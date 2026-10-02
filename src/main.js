@@ -33052,7 +33052,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All FOURTEEN
+   what it says, and the box already grows to fit its contents. All FIFTEEN
    locales measure inside 150 px on one line today — Spanish's "Suena a las"
    and Korean's "울리는 시각" tie for the long one at 52.8 px (§209, §211),
    past German's "Klingelt um" at 49.5 (§116 measured the others against
@@ -33060,7 +33060,8 @@ html:lang(ko) { word-break: keep-all; }
    32.8; §213's Russian "Звонит в" 40.6; §214's Portuguese "Toca às" 34.5;
    §210's Italian "Suona alle" 47.3;
    §212's Hindi "बजने का समय" 50.6; §249's Vietnamese "Reo lúc" 33.9,
-   its "Thời gian" the longer label at 42.1) — so the allowance that a
+   its "Thời gian" the longer label at 42.1; §249's Dutch "Gaat af om"
+   49.5, level with German) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -33731,6 +33732,11 @@ function setBarState(id, on) {
 // once "View" took the menu word Xem: §208's lesson, a face chosen against
 // this bar. Its tooltips ("Ẩn bảng Xem") took the same word so the panel and
 // the button that opens it agree.
+// §249's Dutch measured 204.4 on its first pass — the WIDEST any locale has
+// measured, on "Menu / Weergave / Bediening" — and 182.6 once "View" took
+// Beeld, the word Dutch software menus already use for it; the two tooltips
+// that name that panel took it too. The same lesson a third time: a face is
+// chosen against this bar.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the

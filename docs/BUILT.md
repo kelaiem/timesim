@@ -29987,6 +29987,136 @@ two tooltips that name the panel matching it.
   fourteen. That predates this landing.
 - **`index.html`'s `<title>` is not localized in any locale** — still true.
 
+### Dutch — chunk G, the one-sitting landing
+
+The entry scoped Dutch as the cheap chunk between two heavy ones, and it was.
+The chrome (478 keys), `explain.html` (761/761) and `primer.html` (145/145) all
+read Dutch at 100%, following the Vietnamese landing's recipe item for item.
+Fifteen locales now. The sites it touched:
+- the `LOCALES` row (`nl`, `tag: 'nl-NL'`, anchored matcher) and four ladder rows
+- both `LOADERS` entries, extract first and wire second
+- `MARKS.nl` and `HONESTY.nl`
+- the precache count, 51 → 53
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+
+**It is the control case, and that is measured rather than assumed.** Chromium
+141 formats `nl-NL` and `nl-BE` identically — `30,0 · 0,024 · 1.000 · 18.000`,
+Latin digits, plural one/other. So there is no region decision, Flemish lands
+on the one table (`nl-BE` → `nl` is a ladder row), and `MARKS.nl` is German's
+row. No other code in the roster begins `nl`. Dutch's accented capitals (É, Ë)
+ink 2 px past the pages' `/1` boxes, the same overrun German's umlauts have
+shipped with since §73. So Dutch takes no line-height rule: Hindi's and
+Vietnamese's rules exist because their scripts overrun further than any Latin
+accent.
+
+**What Dutch did find was the chrome bar.** *Menu / Weergave / Bediening*
+measured **204.4** against German's 192.4, the widest any locale has measured,
+and on a word that looks unremarkable. "View" took **Beeld**, the word Dutch
+software menus already use for it, and the bar reads **182.6**. The two
+tooltips that name that panel took the same word. This is §208's lesson for the
+third time — Arabic's "Controls", Vietnamese's "View", now Dutch's — so it
+stops being an anecdote: **of the nine locales since §208, three were wider
+than German on their first pass, and each was fixed by a word rather than by
+the bar.**
+
+### The tables
+
+Ten translators worked in parallel against one glossary, using the numbered
+`{id: string}` shape, the extractor's own key literals, and a validator
+mirroring the page gate. That is the Vietnamese landing's pipeline unchanged.
+Its glossary:
+- the escapement: Zwitserse ankergang, ankerrad with its knottanden, anker, onrust, spiraalveer
+- the power: drijfveer in its veerhuis, snek on its snekkegel, ketting
+- the works: rondsel, wijzerwerk, kroon, kolomwiel
+- the four phases: rust / trek / impuls / val
+- pawls: klink for a click against pal for a driving pawl, and loopbehoud for maintaining power
+
+*Gemodelleerd* and *gesimuleerd* are held apart by stem in `HONESTY.nl`, as
+German's are, since Dutch inflects the participle.
+
+**Reconciliation found the seams §208 predicts, and one the brief itself
+caused.** The brief misspelled the club tooth (*knotstand* for *knottand*), and
+the chunks that read it carried the typo faithfully. Each of these is one word
+now:
+
+| English | Dutch |
+|---|---|
+| club tooth | knottand |
+| winding spur | recht opwindrad |
+| hack contact | stoppunt (not *stopcontact*, a mains socket) |
+| a detented display | rastering (*pal* is a pawl) |
+| power, interface, alarm (category tags) | energie, bediening, wekker, on both pages |
+| the two page titles | Horloge-sim |
+
+Eleven English keys appear twice with disagreeing Dutch, and a JS table keeps
+one value, so each was chosen. **One choice was overruled by the plate-fit
+gate, and it was the better word.** *Pivot* was first resolved to *draaipunt*,
+the prose word. That overran three plate labels, and the label that fits is
+*tap*, which is what a Dutch watchmaker calls a pivot. Prose keeps *draaipunt*
+where it means the turning point of a lever.
+
+### §236's sense audit, in an inflected language
+
+Dutch links **81** times against English's 86. The audit carries over from the
+Vietnamese landing: blocks whose Dutch carries a linked term's word while the
+English lacks the term. Here it found **three** false links, all of them
+homographs rather than senses:
+- *op slag stil* — "instantly", not a throw
+- *lagen* — twice, the past tense of *liggen*, not strata
+
+All three were reworded, and the audit reads 0 for every term. The brief had
+already steered the translators away from the vocabulary's short words in
+other senses:
+- a beat is *tik*
+- a strike is *klap*
+- a unit of length is a *maateenheid*
+- a path is *pad* or *weg*
+
+Those choices are why the count is three and not Vietnamese's 16-block
+*hành trình*.
+
+### Fit, every fix in the label
+
+The page gate's first Dutch pass found **fourteen** overruns or collisions:
+thirteen on the explainer and one on the primer. That is twice Vietnamese's
+count, because Dutch compounds run long where Vietnamese words run tall. Every
+one was fixed in the label. Among them:
+- the three *draaipunt* labels
+- *POWER FLOW* quoted inside a caption, which keeps the chrome's own *KRACHTSTROOM*
+- the §35 link beak's state labels, now *snavel OP → ring op · uit*
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages; honesty control PASS (*gemodelleerd / gesimuleerd*), **14/14** rows verified — PASS |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| `glossary-links` | text identical with and without the linker in every locale; nl **81** links (en 86) — PASS |
+| sense audit | 3 false links found and reworded; 0 remain |
+| page headers | **56 px in Dutch**, both pages, at all eight widths — one line, matching English |
+| `#chrome-bar` | nl **182.6** against en 170.2 and de 192.4 (first pass 204.4) |
+| `.hud-ro-label` | *Gaat af om* 49.5 (level with German), *Tijd* 15.8 against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **39/39**, precache **53/53**, the Dutch primer served from cache |
+| boot | `?lang=nl` on all three documents console-silent apart from the static server's own 404, which English shows too; `lang="nl"`, `dir="ltr"`; `fmtNum` reads `30,0 · 0,024 · 18.000`; the ladder assert silent |
+| fingerprint | **1112714209** (60 units, 12 poses) at `?lang=nl` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it — the tables cannot move geometry |
+| battery | **51/51 gates**, local (dev container, 3 shards, 4601 s wall, 6138 s of checks); fingerprint **1112714209** across virgin boots A and B and under the share payload (36/36 applied) — identical to `origin/main`, §73's form of "no geometry moved". CI's Battery job on the PR, opted in to the self-hosted runner, is the merge gate |
+
+### Residue, recorded
+
+- **No native review pass** — the IOU every locale carries. The terms most
+  likely to differ in a workshop are *snek* for the fusee, *loopbehoud* for
+  maintaining power, and *regulateur* for the alarm governor.
+- **One Dutch word names two parts**: *anker* is the escapement's pallet fork
+  and the alarm governor's anchor, as the English "anchor" nearly does too.
+  Each entry's context separates them, but no glossary row does.
+- **The chrome is not held by the honesty gate** — Vietnamese's finding, met
+  again on the same string. "No models" means model FILES, and the Dutch says
+  *geen modelbestanden* rather than forcing *gemodelleerd* in.
+- **`Version`** still has no entry in any locale's table, and
+  **`index.html`'s `<title>`** is still not localized in any locale.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
