@@ -2736,8 +2736,16 @@ const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW
 // the PLANE, never the mesh — the two constants below are that plane, and the
 // geometry fingerprint is what proves the deferral cost nothing: the shipped
 // movement hashes exactly as it did with the cut up here.
-const BACK_PLATE_Z = -1;   // the slab's centre
-const BACK_PLATE_T = 2;    // ...spanning [z−1, z+1]
+// TODO 202 — the plate's two FACES are the datums, and the thickness is what
+// lies between them. The movement side is z 0, which every train part, cock
+// leg and pillar seats off (PLATE_TOP). The dial side is z −2.3: until TODO 202
+// the extrude's bevel stood proud of a nominal [−2, 0] slab, and the face it
+// actually presented at −2.3 is what the whole dial-side stack was solved
+// against (TODO 153's PLATE_BACK_FACE, §234's guard, TODO 172's pockets). The
+// builder now cuts the finished plate, so the slab is declared as the metal
+// those solves already stand on: 2.3 u = 0.872 mm, centred at −1.15.
+const BACK_PLATE_T = 2.3;
+const BACK_PLATE_Z = -BACK_PLATE_T / 2;   // the slab's centre: top face at z 0
 
 // --- the case's RADIAL dimensions (backlog: watch case) — derived once,
 // here, because the stems below are cut to reach through them. The z
@@ -4511,7 +4519,7 @@ const FRAME_JOINTS = [];
 // plate, since a blind hole would leave less. ENGAGE_MIN·d ≤ BACK_PLATE_T
 // fixes the largest thread the plate can hold to strength:
 //
-//      d = BACK_PLATE_T / ENGAGE_MIN = 1.333 u = 0.505 mm
+//      d = BACK_PLATE_T / ENGAGE_MIN = 1.533 u = 0.581 mm   (TODO 202: the plate as cut)
 //
 // A real cock screw on a 32 mm movement runs about 1 mm, and the plate that
 // takes it is thicker than 0.758 mm; that plate is TODO 69's class, not this
@@ -5603,11 +5611,15 @@ const settingArbor = (() => {
 let minuteWheelBase = Math.PI / minuteWheelTeeth;
 // (Z_SETTING, RSV_P0_TOP_Z and SETTING_ROD_R are hoisted above the minute
 // wheel's build now — TODO 150 item 1 — with their derivation comments there.)
-const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
-// TODO 200 — and its movement-side twin, +0.3: the bevel stands proud of BOTH
-// faces. A part RIVETED through the plate spans the metal the extrude cuts,
-// face to face, not the slab constant — BACK_PLATE_T is 2.0, the plate is 2.6.
-const PLATE_TOP_FACE = PLATE_TOP + BACK_PLATE_T * G.PLATE_BEVEL_T_F;
+// The faces the base plate PRESENTS, asserted at the plate build (§234). Until
+// TODO 202 the extrude's bevel stood proud of both, so these read −2.3 and
+// +0.3 and every part seated off PLATE_TOP sat up to 0.3 inside the metal;
+// the builder now cuts the blank short by the bevel, the plate measures
+// BACK_PLATE_T face to face, and the presented faces ARE the slab's. The two
+// names stay because their consumers mean "the face the metal presents" —
+// the motion-works stack (TODO 153) and the pillar's riveted joint (TODO 200).
+const PLATE_BACK_FACE = PLATE_BACK;
+const PLATE_TOP_FACE = PLATE_TOP;
 // TODO 172 — the alarm setting lane (wheel, both idlers, the crisp arbor pinion
 // and its rod end) stands ONE CLEAR_MARGIN off the dial's back face; it was a
 // designed 0.05, under the margin. + MEASURED_MARGIN_BAND because a plane that
@@ -12359,10 +12371,10 @@ const PILLAR_TAP_DEPTH = PILLAR_ENGAGE + G.THREAD_PITCH_PER_DIA * PILLAR_THREAD_
 // foot land (1.5 × body), so it bears on plate from the tenon out to the land.
 const PILLAR_TENON_R = PILLAR_BODY_R - STOCK_MIN_U;
 // TODO 200 — the joint is the plate's PRESENTED thickness, face to face
-// (PLATE_TOP_FACE − PLATE_BACK_FACE, 2.6), not the slab constant: at
-// BACK_PLATE_T the shoulder stood 0.3 inside the movement-side face and the
-// tenon stopped 0.3 short of the dial-side one, a rivet ending inside its
-// own hole. The shoulder now seats ON the presented face.
+// (PLATE_TOP_FACE − PLATE_BACK_FACE): when the extrude stood its bevel proud,
+// the shoulder sat 0.3 inside the movement-side face and the tenon stopped 0.3
+// short of the dial-side one, a rivet ending inside its own hole. Since TODO
+// 202 the presented faces are the slab's, and this reads BACK_PLATE_T.
 const PILLAR_BASE_Z = PLATE_TOP_FACE;
 const PILLAR_TENON_LEN = PLATE_TOP_FACE - PLATE_BACK_FACE;
 // TODO 200 — THE RIVETED END. A riveted tenon is spread into a countersink on
@@ -12599,7 +12611,7 @@ recutBackPlate();
 // profile, turned on the pillar's segment count so the two touch facet for
 // facet.
 for (const s of pillarRivetSites) {
-  const F = BACK_PLATE_T / 2 + BACK_PLATE_T * G.PLATE_BEVEL_T_F;   // presented faces, plate-local ±
+  const F = (PLATE_TOP_FACE - PLATE_BACK_FACE) / 2;   // presented faces, plate-local ±
   const Ro = PILLAR_RIVET_MOUTH_R + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP;
   const land = new THREE.Mesh(G.makeRivetLand({ tenonR: PILLAR_TENON_R, mouthR: PILLAR_RIVET_MOUTH_R,
     outerR: Ro, z0: -F, z1: F, segments: G.PILLAR_SEGMENTS }), MATS.perledNickel);
@@ -22121,7 +22133,12 @@ const ALARM_HAM_SPR_ANCHOR = {
   x: _hamBear0.x - _hamPush.x * ALARM_HAM_SPR_FREE,
   y: _hamBear0.y - _hamPush.y * ALARM_HAM_SPR_FREE,
 };
-const ALARM_HAM_SPR_STUD_R = 0.3;
+// TODO 202 — the stud is a TURNED bar standing from the rim's back face to the
+// strike plane, so its section is set by that length at the turning ceiling's
+// build-to figure (§233's TURN_LD_TARGET, the arrest columns' rule). It was a
+// 0.3 literal, L/D 19.3 while the rim's face stood 0.3 proud; cut to the
+// finished plate the stud grew by that 0.3 and read L/D 20.3, over the gate.
+const ALARM_HAM_SPR_STUD_R = (Z_STRIKE - HAMMER_POST_BOT) / (2 * TURN_LD_TARGET);
 {
   const r = Math.hypot(ALARM_HAM_SPR_ANCHOR.x, ALARM_HAM_SPR_ANCHOR.y);
   if (r - ALARM_HAM_SPR_STUD_R < R_ANNULUS_IN - 1e-9 || r + ALARM_HAM_SPR_STUD_R > R_ANNULUS_OUT + 1e-9)
@@ -46018,7 +46035,7 @@ const JMP_SITE_MOVERS = [
   { name: 'alarm setting wheel', kind: 'revolve', roots: [alarmSetWheelGroup], onto: jmpRotorNamed(alarmSetWheelGroup, 'alarmSettingWheel'), slack: 0 },
   // ---- bounded: each bound is the census's measured minimum over the pose
   // net, rounded down to 0.01 (trailing: the reading and the mesh that sets it)
-  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.99 },   // 0.9901, the centre wheel's arbor body
+  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.85 },   // 0.8554, the fusee's lower pivot at train 46/96 — TODO 202: the pivot seats mid-plate, and the plate's centre is −1.15 now (was the centre arbor's 0.9901)
   // the clutch and the reset rod are PHANTOMS as built — tick places both, so
   // the solve reads the clutch 32.8 off its stem and the rod at the origin;
   // both stay this far from any station the whole net over

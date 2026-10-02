@@ -21,7 +21,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
 | 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
 | 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.931) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
-| 202 | OPEN | The base plate's extrude carries its `bevelThickness` PROUD of both faces, so it presents [−2.3, 0.3] against `PLATE_TOP` 0 / `PLATE_BACK` −2. The dial side was re-derived (TODO 153's `PLATE_BACK_FACE`); the movement side never was, and the parts seated off `PLATE_TOP` sit up to 0.225 inside the metal over solid plate: the transfer wheel, ratchet, click, governor wheel/pinion/arbor, geneva finger disc and pin, alarm arrest cross, the cock legs and pivot bosses. The plate is a held fixture, so no sweep sees it. Fix: cut the extrude at `BACK_PLATE_T − 2·bevel` (the pallet fork's precedent), then re-solve the TODO 153 stack against the moved dial face. |
+| 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 (a plate clearance tier) is not built. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
@@ -27146,7 +27146,7 @@ Feasibility: medium · Cost: about 100–200 lines in `main.js` (§104's
 governor block) and `geometry.js` · Battery: moves the alarm barrel's
 geometry and the governor's ring. The full battery runs.
 
-## 202. The base plate's movement-side face stands 0.3 above PLATE_TOP, and the parts seated on PLATE_TOP sit inside it
+## 202. The base plate's movement-side face stands 0.3 above PLATE_TOP, and the parts seated on PLATE_TOP sit inside it — CLOSED
 
 Found by TODO 200. `G.makeBackPlate` extrudes `thickness` with a
 `bevelThickness` of `thickness · PLATE_BEVEL_T_F` (0.3). `ExtrudeGeometry`
@@ -27204,6 +27204,60 @@ never against the cut one.
 
 Feasibility: medium · Battery: moves the fingerprint, every digest touching
 the plate and the motion-works stack; full battery.
+
+**Closed — what was built, and why the fix path above was not taken.** Step 1
+was right and is done: `makeBackPlate` now extrudes `thickness − 2·bevelT`,
+so the finished, chamfered plate measures exactly `thickness` face to face
+(TODO 98's rule; the three-quarter plate's builder already did this). Step 2
+was tried and is the wrong datum. Holding the slab at [−2, 0] moves the
+dial face 0.3 toward the dial, and the TODO 153 stack re-solves off it. The
+first boot of that tree re-sited the motion works' rise corner, from cone r
+2.116 at 4.203 to r 2.062 at 4.274. The rise bore then no longer crossed
+the cap pocket's rim, and the build died in `discLessDisc`. Every dial-side
+solve — TODO 153's stack, §234's leg, TODO 172's pockets, the reserve
+traverse — stands on the face the metal actually presented, −2.3. So that
+face is the datum, not the slab constant that was never cut.
+
+So the slab is DECLARED as the metal both sides already stand on. The
+movement face is z 0 (`PLATE_TOP`, unchanged, so nothing seated off it
+moves). The dial face is −2.3 (unchanged, so nothing on the dial side
+moves). Between them, `BACK_PLATE_T` = 2.3 u = 0.872 mm and `BACK_PLATE_Z` =
+−1.15. `PLATE_BACK_FACE` and `PLATE_TOP_FACE` are now the slab's own faces;
+the names stay because their consumers mean "the face the metal presents".
+The only metal removed is the 0.3 the parts were buried in.
+
+What the new thickness moves, by derivation:
+- `COCK_THREAD_D` = `BACK_PLATE_T / ENGAGE_MIN` is now 1.533 u (0.581 mm,
+  was 0.505). Both cocks re-sited their screws by under 0.5 u.
+- `PIVOT_SEAT_Z` (mid-plate) is −1.15.
+- The dial-side jewels sit at `PLATE_BACK` −2.3, which is ON the face the
+  plate presents. At −2.0 they had been 0.3 inside it.
+- The pillar tenons (TODO 200) are 2.3 long.
+- The fusee's lower pivot runs to `PIVOT_SEAT_Z`, 0.15 deeper. That moves
+  `jumperMovers`' "going-train bodies" bound, which is the census's own
+  measured minimum. The fusee pivot now sets it at 0.8554, against 0.9901
+  for the centre arbor before, so the bound is re-recorded at 0.85. That is
+  still far over `CLEAR_MARGIN`.
+- The alarm hammer spring's stud stands from the rim's back face, so it grew
+  by the 0.3 and read L/D 20.3 against `turning`'s ceiling of 20. Its radius
+  was a 0.3 literal. It is now derived from its length at
+  `TURN_LD_TARGET`, the arrest columns' rule: 0.338.
+- `probe-184-frame-joints` reads all seven base-plate joints at 0.872 mm
+  engaged against 0.872 required, 11/11, controls PASS.
+- Boot is silent.
+
+Measured on the built meshes, the slab and both pocket floors now span
+[−2.3, 0.000]. So nothing seated off `PLATE_TOP` is inside the metal any
+more. The same scratch probe, re-run on the band (−0.3, 0) with a downward
+ray confirming plate metal, finds only designed sinks:
+- the balance pivot and its two rubbed-in collars at −0.297
+  (`makeJewelSetting`'s sunk collar);
+- the alarm barrel arbor at −0.2, which runs in its bored boss (§99);
+- the case clamp heads, sunk `SEAT_EMBED` into the rim.
+
+Step 4 (a clearance tier between the plate and the parts seated on it) is
+not built. It remains the way to make the next face error a red row rather
+than a probe's finding.
 
 ## 203. The link search's tab zone scores no fixed off-centre metal centred inside r 7 (feeler and rocker brackets, seat and sleeve posts)
 
