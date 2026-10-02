@@ -27,7 +27,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
 | 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
-| 187 | OPEN | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
+| 187 | CLOSED | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
 | 186 | PART DONE | B1 built: the 6 silent non-identity points (`reconf=1` is the default's key) are swept FULL on push/dispatch/local runs (restricted to their changed units, unioned with the default; 0.06–0.56× the default's three sweeps each, +1,906 s of tier wall locally, ~+18 min projected on CI) and INCREMENTALLY on PRs against the cached `points.json` (Chain-only, 449 s for all six in a same-tree simulation) under a 10-min ceiling that SKIPS, never passes. All six clean and listed in `validated-configs.js`. Open: B2, the warning points as expected-red, once the §127 matrix is wired |
 | 185 | CLOSED | The cap leg's tilt judges the minute star and wheel at their swept discs (`MW_FOLD_OBSTACLES`, `G.revolvedBlankDiscClearance`), and the stub is certified to `FOLD_SAT`. The tilt maximizes its least judged pair, the star's included, counted to `FOLD_SAT`. The fold cannot saturate before the star binds, so the optimum is interior: φ 15.16° → 15.87°, L 3.241 → 3.374, the pairs 0.1518 / 0.1531 → 0.1921 / 0.3017, and the star certified 0.1969 (measured 0.2085). The reserve swing went 5.0° → 3.5° by its own tie-break; the jumper is unchanged at 233.5° |
 | 184 | CLOSED | Every frame joint crosses its face by its requirement. The four plate screws are 1.0 mm threads, 1.5 mm into tapped pillars. The three cock screws are tapped through the base plate, and the plate's 0.758 mm sets their 0.505 mm thread ([TODO 69]'s class). The four pillars are riveted into the base plate on flush tenons. `FRAME_JOINTS` is boot-asserted, and `support` fails a fastened edge unless the metal measures engaged |
@@ -143,13 +143,13 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
-| 70 | OPEN | `makeJewelSetting`'s collar is wound inside out AND is an open shell — three in the scene, found by §148's own winding assert swept scene-wide. The winding is a two-line fix; the open profile is TODO 27's measured hazard and is the real work |
+| 70 | CLOSED | `makeJewelSetting`'s collar is a CLOSED profile now, wound outward, and it runs `assertLatheOutward`. The open shell, the parity raycast's hazard (TODO 27), is gone with the winding. Closed with TODO 75 |
 | 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
 | 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
-| 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
+| 75 | CLOSED | Ten bodies, not four, were inside out: the three waiver keys were `unit/(unnamed)` blankets, and TODO 184's six bored cock legs and pads arrived under them. The escape bridge's boss and foot tube, the bored legs, `makeJewelSetting`'s collar and `alarmFaceCam` are all wound outward at their builders. Each lathe runs `assertLatheOutward`, and `INVERTED_WAIVERS` is empty |
 | 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
 | 78 | CLOSED | §54's `checkSlenderness` was exported and NEVER REGISTERED in `CHECKS` — `start()` answered "unknown check", so it had not run once since §52, its waiver waived rows in a report nothing produced, and three different λ values for one mesh accumulated in `main.js`. Second instance of the class (TODO 29 was the first), so `ci-battery` now GATES `CHECK_NAMES` (read from the page) against `BATTERY`. It also measured stock length, not free length: meshes may now declare `userData.bearings` and λ is taken per free length, an overhang scaled by `SLENDER_OVERHANG_K` = ∛16. Report (§40): **9 rows over ceiling, 7 unwaived and untriaged** |
 | 79 | CLOSED (§202) | **A third hanger stands 2.64 u inboard of the rod end — the overhang §54's target allows this section as a cantilever, λₑ 27 — and the middle hanger moved to the run's midpoint; the rod-end term went 21.2 → 341 N/m coupled, the chain delivers 6.17 mN at the tab (probe and derivation agree), inside the window, and the transfer waiver is retired. `tools/probe-79-rodend-band.mjs` scanned the run §68 never did: clear by ≥ 2.5 u from the rod end to t 10.6.** As filed: the alarm link's lay shaft had a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. **MEASURED by TODO 82: the transfer IS rod-end-limited, at ≈1.58 mN — below the 5–50 mN band, and the rod-end overhang carries 72.4% of the whole chain's compliance while the fork-end the section was sized against carries 0.1%.** (The 3.3 mN first filed here was the free-cantilever value against a stroke that was itself a deleted constant; both are corrected in TODO 82.) Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
@@ -8422,7 +8422,15 @@ that the plate is thin, not that the chaton is fat: every member above is
 already at its floor, and `CHATON_DEPTH` is the depth that EQUALISES the two
 that were there first.
 
-## 70. `makeJewelSetting`'s collar is wound inside out, and it is an open shell as well
+## 70. `makeJewelSetting`'s collar is wound inside out, and it is an open shell as well — CLOSED
+
+**Closed with TODO 75.** The collar's profile is closed now: `(wallR, floor)
+→ (outerR, floor) → (outerR, rimTop) → (wallR, rimTop)`, back to the start,
+with `floor = −d − 0.1`. That is ringGeo's travel, and it carries the
+counterbore wall down to the floor the outer wall already reached.
+`assertLatheOutward` runs on it, as this item asked, and boot is silent.
+`meshIntegrity`'s inverted tier no longer lists the balance cock's collar,
+which was this builder's row there (−1.64).
 
 > **Instrument note (2026-08-21).** §77's `meshIntegrity` tier 0 now
 > measures signed volume per mesh scene-wide, and its four `inverted` rows
@@ -8661,7 +8669,38 @@ that grows names the builder that regressed. The rows are a §40 report, not
 gated and not waived; each builder fix moves the fingerprint (vertices move)
 and is its own landing, item 73 half 1 being the first.
 
-## 75. Four bodies measure INSIDE-OUT — over half the fork cock's volume is negative
+## 75. Four bodies measure INSIDE-OUT — over half the fork cock's volume is negative — CLOSED
+
+**Closed 2026-10-02, and there were ten bodies, not four.** The tier's
+waivers were keyed `Fork cock/(unnamed)`, `Balance cock/(unnamed)` and
+`Alarm setting wheel/alarmFaceCam`. A `unit/(unnamed)` key waives EVERY
+unnamed mesh of that unit. So when TODO 184 step 2 cut six bored legs and
+pads under the two cocks with a profile travelled the wrong way round, they
+went in inside out, and no gate saw them. Measured before the fix:
+
+| unit | body | builder | signed vol / bbox |
+|---|---|---|---|
+| Fork cock | pivot boss | `makeEscapeBridge` | −5.03 / 9.00 |
+| Fork cock | foot tube | `makeEscapeBridge` | −4.68 / 8.24 |
+| Fork cock | bored leg ×2 | `boredLegGeometry` | −18.47, −3.07 |
+| Balance cock | jewel collar | `makeJewelSetting` (TODO 70) | −1.64 / 5.06 |
+| Balance cock | bored leg and pad ×2 each | `boredLegGeometry` | −37.80 ×2, −4.01 ×2 |
+| Alarm setting wheel | `alarmFaceCam` | hand-built index | −0.27 / 6.08 |
+
+**What changed.**
+- Every lathe profile now travels ringGeo's way: bore bottom → out → up →
+  back in. This is the same set of points in the opposite order, except for
+  the collar, which TODO 70 also closes.
+- Each of those builders now calls `assertLatheOutward`. This item asked for
+  it to be pointed at them, and boot stays silent.
+- `alarmFaceCam`'s two walls ran inward and its base ring was not a face, so
+  the walls are re-wound and the base is added. It is a closed body now.
+
+`INVERTED_WAIVERS` is empty, and its comment records the trap: a key names a
+mesh, and an unnamed key is a hole the size of a unit. After the fix,
+`meshIntegrity` reads `inverted: 0 rows, 0 waived, 0 stale`.
+`probe-184-frame-joints` still reads 11/11 joints engaged. The fingerprint
+moves (normals and closure), and the battery is the acceptance.
 
 Filed from `meshIntegrity` tier 0's arrival run (§77, 2026-08-21): the
 divergence-theorem signed volume, measured per mesh with a floor of

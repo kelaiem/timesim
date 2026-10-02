@@ -6561,30 +6561,34 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot
       // set into the plate — a chaton lying on a surface is not a setting.
       const t2 = thickness / 2;
       const cbR = n.cbR ?? n.bore, cbD = n.cbDepth ?? 0;
+      // TODO 75 — travelled ringGeo's way (bore bottom → out → up → back in);
+      // the old profile ran the other way round and the boss was inside out.
       const pts = [
         new THREE.Vector2(n.bore, -t2),
-        new THREE.Vector2(n.bore, t2 - cbD),
-        new THREE.Vector2(cbR, t2 - cbD),
-        new THREE.Vector2(cbR, t2),
-        new THREE.Vector2(n.r, t2),
         new THREE.Vector2(n.r, -t2),
+        new THREE.Vector2(n.r, t2),
+        new THREE.Vector2(cbR, t2),
+        new THREE.Vector2(cbR, t2 - cbD),
+        new THREE.Vector2(n.bore, t2 - cbD),
         new THREE.Vector2(n.bore, -t2),
       ];
       const bossG = new THREE.LatheGeometry(pts, 40);
       bossG.rotateX(Math.PI / 2); // lathe revolves about +Y; stand it along Z
+      assertLatheOutward(bossG, 'the escape bridge\'s pivot boss');
       disc = new THREE.Mesh(bossG, slabMat);
     } else if (n.foot) {
       // A FOOT boss, and the foot screw runs down through it — so it is a
       // tube, bored one seat fit over the shank (TODO 27: the screw's shaft
       // used to be drawn inside solid nickel with nothing cut for it).
       const t2 = thickness / 2, br = screwBoreR(footHeadR(n));
-      const pts = [
-        new THREE.Vector2(br, -t2), new THREE.Vector2(br, t2),
-        new THREE.Vector2(n.r, t2), new THREE.Vector2(n.r, -t2),
+      const pts = [   // TODO 75: ringGeo's travel, as the boss above
+        new THREE.Vector2(br, -t2), new THREE.Vector2(n.r, -t2),
+        new THREE.Vector2(n.r, t2), new THREE.Vector2(br, t2),
         new THREE.Vector2(br, -t2),
       ];
       const tubeG = new THREE.LatheGeometry(pts, 28);
       tubeG.rotateX(Math.PI / 2);
+      assertLatheOutward(tubeG, 'the escape bridge\'s foot tube');
       disc = new THREE.Mesh(tubeG, slabMat);
     } else {
       disc = new THREE.Mesh(new THREE.CylinderGeometry(n.r, n.r, thickness, 28), slabMat);
@@ -6716,13 +6720,20 @@ export const screwShankR = (headR) => headR / 2;
 // CylinderGeometry(rTop, rBot, h) it replaces (same axis, +Y, centred), with
 // a clearance bore of radius `bore` all the way through. The screw is what
 // holds the member above to the plate below, so the leg carries no thread.
+//
+// TODO 75 — travelled ringGeo's way (bore bottom → out → up → back in). The
+// first version ran the other way round, and the six cock legs and pads it
+// cut shipped inside out under the cocks' blanket inverted-body waiver.
 export function boredLegGeometry(rTop, rBot, bore, h, seg = 20) {
   const pts = [
-    new THREE.Vector2(bore, -h / 2), new THREE.Vector2(bore, h / 2),
-    new THREE.Vector2(rTop, h / 2), new THREE.Vector2(rBot, -h / 2),
+    new THREE.Vector2(bore, -h / 2), new THREE.Vector2(rBot, -h / 2),
+    new THREE.Vector2(rTop, h / 2), new THREE.Vector2(bore, h / 2),
     new THREE.Vector2(bore, -h / 2),
   ];
-  return new THREE.LatheGeometry(pts, seg);
+  const geo = new THREE.LatheGeometry(pts, seg);
+  // the assert reads z as the axis; this geometry is handed over along +Y
+  assertLatheOutward(geo.clone().rotateX(Math.PI / 2), 'a bored cock leg');
+  return geo;
 }
 export const screwBoreR = (headR) => screwShankR(headR) + SEAT_FIT;
 // §148 — AND THERE ARE TWO HOLES, because there are two joints. A screw that
@@ -7163,14 +7174,23 @@ export function makeJewelSetting({ r }) {
   const wallR = r * 1.15;                // counterbore wall
   const outerR = r * 1.6;
   const d = Math.max(r * 0.35, 0.3);     // recess depth into the host
+  // TODO 70/75 — a CLOSED profile, travelled ringGeo's way (bore bottom →
+  // out → up → back in). The old one was four points that never returned —
+  // an open shell, wound inside out — and an open mesh is the parity
+  // raycast's measured hazard (TODO 27). Closing it carries the counterbore
+  // wall down to the collar's own floor, −d − 0.1, which the outer wall
+  // already reached: the collar is now the solid ring it was drawn as.
+  const floor = -d - 0.1;
   const pts = [
-    new THREE.Vector2(wallR, -d),
-    new THREE.Vector2(wallR, rimTop),
+    new THREE.Vector2(wallR, floor),
+    new THREE.Vector2(outerR, floor),
     new THREE.Vector2(outerR, rimTop),
-    new THREE.Vector2(outerR, -d - 0.1),
+    new THREE.Vector2(wallR, rimTop),
+    new THREE.Vector2(wallR, floor),
   ];
   const collarG = new THREE.LatheGeometry(pts, 32);
   collarG.rotateX(Math.PI / 2); // stand the profile up along Z
+  assertLatheOutward(collarG, 'a jewel setting\'s collar');
   g.add(new THREE.Mesh(collarG, MATS.nickel));
   // TODO 12: the stone at floor stock. d·0.8 gave 0.269 u at the balance
   // cock's setting; the max floors it at 0.12 mm while staying inside the

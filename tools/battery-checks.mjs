@@ -192,8 +192,9 @@ export const BATTERY = [
   // two case bodies, plus three the gate caught on its own first run
   // (TODO 115's mirrored sweeps had shipped both stem saws and the fusee's
   // land ring inverted, days old, seen by nothing else) — and 4 waived by
-  // name in INVERTED_WAIVERS citing TODO 123. Waiver staleness gates with
-  // it, SLENDER_WAIVERS' covenant.
+  // name in INVERTED_WAIVERS citing TODO 123. Since TODO 75 none are waived:
+  // those keys had grown to cover ten bodies, all now wound outward. Waiver
+  // staleness gates with it, SLENDER_WAIVERS' covenant.
   // TODO 100 — a cut outline is a simple polygon, or it is not an outline.
   // Unlike meshIntegrity and slenderness above, this one GATES ITS ROWS rather
   // than reporting them, and it can because the movement was measured clean

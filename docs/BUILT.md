@@ -15064,6 +15064,15 @@ contradictory: those collars are OPEN shells, whose signed sum is
 path-dependent, so inverted winding need not read negative. Item 70 carries
 that note, so nobody re-attributes them later.
 
+**Corrected at TODO 75's close (2026-10-02): one of the four was a collar
+after all, just not one of item 70's three.** The Balance cock row is 192
+triangles: 32 segments × 3 profile spans × 2. That is exactly
+`makeJewelSetting`'s four-point open profile, at a fourth site item 70 never
+listed. It stopped reading negative the moment that builder's profile was
+closed and wound outward, and nothing else in the fix touched a 32-segment
+lathe. So the coordinates did not match because the instances differed, not
+the builder. TODO 75's entry has the full table of ten bodies.
+
 **The chain's 91 rows are the fiction, not a defect, and the instrument now
 says which.** The build DECLARES its articulation a fiction in as many words —
 wrap links carry up to ~36.3° of per-joint twist a real chain would shed by
