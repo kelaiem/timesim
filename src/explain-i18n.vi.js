@@ -469,7 +469,6 @@ export default {
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: 'Độ rơi + <code>CLEAR_MARGIN</code>: vị trí tự do của lá nằm quá điểm tựa chặn, nên lá vẫn còn đẩy khi cần nằm trên chốt chặn — chính điều đó giữ cần ở đó.',
   ['<code>ALARM_SIL_FINGER_R</code>']: '<code>ALARM_SIL_FINGER_R</code>',
   ['5.86']: '5.86',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: 'Khe trống duy nhất trên đuôi: mép ngoài tai + biên (5.76) .. mép trong cọc − biên (5.96), đặt giữa.',
   ['<code>ALARM_SIL_THROW</code>']: '<code>ALARM_SIL_THROW</code>',
   ['0.05']: '0.05',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: 'Đúng bằng khe nghỉ: một đuôi đang nghỉ được chạm tới, không bao giờ bị tải; một đuôi đã nâng bị ép về vị trí nghỉ.',

@@ -503,7 +503,6 @@ export default {
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: 'Queda + <code>CLEAR_MARGIN</code>: o assento livre da lâmina fica além do batente, de modo que ela ainda empurra quando a alavanca repousa no batente — é isso que a mantém ali.',
   ['<code>ALARM_SIL_FINGER_R</code>']: '<code>ALARM_SIL_FINGER_R</code>',
   ['5.86']: '5.86',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: 'A única vaga livre na cauda: exterior da orelha + margem (5.76) .. interior do poste − margem (5.96), centrada.',
   ['<code>ALARM_SIL_THROW</code>']: '<code>ALARM_SIL_THROW</code>',
   ['0.05']: '0.05',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: 'Exatamente a folga de repouso: uma cauda em repouso é tocada, nunca carregada; uma cauda erguida é empurrada de volta ao repouso.',

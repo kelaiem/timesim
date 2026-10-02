@@ -472,7 +472,6 @@ export default {
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: '落下 + <code>CLEAR_MARGIN</code>：刃の自由座はバンクの先にあり、レバーが止めに載っても押し続けている — それがそこに保つもの。',
   ['<code>ALARM_SIL_FINGER_R</code>']: '<code>ALARM_SIL_FINGER_R</code>',
   ['5.86']: '5.86',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: '尾の上のただ一つの空きスロット：耳外 + 余裕（5.76）.. スタッド内 − 余裕（5.96）、中央。',
   ['<code>ALARM_SIL_THROW</code>']: '<code>ALARM_SIL_THROW</code>',
   ['0.05']: '0.05',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: 'ちょうど静止隙間：静止の尾は触れられ、荷重されず；上がった尾は静止へ押し戻される。',

@@ -510,7 +510,6 @@ export default {
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: 'गिरावट + <code>CLEAR_MARGIN</code>: ब्लेड की मुक्त सीट बैंक के परे बैठती है, इसलिए जब लीवर स्टॉप पर टिका होता है तब भी वह धकेल रही होती है — यही उसे वहाँ थामे रखता है।',
   ['<code>ALARM_SIL_FINGER_R</code>']: '<code>ALARM_SIL_FINGER_R</code>',
   ['5.86']: '5.86',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: 'पूँछ पर एकमात्र खाली स्थान: लग बाहरी + मार्जिन (5.76) .. स्टड भीतरी − मार्जिन (5.96), केंद्रित।',
   ['<code>ALARM_SIL_THROW</code>']: '<code>ALARM_SIL_THROW</code>',
   ['0.05']: '0.05',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: 'ठीक विश्राम अंतराल: विश्राम में पड़ी पूँछ छुई जाती है, कभी लदती नहीं; उठी हुई पूँछ वापस विश्राम पर दबा दी जाती है।',

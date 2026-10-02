@@ -455,7 +455,6 @@ export default {
   ['stop gap']: 'Anschlagspalt',
   ['<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — the lever ratio, written out.']: '<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — das Hebelverhältnis, ausgeschrieben.',
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: 'Fall + <code>CLEAR_MARGIN</code>: der freie Sitz der Feder liegt jenseits des Anschlags, sodass sie noch drückt, wenn der Hebel am Anschlag ruht — das ist es, was ihn dort hält.',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: 'Der eine freie Platz am Schwanz: Lappenaußenseite + Abstand (5.76) .. Stiftinnenseite − Abstand (5.96), mittig.',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: 'Exakt das Ruhespiel: ein ruhender Schwanz wird berührt, nie belastet; ein gestiegener Schwanz wird in die Ruhe zurückgedrückt.',
   ['ring window']: 'Klingelfenster',
   ['≈ 2.76 min']: '≈ 2.76 min',

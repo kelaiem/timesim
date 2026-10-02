@@ -529,7 +529,6 @@ export default {
   ['stop gap']: 'فجوة المصدّ',
   ['<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — the lever ratio, written out.']: '<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — نسبة الذراع مكتوبة صراحةً.',
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: 'الهبوط + <code>CLEAR_MARGIN</code>: المقعد الحر للنصل يقع أبعد من الحدّ، فيظل يدفع حين تستقر ذراع التحسس على المصدّ — وهذا ما يمسكها هناك.',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: 'الموضع الحر الوحيد على الذيل: خارج الأذن + الهامش (5.76) .. داخل الوتد − الهامش (5.96)، في المنتصف.',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: 'فجوة السكون بالضبط: الذيل الساكن يُلمَس ولا يُحمَّل أبدًا؛ والذيل المرتفع يُضغَط عائدًا إلى السكون.',
   ['ring window']: 'نافذة الرنين',
   ['≈ 2.76 min']: '≈ 2.76 د',

@@ -485,7 +485,6 @@ export default {
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: '낙하 + <code>CLEAR_MARGIN</code>: 블레이드의 자유 시트가 뱅크 너머에 있으므로, 레버가 스톱에 얹혀 있을 때도 여전히 밀고 있습니다 — 레버를 거기 붙들어 두는 것이 바로 그 힘입니다.',
   ['<code>ALARM_SIL_FINGER_R</code>']: '<code>ALARM_SIL_FINGER_R</code>',
   ['5.86']: '5.86',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: '테일 위의 단 하나 빈 자리: 러그 바깥 + 여유(5.76) .. 포스트 안쪽 − 여유(5.96), 중앙에.',
   ['<code>ALARM_SIL_THROW</code>']: '<code>ALARM_SIL_THROW</code>',
   ['0.05']: '0.05',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: '정확히 휴지 간격: 쉬고 있는 테일은 닿기만 하고 하중을 받지 않으며; 올라간 테일은 휴지 위치로 눌려 돌아갑니다.',

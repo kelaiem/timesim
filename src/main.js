@@ -18933,17 +18933,23 @@ const ALARM_FEELER_TAIL = 0.9;   // outboard stub — the silence finger's seat 
 const ALARM_FEELER_SEAT_DROP = ALARM_PIN_DROP + CLEAR_MARGIN;
 const _armMidZ = (ALARM_FEELER_TOP + (ALARM_FEELER_TOP - ALARM_FEELER_T)) / 2; // −0.96
 const ALARM_FEELER_BEAR_R = ALARM_FEELER_ARM_LEN * 0.45;  // bearing inboard of the pin
-const ALARM_FEELER_SPR_FREE = 0.7;                        // stud stands outboard of the pivot
-let alarmFeelerSpringBlade = null, alarmFeelerBearPoint = null;
+const ALARM_FEELER_SPR_FREE = 0.7;                        // the blade's reach past the pivot's station: with BEAR_R, its FREE LENGTH (TODO 190: no longer the stud's station — see the blade)
+// The bracket lugs' plan section and station, hoisted (TODO 190): the return
+// blade's azimuth is solved against the −y lug, so the lug and that solve read
+// one number. Inherited literals — §29 step 3's bracket, unchanged.
+const ALARM_FEELER_LUG_L = 0.22;   // along the lever
+const ALARM_FEELER_LUG_W = 0.18;   // across it
+const ALARM_FEELER_LUG_Y = 0.25;   // lever-local |y| of each lug's centre
+let alarmFeelerSpringBlade = null, alarmFeelerBearPoint = null, alarmFeelerSprAnchorL = null;
 const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
 {
   // Bracket: two lugs from the sheet's back face down to the pivot, a
   // tangential pivot pin between them, and the BANKING STOP over the tail.
   const lugH = -0.05 - (_armMidZ - 0.10); // sheet back face → just under the pivot
   for (const side of [-1, 1]) {
-    const lug = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, lugH), MATS.nickel);
-    lug.position.set(_uF.x * ALARM_FEELER_PIVOT_R - Math.sin(_phiF) * 0.25 * side,
-                     _uF.y * ALARM_FEELER_PIVOT_R + Math.cos(_phiF) * 0.25 * side,
+    const lug = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_LUG_L, ALARM_FEELER_LUG_W, lugH), MATS.nickel);
+    lug.position.set(_uF.x * ALARM_FEELER_PIVOT_R - Math.sin(_phiF) * ALARM_FEELER_LUG_Y * side,
+                     _uF.y * ALARM_FEELER_PIVOT_R + Math.cos(_phiF) * ALARM_FEELER_LUG_Y * side,
                      -0.05 - lugH / 2);
     lug.rotation.z = _phiF;
     alarmFeelerUnit.add(lug);
@@ -19112,10 +19118,55 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   bearP.position.set(ALARM_FEELER_BEAR_R, 0, ALARM_FEELER_T / 2);
   alarmFeelerLever.add(bearP);
   alarmFeelerBearPoint = bearP;
-  const anchor = {
-    x: _uF.x * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_SPR_FREE) ,
-    y: _uF.y * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_SPR_FREE),
+  // TODO 190 — THE BLADE LEAVES THE TAIL'S LINE. Its stud stood SPR_FREE
+  // outboard of the pivot ON the lever's line, so the blade ran back over the
+  // whole tail, its band (TOP + 0.02..0.10) right where the §45 silence finger
+  // seats (underside TOP + 0.05): the finger pressed the BLADE, not the tail —
+  // 0.065–0.124 deep at every pose — while the `rocker finger ⇄ feeler tail`
+  // hand-off row, reading only its own two meshes, stayed green.
+  //
+  // The fold is an AZIMUTH about the bear point, CLAUDE.md's first fold
+  // currency: the free length (anchor → bear chord, SPR_FREE + BEAR_R) is held,
+  // so k, both seat forces, §137's row and TODO 199's table do not move. The
+  // blade swings to lever −y — the side AWAY from the silence rocker, whose
+  // chord leaves the finger along +y — by the least angle at which its line
+  // clears the bracket's −y lug by CLEAR_MARGIN (the lug hangs from the sheet
+  // to under the pivot, through the blade's whole z band). The lug's critical
+  // point is its inboard outer corner (LUG_L/2, −(LUG_Y + LUG_W/2)); its height
+  // above the blade's line is (BEAR_R − LUG_L/2)·sin α − (LUG_Y + LUG_W/2)·cos α,
+  // set equal to the margin plus the blade's half-width. Riding is the worst
+  // pose: the rock carries the bear point INBOARD (x' = x·cosθ + z·sinθ, z > 0),
+  // which only raises that height.
+  const SPR_L = ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R;           // the free length, held
+  const _sA = ALARM_FEELER_BEAR_R - ALARM_FEELER_LUG_L / 2, _sB = ALARM_FEELER_LUG_Y + ALARM_FEELER_LUG_W / 2;
+  const SPR_AZ = Math.asin((CLEAR_MARGIN + MEASURED_MARGIN_BAND + SPRING_FLAT_U / 2) / Math.hypot(_sA, _sB))
+    + Math.atan2(_sB, _sA);                                             // ≈ 30.8°
+  const anchorL = { x: ALARM_FEELER_BEAR_R - SPR_L * Math.cos(SPR_AZ), y: -SPR_L * Math.sin(SPR_AZ) };  // lever-local
+  alarmFeelerSprAnchorL = anchorL;   // the silence rocker's finger assert reads it
+  const anchor = {   // lever-local → dial-local (the lever's own yaw, about the pivot)
+    x: _pivotDial.x + Math.cos(_phiF) * anchorL.x - Math.sin(_phiF) * anchorL.y,
+    y: _pivotDial.y + Math.sin(_phiF) * anchorL.x + Math.cos(_phiF) * anchorL.y,
   };
+  {
+    // Asserted against what the fold must keep: the chord (the k every force
+    // figure rests on), the lug margin and the stud's own clearance from that
+    // lug. That the finger's seat on the tail is left to the TAIL is asserted
+    // at the rocker, where the finger's station is declared.
+    const chord = Math.hypot(ALARM_FEELER_BEAR_R - anchorL.x, anchorL.y);
+    if (Math.abs(chord - SPR_L) > 1e-9)
+      console.warn(`TODO 190 feeler blade: anchor→bear chord ${chord.toFixed(4)} ≠ the held free length ${SPR_L.toFixed(4)}`);
+    const segPt = (px, py) => {   // plan distance from a lever-local point to the blade's centreline segment
+      const vx = anchorL.x - ALARM_FEELER_BEAR_R, vy = anchorL.y, L2 = vx * vx + vy * vy;
+      const t = Math.max(0, Math.min(1, ((px - ALARM_FEELER_BEAR_R) * vx + py * vy) / L2));
+      return Math.hypot(px - ALARM_FEELER_BEAR_R - t * vx, py - t * vy);
+    };
+    const lugClr = segPt(ALARM_FEELER_LUG_L / 2, -_sB) - SPRING_FLAT_U / 2;
+    if (lugClr < CLEAR_MARGIN)
+      console.warn(`TODO 190 feeler blade: clears the bracket's −y lug by ${lugClr.toFixed(4)}, need ${CLEAR_MARGIN}`);
+    const studClr = Math.hypot(Math.max(0, Math.abs(anchorL.x) - ALARM_FEELER_LUG_L / 2), Math.max(0, Math.abs(anchorL.y + ALARM_FEELER_LUG_Y) - ALARM_FEELER_LUG_W / 2)) - 0.09;
+    if (studClr < CLEAR_MARGIN)
+      console.warn(`TODO 190 feeler blade: the stud stands ${studClr.toFixed(4)} off the bracket's −y lug, need ${CLEAR_MARGIN}`);
+  }
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.34, 8), MATS.nickel);
   stud.rotation.x = Math.PI / 2;
   stud.name = 'alarmFeelerSpringStud';
@@ -19126,6 +19177,12 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   const blade = new THREE.Mesh(geo, MATS.blueSteel);
   blade.name = 'alarmFeelerSpring';
   blade.position.set(anchor.x, anchor.y, ALARM_FEELER_TOP + 0.06);
+  // TODO 190 — the frame law (tick) aims the blade with a yaw and a pitch, and
+  // under the default 'XYZ' the pitch turned about the UNIT's y, not the
+  // blade's own transverse axis (TODO 173's lever defect, in its spring): the
+  // free end missed the bear point by 0.0057 / 0.0101 (riding / dropped) on the
+  // lever's line, and by 0.0265 / 0.0463 once folded 30.8° off it. Yaw first.
+  blade.rotation.order = 'ZYX';
   alarmFeelerUnit.add(blade);
   alarmFeelerSpringBlade = blade;
 }
@@ -19432,6 +19489,9 @@ function alarmSetHoldRecord() {
 //     from (27.88, −4.07) to (18.66, −3.23) and boot warns five times (the
 //     plate bores, both hoisted link constants, TODO 82's series stall). That
 //     is a P3 re-siting with its own battery, not this landing's to spend.
+//     (TODO 190 found WHERE it holds it: the TAB zone, whose tab disc at the
+//     frozen tab 315° reads 0.4592 to the box's ROOT corner (4.948, −2.470),
+//     r 5.53. Without the run the frozen site and tab still clear 0.5217.)
 //   - Its far end stands at the free column (12–13, −2..1) TODO 199 stage 4
 //     names for the release line's rise, so the run is the natural first
 //     member of that line — or the thing stage 4 retires along with the
@@ -20473,12 +20533,15 @@ const alarmPhiCapAt = (lift) => {
 // — the lock re-engaging on the pin's lift — gated on TODO 190's re-design of
 // this finger's interface.
 //
-// The finger's radius is the ONE free slot on the tail: mid-window between
-// the bracket lugs' outer reach and the spring stud's inner face, both
-// margins exact. Its throw is a DESIGNED lever ratio off the lifter's
-// travel: close the rest gap, press a fully-risen tail back to rest, and a
-// 0.01 capture bite.
-const ALARM_SIL_FINGER_R = 5.86;   // (lug outer 5.61 + margin → 5.76) .. (stud inner 6.11 − margin → 5.96), centred
+// The finger's radius is the ONE free slot on the tail: it was cut mid-window
+// between the bracket lugs' outer reach and the return blade's stud, both
+// margins exact. TODO 190 folded that blade off the lever's line (it lay over
+// the tail, under this finger), so the window's outer wall is the banking stop
+// now and 5.86 is no longer centred in it; the radius is HELD, because
+// ALARM_SIL_PIN_LEVER and every force and throw below rest on it. Its throw
+// is a DESIGNED lever ratio off the lifter's travel: close the rest gap,
+// press a fully-risen tail back to rest, and a 0.01 capture bite.
+const ALARM_SIL_FINGER_R = 5.86;   // (lug outer 5.61 + margin → 5.76) .. (the retired stud station's inner face 6.11 − margin → 5.96), centred; held since TODO 190
 const ALARM_SIL_PADDLE_R = 6.9;    // on the run, outboard of the sleeve posts' band, inboard of i1's stand-off
 const ALARM_SIL_GAP = 0.05;        // rest gap, finger underside → tail top (the standard rest-gap figure)
 const ALARM_SIL_TAIL_ARM = ALARM_SIL_FINGER_R - ALARM_FEELER_PIVOT_R;  // the finger's arm on the feeler lever
@@ -20624,7 +20687,15 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   // §45 stage 2 fit asserts:
   const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`§45 silence ${nm}: ${v.toFixed(3)}, need ${need}`); };
   say('finger window: lug side', (ALARM_SIL_FINGER_R - 0.1) - (ALARM_FEELER_PIVOT_R + 0.11), CLEAR_MARGIN - 1e-6);
-  say('finger window: stud side', ((ALARM_FEELER_PIVOT_R + ALARM_FEELER_SPR_FREE) - 0.09) - (ALARM_SIL_FINGER_R + 0.1), CLEAR_MARGIN - 1e-6);
+  // TODO 190 — the finger lands on the TAIL: the feeler's return blade, folded
+  // off the lever's line, passes its seat by at least the margin (lever-local:
+  // the finger at x = −TAIL_ARM, the blade from the bear point to its anchor).
+  {
+    const a = alarmFeelerSprAnchorL, bx = ALARM_FEELER_BEAR_R;
+    const vx = a.x - bx, vy = a.y, L2 = vx * vx + vy * vy, px = -ALARM_SIL_TAIL_ARM;
+    const t = Math.max(0, Math.min(1, ((px - bx) * vx) / L2));
+    say('finger seat clear of the feeler blade', Math.hypot(px - bx - t * vx, -t * vy) - 0.1 - SPRING_FLAT_U / 2, CLEAR_MARGIN - 1e-6);
+  }
   say('finger clear of the banking stop', (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL - 0.1) - (ALARM_SIL_FINGER_R + 0.1), CLEAR_MARGIN - 1e-6);
   say('paddle plane meets the bar crank', paddleBotL - barZ, 0.1);
   say('finger plane meets the bar crank', barZ - fingerBotL, 0.1);
@@ -20643,9 +20714,9 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
 // pin is pressed from dropped back to riding — first-order cantilever
 // arithmetic through the two pivots, TODO 16's own caveat attached (the
 // ratios carry the conclusion; the absolutes are good to a factor of two):
-//   blade k    = 3EI/L³ over its anchor→bear chord (SPR_FREE outboard of the
-//                pivot to BEAR_R inboard of it, along one ray: L = SPR_FREE
-//                + BEAR_R), section SPRING_FLAT_U square;
+//   blade k    = 3EI/L³ over its anchor→bear chord, L = SPR_FREE + BEAR_R
+//                (laid along the lever's line until TODO 190 swung it 30.8°
+//                about the bear point, length held), section SPRING_FLAT_U square;
 //   bear δ     = the pin's full ALARM_PIN_DROP through the feeler lever,
 //                BEAR_R / ARM_LEN of it arriving at the bear point;
 //   finger F   = that blade-force change re-levered about the feeler pivot

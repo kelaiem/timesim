@@ -492,7 +492,6 @@ export default {
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: '落下 + <code>CLEAR_MARGIN</code>:刃的自由座在限位之外，槓桿靠上限位時它仍在推 — 這正是把它按在那裡的東西。',
   ['<code>ALARM_SIL_FINGER_R</code>']: '<code>ALARM_SIL_FINGER_R</code>',
   ['5.86']: '5.86',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: '尾上唯一的空檔:耳外 + 裕度（5.76）.. 柱內 − 裕度（5.96），居中。',
   ['<code>ALARM_SIL_THROW</code>']: '<code>ALARM_SIL_THROW</code>',
   ['0.05']: '0.05',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: '恰為靜止隙:靜止之尾被觸而不受載;升起之尾被按回靜止。',

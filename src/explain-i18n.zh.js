@@ -455,7 +455,6 @@ export default {
   ['stop gap']: '挡块间隙',
   ['<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — the lever ratio, written out.']: '<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — 杠杆比，写明。',
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: '落差 + <code>CLEAR_MARGIN</code>：弹片的自由位置在挡块之外，因此当杠杆靠上挡块时它仍在施压——正是这一点把杠杆保持在那里。',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: '尾部上唯一的空位：凸耳外缘 + 余量（5.76）..柱内侧 − 余量（5.96），取中。',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: '恰为静止间隙：静止的尾部只被触到、绝不被加载；升起的尾部会被压回静止位。',
   ['ring window']: '响铃窗口',
   ['≈ 2.76 min']: '≈ 2.76 分钟',

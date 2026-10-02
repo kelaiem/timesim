@@ -26125,6 +26125,8 @@ with no new metal:
 
 ## 190. The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring, hidden by an EXPECTED pair
 
+**PART DONE** — the P0 (the finger pressed the return blade, not the tail) is fixed; the three crossings and five under-margin pairs left wait on an owner decision about the tail run and the Alarm link's rod site. See "Stage 1 landed" and "The decision" below.
+
 Found closing [TODO 173]; the owner first scoped the tail-run ⇄ lug crossing
 into that PR. Measured by exact separating-axis depth over 129 poses, on main
 as well as after TODO 173, there are four crossings at every pose:
@@ -26168,6 +26170,108 @@ options were named, none trialled:
 
 The finger radius, the pivot fraction and `ALARM_SIL_PIN_LEVER` are held.
 Then land the floors row with only the real contacts; it is the acceptance.
+
+### Stage 1 landed — the finger bears on the tail
+
+Re-measured on main (2e498da) by `tools/probe-silence-feeler-pairs.mjs`
+(every mesh pair of the two units, 14 axes × 12 samples plus the four
+hand-off parities and dropped+setting, 173 poses; separating-axis depth on the
+crossings). It reproduced this item's table exactly: jog ⇄ bar 0.2489–0.2684,
+`alarmTailRun` ⇄ rocker lug #6 0.1568–0.2101, `alarmFeelerSpring` ⇄
+`alarmSilFinger` 0.0649–0.1236 and ⇄ the finger's riser 0.067–0.1251, jog ⇄
+riser 0.0938–0.1252 and ⇄ finger 0.0447–0.071; under the margin, bar ⇄ feeler
+lug (+y) 0.0751, lug #5 ⇄ run 0.0836, bar ⇄ spring stud 0.0929, bar ⇄ feeler
+lug (−y) 0.1011, riser ⇄ stud 0.1162, lug #5 ⇄ jog 0.1375, riser ⇄ feeler lug
+(+y) 0.1417, bar ⇄ spring 0.1485.
+
+**The fix is an azimuth about the blade's bear point.** The blade's stud stood
+on the lever's line, `SPR_FREE` outboard of the pivot, so the blade ran back
+over the whole tail under the finger. It now swings to lever −y, the side
+away from the rocker, whose chord leaves the finger along +y. The angle is the
+least at which its line clears the bracket's −y lug by `CLEAR_MARGIN`:
+(BEAR_R − LUG_L/2)·sin α − (LUG_Y + LUG_W/2)·cos α = CLEAR_MARGIN + blade
+half-width, which gives **30.8°** (stud at lever-local (−0.446, −0.923)). The
+free length (anchor → bear chord, `SPR_FREE + BEAR_R` = 1.8025) is held and
+asserted, so k 980.6 N/m, both seat forces, §137's row and [TODO 199]'s table
+do not move. Riding is the worst pose, because the rock carries the bear point
+inboard. The lug's three literals are hoisted (`ALARM_FEELER_LUG_L/W/Y`) so the
+lug and the solve read one number.
+
+- **Found doing it:** the blade's frame law pitched about the unit's y, not
+  the blade's own transverse axis (default 'XYZ', TODO 173's defect in the
+  spring). Its free end missed the bear point by 0.0057 / 0.0101
+  (riding / dropped) on main, and by 0.0265 / 0.0463 once folded. It is
+  'ZYX' now: 0 / 0.
+- **What moved in the rocker's build:** the finger window's 'stud side'
+  assert went with the stud's station. It is replaced by 'finger seat clear of
+  the feeler blade', which reads the folded blade's line against the finger.
+  `ALARM_SIL_FINGER_R` 5.86 was cut centred between the lugs and the old stud.
+  It is held, because `ALARM_SIL_PIN_LEVER` rests on it, and the comment and
+  `explain.html`'s constants row say so.
+- **After:** every spring and stud row is gone. Riser ⇄ tail and finger ⇄ tail
+  are the only contacts at `setting`, and the hand-off row is unchanged
+  (0.05 / 0.05 / −0.0057 / 0.0311). Left: the three run crossings (jog ⇄ bar,
+  run ⇄ lug #6, jog ⇄ riser/finger) and five under-margin pairs (0.0751,
+  0.0836, 0.1011, 0.1375, 0.1417).
+
+### The decision — the run and the link's rod site
+
+None of the three remaining crossings can be closed without moving the run or
+its jog. The finger is held at `ALARM_SIL_TAIL_ARM` 0.36, and the jog's centre
+stands **0.23** from it; finger r 0.1 plus the jog's 0.13 half-width plus the
+margin needs ≥ 0.43. And every change to the run moves the Alarm link.
+Measured by instrumenting the §112 search:
+
+- **How the run holds the site.** It binds the TAB zone, not the column or
+  the chord. At the frozen (27.88, −4.07), tab 315°, the solve's 0.4592 is
+  `tab: Alarm release feeler/alarmTailRun`: the tab disc (`TAB_R` 1.3) against
+  the run box's ROOT corner (4.948, −2.470), which is r 5.53. The tab filter
+  admits an obstacle by its box CENTRE being past r 7 (the run's is r 9.2), and
+  the filter exists to exclude "concentric centre machinery" at the radius of
+  the run's root. So the site is held by the run's real metal, through an
+  inconsistency in the filter. The walked site's tab at 318° reads 0.1771
+  against the same corner.
+- **Retire the run.** The argmax walks to (18.66, −3.23), tab 324°, clearing
+  **0.9124** (bound by the chord against the silence rocker's bar). Boot warns
+  five times:
+  - `ALARM_LINK_BODY_LEN_U` 20.5712 → built 10.7900;
+  - `ALARM_LINK_BUSH_OD_U` 0.7114 → 0.4397;
+  - TODO 82's series stall 1221.13 → 1392.333 mN;
+  - the governing member flips from the rod-end overhang to the fork-end;
+  - both plate bores drift.
+- **Retire the run and FREEZE the site.** Declare the rod site AND the tab
+  azimuth. Freezing only the rod lets the tab walk and warns: body length
+  20.3717. The search then validates instead of choosing. Without the run the
+  frozen site still clears **0.5217** (bound by the chord against
+  `alarmFaceCam`), and the build boots silent. The cost is rule 1: the site
+  becomes a declared number that the clearance argmax no longer picks.
+- **Keep the run and re-root it.** The jog must leave the bar's and finger's
+  footprint, and the run must clear the rocker's lugs (gap between them 0.18;
+  the run is 0.26 wide). Inboard (lever t ≤ −0.08), the jog meets the feeler's
+  own −y lug and the run crosses both rocker lugs. Outboard, it needs t ≥ ~1.28,
+  past the banking stop, on a longer tail stub. Either way it moves the run's
+  root corner, which is exactly what binds the frozen site's tab score, so the
+  link moves unless it is also frozen.
+
+**The rest is measured, given a retired run.** A prototype (run retired,
+site and tab frozen, otherwise this tree) shifts the rocker bar
++0.10 along its PIVOT axis, which moves no lever arm: the arm about that
+axis is the chord coordinate. It also raises the finger's riser off the tail
+and centres it 0.04 along the same axis. Then every rocker ⇄ feeler pair
+clears: the floors row `{ a: 'Alarm silence rocker', b: 'Alarm release
+feeler', min: CLEAR_MARGIN, contacts: [['alarmSilFinger', 'alarmFeelerTail']] }`
+measures **0.1751** over the full pose net (`expectedContacts`, bar ⇄ feeler
++y lug at beat f=0), and every hand-off row stays green. The bar shift in the
+prototype moved the whole bar, deepening its declared overlap with the
+rocker's own +1 lug. The landing should cut it as a plan dog-leg near the
+finger instead (the intra-unit rows address the rocker's meshes by index, so
+an added mesh re-numbers them).
+
+**Acceptance (unchanged):** the floors row above, at `CLEAR_MARGIN`, with the
+hand-off row shut at both parities. Retire the run's `SLENDER_WAIVERS` row,
+its `§29 pawl tail corridor` wall and `ALARM_TAIL_RUN_*` with it if the run
+goes. Removing the wall cannot move the setting route: the bearing solve keeps
+the incumbent whenever it clears every wall.
 
 ## 191. The alarm selector rod stands 0.0811 from the beak post it runs parallel to
 
@@ -26623,7 +26727,9 @@ that choice to the start of stage 2.
    its population was the beak's posed wobble). New `ALARM_HANDOFFS` rows:
    the lock HOLDS armed before the trip, RELEASES at the drop, and
    RE-ENGAGES on silence. The silence re-engagement is gated on
-   [TODO 190], whose finger presses the feeler's spring rather than its tail.
+   [TODO 190]. Its finger bears on the tail now (stage 1 folded the feeler's
+   return blade off the tail's line), but the rocker still crosses the run's
+   jog, and that waits on stage 4's decision about the run below.
 3. **Stage 4 — the P3 fold.** The feeler is dial-side and the lock is on the
    three-quarter plate's top, so the line needs a ~17.4-unit vertical rod
    through both plates (a [TODO 145]-class turning bar: hold it to §233's
@@ -26635,7 +26741,11 @@ that choice to the start of stage 2.
    (§112/TODO 174 — measured, the site walks from (27.88, −4.07) to
    (18.66, −3.23)), so that re-site belongs in this stage's battery, and the
    run's inherited length `ALARM_TAIL_RUN_LEN` and its `SLENDER_WAIVERS`
-   row go with whichever answer lands.
+   row go with whichever answer lands. [TODO 190] measured how the run holds
+   the site (the §112 search's TAB zone, against the run's root corner at
+   r 5.53) and priced a third answer: retire the run and freeze the site and
+   tab, which still clear 0.5217 without it. [TODO 190] cannot close until one
+   of these is chosen.
 
 **Acceptance.** `MECH_GRAPH.todo` loses the `Alarm release feeler → Alarm
 lock` row and gains drive edges for every new member; the new hand-off rows

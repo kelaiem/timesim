@@ -492,7 +492,6 @@ export default {
   ['Drop + <code>CLEAR_MARGIN</code>: the blade\'s free seat sits beyond the bank, so it is still pushing when the lever rests on the stop — that is what holds it there.']: 'Chute + <code>CLEAR_MARGIN</code> : l’assise libre de la lame est au-delà de la butée, elle pousse donc encore quand le levier repose sur l’arrêt — c’est ce qui l’y tient.',
   ['<code>ALARM_SIL_FINGER_R</code>']: '<code>ALARM_SIL_FINGER_R</code>',
   ['5.86']: '5.86',
-  ['The one free slot on the tail: lug outer + margin (5.76) .. stud inner − margin (5.96), centred.']: 'Le seul créneau libre sur la queue : extérieur d’oreille + marge (5.76) .. intérieur de tenon − marge (5.96), centré.',
   ['<code>ALARM_SIL_THROW</code>']: '<code>ALARM_SIL_THROW</code>',
   ['0.05']: '0.05',
   ['Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.']: 'Exactement l’écart de repos : une queue au repos est touchée, jamais chargée ; une queue levée est repoussée au repos.',
