@@ -18,7 +18,7 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, localizeTree } from './
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_TRUE_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
@@ -1510,9 +1510,9 @@ const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI *
 // §36A: balanceTheta(tau) = amp*sin(2*pi*F_BALANCE*tau), so the swing is
 // +/-AMPLITUDE_VISUAL_DEG and the travel is twice that. The hairspring rides
 // the same arbor and takes the same arc. AMPLITUDE_VISUAL_DEG, not
-// AMPLITUDE_TRUE_DEG: the registry must bound the mesh that is actually
-// ANIMATED, and the true 270 deg swing is a physical reference the meshes
-// never perform.
+// AMPLITUDE_PEAK_DEG: the registry must bound the mesh that is actually
+// ANIMATED, and the physical swing (TODO 192 step 4: up to 327 deg) is a
+// reference the meshes never perform.
 // §48 — the winding path reverses because it is driven from BOTH ends: the
 // mainspring unwinds it one way, the keyless works winds it the other. That
 // is a two-way drive, not a missing spring.
@@ -1796,7 +1796,7 @@ const hairspring = G.makeHairspring({
   ...HAIRSPRING_PLAN,
   height: HAIRSPRING_H, // shared with the cock's z-solve: its slab sits one margin above this stack
   ribbonR: HAIRSPRING_RIBBON_R,   // TODO 25 tier two — solved from the balance above, not from legibility
-  reportMaxRad: AMPLITUDE_TRUE_DEG * DEG2RAD, // §218 — the law is EVALUATED (not meshed) out to the physical swing
+  reportMaxRad: AMPLITUDE_PEAK_DEG * DEG2RAD, // §218 — the law is EVALUATED (not meshed) out to the largest physical swing (TODO 192 step 4)
 });
 
 // --- TODO 25 tier two: THE RATE, NOW A CONSEQUENCE ---------------------------
@@ -1809,8 +1809,8 @@ const hairspring = G.makeHairspring({
 //
 // Amplitude appears nowhere, and that is not an oversight: under the linear
 // (isochronous) model f = √(k/I)/2π has no amplitude term, so neither
-// AMPLITUDE_VISUAL_DEG (45, what the mesh performs) nor AMPLITUDE_TRUE_DEG
-// (270, the physical reference) belongs in it.
+// AMPLITUDE_VISUAL_DEG (45, what the mesh performs) nor the physical swing
+// (AMPLITUDE_CLAIM_DEG / AMPLITUDE_PEAK_DEG) belongs in it.
 // §218 — a FATIGUE figure for the ribbon, cited rather than chosen (rule 1,
 // STEEL_E_PA's precedent): Shigley's rotating-beam endurance limit for steels,
 // S'e = 0.5·Sut up to Sut 1400 MPa and 700 MPa above it (Budynas & Nisbett,
@@ -1872,7 +1872,7 @@ const OSCILLATOR = (() => {
     formable: OC.rhoMin >= OC.kneeR,
     centroidResidual_u: OC.centroidResidual, converged: OC.converged,
     devLen3d_u: OC.devLen3d, kneeLengthExcessPct: 100 * (OC.devLen3d / H.devLen - 1),
-    flat: { pivotForce_mN: { performed: flatForce(AMPLITUDE_VISUAL_DEG * DEG2RAD), physical: flatForce(AMPLITUDE_TRUE_DEG * DEG2RAD) } },
+    flat: { pivotForce_mN: { performed: flatForce(AMPLITUDE_VISUAL_DEG * DEG2RAD), physical: flatForce(AMPLITUDE_PEAK_DEG * DEG2RAD) } },
   } : null;
   const breathing = {
     law: 'clamped–clamped planar elastica, inextensible segments, EI scaled out (geometry.js spiralElastica)',
@@ -1884,7 +1884,7 @@ const OSCILLATOR = (() => {
     control: { maxPivotForce_mN: controlLam, pass: controlLam < 1e-9, rows: EL.control.map((c) => ({ thetaRad: c.theta, pivotForce_mN: c.lam * EI / OSC_U ** 2 * 1e3, kOverPure: c.kOverPure })) },
     peaks: {
       performed: { ampDeg: AMPLITUDE_VISUAL_DEG, pivotForce_mN: peak(worn, 'pivotForce_mN'), stress_MPa: peak(worn, 'stress_MPa'), radialShift_mm: peak(worn, 'radialShift_mm'), minCoilGap_mm: worn.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
-      physical:  { ampDeg: AMPLITUDE_TRUE_DEG,   pivotForce_mN: peak(all, 'pivotForce_mN'),  stress_MPa: peak(all, 'stress_MPa'),  radialShift_mm: peak(all, 'radialShift_mm'),  minCoilGap_mm: all.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
+      physical:  { ampDeg: AMPLITUDE_PEAK_DEG,   pivotForce_mN: peak(all, 'pivotForce_mN'),  stress_MPa: peak(all, 'stress_MPa'),  radialShift_mm: peak(all, 'radialShift_mm'),  minCoilGap_mm: all.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
     },
     overcoil,
     fatigue_MPa: HAIRSPRING_FATIGUE_MPA,
@@ -1938,7 +1938,7 @@ if (!OSCILLATOR.agrees)
   if (B.overcoil && !B.overcoil.pass)
     console.warn(`§218 tier two / TODO 147: the overcoil does not hold — centroid residual ${B.overcoil.centroidResidual_u.toExponential(2)} u, stud residual ${B.overcoil.studResidual_u.toExponential(2)} u, clamp ratio ${OSCILLATOR.clampRatio.toFixed(6)}, pivot force ×${B.overcoil.forceRatio.performed.toFixed(3)} of the flat spring's at ${AMPLITUDE_VISUAL_DEG}°, stud post reaches r ${(B.overcoil.endR_u + B.overcoil.postHalf_u).toFixed(4)} against the outer coil's ${B.overcoil.outerR_u.toFixed(4)}, tightest terminal bend ρ ${B.overcoil.rhoMin_u.toFixed(3)} against the collet's ${B.overcoil.kneeR_u.toFixed(3)}`);
   if (!B.stressInLimit)
-    console.warn(`§218: the ribbon's outer-fibre stress at ${AMPLITUDE_TRUE_DEG}° is ${B.peaks.physical.stress_MPa.toFixed(0)} MPa, over the ${HAIRSPRING_FATIGUE_MPA} MPa endurance figure`);
+    console.warn(`§218: the ribbon's outer-fibre stress at ${AMPLITUDE_PEAK_DEG}° is ${B.peaks.physical.stress_MPa.toFixed(0)} MPa, over the ${HAIRSPRING_FATIGUE_MPA} MPa endurance figure`);
 }
 
 // ---------------------------------------------------------------------------
@@ -8021,13 +8021,17 @@ hammerGroup.add(hammerTailBar);
 //    under the 14.3 mN deflection ceiling below. The figures that follow are
 //    the record the rod was first priced against.)
 //  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
-//    3.067 mm (measured off the built pad). Holding a 270°
-//    (AMPLITUDE_TRUE_DEG) swing means absorbing the hairspring's own
-//    peak torque k·θ = 1.234e-7 × 4.712 = 5.82e-7 N·m — 0.19 mN of
-//    friction at that radius, so ≈1.3 mN of normal force at a ruby-on-
-//    brass μ 0.15. The pad closes on the rim 0.495 u per 3.413 u of rod
-//    travel (both measured over the crown cycle), so the rod carries
-//    1.3 × 0.145 = 0.18 mN.
+//    3.067 mm (measured off the built pad). Holding a 327°
+//    (AMPLITUDE_PEAK_DEG, TODO 192 step 4 — the largest swing the spring
+//    sustains; this was first priced at a 270° the spring could not reach)
+//    swing means absorbing the hairspring's own peak torque
+//    k·θ = 1.234e-7 × 5.707 = 7.04e-7 N·m — 0.23 mN of friction at that
+//    radius, so ≈1.53 mN of normal force at a ruby-on-brass μ 0.15. The pad
+//    closes on the rim 0.495 u per 3.413 u of rod travel (both measured over
+//    the crown cycle), so the rod carries 1.53 × 0.145 = 0.22 mN. (The
+//    verdict below was taken at the first pricing, 1.3 mN and 0.18 mN; every
+//    hack figure in it scales by 1.21, which moves no conclusion — its
+//    7.2 mN deflection ceiling is 33× the new load.)
 // Both are sub-milliNewton — an order under the 5–50 mN detent budgets
 // the movement already carries (the yoke spring's block names that
 // envelope), which is the first thing the verdict below turns on.
@@ -24205,15 +24209,16 @@ const EQUALISATION = (() => {
   //    sustained amplitude is the θ at which that spend equals what arrives
   //    — a quadratic in θ, solved in closed form — and the record carries
   //    it at every corner beside the amplitude the movement CLAIMS
-  //    (AMPLITUDE_TRUE_DEG), with the factor by which the claim exceeds the
+  //    (AMPLITUDE_CLAIM_DEG), with the factor by which the claim exceeds the
   //    supply. Measured at the shipped metal: the sustained swing is 77–186°
-  //    vertical (TODO 192's steps and TODO 193 took it from 2–7°: pivots cut,
-  //    the strip, then the ribbon proportioned to its alloy and its drum).
-  //    TODO 192 is OPEN on that number; this block is its instrument. The
-  //    gate holds the arithmetic (the identities, the corners' ordering, the
-  //    amplitude solve plugging back) and REPORTS the verdict, because an
-  //    amplitude gate on today's tree would be red on arrival and a red that
-  //    cannot go green is a number nobody reads.
+  //    vertical and 112–327° dial-flat (TODO 192's steps and TODO 193 took it
+  //    from 2–7°: pivots cut, the strip, then the ribbon proportioned to its
+  //    alloy and its drum). The gate holds the arithmetic (the identities,
+  //    the corners' ordering, the amplitude solve plugging back) and, since
+  //    TODO 192 step 4, the two amplitudes layout.js declares against the
+  //    solve's extremes, published here as `amplitude`: the claim at or under
+  //    the minimum, the peak loads are priced at at or over the maximum, each
+  //    within a degree.
   const energy = (() => {
     const released_J = 0.5 * k * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2);
     const reserve_s = SPEC.reserveHours * 3600;
@@ -24227,7 +24232,7 @@ const EQUALISATION = (() => {
     const rArbor = G.barrelArborR(DRUM_R_ACTUAL), rWrap = DRUM_WRAP_R;
     const rFuseeMean = (FUSEE_R_LARGE + FUSEE_TORQUE_K) / 2, rGreat = rW(TRAIN.barrel);
     const kB = OSCILLATOR.k_Nm_per_rad, mB = OSC_I.mass, g = 9.81;
-    const thetaClaim = AMPLITUDE_TRUE_DEG * DEG2RAD;
+    const thetaClaim = AMPLITUDE_CLAIM_DEG * DEG2RAD;
     // TODO 192 step 2 / TODO 193 — WHY EACH PIVOT IS THE SIZE IT IS, as
     // arithmetic. Each jewelled pivot is a cantilever from its shoulder,
     // loaded at its end by the arbor's radial reaction; the same upper bound
@@ -24296,10 +24301,25 @@ const EQUALISATION = (() => {
       pivots: { trainStaffR_u: TRAIN_STAFF_R, trainPivotR_u: TRAIN_PIVOT_R, balancePivotR_u: BALANCE_PIVOT_R,
                 byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
                 fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
-      balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_TRUE_DEG },
+      balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
       corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
     };
   })();
+  // TODO 192 step 4 — the solve's extremes over every corner and both
+  // positions, the two numbers AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG are
+  // read from. `equalisation` row 14 holds the declarations to them.
+  {
+    const all = Object.entries(energy.corners).flatMap(([c, C]) =>
+      ['vertical', 'flat'].map((pos) => ({ corner: c, position: pos, deg: C.sustainedDeg[pos] })));
+    const min = all.reduce((a, b) => (b.deg < a.deg ? b : a)), max = all.reduce((a, b) => (b.deg > a.deg ? b : a));
+    energy.amplitude = { min, max, claimDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG,
+      claimHolds: AMPLITUDE_CLAIM_DEG <= min.deg && min.deg - AMPLITUDE_CLAIM_DEG < 1,
+      peakBounds: AMPLITUDE_PEAK_DEG >= max.deg && AMPLITUDE_PEAK_DEG - max.deg < 1 };
+    if (!energy.amplitude.claimHolds)
+      console.warn(`TODO 192: AMPLITUDE_CLAIM_DEG ${AMPLITUDE_CLAIM_DEG}° is not the sustained minimum rounded down — the solve's least is ${min.deg.toFixed(2)}° (${min.corner}, ${min.position})`);
+    if (!energy.amplitude.peakBounds)
+      console.warn(`TODO 192: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the sustained maximum rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position})`);
+  }
   return Object.freeze({
     going: {
       k_Nm_per_rad: k,

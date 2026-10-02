@@ -324,11 +324,14 @@ it into prose either.
    `RIBBON_STRESS_WAIVERS` and a waiver whose ribbon is under it STALE (the
    going ribbon's went stale the moment TODO 192 step 3 PROPORTIONED it — the
    thickness that lands full wind on the limit, the coils that half-fill the
-   barrel — and was retired by the gate rather than by memory). The
-   VERDICT — 77–186° vertical
-   sustained against a claimed 270°, TODO 192 — is a REPORT, deliberately: an amplitude gate on
-   today's metal would be red on arrival, and a red that cannot go green is a
-   number nobody reads. `FRICTION` is the one place a coefficient the movement
+   barrel — and was retired by the gate rather than by memory). And
+   since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
+   not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
+   its minimum rounded DOWN (76: adverse, vertical), `AMPLITUDE_PEAK_DEG` its
+   maximum rounded UP (327: favourable, dial-flat; §218's peaks and the hack
+   brake are priced there) — held on both sides and within a degree, so a
+   solve that moves leaves neither behind. How low 76° is for a lever watch is
+   TODO 207, and a REPORT. `FRICTION` is the one place a coefficient the movement
    cannot measure may live, always as a band with its source, never a single
    number, and `MU_STEEL` is the adverse corner of every steel row by
    reference; `tools/probe-power-budget.mjs` computes the same column from the
