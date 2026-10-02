@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
 | 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
 | 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
@@ -158,7 +159,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | CLOSED | Ten bodies, not four, were inside out: the three waiver keys were `unit/(unnamed)` blankets, and TODO 184's six bored cock legs and pads arrived under them. The escape bridge's boss and foot tube, the bored legs, `makeJewelSetting`'s collar and `alarmFaceCam` are all wound outward at their builders. Each lathe runs `assertLatheOutward`, and `INVERTED_WAIVERS` is empty |
-| 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
+| 76 | OPEN | Re-measured and SPLIT (2026-10-02): the overlap is two defects, not one. The worst (0.238, a rivet through its own leaf) is NOT the twist — it is the joints being spaced by ARC along the chain's path while each link's bores are a fixed CHAIN_PITCH apart in a straight line, so a tight curve or the pinned span→coil corner puts two rivets 1.595 apart (−16%). That half is fixable here: lay the joints a chord pitch apart and absorb the closure in the straight span. The twist half (16–35° per wrap joint against a 4.5° joint-play allowance) is a layout problem, TODO 208 |
 | 78 | CLOSED | §54's `checkSlenderness` was exported and NEVER REGISTERED in `CHECKS` — `start()` answered "unknown check", so it had not run once since §52, its waiver waived rows in a report nothing produced, and three different λ values for one mesh accumulated in `main.js`. Second instance of the class (TODO 29 was the first), so `ci-battery` now GATES `CHECK_NAMES` (read from the page) against `BATTERY`. It also measured stock length, not free length: meshes may now declare `userData.bearings` and λ is taken per free length, an overhang scaled by `SLENDER_OVERHANG_K` = ∛16. Report (§40): **9 rows over ceiling, 7 unwaived and untriaged** |
 | 79 | CLOSED (§202) | **A third hanger stands 2.64 u inboard of the rod end — the overhang §54's target allows this section as a cantilever, λₑ 27 — and the middle hanger moved to the run's midpoint; the rod-end term went 21.2 → 341 N/m coupled, the chain delivers 6.17 mN at the tab (probe and derivation agree), inside the window, and the transfer waiver is retired. `tools/probe-79-rodend-band.mjs` scanned the run §68 never did: clear by ≥ 2.5 u from the rod end to t 10.6.** As filed: the alarm link's lay shaft had a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. **MEASURED by TODO 82: the transfer IS rod-end-limited, at ≈1.58 mN — below the 5–50 mN band, and the rod-end overhang carries 72.4% of the whole chain's compliance while the fork-end the section was sized against carries 0.1%.** (The 3.3 mN first filed here was the free-cantilever value against a stroke that was itself a deleted constant; both are corrected in TODO 82.) Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
 | 80 | OPEN | `weldGeometry` returns a fresh `BufferGeometry` and does not copy `userData`, and `weldTree` assigns it at the end of boot — so a `geometry.userData.subBodies` declared on a non-indexed geometry is silently deleted before any check runs, reporting `declaredGeometries: 0`. §77's shipped tables survive by construction (`mergeGeos` declares after welding, and its output is indexed), which nothing states anywhere |
@@ -8893,6 +8894,73 @@ whether 0.24 u of joint burial is acceptable display fiction or debt worth
 that work is an owner's call. Until then this item is the number: re-run
 the probe after any chain-frame change, and if the max span GROWS, the
 fiction deepened and this item's figures are stale.
+
+
+### Re-measured and split (2026-10-02, while triaging TODO 192's follow-ups)
+
+Measured with the declaration taken away (`subBodyOverlapOk = []`) and
+`checkMeshIntegrity` re-run, at six tensions 0.02–1.0, with each body's axis
+FITTED from its own triangles (the area-weighted normal tensor: a plate's
+largest eigenvector is its pin axis). Non-adjacent pairs: 0 at every tension,
+so the stamps are still sound. The adjacent rows are FOUR populations, and only
+two of them are the twist this item was written about:
+
+| population | depth | cause |
+|---|---|---|
+| rivet ⇄ its own link, aligned | ≈ 0.0004 | the head seated on its counterbore floor, read as interior by the vertex test — contact, not overlap |
+| rivet ⇄ its own link, tilted | 0.03–0.10 | the rivet takes the MEAN frame of two twisted links, so it stands several degrees off both |
+| link ⇄ link | up to 0.154 | the twist itself, on the wrap |
+| rivet ⇄ its own link, mis-SPACED | 0.08–**0.238** | the joints are not a pitch apart (below) |
+
+| tension | rows | worst | worst twist per joint |
+|---|---|---|---|
+| 0.02 | 44 | 0.079 | 14.9° |
+| 0.07 | 48 | 0.085 | 34.8° |
+| 0.2 | 56 | 0.231 | 32.5° |
+| 0.5 | 69 | 0.154 | 28.4° |
+| 0.85 | 82 | 0.154 | 24.4° |
+| 1.0 | 91 | **0.238** | 24.8° |
+
+**The worst row is not the twist.** `buildChainLinkGeometry` places the N+1
+joints with `curve.getSpacedPoints(N)` — uniform in ARC LENGTH along the path —
+while every link is a rigid stamp whose two bores are exactly `CHAIN_PITCH`
+apart in a STRAIGHT line. On a gentle curve the two agree (the wrap and coil
+read 1.891–1.906 against 1.9). On a tight one they part. At tension 1, link 33
+has its rivets **1.595** apart (−16%), right at the pinned span→coil corner,
+and link 31 has them 1.962 apart (+3%). The rivets then stand 0.15 off their
+bores, which is the 0.238 rivet-through-leaf the item has quoted since §77.
+The twist at those joints is 5–7°. At tension 0.02 the same defect is link 10
+(1.814, −4.5%) and the 0.079 worst row.
+
+**That half is fixable here, and it is what a chain IS**: joint i+1 lies on
+the path exactly one `CHAIN_PITCH` from joint i in a straight line (a
+sphere–curve intersection, walked from the fusee hook). The cost is closure.
+The chord polygon is shorter than the arc wherever the path curves, so N
+chord-exact links from the fusee hook do not land on the drum hook. The free
+span is straight, where chord equals arc, so it is the natural place to take
+up the difference. But §150's fixed-length law (TODO 40) is solved on the
+path's ARC length, and has to be restated on the chord polygon.
+
+**The twist half is NOT fixable inside the chain.** A chain bends only about
+its pins. On the wrap it bends about the fusee's axis while §124 leans its pins
+up to 63° from that axis, so neighbouring links must twist against each other
+at every joint: 16–35° measured. The joint can absorb some of that. The inner
+pair turns on its pin with `CHAIN_RIVET_FIT` 0.013 u of radial clearance across
+a stack 0.33 u deep, so it rocks ≈ 2·0.013/0.33 = 0.079 rad ≈ **4.5°** per
+joint. The outer pair is riveted and has none. The wrap asks four to eight
+times that. The lean is §124's answer to a cone whose slope reaches 10.4:1 at
+the base, so this half is filed as the layout problem it is: **TODO 208**.
+
+**Re-scoped fix path for this item:**
+1. Joints a chord pitch apart, closure taken up in the straight span, §150's
+   length law restated on the chord polygon. This removes the mis-spaced
+   population and the 0.238.
+2. Narrow the declaration to what is left. The rivets' tilt and the link⇄link
+   twist stay declared, citing TODO 208, with the measured per-joint twist
+   REPORTED against the 4.5° allowance. A twist under the allowance is joint
+   play, not fiction.
+3. The seated-head contact rows (≈ 0.0004) are the instrument reading touching
+   faces as interior. Note them in `probe-77-chain`, and do not declare them.
 
 ## 77. The reserve train's two meshes interpenetrate — 0.118 mm after §136 cut them conjugate, because the extrude fattens what the generator cut
 
@@ -27440,3 +27508,43 @@ the drum.
 The acceptance is the energy column's adverse vertical minimum at or above a
 declared target. Raise `AMPLITUDE_CLAIM_DEG` with it, since row 14 holds the
 claim within a degree of the solve and so will refuse to leave it behind.
+
+## 208. The fusee cone is too steep for an upright chain: wrap links lean to 63 degrees and twist 16-35 degrees per joint
+
+Split out of [TODO 76] when it was re-measured. A chain bends only about its
+pins. A real fusee chain wraps with its pins parallel to the fusee arbor and
+its plates on edge in the groove, like a roller chain on a sprocket. This
+movement's wrap cannot. Its cone's flank reaches |dr/dz| = 10.44 at the base,
+and §124 established that in the slope window m ∈ [0.4, 1.7] no chain pose
+seats: an upright link gaps 2h·m off the floor, and one leaned far enough to
+seat fouls the adjacent turn. So §124 leans each wrap link to `fuseeBetaAt(f)`,
+up to the 63.43° lie-flat ceiling.
+
+The cost lands at the joints. The wrap bends the chain about the arbor while
+each link's pin is leaned up to 63° from it, so consecutive links' pin axes
+differ by roughly β × the bend per joint. Measured with each link's axis fitted
+from its own triangles (TODO 76's re-measure): **16–35° per wrap joint** at
+every tension past the first turn. The joint can take ≈ **4.5°**: the inner
+pair turns on its pin with `CHAIN_RIVET_FIT` 0.013 u of radial clearance across
+the 0.33 u stack, 2·0.013/0.33 rad, and the riveted outer pair takes none. The
+excess is what TODO 76 declares as fiction, and it buries neighbouring links
+up to 0.154 u.
+
+This cannot be fixed inside the chain, and leaning less re-opens §124's float
+row (budget 0.25). The levers are the ones §124 priced and could not afford
+inside its gearing:
+1. **A coarser groove pitch against the chain's stack.** Real fusees run pitch
+   ≥ 2× stack. This one is 1.389 against 0.66 (2.1×) since §124, but the cone
+   is still steep at the base, where the equalising law puts it.
+2. **More fusee height.** A taller band at the same turns gives a gentler
+   flank. §124 measured 0.0044 u of land slack and none toward the centre
+   wheel, so this means re-siting the upper stratum: a LAYOUT change (design
+   priority P3).
+3. **A larger fusee radius ratio budget** (with TODO 207's larger barrel, which
+   moves the torque law the fusee is cut against).
+
+The acceptance is the per-joint twist on the wrap under the 4.5° joint-play
+allowance at every tension, with §61's float and burial rows still green. At
+that point TODO 76's remaining declaration retires. Until then the twist is
+declared fiction, MODELLED and not SIMULATED: no force on the chain is
+integrated, so nothing would twist a real chain into this pose or out of it.
