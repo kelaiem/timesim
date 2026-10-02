@@ -33411,7 +33411,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All SIXTEEN
+   what it says, and the box already grows to fit its contents. All SEVENTEEN
    locales measure inside 150 px on one line today — Spanish's "Suena a las"
    and Korean's "울리는 시각" tie for the long one at 52.8 px (§209, §211),
    past German's "Klingelt um" at 49.5 (§116 measured the others against
@@ -33421,7 +33421,8 @@ html:lang(ko) { word-break: keep-all; }
    §212's Hindi "बजने का समय" 50.6; §249's Vietnamese "Reo lúc" 33.9,
    its "Thời gian" the longer label at 42.1; §249's Dutch "Gaat af om"
    49.5, level with German; §249's Persian "زنگ در" 28.8, the shortest
-   alarm label yet, "زمان" 20.0) — so the allowance that a
+   alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
+   19.5) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -34100,6 +34101,9 @@ function setBarState(id, on) {
 // §249's Persian measured 156.0 on its first pass, on "منو / نما / کنترل‌ها" —
 // 14.2 narrower than English and 11.0 under Arabic's 167.0, so the second
 // right-to-left locale needed no word chosen against the bar.
+// §249's Hebrew measured 165.7 on its first pass, on "תפריט / תצוגה / פקדים"
+// — 4.5 under English, between Persian's 156.0 and Arabic's 167.0: the third
+// right-to-left locale, and the third to need no word chosen against the bar.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the

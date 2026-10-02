@@ -30229,6 +30229,7 @@ fusee's torque-path plate before anything was changed.
 - **Arrows in runs anchored by a Latin symbol stay as drawn**, because those
   runs stay left-to-right. The symbols are `r`, `ρ`, `Ø`, `μ` and `mN`.
 - **Running prose** follows the same logic: flow arrows there read «←».
+  (Eight did not, measured by Hebrew's landing below and fixed there.)
 
 **The sliders were measured too, and both measurements found the same defect
 in Arabic.** All 58 `input[type=range]` elements compute `direction: rtl`
@@ -30321,6 +30322,186 @@ spacing is a fixed-width face drawing a cursive script, not a shaping failure.
   §73's rule working as designed. It is still owed.
 - **The chrome is not held by the honesty gate.** "No models" (model FILES)
   is «بدون فایل مدل».
+- **`Version`** still has no entry in any locale's table, and
+  **`index.html`'s `<title>`** is still not localized in any locale.
+
+### Hebrew — chunk A, the third right-to-left row, and the arrows measured at last
+
+The chrome (477 keys), `explain.html` (761/761) and `primer.html` (145/145)
+read Hebrew at 100%, on Persian's pipeline item for item. That makes
+seventeen locales. The sites it touched:
+- the `LOCALES` row (`he`, `tag: 'he-IL'`, `dir: 'rtl'`, matcher
+  `/^(he|iw)(-|$)/`) and eight ladder rows
+- both `LOADERS` entries
+- `MARKS.he` and `HONESTY.he`
+- the precache count, 55 → 57
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+
+**There is no digit override, and that is measured, not assumed.** In
+Chromium 141 and Node's ICU, `he`, `he-IL`, `iw` and `iw-IL` all format
+`30.0 · 0.024 · 1,000 · 18,000` — Hebrew's default numbering system IS
+`latn` — so `tag` is plain `he-IL` and `MARKS.he` is English's row. The
+plural rules are `one / two / other` (Hebrew has a dual); nothing in the
+chrome pluralises through `Intl.PluralRules`, so that is recorded rather
+than used.
+
+**`iw` is Hebrew's legacy code, and it lands on the same table.** Java and
+older Android runtimes still report it, and `Intl` canonicalises `iw` to `he`. The
+matcher takes both, the ladder asserts `iw` and `iw-IL` resolve to `he`, and
+its negative rows are `her` (Herero) and `iwm` (Iwam): two codes a careless
+`^he` or `^iw` would swallow.
+
+**`HONESTY.he` reads ממודל / מסומלץ and their verbal nouns, never the bare
+noun.** The credit line's "AI model" is «מודל הבינה המלאכותית», so a matcher
+on מודל would count it — Persian's rule, for the third time. Hebrew
+writes the pair unpointed, so there was no diacritic to strip.
+
+### Orthography, and what Hebrew's prefixes did to the linker
+
+The validator enforced modern unpointed spelling:
+- **No niqqud.** A point is a combining mark (`\p{M}`), and §236's `word`
+  rule refuses a match that one follows, so a pointed term never links.
+- **No direction marks.** No LRM, RLM or embedding controls; the layout's
+  direction is the document's.
+- **Western digits only**, and **a prefix before a number takes a maqaf**
+  («ב־18,000») rather than touching the digit.
+
+**Hebrew attaches its prefixes with no space** — ה ו ב ל מ ש כ, and stacks of
+them («וכשהתחנה»). §236's whole-word rule therefore cannot find «תחנה» inside
+«בתחנה», and this is the case the `.gloss-variants` rows exist for. The
+translators wrote each row as the term's prefix paradigm: 41 to 137 forms per
+row, comma-separated in ASCII because `glossary-links.js` splits only on
+`[,、]`. Measured against the prose afterwards, every genuine noun form the
+page uses is in its row. The forms that are not are other words:
+- «שכבר» is "already"
+- «מסיר» is "removes"
+- «משיקית» and «אזימוטלי» are adjectives, which English does not link either
+
+**The result: Hebrew links 77 times against English's 86, Persian's 79 and
+Arabic's 52.** The sense audit, rebuilt with an optional prefix stack on every
+pattern, reads 0 for all sixteen live terms. Its control is a positive count
+per term (between 2 and 25 blocks carry each word), because an audit whose
+regexes match nothing also reads 0.
+
+### Arrows, measured on the glyphs
+
+Persian's landing reasoned the arrow rule out per site and confirmed it by
+screenshot. Hebrew's built the instrument instead. `tools/probe-249-arrows.mjs`
+reads glyph boxes off the rendered page: for each arrow outside `<code>`, the
+nearest letter or digit before and after it in LOGICAL order, and their
+on-screen x. An arrow that does not point from the first to the second is
+BACKWARDS.
+
+It carries two controls:
+- English must measure arrows (54) with none backwards.
+- One English arrow flipped in place must then read BACKWARDS.
+
+Arrows with nothing on one side are EDGE and are reported, never judged.
+That covers header links, continuation lines, and physical directions like
+«ריק →».
+
+**Its first Hebrew run found five, none of which a screenshot pass had a
+reason to look at:**
+- **Four were numbers between Hebrew runs** — «5.9583 → 6.6312 כריכות»,
+  «160° → 24°», «0.231 → 0.393 N·mm», «14.0 → 24.4 dBA». UAX #9 N1 counts a
+  number as right-to-left for a neighbouring neutral, so each run lays out
+  right-to-left and the arrow points back at its source. They are «←» now.
+- **The fifth went the other way.** «r 35 על הפלטה ← r 48.20» sits between
+  two Latin-anchored runs inside an `ltr` plate, which lay out left-to-right,
+  so the translator's «←» pointed backwards. It is «→» now, which is the
+  Latin-anchor exception Persian wrote down, found here by measurement.
+
+**Then it measured Persian, whose record said its prose was right, and found
+eight backwards.** They are the same four number cases plus «زوجیت حلقه →
+گیره، سطح هموار طوق → بالابر → غلاف → لوله», a flow chain in running prose.
+They are fixed in this landing: eight glyphs in `src/explain-i18n.fa.js`,
+values only, no key touched. Persian now measures 0 backwards.
+
+**Arabic measures 39 backwards: 35 on the explainer and 4 on the primer.**
+The Persian entry recorded "at least sixteen", and this is the count. The
+probe's `OWED` set holds Arabic as reported rather than failed. A locale in
+`OWED` that measures clean FAILS as stale, so the Arabic landing retires the
+row instead of remembering to.
+
+The probe is an acceptance test (the index counts 152 of 262 now) and runs
+`he,fa,ar` by default. It is not in any workflow. It needs a browser and
+reads the static pages, which the Explainer workflow deliberately keeps
+browser-free.
+
+### The tables
+
+Ten translators worked against one glossary, in the watchmaker's (שען)
+register:
+- מילוט עוגן שווייצרי, גלגל המילוט, עוגן, מאזן, קפיץ שיער, קפיץ ראשי, תוף,
+  פיוזי, שרשרת, גלגלון, כתר, גלגל עמודים, וסת
+- a numbered figure is איור, the metal plate פלטה
+- the primer addresses its reader in the plural, never a gendered singular
+
+The brief named the collisions in advance:
+- **«מהלך» is the cam's throw only.** A lever's stroke is «תנועה» or «דרך»,
+  and a move in plain prose is «צעד». The page never says «במהלך» ("during"),
+  which would link.
+- **«מיתר» is the chord only.** The primer's guitar string is a different word.
+- **«שכבה» is the stratum.** A spring's strip is «סרט».
+
+Reconciliation was small:
+
+| English | seam | now |
+|---|---|---|
+| posed | four blocks wrote a bare «מוצב», which does not link | «מוצב בתנוחה», carrying the pose term where the English makes the claim |
+| arming run / chain | «שרשרת הדריכה» in three blocks — and שרשרת is the fusee's chain, a glossary word | «רצף הדריכה», the primer's |
+| backlash | «שחוק» once against «משחק» | «משחק» |
+| blank (arm) | «אטומה» once against «עיוורת» | «עיוורת» |
+
+Twelve English keys appear twice with disagreeing Hebrew, and each was
+chosen. One choice was by fit: the link-beak readout lost «הקישור» in both of
+its states, «מקור למעלה ← טבעת למעלה (לא דרוך)». It was the page gate's only
+Hebrew overflow.
+
+### Fit
+
+- **Headers:** 56 px at all eight widths on both pages, one line.
+- **Chrome bar:** 165.7 on «תפריט / תצוגה / פקדים», 4.5 under English,
+  between Persian's 156.0 and Arabic's 167.0. The third right-to-left locale
+  is the third to need no word chosen against the bar.
+- **HUD labels:** «מצלצל ב־» 41.0, «שעה» 19.5 — one line.
+- **§53's column:** no content wider than its box.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages (after one, above); honesty control PASS (*ממודל / מסומלץ*), **16/16** rows verified; block coverage 0 short blocks against Hebrew's median ratio 0.84 — PASS |
+| `explain-quotes` | PASS |
+| `glossary-links` | text identical with and without the linker in every locale; he **77** links — PASS |
+| sense audit | 0 false links over the sixteen live terms, every term's positive control non-zero |
+| `probe-249-arrows` | controls PASS (54 English arrows, a flipped one read BACKWARDS); he **0** backwards of 54 judged, fa **0** of 50 (8 before this landing), ar **39** — OWED |
+| page headers | **56 px in Hebrew**, both pages, all eight widths |
+| `#chrome-bar` | he **165.7** against en 170.2, ar 167.0, fa 156.0 and de 192.4 |
+| `.hud-ro-label` | *מצלצל ב־* 41.0, *שעה* 19.5 against 150 px — one line |
+| `offline-check` | **41/41**, precache **57/57** |
+| boot | `?lang=he` and `?lang=iw-IL` on all three documents console-silent apart from software-GL driver notices and the static server's own 404, which English shows too; `lang="he"`, `dir="rtl"`; the ladder assert silent |
+| fingerprint | **492646093** (60 units, 12 poses) at `?lang=he` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it |
+BATTERY_LINE
+
+### Residue, recorded
+
+- **No native review pass**, the IOU every locale carries. The terms most
+  likely to differ in an Israeli workshop are:
+  - «פיוזי», a transliteration for a part with no Hebrew word
+  - «עוגן» for the pallet fork, which is also the escapement's whole name in
+    common use («מילוט עוגן»)
+  - «גלגלון» for the pinion, where «גלגל שיניים קטן» is also heard
+- **The lever is two words by design**: «עוגן» in the escapement, «זרוע
+  המנוף» in the fusee's set-up. These are two different parts that share an
+  English word.
+- **Arabic's 39 backward arrows** are counted above and held by the probe's
+  `OWED` row. The two slider legends Persian found are on top of those.
+- **The fourteen older tables** still render the blocks rewritten since their
+  landings in English. That is §73's rule working, and it is still owed.
+- **The chrome is not held by the honesty gate.** "No models" (model FILES)
+  is «ללא קובצי מודל».
 - **`Version`** still has no entry in any locale's table, and
   **`index.html`'s `<title>`** is still not localized in any locale.
 
