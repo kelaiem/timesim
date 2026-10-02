@@ -212,6 +212,7 @@ const MARKS = {
   // 1.000 · 18.000, Latin digits); Node's ICU 78 gives the same four.
   vi: { group: ['.'], dec: ',' },
   nl: { group: ['.'], dec: ',' },        // §249 — nl-NL and nl-BE alike: German's marks (Chromium 141)
+  he: { group: [','], dec: '.' },        // §249 — he-IL is latn by default: English's marks (Chromium 141)
   fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
 };
 
@@ -276,6 +277,10 @@ const HONESTY = {
   // model" is مدل هوش مصنوعی. The joint is a ZWNJ, a space or nothing, and the
   // page uses all three spellings somewhere, so the matcher takes all three.
   fa:        { m: /مدل[\u200c\s]?سازی/, s: /شبیه[\u200c\s]?سازی/ },
+  // §249 — the participle, the verbal noun and the infinitive (ממודל, מידול,
+  // למדל), never the bare noun מודל: the credit line's "AI model" is מודל
+  // בינה מלאכותית. Simulated reads its loan-verb forms and the noun סימולציה.
+  he:        { m: /ממודל|מידול|למדל/, s: /מסומלצ|מסומלץ|סימולצי|לסמלץ/ },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };
