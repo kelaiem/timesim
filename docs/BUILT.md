@@ -30505,6 +30505,175 @@ Hebrew overflow.
 - **`Version`** still has no entry in any locale's table, and
   **`index.html`'s `<title>`** is still not localized in any locale.
 
+### Indonesian — chunk D's other half, and the cheapest table measured to be so
+
+The chrome (477 keys), `explain.html` (761/761) and `primer.html` (145/145)
+read Indonesian at 100%, on the pipeline Hebrew left behind. That makes
+eighteen locales. The sites it touched:
+- the `LOCALES` row (`id`, `tag: 'id-ID'`, matcher `/^(id|in)(-|$)/`) and
+  eight ladder rows
+- both `LOADERS` entries
+- `MARKS.id` and `HONESTY.id`
+- the precache count, 57 → 59
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+
+**Every decision the chunk named was measured before it was written.**
+- **Number marks.** In Chromium 141 and Node's ICU, `id`, `id-ID`, `in` and
+  `in-ID` all format `30,0 · 0,024 · 1.000 · 18.000` on `latn`. So
+  `MARKS.id` is German's row, and the primer's quantities read `0,024 mm`.
+- **Plurals.** The plural rule has ONE category, as Vietnamese's does, so no
+  count string could ever want a second form.
+- **The legacy code.** `in` is Java's legacy code, and `Intl` canonicalises
+  it to `id`. It is Hebrew's `iw` case again, so the matcher takes both. The
+  negative rows are `ido` (Ido) and `inh` (Ingush), the two codes a careless
+  `^id` or `^in` would swallow. ISO 639-3's `ind` is not what a browser
+  sends.
+
+**`HONESTY.id` reads the affixed verb or the pe-an noun, never the bare
+noun.** *dimodelkan / memodelkan / pemodelan* count as modelled, and
+*simulasi* (in *disimulasikan* too) counts as simulated. The credit line's
+"AI model" is «model AI Anthropic» on the explainer and «model AI dari Anthropic» on the primer, so a matcher on «model» would count
+it. That is the rule every right-to-left row needed, applied a fourth time.
+
+### The vertical question, answered by inventory
+
+Vietnamese's stacked tone marks cost the pages a `line-height: 1.3` rule, and
+the chunk asked that Indonesian confirm it needs none rather than assume it.
+The confirmation is a character inventory, not a face measurement.
+- The validator held every string to plain ASCII letters, because standard
+  spelling (EYD) writes no diacritics. Any accented letter the English does
+  not itself carry failed.
+- The assembled tables were then read whole. Every non-ASCII letter in an
+  Indonesian value (Greek letters, `µ`, `Ø`, a `ü` in a name) is a symbol the
+  English pages or the English chrome already carry.
+
+A table that adds no glyph English lacks cannot ink outside a box English
+fits. So there is no `:lang(id)` rule, by measurement.
+
+### The tables
+
+Ten translators worked against one glossary. Indonesian horology has a thin
+native vocabulary, so the names are plain descriptive Indonesian where one
+exists, and loans where the trade uses them:
+- descriptive: mesin jam, roda eskapemen, jangkar, pegas rambut, pegas
+  utama, tabung pegas, rantai, mahkota
+- loans: eskapemen, balans, pinion, fusee, governor
+
+The primer addresses its reader as «Anda». Buttons take the base imperative,
+as Indonesian software does: «Putar», «Jeda».
+
+**The linker's sense was the brief's first concern, because Vietnamese's
+first build linked 107 times on everyday words.** Each linked term was given
+a word that is rare outside its sense, and the everyday word was named for
+the everyday meaning:
+- a waiver is «dispensasi», because «pengecualian» is "exception"
+- a cam's throw is «lontaran», because «langkah» is "step" and a lever's
+  stroke
+- a tangent is «garis singgung», and touching is «bersentuhan»
+- «diturunkan» is "derived" only; lowered is «direndahkan»
+
+**Indonesian attaches -nya and the di-/me-/-kan affixes with no space**, so
+«stasiunnya» does not match «stasiun». The `.gloss-variants` rows list those
+forms («posenya», «dipose», «didispensasi», «azimutnya»), comma-separated in
+ASCII as the splitter requires.
+
+**The result: Indonesian links 87 times against English's 86.** That is the
+first table to land at English's count rather than under it. The sense
+audit carried a positive control per term, between 2 and 31 blocks carrying
+each word. It reads 0 for fifteen terms and 1 for *derived*. That one is
+x0135's «semuanya diturunkan darinya» for "all fall out of it", which is
+the derived sense in fact, and it stands.
+
+Reconciliation, on reports the translators made of every name the glossary
+did not give:
+
+| English | seam | now |
+|---|---|---|
+| `.where` category tags | five left in English (display, interface, power, going) | «tampilan», «antarmuka», «daya», «rangkaian jalan», as Hebrew and Persian translated every tag; «alarm» is already Indonesian |
+| timing screws | three names across the escapement, hacking and primer chunks | «sekrup pengatur laju» |
+| winding spur | three names, one of them the arbor's winding WHEEL | «roda lurus pemutar», the chrome's |
+| gear meshing | «tautan» against «kaitan» | «kaitan / berkait»; «tautan» stays a hyperlink |
+| the balance rim | the primer's «pelek» against the explainer's «lingkar» | «lingkar» |
+| the stop-work's blank arm | «pejal» against «polos» | «lengan pejal» |
+| recoil | «rekoil» against one «mundur» ("backward") | «rekoil» |
+
+Eleven English keys appear twice with disagreeing Indonesian, and each was
+chosen. The chrome's "every part built from geometry, no models" is model
+FILES, «tanpa file model». It is the chrome's one honesty-validator
+exception, as it was Hebrew's.
+
+### Fit
+
+**The page gate's first pass found 14 explainer and 1 primer overruns**,
+against Dutch's 14 and Vietnamese's 7. Indonesian has no compounds, but it
+spends words where English spends none («yang», «adalah»). Each label was set
+whole against its English length:
+- dropping «yang» and the copula
+- «palet MASUK (+x) — tahan, lepas, dorong, biarkan»
+- the link-beak readout cut to «paruh NAIK → cincin naik (mati)»
+
+A second pass found two of those shortenings still long. A third pass read 0
+on both pages.
+
+- **Headers:** 56 px at all eight widths on both pages, one line.
+- **Chrome bar:** 184.4 on «Menu / Tampilan / Kontrol»: 14.2 over English,
+  8.0 under German. No word needed choosing against the bar.
+- **HUD labels:** «Berbunyi pukul» 66.2 is the LONGEST alarm label any
+  locale has measured, past Spanish's and Korean's 52.8, and still under half
+  of the 150 px box. «Waktu» measures 28.0.
+- **§53's column:** no content wider than its box.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages (after fifteen, above); honesty control PASS (*dimodelkan / disimulasikan*), **17/17** rows verified; block coverage 0 short blocks against Indonesian's median ratio 1.13 — PASS |
+| `explain-quotes` | PASS |
+| `glossary-links` | text identical with and without the linker in every locale; id **87** links (en 86) — PASS |
+| sense audit | 1 hit over the sixteen live terms, read in context and correct; every term's positive control non-zero |
+| `probe-249-arrows --locales id` | controls PASS; **0** backwards of 52 judged |
+| character inventory | 0 letters outside what the English pages and chrome already carry — no line-height rule |
+| page headers | **56 px in Indonesian**, both pages, all eight widths |
+| `#chrome-bar` | id **184.4** against en 170.2, de 192.4, nl 182.6, vi 180.1 |
+| `.hud-ro-label` | *Berbunyi pukul* 66.2, *Waktu* 28.0 against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **42/42**, precache **59/59**, the Indonesian primer served from cache. A first run beside the battery failed four OTHER locales' cached tables on time and passed alone |
+| boot | `?lang=id` and `?lang=in-ID` on all three documents console-silent apart from software-GL driver notices and the static server's own 404, which English shows too; `lang="id"`, `dir="ltr"`; the ladder assert silent |
+| fingerprint | **3320405429** (60 units, 12 poses) at `?lang=id` and in English on the merged head, IDENTICAL to a virgin boot of `origin/main` measured beside it |
+| battery | **51/51 gates**, local (dev container, 3 shards, 4626 s wall, 5995 s of checks); fingerprint **492646093** across virgin boots A and B and under the share payload — identical to its base. Run before `main`'s TODO 202 merge was brought in; CI's Battery job on the merged head, opted in to the self-hosted runner, is the merge gate |
+
+### Residue, recorded
+
+- **No native review pass**, the IOU every locale carries. The terms most
+  likely to differ in an Indonesian workshop are:
+  - «balans» and «jangkar» for the balance and the pallet fork, loans and
+    calques where a workshop may use others
+  - «fusee», kept as the loan because no Indonesian word exists for the part
+  - «eskapemen», where some writers keep the English «escapement»
+- **Several names the glossary did not give were coined in a chunk and are
+  used once.** The translators reported every one: «goyang samping» for
+  side-shake, «kiralitas» for handedness, «garpu engsel» for a clevis.
+  Reconciliation unified the ones that recur across chunks; the rest are
+  single uses, recorded rather than reworded.
+- **The fourteen older tables** still render the blocks rewritten since their
+  landings in English. That is §73's rule working, and it is still owed.
+- **The explainer's number check holds plate labels only.** Its premise is
+  that prose quotes its constants inside `<code>`, but prose carries bare
+  numbers too. Carrying `main`'s re-quoted overcoil numbers into this table
+  (×0.122 at 270° → ×0.110 at 327°) briefly put BOTH of a paragraph's 270°s
+  at 327° where the English moved one. The gate printed "0 number drift"
+  over it. So did a mutation to 999°.
+  - The Indonesian table reads 0 of 393 prose blocks off its English, as a
+    multiset of digits outside `<code>`.
+  - The shipped tables read 14, across de, fr, ja, ko, zh and zh-Hant. They
+    include German's `0,225` where the explainer keeps source form.
+  - Holding prose is owed to its own change, not this landing.
+- **Arabic's 39 backward arrows** are still held by `probe-249-arrows`'
+  `OWED` row.
+- **`Version`** still has no entry in any locale's table, and
+  **`index.html`'s `<title>`** is still not localized in any locale.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising

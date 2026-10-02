@@ -9679,6 +9679,78 @@ function chainLinkFrame(a, b, beta, flip, t, k, y) {
     y.set(y2x, y2y, y2z);
   }
 }
+// TODO 76 — WHERE THE JOINTS ARE, one law for every reader (the builder, the
+// arrest's analytic reach table, and the pad law that samples the builder's
+// buffer). A link is a rigid stamp whose two bores are CHAIN_PITCH apart in a
+// STRAIGHT line, so consecutive joints must be a CHORD apart, not an arc. The
+// joints used to come from `curve.getSpacedPoints(N)`, uniform in ARC, and
+// on a tight curve the two part. Measured at full wind, the pinned span→coil
+// corner put two rivets 1.595 apart (−16%), 0.15 off their bores at each end,
+// which was the 0.238 rivet-through-leaf TODO 76 had quoted since §77 and
+// blamed on the twist.
+//
+// So every chord is EQUAL, and the common chord c is solved so that N of them
+// walked from the fusee end land exactly on the hook: c(N) is the one free
+// number, found by bisection on the arc the walk leaves over. c is not
+// CHAIN_PITCH exactly, because §150 holds the run's length to half a pitch,
+// not to N pitches. That residual is §150's own gated tolerance, spread evenly
+// over the N links as it always was. What this removes is the CURVATURE's
+// share, which was never spread: it landed whole on the tightest bend.
+//
+// The walk runs on the curve's arc-uniform polyline (32 samples a pitch, so
+// its chord sag is ~1e-4 u), intersecting a sphere of radius c about the last
+// joint with the polyline's first outbound crossing. Every reader gets the
+// joints AND each joint's arc position, because the wrap's judged-link guard,
+// the lean ramp and β(s) are all stated in arc.
+const CHAIN_JOINT_SAMPLES_PER_PITCH = 32;
+function chainJoints(curve) {
+  curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
+  const len = curve.getLength();
+  const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
+  const M = N * CHAIN_JOINT_SAMPLES_PER_PITCH;
+  const P = curve.getSpacedPoints(M);
+  const ds = len / M;
+  // One walk at chord c: joint positions as fractional polyline indices.
+  const walk = (c, out) => {
+    let jf = 0, q = P[0];
+    if (out) out[0] = 0;
+    for (let n = 1; n <= N; n++) {
+      let j = Math.floor(jf) + 1;
+      while (j <= M && P[j].distanceTo(q) < c) j++;
+      if (j > M) return { ok: false, rest: -(N - n + 1) };   // ran off the end: c too long
+      // solve |A + t(B − A) − q| = c on segment [j−1, j], the outbound root
+      const A = P[j - 1], B = P[j];
+      const dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
+      const ex = A.x - q.x, ey = A.y - q.y, ez = A.z - q.z;
+      const a = dx * dx + dy * dy + dz * dz, b = 2 * (dx * ex + dy * ey + dz * ez), cc = ex * ex + ey * ey + ez * ez - c * c;
+      const t = Math.min(1, Math.max(0, (-b + Math.sqrt(Math.max(b * b - 4 * a * cc, 0))) / (2 * a)));
+      jf = Math.max(jf, j - 1 + t);
+      q = new THREE.Vector3(A.x + t * dx, A.y + t * dy, A.z + t * dz);
+      if (out) out[n] = jf;
+    }
+    return { ok: true, rest: M - jf };   // polyline samples left after the last joint
+  };
+  // c is monotone in the arc the walk consumes; bracket it and bisect so the
+  // last joint lands on the end sample. 48 halvings take a 20% bracket below
+  // 1e-15 of a pitch, and a fixed count keeps the solve bit-reproducible (the
+  // fingerprint's double boot compares exact strings).
+  let lo = 0.8 * len / N, hi = 1.05 * len / N;
+  for (let it = 0; it < 48; it++) {
+    const mid = (lo + hi) / 2;
+    const r = walk(mid);
+    if (!r.ok || r.rest < 0) hi = mid; else lo = mid;
+  }
+  const idx = new Float64Array(N + 1);
+  walk(lo, idx);
+  idx[N] = M;   // the hook: the residual after 48 halvings is below float noise, so the end joint IS the end
+  const joints = [], s = new Float64Array(N + 1);
+  for (let n = 0; n <= N; n++) {
+    const j = Math.min(Math.floor(idx[n]), M - 1), t = idx[n] - j;
+    joints.push(new THREE.Vector3().lerpVectors(P[j], P[j + 1], t));
+    s[n] = idx[n] * ds;
+  }
+  return { joints, s, len, N, chord: lo };
+}
 // §124 (TODO 46) — betaAtArc: the wrap's tilt law as a function of arc
 // position along the curve (rebuildChain builds it from its own chord-summed
 // wrap points, so the builder and the path hold ONE mapping). Wrap links get
@@ -9686,10 +9758,7 @@ function chainLinkFrame(a, b, beta, flip, t, k, y) {
 // lie on the flank the cut was relieved for; the span and drum coil stay
 // world-vertical (the drum's §61 wallR floor assumes flat plates).
 function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
-  curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
-  const len = curve.getLength();
-  const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
-  const joints = curve.getSpacedPoints(N); // N+1 rivet positions, arc-length uniform
+  const { joints, s: sJ, len, N } = chainJoints(curve); // N+1 rivet positions, a chord apart (TODO 76)
   const { inner, outer, pin } = CHAIN_TMPL;
   // §124 (TODO 46) — which links the float row may judge: OUTER links wholly
   // on the fusee wrap. `wrapArc` is the wrap's chord-summed arc from
@@ -9699,7 +9768,7 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   // TOP is the cheap side to err on — the defect lives at the BOTTOM).
   // Inner links are excluded by CONSTRUCTION, not oversight: their plates
   // are CHAIN_END_R_IN and ride (OUT − IN) = 0.085 off the floor by design.
-  const isWrapLink = (i) => wrapArc > 0 && (i + 1) * (len / N) <= wrapArc - CHAIN_PITCH;
+  const isWrapLink = (i) => wrapArc > 0 && sJ[i + 1] <= wrapArc - CHAIN_PITCH;
   // Parity is anchored at the CLAW end so the link that drops over the
   // hook's pin is always an outer pair, whatever N rounds to this rebuild.
   // linkOuterPtsNear mirrors this expression VERBATIM (same N, same
@@ -9752,12 +9821,16 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
     chainBuf.idxAuthored = chainBuf.idx.slice();
     // ADJACENT pairs are declared expected-overlap, and only adjacent
     // pairs: the chain's articulation is a declared fiction (the frame
-    // loop below — up to ~36.3° of per-joint twist a real chain would
-    // shed by joint play), so neighbouring rigid stamps interpenetrate at
-    // the joint BY DECLARATION, measured at up to 0.24 u at the boot pose
-    // (TODO 76 carries the numbers). A NON-adjacent pair overlapping is
-    // never the fiction — it is a corrupted stamp or a collapsed curve —
-    // so those stay live rows in meshIntegrity's report.
+    // loop below — §124 leans the wrap's pins up to 63° from the axis the
+    // wrap bends about, so neighbouring links twist 16–35° per joint against
+    // the ≈ 4.5° the running fit allows, TODO 208), and neighbouring rigid
+    // stamps interpenetrate at the joint BY DECLARATION: link ⇄ link up to
+    // 0.155 u, and a rivet riding the mean of two twisted frames up to 0.078
+    // into its own link. The 0.238 this note used to quote was not the twist
+    // but joints spaced in arc rather than chord, gone since chainJoints
+    // (TODO 76). A NON-adjacent pair overlapping is never the fiction — it is
+    // a corrupted stamp or a collapsed curve — so those stay live rows in
+    // meshIntegrity's report.
     const overlapOk = [];
     for (let i = 0; i < N; i++) {
       if (i + 1 < N) overlapOk.push([`link#${i}`, `link#${i + 1}`]);
@@ -9787,7 +9860,6 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const mid = new THREE.Vector3();
   const seatBases = [];   // §124: assembled vertex base of each judged link's outer template
   const linkBase = new Uint32Array(N + 1); // per-link vertex base (+ end sentinel) — builtPtsNear reads links out of this buffer by index
-  const L = len / N;
   if (!chainFrames || chainFrames.length < N)
     chainFrames = Array.from({ length: N }, () => ({ t: new THREE.Vector3(), y: new THREE.Vector3(), k: new THREE.Vector3() }));
   const frameFlip = chainWalkFlip(joints, wrapArc);
@@ -9807,9 +9879,9 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
     // tension ≈ 0.07 where the departure is still near the base).
     let beta = 0;
     if (betaAtArc && wrapArc > 0) {
-      const sEnd = (i + 1) * L;
+      const sEnd = sJ[i + 1];
       const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      if (ramp > 0) beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
+      if (ramp > 0) beta = ramp * betaAtArc(Math.min((sJ[i] + sJ[i + 1]) / 2, wrapArc));
     }
     chainLinkFrame(a, b, beta, frameFlip, t, k, y);
     chainFrames[i].t.copy(t); chainFrames[i].y.copy(y); chainFrames[i].k.copy(k);
@@ -9842,7 +9914,7 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   // §151 — the pad law's handle on this buffer: which vertices are link i's
   // plates (rivets live past linkBase[N]), plus the wrap bookkeeping to pick
   // the links, so builtPtsNear indexes the stamp instead of re-deriving it.
-  geo.userData.links = { base: linkBase, len, N };
+  geo.userData.links = { base: linkBase, len, N, s: sJ };
   // §77 — the declared route's table, re-attached to every geometry the
   // rebuild emits (same discipline as `seat`/`links` above: riding the
   // geometry means a rebuild can never serve a stale declaration).
@@ -10054,6 +10126,25 @@ function chainLayoutAt(tension) {
     return fuseeBetaAt(fLink);
   };
   return { curve, wrapArc, betaAtArc, hookDrift: drumTurns - baseTurns };
+}
+// Boot assert (rule 6) — TODO 76: every joint sits inside its bores' running
+// fit. chainJoints makes the N chords equal, and their common length c is what
+// §150's length law leaves over N: not CHAIN_PITCH, but within its half-pitch
+// tolerance. A link's bores are CHAIN_PITCH apart, so each rivet stands
+// |c − CHAIN_PITCH|/2 off its bore's centre. That is real only while it is
+// inside the clearance the inner pair turns in, CHAIN_RIVET_FIT. Measured: c
+// runs 1.8853–1.8925 (0.004–0.007 off centre against 0.013). Swept at 21
+// tensions, the reserve's ends included.
+await breathe();
+{
+  let worst = 0, at = 0, cAt = CHAIN_PITCH;
+  for (let i = 0; i <= 20; i++) {
+    const c = chainJoints(chainLayoutAt(i / 20).curve).chord;
+    const off = Math.abs(c - CHAIN_PITCH) / 2;
+    if (off > worst) { worst = off; at = i / 20; cAt = c; }
+  }
+  if (worst > CHAIN_RIVET_FIT)
+    console.warn(`TODO 76: the chain's joints stand ${worst.toFixed(4)} u off their bores at tension ${at} (chord ${cAt.toFixed(4)} against CHAIN_PITCH ${CHAIN_PITCH}), outside the ${CHAIN_RIVET_FIT.toFixed(4)} running fit — §150's length residual no longer fits in the joint`);
 }
 // Boot assert (rule 6) — the hook congruence's BRANCH MARGIN. drumTurns'
 // fractional part is forced by the two azimuths (hook and departure); only
@@ -12915,7 +13006,7 @@ for (const j of FRAME_JOINTS) {
   // side for a CONTACT the handoff row measures at ±HANDOFF_TRACK_TOL. So
   // anything DISCRETE reads the layout the mesh actually lays: the same
   // control points rebuildChain bakes (chainLayoutAt — one arithmetic,
-  // shared), the same N-equal-arc joints and leaned frames
+  // shared), the same chord-equal joints (chainJoints, TODO 76) and leaned frames
   // buildChainLinkGeometry stamps, sampled over the plates' stadium
   // boundary at each link's own parity. This analytic re-derivation is
   // what the REACH laws consume. The pad's CONTACT law does not: it
@@ -12938,11 +13029,7 @@ for (const j of FRAME_JOINTS) {
   // corridor asserts instead, which is where a straight run belongs.
   const linkOuterPtsNear = (tension, arcBack = 6 * CHAIN_PITCH, wrapOnly = false) => {
     const { curve, wrapArc, betaAtArc } = chainLayoutAt(Math.max(tension, 0.02));
-    curve.arcLengthDivisions = 800;
-    const len = curve.getLength();
-    const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
-    const joints = curve.getSpacedPoints(N);
-    const L = len / N;
+    const { joints, s: sJ, N } = chainJoints(curve);   // TODO 76 — the builder's joints, by the one law
     const out = [];
     const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
     // TODO 115 — through `chainLinkFrame`, the builder's own law, not a copy
@@ -12951,13 +13038,13 @@ for (const j of FRAME_JOINTS) {
     // is not there. It was, for one landing.
     const flip = chainWalkFlip(joints, wrapArc);
     for (let i = 0; i < N; i++) {
-      const sEnd = (i + 1) * L;
+      const sEnd = sJ[i + 1];
       if (sEnd < wrapArc - arcBack) continue; // only the wrap's top matters to the finger
-      if (i * L > wrapArc) break;             // past the departure the span takes over (its corridor is asserted separately)
+      if (sJ[i] > wrapArc) break;             // past the departure the span takes over (its corridor is asserted separately)
       if (wrapOnly && sEnd > wrapArc) break;  // …and the straddling link goes with it — see the note above
       const a = joints[i], b = joints[i + 1];
       const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      chainLinkFrame(a, b, ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc)), flip, t, k, y);
+      chainLinkFrame(a, b, ramp * betaAtArc(Math.min((sJ[i] + sJ[i + 1]) / 2, wrapArc)), flip, t, k, y);
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mz = (a.z + b.z) / 2;
       const push = (aa, yy, dd) => out.push({
         x: mx + t.x * aa + y.x * yy + k.x * dd,
@@ -12966,7 +13053,7 @@ for (const j of FRAME_JOINTS) {
       });
       // THE LINK'S OWN PARITY, the builder's law VERBATIM (anchored at the
       // claw end — buildChainLinkGeometry is the other reader of this
-      // expression, and both index the same N-equal-arc joints, so link i
+      // expression, and both index the same chord-equal joints, so link i
       // here IS link i there). The first cut modelled EVERY link with the
       // outer plates' stadium, and the built chain alternates: an inner
       // link's plates ride CHAIN_END_R_OUT − CHAIN_END_R_IN = 0.085 lower
@@ -13390,12 +13477,11 @@ for (const j of FRAME_JOINTS) {
     lawChainBuf = chainBuf; lawChainFrames = chainFrames;
     chainBuf = saveBuf; chainFrames = saveFrames;
     const pos = geo.attributes.position.array;
-    const { base, len, N } = geo.userData.links;
-    const L = len / N;
+    const { base, N, s: sJ } = geo.userData.links;
     const out = [];
     const seen = (x, y, z) => out.push({ x, y, z });
     for (let i = 0; i < N; i++) {
-      if (i * L > wrapArc) break; // past the straddler the span takes over
+      if (sJ[i] > wrapArc) break; // past the straddler the span takes over
       const tmpl = (N - 1 - i) % 2 === 0 ? CHAIN_TMPL.outer : CHAIN_TMPL.inner;
       const v0 = base[i];
       for (let v = v0 * 3; v < base[i + 1] * 3; v += 3) {
@@ -33485,18 +33571,19 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All SEVENTEEN
-   locales measure inside 150 px on one line today — Spanish's "Suena a las"
-   and Korean's "울리는 시각" tie for the long one at 52.8 px (§209, §211),
-   past German's "Klingelt um" at 49.5 (§116 measured the others against
-   it: en 36.7, fr 37.3, ja 40.0, zh 40.0, zh-Hant 30.0; §208's Arabic
-   32.8; §213's Russian "Звонит в" 40.6; §214's Portuguese "Toca às" 34.5;
+   what it says, and the box already grows to fit its contents. All EIGHTEEN
+   locales measure inside 150 px on one line today — §249's Indonesian
+   "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
+   and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
+   "Klingelt um" at 49.5 (§116 measured the others against it: en 36.7,
+   fr 37.3, ja 40.0, zh 40.0, zh-Hant 30.0; §208's Arabic 32.8;
+   §213's Russian "Звонит в" 40.6; §214's Portuguese "Toca às" 34.5;
    §210's Italian "Suona alle" 47.3;
    §212's Hindi "बजने का समय" 50.6; §249's Vietnamese "Reo lúc" 33.9,
    its "Thời gian" the longer label at 42.1; §249's Dutch "Gaat af om"
    49.5, level with German; §249's Persian "زنگ در" 28.8, the shortest
    alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
-   19.5) — so the allowance that a
+   19.5; §249's Indonesian "Waktu" 28.0) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -34178,6 +34265,9 @@ function setBarState(id, on) {
 // §249's Hebrew measured 165.7 on its first pass, on "תפריט / תצוגה / פקדים"
 // — 4.5 under English, between Persian's 156.0 and Arabic's 167.0: the third
 // right-to-left locale, and the third to need no word chosen against the bar.
+// §249's Indonesian measured 184.4 on its first pass, on "Menu / Tampilan /
+// Kontrol" — 14.2 over English and 8.0 under German, so it needed no word
+// chosen against the bar either.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
