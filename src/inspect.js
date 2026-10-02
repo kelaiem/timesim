@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, CASE_WIDTH_MAX,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -9469,6 +9469,12 @@ export function checkOscillator(clock) {
 //     SPRING_SIGMA_Y_PA. A pivot over yield must be sized to its load.
 // The verdict — sustained amplitude against the claimed AMPLITUDE_TRUE_DEG —
 // is REPORTED in the payload and the note. Gating it is TODO 192's step 4.
+// TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
+// fix path brings it under, and FAILS when its ribbon already is (stale).
+export const RIBBON_STRESS_WAIVERS = {
+  going: 'TODO 192 step 3 — the drum\'s working band is re-solved against an amplitude target WITH σ under MAINSPRING_SIGMA_Y_PA; σ = E·a·θ/L, so the levers are the ribbon\'s half-thickness, its length and its wind',
+  alarm: 'TODO 201 — over the alloy\'s TENSILE strength at full wind; the ribbon is re-proportioned and re-cut as a strip together with §104\'s governor solve',
+};
 export function checkEqualisation(clock) {
   const E = clock.equalisation;
   if (!E) return { ok: true, error: 'no equalisation payload on __clock (main.js TODO 32 block missing)' };
@@ -9488,10 +9494,26 @@ export function checkEqualisation(clock) {
     });
     if (!ms || !ms.section || !tube) { failures.push({ what: 'declared vs cut', unit: unitName, error: 'mainspring payload or ribbon mesh not found' }); return; }
     const sec = ms.section, s = tube.scale.z || 1;
-    if (Math.abs(sec.a - ms.ribbonR) > 1e-9 || Math.abs(sec.a * s - sec.c) > 1e-6
-        || Math.abs(sec.I_u4 - (sec.a ** 3) * sec.c / 3) > 1e-12)
+    const Ilaw = { strip: (a, c) => 4 * a ** 3 * c / 3, rhombus4: (a, c) => a ** 3 * c / 3 }[sec.shape];
+    if (!Ilaw || Math.abs(sec.a - ms.ribbonR) > 1e-9 || Math.abs(sec.a * s - sec.c) > 1e-6
+        || Math.abs(sec.I_u4 - Ilaw(sec.a, sec.c)) > 1e-12)
       failures.push({ what: 'declared vs cut', unit: unitName, declared: sec,
         cut: { ribbonR: ms.ribbonR, scaleZ: s, axialHalf: sec.a * s } });
+    // TODO 193 — and the SHAPE is read off the metal, not taken from the
+    // label: a strip's start cap (stripSweepGeometry's layout — the last 8
+    // vertices are the two caps, start first) has its four corners at a·√2
+    // from their centroid, unscaled; a four-segment tube's ring has them at a.
+    // A builder that went back to the tube while still publishing 'strip'
+    // would carry a k four times the metal's, and this is the row that says so.
+    if (sec.shape === 'strip') {
+      const pos = tube.geometry.attributes.position, n0 = pos.count - 8;
+      const cs = [0, 1, 2, 3].map((k) => [pos.getX(n0 + k), pos.getY(n0 + k), pos.getZ(n0 + k)]);
+      const cen = [0, 1, 2].map((j) => cs.reduce((t, c) => t + c[j], 0) / 4);
+      const dist = cs.map((c) => Math.hypot(c[0] - cen[0], c[1] - cen[1], c[2] - cen[2]));
+      if (dist.some((d) => Math.abs(d - sec.a * Math.SQRT2) > 1e-4))
+        failures.push({ what: 'strip section not cut as a strip', unit: unitName,
+          cornerDist: dist.map((d) => +d.toFixed(5)), want: +(sec.a * Math.SQRT2).toFixed(5) });
+    }
     // ...and the frozen record against the live declaration: the payload was
     // computed at boot, so a rebuilt ribbon leaves it quoting stale metal.
     if (Math.abs(record.section.I_u4 - sec.I_u4) > 1e-12 || Math.abs(record.devLen_u - ms.devLen) > 1e-9)
@@ -9554,15 +9576,55 @@ export function checkEqualisation(clock) {
     if (!st || !Array.isArray(st.rows) || !st.rows.length) {
       failures.push({ what: 'pivot strength rows', note: 'going.energy.pivots.strength is missing — the floor-binds claim is unrecorded' });
     } else {
-      const d = PIVOT_MIN_U * UNIT_MM / 1000;
       for (const r of st.rows) {
+        const d = r.d_u * UNIT_MM / 1000;
         const sigma = 32 * r.load_N * (r.length_u * UNIT_MM / 1000) / (Math.PI * d ** 3);
         if (!(rel(r.sigma_Pa, sigma) <= 1e-12))
           failures.push({ what: 'pivot stress identity', pivot: r.pivot, record: r.sigma_Pa, fromLoad: sigma });
-        if (!(r.sigma_Pa < SPRING_SIGMA_Y_PA))
+        if (!(r.d_u >= PIVOT_MIN_U - 1e-12))
+          failures.push({ what: 'pivot under the pivot floor', pivot: r.pivot, d_u: r.d_u, floor_u: PIVOT_MIN_U });
+        // a LOAD-bound pivot is cut to its yield exactly, so the gate admits
+        // equality at float noise and nothing over it
+        if (!(r.sigma_Pa <= SPRING_SIGMA_Y_PA * (1 + 1e-9)))
           failures.push({ what: 'pivot over yield at service load', pivot: r.pivot, sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: SPRING_SIGMA_Y_PA / 1e6 });
       }
     }
+  }
+  // Row 13 (TODO 193) — THE RIBBONS AGAINST THEIR MATERIAL. σ = M·a/I at
+  // both ends of each ribbon's working wind, re-derived from the record's own
+  // k, angles and section (and against E·a·θ/L, which is the same number when
+  // k is the ribbon's — the shape cancels), and the full-wind end held to
+  // MAINSPRING_SIGMA_Y_PA, the alloy band's low end. A ribbon over it is
+  // waived by NAME in RIBBON_STRESS_WAIVERS citing its TODO, and a waiver
+  // whose ribbon is under the limit is STALE and fails.
+  for (const [half, R] of [['going', g], ['alarm', a]]) {
+    const st = R.stress;
+    if (!st || !Array.isArray(st.sigma_Pa) || st.sigma_Pa.length !== 2) {
+      failures.push({ what: 'ribbon stress rows', ribbon: half, note: 'equalisation.' + half + '.stress is missing — the ribbon is not held to its material' });
+      continue;
+    }
+    const aM = R.section.a * UNIT_MM / 1000, IM = R.section.I_u4 * (UNIT_MM / 1000) ** 4;
+    const thetas = half === 'going' ? R.windRangeRad : R.windRangeRad;
+    thetas.forEach((th, i) => {
+      const sigma = R.k_Nm_per_rad * th * aM / IM;
+      if (!(rel(st.sigma_Pa[i], sigma) <= 1e-12))
+        failures.push({ what: 'ribbon stress identity', ribbon: half, end: i ? 'full' : 'run-down', record: st.sigma_Pa[i], fromMoment: sigma });
+    });
+    if (!(st.limit_Pa === MAINSPRING_SIGMA_Y_PA))
+      failures.push({ what: 'ribbon stress limit', ribbon: half, record: st.limit_Pa, layout: MAINSPRING_SIGMA_Y_PA });
+    const over = st.sigma_Pa[1] > MAINSPRING_SIGMA_Y_PA;
+    const waiver = RIBBON_STRESS_WAIVERS[half];
+    if (over && !waiver)
+      failures.push({ what: 'ribbon over its alloy at full wind', ribbon: half, sigma_MPa: st.sigma_Pa[1] / 1e6, limit_MPa: MAINSPRING_SIGMA_Y_PA / 1e6 });
+    if (!over && waiver)
+      failures.push({ what: 'stale ribbon stress waiver', ribbon: half, cites: waiver, sigma_MPa: st.sigma_Pa[1] / 1e6 });
+  }
+  // the going ribbon's k IS its strip at the alloy's modulus — the identity
+  // that makes "the shape cancels" true of this record and not just of algebra
+  if (g.section.shape === 'strip') {
+    const kStrip = MAINSPRING_E_PA * g.section.I_u4 * (UNIT_MM / 1000) ** 4 / (g.devLen_u * UNIT_MM / 1000);
+    if (!(rel(g.k_Nm_per_rad, kStrip) <= 1e-12))
+      failures.push({ what: 'going k is not its strip', record: g.k_Nm_per_rad, fromSection: kStrip });
   }
   // §104 rows 4–6, 8 — held from the record:
   if (!a.setup || !a.setup.quantised)
@@ -9631,6 +9693,10 @@ export function checkEqualisation(clock) {
         released_mJ: +(en.released_J * 1e3).toFixed(4), meanPower_nW: +(en.meanPower_W * 1e9).toFixed(2),
         escapeTorque_nNm: +(en.escapeTorque_Nm * 1e9).toFixed(3), perBeat_nJ: +(en.perBeat_J * 1e9).toFixed(4),
         claimedDeg: en.balance.claimedDeg,
+        ribbons: Object.fromEntries([['going', g], ['alarm', a]].filter(([, R]) => R.stress).map(([h, R]) => [h, {
+          shape: R.section.shape, sigma_MPa: R.stress.sigma_Pa.map((x) => +(x / 1e6).toFixed(1)),
+          limit_MPa: R.stress.limit_Pa / 1e6, waived: RIBBON_STRESS_WAIVERS[h] ? RIBBON_STRESS_WAIVERS[h].split(' — ')[0] : null,
+        }])),
         pivots: en.pivots && en.pivots.strength ? {
           trainPivotR_u: +en.pivots.trainPivotR_u.toFixed(5), balancePivotR_u: +en.pivots.balancePivotR_u.toFixed(5),
           worst: en.pivots.strength.worst, worstMargin: +en.pivots.strength.worstMargin.toFixed(3),

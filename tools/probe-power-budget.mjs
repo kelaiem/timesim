@@ -1,4 +1,4 @@
-// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor since TODO 192 step 2), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. The verdict itself is a REPORT; the agreement is the acceptance.
+// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. The verdict itself is a REPORT; the agreement is the acceptance.
 //
 // Why it exists. Until TODO 192 every number the movement published about its
 // power was FRICTIONLESS. EQUALISATION holds the fusee's level product to float
@@ -154,8 +154,36 @@ const armM = 7850 * B.arm.x * B.arm.y * B.arm.z * U ** 3;
 const screwM = 7850 * B.screws.n * (Math.PI * B.screws.len / 3) * (B.screws.r1 ** 2 + B.screws.r1 * B.screws.r2 + B.screws.r2 ** 2) * U ** 3;
 const balMass = rimM + armM + screwM;               // kg, staff/rollers neglected (<1% by OSC_I's own bound)
 
+// THE PIVOTS' SIZES AND STRENGTH (TODO 192 step 2, TODO 193): each jewelled
+// train pivot carries its arbor's torque as the η law's upper-bound radial
+// load, T·(1/r_pinion + 1/r_wheel), all on one pivot; the balance pivot its
+// weight. σ = 32·F·L/(π d³). Each train pivot is the thicker of §50's floor
+// and the d its load needs at SPRING_SIGMA_Y_PA — computed HERE from this
+// probe's own loads, then asserted against the radii the build cut. The
+// LENGTHS are read off the record (cut geometry, a stack of four constants
+// deep).
+const recRowsS = eq.energy?.pivots?.strength?.rows || [];
+const lenOf = (name) => { const r = recRowsS.find((x) => x.pivot === name); return r ? r.length_u : NaN; };
+const strength = (() => {
+  const rows = []; let Tq = tauFusee;
+  arbors.forEach((a, i) => {
+    Tq *= meshes[i].z2 / meshes[i].z1;
+    const F = Tq * (1 / (a.rIn * U) + 1 / (a.rOut * U)), L_u = lenOf(`${a.name} arbor`);
+    const dLoad = Math.cbrt(32 * F * (L_u * U) / (Math.PI * L.SPRING_SIGMA_Y_PA)) / U;
+    const d_u = Math.max(L.PIVOT_MIN_U, dLoad);
+    rows.push({ pivot: `${a.name} arbor`, load_N: F, length_u: L_u, d_u, bound: dLoad > L.PIVOT_MIN_U ? 'load' : 'floor' });
+    a.rPiv = L.flatsR(d_u, Q.pivotSegs);
+  });
+  rows.push({ pivot: 'balance', load_N: balMass * 9.81, length_u: lenOf('balance'), d_u: L.PIVOT_MIN_U, bound: 'floor' });
+  for (const r of rows) {
+    r.sigma_Pa = 32 * r.load_N * (r.length_u * U) / (Math.PI * (r.d_u * U) ** 3);
+    r.margin = L.SPRING_SIGMA_Y_PA / r.sigma_Pa;
+  }
+  return rows;
+})();
+
 // ---- THE CHAIN OF LOSSES, per corner ----
-function run(A, piv = { train: Q.trainPivR, bal: Q.balPivR }) {
+function run(A, piv = { train: null, bal: Q.balPivR }) {
   const stages = [];
   const push = (name, eta, how) => stages.push({ name, eta, how });
   push('mainspring (coil friction)', A.springInt, 'assumed band');
@@ -165,7 +193,8 @@ function run(A, piv = { train: Q.trainPivR, bal: Q.balPivR }) {
   meshes.forEach((m, i) => {
     push(`mesh ${m.name} (${m.z1}/${m.z2})`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ(1/z₁ + 1/z₂)');
     const a = arbors[i];
-    push(`${a.name} arbor pivots`, 1 - A.muJewel * piv.train * (1 / a.rIn + 1 / a.rOut), `μ·r_piv·(1/r_pinion + 1/r_out) = loads additive (upper bound), pivot r ${f(piv.train, 4)} u`);
+    const rP = piv.train ?? a.rPiv;
+    push(`${a.name} arbor pivots`, 1 - A.muJewel * rP * (1 / a.rIn + 1 / a.rOut), `μ·r_piv·(1/r_pinion + 1/r_out) = loads additive (upper bound), pivot r ${f(rP, 4)} u`);
   });
   push('lever escapement', A.escEff, 'assumed band');
   const etaTotal = stages.reduce((p, s) => p * s.eta, 1);
@@ -219,34 +248,16 @@ const Zm3 = (sec.I_u4 / sec.a) * U ** 3;
 const ribbon = {
   sigmaFull_MPa: eq.momentRange_Nmm[1] / 1000 / Zm3 / 1e6,
   sigmaEmpty_MPa: eq.momentRange_Nmm[0] / 1000 / Zm3 / 1e6,
-  repoLimit_MPa: L.SPRING_SIGMA_Y_PA / 1e6,
-  volume_mm3: 2 * sec.a * sec.c * eq.devLen_u * L.UNIT_MM ** 3,
+  repoLimit_MPa: L.MAINSPRING_SIGMA_Y_PA / 1e6,
+  volume_mm3: (sec.shape === 'strip' ? 4 : 2) * sec.a * sec.c * eq.devLen_u * L.UNIT_MM ** 3,   // strip 2a×2c; rhombus half that
 };
 // The alarm ribbon, the same arithmetic on the other half of the record.
 const secA = live.eqAlarm.section, ZmA = (secA.I_u4 / secA.a) * U ** 3;
 const alarmRibbon = { sigmaEmpty_MPa: live.eqAlarm.momentRange_Nmm[0] / 1000 / ZmA / 1e6, sigmaFull_MPa: live.eqAlarm.momentRange_Nmm[1] / 1000 / ZmA / 1e6 };
-
-// THE PIVOTS' OWN STRENGTH (TODO 192 step 2): each jewelled train pivot carries
-// its arbor's torque as the η law's upper-bound radial load, T·(1/r_pinion +
-// 1/r_wheel), all on one pivot; the balance pivot its weight. σ = 32·F·L/(π d³)
-// with d the pivot floor. The LENGTHS are read off the record (they are cut
-// geometry, a stack of four constants deep); the loads are computed here.
-const strength = (() => {
-  const rows = []; let Tq = tauFusee;
-  arbors.forEach((a, i) => {
-    Tq *= meshes[i].z2 / meshes[i].z1;
-    rows.push({ pivot: `${a.name} arbor`, load_N: Tq * (1 / (a.rIn * U) + 1 / (a.rOut * U)) });
-  });
-  rows.push({ pivot: 'balance', load_N: balMass * 9.81 });
-  const d = L.PIVOT_MIN_U * U, recRows = eq.energy?.pivots?.strength?.rows || [];
-  for (const r of rows) {
-    const rec = recRows.find((x) => x.pivot === r.pivot);
-    r.length_u = rec ? rec.length_u : NaN;
-    r.sigma_Pa = 32 * r.load_N * (r.length_u * U) / (Math.PI * d ** 3);
-    r.margin = L.SPRING_SIGMA_Y_PA / r.sigma_Pa;
-  }
-  return rows;
-})();
+// TODO 193 — the same σ by the OTHER law, E·a·θ/L, which is the moment law
+// whenever k is the ribbon's E·I/L: the section's shape cancels. The going
+// ribbon's k is its strip at MAINSPRING_E_PA; the two readings must agree.
+ribbon.sigmaFullByEaThetaL_MPa = L.MAINSPRING_E_PA * sec.a * U * eq.windFullRad / (eq.devLen_u * U) / 1e6;
 
 // ---- PRINT ----
 console.log('\n=== POWER BUDGET — going train, spring to balance ===\n');
@@ -256,7 +267,7 @@ console.log(`          energy released over ${L.SPEC.reserveHours} h: ${f(E_spri
 console.log(`fusee     ${f(fuseeTurns, 3)} turns, level torque ${f(tauFusee * 1e3, 4)} N·mm, r ${f(rFuseeSmall)} → ${f(rFuseeLarge)} u; drum feed R ${f(rWrap)} u`);
 console.log(`train     ratio fusee → escape ${f(ratio, 2)}; escape torque ${f(tauEsc * 1e9, 2)} nN·m; ${f(grossPerBeat * 1e9, 3)} nJ per beat at the fusee`);
 console.log(`balance   I ${e(osc.I)} kg·m², k ${e(osc.k)} N·m/rad, ${osc.f} Hz; mass ${f(balMass * 1e6, 2)} mg; E at ${L.AMPLITUDE_TRUE_DEG}° = ${f(0.5 * osc.k * (L.AMPLITUDE_TRUE_DEG * Math.PI / 180) ** 2 * 1e6, 3)} µJ`);
-console.log(`pivots    train and balance r ${f(Q.trainPivR, 4)} u = ${f(Q.trainPivR * L.UNIT_MM * 2, 3)} mm ⌀ (${f(L.PIVOT_MIN_U * L.UNIT_MM, 3)} across the flats); fusee staff ${f(Q.upperStaffR * L.UNIT_MM * 2, 3)} mm ⌀ (plain bush); fork ${f(Q.forkStaffR * L.UNIT_MM * 2, 3)} mm ⌀`);
+console.log(`pivots    ${arbors.map((a) => `${a.name} ${f(a.rPiv * L.UNIT_MM * 2 * Math.cos(Math.PI / Q.pivotSegs), 4)}`).join(', ')} mm ⌀ across the flats (floor ${f(L.PIVOT_MIN_U * L.UNIT_MM, 3)}; the rest at the floor, the balance too); fusee staff ${f(Q.upperStaffR * L.UNIT_MM * 2, 3)} mm ⌀ (plain bush); fork ${f(Q.forkStaffR * L.UNIT_MM * 2, 3)} mm ⌀`);
 for (const [n, R] of Object.entries(results)) {
   console.log(`\n--- ${n} corner ---`);
   for (const s of R.stages) console.log(`  ${s.name.padEnd(42)} η ${f(s.eta, 4)}   ${s.how}`);
@@ -275,8 +286,9 @@ for (const [n, R] of Object.entries(realPivots))
 console.log(`\n--- the pivots' own strength (bending at an upper-bound service load, against SPRING_SIGMA_Y_PA ${f(L.SPRING_SIGMA_Y_PA / 1e6, 0)} MPa) ---`);
 for (const r of strength) console.log(`  ${r.pivot.padEnd(14)} F ${e(r.load_N)} N over ${f(r.length_u)} u  σ ${f(r.sigma_Pa / 1e6, 1)} MPa  margin ×${f(r.margin, 1)}`);
 console.log(`\n--- the ribbon's own stress (uniform moment, σ = M·a/I) ---`);
-console.log(`  going  σ ${f(ribbon.sigmaEmpty_MPa, 0)} → ${f(ribbon.sigmaFull_MPa, 0)} MPa over the reserve, against SPRING_SIGMA_Y_PA ${f(ribbon.repoLimit_MPa, 0)} MPa; ribbon volume ${f(ribbon.volume_mm3, 2)} mm³`);
-console.log(`  alarm  σ ${f(alarmRibbon.sigmaEmpty_MPa, 0)} → ${f(alarmRibbon.sigmaFull_MPa, 0)} MPa over its strike travel (both sections ${sec.shape}: modulus a²c/3, a quarter of the bounding strip's)`);
+console.log(`  going  σ ${f(ribbon.sigmaEmpty_MPa, 0)} → ${f(ribbon.sigmaFull_MPa, 0)} MPa over the reserve, against MAINSPRING_SIGMA_Y_PA ${f(ribbon.repoLimit_MPa, 0)} MPa; ribbon volume ${f(ribbon.volume_mm3, 2)} mm³`);
+console.log(`  alarm  σ ${f(alarmRibbon.sigmaEmpty_MPa, 0)} → ${f(alarmRibbon.sigmaFull_MPa, 0)} MPa over its strike travel; sections going ${sec.shape}, alarm ${secA.shape}; the alloy's band ${f(L.MAINSPRING_SIGMA_Y_BAND.low / 1e6, 0)}–${f(L.MAINSPRING_SIGMA_Y_BAND.high / 1e6, 0)} MPa (gated at the low end)`);
+console.log(`  going  σ at full wind by E·a·θ/L: ${f(ribbon.sigmaFullByEaThetaL_MPa, 1)} MPa (the moment law above: ${f(ribbon.sigmaFull_MPa, 1)})`);
 // ---- THE ASSERT: the record's energy column against this computation -------
 // Same constants, two readers — the record by name inside main.js, this by
 // text from outside — and two writers of the arithmetic. 1e-9 relative is
@@ -312,12 +324,20 @@ if (!REC || !REC.corners) {
     same(`pivot ${r.pivot}: load`, r.load_N, rec.load_N);
     same(`pivot ${r.pivot}: σ`, r.sigma_Pa, rec.sigma_Pa);
   }
-  same('train pivot radius', Q.trainPivR, REC.pivots.trainPivotR_u);
+  same('train pivot floor radius', Q.trainPivR, REC.pivots.trainPivotR_u);
+  for (const a of arbors) {
+    const rec = REC.pivots.byArbor?.[a.name];
+    if (!rec) { disagreements.push({ what: `pivot size ${a.name}`, probe: 'present', record: 'absent' }); continue; }
+    same(`pivot radius ${a.name}`, a.rPiv, rec.r_u);
+  }
+  same('going σ full wind (moment law)', ribbon.sigmaFull_MPa * 1e6, eq.stress.sigma_Pa[1]);
+  same('going σ full wind (E·a·θ/L)', ribbon.sigmaFullByEaThetaL_MPa * 1e6, eq.stress.sigma_Pa[1]);
+  same('alarm σ full wind', alarmRibbon.sigmaFull_MPa * 1e6, live.eqAlarm.stress.sigma_Pa[1]);
   same('balance pivot radius', Q.balPivR, REC.pivots.balancePivotR_u);
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2} figures within 1e-9 relative`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3} figures within 1e-9 relative`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);
