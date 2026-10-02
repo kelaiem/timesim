@@ -737,10 +737,11 @@ const EXPECTED_PAIRS = [
   ['Alarm release disc', 'Alarm release reader'], // TODO 117 stage 1: the collar's pin rides the SAME track — its tip lands on ALARM_TRACK_TOP by construction, so this is a working contact from the moment the metal exists
   // (TODO 189 RETIRED ['Alarm release feeler', 'Alarm winding train'] — the §29
   // beak in the contrate band, the pair's only claimed contact, went with the
-  // beak. Measured after the retirement, the nearest the two come is the kept
+  // beak. Measured after the retirement, the nearest the two came was the
   // tail run's far end over the contrate, ≥ 0.642 apart by bounding boxes (a
   // lower bound on the true gap) at f 0…1 on alarmStrike, alarmWind and alarm,
-  // so nothing else needs the grant and `undeclaredClearance` holds them now.)
+  // so nothing else needed the grant and `undeclaredClearance` holds them now.
+  // TODO 190 retired the run itself, which only widens that gap.)
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
@@ -2298,6 +2299,20 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Alarm release reader', b: 'Alarm release feeler', min: CLEAR_MARGIN,
     contacts: [['alarmReaderRing', 'alarmFeelerTip']],
   },
+  // TODO 190 — the SILENCE contact, and nothing else. The rocker's finger
+  // presses the feeler's tail (the `rocker finger ⇄ feeler tail` hand-off row
+  // owns the bite); every other pair of the two units keeps the margin. Under
+  // the EXPECTED blanket the finger had been pressing the feeler's RETURN
+  // BLADE, and the tail run's jog sat 0.25 into the rocker's bar at every
+  // pose. The blade was folded off the tail (stage 1), the run retired, the
+  // bar cranked off the feeler's bracket and the finger's riser lifted to
+  // stand on the finger — the riser no longer touches the tail, so it is not
+  // named here. Bound by the bar ⇄ the bracket's +y lug, which the crank's
+  // jog puts exactly one margin off (plus the band).
+  {
+    a: 'Alarm silence rocker', b: 'Alarm release feeler', min: CLEAR_MARGIN,
+    contacts: [['alarmSilFinger', 'alarmFeelerTail']],
+  },
   // TODO 179 — the reader's other half: its pin RIDES the raised track (the
   // alarmHandoffs rows and the penetration budget own that contact, notch
   // walls included), and nothing else of the two units may come within the
@@ -3437,10 +3452,14 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm setting idler — §15's chain:
   { unit: 'Alarm setting idler', a: 'alarmSetIdler', b: 'alarmSetIdler', why: '§121: the i1⇄i2 working mesh (tooth kiss, deep 0) — TODO 15\'s phase solve owns it; both gears carry one name, which is why one row names it twice' },
   // Alarm silence rocker — §94's rocker:
-  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'BoxGeometry#5', why: '§121: a fork prong rooted in the rocker bar' },
-  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'BoxGeometry#6', why: '§121: the second prong, same root' },
-  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'alarmSilPivot', why: '§121: the rocker bar on its pivot (kiss — the running fit)' },
-  { unit: 'Alarm silence rocker', a: 'BoxGeometry#0', b: 'alarmSilBlade', why: '§121: the blade rooted in the rocker bar' },
+  // TODO 190: the bar is NAMED (`alarmSilBar`) now it is cut as a cranked
+  // extrude — it was `BoxGeometry#0`, an index the next inserted member would
+  // have slid onto its neighbour (TODO 50's lesson). The lugs keep their
+  // indices: the mesh count did not change.
+  { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'BoxGeometry#5', why: '§121: a fork prong rooted in the rocker bar' },
+  { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'BoxGeometry#6', why: '§121: the second prong, same root' },
+  { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'alarmSilPivot', why: '§121: the rocker bar on its pivot (kiss — the running fit)' },
+  { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'alarmSilBlade', why: '§121: the blade rooted in the rocker bar' },
   // Alarm hammer — §48's return:
   { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerSpring', why: '§121: the return spring pressing the tail (0.5 of the spring\'s tip 0.05 into the tail\'s face band) — §48\'s sprung row; the spring law is TODO 14\'s open note' },
   // Alarm barrel — TODO 1's morphing ribbon, the tier\'s singleton-frame rule at work:
@@ -3472,8 +3491,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm winding train', a: 'alarmClimbPinion', b: 'alarmWindIdler', why: '§121: the climb pinion\'s working mesh into i1 — TODO 15\'s phase solve owns it (gap against tooth, measured)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'alarmWindIdler', why: '§121: the i1⇄i2 working mesh, same solve — both idlers carry §99\'s one name, so the row names it twice' },
   // (Alarm release feeler — §29's tail run ⇄ riser corner: RETIRED by TODO 189
-  // with the riser. The run stays (main.js says why), but the corner it named
-  // is gone, and a row naming metal that is not there is a stale selector.)
+  // with the riser, and the run itself by TODO 190. A row naming metal that is
+  // not there is a stale selector.)
   // Case — TODO 122's glazing joints. The Case sits outside INTRA_TIER_SCOPE
   // (its FF rows are reported, not gated), but a declared joint is a CLAIM
   // the §182 audit measures every run, and these three are exactly the
@@ -8014,9 +8033,11 @@ export const SLENDER_WAIVERS = {
   // of the change rather than a tidy-up afterwards — a waiver naming a unit
   // with no over-ceiling row is itself a gated failure, so the fix cannot
   // land without it.
-  // λ 85.1, the §29 step-4 tail run. Wants +0.2390 u per side; the alarm
-  // setting idler stands 0.2933 away and leaves 0.1433.
-  'Alarm release feeler': 'TODO 109',
+  // RETIRED by TODO 190 'Alarm release feeler' (was TODO 109, λ 85.1 on the
+  // §29 step-4 tail run). Not thickened — the member was retired: the run and
+  // its jog carried nothing once TODO 189 took the beak, and they crossed the
+  // silence rocker at every pose. `slenderness` reports no over-ceiling row
+  // for this unit, so the waiver would name a unit that no longer has one.
   // RETIRED by §235. This read λ 76.6 on the alarm stem and said what the row
   // actually wanted was a second bearing rather than a section — which was true
   // of a stem cut at r 0.42, arbor stock standing in for a crown stem. §235's
