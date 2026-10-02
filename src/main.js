@@ -23992,8 +23992,9 @@ declareRestoring('Alarm governor anchor', 'alarmGovAnchor', 'two-way',
 //    the design point, the measured cadence endpoints, the ring's section
 //    inside real stock, and the hammer's window at the fastest gap.
 //
-// Sanity anchor for the going k: ~9.2e-5 N·m/rad ⇒ full-wind arbor moment
-// ~1.2 N·mm — inside the real small-movement barrel range (roughly
+// Sanity anchor for the going k: ~4.4e-4 N·m/rad (TODO 193: the strip, at the
+// alloy's modulus — it read ~1e-4 as the rhombus at steel) ⇒ full-wind arbor
+// moment ~4.5 N·mm — inside the real small-movement barrel range (roughly
 // 0.5–5 N·mm), which is the cross-check that the §39 scale pin, the
 // section and the length are telling one consistent story.
 const EQUALISATION = (() => {
