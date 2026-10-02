@@ -3555,6 +3555,25 @@ export const INTRA_UNIT_WAIVERS = [
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'ExtrudeGeometry#6',
     debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same extrude debt (TODO 84); depth refused by the probe at a 6-tooth wheel, not measured' },
 ];
+// TODO 191 — INTRA-UNIT CLEARANCE FLOORS, `EXPECTED_CONTACT_FLOORS`' shape one
+// level down. The tiers above gate INTERSECTION only, so two members of one
+// unit may stand anywhere short of touching and nothing reads it; a floors
+// row there needs one unit and so cannot be written. A row here names two
+// labels of one unit and holds every combination they resolve to at or over
+// `min`, by `meshClearance`, at every pose of this check's own net. A row
+// whose unit or labels match nothing FAILS (a floor that measures nothing is
+// the silent hole `unmatchedSelectors` exists for), and so does a row whose
+// labels name one mesh. Seeded with the one pair an item filed; it is not a
+// sweep of every unit's pairs, and nothing here says the unlisted ones clear.
+export const INTRA_UNIT_FLOORS = [
+  // TODO 191 — the selector rod and the beak's post run parallel along the
+  // rod's top. The rod slides on its own axis and the post is still, so the
+  // gap is the plan gap at every pose; it read 0.0811 at TODO 174 and 0.0409
+  // after TODO 190 thickened the rod, with the post on the arm's line. The
+  // post now stands on the fulcrum axis (main.js, ALARM_BEAK_POST_SIDE).
+  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkBeakPost', min: CLEAR_MARGIN,
+    why: 'TODO 191: the post carries the beak\'s fulcrum beside the rod the tail drives — parallel members of one action group, held to the one margin' },
+];
 
 // §121 — the units whose FF and MM tiers are GATED: the population this
 // landing's triage actually inspected, row by row (ASSEMBLY_SCOPE's shape and
@@ -3620,7 +3639,7 @@ export function clusterByFrame(meshes, trace, singletons = new Set()) {
   return groups;
 }
 
-export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS } = {}) {
+export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, yieldEvery = 16, contacts = INTRA_UNIT_CONTACTS, floors = INTRA_UNIT_FLOORS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
   const _m = new THREE.Matrix4();
   // A MORPH IS MOTION. The signature carries the mesh's geometry identity as
@@ -3825,6 +3844,24 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
     });
   }
 
+  // TODO 191 — INTRA_UNIT_FLOORS, resolved here and measured in the pose loop
+  // below beside the declared rows. Every combination the two labels resolve
+  // to is held, because a floor is a claim about the parts, not about the
+  // nearest one of them.
+  const floorRows = [], floorMalformed = [];
+  for (const f of floors) {
+    const u = units.find((x) => x.name === f.unit);
+    const as = u ? u.meshes.filter((m) => meshLabel(u, m) === f.a) : [];
+    const bs = u ? u.meshes.filter((m) => meshLabel(u, m) === f.b) : [];
+    const combos = [];
+    for (const A of as) for (const B of bs) if (A !== B) combos.push([A, B]);
+    if (!combos.length) {
+      floorMalformed.push({ unit: f.unit, a: f.a, b: f.b, why: !u ? 'no such unit' : (!as.length || !bs.length) ? 'a label matches no mesh' : 'both labels name the one same mesh' });
+      continue;
+    }
+    floorRows.push({ row: f, combos, min: Infinity, at: null });
+  }
+
   // 4. tiers MF and MM at every sampled pose
   //
   // TODO 54 — canonical entry per axis, which this loop did NOT do. It ran
@@ -3876,6 +3913,15 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
         if (verdict(a, b, u, 'MM', la, lb)) {
           seen.set(key, { unit: u.name, tier: 'MM', a: la, b: lb, at: `${axis.name} f=${+f.toFixed(2)}` });
         }
+      }
+    }
+    for (const fr of floorRows) {
+      // bounded a band over the floor: past it the row's verdict cannot move,
+      // and an unbounded query per pose is cost with no reader
+      const bound = fr.row.min + 0.4;
+      for (const [A, B] of fr.combos) {
+        const d = meshClearance(A, B, bound);
+        if (d < fr.min) { fr.min = d; fr.at = `${axis.name} f=${+f.toFixed(2)}`; }
       }
     }
     // …and the declared rows, at this same pose. The box test first and a
@@ -4042,7 +4088,13 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
     declared, declaredApart, declaredNeverCompared, declaredDegenerate,
     declaredUnmeasurable,
     declaredReach: DECLARED_CONTACT_REACH,
-    gate: 'GATING — 0 unwaived intersections (tier MF over every unit; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors, AND (TODO 104 tier A) 0 declared rows whose parts never come within DECLARED_CONTACT_REACH plus 0 malformed declarations; out-of-scope FF/MM rows, unmeasurable pairs, unmeasurable declarations and declarations no tier compares are reported (§48), and the scope widening is TODO 5\'s filed remainder',
+    // TODO 191 — the floors: a row under its `min` fails, and so does one that
+    // resolves to nothing. `min` is `null` when nothing came within the band.
+    floors: floorRows.map((fr) => ({ unit: fr.row.unit, a: fr.row.a, b: fr.row.b, floor: fr.row.min,
+      min: Number.isFinite(fr.min) ? +fr.min.toFixed(4) : null, at: fr.at ?? '(never within band)',
+      ok: !(fr.min < fr.row.min - FLOOR_TIE_EPS), why: fr.row.why })),
+    floorMalformed,
+    gate: 'GATING — 0 unwaived intersections (tier MF over every unit; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors, AND (TODO 104 tier A) 0 declared rows whose parts never come within DECLARED_CONTACT_REACH plus 0 malformed declarations, AND (TODO 191) every INTRA_UNIT_FLOORS row at or over its floor with 0 malformed floor rows; out-of-scope FF/MM rows, unmeasurable pairs, unmeasurable declarations and declarations no tier compares are reported (§48), and the scope widening is TODO 5\'s filed remainder',
   };
 }
 

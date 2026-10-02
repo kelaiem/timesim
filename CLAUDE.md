@@ -259,7 +259,10 @@ it into prose either.
    mover pairs inside `INTRA_TIER_SCOPE`, out-of-scope FF/MM rows
    reported; declared joints live in `INTRA_UNIT_CONTACTS`, a stale
    selector in that table is itself a failure, waived rows cite their
-   TODO. **And since §182 the table is audited against the metal, not
+   TODO. Since TODO 191 it also holds `INTRA_UNIT_FLOORS` — two members of
+   one unit held to a floor (`EXPECTED_CONTACT_FLOORS`' shape one level
+   down, since the tiers gate only intersection); a row under its floor or
+   resolving to no pair fails. **And since §182 the table is audited against the metal, not
    only against the mesh names** (TODO 104 tier A): a declared row does
    not waive an overlap, it SKIPS the pair before measurement, so a row
    describing a joint that is not there buys silence for whatever lands
