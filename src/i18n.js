@@ -143,6 +143,13 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // marks, for Arabic's reason above. Dari (fa-AF) lands on the one table: the
 // written standard is shared and the numbers, once pinned, are identical.
 // Plural one/other. The matcher is anchored; 'fat' (Fanti) is the negative.
+// §249 — HEBREW, the third right-to-left row and the first with no digit
+// override: Chromium 141 and Node's ICU format 'he' and 'he-IL' as 30.0 · 0.024
+// · 18,000, latn by default, so the tag is plain 'he-IL' and the marks are
+// English's. The matcher takes 'iw' too — the legacy code Java still emits,
+// which Intl itself canonicalizes to 'he' — and is anchored: 'her' (Herero) and
+// 'iwm' are other languages. Plural one/two/other; the chrome carries no
+// count string, so the dual costs nothing here.
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
@@ -158,6 +165,7 @@ export const LOCALES = [
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
   { code: 'zh', face: '简体中文', tag: 'zh-CN', match: (v) => v.startsWith('zh') },
+  { code: 'he', face: 'עברית', tag: 'he-IL', dir: 'rtl', match: (v) => /^(he|iw)(-|$)/.test(v) },
   { code: 'fa', face: 'فارسی', tag: 'fa-IR-u-nu-latn', dir: 'rtl', match: (v) => /^fa(-|$)/.test(v) },
   { code: 'ar', face: 'العربية', tag: 'ar-u-nu-latn', dir: 'rtl', match: (v) => v.startsWith('ar') },
 ];
@@ -221,6 +229,9 @@ for (const [input, want] of [
   // §249 — Iranian and Afghan Persian on the one table; 'fat' is Fanti.
   ['fa', 'fa'], ['fa-IR', 'fa'], ['fa-AF', 'fa'], ['fa_IR', 'fa'], ['fa-IR-u-nu-latn', 'fa'],
   ['fat', null], ['fat-GH', null],
+  // §249 — 'iw' is Hebrew's legacy code and lands on the same table.
+  ['he', 'he'], ['he-IL', 'he'], ['he_IL', 'he'], ['iw', 'he'], ['iw-IL', 'he'],
+  ['her', null], ['her-NA', null], ['iwm', null],
   ['xx', null], ['', null],
 ]) if (_norm(input) !== want) console.warn(`i18n: locale ladder broken — _norm('${input}') = ${_norm(input)}, expected ${want}`);
 
