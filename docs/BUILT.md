@@ -30294,8 +30294,8 @@ spacing is a fixed-width face drawing a cursive script, not a shaping failure.
 | sliders | 58/58 `input[type=range]` compute `direction: rtl` under `fa` and `ar` |
 | `offline-check` | **40/40**, precache **55/55**, the Persian primer served from cache |
 | boot | `?lang=fa` on all three documents console-silent apart from the static server's own 404, which English shows too; `lang="fa"`, `dir="rtl"`; `fmtNum` reads `30.0 · 0.024 · 18,000`; the ladder assert silent |
-| fingerprint | **3297321040** (60 units, 12 poses) at `?lang=fa` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it |
-| battery | **51/51 gates**, local (dev container, 3 shards, 4839 s wall, 6475 s of checks); fingerprint **3297321040** across virgin boots A and B and under the share payload (36/36 applied) — identical to `origin/main`. CI's Battery job on the PR is the merge gate |
+| fingerprint | **492646093** (60 units, 12 poses) at `?lang=fa` and in English on the branch merged with `main` at `cccea9d`, IDENTICAL to a virgin boot of that `main` measured beside it (3297321040 against the earlier base, likewise identical) |
+| battery | **51/51 gates**, local (dev container, 3 shards, 4839 s wall, 6475 s of checks); fingerprint **3297321040** across virgin boots A and B and under the share payload (36/36 applied) — identical to its base. Run before `main`'s TODO 190/192/200 merges were brought in; CI's Battery job on the merged head is the merge gate |
 
 ### Residue, recorded
 
@@ -30314,10 +30314,11 @@ spacing is a fixed-width face drawing a cursive script, not a shaping failure.
 - **«تیک» is the beat, and in two blocks the program's per-frame update.**
   One chunk separated them with «به‌روزرسانی»; the other did not.
 - **Persian is today the ONLY table at 100% on both pages.** It was extracted
-  after `main`'s TODO 189/199 landings rewrote six explainer blocks and two
-  primer blocks. The other fourteen render those eight blocks in English
-  until they are re-translated, which is §73's rule working as designed. It
-  is still owed.
+  after `main`'s TODO 189/190/199 landings rewrote eight explainer blocks
+  and two primer blocks; the two TODO 190 rewrote after extraction were
+  carried into the Persian table when `main` was merged. The other fourteen
+  render those ten blocks in English until they are re-translated, which is
+  §73's rule working as designed. It is still owed.
 - **The chrome is not held by the honesty gate.** "No models" (model FILES)
   is «بدون فایل مدل».
 - **`Version`** still has no entry in any locale's table, and
