@@ -7300,14 +7300,22 @@ export function makeJewelSetting({ r, holeR = r * 0.5 }) {
 // its top face was solid: the screw above it had nothing to thread into.
 // TODO 184 step 3 — and a TENON at the foot: `tenonR` × `tenonLen` below the
 // foot land's face, which is the shoulder the pillar seats on the base plate
-// with. The tenon's riveted end (spread into a dial-side countersink) is not
-// drawn — the plate is one extrusion and cannot carry a stepped hole — but its
-// LENGTH is: it passes the plate's whole thickness and ends flush, which is
-// what makes it a joint rather than a column standing on a face.
-export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, tenonLen = 0 }) {
+// with. It passes the plate's whole thickness and ends flush, which is what
+// makes it a joint rather than a column standing on a face; TODO 200 draws its
+// riveted end too (`rivetC`, below), set into the plate's countersunk land.
+// TODO 200 — the pillar's lathe segment count, named: the base plate's
+// countersunk land is turned on it too, so the spread head and its seat touch
+// facet for facet rather than crossing at the chords.
+export const PILLAR_SEGMENTS = 24;
+// `rivetC` is the riveted end's spread (TODO 200): the tenon's last rivetC of
+// length is a 45° cone out to tenonR + rivetC, set into the host's countersink.
+export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, tenonLen = 0, rivetC = 0 }) {
   const rr = bodyR;
   const foot = tenonR > 0 && tenonLen > 0
-    ? [new THREE.Vector2(0, -tenonLen), new THREE.Vector2(tenonR, -tenonLen), new THREE.Vector2(tenonR, 0)]
+    ? [new THREE.Vector2(0, -tenonLen),
+       ...(rivetC > 0 ? [new THREE.Vector2(tenonR + rivetC, -tenonLen), new THREE.Vector2(tenonR, -tenonLen + rivetC)]
+                      : [new THREE.Vector2(tenonR, -tenonLen)]),
+       new THREE.Vector2(tenonR, 0)]
     : [new THREE.Vector2(0, 0)];
   const top = tapR > 0 && tapDepth > 0
     ? [new THREE.Vector2(tapR, height),
@@ -7327,12 +7335,32 @@ export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, 
     new THREE.Vector2(rr * 1.5, height),
     ...top,
   ];
-  const geo = new THREE.LatheGeometry(pts, 24);
+  const geo = new THREE.LatheGeometry(pts, PILLAR_SEGMENTS);
   geo.rotateX(Math.PI / 2); // stand pillar along Z
   geo.translate(0, 0, -height / 2);
   const m = new THREE.Mesh(geo, MATS.brass);
   m.userData.height = height;
   return m;
+}
+
+// TODO 200 — the countersunk land a riveted tenon is set into: a closed ring,
+// axis +z, its bore tenonR from the top face down to the countersink and then
+// a 45° cone out to mouthR at the bottom face (z0), outerR beyond. Travelled
+// ringGeo's way, bore bottom → out → up → back in.
+export function makeRivetLand({ tenonR, mouthR, outerR, z0, z1, segments }) {
+  const c = mouthR - tenonR;
+  const pts = [
+    new THREE.Vector2(mouthR, z0),
+    new THREE.Vector2(outerR, z0),
+    new THREE.Vector2(outerR, z1),
+    new THREE.Vector2(tenonR, z1),
+    new THREE.Vector2(tenonR, z0 + c),
+    new THREE.Vector2(mouthR, z0),
+  ];
+  const geo = new THREE.LatheGeometry(pts, segments);
+  geo.rotateX(Math.PI / 2);
+  assertLatheOutward(geo, 'a riveted tenon\'s countersunk land');
+  return geo;
 }
 
 // Brand mark (§27) — the house signature: a lemniscate of Bernoulli (∞)
