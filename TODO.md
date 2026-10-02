@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
 | 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
 | 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.931) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
 | 202 | OPEN | The base plate's extrude carries its `bevelThickness` PROUD of both faces, so it presents [−2.3, 0.3] against `PLATE_TOP` 0 / `PLATE_BACK` −2. The dial side was re-derived (TODO 153's `PLATE_BACK_FACE`); the movement side never was, and the parts seated off `PLATE_TOP` sit up to 0.225 inside the metal over solid plate: the transfer wheel, ratchet, click, governor wheel/pinion/arbor, geneva finger disc and pin, alarm arrest cross, the cock legs and pivot bosses. The plate is a held fixture, so no sweep sees it. Fix: cut the extrude at `BACK_PLATE_T − 2·bevel` (the pallet fork's precedent), then re-solve the TODO 153 stack against the moved dial face. |
@@ -27286,4 +27287,96 @@ minimum is a sampled one.
 3. Clear it in position space, keeping `ALARM_LINK_ROD_END_OVERHANG`'s chain
    and the crank's arm.
 4. Add an `INTRA_UNIT_FLOORS` row as the acceptance.
+
+## 206. Nothing presses the alarm link's beak onto the castellations: the gap direction is posed, and the restoring audit's two-way declaration hides it
+
+Found 2026-10-02, out of an owner question while reading TODO 191's
+schematic: *what is tensioning the beak against the column wheel's
+castellation?* Read off the code, not yet measured: **nothing in the metal
+does.**
+
+**The chain.** The §35 link carries the alarm's on/off from the column wheel
+at the rim to the selector ring at the centre. Each joint is two-way, so the
+chain transmits force in both directions:
+
+- the beak lever's long arm rides the castellations;
+- its tail presses the top of the selector rod (`Rod`);
+- the rod's foot turns the rim crank on the lay shaft;
+- the centre crank's pin rides the selector ring's grooved tab.
+
+TODO 20's second pass made the pin-in-groove two-way on purpose, to retire
+the "phantom bias spring" the first build needed. The selector ring is
+declared to need no spring of its own (`main.js` §48 block: `declareRestoring
+('Alarm link', '*', 'two-way', …)` and `('Alarm selector', 'alarmSelRing',
+'two-way', …)`).
+
+**What is missing is a SOURCE for the second direction.** A chain that
+transmits both ways still needs something to push it each way. The only
+input is the column wheel:
+- A column passing under the nose pushes it UP, and the tail, rod, shaft and
+  ring follow.
+- When a gap comes round, nothing pushes the nose DOWN into it. There is no
+  spring on the beak lever, the rod, the shaft or the ring.
+
+The tick law places the beak from the castellation profile under it, and
+solves the rod, shaft and ring from that pose. The §229 comment says "the
+beak falls until the seat catches it", but no part makes it fall. So the
+alarm's arming state is **modelled, not simulated** in the gap direction.
+That is TODO 199's class of gap: a state carried by the pose law rather than
+by a force path.
+
+**Why no gate saw it.** The §48 / TODO 29 restoring audit asks a
+reciprocating part for a restoring element, a two-way drive, or a waiver. It
+accepts `two-way` on the declaration alone.
+- For the Alarm link, the declaration is TRUE of the pin-in-groove (the
+  link drives the ring both ways).
+- It is SILENT about what drives the link both ways.
+
+The same unit pair shows the contrast. The Alarm lock's beak, riding the
+same castellations, IS sprung: its lever's own §102 blade presses it onto
+them through the located pin (`main.js` ~27478,
+`declareRestoring('Alarm lock' …)`).
+
+**Fix path.**
+
+1. **Measure first.** Pose the alarm axis through a column → gap transition
+   and confirm that the nose's descent is assigned by the tick law and
+   driven by no contact. Look for any spring the read missed, for example a
+   detent on the ring's tab, or anything bearing on the rod or the lay
+   shaft. Record what the audit's population says about the link.
+2. **Give the chain a real return element** (P0/P1). Two natural sites:
+   - **A blade on the beak lever**, bearing on its tail or arm and grounded
+     on the three-quarter plate. It presses the nose onto the castellations
+     the way the lock lever's blade does. This is the conventional answer
+     and keeps the force where the reading happens.
+   - **A bias on the selector ring**, which presses the ring up, so the
+     pin, cranks, rod and tail press the nose down. Fewer new parts, but the
+     force reaches the nose through the whole series compliance, which
+     TODO 82 / §137 already price for the forward direction.
+
+   Size it in TODO 16's format:
+   - The bias must hold the nose on its seat against the chain's friction
+     (the `FRICTION` band's adverse corner).
+   - The column must still lift it inside the switch's detent budget. The
+     jumper's 5–50 mN window and the stall the pusher sees grow by this
+     bias.
+
+   Declare it as a §48 `spring` naming its mesh. Add an `ALARM_HANDOFFS`
+   row for the beak's seat at the gap.
+3. **Close the audit hole.** A `two-way` declaration should name its second
+   direction's driver (a unit, a mesh, or an input). It FAILS when that
+   driver is itself only `two-way` back up the same chain, or when there is
+   no driver. A circle of two-way joints with one input is a one-way
+   mechanism. Expect the tightened rule to surface other units declared the
+   same way. List them in the landing rather than fixing them silently.
+4. **Record.**
+   - Correct the §229 / §35 comments that say the beak "falls".
+   - Add the honesty line to the explainer's arming entry, which currently
+     reads "every member real" over this chain.
+   - Point §252's glossary row for `Beak arm` at the spring once it exists.
+
+Feasibility: medium · Cost: one blade (geometry, §50 / §54 duties, a stud on
+plate land), its transfers row, a hand-off row, and the audit rule (≈ 40
+lines in `inspect.js` + the check) · Battery: full; moves the alarm switch's
+force arithmetic and possibly the stall record.
 
