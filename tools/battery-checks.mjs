@@ -299,7 +299,7 @@ export const BATTERY = [
     gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut, energy column arithmetic held (identities, corners ordered, amplitude solve plugs back)',
     fails: (r) => r.failures,
     note: (r) => r.summary + (r.going && r.going.energy
-      ? `; energy ${r.going.energy.released_mJ} mJ over the reserve, sustains ${r.going.energy.corners.nominal.sustainedDeg.vertical}° vertical / ${r.going.energy.corners.nominal.sustainedDeg.flat}° flat at the nominal corner against a claimed ${r.going.energy.claimedDeg}° (TODO 192 OPEN, ×${r.going.energy.corners.nominal.claimFactorOverSupply} short)`
+      ? `; energy ${r.going.energy.released_mJ} mJ over the reserve, sustains ${r.going.energy.corners.nominal.sustainedDeg.vertical}° vertical / ${r.going.energy.corners.nominal.sustainedDeg.flat}° flat at the nominal corner against a claimed ${r.going.energy.claimedDeg}° (TODO 192 OPEN, ×${r.going.energy.corners.nominal.claimFactorOverSupply} short)${r.going.energy.pivots ? `; pivots at the floor, the ${r.going.energy.pivots.worst} tightest at ×${r.going.energy.pivots.worstMargin} under yield` : ''}`
       : '; energy column ABSENT') },
   // TODO 40 row 3's missing instrument. The row named the hole and left it:
   // nothing in the battery ever stated that a chain is a fixed length of

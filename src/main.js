@@ -1448,10 +1448,18 @@ const escapeWheelR = escapeWheel.userData.r || 4.5;
 // past the slab's top, a real pivot end), and down just past the safety
 // roller — the wheel sits low in the movement but the cock sits low too, so
 // a symmetric staff would spike out through the cock.
+const COCK_W = 6;   // the balance cock's width — see its build, where the reason for 6 lives
+// TODO 192 step 2 — the staff's body stops CLEAR_MARGIN under the cock's stone
+// (the endshake gap, the movement's one clearance margin); the PIVOT that
+// carries on through the stone to the §120 endstone is cut at the lower-pivot
+// site, beside its lower twin. The tip itself does not move: 0.5 proud of the
+// cock face, 0.17 under the endstone, exactly as §120 solved it.
+const BALANCE_SHOULDER_TOP_Z = COCK_MID_Z + G.cockJewelStone({ width: COCK_W, thickness: COCK_T }).bottom - CLEAR_MARGIN;
+const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
 const balanceWheel = G.makeBalanceWheel({
   radius: 9,
   thickness: BAL_T,
-  staffTop: COCK_SLAB_TOP + 0.5 - L_BALANCE,
+  staffTop: BALANCE_SHOULDER_TOP_Z - L_BALANCE,
   // pinDrop + 0.4·t = safety-roller plane (mirrors the builder's stack);
   // +0.6 pokes the staff just past the roller's underside.
   staffBottom: (L_BALANCE - PIN_PLANE_Z) + BAL_T * 0.4 + 0.6,
@@ -3775,21 +3783,71 @@ tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, bor
 // a real train pivot. These are the SHIPPED numbers, unmoved; naming them is
 // what lets the energy column quote the metal rather than restate it, and
 // what TODO 192's step 2 (cut them to the real band) will move in one place.
-const TRAIN_STAFF_R = 0.5;     // every going-train arbor, both ends, and the fusee's plain top bush
-const BALANCE_STAFF_R = 0.3;   // the balance's lower pivot (the upper rides the §120 shock setting)
-function addUpperPivot(arbor, { staffR = TRAIN_STAFF_R, jewelR = 1.3, boreR = null, chaton = false } = {}) {
+const TRAIN_STAFF_R = 0.5;     // every going-train arbor's STAFF, both ends, and the fusee's plain top bush
+//
+// TODO 192 step 2 — AND THE PIVOTS ARE CUT. A staff is not its pivot: a real
+// arbor runs full size to its shoulder and steps down to the short pivot that
+// turns in the stone, and only the pivot's radius is a friction arm. Until
+// this landing the staff ran on into the plate at full size and was the
+// bearing, so every jewelled pivot in the train was 0.379 mm ⌀ and the
+// balance's 0.227 — and the balance's own vertical pivot Q came out at 62.
+//
+// The radius is DERIVED, and the constraint that binds is the floor, not the
+// load. Pivot friction torque is μ·F·r, linear in r, so the right pivot is the
+// thinnest one that is still metal: §50's PIVOT_MIN_U (0.07 mm, the bottom of
+// the 0.07–0.12 mm band its own basis calls a real train pivot) measured
+// ACROSS THE FLATS of the 12-gon the cylinder is cut as, because §50's census
+// reads the tessellated stock. The load does not bind, but it comes closest at
+// the CENTRE arbor: the energy column below prices each pivot's bending stress
+// at an upper-bound service load against SPRING_SIGMA_Y_PA and publishes the
+// margin, and the centre pivot clears it by only 2.4× (336 MPa) where the
+// third clears by 28× and the rest by over 100×. A real centre pivot is the
+// thickest in the train for exactly this reason. (A pivot is sized in practice
+// by SHOCK, which this movement has no specification for — the shock setting is
+// drawn, not rated. That is the honest residue, and it sits in TODO 192.)
+const PIVOT_SEGMENTS = 12;
+const TRAIN_PIVOT_R = flatsR(PIVOT_MIN_U, PIVOT_SEGMENTS);   // 0.0957 u — ⌀ 0.07 mm across the flats
+const BALANCE_STAFF_R = 0.3;   // the balance staff's body at its lower end (makeBalanceWheel cuts the upper)
+const BALANCE_PIVOT_R = TRAIN_PIVOT_R; // the same floor binds: a balance pivot is the movement's most loaded-by-friction contact
+// The stone's top, world z, in a chaton flush with the three-quarter plate's
+// top face — where an upper pivot that runs THROUGH its hole ends.
+const CHATON_STONE_TOP_Z = TQ_TOP_Z - G.CHATON_STONE_SET * CHATON_DEPTH;
+const CHATON_STONE_BOT_Z = CHATON_STONE_TOP_Z - G.CHATON_RUBY_FRAC * CHATON_DEPTH;
+// `pivotR` < staffR cuts a SHOULDERED staff: the staff stops CLEAR_MARGIN
+// under the stone (the endshake gap, at the movement's one clearance margin)
+// and the pivot runs from there up through the stone's hole to its top face.
+// The stone's hole is turned for the PIVOT (holeR); the plate's collar is
+// opened one more running clearance than the staff needed, so of the two
+// bores the staff passes the stone is the one that bears — a staff that
+// touched its plate first would make the plate the bearing at the staff's
+// radius, which is the thing this cut exists to stop. pivotR = staffR (the
+// default for a plain bush) is the old construction exactly.
+function addUpperPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR = 1.3, boreR = null, chaton = false } = {}) {
   const worldTop = boxOf(arbor).max.z;
-  const len = TQ_MID_Z - worldTop;
+  const shouldered = pivotR < staffR;
+  if (shouldered && !chaton)
+    console.warn('TODO 192: a shouldered upper pivot needs a chaton stone to run in — only the chaton family knows its stone');
+  const staffEnd = shouldered ? CHATON_STONE_BOT_Z - CLEAR_MARGIN : TQ_MID_Z;
+  const len = staffEnd - worldTop;
   let shaft = null;
   if (len > 0.05) {
-    shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
+    shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, PIVOT_SEGMENTS), MATS.steel);
     shaft.rotation.x = Math.PI / 2;
     shaft.position.z = (worldTop - arbor.position.z) + len / 2; // arbor-local
     arbor.add(shaft);
   }
+  if (shouldered) {
+    const from = Math.max(worldTop, staffEnd), pLen = CHATON_STONE_TOP_Z - from;
+    const pivot = new THREE.Mesh(new THREE.CylinderGeometry(pivotR, pivotR, pLen, PIVOT_SEGMENTS), MATS.steel);
+    pivot.name = 'trainPivot';
+    pivot.rotation.x = Math.PI / 2;
+    pivot.position.z = (from - arbor.position.z) + pLen / 2;
+    arbor.add(pivot);
+  }
   tqPivots.push({
     x: arbor.position.x, y: arbor.position.y, staffR, jewelR, chaton,
     boreR: boreR ?? staffR + PIVOT_BORE_CLEAR,
+    holeR: shouldered ? pivotR + PIVOT_BORE_CLEAR : undefined,
   });
   return shaft; // so a caller with a continuation to declare can NAME its half of the joint
 }
@@ -3808,9 +3866,9 @@ function addUpperPivot(arbor, { staffR = TRAIN_STAFF_R, jewelR = 1.3, boreR = nu
 // carry one family: one screw, one ring turned to two bores.
 for (const arbor of [centerArbor, thirdArbor, fourthArbor]) {
   await breathe();
-  addUpperPivot(arbor, { chaton: true });
+  addUpperPivot(arbor, { pivotR: TRAIN_PIVOT_R, chaton: true });
 }
-addUpperPivot(escapeArbor, { chaton: true });
+addUpperPivot(escapeArbor, { pivotR: TRAIN_PIVOT_R, chaton: true });
 // The FUSEE arbor is the exception: it does not END in the plate — it
 // passes THROUGH it and finishes in a short LET-DOWN square standing
 // proud of the top face. There is deliberately NO ratchet or click on
@@ -4470,7 +4528,9 @@ function declareFrameJoint({ joint, clamped, host, frame, x, y, top, headR, head
 // half-width past the staff — no dead nickel overhanging the bearing (the
 // old 0.12 left 0.38·L of slab reaching past the jewel for no structural
 // reason).
-const COCK_W = 6;
+// (COCK_W is hoisted above the balance build: TODO 192 step 2 shoulders the
+// balance staff to the cock's stone, and the stone's height is a function of
+// the cock's width.)
 const COCK_FOOT_R = COCK_W / 2;
 const COCK_JEWEL_AT = 0.5;
 const COCK_LEG_R = 1.3;
@@ -4844,23 +4904,47 @@ function clampCutToKeeps(keeps) {
 const PLATE_TOP = BACK_PLATE_Z + BACK_PLATE_T / 2;   // back plate spans [z−1, z+1]
 const PIVOT_SEAT_Z = BACK_PLATE_Z;    // pivot bottoms out mid-plate
 const _pivotBox = new THREE.Box3();
-function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, jewelR = 1.3 } = {}) {
+// TODO 192 step 2 — `pivotR` < staffR cuts the same SHOULDERED staff as
+// addUpperPivot, mirrored: the staff stops CLEAR_MARGIN above the stone and the
+// pivot runs down through the stone's hole (turned for it) to the stone's
+// underside. It no longer reaches mid-plate: the stone is the bearing, and a
+// staff carried on into the plate's bore would have been a second one at the
+// staff's radius. pivotR = staffR is the old construction exactly.
+function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR = 1.3, name = 'trainPivot' } = {}) {
   arbor.updateMatrixWorld(true);
   _pivotBox.setFromObject(arbor);
   const worldBottom = _pivotBox.min.z;
-  const len = worldBottom - PIVOT_SEAT_Z;
-  if (len <= 0.05) return; // already reaches into the plate
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, 12), MATS.steel);
-  shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = (worldBottom - arbor.position.z) - len / 2; // arbor-local
-  arbor.add(shaft);
+  if (worldBottom - PIVOT_SEAT_Z <= 0.05) return; // already reaches into the plate
+  const shouldered = pivotR < staffR;
+  const jewel = shouldered
+    ? G.makeJewelSetting({ r: jewelR, holeR: pivotR + PIVOT_BORE_CLEAR })
+    : G.makeJewelSetting({ r: jewelR });
+  const stone = jewel.userData.stone;
+  const staffEnd = shouldered ? PLATE_TOP + stone.top + CLEAR_MARGIN : PIVOT_SEAT_Z;
+  const len = worldBottom - staffEnd;
+  if (len > 0.05) {
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(staffR, staffR, len, PIVOT_SEGMENTS), MATS.steel);
+    shaft.rotation.x = Math.PI / 2;
+    shaft.position.z = (worldBottom - arbor.position.z) - len / 2; // arbor-local
+    arbor.add(shaft);
+  }
+  if (shouldered) {
+    const from = Math.min(worldBottom, staffEnd), to = PLATE_TOP + stone.bottom, pLen = from - to;
+    const pivot = new THREE.Mesh(new THREE.CylinderGeometry(pivotR, pivotR, pLen, PIVOT_SEGMENTS), MATS.steel);
+    pivot.name = name;
+    pivot.rotation.x = Math.PI / 2;
+    pivot.position.z = (from - arbor.position.z) - pLen / 2;
+    arbor.add(pivot);
+  }
   // Jewel hole in the plate's top face, coaxial with the staff.
-  const jewel = G.makeJewelSetting({ r: jewelR });
   jewel.position.set(arbor.position.x, arbor.position.y, PLATE_TOP);
   movement.add(jewel);
 }
-for (const arbor of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
-  addLowerPivot(arbor);
+// The fusee runs in plain bushes at its staff's size — it carries the chain's
+// pull and the winding torque, and its let-down square must pass its bore.
+addLowerPivot(barrelArbor);
+for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
+  addLowerPivot(arbor, { pivotR: TRAIN_PIVOT_R });
 }
 // Dial-side counterpart: parts living UNDER the plate (the keyless works'
 // setting lever and yoke) pivot on studs planted in the plate's BACK face —
@@ -4892,7 +4976,17 @@ addLowerPivot(forkGroup, { staffR: 0.35, jewelR: 1.0 });
 // group's box-min is the staff tip, on-axis) down to mid-plate, running
 // into a rubbed-in jewel in the plate's top face. Nothing else occupies
 // the axis below (the stop crank works at radius ≈ 8.5+).
-addLowerPivot(balanceGroup, { staffR: BALANCE_STAFF_R, jewelR: 1.0 });
+addLowerPivot(balanceGroup, { staffR: BALANCE_STAFF_R, pivotR: BALANCE_PIVOT_R, jewelR: 1.0, name: 'balancePivot' });
+// ...and its UPPER pivot, from the staff's shoulder through the cock's stone
+// (turned for it — see the cock build) to the tip under the endstone.
+{
+  const len = BALANCE_PIVOT_TIP_Z - BALANCE_SHOULDER_TOP_Z;
+  const pivot = new THREE.Mesh(new THREE.CylinderGeometry(BALANCE_PIVOT_R, BALANCE_PIVOT_R, len, PIVOT_SEGMENTS), MATS.steel);
+  pivot.name = 'balancePivot';
+  pivot.rotation.x = Math.PI / 2;
+  pivot.position.z = (BALANCE_SHOULDER_TOP_Z + len / 2) - L_BALANCE; // balance-local
+  balanceGroup.add(pivot);
+}
 // (The spring drum gets its lower pivot where it is built, further down —
 // declaring it here would read drumGroup before its `const`.)
 
@@ -10967,6 +11061,7 @@ const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
 const balanceCockLen = (cockEdgeR - 0.1) / (0.5 + COCK_JEWEL_AT);
 const balanceCock = G.makeCock({
   length: balanceCockLen, width: COCK_W, thickness: COCK_T, jewelAt: COCK_JEWEL_AT,
+  jewelHoleR: BALANCE_PIVOT_R + PIVOT_BORE_CLEAR,   // TODO 192 step 2: the stone turned for the pivot that runs in it
 });
 {
   // Local +Y runs foot → jewel, i.e. opposite the solved foot bearing.
@@ -12401,7 +12496,9 @@ let tqPlateMesh = null;
   for (const p of tqPivots) {
     if (!p.jewelR) continue; // plain bushing (the barrel arbor)
     const collar = new THREE.Mesh(
-      ringGeo(p.boreR, tqOpeningR(p) + SEAT_LAND_LAP, TQ_T - CHATON_DEPTH),
+      // TODO 192 step 2: a shouldered staff's collar is opened one running
+      // clearance more, so the stone (holeR) bears and the plate does not.
+      ringGeo(p.holeR ? p.boreR + PIVOT_BORE_CLEAR : p.boreR, tqOpeningR(p) + SEAT_LAND_LAP, TQ_T - CHATON_DEPTH),
       MATS.nickel);
     collar.name = 'pivotCollar';
     collar.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - CHATON_DEPTH) / 2);
@@ -12414,7 +12511,7 @@ let tqPlateMesh = null;
     // floors (CHATON_DEPTH), a seat cut for every screw head, and the land
     // put back under each seat.
     if (p.chaton) {
-      const chaton = G.makeChaton({ boreR: p.boreR, thickness: CHATON_DEPTH,
+      const chaton = G.makeChaton({ boreR: p.boreR, holeR: p.holeR, thickness: CHATON_DEPTH,
         screwCount: p.screws, screwPhase: p.screwPhase,
         // Through the plate and no further — the pillar screws' rule, and for
         // the same reason: below the underside the thread takes its tapping,
@@ -23863,15 +23960,16 @@ const EQUALISATION = (() => {
   //    μ·r_rivet·(1/r_fusee + 1/R_wrap) per link articulated on and off, and
   //    the ribbon and the escapement are bands outright.
   //  · The BALANCE spends, per beat, (π/Q_other)·½kθ² on everything but its
-  //    pivots and 2θ·T_f on them, T_f = μ·m·g·r: the staff's radius with the
+  //    pivots and 2θ·T_f on them, T_f = μ·m·g·r: the PIVOT's radius with the
   //    watch vertical, the pivot END's contact radius dial-flat. The
   //    sustained amplitude is the θ at which that spend equals what arrives
   //    — a quadratic in θ, solved in closed form — and the record carries
   //    it at every corner beside the amplitude the movement CLAIMS
   //    (AMPLITUDE_TRUE_DEG), with the factor by which the claim exceeds the
-  //    supply. Measured at the shipped metal: the claim exceeds it by 43–134×
-  //    and the sustained swing is 2–7° vertical. TODO 192 is OPEN on that
-  //    number; this block is its step 1, the instrument, not its fix. The
+  //    supply. Measured at the shipped metal: the claim exceeds it by 15–44×
+  //    and the sustained swing is 10–26° vertical — it was 43–134× and 2–7°
+  //    until step 2 cut the pivots, which is the whole of what that cut buys.
+  //    TODO 192 is OPEN on that number; this block is its instrument. The
   //    gate holds the arithmetic (the identities, the corners' ordering, the
   //    amplitude solve plugging back) and REPORTS the verdict, because an
   //    amplitude gate on today's tree would be red on arrival and a red that
@@ -23895,6 +23993,38 @@ const EQUALISATION = (() => {
     const rFuseeMean = (FUSEE_R_LARGE + FUSEE_TORQUE_K) / 2, rGreat = rW(TRAIN.barrel);
     const kB = OSCILLATOR.k_Nm_per_rad, mB = OSC_I.mass, g = 9.81;
     const thetaClaim = AMPLITUDE_TRUE_DEG * DEG2RAD;
+    // TODO 192 step 2 — WHY THE PIVOTS ARE AT THE FLOOR, as arithmetic. Each
+    // jewelled pivot is a cantilever from its shoulder, loaded at its end by
+    // the arbor's radial reaction; the same upper bound the η law prices —
+    // the pinion's and the wheel's loads ADDED, T·(1/r_pinion + 1/r_wheel) —
+    // and the WHOLE of it on one pivot. Its bending stress σ = 32·F·L/(π·d³),
+    // d the pivot floor (the flats, the thinner reading of the 12-gon), L the
+    // longer of the two pivots as cut. The balance's load is its weight, all
+    // on one pivot (the vertical positions). Every row must come in under
+    // SPRING_SIGMA_Y_PA, and the margin is the record's statement that the
+    // load did not size the pivot — the floor did.
+    const upperPivotL = CHATON_STONE_TOP_Z - (CHATON_STONE_BOT_Z - CLEAR_MARGIN);
+    const lowerPivotL = CLEAR_MARGIN + G.jewelStone(1.3).rubyDepth;
+    const balancePivotL = Math.max(BALANCE_PIVOT_TIP_Z - BALANCE_SHOULDER_TOP_Z, CLEAR_MARGIN + G.jewelStone(1.0).rubyDepth);
+    const dPivot_m = PIVOT_MIN_U * OSC_U;
+    const bend = (F, L_u) => 32 * F * (L_u * OSC_U) / (Math.PI * dPivot_m ** 3);
+    const pivotStrength = (() => {
+      const rows = [];
+      let T = fuseeTorque_Nm;
+      for (const m of meshes) {
+        T *= m.z2 / m.z1;                                           // the arbor's torque, one mesh down
+        const F = T * (1 / (m.rIn * OSC_U) + 1 / (m.rOut * OSC_U));
+        const sigma = bend(F, Math.max(upperPivotL, lowerPivotL));
+        rows.push({ pivot: `${m.arbor} arbor`, load_N: F, length_u: Math.max(upperPivotL, lowerPivotL), sigma_Pa: sigma, margin: SPRING_SIGMA_Y_PA / sigma });
+      }
+      const Fb = mB * g, sigmaB = bend(Fb, balancePivotL);
+      rows.push({ pivot: 'balance', load_N: Fb, length_u: balancePivotL, sigma_Pa: sigmaB, margin: SPRING_SIGMA_Y_PA / sigmaB });
+      const worst = rows.reduce((a, b) => (b.margin < a.margin ? b : a));
+      if (!(worst.margin > 1))
+        console.warn(`TODO 192: the ${worst.pivot} pivot bends at ${(worst.sigma_Pa / 1e6).toFixed(1)} MPa at its service load, `
+          + `over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — the floor no longer binds and the pivot must be sized to its load`);
+      return { rows, dPivot_mm: PIVOT_MIN_U * UNIT_MM, yield_Pa: SPRING_SIGMA_Y_PA, worst: worst.pivot, worstMargin: worst.margin };
+    })();
     const corner = (cname) => {
       const A = Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
       const stages = [];
@@ -23905,13 +24035,13 @@ const EQUALISATION = (() => {
       push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)');
       for (const m of meshes) {
         push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)');
-        push(`${m.arbor} arbor pivots`, 1 - A.muJewel * TRAIN_STAFF_R * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_staff·(1/r_pinion + 1/r_wheel)');
+        push(`${m.arbor} arbor pivots`, 1 - A.muJewel * TRAIN_PIVOT_R * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)');
       }
       push('lever escapement', A.escEff, 'FRICTION.escEff');
       const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
       const etaTotal = stages.reduce((p, s) => p * s.eta, 1);
       const delivered_J = etaTotal * perBeat_J;
-      const tfVertical_Nm = A.muJewel * mB * g * BALANCE_STAFF_R * OSC_U;
+      const tfVertical_Nm = A.muJewel * mB * g * BALANCE_PIVOT_R * OSC_U;
       const tfFlat_Nm = A.muJewel * mB * g * (2 / 3) * (A.endContactMm / 1000);
       // loss(θ) = (π k_B / 2Q) θ² + 2 T_f θ = delivered  ⇒  the positive root.
       const sustained = (tf) => { const a = Math.PI * kB / (2 * A.qOther), b = 2 * tf; return (-b + Math.sqrt(b * b + 4 * a * delivered_J)) / (2 * a); };
@@ -23927,7 +24057,8 @@ const EQUALISATION = (() => {
     return {
       released_J, meanPower_W: released_J / reserve_s, reserve_s, beats,
       fuseeTurns: FUSEE_WRAP_TURNS, fuseeTorque_Nm, trainRatio, escapeTorque_Nm, perBeat_J,
-      pivots: { trainStaffR_u: TRAIN_STAFF_R, balanceStaffR_u: BALANCE_STAFF_R },
+      pivots: { trainStaffR_u: TRAIN_STAFF_R, trainPivotR_u: TRAIN_PIVOT_R, balancePivotR_u: BALANCE_PIVOT_R,
+                fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
       balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_TRUE_DEG },
       corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
     };

@@ -6469,7 +6469,15 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
 // centre (+ = toward the rounded head). At 0.5 the jewel sits at the head
 // arc's own centre, so the slab ends exactly one half-width past the staff —
 // the classic round-head cock, with no dead overhang beyond the bearing.
-export function makeCock({ length, width, thickness = width * 0.5, studHole = null, jewelAt = 0.12 }) {
+// Where a cock's sunk jewel stone sits, cock-local z (the slab's mid-plane at
+// 0) — the stack makeCock builds, so a staff can be shouldered to it first.
+const cockCoreDepth = (width, thickness) => thickness - 2 * Math.min(width * 0.05, thickness * 0.2);
+export const cockJewelR = (width) => width * 0.16;
+export function cockJewelStone({ width, thickness = width * 0.5 }) {
+  const z0 = cockCoreDepth(width, thickness) * 0.5, st = jewelStone(cockJewelR(width));
+  return { top: z0 + st.top, bottom: z0 + st.bottom };
+}
+export function makeCock({ length, width, thickness = width * 0.5, studHole = null, jewelAt = 0.12, jewelHoleR = undefined }) {
   const g = new THREE.Group();
   const hw = width / 2;
   const s = new THREE.Shape();
@@ -6503,7 +6511,7 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   s.holes.push(h2);
 
   const bevelT = Math.min(width * 0.05, thickness * 0.2);
-  const depth = thickness - 2 * bevelT; // core extrusion; bevels restore the total
+  const depth = cockCoreDepth(width, thickness); // core extrusion; bevels restore the total
   const geo = new THREE.ExtrudeGeometry(s, {
     depth,
     bevelEnabled: true,
@@ -6516,7 +6524,7 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   g.add(new THREE.Mesh(geo, MATS.nickel));
 
   // Sunk jewel setting at the pivot.
-  const js = makeJewelSetting({ r: width * 0.16 });
+  const js = makeJewelSetting({ r: cockJewelR(width), holeR: jewelHoleR });
   js.position.set(0, length * jewelAt, depth * 0.5);
   g.add(js);
 
@@ -7000,7 +7008,15 @@ function assertLatheOutward(geo, what) {
 // remaining thickness under the seat, passed by the host because only the
 // host knows it (SEAT_FIT's rule: draw the fastener as far as its own drawn
 // body goes, and cut the host for it).
-export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase = 0, screwShank = 0 }) {
+// TODO 192 step 2 — the stone's top stands this fraction of the chaton's
+// thickness below its rim (a set stone sits under its bezel). Exported because
+// a pivot that runs THROUGH the hole is cut to it before the plate exists.
+export const CHATON_STONE_SET = 0.08;
+// `holeR` is the stone's hole, turned for its pivot; `boreR` stays the SETTING'S
+// size, which the stone's outside, the gold ring, the screw circle and the
+// plate's counterbore are all proportions of (§148's one family). Defaults to
+// boreR — a chaton whose staff runs full size through it, as before.
+export function makeChaton({ boreR, holeR = boreR, thickness = 0.35, screwCount = 3, screwPhase = 0, screwShank = 0 }) {
   const g = new THREE.Group();
   const rubyR = jewelOuterR(boreR);
   const outerR = chatonOuterR(boreR);
@@ -7106,15 +7122,15 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
   // TODO 12: stone at CHATON_RUBY_FRAC·t (was 0.62). Its AABB section is
   // that full height; at the bore the sink leaves 0.52·t, which is the sink
   // doing its job and is why real pressed jewels are dimensioned on their rim.
-  const zT = -t * 0.08, zB = zT - t * CHATON_RUBY_FRAC, zS = zB + t * 0.22;
+  const zT = -t * CHATON_STONE_SET, zB = zT - t * CHATON_RUBY_FRAC, zS = zB + t * 0.22;
   const rubyPts = [
-    new THREE.Vector2(boreR, zT),
-    new THREE.Vector2(boreR, zS),
-    new THREE.Vector2(boreR * 1.05, zS),   // the dish, falling from the bore
+    new THREE.Vector2(holeR, zT),
+    new THREE.Vector2(holeR, zS),
+    new THREE.Vector2(boreR * 1.05, zS),   // the dish, falling from the setting's bore
     new THREE.Vector2(rubyR * 0.98, zB),
     new THREE.Vector2(rubyR, zB),
     new THREE.Vector2(rubyR, zT),
-    new THREE.Vector2(boreR, zT),
+    new THREE.Vector2(holeR, zT),
   ];
   const rubyG = new THREE.LatheGeometry(rubyPts, 32);
   rubyG.rotateX(Math.PI / 2);
@@ -7167,13 +7183,26 @@ export function makeChaton({ boreR, thickness = 0.35, screwCount = 3, screwPhase
 // from above you read polished rim → recess → sunken ruby, matching the
 // rubbed-in stones above. Replaces the old brass-ring-plus-torus
 // appliqué that sat ON the surface like a donut.
-export function makeJewelSetting({ r }) {
+// TODO 192 step 2 — `holeR` is the STONE'S HOLE, turned for the pivot that
+// runs in it (pivot + PIVOT_BORE_CLEAR). It used to be r·0.5 whatever ran
+// there, so a 0.5 staff stood 0.15 off a 0.65 hole and bore on nothing; the
+// setting's other dimensions stay proportions of `r`, the stone's size.
+// The stone's height in a setting of size r, setting-local — the ONE copy of
+// that stack, read by makeJewelSetting and by anything that must cut a pivot
+// to a stone before the stone exists (cockJewelStone).
+export function jewelStone(r) {
+  const rimTop = 0.1, d = Math.max(r * 0.35, 0.3);
+  const rubyDepth = Math.max(d * 0.8, STOCK_MIN_U);
+  return { rimTop, d, rubyDepth, top: rimTop - SEAT_FIT, bottom: rimTop - SEAT_FIT - rubyDepth };
+}
+export function makeJewelSetting({ r, holeR = r * 0.5 }) {
   const g = new THREE.Group();
-  const rimTop = 0.1;                    // hair proud of the host face
+  const st = jewelStone(r);
+  const rimTop = st.rimTop;              // hair proud of the host face
   const seatGap = SEAT_FIT;              // same fit the bridge uses (TODO 27)
   const wallR = r * 1.15;                // counterbore wall
   const outerR = r * 1.6;
-  const d = Math.max(r * 0.35, 0.3);     // recess depth into the host
+  const d = st.d;                        // recess depth into the host
   // TODO 70/75 — a CLOSED profile, travelled ringGeo's way (bore bottom →
   // out → up → back in). The old one was four points that never returned —
   // an open shell, wound inside out — and an open mesh is the parity
@@ -7196,11 +7225,14 @@ export function makeJewelSetting({ r }) {
   // cock's setting; the max floors it at 0.12 mm while staying inside the
   // collar's lathe wall, which reaches −d−0.1 (deepest stone bottom here is
   // rimTop − seatGap − STOCK_MIN_U = −0.30 against −0.436).
-  const rubyDepth = Math.max(d * 0.8, STOCK_MIN_U);
-  const ruby = new THREE.Mesh(ringExtrude(wallR - seatGap, r * 0.5, rubyDepth, 32), MATS.ruby);
+  const rubyDepth = st.rubyDepth;
+  const ruby = new THREE.Mesh(ringExtrude(wallR - seatGap, holeR, rubyDepth, 32), MATS.ruby);
   ruby.position.z = rimTop - seatGap - rubyDepth / 2; // top sits below the rim
   g.add(ruby);
   g.userData.r = r;
+  // Where the stone is, setting-local, so a pivot can be run THROUGH it
+  // rather than to a height someone guessed.
+  g.userData.stone = { top: rimTop - seatGap, bottom: rimTop - seatGap - rubyDepth, holeR };
   return g;
 }
 

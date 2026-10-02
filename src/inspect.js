@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, CASE_WIDTH_MAX,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -7722,6 +7722,11 @@ export const STOCK_KIND_BY_PART = {
   'Power reserve': 'hand',
 };
 export const STOCK_KIND_BY_MESH = {
+  // TODO 192 step 2 — the shouldered staffs' pivots: cut AT the 0.07 mm pivot
+  // floor across their 12-gon's flats, because friction is linear in their
+  // radius. Pin stock, so the pivot floor is the one that answers.
+  trainPivot: 'pivot',
+  balancePivot: 'pivot',
   // §188 — the CENTRAL hands, declared per MESH because their units (Hour
   // wheel, Dial, Alarm disc) carry non-hand metal a PART row would mislabel.
   // Cut from HAND_STOCK_MM (geometry.js): 0.20 mm blades against the 0.10
@@ -9444,8 +9449,9 @@ export function checkOscillator(clock) {
 // TODO 192 / §247 tier two — THE ENERGY COLUMN (`going.energy`) is held too,
 // as ARITHMETIC: the first rows on this record that price friction, and the
 // gate holds that they are the arithmetic they claim rather than the verdict
-// they reach, because the verdict is red on today's metal by 43–134× and a
-// gate that cannot go green is a number nobody reads. So:
+// they reach, because the verdict is red on today's metal by 15–44× (43–134×
+// before TODO 192 step 2 cut the pivots) and a gate that cannot go green is a
+// number nobody reads. So:
 //
 //  9. THE IDENTITIES — released energy is ½k(θ_full² − θ_setup²) from the
 //     record's own k and angles; the escape torque is that energy over the
@@ -9461,7 +9467,11 @@ export function checkOscillator(clock) {
 // 11. THE AMPLITUDE SOLVE PLUGS BACK — at the sustained θ the balance's spend,
 //     (πk/2Q)θ² + 2θT_f, equals what the train delivers, to 1e-9; and flat
 //     sustains at least vertical (the pivot END's contact radius is smaller
-//     than the staff's).
+//     than the pivot's).
+// 12. THE PIVOTS ARE AT THE FLOOR BECAUSE THE LOAD LETS THEM BE (TODO 192
+//     step 2) — every row of `pivots.strength` re-derives σ = 32·F·L/(π·d³)
+//     from its own load and length at the pivot floor, and sits under
+//     SPRING_SIGMA_Y_PA. A pivot over yield must be sized to its load.
 // The verdict — sustained amplitude against the claimed AMPLITUDE_TRUE_DEG —
 // is REPORTED in the payload and the note. Gating it is TODO 192's step 4.
 export function checkEqualisation(clock) {
@@ -9540,6 +9550,24 @@ export function checkEqualisation(clock) {
             etaTotal: [hi.etaTotal, lo.etaTotal], vertical: [hi.sustainedDeg.vertical, lo.sustainedDeg.vertical] });
       }
     }
+    // Row 12 (TODO 192 step 2) — the pivots were cut to §50's floor on the claim
+    // that the LOAD does not bind them. Held: every pivot's bending stress
+    // re-derived from its own row (σ = 32·F·L/(π·d³), d the pivot floor) and
+    // under the one spring-steel yield. A pivot the load DID bind would have to
+    // be sized to its load, not left at the floor.
+    const st = en.pivots && en.pivots.strength;
+    if (!st || !Array.isArray(st.rows) || !st.rows.length) {
+      failures.push({ what: 'pivot strength rows', note: 'going.energy.pivots.strength is missing — the floor-binds claim is unrecorded' });
+    } else {
+      const d = PIVOT_MIN_U * UNIT_MM / 1000;
+      for (const r of st.rows) {
+        const sigma = 32 * r.load_N * (r.length_u * UNIT_MM / 1000) / (Math.PI * d ** 3);
+        if (!(rel(r.sigma_Pa, sigma) <= 1e-12))
+          failures.push({ what: 'pivot stress identity', pivot: r.pivot, record: r.sigma_Pa, fromLoad: sigma });
+        if (!(r.sigma_Pa < SPRING_SIGMA_Y_PA))
+          failures.push({ what: 'pivot over yield at service load', pivot: r.pivot, sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: SPRING_SIGMA_Y_PA / 1e6 });
+      }
+    }
   }
   // §104 rows 4–6, 8 — held from the record:
   if (!a.setup || !a.setup.quantised)
@@ -9608,6 +9636,10 @@ export function checkEqualisation(clock) {
         released_mJ: +(en.released_J * 1e3).toFixed(4), meanPower_nW: +(en.meanPower_W * 1e9).toFixed(2),
         escapeTorque_nNm: +(en.escapeTorque_Nm * 1e9).toFixed(3), perBeat_nJ: +(en.perBeat_J * 1e9).toFixed(4),
         claimedDeg: en.balance.claimedDeg,
+        pivots: en.pivots && en.pivots.strength ? {
+          trainPivotR_u: +en.pivots.trainPivotR_u.toFixed(5), balancePivotR_u: +en.pivots.balancePivotR_u.toFixed(5),
+          worst: en.pivots.strength.worst, worstMargin: +en.pivots.strength.worstMargin.toFixed(3),
+        } : null,
         corners: Object.fromEntries(Object.entries(en.corners).map(([c, C]) => [c, {
           etaTrain: +C.etaTrain.toFixed(4), etaTotal: +C.etaTotal.toFixed(4), delivered_nJ: +(C.delivered_J * 1e9).toFixed(4),
           sustainedDeg: { vertical: +C.sustainedDeg.vertical.toFixed(2), flat: +C.sustainedDeg.flat.toFixed(2) },
@@ -10505,6 +10537,11 @@ const TURN_LAP_MAX_FRAC = 0.5;
 // the least slender thing this needs to speak about — widens by 15%, so the
 // test has seven times the margin it needs on the shortest member it judges,
 // and a disc (which widens by well under 1%) cannot pass it.
+// TODO 192 step 2 — the members that ARE pivots: a short reduced step at the
+// end of an arbor, turned last against its own shoulder. Named, because
+// "a pin-kind member at the end of a bar" also describes a screw's shank and
+// a stud's head, and those are judged as the bar they are.
+const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot']);
 const TURN_AMBIG_TILT = 0.15;
 const TURN_AMBIG_WIDEN = 1.02;
 
@@ -10848,12 +10885,42 @@ export async function turnedBars(clock, opts = {}) {
         if (!bridge) continue;
         cluster.push(b); spans.push(sb); used.add(j);
       }
-      const mm = turnMeasure(a.axis, a.origin, cluster.map((x) => x.pts));
+      // TODO 192 step 2 — A PIVOT AT THE END OF A BAR is judged on its own
+      // length. The narrowest-step rule assumes the thin step is cut last
+      // "with the whole length already standing out", which is true of a neck
+      // in the middle of a bar and false of one at its END: a pivot is turned
+      // with the bar gripped up to its shoulder and finished in a pivot runner
+      // that carries it right under the tool, so what bends is the pivot. Read
+      // the old way every pivoted arbor in a real watch is unturnable — the
+      // centre arbor at L/D 51 on a 0.07 mm pivot 0.19 mm long. The rule is
+      // applied by MEMBER, not inferred from the outline: a member named in
+      // TURN_END_PIVOTS whose span reaches an end of the bar is split out and
+      // measured alone, and the rest of the bar keeps the old rule. Inferring
+      // it from the outline was tried and moved 46 of 224 bars (hollow stones,
+      // tapered screw heads); by member it moves exactly the shouldered staffs.
+      let lo = Infinity, hi = -Infinity;
+      const endSpanOf = (x) => { let a0 = Infinity, a1 = -Infinity; for (const p of x.pts) { const t = (p[0] - a.origin[0]) * a.axis[0] + (p[1] - a.origin[1]) * a.axis[1] + (p[2] - a.origin[2]) * a.axis[2]; if (t < a0) a0 = t; if (t > a1) a1 = t; } return [a0, a1]; };
+      const spansC = cluster.map(endSpanOf);
+      for (const [x0, x1] of spansC) { if (x0 < lo) lo = x0; if (x1 > hi) hi = x1; }
+      const isEnd = (i) => TURN_END_PIVOTS.has(cluster[i].mesh)
+        && (Math.abs(spansC[i][0] - lo) < TURN_AXIS_OFFSET_U || Math.abs(spansC[i][1] - hi) < TURN_AXIS_OFFSET_U);
+      const ends = cluster.map((_, i) => i).filter(isEnd);
+      const body = cluster.filter((_, i) => !ends.includes(i));
+      let mm = turnMeasure(a.axis, a.origin, (body.length ? body : cluster).map((x) => x.pts));
+      if (mm && body.length && ends.length) {
+        // the body is still read over the WHOLE span: it stands out of the chuck that far
+        mm = { lenU: hi - lo, diaU: mm.diaU };
+        for (const i of ends) {
+          const pm = turnMeasure(a.axis, a.origin, [cluster[i].pts]);
+          if (pm && pm.lenU / pm.diaU > mm.lenU / mm.diaU) mm = pm;
+        }
+      }
       if (!mm) continue;
       bars.push({ part: unit, meshes: cluster.map((x) => x.mesh),
         kind: cluster[0].kind,
         lenMM: +(mm.lenU * UNIT_MM).toFixed(4), diaMM: +(mm.diaU * UNIT_MM).toFixed(4),
         LD: +(mm.lenU / mm.diaU).toFixed(1),
+        ...(ends.length && body.length ? { endPivots: ends.length } : {}),
         where: cluster.map((x) => x.where) });
     }
   }

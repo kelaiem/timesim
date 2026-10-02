@@ -310,8 +310,11 @@ it into prose either.
    η in (0, 1] at each of `FRICTION`'s three corners, the corners ORDERED
    (favourable ≥ nominal ≥ adverse, which is what makes "holds at all three"
    a statement about a band), and the sustained-amplitude solve plugging back
-   into the balance's spend. The VERDICT — 2–7° vertical sustained against a
-   claimed 270°, TODO 192 — is a REPORT, deliberately: an amplitude gate on
+   into the balance's spend, and since TODO 192 step 2 every pivot's bending
+   stress at its service load re-derived and held under `SPRING_SIGMA_Y_PA` —
+   the record's proof that the LOAD did not size the pivots cut at §50's floor
+   (the centre arbor's comes closest, ×2.4). The VERDICT — 10–26° vertical
+   sustained against a claimed 270°, TODO 192 — is a REPORT, deliberately: an amplitude gate on
    today's metal would be red on arrival, and a red that cannot go green is a
    number nobody reads. `FRICTION` is the one place a coefficient the movement
    cannot measure may live, always as a band with its source, never a single
@@ -387,7 +390,12 @@ it into prose either.
    in the safe direction is a check that passes. It GATES on arrival with all
    twelve failing bars declared in `TURN_WAIVERS` against TODO 145, on
    `stockFloor`'s convention rather than §54's report covenant: a thirteenth
-   bar fails the build, where a report would have left it silent. `needRest`
+   bar fails the build, where a report would have left it silent. **A pivot
+   at the END of a bar is judged on its own length** (TODO 192 step 2): it is
+   turned last against its own shoulder, so a member named in `TURN_END_PIVOTS`
+   that reaches an end is measured alone and the body keeps the narrowest-step
+   rule — by member, because inferring it from the outline moved 46 of 224
+   bars, and by name it moves exactly the shouldered staffs. `needRest`
    (L/D 10–20, wanting a follower rest) and `ambiguous` are REPORTS),
    and `jumperMovers` **control PASS, 0 undeclared moving obstacles, 0 rows
    naming no mesh, 0 failing rows** (TODO 181 — `JMP_SITE` can only read the
