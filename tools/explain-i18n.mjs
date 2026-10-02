@@ -212,6 +212,7 @@ const MARKS = {
   // 1.000 · 18.000, Latin digits); Node's ICU 78 gives the same four.
   vi: { group: ['.'], dec: ',' },
   nl: { group: ['.'], dec: ',' },        // §249 — nl-NL and nl-BE alike: German's marks (Chromium 141)
+  fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -234,11 +235,13 @@ const EN_SIMULATED = /\bsimulat/i;
 
 // Arabic carries the damma of مُحاكى between م and ح, so a substring of the
 // bare letters misses the word it is looking at. Diacritics and tatweel come
-// off before matching; every other locale passes through untouched.
+// off before matching; §249's Persian takes the same strip, since the same
+// harakat may sit in a Persian word; every other locale passes through
+// untouched.
 const AR_MARKS = /[ً-ْٰـ]/g;
 const honestyText = (s, lang) => {
   const t = s.replace(/<code>.*?<\/code>/g, ' ').replace(/<[^>]+>/g, ' ');
-  return lang === 'ar' ? t.replace(AR_MARKS, '') : t;
+  return lang === 'ar' || lang === 'fa' ? t.replace(AR_MARKS, '') : t;
 };
 
 // STEMS, not words, because every locale here inflects: 모델링됨/모델링되어,
@@ -269,6 +272,10 @@ const HONESTY = {
   // never the noun: 'modellen' is plural 'models' and the credit line reads
   // 'AI-model', neither of which is the honesty word.
   nl:        { m: /modelle(?:er|r)/i, s: /simul/i },
+  // §249 — the -سازی compound, never the bare noun: the credit line's "AI
+  // model" is مدل هوش مصنوعی. The joint is a ZWNJ, a space or nothing, and the
+  // page uses all three spellings somewhere, so the matcher takes all three.
+  fa:        { m: /مدل[\u200c\s]?سازی/, s: /شبیه[\u200c\s]?سازی/ },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };
