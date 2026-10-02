@@ -26,7 +26,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
-| 192 | PART DONE | Steps 1 and 2 LANDED, and TODO 193 changed the supply under them. Step 1 (§247 tier two): `FRICTION` bands, `EQUALISATION.going.energy`, rows 9–11. Step 2: the jewelled train arbors and the balance shouldered onto pivots at §50's floor, row 12 holding each pivot's service stress under yield; since TODO 193 the centre pivot is sized to its LOAD (0.086 mm) and the rest stay at the floor. OPEN: 15.1 mJ over 30 h (140 nW) sustains 40–101° vertical, 63–213° dial-flat, against a claimed 270° — 3.4–10× short. Remaining: the working band re-solved against a declared amplitude target with the going ribbon's σ under `MAINSPRING_SIGMA_Y_PA` (today 1931 MPa at full wind, waived citing this step), then gated |
+| 192 | PART DONE | Steps 1–3 LANDED (with TODO 193 between them): the energy column and `FRICTION` (§247 tier two); the pivots shouldered and sized floor-or-load; the going ribbon a strip of the cited alloy, then PROPORTIONED to it — the half-thickness that puts full wind on `MAINSPRING_SIGMA_Y_PA` and the most coils the barrel holds at half fill (8, was 5): 31.6 mJ over 30 h sustains 77–186° vertical, 112–327° dial-flat. OPEN: step 4, gating the amplitude — which first needs `AMPLITUDE_TRUE_DEG` split into the claim (the solve's minimum) and the swing loads are priced at (its maximum); 270° vertical at the adverse corner needs the balance or a larger barrel |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | CLOSED (re-scoped) | The §29 beak held nothing: it never reached the contrate, and the contrate does not turn during a ring (parked on the arbor side since §99). Riser, beak, flex group and law retired with every row naming them; the tail run kept (retiring it re-sites the Alarm link). The hold is the `alarmReleased` flag, declared in `MECH_GRAPH.todo`; the residual is [TODO 199] |
@@ -26568,13 +26568,50 @@ truth failure, not packaging.
    | favourable | 0.287 | **100.6° / 213.1°** | 3.4× |
    | nominal | 0.222 | **66.8° / 122.3°** | 5.5× |
    | adverse | 0.160 | **40.1° / 62.8°** | 10.0× |
-3. Re-solve the drum's working band against a declared amplitude target at
-   the adverse corner, with the ribbon inside TODO 193's stress limit:
+3. ~~Re-solve the drum's working band against a declared amplitude target at
+   the adverse corner, with the ribbon inside TODO 193's stress limit~~
+   **LANDED — the ribbon, not the band.** The working band's ANGLES are the
+   fusee's (its torque law is normalised to them, so moving them re-cuts the
+   fusee and the chain), so the solve moves the ribbon and holds the angles.
+   `makeBarrel`'s `ribbonSolve` proportions it two ways. The half-thickness
+   that puts the full wind exactly on `MAINSPRING_SIGMA_Y_PA` is
+   a = (σ/E)·L/θ_f. The coil count is the most whole coils the barrel holds
+   with the ribbon filling half the area between arbor and wall, the classical
+   barrel rule. Energy at a fixed peak stress goes as the ribbon's volume, and
+   the old fraction-of-a-gap thickness filled 20%. Result: **8 coils**
+   (was 5), 1800 MPa at full wind exactly (was 1931), k ×2.1 and **31.6 mJ**
+   released (was 15.1). The going ribbon's stress waiver went stale and is
+   retired, which the gate enforced. The centre pivot re-sizes to the doubled
+   load (0.135 mm), the others stay at the floor. A longer pivot, from a
+   deeper chaton stone that landed on `main` meanwhile, puts the third at
+   491 MPa of its 800. Verdict now:
+
+   | corner | ribbon → balance η | sustained, vertical / dial-flat |
+   |---|---|---|
+   | favourable | 0.287 | **185.8° / 326.7°** |
+   | nominal | 0.222 | **125.3° / 201.1°** |
+   | adverse | 0.160 | **77.0° / 111.8°** |
+
+   What step 3 did NOT do is reach 270° vertical at the adverse corner,
+   because this drum cannot: it is already at half fill and at its alloy's
+   limit. The further levers are the balance (a larger radius of gyration per
+   unit mass, which is the third cause above) and the drum itself (a larger
+   barrel is a layout change).
+   The text this step was filed with, kept for the record — re-solve
+   against a declared amplitude target, with the ribbon inside TODO 193's
+   stress limit:
    `MAINSPRING_SIGMA_Y_PA`, 1800 MPa, which the going ribbon exceeds today at
    1931 MPa at full wind. It is waived by name citing this step, and the gate
    fails the waiver once the ribbon is under. σ = E·a·θ/L, so the levers are
    the half-thickness, the length and the wind.
-4. Gate the amplitude the solve achieves.
+4. Gate the amplitude the solve achieves. **OPEN, and it needs one decision
+   first:** what `AMPLITUDE_TRUE_DEG` means once it is not 270. Today it
+   is three things at once. It is the CLAIM the energy column reports
+   against. It is the swing §218's hairspring stress and pivot-force peaks
+   are evaluated to. And it is the swing the hack brake is priced to hold.
+   The first wants the solve's MINIMUM (adverse, vertical: 77°), the other
+   two its MAXIMUM (favourable, dial-flat: 327°). One literal cannot be
+   both honestly.
 
 Items 1 and 2 are independent and could land first; both have. Until the rest do,
 `AMPLITUDE_TRUE_DEG`, the hack brake's 1.3 mN and §218's physical peaks

@@ -9493,7 +9493,7 @@ export function checkOscillator(clock) {
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 export const RIBBON_STRESS_WAIVERS = {
-  going: 'TODO 192 step 3 — the drum\'s working band is re-solved against an amplitude target WITH σ under MAINSPRING_SIGMA_Y_PA; σ = E·a·θ/L, so the levers are the ribbon\'s half-thickness, its length and its wind',
+  // (going: RETIRED by TODO 192 step 3 — the ribbon is proportioned to the limit, so its waiver went stale and the gate said so)
   alarm: 'TODO 201 — over the alloy\'s TENSILE strength at full wind; the ribbon is re-proportioned and re-cut as a strip together with §104\'s governor solve',
 };
 export function checkEqualisation(clock) {
@@ -9633,7 +9633,9 @@ export function checkEqualisation(clock) {
     });
     if (!(st.limit_Pa === MAINSPRING_SIGMA_Y_PA))
       failures.push({ what: 'ribbon stress limit', ribbon: half, record: st.limit_Pa, layout: MAINSPRING_SIGMA_Y_PA });
-    const over = st.sigma_Pa[1] > MAINSPRING_SIGMA_Y_PA;
+    // a ribbon PROPORTIONED to the limit (TODO 192 step 3) sits ON it by
+    // construction, so the gate admits equality at float noise and nothing over
+    const over = st.sigma_Pa[1] > MAINSPRING_SIGMA_Y_PA * (1 + 1e-9);
     const waiver = RIBBON_STRESS_WAIVERS[half];
     if (over && !waiver)
       failures.push({ what: 'ribbon over its alloy at full wind', ribbon: half, sigma_MPa: st.sigma_Pa[1] / 1e6, limit_MPa: MAINSPRING_SIGMA_Y_PA / 1e6 });

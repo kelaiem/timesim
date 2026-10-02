@@ -8014,7 +8014,12 @@ hammerGroup.add(hammerTailBar);
 //    1.131e4 rad, so τ ≤ 3.03e-7 N·m. A reset sweeps the cam at most
 //    half a turn (this file's own "up to half a fourth-wheel
 //    revolution"), and the rod's measured driven-end stroke is 1.152 mm,
-//    so F = τ·π / 1.152 mm = 0.83 mN.
+//    so F = τ·π / 1.152 mm = 0.83 mN. (TODO 193 and 192 step 3 then gave the
+//    ribbon its real section and its drum's worth of coils: 31.6 mJ, so
+//    τ ≤ 2.80e-6 N·m and F ≈ 7.6 mN — no longer sub-milliNewton, inside the
+//    5–50 mN detent window the LIVE rows price at its 50 mN ceiling, and
+//    under the 14.3 mN deflection ceiling below. The figures that follow are
+//    the record the rod was first priced against.)
 //  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
 //    3.067 mm (measured off the built pad). Holding a 270°
 //    (AMPLITUDE_TRUE_DEG) swing means absorbing the hairspring's own
@@ -9289,6 +9294,10 @@ const barrel = G.makeBarrel({ name: 'barrel',
   // itself is a bench state, reachable only by letting the set-up down.
   springArborR: MS_COLLAR_R, springWindSweep: DRUM_ROT_FULL,
   springSetupSweep: SETUP_SWEEP,
+  // TODO 192 step 3 — the ribbon PROPORTIONED to its alloy and its drum: the
+  // half-thickness that puts the full wind on MAINSPRING_SIGMA_Y_PA, and the
+  // most coils of it the barrel holds at half fill (makeBarrel's ribbonSolve).
+  ribbonSolve: { sigmaOverE: MAINSPRING_SIGMA_Y_PA / MAINSPRING_E_PA },
 });
 await breathe();
 const mainspring = barrel.getObjectByName('spring').userData.mainspring;
@@ -24197,9 +24206,9 @@ const EQUALISATION = (() => {
   //    — a quadratic in θ, solved in closed form — and the record carries
   //    it at every corner beside the amplitude the movement CLAIMS
   //    (AMPLITUDE_TRUE_DEG), with the factor by which the claim exceeds the
-  //    supply. Measured at the shipped metal: the claim exceeds it by 15–44×
-  //    and the sustained swing is 10–26° vertical — it was 43–134× and 2–7°
-  //    until step 2 cut the pivots, which is the whole of what that cut buys.
+  //    supply. Measured at the shipped metal: the sustained swing is 77–186°
+  //    vertical (TODO 192's steps and TODO 193 took it from 2–7°: pivots cut,
+  //    the strip, then the ribbon proportioned to its alloy and its drum).
   //    TODO 192 is OPEN on that number; this block is its instrument. The
   //    gate holds the arithmetic (the identities, the corners' ordering, the
   //    amplitude solve plugging back) and REPORTS the verdict, because an
