@@ -249,14 +249,20 @@ export const BATTERY = [
   // `declaredDegenerate`: a row whose two labels name the one same mesh
   // resolves to no pair at all and would drop out of every count in silence.
   { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY },
-    gate: '0 unwaived intra-unit intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors, 0 declared rows that excuse nothing, 0 malformed declarations',
+    gate: '0 unwaived intra-unit intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors, 0 declared rows that excuse nothing, 0 malformed declarations, every INTRA_UNIT_FLOORS row at its floor and 0 malformed floor rows',
     fails: (r) => [...r.violations, ...r.unmatchedSelectors.map((u) => ({ unmatchedIntraUnitSelector: u })),
       ...r.declaredApart.map((d) => ({ declarationExcusesNothing: `${d.unit} / ${d.a} \u21c4 ${d.b}`, nearestD: d.nearestD, tiers: d.tiers, why: d.why })),
-      ...r.declaredDegenerate.map((d) => ({ malformedDeclaration: `${d.unit} / ${d.a} \u21c4 ${d.b}`, why: 'both labels name the one same mesh — the row resolves to no pair at all' }))],
+      ...r.declaredDegenerate.map((d) => ({ malformedDeclaration: `${d.unit} / ${d.a} \u21c4 ${d.b}`, why: 'both labels name the one same mesh — the row resolves to no pair at all' })),
+      // TODO 191 — INTRA_UNIT_FLOORS: a pair of one unit's members under its
+      // floor, or a floor row that resolves to nothing (it would measure no
+      // pair and pass for that reason alone)
+      ...r.floors.filter((x) => !x.ok).map((x) => ({ intraFloorUnder: `${x.unit} / ${x.a} \u21c4 ${x.b}`, min: x.min, floor: x.floor, at: x.at })),
+      ...r.floorMalformed.map((x) => ({ malformedIntraFloor: `${x.unit} / ${x.a} \u21c4 ${x.b}`, why: x.why }))],
     note: (r) => `${r.movers} movers in ${r.frames} frames over ${r.poses} poses; pairs MF ${r.tiers.MF}/FF ${r.tiers.FF}/MM ${r.tiers.MM}, `
       + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt), ${r.unmeasurable.length} unmeasurable (reported); `
       + `${r.declared.length} declarations (reach ${r.declaredReach}, ${r.declaredNeverCompared.length} no tier compares, `
-      + `${r.declaredUnmeasurable.length} unmeasurable \u2014 both reported)` },
+      + `${r.declaredUnmeasurable.length} unmeasurable \u2014 both reported); `
+      + `${r.floors.length} floor row(s): ${r.floors.map((x) => `${x.a} \u21c4 ${x.b} ${x.min ?? '\u2265 band'}`).join(', ')}` },
   // §107 — TODO 5's other half. `intraUnit` above compares movers against
   // their own unit's FIXTURES, so two meshes that always move together were
   // never measured by anything: §104's governor anchor shipped with one pallet

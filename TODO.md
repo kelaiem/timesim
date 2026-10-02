@@ -17,6 +17,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
+| 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.931) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
 | 202 | OPEN | The base plate's extrude carries its `bevelThickness` PROUD of both faces, so it presents [−2.3, 0.3] against `PLATE_TOP` 0 / `PLATE_BACK` −2. The dial side was re-derived (TODO 153's `PLATE_BACK_FACE`); the movement side never was, and the parts seated off `PLATE_TOP` sit up to 0.225 inside the metal over solid plate: the transfer wheel, ratchet, click, governor wheel/pinion/arbor, geneva finger disc and pin, alarm arrest cross, the cock legs and pivot bosses. The plate is a held fixture, so no sweep sees it. Fix: cut the extrude at `BACK_PLATE_T − 2·bevel` (the pallet fork's precedent), then re-solve the TODO 153 stack against the moved dial face. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
@@ -27,7 +29,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
 | 192 | PART DONE | Steps 1–3 LANDED (with TODO 193 between them): the energy column and `FRICTION` (§247 tier two); the pivots shouldered and sized floor-or-load; the going ribbon a strip of the cited alloy, then PROPORTIONED to it — the half-thickness that puts full wind on `MAINSPRING_SIGMA_Y_PA` and the most coils the barrel holds at half fill (8, was 5): 31.6 mJ over 30 h sustains 77–186° vertical, 112–327° dial-flat. OPEN: step 4, gating the amplitude — which first needs `AMPLITUDE_TRUE_DEG` split into the claim (the solve's minimum) and the swing loads are priced at (its maximum); 270° vertical at the adverse corner needs the balance or a larger barrel |
-| 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
+| 191 | CLOSED | The beak's post stands on the lever's FULCRUM AXIS, 0.4557 to the arm's −y, not on the arm's line: arms 3.577 / 0.768 and the 4.657 ratio untouched. Rod ⇄ post 0.0409 (it had shrunk from 0.0811 when TODO 190 thickened the rod) → 0.1643, held by the new `INTRA_UNIT_FLOORS` row in `intraUnit` (control: the old station reads 0.0409 and fails) |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | CLOSED (re-scoped) | The §29 beak held nothing: it never reached the contrate, and the contrate does not turn during a ring (parked on the arbor side since §99). Riser, beak, flex group and law retired with every row naming them; the tail run kept (retiring it re-sites the Alarm link). The hold is the `alarmReleased` flag, declared in `MECH_GRAPH.todo`; the residual is [TODO 199] |
 | 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
@@ -26422,7 +26424,7 @@ CLEAR_MARGIN, contacts: [['alarmSilFinger', 'alarmFeelerTail']] }` measures
 touches the tail, so it is not named. `alarmHandoffs` 15 rows, 0 waived, all
 OK; `rocker finger ⇄ feeler tail` 0.05 / 0.05 / −0.0057 / 0.0311, unchanged.
 
-## 191. The alarm selector rod stands 0.0811 from the beak post it runs parallel to
+## 191. The alarm selector rod stands 0.0811 from the beak post it runs parallel to — CLOSED
 
 Found closing [TODO 174]. At the corrected rod site (tab 315°, 9 from the
 wheel) the beak arms shrank to the declared fork's 3.577 / 0.768, which brings
@@ -26437,6 +26439,56 @@ post's station along the arm's line, or the rod's azimuth about the crank,
 with the lever's arm lengths and 4.66:1 held (spending the ratio to buy room
 is forbidden). The acceptance is a measured gap ≥ `CLEAR_MARGIN` over the
 link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
+
+**CLOSED — the post moved along the fulcrum axis, and a floors row holds it.**
+
+- **Re-measured first, after TODO 190: 0.0409, not 0.0811.** The gap got
+  WORSE. TODO 190's re-solved site lengthened the rod (20.4894 → 20.7535), and
+  the rod's section is turned to that length (`ALARM_LINK_ROD_R_SECTION` =
+  L / (2·`TURN_LD_TARGET`), 0.5692 → 0.5765). The rod distance stayed 9, so the
+  arms did not move and the post stayed `tailLen` 0.768 from the rod's axis.
+  Measured by `meshClearance` over every `AXES` axis at 9 samples (126 poses):
+  0.0409 at every pose. The rod slides along its own axis and the post is
+  still, so the plan gap is the gap.
+- **Why not "along the arm's line".** The tick tilts the lever about its OWN
+  y (`rotation.y` under `'ZYX'`): a see-saw whose fulcrum is the horizontal
+  line through `beakPiv`, square to the arm. Each arm is a point's distance
+  from that line, so moving the post along the arm's line moves the fulcrum,
+  and with it the ratio. Moving it ALONG the fulcrum axis moves no arm at all —
+  TODO 190's precedent for the rocker's bar.
+- **The station, derived.** `ALARM_BEAK_POST_SIDE` is the least offset along
+  the fulcrum axis at which the two circumradii clear by the margin:
+  hypot(`tailLen`, s) = R_rod + R_post + `CLEAR_MARGIN`. That gives
+  s = **0.4557**, on the lever's −y. The side was measured: on +y, at the same
+  offset, the post stands 0.0667 from `alarmJumperBlade`; on −y, 0.593. Two
+  rule-6 asserts hold it. The first is the plan gap. The second checks that
+  the post's outer flank (0.6224) stays inside the bar's half-width
+  (`ALARM_LINK_ARM_W`/2 = 0.627), so the post is still under the lever it
+  carries. Both declared joints, bar ⇄ post and tail ⇄ post, still touch.
+  §172's saw-tip assert now reads the post's real axis distance.
+- **Acceptance.** `INTRA_UNIT_FLOORS` is new in `inspect.js`:
+  `EXPECTED_CONTACT_FLOORS`' shape for two members of ONE unit, which that
+  table cannot express. It is measured inside `intraUnit`'s pose net and
+  gated in the battery. It fails on a pair under its floor, and on a row that
+  resolves to no pair. Its one row,
+  `{ unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkBeakPost', min: CLEAR_MARGIN }`,
+  reads **0.1643**. The must-fail control moved the post back onto the arm's
+  line in the page and re-ran the check: 0.0409, FAIL. Why a new table and not
+  `INTRA_TIER_SCOPE`: `Alarm link` is already in that scope, and the scope
+  gates INTERSECTION only, so a gap of 0.04 passed it.
+- **Unchanged, measured.** The 4.657 ratio, the arms and the rod site are
+  untouched. Nothing else on the link moved, so neither did `transfers`
+  (21 rows, 0 waived) nor TODO 82's stall assert. `intraUnit`'s out-of-scope
+  rows and declared-row distances are identical to the base, diffed. Every
+  spec point the battery requires silent boots with 0 warns, all at the same
+  post station and 0.1643: default, `studr=7.595`, `4.71`, `7.1175`,
+  `route=2-leg`, `reconf=1`, `balstep=60` and `subdialr=8`.
+- **Found doing it.** These are filed rather than fixed, because neither is
+  this pair. The post does not stand on the plate: its foot is **0.6183** above
+  the three-quarter plate that the `Alarm link ⇄ Three-quarter plate` floors
+  row excuses as its seat ([TODO 204]). The lay shaft's rod-end neck stands
+  **0.1091** from the rod, another intra-unit pair under the margin
+  ([TODO 205]).
 
 ## 192. The going spring cannot drive the balance: the power budget does not close
 
@@ -27177,3 +27229,61 @@ site moves.
 Feasibility: medium · Cost: the tab filter and a sleeve-post guard in the
 §112 search (~40 lines), then a possible re-site · Battery: full, with a
 `--report` diff, if the site moves.
+
+## 204. The link beak's post stands 0.618 above the three-quarter plate a floors row declares it seated on
+
+Found closing [TODO 191]. `alarmLinkBeakPost` is built from
+`ALARM_LOCK_Z + 0.30` up to the lever's fulcrum height. Measured by
+`meshClearance` at rest, its foot stands **0.6183** above `threeQuarterPlate`.
+Several things nonetheless call it seated:
+- `EXPECTED_PAIRS` (`['Alarm link', 'Three-quarter plate']`, "the beak's post
+  seated on the plate top");
+- the matching `EXPECTED_CONTACT_FLOORS` row, which names
+  `['alarmLinkBeakPost', 'threeQuarterPlate']` as a contact;
+- TODO 171's closure.
+
+A declared contact is EXCLUDED before measurement, so `expectedContacts`
+never reads the pair. `support` passes the unit on the rod's upper bush,
+which really is pressed into the plate (its gap is 0.007). Nothing holds the
+post up. The lever's fulcrum stands on a post that stands on air.
+
+Lowering the post is not enough. The plate's selector-rod bore
+(`ALARM_LINK_ROD_PLATE_BORE_R` 0.931 about the rod) lies under the post's
+foot at both stations: on the arm's line the post's axis was 0.768 from the
+rod, and at TODO 191's fulcrum-axis station it is 0.893. A post seated on
+the plate needs plate land, so its axis must be at least 0.931 + its radius
++ `STOCK_MIN_U` from the rod, which is the plate-land rule that
+`linkRodTqLand` holds for bores.
+
+**Fix path (P1, the beak lever's support).** Two options:
+- Seat the post on plate land further along the fulcrum axis. At that
+  offset it no longer stands under the bar (half-width 0.627), so it needs
+  a pivot pin across to the lever, with that pin's own §50/§54 duties.
+- Carry the fulcrum from something it really stands on, such as a bridge
+  or the lock's tier.
+
+Then delete the post from the floors row's `contacts`, or keep it there
+only once it measures seated. Retire the "seated" wording in
+`EXPECTED_PAIRS` and TODO 171's record if the post stops being what seats
+the pair.
+
+## 205. The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld
+
+Found closing [TODO 191] by the same scan, `meshClearance` over every `AXES`
+axis at 9 samples. `alarmLinkNeckRod` ⇄ `alarmLinkRod` reads **0.1091** at
+`beat f=0`, under `CLEAR_MARGIN`. Both are members of `Alarm link`, so no
+pair sweep reads them, and `intraUnit` gates only intersection.
+
+The neck is the lay shaft's rod-end stub, pressed into the body. It turns
+with the shaft and carries the rim crank whose eye takes the rod's foot.
+The rod translates. So the gap can move with the roll, and the scan's
+minimum is a sampled one.
+
+**Fix path (P2 — one action group).**
+1. Measure the pair over the shaft's whole roll.
+2. Find which feature binds: the neck's end face, or its flank against the
+   rod's foot.
+3. Clear it in position space, keeping `ALARM_LINK_ROD_END_OVERHANG`'s chain
+   and the crank's arm.
+4. Add an `INTRA_UNIT_FLOORS` row as the acceptance.
+
