@@ -27206,6 +27206,11 @@ What the new thickness moves, by derivation:
 - The dial-side jewels sit at `PLATE_BACK` −2.3, which is ON the face the
   plate presents. At −2.0 they had been 0.3 inside it.
 - The pillar tenons (TODO 200) are 2.3 long.
+- The fusee's lower pivot runs to `PIVOT_SEAT_Z`, 0.15 deeper. That moves
+  `jumperMovers`' "going-train bodies" bound, which is the census's own
+  measured minimum. The fusee pivot now sets it at 0.8554, against 0.9901
+  for the centre arbor before, so the bound is re-recorded at 0.85. That is
+  still far over `CLEAR_MARGIN`.
 - The alarm hammer spring's stud stands from the rim's back face, so it grew
   by the 0.3 and read L/D 20.3 against `turning`'s ceiling of 20. Its radius
   was a 0.3 literal. It is now derived from its length at

@@ -46011,7 +46011,7 @@ const JMP_SITE_MOVERS = [
   { name: 'alarm setting wheel', kind: 'revolve', roots: [alarmSetWheelGroup], onto: jmpRotorNamed(alarmSetWheelGroup, 'alarmSettingWheel'), slack: 0 },
   // ---- bounded: each bound is the census's measured minimum over the pose
   // net, rounded down to 0.01 (trailing: the reading and the mesh that sets it)
-  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.99 },   // 0.9901, the centre wheel's arbor body
+  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.85 },   // 0.8554, the fusee's lower pivot at train 46/96 — TODO 202: the pivot seats mid-plate, and the plate's centre is −1.15 now (was the centre arbor's 0.9901)
   // the clutch and the reset rod are PHANTOMS as built — tick places both, so
   // the solve reads the clutch 32.8 off its stem and the rod at the origin;
   // both stay this far from any station the whole net over
