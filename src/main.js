@@ -22129,7 +22129,12 @@ const ALARM_HAM_SPR_ANCHOR = {
   x: _hamBear0.x - _hamPush.x * ALARM_HAM_SPR_FREE,
   y: _hamBear0.y - _hamPush.y * ALARM_HAM_SPR_FREE,
 };
-const ALARM_HAM_SPR_STUD_R = 0.3;
+// TODO 202 — the stud is a TURNED bar standing from the rim's back face to the
+// strike plane, so its section is set by that length at the turning ceiling's
+// build-to figure (§233's TURN_LD_TARGET, the arrest columns' rule). It was a
+// 0.3 literal, L/D 19.3 while the rim's face stood 0.3 proud; cut to the
+// finished plate the stud grew by that 0.3 and read L/D 20.3, over the gate.
+const ALARM_HAM_SPR_STUD_R = (Z_STRIKE - HAMMER_POST_BOT) / (2 * TURN_LD_TARGET);
 {
   const r = Math.hypot(ALARM_HAM_SPR_ANCHOR.x, ALARM_HAM_SPR_ANCHOR.y);
   if (r - ALARM_HAM_SPR_STUD_R < R_ANNULUS_IN - 1e-9 || r + ALARM_HAM_SPR_STUD_R > R_ANNULUS_OUT + 1e-9)

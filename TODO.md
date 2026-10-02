@@ -27206,6 +27206,10 @@ What the new thickness moves, by derivation:
 - The dial-side jewels sit at `PLATE_BACK` −2.3, which is ON the face the
   plate presents. At −2.0 they had been 0.3 inside it.
 - The pillar tenons (TODO 200) are 2.3 long.
+- The alarm hammer spring's stud stands from the rim's back face, so it grew
+  by the 0.3 and read L/D 20.3 against `turning`'s ceiling of 20. Its radius
+  was a 0.3 literal. It is now derived from its length at
+  `TURN_LD_TARGET`, the arrest columns' rule: 0.338.
 - `probe-184-frame-joints` reads all seven base-plate joints at 0.872 mm
   engaged against 0.872 required, 11/11, controls PASS.
 - Boot is silent.
