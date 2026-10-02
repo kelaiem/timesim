@@ -29506,17 +29506,54 @@ const alarmLinkParts = {};
   const postLen = beakArm.position.z - postBase;
   // TODO 11 tranche five: post stock across the FLATS. At r 0.16 the 10-gon
   // measured 0.1153 mm — a nominal ⌀ 0.121 bar reading 4% under the floor.
+  // TODO 191 — THE POST STANDS ON THE FULCRUM AXIS, NOT ON THE ARM'S LINE.
+  // The lever is a see-saw: the tick tilts it about its OWN y (rotation.y
+  // under 'ZYX', above), the horizontal line through beakPiv square to the
+  // arm. An arm is a point's distance from that LINE, so a post anywhere
+  // along it carries the same fulcrum and moves no arm — while a post moved
+  // along the arm's own line moves the fulcrum and spends the 4.657 ratio,
+  // which the fork may not touch. On the arm's line the post stood
+  // tailLen = 0.768 from the selector rod's axis, the two running parallel
+  // over the rod's whole top: 0.0811 at TODO 174, and 0.0409 once TODO 190's
+  // longer rod thickened its turned section (ALARM_LINK_ROD_R_SECTION
+  // 0.5692 → 0.5765). Both polygons are bounded by their circumradii here, so
+  // the post's offset is the least that holds CLEAR_MARGIN at any facet
+  // orientation:  hypot(tailLen, s) = R_rod + R_post + CLEAR_MARGIN.
+  // The rod slides only along its own axis and the post is still, so the
+  // plan gap IS the gap at every pose (`intraUnit`'s floors row measures it
+  // on the metal; the assert below holds the derivation).
+  //
+  // The SIDE is the lever's −y, measured rather than chosen: at the same
+  // least offset on +y the post stands 0.0667 from the alarm jumper's blade,
+  // on −y 0.593 (TODO 191's scan). And the post still has to be under the
+  // bar it carries, which is the assert's second half — the bar is one
+  // ratchet tooth wide (ALARM_LINK_ARM_W), so the post's outer flank must
+  // stay inside its half-width.
+  const _postReach = ALARM_LINK_ROD_R_SECTION + STOCK_MIN_R10 + CLEAR_MARGIN;
+  const ALARM_BEAK_POST_SIDE = -Math.sqrt(Math.max(0, _postReach * _postReach - tailLen * tailLen));
+  const _postXY = {
+    x: beakPiv.x - Math.sin(beakAim) * ALARM_BEAK_POST_SIDE,   // the arm's local +y in world is (−sin aim, cos aim)
+    y: beakPiv.y + Math.cos(beakAim) * ALARM_BEAK_POST_SIDE,
+  };
+  {
+    const gap = Math.hypot(_postXY.x - ALARM_LINK_ROD_XY.x, _postXY.y - ALARM_LINK_ROD_XY.y)
+      - ALARM_LINK_ROD_R_SECTION - STOCK_MIN_R10;
+    if (gap < CLEAR_MARGIN - 1e-9)
+      console.warn(`TODO 191: the beak post stands ${gap.toFixed(4)} from the selector rod in plan, under CLEAR_MARGIN ${CLEAR_MARGIN} (circumradii; the two run parallel)`);
+    if (Math.abs(ALARM_BEAK_POST_SIDE) + STOCK_MIN_R10 > ALARM_LINK_ARM_W / 2 + 1e-9)
+      console.warn(`TODO 191: the beak post's flank reaches ${(Math.abs(ALARM_BEAK_POST_SIDE) + STOCK_MIN_R10).toFixed(4)} off the arm's line, past the bar's half-width ${(ALARM_LINK_ARM_W / 2).toFixed(4)} — the post no longer stands under the lever it carries`);
+  }
   const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, postLen, 10), MATS.steel);
   beakPost.name = 'alarmLinkBeakPost';
   beakPost.rotation.x = Math.PI / 2;
-  beakPost.position.set(beakPiv.x, beakPiv.y, postBase + postLen / 2);
+  beakPost.position.set(_postXY.x, _postXY.y, postBase + postLen / 2);
   alarmLinkUnit.add(beakPost);
   // §172, rule 6 — the three things finding 2 measured, each asserted with its
   // achieved and required number so none of them can quietly come back.
   {
     // 1. the post's OUTER FACE against the saw's tips (not its axis: the face
     //    is what sweeps the teeth, §169's correction applied here).
-    const postFace = pivDist - STOCK_MIN_R10;
+    const postFace = Math.hypot(pivDist, ALARM_BEAK_POST_SIDE) - STOCK_MIN_R10;   // TODO 191: the post's axis stands off the arm's line, on the fulcrum axis
     if (postFace < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
       console.warn(`§172: the link beak's post reaches ${postFace.toFixed(4)} from the wheel's arbor against the saw's tips at ${ALARM_COL_TIP_R.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN}`);
     // 2. the BAR's underside over the column tops — the row nothing declared.
@@ -33431,7 +33468,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All SIXTEEN
+   what it says, and the box already grows to fit its contents. All SEVENTEEN
    locales measure inside 150 px on one line today — Spanish's "Suena a las"
    and Korean's "울리는 시각" tie for the long one at 52.8 px (§209, §211),
    past German's "Klingelt um" at 49.5 (§116 measured the others against
@@ -33441,7 +33478,8 @@ html:lang(ko) { word-break: keep-all; }
    §212's Hindi "बजने का समय" 50.6; §249's Vietnamese "Reo lúc" 33.9,
    its "Thời gian" the longer label at 42.1; §249's Dutch "Gaat af om"
    49.5, level with German; §249's Persian "زنگ در" 28.8, the shortest
-   alarm label yet, "زمان" 20.0) — so the allowance that a
+   alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
+   19.5) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -34120,6 +34158,9 @@ function setBarState(id, on) {
 // §249's Persian measured 156.0 on its first pass, on "منو / نما / کنترل‌ها" —
 // 14.2 narrower than English and 11.0 under Arabic's 167.0, so the second
 // right-to-left locale needed no word chosen against the bar.
+// §249's Hebrew measured 165.7 on its first pass, on "תפריט / תצוגה / פקדים"
+// — 4.5 under English, between Persian's 156.0 and Arabic's 167.0: the third
+// right-to-left locale, and the third to need no word chosen against the bar.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the

@@ -73,6 +73,7 @@ const LOADERS = {
   ja: () => import('./explain-i18n.ja.js'),
   zh: () => import('./explain-i18n.zh.js'),
   'zh-Hant': () => import('./explain-i18n.zh-Hant.js'),
+  he: () => import('./explain-i18n.he.js'),
   fa: () => import('./explain-i18n.fa.js'),
   ar: () => import('./explain-i18n.ar.js'),
 };

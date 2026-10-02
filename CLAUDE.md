@@ -259,7 +259,10 @@ it into prose either.
    mover pairs inside `INTRA_TIER_SCOPE`, out-of-scope FF/MM rows
    reported; declared joints live in `INTRA_UNIT_CONTACTS`, a stale
    selector in that table is itself a failure, waived rows cite their
-   TODO. **And since §182 the table is audited against the metal, not
+   TODO. Since TODO 191 it also holds `INTRA_UNIT_FLOORS` — two members of
+   one unit held to a floor (`EXPECTED_CONTACT_FLOORS`' shape one level
+   down, since the tiers gate only intersection); a row under its floor or
+   resolving to no pair fails. **And since §182 the table is audited against the metal, not
    only against the mesh names** (TODO 104 tier A): a declared row does
    not waive an overlap, it SKIPS the pair before measurement, so a row
    describing a joint that is not there buys silence for whatever lands
@@ -862,7 +865,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 261 measuring scripts and this file names 21. The rest are named for the
+`tools/` holds 262 measuring scripts and this file names 21. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -879,7 +882,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **151 of
+The index also carries the split that decides how to read a result: **152 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
