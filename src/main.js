@@ -2931,7 +2931,7 @@ if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 19.3894; // TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
+const ALARM_LINK_ROD_LEN_U = 20.4894; // TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
 const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5533
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.603 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.921 — a wall at the §50 floor
@@ -3014,7 +3014,22 @@ if (TQ_MEASURED_MAX > TQ_DESIGN_MAX + 1e-6) {
   }
 }
 const TQ_BOT_Z = Math.max(TQ_MEASURED_MAX, TQ_DESIGN_MAX) + CLEAR_MARGIN;
-const TQ_T = 0.8;
+// TODO 69 — THE PLATE'S THICKNESS, DERIVED. It was `0.8` with no comment at
+// all (0.303 mm, thinner than the bridges of a small calibre), and §148 then
+// found it load-bearing. The constraint that binds is the plate's own
+// fasteners. A frame screw's head is a CHEESE head, k = 0.6 d tall (ISO 1207
+// gives 0.6–0.7 d; this is the low end, the thinnest real head). It is sunk
+// FLUSH in a seat cut from the top, because the hack blade passes over this
+// face (§20). The land left under the seat must be at least STOCK_MIN_U. So
+//   TQ_T = 0.6 · d + STOCK_MIN_U = 1.900 u (0.720 mm)
+// with d the plate screws' Ø1.0 mm thread (PILLAR_THREAD_D, asserted equal
+// below). The other constraints all fall inside it: §148's chaton window opens
+// at 0.950 u. Real three-quarter plates run 0.9–1.4 mm, and this sits under
+// that band on purpose — the derived floor, not a chosen look (TODO 69 stage 1).
+const CHEESE_HEAD_K = 0.6;                                     // ISO 1207 k/d, low end
+const PLATE_SCREW_HEAD_T = CHEESE_HEAD_K * CASE_SCREW_SHAFT_D;  // 1.583 u (0.600 mm)
+const TQ_T = PLATE_SCREW_HEAD_T + STOCK_MIN_U;
+const PLATE_SCREW_LAND_T = TQ_T - PLATE_SCREW_HEAD_T;          // = STOCK_MIN_U by construction
 const TQ_TOP_Z = TQ_BOT_Z + TQ_T;
 const TQ_MID_Z = TQ_BOT_Z + TQ_T / 2;
 
@@ -8270,7 +8285,8 @@ const stopBearingObstaclesAt = (p) => [
 // DERIVED, not chosen: the pin comes in only as far as the coupling makes it,
 // which is rule 1 applied to a lever ratio. A first solve at the post reports
 // the |K| this movement's station achieves; the mast fits when
-//   stroke ≤ (TQ_TOP_Z − mast clevis − ROD2_PLANE_Z) · sin(ψ_target) · |K|
+//   stroke ≤ (cock top − mast clevis − ROD2_PLANE_Z) · sin(ψ_target) · |K|
+// (the input is still named TQ_TOP_Z; since TODO 69 it carries COCK_SLAB_TOP)
 // so the pin's fraction of the arm is that ceiling over the stroke, capped at
 // 1 — a movement whose coupling already affords the full stroke keeps the
 // post it always used, and IDENTITY is exactly that movement. (A flat 0.70
@@ -8287,7 +8303,19 @@ const stopBearingObstaclesAt = (p) => [
 const STOPWORK_HAMMER_BAND = { measured: false, lo: 0, hi: 0, rMax: 0 };   // §234: the hammer's swept band, measured once for every obstaclesFor call
 const STOPWORK_AT_POST = {
   P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
-  plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z,
+  plateR, TQ_CUT,
+  // TODO 69 — THE MAST'S CEILING IS THE BALANCE COCK, and now it says so.
+  // solveStopWork calls this input "the balance cock's height", and it was
+  // passed TQ_TOP_Z because the two were the same plane: COCK_T was 0.8 and
+  // so was TQ_T, both standing on the under-plate datum, and both tops read
+  // 9.5454. The thicker plate parted them by 1.1000. Read through the plate,
+  // the extra headroom moved the hack pin out along its arm, the rod's route
+  // then met the fourth arbor's collar (−0.284, where main cleared +0.074),
+  // and the alarm link's rod site, three hoisted constants and the transfer
+  // arithmetic all followed it. Read through the cock — the member the
+  // comment always named — the pin is bit-identical to main (k 0.8210).
+  TQ_TOP_Z: COCK_SLAB_TOP,
+  ROD2_PLANE_Z,
   // §234: the flat link's two extents are two numbers — the sheet's half for
   // the banded (great-wheel) row, and a width RULE for the plan, because the
   // hack link's width follows the chord the station solve is still choosing.
@@ -12484,6 +12512,10 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
 // stand proud has to be sunk, and a sunk head needs a recess to sit in.
 // Attached to the plate's group, plate-local frame (group origin at TQ_MID_Z).
 {
+  // TODO 69: the head is a real cheese head now, so the seat is its whole
+  // height deep and the land under it is what TQ_T was derived to leave.
+  if (PILLAR_THREAD_D !== CASE_SCREW_SHAFT_D)
+    console.warn(`TODO 69: TQ_T was derived from a Ø${(CASE_SCREW_SHAFT_D * UNIT_MM).toFixed(3)} mm plate-screw thread, but PILLAR_THREAD_D is Ø${(PILLAR_THREAD_D * UNIT_MM).toFixed(3)} mm — re-derive the plate`);
   // The land put back under each seat — the ring of plate the head bears on,
   // bored for the shank that passes through it. Same construction as the
   // bearing collars above, lapped 0.15 into the stock around the seat so no
@@ -12491,9 +12523,9 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   for (const p of pillarSeats) {
     await breathe();
     const land = new THREE.Mesh(
-      ringGeo(G.screwBoreR(PILLAR_SCREW_HEAD_R), PILLAR_SEAT_R + 0.15, TQ_T - STOCK_MIN_U),
+      ringGeo(G.screwBoreR(PILLAR_SCREW_HEAD_R), PILLAR_SEAT_R + 0.15, PLATE_SCREW_LAND_T),
       MATS.nickel);
-    land.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - STOCK_MIN_U) / 2);
+    land.position.set(p.x, p.y, -TQ_T / 2 + PLATE_SCREW_LAND_T / 2);
     threeQuarterPlate.add(land);
   }
   const plateScrews = pillarSeats.map((p) => ({
@@ -12503,21 +12535,21 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     // underside — "below the underside the thread takes the pillar", said
     // the comment, and nothing did. Drawn TAPPED: its crests are the bore's
     // radius, the joint assembled touching, §148's rule.
-    shank: (TQ_T - STOCK_MIN_U) + PILLAR_ENGAGE, tapped: true,
+    shank: PLATE_SCREW_LAND_T + PILLAR_ENGAGE, tapped: true,
   }));
   threeQuarterPlate.add(G.makeScrews({
     at: plateScrews,
-    // headT = STOCK_MIN_U like every §20 screw head — the first cut used
-    // TQ_T·0.35 (0.106 mm) and the §50 stockFloor gate refused it against
-    // the 0.12 wheel floor, which is the gate doing its job.
-    headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
+    // TODO 69: a cheese head, k = 0.6 d. It used to be STOCK_MIN_U (0.12 mm
+    // on a 1.0 mm thread) because the 0.303 mm plate could not seat more —
+    // the first cut used TQ_T·0.35 (0.106 mm), which §50 refused.
+    headR: PILLAR_SCREW_HEAD_R, headT: PLATE_SCREW_HEAD_T,
   }));
   // The head is sunk flush, so what it clamps below itself is the plate's
-  // land: TQ_T − STOCK_MIN_U, the same land ring cut above.
+  // land, PLATE_SCREW_LAND_T, the same land ring cut above.
   for (const p of plateScrews)
     declareFrameJoint({ joint: 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: 'pillar',
-      frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
-      shank: p.shank, clamp: TQ_T - STOCK_MIN_U });
+      frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: PLATE_SCREW_HEAD_T,
+      shank: p.shank, clamp: PLATE_SCREW_LAND_T });
 }
 // TODO 184 — THE FRAME'S JOINTS, ASSERTED. Every row is declared by now — the
 // plate screws, just above, are the last (cocks and tenons come earlier), and each is a DERIVATION —
@@ -27982,7 +28014,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 20.5712;   // TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+const ALARM_LINK_BODY_LEN_U = 20.5327;   // TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
 // needs the bush's own OD before that loop runs, at the SAME radius the
@@ -36206,7 +36238,15 @@ const BACK_SWEPT_REGIONS = [
   // tower rides the driver's section, so this row rises with it. Re-authored
   // from the measurement it printed, 12.3559 (alarmJumperBlade — still the
   // sautoir, not the castellations), rounded up past margin flicker.
-  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 12.36 },
+  //
+  // TODO 69 KEYS IT TO THE PLATE, because this is the third time it has gone
+  // stale for the same reason: the whole tower stands on the three-quarter
+  // plate's top face and rides it 1:1 (the 0.5609 above; TODO 69's thicker
+  // plate moved it 1.1000). So the row is the plate top plus the tower's
+  // measured RISE above it, not a height typed in world z: the sautoir's
+  // 12.3559 over §226's plate top 9.5454 is 2.8105, kept as the 2.8146 the
+  // last re-authoring rounded to. A plate that moves now carries the row.
+  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: TQ_TOP_Z + 2.8146 },
   // The striking wheel's rotation is not axisymmetric at bin scale: measured
   // swept 10.982 at r 33.6–34.5 against build 10.582 (probe-back-envelope,
   // 43 poses, 2026-09-14).
@@ -36217,7 +36257,11 @@ const BACK_SWEPT_REGIONS = [
   // one at all: probe-192-tier-price's control reads the 'Alarm switch' row
   // only, so the sibling row went stale in total silence and the BACK_ENVELOPE
   // assert below found it on its first boot.
-  { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: 10.99 },
+  //
+  // TODO 69 keys it to the plate top for the reason the row above gives: the
+  // wheel stands on the plate. Its measured rise is 1.4366 (10.982 over the
+  // 9.5454 top), kept as the 1.4446 the last re-authoring rounded to.
+  { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: TQ_TOP_Z + 1.4446 },
   // The pusher-side linkage outboard at the band: measured swept (and
   // canonical-reset) 10.063 over r 48.5–49.4 against a CONSTRUCTION pose
   // that parks it at 7.744 — the one member found so far for which
@@ -36525,21 +36569,6 @@ const CASE_DIMS = (() => {
   // (§3's 0.7 mm, reused by §186's clamps as CASE_CLAMP_ENG) — a ring
   // thread engaging less than the screws it replaced would be a downgrade
   // nobody derived.
-  const zMidBack = zSkirtBot + CASE_CLAMP_ENG;   // the band's back face = top of the threaded mouth
-  // The bore wall must still contain the pusher's bore window whole
-  // (§186's boredProfiles carries the degenerate-piece assert; this is the
-  // same constraint stated where the number is born).
-  const pusherApD = CASE_PUSHER_D / 2 + G.TUBE_WALL;
-  const zPusherHi = alarmPusherGroup.position.z + pusherApD;
-  if (zMidBack < zPusherHi + CLEAR_MARGIN)
-    console.warn(`§187: the band's back face ${zMidBack.toFixed(3)} sits within CLEAR_MARGIN of the pusher `
-      + `window's top ${zPusherHi.toFixed(3)} — the bored piece above the window is degenerate`);
-  // The ring's face plate: lip (0.6) + crystal (0.6) — §3's flush-both-
-  // sides identity, kept for the glass's EDGE band (the raised step stands
-  // proud of this plane by design; the record states the successor
-  // identity: the glass's outer pane's INNER face is flush with the band's
-  // back face).
-  const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
   // The glazing channel, under a lip one glass-thickness wide (a glass
   // bears on a land at least its own thickness — the glazing floor;
   // anything wider spends aperture).
@@ -36562,7 +36591,36 @@ const CASE_DIMS = (() => {
   const CASE_BCG_T = (0.3 / UNIT_MM) * 0.8;      // the I-ring's wall, compressed as drawn
   const RA_EDGE = skirtID - CASE_BCG_T;          // the glass's outer edge — on the gasket, not on air
   const RA = RA_EDGE - CASE_CRYSTAL_T;           // the APERTURE — the lip's bore
-  // ...which must show the whole three-quarter plate: measured reach
+  // The band's back face = the top of the threaded mouth, and since TODO 69
+  // ALSO the plane everything OUTBOARD of the aperture must clear. The raised
+  // step can only cover metal inside the aperture (its wall stands one margin
+  // outside the tallest bin it covers, and that must still pass through the
+  // window one margin inside RA), so a bin past RA − 2·CLEAR_MARGIN can only
+  // ever be cleared by the pane plane itself. That used to be a warning after
+  // the fact ("the tall band has outgrown the ring"). TODO 69's thicker plate
+  // carried the alarm hammer's lever plane up 1.1 u to 11.932 at r 46–47,
+  // 0.005 inside the margin of the shipped 12.077, and this term is what pays
+  // for it, in case height rather than in the hammer. Inert on any movement
+  // whose outboard metal already clears the threaded mouth.
+  const zPaneFloor = envMaxOver(RA - 2 * CLEAR_MARGIN, CASE_R_OUT) + CLEAR_MARGIN;
+  const zMidBack = Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
+  // The bore wall must still contain the pusher's bore window whole
+  // (§186's boredProfiles carries the degenerate-piece assert; this is the
+  // same constraint stated where the number is born).
+  const pusherApD = CASE_PUSHER_D / 2 + G.TUBE_WALL;
+  const zPusherHi = alarmPusherGroup.position.z + pusherApD;
+  if (zMidBack < zPusherHi + CLEAR_MARGIN)
+    console.warn(`§187: the band's back face ${zMidBack.toFixed(3)} sits within CLEAR_MARGIN of the pusher `
+      + `window's top ${zPusherHi.toFixed(3)} — the bored piece above the window is degenerate`);
+  // The ring's face plate: lip (0.6) + crystal (0.6) — §3's flush-both-
+  // sides identity, kept for the glass's EDGE band (the raised step stands
+  // proud of this plane by design; the record states the successor
+  // identity: the glass's outer pane's INNER face is flush with the band's
+  // back face).
+  const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
+  // (The glazing channel and the APERTURE it leaves are derived above the
+  // band's back face now — TODO 69: the back face reads the aperture.) The
+  // aperture must show the whole three-quarter plate: measured reach
   // (TODO 84's rule — the extrude bevel swells past the authored radius),
   // plus the one margin of sight.
   {
