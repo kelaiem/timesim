@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 200 | OPEN | The pillar tenons pass the base plate flush, but their riveted ends are not drawn. That is the peened spread into a dial-side countersink, which is what holds the joint. The plate is one extrusion and has no stepped hole. Fix: countersink the four pillar holes on the dial side (a late re-cut or a land ring), and draw the spread as a frustum. Derive the countersink depth from `BACK_PLATE_T − STOCK_MIN_U` |
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
@@ -145,7 +146,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 | 70 | CLOSED | `makeJewelSetting`'s collar is a CLOSED profile now, wound outward, and it runs `assertLatheOutward`. The open shell, the parity raycast's hazard (TODO 27), is gone with the winding. Closed with TODO 75 |
 | 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
-| 69 | OPEN | `TQ_T` = 0.303 mm, thinner than any plate a watch is built from and the one dimension in the frame with no derivation at all. §148 made it load-bearing: a chaton's fourth member — the ledge its screw heads clamp — needs `t ≥ 0.633` against a collar that caps `t` at 0.483, an EMPTY window, closed for now by countersinking the screw rather than thickening the plate. Raising `TQ_T` moves `TQ_TOP_Z` and everything above it |
+| 69 | OPEN (stage 1 done) | `TQ_T` = 0.303 mm has no derivation. Stage 1 derived the floor: a real cheese head on the 1.0 mm plate screws (k = 0.6 d, seated over a `STOCK_MIN_U` land) needs **1.900 u (0.720 mm)**; §148's chaton window opens at 0.950 u; real plates run 0.9–1.4 mm. It also inventoried the consumers by datum: `TQ_BOT_Z` is fixed; what is keyed to `TQ_TOP_Z` moves ΔT (the alarm cam, lever and tail plane, studs, posts); `TQ_MID_Z` moves ΔT/2; the case follows. Stage 2: choose the derived floor or the practice band, raise the screw heads in the same change, then a full battery `--report` diff |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
@@ -8421,6 +8422,82 @@ filed rather than taken.
 that the plate is thin, not that the chaton is fat: every member above is
 already at its floor, and `CHATON_DEPTH` is the depth that EQUALISES the two
 that were there first.
+
+### Stage 1 (2026-10-02): what thickness, and what it moves
+
+Tracked in #545. This stage changes no code. It derives the target and
+inventories the consumers, so that stage 2 is an edit against a known bill.
+
+**One correction to the text above first.** The hammer's head section is no
+longer `2·(Z_GONG − TQ_TOP_Z − margin)`. Since §197/§198 the gong band hangs
+off the plate's UNDERSIDE: `ALARM_PUSH_AXIS_Z = TQ_BOT_Z − …`,
+`GONG_BAND_TOP` from that, and `ALARM_HEAD_H_BAND` is bounded by
+`TQ_BOT_Z − CLEAR_MARGIN − 0.01`. A thicker plate does not grow the head. It
+lengthens the hammer's DROP instead: `Z_GONG − Z_STRIKE` grows by the full
+ΔT, because the strike plane rides the plate top and the gong does not.
+
+**The constraints a thickness has to meet.** Units are `UNIT_MM` = 0.379
+mm/u and `S` = `STOCK_MIN_U` = 0.3166 u (0.12 mm).
+
+| # | constraint | arithmetic | needs `TQ_T` ≥ |
+|---|---|---|---|
+| A | A chaton seats a cheese-head screw without countersinking (§148's empty window, above). | ledge `t − headT ≥ S` with `headT ≥ S`, so `t ≥ 2S`; collar `TQ_T − t ≥ S` | **0.9498 u (0.360 mm)** |
+| B | A plate screw's head is a real cheese head. Today it is drawn `S` tall (0.12 mm) on a 1.0 mm thread. ISO 1207 puts k at 0.6–0.7 d, and the head sinks into a seat with a land of at least `S` under it. | k = 0.6 × `PILLAR_THREAD_D` = 0.6 mm = 1.583 u, plus S | **1.900 u (0.720 mm)** |
+| C | Real three-quarter plates (the band this item opened with). | 0.9–1.4 mm | **2.37–3.69 u** |
+
+B binds among the movement's own constraints. It is also the 0.12 mm head
+that TODO 184's residue named ("the plate-screw heads at `STOCK_MIN_U`
+tall"), so fixing the plate and fixing the heads are one change. C is a
+sanity band, not a derivation. Even B's 0.720 mm sits under it. **Stage 2
+must choose between the derived floor (B) and the practice band (C), and
+write the reason beside `TQ_T`.** Rule 1 accepts either if the comment
+carries the constraint. It does not accept a number between them.
+
+**What moves, by the datum it hangs off.** `TQ_BOT_Z` is FIXED: it is the
+under-plate envelope plus the margin. ΔT moves only what is keyed above it.
+
+- **Moves by ΔT, keyed to `TQ_TOP_Z`:**
+  - `LETDOWN_TOP` and the let-down square (`main.js` ~3837, ~3858).
+  - The stop work's mast ceiling (`layout.js` 2514, 2785). This *relaxes*.
+  - `ALARM_LOCK_Z`, and with it `Z_STRIKE` and `ALARM_CAM_Z0`. That is the
+    whole cam, lever and tail plane of the alarm complex (~20440, ~21203).
+  - The lift post (~21417), the lock-pivot post (~26595), the ratchet
+    skirt's band assert (~26798–26822), the anchor and jumper studs (~27090,
+    ~27216, ~27746), the rocker post (~27545) and `ALARM_DRIVER_BOT_Z`
+    (~30513).
+  - The plate-crossing and footing classifier (~11219, ~11330–11340).
+- **Moves by ΔT/2, keyed to `TQ_MID_Z`:**
+  - The plate itself (~12472).
+  - The drum arbor's top and bottom (~10505).
+  - The let-down shaft (~3852).
+  - The link rod's top bush and bearing station (~29692–29698).
+  - The length at ~3782.
+- **Re-derived from `TQ_T` itself, so each grows with it:**
+  - `CHATON_DEPTH` (~3187), and with it every chaton's collar, stone,
+    screws and lands (~12404–12466).
+  - `TQ_LAND_MIN` (~11282).
+  - The plate extrude (~12365).
+  - The pillar-screw seat lands, `shank` and `clamp` (~12494–12520). Their
+    `FRAME_JOINTS` rows re-measure themselves.
+  - The `tq` stratum row (~3054) and the band at ~28067.
+- **Follows by construction:** the case. Its back is §187's measured
+  `BACK_ENVELOPE`, so the overall height grows by about ΔT and nothing is
+  re-entered by hand.
+- **Does not move:** everything under the plate, including the balance
+  cock's slab plane (`SPRING_TOP_Z` + margin), the gong band and the hammer
+  head band, and the push stem.
+
+**Stage 2, the change itself.**
+1. Set `TQ_T` from the chosen constraint, with its comment.
+2. Raise the plate-screw heads to k = 0.6 d in the same change (constraint
+   B's other half). Drop §148's countersink only if A's window now opens.
+3. Re-run the boot asserts above. Then run the full battery with a
+   `--report` diff against the base: every absolute-z gate is in that list.
+
+Expect the alarm complex to be the work: its plane moves while the gong does
+not, so the hammer's drop and the lift post are where P3 conflicts will
+surface. They are resolved in position space, never by shortening the
+hammer.
 
 ## 70. `makeJewelSetting`'s collar is wound inside out, and it is an open shell as well — CLOSED
 
@@ -26266,3 +26343,46 @@ outline, or keep its land. Then move the cross-ring tier's gate from
 `HELD_NAMES` to every unit, so the REPORT becomes a gate (§40's arc). The
 acceptance is `outlines`' `crossRing.reported` empty, both meshes reading
 0 open edges, and for the disc `probe-bore-cut.mjs`'s TODO 107 acceptance.
+
+## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread
+
+Filed from [TODO 184]'s residue (#545). Step 3 of 184 riveted the four
+pillars into the base plate:
+
+- `makePillar` cuts a tenon of `PILLAR_TENON_R` = `PILLAR_BODY_R − STOCK_MIN_U`.
+- The tenon's length is `PILLAR_TENON_LEN` = `BACK_PLATE_T`.
+- It passes the plate's whole thickness and ends FLUSH with the dial side.
+
+`FRAME_JOINTS` measures each tenon engaged, and `support` gates it through
+`FASTENED_EDGES`.
+
+**What is missing is the rivet.** A riveted tenon is peened over into a
+countersink on the far face, and that spread is what stops the pillar
+pulling out. Without it the joint is a press fit at best. The model draws
+the tenon flush, because the base plate is ONE extrusion. Its holes are
+straight through, so it cannot carry the stepped hole a countersink needs.
+`makePillar`'s own comment says so ("The tenon's riveted end … is not
+drawn").
+
+**Fix path.**
+1. Give the base plate's pillar holes a dial-side countersink. Either cut
+   it as a second, shallower extrusion step (the plate already carries
+   `BACK_PLATE_LATE_HOLES` and a late re-cut, `recutBackPlate`), or add a
+   countersunk land ring at each site in the `ringGeo` idiom, held by the
+   same seat fit.
+2. Draw the spread head as a cone frustum on the tenon's end that fills
+   it, flush with the dial face.
+3. The countersink is a cut in the base plate, so `outlines` (cross-ring),
+   `meshIntegrity` (closure) and the §152 digest all read it through
+   TODO 187's `HELD_FIXTURES`.
+
+**Constraint to derive, not pick.** A 90° countersink of depth `c` needs
+`c ≤ BACK_PLATE_T − S`, so that a land of at least `STOCK_MIN_U` is left
+under it. Its diameter is `tenon ⌀ + 2c`, and that must clear every other
+cut on the dial side of the plate. The motion works and the keyless both
+work in that face. The pillar seat scan already reads the plate's openings
+(184 step 3), and it is the place to add that bound.
+
+Feasibility: small to medium · Cost: about 60–120 lines in `geometry.js`
+and `main.js` · Battery: moves the fingerprint and the base plate's digest.
+The full battery runs.
