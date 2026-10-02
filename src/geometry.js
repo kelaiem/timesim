@@ -5735,9 +5735,56 @@ export const barrelArborR = (radius) => radius * 0.09;
 // smoke test being the one).
 // springSetupSweep (TODO 32): pre-tension under the whole service band —
 // see mainspringFrames. Default 0, so the alarm barrel (§89) is untouched.
+// TODO 193 — A MAINSPRING IS A FLAT STRIP, so it is cut as one. TubeGeometry
+// with radialSegments 4 puts its four vertices ON the Frenet normal and
+// binormal, which cuts a RHOMBUS: a section whose second moment is a³c/3, a
+// quarter of the strip it was drawn to be, and whose k = E·I/L was therefore a
+// quarter of the metal's. Nothing about the rhombus was chosen — it is what
+// four segments of a round tube happen to be. This sweeps the SAME curve on the
+// SAME frames TubeGeometry uses (computeFrenetFrames, getPointAt at i/segs) but
+// puts the vertices at the CORNERS, N·±half + B·±half, so the section is the
+// square that the caller's scale.z then stands on edge into the strip. Each
+// face carries its own vertices (flat, as a strip's faces are), and both ends
+// are CAPPED: an open mesh reads as a colliding one (TODO 27), and every
+// TubeGeometry in this file ships open.
+//
+// LAYOUT, which the equalisation cross-check reads: the last 8 vertices are
+// the two caps, the START cap first, each its section's four corners.
+export function stripSweepGeometry(curve, segs, half) {
+  const frames = curve.computeFrenetFrames(segs, false);
+  const P = new THREE.Vector3();
+  const rings = [];
+  for (let i = 0; i <= segs; i++) {
+    curve.getPointAt(i / segs, P);
+    const N = frames.normals[i], B = frames.binormals[i];
+    rings.push([[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sn, sb]) =>
+      new THREE.Vector3().copy(P).addScaledVector(N, sn * half).addScaledVector(B, sb * half)));
+  }
+  const pos = [], idx = [];
+  // wound OUTWARD (a closed body's signed volume positive — meshIntegrity's
+  // inverted tier holds it)
+  const quad = (a, b, c, d) => {
+    const o = pos.length / 3;
+    for (const v of [a, b, c, d]) pos.push(v.x, v.y, v.z);
+    idx.push(o, o + 2, o + 1, o, o + 3, o + 2);
+  };
+  for (let i = 0; i < segs; i++) for (let k = 0; k < 4; k++) {
+    const k2 = (k + 1) % 4;
+    quad(rings[i][k], rings[i + 1][k], rings[i + 1][k2], rings[i][k2]);
+  }
+  const r0 = rings[0], r1 = rings[segs];
+  quad(r0[3], r0[2], r0[1], r0[0]);
+  quad(r1[0], r1[1], r1[2], r1[3]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
 export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null, name = '',
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
-                             springSetupSweep = 0,
+                             springSetupSweep = 0, ribbonSection = 'strip',
                              arbor = true, arborBoreR = null,
                              sense = MOVEMENT_SENSE }) {
   const g = new THREE.Group();
@@ -5817,17 +5864,21 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
     sweep: springWindSweep, setup: springSetupSweep, sense,
   }) : null;
-  const tubeOf = (pts) => new THREE.TubeGeometry(
-    new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))),
-    wind.segs, sRibbon, 4, false);
+  // TODO 193 — cut as a STRIP (stripSweepGeometry), on the curve and frames
+  // the old TubeGeometry swept: the same polyline, the same segment count, the
+  // same half-extent sRibbon, corners where the rhombus had its points.
+  // `ribbonSection: 'rhombus4'` keeps the old four-segment tube for a caller
+  // whose ribbon has not been re-specified yet (the alarm barrel — its k is
+  // §104's governor constant, and TODO 201 re-proportions the two together).
+  const strip = ribbonSection === 'strip';
+  const sweep = (curve, segs) => (strip
+    ? stripSweepGeometry(curve, segs, sRibbon)
+    : new THREE.TubeGeometry(curve, segs, sRibbon, 4, false));
+  const tubeOf = (pts) => sweep(
+    new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))), wind.segs);
   const windGeos = morph ? wind.frames.map(tubeOf) : null;
-  const sGeo = morph ? windGeos[windGeos.length - 1] : new THREE.TubeGeometry(
-    new ArchimedeanSpiral(springInner, springOuter, sCoils),
-    sCoils * 48,
-    sRibbon,
-    4,
-    false
-  );
+  const sGeo = morph ? windGeos[windGeos.length - 1]
+    : sweep(new ArchimedeanSpiral(springInner, springOuter, sCoils), sCoils * 48);
   const springMesh = new THREE.Mesh(sGeo, MATS.steel);
   springMesh.name = 'mainspringRibbon'; // TODO 12 triage: SPRING stock — the coil IS the mainspring (real ones 0.05–0.20 mm); named so §50's kind table sees it
   // §78 part two — the ribbon's own winding, exported for the schematic. The
@@ -5885,16 +5936,20 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       height: height * 0.7, frames: windGeos.length, segs: wind.segs,
       devLen: wind.devLen, capacity: wind.capacity, minPitch: wind.minPitch,
       maxStep: wind.maxStep, lenErr: wind.lenErr, cutSpread: wind.cutSpread,
-      // TODO 32 — the SECTION AS CUT, the hairspring's TODO 25 publish
-      // verbatim: radialSegments 4 cuts a RHOMBUS whose half-diagonals are
-      // ribbonR (radial — the bending direction) and, after scale.z stands
-      // the ribbon on edge, max(height·0.7/2, ribbonR) — the floor mirrors
-      // scale.z's own Math.max. I about the axial diagonal = a³c/3, a
-      // quarter of the bounding rectangle's b·h³/12 sketch. Units^4;
-      // main.js converts through §39's UNIT_MM for the EQUALISATION record.
+      // TODO 32 / TODO 193 — the SECTION AS CUT. Since TODO 193 the ribbon
+      // is a STRIP (stripSweepGeometry): half-thickness a = ribbonR radially
+      // (the bending direction) and half-width c = max(height·0.7/2, ribbonR)
+      // axially once scale.z stands it on edge — the floor mirrors scale.z's
+      // own Math.max. I about the axial centre-line = (2c)(2a)³/12 = 4a³c/3,
+      // the b·h³/12 the entry always sketched; the rhombus four tube segments
+      // used to cut was a quarter of it. Units^4; main.js converts through
+      // §39's UNIT_MM for the EQUALISATION record.
+      // (A 'rhombus4' caller keeps the old publish: I = a³c/3 about the axial
+      // diagonal, the section four tube segments cut.)
       section: (() => {
         const a = sRibbon, c = Math.max((height * 0.7) / 2, sRibbon);
-        return { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
+        return strip ? { shape: 'strip', a, c, I_u4: 4 * (a ** 3) * c / 3 }
+          : { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
       })(),
     };
     setWind(wind.sweepFull);   // built fully wound, which is where the sim boots

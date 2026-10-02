@@ -17,13 +17,14 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | OPEN | The pillar tenons pass the base plate flush, but their riveted ends are not drawn. That is the peened spread into a dial-side countersink, which is what holds the joint. The plate is one extrusion and has no stepped hole. Fix: countersink the four pillar holes on the dial side (a late re-cut or a land ring), and draw the spread as a frustum. Derive the countersink depth from `BACK_PLATE_T − STOCK_MIN_U` |
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
-| 193 | OPEN | The mainspring ribbons are never held to their material: going 1032 → 1756 MPa, alarm 3096 → 5264 MPa (uniform moment, σ = M·a/I on the as-cut `rhombus4`, whose modulus is ¼ of a flat strip's), against the 800 MPa `SPRING_SIGMA_Y_PA` every other spring answers to. Fix: decide the section (strip vs rhombus) and re-solve k, cite a mainspring-alloy limit, gate σ at full wind for both ribbons |
-| 192 | PART DONE | Steps 1 and 2 LANDED. Step 1 (§247 tier two): `FRICTION` bands in `layout.js`, `EQUALISATION.going.energy`, `checkEqualisation` rows 9–11 gating the arithmetic and reporting the verdict, the probe asserting against the record. Step 2: the jewelled train arbors and the balance shouldered onto pivots at §50's floor (⌀ 0.07 mm), the stones turned for them, row 12 holding each pivot's service stress under yield (centre arbor tightest, ×2.4). OPEN: the going spring still cannot drive the balance: 3.43 mJ over 30 h (31.7 nW) against a 270° balance that needs 15–44× that after friction; sustained amplitude 10–26° vertical, 17–82° dial-flat. Remaining cause: 0.673 working turns of the drum. Fix: the working band re-solved against a declared amplitude target (after TODO 193), then gated |
+| 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
+| 192 | PART DONE | Steps 1 and 2 LANDED, and TODO 193 changed the supply under them. Step 1 (§247 tier two): `FRICTION` bands, `EQUALISATION.going.energy`, rows 9–11. Step 2: the jewelled train arbors and the balance shouldered onto pivots at §50's floor, row 12 holding each pivot's service stress under yield; since TODO 193 the centre pivot is sized to its LOAD (0.086 mm) and the rest stay at the floor. OPEN: 15.1 mJ over 30 h (140 nW) sustains 40–101° vertical, 63–213° dial-flat, against a claimed 270° — 3.4–10× short. Remaining: the working band re-solved against a declared amplitude target with the going ribbon's σ under `MAINSPRING_SIGMA_Y_PA` (today 1931 MPa at full wind, waived citing this step), then gated |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
@@ -26199,8 +26200,21 @@ truth failure, not packaging.
 
    Still below a lever escapement's lift angle at the adverse corner, so
    the rest of the fix (step 3) is unchanged in kind.
+   **Since TODO 193** the going ribbon is cut as the strip it is, at the
+   cited alloy's modulus. k is 4.4× what this table priced, and the centre
+   pivot is sized to its load (0.086 mm), not the floor. Verdict now:
+
+   | corner | ribbon → balance η | sustained, vertical / dial-flat | claim over supply |
+   |---|---|---|---|
+   | favourable | 0.287 | **100.6° / 213.1°** | 3.4× |
+   | nominal | 0.222 | **66.8° / 122.3°** | 5.5× |
+   | adverse | 0.160 | **40.1° / 62.8°** | 10.0× |
 3. Re-solve the drum's working band against a declared amplitude target at
-   the adverse corner, with the ribbon inside TODO 193's stress limit.
+   the adverse corner, with the ribbon inside TODO 193's stress limit:
+   `MAINSPRING_SIGMA_Y_PA`, 1800 MPa, which the going ribbon exceeds today at
+   1931 MPa at full wind. It is waived by name citing this step, and the gate
+   fails the waiver once the ribbon is under. σ = E·a·θ/L, so the levers are
+   the half-thickness, the length and the wind.
 4. Gate the amplitude the solve achieves.
 
 Items 1 and 2 are independent and could land first; both have. Until the rest do,
@@ -26209,6 +26223,8 @@ describe a balance this spring cannot keep swinging. That is MODELLED, not
 SIMULATED — no force path reaches the balance, and none says it would.
 
 ## 193. The mainspring ribbon works at 1756 MPa, over the 800 MPa SPRING_SIGMA_Y_PA the movement cites
+
+**DONE** — see the resolution at the end of this item.
 
 Found beside [TODO 192] by the same probe (issue #531). A spiral spring wound off its free
 coil carries a UNIFORM moment M = k·θ along its length, so the outer fibre sees
@@ -26257,6 +26273,50 @@ Fix order:
 
 `probe-power-budget.mjs` prints the going ribbon's σ. The alarm figure above
 is the same arithmetic on the alarm half of the record.
+
+**DONE — what the landing found and built.**
+
+- **The fix order's premise was wrong, and the record now says why.** With k
+  derived from the section, k = E·I/L, the outer-fibre stress σ = M·a/I is
+  E·a·θ/L: the section's SHAPE cancels. Reading the ribbons "as the bounding
+  rectangle" lowered nothing; it held M fixed while changing I, which the code
+  never does. Stress is set by the half-thickness, the wind and the length.
+  The shape sets the ENERGY instead: at the same peak stress a strip stores 4×
+  what its inscribed rhombus does.
+- **The section, decided: a strip.** The rhombus was not a design. It is what
+  `TubeGeometry` with four radial segments cuts, its vertices ON the Frenet
+  normal and binormal. `stripSweepGeometry` sweeps the same curve on the same
+  frames with the vertices at the corners, caps both ends (an open mesh reads
+  as a colliding one, TODO 27), and the equalisation cross-check reads the cut
+  cap's corners at a·√2 rather than trusting the label. A tube re-cut while
+  still publishing `strip` fails that row; that was mutated and seen.
+- **The alloy, named and cited.** `MAINSPRING_E_PA` 220 GPa and
+  `MAINSPRING_SIGMA_Y_BAND`, Nivaflex 45/18 (DIN 2.4782): Rp0.2 1800–2550 MPa
+  after hardening by degree of cold work, Rm up to 3000 MPa. A band, as
+  `FRICTION`'s rows are, and the gate reads its LOW end. `SPRING_SIGMA_Y_PA`
+  stays the carbon band every blade answers to.
+- **k re-solved for the going ribbon:** 9.97e-5 → 4.39e-4 N·m/rad (strip ×4,
+  alloy ×1.1). The fusee is unmoved, because the torque law is normalised and k
+  cancels from every geometric consequence. The full-wind moment is 4.49 N·mm,
+  still inside the real small-barrel range the record cites.
+- **What that moved.** The energy column, 3.43 → 15.08 mJ. And the CENTRE
+  pivot: at 4.4× the torque its floor-cut pivot bent at 1477 MPa against 800,
+  so TODO 192 step 2's claim that the load never binds stopped being true.
+  Each pivot is now the thicker of the floor and its load
+  (`TRAIN_PIVOT_SIZES`). The centre comes out at 0.086 mm and is re-cut, both
+  stones with it, once the drum's ribbon exists and before the plate is built.
+  Row 12 admits a load-bound pivot at its yield and nothing over it.
+- **Row 13 gates both ribbons.** σ at both ends of each working wind,
+  re-derived from the record. The full-wind end is held to the band's low end,
+  and over it a ribbon is waived by name (`RIBBON_STRESS_WAIVERS`), stale if
+  under. Going: 1135 → 1931 MPa, inside the band and over its low end, waived
+  citing TODO 192 step 3. Alarm: 3096 → 5264 MPa, past Rm, waived citing
+  TODO 201.
+- **The alarm ribbon was NOT re-cut.** Its k is §104's governor constant, and
+  the strip at the alloy asked the I_a solve for a 1.5 mm poising ring, outside
+  real ring stock and into the plate. Its section and that solve are re-done
+  together, in TODO 201.
+
 
 ## 194. The alarm follower's return spring does not bear on the follower arm
 
@@ -26423,3 +26483,44 @@ work in that face. The pillar seat scan already reads the plate's openings
 Feasibility: small to medium · Cost: about 60–120 lines in `geometry.js`
 and `main.js` · Battery: moves the fingerprint and the base plate's digest.
 The full battery runs.
+
+## 201. The alarm ribbon works past its alloy's tensile strength, and its section and the governor solve are re-cut together
+
+Found closing [TODO 193], whose row 13 holds both mainspring ribbons to the
+cited alloy band (`MAINSPRING_SIGMA_Y_BAND`, Nivaflex 45/18). The alarm
+ribbon runs at **3096 → 5264 MPa** over its strike travel. The band's low end
+is 1800 MPa and the alloy's tensile strength tops out at 3000, so it is past
+both at every point of its working wind. It is waived by name in
+`RIBBON_STRESS_WAIVERS` citing this item.
+
+It is also the one ribbon still cut as the four-segment `rhombus4`, priced at
+carbon steel's modulus. That is deliberate, and it is the second half of this
+item. The alarm's k IS §104's governor constant: `ALARM_GOV_K` feeds the I_a
+solve that poises the anchor to the designed strike gap. Cut as the strip at
+the alloy's modulus, the ribbon is 4.4× stiffer, and the solve asks for a
+1.5 mm poising-ring section. That is outside real ring stock (0.2–0.8 mm),
+reaches into the plate, and runs the ring through the governor stud. Those are
+four boot warnings, measured.
+
+**Why this is one fix, not two.** σ = E·a·θ/L, so stress falls only with a
+thinner ribbon, a longer one, or less wind. Each of those moves k, and every
+change to k moves the I_a solve. Re-cutting the section without
+re-proportioning breaks the governor. Re-proportioning without re-cutting
+leaves a k a quarter of the metal's.
+
+**Fix path (P1 for the alarm's power group).**
+1. Choose the ribbon's half-thickness and length so σ at full wind sits under
+   `MAINSPRING_SIGMA_Y_PA`, at a strike energy the hammer's fall window still
+   accepts. `capacityLeft` and the 4.25-turn usable ceiling are the
+   constraints that hold the length.
+2. Cut it as a strip (`ribbonSection` back to the default) at
+   `MAINSPRING_E_PA`.
+3. Re-solve I_a against the new k and hold the poising ring inside real ring
+   stock. If no ring can, revisit the step-up or the escapement geometry
+   rather than the ring's stock floor.
+4. Delete the `alarm` row from `RIBBON_STRESS_WAIVERS`. The gate fails a stale
+   waiver, so this step is enforced.
+
+Feasibility: medium · Cost: about 100–200 lines in `main.js` (§104's
+governor block) and `geometry.js` · Battery: moves the alarm barrel's
+geometry and the governor's ring. The full battery runs.

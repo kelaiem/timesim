@@ -723,6 +723,28 @@ export const SPRING_SIGMA_Y_PA = 800e6;
 // Shear yield by von Mises — what a COIL is limited by, where a blade is
 // limited by SPRING_SIGMA_Y_PA directly. One yield, two loadings.
 export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
+// TODO 193 — THE MAINSPRING ALLOY, named, and why it is not SPRING_SIGMA_Y_PA.
+// The 800 MPa above is the hardened CARBON band every blade and click in the
+// movement is solved or gated against; the two ribbons that POWER the watch
+// work an order of stress beyond any blade (σ = E·a·θ/L over a whole wind, not
+// a click's deflection), and real mainsprings are drawn from a different
+// material for exactly that reason: a cobalt–nickel–chromium precipitation
+// alloy, the Nivaflex 45/18 class (DIN 2.4782), which is what high-grade
+// watches wind today. Its properties, from the alloy's published data
+// (Hempel Metals' 2.4782 sheet, quoting VACUUMSCHMELZE's): Young's modulus
+// 220 GPa; yield Rp0.2 950 MPa solution-annealed and 1800–2550 MPa after
+// hardening, the spread being the degree of cold work before the age; tensile
+// strength up to 3000 MPa. A BAND, as FRICTION's rows are, because the
+// movement does not say how hard its ribbon was drawn — and the gate reads the
+// LOW end, the adverse corner, so a verdict cannot depend on assuming the best
+// stock in the catalogue. The ribbons' k and stress both use this modulus; the
+// hairspring and every blade keep STEEL_E_PA.
+export const MAINSPRING_E_PA = 220e9;
+export const MAINSPRING_SIGMA_Y_BAND = Object.freeze({
+  low: 1800e6, high: 2550e6, ultimate: 3000e6,
+  why: 'Nivaflex 45/18 (DIN 2.4782) Rp0.2 after hardening, 1800–2550 MPa by degree of cold work; Rm up to 3000 MPa (Hempel Metals / VACUUMSCHMELZE data)',
+});
+export const MAINSPRING_SIGMA_Y_PA = MAINSPRING_SIGMA_Y_BAND.low;
 // §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
 // in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
 // on the winder and its rate is not held — the spring-design handbooks' 4–12.

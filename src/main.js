@@ -66,7 +66,8 @@ import {
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, HUB_COLLAR_BORE_R, STEM_SQ_BORE_REACH, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
-  STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
+  STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
+  MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
@@ -3843,12 +3844,15 @@ function addUpperPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
     pivot.rotation.x = Math.PI / 2;
     pivot.position.z = (from - arbor.position.z) + pLen / 2;
     arbor.add(pivot);
+    arbor.userData.pivotUpper = pivot;   // TODO 193: re-cut to its load once the drum's ribbon exists
   }
-  tqPivots.push({
+  const tq = {
     x: arbor.position.x, y: arbor.position.y, staffR, jewelR, chaton,
     boreR: boreR ?? staffR + PIVOT_BORE_CLEAR,
     holeR: shouldered ? pivotR + PIVOT_BORE_CLEAR : undefined,
-  });
+  };
+  tqPivots.push(tq);
+  if (shouldered) arbor.userData.pivotUpperTq = tq;
   return shaft; // so a caller with a continuation to declare can NAME its half of the joint
 }
 
@@ -4935,6 +4939,7 @@ function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
     pivot.rotation.x = Math.PI / 2;
     pivot.position.z = (from - arbor.position.z) - pLen / 2;
     arbor.add(pivot);
+    arbor.userData.pivotLower = { mesh: pivot, jewel, jewelR };   // TODO 193: re-cut to its load once the drum's ribbon exists
   }
   // Jewel hole in the plate's top face, coaxial with the staff.
   jewel.position.set(arbor.position.x, arbor.position.y, PLATE_TOP);
@@ -9255,6 +9260,69 @@ const barrel = G.makeBarrel({ name: 'barrel',
 });
 await breathe();
 const mainspring = barrel.getObjectByName('spring').userData.mainspring;
+// TODO 193 — THE GOING RIBBON'S k, named once. k = E·I/L of the ribbon AS CUT
+// (a strip since TODO 193) at its own alloy's modulus; EQUALISATION quotes this
+// rather than re-deriving it, so the pivots sized below and the record priced
+// later read one number.
+const ribbonK = (sp, E) => E * (sp.section.I_u4 * OSC_U ** 4) / (sp.devLen * OSC_U); // N·m/rad
+const GOING_K = ribbonK(mainspring, MAINSPRING_E_PA);
+// The train's stages, the ONE list the pivots' loads and the energy column's
+// losses both walk: pinion in, wheel out, tooth counts.
+const TRAIN_STAGES = (() => {
+  const rW = (m) => m.module * m.teeth / 2, rP = (m) => m.module * m.pinion / 2;
+  return [
+    { name: 'great wheel → centre pinion', z1: TRAIN.barrel.teeth, z2: TRAIN.barrel.pinion, arbor: 'centre', obj: centerArbor, rIn: rP(TRAIN.barrel), rOut: rW(TRAIN.center) },
+    { name: 'centre → third pinion',       z1: TRAIN.center.teeth, z2: TRAIN.center.pinion, arbor: 'third',  obj: thirdArbor,  rIn: rP(TRAIN.center), rOut: rW(TRAIN.third) },
+    { name: 'third → fourth pinion',       z1: TRAIN.third.teeth,  z2: TRAIN.third.pinion,  arbor: 'fourth', obj: fourthArbor, rIn: rP(TRAIN.third),  rOut: rW(TRAIN.fourth) },
+    { name: 'fourth → escape pinion',      z1: TRAIN.fourth.teeth, z2: TRAIN.fourth.pinion, arbor: 'escape', obj: escapeArbor, rIn: rP(TRAIN.fourth), rOut: escapeWheelR },
+  ];
+})();
+// TODO 193 — AND THE PIVOTS ARE SIZED TO IT. TODO 192 step 2 cut every
+// jewelled pivot at §50's floor on the claim that friction is linear in r and
+// the load does not bind; with the ribbon cut as the strip it is, the train
+// carries 4.4× the torque and the CENTRE pivot's upper-bound bending stress
+// went to 1477 MPa against the 800 its steel yields at. So each pivot is the
+// thinner of the floor and its load: d = max(PIVOT_MIN_U, ∛(32·F·L/(π·σ_y))),
+// F the stage's torque over its pinion and its wheel ADDED and borne by ONE
+// pivot (the η law's own upper bound — two pivots share a real load, and the
+// two reactions are not collinear, which is the margin this sizes into), L the
+// longer of the two pivots as cut, σ_y the steel's SPRING_SIGMA_Y_PA. Cut at the
+// floor before the drum existed, a pivot the load binds is RE-CUT here — both
+// ends, and the stones turned for it — before the plate (and its chatons) is
+// built. The record's strength rows re-derive the same stress.
+const PIVOT_UPPER_L = CHATON_STONE_TOP_Z - (CHATON_STONE_BOT_Z - CLEAR_MARGIN);
+const PIVOT_LOWER_L = CLEAR_MARGIN + G.jewelStone(1.3).rubyDepth;
+const PIVOT_LEN_U = Math.max(PIVOT_UPPER_L, PIVOT_LOWER_L);
+const GOING_FUSEE_TORQUE_NM = 0.5 * GOING_K * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2) / (FUSEE_WRAP_TURNS * 2 * Math.PI);
+const TRAIN_PIVOT_SIZES = (() => {
+  const rows = [];
+  let T = GOING_FUSEE_TORQUE_NM;
+  for (const st of TRAIN_STAGES) {
+    T *= st.z2 / st.z1;
+    const F = T * (1 / (st.rIn * OSC_U) + 1 / (st.rOut * OSC_U));
+    const dLoad = Math.cbrt(32 * F * (PIVOT_LEN_U * OSC_U) / (Math.PI * SPRING_SIGMA_Y_PA)) / OSC_U;
+    const dU = Math.max(PIVOT_MIN_U, dLoad);
+    rows.push({ arbor: st.arbor, obj: st.obj, torque_Nm: T, load_N: F, dU, rU: flatsR(dU, PIVOT_SEGMENTS),
+      bound: dLoad > PIVOT_MIN_U ? 'load' : 'floor' });
+  }
+  return rows;
+})();
+for (const row of TRAIN_PIVOT_SIZES) {
+  if (!(row.rU > TRAIN_PIVOT_R + 1e-12)) continue;
+  const A = row.obj, up = A.userData.pivotUpper, tq = A.userData.pivotUpperTq, lo = A.userData.pivotLower;
+  if (!up || !tq || !lo) { console.warn(`TODO 193: the ${row.arbor} arbor's pivots were not cut by addUpperPivot/addLowerPivot — cannot size them to their load`); continue; }
+  for (const m of [up, lo.mesh]) {
+    const h = m.geometry.parameters.height;
+    m.geometry.dispose();
+    m.geometry = new THREE.CylinderGeometry(row.rU, row.rU, h, PIVOT_SEGMENTS);
+  }
+  tq.holeR = row.rU + PIVOT_BORE_CLEAR;
+  const jewel = G.makeJewelSetting({ r: lo.jewelR, holeR: row.rU + PIVOT_BORE_CLEAR });
+  jewel.position.copy(lo.jewel.position);
+  movement.remove(lo.jewel);
+  movement.add(jewel);
+  lo.jewel = jewel;
+}
 // §48/TODO 29 — the ribbon RECIPROCATES now, so the audit has an opinion about
 // it, and it did not before: the retired readout rotated the spiral rigidly
 // with tension, which the §36 registry read as one more monotonic rotor. The
@@ -22869,6 +22937,7 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
     // whose ribbon needed a collar built up over a thin pivot — there is
     // nothing here for a collar to add but a second radius to justify.
     springArborR: ALARM_BARREL_ARBOR_R,
+    ribbonSection: 'rhombus4',   // TODO 201: re-cut as a strip WITH the §104 governor re-solve, not before
     sense: ALARM_SENSE, // TODO 115: the alarm is its own motor — layout.js
     // A full wind IS the relative travel between the two rotors: since §99
     // tick winds the ribbon by (bodyA − arborA), which spans TURNS·2π from
@@ -23035,6 +23104,12 @@ const ALARM_GOV_DESIGN_WIND = ALARM_BARREL_TURNS / 2;
 // The spring's stiffness, from the ribbon AS CUT — the same k = E·I/L the
 // EQUALISATION record publishes (the record quotes THIS constant, so the
 // solve and the report cannot drift apart).
+// TODO 193 left this ribbon as it was cut and priced — the rhombus, at the
+// carbon steel's modulus — because its k IS the governor's: the I_a solve below
+// poises the anchor against it, and a strip of the alloy (×4.4) asks for a
+// 1.5 mm poising ring, outside real ring stock and into the plate. The ribbon
+// is also over the alloy's TENSILE strength at full wind, so its proportions and
+// this solve have to be re-done together: TODO 201.
 const ALARM_GOV_K = OSC_STEEL_E * (alarmSpring.section.I_u4 * OSC_U ** 4) / (alarmSpring.devLen * OSC_U); // N·m/rad
 const alarmMomentAt = (windTurns) => ALARM_GOV_K * (ALARM_SETUP_SWEEP + windTurns * Math.PI * 2); // N·m — the set-up floor is in the law
 const alarmGovTorqueAt = (windTurns) => alarmMomentAt(windTurns) * ALARM_GOV_MESH_EFF / ALARM_GOV_STEPUP; // N·m at the governor arbor
@@ -23901,8 +23976,9 @@ declareRestoring('Alarm governor anchor', 'alarmGovAnchor', 'two-way',
 // arithmetic is published for the inspector's `equalisation` gate:
 //
 //  · GOING half, fully derived: k = E·I/L from the ribbon AS CUT (the
-//    rhombus4 section the builder publishes — the entry's own b·h³/12
-//    sketch is the bounding rectangle, 4× this), the set-up as integer
+//    strip the builder publishes since TODO 193 — it was a rhombus, a
+//    quarter of this, cut by four tube segments — at the alloy's own
+//    MAINSPRING_E_PA), the set-up as integer
 //    ratchet clicks, and the level check — springTq(t)·r(t)/K over the
 //    sampled reserve, which the fusee's construction makes an identity;
 //    the gate holds it to float noise so the identity can never silently
@@ -23922,8 +23998,27 @@ declareRestoring('Alarm governor anchor', 'alarmGovAnchor', 'two-way',
 // section and the length are telling one consistent story.
 const EQUALISATION = (() => {
   const u4 = OSC_U ** 4;
-  const kOf = (sp) => OSC_STEEL_E * (sp.section.I_u4 * u4) / (sp.devLen * OSC_U); // N·m/rad
-  const k = kOf(mainspring);
+  const kOf = (sp) => MAINSPRING_E_PA * (sp.section.I_u4 * u4) / (sp.devLen * OSC_U); // N·m/rad — TODO 193: the ribbon's own alloy
+  // TODO 193 — THE RIBBON AGAINST ITS MATERIAL. A spiral wound off its free
+  // coil carries a UNIFORM moment M = k·θ, so the outer fibre sees σ = M·a/I
+  // everywhere along it — which, k being E·I/L, is E·a·θ/L: the section's
+  // SHAPE cancels, and what sets the stress is the half-thickness, the wind
+  // and the length. (That is why cutting the strip moved k fourfold and the
+  // stress not at all.) Published at both ends of each ribbon's working wind
+  // against the alloy's cited band; checkEqualisation row 13 gates the full-
+  // wind end against the band's LOW end and waives by name.
+  const ribbonStress = (kNm, sec, thetas) => {
+    const aM = sec.a * OSC_U, IM = sec.I_u4 * u4;
+    const sigma = thetas.map((th) => kNm * th * aM / IM);
+    return {
+      sigma_Pa: sigma, limit_Pa: MAINSPRING_SIGMA_Y_PA, band: { ...MAINSPRING_SIGMA_Y_BAND },
+      E_Pa: MAINSPRING_E_PA, marginLow: MAINSPRING_SIGMA_Y_BAND.low / sigma[sigma.length - 1],
+      marginHigh: MAINSPRING_SIGMA_Y_BAND.high / sigma[sigma.length - 1],
+    };
+  };
+  const k = GOING_K;   // TODO 193: quoted, not re-derived — the pivots above were sized to this number
+  if (Math.abs(kOf(mainspring) / k - 1) > 1e-12)
+    console.warn(`TODO 193: the going k has two values — GOING_K ${k} vs kOf ${kOf(mainspring)}`);
   // The level product over the reserve, sampled: springTq·envR/K − 1.
   // 257 samples ties the gate's grid to a fixed, odd count (endpoints + midpoint on the grid).
   let levelMaxDev = 0;
@@ -23978,13 +24073,8 @@ const EQUALISATION = (() => {
     const released_J = 0.5 * k * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2);
     const reserve_s = SPEC.reserveHours * 3600;
     const beats = SPEC.vph * SPEC.reserveHours;
-    const rW = (m) => m.module * m.teeth / 2, rP = (m) => m.module * m.pinion / 2;
-    const meshes = [
-      { name: 'great wheel → centre pinion', z1: TRAIN.barrel.teeth, z2: TRAIN.barrel.pinion, arbor: 'centre', rIn: rP(TRAIN.barrel), rOut: rW(TRAIN.center) },
-      { name: 'centre → third pinion',       z1: TRAIN.center.teeth, z2: TRAIN.center.pinion, arbor: 'third',  rIn: rP(TRAIN.center), rOut: rW(TRAIN.third) },
-      { name: 'third → fourth pinion',       z1: TRAIN.third.teeth,  z2: TRAIN.third.pinion,  arbor: 'fourth', rIn: rP(TRAIN.third),  rOut: rW(TRAIN.fourth) },
-      { name: 'fourth → escape pinion',      z1: TRAIN.fourth.teeth, z2: TRAIN.fourth.pinion, arbor: 'escape', rIn: rP(TRAIN.fourth), rOut: escapeWheelR },
-    ];
+    const rW = (m) => m.module * m.teeth / 2;
+    const meshes = TRAIN_STAGES.map(({ obj, ...m }) => ({ ...m, rPiv: TRAIN_PIVOT_SIZES.find((p) => p.arbor === m.arbor).rU }));
     const trainRatio = meshes.reduce((p, m) => p * m.z1 / m.z2, 1);
     const fuseeTorque_Nm = released_J / (FUSEE_WRAP_TURNS * 2 * Math.PI);
     const escapeTorque_Nm = fuseeTorque_Nm / trainRatio;
@@ -23993,36 +24083,37 @@ const EQUALISATION = (() => {
     const rFuseeMean = (FUSEE_R_LARGE + FUSEE_TORQUE_K) / 2, rGreat = rW(TRAIN.barrel);
     const kB = OSCILLATOR.k_Nm_per_rad, mB = OSC_I.mass, g = 9.81;
     const thetaClaim = AMPLITUDE_TRUE_DEG * DEG2RAD;
-    // TODO 192 step 2 — WHY THE PIVOTS ARE AT THE FLOOR, as arithmetic. Each
-    // jewelled pivot is a cantilever from its shoulder, loaded at its end by
-    // the arbor's radial reaction; the same upper bound the η law prices —
-    // the pinion's and the wheel's loads ADDED, T·(1/r_pinion + 1/r_wheel) —
-    // and the WHOLE of it on one pivot. Its bending stress σ = 32·F·L/(π·d³),
-    // d the pivot floor (the flats, the thinner reading of the 12-gon), L the
+    // TODO 192 step 2 / TODO 193 — WHY EACH PIVOT IS THE SIZE IT IS, as
+    // arithmetic. Each jewelled pivot is a cantilever from its shoulder,
+    // loaded at its end by the arbor's radial reaction; the same upper bound
+    // the η law prices — the pinion's and the wheel's loads ADDED,
+    // T·(1/r_pinion + 1/r_wheel) — and the WHOLE of it on one pivot. Its
+    // bending stress σ = 32·F·L/(π·d³), d the pivot as cut across its flats
+    // (TRAIN_PIVOT_SIZES — the floor, or the load where the load binds), L the
     // longer of the two pivots as cut. The balance's load is its weight, all
-    // on one pivot (the vertical positions). Every row must come in under
-    // SPRING_SIGMA_Y_PA, and the margin is the record's statement that the
-    // load did not size the pivot — the floor did.
-    const upperPivotL = CHATON_STONE_TOP_Z - (CHATON_STONE_BOT_Z - CLEAR_MARGIN);
-    const lowerPivotL = CLEAR_MARGIN + G.jewelStone(1.3).rubyDepth;
+    // on one pivot (the vertical positions), at the floor. Every row must come
+    // in at or under SPRING_SIGMA_Y_PA: a load-bound row sits ON it by
+    // construction, and its margin is the upper bound's.
     const balancePivotL = Math.max(BALANCE_PIVOT_TIP_Z - BALANCE_SHOULDER_TOP_Z, CLEAR_MARGIN + G.jewelStone(1.0).rubyDepth);
-    const dPivot_m = PIVOT_MIN_U * OSC_U;
-    const bend = (F, L_u) => 32 * F * (L_u * OSC_U) / (Math.PI * dPivot_m ** 3);
+    const bend = (F, L_u, d_u) => 32 * F * (L_u * OSC_U) / (Math.PI * (d_u * OSC_U) ** 3);
     const pivotStrength = (() => {
       const rows = [];
       let T = fuseeTorque_Nm;
       for (const m of meshes) {
         T *= m.z2 / m.z1;                                           // the arbor's torque, one mesh down
         const F = T * (1 / (m.rIn * OSC_U) + 1 / (m.rOut * OSC_U));
-        const sigma = bend(F, Math.max(upperPivotL, lowerPivotL));
-        rows.push({ pivot: `${m.arbor} arbor`, load_N: F, length_u: Math.max(upperPivotL, lowerPivotL), sigma_Pa: sigma, margin: SPRING_SIGMA_Y_PA / sigma });
+        const size = TRAIN_PIVOT_SIZES.find((p) => p.arbor === m.arbor);
+        const sigma = bend(F, PIVOT_LEN_U, size.dU);
+        rows.push({ pivot: `${m.arbor} arbor`, load_N: F, length_u: PIVOT_LEN_U, d_u: size.dU, bound: size.bound,
+          sigma_Pa: sigma, margin: SPRING_SIGMA_Y_PA / sigma });
       }
-      const Fb = mB * g, sigmaB = bend(Fb, balancePivotL);
-      rows.push({ pivot: 'balance', load_N: Fb, length_u: balancePivotL, sigma_Pa: sigmaB, margin: SPRING_SIGMA_Y_PA / sigmaB });
+      const Fb = mB * g, sigmaB = bend(Fb, balancePivotL, PIVOT_MIN_U);
+      rows.push({ pivot: 'balance', load_N: Fb, length_u: balancePivotL, d_u: PIVOT_MIN_U, bound: 'floor',
+        sigma_Pa: sigmaB, margin: SPRING_SIGMA_Y_PA / sigmaB });
       const worst = rows.reduce((a, b) => (b.margin < a.margin ? b : a));
-      if (!(worst.margin > 1))
-        console.warn(`TODO 192: the ${worst.pivot} pivot bends at ${(worst.sigma_Pa / 1e6).toFixed(1)} MPa at its service load, `
-          + `over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — the floor no longer binds and the pivot must be sized to its load`);
+      if (worst.margin < 1 - 1e-9)
+        console.warn(`TODO 193: the ${worst.pivot} pivot bends at ${(worst.sigma_Pa / 1e6).toFixed(1)} MPa at its service load, `
+          + `over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — TRAIN_PIVOT_SIZES and this row have parted`);
       return { rows, dPivot_mm: PIVOT_MIN_U * UNIT_MM, yield_Pa: SPRING_SIGMA_Y_PA, worst: worst.pivot, worstMargin: worst.margin };
     })();
     const corner = (cname) => {
@@ -24035,7 +24126,7 @@ const EQUALISATION = (() => {
       push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)');
       for (const m of meshes) {
         push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)');
-        push(`${m.arbor} arbor pivots`, 1 - A.muJewel * TRAIN_PIVOT_R * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)');
+        push(`${m.arbor} arbor pivots`, 1 - A.muJewel * m.rPiv * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)');
       }
       push('lever escapement', A.escEff, 'FRICTION.escEff');
       const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
@@ -24058,6 +24149,7 @@ const EQUALISATION = (() => {
       released_J, meanPower_W: released_J / reserve_s, reserve_s, beats,
       fuseeTurns: FUSEE_WRAP_TURNS, fuseeTorque_Nm, trainRatio, escapeTorque_Nm, perBeat_J,
       pivots: { trainStaffR_u: TRAIN_STAFF_R, trainPivotR_u: TRAIN_PIVOT_R, balancePivotR_u: BALANCE_PIVOT_R,
+                byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
                 fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
       balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_TRUE_DEG },
       corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
@@ -24076,6 +24168,8 @@ const EQUALISATION = (() => {
       windFullRad: SPRING_WIND_FULL, tqEmpty: SPRING_TQ_EMPTY,
       fuseeK: FUSEE_TORQUE_K, rLarge: FUSEE_R_LARGE,
       momentRange_Nmm: [k * SETUP_SWEEP * 1000, k * SPRING_WIND_FULL * 1000],
+      windRangeRad: [SETUP_SWEEP, SPRING_WIND_FULL],
+      stress: ribbonStress(k, mainspring.section, [SETUP_SWEEP, SPRING_WIND_FULL]),
       levelMaxDev,
     },
     alarm: {
@@ -24093,6 +24187,7 @@ const EQUALISATION = (() => {
       },
       windRangeRad: [alarmSetup, alarmSetup + alarmTravel],
       momentRange_Nmm: [kAlarm * alarmSetup * 1000, kAlarm * (alarmSetup + alarmTravel) * 1000],
+      stress: ribbonStress(kAlarm, alarmSpring.section, [alarmSetup, alarmSetup + alarmTravel]),
       // The ribbon's measured ceiling, and where the total sits under it.
       // Measured by the §47 method (the builder's own frame solver at
       // rising sweeps): the k-solve reaches the developed length at 4.3
