@@ -17,12 +17,13 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 209 | OPEN | Twelve parts stand under `CLEAR_MARGIN` off the base plate without touching it, frozen in `PLATE_CLEARANCE_DEBT` when the `plateSeats` tier arrived. The winding clutch's rim and the winding pinion are at 0.046, the transfer arbor 0.050, the great wheel and transfer wheel 0.075, the case lugs 0.091, and an alarm winding-train arbor and five parts at a flat 0.1 (set-up box, wind-pinion saw, geneva finger disc and pin, arrest cross). Fix: re-seat each at `PLATE_TOP`/`PLATE_BACK` ± `CLEAR_MARGIN`, derived; a part that bears on the plate by design moves to `PLATE_SEATS` with its reason instead. |
 | 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
 | 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
 | 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
 | 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.931) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
-| 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 (a plate clearance tier) is not built. |
+| 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 is built as the `plateSeats` gate: 62 declared seats, 12 frozen debt rows (TODO 209), and a mutation probe that restores the proud plate and watches it fire. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
@@ -27342,9 +27343,30 @@ ray confirming plate metal, finds only designed sinks:
 - the alarm barrel arbor at −0.2, which runs in its bored boss (§99);
 - the case clamp heads, sunk `SEAT_EMBED` into the rim.
 
-Step 4 (a clearance tier between the plate and the parts seated on it) is
-not built. It remains the way to make the next face error a red row rather
-than a probe's finding.
+**Step 4 — built, in a later landing: `plateSeats`.** This is a battery
+gate (`checkPlateSeats` in `inspect.js`). It measures every labelled mesh,
+each owned by its nearest unit, against the plate's own metal over §152's 43
+digest poses, so the next face error is a red row rather than a probe's
+finding.
+
+- **Seats.** Within `CLEAR_MARGIN` a mesh must be a `PLATE_SEATS` row: 62
+  rows, each with its kind (pivot, planted, fastened or housed) and a reason.
+- **Debt.** Otherwise it must be a row of `PLATE_CLEARANCE_DEBT`: 12 parts
+  that stood under the margin without touching when the tier arrived. That
+  inventory is CLOSED and TODO 209 pays it down.
+- **Both tables are judged both ways.**
+  - A seat that never comes near the plate is stale.
+  - A row naming no mesh is malformed.
+  - A debt row that gets deeper, or clears, fails.
+- **Controls.** A must-hit (seats measured in contact, 61 of them) and a
+  must-miss (the three-quarter plate, measured 4.821 clear).
+- **Proof it fires.** `tools/probe-202-plate-tier.mjs` restores the proud
+  extrude. The tier then fails with 16 undeclared parts, among them the set-up
+  ratchet and click, the governor's wheel, pinion and arbor, and the train
+  pivots' collars. It also reports 9 regressed debt rows, the transfer wheel
+  among them, in contact. 7/7 claims pass.
+- **Cost.** It measures in 23 s, memoised on each mesh's (geometry, world
+  matrix), because most of the population is fixed metal.
 
 ## 203. The link search's tab zone scores no fixed off-centre metal centred inside r 7 (feeler and rocker brackets, seat and sleeve posts)
 
@@ -27629,3 +27651,50 @@ allowance at every tension, with §61's float and burial rows still green. At
 that point TODO 76's remaining declaration retires. Until then the twist is
 declared fiction, MODELLED and not SIMULATED: no force on the chain is
 integrated, so nothing would twist a real chain into this pose or out of it.
+
+## 209. Twelve parts stand under CLEAR_MARGIN off the base plate
+
+Found by TODO 202 step 4's `plateSeats` tier on arrival. That tier holds
+every labelled mesh within `CLEAR_MARGIN` of the base plate to a declared
+seat. These twelve are not seats: none of them touches the plate, none is
+carried by it, and each stands closer to it than the movement's one
+clearance margin. They are frozen in `PLATE_CLEARANCE_DEBT` (in
+`src/inspect.js`) at their measured arrival depth, rounded down. That table
+is a CLOSED inventory, on `UNDECLARED_CLEARANCE_DEBT`'s rule:
+- a row fails if its part gets deeper (regressed) or clears (stale);
+- no row may be added.
+
+| part | min over the 43 digest poses | at pose |
+|---|---|---|
+| `Winding clutch / clutchRim` | 0.04595 | 9 |
+| `Keyless works / windingPinion` | 0.04596 | 9 |
+| `Keyless works / transferArbor` | 0.04979 | 0 |
+| `Fusee & great wheel / ExtrudeGeometry#2` (the great wheel) | 0.0752 | 16 |
+| `Keyless works / transferWheel` | 0.0752 | 0 |
+| `Case / caseLug` | 0.0905 | 0 |
+| `Alarm winding train / CylinderGeometry#0` | 0.0998 | 28 |
+| `Keyless works / windPinionSaw` | 0.1000 | 35 |
+| `Set-up work / BoxGeometry#0` | 0.1000 | 0 |
+| `Alarm winding arrest / genevaFingerDisc` | 0.1000 | 0 |
+| `Alarm winding arrest / genevaFingerPin` | 0.1000 | 40 |
+| `Alarm winding arrest / alarmArrestCross` | 0.1000 | 0 |
+
+The five at a flat 0.1000 read like a literal `0.1` off the plate face where
+the margin is 0.15. The 0.075 pair is what was 0.225 *inside* the plate
+before TODO 202 cut it to its finished faces. Their stations were solved
+against a face 0.3 higher, so they stand 0.075 above the real one.
+
+**Fix path.**
+1. For each row, find the constant that places it against the plate face.
+   Re-derive it as the face ± `CLEAR_MARGIN` (+ `MEASURED_MARGIN_BAND` where
+   the solve lands exactly on the margin), with the constraint in the
+   comment.
+2. A part that bears on the plate by design does not belong here. A thrust
+   face or a running fit in a plate bore moves to `PLATE_SEATS` with its
+   kind and reason instead.
+3. Delete each row as it clears. The gate fails a cleared row as stale, so
+   deleting the waiver is structurally part of the fix.
+
+Feasibility: small per row · Battery: each fix moves its part's digest; the
+`plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved
+station.

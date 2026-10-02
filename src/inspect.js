@@ -4457,6 +4457,216 @@ const FASTENED_EDGES = {
 };
 const ENGAGE_TIE_MM = 1e-4;   // the probe's metal-vs-declaration tolerance; a cut short by a real amount reads 0.01+
 
+// TODO 202 step 4 — THE PLATE'S SEATS, a clearance tier between the base plate
+// and the metal around it. Why it exists: for as long as the plate's extrude
+// stood its bevel 0.3 proud of PLATE_TOP, a dozen parts seated off that plane
+// sat up to 0.225 inside its metal, and no gate saw it — the plate is a HELD
+// fixture (above), in no sweep's pairs, so every margin those parts were
+// solved to was checked against the declared face and never against the cut
+// one. A label would put the plate in every pair sweep and arrive with 39
+// units under the margin (the argument above); this is the narrower thing the
+// defect needed: every labelled mesh measured against the plate's own metal
+// over §152's pose net (digestPoses), owned by its NEAREST unit (§40's hops
+// rule, nearestUnitMeshes) so a nested label's mesh is one row, not two.
+//
+// Two declared tables, both judged in BOTH directions:
+//   · PLATE_SEATS — metal the plate CARRIES: a pivot running in a plate bore,
+//     a stud or post planted in it, a frame joint's leg, screw or tenon, the
+//     case holding its rim. A seat may stand at any distance, contact
+//     included; that is its job. A seat row that never comes within
+//     CLEAR_MARGIN is STALE (the part moved off the plate and the row now buys
+//     silence for whatever lands there next), and one naming no mesh is
+//     MALFORMED — the row is keyed by `meshLabel`, so a builder that renames
+//     or reorders a unit's meshes surfaces here rather than quietly passing.
+//   · PLATE_CLEARANCE_DEBT — parts that should CLEAR the plate and stood
+//     under the margin when this tier arrived. UNDECLARED_CLEARANCE_DEBT's
+//     convention exactly: a CLOSED arrival inventory, frozen at the measured
+//     depth and citing a TODO with a fix path; a row fails if its part gets
+//     deeper than its floor (regressed) or if it has cleared (stale). No row
+//     may be added — a newly undeclared part under the margin blocks landing.
+// A tie at the margin is not a violation (FLOOR_TIE_EPS above): a part placed
+// exactly one CLEAR_MARGIN off the face reads 0.15 − 3e-7 in Float32 metal.
+//
+// The control holds both directions of the measurement itself: a must-hit
+// (at least one seat measured in CONTACT — a meshClearance that never returns
+// ≤ 0 would pass every part) and a must-miss (the three-quarter plate, which
+// stands TQ_BOT_Z clear of it, measured and found clear — one that returns 0
+// for everything would fail every part, and a gate that cannot tell the two
+// apart has measured nothing). tools/probe-202-plate-tier.mjs re-cuts the plate
+// with its old proud bevel and watches this tier name the buried parts.
+export const PLATE_SEATS = [
+  // kind: pivot (an arbor end running in the plate), planted (a stud, post or
+  // foot set into or onto it), fastened (a frame joint's leg, screw or tenon),
+  // housed (the case and the crown stem's sleeve, which hold the plate's rim).
+  { unit: "Fusee & great wheel", mesh: "CylinderGeometry#11", kind: "pivot", why: "the fusee arbor's lower pivot, seated mid-plate (PIVOT_SEAT_Z)" },
+  { unit: "Center wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
+  { unit: "Third wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
+  { unit: "Fourth wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
+  { unit: "Escape wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
+  { unit: "Pallet fork", mesh: "CylinderGeometry#5", kind: "pivot", why: "the fork arbor, its lower pivot seated mid-plate" },
+  { unit: "Balance", mesh: "balancePivot", kind: "pivot", why: "the staff's lower pivot in its plate jewel" },
+  { unit: "Heart cam (seconds reset)", mesh: "secondsArborRod", kind: "pivot", why: "the seconds arbor, running through the plate" },
+  { unit: "Reset hammer", mesh: "CylinderGeometry#4", kind: "planted", why: "the hammer's pivot post, standing on the plate" },
+  { unit: "Reset hammer", mesh: "CylinderGeometry#5", kind: "planted", why: "the post's foot boss, on the plate face" },
+  { unit: "Fork cock", mesh: "LatheGeometry#3", kind: "fastened", why: "a cock leg, bored for its screw (TODO 184)" },
+  { unit: "Fork cock", mesh: "LatheGeometry#4", kind: "fastened", why: "the leg's foot, on the plate face" },
+  { unit: "Fork cock", mesh: "screwShanks", kind: "fastened", why: "the cock screws, tapped through the plate (TODO 184)" },
+  { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
+  { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
+  { unit: "Setting lever", mesh: "CylinderGeometry#7", kind: "pivot", why: "the lever's pivot, seated mid-plate" },
+  { unit: "Yoke", mesh: "CylinderGeometry#3", kind: "pivot", why: "the yoke's pivot, seated mid-plate" },
+  { unit: "Stop lever", mesh: "CylinderGeometry#6", kind: "planted", why: "the lever's arbor post, planted in the plate" },
+  { unit: "Maintaining detent", mesh: "CylinderGeometry#1", kind: "planted", why: "the detent's pivot post, on the plate face" },
+  { unit: "Set-up work", mesh: "CylinderGeometry#3", kind: "planted", why: "a stud, on the plate face" },
+  { unit: "Set-up work", mesh: "CylinderGeometry#6", kind: "planted", why: "a stud, on the plate face" },
+  { unit: "Set-up work", mesh: "mainspringDrumPivot", kind: "pivot", why: "the drum arbor's lower pivot" },
+  { unit: "Balance cock", mesh: "LatheGeometry#4", kind: "fastened", why: "a cock leg, bored for its screw (TODO 184)" },
+  { unit: "Balance cock", mesh: "LatheGeometry#5", kind: "fastened", why: "the leg's foot, on the plate face" },
+  { unit: "Balance cock", mesh: "LatheGeometry#6", kind: "fastened", why: "a cock leg, bored for its screw (TODO 184)" },
+  { unit: "Balance cock", mesh: "LatheGeometry#7", kind: "fastened", why: "the leg's foot, on the plate face" },
+  { unit: "Balance cock", mesh: "screwShanks", kind: "fastened", why: "the cock screws, tapped through the plate (TODO 184)" },
+  { unit: "pillars", mesh: "pillar", kind: "fastened", why: "riveted through the plate into its countersunk land (TODO 184, 200)" },
+  { unit: "Dial", mesh: "CylinderGeometry#0", kind: "planted", why: "a dial foot, pinned into the plate" },
+  { unit: "Dial", mesh: "CylinderGeometry#1", kind: "planted", why: "a dial foot, pinned into the plate" },
+  { unit: "Dial", mesh: "CylinderGeometry#2", kind: "planted", why: "a dial foot, pinned into the plate" },
+  { unit: "Motion works", mesh: "CylinderGeometry#4", kind: "planted", why: "the motion-works stud, planted in the dial side" },
+  { unit: "Minute jumper", mesh: "CylinderGeometry#3", kind: "planted", why: "the jumper's pivot stud, planted in the dial side" },
+  { unit: "Minute jumper", mesh: "CylinderGeometry#5", kind: "planted", why: "the jumper spring's post, planted in the dial side" },
+  { unit: "Power-reserve train", mesh: "CylinderGeometry#1", kind: "pivot", why: "an arbor running through the plate" },
+  { unit: "Alarm setting idler", mesh: "CylinderGeometry#3", kind: "planted", why: "an idler's stud, planted in the dial side" },
+  { unit: "Alarm setting idler", mesh: "CylinderGeometry#5", kind: "planted", why: "an idler's stud, planted in the dial side" },
+  { unit: "Alarm setting arbor", mesh: "CylinderGeometry#3", kind: "pivot", why: "the arbor's pivot, seated in the dial side" },
+  { unit: "Alarm release lifter", mesh: "alarmLifterPost", kind: "planted", why: "the lifter's post, planted in the plate" },
+  { unit: "Alarm release lifter", mesh: "alarmLifterGuidePost", kind: "planted", why: "the guide post, planted in the plate" },
+  { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
+  { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
+  { unit: "Alarm hammer", mesh: "alarmHammerSpringStud", kind: "planted", why: "the spring's stud, planted in the rim (GONG_RIM_PLANT)" },
+  { unit: "Alarm striking wheel", mesh: "CylinderGeometry#0", kind: "pivot", why: "the arbor's lower pivot" },
+  { unit: "Alarm barrel", mesh: "LatheGeometry#0", kind: "planted", why: "the barrel arbor's bored boss, on the plate (§99)" },
+  { unit: "Alarm barrel", mesh: "alarmBarrelArbor", kind: "pivot", why: "the barrel arbor, running in that boss (§99)" },
+  { unit: "Alarm governor", mesh: "alarmGovStud", kind: "planted", why: "the governor's stud, planted in the plate" },
+  { unit: "Alarm governor anchor", mesh: "alarmGovAnchorStud", kind: "planted", why: "the anchor's stud, planted in the plate" },
+  { unit: "Alarm winding train", mesh: "CylinderGeometry#5", kind: "pivot", why: "an arbor's lower pivot" },
+  { unit: "Alarm winding train", mesh: "CylinderGeometry#8", kind: "pivot", why: "an arbor's lower pivot" },
+  { unit: "Alarm click", mesh: "alarmClickStud", kind: "planted", why: "the click's stud, planted in the plate" },
+  { unit: "Alarm click", mesh: "CylinderGeometry#4", kind: "pivot", why: "the click arbor's pivot" },
+  { unit: "Alarm winding arrest", mesh: "alarmArrestArbor", kind: "pivot", why: "an arbor's lower pivot" },
+  { unit: "Alarm winding arrest", mesh: "subIdlerArbor", kind: "pivot", why: "an arbor's lower pivot" },
+  { unit: "Alarm winding arrest", mesh: "alarmArrestFingerArbor", kind: "pivot", why: "an arbor's lower pivot" },
+  { unit: "Alarm winding arrest", mesh: "alarmArrestStud", kind: "planted", why: "the arrest's stud, planted in the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkHanger3", kind: "planted", why: "a hanger, standing on the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkRodBushBack", kind: "pivot", why: "the link rod's back bush, a running fit in the plate" },
+  { unit: "Case", mesh: "caseMiddle", kind: "housed", why: "the case middle's ledge, which the plate's rim sits on" },
+  { unit: "Case", mesh: "caseClampScrew", kind: "fastened", why: "the clamp screws, through the rim's bores (§186)" },
+];
+export const PLATE_CLEARANCE_DEBT = [
+  // Frozen at the arrival depth (the measured minimum over digestPoses, rounded
+  // DOWN to 1e-4), each citing TODO 209's fix path.
+  { unit: "Winding clutch", mesh: "clutchRim", floor: 0.0459, todo: 209 },
+  { unit: "Keyless works", mesh: "windingPinion", floor: 0.0459, todo: 209 },
+  { unit: "Keyless works", mesh: "transferArbor", floor: 0.0497, todo: 209 },
+  { unit: "Fusee & great wheel", mesh: "ExtrudeGeometry#2", floor: 0.0751, todo: 209 },
+  { unit: "Keyless works", mesh: "transferWheel", floor: 0.0751, todo: 209 },
+  { unit: "Case", mesh: "caseLug", floor: 0.0905, todo: 209 },
+  { unit: "Alarm winding train", mesh: "CylinderGeometry#0", floor: 0.0997, todo: 209 },
+  { unit: "Keyless works", mesh: "windPinionSaw", floor: 0.0999, todo: 209 },
+  { unit: "Set-up work", mesh: "BoxGeometry#0", floor: 0.0999, todo: 209 },
+  { unit: "Alarm winding arrest", mesh: "genevaFingerDisc", floor: 0.0999, todo: 209 },
+  { unit: "Alarm winding arrest", mesh: "genevaFingerPin", floor: 0.0999, todo: 209 },
+  { unit: "Alarm winding arrest", mesh: "alarmArrestCross", floor: 0.0999, todo: 209 },
+];
+const plateRowKey = (unit, mesh) => `${unit} / ${mesh}`;
+
+export async function checkPlateSeats(clock, { seats = PLATE_SEATS, debtTable = PLATE_CLEARANCE_DEBT, yieldEvery = 16, poses: poseArg } = {}) {
+  const held = heldFixtureEntries(clock);
+  const problems = heldFixtureProblems(held);
+  const plate = held.flatMap((h) => h.meshes);
+  const all = collectUnits(clock, { includeExcluded: true });
+  const entries = [];
+  for (const [unitName, meshes] of nearestUnitMeshes(clock)) {
+    const u = all.find((x) => x.name === unitName);
+    for (const m of meshes) entries.push({ unit: unitName, mesh: m, label: meshLabel(u, m) });
+  }
+  const poses = poseArg ?? digestPoses(clock);
+  const rows = new Map();
+  const bM = new THREE.Box3(), bP = plate.map(() => new THREE.Box3());
+  let tested = 0;
+  for (let pi = 0; pi < poses.length; pi++) {
+    clock.resetInputs();
+    clock.setPose(poses[pi]);
+    clock.scene.updateMatrixWorld(true);
+    plate.forEach((h, i) => bP[i].setFromObject(h));
+    for (const e of entries) {
+      // The plate never moves, so a mesh standing where it stood at an earlier
+      // pose (same geometry, same world matrix) has the same answer: most of
+      // the population is fixed metal, and re-measuring it 43 times cost ~200 s.
+      const mk = e.mesh.geometry.id + ':' + e.mesh.matrixWorld.elements.map((v) => v.toFixed(9)).join(',');
+      let best = e.memo?.get(mk);
+      if (best === undefined) {
+        bM.setFromObject(e.mesh);
+        best = Infinity;
+        for (let i = 0; i < plate.length; i++) {
+          if (boxDistance(bM, bP[i]) >= CLEAR_MARGIN) continue;
+          tested++;
+          best = Math.min(best, meshClearance(e.mesh, plate[i], CLEAR_MARGIN));
+        }
+        (e.memo ??= new Map()).set(mk, best);
+      }
+      if (!(best < CLEAR_MARGIN - FLOOR_TIE_EPS)) continue;
+      const key = plateRowKey(e.unit, e.label);
+      const r = rows.get(key) ?? rows.set(key, { unit: e.unit, mesh: e.label, min: Infinity, poses: 0, contactPoses: 0, at: null }).get(key);
+      r.poses++;
+      if (best <= 0) r.contactPoses++;
+      if (best < r.min) { r.min = best; r.at = pi; }
+    }
+    if ((pi + 1) % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  // The must-miss: measured explicitly, so it cannot pass by never being tried.
+  const tq = all.find((u) => u.name === 'Three-quarter plate');
+  clock.resetInputs();
+  clock.setPose(poses[0]);
+  clock.scene.updateMatrixWorld(true);
+  const tqClear = tq ? Math.min(...tq.meshes.flatMap((m) => plate.map((h) => meshClearance(m, h)))) : null;
+
+  const out = [...rows.values()].map((r) => ({ ...r, min: +r.min.toFixed(6), seated: seats.some((s) => plateRowKey(s.unit, s.mesh) === plateRowKey(r.unit, r.mesh)) }))
+    .sort((a, b) => a.min - b.min);
+  const known = new Set(entries.map((e) => plateRowKey(e.unit, e.label)));
+  const seatKeys = new Set(seats.map((s) => plateRowKey(s.unit, s.mesh)));
+  const malformed = [
+    ...seats.filter((s) => !known.has(plateRowKey(s.unit, s.mesh))).map((s) => ({ seat: plateRowKey(s.unit, s.mesh), problem: 'names no mesh' })),
+    ...seats.filter((s) => !s.why).map((s) => ({ seat: plateRowKey(s.unit, s.mesh), problem: 'no `why`' })),
+    ...debtTable.filter((d) => !known.has(plateRowKey(d.unit, d.mesh))).map((d) => ({ debt: plateRowKey(d.unit, d.mesh), problem: 'names no mesh' })),
+    ...debtTable.filter((d) => !d.todo || !(d.floor >= 0)).map((d) => ({ debt: plateRowKey(d.unit, d.mesh), problem: 'needs a TODO and a floor' })),
+    ...debtTable.filter((d) => seatKeys.has(plateRowKey(d.unit, d.mesh))).map((d) => ({ debt: plateRowKey(d.unit, d.mesh), problem: 'also a seat — a part is carried by the plate or clears it, not both' })),
+  ];
+  const byKey = new Map(out.map((r) => [plateRowKey(r.unit, r.mesh), r]));
+  const debtKeys = new Set(debtTable.map((d) => plateRowKey(d.unit, d.mesh)));
+  const violations = out.filter((r) => !r.seated && !debtKeys.has(plateRowKey(r.unit, r.mesh)))
+    .map((r) => ({ part: plateRowKey(r.unit, r.mesh), min: r.min, contact: r.min <= 0, pose: r.at }));
+  const staleSeats = seats.filter((s) => known.has(plateRowKey(s.unit, s.mesh)) && !byKey.has(plateRowKey(s.unit, s.mesh)))
+    .map((s) => ({ seat: plateRowKey(s.unit, s.mesh), problem: 'never within CLEAR_MARGIN of the plate — the row buys silence for nothing' }));
+  const regressed = [], staleDebt = [];
+  for (const d of debtTable) {
+    const k = plateRowKey(d.unit, d.mesh), r = byKey.get(k);
+    if (!known.has(k)) continue;
+    if (!r) { staleDebt.push({ debt: k, todo: d.todo }); continue; }
+    if (r.min < d.floor - FLOOR_TIE_EPS) regressed.push({ debt: k, min: r.min, floor: d.floor, todo: d.todo });
+  }
+  const contactSeen = out.some((r) => r.min <= 0);
+  const control = problems.length ? `FAIL — ${problems.map((p) => p.problem).join('; ')}`
+    : !contactSeen ? 'FAIL — no mesh measured in contact with the plate: the must-hit never fired'
+    : !(tqClear >= CLEAR_MARGIN) ? `FAIL — the three-quarter plate read ${tqClear} from the base plate: the must-miss did not miss`
+    : `PASS (must-hit: ${out.filter((r) => r.min <= 0).length} parts in contact; must-miss: three-quarter plate ${tqClear.toFixed(3)} clear)`;
+  return {
+    ok: control.startsWith('PASS') && !violations.length && !malformed.length && !staleSeats.length && !regressed.length && !staleDebt.length,
+    control, poses: poses.length, plateMeshes: plate.length, population: entries.length, tested,
+    rows: out, violations, malformed, staleSeats, regressed, staleDebt,
+    seatCount: seats.length, debtCount: debtTable.length,
+  };
+}
+
 export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GRAPH.support } = {}) {
   clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   clock.scene.updateMatrixWorld(true);
@@ -11858,6 +12068,7 @@ const CHECKS = {
   // `restoring` were both exported and never registered and each spent a
   // section answering "unknown check".
   turning: (clock, opts) => checkTurning(clock, opts),
+  plateSeats: (clock, opts) => checkPlateSeats(clock, opts),       // TODO 202 step 4 — every mesh within CLEAR_MARGIN of the base plate is a declared seat or frozen debt
   jumperMovers: (clock, opts) => checkJumperMovers(clock, opts),   // TODO 181 — every moving obstacle JMP_SITE reads is declared, and each row's answer holds over the pose net
   // §54's slenderness ceiling. It was EXPORTED AND NEVER REGISTERED HERE, so
   // `start(clock, 'slenderness')` answered "unknown check", every λ quoted in

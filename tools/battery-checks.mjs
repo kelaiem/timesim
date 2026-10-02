@@ -142,6 +142,24 @@ export const BATTERY = [
   // still metal are a REPORT: conservative, not wrong. The control fires the
   // classifier both ways on this run's own measurements and holds the must-
   // hits (every lawed row seen moving, the jumper inside its own region).
+  // TODO 202 step 4 — the base plate is a HELD fixture, in no sweep's pairs, so
+  // for as long as its extrude stood 0.3 proud a dozen parts sat inside its
+  // metal under a green board. Every labelled mesh is measured against the
+  // plate's own metal over §152's pose net; within CLEAR_MARGIN it must be a
+  // declared seat (PLATE_SEATS — pivot, planted, fastened, housed) or a row of
+  // the CLOSED arrival inventory PLATE_CLEARANCE_DEBT (TODO 209), both tables
+  // judged both ways (stale, malformed, regressed). The control holds a
+  // must-hit (a seat in contact) and a must-miss (the three-quarter plate
+  // clear); tools/probe-202-plate-tier.mjs re-cuts the proud plate and watches
+  // this name the buried parts.
+  { name: 'plateSeats', opts: { yieldEvery: YIELD_EVERY },
+    gate: 'control PASS, 0 undeclared parts within CLEAR_MARGIN of the base plate, 0 malformed or stale seats, 0 regressed or stale debt rows',
+    fails: (r) => [
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...r.violations, ...r.malformed, ...r.staleSeats, ...r.regressed, ...r.staleDebt],
+    note: (r) => `${r.population} meshes over ${r.poses} poses against ${r.plateMeshes} plate meshes: `
+      + `${r.rows.length} within the margin — ${r.rows.filter((x) => x.seated).length} seated (${r.seatCount} rows), `
+      + `${r.debtCount} debt (TODO 209); ${r.control}` },
   { name: 'jumperMovers', opts: { yieldEvery: YIELD_EVERY },
     gate: 'control PASS, 0 undeclared moving obstacles, 0 rows naming no mesh, 0 malformed rows, 0 rows whose answer fails (lawed off-sample, revolve over slack, bounded under bound)',
     fails: (r) => [
