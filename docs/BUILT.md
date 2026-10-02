@@ -1781,6 +1781,15 @@ precedent) and §29's heart is crisp.
 > alone. The feeler → lock release is [TODO 199], declared in
 > `MECH_GRAPH.todo`. The "verified end-to-end" line below verified the flag's
 > sequence, not a detent.
+>
+> **And the run itself, by TODO 190.** The kept tail run and its jog crossed
+> the §45 silence rocker at every pose (jog ⇄ bar 0.25–0.27, run ⇄ the
+> rocker's bracket lug 0.16–0.21, jog ⇄ finger 0.04–0.07) and carried
+> nothing, so they were retired with their length, corridor wall and §54
+> waiver. Their root corner had been binding the Alarm link's rod-site
+> search: the link re-solved from (27.88, −4.07), tab 315° to
+> (18.96, −2.83), tab 324°, both 9 from the column wheel on neighbouring
+> parity rays — see TODO 190.
 
 **Step 5 — the trip IS the pin.** `alarmReleased` fires when the physical
 chain bottoms the pin (one-shot per drop; FF/catch-up latches honestly),

@@ -5530,6 +5530,21 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // alarm barrel (§89) exactly as it was.
 // `sense`: the train this spring drives — MOVEMENT_SENSE for the going drum,
 // ALARM_SENSE for the alarm barrel (layout.js says why they are two).
+// TODO 192 step 3 — the FREE coil's developed length: the even-pitch spiral
+// from innerR to outerR over A radians, ∫₀^A √(r² + r′²) da, by the same
+// composite 2-point Gauss–Legendre (128 panels, open) mainspringFrames' arcLen
+// uses for its k = 1 frame — so a ribbon proportioned with this number is
+// priced by the record against the identical length.
+export function freeCoilLength(innerR, outerR, A) {
+  const QN = 128, GX = 1 / Math.sqrt(3), h = A / QN, dr = (outerR - innerR) / A;
+  const f = (a) => Math.hypot(innerR + dr * a, dr);
+  let s = 0;
+  for (let i = 0; i < QN; i++) {
+    const c = (i + 0.5) * h, e = (h / 2) * GX;
+    s += f(c - e) + f(c + e);
+  }
+  return s * (h / 2);
+}
 export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
                                    sense = MOVEMENT_SENSE }) {
   const pBind = ribbonR * 2;              // coil bind — see above
@@ -5784,7 +5799,7 @@ export function stripSweepGeometry(curve, segs, half) {
 
 export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null, name = '',
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
-                             springSetupSweep = 0, ribbonSection = 'strip',
+                             springSetupSweep = 0, ribbonSection = 'strip', ribbonSolve = null,
                              arbor = true, arborBoreR = null,
                              sense = MOVEMENT_SENSE }) {
   const g = new THREE.Group();
@@ -5846,7 +5861,49 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 
   // Spiral mainspring ribbon (tall in Z), hooked to wall & arbor. name='spring'.
   const springOuter = drumInnerR - wallModule * 0.5;
-  const sCoils = 5;
+  // TODO 192 step 3 — `ribbonSolve` PROPORTIONS the ribbon to its material and
+  // its drum instead of to a fraction (the going drum passes it; the alarm
+  // barrel, TODO 201, does not and keeps the legacy fraction below).
+  //
+  //  · THICKNESS from the stress. A spiral wound θ off its free coil works at
+  //    σ = E·a·θ/L (TODO 193), so at the full wind θ_f = setup + sweep the
+  //    half-thickness that lands the outer fibre on the alloy's limit is
+  //    a = (σ/E)·L/θ_f. The wind angles are the fusee's (its torque law is
+  //    normalised to them), so they are inputs here, never outputs.
+  //  · LENGTH from the drum. Energy at a fixed peak stress goes as the ribbon's
+  //    VOLUME, so more coils store more — until the barrel cannot hold them.
+  //    The classical barrel rule takes the spring to occupy HALF the area
+  //    between arbor and wall (the other half is where the coils go as they
+  //    pass from the wall to the arbor); `coils` is the largest whole number
+  //    whose solved ribbon keeps that fill, 2a·L ≤ ½·π(R² − r²).
+  //
+  // a and L are coupled (L is the free coil's own length, and the coil's inner
+  // radius is the arbor plus a), so each candidate is a fixed point, iterated
+  // to 1e-12. `freeCoilLength` is the builder's own quadrature for the free
+  // frame, so the stress the record later computes from devLen is this one.
+  const solved = (() => {
+    if (!(ribbonSolve && springArborR !== null && springWindSweep > 0)) return null;
+    const thetaF = springSetupSweep + springWindSweep;
+    const kappa = ribbonSolve.sigmaOverE / thetaF;
+    const area = Math.PI * (springOuter ** 2 - springArborR ** 2);
+    let best = null;
+    for (let n = 1; n <= 40; n++) {
+      let a = 0.1;
+      for (let it = 0; it < 200; it++) {
+        const L = freeCoilLength(springArborR + a, springOuter, n * Math.PI * 2);
+        const next = kappa * L;
+        if (Math.abs(next - a) < 1e-12) { a = next; break; }
+        a = next;
+      }
+      const L = freeCoilLength(springArborR + a, springOuter, n * Math.PI * 2);
+      const fill = (2 * a * L) / area;
+      if (fill > 0.5) break;
+      best = { coils: n, ribbonR: a, devLen: L, fill, kappa, thetaF };
+    }
+    if (!best) console.warn('TODO 192: no whole number of coils keeps the solved ribbon inside half the barrel');
+    return best;
+  })();
+  const sCoils = solved ? solved.coils : 5;
   // The ribbon's section, and with it the inner radius. Legacy form: the inner
   // radius is a fraction of the drum and the section follows. Morph form: the
   // inner coil BEARS ON the arbor collar, so springInner = arborR + sRibbon and
@@ -5856,7 +5913,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   // fraction had left standing (an EXPECTED pair, so nothing measured it).
   const morph = springArborR !== null && springWindSweep > 0;
   const q = 0.1 / sCoils;
-  const sRibbon = morph
+  const sRibbon = solved ? solved.ribbonR : morph
     ? Math.max((q * (springOuter - springArborR)) / (1 + q), 0.08)
     : Math.max(((springOuter - radius * 0.16) / sCoils) * 0.1, 0.08);
   const springInner = morph ? springArborR + sRibbon : radius * 0.16;
@@ -5933,6 +5990,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       setupSweep: wind.setupSweep,
       innerAnchorAz: wind.sweepFull % (Math.PI * 2),
       innerR: springInner, outerR: springOuter, ribbonR: sRibbon, pBind: wind.pBind,
+      solve: solved, coils: sCoils,
       height: height * 0.7, frames: windGeos.length, segs: wind.segs,
       devLen: wind.devLen, capacity: wind.capacity, minPitch: wind.minPitch,
       maxStep: wind.maxStep, lenErr: wind.lenErr, cutSpread: wind.cutSpread,
@@ -7300,14 +7358,22 @@ export function makeJewelSetting({ r, holeR = r * 0.5 }) {
 // its top face was solid: the screw above it had nothing to thread into.
 // TODO 184 step 3 — and a TENON at the foot: `tenonR` × `tenonLen` below the
 // foot land's face, which is the shoulder the pillar seats on the base plate
-// with. The tenon's riveted end (spread into a dial-side countersink) is not
-// drawn — the plate is one extrusion and cannot carry a stepped hole — but its
-// LENGTH is: it passes the plate's whole thickness and ends flush, which is
-// what makes it a joint rather than a column standing on a face.
-export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, tenonLen = 0 }) {
+// with. It passes the plate's whole thickness and ends flush, which is what
+// makes it a joint rather than a column standing on a face; TODO 200 draws its
+// riveted end too (`rivetC`, below), set into the plate's countersunk land.
+// TODO 200 — the pillar's lathe segment count, named: the base plate's
+// countersunk land is turned on it too, so the spread head and its seat touch
+// facet for facet rather than crossing at the chords.
+export const PILLAR_SEGMENTS = 24;
+// `rivetC` is the riveted end's spread (TODO 200): the tenon's last rivetC of
+// length is a 45° cone out to tenonR + rivetC, set into the host's countersink.
+export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, tenonLen = 0, rivetC = 0 }) {
   const rr = bodyR;
   const foot = tenonR > 0 && tenonLen > 0
-    ? [new THREE.Vector2(0, -tenonLen), new THREE.Vector2(tenonR, -tenonLen), new THREE.Vector2(tenonR, 0)]
+    ? [new THREE.Vector2(0, -tenonLen),
+       ...(rivetC > 0 ? [new THREE.Vector2(tenonR + rivetC, -tenonLen), new THREE.Vector2(tenonR, -tenonLen + rivetC)]
+                      : [new THREE.Vector2(tenonR, -tenonLen)]),
+       new THREE.Vector2(tenonR, 0)]
     : [new THREE.Vector2(0, 0)];
   const top = tapR > 0 && tapDepth > 0
     ? [new THREE.Vector2(tapR, height),
@@ -7327,12 +7393,32 @@ export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, 
     new THREE.Vector2(rr * 1.5, height),
     ...top,
   ];
-  const geo = new THREE.LatheGeometry(pts, 24);
+  const geo = new THREE.LatheGeometry(pts, PILLAR_SEGMENTS);
   geo.rotateX(Math.PI / 2); // stand pillar along Z
   geo.translate(0, 0, -height / 2);
   const m = new THREE.Mesh(geo, MATS.brass);
   m.userData.height = height;
   return m;
+}
+
+// TODO 200 — the countersunk land a riveted tenon is set into: a closed ring,
+// axis +z, its bore tenonR from the top face down to the countersink and then
+// a 45° cone out to mouthR at the bottom face (z0), outerR beyond. Travelled
+// ringGeo's way, bore bottom → out → up → back in.
+export function makeRivetLand({ tenonR, mouthR, outerR, z0, z1, segments }) {
+  const c = mouthR - tenonR;
+  const pts = [
+    new THREE.Vector2(mouthR, z0),
+    new THREE.Vector2(outerR, z0),
+    new THREE.Vector2(outerR, z1),
+    new THREE.Vector2(tenonR, z1),
+    new THREE.Vector2(tenonR, z0 + c),
+    new THREE.Vector2(mouthR, z0),
+  ];
+  const geo = new THREE.LatheGeometry(pts, segments);
+  geo.rotateX(Math.PI / 2);
+  assertLatheOutward(geo, 'a riveted tenon\'s countersunk land');
+  return geo;
 }
 
 // Brand mark (§27) — the house signature: a lemniscate of Bernoulli (∞)

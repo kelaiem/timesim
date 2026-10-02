@@ -318,8 +318,11 @@ it into prose either.
    section's shape cancels, which is why cutting the strip moved k fourfold
    and the stress not at all) held to `MAINSPRING_SIGMA_Y_PA`, the cited
    alloy band's low end, each ribbon over it waived BY NAME in
-   `RIBBON_STRESS_WAIVERS` and a waiver whose ribbon is under it STALE. The
-   VERDICT — 40–101° vertical
+   `RIBBON_STRESS_WAIVERS` and a waiver whose ribbon is under it STALE (the
+   going ribbon's went stale the moment TODO 192 step 3 PROPORTIONED it — the
+   thickness that lands full wind on the limit, the coils that half-fill the
+   barrel — and was retired by the gate rather than by memory). The
+   VERDICT — 77–186° vertical
    sustained against a claimed 270°, TODO 192 — is a REPORT, deliberately: an amplitude gate on
    today's metal would be red on arrival, and a red that cannot go green is a
    number nobody reads. `FRICTION` is the one place a coefficient the movement
@@ -856,7 +859,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 260 measuring scripts and this file names 21. The rest are named for the
+`tools/` holds 261 measuring scripts and this file names 21. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -873,7 +876,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **150 of
+The index also carries the split that decides how to read a result: **151 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

@@ -17,15 +17,16 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 202 | OPEN | The base plate's extrude carries its `bevelThickness` PROUD of both faces, so it presents [−2.3, 0.3] against `PLATE_TOP` 0 / `PLATE_BACK` −2. The dial side was re-derived (TODO 153's `PLATE_BACK_FACE`); the movement side never was, and the parts seated off `PLATE_TOP` sit up to 0.225 inside the metal over solid plate: the transfer wheel, ratchet, click, governor wheel/pinion/arbor, geneva finger disc and pin, alarm arrest cross, the cock legs and pivot bosses. The plate is a held fixture, so no sweep sees it. Fix: cut the extrude at `BACK_PLATE_T − 2·bevel` (the pallet fork's precedent), then re-solve the TODO 153 stack against the moved dial face. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
-| 200 | OPEN | The pillar tenons pass the base plate flush, but their riveted ends are not drawn. That is the peened spread into a dial-side countersink, which is what holds the joint. The plate is one extrusion and has no stepped hole. Fix: countersink the four pillar holes on the dial side (a late re-cut or a land ring), and draw the spread as a frustum. Derive the countersink depth from `BACK_PLATE_T − STOCK_MIN_U` |
+| 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
-| 192 | PART DONE | Steps 1 and 2 LANDED, and TODO 193 changed the supply under them. Step 1 (§247 tier two): `FRICTION` bands, `EQUALISATION.going.energy`, rows 9–11. Step 2: the jewelled train arbors and the balance shouldered onto pivots at §50's floor, row 12 holding each pivot's service stress under yield; since TODO 193 the centre pivot is sized to its LOAD (0.086 mm) and the rest stay at the floor. OPEN: 15.1 mJ over 30 h (140 nW) sustains 40–101° vertical, 63–213° dial-flat, against a claimed 270° — 3.4–10× short. Remaining: the working band re-solved against a declared amplitude target with the going ribbon's σ under `MAINSPRING_SIGMA_Y_PA` (today 1931 MPa at full wind, waived citing this step), then gated |
+| 192 | PART DONE | Steps 1–3 LANDED (with TODO 193 between them): the energy column and `FRICTION` (§247 tier two); the pivots shouldered and sized floor-or-load; the going ribbon a strip of the cited alloy, then PROPORTIONED to it — the half-thickness that puts full wind on `MAINSPRING_SIGMA_Y_PA` and the most coils the barrel holds at half fill (8, was 5): 31.6 mJ over 30 h sustains 77–186° vertical, 112–327° dial-flat. OPEN: step 4, gating the amplitude — which first needs `AMPLITUDE_TRUE_DEG` split into the claim (the solve's minimum) and the swing loads are priced at (its maximum); 270° vertical at the adverse corner needs the balance or a larger barrel |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | CLOSED (re-scoped) | The §29 beak held nothing: it never reached the contrate, and the contrate does not turn during a ring (parked on the arbor side since §99). Riser, beak, flex group and law retired with every row naming them; the tail run kept (retiring it re-sites the Alarm link). The hold is the `alarmReleased` flag, declared in `MECH_GRAPH.todo`; the residual is [TODO 199] |
@@ -9492,6 +9493,21 @@ reflected: the two 14.70 u spans 42.5 % of the compliance each, the tail blade
 against this figure is RELATIVE (3 %) now: the probe measures nPin at 1.0152
 where the solve holds it at 1, and with the spans governing that 1.5 % is 3 %
 of the total.
+
+### Re-measured, TODO 190 — the link re-solved
+
+[TODO 190] retired the feeler's tail run, which had been binding the §112
+search's tab zone, and the rod re-solved to (18.96, −2.83), tab 324°, on the
+neighbouring parity ray at the same d 9 (it was (27.88, −4.07), tab 315°). The
+body nearly halves (20.53 → 11.06, two 5.53 spans), so the probe re-reads:
+k_eff **18498 N/m**, stall **1331.88 mN** (was 1221.13), and the derivation's
+series sum 1357.49 (1.9 % apart). The governor flips from the rod-end overhang
+to the **fork-end overhang** — 39.6 % of the compliance against the rod end's
+35.0 % — because the shorter span cut the rod-end cantilever's back-span
+coupling from ≈9.8 to 6.09, while the fork end's 1.35 of neck stock does not
+depend on the chord. The stall still COVERS
+the 5–50 mN window, by 27×. `ALARM_LINK_STALL_PROBE_MN` and
+`ALARM_LINK_GOVERNING` carry both figures, and the row asserts them.
 
 ## 83. The parity ray still lies inside the box — §122 silenced only the provably-outside calls
 
@@ -26112,7 +26128,8 @@ with no new metal:
   free column (12–13, −2..1) [TODO 199] stage 4 names. Its length is now
   inherited (`ALARM_TAIL_RUN_LEN`, the retired beak's stand-off), its
   `SLENDER_WAIVERS` row (λ 85.1) and its `§29 pawl tail corridor` wall stay
-  with the metal. [TODO 199] adopts it or retires it.
+  with the metal. [TODO 199] adopts it or retires it. (*Retired by [TODO
+  190], with all three, and the link re-solved.*)
 - **Declared:** a `MECH_GRAPH.todo` row, `Alarm release feeler → Alarm lock`:
   the strike hold between arming and the trip is the `alarmReleased` flag,
   modelled and not simulated, and the feeler → lock release is unmodelled.
@@ -26122,7 +26139,13 @@ with no new metal:
   §25 B lock header, `alarmReleased`'s own comments), `inspect.js`,
   `docs/BUILT.md` §29 and §45, and `explain.html`'s alarm entry and plates 2–4.
 
-## 190. The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring, hidden by an EXPECTED pair
+## 190. The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring, hidden by an EXPECTED pair — CLOSED
+
+**CLOSED** — stage 1 fixed the P0 (the finger pressed the return blade, not
+the tail); stage 2 retired the tail run and its jog (the owner's option A),
+let the Alarm link's rod-site search re-solve, re-derived every link constant
+the move touched, cranked the rocker's bar off the feeler's bracket, and
+landed the floors row. See "Stage 2 landed" at the end.
 
 Found closing [TODO 173]; the owner first scoped the tail-run ⇄ lug crossing
 into that PR. Measured by exact separating-axis depth over 129 poses, on main
@@ -26167,6 +26190,237 @@ options were named, none trialled:
 
 The finger radius, the pivot fraction and `ALARM_SIL_PIN_LEVER` are held.
 Then land the floors row with only the real contacts; it is the acceptance.
+
+### Stage 1 landed — the finger bears on the tail
+
+Re-measured on main (2e498da) by `tools/probe-silence-feeler-pairs.mjs`
+(every mesh pair of the two units, 14 axes × 12 samples plus the four
+hand-off parities and dropped+setting, 173 poses; separating-axis depth on the
+crossings). It reproduced this item's table exactly: jog ⇄ bar 0.2489–0.2684,
+`alarmTailRun` ⇄ rocker lug #6 0.1568–0.2101, `alarmFeelerSpring` ⇄
+`alarmSilFinger` 0.0649–0.1236 and ⇄ the finger's riser 0.067–0.1251, jog ⇄
+riser 0.0938–0.1252 and ⇄ finger 0.0447–0.071; under the margin, bar ⇄ feeler
+lug (+y) 0.0751, lug #5 ⇄ run 0.0836, bar ⇄ spring stud 0.0929, bar ⇄ feeler
+lug (−y) 0.1011, riser ⇄ stud 0.1162, lug #5 ⇄ jog 0.1375, riser ⇄ feeler lug
+(+y) 0.1417, bar ⇄ spring 0.1485.
+
+**The fix is an azimuth about the blade's bear point.** The blade's stud stood
+on the lever's line, `SPR_FREE` outboard of the pivot, so the blade ran back
+over the whole tail under the finger. It now swings to lever −y, the side
+away from the rocker, whose chord leaves the finger along +y. The angle is the
+least at which its line clears the bracket's −y lug by `CLEAR_MARGIN`:
+(BEAR_R − LUG_L/2)·sin α − (LUG_Y + LUG_W/2)·cos α = CLEAR_MARGIN + blade
+half-width, which gives **30.8°** (stud at lever-local (−0.446, −0.923)). The
+free length (anchor → bear chord, `SPR_FREE + BEAR_R` = 1.8025) is held and
+asserted, so k 980.6 N/m, both seat forces, §137's row and [TODO 199]'s table
+do not move. Riding is the worst pose, because the rock carries the bear point
+inboard. The lug's three literals are hoisted (`ALARM_FEELER_LUG_L/W/Y`) so the
+lug and the solve read one number.
+
+- **Found doing it:** the blade's frame law pitched about the unit's y, not
+  the blade's own transverse axis (default 'XYZ', TODO 173's defect in the
+  spring). Its free end missed the bear point by 0.0057 / 0.0101
+  (riding / dropped) on main, and by 0.0265 / 0.0463 once folded. It is
+  'ZYX' now: 0 / 0.
+- **What moved in the rocker's build:** the finger window's 'stud side'
+  assert went with the stud's station. It is replaced by 'finger seat clear of
+  the feeler blade', which reads the folded blade's line against the finger.
+  `ALARM_SIL_FINGER_R` 5.86 was cut centred between the lugs and the old stud.
+  It is held, because `ALARM_SIL_PIN_LEVER` rests on it, and the comment and
+  `explain.html`'s constants row say so.
+- **After:** every spring and stud row is gone. Riser ⇄ tail and finger ⇄ tail
+  are the only contacts at `setting`, and the hand-off row is unchanged
+  (0.05 / 0.05 / −0.0057 / 0.0311). Left: the three run crossings (jog ⇄ bar,
+  run ⇄ lug #6, jog ⇄ riser/finger) and five under-margin pairs (0.0751,
+  0.0836, 0.1011, 0.1375, 0.1417).
+
+### The decision — the run and the link's rod site
+
+None of the three remaining crossings can be closed without moving the run or
+its jog. The finger is held at `ALARM_SIL_TAIL_ARM` 0.36, and the jog's centre
+stands **0.23** from it; finger r 0.1 plus the jog's 0.13 half-width plus the
+margin needs ≥ 0.43. And every change to the run moves the Alarm link.
+Measured by instrumenting the §112 search:
+
+- **How the run holds the site.** It binds the TAB zone, not the column or
+  the chord. At the frozen (27.88, −4.07), tab 315°, the solve's 0.4592 is
+  `tab: Alarm release feeler/alarmTailRun`: the tab disc (`TAB_R` 1.3) against
+  the run box's ROOT corner (4.948, −2.470), which is r 5.53. The tab filter
+  admits an obstacle by its box CENTRE being past r 7 (the run's is r 9.2), and
+  the filter exists to exclude "concentric centre machinery" at the radius of
+  the run's root. So the site is held by the run's real metal, through an
+  inconsistency in the filter. The walked site's tab at 318° reads 0.1771
+  against the same corner.
+- **Retire the run.** The argmax walks to (18.66, −3.23), tab 324°, clearing
+  **0.9124** (bound by the chord against the silence rocker's bar). Boot warns
+  five times:
+  - `ALARM_LINK_BODY_LEN_U` 20.5712 → built 10.7900;
+  - `ALARM_LINK_BUSH_OD_U` 0.7114 → 0.4397;
+  - TODO 82's series stall 1221.13 → 1392.333 mN;
+  - the governing member flips from the rod-end overhang to the fork-end;
+  - both plate bores drift.
+- **Retire the run and FREEZE the site.** Declare the rod site AND the tab
+  azimuth. Freezing only the rod lets the tab walk and warns: body length
+  20.3717. The search then validates instead of choosing. Without the run the
+  frozen site still clears **0.5217** (bound by the chord against
+  `alarmFaceCam`), and the build boots silent. The cost is rule 1: the site
+  becomes a declared number that the clearance argmax no longer picks.
+- **Keep the run and re-root it.** The jog must leave the bar's and finger's
+  footprint, and the run must clear the rocker's lugs (gap between them 0.18;
+  the run is 0.26 wide). Inboard (lever t ≤ −0.08), the jog meets the feeler's
+  own −y lug and the run crosses both rocker lugs. Outboard, it needs t ≥ ~1.28,
+  past the banking stop, on a longer tail stub. Either way it moves the run's
+  root corner, which is exactly what binds the frozen site's tab score, so the
+  link moves unless it is also frozen.
+
+**The rest is measured, given a retired run.** A prototype (run retired,
+site and tab frozen, otherwise this tree) shifts the rocker bar
++0.10 along its PIVOT axis, which moves no lever arm: the arm about that
+axis is the chord coordinate. It also raises the finger's riser off the tail
+and centres it 0.04 along the same axis. Then every rocker ⇄ feeler pair
+clears: the floors row `{ a: 'Alarm silence rocker', b: 'Alarm release
+feeler', min: CLEAR_MARGIN, contacts: [['alarmSilFinger', 'alarmFeelerTail']] }`
+measures **0.1751** over the full pose net (`expectedContacts`, bar ⇄ feeler
++y lug at beat f=0), and every hand-off row stays green. The bar shift in the
+prototype moved the whole bar, deepening its declared overlap with the
+rocker's own +1 lug. The landing should cut it as a plan dog-leg near the
+finger instead (the intra-unit rows address the rocker's meshes by index, so
+an added mesh re-numbers them).
+
+**Acceptance (unchanged):** the floors row above, at `CLEAR_MARGIN`, with the
+hand-off row shut at both parities. Retire the run's `SLENDER_WAIVERS` row,
+its `§29 pawl tail corridor` wall and `ALARM_TAIL_RUN_*` with it if the run
+goes. Removing the wall cannot move the setting route: the bearing solve keeps
+the incumbent whenever it clears every wall.
+
+### Stage 2 landed — the run retired, the link re-solved, the bar cranked
+
+**The run and its jog are gone**, with everything that named them:
+`ALARM_TAIL_RUN_Z/_T/_HALFW/_LEN`, the `§29 pawl tail corridor` wall in
+`alarmSetWallsAt` and its §29 step-4 boot assert, the feeler's
+`SLENDER_WAIVERS` row (λ 85.1, TODO 109 — a stale waiver fails, and
+`slenderness` reports no over-ceiling row for the feeler now), and the prose
+in `main.js`, `inspect.js`, `docs/BUILT.md` §29 and `explain.html`. No
+restoring, intraUnit, jumperMovers, penetration or clearance row named the run
+(grepped; the one intraUnit row that did went with the riser in TODO 189). The
+feeler's own meshes before the run keep their indices. Removing the wall
+cannot move the setting route: the route's incumbent cleared it.
+
+**The link re-solved, and nothing was frozen.** Re-measured on this tree
+(after TODO 69's plate), with the run gone the search's argmax walked to
+(18.6572, −3.2292), d 9.5, tab 324°, clearing 0.8935 (bound by the column
+against the balance — not the chord against the rocker, as the pre-TODO-69
+measurement said). **That site was not legal, and nothing in the search could
+see it**: its plate bore crossed the three-quarter plate's BALANCE CUT.
+`outlines` reported a new cross-ring crossing (`outline × hole 2`, 2 points at
+(18.06, −4.04)), the extrude filled the rest, and `expectedContacts` read
+`alarmLinkRod ⇄ threeQuarterPlate` at **0** against its 0.15 floor. Stage 1
+of the search said "both plates must carry the bore" and tested only |xy|
+against the round `plateR`. It now also holds a land of `STOCK_MIN_U` round
+the bore to every opening each plate already carries (`linkRodTqLand`: the
+balance cut via `inCutClearance`, the other bores, slots and §62 windows;
+`linkRodBackLand`: the base plate's holes, late holes, slots and sector), the
+rod's own bore excepted, and a boot assert holds the literal bores to the same
+lands. §50's floor and not §62's `TQ_LAND_MIN` (1.9 at today's plate): that is
+the window rule, the old site left only 0.786 to its nearest opening, and the chaton seats
+overlap their own bores by design — at 1.9 no candidate survives (best −0.260).
+The search then lands on **(18.9643, −2.8347)**, d **9** on parity ray k −1,
+tab **324°**, clearing **0.6033** (bound by the column against the alarm
+setting arbor's wheel), with lands 0.389 (three-quarter plate) and 3.050
+(base plate).
+
+**And every spec boot has to reach the same answer.** The first commit of
+this landing read 0.6099 there, and the battery's spec tier then caught
+`studr=7.595`, `4.71` and `7.1175` (all listed in `validated-configs.js`)
+re-solving to the OLD site with six boot warns. The cause was the search's
+rotor DISC: an obstacle centred near its rotor's axis was claimed as a disc of
+radius (box-centre offset + half the box's longer side), which is not a bound
+on the metal. At `?studr=7.595` the hairspring's coil reaches 8.40 from the
+balance staff, but its box claimed a disc of 11.3, which reached the rod's
+column at (18.96, −2.83) — true distance 3.47 — and scored that site −0.576.
+The disc's radius is now the metal's own farthest vertex from the axis, which
+is exactly what turning about that axis sweeps. Default, identity, `reconf=1`,
+the three `studr` points and `route=2-leg` all solve to the same site, tab and
+clearance (0.6033 — the arbor wheel's honest disc is a little larger than the
+old formula's under-claim) and boot silent. It was (27.8789, −4.0720), d 9, k 0, tab 315°, 0.4592 (tab: the
+run's root corner).
+
+Re-derived from the move, each against the assert that holds it (no assert was
+loosened):
+
+| constant | was | now | the constraint |
+|---|---|---|---|
+| `ALARM_LINK_BODY_LEN_U` | 20.5327 | 11.0631 | t3 − t1 of the re-solved chord (built 11.06309), the §169 COILS hoist asserted ±0.01 against the build — rounded UP, because the stratum assert holds the hoisted bush OD against the built one at 1e-6 |
+| `ALARM_LINK_BUSH_OD_U` | 0.7104 | 0.4473 | body / (2·TURN_LD_TARGET) + bush clearance + wall — a formula of the line above, asserted against the built bush |
+| `ALARM_LINK_ROD_LEN_U` | 20.4894 | 20.7535 | the smaller bush drops the shaft stratum 0.2631 toward the dial and the rod's foot rides it (built 20.75353, asserted ±0.01); the rod's section and plate bore follow |
+| plate bores (`BACK_PLATE_HOLES`, `tqHoles`, `_boreXY`) | (27.88, −4.07) | (18.96, −2.83) | = `ALARM_LINK_ROD_XY` (the §35 tripwire, 0.25), and now the plate-land assert |
+| beak fork (`wrLen`) | 9 | 9 | `ALARM_LINK_ROD_DIST`, the fork's one input, did not change: beak 3.5770, tail 0.7680, ratio 4.6574, tail stall 63236 mN, all as at TODO 174 |
+| `ALARM_LINK_STALL_PROBE_MN` | 1221.13 | 1331.88 | `tools/probe-82-alarm-stall.mjs`, posed; the row's own series sum reads 1357.49 (1.9 % apart, inside the 3 % assert) |
+| `ALARM_LINK_GOVERNING` | rod-end overhang | fork-end overhang | the largest n²/k share, read by BOTH paths: fork end 39.6 %, rod end 35.0 %, each span 12.5 %, tail blade 0.3 % |
+
+**P1 did not get worse.** The stall ROSE, 1221 → 1357 mN, covering the
+5–50 mN detent window by 27× (the row's envelope is `covers`). The governor
+flipped because the shorter chord halved the spans (5.53 each), which cut the
+rod-end cantilever's back-span coupling (span + overhang)/overhang from ≈9.8
+to 6.09 and stiffened it; the fork-end overhang is 1.35 of neck stock whatever
+the chord does. The beak lever's arms and ratio are untouched (same rod
+distance). The row's `why` said the stall "misses the detent window by an
+order, and the row is waived citing TODO 79" — stale since §232 (it covered,
+and nothing was waived); it says what is true now.
+
+**Found doing it — the shaft's OD sample was a picked number.** At the
+re-solved body `turning` read the lay shaft at its counterbore radius, L/D 48.9
+on a bar whose OD is about L/D 18: `ALARM_LINK_OD_SAMPLE_U` was a flat 0.4,
+"comfortably under a census bin" at a 30.99 body but over it here (≈0.17 a
+bin), so the bins at the two bore bottoms held bore vertices alone. It is half
+a census bin now (a mirror of `TURN_BINS`), which puts an OD vertex in every
+bin at any length.
+
+**The tab filter was NOT changed to the nearest extent, and why.** The filter
+admits an obstacle to the tab zone when its box CENTRE stands beyond r 7. The
+obvious "consistent" rule — admit by NEAREST extent — was implemented and
+measured, and it re-opens the FORBIDDEN the filter was written for: the alarm
+setting idler's wheel (axis r 8.7) reaches r 4.08, so the nearest-extent rule
+drops it, the solve seats the tab at 0° in the idler's plan (same rod site),
+and restricted sweeps read `Alarm link ⇄ Alarm setting idler` **FORBIDDEN at
+13/97 alarm poses** (hanger 1 through the wheel) and the centre pin **0.1014**
+off a release-sleeve post (`undeclaredClearance`). The centre rule, run
+retired, reads both clean. So the test on the centre is deliberate: it asks
+whether a part is centre machinery, and an off-centre part is then scored on
+ALL its metal — the idler's, and the run's root corner, which bound the old
+site honestly. The residue is the other side — fixed off-centre metal CENTRED
+inside r 7 is not scored — and admitting it by identity starves the solve to
+−1.048 (bound by a sleeve post); [TODO 203] files it. The comment at the
+filter now says all of this.
+
+**The rocker's bar is cranked in plan** at the finger end (one mesh,
+`alarmSilBar`, an extrude; it was `BoxGeometry#0`). The finger end steps
+`ALARM_SIL_BAR_JOG` along the PIVOT axis, away from the feeler's bracket lugs
+on the bar's −y side: jog = the lugs' farthest reach (rocker-local y −0.2386)
++ the bar's half-width + `CLEAR_MARGIN` (+ the band) = **0.0749**, exact at
+every pose because the rock is about y. The step stands at the least station
+at which the straight part clears both lugs by the margin with its end face
+carried by the largest rock the run gives (scanned: x −0.2097), and is asserted
+outboard of the rocker's own bracket lug (−0.16), so the declared bar ⇄ lug
+joints are the straight bar they were. No lever arm moved: the arms are the
+chord coordinate, and the finger stays on the chord. The finger's riser
+stands on the finger now (it reached the finger's underside at r 0.14 round a
+0.10 finger and was the first metal to meet the tail, 0.0084 into it at
+`setting`); it runs from the pad's top face through the bar, at half the jog —
+through rather than to the bar's plane, because a 0.116 stub is 0.044 mm,
+under §50's 0.07 mm pivot floor (stockFloor read it). The four rocker
+`INTRA_UNIT_CONTACTS` rows name `alarmSilBar` instead of `BoxGeometry#0`; the
+lugs keep their indices (the mesh count did not change).
+
+**Acceptance.** `tools/probe-silence-feeler-pairs.mjs` (173 poses): one
+contact, `alarmSilFinger ⇄ alarmFeelerTail` at the setting parities
+(0.0057); every other rocker ⇄ feeler pair ≥ 0.15, the closest the bar ⇄
+the bracket's +y lug at 0.15 (the jog's own margin) and its −y lug at 0.172.
+The floors row `{ a: 'Alarm silence rocker', b: 'Alarm release feeler', min:
+CLEAR_MARGIN, contacts: [['alarmSilFinger', 'alarmFeelerTail']] }` measures
+**0.15** over the full net (`expectedContacts`: bar ⇄ the bracket's +y lug at `alarm` f 0 — the jog's own margin, plus the band; the whole-bar prototype's 0.10 shift read 0.1751, and the crank steps only what the margin needs); the riser no longer
+touches the tail, so it is not named. `alarmHandoffs` 15 rows, 0 waived, all
+OK; `rocker finger ⇄ feeler tail` 0.05 / 0.05 / −0.0057 / 0.0311, unchanged.
 
 ## 191. The alarm selector rod stands 0.0811 from the beak post it runs parallel to
 
@@ -26314,13 +26568,50 @@ truth failure, not packaging.
    | favourable | 0.287 | **100.6° / 213.1°** | 3.4× |
    | nominal | 0.222 | **66.8° / 122.3°** | 5.5× |
    | adverse | 0.160 | **40.1° / 62.8°** | 10.0× |
-3. Re-solve the drum's working band against a declared amplitude target at
-   the adverse corner, with the ribbon inside TODO 193's stress limit:
+3. ~~Re-solve the drum's working band against a declared amplitude target at
+   the adverse corner, with the ribbon inside TODO 193's stress limit~~
+   **LANDED — the ribbon, not the band.** The working band's ANGLES are the
+   fusee's (its torque law is normalised to them, so moving them re-cuts the
+   fusee and the chain), so the solve moves the ribbon and holds the angles.
+   `makeBarrel`'s `ribbonSolve` proportions it two ways. The half-thickness
+   that puts the full wind exactly on `MAINSPRING_SIGMA_Y_PA` is
+   a = (σ/E)·L/θ_f. The coil count is the most whole coils the barrel holds
+   with the ribbon filling half the area between arbor and wall, the classical
+   barrel rule. Energy at a fixed peak stress goes as the ribbon's volume, and
+   the old fraction-of-a-gap thickness filled 20%. Result: **8 coils**
+   (was 5), 1800 MPa at full wind exactly (was 1931), k ×2.1 and **31.6 mJ**
+   released (was 15.1). The going ribbon's stress waiver went stale and is
+   retired, which the gate enforced. The centre pivot re-sizes to the doubled
+   load (0.135 mm), the others stay at the floor. A longer pivot, from a
+   deeper chaton stone that landed on `main` meanwhile, puts the third at
+   491 MPa of its 800. Verdict now:
+
+   | corner | ribbon → balance η | sustained, vertical / dial-flat |
+   |---|---|---|
+   | favourable | 0.287 | **185.8° / 326.7°** |
+   | nominal | 0.222 | **125.3° / 201.1°** |
+   | adverse | 0.160 | **77.0° / 111.8°** |
+
+   What step 3 did NOT do is reach 270° vertical at the adverse corner,
+   because this drum cannot: it is already at half fill and at its alloy's
+   limit. The further levers are the balance (a larger radius of gyration per
+   unit mass, which is the third cause above) and the drum itself (a larger
+   barrel is a layout change).
+   The text this step was filed with, kept for the record — re-solve
+   against a declared amplitude target, with the ribbon inside TODO 193's
+   stress limit:
    `MAINSPRING_SIGMA_Y_PA`, 1800 MPa, which the going ribbon exceeds today at
    1931 MPa at full wind. It is waived by name citing this step, and the gate
    fails the waiver once the ribbon is under. σ = E·a·θ/L, so the levers are
    the half-thickness, the length and the wind.
-4. Gate the amplitude the solve achieves.
+4. Gate the amplitude the solve achieves. **OPEN, and it needs one decision
+   first:** what `AMPLITUDE_TRUE_DEG` means once it is not 270. Today it
+   is three things at once. It is the CLAIM the energy column reports
+   against. It is the swing §218's hairspring stress and pivot-force peaks
+   are evaluated to. And it is the swing the hack brake is priced to hold.
+   The first wants the solve's MINIMUM (adverse, vertical: 77°), the other
+   two its MAXIMUM (favourable, dial-flat: 327°). One literal cannot be
+   both honestly.
 
 Items 1 and 2 are independent and could land first; both have. Until the rest do,
 `AMPLITUDE_TRUE_DEG`, the hack brake's 1.3 mN and §218's physical peaks
@@ -26622,19 +26913,25 @@ that choice to the start of stage 2.
    its population was the beak's posed wobble). New `ALARM_HANDOFFS` rows:
    the lock HOLDS armed before the trip, RELEASES at the drop, and
    RE-ENGAGES on silence. The silence re-engagement is gated on
-   [TODO 190], whose finger presses the feeler's spring rather than its tail.
+   [TODO 190], which is CLOSED: the finger bears on the tail and is the only
+   rocker metal within the margin of the feeler (the floors row
+   `Alarm silence rocker ⇄ Alarm release feeler` holds it).
 3. **Stage 4 — the P3 fold.** The feeler is dial-side and the lock is on the
    three-quarter plate's top, so the line needs a ~17.4-unit vertical rod
    through both plates (a [TODO 145]-class turning bar: hold it to §233's
    L/D) plus a ~14–18 unit transfer. Free columns were measured at
    (12–13, −2..1) near the feeler and (22–23, 13–15) / (21–22, 6) near the
-   lock (quoted). The first of those is where the kept tail run
-   (`alarmTailRun`) already ends: adopt the run as the line's first member
-   or retire it. Retiring it re-opens the Alarm link's rod-site search
-   (§112/TODO 174 — measured, the site walks from (27.88, −4.07) to
-   (18.66, −3.23)), so that re-site belongs in this stage's battery, and the
-   run's inherited length `ALARM_TAIL_RUN_LEN` and its `SLENDER_WAIVERS`
-   row go with whichever answer lands.
+   lock (quoted). **The tail run is no longer a candidate first member: [TODO
+   190] retired it** (the owner chose to retire it and let the link
+   re-solve). The run, its jog, `ALARM_TAIL_RUN_LEN`, its `SLENDER_WAIVERS`
+   row and its `§29 pawl tail corridor` wall are gone, and the Alarm link
+   re-solved from (27.88, −4.07) to (18.96, −2.83) (still d 9, the next
+   parity ray; tab 315° → 324°) with every link constant re-derived — see
+   [TODO 190]. The line's
+   first member near the feeler is therefore new metal, and the free column
+   at (12–13, −2..1) has to be re-measured on this tree before it is relied
+   on: the link's chord moved, and its tab now sits at 324°, nearer the
+   feeler.
 
 **Acceptance.** `MECH_GRAPH.todo` loses the `Alarm release feeler → Alarm
 lock` row and gains drive edges for every new member; the new hand-off rows
@@ -26648,7 +26945,7 @@ space; stage 3 tick law + one axis + ~3 hand-off rows; stage 4 a rod through
 both plates and a re-site · Battery: stage 2 probe-only; stages 3 and 4 full
 battery with a `--report` diff
 
-## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread
+## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread — CLOSED
 
 Filed from [TODO 184]'s residue (#545). Step 3 of 184 riveted the four
 pillars into the base plate:
@@ -26691,6 +26988,43 @@ Feasibility: small to medium · Cost: about 60–120 lines in `geometry.js`
 and `main.js` · Battery: moves the fingerprint and the base plate's digest.
 The full battery runs.
 
+**Closed — what was built.**
+
+- **The countersink.** Its depth is `PILLAR_RIVET_C` = `STOCK_MIN_U`, at
+  45°, so the radial step equals the shoulder's own. The plate is captured
+  between two equal lips, and `c` sits well inside `c ≤ thickness − S`; a
+  boot assert holds that bound. The mouth `PILLAR_TENON_R + c` comes out at
+  exactly `PILLAR_BODY_R`.
+- **The cut.** The late hole is cut through at the mouth, so the existing
+  late-hole land check (STOCK_MIN_U to every other opening and to the edge)
+  now covers the countersink's widest diameter. That is the "must clear
+  every other cut" bound this item asked for. Measured, the nearest other
+  opening is 7.3 off.
+- **The land.** The bore is put back by a turned land per pillar:
+  `G.makeRivetLand`, a closed lathe behind `assertLatheOutward`. It is hung
+  on the plate as the pocket floors are (named `backPlate`, so `support`,
+  the held-fixture gates and the digest read it). It laps `SEAT_LAND_LAP`
+  past the bevel's widening at the faces, and is turned on
+  `G.PILLAR_SEGMENTS`, the pillar's own 24, so the spread head and its seat
+  touch facet for facet.
+- **The spread.** `makePillar({ rivetC })` turns the tenon's last `c` as the
+  matching 45° frustum, flush with the dial face.
+
+**And the joint was 0.6 short of the plate it claimed to fill.** The base
+plate's extrude stands its `bevelThickness` proud of BOTH faces. It
+PRESENTS [−2.3, 0.3], which TODO 153 already established for the dial side
+(`PLATE_BACK_FACE`). TODO 184 step 3 sized the tenon at `BACK_PLATE_T` and
+stood the pillar on `PLATE_TOP` 0. Measured on the built meshes, the
+shoulder sat 0.3 inside the movement-side face and the tenon ended 0.3
+short of the dial-side one: a rivet stopping inside its own hole, which a
+countersink there would only have made visible. This needed a new constant,
+`PLATE_TOP_FACE` (+0.3), the movement-side twin of `PLATE_BACK_FACE`. The
+pillar now stands on that face (`PILLAR_BASE_Z`), and its tenon is
+`PLATE_TOP_FACE − PLATE_BACK_FACE` = 2.6 long. `probe-184-frame-joints`
+reads the four rows at 0.985 mm engaged against 0.985 required, measured on
+the metal, 11/11, controls PASS. The same 0.3 sits under every other part
+seated off `PLATE_TOP`; that is filed as TODO 202, not absorbed here.
+
 ## 201. The alarm ribbon works past its alloy's tensile strength, and its section and the governor solve are re-cut together
 
 Found closing [TODO 193], whose row 13 holds both mainspring ribbons to the
@@ -26731,3 +27065,115 @@ leaves a k a quarter of the metal's.
 Feasibility: medium · Cost: about 100–200 lines in `main.js` (§104's
 governor block) and `geometry.js` · Battery: moves the alarm barrel's
 geometry and the governor's ring. The full battery runs.
+
+## 202. The base plate's movement-side face stands 0.3 above PLATE_TOP, and the parts seated on PLATE_TOP sit inside it
+
+Found by TODO 200. `G.makeBackPlate` extrudes `thickness` with a
+`bevelThickness` of `thickness · PLATE_BEVEL_T_F` (0.3). `ExtrudeGeometry`
+stands that bevel PROUD of both faces, so the plate the build cuts spans
+world [−2.3, 0.3], against the [−2, 0] that `BACK_PLATE_T` and `PLATE_TOP` /
+`PLATE_BACK` declare. TODO 153 found the dial side and re-derived it
+(`PLATE_BACK_FACE`, asserted at the plate build). The movement side was never
+re-derived, and every part seated off `PLATE_TOP` was solved against a face
+0.3 lower than the metal.
+
+**Measured.** This is a scratch probe on the TODO 200 build: world vertices
+in the band (0, 0.3) within the plate's radius, with a downward ray from
+z 1 confirming plate metal at the 0.3 face under each sampled vertex.
+Parts over solid plate inside the band:
+
+| part | lowest z |
+|---|---|
+| `transferWheel` | 0.075 |
+| `ratchet` | 0.150 |
+| `click` | 0.250 |
+| `alarmGovWheel` | 0.198 |
+| `alarmGovPinion` | 0.154 |
+| `alarmGovArbor` | 0.150 |
+| `genevaFingerDisc` | 0.100 |
+| `genevaFingerPin` | 0.100 |
+| `alarmArrestCross` | 0.100 |
+
+Beyond those:
+
+- an unnamed extrude at 0.075;
+- the train and balance pivots' bosses, at 0.170;
+- the cock legs, whose tapped joints `probe-184-frame-joints` reports at
+  z 0.00;
+- the case clamp screws, at 0.274, over metal at 5 of 9 samples.
+
+The burial is up to 0.225 under a part meant to clear the face by
+`CLEAR_MARGIN`.
+
+**Why nothing caught it.** The plate is a HELD fixture (TODO 187). It is in
+no sweep's pairs, so the margin was checked against the declared face and
+never against the cut one.
+
+**Fix path.**
+1. Fix the BUILDER, as TODO 98 fixed the pallet fork. Extrude
+   `thickness − 2·bevelThickness` so the lapped blank measures exactly
+   `BACK_PLATE_T`, and keep the §234 face assert, now reading −2.0.
+2. Re-solve the TODO 153 motion-works stack against the moved dial face.
+   `MW_PLATE_FACE_LOCAL` and `MW_LEG1_R` read `PLATE_BACK_FACE`, so derive
+   that constant from the builder's law rather than restating it.
+3. `PLATE_TOP_FACE` (TODO 200) follows the same law. The pillar's tenon
+   is `PLATE_TOP_FACE − PLATE_BACK_FACE` and its base is `PLATE_TOP_FACE`,
+   so the rivet re-fits itself. Re-read `probe-184-frame-joints`.
+4. Optionally, put the base plate in a clearance tier against the parts
+   seated on it, so the next face error is a red row.
+
+Feasibility: medium · Battery: moves the fingerprint, every digest touching
+the plate and the motion-works stack; full battery.
+
+## 203. The link search's tab zone scores no fixed off-centre metal centred inside r 7 (feeler and rocker brackets, seat and sleeve posts)
+
+Found closing [TODO 190]. The §112 rod-site search scores the drive tab's
+neighbourhood (`TAB_R` 1.3 about the tab at r 5.4, plus the fork block's
+modelled seat) against `tabObs`, which admits an obstacle only when its box
+CENTRE stands beyond r 7. The filter's purpose is to drop CENTRE machinery
+(the face cam, the disc train), which rings the tab's radius at every azimuth
+and cannot discriminate between tab seats.
+
+The test is a proxy, and it fails in one direction:
+
+- **Off-centre parts are scored on ALL their metal**, which is right. The
+  alarm setting idler (axis r 8.7) reaches r 4.08, and that reach is what
+  keeps the fork off it. Testing the NEAREST extent instead drops the idler
+  and re-opens the FORBIDDEN `Alarm link ⇄ Alarm setting idler` (measured,
+  [TODO 190]: 13/97 alarm poses, plus the centre pin 0.1014 off a release
+  sleeve post, at the rod site the search chose before its plate-land rule).
+- **Fixed off-centre metal whose centre sits INSIDE r 7 is never scored.**
+  Measured in the tab band: the feeler's bracket lugs and lever (centres
+  r 5.5–5.8), the silence rocker's bar and lugs (r 5.6–6.1), the release
+  seat's posts (r 5.56) and the release sleeve's guide posts (r 5.15). None
+  of them turns about the ring's axis, so none is the machinery the filter
+  exists to drop. At [TODO 190]'s site the tab stands at 324°, in the
+  feeler's and rocker's quadrant.
+
+Admitting by identity — everything that does not turn about the ring's axis
+— is the honest rule, and it starves the solve to −1.048 (bound by a sleeve
+post at tab 354°). The sleeve posts are ring-borne in the selector's own sense
+and are what `_postClear` already models for the SELECTOR's posts; the
+sleeve's three are one band deeper and modelled by nothing here.
+
+Nothing is fouled today: restricted `inspection` and `undeclaredClearance`
+over the Alarm link read clean at the re-solved site. The search is a
+heuristic whose verdicts the battery checks after it, so this is a solver
+blind spot rather than a defect in the metal, and it matters the next time the
+site moves.
+
+**Fix path (P3, the link's own corridor solve).**
+1. Classify tab-zone obstacles by what they ARE, not where their box centre
+   falls: drop a part only when its rotor axis is the ring's (the disc train,
+   the face cam, anything orbiting the centre), and score every fixed part.
+2. Model the release sleeve's guide posts the way `_postClear` models the
+   selector's, against the fork's modelled footprint rather than `TAB_R`'s
+   1.3 disc, which over-claims at r 5.15. Without this, step 1 has no
+   feasible site.
+3. Re-solve. If the site moves, re-derive the link's hoisted constants the
+   way [TODO 190] did (body length, bush OD, rod length, plate bores, the
+   beak fork, TODO 82's stall and governor), and check the plate lands.
+
+Feasibility: medium · Cost: the tab filter and a sleeve-post guard in the
+§112 search (~40 lines), then a possible re-site · Battery: full, with a
+`--report` diff, if the site moves.
