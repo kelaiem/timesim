@@ -159,7 +159,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | CLOSED | Ten bodies, not four, were inside out: the three waiver keys were `unit/(unnamed)` blankets, and TODO 184's six bored cock legs and pads arrived under them. The escape bridge's boss and foot tube, the bored legs, `makeJewelSetting`'s collar and `alarmFaceCam` are all wound outward at their builders. Each lathe runs `assertLatheOutward`, and `INVERTED_WAIVERS` is empty |
-| 76 | OPEN | Re-measured and SPLIT (2026-10-02): the overlap is two defects, not one. The worst (0.238, a rivet through its own leaf) is NOT the twist — it is the joints being spaced by ARC along the chain's path while each link's bores are a fixed CHAIN_PITCH apart in a straight line, so a tight curve or the pinned span→coil corner puts two rivets 1.595 apart (−16%). That half is fixable here: lay the joints a chord pitch apart and absorb the closure in the straight span. The twist half (16–35° per wrap joint against a 4.5° joint-play allowance) is a layout problem, TODO 208 |
+| 76 | OPEN | Split and half closed (2026-10-02). The joints are now a CHORD apart (`chainJoints`, one law for the builder and both arrest readers), so the arc-vs-chord mismatch that put two rivets 1.595 apart at the span→coil corner is gone: the worst rivet row is 0.078 (was 0.238), and every rivet stands inside its running fit (boot-asserted). What remains is the twist, link⇄link 0.155 and rivet tilt 0.078, which is TODO 208's layout problem; narrow the declaration to it and report the per-joint twist against the 4.5° joint-play allowance |
 | 78 | CLOSED | §54's `checkSlenderness` was exported and NEVER REGISTERED in `CHECKS` — `start()` answered "unknown check", so it had not run once since §52, its waiver waived rows in a report nothing produced, and three different λ values for one mesh accumulated in `main.js`. Second instance of the class (TODO 29 was the first), so `ci-battery` now GATES `CHECK_NAMES` (read from the page) against `BATTERY`. It also measured stock length, not free length: meshes may now declare `userData.bearings` and λ is taken per free length, an overhang scaled by `SLENDER_OVERHANG_K` = ∛16. Report (§40): **9 rows over ceiling, 7 unwaived and untriaged** |
 | 79 | CLOSED (§202) | **A third hanger stands 2.64 u inboard of the rod end — the overhang §54's target allows this section as a cantilever, λₑ 27 — and the middle hanger moved to the run's midpoint; the rod-end term went 21.2 → 341 N/m coupled, the chain delivers 6.17 mN at the tab (probe and derivation agree), inside the window, and the transfer waiver is retired. `tools/probe-79-rodend-band.mjs` scanned the run §68 never did: clear by ≥ 2.5 u from the rod end to t 10.6.** As filed: the alarm link's lay shaft had a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. **MEASURED by TODO 82: the transfer IS rod-end-limited, at ≈1.58 mN — below the 5–50 mN band, and the rod-end overhang carries 72.4% of the whole chain's compliance while the fork-end the section was sized against carries 0.1%.** (The 3.3 mN first filed here was the free-cantilever value against a stroke that was itself a deleted constant; both are corrected in TODO 82.) Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
 | 80 | OPEN | `weldGeometry` returns a fresh `BufferGeometry` and does not copy `userData`, and `weldTree` assigns it at the end of boot — so a `geometry.userData.subBodies` declared on a non-indexed geometry is silently deleted before any check runs, reporting `declaredGeometries: 0`. §77's shipped tables survive by construction (`mergeGeos` declares after welding, and its output is indexed), which nothing states anywhere |
@@ -8952,9 +8952,28 @@ times that. The lean is §124's answer to a cone whose slope reaches 10.4:1 at
 the base, so this half is filed as the layout problem it is: **TODO 208**.
 
 **Re-scoped fix path for this item:**
-1. Joints a chord pitch apart, closure taken up in the straight span, §150's
-   length law restated on the chord polygon. This removes the mis-spaced
-   population and the 0.238.
+1. **LANDED** — joints a chord apart. `chainJoints` (main.js) is now the one
+   joint law. The builder, the arrest's analytic reach table and the pad law
+   that samples the builder's buffer all read it, and each link's arc
+   position comes with it, because the judged-link guard, the lean ramp and
+   β(s) are stated in arc. Every chord is EQUAL, and the common chord c is
+   solved by bisection so that N of them walked from the fusee end land on
+   the hook. This needed no restatement of §150 after all. §150 already holds
+   the run's length to half a pitch, not to N pitches, so c was never going
+   to be CHAIN_PITCH exactly. What equal chords remove is the curvature's
+   share of the mismatch, which `getSpacedPoints` had landed whole on the
+   tightest bend. Measured over the reserve, c = 1.8853–1.8925, so each rivet
+   stands 0.004–0.007 off its bore's centre. That is inside `CHAIN_RIVET_FIT`
+   (0.013), and a boot assert holds it at 21 tensions (it fires when
+   mutated). The overlap rows, re-run with the declaration removed:
+
+   | tension | rows | link⇄rivet worst | link⇄link worst |
+   |---|---|---|---|
+   | 0.02 | 44 | 0.011 (was 0.079) | 0.017 |
+   | 0.2 | 52 | 0.078 (was 0.231) | 0.154 |
+   | 1.0 | 89 | 0.078 (was **0.238**) | 0.155 |
+
+   What is left is the twist, both populations, and that is TODO 208's.
 2. Narrow the declaration to what is left. The rivets' tilt and the link⇄link
    twist stay declared, citing TODO 208, with the measured per-joint twist
    REPORTED against the 4.5° allowance. A twist under the allowance is joint
@@ -27542,6 +27561,14 @@ inside its gearing:
    priority P3).
 3. **A larger fusee radius ratio budget** (with TODO 207's larger barrel, which
    moves the torque law the fusee is cut against).
+
+**Owed with it: `explain.html`'s fusee entry** says the 36.3° of per-joint
+twist is shed "through joint play over the free span". The running fit allows
+≈ 4.5°, so that sentence is the fiction describing itself as physics. It is
+left unchanged here only because editing the English drops the block from all
+sixteen locale tables (`explain-i18n --check` fails on the stale keys), so the
+correction belongs with a translation pass. That pass is this item's landing
+at the latest.
 
 The acceptance is the per-joint twist on the wrap under the 4.5° joint-play
 allowance at every tension, with §61's float and burial rows still green. At
