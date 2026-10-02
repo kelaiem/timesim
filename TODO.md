@@ -27210,9 +27210,10 @@ What the new thickness moves, by derivation:
   engaged against 0.872 required, 11/11, controls PASS.
 - Boot is silent.
 
-Re-measured with the same scratch probe (vertices in the band, a downward
-ray confirming plate metal): no part has a vertex over solid plate above z
-0. Below it, in (−0.3, 0), what remains is designed:
+Measured on the built meshes, the slab and both pocket floors now span
+[−2.3, 0.000]. So nothing seated off `PLATE_TOP` is inside the metal any
+more. The same scratch probe, re-run on the band (−0.3, 0) with a downward
+ray confirming plate metal, finds only designed sinks:
 - the balance pivot and its two rubbed-in collars at −0.297
   (`makeJewelSetting`'s sunk collar);
 - the alarm barrel arbor at −0.2, which runs in its bored boss (§99);
