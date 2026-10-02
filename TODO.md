@@ -147,7 +147,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 | 70 | CLOSED | `makeJewelSetting`'s collar is a CLOSED profile now, wound outward, and it runs `assertLatheOutward`. The open shell, the parity raycast's hazard (TODO 27), is gone with the winding. Closed with TODO 75 |
 | 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
-| 69 | OPEN (stage 1 done) | `TQ_T` = 0.303 mm has no derivation. Stage 1 derived the floor: a real cheese head on the 1.0 mm plate screws (k = 0.6 d, seated over a `STOCK_MIN_U` land) needs **1.900 u (0.720 mm)**; §148's chaton window opens at 0.950 u; real plates run 0.9–1.4 mm. It also inventoried the consumers by datum: `TQ_BOT_Z` is fixed; what is keyed to `TQ_TOP_Z` moves ΔT (the alarm cam, lever and tail plane, studs, posts); `TQ_MID_Z` moves ΔT/2; the case follows. Stage 2: choose the derived floor or the practice band, raise the screw heads in the same change, then a full battery `--report` diff |
+| 69 | CLOSED | `TQ_T` is DERIVED: a real cheese head on the 1.0 mm plate screws (k = 0.6 d), sunk flush over a `STOCK_MIN_U` land, gives 1.900 u (0.720 mm). The screws carry that head. The plate grew 1.1000. The stop work's ceiling reads the balance cock it always named, the swept rows are keyed to the plate, two hoisted constants were re-measured, and the case's pane plane clears the outboard metal. Boot is silent |
 | 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
@@ -8368,7 +8368,56 @@ constants by design. That gap is structural, and this item is its first
 instance rather than a one-off typo.
 
 
-## 69. The three-quarter plate is 0.303 mm thick, and §148 made that load-bearing
+## 69. The three-quarter plate is 0.303 mm thick, and §148 made that load-bearing — CLOSED
+
+**Closed by stage 2 (2026-10-02).** The owner chose the derived floor (B).
+`TQ_T` = `CHEESE_HEAD_K · CASE_SCREW_SHAFT_D + STOCK_MIN_U` = **1.900 u
+(0.720 mm)**, with the constraint written beside it. `CHEESE_HEAD_K` is 0.6,
+the low end of ISO 1207's k/d. The plate screws carry that cheese head now:
+`PLATE_SCREW_HEAD_T` = 1.583 u, sunk flush over a land of
+`PLATE_SCREW_LAND_T` = `STOCK_MIN_U`. `FRAME_JOINTS` still reads 11/11
+engaged, the plate screws at their full 1.5 mm in the pillars.
+
+The plate grew by exactly 1.1000 (`TQ_TOP_Z` 9.5454 → 10.6454, `TQ_BOT_Z`
+fixed). The first boot raised ten warnings. Each traced to a datum, and
+each was fixed at it:
+
+- **The stop work's mast ceiling** (seven of them). `solveStopWork` calls
+  its input "the balance cock's height", and it was passed `TQ_TOP_Z`.
+  `COCK_T` was 0.8 like `TQ_T`, so the two tops coincided at 9.5454. Read
+  through the thicker plate, the extra headroom moved the hack pin out along
+  its arm. The rod's route then met the fourth arbor's collar (−0.284, where
+  main cleared +0.074). The alarm link's rod site re-solved somewhere else,
+  three hoisted constants drifted, the §35 plate bores parted from the rod,
+  and §137's transfer arithmetic changed members. The input is
+  `COCK_SLAB_TOP` now, the member it always named. The hack pin is
+  bit-identical to main (k 0.8210), and all seven warnings went with it.
+- **Two declared swept rows** in `BACK_SWEPT_REGIONS` (Alarm switch, Alarm
+  striking wheel) were world-z literals, stale by exactly ΔT. This was the
+  third time for the same reason, so they are keyed to `TQ_TOP_Z` plus each
+  tower's measured rise.
+- **The selector rod's length**, a measured hand-off constant by design,
+  was re-measured +1.1000 (`ALARM_LINK_ROD_LEN_U` 20.4894). Its thicker
+  section moved the shaft's body length 0.04, and that was re-measured too
+  (`ALARM_LINK_BODY_LEN_U` 20.5327).
+- **The case's glass step.** The alarm hammer's lever plane rides the plate
+  top, so it rose to 11.932 at r 46–47. That is outboard of where the raised
+  step can reach, and 0.005 inside the margin of the pane plane. The band's
+  back face now also derives from everything outboard of the aperture
+  (`zPaneFloor`). The case pays the 0.005 in height, and the hammer is
+  untouched. The term is inert wherever the outboard metal already clears.
+- **The pawl-spring stud's swing** (the battery's one red, `expectedContacts`
+  Alarm switch ⇄ Case: 0.0696 against 0.15 at `alarmPress` f 0.125). The
+  stud rides the column driver, and the press swings it from r 40.088 out to
+  40.418, past the glass step that the build pose had sized, so it ends up
+  under the outer pane. A declared swept row covers it (r 39.7–40.5,
+  `TQ_TOP_Z + 1.368`), measured over all 14 axes.
+
+After these, boot is silent. **What §148's countersink can now do:** window
+A opens at 0.950 u, so the chaton screws could take cheese heads. They stay
+countersunk here, because that is a real construction and not debt; this
+item only asked for the plate to stop forcing it.
+
 
 `TQ_T = 0.8` (`main.js`) is one of the few dimensions in this movement that
 carries no derivation at all — no comment, no constraint, no citation. Through
