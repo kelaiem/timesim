@@ -36247,6 +36247,17 @@ const BACK_SWEPT_REGIONS = [
   // 12.3559 over §226's plate top 9.5454 is 2.8105, kept as the 2.8146 the
   // last re-authoring rounded to. A plate that moves now carries the row.
   { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: TQ_TOP_Z + 2.8146 },
+  // TODO 69 — the column driver's pawl-spring stud, which the build pose cannot
+  // see: it rides the driver, and the press swings it outward, so at the build
+  // pose it reads r 39.755–40.088 and at alarmPress it reaches 40.418 (measured
+  // over all 14 axes × 33 poses; only alarmPress carries it past 40.088). Its
+  // top is 12.0125 in TODO 69's tree, 1.3671 over the plate top it rides
+  // (ALARM_DRIVER_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN), rounded up here. Under the
+  // 0.303 mm plate it stood 1.1 lower and the pane never cared. At 0.720 mm the
+  // glass step's wall, sized from the build pose, stopped at 40.24, and the
+  // battery's expectedContacts read the swung stud 0.0696 under the outer pane
+  // (alarmPress f 0.125, floor 0.15). This row widens the step to cover it.
+  { unit: 'Alarm switch', r0: 39.7, r1: 40.5, z: TQ_TOP_Z + 1.368 },
   // The striking wheel's rotation is not axisymmetric at bin scale: measured
   // swept 10.982 at r 33.6–34.5 against build 10.582 (probe-back-envelope,
   // 43 poses, 2026-09-14).

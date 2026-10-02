@@ -8405,6 +8405,12 @@ each was fixed at it:
   back face now also derives from everything outboard of the aperture
   (`zPaneFloor`). The case pays the 0.005 in height, and the hammer is
   untouched. The term is inert wherever the outboard metal already clears.
+- **The pawl-spring stud's swing** (the battery's one red, `expectedContacts`
+  Alarm switch ⇄ Case: 0.0696 against 0.15 at `alarmPress` f 0.125). The
+  stud rides the column driver, and the press swings it from r 40.088 out to
+  40.418, past the glass step that the build pose had sized, so it ends up
+  under the outer pane. A declared swept row covers it (r 39.7–40.5,
+  `TQ_TOP_Z + 1.368`), measured over all 14 axes.
 
 After these, boot is silent. **What §148's countersink can now do:** window
 A opens at 0.950 u, so the chaton screws could take cheese heads. They stay
