@@ -5604,6 +5604,10 @@ let minuteWheelBase = Math.PI / minuteWheelTeeth;
 // (Z_SETTING, RSV_P0_TOP_Z and SETTING_ROD_R are hoisted above the minute
 // wheel's build now — TODO 150 item 1 — with their derivation comments there.)
 const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
+// TODO 200 — and its movement-side twin, +0.3: the bevel stands proud of BOTH
+// faces. A part RIVETED through the plate spans the metal the extrude cuts,
+// face to face, not the slab constant — BACK_PLATE_T is 2.0, the plate is 2.6.
+const PLATE_TOP_FACE = PLATE_TOP + BACK_PLATE_T * G.PLATE_BEVEL_T_F;
 // TODO 172 — the alarm setting lane (wheel, both idlers, the crisp arbor pinion
 // and its rod end) stands ONE CLEAR_MARGIN off the dial's back face; it was a
 // designed 0.05, under the margin. + MEASURED_MARGIN_BAND because a plane that
@@ -12302,6 +12306,7 @@ function checkPlateWindows(stage) {
 // of this block. The scan itself is unchanged, and must stay this side of the
 // push: a pillar may not avoid its own screw's seat.
 const pillarSeats = []; // §20: the plate screws land over the solved seats
+const pillarRivetSites = []; // TODO 200: each tenon's countersunk land, put back after the late re-cut
 // TODO 184 — THE PILLAR IS SIZED FROM ITS SCREW, and the screw from its job.
 // This chain used to run the other way: land = TQ_BOT_Z·0.09·1.5 (a fraction
 // of the gap between the plates), head = land·0.6, thread = head/2 — a
@@ -12340,7 +12345,26 @@ const PILLAR_TAP_DEPTH = PILLAR_ENGAGE + G.THREAD_PITCH_PER_DIA * PILLAR_THREAD_
 // carries the pillar's bending at the plate. The shoulder it seats with is the
 // foot land (1.5 × body), so it bears on plate from the tenon out to the land.
 const PILLAR_TENON_R = PILLAR_BODY_R - STOCK_MIN_U;
-const PILLAR_TENON_LEN = BACK_PLATE_T;
+// TODO 200 — the joint is the plate's PRESENTED thickness, face to face
+// (PLATE_TOP_FACE − PLATE_BACK_FACE, 2.6), not the slab constant: at
+// BACK_PLATE_T the shoulder stood 0.3 inside the movement-side face and the
+// tenon stopped 0.3 short of the dial-side one, a rivet ending inside its
+// own hole. The shoulder now seats ON the presented face.
+const PILLAR_BASE_Z = PLATE_TOP_FACE;
+const PILLAR_TENON_LEN = PLATE_TOP_FACE - PLATE_BACK_FACE;
+// TODO 200 — THE RIVETED END. A riveted tenon is spread into a countersink on
+// the far face, which is what makes it hold: a plain tenon in a plain hole
+// pulls straight out. The countersink is 45°, so its depth is its radial
+// step, and that step is the shoulder's own — STOCK_MIN_U — so the plate is
+// captured between two equal lips, one each side: the least a lathe can cut
+// that still bears, and well inside the c ≤ thickness − STOCK_MIN_U the plate
+// needs left round the tenon above it. The mouth comes out at exactly the
+// pillar's body radius, the spread head is turned to it, and the late hole
+// below is cut through at the mouth with the conical land put back.
+const PILLAR_RIVET_C = STOCK_MIN_U;
+const PILLAR_RIVET_MOUTH_R = PILLAR_TENON_R + PILLAR_RIVET_C;
+if (PILLAR_RIVET_C > PILLAR_TENON_LEN - STOCK_MIN_U + 1e-9)
+  console.warn(`TODO 200: pillar countersink ${PILLAR_RIVET_C.toFixed(3)} leaves under STOCK_MIN_U of plate round the tenon (plate ${PILLAR_TENON_LEN.toFixed(3)})`);
 if (PILLAR_BODY_R - PILLAR_TAP_R < STOCK_MIN_U - 1e-9)
   console.warn(`TODO 184: pillar wall round its tapped bore ${(PILLAR_BODY_R - PILLAR_TAP_R).toFixed(3)} — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
 if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
@@ -12363,7 +12387,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // reach, and would veto a pillar seat nowhere near real metal). Only the
   // meshes actually low enough to meet a full-height pillar column matter:
   // each keyless mesh's own world-vertex AABB, kept only where its z-band
-  // meets the pillar's own [−PILLAR_TENON_LEN, TQ_BOT_Z] span (a margin either side, since a
+  // meets the pillar's own [PLATE_BACK_FACE, TQ_BOT_Z] span (a margin either side, since a
   // pillar full-height column reaches those ends exactly).
   const PILLAR_KEYLESS_BOXES = [];
   {
@@ -12378,11 +12402,12 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       const b = new THREE.Box3();
       for (let i = 0; i < pos.count; i++) b.expandByPoint(o.localToWorld(kv.fromBufferAttribute(pos, i)));
       // TODO 184 step 3: the pillar now reaches DOWN through the base plate on
-      // its tenon, so its span is [−PILLAR_TENON_LEN, TQ_BOT_Z]. Reading the old
+      // its tenon, so its span is [PLATE_BACK_FACE, TQ_BOT_Z] (TODO 200: the
+      // presented face, the rivet's end). Reading the old
       // [0, TQ_BOT_Z] left the crown stem's sleeve — standing in the plate's
       // rim notch at z −4.10..−1.40 — out of the scan, and the first battery
       // run of the tenon found the 148° pillar's tenon on it.
-      if (b.max.z < -PILLAR_TENON_LEN - CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
+      if (b.max.z < PLATE_BACK_FACE - CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
       PILLAR_KEYLESS_BOXES.push(b);
     }
   }
@@ -12496,10 +12521,11 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       if (best) break; // nearest feasible bearing to the quadrant's ideal wins
     }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
-    const pillar = G.makePillar({ height: TQ_BOT_Z, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
-      tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN });
+    const pillarH = TQ_BOT_Z - PILLAR_BASE_Z;
+    const pillar = G.makePillar({ height: pillarH, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
+      tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN, rivetC: PILLAR_RIVET_C });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
-    pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
+    pillar.position.set(best.x, best.y, PILLAR_BASE_Z + pillarH / 2);
     // TODO 184 — the pillar's PLAN, published for the siting solves that
     // score the built scene (§198's vocabulary, the alarm link rod's first):
     // a turned part is a disc of its widest land, and its axis-aligned box
@@ -12510,12 +12536,14 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     pillarsGroup.add(pillar);
     pillarSeats.push({ x: best.x, y: best.y });
     // The tenon's hole: the pillar is solved long after the base plate is
-    // cut, so it waits for the late re-cut below. Its radius IS the tenon's —
-    // a riveted fit is assembled touching.
-    BACK_PLATE_LATE_HOLES.push({ x: best.x, y: best.y, r: PILLAR_TENON_R });
+    // cut, so it waits for the late re-cut below. TODO 200: it is cut through
+    // at the countersink's MOUTH, and the land below puts the bore back — the
+    // tenon's own radius above, the 45° cone below, both assembled touching.
+    BACK_PLATE_LATE_HOLES.push({ x: best.x, y: best.y, r: PILLAR_RIVET_MOUTH_R });
+    pillarRivetSites.push({ x: best.x, y: best.y });
     declareFrameJoint({ joint: 'Pillar ⇄ base plate', clamped: 'pillar (shoulder)', host: 'base plate',
-      frame: pillar, x: 0, y: 0, top: -TQ_BOT_Z / 2, headT: 0, clamp: 0, shank: PILLAR_TENON_LEN,
-      d: 2 * PILLAR_TENON_R, required: BACK_PLATE_T, meshName: 'pillar' });
+      frame: pillar, x: 0, y: 0, top: -pillarH / 2, headT: 0, clamp: 0, shank: PILLAR_TENON_LEN,
+      d: 2 * PILLAR_TENON_R, required: PILLAR_TENON_LEN, meshName: 'pillar' });
   }
   // TODO 27 — AND THE SEATS ARE BORED. §20 recorded the plate screws as
   // "head FLUSH with the face" and verified the position; flush was achieved
@@ -12549,6 +12577,23 @@ await breathe();
   }
 }
 recutBackPlate();
+// TODO 200 — THE COUNTERSUNK LANDS. Each pillar's hole is cut through at the
+// countersink's mouth; this puts the bore back as a turned land, the pocket
+// floors' idiom (a child of the plate, its name and finish), lapping
+// SEAT_LAND_LAP into the stock past the bevel's widening at the faces. Its
+// bore is the tenon's radius from the movement face down to the countersink,
+// then the 45° cone out to the mouth on the dial face — the spread head's own
+// profile, turned on the pillar's segment count so the two touch facet for
+// facet.
+for (const s of pillarRivetSites) {
+  const F = BACK_PLATE_T / 2 + BACK_PLATE_T * G.PLATE_BEVEL_T_F;   // presented faces, plate-local ±
+  const Ro = PILLAR_RIVET_MOUTH_R + plateR * G.PLATE_BEVEL_F + SEAT_LAND_LAP;
+  const land = new THREE.Mesh(G.makeRivetLand({ tenonR: PILLAR_TENON_R, mouthR: PILLAR_RIVET_MOUTH_R,
+    outerR: Ro, z0: -F, z1: F, segments: G.PILLAR_SEGMENTS }), MATS.perledNickel);
+  land.name = 'backPlate';   // support resolves the plate by this exact name
+  land.position.set(s.x, s.y, 0);
+  backPlate.add(land);
+}
 
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();

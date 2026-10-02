@@ -17,8 +17,9 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 202 | OPEN | The base plate's extrude carries its `bevelThickness` PROUD of both faces, so it presents [−2.3, 0.3] against `PLATE_TOP` 0 / `PLATE_BACK` −2. The dial side was re-derived (TODO 153's `PLATE_BACK_FACE`); the movement side never was, and the parts seated off `PLATE_TOP` sit up to 0.225 inside the metal over solid plate: the transfer wheel, ratchet, click, governor wheel/pinion/arbor, geneva finger disc and pin, alarm arrest cross, the cock legs and pivot bosses. The plate is a held fixture, so no sweep sees it. Fix: cut the extrude at `BACK_PLATE_T − 2·bevel` (the pallet fork's precedent), then re-solve the TODO 153 stack against the moved dial face. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
-| 200 | OPEN | The pillar tenons pass the base plate flush, but their riveted ends are not drawn. That is the peened spread into a dial-side countersink, which is what holds the joint. The plate is one extrusion and has no stepped hole. Fix: countersink the four pillar holes on the dial side (a late re-cut or a land ring), and draw the spread as a frustum. Derive the countersink depth from `BACK_PLATE_T − STOCK_MIN_U` |
+| 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
@@ -26648,7 +26649,7 @@ space; stage 3 tick law + one axis + ~3 hand-off rows; stage 4 a rod through
 both plates and a re-site · Battery: stage 2 probe-only; stages 3 and 4 full
 battery with a `--report` diff
 
-## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread
+## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread — CLOSED
 
 Filed from [TODO 184]'s residue (#545). Step 3 of 184 riveted the four
 pillars into the base plate:
@@ -26691,6 +26692,43 @@ Feasibility: small to medium · Cost: about 60–120 lines in `geometry.js`
 and `main.js` · Battery: moves the fingerprint and the base plate's digest.
 The full battery runs.
 
+**Closed — what was built.**
+
+- **The countersink.** Its depth is `PILLAR_RIVET_C` = `STOCK_MIN_U`, at
+  45°, so the radial step equals the shoulder's own. The plate is captured
+  between two equal lips, and `c` sits well inside `c ≤ thickness − S`; a
+  boot assert holds that bound. The mouth `PILLAR_TENON_R + c` comes out at
+  exactly `PILLAR_BODY_R`.
+- **The cut.** The late hole is cut through at the mouth, so the existing
+  late-hole land check (STOCK_MIN_U to every other opening and to the edge)
+  now covers the countersink's widest diameter. That is the "must clear
+  every other cut" bound this item asked for. Measured, the nearest other
+  opening is 7.3 off.
+- **The land.** The bore is put back by a turned land per pillar:
+  `G.makeRivetLand`, a closed lathe behind `assertLatheOutward`. It is hung
+  on the plate as the pocket floors are (named `backPlate`, so `support`,
+  the held-fixture gates and the digest read it). It laps `SEAT_LAND_LAP`
+  past the bevel's widening at the faces, and is turned on
+  `G.PILLAR_SEGMENTS`, the pillar's own 24, so the spread head and its seat
+  touch facet for facet.
+- **The spread.** `makePillar({ rivetC })` turns the tenon's last `c` as the
+  matching 45° frustum, flush with the dial face.
+
+**And the joint was 0.6 short of the plate it claimed to fill.** The base
+plate's extrude stands its `bevelThickness` proud of BOTH faces. It
+PRESENTS [−2.3, 0.3], which TODO 153 already established for the dial side
+(`PLATE_BACK_FACE`). TODO 184 step 3 sized the tenon at `BACK_PLATE_T` and
+stood the pillar on `PLATE_TOP` 0. Measured on the built meshes, the
+shoulder sat 0.3 inside the movement-side face and the tenon ended 0.3
+short of the dial-side one: a rivet stopping inside its own hole, which a
+countersink there would only have made visible. This needed a new constant,
+`PLATE_TOP_FACE` (+0.3), the movement-side twin of `PLATE_BACK_FACE`. The
+pillar now stands on that face (`PILLAR_BASE_Z`), and its tenon is
+`PLATE_TOP_FACE − PLATE_BACK_FACE` = 2.6 long. `probe-184-frame-joints`
+reads the four rows at 0.985 mm engaged against 0.985 required, measured on
+the metal, 11/11, controls PASS. The same 0.3 sits under every other part
+seated off `PLATE_TOP`; that is filed as TODO 202, not absorbed here.
+
 ## 201. The alarm ribbon works past its alloy's tensile strength, and its section and the governor solve are re-cut together
 
 Found closing [TODO 193], whose row 13 holds both mainspring ribbons to the
@@ -26731,3 +26769,62 @@ leaves a k a quarter of the metal's.
 Feasibility: medium · Cost: about 100–200 lines in `main.js` (§104's
 governor block) and `geometry.js` · Battery: moves the alarm barrel's
 geometry and the governor's ring. The full battery runs.
+
+## 202. The base plate's movement-side face stands 0.3 above PLATE_TOP, and the parts seated on PLATE_TOP sit inside it
+
+Found by TODO 200. `G.makeBackPlate` extrudes `thickness` with a
+`bevelThickness` of `thickness · PLATE_BEVEL_T_F` (0.3). `ExtrudeGeometry`
+stands that bevel PROUD of both faces, so the plate the build cuts spans
+world [−2.3, 0.3], against the [−2, 0] that `BACK_PLATE_T` and `PLATE_TOP` /
+`PLATE_BACK` declare. TODO 153 found the dial side and re-derived it
+(`PLATE_BACK_FACE`, asserted at the plate build). The movement side was never
+re-derived, and every part seated off `PLATE_TOP` was solved against a face
+0.3 lower than the metal.
+
+**Measured.** This is a scratch probe on the TODO 200 build: world vertices
+in the band (0, 0.3) within the plate's radius, with a downward ray from
+z 1 confirming plate metal at the 0.3 face under each sampled vertex.
+Parts over solid plate inside the band:
+
+| part | lowest z |
+|---|---|
+| `transferWheel` | 0.075 |
+| `ratchet` | 0.150 |
+| `click` | 0.250 |
+| `alarmGovWheel` | 0.198 |
+| `alarmGovPinion` | 0.154 |
+| `alarmGovArbor` | 0.150 |
+| `genevaFingerDisc` | 0.100 |
+| `genevaFingerPin` | 0.100 |
+| `alarmArrestCross` | 0.100 |
+
+Beyond those:
+
+- an unnamed extrude at 0.075;
+- the train and balance pivots' bosses, at 0.170;
+- the cock legs, whose tapped joints `probe-184-frame-joints` reports at
+  z 0.00;
+- the case clamp screws, at 0.274, over metal at 5 of 9 samples.
+
+The burial is up to 0.225 under a part meant to clear the face by
+`CLEAR_MARGIN`.
+
+**Why nothing caught it.** The plate is a HELD fixture (TODO 187). It is in
+no sweep's pairs, so the margin was checked against the declared face and
+never against the cut one.
+
+**Fix path.**
+1. Fix the BUILDER, as TODO 98 fixed the pallet fork. Extrude
+   `thickness − 2·bevelThickness` so the lapped blank measures exactly
+   `BACK_PLATE_T`, and keep the §234 face assert, now reading −2.0.
+2. Re-solve the TODO 153 motion-works stack against the moved dial face.
+   `MW_PLATE_FACE_LOCAL` and `MW_LEG1_R` read `PLATE_BACK_FACE`, so derive
+   that constant from the builder's law rather than restating it.
+3. `PLATE_TOP_FACE` (TODO 200) follows the same law. The pillar's tenon
+   is `PLATE_TOP_FACE − PLATE_BACK_FACE` and its base is `PLATE_TOP_FACE`,
+   so the rivet re-fits itself. Re-read `probe-184-frame-joints`.
+4. Optionally, put the base plate in a clearance tier against the parts
+   seated on it, so the next face error is a red row.
+
+Feasibility: medium · Battery: moves the fingerprint, every digest touching
+the plate and the motion-works stack; full battery.
