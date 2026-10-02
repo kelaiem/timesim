@@ -4,10 +4,14 @@
 // power was FRICTIONLESS. EQUALISATION holds the fusee's level product to float
 // noise and the spring's k to its ribbon, and OSCILLATOR solves the hairspring
 // to the balance's inertia; nothing asked whether one could DRIVE the other.
-// AMPLITUDE_TRUE_DEG = 270 is called a "physical reference", and two sites price
-// loads against it: the hack brake's 1.3 mN (main.js, the priceRigidBentLink
+// AMPLITUDE_TRUE_DEG = 270 was called a "physical reference", and two sites
+// priced loads against it: the hack brake (main.js, the priceRigidBentLink
 // block) and §218's physical breathing peaks. This probe asked first; the
-// record now carries the same arithmetic, and this is the second path.
+// record now carries the same arithmetic, and this is the second path. Since
+// TODO 192 step 4 the one literal is two, read off this solve: the CLAIM
+// (AMPLITUDE_CLAIM_DEG, its minimum rounded down — what the "to hold" rows
+// below price) and the PEAK the loads are priced at (AMPLITUDE_PEAK_DEG, its
+// maximum rounded up).
 //
 // Where the numbers come from. The live figures are read off a booted tree:
 // the equalisation record (k, set-up and full-wind angles, the fusee's radii),
@@ -208,7 +212,7 @@ function run(A, piv = { train: null, bal: Q.balPivR }) {
   const supply = etaTotal * grossPerBeat;           // J delivered to the balance per beat
   // Per beat (half an oscillation): loss = (π/Q)·½kθ²  +  2θ·T_f  ⇒  aθ² + bθ − c = 0.
   const amp = (tf) => { const a = Math.PI * k / (2 * A.qOther), b = 2 * tf, c = supply; return (-b + Math.sqrt(b * b + 4 * a * c)) / (2 * a); };
-  const thT = L.AMPLITUDE_TRUE_DEG * Math.PI / 180;
+  const thT = L.AMPLITUDE_CLAIM_DEG * Math.PI / 180;
   const needPerBeat = (tf) => Math.PI * k / (2 * A.qOther) * thT ** 2 + 2 * thT * tf;
   const need = needPerBeat(tfVert);
   const eNeeded = need / etaTotal * beats;          // J the ribbon must release over the reserve
@@ -218,11 +222,11 @@ function run(A, piv = { train: null, bal: Q.balPivR }) {
     stages, etaTrain, etaTotal, supply_nJ: supply * 1e9,
     balance: {
       tfVert_Nm: tfVert, tfFlat_Nm: tfFlat,
-      qPivotVertAt270: Math.PI * k * thT / (4 * tfVert), qPivotFlatAt270: Math.PI * k * thT / (4 * tfFlat),
+      qPivotVertAtClaim: Math.PI * k * thT / (4 * tfVert), qPivotFlatAtClaim: Math.PI * k * thT / (4 * tfFlat),
       ampVertDeg: amp(tfVert) * 180 / Math.PI, ampFlatDeg: amp(tfFlat) * 180 / Math.PI,
       ampNoFrictionTrainDeg: (() => { const s = grossPerBeat * A.escEff; const a = Math.PI * k / (2 * A.qOther), b = 2 * tfVert; return (-b + Math.sqrt(b * b + 4 * a * s)) / (2 * a) * 180 / Math.PI; })(),
     },
-    at270: {
+    atClaim: {
       needPerBeat_nJ: need * 1e9, shortfall: need / supply,
       springEnergyNeeded_mJ: eNeeded * 1e3,
       workingTurnsNeeded: (thFullNeeded - eq.setup.sweepRad) / (2 * Math.PI),
@@ -266,7 +270,7 @@ console.log(`          moment ${f(eq.momentRange_Nmm[0])} → ${f(eq.momentRange
 console.log(`          energy released over ${L.SPEC.reserveHours} h: ${f(E_spring * 1e3, 3)} mJ = ${f(E_spring / reserveS * 1e9, 1)} nW mean`);
 console.log(`fusee     ${f(fuseeTurns, 3)} turns, level torque ${f(tauFusee * 1e3, 4)} N·mm, r ${f(rFuseeSmall)} → ${f(rFuseeLarge)} u; drum feed R ${f(rWrap)} u`);
 console.log(`train     ratio fusee → escape ${f(ratio, 2)}; escape torque ${f(tauEsc * 1e9, 2)} nN·m; ${f(grossPerBeat * 1e9, 3)} nJ per beat at the fusee`);
-console.log(`balance   I ${e(osc.I)} kg·m², k ${e(osc.k)} N·m/rad, ${osc.f} Hz; mass ${f(balMass * 1e6, 2)} mg; E at ${L.AMPLITUDE_TRUE_DEG}° = ${f(0.5 * osc.k * (L.AMPLITUDE_TRUE_DEG * Math.PI / 180) ** 2 * 1e6, 3)} µJ`);
+console.log(`balance   I ${e(osc.I)} kg·m², k ${e(osc.k)} N·m/rad, ${osc.f} Hz; mass ${f(balMass * 1e6, 2)} mg; E at ${L.AMPLITUDE_PEAK_DEG}° (peak) = ${f(0.5 * osc.k * (L.AMPLITUDE_PEAK_DEG * Math.PI / 180) ** 2 * 1e6, 3)} µJ`);
 console.log(`pivots    ${arbors.map((a) => `${a.name} ${f(a.rPiv * L.UNIT_MM * 2 * Math.cos(Math.PI / Q.pivotSegs), 4)}`).join(', ')} mm ⌀ across the flats (floor ${f(L.PIVOT_MIN_U * L.UNIT_MM, 3)}; the rest at the floor, the balance too); fusee staff ${f(Q.upperStaffR * L.UNIT_MM * 2, 3)} mm ⌀ (plain bush); fork ${f(Q.forkStaffR * L.UNIT_MM * 2, 3)} mm ⌀`);
 for (const [n, R] of Object.entries(results)) {
   console.log(`\n--- ${n} corner ---`);
@@ -274,15 +278,15 @@ for (const [n, R] of Object.entries(results)) {
   console.log(`  train (drum → escape wheel)                η ${f(R.etaTrain, 4)}`);
   console.log(`  TOTAL ribbon → balance                     η ${f(R.etaTotal, 4)}  ⇒ ${f(R.supply_nJ, 3)} nJ per beat reaches the balance`);
   const b = R.balance;
-  console.log(`  balance pivot friction: vertical ${e(b.tfVert_Nm)} N·m (Q_pivot ${f(b.qPivotVertAt270, 0)} at 270°), dial-flat ${e(b.tfFlat_Nm)} N·m (Q_pivot ${f(b.qPivotFlatAt270, 0)})`);
+  console.log(`  balance pivot friction: vertical ${e(b.tfVert_Nm)} N·m (Q_pivot ${f(b.qPivotVertAtClaim, 0)} at ${L.AMPLITUDE_CLAIM_DEG}°), dial-flat ${e(b.tfFlat_Nm)} N·m (Q_pivot ${f(b.qPivotFlatAtClaim, 0)})`);
   console.log(`  SUSTAINED AMPLITUDE: vertical ${f(b.ampVertDeg, 1)}°, dial-flat ${f(b.ampFlatDeg, 1)}°  (train made frictionless, vertical: ${f(b.ampNoFrictionTrainDeg, 1)}°)`);
-  const t = R.at270;
-  console.log(`  to hold ${L.AMPLITUDE_TRUE_DEG}° vertical: ${f(t.needPerBeat_nJ, 2)} nJ/beat = ${f(t.shortfall, 2)}× what arrives; ribbon must release ${f(t.springEnergyNeeded_mJ, 1)} mJ`);
+  const t = R.atClaim;
+  console.log(`  to hold the claimed ${L.AMPLITUDE_CLAIM_DEG}° vertical: ${f(t.needPerBeat_nJ, 2)} nJ/beat = ${f(t.shortfall, 2)}× what arrives; ribbon must release ${f(t.springEnergyNeeded_mJ, 1)} mJ`);
   console.log(`     = ${f(t.workingTurnsNeeded, 2)} working turns at today's k (moment ratio then ${f(t.torqueRatioThen, 2)}:1), or k ×${f(t.kMultiplierAtTodaysAngles, 1)} at today's angles`);
 }
 console.log(`\n--- before the step-2 cut: the staffs as pivots (train ${f(REAL_PIV.train * L.UNIT_MM * 2, 3)} mm ⌀, balance ${f(REAL_PIV.bal * L.UNIT_MM * 2, 3)} mm ⌀) ---`);
 for (const [n, R] of Object.entries(realPivots))
-  console.log(`  ${n.padEnd(11)} train η ${f(R.etaTrain, 3)}, total η ${f(R.etaTotal, 3)}; amplitude vertical ${f(R.balance.ampVertDeg, 1)}°, dial-flat ${f(R.balance.ampFlatDeg, 1)}°; 270° needs ${f(R.at270.springEnergyNeeded_mJ, 1)} mJ = ${f(R.at270.workingTurnsNeeded, 2)} working turns or k ×${f(R.at270.kMultiplierAtTodaysAngles, 1)}`);
+  console.log(`  ${n.padEnd(11)} train η ${f(R.etaTrain, 3)}, total η ${f(R.etaTotal, 3)}; amplitude vertical ${f(R.balance.ampVertDeg, 1)}°, dial-flat ${f(R.balance.ampFlatDeg, 1)}°; ${L.AMPLITUDE_CLAIM_DEG}° needs ${f(R.atClaim.springEnergyNeeded_mJ, 1)} mJ = ${f(R.atClaim.workingTurnsNeeded, 2)} working turns or k ×${f(R.atClaim.kMultiplierAtTodaysAngles, 1)}`);
 console.log(`\n--- the pivots' own strength (bending at an upper-bound service load, against SPRING_SIGMA_Y_PA ${f(L.SPRING_SIGMA_Y_PA / 1e6, 0)} MPa) ---`);
 for (const r of strength) console.log(`  ${r.pivot.padEnd(14)} F ${e(r.load_N)} N over ${f(r.length_u)} u  σ ${f(r.sigma_Pa / 1e6, 1)} MPa  margin ×${f(r.margin, 1)}`);
 console.log(`\n--- the ribbon's own stress (uniform moment, σ = M·a/I) ---`);
@@ -314,8 +318,16 @@ if (!REC || !REC.corners) {
     same(`${n}: etaTrain`, R.etaTrain, C.etaTrain);
     same(`${n}: sustained vertical (deg)`, R.balance.ampVertDeg, C.sustainedDeg.vertical);
     same(`${n}: sustained flat (deg)`, R.balance.ampFlatDeg, C.sustainedDeg.flat);
-    same(`${n}: claim factor`, R.at270.shortfall, C.claim.factorOverSupply);
+    same(`${n}: claim factor`, R.atClaim.shortfall, C.claim.factorOverSupply);
   }
+  // TODO 192 step 4 — the record's amplitude extremes, and the two declared
+  // amplitudes read off them the safe way, against this computation's.
+  const amps = Object.values(results).flatMap((R) => [R.balance.ampVertDeg, R.balance.ampFlatDeg]);
+  const lo = Math.min(...amps), hi = Math.max(...amps);
+  if (!REC.amplitude) disagreements.push({ what: 'amplitude block', probe: 'present', record: 'absent' });
+  else { same('sustained minimum (deg)', lo, REC.amplitude.min.deg); same('sustained maximum (deg)', hi, REC.amplitude.max.deg); }
+  if (L.AMPLITUDE_CLAIM_DEG !== Math.floor(lo)) disagreements.push({ what: 'AMPLITUDE_CLAIM_DEG is not ⌊minimum⌋', probe: Math.floor(lo), record: L.AMPLITUDE_CLAIM_DEG });
+  if (L.AMPLITUDE_PEAK_DEG !== Math.ceil(hi)) disagreements.push({ what: 'AMPLITUDE_PEAK_DEG is not ⌈maximum⌉', probe: Math.ceil(hi), record: L.AMPLITUDE_PEAK_DEG });
   const recRows = REC.pivots?.strength?.rows || [];
   if (recRows.length !== strength.length) disagreements.push({ what: 'pivot strength rows', probe: strength.length, record: recRows.length });
   for (const r of strength) {
@@ -337,7 +349,7 @@ if (!REC || !REC.corners) {
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3} figures within 1e-9 relative`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);

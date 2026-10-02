@@ -357,7 +357,27 @@ export const ALARM_SENSE = +1;
 
 export const F_BALANCE = SPEC.vph / 7200; // Hz — balance frequency: vph/3600 beats/s, 2 beats per oscillation
 export const BEAT_DEG = 12;             // escape-wheel advance per beat (half of 24° tooth pitch)
-export const AMPLITUDE_TRUE_DEG = 270;  // "true" balance swing (physical reference, unused for mesh)
+// TODO 192 step 4 — the balance's physical swing is TWO numbers, because one
+// literal cannot honestly be both (it was: AMPLITUDE_TRUE_DEG = 270, which the
+// spring could not sustain in any position at any friction corner). Both are
+// the energy column's sustained-amplitude solve (main.js,
+// EQUALISATION.going.energy), read in the safe direction for their use:
+//  · AMPLITUDE_CLAIM_DEG — what the movement CLAIMS it keeps up. The solve's
+//    MINIMUM over FRICTION's three corners and both positions (adverse,
+//    vertical: 76.96°), rounded DOWN to a whole degree: a claim that holds
+//    wherever and however the watch is worn. Rounding 76.96 to the nearest
+//    degree would have over-claimed.
+//  · AMPLITUDE_PEAK_DEG — what every load on the oscillator is PRICED at
+//    (§218's hairspring stress and pivot-load peaks, the hack brake). The
+//    solve's MAXIMUM (favourable, dial-flat: 326.70°), rounded UP: a load
+//    priced below the swing the balance can reach is not a bound.
+// Neither can be computed here, since the solve reads the cut ribbon, the
+// pivots and the balance, all built in main.js. So `equalisation` row 14 holds
+// each one to the solve on two sides: the SIDE (claim ≤ minimum,
+// peak ≥ maximum) and the TIGHTNESS (each within one degree). A change that
+// moves the solve fails the gate until these move with it.
+export const AMPLITUDE_CLAIM_DEG = 76;
+export const AMPLITUDE_PEAK_DEG = 327;
 export const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
 export const IMPULSE_WIDTH = 0.16;      // fraction of a beat spent in unlock+impulse (rest = locked)
 export const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
