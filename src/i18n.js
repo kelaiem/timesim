@@ -136,6 +136,15 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // takes no line-height rule: Hindi's and Vietnamese's exist because their
 // scripts overrun further than any Latin accent. The matcher is anchored, the
 // convention for every row added since §211; no other code begins 'nl'.
+// §249 — INDONESIAN, the cheapest table in the wave and measured to be so:
+// Chromium 141 and Node's ICU format 'id' and 'id-ID' as 30,0 · 0,024 · 1.000 ·
+// 18.000, Latin digits, so MARKS.id is German's row; its plural rule has ONE
+// category, Vietnamese's. The matcher takes 'in' too — the legacy code Java
+// emits, which Intl itself canonicalizes to 'id' (Hebrew's 'iw' case again) —
+// and is anchored: 'ido' (Ido) and 'inh' (Ingush) are other languages, and the
+// ISO 639-3 'ind' is not what a browser sends. The script is the 26 letters
+// English writes, so no line-height rule: the vertical question Vietnamese
+// raised is answered by the tables' character inventory, not a face.
 // §249 — PERSIAN, the second right-to-left row and the second DIGIT override.
 // Measured in Chromium 141 and Node's ICU alike: 'fa', 'fa-IR' and 'fa-AF' all
 // default to arabext (۳۰٫۰ · ۰٫۰۲۴ · ۱۸٬۰۰۰), and '-u-nu-latn' turns every one
@@ -161,6 +170,7 @@ export const LOCALES = [
   { code: 'it', face: 'Italiano', tag: 'it-IT', match: (v) => v.startsWith('it') },
   { code: 'vi', face: 'Tiếng Việt', tag: 'vi-VN', match: (v) => /^vi(-|$)/.test(v) },
   { code: 'nl', face: 'Nederlands', tag: 'nl-NL', match: (v) => /^nl(-|$)/.test(v) },
+  { code: 'id', face: 'Bahasa Indonesia', tag: 'id-ID', match: (v) => /^(id|in)(-|$)/.test(v) },
   { code: 'hi', face: 'हिन्दी', tag: 'hi-IN', match: (v) => /^hi(-|$)/.test(v) },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
@@ -213,6 +223,9 @@ for (const [input, want] of [
   ['vi', 'vi'], ['vi-VN', 'vi'], ['vi_VN', 'vi'], ['vic', null], ['vic-VI', null],
   // §249 — Flemish lands on the one table; the two regions format identically.
   ['nl', 'nl'], ['nl-NL', 'nl'], ['nl-BE', 'nl'], ['nl_NL', 'nl'],
+  // §249 — 'in' is Indonesian's legacy code and lands on the same table.
+  ['id', 'id'], ['id-ID', 'id'], ['id_ID', 'id'], ['in', 'id'], ['in-ID', 'id'],
+  ['ido', null], ['inh', null], ['inh-RU', null],
   // §212 — the negative row is the decision: 'hif' (Fiji Hindi) is its own
   // language and gets English, not this table.
   ['hi', 'hi'], ['hi-IN', 'hi'], ['hi_IN', 'hi'], ['hif', null], ['hif-FJ', null],

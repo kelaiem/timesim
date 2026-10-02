@@ -212,6 +212,7 @@ const MARKS = {
   // 1.000 · 18.000, Latin digits); Node's ICU 78 gives the same four.
   vi: { group: ['.'], dec: ',' },
   nl: { group: ['.'], dec: ',' },        // §249 — nl-NL and nl-BE alike: German's marks (Chromium 141)
+  id: { group: ['.'], dec: ',' },        // §249 — id-ID and the legacy 'in' alike: German's marks (Chromium 141)
   he: { group: [','], dec: '.' },        // §249 — he-IL is latn by default: English's marks (Chromium 141)
   fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
 };
@@ -273,6 +274,11 @@ const HONESTY = {
   // never the noun: 'modellen' is plural 'models' and the credit line reads
   // 'AI-model', neither of which is the honesty word.
   nl:        { m: /modelle(?:er|r)/i, s: /simul/i },
+  // §249 — Indonesian builds both words on loan stems: dimodelkan / pemodelan
+  // and disimulasikan / simulasi. The bare noun «model» is not the honesty
+  // word (the credit line's "AI model" is «model AI»), so the stem needs a
+  // prefix or a verbal suffix to count.
+  id:        { m: /dimodelkan|pemodelan|memodelkan|termodelkan/i, s: /simulasi/i },
   // §249 — the -سازی compound, never the bare noun: the credit line's "AI
   // model" is مدل هوش مصنوعی. The joint is a ZWNJ, a space or nothing, and the
   // page uses all three spellings somewhere, so the matcher takes all three.
