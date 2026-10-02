@@ -2081,10 +2081,13 @@
       spring-biased lever — a ring because it is present at every azimuth at once, which is
       the only way a signal leaves an orbiting member without a link whose length would have
       to change with azimuth. The lever rocks about its own pin, so its tip follows the ring
-      down and its tail rises to a banked stop. The climb pawl on that tail is meant to hold
-      the strike train and withdraw on the drop, but its beak does not reach the contrate's
-      teeth: that release is posed, not made in the metal (TODO 189). Everywhere else no
-      boolean decides anything: causality enters at the crown and arrives at the gong through
+      down and its tail rises to a banked stop. That is where the metal ends. Nothing carries
+      the drop on to the strike train: between arming and the trip the train is held by a
+      flag in the code, <code>alarmReleased</code> — modelled, not simulated — and the lock
+      that stops it answers the on/off column alone (TODO 199). A climb pawl on the tail
+      used to be described as that hold; its beak never reached the winding contrate, which
+      does not turn during a ring anyway, and it was retired (TODO 189). Up to the lever no
+      boolean decides anything: causality enters at the crown and arrives at the tail through
       closed contacts (the repo's P0 rule), and each hand-off below is a measured row of the
       <code>alarmHandoffs</code> battery.</p>
 
@@ -2158,7 +2161,7 @@
             <path class="leader" d="M 557 145 L 404 192"/>
 
             <text class="lbl lbl-strong" x="560" y="256">tail 0.90 · banking stop</text>
-            <text class="val val-steel" x="560" y="270">step 4 extends to climb pawl</text>
+            <text class="val val-steel" x="560" y="270">its run beyond holds nothing</text>
             <path class="leader" d="M 557 252 L 428 218"/>
 
             <text class="lbl" x="96" y="330">rim teeth — the arm crosses</text>
@@ -2303,7 +2306,7 @@
         <div class="fig-head"><span class="fig-no">PLATE 3</span><span class="fig-title">The release chain — the trip is the pin's drop</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 780 290" width="780" height="290" role="img"
-               aria-label="Flow of the release: notch arrival and the silence cap combine through a minimum gate into the physical pin drop, which banks the lever, withdraws the pawl, and frees the strike train">
+               aria-label="Flow of the release: notch arrival and the silence cap combine through a minimum gate into the physical pin drop, which banks the lever; a flag in the code, not metal, then frees the strike train">
             <rect x="20" y="30" width="180" height="52" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
             <text class="lbl lbl-strong" x="34" y="52">disc law</text>
             <text class="val val-brass" x="34" y="68">notch allows: 0 → 0.10</text>
@@ -2327,9 +2330,9 @@
             <text class="val val-ruby" x="560" y="113">drop ≥ 0.10 → tail fully up</text>
             <line x1="500" y1="101" x2="542" y2="101" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
 
-            <rect x="546" y="170" width="214" height="52" fill="none" stroke="var(--text)" stroke-width="1.4"/>
-            <text class="lbl lbl-strong" x="560" y="192">climb pawl withdraws</text>
-            <text class="val" x="560" y="208">clear of the contrate</text>
+            <rect x="546" y="170" width="214" height="52" fill="none" stroke="var(--text)" stroke-width="1.4" stroke-dasharray="5 3"/>
+            <text class="lbl lbl-strong" x="560" y="192">alarmReleased flag set</text>
+            <text class="val" x="560" y="208">code, not metal (TODO 199)</text>
             <line x1="653" y1="127" x2="653" y2="166" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arr)"/>
 
             <rect x="300" y="170" width="200" height="52" fill="none" stroke="var(--text)" stroke-width="1.4"/>
@@ -2348,9 +2351,11 @@
             </defs>
           </svg>
         </div>
-        <figcaption>Causality runs left to right through closed contacts: the disc's law says
-        what the notch <em>allows</em>, the silence rocker caps it, and only the physical pin —
-        the <code>min()</code> of the two — trips the release. The old §25 angle-crossing
+        <figcaption>Causality runs left to right through closed contacts as far as the lever:
+        the disc's law says what the notch <em>allows</em>, the silence rocker caps it, and only
+        the physical pin — the <code>min()</code> of the two — trips the release. The dashed
+        box is the one link that is not metal: the banked lever reaches nothing, and the code
+        sets a flag that lets the strike train run (TODO 199). The old §25 angle-crossing
         survives as an agreement assert only: a pin bottoming outside the coincidence window
         is a defect, not a ring.</figcaption>
       </figure>
@@ -2419,15 +2424,15 @@
             </defs>
           </svg>
         </div>
-        <figcaption>Entirely geometric — no boolean anywhere. Pulling the crown slides the
+        <figcaption>Geometric as far as the tail. Pulling the crown slides the
         stepped collar under the lifter's domed head; the head climbs onto the raised land,
         lifting the whole lifter; the run's underside carries the rocker's paddle up, and the
         seesaw sends the finger down its designed throw — exactly the 0.05 rest gap, so a
         resting tail is touched, never loaded, and a risen tail is pressed back to rest
-        (lifting the pin out of the notch mid-ring). Held this way the release pawl is seated
-        through <em>located</em> geometry rather than its spring, so the one-way ratchet
-        cannot cam it aside: a running ring is arrested on the next tooth, not paused. In
-        code the whole chain is one pure function of <code>alarmCrownPullT</code>
+        (lifting the pin out of the notch mid-ring). What then stops a running ring is the
+        code clearing the <code>alarmReleased</code> flag: the release pawl once said to catch
+        the train on the next tooth never reached it (TODO 189), and an arrest in the metal is
+        TODO 199. In code the whole chain is one pure function of <code>alarmCrownPullT</code>
         (<code>alarmSilFingerDropAt → alarmPinDropCapAt</code>, <code>main.js:7085</code>).</figcaption>
       </figure>
 

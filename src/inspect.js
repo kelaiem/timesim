@@ -361,9 +361,12 @@ export const MECH_GRAPH = {
     ['Alarm release disc', 'Alarm release reader'], // TODO 117: the raised track carries the READER's pin now; the notch's arrival
     ['Alarm release reader', 'Alarm release feeler'], // TODO 117: the collar's dial-side face carries the drop to the lever's jogged tip, at every azimuth at once
                                                     // under it IS the drop — the azimuth-independent detection
-    ['Alarm release feeler', 'Alarm winding train'], // §29 step 4: the tail's beak in the climb's contrate band is the
-                                                     // RELEASE DETENT — seated it holds the striking barrel through the
-                                                     // 12/44 mesh; the pin's drop withdraws it and the train runs
+    // (TODO 189 RETIRED ['Alarm release feeler', 'Alarm winding train'] — §29
+    // step 4's "release detent", a beak said to hold the striking barrel in the
+    // climb's contrate. It never reached the teeth, and the contrate does not
+    // turn during a ring: since §99 it is on the ARBOR side, parked by the
+    // click, while the barrel BODY runs. Nothing carries the feeler's drop to
+    // the strike now; the hold is a flag, declared in `todo` below — TODO 199.)
     // Alarm striking works (§25 A): a SECOND force source — the alarm's own
     // mainspring, the counterpart of 'mainspring' for the going train. It
     // drives the pin wheel through a 4:1 step-up and the pins lift the hammer,
@@ -403,6 +406,17 @@ export const MECH_GRAPH = {
     // corner gears' own tooth ratios — same representational-coupling
     // convention already accepted for the reserve train, not a unique gap.
     ['Keyless works', 'cannon pinion / hands', 'motion-works arbor now has real bevel-gear pairs at every corner; the DRIVING value (handSetOffset) is still assigned directly in tick() rather than computed forward from the crown through those gears’ tooth ratios'],
+    // TODO 189/199 — THE STRIKE HOLD BETWEEN ARMING AND THE TRIP IS A FLAG.
+    // The read station is metal up to the feeler (disc → reader → feeler, the
+    // drive rows above), and so is the lock (column wheel → lock lever), but
+    // nothing joins them: the lock lever's pose is `alarmLockArmAt(col)`, a
+    // function of the column wheel alone, clear once armed. §29 step 4's beak
+    // was said to be that join and was retired by TODO 189 — it never reached
+    // the contrate, which does not turn during a ring. Measured: armed at wind
+    // 1.5, 120 × step(1/60) leave the strike rotor still ONLY because
+    // `alarmReleased === false`. The feeler → lock release line, its energy
+    // budget and its fold are TODO 199.
+    ['Alarm release feeler', 'Alarm lock', 'the strike hold between arming and the trip is the alarmReleased FLAG in tick() — modelled, not simulated: the lock lever answers the column wheel alone and stands clear once armed, and the feeler’s drop reaches nothing in the metal; the feeler → lock release is unmodelled (TODO 199)'],
     // (The hairspring-stud item is CLOSED: the stud lives on the cock's
     // stud-carrier arm, the spring's outer end is angle-fixed by setWind,
     // and the ['Hairspring','Balance cock'] support row above measures the
@@ -721,7 +735,12 @@ const EXPECTED_PAIRS = [
   // what remains between these two is the arm crossing the spinning rim, which
   // §124 already holds to one margin at every station of the rock.
   ['Alarm release disc', 'Alarm release reader'], // TODO 117 stage 1: the collar's pin rides the SAME track — its tip lands on ALARM_TRACK_TOP by construction, so this is a working contact from the moment the metal exists
-  ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
+  // (TODO 189 RETIRED ['Alarm release feeler', 'Alarm winding train'] — the §29
+  // beak in the contrate band, the pair's only claimed contact, went with the
+  // beak. Measured after the retirement, the nearest the two come is the kept
+  // tail run's far end over the contrate, ≥ 0.642 apart by bounding boxes (a
+  // lower bound on the true gap) at f 0…1 on alarmStrike, alarmWind and alarm,
+  // so nothing else needs the grant and `undeclaredClearance` holds them now.)
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
@@ -743,15 +762,17 @@ const EXPECTED_PAIRS = [
   ['Alarm release lifter', 'Alarm silence rocker'], // §45 stage 2: the run ⇄ paddle working contact (every parity)
   ['Alarm silence rocker', 'Alarm release feeler'], // §45 stage 2: the finger ⇄ tail working contact (setting parity)
   ['Alarm silence rocker', 'Dial'],         // §45 stage 2: nesting artifact + the lugs' sheet anchors
-  ['Alarm winding train', 'Dial'],          // the SAME detent contact re-attributed through nesting: the feeler
-                                            // is a dialFace descendant, so the Dial's traverse carries its beak
-                                            // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
+  // (TODO 189 RETIRED ['Alarm winding train', 'Dial'] — the SAME beak contact
+  // re-attributed through nesting, the feeler being a dialFace descendant. The
+  // beak is gone; measured, every Dial descendant stands ≥ 0.642 off the winding
+  // train by bounding boxes on the same samples as the row above.)
   ['Alarm release feeler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
   ['Alarm release reader', 'Alarm release feeler'], // TODO 117: the collar's dial-side face UNDER the lever's jogged tip — the working read contact, moved here from the disc when the lever lost its pin
   // TODO 117: the SAME contact re-attributed through nesting — the reader hangs
   // under hourWheelGroup and collectUnits does no exclusion, so the Hour wheel's
   // traverse carries the collar's ring and the lever's tip reads as touching the
-  // hour wheel. The 'Alarm winding train' ⇄ 'Dial' precedent, and it is measured
+  // hour wheel. The 'Alarm winding train' ⇄ 'Dial' precedent (that row retired
+  // with the §29 beak, TODO 189), and it is measured
   // rather than assumed: over the 42-pose net the feeler's nearest approach to
   // the hour wheel's OWN metal is 0.3917 (alarmFeelerTip ⇄ hourTube, at
   // jumperEngage f=1), 2.6× CLEAR_MARGIN, while its approach to the nested
@@ -3450,19 +3471,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm winding arrest', a: 'subIdlerPinion', b: 'subLegBPinion', why: '§129: the compound idler driving leg B — the mesh that carries the reversed sign into the spider' },
   { unit: 'Alarm winding train', a: 'alarmClimbPinion', b: 'alarmWindIdler', why: '§121: the climb pinion\'s working mesh into i1 — TODO 15\'s phase solve owns it (gap against tooth, measured)' },
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'alarmWindIdler', why: '§121: the i1⇄i2 working mesh, same solve — both idlers carry §99\'s one name, so the row names it twice' },
-  // Alarm release feeler — §29's tail run:
-  // NAMED, and the `why` corrected with it. This row addressed its joint by
-  // INDEX; TODO 117 inserted one mesh into the lever ahead of it and the row
-  // slid onto the neighbouring pair, leaving the real corner unexcused — the
-  // battery reported it as a fresh MM intersection in metal nobody had
-  // touched. The names are alarmTailRun / alarmPawlRiser now (TODO 50's fix,
-  // applied again). And the description was already known to be wrong: TODO
-  // 109 went looking for the "cheek mid-guide" this row claimed and measured
-  // the pair at run-local x +4.5673, the run's far END — it is the RISER, the
-  // rigid corner where the run turns down to the beak, and there is no second
-  // guidance station. That was filed against TODO 104 as a row describing the
-  // wrong KIND of joint; it is paid here.
-  { unit: 'Alarm release feeler', a: 'alarmTailRun', b: 'alarmPawlRiser', why: '§121: the §29 tail run\'s far corner, where the riser turns down to the beak — a rigid joint in one lever, split across frames only because the riser rides the pawl\'s flex group (TODO 109 measured the pair at run-local x +4.5673, the END, not a mid-guide)' },
+  // (Alarm release feeler — §29's tail run ⇄ riser corner: RETIRED by TODO 189
+  // with the riser. The run stays (main.js says why), but the corner it named
+  // is gone, and a row naming metal that is not there is a stale selector.)
   // Case — TODO 122's glazing joints. The Case sits outside INTRA_TIER_SCOPE
   // (its FF rows are reported, not gated), but a declared joint is a CLAIM
   // the §182 audit measures every run, and these three are exactly the
@@ -5151,26 +5162,10 @@ const PENETRATION_BUDGETS = [
       return out;
     },
   },
-  {
-    // §29 step 4: the pawl's beak in the winding contrate's tooth band — a
-    // detent riding a turning member (the climb spins on the strike axis's
-    // back-spin and under winding), with the spring-steel tip following the
-    // saw profile kinematically. Same blindness argument, same calibration.
-    pair: ['Alarm winding train', 'Alarm release feeler'],
-    maxDepth: 0.12,
-    axis: 'alarmStrike',
-    nSamples: 150,
-    selectA(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmWindContrate') out.push(o); });
-      return out;
-    },
-    selectB(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmPawlBeak') out.push(o); });
-      return out;
-    },
-  },
+  // (§29 step 4's beak ⇄ contrate budget on the alarmStrike axis is RETIRED
+  // by TODO 189 with the beak. It read depth 0 for the whole of its life
+  // because the beak never reached the teeth — a depth-only budget cannot
+  // tell a held detent from no contact at all, which is how it hid that.)
   {
     // §99 — the click's ride over the arbor ratchet, swept on the axis that
     // exists for it (TODO 38 sequenced the axis before this click so the

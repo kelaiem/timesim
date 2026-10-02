@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 // ACCEPTANCE — WHAT DOES FORKING THE TAKE-OFF RADIUS COST?
 //
+// TODO 189 — READ ITS BEAK ROWS AS HISTORY. The pawl beak this prices (its
+// withdrawal, its read budget, CLEAR_BAR) was retired: it never reached the
+// teeth, and the contrate does not turn during a ring. `ALARM_PAWL_ENGAGE` and `ALARM_PAWL_DIST` no
+// longer exist in main.js, so the rows that price the beak's withdrawal and
+// the false-release read budget (ALARM_PAWL_ENGAGE / gain) verify this file's
+// own restated constants — a line spec for an output that is not built — and
+// say nothing about the shipped movement. The rows about the ring, the pin and
+// the lever's arms still describe metal. The release's real output stage is
+// TODO 199's to design, and its read budget is re-derived against that
+// output's engagement, not this one's.
+//
 // TODO 117's decided topology (the reader rides the hour) has been refused
 // twice at ALARM_TRACK_RMID, both times by measurement and both times on the
 // same side of the feeler's arm: reversing the bias blade costs 83.61 mN

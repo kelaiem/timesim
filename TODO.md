@@ -18,6 +18,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | item | state | what remains |
 |---|---|---|
 | 200 | OPEN | The pillar tenons pass the base plate flush, but their riveted ends are not drawn. That is the peened spread into a dial-side countersink, which is what holds the joint. The plate is one extrusion and has no stepped hole. Fix: countersink the four pillar holes on the dial side (a late re-cut or a land ring), and draw the spread as a frustum. Derive the countersink depth from `BACK_PLATE_T − STOCK_MIN_U` |
+| 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
@@ -26,7 +27,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 192 | PART DONE | Steps 1 and 2 LANDED. Step 1 (§247 tier two): `FRICTION` bands in `layout.js`, `EQUALISATION.going.energy`, `checkEqualisation` rows 9–11 gating the arithmetic and reporting the verdict, the probe asserting against the record. Step 2: the jewelled train arbors and the balance shouldered onto pivots at §50's floor (⌀ 0.07 mm), the stones turned for them, row 12 holding each pivot's service stress under yield (centre arbor tightest, ×2.4). OPEN: the going spring still cannot drive the balance: 3.43 mJ over 30 h (31.7 nW) against a 270° balance that needs 15–44× that after friction; sustained amplitude 10–26° vertical, 17–82° dial-flat. Remaining cause: 0.673 working turns of the drum. Fix: the working band re-solved against a declared amplitude target (after TODO 193), then gated |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
-| 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
+| 189 | CLOSED (re-scoped) | The §29 beak held nothing: it never reached the contrate, and the contrate does not turn during a ring (parked on the arbor side since §99). Riser, beak, flex group and law retired with every row naming them; the tail run kept (retiring it re-sites the Alarm link). The hold is the `alarmReleased` flag, declared in `MECH_GRAPH.todo`; the residual is [TODO 199] |
 | 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
 | 187 | CLOSED | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
 | 186 | PART DONE | B1 built: the 6 silent non-identity points (`reconf=1` is the default's key) are swept FULL on push/dispatch/local runs (restricted to their changed units, unioned with the default; 0.06–0.56× the default's three sweeps each, +1,906 s of tier wall locally, ~+18 min projected on CI) and INCREMENTALLY on PRs against the cached `points.json` (Chain-only, 449 s for all six in a same-tree simulation) under a 10-min ceiling that SKIPS, never passes. All six clean and listed in `validated-configs.js`. Open: B2, the warning points as expected-red, once the §127 matrix is wired |
@@ -25999,30 +26000,77 @@ condition. No new constants, scans or solvers · Battery: boot-only for steps
 1 and 3 (fingerprint must not move); step 2 changes no metal, but it feeds
 two solves, so run the full battery with a `--report` diff against the base
 
-## 189. The release pawl's beak never reaches the alarm winding contrate: the strike hold is in the pose law only
+## 189. The release pawl's beak never reaches the alarm winding contrate: the strike hold is in the pose law only — CLOSED
 
 Found closing [TODO 173]. The §29 step-4 beak should hold the alarm winding
-train against the strike until the feeler drops. It sits **0.5378** off the
+train against the strike until the feeler drops. It sat **0.5378** off the
 contrate at rest, 0.33 at the drop, and 0.1 radially outside the teeth (beak
 r 2.10–2.34 against the teeth's 1.998). `alarmPawlRiser ⇄ alarmWindContrate`
-reads 0.1278 at alarmWind f 0.87.
+read 0.1278 at alarmWind f 0.87. The EXPECTED `Alarm release feeler ⇄ Alarm
+winding train` pair and a depth-only penetration budget hid it.
 
-Two causes:
-- The beak's z was converted with a stale `-7` for the dial plane. It is
-  `Z_DIAL` (−8.4); TODO 173 fixed the conversion for the tail run.
-- `_pawlBandTop` assumed the tooth band is centred on `Z_ALARM_CORNER`. That
-  plane is the cone's APEX; the conical teeth sit 1.5–2.04 dial-ward of it.
+**CLOSED as re-scoped**: the false hold is retired and the residual is
+filed as [TODO 199].
 
-The EXPECTED `Alarm release feeler ⇄ Alarm winding train` pair and a
-depth-only penetration budget hid it. The hold the strike depends on exists
-only in the pose law.
+**The filed fix path was wrong, because the premise was.** It proposed
+re-siting the beak onto the band's dial-side edge. Measured while scoping
+that, the claim is false twice over:
 
-**Fix path.** With TODO 173's rock the tail rises dial-ward on the drop. So
-the beak must engage the band's DIAL-side (large-end) edge, read off
-`ALARM_BEVEL_SPEC`, and the flex sign at the pawl's tick flips too. Re-site the
-beak there. That is a detent on symmetric bevel teeth, and the "one-way saw" it
-is said to ride is not cut. Then add a floors row (contacts: beak ⇄ contrate),
-and a hand-off row that measures the hold at rest and the release at the drop.
+- **The contrate never turns during a ring.** Since §99 it sits on the ARBOR
+  side, parked and held by the click. On the `alarmStrike` axis the climb and
+  `arborA` stand at rotation 0 at every sample while `bodyA` runs
+  0 → 10.9956 rad (re-measured at f 0, ¼, ½, ¾, 1). A beak on it holds
+  nothing. Its symmetric bevel teeth would also lock WINDING both ways if one
+  ever seated, and the "one-way saw" it was said to ride was never cut.
+- **Nothing in the metal holds the train between arming and the trip.**
+  `alarmLockLever.rotation.z = alarmLockArmAt(alarmColShownA)` is a function
+  of the column wheel alone. The lock finger reads −0.3167 into the stop
+  wheel's teeth disarmed and +0.1500 clear when armed, released, dropped or
+  silenced (quoted from the scoping agent). Only `alarmReleased === false` in
+  tick() holds the train: armed at wind 1.5, 120 × `step(1/60)` leave the
+  strike rotor at `bodyA` −0.2435 exactly with the flag off (re-measured).
+- And a flex-sign defect: `alarmPawlFlex.rotation.z = -dirL` aimed the beak
+  ~76° off the climb axis.
+
+A follower → lock link fails P1 as it stands (the feeler's drop gives
+~1.1–1.5 mN·u; a block withdrawal costs ~5.5 mN·u — [TODO 199]'s table), so
+the honest residual is several landings. This item closes STAGE 1, honesty
+with no new metal:
+
+- **Retired:** the riser (`alarmPawlRiser`), the beak (`alarmPawlBeak`), their
+  flex group (`alarmPawlFlex`, the 'Pawl tip' sub-piece and its twelve locale
+  strings) and the flex's tick law; the `MECH_GRAPH` drive edge and the
+  EXPECTED pair `Alarm release feeler ⇄ Alarm winding train` and its nesting
+  twin `Alarm winding train ⇄ Dial` (after the retirement the nearest
+  approach is the kept tail run's end over the contrate, ≥ 0.642 by bounding
+  boxes at f 0…1 on `alarmStrike`, `alarmWind` and `alarm`, so nothing else
+  needs either grant); the `INTRA_UNIT_CONTACTS`
+  run ⇄ riser row; the `alarmStrike` penetration budget on the beak; the
+  beak's withdrawal-travel boot assert; and the feeler's `declareRestoring`
+  row. That last one was a finding of its own: the restoring audit's
+  population for the feeler was the riser and beak ALONE (their flex group's
+  posed saw wobble), the lever reverses on no axis, and with the beak gone
+  the row is stale. The blade still returns the lever; the missing piece is
+  an axis that drops the pin and lifts it again — [TODO 199] stage 3.
+- **Kept, and why:** the tail run (`alarmTailRun`) and its jog. They have no
+  mechanical job now. But retiring the run moves an UNRELATED group: the
+  Alarm link's rod-site search (§112/TODO 174) scores every labelled mesh's
+  box, the run's box is what holds the frozen site, and without it the search
+  walks from (27.88, −4.07) to (18.66, −3.23) with five boot warns (plate
+  bores, both hoisted link constants, TODO 82's series stall). That is a P3
+  re-siting this landing does not spend. The run's far end also stands at the
+  free column (12–13, −2..1) [TODO 199] stage 4 names. Its length is now
+  inherited (`ALARM_TAIL_RUN_LEN`, the retired beak's stand-off), its
+  `SLENDER_WAIVERS` row (λ 85.1) and its `§29 pawl tail corridor` wall stay
+  with the metal. [TODO 199] adopts it or retires it.
+- **Declared:** a `MECH_GRAPH.todo` row, `Alarm release feeler → Alarm lock`:
+  the strike hold between arming and the trip is the `alarmReleased` flag,
+  modelled and not simulated, and the feeler → lock release is unmodelled.
+- **Prose corrected** in `main.js` (the §29 step-4 header, the §45 silence
+  story's "the running contrate CAMS it out … caught on the next tooth", the
+  trip site's "the pawl just withdrew", the ring and silence comments, the
+  §25 B lock header, `alarmReleased`'s own comments), `inspect.js`,
+  `docs/BUILT.md` §29 and §45, and `explain.html`'s alarm entry and plates 2–4.
 
 ## 190. The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring, hidden by an EXPECTED pair
 
@@ -26049,6 +26097,14 @@ meshes.
 All of this hides behind the EXPECTED `Alarm silence rocker ⇄ Alarm release
 feeler` pair, which has no floors row. A floors row with the genuine contacts
 (finger ⇄ tail, dropper ⇄ tail) measures min 0.
+
+**Since [TODO 189] the tail run and its jog carry nothing**: the riser and
+beak they existed for were retired, and they stay only because retiring the
+run walks the Alarm link's rod site (measured, (27.88, −4.07) → (18.66,
+−3.23)). So a fourth option sits beside the three below — retire the run,
+which takes rows 1, 2 and 4 with it and leaves the spring ⇄ finger crossing —
+priced by [TODO 199] stage 4's link re-site. The finger's re-engagement on a
+risen tail is also what [TODO 199] stage 3 gates its silence row on.
 
 **Fix path (P2 — one action group; MECH_GRAPH drives rocker → feeler).**
 Redesign the finger/spring/jog/bracket interface in position space. Three
@@ -26380,6 +26436,108 @@ outline, or keep its land. Then move the cross-ring tier's gate from
 `HELD_NAMES` to every unit, so the REPORT becomes a gate (§40's arc). The
 acceptance is `outlines`' `crossRing.reported` empty, both meshes reading
 0 open edges, and for the disc `probe-bore-cut.mjs`'s TODO 107 acceptance.
+
+## 199. The strike hold between arming and the trip is the alarmReleased flag: build the feeler→lock release
+
+Filed closing [TODO 189], which retired the §29 step-4 beak because it held
+nothing. What is left is the gap that beak was drawn over: **nothing in the
+metal carries the feeler's drop to the strike train.**
+
+- The read station is metal up to the feeler lever: disc → reader → feeler,
+  each hand-off an `ALARM_HANDOFFS` row, the lever banked on its stop.
+- The lock is metal too, but it answers the column wheel ALONE:
+  `alarmLockLever.rotation.z = alarmLockArmAt(alarmColShownA)`. Its finger
+  reads −0.3167 into the stop wheel's teeth disarmed and +0.1500 clear when
+  armed, released, dropped or silenced (quoted from TODO 189's scoping).
+- Between them is a flag. Armed at wind 1.5, 120 × `step(1/60)` leave the
+  strike rotor at `bodyA` −0.2435 exactly with `alarmReleased` false, and
+  run it to 1.7514 with the flag set (re-measured for this item). The flag is
+  the hold: modelled, not simulated. `MECH_GRAPH.todo` carries the row
+  `Alarm release feeler → Alarm lock` until this closes.
+
+**Why it is not one landing.** A direct follower → lock link fails P1. The
+feeler's drop delivers ~1.1–1.5 mN·u of work, and withdrawing the lock's
+finger from a loaded stop costs ~5.5 mN·u, so the drop alone cannot pay for
+the release — an ENERGY SOURCE has to be chosen first, and the owner deferred
+that choice to the start of stage 2.
+
+### P1 arithmetic (TODO 16's format)
+
+| quantity | value | derivation |
+|---|---|---|
+| feeler bias blade k | 980.6 N/m | the §137 row `alarm release: bias blade`: 3EI/L³ over `SPRING_FLAT_U`² at free length 1.8025 u (re-read live) |
+| blade force at the bear point, riding / dropped | 41.80 / 25.08 mN | k × (`ALARM_FEELER_SEAT_DROP` 0.25, less `ALARM_PIN_DROP` 0.10 dropped) × BEAR_R/ARM_LEN (re-read live) |
+| moment about the feeler pivot, dropped | 27.65 mN·u | 25.08 mN × BEAR_R 1.1025 |
+| force at the old beak station, r 10.427 | 2.65 mN | 27.65 / 10.427 (quoted; r is pivot → climb axis, the retired beak's station — the kept run ends at r 8.41, where it is 3.29 mN) |
+| travel there | 0.4256 u | `ALARM_PIN_DROP` × 10.427 / ARM_LEN 2.45 (0.343 u at r 8.41) |
+| work the drop can deliver | ~1.13–1.50 mN·u | the moment (27.65 dropped → 46.09 riding) × the lever's 0.0408 rad swing, end value to mean |
+| lock return blade k | 2579 N/m | quoted, not re-measured |
+| lock blade force at r 1.52, lifted / engaged | 48.9 / 193.0 mN | quoted, not re-measured; **check before use** — the source's own comment (main.js §25 B stop block) calls this blade's yield 67.4 mN, below the 193.0 engaged figure |
+| lock blade moment, engaged | ~293 mN·u | 193.0 × 1.52 |
+| referred to the pad, lifted / engaged | 14.9 / 58.7 mN | quoted (≈ 293 / 5.0 at the pad arm) |
+| stop reaction at the finger | 72.9 mN | quoted from source (the barrel's 0.08843 N·mm over the stop's tip circle), not measured |
+| block-withdrawal friction | ~11.7 mN | quoted |
+| withdrawal stroke | 0.4667 u | quoted |
+| withdrawal work | ≈ 5.5 mN·u | 11.7 × 0.4667 — **3.6–4.8× what the drop delivers** |
+
+### The three energy options (for decision when stage 2 starts)
+
+- **b1 — let the stop wheel push the finger out.** Cut the finger's face with
+  a let-off of at least atan µ = 11.3° (µ 0.2, `MU_STEEL`). At 15° the train
+  pushes the finger outward with ~4.7 mN (72.9 × (sin 15° − 0.2 cos 15°)), and
+  the feeler need only release a latch, ~0.44 mN·u (quoted). The cost: it
+  re-opens [TODO 90]'s radial-stop rule (finding 4 cut the stop square so it
+  is form-locking at any phase), and the blade bias flips — the lock must be
+  sprung toward ENGAGED and held there by a latch the feeler trips.
+- **b2 — a two-stage release.** A light intermediate detent that the feeler's
+  drop can trip, which lets a spring loaded at re-lock (by the silence or the
+  run-down) withdraw the lock. Two new members and a spring, each with its
+  own P1 row.
+- **b3 — re-size the blades.** Still ~1.5× short of the withdrawal work
+  unless the stop's engagement is made shallower than `STOCK_MIN_U`, which
+  §50 does not allow. Listed for completeness.
+
+### Staged plan
+
+1. **Stage 2 — the release line in free space** (CLAUDE.md's "design in a
+   line"). Choose b1/b2/b3 with the owner. Lay the line from the feeler's
+   drop to the lock's finger as a straight chain, its instruments red until
+   every contact closes, and write its LINE SPEC (arms, gains, stall forces)
+   as the reference the fold must measure back to.
+2. **Stage 3 — the tick law.** `alarmReleased` becomes a READOUT of the lock's
+   pose instead of the thing that holds the train. The `alarmStrike` axis
+   poses the feeler DROPPED (today it poses the flag), and an axis drops the
+   pin and lifts it again so the restoring audit can see the lever reverse —
+   then the feeler's `declareRestoring` row comes back, naming
+   `alarmFeelerSpring`, against the lever body (TODO 189 had to retire it:
+   its population was the beak's posed wobble). New `ALARM_HANDOFFS` rows:
+   the lock HOLDS armed before the trip, RELEASES at the drop, and
+   RE-ENGAGES on silence. The silence re-engagement is gated on
+   [TODO 190], whose finger presses the feeler's spring rather than its tail.
+3. **Stage 4 — the P3 fold.** The feeler is dial-side and the lock is on the
+   three-quarter plate's top, so the line needs a ~17.4-unit vertical rod
+   through both plates (a [TODO 145]-class turning bar: hold it to §233's
+   L/D) plus a ~14–18 unit transfer. Free columns were measured at
+   (12–13, −2..1) near the feeler and (22–23, 13–15) / (21–22, 6) near the
+   lock (quoted). The first of those is where the kept tail run
+   (`alarmTailRun`) already ends: adopt the run as the line's first member
+   or retire it. Retiring it re-opens the Alarm link's rod-site search
+   (§112/TODO 174 — measured, the site walks from (27.88, −4.07) to
+   (18.66, −3.23)), so that re-site belongs in this stage's battery, and the
+   run's inherited length `ALARM_TAIL_RUN_LEN` and its `SLENDER_WAIVERS`
+   row go with whichever answer lands.
+
+**Acceptance.** `MECH_GRAPH.todo` loses the `Alarm release feeler → Alarm
+lock` row and gains drive edges for every new member; the new hand-off rows
+read green at both parities; `transfers` carries a row per new corner with
+its force arithmetic inside the detent envelope; `restoring` judges the lever
+again; and armed, unreleased, 120 × `step(1/60)` hold the strike rotor still
+with the flag forced TRUE — because the metal holds it.
+
+Feasibility: several landings · Cost: stage 2 a new action group in free
+space; stage 3 tick law + one axis + ~3 hand-off rows; stage 4 a rod through
+both plates and a re-site · Battery: stage 2 probe-only; stages 3 and 4 full
+battery with a `--report` diff
 
 ## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread
 

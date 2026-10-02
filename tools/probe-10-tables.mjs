@@ -8,9 +8,10 @@
 //      same pose against a drill-0 baseline), and back out is === for the
 //      generic pieces and the baseline value for the tick-owned one;
 //   3. the alarm tables: a group drill fans every unit's pieces by rank·UNIT
-//      in that unit's own direction, and the six tick-owned handles (pusher,
-//      selector ring, sleeve, lifter, link rod, pawl tip) hold their offsets
-//      through a pressed, armed, striking pose — measured, not assumed;
+//      in that unit's own direction, and the five tick-owned handles (pusher,
+//      selector ring, sleeve, lifter, link rod — the sixth, the §29 pawl tip,
+//      was retired by TODO 189) hold their offsets through a pressed, armed,
+//      striking pose — measured, not assumed;
 //   4. resetInputs re-gathers everything.
 //   cd tools && node probe-10-tables.mjs      (exit 1 on any claim)
 import { chromium } from 'playwright';
