@@ -6476,8 +6476,26 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
     return R;
   };
 
+  // TODO 196 — THE OUTLINE OPENS AND CLOSES ON ONE POINT, BIT FOR BIT. With
+  // no notch the rim is `absarc`, and an EllipseCurve does not start at EP: it
+  // RECOMPUTES its first point as radius·(cos, sin)(atan2(EP)), which lands
+  // within a few ulps of EP and only sometimes on it. The outline used to open
+  // at EP and close back to EP, and `vendor/three.module.js` (Path.closePath,
+  // and absellipse's join) inserts a LineCurve wherever two such points are
+  // not bit-equal — so whether the rim carried a 1e-15-long edge at E+ was a
+  // coin toss on the balance station's last bits. ExtrudeGeometry's bevel
+  // offsets each contour point along the bisector of its two edges, and the
+  // bisector of a 1e-15 edge points nowhere in particular: the default carried
+  // a 4.4e-16 edge there, `?balstep=60` a 7.1e-15 one; the default's corner
+  // stood 0.021 proud of the finished radius, and the two plates' rims stood up
+  // to 0.0065 apart at x ≈ 41.3. So with no notch the outline opens
+  // and closes on the arc's OWN first point — one source — and E+ is no longer
+  // a vertex the arc must agree with. (The notched walk never had the join: it
+  // emits only lineTo points, opening at EP and closing on that same EP.)
+  const rimArc = notches.length ? null : new THREE.EllipseCurve(0, 0, radius, radius, thP, thM, false, 0);
+  const start = rimArc ? rimArc.getPoint(0) : EP;
   const s = new THREE.Shape();
-  s.moveTo(EP.x, EP.y);
+  s.moveTo(start.x, start.y);
   if (notches.length) {
     // Adaptive: a notch's angular edges are near-radial steps (43.7 → 36 in a
     // fraction of a degree), and a straight chord across one of those cuts
@@ -6502,7 +6520,8 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
       thPrev = th; Rprev = R;
     }
   } else {
-    s.absarc(0, 0, radius, thP, thM, false); // rim, CCW, material on the left
+    s.curves.push(rimArc); // rim, CCW, material on the left — the very curve `start` was read off
+    s.currentPoint.copy(rimArc.getPoint(1));
   }
   // ...in along the −phiOpen edge, around the balance the short way (φ
   // decreasing, i.e. clockwise about the balance so the opening stays a
@@ -6514,7 +6533,7 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
     const r = cutEdgeRadius(cut, phi);
     s.lineTo(cut.x + Math.cos(cut.aim + phi) * r, cut.y + Math.sin(cut.aim + phi) * r);
   }
-  s.lineTo(EP.x, EP.y);
+  s.lineTo(start.x, start.y);
   s.closePath();
 
   for (const h of holes) {
