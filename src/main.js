@@ -28926,7 +28926,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 11.0429;   // TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+const ALARM_LINK_BODY_LEN_U = 11.0231;   // TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
 // needs the bush's own OD before that loop runs, at the SAME radius the
@@ -29513,8 +29513,9 @@ const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY
 // ceiling, and everything that hangs off it derived from that in turn. The
 // chord is known here (both ends were sited above), so the shaft can be sized
 // before the parts that must clear it.
-const ALARM_LINK_CHORD_LEN = Math.hypot(
-  ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y);
+// (ALARM_LINK_CHORD_LEN is defined below ALARM_LINK_BUSH_LEN since TODO 205:
+// the chord ends at the shaft's TIP, which stands off the rod's axis by a
+// clearance derived from the neck and the rim crank's rest, hoisted there.)
 // THE SHAFT STAYS AT ITS ORIGINAL SECTION. Two attempts to thicken it were
 // rejected by CI, and the second is the informative one.
 //
@@ -29638,6 +29639,58 @@ const ALARM_LINK_PRESS_LAP_FRAC = 0.51;
 // three stations) — hoisted because the rod-end overhang derivation below
 // needs the bush's HALF-length to know where its outer face lands.
 const ALARM_LINK_BUSH_LEN = 0.3;
+// TODO 205 — THE SHAFT'S TIP STANDS OFF THE ROD'S AXIS, by what the neck
+// must clear under the rod's foot. The rim crank sits at the shaft's tip and
+// presses the rod's FOOT FACE with its tip corner; at the rest roll that face
+// stands only H_REST over the shaft axis. With the tip under the rod's own
+// axis (the chord used to END at ALARM_LINK_ROD_XY) the rod-end neck ran
+// under the foot's whole disc, and its flank stood H_REST − NECK_R = 0.1035
+// below the face (0.1091 as the octagonal mesh reads it) — under CLEAR_MARGIN,
+// at every rest pose of the net. Nothing in the crank can buy the room
+// without spending the mechanism: H_REST is the finger's designed rest
+// (ALARM_LINK_RIM_REST_FROM_ZENITH, the corridor-probed rest the roll span
+// and the rod's travel are solved from), the neck's radius IS the arm's
+// inner face (ALARM_LINK_SHAFT_NECK_R, a lever arm in §137's crank row),
+// and the overhang's length is TODO 79/82's stiffness chain. So it is solved
+// in POSITION space: the shaft's chord is turned about its inner end (the
+// fork stays on the tab) until the rod's axis lies a STANDOFF to the side
+// of the shaft's tip, square to the chord, on the side the finger leans
+// toward at rest — so the finger reaches back under the foot. The standoff
+// is the least plan offset at which the foot's rim clears the neck by the
+// margin in 3D: the foot disc (radius R_rod, at height H_REST) against the
+// neck cylinder (radius NECK_R) — hypot(s − R_rod, H_REST) = NECK_R +
+// CLEAR_MARGIN. The rim crank's own dimensions are hoisted here for it (the
+// registration solve and the crank build read the same names).
+const ALARM_LINK_RIM_LEN = 0.45;                 // the rim crank's radial depth (its box), was the build's literal
+const ALARM_LINK_RIM_TIP_D = ALARM_LINK_CRANK_OFF + ALARM_LINK_RIM_LEN / 2 - 0.02;   // the finger's contact corner's radius (the registration solve's rimTipD)
+const ALARM_LINK_RIM_REST_FROM_ZENITH = 1.05;    // the finger's DESIGNED rest, 60° off its own zenith (the registration solve's comment, step 1)
+// A corner pair (±CRANK_T/2, RIM_TIP_D) rolled θ off its zenith tops out at
+// RIM_TIP_D·cosθ + (CRANK_T/2)·sinθ — the envelope the registration solve
+// bisects, closed here because the zenith of the pair is the arm's own centre
+// line. Asserted against the solved foot at the rod build.
+const ALARM_LINK_RIM_H_REST = ALARM_LINK_RIM_TIP_D * Math.cos(ALARM_LINK_RIM_REST_FROM_ZENITH)
+  + (ALARM_LINK_CRANK_T / 2) * Math.sin(ALARM_LINK_RIM_REST_FROM_ZENITH);   // 0.2635
+const ALARM_LINK_ROD_STANDOFF = (() => {
+  const reach = ALARM_LINK_SHAFT_NECK_R + CLEAR_MARGIN;
+  // a foot already high enough clears the neck vertically, at any plan offset
+  if (ALARM_LINK_RIM_H_REST >= reach) return 0;
+  return ALARM_LINK_ROD_R_SECTION + Math.sqrt(reach * reach - ALARM_LINK_RIM_H_REST * ALARM_LINK_RIM_H_REST);
+})();   // 0.7601
+// The tip: on the circle whose diameter is INNER→ROD (so ROD − TIP is square
+// to the chord), at |ROD − TIP| = STANDOFF, with the rod on the chord's RIGHT
+// — the shaft group's −y, which is where the finger leans at its positive-roll
+// rest ((0,0,1) rolled +θ about the chord is (0, −sinθ, cosθ)). The chord is
+// therefore turned LEFT about the inner end by asin(STANDOFF / |ROD − INNER|).
+const ALARM_LINK_SHAFT_TIP_XY = (() => {
+  const dx = ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, dy = ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y;
+  const D = Math.hypot(dx, dy);
+  const a = Math.asin(ALARM_LINK_ROD_STANDOFF / D), L = Math.sqrt(D * D - ALARM_LINK_ROD_STANDOFF ** 2);
+  const ux = dx / D, uy = dy / D;
+  const vx = ux * Math.cos(a) - uy * Math.sin(a), vy = ux * Math.sin(a) + uy * Math.cos(a);
+  return { x: ALARM_LINK_INNER_XY.x + vx * L, y: ALARM_LINK_INNER_XY.y + vy * L };
+})();
+const ALARM_LINK_CHORD_LEN = Math.hypot(
+  ALARM_LINK_SHAFT_TIP_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_SHAFT_TIP_XY.y - ALARM_LINK_INNER_XY.y);
 // (TODO 9's ALARM_LINK_ROD_SEAT = 0.079 — "read off the model and pasted
 // back in", standing rule 1's confessed failure case — and the
 // ALARM_LINK_ROD_FOOT chain built on it are RETIRED by TODO 20. The rod's
@@ -30170,7 +30223,7 @@ const alarmLinkParts = {};
   // the plan hoist, above the back plate's hole list, which consumes them).
   // The value is unchanged at 0.30: §137 reconciled it against the metal.
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
-  const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
+  const chord = { x: ALARM_LINK_SHAFT_TIP_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_SHAFT_TIP_XY.y - ALARM_LINK_INNER_XY.y };   // TODO 205: to the shaft's TIP, ALARM_LINK_ROD_STANDOFF beside the rod
   const fullChordLen = Math.hypot(chord.x, chord.y);
   // §232 — THE SHAFT'S THREE LENGTHS. §234 Landing 5, course-corrected: the
   // chain used to read NECK ⇒ STUB ⇒ STATION, treating §54's λ CEILING on
@@ -30330,7 +30383,7 @@ const alarmLinkParts = {};
     return [t1, (t1 + t3) / 2, t3];
   })();
   const shaft = new THREE.Group();
-  shaft.position.set((innerEnd.x + ALARM_LINK_ROD_XY.x) / 2, (innerEnd.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
+  shaft.position.set((innerEnd.x + ALARM_LINK_SHAFT_TIP_XY.x) / 2, (innerEnd.y + ALARM_LINK_SHAFT_TIP_XY.y) / 2, ALARM_LINK_SHAFT_Z);
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
   shaft.rotation.z = Math.atan2(chord.y, chord.x);
   // §54 / TODO 16 / §137 — THE SECTION, RECONCILED AGAINST THE METAL THAT
@@ -30603,13 +30656,13 @@ const alarmLinkParts = {};
   {
     const key = new THREE.Group();
     key.position.x = chordLen / 2;
-    const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, 0.45), MATS.steel);
+    const crank = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_CRANK_T, ALARM_LINK_CRANK_T, ALARM_LINK_RIM_LEN), MATS.steel);
     crank.name = 'alarmLinkCrankRim';
     crank.position.set(0, 0, ALARM_LINK_CRANK_OFF);
     key.add(crank);
     shaft.add(key);
     alarmLinkParts.rimKey = key;
-    alarmLinkParts.rimLen = 0.45;
+    alarmLinkParts.rimLen = ALARM_LINK_RIM_LEN;
   }
   // CENTRE end: the old jaw-finger (which pressed one face, needed a
   // phantom bias spring for the return, and whose root transfixed the tab)
@@ -30745,12 +30798,16 @@ const alarmLinkParts = {};
     //    zenith on the positive-roll side the §35 corridor was probed on:
     //    enough flank slope to work, bounded lateral sweep (the corridor
     //    assert below measures it from the DERIVED rolls).
-    const rimTipD = ALARM_LINK_CRANK_OFF + alarmLinkParts.rimLen / 2 - 0.02;
+    const rimTipD = ALARM_LINK_RIM_TIP_D;   // TODO 205: hoisted (the tip's standoff is derived from it)
     const rimPair = cornerPair(alarmLinkParts.rimKey, rimTipD);
     const zen = (f) => Math.atan2(f.A, f.B); // roll maximizing A sinθ + B cosθ
     const rollZenith = (zen(rimPair[0]) + zen(rimPair[1])) / 2;
-    F.rollRest = rollZenith + 1.05;
+    F.rollRest = rollZenith + ALARM_LINK_RIM_REST_FROM_ZENITH;   // TODO 205: hoisted (the tip's standoff is derived from the rest's height)
     const rodFootRest = envZ(rimPair, F.rollRest);
+    // TODO 205 — the standoff's height input, held to the solve it closes.
+    if (Math.abs((rodFootRest - ALARM_LINK_SHAFT_Z) - ALARM_LINK_RIM_H_REST) > 1e-6)
+      console.warn(`TODO 205: the rod's solved foot stands ${(rodFootRest - ALARM_LINK_SHAFT_Z).toFixed(5)} over the shaft axis, `
+        + `but ALARM_LINK_ROD_STANDOFF was derived from ALARM_LINK_RIM_H_REST ${ALARM_LINK_RIM_H_REST.toFixed(5)} — re-derive the closed form`);
     // 2. BUILD THE ROD — both of its ends are read off their partners now
     //    (top: the tail's underside; foot: the finger's designed rest).
     //    Frames: the link unit is world-identity; assert rather than assume.
@@ -30847,6 +30904,35 @@ const alarmLinkParts = {};
     // 5. The rod's travel falls out — and the nose's seat drop through the
     //    beak's measured lever arms.
     F.rodTravel = envZ(rimPair, F.rollArmed) - rodFootRest;
+    // TODO 205 — THE FINGER STILL LANDS ON THE FOOT'S FACE. The standoff moves
+    // the contact off the rod's axis toward the foot's rim, so both ends of
+    // the stroke are measured on the built metal: the finger's upper corner
+    // line (the one the envelope solve picked), both of its ends along the
+    // chord, must stand inside the foot's faceted face (its apothem, the
+    // 12-gon's inscribed radius) at the rest and the armed roll.
+    {
+      const apothem = ALARM_LINK_ROD_R_SECTION * Math.cos(Math.PI / 12);
+      const worst = { r: 0, at: '' };
+      for (const [nm, th] of [['rest', F.rollRest], ['armed', F.rollArmed]]) {
+        shaft.rotation.x = th;
+        alarmLinkParts.rimKey.updateWorldMatrix(true, false);
+        const corners = [];
+        for (const sy of [1, -1]) for (const sx of [1, -1])
+          corners.push(new THREE.Vector3(sx * ALARM_LINK_CRANK_T / 2, sy * ALARM_LINK_CRANK_T / 2, rimTipD).applyMatrix4(alarmLinkParts.rimKey.matrixWorld));
+        const zTop = Math.max(...corners.map((c) => c.z));
+        for (const c of corners) {
+          if (c.z < zTop - 1e-9) continue;
+          const r = Math.hypot(c.x - ALARM_LINK_ROD_XY.x, c.y - ALARM_LINK_ROD_XY.y);
+          if (r > worst.r) { worst.r = r; worst.at = nm; }
+        }
+      }
+      shaft.rotation.x = 0;
+      alarmLinkParts.rimKey.updateWorldMatrix(true, false);
+      F.rimContactR = worst.r;
+      if (worst.r > apothem - 1e-9)
+        console.warn(`TODO 205: the rim finger's contact reaches ${worst.r.toFixed(4)} off the rod's axis at ${worst.at} — `
+          + `past the foot's face (apothem ${apothem.toFixed(4)}); the standoff ${ALARM_LINK_ROD_STANDOFF.toFixed(4)} has pushed the contact off the metal`);
+    }
     // The PIN's travel falls out of the same two rolls, off the sinusoid it
     // was seated on. It is exposed because the §137 transfer row needs it:
     // the shaft's span and fork-end members work at the PIN, not at the rod,
@@ -43859,8 +43945,8 @@ const _tailAt = { x: (_colAt.x + _rodAt.x) / 2, y: (_colAt.y + _rodAt.y) / 2, z:
 // The rod's whole run, plate top down to the shaft: its mid-Z is the frame.
 const _dropAt = { x: ALARM_LINK_ROD_XY.x, y: ALARM_LINK_ROD_XY.y, z: (ALARM_LOCK_Z + ALARM_LINK_SHAFT_Z) / 2 };
 const _shaftAt = {
-  x: (ALARM_LINK_ROD_XY.x + ALARM_LINK_INNER_XY.x) / 2,
-  y: (ALARM_LINK_ROD_XY.y + ALARM_LINK_INNER_XY.y) / 2,
+  x: (ALARM_LINK_SHAFT_TIP_XY.x + ALARM_LINK_INNER_XY.x) / 2,   // TODO 205: the shaft ends at its tip, beside the rod
+  y: (ALARM_LINK_SHAFT_TIP_XY.y + ALARM_LINK_INNER_XY.y) / 2,
   z: ALARM_LINK_SHAFT_Z,
 };
 // The tab is the one stop whose subject lives under `dialFace`, so its z has
@@ -43877,7 +43963,7 @@ const _tabAt = {
   z: Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2),
 };
 const _rodRun = Math.hypot(_rodAt.x - _colAt.x, _rodAt.y - _colAt.y);
-const _shaftRun = Math.hypot(ALARM_LINK_INNER_XY.x - ALARM_LINK_ROD_XY.x, ALARM_LINK_INNER_XY.y - ALARM_LINK_ROD_XY.y);
+const _shaftRun = ALARM_LINK_CHORD_LEN;
 // The centre is the one stop a radial standoff cannot frame. On the dial side
 // the hands sweep directly in front of it (they sit BEYOND the dial, so x-ray
 // does not help — it glassifies the dial and the 3/4 plate, not the hands);

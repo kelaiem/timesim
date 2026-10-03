@@ -3608,6 +3608,13 @@ export const INTRA_UNIT_FLOORS = [
   // post now stands on the fulcrum axis (main.js, ALARM_BEAK_POST_SIDE).
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkBeakPost', min: CLEAR_MARGIN,
     why: 'TODO 191: the post carries the beak\'s fulcrum beside the rod the tail drives — parallel members of one action group, held to the one margin' },
+  // TODO 205 — the lay shaft's rod-end neck ran under the selector rod's foot,
+  // its flank 0.1091 below the face at the rest roll (the foot rides the rim
+  // finger, so the gap is least at rest and opens as the link arms). The
+  // shaft's tip now stands ALARM_LINK_ROD_STANDOFF beside the rod's axis
+  // (main.js), so the foot's rim clears the neck by the margin in 3D.
+  { unit: 'Alarm link', a: 'alarmLinkNeckRod', b: 'alarmLinkRod', min: CLEAR_MARGIN,
+    why: 'TODO 205: the neck carries the rim crank whose finger lifts the rod\'s foot — the foot stands over the neck\'s side, held to the one margin' },
 ];
 
 // §121 — the units whose FF and MM tiers are GATED: the population this

@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 213 | OPEN | The §112 link-site solve's `scoreChord` scores the lay shaft as a chord ending at the rod's axis; since TODO 205 the shaft ends at a tip 0.7600 beside it. Score the chord to the tip the build will cut (the standoff is a closed form computable before the solve) |
 | 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
 | 211 | OPEN | The yoke's prong stands at best 0.137 off the clutch's groove collars over the whole pose net, so the return `declareRestoring('Winding clutch', …, 'yokeSpring')` describes ("re-seats it through the fork") passes through a fork that touches nothing; found by TODO 194's reach control, waived to this item |
 | 210 | OPEN | The maintaining detent's restoring row names `maintSpring` — the maintaining-POWER torus under the maintaining wheel, another unit, 1.0+ from the click at every pose; the detent has no spring of its own in the metal. Found by TODO 194's reach control, waived to this item |
@@ -24,7 +25,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
 | 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
-| 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
+| 205 | CLOSED | The neck's flank ran under the rod's foot face, 0.1091 at the rest roll (the least of the roll; armed 0.2043). The chord now turns 3.0° about its inner end so the shaft's tip stands `ALARM_LINK_ROD_STANDOFF` 0.7600 beside the rod's axis — the least offset at which the foot's rim clears the neck by `CLEAR_MARGIN` — and an `INTRA_UNIT_FLOORS` row reads 0.1657 |
 | 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.973 since TODO 194 thickened the rod; 0.931 when filed) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
 | 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 is built as the `plateSeats` gate: 62 declared seats, 12 frozen debt rows (TODO 209), and a mutation probe that restores the proud plate and watches it fire. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
@@ -27891,7 +27892,7 @@ only once it measures seated. Retire the "seated" wording in
 `EXPECTED_PAIRS` and TODO 171's record if the post stops being what seats
 the pair.
 
-## 205. The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld
+## 205. The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld — CLOSED
 
 Found closing [TODO 191] by the same scan, `meshClearance` over every `AXES`
 axis at 9 samples. `alarmLinkNeckRod` ⇄ `alarmLinkRod` reads **0.1091** at
@@ -27910,6 +27911,82 @@ minimum is a sampled one.
 3. Clear it in position space, keeping `ALARM_LINK_ROD_END_OVERHANG`'s chain
    and the crank's arm.
 4. Add an `INTRA_UNIT_FLOORS` row as the acceptance.
+
+**CLOSED — the shaft's tip stands beside the rod, and a floors row holds it.**
+
+- **Measured over the roll first.** The pose net holds the link at two rolls
+  only: rest (1.0500) on every axis but the armed ones, armed (0.7000) on
+  `alarm` and `alarmStrike`; `alarmToggle` and `alarmPress` visit both. At
+  41 samples per axis the pair reads **0.1091 at rest and 0.2043 armed**,
+  nothing else. To see the stroke between, a scratch probe rolled the shaft
+  continuously from 0.60 to 1.15 and set the rod's foot on the finger's
+  contact corner at each roll (the tick's own law; its control reproduces the
+  solved foot at both ends to 5e-15). The gap is monotone in the roll: least
+  at REST, where the foot rides lowest, opening to 0.2043 at the armed roll.
+- **The binding feature is the neck's FLANK under the foot's face**, not its
+  end face. The chord ended at `ALARM_LINK_ROD_XY`, so the neck's end stood
+  exactly under the rod's axis (along-neck offset 4e-15) and its whole last
+  0.597 ran under the foot's disc. At rest the face stands `H_REST` = 0.2635
+  over the shaft axis (the finger's tip corner, 60° off its zenith), the neck's
+  top 0.16: a 0.1035 vertical gap, 0.1091 as the octagonal neck reads it.
+- **Why not in the crank.** Each term of that gap is the mechanism.
+  `H_REST` is the finger's designed rest, the one the roll span and the rod's
+  travel are solved from. The neck's radius is the arm's inner face
+  (`ALARM_LINK_SHAFT_NECK_R`, a lever arm in §137's crank row). The neck's
+  length is TODO 79/82's overhang chain. And with the tip under the rod no
+  station works either: the crank has to sit on the neck, and the finger has
+  to land inside the foot's disc, so the neck always runs under the disc.
+- **The fix, in position space.** The chord turns about its inner end (the
+  fork stays on the tab) until the rod's axis stands `ALARM_LINK_ROD_STANDOFF`
+  beside the shaft's tip, square to the chord, on the side the finger leans to
+  at rest. The finger reaches back under the foot. The standoff is the least
+  plan offset at which the foot's rim clears the neck by the margin in 3D:
+  hypot(s − R_rod, H_REST) = NECK_R + `CLEAR_MARGIN`, so s = 0.5968 +
+  √(0.31² − 0.2635²) = **0.7600**. `H_REST` is closed form
+  (`RIM_TIP_D`·cos θ + `CRANK_T`/2·sin θ). The rim crank's radius, depth and
+  rest are hoisted for it, and the registration solve and crank build read
+  the same names. The chord turns asin(0.7600/14.60) = 3.0° and is 0.0198
+  shorter; `ALARM_LINK_BODY_LEN_U` is re-measured, 11.0429 → 11.0231.
+- **Two rule-6 asserts.** The solved rod foot must stand `H_REST` over the
+  shaft axis to 1e-6. And the finger's contact corner line, both ends, must
+  land inside the foot's faceted face at rest and armed. It does: 0.4255 off
+  the rod's axis at rest and **0.5355 armed**, against the 12-gon's apothem
+  0.5764. The contact used to sit 0.34–0.23 off the axis on the other side,
+  so the rod now takes a larger eccentric push near the end of the stroke.
+  That is a P1 reading nobody prices yet. It is noted here and not filed.
+- **Acceptance.** A second `INTRA_UNIT_FLOORS` row,
+  `{ unit: 'Alarm link', a: 'alarmLinkNeckRod', b: 'alarmLinkRod', min: CLEAR_MARGIN }`,
+  reads **0.1657** (rest; 0.2509 armed). The continuous roll reads 0.1657 at
+  rest, rising monotone to 0.2509 armed. The must-fail control ran
+  `checkIntraUnit` with the same row on the base tree: **0.1091 at `beat f=0`,
+  FAIL.**
+- **Unchanged, measured against the base.** The focused checks were run by
+  `ci-battery.mjs --only` on both trees (`intraUnit`, `transfers`,
+  `stockFloor`, `turning`, `alarmHandoffs`, `expectedContacts`) and their
+  `--report`s diffed. All pass. `alarmHandoffs`: 17 hand-offs, 0 waived, 0
+  diffs. `turning`: the rod is 0.0005 longer (the stratum fell with the
+  bush). `stockFloor`: only the three hangers' positions moved. Two
+  `expectedContacts` rows moved where their minimum lands, and their minima
+  did not. `transfers`: 23 rows, 0 waived; the lay shaft's crank row's kEff
+  18589.96 → 18591.66 N/m. TODO 82's probe agrees: k_eff
+  **18244.09 → 18245.73 N/m**, stroke 0.10020 posed and stepped (agree),
+  probe OK. The overhang's 14414 → 14436 N/m and the spans' 150279 → 150010
+  are the shaft's section following the shorter body (r 0.3067 → 0.3062).
+  The fingerprint moves only `Alarm link` (0.021) and `Alarm selector`
+  (0.051, the fork built on the turned pin): 3021045713 → 124220314,
+  deterministic across virgin boots.
+- **The turned chord meets nothing new.** `inspection` (0 FORBIDDEN, 85
+  contacting pairs), `clearances` (0 violations, 33 budgets) and
+  `undeclaredClearance` (controls PASS, 1634 undeclared pairs, 0 under
+  margin) ran on both trees. Their `--report`s differ only in census counts
+  and timings, with not one row moved. Every spec point the battery requires
+  silent boots with 0 warnings: default, `studr=7.595`, `4.71`, `7.1175`,
+  `route=2-leg`, `balstep=60`, `subdialr=8` and `reconf=1`.
+- **Not done.** The §112 site solve's `scoreChord` still scores the chord
+  ending at the rod's axis. Its working-end trim and the 0.6 crank stadium
+  cover the tip's 0.76, and the built metal sweeps clean, so the site did not
+  move. But the solve does not yet judge the tip it now produces. Filed as
+  [TODO 213].
 
 ## 206. Nothing presses the alarm link's beak onto the castellations: the gap direction is posed, and the restoring audit's two-way declaration hides it
 
@@ -28227,3 +28304,30 @@ would TOUCH the bore (land 0) at one bearing.
    position space).
 4. Then put `Alarm winding arrest` in `ASSEMBLY_SCOPE`, so a split finger
    fails rather than reports.
+
+## 213. The link site solve scores a chord ending at the rod's axis, not at the shaft tip TODO 205 stands beside it
+
+Found closing [TODO 205]. The §112 site solve (`main.js`, the IIFE that
+returns `ALARM_LINK_ROD_XY`) judges each rod/tab candidate with `scoreChord`,
+which walks the lay shaft as the straight segment from the ROD candidate to
+the tab. TODO 205 turned the built chord about its inner end, so the shaft
+now ends at `ALARM_LINK_SHAFT_TIP_XY`, `ALARM_LINK_ROD_STANDOFF` (0.7600)
+beside the rod's axis, 3.0° off the scored line. The scored corridor is no
+longer the metal.
+
+Today it costs nothing that was measured: the solve trims the chord's last
+1.8 as the crank's working zone and charges a 0.6 stadium over the first 2.5,
+which together cover the tip's offset. The site did not move, and
+`inspection`, `clearances` and `undeclaredClearance` read the turned shaft
+clean. But the solve accepts on a geometry the build does not cut, which is
+the rule-5a failure (judge on real metal) waiting for a layout change to make
+it bite.
+
+**Fix path.** The standoff and its side are closed forms of hoistable
+constants (`ALARM_LINK_RIM_TIP_D`, `ALARM_LINK_RIM_REST_FROM_ZENITH`,
+`ALARM_LINK_SHAFT_NECK_R`, `ALARM_LINK_ROD_R_SECTION`). Hoist them above the
+solve and give `scoreChord` the tip each candidate would produce. Then
+`ALARM_LINK_SHAFT_TIP_XY` reuses that one function rather than a second copy
+of the law. Acceptance: the chosen site, re-measured, and the plate bores'
+re-sync assert silent.
+
