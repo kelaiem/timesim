@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
 | 211 | OPEN | The yoke's prong stands at best 0.137 off the clutch's groove collars over the whole pose net, so the return `declareRestoring('Winding clutch', …, 'yokeSpring')` describes ("re-seats it through the fork") passes through a fork that touches nothing; found by TODO 194's reach control, waived to this item |
 | 210 | OPEN | The maintaining detent's restoring row names `maintSpring` — the maintaining-POWER torus under the maintaining wheel, another unit, 1.0+ from the click at every pose; the detent has no spring of its own in the metal. Found by TODO 194's reach control, waived to this item |
 | 209 | OPEN | Twelve parts stand under `CLEAR_MARGIN` off the base plate without touching it, frozen in `PLATE_CLEARANCE_DEBT` when the `plateSeats` tier arrived. The winding clutch's rim and the winding pinion are at 0.046, the transfer arbor 0.050, the great wheel and transfer wheel 0.075, the case lugs 0.091, and an alarm winding-train arbor and five parts at a flat 0.1 (set-up box, wind-pinion saw, geneva finger disc and pin, arrest cross). Fix: re-seat each at `PLATE_TOP`/`PLATE_BACK` ± `CLEAR_MARGIN`, derived; a part that bears on the plate by design moves to `PLATE_SEATS` with its reason instead. |
@@ -29,6 +30,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
+| 198 | CLOSED | Both units are cut as rings that do not cross, and the cross-ring tier now GATES every labelled unit. Plate: the balance cut's edge walked the cut's per-degree table at 2°, so the chords skipped every even-degree clamp and crossed the fourth and escape wheels' chaton seats (holes 16 and 17). It now takes one vertex per table entry, and §148's clamp holds the chords as well as the rays. Disc: the outline was clamped onto its own bore and the bore cut again as a second ring; the two are now one opening where the cutaway reaches it. Crossings 6 + 36 → 0, open edges 56 and 110 + 19 non-manifold → 0 |
+| 107 | CLOSED (with TODO 198) | It was not the triangulator. It was TODO 198's crossing rings: the outline sat on the bore circle with the bore cut again inside it. `probe-bore-cut.mjs` reads 0 of 808 rays blocked (was 122, 15.1%) and 0 of 464 inside the arbor (was 20). The `INTRA_UNIT_WAIVERS` row is deleted |
 | 197 | CLOSED | `meshClearance`'s near-zero arbitration no longer RAISES a distance: a contained sample gives 0, a positive library figure is kept (min with the sample, an upper bound), and only a library 0 with nothing contained takes the sampled figure. `probe-159-frame-scale.mjs`'s new band rows: 26 of 60 over-read (worst 0.0266 read as 0.0604) → 0. `JMP_SITE` measures through the same rigid-frame law (`rigidSplit` in layout.js): 789 of 4,477 queries were stretched (to ×40.14), and the station is unchanged at 233.5°, clr 0.1572. 20 measurements in the focused checks moved, all down; no verdict moved |
 | 196 | CLOSED | The item's hypothesis was wrong: nothing reads the requested target. The fault had two halves. The balance solve's last bits depended on where its search began (default and `balstep=60` reached the same edge 9.2e-14° apart), and the plate's rim turned bit noise into metal: `absarc` recomputes E+ from atan2, and three.js inserts a 1e-15 edge whenever the two points are not bit-equal, which the bevel turned into a 0.0065 move. Fixed at both: the edge is the binding obstacle's closed-form tangency, stepped to the first ulp `ok` accepts, and the outline opens and closes on the arc's own first point. `balstep=60` now builds bit-identical to the default (0 unit digests differ). The default plate lost a corner that stood 0.021 proud of its radius, so the default fingerprint moved, 3805411413 → 3021045713 |
 | 195 | CLOSED | `probe-117-fork-room.mjs` reads its control radii off the disc's own meshes in the disc's frame: TRACK_R 3.0500 (track mid), BODY_R 3.9289 (track edge to rim tips), and `ALARM_TRACK_H` is the track extrusion's depth. Bands whose footprint leaves the metal print `off`. 2 failing → 0 of 4, step 5.2627 → 0.2500. `explain.html`'s row now says the annulus overlaps the hub's 2.8667 wall by 0.0167 and lies inside the rim's root circle at 4.3812 (it said 3.30; a first draft said 4.125). Re-keyed in 17 locales |
@@ -12930,7 +12933,7 @@ the whole tell.
    TODO 95's named residue and this item bounds it rather than closing it.
 
 
-## 107. The geneva finger disc's bore is not fully cut — cap triangles carry metal across the hole its arbor runs in
+## 107. The geneva finger disc's bore is not fully cut — cap triangles carry metal across the hole its arbor runs in — CLOSED
 
 Filed 2026-08-26, out of TODO 95 row 4. **This is MODELING.md rule 1 in plan:
 the rendered solid is not the authored one**, and it is the same failure
@@ -13000,6 +13003,31 @@ reads the bore as correctly sized because **the bore's VERTICES are all at
 0.2347**; only the faces between them carry the metal. It took a segment test
 against the arbor, which is the one witness that reads faces rather than
 points.
+
+**Closed with [TODO 198], and the diagnosis above was wrong in one word.** It
+was not the triangulator. The outline was `max(boreR, env)`, and over 822 of
+its 1440 bins (205°) the cutaway's envelope runs inside the bore, so the
+outline sat ON the bore circle there. The 64-gon bore was then cut as a
+second ring just inside it. Two rings on top of each other cross: 36 points,
+which `outlines`' cross-ring tier (TODO 187) found and this item's history had
+read as "a hole that fine against an outline that fine". Earcut resolved the
+overlap however it liked, and the wedge of metal in the bore was the result.
+None of the three repairs above was needed. Where the cutaway reaches the
+bore, the two are now one opening: one ring, out along the envelope over the
+155° that carries metal and back along the bore at the same bins
+(`makeGenevaFinger`).
+
+| | before | after |
+|---|---|---|
+| rays down the bore blocked (`probe-bore-cut.mjs`) | 122 of 808 (15.1%) | **0 of 808** |
+| inside the arbor's own footprint | 20 of 464 (4.3%) | **0 of 464** |
+| `intraUnit` disc ⇄ `alarmArrestFingerArbor` | waived MF row | **no row** |
+| disc open / non-manifold edges (`surfaceEdgeCensus`) | 110 / 19 | **0 / 0** |
+
+The `INTRA_UNIT_WAIVERS` row is deleted, not renewed. The disc was never
+declared in `INTRA_UNIT_CONTACTS`, as this item asked. What the honest cut
+shows about the disc itself (it wraps only 155° of its bore, and the pin
+stands on none of it) is [TODO 212].
 
 ## 101. The alarm disc's arm runs through the hour tube — 0.29 u of steel, against a 0.15 floor — CLOSED
 
@@ -27294,7 +27322,7 @@ sweeps whose numbers this landing has not measured. Boot is silent
 seven swept/silent spec points: studr=7.595, studr=4.71, studr=7.1175,
 route=2-leg (its real three-point query), balstep=60, subdialr=8 and reconf=1.
 
-## 198. Two units carry rings that cross each other: the three-quarter plate and the geneva finger disc are cut open
+## 198. Two units carry rings that cross each other: the three-quarter plate and the geneva finger disc are cut open — CLOSED
 
 Found closing [TODO 187]. The new cross-ring tier of `outlines` (two rings of
 one authored shape crossing each other) gates only the held fixtures. Its
@@ -27324,6 +27352,89 @@ outline, or keep its land. Then move the cross-ring tier's gate from
 `HELD_NAMES` to every unit, so the REPORT becomes a gate (§40's arc). The
 acceptance is `outlines`' `crossRing.reported` empty, both meshes reading
 0 open edges, and for the disc `probe-bore-cut.mjs`'s TODO 107 acceptance.
+
+**Closed. Neither crossing was an opening drawn in the wrong place; both were
+one boundary written down twice.**
+
+**What holes 16 and 17 are.** They are two of the four §132 chaton
+counterbores (`tqPolyHoles`: each the counterbore merged with its screw
+seats). Hole 16 is the **fourth wheel's**, at (0, −18.215). Hole 17 is the
+**escape wheel's**, at (4.910, −26.042). The outline they straddled is not
+the rim but the balance cut's escapement stretch, which §148's `seatCut`
+pulls back out of every chaton keep (counterbore and seats, each held
+`CLEAR_MARGIN` off). The cut is a polar table, one radius per degree, and
+`clampCutToKeeps` clamped it per degree. But `makeThreeQuarterPlate` walked
+the edge at **2°**, from −75°, so it visited only the ODD degrees. Every
+even-degree clamp was invisible to the metal, and a chord between two odd
+neighbours ran straight across the seat it had been pulled out of: 2 points
+into hole 16 (segment φ −127° → −129°) and 4 into hole 17 (−89° → −91° and
+−107° → −109°), up to **0.131** past the outline.
+
+**The plate fix, from the constraint.** The plate must be cut from the table
+the clamp held, so the edge now takes one vertex per entry (`STEP =
+2π / cut.radii.length`; ±phiOpen = 75° is a whole number of steps, and it
+warns if not). With the even entries visible, a 1° chord can still cross a
+seat's FLANK, where one ray enters the keep and the next misses it, because
+the clamp held rays and not edges. So after the per-ray clamp, every chord
+that still enters a keep's disc has its farther end pulled in along its own
+ray, by bisection, to the radius where that chord just clears. Both ends are
+pulled together only when the farther one alone is not enough. The test is
+the same disc (need + `CLEAR_MARGIN`) as a true point-to-segment distance. It
+only shrinks the table and never goes past the balance's running-clearance
+floor. A post-condition warns if any chord is left inside a keep. The simpler
+sufficient rule (each entry inside the least entry radius over both its
+chords) was tried first: it took up to 1.2 off the cut and 3.38 of its area.
+The chord rule takes 1.57.
+
+**The disc fix.** The outline was `max(boreR, env)`, and over 822 of 1440
+bins the envelope runs inside the bore. So the outline sat ON the bore circle
+there, and the 64-gon bore was cut again as a second ring just inside it: 36
+crossings. Where the cutaway reaches the bore there is no land between them,
+so they are one opening. The ring now runs out along the envelope over the
+one run of bins that carries metal, and back along the bore at the same bins.
+The separate bore ring is cut only when the envelope clears the bore all the
+way round. It warns if the envelope ever reaches the bore in two places
+(two loose pieces, not a disc). This moves no metal the shape claimed; it
+stops claiming the overlap.
+
+**Measured** (browser boots of this tree against origin/main fb08638):
+
+| | before | after |
+|---|---|---|
+| `outlines` cross-ring rows | 3 (plate × hole 16: 2, × hole 17: 4; disc × bore: 36) | **0** |
+| `threeQuarterPlate` open / non-manifold edges | 56 / 0 | **0 / 0** |
+| `genevaFingerDisc` open / non-manifold edges | 110 / 19 | **0 / 0** |
+| plate cut-edge vertices | 106 (odd degrees) | 211 (every degree) |
+| plate chaton seat ⇄ cut edge, authored rings | −0.131 (crossed) | **+0.032 / +0.031** (= 0.15 − 2 × `PLATE_BEVEL`) |
+| balance-cut area (sector integral about the balance) | 271.651 | 270.084 (plate +1.57, ≈0.6%) |
+| largest edge move | — | 1.69 inward at φ 270° (the escape seat's flank, an even entry the 2° walk skipped); 0.34 outward at 228° |
+| bore rays blocked (`probe-bore-cut.mjs`) | 122 / 808 (15.1%) | **0 / 808** |
+| `intraUnit` disc ⇄ arbor | waived (TODO 107) | **no row**, waiver deleted |
+| default fingerprint | 3021045713 | 3021045713 (a box hash cannot see a cut) |
+
+**The gate.** The cross-ring tier's `crossRing.reported` came back empty
+after the fix, so the tier now gates every row it reads, held fixture and
+labelled unit alike (`checkOutlines`; `battery-checks.mjs`'s gate and note).
+The `reported` list is gone. `probe-187-plate-gates.mjs` passes 9 of 9.
+Claim 9 now asserts no unit carries a row in either boot. Claim 2 now asks
+for at least one base-plate mesh read: it had been failing on `main` since
+TODO 200's rivet lands, which are lathes and never had a shape. Its tree copy
+now filters paths inside the tree, so it also runs from a worktree.
+
+**Focused checks** (local, headless Chromium, this tree, whole, not
+restricted): `outlines` PASS (0 cross-ring rows); `meshIntegrity` PASS;
+`intraUnit` PASS (3 → 2 waived, the TODO 107 row gone); `plateSeats` PASS
+(62 seated, 12 TODO 209 debt, unchanged); `inspection { includeExcluded }`
+PASS, 0 FORBIDDEN; `clearances` PASS (33 budgets); `expectedContacts` PASS
+(32 pairs, 0 waived); `undeclaredClearance` PASS (1634 undeclared unit pairs, 0 under the margin). The default and the
+seven sweep points (`studr=7.595`, `studr=4.71`, `studr=7.1175`,
+`route=2-leg`, `balstep=60`, `subdialr=8`, `reconf=1`) boot with 0 warnings,
+and both meshes read 0 open edges in every one. The full battery was not run
+here.
+
+**Found and filed, not fixed:** cut honestly, the finger disc wraps only 155°
+of its bore, its pin stands on no metal, and nothing joins the finger to the
+pinion that turns it: [TODO 212].
 
 ## 199. The strike hold between arming and the trip is the alarmReleased flag: build the feeler→lock release
 
@@ -28065,3 +28176,54 @@ spring's preload holding it there), or the tick's clutch position must be
 derived from the prong's. Either way, add an `ALARM_HANDOFFS`-class row (the
 stem-clutch table is the sibling) measuring prong ⇄ collar shut. Then retire
 `RESTORING_REACH_WAIVERS['Winding clutch\u0000clutchSleeve']`.
+
+## 212. The geneva finger is three loose bodies: its pin stands on no metal, its disc wraps 155° of its bore, and nothing joins either to the pinion that turns them
+
+Found closing [TODO 198]. Once `makeGenevaFinger` cuts its disc as one honest
+ring, the disc's shape is visible, and it is not a Geneva driver:
+
+- **The disc wraps 155° of its bore.** The cutaway's envelope runs inside
+  the bore over 822 of the outline's 1440 bins (205°), opposite the metal. So
+  the disc is a crescent on the far side of the arbor, tapering to 0.0056
+  where its two tips meet the bore. (Before TODO 198 this was hidden: the
+  outline was clamped onto the bore circle and the bore cut again as a second
+  ring, and the extrude came out open.)
+- **The pin stands on none of it.** `genevaFingerPin` is at (a, 0) =
+  (1.574, 0), on the empty side, **1.457** from the nearest disc metal. The
+  schematic draws "the crank: axis → pin" (`main.js`, the geneva glyph pass),
+  and no crank exists in the metal.
+- **Nothing joins the finger to its pinion.** `fpSpin` carries the disc, the
+  pin and `subFingerPinion`, and turns them together. All three are bored onto
+  `alarmArrestFingerArbor`, which is a fixed column (`column()` in the arrest
+  block: "the finger turns, the column does not"). Disc ⇄ pinion measures
+  **4.508** apart, pin ⇄ pinion **4.198**. So the drive edge from the pinion
+  to the finger has no metal path: the finger is posed off the pinion's angle.
+
+Why it is likely over-cut: the envelope samples the cross's RIM CIRCLE at b
+over ±`spec.index` about the engaging slot, including the slot mouths, where
+there is no cross metal. At mid-engagement the rim point on the line of
+centres is d − b = 0.313 from the finger's axis, so env = 0.163 < boreR there.
+The cross's real nearest metal is its horn, `spec.horn` = 0.3847, which the
+spec sizes to exactly `fingerBoreR + CLEAR_MARGIN`. So even an exact envelope
+would TOUCH the bore (land 0) at one bearing.
+
+`assembly` sees it and only reports it, because the arrest is outside
+`ASSEMBLY_SCOPE`: its row reads the `genevaFingerDisc` group as **3 bodies**
+(`subFingerPinion`, `genevaFingerDisc`, `genevaFingerPin`), separation
+1.4572. `support` is declared per unit, so it cannot see it either.
+
+**Fix path.**
+1. Cut the envelope against the cross's own traced outline
+   (`makeGenevaCross`' `userData.outline`), swept over the engagement, rather
+   than against its rim circle. Measure how much of the bore the disc then
+   wraps.
+2. Give the finger a real body. A Geneva driver is a locking disc and a crank
+   carrying the pin on one hub, and that hub is fixed to the output pinion's
+   (a pipe or a shared arbor that turns, in place of the fixed column), sized
+   at P1 for the stall torque the arbor's own comment already derives
+   (9.8e-5 N·m).
+3. If the disc must keep a land at the bore, that is `hornFloor = fingerBoreR
+   + land + CLEAR_MARGIN`, which grows d and re-lays the arrest (P3, in
+   position space).
+4. Then put `Alarm winding arrest` in `ASSEMBLY_SCOPE`, so a split finger
+   fails rather than reports.

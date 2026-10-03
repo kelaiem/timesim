@@ -13,8 +13,11 @@
 // the battery applies, not a re-statement of it):
 //   CONTROL — the shipped tree:
 //     1. boot silent (standing rule 6);
-//     2. `outlines` passes its battery gate, with the base plate READ (every
-//        mesh of it carries an authored shape) and 0 cross-ring rows on it;
+//     2. `outlines` passes its battery gate, with the base plate READ (at
+//        least one mesh of it carries an authored shape — TODO 200's rivet
+//        lands are lathes and never had one, which the gate counts rather
+//        than fails, and every EXTRUDE of it is read or the gate fails on
+//        noShape) and 0 cross-ring rows on it;
 //     3. `meshIntegrity` passes its battery gate, the plate's meshes CLOSED;
 //     4. the digest payload carries a 'Base plate' row and names it `held`,
 //        and the fingerprint carries its box at every pose.
@@ -27,8 +30,8 @@
 //     8. the 'Base plate' digest MOVES and no unit's does — the changed set is
 //        the plate (plus `DIGEST_ALWAYS_CHANGED`), and `resolvePairsTouching`
 //        accepts it without throwing;
-//     9. the unit cross-ring rows (a REPORT, TODO 198) are identical in both
-//        boots — the mutation is the plate's alone.
+//     9. no labelled unit carries a cross-ring row in either boot (the tier
+//        gates them since TODO 198) — the mutation is the plate's alone.
 // Reported, not gated: whether the mutant boots silent (it did when TODO 172
 // measured it — the point of the item), and whether the FINGERPRINT moved. A
 // box hash cannot see a hole, so it is not expected to; the plate's box row is
@@ -40,7 +43,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, relative } from 'node:path';
 import { BATTERY, virginBoot, prepPage, runCheck } from './battery-checks.mjs';
 
 const ROOT = resolve(process.env.ROOT || '..');
@@ -61,7 +64,9 @@ const HELD = 'Base plate';
 const copyTree = () => {
   const dir = mkdtempSync(join(tmpdir(), 'plate187-'));
   cpSync(ROOT, dir, { recursive: true, dereference: true,
-    filter: (s) => !/(^|[\\/])(\.git|node_modules|\.battery-out|\.claude|timelapse)([\\/]|$)/.test(s) });
+    // Matched against the path INSIDE the tree: a checkout living under a
+    // `.claude/worktrees/` directory would otherwise filter out every file.
+    filter: (s) => !/(^|[\\/])(\.git|node_modules|\.battery-out|\.claude|timelapse)([\\/]|$)/.test(relative(ROOT, s)) });
   return dir;
 };
 
@@ -134,7 +139,7 @@ console.log('');
 claim(1, control.warns.length === 0, `control boots silent (${control.warns.length} boot warn(s))`);
 {
   const h = heldOf(control);
-  claim(2, control.outlines.fails.length === 0 && h && h.meshes > 0 && h.read === h.meshes && crossOf(control).length === 0,
+  claim(2, control.outlines.fails.length === 0 && h && h.meshes > 0 && h.read > 0 && crossOf(control).length === 0,
     `control outlines gate: ${control.outlines.fails.length} fail(s); base plate read ${h ? `${h.read} of ${h.meshes}` : 'MISSING'} meshes, `
     + `${crossOf(control).length} cross-ring rows on it; ${control.outlines.result.read} of ${control.outlines.result.geometries} geometries read`);
 }
@@ -167,11 +172,10 @@ if (mutant) {
     + `${unitMoved.length} labelled unit(s) moved${unitMoved.length ? `: ${unitMoved.join(', ')}` : ''}); `
     + `digestChangedUnits → ${JSON.stringify(mutant.changed)}, resolvePairsTouching `
     + `${mutant.restrict?.ok ? `accepts it (${mutant.restrict.size} names)` : `THREW: ${mutant.restrict?.error}`}`);
-  const ctlRows = JSON.stringify(control.outlines.result.crossRing.reported);
-  const mutRows = JSON.stringify(mutant.outlines.result.crossRing.reported);
-  claim(9, ctlRows === mutRows,
-    `unit cross-ring rows (REPORT, TODO 198) identical in both boots: ${control.outlines.result.crossRing.reported
-      .map((x) => `${x.unit} / ${x.mesh} ${x.rings} ${x.crossings}`).join('; ') || 'none'}`);
+  const unitRows = (r) => r.outlines.result.crossRing.gated.filter((x) => x.unit !== HELD);
+  const fmtRows = (rows) => rows.map((x) => `${x.unit} / ${x.mesh} ${x.rings} ${x.crossings}`).join('; ') || 'none';
+  claim(9, unitRows(control).length === 0 && unitRows(mutant).length === 0,
+    `unit cross-ring rows (gated since TODO 198): control ${fmtRows(unitRows(control))}, mutant ${fmtRows(unitRows(mutant))}`);
   console.log('');
   console.log(`REPORT  mutant boot warns: ${mutant.warns.length}${mutant.warns.length ? ` — ${mutant.warns.slice(0, 3).join(' | ')}` : ' (silent — every boot assert passed the open plate)'}`);
   console.log(`REPORT  fingerprint ${control.fpHash === mutant.fpHash ? 'UNMOVED' : 'MOVED'} (${control.fpHash} → ${mutant.fpHash}) — a box cannot see a hole`);

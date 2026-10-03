@@ -3542,14 +3542,13 @@ export const INTRA_UNIT_CONTACTS = [
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
-  // The row below became visible with TODO 95's pass-through witness; the metal
-  // did not move. It is a MESH that fails a fit its CONSTANTS derive correctly
-  // — MODELING.md rule 1 — so the repair is in the builder, not in this table,
-  // and it may not be promoted to INTRA_UNIT_CONTACTS: that table says
-  // "assembled and touching on purpose", which this is not.
+  // TODO 107's row (genevaFingerDisc ⇄ alarmArrestFingerArbor) stood here and
+  // is CLOSED with TODO 198 — deleted, not renewed. The bore was never a
+  // triangulator failure: the disc's outline was clamped onto its own bore
+  // circle and drawn again as a separate bore ring, the two rings crossed 36
+  // times, and earcut filled the overlap with metal. Cut as one ring where the
+  // cutaway reaches the bore, 0 of 808 rays down it are blocked.
   // TODO 102 stood here too and is CLOSED — the waiver is deleted, not renewed.
-  { unit: 'Alarm winding arrest', a: 'genevaFingerDisc', b: 'alarmArrestFingerArbor',
-    debt: 'TODO 107: the bore is a designed 0.05 running fit (fingerBoreR = arborR + 0.05) that the extrude\'s cap triangulation does not honour — rays down the bore are blocked over 15.1% of its area and 4.3% of the arbor\'s own footprint' },
   // TODO 22 closed with the switch resize: the press axis rides above the
   // wheel's stack and the stem's inner end is press-swept derived — the
   // instrument measures the repair (0 rows).
@@ -9573,15 +9572,17 @@ export async function checkOutlines(clock, opts = {}) {
     if (++i % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
   }
 
-  // TODO 187 — the cross-ring tier GATES the held fixtures and REPORTS every
-  // labelled unit (§40's report → triage → gate arc). Its first movement-wide
-  // run found two units already carrying the defect TODO 172 caught on the
-  // plate, both open meshes: the three-quarter plate (its outline crosses holes
-  // 16 and 17, 6 points, 56 open edges) and the geneva finger disc (its outline
-  // crosses its own bore, 36 points — TODO 107's wedge). Gating those on
-  // arrival would land CI red; they are filed in TODO 198 instead.
-  const crossGated = crossRows.filter((r) => HELD_NAMES.has(r.unit));
-  const crossReported = crossRows.filter((r) => !HELD_NAMES.has(r.unit));
+  // TODO 187 → TODO 198 — the cross-ring tier GATES every ring it reads, held
+  // fixture and labelled unit alike (§40's report → triage → gate arc, run to
+  // its end). TODO 187 gated only the held fixtures because its first
+  // movement-wide run found two units already carrying the defect TODO 172
+  // caught on the plate, both open meshes: the three-quarter plate (its
+  // balance cut's 2° chords crossed the fourth and escape wheels' chaton seats,
+  // holes 16 and 17 — 6 points, 56 open edges) and the geneva finger disc (its
+  // outline clamped onto its own bore, 36 points, 129 bad edges — TODO 107's
+  // wedge). TODO 198 cut both as simple, non-crossing rings and closed them,
+  // so the report had nothing left in it to excuse.
+  const crossGated = crossRows;
   const heldProblems = heldFixtureProblems(held);
   for (const h of held) if (h.meshes.length && !heldRead.get(h.name))
     heldProblems.push({ heldFixture: h.name, problem: 'no mesh of it carries a readable authored shape — the row reads nothing' });
@@ -9595,7 +9596,7 @@ export async function checkOutlines(clock, opts = {}) {
     noShape,
     held: held.map((h) => ({ name: h.name, meshes: h.meshes.length, read: heldRead.get(h.name) })),
     heldProblems,
-    crossRing: { gated: crossGated, reported: crossReported },
+    crossRing: { gated: crossGated },
     withoutShape: Object.entries(byKind).sort((a, b) => b[1] - a[1])
       .map(([type, count]) => ({ type, count })),
   };

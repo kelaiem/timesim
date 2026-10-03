@@ -4893,10 +4893,42 @@ const inCutClearance = (x, y) => {
 // only direction taken — the table is otherwise only ever grown, and a clamp
 // that could grow it would let a bearing open the very wedge the balance runs
 // in. The balance's running clearance is the floor and is never crossed.
+//
+// TODO 198 — AND IT HOLDS THE CHORDS, NOT ONLY THE RAYS. The plate is cut as a
+// polygon with one vertex per entry (makeThreeQuarterPlate), so what must stay
+// out of a keep is each straight EDGE between two neighbouring entries, not
+// only the entries themselves. An entry clamped on its own ray leaves the
+// chords either side free to cut across the keep's flank, where the next ray
+// misses the disc and its entry stands far out: measured on the fourth wheel's
+// and the escape wheel's chaton seats, chords up to 0.13 into the seat. So
+// after the per-ray clamp, every chord that still enters a keep's disc has its
+// FARTHER end pulled in along its own ray — by bisection, to the radius at
+// which that chord just clears — and both ends together only when lowering
+// the farther one to the nearer one's radius is not enough. The test is the
+// same disc the ray clamp uses (need + CLEAR_MARGIN), measured as a true
+// point-to-segment distance; it only ever shrinks the table and never past the
+// balance's running-clearance floor, so it cannot open the wedge the balance
+// runs in. Pulling in only what a chord demands, rather than holding each
+// entry to the least entry radius over both its chords, keeps the escapement
+// view: that sufficient rule took up to 1.2 off the cut at the seats' flanks
+// where this takes what the metal needs.
 const cutFloorR = () => BAL_OUTER_R + TQ_CUT_MARGIN;
 function clampCutToKeeps(keeps) {
   let worst = 0;
+  const pt = (i, r) => {
+    const a = TQ_CUT.aim + i * DEG2RAD;
+    return [Math.cos(a) * r, Math.sin(a) * r];   // cut-centred
+  };
+  const chordEnters = (i, ri, j, rj, k) => {
+    const [ax, ay] = pt(i, ri), [bx, by] = pt(j, rj);
+    const px = k.x - TQ_CUT.x, py = k.y - TQ_CUT.y;
+    const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1e-18;
+    const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L2));
+    return Math.hypot(px - ax - t * vx, py - ay - t * vy) < k.r;
+  };
   for (const table of [TQ_CUT.rawRadii, TQ_CUT.radii]) {
+    const set = (i, r) => { worst = Math.max(worst, table[i] - r); table[i] = r; };
+    // The per-ray clamp: each entry out of every keep its own ray enters.
     for (let i = 0; i < 360; i++) {
       const a = TQ_CUT.aim + i * DEG2RAD, ux = Math.cos(a), uy = Math.sin(a);
       for (const k of keeps) {
@@ -4906,10 +4938,41 @@ function clampCutToKeeps(keeps) {
         if (disc <= 0) continue;                           // the ray misses it entirely
         const rIn = b - Math.sqrt(disc);                   // ...enters the keep here
         if (table[i] <= rIn) continue;
-        worst = Math.max(worst, table[i] - Math.max(rIn, cutFloorR()));
-        table[i] = Math.max(rIn, cutFloorR());
+        set(i, Math.max(rIn, cutFloorR()));
       }
     }
+    // The chords. Converged, because pulling one end in can only ever shorten
+    // the chords it belongs to; each pass bisects to 1e-6 of a unit.
+    for (let pass = 0; pass < 16; pass++) {
+      let moved = false;
+      for (let i = 0; i < 360; i++) {
+        const j = (i + 1) % 360;
+        for (const k of keeps) {
+          if (!chordEnters(i, table[i], j, table[j], k)) continue;
+          const far = table[i] >= table[j] ? i : j, near = far === i ? j : i;
+          const enters = (rf, rn) => (far === i ? chordEnters(i, rf, j, rn, k) : chordEnters(i, rn, j, rf, k));
+          const floor = cutFloorR();
+          if (!enters(Math.max(table[near], floor), table[near])) {
+            let lo = Math.max(table[near], floor), hi = table[far];   // lo clears, hi enters
+            while (hi - lo > 1e-6) { const m = (lo + hi) / 2; if (enters(m, table[near])) hi = m; else lo = m; }
+            set(far, lo);
+          } else {
+            let lo = floor, hi = table[near];                         // both ends together
+            if (enters(lo, lo)) { set(far, floor); set(near, floor); moved = true; continue; }
+            while (hi - lo > 1e-6) { const m = (lo + hi) / 2; if (enters(m, m)) hi = m; else lo = m; }
+            set(far, lo); set(near, lo);
+          }
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    // Held, not assumed (rule 6): a chord still inside a keep here means the
+    // floor stopped the pull or the passes ran out, and the plate would be cut
+    // through a chaton seat exactly as before.
+    let left = 0;
+    for (let i = 0; i < 360; i++) for (const k of keeps) if (chordEnters(i, table[i], (i + 1) % 360, table[(i + 1) % 360], k)) left++;
+    if (left) console.warn(`TODO 198: ${left} chord(s) of the balance cut still enter a chaton keep after the clamp — the plate is cut through a bearing`);
   }
   return worst;
 }

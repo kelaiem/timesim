@@ -443,9 +443,10 @@ it into prose either.
    fingerprint, and gates two things on it — 0 CROSS-RING crossings (two rings
    of one shape crossing each other, which is how TODO 172's first pocket
    draft opened the slab through every gate) and, in `meshIntegrity`, 0 open
-   or non-manifold edges. The cross-ring tier REPORTS the labelled units:
-   its first run found the three-quarter plate and the geneva finger disc
-   both cut that way, TODO 198. `probe-187-plate-gates.mjs` re-cuts the
+   or non-manifold edges. Since TODO 198 the cross-ring tier GATES the
+   labelled units too: its first run found the three-quarter plate and the
+   geneva finger disc both cut that way, and both are now cut as rings that
+   do not cross. `probe-187-plate-gates.mjs` re-cuts the
    draft and watches both go red), and `point sweeps` **0 broken, every
    LISTED point clean** (TODO 186 — the silent spec points swept and unioned
    by §152's rule; a finding keeps a point out of the validated set, a PR's
