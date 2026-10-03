@@ -108,7 +108,7 @@ const res = await page.evaluate(async () => {
   const mc = I.meshClearance(mid, stem, Infinity);
   out.push(mc <= 0.001
     ? `CONCLUSION: meshClearance ${mc.toFixed(4)} agrees with the raw query and with sampling at ${best.toFixed(4)}. The pass-through witness is holding.`
-    : `CONCLUSION: raw says ${raw ? raw.distance.toFixed(4) : 'null'} and sampling says ${best.toFixed(4)}, but meshClearance says ${mc.toFixed(4)}. The LIBRARY is right and the WRAPPER overrode it — _meshClearanceInner takes Math.max(d, v.d) when sampledVerdict finds no contained sample, so a sampling miss beats a correct 0.`);
+    : `CONCLUSION: raw says ${raw ? raw.distance.toFixed(4) : 'null'} and sampling says ${best.toFixed(4)}, but meshClearance says ${mc.toFixed(4)}. The LIBRARY is right and the WRAPPER overrode it — _meshClearanceInner takes the sampled v.d when the library reads 0 and sampledVerdict finds no contained sample, so a sampling miss beats a correct 0.`);
   return out;
 });
 console.log(res.join('\n'));

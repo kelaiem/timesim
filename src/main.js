@@ -43,7 +43,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T,
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
@@ -46963,10 +46963,39 @@ const JMP_SITE = await (async () => {
   OBS = { main: bvhMain, plate: bvhPlate, lever: bvhLever, post: bvhPost, rotors };
   // ---- the measures
   const t1 = {}, t2 = {};
+  // TODO 197 — EVERY QUERY THROUGH A RIGID FRAME, by the same law the battery
+  // measures with (`rigidSplit` in layout.js, which inspect.js's `rigidFrame`
+  // reads). The obstacle trees are world-baked, so the frame that matters is
+  // the query's: the lifter bar is a unit box carried by a matrix whose scale.x
+  // is its span. Its distances were already in world units (TODO 159's
+  // argument: one 12-triangle box with no tree, each triangle carried into the
+  // obstacle's frame before it is measured), but the library also prunes with
+  // an oriented box built from that matrix, which is the bound TODO 159
+  // measured unsound under a non-rigid map. So a non-rigid M has its linear
+  // part (or just its column norms, when the columns are orthogonal) baked into
+  // a throwaway copy, and the copy is measured through the rigid remainder. A
+  // rigid M passes through untouched, so every part but the bar reads exactly
+  // what it read before.
+  const _unS = new THREE.Matrix4();
+  const rigidQ = (geo, M) => {
+    const { kind, n } = rigidSplit(M.elements);
+    if (kind === 'rigid') return null;
+    const L = new THREE.Matrix4(), F = new THREE.Matrix4();
+    if (kind === 'scale') { L.makeScale(n[0], n[1], n[2]); F.copy(M).multiply(_unS.makeScale(1 / n[0], 1 / n[1], 1 / n[2])); }
+    else { L.copy(M).setPosition(0, 0, 0); F.makeTranslation(M.elements[12], M.elements[13], M.elements[14]); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', geo.attributes.position.clone().applyMatrix4(L));
+    if (geo.index) g.setIndex(geo.index.clone());
+    g.computeBoundingBox();
+    return { g, F };
+  };
   const bvhShort = (bvh, geo, M, tau) => {
     if (!bvh) return false;
-    const r = bvh.closestPointToGeometry(geo, M, t1, t2, 0, tau);
-    return !!r && r.distance < tau;
+    const q = rigidQ(geo, M);
+    try {
+      const r = bvh.closestPointToGeometry(q ? q.g : geo, q ? q.F : M, t1, t2, 0, tau);
+      return !!r && r.distance < tau;
+    } finally { if (q) q.g.dispose(); }
   };
   const HMIN = G.ENVELOPE_DELTA_FINE;
   // The revolutions are judged on BOXES: a piece of the jumper whose own box
@@ -47066,7 +47095,8 @@ const JMP_SITE = await (async () => {
     // the two-tree descent measures in the query geometry's own frame, which a
     // non-uniform scale distorts — it read a tab 0.119 off as clear. Without a
     // tree each of its twelve triangles is carried into the obstacle's frame
-    // before it is measured, which is exact under any affine map.
+    // before it is measured. Since TODO 197 bvhShort also bakes the stretch
+    // out of that matrix first (rigidQ), so the library never sees it.
     const lg = indexed(new THREE.BoxGeometry(1, W, JMP_LIFTER_T));
     try {
       // every pose this station is judged at, posed once

@@ -29,7 +29,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
-| 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
+| 197 | CLOSED | `meshClearance`'s near-zero arbitration no longer RAISES a distance: a contained sample gives 0, a positive library figure is kept (min with the sample, an upper bound), and only a library 0 with nothing contained takes the sampled figure. `probe-159-frame-scale.mjs`'s new band rows: 26 of 60 over-read (worst 0.0266 read as 0.0604) → 0. `JMP_SITE` measures through the same rigid-frame law (`rigidSplit` in layout.js): 789 of 4,477 queries were stretched (to ×40.14), and the station is unchanged at 233.5°, clr 0.1572. 20 measurements in the focused checks moved, all down; no verdict moved |
 | 196 | CLOSED | The item's hypothesis was wrong: nothing reads the requested target. The fault had two halves. The balance solve's last bits depended on where its search began (default and `balstep=60` reached the same edge 9.2e-14° apart), and the plate's rim turned bit noise into metal: `absarc` recomputes E+ from atan2, and three.js inserts a 1e-15 edge whenever the two points are not bit-equal, which the bevel turned into a 0.0065 move. Fixed at both: the edge is the binding obstacle's closed-form tangency, stepped to the first ulp `ok` accepts, and the outline opens and closes on the arc's own first point. `balstep=60` now builds bit-identical to the default (0 unit digests differ). The default plate lost a corner that stood 0.021 proud of its radius, so the default fingerprint moved, 3805411413 → 3021045713 |
 | 195 | CLOSED | `probe-117-fork-room.mjs` reads its control radii off the disc's own meshes in the disc's frame: TRACK_R 3.0500 (track mid), BODY_R 3.9289 (track edge to rim tips), and `ALARM_TRACK_H` is the track extrusion's depth. Bands whose footprint leaves the metal print `off`. 2 failing → 0 of 4, step 5.2627 → 0.2500. `explain.html`'s row now says the annulus overlaps the hub's 2.8667 wall by 0.0167 and lies inside the rim's root circle at 4.3812 (it said 3.30; a first draft said 4.125). Re-keyed in 17 locales |
 | 194 | CLOSED | No blade can return the follower (the energy floor is ≈ 6.68 µJ, and a straight blade in the free ring falls 2–5× short), so a COAXIAL SPIRAL does it: the inner end is clamped in a fixed collet on the post and the outer end against a riser the arm carries. This was forced, because the lobe passes 0.03 from the post. 0.033 mm × 0.5768 u, 2.5 coils, solved on the hairspring's elastica: 7.86 → 31.79 mN at the nose, equal-margin in the 5–50 window, strain at 0.9 of yield, coils one running fit apart. Its band is a §51 strata spend: `Z_DIAL` −8.40 → −9.13. The dial move lengthened the selector rod, whose thicker section forked the alarm link's fulcrum (a lug, arms and ratio held). Both ends are measured seated at every parity. A new reach control in `restoring` fires on §29's blade (0.0826) and found TODO 210 and 211 |
@@ -27190,7 +27190,7 @@ to [Applied route, Base plate, Chain]. That row had been stale since TODO 187
 put the held base plate into the digests; no key moved. The §152 baseline for
 the plate is stale until the next push to `main` re-seeds it.
 
-## 197. meshClearance can read OVER the true distance below 0.05, because sampledVerdict's vertex sampler raises the exact figure
+## 197. meshClearance can read OVER the true distance below 0.05, because sampledVerdict's vertex sampler raises the exact figure — CLOSED
 
 Found closing [TODO 159]. `meshClearance` guards its BVH near-zeros with
 `sampledVerdict` (the parity raycast plus a vertex-and-midpoint distance
@@ -27216,6 +27216,83 @@ decide only that (a parity verdict of inside → 0) and never replace the
 library's exact distance with a larger one. Control: the probe's seeded
 trials report 0 over-reads, and a battery `--report` diff names every moved
 row (each should be under 0.05 before).
+
+**Closed — what was built.** In `_meshClearanceInner` the sampler now decides
+contact and nothing else:
+- **inside → 0.** A contained sample, or TODO 95's pass-through witness,
+  proves the contact.
+- **d > 0 → min(d, v.d).** The library's tri-to-tri figure is exact. Any
+  sampled pair of surface points is an upper bound on the true gap, so the
+  minimum can only be the truer of the two. A v.d under d would be §82's
+  over-estimate class come back, and this way it is caught, not masked.
+- **d = 0 with nothing contained → v.d.** This is the only branch where the
+  sampler's figure replaces the library's, because there the library's 0 is
+  not a distance: `distanceToTriangle` short-circuits to exactly 0 through
+  `intersectsTriangle`, the measured false-positive mode. TODO 95's 2.6104
+  came through this branch, and it is unchanged here.
+
+`probe-159-frame-scale.mjs` gains BAND ROWS. These are 60 seeded poses, a
+third of them rigid, walked toward the sphere until the brute-force gap is in
+[0.001, 0.05). The probe now gates over-reads and under-reads past 1e-6:
+- Before: 60 landed in the band, and **26 over-read**. The worst was trial 16
+  (stretched box): **0.0266 read as 0.0604**, past the band itself. Rigid
+  trials over-read too (trial 18: 0.0294 read as 0.0347). Exit 1.
+- After: **0 over-reads and 0 under-reads** of 60. The brute rows' one in-band
+  trial goes from +0.013746 to +0.000000. Exit 0.
+
+`JMP_SITE` measures through the same law. The rigid/scale/linear decision and
+`RIGID_EPS` moved from `inspect.js` to `layout.js` as `rigidSplit`, which both
+`rigidFrame` and the solve's `bvhShort` read (one law, not two copies). A
+non-rigid query matrix has its stretch baked into a throwaway copy, and the
+copy is measured through the rigid remainder. Measured on the default boot:
+- 789 of 4,477 queries were non-rigid, all `scale` (orthogonal), with column
+  norms up to 40.14. That is the lifter bar.
+- The station is unchanged: az 233.5°, clr 0.1572265625, capD 11.1092, score
+  0.379411, bSlack 2, 190 of 720 candidates tested, lifter width 1.48704.
+- This matches TODO 159's argument. A treeless 12-triangle box was already
+  measured exactly, and the OBB pruning bound never cost it the minimum.
+
+**Before the fix, which rows read under 0.05?** Read from the TODO 196 tree's
+local `--report`, which differs from `main` only at the three-quarter plate's
+rim:
+- `clearances`, `expectedContacts`, `undeclaredClearance`: no rows. The census
+  counts 0 `near` outcomes.
+- `plateSeats`: 4 rows. `alarmLinkRodBushBack` 0.003341 (seated), and three
+  `PLATE_CLEARANCE_DEBT` rows: `clutchRim` 0.046296 against floor 0.0459,
+  `windingPinion` 0.046492 against 0.0459, and `transferArbor` 0.049794
+  against 0.0497.
+- `intraUnit`: 35 declared joints with nearestD in (0, 0.05).
+- `assembly`: 9 undeclared splits.
+- `support`: 10 gaps.
+- `jumperMovers`: `selector ring` worstGap 0.0263 and `follower` worstSlack
+  0.028.
+
+**Measured after, on the same boot against `main` (focused checks, default
+spec):** 20 measurements moved (1 plate seat, 14 declared joints, 3 assembly
+splits, 2 support gaps), every one DOWN, and no verdict moved:
+- `plateSeats` `transferArbor` 0.049794 → **0.049746**. It still clears its
+  debt floor 0.0497, by 0.000046. That floor was frozen from the raised
+  reading, so it is now 0.000046 from failing on the true one.
+- `intraUnit`: 14 declared rows (28 fields). The largest moves are
+  `alarmColDriver ⇄ alarmColStud` **0.0531 → 0.0475**, `alarmPusherStem ⇄
+  alarmPusherGuide` 0.0406 → 0.032, and the alarm setting idler's 0.0379 →
+  0.0284. The first of these confirms that a raised reading could land OVER
+  0.05, so the list above is a floor on what moves, not a census.
+- `assembly`: 3 separations, each appearing in both `undeclared` and
+  `outOfScope`. `Mainspring drum` 0.0029 → 0.0018, `alarmArborRatchet` 0.0098
+  → 0.0056, `alarmColDriver` 0.0065 → 0.0042.
+- `support`: two gaps (0.05 → 0.049 and 0.049 → 0.048), which also re-sorts
+  the rows.
+- `jumperMovers`: identical.
+- Every gate stayed green: `plateSeats` control PASS with 0 regressed, 0 stale
+  debt and 0 violations; `support` 0 failures; `assembly` ok; `intraUnit` 0
+  violations.
+
+The full battery `--report` diff is the remaining acceptance. It runs the
+sweeps whose numbers this landing has not measured. Boot is silent
+(`__clock.bootWarns` 0, no app console warning) on the default spec and the
+seven swept/silent spec points: studr=7.595, studr=4.71, studr=7.1175,
+route=2-leg (its real three-point query), balstep=60, subdialr=8 and reconf=1.
 
 ## 198. Two units carry rings that cross each other: the three-quarter plate and the geneva finger disc are cut open
 

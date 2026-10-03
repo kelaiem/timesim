@@ -447,6 +447,31 @@ export const MM = (units) => units * UNIT_MM;          // for readouts and asser
 // units; the boot assert in main.js refuses a layout that outgrows them.
 export const CASE_WIDTH_MAX = 40 / UNIT_MM / 2;   // radius cap, 52.77 units
 export const CASE_LUG_SPAN_MAX = 20 / UNIT_MM;    // 52.77 units across the spring bar
+// TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
+// One law for the two places that measure through a possibly stretched matrix:
+// inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
+// (the jumper lifter bar, cut at unit length and stretched onto its span). A
+// frame whose column norms are within ε of 1 and whose columns are within ε of
+// orthogonal misreads a distance d by at most ~ε·d. No two points of the
+// movement are farther apart than the case's diameter, 2 · CASE_WIDTH_MAX =
+// 105.5 u, and every report prints four decimals, so ε = 1e-4 / 105.5 ≈ 9.5e-7
+// keeps the worst misreading below what any report can show. A frame
+// tolerance, not a clearance margin: CLEAR_MARGIN stays the only one.
+export const RIGID_EPS = 1e-4 / (2 * CASE_WIDTH_MAX);
+// Classify a column-major 4×4 (three.js `Matrix4.elements`): 'rigid' (use it
+// as it stands), 'scale' (orthogonal columns, L = Q·diag(n): bake diag(n) into
+// the geometry and measure through Q plus the translation) or 'linear' (a
+// shear: bake the whole linear part, keep only the translation). Pure, so
+// both callers read the same decision; each builds its own matrices from `n`.
+export function rigidSplit(e) {
+  const n0 = Math.hypot(e[0], e[1], e[2]), n1 = Math.hypot(e[4], e[5], e[6]), n2 = Math.hypot(e[8], e[9], e[10]);
+  const c01 = Math.abs(e[0] * e[4] + e[1] * e[5] + e[2] * e[6]) / (n0 * n1);
+  const c12 = Math.abs(e[4] * e[8] + e[5] * e[9] + e[6] * e[10]) / (n1 * n2);
+  const c02 = Math.abs(e[0] * e[8] + e[1] * e[9] + e[2] * e[10]) / (n0 * n2);
+  const orthogonal = c01 <= RIGID_EPS && c12 <= RIGID_EPS && c02 <= RIGID_EPS;
+  const unit = Math.abs(n0 - 1) <= RIGID_EPS && Math.abs(n1 - 1) <= RIGID_EPS && Math.abs(n2 - 1) <= RIGID_EPS;
+  return { kind: orthogonal ? (unit ? 'rigid' : 'scale') : 'linear', n: [n0, n1, n2] };
+}
 // Movement-to-case clearance and band wall: 1 mm each, the dress-watch
 // practice for a hand-wound movement ring seat — enough for the case
 // screws' bite and the movement ring's spring, not a micron more (the cap
