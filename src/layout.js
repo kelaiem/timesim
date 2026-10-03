@@ -1400,6 +1400,70 @@ export function solveLayout({
     const p = stepPos(escapePos, deg, escToBalance);
     return obstacles.every((o) => Math.hypot(p.x - o.pos.x, p.y - o.pos.y) >= o.rr);
   };
+  // TODO 196 — THE ANSWER IS THE EDGE, NOT THE SEARCH. The constraint: an
+  // infeasible target walks out to the nearest clear angle, and that angle is a
+  // property of the OBSTACLES alone, so every target that walks to one edge
+  // must land on one station, bit for bit.
+  //
+  // Fixed halvings from the target were rejected because they cannot do that:
+  // the search stopped after 40 halvings of a bracket measured FROM the target,
+  // so its last bits were a function of where it began — the default 44.6 and
+  // `?balstep=60` both reached the edge at 43.7635° and stood 9.2e-14 apart.
+  // Nor is bisecting to float adjacency enough: `ok`, evaluated through
+  // cos/sin, FLICKERS over about 4 ulps at the edge (measured: 44.6 and 44.2
+  // settle 4 ulps apart that way), so a bisection lands on whichever flicker
+  // its bracket happens to straddle.
+  //
+  // So the search only decides WHICH obstacle binds. The edge is that
+  // obstacle's own tangency in closed form — the balance's circle about the
+  // escape arbor (radius R = escToBalance) meets the keep-out circle (radius
+  // rr, centre D from the escape at bearing β) where
+  // cos(θ − β) = (R² + D² − rr²) / 2RD — and ulp-stepping outward from it
+  // finds the first angle `ok` accepts, which steps over the flicker. Both
+  // read only the obstacle, never the target. No tolerance is chosen: the
+  // stopping rules are float adjacency and `ok` itself. (The three-quarter
+  // plate's rim had turned those 9.2e-14 into a 0.0065 move; its own half of
+  // the fix is in makeThreeQuarterPlate.)
+  const nextOut = (() => {
+    const f = new Float64Array(1), b = new BigInt64Array(f.buffer);
+    return (x, s) => {
+      if (x === 0) return s * Number.MIN_VALUE;
+      f[0] = x; b[0] += (x > 0) === (s > 0) ? 1n : -1n; return f[0];
+    };
+  })();
+  // A ceiling on the outward walk, not a tolerance: 4096 ulps of a station
+  // angle near 44° is 3e-11°, three orders past the measured 4-ulp flicker, so
+  // reaching it means the closed form named the wrong edge — reported, below.
+  const EDGE_WALK_ULPS = 1 << 12;
+  const edgeAt = (good, bad, s) => {
+    for (;;) {
+      const m = (good + bad) / 2;
+      if (m === good || m === bad) break;
+      if (ok(m)) good = m; else bad = m;
+    }
+    const pb = stepPos(escapePos, bad, escToBalance);
+    let best = null;
+    for (const o of obstacles) {
+      if (Math.hypot(pb.x - o.pos.x, pb.y - o.pos.y) >= o.rr) continue; // not the one that binds
+      const dx = o.pos.x - escapePos.x, dy = o.pos.y - escapePos.y;
+      const D = Math.hypot(dx, dy);
+      const c = (escToBalance * escToBalance + D * D - o.rr * o.rr) / (2 * escToBalance * D);
+      if (!(c >= -1 && c <= 1)) continue;
+      const beta = Math.atan2(dy, dx) / DEG2RAD, alpha = Math.acos(c) / DEG2RAD;
+      for (const th of [beta + alpha, beta - alpha]) {
+        const t = th + 360 * Math.round((good - th) / 360);
+        if (!best || Math.abs(t - good) < Math.abs(best - good)) best = t;
+      }
+    }
+    if (best === null) return good;
+    let at = best;
+    for (let k = 0; k < EDGE_WALK_ULPS && !ok(at); k++) at = nextOut(at, s);
+    if (!ok(at)) {
+      warn(`balance step: the closed-form edge ${best} did not reach a clear double within ${EDGE_WALK_ULPS} ulps — keeping the bisection's ${good}`);
+      return good;
+    }
+    return at;
+  };
   let BALANCE_STEP_DEG;
   if (ok(balanceStepTargetDeg)) {
     BALANCE_STEP_DEG = balanceStepTargetDeg;
@@ -1407,20 +1471,16 @@ export function solveLayout({
     const edge = (s) => {
       let hi = 0.25;
       while (hi <= 90 && !ok(balanceStepTargetDeg + s * hi)) hi += 0.25;
-      if (hi > 90) return Infinity;
-      let lo = hi - 0.25;
-      for (let k = 0; k < 40; k++) {
-        const m = (lo + hi) / 2;
-        if (ok(balanceStepTargetDeg + s * m)) hi = m; else lo = m;
-      }
-      return hi;
+      if (hi > 90) return null;
+      const at = edgeAt(balanceStepTargetDeg + s * hi, balanceStepTargetDeg + s * (hi - 0.25), s);
+      return { at, dist: Math.abs(at - balanceStepTargetDeg) };
     };
     const down = edge(-1), up = edge(1);
-    if (down === Infinity && up === Infinity) {
+    if (!down && !up) {
       warn('balance step: no clear angle about the escape arbor — leaving the target');
       BALANCE_STEP_DEG = balanceStepTargetDeg;
     } else {
-      BALANCE_STEP_DEG = balanceStepTargetDeg + (down <= up ? -down : up);
+      BALANCE_STEP_DEG = (!up || (down && down.dist <= up.dist)) ? down.at : up.at;
     }
   }
   const balancePos = stepPos(escapePos, BALANCE_STEP_DEG, escToBalance);

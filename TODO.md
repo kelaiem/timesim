@@ -30,7 +30,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
-| 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
+| 196 | CLOSED | The item's hypothesis was wrong: nothing reads the requested target. The fault had two halves. The balance solve's last bits depended on where its search began (default and `balstep=60` reached the same edge 9.2e-14° apart), and the plate's rim turned bit noise into metal: `absarc` recomputes E+ from atan2, and three.js inserts a 1e-15 edge whenever the two points are not bit-equal, which the bevel turned into a 0.0065 move. Fixed at both: the edge is the binding obstacle's closed-form tangency, stepped to the first ulp `ok` accepts, and the outline opens and closes on the arc's own first point. `balstep=60` now builds bit-identical to the default (0 unit digests differ). The default plate lost a corner that stood 0.021 proud of its radius, so the default fingerprint moved, 3805411413 → 3021045713 |
 | 195 | CLOSED | `probe-117-fork-room.mjs` reads its control radii off the disc's own meshes in the disc's frame: TRACK_R 3.0500 (track mid), BODY_R 3.9289 (track edge to rim tips), and `ALARM_TRACK_H` is the track extrusion's depth. Bands whose footprint leaves the metal print `off`. 2 failing → 0 of 4, step 5.2627 → 0.2500. `explain.html`'s row now says the annulus overlaps the hub's 2.8667 wall by 0.0167 and lies inside the rim's root circle at 4.3812 (it said 3.30; a first draft said 4.125). Re-keyed in 17 locales |
 | 194 | CLOSED | No blade can return the follower (the energy floor is ≈ 6.68 µJ, and a straight blade in the free ring falls 2–5× short), so a COAXIAL SPIRAL does it: the inner end is clamped in a fixed collet on the post and the outer end against a riser the arm carries. This was forced, because the lobe passes 0.03 from the post. 0.033 mm × 0.5768 u, 2.5 coils, solved on the hairspring's elastica: 7.86 → 31.79 mN at the nose, equal-margin in the 5–50 window, strain at 0.9 of yield, coils one running fit apart. Its band is a §51 strata spend: `Z_DIAL` −8.40 → −9.13. The dial move lengthened the selector rod, whose thicker section forked the alarm link's fulcrum (a lug, arms and ratio held). Both ends are measured seated at every parity. A new reach control in `restoring` fires on §29's blade (0.0826) and found TODO 210 and 211 |
 | 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
@@ -27089,7 +27089,7 @@ Checks: `explain-i18n --check` PASS (0 unmatched, 0 drift, 0 crossed
 honesty terms, 17/17 HONESTY rows verified); `explain-quotes` PASS (35
 agree, 0 disagree); `glossary-links` PASS.
 
-## 196. balstep=60 re-cuts the three-quarter plate's rim although the solved balance station is unchanged
+## 196. balstep=60 re-cuts the three-quarter plate's rim although the solved balance station is unchanged — CLOSED
 
 Found closing [TODO 186] B1. Swept as a spec point, `balstep=60` reports
 `Three-quarter plate` as changed against the default. Measured properly, the
@@ -27107,6 +27107,88 @@ plate that should be digest-identical.
 plate's outline and its recesses for the balance-step input) and derive it
 from the solved station instead. Acceptance: `balstep=60`'s changed set drops
 to {Chain}, and the point's full sweep stays clean.
+
+**Closed — the hypothesis was wrong, and the cause had two halves.** Nothing
+in the plate reads the requested target. Every input to the cut was dumped
+at both specs: slots, holes and windows were bit-identical, and the cut's
+centre and radii differed by at most 1e-13. Bit noise was becoming metal,
+and it took two defects to do it:
+
+- **The solve's answer depended on its starting point.** An infeasible
+  target walked out in 0.25° steps, then took a FIXED 40 halvings of a
+  bracket measured from the target. Its last bits therefore depended on
+  where it began. The default 44.6 and `balstep=60` both reach the edge at
+  43.7635°, as …08367 and …083576 (9.2e-14 apart); 44.2 lands on a third
+  value, …08353.
+- **The plate's rim amplified those bits.** With no notch,
+  `makeThreeQuarterPlate` opened its outline at EP (where the wedge's +φ edge
+  leaves the rim, 5.18°) and closed it back to EP. The rim itself is an
+  `absarc`, which RECOMPUTES its first point as radius·(cos, sin)(atan2(EP)),
+  and `vendor/three.module.js` (`closePath`, and `absellipse`'s join) inserts
+  a LineCurve wherever two such points are not bit-equal. A node rebuild
+  from the dumped inputs shows the default with a 4.4e-16 edge there and
+  `balstep=60` with a 7.1e-15 one. ExtrudeGeometry's bevel offsets each point
+  along the bisector of its two edges, and a 1e-15 edge has no meaningful
+  bisector. So the two plates stood up to 0.0065 apart, and the DEFAULT's
+  corner stood 0.0213 proud of its own finished radius (r 41.5374 against
+  `plateR` 41.5162).
+
+**What was built.** Both halves, each from one source:
+
+- **The solve (`solveLayout`, `src/layout.js`).** The coarse walk now only
+  decides WHICH obstacle binds. The edge is that obstacle's tangency in
+  closed form, cos(θ − β) = (R² + D² − rr²) / 2RD, then stepped outward one
+  ulp at a time to the first angle `ok` accepts. The stepping is needed
+  because `ok`, evaluated through cos/sin, flickers over about 4 ulps at the
+  edge: bisecting to float adjacency alone still landed 44.6 and 44.2 four
+  ulps apart. Swept over 4,925 targets in [−180°, 180°], each edge yields
+  exactly one double, there are no warnings, and nothing moves more than
+  2.1e-13° from the old solve.
+- **The plate (`makeThreeQuarterPlate`, `src/geometry.js`).** With no notch,
+  the outline opens and closes on the rim arc's own first point: the
+  EllipseCurve is pushed as built, and `start` is read off it. The notched
+  walk never had the join, since it emits only `lineTo` points that open
+  and close on one EP. Rebuilt in node from both old input sets, the two
+  plates are now bit-identical even with the solve left unfixed: the cut's
+  1e-13 differences vanish into the Float32 positions once nothing amplifies
+  them.
+
+**Measured** (browser boots of this tree against origin/main):
+
+| | before | after |
+|---|---|---|
+| default fingerprint | 3805411413 | **3021045713** |
+| `balstep=60` fingerprint | 1638161987 | 3021045713 |
+| default plate vertices / index | 164,576 / 195,300 | 164,546 / 195,264 |
+| default ⇄ `balstep=60` plate coordinates differing | 88 (max 0.0065234) | **0** |
+| default ⇄ `balstep=60` unit digests differing | `Three-quarter plate` | **none** (not even `Chain`) |
+| default plate max radius over `plateR` | 0.0213 | 0.0006 |
+| plate `zeroArea` collapsed triangles (report) | 12 | 8 |
+
+Old default ⇄ new default differ only in `Three-quarter plate`'s digest: the
+corner lost its four bevel spikes (old vertices 0.043–0.095 from any new
+one). `outlines`: controls PASS, 0 self-crossing rings, and the plate's
+cross-ring rows are unchanged (TODO 198's outline × hole 16: 2 and × hole
+17: 4). `meshIntegrity`: controls PASS, 0 open, 0 inverted. The default and
+all seven sweep points (`studr=7.595`, `studr=4.71`, `studr=7.1175`,
+`route=2-leg`, `balstep=60`, `subdialr=8`, `reconf=1`) boot with 0
+warnings. The battery itself was not run here.
+
+**Residue, not fixed.** The plate's `linkRod` hole at (18.96, −2.83) closes on
+a 4.4e-16 edge: a full-circle `absarc` ends at r·sin(2π) ≈ −2.4e-16 off its
+start, and that survives rounding at this centre. It is a different
+junction (an arc meeting its own start) and stable across specs, so it
+moves nothing between points. Every `absarc(…, 0, 2π)` in the repo carries
+the same exposure wherever the centre's y lets the residue survive.
+
+**Regenerated in the landing.** `src/validated-configs.js` was rewritten from this
+change's whole-run points file (`node tools/validated-configs.mjs --write
+--points FILE`, battery 52/52, 6 points 6 clean). The `balstep=60` changed set
+is now [Chain], the unit that is in every changed set unconditionally; it was
+[Chain, Three-quarter plate]. The same rewrite refreshed `route=2-leg`'s evidence
+to [Applied route, Base plate, Chain]. That row had been stale since TODO 187
+put the held base plate into the digests; no key moved. The §152 baseline for
+the plate is stale until the next push to `main` re-seeds it.
 
 ## 197. meshClearance can read OVER the true distance below 0.05, because sampledVerdict's vertex sampler raises the exact figure
 
