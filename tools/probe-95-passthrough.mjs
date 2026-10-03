@@ -1,10 +1,12 @@
 // TODO 95 — find every mesh pair where the WRAPPER disagrees with the LIBRARY.
 //
-// `_meshClearanceInner` arbitrates a near-zero against `sampledVerdict` with
-// `d = v.inside ? Math.min(d, 0) : Math.max(d, v.d)`. That `Math.max` cannot
-// tell a FALSE zero (BUILT §82: the vendor's tri-tri test does emit them) from
-// a TRUE zero whose witness point sampling missed — and it resolves the
-// ambiguity towards CLEARANCE, which is the unsafe direction and silent.
+// `_meshClearanceInner` arbitrates a near-zero against `sampledVerdict`. It
+// took `Math.max(d, v.d)` when nothing was contained; since TODO 197 a library
+// figure above 0 is never raised (min(d, v.d)), but a library 0 with nothing
+// contained still takes the sampled v.d. That branch cannot tell a FALSE zero
+// (BUILT §82: the vendor's tri-tri test does emit them) from a TRUE zero whose
+// witness point sampling missed — and it resolves the ambiguity towards
+// CLEARANCE, which is the unsafe direction and silent.
 //
 // A body passing CLEAN THROUGH another is the case sampling can never witness:
 // its vertices and edge midpoints are all in free space, and the wall between

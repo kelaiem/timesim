@@ -37,7 +37,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
-  SLENDER_OVERHANG_K, MOVEMENT_SENSE, CASE_WIDTH_MAX,
+  SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
   TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -883,14 +883,11 @@ function bvhFor(mesh) {
 // is baked once per frame geometry, and a per-pose stretch (the lifter bar and
 // three 12-triangle spring blades) re-bakes a box.
 //
-// RIGID_EPS, derived: a frame whose column norms are within ε of 1 and whose
-// columns are within ε of orthogonal misreads a distance d by at most ~ε·d.
-// No two points of the movement are farther apart than the case's diameter,
-// 2 · CASE_WIDTH_MAX = 105.5 u, and every report prints four decimals, so
-// ε = 1e-4 / 105.5 ≈ 9.5e-7 keeps the worst misreading below what any report
-// can show. (Measured: rigid frames sit within 3e-16 of 1; the smallest real
-// stretch in the movement is 1.42 — the bound is not near either.) This is a
-// frame tolerance, not a clearance margin: CLEAR_MARGIN stays the only one.
+// RIGID_EPS and the rigid/scale/linear decision live in layout.js
+// (`rigidSplit`, derived there), because TODO 197 routed main.js's JMP_SITE
+// through the same law and a second copy of it is the defect class CLAUDE.md
+// names. (Measured: rigid frames sit within 3e-16 of 1; the smallest real
+// stretch in the movement is 1.42 — the bound is not near either.)
 //
 // Not every BVH query has the defect. An INCIDENCE predicate —
 // `intersectsGeometry`, the parity raycast, `segmentPierces`, `intersectsBox`
@@ -901,7 +898,6 @@ function bvhFor(mesh) {
 // were already exact and are left alone. The distance paths are what read a
 // frame's units: `meshClearance`, `sampledVerdict`, `sampledClearance`, the
 // anchor checks' `closestPointToPoint`, and the hand-off rulers.
-const RIGID_EPS = 1e-4 / (2 * CASE_WIDTH_MAX);
 const _frameCache = new WeakMap();   // mesh → its reused view
 const _bakeCache = new WeakMap();    // source geometry → { key, ver, geometry }
 const _bakeL = new THREE.Matrix4(), _unbakeS = new THREE.Matrix4();
@@ -940,17 +936,13 @@ export function rigidFrame(mesh) {
   let v = _frameCache.get(mesh);
   if (!v) { v = { geometry: null, src: null, frame: null, own: new THREE.Matrix4(), rigid: true, baked: null }; _frameCache.set(mesh, v); }
   const e = mesh.matrixWorld.elements;
-  const n0 = Math.hypot(e[0], e[1], e[2]), n1 = Math.hypot(e[4], e[5], e[6]), n2 = Math.hypot(e[8], e[9], e[10]);
-  const c01 = Math.abs(e[0] * e[4] + e[1] * e[5] + e[2] * e[6]) / (n0 * n1);
-  const c12 = Math.abs(e[4] * e[8] + e[5] * e[9] + e[6] * e[10]) / (n1 * n2);
-  const c02 = Math.abs(e[0] * e[8] + e[1] * e[9] + e[2] * e[10]) / (n0 * n2);
-  const orthogonal = c01 <= RIGID_EPS && c12 <= RIGID_EPS && c02 <= RIGID_EPS;
+  const { kind, n: [n0, n1, n2] } = rigidSplit(e);
   v.src = mesh.geometry;
-  if (orthogonal && Math.abs(n0 - 1) <= RIGID_EPS && Math.abs(n1 - 1) <= RIGID_EPS && Math.abs(n2 - 1) <= RIGID_EPS) {
+  if (kind === 'rigid') {
     v.geometry = mesh.geometry; v.frame = mesh.matrixWorld; v.rigid = true; v.baked = null;
     return v;
   }
-  if (orthogonal) {
+  if (kind === 'scale') {
     // L = Q·diag(n): bake diag(n), keep Q (and the translation) as the frame.
     _bakeL.makeScale(n0, n1, n2);
     v.own.copy(mesh.matrixWorld).multiply(_unbakeS.makeScale(1 / n0, 1 / n1, 1 / n2));
@@ -1689,8 +1681,9 @@ function bvhBox(tree) {
 //
 // Such a body crosses the other surface an EVEN number of times along one
 // edge, and that is the only witness its shape leaves. It matters because the
-// caller does not merely fail to notice — `_meshClearanceInner` publishes
-// `Math.max(d, v.d)`, so a sampling miss OVERRIDES a correct library answer:
+// caller does not merely fail to notice — `_meshClearanceInner` published
+// `Math.max(d, v.d)` (until TODO 197; a library 0 with nothing contained still
+// takes the sampled figure), so a sampling miss OVERRODE a correct library answer:
 // the raw query returns 0.0000 for that stem and meshClearance returned
 // 2.6104, reporting a genuine 1 mm interpenetration as 2.61 u of CLEARANCE.
 // Over-estimating is the unsafe direction and it is silent — `Alarm switch ⇄
@@ -1973,11 +1966,32 @@ function _meshClearanceInner(a, b, upperBound = Infinity) {
   // timing screw vs the escape bridge's fork jewel; later the alarm hand ⇄
   // hour tube, 2.32 apart, where the boolean lied in BOTH directions too —
   // so the boolean can no longer arbitrate). Near-zeros go to
-  // sampledVerdict: a contained sample proves the contact genuine; none,
-  // and the sampled minimum stands.
+  // sampledVerdict: a contained sample proves the contact genuine.
+  //
+  // TODO 197 — THE SAMPLER DECIDES CONTACT, NEVER A DISTANCE. This used to
+  // publish `Math.max(d, v.d)` whenever nothing was contained, and `v.d` is a
+  // VERTEX-AND-MIDPOINT minimum: it cannot see an edge-to-edge closest pair,
+  // so it is an UPPER bound on the true gap and the max RAISED the library's
+  // exact figure — measured 0.0358 for a true 0.0221, and on
+  // probe-159-frame-scale's band rows 26 of 60 seeded near pairs over-read,
+  // worst 0.0266 read as 0.0604. Over-reading is the unsafe direction, so:
+  //   · inside → 0: a contained sample (or TODO 95's pass-through witness)
+  //     proves the contact;
+  //   · d > 0 → min(d, v.d): the library's tri-to-tri figure is exact, and
+  //     any sampled pair of surface points is an upper bound on the true gap,
+  //     so the minimum can only be the truer of the two (a v.d under d would
+  //     be §82's over-estimate class back again, caught rather than masked);
+  //   · d === 0 with nothing contained → v.d: the only branch where the
+  //     sampler's figure replaces the library's, because there the library's
+  //     0 is not a distance. distanceToTriangle short-circuits to exactly 0
+  //     through intersectsTriangle, which is the measured false-positive mode
+  //     above; with no witness of contact, the sampled minimum is the only
+  //     measured gap there is. This is the branch TODO 95's 2.6104 came
+  //     through, and the pass-through witness is what closed it for a closed
+  //     surface — the branch itself is unchanged by TODO 197.
   if (d < 0.05) {
     const v = sampledVerdict(a, b, upperBound);
-    d = v.inside ? Math.min(d, 0) : Math.max(d, v.d);
+    d = v.inside ? Math.min(d, 0) : d > 0 ? Math.min(d, v.d) : v.d;
   }
   return d;
 }

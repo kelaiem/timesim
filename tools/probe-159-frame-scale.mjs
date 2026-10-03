@@ -31,6 +31,15 @@
 //     gate): a non-rigid map reaches the library's OBB pruning bounds.
 //   · CONTROLS — a must-hit (an overlapping stretched pair reads 0), and a
 //     rigid pair, which must read what it always read.
+//   · BAND ROWS (TODO 197) — seeded poses pulled in until the brute-force gap
+//     lies inside meshClearance's 0.05 arbitration band, rigid bodies included.
+//     There `sampledVerdict` used to be combined as `Math.max(d, v.d)`, and its
+//     vertex-and-midpoint sampler cannot see an edge–edge minimum, so it RAISED
+//     the library's exact figure: 0.0358 read for a true 0.0221 on the seeded
+//     run. Any reading OVER the brute force by more than 1e-6 is an OVER-READ,
+//     the unsafe direction, and fails the probe. A reading UNDER it is printed
+//     and counted (a false "inside" from the parity ray would read 0 — safe,
+//     but wrong), and gates too, because the fix claims exactness.
 //
 // Run it against another tree to see the defect: the `INSPECT` env var names
 // the inspect.js to load (default this tree's). On main before TODO 159 the
@@ -196,11 +205,11 @@ for (let k = 0; k < N; k++) {
   const wm = m.geometry.clone().applyMatrix4(m.matrixWorld); wm.computeBoundsTree();
   if (worldSphere.boundsTree.intersectsGeometry(wm, new THREE.Matrix4())) { pierced++; continue; }
   const bf = brute(sphere, m);
-  // Inside 0.05 meshClearance hands its answer to sampledVerdict, whose
-  // vertex-and-midpoint sampler cannot see an edge–edge minimum and may only
-  // RAISE the library's figure (`Math.max(d, v.d)`) — a property of the
-  // arbitration, rigid frames included, and not this item's. Those trials are
-  // gated on the library query through rigidFrame instead, where it exists.
+  // Inside 0.05 meshClearance hands its answer to sampledVerdict. Until TODO
+  // 197 that could RAISE the library's figure (`Math.max(d, v.d)`); the BAND
+  // ROWS below gate that, on a population built to land in the band. Here a
+  // band trial is still gated on the library query through rigidFrame, and
+  // its meshClearance excess is reported.
   const band = bf < 0.05;
   const ab = I.meshClearance(sphere, m), ba = I.meshClearance(m, sphere);
   let raw = null;
@@ -238,10 +247,68 @@ for (const r of rows) console.log(r);
 if (bruteBad) failures++;
 if (measured < N / 2) fail(`only ${measured} of ${N} trials were measured — the trial generator no longer exercises the query`);
 if (!I.rigidFrame && inBand) console.log(`      (no rigidFrame in this inspect.js — the ${inBand} band trial(s) were not gated)`);
-console.log(`REPORT  in-band, meshClearance over the brute force by at most ${f6(bandWorst)} (sampledVerdict's max(), not the frame)`);
+console.log(`REPORT  in-band, meshClearance over the brute force by at most ${f6(bandWorst)} (the BAND ROWS below gate this)`);
 console.log(`REPORT  raw library, SCALED tree first (the defect): ${oldBad} of ${measured} off`);
 console.log(`REPORT  raw library, RIGID tree first (the swap):    ${swapBad} of ${measured} off, worst over-read ${f6(swapWorst)}`);
 for (const r of swapKinds) console.log(`          ${r}`);
+
+// ---- BAND ROWS (TODO 197): poses pulled into the 0.05 arbitration band ------
+// Each trial is posed as above (a third of them RIGID, scale 1), then moved
+// toward the sphere's centre by (gap − target) until the brute-force gap lands
+// in [0.001, 0.05). Moving a body by t changes its distance to a fixed one by at
+// most t, so the walk approaches the target from above; a pose that pierces is
+// dropped. Seeded separately from the brute rows, so neither population moves
+// when the other's size does.
+{
+  let bseed = 197;
+  const brnd = () => { bseed |= 0; bseed = (bseed + 0x6D2B79F5) | 0; let t = Math.imul(bseed ^ (bseed >>> 15), 1 | bseed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const NB = +(process.env.BAND_TRIALS || 60);
+  const disjoint = (m) => {
+    const wm = m.geometry.clone().applyMatrix4(m.matrixWorld); wm.computeBoundsTree();
+    return !worldSphere.boundsTree.intersectsGeometry(wm, new THREE.Matrix4());
+  };
+  let bandN = 0, over = 0, under = 0, overWorst = 0, underWorst = 0, missed = 0;
+  const bandRows = [];
+  for (let k = 0; k < NB; k++) {
+    const kind = k % 3 === 0 ? 'rigid' : brnd() < 0.3 ? 'sheared' : 'stretched';
+    const s = kind === 'rigid' ? [1, 1, 1] : [0.2 + brnd() * 6, 0.3 + brnd() * 2, 0.3 + brnd() * 2];
+    const dir = new THREE.Vector3(brnd() - 0.5, brnd() - 0.5, brnd() - 0.5).normalize();
+    const target = 0.004 + brnd() * 0.04;
+    let reach = 3 + 0.5 + Math.max(...s) * 0.5;
+    let holder, m;
+    if (kind === 'sheared') {
+      holder = new THREE.Group(); holder.scale.set(...s); holder.rotation.set(brnd() * 3, brnd() * 3, brnd() * 3);
+      m = place(k % 2 ? blob() : box(), { rz: brnd() * 3, rx: brnd() * 3, parent: holder });
+    } else {
+      m = place(k % 2 ? blob() : box(), { s, rz: brnd() * 6.3, rx: brnd() * 6.3 });
+      holder = m;
+    }
+    let bf = Infinity;
+    for (let it = 0; it < 12; it++) {
+      holder.position.copy(dir.clone().multiplyScalar(reach));
+      holder.updateMatrixWorld(true); m.updateWorldMatrix(true, false);
+      if (!disjoint(m)) { bf = NaN; break; }
+      bf = brute(sphere, m);
+      if (bf < 0.05) break;
+      reach -= bf - target;
+    }
+    if (!(bf >= 0.001 && bf < 0.05)) { missed++; continue; }
+    bandN++;
+    const ab = I.meshClearance(sphere, m), ba = I.meshClearance(m, sphere);
+    const ex = Math.max(ab - bf, ba - bf), sh = Math.min(ab - bf, ba - bf);
+    const tag = `${kind} ${k % 2 ? 'ellipsoid' : 'box'}`;
+    if (ex > TOL) { over++; overWorst = Math.max(overWorst, ex); bandRows.push(`  OVER   trial ${k} (${tag}): brute ${f6(bf)}  sphere,body ${f6(ab)}  body,sphere ${f6(ba)}  (+${f6(ex)})`); }
+    if (sh < -TOL) { under++; underWorst = Math.max(underWorst, -sh); bandRows.push(`  UNDER  trial ${k} (${tag}): brute ${f6(bf)}  sphere,body ${f6(ab)}  body,sphere ${f6(ba)}  (${f6(sh)})`); }
+  }
+  console.log(`\nBAND ROWS (TODO 197): ${NB} seeded poses pulled into [0.001, 0.05), a third rigid`);
+  console.log(`      ${bandN} landed in the band, ${missed} did not (pierced, or the walk ran out)`);
+  console.log(`${over === 0 ? 'ok  ' : 'FAIL'}  OVER-READS (meshClearance above the brute force, the unsafe direction): ${over} of ${bandN}, worst +${f6(overWorst)}`);
+  console.log(`${under === 0 ? 'ok  ' : 'FAIL'}  under-reads (below the brute force): ${under} of ${bandN}, worst -${f6(underWorst)}`);
+  for (const r of bandRows) console.log(r);
+  if (over) failures++;
+  if (under) failures++;
+  if (bandN < NB / 2) fail(`only ${bandN} of ${NB} band trials landed in the band — the generator no longer exercises the arbitration`);
+}
 
 console.log(`\n${failures ? `FAIL — ${failures} failure(s)` : 'PASS'}  (inspect: ${inspectUrl.replace(/^.*?([^/]+\/src\/inspect\.js)$/, '$1')})`);
 process.exit(failures ? 1 : 0);
