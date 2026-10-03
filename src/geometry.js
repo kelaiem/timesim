@@ -4012,23 +4012,63 @@ export function makeGenevaFinger({ spec, thickness, boreR, material }) {
     const r = Math.max(boreR, env[i]);
     pts.push([Math.cos(ang) * r, Math.sin(ang) * r]);
   }
+  // TODO 198 — WHERE THE CUTAWAY REACHES THE BORE, THE TWO ARE ONE OPENING.
+  // The metal is the ring between the bore and the envelope, so it exists
+  // only over the bins where env stands OUTSIDE the bore; over the rest the
+  // cutaway's floor IS the bore and no land stands between them. Drawing that
+  // as an outline clamped onto the bore circle plus a separate bore ring put
+  // two rings on top of each other — the 1440-point outline sitting on
+  // boreR, the bore's chords just inside it — and they crossed 36 times
+  // (`outlines`' cross-ring tier). Earcut resolved the overlap however it
+  // liked: 129 open edges, and the cap triangles that carried metal across
+  // the bore over 15.1% of its area (TODO 107, which blamed the triangulator
+  // for what was the drawing).
+  //
+  // So the bore is cut as its own ring only when the envelope clears it all
+  // the way round. Otherwise the one ring is: out along the envelope over the
+  // run of bins that carry metal, from the bore at the run's last empty bin
+  // to the bore at its next, and back along the bore itself — the same bins,
+  // at boreR, so the bore is the envelope's own resolution rather than a
+  // second polygon to agree with it. Every vertex is a lineTo, so
+  // curveSegments: 1 still re-tessellates nothing (the reason the bore was an
+  // explicit polygon, not an absarc, in the first place: at that setting an
+  // absarc collapses to one segment and the metal closes over the arbor).
   const s = new THREE.Shape();
-  pts.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
-  s.closePath();
-  // The bore is written as an EXPLICIT POLYGON, not an absarc. This extrude
-  // runs at curveSegments: 1 (the outline is already a fine polygon and does
-  // not want re-tessellating), and at that setting an absarc is divided into a
-  // single segment — the hole collapses and the disc's metal closes over the
-  // arbor it is bored for. Measured: intraUnit reported genevaFingerDisc ⇄
-  // alarmArrestArbor intersecting, with a bore nominally 0.01 CLEAR of it.
-  const hole = new THREE.Path();
-  for (let i = 0; i < 64; i++) {
-    const t = -(i / 64) * Math.PI * 2;              // reversed, so the hole winds against the outline
-    const x = Math.cos(t) * boreR, y = Math.sin(t) * boreR;
-    if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y);
+  const metal = env.map((e) => e > boreR);
+  const runStarts = [];
+  for (let i = 0; i < SEG; i++) if (metal[i] && !metal[(i + SEG - 1) % SEG]) runStarts.push(i);
+  if (!metal.some((m) => !m)) {
+    pts.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
+    s.closePath();
+    const hole = new THREE.Path();
+    for (let i = 0; i < SEG; i++) {
+      const t = -(i / SEG) * Math.PI * 2;           // reversed, so the hole winds against the outline
+      const x = Math.cos(t) * boreR, y = Math.sin(t) * boreR;
+      if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y);
+    }
+    hole.closePath();
+    s.holes.push(hole);
+  } else if (runStarts.length === 1) {
+    const i0 = (runStarts[0] + SEG - 1) % SEG;       // the empty bin before the run: on the bore
+    let n = 1;
+    while (metal[(i0 + n) % SEG]) n++;               // i0 + n is the empty bin after it
+    const at = (i, r) => {
+      const ang = ((i % SEG) / SEG) * Math.PI * 2;
+      return [Math.cos(ang) * r, Math.sin(ang) * r];
+    };
+    const ring = [];
+    for (let k = 0; k <= n; k++) ring.push(at(i0 + k, Math.max(boreR, env[(i0 + k) % SEG])));
+    for (let k = n - 1; k >= 1; k--) ring.push(at(i0 + k, boreR));
+    ring.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
+    s.closePath();
+  } else {
+    // Two or more runs would be two or more pieces of steel with nothing
+    // joining them — not a disc. Nothing in the shipped spec does it.
+    console.warn(`TODO 198: the geneva finger's cutaway reaches its bore in ${runStarts.length} places, so its disc `
+      + 'is that many separate pieces — no single ring describes it');
+    pts.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
+    s.closePath();
   }
-  hole.closePath();
-  s.holes.push(hole);
   const g = new THREE.Group();
   const disc = new THREE.Mesh(
     new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: 1 }),
@@ -6526,7 +6566,22 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   // ...in along the −phiOpen edge, around the balance the short way (φ
   // decreasing, i.e. clockwise about the balance so the opening stays a
   // hole in the material), then back out along the +phiOpen edge.
-  const STEP = 2 * Math.PI / 180;
+  //
+  // TODO 198 — ONE VERTEX PER ENTRY OF THE CUT'S OWN TABLE. The edge is a
+  // polar table, one radius per degree, and the main build clamps it per
+  // degree out of every chaton keep (§148's `clampCutToKeeps`). At the old
+  // 2° step this walk visited only the ODD degrees (−75, −77, …), so every
+  // even-degree clamp was invisible to the metal and a chord between two odd
+  // neighbours ran straight across the keep it had been pulled out of: the
+  // fourth wheel's and the escape wheel's chaton seats (holes 16 and 17 of
+  // this shape) were crossed at 2 and 4 points, up to 0.13 deep, and the
+  // plate came out open. Stepping by the table's own pitch puts a vertex on
+  // every entry the clamp wrote, which needs ±phiOpen to be a whole number of
+  // steps — it is (75°), and it warns if that ever stops being true.
+  const STEP = 2 * Math.PI / cut.radii.length;
+  if (Math.abs(cut.phiOpen / STEP - Math.round(cut.phiOpen / STEP)) > 1e-9)
+    console.warn(`TODO 198: the balance cut's half-angle ${(cut.phiOpen * 180 / Math.PI).toFixed(4)}° is not a whole number `
+      + `of its table's ${(STEP * 180 / Math.PI).toFixed(4)}° steps, so the plate's edge vertices miss the clamped entries`);
   const N = Math.max(2, Math.round((2 * (Math.PI - cut.phiOpen)) / STEP));
   for (let i = 0; i <= N; i++) {
     const phi = -cut.phiOpen - (i / N) * 2 * (Math.PI - cut.phiOpen);
