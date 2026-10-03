@@ -497,7 +497,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'पिन व्यास 0.28 + ढील, ट्रैक की मध्य त्रिज्या पर।',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'वलय 2.85..3.25 — हब (2.85) के बाहर, रिम के मूल वृत्त (3.30) के भीतर।',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'वलय 2.85..3.25। इसका भीतरी किनारा हब की दीवार (2.8667) पर 0.0167 चढ़ा हुआ है: दोनों डिस्क का एक ही टुकड़ा हैं, इसलिए यह जोड़ है, फ़िट नहीं। पिन दीवार के बाहर चलती है (उसका भीतरी किनारा 2.91), और वलय रिम के मूल वृत्त (4.3812) के भीतर है।',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'ब्रैकेट लग्स की भीतरी सतहें रिम के सिरों से एक <code>CLEAR_MARGIN</code> जितनी दूर रहती हैं (बूट पर अभिकथित)।',

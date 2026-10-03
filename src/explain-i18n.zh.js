@@ -450,7 +450,7 @@ export default {
   ['Stop-banked travel; the rim-crossing margin bounds it at 0.108.']: '至限位挡块的行程；跨越轮缘的余量把它限制在 0.108。',
   ['Pin diameter equals the arm\'s width, so the arm fits the notch sector exactly when fully dropped.']: '销钉直径等于臂宽，因此完全落下时臂正好嵌入缺口扇区。',
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: '销钉直径 0.28 加上游隙，取在轨道中径处。',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: '圆环 2.85..3.25 — 位于轮毂（2.85）之外、轮缘齿根圆（3.30）之内。',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: '圆环 2.85..3.25。其内缘与轮毂壁（2.8667）重叠 0.0167：两者是圆盘的同一块金属，所以这是接合而非配合。销钉在壁外运行（其内缘 2.91），圆环位于轮缘齿根圆（4.3812）之内。',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: '托架凸耳的内侧面与轮缘齿尖保持一个 <code>CLEAR_MARGIN</code> 的间隙（启动时断言）。',
   ['stop gap']: '挡块间隙',
   ['<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — the lever ratio, written out.']: '<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — 杠杆比，写明。',

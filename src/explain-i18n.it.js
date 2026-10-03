@@ -489,7 +489,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'Diametro della spina 0.28 + lasco, sul raggio medio della pista.',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'Anello 2.85..3.25 — fuori dal mozzo (2.85), dentro la circonferenza di piede del cerchione (3.30).',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'Anello 2.85..3.25. Il suo bordo interno si sovrappone alla parete del mozzo (2.8667) di 0.0167: sono un unico pezzo del disco, quindi è un giunto, non un accoppiamento. La spina corre fuori dalla parete (il suo bordo interno 2.91), e l’anello sta dentro la circonferenza di piede del cerchione (4.3812).',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'Le facce interne delle alette della staffa distano dalle punte del cerchione di un <code>CLEAR_MARGIN</code> (asserito all’avvio).',

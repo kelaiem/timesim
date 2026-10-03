@@ -489,7 +489,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'Диаметр штифта 0.28 + люфт, на среднем радиусе дорожки.',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'Кольцо 2.85..3.25 — вне ступицы (2.85), внутри окружности впадин обода (3.30).',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'Кольцо 2.85..3.25. Его внутренний край заходит на стенку ступицы (2.8667) на 0.0167: это одна деталь диска, так что это соединение, а не посадка. Штифт идёт снаружи стенки (его внутренний край 2.91), а кольцо лежит внутри окружности впадин обода (4.3812).',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'Внутренние грани ушек кронштейна отстоят от вершин зубьев обода на один <code>CLEAR_MARGIN</code> (ассерт при запуске).',

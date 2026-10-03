@@ -523,7 +523,7 @@ export default {
   ['Pin diameter equals the arm\'s width, so the arm fits the notch sector exactly when fully dropped.']: 'قطر الدبوس يساوي عرض الذراع، فتلائم الذراع قطاع الحزّ بالضبط عند الهبوط الكامل.',
   ['0.14 rad']: '0.14 راد',
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'قطر الدبوس 0.28 + اللعب، مقسومًا على نصف قطر المسار الأوسط.',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'النطاق الحلقي 2.85..3.25 — خارج الصُرّة (2.85)، داخل دائرة جذر الحافة (3.30).',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'النطاق الحلقي 2.85..3.25. طرفه الداخلي يتداخل مع جدار الصُرّة (2.8667) بمقدار 0.0167: كلاهما قطعة واحدة من القرص، فهذا وصلٌ لا مُلاءمة. يسير الدبوس خارج الجدار (طرفه الداخلي 2.91)، ويقع النطاق الحلقي داخل دائرة جذر الحافة (4.3812).',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'الوجوه الداخلية لأذني الكتيفة تخلو عن رؤوس الحافة بمقدار <code>CLEAR_MARGIN</code> واحد (متحقَّق منه عند الإقلاع).',
   ['stop gap']: 'فجوة المصدّ',
   ['<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — the lever ratio, written out.']: '<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — نسبة الذراع مكتوبة صراحةً.',

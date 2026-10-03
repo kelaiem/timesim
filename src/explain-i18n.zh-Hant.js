@@ -479,7 +479,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: '釘徑 0.28 + 鬆量，取在軌的中徑上。',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: '環帶 2.85..3.25 — 轂（2.85）之外、緣的齒根圓（3.30）之內。',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: '環帶 2.85..3.25。其內緣與轂壁（2.8667）重疊 0.0167：兩者同屬圓盤的一體，故是接合而非配合。釘沿壁外運行（其內緣 2.91），環帶位於緣的齒根圓（4.3812）之內。',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: '支架耳的內側面對緣齒尖讓出一個 <code>CLEAR_MARGIN</code>（開機斷言）。',

@@ -44,14 +44,40 @@
 //     and the band must read SHUT, because that is the state the fork exists to
 //     escape. A scan that finds room where the movement already reads is not
 //     reading the scene.
-//   · must-hit — the disc's two dial-most planes, the raised TRACK outboard and
-//     the BODY TOP inboard, must stand exactly ALARM_TRACK_H apart. This is the
+//   · must-hit — the disc's two dial-most planes, the raised TRACK's top and
+//     the BODY TOP, must stand exactly ALARM_TRACK_H apart. This is the
 //     strongest check available without leaving the world frame: it reproduces
-//     a source constant from two of the scan's own bands, so a wrong transform
-//     or the wrong metal cannot pass it.
+//     a source constant from two of the scan's own bands, so the wrong metal, or
+//     a band off the metal, cannot pass it. A wrong TRANSFORM can, within
+//     limits, and they are measured rather than assumed (TODO 195): an axial
+//     offset cancels in the difference, and moving the scan centre 0.5 in the
+//     dial plane left all four controls green. The body band clears the
+//     track's edge by 0.52, so until a centre error reaches that, each band
+//     still takes its minimum on its own plane.
+//   · must-hit — the disc is found under every candidate whose ring footprint
+//     lies on the disc's metal, so the bands are on real metal.
 //   · must-miss — a band far outside the movement must find NO disc metal, so
 //     the "is there anything to cut a notch in" test is known to be able to
 //     say no.
+//
+// THE CONTROL RADII ARE READ OFF THE DISC'S OWN MESHES, and that is TODO 195's
+// correction. They were literals, r 2.20 for the body top and r 3.05 for the
+// track, written when the hub stood up to the track's plane. TODO 179 cut the
+// hub flush with the body, and the disc's bore on the hour tube (2.55) had
+// already put r 2.20's band in air: with no body sample the step read 5.2627,
+// which is only the track top's depth below the world origin (a missing floor
+// less a real one), and two controls failed on main. Now, in the disc group's own
+// frame (so the world transform the scan reads is NOT what places them):
+//   TRACK_R = the track's inner and outer edge radii averaged (alarmDiscTrack),
+//             its band held to lie wholly on the track;
+//   BODY_R  = midway from the track's outer edge to the body's outermost radius
+//             (alarmDiscBody, the rim's tips), its band held to clear the track
+//             and stay on the body (the teeth are cut to the body's own
+//             thickness, so the whole face out to the tips is one plane). Inboard is no use: bore → track is 0.30, under the band's
+//             own STOCK_MIN_U, so no body-only band fits there.
+//   ALARM_TRACK_H = the track extrusion's own depth, not a copy of the constant.
+// A candidate radius whose footprint leaves the disc's metal (inside the bore,
+// read the same way) is printed as such and is not a must-hit row.
 //
 // ACCEPTANCE — exits non-zero on its CONTROLS only. The spans are a REPORT:
 // what counts as enough room is a design question, and this prints the space
@@ -78,7 +104,8 @@ const out = await page.evaluate(async () => {
   const C = window.__clock;
   const cx = C.P.dial.x, cy = C.P.dial.y;
 
-  const STOCK_MIN_U = 0.12 / (0.72 / 1.9);   // layout.js §50 floor stock
+  const L = await import('/src/layout.js');
+  const STOCK_MIN_U = L.STOCK_MIN_U;         // layout.js §50 floor stock
   const CLEAR_MARGIN = 0.15;
   const ALARM_PIN_DROP = 0.10;
   const HALF = STOCK_MIN_U / 2;              // the ring's own radial half-width
@@ -98,6 +125,44 @@ const out = await page.evaluate(async () => {
   // jog post's own far side — as built it spans r 3.358 … 3.675, and 3.50's
   // band reaches 3.658, which is not the same as reaching 3.675.
   const CANDIDATES = [2.20, 2.40, 2.60, 2.80, 3.05, 3.30, 3.50, 3.70];
+
+  // TODO 195 — THE CONTROL RADII, read off the disc's meshes in the disc
+  // group's own frame (see the header). Read at the build pose, before any
+  // setPose: these are radii about the disc's axis, which no pose changes.
+  const discObj = C.labelEntries.find((e) => e.name === FLOOR_UNIT)?.obj;
+  if (!discObj) return { fatal: 'no ' + FLOOR_UNIT + ' unit' };
+  discObj.updateWorldMatrix(true, true);
+  const toDisc = new THREE.Matrix4().copy(discObj.matrixWorld).invert();
+  const lv = new THREE.Vector3();
+  const radialExtent = (pred) => {
+    let lo = Infinity, hi = -Infinity, n = 0;
+    discObj.traverse((m) => {
+      if (!m.isMesh || !pred(m)) return;
+      const pos = m.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        lv.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).applyMatrix4(toDisc);
+        const r = Math.hypot(lv.x, lv.y);
+        lo = Math.min(lo, r); hi = Math.max(hi, r); n++;
+      }
+    });
+    return n ? { lo, hi } : null;
+  };
+  const trackR = radialExtent((m) => m.name === 'alarmDiscTrack');
+  const bodyR = radialExtent((m) => m.name === 'alarmDiscBody');
+  const discR = radialExtent(() => true);
+  if (!trackR || !bodyR) return { fatal: 'no alarmDiscTrack / alarmDiscBody mesh under ' + FLOOR_UNIT };
+  const trackMesh = discObj.getObjectByName('alarmDiscTrack');
+  const TRACK_H = trackMesh.geometry.parameters?.options?.depth;
+  if (!(TRACK_H > 0)) return { fatal: 'alarmDiscTrack carries no extrusion depth to read ALARM_TRACK_H from' };
+  const TRACK_R = (trackR.lo + trackR.hi) / 2;
+  const BODY_R = (trackR.hi + bodyR.hi) / 2;
+  // Each band must lie on the one plane it claims, or the step is a mixture.
+  if (trackR.hi - trackR.lo < 2 * HALF)
+    return { fatal: `the track ${trackR.lo.toFixed(4)}..${trackR.hi.toFixed(4)} is narrower than one band ${(2 * HALF).toFixed(4)}` };
+  if (BODY_R - HALF <= trackR.hi || BODY_R + HALF >= bodyR.hi)
+    return { fatal: `the body band ${(BODY_R - HALF).toFixed(4)}..${(BODY_R + HALF).toFixed(4)} does not fit between the track ${trackR.hi.toFixed(4)} and the body's edge ${bodyR.hi.toFixed(4)}` };
+  const RADII = [...CANDIDATES, TRACK_R, BODY_R];
+  const I_TRACK = CANDIDATES.length, I_BODY = CANDIDATES.length + 1;
 
   const poses = [];
   for (const ax of I.AXES) for (const f of [0, 0.5, 1]) poses.push(ax.pose(f));
@@ -133,7 +198,7 @@ const out = await page.evaluate(async () => {
   const mk = () => ({ discMinZ: Infinity, discMaxZ: -Infinity,
                       obstacle: { z: -Infinity, who: null }, entitled: { z: -Infinity, who: null },
                       feeler: { z: -Infinity, who: null } });
-  const bands = CANDIDATES.map(mk);
+  const bands = RADII.map(mk);
   const CONTROL_FAR = 40;                     // must-miss band
   const farBand = mk();
 
@@ -145,7 +210,7 @@ const out = await page.evaluate(async () => {
   // the mesh's nearest and furthest distance from the dial centre. Pruning on
   // that cannot manufacture a span: a mesh failing it contributes no sample to
   // any band by construction rather than by assumption.
-  const RMAX = Math.max(...CANDIDATES) + HALF;
+  const RMAX = Math.max(...RADII) + HALF, RMIN = Math.min(...RADII) - HALF;
   const reaches = (box) => {
     const xs = [box.min.x - cx, box.max.x - cx], ys = [box.min.y - cy, box.max.y - cy];
     const nx = (xs[0] <= 0 && xs[1] >= 0) ? 0 : Math.min(Math.abs(xs[0]), Math.abs(xs[1]));
@@ -153,7 +218,7 @@ const out = await page.evaluate(async () => {
     const nearR = Math.hypot(nx, ny);
     let farR = 0;
     for (const x of xs) for (const y of ys) farR = Math.max(farR, Math.hypot(x, y));
-    return { band: nearR <= RMAX && farR >= CANDIDATES[0] - HALF,
+    return { band: nearR <= RMAX && farR >= RMIN,
              control: nearR <= CONTROL_FAR + HALF && farR >= CONTROL_FAR - HALF };
   };
 
@@ -161,8 +226,6 @@ const out = await page.evaluate(async () => {
   // pass: the floor is a minimum over the whole net, and nothing else in the
   // band can be judged against it until it is known. Doing both at once is what
   // forced the first version to hold every sample in memory.
-  const discObj = C.labelEntries.find((e) => e.name === FLOOR_UNIT)?.obj;
-  if (!discObj) return { fatal: 'no ' + FLOOR_UNIT + ' unit' };
   for (const pose of poses) {
     C.setPose(pose);
     discObj.updateWorldMatrix(true, true);
@@ -171,8 +234,8 @@ const out = await page.evaluate(async () => {
       if (!rr.band && !rr.control) continue;
       walk(m, (x, y, z) => {
         const r = Math.hypot(x - cx, y - cy);
-        for (let i = 0; i < CANDIDATES.length; i++) {
-          if (Math.abs(r - CANDIDATES[i]) > HALF) continue;
+        for (let i = 0; i < RADII.length; i++) {
+          if (Math.abs(r - RADII[i]) > HALF) continue;
           bands[i].discMinZ = Math.min(bands[i].discMinZ, z);
           bands[i].discMaxZ = Math.max(bands[i].discMaxZ, z);
         }
@@ -201,8 +264,8 @@ const out = await page.evaluate(async () => {
         if (!rr.band && !rr.control) continue;
         walk(m, (x, y, z) => {
           const r = Math.hypot(x - cx, y - cy);
-          for (let i = 0; i < CANDIDATES.length; i++) {
-            if (Math.abs(r - CANDIDATES[i]) > HALF) continue;
+          for (let i = 0; i < RADII.length; i++) {
+            if (Math.abs(r - RADII[i]) > HALF) continue;
             const b = bands[i];
             if (!(z < b.discMinZ)) continue;
             if (isFeeler) keep(b.feeler, z, name);
@@ -225,10 +288,11 @@ const out = await page.evaluate(async () => {
     return { floorZ: b.discMinZ, ceilZ: isFinite(ceil) ? ceil : null, who, span: isFinite(ceil) ? b.discMinZ - ceil : null };
   };
 
-  const rows = CANDIDATES.map((r, i) => {
+  const rowOf = (r, i) => {
     const b = bands[i];
     return {
       r,
+      onDisc: r - HALF >= discR.lo && r + HALF <= discR.hi,   // the ring's footprint lies on the disc's metal
       discPresent: isFinite(b.discMinZ),
       discMinZ: isFinite(b.discMinZ) ? +b.discMinZ.toFixed(4) : null,
       discMaxZ: isFinite(b.discMaxZ) ? +b.discMaxZ.toFixed(4) : null,
@@ -236,15 +300,19 @@ const out = await page.evaluate(async () => {
       withFeeler: spanOf(b, [b.obstacle, b.feeler]),         // the shipped state, for the control
       toEntitled: spanOf(b, [b.obstacle, b.entitled]),       // where the dial/carrier floor sits
     };
-  });
+  };
+  const rows = CANDIDATES.map((r, i) => rowOf(r, i));
 
   return {
     rows,
+    trackRow: rowOf(TRACK_R, I_TRACK),
+    bodyRow: rowOf(BODY_R, I_BODY),
+    radii: { trackLo: trackR.lo, trackHi: trackR.hi, bodyHi: bodyR.hi, discLo: discR.lo, discHi: discR.hi, half: HALF },
     bars: {
       ring: STOCK_MIN_U + ALARM_PIN_DROP + CLEAR_MARGIN,
       ringAndTip: STOCK_MIN_U + ALARM_PIN_DROP + CLEAR_MARGIN + STOCK_MIN_U,
       pinShank: 0.061,     // ALARM_PIN_SHANK (TODO 173) — arm underside to track top, by construction
-      trackH: 0.25,         // ALARM_TRACK_H = ALARM_PIN_DROP + CLEAR_MARGIN (TODO 179; 0.17 by literal before) — the raised track's height off the disc body
+      trackH: TRACK_H,      // ALARM_TRACK_H, read as the track extrusion's depth (TODO 195; a 0.25 copy before, 0.17 before TODO 179)
     },
     control: { farDiscPresent: isFinite(farBand.discMinZ), farR: CONTROL_FAR },
     poses: poses.length,
@@ -264,9 +332,11 @@ for (const row of out.rows) {
   // That is what has to fit dial-ward of the track for the blade to keep its
   // sense — probe-117-reversed-bias.mjs's whole finding in one sum.
   const fits = d?.span != null && d.span >= out.bars.ringAndTip;
-  console.log(`  ${row.r.toFixed(2).padStart(5)}    ${row.discPresent ? 'yes' : ' NO'}   ${fmt(row.discMinZ)}   ${fmt(d?.span)}   ${(d?.who || '—').padEnd(28)}  ${fmt(w?.span)}        ${fits ? 'YES' : 'no '}`);
+  console.log(`  ${row.r.toFixed(2).padStart(5)}    ${!row.onDisc ? 'off' : row.discPresent ? 'yes' : ' NO'}   ${fmt(row.discMinZ)}   ${fmt(d?.span)}   ${(d?.who || '—').padEnd(28)}  ${fmt(w?.span)}        ${fits ? 'YES' : 'no '}`);
 }
-console.log(`\n  a ring needs ${out.bars.ring.toFixed(4)} (stock + ALARM_PIN_DROP + one margin to the track)`);
+console.log(`\n  'off' = the ring's footprint leaves the disc's metal (disc ${out.radii.discLo.toFixed(4)}..${out.radii.discHi.toFixed(4)}), so it is no candidate`);
+console.log(`  control radii, read off the disc: track ${out.radii.trackLo.toFixed(4)}..${out.radii.trackHi.toFixed(4)} → TRACK_R ${out.trackRow.r.toFixed(4)}; body edge ${out.radii.bodyHi.toFixed(4)} → BODY_R ${out.bodyRow.r.toFixed(4)} (band ±${out.radii.half.toFixed(4)})`);
+console.log(`  a ring needs ${out.bars.ring.toFixed(4)} (stock + ALARM_PIN_DROP + one margin to the track)`);
 console.log(`  a ring AND the lever's tip need ${out.bars.ringAndTip.toFixed(4)}`);
 
 const rows = [];
@@ -280,32 +350,35 @@ const push = (what, ok, got, want) => rows.push({ what, ok, got, want });
 // construction — a DIFFERENT measurement, and conflating the two is how the
 // item's retraction came to quote 0.0133 for a gap the source defines as 0.04.
 // This row holds only what it measures: shut is shut.
-const ref = out.rows.find((r) => Math.abs(r.r - 3.05) < 1e-9);
+const ref = out.trackRow;
 const refSpan = ref?.withFeeler?.span;
-push('CONTROL the shipped radius reads SHUT — no ring fits where the feeler already reads',
+push('CONTROL the shipped radius (TRACK_R) reads SHUT — no ring fits where the feeler already reads',
   refSpan !== null && refSpan !== undefined && refSpan < out.bars.ring,
   `${refSpan === null || refSpan === undefined ? 'no bound found' : refSpan.toFixed(4)} bounded by ${ref?.withFeeler?.who || '\u2014'}`,
   `< ${out.bars.ring.toFixed(4)}, the least a ring needs`);
 // CONTROL — the scan must reproduce a SOURCE CONSTANT from two of its own bands,
 // which is the strongest check available without leaving the world frame. The
-// disc's dial-most face is its raised TRACK where the annulus reaches (r 2.40
-// outward, through the hub that shares the track's plane) and its BODY TOP
-// inboard of that, and those two planes stand exactly ALARM_TRACK_H apart. A
-// scan reading the wrong metal, or reading it through a stale transform, cannot
-// produce that difference by accident.
+// disc's dial-most face is its raised TRACK at TRACK_R and its BODY TOP at
+// BODY_R, outboard of the track (the hub is flush with the body since TODO
+// 179, and inboard there is no room for a body-only band), and those two planes
+// stand exactly ALARM_TRACK_H apart. A scan reading the wrong metal, or reading
+// it through a stale transform, cannot produce that difference by accident.
 {
-  const inner = out.rows.find((r) => Math.abs(r.r - 2.20) < 1e-9);
-  const outer = out.rows.find((r) => Math.abs(r.r - 3.05) < 1e-9);
-  const step = inner && outer ? inner.discMinZ - outer.discMinZ : null;
+  const inner = out.bodyRow, outer = out.trackRow;
+  const step = inner.discPresent && outer.discPresent ? inner.discMinZ - outer.discMinZ : null;
   push('CONTROL the two disc planes the scan finds stand ALARM_TRACK_H apart',
     step !== null && Math.abs(step - out.bars.trackH) < 1e-3,
-    `${step === null ? 'missing' : step.toFixed(4)} between r 2.20 (body top) and r 3.05 (track top)`,
-    `${out.bars.trackH}`);
+    `${step === null ? 'missing' : step.toFixed(4)} between r ${inner.r.toFixed(4)} (body top) and r ${outer.r.toFixed(4)} (track top)`,
+    `${out.bars.trackH.toFixed(4)}`);
 }
 push('CONTROL no disc metal exists far outside the movement, so the notch test can say no',
   !out.control.farDiscPresent, `r ${out.control.farR}: disc metal ${out.control.farDiscPresent ? 'FOUND' : 'absent'}`, 'absent');
-push('CONTROL the disc IS found at every candidate radius, so the bands are on real metal',
-  out.rows.every((r) => r.discPresent), out.rows.map((r) => `${r.r}:${r.discPresent ? 'y' : 'N'}`).join(' '), 'all present');
+{
+  const held = [...out.rows.filter((r) => r.onDisc), out.trackRow, out.bodyRow];
+  push('CONTROL the disc IS found under every band whose footprint lies on its metal, so the bands are on real metal',
+    held.length > 2 && held.every((r) => r.discPresent),
+    held.map((r) => `${+r.r.toFixed(4)}:${r.discPresent ? 'y' : 'N'}`).join(' '), 'all present');
+}
 
 let bad = 0;
 console.log('');

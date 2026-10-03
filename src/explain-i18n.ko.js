@@ -472,7 +472,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: '핀 지름 0.28 + 여유, 트랙 중간 반지름 위에서.',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: '환대 2.85..3.25 — 허브(2.85) 바깥, 림의 이뿌리원(3.30) 안쪽.',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: '환대 2.85..3.25. 안쪽 가장자리가 허브 벽(2.8667)과 0.0167 겹칩니다: 둘 다 원판의 한 덩어리이므로 끼워맞춤이 아니라 접합입니다. 핀은 벽 바깥을 지나며(안쪽 가장자리 2.91), 환대는 림의 이뿌리원(4.3812) 안쪽에 있습니다.',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: '브래킷 러그의 안쪽 면은 림의 이끝을 <code>CLEAR_MARGIN</code> 하나만큼 비켜갑니다(부팅 시 어서트).',
