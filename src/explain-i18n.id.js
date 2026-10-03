@@ -461,7 +461,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'Diameter pin 0.28 + celah main, dibagi jari-jari tengah lintasan.',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'Anulus 2.85..3.25 — di luar hub (2.85), di dalam lingkaran kaki lingkar (3.30).',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'Anulus 2.85..3.25. Tepi dalamnya menumpang dinding hub (2.8667) sejauh 0.0167: keduanya satu potong cakram, jadi itu sambungan, bukan suaian. Pin berjalan di luar dinding (tepi dalamnya 2.91), dan anulus berada di dalam lingkaran kaki lingkar (4.3812).',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'Muka sisi dalam telinga braket bebas dari ujung gigi lingkar sejauh satu <code>CLEAR_MARGIN</code> (di-assert saat boot).',

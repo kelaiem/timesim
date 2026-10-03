@@ -450,7 +450,7 @@ export default {
   ['Stop-banked travel; the rim-crossing margin bounds it at 0.108.']: 'Weg bis zum Anschlag; der Randquerungsabstand begrenzt ihn auf 0.108.',
   ['Pin diameter equals the arm\'s width, so the arm fits the notch sector exactly when fully dropped.']: 'Der Stiftdurchmesser gleicht der Armbreite, sodass der Arm im voll gefallenen Zustand genau in den Kerbensektor passt.',
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'Stiftdurchmesser 0.28 + Spiel, über dem mittleren Radius der Bahn.',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'Kreisring 2.85..3.25 — außerhalb der Nabe (2.85), innerhalb des Fußkreises des Kranzes (3.30).',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'Kreisring 2.85..3.25. Sein Innenrand überlappt die Wand der Nabe (2.8667) um 0.0167: beides ist ein Stück der Scheibe, also eine Verbindung, keine Passung. Der Stift läuft außerhalb der Wand (sein Innenrand 2.91), und der Kreisring liegt innerhalb des Fußkreises des Kranzes (4.3812).',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'Die Innenflächen der Bocklappen halten von den Kranzspitzen einen <code>CLEAR_MARGIN</code> Abstand (beim Start zugesichert).',
   ['stop gap']: 'Anschlagspalt',
   ['<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — the lever ratio, written out.']: '<code>ALARM_PIN_DROP × tail/arm</code> = 0.10 × 0.90/2.45 — das Hebelverhältnis, ausgeschrieben.',

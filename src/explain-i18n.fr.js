@@ -480,7 +480,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'Diamètre de cheville 0.28 + jeu, sur le rayon médian de la piste.',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'Anneau 2.85..3.25 — hors du moyeu (2.85), dans le cercle de pied de la jante (3.30).',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'Anneau 2.85..3.25. Son bord intérieur chevauche la paroi du moyeu (2.8667) de 0.0167 : les deux sont une seule pièce du disque, donc une jonction, pas un ajustement. La cheville passe hors de la paroi (son bord intérieur 2.91), et l’anneau reste dans le cercle de pied de la jante (4.3812).',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'Les faces intérieures des oreilles de potence dégagent les pointes de jante d’un <code>CLEAR_MARGIN</code> (asserté au démarrage).',

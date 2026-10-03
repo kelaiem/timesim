@@ -31,7 +31,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
-| 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
+| 195 | CLOSED | `probe-117-fork-room.mjs` reads its control radii off the disc's own meshes in the disc's frame: TRACK_R 3.0500 (track mid), BODY_R 3.9289 (track edge to rim tips), and `ALARM_TRACK_H` is the track extrusion's depth. Bands whose footprint leaves the metal print `off`. 2 failing → 0 of 4, step 5.2627 → 0.2500. `explain.html`'s row now says the annulus overlaps the hub's 2.8667 wall by 0.0167 and lies inside the rim's root circle at 4.3812 (it said 3.30; a first draft said 4.125). Re-keyed in 17 locales |
 | 194 | CLOSED | No blade can return the follower (the energy floor is ≈ 6.68 µJ, and a straight blade in the free ring falls 2–5× short), so a COAXIAL SPIRAL does it: the inner end is clamped in a fixed collet on the post and the outer end against a riser the arm carries. This was forced, because the lobe passes 0.03 from the post. 0.033 mm × 0.5768 u, 2.5 coils, solved on the hairspring's elastica: 7.86 → 31.79 mN at the nose, equal-margin in the 5–50 window, strain at 0.9 of yield, coils one running fit apart. Its band is a §51 strata spend: `Z_DIAL` −8.40 → −9.13. The dial move lengthened the selector rod, whose thicker section forked the alarm link's fulcrum (a lug, arms and ratio held). Both ends are measured seated at every parity. A new reach control in `restoring` fires on §29's blade (0.0826) and found TODO 210 and 211 |
 | 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
 | 192 | DONE | Steps 1–4 LANDED (with TODO 193 between 2 and 3): the energy column and `FRICTION` (§247 tier two); the pivots shouldered and sized floor-or-load; the going ribbon a strip of the cited alloy, PROPORTIONED to it (8 coils, 31.6 mJ over 30 h); and the amplitude split and gated — `AMPLITUDE_CLAIM_DEG` 76 (the sustained minimum, adverse vertical 76.96°, rounded down) and `AMPLITUDE_PEAK_DEG` 327 (the maximum, favourable dial-flat 326.70°, rounded up), `equalisation` row 14. What the swing still is against a real lever watch is TODO 207 |
@@ -27001,7 +27001,7 @@ added:** an `alarmRide` axis, armed, `alarmCrownPullT: 0`, τ over twelve
 hours, which would also give `restoring` a reversal of the follower that is
 the riding pump rather than the release.
 
-## 195. probe-117-fork-room's controls and the explainer's track annulus still describe the old hub
+## 195. probe-117-fork-room's controls and the explainer's track annulus still describe the old hub — CLOSED
 
 Found closing [TODO 179]. Two stale descriptions of the release disc's hub,
 both true of an earlier cut and neither gated:
@@ -27024,6 +27024,70 @@ the hub and track radii from the geometry, never restate them), so the
 control measures metal on both sides of the step. Correct the explainer's row
 to the real relation (the track overlaps the hub's wall; the pin rides the
 track's annulus outside it), then re-key and re-translate that block.
+
+**Closed — what was built.** The probe's control radii are DERIVED, not
+restated. It reads the disc's meshes in the disc group's own frame (so the
+world transform the scan uses is not what places them):
+- `TRACK_R` = the mean of `alarmDiscTrack`'s inner and outer edge radii,
+  2.8500..3.2500 → **3.0500**. The probe holds the track to be wider than one
+  band (STOCK_MIN_U, ±0.1583).
+- `BODY_R` = midway from the track's outer edge to `alarmDiscBody`'s
+  outermost radius (the rim's tips, 4.6079) → **3.9289**. Its band
+  3.7706..4.0872 clears the track by 0.52 and sits under the root circle
+  (4.3812). The teeth are cut to the body's thickness, so it is one plane.
+  The probe holds the band between the track and the body's edge. Inboard
+  is no use: bore 2.55 → track 2.85 is 0.30, under one band's width.
+- `ALARM_TRACK_H` is the track extrusion's own `depth` (0.25), no longer a
+  copy. `STOCK_MIN_U` is imported from `layout.js`.
+- A candidate radius whose band leaves the disc's metal (2.5500..4.6079)
+  prints `off` and is no must-hit row. That is r 2.20, 2.40 and 2.60.
+  `held.length > 2` keeps that filter from emptying the control.
+- The step no longer subtracts from a missing floor. That `null − z` is
+  what printed 5.2627: the track top's depth below the world origin, not a
+  step. (This item measured 5.2595 before TODO 194 dropped the dial.)
+
+Measured, `node tools/probe-117-fork-room.mjs`:
+- On `main` (81f2358): `4 control rows, 2 failing`. The step read
+  `5.2627 between r 2.20 (body top) and r 3.05 (track top)`, and the
+  presence row read `2.2:N`.
+- After: `4 control rows, 0 failing`, exit 0. Step `0.2500 between r 3.9289
+  (body top) and r 3.0500 (track top)` against 0.2500. Shut row 0.5467 <
+  0.5667. Presence `2.8:y 3.05:y 3.3:y 3.5:y 3.7:y 3.05:y 3.9289:y`. The
+  spans report is unchanged.
+
+Mutations, each run on a scratch copy and deleted:
+- **Fires.** The body band moved back to r 2.20, after the guards:
+  exit 1, 2 failing (step `missing`, presence `3.9289:N`).
+- **Does not fire.** The world scan centre moved 0.5 in the dial plane:
+  exit 0, all four green. The shut row moved to 0.0610 but stayed under its
+  bar. An axial offset cancels in a difference, and an in-plane error under
+  the body band's 0.52 clearance to the track leaves each band on its own
+  plane. The header's "a wrong transform cannot pass it" overclaimed, on
+  `main`'s radii as well. It now states those limits instead.
+
+The explainer row now reads: "Annulus 2.85..3.25. Its inner edge overlaps
+the hub's wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a
+fit. The pin rides outside the wall (its inner edge 2.91), and the annulus
+lies inside the rim's root circle (4.3812)." The figures behind it:
+- Hub wall = `HOUR_TUBE_OUTER + 0.05 + STOCK_MIN_U` = 2.8667. Overlap with
+  RMID − HALFW = 2.85 is 0.0167.
+- Pin inner edge = RMID − `ALARM_PIN_R` = 2.91, which is 0.0433 outside the
+  wall.
+- Root circle = `gearToothSpec({ module: 0.3, teeth: 30, mates: [28] })
+  .rootR` = 4.3812. Its tip, 4.6079, is what the probe measures on the cut
+  metal.
+
+The old row said 3.30. A first draft of this fix said 4.125, which is a
+1.25·m dedendum that §136's solved dedendum replaced. The same figure sat
+in the `ALARM_TRACK_RMID` comment in `src/main.js`, and that comment is
+corrected in this landing (a comment only — no constant reads it). **Residue:**
+TODO 144's brake table and its closing note quote 4.125 as historical record;
+at 4.3812 that row's force is 39.3 mN rather than 41.7, still inside 5–50, so
+no verdict there moves.
+
+Checks: `explain-i18n --check` PASS (0 unmatched, 0 drift, 0 crossed
+honesty terms, 17/17 HONESTY rows verified); `explain-quotes` PASS (35
+agree, 0 disagree); `glossary-links` PASS.
 
 ## 196. balstep=60 re-cuts the three-quarter plate's rim although the solved balance station is unchanged
 

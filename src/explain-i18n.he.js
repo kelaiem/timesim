@@ -463,7 +463,7 @@ export default {
   ['Pin diameter 0.28 + slop, over the track\'s mid radius.']: 'קוטר הפין 0.28 + חופש, חלקי הרדיוס האמצעי של המסילה.',
   ['<code>ALARM_TRACK_RMID</code>']: '<code>ALARM_TRACK_RMID</code>',
   ['3.05']: '3.05',
-  ['Annulus 2.85..3.25 — outside the hub (2.85), inside the rim\'s root circle (3.30).']: 'אזור טבעתי 2.85..3.25 — מחוץ לטבור (2.85), בתוך מעגל השורש של החישוק (3.30).',
+  ['Annulus 2.85..3.25. Its inner edge overlaps the hub\'s wall (2.8667) by 0.0167: one piece of the disc, so a joint, not a fit. The pin rides outside the wall (its inner edge 2.91), and the annulus lies inside the rim\'s root circle (4.3812).']: 'אזור טבעתי 2.85..3.25. שפתו הפנימית חופפת את דופן הטבור (2.8667) בשיעור 0.0167: שניהם חלק אחד של הדסקה, ולכן זהו חיבור ולא התאמה. הפין נע מחוץ לדופן (שפתו הפנימית 2.91), והאזור הטבעתי נמצא בתוך מעגל השורש של החישוק (4.3812).',
   ['<code>ALARM_FEELER_PIVOT_R</code>']: '<code>ALARM_FEELER_PIVOT_R</code>',
   ['5.50']: '5.50',
   ['Bracket lugs\' inboard faces clear the rim\'s tips by one <code>CLEAR_MARGIN</code> (asserted at boot).']: 'הפאות הפנימיות של אוזני התושבת מפנות את קצות החישוק ב־<code>CLEAR_MARGIN</code> אחד (נבדק באתחול).',
