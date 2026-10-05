@@ -145,6 +145,14 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // ISO 639-3 'ind' is not what a browser sends. The script is the 26 letters
 // English writes, so no line-height rule: the vertical question Vietnamese
 // raised is answered by the tables' character inventory, not a face.
+// §249 — TURKISH, measured in Chromium 141 and Node's ICU alike: 'tr', 'tr-TR'
+// and 'tr-CY' format 30,0 · 0,024 · 1.000 · 18.000 on latn, so MARKS.tr is
+// German's row; plural one/other. Its real rule is the DOTTED I, and it is a
+// rule about CODE, not the table: JS's toLowerCase/toUpperCase are
+// locale-blind, so lowerUi below carries the three display sites that reach a
+// translated string, and CSS text-transform — measured on pixels, in HTML and
+// in an SVG <text> alike — dots the capital already under lang="tr". The
+// matcher is anchored: 'tru' (Turoyo) and 'trv' (Taroko) are other languages.
 // §249 — PERSIAN, the second right-to-left row and the second DIGIT override.
 // Measured in Chromium 141 and Node's ICU alike: 'fa', 'fa-IR' and 'fa-AF' all
 // default to arabext (۳۰٫۰ · ۰٫۰۲۴ · ۱۸٬۰۰۰), and '-u-nu-latn' turns every one
@@ -171,6 +179,7 @@ export const LOCALES = [
   { code: 'vi', face: 'Tiếng Việt', tag: 'vi-VN', match: (v) => /^vi(-|$)/.test(v) },
   { code: 'nl', face: 'Nederlands', tag: 'nl-NL', match: (v) => /^nl(-|$)/.test(v) },
   { code: 'id', face: 'Bahasa Indonesia', tag: 'id-ID', match: (v) => /^(id|in)(-|$)/.test(v) },
+  { code: 'tr', face: 'Türkçe', tag: 'tr-TR', match: (v) => /^tr(-|$)/.test(v) },
   { code: 'hi', face: 'हिन्दी', tag: 'hi-IN', match: (v) => /^hi(-|$)/.test(v) },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
@@ -226,6 +235,9 @@ for (const [input, want] of [
   // §249 — 'in' is Indonesian's legacy code and lands on the same table.
   ['id', 'id'], ['id-ID', 'id'], ['id_ID', 'id'], ['in', 'id'], ['in-ID', 'id'],
   ['ido', null], ['inh', null], ['inh-RU', null],
+  // §249 — Turkey and Cyprus on the one table; 'tru' and 'trv' are not Turkish.
+  ['tr', 'tr'], ['tr-TR', 'tr'], ['tr_TR', 'tr'], ['tr-CY', 'tr'],
+  ['tru', null], ['trv', null],
   // §212 — the negative row is the decision: 'hif' (Fiji Hindi) is its own
   // language and gets English, not this table.
   ['hi', 'hi'], ['hi-IN', 'hi'], ['hi_IN', 'hi'], ['hif', null], ['hif-FJ', null],
@@ -280,6 +292,20 @@ export function fmtNum(n, digits = 0) {
 // gives 18.000 (de) and 18,000 (en/zh).
 export function fmtInt(n) {
   return Number(n).toLocaleString(LANG_TAG, { useGrouping: true, maximumFractionDigits: 0 });
+}
+
+// Display-layer CASE mapping (§249 Turkish), fmtNum's twin for letters: a
+// translated string is lowercased in its own locale, because String's
+// toLowerCase is locale-BLIND and Turkish has two i's — 'I' lowers to 'ı', not
+// 'i', and 'İ' to 'i', not 'i' + U+0307. Three sites reach a translated string
+// (the announcer's on/off word, and the advanced-panel filter's translated
+// haystack and query — its English haystack stays locale-blind beside it);
+// every other toLowerCase in the tree reads canonical English, a hex colour, a
+// locale tag or a key name, where locale-blind is the CORRECT answer — a tag
+// lowered by Turkish rules would turn 'IT' into 'ıt'. Text uppercased for
+// display is CSS text-transform, which reads the document's lang already.
+export function lowerUi(s) {
+  return String(s).toLocaleLowerCase(LANG_TAG);
 }
 
 // ---------------------------------------------------------------------------

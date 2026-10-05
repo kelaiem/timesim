@@ -213,6 +213,7 @@ const MARKS = {
   vi: { group: ['.'], dec: ',' },
   nl: { group: ['.'], dec: ',' },        // §249 — nl-NL and nl-BE alike: German's marks (Chromium 141)
   id: { group: ['.'], dec: ',' },        // §249 — id-ID and the legacy 'in' alike: German's marks (Chromium 141)
+  tr: { group: ['.'], dec: ',' },        // §249 — tr-TR and tr-CY alike: German's marks (Chromium 141)
   he: { group: [','], dec: '.' },        // §249 — he-IL is latn by default: English's marks (Chromium 141)
   fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
 };
@@ -279,6 +280,12 @@ const HONESTY = {
   // word (the credit line's "AI model" is «model AI»), so the stem needs a
   // prefix or a verbal suffix to count.
   id:        { m: /dimodelkan|pemodelan|memodelkan|termodelkan/i, s: /simulasi/i },
+  // §249 — the verb modellemek's stem (modellenmiş, modelleme) carries a
+  // doubled l the bare noun «model» does not, so the credit line's «yapay zekâ modeli»
+  // cannot count. Simulated is the loan simüle / simülasyon; the class spells
+  // the capital İ out because /i does not fold it onto i (MODELLENMİŞ,
+  // SİMÜLE EDİLMİŞ).
+  tr:        { m: /modelle/i, s: /s[iİ]m[üÜ]l/i },
   // §249 — the -سازی compound, never the bare noun: the credit line's "AI
   // model" is مدل هوش مصنوعی. The joint is a ZWNJ, a space or nothing, and the
   // page uses all three spellings somewhere, so the matcher takes all three.

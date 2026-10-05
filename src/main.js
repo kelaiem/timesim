@@ -11,7 +11,7 @@ import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
-import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, localizeTree } from './i18n.js';
+import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, lowerUi, localizeTree } from './i18n.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
 // order (kinematic constants + the whole Z-stack). See src/layout.js. They are
 // consumed unchanged below; the geometry fingerprint proves the move changed
@@ -35491,7 +35491,7 @@ function askTour(onProceed) {
     if (!b) return;
     b.click();
     const st = b.dataset.state;
-    announce(`${t(label)}${st ? ' ' + t(st === 'on' ? 'On' : 'Off').toLowerCase() : ''}`);
+    announce(`${t(label)}${st ? ' ' + lowerUi(t(st === 'on' ? 'On' : 'Off')) : ''}`);
   };
   const orbit = (dAz, dPol) => () => {
     camTween = null;
@@ -35876,7 +35876,11 @@ function askTour(onProceed) {
       // path (already `label.title`, English by contract). Built from
       // `labelText` rather than `label.textContent`/`row.textContent`, so
       // neither the ' ⟳' reload suffix nor the numeric readout can false-hit.
-      advFilterables.push({ row, hay: `${labelText} ${authored || ''} ${r.path.join('.')}`.toLowerCase() });
+      // §249 — and lowered by two rules: the translated label in its own
+      // locale (lowerUi — Turkish 'I' is 'ı'), the English source and path
+      // locale-blind, so a Turkish reader's 'Input' still finds 'input'. The
+      // query is lowered both ways and either side may match.
+      advFilterables.push({ row, ui: lowerUi(labelText), en: `${authored || ''} ${r.path.join('.')}`.toLowerCase() });
     }
   };
   await breathe();
@@ -35900,8 +35904,8 @@ function askTour(onProceed) {
     }
   }
   document.getElementById('advanced-filter').addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    for (const f of advFilterables) f.row.style.display = (!q || f.hay.includes(q)) ? '' : 'none';
+    const raw = e.target.value.trim(), qUi = lowerUi(raw), qEn = raw.toLowerCase();
+    for (const f of advFilterables) f.row.style.display = (!raw || f.ui.includes(qUi) || f.en.includes(qEn)) ? '' : 'none';
   });
   document.getElementById('btn-reset-aesthetics').addEventListener('click', () => {
     clearOverrides();
