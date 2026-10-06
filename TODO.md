@@ -28337,7 +28337,7 @@ pinion and the rim now read 0.150000 off the plate, the saw 0.204. All three
 went stale and were deleted. The case's stem tube is derived from the plane
 and moved with it.
 
-**What remained (6 rows) when the first part landed, and why each is more than a constant.**
+**What remained (6 rows) when the first part landed, and why each is more than a constant.** Two remain: the 0.075 gear pair.
 
 - **`transferWheel` and the great wheel (0.075).** Both are gears whose
   `makeGear` edge bevel stands 0.075 proud of the stock face:
@@ -28353,7 +28353,23 @@ and moved with it.
   towards the plate's dial face at −2.3. The fix is a relief cut in the
   plate's dial face over the stem train, as a real plate is recessed for its
   keyless works, or a lower stem plane. Either moves the case's stem tubes.
-- **`caseLug` (0.0905).** Not yet traced.
+- **`caseLug` (0.0905)** (PAID, below).
+
+**And the case lugs, paid down.** It was not the plate's position that was
+off. Each lug was rooted a fixed `CASE_LUG_ROOT` (0.8 mm) into the band,
+measured from the band's outer surface at the lug's centre. The lugs stand
+±10.6 mm off the pair axis. There the back bore has risen to its own chord
+depth, and it rises fastest at the lug's inboard face. So the root's inboard
+corner sank to 0.02 u short of breaking through the bore wall. That left
+0.09 u to the plate rim seated in the bore (the 0.07 u locating fit). The
+foot is now capped where the wall runs out, by `caseLugRootR` in `layout.js`.
+That is one law, read by both the solid and the schematic lines. The root
+stands `STOCK_MIN_U` (§50's sheet floor) of band metal outboard of the bore at
+that corner whenever the 0.8 mm intent would sink it deeper. The embed is now
+0.69 mm and the inboard corner sits at r 50.41, against the rim's 50.06.
+`probe-lug-geom.mjs` still reads 48.000 mm across the tips, the 20.000 mm
+interior span and the ≥ 2.0 mm wrap gap unchanged. The row went stale and was
+deleted.
 
 Feasibility: small per row · Battery: each fix moves its part's digest; the
 `plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved

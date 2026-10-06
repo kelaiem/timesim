@@ -47,7 +47,7 @@ import {
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
-  CASE_BAR_REACH, CASE_LUG_REACH,             // §190: the lug/bar stock, one declaration — the schematic tier draws the same metal makeCase cuts
+  CASE_BAR_REACH, CASE_LUG_REACH, caseLugRootR,             // §190: the lug/bar stock, one declaration — the schematic tier draws the same metal makeCase cuts
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -39407,8 +39407,8 @@ const SCHEMATIC = { proxies: [], on: false };
       const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
       const zLug = zLedge + CASE_LUG_W / 2 + CASE_LUG_Z_OFF; // the solid lugs' own station
       for (const s of [-1, 1]) {                   // the two lug flanks: each rooted
-        const off = s * LUG_SPAN / 2;              // CASE_LUG_ROOT past the chord-depth
-        const root = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0)) - CASE_LUG_ROOT; // surface at its
+        const off = s * LUG_SPAN / 2;              // caseLugRootR past the chord-depth
+        const root = caseLugRootR(off, R_OUT, R_BORE_BACK);                           // surface at its
         put(new THREE.Line(seg(                    // own station, tip at the
           u.clone().multiplyScalar(root).addScaledVector(p, off).setZ(zLug),   // solid's own
           u.clone().multiplyScalar(R_OUT + CASE_LUG_REACH).addScaledVector(p, off).setZ(zLug)), rim)); // station
