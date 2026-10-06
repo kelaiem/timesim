@@ -106,6 +106,12 @@ export const BATTERY = [
     gate: 'the nose on the flank lifting and free falling/rebounding; the tip on the tail at every phase',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+  // TODO 210 — the maintaining detent's blade on the click's tail, in contact
+  // at every phase of a tooth (the click's restoring answer, measured).
+  { name: 'maintDetentHandoff', opts: {},
+    gate: 'the detent blade on the click\'s tail at every phase of a tooth',
+    fails: (r) => r.unwaived,
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'stockFloor', opts: {},
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],

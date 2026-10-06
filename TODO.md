@@ -17,12 +17,14 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 214 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
+| 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
+| 215 | OPEN | Found closing TODO 210. The maintaining detent rides its ring in the LOCKING sense: as the train runs the beak climbs each tooth's 28% face and slides down its 72% ramp (law and metal agree). The ride is not on the cut either: the tip floats 0.04–0.10 over the ramp, the click's body sits up to 0.26 inside the ring mid-climb, and 35% of each tooth the beak hovers 0.311 over the root on the law's `max(…, 0)` floor with no banking cut |
+| 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211 |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
 | 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
-| 211 | OPEN | The yoke's prong stands at best 0.137 off the clutch's groove collars over the whole pose net, so the return `declareRestoring('Winding clutch', …, 'yokeSpring')` describes ("re-seats it through the fork") passes through a fork that touches nothing; found by TODO 194's reach control, waived to this item |
-| 210 | OPEN | The maintaining detent's restoring row names `maintSpring` — the maintaining-POWER torus under the maintaining wheel, another unit, 1.0+ from the click at every pose; the detent has no spring of its own in the metal. Found by TODO 194's reach control, waived to this item |
-| 209 | PART DONE | Six of twelve rows retired: the arrest's plane re-floored at the plate face + `CLEAR_MARGIN` (it was a literal 0.1), the set-up square ended at its ratchet's floor, and two misfiled rows (the transfer arbor and the alarm climb rod, both running through plate bores) moved to `PLATE_SEATS`. Left: the transfer wheel and great wheel (0.075, a gear bevel under the margin, a band re-solve), the keyless stem parts (0.046–0.1, a dial-face relief or lower stem plane), and the case lugs (0.09). |
+| 211 | CLOSED | `HUB_COLLAR_R` is derived from where the prong bears (1.2730 → 1.7513: the farthest bearing vertex 1.6798 from the stem, plus the two running fits' shake, at the 20-gon's inradius), and `yokeClutchAt` solves the yoke's angle from that contact and derives the clutch from it. The new stem-clutch rows read 0.015–0.020 shut and 0.102–0.106 free (before 0.166–0.191 everywhere), and the reach waiver is retired. The keyless plane paid for the wider collars in strata: `Z_KEYLESS` is derived as the plate's dial face − `CLEAR_MARGIN` − the stem stack's widest radius (the pinion's tip circle 1.754052, which binds over the collars), −4.1 → −4.2041, which also retired TODO 209's three keyless rows. The setting lever ⇄ yoke edge is filed as TODO 214 |
+| 210 | CLOSED | The detent has its own spring: a straight blade (`SPRING_FLAT_U` × 0.5643, free 7.56–7.72 from the post's face) let into the cock's post, bearing on a TAIL the click now carries behind its pivot. Solved in a line from the law's travel (0.2286 rad), R = 3 and the 0.9·σy target: the beak presses the ring 10.01 mN seated → 24.97 mN at a tooth's crest, equal-margin in `SELECTOR_DETENT_WINDOW_MN`. Two §137 `crank` rows, `maintDetentHandoff` reads −0.021 at three phases, reach 1.0+ → 0, waiver retired |
+| 209 | PART DONE | Nine of twelve rows retired: the arrest's plane re-floored at the plate face + `CLEAR_MARGIN` (it was a literal 0.1), the set-up square ended at its ratchet's floor, two misfiled rows (the transfer arbor and the alarm climb rod, both running through plate bores) moved to `PLATE_SEATS`, and the three keyless stem rows paid down by TODO 211's derived `Z_KEYLESS`. Left: the transfer wheel and great wheel (0.075, a gear bevel under the margin, a band re-solve) and the case lugs (0.09). |
 | 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
 | 207 | DONE | The design swing is declared and gated: `AMPLITUDE_TARGET_DEG` 200° vertical at the nominal corner, met at 200.4°. The drum grew to the largest the plate carries (`DRUM_R_ACTUAL` 10 → 10.71, held by a boot assert to its plate-edge bound) and the balance was lightened in rim height to the heaviest that reaches the target (`BAL_RIM_F` 0.645: inertia 62%, mass 63%), its hairspring re-solved at the same 0.0239 mm in a 0.3726 ribbon. The favourable dial-flat swing now passes the knocking angle: TODO 214 |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
@@ -28182,7 +28184,7 @@ separate pins built outward from the cage hub, and the hub had joined them. The
 count is 230 → 239 bars and no new waivers.
 
 What it did not do: the favourable corner's dial-flat swing is past a lever
-escapement's knocking angle, which is TODO 214. The swing remains MODELLED, not
+escapement's knocking angle, which is TODO 216. The swing remains MODELLED, not
 SIMULATED: it is the energy column's solve, not a balance driven by a force.
 
 ## 208. The fusee cone is too steep for an upright chain: wrap links lean to 63 degrees and twist 16-35 degrees per joint
@@ -28291,7 +28293,17 @@ against a face 0.3 higher, so they stand 0.075 above the real one.
   the plate. Each reading was the shaft's radial gap to its own bore wall, a
   running fit, not a part that should clear the plate.
 
-**What remains (6 rows), and why each is more than a constant.**
+**And three more, paid down by [TODO 211].** The keyless stem rows
+(`windingPinion`, `clutchRim` 0.046, `windPinionSaw` 0.1) took the second of
+the two fixes named below, the lower stem plane. TODO 211's wider fork collars
+needed it too, so `Z_KEYLESS` is now DERIVED: the plate's dial face, less
+`CLEAR_MARGIN`, less the stem stack's widest radius. That radius is the pinion's
+and the clutch rim's tip circle, 1.754052. The plane went −4.1 → −4.2041, and the
+pinion and the rim now read 0.150000 off the plate, the saw 0.204. All three
+went stale and were deleted. The case's stem tube is derived from the plane
+and moved with it.
+
+**What remained (6 rows) when the first part landed, and why each is more than a constant.**
 
 - **`transferWheel` and the great wheel (0.075).** Both are gears whose
   `makeGear` edge bevel stands 0.075 proud of the stock face:
@@ -28302,8 +28314,8 @@ against a face 0.3 higher, so they stand 0.075 above the real one.
   - So this is a re-solve of that band (spur, transfer wheel, great wheel)
     with the bevel counted, which is the two-bevel lesson the alarm stack
     already pays.
-- **`windingPinion`, `clutchRim` (0.046) and `windPinionSaw` (0.1).** These
-  are on the crown stem's axis at `Z_KEYLESS` (−4.1). Their radii reach up
+- **`windingPinion`, `clutchRim` (0.046) and `windPinionSaw` (0.1)** (PAID
+  by TODO 211, above). These were on the crown stem's axis at `Z_KEYLESS` (−4.1). Their radii reach up
   towards the plate's dial face at −2.3. The fix is a relief cut in the
   plate's dial face over the stem train, as a real plate is recessed for its
   keyless works, or a lower stem plane. Either moves the case's stem tubes.
@@ -28313,7 +28325,7 @@ Feasibility: small per row · Battery: each fix moves its part's digest; the
 `plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved
 station.
 
-## 210. The maintaining detent's restoring declaration names the maintaining-power spring, which never touches the detent
+## 210. The maintaining detent's restoring declaration names the maintaining-power spring, which never touches the detent — CLOSED
 
 Found by [TODO 194]'s reach control on its first run.
 `declareRestoring('Maintaining detent', 'click', 'spring', …, 'maintSpring')`
@@ -28338,18 +28350,96 @@ to — state it). Then re-point the declaration at it and retire
 `RESTORING_REACH_WAIVERS['Maintaining detent\u0000click']`. The waiver goes
 stale and fails the moment the row reaches.
 
-## 211. The yoke's prong never bears on the clutch collar it is declared to return the clutch through
+### Closed — a straight blade in the post, bearing on a tail the click now carries.
+
+**Where it can live, measured.** The only fixed metal near the click is its
+own cock: the post on the plate outside the great wheel's tip circle, the arm
+over the wheel, the pivot stud. The click works in the ring's band, and from
+the ring's top face to the arm's underside is 0.05. A coaxial spiral on the
+stud (TODO 194's answer) has no band to wind in without moving the arm, which
+would be a strata spend on the whole sandwich. Under the arm the band is free
+along the whole run to the post. An obstacle sweep of every axis read the
+great wheel 0.46 below it and the chain 1.13 off it. So the spring is a
+STRAIGHT BLADE let into a slot across the post and lying along the arm. Such
+a blade pushes only ACROSS the arm, and the click points 0.72π off the arm's
+line. A force across the arm would be mostly along the click and would turn
+it hardly at all. The flank near the pivot is no better: it is outside the
+ring's tip circle + margin only within about 1.1 of the pivot, and a blade
+along the arm cannot meet it square. So the click carries a **tail** behind
+its pivot, clocked along the arm, and the tail's corner bears on the blade.
+That is §137's `crank`: a blade biasing a separate pivoted arm.
+
+**The window.** `SELECTOR_DETENT_WINDOW_MN`, 5–50 mN at the beak. A
+maintaining detent is a click indexing a ratchet at its tooth run, which is
+the load class the window's own basis names (jumper/detent indexing loads at
+the tooth run). Its HOLD during winding is the saw face's closing geometry,
+not this spring, so no stronger window applies (the alarm click's row says
+the same of its own hold).
+
+**The line spec** (main.js `MAINT_DET_SPRING`, solved at boot):
+
+| quantity | value | constraint |
+|---|---|---|
+| travel Δa | 0.2286 rad | the law's own lift, seat → crest: (`MAINT_RING_R` − `MAINT_DET_TIP_R`)/`MAINT_DET_LEVER` |
+| force ratio | R = 3 by design (2.49 as built) | equal margin, Fmin·Fmax = 5·50; U = ½·Fmax·LF·Δa·R/(R−1) is least at R = 3, and the least energy is the least steel. The built ratio is lower because the corner's moment arm falls 3.18 → 2.87 over the ride |
+| preload θ0 | 0.1143 rad | Δa/(R−1). It is the law's seat now too (`MAINT_DET_PRELOAD`, was one `CLEAR_MARGIN` at the beak) |
+| stock t | 0.1319 u (0.05 mm) | `SPRING_FLAT_U`, the file's flat-blade section |
+| tail ℓ / free length L | 3.2028 / 7.559–7.721 | together they fill the arm's run from the pivot to the post's face (read at the band's foot, where the tapered post is widest, the conservative read). The blade's root works to 0.9·`SPRING_SIGMA_Y_PA` (720 MPa) at the crest: bisected on ℓ |
+| height b | 0.5643 u (0.214 mm) | from the window (the beak force is linear in b), inside the 0.6489 band between the great wheel's face and the arm, each a `CLEAR_MARGIN` off |
+| tail section | the click's own at its boss (0.692 × 0.41) | read off the click's cut. The tail carries the beak's moment about the pivot |
+| clocking | tail along the arm at the seat | the tail only turns away from the blade's face as the click lifts, and the face only deflects off its free line, so the corner bears and the flank never does (asserted over the ride) |
+
+**The forces**: blade 7.92 → 21.93 mN at the corner. Through arms of
+3.1835 → 2.8673 against `MAINT_DET_LEVER` 2.518, that puts **10.01 mN seated
+and 24.97 mN at the crest** on the ring. The product is 250.0 mN², so each end
+is 2.00× clear of the bound it faces (10.01/5 and 50/24.97). **Energy**: the bound for
+those forces over that travel is 4.55 µJ. The blade stores 4.51 µJ at the
+crest, which equals its σ²V/18E capacity at 720 MPa, because that capacity is
+the strain solve read as energy. The 0.9% between bound and stored is the
+falling moment arm (the bound assumes a fixed lever), not a shortfall at
+either end: both forces are computed at the corner. A straight blade does fit
+the space. It takes 0.5643 of a 0.6489 band, at the longest free length the
+run allows.
+
+**Added.**
+- `maintDetentTail` rides the click's rotation exactly (one rigid frame with it).
+- `maintDetentSpring` is drawn RIGID about its root and aimed through the corner, the feeler blade's convention. A real cantilever bows, so its free end's slope is wrong by 3/2 and nothing reads it. This is the sautoir's stated debt.
+- The corner sinks `ALARM_SEAT_SINK` into the face.
+- Two §137 `crank` rows, seated and at the crest. Each carries its blade figures, both arms, the ratio and the energy column.
+- `declareRestoring('Maintaining detent', 'click', …, 'maintDetentSpring')`, plus the blade's own `spring` row: it reciprocates with the click and is its own restoring element.
+- INTRA_UNIT_CONTACTS: tail ⇄ stud, blade ⇄ post, blade ⇄ tail.
+- stockFloor kind `maintDetentSpring: 'spring'`.
+- A sibling hand-off check, **`maintDetentHandoff`**. It holds blade ⇄ tail in contact at three phases of a tooth (riding, seated, crest): **−0.0213 / −0.0210 / −0.0214**.
+- The reach control reads **0** via the tail, where it read 1.0+ on `maintSpring`. The waiver is retired.
+- The fingerprint is unchanged (2478404098): the new metal lies inside the unit's existing box at every pose.
+- MECH_GRAPH needs no edge: both parts are inside 'Maintaining detent', whose support and drive edges already stand.
+
+**What closing it found** is filed as [TODO 215]: the detent rides its ring in
+the LOCKING sense, and the ride is posed off the cut. Since this item, the
+blade presses the beak onto the law's floor (lift 0) with ≈ 10 mN while,
+over 35% of each tooth, the cut has nothing under it there.
+
+## 211. The yoke's prong never bears on the clutch collar it is declared to return the clutch through — CLOSED
 
 Found by [TODO 194]'s reach control. `declareRestoring('Winding clutch',
 'clutchSleeve', 'spring', …, 'yokeSpring', 'yokeProng')` says that "the yoke
 spring re-seats it through the fork". Measured, the first hop holds: the yoke's
 blade touches the yoke (0, the `Yoke` row). The second does not. The prong
-(`YOKE_PRONG_R` 0.4) rides the clutch's groove between collars at
-±`GROOVE_HALF` 0.95 with thickness `GROOVE_COLLAR_T` 0.5, so there is 0.3 of
-play a side. Over three samples of every axis, the prong comes no nearer than
-**0.137** to any clutch mesh (`clutchHubCollarIn`). The clutch's position is
-the tick's. The fork that is meant to drive it is never in contact with it in
-the pose net.
+(`YOKE_PRONG_R` 0.4) rides the CLUTCH's own hub groove, between
+`clutchHubCollarIn` (at `YOKE_FORK_IN` −2.048) and `clutchHubCollarOut` (at
+`YOKE_FORK_OUT` −0.748), each `HUB_COLLAR_T` 0.4 thick, so the groove is
+2·(0.4 + `SAW_FIT`) = 0.9 wide. (This entry first named `GROOVE_HALF` and
+`GROOVE_COLLAR_T`; those are the STEM's setting-lever groove on `windSpinner`,
+a different part.) The prong's centre stands OUTSIDE the collars' radius,
+`HUB_COLLAR_R` 1.273: 1.54 from the stem axis at mid-stroke and 1.627 at the
+ends, where the arm's arc carries it out. So only a chord of the post could
+ever meet a collar, at its arris, and the play along the stem was 0.31 at
+mid-stroke and 0.53 at the ends. Over three samples of every axis the prong
+came no nearer than **0.137** to any clutch mesh; the stem-clutch handoff poses
+read it 0.166–0.191 off both collars. The clutch's position was the tick's
+(`pull·CLUTCH_TRAVEL` plus the saw lift) and the yoke's angle was posed to
+follow it. Turning the yoke about its pivot does not help: the prong's arc
+carries it off the collar band before it reaches either face.
 
 **Fix path (P0).** Either the yoke's angle must be solved from the collar it
 pushes, so that the prong bears on a collar face at both crown parities (the
@@ -28357,6 +28447,88 @@ spring's preload holding it there), or the tick's clutch position must be
 derived from the prong's. Either way, add an `ALARM_HANDOFFS`-class row (the
 stem-clutch table is the sibling) measuring prong ⇄ collar shut. Then retire
 `RESTORING_REACH_WAIVERS['Winding clutch\u0000clutchSleeve']`.
+
+**CLOSED — the collars are sized to the prong's bearing line, and the clutch is
+where the fork puts it.** Both halves of the fix path, in that order:
+
+- **The collar radius is DERIVED (`layout.js`, `HUB_COLLAR_R`).** A post
+  crossing the stem's plane bears with a vertical generator, so a FACE contact
+  needs the collar wider than that generator's lateral distance from the stem
+  axis. Narrower, the post meets the collar's arris. The contact is solved on
+  the cut: the prong is makeYoke's 10-gon (`YOKE_PRONG_SEGMENTS`, now passed
+  to it), so the bearing is a VERTEX, and which vertex depends on the arm's
+  tilt. Sampled over the whole stroke on both faces, the farthest bearing
+  vertex stands **1.6798** from the stem (`YOKE_BEARING_LATERAL`). It is the
+  far vertex at the stroke end where the arm tilts away from the face: collar
+  Out at the first touch of the pull, collar In at the start of the push home.
+  The face must reach past that line by the two members' radial shake. The
+  clutch rides its square on `SAW_FIT` and the yoke its pivot on
+  `PIVOT_BORE_CLEAR`, both diametral, so the shake is (0.05 + 0.05)/2 = 0.05.
+  The collars are 20-gons that turn with the stem (`HUB_COLLAR_SEGMENTS`), so
+  the face is certain only inside their inradius:
+  R·cos(π/20) = 1.6798 + 0.05, so **R = 1.7513** (was 1.272985, which was sized
+  for the setting wheel's blank height; the `zTipLo` guard still holds).
+  The circle-model estimates of 1.35–1.45 measured a chord bite at the arris,
+  which is the edge contact this item is about. main.js asserts the mirror
+  (layout.js solves on a copy of the prong's polygon) against the built mesh's
+  own vertices, and the land past the bearing line against the fits.
+- **The yoke's angle is SOLVED from the contact, and the clutch is derived
+  from it (`yokeClutchAt`).** Causality runs crown → setting lever → yoke →
+  clutch. The lever carries the prong's centre linearly over the pull, from
+  bearing on collar In with the clutch seated (`YOKE_A_SEAT` −1.0559) to
+  bearing on collar Out with the clutch at its setting station (`YOKE_A_FULL`
+  +1.0658). That span is `CLUTCH_TRAVEL` plus the groove's play (0.097), and
+  the play is lost motion: the clutch does not move until the prong has crossed
+  it, at pull 0.046. The clutch's offset is the farther of collar Out's push
+  and the saw ramps' raw lift. The yoke spring holds the prong on collar In, so
+  a cam-over carries the yoke out with it. Every station is a bisection on the
+  support vertex against the cut face plane. The prong parks one `SEAT_RELIEF`
+  off the face it bears on, which is §99's convention and the clutch seat's
+  own. A pose law is stateless and this one carries the PULL's side of the
+  hysteresis: pushing home crosses the play at the other end of the stroke.
+  The two agree at both ends, which are what the rows measure. The tick's
+  clutch is `clutchHomeDist + fork.c + SEAT_RELIEF`, and the yoke's angle is
+  `yokeAngleAt(fork.a)`. One law places both, so they cannot disagree.
+- **Two handoff rows** in `STEM_CLUTCH_HANDOFFS`: prong ⇄ collar In (contact
+  at seated, backlash and camming; free pulled) and prong ⇄ collar Out (the
+  converse). As `checkAlarmHandoffs` reads them (its sampled arbiter lifts the
+  exact 0.005 off the vertex line), both read **0.0147–0.0195** in contact
+  and **0.1022–0.1064** free. Before, the same rows read 0.166–0.191 at every
+  pose. The reach row reads **0.005** via `clutchHubCollarOut`, and the
+  waiver is retired.
+- **What it cost in position space.** `Z_YOKE` is unchanged in form (collar
+  radius + margin + half body + bevel under the keyless plane). The yoke drops
+  the collar's growth, **0.4784**, from −6.083 to −6.561. Its boss underside
+  moves to −7.311, against a dial back now at −9.13 since TODO 194.
+- **And it cost a strata spend (P3, §51's precedent): the keyless plane is
+  DERIVED now.** The wider collars stood **0.0487** off the base plate's dial
+  face, under `CLEAR_MARGIN`, and `plateSeats` refused them. The plane was a
+  literal −4.1, set "mid-band" under a ceiling written against a plate face at
+  −2 (it is −2.3 since TODO 202) and a pinion radius of 1.79 from before
+  §234's re-cut. Every member on the stem axis is a body of revolution about
+  it, so its reach toward the plate is its radius, and the plane is cut
+  against the widest: `Z_KEYLESS = −BACK_PLATE_T − CLEAR_MARGIN −
+  KEYLESS_STACK_R`, with `KEYLESS_STACK_R = max(KW_BEVEL.tipR, HUB_COLLAR_R)`.
+  The collars do NOT bind. The winding pinion's and the clutch rim's tip circle,
+  **1.754052** (both cones are cut to `windPinionTeeth` at `KW_MODULE`), is
+  0.0027 wider than the collars' 1.751339, so the plane is
+  −2.3 − 0.15 − 1.754052 = **−4.204052**, 0.1041 lower. `BACK_PLATE_T` moved
+  from main.js to layout.js so the plane can be derived from it. main.js holds
+  the derivation on the metal in two ways. `KW_BEVEL.tipR` is asserted against
+  both cones' cut specs. Every vertex of the pinion's and the clutch's groups is
+  read for its radius about the stem, which is invariant under spin and slide,
+  and must lie inside `KEYLESS_STACK_R`. Measured plate gaps: pinion and clutch
+  rim **0.150000** (0.0459 before), collars **0.152713** (0.0487), the pinion's
+  saw **0.204052** (0.0999), the clutch's saw 0.254. That retires TODO 209's
+  three keyless rows (`clutchRim`, `windingPinion`, `windPinionSaw`), which
+  went stale on the move and are deleted from `PLATE_CLEARANCE_DEBT`. The yoke
+  follows the plane: `Z_YOKE` −6.665, boss underside −7.415, still 1.7 over
+  the dial's back. The setting lever, the crown and setting wheels, the stem
+  bush and the case's stem tube all derive from `Z_KEYLESS` and moved with it.
+  Fingerprint 124220314 → 2478404098.
+- **Side finding, filed as [TODO 214].** The `['Setting lever', 'Yoke']`
+  drive edge has no metal either: the two stand 2.38–4.93 apart over the pull,
+  and the yoke's lever law is a law of `crownPullT`.
 
 ## 212. The geneva finger is three loose bodies: its pin stands on no metal, its disc wraps 155° of its bore, and nothing joins either to the pinion that turns them
 
@@ -28484,7 +28656,71 @@ re-sync assert silent.
   byte-identical, no focused battery checks were run: nothing they read
   changed.
 
-## 214. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
+## 214. The setting lever never touches the yoke it is declared to drive: the yoke's angle is a law of crownPullT
+
+Found closing [TODO 211]. `MECH_GRAPH` declares `['Setting lever', 'Yoke']`
+as a drive edge ("ganged clutch shift"), and since TODO 211 the yoke really
+drives the clutch: its prong bears on collar Out pulled and on collar In
+seated. The hop before it is still posed. Measured mesh to mesh over the pull
+(`crownPullT` 0, 0.25, 0.5, 0.75, 1), the two units stand **2.383, 2.817, 3.481,
+4.224, 4.925** apart. They are on opposite sides of the stem, and no metal joins
+them. `yokeClutchAt` (layout.js) carries the prong's centre linearly in
+`crownPullT` from `YOKE_A_SEAT` to `YOKE_A_FULL`, which is a law of the input,
+not of a contact. This is the TODO 20 class, at the keyless works.
+
+**Fix path (P0).** Give the yoke a driver. A real keyless works does it with
+the setting lever's own beak or pin bearing on a yoke flank, or with a pin on
+the lever riding a slot or ramp in the yoke (the yoke spring keeps the flank
+on the pin). Then solve the yoke's angle from that contact against the cut,
+the way TODO 211 solved the prong against the collars. The lever law in
+`yokeClutchAt` is then replaced by the solved angle, and a handoff row measures
+the lever ⇄ yoke contact at both parities. The two pivots stand on opposite
+sides of the stem (`SL_C`, `YK_C`), so the linkage has to cross the stem's
+band. That is a P3 question in strata (the lever is at `Z_SETTING_LEVER`, the
+yoke below the collars at `Z_YOKE`). Design it in a line first.
+
+## 215. The maintaining detent rides its ring backwards: the beak climbs each tooth's face and floats over the cut ramp
+
+Found closing [TODO 210], measured on the train axis (96 poses over two teeth),
+against both the law and the cut outline (`ratchet`'s authored shape, the
+maintaining ring at `MAINT_RING_R` 4.44, root 3.552).
+
+1. **Direction.** As the train runs, `updateMaintaining` lifts the beak over
+   ≈ 0.18 of each tooth's pitch and lets it fall over ≈ 0.47, hovering for the
+   other 0.35. Those are the 28% FACE and the 72% RAMP of `sawRadiusAt`, above
+   `MAINT_DET_TIP_R`. So the beak climbs the face and slides down the ramp. The
+   metal agrees. At the beak's azimuth the cut profile FALLS at the ramp's slope
+   as tau advances (4.153 → 3.614 over half a tooth), so the next thing to
+   arrive is a face. On the metal, that is the ratchet's LOCKING sense: running
+   would jam the ring against the detent, which is the reverse of what the block
+   comment says ("the detent slowly ticks over the maintaining wheel's rim
+   teeth"). Suspected cause, not verified: `MAINT_U_SIGN` serves two saws whose
+   relative motions are opposite. The pawls see the flange go backward in
+   winding, and the detent sees the ring go forward in running. Both are cut
+   `reverse: false`. Nothing in the battery measures a direction (CLAUDE.md's
+   direction-guard entry), and this is that class.
+2. **The ride is not on the cut.** While descending the ramp, the law's tip
+   stands 0.04–0.10 above the cut surface (r 4.249 against 4.153 at tau 0).
+   Mid-climb, the click's body sits up to **0.26** inside the ring. The pair is
+   `EXPECTED` (contact excused unit-wide) and has no `EXPECTED_CONTACT_FLOORS`
+   row, so no gate reads either number. The law's `sawRadiusAt` is linear in u.
+   The cut is chords.
+3. **The seat is a floor that exists only in the function.**
+   `lift = max(sawRadiusAt − TIP_R, 0)`. Over 35% of each tooth the beak hovers
+   at `MAINT_DET_BASE`, 0.311 above the root, with nothing under it and no
+   banking cut. Since TODO 210 the blade presses it there with ≈ 10 mN.
+
+**Fix path (P0, the detent group).** Decide the ring's hand from the detent's
+relative motion, and add a direction guard that MEASURES which flank the beak
+climbs over a run and asserts it is the ramp. Then choose between cutting a
+banking for the 0.35 depth seat and letting the beak seat at the root. That is
+a real choice: the second grows the travel to 0.353 rad and re-solves TODO
+210's blade (its solve reads the travel, so it follows). Pose the ride by a
+solve on the cut outline, not the linearised profile. Add a floors row for
+`Maintaining detent ⇄ Fusee & great wheel` that excludes only the beak's
+working contact.
+
+## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
 
 Found closing [TODO 207]. The design swing is now 200° vertical at the nominal
 corner. At the favourable corner, dial-flat, the same balance and spring sustain

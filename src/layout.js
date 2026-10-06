@@ -373,7 +373,7 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 //    before it), rounded UP: a load priced below the swing the balance can
 //    reach is not a bound. (A real lever escapement knocks its pin on the
 //    fork's horns at about 330°, so the favourable corner's dial-flat swing is
-//    one the watch would bank at, not reach — TODO 214. Pricing at the
+//    one the watch would bank at, not reach — TODO 216. Pricing at the
 //    solve's figure is the conservative side of that.)
 // Neither can be computed here, since the solve reads the cut ribbon, the
 // pivots and the balance, all built in main.js. So `equalisation` row 14 holds
@@ -1156,18 +1156,22 @@ export const Z_DIAL_FACE = Z_DIAL - DIAL_T;  // the VISIBLE face, one plate forw
 // leave the rim a straight land — 0.4 − 2×0.05 = 0.30 mm, 75% of stock, and
 // makeDial boot-asserts the rule rather than the number.
 export const DIAL_EDGE_BREAK = 0.05 / UNIT_MM;  // 0.132 u
-// KEYLESS PLANE — the stem/clutch/setting-wheel plane, on the DIAL SIDE of
-// the base plate as in a real watch (it used to ride atop the barrel on the
-// movement side). Bracketed by two binds and set mid-band:
-//  · ceiling: the sliding pinion's axis lies ALONG the stem, so its z-reach
-//    is its outer RADIUS (pitch 1.36 + addendum ≈ 1.79); that stack must
-//    clear the plate's flat underside (−2) by CLEAR_MARGIN →
-//    Z_KEYLESS ≤ −2 − 0.15 − 1.79 = −3.94.
-//  · floor: the yoke rides below the plane (its arm passes under the
-//    sliding pinion's hub collars, r 1.2) and its pivot boss must clear the
-//    dial face (Z_DIAL) by the margin → Z_KEYLESS ≥ −7 + 0.15 + 0.75
-//    (boss half) + 1.91 (yoke drop, see Z_YOKE) = −4.19.
-export const Z_KEYLESS = -4.1;
+// The base plate's THICKNESS, hoisted from main.js (TODO 211) because the
+// keyless plane below is derived from the plate's dial face and layout.js
+// cannot read main.js. TODO 202 — the plate's two FACES are the datums, and
+// the thickness is what lies between them. The movement side is z 0, which
+// every train part, cock leg and pillar seats off (PLATE_TOP). The dial side
+// is z −2.3: until TODO 202 the extrude's bevel stood proud of a nominal
+// [−2, 0] slab, and the face it actually presented at −2.3 is what the whole
+// dial-side stack was solved against (TODO 153's PLATE_BACK_FACE, §234's
+// guard, TODO 172's pockets). The builder now cuts the finished plate, so the
+// slab is declared as the metal those solves already stand on: 2.3 u =
+// 0.872 mm, centred at −1.15.
+export const BACK_PLATE_T = 2.3;
+// KEYLESS PLANE — the stem/clutch/setting-wheel plane, on the DIAL SIDE of the
+// base plate as in a real watch. Z_KEYLESS itself is DERIVED below HUB_COLLAR_R
+// (search KEYLESS PLANE — DERIVED), because its ceiling is the stem stack's
+// radius and the collars are now the second-widest member of it.
 
 // ---------------------------------------------------------------------------
 // Train ratios — the "ratios" third of the eventual solveLayout output. Tooth
@@ -1779,6 +1783,9 @@ export const STEM_R = STEM_STOCK_R_U;
 //   setTipR    = the setting wheel's blank reach from its own axis — the fifth
 //                row, and the one the CLUTCH's body has to stand clear of at
 //                full pull (see YOKE_FORK_OUT)
+//   tipR       = the winding pinion's and clutch rim's tip circle about the
+//                stem (both cut to windPinionTeeth at KW_MODULE, so one
+//                figure) — the keyless plane's ceiling (TODO 211, Z_KEYLESS)
 // §234 step 3b re-cut all five: windPinionTeeth 8 → 10 moves BOTH corners
 // (the crown-wheel pair through mateTeeth, the setting corner through the
 // clutch rim, which is cut to windPinionTeeth's own count) and KW_PIN_BORE
@@ -1790,6 +1797,7 @@ export const KW_BEVEL = {
   rimBack: 0.415533,
   rimTip: 0.147443,
   setTipR: 3.517064,
+  tipR: 1.754052,
 };
 // The pinion's COUPLING BOSS — the turned shoulder outboard of its cone that
 // carries the saw ring. It exists because the crown wheel's rim overhangs the
@@ -1926,19 +1934,8 @@ export const HUB_COLLAR_T = 0.4;
 // (TODO 136, out of this landing's scope) — both P0/P2 costs a running-fit
 // joint does not need to spend.
 export const HUB_COLLAR_BORE_R = STEM_SQ_BORE_REACH;
-// The collars' radius. Slimmed 1.5 → 1.2 at TODO 50's split: the yoke's arm
-// passes UNDER them and every 0.1 of hub radius is 0.1 of yoke drop, depth the
-// dial gap has no more of. It lives here since TODO 136 because YOKE_FORK_OUT's
-// third wall is a claim about this radius reaching the setting wheel's blank —
-// main.js's own guard is `HUB_COLLAR_R >= KW_SPEC.settingWheel.zTipLo`, and
-// below that the collar could tuck inside the cone's mouth, where the bound's
-// purely-radial assumption stops being true.
-// §234 step 3b — 1.2 no longer clears it. Re-cutting the setting corner (the
-// clutch rim's tooth count follows windPinionTeeth, 8 → 10) grew the setting
-// wheel's blank: zTipLo 1.2 → 1.272985. The collar is grown to just clear it,
-// the boundary the guard is asking for — not padded, since every 0.1 here is
-// 0.1 of yoke drop this landing did not go looking to spend.
-export const HUB_COLLAR_R = 1.272985;
+// (HUB_COLLAR_R — the collars' radius — is derived below CLUTCH_TRAVEL since
+// TODO 211: it is sized by where the fork's prong BEARS, which needs the stroke.)
 // The stem bushing's foot is a 2.2 box aligned to the stem, so 1.1 is its
 // half-extent along it — the term both the foot's own station and the plate's
 // keyless floor are written in terms of. One declaration since TODO 136, which
@@ -2012,6 +2009,155 @@ export const STEM_CLUTCH_OFF =
 // interleave — asserted at the build (toothH + margin, against a ~1.3
 // travel).
 export const CLUTCH_TRAVEL = CROWN_PULL_DIST - STEM_CLUTCH_OFF;
+
+// ---------------------------------------------------------------------------
+// TODO 211 — THE FORK BEARS ON A COLLAR FACE, and the clutch is where it puts it.
+//
+// The prong is a vertical post crossing the stem's plane beside the spine
+// (YOKE_ARM holds it CLEAR_MARGIN off the sleeve at mid-stroke), so the
+// generator it bears with stands at a LATERAL distance from the stem axis —
+// 1.54 at mid-stroke, more at the ends, where the arm's arc carries it out.
+// A collar face meets that generator only if the collar is wider than that
+// distance: narrower, and the prong reaches the collar's ARRIS, a point on its
+// rim edge, or (the shipped 1.273, the setting wheel's blank height and nothing
+// the fork asked for) misses it altogether — 0.137 of air at every pose of the
+// net, so "the yoke spring re-seats it through the fork" passed through a fork
+// that touched nothing, and the clutch's station was the tick's to write.
+//
+// So the CONTACT is solved against the cut, both members as they are cut:
+//   · the prong is makeYoke's CylinderGeometry of YOKE_PRONG_SEGMENTS, turned
+//     upright (rotateX π/2), so its yoke-local outline is the polygon
+//     (r·sin φ, −r·cos φ) about the arm's tip — the support toward a collar
+//     face is a VERTEX of it, and which vertex depends on how far the arm has
+//     tilted; main.js asserts this mirror against the built mesh;
+//   · the collars are flat-faced HUB_COLLAR_SEGMENTS-gons that turn with the
+//     stem, so the face is certain only inside their INRADIUS, R·cos(π/n).
+// Stations here are along the stem, measured from the yoke's mid (the fork
+// band's mid at half travel — layout's `yokeMidAlong`), and lateral is the
+// distance from the stem axis.
+export const YOKE_PRONG_SEGMENTS = 10;   // makeYoke's prong tessellation, passed to it (main.js)
+export const HUB_COLLAR_SEGMENTS = 20;   // the collars' cut outline, passed to loopPts (main.js)
+const YOKE_GROOVE_HALF = (YOKE_FORK_OUT - YOKE_FORK_IN - HUB_COLLAR_T) / 2;   // the free groove between the two collar faces, half
+// the prong's cut vertices at a prong-centre station `a`: along offsets from the
+// yoke's mid, lateral distances from the stem axis. The arm runs from the pivot
+// (lateral YK_C) to the prong; the polygon is symmetric about the arm line, so
+// the yoke's handedness does not choose the set.
+function yokeProngVerts(a) {
+  const drop = Math.sqrt(Math.max(0, YOKE_ARM * YOKE_ARM - a * a));
+  const ey = [a / YOKE_ARM, drop / YOKE_ARM], ex = [ey[1], -ey[0]];
+  const cl = YK_C - drop;   // the prong centre's lateral distance
+  const out = [];
+  for (let i = 0; i < YOKE_PRONG_SEGMENTS; i++) {
+    const phi = (2 * Math.PI * i) / YOKE_PRONG_SEGMENTS;
+    const x = YOKE_PRONG_R * Math.sin(phi), y = -YOKE_PRONG_R * Math.cos(phi);
+    out.push({ s: a + x * ex[0] + y * ey[0], l: cl - (x * ex[1] + y * ey[1]) });
+  }
+  return out;
+}
+// The prong's SUPPORT toward a face: side −1 is its inboard-most vertex (the one
+// that bears on collar In's outboard face), +1 its outboard-most (collar Out's
+// inboard face). Returns the vertex's along station and lateral distance.
+export function yokeProngSupport(a, side) {
+  let best = null;
+  for (const v of yokeProngVerts(a))
+    if (!best || side * (v.s - best.s) > 1e-12 || (Math.abs(v.s - best.s) <= 1e-12 && v.l > best.l)) best = v;
+  return best;   // a tie (an edge flush with the face) reports its farther vertex — the conservative one
+}
+// The prong-centre station at which that support lands on the plane `F`: the
+// support's along station rises monotonically with `a` over the arm's swing, so
+// a bisection over the whole reach is exact to float.
+export function yokeOffsetForFace(F, side) {
+  let lo = -YOKE_ARM * 0.9, hi = YOKE_ARM * 0.9;
+  for (let k = 0; k < 64; k++) {
+    const m = (lo + hi) / 2;
+    if (yokeProngSupport(m, side).s > F) hi = m; else lo = m;
+  }
+  return (lo + hi) / 2;
+}
+// The two working faces, at clutch offset c (0 = seated on the saw, before the
+// tick's SEAT_RELIEF; CLUTCH_TRAVEL = the setting station). The prong parks one
+// SEAT_RELIEF off whichever face it bears on — §99's face-relief convention,
+// the clutch's own seat's: coincident planes are the case the BVH instruments
+// cannot arbitrate, and 0.005 is an order under HANDOFF_TRACK_TOL.
+const yokeFaceIn = (c) => SEAT_RELIEF + c - CLUTCH_TRAVEL / 2 - YOKE_GROOVE_HALF;
+const yokeFaceOut = (c) => SEAT_RELIEF + c - CLUTCH_TRAVEL / 2 + YOKE_GROOVE_HALF;
+// THE BEARING GENERATOR'S REACH — the farthest any support vertex stands from
+// the stem axis while bearing, over the whole stroke on either face (collar In
+// carries the spring's seating load and the push home; collar Out the pull).
+// Sampled, because which vertex bears changes with the arm's tilt; the ends
+// govern (the arc's √ is largest there), and the sampling holds that rather
+// than assuming it.
+export const YOKE_BEARING_LATERAL = (() => {
+  let L = 0;
+  for (let i = 0; i <= 64; i++) {
+    const c = (CLUTCH_TRAVEL * i) / 64;
+    L = Math.max(L,
+      yokeProngSupport(yokeOffsetForFace(yokeFaceIn(c) + SEAT_RELIEF, -1), -1).l,
+      yokeProngSupport(yokeOffsetForFace(yokeFaceOut(c) - SEAT_RELIEF, +1), +1).l);
+  }
+  return L;
+})();
+// The collars' radius, DERIVED from that reach (TODO 211). A face contact needs
+// the face under the generator WHEREVER the two members float on their own
+// fits: the clutch rides the stem square on SAW_FIT and the yoke its pivot on
+// PIVOT_BORE_CLEAR, each a diametral running fit, so each member can stand half
+// of it off true radially and the bearing line can wander the sum. The face
+// must reach that far past the generator at its INRADIUS (the polygon turns
+// with the stem, so its flats come round under the prong):
+//   R·cos(π/n) = YOKE_BEARING_LATERAL + (SAW_FIT + PIVOT_BORE_CLEAR) / 2.
+// History: 1.5 at the first build, slimmed to 1.2 at TODO 50's split (every
+// 0.1 here is 0.1 of yoke drop — Z_YOKE), grown to 1.272985 at §234 step 3b to
+// clear the setting wheel's blank height (main.js's `HUB_COLLAR_R >= zTipLo`
+// guard, YOKE_FORK_OUT's third-wall premise — which a wider collar still
+// satisfies). None of those sized it for the fork that bears on it.
+export const HUB_COLLAR_R = (YOKE_BEARING_LATERAL + (SAW_FIT + PIVOT_BORE_CLEAR) / 2)
+  / Math.cos(Math.PI / HUB_COLLAR_SEGMENTS);
+// KEYLESS PLANE — DERIVED (TODO 211's strata spend). Every member on the stem
+// axis is a body of revolution about it, so its z-reach above the plane is its
+// outer RADIUS, whatever it is turned to. Two members set the stack's reach:
+// the winding pinion's and clutch rim's tip circle (KW_BEVEL.tipR, both cones
+// cut at KW_MODULE to windPinionTeeth) and the fork collars (HUB_COLLAR_R,
+// whose vertices stand on the circumradius). The saw rings and the sleeve are
+// narrower, and main.js asserts that no mesh on the pinion or the clutch
+// reaches past this figure. The whole reach must clear the plate's dial face
+// (−BACK_PLATE_T, the movement side being z 0) by the one margin:
+//   Z_KEYLESS = −BACK_PLATE_T − CLEAR_MARGIN − max(tipR, HUB_COLLAR_R)
+//             = −2.3 − 0.15 − 1.754052 = −4.204052.
+// The tip circle binds, by 0.0027 over the collars. History: −4.1 was set
+// "mid-band" between a ceiling written against a −2 plate face (the face is
+// −2.3 since TODO 202) and the pinion's 1.79 outer radius of the pre-§234 cut,
+// which left the pinion and clutch rim 0.046 and the pinion's saw 0.1 off the
+// plate (TODO 209's debt rows); TODO 211's collars grew to 1.7513 and stood
+// them 0.0487 off too. The floor below is the yoke: its boss underside
+// (Z_YOKE − 0.75, Z_YOKE = Z_KEYLESS − (HUB_COLLAR_R + CLEAR_MARGIN + 0.56))
+// must clear the dial's back (Z_DIAL) by the margin, which asks only
+// Z_KEYLESS ≥ Z_DIAL + 0.15 + 0.75 + 2.4613 = −5.77; what lies between (the
+// setting lever, the motion works, the case's stem tubes) is held by the
+// battery's sweeps, not by this line.
+export const KEYLESS_STACK_R = Math.max(KW_BEVEL.tipR, HUB_COLLAR_R);
+export const Z_KEYLESS = -BACK_PLATE_T - CLEAR_MARGIN - KEYLESS_STACK_R;
+// THE FORK'S LAW, crown → setting lever → yoke → clutch. The setting lever
+// carries the prong-centre station linearly over the pull, from bearing on
+// collar In with the clutch seated (YOKE_A_SEAT) to bearing on collar Out with
+// the clutch at its setting station (YOKE_A_FULL); that span is the clutch's
+// travel PLUS the groove's play, and the play is LOST MOTION — the prong
+// crosses it before collar Out moves. The clutch is then wherever the
+// farther-out constraint puts it: the prong pushing collar Out, or the saw's
+// ramps lifting it (a backward crown) — and the yoke spring holds the prong on
+// collar In, so a lifted clutch carries the yoke with it. Pushing home crosses
+// the play at the OTHER end of the stroke (the prong leaves collar Out and the
+// spring takes it to collar In); a pose law is stateless and this one carries
+// the pull's side, and the two agree at both stroke ends, which are what the
+// handoff rows measure.
+export const YOKE_A_SEAT = yokeOffsetForFace(yokeFaceIn(0) + SEAT_RELIEF, -1);
+export const YOKE_A_FULL = yokeOffsetForFace(yokeFaceOut(CLUTCH_TRAVEL) - SEAT_RELIEF, +1);
+export function yokeClutchAt(pull, lift) {
+  const aLever = YOKE_A_SEAT + pull * (YOKE_A_FULL - YOKE_A_SEAT);
+  const cDrive = Math.max(0, yokeProngSupport(aLever, +1).s + SEAT_RELIEF - yokeFaceOut(0));
+  const c = Math.max(lift, cDrive);
+  const a = Math.max(aLever, yokeOffsetForFace(yokeFaceIn(c) + SEAT_RELIEF, -1));
+  return { c, a };
+}
 // The stem's setting-lever GROOVE, outboard of everything the clutch can
 // reach: at home plus cam-over lift plus the seat relief, the RIM's
 // BEVELED outboard face — the clutch's leading edge — stands at
@@ -2238,23 +2384,23 @@ export function solveKeyless({
   // The yoke's fork tracks the CLUTCH's hub collars (TODO 50 moved them off
   // the stem group and onto the clutch, which is the member that actually
   // slides against the spring), so its pivot centres on the clutch's stroke
-  // and its angle law reads the clutch's along-stem station. `pull` here is
-  // the clutch's normalized travel: crownPullT plus the saw lift's share,
-  // which is how the cam-over reaches the fork without a second law.
+  // and its angle reads the prong's along-stem station about that mid —
+  // `yokeClutchAt` (TODO 211) solves the station from the prong's contact with
+  // the cut collar faces, the cam-over reaching the fork through collar In.
   const yokeMidAlong = clutchHomeDist + CLUTCH_TRAVEL / 2 + YOKE_TRACK_OFF;
   const yokePivot = {
     x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
     y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
   };
-  function yokeAngleAt(pull) {
+  function yokeAngleAt(a) {
     // The arm is SHORTER than the pivot's offset to the stem line by
     // design (YOKE_ARM's constraint: the prongs are posts that must never
-    // stand ON the line). The law tracks the clutch's along-stem station
-    // EXACTLY — the prong's flanks are what work the collar faces, so
-    // along-tracking is the contract — and the prong's perpendicular
+    // stand ON the line). `a` is the prong centre's along-stem station from
+    // the yoke's mid — since TODO 211 the law's OUTPUT (`yokeClutchAt`, which
+    // solves it from the prong's contact with the cut collar faces), no
+    // longer a copy of the clutch's slide — and the prong's perpendicular
     // height follows as YK_C − √(arm² − a²): the margin against the
     // spine at mid-stroke, a shade farther out at the ends.
-    const a = clutchHomeDist + pull * CLUTCH_TRAVEL + YOKE_TRACK_OFF - yokeMidAlong;
     const drop = Math.sqrt(Math.max(0, YOKE_ARM * YOKE_ARM - a * a));
     const tx = yokePivot.x + uWind.x * a + sideSign * vPerp.x * drop;
     const ty = yokePivot.y + uWind.y * a + sideSign * vPerp.y * drop;

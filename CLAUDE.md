@@ -337,7 +337,7 @@ it into prose either.
    heaviest that still reaches the target, held both ways — under it fails,
    and so does more than `AMPLITUDE_TARGET_SLACK_DEG` over it. That the
    favourable dial-flat swing (455°) passes a lever escapement's knocking
-   angle is TODO 214, a REPORT. `FRICTION` is the one place a coefficient the movement
+   angle is TODO 216, a REPORT. `FRICTION` is the one place a coefficient the movement
    cannot measure may live, always as a band with its source, never a single
    number, and `MU_STEEL` is the adverse corner of every steel row by
    reference; `tools/probe-power-budget.mjs` computes the same column from the
