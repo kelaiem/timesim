@@ -17,11 +17,12 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 215 | OPEN | Found closing TODO 210. The maintaining detent rides its ring in the LOCKING sense: as the train runs the beak climbs each tooth's 28% face and slides down its 72% ramp (law and metal agree). The ride is not on the cut either: the tip floats 0.04–0.10 over the ramp, the click's body sits up to 0.26 inside the ring mid-climb, and 35% of each tooth the beak hovers 0.311 over the root on the law's `max(…, 0)` floor with no banking cut |
 | 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211 |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
 | 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
 | 211 | CLOSED | `HUB_COLLAR_R` is derived from where the prong bears (1.2730 → 1.7513: the farthest bearing vertex 1.6798 from the stem, plus the two running fits' shake, at the 20-gon's inradius), and `yokeClutchAt` solves the yoke's angle from that contact and derives the clutch from it. The new stem-clutch rows read 0.015–0.020 shut and 0.102–0.106 free (before 0.166–0.191 everywhere), and the reach waiver is retired. The keyless plane paid for the wider collars in strata: `Z_KEYLESS` is derived as the plate's dial face − `CLEAR_MARGIN` − the stem stack's widest radius (the pinion's tip circle 1.754052, which binds over the collars), −4.1 → −4.2041, which also retired TODO 209's three keyless rows. The setting lever ⇄ yoke edge is filed as TODO 214 |
-| 210 | OPEN | The maintaining detent's restoring row names `maintSpring` — the maintaining-POWER torus under the maintaining wheel, another unit, 1.0+ from the click at every pose; the detent has no spring of its own in the metal. Found by TODO 194's reach control, waived to this item |
+| 210 | CLOSED | The detent has its own spring: a straight blade (`SPRING_FLAT_U` × 0.5643, free 7.56–7.72 from the post's face) let into the cock's post, bearing on a TAIL the click now carries behind its pivot. Solved in a line from the law's travel (0.2286 rad), R = 3 and the 0.9·σy target: the beak presses the ring 10.01 mN seated → 24.97 mN at a tooth's crest, equal-margin in `SELECTOR_DETENT_WINDOW_MN`. Two §137 `crank` rows, `maintDetentHandoff` reads −0.021 at three phases, reach 1.0+ → 0, waiver retired |
 | 209 | PART DONE | Nine of twelve rows retired: the arrest's plane re-floored at the plate face + `CLEAR_MARGIN` (it was a literal 0.1), the set-up square ended at its ratchet's floor, two misfiled rows (the transfer arbor and the alarm climb rod, both running through plate bores) moved to `PLATE_SEATS`, and the three keyless stem rows paid down by TODO 211's derived `Z_KEYLESS`. Left: the transfer wheel and great wheel (0.075, a gear bevel under the margin, a band re-solve) and the case lugs (0.09). |
 | 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
 | 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
@@ -28253,7 +28254,7 @@ Feasibility: small per row · Battery: each fix moves its part's digest; the
 `plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved
 station.
 
-## 210. The maintaining detent's restoring declaration names the maintaining-power spring, which never touches the detent
+## 210. The maintaining detent's restoring declaration names the maintaining-power spring, which never touches the detent — CLOSED
 
 Found by [TODO 194]'s reach control on its first run.
 `declareRestoring('Maintaining detent', 'click', 'spring', …, 'maintSpring')`
@@ -28277,6 +28278,75 @@ sized like the other detent blades in this file. That means a §137 `crank` or
 to — state it). Then re-point the declaration at it and retire
 `RESTORING_REACH_WAIVERS['Maintaining detent\u0000click']`. The waiver goes
 stale and fails the moment the row reaches.
+
+### Closed — a straight blade in the post, bearing on a tail the click now carries.
+
+**Where it can live, measured.** The only fixed metal near the click is its
+own cock: the post on the plate outside the great wheel's tip circle, the arm
+over the wheel, the pivot stud. The click works in the ring's band, and from
+the ring's top face to the arm's underside is 0.05. A coaxial spiral on the
+stud (TODO 194's answer) has no band to wind in without moving the arm, which
+would be a strata spend on the whole sandwich. Under the arm the band is free
+along the whole run to the post. An obstacle sweep of every axis read the
+great wheel 0.46 below it and the chain 1.13 off it. So the spring is a
+STRAIGHT BLADE let into a slot across the post and lying along the arm. Such
+a blade pushes only ACROSS the arm, and the click points 0.72π off the arm's
+line. A force across the arm would be mostly along the click and would turn
+it hardly at all. The flank near the pivot is no better: it is outside the
+ring's tip circle + margin only within about 1.1 of the pivot, and a blade
+along the arm cannot meet it square. So the click carries a **tail** behind
+its pivot, clocked along the arm, and the tail's corner bears on the blade.
+That is §137's `crank`: a blade biasing a separate pivoted arm.
+
+**The window.** `SELECTOR_DETENT_WINDOW_MN`, 5–50 mN at the beak. A
+maintaining detent is a click indexing a ratchet at its tooth run, which is
+the load class the window's own basis names (jumper/detent indexing loads at
+the tooth run). Its HOLD during winding is the saw face's closing geometry,
+not this spring, so no stronger window applies (the alarm click's row says
+the same of its own hold).
+
+**The line spec** (main.js `MAINT_DET_SPRING`, solved at boot):
+
+| quantity | value | constraint |
+|---|---|---|
+| travel Δa | 0.2286 rad | the law's own lift, seat → crest: (`MAINT_RING_R` − `MAINT_DET_TIP_R`)/`MAINT_DET_LEVER` |
+| force ratio | R = 3 by design (2.49 as built) | equal margin, Fmin·Fmax = 5·50; U = ½·Fmax·LF·Δa·R/(R−1) is least at R = 3, and the least energy is the least steel. The built ratio is lower because the corner's moment arm falls 3.18 → 2.87 over the ride |
+| preload θ0 | 0.1143 rad | Δa/(R−1). It is the law's seat now too (`MAINT_DET_PRELOAD`, was one `CLEAR_MARGIN` at the beak) |
+| stock t | 0.1319 u (0.05 mm) | `SPRING_FLAT_U`, the file's flat-blade section |
+| tail ℓ / free length L | 3.2028 / 7.559–7.721 | together they fill the arm's run from the pivot to the post's face (read at the band's foot, where the tapered post is widest, the conservative read). The blade's root works to 0.9·`SPRING_SIGMA_Y_PA` (720 MPa) at the crest: bisected on ℓ |
+| height b | 0.5643 u (0.214 mm) | from the window (the beak force is linear in b), inside the 0.6489 band between the great wheel's face and the arm, each a `CLEAR_MARGIN` off |
+| tail section | the click's own at its boss (0.692 × 0.41) | read off the click's cut. The tail carries the beak's moment about the pivot |
+| clocking | tail along the arm at the seat | the tail only turns away from the blade's face as the click lifts, and the face only deflects off its free line, so the corner bears and the flank never does (asserted over the ride) |
+
+**The forces**: blade 7.92 → 21.93 mN at the corner. Through arms of
+3.1835 → 2.8673 against `MAINT_DET_LEVER` 2.518, that puts **10.01 mN seated
+and 24.97 mN at the crest** on the ring. The product is 250.0 mN², so each end
+is 2.00× clear of the bound it faces (10.01/5 and 50/24.97). **Energy**: the bound for
+those forces over that travel is 4.55 µJ. The blade stores 4.51 µJ at the
+crest, which equals its σ²V/18E capacity at 720 MPa, because that capacity is
+the strain solve read as energy. The 0.9% between bound and stored is the
+falling moment arm (the bound assumes a fixed lever), not a shortfall at
+either end: both forces are computed at the corner. A straight blade does fit
+the space. It takes 0.5643 of a 0.6489 band, at the longest free length the
+run allows.
+
+**Added.**
+- `maintDetentTail` rides the click's rotation exactly (one rigid frame with it).
+- `maintDetentSpring` is drawn RIGID about its root and aimed through the corner, the feeler blade's convention. A real cantilever bows, so its free end's slope is wrong by 3/2 and nothing reads it. This is the sautoir's stated debt.
+- The corner sinks `ALARM_SEAT_SINK` into the face.
+- Two §137 `crank` rows, seated and at the crest. Each carries its blade figures, both arms, the ratio and the energy column.
+- `declareRestoring('Maintaining detent', 'click', …, 'maintDetentSpring')`, plus the blade's own `spring` row: it reciprocates with the click and is its own restoring element.
+- INTRA_UNIT_CONTACTS: tail ⇄ stud, blade ⇄ post, blade ⇄ tail.
+- stockFloor kind `maintDetentSpring: 'spring'`.
+- A sibling hand-off check, **`maintDetentHandoff`**. It holds blade ⇄ tail in contact at three phases of a tooth (riding, seated, crest): **−0.0213 / −0.0210 / −0.0214**.
+- The reach control reads **0** via the tail, where it read 1.0+ on `maintSpring`. The waiver is retired.
+- The fingerprint is unchanged (2478404098): the new metal lies inside the unit's existing box at every pose.
+- MECH_GRAPH needs no edge: both parts are inside 'Maintaining detent', whose support and drive edges already stand.
+
+**What closing it found** is filed as [TODO 215]: the detent rides its ring in
+the LOCKING sense, and the ride is posed off the cut. Since this item, the
+blade presses the beak onto the law's floor (lift 0) with ≈ 10 mN while,
+over 35% of each tooth, the cut has nothing under it there.
 
 ## 211. The yoke's prong never bears on the clutch collar it is declared to return the clutch through — CLOSED
 
@@ -28537,3 +28607,44 @@ the lever ⇄ yoke contact at both parities. The two pivots stand on opposite
 sides of the stem (`SL_C`, `YK_C`), so the linkage has to cross the stem's
 band. That is a P3 question in strata (the lever is at `Z_SETTING_LEVER`, the
 yoke below the collars at `Z_YOKE`). Design it in a line first.
+
+## 215. The maintaining detent rides its ring backwards: the beak climbs each tooth's face and floats over the cut ramp
+
+Found closing [TODO 210], measured on the train axis (96 poses over two teeth),
+against both the law and the cut outline (`ratchet`'s authored shape, the
+maintaining ring at `MAINT_RING_R` 4.44, root 3.552).
+
+1. **Direction.** As the train runs, `updateMaintaining` lifts the beak over
+   ≈ 0.18 of each tooth's pitch and lets it fall over ≈ 0.47, hovering for the
+   other 0.35. Those are the 28% FACE and the 72% RAMP of `sawRadiusAt`, above
+   `MAINT_DET_TIP_R`. So the beak climbs the face and slides down the ramp. The
+   metal agrees. At the beak's azimuth the cut profile FALLS at the ramp's slope
+   as tau advances (4.153 → 3.614 over half a tooth), so the next thing to
+   arrive is a face. On the metal, that is the ratchet's LOCKING sense: running
+   would jam the ring against the detent, which is the reverse of what the block
+   comment says ("the detent slowly ticks over the maintaining wheel's rim
+   teeth"). Suspected cause, not verified: `MAINT_U_SIGN` serves two saws whose
+   relative motions are opposite. The pawls see the flange go backward in
+   winding, and the detent sees the ring go forward in running. Both are cut
+   `reverse: false`. Nothing in the battery measures a direction (CLAUDE.md's
+   direction-guard entry), and this is that class.
+2. **The ride is not on the cut.** While descending the ramp, the law's tip
+   stands 0.04–0.10 above the cut surface (r 4.249 against 4.153 at tau 0).
+   Mid-climb, the click's body sits up to **0.26** inside the ring. The pair is
+   `EXPECTED` (contact excused unit-wide) and has no `EXPECTED_CONTACT_FLOORS`
+   row, so no gate reads either number. The law's `sawRadiusAt` is linear in u.
+   The cut is chords.
+3. **The seat is a floor that exists only in the function.**
+   `lift = max(sawRadiusAt − TIP_R, 0)`. Over 35% of each tooth the beak hovers
+   at `MAINT_DET_BASE`, 0.311 above the root, with nothing under it and no
+   banking cut. Since TODO 210 the blade presses it there with ≈ 10 mN.
+
+**Fix path (P0, the detent group).** Decide the ring's hand from the detent's
+relative motion, and add a direction guard that MEASURES which flank the beak
+climbs over a run and asserts it is the ramp. Then choose between cutting a
+banking for the 0.35 depth seat and letting the beak seat at the root. That is
+a real choice: the second grows the travel to 0.353 rad and re-solves TODO
+210's blade (its solve reads the travel, so it follows). Pose the ride by a
+solve on the cut outline, not the linearised profile. Add a floors row for
+`Maintaining detent ⇄ Fusee & great wheel` that excludes only the beak's
+working contact.

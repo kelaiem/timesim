@@ -3281,6 +3281,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'mwCornerFoldOut', b: 'settingTraverse2', why: 'the fold corner\'s outboard bevel, keyed to leg 2 (§234)' },
   { unit: 'Keyless works', a: 'mwCornerRiseIn', b: 'settingTraverse2', why: 'the rise corner\'s inboard bevel, keyed to leg 2 of the folded traverse (same marginal cluster)' },
   { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
+  { unit: 'Maintaining detent', a: 'maintDetentTail', b: 'CylinderGeometry#3', why: 'TODO 210: the click\'s tail is its boss continued behind the pivot, so it rides the same stud the click does' },
+  { unit: 'Maintaining detent', a: 'maintDetentSpring', b: 'CylinderGeometry#1', why: 'TODO 210: the detent blade let into a slot across the cock\'s post to its axis — the ground it is a cantilever from' },
+  { unit: 'Maintaining detent', a: 'maintDetentSpring', b: 'maintDetentTail', why: 'TODO 210: the blade bears on the tail\'s corner, sunk ALARM_SEAT_SINK into its face (the seated-contact convention) — the click\'s return passes through this joint; maintDetentHandoff measures it seated at three phases of a tooth' },
   // (§182 retired 'alarmIndexWedge ⇄ ShapeGeometry#3'. It read "the index wedge
   // stands proud THROUGH the face sheet by design", and TODO 26 had already
   // pulled the wedge's tip back to one CLEAR_MARGIN behind the DIAL'S BACK
@@ -6239,6 +6242,28 @@ export const STRIKE_HANDOFFS = [
   },
 ];
 
+// TODO 210 — THE MAINTAINING DETENT'S SPRING, a sibling registration in the
+// same pattern. The blade let into the cock's post bears on the click's tail at
+// every pose — it is preloaded past the seat — so the one row expects CONTACT
+// at all three phases, posed on the train (tau alone moves the detent: it
+// rides the great wheel's absolute angle). The phases are one tooth's, read on
+// the shipped layout: `riding` mid-climb (lift ≈ 0.15 rad), `seated` with the
+// beak at its seat (lift 0), `crest` within ~0.001 rad of the tooth's tip,
+// where the blade is deflected most. A layout move shifts which phase each tau
+// samples, never what the row expects of it.
+export const MAINT_DETENT_HANDOFF_POSES = [
+  ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['seated', { tau: 1285, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['crest', { tau: 2177, crownPullT: 0, leverEngage: 0, tension: 1 }],
+];
+export const MAINT_DETENT_HANDOFFS = [
+  {
+    label: 'detent blade ⇄ click tail (the spring seats the beak)',
+    unitA: 'Maintaining detent', meshA: 'maintDetentSpring',
+    unitB: 'Maintaining detent', meshB: 'maintDetentTail',
+  },
+];
+
 export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = ALARM_HANDOFFS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
   clock.scene.updateMatrixWorld(true);
@@ -8105,6 +8130,7 @@ export const STOCK_KIND_BY_MESH = {
   // three alarm pins are pin-stock, though two still sit under even the
   // pivot floor and stay inside the debt below.
   maintSpring: 'spring',
+  maintDetentSpring: 'spring',     // TODO 210 — the maintaining detent's blade, SPRING_FLAT_U stock
   alarmHammerSpring: 'spring',     // §48/TODO 14 — flat blade at SPRING_FLAT_U
   alarmHammerSpringStud: 'pivot',  // ...and the grounded stud it hangs from
   alarmPinSpringB: 'spring',
@@ -12140,6 +12166,10 @@ const CHECKS = {
   // tip on the tail at every phase.
   strikeHandoff: (clock, opts) => checkAlarmHandoffs(clock,
     { poses: STRIKE_HANDOFF_POSES, handoffs: STRIKE_HANDOFFS, ...opts }),
+  // TODO 210 — the maintaining detent's blade on the click's tail, same
+  // instrument, own phase table: contact at every phase of a tooth.
+  maintDetentHandoff: (clock, opts) => checkAlarmHandoffs(clock,
+    { poses: MAINT_DETENT_HANDOFF_POSES, handoffs: MAINT_DETENT_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   undeclaredClearance: (clock, opts) => checkUndeclaredClearance(clock, opts), // TODO 164 — every OTHER unit pair, held to CLEAR_MARGIN
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
@@ -13230,13 +13260,11 @@ function driveFanout(name) {
 // longer declares (§29's blade on the base tree) through the same function.
 // Accepted debt, keyed `unit\u0000member`, each citing its TODO — §50's convention.
 export const RESTORING_REACH_WAIVERS = {
-  // Found by this control on its first run. The maintaining detent's row
-  // names `maintSpring` — the maintaining-POWER spring, a torus coiled under
-  // the maintaining wheel in 'Fusee & great wheel' — which shares the word and
-  // never touches the detent's click (1.0+ at every pose). The detent has no
-  // spring of its own in the metal: §48's guard passed it because a mesh of
-  // that name exists.
-  'Maintaining detent\u0000click': 'TODO 210',
+  // (TODO 210's row — 'Maintaining detent' / click, which named `maintSpring`,
+  // the maintaining-POWER spring under the maintaining wheel, 1.0+ off the
+  // click at every pose — is retired: the detent carries its own blade now,
+  // let into the cock's post and bearing on the click's tail, and the row
+  // names it. maintDetentHandoff holds the contact at three phases of a tooth.)
   // (TODO 211's row — 'Winding clutch' through the yoke's prong, which stood
   // 0.137 off both collars over the whole net — is retired: the prong bears on
   // a collar face at every pose now, and the clutch's station is solved from
