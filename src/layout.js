@@ -364,20 +364,32 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 // EQUALISATION.going.energy), read in the safe direction for their use:
 //  · AMPLITUDE_CLAIM_DEG — what the movement CLAIMS it keeps up. The solve's
 //    MINIMUM over FRICTION's three corners and both positions (adverse,
-//    vertical: 76.96°), rounded DOWN to a whole degree: a claim that holds
-//    wherever and however the watch is worn. Rounding 76.96 to the nearest
-//    degree would have over-claimed.
+//    vertical: 126.03° since TODO 207; 76.96° before it), rounded DOWN to a
+//    whole degree: a claim that holds wherever and however the watch is
+//    worn. Rounding to the nearest degree can over-claim.
 //  · AMPLITUDE_PEAK_DEG — what every load on the oscillator is PRICED at
 //    (§218's hairspring stress and pivot-load peaks, the hack brake). The
-//    solve's MAXIMUM (favourable, dial-flat: 326.70°), rounded UP: a load
-//    priced below the swing the balance can reach is not a bound.
+//    solve's MAXIMUM (favourable, dial-flat: 454.80° since TODO 207; 326.70°
+//    before it), rounded UP: a load priced below the swing the balance can
+//    reach is not a bound. (A real lever escapement knocks its pin on the
+//    fork's horns at about 330°, so the favourable corner's dial-flat swing is
+//    one the watch would bank at, not reach — TODO 214. Pricing at the
+//    solve's figure is the conservative side of that.)
 // Neither can be computed here, since the solve reads the cut ribbon, the
 // pivots and the balance, all built in main.js. So `equalisation` row 14 holds
 // each one to the solve on two sides: the SIDE (claim ≤ minimum,
 // peak ≥ maximum) and the TIGHTNESS (each within one degree). A change that
 // moves the solve fails the gate until these move with it.
-export const AMPLITUDE_CLAIM_DEG = 76;
-export const AMPLITUDE_PEAK_DEG = 327;
+export const AMPLITUDE_CLAIM_DEG = 126;
+export const AMPLITUDE_PEAK_DEG = 455;
+// TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
+// watch holds 200° or more in the vertical positions, and a watchmaker reads
+// less as a fault. It is held at the NOMINAL corner, the serviced state; the
+// adverse corner (aged oil, the service interval's end) is reported, not
+// targeted, and it is what AMPLITUDE_CLAIM_DEG claims. BAL_RIM_F is the
+// heaviest rim that reaches it, and `equalisation` row 15 holds both.
+export const AMPLITUDE_TARGET_DEG = 200;
+export const AMPLITUDE_TARGET_SLACK_DEG = 1.5;   // one 0.005 step of BAL_RIM_F is 1.3° of nominal vertical swing (measured)
 export const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
 export const IMPULSE_WIDTH = 0.16;      // fraction of a beat spent in unlock+impulse (rest = locked)
 export const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
@@ -993,7 +1005,30 @@ export const FORK_BEVEL_FRAC = 0.12;
 // item's.
 export const FORK_HALF_Z = FORK_T / 2;
 export const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
-export const RIM_H = BAL_T * 0.55;     // rim height — mirrors makeBalanceWheel's 0.55·t rim
+// TODO 207 — the balance is LIGHTENED to the spring the movement can carry.
+// Its sustained swing is the energy each beat delivers against what the
+// balance spends: (πk/2Q)θ² on everything but its pivots, where k = I·ω² goes
+// with its INERTIA, and 2θ·μ·m·g·r on its pivots, which goes with its MASS.
+// The barrel is already as large as the plate allows (DRUM_R_ACTUAL), so the
+// rest of the gap to AMPLITUDE_TARGET_DEG comes out of the balance. The rim's
+// WIDTH is not free: the stop work's pad is sized to the rim's underside
+// annulus (HACK_PAD_TOP_R below), so the rim loses HEIGHT. The timing screws'
+// heads and the arms' thickness scale with it, which keeps the screws inside
+// the rim's band (HACK_SCREW_DROP stays positive) and the arms inside the
+// rim. BAL_RIM_F is the HEAVIEST rim that still reaches the target, because a
+// heavier balance is the steadier one against the escapement's
+// disturbances. Searched in steps of 0.005: 0.645 sustains 200.4° nominal
+// vertical, 0.650 sustains 199.1°. `equalisation` row 15 holds it on both
+// sides: the target met at the nominal corner, vertical, and not exceeded by
+// AMPLITUDE_TARGET_SLACK_DEG or more, which is what one 0.005 step heavier
+// costs (1.3°) with margin, so a lighter rim than needed fails the gate too.
+// The metal comes off the rim's TOP: its underside stays where the full rim's
+// was, so the balance's seat over the fork (L_BALANCE below), the stop work's
+// contact plane (HACK_CONTACT_Z) and everything stacked above the balance keep
+// their datum. RIM_H_REF is that full rim, and the datum it fixes.
+export const BAL_RIM_F = 0.645;
+export const RIM_H_REF = BAL_T * 0.55;           // the full rim — the seat's datum
+export const RIM_H = RIM_H_REF * BAL_RIM_F;     // rim height — mirrors makeBalanceWheel's 0.55·t·rimF rim
 // Balance mid-plane: the fork blank's TRUE top (L_FORK + FORK_HALF_Z) +
 // margin + half the rim's own height. The rim's underside is the balance's
 // deepest full-ring face, so this is the lowest the wheel can sit without
@@ -1009,14 +1044,29 @@ export const RIM_H = BAL_T * 0.55;     // rim height — mirrors makeBalanceWhee
 // margin below is the margin that exists.
 // With the low escapement it lands FAR BELOW the plate band — the whole
 // oscillator now lives in open air under the plate's cutaway.
-export const L_BALANCE = L_FORK + FORK_HALF_Z + CLEAR_MARGIN + RIM_H / 2;
+// TODO 207 — RIM_H_REF, not RIM_H: the lightened rim keeps the full rim's
+// underside (its metal comes off the top), so the underside is still exactly
+// one margin over the fork and L_BALANCE is still the full rim's mid-plane —
+// the balance group's datum, which the hairspring, the cock and the train's
+// ceiling are stacked from.
+export const L_BALANCE = L_FORK + FORK_HALF_Z + CLEAR_MARGIN + RIM_H_REF / 2;
 // Impulse-pin world mid-plane — inside the fork's z-band, VERIFIED by the
 // collision audit; it is pinned to the FORK, not the balance, and must not
 // move when L_BALANCE does. makeBalanceWheel takes the wheel-centre→pin
 // distance as `pinDrop` so the caller can hold this plane exactly.
 export const PIN_PLANE_Z = L_FORK - 0.5;
 export const L_HAIRSPRING = L_BALANCE + 1.2;
-export const HAIRSPRING_H = 0.6;   // makeHairspring height (its stud/terminal top out ≈0.7·H above mid-plane)
+// makeHairspring height (its stud/terminal top out ≈0.7·H above mid-plane).
+// TODO 207 — it scales with the balance it springs. The rate fixes k = I·ω²,
+// and the ribbon's section is solved from k (main.js, TODO 25): a³·c ∝ k·L,
+// with c the half-height. §218 derived the coil count (8) against the stock
+// band at the 0.6 the ribbon stood at, and the stud post forbids a finer pitch
+// (TODO 147). So when the lightened balance needs a softer spring, the ribbon
+// keeps §218's thickness and loses HEIGHT in proportion to k. The oscillator
+// gate holds the result inside real stock; a real hairspring of this
+// thickness runs about this tall.
+export const HAIRSPRING_H_REF = 0.6;   // the height the train's datum was solved at (TRAIN_CEILING_Z)
+export const HAIRSPRING_H = 0.3726;
 // BALANCE COCK: a LOW bridge riding one margin over the hairspring
 // stack, wherever that stack lands — with the low escapement that is
 // ~4 under the three-quarter plate's band, so the cock (and the
@@ -1044,7 +1094,10 @@ export const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_OVERCOIL_RAISE + HAIRSPRIN
 // is not a reason to re-cut the mainspring or re-clock the arrest, so those
 // stations keep their datum here. The cock and the plate floor above the
 // balance are what the overcoil is metal in, and they read SPRING_TOP_Z.
-export const TRAIN_CEILING_Z = L_HAIRSPRING + HAIRSPRING_H * 0.7;
+// TODO 207 applies the same rule a second time: a lighter balance and the
+// shorter ribbon it is sprung with are not a reason to re-cut the mainspring
+// either, so the datum is the reference ribbon's.
+export const TRAIN_CEILING_Z = L_HAIRSPRING + HAIRSPRING_H_REF * 0.7;
 export const COCK_SLAB_BOT = SPRING_TOP_Z + CLEAR_MARGIN;
 export const COCK_SLAB_TOP = COCK_SLAB_BOT + COCK_T;
 export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
@@ -2708,7 +2761,7 @@ export function solveStopWork({
   // The rim's underside hangs only this far below the screws' deepest sweep
   // (0.275·t rim half-height vs 0.24·t screw base radius) — far less than
   // the margin, so z alone cannot keep the pad clear of the screws:
-  const HACK_SCREW_DROP = (0.55 / 2 - 0.24) * BAL_T;
+  const HACK_SCREW_DROP = (0.55 / 2 - 0.24) * BAL_T * BAL_RIM_F;   // TODO 207 — rim and screw heads scale together
   // ...the rest of the separation must come radially. Corner-to-corner:
   // √(standoff² + drop²) = margin ⇒
   const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_SCREW_DROP ** 2));
@@ -2718,7 +2771,7 @@ export function solveStopWork({
   const HACK_PAD_TOP_R = (HACK_SCREW_IN_R - HACK_SCREW_STANDOFF - HACK_RIM_I) / 2;
   const HACK_PAD_R = HACK_PAD_TOP_R / rubyFlare; // pad post / ruby-base radius
   const HACK_CONTACT_R = (HACK_RIM_I + HACK_SCREW_IN_R - HACK_SCREW_STANDOFF) / 2;
-  const HACK_CONTACT_Z = L_BALANCE - RIM_H / 2;          // the rim's underside plane
+  const HACK_CONTACT_Z = L_BALANCE - RIM_H_REF / 2;      // the rim's underside plane (TODO 207: held at the full rim's — the metal comes off the top)
   // Minimum acceptable pad gap below the rim when released — the linkage's
   // actual released drop is DERIVED (the rod's rigid length maps the post's
   // crown travel onto the crank), asserted against this floor below.

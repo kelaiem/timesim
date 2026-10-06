@@ -2543,7 +2543,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
 // below it, as before; default −t·1.8 keeps the old hard-coded stack.
 export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6,
                                    staffTop = null, staffBottom = null,
-                                   pinDrop = thickness * 1.8 }) {
+                                   pinDrop = thickness * 1.8, rimF = 1 }) {
   const g = new THREE.Group();
   const rimO = radius;
   const rimI = radius - thickness * 0.5;
@@ -2552,13 +2552,23 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // itself already down from 1.3 × 1.0): a light precision ring. The
   // proportions are mirrored in main.js (HACK_RIM_I, RIM_H) — the stop
   // work's pad annulus is derived from them, so they must move together.
-  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, thickness * 0.55, 48), MATS.brass);
+  // TODO 207 — `rimF` lightens the rim in HEIGHT (its width is the stop
+  // work's pad annulus, mirrored in layout.js), with the arms' thickness and
+  // the screw heads scaled alike so both stay inside the rim's band.
+  // The metal comes off the TOP: the rim keeps the full rim's underside, so
+  // its centre drops by half the height removed, and the arms and screws sit
+  // on that centre too.
+  const rimDz = -thickness * 0.55 * (1 - rimF) / 2;
+  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, thickness * 0.55 * rimF, 48), MATS.brass);
+  rim.position.z = rimDz;
   g.add(rim);
 
   // Two arms (a single diameter bar = 2 arms), matched to the finer rim —
   // kept inside the rim's own z-band.
-  const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.5, thickness * 0.4);
-  g.add(new THREE.Mesh(armGeo, MATS.steel));
+  const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.5, thickness * 0.4 * rimF);
+  const armMesh = new THREE.Mesh(armGeo, MATS.steel);
+  armMesh.position.z = rimDz;
+  g.add(armMesh);
 
   // Central staff along Z. Asymmetric (staffTop/staffBottom) when the caller
   // says so; staffHeight remains the symmetric fallback.
@@ -2590,14 +2600,14 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   const SCREW_PROTRUSION = 0.3;
   const screwLen = SCREW_PROTRUSION + thickness * 0.16;
   const SCREW_N = 16;
-  const screwR1 = thickness * 0.20, screwR2 = thickness * 0.24;
+  const screwR1 = thickness * 0.20 * rimF, screwR2 = thickness * 0.24 * rimF;
   const screwRC = rimO - (screwLen / 2 - SCREW_PROTRUSION); // tip lands at rimO + PROTRUSION
   const screwGeo = new THREE.CylinderGeometry(screwR1, screwR2, screwLen, 10);
   for (let i = 0; i < SCREW_N; i++) {
     const a = (i / SCREW_N) * Math.PI * 2;
     const sc = new THREE.Mesh(screwGeo, MATS.blueSteel);
     sc.rotation.z = a - Math.PI / 2; // cylinder Y-axis -> radial
-    sc.position.set(Math.cos(a) * screwRC, Math.sin(a) * screwRC, 0);
+    sc.position.set(Math.cos(a) * screwRC, Math.sin(a) * screwRC, rimDz);
     g.add(sc);
   }
 
@@ -2653,8 +2663,8 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // UNIT_MM. Harvesting these by traversing children would be the wrong
   // answer twice over — the §66 schematic tier appends Line proxies to this
   // very group, and a traversal cannot tell a rim from a roller.
-  g.userData.rim = { rO: rimO, rI: rimI, h: thickness * 0.55 };            // brass annulus
-  g.userData.arm = { x: rimI * 2, y: thickness * 0.5, z: thickness * 0.4 }; // steel bar across the middle (= 2 arms)
+  g.userData.rim = { rO: rimO, rI: rimI, h: thickness * 0.55 * rimF };            // brass annulus
+  g.userData.arm = { x: rimI * 2, y: thickness * 0.5, z: thickness * 0.4 * rimF }; // steel bar across the middle (= 2 arms)
   g.userData.screws = { n: SCREW_N, rc: screwRC, len: screwLen, r1: screwR1, r2: screwR2 };
   return g;
 }
