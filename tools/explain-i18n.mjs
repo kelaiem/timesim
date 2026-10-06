@@ -214,6 +214,7 @@ const MARKS = {
   nl: { group: ['.'], dec: ',' },        // §249 — nl-NL and nl-BE alike: German's marks (Chromium 141)
   id: { group: ['.'], dec: ',' },        // §249 — id-ID and the legacy 'in' alike: German's marks (Chromium 141)
   tr: { group: ['.'], dec: ',' },        // §249 — tr-TR and tr-CY alike: German's marks (Chromium 141)
+  cy: { group: [','], dec: '.' },        // §249 — the BORROWED en-GB tag (Chromium carries no 'cy'): English's marks, Welsh's own standard
   he: { group: [','], dec: '.' },        // §249 — he-IL is latn by default: English's marks (Chromium 141)
   fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
 };
@@ -286,6 +287,13 @@ const HONESTY = {
   // the capital İ out because /i does not fold it onto i (MODELLENMİŞ,
   // SİMÜLE EDİLMİŞ).
   tr:        { m: /modelle/i, s: /s[iİ]m[üÜ]l/i },
+  // §249 — the verb-noun modelu and its forms (modelir, modelwyd, modeledig),
+  // MUTATED too: «wedi'i fodelu» is the soft form after ei. The bare noun
+  // «model» never counts — the credit line's "AI model" is «model
+  // deallusrwydd artiffisial», and the plural noun «modelau» is excluded by
+  // the letter after the stem. Simulated is efelych-, and after the feminine
+  // ei it takes an h: «wedi'i hefelychu».
+  cy:        { m: /\b[mf]odel(?:u|w|i|edig)/i, s: /\bh?efelych/i },
   // §249 — the -سازی compound, never the bare noun: the credit line's "AI
   // model" is مدل هوش مصنوعی. The joint is a ZWNJ, a space or nothing, and the
   // page uses all three spellings somewhere, so the matcher takes all three.
