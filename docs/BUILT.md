@@ -30890,6 +30890,204 @@ against the bar.
 - **The fourteen older tables** still render the blocks rewritten since their
   landings in English. That is §73's rule working, and it is still owed.
 
+### Welsh — chunk J, a borrowed tag, and the mutations written into the linker
+
+The chrome (477 keys), `explain.html` (761/761) and `primer.html` (145/145)
+read Welsh at 100%, on the pipeline Hebrew, Indonesian and Turkish used. That
+makes twenty locales. Welsh was not one of the wave's scoped chunks: it was
+asked for after Turkish and filed as chunk J in the same sitting, on the
+recipe's terms, with the native review recorded as owed rather than made the
+bar (§215 makes it the bar for Gaelic, which has no technical register; Welsh
+has the national term bank). The sites it touched:
+- the `LOCALES` row (`cy`, `tag: 'en-GB'`, matcher `/^(cy|cym|wel)(-|$)/`)
+  and seven ladder rows
+- **one new boot assert**: every row's tag is one this browser carries
+- both `LOADERS` entries
+- `MARKS.cy` and `HONESTY.cy`
+- the precache count, 61 → 63
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+
+**The browser does not carry Welsh, and that decided the tag.** Measured in
+Chromium 141, `Intl.NumberFormat.supportedLocalesOf(['cy'])` is EMPTY, and
+`cy-GB` too. A bare `cy` therefore resolves to the browser's own default,
+which makes the chrome's numbers a fact about the reader's MACHINE:
+
+| browser launched as | `new Intl.NumberFormat('cy')` | `'en-GB'` |
+|---|---|---|
+| en-US | 30.0 · 18,000 | 30.0 · 18,000 |
+| fr-FR | 30,0 · 18 000 | 30.0 · 18,000 |
+| de-DE | 30,0 · 18.000 | 30.0 · 18,000 |
+
+Node's ICU 78 does carry `cy`, and formats `30.0 · 18,000`: English's marks,
+which is Welsh's written standard. So the row BORROWS `en-GB`, a tag every
+browser carries and which formats exactly those marks. `LANG_TAG` is
+documented as "for number formatting only — never for content negotiation",
+which is the contract that makes a borrowed tag honest;
+`documentElement.lang` still reads `cy`. This is the shape §215 scoped for
+Scottish Gaelic, built for the first time here.
+
+**A borrowed tag is only safe while nobody "corrects" it, so the roster now
+asserts it.** Every row's tag must satisfy `supportedLocalesOf`, or boot warns
+naming the row. Mutated to `cy-GB`, all four boots of the check below warned,
+and the chrome read `30,0 · 0,024 · 18 000` on the French machine — the
+failure the row exists to prevent, visible at last. Every other tag in the
+roster (`ar-u-nu-latn` and `fa-IR-u-nu-latn` included) was measured carried
+first, so the assert is silent on a clean tree.
+
+**The matcher takes `cym` and `wel`**, ISO 639-2's two codes for Welsh, which
+`Intl.getCanonicalLocales` maps to `cy` — Hebrew's `iw` case and Indonesian's
+`in` again. It is anchored: `cyb` (Cayubaba) and `cyo` (Cuyonon) are other
+languages, and the ladder's negative rows say so. `tr-CY` is Turkish in
+Cyprus, a region subtag, and never reaches this row. Plurals are
+zero/one/two/few/many/other, the most categories in the roster, and free while
+no chrome string pluralizes a count.
+
+**`HONESTY.cy` reads the verb-noun, MUTATED.** *modelu* is "to model", and
+after *ei* it soft-mutates: «wedi'i fodelu». The matcher is
+`/\b[mf]odel(?:u|w|i|edig)/i`, so it takes *modelu, fodelu, modelir,
+modelwyd, modeledig* and refuses both the credit line's «model deallusrwydd
+artiffisial» and the plural noun «modelau». Simulated is *efelychu*, and after
+the feminine *ei* it takes an h: «wedi'i hefelychu», so the matcher is
+`/\bh?efelych/i`. The brief kept *efelych-* for simulation alone — imitating
+is *dynwared* — because in everyday Welsh *efelychu* also means "to imitate",
+and a word the page uses in two senses is the word HONESTY cannot police.
+
+### Mutation, and what it did to the linker
+
+Welsh changes a word's first consonant after the article, a possessive or a
+preposition: *gorsaf* (station) is «yr orsaf», «yng ngorsaf», «ei gorsaf».
+The tables are whole sentences, so this costs nothing at `t()` — no code
+builds a phrase whose first letter would have to change. It costs the
+LINKER, which matches whole words: «gorsaf» does not match «orsaf».
+
+So the `.gloss-variants` rows carry every mutated form, soft, nasal and
+aspirate, singular and plural, of each live term:
+- for station: «gorsafoedd, orsaf, orsafoedd, ngorsaf, ngorsafoedd»
+- for hand-off: «trosglwyddiadau, drosglwyddiad, … nhrosglwyddiad, …
+  throsglwyddiad, …»
+
+Forms that are other words were left out. *lôn*'s plural «lonydd» is also the
+soft form of *llonydd* ("still"), so the lanes row carries only «haenau».
+
+**The result: Welsh links 72 times against English's 86**, and the mutated
+forms are doing work — «orsaf», «goridor», «gyllideb» and «asimwthau» are
+among the forms matched.
+
+The sense audit read the forms the linker actually matches (each term's cell
+plus its variants row). Its only hits were nine uses of «llawr» (floor), and
+the English says "floor" in every one. The linker refuses `floor` anyway, so
+nothing was linked wrongly. Every term but one carries a positive control;
+*action group* is the exception, as it was for Turkish.
+
+### The tables
+
+Ten translators worked against one glossary in standard written Welsh, after
+Porth Termau Cenedlaethol Cymru where it has a term:
+- **the watch's parts:** peirianwaith (movement), dihangfa lifer Swisaidd,
+  olwyn ddihangfa, fforch baled, mantol, sbring blewyn, prif sbring, casgen,
+  cadwyn, piniwn, coron, olwyn golofn, rheolydd
+- **the physics:** osgled (amplitude), syrthni (inertia), trorym (torque)
+- **the loan:** *fusee*, kept like every other locale's
+
+Clock hands are *bysedd*, as Welsh has always called them. Commands take the
+verb-noun, as Welsh software does: «Weindio», «Oedi», «Copïo dolen». The
+primer addresses its reader as «chi». A numbered figure is DARLUN, because
+*plât* is the metal.
+
+**The linker's senses were chosen against everyday Welsh:**
+- a waiver is «ildiad», and an ordinary exception is «eithriad»
+- a cam's throw is «tafliad», and a lever's stroke is «strôc»
+- a pose is «ystum», never the verb *ystumio* ("to distort"); a posed value
+  is «wedi'i osod»
+- a geometric chord is «cord», and the gong's musical chord is «cyfuniad o
+  nodau»
+- a hand-off is «trosglwyddiad», and only that; passing something on is the
+  verb-noun «trosglwyddo»
+
+Reconciliation, from what the translators reported:
+
+| English | seam | now |
+|---|---|---|
+| rim (of a wheel) | «cylchyn» ×5 chunks, «cant» (also "hundred") in one, «rhimyn» in two | «cylchyn» for a WHEEL's rim — balance, alarm disc, clutch |
+| rim (of a plate, case or knob) | the same three words | «rhimyn», the primer's and ex-a's split, kept as a sense rather than a seam |
+| the §35 link and linkage | «dolen», «cysylltiad», «cysylltydd», «braich gysylltu» | the part is «cysylltydd», a linkage «cysylltwaith»; «dolen» stays the hyperlink and, as «dolen gadwyn», the chain link |
+| finger | «bys», «tafod», «gyrrwr», avoided | the going-side arrest finger is «bys»; the Geneva finger «gyrrwr», since the English calls it driver too |
+| a stone's locking corner | «ongl» (an angle) against «congl» | «congl», feminine |
+
+Seven English keys appear twice with disagreeing Welsh, and each was chosen.
+"Blocked — brake held" is «wedi'i rwystro», because the brake holds the train
+and nothing latches. "RIDING" is «REIDIO», because the feeler rides the rim
+and «rhedeg» is running.
+
+The chrome's "no models" is model FILES, «dim ffeiliau model». The translator
+first wrote «ffeiliau modelu» to satisfy the validator, which would have
+claimed MODELLING. Reconciliation set it back. That is the chrome's one
+honesty-validator exception, as it was Hebrew's, Indonesian's and Turkish's.
+
+### Fit
+
+**The page gate's first pass found seventeen explainer overruns and
+collisions, and one on the primer**, the most since Indonesian's fifteen.
+Welsh spends words on articles and mutation-bearing prepositions where
+English spends none. Each label was set whole against its English length:
+- «pig I FYNY → cylch ↑ (diarfog)» for "link beak UP → ring up (disarmed)",
+  the arrow Turkish used
+- «● rhuddem = trosglwyddiad a fesurwyd — …», which a second pass found still
+  long and cut once more
+
+The third pass read 0 on both pages.
+
+**The chrome bar measured 216.2 on «Dewislen / Golwg / Rheolaethau» — the
+WIDEST any locale has measured, past Dutch's 204.4.** It measured 185.0 once
+the panel took the verb-noun «Rheoli» that Welsh software already uses for a
+control panel (Panel Rheoli). That is §208's lesson a fifth time: a face
+chosen against the bar.
+
+- **Headers:** 56 px at all eight widths on both pages.
+- **HUD labels:** «Canu am» 40.6, level with Russian; «Amser» 28.9.
+- **§53's column:** no content wider than its box.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages (after eighteen, above); honesty control PASS (*wedi'i fodelu / wedi'i efelychu*), **19/19** rows verified; block coverage 0 short blocks against Welsh's median ratio 1.10 (explainer) and 1.09 (primer) — PASS |
+| tag assert | silent on the tree; mutated to `cy-GB`, **4/4** boots warned and the chrome read `30,0 · 0,024 · 18 000` under fr-FR |
+| `explain-quotes` | PASS |
+| `glossary-links` | text identical with and without the linker in every locale; cy **72** links (en 86) — PASS |
+| sense audit | 0 wrong-sense links over the sixteen live terms (nine «llawr» uses read in context, every one English "floor") |
+| `probe-249-arrows --locales cy` | controls PASS; **0** backwards of 53 judged |
+| `probe-249-dotted-i` | PASS (no new case-mapping call) |
+| page headers | **56 px in Welsh**, both pages, all eight widths |
+| `#chrome-bar` | cy **185.0** (216.2 on the first pass) against en 170.2, de 192.4 |
+| `.hud-ro-label` | *Canu am* 40.6, *Amser* 28.9 against 150 px — one line |
+| `offline-check` | **44/44**, precache **63/63** |
+| boot | `?lang=cy`, `?lang=cym` and `?lang=cy-GB` console-silent on all three documents, in browsers launched as fr-FR and de-DE; `lang="cy"`, `dir="ltr"`; the chrome formats `30.0 · 0.024 · 18,000` where a bare `cy` reads `30,0` on the same machine |
+| fingerprint | **1896818507** at `?lang=cy` and in English, identical to a virgin boot of `origin/main` measured beside it |
+| battery | (running locally; the line is filled in when it finishes) |
+
+### Residue, recorded
+
+- **No native review pass**, the IOU every locale carries, and the one Welsh
+  most needs: mutation is the thing a machine draft gets subtly wrong without
+  any gate noticing. The terms most likely to differ in a Welsh workshop are:
+  - «mantol» for the balance, from the word for scales
+  - «dihangfa» for the escapement, a plain compound where the trade may keep
+    the English
+  - «fforch baled» for the pallet fork
+  - «sbring» throughout, where a purist might write «sbrin»
+- **«bys» is both a hand and a mechanical finger** — Welsh's own word for both.
+  Every finger is qualified («bys tawelu», the arrest's «bys»), but a reader
+  meets the same word the glossary gives the hands.
+- **The explainer's number check holds plate labels only** (recorded under
+  Indonesian, still owed).
+- **Arabic's 39 backward arrows** are still held by `probe-249-arrows`'
+  `OWED` row.
+- **The fourteen older tables** still render the blocks rewritten since their
+  landings in English. That is §73's rule working, and it is still owed.
+- **`index.html`'s `<title>`** is still not localized in any locale.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
