@@ -157,7 +157,7 @@ console.log(`      (at full draw the head reaches in to r ${headDrawRMin.toFixed
 const cam = A.lever.cam;
 say(Math.abs(cam.base_u - cam.refBase_u) < 0.01 && Math.abs(cam.pickup_u - cam.refPickup_u) < 0.01,
   `cam base ${cam.base_u.toFixed(4)} / pickup ${cam.pickup_u.toFixed(4)} reproduce §25's ${cam.refBase_u.toFixed(4)} / ${cam.refPickup_u.toFixed(4)}; tip ${cam.tip_u.toFixed(4)} vs ${cam.refTip_u.toFixed(4)} is the declared fork (+${(cam.tip_u - cam.refTip_u).toFixed(4)})`);
-say(A.strike.mu > 0.9 && A.strike.mu < 1.3, `impedance match μ = ${A.strike.mu.toFixed(3)} (the head solved to a quarter of the wire — H ${A.hammer.headH_u.toFixed(2)}, owned by the ${A.hammer.headHOwner}, match ${A.hammer.headHMatch_u.toFixed(2)}; the arm and tail add the rest)`);
+say(A.strike.mu > 0.9 && A.strike.mu < 1.3, `impedance match μ = ${A.strike.mu.toFixed(3)} (the head solved to the arc fundamental's modal fraction of the wire, §253 — H ${A.hammer.headH_u.toFixed(2)}, owned by the ${A.hammer.headHOwner}, match ${A.hammer.headHMatch_u.toFixed(2)}; the arm and tail add the rest)`);
 console.log(`\n  level ${A.splA_dBA.toFixed(1)} dBA at 0.3 m, on axis — f₁ ${f1.toFixed(0)} Hz, f₂ ${A.modes[1].f_Hz.toFixed(0)} Hz; wire ⌀${A.wire.dia_mm.toFixed(3)} mm × ${A.wire.devLen_mm.toFixed(2)} mm at r ${A.wire.ringR_u.toFixed(2)}; head ${A.hammer.headH_u.toFixed(2)} × ${A.hammer.headL_u.toFixed(2)} u, ${A.hammer.headMass_mg.toFixed(1)} mg; blow ${(A.strike.energy_J * 1e9).toFixed(2)} nJ`);
 const noise = warns.filter((w) => !/WebGL|GL Driver|GroupMarker|404|swiftshader/i.test(w));
 say(noise.length === 0, `boot silent${noise.length ? ': ' + noise.join(' | ') : ''}`);

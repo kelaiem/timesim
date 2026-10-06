@@ -22181,16 +22181,147 @@ const Z_GONG = GONG_BAND_TOP - GONG_WIRE_R;
 // this wire — the one quantity the whole entry exists to buy, so it is
 // solved here and the arc angle is whatever the radius makes of it.
 const GONG_STEEL_C = Math.sqrt(OSC_STEEL_E / OSC_STEEL_RHO);      // bar wave speed, m/s — §137's one steel pair
+// §56's STRAIGHT clamped-free roots β_nL. Since §253 they are not the voice:
+// they are the α → 0 CONTROL of the arch solve below (which must reproduce
+// them as the arc flattens), the ceiling of its root scan, and the start of
+// the design-length fixed point.
 const GONG_MODE_BL = [1.87510407, 4.69409113, 7.85475744, 10.99554073, 14.13716839];
-const GONG_MODES = GONG_MODE_BL.map((bl) => {
-  const sig = (Math.cosh(bl) + Math.cos(bl)) / (Math.sinh(bl) + Math.sin(bl));
-  const raw = (u) => (Math.cosh(bl * u) - Math.cos(bl * u)) - sig * (Math.sinh(bl * u) - Math.sin(bl * u));
-  const tip = raw(1);
-  const phi = (u) => raw(u) / tip;                 // u = x/L, unity at the free end
-  return { bl, bl2: bl * bl, phi };
-});
+// §253 — THE CURVATURE TERM (TODO 17's last open clause). The wire is not a
+// straight bar: it is an ARC of 55° about the movement's axis, and the hammer
+// strikes it radially — IN the plane of that arc. In-plane bending of a curved
+// bar couples with stretching along it (Love's thin-arch theory — membrane
+// strain ε = (u' + w)/R, bending κ = (u' − w'')/R², u tangential, w radial
+// outward, ' = d/dθ), so the modes are neither the straight bar's nor shifted
+// all one way. Nondimensionalised, with Ω = ρAω²R⁴/EI and S = (R/k)² = EAR²/EI
+// (k the section's radius of gyration, d/4 for round wire):
+//     S(u'' + w') + u'' − w'''  + Ω u = 0
+//    −S(u' + w)  + u''' − w'''' + Ω w = 0
+// clamped at θ = 0 (u = w = w' = 0), free at θ = α (N: u' + w = 0,
+// M: u' − w'' = 0, Q: u'' − w''' = 0). A CIRCULAR arc makes every coefficient
+// constant, so the solution is exact rather than discretised: the six-state
+// system z' = A·z is propagated across the arc by the matrix exponential
+// (scaling and squaring, no step error), the three free-end conditions make
+// a 3×3 determinant in Ω, and its zeros are the modes — found by a sign scan
+// in g = Ω^¼ (≈ βR, the straight bar's own variable) and refined by
+// bisection. Each mode's shape is propagated back for its MODAL MASS at unit
+// radial tip (∫(u² + w²) — the tangential motion carries inertia the straight
+// law's L/4 never counted) and the share of that inertia that is tangential,
+// which is how an extensional-dominant mode is told from a flexural one.
+// CONTROLS, in tools/probe-253-arch-modes.mjs: at fixed L and α → 0 the roots
+// return to GONG_MODE_BL and the modal fraction to ¼ (the straight limit IS
+// the control — not a second copy of the formula); the characteristic cubic
+//     S p³ + (Ω + 2S) p² − ((S + 1)Ω − S) p − Ω(Ω − S) = 0        (p = λ²)
+// gives, at S → ∞, the closed ring's Ω = n²(n² − 1)²/(n² + 1) — the textbook
+// value — and at R → ∞ factors into the straight bar's β⁴ = ρAω²/EI and the
+// axial wave; and a Rayleigh–Ritz solve of the same energy (a different
+// method, in the probe) lands on the same Ω to 1e-6. WHAT IT FOUND at the
+// shipped arc (55°, S ≈ 4400): f₁ 1.9% OVER the straight figure, f₂ 9.3%
+// UNDER it, so the second partial sits at 5.57× the first and not 6.27×, and
+// m₁ = 0.296 M rather than 0.250 M; a sixth mode at 76 kHz between the third
+// and fourth straight-bar roots, strongly coupled (tangential inertia share
+// 0.49 — just under the half that would label it extensional) — real,
+// inaudible, published with that share. Shear deformation and rotary inertia
+// are neglected exactly as the straight law neglected them (Euler–Bernoulli):
+// at L/d = 16 that is a few percent on the ultrasonic modes and nothing on
+// the two that are heard.
+const GONG_ARCH = (() => {
+  const mul = (A, B, C) => {
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+      let t = 0; for (let k = 0; k < 6; k++) t += A[i * 6 + k] * B[k * 6 + j];
+      C[i * 6 + j] = t;
+    }
+  };
+  // e^A by scaling and squaring: Taylor to 14 terms at ‖B‖₁ ≤ ¼ (truncation
+  // ~1e-21), then 2^s squarings. The system's norm is ~(S + 1)·α·max(1, Ω/S),
+  // so s runs to ~18 — a 6×6 affords it.
+  const expm = (A) => {
+    let norm = 0;
+    for (let i = 0; i < 6; i++) { let r = 0; for (let j = 0; j < 6; j++) r += Math.abs(A[i * 6 + j]); norm = Math.max(norm, r); }
+    const s = Math.max(0, Math.ceil(Math.log2(norm / 0.25)));
+    const B = A.map((v) => v / 2 ** s);
+    const X = new Float64Array(36), T = new Float64Array(36), P = new Float64Array(36);
+    for (let i = 0; i < 6; i++) { X[i * 7] = 1; T[i * 7] = 1; }
+    for (let k = 1; k <= 14; k++) { mul(T, B, P); for (let i = 0; i < 36; i++) { T[i] = P[i] / k; X[i] += T[i]; } }
+    for (let q = 0; q < s; q++) { mul(X, X, P); X.set(P); }
+    return X;
+  };
+  // z = (u, u', w, w', w'', w'''); u'' and w'''' follow from the two equations.
+  const sys = (S, Om, scale) => {
+    const A = new Float64Array(36);
+    A[0 * 6 + 1] = 1;
+    A[1 * 6 + 5] = 1 / (S + 1); A[1 * 6 + 3] = -S / (S + 1); A[1 * 6 + 0] = -Om / (S + 1);
+    A[2 * 6 + 3] = 1; A[3 * 6 + 4] = 1; A[4 * 6 + 5] = 1;
+    A[5 * 6 + 4] = -1; A[5 * 6 + 1] = -Om / S - (S + 1); A[5 * 6 + 2] = (S + 1) * (Om / S - 1);
+    for (let i = 0; i < 36; i++) A[i] *= scale;
+    return A;
+  };
+  // The free-end 3×3: columns are the clamped end's three free initial values
+  // (u'(0), w''(0), w'''(0)), rows the three natural conditions at θ = α.
+  const freeEnd = (S, Om, alpha) => {
+    const P = expm(sys(S, Om, alpha));
+    const m = new Float64Array(9);
+    [1, 4, 5].forEach((col, c) => {
+      const z = [0, 1, 2, 3, 4, 5].map((r) => P[r * 6 + col]);
+      const upp = (z[5] - S * z[3] - Om * z[0]) / (S + 1);
+      m[0 * 3 + c] = z[1] + z[2]; m[1 * 3 + c] = z[1] - z[4]; m[2 * 3 + c] = upp - z[5];
+    });
+    const det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    return { det, m };
+  };
+  // modes(S, α, gMax, nMax): every in-plane mode with Ω^¼ ≤ gMax, lowest
+  // first, at most nMax. The roots sit ~π/α apart in g, so a scan step of a
+  // hundredth of that cannot straddle two.
+  const modes = (S, alpha, gMax, nMax, NG = 160) => {
+    const det = (g) => freeEnd(S, g ** 4, alpha).det;
+    const step = 0.01 * Math.PI / alpha;
+    const roots = [];
+    let g0 = step, d0 = det(g0);
+    for (let g1 = g0 + step; g1 <= gMax && roots.length < nMax; g1 += step) {
+      const d1 = det(g1);
+      if (Math.sign(d1) !== Math.sign(d0)) {
+        let lo = g0, hi = g1, dlo = d0;
+        for (let k = 0; k < 64; k++) {
+          const mid = (lo + hi) / 2, dm = det(mid);
+          if (Math.sign(dm) === Math.sign(dlo)) { lo = mid; dlo = dm; } else hi = mid;
+        }
+        roots.push((lo + hi) / 2);
+      }
+      g0 = g1; d0 = d1;
+    }
+    return roots.map((g) => {
+      const Om = g ** 4, { m } = freeEnd(S, Om, alpha);
+      // the null vector: the longest cross product of two rows of the 3×3
+      const cr = (p, q) => [m[p * 3 + 1] * m[q * 3 + 2] - m[p * 3 + 2] * m[q * 3 + 1],
+        m[p * 3 + 2] * m[q * 3 + 0] - m[p * 3 + 0] * m[q * 3 + 2],
+        m[p * 3 + 0] * m[q * 3 + 1] - m[p * 3 + 1] * m[q * 3 + 0]];
+      const v = [cr(0, 1), cr(1, 2), cr(0, 2)].reduce((b, c) => (Math.hypot(...c) > Math.hypot(...b) ? c : b));
+      const stepM = expm(sys(S, Om, alpha / NG));
+      let z = [0, v[0], 0, 0, v[1], v[2]];
+      const u = new Float64Array(NG + 1), w = new Float64Array(NG + 1);
+      for (let q = 1; q <= NG; q++) {
+        const n = [0, 0, 0, 0, 0, 0];
+        for (let i = 0; i < 6; i++) for (let k = 0; k < 6; k++) n[i] += stepM[i * 6 + k] * z[k];
+        z = n; u[q] = z[0]; w[q] = z[2];
+      }
+      const tip = w[NG];
+      let I2 = 0, Iu = 0;
+      for (let q = 0; q <= NG; q++) {
+        u[q] /= tip; w[q] /= tip;
+        const c = (q === 0 || q === NG) ? 0.5 : 1;
+        I2 += c * (u[q] * u[q] + w[q] * w[q]); Iu += c * u[q] * u[q];
+      }
+      return { g, Om, mFrac: I2 / NG, tanShare: Iu / I2, uTip: u[NG], w, u };
+    });
+  };
+  return { modes };
+})();
+// Ω → Hz: ω = √Ω·√(EI/ρA)/R², and √(EI/ρA) = k·c.
+const gongFreqOf = (Om, R_m, k_m) => Math.sqrt(Om) * k_m * GONG_STEEL_C / (2 * Math.PI * R_m * R_m);
 const GONG_F1_TARGET_HZ = 2500;                  // TODO 17 — the ear's A-weighted peak
-const GONG_DESIGN_LEN_M = Math.sqrt(GONG_MODES[0].bl2 * (GONG_WIRE_DIA * OSC_U / 4) * GONG_STEEL_C / (2 * Math.PI * GONG_F1_TARGET_HZ));
+// §56's straight-bar length for that pitch — since §253 the START of the
+// fixed point below (see GONG_DESIGN), not the design; named because the
+// record quotes how far the curvature moved it.
+const GONG_STRAIGHT_LEN_M = Math.sqrt(GONG_MODE_BL[0] ** 2 * (GONG_WIRE_DIA * OSC_U / 4) * GONG_STEEL_C / (2 * Math.PI * GONG_F1_TARGET_HZ));
 // THE BLOCK. §197 sized the stud as a ferrule (a floor-stock wall round the
 // brazed end) and asserted the clamp condition — a clamped-free bar only
 // rings at its clamped-free modes if the root is effectively rigid, compared
@@ -22204,13 +22335,47 @@ const GONG_DESIGN_LEN_M = Math.sqrt(GONG_MODES[0].bl2 * (GONG_WIRE_DIA * OSC_U /
 const GONG_ROOT_STIFF_MIN = 10, GONG_ROOT_DESIGN = 1.5;
 const GONG_POST_TOP = Z_GONG + GONG_WIRE_R;        // the wire is let in WHOLE, so the block reaches over its top
 const GONG_POST_LEN = GONG_POST_TOP - (GONG_RIM_Z - GONG_RIM_PLANT);
-const GONG_POST_R = Math.max(GONG_WIRE_R + STOCK_MIN_U,
-  GONG_WIRE_R * (GONG_ROOT_STIFF_MIN * GONG_ROOT_DESIGN * GONG_POST_LEN / (GONG_DESIGN_LEN_M / OSC_U)) ** 0.25);
+const gongPostRFor = (L_m) => Math.max(GONG_WIRE_R + STOCK_MIN_U,
+  GONG_WIRE_R * (GONG_ROOT_STIFF_MIN * GONG_ROOT_DESIGN * GONG_POST_LEN / (L_m / OSC_U)) ** 0.25);
 // THE RADIUS. The ring stands as far out as its own block can — one margin
 // off the case bore — because every unit of radius is a unit of the head's
 // LENGTH (the head lies between the plate's rim and the wire), and §197
 // measured that length as what the level is bought with.
-const GONG_R = R_ANNULUS_OUT - GONG_POST_R;
+// §253 — AND THE LENGTH, THE BLOCK AND THE RADIUS ARE ONE FIXED POINT. The
+// arch's f₁ depends on the ring's RADIUS (through S and α), the radius on the
+// block's radius, and the block's radius on the wire's length through the
+// clamp condition's (L_wire/L_stud)^¼. §56's straight law had none of that
+// coupling and could be solved in one line; this iterates the three from the
+// straight length until the length stops moving — the ¼ power makes each
+// round a contraction by ~1e-3, so it closes in three — and warns if it does
+// not. The inner solve is Newton on f₁ ∝ L⁻², the straight bar's exponent,
+// which the arch's few-percent deviation leaves a contraction too.
+const GONG_DESIGN = (() => {
+  const k_m = GONG_WIRE_R * OSC_U / 2;
+  let L = GONG_STRAIGHT_LEN_M, R = 0, m1 = null, outer = 0, inner = 0, closed = false;
+  for (outer = 1; outer <= 8 && !closed; outer++) {
+    R = R_ANNULUS_OUT - gongPostRFor(L);
+    const R_m = R * OSC_U, S = (R / (GONG_WIRE_R / 2)) ** 2;
+    let Lk = L;
+    for (let j = 0; j < 40; j++) {
+      const alpha = Lk / R_m;
+      m1 = GONG_ARCH.modes(S, alpha, 1.3 * GONG_MODE_BL[0] / alpha, 1)[0];
+      const f1 = gongFreqOf(m1.Om, R_m, k_m);
+      inner++;
+      if (Math.abs(f1 / GONG_F1_TARGET_HZ - 1) < 1e-10) break;
+      Lk *= Math.sqrt(f1 / GONG_F1_TARGET_HZ);
+    }
+    closed = Math.abs(Lk / L - 1) < 1e-10;
+    L = Lk;
+  }
+  return { L, R, postR: gongPostRFor(L), modalFrac: m1.mFrac, straightL: GONG_STRAIGHT_LEN_M, outer: outer - 1, inner, closed };
+})();
+if (!GONG_DESIGN.closed)
+  console.warn(`§253: the gong's design length did not close on its block and radius in ${GONG_DESIGN.outer} rounds `
+    + `(L ${(GONG_DESIGN.L * 1000).toFixed(4)} mm, r ${GONG_DESIGN.R.toFixed(4)})`);
+const GONG_DESIGN_LEN_M = GONG_DESIGN.L;
+const GONG_POST_R = GONG_DESIGN.postR;
+const GONG_R = GONG_DESIGN.R;
 if (GONG_R - GONG_POST_R < R_ANNULUS_IN - 1e-9)
   console.warn(`§198: the gong block (r ${GONG_POST_R.toFixed(3)} at ${GONG_R.toFixed(3)}) does not fit the annulus `
     + `${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
@@ -22476,19 +22641,27 @@ alarmGongUnit.add(gongPost);
 // a bell, and the octave pair this used to play (1760 + 880 Hz, chosen as "a
 // small bell") modelled away the very thing that makes a gong sound like a
 // gong. Neither of those tones was a mode of this wire at any dimension.
-// (The mode table itself — GONG_MODE_BL, the clamped-free roots, every shape
-// normalised to unity at the free end so ∫φ² = L/4 for every mode — is
-// declared above, because §198's block sizing needs the fundamental's factor
-// before the ring is drawn.)
+// §253 — FROM THE GONG AS IT IS CUT. The wire is 55° of a circle and the
+// hammer strikes it in that plane, so the modes are the ARCH's (GONG_ARCH,
+// declared above because §198's block sizing needs the fundamental before the
+// ring is drawn): the inharmonicity stays and the ratios move — 1 : 5.57 : 16.4
+// at the shipped arc, the fundamental 1.9% over the straight figure and the
+// second partial 9.3% under it, with the straight roots kept as the control
+// the solve is held to.
 //
 // Recomputed whenever the arc or wire changes, so the pitch tracks the
 // geometry: shorten the arc and it rings higher, exactly as the real thing.
 const gongDevLen = () => GONG_R * Math.abs(GONG_A1 - GONG_A0) * UNIT_MM / 1000;   // developed length, m
-function gongModes() {
-  const L = gongDevLen();
-  const k = (2 * GONG_WIRE_R * UNIT_MM / 1000) / 4;          // radius of gyration, circular section
-  return GONG_MODES.map((m) => m.bl2 * k * GONG_STEEL_C / (2 * Math.PI * L * L));
+// Every in-plane mode of the arc as built up to the straight bar's fifth root
+// (the energy partition in GONG_ACOUSTICS counts the ultrasonic ones), each
+// with its Hz and its kind.
+function gongArchModes() {
+  const L = gongDevLen(), R_m = GONG_R * OSC_U, k_m = GONG_WIRE_R * OSC_U / 2;
+  const alpha = L / R_m, S = (GONG_R / (GONG_WIRE_R / 2)) ** 2;
+  return GONG_ARCH.modes(S, alpha, 1.1 * GONG_MODE_BL[4] / alpha, 8)
+    .map((m) => ({ ...m, f: gongFreqOf(m.Om, R_m, k_m), kind: m.tanShare > 0.5 ? 'extensional' : 'flexural' }));   // a label on a published share, not a claim
 }
+function gongModes() { return gongArchModes().map((m) => m.f); }
 let gongF = gongModes();
 
 // Emitter for the bell voice — an empty at the strike point (the gong unit's
@@ -22545,12 +22718,15 @@ registerSub('Alarm hammer', 'Hammer', alarmHammerPivot);
 //    height, and §197 measured length as what the level is bought with.
 //  · SECTION, across the blow: SOLVED for the impedance match. §148 named
 //    the rule that sizes a bell's clapper — the energy a blow hands the wire
-//    peaks at μ = m_hammer/m_modal = 1, m_modal being a quarter of the wire
-//    (∫φ² = L/4 at unit tip amplitude, every mode) — and §197 could only
-//    measure how close the band-limited head came (0.55). Out here the band
-//    is taller than any match asks for, so the match IS the constraint: the
-//    head's mass is a quarter of the DESIGN wire's, the silhouette's area
-//    (face, cheeks, peen) is a known fraction of L·H, and H follows. Square
+//    peaks at μ = m_hammer/m_modal = 1, m_modal being the fundamental's modal
+//    mass (a quarter of the wire for a STRAIGHT bar, ∫φ² = L/4 at unit tip;
+//    §253: the ARC's fundamental, 0.295 of the wire at the design arc, its
+//    tangential motion carrying inertia the straight shape had none of) — and
+//    §197 could only measure how close the band-limited head came (0.55). Out
+//    here the band is taller than any match asks for, so the match IS the
+//    constraint: the head's mass is that fraction of the DESIGN wire's, the
+//    silhouette's area (face, cheeks, peen) is a known fraction of L·H, and
+//    H follows. Square
 //    across the wire, so the face meets it with the same margin either side.
 //    The band is asserted afterwards, as a tripwire, never as the design.
 //  · AND THE DRAW CARRIES IT UNDER THE PLATE'S RIM. A 0.27 rad draw on a
@@ -22565,7 +22741,7 @@ const ALARM_HEAD_L = ALARM_HEAD_FACE_R - GONG_BLOW * R_ANNULUS_IN;
 const ALARM_HEAD_SILHOUETTE = 0.55 + 0.45 * (1 + 0.6) / 2;    // cheeks 0.55 L at full H, peen 0.45 L tapering to 0.6 H
 const ALARM_HEAD_H_MATCH = (() => {
   const wireM = OSC_STEEL_RHO * Math.PI * (GONG_WIRE_R * OSC_U) ** 2 * GONG_DESIGN_LEN_M;   // kg, the design wire
-  const headU3 = (wireM / 4) / OSC_STEEL_RHO / OSC_U ** 3;                                // u³ the match wants
+  const headU3 = (wireM * GONG_DESIGN.modalFrac) / OSC_STEEL_RHO / OSC_U ** 3;            // u³ the match wants (§253: the arc fundamental's fraction, ¼ for a straight bar)
   return Math.sqrt(headU3 / (ALARM_HEAD_L * ALARM_HEAD_SILHOUETTE));
 })();
 const ALARM_HEAD_H_BAND = 2 * Math.min(Z_GONG - GONG_BAND_FLOOR.z, (TQ_BOT_Z - CLEAR_MARGIN - 0.01) - Z_GONG);
@@ -23401,6 +23577,74 @@ let alarmHammerSpring = null;
       + `the draw (sign ${ALARM_HAM_SPR_DRAW_SIGN}) — it would hold the hammer up, not drive it down`);
 }
 
+const gongBesselJ = (nMax, z) => {               // J₀..J_nMax by Miller's backward recurrence, normalised by J₀ + 2ΣJ₂ₖ = 1
+  const J = new Float64Array(nMax + 1);
+  if (z < 1e-12) { J[0] = 1; return J; }
+  const start = nMax + Math.ceil(Math.sqrt(40 * (nMax + 1))) + Math.ceil(z) + 20;
+  const t = new Float64Array(start + 2);
+  let jp = 0, j = 1e-300;
+  for (let m = start; m >= 0; m--) {
+    t[m] = j; const jm = (2 * m / z) * j - jp; jp = j; j = jm;
+    if (Math.abs(j) > 1e250) { j *= 1e-250; jp *= 1e-250; for (let q = m; q <= start; q++) t[q] *= 1e-250; }
+  }
+  let sum = t[0]; for (let m = 2; m <= start; m += 2) sum += 2 * t[m];
+  for (let m = 0; m <= nMax; m++) J[m] = t[m] / sum;
+  return J;
+};
+// gongRadiationFactors(shape, α, R, k): the two angular integrals of the arc's
+// far field — ∫|F|²dΩ over the sphere and max|F|² — for a mode's radial shape
+// over θ ∈ [0, α] (unity at the tip), ring radius R (m) and acoustic wavenumber
+// k. The dipole strength and the air's constants are applied by the caller.
+const gongRadiationFactors = (shape, alpha, R_m, kAc) => {
+  const NG = shape.length - 1, dth = alpha / NG;
+  const zMax = kAc * R_m, MM = Math.ceil(zMax) + 30;
+  const PhRe = new Float64Array(2 * MM + 1), PhIm = new Float64Array(2 * MM + 1);
+  for (let mi = -MM; mi <= MM; mi++) {
+    let re = 0, im = 0;
+    for (let q = 0; q <= NG; q++) {
+      const c = (q === 0 || q === NG) ? 0.5 : 1, th = q * dth;
+      re += c * shape[q] * Math.cos(mi * th); im -= c * shape[q] * Math.sin(mi * th);
+    }
+    PhRe[mi + MM] = re * dth; PhIm[mi + MM] = im * dth;
+  }
+  // J′_m(z) = (J_{m−1} − J_{m+1})/2, with J_{−m} = (−1)^m J_m
+  const jd = (J, m) => {
+    const am = Math.abs(m), d = ((am === 0 ? -J[1] : J[am - 1]) - J[am + 1]) / 2;
+    return (m < 0 && (am & 1)) ? -d : d;
+  };
+  const NT = 200, NTP = 48, NP = 720;    // the peak's grid: 1.9° in ϑ, 0.5° in ϕ — the flat-limit control reads it to 8e-3
+  let sph = 0, peak = 0;
+  for (let t = 0; t <= NT; t++) {
+    const st = Math.sin((t / NT) * Math.PI / 2), wT = (t === 0 || t === NT) ? 0.5 : 1;
+    const J = gongBesselJ(MM + 1, zMax * st);
+    let acc = 0;
+    for (let mi = -MM; mi <= MM; mi++) { const d = jd(J, mi); acc += d * d * (PhRe[mi + MM] ** 2 + PhIm[mi + MM] ** 2); }
+    sph += wT * 2 * Math.PI * R_m * R_m * st * st * st * acc * (Math.PI / NT);
+  }
+  const cre = new Float64Array(2 * MM + 1), cim = new Float64Array(2 * MM + 1);
+  for (let t = 1; t <= NTP; t++) {
+    const st = Math.sin((t / NTP) * Math.PI / 2);
+    const J = gongBesselJ(MM + 1, zMax * st);
+    for (let mi = -MM; mi <= MM; mi++) {
+      const d = jd(J, mi), k4 = (((mi - 1) % 4) + 4) % 4;        // (−i)^{m−1} = 1, −i, −1, i
+      const pr = [1, 0, -1, 0][k4], pi = [0, -1, 0, 1][k4];
+      cre[mi + MM] = d * (pr * PhRe[mi + MM] - pi * PhIm[mi + MM]);
+      cim[mi + MM] = d * (pr * PhIm[mi + MM] + pi * PhRe[mi + MM]);
+    }
+    for (let p = 0; p < NP; p++) {
+      const ph = (p / NP) * 2 * Math.PI, cph = Math.cos(ph), sph1 = Math.sin(ph);
+      // e^{imϕ} for m = −MM..MM by the angle-addition recurrence, no trig in the inner loop
+      let c = Math.cos(-MM * ph), sn = Math.sin(-MM * ph), re = 0, im = 0;
+      for (let mi = -MM; mi <= MM; mi++) {
+        re += cre[mi + MM] * c - cim[mi + MM] * sn; im += cre[mi + MM] * sn + cim[mi + MM] * c;
+        const c2 = c * cph - sn * sph1; sn = sn * cph + c * sph1; c = c2;
+      }
+      peak = Math.max(peak, R_m * R_m * st * st * (re * re + im * im));
+    }
+  }
+  return { sph, peak };
+};
+
 // --- §197 — THE LOUDNESS, DERIVED FROM THE METAL ---------------------------
 //
 // §56 made the gong's PITCH a consequence of the wire. Its LEVEL was still
@@ -23419,7 +23663,8 @@ let alarmHammerSpring = null;
 //     the blow: that is what makes §148's shape argument a dynamic one at
 //     last, and what the §197 band buys.
 //  2. THE HAND-OFF. A rigid-body impact between the rotor's effective mass at
-//     the strike radius (I/r²) and the wire's modal mass M/4 gives the mode
+//     the strike radius (I/r²) and the wire's modal mass — the fundamental's,
+//     M/4 for a straight bar and 0.296 M for the arc since §253 — gives the mode
 //     the fraction η = 4μ/(1+μ)²·((1+e)/2)², peaking at μ = 1 — the impedance
 //     match that sizes a clapper. e is steel on steel, and the CONTACT TIME
 //     (Hertz, a torus on a flat face) decides which modes the blow can reach
@@ -23491,7 +23736,8 @@ const GONG_ACOUSTICS = (() => {
   })();
   const mRotor = rotor.vol_u3 * U ** 3 * OSC_STEEL_RHO;         // kg
   // §198 — the HEAD alone, by the same tetrahedra: the match solve sized it
-  // to a quarter of the design wire, and that claim is measured off the
+  // to the arc fundamental's modal fraction of the design wire (§253; a
+  // quarter on §198's straight law), and that claim is measured off the
   // cut metal below rather than trusted from the silhouette fraction.
   const mHead = (() => {
     const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
@@ -23528,10 +23774,16 @@ const GONG_ACOUSTICS = (() => {
   const vHead = thetaDot * rArm;
   const E_blow = 0.5 * I_h * thetaDot * thetaDot;
   const mEff = I_h / (rArm * rArm);                             // the mass the wire actually meets
-  // 2 — the wire, and the hand-off.
+  // 2 — the wire, and the hand-off. §253: the modes are the arc's (GONG_ARCH),
+  // each with its own modal mass at unit radial tip. The impedance the blow
+  // meets is the FUNDAMENTAL's — 0.296 M at the shipped arc, where the straight
+  // law's L/4 said 0.250 M for every mode — and that is also what the head is
+  // solved to match (ALARM_HEAD_H_MATCH).
   const L = gongDevLen(), aW = GONG_WIRE_R * U;
   const M = OSC_STEEL_RHO * Math.PI * aW * aW * L;
-  const mModal = M / 4;                                          // ∫φ² = L/4, every mode (see GONG_MODES)
+  const arch = gongArchModes();
+  const R_m = GONG_R * U, alpha = L / R_m;
+  const mModal = M * arch[0].mFrac;
   const mu = mEff / mModal;
   const eta = (4 * mu / (1 + mu) ** 2) * ((1 + REST) / 2) ** 2;
   const Estar = OSC_STEEL_E / (2 * (1 - NU * NU));
@@ -23539,14 +23791,19 @@ const GONG_ACOUSTICS = (() => {
   const kHertz = (4 / 3) * Estar * Math.sqrt(Re);
   const mRed = mEff * mModal / (mEff + mModal);
   const tau = 2.9432 * (5 * mRed / (4 * kHertz)) ** 0.4 * vHead ** -0.2;
-  // 3/4 — per mode.
+  // 3/4 — per mode. The Hertz spectrum says which modes the blow can reach;
+  // §253 divides by each mode's modal mass as well, because an impulse J at
+  // the tip leaves mode n with J²φ_n(tip)²/2m_n — equal across modes only
+  // while every m_n was M/4.
   const kGyr = aW / 2;
-  const spec = GONG_MODES.map((m) => {
-    const f = m.bl2 * kGyr * GONG_STEEL_C / (2 * Math.PI * L * L);
-    const x = 2 * f * tau;
+  const spec = arch.map((m) => {
+    const f = m.f, x = 2 * f * tau;
     const S = Math.abs(Math.cos(Math.PI * f * tau) / (Math.abs(1 - x * x) < 1e-12 ? 1e-12 : 1 - x * x));
-    return { f, w: S * S, lambda: C_AIR / f };
+    return { f, w: S * S / m.mFrac, lambda: C_AIR / f, mFrac: m.mFrac, kind: m.kind, uTip: m.uTip, tanShare: m.tanShare, shape: m.w };
   });
+  // §56's straight law at this length, kept beside the arch's answer so the
+  // record (and the explainer) can quote what the curvature term moved.
+  const straightLaw_Hz = GONG_MODE_BL.map((bl) => bl * bl * kGyr * GONG_STEEL_C / (2 * Math.PI * L * L));
   const wSum = spec.reduce((t, m) => t + m.w, 0);
   const aWeight = (f) => {
     const f2 = f * f;
@@ -23554,53 +23811,60 @@ const GONG_ACOUSTICS = (() => {
     const den = (f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2);
     return 20 * Math.log10(num / den) + 2.0;
   };
-  // THE RADIATION INTEGRAL, and why it is an integral. The wire is a LINE of
-  // transverse dipoles whose strength follows the mode shape, so the far field
-  // in a direction α off the wire's own axis is that shape's Fourier component
-  // at the acoustic wavenumber:
-  //     D(α) = ∫₀^L φ(x)·e^{−i k x cosα} dx        (→ γL as k→0)
-  //     W    = k²·(2ρ₀πa²ωU)²/(32πρ₀c) · ∫₀^π sin³α |D̂(α)|² dα
-  // which reduces EXACTLY to the compact dipole k²F²/(24πρ₀c) when kL ≪ 1
-  // (∫sin³ = 4/3), and degrades on its own past that. A hard "compact or not"
-  // cutoff was the first form and it is worse than wrong, it is DISCONTINUOUS:
-  // the wire's second mode crossed L = λ/2 with the §197 arc and its whole
-  // contribution vanished from the total in one step, which reads as a design
-  // change and is a modelling artefact. Neighbouring antinodes cancelling is a
+  // THE RADIATION INTEGRAL, and why it is an integral. §197 wrote it for a
+  // LINE of transverse dipoles whose strength follows the mode shape — the far
+  // field a direction α off the wire's axis is the shape's Fourier component
+  // at the acoustic wavenumber, D(α) = ∫φ·e^{−ikx cosα}dx, and W integrates
+  // sin³α|D|² — which reduces EXACTLY to the compact dipole k²F²/(24πρ₀c) when
+  // kL ≪ 1 and degrades on its own past that. (A hard "compact or not" cutoff
+  // was the first form and it is worse than wrong, it is DISCONTINUOUS: the
+  // wire's second mode crossed L = λ/2 with the §197 arc and its whole
+  // contribution vanished in one step. Neighbouring antinodes cancelling is a
   // real effect and this is what it looks like when it is computed instead of
-  // declared.
-  const NX = 400, NA = 180;
-  const radiate = (phi, kAc, amp) => {
-    // amp = 2ρ₀πa²ωU, the dipole strength per unit length at the tip.
-    let peak = 0, tot = 0;
-    for (let j = 0; j <= NA; j++) {
-      const al = (j / NA) * Math.PI, ca = Math.cos(al);
-      let re = 0, im = 0;
-      for (let q = 0; q <= NX; q++) {
-        const u = q / NX, w = (q === 0 || q === NX) ? 0.5 : 1;
-        const ph = phi(u) * w, th = -kAc * L * u * ca;
-        re += ph * Math.cos(th); im += ph * Math.sin(th);
-      }
-      const D2 = (re * re + im * im) * (L / NX) ** 2;
-      const wA = (j === 0 || j === NA) ? 0.5 : 1;
-      tot += wA * Math.sin(al) ** 3 * D2 * (Math.PI / NA);
-      peak = Math.max(peak, Math.sin(al) ** 2 * D2);
-    }
-    const W = kAc * kAc * amp * amp * tot / (32 * Math.PI * RHO_AIR * C_AIR);
-    // the on-axis (β = 0, best α) intensity at 0.3 m, from |p| = k·amp·|D|·sinα/(4πr)
+  // declared.)
+  // §253 writes it for the ARC the wire is. Each element is still a dipole
+  // normal to the wire — a cylinder's added mass is for TRANSVERSE motion, so
+  // the mode's tangential component radiates nothing and only the radial shape
+  // φ enters — but the normal turns through the arc and the elements sit on a
+  // circle, so for r̂ = (sinϑ cosϕ, sinϑ sinϕ, cosϑ)
+  //     F(ϑ, ϕ) = R·sinϑ · ∫₀^α φ(θ)·cos(ϕ−θ)·e^{−ikR sinϑ cos(ϕ−θ)} dθ
+  // and the ϕ-integral of |F|² is done EXACTLY by Jacobi–Anger —
+  // cosψ·e^{−iz cosψ} = Σ (−i)^{m−1} J′_m(z) e^{imψ} — so with one Fourier
+  // transform of the shape per mode, Φ_m = ∫φ·e^{−imθ}dθ,
+  //     ∫₀^{2π}|F|² dϕ = 2πR² sin²ϑ · Σ_m J′_m(kR sinϑ)² |Φ_m|²  ;
+  // ϑ is quadrature over the upper hemisphere, doubled (the arc's plane is a
+  // mirror), and the highest mode's kR = 47 costs a longer Bessel recurrence,
+  // never a finer mesh. The on-axis intensity is the peak of |F|² found over a
+  // coarse (ϑ, ϕ) grid of the same series; ϑ = 0 radiates nothing, every dipole
+  // lying in the arc's plane. CONTROLS (tools/probe-253-arch-modes.mjs):
+  // flattened to α → 0 at fixed L this returns §197's line integral to 1e-4 in
+  // W and in peak, and at the shipped arc it agrees with a brute-force sphere
+  // quadrature to 1e-5. WHAT IT FOUND: at the same tip velocity the loud second
+  // mode radiates 0.64× what the straight line credited it, the fundamental
+  // 1.06× — the two halves of a bent wire do not cancel the way a straight
+  // pair's do, in either direction.
+  const radiate = (shape, kAc, amp) => {
+    // amp = 2ρ₀πa²ωU, the dipole strength per unit length at the tip; shape
+    // the mode's radial displacement over θ ∈ [0, α], unity at the tip.
+    const { sph, peak } = gongRadiationFactors(shape, alpha, R_m, kAc);
+    const W = kAc * kAc * amp * amp * sph / (32 * Math.PI * Math.PI * RHO_AIR * C_AIR);
+    // the on-axis (best direction) intensity at 0.3 m, from |p| = k·amp·|F|/(4πr)
     const I = (kAc * kAc * amp * amp * peak) / (32 * Math.PI * Math.PI * RHO_AIR * C_AIR * 0.09);
     return { W, I };
   };
   let counted = 0;
   const modes = spec.map((m, i) => {
     const E_n = eta * E_blow * m.w / wSum;
-    const U_n = Math.sqrt(8 * E_n / M);                          // tip velocity amplitude (m_n = M/4)
+    const m_n = M * m.mFrac;
+    const U_n = Math.sqrt(2 * E_n / m_n);                        // radial tip velocity amplitude
     const om = 2 * Math.PI * m.f;
     const kAc = om / C_AIR;
-    const { W: W_rad, I: I_ax } = radiate(GONG_MODES[i].phi, kAc, 2 * RHO_AIR * Math.PI * aW * aW * om * U_n);
+    const { W: W_rad, I: I_ax } = radiate(m.shape, kAc, 2 * RHO_AIR * Math.PI * aW * aW * om * U_n);
     const spl = 10 * Math.log10(Math.max(I_ax, 1e-30) / 1e-12);
     const audible = m.f <= 20000;                                // the listener, not the model
     if (audible) counted += 10 ** ((spl + aWeight(m.f)) / 10);
-    return { n: i + 1, f_Hz: m.f, E_J: E_n, tipV_ms: U_n, W_W: W_rad, kL: kAc * L,
+    return { n: i + 1, kind: m.kind, f_Hz: m.f, modalMass_mg: m_n * 1e6, tanTip: m.uTip, tanShare: m.tanShare,
+      E_J: E_n, tipV_ms: U_n, W_W: W_rad, kL: kAc * L, kR: kAc * R_m,
       spl_dB: spl, splA_dBA: spl + aWeight(m.f), audible, ringT60_s: 13.8 * Q / om };
   });
   return {
@@ -23612,7 +23876,14 @@ const GONG_ACOUSTICS = (() => {
     wire: { dia_mm: 2 * GONG_WIRE_R * UNIT_MM, devLen_mm: L * 1000, arcDeg: Math.abs(GONG_A1 - GONG_A0) / DEG2RAD,
       designArcDeg: GONG_ARC_DESIGN / DEG2RAD, footWalkedDeg: GONG_FOOT_WALKED / DEG2RAD, hand: GONG_HAND,
       ringR_u: GONG_R, targetF1_Hz: GONG_F1_TARGET_HZ,
-      mass_mg: M * 1e6, modalMass_mg: mModal * 1e6 },
+      mass_mg: M * 1e6, modalMass_mg: mModal * 1e6,
+      // §253 — the arc's fundamental against the straight bar's: its modal
+      // fraction of the wire (¼ for a straight bar), the design arc's, and
+      // §56's law at this length, so the record can quote what the term moved
+      modalFrac: arch[0].mFrac, designModalFrac: GONG_DESIGN.modalFrac,
+      designModalMass_mg: OSC_STEEL_RHO * Math.PI * aW * aW * GONG_DESIGN_LEN_M * GONG_DESIGN.modalFrac * 1e6,
+      straightLen_mm: GONG_STRAIGHT_LEN_M * 1000, straightLaw_Hz, arcRad: alpha, S: (GONG_R / (GONG_WIRE_R / 2)) ** 2,
+      designFixedPoint: { rounds: GONG_DESIGN.outer, solves: GONG_DESIGN.inner, closed: GONG_DESIGN.closed } },
     hammer: { headH_u: ALARM_HEAD_H, headL_u: ALARM_HEAD_L, headHOwner: ALARM_HEAD_H_OWNER, headHMatch_u: ALARM_HEAD_H_MATCH,
       headMass_mg: mHead * 1e6, blow: GONG_BLOW, liftSign: ALARM_HAM_LIFT_SIGN, faceR_u: ALARM_HEAD_FACE_R, restGap_u: HAMMER_HEAD_GAP,
       mass_mg: mRotor * 1e6, I_kgm2: I_h, effMass_mg: mEff * 1e6,
@@ -23659,28 +23930,33 @@ await breathe();
     console.warn(`§197: the gong's fundamental is ${A.modes[0].f_Hz.toFixed(0)} Hz — outside the 1–4 kHz a struck `
       + 'alarm gong rings in; the band or the arc moved and the ear is no longer being aimed at');
   // §198 — AND THE DESIGN POINT IS REACHED: the achieved fundamental must be
-  // the target's, within the walk's own effect. The clear-station walk only
-  // ever lengthens the arc (f ∝ 1/L²), so the shortfall is bounded by the
-  // walked angle — on the shipped build the foot walks nowhere and the two
-  // agree to float noise, which is TODO 127 closed as a measurement.
+  // the target's, within the walk's own effect. On the shipped build the foot
+  // walks nowhere and the two agree to the aesthetics default's 0.01°
+  // rounding (3.6e-4 in f), which is TODO 127 closed as a measurement. A
+  // clear-station walk only ever LENGTHENS the arc, and §253's arch law is
+  // still monotone in length over the knob's range, so a walked foot may
+  // only have LOWERED the pitch — the one thing that is asserted about it.
   {
-    const arc = A.wire.arcDeg, design = A.wire.designArcDeg;
-    const expect = GONG_F1_TARGET_HZ * (design / arc) ** 2;
-    if (Math.abs(A.modes[0].f_Hz / expect - 1) > 1e-3)
-      console.warn(`§198: the gong rings ${A.modes[0].f_Hz.toFixed(1)} Hz where the design arc ${design.toFixed(2)}° `
-        + `(walked to ${arc.toFixed(2)}°) should ring ${expect.toFixed(1)} — the pitch and the arc have parted`);
+    const arc = A.wire.arcDeg, f1 = A.modes[0].f_Hz;
+    if (A.wire.footWalkedDeg < 1e-9 && Math.abs(f1 / GONG_F1_TARGET_HZ - 1) > 1e-3)
+      console.warn(`§198: the gong rings ${f1.toFixed(1)} Hz at the design arc ${arc.toFixed(2)}° `
+        + `where the solve put ${GONG_F1_TARGET_HZ} — the pitch and the arc have parted`);
+    if (A.wire.footWalkedDeg >= 1e-9 && f1 > GONG_F1_TARGET_HZ * (1 + 1e-3))
+      console.warn(`§198: the foot walked ${A.wire.footWalkedDeg.toFixed(2)}° and the gong rings ${f1.toFixed(1)} Hz, `
+        + `ABOVE the ${GONG_F1_TARGET_HZ} the design arc rings — a longer arc cannot ring higher`);
   }
   // The head must land near the impedance match, or the §148 shape argument
   // has quietly stopped being a dynamic one. §198 — and it is SOLVED to it:
-  // the head's own mass is a quarter of the design wire's within the
+  // the head's own mass is the arc fundamental's fraction (§253: 0.296, a
+  // quarter on the straight law) of the design wire's within the
   // silhouette's tessellation, so the whole rotor lands a little over 1 (the
   // arm and tail add their share). The §197 band is kept as the envelope.
   if (!(A.strike.mu > 0.4 && A.strike.mu < 2.5))
     console.warn(`§197: the hammer meets the wire at μ = ${A.strike.mu.toFixed(2)} — far off the matched 1.0, `
       + `so ${(100 * A.strike.eta / ((1 + A.strike.restitution) / 2) ** 2).toFixed(0)}% of the available transfer is being thrown away`);
   if (A.hammer.headHOwner === 'impedance match'
-      && Math.abs(A.hammer.headMass_mg / (A.wire.modalMass_mg * GONG_DESIGN_LEN_M / (A.wire.devLen_mm / 1000)) - 1) > 0.02)
-    console.warn(`§198: the hammer head weighs ${A.hammer.headMass_mg.toFixed(2)} mg against the ${A.wire.modalMass_mg.toFixed(2)} mg `
+      && Math.abs(A.hammer.headMass_mg / A.wire.designModalMass_mg - 1) > 0.02)
+    console.warn(`§198: the hammer head weighs ${A.hammer.headMass_mg.toFixed(2)} mg against the ${A.wire.designModalMass_mg.toFixed(2)} mg `
       + 'modal mass it was solved to match — the silhouette fraction and the cut metal disagree');
   // Real alarm-gong wire runs 0.4–1.1 mm. A band that drifts outside that is
   // no longer describing a gong, whatever the arithmetic says. (§198 sizes
@@ -40713,8 +40989,10 @@ const SND = {
     // Light the whole power chain, not just the noisy end: the pin wheel did
     // the work, the hammer carried it, the gong turned it into sound (§25).
     sndFlash(alarmGongUnit); sndFlash(alarmHammerUnit); sndFlash(alarmLiftUnit); sndFlash(alarmStrikeUnit);
-    // §56: the wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the
-    // 1st — inharmonic, which is what makes this read as struck steel.
+    // §56: the wire's OWN modes, not a chosen note — and since §253 the ARC's
+    // own modes: the 2nd sits at 5.58× the 1st at the shipped arc (the straight
+    // bar's 6.27 less the curvature's share) — inharmonic, which is what makes
+    // this read as struck steel.
     // §197 — AND THE BALANCE BETWEEN THEM IS THE ARITHMETIC'S NOW, not an ear's.
     // 0.30 over 0.14 said "the 2nd carries the loudest energy at these
     // dimensions", which was a guess that happened to be right; GONG_ACOUSTICS
@@ -48974,6 +49252,15 @@ window.__clock = {
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get acoustics() { return GONG_ACOUSTICS; },  // §197 — the gong's blow, modes and radiated level, off the built metal
+  // §253 — the arch solve and the arc's radiation integral THEMSELVES, for
+  // probe-253-arch-modes to hold their controls on (the straight limit, the
+  // brute-force sphere): plain data out, so a page.evaluate can carry it.
+  gongArch: {
+    modes: (S, alpha, gMax, nMax) => GONG_ARCH.modes(S, alpha, gMax, nMax)
+      .map((m) => ({ g: m.g, Om: m.Om, mFrac: m.mFrac, tanShare: m.tanShare, uTip: m.uTip, w: Array.from(m.w), u: Array.from(m.u) })),
+    radiation: (shape, alpha, R_m, kAc) => gongRadiationFactors(Float64Array.from(shape), alpha, R_m, kAc),
+    straightRoots: GONG_MODE_BL.slice(),
+  },
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it

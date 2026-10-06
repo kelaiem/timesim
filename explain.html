@@ -3065,15 +3065,19 @@
 
   <!-- ===================== THE GONG'S VOICE ===================== -->
   <details class="mech" id="gong">
-    <summary>The gong's voice — partials from the bar, and how loud a wire can be<span class="where">alarm · src/main.js §56, §197, §198</span></summary>
+    <summary>The gong's voice — partials from the bar, and how loud a wire can be<span class="where">alarm · src/main.js §56, §197, §198, §253</span></summary>
     <div class="mech-body">
       <p>The alarm's sound is not a sample and not a picked frequency: the gong is a
       clamped-free steel bar, and its voice is derived from that bar's own bending modes.
-      A clamped-free bar's overtones are fixed by physics, not tuning: the second mode
-      rings at <b>6.27×</b> the fundamental — that is <code>(k₂L/k₁L)² = (4.694/1.875)²</code>
-      from the beam equation, and it is why struck gongs sound metallic rather than
-      musical (the partials are inharmonic). The build states it as its own comment: "the
-      wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the [fundamental]".</p>
+      A clamped-free bar's overtones are fixed by physics, not tuning — a straight one's
+      second mode rings at <b>6.27×</b> the fundamental, <code>(k₂L/k₁L)² = (4.694/1.875)²</code>
+      from the beam equation — and it is why struck gongs sound metallic rather than
+      musical (the partials are inharmonic). Since §253 the bar is solved as what it is
+      cut as, an ARC: the wire is 55.8° of a circle and the hammer strikes it in that
+      plane, where bending couples with stretching along the arc, so the modes are the
+      arch's own — the second at <b>5.57×</b> the fundamental, the straight bar's 6.27
+      less the curvature's share. The build states it as its own comment: "the wire's
+      OWN modes, not a chosen note".</p>
       <p>§56 derived the PITCH from the bar. §197 derived the LEVEL, which turned out to be
       the more uncomfortable number: the wire the build shipped was 0.379 mm thick and
       radiated, measured through the chain in PLATE 3, about <b>−4 dBA at 0.3 m</b> — below
@@ -3091,15 +3095,31 @@
       the annulus between the plate's rim and the case bore there is no opening at any
       azimuth, so <code>aesthetics.gong.arcDeg</code>'s derived arc took effect for the first
       time: 55.29° of a ⌀1.1 mm wire (real gong stock's ceiling, which caps the section out
-      there rather than any band) at <code>GONG_R</code> 48.20, ringing <b>2500 Hz</b>. The
-      price was the part the roadmap named: a hammer pivoted out at the ring's own radius
-      cannot reach the striking wheel with its 6.5 u tail, so a <b>lifting lever</b> — two
-      equal arms about the post the old hammer stood on, ratio 1 — carries the cam's lift to
-      the tail, and the cam is generated through it (base and pickup radii reproduced, the
-      tip's +0.114 declared as the fold's one fork at <code>ALARM_LIFT_FORK</code>). The head
-      is solved to a quarter of the wire's mass now, the impedance match §197 could only
-      approach: <b>14.0 → 24.4 dBA</b>, the pitch's ω⁴ plus a matched head, the fall still
-      TODO 128's.</p>
+      there rather than any band) at <code>GONG_R</code> 48.20, ringing <b>2500 Hz</b> — 55.80°
+      since §253 solved the same pitch on the arc's own modes. The price was the part the
+      roadmap named: a hammer pivoted out at the ring's own radius cannot reach the striking
+      wheel with its 6.5 u tail, so a <b>lifting lever</b> — two equal arms about the post the
+      old hammer stood on, ratio 1 — carries the cam's lift to the tail, and the cam is
+      generated through it (base and pickup radii reproduced, the tip's +0.114 declared as
+      the fold's one fork at <code>ALARM_LIFT_FORK</code>). The head is solved to the wire's
+      modal mass now (a quarter of the wire on §198's straight law, 0.296 of it on §253's
+      arch), the impedance match §197 could only approach: <b>14.0 → 24.4 dBA</b>, the
+      pitch's ω⁴ plus a matched head, the fall still TODO 128's.</p>
+      <p>§253 carried the curvature term TODO 17 had named from the start. §56's law was a
+      STRAIGHT clamped-free bar; the wire is an arc, and in-plane bending of an arc couples
+      with stretching along it, so <code>GONG_ARCH</code> solves Love's thin-arch equations
+      exactly — a circular arc makes every coefficient constant, so the six-state system is
+      propagated by the matrix exponential, the three free-end conditions make a 3×3
+      determinant, and its zeros are the modes. Held to the straight bar as its own control
+      (flatten the arc and the roots return to <code>GONG_MODE_BL</code>) and to a
+      Rayleigh–Ritz solve of the same energy by a second method, the arch moves the
+      fundamental <b>+1.9%</b> and the second mode <b>−9.5%</b> against the straight figures at
+      the same length, so the design arc that rings 2500 Hz lengthened from 55.29° to
+      <b>55.80°</b>; the fundamental's modal mass is <b>0.296</b> of the wire, not a quarter,
+      and the head is matched to that (32.9 → 39.3 mg); and the radiation integral is the
+      arc's too, the loud second mode radiating 0.64× what a straight line credited it at the
+      same tip velocity. The level came out where it was, <b>24.6 dBA</b>, by offsetting
+      terms — a heavier blow, a less efficient second partial.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Two mode shapes, one strike point</span></div>
         <div class="fig-body">
@@ -3110,7 +3130,7 @@
             <path d="M 66 95 C 300 95, 520 88, 700 40" fill="none" stroke="var(--brass)" stroke-width="2"/>
             <text class="val val-brass" x="596" y="34">mode 1 — the fundamental</text>
             <path d="M 66 95 C 240 95, 330 130, 420 130 C 540 130, 620 70, 700 46" fill="none" stroke="var(--ruby)" stroke-width="1.6" stroke-dasharray="6 3"/>
-            <text class="val val-ruby" x="300" y="150">mode 2 — 6.27× (node marked)</text>
+            <text class="val val-ruby" x="300" y="150">mode 2 — 5.57× (node marked)</text>
             <circle cx="558" cy="99" r="4" fill="var(--ruby)"/>
             <line x1="230" y1="60" x2="230" y2="88" stroke="var(--text)" stroke-width="1.5" marker-end="url(#arrG)"/>
             <text class="lbl lbl-strong" x="196" y="50">hammer strikes here</text>
@@ -3118,25 +3138,28 @@
             <defs><marker id="arrG" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--text)"/></marker></defs>
           </svg>
         </div>
-        <figcaption>Ledger: TODO 17 is closed by §56 and §197 together — §56 took the
-        partial RATIOS from the modelled bar rather than a preset chord, and §197 took the
-        excitation weighting and the mix with them, so the strike's energy split and the two
-        synthesised gains are computed from the modes rather than chosen. What is still open
-        is one item down: the wire radiates on its own here, and a real alarm is loud because
-        its gong drives the caseback (TODO 126).</figcaption>
+        <figcaption>Ledger: TODO 17 is closed by §56, §197 and §253 together — §56 took the
+        partial RATIOS from the modelled bar rather than a preset chord, §197 took the
+        excitation weighting and the mix with them, so the strike's energy split and the
+        synthesised gains are computed from the modes rather than chosen, and §253 took the
+        bar's curvature, so the modes are the arc's. The shapes drawn here are the straight
+        bar's, for legibility: the arc's radial shapes differ from them by a few percent and
+        carry a tangential component a straight bar has none of. What is still open is one
+        item down: the wire radiates on its own here, and a real alarm is loud because its
+        gong drives the caseback (TODO 126).</figcaption>
       </figure>
       <!-- —————— PLATE 2 : DIMENSION THE WIRE, THEN STRIKE IT (interactive, audible) —————— -->
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Dimension the wire, then strike it — the pitch its dimensions imply</span></div>
         <div class="controls">
           <label>arc
-            <input type="range" id="gongArc" min="25" max="120" value="55.29" step="0.01" aria-label="Gong arc in degrees, measured back from the free end">
+            <input type="range" id="gongArc" min="25" max="120" value="55.80" step="0.01" aria-label="Gong arc in degrees, measured back from the free end">
           </label>
           <label>wire Ø
             <input type="range" id="gongDia" min="4000" max="30000" value="29028" step="1" aria-label="Gong wire diameter in ten-thousandths of a unit">
           </label>
           <button id="gongStrike" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">STRIKE</button>
-          <span class="readout" id="gongReadout">arc 55.29° · Ø 2.90 u</span>
+          <span class="readout" id="gongReadout">arc 55.80° · Ø 2.90 u</span>
           <span class="chip ride" id="gongChip">SHIPPED VOICE</span>
         </div>
         <div class="fig-body">
@@ -3151,7 +3174,7 @@
             <line x1="390" y1="130" x2="390" y2="150" stroke="var(--line)" stroke-width="1"/>
             <text class="val" x="300" y="166">movement axis · GONG_R 48.20</text>
             <path id="gongGhost" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
-            <text class="val" x="560" y="128" id="gongGhostLbl">shipped arc 55.29°</text>
+            <text class="val" x="560" y="128" id="gongGhostLbl">shipped arc 55.80°</text>
             <path id="gongGlow" fill="none" stroke="var(--brass)" stroke-linecap="round" opacity="0"/>
             <path id="gongWire" fill="none" stroke="var(--steel)" stroke-linecap="round"/>
             <g id="gongFootG">
@@ -3163,24 +3186,26 @@
             <text class="lbl lbl-strong" x="540" y="48">hammer — fixed at the free end</text>
             <text class="val" x="540" y="62">free end az 24.5° · pivot az 33.4°</text>
             <text class="val val-brass" x="24" y="236" id="gongF1">f₁ 2.50 kHz</text>
-            <text class="val val-ruby" x="24" y="250" id="gongF2">f₂ 15.67 kHz · 6.27×</text>
-            <text class="val" x="24" y="264" id="gongF3">(f₃ 43.87 kHz — computed, not struck)</text>
+            <text class="val val-ruby" x="24" y="250" id="gongF2">f₂ 13.92 kHz · 5.57×</text>
+            <text class="val" x="24" y="264" id="gongF3">(f₃ 41.05 kHz — computed, not struck)</text>
             <defs><marker id="arrGA" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--text)"/></marker></defs>
           </svg>
         </div>
-        <figcaption>The sound is the law run live: <code>fₙ = (βₙL)²·(d/4)·√(E/ρ) / (2πL²)</code>
-        with <code>(βₙL)² = 3.516, 22.03</code>, steel's <code>E/ρ = 200 GPa / 7850</code>, and
-        <code>L = GONG_R·arc·UNIT_MM</code> (GONG_R 48.20, UNIT_MM 0.379) — <code>gongModes()</code>
-        ported verbatim, so the readout at the defaults IS the shipped voice. STRIKE plays what
-        the sim plays on a hammer hit: the same two partials through <code>sndTone</code>'s
-        envelope, each a ±4-cent sine pair. Their BALANCE is no longer chosen — §197 sets each
-        amplitude to √(that mode's radiated power), referred to the loudest, so the fundamental
-        sits 28 dB under the second mode because that is what a compact dipole does with ω⁴; and
-        each decay is the mode's own T60 clipped to one strike gap, so the ring cannot outlive
-        its cadence. Ledger: the OVERALL level 0.30 is still §56's chosen gain — this fixed the
+        <figcaption>The sound is the law run live — since §253 the arch's in-plane modes,
+        <code>Ω = ρAω²R⁴/EI</code> solved for the arc's <code>S = (R/k)²</code> and angle, with
+        steel's <code>E/ρ = 200 GPa / 7850</code>, <code>k = d/4</code> and
+        <code>R = GONG_R·UNIT_MM</code> (GONG_R 48.20, UNIT_MM 0.379) — <code>GONG_ARCH</code>
+        ported verbatim, so the readout at the defaults IS the shipped voice, and the ratio
+        beside f₂ is the arc's at that arc, not a constant. STRIKE plays what the sim plays on
+        a hammer hit: the same two partials through <code>sndTone</code>'s envelope, each a
+        ±4-cent sine pair. Their BALANCE is no longer chosen — §197 sets each amplitude to
+        √(that mode's radiated power), referred to the loudest, so the fundamental sits 27 dB
+        under the second mode because that is what a compact dipole does with ω⁴; and each
+        decay is the mode's own T60 clipped to one strike gap, so the ring cannot outlive its
+        cadence. Ledger: the OVERALL level 0.30 is still §56's chosen gain — this fixed the
         mix to the metal, not the volume — and the third mode is computed by the law but not
-        voiced, matching the build. A partial the law pushes past hearing is marked and skipped,
-        not folded back.</figcaption>
+        voiced, matching the build. A partial the law pushes past hearing is marked and
+        skipped, not folded back.</figcaption>
       </figure>
       <!-- —————— PLATE 3 : HOW LOUD, AND WHERE THE LEVEL GOES —————— -->
       <figure>
@@ -3195,18 +3220,18 @@
               <rect x="176" y="30" width="128" height="52" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <text class="lbl lbl-strong" x="188" y="50">the blow</text>
               <text class="val" x="188" y="66">½Iθ̇², 0.025 m/s</text>
-              <text class="val val-brass" x="188" y="78">11.95 nJ</text>
+              <text class="val val-brass" x="188" y="78">14.95 nJ</text>
               <rect x="334" y="30" width="128" height="52" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <text class="lbl lbl-strong" x="346" y="50">the hand-off</text>
-              <text class="val" x="346" y="66">μ 1.14, η 0.81</text>
-              <text class="val val-brass" x="346" y="78">contact 9.1 µs</text>
+              <text class="val" x="346" y="66">μ 1.19, η 0.80</text>
+              <text class="val val-brass" x="346" y="78">contact 9.8 µs</text>
               <rect x="492" y="30" width="128" height="52" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <text class="lbl lbl-strong" x="504" y="50">the radiation</text>
-              <text class="val" x="504" y="66">line of dipoles</text>
-              <text class="val val-brass" x="504" y="78">0.54 nW</text>
+              <text class="val" x="504" y="66">an arc of dipoles</text>
+              <text class="val val-brass" x="504" y="78">0.30 nW</text>
               <rect x="650" y="30" width="112" height="52" rx="4" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
               <text class="lbl lbl-strong" x="662" y="50">at 0.3 m</text>
-              <text class="val val-brass" x="662" y="70">24 dBA</text>
+              <text class="val val-brass" x="662" y="70">25 dBA</text>
               <line x1="146" y1="56" x2="172" y2="56" stroke="var(--text)" stroke-width="1.4" marker-end="url(#arrGL)"/>
               <line x1="304" y1="56" x2="330" y2="56" stroke="var(--text)" stroke-width="1.4" marker-end="url(#arrGL)"/>
               <line x1="462" y1="56" x2="488" y2="56" stroke="var(--text)" stroke-width="1.4" marker-end="url(#arrGL)"/>
@@ -3215,9 +3240,9 @@
             <line x1="18" y1="104" x2="762" y2="104" stroke="var(--line)" stroke-width="0.75"/>
             <text class="lbl lbl-strong" x="18" y="126">what moved, and what it was worth</text>
             <text class="val" x="18" y="144">the ring (§198): r 35 on the plate → r 48.20 in the annulus — the arc is the ear's, f₁ 1381 → 2500 Hz</text>
-            <text class="val" x="18" y="160">the wire and the head: Ø 0.996 → 1.100 mm (stock's ceiling); the head solved to a quarter of the wire, μ 0.55 → 1.14</text>
+            <text class="val" x="18" y="160">the wire and the head: Ø 0.996 → 1.100 mm (stock's ceiling); the head solved to the wire's modal mass (§253: the arc's 0.296, not ¼), μ 0.55 → 1.19</text>
             <text class="val val-ruby" x="18" y="176">the fall: 53.2 ms, unchanged — a third of the cycle, and no spring that fits gives it</text>
-            <text class="val val-brass" x="18" y="196">−3.7 → 14.0 (§197) → 24.4 dBA (§198) at 0.3 m, on axis, the wire radiating alone</text>
+            <text class="val val-brass" x="18" y="196">−3.7 → 14.0 (§197) → 24.4 (§198) → 24.6 dBA (§253) at 0.3 m, on axis, the wire radiating alone</text>
             <defs><marker id="arrGL" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--text)"/></marker></defs>
           </svg>
         </div>
@@ -3225,7 +3250,8 @@
         every figure on this plate. A bar this short against the sound it makes radiates as a
         compact DIPOLE — no net volume change, only net momentum — which is a poor loudspeaker
         by many tens of dB, and it is why the second mode carries the ring: the radiated power
-        goes as ω⁴, so 6.27× the frequency is 26 dB of level from the same joules. A real alarm
+        goes as ω⁴, so 5.57× the frequency is 26 dB of level from the same joules (§253's arc
+        geometry takes a third of the second mode's power back, and that is in the figure). A real alarm
         watch is loud for a reason this model does not carry: the gong's foot drives the
         caseback, and the caseback is a 30 mm diaphragm. Ledger: TODO 126 holds that path and
         TODO 128 holds the spring, so every level here is a floor twice over rather than a
@@ -4676,24 +4702,72 @@
       upd();
     })();
 
-    // —— The gong's voice: gongModes() ported, sndTone's envelope ported, audible ——
+    // —— The gong's voice: GONG_ARCH ported, sndTone's envelope ported, audible ——
     (function () {
-      // §56 gongModes(), verbatim: f_n = (β_nL)²·(d/4)·√(E/ρ) / (2πL²).
-      // UNIT_MM is layout.js's pin (0.72 mm chain pitch / 1.9 u), GONG_R the
-      // build's 48.20 since §198 (R_ANNULUS_OUT − GONG_POST_R — the ring sits as
-      // far out in the annulus as its own block allows). Only the two aesthetics
-      // knobs vary — same domain as the sim.
-      var GONG_R = 48.20, UNIT_MM = 0.72 / 1.9;
+      // §253 GONG_ARCH, verbatim: the in-plane modes of a clamped-free CIRCULAR
+      // ARC (Love's thin-arch equations, Ω = ρAω²R⁴/EI, S = (R/k)²) — the
+      // six-state system propagated by the matrix exponential, the three
+      // free-end conditions' 3×3 determinant scanned in Ω^¼ and bisected, and
+      // f = √Ω·k·c/(2πR²). §56's straight roots are the scan's ceiling here as
+      // in the build. UNIT_MM is layout.js's pin (0.72 mm chain pitch / 1.9 u),
+      // GONG_R the build's 48.2208 since §198 (R_ANNULUS_OUT − GONG_POST_R — the
+      // ring sits as far out in the annulus as its own block allows; §253's
+      // fixed point leaves it there). Only the two aesthetics knobs vary — same
+      // domain as the sim.
+      var GONG_R = 48.2208, UNIT_MM = 0.72 / 1.9;
       var GONG_STEEL_C = Math.sqrt(200e9 / 7850);
+      var BL = [1.87510407, 4.69409113, 7.85475744];
+      function mul(A, B, C) {
+        for (var i = 0; i < 6; i++) for (var j = 0; j < 6; j++) {
+          var t = 0; for (var k = 0; k < 6; k++) t += A[i * 6 + k] * B[k * 6 + j];
+          C[i * 6 + j] = t;
+        }
+      }
+      function expm(A) {
+        var norm = 0, i, j, k;
+        for (i = 0; i < 6; i++) { var r = 0; for (j = 0; j < 6; j++) r += Math.abs(A[i * 6 + j]); norm = Math.max(norm, r); }
+        var s = Math.max(0, Math.ceil(Math.log2(norm / 0.25)));
+        var B = new Float64Array(36); for (i = 0; i < 36; i++) B[i] = A[i] / Math.pow(2, s);
+        var X = new Float64Array(36), T = new Float64Array(36), P = new Float64Array(36);
+        for (i = 0; i < 6; i++) { X[i * 7] = 1; T[i * 7] = 1; }
+        for (k = 1; k <= 14; k++) { mul(T, B, P); for (i = 0; i < 36; i++) { T[i] = P[i] / k; X[i] += T[i]; } }
+        for (k = 0; k < s; k++) { mul(X, X, P); X.set(P); }
+        return X;
+      }
+      function sys(S, Om, scale) {
+        var A = new Float64Array(36);
+        A[1] = 1; A[11] = 1 / (S + 1); A[9] = -S / (S + 1); A[6] = -Om / (S + 1);
+        A[15] = 1; A[22] = 1; A[29] = 1;
+        A[34] = -1; A[31] = -Om / S - (S + 1); A[32] = (S + 1) * (Om / S - 1);
+        for (var i = 0; i < 36; i++) A[i] *= scale;
+        return A;
+      }
+      function det(S, Om, alpha) {
+        var P = expm(sys(S, Om, alpha)), m = [], cols = [1, 4, 5];
+        for (var c = 0; c < 3; c++) {
+          var z = []; for (var r = 0; r < 6; r++) z.push(P[r * 6 + cols[c]]);
+          var upp = (z[5] - S * z[3] - Om * z[0]) / (S + 1);
+          m[c] = z[1] + z[2]; m[3 + c] = z[1] - z[4]; m[6 + c] = upp - z[5];
+        }
+        return m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+      }
       function modes(arcDeg, diaUnits) {
-        var L = GONG_R * arcDeg * Math.PI / 180 * UNIT_MM / 1000;
-        var k = (diaUnits * UNIT_MM / 1000) / 4;
-        // §197 — the same roots main.js derives GONG_MODES from (β_nL for a
-        // clamped-free bar), squared, so the page and the build agree to more
-        // than the three figures the caption quotes.
-        return [3.51602, 22.03449, 61.69721].map(function (bl2) {
-          return bl2 * k * GONG_STEEL_C / (2 * Math.PI * L * L);
-        });
+        var alpha = arcDeg * Math.PI / 180, R = GONG_R * UNIT_MM / 1000, k = diaUnits * UNIT_MM / 1000 / 4;
+        var S = Math.pow(GONG_R / (diaUnits / 4), 2), gMax = 1.1 * BL[2] / alpha, step = 0.01 * Math.PI / alpha;
+        var roots = [], g0 = step, d0 = det(S, Math.pow(g0, 4), alpha);
+        for (var g1 = g0 + step; g1 <= gMax && roots.length < 3; g1 += step) {
+          var d1 = det(S, Math.pow(g1, 4), alpha);
+          if ((d1 < 0) !== (d0 < 0)) {
+            var lo = g0, hi = g1, dlo = d0;
+            for (var it = 0; it < 64; it++) {
+              var mid = (lo + hi) / 2, dm = det(S, Math.pow(mid, 4), alpha);
+              if ((dm < 0) === (dlo < 0)) { lo = mid; dlo = dm; } else hi = mid;
+            }
+            roots.push((lo + hi) / 2);
+          }
+          g0 = g1; d0 = d1;
+        }
+        return roots.map(function (g) { return g * g * k * GONG_STEEL_C / (2 * Math.PI * R * R); });
       }
 
       var arcSl = document.getElementById('gongArc');
@@ -4727,7 +4801,7 @@
         }
         return d.join(' ');
       }
-      var SHIPPED_ARC = 55.29, SHIPPED_DIA = 2.9028;   // §198's derived defaults (aesthetics.gong — the ear's arc, walked 0°, on stock-ceiling wire)
+      var SHIPPED_ARC = 55.80, SHIPPED_DIA = 2.9028;   // the derived defaults (aesthetics.gong — the ear's arc on §253's arch law, walked 0°, on stock-ceiling wire)
       ghost.setAttribute('d', arcPath(A1 - SHIPPED_ARC, A1));
 
       function fmtHz(f) {
@@ -4746,7 +4820,7 @@
         footLbl.setAttribute('x', fp[0] + 12); footLbl.setAttribute('y', fp[1] + 4);
         readout.textContent = tr('arc') + ' ' + arc + '° · Ø ' + dia.toFixed(2) + ' u (' + (dia * UNIT_MM).toFixed(2) + ' mm)';
         fEls[0].textContent = 'f₁ ' + fmtHz(f[0]) + (f[0] > AUDIBLE_TOP ? ' — ' + tr('beyond hearing, skipped') : '');
-        fEls[1].textContent = 'f₂ ' + fmtHz(f[1]) + ' · 6.27×' + (f[1] > AUDIBLE_TOP ? ' — ' + tr('beyond hearing, skipped') : '');
+        fEls[1].textContent = 'f₂ ' + fmtHz(f[1]) + ' · ' + (f[1] / f[0]).toFixed(2) + '×' + (f[1] > AUDIBLE_TOP ? ' — ' + tr('beyond hearing, skipped') : '');
         fEls[2].textContent = '(f₃ ' + fmtHz(f[2]) + ' — ' + tr('computed, not struck') + ')';
         var shipped = arc === SHIPPED_ARC && Math.abs(dia - SHIPPED_DIA) < 5e-3;
         chip.className = 'chip ' + (shipped ? 'ride' : 'ramp');
