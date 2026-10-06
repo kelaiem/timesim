@@ -2474,7 +2474,7 @@ the tab against a 5–50 mN window. The remaining work is to size the tail and
 the shaft TOGETHER so the chain lands inside the window; until then the waiver
 stays, and its comment in `inspect.js` carries these numbers.
 
-## 17. CLOSED (§253) — the gong's sound is not derived from the gong
+## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong — CLOSED (§253)
 
 `sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
 musically ("A6-ish, a small bell" says the comment). The gong's actual
