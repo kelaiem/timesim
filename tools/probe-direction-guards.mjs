@@ -148,6 +148,15 @@ const MUTANTS = [
     find: 'const MAINT_U_SIGN = MOVEMENT_SENSE;',
     to:   'const MAINT_U_SIGN = -MOVEMENT_SENSE;',
     note: 'the pawl is dragged up the steep locking face and slides down the ramp — a one-way device running the wrong way' },
+  // TODO 215 — the maintaining RING is the detent's saw, and it runs past the
+  // detent with the train, not against it as the flange runs past the pawls.
+  // Flipping the declaration re-cuts the ring AND the click (which is cut from
+  // the ring's polygon), so the two still agree with each other — what the
+  // guard catches is that neither agrees with barrelMeshAngle's real run.
+  { kind: 'subject', name: 'the maintaining ring\'s run past its detent', file: 'src/main.js',
+    find: 'const MAINT_RING_RUN = MOVEMENT_SENSE;',
+    to:   'const MAINT_RING_RUN = -MOVEMENT_SENSE;',
+    note: 'the beak climbs each tooth\'s 28% face while the watch runs and the back-drive pulls the click off its stud — TODO 215\'s own defect, both halves' },
   { kind: 'subject', name: 'the chain\'s wrap hand', file: 'src/main.js',
     find: '    const ang = thetaT - MOVEMENT_SENSE * (wraps - s) * Math.PI * 2;',
     to:   '    const ang = thetaT + MOVEMENT_SENSE * (wraps - s) * Math.PI * 2;',
