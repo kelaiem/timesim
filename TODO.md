@@ -17,8 +17,9 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 217 | OPEN | Found closing TODO 215. The maintaining detent's HOLD is unpriced: the maintaining spring is a torus with no torque law, so nothing says what the face pushes into the beak while winding, and the cranked click carries that load as a bent strut (its line of action passes through the stud, not along the arm) |
 | 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
-| 215 | OPEN | Found closing TODO 210. The maintaining detent rides its ring in the LOCKING sense: as the train runs the beak climbs each tooth's 28% face and slides down its 72% ramp (law and metal agree). The ride is not on the cut either: the tip floats 0.04–0.10 over the ramp, the click's body sits up to 0.26 inside the ring mid-climb, and 35% of each tooth the beak hovers 0.311 over the root on the law's `max(…, 0)` floor with no banking cut |
+| 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
 | 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211 |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
 | 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
@@ -28679,7 +28680,7 @@ sides of the stem (`SL_C`, `YK_C`), so the linkage has to cross the stem's
 band. That is a P3 question in strata (the lever is at `Z_SETTING_LEVER`, the
 yoke below the collars at `Z_YOKE`). Design it in a line first.
 
-## 215. The maintaining detent rides its ring backwards: the beak climbs each tooth's face and floats over the cut ramp
+## 215. The maintaining detent rides its ring backwards: the beak climbs each tooth's face and floats over the cut ramp — CLOSED
 
 Found closing [TODO 210], measured on the train axis (96 poses over two teeth),
 against both the law and the cut outline (`ratchet`'s authored shape, the
@@ -28699,6 +28700,12 @@ maintaining ring at `MAINT_RING_R` 4.44, root 3.552).
    winding, and the detent sees the ring go forward in running. Both are cut
    `reverse: false`. Nothing in the battery measures a direction (CLAUDE.md's
    direction-guard entry), and this is that class.
+   *Verified closing it:* that is the cause, and the pawls are the right hand —
+   they ride the FLANGE, a separate cut, so the two saws can be handed
+   independently. And the entry missed the CLICK's hand: its tip stood +0.522
+   rad from its stud, on the pawls' side, so when winding back-drives the ring
+   the face would pull the beak AWAY from its stud — the hold in tension, not
+   a strut. Both halves have to turn over together.
 2. **The ride is not on the cut.** While descending the ramp, the law's tip
    stands 0.04–0.10 above the cut surface (r 4.249 against 4.153 at tau 0).
    Mid-climb, the click's body sits up to **0.26** inside the ring. The pair is
@@ -28709,6 +28716,12 @@ maintaining ring at `MAINT_RING_R` 4.44, root 3.552).
    `lift = max(sawRadiusAt − TIP_R, 0)`. Over 35% of each tooth the beak hovers
    at `MAINT_DET_BASE`, 0.311 above the root, with nothing under it and no
    banking cut. Since TODO 210 the blade presses it there with ≈ 10 mN.
+   *Found closing it:* the root seat the fix path offers is IMPOSSIBLE for the
+   straight click, not just a re-solve. The stud stands at r 4.970, 0.53
+   outside the tip circle, so a straight 2.518 bar from there to the root lies
+   ~80° off radial and its body runs through the tooth behind the beak — 0.10
+   to 0.26 inside the ring at every pose. Solved honestly against the polygon,
+   it can only ride the tips (travel 0.048). The click has to be cranked.
 
 **Fix path (P0, the detent group).** Decide the ring's hand from the detent's
 relative motion, and add a direction guard that MEASURES which flank the beak
@@ -28719,6 +28732,110 @@ a real choice: the second grows the travel to 0.353 rad and re-solves TODO
 solve on the cut outline, not the linearised profile. Add a floors row for
 `Maintaining detent ⇄ Fusee & great wheel` that excludes only the beak's
 working contact.
+
+**CLOSED — the ring is cut to the detent's hand, and the click is cut from the
+ring.** The choices taken were the root seat and a cranked click (pivot and cock
+kept where they stood), and thicker blade stock when the band would not take the
+re-solved height.
+
+- **One declaration, one guard.** `MAINT_RING_RUN = MOVEMENT_SENSE` is the
+  ring's run past the detent (it rides `barrelArbor`; the detent stands on the
+  plate). The ring is cut `reverse` exactly when that run is the train's, so
+  its teeth lean against it; the flange keeps `reverse: false` for the pawls,
+  which see the fusee run backward. The click is cut from the ring's own
+  polygon (`MAINT_RING_POLY`), so it can never disagree with the ring. What
+  neither can see is which way the ring actually runs, and the new guard beside
+  the pawls' reads that from `barrelMeshAngle`, never restates it: stepping one
+  pitch in the real run through the shipped ride, the beak lifts over about
+  **85%** of the pitch (the ramp's side of the 0.5 classifier), and at the seat the
+  flank a backward turn drives into the beak pushes it TOWARD the stud.
+  `probe-direction-guards.mjs` carries a row that flips the declaration (ring
+  and click flip together and stay consistent with each other), and it comes back CAUGHT by both
+  halves of the guard (the beak lifts over 15.0% of the pitch, and the
+  back-drive pulls it off its stud). The probe's run as a whole still FAILS, on
+  main too and not on this row: its hash is taken the instant `__clock` appears,
+  which races the first frame (measured, τ 0 at that instant and 0.197–0.200
+  three seconds later, 191 meshes moved), so its reproducibility control and
+  the NO-OP/SILENT verdicts of two unrelated rows (the stem one-way, the
+  feeler's rock) flip between runs.
+- **The click, derived from the cut.** The tip sits in a valley on the V's
+  bisector, `SEAT_RELIEF` off both flanks (V 66.15°: face 20.36° off radial,
+  ramp 45.79°), at r 3.5609. The stud is on the FACE's normal through the tip,
+  so the back-drive's reaction runs through the pivot: a pure strut, no moment
+  either way, which places the beak 27.42° from the stud and makes the strut
+  `MAINT_DET_LEVER` **2.4415** (2.518 before). The arm is concentric with the
+  ring, its inner edge exactly `CLEAR_MARGIN` outside the tip circle at the
+  seat (a circumscribed polygon, each chord tangent at its midpoint), its
+  half-width the band from there to the stud, **0.380**, and its boss rounded
+  about the stud at that radius. The beak is the only metal inside the margin:
+  a convex wedge dropping radially to the tip on the stud's side, its far flank
+  parallel to the face. Arm and beak are two meshes of one rigid body
+  (`maintDetentClick`, `maintDetentBeak`); the ring's mesh is `maintRing`.
+- **The ride, on the chords.** `MAINT_DET_RIDE.liftAt` scans then bisects the
+  smallest lift that stands the whole beak `SEAT_RELIEF` off the ring's
+  polygon (beak edges densified to 0.02, the ring's corners tested against the
+  beak). Over two teeth at 49 poses the beak's nearest point to the cut is
+  **0.00500** at every one and it is the TIP every time; the arm stands
+  **≥ 0.1509** off the ring (0.150 at the seat instant, by construction). The
+  seat is an instant now, the tip in the root, where it used to be 35% of each
+  tooth hovering on the law's floor. Travel, measured on the cut and refined on
+  the crest: **0.3685 rad** (0.2286 before).
+- **The blade (TODO 210's solve, re-run on that travel).** At `SPRING_FLAT_U`
+  the window asked for a blade taller than the 0.6489 band, so the stock is
+  derived from the window: the thinnest blade whose equal-margin height fits
+  the band (the beak force per unit height goes as t·L/θ at a fixed crest
+  strain; the force at a fixed deflection as t³).
+
+  | | before | after |
+  |---|---|---|
+  | travel (rad) | 0.2286 | 0.3685 |
+  | strut / lever | 2.5180 | 2.4415 |
+  | blade stock t | 0.1319 u (0.0500 mm, `SPRING_FLAT_U`) | 0.1568 u (0.0594 mm) |
+  | blade height b | 0.5643 | 0.6489 (= the band) |
+  | tail ℓ | 3.2028 | 2.2757 |
+  | free length seated / crest | 7.559 / 7.721 | 8.629 / 8.918 |
+  | tail moment arm seated / crest | 3.184 / 2.867 | 2.255 / 1.812 |
+  | beak force seated / crest (mN) | 10.01 / 24.97 | 10.93 / 22.87 |
+  | force ratio R | 2.494 | 2.093 |
+  | σ at the crest | 720 MPa (0.9·σy) | 720 MPa |
+  | stored / TODO 194 bound (µJ) | 4.505 / 4.546 | 7.110 / 7.467 |
+
+  Every TODO 210 assert holds unchanged: the window, equal margin
+  (10.93 × 22.87 = 250), 0.9·σy at the crest, the energy bound, the band and
+  the tail a margin off the ring.
+- **Rows.** `EXPECTED_CONTACT_FLOORS` gains `Maintaining detent ⇄ Fusee &
+  great wheel` at `CLEAR_MARGIN`, excusing only `maintDetentBeak ⇄ maintRing`.
+  `maintDetentHandoff` gains `detent beak ⇄ maintaining ring`, contact at all
+  three phases, and the phases are re-read on the click's pose by golden
+  section (seated τ 1457.2, crest τ 1069.4). The intra-unit stud row and the
+  restoring declaration name `maintDetentClick`.
+- **The cock's post, moved out (P3).** The new floors row is the first thing
+  to measure this pair without the EXPECTED blanket, and it read the post
+  **0.0481** off the great wheel's teeth: its footing took one module for the
+  addendum (the wheel's metal reaches 0.052 further) and the post's top radius
+  where it is cut tapered, POST_R + 0.1 at the foot, with a 0.05 "slop"
+  covering neither. Both are read from their sources now — the wheel's
+  outermost vertex off the cut (a first pass on `gearToothSpec`'s `tipR` still
+  read 0.1196: the cut stands 0.03 past the spec's tip), and the post's foot —
+  so the post stands a margin off the wheel's real metal at its widest; the
+  row's binding pair is now the blade on the band's floor, 0.150. The
+  mechanism is untouched; the blade's free length grows with the run to the
+  post, which is why the table's after column moves from the first cut.
+- **Explainer.** Plate 3 drew the old straight click on a ring of the
+  flange's hand; its script now cuts the ring to the other hand and draws the
+  cranked click riding the cut by the same solve. The figcaption's claims
+  still hold and are untouched.
+- **Measured.** Focused battery, local container (SwiftShader), `--shards 2
+  --no-incremental` over restoring, transfers, maintDetentHandoff,
+  alarmHandoffs, windArrestHandoff, stemClutchHandoff, intraUnit,
+  expectedContacts, stockFloor, turning, slenderness, outlines, meshIntegrity,
+  inspection, clearances, undeclaredClearance, plateSeats, assembly, transmits,
+  equalisation, graph, support and jumperMovers: **43/43 gates pass**. The new
+  floors row's binding pair is the blade over the great wheel at 0.150 (a tie
+  on the band's own margin); the beak row reads 0.005 at all three phases and
+  the blade row −0.020. Boot silent on the default and the seven spec points.
+  Fingerprint 1896818507 → 1211654045.
+- **Not closed here, filed as [TODO 217].** The hold is still unpriced.
 
 ## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
 
@@ -28750,3 +28867,31 @@ a number that looked right.
 
 `AMPLITUDE_PEAK_DEG` stays at the solve's maximum meanwhile, which over-prices
 the hairspring and the hack brake rather than under-pricing them.
+
+## 217. The maintaining detent's HOLD is unpriced: the maintaining spring has no torque, and the cranked click carries the back-drive as a bent strut
+
+Found closing [TODO 215]. While the fusee is wound the maintaining spring drives
+the train and its reaction comes back through the maintaining ring into the
+detent's beak: that face load is the HOLD, the detent's real job. Nothing prices
+it. The maintaining spring (`maintSpring`) is a 1.5π torus drawn under the ring
+with no stiffness, preload or torque law, so the load the face puts into the beak
+has no number; TODO 210's blade window (5–50 mN) prices only the ride.
+
+TODO 215 placed the stud on the face's normal through the tip, so that load has
+no moment about the pivot (the click is a strut and cannot cam out). But the
+click is CRANKED: its arm runs round the ring a margin outside the tips, so the
+line of action from tip to stud is a chord across the arm's arc, and the arm
+carries the hold in bending as well as compression. Its section (0.760 wide in
+plan, `MAINT_RING_T`·0.9 thick) was sized from the band and the stud, not from
+that load.
+
+**Fix path (P1, the detent group).** Give the maintaining spring a torque law
+(its job fixes it: it must drive the train for the length of a wind, so its
+torque at the great wheel is the going torque, and its stiffness and preload
+follow from the angle it gives up over one wind). Price the face load at the
+ring's root radius, then the arm's bending stress at the crank's largest offset
+from the tip–stud line, and hold it under `SPRING_SIGMA_Y_PA`-class steel the way
+TODO 192 holds the pivots. If the arm is over, the section grows inside the band
+(the band is 0.38 each side of the stud, from the margin to the pivot), or the
+offset shrinks by moving the stud, which is a P3 spend on the cock.
+
