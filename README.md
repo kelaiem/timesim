@@ -414,7 +414,10 @@ imply otherwise.
 **The gong.** The partial ratios in *The gong's voice* are the Euler–Bernoulli
 clamped-free beam's, not a horological source: the mode constants
 `(βₙL)² = 3.516, 22.03` are standard, and the ~6.3× second partial they give is
-why a struck bar clangs where a string sings.
+why a struck bar clangs where a string sings. Since §253 the bar is solved as
+the circular arc it is bent into (Love's thin-arch equations, the straight
+beam kept as the flat-limit control), which brings that to ~5.6× here — still
+nowhere near a harmonic.
 
 ### Watches this movement takes an idea from
 

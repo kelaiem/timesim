@@ -118,7 +118,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
 | 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
 | 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%). **TODO 82 re-took the chain: ROD-END-limited at ≈1.58 mN, not tail-limited at ≈48 mN — the stroke every earlier figure used was a deleted constant, and "in series" was a minimum. This item's ORIGINAL verdict (short by one to two orders of magnitude) is restored.** **§202: `alarmLinkRod` is bushed in both plates and off the report (foot overhang λₑ 26.6); the shaft carries three hangers and its two equal 14.70 u spans govern at λ 59.6 — and λ ≤ 27 there wants r ≥ 0.2722, INSIDE the 0.2850 corridor for the first time.** The section fix is legal now and deliberately not taken: at r 0.28 the tail blade governs alone at ≈ 65 mN against the window's 50. What remains is sizing tail and shaft together so the chain lands inside 5–50 mN |
-| 17 | MOSTLY CLOSED | The hammer still strikes in-plane, so a curved bar's own modes would sit above the straight-bar figures. §197 closed the rest: the strike's excitation weighting across modes and the two synthesised gains are derived now, and the pitch's own bound moved out to item 127 |
+| 17 | CLOSED | §253 solved the wire as the arc it is cut as (Love's thin-arch in-plane modes, exact for a circular arc): f₁ **+1.9%**, f₂ **−9.5%** against the straight law at the same length, so the second partial is 5.57× the first and not 6.27×; the design arc 55.27 → **55.80°**, the head matched to the arc fundamental's **0.296 M** (32.9 → 39.3 mg), the radiation integral the arc's; level 24.6 dBA. §56 took the ratios from the bar, §197 the excitation and the mix; the pitch's bound closed as item 127 |
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
@@ -2474,7 +2474,7 @@ the tab against a 5–50 mN window. The remaining work is to size the tail and
 the shaft TOGETHER so the chain lands inside the window; until then the waiver
 stays, and its comment in `inspect.js` carries these numbers.
 
-## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
+## 17. CLOSED (§253) — the gong's sound is not derived from the gong
 
 `sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
 musically ("A6-ish, a small bell" says the comment). The gong's actual
@@ -2534,19 +2534,52 @@ spectrum, and each partial's synthesised amplitude set to √(its radiated
 power) referred to the loudest. `0.30` survives as the overall LEVEL
 (§56's chosen gain), which is a volume and not a claim about the wire.
 
-Still open, and now two separate things:
+**§253 closed the curvature half, and with it the item.** The residue was
+one clause — the hammer strikes in-plane and `gongModes()` used straight-bar
+figures — and the note above it was wrong in both directions at once. Solved
+as what it is cut as (Love's thin-arch equations for a clamped-free circular
+arc — exact, because a circular arc makes the coefficients constant:
+`GONG_ARCH` propagates the six-state system by matrix exponential and bisects
+the free-end determinant), at the shipped 55° the fundamental sits **1.9%
+ABOVE** the straight figure and the second mode **9.5% BELOW** it — "somewhat
+above" held for the partial the arc is cut for and not for the one the ear
+mostly hears. The ratios are **1 : 5.57 : 16.4** now, not 1 : 6.27 : 17.55.
+Three consequences were carried, none re-tuned:
 
-- **The hammer strikes in-plane**, and a curved bar's in-plane modes sit
-  above the straight-bar figures `gongModes()` uses — the curvature term
-  is still missing. Unchanged by §197, which reused the same law.
-- **The strike's ENERGY is still not derived** — item 17's own ledger said
-  so and it is still true, now with a number on it: item 128.
-- **The DESIGN question moved to item 127**, where it belongs: §197
-  measured why the arc cannot shorten to the ear's optimum (the plate's
-  balance opening offers no stud station), so "should the default arc be
-  ~45°" is answerable at last and the answer is "not without moving where
-  the foot lands". Item 126 carries the other half — that the wire is not
-  what makes a real alarm loud.
+- the design arc that rings 2500 Hz lengthened from 55.27° to **55.80°**
+  (`aesthetics.gong.arcDeg`), and the length, the block's radius and the
+  ring's radius became one fixed point — the arch's f₁ reads R, R reads the
+  block, the block reads L through the clamp condition's ¼ power — that
+  closes in two rounds and warns if it does not;
+- the fundamental's modal mass is **0.2957 M**, not M/4 (the arc's tangential
+  motion carries inertia a straight shape has none of), so the impedance
+  match the head is solved to moved with it: 32.9 → **39.3 mg**, H 4.24 →
+  4.63 u, μ 1.18 → 1.19, the band still not binding; and the strike's energy
+  partition divides by each mode's own modal mass, which it never had to
+  while every one was M/4;
+- the radiation integral is the arc's — dipoles normal to a wire that turns
+  through 55°, the azimuth integral done exactly by a Bessel series — and at
+  the same tip velocity the loud second mode radiates **0.64×** what the
+  straight line credited it. The level landed at **24.6 dBA** against §198's
+  24.4: a heavier blow and a less efficient second partial offsetting.
+
+Held by `probe-253-arch-modes.mjs` — the straight limit returns §56's roots
+to 1e-4 and the modal fraction to ¼, a Rayleigh–Ritz solve by a second
+method lands on the same Ω to 1e-8, the characteristic cubic's S → ∞ root is
+the textbook inextensional ring, and the arc integral returns §197's line
+integral when flattened and a brute-force sphere at the shipped arc — and by
+`probe-197-gong-loudness.mjs`, whose second reader is now the Rayleigh–Ritz
+arch and a brute-force sphere. What the law still assumes, named:
+Euler–Bernoulli (no shear deformation, no rotary inertia), exactly as §56
+assumed it — a few percent on the ultrasonic modes at L/d = 16 and nothing
+on the two that are heard; and a sixth mode at 76 kHz, strongly coupled
+(tangential inertia share 0.49) where the straight table had none, inaudible
+and reported with that share.
+
+What this item never claimed stays where it was filed: the strike's ENERGY
+is item 128, the wire's inability to be loud on its own is item 126, and the
+design question (should the arc be the ear's) closed as item 127 by way of
+§198.
 
 ## 19. CLOSED — the selector's sensing pin never touched the ring it read
 

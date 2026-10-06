@@ -30905,3 +30905,138 @@ move.
   efficiency the source had (`ALARM_GOV_MESH_EFF`), which `FRICTION` does not
   yet subsume.
 - Tiers one and three of this entry, in the roadmap.
+
+## §253 — The gong's voice carries the curvature term: in-plane modes of the clamped-free arc, and the modal mass the head is matched to
+
+TODO 17's last open clause, written into the item on the day it was filed:
+*the hammer strikes IN-PLANE, and a curved bar's in-plane modes sit somewhat
+above the straight-bar figures, so the derivation should carry the curvature
+term rather than reuse this estimate.* §56 derived the pitch from a STRAIGHT
+clamped-free bar and §197 derived the level on the same law; neither touched
+the fact that the wire is 55° of a circle and the blow is radial. This entry
+solves the wire as the arc it is cut as, and carries what that moves through
+the three places §56 and §197 had spent the straight answer — the design arc,
+the head the blow is matched to, and the radiation integral — rather than
+re-tuning any of them. It closes the item.
+
+### The law, and why it is exact rather than approximate
+
+In-plane motion of a thin circular arch couples bending with stretching along
+the arc. In Love's theory, with u the tangential and w the radial (outward)
+displacement and ' = d/dθ, the membrane strain is ε = (u' + w)/R and the
+change of curvature κ = (u' − w'')/R²; nondimensionalised by Ω = ρAω²R⁴/EI
+and S = (R/k)² = EAR²/EI (k the section's radius of gyration, d/4 for round
+wire), the equations of motion are
+
+    S(u'' + w') + u''  − w'''  + Ω u = 0
+   −S(u' + w)  + u''' − w'''' + Ω w = 0
+
+clamped at θ = 0 (u = w = w' = 0) and free at θ = α (N: u' + w = 0,
+M: u' − w'' = 0, Q: u'' − w''' = 0). Because the arc is CIRCULAR every
+coefficient is constant, so the solution is exact and `GONG_ARCH` treats it
+that way: the six-state system z' = A·z is propagated across the arc by the
+matrix exponential (scaling and squaring, Taylor to fourteen terms — no step
+error), the three free-end conditions make a 3×3 determinant in Ω, and its
+zeros are the modes, found by a sign scan in g = Ω^¼ (≈ βR, the straight
+bar's own variable; the roots sit ~π/α apart and the scan steps a hundredth
+of that) and refined by bisection. Each mode's shape is propagated back for
+its MODAL MASS at unit radial tip, ∫(u² + w²) — the tangential motion carries
+inertia the straight law's L/4 never counted — and the share of that inertia
+that is tangential. The characteristic cubic,
+
+    S p³ + (Ω + 2S) p² − ((S + 1)Ω − S) p − Ω(Ω − S) = 0        (p = λ²),
+
+is the entry's textbook anchor: at S → ∞ its root p = −n² gives the closed
+inextensional ring's Ω = n²(n² − 1)²/(n² + 1), and at R → ∞ it factors into
+the straight bar's β⁴ = ρAω²/EI and the axial wave. Shear deformation and
+rotary inertia are neglected exactly as §56 neglected them (Euler–Bernoulli);
+at L/d = 16 that is a few percent on the ultrasonic modes and nothing on the
+two that are heard.
+
+### What it found, at the shipped arc (S = 4415, α = 55.8°)
+
+| | straight law (§56) | the arc (§253) | term |
+|---|---|---|---|
+| f₁ | 2452.7 Hz | **2500.2 Hz** | **+1.94%** |
+| f₂ | 15370.5 Hz | **13917.3 Hz** | **−9.45%** |
+| f₃ | 43038 Hz | 41054 Hz | −4.6% |
+| f₂/f₁ | 6.27 | **5.57** | |
+| m₁/M | 0.250 | **0.2957** | the tangential motion's inertia |
+| tangential tip motion, mode 1 | 0 | 0.40 of the radial | |
+
+The note in the item had the sign right for the fundamental and wrong for the
+second partial, which is the one the ear mostly hears: the arc raises f₁ and
+LOWERS f₂, so the inharmonic ratio §56 was built on is 5.57 here, not 6.27. A
+sixth mode appears at 76 kHz between the third and fourth straight-bar roots,
+strongly coupled (tangential inertia share 0.49, radial tip motion 0.68 of
+the tangential) — real, inaudible, in the table with its share.
+
+### Three consequences, carried rather than re-tuned
+
+**The design arc.** The arc that rings 2500 Hz is longer on the arch law than
+on the straight one, 55.27° → **55.80°** — and solving it stopped being a
+one-liner. The arch's f₁ depends on the ring's RADIUS (through S and α), the
+radius on the block's radius (`GONG_R = R_ANNULUS_OUT − GONG_POST_R`), and the
+block's radius on the wire's length through §198's clamp condition
+(L_wire/L_stud)^¼. `GONG_DESIGN` iterates the three from §56's straight
+length — Newton on f₁ ∝ L⁻² inside, the ¼ power making each outer round a
+contraction by ~1e-3 — and closes in two rounds and seven solves; it warns
+if it does not. `aesthetics.gong.arcDeg` moved to the new derivation, the
+boot assert on it unchanged.
+
+**The head.** §198 solved the hammer head to the impedance match, "a quarter
+of the design wire's mass" because a straight bar's modal mass is M/4 for
+every mode. The arc's fundamental is 0.2957 M, so the match moved with the
+law it was derived from: head 32.9 → **39.3 mg**, H 4.24 → 4.63 u (the band
+still not binding — owner `impedance match`), μ 1.18 → 1.19. The §198 assert
+now compares the cut head against `designModalMass_mg` directly. The strike's
+energy partition divides by each mode's modal mass too — J²φ_n(tip)²/2m_n per
+mode, which was uniform across modes only while every m_n was M/4.
+
+**The radiation.** §197 integrated a LINE of transverse dipoles. The arc's
+elements are still dipoles normal to the wire — a cylinder's added mass is
+for transverse motion, so the tangential component radiates nothing — but
+the normal turns through the arc and the elements sit on a circle, so for
+r̂ = (sinϑ cosϕ, sinϑ sinϕ, cosϑ)
+
+    F(ϑ, ϕ) = R·sinϑ · ∫₀^α φ(θ)·cos(ϕ−θ)·e^{−ikR sinϑ cos(ϕ−θ)} dθ
+
+and the ϕ-integral of |F|² is done exactly by Jacobi–Anger,
+cosψ·e^{−iz cosψ} = Σ (−i)^{m−1} J′_m(z) e^{imψ}, so with one Fourier
+transform of the shape per mode (Φ_m = ∫φ·e^{−imθ}dθ)
+∫|F|²dϕ = 2πR² sin²ϑ Σ_m J′_m(kR sinϑ)² |Φ_m|² — no azimuth grid, the
+highest mode's kR = 47 costing a longer Bessel recurrence rather than a
+finer mesh. At the same tip velocity the loud second mode radiates **0.64×**
+what the straight line credited it, the fundamental 1.06×. The level landed
+at **24.6 dBA** against §198's 24.4 — a heavier blow (14.95 nJ against
+12.47) and a less efficient second partial, offsetting.
+
+### Held by
+
+`tools/probe-253-arch-modes.mjs` (acceptance), calling the build's own
+functions through `__clock.gongArch` rather than a copy: (1) the straight
+limit — at the shipped length and α → 0 the first three roots return to
+§56's β_nL to 1e-4 and the modal fraction to ¼ to 1e-3, the deviation
+falling monotonically as the arc flattens (1.6e-3 → 4.1e-6); (2) a second
+method — a Rayleigh–Ritz solve of the same energy (Legendre basis, Gauss
+quadrature, Cholesky + Jacobi, nothing shared with the shooting) lands on the
+same Ω to 1e-8 and the same modal fraction to 1e-6 on six modes; (3) the
+cubic's S → ∞ root is the inextensional ring to 1e-9; (4) the arc's
+radiation series, flattened, returns §197's line integral to 2e-5 in power
+and 8e-3 in peak; (5) at the shipped arc it agrees with a brute-force sphere
+quadrature to 1e-8 in power; (6) the design point — fixed point closed, foot
+walked 0°, f₁ 2500.2 Hz, f₂/f₁ 5.566, head on the design wire's fundamental
+modal mass. `tools/probe-197-gong-loudness.mjs` keeps its role as the
+second reader off the metal and now reads the arc by Rayleigh–Ritz and the
+sphere by brute force: fundamental, second partial, modal fraction and the
+second partial's power all against the declared payload (5.8e-7, 5.6e-7,
+2.1e-8, 5.1e-3). `probe-198-lifting-lever.mjs` holds f₁ on the target as
+before. The explainer's PLATE 2 ports `GONG_ARCH` verbatim, so the slider's
+readout is the arch law and the ratio beside f₂ is the arc's at that arc.
+
+### What it leaves
+
+Nothing of TODO 17's. The strike's ENERGY is item 128's, the case path item
+126's, and the level is still the wire alone. The sixth mode and the
+Euler–Bernoulli assumption are named in the item and in `GONG_ARCH`'s
+comment as what the law still assumes, not as debt.
