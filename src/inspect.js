@@ -4610,13 +4610,12 @@ export const PLATE_SEATS = [
 ];
 export const PLATE_CLEARANCE_DEBT = [
   // Frozen at the arrival depth (the measured minimum over digestPoses, rounded
-  // DOWN to 1e-4), each citing TODO 209's fix path.
-  { unit: "Winding clutch", mesh: "clutchRim", floor: 0.0459, todo: 209 },
-  { unit: "Keyless works", mesh: "windingPinion", floor: 0.0459, todo: 209 },
+  // DOWN to 1e-4), each citing TODO 209's fix path. TODO 211 retired the
+  // keyless stem's three (clutchRim, windingPinion 0.0459, windPinionSaw
+  // 0.0999) by deriving Z_KEYLESS off the plate's dial face (layout.js).
   { unit: "Fusee & great wheel", mesh: "ExtrudeGeometry#2", floor: 0.0751, todo: 209 },
   { unit: "Keyless works", mesh: "transferWheel", floor: 0.0751, todo: 209 },
   { unit: "Case", mesh: "caseLug", floor: 0.0905, todo: 209 },
-  { unit: "Keyless works", mesh: "windPinionSaw", floor: 0.0999, todo: 209 },
 ];
 const plateRowKey = (unit, mesh) => `${unit} / ${mesh}`;
 
@@ -6177,6 +6176,26 @@ export const STEM_CLUTCH_HANDOFFS = [
     unitA: 'Winding clutch', meshA: 'clutchSaw',
     unitB: 'Keyless works', meshB: 'windPinionSaw',
     expect: { seated: 'contact', backlash: 'contact', camming: 'contact', pulled: 'free' },
+  },
+  // TODO 211 — the FORK, at both crown parities. The yoke spring holds the
+  // prong on collar In's outboard face whenever the crown is home — seated,
+  // in the backlash, and riding a cam-over, where the clutch carries the yoke
+  // out with it — and pulled, the setting lever has driven the prong across
+  // the groove's play onto collar Out's inboard face, which is what put the
+  // clutch at its setting station. Each face is FREE in the other parity by
+  // that play (≈ 0.1 less two reliefs). Before these rows the prong stood
+  // 0.137–0.19 off both collars at every pose and nothing asked.
+  {
+    label: 'yoke prong ⇄ collar In (the spring seats the clutch)',
+    unitA: 'Yoke', meshA: 'yokeProng',
+    unitB: 'Winding clutch', meshB: 'clutchHubCollarIn',
+    expect: { seated: 'contact', backlash: 'contact', camming: 'contact', pulled: 'free' },
+  },
+  {
+    label: 'yoke prong ⇄ collar Out (the fork pulls the clutch)',
+    unitA: 'Yoke', meshA: 'yokeProng',
+    unitB: 'Winding clutch', meshB: 'clutchHubCollarOut',
+    expect: { seated: 'free', backlash: 'free', camming: 'free', pulled: 'contact' },
   },
 ];
 
@@ -13218,12 +13237,10 @@ export const RESTORING_REACH_WAIVERS = {
   // spring of its own in the metal: §48's guard passed it because a mesh of
   // that name exists.
   'Maintaining detent\u0000click': 'TODO 210',
-  // Also found on the first run, through the `through` hop: the yoke's blade
-  // reaches the yoke (0 — the 'Yoke' row), but the yoke's prong stands at
-  // best 0.137 off the clutch's groove collars over the whole net, so the
-  // return the row describes ("the yoke spring re-seats it through the fork")
-  // passes through a fork that touches nothing — TODO 194's class, again.
-  'Winding clutch\u0000clutchSleeve': 'TODO 211',
+  // (TODO 211's row — 'Winding clutch' through the yoke's prong, which stood
+  // 0.137 off both collars over the whole net — is retired: the prong bears on
+  // a collar face at every pose now, and the clutch's station is solved from
+  // it. stemClutchHandoff's two fork rows hold the contact at both parities.)
 };
 export async function measureSpringReach(clock, rows = null) {
   const unitObj = new Map((clock.labelEntries || []).map((e) => [e.name, e.obj]));

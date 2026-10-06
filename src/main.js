@@ -65,6 +65,7 @@ import {
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, HUB_COLLAR_BORE_R, STEM_SQ_BORE_REACH, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
+  YOKE_PRONG_SEGMENTS, HUB_COLLAR_SEGMENTS, YOKE_BEARING_LATERAL, YOKE_A_SEAT, YOKE_A_FULL, yokeProngSupport, yokeClutchAt,   // TODO 211: the fork bears on a cut collar face, and the clutch is where it puts it
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
@@ -76,6 +77,7 @@ import {
   SLENDER_OVERHANG_K,                         // §54: an overhang's effective length — §36 sizes against what the check MEASURES
   SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
+  BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -2135,7 +2137,13 @@ const KW_SPEC = {
     rimBack: KW_SPEC.clutchRim.zWebHi - KW_SPEC.clutchRim.zWebLo,
     rimTip: KW_SPEC.clutchRim.zWebLo - KW_SPEC.clutchRim.zTipLo,
     setTipR: KW_SPEC.settingWheel.tipR,
+    tipR: KW_SPEC.windPinion.tipR,
   };
+  // TODO 211 — tipR is one row for two cones, because the keyless plane's
+  // ceiling (Z_KEYLESS) reads it for both: hold the rim to the same figure.
+  if (Math.abs(KW_SPEC.clutchRim.tipR - KW_BEVEL.tipR) > 5e-6)
+    console.warn(`TODO 211 keyless bevel: the clutch rim's tip circle ${KW_SPEC.clutchRim.tipR.toFixed(6)} is not the `
+      + `pinion's KW_BEVEL.tipR ${KW_BEVEL.tipR} that the keyless plane is cut against`);
   for (const [k, v] of Object.entries(want))
     if (Math.abs(v - KW_BEVEL[k]) > 5e-6)
       console.warn(`TODO 136 keyless bevel: layout.js declares KW_BEVEL.${k} = ${KW_BEVEL[k]} but the cut `
@@ -2742,15 +2750,9 @@ const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW
 // the PLANE, never the mesh — the two constants below are that plane, and the
 // geometry fingerprint is what proves the deferral cost nothing: the shipped
 // movement hashes exactly as it did with the cut up here.
-// TODO 202 — the plate's two FACES are the datums, and the thickness is what
-// lies between them. The movement side is z 0, which every train part, cock
-// leg and pillar seats off (PLATE_TOP). The dial side is z −2.3: until TODO 202
-// the extrude's bevel stood proud of a nominal [−2, 0] slab, and the face it
-// actually presented at −2.3 is what the whole dial-side stack was solved
-// against (TODO 153's PLATE_BACK_FACE, §234's guard, TODO 172's pockets). The
-// builder now cuts the finished plate, so the slab is declared as the metal
-// those solves already stand on: 2.3 u = 0.872 mm, centred at −1.15.
-const BACK_PLATE_T = 2.3;
+// TODO 202 — the plate's two FACES are the datums; BACK_PLATE_T (layout.js
+// since TODO 211, which derives the keyless plane from the dial face) is what
+// lies between them.
 const BACK_PLATE_Z = -BACK_PLATE_T / 2;   // the slab's centre: top face at z 0
 
 // --- the case's RADIAL dimensions (backlog: watch case) — derived once,
@@ -7831,15 +7833,39 @@ const yoke = G.makeYoke({
   prongGap: 0,
   prongH: Z_KEYLESS - Z_YOKE + 0.4,
   prongR: YOKE_PRONG_R,
+  prongSegments: YOKE_PRONG_SEGMENTS,   // TODO 211: layout.js solves the bearing against this polygon
 });
 // Rule 6 — the fork's window has two walls and YOKE_ARM only derives one
-// (the spine margin at mid-stroke). The other: at the stroke ENDS the
-// prong stands farthest from the stem line, and its inner edge must still
-// land inside the collar's face band or the fork tracks nothing there.
+// (the spine margin at mid-stroke). The other was "the prong's inner edge lands
+// inside the collar's band at the stroke ends", and it held while the prong
+// touched nothing (TODO 211): a chord inside the band is the collar's ARRIS,
+// not its face. The wall now is the bearing itself, and layout.js sizes
+// HUB_COLLAR_R to it — so what can drift is the MIRROR: layout.js solves the
+// contact on a copy of this prong's polygon (it cannot import geometry.js),
+// and a re-cut prong would leave the collars sized for a post that is not
+// there. Asserted against the built mesh's own vertices, at the seated
+// station, in the arm's frame (local +Y is the arm; makeYoke's convention).
 {
-  const perpEnd = YK_C - Math.sqrt(YOKE_ARM ** 2 - (CLUTCH_TRAVEL / 2) ** 2);
-  if (!(perpEnd - YOKE_PRONG_R < HUB_COLLAR_R))
-    console.warn(`TODO 50: fork prong inner edge ${(perpEnd - YOKE_PRONG_R).toFixed(3)} at the stroke ends — outside the collar's ${HUB_COLLAR_R} face band, the fork tracks nothing there`);
+  const prong = yoke.getObjectByName('yokeProng');
+  const pos = prong.geometry.attributes.position;
+  const a = YOKE_A_SEAT, drop = Math.sqrt(YOKE_ARM ** 2 - a ** 2);
+  const ey = [a / YOKE_ARM, drop / YOKE_ARM], ex = [ey[1], -ey[0]];
+  let sMin = Infinity, lAt = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + prong.position.x, y = pos.getY(i) + prong.position.y - YOKE_ARM;
+    const sv = a + x * ex[0] + y * ey[0], lv = (YK_C - drop) - (x * ex[1] + y * ey[1]);
+    if (sv < sMin - 1e-12 || (Math.abs(sv - sMin) <= 1e-12 && lv > lAt)) { sMin = sv; lAt = lv; }
+  }
+  const want = yokeProngSupport(a, -1);
+  if (Math.abs(sMin - want.s) > 1e-6 || Math.abs(lAt - want.l) > 1e-6)
+    console.warn(`TODO 211 fork: the built prong bears at along ${sMin.toFixed(5)}, lateral ${lAt.toFixed(5)}, `
+      + `but layout.js solved ${want.s.toFixed(5)}, ${want.l.toFixed(5)} — HUB_COLLAR_R is sized for a prong that is not the cut`);
+  // …and the derivation's own claim, restated as the number it buys: the face
+  // under the bearing generator by the two running fits, at the inradius.
+  const land = HUB_COLLAR_R * Math.cos(Math.PI / HUB_COLLAR_SEGMENTS) - YOKE_BEARING_LATERAL;
+  if (!(land >= (SAW_FIT + PIVOT_BORE_CLEAR) / 2 - 1e-9))
+    console.warn(`TODO 211 fork: the collar's face reaches only ${land.toFixed(4)} past the prong's bearing line `
+      + `(${YOKE_BEARING_LATERAL.toFixed(4)} from the stem) against the ${((SAW_FIT + PIVOT_BORE_CLEAR) / 2).toFixed(3)} the two fits can float it — the fork bears on the arris`);
 }
 const yokeGroup = new THREE.Group();
 yokeGroup.position.set(yokePivot.x, yokePivot.y, Z_YOKE);
@@ -8004,8 +8030,8 @@ windClutchMount.add(windClutch);
   // itself, not merely into the sleeve's now-larger OD (see layout.js's
   // comment on the constant for the retired 0.62/0.75 pair this replaces).
   {
-    const shape = new THREE.Shape(loopPts(HUB_COLLAR_R, 20));
-    const hole = new THREE.Path(loopPts(HUB_COLLAR_BORE_R, 20).reverse()); // hole winds opposite the outer loop
+    const shape = new THREE.Shape(loopPts(HUB_COLLAR_R, HUB_COLLAR_SEGMENTS));   // TODO 211: HUB_COLLAR_R is sized at THIS polygon's inradius
+    const hole = new THREE.Path(loopPts(HUB_COLLAR_BORE_R, HUB_COLLAR_SEGMENTS).reverse()); // hole winds opposite the outer loop
     shape.holes.push(hole);
     const geo = new THREE.ExtrudeGeometry(shape, { depth: HUB_COLLAR_T, bevelEnabled: false });
     geo.translate(0, 0, -HUB_COLLAR_T / 2);
@@ -8017,6 +8043,34 @@ windClutchMount.add(windClutch);
       windClutch.add(hub);
     }
   }
+}
+// TODO 211 — THE KEYLESS PLANE'S CEILING, HELD ON THE METAL. Z_KEYLESS is
+// derived (layout.js) from KEYLESS_STACK_R, the stem stack's widest radius, so
+// no member of the pinion or the clutch may reach farther from the stem than
+// that. Radius about the stem is invariant under the members' spin and slide,
+// so this reads every vertex in its group's own frame (local +Y is the stem)
+// and holds at every pose — the plate gap the battery's plateSeats measures
+// over the pose net is then the margin the derivation wrote down.
+{
+  const _m = new THREE.Matrix4(), _inv = new THREE.Matrix4(), _v = new THREE.Vector3();
+  let worst = 0, who = '';
+  for (const grp of [windPinionGroup, windClutch]) {
+    grp.updateWorldMatrix(true, true);
+    _inv.copy(grp.matrixWorld).invert();
+    grp.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position) return;
+      _m.multiplyMatrices(_inv, o.matrixWorld);
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        _v.fromBufferAttribute(pos, i).applyMatrix4(_m);
+        const r = Math.hypot(_v.x, _v.z);
+        if (r > worst) { worst = r; who = o.name; }
+      }
+    });
+  }
+  if (worst > KEYLESS_STACK_R + 1e-6)
+    console.warn(`TODO 211: ${who} reaches ${worst.toFixed(6)} from the stem, past KEYLESS_STACK_R `
+      + `${KEYLESS_STACK_R.toFixed(6)} — Z_KEYLESS is cut against a stack narrower than the metal and the plate gap is under CLEAR_MARGIN`);
 }
 // The stem's SQUARE — the keyed joint's metal, on the spinner where the
 // clutch rides. Side from the stem's own circle (inscribed square,
@@ -8084,7 +8138,7 @@ const YOKE_SPRING_R = 1.55;   // arc about the pivot: the 1.0 pivot jewel settin
   yokeGroup.add(arc);
   // …and the post its fixed end reacts on: movement-frame, on the arm's
   // seated line one blade past the arc, from the plate's back face down.
-  const postAz = yokeAngleAt(0) - Math.PI / 2; // world azimuth of the local −Y arm line at seat
+  const postAz = yokeAngleAt(YOKE_A_SEAT) - Math.PI / 2; // world azimuth of the local −Y arm line at seat (TODO 211: the prong bearing on collar In)
   const pr = YOKE_SPRING_R + SPRING_FLAT_U / 2 + PIVOT_MIN_U;
   const postLen = Math.abs(Z_KEYLESS - Z_YOKE) + 0.9;
   const sp = new THREE.Mesh(new THREE.CylinderGeometry(PIVOT_MIN_U, PIVOT_MIN_U, postLen, 10), MATS.blueSteel);
@@ -45264,9 +45318,14 @@ function tick(t) {
   // the coupling is clear of itself and a parked mid-ramp slip lifts
   // nothing (the first cut added the full lift at every pull, and the
   // pulled clutch overshot the setting station into the wheel by it).
-  const sawLift = Math.max(0,
-    sawCouplingLiftAt(STEM_SAW_SPEC, stemSlipLocal() + sawSeatOffset(STEM_SAW_SPEC, windSign))
-    - crownPullT * CLUTCH_TRAVEL);   // TODO 115 — the profile's own sense, at the same seat offset the rings are clocked to
+  // TODO 211 — and the separation is no longer the tick's to write: the
+  // CLUTCH IS WHERE THE FORK PUTS IT. `yokeClutchAt` (layout.js) takes the
+  // pull through the setting lever's law to the prong, the prong across the
+  // groove's play to collar Out, and returns the clutch's offset as the
+  // farther of that push and the ramps' raw lift — the yoke spring holding the
+  // prong on collar In, so a cam-over carries the yoke out with it.
+  const sawLiftRaw = sawCouplingLiftAt(STEM_SAW_SPEC, stemSlipLocal() + sawSeatOffset(STEM_SAW_SPEC, windSign));   // TODO 115 — the profile's own sense, at the same seat offset the rings are clocked to
+  const fork = yokeClutchAt(crownPullT, sawLiftRaw);
   // §99's face-relief convention, at the coupling: the analytic seat would
   // park the pair plane-on-plane twice over (tip flats on valley flats in
   // z, drive faces in θ), and exactly-coincident planes are the one case
@@ -45276,7 +45335,7 @@ function tick(t) {
   // it) axially and the same in clocking, an order under
   // HANDOFF_TRACK_TOL (0.03) so every declared contact still measures
   // shut — while the tick's laws read the exact slip.
-  const clutchDist = clutchHomeDist + crownPullT * CLUTCH_TRAVEL + sawLift + SEAT_RELIEF;
+  const clutchDist = clutchHomeDist + fork.c + SEAT_RELIEF;
   windClutch.position.set(uWind.x * clutchDist, uWind.y * clutchDist, Z_KEYLESS);
 
   // Setting-lever linkage: the lever's angle is SOLVED from where the stem's
@@ -45294,10 +45353,11 @@ function tick(t) {
   // required to explain the reversal. (The setting-lever DETENT that holds
   // each position is a separate mechanism, and a separate question.)
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
-  // TODO 50 — the fork follows the CLUTCH, not the stem: pull plus the saw
-  // lift's share of the stroke, so a cam-over reaches the yoke through the
-  // same angle law that tracks the slide (no second law, no keyframe).
-  yokeGroup.rotation.z = yokeAngleAt(crownPullT + sawLift / CLUTCH_TRAVEL);
+  // TODO 211 — the fork's angle is the prong's SOLVED station (above): bearing
+  // on collar In seated and through a cam-over, on collar Out pulled, crossing
+  // the play between — one law that also placed the clutch, so the two cannot
+  // disagree about where the fork is.
+  yokeGroup.rotation.z = yokeAngleAt(fork.a);
   updateStopWork(hackPinWorldAt(crownPullT));
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
