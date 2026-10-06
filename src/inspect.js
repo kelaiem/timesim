@@ -4600,6 +4600,11 @@ export const PLATE_SEATS = [
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger3", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkRodBushBack", kind: "pivot", why: "the link rod's back bush, a running fit in the plate" },
+  // TODO 209 — two arrival "debt" rows that are bore fits, not clearances: each
+  // shaft passes THROUGH the plate, and the reading is its radial gap to the
+  // bore wall, a running fit (0.0497, 0.0998), not a part that should clear it.
+  { unit: "Keyless works", mesh: "transferArbor", kind: "pivot", why: "the transfer arbor, running through its plate bore from the crown wheel below to the transfer wheel above" },
+  { unit: "Alarm winding train", mesh: "CylinderGeometry#0", kind: "pivot", why: "the climb arbor's rod, running through its plate bore (contrate below, pinion above)" },
   { unit: "Case", mesh: "caseMiddle", kind: "housed", why: "the case middle's ledge, which the plate's rim sits on" },
   { unit: "Case", mesh: "caseClampScrew", kind: "fastened", why: "the clamp screws, through the rim's bores (§186)" },
 ];
@@ -4608,16 +4613,10 @@ export const PLATE_CLEARANCE_DEBT = [
   // DOWN to 1e-4), each citing TODO 209's fix path.
   { unit: "Winding clutch", mesh: "clutchRim", floor: 0.0459, todo: 209 },
   { unit: "Keyless works", mesh: "windingPinion", floor: 0.0459, todo: 209 },
-  { unit: "Keyless works", mesh: "transferArbor", floor: 0.0497, todo: 209 },
   { unit: "Fusee & great wheel", mesh: "ExtrudeGeometry#2", floor: 0.0751, todo: 209 },
   { unit: "Keyless works", mesh: "transferWheel", floor: 0.0751, todo: 209 },
   { unit: "Case", mesh: "caseLug", floor: 0.0905, todo: 209 },
-  { unit: "Alarm winding train", mesh: "CylinderGeometry#0", floor: 0.0997, todo: 209 },
   { unit: "Keyless works", mesh: "windPinionSaw", floor: 0.0999, todo: 209 },
-  { unit: "Set-up work", mesh: "BoxGeometry#0", floor: 0.0999, todo: 209 },
-  { unit: "Alarm winding arrest", mesh: "genevaFingerDisc", floor: 0.0999, todo: 209 },
-  { unit: "Alarm winding arrest", mesh: "genevaFingerPin", floor: 0.0999, todo: 209 },
-  { unit: "Alarm winding arrest", mesh: "alarmArrestCross", floor: 0.0999, todo: 209 },
 ];
 const plateRowKey = (unit, mesh) => `${unit} / ${mesh}`;
 

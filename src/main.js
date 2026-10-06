@@ -10987,9 +10987,15 @@ const setupWork = new THREE.Group();
   // plate (Z_RATCHET_BOT — the winding spur's convention). No cap: the
   // ratchet is captive between the plate below and the arbor's shoulder
   // above. All STATIC — the arbor does not turn in service.
-  const sqH = RATCHET_T + 0.2;
+  // TODO 209 — the square starts at the ratchet's own floor, Z_RATCHET_BOT, one
+  // margin off the plate. It ran 0.05 below it, which stood its end 0.1 off the
+  // plate face, under the margin the ratchet it carries was placed at; the
+  // square fills the ratchet's bore, so ending flush with it is a seat, not a
+  // coplanar overlap. Its top (0.15 above the ratchet, the arbor's shoulder)
+  // is unchanged.
+  const sqH = RATCHET_T + 0.15;
   const square = new THREE.Mesh(new THREE.BoxGeometry(SQ, SQ, sqH), MATS.steel);
-  square.position.z = Z_RATCHET_BOT - 0.05 + sqH / 2;
+  square.position.z = Z_RATCHET_BOT + sqH / 2;
   az.add(square);
   const ratchet = G.makeRatchetAndClick({ radius: ratchetR, teeth: SETUP_RATCHET_TEETH, thickness: RATCHET_T, includeClick: false, squareBore: SQ });
   ratchet.position.z = Z_RATCHET_BOT;
@@ -26538,8 +26544,14 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // below the pinion but not through it. Asking only for planes ABOVE, which
   // is what the tower's shape suggests, left no plane at all once the ceiling
   // was known: the pinion's band ends at 7.62 and the ceiling starts at 7.97.
+  // TODO 209 — and the FLOOR is the base plate's face plus the one margin.
+  // It was `PLATE_Z + 0.6`, the studs' plant depth plus a literal 0.1, which put
+  // the lowest plane (the one the solve takes) 0.1 off the plate: the cross,
+  // the finger and its pin stood under CLEAR_MARGIN of it, and `plateSeats`
+  // froze all three as debt on arrival.
+  const FLOOR_Z = ALARM_U_FLOOR + M;
   const planes = [];
-  for (let z = PLATE_Z + 0.6; z <= CEIL_Z - ARREST_PLATE_T * 2; z += 0.25) {
+  for (let z = FLOOR_Z; z <= CEIL_Z - ARREST_PLATE_T * 2; z += 0.25) {
     if (z + ARREST_PLATE_T > SUB_OUT_Z - T / 2 - M && z < SUB_OUT_Z + T / 2 + M) continue;
     planes.push(+z.toFixed(3));
   }
