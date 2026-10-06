@@ -4618,7 +4618,6 @@ export const PLATE_CLEARANCE_DEBT = [
   // 0.0999) by deriving Z_KEYLESS off the plate's dial face (layout.js).
   { unit: "Fusee & great wheel", mesh: "ExtrudeGeometry#2", floor: 0.0751, todo: 209 },
   { unit: "Keyless works", mesh: "transferWheel", floor: 0.0751, todo: 209 },
-  { unit: "Case", mesh: "caseLug", floor: 0.0905, todo: 209 },
 ];
 const plateRowKey = (unit, mesh) => `${unit} / ${mesh}`;
 

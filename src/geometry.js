@@ -8,7 +8,7 @@ import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
-  CASE_SPRING_BAR_D, CASE_BAR_REACH, CASE_LUG_REACH } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190: the lug/bar stock, one declaration
+  CASE_SPRING_BAR_D, CASE_BAR_REACH, CASE_LUG_REACH, caseLugRootR } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190: the lug/bar stock, one declaration
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -10327,10 +10327,12 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
       // each one stands ±lugCtrSpan/2 off the pair axis, where the band has
       // fallen away from R_OUT to the chord depth sqrt(R_OUT² − off²) —
       // ~9 units at the 20 mm interior spec. Root the foot CASE_LUG_ROOT
-      // past THAT surface, put the tip at R_OUT + CASE_LUG_REACH, and let
-      // the length derive.
-      const surfR = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0));
-      const root = surfR - CASE_LUG_ROOT, tip = R_OUT + CASE_LUG_REACH;
+      // past THAT surface — unless the back bore, risen to its own chord
+      // depth at the lug's inboard face, leaves less wall than that
+      // (caseLugRootR) — put the tip at R_OUT + CASE_LUG_REACH, and let the
+      // length derive.
+      // TODO 209: capped where the back bore's wall would run out behind it.
+      const root = caseLugRootR(off, R_OUT, R_BORE_BACK), tip = R_OUT + CASE_LUG_REACH;
       const lug = new THREE.Mesh(new THREE.BoxGeometry(CASE_LUG_T, tip - root, CASE_LUG_W), material);
       lug.position.set(u.x * (root + tip) / 2 + perp.x * off,
                        u.y * (root + tip) / 2 + perp.y * off,

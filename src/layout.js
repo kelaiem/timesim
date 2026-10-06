@@ -525,6 +525,22 @@ export const CASE_PUSHER_D = 1.2 / UNIT_MM;
 export const CASE_LUG_T = 1.2 / UNIT_MM;      // lug thickness across the strap — stamped-lug plate stock
 export const CASE_LUG_W = 3.0 / UNIT_MM;      // lug height along z: carries the spring-bar bore with a wall each side ((3.0 − 1.5)/2 = 0.75 mm)
 export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the brazed stamped-lug truth (a 0.3 mm first cut read as floating at screen scale)
+// TODO 209 — the foot's depth is bounded by the wall it is brazed INTO. The
+// lugs stand ±(span + T)/2 off the pair axis, where the back band's bore has
+// risen to the chord depth sqrt(R_BORE_BACK² − x²) — and it rises fastest at
+// the lug's INBOARD face (the smaller |x|), so that corner is where a fixed
+// embed breaks through first. Measured: CASE_LUG_ROOT alone left the corner
+// 0.02 u inside the band and 0.09 u off the plate rim seated in that bore —
+// a solder foot with no wall behind it, under CLEAR_MARGIN to the movement.
+// The root therefore stands one sheet floor (STOCK_MIN_U, §50) of band metal
+// outboard of the bore at that corner whenever the brazed-embed intent would
+// sink it deeper. ONE law for the solid (geometry.js) and the line tier.
+export const caseLugRootR = (off, rOut, rBore) => {
+  const surfR = Math.sqrt(Math.max(rOut * rOut - off * off, 0));
+  const xIn = Math.abs(off) - CASE_LUG_T / 2;
+  const boreR = Math.sqrt(Math.max(rBore * rBore - xIn * xIn, 0));
+  return Math.max(surfR - CASE_LUG_ROOT, boreR + STOCK_MIN_U);
+};
 export const CASE_LUG_Z_OFF = 0.5 / UNIT_MM;  // the lug band's z offset above the ledge plane (the value the pre-§186 seat face had)
 export const CASE_SPRING_BAR_D = 1.5 / UNIT_MM; // Ø1.5 mm — the standard double-flanged spring bar for a 20 mm strap
 // The wrap gap — owner spec 2026-09-01: at least 2.0 mm between case metal
