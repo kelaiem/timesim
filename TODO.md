@@ -17,8 +17,9 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 217 | OPEN | Found closing TODO 215. The maintaining detent's HOLD is unpriced: the maintaining spring is a torus with no torque law, so nothing says what the face pushes into the beak while winding, and the cranked click carries that load as a bent strut (its line of action passes through the stud, not along the arm) |
 | 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
-| 215 | OPEN | Found closing TODO 210. The maintaining detent rides its ring in the LOCKING sense: as the train runs the beak climbs each tooth's 28% face and slides down its 72% ramp (law and metal agree). The ride is not on the cut either: the tip floats 0.04–0.10 over the ramp, the click's body sits up to 0.26 inside the ring mid-climb, and 35% of each tooth the beak hovers 0.311 over the root on the law's `max(…, 0)` floor with no banking cut |
+| 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
 | 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211 |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
 | 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
@@ -121,7 +122,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
 | 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
 | 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%). **TODO 82 re-took the chain: ROD-END-limited at ≈1.58 mN, not tail-limited at ≈48 mN — the stroke every earlier figure used was a deleted constant, and "in series" was a minimum. This item's ORIGINAL verdict (short by one to two orders of magnitude) is restored.** **§202: `alarmLinkRod` is bushed in both plates and off the report (foot overhang λₑ 26.6); the shaft carries three hangers and its two equal 14.70 u spans govern at λ 59.6 — and λ ≤ 27 there wants r ≥ 0.2722, INSIDE the 0.2850 corridor for the first time.** The section fix is legal now and deliberately not taken: at r 0.28 the tail blade governs alone at ≈ 65 mN against the window's 50. What remains is sizing tail and shaft together so the chain lands inside 5–50 mN |
-| 17 | MOSTLY CLOSED | The hammer still strikes in-plane, so a curved bar's own modes would sit above the straight-bar figures. §197 closed the rest: the strike's excitation weighting across modes and the two synthesised gains are derived now, and the pitch's own bound moved out to item 127 |
+| 17 | CLOSED | §253 solved the wire as the arc it is cut as (Love's thin-arch in-plane modes, exact for a circular arc): f₁ **+1.9%**, f₂ **−9.5%** against the straight law at the same length, so the second partial is 5.57× the first and not 6.27×; the design arc 55.27 → **55.80°**, the head matched to the arc fundamental's **0.296 M** (32.9 → 39.3 mg), the radiation integral the arc's; level 24.6 dBA. §56 took the ratios from the bar, §197 the excitation and the mix; the pitch's bound closed as item 127 |
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
@@ -2477,7 +2478,7 @@ the tab against a 5–50 mN window. The remaining work is to size the tail and
 the shaft TOGETHER so the chain lands inside the window; until then the waiver
 stays, and its comment in `inspect.js` carries these numbers.
 
-## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
+## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong — CLOSED (§253)
 
 `sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
 musically ("A6-ish, a small bell" says the comment). The gong's actual
@@ -2537,19 +2538,52 @@ spectrum, and each partial's synthesised amplitude set to √(its radiated
 power) referred to the loudest. `0.30` survives as the overall LEVEL
 (§56's chosen gain), which is a volume and not a claim about the wire.
 
-Still open, and now two separate things:
+**§253 closed the curvature half, and with it the item.** The residue was
+one clause — the hammer strikes in-plane and `gongModes()` used straight-bar
+figures — and the note above it was wrong in both directions at once. Solved
+as what it is cut as (Love's thin-arch equations for a clamped-free circular
+arc — exact, because a circular arc makes the coefficients constant:
+`GONG_ARCH` propagates the six-state system by matrix exponential and bisects
+the free-end determinant), at the shipped 55° the fundamental sits **1.9%
+ABOVE** the straight figure and the second mode **9.5% BELOW** it — "somewhat
+above" held for the partial the arc is cut for and not for the one the ear
+mostly hears. The ratios are **1 : 5.57 : 16.4** now, not 1 : 6.27 : 17.55.
+Three consequences were carried, none re-tuned:
 
-- **The hammer strikes in-plane**, and a curved bar's in-plane modes sit
-  above the straight-bar figures `gongModes()` uses — the curvature term
-  is still missing. Unchanged by §197, which reused the same law.
-- **The strike's ENERGY is still not derived** — item 17's own ledger said
-  so and it is still true, now with a number on it: item 128.
-- **The DESIGN question moved to item 127**, where it belongs: §197
-  measured why the arc cannot shorten to the ear's optimum (the plate's
-  balance opening offers no stud station), so "should the default arc be
-  ~45°" is answerable at last and the answer is "not without moving where
-  the foot lands". Item 126 carries the other half — that the wire is not
-  what makes a real alarm loud.
+- the design arc that rings 2500 Hz lengthened from 55.27° to **55.80°**
+  (`aesthetics.gong.arcDeg`), and the length, the block's radius and the
+  ring's radius became one fixed point — the arch's f₁ reads R, R reads the
+  block, the block reads L through the clamp condition's ¼ power — that
+  closes in two rounds and warns if it does not;
+- the fundamental's modal mass is **0.2957 M**, not M/4 (the arc's tangential
+  motion carries inertia a straight shape has none of), so the impedance
+  match the head is solved to moved with it: 32.9 → **39.3 mg**, H 4.24 →
+  4.63 u, μ 1.18 → 1.19, the band still not binding; and the strike's energy
+  partition divides by each mode's own modal mass, which it never had to
+  while every one was M/4;
+- the radiation integral is the arc's — dipoles normal to a wire that turns
+  through 55°, the azimuth integral done exactly by a Bessel series — and at
+  the same tip velocity the loud second mode radiates **0.64×** what the
+  straight line credited it. The level landed at **24.6 dBA** against §198's
+  24.4: a heavier blow and a less efficient second partial offsetting.
+
+Held by `probe-253-arch-modes.mjs` — the straight limit returns §56's roots
+to 1e-4 and the modal fraction to ¼, a Rayleigh–Ritz solve by a second
+method lands on the same Ω to 1e-8, the characteristic cubic's S → ∞ root is
+the textbook inextensional ring, and the arc integral returns §197's line
+integral when flattened and a brute-force sphere at the shipped arc — and by
+`probe-197-gong-loudness.mjs`, whose second reader is now the Rayleigh–Ritz
+arch and a brute-force sphere. What the law still assumes, named:
+Euler–Bernoulli (no shear deformation, no rotary inertia), exactly as §56
+assumed it — a few percent on the ultrasonic modes at L/d = 16 and nothing
+on the two that are heard; and a sixth mode at 76 kHz, strongly coupled
+(tangential inertia share 0.49) where the straight table had none, inaudible
+and reported with that share.
+
+What this item never claimed stays where it was filed: the strike's ENERGY
+is item 128, the wire's inability to be loud on its own is item 126, and the
+design question (should the arc be the ear's) closed as item 127 by way of
+§198.
 
 ## 19. CLOSED — the selector's sensing pin never touched the ring it read
 
@@ -28695,7 +28729,7 @@ sides of the stem (`SL_C`, `YK_C`), so the linkage has to cross the stem's
 band. That is a P3 question in strata (the lever is at `Z_SETTING_LEVER`, the
 yoke below the collars at `Z_YOKE`). Design it in a line first.
 
-## 215. The maintaining detent rides its ring backwards: the beak climbs each tooth's face and floats over the cut ramp
+## 215. The maintaining detent rides its ring backwards: the beak climbs each tooth's face and floats over the cut ramp — CLOSED
 
 Found closing [TODO 210], measured on the train axis (96 poses over two teeth),
 against both the law and the cut outline (`ratchet`'s authored shape, the
@@ -28715,6 +28749,12 @@ maintaining ring at `MAINT_RING_R` 4.44, root 3.552).
    winding, and the detent sees the ring go forward in running. Both are cut
    `reverse: false`. Nothing in the battery measures a direction (CLAUDE.md's
    direction-guard entry), and this is that class.
+   *Verified closing it:* that is the cause, and the pawls are the right hand —
+   they ride the FLANGE, a separate cut, so the two saws can be handed
+   independently. And the entry missed the CLICK's hand: its tip stood +0.522
+   rad from its stud, on the pawls' side, so when winding back-drives the ring
+   the face would pull the beak AWAY from its stud — the hold in tension, not
+   a strut. Both halves have to turn over together.
 2. **The ride is not on the cut.** While descending the ramp, the law's tip
    stands 0.04–0.10 above the cut surface (r 4.249 against 4.153 at tau 0).
    Mid-climb, the click's body sits up to **0.26** inside the ring. The pair is
@@ -28725,6 +28765,12 @@ maintaining ring at `MAINT_RING_R` 4.44, root 3.552).
    `lift = max(sawRadiusAt − TIP_R, 0)`. Over 35% of each tooth the beak hovers
    at `MAINT_DET_BASE`, 0.311 above the root, with nothing under it and no
    banking cut. Since TODO 210 the blade presses it there with ≈ 10 mN.
+   *Found closing it:* the root seat the fix path offers is IMPOSSIBLE for the
+   straight click, not just a re-solve. The stud stands at r 4.970, 0.53
+   outside the tip circle, so a straight 2.518 bar from there to the root lies
+   ~80° off radial and its body runs through the tooth behind the beak — 0.10
+   to 0.26 inside the ring at every pose. Solved honestly against the polygon,
+   it can only ride the tips (travel 0.048). The click has to be cranked.
 
 **Fix path (P0, the detent group).** Decide the ring's hand from the detent's
 relative motion, and add a direction guard that MEASURES which flank the beak
@@ -28735,6 +28781,110 @@ a real choice: the second grows the travel to 0.353 rad and re-solves TODO
 solve on the cut outline, not the linearised profile. Add a floors row for
 `Maintaining detent ⇄ Fusee & great wheel` that excludes only the beak's
 working contact.
+
+**CLOSED — the ring is cut to the detent's hand, and the click is cut from the
+ring.** The choices taken were the root seat and a cranked click (pivot and cock
+kept where they stood), and thicker blade stock when the band would not take the
+re-solved height.
+
+- **One declaration, one guard.** `MAINT_RING_RUN = MOVEMENT_SENSE` is the
+  ring's run past the detent (it rides `barrelArbor`; the detent stands on the
+  plate). The ring is cut `reverse` exactly when that run is the train's, so
+  its teeth lean against it; the flange keeps `reverse: false` for the pawls,
+  which see the fusee run backward. The click is cut from the ring's own
+  polygon (`MAINT_RING_POLY`), so it can never disagree with the ring. What
+  neither can see is which way the ring actually runs, and the new guard beside
+  the pawls' reads that from `barrelMeshAngle`, never restates it: stepping one
+  pitch in the real run through the shipped ride, the beak lifts over about
+  **85%** of the pitch (the ramp's side of the 0.5 classifier), and at the seat the
+  flank a backward turn drives into the beak pushes it TOWARD the stud.
+  `probe-direction-guards.mjs` carries a row that flips the declaration (ring
+  and click flip together and stay consistent with each other), and it comes back CAUGHT by both
+  halves of the guard (the beak lifts over 15.0% of the pitch, and the
+  back-drive pulls it off its stud). The probe's run as a whole still FAILS, on
+  main too and not on this row: its hash is taken the instant `__clock` appears,
+  which races the first frame (measured, τ 0 at that instant and 0.197–0.200
+  three seconds later, 191 meshes moved), so its reproducibility control and
+  the NO-OP/SILENT verdicts of two unrelated rows (the stem one-way, the
+  feeler's rock) flip between runs.
+- **The click, derived from the cut.** The tip sits in a valley on the V's
+  bisector, `SEAT_RELIEF` off both flanks (V 66.15°: face 20.36° off radial,
+  ramp 45.79°), at r 3.5609. The stud is on the FACE's normal through the tip,
+  so the back-drive's reaction runs through the pivot: a pure strut, no moment
+  either way, which places the beak 27.42° from the stud and makes the strut
+  `MAINT_DET_LEVER` **2.4415** (2.518 before). The arm is concentric with the
+  ring, its inner edge exactly `CLEAR_MARGIN` outside the tip circle at the
+  seat (a circumscribed polygon, each chord tangent at its midpoint), its
+  half-width the band from there to the stud, **0.380**, and its boss rounded
+  about the stud at that radius. The beak is the only metal inside the margin:
+  a convex wedge dropping radially to the tip on the stud's side, its far flank
+  parallel to the face. Arm and beak are two meshes of one rigid body
+  (`maintDetentClick`, `maintDetentBeak`); the ring's mesh is `maintRing`.
+- **The ride, on the chords.** `MAINT_DET_RIDE.liftAt` scans then bisects the
+  smallest lift that stands the whole beak `SEAT_RELIEF` off the ring's
+  polygon (beak edges densified to 0.02, the ring's corners tested against the
+  beak). Over two teeth at 49 poses the beak's nearest point to the cut is
+  **0.00500** at every one and it is the TIP every time; the arm stands
+  **≥ 0.1509** off the ring (0.150 at the seat instant, by construction). The
+  seat is an instant now, the tip in the root, where it used to be 35% of each
+  tooth hovering on the law's floor. Travel, measured on the cut and refined on
+  the crest: **0.3685 rad** (0.2286 before).
+- **The blade (TODO 210's solve, re-run on that travel).** At `SPRING_FLAT_U`
+  the window asked for a blade taller than the 0.6489 band, so the stock is
+  derived from the window: the thinnest blade whose equal-margin height fits
+  the band (the beak force per unit height goes as t·L/θ at a fixed crest
+  strain; the force at a fixed deflection as t³).
+
+  | | before | after |
+  |---|---|---|
+  | travel (rad) | 0.2286 | 0.3685 |
+  | strut / lever | 2.5180 | 2.4415 |
+  | blade stock t | 0.1319 u (0.0500 mm, `SPRING_FLAT_U`) | 0.1568 u (0.0594 mm) |
+  | blade height b | 0.5643 | 0.6489 (= the band) |
+  | tail ℓ | 3.2028 | 2.2757 |
+  | free length seated / crest | 7.559 / 7.721 | 8.629 / 8.918 |
+  | tail moment arm seated / crest | 3.184 / 2.867 | 2.255 / 1.812 |
+  | beak force seated / crest (mN) | 10.01 / 24.97 | 10.93 / 22.87 |
+  | force ratio R | 2.494 | 2.093 |
+  | σ at the crest | 720 MPa (0.9·σy) | 720 MPa |
+  | stored / TODO 194 bound (µJ) | 4.505 / 4.546 | 7.110 / 7.467 |
+
+  Every TODO 210 assert holds unchanged: the window, equal margin
+  (10.93 × 22.87 = 250), 0.9·σy at the crest, the energy bound, the band and
+  the tail a margin off the ring.
+- **Rows.** `EXPECTED_CONTACT_FLOORS` gains `Maintaining detent ⇄ Fusee &
+  great wheel` at `CLEAR_MARGIN`, excusing only `maintDetentBeak ⇄ maintRing`.
+  `maintDetentHandoff` gains `detent beak ⇄ maintaining ring`, contact at all
+  three phases, and the phases are re-read on the click's pose by golden
+  section (seated τ 1457.2, crest τ 1069.4). The intra-unit stud row and the
+  restoring declaration name `maintDetentClick`.
+- **The cock's post, moved out (P3).** The new floors row is the first thing
+  to measure this pair without the EXPECTED blanket, and it read the post
+  **0.0481** off the great wheel's teeth: its footing took one module for the
+  addendum (the wheel's metal reaches 0.052 further) and the post's top radius
+  where it is cut tapered, POST_R + 0.1 at the foot, with a 0.05 "slop"
+  covering neither. Both are read from their sources now — the wheel's
+  outermost vertex off the cut (a first pass on `gearToothSpec`'s `tipR` still
+  read 0.1196: the cut stands 0.03 past the spec's tip), and the post's foot —
+  so the post stands a margin off the wheel's real metal at its widest; the
+  row's binding pair is now the blade on the band's floor, 0.150. The
+  mechanism is untouched; the blade's free length grows with the run to the
+  post, which is why the table's after column moves from the first cut.
+- **Explainer.** Plate 3 drew the old straight click on a ring of the
+  flange's hand; its script now cuts the ring to the other hand and draws the
+  cranked click riding the cut by the same solve. The figcaption's claims
+  still hold and are untouched.
+- **Measured.** Focused battery, local container (SwiftShader), `--shards 2
+  --no-incremental` over restoring, transfers, maintDetentHandoff,
+  alarmHandoffs, windArrestHandoff, stemClutchHandoff, intraUnit,
+  expectedContacts, stockFloor, turning, slenderness, outlines, meshIntegrity,
+  inspection, clearances, undeclaredClearance, plateSeats, assembly, transmits,
+  equalisation, graph, support and jumperMovers: **43/43 gates pass**. The new
+  floors row's binding pair is the blade over the great wheel at 0.150 (a tie
+  on the band's own margin); the beak row reads 0.005 at all three phases and
+  the blade row −0.020. Boot silent on the default and the seven spec points.
+  Fingerprint 1896818507 → 1211654045.
+- **Not closed here, filed as [TODO 217].** The hold is still unpriced.
 
 ## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
 
@@ -28766,3 +28916,31 @@ a number that looked right.
 
 `AMPLITUDE_PEAK_DEG` stays at the solve's maximum meanwhile, which over-prices
 the hairspring and the hack brake rather than under-pricing them.
+
+## 217. The maintaining detent's HOLD is unpriced: the maintaining spring has no torque, and the cranked click carries the back-drive as a bent strut
+
+Found closing [TODO 215]. While the fusee is wound the maintaining spring drives
+the train and its reaction comes back through the maintaining ring into the
+detent's beak: that face load is the HOLD, the detent's real job. Nothing prices
+it. The maintaining spring (`maintSpring`) is a 1.5π torus drawn under the ring
+with no stiffness, preload or torque law, so the load the face puts into the beak
+has no number; TODO 210's blade window (5–50 mN) prices only the ride.
+
+TODO 215 placed the stud on the face's normal through the tip, so that load has
+no moment about the pivot (the click is a strut and cannot cam out). But the
+click is CRANKED: its arm runs round the ring a margin outside the tips, so the
+line of action from tip to stud is a chord across the arm's arc, and the arm
+carries the hold in bending as well as compression. Its section (0.760 wide in
+plan, `MAINT_RING_T`·0.9 thick) was sized from the band and the stud, not from
+that load.
+
+**Fix path (P1, the detent group).** Give the maintaining spring a torque law
+(its job fixes it: it must drive the train for the length of a wind, so its
+torque at the great wheel is the going torque, and its stiffness and preload
+follow from the angle it gives up over one wind). Price the face load at the
+ring's root radius, then the arm's bending stress at the crank's largest offset
+from the tip–stud line, and hold it under `SPRING_SIGMA_Y_PA`-class steel the way
+TODO 192 holds the pivots. If the arm is over, the section grows inside the band
+(the band is 0.38 each side of the stud, from the margin to the pivot), or the
+offset shrinks by moving the stud, which is a P3 spend on the cock.
+

@@ -17,9 +17,12 @@
 //     the one number that cannot be re-read out of a constant, because it is
 //     the shipped animation's own answer to "how fast does the hammer arrive".
 //
-// The acoustics themselves (a clamped-free bar, an impulsive hand-off, a line
-// of transverse dipoles integrated over the wavenumber) are written out in
-// main.js beside the build. What is worth repeating here is the LIMIT: this
+// The acoustics themselves (since §253 a clamped-free ARC — Love's thin-arch
+// modes, solved in main.js by shooting and HERE by Rayleigh–Ritz, a second
+// method; an impulsive hand-off weighted by each mode's own modal mass; the
+// arc's dipoles integrated over the sphere — by a Bessel series in the build,
+// by brute-force quadrature here) are written out in main.js beside the
+// build. What is worth repeating here is the LIMIT: this
 // models the wire radiating ON ITS OWN. A real alarm watch is loud because the
 // gong's foot drives the caseback and the caseback is a diaphragm — the wire
 // is the string and the case is the soundboard — and that path is not
@@ -158,13 +161,64 @@ const UNIT_MM = 0.72 / 1.9;
 const U = UNIT_MM / 1000;
 const RHO = 7850, E_STEEL = 200e9, NU = 0.29, CBAR = Math.sqrt(E_STEEL / RHO);
 const RHO0 = 1.2, C0 = 343, REST = 0.8, Q = 4000;
-const BL = [1.87510407, 4.69409113, 7.85475744, 10.99554073, 14.13716839];
-const MODES = BL.map((bl) => {
-  const sig = (Math.cosh(bl) + Math.cos(bl)) / (Math.sinh(bl) + Math.sin(bl));
-  const raw = (u) => (Math.cosh(bl * u) - Math.cos(bl * u)) - sig * (Math.sinh(bl * u) - Math.sin(bl * u));
-  const tip = raw(1);
-  return { bl2: bl * bl, phi: (u) => raw(u) / tip };
-});
+const BL = [1.87510407, 4.69409113, 7.85475744, 10.99554073, 14.13716839];   // §56's straight roots: the mode ceiling, as in the build
+// §253 — the arc's in-plane modes by RAYLEIGH–RITZ (Legendre basis in s = θ/α,
+// Gauss quadrature, Cholesky + Jacobi): nothing shared with the build's
+// shooting solve, which probe-253-arch-modes holds it against to 1e-6.
+function legendre(n, x) { const P = [1, x]; for (let k = 1; k < n; k++) P.push(((2 * k + 1) * x * P[k] - k * P[k - 1]) / (k + 1)); return P; }
+function gauss(n) {
+  const x = [], w = [];
+  for (let i = 0; i < n; i++) {
+    let z = Math.cos(Math.PI * (i + 0.75) / (n + 0.5)), dz = 1;
+    for (let it = 0; it < 100 && Math.abs(dz) > 1e-15; it++) { const P = legendre(n, z); const dp = n * (z * P[n] - P[n - 1]) / (z * z - 1); dz = P[n] / dp; z -= dz; }
+    const P = legendre(n, z), dp = n * (z * P[n] - P[n - 1]) / (z * z - 1);
+    x.push((z + 1) / 2); w.push(1 / ((1 - z * z) * dp * dp));
+  }
+  return { x, w };
+}
+function basisAt(N, s) {
+  const h = 1e-5;
+  const f = (ss) => { const P = legendre(N, 2 * ss - 1); return { w: P.slice(0, N).map((p) => ss * ss * p), u: P.slice(0, N).map((p) => ss * p) }; };
+  const c = f(s), p = f(s + h), m = f(s - h);
+  return { w: c.w, w1: c.w.map((_, i) => (p.w[i] - m.w[i]) / (2 * h)), w2: c.w.map((_, i) => (p.w[i] - 2 * c.w[i] + m.w[i]) / (h * h)), u: c.u, u1: c.u.map((_, i) => (p.u[i] - m.u[i]) / (2 * h)) };
+}
+function archModesRR(S, alpha, N = 14, nq = 48) {
+  const n = 2 * N, K = Array.from({ length: n }, () => new Array(n).fill(0)), Mm = Array.from({ length: n }, () => new Array(n).fill(0));
+  const q = gauss(nq);
+  for (let g = 0; g < nq; g++) {
+    const s = q.x[g], wq = q.w[g] * alpha, b = basisAt(N, s);
+    const eps = [], kap = [], uu = [], ww = [];
+    for (let i = 0; i < N; i++) { uu.push(b.u[i]); ww.push(0); eps.push(b.u1[i] / alpha); kap.push(b.u1[i] / alpha); }
+    for (let i = 0; i < N; i++) { uu.push(0); ww.push(b.w[i]); eps.push(b.w[i]); kap.push(-b.w2[i] / (alpha * alpha)); }
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { K[i][j] += wq * (S * eps[i] * eps[j] + kap[i] * kap[j]); Mm[i][j] += wq * (uu[i] * uu[j] + ww[i] * ww[j]); }
+  }
+  const Lc = Array.from({ length: n }, () => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) { let sum = Mm[i][j]; for (let k = 0; k < j; k++) sum -= Lc[i][k] * Lc[j][k]; Lc[i][j] = i === j ? Math.sqrt(sum) : sum / Lc[j][j]; }
+  const solveL = (b) => { const y = b.slice(); for (let i = 0; i < n; i++) { for (let k = 0; k < i; k++) y[i] -= Lc[i][k] * y[k]; y[i] /= Lc[i][i]; } return y; };
+  const Y = []; for (let j = 0; j < n; j++) Y.push(solveL(K.map((r) => r[j])));
+  const C = []; for (let i = 0; i < n; i++) C.push(solveL(Y.map((col) => col[i])));
+  const A = C.map((r) => r.slice()), V = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+  for (let sweep = 0; sweep < 100; sweep++) {
+    let off = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) off += A[i][j] * A[i][j];
+    if (off < 1e-22) break;
+    for (let p = 0; p < n; p++) for (let qq = p + 1; qq < n; qq++) {
+      if (Math.abs(A[p][qq]) < 1e-300) continue;
+      const th = (A[qq][qq] - A[p][p]) / (2 * A[p][qq]), t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th * th + 1)), cc = 1 / Math.sqrt(t * t + 1), sn = t * cc;
+      for (let k = 0; k < n; k++) { const akp = A[k][p], akq = A[k][qq]; A[k][p] = cc * akp - sn * akq; A[k][qq] = sn * akp + cc * akq; }
+      for (let k = 0; k < n; k++) { const apk = A[p][k], aqk = A[qq][k]; A[p][k] = cc * apk - sn * aqk; A[qq][k] = sn * apk + cc * aqk; }
+      for (let k = 0; k < n; k++) { const vkp = V[k][p], vkq = V[k][qq]; V[k][p] = cc * vkp - sn * vkq; V[k][qq] = sn * vkp + cc * vkq; }
+    }
+  }
+  return Array.from({ length: n }, (_, i) => ({ Om: A[i][i], i })).sort((a, b) => a.Om - b.Om).map(({ Om, i }) => {
+    const a = V.map((r) => r[i]);
+    for (let r = n - 1; r >= 0; r--) { for (let k = r + 1; k < n; k++) a[r] -= Lc[k][r] * a[k]; a[r] /= Lc[r][r]; }
+    const NG = 160, w = new Float64Array(NG + 1), u = new Float64Array(NG + 1);
+    for (let g = 0; g <= NG; g++) { const b = basisAt(N, g / NG); let ww = 0, uu = 0; for (let k = 0; k < N; k++) { uu += a[k] * b.u[k]; ww += a[N + k] * b.w[k]; } w[g] = ww; u[g] = uu; }
+    const tip = w[NG]; let I2 = 0, Iu = 0;
+    for (let g = 0; g <= NG; g++) { w[g] /= tip; u[g] /= tip; const c = (g === 0 || g === NG) ? 0.5 : 1; I2 += c * (u[g] * u[g] + w[g] * w[g]); Iu += c * u[g] * u[g]; }
+    return { Om, g: Om ** 0.25, mFrac: I2 / NG, tanShare: Iu / I2, w };
+  });
+}
 const aWeight = (f) => {
   const f2 = f * f;
   const num = 12194 ** 2 * f2 * f2;
@@ -176,7 +230,12 @@ const w = out.wire;
 const aW = ((w.aRadial + w.aAxial) / 2) * U;         // the section, both readings averaged
 const L = w.R * w.span * U;
 const M = RHO * Math.PI * aW * aW * L;
-const mModal = M / 4;
+// §253 — the arc as the vertices read it: R and the span give α, R and the
+// section give S, and the fundamental's own modal fraction is the impedance.
+const R_m = w.R * U, alphaArc = w.span, S_arc = (R_m / (aW / 2)) ** 2;
+const arch = archModesRR(S_arc, alphaArc).filter((m) => m.g <= 1.1 * BL[4] / alphaArc).slice(0, 8)
+  .map((m) => ({ ...m, f: Math.sqrt(m.Om) * (aW / 2) * CBAR / (2 * Math.PI * R_m * R_m), kind: m.tanShare > 0.5 ? 'extensional' : 'flexural' }));
+const mModal = M * arch[0].mFrac;
 const I_h = out.rotor.Izz_u5 * U ** 5 * RHO;
 // The gap the pose law was sampled at: setPose derives the wind from the phase
 // (phase 4 of 28 ⇒ 1.75 − 4/16 turns), so the fall's phase fraction converts
@@ -205,45 +264,42 @@ const Estar = E_STEEL / (2 * (1 - NU * NU));
 const kHertz = (4 / 3) * Estar * Math.sqrt(Math.sqrt(aW * w.R * U));
 const mRed = mEff * mModal / (mEff + mModal);
 const tau = 2.9432 * (5 * mRed / (4 * kHertz)) ** 0.4 * Math.abs(vHead) ** -0.2;
-const kGyr = aW / 2;
-const spec = MODES.map((m) => {
-  const f = m.bl2 * kGyr * CBAR / (2 * Math.PI * L * L);
-  const x = 2 * f * tau;
+const spec = arch.map((m) => {
+  const f = m.f, x = 2 * f * tau;
   const S = Math.abs(Math.cos(Math.PI * f * tau) / (Math.abs(1 - x * x) < 1e-12 ? 1e-12 : 1 - x * x));
-  return { f, w: S * S };
+  return { f, w: S * S / m.mFrac, mFrac: m.mFrac, kind: m.kind, shape: m.w };   // §253: ÷ modal mass — J²φ²/2mₙ per mode
 });
 const wSum = spec.reduce((t, m) => t + m.w, 0);
-const NX = 400, NA = 180;
-const radiate = (phi, kAc, amp) => {
-  let peak = 0, tot = 0;
-  for (let j = 0; j <= NA; j++) {
-    const al = (j / NA) * Math.PI, ca = Math.cos(al);
-    let re = 0, im = 0;
-    for (let q = 0; q <= NX; q++) {
-      const u = q / NX, ww = (q === 0 || q === NX) ? 0.5 : 1;
-      const ph = phi(u) * ww, t = -kAc * L * u * ca;
-      re += ph * Math.cos(t); im += ph * Math.sin(t);
+// §253 — the arc's far field by BRUTE FORCE over the sphere (the build does it
+// by a Bessel series): F(r̂) = R∫φ (n̂·r̂) e^{−ik r̂·x} dθ, dipoles normal to the
+// wire, turning with it.
+const radiate = (shape, kAc, amp) => {
+  const NG = shape.length - 1, dth = alphaArc / NG, NT = 100, NP = 400;
+  let sph = 0, peak = 0;
+  for (let t = 0; t <= NT; t++) {
+    const vt = (t / NT) * Math.PI, st = Math.sin(vt), wT = (t === 0 || t === NT) ? 0.5 : 1;
+    for (let p = 0; p < NP; p++) {
+      const ph = (p / NP) * 2 * Math.PI; let re = 0, im = 0;
+      for (let q = 0; q <= NG; q++) { const c = (q === 0 || q === NG) ? 0.5 : 1, th = q * dth, nr = st * Math.cos(ph - th), a = -kAc * R_m * nr; re += c * shape[q] * nr * Math.cos(a); im += c * shape[q] * nr * Math.sin(a); }
+      const F2 = R_m * R_m * (re * re + im * im) * dth * dth;
+      sph += wT * F2 * st * (Math.PI / NT) * (2 * Math.PI / NP); peak = Math.max(peak, F2);
     }
-    const D2 = (re * re + im * im) * (L / NX) ** 2;
-    const wA = (j === 0 || j === NA) ? 0.5 : 1;
-    tot += wA * Math.sin(al) ** 3 * D2 * (Math.PI / NA);
-    peak = Math.max(peak, Math.sin(al) ** 2 * D2);
   }
   return {
-    W: kAc * kAc * amp * amp * tot / (32 * Math.PI * RHO0 * C0),
+    W: kAc * kAc * amp * amp * sph / (32 * Math.PI * Math.PI * RHO0 * C0),
     I: kAc * kAc * amp * amp * peak / (32 * Math.PI * Math.PI * RHO0 * C0 * 0.09),
   };
 };
 let acc = 0;
 const modes = spec.map((m, i) => {
   const E_n = eta * E_blow * m.w / wSum;
-  const U_n = Math.sqrt(8 * E_n / M);
+  const U_n = Math.sqrt(2 * E_n / (M * m.mFrac));
   const om = 2 * Math.PI * m.f, kAc = om / C0;
-  const { W: W_rad, I } = radiate(MODES[i].phi, kAc, 2 * RHO0 * Math.PI * aW * aW * om * U_n);
+  const { W: W_rad, I } = radiate(m.shape, kAc, 2 * RHO0 * Math.PI * aW * aW * om * U_n);
   const spl = 10 * Math.log10(Math.max(I, 1e-30) / 1e-12);
   const audible = m.f <= 20000;
   if (audible) acc += 10 ** ((spl + aWeight(m.f)) / 10);
-  return { n: i + 1, f_Hz: m.f, W_W: W_rad, spl_dB: spl, splA_dBA: spl + aWeight(m.f), audible,
+  return { n: i + 1, kind: m.kind, f_Hz: m.f, mFrac: m.mFrac, W_W: W_rad, spl_dB: spl, splA_dBA: spl + aWeight(m.f), audible,
     ringT60_s: 13.8 * Q / om };
 });
 const splA = 10 * Math.log10(Math.max(acc, 1e-30));
@@ -255,7 +311,7 @@ if (JSON_OUT) {
 } else {
   console.log('§197 — the alarm gong, measured off the metal\n');
   console.log(`  band            floor ${fmt(D.band.floor)} (${D.band.floorOwner})  ceiling ${fmt(D.band.ceiling)}  ring z ${fmt(D.band.ringZ)}  cam z ${fmt(D.band.strikeZ)}`);
-  console.log(`  wire            ⌀${fmt(2 * aW * 1000)} mm  × ${fmt(L * 1000)} mm developed (${fmt(w.span * 180 / Math.PI, 2)}° of r ${fmt(w.R, 2)})  ${fmt(M * 1e6, 2)} mg, modal ${fmt(mModal * 1e6, 2)} mg`);
+  console.log(`  wire            ⌀${fmt(2 * aW * 1000)} mm  × ${fmt(L * 1000)} mm developed (${fmt(w.span * 180 / Math.PI, 2)}° of r ${fmt(w.R, 2)})  ${fmt(M * 1e6, 2)} mg, modal ${fmt(mModal * 1e6, 2)} mg (the arc fundamental's ${fmt(arch[0].mFrac, 4)} of the wire — §253; S ${fmt(S_arc, 0)})`);
   console.log(`  hammer rotor    ${fmt(out.rotor.vol_u3 * U ** 3 * RHO * 1e6, 2)} mg   I ${I_h.toExponential(4)} kg·m²   effective at the face ${fmt(mEff * 1e6, 2)} mg`);
   console.log(`  the blow        ${fmt(Math.abs(thetaDot), 1)} rad/s → ${fmt(Math.abs(vHead), 3)} m/s at the face,  E = ${E_blow.toExponential(4)} J`);
   console.log(`                  fall ${fmt(D.hammer.fall_s * 1000, 2)} ms — CHOSEN (a third of the cam's free window), not √(k/I)`);
@@ -264,9 +320,9 @@ if (JSON_OUT) {
   console.log(`                  and it is not a blade at all: it STRETCHES ${fmt(D.spring.stretch_u, 3)} u (${fmt(100 * D.spring.stretch_u / D.spring.free_u, 0)}% of itself) over the draw`);
   console.log(`                  at 2.2 u a real blade would work to ${fmt(D.spring.rootStress_Pa / 1e6, 0)} MPa against a ${fmt(D.spring.yield_Pa / 1e6, 0)} MPa yield`);
   console.log(`  hand-off        μ = ${fmt(mu)} (matched at 1.0), η = ${fmt(eta)}, contact ${fmt(tau * 1e6, 2)} µs\n`);
-  console.log('  mode      f        SPL @0.3 m     dBA      T60      heard');
+  console.log('  mode      f        SPL @0.3 m     dBA      T60      heard            kind');
   for (const m of modes)
-    console.log(`   ${m.n}   ${fmt(m.f_Hz, 0).padStart(8)} Hz  ${fmt(m.spl_dB, 1).padStart(7)} dB  ${fmt(m.splA_dBA, 1).padStart(7)}  ${fmt(m.ringT60_s, 2).padStart(6)} s   ${m.audible ? 'yes' : 'no (ultrasonic)'}`);
+    console.log(`   ${m.n}   ${fmt(m.f_Hz, 0).padStart(8)} Hz  ${fmt(m.spl_dB, 1).padStart(7)} dB  ${fmt(m.splA_dBA, 1).padStart(7)}  ${fmt(m.ringT60_s, 2).padStart(6)} s   ${(m.audible ? 'yes' : 'no (ultrasonic)').padEnd(16)} ${m.kind}`);
   console.log(`\n  TOTAL           ${fmt(splA, 1)} dBA at 0.3 m, on axis — the WIRE alone (no case path)\n`);
 }
 
@@ -274,6 +330,9 @@ if (JSON_OUT) {
 const checks = [
   ['wire section, radial vs axial reading', Math.abs(w.aRadial / w.aAxial - 1), 0.02],
   ['fundamental vs declared', Math.abs(modes[0].f_Hz / D.modes[0].f_Hz - 1), 0.01],
+  ['second partial vs declared (§253)', Math.abs(modes[1].f_Hz / D.modes[1].f_Hz - 1), 0.01],
+  ['fundamental modal fraction vs declared (§253)', Math.abs(modes[0].mFrac / D.wire.modalFrac - 1), 0.01],
+  ['second partial radiated power vs declared (§253)', Math.abs(modes[1].W_W / D.modes[1].W_W - 1), 0.05],
   ['blow energy vs declared', Math.abs(E_blow / D.strike.energy_J - 1), 0.03],
   ['mass ratio vs declared', Math.abs(mu / D.strike.mu - 1), 0.02],
   ['A-weighted level vs declared (dB)', Math.abs(splA - D.splA_dBA), 0.6],
