@@ -17,7 +17,9 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 217 | OPEN | Found closing TODO 215. The maintaining detent's HOLD is unpriced: the maintaining spring is a torus with no torque law, so nothing says what the face pushes into the beak while winding, and the cranked click carries that load as a bent strut (its line of action passes through the stud, not along the arm) |
+| 219 | OPEN | Found closing TODO 217. The maintaining spring is still a drawn torus: its torque at its working point is derived (the going torque, 3.2307 N·mm — it is a series member of the drive), but its stiffness and preload set how long it keeps the train going through a wind, and the model declares no length of a wind. And the ring is never held: it rides `barrelArbor` through winding, so the spring is never deflected and the hold is never posed |
+| 218 | OPEN | Found closing TODO 217. The maintaining detent's beak is a 20.40° wedge carrying the 2554 mN hold almost square to its axis: 2076 MPa at its KINDEST section against the 800 MPa steel (≈ 1.1 GPa if the flank bears evenly along the face), waived by name in `HOLD_STRESS_WAIVERS`. The valley it seats in is 66.15°; fix by cutting the beak to the valley's offset and re-solving the ride and the blade on it |
+| 217 | CLOSED | The hold is priced: the maintaining spring is a series member of the drive, so the detent holds the going torque (3.2307 N·mm) at the first instant of a wind whatever its stiffness — 2554 mN on the face over a 3.3377 u arm. The cranked arm carries it at 686.5 MPa (Winkler bending at its worst section, 1.3211 u off the tip–stud chord, plus the whole load axial), ×1.165 under `SPRING_SIGMA_Y_PA`, so no section change; held as `equalisation` row 16, a §137 `rigidBentLink` row, and in `probe-power-budget`. The beak is over yield (TODO 218); the spring's stiffness is TODO 219 |
 | 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
 | 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
 | 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211 |
@@ -28917,7 +28919,7 @@ a number that looked right.
 `AMPLITUDE_PEAK_DEG` stays at the solve's maximum meanwhile, which over-prices
 the hairspring and the hack brake rather than under-pricing them.
 
-## 217. The maintaining detent's HOLD is unpriced: the maintaining spring has no torque, and the cranked click carries the back-drive as a bent strut
+## 217. The maintaining detent's HOLD is unpriced: the maintaining spring has no torque, and the cranked click carries the back-drive as a bent strut — CLOSED
 
 Found closing [TODO 215]. While the fusee is wound the maintaining spring drives
 the train and its reaction comes back through the maintaining ring into the
@@ -28944,3 +28946,161 @@ TODO 192 holds the pivots. If the arm is over, the section grows inside the band
 (the band is 0.38 each side of the stud, from the margin to the pivot), or the
 offset shrinks by moving the stud, which is a P3 spend on the cock.
 
+### Closed — the hold is the going torque, and the arm carries it; the beak does not.
+
+**The spring's torque, from its job.** The maintaining spring is a SERIES
+member of the drive: cone → base ratchet → pawls → maintaining wheel → spring →
+great wheel. So while the watch runs it is wound to exactly the torque it passes
+on, the going torque at the great wheel. The level product holds that constant
+over the reserve: `EQUALISATION.going.energy.fuseeTorque_Nm`, **3.2307 N·mm**.
+That is frictionless, and the drum's, the chain's and the fusee's losses only
+lower it, so it is the upper bound (the pivots' convention). Winding takes the
+drive off, the detent holds the ring, and the spring gives up angle as it drives
+the train on, so its torque only FALLS from there. **The hold is greatest at the
+first instant of a wind and equal to the going torque there, whatever the
+spring's stiffness.** The stiffness and preload decide how long the train is
+kept going, which needs the length of a wind. Nothing in the model declares one
+(`AUTO_WIND_RATE` is the Wind button's pace, 0.8 s for a full wind, a UI
+choice), so they are filed as [TODO 219] with the drawn torus, rather than
+derived from a number that looked right. The pawls' drag on the ring while they
+click backwards adds to the hold. It is their springs' mN against this N, and
+it is not priced.
+
+**The face load.** The face's reaction runs along its normal through the tip,
+seated at the root, and through the stud (TODO 215). Read off the click as cut,
+that line stands **3.3377 u** from the ring's axis (tip r 3.5609, root 3.5520),
+and it is the face normal to 2e-16. So F = τ/arm = **2554.3 mN**, a hundred
+times the blade's crest force. TODO 210's window prices the ride and was right
+to call the hold the saw's.
+
+**The arm.** Every radial section of the arm carries F at its centroid's offset
+from the 2.4415 u tip–stud chord. The largest is **1.3211 u**, at the beak's
+radial flank, where the plain arm begins; nearer the stud the offset falls to
+zero. The section is 0.7592 deep (rOut 5.3500 down to the circumscribed inner
+arc's vertex radius 4.5908, its shallowest) by `MAINT_RING_T`·0.9 = 0.4095. It
+is a curved bar (centroid radius over depth ≈ 6.5), so the bending is Winkler's
+inner fibre, M·(r_n − r_i)/(A·e·r_i) with r_n = h/ln(r_o/r_i), **629.3 MPa**.
+The WHOLE load is added as axial, **57.2 MPa**, an upper bound since only its
+component along the section's normal is axial. That gives **686.5 MPa, ×1.165
+under `SPRING_SIGMA_Y_PA`** (800). The straight-bar reading is 654.6. The arm's
+section was sized from the band and the stud, and it carries the load:
+**no section change**, and no P3 spend on the stud. The stress concentration at
+the re-entrant corner where the beak leaves the arm is not priced. It sits on
+the beak's side of the joint, which is TODO 218's.
+
+**The beak is over yield, and that is filed as [TODO 218].** The beak is a
+wedge between its radial flank and its face-parallel flank, **20.40°**, and the
+load arrives at its apex almost square to its axis. Take its KINDEST section:
+square to the bisector, at the deepest station still wholly inside the wedge,
+where the radial flank meets the arm's inner edge. There it is 0.3644 wide,
+0.9968 off the chord, and F/A + 6Fe/tw² = **2075.7 MPa**, ×0.385 of yield. Every
+station nearer the apex is narrower and worse. The section TODO 215 cut fixes
+the wedge, and growing the arm cannot reach it.
+
+**Rows.**
+- `EQUALISATION.going.energy.maintainingHold` (main.js). It carries the
+  spring's law at its working point (`torqueRun_Nm`, with `k` and `preload`
+  null and `kDebt: 'TODO 219'`), the load, the moment arm, the line's agreement
+  with the face normal, and the arm and beak blocks with their sections,
+  offsets, stresses and margins. It is computed from `MAINT_DET_HOLD_GEOM`,
+  which the detent block reads off the click as cut. Two boot warns: the arm
+  over yield, and the line of action leaving the face normal (a click recut off
+  it carries an unpriced moment about the stud).
+- `equalisation` **row 16** (inspect.js). It checks four things. The torque IS
+  the record's `fuseeTorque_Nm`. The load is τ/arm. The arm and beak stresses
+  are re-derived from the row's own geometry at 1e-12. Each member sits under
+  `SPRING_SIGMA_Y_PA` unless it is waived by name in `HOLD_STRESS_WAIVERS`, and
+  a waiver whose member is under yield is STALE and fails. The beak is waived
+  there against TODO 218, the `RIBBON_STRESS_WAIVERS` convention for debt found
+  on arrival. The arm is not waived.
+- A §137 **`rigidBentLink`** row, `maintaining detent: the hold in winding (ring
+  face → beak → cranked arm → stud)`. For this load the click is a bent strut
+  grounded at its stud: the pivot takes the reaction and no moment. That is the
+  idiom's anatomy, a chord with a routing bend that is legitimate only priced,
+  so `transfers` re-verifies moment = load·e·`UNIT_MM` (1278.8 mN·mm). The row
+  has no envelope, because the load is the going train's torque and no declared
+  window bounds it.
+- `probe-power-budget.mjs` computes the hold from its OWN level torque and the
+  record's cut geometry, and asserts the load, the arm's σ and the beak's σ
+  (43 figures agree, from 40).
+
+**Measured.** Focused battery, local container (SwiftShader), `--shards 2
+--no-incremental` over equalisation, transfers, restoring, maintDetentHandoff,
+stockFloor, intraUnit, expectedContacts, outlines, meshIntegrity, inspection,
+clearances, undeclaredClearance, plateSeats, turning, slenderness and assembly:
+**36/36 gates pass**. `equalisation`'s note reads the hold at 2554.3 mN, the arm 686.5 MPa ×1.165, the beak 2075.7 MPa (waived, TODO 218); `transfers` reads 26 rows, 3 `rigidBentLink`, 0 mismatched. Mutating `HOLD_STRESS_WAIVERS` (waiving the arm, un-waiving the beak) turns `equalisation` red with a stale-waiver row. Boot silent on the default and the seven spec points.
+Fingerprint unchanged at **1211654045**: no metal moved.
+
+## 218. The maintaining detent's beak is a 20-degree wedge carrying the 2.55 N hold across its axis: 2.08 GPa at its kindest section
+
+Found closing [TODO 217]. While the fusee is wound the detent holds the going
+torque, **2554.3 mN** on the ring's face. TODO 215 cut the beak as a wedge
+between a RADIAL flank (the stud's side) and a flank parallel to the face, so
+its included angle is the face's angle off radial, **20.40°**. The load arrives
+at its apex along the face's normal, toward the stud, about 80° off the wedge's
+axis. The beak is a cantilever wedge loaded across its axis.
+
+- **Apex load** (TODO 215's strut, the reading `equalisation` row 16 records).
+  At its KINDEST section — square to the bisector, where the radial flank meets
+  the arm's inner edge, 0.3644 wide and 0.9968 off the tip–stud chord — the
+  beak carries F/A + 6Fe/tw² = **2075.7 MPa** against `SPRING_SIGMA_Y_PA`'s 800.
+  Every station nearer the apex is narrower and worse (the wedge's bending goes
+  as 1/s).
+- **Even bearing.** The flank is parallel to the face, `SEAT_RELIEF` off it, so
+  under load it may land along the face's length (0.947 u) instead. The wedge's
+  bending is then constant along the contact, 3p/(4t·tan²(α/2)) with p the load
+  per length: **≈ 1.06 GPa**, an estimate, not a record row. That is still over
+  yield. Worse, the resultant then stands up the face, off the stud's line, and
+  puts a moment on the click that nothing prices (P0: does it seat the beak or
+  cam it out?).
+
+Waived by name in `HOLD_STRESS_WAIVERS.beak`. It goes stale and fails the moment
+the beak is under yield.
+
+**Fix path (P1/P0, the detent group).** The valley the beak seats in is
+**66.15°** (face 20.36° off radial, ramp 45.79°). The tip already sits on its
+bisector, `SEAT_RELIEF`/sin(half the V) from the root. So cut the beak's
+stud-side flank PARALLEL TO THE RAMP at `SEAT_RELIEF`, and the beak becomes the
+valley's own offset, apex at the same tip. By the same wedge law, tan²(α/2)
+grows ×13, so the bending falls by about an order of magnitude; re-measure, do
+not quote this. The ride solve (`MAINT_DET_RIDE.liftAt`) reads the beak's
+polygon, so it follows. TODO 210's blade solve reads the travel and re-solves.
+Re-read `maintDetentHandoff`'s phases and the §115/TODO 215 direction guard,
+and re-price row 16 at the new section. Decide the contact model with it:
+apex, or the flank bearing along the face. If the flank bears, find where the
+resultant goes relative to the stud, and with it whether the stud still stands
+on the line that carries the hold.
+
+## 219. The maintaining spring is still a drawn torus: its stiffness, preload and section need the length of a wind, which the model does not declare
+
+Found closing [TODO 217]. `maintSpring` is a 1.5π torus (r `MAINT_RING_ROOT`·0.6,
+tube 0.08) under the ring, with no stiffness and no section. TODO 217 derived
+what its JOB fixes. It is a series member of the drive, so at its working point
+it carries the going torque, 3.2307 N·mm, and the detent's hold peaks there
+whatever its stiffness. What the job does NOT fix without one more number is
+the stiffness k and the preload. They set how far the torque falls as the
+spring drives the train through a wind: τ(Δ) = τ_going − k·Δ, Δ being the great
+wheel's advance since the wind began, ω_great·t_wind. The model has no t_wind.
+`AUTO_WIND_RATE` (48 rad/s, 0.8 s for the button's full wind) is a UI pace and
+not a hand's.
+
+The model also never DEFLECTS the spring. `maintWheel` rides `barrelArbor` with
+no windBack, so through a wind the ring advances with the train past the beak,
+exactly as it does running. The detent never holds, and the hold TODO 217
+prices is never posed. The explainer's Plate 3 caption says the same thing as a
+virtue ("winding cannot drag it backwards").
+
+**Fix path (P1, then P0).**
+1. Declare the maintaining run. Either cite a band for how long a hand wind
+   takes (`FRICTION`'s rule: a band with its source, never a single number), or
+   cut Harrison's stop: a slot in the great wheel bounding the spring's travel,
+   so the run is geometry. Then derive k from the torque floor the train needs
+   at the run's end. The energy column can name that floor: the torque under
+   which the adverse corner stops sustaining `AMPLITUDE_CLAIM_DEG`.
+2. Cut the spring as metal: a ribbon or a pair of blades whose σ = E·a·θ/L at
+   the working point sits under `SPRING_SIGMA_Y_PA`, the mainspring's
+   σ-from-the-wind law, and publish it on `maintainingHold.spring`, whose `k`
+   and `preload` are null today.
+3. Pose the wind. Hold the ring on the beak while `windBack` moves, advance the
+   great wheel on the spring, and let the run-out (the spring bottoming, or the
+   train stopping) be what a long wind does.

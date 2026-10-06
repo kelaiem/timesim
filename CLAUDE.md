@@ -324,7 +324,13 @@ it into prose either.
    `RIBBON_STRESS_WAIVERS` and a waiver whose ribbon is under it STALE (the
    going ribbon's went stale the moment TODO 192 step 3 PROPORTIONED it — the
    thickness that lands full wind on the limit, the coils that half-fill the
-   barrel — and was retired by the gate rather than by memory). And
+   barrel — and was retired by the gate rather than by memory). Since
+   TODO 217 the maintaining detent's HOLD sits beside them
+   (`going.energy.maintainingHold`): the maintaining spring is a series member of
+   the drive, so the face load peaks at the going torque whatever its stiffness;
+   the cranked arm that carries it is re-derived (Winkler bending plus the whole
+   load axial) and held under `SPRING_SIGMA_Y_PA`, and the beak's wedge, over it,
+   is waived by name in `HOLD_STRESS_WAIVERS` (TODO 218) on the ribbons' rule. And
    since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` its
@@ -881,7 +887,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 265 measuring scripts and this file names 21. The rest are named for the
+`tools/` holds 266 measuring scripts and this file names 21. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -898,7 +904,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **155 of
+The index also carries the split that decides how to read a result: **156 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
