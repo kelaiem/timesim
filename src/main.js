@@ -34824,7 +34824,7 @@ function setBarState(id, on) {
 // §249's Indonesian measured 184.4 on its first pass, on "Menu / Tampilan /
 // Kontrol" — 14.2 over English and 8.0 under German, so it needed no word
 // chosen against the bar either.
-// §249's Turkish measured 198.5 on its first pass — the third locale past
+// §249's Turkish measured 198.5 on its first pass — the fourth locale past
 // German — on "Menü / Görünüm / Kontroller", and 186.3 once the panel took the
 // singular Kontrol that Turkish software already uses for a control panel
 // (Kontrol Paneli): §208's lesson a fourth time, a face chosen against this bar.
