@@ -28170,6 +28170,17 @@ heavier one. Mutated to 0.65 and 0.63, the boot warning fires both ways.
 §218 at the new peak: 184.8 MPa against 700, minimum coil gap 0.134 mm, overcoil
 pivot load ×0.169 of the flat spring's.
 
+**`turning` read two screws as one bar.** Thinner screws turned the coaxial
+pair on opposite sides of the rim into one bar 7 mm long at L/D 28.8. `gapBridged`
+spliced them across the whole wheel, because the staff seated in the gap has a
+matching t-range. A member seated in a gap now refuses the bridge when it stands
+ACROSS the line instead of being revolved about it. The test is the ratio of the
+smaller to the larger second moment of its offsets from the line: under
+`TURN_CROSS_ANISO` 0.5. A body of revolution reads 1 and the staff reads under 0.01.
+The rule moved one other bar: the winding arrest's two spider stubs. These are
+separate pins built outward from the cage hub, and the hub had joined them. The
+count is 230 → 239 bars and no new waivers.
+
 What it did not do: the favourable corner's dial-flat swing is past a lever
 escapement's knocking angle, which is TODO 214. The swing remains MODELLED, not
 SIMULATED: it is the energy column's solve, not a balance driven by a force.
