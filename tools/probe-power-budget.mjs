@@ -328,6 +328,11 @@ if (!REC || !REC.corners) {
   else { same('sustained minimum (deg)', lo, REC.amplitude.min.deg); same('sustained maximum (deg)', hi, REC.amplitude.max.deg); }
   if (L.AMPLITUDE_CLAIM_DEG !== Math.floor(lo)) disagreements.push({ what: 'AMPLITUDE_CLAIM_DEG is not ⌊minimum⌋', probe: Math.floor(lo), record: L.AMPLITUDE_CLAIM_DEG });
   if (L.AMPLITUDE_PEAK_DEG !== Math.ceil(hi)) disagreements.push({ what: 'AMPLITUDE_PEAK_DEG is not ⌈maximum⌉', probe: Math.ceil(hi), record: L.AMPLITUDE_PEAK_DEG });
+  // TODO 207 — the design target, at the nominal corner held vertical: met, and
+  // by less than the slack one heavier rim step costs.
+  const nv = results.nominal.balance.ampVertDeg;
+  if (!(nv >= L.AMPLITUDE_TARGET_DEG && nv < L.AMPLITUDE_TARGET_DEG + L.AMPLITUDE_TARGET_SLACK_DEG))
+    disagreements.push({ what: 'nominal vertical swing against AMPLITUDE_TARGET_DEG', probe: nv, record: `${L.AMPLITUDE_TARGET_DEG} + <${L.AMPLITUDE_TARGET_SLACK_DEG}` });
   const recRows = REC.pivots?.strength?.rows || [];
   if (recRows.length !== strength.length) disagreements.push({ what: 'pivot strength rows', probe: strength.length, record: recRows.length });
   for (const r of strength) {
@@ -349,7 +354,7 @@ if (!REC || !REC.corners) {
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way, and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);

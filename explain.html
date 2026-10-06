@@ -1259,7 +1259,7 @@
         state is the elastica of an inextensible ribbon between a collet that turns and a
         stud that does not, so the coils tighten on the wind and dilate on the run-back at
         constant length, and the sideways load the stud's reaction would put on the pivots —
-        the flat spiral's known vice — is measured rather than assumed: 0.0047 mN at the
+        the flat spiral's known vice — is measured rather than assumed: 0.0029 mN at the
         drawn swing for a flat spring of this section, and 0.0001 mN with the Breguet
         overcoil the next plate draws.
         <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and
@@ -1294,8 +1294,8 @@
             <text class="val" x="320" y="118">stud as far in as its post allows: r 3.1751</text>
             <text class="lbl lbl-strong" x="320" y="146">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="162">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.110 at 327°</text>
-            <text class="val" x="320" y="206">flat spring 0.0047 mN → overcoil 0.0001 mN at the drawn swing</text>
+            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.169 at 455°</text>
+            <text class="val" x="320" y="206">flat spring 0.0029 mN → overcoil 0.0001 mN at the drawn swing</text>
           </svg>
         </div>
         <figcaption>The last three quarters of a turn are raised through a knee to a second
@@ -1307,7 +1307,7 @@
         condition, derived rather than quoted, and the elastica verifies it: the clamp
         stiffening the flat spring showed (1.0040) reads 1.000000 with the overcoil, and the
         pivot load at the drawn swing falls to a thirty-third of the flat spring's. At a real
-        327° a residual survives — the theorem is a small-amplitude statement — and it is
+        455° a residual survives — the theorem is a small-amplitude statement — and it is
         reported, not hidden. Phillips's condition alone does not say where the curve should
         END, and for a while this one ended outboard of the spring it rises over — the whole
         benefit of raising it, unclaimed. So the stud is a third condition now, not an output:
@@ -1478,8 +1478,8 @@
             <text class="val" x="256" y="372">standoff</text>
             <text class="lbl" x="500" y="282">detail ×5 — real edges only</text>
             <text class="lbl lbl-strong" x="500" y="302">THE CORNER THAT SIZES BOTH</text>
-            <text class="val" x="500" y="320">HACK_SCREW_DROP 0.0875 — z, at the tip</text>
-            <text class="val" x="500" y="334">HACK_SCREW_STANDOFF 0.1218 — radial</text>
+            <text class="val" x="500" y="320">HACK_SCREW_DROP 0.0564 — z, at the tip</text>
+            <text class="val" x="500" y="334">HACK_SCREW_STANDOFF 0.1390 — radial</text>
             <text class="val" x="500" y="348">hypotenuse = CLEAR_MARGIN 0.15</text>
             <text class="val" x="500" y="366">z alone cannot clear the screws;</text>
             <text class="val" x="500" y="380">the rest of the separation is radial.</text>
@@ -3655,7 +3655,7 @@
       var BAND = 2.7775, Z0 = 5.1479;                     // FUSEE_BAND, FUSEE_Z0 (= FUSEE_Z0_MIN — §124 raised it by FUSEE_TILT_Z)
       var BASE_Z = 4.59, TIP_Z = 7.9454;                  // cone base and tip in world z
       var CW_TOP = 4.26, SPRING_TOP = 7.9654;             // the two planes the band is solved between
-      var DRUM_R = 10, WRAP_R = 10.66;                    // DRUM_R_ACTUAL, + CHAIN_END_R_OUT = DRUM_WRAP_R
+      var DRUM_R = 10.71, WRAP_R = 11.37;                    // DRUM_R_ACTUAL, + CHAIN_END_R_OUT = DRUM_WRAP_R
       var DRUM_BOT = 2.93, DRUM_TOP = 7.9654;
       var COIL_TOP = DRUM_TOP - 0.6;                      // hook plane, just under the drum's lid
       var COIL_PITCH = 0.69;                              // CHAIN_COIL_PITCH = CHAIN_PIN_LEN + 0.03

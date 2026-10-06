@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -9869,7 +9869,12 @@ export function checkOscillator(clock) {
 //     under-statement); AMPLITUDE_PEAK_DEG at or over the maximum and within
 //     a degree (every load priced at it bounds the real swing, and is not a
 //     stale over-pricing). The record's own `amplitude` block must name the
-//     same extremes. The size of the swing against what a lever watch
+//     same extremes.
+// 15. THE SWING THE MOVEMENT IS DESIGNED TO (TODO 207) — the nominal corner,
+//     held vertical, sustains at least AMPLITUDE_TARGET_DEG and less than
+//     AMPLITUDE_TARGET_SLACK_DEG more, so BAL_RIM_F is the heaviest balance the
+//     spring keeps there. A lighter rim than needed fails it as surely as a
+//     heavier one. The size of the swing against what a lever watch
 //     normally runs at stays a REPORT, in the payload and the note.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
@@ -9983,6 +9988,16 @@ export function checkEqualisation(clock) {
       const A = en.amplitude;
       if (!A || A.min.deg !== min.deg || A.max.deg !== max.deg || !A.claimHolds || !A.peakBounds)
         failures.push({ what: 'amplitude block disagrees with the corners', record: A || null, fromCorners: { min, max } });
+      // Row 15 (TODO 207) — the design target, at the nominal corner held
+      // vertical: met, and by less than AMPLITUDE_TARGET_SLACK_DEG, so the
+      // balance is the heaviest the spring can keep at the target.
+      const nv = en.corners.nominal.sustainedDeg.vertical;
+      if (!(nv >= AMPLITUDE_TARGET_DEG))
+        failures.push({ what: 'nominal vertical swing under the design target', nominalVerticalDeg: nv, targetDeg: AMPLITUDE_TARGET_DEG });
+      else if (!(nv < AMPLITUDE_TARGET_DEG + AMPLITUDE_TARGET_SLACK_DEG))
+        failures.push({ what: 'nominal vertical swing past the target by a rim step or more (BAL_RIM_F lighter than needed)', nominalVerticalDeg: nv, targetDeg: AMPLITUDE_TARGET_DEG, slackDeg: AMPLITUDE_TARGET_SLACK_DEG });
+      if (!A || !A.target || A.target.nominalVertical !== nv)
+        failures.push({ what: 'amplitude target block disagrees with the nominal corner', record: A && A.target, fromCorner: nv });
     }
     // Row 12 (TODO 192 step 2) — the pivots were cut to §50's floor on the claim
     // that the LOAD does not bind them. Held: every pivot's bending stress
@@ -10111,7 +10126,7 @@ export function checkEqualisation(clock) {
       energy: en && en.corners ? {
         released_mJ: +(en.released_J * 1e3).toFixed(4), meanPower_nW: +(en.meanPower_W * 1e9).toFixed(2),
         escapeTorque_nNm: +(en.escapeTorque_Nm * 1e9).toFixed(3), perBeat_nJ: +(en.perBeat_J * 1e9).toFixed(4),
-        claimedDeg: en.balance.claimedDeg, peakDeg: en.balance.peakDeg,
+        claimedDeg: en.balance.claimedDeg, peakDeg: en.balance.peakDeg, targetDeg: AMPLITUDE_TARGET_DEG,
         sustainedRangeDeg: en.amplitude ? [+en.amplitude.min.deg.toFixed(2), +en.amplitude.max.deg.toFixed(2)] : null,
         ribbons: Object.fromEntries([['going', g], ['alarm', a]].filter(([, R]) => R.stress).map(([h, R]) => [h, {
           shape: R.section.shape, sigma_MPa: R.stress.sigma_Pa.map((x) => +(x / 1e6).toFixed(1)),
@@ -11185,6 +11200,12 @@ export async function turnedBars(clock, opts = {}) {
   // `TURN_AXIS_OFFSET_U` applies to two round members, scaled to the members
   // being spliced since a wheel's own OD says nothing about the size of its
   // bore.
+  // TODO 207 — below this ratio of the smaller to the larger second moment of
+  // its offsets from the bar's line, a member is not revolved about the line
+  // but stands ACROSS it. A body of revolution reads 1 (a regular polygon is
+  // exactly isotropic); the balance staff across a screw line reads under
+  // 0.01. One half separates them with an order of magnitude either side.
+  const TURN_CROSS_ANISO = 0.5;
   const gapBridged = (a, b, unitVolumes, gapLo, gapHi) => {
     const covering = [];
     // The line to measure against is the one through BOTH members' origins —
@@ -11249,6 +11270,37 @@ export async function turnedBars(clock, opts = {}) {
       // that puts a pole strictly INSIDE the member's length — the bore's
       // bottom, solid stock between two pressed stubs (`alarmLinkShaft`) —
       // and no arbor continues through that.
+      // TODO 207 — A MEMBER STANDING ACROSS THE LINE, not around it, is not
+      // stock the bar runs through. A wheel or hub pressed on a through-arbor
+      // is a body of revolution about the bar's line, so its vertices' offsets
+      // from the line have an ISOTROPIC second moment (a regular n-gon's is
+      // exactly isotropic for n ≥ 3, teeth and segments included). A staff,
+      // arm or rim the line merely crosses is strongly anisotropic. The case
+      // that found it: two timing screws on opposite sides of a balance rim
+      // are coaxial, and across the whole wheel they read as ONE bar 7 mm
+      // long (L/D 28.8 once TODO 207 thinned the screws). The line between
+      // them runs through the staff, which stands across it. A member like
+      // that seated in the gap refuses the bridge, exactly as a blind
+      // counterbore does below. The rule moved exactly one other bar: the
+      // alarm winding arrest's two spider stubs, built as separate pins from
+      // the cage hub outward on opposite sides (geometry.js `spiderStub${i}`),
+      // which the hub had joined into one 1.071 bar; each is now its own.
+      {
+        const u0 = Math.abs(axis[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+        const uu = turnSub(u0, axis.map((x) => x * turnDot(u0, axis)));
+        const ul = Math.hypot(uu[0], uu[1], uu[2]); const ux = uu.map((x) => x / ul);
+        const wx = [axis[1] * ux[2] - axis[2] * ux[1], axis[2] * ux[0] - axis[0] * ux[2], axis[0] * ux[1] - axis[1] * ux[0]];
+        let sxx = 0, syy = 0, sxy = 0, n = 0;
+        for (const p of pts) {
+          const d = turnSub(p, a.origin), t = turnDot(d, axis);
+          const off = [d[0] - t * axis[0], d[1] - t * axis[1], d[2] - t * axis[2]];
+          const x = turnDot(off, ux), y = turnDot(off, wx);
+          sxx += x * x; syy += y * y; sxy += x * y; n++;
+        }
+        const tr2 = (sxx + syy) / 2, det = Math.sqrt(((sxx - syy) / 2) ** 2 + sxy * sxy);
+        const lamMin = tr2 - det, lamMax = tr2 + det;
+        if (n > 2 && lamMax > 0 && lamMin / lamMax < TURN_CROSS_ANISO) return false;
+      }
       const eps = Math.max(TURN_AXIS_OFFSET_U, 1e-3 * (vHi - vLo));
       let interiorPole = false;
       for (const [t, r] of tr) if (r < TURN_AXIS_OFFSET_U && t > vLo + eps && t < vHi - eps) { interiorPole = true; break; }
