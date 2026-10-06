@@ -21,7 +21,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
 | 211 | OPEN | The yoke's prong stands at best 0.137 off the clutch's groove collars over the whole pose net, so the return `declareRestoring('Winding clutch', …, 'yokeSpring')` describes ("re-seats it through the fork") passes through a fork that touches nothing; found by TODO 194's reach control, waived to this item |
 | 210 | OPEN | The maintaining detent's restoring row names `maintSpring` — the maintaining-POWER torus under the maintaining wheel, another unit, 1.0+ from the click at every pose; the detent has no spring of its own in the metal. Found by TODO 194's reach control, waived to this item |
-| 209 | OPEN | Twelve parts stand under `CLEAR_MARGIN` off the base plate without touching it, frozen in `PLATE_CLEARANCE_DEBT` when the `plateSeats` tier arrived. The winding clutch's rim and the winding pinion are at 0.046, the transfer arbor 0.050, the great wheel and transfer wheel 0.075, the case lugs 0.091, and an alarm winding-train arbor and five parts at a flat 0.1 (set-up box, wind-pinion saw, geneva finger disc and pin, arrest cross). Fix: re-seat each at `PLATE_TOP`/`PLATE_BACK` ± `CLEAR_MARGIN`, derived; a part that bears on the plate by design moves to `PLATE_SEATS` with its reason instead. |
+| 209 | PART DONE | Six of twelve rows retired: the arrest's plane re-floored at the plate face + `CLEAR_MARGIN` (it was a literal 0.1), the set-up square ended at its ratchet's floor, and two misfiled rows (the transfer arbor and the alarm climb rod, both running through plate bores) moved to `PLATE_SEATS`. Left: the transfer wheel and great wheel (0.075, a gear bevel under the margin, a band re-solve), the keyless stem parts (0.046–0.1, a dial-face relief or lower stem plane), and the case lugs (0.09). |
 | 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
 | 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
@@ -28162,7 +28162,7 @@ that point TODO 76's remaining declaration retires. Until then the twist is
 declared fiction, MODELLED and not SIMULATED: no force on the chain is
 integrated, so nothing would twist a real chain into this pose or out of it.
 
-## 209. Twelve parts stand under CLEAR_MARGIN off the base plate
+## 209. Twelve parts stand under CLEAR_MARGIN off the base plate — PART DONE
 
 Found by TODO 202 step 4's `plateSeats` tier on arrival. That tier holds
 every labelled mesh within `CLEAR_MARGIN` of the base plate to a declared
@@ -28204,6 +28204,39 @@ against a face 0.3 higher, so they stand 0.075 above the real one.
    kind and reason instead.
 3. Delete each row as it clears. The gate fails a cleared row as stale, so
    deleting the waiver is structurally part of the fix.
+
+**Part done — six of the twelve rows retired.**
+
+- **The arrest trio (cross, finger disc and pin).** The arrest solve's lowest
+  candidate plane was `PLATE_Z + 0.6`: the studs' 0.5 plant depth plus a
+  literal 0.1, taken as the plane the solve settles on. It is now
+  `ALARM_U_FLOOR + CLEAR_MARGIN`, the plate face plus the one margin.
+- **The set-up square.** It ran 0.05 below the ratchet it carries, which
+  stood its end 0.1 off the plate. It now starts at the ratchet's own floor,
+  `Z_RATCHET_BOT`, one margin off the plate. It fills the ratchet's bore, so
+  ending flush is a seat. Its top, the arbor's shoulder, is unchanged.
+- **Two rows were misfiled, and are now `PLATE_SEATS`.** The keyless transfer
+  arbor (0.0497) and the alarm climb arbor's rod (0.0998) both pass THROUGH
+  the plate. Each reading was the shaft's radial gap to its own bore wall, a
+  running fit, not a part that should clear the plate.
+
+**What remains (6 rows), and why each is more than a constant.**
+
+- **`transferWheel` and the great wheel (0.075).** Both are gears whose
+  `makeGear` edge bevel stands 0.075 proud of the stock face:
+  min(t·0.18, m·0.22). The transfer wheel is placed off `Z_RATCHET_BOT` by its
+  STOCK, so the bevel reaches below the margin.
+  - The winding spur is coplanar with it and must stay so to mesh.
+  - The band under the great wheel is ~1.2 tall.
+  - So this is a re-solve of that band (spur, transfer wheel, great wheel)
+    with the bevel counted, which is the two-bevel lesson the alarm stack
+    already pays.
+- **`windingPinion`, `clutchRim` (0.046) and `windPinionSaw` (0.1).** These
+  are on the crown stem's axis at `Z_KEYLESS` (−4.1). Their radii reach up
+  towards the plate's dial face at −2.3. The fix is a relief cut in the
+  plate's dial face over the stem train, as a real plate is recessed for its
+  keyless works, or a lower stem plane. Either moves the case's stem tubes.
+- **`caseLug` (0.0905).** Not yet traced.
 
 Feasibility: small per row · Battery: each fix moves its part's digest; the
 `plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved
