@@ -31065,7 +31065,7 @@ chosen against the bar.
 | `offline-check` | **44/44**, precache **63/63** |
 | boot | `?lang=cy`, `?lang=cym` and `?lang=cy-GB` console-silent on all three documents, in browsers launched as fr-FR and de-DE; `lang="cy"`, `dir="ltr"`; the chrome formats `30.0 · 0.024 · 18,000` where a bare `cy` reads `30,0` on the same machine |
 | fingerprint | **1896818507** at `?lang=cy` and in English, identical to a virgin boot of `origin/main` measured beside it |
-| battery | (running locally; the line is filled in when it finishes) |
+| battery | **53/53 gates pass**, locally on the dev container (3 shards, 3784 s wall, 4768 s of checks); fingerprint **1896818507** across virgin boots A and B and under the share payload; six swept spec points CLEAN |
 
 ### Residue, recorded
 
