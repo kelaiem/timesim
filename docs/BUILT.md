@@ -30892,7 +30892,7 @@ against the bar.
 
 ### Welsh — chunk J, a borrowed tag, and the mutations written into the linker
 
-The chrome (477 keys), `explain.html` (761/761) and `primer.html` (145/145)
+The chrome (477 keys), `explain.html` (762/762) and `primer.html` (145/145)
 read Welsh at 100%, on the pipeline Hebrew, Indonesian and Turkish used. That
 makes twenty locales. Welsh was not one of the wave's scoped chunks: it was
 asked for after Turkish and filed as chunk J in the same sitting, on the
@@ -31025,6 +31025,16 @@ first wrote «ffeiliau modelu» to satisfy the validator, which would have
 claimed MODELLING. Reconciliation set it back. That is the chrome's one
 honesty-validator exception, as it was Hebrew's, Indonesian's and Turkish's.
 
+**§253 landed while this PR was open, and showed the key rule working.** It
+rewrote the gong entry: nineteen explainer blocks and one primer block. The
+Welsh that had been keyed to the old English stopped matching, and the gate
+named all twenty. The tables were rebuilt from a fresh extract: every
+unchanged key kept its Welsh, the twenty new keys were translated, and the
+nineteen stale ones dropped out. The new keys were translated against the old
+Welsh, so a sentence §253 kept reads the same. «clamp-rhydd» (clamped-free)
+is now the one spelling in both tables, where the old gong block had
+«clampiedig–rhydd».
+
 ### Fit
 
 **The page gate's first pass found seventeen explainer overruns and
@@ -31052,19 +31062,19 @@ chosen against the bar.
 
 | | measured |
 |---|---|
-| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages (after eighteen, above); honesty control PASS (*wedi'i fodelu / wedi'i efelychu*), **19/19** rows verified; block coverage 0 short blocks against Welsh's median ratio 1.10 (explainer) and 1.09 (primer) — PASS |
+| `explain-i18n --check` | explainer **762/762**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages (after eighteen, above); honesty control PASS (*wedi'i fodelu / wedi'i efelychu*), **19/19** rows verified; block coverage 0 short blocks against Welsh's median ratio 1.10 (explainer) and 1.09 (primer) — PASS |
 | tag assert | silent on the tree; mutated to `cy-GB`, **4/4** boots warned and the chrome read `30,0 · 0,024 · 18 000` under fr-FR |
 | `explain-quotes` | PASS |
 | `glossary-links` | text identical with and without the linker in every locale; cy **72** links (en 86) — PASS |
 | sense audit | 0 wrong-sense links over the sixteen live terms (nine «llawr» uses read in context, every one English "floor") |
-| `probe-249-arrows --locales cy` | controls PASS; **0** backwards of 53 judged |
+| `probe-249-arrows --locales cy` | controls PASS; **0** backwards of 55 judged |
 | `probe-249-dotted-i` | PASS (no new case-mapping call) |
 | page headers | **56 px in Welsh**, both pages, all eight widths |
 | `#chrome-bar` | cy **185.0** (216.2 on the first pass) against en 170.2, de 192.4 |
 | `.hud-ro-label` | *Canu am* 40.6, *Amser* 28.9 against 150 px — one line |
 | `offline-check` | **44/44**, precache **63/63** |
 | boot | `?lang=cy`, `?lang=cym` and `?lang=cy-GB` console-silent on all three documents, in browsers launched as fr-FR and de-DE; `lang="cy"`, `dir="ltr"`; the chrome formats `30.0 · 0.024 · 18,000` where a bare `cy` reads `30,0` on the same machine |
-| fingerprint | **1896818507** at `?lang=cy` and in English, identical to a virgin boot of `origin/main` measured beside it; after `main`'s TODO 215 merged in, **1211654045** on both, identical to the new `main` again |
+| fingerprint | **1896818507** at `?lang=cy` and in English, identical to a virgin boot of `origin/main` measured beside it; after `main`'s TODO 215 merged in, **1211654045** on both, and after §253, **413380779** on both — identical to `main` each time |
 | battery | **53/53 gates pass**, locally on the dev container (3 shards, 3784 s wall, 4768 s of checks), on the head before `main`'s TODO 215 merged in; fingerprint **1896818507** across virgin boots A and B and under the share payload; six swept spec points CLEAN. The merged head runs it on CI |
 
 ### Residue, recorded
