@@ -18,10 +18,10 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, lowerUi, localizeTree }
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
-  BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
+  BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
@@ -937,7 +937,12 @@ const barrelR = (TRAIN.barrel.module * TRAIN.barrel.teeth) / 2;
 // plate floor the hairspring stack sets (= floor − margin; the drum gets
 // no plate opening — only its arbor reaches the plate). With the fusee
 // dropped to the same spring-bound floor, drum and cone compress together.
-const DRUM_R_ACTUAL = 10;
+// TODO 207 — the largest drum the plate carries: its chain coil one
+// CLEAR_MARGIN inside plateR, measured along drumDir (10.7181, solved and
+// held by the assert beside drumPos; rounded down). It was the bare 10, and
+// the spring's energy at a fixed peak stress goes as the ribbon's volume, so
+// every unit of radius the plate allows is energy the balance is owed.
+const DRUM_R_ACTUAL = 10.71;
 const DRUM_BOT_Z = L_BARREL + 0.7 + 0.08 + CLEAR_MARGIN;
 const DRUM_TOP_Z = TRAIN_CEILING_Z; // §218 tier two — the train's own ceiling, not the raised spring stack (layout.js says why)
 const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
@@ -1468,6 +1473,7 @@ const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
 const balanceWheel = G.makeBalanceWheel({
   radius: 9,
   thickness: BAL_T,
+  rimF: BAL_RIM_F,   // TODO 207 — lightened to the spring the plate can carry (layout.js says why)
   staffTop: BALANCE_SHOULDER_TOP_Z - L_BALANCE,
   // pinDrop + 0.4·t = safety-roller plane (mirrors the builder's stack);
   // +0.6 pokes the staff just past the roller's underside.
@@ -2956,7 +2962,7 @@ if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 21.4835; // TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
+const ALARM_LINK_ROD_LEN_U = 21.1389; // TODO 207: re-measured after the lightened balance's shorter hairspring (HAIRSPRING_H 0.6 → 0.3726) lowered the stack the plate floor stands on by 1.5·ΔH = 0.341, and the rod's top end stands on the plate — was 21.4835. TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
 const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5968 (TODO 194; 0.5765 before the dial move)
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.647 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.963 — a wall at the §50 floor
@@ -8359,17 +8365,18 @@ hammerGroup.add(hammerTailBar);
 //    under the 14.3 mN deflection ceiling below. The figures that follow are
 //    the record the rod was first priced against.)
 //  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
-//    3.067 mm (measured off the built pad). Holding a 327°
-//    (AMPLITUDE_PEAK_DEG, TODO 192 step 4 — the largest swing the spring
-//    sustains; this was first priced at a 270° the spring could not reach)
-//    swing means absorbing the hairspring's own peak torque
-//    k·θ = 1.234e-7 × 5.707 = 7.04e-7 N·m — 0.23 mN of friction at that
-//    radius, so ≈1.53 mN of normal force at a ruby-on-brass μ 0.15. The pad
-//    closes on the rim 0.495 u per 3.413 u of rod travel (both measured over
-//    the crown cycle), so the rod carries 1.53 × 0.145 = 0.22 mN. (The
-//    verdict below was taken at the first pricing, 1.3 mN and 0.18 mN; every
-//    hack figure in it scales by 1.21, which moves no conclusion — its
-//    7.2 mN deflection ceiling is 33× the new load.)
+//    3.067 mm (measured off the built pad). Holding a 455°
+//    (AMPLITUDE_PEAK_DEG — the largest swing the spring sustains, TODO 192
+//    step 4; this was first priced at a 270° the spring could not reach)
+//    swing means absorbing the hairspring's own peak torque. TODO 207
+//    lightened the balance and its spring with it (k 1.234e-7 → 7.663e-8
+//    N·m/rad), so k·θ = 7.663e-8 × 7.941 = 6.09e-7 N·m — 0.20 mN of friction
+//    at that radius, so ≈1.32 mN of normal force at a ruby-on-brass μ 0.15.
+//    The pad closes on the rim 0.495 u per 3.413 u of rod travel (both
+//    measured over the crown cycle), so the rod carries 1.32 × 0.145 =
+//    0.19 mN. (The verdict below was taken at the first pricing, 1.3 mN and
+//    0.18 mN; every hack figure in it scales by 1.02, which moves no
+//    conclusion.)
 // Both are sub-milliNewton — an order under the 5–50 mN detent budgets
 // the movement already carries (the yoke spring's block names that
 // envelope), which is the first thing the verdict below turns on.
@@ -9605,6 +9612,26 @@ const drumPos = {
   x: P.barrel.x + drumDir.x * FUSEE_DRUM_DIST,
   y: P.barrel.y + drumDir.y * FUSEE_DRUM_DIST,
 };
+// TODO 207 — the drum is as large as the PLATE that carries it allows, and
+// this holds DRUM_R_ACTUAL to that (it is declared far above, because the
+// fusee's torque law consumes the centre distance before the plate is
+// solved, so the literal cannot be computed there). The drum's outermost
+// metal is the chain coil on its wall, CHAIN_END_R_OUT either side of
+// DRUM_WRAP_R. Its centre stands FUSEE_DRUM_DIST out along drumDir, which
+// itself grows with R. One CLEAR_MARGIN inside plateR is the bound, solved
+// here in closed form along the fixed direction: |F + d·(D₀ + R)| + R +
+// 2·CHAIN_END_R_OUT + CLEAR_MARGIN = plateR, with D₀ = FUSEE_DRUM_DIST − R.
+// The literal must sit at or under that bound and within 0.01 of it, so a
+// layout change that moves the plate or the direction fails here until the
+// drum is re-sized.
+{
+  const D0 = FUSEE_DRUM_DIST - DRUM_R_ACTUAL;
+  const reach = (R) => Math.hypot(P.barrel.x + drumDir.x * (D0 + R), P.barrel.y + drumDir.y * (D0 + R)) + R + 2 * CHAIN_END_R_OUT + CLEAR_MARGIN;
+  let lo = 0, hi = plateR;
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (reach(m) <= plateR) lo = m; else hi = m; }
+  if (!(DRUM_R_ACTUAL <= lo + 1e-9 && lo - DRUM_R_ACTUAL < 0.01))
+    console.warn(`TODO 207: DRUM_R_ACTUAL ${DRUM_R_ACTUAL} is not the plate's bound rounded down — the drum's chain coil may reach ${lo.toFixed(4)} (one CLEAR_MARGIN inside plateR ${plateR.toFixed(3)})`);
+}
 // Drum seat: LIFTED above the great wheel's plane. At the compact 2.5-unit
 // gap the drum's silhouette overlaps the great wheel's radius in XY, so
 // the clearance is vertical: drum bottom sits above the wheel's top face
@@ -25344,10 +25371,12 @@ const EQUALISATION = (() => {
   //    — a quadratic in θ, solved in closed form — and the record carries
   //    it at every corner beside the amplitude the movement CLAIMS
   //    (AMPLITUDE_CLAIM_DEG), with the factor by which the claim exceeds the
-  //    supply. Measured at the shipped metal: the sustained swing is 77–186°
-  //    vertical and 112–327° dial-flat (TODO 192's steps and TODO 193 took it
-  //    from 2–7°: pivots cut, the strip, then the ribbon proportioned to its
-  //    alloy and its drum). The gate holds the arithmetic (the identities,
+  //    supply. Measured at the shipped metal: the sustained swing is 126–293°
+  //    vertical and 172–455° dial-flat, 200° vertical at the nominal corner
+  //    (TODO 192's steps and TODO 193 took it from 2–7°: pivots cut, the
+  //    strip, then the ribbon proportioned to its alloy and its drum; TODO 207
+  //    then grew the drum to the plate and lightened the balance to the
+  //    AMPLITUDE_TARGET_DEG design swing). The gate holds the arithmetic (the identities,
   //    the corners' ordering, the amplitude solve plugging back) and, since
   //    TODO 192 step 4, the two amplitudes layout.js declares against the
   //    solve's extremes, published here as `amplitude`: the claim at or under
@@ -25453,6 +25482,14 @@ const EQUALISATION = (() => {
       console.warn(`TODO 192: AMPLITUDE_CLAIM_DEG ${AMPLITUDE_CLAIM_DEG}° is not the sustained minimum rounded down — the solve's least is ${min.deg.toFixed(2)}° (${min.corner}, ${min.position})`);
     if (!energy.amplitude.peakBounds)
       console.warn(`TODO 192: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the sustained maximum rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position})`);
+    // TODO 207 — the DESIGN target, at the nominal corner held vertical: met,
+    // and by less than one heavier rim step would cost (BAL_RIM_F is the
+    // heaviest rim that reaches it).
+    const nominalVertical = energy.corners.nominal.sustainedDeg.vertical;
+    energy.amplitude.target = { deg: AMPLITUDE_TARGET_DEG, slackDeg: AMPLITUDE_TARGET_SLACK_DEG, nominalVertical,
+      met: nominalVertical >= AMPLITUDE_TARGET_DEG, tight: nominalVertical < AMPLITUDE_TARGET_DEG + AMPLITUDE_TARGET_SLACK_DEG };
+    if (!energy.amplitude.target.met || !energy.amplitude.target.tight)
+      console.warn(`TODO 207: the nominal corner sustains ${nominalVertical.toFixed(2)}° vertical against the ${AMPLITUDE_TARGET_DEG}° target (slack ${AMPLITUDE_TARGET_SLACK_DEG}°) — ${energy.amplitude.target.met ? 'BAL_RIM_F is lighter than the target needs' : 'the balance is too heavy for its spring'}; re-solve BAL_RIM_F`);
   }
   return Object.freeze({
     going: {
@@ -29521,7 +29558,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 11.0231;   // TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+const ALARM_LINK_BODY_LEN_U = 11.0331;   // TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
 // needs the bush's own OD before that loop runs, at the SAME radius the

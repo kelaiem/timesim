@@ -327,11 +327,17 @@ it into prose either.
    barrel — and was retired by the gate rather than by memory). And
    since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
-   its minimum rounded DOWN (76: adverse, vertical), `AMPLITUDE_PEAK_DEG` its
-   maximum rounded UP (327: favourable, dial-flat; §218's peaks and the hack
+   its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` its
+   maximum rounded UP (455: favourable, dial-flat; §218's peaks and the hack
    brake are priced there) — held on both sides and within a degree, so a
-   solve that moves leaves neither behind. How low 76° is for a lever watch is
-   TODO 207, and a REPORT. `FRICTION` is the one place a coefficient the movement
+   solve that moves leaves neither behind. And since TODO 207 the swing the
+   movement is DESIGNED to, `AMPLITUDE_TARGET_DEG` 200° held vertical at the
+   NOMINAL corner (a serviced lever watch): the drum is as large as the plate
+   carries (`DRUM_R_ACTUAL`) and the balance's rim (`BAL_RIM_F`) is the
+   heaviest that still reaches the target, held both ways — under it fails,
+   and so does more than `AMPLITUDE_TARGET_SLACK_DEG` over it. That the
+   favourable dial-flat swing (455°) passes a lever escapement's knocking
+   angle is TODO 216, a REPORT. `FRICTION` is the one place a coefficient the movement
    cannot measure may live, always as a band with its source, never a single
    number, and `MU_STEEL` is the adverse corner of every steel row by
    reference; `tools/probe-power-budget.mjs` computes the same column from the

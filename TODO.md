@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
 | 215 | OPEN | Found closing TODO 210. The maintaining detent rides its ring in the LOCKING sense: as the train runs the beak climbs each tooth's 28% face and slides down its 72% ramp (law and metal agree). The ride is not on the cut either: the tip floats 0.04–0.10 over the ramp, the click's body sits up to 0.26 inside the ring mid-climb, and 35% of each tooth the beak hovers 0.311 over the root on the law's `max(…, 0)` floor with no banking cut |
 | 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211 |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
@@ -25,7 +26,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 210 | CLOSED | The detent has its own spring: a straight blade (`SPRING_FLAT_U` × 0.5643, free 7.56–7.72 from the post's face) let into the cock's post, bearing on a TAIL the click now carries behind its pivot. Solved in a line from the law's travel (0.2286 rad), R = 3 and the 0.9·σy target: the beak presses the ring 10.01 mN seated → 24.97 mN at a tooth's crest, equal-margin in `SELECTOR_DETENT_WINDOW_MN`. Two §137 `crank` rows, `maintDetentHandoff` reads −0.021 at three phases, reach 1.0+ → 0, waiver retired |
 | 209 | PART DONE | Nine of twelve rows retired: the arrest's plane re-floored at the plate face + `CLEAR_MARGIN` (it was a literal 0.1), the set-up square ended at its ratchet's floor, two misfiled rows (the transfer arbor and the alarm climb rod, both running through plate bores) moved to `PLATE_SEATS`, and the three keyless stem rows paid down by TODO 211's derived `Z_KEYLESS`. Left: the transfer wheel and great wheel (0.075, a gear bevel under the margin, a band re-solve) and the case lugs (0.09). |
 | 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
-| 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
+| 207 | DONE | The design swing is declared and gated: `AMPLITUDE_TARGET_DEG` 200° vertical at the nominal corner, met at 200.4°. The drum grew to the largest the plate carries (`DRUM_R_ACTUAL` 10 → 10.71, held by a boot assert to its plate-edge bound) and the balance was lightened in rim height to the heaviest that reaches the target (`BAL_RIM_F` 0.645: inertia 62%, mass 63%), its hairspring re-solved at the same 0.0239 mm in a 0.3726 ribbon. The favourable dial-flat swing now passes the knocking angle: TODO 214 |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
 | 205 | CLOSED | The neck's flank ran under the rod's foot face, 0.1091 at the rest roll (the least of the roll; armed 0.2043). The chord now turns 3.0° about its inner end so the shaft's tip stands `ALARM_LINK_ROD_STANDOFF` 0.7600 beside the rod's axis — the least offset at which the foot's rim clears the neck by `CLEAR_MARGIN` — and an `INTRA_UNIT_FLOORS` row reads 0.1657 |
 | 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.973 since TODO 194 thickened the rod; 0.931 when filed) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
@@ -28117,6 +28118,8 @@ force arithmetic and possibly the stall record.
 
 ## 207. The balance sustains 76–327°: a lever watch runs 200° and up in every position
 
+**DONE** — the resolution is at the end of this item.
+
 Found closing [TODO 192]. The amplitude claim is honest now
 (`AMPLITUDE_CLAIM_DEG` 76, gated against the energy column's solve), and it is
 honestly LOW. A serviced Swiss lever watch typically holds 200–220° or more
@@ -28148,6 +28151,74 @@ the drum.
 The acceptance is the energy column's adverse vertical minimum at or above a
 declared target. Raise `AMPLITUDE_CLAIM_DEG` with it, since row 14 holds the
 claim within a degree of the solve and so will refuse to leave it behind.
+
+### Resolution (2026-10-06)
+
+The barrel lever was chosen and taken as far as the plate allows, and the balance
+lever took the rest. Measured before anything moved: at the adverse corner held
+vertical, the balance's pivots spent 85% of what arrived each beat (7.8 of
+9.2 nJ). That term goes with its MASS, and the rest (πk/2Q)θ² goes with its
+INERTIA, so the swing is a function of energy ÷ balance size alone.
+
+**The drum, to the plate.** A wider drum steps away from the fusee by the same
+amount (FUSEE_DRUM_DIST = R_LARGE + R + 2.5), so its outer edge moves twice as
+fast as its radius. Its height is pinned by the great wheel under it and the
+train's ceiling over it. Measured, the chain coil on its wall stood 1.486 inside
+the plate edge, so the bound is the coil one CLEAR_MARGIN inside plateR, 10.7181,
+solved in closed form along drumDir. `DRUM_R_ACTUAL` 10.71 is that rounded down,
+held by a boot assert on both sides. It is a literal because the fusee's torque
+law consumes the centre distance before the plate is solved. The ribbon
+re-proportioned itself (TODO 192 step 3's solve): 31.6 → 35.5 mJ over the reserve.
+The case's inner wall stands at r 50.1 in the drum's band, so the movement could
+carry a much larger drum if the plate grew. That is the "grow the movement"
+option, not taken.
+
+**The balance, lightened in HEIGHT.** The rim's width is the stop work's pad
+annulus (HACK_PAD_TOP_R), already within 0.03 of its 0.7 floor, so the metal
+comes off the rim's TOP: its underside, the balance's seat over the fork and the
+hack's contact plane stay where the full rim put them (`RIM_H_REF`). The timing
+screws' heads and the arms' thickness scale with it, so the screws stay inside
+the rim's band. `BAL_RIM_F` 0.645 is the heaviest rim that reaches the target,
+searched in 0.005 steps: 0.645 sustains 200.4° and 0.650 sustains 199.1°. Inertia
+3.106e-10 kg·m² (62%), mass 34.2 mg (63%).
+
+**The hairspring follows the balance.** k = I·ω² fell with the inertia. The coil
+count is §218's and the stud post forbids a finer pitch, so the ribbon keeps
+§218's 0.0239 mm and loses HEIGHT in proportion to k: `HAIRSPRING_H` 0.6 → 0.3726
+(0.14 mm, a real hairspring's proportion). The train's datum stays on the
+reference ribbon (`HAIRSPRING_H_REF`, §218's rule applied a second time), so the
+drum keeps its height. The stack above the balance is 0.341 shorter, so the plate
+stands that much lower, and the alarm selector rod and its body were re-measured
+by their own procedure (21.4835 → 21.1389, 11.0231 → 11.0331).
+
+| corner | vertical | dial-flat |
+|---|---|---|
+| favourable | 292.8° | 454.8° |
+| nominal | **200.4°** | 292.1° |
+| adverse | 126.0° | 171.7° |
+
+`AMPLITUDE_CLAIM_DEG` 126 and `AMPLITUDE_PEAK_DEG` 455 follow the solve (row 14).
+`AMPLITUDE_TARGET_DEG` 200 is new and is gated as row 15: met at the nominal
+corner held vertical, and by less than `AMPLITUDE_TARGET_SLACK_DEG` 1.5° (one
+heavier rim step costs 1.3°), so a lighter rim than needed fails as surely as a
+heavier one. Mutated to 0.65 and 0.63, the boot warning fires both ways.
+§218 at the new peak: 184.8 MPa against 700, minimum coil gap 0.134 mm, overcoil
+pivot load ×0.169 of the flat spring's.
+
+**`turning` read two screws as one bar.** Thinner screws turned the coaxial
+pair on opposite sides of the rim into one bar 7 mm long at L/D 28.8. `gapBridged`
+spliced them across the whole wheel, because the staff seated in the gap has a
+matching t-range. A member seated in a gap now refuses the bridge when it stands
+ACROSS the line instead of being revolved about it. The test is the ratio of the
+smaller to the larger second moment of its offsets from the line: under
+`TURN_CROSS_ANISO` 0.5. A body of revolution reads 1 and the staff reads under 0.01.
+The rule moved one other bar: the winding arrest's two spider stubs. These are
+separate pins built outward from the cage hub, and the hub had joined them. The
+count is 230 → 239 bars and no new waivers.
+
+What it did not do: the favourable corner's dial-flat swing is past a lever
+escapement's knocking angle, which is TODO 216. The swing remains MODELLED, not
+SIMULATED: it is the energy column's solve, not a balance driven by a force.
 
 ## 208. The fusee cone is too steep for an upright chain: wrap links lean to 63 degrees and twist 16-35 degrees per joint
 
@@ -28681,3 +28752,34 @@ a real choice: the second grows the travel to 0.353 rad and re-solves TODO
 solve on the cut outline, not the linearised profile. Add a floors row for
 `Maintaining detent ⇄ Fusee & great wheel` that excludes only the beak's
 working contact.
+
+## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
+
+Found closing [TODO 207]. The design swing is now 200° vertical at the nominal
+corner. At the favourable corner, dial-flat, the same balance and spring sustain
+**454.8°**. A Swiss lever escapement KNOCKS when the swing passes about
+360° − half the lift angle (around 330° for a 50° lift): the impulse pin comes
+round and strikes the outside of the fork's horn, so the balance banks instead
+of reaching that swing. A real watch at that corner, fresh and fully wound and
+lying flat, would knock.
+
+The favourable corner combines every band's best value at once (Q_other 500,
+the escapement at 40%, μ_jewel 0.10, the smallest pivot-end contact), and the
+spread between FRICTION's corners is wide: 172–455° dial-flat over the three.
+
+**Why it is a REPORT.** The model has no knocking angle of its own. The lift
+angle is not a declared quantity (`FORK_BANK_DEG` is the bank, not the lift),
+and nothing poses the pin against the outside of a horn. A gate on 330° would be
+a number that looked right.
+
+**Fix paths:**
+1. Derive the knocking angle from the escapement's own geometry (the lift
+   angle the pallet and roller proportions imply), then cap
+   `AMPLITUDE_PEAK_DEG` at it. Above the knock the swing is banked, not
+   sustained, and the loads priced at the peak are the banking loads.
+2. Narrow the corner spread where a band is wider than its source supports.
+3. Accept a knock at the best corner as a real watch's fully-wound behaviour,
+   and say so on the explainer.
+
+`AMPLITUDE_PEAK_DEG` stays at the solve's maximum meanwhile, which over-prices
+the hairspring and the hack brake rather than under-pricing them.
