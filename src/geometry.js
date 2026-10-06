@@ -3175,7 +3175,7 @@ export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH 
 // tip rise to the hub's level.
 // ---------------------------------------------------------------------------
 
-export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6, prongR = 0.4 }) {
+export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6, prongR = 0.4, prongSegments = 10 }) {
   const g = new THREE.Group();
   const hw = width / 2;
 
@@ -3202,7 +3202,7 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
   bossGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(bossGeo, MATS.steel));
 
-  const prongGeo = new THREE.CylinderGeometry(prongR, prongR, prongH, 10);
+  const prongGeo = new THREE.CylinderGeometry(prongR, prongR, prongH, prongSegments);   // TODO 211: the polygon layout.js solves the fork's bearing against
   prongGeo.rotateX(Math.PI / 2);
   // prongGap 0 asks for a SINGLE pin — the groove-and-pin fork real yokes
   // ride a sliding pinion's neck with (two coincident posts would be one
