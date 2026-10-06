@@ -31064,8 +31064,8 @@ chosen against the bar.
 | `.hud-ro-label` | *Canu am* 40.6, *Amser* 28.9 against 150 px — one line |
 | `offline-check` | **44/44**, precache **63/63** |
 | boot | `?lang=cy`, `?lang=cym` and `?lang=cy-GB` console-silent on all three documents, in browsers launched as fr-FR and de-DE; `lang="cy"`, `dir="ltr"`; the chrome formats `30.0 · 0.024 · 18,000` where a bare `cy` reads `30,0` on the same machine |
-| fingerprint | **1896818507** at `?lang=cy` and in English, identical to a virgin boot of `origin/main` measured beside it |
-| battery | **53/53 gates pass**, locally on the dev container (3 shards, 3784 s wall, 4768 s of checks); fingerprint **1896818507** across virgin boots A and B and under the share payload; six swept spec points CLEAN |
+| fingerprint | **1896818507** at `?lang=cy` and in English, identical to a virgin boot of `origin/main` measured beside it; after `main`'s TODO 215 merged in, **1211654045** on both, identical to the new `main` again |
+| battery | **53/53 gates pass**, locally on the dev container (3 shards, 3784 s wall, 4768 s of checks), on the head before `main`'s TODO 215 merged in; fingerprint **1896818507** across virgin boots A and B and under the share payload; six swept spec points CLEAN. The merged head runs it on CI |
 
 ### Residue, recorded
 
