@@ -2294,6 +2294,17 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // TODO 215 — the maintaining detent's WORKING contact, and nothing else: the
+  // beak on the ring's cut (maintDetentHandoff's beak row owns that bite, at
+  // SEAT_RELIEF). Under the EXPECTED blanket the straight click's body sat
+  // 0.10–0.26 inside the ring at every pose; the click is cranked now, its arm
+  // concentric with the ring a margin outside the tip circle at the seat (the
+  // ride only turns it outward), so the arm, the tail, the blade, the stud and
+  // the cock all keep the margin from the ring, the pawls and the great wheel.
+  {
+    a: 'Maintaining detent', b: 'Fusee & great wheel', min: CLEAR_MARGIN,
+    contacts: [['maintDetentBeak', 'maintRing']],
+  },
   // TODO 174 — the fork's DRIVE contact, and nothing else: the centre pin in
   // the groove. Every other pair of the two units' metal keeps the margin —
   // the centre crank's carrier above all, which the derived ALARM_FORK_SEAT
@@ -3280,8 +3291,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'mwCornerFoldIn', b: 'settingTraverse1', why: 'the fold corner\'s inboard bevel, keyed to the far end of leg 1 (§234 — the corner that split the bar)' },
   { unit: 'Keyless works', a: 'mwCornerFoldOut', b: 'settingTraverse2', why: 'the fold corner\'s outboard bevel, keyed to leg 2 (§234)' },
   { unit: 'Keyless works', a: 'mwCornerRiseIn', b: 'settingTraverse2', why: 'the rise corner\'s inboard bevel, keyed to leg 2 of the folded traverse (same marginal cluster)' },
-  { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
-  { unit: 'Maintaining detent', a: 'maintDetentTail', b: 'CylinderGeometry#3', why: 'TODO 210: the click\'s tail is its boss continued behind the pivot, so it rides the same stud the click does' },
+  { unit: 'Maintaining detent', a: 'maintDetentClick', b: 'maintDetentStud', why: 'click on its pivot stud (TODO 215: the cranked arm\'s boss, rounded about the stud at the arm\'s half-width)' },
+  { unit: 'Maintaining detent', a: 'maintDetentTail', b: 'maintDetentStud', why: 'TODO 210: the click\'s tail is its boss continued behind the pivot, so it rides the same stud the click does' },
   { unit: 'Maintaining detent', a: 'maintDetentSpring', b: 'CylinderGeometry#1', why: 'TODO 210: the detent blade let into a slot across the cock\'s post to its axis — the ground it is a cantilever from' },
   { unit: 'Maintaining detent', a: 'maintDetentSpring', b: 'maintDetentTail', why: 'TODO 210: the blade bears on the tail\'s corner, sunk ALARM_SEAT_SINK into its face (the seated-contact convention) — the click\'s return passes through this joint; maintDetentHandoff measures it seated at three phases of a tooth' },
   // (§182 retired 'alarmIndexWedge ⇄ ShapeGeometry#3'. It read "the index wedge
@@ -6247,20 +6258,33 @@ export const STRIKE_HANDOFFS = [
 // every pose — it is preloaded past the seat — so the one row expects CONTACT
 // at all three phases, posed on the train (tau alone moves the detent: it
 // rides the great wheel's absolute angle). The phases are one tooth's, read on
-// the shipped layout: `riding` mid-climb (lift ≈ 0.15 rad), `seated` with the
-// beak at its seat (lift 0), `crest` within ~0.001 rad of the tooth's tip,
-// where the blade is deflected most. A layout move shifts which phase each tau
-// samples, never what the row expects of it.
+// the shipped layout: `riding` climbing the ramp (lift 0.148 rad), `seated`
+// with the beak at the root (lift 5e-6 — since TODO 215 the seat is an
+// INSTANT, the tip in the valley, where it used to be 35% of the tooth hovering
+// on the law's floor), `crest` at the tooth's tip (lift 0.3685 = the measured
+// travel), where the blade is deflected most. Located by golden section on the
+// click's pose. A layout move shifts which phase each tau samples, never what
+// the rows expect of it.
 export const MAINT_DETENT_HANDOFF_POSES = [
   ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
-  ['seated', { tau: 1285, crownPullT: 0, leverEngage: 0, tension: 1 }],
-  ['crest', { tau: 2177, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['seated', { tau: 1457.2, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['crest', { tau: 1069.4, crownPullT: 0, leverEngage: 0, tension: 1 }],
 ];
 export const MAINT_DETENT_HANDOFFS = [
   {
     label: 'detent blade ⇄ click tail (the spring seats the beak)',
     unitA: 'Maintaining detent', meshA: 'maintDetentSpring',
     unitB: 'Maintaining detent', meshB: 'maintDetentTail',
+  },
+  // TODO 215 — the other end of the same force path: the beak ON THE CUT. The
+  // ride is solved against the ring's polygon to stand SEAT_RELIEF off it, so
+  // at every phase — climbing the ramp, seated at the root, over the crest —
+  // the beak touches; the law's old linearised profile floated the tip 0.04–0.10
+  // over the chords and hung it 0.311 over an empty root, which no row read.
+  {
+    label: 'detent beak ⇄ maintaining ring (the beak rides the cut)',
+    unitA: 'Maintaining detent', meshA: 'maintDetentBeak',
+    unitB: 'Fusee & great wheel', meshB: 'maintRing',
   },
 ];
 
