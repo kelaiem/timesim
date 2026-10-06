@@ -30689,6 +30689,207 @@ on both pages.
 - **`Version`** still has no entry in any locale's table, and
   **`index.html`'s `<title>`** is still not localized in any locale.
 
+### Turkish — chunk B, the apostrophe suffix, and the dotted i audited in code
+
+The chrome (477 keys), `explain.html` (761/761) and `primer.html` (145/145)
+read Turkish at 100%, on the pipeline Hebrew and Indonesian used. That makes
+nineteen locales. The sites it touched:
+- the `LOCALES` row (`tr`, `tag: 'tr-TR'`, matcher `/^tr(-|$)/`) and six
+  ladder rows
+- both `LOADERS` entries
+- `MARKS.tr` and `HONESTY.tr`
+- the precache count, 59 → 61
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+- **one new display-layer function, `lowerUi`**, and the three sites that
+  reach it
+
+**The marks were measured, and they are German's.** In Chromium 141 and
+Node's ICU, `tr`, `tr-TR` and `tr-CY` all format `30,0 · 0,024 · 1.000 ·
+18.000` on `latn`, with plural one/other. Turkey and Cyprus land on the one
+table. The negative ladder rows are `tru` (Turoyo) and `trv` (Taroko), two
+codes a careless `startsWith('tr')` would swallow.
+
+**`HONESTY.tr` reads the verb's doubled l.** *modellemek*'s stem is
+«modelle-» (*modellenmiş*, *modelleme*), which the bare noun «model» does
+not carry. So the credit line's «yapay zekâ modeli» cannot count. Simulated
+is the loan *simüle* / *simülasyon*.
+
+The stem's character class spells the capital out: `/s[iİ]m[üÜ]l/i`. A JS
+`/i` flag does NOT fold `İ` onto `i`, so `/simül/i` would miss «SİMÜLE
+EDİLMİŞ», the form the page's capitals emphasis takes. That was measured
+before the row was written.
+
+### The dotted i, a rule about code rather than the table
+
+Turkish has two i's. The capital of `i` is `İ`, and the lower case of `I` is
+`ı`. JavaScript's `toUpperCase` and `toLowerCase` are locale-BLIND, so a
+translated string lowered in JS turns «KAPALI» into «kapali». The chunk
+named this as a code audit, and it is measured in both halves.
+
+**JS: eight case-mapping calls in `src/*.js`, three of them reaching a
+translated string.**
+- **The three display sites**:
+  - the screen-reader announcer's on/off word
+  - the advanced panel filter's translated haystack
+  - the filter's query
+- **They now go through `lowerUi`**, which lowers in the UI locale.
+  `fmtNum` is its precedent: it lives beside it in `i18n.js`, and it is the
+  same rule for letters as for numbers.
+- **The filter's English haystack stays locale-blind** (the `_labels` source
+  and the key path). The query is lowered BOTH ways, and either side may
+  match. Lowering everything by Turkish rules would have turned «Input» into
+  «ınput», so a Turkish reader's English search would stop finding English.
+- **The other five calls are correct as they are, because they must stay
+  blind.** They read:
+  - a hex colour
+  - an anchor id from the canonical English term
+  - a locale tag, in `_norm` (Turkish rules would turn `IT` into `ıt`)
+  - the template's canonical `'On'`/`'Off'`
+  - a key name
+
+**CSS: no change, measured on pixels.** `text-transform: uppercase` reads
+the element's `lang`, and the plates' `.lbl` uppercases inside SVG `<text>`.
+The question was whether that path honours Turkish too. `textContent` never
+shows a CSS transform, so the measure is a screenshot:
+- the box renders `i` uppercased at 80 px
+- it is compared against literal `İ` and `I`
+- English controls must read `I`
+
+`lang="tr"` renders `İ` in an HTML box AND in SVG `<text>`.
+
+**`tools/probe-249-dotted-i.mjs` holds both halves as an acceptance test.**
+- Its census classifies every case-mapping call in `src/*.js`, DISPLAY or
+  BLIND, by file and line text.
+- A new call that matches no row FAILS, and so does a row that matches
+  nothing. The next site to lower a translated string has to be looked at,
+  not merely added.
+- Mutation-tested: a stray `s.toUpperCase()` in a new `src` file read
+  UNCLASSIFIED and the probe exited non-zero.
+
+### The apostrophe suffix
+
+A Turkish case suffix on a number, a symbol, an abbreviation or a code
+identifier is attached with an apostrophe: `18.000'den`, `§65'te`,
+`<code>CLEAR_MARGIN</code>'ın`. §216 scoped this for Hungarian with a
+different punctuation, and it holds here as written.
+- The checker's number token is built from the locale's marks, so it stops at
+  the apostrophe. A primer quantity «18.000'den» parses as 18000, verified
+  with a planted string before any table was written.
+- On a `<code>` span the suffix rides OUTSIDE the closing tag, so the span
+  stays byte-identical to the source.
+
+The validator FAILED a suffix glued inside `</code>`. It also failed a capital
+written with the dotless I where Turkish needs the dot (`MODELLENMIŞ` for
+`MODELLENMİŞ`). Common nouns take their suffixes with no mark.
+
+### The tables
+
+Ten translators worked against one glossary in the saatçi's register:
+- Turkish words where the trade has them: zemberek, akrep, yelkovan, çark,
+  çapa, spiral yay
+- the French loans where it uses those: eşapman, balans, pinyon
+- *fusee*, kept as the loan and suffixed with an apostrophe as Turkish does
+  for a foreign spelling: «fusee'nin»
+
+The primer addresses its reader as «siz». A numbered figure is LEVHA. An arc
+is «kavis» throughout, because «yay» is the spring.
+
+**The linker's senses were chosen against everyday Turkish:**
+- a hand-off is «devir-teslim», never bare «devir», which is a revolution
+  (rpm)
+- a cam's throw is «kalkış», and a lever's stroke is «strok»
+- a waiver is «muafiyet», and an ordinary exception is «istisna»
+- a chord is «kiriş», and the gong's musical chord is «akor»
+
+Turkish attaches case and possessive suffixes with no space, so the
+`.gloss-variants` rows list them («istasyonda», «azimutu», «muafiyete»). The
+rows also deliberately leave out forms that are other words:
+- **Lane:** «şeridi» and its family are left out, because they collide with
+  «yay şeridi» (ribbon).
+- **Fold:** «katlanır» and «katlanan» are left out, because they also mean
+  "endure".
+
+**The result: Turkish links 70 times against English's 86.** The sense
+audit was rebuilt to read the forms the linker actually matches — each
+term's cell plus its variants row, from the translated output — rather than
+guessed stems. Turkish stems run into other words: «poz» is the front of
+«pozisyon».
+- Its only hits were seven uses of «taban» (floor). The English says "floor"
+  in every one, and the linker refuses `floor` anyway, so nothing was linked
+  wrongly.
+- Every term but one carries a positive control. The exception is *action
+  group*, which no Turkish block carries.
+
+Reconciliation, from what the translators reported:
+
+| English | seam | now |
+|---|---|---|
+| pad (hack, lifter, finger) | «pabuç» ×16 against «ped» ×7 | «pabuç» |
+| rim | «çember» against one «jant» | «çember» |
+| coupling | «kuplaj» against «akuplaj» | «kuplaj» |
+| the Maltese stop-work | «durdurma düzeneği» in the chrome against «kurma durdurucu» | «kurma durdurucu» |
+
+Nine English keys appear twice with disagreeing Turkish, and each was
+chosen. A tooth space is «diş aralığı», because «diş boşluğu» is backlash.
+The chrome's "no models" is model FILES, «hiç model dosyası yok». That is
+its one honesty-validator exception, as it was Hebrew's and Indonesian's.
+
+### Fit
+
+**The page gate's first pass found six explainer overruns and none on the
+primer**, fewer than Indonesian's fifteen for a language that agglutinates.
+Each was set against its English length, and the second pass read 0.
+
+**The chrome bar measured 198.5 on «Menü / Görünüm / Kontroller» — the
+fourth locale past German's 192.4.** It measured 186.3 once the panel took
+the singular «Kontrol» that Turkish software already uses for a control
+panel (Kontrol Paneli). That is §208's lesson a fourth time: a face chosen
+against the bar.
+
+- **Headers:** 56 px at all eight widths on both pages.
+- **HUD labels:** «Çalma saati» 52.8, level with Spanish and Korean; «Zaman»
+  31.1.
+- **§53's column:** no content wider than its box.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 crossed honesty terms, **0 new plate overflow** on both pages (after six, above); honesty control PASS (*modellenmiş / simüle edilmiş*), **18/18** rows verified; block coverage 0 short blocks against Turkish's median ratio 1.05 — PASS |
+| `probe-249-dotted-i` | census 8 calls, 1 DISPLAY definition + 3 `lowerUi` sites, 7 BLIND rows matched, 0 unclassified, 0 stale; CSS: `İ` under `tr` in HTML and SVG, controls `I` — PASS; mutation (a stray `toUpperCase`) — FAIL as it must |
+| `explain-quotes` | PASS |
+| `glossary-links` | text identical with and without the linker in every locale; tr **70** links — PASS |
+| sense audit | 0 wrong-sense links over the sixteen live terms (seven «taban» uses read in context, every one English "floor") |
+| `probe-249-arrows --locales tr` | controls PASS; **0** backwards of 52 judged |
+| page headers | **56 px in Turkish**, both pages, all eight widths |
+| `#chrome-bar` | tr **186.3** (198.5 on the first pass) against en 170.2, de 192.4 |
+| `.hud-ro-label` | *Çalma saati* 52.8, *Zaman* 31.1 against 150 px — one line |
+| `offline-check` | **43/43**, precache **61/61**, the Turkish primer served from cache |
+| boot | `?lang=tr` and `?lang=tr-CY` on all three documents console-silent apart from software-GL notices and the static server's own 404, which English shows too; `lang="tr"`, `dir="ltr"`; the ladder assert silent; in the page, `lowerUi('KAPALI İÇİN')` reads «kapalı için» where the locale-blind call reads «kapali i̇çi̇n», the combining dot riding each i |
+| fingerprint | **124220314** (60 units, 12 poses) at `?lang=tr` and in English on the merged head, IDENTICAL to a virgin boot of `origin/main` measured beside it |
+| battery | **52/52 gates**, local (dev container, 3 shards, 3345 s wall, 4199 s of checks), on the head with `main`'s TODO 209 merged; fingerprint **124220314** across virgin boots A and B and under the share payload — identical to `origin/main`. CI's Battery job on the PR, opted in to the self-hosted runner, is the merge gate |
+
+### Residue, recorded
+
+- **No native review pass**, the IOU every locale carries. The terms most
+  likely to differ in a Turkish workshop are:
+  - «saat makinesi» for the movement, where «mekanizma» and «kalibre» are
+    also heard
+  - «kurma kolu» for the crown, which reads as "winding crown" on the ALARM
+    crown, a crown that sets rather than winds
+  - «fusee», a loan for a part with no Turkish word
+- **«kavrama» is both the clutch and a gear mesh** in the glossary as
+  written. The keyless prose writes «dişli kavraması» for the mesh to keep
+  them apart; two short labels carry the bare word.
+- **The explainer's number check holds plate labels only** (recorded under
+  Indonesian, still owed). Turkish reads 0 prose blocks off its English, as a
+  multiset of digits outside `<code>`.
+- **Arabic's 39 backward arrows** are still held by `probe-249-arrows`'
+  `OWED` row.
+- **The fourteen older tables** still render the blocks rewritten since their
+  landings in English. That is §73's rule working, and it is still owed.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising

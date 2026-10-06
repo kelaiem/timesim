@@ -11,7 +11,7 @@ import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
-import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, localizeTree } from './i18n.js';
+import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, lowerUi, localizeTree } from './i18n.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
 // order (kinematic constants + the whole Z-stack). See src/layout.js. They are
 // consumed unchanged below; the geometry fingerprint proves the move changed
@@ -65,6 +65,7 @@ import {
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, HUB_COLLAR_BORE_R, STEM_SQ_BORE_REACH, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
+  YOKE_PRONG_SEGMENTS, HUB_COLLAR_SEGMENTS, YOKE_BEARING_LATERAL, YOKE_A_SEAT, YOKE_A_FULL, yokeProngSupport, yokeClutchAt,   // TODO 211: the fork bears on a cut collar face, and the clutch is where it puts it
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
@@ -76,6 +77,7 @@ import {
   SLENDER_OVERHANG_K,                         // §54: an overhang's effective length — §36 sizes against what the check MEASURES
   SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
+  BACK_PLATE_T, KEYLESS_STACK_R,              // TODO 211: the plate's thickness (hoisted — the keyless plane derives from its dial face) and the stem stack's reach that plane is cut against
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -2135,7 +2137,13 @@ const KW_SPEC = {
     rimBack: KW_SPEC.clutchRim.zWebHi - KW_SPEC.clutchRim.zWebLo,
     rimTip: KW_SPEC.clutchRim.zWebLo - KW_SPEC.clutchRim.zTipLo,
     setTipR: KW_SPEC.settingWheel.tipR,
+    tipR: KW_SPEC.windPinion.tipR,
   };
+  // TODO 211 — tipR is one row for two cones, because the keyless plane's
+  // ceiling (Z_KEYLESS) reads it for both: hold the rim to the same figure.
+  if (Math.abs(KW_SPEC.clutchRim.tipR - KW_BEVEL.tipR) > 5e-6)
+    console.warn(`TODO 211 keyless bevel: the clutch rim's tip circle ${KW_SPEC.clutchRim.tipR.toFixed(6)} is not the `
+      + `pinion's KW_BEVEL.tipR ${KW_BEVEL.tipR} that the keyless plane is cut against`);
   for (const [k, v] of Object.entries(want))
     if (Math.abs(v - KW_BEVEL[k]) > 5e-6)
       console.warn(`TODO 136 keyless bevel: layout.js declares KW_BEVEL.${k} = ${KW_BEVEL[k]} but the cut `
@@ -2742,15 +2750,9 @@ const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW
 // the PLANE, never the mesh — the two constants below are that plane, and the
 // geometry fingerprint is what proves the deferral cost nothing: the shipped
 // movement hashes exactly as it did with the cut up here.
-// TODO 202 — the plate's two FACES are the datums, and the thickness is what
-// lies between them. The movement side is z 0, which every train part, cock
-// leg and pillar seats off (PLATE_TOP). The dial side is z −2.3: until TODO 202
-// the extrude's bevel stood proud of a nominal [−2, 0] slab, and the face it
-// actually presented at −2.3 is what the whole dial-side stack was solved
-// against (TODO 153's PLATE_BACK_FACE, §234's guard, TODO 172's pockets). The
-// builder now cuts the finished plate, so the slab is declared as the metal
-// those solves already stand on: 2.3 u = 0.872 mm, centred at −1.15.
-const BACK_PLATE_T = 2.3;
+// TODO 202 — the plate's two FACES are the datums; BACK_PLATE_T (layout.js
+// since TODO 211, which derives the keyless plane from the dial face) is what
+// lies between them.
 const BACK_PLATE_Z = -BACK_PLATE_T / 2;   // the slab's centre: top face at z 0
 
 // --- the case's RADIAL dimensions (backlog: watch case) — derived once,
@@ -7831,15 +7833,39 @@ const yoke = G.makeYoke({
   prongGap: 0,
   prongH: Z_KEYLESS - Z_YOKE + 0.4,
   prongR: YOKE_PRONG_R,
+  prongSegments: YOKE_PRONG_SEGMENTS,   // TODO 211: layout.js solves the bearing against this polygon
 });
 // Rule 6 — the fork's window has two walls and YOKE_ARM only derives one
-// (the spine margin at mid-stroke). The other: at the stroke ENDS the
-// prong stands farthest from the stem line, and its inner edge must still
-// land inside the collar's face band or the fork tracks nothing there.
+// (the spine margin at mid-stroke). The other was "the prong's inner edge lands
+// inside the collar's band at the stroke ends", and it held while the prong
+// touched nothing (TODO 211): a chord inside the band is the collar's ARRIS,
+// not its face. The wall now is the bearing itself, and layout.js sizes
+// HUB_COLLAR_R to it — so what can drift is the MIRROR: layout.js solves the
+// contact on a copy of this prong's polygon (it cannot import geometry.js),
+// and a re-cut prong would leave the collars sized for a post that is not
+// there. Asserted against the built mesh's own vertices, at the seated
+// station, in the arm's frame (local +Y is the arm; makeYoke's convention).
 {
-  const perpEnd = YK_C - Math.sqrt(YOKE_ARM ** 2 - (CLUTCH_TRAVEL / 2) ** 2);
-  if (!(perpEnd - YOKE_PRONG_R < HUB_COLLAR_R))
-    console.warn(`TODO 50: fork prong inner edge ${(perpEnd - YOKE_PRONG_R).toFixed(3)} at the stroke ends — outside the collar's ${HUB_COLLAR_R} face band, the fork tracks nothing there`);
+  const prong = yoke.getObjectByName('yokeProng');
+  const pos = prong.geometry.attributes.position;
+  const a = YOKE_A_SEAT, drop = Math.sqrt(YOKE_ARM ** 2 - a ** 2);
+  const ey = [a / YOKE_ARM, drop / YOKE_ARM], ex = [ey[1], -ey[0]];
+  let sMin = Infinity, lAt = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + prong.position.x, y = pos.getY(i) + prong.position.y - YOKE_ARM;
+    const sv = a + x * ex[0] + y * ey[0], lv = (YK_C - drop) - (x * ex[1] + y * ey[1]);
+    if (sv < sMin - 1e-12 || (Math.abs(sv - sMin) <= 1e-12 && lv > lAt)) { sMin = sv; lAt = lv; }
+  }
+  const want = yokeProngSupport(a, -1);
+  if (Math.abs(sMin - want.s) > 1e-6 || Math.abs(lAt - want.l) > 1e-6)
+    console.warn(`TODO 211 fork: the built prong bears at along ${sMin.toFixed(5)}, lateral ${lAt.toFixed(5)}, `
+      + `but layout.js solved ${want.s.toFixed(5)}, ${want.l.toFixed(5)} — HUB_COLLAR_R is sized for a prong that is not the cut`);
+  // …and the derivation's own claim, restated as the number it buys: the face
+  // under the bearing generator by the two running fits, at the inradius.
+  const land = HUB_COLLAR_R * Math.cos(Math.PI / HUB_COLLAR_SEGMENTS) - YOKE_BEARING_LATERAL;
+  if (!(land >= (SAW_FIT + PIVOT_BORE_CLEAR) / 2 - 1e-9))
+    console.warn(`TODO 211 fork: the collar's face reaches only ${land.toFixed(4)} past the prong's bearing line `
+      + `(${YOKE_BEARING_LATERAL.toFixed(4)} from the stem) against the ${((SAW_FIT + PIVOT_BORE_CLEAR) / 2).toFixed(3)} the two fits can float it — the fork bears on the arris`);
 }
 const yokeGroup = new THREE.Group();
 yokeGroup.position.set(yokePivot.x, yokePivot.y, Z_YOKE);
@@ -8004,8 +8030,8 @@ windClutchMount.add(windClutch);
   // itself, not merely into the sleeve's now-larger OD (see layout.js's
   // comment on the constant for the retired 0.62/0.75 pair this replaces).
   {
-    const shape = new THREE.Shape(loopPts(HUB_COLLAR_R, 20));
-    const hole = new THREE.Path(loopPts(HUB_COLLAR_BORE_R, 20).reverse()); // hole winds opposite the outer loop
+    const shape = new THREE.Shape(loopPts(HUB_COLLAR_R, HUB_COLLAR_SEGMENTS));   // TODO 211: HUB_COLLAR_R is sized at THIS polygon's inradius
+    const hole = new THREE.Path(loopPts(HUB_COLLAR_BORE_R, HUB_COLLAR_SEGMENTS).reverse()); // hole winds opposite the outer loop
     shape.holes.push(hole);
     const geo = new THREE.ExtrudeGeometry(shape, { depth: HUB_COLLAR_T, bevelEnabled: false });
     geo.translate(0, 0, -HUB_COLLAR_T / 2);
@@ -8017,6 +8043,34 @@ windClutchMount.add(windClutch);
       windClutch.add(hub);
     }
   }
+}
+// TODO 211 — THE KEYLESS PLANE'S CEILING, HELD ON THE METAL. Z_KEYLESS is
+// derived (layout.js) from KEYLESS_STACK_R, the stem stack's widest radius, so
+// no member of the pinion or the clutch may reach farther from the stem than
+// that. Radius about the stem is invariant under the members' spin and slide,
+// so this reads every vertex in its group's own frame (local +Y is the stem)
+// and holds at every pose — the plate gap the battery's plateSeats measures
+// over the pose net is then the margin the derivation wrote down.
+{
+  const _m = new THREE.Matrix4(), _inv = new THREE.Matrix4(), _v = new THREE.Vector3();
+  let worst = 0, who = '';
+  for (const grp of [windPinionGroup, windClutch]) {
+    grp.updateWorldMatrix(true, true);
+    _inv.copy(grp.matrixWorld).invert();
+    grp.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position) return;
+      _m.multiplyMatrices(_inv, o.matrixWorld);
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        _v.fromBufferAttribute(pos, i).applyMatrix4(_m);
+        const r = Math.hypot(_v.x, _v.z);
+        if (r > worst) { worst = r; who = o.name; }
+      }
+    });
+  }
+  if (worst > KEYLESS_STACK_R + 1e-6)
+    console.warn(`TODO 211: ${who} reaches ${worst.toFixed(6)} from the stem, past KEYLESS_STACK_R `
+      + `${KEYLESS_STACK_R.toFixed(6)} — Z_KEYLESS is cut against a stack narrower than the metal and the plate gap is under CLEAR_MARGIN`);
 }
 // The stem's SQUARE — the keyed joint's metal, on the spinner where the
 // clutch rides. Side from the stem's own circle (inscribed square,
@@ -8084,7 +8138,7 @@ const YOKE_SPRING_R = 1.55;   // arc about the pivot: the 1.0 pivot jewel settin
   yokeGroup.add(arc);
   // …and the post its fixed end reacts on: movement-frame, on the arm's
   // seated line one blade past the arc, from the plate's back face down.
-  const postAz = yokeAngleAt(0) - Math.PI / 2; // world azimuth of the local −Y arm line at seat
+  const postAz = yokeAngleAt(YOKE_A_SEAT) - Math.PI / 2; // world azimuth of the local −Y arm line at seat (TODO 211: the prong bearing on collar In)
   const pr = YOKE_SPRING_R + SPRING_FLAT_U / 2 + PIVOT_MIN_U;
   const postLen = Math.abs(Z_KEYLESS - Z_YOKE) + 0.9;
   const sp = new THREE.Mesh(new THREE.CylinderGeometry(PIVOT_MIN_U, PIVOT_MIN_U, postLen, 10), MATS.blueSteel);
@@ -10755,6 +10809,9 @@ function sawRadiusAt(u, R) {
 // Detent handles — built with its own cock after the drum (it needs the
 // spur/transfer envelope for its footing); null until then.
 let maintDetentBeak = null;
+// TODO 210 — the detent's own spring: the click's tail and the blade grounded
+// on the cock's post that bears on it (built with the cock below; null until).
+let maintDetentTail = null, maintDetentBlade = null, MAINT_DET_SPRING = null;
 let MAINT_DETENT_AZ = 0, MAINT_DET_TIP_AZ = 0, MAINT_DET_TIP_R = 0,
     MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SIGN = 1;
 // The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
@@ -10802,6 +10859,14 @@ function updateMaintaining(windBack) {
       MAINT_DET_BASE - MAINT_DET_SIGN * MAINT_DET_PRELOAD,   // where the spring alone would seat it
       MAINT_DET_BASE + MAINT_DET_SIGN * lift,                // where the ring lets it sit
       -MAINT_DET_SIGN);
+    // TODO 210 — the tail is the click's own metal (one rigid body with it),
+    // and the blade's free end goes where the tail's corner puts it: the
+    // spring is deflected BY the click, never posed beside it.
+    if (maintDetentTail) {
+      const rel = maintDetentBeak.rotation.z - MAINT_DET_BASE;
+      maintDetentTail.rotation.z = MAINT_DET_SPRING.tailAz + rel;
+      maintDetentBlade.rotation.z = MAINT_DET_SPRING.bladeAimAt(rel);
+    }
   }
 }
 // The DETENT on its own overhung cock. Its beak must reach the ring at
@@ -10916,18 +10981,248 @@ const maintDetent = new THREE.Group();
   stud.rotation.x = Math.PI / 2;
   stud.position.set(pivR, 0, armBot + ARM_T - studH / 2);
   az.add(stud);
+  // ---- TODO 210 — THE DETENT'S OWN SPRING, AS METAL. ----------------------
+  // The click's return was declared against `maintSpring`, the maintaining-
+  // POWER spring coiled under the maintaining wheel in another unit, which
+  // never comes within 1.0 of the click; nothing in this unit was a spring,
+  // so the seat in updateMaintaining was a law with no force behind it.
+  //
+  // WHERE IT CAN LIVE, measured rather than chosen. The only fixed metal near
+  // the click is this cock — the post on the plate outside the great wheel's
+  // tip circle, the arm over the wheel, the pivot stud — and the click's band
+  // is the ring's: from the ring's top face to the arm's underside is 0.05, so
+  // no coaxial spiral has a band to wind in without moving the arm (a strata
+  // spend on the whole sandwich). Under the arm, between the great wheel's
+  // face and the arm, the band is free along the whole run to the post (an
+  // obstacle sweep of every axis read the great wheel 0.46 below and the chain
+  // 1.13 off it). So the spring is a STRAIGHT BLADE grounded in the post,
+  // lying along the arm — which pushes only ACROSS the arm, and the click
+  // points 0.72π off the arm's line, where a force across the arm is mostly
+  // along the click and turns it hardly at all. The click therefore carries a
+  // TAIL behind its pivot, clocked along the arm, and the tail's corner bears
+  // on the blade: a blade biasing a separate pivoted arm, §137's crank.
+  //
+  // THE LINE SPEC, every quantity derived:
+  //   travel Δa — the law's own lift from the seat to the crest of a tooth,
+  //     (MAINT_RING_R − MAINT_DET_TIP_R)/MAINT_DET_LEVER.
+  //   window — SELECTOR_DETENT_WINDOW_MN, 5–50 mN at the beak. A maintaining
+  //     detent is a click indexing a ratchet at its tooth run, which is the
+  //     load class the window's own basis names (jumper/detent indexing loads
+  //     at the tooth run); its HOLD during winding is the saw face's closing
+  //     geometry, not this spring, so no stronger window applies.
+  //   force ratio R = Fmax/Fmin — 3. Any linear spring through any lever,
+  //     placed equal-margin in the window (Fmin·Fmax = 5·50), stores
+  //     U = ½·Fmax·LF·Δa·R/(R−1), least at R = 3 (TODO 194's bound); the
+  //     least stored energy is the least steel. So the preload θ0 = Δa/(R−1).
+  //   stock t — SPRING_FLAT_U, the file's flat-blade section.
+  //   tail ℓ and free length L — they share the arm's run from the pivot to
+  //     the post's face, and the blade's root works to 0.9·SPRING_SIGMA_Y_PA
+  //     at the crest (TODO 194's target, the 10% headroom SLENDER_TARGET and
+  //     TURN_LD_TARGET keep): the longest blade the run carries, with the tail
+  //     its strain asks for. Bisected, since the strain rises with ℓ.
+  //   height b — from the window: the beak force is linear in b, so the
+  //     equal-margin product fixes it. It must fit the band between the great
+  //     wheel's face and the arm, each a CLEAR_MARGIN off.
+  //   tail section — the click's own, read off its cut at the boss: the tail
+  //     carries the same moment about the pivot the beak does (moment balance).
+  //   clocking — the tail lies along the arm at the seat (az 0) and only ever
+  //     turns away from the blade's face as the click lifts, while the blade
+  //     only ever deflects off its free line: so the CORNER bears and the
+  //     tail's flank never lies on the blade (asserted below).
+  // The blade is drawn RIGID about its root, aimed through the corner (the
+  // feeler blade's convention); a real cantilever bows, so its free end's
+  // slope is wrong by 3/2 and nothing reads it — the sautoir's stated debt.
+  // The corner is sunk ALARM_SEAT_SINK into the blade's face (the seated-
+  // contact convention), so maintDetentHandoff reads a touch, not a hair.
+  MAINT_DET_SPRING = (() => {
+    const U = UNIT_MM / 1000;                          // m per unit
+    const [lo, hi] = SELECTOR_DETENT_WINDOW_MN;
+    const seatS = -MAINT_DET_SIGN;                     // the rotation sense that seats the beak
+    const travel = (MAINT_RING_R - MAINT_DET_TIP_R) / MAINT_DET_LEVER;
+    const R_FORCE = 3;                                 // argmin of R/(R−1)·√R — see above
+    const theta0 = travel / (R_FORCE - 1);
+    const strainTarget = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA;
+    const t = SPRING_FLAT_U;
+    beak.geometry.computeBoundingBox();
+    const tailW = 2 * beak.geometry.boundingBox.max.y; // the click's section at its boss, off the cut
+    const clickT = beak.geometry.boundingBox.max.z - beak.geometry.boundingBox.min.z;
+    const tailAz = 0;                                  // along the arm at the seat (rel = 0)
+    // The band under the arm: the great wheel's face (its bevelled body, the
+    // same reach DRUM_BOT_Z clears) and the arm's underside, a margin off each.
+    const gwFace = L_BARREL + G.gearFaceReach({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth,
+      mates: [TRAIN.barrel.pinion], thickness: 1.4, boreR: 1.4 }).body;
+    const zLo = gwFace + CLEAR_MARGIN, zHi = armBot - CLEAR_MARGIN;
+    // The post is cut tapered, POST_R + 0.1 at the plate to POST_R at the arm's
+    // top; the free length is read from its face at the band's FOOT, its widest
+    // there — the shortest free length, the conservative read for strain.
+    const postH = armBot + ARM_T;
+    const postRAt = (z) => POST_R + 0.1 * (1 - z / postH);
+    const xClamp = postR - postRAt(zLo);
+    // The tail's corner on the blade's side, in the az frame, at tail angle φ.
+    const cornerAt = (l, phi) => ({
+      x: pivR + l * Math.cos(phi) + seatS * (tailW / 2) * Math.sin(phi),
+      y: l * Math.sin(phi) - seatS * (tailW / 2) * Math.cos(phi),
+    });
+    const REL = { seat: seatS * theta0, seated: 0, crest: -seatS * travel };   // rot − BASE
+    const shape = (l) => {
+      const free = cornerAt(l, tailAz + REL.seat);
+      const at = (rel) => {
+        const c = cornerAt(l, tailAz + rel);
+        const L = xClamp - c.x;                        // free length to the contact
+        const delta = seatS * (free.y - c.y);          // deflection off the free line
+        return { rel, c, L, delta, strain: 3 * t * delta / (2 * L * L) };
+      };
+      return { l, free, seated: at(REL.seated), crest: at(REL.crest), at };
+    };
+    let a = 0.5 * MAINT_DET_LEVER, b2 = xClamp - pivR - CLEAR_MARGIN;
+    if (shape(a).crest.strain > strainTarget || shape(b2).crest.strain < strainTarget)
+      console.warn(`TODO 210 detent spring: the tail bisection is not bracketed — strain ${shape(a).crest.strain.toExponential(3)}..${shape(b2).crest.strain.toExponential(3)} against ${strainTarget.toExponential(3)}`);
+    for (let i = 0; i < 80; i++) { const m = (a + b2) / 2; if (shape(m).crest.strain > strainTarget) b2 = m; else a = m; }
+    const S = shape(a);
+    const P0 = { x: xClamp, y: S.free.y };             // the root, on the free line at the post's face
+    const SINK = ALARM_SEAT_SINK;
+    const target = (c) => ({ x: c.x, y: c.y + seatS * SINK });
+    // Force at the beak per unit blade height: the blade's 3EI/L³ at the
+    // contact, along the face's normal, turned into a moment about the pivot
+    // and read at the beak's lever.
+    const beakAt = (p, height) => {
+      const k = cantileverK_N_per_m(height, t, p.L);
+      const F = k * p.delta * U;                       // N, at the contact
+      const q = target(p.c);
+      const ux = (q.x - P0.x), uy = (q.y - P0.y), un = Math.hypot(ux, uy);
+      let nx = -uy / un, ny = ux / un;
+      if (ny * seatS < 0) { nx = -nx; ny = -ny; }      // the normal that points into the tail
+      const armIn = seatS * ((p.c.x - pivR) * ny - p.c.y * nx);   // u, the corner's moment arm
+      return { k, F_mN: F * 1000, armIn, beak_mN: F * 1000 * armIn / MAINT_DET_LEVER };
+    };
+    const b = Math.sqrt(lo * hi / (beakAt(S.seated, 1).beak_mN * beakAt(S.crest, 1).beak_mN));
+    const seated = beakAt(S.seated, b), crest = beakAt(S.crest, b);
+    const reachMax = Math.max(Math.hypot(target(S.seated.c).x - P0.x, target(S.seated.c).y - P0.y),
+      Math.hypot(target(S.crest.c).x - P0.x, target(S.crest.c).y - P0.y));
+    const embed = postR - xClamp;                      // let into a slot across the post, to its axis
+    const bladeLen = embed + reachMax + CLEAR_MARGIN;  // one margin past the deepest contact: the corner lands on the face, never the end
+    const aimAt = (rel) => { const q = target(cornerAt(S.l, tailAz + rel)); return Math.atan2(q.y - P0.y, q.x - P0.x); };
+    // ENERGY, TODO 194's bound and the blade's capacity, both published.
+    const R = crest.beak_mN / seated.beak_mN;
+    const U_bound_J = 0.5 * (crest.beak_mN / 1000) * (MAINT_DET_LEVER * U) * travel * R / (R - 1);
+    const U_blade_J = 0.5 * crest.k * (S.crest.delta * U) ** 2;
+    const sigmaMax_Pa = STEEL_E_PA * S.crest.strain;
+    const U_cap_J = sigmaMax_Pa ** 2 * (S.crest.L * U) * (b * U) * (t * U) / (18 * STEEL_E_PA);
+    // ---- the derivation, held (rule 6: achieved and required) ----
+    const say = (what, ok, got, need) => { if (!ok) console.warn(`TODO 210 detent spring: ${what} — ${got}, need ${need}`); };
+    say('crest strain', Math.abs(S.crest.strain - strainTarget) <= 1e-6 * strainTarget, S.crest.strain.toExponential(4), strainTarget.toExponential(4));
+    say('seated beak force', seated.beak_mN >= lo && seated.beak_mN <= hi, `${seated.beak_mN.toFixed(3)} mN`, `${lo}–${hi}`);
+    say('crest beak force', crest.beak_mN >= lo && crest.beak_mN <= hi, `${crest.beak_mN.toFixed(3)} mN`, `${lo}–${hi}`);
+    say('equal margin', Math.abs(seated.beak_mN * crest.beak_mN - lo * hi) <= 1e-6 * lo * hi, (seated.beak_mN * crest.beak_mN).toFixed(4), lo * hi);
+    say('blade height in the band', b <= zHi - zLo, b.toFixed(4), `≤ ${(zHi - zLo).toFixed(4)}`);
+    say('tail and blade share a band', Math.min(zHi, beak.position.z + clickT) - Math.max(zHi - b, beak.position.z) >= clickT / 2,
+      (Math.min(zHi, beak.position.z + clickT) - Math.max(zHi - b, beak.position.z)).toFixed(4), `≥ ${(clickT / 2).toFixed(4)}`);
+    say('blade stock over the spring floor', t >= SPRING_MIN_U, t.toFixed(4), `≥ ${SPRING_MIN_U.toFixed(4)}`);
+    say('stored energy within the blade\'s capacity', U_blade_J <= U_cap_J * (1 + 1e-9), `${(U_blade_J * 1e6).toFixed(4)} µJ`, `≤ ${(U_cap_J * 1e6).toFixed(4)} µJ`);
+    // The corner bears and nothing else does: over the ride, the tail turns no
+    // nearer the blade's face than the face itself lies.
+    for (let i = 0; i <= 16; i++) {
+      const rel = REL.crest * (i / 16);
+      const phi = tailAz + rel, beta = Math.atan2(-(target(cornerAt(S.l, phi)).y - P0.y), -(target(cornerAt(S.l, phi)).x - P0.x));
+      if (seatS * (phi - beta) > 1e-9) { say('the corner bears, not the flank', false, `tail ${phi.toFixed(4)} vs face ${beta.toFixed(4)} at rel ${rel.toFixed(4)}`, 'tail ≤ face'); break; }
+    }
+    // …and the tail stands a margin off the ring's tip circle over the ride.
+    {
+      let rMin = Infinity;
+      for (let i = 0; i <= 16; i++) {
+        const phi = tailAz + REL.crest * (i / 16);
+        for (const [lx, ly] of [[0, tailW / 2], [0, -tailW / 2], [S.l, tailW / 2], [S.l, -tailW / 2]])
+          rMin = Math.min(rMin, Math.hypot(pivR + lx * Math.cos(phi) - ly * Math.sin(phi), lx * Math.sin(phi) + ly * Math.cos(phi)));
+      }
+      say('tail off the ring', rMin >= MAINT_RING_R + CLEAR_MARGIN, rMin.toFixed(4), `≥ ${(MAINT_RING_R + CLEAR_MARGIN).toFixed(4)}`);
+    }
+    return Object.freeze({
+      seatS, travel, theta0, R_design: R_FORCE, R, strainTarget, strainCrest: S.crest.strain, sigmaMax_Pa,
+      tailLen: S.l, tailW, tailAz, clickT, bladeT: t, bladeB: b, bladeLen, embed, zLo, zHi,
+      clamp: P0, freeLenSeated: S.seated.L, freeLenCrest: S.crest.L,
+      deltaSeated: S.seated.delta, deltaCrest: S.crest.delta,
+      k_N_per_m_seated: seated.k, k_N_per_m_crest: crest.k,
+      bladeF_mN_seated: seated.F_mN, bladeF_mN_crest: crest.F_mN,
+      armIn_seated: seated.armIn, armIn_crest: crest.armIn,
+      beakF_mN_seated: seated.beak_mN, beakF_mN_crest: crest.beak_mN,
+      U_bound_J, U_blade_J, U_cap_J,
+      bladeAimAt: aimAt,
+    });
+  })();
+  {
+    const SP = MAINT_DET_SPRING;
+    // The TAIL: the click's own boss continued behind the pivot, its section
+    // the click's root section, its thickness and plane the click's. It rides
+    // the click's rotation exactly (updateMaintaining), so it is one rigid
+    // body with it — the member tier clusters them into one frame.
+    const tailGeo = new THREE.BoxGeometry(SP.tailLen, SP.tailW, SP.clickT);
+    tailGeo.translate(SP.tailLen / 2, 0, SP.clickT / 2);
+    const tail = new THREE.Mesh(tailGeo, MATS.blueSteel);
+    tail.name = 'maintDetentTail';
+    tail.position.set(pivR, 0, beak.position.z);
+    tail.rotation.z = SP.tailAz + (beak.rotation.z - MAINT_DET_BASE);
+    az.add(tail);
+    maintDetentTail = tail;
+    // The BLADE: let into a slot across the cock's post to its axis, free
+    // from the post's face, its contact face on the tail's side.
+    const bladeGeo = new THREE.BoxGeometry(SP.bladeLen, SP.bladeT, SP.bladeB);
+    bladeGeo.translate(SP.bladeLen / 2 - SP.embed, SP.seatS * SP.bladeT / 2, 0);
+    const blade = new THREE.Mesh(bladeGeo, MATS.blueSteel);
+    blade.name = 'maintDetentSpring';
+    blade.position.set(SP.clamp.x, SP.clamp.y, SP.zHi - SP.bladeB / 2);
+    blade.rotation.z = SP.bladeAimAt(beak.rotation.z - MAINT_DET_BASE);
+    if (!(Math.cos(blade.rotation.z) < 0))
+      console.warn(`TODO 210 detent spring: the blade aims ${blade.rotation.z.toFixed(4)} — it must run from the post back toward the pivot, or its body lies on the tail's side of its face`);
+    az.add(blade);
+    maintDetentBlade = blade;
+  }
   movement.add(maintDetent);
   registerExplode(maintDetent, 0, 1); // base-plate furniture
   registerLabel('Maintaining detent', maintDetent);
 }
-// §48/TODO 13 — the detent spring's PRELOAD, as an angle at the beak. One
-// CLEAR_MARGIN of further travel past the ring's deepest point, so the spring
-// is still pushing when the beak is at the bottom of a tooth rather than
-// merely touching it. Defined HERE, after the solve: MAINT_DET_LEVER is
-// assigned by that solve, and reading it earlier is a module-level temporal
-// dead zone — which is exactly how the first version of this failed, throwing
+// §48/TODO 13 — the detent spring's PRELOAD, as an angle at the beak: where
+// the spring alone would seat it. TODO 210 — it is the BLADE's now, θ0 =
+// Δa/(R−1) from the solve above (the blade's free line runs through the tail's
+// corner at that angle), where it was one CLEAR_MARGIN of travel at the beak
+// for a spring that did not exist. Defined HERE, after the solve: the cock's
+// block assigns it, and reading it earlier is a module-level temporal dead
+// zone — which is exactly how the first version of this failed, throwing
 // before `__clock` was ever set, with nothing in the console to say so.
-const MAINT_DET_PRELOAD = CLEAR_MARGIN / MAINT_DET_LEVER;
+const MAINT_DET_PRELOAD = MAINT_DET_SPRING.theta0;
+// §137 — THE DETENT'S FORCE, declared beside its metal (TODO 210): the blade
+// grounded in the cock's post biases the click through its tail, a crank —
+// the blade works at the tail's corner and the beak at MAINT_DET_LEVER, so the
+// blade's force reaches the ring re-levered about the pivot. Two rows, the two
+// ends of the ride: seated (the beak at its seat, the blade at its preload)
+// and at the crest of a tooth (the most the blade is deflected), each inside
+// the window it was solved into.
+for (const [end, F, Fb, arm, L, d, k] of [
+  ['seated', MAINT_DET_SPRING.beakF_mN_seated, MAINT_DET_SPRING.bladeF_mN_seated, MAINT_DET_SPRING.armIn_seated,
+    MAINT_DET_SPRING.freeLenSeated, MAINT_DET_SPRING.deltaSeated, MAINT_DET_SPRING.k_N_per_m_seated],
+  ['at the crest', MAINT_DET_SPRING.beakF_mN_crest, MAINT_DET_SPRING.bladeF_mN_crest, MAINT_DET_SPRING.armIn_crest,
+    MAINT_DET_SPRING.freeLenCrest, MAINT_DET_SPRING.deltaCrest, MAINT_DET_SPRING.k_N_per_m_crest],
+]) {
+  declareTransfer(`maintaining detent: click spring (post → tail → beak on the ring), ${end}`, {
+    unit: 'Maintaining detent', meshes: ['maintDetentSpring', 'maintDetentTail'], idiom: 'crank',
+    load: { value: F, unit: 'mN',
+      source: 'the blade’s 3EI/L³ (cantileverK_N_per_m over SPRING_FLAT_U × the solved height, free from the post’s face to the tail’s corner), deflected off its free line by the corner, along the face’s normal, its moment about the click’s pivot read at MAINT_DET_LEVER' },
+    quantities: {
+      bladeT_u: MAINT_DET_SPRING.bladeT, bladeB_u: MAINT_DET_SPRING.bladeB, freeLen_u: L, delta_u: d,
+      k_N_per_m: k, bladeF_mN: Fb, travel_rad: MAINT_DET_SPRING.travel, preload_rad: MAINT_DET_SPRING.theta0,
+      armIn_u: arm, armOut_u: MAINT_DET_LEVER, ratio: MAINT_DET_LEVER / arm,
+      tailLen_u: MAINT_DET_SPRING.tailLen, band_u: MAINT_DET_SPRING.zHi - MAINT_DET_SPRING.zLo,
+      sigmaMax_MPa: MAINT_DET_SPRING.sigmaMax_Pa / 1e6, forceRatio: MAINT_DET_SPRING.R,
+      // TODO 194's energy floor for these two forces over this travel, what the
+      // blade stores at the crest, and what its volume can store at its σ (a
+      // tip-loaded cantilever's σ²V/18E) — the last two are one number by
+      // construction, which is the strain solve read as energy.
+      U_bound_uJ: MAINT_DET_SPRING.U_bound_J * 1e6, U_blade_uJ: MAINT_DET_SPRING.U_blade_J * 1e6, U_cap_uJ: MAINT_DET_SPRING.U_cap_J * 1e6,
+    },
+    envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: F },
+    why: `a grounded blade biasing a pivoted click short of its beak is a crank: the blade bears on the tail’s corner ${arm.toFixed(4)} from the pivot and the beak works at ${MAINT_DET_LEVER.toFixed(4)}, so the ${Fb.toFixed(2)} mN the blade delivers ${end} arrives at the ring as ${F.toFixed(2)} mN — `
+      + `placed equal-margin in the window (${MAINT_DET_SPRING.beakF_mN_seated.toFixed(2)} × ${MAINT_DET_SPRING.beakF_mN_crest.toFixed(2)} = 5 × 50 mN²), the click being a detent indexing a ratchet at its tooth run, which is the load class the window’s basis names; the HOLD in winding is the saw face’s, not this spring’s`,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // SET-UP WORK — the one ratchet a fusee movement really carries at its
@@ -10960,9 +11255,15 @@ const setupWork = new THREE.Group();
   // plate (Z_RATCHET_BOT — the winding spur's convention). No cap: the
   // ratchet is captive between the plate below and the arbor's shoulder
   // above. All STATIC — the arbor does not turn in service.
-  const sqH = RATCHET_T + 0.2;
+  // TODO 209 — the square starts at the ratchet's own floor, Z_RATCHET_BOT, one
+  // margin off the plate. It ran 0.05 below it, which stood its end 0.1 off the
+  // plate face, under the margin the ratchet it carries was placed at; the
+  // square fills the ratchet's bore, so ending flush with it is a seat, not a
+  // coplanar overlap. Its top (0.15 above the ratchet, the arbor's shoulder)
+  // is unchanged.
+  const sqH = RATCHET_T + 0.15;
   const square = new THREE.Mesh(new THREE.BoxGeometry(SQ, SQ, sqH), MATS.steel);
-  square.position.z = Z_RATCHET_BOT - 0.05 + sqH / 2;
+  square.position.z = Z_RATCHET_BOT + sqH / 2;
   az.add(square);
   const ratchet = G.makeRatchetAndClick({ radius: ratchetR, teeth: SETUP_RATCHET_TEETH, thickness: RATCHET_T, includeClick: false, squareBore: SQ });
   ratchet.position.z = Z_RATCHET_BOT;
@@ -22361,9 +22662,21 @@ declareRestoring('Minute jumper', 'jumperBeak', 'spring',
 // stays truthfully declared on 'Minute jumper', whose beak genuinely
 // reciprocates in pose space; the star-side physics (jumper indexes the
 // star) is real, ease-tier, and uninstrumented — TODO 29's class.
+// TODO 210 — re-pointed at the detent's OWN spring. The row named
+// `maintSpring`, the maintaining-POWER spring in 'Fusee & great wheel', which
+// shares the word and never comes within 1.0 of the click; the reach control
+// waived it against this item. The blade below is grounded in the cock's post
+// and bears on the click's tail, which is the click's own metal, so the reach
+// measures the blade against the click's frame directly.
 declareRestoring('Maintaining detent', 'click', 'spring',
-  'the detent spring seats the beak one CLEAR_MARGIN past the ring root; the saw teeth obstruct',
-  'maintSpring');
+  `a straight blade let into the cock's post bears on the click's tail, preloaded ${MAINT_DET_SPRING.theta0.toFixed(4)} rad past the seat, so the beak presses the ring with ${MAINT_DET_SPRING.beakF_mN_seated.toFixed(2)}–${MAINT_DET_SPRING.beakF_mN_crest.toFixed(2)} mN over the whole ride — the saw teeth obstruct, so the seat is a limit, not a placement`,
+  'maintDetentSpring');
+// …and the blade answers for itself: it reciprocates with the click (the tail
+// deflects it and it returns), and it is its own restoring element — the
+// sautoir's idiom, spring and reciprocating body one part.
+declareRestoring('Maintaining detent', 'maintDetentSpring', 'spring',
+  'the blade is its own spring: grounded in the post, deflected by the tail\'s corner as the beak climbs a tooth and returned by its own elasticity as the beak falls — it touches the tail at every pose (maintDetentHandoff)',
+  'maintDetentSpring');
 // RETIRED (TODO 43): 'Alarm setting arbor' and 'Alarm crown' left the §36
 // population when the detector stopped lying about them. TODO 38's landing
 // had already recorded that the crown's `reversed` was an artifact — the
@@ -26777,8 +27090,14 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // below the pinion but not through it. Asking only for planes ABOVE, which
   // is what the tower's shape suggests, left no plane at all once the ceiling
   // was known: the pinion's band ends at 7.62 and the ceiling starts at 7.97.
+  // TODO 209 — and the FLOOR is the base plate's face plus the one margin.
+  // It was `PLATE_Z + 0.6`, the studs' plant depth plus a literal 0.1, which put
+  // the lowest plane (the one the solve takes) 0.1 off the plate: the cross,
+  // the finger and its pin stood under CLEAR_MARGIN of it, and `plateSeats`
+  // froze all three as debt on arrival.
+  const FLOOR_Z = ALARM_U_FLOOR + M;
   const planes = [];
-  for (let z = PLATE_Z + 0.6; z <= CEIL_Z - ARREST_PLATE_T * 2; z += 0.25) {
+  for (let z = FLOOR_Z; z <= CEIL_Z - ARREST_PLATE_T * 2; z += 0.25) {
     if (z + ARREST_PLATE_T > SUB_OUT_Z - T / 2 - M && z < SUB_OUT_Z + T / 2 + M) continue;
     planes.push(+z.toFixed(3));
   }
@@ -29425,6 +29744,108 @@ const linkRodBackLand = (x, y) => {
   }
   return c - ALARM_LINK_ROD_PLATE_BORE_R;
 };
+// TODO 213 — HOISTED above the §112 site solve, which scores each candidate
+// chord to the tip the build will cut. Every input is a constant already
+// standing here: ALARM_LINK_CRANK_T (beside ALARM_FORK_SEAT), CLEAR_MARGIN, and
+// ALARM_LINK_ROD_R_SECTION (the plan hoist, from the MEASURED, boot-guarded
+// ALARM_LINK_ROD_LEN_U — see the note at linkShaftTipXY on why that is not
+// circular).
+// (ALARM_LINK_CRANK_T — the arm section — is hoisted beside ALARM_FORK_SEAT, which derives from it; TODO 174)
+// The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
+// now be buried inside a shaft of radius 0.402 — which is exactly why this
+// became derived rather than re-tuned. Crank and shaft are one rigid part, so
+// they touch: no clearance margin between an arm and its own arbor.
+const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
+// Top face of the arm, measured from the shaft axis.
+const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
+// §232 — THE NECK, which makes the sentence four lines up TRUE at last.
+// "The arm sits ON the shaft's surface" never was: at the shipped 0.1233 the
+// arm floated 0.0367 clear of its own arbor, and at the section §54 wants it
+// would be BURIED inside it. One move fixes both, and it is the one a
+// watchmaker makes — TURN THE SHAFT DOWN where the cranks sit. The neck's
+// radius is not a new number but the arm's own inner face, so
+// ALARM_LINK_CRANK_OFF does not budge; and that matters because §137's crank
+// row declares it as `armIn_u`, making this offset a LEVER ARM. Deriving the
+// arm from a fattened shaft instead moved it 0.22 → 0.3075, took the crank
+// ratio 2.545 → 1.821 and the series stall to 92.4 mN against a 5–50 mN
+// envelope that is inherited and never forkable — measured, at boot, before
+// this route was taken. The full section goes between the BUSHES, where the
+// slenderness actually is. ALARM_LINK_CRANK_T's comment has said "the cranks
+// sit on the NECKS" all along; there were no necks.
+const ALARM_LINK_SHAFT_NECK_R = ALARM_LINK_CRANK_OFF - ALARM_LINK_CRANK_T / 2;   // 0.16
+// TODO 205 — THE SHAFT'S TIP STANDS OFF THE ROD'S AXIS, by what the neck
+// must clear under the rod's foot. The rim crank sits at the shaft's tip and
+// presses the rod's FOOT FACE with its tip corner; at the rest roll that face
+// stands only H_REST over the shaft axis. With the tip under the rod's own
+// axis (the chord used to END at ALARM_LINK_ROD_XY) the rod-end neck ran
+// under the foot's whole disc, and its flank stood H_REST − NECK_R = 0.1035
+// below the face (0.1091 as the octagonal mesh reads it) — under CLEAR_MARGIN,
+// at every rest pose of the net. Nothing in the crank can buy the room
+// without spending the mechanism: H_REST is the finger's designed rest
+// (ALARM_LINK_RIM_REST_FROM_ZENITH, the corridor-probed rest the roll span
+// and the rod's travel are solved from), the neck's radius IS the arm's
+// inner face (ALARM_LINK_SHAFT_NECK_R, a lever arm in §137's crank row),
+// and the overhang's length is TODO 79/82's stiffness chain. So it is solved
+// in POSITION space: the shaft's chord is turned about its inner end (the
+// fork stays on the tab) until the rod's axis lies a STANDOFF to the side
+// of the shaft's tip, square to the chord, on the side the finger leans
+// toward at rest — so the finger reaches back under the foot. The standoff
+// is the least plan offset at which the foot's rim clears the neck by the
+// margin in 3D: the foot disc (radius R_rod, at height H_REST) against the
+// neck cylinder (radius NECK_R) — hypot(s − R_rod, H_REST) = NECK_R +
+// CLEAR_MARGIN. The rim crank's own dimensions are hoisted here for it (the
+// registration solve and the crank build read the same names).
+const ALARM_LINK_RIM_LEN = 0.45;                 // the rim crank's radial depth (its box), was the build's literal
+const ALARM_LINK_RIM_TIP_D = ALARM_LINK_CRANK_OFF + ALARM_LINK_RIM_LEN / 2 - 0.02;   // the finger's contact corner's radius (the registration solve's rimTipD)
+const ALARM_LINK_RIM_REST_FROM_ZENITH = 1.05;    // the finger's DESIGNED rest, 60° off its own zenith (the registration solve's comment, step 1)
+// A corner pair (±CRANK_T/2, RIM_TIP_D) rolled θ off its zenith tops out at
+// RIM_TIP_D·cosθ + (CRANK_T/2)·sinθ — the envelope the registration solve
+// bisects, closed here because the zenith of the pair is the arm's own centre
+// line. Asserted against the solved foot at the rod build.
+const ALARM_LINK_RIM_H_REST = ALARM_LINK_RIM_TIP_D * Math.cos(ALARM_LINK_RIM_REST_FROM_ZENITH)
+  + (ALARM_LINK_CRANK_T / 2) * Math.sin(ALARM_LINK_RIM_REST_FROM_ZENITH);   // 0.2635
+const ALARM_LINK_ROD_STANDOFF = (() => {
+  const reach = ALARM_LINK_SHAFT_NECK_R + CLEAR_MARGIN;
+  // a foot already high enough clears the neck vertically, at any plan offset
+  if (ALARM_LINK_RIM_H_REST >= reach) return 0;
+  return ALARM_LINK_ROD_R_SECTION + Math.sqrt(reach * reach - ALARM_LINK_RIM_H_REST * ALARM_LINK_RIM_H_REST);
+})();   // 0.7601
+// The tip: on the circle whose diameter is INNER→ROD (so ROD − TIP is square
+// to the chord), at |ROD − TIP| = STANDOFF, with the rod on the chord's RIGHT
+// — the shaft group's −y, which is where the finger leans at its positive-roll
+// rest ((0,0,1) rolled +θ about the chord is (0, −sinθ, cosθ)). The chord is
+// therefore turned LEFT about the inner end by asin(STANDOFF / |ROD − INNER|).
+// TODO 213 — ONE LAW, ONE SOURCE. The §112 site solve below scores every
+// rod/tab candidate's lay shaft as the chord INNER→TIP this function returns
+// (`scoreChord`, and the fork block's plan seat, whose pin line runs with the
+// chord), and `ALARM_LINK_SHAFT_TIP_XY` is this same function at the solved
+// site — so the corridor the solve accepts is the metal the build cuts. It
+// was a chord ending at the rod's axis until TODO 213: 3.0° off the built
+// shaft at the shipped site, covered only by the crank-zone trim.
+//
+// IT IS A FIXED POINT, NOT A CIRCLE, and it is closed the way this file
+// already closes the rod's own ordering problem. The standoff reads
+// ALARM_LINK_ROD_R_SECTION, which reads the rod's LENGTH, which is a
+// registration-solve output downstream of this site (site → chord → body
+// between stations → bush OD → shaft stratum → the rod's foot). That chain is
+// already cut at ALARM_LINK_ROD_LEN_U and ALARM_LINK_BODY_LEN_U: MEASURED
+// constants, each boot-guarded against the value the build produces at the
+// solved site (the rod build's "re-measure and update" assert and the shaft
+// stratum assert). So every candidate is scored at the shipped section, and
+// the guards hold that the site it chooses reproduces the constants it was
+// scored with — a site that moved would warn until both were re-measured.
+// The section is not a candidate-dependent quantity worth more than that:
+// dR/dL = 1/(2·TURN_LD_TARGET) ≈ 0.028, so even the 0.73 the rod grew in
+// TODO 194 moved the standoff 0.02 — against the 0.76 offset the old score
+// ignored outright.
+const linkShaftTipXY = (rod, inner) => {
+  const dx = rod.x - inner.x, dy = rod.y - inner.y;
+  const D = Math.hypot(dx, dy);
+  const a = Math.asin(ALARM_LINK_ROD_STANDOFF / D), L = Math.sqrt(D * D - ALARM_LINK_ROD_STANDOFF ** 2);
+  const ux = dx / D, uy = dy / D;
+  const vx = ux * Math.cos(a) - uy * Math.sin(a), vy = ux * Math.sin(a) + uy * Math.cos(a);
+  return { x: inner.x + vx * L, y: inner.y + vy * L };
+};
 const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_AZ_DEG, colClear: ALARM_LINK_ROD_COL_CLEAR } = await (async () => {
   // The low rods enter through LOW_LINKAGE_OBSTACLES (rule 5), not their
   // mesh boxes: a diagonal rod segment's box is a rectangle the rod never
@@ -29551,6 +29972,10 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     }
     return { c, who };
   };
+  // TODO 213 — (x, y) is the shaft's TIP (linkShaftTipXY, the law the build
+  // cuts), not the rod's axis: the chord is scored from the metal's own end,
+  // ALARM_LINK_ROD_STANDOFF beside the rod, and the rim crank's 0.6 stadium
+  // rides the first 2.5 from that end, where the crank actually sits.
   const scoreChord = (x, y, tx, ty) => {
     let c = Infinity, who = '';
     // the last 1.8 of the chord is the crank's WORKING zone over the ring —
@@ -29745,10 +30170,15 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   for (const rc of rodCands) {
     for (let azw = 0; azw < 360; azw += 3) {
       const tx = Math.cos(azw * DEG2RAD) * 5.4, ty = Math.sin(azw * DEG2RAD) * 5.4; // tab mid-reach, the ring's own radius
-      const seat = _blockSeat(tx, ty, rc.x, rc.y);
+      // TODO 213 — the chord this candidate's build would cut: tab to the tip
+      // standing ALARM_LINK_ROD_STANDOFF beside the rod (the same function
+      // ALARM_LINK_SHAFT_TIP_XY reads). The fork's pin line runs with it, so
+      // the block's plan seat takes the same direction.
+      const tip = linkShaftTipXY(rc, { x: tx, y: ty });
+      const seat = _blockSeat(tx, ty, tip.x, tip.y);
       if (!_blockOk(seat)) continue;
       if (_postClear(tx, ty, seat) < 0) continue;   // TODO 174 — the fork clears every guide post station
-      const { c: cc, who } = scoreChord(rc.x, rc.y, tx, ty);
+      const { c: cc, who } = scoreChord(tip.x, tip.y, tx, ty);
       const tb = scoreTab(tx, ty, seat.bx, seat.by);
       const c = Math.min(rc.c, cc, tb.c);
       const boundBy = c === rc.c ? rc.who : (c === cc ? who : tb.who);
@@ -29868,7 +30298,8 @@ const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY
 // 19.550 u bush-to-bush span (λₑ 79.3). Splitting the span leaves the reported
 // λ where it is. See the bearing declaration at the shaft build below.
 // §232 — THE SECTION IS DERIVED NOW, AND IT MOVED to the chord solve where
-// its inputs live (search ALARM_LINK_SHAFT_NECK_R below). It was the literal
+// its inputs live (search ALARM_LINK_SHAFT_NECK_R — hoisted above the §112
+// site solve by TODO 213, which scores the tip it sets). It was the literal
 // 0.1233: the first four-place value above §137 Landing 2's FORCE floor
 // (3EI/L³ ≥ 2800 N/m over the 0.9286 mm drive end, r ≥ 0.123222 → 2807 N/m).
 // That floor still binds and is still asserted; it simply stopped being the
@@ -29882,29 +30313,6 @@ const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY
 // (12.487 u, λₑ 127.6), so splitting a span would leave λ where it stood.
 // §202 shipped the third bush and CLOSED TODO 79: the overhang is short now
 // and a SPAN governs, so splitting it is exactly what moves λ.
-// (ALARM_LINK_CRANK_T — the arm section — is hoisted beside ALARM_FORK_SEAT, which derives from it; TODO 174)
-// The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
-// now be buried inside a shaft of radius 0.402 — which is exactly why this
-// became derived rather than re-tuned. Crank and shaft are one rigid part, so
-// they touch: no clearance margin between an arm and its own arbor.
-const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
-// Top face of the arm, measured from the shaft axis.
-const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
-// §232 — THE NECK, which makes the sentence four lines up TRUE at last.
-// "The arm sits ON the shaft's surface" never was: at the shipped 0.1233 the
-// arm floated 0.0367 clear of its own arbor, and at the section §54 wants it
-// would be BURIED inside it. One move fixes both, and it is the one a
-// watchmaker makes — TURN THE SHAFT DOWN where the cranks sit. The neck's
-// radius is not a new number but the arm's own inner face, so
-// ALARM_LINK_CRANK_OFF does not budge; and that matters because §137's crank
-// row declares it as `armIn_u`, making this offset a LEVER ARM. Deriving the
-// arm from a fattened shaft instead moved it 0.22 → 0.3075, took the crank
-// ratio 2.545 → 1.821 and the series stall to 92.4 mN against a 5–50 mN
-// envelope that is inherited and never forkable — measured, at boot, before
-// this route was taken. The full section goes between the BUSHES, where the
-// slenderness actually is. ALARM_LINK_CRANK_T's comment has said "the cranks
-// sit on the NECKS" all along; there were no necks.
-const ALARM_LINK_SHAFT_NECK_R = ALARM_LINK_CRANK_OFF - ALARM_LINK_CRANK_T / 2;   // 0.16
 // §234 Landing 5 — the neck's actual embedment fraction, hoisted (the shaft
 // build below and the rod-end overhang derivation just past it both need it,
 // and the search that chose 0.51 lives at the shaft build's own comment):
@@ -29915,56 +30323,7 @@ const ALARM_LINK_PRESS_LAP_FRAC = 0.51;
 // three stations) — hoisted because the rod-end overhang derivation below
 // needs the bush's HALF-length to know where its outer face lands.
 const ALARM_LINK_BUSH_LEN = 0.3;
-// TODO 205 — THE SHAFT'S TIP STANDS OFF THE ROD'S AXIS, by what the neck
-// must clear under the rod's foot. The rim crank sits at the shaft's tip and
-// presses the rod's FOOT FACE with its tip corner; at the rest roll that face
-// stands only H_REST over the shaft axis. With the tip under the rod's own
-// axis (the chord used to END at ALARM_LINK_ROD_XY) the rod-end neck ran
-// under the foot's whole disc, and its flank stood H_REST − NECK_R = 0.1035
-// below the face (0.1091 as the octagonal mesh reads it) — under CLEAR_MARGIN,
-// at every rest pose of the net. Nothing in the crank can buy the room
-// without spending the mechanism: H_REST is the finger's designed rest
-// (ALARM_LINK_RIM_REST_FROM_ZENITH, the corridor-probed rest the roll span
-// and the rod's travel are solved from), the neck's radius IS the arm's
-// inner face (ALARM_LINK_SHAFT_NECK_R, a lever arm in §137's crank row),
-// and the overhang's length is TODO 79/82's stiffness chain. So it is solved
-// in POSITION space: the shaft's chord is turned about its inner end (the
-// fork stays on the tab) until the rod's axis lies a STANDOFF to the side
-// of the shaft's tip, square to the chord, on the side the finger leans
-// toward at rest — so the finger reaches back under the foot. The standoff
-// is the least plan offset at which the foot's rim clears the neck by the
-// margin in 3D: the foot disc (radius R_rod, at height H_REST) against the
-// neck cylinder (radius NECK_R) — hypot(s − R_rod, H_REST) = NECK_R +
-// CLEAR_MARGIN. The rim crank's own dimensions are hoisted here for it (the
-// registration solve and the crank build read the same names).
-const ALARM_LINK_RIM_LEN = 0.45;                 // the rim crank's radial depth (its box), was the build's literal
-const ALARM_LINK_RIM_TIP_D = ALARM_LINK_CRANK_OFF + ALARM_LINK_RIM_LEN / 2 - 0.02;   // the finger's contact corner's radius (the registration solve's rimTipD)
-const ALARM_LINK_RIM_REST_FROM_ZENITH = 1.05;    // the finger's DESIGNED rest, 60° off its own zenith (the registration solve's comment, step 1)
-// A corner pair (±CRANK_T/2, RIM_TIP_D) rolled θ off its zenith tops out at
-// RIM_TIP_D·cosθ + (CRANK_T/2)·sinθ — the envelope the registration solve
-// bisects, closed here because the zenith of the pair is the arm's own centre
-// line. Asserted against the solved foot at the rod build.
-const ALARM_LINK_RIM_H_REST = ALARM_LINK_RIM_TIP_D * Math.cos(ALARM_LINK_RIM_REST_FROM_ZENITH)
-  + (ALARM_LINK_CRANK_T / 2) * Math.sin(ALARM_LINK_RIM_REST_FROM_ZENITH);   // 0.2635
-const ALARM_LINK_ROD_STANDOFF = (() => {
-  const reach = ALARM_LINK_SHAFT_NECK_R + CLEAR_MARGIN;
-  // a foot already high enough clears the neck vertically, at any plan offset
-  if (ALARM_LINK_RIM_H_REST >= reach) return 0;
-  return ALARM_LINK_ROD_R_SECTION + Math.sqrt(reach * reach - ALARM_LINK_RIM_H_REST * ALARM_LINK_RIM_H_REST);
-})();   // 0.7601
-// The tip: on the circle whose diameter is INNER→ROD (so ROD − TIP is square
-// to the chord), at |ROD − TIP| = STANDOFF, with the rod on the chord's RIGHT
-// — the shaft group's −y, which is where the finger leans at its positive-roll
-// rest ((0,0,1) rolled +θ about the chord is (0, −sinθ, cosθ)). The chord is
-// therefore turned LEFT about the inner end by asin(STANDOFF / |ROD − INNER|).
-const ALARM_LINK_SHAFT_TIP_XY = (() => {
-  const dx = ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, dy = ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y;
-  const D = Math.hypot(dx, dy);
-  const a = Math.asin(ALARM_LINK_ROD_STANDOFF / D), L = Math.sqrt(D * D - ALARM_LINK_ROD_STANDOFF ** 2);
-  const ux = dx / D, uy = dy / D;
-  const vx = ux * Math.cos(a) - uy * Math.sin(a), vy = ux * Math.sin(a) + uy * Math.cos(a);
-  return { x: ALARM_LINK_INNER_XY.x + vx * L, y: ALARM_LINK_INNER_XY.y + vy * L };
-})();
+const ALARM_LINK_SHAFT_TIP_XY = linkShaftTipXY(ALARM_LINK_ROD_XY, ALARM_LINK_INNER_XY);   // TODO 213: the solve scored this same law (the function is hoisted above it)
 const ALARM_LINK_CHORD_LEN = Math.hypot(
   ALARM_LINK_SHAFT_TIP_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_SHAFT_TIP_XY.y - ALARM_LINK_INNER_XY.y);
 // (TODO 9's ALARM_LINK_ROD_SEAT = 0.079 — "read off the model and pasted
@@ -34402,7 +34761,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All EIGHTEEN
+   what it says, and the box already grows to fit its contents. All NINETEEN
    locales measure inside 150 px on one line today — §249's Indonesian
    "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
    and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
@@ -34414,7 +34773,8 @@ html:lang(ko) { word-break: keep-all; }
    its "Thời gian" the longer label at 42.1; §249's Dutch "Gaat af om"
    49.5, level with German; §249's Persian "زنگ در" 28.8, the shortest
    alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
-   19.5; §249's Indonesian "Waktu" 28.0) — so the allowance that a
+   19.5; §249's Indonesian "Waktu" 28.0; §249's Turkish "Çalma saati" 52.8,
+   level with Spanish and Korean, "Zaman" 31.1) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -35099,6 +35459,10 @@ function setBarState(id, on) {
 // §249's Indonesian measured 184.4 on its first pass, on "Menu / Tampilan /
 // Kontrol" — 14.2 over English and 8.0 under German, so it needed no word
 // chosen against the bar either.
+// §249's Turkish measured 198.5 on its first pass — the fourth locale past
+// German — on "Menü / Görünüm / Kontroller", and 186.3 once the panel took the
+// singular Kontrol that Turkish software already uses for a control panel
+// (Kontrol Paneli): §208's lesson a fourth time, a face chosen against this bar.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
@@ -35767,7 +36131,7 @@ function askTour(onProceed) {
     if (!b) return;
     b.click();
     const st = b.dataset.state;
-    announce(`${t(label)}${st ? ' ' + t(st === 'on' ? 'On' : 'Off').toLowerCase() : ''}`);
+    announce(`${t(label)}${st ? ' ' + lowerUi(t(st === 'on' ? 'On' : 'Off')) : ''}`);
   };
   const orbit = (dAz, dPol) => () => {
     camTween = null;
@@ -36152,7 +36516,11 @@ function askTour(onProceed) {
       // path (already `label.title`, English by contract). Built from
       // `labelText` rather than `label.textContent`/`row.textContent`, so
       // neither the ' ⟳' reload suffix nor the numeric readout can false-hit.
-      advFilterables.push({ row, hay: `${labelText} ${authored || ''} ${r.path.join('.')}`.toLowerCase() });
+      // §249 — and lowered by two rules: the translated label in its own
+      // locale (lowerUi — Turkish 'I' is 'ı'), the English source and path
+      // locale-blind, so a Turkish reader's 'Input' still finds 'input'. The
+      // query is lowered both ways and either side may match.
+      advFilterables.push({ row, ui: lowerUi(labelText), en: `${authored || ''} ${r.path.join('.')}`.toLowerCase() });
     }
   };
   await breathe();
@@ -36176,8 +36544,8 @@ function askTour(onProceed) {
     }
   }
   document.getElementById('advanced-filter').addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    for (const f of advFilterables) f.row.style.display = (!q || f.hay.includes(q)) ? '' : 'none';
+    const raw = e.target.value.trim(), qUi = lowerUi(raw), qEn = raw.toLowerCase();
+    for (const f of advFilterables) f.row.style.display = (!raw || f.ui.includes(qUi) || f.en.includes(qEn)) ? '' : 'none';
   });
   document.getElementById('btn-reset-aesthetics').addEventListener('click', () => {
     clearOverrides();
@@ -45481,9 +45849,14 @@ function tick(t) {
   // the coupling is clear of itself and a parked mid-ramp slip lifts
   // nothing (the first cut added the full lift at every pull, and the
   // pulled clutch overshot the setting station into the wheel by it).
-  const sawLift = Math.max(0,
-    sawCouplingLiftAt(STEM_SAW_SPEC, stemSlipLocal() + sawSeatOffset(STEM_SAW_SPEC, windSign))
-    - crownPullT * CLUTCH_TRAVEL);   // TODO 115 — the profile's own sense, at the same seat offset the rings are clocked to
+  // TODO 211 — and the separation is no longer the tick's to write: the
+  // CLUTCH IS WHERE THE FORK PUTS IT. `yokeClutchAt` (layout.js) takes the
+  // pull through the setting lever's law to the prong, the prong across the
+  // groove's play to collar Out, and returns the clutch's offset as the
+  // farther of that push and the ramps' raw lift — the yoke spring holding the
+  // prong on collar In, so a cam-over carries the yoke out with it.
+  const sawLiftRaw = sawCouplingLiftAt(STEM_SAW_SPEC, stemSlipLocal() + sawSeatOffset(STEM_SAW_SPEC, windSign));   // TODO 115 — the profile's own sense, at the same seat offset the rings are clocked to
+  const fork = yokeClutchAt(crownPullT, sawLiftRaw);
   // §99's face-relief convention, at the coupling: the analytic seat would
   // park the pair plane-on-plane twice over (tip flats on valley flats in
   // z, drive faces in θ), and exactly-coincident planes are the one case
@@ -45493,7 +45866,7 @@ function tick(t) {
   // it) axially and the same in clocking, an order under
   // HANDOFF_TRACK_TOL (0.03) so every declared contact still measures
   // shut — while the tick's laws read the exact slip.
-  const clutchDist = clutchHomeDist + crownPullT * CLUTCH_TRAVEL + sawLift + SEAT_RELIEF;
+  const clutchDist = clutchHomeDist + fork.c + SEAT_RELIEF;
   windClutch.position.set(uWind.x * clutchDist, uWind.y * clutchDist, Z_KEYLESS);
 
   // Setting-lever linkage: the lever's angle is SOLVED from where the stem's
@@ -45511,10 +45884,11 @@ function tick(t) {
   // required to explain the reversal. (The setting-lever DETENT that holds
   // each position is a separate mechanism, and a separate question.)
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
-  // TODO 50 — the fork follows the CLUTCH, not the stem: pull plus the saw
-  // lift's share of the stroke, so a cam-over reaches the yoke through the
-  // same angle law that tracks the slide (no second law, no keyframe).
-  yokeGroup.rotation.z = yokeAngleAt(crownPullT + sawLift / CLUTCH_TRAVEL);
+  // TODO 211 — the fork's angle is the prong's SOLVED station (above): bearing
+  // on collar In seated and through a cam-over, on collar Out pulled, crossing
+  // the play between — one law that also placed the clutch, so the two cannot
+  // disagree about where the fork is.
+  yokeGroup.rotation.z = yokeAngleAt(fork.a);
   updateStopWork(hackPinWorldAt(crownPullT));
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
