@@ -18,7 +18,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | item | state | what remains |
 |---|---|---|
 | 214 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
-| 213 | OPEN | The §112 link-site solve's `scoreChord` scores the lay shaft as a chord ending at the rod's axis; since TODO 205 the shaft ends at a tip 0.7600 beside it. Score the chord to the tip the build will cut (the standoff is a closed form computable before the solve) |
+| 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
 | 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
 | 211 | OPEN | The yoke's prong stands at best 0.137 off the clutch's groove collars over the whole pose net, so the return `declareRestoring('Winding clutch', …, 'yokeSpring')` describes ("re-seats it through the fork") passes through a fork that touches nothing; found by TODO 194's reach control, waived to this item |
 | 210 | OPEN | The maintaining detent's restoring row names `maintSpring` — the maintaining-POWER torus under the maintaining wheel, another unit, 1.0+ from the click at every pose; the detent has no spring of its own in the metal. Found by TODO 194's reach control, waived to this item |
@@ -28409,7 +28409,7 @@ would TOUCH the bore (land 0) at one bearing.
 4. Then put `Alarm winding arrest` in `ASSEMBLY_SCOPE`, so a split finger
    fails rather than reports.
 
-## 213. The link site solve scores a chord ending at the rod's axis, not at the shaft tip TODO 205 stands beside it
+## 213. The link site solve scores a chord ending at the rod's axis, not at the shaft tip TODO 205 stands beside it — CLOSED
 
 Found closing [TODO 205]. The §112 site solve (`main.js`, the IIFE that
 returns `ALARM_LINK_ROD_XY`) judges each rod/tab candidate with `scoreChord`,
@@ -28434,6 +28434,55 @@ solve and give `scoreChord` the tip each candidate would produce. Then
 `ALARM_LINK_SHAFT_TIP_XY` reuses that one function rather than a second copy
 of the law. Acceptance: the chosen site, re-measured, and the plate bores'
 re-sync assert silent.
+
+**CLOSED — the solve scores the chord the build cuts, from one law.**
+
+- **The hoist.** `ALARM_LINK_CRANK_OFF`, `ALARM_LINK_CRANK_TOP`,
+  `ALARM_LINK_SHAFT_NECK_R`, `ALARM_LINK_RIM_LEN`, `ALARM_LINK_RIM_TIP_D`,
+  `ALARM_LINK_RIM_REST_FROM_ZENITH`, `ALARM_LINK_RIM_H_REST` and
+  `ALARM_LINK_ROD_STANDOFF` moved, with their comments, from below the solve
+  to just above it. Every input they read was already standing there:
+  `ALARM_LINK_CRANK_T` (beside `ALARM_FORK_SEAT`), `CLEAR_MARGIN`, and
+  `ALARM_LINK_ROD_R_SECTION` (the plan hoist at the top of the file). Nothing
+  was re-valued; the standoff still reads 0.7601.
+- **The circularity, and why it is a fixed point rather than a circle.** The
+  standoff reads the rod's section, the section reads the rod's length, and
+  the length is a registration-solve output downstream of the site (site →
+  chord → body between stations → bush OD → shaft stratum → the rod's foot).
+  That chain was already cut by this file's own hand-off idiom:
+  `ALARM_LINK_ROD_LEN_U` and `ALARM_LINK_BODY_LEN_U` are MEASURED constants,
+  each boot-guarded against the value the build produces at the solved site.
+  So every candidate is scored at the shipped section, and the guards hold
+  that the site the solve chooses reproduces the constants it was scored
+  with. A site that moved would warn until both were re-measured. The
+  section is not worth more candidate-dependence than that:
+  dR/dL = 1/(2·`TURN_LD_TARGET`) ≈ 0.028, so even TODO 194's 0.73 of rod
+  moved the standoff 0.02, against the 0.76 the old score ignored outright.
+- **One law.** `linkShaftTipXY(rod, inner)` is the TODO 205 construction,
+  lifted out of `ALARM_LINK_SHAFT_TIP_XY`'s IIFE unchanged. The stage-2 loop
+  computes each candidate's tip with it. `scoreChord` walks tip → tab, so the
+  0.6 crank stadium over the first 2.5 now rides from the metal's own end.
+  `_blockSeat` takes the same direction, because the fork's pin line runs
+  with the chord the build cuts; scoring the chord alone would have left the
+  rod-axis direction written a second time one line up.
+  `ALARM_LINK_SHAFT_TIP_XY` is now `linkShaftTipXY(ALARM_LINK_ROD_XY,
+  ALARM_LINK_INNER_XY)`. The construction appears once in the file.
+- **Re-measured, the site did not move.** The solve picks (18.9643, −2.8347),
+  d 9 on parity step −1, tab 324°, on both trees. The joint score stays
+  **0.5830**, bound by the column (`Alarm setting arbor`'s disc). The chosen
+  candidate's chord score fell **0.6408 → 0.6286**, and its binder changed
+  from `Alarm setting wheel`/`alarmFaceCam` to an `Alarm silence rocker` box:
+  the turned chord passes nearer the rocker. That is still 0.44 over
+  `CLEAR_MARGIN`. The tab-zone score (1.4848) did not change. Both readings
+  came from a temporary log at the solve's return; it was removed before
+  commit.
+- **Acceptance.** The plate bores' re-sync assert is silent. The default
+  boot and all seven silent spec points (`studr=7.595`, `4.71`, `7.1175`,
+  `route=2-leg`, `balstep=60`, `subdialr=8`, `reconf=1`) boot with **0
+  warnings**, headless Chromium on the dev container. The default
+  fingerprint is **124220314** before and after. With the geometry
+  byte-identical, no focused battery checks were run: nothing they read
+  changed.
 
 ## 214. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
 
