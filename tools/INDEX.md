@@ -4,7 +4,7 @@
 
 # The instruments
 
-266 scripts. **156 are ACCEPTANCE tests** — they decide and exit non-zero.
+267 scripts. **157 are ACCEPTANCE tests** — they decide and exit non-zero.
 **110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -181,6 +181,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-249-dotted-i.mjs` | §249 | acceptance | §249 (Turkish) — DOES DISPLAY TEXT CASE-MAP IN ITS OWN LOCALE? |
 | `probe-249-vietnamese-vert.mjs` | §249 | acceptance | §249 (Vietnamese) — what stacked tone marks do to a line box sized for Latin. |
 | `probe-253-arch-modes.mjs` | §253 | acceptance | §253 — IS THE GONG'S ARCH SOLVE RIGHT, AND DOES IT KNOW WHEN IT IS A STRAIGHT BAR? |
+| `probe-254-chain-twist.mjs` | §254 | acceptance | §254 — DOES THE CHAIN BEND ONLY ABOUT ITS PINS? Acceptance. |
 | `probe-3-sapphire.mjs` | §3 | acceptance | §3 — THE BOX SAPPHIRE DIAL: IS IT GLASS, IS IT THE SAME METAL, CAN THE PRINT STILL BE READ? Acceptance. Boots the identity build twice — the silvered dial, then §3's CLEAR sapphire one — with `dial.plate.sapphire` and `dial.plate.smoke` BOTH written through the aesthetics override store on both boots, and holds §3's four claims. Both seeded explicitly since §222 made the smoked sapphire dial the schema's default: this probe used to get its silvered boot by writing no override at all, and that boot silently became a sapphire one the moment the default moved — an acceptance test whose control is "whatever ships" stops testing what it names. Its sapphire boot pins `smoke` to 1 for the same reason: §3's claims are about the CLEAR crystal's recipe, and §220's coat is probe-220-smoke.mjs's subject. 1. BOTH BOOT SILENT. The §157 ink gate runs on the sapphire ground (the crystal's tint over the base plate's nickel) exactly as on the face, so silence here is the legibility measurement, not its absence. 2. THE GEOMETRY DOES NOT MOVE. Every mesh under the Dial unit: same names, same vertex counts, same bounding boxes, silvered or sapphire. A finish knob that moved metal would be a spec, and this is not one. 3. THE RIGHT PARTS ARE GLASS. Sapphire: the plate body, both pocket walls, the face sheet and both well sheets are transparent at the crystal's opacity with depthWrite off; the chapter ring, the applied numerals and the feet are opaque metal. Silvered: none of the dial is transparent. The crystal itself reads the same recipe on both boots. 4. X-RAY COMPOSES. On the sapphire dial the toggle installs the dial's own materials (self-mapped) and restores them; the plate behind still glasses; nothing on the dial changes material across on→off. Also writes two PNGs from the Dial preset for the record — a report, not a gate, since a software-GL frame is what it is. cd tools && node probe-3-sapphire.mjs [outdir] (exit 1 on any claim) |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
