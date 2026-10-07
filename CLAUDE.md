@@ -120,7 +120,14 @@ go through `fmtNum`/`fmtInt` at the display layer only (German reads
 `30,0 h` and `18.000 A/h`, French `18 000 A/h` with a NARROW NO-BREAK SPACE;
 the stored value keeps its `.`). Locale is
 reload-tier (§22's precedent), so there is exactly one path that builds
-a localized panel. **The static pages are localized too** (§73 tier two,
+a localized panel. **What reaches the screen is measured, not the table**:
+`node tools/probe-chrome-coverage.mjs` boots every locale and fails on any
+string that still reads English — MISSING (no table has it: a locale landing
+builds from an existing table's keys, so it cannot see one) or NOT APPLIED
+(translated, but its display site never ran `t()` / `localizeTree()`, which is
+what a section built after the one localization pass looks like). Run it at
+every locale landing and after any change that adds UI text; it is not in a
+workflow, for the reason page coverage is reported rather than gated. **The static pages are localized too** (§73 tier two,
 §95 tier two): `src/page-i18n.js` is the ENGINE — the walk and the swap, one
 copy — and each page adds a dozen-line module naming its own tables
 (`src/explain-i18n.js`, `src/primer-i18n.js`), one per locale, keyed by the
@@ -887,7 +894,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 266 measuring scripts and this file names 21. The rest are named for the
+`tools/` holds 267 measuring scripts and this file names 22. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -904,7 +911,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **156 of
+The index also carries the split that decides how to read a result: **157 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

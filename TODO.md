@@ -28488,11 +28488,13 @@ Both rows now read 0.1500 off the plate, and their bevelled tops are still
 0.219 under the great wheel's disc. `transmits` and `intraUnit` are clean.
 `PLATE_CLEARANCE_DEBT` is empty.
 
-Noted, not changed: `GW_UNDER_Z`, the rod corridor's ceiling, reads the great
-wheel's bevel with a `0.36` module literal. The wheel's module is
-`TRAIN.barrel.module` = 0.255, so the ceiling stands 0.023 lower than the
-real underside. That is conservative, and moving the rods is outside this
-item.
+And the note this left, paid in a follow-up: `GW_UNDER_Z` (the rod
+corridor's ceiling) and the set-up click screw's `gwUnder` both restated the
+great wheel's underside with a `0.36` module literal. The wheel is
+`TRAIN.barrel.module` = 0.255, so both bounds stood 0.023 under the real face.
+`GW_T` and `GW_UNDER_Z` are now declared once beside the wheel and read
+`G.gearBevel` with its own module; the winding band reads `GW_T` too. The rod
+plane (`ROD2_PLANE_Z`) rises 0.912 → 0.935 to stay one margin under the metal.
 
 Feasibility: small per row · Battery: each fix moves its part's digest; the
 `plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved

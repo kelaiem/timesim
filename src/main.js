@@ -951,7 +951,16 @@ const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid (dec
 // further down: its arbor is sized to reach the plate's mid-thickness,
 // which isn't known yet here)
 await breathe();
-const greatWheel = G.makeGear({ name: 'greatWheel', module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth, mates: [TRAIN.barrel.pinion], thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
+const GW_T = 1.4;   // the great wheel's stock
+const greatWheel = G.makeGear({ name: 'greatWheel', module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth, mates: [TRAIN.barrel.pinion], thickness: GW_T, boreR: 1.4, spokes: 5, material: MATS.brass });
+// The disc's UNDERSIDE (the wheel sits at L_BARREL, centred): half the stock
+// plus makeGear's own edge bevel, read through the builder's law with this
+// wheel's OWN module. Three sites used to restate it with a 0.36 module literal,
+// TODO 209 found. The wheel is TRAIN.barrel.module (0.255), so every bound
+// under it stood 0.023 low: conservative, but a number that does not describe
+// the metal. The rod corridor, the set-up click screw and the swept-radius
+// reads all take this one.
+const GW_UNDER_Z = L_BARREL - GW_T / 2 - G.gearBevel(TRAIN.barrel.module, GW_T, true);
 await breathe();
 const barrelR_actual = greatWheel.userData.r || barrelR;
 // FLAT cone (tornado): height squashed 8.5 → 4.5 with the same 3.75 wrap
@@ -2619,7 +2628,7 @@ const Z_RATCHET_BOT = 0.15; // world: one margin above the plate's top face
 // Its BOTTOM is now the plate's top face (0, by BACK_PLATE_Z's construction)
 // plus one CLEAR_MARGIN plus the bevel, and the stock between them is what
 // remains.
-const WIND_BAND_TOP = L_BARREL - 1.4 * G.GEAR_HUB_H_F / 2;   // the great wheel's (1.4 stock) hub underside: 0.95
+const WIND_BAND_TOP = L_BARREL - GW_T * G.GEAR_HUB_H_F / 2;  // the great wheel's hub underside: 0.95
 // The bevel is min(t·0.18, module·0.22). Read at the thickest the stock could
 // be, it gives the module-bound value; the assert holds the cut stock to it.
 const WIND_BAND_BEVEL = G.gearBevel(KW_MODULE, WIND_BAND_TOP - CLEAR_MARGIN, true);
@@ -7846,9 +7855,8 @@ const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 //  · ceiling: the great wheel's disc underside (thickness/2 + bevel below
 //    its plane) less a margin — BOTH rod routes cross its footprint.
 const ROD_TAILBAR_T = 0.8;
-const GW_UNDER_Z = L_BARREL - 1.4 / 2 - Math.min(1.4 * 0.18, 0.36 * 0.22);
 const ROD_PLANE_Z = CLEAR_MARGIN + ROD_TAILBAR_T / 2;              // floor-bound: 0.55
-const ROD2_PLANE_Z = GW_UNDER_Z - CLEAR_MARGIN - LINK_T / 2;       // ceiling-bound: 0.912 at the stamped sheet (was 0.72 for the ⌀0.7 tube)
+const ROD2_PLANE_Z = GW_UNDER_Z - CLEAR_MARGIN - LINK_T / 2;       // ceiling-bound: 0.935 at the stamped sheet (0.912 under the 0.36-module literal, TODO 209; 0.72 for the ⌀0.7 tube)
 if (ROD2_PLANE_Z < ROD_PLANE_Z)
   console.warn(`rod corridor collapsed: hack plane ${ROD2_PLANE_Z.toFixed(2)} under reset plane ${ROD_PLANE_Z.toFixed(2)}`);
 // §234 — THE STACK. The two flat links lie one over the other where their
@@ -11926,7 +11934,7 @@ const setupWork = new THREE.Group();
   // (the wheel's tip circle passes 5.2 from the drum axis, disc underside
   // at L_BARREL − t/2 − bevel): the screw head's thickness is derived so
   // its top stays one margin under that face.
-  const gwUnder = L_BARREL - 1.4 / 2 - Math.min(1.4 * 0.18, 0.36 * 0.22);
+  const gwUnder = GW_UNDER_Z;
   // TODO 12: floor stock when the under-wheel clearance allows it; the min
   // keeps the bound honest. The 0.01 is JMP_BIND_EPS's lesson relearned the
   // moment this formula first went ACTIVE: solved exactly to the bind, the
@@ -44225,6 +44233,13 @@ stateSection.innerHTML = `
   </div>
 `;
 document.getElementById('clock-ui').appendChild(stateSection);
+// This section is built ~8,000 lines after the panel's one localizeTree pass
+// (§73), so it is walked here: until §249's review its "State / Save / Load /
+// Clear" read English in every locale while all nineteen tables translated
+// them — the save handlers' t('Saved!') / t('Save') were the only words in it
+// that ever changed. tools/probe-chrome-coverage.mjs reads it NOT APPLIED if
+// this line goes.
+localizeTree(stateSection);
 
 const saveStateBtn = document.getElementById('btn-save-state');
 const loadStateBtn = document.getElementById('btn-load-state');
