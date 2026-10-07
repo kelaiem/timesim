@@ -31497,10 +31497,11 @@ than for the lean that first asked for it.
 
 | | §124/§150 cut | §254 cut |
 |---|---|---|
-| band / groove pitch | 2.7775 / 1.389 | **3.1854 / 1.5927** |
-| base slope against the one-wall bound 2.0 | 2.02 (leaned) | **1.80** |
+| band / groove pitch | 2.7775 / 1.389 | **3.1667 / 1.5833** |
+| channel width | stack + 0.01 (0.67) | **stack + the plate's twist + 0.01 (0.7096)** |
+| base slope against the one-wall bound (grooveD over the half-width) | 2.02 (leaned) against 2.0 | **1.81** against 1.86 |
 | worst per-joint twist on the wrap, over the reserve | 16–36° declared fiction | **1.7–3.7°**, under the 4.88° fit |
-| base collar `FUSEE_BASE_INSET` | margin + tilt down-reach (0.558) | groove half-width + margin (0.485): a whole lower wall |
+| base collar `FUSEE_BASE_INSET` | margin + tilt down-reach (0.558) | half-width + margin + the plunge lead's drop (0.5378): a whole lower wall under the channel's start |
 | maintaining flange | on a boss under the overhanging chain | cut on the cone's base face (the boss had nothing left to clear) |
 
 `tools/probe-254-chain-twist.mjs` is the acceptance: each link's pin axis is
@@ -31564,6 +31565,65 @@ coil is proudest on the trailing side), scans the beak on both sides of the
 pad with a window derived from the tab's own width, turns the reaction and
 the lug's approach the way winding turns the cone, and measures the run's
 reach above the departure for the upright stack. Recorded under TODO 115.
+
+### What the first battery found, and what each finding was
+
+The first full battery of the upright cut went red in four places. None was
+a defect of the idea; each was a derivation the upright chain had left
+implicit, and each is now derived rather than patched.
+
+**Burial 1.15 on the chain-on-cone row.** The vertices reading it stood
+0.001 u over a channel wall. A channel's walls are helicoids — at one azimuth
+both stand at one z whatever the radius — and a chain plate is flat, so the
+two agree on the chord line at the joints and part everywhere else: at a point
+(s along the chord, y inboard of it) by `lead·|atan2(s, d − y) − s·atan(h/d)/h|`
+(h = CHAIN_PITCH/2, d the chord's distance from the axis). The stadium's
+corners reach it. The row read the WALL's height at the vertex — a cliff the
+old z-only floor never had, since a revolve has no walls — so a micron into a
+wall read as the land's whole height. Two changes, one in the metal and one in
+the measure:
+
+- The channel is cut wide enough that no corner of the stadium touches either
+  wall, at the radius where the mismatch is largest (it goes as 1/r², so the
+  wrap's smallest, bounded before the torque solve exists by the closed-form
+  branch of the same solve, `u(1) ≤ √(θ_s² + β)`, and asserted against the
+  solve's own K): `FUSEE_GROOVE_W` = stack + 2·`FUSEE_TWIST_ALLOW` + the
+  0.01 seating clearance = 0.7096. The z stack that consumes the width moved
+  below the spring constants that bound it (nothing read it in between).
+- `userData.groove.exitDepth(az, z, r)` is the cone's SHORTEST way out of its
+  metal for a point in the land: radially to the land, or along the axis to a
+  window's edge and out to the shelf. The burial row reads that, so the
+  departure link — where the chain's slope parts from the helix's and a
+  corner touches a wall by a few hundredths — reads its depth, not the wall's
+  height. A vertex a plate's thickness into a wall still reads a plate's
+  thickness, and the budget is the unchanged 0.25.
+
+**Center wheel 0.1461 against CLEAR_MARGIN.** The deepest thing the chain
+reaches below its centreline is not the stack's half but the hook's end
+rivet: the pin leans with the helix (that is what makes the plates parallel to
+the walls), so the formed head, a disc of `CHAIN_RIVET_HEAD_R` on the stack's
+outer face, dips `R·sin(lean)` = 0.0189 below it. `FUSEE_Z0_MIN` carries it;
+the band, which the dip is raised against, is what its lean is computed from,
+so the pair closes in four fixed substitutions (contraction 0.006).
+
+**The hook link's rear cap lies behind f = 0.** Its metal reaches
+`CHAIN_END_R_OUT` back along the chord, and the channel has to be there to
+receive it. The cut starts `FUSEE_PLUNGE_LEAD_TURNS` early — the cap tip's
+angular reach `atan(R/r)` at R_LARGE, taken up to whole ribbon stations
+(2 of 96, 0.0208 turn) so the plunge wall is one the mesh already owns — and
+the base collar carries the lead's drop (0.033), so the channel's foot at its
+plunge still stands a margin above the base.
+
+**Maintaining power met the cone's base face.** With the boss gone the cone's
+base face IS the flange's top, so the pawl pivot studs, which stopped there,
+touched it, and the detent's bracket arm sat 0.1025 from it. The studs are blind
+pins in their pawls and stop one `CLEAR_MARGIN` under the face; the bracket
+arm's thickness is `min(0.45, face − margin − its underside)` (0.386 — the
+click's own section carries the hold, which TODO 217's arithmetic reads, and
+the arm is a support bracket). The cone seated on its arbor is a declared
+joint: the staff starts on the cone's tip face by construction, and float32
+vertices read that as a 2e-8 hairline that the lathed cone had happened to
+round the other way.
 
 ### Measured at closure
 
