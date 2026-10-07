@@ -1008,58 +1008,10 @@ const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the w
 // second number: tick() banks against engageTurns, so a lug whose clocking
 // drifted from the wrap would be caught at boot, not discovered as overwind.
 const WIND_ARREST = { engageTurns: FUSEE_WRAP_TURNS };
-const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
-const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 0.01;  // 0.67 — the stack drops in with a seating clearance
-const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
-// §254 (TODO 208) — the collar under the bottom groove: the groove's own
-// lower wall, whole (half the channel's width below the centreline), plus one
-// margin of base face under it. The bottom groove no longer opens out the
-// base: an upright chain is located in z by that wall, so the wall is derived
-// to exist. (§124's collar was the tilt's funded down-reach; the lean is gone.)
-const FUSEE_BASE_INSET = FUSEE_GROOVE_W / 2 + CLEAR_MARGIN; // 0.485
-// Lowest legal bottom-groove centreline: the center wheel's top face plus
-// the margin plus the chain's deepest reach below its centreline — the
-// upright stack's half, CHAIN_PIN_LEN/2, since §254 stood the chain up.
-const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + CHAIN_PIN_LEN / 2;
-// Highest legal tip: the spring stack top, less a 0.02 float guard so the
-// plate-floor comparator binds on the SPRING, not on rounding at the tip.
-const FUSEE_BAND = TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN; // §218 tier two — TRAIN_CEILING_Z, not the raised spring stack
-const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h default (§124: two grooves — was 0.695 across four)
-const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
-if (FUSEE_LAND_W < 0.02)
-  console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
-const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§124 grew the collar)
-// Base DERIVED from the plate's design goal. The old bind (the chain's
-// lowest span clearing the movement-side crown wheel) vanished when the
-// keyless works moved to the dial side — after that, the only thing the
-// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
-// sits at max(tallest under-plate part, hairspring stack) + margin, and
-// the fusee tip was that tallest part by ~2.5, holding the whole back of
-// the movement high and the balance cock BELOW the plate band it is meant
-// to sit in (the long-standing console warning). Keep the tip AT or under
-// the hairspring stack's top so the spring stays the plate's binding
-// member and everything above — plate, rod planes, post, stop-work tail —
-// closes down with it. The FLOOR under the cone is the CENTER WHEEL: its
-// disc reaches under the cone's footprint (origin is only 16.2 from the
-// barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's lowest
-// wrap — the groove FUSEE_BASE_INSET above the base, chain half-stack
-// below its centre-line — must clear the wheel's top face by the margin.
-// Both binds explicit. Since §61 the CENTER bind governs by construction:
-// FUSEE_BAND was derived to fill exactly the space between the two binds,
-// so the max() seats the cone on the wheel-side bind with the tip 0.04
-// under the spring top (the guard pair in the band derivation). The
-// spring bind's own 0.1 keeps the tip clear of the plate comparator if a
-// future change hands it back the governing role.
-// (This z stack — base, groove start, band — is declared BEFORE the torque
-// law below, because the span-aware solve consumes the wrap's z stations:
-// the free span's length has a z leg, and its give is part of the chain
-// conservation the law integrates. Same hoist reason as COIL_TOP's.)
-const FUSEE_BASE_Z = Math.max(
-  TRAIN_CEILING_Z - L_BARREL - FUSEE_H - 0.1,   // §218 tier two — the train's ceiling
-  FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
-);
-const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
-const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
+// (The cone's z stack — groove width and depth, base collar, center-wheel bind, band, pitch,
+// base and groove start — is declared below, beside the spring constants it needs:
+// the groove's width carries the plate's twist off the helicoid walls, which is a
+// function of the wrap's smallest radius, which only the torque law bounds. §254.)
 // THE SPRING'S TORQUE LAW — derived from the ribbon, and the cone solved
 // against it (TODO 32, closing; TODO 40 row 1 built the machinery).
 //
@@ -1161,6 +1113,140 @@ const DRUM_WRAP_R = DRUM_R_ACTUAL + CHAIN_END_R_OUT;
 const FUSEE_LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24); // 32.9344 rad·u — the pre-§124 shipped product, held
 const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;     // 5.46955 — was the bare literal 7.4
 const SPRING_WIND_BETA = (4 * Math.PI * FUSEE_WRAP_TURNS * FUSEE_R_LARGE * SETUP_SWEEP) / DRUM_WRAP_R;
+const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
+const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
+// §254 — THE CHANNEL IS WIDER THAN THE STACK BY WHAT A FLAT PLATE NEEDS TO LIE
+// ALONG A HELIX. A fusee engine's channel walls are helicoids: at one azimuth
+// both stand at one z whatever the radius, so the wall's z at a point is
+// lead·θ with θ the point's azimuth about the ARBOR. A chain plate is flat: its
+// face is a plane through the chord, z linear in the distance s along it. The
+// two agree on the chord line at the joints and part everywhere else — at a
+// point (s along the chord, y inboard of it) by
+//     lead·|atan2(s, d − y) − s·atan(h/d)/h|,   h = CHAIN_PITCH/2, d = √(r² − h²)
+// (d the chord's distance from the axis, r the joints' radius), which the
+// plate's corners reach: a rear cap bottom corner stood 0.001 over the wall's
+// lower edge on the first §254 cut, and the burial row, whose depth is the
+// WALL'S height at the vertex (a cliff, 1.15), read it as 1.15. The corner is
+// really 0.001 into the wall — and the fix is the real one: the channel is cut
+// wide enough that no corner of the stadium touches either wall, at the radius
+// where the mismatch is largest (the wrap's smallest, since it goes as 1/r²).
+// The smallest radius is not known until the torque solve has run, and the
+// solve consumes the z stack this widens, so the bound used is the closed-form
+// branch of the same solve, u(1) ≤ √(θ_s² + β) (the span's give only lowers u),
+// which gives r_min ≥ P/√(θ_s² + β) — asserted against the solve's own K below.
+// Both faces tilt with the chord, so the stack's half also grows by 1/cos(lean).
+const FUSEE_R_WRAP_MIN_LB = FUSEE_LEVEL_P / Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA);
+const plateTwistAllow = (r, lead) => {
+  const h = CHAIN_PITCH / 2, R = CHAIN_END_R_OUT;
+  const d = Math.sqrt(r * r - h * h);
+  const kap = Math.atan(h / d) / h;                       // the plate's face slope per unit chord, in lead units
+  const NS = 64;
+  let worst = 0;
+  const probe = (s, y) => {
+    const m = Math.abs(Math.atan2(s, d - y) - s * kap);
+    if (m > worst) worst = m;
+  };
+  for (let i = 0; i <= NS; i++) {
+    const a = -Math.PI / 2 + Math.PI * (i / NS);           // the stadium's outline: two caps and two straight edges
+    for (const sg of [-1, 1]) for (const sy of [-1, 1]) {
+      probe(sg * (h + R * Math.cos(a)), sy * R * Math.sin(a));
+      probe(sg * h * (i / NS), sy * R);
+    }
+  }
+  const tilt = CHAIN_PIN_LEN / 2 * (1 / Math.cos(Math.atan(lead * kap)) - 1);
+  return lead * worst + tilt;
+};
+const FUSEE_PITCH_EARLY = (TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - (L_CENTER + 0.5 + 0.08 + CLEAR_MARGIN + CHAIN_PIN_LEN / 2)) / FUSEE_GROOVE_TURNS;   // the pitch to within the hook dip's 0.0186/2 — an UPPER bound, so a wider lead and a wider channel: the safe side
+const FUSEE_TWIST_ALLOW = plateTwistAllow(FUSEE_R_WRAP_MIN_LB, FUSEE_PITCH_EARLY / (2 * Math.PI));
+const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 2 * FUSEE_TWIST_ALLOW + 0.01;   // the stack, the corners' twist, and the seating clearance (0.005 a side)
+// Lowest legal bottom-groove centreline: the center wheel's top face plus
+// the margin plus the chain's deepest reach below its centreline. Since §254
+// stood the chain up that reach is the stack's half, CHAIN_PIN_LEN/2, PLUS
+// the one thing that stands lower: the hook's end rivet. The pin leans off
+// the arbor by the helix's own slope (that is what makes the plates parallel
+// to the groove's helicoid walls), so the formed head — a disc of
+// CHAIN_RIVET_HEAD_R on the stack's outer face — has its rim dip below the
+// face by R·sin(lean). Measured on the shipped metal: 0.0186 u, the whole of
+// the 0.0039 the center wheel's clearance came up short of CLEAR_MARGIN.
+// The lean is the chord's slope at the base, lead·(2·asin(pitch/2r)/pitch)
+// with lead the groove's rise per radian, which is the band over the groove
+// turns — and the band is what this raises Z0_MIN against, so the pair is
+// closed by four fixed substitutions (contraction ≈ 0.006 each: exact to
+// float, and a fixed count keeps the boot bit-reproducible).
+const FUSEE_WHEEL_TOP_Z = L_CENTER + 0.5 + 0.08;   // the center wheel's top face
+const chainHookDip = (pitch) => {
+  const lead = pitch / (2 * Math.PI);
+  const slope = lead * 2 * Math.asin((CHAIN_PITCH / 2) / FUSEE_R_LARGE) / CHAIN_PITCH;   // R_LARGE ≤ the claw's radius: the smaller r leans more, so the bound is the safe one
+  return CHAIN_RIVET_HEAD_R * Math.sin(Math.atan(slope));
+};
+const FUSEE_HOOK_DIP = (() => {
+  let dip = 0;
+  for (let i = 0; i < 4; i++) {
+    const z0 = FUSEE_WHEEL_TOP_Z + CLEAR_MARGIN + CHAIN_PIN_LEN / 2 + dip;
+    dip = chainHookDip((TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - z0) / FUSEE_GROOVE_TURNS);
+  }
+  return dip;
+})();
+const FUSEE_Z0_MIN = FUSEE_WHEEL_TOP_Z + CLEAR_MARGIN + CHAIN_PIN_LEN / 2 + FUSEE_HOOK_DIP;
+// Highest legal tip: the spring stack top, less a 0.02 float guard so the
+// plate-floor comparator binds on the SPRING, not on rounding at the tip.
+const FUSEE_BAND = TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN; // §218 tier two — TRAIN_CEILING_Z, not the raised spring stack
+const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h default (§124: two grooves — was 0.695 across four)
+const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
+if (FUSEE_LAND_W < 0.02)
+  console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
+// §254 — WHERE THE CUT STARTS. The chain is hooked at f = 0, but the hook
+// link's metal lies BEHIND that joint: its plate cap reaches CHAIN_END_R_OUT
+// back along the chord (the outer radius, so either parity of the hook link is
+// covered), and the groove has to be there to receive it. The engine plunges
+// that far early. The cap's tip is the farthest point, and it stands on the
+// chord line at the joints' radius (a point of the cap off the line is nearer
+// in along the chord by more than it is nearer the axis), so the lead is that
+// tip's angular reach, atan(R/r), at R_LARGE (the claw's radius is larger, so
+// this is the most angle), taken up to whole stations of the ribbon so the
+// plunge wall is one the mesh already owns.
+const FUSEE_PLUNGE_LEAD_TURNS = Math.ceil(
+  (Math.atan(CHAIN_END_R_OUT / FUSEE_R_LARGE) / (2 * Math.PI)) * G.FUSEE_RIBBON_NAZ - 1e-9) / G.FUSEE_RIBBON_NAZ;
+const FUSEE_PLUNGE_DROP = FUSEE_BAND * (FUSEE_PLUNGE_LEAD_TURNS / FUSEE_GROOVE_TURNS);   // how far below the claw's station the channel begins
+// §254 (TODO 208) — the collar under the bottom groove: the groove's own
+// lower wall, whole (half the channel's width below the centreline), plus one
+// margin of base face under it — under the channel's FOOT AT ITS PLUNGE, which
+// the lead (below) puts FUSEE_PLUNGE_DROP under the claw's station. The bottom groove no longer opens out the
+// base: an upright chain is located in z by that wall, so the wall is derived
+// to exist. (§124's collar was the tilt's funded down-reach; the lean is gone.)
+const FUSEE_BASE_INSET = FUSEE_GROOVE_W / 2 + CLEAR_MARGIN + FUSEE_PLUNGE_DROP;
+const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§124 grew the collar)
+// Base DERIVED from the plate's design goal. The old bind (the chain's
+// lowest span clearing the movement-side crown wheel) vanished when the
+// keyless works moved to the dial side — after that, the only thing the
+// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
+// sits at max(tallest under-plate part, hairspring stack) + margin, and
+// the fusee tip was that tallest part by ~2.5, holding the whole back of
+// the movement high and the balance cock BELOW the plate band it is meant
+// to sit in (the long-standing console warning). Keep the tip AT or under
+// the hairspring stack's top so the spring stays the plate's binding
+// member and everything above — plate, rod planes, post, stop-work tail —
+// closes down with it. The FLOOR under the cone is the CENTER WHEEL: its
+// disc reaches under the cone's footprint (origin is only 16.2 from the
+// barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's lowest
+// wrap — the groove FUSEE_BASE_INSET above the base, chain half-stack
+// below its centre-line — must clear the wheel's top face by the margin.
+// Both binds explicit. Since §61 the CENTER bind governs by construction:
+// FUSEE_BAND was derived to fill exactly the space between the two binds,
+// so the max() seats the cone on the wheel-side bind with the tip 0.04
+// under the spring top (the guard pair in the band derivation). The
+// spring bind's own 0.1 keeps the tip clear of the plate comparator if a
+// future change hands it back the governing role.
+// (This z stack — base, groove start, band — is declared BEFORE the torque
+// law below, because the span-aware solve consumes the wrap's z stations:
+// the free span's length has a z leg, and its give is part of the chain
+// conservation the law integrates. Same hoist reason as COIL_TOP's.)
+const FUSEE_BASE_Z = Math.max(
+  TRAIN_CEILING_Z - L_BARREL - FUSEE_H - 0.1,   // §218 tier two — the train's ceiling
+  FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
+);
+const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
+const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
 // The fusee↔drum centre distance — declared HERE because the span law
 // consumes it before the drum builds (DRUM_WRAP_R's own reason, one line
 // up). The 2.5 is the hand-set XY gap the drum block justifies (clearance
@@ -1435,6 +1521,7 @@ const fusee = G.makeFusee({
   // radii (the builder still seats the base and closes the tip on them);
   // what envR changes is everything between.
   envR: fuseeEnvR,
+  leadTurns: FUSEE_PLUNGE_LEAD_TURNS,   // §254: the channel starts behind the hook, where its link's rear cap lies
   // §254 — no relief and no tilt law: the groove is a helical shelf, flat
   // across its width at every azimuth (makeFusee's header), and the chain
   // stands upright on it. The chain's CENTRELINE stays on the envelope, so
@@ -10908,7 +10995,13 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     pawl.rotation.z = Math.PI * 0.778;
     pawl.name = 'maintPawl';
     az.add(pawl);
-    const studH = MAINT_FLANGE_TOP - MAINT_RING_TOP;
+    // §254: the stud used to stop at the flange's top, which was a boss's
+    // underside; it is the cone's own base face now, and a pivot stud is a
+    // blind pin in the pawl, not a thing that bears on the cone — it stops one
+    // CLEAR_MARGIN under the face (still inside the pawl's 0.8·T thickness).
+    const studH = MAINT_FLANGE_TOP - CLEAR_MARGIN - MAINT_RING_TOP;
+    if (MAINT_FLANGE_TOP - CLEAR_MARGIN < MAINT_FLANGE_BOT + MAINT_FLANGE_T * 0.1 + CHAIN_PLATE_T)
+      console.warn('maintaining wheel: the pawl stud, stopped a margin under the cone, would no longer reach into the pawl');
     const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, studH, 8), MATS.blueSteel);
     stud.rotation.x = Math.PI / 2;
     stud.position.set(MAINT_PAWL_PIV, 0, MAINT_RING_TOP + studH / 2 - L_BARREL);
@@ -11455,8 +11548,15 @@ const maintDetent = new THREE.Group();
   // Arm plane: just above the ring's band (the flange above starts at
   // MAINT_FLANGE_BOT — the arm's top stays a margin under it; radially
   // the arm never comes near the flange's 2-unit reach anyway).
-  const ARM_T = 0.45;
+  // §254: the bracket arm stands under the cone's base face, and that face is
+  // now the flange's own top (the boss that used to hold the cone off is gone),
+  // so the arm's top is derived against it: CLEAR_MARGIN under the face, 0.45
+  // at most. The arm is a support bracket, not the stressed member — the click's
+  // own section carries the hold (TODO 217's arithmetic reads that, not this).
   const armBot = MAINT_RING_TOP + 0.05;
+  const ARM_T = Math.min(0.45, MAINT_CONE_BASE - CLEAR_MARGIN - armBot);
+  if (ARM_T < STOCK_MIN_U)
+    console.warn(`maintaining detent: the bracket arm is ${ARM_T.toFixed(3)} thick between the ring and the cone's base face, under the §50 floor ${STOCK_MIN_U.toFixed(3)}`);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(postR - pivR + POST_R, 1.1, ARM_T), MATS.steel);
   arm.position.set((pivR + postR + POST_R) / 2, 0, armBot + ARM_T / 2);
   az.add(arm);

@@ -5279,6 +5279,18 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // plates on edge in the channel — seats on that shelf with no daylight at
 // all, because the shelf is flat under the whole stack.
 //
+// The tool is WIDER than the stack, by an amount the caller derives: the
+// channel's walls are helicoids (at one azimuth both stand at one z whatever
+// the radius), and a flat plate lying along the helix twists out of such a
+// channel by a·b·lead/(r·(r − b)) at a corner (a, b) — main.js's
+// plateTwistAllow. And the cut starts a LEAD of `leadTurns` BEFORE f = 0: the
+// chain is hooked at f = 0 and the hook link's rear metal (its plate end and
+// the end rivet's head) lies behind the joint along the chord, so the engine
+// plunges that much earlier and the channel continues the same helix down
+// into the collar. The lead is rounded UP to a whole station (FUSEE_RIBBON_NAZ
+// per turn) so the plunge wall is a station the ribbon already owns, and the
+// published closures read the lead as cut.
+//
 // The build it replaces lathed the floor as a SURFACE OF REVOLUTION, floorAt(z),
 // and no revolve can carry a helical shelf: a revolved floor is sloped across
 // the groove's width wherever the flank is, so an upright stack gapped 2h·m
@@ -5318,18 +5330,28 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // rotates the whole cut about the arbor after the fact (main.js knows the
 // clocking only once the drum's station and the arbor's full-wind phase
 // exist), and the closures follow it.
+export const FUSEE_RIBBON_NAZ = 96;     // stations per turn: a 5.47-radius ring facets at 0.003 of sagitta, an order under the §61 slack
 export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
-                            grooveW, grooveD, bandZ0, bandSpan, envR = null }) {
+                            grooveW, grooveD, bandZ0, bandSpan, envR = null, leadTurns = 0 }) {
   const g = new THREE.Group();
   const env = envR || ((f) => rLarge + (rSmall - rLarge) * f); // land-crest envelope over the band
   const G = grooveTurns;
   const pitch = bandSpan / G;
   const hw = grooveW / 2;
+  const NAZ = FUSEE_RIBBON_NAZ;
+  // The plunge lead, in stations (rounded up: the plunge wall is sewn at a
+  // station) and in band fraction. The caller is expected to hand a lead
+  // already on a station; a fractional one is cut long and warned about.
+  const iLead = -Math.ceil(leadTurns * NAZ - 1e-9);
+  if (Math.abs(leadTurns * NAZ + iLead) > 1e-9)
+    console.warn(`fusee: plunge lead ${leadTurns.toFixed(5)} turns is not a whole station of ${NAZ} — cut as ${(-iLead / NAZ).toFixed(5)}`);
+  const leadTurnsCut = -iLead / NAZ;
+  const fLead = leadTurnsCut / G;         // the cut runs over f ∈ [−fLead, 1)
   const zTip = height - 0.02;            // the tip face; the groove runs out through it, as cut threads do
   const rTipFlat = rSmall * 0.45;         // the tip's small flat, inside every groove radius
   const clampF = (f) => Math.min(Math.max(f, 0), 1);
   const envZ = (z) => env(clampF((z - bandZ0) / bandSpan)); // the land surface: collar and runout continue the band's ends
-  const floorR = (f) => env(f) - grooveD;                   // the tool's radius on pass f — FLAT across the window
+  const floorR = (f) => env(Math.max(f, 0)) - grooveD;      // the tool's radius on pass f — FLAT across the window; the lead continues the plunge radius
   // TODO 115 — the helix's hand. One line lays it (the direction guard
   // mutates this line and expects the hand assert below to fire): azimuth
   // advances with z in the movement's own sense, because the chain pays off
@@ -5341,16 +5363,17 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     return clock + a;
   };
   const zgAt = (f) => bandZ0 + bandSpan * f;
-  // The REAL pass whose window holds (az, z), or null: f ∈ [0, 1) — the tool
-  // cuts from the plunge at f = 0 up to its exit at f = 1, and the exit
-  // station itself belongs to the strip that ends there, never to the one
-  // after it (the end wall is sewn between the two).
+  // The REAL pass whose window holds (az, z), or null: f ∈ [−fLead, 1) — the
+  // tool cuts from the plunge, the lead before the hook's station f = 0, up
+  // to its exit at f = 1, and the exit station itself belongs to the strip
+  // that ends there, never to the one after it (the end wall is sewn between
+  // the two).
   const passAt = (az, z) => {
     let frac = (MOVEMENT_SENSE * (az - clock)) / (Math.PI * 2);
     frac -= Math.floor(frac);
     const k = Math.round((z - bandZ0) / pitch - frac);
     const f = (frac + k) / G;
-    if (f < 0 || f >= 1) return null;
+    if (f < -fLead || f >= 1) return null;
     if (Math.abs(z - zgAt(f)) > hw) return null;
     return f;
   };
@@ -5362,9 +5385,34 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     if (typeof az !== 'number') throw new Error('fusee floorAt(z, az): the §254 cut is helical, so the floor needs the azimuth too');
     return surfaceR(az, z);
   };
+  // How far a point at (az, z, r) must travel to leave the cone's metal by the
+  // SHORTEST way, for a point that stands in the LAND (outside every window):
+  // out radially to the land (floorAt − r), or along the axis to the nearest
+  // window's edge and then out to its shelf, whichever is less. A window has
+  // walls — vertical, at the helicoid — so a vertex a micron past one is a
+  // micron into the wall, not the wall's whole height; floorAt alone reads it
+  // as the height (a cliff), which was the right answer only for a floor that
+  // was a function of z. A point inside a window has no axial way out (the
+  // walls are metal on both sides), so it reads Infinity and its depth is the
+  // shelf's, floorAt − r.
+  const exitDepth = (az, z, r) => {
+    if (passAt(az, z) !== null) return Infinity;
+    let frac = (MOVEMENT_SENSE * (az - clock)) / (Math.PI * 2);
+    frac -= Math.floor(frac);
+    const k0 = Math.round((z - bandZ0) / pitch - frac);
+    let best = Infinity;
+    for (let k = k0 - 1; k <= k0 + 1; k++) {
+      const f = (frac + k) / G;
+      if (f < -fLead || f >= 1) continue;
+      const axial = Math.max(Math.abs(z - zgAt(f)) - hw, 0);
+      const radial = Math.max(floorR(f) - r, 0);
+      const d = Math.hypot(axial, radial);
+      if (d < best) best = d;
+    }
+    return best;
+  };
 
   // ---- the ribbon --------------------------------------------------------
-  const NAZ = 96;                         // stations per turn: a 5.47-radius ring facets at 0.003 of sagitta, an order under the §61 slack
   const NL = 6;                           // land samples between a window's top and the next turn's foot
   // Station i ↔ f = i / (NAZ·G); a strip's foot is zFoot(i), its top edge is
   // zFoot(i + NAZ) — the next turn's foot by the SAME expression on the same
@@ -5379,7 +5427,7 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // Virtual turns: enough below the band that the lowest strip's feet all
   // sit under the base plane, enough above that the highest strip's feet all
   // sit over the tip plane — every point past a plane clips onto it.
-  const kMin = Math.floor((hw - bandZ0) / pitch) - 1;
+  const kMin = Math.min(Math.floor((hw - bandZ0) / pitch) - 1, Math.floor(iLead / NAZ) - 1);
   const kUp = Math.ceil((zTip - bandZ0 + hw) / pitch) - G;
   // The clip radius at a plane: where a REAL window reaches the plane at this
   // station the cut's own floor, else the land. A real strip at the groove's
@@ -5438,17 +5486,17 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     }
     return prev;
   };
-  if (bandZ0 - hw < -1e-9)
-    console.warn(`fusee: the bottom groove opens out the base (window foot ${(bandZ0 - hw).toFixed(3)} under z = 0) — the collar is derived to carry a whole lower wall, and the base ring is built on that`);
-  ribbon(kMin * NAZ, 0, false);                 // the collar: virtual turns, windows uncut, clipped at the base
-  ribbon(0, G * NAZ, true);                     // the groove, plunge to exit
+  if (zgAt(-fLead) - hw < -1e-9)
+    console.warn(`fusee: the bottom groove opens out the base (window foot ${(zgAt(-fLead) - hw).toFixed(3)} under z = 0 at the plunge) — the collar is derived to carry a whole lower wall under the lead, and the base ring is built on that`);
+  ribbon(kMin * NAZ, iLead, false);             // the collar: virtual turns, windows uncut, clipped at the base
+  ribbon(iLead, G * NAZ, true);                 // the groove, plunge (the lead's start) to exit
   ribbon(G * NAZ, (G + kUp) * NAZ, false);      // the runout: virtual turns clipped at the tip
   // The two end walls, sewn between vertices both strips already own: at the
-  // plunge (f = 0) the real strip's shelf points against the virtual strip's
-  // envelope points at the same z; at the exit (f = 1) likewise, the window
-  // there clipped by the tip.
+  // plunge (f = −fLead) the real strip's shelf points against the virtual
+  // strip's envelope points at the same z; at the exit (f = 1) likewise, the
+  // window there clipped by the tip.
   {
-    const s0r = station(0, true), s0v = station(0, false);
+    const s0r = station(iLead, true), s0v = station(iLead, false);
     const s1r = station(G * NAZ, true), s1v = station(G * NAZ, false);
     // plunge wall faces +sense (the groove lies on its +sense side); exit wall −sense
     if (MOVEMENT_SENSE >= 0) {
@@ -5547,7 +5595,7 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     g.userData.grooveAz0 = azAt(0);
     g.userData.groove.clock = az;
   };
-  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, pitch, floorAt, floorR, envAt: env, azAt, zgAt, passAt, clock, setGrooveClock };
+  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, pitch, leadTurns: leadTurnsCut, fLead, floorAt, floorR, exitDepth, envAt: env, azAt, zgAt, passAt, clock, setGrooveClock };
   return g;
 }
 

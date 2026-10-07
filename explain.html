@@ -784,18 +784,18 @@
           </svg>
         </div>
         <figcaption>Radially true; z is drawn at twice that scale, because at one scale the
-        whole story here — a 0.69 coil pitch, a 1.5927 groove pitch, a 3.1854 band — collapses
+        whole story here — a 0.69 coil pitch, a 1.5833 groove pitch, a 3.1667 band — collapses
         into the thickness of a few strokes. The wrap climbs one groove pitch per turn
         (<code>f = s / FUSEE_GROOVE_TURNS</code>, so a full 1.75-turn wind reaches
         <code>f</code> 0.875 and never the tip) from a hook on the cone at the groove's
         plunge (§254), while the coil descends
         <code>CHAIN_COIL_PITCH</code> per turn from a hook fixed on the drum wall. The two
-        descents are why the span's z leg stays small — about 1.95 below the drum's hook plane
+        descents are why the span's z leg stays small — about 1.93 below the drum's hook plane
         at empty, 0.37 above it at full wind — over a run of 17 to 18 instead of raking
         across the train. The cone's z is pinned at both ends by parts that are not the cone:
         the center wheel's top face below and the hairspring stack above
         (<code>FUSEE_Z0_MIN</code>, <code>FUSEE_BASE_Z</code>) — the band between them is
-        <code>FUSEE_BAND = 3.1854</code>, and the groove pitch, the land width and the reserve
+        <code>FUSEE_BAND = 3.1667</code>, and the groove pitch, the land width and the reserve
         the movement can hold all fall out of it. <b>Watch the chain readout while it
         runs.</b> The three lengths are the model's own arithmetic, and their sum — the chain
         — is the one number in the plate that should not move. It used to, by about 9%
@@ -806,7 +806,7 @@
         wall — because the cone is cut from the solve that conserves their sum, and since
         §254 the same walk is booked at the cone's end, where the chain is hooked. The
         <code>chainLength</code> battery gate holds it: the run's spread over the whole
-        reserve is 0.41 of a 1.9 link pitch, and the mesh lays 44 links at every state of
+        reserve is 0.57 of a 1.9 link pitch, and the mesh lays 44 links at every state of
         wind.</figcaption>
       </figure>
 
@@ -966,7 +966,7 @@
       120/7 = 17.143:1 (<code>TRAIN.barrel</code> 120 teeth on a 7-leaf pinion at module
       2·16.2/127 = 0.25512, the centre distance held so the center arbor does not move), so
       the fusee turns once per 120/7 h and the 30 h reserve fits in 1.75 wraps over TWO
-      grooves — at pitch 1.389 as §124 cut them, 1.5927 since §254 — at least twice the
+      grooves — at pitch 1.389 as §124 cut them, 1.5833 since §254 — at least twice the
       chain's stack — while the set-up deepened 17 → 23 clicks, the minimum integer whose
       full-band seat residual cleared the §61 float budget on §124's cut (22 → 0.200 ✗,
       23 → 0.146 ✓). On that cut every link either stood or LEANED flush against the flank,
@@ -1003,7 +1003,7 @@
       the cone is CUT from the solve that holds all three ledgers to one length. The old
       one-line closure was this ODE's "span frozen" branch, and the integrator reproduces
       it to 1e-9 as its own boot control. Measured on the shipped mesh, the run's length
-      now spreads 0.41 u over the whole reserve against the 0.95 half-link-pitch tolerance
+      now spreads 0.57 u over the whole reserve against the 0.95 half-link-pitch tolerance
       (it spread 1.62 u — 43 links at some winds, 44 at others — with the span unbooked),
       the census lays 44 links at every state of wind, and the <code>chainLength</code>
       gate holds it unwaived. <b>TODO 32 is closed for this train</b>:
@@ -3706,8 +3706,8 @@
       var WRAP_TURNS = HOURS / (120 / 7);                 // FUSEE_WRAP_TURNS = 1.75 — §124: hours per fusee turn IS the first mesh, 120/7
       var GROOVE_TURNS = Math.ceil(WRAP_TURNS + 0.25);    // FUSEE_GROOVE_TURNS = 2
       var F_ACTIVE = WRAP_TURNS / GROOVE_TURNS;           // FUSEE_F_ACTIVE = 0.875
-      var BAND = 3.1854, Z0 = 4.74;                       // FUSEE_BAND, FUSEE_Z0 (= FUSEE_Z0_MIN — §254 stood the chain up, so the groove floor sits on the centre wheel's bind and the whole §124 raise is band)
-      var BASE_Z = 4.255, TIP_Z = 7.9454;                 // cone base and tip in world z
+      var BAND = 3.1667, Z0 = 4.7587;                       // FUSEE_BAND, FUSEE_Z0 (= FUSEE_Z0_MIN — §254 stood the chain up, so the groove floor sits on the centre wheel's bind and the whole §124 raise is band)
+      var BASE_Z = 4.2209, TIP_Z = 7.9454;                 // cone base and tip in world z
       var CW_TOP = 4.26, SPRING_TOP = 7.9654;             // the two planes the band is solved between
       var DRUM_R = 10.71, WRAP_R = 11.37;                    // DRUM_R_ACTUAL, + CHAIN_END_R_OUT = DRUM_WRAP_R
       var DRUM_BOT = 2.93, DRUM_TOP = 7.9654;
@@ -3915,8 +3915,8 @@
       // Projected onto the plane the two arbors share: u runs along that
       // line (fusee axis at u = 0, drum axis at u = −D) and z is world z.
       // z is drawn at TWICE the radial scale and the plate says so — at one
-      // scale the whole z story (a 0.69 coil pitch, a 1.5927 groove pitch, a
-      // 3.1854 band) collapses into the thickness of a few strokes, which is
+      // scale the whole z story (a 0.69 coil pitch, a 1.5833 groove pitch, a
+      // 3.1667 band) collapses into the thickness of a few strokes, which is
       // the one thing this view exists to show. Radially it is true.
       var S = 17, SZ = 34, OX = 590, BY = 339.6;
       function X(u) { return OX + u * S; }

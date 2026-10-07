@@ -3142,6 +3142,7 @@ export const INTRA_UNIT_CONTACTS = [
   // COINCIDE exactly (a knife-edge no instrument can arbitrate); the plate
   // rise moved the abutment's phase into this check's sight, and the joint
   // is now an overlap with its name — one arbor, two meshes.
+  { unit: 'Fusee & great wheel', a: 'fuseeCone', b: 'fuseeUpperPivot', why: '§254: the cone is seated on its arbor — the staff starts on the cone\'s tip face, one plane by construction (the cone\'s top is the train ceiling less the float guard, the staff is cut from there), which float32 vertices read as a 2e-8 hairline. It went unreported on the lathed cone only because that mesh\'s tip rounded the other way; DECLARED_CONTACT_REACH holds the row to a real touch.' },
   { unit: 'Fusee & great wheel', a: 'fuseeTopArbor', b: 'fuseeUpperPivot', why: 'one arbor in two meshes — the windTop continuation welds into the pivot staff at the plate mid-plane' },
   // Both were 'ExtrudeGeometry#32' until TODO 50 named the setting wheel
   // (the clutch pair's floors row needed the name): the wheel — the
@@ -5599,8 +5600,14 @@ const PENETRATION_BUDGETS = [
     // at 0.8, at a third of the size. §254: the floor is a helical SHELF
     // now (makeFusee), flat across the groove at every azimuth, so floorAt
     // takes the azimuth and what this row reads outside a window is the
-    // land — a chain vertex in the land is a plate through the groove's
-    // wall, and reads as the burial it is.
+    // land — a chain vertex in the land is a plate in the groove's wall, and
+    // its depth is the SHORTEST way out of the metal (the groove's exitDepth:
+    // radially to the land, or along the axis to the window's edge and out to
+    // the shelf), not the wall's whole height: the first §254 cut read a
+    // vertex 0.0007 past a wall as 1.15 deep, a cliff the old z-only floor
+    // never had. Plates in a window the width of their own twist (main.js's
+    // FUSEE_GROOVE_W) touch no wall except at the departure, where the chain's
+    // slope leaves the helix's and the last links read what that costs.
     pair: ['Fusee & great wheel', 'Chain'],
     maxDepth: 0.25,
     axis: 'reserve',
@@ -5619,7 +5626,7 @@ const PENETRATION_BUDGETS = [
       // committed once.
       if (typeof floorAt !== 'function') throw new Error('chain-on-cone seating: userData.groove.floorAt missing — the cut and the check must hold one law');
       const toLocal = fus.matrixWorld.clone().invert().multiply(chain.matrixWorld);
-      return sampleRadialDepth(chain.geometry, toLocal, floorAt, -Infinity, Infinity);
+      return sampleRadialDepth(chain.geometry, toLocal, floorAt, -Infinity, Infinity, fus.userData.groove.exitDepth);
     },
   },
   {
@@ -5839,14 +5846,21 @@ const PENETRATION_BUDGETS = [
 // which vertices alone never visit (the drum row would read ~0 without
 // centroids). zLo/zHi gate the band the surface claims; points outside it
 // are someone else's business (the span, the hook).
-function sampleRadialDepth(geometry, toLocal, floorAt, zLo, zHi) {
+function sampleRadialDepth(geometry, toLocal, floorAt, zLo, zHi, exitDepth = null) {
   const pos = geometry.attributes.position;
   const idx = geometry.index;
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   let worst = 0;
   const probe = (v) => {
     if (v.z < zLo || v.z > zHi) return;
-    const d = floorAt(v.z, Math.atan2(v.y, v.x)) - Math.hypot(v.x, v.y);   // §254: the cone's floor is helical, so the surface takes the azimuth too (the drum's ignores it)
+    const az = Math.atan2(v.y, v.x), r = Math.hypot(v.x, v.y);
+    let d = floorAt(v.z, az) - r;   // §254: the cone's floor is helical, so the surface takes the azimuth too (the drum's ignores it)
+    // §254: a cone with channel WALLS has a second way out of its metal, along
+    // the axis to the window's edge, and a vertex a micron past a wall is a
+    // micron deep, not the land's height. The row's depth is the shortest way
+    // out (the groove's own exitDepth), which is the penetration the budget
+    // was always meant to bound; a row with no walls passes none.
+    if (exitDepth && d > 0) d = Math.min(d, exitDepth(az, v.z, r));
     if (d > worst) worst = d;
   };
   const triCount = (idx ? idx.count : pos.count) / 3;
