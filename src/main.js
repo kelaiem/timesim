@@ -11075,6 +11075,15 @@ let MAINT_DETENT_AZ = 0, MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SIGN
 // geometry read off the click as cut (built with the cock below; null until).
 const MAINT_DET_CLICK_T = MAINT_RING_T * 0.9;
 let MAINT_DET_HOLD_GEOM = null;
+// A fast-forward frame runs FF_TICKS_PER_FRAME coarse ticks and draws the last.
+// The detent's beak, tail and blade are a pure function of the ring's angle (the
+// ride solve is memoised on it and keeps no state), nothing reads them inside a
+// tick, and they are only ever DRAWN after the frame — so the ticks before the
+// last one need not pose them. Each of those posings is a ride solve (about 45
+// clearance passes over 145 beak samples), and 44 of them per frame were 95% of
+// the frame's cost (316 ms against 20 ms, measured before this change).
+const FF_TICKS_PER_FRAME = 45;
+let detentPoseDeferred = false;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
 // The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
 // windBack: zero while running (locked, torque flows), sweeping backward
@@ -11112,7 +11121,7 @@ function updateMaintaining(windBack) {
   // would do if the cam fell away: the follower drops to its seat instead of
   // tracking a profile that is no longer there.
   const followCam = (seat, cam, sign) => (sign > 0 ? Math.min(seat, cam) : Math.max(seat, cam));
-  if (maintDetentBeak) {
+  if (maintDetentBeak && !detentPoseDeferred) {
     // TODO 215 — the cam is the ring's CUT, not the linearised profile: the
     // whole beak is solved against the polygon the teeth were cut from (the
     // law's `max(sawRadiusAt − TIP_R, 0)` floated the tip 0.04–0.10 over the
@@ -11360,10 +11369,25 @@ const maintDetent = new THREE.Group();
       const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy), 0, 1);
       return Math.hypot(x - ax - t * dx, y - ay - t * dy);
     };
+    // The edges that can pass the window test below, by azimuth bin. The test
+    // keeps an edge whose midpoint is within 2·pitchR of the sample; a sample
+    // in a bin lies within half a bin of the bin's centre, so every edge it
+    // could keep is within 2·pitchR + half a bin (+ a rounding margin) of that
+    // centre — a SUPERSET, listed in E's own order. ringSd still applies the
+    // exact original test to each candidate, so it visits the same edges in the
+    // same order and returns the same double; what it no longer does is
+    // evaluate `wrapPi` (a floating-point modulo) on all 48 edges for each of
+    // the ~300,000 samples a fast-forward frame asks about.
+    const RING_NB = 96, RING_BW = (2 * Math.PI) / RING_NB;
+    const ringCand = Array.from({ length: RING_NB }, (_, b) => {
+      const c = -Math.PI + (b + 0.5) * RING_BW;
+      return E.filter((e) => Math.abs(wrapPi(e.mid - c)) <= 2 * pitchR + RING_BW / 2 + 1e-9);
+    });
     const ringSd = (x, y) => {                         // + outside the ring's metal, − inside
       const az = Math.atan2(y, x), r = Math.hypot(x, y);
       let d = Infinity, rb = null;
-      for (const e of E) {
+      const bin = Math.min(RING_NB - 1, Math.max(0, Math.floor((az + Math.PI) / RING_BW)));
+      for (const e of ringCand[bin] ?? E) {            // a NaN sample has no bin: every edge, as before
         if (Math.abs(wrapPi(e.mid - az)) > 2 * pitchR) continue;
         d = Math.min(d, segD(x, y, e.ax, e.ay, e.bx, e.by));
         if (rb === null) {
@@ -49573,10 +49597,17 @@ function advanceFrame(realDt) {
     if (fastForward) {
       // ~5400×: 45 coarse 2 s ticks per frame — the whole 30 h reserve pays
       // off in about 20 s of wall time, chain and reserve hand visibly moving.
-      for (let i = 0; i < 45; i++) {
-        simTime += 2;
-        tick(simTime);
-        ticksThisFrame++;
+      // Only the frame's last tick poses the maintaining detent (see
+      // detentPoseDeferred), because only its pose is drawn.
+      try {
+        for (let i = 0; i < FF_TICKS_PER_FRAME; i++) {
+          simTime += 2;
+          detentPoseDeferred = i < FF_TICKS_PER_FRAME - 1;
+          tick(simTime);
+          ticksThisFrame++;
+        }
+      } finally {
+        detentPoseDeferred = false;
       }
       accumulator = 0;
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
