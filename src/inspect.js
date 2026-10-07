@@ -4627,8 +4627,9 @@ export const PLATE_CLEARANCE_DEBT = [
   // DOWN to 1e-4), each citing TODO 209's fix path. TODO 211 retired the
   // keyless stem's three (clutchRim, windingPinion 0.0459, windPinionSaw
   // 0.0999) by deriving Z_KEYLESS off the plate's dial face (layout.js).
-  { unit: "Fusee & great wheel", mesh: "ExtrudeGeometry#2", floor: 0.0751, todo: 209 },
-  { unit: "Keyless works", mesh: "transferWheel", floor: 0.0751, todo: 209 },
+  // TODO 209 retired the rest: the case lugs (caseLugRootR) and the winding
+  // band's spur and transfer wheel (WIND_T, cut against the gear bevel). EMPTY
+  // now, and closed: a part that arrives under the margin blocks landing.
 ];
 const plateRowKey = (unit, mesh) => `${unit} / ${mesh}`;
 
