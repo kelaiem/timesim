@@ -28269,7 +28269,7 @@ that point TODO 76's remaining declaration retires. Until then the twist is
 declared fiction, MODELLED and not SIMULATED: no force on the chain is
 integrated, so nothing would twist a real chain into this pose or out of it.
 
-## 209. Twelve parts stand under CLEAR_MARGIN off the base plate — PART DONE
+## 209. Twelve parts stand under CLEAR_MARGIN off the base plate — CLOSED
 
 Found by TODO 202 step 4's `plateSeats` tier on arrival. That tier holds
 every labelled mesh within `CLEAR_MARGIN` of the base plate to a declared
@@ -28286,7 +28286,7 @@ is a CLOSED inventory, on `UNDECLARED_CLEARANCE_DEBT`'s rule:
 | `Winding clutch / clutchRim` | 0.04595 | 9 |
 | `Keyless works / windingPinion` | 0.04596 | 9 |
 | `Keyless works / transferArbor` | 0.04979 | 0 |
-| `Fusee & great wheel / ExtrudeGeometry#2` (the great wheel) | 0.0752 | 16 |
+| `Fusee & great wheel / ExtrudeGeometry#2` (the winding spur — filed as "the great wheel" on arrival; see below) | 0.0752 | 16 |
 | `Keyless works / transferWheel` | 0.0752 | 0 |
 | `Case / caseLug` | 0.0905 | 0 |
 | `Alarm winding train / CylinderGeometry#0` | 0.0998 | 28 |
@@ -28337,7 +28337,7 @@ pinion and the rim now read 0.150000 off the plate, the saw 0.204. All three
 went stale and were deleted. The case's stem tube is derived from the plane
 and moved with it.
 
-**What remained (6 rows) when the first part landed, and why each is more than a constant.** Two remain: the 0.075 gear pair.
+**What remained (6 rows) when the first part landed, and why each is more than a constant.** (All paid; the last two below.)
 
 - **`transferWheel` and the great wheel (0.075).** Both are gears whose
   `makeGear` edge bevel stands 0.075 proud of the stock face:
@@ -28370,6 +28370,36 @@ that corner whenever the 0.8 mm intent would sink it deeper. The embed is now
 `probe-lug-geom.mjs` still reads 48.000 mm across the tips, the 20.000 mm
 interior span and the ≥ 2.0 mm wrap gap unchanged. The row went stale and was
 deleted.
+
+**And the last two, closing the item: the winding band.** The row filed as
+"the great wheel" was the winding SPUR. `ExtrudeGeometry#2` is the third
+unnamed mesh of the fusee unit, and measured the great wheel's disc stands
+1.244 off the plate, nowhere near the margin. The spur and the transfer
+wheel are coplanar in the band under the great wheel, and both were cut at
+the set-up ratchet's `Z_RATCHET_BOT` / `RATCHET_T`. That ratchet extrudes
+bevel-free; `makeGear` does not. Each gear's edge bevel stood
+`gearBevel(KW_MODULE, t)` = 0.0748 proud of the stock's lower face, 0.075
+off the plate.
+
+The band is now cut against the bevel on both faces (`WIND_BAND_TOP`,
+`Z_WIND_BOT`, `WIND_T` in `main.js`):
+- The TOP is unchanged: the great wheel's hub-ring underside,
+  `L_BARREL − 1.4·GEAR_HUB_H_F/2` = 0.95, where the spur's top face has
+  always sat.
+- The BOTTOM is the plate's top face plus one `CLEAR_MARGIN` plus the bevel.
+- The stock is what remains between them: 0.725, was 0.8. It still carries
+  the module-bound bevel, and a boot assert holds that.
+- The idler, when a spec routes one, takes the same stock.
+
+Both rows now read 0.1500 off the plate, and their bevelled tops are still
+0.219 under the great wheel's disc. `transmits` and `intraUnit` are clean.
+`PLATE_CLEARANCE_DEBT` is empty.
+
+Noted, not changed: `GW_UNDER_Z`, the rod corridor's ceiling, reads the great
+wheel's bevel with a `0.36` module literal. The wheel's module is
+`TRAIN.barrel.module` = 0.255, so the ceiling stands 0.023 lower than the
+real underside. That is conservative, and moving the rods is outside this
+item.
 
 Feasibility: small per row · Battery: each fix moves its part's digest; the
 `plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved

@@ -4589,6 +4589,7 @@ export function makeJumper({ reach, thickness, width = 0.9 }) {
 // consumers keep a single import surface.
 import { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt, sawSeatOffset } from './layout.js';
 export { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt, sawSeatOffset };
+export { gearBevel, GEAR_HUB_H_F };   // TODO 209: a band between gears is cut against the bevel the builder adds
 
 // The coupling ring as a closed, indexed solid: an annulus rIn..rOut of
 // thickness baseT with the saw profile standing on its +Z face. Every body
