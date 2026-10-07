@@ -9899,11 +9899,25 @@ export function checkOscillator(clock) {
 //     spring keeps there. A lighter rim than needed fails it as surely as a
 //     heavier one. The size of the swing against what a lever watch
 //     normally runs at stays a REPORT, in the payload and the note.
+// 16. THE MAINTAINING DETENT HOLDS THE GOING TORQUE (TODO 217) — the face load
+//     is the record's fuseeTorque_Nm over the face normal's moment arm about
+//     the ring (the maintaining spring is a series member of the drive, so the
+//     hold peaks at the going torque whatever its stiffness), and the cranked
+//     click carries it as a bent strut: the arm's worst section in Winkler
+//     bending plus the whole load axial, the beak's wedge at its kindest
+//     section. Re-derived from the row's own geometry and held under
+//     SPRING_SIGMA_Y_PA, a member over it waived by name in HOLD_STRESS_WAIVERS.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 export const RIBBON_STRESS_WAIVERS = {
   // (going: RETIRED by TODO 192 step 3 — the ribbon is proportioned to the limit, so its waiver went stale and the gate said so)
   alarm: 'TODO 201 — over the alloy\'s TENSILE strength at full wind; the ribbon is re-proportioned and re-cut as a strip together with §104\'s governor solve',
+};
+// TODO 217 — the maintaining detent's members over yield holding the going
+// torque, by name; the RIBBON_STRESS_WAIVERS convention (a waiver whose member
+// is under yield is stale and fails).
+export const HOLD_STRESS_WAIVERS = {
+  beak: 'TODO 218 — a 20° wedge carrying the hold across its axis; the beak is re-cut to carry it (the valley it seats in is 66°) and the ride and blade re-solved on the new outline',
 };
 export function checkEqualisation(clock) {
   const E = clock.equalisation;
@@ -10044,6 +10058,46 @@ export function checkEqualisation(clock) {
           failures.push({ what: 'pivot over yield at service load', pivot: r.pivot, sigma_MPa: r.sigma_Pa / 1e6, yield_MPa: SPRING_SIGMA_Y_PA / 1e6 });
       }
     }
+    // Row 16 (TODO 217) — THE MAINTAINING DETENT'S HOLD. The face load is the
+    // going torque over the face normal's moment arm, the torque being the
+    // record's own fuseeTorque_Nm (the spring is a series member of the drive,
+    // so the hold peaks at it whatever the spring's stiffness); the arm's
+    // stress is Winkler's inner fibre plus the whole load axial at its worst
+    // section; the beak's is the wedge's F/A + 6Fe/tw² at its kindest one. Each
+    // re-derived from the row's own geometry, and each held under
+    // SPRING_SIGMA_Y_PA unless waived by name in HOLD_STRESS_WAIVERS — a waiver
+    // whose member is under yield is STALE and fails.
+    const ho = en.maintainingHold;
+    if (!ho || !ho.arm || !ho.beak || !ho.spring) {
+      failures.push({ what: 'maintaining hold rows', note: 'going.energy.maintainingHold is missing — the detent\'s hold is unpriced (TODO 217 regressed)' });
+    } else {
+      const U = UNIT_MM / 1000;
+      if (!(ho.spring.torqueRun_Nm === en.fuseeTorque_Nm))
+        failures.push({ what: 'maintaining spring torque is not the going torque', record: ho.spring.torqueRun_Nm, going: en.fuseeTorque_Nm });
+      const F = ho.spring.torqueRun_Nm / (ho.momentArm_u * U);
+      if (!(rel(ho.load_N, F) <= 1e-12))
+        failures.push({ what: 'hold identity: face load', record: ho.load_N, fromTorque: F });
+      if (!(Math.abs(ho.lineVsFaceNormal) <= 1e-9))
+        failures.push({ what: 'hold line of action off the face normal', dev: ho.lineVsFaceNormal });
+      const a = ho.arm, ri = a.ri_u * U, ro = a.ro_u * U, h = ro - ri, A = h * a.t_u * U;
+      const rn = h / Math.log(ro / ri), M = F * a.offset_u * U;
+      const armSigma = M * (rn - ri) / (A * ((ri + ro) / 2 - rn) * ri) + F / A;
+      if (!(rel(a.sigma_Pa, armSigma) <= 1e-12))
+        failures.push({ what: 'hold identity: arm stress', record: a.sigma_Pa, fromLoad: armSigma });
+      const b = ho.beak, bw = b.width_u * U, bt = b.t_u * U;
+      const beakSigma = F / (bw * bt) + 6 * F * b.offset_u * U / (bt * bw * bw);
+      if (!(rel(b.sigma_Pa, beakSigma) <= 1e-12))
+        failures.push({ what: 'hold identity: beak stress', record: b.sigma_Pa, fromLoad: beakSigma });
+      for (const [member, sigma] of [['arm', armSigma], ['beak', beakSigma]]) {
+        const over = sigma > SPRING_SIGMA_Y_PA * (1 + 1e-9), waiver = HOLD_STRESS_WAIVERS[member];
+        if (over && !waiver)
+          failures.push({ what: 'maintaining detent over yield holding the going torque', member, sigma_MPa: sigma / 1e6, yield_MPa: SPRING_SIGMA_Y_PA / 1e6 });
+        if (!over && waiver)
+          failures.push({ what: 'stale hold stress waiver', member, cites: waiver, sigma_MPa: sigma / 1e6 });
+      }
+      for (const k of Object.keys(HOLD_STRESS_WAIVERS))
+        if (!['arm', 'beak'].includes(k)) failures.push({ what: 'hold stress waiver names no member', member: k });
+    }
   }
   // Row 13 (TODO 193) — THE RIBBONS AGAINST THEIR MATERIAL. σ = M·a/I at
   // both ends of each ribbon's working wind, re-derived from the record's own
@@ -10155,6 +10209,12 @@ export function checkEqualisation(clock) {
           shape: R.section.shape, sigma_MPa: R.stress.sigma_Pa.map((x) => +(x / 1e6).toFixed(1)),
           limit_MPa: R.stress.limit_Pa / 1e6, waived: RIBBON_STRESS_WAIVERS[h] ? RIBBON_STRESS_WAIVERS[h].split(' — ')[0] : null,
         }])),
+        hold: en.maintainingHold ? {
+          load_mN: +(en.maintainingHold.load_N * 1000).toFixed(1), torque_Nmm: +(en.maintainingHold.spring.torqueRun_Nm * 1000).toFixed(4),
+          arm_MPa: +(en.maintainingHold.arm.sigma_Pa / 1e6).toFixed(1), armMargin: +en.maintainingHold.arm.margin.toFixed(3),
+          beak_MPa: +(en.maintainingHold.beak.sigma_Pa / 1e6).toFixed(1), beakMargin: +en.maintainingHold.beak.margin.toFixed(3),
+          waived: Object.fromEntries(Object.entries(HOLD_STRESS_WAIVERS).map(([k, v]) => [k, v.split(' — ')[0]])),
+        } : null,
         pivots: en.pivots && en.pivots.strength ? {
           trainPivotR_u: +en.pivots.trainPivotR_u.toFixed(5), balancePivotR_u: +en.pivots.balancePivotR_u.toFixed(5),
           worst: en.pivots.strength.worst, worstMargin: +en.pivots.strength.worstMargin.toFixed(3),

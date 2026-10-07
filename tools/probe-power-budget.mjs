@@ -1,4 +1,4 @@
-// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. The verdict itself is a REPORT; the agreement is the acceptance.
+// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak — against the same record. The verdict itself is a REPORT; the agreement is the acceptance.
 //
 // Why it exists. Until TODO 192 every number the movement published about its
 // power was FRICTIONLESS. EQUALISATION holds the fusee's level product to float
@@ -186,6 +186,26 @@ const strength = (() => {
   return rows;
 })();
 
+// THE MAINTAINING DETENT'S HOLD (TODO 217). The maintaining spring is a
+// series member of the drive, so while the watch runs it carries the going
+// torque, and at the first instant of a wind the detent holds exactly that:
+// THIS probe's level torque, over the face normal's moment arm about the ring.
+// The click carries it as a bent strut — the arm's worst section in Winkler
+// bending plus the whole load axial, the beak's wedge as F/A + 6Fe/tw². The
+// GEOMETRY (moment arm, offsets, sections) is read off the record — cut
+// geometry, the pivot lengths' convention; the load and the laws are this
+// probe's own.
+const holdRec = eq.energy?.maintainingHold || null;
+const hold = holdRec && (() => {
+  const F = tauFusee / (holdRec.momentArm_u * U);
+  const a = holdRec.arm, ri = a.ri_u * U, ro = a.ro_u * U, h = ro - ri, A = h * a.t_u * U;
+  const rn = h / Math.log(ro / ri), M = F * a.offset_u * U;
+  const arm = M * (rn - ri) / (A * ((ri + ro) / 2 - rn) * ri) + F / A;
+  const b = holdRec.beak, bw = b.width_u * U, bt = b.t_u * U;
+  const beak = F / (bw * bt) + 6 * F * b.offset_u * U / (bt * bw * bw);
+  return { load_N: F, armSigma_Pa: arm, beakSigma_Pa: beak, armStraight_Pa: 6 * M / (a.t_u * U * h * h) + F / A };
+})();
+
 // ---- THE CHAIN OF LOSSES, per corner ----
 function run(A, piv = { train: null, bal: Q.balPivR }) {
   const stages = [];
@@ -293,6 +313,12 @@ console.log(`\n--- the ribbon's own stress (uniform moment, σ = M·a/I) ---`);
 console.log(`  going  σ ${f(ribbon.sigmaEmpty_MPa, 0)} → ${f(ribbon.sigmaFull_MPa, 0)} MPa over the reserve, against MAINSPRING_SIGMA_Y_PA ${f(ribbon.repoLimit_MPa, 0)} MPa; ribbon volume ${f(ribbon.volume_mm3, 2)} mm³`);
 console.log(`  alarm  σ ${f(alarmRibbon.sigmaEmpty_MPa, 0)} → ${f(alarmRibbon.sigmaFull_MPa, 0)} MPa over its strike travel; sections going ${sec.shape}, alarm ${secA.shape}; the alloy's band ${f(L.MAINSPRING_SIGMA_Y_BAND.low / 1e6, 0)}–${f(L.MAINSPRING_SIGMA_Y_BAND.high / 1e6, 0)} MPa (gated at the low end)`);
 console.log(`  going  σ at full wind by E·a·θ/L: ${f(ribbon.sigmaFullByEaThetaL_MPa, 1)} MPa (the moment law above: ${f(ribbon.sigmaFull_MPa, 1)})`);
+if (hold) {
+  console.log(`\n--- the maintaining detent's hold (TODO 217): the going torque on the ring's face, against SPRING_SIGMA_Y_PA ${f(L.SPRING_SIGMA_Y_PA / 1e6, 0)} MPa ---`);
+  console.log(`  face load ${f(hold.load_N * 1000, 1)} mN = ${f(tauFusee * 1e3, 4)} N·mm over a ${f(holdRec.momentArm_u, 4)} u arm (tip r ${f(holdRec.tipR_u, 4)}, root ${f(holdRec.rootR_u, 4)})`);
+  console.log(`  arm   σ ${f(hold.armSigma_Pa / 1e6, 1)} MPa at ${f(holdRec.arm.offset_u, 4)} u off the tip–stud chord (straight-bar reading ${f(hold.armStraight_Pa / 1e6, 1)}), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.armSigma_Pa, 3)}`);
+  console.log(`  beak  σ ${f(hold.beakSigma_Pa / 1e6, 1)} MPa at its kindest section (a ${f(holdRec.beak.wedgeRad * 180 / Math.PI, 2)}° wedge, ${f(holdRec.beak.width_u, 4)} u wide), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.beakSigma_Pa, 3)}`);
+}
 // ---- THE ASSERT: the record's energy column against this computation -------
 // Same constants, two readers — the record by name inside main.js, this by
 // text from outside — and two writers of the arithmetic. 1e-9 relative is
@@ -351,14 +377,20 @@ if (!REC || !REC.corners) {
   same('going σ full wind (E·a·θ/L)', ribbon.sigmaFullByEaThetaL_MPa * 1e6, eq.stress.sigma_Pa[1]);
   same('alarm σ full wind', alarmRibbon.sigmaFull_MPa * 1e6, live.eqAlarm.stress.sigma_Pa[1]);
   same('balance pivot radius', Q.balPivR, REC.pivots.balancePivotR_u);
+  if (!hold) disagreements.push({ what: 'maintaining hold', probe: 'computed', record: 'EQUALISATION.going.energy.maintainingHold is missing' });
+  else {
+    same('maintaining hold: face load', hold.load_N, holdRec.load_N);
+    same('maintaining hold: arm σ', hold.armSigma_Pa, holdRec.arm.sigma_Pa);
+    same('maintaining hold: beak σ', hold.beakSigma_Pa, holdRec.beak.sigma_Pa);
+  }
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way, and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 3} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way, and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);
 console.log('\nThe verdict above is a REPORT. The only acceptance here is the record agreeing with this computation.\n');
 
-if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, strength, ribbon, alarmRibbon, disagreements }, null, 1));
+if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, strength, hold, ribbon, alarmRibbon, disagreements }, null, 1));
 if (disagreements.length) { console.log(`FAIL — ${disagreements.length} disagreement(s) between the record and this computation`); process.exit(1); }

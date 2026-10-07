@@ -10871,6 +10871,10 @@ let MAINT_DETENT_AZ = 0, MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SIGN
 // `liftAt(net)` is the smallest lift about the stud that stands the whole beak
 // SEAT_RELIEF off the ring's polygon, net being the ring's angle in the cock's
 // azimuth frame.
+// TODO 217 — the click's stock (the ring's band, less a tenth), and the hold's
+// geometry read off the click as cut (built with the cock below; null until).
+const MAINT_DET_CLICK_T = MAINT_RING_T * 0.9;
+let MAINT_DET_HOLD_GEOM = null;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
 // The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
 // windBack: zero while running (locked, torque flows), sweeping backward
@@ -11038,10 +11042,12 @@ const maintDetent = new THREE.Group();
   // stud at the arm's half-width, and the outer arc returns to the flank's
   // crossing D; D → C closes along the flank's own line.
   const armPts = [];
+  let armInnerVertexR = rIn;                           // TODO 217: the circumscribed arc's vertex radius — the arm's shallowest section
   {
     const azC = Math.atan2(ptC.y, ptC.x);
     const Nin = Math.max(4, Math.ceil(Math.abs(azC) / 0.04));
     const dIn = -azC / Nin, rc = rIn / Math.cos(Math.abs(dIn) / 2);
+    armInnerVertexR = rc;
     armPts.push(ptC);
     for (let k = 0; k < Nin; k++) { const a = azC + (k + 0.5) * dIn; armPts.push(_v2(rc * Math.cos(a), rc * Math.sin(a))); }
     const M = 12;                                      // the boss: about the stud, on the side away from the beak
@@ -11086,6 +11092,57 @@ const maintDetent = new THREE.Group();
   // The lift's sense, by finite difference about the stud.
   const tipAt = (rot) => { const q = _rot(_v2(Tz.x - pivR, Tz.y), rot); return _v2(pivR + q.x, q.y); };
   MAINT_DET_SIGN = Math.sign(Math.hypot(tipAt(1e-4).x, tipAt(1e-4).y) - Math.hypot(Tz.x, Tz.y)) || 1;
+  // ---- TODO 217 — THE HOLD'S GEOMETRY, read off the click as cut. --------
+  // While the fusee is wound the maintaining spring's reaction comes back
+  // through the ring into the beak along the face's normal, which TODO 215
+  // ran through the stud: the click holds it as a STRUT. But the strut is a
+  // CHORD — the metal between tip and stud is the beak dropping radially and
+  // the arm running round the ring a margin outside the tips — so every
+  // section of the arm carries the load at an offset from that chord, and
+  // bends. Published here as geometry (the load is the energy column's, priced
+  // in EQUALISATION, which is defined after the fusee): the line of action,
+  // its moment arm about the ring's axis (what turns the spring's torque into
+  // a face load), and each arm section's offset from it.
+  MAINT_DET_HOLD_GEOM = (() => {
+    const P = _v2(pivR, 0);
+    const strutLen = Math.hypot(P.x - Tz.x, P.y - Tz.y);
+    const n = _v2((P.x - Tz.x) / strutLen, (P.y - Tz.y) / strutLen);   // tip → stud
+    const nFz = _rot(nFace, -phiP);
+    const offLine = (q) => Math.abs((q.x - Tz.x) * n.y - (q.y - Tz.y) * n.x);
+    // THE ARM. Its sections are radial: inner edge the circumscribed arc's
+    // VERTEX radius (the shallowest the polygon cuts it), outer edge rOut, the
+    // stock CLICK_T. Sampled from the beak's radial flank (stud side — beyond
+    // it the beak's metal deepens the section down to the tip) to the stud.
+    const ri = armInnerVertexR, ro = rOut, Rc = (ri + ro) / 2;
+    const N = 400;
+    let eMax = 0, azAt = 0;
+    for (let k = 0; k <= N; k++) {
+      const a = tipAz * (1 - k / N);
+      const e = offLine(_v2(Rc * Math.cos(a), Rc * Math.sin(a)));
+      if (e > eMax) { eMax = e; azAt = a; }
+    }
+    // THE BEAK. A wedge between the radial flank and the face-parallel flank
+    // (uFz runs up the face, out of the valley), its apex the tip the load
+    // arrives at. Its section is taken square to the wedge's bisector at the
+    // DEEPEST station still wholly inside the wedge — where the first flank
+    // reaches the arm's inner edge — which is the beak's KINDEST section: every
+    // station nearer the apex is narrower and, under the same load, worse.
+    const tipR = Math.hypot(Tz.x, Tz.y);
+    const wedge = Math.acos(clamp(uRad.x * uFz.x + uRad.y * uFz.y, -1, 1));
+    const bis = _unit(_v2(uRad.x + uFz.x, uRad.y + uFz.y));
+    const sRoot = Math.cos(wedge / 2) * Math.min(rIn - tipR, Math.hypot(ptC.x - Tz.x, ptC.y - Tz.y));
+    const beakRoot = { wedgeRad: wedge, s_u: sRoot, width_u: 2 * sRoot * Math.tan(wedge / 2),
+      offset_u: offLine(_v2(Tz.x + sRoot * bis.x, Tz.y + sRoot * bis.y)), t_u: MAINT_DET_CLICK_T };
+    return {
+      strut_u: strutLen, tipR_u: tipR, rootR_u: MAINT_RING_ROOT, beakRoot,
+      // the face's normal and the tip→stud line are one line by construction
+      // (TODO 215); a click recut off it would put a moment on the pivot
+      lineVsFaceNormal: 1 - Math.abs(n.x * nFz.x + n.y * nFz.y),
+      momentArm_u: offLine(_v2(0, 0)),
+      arm: { ri_u: ri, ro_u: ro, depth_u: ro - ri, t_u: MAINT_DET_CLICK_T, centroidR_u: Rc,
+             offsetMax_u: eMax, azFromStud: azAt, azBeak: tipAz },
+    };
+  })();
   // THE RIDE, on the cut. The beak's three edges densified to ≤ 0.02 (vertices
   // are not the surface); the ring's vertices are tested against the beak too,
   // so a tooth's corner cannot slip between two samples. A saw is star-shaped
@@ -11314,7 +11371,7 @@ const maintDetent = new THREE.Group();
   // the BEAK (the working contact, the one thing EXPECTED_CONTACT_FLOORS
   // excuses on the ring) — cut pivot-local and seated, so the group's
   // rotation IS the click's lift.
-  const CLICK_T = MAINT_RING_T * 0.9;
+  const CLICK_T = MAINT_DET_CLICK_T;
   const beak = new THREE.Group();
   beak.position.set(pivR, 0, MAINT_RING_BOT + MAINT_RING_T * 0.05);
   beak.rotation.z = MAINT_DET_BASE;
@@ -25786,6 +25843,68 @@ const EQUALISATION = (() => {
           + `over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — TRAIN_PIVOT_SIZES and this row have parted`);
       return { rows, dPivot_mm: PIVOT_MIN_U * UNIT_MM, yield_Pa: SPRING_SIGMA_Y_PA, worst: worst.pivot, worstMargin: worst.margin };
     })();
+    // TODO 217 — THE MAINTAINING DETENT'S HOLD, priced. While the fusee is
+    // wound the detent holds the maintaining ring, and the maintaining spring's
+    // reaction comes back through the ring's face into the beak: that face
+    // load is the detent's real job, and TODO 210's 5–50 mN window prices only
+    // its ride.
+    //
+    //  · THE SPRING'S TORQUE, from its job. The spring is a SERIES member of the
+    //    drive — cone → base ratchet → pawls → maintaining wheel → SPRING →
+    //    great wheel — so while the watch runs it is wound to exactly the torque
+    //    it passes on: the going torque at the great wheel, which the level
+    //    product holds constant over the reserve (fuseeTorque_Nm, frictionless:
+    //    the drum's, the chain's and the fusee's losses only lower it, so this
+    //    is the upper bound, the pivots' convention above). Winding takes the
+    //    drive off, the detent holds the ring, and the spring gives up angle as
+    //    it drives the train on: the torque FALLS from there, at whatever rate
+    //    its stiffness sets. So the hold is greatest at the first instant of a
+    //    wind and equal to the going torque there, WHATEVER the stiffness — the
+    //    stiffness and preload set how long the train is kept going, which needs
+    //    the length of a wind, and nothing in the model declares one (TODO 219).
+    //  · THE FACE LOAD. The face's reaction runs along its normal through the
+    //    tip, seated at the root, and through the stud (TODO 215); its moment
+    //    arm about the ring's axis is that line's distance from the axis, read
+    //    off the click as cut (MAINT_DET_HOLD_GEOM). F = τ / arm.
+    //  · THE ARM, in combined compression and bending. Every radial section of
+    //    the arm carries F at its centroid's offset from the tip–stud chord;
+    //    the largest is at the beak's radial flank, where the plain arm begins.
+    //    A curved bar (centroid radius / depth ≈ 6.5), so the bending is
+    //    Winkler's inner fibre, M·(r_n − r_i)/(A·e·r_i), r_n = h/ln(r_o/r_i),
+    //    plus the WHOLE of F as axial load (an upper bound: only its component
+    //    along the section's normal is), under SPRING_SIGMA_Y_PA.
+    //  · THE BEAK, as a cantilever wedge carrying F at its apex: σ = F/A + 6Fe/tw²
+    //    at its kindest section (MAINT_DET_HOLD_GEOM). Over the one steel's
+    //    yield on today's metal — TODO 218, waived by name in inspect.js.
+    const maintainingHold = (() => {
+      const H = MAINT_DET_HOLD_GEOM;
+      const torque_Nm = fuseeTorque_Nm;
+      const load_N = torque_Nm / (H.momentArm_u * OSC_U);
+      const a = H.arm, ri = a.ri_u * OSC_U, ro = a.ro_u * OSC_U, h = ro - ri, t = a.t_u * OSC_U;
+      const A = h * t, M_Nm = load_N * a.offsetMax_u * OSC_U;
+      const rn = h / Math.log(ro / ri), ecc = (ri + ro) / 2 - rn;
+      const armBend_Pa = M_Nm * (rn - ri) / (A * ecc * ri), armAxial_Pa = load_N / A;
+      const armSigma_Pa = armBend_Pa + armAxial_Pa;
+      const b = H.beakRoot, bw = b.width_u * OSC_U, bt = b.t_u * OSC_U;
+      const beakSigma_Pa = load_N / (bw * bt) + 6 * load_N * b.offset_u * OSC_U / (bt * bw * bw);
+      if (armSigma_Pa > SPRING_SIGMA_Y_PA)
+        console.warn(`TODO 217: the maintaining detent's arm bends at ${(armSigma_Pa / 1e6).toFixed(0)} MPa holding the going torque `
+          + `(${(load_N * 1000).toFixed(0)} mN on the face, offset ${a.offsetMax_u.toFixed(4)} u) — over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; size the arm to its load`);
+      if (Math.abs(H.lineVsFaceNormal) > 1e-9)
+        console.warn(`TODO 217: the hold's line of action (tip → stud) has left the face's normal by ${H.lineVsFaceNormal.toExponential(2)} — the click is no longer a strut, and the moment it carries about the stud is unpriced`);
+      return {
+        spring: { torqueRun_Nm: torque_Nm, k_Nm_per_rad: null, preload_rad: null,
+          law: 'series member: wound by the drive to the going torque while running; holds that at the first instant of a wind and falls by k·(the great wheel\'s advance) as it drives the train on',
+          kDebt: 'TODO 219' },
+        load_N, momentArm_u: H.momentArm_u, tipR_u: H.tipR_u, rootR_u: H.rootR_u, strut_u: H.strut_u,
+        lineVsFaceNormal: H.lineVsFaceNormal, yield_Pa: SPRING_SIGMA_Y_PA,
+        arm: { ri_u: a.ri_u, ro_u: a.ro_u, t_u: a.t_u, offset_u: a.offsetMax_u, M_Nm,
+          bend_Pa: armBend_Pa, axial_Pa: armAxial_Pa, sigma_Pa: armSigma_Pa,
+          straightBend_Pa: 6 * M_Nm / (t * h * h), margin: SPRING_SIGMA_Y_PA / armSigma_Pa },
+        beak: { wedgeRad: b.wedgeRad, s_u: b.s_u, width_u: b.width_u, t_u: b.t_u, offset_u: b.offset_u,
+          sigma_Pa: beakSigma_Pa, margin: SPRING_SIGMA_Y_PA / beakSigma_Pa },
+      };
+    })();
     const corner = (cname) => {
       const A = Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
       const stages = [];
@@ -25821,6 +25940,7 @@ const EQUALISATION = (() => {
       pivots: { trainStaffR_u: TRAIN_STAFF_R, trainPivotR_u: TRAIN_PIVOT_R, balancePivotR_u: BALANCE_PIVOT_R,
                 byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
                 fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
+      maintainingHold,
       balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
       corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
     };
@@ -25947,6 +26067,37 @@ const EQUALISATION = (() => {
     },
   });
 })();
+// TODO 217 — §137's row for the HOLD. The maintaining spring's reaction turns
+// a corner on its way to the plate: it arrives on the ring's face, runs up the
+// beak and round the cranked arm, and leaves through the stud. The line of
+// action is the tip–stud chord and the click's metal is not on it, so for this
+// load the click is a bent strut grounded at its stud — the pivot takes the
+// reaction and no moment (TODO 215 put the stud on the face's normal) — and
+// that is rigidBentLink's anatomy: a chord with a routing bend, legitimate
+// only while the moment the offset induces is computed and priced. Priced at
+// the arm's worst section from EQUALISATION's hold (the going torque, the
+// upper bound); the beak's own wedge is TODO 218. No window: the load is the
+// going train's torque, not a detent's, and no declared envelope bounds it.
+{
+  const H = EQUALISATION.going.energy.maintainingHold;
+  const F_mN = H.load_N * 1000;
+  declareTransfer('maintaining detent: the hold in winding (ring face → beak → cranked arm → stud)', {
+    unit: 'Maintaining detent', meshes: ['maintDetentBeak', 'maintDetentClick'], idiom: 'rigidBentLink',
+    load: { value: F_mN, unit: 'mN',
+      source: 'the going torque at the great wheel (EQUALISATION.going.energy.fuseeTorque_Nm, the level product\'s constant, frictionless — the upper bound) over the face normal\'s moment arm about the ring\'s axis, read off the click as cut: the maintaining spring is a series member of the drive, wound to that torque while the watch runs, and the hold is greatest at the first instant of a wind' },
+    quantities: {
+      torque_Nmm: H.spring.torqueRun_Nm * 1000, momentArm_u: H.momentArm_u, strut_u: H.strut_u,
+      offset_e_u: H.arm.offset_u, moment_mNmm: F_mN * H.arm.offset_u * UNIT_MM,
+      sigma_MPa: H.arm.sigma_Pa / 1e6, sigmaBend_MPa: H.arm.bend_Pa / 1e6, sigmaAxial_MPa: H.arm.axial_Pa / 1e6,
+      armDepth_u: H.arm.ro_u - H.arm.ri_u, armT_u: H.arm.t_u, margin: H.arm.margin,
+      beakSigma_MPa: H.beak.sigma_Pa / 1e6,
+    },
+    why: `the maintaining spring's reaction, ${F_mN.toFixed(0)} mN on the ring's face at r ${H.tipR_u.toFixed(4)} (the going torque ${(H.spring.torqueRun_Nm * 1000).toFixed(3)} N·mm over a ${H.momentArm_u.toFixed(4)} u arm), `
+      + `runs the tip–stud chord (${H.strut_u.toFixed(4)} u) while the click's metal runs round the ring: the arm's worst section stands ${H.arm.offset_u.toFixed(4)} u off the chord and carries `
+      + `${(H.arm.sigma_Pa / 1e6).toFixed(0)} MPa (Winkler bending ${(H.arm.bend_Pa / 1e6).toFixed(0)} + the whole load axial ${(H.arm.axial_Pa / 1e6).toFixed(0)}), ×${H.arm.margin.toFixed(2)} under the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; `
+      + `the beak's wedge is ${(H.beak.sigma_Pa / 1e6).toFixed(0)} MPa at its kindest section, over it — TODO 218`,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // 'Alarm winding train' (§25 C) — the crown's path to the barrel. Pull the
