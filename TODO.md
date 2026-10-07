@@ -8854,7 +8854,9 @@ The catalogue, by pattern (collapsed edge / collinear / sliver per geometry):
   the column-wheel base disc, all carrying the absarc-seam and earcut
   hole-bridge slivers item 4 measured on one consumer. One builder fix
   clears ~380 triangles across the whole fleet.
-- **Lathes with collapsed cap fans**: the fusee body (96), four `pillar`
+- **Lathes with collapsed cap fans**: the fusee body (96 — retired by §254:
+  the cone is a ribbon now and carries none; the census fell 21263 → 21167
+  and 128 → 127 geometries), four `pillar`
   lathes (48 each), the two governor studs (24 each) — `LatheGeometry`
   profiles that touch their own axis collapse the fan ring to zero-length
   edges. (`makeScrews`' tapped shanks avoided exactly this by construction —

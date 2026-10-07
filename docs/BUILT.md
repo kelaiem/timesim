@@ -31627,4 +31627,33 @@ round the other way.
 
 ### Measured at closure
 
-(filled from the battery run below)
+`node tools/ci-battery.mjs --shards 3 --no-incremental --report`, on this
+container (headless Chromium over SwiftShader, so CI's ubuntu-latest path is
+not exercised by it), the base tree and this one each run whole: **53/53
+gates on both**, 5058.6 s and 5079.3 s. The fingerprint moved 413380779 →
+4168942461 (it must: the cone is a different mesh) and is deterministic
+across virgin boots. The reports differ in nineteen checks; the ones that
+carry a reading rather than a census:
+
+| reading | base | §254 |
+|---|---|---|
+| chain on cone, burial (budget 0.25) | 0.195 | **0.133** |
+| chain on cone, float / seating (budget 0.25) | 0.199 | **0.182** |
+| `chainLength` spread, 44 links at every state of wind | 0.5669 u (0.674%) | **0.5666 u (0.671%)** |
+| per-joint twist on the wrap (probe-254-chain-twist) | 16–36° | **1.7–3.7°** (fit 4.88°) |
+| zero-area triangles, whole movement | 21263 in 128 geometries | **21167 in 127** (the lathed cone's 96 collapsed fan triangles are gone) |
+| `equalisation` level product, |dev| | 2.2e-16 | 2.2e-16 |
+| nominal-corner delivered energy per beat | 14.4181 nJ | 14.4138 nJ (the span's z leg moved) |
+| winding arrest, full-wind hand-off gap | 0 | 0.0007 (inside its tolerance) |
+
+`undeclaredClearance` reads 0 under the margin with 0 debt rows,
+`expectedContacts` 0 violations with 0 waivers, `intraUnit` 0 unwaived, and
+`plateSeats` 0 debt. No waiver was added and no budget moved: the only
+instrument edits are the burial row's measure (the shortest way out of the
+metal, which gives the same answer as the old cliff wherever there is no
+wall to be past) and one declared joint, the cone on its arbor.
+Boot is silent.
+
+The one thing the report cannot show is the reading it was written to
+cause: that no wrap joint twists past the fit. That is the probe above, which
+exits non-zero if one does.
