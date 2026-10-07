@@ -27198,6 +27198,57 @@ const ARREST_SPEC = G.genevaSpec({
   arborR: PIVOT_MIN_U,
 });
 const ARREST_PLATE_T = STOCK_MIN_U;      // the cross and finger are floor stock
+// TODO 212 — THE FINGER IS ONE BODY ON A HUB THAT TURNS. It was three: a disc,
+// a pin standing 1.457 off it, and the output pinion 4.508 above both, each
+// bored onto a FIXED column and posed together off the pinion's angle with no
+// metal between them. A Geneva driver is a locking disc and a crank carrying the
+// pin on one hub, and the hub is what the pinion turns — so the finger now
+// carries a crank in its own plane beside the cross's (geometry.js
+// genevaFingerStack says why it cannot share it), and a PIPE runs from the
+// crank's outer face to the pinion, bored over the column at the running fit:
+// the house idiom of the tower beside it, whose leg pinions reach their side
+// gears by the same kind of turning sleeve on a planted column. A turning arbor
+// in place of the column would want a bearing at its top, and there is no
+// bridge up there to carry one.
+//
+// SIZED AT P1 FROM THE STALL, and the floor governs every member. At the bank the
+// finger holds the full-wind spring moment through the train's gain:
+// T = M_full / SUB_GAIN (virtual work — the finger turns SUB_GAIN times per turn
+// of wind) — 0.393 N·mm / 4 = 9.8e-5 N·m, the figure ARREST_SPEC's arbor
+// comment quotes, read here off the equalisation record rather than restated.
+// Measured against it: pipe 7.1 MPa against SPRING_TAU_Y_PA's 462, crank arm
+// 70 MPa and pin 71 MPa against SPRING_SIGMA_Y_PA's 800.
+//   · the pipe in torsion, τ = T·r_o/J, J = π(r_o⁴ − r_i⁴)/2, against
+//     SPRING_TAU_Y_PA, r_i the running bore;
+//   · the crank's arm in bending at the hub, σ = 6·F·(a − hubR)/(w·t²),
+//     F = T/a, w its narrowest width 2·min(hubR, bossR), against
+//     SPRING_SIGMA_Y_PA;
+//   · the pin as a cantilever off the crank's face to the cross's mid-plane,
+//     σ = 32·F·L/(π·d³), L = margin + plate/2 — asserted below the build.
+// Each solves for the section the load asks and takes the larger of that and
+// the §50 floor; the floor governs all three.
+const ARREST_STALL_NMM = EQUALISATION.alarm.momentRange_Nmm[1] / SUB_GAIN;
+const ARREST_FINGER_HUB_R = (() => {
+  const T = ARREST_STALL_NMM, ri = ARREST_SPEC.fingerBoreR * UNIT_MM;
+  const tau = (ro) => (T * ro) / ((Math.PI / 2) * (ro ** 4 - ri ** 4)) * 1e6;   // N/mm² → Pa
+  let lo = ri * (1 + 1e-9), hi = ri + 10;
+  for (let i = 0; i < 200; i++) { const m = (lo + hi) / 2; if (tau(m) > SPRING_TAU_Y_PA) lo = m; else hi = m; }
+  return Math.max(ARREST_SPEC.fingerBoreR + STOCK_MIN_U, hi / UNIT_MM);
+})();
+// makeGenevaFinger's boss: the pin's hole plus one §50 wall (the build asserts
+// the builder cut the same one)
+const ARREST_FINGER_BOSS_R = ARREST_SPEC.pinR + STOCK_MIN_U;
+const ARREST_CRANK_T = (() => {
+  const bossR = ARREST_FINGER_BOSS_R;
+  const F = ARREST_STALL_NMM / (ARREST_SPEC.a * UNIT_MM);                     // N at the pin
+  const M = F * (ARREST_SPEC.a - ARREST_FINGER_HUB_R) * UNIT_MM;              // N·mm at the hub
+  const w = 2 * Math.min(ARREST_FINGER_HUB_R, bossR) * UNIT_MM;
+  const tNeed = Math.sqrt((6 * M) / (w * SPRING_SIGMA_Y_PA / 1e6)) / UNIT_MM;
+  return Math.max(STOCK_MIN_U, tNeed);
+})();
+// The crank stands on the side of the cross that faces the output pinion, so
+// the hub runs to the pinion without crossing the cross's plane.
+const arrestFingerSide = (z) => (z + ARREST_PLATE_T / 2 < SUB_OUT_Z ? 1 : -1);
 const ARREST_PIN_Z = ALARM_WIND_TIER_Z;  // leg A shares the arbor wheel's mesh plane
 
 // ---------------------------------------------------------------------------
@@ -27439,6 +27490,8 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     out: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, mates: [SUB_FINGER_TEETH], thickness: T }) + M,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, mates: [SUB_OUT_TEETH], thickness: T }) + M,
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR + M,   // the pin sweeps a FULL circle
+    crank: ARREST_SPEC.a + ARREST_FINGER_BOSS_R + M, // TODO 212 — and so does the boss that carries it
+    fPipe: ARREST_FINGER_HUB_R + M,                  // TODO 212 — the hub the pinion turns
     cross: ARREST_SPEC.b + M,
     arbor: ARREST_COLUMN_R + M,
     stud: ARREST_SPEC.studR + M,
@@ -27667,9 +27720,31 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // the finger and its pin stood under CLEAR_MARGIN of it, and `plateSeats`
   // froze all three as debt on arrival.
   const FLOOR_Z = ALARM_U_FLOOR + M;
+  // TODO 212 — the finger is a STACK now (disc, crank, pin — geometry.js
+  // genevaFingerStack), and its hub is a pipe from the crank's outer face to
+  // the output pinion, so a plane is judged by the whole stack: it must stand
+  // on the floor, under the ceiling, and clear the pinion's band by the margin
+  // (the pipe joins the two; nothing else of the finger may meet the pinion).
+  const fingerBands = (z) => {
+    const s = G.genevaFingerStack({ thickness: ARREST_PLATE_T, crankT: ARREST_CRANK_T, side: arrestFingerSide(z) });
+    const face = z + s.face;
+    return { side: s.side, lo: z + s.lo, hi: z + s.hi, crankLo: z + s.crankLo, crankHi: z + s.crankHi,
+      pipeLo: s.side > 0 ? face : OUT[1], pipeHi: s.side > 0 ? OUT[0] : face };
+  };
+  // The pipe is a member, so its LENGTH is a section too: §50's floor reads a
+  // part's least dimension, and a pipe shorter than the floor is a washer
+  // standing in for a hub (measured: the first solve put the plane where the
+  // pipe ran 0.282 — 0.107 mm, and `stockFloor` failed it). That floor is
+  // larger than the margin, so it is the one the plane must clear the pinion by.
+  const PIPE_MIN = Math.max(M, STOCK_MIN_U);
+  const planeOk = (z) => {
+    const f = fingerBands(z);
+    return f.lo >= FLOOR_Z - 1e-9 && Math.max(f.hi, z + ARREST_PLATE_T * 2) <= CEIL_Z + 1e-9
+      && (f.hi + PIPE_MIN <= OUT[0] + 1e-9 || f.lo >= OUT[1] + PIPE_MIN - 1e-9);
+  };
   const planes = [];
   for (let z = FLOOR_Z; z <= CEIL_Z - ARREST_PLATE_T * 2; z += 0.25) {
-    if (z + ARREST_PLATE_T > SUB_OUT_Z - T / 2 - M && z < SUB_OUT_Z + T / 2 + M) continue;
+    if (!planeOk(z)) continue;
     planes.push(+z.toFixed(3));
   }
 
@@ -27691,6 +27766,8 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     idlerBody: ARREST_COLUMN_R + 0.05 + STOCK_MIN_U,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, mates: [SUB_OUT_TEETH], thickness: T }),
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR,
+    crank: ARREST_SPEC.a + ARREST_FINGER_BOSS_R,   // TODO 212 — the pin's boss sweeps a full circle too
+    fPipe: ARREST_FINGER_HUB_R,
     cross: ARREST_SPEC.b, stud: ARREST_SPEC.studR,
   };
   const MESH_PAIRS = new Set(['idlerP|legB', 'legB|idlerP', 'outW|fPin', 'fPin|outW']);
@@ -27877,19 +27954,38 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
           const fTop = Math.max(z + ARREST_PLATE_T * 2, OUT[1] + 0.2);
           const fCol = clear('the finger arbor', PLATE_Z, fTop, fx, fy, NEED.arbor, null);
           if (fCol.c < 0) { note(fCol); continue; }
-          const fin = clear('the finger', z, z + ARREST_PLATE_T, fx, fy, NEED.finger, null);
+          const fb = fingerBands(z);
+          const fin = clear('the finger', fb.lo, fb.hi, fx, fy, NEED.finger, null);
           if (fin.c < 0) { note(fin); continue; }
+          const crk = clear('the crank', fb.crankLo, fb.crankHi, fx, fy, NEED.crank, null);
+          if (crk.c < 0) { note(crk); continue; }
+          const fPipe = clear("the finger's pipe", fb.pipeLo, fb.pipeHi, fx, fy, NEED.fPipe, null);
+          if (fPipe.c < 0) { note(fPipe); continue; }
           stage.plane++;
           const fingerPieces = [
             { k: 'fPin', lo: OUT[0], hi: OUT[1], r: reach.fPin },
-            { k: 'finger', lo: z, hi: z + ARREST_PLATE_T, r: reach.finger },
+            { k: 'finger', lo: fb.lo, hi: fb.hi, r: reach.finger },
+            { k: 'crank', lo: fb.crankLo, hi: fb.crankHi, r: reach.crank },
             { k: 'fingerArbor', lo: PLATE_Z, hi: fTop, r: reach.col },
           ];
+          const pipePiece = { k: 'fPipe', lo: fb.pipeLo, hi: fb.pipeHi, r: reach.fPipe };
           const fVsTower = selfClear(fingerPieces, towerPieces, SUB_OUT_CD);
           if (fVsTower.c < 0) { note(fVsTower); continue; }
+          // TODO 212 — THE PIPE AGAINST THE TOWER GATES; IT DOES NOT RANK. The
+          // pipe ends on the output pinion's face and the cage's wheel meshes
+          // that pinion at the fixed SUB_OUT_CD, so their bands always meet and
+          // the clearance is SUB_OUT_CD − the wheel's tip − hubR − margin at
+          // EVERY candidate (0.034 at identity). A term no freedom moves cannot
+          // rank the freedoms: counted in the maximin it became the bound for
+          // every station, tied them all, and the plane fell to evaluation
+          // order — measured, it carried the Geneva from the floor to z 3.9,
+          // into the spider's band, for nothing. So it is a pass/fail here, and
+          // the ranking stays what it measured before the pipe existed.
+          const pVsTower = selfClear([pipePiece], towerPieces, SUB_OUT_CD);
+          if (pVsTower.c < 0) { note(pVsTower); continue; }
           const live = [];
           for (const o of keep) {
-            const r = selfClear(fingerPieces, o.pieces, Math.hypot(fx - o.ix, fy - o.iy));
+            const r = selfClear([...fingerPieces, pipePiece], o.pieces, Math.hypot(fx - o.ix, fy - o.iy));
             if (r.c < 0) { note(r); continue; }
             live.push({ o, fVsIdler: r });
           }
@@ -27917,7 +28013,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
             for (const { o, fVsIdler } of live) {
               const cVsIdler = selfClear(crossPieces, o.pieces, Math.hypot(cx - o.ix, cy - o.iy));
               if (cVsIdler.c < 0) { note(cVsIdler); continue; }
-              const parts = [...tower, ...o.rows, fPin, fCol, fin, cr, st,
+              const parts = [...tower, ...o.rows, fPin, fCol, fin, crk, fPipe, cr, st,
                 o.tvi, fVsTower, fVsIdler, cVsTower, cVsIdler]
                 .filter((r) => Number.isFinite(r.c))
                 .sort((p1, p2) => p1.c - p2.c);
@@ -27956,8 +28052,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   };
   const planeLo = planes.length ? planes[0] : PLATE_Z + 0.6;
   const planeHi = planes.length ? planes[planes.length - 1] : PLATE_Z + 0.6;
-  const usable = (list) => list.filter((z) =>
-    !(z + ARREST_PLATE_T > SUB_OUT_Z - T / 2 - M && z < SUB_OUT_Z + T / 2 + M));
+  const usable = (list) => list.filter(planeOk);
 
   // PASS 1 — the whole space, coarsely. Wide enough that no region can hide.
   await breathe();
@@ -28280,13 +28375,34 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   const finger = G.makeGenevaFinger({
     spec: ARREST_SPEC, thickness: ARREST_PLATE_T,
     // the running fit the spec derives, and the same surface its horn floor
-    // was sized against — the finger turns, the column does not
+    // was sized against — the hub turns, the column does not
     boreR: ARREST_SPEC.fingerBoreR, material: MATS.blueSteel,
+    // TODO 212 — cut against the cross AS CUT (its blank too), carried on a
+    // crank on the pinion's side of the cross, at the P1 sections above
+    blankAt: ARREST_BLANK_AT, hubR: ARREST_FINGER_HUB_R, crankT: ARREST_CRANK_T,
+    side: arrestFingerSide(ARREST_Z),
   });
   await breathe();
   finger.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmArrestFinger'; });
   finger.position.z = ARREST_Z - SUB_OUT_Z;
   fpSpin.add(finger);
+  // TODO 212 — THE HUB: a pipe from the crank's outer face to the output
+  // pinion's, bored over the column at the running fit and walled at the
+  // finger's hub radius, so pinion, pipe, crank, disc and pin are one turning
+  // body on a planted column — the `tube` idiom the tower's sleeves use one
+  // arbor over. Face to face at both ends: its section IS the crank's hub ring,
+  // and its top is the pinion's lower face.
+  {
+    const stk = finger.userData.stack, face = ARREST_Z + stk.face;
+    const pinFace = stk.side > 0 ? SUB_OUT_Z - ALARM_WIND_WHEEL_T / 2 : SUB_OUT_Z + ALARM_WIND_WHEEL_T / 2;
+    // the siting solve admits a plane only if the stack clears the pinion's
+    // band by the §50 floor, so the pipe is at least that long — never the
+    // zero-length ring TODO 60 found standing in for a sleeve
+    if ((pinFace - face) * stk.side < Math.max(CLEAR_MARGIN, STOCK_MIN_U) - 1e-9)
+      console.warn(`TODO 212: the finger's pipe runs ${((pinFace - face) * stk.side).toFixed(4)} from the crank to the pinion — `
+        + `under the §50 floor ${STOCK_MIN_U.toFixed(4)} the siting solve guarantees`);
+    tube(fpSpin, ARREST_SPEC.fingerBoreR, ARREST_FINGER_HUB_R, face, pinFace, 'genevaFingerPipe');
+  }
   alarmArrestUnit.add(fpSpin);
   arrestFingerSpin = fpSpin;
   // …on an arbor that reaches BOTH its members. It carries the finger at
@@ -28441,6 +28557,25 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
     console.warn('alarm arrest: the pin circle clears the cross rim — the blank arm cannot bank it');
   if (ARREST_SPEC.web < STOCK_MIN_U - 1e-9)
     console.warn(`alarm arrest: the cross's arm web ${ARREST_SPEC.web.toFixed(3)} is under the §50 floor ${STOCK_MIN_U.toFixed(3)}`);
+  // TODO 212's claims. The land is the one the item's step 3 would have bought
+  // by growing d; cut against the cross's real metal it is already there, and
+  // this is what says so at every boot.
+  if (!(finger.userData.land >= STOCK_MIN_U - 1e-9))
+    console.warn(`TODO 212: the finger's cutaway leaves ${finger.userData.land.toFixed(4)} of land over its bore, under the `
+      + `§50 floor ${STOCK_MIN_U.toFixed(4)} — the disc needs hornFloor = bore + land + margin, which grows d`);
+  if (Math.abs(finger.userData.bossR - ARREST_FINGER_BOSS_R) > 1e-12)
+    console.warn(`TODO 212: the finger's pin boss is cut at ${finger.userData.bossR} but sited and sized at ${ARREST_FINGER_BOSS_R}`);
+  {
+    // the pin as a cantilever off the crank's face, loaded at the cross's
+    // mid-plane — the one member the stall arithmetic above leaves to here,
+    // because its free length is the stack's
+    const F = ARREST_STALL_NMM / (ARREST_SPEC.a * UNIT_MM);
+    const L = (finger.userData.stack.lift + ARREST_PLATE_T / 2) * UNIT_MM;
+    const dPin = 2 * ARREST_SPEC.pinR * UNIT_MM;
+    const sigma = (32 * F * L) / (Math.PI * dPin ** 3) * 1e6;
+    if (!(sigma <= SPRING_SIGMA_Y_PA))
+      console.warn(`TODO 212: the Geneva pin bends ${(sigma / 1e6).toFixed(1)} MPa at the stall, over ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)}`);
+  }
   // §129's own claims.
   {
     // THE SUBTRACTION ITSELF, asserted rather than trusted: move both members
@@ -40499,7 +40634,10 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         addLine(f, trace(f.userData.outline, z, Math.max(1, Math.ceil(f.userData.outline.length / 240))), SCHEMATIC.matWheel);
       addLine(f, ringPts(sp.lockR, 0, 0, z), MAT_LEVER);          // the locking disc
       addLine(f, ringPts(sp.pinR, sp.a, 0, z + gf.thickness), SCHEMATIC.matWheel); // the pin, on its own plane
-      addLine(f, [V(0, 0, z), V(sp.a, 0, z)], MAT_LEVER);         // the crank: axis → pin
+      // the crank: axis → pin, drawn in the crank's own plane — since TODO 212
+      // there is a crank in the metal for this line to be a claim about
+      const zc = gf.crankZ !== undefined ? gf.crankZ : z;
+      addLine(f, [V(0, 0, zc), V(sp.a, 0, zc)], MAT_LEVER);
       // The pin's ORBIT is centred on the finger's own axis, so it reads the
       // same at every rotation — safe to hang on the turning group.
       addLine(f, ringPts(sp.a, 0, 0, z), MAT_LEVER);

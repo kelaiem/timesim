@@ -25,7 +25,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
 | 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211 |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
-| 212 | OPEN | Found closing TODO 198. The geneva finger is three loose bodies on a fixed column: its disc wraps only 155° of its bore, its pin stands 1.457 off any disc metal, and the disc stands 4.508 from the output pinion that is meant to turn it (`assembly` reports the group as 3 bodies; the arrest is outside `ASSEMBLY_SCOPE`). Fix: cut the envelope to the cross's real metal, give the finger a crank and a hub fixed to the pinion, then scope the arrest into `assembly` |
+| 212 | CLOSED | The finger is one turning body: output pinion, a pipe on the fixed column, a crank carrying the pin, and the locking disc, joined face to face (`assembly` 3 bodies → 1, and the arrest is in `ASSEMBLY_SCOPE`). The disc is cut against the cross's real traced metal, one exact clearance disc per point, so it wraps 360° of its bore with 0.4636 of land (was 155°, land 0): step 3's d growth was not owed. Sections are the §50 floor, checked against the 9.8e-5 N·m stall. The solve re-sited finger and cross about their arbors at the same floor plane |
 | 211 | CLOSED | `HUB_COLLAR_R` is derived from where the prong bears (1.2730 → 1.7513: the farthest bearing vertex 1.6798 from the stem, plus the two running fits' shake, at the 20-gon's inradius), and `yokeClutchAt` solves the yoke's angle from that contact and derives the clutch from it. The new stem-clutch rows read 0.015–0.020 shut and 0.102–0.106 free (before 0.166–0.191 everywhere), and the reach waiver is retired. The keyless plane paid for the wider collars in strata: `Z_KEYLESS` is derived as the plate's dial face − `CLEAR_MARGIN` − the stem stack's widest radius (the pinion's tip circle 1.754052, which binds over the collars), −4.1 → −4.2041, which also retired TODO 209's three keyless rows. The setting lever ⇄ yoke edge is filed as TODO 214 |
 | 210 | CLOSED | The detent has its own spring: a straight blade (`SPRING_FLAT_U` × 0.5643, free 7.56–7.72 from the post's face) let into the cock's post, bearing on a TAIL the click now carries behind its pivot. Solved in a line from the law's travel (0.2286 rad), R = 3 and the 0.9·σy target: the beak presses the ring 10.01 mN seated → 24.97 mN at a tooth's crest, equal-margin in `SELECTOR_DETENT_WINDOW_MN`. Two §137 `crank` rows, `maintDetentHandoff` reads −0.021 at three phases, reach 1.0+ → 0, waiver retired |
 | 209 | PART DONE | Nine of twelve rows retired: the arrest's plane re-floored at the plate face + `CLEAR_MARGIN` (it was a literal 0.1), the set-up square ended at its ratchet's floor, two misfiled rows (the transfer arbor and the alarm climb rod, both running through plate bores) moved to `PLATE_SEATS`, and the three keyless stem rows paid down by TODO 211's derived `Z_KEYLESS`. Left: the transfer wheel and great wheel (0.075, a gear bevel under the margin, a band re-solve) and the case lugs (0.09). |
@@ -28642,7 +28642,7 @@ where the fork puts it.** Both halves of the fix path, in that order:
   drive edge has no metal either: the two stand 2.38–4.93 apart over the pull,
   and the yoke's lever law is a law of `crownPullT`.
 
-## 212. The geneva finger is three loose bodies: its pin stands on no metal, its disc wraps 155° of its bore, and nothing joins either to the pinion that turns them
+## 212. The geneva finger is three loose bodies: its pin stands on no metal, its disc wraps 155° of its bore, and nothing joins either to the pinion that turns them — CLOSED
 
 Found closing [TODO 198]. Once `makeGenevaFinger` cuts its disc as one honest
 ring, the disc's shape is visible, and it is not a Geneva driver:
@@ -28692,6 +28692,97 @@ would TOUCH the bore (land 0) at one bearing.
    position space).
 4. Then put `Alarm winding arrest` in `ASSEMBLY_SCOPE`, so a split finger
    fails rather than reports.
+
+
+**Closed. The disc was cut against a cross that does not exist, and the finger
+is one turning body now: pinion, pipe, crank, disc and pin.**
+
+**The envelope.** The cross is cut from one field, and the finger now cuts its
+cutaway against that same field's traced outline (`genevaCrossOutline`,
+memoised and shared by both builders). The rim circle the old envelope sampled
+has no metal at the slot mouths: each hollow cuts the rim away from 1.7° off a
+slot's axis, inside the slot's own 3.2° half-width, so a horn's real tip is
+where a slot wall meets a hollow, well below the rim. Two clearances, both
+already the spec's: the margin against slot walls, horn tips, rim and blank
+arm, and the seat's own room (`hollowR − lockR` = 0.075) against the hollows.
+Holding the hollows to the full margin would cut the locking arc at the lock
+pose itself. Each boundary point excludes a DISC of its clearance, cut per
+ray, not a bin smeared ±1.5°: the first cut of this did the latter and left
+the cutaway's flank 0.0095 from a slot wall in a node check, 0.035 in the
+browser, under a declared contact (`INTRA_UNIT_CONTACTS` disc ⇄ cross) that
+skips the pair, so no gate could have seen it. The sampling's own gaps are
+added to the clearance: half the largest move between driver samples (the
+cross turns at most 0.62 per radian of driver) plus half the outline's largest
+vertex gap (0.0137).
+
+**Step 3 was not owed.** Cut against the real metal, the disc keeps
+**0.4636** of land over its bore (the §50 floor is 0.317), so `genevaSpec`'s
+`hornFloor` and d are unchanged. A boot assert holds the land at the floor.
+
+**The body.** A Geneva driver is a locking disc and a crank carrying the pin,
+and the crank cannot share the cross's plane: the slot runs from the pin
+straight at the driver's axis, so any coplanar arm is inside the slot it
+drives. The crank stands in its own plane on the output pinion's side of the
+cross, one margin clear of it (`genevaFingerStack`, read by the builder and
+the siting solve). The disc rises through that margin to meet it. Only the
+disc's footprint can, because it already clears the cross's swept metal by the
+margin. The crank is the hull of the hub ring and the pin's boss (the pin's
+hole plus one §50 wall). The pin passes through it and the cross's plane. A
+PIPE, `genevaFingerPipe`, runs from the crank to the pinion's face, bored over
+the fixed column at the running fit: the tower's sleeve idiom one arbor over.
+A turning arbor in place of the column would want a bearing at its top, and
+nothing up there can carry one.
+
+**P1, from the stall.** At the bank the finger holds the full-wind moment
+through the train's gain, 0.393 N·mm / 4 = 9.8e-5 N·m. Each section solves
+for its load and takes the larger of that and the §50 floor; the floor
+governs all three:
+
+| member | section | stress at the stall | allowable |
+|---|---|---|---|
+| pipe (torsion) | bore 0.2347, outside `ARREST_FINGER_HUB_R` 0.5514 | 7.1 MPa | `SPRING_TAU_Y_PA` 462 |
+| crank arm (bending at the hub) | `ARREST_CRANK_T` 0.3167, width 2·min(hub, boss) | 70 MPa | `SPRING_SIGMA_Y_PA` 800 |
+| pin (cantilever off the crank to the cross's mid-plane) | ⌀ 2·`PIVOT_MIN_U` | 71 MPa | 800 (boot assert) |
+
+**P3, in position space.** The pin's boss wall takes the crank's reach from
+a + pinR = 1.759 to 2.076, and at the old station the crank met the alarm
+governor wheel's swept ring by 0.011. The siting solve re-sited the finger
+about the tower (azimuth 0° → 288°) and the cross about the finger (0° → 18°)
+and kept the floor plane (z 0.15). Its slack is unchanged at 0.1044, bound by
+the tower as before. Two rules were added to the solve on the way. **The pipe
+against the tower gates and does not rank**: the pipe ends on the pinion the
+cage's wheel meshes at the fixed `SUB_OUT_CD`, so that clearance is the same
+0.034 at every candidate. Counted in the maximin, it tied every station and
+the plane fell to evaluation order, z 3.9, into the spider's band. **A plane
+must leave the pipe the §50 floor of length**: at z 3.9 the pipe ran 0.282
+(0.107 mm) and `stockFloor` failed it.
+
+**Measured** (browser boot of this tree against origin/main 3805562):
+
+| | before | after |
+|---|---|---|
+| disc wraps its bore | 155° (land 0) | **360°** (land **0.4636**) |
+| `assembly`, the finger's group | 3 bodies (pinion / disc / pin), sep 1.4572 | **1 body**: pinion, pipe, crank, disc and pin joined face to face |
+| disc ⇄ pinion | 4.508 apart, no metal between | joined through crank and pipe (0 at each joint) |
+| pin ⇄ disc | 1.457 off any metal | carried in the crank (0); 0.6228 to the disc |
+| disc ⇄ cross over `alarmWind` + `alarmStrike` | 0.075 | **0.075** (the seat) |
+| crank ⇄ cross | — | 0.150 |
+| pipe ⇄ column (running fit) | — | 0.0496 |
+
+The schematic's "crank: axis → pin" glyph is drawn in the crank's own plane
+and is a claim about metal again.
+
+**Scoped.** `Alarm winding arrest` is in `ASSEMBLY_SCOPE`, so a split finger
+FAILS. Scoping it also gates two splits that are not this item's: each leg
+pinion's sleeve stands 0.1605 off its side gear (`spiderSpec.hubFaceZ` is the
+bore's end `zBoreOut`, while `makeConicalGear` cuts the blank's back face at
+`zWebHi`, so TODO 60's sleeves end in air again). They are identical on the
+base tree, only reported there, and were fixed first by [TODO 220] (#585).
+
+**Battery** (local, SwiftShader, 3 shards, `--no-incremental`, on TODO 220's
+merged tree): **53/53**. `assembly` 0 undeclared splits among the scoped units
+(the arrest's rows 3 → 0); boot silent; spec boots 36/36; six swept points
+clean, `validated-configs` unchanged; fingerprint 2671101204, deterministic.
 
 ## 213. The link site solve scores a chord ending at the rod's axis, not at the shaft tip TODO 205 stands beside it — CLOSED
 

@@ -3903,16 +3903,20 @@ export function genevaSpec({ N, stockMin, pivotMin, margin, studR, arborR }) {
   };
 }
 
-// The cross: rim at b, N−1 slots, one un-slotted arm (the bank), a hollow at
-// each station midpoint for the finger's locking disc, bored for its stud.
+// TODO 212 — THE CROSS'S METAL IS ONE DERIVATION, read by two cutters. The
+// cross is cut from this field and the finger's cutaway is cut AGAINST it, so
+// the two cannot describe different crosses. The finger used to sample the
+// cross's RIM CIRCLE instead — slot mouths included, where there is no metal —
+// and that phantom rim, passing 0.313 from the finger's axis, cut the disc down
+// to a crescent wrapping 155° of its bore. The real nearest metal is a horn
+// TIP, where a slot wall meets a hollow, and the hollow has already eaten the
+// rim there: measured, the true cutaway stops 0.48 outside the bore.
 //
-// The outline is traced from an exact signed-distance field rather than
-// written as a radial function, because it genuinely is not one: a slot has
-// PARALLEL walls, so a ray leaving the centre a few degrees off a slot's axis
-// crosses metal, then the slot, then metal again out to the rim. Sampling
-// r(θ) would fill that outer sliver in and quietly fatten every arm.
-export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
-  const { N, d, b, slotW, slotInner, hubR, hollowR, studR, boreR } = spec;
+// Each term is a true signed distance, positive INSIDE the metal, returned
+// separately so a consumer can ask WHICH surface a boundary point lies on (the
+// finger needs to tell the hollows — its own seat — from everything else).
+function genevaCrossTerms(spec, blankAt) {
+  const { N, d, b, slotW, slotInner, hollowR, boreR } = spec;
   const H = [];                                  // hollow centres, in cross-local coords
   for (let j = 0; j < N; j++) {
     const phi = ((j + 0.5) / N) * Math.PI * 2;
@@ -3924,24 +3928,51 @@ export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
     const psi = (j / N) * Math.PI * 2;
     slots.push([Math.cos(psi), Math.sin(psi)]);
   }
-  // Positive INSIDE the metal. Each term is a true signed distance, so the
-  // marching-squares interpolation below lands on the real boundary rather
-  // than on the grid.
-  const f = (x, y) => {
+  return (x, y) => {
     const r = Math.hypot(x, y);
-    let v = Math.min(b - r, r - boreR);
-    for (const [hx, hy] of H) v = Math.min(v, Math.hypot(x - hx, y - hy) - hollowR);
+    let hollow = Infinity, slot = Infinity;
+    for (const [hx, hy] of H) hollow = Math.min(hollow, Math.hypot(x - hx, y - hy) - hollowR);
     for (const [ux, uy] of slots) {
       const along = x * ux + y * uy, across = Math.abs(-x * uy + y * ux);
       const t = along - slotInner;
       const sdDisc = Math.hypot(x - ux * slotInner, y - uy * slotInner) - slotW / 2;
       const sdSlab = t >= 0 ? across - slotW / 2 : Math.hypot(t, Math.max(0, across - slotW / 2));
-      v = Math.min(v, Math.min(sdDisc, sdSlab));
+      slot = Math.min(slot, sdDisc, sdSlab);
     }
-    return v;
+    return { rim: b - r, bore: r - boreR, hollow, slot };
   };
-  const loops = traceField(f, b + 0.05, 0.01);
-  loops.sort((p, q) => Math.abs(polyArea(q)) - Math.abs(polyArea(p)));
+}
+// The traced loops, largest first (the outline, then the stud's bore). Traced
+// once per (spec, blank) and shared, because both cutters read it and a
+// 770 × 770 field is not a thing to evaluate twice at boot.
+const _crossLoops = new WeakMap();
+export function genevaCrossOutline({ spec, blankAt = 0 }) {
+  let bySpec = _crossLoops.get(spec);
+  if (!bySpec) _crossLoops.set(spec, bySpec = new Map());
+  if (!bySpec.has(blankAt)) {
+    const terms = genevaCrossTerms(spec, blankAt);
+    const f = (x, y) => {
+      const t = terms(x, y);
+      return Math.min(t.rim, t.bore, t.hollow, t.slot);
+    };
+    const loops = traceField(f, spec.b + 0.05, 0.01);
+    loops.sort((p, q) => Math.abs(polyArea(q)) - Math.abs(polyArea(p)));
+    bySpec.set(blankAt, loops);
+  }
+  return bySpec.get(blankAt);
+}
+
+// The cross: rim at b, N−1 slots, one un-slotted arm (the bank), a hollow at
+// each station midpoint for the finger's locking disc, bored for its stud.
+//
+// The outline is traced from an exact signed-distance field rather than
+// written as a radial function, because it genuinely is not one: a slot has
+// PARALLEL walls, so a ray leaving the centre a few degrees off a slot's axis
+// crosses metal, then the slot, then metal again out to the rim. Sampling
+// r(θ) would fill that outer sliver in and quietly fatten every arm.
+export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
+  const { hubR } = spec;
+  const loops = genevaCrossOutline({ spec, blankAt });
   const s = new THREE.Shape();
   loops[0].forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
   s.closePath();
@@ -3970,79 +4001,183 @@ export function makeGenevaCross({ spec, thickness, blankAt = 0, material }) {
   return mesh;
 }
 
-// The finger: the locking disc on the driver's arbor, carrying one pin at a.
-// The disc is cut away over the engagement, and the cutaway is the CROSS'S OWN
-// SWEPT ENVELOPE mapped into the finger's frame — not a chosen sector. A disc
-// that merely "looks cut enough" is the §35 failure mode in miniature: it
-// would read clear at rest and foul mid-engagement, where no static pose
-// looks.
-export function makeGenevaFinger({ spec, thickness, boreR, material }) {
-  const { a, b, d, beta, lockR, pinR, slotInner } = spec;
+// TODO 212 — THE FINGER'S Z-STACK, as arithmetic, so the siting solve (which
+// runs before any mesh exists) and the builder read one law — MODELING rule
+// 1's export-a-function case. Offsets are from the CROSS's plane (its bottom
+// face), `side` +1 putting the crank above the cross and −1 below; the caller
+// picks the side that faces the output pinion, so the hub runs to it without
+// crossing the cross's plane.
+//
+// Why there is a crank plane at all. A Geneva driver is a locking disc and a
+// crank carrying the pin, and the two cannot share the cross's plane: the
+// pin's slot runs from the pin straight in toward the driver's axis, so any
+// coplanar arm from the hub to the pin is inside the slot it is driving. So
+// the crank stands in its own plane, one `margin` clear of the cross's face
+// (it sweeps over the cross and must not touch it), and the disc rises through
+// that margin to meet it. The disc can do that and nothing else can: its
+// footprint is the one region the cross's swept metal clears by the margin
+// already, so the disc grown in z clears the cross by construction, where a hub
+// ring grown down to the disc would stand directly over the horns. The pin
+// runs the whole stack — through the cross's plane, where it works, and into
+// the crank, where it is carried.
+export function genevaFingerStack({ thickness, crankT, side = 1, lift = CLEAR_MARGIN_G }) {
+  if (side > 0) {
+    const crankLo = thickness + lift;
+    return { side: 1, lift, discLo: 0, discHi: thickness + lift, crankLo, crankHi: crankLo + crankT,
+      lo: 0, hi: crankLo + crankT, face: crankLo + crankT };
+  }
+  const crankHi = -lift;
+  return { side: -1, lift, discLo: -lift, discHi: thickness, crankLo: crankHi - crankT, crankHi,
+    lo: crankHi - crankT, hi: thickness, face: crankHi - crankT };
+}
+
+// The finger: the locking disc on the driver's hub, a crank carrying one pin
+// at a, and the pin. The disc is cut away over the engagement, and the cutaway
+// is the CROSS'S OWN SWEPT METAL mapped into the finger's frame — not a chosen
+// sector, and not the cross's rim circle (TODO 212). A disc that merely "looks
+// cut enough" is the §35 failure mode in miniature: it would read clear at
+// rest and foul mid-engagement, where no static pose looks.
+//
+// `boreR` is the running bore over the fixed column; `hubR` is the outside of
+// the turning hub (the crank's boss, and the pipe the caller builds from the
+// crank's outer face to the output pinion — the same section, so the joint is
+// face to face). `blankAt` is the cross's own blank station, so the swept metal
+// is the cross as cut.
+export function makeGenevaFinger({ spec, thickness, boreR, hubR, crankT, side = 1, blankAt = 0, material }) {
+  const { a, d, beta, lockR, pinR, slotInner, hollowR } = spec;
   const SEG = 1440;
   const env = new Array(SEG).fill(lockR);        // finger-local max radius, per bin
+  // TWO CLEARANCES, both already the spec's. The disc's locking arc rides in a
+  // hollow, which the spec cuts at lockR + margin/2 — that pair is the SEAT,
+  // declared and measured as one (INTRA_UNIT_CONTACTS), and its running room
+  // is hollowR − lockR. Every other surface of the cross — slot walls, horn
+  // tips, the rim, the blank arm — is held off by the one margin. Holding the
+  // hollow to the full margin too would cut the locking arc to hollowR −
+  // margin at the lock pose itself, i.e. the disc would no longer reach the
+  // seat it exists to make; holding the horn tips to the seat's room would
+  // let them graze the disc at the pose where they pass closest. So each
+  // boundary point is cut at the clearance of the surface it lies on, and a
+  // point that lies on a hollow AND on anything else (a horn's own corner) is
+  // held to the margin.
+  const seat = hollowR - lockR;
+  const terms = genevaCrossTerms(spec, blankAt);
+  const loops = genevaCrossOutline({ spec, blankAt });
+  const ON = 1e-3;                                // the trace's own accuracy is ~1e-4; this is an order above it
+  const pts0 = loops[0].map(([x, y]) => {
+    const t = terms(x, y);
+    const onHollow = Math.abs(t.hollow) < ON && t.slot >= ON && t.rim >= ON;
+    return [x, y, onHollow ? seat : CLEAR_MARGIN_G];
+  });
+  // Every engagement is the SAME relative motion — the slot that is engaging
+  // turns to point along gam(θ) — so the swept metal is the union, over every
+  // slotted station, of the outline re-expressed in that station's slot frame.
+  // Only points that can come within reach of the disc matter: during an
+  // engagement the slot axis stays within β of the line of centres, so a point
+  // more than β + asin((lockR + margin)/d) off its slot's axis never comes
+  // within lockR + margin of the finger's axis.
+  const N = spec.N, win = beta + Math.asin(Math.min(1, (lockR + CLEAR_MARGIN_G) / d)) + 1e-3;
+  const P = [];
+  for (let j = 0; j < N; j++) {
+    if (j === blankAt) continue;
+    const psi = (j / N) * Math.PI * 2, c = Math.cos(-psi), s = Math.sin(-psi);
+    for (const [x, y, clr] of pts0) {
+      const u = c * x - s * y, v = s * x + c * y;   // slot frame: the slot's axis is +u
+      if (Math.abs(Math.atan2(v, u)) <= win) P.push(u, v, clr);
+    }
+  }
   const sweep = Math.PI / 2 - beta;
-  for (let k = 0; k <= 600; k++) {
-    const th = -sweep + (2 * sweep * k) / 600;   // driver angle, 0 = crank pointing at the cross
-    // The cross's rotation is what the slot demands of it at this driver angle.
-    const gam = Math.atan2(a * Math.sin(th), a * Math.cos(th) - d);
-    // Sample the cross's rim and the mouths of the two slots nearest the pin;
-    // the rim is what can foul the disc, so it is what the cutaway is cut to.
-    // The rim near the ENGAGING slot is what can foul the disc — the cross's
-    // centre is at +d, so the near rim is sampled about `gam` itself. (Sampling
-    // gam − π reads the far rim, which never comes near the driver at all, so
-    // the envelope stays at lockR and the disc ships uncut: a cutaway that
-    // looks right at rest and buries itself mid-engagement, where no static
-    // pose looks.)
-    for (let m = 0; m <= 480; m++) {
-      const lam = gam + ((m / 480) - 0.5) * spec.index * 2;
-      const px = d + Math.cos(lam) * b, py = Math.sin(lam) * b;   // cross rim point, driver frame
+  // A BOUNDARY POINT EXCLUDES A DISC, NOT A BIN. Each sampled point of the
+  // cross keeps the finger's metal a clearance c away from it, so along the
+  // finger's ray at bearing α it cuts the disc to the near intersection with
+  // that circle: r·cos δ − √(c² − r²·sin² δ), δ the bearing off the point,
+  // over every ray the circle reaches. The first cut of this pushed each point
+  // into its own bin and smeared a fixed ±1.5° — which is the disc only at the
+  // point's own bearing, and at the cutaway's steep flank the next bin out
+  // stood 0.0095 from a slot wall it was meant to clear by the margin.
+  //
+  // And the sampling's own gaps are added to c, so the cut holds BETWEEN
+  // samples too: half the largest move of any cross point between two driver
+  // angles (the cross turns at most kMax per radian of driver, its metal
+  // reaching b from its centre; the finger's own frame turns lockR + margin's
+  // worth), plus half the outline's largest vertex gap.
+  const NTH = 600, dTh = (2 * sweep) / NTH;
+  const gamAt = (th) => Math.atan2(a * Math.sin(th), a * Math.cos(th) - d);
+  let kMax = 0;
+  for (let k = 0; k <= 2000; k++) {
+    const th = -sweep + (2 * sweep * k) / 2000, h = 1e-6;
+    let dg = gamAt(th + h) - gamAt(th - h);
+    dg = Math.atan2(Math.sin(dg), Math.cos(dg));
+    kMax = Math.max(kMax, Math.abs(dg / (2 * h)));
+  }
+  let gap = 0;
+  const ol = loops[0];
+  for (let i = 0; i < ol.length; i++) {
+    const [x0, y0] = ol[i], [x1, y1] = ol[(i + 1) % ol.length];
+    gap = Math.max(gap, Math.hypot(x1 - x0, y1 - y0));
+  }
+  const EPS = 0.5 * dTh * (spec.b * kMax + lockR + CLEAR_MARGIN_G) + 0.5 * gap;
+  const TAU = Math.PI * 2;
+  for (let k = 0; k <= NTH; k++) {
+    const th = -sweep + dTh * k;                 // driver angle, 0 = crank pointing at the cross
+    // The cross's rotation is what the slot demands of it at this driver angle:
+    // the engaging slot's axis, seen from the cross's centre at +d, points at
+    // the pin.
+    const gam = gamAt(th);
+    const c = Math.cos(gam), s = Math.sin(gam);
+    for (let i = 0; i < P.length; i += 3) {
+      const px = d + c * P[i] - s * P[i + 1], py = s * P[i] + c * P[i + 1];   // driver frame
       const rr = Math.hypot(px, py);
-      if (rr > lockR) continue;                                    // outside the disc anyway
+      const cl = P[i + 2] + EPS;
+      if (rr > lockR + cl) continue;              // cannot reach the disc
       // into the FINGER's frame: the finger turns with the driver angle
-      let ang = Math.atan2(py, px) - th;
-      ang = ((ang % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-      const bin = Math.round((ang / (Math.PI * 2)) * SEG) % SEG;
-      // Smear across neighbouring bins, so the cut is conservative at the
-      // cutaway's steep edges rather than a comb: a consumer sampling between
-      // two bins would otherwise read a radius from one side of the step.
-      const SMEAR = Math.ceil(SEG / 240);        // ±1.5°
-      for (let o = -SMEAR; o <= SMEAR; o++) {
-        const i = (bin + o + SEG) % SEG;
-        env[i] = Math.min(env[i], rr - CLEAR_MARGIN_G);
+      const phi = Math.atan2(py, px) - th;
+      const w = Math.asin(Math.min(1, cl / rr));
+      const nb = Math.ceil((w / TAU) * SEG) + 1;
+      const b0 = Math.round((((phi % TAU) + TAU) % TAU) / TAU * SEG);
+      for (let o = -nb; o <= nb; o++) {
+        const q = (((b0 + o) % SEG) + SEG) % SEG;
+        const del = (q / SEG) * TAU - phi;
+        const sd = rr * Math.sin(del);
+        if (Math.abs(sd) >= cl) continue;
+        const cd = rr * Math.cos(del);
+        if (cd <= 0) continue;
+        const cut = cd - Math.sqrt(cl * cl - sd * sd);
+        if (cut < env[q]) env[q] = cut;
       }
     }
   }
   const pts = [];
   for (let i = 0; i < SEG; i++) {
     const ang = (i / SEG) * Math.PI * 2;
-    // The cut may run right down to the arbor — at N = 8 the cross's horn
-    // passes within a margin of it — so the floor here is the arbor itself,
-    // not a comfortable ring around it. spec.horn is what guarantees the
-    // arbor survives that; this clamp only keeps the outline valid.
     const r = Math.max(boreR, env[i]);
     pts.push([Math.cos(ang) * r, Math.sin(ang) * r]);
   }
+  // The land the cut leaves over the bore, reported so the consumer asserts it
+  // (TODO 212's step 3 is only owed if this falls under the §50 floor).
+  let land = Infinity;
+  for (let i = 0; i < SEG; i++) land = Math.min(land, env[i] - boreR);
   // TODO 198 — WHERE THE CUTAWAY REACHES THE BORE, THE TWO ARE ONE OPENING.
   // The metal is the ring between the bore and the envelope, so it exists
   // only over the bins where env stands OUTSIDE the bore; over the rest the
   // cutaway's floor IS the bore and no land stands between them. Drawing that
   // as an outline clamped onto the bore circle plus a separate bore ring put
-  // two rings on top of each other — the 1440-point outline sitting on
-  // boreR, the bore's chords just inside it — and they crossed 36 times
-  // (`outlines`' cross-ring tier). Earcut resolved the overlap however it
-  // liked: 129 open edges, and the cap triangles that carried metal across
-  // the bore over 15.1% of its area (TODO 107, which blamed the triangulator
-  // for what was the drawing).
-  //
-  // So the bore is cut as its own ring only when the envelope clears it all
-  // the way round. Otherwise the one ring is: out along the envelope over the
-  // run of bins that carry metal, from the bore at the run's last empty bin
-  // to the bore at its next, and back along the bore itself — the same bins,
-  // at boreR, so the bore is the envelope's own resolution rather than a
-  // second polygon to agree with it. Every vertex is a lineTo, so
-  // curveSegments: 1 still re-tessellates nothing (the reason the bore was an
-  // explicit polygon, not an absarc, in the first place: at that setting an
-  // absarc collapses to one segment and the metal closes over the arbor).
+  // two rings on top of each other, and they crossed 36 times (`outlines`'
+  // cross-ring tier). So the bore is cut as its own ring only when the
+  // envelope clears it all the way round — which, cut against the cross's real
+  // metal, it now does (TODO 212). The one-run and many-run branches stay,
+  // because they are what keeps a future spec honest if it ever does not.
+  // Every vertex is a lineTo, so curveSegments: 1 re-tessellates nothing (an
+  // absarc at that setting collapses to one segment and closes over the arbor).
+  const borePath = (r, n) => {
+    const hole = new THREE.Path();
+    for (let i = 0; i < n; i++) {
+      const t = -(i / n) * Math.PI * 2;           // reversed, so the hole winds against the outline
+      const x = Math.cos(t) * r, y = Math.sin(t) * r;
+      if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y);
+    }
+    hole.closePath();
+    return hole;
+  };
   const s = new THREE.Shape();
   const metal = env.map((e) => e > boreR);
   const runStarts = [];
@@ -4050,14 +4185,7 @@ export function makeGenevaFinger({ spec, thickness, boreR, material }) {
   if (!metal.some((m) => !m)) {
     pts.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
     s.closePath();
-    const hole = new THREE.Path();
-    for (let i = 0; i < SEG; i++) {
-      const t = -(i / SEG) * Math.PI * 2;           // reversed, so the hole winds against the outline
-      const x = Math.cos(t) * boreR, y = Math.sin(t) * boreR;
-      if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y);
-    }
-    hole.closePath();
-    s.holes.push(hole);
+    s.holes.push(borePath(boreR, SEG));
   } else if (runStarts.length === 1) {
     const i0 = (runStarts[0] + SEG - 1) % SEG;       // the empty bin before the run: on the bore
     let n = 1;
@@ -4079,25 +4207,73 @@ export function makeGenevaFinger({ spec, thickness, boreR, material }) {
     pts.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
     s.closePath();
   }
+  const stack = genevaFingerStack({ thickness, crankT, side });
   const g = new THREE.Group();
   const disc = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: 1 }),
+    new THREE.ExtrudeGeometry(s, { depth: stack.discHi - stack.discLo, bevelEnabled: false, curveSegments: 1 }),
     material || MATS.steel);
   disc.name = 'genevaFingerDisc';
+  disc.position.z = stack.discLo;
   g.add(disc);
-  // The pin stands the full height of the cross's slot plus this disc, so the
-  // two overlap in z wherever they overlap in plan — a pin that only reached
-  // its own disc would index nothing.
-  const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, thickness * 2, 14),
+  // THE CRANK — the hub and the pin's boss, joined: the convex hull of two
+  // circles, the hub's (hubR about the axis) and the boss's (bossR about the
+  // pin). The boss is the pin's own hole plus one §50 wall, because a pin is
+  // held by the metal around it and a wall under the floor is not a wall.
+  // Bored over the column at the running bore and bored for the pin, both as
+  // explicit polygons: the pin's hole takes the CylinderGeometry's own 14
+  // vertices, so pin and crank share one surface rather than two that nearly
+  // agree.
+  const bossR = pinR + STOCK_MIN_U;
+  const PIN_SEG = 14;
+  const ph = Math.acos(Math.max(-1, Math.min(1, (hubR - bossR) / a)));   // the external tangents' angle
+  const crankPts = [];
+  const ARC = 96;
+  for (let i = 0; i <= ARC; i++) {                // the hub's back, φ → 2π − φ
+    const t = ph + ((Math.PI * 2 - 2 * ph) * i) / ARC;
+    crankPts.push([Math.cos(t) * hubR, Math.sin(t) * hubR]);
+  }
+  for (let i = 0; i <= ARC; i++) {                // the boss's front, −φ → φ
+    const t = -ph + (2 * ph * i) / ARC;
+    crankPts.push([a + Math.cos(t) * bossR, Math.sin(t) * bossR]);
+  }
+  const cs = new THREE.Shape();
+  crankPts.forEach(([x, y], i) => (i === 0 ? cs.moveTo(x, y) : cs.lineTo(x, y)));
+  cs.closePath();
+  cs.holes.push(borePath(boreR, 96));
+  const pinHole = new THREE.Path();
+  for (let k = 0; k < PIN_SEG; k++) {
+    // CylinderGeometry puts vertex k at (r·sin θ, ·, r·cos θ), θ = 2πk/n, and
+    // the pin's quarter-turn about x carries that to (r·sin θ, −r·cos θ) in
+    // plan. (ExtrudeGeometry winds holes itself, so the order is free.)
+    const t = (k / PIN_SEG) * Math.PI * 2;
+    const x = a + Math.sin(t) * pinR, y = -Math.cos(t) * pinR;
+    if (k === 0) pinHole.moveTo(x, y); else pinHole.lineTo(x, y);
+  }
+  pinHole.closePath();
+  cs.holes.push(pinHole);
+  const crank = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(cs, { depth: crankT, bevelEnabled: false, curveSegments: 1 }),
+    material || MATS.steel);
+  crank.name = 'genevaFingerCrank';
+  crank.position.z = stack.crankLo;
+  g.add(crank);
+  // The pin runs the whole stack: through the cross's plane, where it works,
+  // and through the crank, which carries it.
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinR, pinR, stack.hi - stack.lo, PIN_SEG),
     material || MATS.steel);
   pin.name = 'genevaFingerPin';
   pin.rotation.x = Math.PI / 2;
-  pin.position.set(a, 0, thickness);
+  pin.position.set(a, 0, (stack.hi + stack.lo) / 2);
   g.add(pin);
   g.userData.spec = spec;
   g.userData.outline = pts;
   g.userData.slotInner = slotInner;
-  g.userData.genevaFinger = { spec, thickness };   // §134, see makeGenevaCross
+  g.userData.stack = stack;
+  g.userData.land = land;
+  g.userData.hubR = hubR;
+  g.userData.bossR = bossR;
+  g.userData.crankOutline = crankPts;
+  g.userData.genevaFinger = { spec, thickness, crankZ: (stack.crankLo + stack.crankHi) / 2 };   // §134, see makeGenevaCross
   return g;
 }
 
