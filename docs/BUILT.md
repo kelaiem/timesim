@@ -31823,6 +31823,11 @@ proved nothing): `liftAt` over 12,002 ring angles — a dense walk over three
 tooth pitches, random angles over six turns, `NaN` and `Infinity` — returns the
 identical double from this tree and from the one before, hash for hash.
 
+The harness agrees: `node tools/ci-battery.mjs --no-incremental --only
+restoring,transmits,transfers,equalisation,meshPhase` is 17/17 gates on this tree
+and on the one before, with the same fingerprint (823415456), and every check
+payload the two reports share is byte-identical. The full battery is CI's.
+
 **Left, measured.** After this a fast-forward frame is 21 ms, of which the next
 three are `alarmPawlSeatPhi` (5.7 ms: the alarm column pawl's seat solve, a pure
 pose of the same shape, run 45 times a frame), `ringSd` (3.0 ms: the one solve
