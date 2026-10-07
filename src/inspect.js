@@ -4208,7 +4208,8 @@ export const ASSEMBLY_SPLITS = [
 export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel', 'Alarm lock',
   'Alarm lifting lever',   // §198
   'Alarm selector',         // TODO 174 — the fork block and its bar are joined to the ring by a foot and a riser; this holds the joint — two bars on one pivot: they overlap at the boss, so the lever is one body or this says so
-  'Hour wheel'];            // TODO 120 — the hour hand PRESSED on its tube (pipe bore = the tube's outside): wheel, tube and hand are one body, or this says so
+  'Hour wheel',             // TODO 120 — the hour hand PRESSED on its tube (pipe bore = the tube's outside): wheel, tube and hand are one body, or this says so
+  'Alarm winding arrest'];  // TODO 212 — the Geneva finger was three loose bodies posed off one angle (disc, a pin 1.457 off it, the pinion 4.508 above); the pinion, its pipe, the crank, the disc and the pin are one turning body now, and a split finger fails here rather than being reported
 // Accepted debt, §50's convention — red in the report, cited, never silenced.
 // (TODO 44's lock-collar waiver RETIRED by §112: the tier-split re-derived
 // the strike sleeve to span from the wheel's hub to the cam's underside —
