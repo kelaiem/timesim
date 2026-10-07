@@ -2488,6 +2488,24 @@ barrelArbor.add(greatWheel);
 // lives.)
 const RATCHET_T = 0.8;
 const Z_RATCHET_BOT = 0.15; // world: one margin above the plate's top face
+// TODO 209 — THE WINDING BAND, cut against the bevel on BOTH faces. The spur,
+// the transfer wheel and (when routed) the idler share one plane under the
+// great wheel, and makeGear's edge bevel stands gearBevel proud of the STOCK
+// on each face. Placed at Z_RATCHET_BOT with RATCHET_T stock (the set-up
+// ratchet's, which extrudes bevel-free), the bottom bevel stood 0.075 off the
+// plate's top face, half a margin short. The band's TOP is unchanged: the
+// great wheel's hub ring underside, where the spur's top face has always sat.
+// Its BOTTOM is now the plate's top face (0, by BACK_PLATE_Z's construction)
+// plus one CLEAR_MARGIN plus the bevel, and the stock between them is what
+// remains.
+const WIND_BAND_TOP = L_BARREL - 1.4 * G.GEAR_HUB_H_F / 2;   // the great wheel's (1.4 stock) hub underside: 0.95
+// The bevel is min(t·0.18, module·0.22). Read at the thickest the stock could
+// be, it gives the module-bound value; the assert holds the cut stock to it.
+const WIND_BAND_BEVEL = G.gearBevel(KW_MODULE, WIND_BAND_TOP - CLEAR_MARGIN, true);
+const Z_WIND_BOT = CLEAR_MARGIN + WIND_BAND_BEVEL;           // stock's lower face
+const WIND_T = WIND_BAND_TOP - Z_WIND_BOT;                   // 0.725 (was RATCHET_T 0.8)
+if (Math.abs(G.gearBevel(KW_MODULE, WIND_T, true) - WIND_BAND_BEVEL) > 1e-12)
+  console.warn(`winding band: bevel at the cut stock ${G.gearBevel(KW_MODULE, WIND_T, true)} ≠ the ${WIND_BAND_BEVEL} the band was solved against`);
 // Hub-less like the transfer wheel it meshes: the band under the great
 // wheel is ~1.2 tall and makeGear's stock hub ring (1.5·thickness) would
 // eat both gaps.
@@ -2497,7 +2515,7 @@ const windSpur = G.makeGear({ name: 'windSpur', module: KW_MODULE, teeth: WIND_S
   // so the spur meshes the transfer wheel itself. The mate is a function of
   // the routing, not a constant, and both operands are the solve's own.
   ? { teeth: windIdler.teeth, mates: [crownWheelTeeth, WIND_SPUR_TEETH] }
-  : { teeth: crownWheelTeeth, mates: [WIND_SPUR_TEETH] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+  : { teeth: crownWheelTeeth, mates: [WIND_SPUR_TEETH] }], thickness: WIND_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
 windSpur.name = 'windSpur';
 // TODO 132 — THE DATUM of the keyless winding mesh. This is a free index, and
 // saying so is the point: the spur is one blank on the barrel arbor (the great
@@ -2509,7 +2527,7 @@ windSpur.name = 'windSpur';
 const windSpurBase = Math.PI / WIND_SPUR_TEETH;
 // makeGear extrudes CENTERED (unlike the old ratchet builder's 0-based
 // extrude), so the group z places the band's middle.
-windSpur.position.z = Z_RATCHET_BOT + RATCHET_T / 2 - L_BARREL;
+windSpur.position.z = Z_WIND_BOT + WIND_T / 2 - L_BARREL;
 barrelArbor.add(windSpur);
 fusee.position.z = FUSEE_BASE_Z; // cone base above the third wheel's plane
 barrelArbor.add(fusee);
@@ -5169,10 +5187,10 @@ crownWheel.traverse((o) => { if (o.isMesh) o.name = 'crownWheel'; });
 crownWheelMount.add(crownWheel);
 // Transfer wheel: hub-less — its band between plate top and great-wheel
 // underside is only ~1.2 tall, and the stock hub ring would eat both gaps.
-const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the winding spur
+const Z_TRANSFER = Z_WIND_BOT + WIND_T / 2; // coplanar with the winding spur (TODO 209: the band's own centre)
 const transferWheel = G.makeGear({ name: 'transferWheel', module: KW_MODULE, teeth: crownWheelTeeth, mates: [windIdler
   ? { teeth: windIdler.teeth, mates: [crownWheelTeeth, WIND_SPUR_TEETH] }
-  : { teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+  : { teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }], thickness: WIND_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
 // TODO 136 — NAMED, with the rest of this arbor's stack. The fold renumbered
 // the unit and stranded five INTRA_UNIT_CONTACTS rows that named these by index;
 // the table's own comments have called that the stale-row trap three times now,
@@ -5210,7 +5228,7 @@ if (windIdler) {
   windIdlerWheel = G.makeGear({ module: KW_MODULE, teeth: windIdler.teeth, mates: [
     { teeth: crownWheelTeeth, mates: [windIdler.teeth] },
     { teeth: WIND_SPUR_TEETH, mates: [windIdler.teeth] },
-  ], thickness: RATCHET_T, boreR: 0.55, spokes: 0, material: MATS.steel, hub: false });
+  ], thickness: WIND_T, boreR: 0.55, spokes: 0, material: MATS.steel, hub: false });
   windIdlerWheel.name = 'kwWindIdler'; // §33 step 2 — instruments couple by string; §194: a declared mesh row NAMES its members, and the solve below declares two
   windIdlerWheel.position.set(windIdler.x, windIdler.y, Z_TRANSFER);
   keyless.add(windIdlerWheel);
