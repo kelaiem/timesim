@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 220 | CLOSED | Regression of TODO 60's fix 2. Each spider leg's pinion and sleeve stood **0.1605** off its side gear: `spiderSpec.hubFaceZ` read `zBoreOut` (1.3182 from the apex) while TODO 136's flat web (17387c21) cuts the blank's back face at `zWebHi` (1.1577). The spec now reads the builder's own `zWebHi`, and a boot assert measures each gear's cut back face and each sleeve's end against it. Both pairs measure 0 (seated); `assembly` with the arrest scoped reads both leg groups as one body. Leg B's pinion, the idler pinion and both columns' tops drop 0.1605 (`pinBZ`'s stock-floor branch); the columns' L/D-derived radius follows, 0.2361 → 0.2316. `halfHeight` still reads `zBoreOut` — [TODO 67] |
 | 219 | OPEN | Found closing TODO 217. The maintaining spring is still a drawn torus: its torque at its working point is derived (the going torque, 3.2307 N·mm — it is a series member of the drive), but its stiffness and preload set how long it keeps the train going through a wind, and the model declares no length of a wind. And the ring is never held: it rides `barrelArbor` through winding, so the spring is never deflected and the hold is never posed |
 | 218 | OPEN | Found closing TODO 217. The maintaining detent's beak is a 20.40° wedge carrying the 2554 mN hold almost square to its axis: 2076 MPa at its KINDEST section against the 800 MPa steel (≈ 1.1 GPa if the flank bears evenly along the face), waived by name in `HOLD_STRESS_WAIVERS`. The valley it seats in is 66.15°; fix by cutting the beak to the valley's offset and re-solving the ride and the blade on it |
 | 217 | CLOSED | The hold is priced: the maintaining spring is a series member of the drive, so the detent holds the going torque (3.2307 N·mm) at the first instant of a wind whatever its stiffness — 2554 mN on the face over a 3.3377 u arm. The cranked arm carries it at 686.5 MPa (Winkler bending at its worst section, 1.3211 u off the tip–stud chord, plus the whole load axial), ×1.165 under `SPRING_SIGMA_Y_PA`, so no section change; held as `equalisation` row 16, a §137 `rigidBentLink` row, and in `probe-power-budget`. The beak is over yield (TODO 218); the spring's stiffness is TODO 219 |
@@ -168,7 +169,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 70 | CLOSED | `makeJewelSetting`'s collar is a CLOSED profile now, wound outward, and it runs `assertLatheOutward`. The open shell, the parity raycast's hazard (TODO 27), is gone with the winding. Closed with TODO 75 |
 | 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
 | 69 | CLOSED | `TQ_T` is DERIVED: a real cheese head on the 1.0 mm plate screws (k = 0.6 d), sunk flush over a `STOCK_MIN_U` land, gives 1.900 u (0.720 mm). The screws carry that head. The plate grew 1.1000. The stop work's ceiling reads the balance cock it always named, the swept rows are keyed to the plate, two hoisted constants were re-measured, and the case's pane plane clears the outboard metal. Boot is silent |
-| 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve |
+| 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve. **Since TODO 138/136 the sign has flipped**: `halfHeight` reads `zBoreOut + margin` 1.4682 against cut metal reaching 1.1577 — slack 0.3105, safe but stale (TODO 220 measured it) |
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | CLOSED | Ten bodies, not four, were inside out: the three waiver keys were `unit/(unnamed)` blankets, and TODO 184's six bored cock legs and pads arrived under them. The escape bridge's boss and foot tube, the bored legs, `makeJewelSetting`'s collar and `alarmFaceCam` are all wound outward at their builders. Each lathe runs `assertLatheOutward`, and `INVERTED_WAIVERS` is empty |
@@ -7805,6 +7806,18 @@ wheels seat on shoulders and bridges this test does not model, and warning
 across all of them would break rule 6 rather than find anything. Widening it is
 worth doing behind a declared scope list, not by default.
 
+**REGRESSED, and re-closed by [TODO 220].** Fix 2's sleeves ended on
+`SUB_SPEC.hubFaceZ`, a copy of the side gear's back face written in
+`spiderSpec` beside the face the builder cuts. TODO 138 Landing 2 re-derived
+that copy for the conical blank (`zBoreOut`, right for a blank whose back cap
+was then a chord of its coneR sphere); TODO 136's flat web (17387c21) then
+moved the cut face in to `zWebHi` and left the copy behind. By 0691e83 both
+legs' sleeves and pinions stood **0.1605** off their side gears (sleeve A
+ended at 4.0466 against the gear at 4.2071) — the very hole this item closed,
+reopened by a second copy of one dimension. The sleeve-end figures above are
+the shear-law build's and no longer describe the metal; TODO 220 has the
+current ones and the boot assert that measures the seat.
+
 ## 61. CLOSED — `SPEC.md` and the gear builder name a tooth form the code does not cut
 
 **Closed 2026-08-20, as filed: the documents now say what is cut.** All
@@ -8327,6 +8340,21 @@ with any spec point that moves the barrel.
 faceWidth + margin` — and then re-run §129's plane and station solve, because
 raising `halfHeight` by 0.119 moves the band the solve searches. That is why
 this is its own item: the arithmetic is one line, the acceptance is a re-solve.
+
+**Update (TODO 220): the sign has flipped, and the figures above describe a
+blank this movement no longer cuts.** TODO 138 Landing 2 replaced the sheared
+cone with the conical blank and re-derived `halfHeight` as `zBoreOut + margin`;
+TODO 136 then cut the web flat between `zWebLo` and `zWebHi`, so the blank's
+farthest axial point is `zWebHi`, not `zBoreOut`. Measured at rest on the
+default build: `halfHeight` 1.4682 against side gear metal reaching 1.1577 from
+the apex and the planets reaching 1.1073 — slack **0.3105** where the
+expression claims 0.150. That is the safe direction (the band over-states the
+cones), but it is the same stale copy TODO 220 removed from `hubFaceZ`, and the
+band is still what `arrestStack`'s first `cageZ` branch, `pinBZ`'s envelope
+branch and §129's `SPIDER` obstacle read. Fix path unchanged in kind: carry
+the cut extent (`max(zWebHi, the planets' axial reach) + margin`, read from
+the specs) and re-solve the stack and §129's plane — a position-space move,
+not done in TODO 220 because it re-lays the cage as well as leg B.
 
 ## 68. CLOSED — the primer told the reader the seconds hand freezes; it flies to zero
 
@@ -29136,3 +29164,84 @@ virtue ("winding cannot drag it backwards").
 3. Pose the wind. Hold the ring on the beak while `windBack` moves, advance the
    great wheel on the spring, and let the run-out (the spring bottoming, or the
    train stopping) be what a long wind does.
+
+## 220. Spider legs stand 0.1605 off their side gears: hubFaceZ written twice — CLOSED
+
+Found while working [TODO 212]. In the alarm winding arrest's spider
+differential each leg's pinion and its sleeve are meant to be one rigid body
+with that leg's side gear — the sleeve is what makes them one (TODO 60, fix 2).
+On 0691e83 `assembly`, run with the arrest scoped in, reported both legs split:
+`alarmArrestPinion + subSleeveA` ⇄ `spiderSideA` and `subLegBPinion +
+subSleeveB` ⇄ `spiderSideB`, each **0.1605** apart. Nothing gated it, because
+`Alarm winding arrest` is not in `ASSEMBLY_SCOPE` (TODO 212 adds it).
+
+**Cause: one dimension written twice.** The face a sleeve butts on lived in two
+places — `spiderSpec.hubFaceZ`, and the plane `makeConicalGear` cuts the
+blank's back face on. TODO 138 Landing 2 (4eac5daf) set `hubFaceZ =
+sideBevel.zBoreOut`, which was right then: the conical blank's back cap was a
+chord of its `coneR` sphere and the bore ended on it at √(coneR² − boreR²).
+Three hours later TODO 136 (17387c21, "the bevel face width is one band per
+PAIR") cut the web FLAT between the planes `zWebLo` and `zWebHi = coneR·cos
+θ_root`, which moved the bore's back end, and the copy in `spiderSpec` stayed
+put. At the shipped spec the two read 1.3182 and 1.1577 from the apex, and
+every sleeve ended in air 0.1605 short of its gear: sleeve A at 4.0466 against
+side gear A's face at 4.2071, sleeve B at 6.6830 against 6.5225. TODO 60
+recorded sleeve A ending at 4.4076 on the shear-law blank; that figure was
+already describing metal no longer cut.
+
+**Fix — one source, measured at boot.**
+
+- `spiderSpec.hubFaceZ` reads `sideBevel.zWebHi`, the same field
+  `makeConicalGear` destructures to place its back-face rings (R4/R5). There is
+  no derivation of the face left in `spiderSpec` to fall behind.
+- A boot assert after TODO 60's reach assert measures the built metal rather
+  than restating either copy: each side gear's farthest point along its own
+  axis (its cut back face) against `hubFaceZ`, and each sleeve's end against
+  that face, to 1e-5 (Float32 vertex noise at z ≈ 8 — not a fit). Proven to
+  fire: reverting the one line to `zBoreOut` warns four times, `|Δ| 0.16052`
+  on each row.
+- **The tower re-lays in position space (P3), nothing else.** `arrestStack`'s
+  `pinBZ` is `max(cageZ + halfHeight, cageZ + hubFaceZ + STOCK_MIN_U) + T/2`,
+  and its stock-floor branch binds both before and after (1.6349 → 1.4744
+  against the envelope's 1.4682), so leg B's pinion, the idler pinion (which
+  shares leg B's plane by meshing) and both columns' tops drop exactly
+  **0.1605**: pinion centres 7.3997 → 7.2392, column tops 7.9997 → 7.8392,
+  sleeve B 6.5225 … 6.8392 — one `STOCK_MIN_U` long, as the branch intends.
+  Leg A, the cage (z 5.3648) and every station's x, y are unchanged. The
+  shorter columns carry their derived radius with them —
+  `ARREST_COLUMN_R = columnLen / (2·TURN_LD_TARGET)`, §234's law, so
+  8.4997 → 8.3392 long reads 0.2361 → 0.2316 at the same L/D 18.0; no member
+  was resized by hand.
+
+**Measured, at rest, default build (`meshClearance`).**
+
+| pair | before | after |
+|---|---|---|
+| `subSleeveA` ⇄ `spiderSideA` | 0.1605 | 0 |
+| `subSleeveB` ⇄ `spiderSideB` | 0.1605 | 0 |
+| sleeve ⇄ its leg pinion (A, B) | 0, 0 | 0, 0 |
+| `alarmArrestPinion` ⇄ `spiderSideA` | 1.1243 | 1.1243 |
+| `subLegBPinion` ⇄ `spiderSideB` | 0.4172 | 0.2567 |
+| `subLegBPinion` ⇄ `spiderCageWheel` | 0.9749 | 0.8144 |
+
+`checkAssembly` with `scope: [...ASSEMBLY_SCOPE, 'Alarm winding arrest']`
+(not committed — TODO 212 owns the scope change) reads the two leg groups as ONE body each: 3 arrest
+violations → 1, and that one is TODO 212's Geneva finger group
+(`subFingerPinion` / `genevaFingerDisc` / `genevaFingerPin`, 3 bodies, 1.4572
+apart), unchanged. Over the whole movement the check's split rows go 33 → 31.
+
+**Residue, not fixed here.** `halfHeight` is the same stale copy in the safe
+direction: `zBoreOut + margin` = 1.4682 against cut metal at 1.1577 (planets
+1.1073), slack 0.3105 where it claims 0.150. It feeds `cageZ`'s first branch
+and §129's `SPIDER` band, so carrying the cut extent re-lays the cage too —
+recorded on [TODO 67]. The planet stubs read the same field the same way
+(`planetBoreOutZ = planetBevel.zBoreOut`), so each stub runs 0.1605 past its
+planet's cut back face; it is metal standing proud of a gear, not a gap, and
+it is left as found.
+
+**Battery** (local, SwiftShader, 3 shards, `--no-incremental`): every
+sweep gate passes, fingerprint 2171331770 deterministic across boots, boot
+silent, all six swept spec points clean, `validated-configs` unchanged (7 keys).
+`spec boots` read 31/36 in that run — five warning points timed out under
+container load (no fatal, no page error) — and 36/36 on a `--spec-only`
+re-run of the same tree.

@@ -28174,9 +28174,13 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   pinA.traverse((o) => { if (o.isMesh) o.name = 'alarmArrestPinion'; });
   spin.add(pinA);
   // TODO 60 — the sleeve ends on the side gear's HUB FACE, not on the swept
-  // envelope. `halfHeight` stands outboard of every point of metal (the cone's
-  // back surface is z = r + faceWidth, so at the bore it is `hubFaceZ`), and a
-  // sleeve ended there stops 0.672 short in mid-air. Both legs had it.
+  // envelope. `halfHeight` stands outboard of every point of metal, and a
+  // sleeve ended there stops short in mid-air. Both legs had it. TODO 220 —
+  // and the hub face is the blank's flat web as CUT (`zWebHi`, the plane the
+  // builder's bore ring R5 stands on), read off the builder's own spec: a
+  // second derivation of it here or in spiderSpec is how both legs came to
+  // stand 0.1605 off their gears after TODO 136 flattened the web. The build
+  // measures the seat below, after the tower's reach assert.
   sleeve(spin, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2, SUB_CAGE_Z - SUB_SPEC.hubFaceZ, 'subSleeveA');
   alarmArrestUnit.add(spin);
   arrestPinionSpin = spin;
@@ -28533,6 +28537,38 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
         console.warn(`alarm arrest: ${o.name || 'a solid'} extrudes at depth 0 — a zero-height ring `
           + `is a malformed solid that still satisfies §107 connectivity (TODO 60)`);
     }
+  }
+  // TODO 220 — EACH LEG SEATS ON ITS SIDE GEAR'S CUT METAL. The hub face was
+  // written twice — `spiderSpec.hubFaceZ` and the plane `makeConicalGear` cuts
+  // the web's back face on — and when TODO 136 flattened the web only the
+  // builder's copy moved: both legs' sleeves and pinions stood 0.1605 off
+  // their side gears, which §107 reported as two splits and nothing gated
+  // (this unit is outside ASSEMBLY_SCOPE). The spec now READS the builder's
+  // `zWebHi`, and this measures the result on the built metal rather than
+  // restating either copy: the side gear's farthest point along its own axis
+  // is the face a hub butts on, and each sleeve must end exactly there. A
+  // gear spun about z keeps its z extent, so the box is exact here and the
+  // tolerance is Float32 position noise, not a clearance.
+  {
+    alarmArrestUnit.updateWorldMatrix(true, true);
+    const zBox = (name) => {
+      const b = new THREE.Box3();
+      alarmArrestUnit.traverse((o) => { if (o.isMesh && o.name === name) b.union(new THREE.Box3().setFromObject(o, true)); });
+      return b;
+    };
+    const sideA = zBox('spiderSideA'), sideB = zBox('spiderSideB');
+    const slA = zBox('subSleeveA'), slB = zBox('subSleeveB');
+    const SEAT_TOL = 1e-5;   // Float32 vertex noise at z ≈ 8, never a fit
+    const rows = [
+      ['side gear A cut back face', SUB_CAGE_Z - sideA.min.z, SUB_SPEC.hubFaceZ],
+      ['side gear B cut back face', sideB.max.z - SUB_CAGE_Z, SUB_SPEC.hubFaceZ],
+      ['sleeve A end on side gear A', slA.max.z, sideA.min.z],
+      ['sleeve B end on side gear B', slB.min.z, sideB.max.z],
+    ];
+    for (const [what, got, want] of rows)
+      if (!(Math.abs(got - want) <= SEAT_TOL))
+        console.warn(`alarm arrest: ${what} measures ${got.toFixed(5)}, required ${want.toFixed(5)} `
+          + `(|Δ| ${Math.abs(got - want).toFixed(5)} > ${SEAT_TOL}) — the hub face is written twice again (TODO 220)`);
   }
 }
 // NO declareTravel HERE, and the omission is the honest reading. §36A's

@@ -4364,7 +4364,19 @@ export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
     // WHERE A HUB ACTUALLY SEATS, which is NOT halfHeight (TODO 60): halfHeight
     // carries the clearance margin and stands outboard of every point of metal,
     // so a sleeve ended there stops in mid-air.
-    hubFaceZ: sideBevel.zBoreOut,
+    //
+    // TODO 220 — and it is the blank's OWN back face, read from the spec the
+    // builder cuts, never re-derived here. It read `zBoreOut` — right when
+    // Landing 2 wrote it, because the blank's back cap was then a chord of the
+    // coneR sphere and the bore ended on it. TODO 136's flat web (17387c21) then
+    // cut the blank between the PLANES zWebLo and zWebHi, the bore's back end
+    // moved in to zWebHi = coneR·cos θ_root, and this copy stayed put: both
+    // leg pinions stood 0.1605 off their side gears' metal on a sleeve that
+    // ended in air, a split §107 reported and nothing gated. `makeConicalGear`
+    // destructures this same `zWebHi` to place its rings R4/R5, so the face a
+    // sleeve butts on and the face the builder cuts are one number, and
+    // main.js measures the cut mesh against it at boot.
+    hubFaceZ: sideBevel.zWebHi,
     // §136/TODO 85: the floor must match the generator that cuts the member, and
     // the member is CONICAL now. minGearTeeth asks whether the cut root CIRCLE
     // clears the bore — a flat-disc question — and rejected these members at 10
