@@ -31773,3 +31773,59 @@ Boot is silent.
 The one thing the report cannot show is the reading it was written to
 cause: that no wrap joint twists past the fit. That is the probe above, which
 exits non-zero if one does.
+
+## §255 — Fast-forward poses the maintaining detent once a frame; the ride's edge lookup is binned
+
+Fast-forward is advertised as "≈5400× — the whole reserve in ~20 s": 45 coarse
+2 s ticks a frame, about 1,200 frames. It had stopped being that. Measured
+by profiling `advanceFrame` over 60 fast-forward frames with the balance
+running, on the same headless Chromium over SwiftShader (JS cost; the GPU is
+not in it):
+
+| tree | median frame |
+|---|---|
+| the commit before TODO 215 | 20.6 ms |
+| TODO 215 landed (and §254 after it) | 316–333 ms |
+| this change | 21.2 ms |
+
+The cost was TODO 215's ride. `updateMaintaining` poses the detent every tick
+from `MAINT_DET_RIDE.liftAt(net)`, `net` being the ring's angle, and the solve
+behind it is up to 56 clearance passes (24 coarse, 32 bisection) over 145 beak
+samples, each sample a `ringSd` query over the ring's 48 cut edges. The solve is
+memoised on the exact double, which is right at 1× (the ring creeps, so most
+ticks repeat) and never hits in fast-forward, where every 2 s tick presents a
+new angle: counted, 45 solves, 2,020 clearance passes and about 293,000 `ringSd`
+calls a frame, 305 ms of the 333. This is not §254's: the tree just before it
+shows the same figure.
+
+**The first change removes work nobody can see.** The beak, the tail and the
+blade are a pure function of the ring's angle — `liftAt` keeps no state and
+`followCam` is a one-sided clamp of constants — they are written only in
+`updateMaintaining` and read nowhere in a tick, and they are drawn after the
+frame. So of a fast-forward frame's 45 ticks only the last needs to pose them
+(`detentPoseDeferred`, set for the first 44 and cleared in a `finally`).
+Nothing else changes: the ticks still run, the ring still turns, and the
+pawls above it are posed every tick as before.
+
+**The second makes the solve itself cheaper, and returns the same double.**
+`ringSd` kept an edge if its midpoint was within 2·`pitchR` of the sample, and
+tested that on all 48 edges with `wrapPi`, a floating-point modulo. It now
+looks up the edges by azimuth bin (96 bins): a bin's list holds every edge
+within 2·`pitchR` plus half a bin of the bin's centre, a superset of what any
+sample in the bin could keep, in E's own order, and `ringSd` applies the
+original test to each, so it visits the same edges in the same order. A sample
+with no bin (a `NaN`) falls back to every edge, which is what it did. A solve
+costs 3.0 ms where it cost 6.4.
+
+Held by comparing the ride's output, not its pose (a sweep of the reserve by
+`setPose` never varies the beak, and a hash of it matched for a reason that
+proved nothing): `liftAt` over 12,002 ring angles — a dense walk over three
+tooth pitches, random angles over six turns, `NaN` and `Infinity` — returns the
+identical double from this tree and from the one before, hash for hash.
+
+**Left, measured.** After this a fast-forward frame is 21 ms, of which the next
+three are `alarmPawlSeatPhi` (5.7 ms: the alarm column pawl's seat solve, a pure
+pose of the same shape, run 45 times a frame), `ringSd` (3.0 ms: the one solve
+that is drawn), `betaAt` (1.9 ms). The first is the same deferral and was left
+alone because the alarm is idle in a plain fast-forward, so nothing exercises
+the claim that its pose is only ever drawn.
