@@ -4101,8 +4101,11 @@
         // is cut from the ring's own polygon, the way main.js cuts it: tip in a
         // valley SEAT_RELIEF off both flanks, the stud on the face's normal
         // through the tip (the hold is a pure strut), an arm concentric with the
-        // ring a margin outside its tips, and a beak dropping radially to the
-        // tip with its far flank parallel to the face.
+        // ring a margin outside its tips, and (TODO 218) a beak that is the
+        // valley's own offset: its stud-side flank parallel to the ramp, its
+        // far flank up the face but RELIEVED off it, so that when winding
+        // swings the face onto the beak the face's far end stands CLEAR_MARGIN
+        // off the flank and the hold bears on the apex, on the stud's line.
         var pivR = SPUR_R + KW + CM + 0.4;
         var RELIEF = 0.005;                                     // SEAT_RELIEF
         var pitch = (Math.PI * 2) / TEETH;
@@ -4136,11 +4139,24 @@
         var tn = T0.x * nF.x + T0.y * nF.y;
         var LEVER = -tn + Math.sqrt(tn * tn - (T0.x * T0.x + T0.y * T0.y) + pivR * pivR);   // the strut, tip to stud
         var phiP = Math.atan2(T0.y + LEVER * nF.y, T0.x + LEVER * nF.x);
-        var Tz = turn(T0, -phiP), uFz = turn(uF, -phiP), seatNet = Math.atan2(Vv.y, Vv.x) - phiP;
+        var Tz = turn(T0, -phiP), uFz = turn(uF, -phiP), uRz = turn(uR, -phiP), seatNet = Math.atan2(Vv.y, Vv.x) - phiP;
         var rIn = RING_R + CM, armW = pivR - rIn, rOut = pivR + armW;
-        function onFace(rho) { var b = Tz.x * uFz.x + Tz.y * uFz.y, c = Tz.x * Tz.x + Tz.y * Tz.y - rho * rho, u = -b + Math.sqrt(b * b - c); return v2(Tz.x + u * uFz.x, Tz.y + u * uFz.y); }
-        var uRad = unit(Tz), sideP = Math.sign(-Math.atan2(Tz.y, Tz.x));
-        var C = onFace(rIn), D = onFace(rOut), B = onFace(pivR), A = v2(uRad.x * pivR, uRad.y * pivR);
+        // The face's relief: swing the face about the ring's axis until it
+        // reaches the apex, then turn the flank in until the face's far end
+        // stands CLEAR_MARGIN off it (main.js's FACE_RELIEF, the same solve).
+        var nFz = turn(nF, -phiP), Vz = turn(Vv, -phiP), FTz = turn(faceTip, -phiP);
+        var backS = Math.sign(-Tz.y * nFz.x + Tz.x * nFz.y);
+        function sdLine(p, a, b) { var u = unit(v2(b.x - a.x, b.y - a.y)); return (p.x - a.x) * u.y - (p.y - a.y) * u.x; }
+        function tipOff(d) { return sdLine(Tz, turn(Vz, backS * d), turn(FTz, backS * d)); }
+        var hLo = 0, hHi = 4 * RELIEF / Math.hypot(Tz.x, Tz.y), s0 = Math.sign(tipOff(0));
+        for (var hi_ = 0; hi_ < 60; hi_++) { var hm = (hLo + hHi) / 2; if (Math.sign(tipOff(hm)) === s0) hLo = hm; else hHi = hm; }
+        var sgnIn = Math.sign(uFz.x * uRz.y - uFz.y * uRz.x);
+        var cH = turn(FTz, backS * hHi), cV = v2(cH.x - Tz.x, cH.y - Tz.y), cL = Math.hypot(cV.x, cV.y);
+        var RELIEF_F = sgnIn * Math.atan2(uFz.x * cV.y - uFz.y * cV.x, uFz.x * cV.x + uFz.y * cV.y) + Math.asin(CM / cL);
+        var uFr = turn(uFz, sgnIn * RELIEF_F);
+        function onFlank(u, rho) { var b = Tz.x * u.x + Tz.y * u.y, c = Tz.x * Tz.x + Tz.y * Tz.y - rho * rho, s = -b + Math.sqrt(b * b - c); return v2(Tz.x + s * u.x, Tz.y + s * u.y); }
+        var sideP = Math.sign(-Math.atan2(Tz.y, Tz.x));
+        var C = onFlank(uFr, rIn), D = onFlank(uFr, rOut), B = onFlank(uFr, pivR), A = onFlank(uRz, pivR);
         var ARM = [C];
         (function () {
           var azC = Math.atan2(C.y, C.x), n = Math.max(4, Math.ceil(Math.abs(azC) / 0.04)), d = -azC / n, rc = rIn / Math.cos(Math.abs(d) / 2), k;

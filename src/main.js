@@ -11184,11 +11184,15 @@ const maintDetent = new THREE.Group();
   //     only ever turns it outward), and the pivot on its centreline, so the
   //     half-width is the band between them, pivR − (MAINT_RING_R + margin).
   //     The boss is the arm's own section, rounded about the stud.
-  //   · THE BEAK — the only metal inside the margin: a wedge dropping
-  //     RADIALLY from the arm to the tip on the pivot's side, and on the far
-  //     side a flank PARALLEL to the face it holds (relief off it at the seat),
-  //     so the hold bears metal on metal along the face the arithmetic prices.
-  //     Its tip is the lowest point and climbs out along the face's line.
+  //   · THE BEAK — the only metal inside the margin: the VALLEY'S OWN OFFSET
+  //     (TODO 218), a wedge whose apex is the tip. On the pivot's side its flank
+  //     runs PARALLEL TO THE RAMP, SEAT_RELIEF off it at the seat; on the far
+  //     side it runs up the face, RELIEVED off it so that the hold bears on the
+  //     APEX and nowhere else (derived below). TODO 215 cut it as a 20.40° wedge
+  //     between a radial flank and a face-parallel one, which carried the hold
+  //     almost square to its axis at 2075.7 MPa against SPRING_SIGMA_Y_PA's 800
+  //     — and whose face-parallel flank, measured, would have taken the hold at
+  //     the face's far end and cammed the click out (the contact block below).
   const pitchR = (Math.PI * 2) / MAINT_TEETH;
   const rIn = MAINT_RING_R + CLEAR_MARGIN;            // the arm's inner edge
   const armW = pivR - rIn;                             // the arm's half-width: the band from the margin to the stud
@@ -11235,15 +11239,69 @@ const maintDetent = new THREE.Group();
   MAINT_DET_SEAT_TIP = Tz; MAINT_DET_PIV_R = pivR;
   const tipAz = Math.atan2(Tz.y, Tz.x);
   const sideP = Math.sign(-tipAz);                     // which way round from the beak the stud lies
-  const uRad = _unit(Tz);
-  const onFace = (rho) => {                            // the face-parallel flank through the tip, at radius rho
-    const b = Tz.x * uFz.x + Tz.y * uFz.y, c = Tz.x * Tz.x + Tz.y * Tz.y - rho * rho;
-    const u = -b + Math.sqrt(b * b - c);
-    return _v2(Tz.x + u * uFz.x, Tz.y + u * uFz.y);
+  const uRz = _rot(uRamp, -phiP);                      // up the ramp, root → crest, cock frame
+  // ---- TODO 218 — THE CONTACT THE HOLD BEARS ON, decided on the cut. ------
+  // When winding back-drives the ring the face swings onto the beak about the
+  // RING'S axis, so it closes on each point of a face-parallel flank at a rate
+  // proportional to that point's distance along the face from the foot of the
+  // axis' perpendicular: at the apex 3.3377 per radian (which is the hold's own
+  // moment arm), at the face's far end — the tooth's tip corner, 0.927 up the
+  // face — 4.2645. With the flank parallel at a uniform SEAT_RELIEF, the far end
+  // touches FIRST, and the reaction there stands 0.927 off the tip–stud line on
+  // the side that turns the click about its stud the way the ride lifts it:
+  // the hold would cam the beak out, against nothing but the blade's ~11 mN and
+  // a friction that needs μ ≥ 0.38 (MU_STEEL, the adverse corner, is 0.2). So
+  // the hold must bear on the APEX, where its line runs through the stud (TODO
+  // 215's strut) and puts no moment on the click. The far flank is therefore
+  // RELIEVED: turned about the apex, into the beak, until the face's far end
+  // stands CLEAR_MARGIN off it at the instant the face reaches the apex — the
+  // one clearance margin, held at the one place a flank-bearing failure would
+  // begin. The relief is solved on the cut, not assumed small.
+  const backS = Math.sign(-Tz.y * _rot(nFace, -phiP).x + Tz.x * _rot(nFace, -phiP).y);   // the ring turn that drives the face onto the tip
+  const faceVz = Vz, faceTz = _rot(cutV.faceTip, -phiP);
+  const sdLine = (p, a, b) => { const u = _unit(_v2(b.x - a.x, b.y - a.y)); return (p.x - a.x) * u.y - (p.y - a.y) * u.x; };
+  const tipOffFace = (d) => sdLine(Tz, _rot(faceVz, backS * d), _rot(faceTz, backS * d));
+  const holdTurn = (() => {                            // the ring turn at which the face reaches the apex
+    const s0 = Math.sign(tipOffFace(0));
+    let lo = 0, hi = 4 * SEAT_RELIEF / Math.hypot(Tz.x, Tz.y);
+    if (Math.sign(tipOffFace(hi)) === s0) console.warn('TODO 218 detent beak: the back-driven face never reaches the apex in the bracket');
+    for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (Math.sign(tipOffFace(m)) === s0) lo = m; else hi = m; }
+    return hi;
+  })();
+  const sgnIn = Math.sign(uFz.x * uRz.y - uFz.y * uRz.x);   // the sense that turns the face's direction into the beak
+  const faceCornerAtHold = _rot(faceTz, backS * holdTurn);
+  const cAt = _v2(faceCornerAtHold.x - Tz.x, faceCornerAtHold.y - Tz.y), cLen = Math.hypot(cAt.x, cAt.y);
+  const cBeta = sgnIn * Math.atan2(uFz.x * cAt.y - uFz.y * cAt.x, uFz.x * cAt.x + uFz.y * cAt.y);   // + : the corner has passed the parallel flank into the beak
+  const FACE_RELIEF = cBeta + Math.asin(CLEAR_MARGIN / cLen);
+  const uFr = _rot(uFz, sgnIn * FACE_RELIEF);           // the far flank, up the face, relieved
+  const onFlank = (u, rho) => {                        // the flank through the tip along u, at radius rho
+    const b = Tz.x * u.x + Tz.y * u.y, c = Tz.x * Tz.x + Tz.y * Tz.y - rho * rho;
+    const s = -b + Math.sqrt(b * b - c);
+    return _v2(Tz.x + s * u.x, Tz.y + s * u.y);
   };
+  // The counterfactual, published with the decision: the parallel flank's
+  // first contact, its offset from the tip–stud line, and the friction that
+  // would have had to hold the click against the moment.
+  const flankBearing = (() => {
+    const P = _v2(pivR, 0), nz = _rot(nFace, -phiP);
+    const off = (faceTz.x - Tz.x) * uFz.x + (faceTz.y - Tz.y) * uFz.y;     // along the face, from the apex
+    const q = _v2(Tz.x + off * uFz.x, Tz.y + off * uFz.y);
+    const moment = (q.x - P.x) * nz.y - (q.y - P.y) * nz.x;               // per unit load, about the stud
+    const fricArm = Math.abs((q.x - P.x) * uFz.y - (q.y - P.y) * uFz.x);
+    const lam = (p) => p.x * uFz.x + p.y * uFz.y;                         // along the face from the axis' foot
+    return { offsetAlongFace_u: off, closeRateTip: Math.abs(lam(Tz)), closeRateCorner: Math.abs(lam(faceTz)),
+      momentPerN_u: moment, muToHold: Math.abs(moment) / fricArm };
+  })();
   const rOut = pivR + armW;
-  const ptC = onFace(rIn), ptD = onFace(rOut), ptB = onFace(pivR);
-  const ptA = _v2(uRad.x * pivR, uRad.y * pivR);       // the radial flank's top, inside the arm
+  const ptC = onFlank(uFr, rIn), ptD = onFlank(uFr, rOut), ptB = onFlank(uFr, pivR);
+  const ptA = onFlank(uRz, pivR);                      // the ramp flank's top, inside the arm
+  if (Math.hypot(ptA.x - pivR, ptA.y) < 0.2 + CLEAR_MARGIN)   // the stud is ⌀0.4 (below)
+    console.warn(`TODO 218 detent beak: the ramp flank tops out ${Math.hypot(ptA.x - pivR, ptA.y).toFixed(4)} from the stud — the beak would cover it`);
+  // The arm's sections are priced from the tip's azimuth (below), which needs
+  // the arm whole there: its beak end, along the relieved flank, must lie on
+  // the far side of the tip from the stud at every radius the arm spans.
+  if (!(sideP * (Math.atan2(ptC.y, ptC.x) - tipAz) < 0 && sideP * (Math.atan2(ptD.y, ptD.x) - tipAz) < 0))
+    console.warn('TODO 218 detent beak: the relieved flank cuts the arm short of the tip\'s azimuth — the arm\'s worst section is no longer whole');
   // THE ARM'S OUTLINE (cock frame). The inner arc is a CIRCUMSCRIBED polygon:
   // each chord is tangent to rIn at its midpoint, so no edge dips inside the
   // margin between vertices (the alarm click's segment-minimum lesson). It runs
@@ -11305,8 +11363,9 @@ const maintDetent = new THREE.Group();
   // While the fusee is wound the maintaining spring's reaction comes back
   // through the ring into the beak along the face's normal, which TODO 215
   // ran through the stud: the click holds it as a STRUT. But the strut is a
-  // CHORD — the metal between tip and stud is the beak dropping radially and
-  // the arm running round the ring a margin outside the tips — so every
+  // CHORD — the metal between tip and stud is the beak (since TODO 218 rising
+  // along the ramp's line) and the arm running round the ring a margin outside
+  // the tips — so every
   // section of the arm carries the load at an offset from that chord, and
   // bends. Published here as geometry (the load is the energy column's, priced
   // in EQUALISATION, which is defined after the fusee): the line of action,
@@ -11320,8 +11379,10 @@ const maintDetent = new THREE.Group();
     const offLine = (q) => Math.abs((q.x - Tz.x) * n.y - (q.y - Tz.y) * n.x);
     // THE ARM. Its sections are radial: inner edge the circumscribed arc's
     // VERTEX radius (the shallowest the polygon cuts it), outer edge rOut, the
-    // stock CLICK_T. Sampled from the beak's radial flank (stud side — beyond
-    // it the beak's metal deepens the section down to the tip) to the stud.
+    // stock CLICK_T. Sampled from the tip's azimuth to the stud, the ARM ALONE:
+    // since TODO 218 the beak's ramp flank runs stud-ward under the arm, so the
+    // sections near the beak carry its metal too, which lies between the arm
+    // and the chord and only deepens them — the arm alone is the upper bound.
     const ri = armInnerVertexR, ro = rOut, Rc = (ri + ro) / 2;
     const N = 400;
     let eMax = 0, azAt = 0;
@@ -11330,20 +11391,31 @@ const maintDetent = new THREE.Group();
       const e = offLine(_v2(Rc * Math.cos(a), Rc * Math.sin(a)));
       if (e > eMax) { eMax = e; azAt = a; }
     }
-    // THE BEAK. A wedge between the radial flank and the face-parallel flank
-    // (uFz runs up the face, out of the valley), its apex the tip the load
-    // arrives at. Its section is taken square to the wedge's bisector at the
-    // DEEPEST station still wholly inside the wedge — where the first flank
-    // reaches the arm's inner edge — which is the beak's KINDEST section: every
-    // station nearer the apex is narrower and, under the same load, worse.
+    // THE BEAK (TODO 218). The wedge between the ramp flank and the relieved
+    // face flank, its apex the tip the load arrives at (the contact block
+    // above: the hold bears on the apex). Its section is taken square to the
+    // wedge's bisector at the DEEPEST station still wholly inside the wedge —
+    // where the first flank reaches the arm's inner edge (both ends then lie
+    // inside that circle, so the whole section does) — which is the beak's
+    // KINDEST section: the load arrives at the apex, so every station nearer
+    // it is narrower and worse, the wedge's stress going as 1/s. The station
+    // where that law reaches yield is published beside it (EQUALISATION).
     const tipR = Math.hypot(Tz.x, Tz.y);
-    const wedge = Math.acos(clamp(uRad.x * uFz.x + uRad.y * uFz.y, -1, 1));
-    const bis = _unit(_v2(uRad.x + uFz.x, uRad.y + uFz.y));
-    const sRoot = Math.cos(wedge / 2) * Math.min(rIn - tipR, Math.hypot(ptC.x - Tz.x, ptC.y - Tz.y));
+    const wedge = Math.acos(clamp(uRz.x * uFr.x + uRz.y * uFr.y, -1, 1));
+    const bis = _unit(_v2(uRz.x + uFr.x, uRz.y + uFr.y));
+    const rampAtIn = onFlank(uRz, rIn);
+    const sRoot = Math.cos(wedge / 2) * Math.min(Math.hypot(rampAtIn.x - Tz.x, rampAtIn.y - Tz.y), Math.hypot(ptC.x - Tz.x, ptC.y - Tz.y));
     const beakRoot = { wedgeRad: wedge, s_u: sRoot, width_u: 2 * sRoot * Math.tan(wedge / 2),
       offset_u: offLine(_v2(Tz.x + sRoot * bis.x, Tz.y + sRoot * bis.y)), t_u: MAINT_DET_CLICK_T };
+    // THE CONTACT, as decided above: the apex, with the face's far end
+    // CLEAR_MARGIN off the relieved flank when the face reaches it — and the
+    // parallel flank's failure, which is why.
+    const contact = { model: 'apex', faceReliefRad: FACE_RELIEF, holdTurnRad: holdTurn,
+      cornerGapAtHold_u: sgnIn * sdLine(faceCornerAtHold, Tz, _v2(Tz.x + uFr.x, Tz.y + uFr.y)),
+      momentAboutStudPerN_u: (Tz.x - P.x) * nFz.y - (Tz.y - P.y) * nFz.x,
+      parallelFlank: flankBearing };
     return {
-      strut_u: strutLen, tipR_u: tipR, rootR_u: MAINT_RING_ROOT, beakRoot,
+      strut_u: strutLen, tipR_u: tipR, rootR_u: MAINT_RING_ROOT, beakRoot, contact,
       // the face's normal and the tip→stud line are one line by construction
       // (TODO 215); a click recut off it would put a moment on the pivot
       lineVsFaceNormal: 1 - Math.abs(n.x * nFz.x + n.y * nFz.y),
@@ -11401,7 +11473,7 @@ const maintDetent = new THREE.Group();
       return rb !== null && r < rb ? -d : d;
     };
     const B = beakPts.map((p) => _v2(p.x - pivR, p.y));   // pivot-local, as cut
-    // The two FLANKS are sampled (tip → radial flank's top, face flank's top →
+    // The two FLANKS are sampled (tip → ramp flank's top, face flank's top →
     // tip); the top runs inside the arm, more than a margin off the tips at
     // every lift, and is still read through the corner test below.
     const samples = [];
@@ -26187,8 +26259,13 @@ const EQUALISATION = (() => {
     //    plus the WHOLE of F as axial load (an upper bound: only its component
     //    along the section's normal is), under SPRING_SIGMA_Y_PA.
     //  · THE BEAK, as a cantilever wedge carrying F at its apex: σ = F/A + 6Fe/tw²
-    //    at its kindest section (MAINT_DET_HOLD_GEOM). Over the one steel's
-    //    yield on today's metal — TODO 218, waived by name in inspect.js.
+    //    at its kindest section (MAINT_DET_HOLD_GEOM). TODO 218 re-cut it as the
+    //    valley's own offset with its face flank relieved, so the hold bears on
+    //    the apex (the record's contact block says why): 56.7° where it was
+    //    20.4°, and under yield where it was 2.6× over. The wedge's stress goes
+    //    as 1/s toward the apex, so the station where it reaches yield is
+    //    published too (yieldStation_u): inside it the apex is a contact
+    //    problem, not a beam's, and that is TODO 221.
     const maintainingHold = (() => {
       const H = MAINT_DET_HOLD_GEOM;
       const torque_Nm = fuseeTorque_Nm;
@@ -26200,6 +26277,12 @@ const EQUALISATION = (() => {
       const armSigma_Pa = armBend_Pa + armAxial_Pa;
       const b = H.beakRoot, bw = b.width_u * OSC_U, bt = b.t_u * OSC_U;
       const beakSigma_Pa = load_N / (bw * bt) + 6 * load_N * b.offset_u * OSC_U / (bt * bw * bw);
+      // Width and offset both grow as s from the apex, so σ(s) = σ(s_root)·s_root/s.
+      const beakYieldStation_u = b.s_u * beakSigma_Pa / SPRING_SIGMA_Y_PA;
+      if (Math.abs(H.contact.momentAboutStudPerN_u) > 1e-9)
+        console.warn(`TODO 218: the hold's apex contact puts ${H.contact.momentAboutStudPerN_u.toExponential(2)} u·N on the click about its stud — the apex has left the stud's line`);
+      if (!(H.contact.cornerGapAtHold_u >= CLEAR_MARGIN * (1 - 1e-9)))
+        console.warn(`TODO 218: when the back-driven face reaches the apex its far end stands ${H.contact.cornerGapAtHold_u.toFixed(4)} off the relieved flank, need ≥ ${CLEAR_MARGIN} — the hold may bear on the flank and cam the click out`);
       if (armSigma_Pa > SPRING_SIGMA_Y_PA)
         console.warn(`TODO 217: the maintaining detent's arm bends at ${(armSigma_Pa / 1e6).toFixed(0)} MPa holding the going torque `
           + `(${(load_N * 1000).toFixed(0)} mN on the face, offset ${a.offsetMax_u.toFixed(4)} u) — over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; size the arm to its load`);
@@ -26215,7 +26298,8 @@ const EQUALISATION = (() => {
           bend_Pa: armBend_Pa, axial_Pa: armAxial_Pa, sigma_Pa: armSigma_Pa,
           straightBend_Pa: 6 * M_Nm / (t * h * h), margin: SPRING_SIGMA_Y_PA / armSigma_Pa },
         beak: { wedgeRad: b.wedgeRad, s_u: b.s_u, width_u: b.width_u, t_u: b.t_u, offset_u: b.offset_u,
-          sigma_Pa: beakSigma_Pa, margin: SPRING_SIGMA_Y_PA / beakSigma_Pa },
+          sigma_Pa: beakSigma_Pa, margin: SPRING_SIGMA_Y_PA / beakSigma_Pa,
+          yieldStation_u: beakYieldStation_u, apexDebt: 'TODO 221', contact: H.contact },
       };
     })();
     const corner = (cname) => {
@@ -26389,7 +26473,7 @@ const EQUALISATION = (() => {
 // that is rigidBentLink's anatomy: a chord with a routing bend, legitimate
 // only while the moment the offset induces is computed and priced. Priced at
 // the arm's worst section from EQUALISATION's hold (the going torque, the
-// upper bound); the beak's own wedge is TODO 218. No window: the load is the
+// upper bound); the beak's own wedge (TODO 218) rides along as a quantity. No window: the load is the
 // going train's torque, not a detent's, and no declared envelope bounds it.
 {
   const H = EQUALISATION.going.energy.maintainingHold;
@@ -26408,7 +26492,7 @@ const EQUALISATION = (() => {
     why: `the maintaining spring's reaction, ${F_mN.toFixed(0)} mN on the ring's face at r ${H.tipR_u.toFixed(4)} (the going torque ${(H.spring.torqueRun_Nm * 1000).toFixed(3)} N·mm over a ${H.momentArm_u.toFixed(4)} u arm), `
       + `runs the tip–stud chord (${H.strut_u.toFixed(4)} u) while the click's metal runs round the ring: the arm's worst section stands ${H.arm.offset_u.toFixed(4)} u off the chord and carries `
       + `${(H.arm.sigma_Pa / 1e6).toFixed(0)} MPa (Winkler bending ${(H.arm.bend_Pa / 1e6).toFixed(0)} + the whole load axial ${(H.arm.axial_Pa / 1e6).toFixed(0)}), ×${H.arm.margin.toFixed(2)} under the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield; `
-      + `the beak's wedge is ${(H.beak.sigma_Pa / 1e6).toFixed(0)} MPa at its kindest section, over it — TODO 218`,
+      + `the beak (TODO 218: the valley's offset, its face flank relieved so the hold bears on the apex, on the stud's line) is a ${(H.beak.wedgeRad / DEG2RAD).toFixed(1)}° wedge at ${(H.beak.sigma_Pa / 1e6).toFixed(0)} MPa at its kindest section, ×${H.beak.margin.toFixed(2)} under it`,
   });
 }
 

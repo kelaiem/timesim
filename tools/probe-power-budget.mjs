@@ -186,7 +186,7 @@ const strength = (() => {
   return rows;
 })();
 
-// THE MAINTAINING DETENT'S HOLD (TODO 217). The maintaining spring is a
+// THE MAINTAINING DETENT'S HOLD (TODO 217; the beak re-cut by TODO 218). The maintaining spring is a
 // series member of the drive, so while the watch runs it carries the going
 // torque, and at the first instant of a wind the detent holds exactly that:
 // THIS probe's level torque, over the face normal's moment arm about the ring.
@@ -203,7 +203,11 @@ const hold = holdRec && (() => {
   const arm = M * (rn - ri) / (A * ((ri + ro) / 2 - rn) * ri) + F / A;
   const b = holdRec.beak, bw = b.width_u * U, bt = b.t_u * U;
   const beak = F / (bw * bt) + 6 * F * b.offset_u * U / (bt * bw * bw);
-  return { load_N: F, armSigma_Pa: arm, beakSigma_Pa: beak, armStraight_Pa: 6 * M / (a.t_u * U * h * h) + F / A };
+  // TODO 218 — the wedge's width and offset both grow as s from the apex the
+  // load arrives at, so σ(s) = σ(s_root)·s_root/s: the station where it
+  // reaches the steel's yield, inside which the apex is a contact (TODO 221).
+  const yieldStation = b.s_u * beak / L.SPRING_SIGMA_Y_PA;
+  return { load_N: F, armSigma_Pa: arm, beakSigma_Pa: beak, beakYieldStation_u: yieldStation, armStraight_Pa: 6 * M / (a.t_u * U * h * h) + F / A };
 })();
 
 // ---- THE CHAIN OF LOSSES, per corner ----
@@ -317,7 +321,9 @@ if (hold) {
   console.log(`\n--- the maintaining detent's hold (TODO 217): the going torque on the ring's face, against SPRING_SIGMA_Y_PA ${f(L.SPRING_SIGMA_Y_PA / 1e6, 0)} MPa ---`);
   console.log(`  face load ${f(hold.load_N * 1000, 1)} mN = ${f(tauFusee * 1e3, 4)} N·mm over a ${f(holdRec.momentArm_u, 4)} u arm (tip r ${f(holdRec.tipR_u, 4)}, root ${f(holdRec.rootR_u, 4)})`);
   console.log(`  arm   σ ${f(hold.armSigma_Pa / 1e6, 1)} MPa at ${f(holdRec.arm.offset_u, 4)} u off the tip–stud chord (straight-bar reading ${f(hold.armStraight_Pa / 1e6, 1)}), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.armSigma_Pa, 3)}`);
-  console.log(`  beak  σ ${f(hold.beakSigma_Pa / 1e6, 1)} MPa at its kindest section (a ${f(holdRec.beak.wedgeRad * 180 / Math.PI, 2)}° wedge, ${f(holdRec.beak.width_u, 4)} u wide), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.beakSigma_Pa, 3)}`);
+  console.log(`  beak  σ ${f(hold.beakSigma_Pa / 1e6, 1)} MPa at its kindest section (a ${f(holdRec.beak.wedgeRad * 180 / Math.PI, 2)}° wedge, ${f(holdRec.beak.width_u, 4)} u wide), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.beakSigma_Pa, 3)}; the 1/s law reaches yield ${f(hold.beakYieldStation_u, 4)} u from the apex`);
+  const ct = holdRec.beak.contact;
+  if (ct) console.log(`  contact: ${ct.model} (TODO 218) — face flank relieved ${f(ct.faceReliefRad * 180 / Math.PI, 2)}°, its far end ${f(ct.cornerGapAtHold_u, 4)} u off when the face reaches the apex; a parallel flank would bear ${f(ct.parallelFlank.offsetAlongFace_u, 4)} u up the face and need μ ≥ ${f(ct.parallelFlank.muToHold, 3)} against the cam-out`);
 }
 // ---- THE ASSERT: the record's energy column against this computation -------
 // Same constants, two readers — the record by name inside main.js, this by
@@ -382,11 +388,12 @@ if (!REC || !REC.corners) {
     same('maintaining hold: face load', hold.load_N, holdRec.load_N);
     same('maintaining hold: arm σ', hold.armSigma_Pa, holdRec.arm.sigma_Pa);
     same('maintaining hold: beak σ', hold.beakSigma_Pa, holdRec.beak.sigma_Pa);
+    same('maintaining hold: beak yield station', hold.beakYieldStation_u, holdRec.beak.yieldStation_u);
   }
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 3} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way, and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 4} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way, and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);
