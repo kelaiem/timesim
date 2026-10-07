@@ -31195,7 +31195,7 @@ zh-Hant, as §236 decided.
 | `glossary-links`, `explain-quotes`, `probe-249-dotted-i` | PASS |
 | `index-instruments --check`, `check-item-numbers` | OK (267 instruments, 157 acceptance) |
 | fingerprint | **413380779** in English and at `?lang=de`, identical to `origin/main` measured beside it |
-| battery | (running locally; the line is filled in when it finishes) |
+| battery | **53/53 gates pass**, locally on the dev container (3 shards, 4090 s wall, 5110 s of checks); fingerprint **413380779** across virgin boots A and B and under the share payload; six swept spec points CLEAN. CI's battery on the self-hosted runner (Linux/ARM64) passed on the merged head |
 
 ### Residue, recorded
 
