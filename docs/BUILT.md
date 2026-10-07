@@ -31098,6 +31098,122 @@ chosen against the bar.
   landings in English. That is §73's rule working, and it is still owed.
 - **`index.html`'s `<title>`** is still not localized in any locale.
 
+### The wave's review — gaps between merges, and the chrome measured at last
+
+After Welsh the owner asked for a review of the whole localization: had
+anything been missed, or left open between merges? It found two kinds of
+gap. The first kind was opened by merges that landed between locale
+landings and that no landing went back to. The second had always been there,
+in places no landing could see.
+
+**Opened between merges:**
+- **TODO 189 (`864e0e6`, 2026-10-02)** rewrote the alarm feeler and arming
+  prose: eight explainer blocks and two primer blocks. It deleted the old
+  entries from the fourteen tables that existed then, "by design", and
+  nothing re-translated them.
+  - Vietnamese and Dutch were among the fourteen. Each had shipped at 100% a
+    day earlier and had read 754/762 and 143/145 ever since.
+  - The later landings recorded this as "the fourteen older tables", which
+    hid that two of the fourteen belonged to this wave.
+- **§253 re-translated the gong entry**, and in Hebrew it set an arrow
+  between two numbers: «(32.9 → 39.3 mg)». UAX #9 lays that out backwards,
+  the case Hebrew's landing wrote down. `probe-249-arrows` is not in a
+  workflow, so nothing ran it. The arrow is «←» now, and Hebrew measures 0
+  backwards of 64.
+
+**Never visible to a landing:**
+- **Ten chrome strings were in no table at all**, so they read English in
+  every locale:
+  - four 3D part labels: Alarm click, Alarm lifting lever, Alarm winding
+    arrest, Winding clutch
+  - the Case lines row of the keyboard help
+  - the route panel's two tooltips
+  - Version
+  - two re-worded strings whose old keys every table still held: the
+    reconfigure hint (it was «Thirteen rings…») and the canvas's
+    screen-reader label (it named one panel; there are two now)
+
+  A locale landing builds its key list from an existing table, so a string
+  no table has cannot appear in any landing's work.
+- **The State section was never localized.** It is built about 8,000 lines
+  after the panel's one `localizeTree` pass, so «State / Save / Load / Clear»
+  read English in all nineteen locales, though every table translated them.
+  `main.js` walks it where it is built now.
+- **Seven older tables had holes of their own** (es, ko, ru, pt, it, hi, ar):
+  the lifting lever's three faces, and four of them the sapphire
+  transmittance slider.
+- **Simplified Chinese's primer lacked seven blocks**: the hand-setting and
+  hacking pair, the four gong paragraphs, and the honesty section.
+
+### The instrument
+
+`tools/probe-chrome-coverage.mjs` measures the screen, not the table.
+- It boots `index.html` in English, then in each locale, and collects every
+  text node and readable attribute.
+- A string that reads identically in both is classified against that
+  locale's own table:
+  - **COGNATE** — the table maps it to itself (Welsh «Camera»)
+  - **NEVER** — declared, with the reason: aesthetics key paths, the product
+    name, a key's name, a number and its unit
+  - **MISSING** — fails
+  - **NOT APPLIED** — the table translates it and the screen still says
+    English; fails
+- §72's appended shortcut hint («Menu (H)») and the advanced rows' reload
+  mark are stripped first, so the key is what gets judged.
+- **The control comes first.** German is booted with its 'Time' entry deleted
+  in flight, and it must read MISSING.
+- Its first run found everything listed above under the chrome, and nothing
+  else.
+
+**It is not in a workflow**, for the reason `explain-i18n.yml` gives for page
+coverage: a hard 100% gate pushes a contributor toward machine filler. It is
+an acceptance test to run at every locale landing, and after any change that
+adds UI text. CLAUDE.md now says so beside the chrome's rules.
+
+### The tables
+
+Each re-worded block was translated against that locale's OWN
+pre-TODO-189 wording, read from `864e0e6^`. A sentence the English kept
+keeps its old translation word for word, and only what changed is new.
+- Seven translators covered nineteen locales.
+- One validator served every locale. It reads `MARKS` and `HONESTY` from
+  `tools/explain-i18n.mjs` itself, so it cannot disagree with the gate.
+- Three re-worded labels overran their plates (pt, it, nl) and were set
+  shorter.
+
+The fifteen hidden `.gloss-variants` rows stay English in ja, ko, zh and
+zh-Hant, as §236 decided.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **762/762** in fifteen locales, **747/762** in ja, ko, zh and zh-Hant (the fifteen variant rows, by §236's decision); primer **145/145** in all nineteen; 0 unmatched, 0 markup / `<code>` / number drift, 0 crossed honesty terms, 0 new plate overflow; honesty **19/19** rows verified — PASS (was 754/762 and 143/145 in fourteen locales, 136/145 in zh) |
+| `probe-chrome-coverage` | control PASS; **0 missing, 0 not applied in all nineteen locales** (first run: the ten strings MISSING and the State section NOT APPLIED in every locale, plus each older table's own holes) |
+| `probe-249-arrows --locales he,fa,ar` | controls PASS; he **0** backwards of 64 (was 1), fa 0; ar 39, still `OWED` |
+| boot | console-silent in all twenty locales; the State section's summary reads «Zustand», «Cyflwr», «状態» … |
+| `glossary-links`, `explain-quotes`, `probe-249-dotted-i` | PASS |
+| `index-instruments --check`, `check-item-numbers` | OK (267 instruments, 157 acceptance) |
+| fingerprint | **413380779** in English and at `?lang=de`, identical to `origin/main` measured beside it |
+| battery | **53/53 gates pass**, locally on the dev container (3 shards, 4090 s wall, 5110 s of checks); fingerprint **413380779** across virgin boots A and B and under the share payload; six swept spec points CLEAN. CI's battery on the self-hosted runner (Linux/ARM64) passed on the merged head |
+
+### Residue, recorded
+
+- **The explainer's English says "three acts" and lists four.** TODO 190
+  added the fourth act to the alarm-arming ledger, and the sentence before it
+  was not updated. That is a fix to the English, and it re-keys the block in
+  all nineteen tables, so it is left for its own change.
+- **zh-Hant writes "winding" two ways**, 上鍊 and 上鏈, in its existing table.
+  The new strings follow the nearest neighbour of each. Unifying them is a
+  review of that table.
+- **Arabic's honesty stem `/حاك/` also matches حاكم ("governor").** A
+  translator avoided the word this time. A sentence that says "modelled",
+  drops the honesty word and names the governor would read CROSSED.
+- **No native review**, as for every locale. The new part labels are the
+  terms most likely to differ from a workshop's: a barrel's click, the
+  sliding clutch, and the lifting lever's faces.
+- **Arabic's 39 backward arrows** are still owed to an Arabic landing.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising

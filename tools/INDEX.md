@@ -4,7 +4,7 @@
 
 # The instruments
 
-266 scripts. **156 are ACCEPTANCE tests** — they decide and exit non-zero.
+267 scripts. **157 are ACCEPTANCE tests** — they decide and exit non-zero.
 **110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -234,6 +234,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-case-closed.mjs` |  | report | IS EVERY CASE BODY A SOLID? Boundary edges per mesh — 0 on a closed one, and the locations printed when it is not. |
 | `probe-case-relief.mjs` |  | acceptance | DOES ANYTHING STAND IN THE BAND'S METAL — AT ANY POSE THE MOVEMENT REACHES? Acceptance, and since §186 it rides the battery workflow (TODO 111 option 1: this is the gate that holds the ANALYTIC sectors honest over the net). The band's openings (the two crown bores, the pusher bore) are a DERIVATION now — CASE_SECTORS cuts them from the three declared, pose-invariant bore lines and nothing else, on the claim that the §186 case has no metal inboard of CASE_R_IN at any pose. Boot holds that claim at ONE pose (the rule-5 reach assert and the build-pose tripwire beside the sectors); this holds it over the POSE NET: every axis at f ∈ {0, 0.5, 1}, entered canonically (inspect.js's own enterAxis, so an axis cannot inherit the tail of the one before it), plus the pose the page boots in. Any contact is a failure, named on both sides. |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
+| `probe-chrome-coverage.mjs` |  | acceptance | §249 (the wave's review) — DOES ANY CHROME STRING STILL READ IN ENGLISH, as rendered? |
 | `probe-coaxial-sense.mjs` |  | acceptance | TODO 115 — DO THE PARTS THAT SHARE A SHAFT TURN THE SAME WAY? |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |

@@ -43918,6 +43918,13 @@ stateSection.innerHTML = `
   </div>
 `;
 document.getElementById('clock-ui').appendChild(stateSection);
+// This section is built ~8,000 lines after the panel's one localizeTree pass
+// (§73), so it is walked here: until §249's review its "State / Save / Load /
+// Clear" read English in every locale while all nineteen tables translated
+// them — the save handlers' t('Saved!') / t('Save') were the only words in it
+// that ever changed. tools/probe-chrome-coverage.mjs reads it NOT APPLIED if
+// this line goes.
+localizeTree(stateSection);
 
 const saveStateBtn = document.getElementById('btn-save-state');
 const loadStateBtn = document.getElementById('btn-load-state');
