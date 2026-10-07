@@ -421,7 +421,6 @@ const DE = {
   'Reassemble': 'Zusammensetzen', 'Reconfigure': 'Umkonfigurieren',
   'Drag the crown to a new azimuth': 'Krone auf einen neuen Azimut ziehen',
   // §93 — the handle rings and what each one moves.
-  'Thirteen rings — each one is a handle': 'Dreizehn Ringe — jeder davon ist ein Griff',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Einen umringten Griff ziehen — eine der beiden Kronen, den Drücker, die Schnecke, das Sekundenrad, das Reserverad, die Weckerecke, das Weckerfederhaus, den Weckerregler samt Anker, den Hilfszifferblatt-Ring, das Ankerrad oder die Unruh',
   'Winding crown — drag it round the rim to move the stem': 'Aufzugskrone — am Rand entlang ziehen, um die Welle zu versetzen',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Weckerkrone — am Rand entlang ziehen, um die Weckerecke zu versetzen',
@@ -535,7 +534,6 @@ const DE = {
   'Shortcuts pause while a slider or menu has focus. Esc closes.': 'Kürzel pausieren, solange ein Regler oder Menü den Fokus hat. Esc schließt. ? ist auf deutscher Tastatur Umschalt+ß.',
   'Exploded': 'Explodiert', 'Reassembled': 'Zusammengesetzt',
   'Focus': 'Fokus', 'X-ray': 'Röntgen',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': '3D-Ansicht des Uhrwerks. Alle Bedienelemente sind im Watch-Sim-Panel; Tastaturkürzel stehen unter der Taste ?.',
   // -- life size captions (numbers arrive via fmtNum)
   'LIFE SIZE — the plate is': 'LEBENSGRÖSSE — die Platine misst',
   'mm across, and that is how big it is on your screen.': 'mm, und genau so groß ist sie auf Ihrem Bildschirm.',
@@ -551,6 +549,19 @@ const DE = {
   'Every part is cut from code — nothing is loaded from a file.': 'Jedes Teil wird aus Code geschnitten — nichts wird aus einer Datei geladen.',
   'The movement did not build': 'Das Werk ließ sich nicht bauen',
   'The browser console has the error.': 'Die Browser-Konsole nennt den Fehler.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': '3D-Ansicht des Uhrwerks. Alle Bedienelemente sind im Watch-Sim- und im Ansichtspanel, erreichbar über die Schalter oben rechts; Tastaturkürzel stehen unter der Taste ?.',
+  'Alarm click': 'Weckerklinke',
+  'Alarm lifting lever': 'Wecker-Hebehebel',
+  'Alarm winding arrest': 'Weckeraufzugssperre',
+  'Winding clutch': 'Aufzugskupplung',
+  'Case lines': 'Gehäuselinien',
+  'Seven parts wear a ring — each one is a handle': 'Sieben Teile tragen einen Ring — jeder davon ist ein Griff',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Ein bestehendes Gestänge neu führen? Sein eigenes Schleppvolumen darf den neuen Weg nicht blockieren.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Diese Route als echte Teile schneiden und neu laden. Rückgängig mit der Zurück-Taste des Browsers.',
+  'Version': 'Version',
 };
 
 // Unit + group display names (German), keyed by the canonical MECH_GRAPH
@@ -776,7 +787,6 @@ const ZH = {
   'Reassemble': '复位', 'Reconfigure': '重新布局',
   'Drag the crown to a new azimuth': '将表冠拖到新的方位角',
   // §93 — the handle rings and what each one moves.
-  'Thirteen rings — each one is a handle': '十三个圆环 — 每个都是可拖动的手柄',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': '拖动带圆环的手柄 — 两个表冠、按钮、宝塔轮、四轮、储能轮、闹铃转角、闹铃发条盒、闹铃调速器及其擒纵叉、小表盘圆环、擒纵轮或摆轮',
   'Winding crown — drag it round the rim to move the stem': '上条表冠 — 沿表壳边缘拖动以移动柄轴',
   'Alarm crown — drag it round the rim to move the alarm corner': '闹铃表冠 — 沿表壳边缘拖动以移动闹铃组',
@@ -874,7 +884,6 @@ const ZH = {
   'Shortcuts pause while a slider or menu has focus. Esc closes.': '滑块或菜单获得焦点时快捷键暂停。Esc 关闭。',
   'Exploded': '已爆炸', 'Reassembled': '已复位',
   'Focus': '聚焦', 'X-ray': '透视',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': '机芯 3D 视图。所有控件都在 Watch Sim 面板中；按 ? 键查看键盘快捷键。',
   'LIFE SIZE — the plate is': '实物大小 — 夹板直径为',
   'mm across, and that is how big it is on your screen.': '毫米，屏幕上显示的正是这个尺寸。',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': '拿尺子贴在屏幕上量量看。是的，它就是这么小：这正是答案。',
@@ -889,6 +898,19 @@ const ZH = {
   'Every part is cut from code — nothing is loaded from a file.': '每个零件都由代码切削而成，没有任何东西从文件加载。',
   'The movement did not build': '机芯构建失败',
   'The browser console has the error.': '错误信息在浏览器控制台中。',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': '机芯 3D 视图。所有控件都在 Watch Sim 面板和显示面板中，可通过右上角的开关打开；按 ? 键查看键盘快捷键。',
+  'Alarm click': '闹铃棘爪',
+  'Alarm lifting lever': '闹铃抬起杠杆',
+  'Alarm winding arrest': '闹铃上链止动',
+  'Winding clutch': '上弦离合',
+  'Case lines': '表壳线条',
+  'Seven parts wear a ring — each one is a handle': '七个零件带有圆环 — 每个都是可拖动的手柄',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': '要为已有的联动杆重新走线？它自身的扫掠体积不得阻挡新路径。',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': '把这条走线切成真实零件并重新加载。用浏览器的后退按钮撤销。',
+  'Version': '版本',
 };
 
 Object.assign(ZH, {
@@ -1148,7 +1170,6 @@ const FR = {
   ['Reassemble']: 'Réassembler',
   ['Reconfigure']: 'Reconfigurer',
   ['Drag the crown to a new azimuth']: 'Glissez la couronne vers un nouvel azimut',
-  ['Thirteen rings — each one is a handle']: 'Treize anneaux — chacun est une poignée',
   ['Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance']: 'Glissez une poignée annelée — l’une des couronnes, le poussoir, la fusée, la roue de seconde, la roue de réserve, l’angle du réveil, le barillet du réveil, le régulateur du réveil et son ancre, l’anneau de compteur, la roue d’échappement ou le balancier',
   ['Winding crown — drag it round the rim to move the stem']: 'Couronne de remontage — glissez-la le long du bord pour déplacer la tige',
   ['Alarm crown — drag it round the rim to move the alarm corner']: 'Couronne de réveil — glissez-la le long du bord pour déplacer l’angle du réveil',
@@ -1296,7 +1317,6 @@ const FR = {
   ['Reassembled']: 'Réassemblée',
   ['Focus']: 'Focus',
   ['X-ray']: 'Radiographie',
-  ['3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.']: 'Vue 3D du mouvement de montre. Toutes les commandes se trouvent dans le panneau Watch Sim ; les raccourcis clavier sont listés sous la touche ?.',
   ['LIFE SIZE — the plate is']: 'TAILLE RÉELLE — la platine fait',
   ['mm across, and that is how big it is on your screen.']: 'mm de diamètre, et c’est exactement sa taille sur votre écran.',
   ['Hold a ruler to the glass. Yes, it is small: that is the answer.']: 'Posez une règle sur l’écran. Oui, c’est petit : c’est la réponse.',
@@ -1525,6 +1545,19 @@ const FR = {
   ['Every part is cut from code — nothing is loaded from a file.']: 'Chaque pièce est taillée par le code — rien n’est chargé depuis un fichier.',
   ['The movement did not build']: 'Le mouvement n’a pas pu être construit',
   ['The browser console has the error.']: 'La console du navigateur indique l’erreur.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Vue 3D du mouvement de montre. Toutes les commandes se trouvent dans les panneaux Watch Sim et Vue, accessibles par les boutons en haut à droite ; les raccourcis clavier sont listés sous la touche ?.',
+  'Alarm click': 'Cliquet du réveil',
+  'Alarm lifting lever': 'Levier de levée du réveil',
+  'Alarm winding arrest': 'Arrêtage du remontage du réveil',
+  'Winding clutch': 'Embrayage du remontoir',
+  'Case lines': 'Lignes du boîtier',
+  'Seven parts wear a ring — each one is a handle': 'Sept pièces portent un anneau — chacun est une poignée',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Retracer une liaison existante ? Son propre volume balayé ne doit pas bloquer le nouveau tracé.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Tailler ce tracé en pièces réelles et recharger. Annuler avec le bouton Précédent du navigateur.',
+  'Version': 'Version',
 };
 
 // ---------------------------------------------------------------------------
@@ -1648,7 +1681,6 @@ const JA = {
   ['Reassemble']: '組み戻す',
   ['Reconfigure']: '再配置',
   ['Drag the crown to a new azimuth']: 'りゅうずをドラッグして方位を変更',
-  ['Thirteen rings — each one is a handle']: '十三のリング — どれも取っ手です',
   ['Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance']: 'リング付きの取っ手をドラッグ — いずれかのりゅうず、プッシャー、フュジー、四番車、リザーブ車、アラーム隅、アラーム香箱、アラーム調速機とそのアンクル、スモールダイヤル環、がんぎ車、テンプ',
   ['Winding crown — drag it round the rim to move the stem']: '巻上げりゅうず — 縁に沿ってドラッグして巻真を移動',
   ['Alarm crown — drag it round the rim to move the alarm corner']: 'アラームりゅうず — 縁に沿ってドラッグしてアラーム隅を移動',
@@ -1796,7 +1828,6 @@ const JA = {
   ['Reassembled']: '組み戻し',
   ['Focus']: 'フォーカス',
   ['X-ray']: '透視',
-  ['3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.']: '時計ムーブメントの 3D ビュー。操作はすべて Watch Sim パネルにあり、キーボードショートカットは ? キーの下に一覧されています。',
   ['LIFE SIZE — the plate is']: '実物大 — 受けの直径は',
   ['mm across, and that is how big it is on your screen.']: 'mm。画面上でもこの大きさです。',
   ['Hold a ruler to the glass. Yes, it is small: that is the answer.']: '画面に定規を当ててみてください。ええ、小さいのです。それが答えです。',
@@ -2025,6 +2056,19 @@ const JA = {
   ['Every part is cut from code — nothing is loaded from a file.']: 'すべての部品はコードから削り出されます。ファイルから読み込むものはありません。',
   ['The movement did not build']: 'ムーブメントを組み立てられませんでした',
   ['The browser console has the error.']: 'エラーはブラウザーのコンソールにあります。',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': '時計ムーブメントの 3D ビュー。操作はすべて Watch Sim パネルと表示パネルにあり、右上隅のトグルから開けます。キーボードショートカットは ? キーの下に一覧されています。',
+  'Alarm click': 'アラームこはぜ',
+  'Alarm lifting lever': 'アラーム持ち上げレバー',
+  'Alarm winding arrest': 'アラーム巻止め',
+  'Winding clutch': 'つづみ車',
+  'Case lines': 'ケースの輪郭線',
+  'Seven parts wear a ring — each one is a handle': 'リング付きの部品は七つ — どれも取っ手です',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': '既存のリンク機構の経路を変えますか？ その機構自身の掃引が新しい経路を塞いではいけません。',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'この経路を実際の部品として切り出し、再読込します。ブラウザーの戻るボタンで元に戻せます。',
+  'Version': 'バージョン',
 };
 
 // ---------------------------------------------------------------------------
@@ -2147,7 +2191,6 @@ const ZH_HANT = {
   ['Reassemble']: '組回',
   ['Reconfigure']: '重新配置',
   ['Drag the crown to a new azimuth']: '把錶冠拖到新的方位',
-  ['Thirteen rings — each one is a handle']: '十三個環 — 每一個都是把手',
   ['Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance']: '拖曳一個帶環的把手 — 任一錶冠、按把、寶塔輪、秒輪、儲存輪、鬧鈴轉角、鬧鈴發條盒、鬧鈴調速器及其擒縱叉、小錶盤環、擒縱輪或擺輪',
   ['Winding crown — drag it round the rim to move the stem']: '上鏈錶冠 — 沿著邊緣拖曳以移動柄軸',
   ['Alarm crown — drag it round the rim to move the alarm corner']: '鬧鈴錶冠 — 沿著邊緣拖曳以移動鬧鈴角',
@@ -2295,7 +2338,6 @@ const ZH_HANT = {
   ['Reassembled']: '已組回',
   ['Focus']: '聚焦',
   ['X-ray']: '透視',
-  ['3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.']: '手錶機芯的 3D 檢視。所有控制項都在 Watch Sim 面板中；鍵盤快速鍵列在 ? 鍵底下。',
   ['LIFE SIZE — the plate is']: '實際大小 — 夾板直徑為',
   ['mm across, and that is how big it is on your screen.']: 'mm，而這就是它在你螢幕上的真實大小。',
   ['Hold a ruler to the glass. Yes, it is small: that is the answer.']: '拿把尺貼到螢幕上量量看。是的，它很小：這就是答案。',
@@ -2524,6 +2566,19 @@ const ZH_HANT = {
   ['Every part is cut from code — nothing is loaded from a file.']: '每個零件都由程式碼切削而成，沒有任何東西從檔案載入。',
   ['The movement did not build']: '機芯建構失敗',
   ['The browser console has the error.']: '錯誤訊息在瀏覽器主控台中。',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': '手錶機芯的 3D 檢視。所有控制項都在 Watch Sim 面板與視圖面板中，可從右上角的切換鈕開啟；鍵盤快速鍵列在 ? 鍵底下。',
+  'Alarm click': '鬧鈴棘爪',
+  'Alarm lifting lever': '鬧鈴抬起槓桿',
+  'Alarm winding arrest': '鬧鈴上鏈止動',
+  'Winding clutch': '上鍊離合器',
+  'Case lines': '錶殼線條',
+  'Seven parts wear a ring — each one is a handle': '七個零件帶著環 — 每一個都是把手',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': '要重新規劃既有連桿的路徑？它自己的掃掠體積不得擋住新路徑。',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': '把這條路徑切成真實零件並重新載入。用瀏覽器的上一頁按鈕復原。',
+  'Version': '版本',
 };
 
 // ---------------------------------------------------------------------------
@@ -2659,7 +2714,6 @@ const AR = {
   'Reassemble': 'إعادة التجميع',
   'Reconfigure': 'إعادة التهيئة',
   'Drag the crown to a new azimuth': 'اسحب التاج إلى سمت جديد',
-  'Thirteen rings — each one is a handle': 'ثلاث عشرة حلقة — كل واحدة منها مقبض',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'اسحب مقبضاً محلَّقاً — أيّاً من التاجين، أو الضاغط، أو الفيوزي، أو العجلة الرابعة، أو عجلة الاحتياطي، أو ركن المنبه، أو برميل المنبه، أو حاكم المنبه ومرساته، أو حلقة الميناء الفرعي، أو عجلة الميزان، أو عجلة التوازن',
   'Winding crown — drag it round the rim to move the stem': 'تاج التعبئة — اسحبه حول الحافة لتحريك الساق',
   'Alarm crown — drag it round the rim to move the alarm corner': 'تاج المنبه — اسحبه حول الحافة لتحريك ركن المنبه',
@@ -2806,7 +2860,6 @@ const AR = {
   'Reassembled': 'مُعاد التجميع',
   'Focus': 'التركيز',
   'X-ray': 'الأشعة السينية',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'عرض 3D لحركة الساعة. جميع عناصر التحكم في لوحة Watch Sim؛ واختصارات لوحة المفاتيح مدرجة تحت المفتاح ?.',
   'LIFE SIZE — the plate is': 'الحجم الطبيعي — عرض الصفيحة',
   'mm across, and that is how big it is on your screen.': 'مم، وهذا هو حجمها الفعلي على شاشتك.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'ضع مسطرة على الزجاج. نعم، إنها صغيرة: هذا هو الجواب.',
@@ -3022,6 +3075,22 @@ const AR = {
   'Every part is cut from code — nothing is loaded from a file.': 'كل قطعة تُقطع من الشيفرة — لا شيء يُحمَّل من ملف.',
   'The movement did not build': 'تعذّر بناء الحركة',
   'The browser console has the error.': 'وحدة تحكّم المتصفّح تعرض الخطأ.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'عرض 3D لحركة الساعة. جميع عناصر التحكم في لوحتي Watch Sim والعرض، اللتين تُفتحان من مفاتيح التبديل في الزاوية العلوية اليمنى؛ واختصارات لوحة المفاتيح مدرجة تحت المفتاح ?.',
+  'Alarm click': 'سقاطة المنبه',
+  'Alarm lifting lever': 'ذراع رفع المنبه',
+  'Alarm winding arrest': 'حاجز تعبئة المنبه',
+  'Winding clutch': 'قابض التعبئة',
+  'Case lines': 'خطوط العلبة',
+  'Seven parts wear a ring — each one is a handle': 'سبعة أجزاء تحمل حلقات — كل حلقة منها مقبض',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'هل تعيد توجيه وصلة موجودة؟ يجب ألا يحجب مسحُها الخاص المسارَ الجديد.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'اقطع هذا المسار أجزاءً حقيقية وأعد التحميل. للتراجع استخدم زر الرجوع في المتصفح.',
+  'Version': 'الإصدار',
+  'Lifting lever nose': 'أنف ذراع الرفع',
+  'Lifting lever tip': 'طرف ذراع الرفع',
+  'Lifting lever post': 'قائم ذراع الرفع',
 };
 
 // ---------------------------------------------------------------------------
@@ -3148,7 +3217,6 @@ const ES = {
   'Reassemble': 'Reensamblar',
   'Reconfigure': 'Reconfigurar',
   'Drag the crown to a new azimuth': 'Arrastra la corona a un nuevo acimut',
-  'Thirteen rings — each one is a handle': 'Trece anillos — cada uno es un asa',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Arrastra un asa anillada — cualquiera de las dos coronas, el pulsador, el caracol, la cuarta rueda, la rueda de reserva, la esquina del despertador, el barrilete del despertador, el regulador del despertador y su áncora, el anillo de la subesfera, la rueda de escape o el volante',
   'Winding crown — drag it round the rim to move the stem': 'Corona de cuerda — arrástrala por el borde para mover la tija',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Corona del despertador — arrástrala por el borde para mover la esquina del despertador',
@@ -3295,7 +3363,6 @@ const ES = {
   'Reassembled': 'Reensamblado',
   'Focus': 'Enfoque',
   'X-ray': 'Rayos X',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'Vista 3D del movimiento del reloj. Todos los controles están en el panel Watch Sim; los atajos de teclado se listan bajo la tecla ?.',
   'LIFE SIZE — the plate is': 'TAMAÑO REAL — la platina mide',
   'mm across, and that is how big it is on your screen.': 'mm de diámetro, y así de grande es en tu pantalla.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Acerca una regla al cristal. Sí, es pequeño: esa es la respuesta.',
@@ -3511,6 +3578,22 @@ const ES = {
   'Every part is cut from code — nothing is loaded from a file.': 'Cada pieza se talla desde el código — no se carga nada de un archivo.',
   'The movement did not build': 'El movimiento no se pudo construir',
   'The browser console has the error.': 'La consola del navegador tiene el error.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Vista 3D del movimiento del reloj. Todos los controles están en los paneles Watch Sim y Vista, accesibles desde los botones de la esquina superior derecha; los atajos de teclado se listan bajo la tecla ?.',
+  'Alarm click': 'Trinquete del despertador',
+  'Alarm lifting lever': 'Palanca de elevación del despertador',
+  'Alarm winding arrest': 'Tope de cuerda del despertador',
+  'Winding clutch': 'Embrague de remontuar',
+  'Case lines': 'Líneas de la caja',
+  'Seven parts wear a ring — each one is a handle': 'Siete piezas llevan un anillo — cada uno es un asa',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': '¿Rehaces la ruta de un varillaje existente? Su propio barrido no debe bloquear la nueva ruta.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Talla esta ruta como piezas reales y recarga. Deshaz con el botón Atrás del navegador.',
+  'Version': 'Versión',
+  'Lifting lever nose': 'Nariz de la palanca de elevación',
+  'Lifting lever tip': 'Punta de la palanca de elevación',
+  'Lifting lever post': 'Poste de la palanca de elevación',
 };
 
 // ---------------------------------------------------------------------------
@@ -3634,7 +3717,6 @@ const KO = {
   'Reassemble': '재조립',
   'Reconfigure': '재구성',
   'Drag the crown to a new azimuth': '용두를 새 방위각으로 드래그',
-  'Thirteen rings — each one is a handle': '열세 개의 링 — 각각이 핸들입니다',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': '링이 있는 핸들을 드래그 — 두 용두 중 하나, 푸셔, 퓨지, 포스 휠, 리저브 휠, 알람 코너, 알람 배럴, 알람 거버너와 그 앵커, 서브 다이얼 링, 탈진 바퀴 또는 밸런스',
   'Winding crown — drag it round the rim to move the stem': '와인딩 용두 — 테두리를 따라 드래그하면 스템이 이동합니다',
   'Alarm crown — drag it round the rim to move the alarm corner': '알람 용두 — 테두리를 따라 드래그하면 알람 코너가 이동합니다',
@@ -3781,7 +3863,6 @@ const KO = {
   'Reassembled': '재조립됨',
   'Focus': '포커스',
   'X-ray': '엑스레이',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': '시계 무브먼트의 3D 뷰. 모든 조작은 Watch Sim 패널에 있으며, 키보드 단축키는 ? 키 아래에 나열되어 있습니다.',
   'LIFE SIZE — the plate is': '실물 크기 — 플레이트는 지름',
   'mm across, and that is how big it is on your screen.': 'mm이며, 화면에서도 바로 그 크기입니다.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': '화면에 자를 대 보세요. 네, 작습니다. 그것이 답입니다.',
@@ -3997,6 +4078,22 @@ const KO = {
   'Every part is cut from code — nothing is loaded from a file.': '모든 부품은 코드로 깎습니다 — 파일에서 불러오는 것은 없습니다.',
   'The movement did not build': '무브먼트를 만들지 못했습니다',
   'The browser console has the error.': '브라우저 콘솔에 오류가 있습니다.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': '시계 무브먼트의 3D 뷰. 모든 조작은 Watch Sim 패널과 보기 패널에 있으며, 오른쪽 위 모서리의 토글로 열 수 있습니다. 키보드 단축키는 ? 키 아래에 나열되어 있습니다.',
+  'Alarm click': '알람 클릭',
+  'Alarm lifting lever': '알람 리프팅 레버',
+  'Alarm winding arrest': '알람 감기 멈춤',
+  'Winding clutch': '와인딩 클러치',
+  'Case lines': '케이스 윤곽선',
+  'Seven parts wear a ring — each one is a handle': '일곱 부품에 링이 있습니다 — 각각이 핸들입니다',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': '기존 링키지의 경로를 바꾸나요? 그 링키지 자신의 스윕이 새 경로를 막아서는 안 됩니다.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': '이 경로를 실제 부품으로 잘라 내고 다시 로드합니다. 브라우저의 뒤로 버튼으로 되돌릴 수 있습니다.',
+  'Version': '버전',
+  'Lifting lever nose': '리프팅 레버 노즈',
+  'Lifting lever tip': '리프팅 레버 끝',
+  'Lifting lever post': '리프팅 레버 포스트',
 };
 
 // ---------------------------------------------------------------------------
@@ -4122,7 +4219,6 @@ const RU = {
   'Reassemble': 'Собрать',
   'Reconfigure': 'Перекомпоновка',
   'Drag the crown to a new azimuth': 'Перетащите головку на новый азимут',
-  'Thirteen rings — each one is a handle': 'Тринадцать колец — каждое из них ручка',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Перетащите ручку с кольцом — любую из головок, кнопку, фузею, секундное колесо, колесо запаса хода, угол будильника, барабан будильника, регулятор будильника и его анкер, кольцо вспомогательного циферблата, ходовое колесо или баланс',
   'Winding crown — drag it round the rim to move the stem': 'Заводная головка — тяните её вдоль края, чтобы переместить вал',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Головка будильника — тяните её вдоль края, чтобы переместить угол будильника',
@@ -4269,7 +4365,6 @@ const RU = {
   'Reassembled': 'Собрано',
   'Focus': 'Фокус',
   'X-ray': 'Рентген',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': '3D-вид часового механизма. Все элементы управления — в панели Watch Sim; клавиши быстрого доступа перечислены под клавишей ?.',
   'LIFE SIZE — the plate is': 'НАТУРАЛЬНАЯ ВЕЛИЧИНА — диаметр платины',
   'mm across, and that is how big it is on your screen.': 'мм, и именно таков её размер на вашем экране.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Приложите линейку к экрану. Да, это мало: в этом и ответ.',
@@ -4484,6 +4579,23 @@ const RU = {
   'Every part is cut from code — nothing is loaded from a file.': 'Каждая деталь вырезается кодом — ничего не загружается из файла.',
   'The movement did not build': 'Механизм не удалось собрать',
   'The browser console has the error.': 'Ошибка записана в консоль браузера.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': '3D-вид часового механизма. Все элементы управления — в панелях Watch Sim и «Вид», которые открываются переключателями в правом верхнем углу; клавиши быстрого доступа перечислены под клавишей ?.',
+  'Alarm click': 'Собачка будильника',
+  'Alarm lifting lever': 'Подъёмный рычаг будильника',
+  'Alarm winding arrest': 'Стопор завода будильника',
+  'Winding clutch': 'Заводная муфта',
+  'Case lines': 'Линии корпуса',
+  'Seven parts wear a ring — each one is a handle': 'У семи деталей есть кольцо — каждое из них ручка',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Перепрокладываете существующую связь? Её собственный заметаемый объём не должен преграждать новый путь.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Изготовить эту трассу настоящими деталями и перезагрузить. Отмена — кнопкой «Назад» в браузере.',
+  'Version': 'Версия',
+  'Lifting lever nose': 'Нос подъёмного рычага',
+  'Lifting lever tip': 'Кончик подъёмного рычага',
+  'Lifting lever post': 'Стойка подъёмного рычага',
+  'Sapphire dial transmittance': 'Светопропускание сапфирового циферблата',
 };
 
 // ---------------------------------------------------------------------------
@@ -4610,7 +4722,6 @@ const PT = {
   'Reassemble': 'Remontar',
   'Reconfigure': 'Reconfigurar',
   'Drag the crown to a new azimuth': 'Arraste a coroa para um novo azimute',
-  'Thirteen rings — each one is a handle': 'Treze anéis — cada um é uma alça',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Arraste uma alça anelada — qualquer das coroas, o pulsador, o caracol, a quarta roda, a roda da reserva, o canto do despertador, o tambor do despertador, o regulador do despertador e sua âncora, o anel do submostrador, a roda de escape ou o balanço',
   'Winding crown — drag it round the rim to move the stem': 'Coroa de corda — arraste-a pela borda para mover a haste',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Coroa do despertador — arraste-a pela borda para mover o canto do despertador',
@@ -4757,7 +4868,6 @@ const PT = {
   'Reassembled': 'Remontado',
   'Focus': 'Foco',
   'X-ray': 'Raio X',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'Vista 3D do movimento do relógio. Todos os controles estão no painel Watch Sim; os atalhos de teclado estão listados sob a tecla ?.',
   'LIFE SIZE — the plate is': 'TAMANHO REAL — a platina mede',
   'mm across, and that is how big it is on your screen.': 'mm de diâmetro, e é esse o tamanho dela na sua tela.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Encoste uma régua no vidro. Sim, é pequeno: essa é a resposta.',
@@ -4972,6 +5082,23 @@ const PT = {
   'Every part is cut from code — nothing is loaded from a file.': 'Cada peça é cortada a partir do código — nada é carregado de um arquivo.',
   'The movement did not build': 'O movimento não foi construído',
   'The browser console has the error.': 'O console do navegador tem o erro.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Vista 3D do movimento do relógio. Todos os controles estão nos painéis Watch Sim e Vista, acessíveis pelos botões no canto superior direito; os atalhos de teclado estão listados sob a tecla ?.',
+  'Alarm click': 'Roquete do despertador',
+  'Alarm lifting lever': 'Alavanca de elevação do despertador',
+  'Alarm winding arrest': 'Batente de corda do despertador',
+  'Winding clutch': 'Embreagem de corda',
+  'Case lines': 'Linhas da caixa',
+  'Seven parts wear a ring — each one is a handle': 'Sete peças levam um anel — cada um é uma alça',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Refazendo a rota de uma ligação existente? A própria varredura dela não deve bloquear o novo caminho.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Corte esta rota como peças reais e recarregue. Desfaça com o botão Voltar do navegador.',
+  'Version': 'Versão',
+  'Lifting lever nose': 'Nariz da alavanca de elevação',
+  'Lifting lever tip': 'Ponta da alavanca de elevação',
+  'Lifting lever post': 'Poste da alavanca de elevação',
+  'Sapphire dial transmittance': 'Transmitância do mostrador de safira',
 };
 
 // ---------------------------------------------------------------------------
@@ -5097,7 +5224,6 @@ const IT = {
   'Reassemble': 'Riassembla',
   'Reconfigure': 'Riconfigura',
   'Drag the crown to a new azimuth': 'Trascina la corona a un nuovo azimut',
-  'Thirteen rings — each one is a handle': 'Tredici anelli — ognuno è una maniglia',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Trascina una maniglia anellata — una delle due corone, il pulsante, il conoide, la ruota dei secondi, la ruota della riserva, l’angolo della sveglia, il bariletto della sveglia, il regolatore della sveglia e la sua àncora, l’anello del quadrantino, la ruota di scappamento o il bilanciere',
   'Winding crown — drag it round the rim to move the stem': 'Corona di carica — trascinala lungo il bordo per spostare l’albero di carica',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Corona della sveglia — trascinala lungo il bordo per spostare l’angolo della sveglia',
@@ -5244,7 +5370,6 @@ const IT = {
   'Reassembled': 'Riassemblato',
   'Focus': 'Focus',
   'X-ray': 'Raggi X',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'Vista 3D del movimento dell’orologio. Tutti i comandi sono nel pannello Watch Sim; le scorciatoie da tastiera sono elencate sotto il tasto ?.',
   'LIFE SIZE — the plate is': 'GRANDEZZA NATURALE — la platina misura',
   'mm across, and that is how big it is on your screen.': 'mm di diametro, ed è così grande sul tuo schermo.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Accosta un righello al vetro. Sì, è piccolo: è questa la risposta.',
@@ -5459,6 +5584,23 @@ const IT = {
   'Every part is cut from code — nothing is loaded from a file.': 'Ogni componente è tagliato dal codice — nulla viene caricato da un file.',
   'The movement did not build': 'Il movimento non è stato costruito',
   'The browser console has the error.': 'La console del browser riporta l’errore.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Vista 3D del movimento dell’orologio. Tutti i comandi sono nei pannelli Watch Sim e Vista, raggiungibili dai pulsanti nell’angolo in alto a destra; le scorciatoie da tastiera sono elencate sotto il tasto ?.',
+  'Alarm click': 'Cricchetto della sveglia',
+  'Alarm lifting lever': 'Leva di sollevamento della sveglia',
+  'Alarm winding arrest': 'Arresto di carica della sveglia',
+  'Winding clutch': 'Innesto di carica',
+  'Case lines': 'Linee della cassa',
+  'Seven parts wear a ring — each one is a handle': 'Sette parti portano un anello — ognuno è una maniglia',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Stai ritracciando un leveraggio esistente? La sua stessa scansione non deve bloccare il nuovo percorso.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Ricava questo percorso come parti reali e ricarica. Annulla con il tasto Indietro del browser.',
+  'Version': 'Versione',
+  'Lifting lever nose': 'Naso della leva di sollevamento',
+  'Lifting lever tip': 'Punta della leva di sollevamento',
+  'Lifting lever post': 'Perno fisso della leva di sollevamento',
+  'Sapphire dial transmittance': 'Trasmittanza del quadrante in zaffiro',
 };
 
 // §212 — HINDI (tier one). Same register as src/explain-i18n.hi.js: loanwords
@@ -5581,7 +5723,6 @@ const HI = {
   'Reassemble': 'फिर से जोड़ें',
   'Reconfigure': 'पुनर्विन्यास',
   'Drag the crown to a new azimuth': 'क्राउन को नए दिगंश पर खींचें',
-  'Thirteen rings — each one is a handle': 'तेरह रिंग — हर एक एक हैंडल है',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'रिंग वाला कोई हैंडल खींचें — कोई भी क्राउन, पुशर, फ्यूज़ी, चौथा व्हील, रिज़र्व व्हील, अलार्म कॉर्नर, अलार्म बैरल, अलार्म गवर्नर और उसका ऐंकर, सब-डायल रिंग, एस्केप व्हील या बैलेंस व्हील',
   'Winding crown — drag it round the rim to move the stem': 'वाइंडिंग क्राउन — स्टेम हिलाने के लिए इसे रिम के चारों ओर खींचें',
   'Alarm crown — drag it round the rim to move the alarm corner': 'अलार्म क्राउन — अलार्म कॉर्नर हिलाने के लिए इसे रिम के चारों ओर खींचें',
@@ -5728,7 +5869,6 @@ const HI = {
   'Reassembled': 'जोड़ा गया',
   'Focus': 'फोकस',
   'X-ray': 'एक्स-रे',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'घड़ी मूवमेंट का 3D दृश्य। सभी नियंत्रण वॉच सिम पैनल में हैं; कीबोर्ड शॉर्टकट ? कुंजी के नीचे सूचीबद्ध हैं।',
   'LIFE SIZE — the plate is': 'असली आकार — प्लेट',
   'mm across, and that is how big it is on your screen.': 'मिमी चौड़ी है, और आपकी स्क्रीन पर यह इतनी ही बड़ी है।',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'स्क्रीन पर रूलर रखकर देखें। हाँ, यह छोटी है: यही उत्तर है।',
@@ -5943,6 +6083,23 @@ const HI = {
   'Every part is cut from code — nothing is loaded from a file.': 'हर पुर्ज़ा कोड से काटा जाता है — कुछ भी फ़ाइल से लोड नहीं होता।',
   'The movement did not build': 'मूवमेंट नहीं बन सका',
   'The browser console has the error.': 'त्रुटि ब्राउज़र कंसोल में है।',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'घड़ी मूवमेंट का 3D दृश्य। सभी नियंत्रण वॉच सिम और दृश्य पैनलों में हैं, जो ऊपर दाएँ कोने के टॉगल से खुलते हैं; कीबोर्ड शॉर्टकट ? कुंजी के नीचे सूचीबद्ध हैं।',
+  'Alarm click': 'अलार्म क्लिक',
+  'Alarm lifting lever': 'अलार्म लिफ्टिंग लीवर',
+  'Alarm winding arrest': 'अलार्म वाइंडिंग अरेस्ट',
+  'Winding clutch': 'वाइंडिंग क्लच',
+  'Case lines': 'केस रेखाएँ',
+  'Seven parts wear a ring — each one is a handle': 'सात पुर्ज़ों पर रिंग है — हर एक एक हैंडल है',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'किसी मौजूदा लिंकेज को फिर से रूट कर रहे हैं? उसका अपना स्वीप नए रास्ते को नहीं रोकना चाहिए।',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'इस रूट को असली पुर्ज़ों के रूप में काटें और रीलोड करें। ब्राउज़र के बैक बटन से पूर्ववत करें।',
+  'Version': 'संस्करण',
+  'Lifting lever nose': 'लिफ्टिंग लीवर नाक',
+  'Lifting lever tip': 'लिफ्टिंग लीवर सिरा',
+  'Lifting lever post': 'लिफ्टिंग लीवर पोस्ट',
+  'Sapphire dial transmittance': 'सैफायर डायल प्रकाश-संचरण',
 };
 
 // §249 TABLE START
@@ -6071,7 +6228,6 @@ const VI = {
   'Reassemble': 'Lắp lại',
   'Reconfigure': 'Cấu hình lại',
   'Drag the crown to a new azimuth': 'Kéo núm vặn tới phương vị mới',
-  'Thirteen rings — each one is a handle': 'Mười ba vòng — mỗi vòng là một tay nắm',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Kéo một tay nắm có vòng — một trong hai núm vặn, nút bấm, fusee, bánh xe thứ tư, bánh dự trữ, góc chuyển báo thức, hộp cót báo thức, bộ điều tốc báo thức và neo của nó, vòng mặt số phụ, bánh xe thoát hoặc bánh lắc',
   'Winding crown — drag it round the rim to move the stem': 'Núm vặn lên dây — kéo vòng quanh vành để dời trục núm',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Núm vặn báo thức — kéo vòng quanh vành để dời góc chuyển báo thức',
@@ -6218,7 +6374,6 @@ const VI = {
   'Reassembled': 'Đã lắp lại',
   'Focus': 'Tập trung',
   'X-ray': 'X-quang',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'Góc nhìn 3D của bộ máy đồng hồ. Mọi điều khiển nằm trong bảng Watch Sim; phím tắt được liệt kê dưới phím ?.',
   'LIFE SIZE — the plate is': 'KÍCH THƯỚC THẬT — mâm rộng',
   'mm across, and that is how big it is on your screen.': 'mm, và đó chính là kích thước của nó trên màn hình của bạn.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Hãy áp thước kẻ lên màn hình. Đúng, nó nhỏ: đó chính là câu trả lời.',
@@ -6449,6 +6604,19 @@ const VI = {
   'Every part is cut from code — nothing is loaded from a file.': 'Mọi chi tiết được cắt từ mã — không gì được nạp từ tệp.',
   'The movement did not build': 'Bộ máy không dựng được',
   'The browser console has the error.': 'Xem lỗi trong console của trình duyệt.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Góc nhìn 3D của bộ máy đồng hồ. Mọi điều khiển nằm trong bảng Watch Sim và bảng Xem, mở bằng các nút bật ở góc trên bên phải; phím tắt được liệt kê dưới phím ?.',
+  'Alarm click': 'Cóc hãm báo thức',
+  'Alarm lifting lever': 'Cần nâng báo thức',
+  'Alarm winding arrest': 'Cơ cấu chặn lên dây báo thức',
+  'Winding clutch': 'Ly hợp lên dây',
+  'Case lines': 'Đường nét vỏ',
+  'Seven parts wear a ring — each one is a handle': 'Bảy chi tiết mang vòng — mỗi vòng là một tay nắm',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Định tuyến lại một thanh nối có sẵn? Vùng quét của chính nó không được chặn đường mới.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Cắt lộ trình này thành chi tiết thật và tải lại. Hoàn tác bằng nút quay lại của trình duyệt.',
+  'Version': 'Phiên bản',
 };
 
 // §249 TABLE END
@@ -6578,7 +6746,6 @@ const NL = {
   'Reassemble': 'Monteren',
   'Reconfigure': 'Herconfigureren',
   'Drag the crown to a new azimuth': 'Sleep de kroon naar een nieuw azimut',
-  'Thirteen rings — each one is a handle': 'Dertien ringen — elk is een handgreep',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Sleep een geringde handgreep — een van beide kronen, de drukknop, de snek, het vierde rad, het reserverad, het wekkerhoekstuk, het wekkerveerhuis, de wekkerregulateur en zijn anker, de ring van de hulpwijzerplaat, het ankerrad of de onrust',
   'Winding crown — drag it round the rim to move the stem': 'Opwindkroon — sleep hem langs de rand om de opwindas te verplaatsen',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Wekkerkroon — sleep hem langs de rand om het wekkerhoekstuk te verplaatsen',
@@ -6725,7 +6892,6 @@ const NL = {
   'Reassembled': 'In elkaar',
   'Focus': 'Focus',
   'X-ray': 'Röntgen',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': '3D-weergave van het uurwerk. Alle bediening zit in het Watch Sim-paneel; de sneltoetsen staan onder de toets ?.',
   'LIFE SIZE — the plate is': 'WARE GROOTTE — de platine is',
   'mm across, and that is how big it is on your screen.': 'mm breed, en precies zo groot staat hij op het scherm.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Houd een liniaal tegen het glas. Ja, hij is klein: dat is het antwoord.',
@@ -6956,6 +7122,19 @@ const NL = {
   'Every part is cut from code — nothing is loaded from a file.': 'Elk onderdeel wordt uit code gesneden — niets wordt uit een bestand geladen.',
   'The movement did not build': 'Het uurwerk kon niet worden gebouwd',
   'The browser console has the error.': 'De browserconsole bevat de fout.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': '3D-weergave van het uurwerk. Alle bediening zit in het Watch Sim- en het Beeldpaneel, bereikbaar via de schakelaars rechtsboven; de sneltoetsen staan onder de toets ?.',
+  'Alarm click': 'Wekkerklink',
+  'Alarm lifting lever': 'Wekkerlichthefboom',
+  'Alarm winding arrest': 'Wekkeropwindstop',
+  'Winding clutch': 'Opwindkoppeling',
+  'Case lines': 'Kastlijnen',
+  'Seven parts wear a ring — each one is a handle': 'Zeven onderdelen dragen een ring — elk is een handgreep',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Een bestaande verbinding omleiden? Haar eigen doorlopen volume mag het nieuwe pad niet blokkeren.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Deze route als echte onderdelen snijden en herladen. Ongedaan maken met de terugknop van de browser.',
+  'Version': 'Versie',
 };
 
 // §249 NL TABLE END
@@ -7085,7 +7264,6 @@ const FA = {
   'Reassemble': 'سرهم‌بندی دوباره',
   'Reconfigure': 'پیکربندی دوباره',
   'Drag the crown to a new azimuth': 'تاج را به آزیموتی تازه بکشید',
-  'Thirteen rings — each one is a handle': 'سیزده حلقه — هر کدام یک دستگیره است',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'یک دستگیره‌ی حلقه‌دار را بکشید — هر یک از دو تاج، دکمه‌ی فشاری، فوزه، چرخ چهارم، چرخ ذخیره، گوشه‌ی زنگ، بشکه‌ی زنگ، گاورنر زنگ و انکر آن، حلقه‌ی صفحه‌ی فرعی، چرخ گریز یا بالانس',
   'Winding crown — drag it round the rim to move the stem': 'تاج کوک — آن را دور لبه بکشید تا میله‌ی کوک جابه‌جا شود',
   'Alarm crown — drag it round the rim to move the alarm corner': 'تاج زنگ — آن را دور لبه بکشید تا گوشه‌ی زنگ جابه‌جا شود',
@@ -7232,7 +7410,6 @@ const FA = {
   'Reassembled': 'سرهم‌شده',
   'Focus': 'تمرکز',
   'X-ray': 'ایکس‌ری',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'نمای 3D موتور ساعت. همه‌ی کنترل‌ها در پنل Watch Sim هستند؛ میان‌برهای صفحه‌کلید زیر کلید ? فهرست شده‌اند.',
   'LIFE SIZE — the plate is': 'اندازه‌ی واقعی — قطر پلاتین',
   'mm across, and that is how big it is on your screen.': 'mm است و روی نمایشگر شما دقیقاً همین اندازه است.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'یک خط‌کش روی شیشه بگیرید. بله، کوچک است: پاسخ همین است.',
@@ -7463,6 +7640,19 @@ const FA = {
   'Every part is cut from code — nothing is loaded from a file.': 'هر قطعه با کد بریده می‌شود — هیچ چیز از فایل بارگذاری نمی‌شود.',
   'The movement did not build': 'موتور ساخته نشد',
   'The browser console has the error.': 'خطا در کنسول مرورگر است.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'نمای 3D موتور ساعت. همه‌ی کنترل‌ها در پنل‌های Watch Sim و نما هستند که با دکمه‌های گوشه‌ی بالا سمت راست باز می‌شوند؛ میان‌برهای صفحه‌کلید زیر کلید ? فهرست شده‌اند.',
+  'Alarm click': 'ضامن زنگ',
+  'Alarm lifting lever': 'اهرم بالابر زنگ',
+  'Alarm winding arrest': 'توقف کوک زنگ',
+  'Winding clutch': 'کلاچ کوک',
+  'Case lines': 'خطوط قاب',
+  'Seven parts wear a ring — each one is a handle': 'هفت قطعه حلقه دارند — هر کدام یک دستگیره است',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'مسیر یک اتصال موجود را دوباره می‌کشید؟ جاروب خود آن نباید جلوی مسیر تازه را بگیرد.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'این مسیر را به‌صورت قطعه‌های واقعی برش بزنید و بازخوانی کنید. با دکمه‌ی بازگشت مرورگر واگرد کنید.',
+  'Version': 'نسخه',
 };
 
 // §249 FA TABLE END
@@ -7593,7 +7783,6 @@ const HE = {
   'Reassemble': 'הרכבה מחדש',
   'Reconfigure': 'שינוי תצורה',
   'Drag the crown to a new azimuth': 'יש לגרור את הכתר לאזימוט חדש',
-  'Thirteen rings — each one is a handle': 'שלוש־עשרה טבעות — כל אחת היא ידית',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'יש לגרור ידית מוקפת טבעת — אחד הכתרים, הלחצן, הפיוזי, הגלגל הרביעי, גלגל העתודה, פינת המעורר, תוף המעורר, וסת המעורר ועוגנו, טבעת הלוח המשני, גלגל המילוט או המאזן',
   'Winding crown — drag it round the rim to move the stem': 'כתר המתיחה — יש לגרור אותו לאורך השפה כדי להזיז את המוט',
   'Alarm crown — drag it round the rim to move the alarm corner': 'כתר המעורר — יש לגרור אותו לאורך השפה כדי להזיז את פינת המעורר',
@@ -7740,7 +7929,6 @@ const HE = {
   'Reassembled': 'מורכב',
   'Focus': 'מיקוד',
   'X-ray': 'רנטגן',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'תצוגת 3D של מנגנון השעון. כל הפקדים נמצאים בחלונית Watch Sim; קיצורי המקלדת מפורטים תחת המקש ?.',
   'LIFE SIZE — the plate is': 'גודל טבעי — קוטר הפלטה',
   'mm across, and that is how big it is on your screen.': 'mm, וזה בדיוק גודלה על המסך.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'אפשר להצמיד סרגל למסך. כן, היא קטנה: זו התשובה.',
@@ -7971,6 +8159,19 @@ const HE = {
   'Every part is cut from code — nothing is loaded from a file.': 'כל חלק נחתך מקוד — שום דבר אינו נטען מקובץ.',
   'The movement did not build': 'בניית המנגנון נכשלה',
   'The browser console has the error.': 'השגיאה מופיעה במסוף הדפדפן.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'תצוגת 3D של מנגנון השעון. כל הפקדים נמצאים בחלוניות Watch Sim ו־תצוגה, הנפתחות מהמתגים בפינה הימנית העליונה; קיצורי המקלדת מפורטים תחת המקש ?.',
+  'Alarm click': 'תפס המעורר',
+  'Alarm lifting lever': 'מנוף ההרמה של המעורר',
+  'Alarm winding arrest': 'עוצר המתיחה של המעורר',
+  'Winding clutch': 'מצמד המתיחה',
+  'Case lines': 'קווי התיבה',
+  'Seven parts wear a ring — each one is a handle': 'לשבעה חלקים יש טבעת — כל אחת היא ידית',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'ניתוב מחדש של מנגנון מוטות קיים? אסור שהסריקה של המנגנון עצמו תחסום את המסלול החדש.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'חיתוך המסלול הזה כחלקים אמיתיים וטעינה מחדש. ביטול באמצעות לחצן החזרה של הדפדפן.',
+  'Version': 'גרסה',
 };
 
 // §249 HE TABLE END
@@ -8100,7 +8301,6 @@ const ID = {
   'Reassemble': 'Rakit ulang',
   'Reconfigure': 'Konfigurasi ulang',
   'Drag the crown to a new azimuth': 'Seret mahkota ke azimut baru',
-  'Thirteen rings — each one is a handle': 'Tiga belas cincin — masing-masing adalah pegangan',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Seret pegangan bercincin — salah satu mahkota, tombol tekan, fusee, roda keempat, roda cadangan, sudut belok alarm, tabung pegas alarm, governor alarm dan jangkarnya, cincin subdial, roda eskapemen, atau balans',
   'Winding crown — drag it round the rim to move the stem': 'Mahkota pemutar — seret mengitari tepi untuk memindahkan batang mahkota',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Mahkota alarm — seret mengitari tepi untuk memindahkan sudut belok alarm',
@@ -8247,7 +8447,6 @@ const ID = {
   'Reassembled': 'Terakit',
   'Focus': 'Fokus',
   'X-ray': 'Sinar-X',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'Tampilan 3D mesin jam. Semua kontrol ada di panel Watch Sim; pintasan keyboard tercantum di bawah tombol ?.',
   'LIFE SIZE — the plate is': 'UKURAN ASLI — diameter pelat',
   'mm across, and that is how big it is on your screen.': 'mm, dan sebesar itulah ukurannya di layar Anda.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Tempelkan penggaris ke layar. Ya, memang kecil: itulah jawabannya.',
@@ -8478,6 +8677,19 @@ const ID = {
   'Every part is cut from code — nothing is loaded from a file.': 'Setiap bagian dipotong dari kode — tidak ada yang dimuat dari berkas.',
   'The movement did not build': 'Mesin jam gagal dibangun',
   'The browser console has the error.': 'Galatnya ada di konsol peramban.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Tampilan 3D mesin jam. Semua kontrol ada di panel Watch Sim dan Tampilan, yang dibuka dengan tombol di pojok kanan atas; pintasan keyboard tercantum di bawah tombol ?.',
+  'Alarm click': 'Pal penahan alarm',
+  'Alarm lifting lever': 'Tuas pengangkat alarm',
+  'Alarm winding arrest': 'Penghenti putaran alarm',
+  'Winding clutch': 'Kopling pemutar',
+  'Case lines': 'Garis casing',
+  'Seven parts wear a ring — each one is a handle': 'Tujuh bagian bercincin — masing-masing adalah pegangan',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Merutekan ulang sambungan yang ada? Sapuannya sendiri tidak boleh menghalangi jalur baru.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Potong rute ini sebagai komponen nyata lalu muat ulang. Batalkan dengan tombol kembali di browser.',
+  'Version': 'Versi',
 };
 
 // §249 ID TABLE END
@@ -8608,7 +8820,6 @@ const TR = {
   'Reassemble': 'Birleştir',
   'Reconfigure': 'Yeniden yapılandır',
   'Drag the crown to a new azimuth': 'Kurma kolunu yeni bir azimuta sürükle',
-  'Thirteen rings — each one is a handle': 'On üç halka — her biri bir tutamaç',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Halkalı bir tutamacı sürükle — iki kurma kolundan biri, basma düğmesi, fusee, dördüncü çark, rezerv çarkı, alarm köşesi, alarm zemberek kutusu, alarm regülatörü ve çapası, alt kadran halkası, eşapman çarkı ya da balans',
   'Winding crown — drag it round the rim to move the stem': 'Kurma kolu — kurma milini taşımak için kenar boyunca sürükle',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Alarm kurma kolu — alarm köşesini taşımak için kenar boyunca sürükle',
@@ -8755,7 +8966,6 @@ const TR = {
   'Reassembled': 'Birleştirilmiş',
   'Focus': 'Odak',
   'X-ray': 'Röntgen',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'Saat makinesinin 3D görünümü. Tüm kontroller Watch Sim panelindedir; klavye kısayolları ? tuşunun altında listelenir.',
   'LIFE SIZE — the plate is': 'GERÇEK BOYUT — plakanın çapı',
   'mm across, and that is how big it is on your screen.': 'mm ve ekranınızdaki boyutu da tam olarak budur.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Ekrana bir cetvel tutun. Evet, küçük: cevap da bu.',
@@ -8986,6 +9196,19 @@ const TR = {
   'Every part is cut from code — nothing is loaded from a file.': 'Her parça koddan kesilir — hiçbir şey bir dosyadan yüklenmez.',
   'The movement did not build': 'Makine oluşturulamadı',
   'The browser console has the error.': 'Hata tarayıcı konsolunda.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Saat makinesinin 3D görünümü. Tüm kontroller, sağ üst köşedeki düğmelerle açılan Watch Sim ve Görünüm panellerindedir; klavye kısayolları ? tuşunun altında listelenir.',
+  'Alarm click': 'Alarm cırcır tırnağı',
+  'Alarm lifting lever': 'Alarm kaldırma kolu',
+  'Alarm winding arrest': 'Alarm kurma durdurucusu',
+  'Winding clutch': 'Kurma kavraması',
+  'Case lines': 'Kasa çizgileri',
+  'Seven parts wear a ring — each one is a handle': 'Yedi parçada halka var — her biri bir tutamaç',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Mevcut bir bağlantının güzergâhını mı değiştiriyorsun? Kendi taraması yeni yolu engellememeli.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Bu güzergâhı gerçek parçalar olarak kes ve yeniden yükle. Tarayıcının geri düğmesiyle geri al.',
+  'Version': 'Sürüm',
 };
 
 // §249 TR TABLE END
@@ -9116,7 +9339,6 @@ const CY = {
   'Reassemble': 'Ailgydosod',
   'Reconfigure': 'Ailgyflunio',
   'Drag the crown to a new azimuth': 'Llusgo\'r goron i asimwth newydd',
-  'Thirteen rings — each one is a handle': 'Tri chylch ar ddeg — mae pob un yn afael',
   'Drag a ringed handle — either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance': 'Llusgo gafael â chylch — y naill goron neu\'r llall, y gwthiwr, y fusee, y bedwaredd olwyn, olwyn y gronfa, cornel y larwm, casgen y larwm, rheolydd y larwm a\'i angor, cylch yr is-ddeial, yr olwyn ddihangfa neu\'r fantol',
   'Winding crown — drag it round the rim to move the stem': 'Coron weindio — llusgo o gwmpas y rhimyn i symud y coesyn',
   'Alarm crown — drag it round the rim to move the alarm corner': 'Coron y larwm — llusgo o gwmpas y rhimyn i symud cornel y larwm',
@@ -9263,7 +9485,6 @@ const CY = {
   'Reassembled': 'Wedi ailgydosod',
   'Focus': 'Ffocws',
   'X-ray': 'Pelydr-X',
-  '3D view of the watch movement. All controls are in the Watch Sim panel; keyboard shortcuts are listed under the ? key.': 'Golwg 3D o beirianwaith yr oriawr. Mae\'r holl reolaethau ym mhanel Watch Sim; mae llwybrau byr y bysellfwrdd wedi\'u rhestru dan y fysell ?.',
   'LIFE SIZE — the plate is': 'MAINT GO IAWN — mae\'r plât yn',
   'mm across, and that is how big it is on your screen.': 'mm ar draws, a dyna\'i faint ar eich sgrin.',
   'Hold a ruler to the glass. Yes, it is small: that is the answer.': 'Daliwch bren mesur at y gwydr. Ydy, mae\'n fach: dyna\'r ateb.',
@@ -9494,6 +9715,19 @@ const CY = {
   'Every part is cut from code — nothing is loaded from a file.': 'Caiff pob rhan ei thorri o god — ni lwythir dim o ffeil.',
   'The movement did not build': 'Methodd adeiladu\'r peirianwaith',
   'The browser console has the error.': 'Mae\'r gwall yng nghonsol y porwr.',
+  // §249 review — strings no table had (four part labels, the keyboard row, the route
+  // panel's hints, Version), the canvas label and reconfigure hint re-keyed to their
+  // re-worded English, and this table's own holes; tools/probe-chrome-coverage.mjs
+  '3D view of the watch movement. All controls are in the Watch Sim and View panels, reachable from the toggles in the top right corner; keyboard shortcuts are listed under the ? key.': 'Golwg 3D o beirianwaith yr oriawr. Mae\'r holl reolaethau ym mhaneli Watch Sim a Golwg, sydd i\'w cyrraedd o\'r botymau togl yn y gornel dde uchaf; mae llwybrau byr y bysellfwrdd wedi\'u rhestru dan y fysell ?.',
+  'Alarm click': 'Clic y larwm',
+  'Alarm lifting lever': 'Lifer codi\'r larwm',
+  'Alarm winding arrest': 'Ataliad weindio\'r larwm',
+  'Winding clutch': 'Cydiwr weindio',
+  'Case lines': 'Llinellau\'r cas',
+  'Seven parts wear a ring — each one is a handle': 'Mae gan saith rhan gylch — mae pob un yn afael',
+  'Re-routing an existing linkage? Its own sweep must not block the new path.': 'Ailgyfeirio cysylltwaith sy\'n bod? Rhaid i\'w ysgubiad ei hun beidio â rhwystro\'r llwybr newydd.',
+  'Cut this route as real parts and reload. Undo with the browser\'s back button.': 'Torri\'r llwybr hwn yn rhannau go iawn ac ail-lwytho. Dadwneud gyda botwm \'yn ôl\' y porwr.',
+  'Version': 'Fersiwn',
 };
 
 // §249 CY TABLE END
