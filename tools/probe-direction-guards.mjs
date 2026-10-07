@@ -124,6 +124,10 @@ const MUTANTS = [
     find: '    const a = MOVEMENT_SENSE * t * grooveTurns * Math.PI * 2;',
     to:   '    const a = -MOVEMENT_SENSE * t * grooveTurns * Math.PI * 2;',
     note: 'the chain would have to wrap the other way to sit in it' },
+  { kind: 'subject', name: 'the arrest\'s station law (the wrap as the absence claims see it)', file: 'src/main.js',
+    find: '      let dAz = (th - MOVEMENT_SENSE * TAU2 * FUSEE_GROOVE_TURNS * (fEnd - f) - azMid) % TAU2;',
+    to:   '      let dAz = (th + MOVEMENT_SENSE * TAU2 * FUSEE_GROOVE_TURNS * (fEnd - f) - azMid) % TAU2;',
+    note: '§254 — this law carried no sense at all until §254, and under the reversed train every absence claim the arrest made was about the wrap\'s mirror image' },
 
   // The commitments the LANDING itself added. A reversal that re-cuts a
   // part is a part that can be re-cut wrongly, so each one joins the table it

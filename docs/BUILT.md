@@ -31449,3 +31449,122 @@ Nothing of TODO 17's. The strike's ENERGY is item 128's, the case path item
 126's, and the level is still the wire alone. The sixth mode and the
 Euler–Bernoulli assumption are named in the item and in `GONG_ARCH`'s
 comment as what the law still assumes, not as debt.
+
+## §254 — The fusee groove is cut as a fusee engine cuts it, the chain stands upright in it, and its cone end is hooked
+
+Three items closed together, because they were one item wearing three
+numbers: TODO 208 (the cone "too steep for an upright chain"), TODO 76's
+remainder (the chain's declared articulation fiction — 16–35° of twist per
+joint against a running fit worth about 4.9°) and TODO 49 (the chain's fusee
+end hooked to nothing).
+
+### The lean was the modelling's, not the cone's
+
+`makeFusee` lathed the groove floor as a surface of revolution, `floorAt(z)`.
+A revolved floor is sloped across the groove's width wherever the flank is,
+so an upright stack gapped `2h·m` off it, and §124 leaned every wrap link
+into the flank — up to the 63.43° lie-flat ceiling at the base — to close
+the daylight. That bent the chain about an axis up to 63° from its own pins,
+and a chain bends only about its pins: the twist was declared fiction and
+filed as a layout problem with three levers (a gentler cone, a coarser pitch,
+more height).
+
+None was pulled. A fusee engine feeds a square-nosed tool radially while the
+blank turns and the carriage advances a pitch a turn, so the floor it cuts is
+a helical SHELF, flat across the tool's width at every azimuth, walled by the
+uncut cone on both sides. An upright stack seats on that shelf with no
+daylight at all — the shelf is flat under the whole stack — wherever the
+flank's slope is under the ONE-WALL BOUND `|dr/dz| ≤ grooveD/(grooveW/2)` =
+2.0 (past it the cone's own flank has fallen inside the tool's radius at the
+window's upper edge, the upper wall is gone, and the top leaf floats by
+`m·gw/2 − grooveD`). `makeFusee` now builds that cut: a ribbon of pitch-wide
+strips along the helix (window at the shelf radius, land above it to the next
+turn's foot, which is the same integer station one turn on evaluated by the
+same expression, so adjacent turns share vertices bit for bit), virtual
+uncut turns for the collar and the runout clipped to the base and tip
+planes, the groove's plunge and exit walls sewn between vertices both strips
+own, degenerate triangles stripped. `userData.groove.floorAt(z, az)` is the
+cut's own surface and the §61 seating rows read it with the azimuth; a chain
+vertex in the land reads as the burial it is (a plate through the groove's
+wall), which no revolve-floored row could see.
+
+What the bound asks of the layout is band: under the held level product the
+slope scales as 1/BAND, and §124's stratum raise (`√(h²+w²) − h` = 0.40790,
+the leaning stack's extra down-reach) is spent as cone height now — the
+groove floor sits on the centre wheel's bind again and the whole raise is
+band. `FUSEE_TILT_Z` is `UPPER_STRATUM_RAISE`, named for what it is rather
+than for the lean that first asked for it.
+
+| | §124/§150 cut | §254 cut |
+|---|---|---|
+| band / groove pitch | 2.7775 / 1.389 | **3.1854 / 1.5927** |
+| base slope against the one-wall bound 2.0 | 2.02 (leaned) | **1.80** |
+| worst per-joint twist on the wrap, over the reserve | 16–36° declared fiction | **1.7–3.7°**, under the 4.88° fit |
+| base collar `FUSEE_BASE_INSET` | margin + tilt down-reach (0.558) | groove half-width + margin (0.485): a whole lower wall |
+| maintaining flange | on a boss under the overhanging chain | cut on the cone's base face (the boss had nothing left to clear) |
+
+`tools/probe-254-chain-twist.mjs` is the acceptance: each link's pin axis is
+FITTED from its own triangles (the area-weighted normal tensor's largest
+eigenvector), consecutive pins must be parallel within what the inner pair
+rocks in its running fit (2·`CHAIN_RIVET_FIT` over the inner pair's stack),
+and the free span and the drum coil are its two controls, because a tensor
+fit can be wrong in the safe direction.
+
+### The hook, and why it was forced
+
+A helically cut groove has a PHASE, and the chain can only lie in it if its
+helix has the groove's. The old wrap was anchored at the DEPARTURE
+(`wraps = t·W`) and its hook end drifted around the cone by the tangent
+departure's walk — TODO 49's measurement — which the revolve-floored cone
+never noticed. Now the claw stands at the groove's plunge (f = 0),
+cone-local, mirrored from the drum's construction, and the wrap runs from it.
+The departure's walk, `acos((P/u − R_wrap)/D)` — the same walk the coil's
+Ω(u) carries, read from the other end of one tangent line — is booked on
+the cone's side of the conservation ODE:
+
+    f_dep(t) = t·F_ACTIVE + [acos x(1) − acos x(t)] / (2π·G),   x = (P/u − R_wrap)/D
+
+F_ACTIVE at full wind exactly, which is the hook's clocking:
+`FUSEE_GROOVE_CLOCK = thetaT(1) − SENSE·2π·W − barrelMeshAngle(0)`, applied
+to the cut once the drum's station and the arbor's phase exist. Every reader
+that wrote `tension · FUSEE_F_ACTIVE` reads `fuseeEngagedF(t)` now, and the
+cut is parametrised by its inverse (`fuseeReserveAtF`), so the equalisation
+gate keeps holding an identity (2.2e-16). Two boot asserts hold the
+construction at 21 tensions under the tick's own rotation law: every wrap
+control point on the groove's helix, and the first link on the claw, both to
+1e-6 — identities, not roundings, because there is no whole-turn absorber at
+this end. The first 0.02 turn of groove behind the hook carries chain that
+never pays out, so at dead reserve the cone is no longer bare.
+
+### What the census was really counting
+
+With the run near a half-pitch boundary the TODO 76 joint assert fired at
+one tension: 45 links at chords of 1.8627. The link count was
+`round(arc/pitch)` over the spline's ARC, which stands up to 0.9% over the
+chord polygon on the tight coil — a third of a link over the run. The census
+is WALKED now: pitch-long chords laid along the path, the last counted by its
+fraction, and the `chainLength` check reports the builder's own count through
+`clock.chainLinkCount`. 44 links at every state of wind.
+
+### What the upright wrap found in the winding arrest
+
+The arrest's solve failed loudly under the new wrap — no legal beak at any
+pad azimuth, a disengaging moment, the pad in the span's corridor — and the
+cause was older than §254. Its design-time occupancy law (`thetaTAt`, the
+station azimuths `chainProudAt` walks) carried no `MOVEMENT_SENSE`, so under
+the reversed train every absence claim the arrest made was about the wrap's
+MIRROR IMAGE about the drum's direction. It shipped green because the mesh
+sweeps hold the real metal and the finger the mirrored law happened to site
+was, by luck of geometry, clear of the real chain. §254 reads the one tangent
+spelling (`spanTangentAngle`), holds the station law on the drawn helix at
+boot (and in the direction-guards table), puts the lever on the departure
+side of the pad by the dead-circle argument at `LEVER_SIDE` (a coil point
+closer to the stud than the face plane is can never be cleared; the arriving
+coil is proudest on the trailing side), scans the beak on both sides of the
+pad with a window derived from the tab's own width, turns the reaction and
+the lug's approach the way winding turns the cone, and measures the run's
+reach above the departure for the upright stack. Recorded under TODO 115.
+
+### Measured at closure
+
+(filled from the battery run below)

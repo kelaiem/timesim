@@ -5594,11 +5594,13 @@ const PENETRATION_BUDGETS = [
     // FUSEE_TORQUE_K by the equalisation identity, since TODO 32's law,
     // re-solved by §150's conserving cut — the wrap's top, not the
     // runout tip); (2) HANDOFF_TRACK_TOL
-    // tessellation slack, 0.03. The tilted wrap measures 0.218 at
-    // reserve 0.883 — the chording bound minus what the tilt's deeper
-    // curvature relief gives back — held at 0.25 so the row polices the
+    // tessellation slack, 0.03. Held at 0.25 so the row polices the
     // relationship, not float luck — the same round-up that held 0.76
-    // at 0.8, at a third of the size.
+    // at 0.8, at a third of the size. §254: the floor is a helical SHELF
+    // now (makeFusee), flat across the groove at every azimuth, so floorAt
+    // takes the azimuth and what this row reads outside a window is the
+    // land — a chain vertex in the land is a plate through the groove's
+    // wall, and reads as the burial it is.
     pair: ['Fusee & great wheel', 'Chain'],
     maxDepth: 0.25,
     axis: 'reserve',
@@ -5633,23 +5635,23 @@ const PENETRATION_BUDGETS = [
     // metal §61's "inner edge on the floor" means, and nothing else). Per
     // link: MAX over its crowns of (r − floorAt) — how far the FARTHEST seat
     // point stands off, because "seated" for a face means every crown
-    // touches. Not a MIN: the TODO 40 relief's shear cancels exactly at the
-    // stack's bottom edge (floorAt(z − h + h) = env(z)), so the bottom-corner
-    // crown reads ~0 BY THE RELIEF'S OWN DESIGN — a min measures that corner
-    // kiss forever and the float stays invisible (measured: 0.065 on the
-    // shipped tree, vs 3.49 = w·m the crowns actually stand off at the base).
-    // And not a max over any WIDER vertex set: the outer half legitimately
-    // stands grooveD + relief·m proud by §61's convention.
+    // touches. Not a MIN: on §124's relieved revolve the bottom-corner crown
+    // read ~0 by the relief's own design while the crowns above stood
+    // 3.49 = w·m off at the base, and a min would have measured that
+    // corner kiss forever; on §254's flat shelf the crowns of a seated link
+    // read alike, and the MAX is kept because it is the claim. And not a
+    // max over any WIDER vertex set: the outer half legitimately stands
+    // grooveD proud by §61's convention.
     // Budget: what a BEDDED chain owes — link chording at the honest
     // 2.41 effective chord (stadium apexes past the rivets, the burial
-    // row's own §124 correction) + the base's lie-flat corner residual
-    // (the flank there is 2.1617 since §150's conserving solve — past
-    // the 63.43° cap's tan = 2, linearized daylight 0.0477, relieved by
-    // the envelope's curvature) +
-    // HANDOFF_TRACK_TOL tessellation slack 0.03. Measured 0.209 at the
-    // bottom turn, held at 0.25 — the burial row's own round-up. §124
-    // closed TODO 46 here: the leaning chain SEATS, and this row is
-    // what holds it seated (it read 3.191 waived on the 8:1 cut).
+    // row's own §124 correction) + HANDOFF_TRACK_TOL tessellation slack
+    // 0.03. §124's lie-flat corner residual is gone with the lean (§254:
+    // the shelf is flat under the whole stack wherever the flank is under
+    // the one-wall bound, which main.js asserts). Held at 0.25 — the
+    // burial row's own round-up. §124 closed TODO 46 here (the leaning
+    // chain seated, 0.209 at the bottom turn, where it had read 3.191
+    // waived on the 8:1 cut); §254 keeps the row as the thing that holds
+    // the upright chain seated.
     pair: ['Fusee & great wheel', 'Chain'],
     maxDepth: 0.25,
     axis: 'reserve',
@@ -5675,7 +5677,7 @@ const PENETRATION_BUDGETS = [
       for (const base of seat.bases) {
         for (const ci of seat.crownIdx) {
           v.fromBufferAttribute(pos, base + ci).applyMatrix4(toLocal);
-          const d = Math.hypot(v.x, v.y) - floorAt(v.z);
+          const d = Math.hypot(v.x, v.y) - floorAt(v.z, Math.atan2(v.y, v.x));   // §254: the floor is helical — a shelf by azimuth
           if (d > worst) worst = d;
         }
       }
@@ -5832,7 +5834,7 @@ const PENETRATION_BUDGETS = [
 ];
 
 // §61 helper — worst radial burial of a mesh below an axisymmetric surface
-// r = floorAt(z), in the surface's own frame. Samples every vertex AND each
+// r = floorAt(z, az), in the surface's own frame. Samples every vertex AND each
 // triangle's centroid: the deepest point of a chording link is mid-edge,
 // which vertices alone never visit (the drum row would read ~0 without
 // centroids). zLo/zHi gate the band the surface claims; points outside it
@@ -5844,7 +5846,7 @@ function sampleRadialDepth(geometry, toLocal, floorAt, zLo, zHi) {
   let worst = 0;
   const probe = (v) => {
     if (v.z < zLo || v.z > zHi) return;
-    const d = floorAt(v.z) - Math.hypot(v.x, v.y);
+    const d = floorAt(v.z, Math.atan2(v.y, v.x)) - Math.hypot(v.x, v.y);   // §254: the cone's floor is helical, so the surface takes the azimuth too (the drum's ignores it)
     if (d > worst) worst = d;
   };
   const triCount = (idx ? idx.count : pos.count) / 3;
@@ -12103,10 +12105,18 @@ export function checkChainLength(clock, { n = 41, divisions = 4000, waiver = nul
     return { ok: false, error: 'no chainRunLength on __clock (main.js TODO 40 exposure missing)' };
   const tol = CHAIN_PITCH / 2;
   const samples = [];
+  // §254: the link count is the builder's own census (chainJoints walks
+  // pitch-long chords along the path) when the surface exposes it; the arc's
+  // rounding is kept only as the fallback, because the spline's arc stands up
+  // to 0.9% over the chord polygon on the tight coil and rounded 45 where 44
+  // chords fit.
+  const linksAt = typeof clock.chainLinkCount === 'function'
+    ? (t, len) => clock.chainLinkCount(t)
+    : (t, len) => Math.max(Math.round(len / CHAIN_PITCH), 2);
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1);
     const len = clock.chainRunLength(t, divisions);
-    samples.push({ t: +t.toFixed(4), len, links: Math.max(Math.round(len / CHAIN_PITCH), 2) });
+    samples.push({ t: +t.toFixed(4), len, links: linksAt(t, len) });
   }
   const lens = samples.map((s) => s.len);
   const min = Math.min(...lens), max = Math.max(...lens);
