@@ -17,9 +17,10 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 221 | OPEN | Found closing TODO 218. The beak's apex takes the whole 2554 mN hold and the wedge's stress goes as 1/s toward it: under yield at its kindest section (236.1 MPa), it reaches 800 MPa 0.2710 u (0.103 mm) from the apex, and inside that the apex is a sharp line in contact with the face, which nothing prices. Cut a land or radius sized from the load, price its contact, and re-place the stud on the land's resultant |
 | 220 | CLOSED | Regression of TODO 60's fix 2. Each spider leg's pinion and sleeve stood **0.1605** off its side gear: `spiderSpec.hubFaceZ` read `zBoreOut` (1.3182 from the apex) while TODO 136's flat web (17387c21) cuts the blank's back face at `zWebHi` (1.1577). The spec now reads the builder's own `zWebHi`, and a boot assert measures each gear's cut back face and each sleeve's end against it. Both pairs measure 0 (seated); `assembly` with the arrest scoped reads both leg groups as one body. Leg B's pinion, the idler pinion and both columns' tops drop 0.1605 (`pinBZ`'s stock-floor branch); the columns' L/D-derived radius follows, 0.2361 → 0.2316. `halfHeight` still reads `zBoreOut` — [TODO 67] |
 | 219 | OPEN | Found closing TODO 217. The maintaining spring is still a drawn torus: its torque at its working point is derived (the going torque, 3.2307 N·mm — it is a series member of the drive), but its stiffness and preload set how long it keeps the train going through a wind, and the model declares no length of a wind. And the ring is never held: it rides `barrelArbor` through winding, so the spring is never deflected and the hold is never posed |
-| 218 | OPEN | Found closing TODO 217. The maintaining detent's beak is a 20.40° wedge carrying the 2554 mN hold almost square to its axis: 2076 MPa at its KINDEST section against the 800 MPa steel (≈ 1.1 GPa if the flank bears evenly along the face), waived by name in `HOLD_STRESS_WAIVERS`. The valley it seats in is 66.15°; fix by cutting the beak to the valley's offset and re-solving the ride and the blade on it |
+| 218 | CLOSED | The beak is the valley's offset: its stud-side flank parallel to the ramp at `SEAT_RELIEF`, its face flank RELIEVED 9.42° so the hold bears on the APEX, on the stud's line. A face-parallel flank would have taken the hold first at the face's far end, 0.927 up the face, and cammed the click out (μ ≥ 0.38 to hold, `MU_STEEL` 0.2). Wedge 20.40° → 56.73°; beak σ 2075.7 → 236.1 MPa at its kindest section, ×3.39 under yield, and `HOLD_STRESS_WAIVERS.beak` retired. Travel and blade bit-identical. The apex inside 0.271 u is TODO 221 |
 | 217 | CLOSED | The hold is priced: the maintaining spring is a series member of the drive, so the detent holds the going torque (3.2307 N·mm) at the first instant of a wind whatever its stiffness — 2554 mN on the face over a 3.3377 u arm. The cranked arm carries it at 686.5 MPa (Winkler bending at its worst section, 1.3211 u off the tip–stud chord, plus the whole load axial), ×1.165 under `SPRING_SIGMA_Y_PA`, so no section change; held as `equalisation` row 16, a §137 `rigidBentLink` row, and in `probe-power-budget`. The beak is over yield (TODO 218); the spring's stiffness is TODO 219 |
 | 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
 | 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
@@ -29273,7 +29274,7 @@ clearances, undeclaredClearance, plateSeats, turning, slenderness and assembly:
 **36/36 gates pass**. `equalisation`'s note reads the hold at 2554.3 mN, the arm 686.5 MPa ×1.165, the beak 2075.7 MPa (waived, TODO 218); `transfers` reads 26 rows, 3 `rigidBentLink`, 0 mismatched. Mutating `HOLD_STRESS_WAIVERS` (waiving the arm, un-waiving the beak) turns `equalisation` red with a stale-waiver row. Boot silent on the default and the seven spec points.
 Fingerprint unchanged at **1211654045**: no metal moved.
 
-## 218. The maintaining detent's beak is a 20-degree wedge carrying the 2.55 N hold across its axis: 2.08 GPa at its kindest section
+## 218. The maintaining detent's beak is a 20-degree wedge carrying the 2.55 N hold across its axis: 2.08 GPa at its kindest section — CLOSED
 
 Found closing [TODO 217]. While the fusee is wound the detent holds the going
 torque, **2554.3 mN** on the ring's face. TODO 215 cut the beak as a wedge
@@ -29312,6 +29313,119 @@ and re-price row 16 at the new section. Decide the contact model with it:
 apex, or the flank bearing along the face. If the flank bears, find where the
 resultant goes relative to the stud, and with it whether the stud still stands
 on the line that carries the hold.
+
+### Closed — the beak is the valley's offset, relieved on the face so the hold bears on the apex.
+
+**The contact, decided first, because it decided the cut.** When winding
+back-drives the ring, the face swings onto the beak about the RING's axis, so
+it closes on each point of a face-parallel flank at a rate proportional to that
+point's distance along the face from the foot of the axis' perpendicular:
+**3.3377** per radian at the apex (the hold's own moment arm, by construction)
+and **4.2645** at the face's far end, the tooth's tip corner, **0.9268** u up
+the face. With the flank parallel at a uniform `SEAT_RELIEF`, the far end
+touches FIRST (×1.278 the apex's rate). The reaction there stands 0.9268 u off
+the tip–stud line, on the side that turns the click the way the ride lifts it:
+**the hold would cam the beak out**, resisted by the blade's ~11 mN and by
+friction only if μ ≥ **0.380**, against `MU_STEEL`'s 0.2 at the adverse corner.
+That was true of TODO 215's beak too, and the "even bearing" reading this item
+filed (≈ 1.06 GPa) was the same failure seen from the stress side. So the hold
+must bear on the APEX, where its line runs through the stud (TODO 215's strut)
+and puts no moment on the click (measured 2.2e-16 u·N per N).
+
+**The cut** (`main.js`, the click block):
+- **Stud-side flank PARALLEL TO THE RAMP** through the tip, `SEAT_RELIEF` off it
+  at the seat (the owner's fix path). It tops out on the arm's centreline
+  1.0857 from the stud, clear of the ⌀0.4 stud (asserted: ≥ its radius +
+  `CLEAR_MARGIN`).
+- **Face-side flank RELIEVED**, `FACE_RELIEF` **9.42°** (0.1644 rad), solved on
+  the cut: swing the face about the ring's axis until it reaches the apex
+  (0.0014976 rad of ring, = `SEAT_RELIEF`/3.3377 to 3e-4), then turn the flank
+  about the apex, into the beak, until the face's far end stands
+  **`CLEAR_MARGIN`** off it. The one clearance margin, held at the one place a
+  flank-bearing failure would begin. The arm's beak end runs along the same
+  line, so the click stays one straight flank there; the arm stays whole at the
+  tip's azimuth (asserted), which is where its sections are priced from.
+- The wedge is the valley less the relief: **56.73°** (was 20.40°; the valley
+  is 66.15°).
+- `MAINT_DET_HOLD_GEOM` gains a `contact` block — the model (`apex`), the
+  relief, the ring turn at which the face reaches the apex, the far end's gap
+  then (**0.1500**), the apex load's moment about the stud, and the parallel
+  flank's counterfactual (its offset, both closing rates, the μ it needed).
+  Two boot warns: the apex leaving the stud's line, and the far end coming
+  inside `CLEAR_MARGIN`.
+
+**The ride and the blade did not move.** `MAINT_DET_RIDE.liftAt` reads the new
+polygon (its exact memo unchanged); the travel is set by the apex passing over
+the crest, which neither flank changes, and reads **0.3684958438715059 rad**,
+bit-identical. TODO 210's blade solve reads only the travel, the lever and the
+band, so every figure of it is bit-identical too: t 0.1568 u, b 0.6489 u, tail
+2.2757, beak force **10.93 / 22.87 mN** seated / at the crest, inside 5–50,
+σ 720 MPa at the crest, the energy column unchanged. What did move is the
+SHAPE of the climb: the ramp flank meets the crest's corner from the first
+instant, so `maintDetentHandoff`'s `riding` pose (τ 0.13) now reads lift
+**0.255** rad (was 0.148), still climbing; `seated` (τ 1457.2) reads 2e-5
+(was 6.5e-6), `crest` (τ 1069.4) 0.36850, unchanged. The phases were re-read by
+golden section on the click's pose and stand where they were. The direction
+guard's rising fraction is **87.1%** of a pitch on both cuts (5224 rising
+steps against 776 over τ 0–3000 at 0.5), and the guard's mutant row (flip
+`MAINT_RING_RUN`) is still CAUGHT by both halves (`probe-direction-guards`,
+on a scratch copy: lift over 15.0% of the pitch, the back-drive pulls the beak
+off its stud). That probe's run as a whole still FAILS on its reproducibility
+control and the stem one-way row, the first-frame race TODO 215 recorded.
+
+**The section, re-priced.** `equalisation` row 16 at the new kindest section —
+square to the bisector where the face flank reaches the arm's inner edge, s
+0.9185, **0.9919** wide, **0.7259** off the tip–stud chord:
+
+| | before | after |
+|---|---|---|
+| wedge | 20.40° (radial ⇄ face-parallel) | 56.73° (ramp-parallel ⇄ face, relieved 9.42°) |
+| kindest section width / offset (u) | 0.3644 / 0.9968 | 0.9919 / 0.7259 |
+| beak σ (MPa) | **2075.7**, ×0.385 of yield | **236.1**, ×3.389 under |
+| arm σ (MPa) | 686.50, ×1.1653 | 686.49, ×1.1654 |
+| contact | apex in the record; the flank, as cut, first | apex, by construction |
+
+The arm moved by 0.009 MPa because its beak end moved with the relieved flank
+and its circumscribed inner arc re-divides (vertex radius 4.590802 → 4.590797). It
+is still read as the ARM ALONE from the tip's azimuth: the beak's ramp flank
+now runs stud-ward under it, and that metal lies between the arm and the chord,
+so it only deepens those sections — the arm alone is the upper bound.
+
+**The waiver is retired.** `HOLD_STRESS_WAIVERS.beak` went stale the moment
+the beak came under yield, and is deleted; the table is empty.
+`probe-power-budget` computes the hold from its own level torque and asserts
+the yield station beside the load, the arm and the beak: **44 figures agree**
+(43 before).
+
+**The explainer.** Plate 3's script cut the old beak; it now cuts the valley's
+offset with the same relief solve. No prose changed.
+
+**What it leaves, filed as [TODO 221].** The wedge's stress goes as 1/s toward
+the apex, so the kindest section is not the worst one: σ reaches yield
+**0.2710** u (0.103 mm) from the apex, and inside that the apex is a contact
+problem, not a beam's. A sharp line carrying 2.55 N yields at any load. That is
+now published on the record as `beak.yieldStation_u`.
+
+**Measured.** Full battery, local container (SwiftShader), `--shards 3
+--no-incremental`: **53/53 gates pass**. Against the base tree's full report
+the only verdict-bearing rows that moved are this item's: `equalisation`'s hold
+(beak 2075.7 → 236.1 MPa, ×0.385 → ×3.389, the waiver gone), `transfers`' hold
+row (the arm's 686.50 → 686.49 and the beak's σ), and `maintDetentHandoff`'s
+beak row at `riding`, 0.0050 → **0.0233** (tol 0.03). That last is the
+instrument, not the metal. At that pose the contact is the ring's crest EDGE
+against the beak's ramp flank, and the exact distance between the two cut
+outlines is 0.0050. But the crest edge carries vertices only at the ring's two
+faces (z 3.2000 and 3.6550), each 0.02275 outside the beak's band (3.2228 to
+3.6323), so the hand-off's vertex ruler (`sampledClearance`, which overrides
+under 0.05) reads √(0.005² + 0.02275²) = 0.0233: MODELING rule 5. Before the
+re-cut the contact was the beak's APEX edge on the ring's face, which the ruler
+reads exactly. `expectedContacts`' detent floors row stays a tie on the band's own
+margin at 0.150, its reported pose moved. Fingerprint 2671101204 →
+2740457561 on #586's tree, **623497375** rebased onto #587: the beak's outline
+and the arm's beak end moved (−12 triangles). Battery 53/53 on both trees.
+Boot silent on the default (`boot silent`), 36/36 spec points build with the
+same 28 expected-warning points as the base, and the six silent swept points
+clean; `validated-configs` unchanged (7 keys).
 
 ## 219. The maintaining spring is still a drawn torus: its stiffness, preload and section need the length of a wind, which the model does not declare
 
@@ -29427,3 +29541,33 @@ silent, all six swept spec points clean, `validated-configs` unchanged (7 keys).
 `spec boots` read 31/36 in that run — five warning points timed out under
 container load (no fatal, no page error) — and 36/36 on a `--spec-only`
 re-run of the same tree.
+
+## 221. The maintaining detent's beak apex is a sharp line carrying the hold: the wedge law reaches yield short of the tip
+
+Found closing [TODO 218]. The beak is now a 56.73° wedge whose apex takes the
+whole hold, **2554.3 mN**, on the stud's line, and `equalisation` row 16 prices
+it at its KINDEST section (s 0.9185 from the apex, 236.1 MPa, ×3.39 under
+`SPRING_SIGMA_Y_PA`). But the load arrives at the apex, and a wedge's width and
+offset both grow as s, so its stress goes as 1/s: σ(s) = 236.1·0.9185/s MPa. It
+reaches the 800 MPa yield at **s = 0.2710 u (0.103 mm)** from the apex
+(`EQUALISATION.going.energy.maintainingHold.beak.yieldStation_u`, asserted by
+`probe-power-budget`). Inside that, the beam reading is the wrong model: the
+apex is a sharp LINE in contact with the face, and a sharp line yields under any
+load at all. Nothing prices it.
+
+A real click's beak is stoned to a small land or radius for exactly this
+reason, and the land is then a contact (Hertz, a cylinder on a flat) with a
+pressure that has a number.
+
+**Fix path (P1, the detent group).** Cut the apex as a land or radius that the
+1/s law and a contact law can both price. Derive its size from the load, with
+the contact pressure held to the steel (and, for the ring's metal, to whatever
+the ring is cut from). Then re-check what the land changes. It must still sit
+`SEAT_RELIEF` off both flanks of the valley at the seat, so the tip moves up the
+bisector. The hold's line must still run through the stud: a land's resultant
+is its centre, not the old tip, so re-place the stud on the normal through it,
+or price the moment the offset puts on the click against the blade. Re-solve
+`MAINT_DET_RIDE`'s travel and TODO 210's blade, which both follow from the
+outline. The face relief (TODO 218, `CLEAR_MARGIN` at the face's far end when
+the face reaches the apex) must be re-solved on the land's outer edge, not the
+old point.

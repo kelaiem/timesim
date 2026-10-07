@@ -6275,8 +6275,10 @@ export const STRIKE_HANDOFFS = [
 // every pose — it is preloaded past the seat — so the one row expects CONTACT
 // at all three phases, posed on the train (tau alone moves the detent: it
 // rides the great wheel's absolute angle). The phases are one tooth's, read on
-// the shipped layout: `riding` climbing the ramp (lift 0.148 rad), `seated`
-// with the beak at the root (lift 5e-6 — since TODO 215 the seat is an
+// the shipped layout: `riding` climbing the ramp (lift 0.255 rad since TODO
+// 218's beak, whose ramp-parallel flank meets the crest's corner from the first
+// instant of the climb; 0.148 before), `seated`
+// with the beak at the root (lift 2e-5, 5e-6 before TODO 218 — since TODO 215 the seat is an
 // INSTANT, the tip in the valley, where it used to be 35% of the tooth hovering
 // on the law's floor), `crest` at the tooth's tip (lift 0.3685 = the measured
 // travel), where the blade is deflected most. Located by golden section on the
@@ -9933,9 +9935,11 @@ export const RIBBON_STRESS_WAIVERS = {
 };
 // TODO 217 — the maintaining detent's members over yield holding the going
 // torque, by name; the RIBBON_STRESS_WAIVERS convention (a waiver whose member
-// is under yield is stale and fails).
+// is under yield is stale and fails). Empty since TODO 218: neither member is.
 export const HOLD_STRESS_WAIVERS = {
-  beak: 'TODO 218 — a 20° wedge carrying the hold across its axis; the beak is re-cut to carry it (the valley it seats in is 66°) and the ride and blade re-solved on the new outline',
+  // (beak: RETIRED by TODO 218 — re-cut as the valley's offset, its face flank
+  // relieved so the hold bears on the apex; 2075.7 → 236.1 MPa at its kindest
+  // section, so its waiver went stale and the gate said so)
 };
 export function checkEqualisation(clock) {
   const E = clock.equalisation;
