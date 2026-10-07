@@ -959,7 +959,7 @@ export const FRICTION = Object.freeze({
 // L_BALANCE ≈ 6.35 → spring top ≈ 7.97 → cock underside = plate floor
 // ≈ 8.12 (wheels that XY-overlap must never share z; each step is
 // half-thickness sums + the one margin; the whole stratum rides
-// FUSEE_TILT_Z above its pre-§124 planes — see that constant).
+// UPPER_STRATUM_RAISE above its pre-§124 planes — see that constant).
 export const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — fixed: drum/fusee/chain ride this side
 // Center wheel dropped onto its own bind: one margin over the great wheel's
 // top face, at the wheel's deepest feature (its hub ring, thickness·1.5/2 =
@@ -968,21 +968,22 @@ export const L_BARREL = 2;     // great-wheel plane (meshes center pinion) — f
 // chain's lowest span must clear THIS wheel's top face, and every 0.1 here
 // is 0.1 the cone (and with it the whole plate stack) cannot drop.
 export const L_CENTER = (L_BARREL + 0.7 + 0.08) + CLEAR_MARGIN + 0.75;
-// §124 (TODO 46) — THE FUSEE'S BASE TILT, FUNDED IN z. The ideal equalising
-// cut's base flank is steeper than a vertical chain stack can seat on, so
-// the chain LIES DOWN against the flank — up to the full lie-flat ceiling
-// atan(CHAIN_END_R_OUT / (CHAIN_PIN_LEN/2)) = 63.43° at the base. A tilted
-// link reaches √(h² + w²) below its centreline where the vertical stack
-// reached h, and that extra down-reach is paid for HERE, once, position-
-// space only (CLAUDE.md P3): the groove-start floor rises by this constant
-// (FUSEE_Z0_MIN consumes it) and the upper stratum rises by the same
-// constant (the three literals below), so FUSEE_BAND — the equalisation's
-// z-span — is preserved to the digit and the centre-wheel margin and
-// MAINT_CHAIN_LOW are spent nowhere. One name on both sides, so the two
-// raises cannot drift apart.
-export const FUSEE_TILT_Z = Math.hypot(CHAIN_PIN_LEN / 2, CHAIN_END_R_OUT) - CHAIN_PIN_LEN / 2; // 0.40790
-export const L_THIRD = 5.95 + FUSEE_TILT_Z;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
-export const L_FOURTH = 6.95 + FUSEE_TILT_Z;
+// §124 (TODO 46) raised the upper stratum — third, fourth and escape planes —
+// by the leaning chain's extra down-reach, √(h² + w²) − h, so the groove
+// floor could rise by the same amount with the band preserved. §254 (TODO
+// 208) stood the chain up: the groove is cut as a fusee engine cuts it and
+// the lean, with its down-reach, is gone, so the groove floor stays on the
+// centre wheel's bind and the raise is now CONE HEIGHT — the whole 0.408 is
+// band, which is TODO 208's second lever bought in position space (CLAUDE.md
+// P3). It is what brings the equalising flank's base slope under the
+// one-wall bound an upright stack needs (|dr/dz| ≤ grooveD/(grooveW/2) —
+// main.js asserts it at boot: the slope scales as 1/BAND under the held
+// level product, 2.02 on the old band). The value is the raise §124 made,
+// kept in metal because lowering the stratum back would spend it; it is
+// named for what it is now rather than for the lean that first asked for it.
+export const UPPER_STRATUM_RAISE = Math.hypot(CHAIN_PIN_LEN / 2, CHAIN_END_R_OUT) - CHAIN_PIN_LEN / 2; // 0.40790
+export const L_THIRD = 5.95 + UPPER_STRATUM_RAISE;   // = L_FOURTH − (fourth 0.4 + margin + third 0.45)
+export const L_FOURTH = 6.95 + UPPER_STRATUM_RAISE;
 // ESCAPE WHEEL BELOW THE FOURTH WHEEL — the low-escapement layout: the
 // wheel drops under the whole train while its pinion stays up in the
 // fourth wheel's plane (the arbor spans the gap). The ceiling is the
@@ -991,7 +992,7 @@ export const L_FOURTH = 6.95 + FUSEE_TILT_Z;
 // Below, its own neighbourhood is clear: the nearest train discs
 // (center, third) are 19+ away in XY, and the fourth arbor is bare
 // staff at this depth.
-export const L_ESCAPE = 4.5 + FUSEE_TILT_Z;
+export const L_ESCAPE = 4.5 + UPPER_STRATUM_RAISE;
 export const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's `thickness`)
 // FORK INLINE WITH THE WHEEL: one shared plane, the way a real lever
 // escapement is built — the stones engage in the fork's own z-band

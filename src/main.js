@@ -52,7 +52,7 @@ import {
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
-  FUSEE_TILT_Z,                               // §124 (TODO 46): the base tilt's funded down-reach — Z0_MIN and the base inset consume it
+  UPPER_STRATUM_RAISE,                        // §124 raised the stratum for the leaning chain; §254 keeps the raise as the cone's band (TODO 208)
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SPRING_MIN_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; the spring floor a spiral is cut against (TODO 194); §54 target
   TURN_LD_TARGET, TURN_LD_MAX,               // §233/§234: the turning ceiling's build-to figure (and the ceiling, published with the fold for its probe) — the arrest columns are cut to it
@@ -1009,64 +1009,18 @@ const FUSEE_F_ACTIVE = FUSEE_WRAP_TURNS / FUSEE_GROOVE_TURNS; // 0.875 — the w
 // §47 — the winding arrest, as a quantity: winding stops when the reserve
 // reaches the turn count at which the arrest finger's beak meets the stop lug
 // on the cone. That count IS FUSEE_WRAP_TURNS — the chain's engagement is
-// f = tension·FUSEE_F_ACTIVE, so the last link arrives (and throws the
-// finger) exactly at full wrap — and the arrest build below extends this
+// f = fuseeEngagedF(tension), FUSEE_F_ACTIVE at full wind (§254: the wrap
+// is hooked to the cone, so f carries the tangent departure's walk and lands
+// on F_ACTIVE at t = 1 by the hook's own clocking), so the last link arrives
+// (and throws the finger) exactly at full wrap — and the arrest build below extends this
 // object with the cut geometry and ASSERTS the identity rather than storing a
 // second number: tick() banks against engageTurns, so a lug whose clocking
 // drifted from the wrap would be caught at boot, not discovered as overwind.
 const WIND_ARREST = { engageTurns: FUSEE_WRAP_TURNS };
-const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
-const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 0.01;  // 0.67 — the stack drops in with a seating clearance
-const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
-// §124 (TODO 46) — the collar grows by the tilt's funded down-reach, so the
-// cone's BASE FACE stays exactly where it was while the groove start rises
-// FUSEE_TILT_Z with the raised floor below.
-const FUSEE_BASE_INSET = CLEAR_MARGIN + FUSEE_TILT_Z; // seat collar under the bottom groove (the cut opens out the base)
-// Lowest legal bottom-groove centreline: the center wheel's top face plus
-// the margin plus the chain's deepest reach below its centreline — which
-// since §124 is the LIE-FLAT TILTED corner, √(h²+w²) = h + FUSEE_TILT_Z,
-// not the vertical stack's h: the base flank is steeper than a vertical
-// stack can seat on, and the chain lies down against it (TODO 46).
-const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z);
-// Highest legal tip: the spring stack top, less a 0.02 float guard so the
-// plate-floor comparator binds on the SPRING, not on rounding at the tip.
-const FUSEE_BAND = TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN; // §218 tier two — TRAIN_CEILING_Z, not the raised spring stack
-const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h default (§124: two grooves — was 0.695 across four)
-const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
-if (FUSEE_LAND_W < 0.02)
-  console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
-const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§124 grew the collar)
-// Base DERIVED from the plate's design goal. The old bind (the chain's
-// lowest span clearing the movement-side crown wheel) vanished when the
-// keyless works moved to the dial side — after that, the only thing the
-// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
-// sits at max(tallest under-plate part, hairspring stack) + margin, and
-// the fusee tip was that tallest part by ~2.5, holding the whole back of
-// the movement high and the balance cock BELOW the plate band it is meant
-// to sit in (the long-standing console warning). Keep the tip AT or under
-// the hairspring stack's top so the spring stays the plate's binding
-// member and everything above — plate, rod planes, post, stop-work tail —
-// closes down with it. The FLOOR under the cone is the CENTER WHEEL: its
-// disc reaches under the cone's footprint (origin is only 16.2 from the
-// barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's lowest
-// wrap — the groove FUSEE_BASE_INSET above the base, chain half-stack
-// below its centre-line — must clear the wheel's top face by the margin.
-// Both binds explicit. Since §61 the CENTER bind governs by construction:
-// FUSEE_BAND was derived to fill exactly the space between the two binds,
-// so the max() seats the cone on the wheel-side bind with the tip 0.04
-// under the spring top (the guard pair in the band derivation). The
-// spring bind's own 0.1 keeps the tip clear of the plate comparator if a
-// future change hands it back the governing role.
-// (This z stack — base, groove start, band — is declared BEFORE the torque
-// law below, because the span-aware solve consumes the wrap's z stations:
-// the free span's length has a z leg, and its give is part of the chain
-// conservation the law integrates. Same hoist reason as COIL_TOP's.)
-const FUSEE_BASE_Z = Math.max(
-  TRAIN_CEILING_Z - L_BARREL - FUSEE_H - 0.1,   // §218 tier two — the train's ceiling
-  FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
-);
-const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
-const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
+// (The cone's z stack — groove width and depth, base collar, center-wheel bind, band, pitch,
+// base and groove start — is declared below, beside the spring constants it needs:
+// the groove's width carries the plate's twist off the helicoid walls, which is a
+// function of the wrap's smallest radius, which only the torque law bounds. §254.)
 // THE SPRING'S TORQUE LAW — derived from the ribbon, and the cone solved
 // against it (TODO 32, closing; TODO 40 row 1 built the machinery).
 //
@@ -1168,6 +1122,140 @@ const DRUM_WRAP_R = DRUM_R_ACTUAL + CHAIN_END_R_OUT;
 const FUSEE_LEVEL_P = 7.4 * ((17 * 2 * Math.PI) / 24); // 32.9344 rad·u — the pre-§124 shipped product, held
 const FUSEE_R_LARGE = FUSEE_LEVEL_P / SETUP_SWEEP;     // 5.46955 — was the bare literal 7.4
 const SPRING_WIND_BETA = (4 * Math.PI * FUSEE_WRAP_TURNS * FUSEE_R_LARGE * SETUP_SWEEP) / DRUM_WRAP_R;
+const FUSEE_GROOVE_D = CHAIN_END_R_OUT;       // cut one plate half-width deep: inner edge on the floor, centreline on the envelope
+const FUSEE_TIP_INSET = 0.02;   // the top groove runs out at the tip, as cut threads do
+// §254 — THE CHANNEL IS WIDER THAN THE STACK BY WHAT A FLAT PLATE NEEDS TO LIE
+// ALONG A HELIX. A fusee engine's channel walls are helicoids: at one azimuth
+// both stand at one z whatever the radius, so the wall's z at a point is
+// lead·θ with θ the point's azimuth about the ARBOR. A chain plate is flat: its
+// face is a plane through the chord, z linear in the distance s along it. The
+// two agree on the chord line at the joints and part everywhere else — at a
+// point (s along the chord, y inboard of it) by
+//     lead·|atan2(s, d − y) − s·atan(h/d)/h|,   h = CHAIN_PITCH/2, d = √(r² − h²)
+// (d the chord's distance from the axis, r the joints' radius), which the
+// plate's corners reach: a rear cap bottom corner stood 0.001 over the wall's
+// lower edge on the first §254 cut, and the burial row, whose depth is the
+// WALL'S height at the vertex (a cliff, 1.15), read it as 1.15. The corner is
+// really 0.001 into the wall — and the fix is the real one: the channel is cut
+// wide enough that no corner of the stadium touches either wall, at the radius
+// where the mismatch is largest (the wrap's smallest, since it goes as 1/r²).
+// The smallest radius is not known until the torque solve has run, and the
+// solve consumes the z stack this widens, so the bound used is the closed-form
+// branch of the same solve, u(1) ≤ √(θ_s² + β) (the span's give only lowers u),
+// which gives r_min ≥ P/√(θ_s² + β) — asserted against the solve's own K below.
+// Both faces tilt with the chord, so the stack's half also grows by 1/cos(lean).
+const FUSEE_R_WRAP_MIN_LB = FUSEE_LEVEL_P / Math.sqrt(SETUP_SWEEP * SETUP_SWEEP + SPRING_WIND_BETA);
+const plateTwistAllow = (r, lead) => {
+  const h = CHAIN_PITCH / 2, R = CHAIN_END_R_OUT;
+  const d = Math.sqrt(r * r - h * h);
+  const kap = Math.atan(h / d) / h;                       // the plate's face slope per unit chord, in lead units
+  const NS = 64;
+  let worst = 0;
+  const probe = (s, y) => {
+    const m = Math.abs(Math.atan2(s, d - y) - s * kap);
+    if (m > worst) worst = m;
+  };
+  for (let i = 0; i <= NS; i++) {
+    const a = -Math.PI / 2 + Math.PI * (i / NS);           // the stadium's outline: two caps and two straight edges
+    for (const sg of [-1, 1]) for (const sy of [-1, 1]) {
+      probe(sg * (h + R * Math.cos(a)), sy * R * Math.sin(a));
+      probe(sg * h * (i / NS), sy * R);
+    }
+  }
+  const tilt = CHAIN_PIN_LEN / 2 * (1 / Math.cos(Math.atan(lead * kap)) - 1);
+  return lead * worst + tilt;
+};
+const FUSEE_PITCH_EARLY = (TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - (L_CENTER + 0.5 + 0.08 + CLEAR_MARGIN + CHAIN_PIN_LEN / 2)) / FUSEE_GROOVE_TURNS;   // the pitch to within the hook dip's 0.0186/2 — an UPPER bound, so a wider lead and a wider channel: the safe side
+const FUSEE_TWIST_ALLOW = plateTwistAllow(FUSEE_R_WRAP_MIN_LB, FUSEE_PITCH_EARLY / (2 * Math.PI));
+const FUSEE_GROOVE_W = CHAIN_PIN_LEN + 2 * FUSEE_TWIST_ALLOW + 0.01;   // the stack, the corners' twist, and the seating clearance (0.005 a side)
+// Lowest legal bottom-groove centreline: the center wheel's top face plus
+// the margin plus the chain's deepest reach below its centreline. Since §254
+// stood the chain up that reach is the stack's half, CHAIN_PIN_LEN/2, PLUS
+// the one thing that stands lower: the hook's end rivet. The pin leans off
+// the arbor by the helix's own slope (that is what makes the plates parallel
+// to the groove's helicoid walls), so the formed head — a disc of
+// CHAIN_RIVET_HEAD_R on the stack's outer face — has its rim dip below the
+// face by R·sin(lean). Measured on the shipped metal: 0.0186 u, the whole of
+// the 0.0039 the center wheel's clearance came up short of CLEAR_MARGIN.
+// The lean is the chord's slope at the base, lead·(2·asin(pitch/2r)/pitch)
+// with lead the groove's rise per radian, which is the band over the groove
+// turns — and the band is what this raises Z0_MIN against, so the pair is
+// closed by four fixed substitutions (contraction ≈ 0.006 each: exact to
+// float, and a fixed count keeps the boot bit-reproducible).
+const FUSEE_WHEEL_TOP_Z = L_CENTER + 0.5 + 0.08;   // the center wheel's top face
+const chainHookDip = (pitch) => {
+  const lead = pitch / (2 * Math.PI);
+  const slope = lead * 2 * Math.asin((CHAIN_PITCH / 2) / FUSEE_R_LARGE) / CHAIN_PITCH;   // R_LARGE ≤ the claw's radius: the smaller r leans more, so the bound is the safe one
+  return CHAIN_RIVET_HEAD_R * Math.sin(Math.atan(slope));
+};
+const FUSEE_HOOK_DIP = (() => {
+  let dip = 0;
+  for (let i = 0; i < 4; i++) {
+    const z0 = FUSEE_WHEEL_TOP_Z + CLEAR_MARGIN + CHAIN_PIN_LEN / 2 + dip;
+    dip = chainHookDip((TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - z0) / FUSEE_GROOVE_TURNS);
+  }
+  return dip;
+})();
+const FUSEE_Z0_MIN = FUSEE_WHEEL_TOP_Z + CLEAR_MARGIN + CHAIN_PIN_LEN / 2 + FUSEE_HOOK_DIP;
+// Highest legal tip: the spring stack top, less a 0.02 float guard so the
+// plate-floor comparator binds on the SPRING, not on rounding at the tip.
+const FUSEE_BAND = TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN; // §218 tier two — TRAIN_CEILING_Z, not the raised spring stack
+const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h default (§124: two grooves — was 0.695 across four)
+const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
+if (FUSEE_LAND_W < 0.02)
+  console.warn(`fusee: land ${FUSEE_LAND_W.toFixed(3)} under the 0.02 crest floor — the reserve outgrew the axial budget (§22/§61)`);
+// §254 — WHERE THE CUT STARTS. The chain is hooked at f = 0, but the hook
+// link's metal lies BEHIND that joint: its plate cap reaches CHAIN_END_R_OUT
+// back along the chord (the outer radius, so either parity of the hook link is
+// covered), and the groove has to be there to receive it. The engine plunges
+// that far early. The cap's tip is the farthest point, and it stands on the
+// chord line at the joints' radius (a point of the cap off the line is nearer
+// in along the chord by more than it is nearer the axis), so the lead is that
+// tip's angular reach, atan(R/r), at R_LARGE (the claw's radius is larger, so
+// this is the most angle), taken up to whole stations of the ribbon so the
+// plunge wall is one the mesh already owns.
+const FUSEE_PLUNGE_LEAD_TURNS = Math.ceil(
+  (Math.atan(CHAIN_END_R_OUT / FUSEE_R_LARGE) / (2 * Math.PI)) * G.FUSEE_RIBBON_NAZ - 1e-9) / G.FUSEE_RIBBON_NAZ;
+const FUSEE_PLUNGE_DROP = FUSEE_BAND * (FUSEE_PLUNGE_LEAD_TURNS / FUSEE_GROOVE_TURNS);   // how far below the claw's station the channel begins
+// §254 (TODO 208) — the collar under the bottom groove: the groove's own
+// lower wall, whole (half the channel's width below the centreline), plus one
+// margin of base face under it — under the channel's FOOT AT ITS PLUNGE, which
+// the lead (below) puts FUSEE_PLUNGE_DROP under the claw's station. The bottom groove no longer opens out the
+// base: an upright chain is located in z by that wall, so the wall is derived
+// to exist. (§124's collar was the tilt's funded down-reach; the lean is gone.)
+const FUSEE_BASE_INSET = FUSEE_GROOVE_W / 2 + CLEAR_MARGIN + FUSEE_PLUNGE_DROP;
+const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 — the band plus its insets, nothing else (§124 grew the collar)
+// Base DERIVED from the plate's design goal. The old bind (the chain's
+// lowest span clearing the movement-side crown wheel) vanished when the
+// keyless works moved to the dial side — after that, the only thing the
+// cone's height still cost was the THREE-QUARTER PLATE FLOOR: the plate
+// sits at max(tallest under-plate part, hairspring stack) + margin, and
+// the fusee tip was that tallest part by ~2.5, holding the whole back of
+// the movement high and the balance cock BELOW the plate band it is meant
+// to sit in (the long-standing console warning). Keep the tip AT or under
+// the hairspring stack's top so the spring stays the plate's binding
+// member and everything above — plate, rod planes, post, stop-work tail —
+// closes down with it. The FLOOR under the cone is the CENTER WHEEL: its
+// disc reaches under the cone's footprint (origin is only 16.2 from the
+// barrel vs an 11.5 wheel plus a 7.4–8.3 cone), so the chain's lowest
+// wrap — the groove FUSEE_BASE_INSET above the base, chain half-stack
+// below its centre-line — must clear the wheel's top face by the margin.
+// Both binds explicit. Since §61 the CENTER bind governs by construction:
+// FUSEE_BAND was derived to fill exactly the space between the two binds,
+// so the max() seats the cone on the wheel-side bind with the tip 0.04
+// under the spring top (the guard pair in the band derivation). The
+// spring bind's own 0.1 keeps the tip clear of the plate comparator if a
+// future change hands it back the governing role.
+// (This z stack — base, groove start, band — is declared BEFORE the torque
+// law below, because the span-aware solve consumes the wrap's z stations:
+// the free span's length has a z leg, and its give is part of the chain
+// conservation the law integrates. Same hoist reason as COIL_TOP's.)
+const FUSEE_BASE_Z = Math.max(
+  TRAIN_CEILING_Z - L_BARREL - FUSEE_H - 0.1,   // §218 tier two — the train's ceiling
+  FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
+);
+const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
+const FUSEE_ZSPAN = FUSEE_BAND; // groove band height — GROOVE_TURNS exact pitches (§61)
 // The fusee↔drum centre distance — declared HERE because the span law
 // consumes it before the drum builds (DRUM_WRAP_R's own reason, one line
 // up). The 2.5 is the hand-set XY gap the drum block justifies (clearance
@@ -1198,11 +1286,25 @@ const SPRING_WIND_SOLVE = (() => {
   const N = Math.round(SPRING_WIND_NPT * SPRING_WIND_TMAX);
   const h = 1 / SPRING_WIND_NPT;
   const iFull = SPRING_WIND_NPT;             // the t = 1 node
-  const W = FUSEE_WRAP_TURNS, P = FUSEE_LEVEL_P, Rw = DRUM_WRAP_R, D = FUSEE_DRUM_DIST;
-  const zRate = FUSEE_ZSPAN * FUSEE_F_ACTIVE; // dz/dt of the departure station
+  const W = FUSEE_WRAP_TURNS, P = FUSEE_LEVEL_P, Rw = DRUM_WRAP_R, D = FUSEE_DRUM_DIST, G = FUSEE_GROOVE_TURNS;
+  const lead = FUSEE_GROOVE_PITCH / (2 * Math.PI); // the groove's rise per radian of helix
   const RwEff = Math.hypot(Rw, CHAIN_COIL_PITCH / (2 * Math.PI)); // the coil's helix factor
+  // §254 (TODO 49) — THE WRAP IS HOOKED TO THE CONE, so its angular extent is
+  // hook-to-departure: the cone turns 2π·W per unit reserve under the hook
+  // while the tangent DEPARTURE walks as the cone's radius changes — the same
+  // walk the coil's Ω(u) below carries, read from the other end of the same
+  // tangent line. In band fractions the departure stands at
+  //   f_dep(t) = t·F_ACTIVE + [acos(x(1)) − acos(x(t))] / (2π·G),  x = (P/u − R_wrap)/D
+  // — sense-free (acos x is the tangent line's half-angle off the centre
+  // line; spanTangentAngle's branch carries the sense) and f_dep(1) = F_ACTIVE
+  // exactly, which is what clocks the hook: the last link arrives at full wrap
+  // as the arrest requires. The old wrap was anchored at the DEPARTURE
+  // (wraps = t·W) and its hook end drifted around the cone by exactly this
+  // walk — the drift TODO 49 measured.
+  const acosX = (ui) => Math.acos(clamp((P / ui - Rw) / D, -1, 1));
+  const fDepAt = (t, ui, u1) => t * FUSEE_F_ACTIVE + (acosX(u1) - acosX(ui)) / (2 * Math.PI * G);
   const spanAt = (t, ui, u1) => {
-    const dz = (FUSEE_Z0 + zRate * t)
+    const dz = (FUSEE_Z0 + FUSEE_ZSPAN * fDepAt(t, ui, u1))
       - (COIL_TOP - ((u1 - ui) / (2 * Math.PI) + DRUM_COIL_SLACK_TURNS) * CHAIN_COIL_PITCH);
     const dr = Rw - P / ui;
     return { S: Math.sqrt(D * D - dr * dr + dz * dz), dz, Sp: Math.sqrt(D * D - dr * dr) };
@@ -1211,28 +1313,38 @@ const SPRING_WIND_SOLVE = (() => {
   // drum (−u) while the tangent departure walks with the radius
   // (acos((r − R_wrap)/D) is thetaT's alpha). Closed in u, so the
   // conservation check reads the coil's chain without trusting the stepper.
-  const coilAngleAt = (ui) => -ui + Math.acos((P / ui - Rw) / D);
+  const coilAngleAt = (ui) => -ui + acosX(ui);
   const integrate = (u1, live) => {
     const u = new Float64Array(N + 1), c = new Float64Array(N + 1);
     u[0] = SETUP_SWEEP;
-    const du = (t, ui) => {
+    // u′ and the wrap's take-up rate c′ share the walk, so one evaluation
+    // returns both. With Φ the wrap's angle, dΦ/dt = 2π·W − g·u′/S_p (the
+    // cone's turn less the departure's walk), the wrap gains √(r² + lead²)
+    // of chain per radian of Φ and its departure climbs lead per radian;
+    // conservation against the span's give and the coil's Ω(u) then reads
+    // u′ in closed form (the walk's two terms are the last two of the
+    // denominator — drop them and this is §150's departure-anchored law).
+    const rates = (t, ui) => {
       const r = P / ui;
-      if (!live || t > 1) return (2 * Math.PI * W * r) / Rw; // S′ ≡ 0: the closed form's branch
+      if (!live || t > 1) {                                  // S′ ≡ 0, departure-anchored: the closed form's branch, and the runout past t = 1
+        return { du: (2 * Math.PI * W * r) / Rw, dc: 2 * Math.PI * W * Math.hypot(r, lead) };
+      }
       const { S, dz, Sp } = spanAt(t, ui, u1);
-      const g = P / (ui * ui);               // −dr/du
-      const wr = Math.hypot(2 * Math.PI * W * r, zRate); // wrap's helix take-up per unit t
-      return (wr + (dz * zRate) / S)
-        / (RwEff * (1 - g / Sp) + ((Rw - r) * g) / S + (dz * CHAIN_COIL_PITCH) / (2 * Math.PI * S));
+      const g = P / (ui * ui);                               // −dr/du
+      const helix = Math.hypot(r, lead) + (dz * lead) / S;   // chain the wrap and the span's z leg take per radian of Φ
+      const du = (2 * Math.PI * W * helix)
+        / (RwEff * (1 - g / Sp) + ((Rw - r) * g) / S + (dz * CHAIN_COIL_PITCH) / (2 * Math.PI * S) + (g / Sp) * helix);
+      const dPhi = 2 * Math.PI * W - (g * du) / Sp;
+      return { du, dc: Math.hypot(r, lead) * dPhi };
     };
-    const dc = (ui) => Math.hypot(2 * Math.PI * W * (P / ui), zRate); // chain onto the cone — the helix rate the wrap really lays
     for (let i = 0; i < N; i++) {
       const t = i * h, ui = u[i], ci = c[i];
-      const k1u = du(t, ui), k1c = dc(ui);
-      const k2u = du(t + h / 2, ui + (h / 2) * k1u), k2c = dc(ui + (h / 2) * k1u);
-      const k3u = du(t + h / 2, ui + (h / 2) * k2u), k3c = dc(ui + (h / 2) * k2u);
-      const k4u = du(t + h, ui + h * k3u), k4c = dc(ui + h * k3u);
-      u[i + 1] = ui + (h / 6) * (k1u + 2 * k2u + 2 * k3u + k4u);
-      c[i + 1] = ci + (h / 6) * (k1c + 2 * k2c + 2 * k3c + k4c);
+      const k1 = rates(t, ui);
+      const k2 = rates(t + h / 2, ui + (h / 2) * k1.du);
+      const k3 = rates(t + h / 2, ui + (h / 2) * k2.du);
+      const k4 = rates(t + h, ui + h * k3.du);
+      u[i + 1] = ui + (h / 6) * (k1.du + 2 * k2.du + 2 * k3.du + k4.du);
+      c[i + 1] = ci + (h / 6) * (k1.dc + 2 * k2.dc + 2 * k3.dc + k4.dc);
     }
     return { u, c };
   };
@@ -1278,6 +1390,18 @@ const SPRING_WIND_SOLVE = (() => {
         break;
       }
   }
+  // §254 — the departure's band fraction on the same grid, with u(1) FINAL so
+  // f_dep(1) is F_ACTIVE to the bit; the cut below is parametrised by it.
+  {
+    const uF = sol.u[iFull];
+    sol.fDep = new Float64Array(N + 1);
+    for (let i = 0; i <= N; i++) sol.fDep[i] = fDepAt(i * h, sol.u[i], uF);
+    for (let i = 0; i < N; i++)
+      if (!(sol.fDep[i + 1] > sol.fDep[i])) {
+        console.warn(`fusee solve: the departure f_dep(t) is not strictly increasing at node ${i} — the walk outran the cone's turn, and the cut cannot be read back from it`);
+        break;
+      }
+  }
   return sol;
 })();
 const springWindAt = (t) => {
@@ -1287,66 +1411,81 @@ const springWindAt = (t) => {
   return table[i] + (table[i + 1] - table[i]) * (x - i); // clamped index ⇒ linear extension past either end
 };
 const SPRING_WIND_FULL = springWindAt(1);              // u(1) — a solve output now (was 10.2081 closed-form; the span's give lowers it ~0.8%)
+// §254 (TODO 49) — WHERE THE CHAIN LEAVES THE CONE at reserve t, in band
+// fractions: the solve's own departure law (f_dep above). Every reader that
+// used to write `tension · FUSEE_F_ACTIVE` reads this instead — the drawing,
+// the arrest's occupancy laws, the HUD's radius and the equalisation gate — so
+// the hook's walk is one law everywhere. F_ACTIVE at t = 1 exactly.
+const fuseeEngagedF = (t) => {
+  const table = SPRING_WIND_SOLVE.fDep;
+  const x = t * SPRING_WIND_NPT;
+  const i = Math.max(0, Math.min(table.length - 2, Math.floor(x)));
+  return table[i] + (table[i + 1] - table[i]) * (x - i);
+};
+// ...and its inverse, band fraction → reserve, which is how the CUT is
+// parametrised: the envelope at f must be the torque radius of the reserve
+// whose departure stands at f. The inverse of the table's own interpolant,
+// so the round trip t → f → t is exact on the grid and float noise off it —
+// the equalisation gate holds the product as an identity through it.
+const fuseeReserveAtF = (f) => {
+  const table = SPRING_WIND_SOLVE.fDep;
+  let lo = 0, hi = table.length - 1;
+  if (f <= table[0]) return (f - table[0]) / (table[1] - table[0]) / SPRING_WIND_NPT;
+  if (f >= table[hi]) return (hi - 1 + (f - table[hi - 1]) / (table[hi] - table[hi - 1])) / SPRING_WIND_NPT;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (table[mid] <= f) lo = mid; else hi = mid; }
+  return (lo + (f - table[lo]) / (table[lo + 1] - table[lo])) / SPRING_WIND_NPT;
+};
 // Normalized torque for display: M(t)/M(1) = u(t)/u(1). Concave in t — a
 // real spring spends its top turns faster than its bottom ones.
 const springTorqueAt = (t) => springWindAt(t) / SPRING_WIND_FULL;
 const SPRING_TQ_EMPTY = SETUP_SWEEP / SPRING_WIND_FULL; // 0.58986 — DERIVED (§124: the deep set-up's consequence; was 0.34606)
 const FUSEE_TORQUE_K = FUSEE_R_LARGE * SPRING_TQ_EMPTY; // 3.2263 — the level product, as a radius (= FUSEE_LEVEL_P/SPRING_WIND_FULL)
 // The envelope at band fraction f. The wrap occupies f ∈ [0, FUSEE_F_ACTIVE]
-// and maps to reserve t = f / FUSEE_F_ACTIVE; past it the cut runs on to the
-// tip carrying the runout, so the law is simply evaluated at t > 1 there.
-const fuseeEnvR = (f) => FUSEE_TORQUE_K / springTorqueAt(f / FUSEE_F_ACTIVE);
+// and maps to reserve t = fuseeReserveAtF(f) (§254 — t·F_ACTIVE plus the
+// departure's walk, inverted); past it the cut runs on to the tip carrying
+// the runout, so the law is simply evaluated at t > 1 there.
+const fuseeEnvR = (f) => FUSEE_TORQUE_K / springTorqueAt(fuseeReserveAtF(f));
 // ...which keeps the small radius a CONSEQUENCE: 3.0858 at the band's top,
 // 3.2263 at the top of the WRAP, where the chain actually stops — and that
 // second number is FUSEE_TORQUE_K by identity (r·M/M₁ constant with M₁ at
 // the wrap's top), the same identity the §61 seating budget's r_min leans on.
 const FUSEE_R_SMALL = fuseeEnvR(1);
-// §124 (TODO 46) — the chain's TILT LAW. The cut's slope at band fraction f
-// (numeric off the one envelope law, dz = BAND·df):
+// The cut's slope at band fraction f (numeric off the one envelope law,
+// dz = BAND·df) — read by the §254 one-wall assert below and by instruments.
 const fuseeSlopeAt = (f) => {
   const d = 1 / 2048;
   const a = Math.max(0, f - d), b = Math.min(1, f + d);
   return (fuseeEnvR(a) - fuseeEnvR(b)) / ((b - a) * FUSEE_BAND);
 };
-// The chain lies flat on the flank — β = atan(slope) — capped at the
-// lie-flat ceiling atan(w/h) = 63.43°, beyond which more tilt stops
-// closing daylight (the plate width is spent). Below the cap the seat is
-// EXACT (daylight w·(m·cosβ − sinβ) = 0 at β = atan m); at the cap —
-// the first ~2.5% of the band, where the slope peaks at 2.1617 (§150's
-// conserving solve steepened §124's 2.109) — the linearized residual is
-// 0.0477, inside the one margin, and the §61 float row measures the
-// curvature-relieved truth. The chain builder and the
-// relieved cut both read THIS, so pose and metal cannot disagree.
-const fuseeBetaAt = (f) =>
-  Math.min(Math.atan(fuseeSlopeAt(f)), Math.atan(CHAIN_END_R_OUT / (CHAIN_PIN_LEN / 2)));
-// Boot asserts (rule 6) — the two §124 guarantees, checked on the built law
-// rather than trusted from the derivation:
-// 1. TILT AFFORDABILITY. A link tilted β reaches drop(β) = h·cosβ + w·sinβ
-//    below its centreline; the headroom at f is the vertical stack's h plus
-//    the funded raise plus the band climbed. Zero slack at f = 0 BY
-//    CONSTRUCTION (FUSEE_TILT_Z is exactly the deficit), positive after.
-// 2. TURN SEPARATION. Adjacent turns' tilted stacks, as parallel rectangles
-//    in the meridian offset (pitch, −m·pitch): separating-axis gap must
-//    keep the pre-§124 axial stack gap's order (0.0354 = pitch − stack).
-//    The chain is ONE mesh — sweptOverlap is structurally blind here, so
-//    this assert is the coverage until the §61 rows re-measure.
+// §254 (TODO 208) — THE CHAIN STANDS UPRIGHT, and the one thing that makes
+// that honest is asserted here. The groove is cut as a fusee engine cuts it
+// (makeFusee): a helical SHELF, flat across the tool's width at every
+// azimuth, walled by the uncut cone on both sides. An upright stack seats
+// on that shelf with no daylight — the shelf is flat under the whole stack —
+// but only while the cone's own flank has not fallen inside the tool's
+// radius at the window's upper edge: |dr/dz| · (grooveW/2) ≤ grooveD, the
+// ONE-WALL BOUND, 2.0 on the shipped stock (0.66 / 0.335 = 1.97 with the
+// seating clearance). Past it the upper wall is gone and the top leaf floats
+// by m·gw/2 − grooveD. §124's lean existed because its floor was a surface
+// of REVOLUTION, sloped across the groove's width wherever the flank is, on
+// which an upright stack gapped 2h·m: the lean was that modelling choice's
+// cost, not the cone's. What the bound asks of the layout is the band — the
+// slope scales as 1/BAND under the held level product — and the band is what
+// §124's stratum raise now buys (UPPER_STRATUM_RAISE: the groove floor no
+// longer rises with it, so the whole raise is cone height, TODO 208's second
+// lever), measured 2.02 before and under the bound after.
 (() => {
-  const h = CHAIN_PIN_LEN / 2, w = CHAIN_END_R_OUT;
-  let worstAfford = Infinity, worstSep = Infinity, atA = 0, atS = 0;
+  const bound = FUSEE_GROOVE_D / (FUSEE_GROOVE_W / 2);
+  let worst = 0, at = 0;
   for (let i = 0; i <= 512; i++) {
-    const f = i / 512;
-    const m = fuseeSlopeAt(f), b = fuseeBetaAt(f);
-    const afford = (h + FUSEE_TILT_Z + FUSEE_BAND * f) - (h * Math.cos(b) + w * Math.sin(b));
-    if (afford < worstAfford) { worstAfford = afford; atA = f; }
-    const oz = FUSEE_GROOVE_PITCH, or = -m * FUSEE_GROOVE_PITCH;
-    const oA = oz * Math.cos(b) + or * Math.sin(b), oB = -oz * Math.sin(b) + or * Math.cos(b);
-    const sep = Math.max(Math.abs(oA) - 2 * h, Math.abs(oB) - 2 * w);
-    if (sep < worstSep) { worstSep = sep; atS = f; }
+    const f = (i / 512) * FUSEE_F_ACTIVE;          // the wrap: the runout past it carries no chain
+    const m = fuseeSlopeAt(f);
+    if (m > worst) { worst = m; at = f; }
   }
-  if (worstAfford < -1e-9)
-    console.warn(`fusee §124: tilt down-reach exceeds headroom by ${(-worstAfford).toFixed(4)} at f=${atA.toFixed(3)} (need ≥ 0)`);
-  if (worstSep < 0.02)
-    console.warn(`fusee §124: adjacent-turn stack gap ${worstSep.toFixed(4)} at f=${atS.toFixed(3)} under the 0.02 floor`);
+  if (worst > bound)
+    console.warn(`fusee §254: flank slope ${worst.toFixed(4)} at f=${at.toFixed(3)} over the one-wall bound ${bound.toFixed(3)} — the upper groove wall is cut away there and an upright stack's top leaf floats ${(worst * FUSEE_GROOVE_W / 2 - FUSEE_GROOVE_D).toFixed(4)}`);
+  if (FUSEE_GROOVE_PITCH - CHAIN_PIN_LEN < 0.02)
+    console.warn(`fusee §254: adjacent wraps' stacks ${(FUSEE_GROOVE_PITCH - CHAIN_PIN_LEN).toFixed(4)} apart, under the 0.02 floor`);
 })();
 // (FUSEE_BASE_Z, FUSEE_Z0, FUSEE_ZSPAN — the cone's z stack — are declared
 // with the torque law above: the span-aware solve consumes them.)
@@ -1357,21 +1496,17 @@ const fuseeBetaAt = (f) =>
 // shared 0.15 margin — with only a sign assert watching it. This bound is
 // the discrete construction's own arithmetic (linkOuterPtsNear: stadium
 // sections of half-height CHAIN_PIN_LEN/2 and half-width CHAIN_END_R_OUT,
-// leaned per the §124 ramp, chorded between equal-arc joints), evaluated on
-// the continuum laws that DO exist here and erring OUTWARD exactly where
-// chording errs inward — the right side for a floor:
+// upright, chorded between equal-chord joints), evaluated on the continuum
+// laws that DO exist here and erring OUTWARD exactly where chording errs
+// inward — the right side for a floor:
 //  · no wrap joint stands above the groove station z(F_ACTIVE), and at full
 //    wind the free span leaves DOWNWARD (the hook plane COIL_TOP sits under
-//    the wrap top — asserted below), so the unleaned straddling link cannot
-//    out-reach the ramp's leaned sections;
-//  · a section s of arc below the departure carries the discrete ramp's
-//    lean (none past the departure, half over the last pitch, full below)
-//    and reaches h·cosβ + max(w·sinβ, t_z·w) above its chord — the leaned
-//    edge at full half-width, OR the end cap's overhang t_z·w along the
-//    climbing tangent (t_z = pitch/(2π·r)); a stadium boundary cannot
-//    spend both at once — while sitting t_z·s below the departure. The
-//    scan takes the max over the top pitches; the unleaned straddle term
-//    seeds it.
+//    the wrap top — asserted below);
+//  · a link's stack reaches h above its chord, and its end cap overhangs
+//    t_z·w along the climbing tangent (t_z = pitch/(2π·r)); the straddling
+//    link, with its wrap-side joint AT the departure, is the one that
+//    reaches highest, so the bound is h + t_z·w over the station. (§124's
+//    leaned-section scan is gone with the lean — §254.)
 // The A2 measurement in the arrest block holds this honest BOTH ways every
 // boot: the discrete top under the bound (conservative), and the plate the
 // bound feeds clear of the discrete top by the full margin.
@@ -1381,13 +1516,7 @@ const CHAIN_TQ_REACH = (() => {
   const tz = FUSEE_GROOVE_PITCH / (2 * Math.PI * fuseeEnvR(FUSEE_F_ACTIVE));
   if (COIL_TOP > zTop + 1e-6)
     console.warn(`TODO 53: the drum's hook plane (${COIL_TOP.toFixed(3)}) stands above the wrap top (${zTop.toFixed(3)}) — the span climbs and CHAIN_TQ_REACH's straddle term under-bounds it`);
-  let reach = h + tz * w; // the straddling link: unleaned, its wrap-side joint AT the departure
-  for (let s = 0; s <= 4 * CHAIN_PITCH; s += CHAIN_PITCH / 32) {
-    const f = Math.max(0, FUSEE_F_ACTIVE - (tz * s) / FUSEE_BAND);
-    const b = (s <= CHAIN_PITCH ? 0.5 : 1) * fuseeBetaAt(f);
-    reach = Math.max(reach, h * Math.cos(b) + Math.max(w * Math.sin(b), tz * w) - tz * s);
-  }
-  return zTop + reach;
+  return zTop + h + tz * w;
 })();
 await breathe();
 const fusee = G.makeFusee({
@@ -1401,21 +1530,13 @@ const fusee = G.makeFusee({
   // radii (the builder still seats the base and closes the tip on them);
   // what envR changes is everything between.
   envR: fuseeEnvR,
-  // ...and the curve forces the RELIEVED cut. A radial-depth groove only
-  // fits a vertical stack on a gentle flank; where the flank steepens the
-  // metal half a stack below the groove stands proud of the chain's
-  // inner-bottom corner (TODO 40's finding — the pre-§124 hyperbola hit
-  // |dr/dz| ≈ 10 at its base and the §61 seating row read red 1.989).
-  // §124 brought the base slope down to a chain-carryable 2.109 (the
-  // 23-click set-up and the two-groove pitch, see the law above) and
-  // TILTS the chain to seat (fuseeBetaAt) — handed to the builder as
-  // tiltAt, so the cut relieves for the TILTED stack (the corner-locus
-  // law, derived in makeFusee's header) rather than the vertical one,
-  // and the chain builder and the lathe read the SAME β(f). The chain's
-  // CENTRELINE stays on the envelope, so the torque radii and the wrap
-  // integral above are untouched.
-  reliefHalf: CHAIN_PIN_LEN / 2,
-  tiltAt: fuseeBetaAt,
+  leadTurns: FUSEE_PLUNGE_LEAD_TURNS,   // §254: the channel starts behind the hook, where its link's rear cap lies
+  // §254 — no relief and no tilt law: the groove is a helical shelf, flat
+  // across its width at every azimuth (makeFusee's header), and the chain
+  // stands upright on it. The chain's CENTRELINE stays on the envelope, so
+  // the torque radii and the wrap integral above are untouched. The cut's
+  // CLOCKING — where the groove starts on the cone — is set once the drum's
+  // station and the arbor's full-wind phase exist (the hook block below).
 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
@@ -2543,7 +2664,7 @@ barrelArbor.add(fusee);
 // §10 level 2 — the pieces on this arbor, named for what the code builds
 registerSub('Fusee & great wheel', 'Great wheel', greatWheel);
 registerSub('Fusee & great wheel', 'Winding spur', windSpur);
-registerSub('Fusee & great wheel', 'Fusee cone', fusee); // the cone with its lands, base flange and boss — one turned piece
+registerSub('Fusee & great wheel', 'Fusee cone', fusee); // the cone with its groove, base flange and chain hook — one turned piece
 movement.add(barrelArbor);
 registerExplode(barrelArbor, L_BARREL, 1);
 registerLabel('Fusee & great wheel', barrelArbor);
@@ -10043,20 +10164,20 @@ let chainFrames = null; // reused per-link frame slots (rivets read their neighb
 function chainWalkFlip(joints, wrapArc) {
   if (!(wrapArc > 0) || joints.length < 2) return 1;
   const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
-  chainLinkFrame(joints[0], joints[1], 0, 1, t, k, y);
+  chainLinkFrame(joints[0], joints[1], 1, t, k, y);
   return (y.x * (P.barrel.x - (joints[0].x + joints[1].x) / 2)
     + y.y * (P.barrel.y - (joints[0].y + joints[1].y) / 2)) >= 0 ? 1 : -1;
 }
-function chainLinkFrame(a, b, beta, flip, t, k, y) {
+// A link's frame: t̂ along the chord (flipped so ŷ points inboard, see
+// chainWalkFlip), k̂ the PIN — world ẑ projected perpendicular to the chord,
+// so the pin leans off the arbor by exactly the helix's lead angle, which is
+// what makes the plates parallel to the groove's helicoid walls (§254) — and
+// ŷ = k̂ × t̂ across the plates. Since §254 there is no lean: a chain bends
+// only about its pins, so this frame is the chain's whole articulation.
+function chainLinkFrame(a, b, flip, t, k, y) {
   t.subVectors(b, a).normalize().multiplyScalar(flip);
   k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
   y.crossVectors(k, t);
-  if (beta > 1e-9) {   // the top of the stack tips toward +ŷ, into the flank
-    const cb = Math.cos(beta), sb = Math.sin(beta);
-    const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
-    k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
-    y.set(y2x, y2y, y2z);
-  }
 }
 // TODO 76 — WHERE THE JOINTS ARE, one law for every reader (the builder, the
 // arrest's analytic reach table, and the pad law that samples the builder's
@@ -10085,7 +10206,34 @@ const CHAIN_JOINT_SAMPLES_PER_PITCH = 32;
 function chainJoints(curve) {
   curve.arcLengthDivisions = 800; // the coils are tight; the default 200 under-resolves arc length
   const len = curve.getLength();
-  const N = Math.max(Math.round(len / CHAIN_PITCH), 2);
+  // §254 — THE CENSUS IS WALKED, NOT DIVIDED. A chain is N rigid links of
+  // CHAIN_PITCH, so the number that spans a path is the number of pitch-long
+  // CHORDS laid end to end along it, the last one counted by its fraction —
+  // not the spline's ARC length over the pitch. The two differ by the
+  // curvature's share (the coil's chords sit 0.9% inside their arcs at full
+  // wind), which is a third of a link over the run: with the run's length
+  // near a half-pitch boundary the arc census rounded 45 where 44 chords
+  // fit, and the §150 residual that should have been 0.005 of a bore read
+  // 0.019, outside the running fit, at exactly one tension.
+  const M0 = Math.max(Math.round(len / CHAIN_PITCH), 2) * CHAIN_JOINT_SAMPLES_PER_PITCH;
+  const P0 = curve.getSpacedPoints(M0);
+  const walked = (() => {
+    let q = P0[0], jf = 0, n = 0;
+    for (;;) {
+      let j = Math.floor(jf) + 1;
+      while (j <= M0 && P0[j].distanceTo(q) < CHAIN_PITCH) j++;
+      if (j > M0) return n + q.distanceTo(P0[M0]) / CHAIN_PITCH;   // the last link's fraction, chord to the end
+      const A = P0[j - 1], B = P0[j];
+      const dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
+      const ex = A.x - q.x, ey = A.y - q.y, ez = A.z - q.z;
+      const a = dx * dx + dy * dy + dz * dz, b = 2 * (dx * ex + dy * ey + dz * ez), cc = ex * ex + ey * ey + ez * ez - CHAIN_PITCH * CHAIN_PITCH;
+      const t = Math.min(1, Math.max(0, (-b + Math.sqrt(Math.max(b * b - 4 * a * cc, 0))) / (2 * a)));
+      jf = Math.max(jf, j - 1 + t);
+      q = new THREE.Vector3(A.x + t * dx, A.y + t * dy, A.z + t * dz);
+      n++;
+    }
+  })();
+  const N = Math.max(Math.round(walked), 2);
   const M = N * CHAIN_JOINT_SAMPLES_PER_PITCH;
   const P = curve.getSpacedPoints(M);
   const ds = len / M;
@@ -10130,13 +10278,11 @@ function chainJoints(curve) {
   }
   return { joints, s, len, N, chord: lo };
 }
-// §124 (TODO 46) — betaAtArc: the wrap's tilt law as a function of arc
-// position along the curve (rebuildChain builds it from its own chord-summed
-// wrap points, so the builder and the path hold ONE mapping). Wrap links get
-// their frame rotated about the local tangent by their own β so the plates
-// lie on the flank the cut was relieved for; the span and drum coil stay
-// world-vertical (the drum's §61 wallR floor assumes flat plates).
-function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
+// wrapArc (§124, kept by §254): the wrap's chord-summed arc from
+// rebuildChain, which tells the builder which links the §61 float row may
+// judge. The tilt law that used to ride beside it is gone — every link
+// stands upright in its frame (chainLinkFrame), on the wrap as on the span.
+function buildChainLinkGeometry(curve, wrapArc = 0) {
   const { joints, s: sJ, len, N } = chainJoints(curve); // N+1 rivet positions, a chord apart (TODO 76)
   const { inner, outer, pin } = CHAIN_TMPL;
   // §124 (TODO 46) — which links the float row may judge: OUTER links wholly
@@ -10199,16 +10345,15 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
     // order would otherwise be unrecoverable after the first raycast.
     chainBuf.idxAuthored = chainBuf.idx.slice();
     // ADJACENT pairs are declared expected-overlap, and only adjacent
-    // pairs: the chain's articulation is a declared fiction (the frame
-    // loop below — §124 leans the wrap's pins up to 63° from the axis the
-    // wrap bends about, so neighbouring links twist 16–35° per joint against
-    // the ≈ 4.5° the running fit allows, TODO 208), and neighbouring rigid
-    // stamps interpenetrate at the joint BY DECLARATION: link ⇄ link up to
-    // 0.155 u, and a rivet riding the mean of two twisted frames up to 0.078
-    // into its own link. The 0.238 this note used to quote was not the twist
-    // but joints spaced in arc rather than chord, gone since chainJoints
-    // (TODO 76). A NON-adjacent pair overlapping is never the fiction — it is
-    // a corrupted stamp or a collapsed curve — so those stay live rows in
+    // pairs. Since §254 the chain bends only about its pins (no lean, no
+    // twist: TODO 208 and TODO 76's remainder are closed, and
+    // probe-254-chain-twist.mjs holds every wrap joint inside its running
+    // fit), so what two neighbouring rigid stamps still share at a joint is
+    // the joint itself: the rivet's head seated on its counterbore floor,
+    // which the vertex test reads as interior, and the lap of an outer and
+    // an inner plate that a joint with CHAIN_RIVET_FIT of play actually
+    // has. A NON-adjacent pair overlapping is never that — it is a corrupted
+    // stamp or a collapsed curve — so those stay live rows in
     // meshIntegrity's report.
     const overlapOk = [];
     for (let i = 0; i < N; i++) {
@@ -10244,25 +10389,7 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const frameFlip = chainWalkFlip(joints, wrapArc);
   for (let i = 0; i < N; i++) {
     const a = joints[i], b = joints[i + 1];
-    // §124 (TODO 46) — the wrap links LEAN into the flank, the tilt the
-    // corner-locus cut accepts. The RAMP sheds β at the departure: judged
-    // links (the isWrapLink guard, one full pitch below the departure) carry
-    // FULL β — anything less re-opens the daylight the float row gates — the
-    // one unjudged link ending inside the last pitch takes β/2, and the
-    // straddler + span are vertical. That grades the shed into two
-    // adjacent-joint steps of ≤ β/2 ≈ 32° at the lowest wrap tensions — the
-    // same order as the ~20–34° of azimuth articulation the wrap already
-    // carries between stations, and the declared articulation fiction of this
-    // chain (a real chain sheds its lean over the free span by joint play;
-    // measured worst per-joint twist over the reserve sweep: 36.3°, at
-    // tension ≈ 0.07 where the departure is still near the base).
-    let beta = 0;
-    if (betaAtArc && wrapArc > 0) {
-      const sEnd = sJ[i + 1];
-      const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      if (ramp > 0) beta = ramp * betaAtArc(Math.min((sJ[i] + sJ[i + 1]) / 2, wrapArc));
-    }
-    chainLinkFrame(a, b, beta, frameFlip, t, k, y);
+    chainLinkFrame(a, b, frameFlip, t, k, y);
     chainFrames[i].t.copy(t); chainFrames[i].y.copy(y); chainFrames[i].k.copy(k);
     mid.addVectors(a, b).multiplyScalar(0.5);
     if (isOuter(i) && isWrapLink(i)) seatBases.push(off / 3);
@@ -10270,10 +10397,10 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
     write(isOuter(i) ? outer : inner, t, y, k, mid);
   }
   linkBase[N] = off / 3; // end of the plates, start of the rivets
-  // Rivets: the MEAN frame of the two links they join (orthonormalized), so
-  // a pin between two leaning links leans with them instead of standing
-  // world-vertical through tilted plates — the declared articulation fiction
-  // above, at the joint itself. End rivets take their single neighbour.
+  // Rivets: the MEAN frame of the two links they join (orthonormalized) —
+  // the two frames differ by the joint's bend about the pin and, since §254,
+  // by nothing else, so the rivet stands along the pin both links share.
+  // End rivets take their single neighbour.
   for (let i = 0; i <= N; i++) {
     const fa = chainFrames[Math.max(i - 1, 0)], fb = chainFrames[Math.min(i, N - 1)];
     t.addVectors(fa.t, fb.t).normalize();
@@ -10369,6 +10496,52 @@ const HOOK_A = spanTangentAngle(fuseeGrooveAt(0.5 * FUSEE_F_ACTIVE).r)
   claw.name = 'drumHookClaw';
   drumGroup.add(claw);
 }
+// §254 (TODO 49) — THE CONE END IS HOOKED TOO, and the hook is what CLOCKS
+// the cut. The groove is a helix on the cone and the chain lies in it, so the
+// chain's helix must be the groove's helix — same hand, same rate (both
+// derive from the one FUSEE_GROOVE_TURNS law) and the same PHASE, which no
+// gate ever asked of the old revolve-floored cut. The wrap's phase is fixed
+// by its departure (thetaT at the station fuseeEngagedF puts it at); the
+// cone's world angle is a pure function of the reserve (windLocalAt: full
+// wind ≡ barrelMeshAngle(0)); so the groove's start on the cone is forced:
+//   clock = thetaT(1) − MOVEMENT_SENSE·2π·WRAP_TURNS − barrelMeshAngle(0)
+// — at full wind the last link stands at the departure with exactly
+// WRAP_TURNS of groove behind it, and f_dep's walk keeps the two helices
+// coincident at every reserve below (asserted after chainLayoutAt). The
+// claw stands at the groove's plunge, cone-local, so it turns with the cone
+// and the chain's first point lands on it by the same identity.
+const FUSEE_GROOVE_CLOCK = (() => {
+  const raw = spanTangentAngle(fuseeGrooveAt(FUSEE_F_ACTIVE).r) - MOVEMENT_SENSE * FUSEE_WRAP_TURNS * Math.PI * 2 - barrelMeshAngle(0);
+  const tau2 = Math.PI * 2;
+  return raw - tau2 * Math.floor(raw / tau2);   // cone-local azimuth, [0, 2π)
+})();
+fusee.userData.groove.setGrooveClock(FUSEE_GROOVE_CLOCK);
+{
+  // The hook itself, the drum's construction mirrored (TODO 49 named the
+  // drum's claw as the template): a tab standing in the groove's channel at
+  // its plunge, bridging from the shelf out to a claw pin at the chain's
+  // centreline radius, the pin lying along the groove. Sized off the link
+  // that hangs on it exactly as the drum's is; the tab's height is the
+  // channel's, less the seating clearance, so it stands in the groove and
+  // not in the land over it.
+  const CLAW_R = 0.3, CLAW_LEN = 1.2;
+  const st = fuseeGrooveAt(0);
+  const localZ = FUSEE_BASE_INSET;                            // cone-local: the groove's start station
+  const rFloor = fusee.userData.groove.floorR(0);
+  const tabD = (st.r + CLAW_R) - (rFloor - 0.1);              // from 0.1 inside the shelf out to the claw's far side
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(tabD, CLAW_LEN + 0.2, FUSEE_GROOVE_W - 0.01), MATS.steel);
+  const ca = Math.cos(FUSEE_GROOVE_CLOCK), sa = Math.sin(FUSEE_GROOVE_CLOCK);
+  const rTab = rFloor - 0.1 + tabD / 2;
+  tab.position.set(ca * rTab, sa * rTab, localZ);
+  tab.rotation.z = FUSEE_GROOVE_CLOCK;
+  tab.name = 'fuseeHookTab';
+  fusee.add(tab);
+  const claw = new THREE.Mesh(new THREE.CylinderGeometry(CLAW_R, CLAW_R, CLAW_LEN, 8), MATS.steel);
+  claw.rotation.z = FUSEE_GROOVE_CLOCK + Math.PI / 2;        // pin lies along the groove
+  claw.position.set(ca * st.r, sa * st.r, localZ);
+  claw.name = 'fuseeHookClaw';
+  fusee.add(claw);
+}
 // §47 — the chain's control-point layout as a PURE function of tension,
 // extracted from rebuildChain so the winding arrest's contact law reads the
 // SAME points the display bakes (the arrest's pad must kiss the real link
@@ -10376,7 +10549,7 @@ const HOOK_A = spanTangentAngle(fuseeGrooveAt(0.5 * FUSEE_F_ACTIVE).r)
 // the Catmull-Rom control points plus the wrap bookkeeping the link builder
 // consumes; building a MESH from it stays rebuildChain's job.
 function chainLayoutAt(tension) {
-  const fActive = tension * FUSEE_F_ACTIVE; // full wind uses the wrap's share of the groove band exactly (§61)
+  const fActive = fuseeEngagedF(tension); // §254: the departure's station — F_ACTIVE at full wind exactly (§61), the hook's walk below it
   const active = fuseeGrooveAt(fActive);
   // External tangent between the fusee's active circle and the drum.
   // Tangent BRANCH matters: paying out requires the cone's surface velocity at
@@ -10399,7 +10572,12 @@ function chainLayoutAt(tension) {
   // had to stop minting it. The degenerate case the floor guarded is
   // handled at the source instead: an EMPTY wrap lays exactly one control
   // point (the departure), never a stack of coincident ones.
-  const wraps = tension * FUSEE_WRAP_TURNS;
+  // §254 (TODO 49) — the wrap runs from the HOOK on the cone (station f = 0,
+  // the groove's plunge, where fuseeHookClaw stands) to the departure: its
+  // turn count is the departure's own station, fActive·GROOVE_TURNS, which the
+  // solve derived with the tangent's walk booked. Under the old
+  // tension·WRAP_TURNS the bottom end drifted around the cone by that walk.
+  const wraps = fActive * FUSEE_GROOVE_TURNS;
   const SEG_PER_TURN = 14;
   const nF = wraps > 0 ? Math.max(Math.ceil(wraps * SEG_PER_TURN), 2) : 0;
   for (let i = 0; i <= nF; i++) {
@@ -10488,23 +10666,10 @@ function chainLayoutAt(tension) {
   // §124 (TODO 46) — the wrap's arc, chord-summed over the wrap control
   // points (the spline adds ~1% of slack; the builder guards a full pitch at
   // the departure, far coarser than that error): tells the builder which
-  // links the float row may judge — and, kept per control point, gives the
-  // builder the arc→f mapping its TILT law reads (control point i sits at
-  // band fraction (i/nF)·fActive by the wrap loop above), so the leaning
-  // links and the corner-locus cut consume the same β(f) at the same
-  // stations.
-  const wrapCum = new Float64Array(nF + 1);
-  for (let i = 0; i < nF; i++) wrapCum[i + 1] = wrapCum[i] + pts[i].distanceTo(pts[i + 1]);
-  const wrapArc = wrapCum[nF];
-  const betaAtArc = (s) => {
-    if (s <= 0) return fuseeBetaAt(0);
-    if (s >= wrapArc) return fuseeBetaAt(fActive);
-    let lo = 0, hi = nF;
-    while (hi - lo > 1) { const mid2 = (lo + hi) >> 1; if (wrapCum[mid2] <= s) lo = mid2; else hi = mid2; }
-    const fLink = ((lo + (s - wrapCum[lo]) / (wrapCum[hi] - wrapCum[lo] || 1)) / nF) * fActive;
-    return fuseeBetaAt(fLink);
-  };
-  return { curve, wrapArc, betaAtArc, hookDrift: drumTurns - baseTurns };
+  // links the float row may judge.
+  let wrapArc = 0;
+  for (let i = 0; i < nF; i++) wrapArc += pts[i].distanceTo(pts[i + 1]);
+  return { curve, wrapArc, hookDrift: drumTurns - baseTurns, thetaT, wraps };
 }
 // Boot assert (rule 6) — TODO 76: every joint sits inside its bores' running
 // fit. chainJoints makes the N chords equal, and their common length c is what
@@ -10626,8 +10791,9 @@ await breathe();
     // that sizes it
     const saveBuf = chainBuf, saveFrames = chainFrames;
     chainBuf = null; chainFrames = null;
-    const geo = buildChainLinkGeometry(lay.curve, lay.wrapArc, lay.betaAtArc);
+    const geo = buildChainLinkGeometry(lay.curve, lay.wrapArc);
     const seat = geo.userData?.seat, floorAt = fusee?.userData?.groove?.floorAt;
+    const datum = barrelMeshAngle(0);   // the cone's world angle at full wind (windLocalAt ≡ 0 there)
     if (!seat?.bases?.length || !seat.crownIdx || typeof floorAt !== 'function') {
       console.warn('§115 chain seat: no declared crowns or no cut floor to read them against — the lie is unchecked');
     } else {
@@ -10637,7 +10803,8 @@ await breathe();
         for (const ci of seat.crownIdx) {
           const j = (base + ci) * 3;
           const r = Math.hypot(pos.array[j] - P.barrel.x, pos.array[j + 1] - P.barrel.y);
-          worst = Math.max(worst, r - floorAt(pos.array[j + 2] - (L_BARREL + FUSEE_BASE_Z)));
+          const azLocal = Math.atan2(pos.array[j + 1] - P.barrel.y, pos.array[j] - P.barrel.x) - datum;
+          worst = Math.max(worst, r - floorAt(pos.array[j + 2] - (L_BARREL + FUSEE_BASE_Z), azLocal));
         }
       }
       // 0.25 is the float row's own budget — link chording at the honest
@@ -10652,8 +10819,8 @@ await breathe();
 })();
 function rebuildChain(tension) {
   lastChainTension = tension;
-  const { curve, wrapArc, betaAtArc } = chainLayoutAt(tension);
-  const geo = buildChainLinkGeometry(curve, wrapArc, betaAtArc);
+  const { curve, wrapArc } = chainLayoutAt(tension);
+  const geo = buildChainLinkGeometry(curve, wrapArc);
   // §71: hand the run to the schematic's chain line — same curve, same frame
   schemChainCurve = curve;
   if (schemChainLine) schemChainLine.geometry.setFromPoints(curve.getPoints(160));
@@ -10753,13 +10920,16 @@ const MAINT_FLANGE_R = MAINT_PAWL_PIV / 1.28;
 // z BOUNDS: ring above the great wheel HUB (its tallest central feature),
 // flange below the chain's lowest links on the cone's bottom groove.
 const GW_HUB_TOP = L_BARREL + (1.4 * 1.5) / 2; // makeGear hub ring: thickness·1.5, centred on the wheel
-// §124 (TODO 46): the lowest wrap LIES DOWN on the base flank, so its
-// underside is the tilted corner's drop — h·cosβ* + w·sinβ* = √(h²+w²) =
-// CHAIN_PIN_LEN/2 + FUSEE_TILT_Z below the groove centreline (the same
-// quantity FUSEE_Z0_MIN funds against the center wheel), not the vertical
-// stack's half. The flange band consumes the honest number or the sandwich
-// stands inside the leaning chain.
-const MAINT_CHAIN_LOW = FUSEE_Z0 - (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z); // underside of the lowest chain wrap
+// §254: the lowest wrap stands UPRIGHT in its groove, so its underside is
+// half the stack below the groove centreline (the same quantity FUSEE_Z0_MIN
+// funds against the center wheel). The groove's lower wall and the base
+// collar under it are FUSEE_BASE_INSET of cone below the centreline, so the
+// chain no longer overhangs the cone's base face: the flange is bound by the
+// face it is cut on, and the face is derived to clear the chain.
+const MAINT_CHAIN_LOW = FUSEE_Z0 - CHAIN_PIN_LEN / 2; // underside of the lowest chain wrap
+const MAINT_CONE_BASE = L_BARREL + FUSEE_BASE_Z;      // the cone's base face, world z
+if (MAINT_CONE_BASE > MAINT_CHAIN_LOW - CLEAR_MARGIN + 1e-9)
+  console.warn(`maintaining power: the cone's base face ${MAINT_CONE_BASE.toFixed(3)} stands inside the chain's margin (underside ${MAINT_CHAIN_LOW.toFixed(3)} − ${CLEAR_MARGIN}) — FUSEE_BASE_INSET no longer carries the lower wall plus a margin`);
 // Ring and flange stock: DERIVED from the band the sandwich actually gets —
 // hub + margin below, chain + margin above, one CLEAR_MARGIN of daylight
 // between the two moving halves. The old 0.5 literals collapsed the band
@@ -10769,28 +10939,26 @@ const MAINT_CHAIN_LOW = FUSEE_Z0 - (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z); // unders
 // has no business thicker); §50's stock floor is the floor, with the warn
 // below as the honest failure mode if a future squeeze reaches it.
 const MAINT_RING_BOT = GW_HUB_TOP + CLEAR_MARGIN;
-const MAINT_BAND = (MAINT_CHAIN_LOW - CLEAR_MARGIN) - MAINT_RING_BOT;
+// §254: the base ratchet flange is cut on the cone's base face (no boss — the
+// chain inside the band left nothing for a spacer to clear), so the band the
+// sandwich gets runs from the hub's margin up to that face.
+const MAINT_FLANGE_TOP = MAINT_CONE_BASE;
+const MAINT_BAND = MAINT_FLANGE_TOP - MAINT_RING_BOT;
 const MAINT_T = Math.min(0.5, (MAINT_BAND - CLEAR_MARGIN) / 2);
 if (MAINT_T < STOCK_MIN_U)
   console.warn(`maintaining power: band-solved stock ${MAINT_T.toFixed(3)} under the §50 floor ${STOCK_MIN_U.toFixed(3)} — the sandwich band collapsed past what thinning may pay`);
 const MAINT_RING_T = MAINT_T, MAINT_FLANGE_T = MAINT_T;
 const MAINT_RING_TOP = MAINT_RING_BOT + MAINT_RING_T;
-const MAINT_FLANGE_TOP = MAINT_CHAIN_LOW - CLEAR_MARGIN;
 const MAINT_FLANGE_BOT = MAINT_FLANGE_TOP - MAINT_FLANGE_T;
 if (MAINT_FLANGE_BOT < MAINT_RING_TOP + 0.1)
   console.warn(`maintaining power: flange bottom ${MAINT_FLANGE_BOT.toFixed(2)} crowds the ring top ${MAINT_RING_TOP.toFixed(2)} — the sandwich band collapsed`);
-// Base ratchet flange: keyed to the FUSEE (winds backward with it). A hub
-// boss carries it down from the cone's base.
+// Base ratchet flange: keyed to the FUSEE (winds backward with it), cut on
+// the cone's base face (§254 — the boss that used to carry it down past the
+// overhanging chain is gone with the overhang).
 {
   const flange = G.makeRatchetAndClick({ radius: MAINT_FLANGE_R, teeth: MAINT_TEETH, thickness: MAINT_FLANGE_T, includeClick: false });
-  flange.position.z = MAINT_FLANGE_BOT - (L_BARREL + FUSEE_BASE_Z); // fusee-local (the fusee sits at FUSEE_BASE_Z in the arbor group)
+  flange.position.z = MAINT_FLANGE_BOT - MAINT_CONE_BASE; // fusee-local (the fusee sits at FUSEE_BASE_Z in the arbor group): −MAINT_FLANGE_T, its top on the face
   fusee.add(flange);
-  const bossH = (L_BARREL + FUSEE_BASE_Z) - MAINT_FLANGE_TOP;
-  const bossR = MAINT_FLANGE_R * 0.8 - 0.15; // inside the flange's root land
-  const boss = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 14), MATS.steel);
-  boss.rotation.x = Math.PI / 2;
-  boss.position.z = -bossH / 2; // fusee-local: hangs from the cone's base plane
-  fusee.add(boss);
 }
 // Maintaining wheel: loose on the arbor, rim saw teeth for the detent,
 // carrying two pawls that ride the flange above. Child of barrelArbor
@@ -10835,7 +11003,13 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     pawl.rotation.z = Math.PI * 0.778;
     pawl.name = 'maintPawl';
     az.add(pawl);
-    const studH = MAINT_FLANGE_TOP - MAINT_RING_TOP;
+    // §254: the stud used to stop at the flange's top, which was a boss's
+    // underside; it is the cone's own base face now, and a pivot stud is a
+    // blind pin in the pawl, not a thing that bears on the cone — it stops one
+    // CLEAR_MARGIN under the face (still inside the pawl's 0.8·T thickness).
+    const studH = MAINT_FLANGE_TOP - CLEAR_MARGIN - MAINT_RING_TOP;
+    if (MAINT_FLANGE_TOP - CLEAR_MARGIN < MAINT_FLANGE_BOT + MAINT_FLANGE_T * 0.1 + CHAIN_PLATE_T)
+      console.warn('maintaining wheel: the pawl stud, stopped a margin under the cone, would no longer reach into the pawl');
     const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, studH, 8), MATS.blueSteel);
     stud.rotation.x = Math.PI / 2;
     stud.position.set(MAINT_PAWL_PIV, 0, MAINT_RING_TOP + studH / 2 - L_BARREL);
@@ -11382,8 +11556,15 @@ const maintDetent = new THREE.Group();
   // Arm plane: just above the ring's band (the flange above starts at
   // MAINT_FLANGE_BOT — the arm's top stays a margin under it; radially
   // the arm never comes near the flange's 2-unit reach anyway).
-  const ARM_T = 0.45;
+  // §254: the bracket arm stands under the cone's base face, and that face is
+  // now the flange's own top (the boss that used to hold the cone off is gone),
+  // so the arm's top is derived against it: CLEAR_MARGIN under the face, 0.45
+  // at most. The arm is a support bracket, not the stressed member — the click's
+  // own section carries the hold (TODO 217's arithmetic reads that, not this).
   const armBot = MAINT_RING_TOP + 0.05;
+  const ARM_T = Math.min(0.45, MAINT_CONE_BASE - CLEAR_MARGIN - armBot);
+  if (ARM_T < STOCK_MIN_U)
+    console.warn(`maintaining detent: the bracket arm is ${ARM_T.toFixed(3)} thick between the ring and the cone's base face, under the §50 floor ${STOCK_MIN_U.toFixed(3)}`);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(postR - pivR + POST_R, 1.1, ARM_T), MATS.steel);
   arm.position.set((pivR + postR + POST_R) / 2, 0, armBot + ARM_T / 2);
   az.add(arm);
@@ -13977,29 +14158,24 @@ for (const j of FRAME_JOINTS) {
   // pure function of tension legitimate). One function proves the pad's
   // CONTACT and every neighbour's ABSENCE, so the two readings cannot
   // drift apart.
-  const thetaTAt = (tension) => {
-    const active = fuseeGrooveAt(Math.max(tension, 0.05) * FUSEE_F_ACTIVE);
-    const dx = drumPos.x - C.x, dy = drumPos.y - C.y;
-    const D = Math.hypot(dx, dy);
-    return Math.atan2(dy, dx) - Math.acos(clamp((active.r - DRUM_WRAP_R) / D, -1, 1));
-  };
-  // Station lean: buildChainLinkGeometry's β ramp in f units — full β below
-  // one chain pitch of the departure, β/2 inside the last pitch, vertical
-  // above (arc per Δf is 2·2π·r: one turn of helix is Δf = 1/GROOVE_TURNS).
-  const stationBeta = (f, tension) => {
-    const fEnd = tension * FUSEE_F_ACTIVE;
-    const dfPitch = CHAIN_PITCH / (FUSEE_GROOVE_TURNS * TAU2 * fuseeGrooveAt(f).r);
-    const ramp = f > fEnd ? 0 : f > fEnd - dfPitch ? 0.5 : 1;
-    return ramp * fuseeBetaAt(f);
-  };
+  // §254 — ONE spelling of the tangent branch (TODO 115's rule), and this
+  // law had the other. It read `atan2 − acos` with no MOVEMENT_SENSE while
+  // `spanTangentAngle` reads `atan2 − SENSE·acos`, so under the shipped
+  // reversed sense every absence claim below — the pad's "no metal before
+  // touch", the stud head's window, the beak's chain-free band, the lug's
+  // proudness — was measured against a wrap MIRRORED about the drum's
+  // direction. The mesh sweeps held the real metal, which is why it shipped
+  // green; the design-time law was the mirror. The coherence assert after
+  // this block holds the two laws together now.
+  const thetaTAt = (tension) => spanTangentAngle(fuseeGrooveAt(fuseeEngagedF(Math.max(tension, 0.05))).r);
   // Cross-section of the stack at a station: the outer plates' rectangle
   // (±CHAIN_END_R_OUT along the plate, ±CHAIN_PIN_LEN/2 along the pin),
-  // leaned by β about the chain direction with the top tipping INBOARD
-  // (ŷ = k̂×t̂ points inboard in the builder's frame) — returned as boundary
-  // points in (outward Δr, Δz) about the groove centreline.
+  // upright (§254 — the lean and its ramp are gone) — returned as boundary
+  // points in (outward Δr, Δz) about the groove centreline. The arguments
+  // are kept so every caller reads one station law.
   const _sec = new Float64Array(40);
-  const stationSection = (f, tension) => {
-    const b = stationBeta(f, tension), cb = Math.cos(b), sb = Math.sin(b);
+  const stationSection = (f, tension) => {   // eslint-disable-line no-unused-vars
+    const cb = 1, sb = 0;
     let n = 0;
     for (let e = 0; e < 4; e++) {          // 4 edges of the rectangle
       for (let s = 0; s <= 4; s++) {       // 5 samples per edge
@@ -14017,14 +14193,15 @@ for (const j of FRAME_JOINTS) {
   // window for clearance duty.
   const chainProudAt = (azMid, azHalf, zLo, zHi, tension, inflate = 0) => {
     if (tension <= 0) return 0;
-    const fEnd = tension * FUSEE_F_ACTIVE;
+    const fEnd = fuseeEngagedF(tension);
     const th = thetaTAt(tension);
     let worst = 0;
     const df = 0.004; // ~1/6 of a link pitch in f — denser than the mesh lays links
     for (let f = 0; f <= fEnd + 1e-9; f += df) {
       const gp = fuseeGrooveAt(f);
       const azW = azHalf + (inflate + CHAIN_PITCH / 2) / gp.r; // + the link's own along-chain reach
-      let dAz = (th - TAU2 * FUSEE_GROOVE_TURNS * (fEnd - f) - azMid) % TAU2;
+      // the station's azimuth: chainLayoutAt's own helix, thetaT − SENSE·2π·(wraps − s)
+      let dAz = (th - MOVEMENT_SENSE * TAU2 * FUSEE_GROOVE_TURNS * (fEnd - f) - azMid) % TAU2;
       if (dAz > Math.PI) dAz -= TAU2; if (dAz < -Math.PI) dAz += TAU2;
       if (Math.abs(dAz) > azW) continue;
       const n = stationSection(f, tension);
@@ -14038,6 +14215,31 @@ for (const j of FRAME_JOINTS) {
     return worst;
   };
 
+  // §254 GUARD — THE CONTINUUM LAW LIES ON THE DRAWN HELIX. chainProudAt
+  // states where each station IS in world azimuth, and chainLayoutAt lays
+  // the control points the mesh is built from; both are one helix or the
+  // absence claims above are claims about some other chain. Measured, not
+  // trusted: at three tensions every wrap control point must sit on the
+  // station law's azimuth to float noise. This is what the mirrored law
+  // above would have failed on its first boot, and what
+  // probe-direction-guards.mjs mutates the station law to watch fire.
+  {
+    let worst = 0, at = 0;
+    for (const t of [0.3, 0.7, 1]) {
+      const { curve, wraps } = chainLayoutAt(t);
+      const fEnd = fuseeEngagedF(t), th = thetaTAt(t);
+      const nF = wraps > 0 ? Math.max(Math.ceil(wraps * 14), 2) : 0;
+      for (let k = 0; k <= nF; k++) {
+        const f = nF ? (k / nF) * wraps / FUSEE_GROOVE_TURNS : 0;
+        const want = th - MOVEMENT_SENSE * TAU2 * FUSEE_GROOVE_TURNS * (fEnd - f);
+        const have = azOf(curve.points[k]);
+        let d = (have - want) % TAU2; if (d > Math.PI) d -= TAU2; if (d < -Math.PI) d += TAU2;
+        if (Math.abs(d) > worst) { worst = Math.abs(d); at = t; }
+      }
+    }
+    if (worst > 1e-9)
+      console.warn(`§254 arrest law: the station law's azimuths stand ${worst.toExponential(2)} rad off the drawn wrap at tension ${at} — the arrest's absence claims are about a chain that is not there (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+  }
   // --- the DISCRETE occupancy: the links the mesh actually lays ----------
   // The continuum law above is exact about where stations ARE and errs
   // OUTWARD about where metal is (a straight plate's outer edge chords
@@ -14068,7 +14270,7 @@ for (const j of FRAME_JOINTS) {
   // corridor that was never in its way. The span is held by its own
   // corridor asserts instead, which is where a straight run belongs.
   const linkOuterPtsNear = (tension, arcBack = 6 * CHAIN_PITCH, wrapOnly = false) => {
-    const { curve, wrapArc, betaAtArc } = chainLayoutAt(Math.max(tension, 0.02));
+    const { curve, wrapArc } = chainLayoutAt(Math.max(tension, 0.02));
     const { joints, s: sJ, N } = chainJoints(curve);   // TODO 76 — the builder's joints, by the one law
     const out = [];
     const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
@@ -14083,8 +14285,7 @@ for (const j of FRAME_JOINTS) {
       if (sJ[i] > wrapArc) break;             // past the departure the span takes over (its corridor is asserted separately)
       if (wrapOnly && sEnd > wrapArc) break;  // …and the straddling link goes with it — see the note above
       const a = joints[i], b = joints[i + 1];
-      const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      chainLinkFrame(a, b, ramp * betaAtArc(Math.min((sJ[i] + sJ[i + 1]) / 2, wrapArc)), flip, t, k, y);
+      chainLinkFrame(a, b, flip, t, k, y);
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mz = (a.z + b.z) / 2;
       const push = (aa, yy, dd) => out.push({
         x: mx + t.x * aa + y.x * yy + k.x * dd,
@@ -14105,14 +14306,14 @@ for (const j of FRAME_JOINTS) {
       const isOuter = (N - 1 - i) % 2 === 0;
       const endR = isOuter ? CHAIN_END_R_OUT : CHAIN_END_R_IN;
       // Each PLATE's band along the pin (CHAIN_TMPL's stack), and THREE
-      // sample planes across it, not just its outer face: the wrap links
-      // are LEANED, so a plate's outboard edge runs diagonally through a
-      // z-window and its extremum inside the window can sit at any depth
-      // across the plate's thickness. Two-plane sampling under-read the
-      // full-wind window by 0.079 (measured — the exact depth the wind
-      // axis's penetration row then found as burial) and read phantom
-      // metal near the window's z-edge at mid-arming; the all-outer
-      // fiction had masked both by inflating everything 0.085.
+      // sample planes across it, not just its outer face: a wrap link's
+      // pin leans off the arbor by the helix's lead angle (§254 — upright
+      // in its groove, no longer leaned into the flank), so a plate's
+      // outboard edge still runs through a z-window at a slant, and its
+      // extremum inside the window can sit at any depth across the plate's
+      // thickness. Two-plane sampling under-read the full-wind window by
+      // 0.079 under §124's lean (measured — the exact depth the wind axis's
+      // penetration row then found as burial); the planes are kept.
       const dHi = isOuter ? CHAIN_PIN_LEN / 2
         : CHAIN_PIN_LEN / 2 - CHAIN_PLATE_T - CHAIN_LEAF_GAP;
       const dLo = dHi - CHAIN_PLATE_T;
@@ -14372,7 +14573,7 @@ for (const j of FRAME_JOINTS) {
   const BEAK_SCAN_STEP = 0.02;   // the parked-beak scan's azimuth resolution, below
   const BEAK_TAN = 0.34;         // stock behind the beak's face, −θ̂ (away from the lug's approach)
   const LUG_OUTER = (() => {
-    const chainProud = lugSt.r + CHAIN_END_R_OUT * Math.cos(fuseeBetaAt(F_LUG));
+    const chainProud = lugSt.r + CHAIN_END_R_OUT;   // §254: the stack stands upright, its outer plate full half-width proud
     const L = 2.2 * R_PAD_ARM, Rs = STUD_FLOOR_R;
     const acosC = (v) => Math.acos(Math.max(-1, Math.min(1, v)));
     // δ above acos(Rb/Rs) keeps the reaction ENGAGING; δ below the other
@@ -14454,7 +14655,11 @@ for (const j of FRAME_JOINTS) {
   })();
   if (F_PAD_WALL === null)
     console.warn(`§47: no wrap station's section spans the pad's mid-height ${padZMid.toFixed(3)} — the pad has no wall to ride`);
-  const PAD_LEAN = Math.tan(fuseeBetaAt(F_PAD_WALL ?? FUSEE_F_ACTIVE));
+  // §254 — the wrap stands upright, so the coil's wall the pad rides is
+  // vertical and the pad's face with it: the lean is zero. The shear
+  // machinery below is the general law (TODO 51's) at zero, kept so a
+  // future lean would ride it rather than re-derive it.
+  const PAD_LEAN = 0;
   // The face LEANS, so it reaches z the unleaned band does not: the law's
   // window has to be the swept one or it under-reads exactly the metal the
   // tilted corner meets (measured, before this: 0.075 of the pad inside the
@@ -14510,10 +14715,10 @@ for (const j of FRAME_JOINTS) {
   // looks (measured beside the link scan: pins peak 3.79 vs plates 4.08).
   let lawChainBuf = null, lawChainFrames = null;
   const builtPtsNear = (tension) => {
-    const { curve, wrapArc, betaAtArc } = chainLayoutAt(Math.max(tension, 0.02));
+    const { curve, wrapArc } = chainLayoutAt(Math.max(tension, 0.02));
     const saveBuf = chainBuf, saveFrames = chainFrames;
     chainBuf = lawChainBuf; chainFrames = lawChainFrames;
-    const geo = buildChainLinkGeometry(curve, wrapArc, betaAtArc);
+    const geo = buildChainLinkGeometry(curve, wrapArc);
     lawChainBuf = chainBuf; lawChainFrames = chainFrames;
     chainBuf = saveBuf; chainFrames = saveFrames;
     const pos = geo.attributes.position.array;
@@ -14607,6 +14812,25 @@ for (const j of FRAME_JOINTS) {
   // thrown a margin of cone rotation before the faces meet. The station
   // sweep is monotone in azimuth, so this is a 1-D solve over the compass.
   const T_LASTPASS = 1 - 1 / FUSEE_WRAP_TURNS;
+  // §254 — WHICH SIDE OF THE PAD THE LEVER LIVES ON. The stud and the beak
+  // stand tangentially off the pad, on one side; the pad's lever pivots
+  // about the stud, so the coil under the pad's near-stud edge is the metal
+  // the lever has the LEAST gain on, and a point closer to the stud than the
+  // face plane is (the dead circle of radius sr − rest about the stud) can
+  // never be cleared at all. The arriving coil is proudest where its
+  // stations are lowest, which is the trailing side of the wrap — so the
+  // stud goes on the DEPARTURE side of the pad, where the stations under its
+  // edge are the highest and least proud, and the pad's throw stays the
+  // designed one. The departure stands at +MOVEMENT_SENSE·θ̂ of every
+  // station behind it (chainLayoutAt's helix: a station f sits at
+  // thetaT − SENSE·2π·G·(fEnd − f)), and the stud is placed at
+  // −LEVER_SIDE·θ̂ of the pad below, so LEVER_SIDE = −MOVEMENT_SENSE puts it
+  // on the departure side and the trailing side is the other. Measured on
+  // the reversed train (§254): with the lever on the trailing side the
+  // stud's shove to clear the coil put the pad's near edge on its dead
+  // circle and the law demanded 0.94 rad of throw for a 0.36 lift; on the
+  // departure side it demands the throw the gain says.
+  const LEVER_SIDE = -MOVEMENT_SENSE;
   let T_TOUCH = null;            // SOLVED with the pad azimuth below — first metal on the pad
   // Pad width along θ̂, wider than a link pitch's arc so the discrete links
   // can't thread it. The face is FLAT across the whole width and the law's
@@ -14796,8 +15020,8 @@ for (const j of FRAME_JOINTS) {
       // P3 feasibility at this azimuth, on this azimuth's own rest radius
       const restR = atFull - PAD_LIFT;
       const px = C.x + restR * Math.cos(az), py = C.y + restR * Math.sin(az);
-      const sx = px - R_PAD_ARM * -Math.sin(az) + NOMINAL_OUT * Math.cos(az);
-      const sy = py - R_PAD_ARM * Math.cos(az) + NOMINAL_OUT * Math.sin(az);
+      const sx = px - LEVER_SIDE * R_PAD_ARM * -Math.sin(az) + NOMINAL_OUT * Math.cos(az);   // the lever's side (studFor's rule)
+      const sy = py - LEVER_SIDE * R_PAD_ARM * Math.cos(az) + NOMINAL_OUT * Math.sin(az);
       if (!clearsWebs(sx, sy, 0.11 + CLEAR_MARGIN)) continue;      // the stud's drop
       const sAz = Math.atan2(sy - C.y, sx - C.x);
       const foot = { x: C.x + BRK_R_OUT * Math.cos(sAz), y: C.y + BRK_R_OUT * Math.sin(sAz) };
@@ -14839,9 +15063,12 @@ for (const j of FRAME_JOINTS) {
   // shove, the lever's gain, and the beak scan. It returns null when no beak
   // azimuth survives, which is what makes the ranked walk above possible.
   // --- the lever: pad — stud — beak --------------------------------------
-  // The stud sits tangentially offset DOWN-FAN of the pad point (−θ̂). The
-  // side matters: the arriving links approach the pad from +θ̂ and STOP at
-  // their terminal azimuths on its face, so everything at −θ̂ of the pad is
+  // The stud sits tangentially offset DOWN-FAN of the pad point. The side
+  // matters, and it is the movement's sense (§254 — this was written −θ̂ for
+  // a forward train and never reversed): winding turns the cone
+  // −MOVEMENT_SENSE·θ̂ (windLocalAt), so the arriving links approach the pad
+  // from the +MOVEMENT_SENSE·θ̂ side and STOP at their terminal azimuths on
+  // its face, and everything on the −MOVEMENT_SENSE·θ̂ side of the pad is
   // azimuth the wrap never visits at these z bands — the stud, its head,
   // the beak and the bank all live there, and the occupancy asserts hold
   // it measured rather than believed. The outboard shove costs the gain
@@ -14873,8 +15100,8 @@ for (const j of FRAME_JOINTS) {
     let out = Math.max(0.15,
       Math.sqrt(Math.max(STUD_FLOOR_R ** 2 - R_PAD_ARM ** 2, 0)) - restR);
     const studAtOut = (o) => ({
-      x: pt.x - R_PAD_ARM * th.x + o * Math.cos(az),
-      y: pt.y - R_PAD_ARM * th.y + o * Math.sin(az),
+      x: pt.x - LEVER_SIDE * R_PAD_ARM * th.x + o * Math.cos(az),
+      y: pt.y - LEVER_SIDE * R_PAD_ARM * th.y + o * Math.sin(az),
     });
     for (let pass = 0; pass < 2; pass++) {
       const s = studAtOut(out);
@@ -14958,15 +15185,23 @@ for (const j of FRAME_JOINTS) {
         padGain: gain, psiFull: psi, beakParked: null, beakGain: 0, beakMoment: 0,
         rejects: { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 1 }, trace: 'P' };
     }
-    // Scan the parked-beak azimuth over the down-fan side. A candidate is
-    // legal when its arm sits in the designed ratio band, its throw runs
-    // INWARD near-radially, and its inflated window is chain-free over the
-    // whole wind cycle; the most-radial throw wins among the legal.
+    // Scan the parked-beak azimuth on BOTH sides of the pad (§254 — the scan
+    // used to run down-fan only, which on the reversed train is the side the
+    // top coil occupies at the tab's band; the stud keeps its side, the beak
+    // goes where the measured tests let it: the trailing side, beyond the
+    // coil's end, on this movement). A candidate is legal when its arm sits
+    // in the designed ratio band, its throw runs INWARD near-radially, and
+    // its inflated window is chain-free over the whole wind cycle; the
+    // most-radial throw wins among the legal. The trace reads the lever's
+    // side first, then the other, a '|' between them.
     let parked = null, bGain = 0, bMoment = 0, best = -Infinity;
     const rejects = { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 0 };
     const trace = [];   // one code per scan step — the scan's own report of WHY, not just how many
-    for (let dAz = 0.12; dAz <= 2.2; dAz += BEAK_SCAN_STEP) {
-      const baz = az - dAz;
+    for (let step = 0; step < 2 * Math.round((2.2 - 0.12) / BEAK_SCAN_STEP) + 2; step++) {
+      const half = Math.round((2.2 - 0.12) / BEAK_SCAN_STEP) + 1;
+      if (step === half) trace.push('|');
+      const dAz = 0.12 + (step % half) * BEAK_SCAN_STEP;
+      const baz = az - (step < half ? LEVER_SIDE : -LEVER_SIDE) * dAz;
       const c = { x: C.x + BEAK_PARKED_R * Math.cos(baz), y: C.y + BEAK_PARKED_R * Math.sin(baz) };
       const arm = { x: c.x - st.x, y: c.y - st.y };
       const armLen = Math.hypot(arm.x, arm.y);
@@ -14974,9 +15209,15 @@ for (const j of FRAME_JOINTS) {
       const g = cross2(arm, rHat(baz));
       if (Math.abs(g) < 0.75 * armLen) { rejects.radial++; trace.push('r'); continue; }   // near-radial motion at the beak
       if (-g * psi <= 0) { rejects.sense++; trace.push('n'); continue; } // and INWARD when the pad lifts
+      // The window the tab itself needs: its own tangential width about the
+      // parked contact plus one scan step (BEAK_SCAN_STEP's rule, stated
+      // where it is spent — §254: this read a bare 0.3 rad, four times the
+      // tab, and on the reversed train it rejected every beak station a
+      // whole 36° from any coil). chainProudAt adds the station law's own
+      // half-pitch and margin on top, so the claim still errs outward.
       let blocked = false;
       for (let t = 0.1; t <= 1.0001; t += 0.05) {
-        if (chainProudAt(baz, 0.3, TAB_Z1, TAB_Z2, Math.min(t, 1), CLEAR_MARGIN) > 0) { blocked = true; break; }
+        if (chainProudAt(baz, BEAK_TAN / (2 * BEAK_PARKED_R) + BEAK_SCAN_STEP, TAB_Z1, TAB_Z2, Math.min(t, 1), CLEAR_MARGIN) > 0) { blocked = true; break; }
       }
       if (blocked) { rejects.chain++; trace.push('c'); continue; }
       // the beak arm's chord vs the flying SPAN — the wrap check above is
@@ -14989,7 +15230,7 @@ for (const j of FRAME_JOINTS) {
       // (the sense that presses the beak deeper) or vanishing — never the
       // sense that peels the finger out of its own arrest
       const tanHat = { x: -Math.sin(baz), y: Math.cos(baz) };
-      const F = { x: -tanHat.x, y: -tanHat.y };            // the cone pushes −θ̂
+      const F = { x: -MOVEMENT_SENSE * tanHat.x, y: -MOVEMENT_SENSE * tanHat.y };   // the cone pushes the way winding turns it: −MOVEMENT_SENSE·θ̂ (§254 — read +1 before)
       const mom = cross2({ x: c.x - st.x, y: c.y - st.y }, F);
       if (mom * psi < 0) { rejects.moment++; trace.push('m'); continue; }
       trace.push('.');
@@ -15069,7 +15310,7 @@ for (const j of FRAME_JOINTS) {
   WIND_ARREST.azRange = candidates.length ? [Math.min(...candidates.map((c) => c.az)), Math.max(...candidates.map((c) => c.az))] : null;
   WIND_ARREST.tabZ = [TAB_Z1, TAB_Z2];
   if (!beakParked) {
-    const az = PAD_AZ - 0.6;
+    const az = PAD_AZ - LEVER_SIDE * 0.6;
     beakParked = { x: C.x + BEAK_PARKED_R * Math.cos(az), y: C.y + BEAK_PARKED_R * Math.sin(az) };
     beakGain = cross2({ x: beakParked.x - stud.x, y: beakParked.y - stud.y }, rHat(az));
     beakMoment = cross2({ x: beakParked.x - stud.x, y: beakParked.y - stud.y },
@@ -15327,9 +15568,10 @@ for (const j of FRAME_JOINTS) {
   const PAD_ARM_END_R = padArmEnd.R;
   armTo(padArmEnd.ctr, 'windArrestPadArm');
   // THE WORKING FACE IS A RADIAL PLANE, and that is the whole mechanics of
-  // an arrest. Winding turns the cone in −z (windLocalAt falls as the bank
-  // rises), so the lug sweeps −θ and meets the beak from the +θ side: the
-  // face's normal is +θ̂, the reaction is TANGENTIAL, and a tangential
+  // an arrest. Winding turns the cone −MOVEMENT_SENSE·θ̂ (windLocalAt), so
+  // the lug sweeps that way and meets the beak's −MOVEMENT_SENSE·θ̂ face (the
+  // tab's stock stands on the other side, below): the face's normal is
+  // tangential, the reaction is TANGENTIAL, and a tangential
   // reaction is the only kind that can stop a rotating cone at all. (Cut
   // ⊥ the stud→beak line instead — a radial normal — and the contact
   // exerts no torque on the cone whatever: it slides past. That cut was
@@ -15398,13 +15640,16 @@ for (const j of FRAME_JOINTS) {
     // edge carries only an EDGE BREAK, sized inside the handoff tolerance
     // so the face's claim and the law's are the same claim (the ramp is
     // the arriving link's own rounded end — see the width note above).
+    // §254: the arrival edge is the movement's — +MOVEMENT_SENSE·θ̂ is where
+    // the links sweep in from, which in this frame is u = −MOVEMENT_SENSE·W/2.
     const EDGE_BREAK = 0.03;
+    const uArr = -MOVEMENT_SENSE * PAD_W / 2, uFar = -uArr, sg = Math.sign(uFar - uArr);
     const shape = new THREE.Shape();
-    shape.moveTo(PAD_W / 2, 0);
-    shape.lineTo(-PAD_W / 2 + EDGE_BREAK, 0);
-    shape.lineTo(-PAD_W / 2, EDGE_BREAK);
-    shape.lineTo(-PAD_W / 2, PAD_T);
-    shape.lineTo(PAD_W / 2, PAD_T);
+    shape.moveTo(uFar, 0);
+    shape.lineTo(uArr + sg * EDGE_BREAK, 0);
+    shape.lineTo(uArr, EDGE_BREAK);
+    shape.lineTo(uArr, PAD_T);
+    shape.lineTo(uFar, PAD_T);
     shape.closePath();
     const g = new THREE.ExtrudeGeometry(shape, { depth: PAD_Z2 - PAD_Z1, bevelEnabled: false });
     g.translate(0, 0, -(PAD_Z2 - PAD_Z1) / 2);
@@ -15616,7 +15861,7 @@ for (const j of FRAME_JOINTS) {
       y: beakTan.x * Math.sin(PSI_FULL) + beakTan.y * Math.cos(PSI_FULL),
     };
     const alongFace = { x: -nT.y, y: nT.x };
-    const lugFloorR = GROOVE.floorAt(coneLocalZ(lugSt.z));
+    const lugFloorR = GROOVE.floorR(F_LUG);   // §254: the shelf at the lug's station (the floor is helical now, so it is read by station, not by z)
     // face edge: the thrown-face line clipped to the lug's radial band
     const hitR = (targetR) => {
       // solve |beakThrown + s·alongFace − C| = targetR (both roots; keep each side)
@@ -15664,13 +15909,31 @@ for (const j of FRAME_JOINTS) {
       console.warn(`§47: lug face misses the thrown beak plane by ${off} — the arrest azimuth is not the construction it claims`);
     // A3 — the lug's final approach (from the tension where the departure
     // run's z band can reach the lug's) must miss the tangent fan corridor
-    const zRun = (t) => fuseeGrooveAt(Math.max(t, 0.01) * FUSEE_F_ACTIVE).z + 0.65; // departure z + the leaned stack's reach
+    // departure z + the stack's reach above it: half the upright stack, plus
+    // the corner a plate lifts when its pin leans by the run's own climb — the
+    // groove's lead at the departure on the cone, the span's rise over its
+    // length past it, whichever is steeper (§254: the leaned stack's 0.65 is
+    // gone with the lean; this is the metal the lug's band has to miss)
+    const zRun = (t) => {
+      const tt = Math.max(t, 0.01);
+      const dep = fuseeGrooveAt(fuseeEngagedF(tt));
+      const lead = Math.atan(FUSEE_GROOVE_PITCH / (TAU2 * dep.r));
+      const lay = chainLayoutAt(tt).curve.points;
+      const nF = lay.length - 1;
+      let climb = 0;
+      for (let i = 0; i < nF; i++) {   // the steepest leg of the run past the cone — the span's rise over its length
+        if (Math.hypot(lay[i].x - C.x, lay[i].y - C.y) <= FUSEE_R_LARGE + 0.5) continue;
+        const dx = lay[i + 1].x - lay[i].x, dy = lay[i + 1].y - lay[i].y, dz = lay[i + 1].z - lay[i].z;
+        climb = Math.max(climb, Math.atan2(Math.abs(dz), Math.hypot(dx, dy)));
+      }
+      return dep.z + CHAIN_PIN_LEN / 2 + CHAIN_END_R_OUT * Math.sin(Math.max(lead, climb));
+    };
     let tRunReach = 1;
     for (let t = 0; t <= 1; t += 0.01) if (zRun(t) >= LUG_Z1 - CLEAR_MARGIN) { tRunReach = t; break; }
     const runLo = thetaTAt(1) - 0.15, runHi = thetaTAt(0) + 0.35; // the fan corridor at the lug's radii, drift included
     const contactAz = azOf(beakThrown);
     for (let dt = 0; dt <= 1 - tRunReach + 1e-9; dt += 0.005) {
-      const a = contactAz + TAU2 * FUSEE_WRAP_TURNS * dt; // lug azimuth at t = 1 − dt
+      const a = contactAz + MOVEMENT_SENSE * TAU2 * FUSEE_WRAP_TURNS * dt; // lug azimuth at t = 1 − dt (§254: the cone turns in the movement's sense — windLocalAt's own law; this read +2π·W·dt whatever the sense)
       let w = (a - runLo) % TAU2; if (w < 0) w += TAU2;
       if (w < runHi - runLo) {
         console.warn(`§47: the lug's final approach crosses the chain's departure corridor at t=${(1 - dt).toFixed(2)} — re-clock the beak azimuth`);
@@ -22021,7 +22284,7 @@ declareTransfer('alarm silence: rocker (lifter run → feeler tail)', {
 // drive the hammer; the hammer's angle is DERIVED from the cam that lifts it.
 // §124 seam (TODO 46): the strike tier STANDS ON the three-quarter plate, so
 // its planes are DERIVED from TQ_TOP_Z rather than restated. (§124 lifted the
-// plate by FUSEE_TILT_Z and the old literals — Z_STRIKE 9.6, ALARM_LOCK_Z 8.83 —
+// plate by UPPER_STRATUM_RAISE (then FUSEE_TILT_Z) and the old literals — Z_STRIKE 9.6, ALARM_LOCK_Z 8.83 —
 // kept describing the pre-lift plate at 8.51: the §102 spring stud collapsed
 // to a 0.015 sliver and the collar's band sank inside the plate.) The stack,
 // floor to ceiling: plate top → ALARM_LOCK_GAP → lock collar (STOCK_MIN_U
@@ -25774,7 +26037,7 @@ const EQUALISATION = (() => {
   let levelMaxDev = 0;
   for (let i = 0; i <= 256; i++) {
     const t = i / 256;
-    const d = Math.abs(springTorqueAt(t) * fuseeEnvR(t * FUSEE_F_ACTIVE) / FUSEE_TORQUE_K - 1);
+    const d = Math.abs(springTorqueAt(t) * fuseeEnvR(fuseeEngagedF(t)) / FUSEE_TORQUE_K - 1);   // §254: at the station the chain actually leaves from
     if (d > levelMaxDev) levelMaxDev = d;
   }
   // §104 — the alarm's k is the GOVERNOR's constant, quoted rather than
@@ -34832,6 +35095,50 @@ if (Math.abs(RESERVE_BARREL_TURNS - WIND_ARREST.engageTurns) > 1e-9)
       + `turns of run-down (needs 0) — the reserve term and barrelMeshAngle are not cancelling, so the maintaining `
       + `work clicks while the watch simply runs (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
 }
+// Boot asserts (rule 6) — §254: THE CHAIN IS IN ITS GROOVE, by PHASE, and
+// HOOKED AT THE CONE. Both measured under the tick's own rotation law
+// (barrelMeshAngle(0) + windLocalAt — the cone's world angle at a banked
+// reserve, which is why this stands here, after RESERVE_BARREL_TURNS is
+// minted, and not beside the chain build) against the cut's own helix (userData.groove.azAt) and the claw
+// the build just placed, at 21 tensions. The §115 guard below holds the
+// helix's HAND; this holds the whole helix — a chain one station out of
+// phase draws, measures the right length and passes every clearance gate,
+// and lies on the land between two grooves. And the cone-end congruence is
+// an identity, not a rounding: there is no whole-turn absorber at this end
+// (TODO 49 priced one and refused it), so it is held to 1e-6.
+await breathe();
+(() => {
+  const groove = fusee.userData.groove;
+  const tau2 = Math.PI * 2;
+  const wrapDiff = (a, b) => { let d = (a - b) % tau2; if (d > Math.PI) d -= tau2; if (d < -Math.PI) d += tau2; return d; };
+  let worstPhase = 0, worstHook = 0, atP = 0, atH = 0;
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    const cone = barrelMeshAngle(0) + windLocalAt(t * RESERVE_BARREL_TURNS, 0);   // the cone's world angle at this reserve
+    const { curve, wraps } = chainLayoutAt(t);
+    const pts = curve.points;
+    const nF = wraps > 0 ? Math.max(Math.ceil(wraps * 14), 2) : 0;
+    for (let k = 0; k <= nF; k++) {               // the wrap's control points, station f = (k/nF)·wraps/G
+      const f = nF ? (k / nF) * wraps / FUSEE_GROOVE_TURNS : 0;
+      const want = cone + groove.azAt(f);
+      const have = Math.atan2(pts[k].y - P.barrel.y, pts[k].x - P.barrel.x);
+      const d = Math.abs(wrapDiff(have, want));
+      if (d > worstPhase) { worstPhase = d; atP = t; }
+    }
+    const claw = fusee.getObjectByName('fuseeHookClaw');
+    const cx = P.barrel.x + Math.cos(cone) * claw.position.x - Math.sin(cone) * claw.position.y;
+    const cy = P.barrel.y + Math.sin(cone) * claw.position.x + Math.cos(cone) * claw.position.y;
+    const cz = L_BARREL + FUSEE_BASE_Z + claw.position.z;
+    const d = Math.hypot(pts[0].x - cx, pts[0].y - cy, pts[0].z - cz);
+    if (d > worstHook) { worstHook = d; atH = t; }
+  }
+  if (worstPhase > 1e-6)
+    console.warn(`§254 chain phase: the wrap stands ${worstPhase.toExponential(2)} rad off the groove's helix at tension ${atH.toFixed(2)} — the chain is not in its groove`.replace(atH.toFixed(2), atP.toFixed(2)));
+  if (worstHook > 1e-6)
+    console.warn(`§254 cone hook: the chain's first link stands ${worstHook.toExponential(2)} u off the claw at tension ${atH.toFixed(2)} — the cone end is hooked to nothing`);
+  if (Math.abs(fuseeEngagedF(1) - FUSEE_F_ACTIVE) > 1e-12)
+    console.warn(`§254: f_dep(1) = ${fuseeEngagedF(1)} is not FUSEE_F_ACTIVE ${FUSEE_F_ACTIVE} — the last link does not arrive at full wrap`);
+})();
 // TODO 115 GUARD — THE MAINTAINING CLICK MUST CLIMB THE RAMP, NOT THE CLIFF.
 // Winding banks turns, `windLocalAt` turns that into windBack, and the pawl
 // reads windBack back through `MAINT_U_SIGN`: three signs in series, and the
@@ -49336,7 +49643,7 @@ function advanceFrame(realDt) {
   // never a working turn. This used to lerp the whole band against the
   // reserve, quoting a radius no wrap ever reaches; two expressions for one
   // quantity is how they drift apart.
-  const fuseeR = fuseeGrooveAt(reserveShown * FUSEE_F_ACTIVE).r;
+  const fuseeR = fuseeGrooveAt(fuseeEngagedF(reserveShown)).r;
   // Against FUSEE_TORQUE_K, the product the cone was CUT to hold (row 1) —
   // so the bar reads 1.000 the whole way down, and reads it because the
   // geometry delivers it rather than because the scale was picked to say so.
@@ -49790,6 +50097,14 @@ window.__clock = {
     curve.arcLengthDivisions = divisions;
     curve.updateArcLengths();
     return curve.getLength();
+  },
+  // §254 — the link count the BUILDER lays at this tension (chainJoints'
+  // walked census: pitch-long chords along the path, the last by its
+  // fraction), so the chainLength check reports the census the mesh carries
+  // rather than re-rounding the spline's arc, which sits up to 0.9% over the
+  // chord polygon on the tight coil and read 45 where 44 chords fit.
+  chainLinkCount(tension) {
+    return chainJoints(chainLayoutAt(clamp(tension, 0, 1)).curve).N;
   },
   get fuseeWrapTurns() { return FUSEE_WRAP_TURNS; },
   get hoursPerFuseeTurn() { return HOURS_PER_FUSEE_TURN; }, // §124: the train axis's orbit length — the first mesh's ratio, one source

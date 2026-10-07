@@ -5443,275 +5443,347 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
 // Fusee — the torque-equalising cone. A helically-grooved cone: the chain
 // pulls at the SMALL radius when the spring is strong (fully wound) and pays
 // off toward the LARGE radius as it weakens, so torque delivered to the
-// train stays level. Base flange at z=0, cone rising +Z, small end up.
-// userData: rSmall, rLarge, height, grooveTurns.
+// train stays level. Base face at z=0, cone rising +Z, small end up.
+// userData: rSmall, rLarge, height, grooveTurns, groove (the cut's closures).
 // ---------------------------------------------------------------------------
 
 // grooveW / grooveD / bandZ0 / bandSpan (§61): the CUT groove the chain
-// actually seats in, all in world units, derived by the caller from the
-// chain's own stock (main.js) — no dimension here is free to disagree with
-// the chain that rides it. rSmall/rLarge remain the ENVELOPE (land-crest)
-// radii: with the groove cut exactly one plate half-width deep, the chain's
-// centreline lies ON the envelope, so these stay the torque radii the
-// S(t)·r_f(t) equalisation was solved against.
-// envR (TODO 40 row 1): the land-crest envelope as a function of band
-// fraction, supplied by the caller because the CURVE is the equalisation's,
-// not this builder's — a straight generator cannot level a linear spring's
-// product, so the shipped cone hands in r = K / S(t) and the flank comes out
-// concave, as a real fusee's is. Omitted (test pages), the envelope falls
-// back to the straight generator between the two end radii.
+// rides. envR (TODO 40 row 1): the land-crest envelope r(f) over the band,
+// the equalisation's own curve, so the cut is the law and not a restatement
+// of it. The groove centreline lies ON the envelope; the floor is cut
+// grooveD inside it (one plate half-width, so the chain's inner edge rides
+// the floor and its outer half stands proud of the land, as on the real
+// thing); grooveW is the channel's width along the axis, the plate stack
+// plus a seating clearance.
 //
-// reliefHalf (TODO 40 row 1, the cut): half the chain's axial stack. The
-// chain is an axis-aligned box train — pin axes parallel to the arbor, as on
-// the real thing — so each wrap's box spans ±reliefHalf in z around its
-// groove point, and on a steep flank the box's LOWER half overhangs metal
-// the radial-depth cut left standing: a radial cut only fits while
-// |dr/dz| ≤ grooveD / reliefHalf (0.66/0.33 = 2.0 in the shipped stock —
-// the 2.42 this first said was a slip of arithmetic), and the equalising
-// 1/√ flank runs 10.44 at its base (TODO 32's law; the hyperbola it
-// replaced ran 5.28 — the relief is slope-agnostic, so only these prose
-// numbers moved). So the floor at height z is
-// relieved to clear the box of the HIGHEST wrap covering z (the envelope
-// falls with z, so that wrap is the binding one):
+// §254 (TODO 208) — THE GROOVE IS CUT THE WAY A FUSEE ENGINE CUTS IT. A fusee
+// engine feeds a square-nosed tool radially while the blank turns and the
+// carriage advances one pitch a turn, so at every azimuth the groove's floor
+// is FLAT across the tool's width: a helical shelf at radius rf(f) = env(f) −
+// grooveD, walled by the uncut cone on both sides (the lower wall always,
+// the upper wall wherever the cone's own flank has not already fallen inside
+// the tool's radius, which is the one-wall bound |dr/dz| ≤ grooveD/(gw/2)
+// the caller asserts). An upright chain — pins parallel to the arbor, the
+// plates on edge in the channel — seats on that shelf with no daylight at
+// all, because the shelf is flat under the whole stack.
 //
-//   floorAt(z) = env(clamp((z − bandZ0 + reliefHalf) / bandSpan, 0, 1)) − grooveD
+// The tool is WIDER than the stack, by an amount the caller derives: the
+// channel's walls are helicoids (at one azimuth both stand at one z whatever
+// the radius), and a flat plate lying along the helix twists out of such a
+// channel by a·b·lead/(r·(r − b)) at a corner (a, b) — main.js's
+// plateTwistAllow. And the cut starts a LEAD of `leadTurns` BEFORE f = 0: the
+// chain is hooked at f = 0 and the hook link's rear metal (its plate end and
+// the end rivet's head) lies behind the joint along the chord, so the engine
+// plunges that much earlier and the channel continues the same helix down
+// into the collar. The lead is rounded UP to a whole station (FUSEE_RIBBON_NAZ
+// per turn) so the plunge wall is a station the ribbon already owns, and the
+// published closures read the lead as cut.
 //
-// — the envelope sheared down by half a stack, minus the same depth. At
-// reliefHalf = 0 this is exactly the un-relieved law, which is why the
-// legacy/test path needs no second branch. The ideal wrap box touches this
-// floor along its bottom-inner corner and clears it everywhere else, which
-// is what the §61 seating row now measures (userData.groove.floorAt below).
+// The build it replaces lathed the floor as a SURFACE OF REVOLUTION, floorAt(z),
+// and no revolve can carry a helical shelf: a revolved floor is sloped across
+// the groove's width wherever the flank is, so an upright stack gapped 2h·m
+// off it and §124 leaned every wrap link into the flank to close the daylight
+// — up to 63.43° — which bent the chain about an axis up to 63° from its own
+// pins and twisted it 16–35° per joint against a running fit worth 4.5°
+// (TODO 76, TODO 208). The lean was the revolve's artefact. With the shelf
+// cut as the engine cuts it the chain stands upright, the twist is gone, and
+// the relief, the tilt law, the lie-flat ceiling and the funded down-reach
+// all go with it.
 //
-// tiltAt (§124, TODO 46): the chain's tilt law β(f) — the caller's
-// fuseeBetaAt — and with it the cut stops assuming a vertical stack. A
-// β-tilted stack (half-stack h = reliefHalf along the pin, half-width
-// w = grooveD across the plates, top tipping INBOARD so the plates lie on
-// the flank) has its meridian rectangle rotated by β, and the single-valued
-// lathe law that accepts every such box is the INNER-BOTTOM-CORNER LOCUS:
+// THE MESH. The surface R(a, z) is built as a RIBBON along the helix: one
+// strip per helix station f, covering the groove's window [z_g(f) − gw/2,
+// z_g(f) + gw/2] at the flat floor plus the LAND above it up to the next
+// turn's window, which is the strip of f + 1/grooveTurns at the same azimuth.
+// A strip's top edge is therefore the next turn's foot — the same integer
+// station index, one turn on, evaluated by the same expression — so adjacent
+// turns share vertices exactly and the ribbon is one manifold sheet. The
+// collar under the first turn and the runout over the last are the SAME
+// construction with the window left uncut (virtual turns, envelope at the
+// window's edges), clipped to the base and tip planes: a clipped point lands
+// where the cut's surface actually meets that plane (the floor radius where a
+// real window reaches it, the envelope elsewhere), so every clipped vertex of
+// a station coincides and the degenerate triangles that leaves are stripped
+// before the geometry is handed out. The groove's two END WALLS — the tool's
+// plunge at f = 0 and its exit at f = 1 — are the only faces the ribbon does
+// not make by itself: at those two azimuths the real strip and the virtual
+// strip differ by exactly the window's cross-section, and that quad is sewn
+// between vertices both already own.
 //
-//   station z_c solves  z_c = z + w·sinβ(z_c) + h·cosβ(z_c)
-//   floorAt(z) = env(f(z_c)) − (w·cosβ(z_c) − h·sinβ(z_c))
-//
-// At β = 0 this is EXACTLY the vertical law above (z_c = z + h, depth w), so
-// it is a generalization, not a second branch. Why the corner locus is the
-// whole law (verified against a brute-force min-over-boxes envelope, worst
-// deviation < 1e-3 everywhere the chain rides): at lie-flat (β = atan m) the
-// stack's inner face is PARALLEL to the locus and contains the corner, so
-// cutting the locus seats the face — both crown edges touch; where the cap
-// β* = atan(w/h) binds (m > w/h, the first ~2% of the band) the corner is
-// the deepest feature and the inner-top crown stands off w·cosβ*·(m − w/h)
-// ≈ 0.024 measured (0.032 linearized), inside the §61 float budget. The
-// envelope's own convexity keeps every face chord OUTSIDE the locus between
-// its corners. The station domain deliberately runs PAST f = 1 into the tip
-// runout (env is evaluated there; β clamps to the band edge) so the top
-// wrap's box is accepted by real stations rather than a flat clamp; the
-// runout's own fictional boxes over-tilt slightly (β held while the flank
-// flattens) but no chain ever rides above f = F_ACTIVE, so that residue is
-// cosmetic by construction.
+// userData.groove publishes the cut's own closures so the §61 seating and
+// float instruments measure the metal the lathe made rather than a
+// re-derivation kept in step: floorAt(z, az) is R(az, z) itself — the shelf
+// inside a window, the land outside it — and floorR(f) the shelf radius at
+// band fraction f. Both take CONE-LOCAL coordinates; az is required, because
+// since §254 the floor is not a function of z alone. setGrooveClock(az)
+// rotates the whole cut about the arbor after the fact (main.js knows the
+// clocking only once the drum's station and the arbor's full-wind phase
+// exist), and the closures follow it.
+export const FUSEE_RIBBON_NAZ = 96;     // stations per turn: a 5.47-radius ring facets at 0.003 of sagitta, an order under the §61 slack
 export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
-                            grooveW, grooveD, bandZ0, bandSpan, envR = null,
-                            reliefHalf = 0, tiltAt = null }) {
+                            grooveW, grooveD, bandZ0, bandSpan, envR = null, leadTurns = 0 }) {
   const g = new THREE.Group();
-  // Legacy proportions when the caller doesn't specify the cut (test pages).
-  if (grooveD === undefined) grooveD = Math.min((rLarge - rSmall) * 0.1, 0.5);
-  if (grooveW === undefined) grooveW = (0.88 * height) / grooveTurns * 0.8;
-  if (bandZ0 === undefined) bandZ0 = height * 0.06;
-  if (bandSpan === undefined) bandSpan = height * 0.88;
-  const env = envR || ((f) => rLarge + (rSmall - rLarge) * f); // land-crest envelope
-  // The relieved groove floor — ONE law for the seat, the band and the tip
-  // runout, shared with the §61 seating/float instruments via userData.groove
-  // so the cut and the check cannot drift apart: they hold the same closure.
-  // With tiltAt it is the corner-locus law derived in the header; without it,
-  // the vertical-stack shear (the corner-locus law at β ≡ 0, kept as its own
-  // closed form so the legacy/test path stays bit-identical).
-  const floorAt = tiltAt
-    ? (z) => {
-        const h = reliefHalf, w = grooveD;
-        let zc = z + Math.hypot(h, w), b = 0;
-        for (let i = 0; i < 4; i++) {   // fixed point: drop(β) varies slowly, 4 iterations land < 1e-9
-          b = tiltAt(Math.min(Math.max((zc - bandZ0) / bandSpan, 0), 1));
-          zc = z + w * Math.sin(b) + h * Math.cos(b);
-        }
-        return env(Math.max((zc - bandZ0) / bandSpan, 0)) - (w * Math.cos(b) - h * Math.sin(b));
-      }
-    : (z) => env(Math.min(Math.max((z - bandZ0 + reliefHalf) / bandSpan, 0), 1)) - grooveD;
-  // The core is lathed at NCORE stations; a straight generator is exact at
-  // any count, a curved one is not, so the count is what decides how much of
-  // the curve survives. Measured on the shipped 1/√ flank (TODO 32), worst
-  // chord sag against the true profile:
-  //   12 → 0.0394   24 → 0.0117   48 → 0.0048   96 → 0.0028
-  // Below 48 the worst chord sits near the base, where the curve bends
-  // hardest; from 48 up it moves to the relief clamp's kink near the band's
-  // top (an O(h) corner no station count removes — the smooth-region sag at
-  // 48 is 0.0032 and still falling as N²). 48 lands the whole table an order
-  // of magnitude inside the 0.08 the §61 chain-seating budget works to, so
-  // the facets cannot be what a seating row is measuring. The straight case
-  // keeps 12: exact is exact.
-  const NCORE = tiltAt ? 96 : envR ? 48 : 12;
-  // GROOVED core (§61). The old build ran a smooth core at the envelope with
-  // a proud wire ridge whose "channel between adjacent flange turns,
-  // comfortably wider than the chain's diameter" was false arithmetic —
-  // the channel measured ~0.19 against a 0.66 chain stack, and the chain's
-  // inner half was buried in the core besides. What a real fusee has is a
-  // helical groove CUT into the cone: here the core is lathed at the GROOVE
-  // FLOOR (envelope − grooveD), and the land between adjacent wraps is a
-  // helical crest ribbon standing grooveD back up to the envelope. The
-  // chain's inner edge rides the floor; the wrap stands proud of the land
-  // by its outer half, as on the real thing.
-  const pts = [];
-  // Base seat: kept INSIDE the bottom wrap's inner edge — the old 1.12·rLarge
-  // disc passed straight through the chain's lowest turn once the chain was
-  // drawn at true scale (its underside overhangs the base plane; the
-  // maintaining sandwich below is derived off exactly that overhang).
-  // floorAt(0), not rLarge − grooveD: the bottom wrap's box reaches
-  // reliefHalf below its groove point, so the seat plane z = 0 is already
-  // inside that box's span and owes it the same relief as the band.
-  const seatR = floorAt(0) - 0.02;
-  pts.push(new THREE.Vector2(seatR, 0));
-  // §124: under the tilt law the floor is CURVED below bandZ0 too (the low
-  // boxes' faces govern the collar), so the tilted profile is lathed from
-  // z = 0; the vertical law is flat there and keeps its band-only stations.
-  const zProfile0 = tiltAt ? 0 : bandZ0;
-  for (let i = 0; i <= NCORE; i++) {
-    const z = zProfile0 + (bandZ0 + bandSpan - zProfile0) * (i / NCORE);
-    pts.push(new THREE.Vector2(floorAt(z), z));
-  }
-  pts.push(new THREE.Vector2(floorAt(height - 0.02), height - 0.02));
-  pts.push(new THREE.Vector2(rSmall * 0.45, height));
-  // LatheGeometry revolves about +Y; every arbor here spins about +Z, so
-  // stand the cone up (profile height axis Y → Z).
-  const geo = new THREE.LatheGeometry(pts, 48);
-  geo.rotateX(Math.PI / 2);
-  const cone = new THREE.Mesh(geo, MATS.brass);
-  g.add(cone);
-
-  // The LAND: a helical crest ribbon between adjacent groove turns — the
-  // uncut material of the cut-groove model. Its centreline runs half a
-  // groove pitch above the groove helix; radially it spans floor → envelope.
-  // Cross-section: landW wide (what the pitch leaves over after the groove),
-  // grooveD tall. Built as an indexed quad strip: inner/outer rails at the
-  // two axial faces, outer face closing the crest.
-  const pitch = bandSpan / grooveTurns;
-  // §124 (TODO 46): the channel each wrap claims is its tilted stack's
-  // z-footprint, ±drop(β) = ±(w·sinβ + h·cosβ) about the groove point (at
-  // β = 0 this is ±reliefHalf, i.e. the passed grooveW = stack + clearance),
-  // plus the same seating clearance grooveW carries over the vertical stack.
-  // The land is what the pitch leaves between the wrap below and the wrap
-  // above — an ASYMMETRIC window, since β falls with height — and near the
-  // base the tilted footprint (~1.48 at the cap) exceeds the 1.389 pitch:
-  // the channels MERGE and there is honestly no land to cut there. The §124
-  // adjacent-turn boot assert (main.js) is what holds the CHAINS apart on
-  // that stretch, exactly as the header note below says the base of a real
-  // steep-flanked fusee works.
-  const h = reliefHalf, w = grooveD;
-  const seatClear = (grooveW - 2 * reliefHalf) / 2;   // = 0.005 on the shipped stock
-  const dropAt = (f) => {
-    if (!tiltAt) return reliefHalf;
-    const b = tiltAt(Math.min(Math.max(f, 0), 1));
-    return w * Math.sin(b) + h * Math.cos(b);
+  const env = envR || ((f) => rLarge + (rSmall - rLarge) * f); // land-crest envelope over the band
+  const G = grooveTurns;
+  const pitch = bandSpan / G;
+  const hw = grooveW / 2;
+  const NAZ = FUSEE_RIBBON_NAZ;
+  // The plunge lead, in stations (rounded up: the plunge wall is sewn at a
+  // station) and in band fraction. The caller is expected to hand a lead
+  // already on a station; a fractional one is cut long and warned about.
+  const iLead = -Math.ceil(leadTurns * NAZ - 1e-9);
+  if (Math.abs(leadTurns * NAZ + iLead) > 1e-9)
+    console.warn(`fusee: plunge lead ${leadTurns.toFixed(5)} turns is not a whole station of ${NAZ} — cut as ${(-iLead / NAZ).toFixed(5)}`);
+  const leadTurnsCut = -iLead / NAZ;
+  const fLead = leadTurnsCut / G;         // the cut runs over f ∈ [−fLead, 1)
+  const zTip = height - 0.02;            // the tip face; the groove runs out through it, as cut threads do
+  const rTipFlat = rSmall * 0.45;         // the tip's small flat, inside every groove radius
+  const clampF = (f) => Math.min(Math.max(f, 0), 1);
+  const envZ = (z) => env(clampF((z - bandZ0) / bandSpan)); // the land surface: collar and runout continue the band's ends
+  const floorR = (f) => env(Math.max(f, 0)) - grooveD;      // the tool's radius on pass f — FLAT across the window; the lead continues the plunge radius
+  // TODO 115 — the helix's hand. One line lays it (the direction guard
+  // mutates this line and expects the hand assert below to fire): azimuth
+  // advances with z in the movement's own sense, because the chain pays off
+  // the fusee as the train turns it.
+  let clock = 0;                          // the groove's start azimuth, cone-local (setGrooveClock)
+  const azAt = (f) => {
+    const t = f;
+    const a = MOVEMENT_SENSE * t * grooveTurns * Math.PI * 2;
+    return clock + a;
   };
-  // The crest exists BETWEEN wraps: grooveTurns grooves have grooveTurns−1
-  // lands, so the helix stops half a pitch short of the band's top — a
-  // full-length run poked 0.2 past the cone's tip and it was the plate
-  // floor's boot assert that caught it.
-  const SEG = (grooveTurns - 1) * 48;
+  const zgAt = (f) => bandZ0 + bandSpan * f;
+  // The REAL pass whose window holds (az, z), or null: f ∈ [−fLead, 1) — the
+  // tool cuts from the plunge, the lead before the hook's station f = 0, up
+  // to its exit at f = 1, and the exit station itself belongs to the strip
+  // that ends there, never to the one after it (the end wall is sewn between
+  // the two).
+  const passAt = (az, z) => {
+    let frac = (MOVEMENT_SENSE * (az - clock)) / (Math.PI * 2);
+    frac -= Math.floor(frac);
+    const k = Math.round((z - bandZ0) / pitch - frac);
+    const f = (frac + k) / G;
+    if (f < -fLead || f >= 1) return null;
+    if (Math.abs(z - zgAt(f)) > hw) return null;
+    return f;
+  };
+  const surfaceR = (az, z) => {
+    const f = passAt(az, z), rl = envZ(z);
+    return f === null ? rl : Math.min(rl, floorR(f));
+  };
+  const floorAt = (z, az) => {
+    if (typeof az !== 'number') throw new Error('fusee floorAt(z, az): the §254 cut is helical, so the floor needs the azimuth too');
+    return surfaceR(az, z);
+  };
+  // How far a point at (az, z, r) must travel to leave the cone's metal by the
+  // SHORTEST way, for a point that stands in the LAND (outside every window):
+  // out radially to the land (floorAt − r), or along the axis to the nearest
+  // window's edge and then out to its shelf, whichever is less. A window has
+  // walls — vertical, at the helicoid — so a vertex a micron past one is a
+  // micron into the wall, not the wall's whole height; floorAt alone reads it
+  // as the height (a cliff), which was the right answer only for a floor that
+  // was a function of z. A point inside a window has no axial way out (the
+  // walls are metal on both sides), so it reads Infinity and its depth is the
+  // shelf's, floorAt − r.
+  const exitDepth = (az, z, r) => {
+    if (passAt(az, z) !== null) return Infinity;
+    let frac = (MOVEMENT_SENSE * (az - clock)) / (Math.PI * 2);
+    frac -= Math.floor(frac);
+    const k0 = Math.round((z - bandZ0) / pitch - frac);
+    let best = Infinity;
+    for (let k = k0 - 1; k <= k0 + 1; k++) {
+      const f = (frac + k) / G;
+      if (f < -fLead || f >= 1) continue;
+      const axial = Math.max(Math.abs(z - zgAt(f)) - hw, 0);
+      const radial = Math.max(floorR(f) - r, 0);
+      const d = Math.hypot(axial, radial);
+      if (d < best) best = d;
+    }
+    return best;
+  };
+
+  // ---- the ribbon --------------------------------------------------------
+  const NL = 6;                           // land samples between a window's top and the next turn's foot
+  // Station i ↔ f = i / (NAZ·G); a strip's foot is zFoot(i), its top edge is
+  // zFoot(i + NAZ) — the next turn's foot by the SAME expression on the same
+  // integer, which is what makes adjacent turns share vertices bit for bit.
+  const fAt = (i) => i / (NAZ * G);
+  const zFoot = (i) => bandZ0 + bandSpan * (i / (NAZ * G)) - hw;
+  // The station's azimuth is reduced to its turn FIRST: a turn later is the
+  // same azimuth plus 2π, which cos/sin do not round back to the same bits,
+  // and a vertex that is not bit-equal to its twin on the turn below is not
+  // welded to it — a seam the eye never sees and the parity ray falls through.
+  const azStation = (i) => azAt((((i % NAZ) + NAZ) % NAZ) / (NAZ * G));
+  // Virtual turns: enough below the band that the lowest strip's feet all
+  // sit under the base plane, enough above that the highest strip's feet all
+  // sit over the tip plane — every point past a plane clips onto it.
+  const kMin = Math.min(Math.floor((hw - bandZ0) / pitch) - 1, Math.floor(iLead / NAZ) - 1);
+  const kUp = Math.ceil((zTip - bandZ0 + hw) / pitch) - G;
+  // The clip radius at a plane: where a REAL window reaches the plane at this
+  // station the cut's own floor, else the land. A real strip at the groove's
+  // exit station (f = 1 exactly) asks its own window, because passAt's
+  // half-open range hands that azimuth to the turn after it on purpose.
+  const clipR = (i, zc, real) => {
+    if (real && Math.abs(zc - zgAt(fAt(i))) <= hw) return Math.min(envZ(zc), floorR(fAt(i)));
+    return surfaceR(azStation(i), zc);
+  };
   const pos = [], idx = [];
-  // 4 rails per station: (floor,lo) (env,lo) (env,hi) (floor,hi).
-  // `open` tracks strip continuity: a merged-channel station emits nothing
-  // and breaks the quad strip, so no degenerate slivers bridge the gap.
-  let open = false;
-  // TODO 115 GUARD — the groove's HAND, sampled from the crest as it is laid
-  // rather than restated from the line that lays it (accumulated here, checked
-  // after the loop).
-  let gA0 = null, gA1 = 0, gZ0 = 0, gZ1 = 0;
-  for (let i = 0; i <= SEG; i++) {
-    const t = i / (grooveTurns * 48);
-    const a = MOVEMENT_SENSE * t * grooveTurns * Math.PI * 2;  // TODO 115 — the chain pays off in the running direction
-    const zg = bandZ0 + bandSpan * t;                     // groove point of the wrap below
-    if (gA0 === null) { gA0 = a; gZ0 = zg; }
-    gA1 = a; gZ1 = zg;
-    const zLo = zg + dropAt(t) + seatClear;               // top of the lower wrap's channel
-    const zHi = zg + pitch - dropAt(t + 1 / grooveTurns) - seatClear; // bottom of the upper wrap's
-    if (zHi - zLo < 0.02) { open = false; continue; }     // channels merged — no land here
-    const zc = (zLo + zHi) / 2;
-    // Envelope evaluated at the land's OWN z, not the groove's t below it —
-    // half a pitch up a cone this steep is ~0.6 of radius, and sampling the
-    // lower station left the crest that far proud on the uphill side.
-    const fLand = (zc - bandZ0) / bandSpan;
-    // Inner rail on the RELIEVED floor (at zHi, the shallower end, so the
-    // rail meets the floor there and embeds at zLo — a crest never floats);
-    // outer rail at the envelope, capped by §54's build-to proportion
-    // (SLENDER_TARGET · width — layout.js, the same number the slenderness
-    // check enforces). Un-relieved, full height is grooveD and the cap never
-    // binds (0.66 < 27·0.025). Relieved, the crest at the steep base would
-    // be grooveD + relief over a hairline width — λ far past §54's 30
-    // (TODO 32's flank bends harder at the base than the hyperbola this
-    // first shipped against) — so it honestly stops short of the envelope
-    // there: on that stretch the chain is retained by the step of the turn
-    // below (the un-relieved metal between wraps) and by its own departing
-    // tangent, which is what the base of a real steep-flanked fusee looks
-    // like. A fin nobody could cut is not a land.
-    const rIn = floorAt(zHi);
-    const rOut = Math.min(env(fLand), rIn + SLENDER_TARGET * (zHi - zLo));
-    const ca = Math.cos(a), sa = Math.sin(a);
-    const base = pos.length / 3;
-    for (const [r, z] of [[rIn, zLo], [rOut, zLo], [rOut, zHi], [rIn, zHi]])
-      pos.push(ca * r, sa * r, z);
-    if (open) {
-      // TODO 123 — the winding follows the sweep (makeSawCoupling's rule,
-      // same landing): these quads were written for azimuth advancing in
-      // +theta, and TODO 115's MOVEMENT_SENSE on the sweep line mirrored the
-      // traversal without them — at sense −1 the whole land ring built
-      // inside-out and culled invisible, the third body the inverted gate
-      // caught on its first run.
-      const b = base - 4, c = base;
-      for (const k of [0, 1, 2]) {
-        if (MOVEMENT_SENSE >= 0) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
-        else idx.push(c + k + 1, c + k, b + k, b + k + 1, c + k + 1, b + k);
+  const vkey = new Map();                 // exact-position weld: coincident vertices become one index
+  const vert = (x, y, z) => {
+    const X = Math.fround(x), Y = Math.fround(y), Z = Math.fround(z);
+    const key = `${X},${Y},${Z}`;
+    let v = vkey.get(key);
+    if (v === undefined) { v = pos.length / 3; vkey.set(key, v); pos.push(X, Y, Z); }
+    return v;
+  };
+  const station = (i, real) => {
+    const az = azStation(i), ca = Math.cos(az), sa = Math.sin(az);
+    const f = fAt(i);
+    const zLo = zFoot(i), zHi = zLo + 2 * hw, zTop = zFoot(i + NAZ);
+    const rf = real ? floorR(f) : null;
+    const pts = [];
+    const push = (r, z) => {
+      if (z < 0) { r = clipR(i, 0, real); z = 0; }
+      else if (z > zTip) { r = clipR(i, zTip, real); z = zTip; }
+      pts.push(vert(ca * r, sa * r, z));
+    };
+    push(envZ(zLo), zLo);                                     // the lower wall's foot, on the land
+    push(real ? Math.min(envZ(zLo), rf) : envZ(zLo), zLo);   // …down to the shelf
+    push(real ? Math.min(envZ(zHi), rf) : envZ(zHi), zHi);   // the shelf, flat across the window
+    push(envZ(zHi), zHi);                                     // the upper wall, where the flank still stands
+    for (let m = 1; m <= NL; m++) {                           // the land up to the next turn's foot
+      const z = zHi + (zTop - zHi) * (m / (NL + 1));
+      push(envZ(z), z);
+    }
+    return pts;
+  };
+  const P = 4 + NL;                       // points per station
+  const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+  // A ribbon from station i0 to i1 inclusive; quads between consecutive
+  // stations. Winding: with azimuth advancing in MOVEMENT_SENSE the outward
+  // normal of (prev, next, next+1, prev+1) flips with the sense, so the
+  // order follows it (makeSawCoupling's rule — the land ring once built
+  // inside-out at sense −1 and culled invisible).
+  const ribbon = (i0, i1, real) => {
+    let prev = station(i0, real);
+    for (let i = i0 + 1; i <= i1; i++) {
+      const next = station(i, real);
+      for (let p = 0; p + 1 < P; p++) {
+        if (MOVEMENT_SENSE >= 0) quad(prev[p], next[p], next[p + 1], prev[p + 1]);
+        else quad(next[p], prev[p], prev[p + 1], next[p + 1]);
+      }
+      prev = next;
+    }
+    return prev;
+  };
+  if (zgAt(-fLead) - hw < -1e-9)
+    console.warn(`fusee: the bottom groove opens out the base (window foot ${(zgAt(-fLead) - hw).toFixed(3)} under z = 0 at the plunge) — the collar is derived to carry a whole lower wall under the lead, and the base ring is built on that`);
+  ribbon(kMin * NAZ, iLead, false);             // the collar: virtual turns, windows uncut, clipped at the base
+  ribbon(iLead, G * NAZ, true);                 // the groove, plunge (the lead's start) to exit
+  ribbon(G * NAZ, (G + kUp) * NAZ, false);      // the runout: virtual turns clipped at the tip
+  // The two end walls, sewn between vertices both strips already own: at the
+  // plunge (f = −fLead) the real strip's shelf points against the virtual
+  // strip's envelope points at the same z; at the exit (f = 1) likewise, the
+  // window there clipped by the tip.
+  {
+    const s0r = station(iLead, true), s0v = station(iLead, false);
+    const s1r = station(G * NAZ, true), s1v = station(G * NAZ, false);
+    // plunge wall faces +sense (the groove lies on its +sense side); exit wall −sense
+    if (MOVEMENT_SENSE >= 0) {
+      quad(s0v[1], s0r[1], s0r[2], s0v[2]);
+      quad(s1r[1], s1v[1], s1v[2], s1r[2]);
+    } else {
+      quad(s0r[1], s0v[1], s0v[2], s0r[2]);
+      quad(s1v[1], s1r[1], s1r[2], s1v[2]);
+    }
+  }
+  // Base and tip. The rings are the clipped points themselves (the same
+  // vertices, by the weld); the tip chamfers to its small flat and both
+  // close with a fan. Winding by the sense, as above.
+  {
+    const cBase = vert(0, 0, 0), cTip = vert(0, 0, height);
+    const base = [], tipRing = [], tipFlat = [];
+    for (let j = 0; j < NAZ; j++) {
+      const i = kMin * NAZ + j;                 // any station at this azimuth: clipR reads the azimuth, not the turn
+      const az = azStation(i), ca = Math.cos(az), sa = Math.sin(az);
+      const rb = clipR(i, 0, false), rt = clipR(i, zTip, false);
+      base.push(vert(ca * rb, sa * rb, 0));
+      tipRing.push(vert(ca * rt, sa * rt, zTip));
+      tipFlat.push(vert(ca * rTipFlat, sa * rTipFlat, height));
+    }
+    for (let j = 0; j < NAZ; j++) {
+      const k = (j + 1) % NAZ;
+      if (MOVEMENT_SENSE >= 0) {
+        idx.push(cBase, base[k], base[j]);
+        quad(tipRing[j], tipRing[k], tipFlat[k], tipFlat[j]);
+        idx.push(cTip, tipFlat[j], tipFlat[k]);
+      } else {
+        idx.push(cBase, base[j], base[k]);
+        quad(tipRing[k], tipRing[j], tipFlat[j], tipFlat[k]);
+        idx.push(cTip, tipFlat[k], tipFlat[j]);
       }
     }
-    open = true;
+    // Where the groove exits through the tip, the tip face steps radially at
+    // the exit azimuth — from the shelf's radius on the station before the
+    // seam to the land's radius after it. The ring carries one vertex per
+    // azimuth, so that step is one sliver the chamfer quads cannot make: the
+    // triangle between the last pre-seam ring point, the exit strip's clipped
+    // shelf corner, and the post-seam ring point, on the tip plane.
+    const exitHi = zgAt(1) + hw;
+    if (exitHi > zTip) {
+      const sr = station(G * NAZ, true);
+      if (MOVEMENT_SENSE >= 0) idx.push(tipRing[NAZ - 1], tipRing[0], sr[2]);
+      else idx.push(tipRing[NAZ - 1], sr[2], tipRing[0]);
+    }
   }
-  // TODO 115 GUARD — the groove is a HELIX and a helix has no mirror axis, so
-  // the chain can only sit in it from one side. The constraint: azimuth must
-  // advance with z in the movement's own sense, because the chain pays off the
-  // fusee as the train turns it. Cut the groove the other way and the chain
-  // would have to wrap against its own lay — and before this it booted in
-  // silence (`probe-direction-guards.mjs`), which is why the hand is read off
-  // the laid crest rather than trusted to the line that lays it.
-  if (gA0 !== null && Math.abs(gZ1 - gZ0) > 1e-9) {
-    // Exported too: the chain's own wrap is laid in main.js, and the only way
-    // for that layer to know which way this groove runs without restating the
-    // line above is to be handed what the crest MEASURED. (TODO 115 — the wrap
-    // and the groove are two files apart and were laid by two opposite laws.)
-    g.userData.grooveDAdZ = (gA1 - gA0) / (gZ1 - gZ0);
-    g.userData.grooveAz0 = gA0;   // …and its PHASE at that first crest point, so a consumer can ask WHERE the thread is, not only which way it runs
-    g.userData.grooveZ0 = gZ0;
-    const hand = Math.sign((gA1 - gA0) / (gZ1 - gZ0));
-    if (hand !== MOVEMENT_SENSE)
-      console.warn(`§115 fusee groove: winds ${hand > 0 ? 'right' : 'left'}-handed (${((gA1 - gA0) / (Math.PI * 2)).toFixed(3)} turns over ${(gZ1 - gZ0).toFixed(3)} of z) but MOVEMENT_SENSE is ${MOVEMENT_SENSE} — the chain would wrap against its lay`);
+  // Strip the degenerate triangles the clipping leaves (two or three of a
+  // triangle's corners welded to one vertex, or three collinear): they carry
+  // no surface, and §77's census counts every one of them (TODO 74).
+  const kept = [];
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+    if (a === b || b === c || a === c) continue;
+    const ax = pos[3 * b] - pos[3 * a], ay = pos[3 * b + 1] - pos[3 * a + 1], az = pos[3 * b + 2] - pos[3 * a + 2];
+    const bx = pos[3 * c] - pos[3 * a], by = pos[3 * c + 1] - pos[3 * a + 1], bz = pos[3 * c + 2] - pos[3 * a + 2];
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    if (nx * nx + ny * ny + nz * nz < 1e-18) continue;
+    kept.push(a, b, c);
   }
-  const landGeo = new THREE.BufferGeometry();
-  landGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  landGeo.setIndex(idx);
-  landGeo.computeVertexNormals();
-  g.add(new THREE.Mesh(landGeo, MATS.brass));
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(kept);
+  geo.computeVertexNormals();
+  const cone = new THREE.Mesh(geo, MATS.brass);
+  cone.name = 'fuseeCone';
+  g.add(cone);
 
+  // TODO 115 GUARD — the groove is a HELIX and a helix has no mirror axis, so
+  // the chain can only sit in it from one side. The hand is read off the laid
+  // stations — azimuth against z over the whole band — rather than trusted to
+  // the line that lays them (probe-direction-guards.mjs mutates that line and
+  // expects this to fire).
+  {
+    const a0 = azAt(0), a1 = azAt(1);
+    const z0 = zgAt(0), z1 = zgAt(1);
+    const dAdZ = (a1 - a0) / (z1 - z0);
+    g.userData.grooveDAdZ = dAdZ;
+    g.userData.grooveAz0 = a0;   // the groove's start — its PHASE, so a consumer can ask WHERE the thread is, not only which way it runs
+    g.userData.grooveZ0 = z0;
+    if (Math.sign(dAdZ) !== MOVEMENT_SENSE)
+      console.warn(`§115 fusee groove: winds ${dAdZ > 0 ? 'right' : 'left'}-handed (${((a1 - a0) / (Math.PI * 2)).toFixed(3)} turns over ${(z1 - z0).toFixed(3)} of z) but MOVEMENT_SENSE is ${MOVEMENT_SENSE} — the chain would wrap against its lay`);
+  }
   g.userData.rSmall = rSmall;
   g.userData.rLarge = rLarge;
   g.userData.height = height;
   g.userData.grooveTurns = grooveTurns;
-  // §61 — the cut, exported for the chain-seating instrument. Since TODO 40
-  // the export carries floorAt ITSELF — the closure the lathe just consumed —
-  // so "the check measures the same analytic floor this geometry was built
-  // from" is true by identity rather than by a re-derivation kept in step.
-  // (The first hyperbolic cut proved the distinction: the check went on
-  // reconstructing a straight chord from rLarge/rSmall and measured against
-  // a floor ~1.3 outside the metal at mid-band.)
-  // §124: envAt (the land-crest envelope closure) and tiltAt ride along so
-  // probes can re-derive the wrap's radial window from the live cut instead
-  // of quoting stale literals (tools/probe-chain-daylight.mjs).
-  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, floorAt, envAt: env, tiltAt };
+  // The clocking: rotate the cut about the arbor. The mesh turns and every
+  // closure above reads `clock`, so the instruments keep measuring the metal
+  // that was actually laid.
+  const setGrooveClock = (az) => {
+    clock = az;
+    cone.rotation.z = az;
+    g.userData.grooveAz0 = azAt(0);
+    g.userData.groove.clock = az;
+  };
+  g.userData.groove = { bandZ0, bandSpan, grooveD, grooveW, pitch, leadTurns: leadTurnsCut, fLead, floorAt, floorR, exitDepth, envAt: env, azAt, zgAt, passAt, clock, setGrooveClock };
   return g;
 }
 
