@@ -31213,14 +31213,48 @@ zh-Hant, as §236 decided.
   with 0 unmatched keys.
 - **zh-Hant writes "winding" two ways**, 上鍊 and 上鏈, in its existing table.
   The new strings follow the nearest neighbour of each. Unifying them is a
-  review of that table.
+  review of that table. **Closed:** every 上鍊 meant winding (鍊 occurred
+  nowhere else), so all sixteen — five chrome labels, eleven in the explainer
+  — now read 上鏈, the table's own majority spelling (87 of 103).
+  Values only; no key moved.
 - **Arabic's honesty stem `/حاك/` also matches حاكم ("governor").** A
   translator avoided the word this time. A sentence that says "modelled",
   drops the honesty word and names the governor would read CROSSED.
+  **Closed, and it was live, not hypothetical:** حاكم stands sixteen times
+  across the two Arabic pages, and the matcher counted every one — a block
+  that said "simulated" in English, dropped محاكى and named the governor
+  read as keeping its word. The simulation forms all close the root ح-ك-ي on
+  its weak letter (محاكى, محاكاة, المحاكي, يحاكي), so the stem is now
+  `/حاك[اىي]/`, which every one of them matches and حاكم never does. No
+  Arabic block's verdict moved (0 crossed, 0 absent before and after), so
+  nothing had yet hidden behind it; the glossary control still verifies the
+  row.
 - **No native review**, as for every locale. The new part labels are the
   terms most likely to differ from a workshop's: a barrel's click, the
-  sliding clutch, and the lifting lever's faces.
+  sliding clutch, and the lifting lever's faces. Still owed — it needs a
+  reader, not a tool.
 - **Arabic's 39 backward arrows** are still owed to an Arabic landing.
+  **Closed, at 47:** the probe's count was short, because an arrow whose
+  neighbour wraps onto the next line was reported as WRAP and never judged.
+  Measured again with line wrapping switched off — the same paragraph and
+  the same bidi resolution, every arrow on one line — Arabic read 44
+  backwards (39 + 5), and the 14 already right stayed right. Each was
+  flipped by its EXACT rendered text node, written back into the table's
+  VALUES only: «14.0 → 24.4 dBA» also stands in its English key, which a
+  plain substring rewrite would have changed. Three more were EDGE arrows
+  opening a continuation line of a chain whose other arrows flipped («←
+  عجلة التاج ← تروس التعبئة», «← عجلات الضبط ← …», «← الجرس»), so they turn
+  with their chains; the EDGE arrows that point a physical direction in a
+  left-to-right drawing (EMPTY, the wheel turning, the balance axis) stay.
+  **The same blind spot hid one in Persian**: §253's gong arrow «(32.9 →
+  39.3 mg)», the sentence Hebrew's was fixed in, wraps in Persian at every
+  width, so this review's Hebrew fix never reached it. It reads ← now.
+  `probe-249-arrows` makes the WRAP pass itself: an arrow that wraps is
+  judged again unwrapped, and only one that still cannot be judged is
+  reported. Its control is the Persian sentence — restore the → and the
+  probe FAILS on exactly that arrow. With Arabic clean the `OWED` row went
+  stale, as the probe's own rule says it must, and is retired: he, fa and ar
+  now measure **0 backwards** of 71, 68 and 71, with 0 left unjudged as WRAP.
 
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 

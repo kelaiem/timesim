@@ -256,7 +256,13 @@ const honestyText = (s, lang) => {
 // is the one outcome a gate must never reach quietly.
 const HONESTY = {
   en:        { m: EN_MODELLED,     s: EN_SIMULATED },
-  ar:        { m: /نمذ/,           s: /حاك/ },
+  // §249's review — the root ح-ك-ي, never the bare three letters: حاكم (the
+  // alarm's GOVERNOR) carries حاك too, sixteen times across the two pages, so
+  // a block whose translation dropped the honesty word and named the governor
+  // read as keeping it. The simulation words all close the root on its weak
+  // letter — محاكى, محاكاة, المحاكي, يحاكي — so the stem must be followed by
+  // ا, ى or ي, which حاكم never is.
+  ar:        { m: /نمذ/,           s: /حاك[اىي]/ },
   de:        { m: /modelli/i,      s: /simul/i },
   es:        { m: /modela/i,       s: /simula/i },
   fr:        { m: /modélis/i,      s: /simul/i },
