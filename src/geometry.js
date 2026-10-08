@@ -3126,17 +3126,16 @@ export function makeHammerLever({ length, width, tipHalfW }) {
 // main.js) use the same value the mesh is built with.
 export const SETTING_LEVER_POST_R = 0.45;
 
-export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH = 1.6, postH = 12 }) {
+export function makeSettingLever({ body, thickness, bossR, bossZ, lug, lugZ, pin, post }) {
+  // TODO 214 — the plate is CUT from the solve (layout.js SETTING_LEVER_CUT):
+  // `body` is its outline in the group's local frame, beak toward +Y and tail
+  // toward −Y as before. The plate hugs the base plate's dial face now, so the
+  // boss and its screw are on the DIAL side (−z), and the beak reaches the
+  // stem's groove as a separate LUG over the groove collars carrying the PIN
+  // that bears on collar In.
   const g = new THREE.Group();
-  const hw = width / 2;
-
   const s = new THREE.Shape();
-  s.moveTo(-hw, -tailLen);
-  s.quadraticCurveTo(-hw * 1.8, 0, -hw * 0.55, beakLen * 0.85);
-  s.lineTo(-hw * 0.32, beakLen);
-  s.lineTo(hw * 0.32, beakLen);
-  s.lineTo(hw * 0.55, beakLen * 0.85);
-  s.quadraticCurveTo(hw * 1.8, 0, hw, -tailLen);
+  body.forEach((p, i) => (i ? s.lineTo(p.x, p.y) : s.moveTo(p.x, p.y)));
   s.closePath();
   const geo = new THREE.ExtrudeGeometry(s, {
     depth: thickness,
@@ -3147,37 +3146,53 @@ export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH 
     curveSegments: 6,
   });
   geo.translate(0, 0, -thickness / 2);
-  const body = new THREE.Mesh(geo, MATS.steel);
-  body.name = 'settingLeverBody';   // TODO 223: the keyless floors row waives this body's burials BY NAME
-  g.add(body);
+  const plate = new THREE.Mesh(geo, MATS.steel);
+  plate.name = 'settingLeverBody';   // TODO 214: its flank is the yoke tail pin's working face (the Setting lever ⇄ Yoke floors row)
+  g.add(plate);
 
-  // Pivot boss + blued screw.
-  const bossGeo = new THREE.CylinderGeometry(hw * 1.5, hw * 1.5, thickness * 1.6, 16);
+  // Pivot boss + blued screw, under the plate.
+  const bossGeo = new THREE.CylinderGeometry(bossR, bossR, bossZ[1] - bossZ[0], 24);
   bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
-  const screwGeo = new THREE.CylinderGeometry(hw * 0.55, hw * 0.55, thickness * 0.5, 10);
+  const boss = new THREE.Mesh(bossGeo, MATS.steel);
+  boss.name = 'settingLeverBoss';
+  boss.position.z = (bossZ[0] + bossZ[1]) / 2;
+  g.add(boss);
+  const screwT = thickness * 0.5;
+  const screwGeo = new THREE.CylinderGeometry(bossR * 0.6, bossR * 0.6, screwT, 16);
   screwGeo.rotateX(Math.PI / 2);
   const screw = new THREE.Mesh(screwGeo, MATS.blueSteel);
-  screw.position.z = thickness * 1.05;
+  screw.name = 'settingLeverScrew';
+  screw.position.z = bossZ[0] - screwT / 2 + 0.05;   // seated a 0.05 weld into the boss's dial face
   g.add(screw);
 
-  // Beak pin — rides up into the stem's groove from below.
-  const pinGeo = new THREE.CylinderGeometry(0.35, 0.35, beakPinH, 10);
+  // The beak LUG — unbevelled, so its underside is the plane the collars are
+  // cleared against, exactly.
+  const ls = new THREE.Shape();
+  lug.forEach((p, i) => (i ? ls.lineTo(p.x, p.y) : ls.moveTo(p.x, p.y)));
+  ls.closePath();
+  const lugGeo = new THREE.ExtrudeGeometry(ls, { depth: lugZ[1] - lugZ[0], bevelEnabled: false, curveSegments: 6 });
+  lugGeo.translate(0, 0, lugZ[0]);
+  const lugMesh = new THREE.Mesh(lugGeo, MATS.steel);
+  lugMesh.name = 'settingLeverBeak';
+  g.add(lugMesh);
+
+  // Beak pin — hangs from the lug down over the stem, bearing on collar In.
+  const pinGeo = new THREE.CylinderGeometry(pin.r, pin.r, pin.z1 - pin.z0, pin.segments);
   pinGeo.rotateX(Math.PI / 2);
-  const pin = new THREE.Mesh(pinGeo, MATS.steel);
-  pin.name = 'settingLeverBeakPin';   // TODO 223: the keyless floors row's one declared contact (the pin in the stem's groove)
-  pin.position.set(0, beakLen, thickness / 2 + beakPinH / 2);
-  g.add(pin);
+  const pinMesh = new THREE.Mesh(pinGeo, MATS.steel);
+  pinMesh.name = 'settingLeverBeakPin';   // TODO 214: the pull's contact — on groove collar In's face (handoff and floors rows)
+  pinMesh.position.set(pin.x, pin.y, (pin.z0 + pin.z1) / 2);
+  g.add(pinMesh);
 
   // Tail post — tall, so it can actuate parts on higher planes.
-  const postGeo = new THREE.CylinderGeometry(SETTING_LEVER_POST_R, SETTING_LEVER_POST_R, postH, 12);
+  const postGeo = new THREE.CylinderGeometry(SETTING_LEVER_POST_R, SETTING_LEVER_POST_R, post.h, 12);
   postGeo.rotateX(Math.PI / 2);
-  const post = new THREE.Mesh(postGeo, MATS.steel);
-  post.position.set(0, -tailLen, thickness / 2 + postH / 2);
-  g.add(post);
+  const postMesh = new THREE.Mesh(postGeo, MATS.steel);
+  postMesh.position.set(post.x, post.y, thickness / 2 + post.h / 2);
+  g.add(postMesh);
 
-  g.userData.beakLen = beakLen;
-  g.userData.tailLen = tailLen;
+  g.userData.outline = body;
+  g.userData.bevel = thickness * 0.12;
   return g;
 }
 
@@ -3188,17 +3203,26 @@ export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH 
 // tip rise to the hub's level.
 // ---------------------------------------------------------------------------
 
-export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6, prongR = 0.4, prongSegments = 10 }) {
+export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.6, prongR = 0.4, prongSegments = 10, tail = null }) {
   const g = new THREE.Group();
   const hw = width / 2;
 
+  // The fork arm, symmetric about local +Y; TODO 214 adds the TAIL — the bell
+  // crank's second arm along local ±X from the pivot, its end rounded about the
+  // tail pin. `tail.x` is signed (the yoke's handedness is the layout's): the
+  // outline is drawn with the tail on +X and mirrored whole when it is on −X,
+  // which moves only the tail because the fork arm is symmetric.
+  const pts = [[-hw, 0], [-hw * 0.5, armLen * 0.82], [-prongGap / 2 - 0.6, armLen],
+    [prongGap / 2 + 0.6, armLen], [hw * 0.5, armLen * 0.82]];
+  if (tail) {
+    const ax = Math.abs(tail.x), w = tail.halfW;
+    pts.push([hw - (hw * 0.5) * (w / (armLen * 0.82)), w], [ax, w]);
+    for (let i = 1; i < 12; i++) { const t = Math.PI / 2 - (Math.PI * i) / 12; pts.push([ax + w * Math.cos(t), w * Math.sin(t)]); }
+    pts.push([ax, -w], [-hw * 0.5, -w]);
+  } else pts.push([hw, 0]);
+  const flip = tail && tail.x < 0 ? -1 : 1;
   const s = new THREE.Shape();
-  s.moveTo(-hw, 0);
-  s.lineTo(-hw * 0.5, armLen * 0.82);
-  s.lineTo(-prongGap / 2 - 0.6, armLen);
-  s.lineTo(prongGap / 2 + 0.6, armLen);
-  s.lineTo(hw * 0.5, armLen * 0.82);
-  s.lineTo(hw, 0);
+  pts.forEach(([x, y], i) => (i ? s.lineTo(flip * x, y) : s.moveTo(flip * x, y)));
   s.closePath();
   const geo = new THREE.ExtrudeGeometry(s, {
     depth: thickness,
@@ -3210,7 +3234,7 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
   });
   geo.translate(0, 0, -thickness / 2);
   const body = new THREE.Mesh(geo, MATS.steel);
-  body.name = 'yokeBody';   // TODO 223: the keyless floors row waives the body's and boss's burials BY NAME
+  body.name = 'yokeBody';   // TODO 223 named it to waive its burial in the minute wheel; TODO 214's re-lay retired the waiver
   g.add(body);
 
   const bossGeo = new THREE.CylinderGeometry(hw * 1.3, hw * 1.3, thickness * 1.5, 14);
@@ -3231,6 +3255,14 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
     g.add(prong);
   }
 
+  if (tail) {
+    const tGeo = new THREE.CylinderGeometry(tail.pinR, tail.pinR, tail.pinH, tail.pinSegments);
+    tGeo.rotateX(Math.PI / 2);
+    const tPin = new THREE.Mesh(tGeo, MATS.steel);
+    tPin.name = 'yokeTailPin';   // TODO 214: bears on the setting lever's flank — the yoke's driver
+    tPin.position.set(tail.x, 0, thickness / 2 + tail.pinH / 2);
+    g.add(tPin);
+  }
   g.userData.armLen = armLen;
   return g;
 }

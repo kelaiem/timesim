@@ -1651,7 +1651,14 @@ export const SL_TAIL = 6;      // lever tail arm length (pivot → post)
 // (GROOVE_LOCAL — the stem's setting-lever groove station — moved below
 // the TODO 50 clutch constants: since the split it DERIVES from the
 // clutch spine's outboard reach.)
-export const YK_C = 7.5;       // yoke pivot's lateral offset, opposite side of the stem
+// The yoke pivot's lateral offset from the stem axis. TODO 214 moved the pivot
+// to the LEVER'S side of the stem (it stood on the far side, its body and boss
+// inside the minute wheel — TODO 223), mirrored across the stem line at the same
+// offset, so the fork's arm (YOKE_ARM), its bearing on the hub collars
+// (YOKE_BEARING_LATERAL) and the collars' radius are untouched: every one of
+// them is a function of the lateral distance alone, and the prong's polygon is
+// symmetric about the arm.
+export const YK_C = 7.5;
 
 // ---------------------------------------------------------------------------
 // The stem's ONE-WAY (TODO 50 / BUILT §149) — a Breguet-style saw FACE coupling between
@@ -2153,45 +2160,582 @@ export const HUB_COLLAR_R = (YOKE_BEARING_LATERAL + (SAW_FIT + PIVOT_BORE_CLEAR)
 // battery's sweeps, not by this line.
 export const KEYLESS_STACK_R = Math.max(KW_BEVEL.tipR, HUB_COLLAR_R);
 export const Z_KEYLESS = -BACK_PLATE_T - CLEAR_MARGIN - KEYLESS_STACK_R;
-// THE FORK'S LAW, crown → setting lever → yoke → clutch. The setting lever
-// carries the prong-centre station linearly over the pull, from bearing on
-// collar In with the clutch seated (YOKE_A_SEAT) to bearing on collar Out with
-// the clutch at its setting station (YOKE_A_FULL); that span is the clutch's
-// travel PLUS the groove's play, and the play is LOST MOTION — the prong
-// crosses it before collar Out moves. The clutch is then wherever the
-// farther-out constraint puts it: the prong pushing collar Out, or the saw's
-// ramps lifting it (a backward crown) — and the yoke spring holds the prong on
-// collar In, so a lifted clutch carries the yoke with it. Pushing home crosses
-// the play at the OTHER end of the stroke (the prong leaves collar Out and the
-// spring takes it to collar In); a pose law is stateless and this one carries
-// the pull's side, and the two agree at both stroke ends, which are what the
-// handoff rows measure.
+// THE FORK'S STATIONS. Seated, the prong bears on collar In with the clutch on
+// its saw (YOKE_A_SEAT); pulled, it bears on collar Out with the clutch at its
+// setting station (YOKE_A_FULL). The span between is the clutch's travel PLUS
+// the groove's play, and the play is LOST MOTION — the prong crosses it before
+// collar Out moves. Since TODO 214 the station between those ends is the YOKE'S
+// TAIL ON THE SETTING LEVER'S FLANK (ykFlankStationAt, below), not a law of the
+// pull; the two ends are what that contact is cut to reproduce.
 export const YOKE_A_SEAT = yokeOffsetForFace(yokeFaceIn(0) + SEAT_RELIEF, -1);
 export const YOKE_A_FULL = yokeOffsetForFace(yokeFaceOut(CLUTCH_TRAVEL) - SEAT_RELIEF, +1);
+// The stem's setting-lever GROOVE stands outboard of everything the clutch can
+// reach: at home plus cam-over lift plus the seat relief, the RIM's leading
+// edge — its tooth tips — stands at STEM_CLUTCH_OFF + toothH + SEAT_RELIEF +
+// rimTip (stem-local).
+export const GROOVE_COLLAR_T = 0.5;  // each groove collar's thickness (main.js builds to these)
+// GROOVE_LOCAL is THE LEVER'S LINE — the stem-local station the setting lever's
+// beak pin stands on at both ends of the pull, and the station the lever's pivot
+// is laid out against (slMidAlong in solveKeyless). It was the old groove's
+// centre: half its 0.5 collar plus the 0.95 collar station (SL_LINE_HOLD) past
+// the clutch's reach, the margin, and one SAW_FIT of machining spare ("a
+// boundary held by float summation over an irrational tooth height loses to
+// epsilon"). TODO 214 HOLDS it: the pivot it fixes fixes the tail post's two
+// stations, and the hack, reset and jumper work and the plate's slot are all
+// solved against those. The new groove is cut under the line rather than the
+// line moved to the groove, and its inboard collar then stands
+// SL_LINE_HOLD − (GROOVE_COLLAR_T + the pin's support + SEAT_RELIEF) = 0.3555
+// farther from the clutch than the margin asks (main.js asserts ≥ 0).
+const SL_LINE_HOLD = 0.5 / 2 + 0.95;
+export const GROOVE_LOCAL = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF
+  + KW_BEVEL.rimTip   // TODO 136 — the rim's LEADING EDGE is its tooth tips, past the reference face
+  + SL_LINE_HOLD + CLEAR_MARGIN + SAW_FIT;
+// The clutch's reach that line was laid past, published for main.js's assert.
+export const GROOVE_CLUTCH_REACH = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + KW_BEVEL.rimTip;
+
+// ---------------------------------------------------------------------------
+// TODO 214 / TODO 223 — THE CROWN → SETTING LEVER → YOKE HOPS ARE CONTACTS.
+//
+// Before this, both hops were laws of crownPullT. The lever's angle aimed its
+// beak pin at the groove's centre (`settingLeverAngleAt`, an atan2 of the pull);
+// the pin reached 0.80 inside the stem from BELOW and stood 0.33 off both groove
+// collars, which were cut at r 0.75 inside a 0.924 stem. The yoke's angle carried
+// the prong linearly in the pull; it stood 2.38–4.93 from the lever, across the
+// stem. The lever's 1.24-thick body lay in the setting bevel at every pose, and
+// the yoke's body and boss in the minute wheel (TODO 223's six burials).
+//
+// THE LINE DESIGN, before any fold. The chain is
+//   stem collar In → beak pin → setting lever → flank → yoke tail pin → yoke →
+//   prong → clutch collar Out,
+// and the yoke spring closes it from the other end: it holds the tail pin on
+// the lever's flank, so the lever's beak pin always bears on collar In's
+// outboard face (the collar that pulls it out), and the clutch's collar In
+// seats on the prong. The line's quantities are the §13 lever's own: pivot SL_C
+// off the stem, beak SL_BEAK = hypot(SL_C, CROWN_PULL_DIST/2), tail SL_TAIL, a
+// stroke of ±SL_TILT. They are KEPT, not re-proportioned: at both ends of the
+// pull the new solve puts the pin's centre exactly where the old law put it
+// (the groove's line, below), so the tail post's two stations do not move.
+//
+// THE FOLD, in position space only. The setting wheel's bevel lies under the
+// groove at every pull (its web 1.5954 below the stem axis, KW_SPEC's zWebLo),
+// so no pin can reach the groove from below; nothing else stands between the
+// stem's top and the plate. So the lever goes UP: its body hugs the plate's
+// dial face at the margin (Z_SETTING_LEVER), clear of the collars laterally, and
+// its beak crosses OVER them as a lug whose underside clears the collars' top by
+// the margin; the pin hangs from the lug down past the stem's top, its foot one
+// margin over the stem, and bears on collar In's face where that face stands
+// above the stem. The yoke keeps its plane and its fork; its pivot moves to the
+// lever's side (YK_C, mirrored) and grows a tail.
+//
+// The CANONICAL FRAME the solves below are written in: s along the stem (+ =
+// outboard, toward the crown), measured from the lever pivot's station
+// (solveKeyless's slMidAlong); l lateral, from the stem axis, + toward the
+// lever. It is right-handed where sideSign = +1 and a mirror where −1; every
+// polygon solved in it is symmetric about both of its own axes (even segment
+// counts), so the mirror cannot choose a different vertex set — solveKeyless
+// maps it to the world, and main.js asserts the cut against it.
+// ---------------------------------------------------------------------------
+// The band a plane solved to land EXACTLY on CLEAR_MARGIN is lifted by, so the
+// BVH-measured gap cannot read either side of it by float accumulation — the
+// part clearing by slightly more, never the gate asking for less. (Moved here
+// from main.js by TODO 214: the keyless planes below are cut against it.)
+export const MEASURED_MARGIN_BAND = 1e-6;
+// The §13 lever's own arms, kept (see above).
+export const SL_BEAK = Math.hypot(SL_C, CROWN_PULL_DIST / 2);
+export const SL_TILT = Math.atan2(CROWN_PULL_DIST / 2, SL_C);   // the lever's tilt at either end of the pull
+// The beak pin: the old pin's stock (r 0.35, ⌀ 0.27 mm), and an EVEN segment
+// count so its support toward ∓s is the same at ±SL_TILT (an even polygon is
+// symmetric about both axes) — which is what lets one line station reproduce
+// BOTH stroke ends exactly.
+export const SL_BEAK_PIN_R = 0.35;
+export const SL_BEAK_PIN_SEGMENTS = 12;
+// The pin's foot stands one margin over the stem's turned surface (the stem's
+// 12-gon reaches STEM_R at its vertices): over the stem, not beside it, which is
+// what frees the pin from the stem's radius. Banded, as every plane landed
+// exactly on the margin is.
+export const SL_PIN_FOOT = STEM_R + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+// The pin's cut vertices at lever tilt th (canonical; th > 0 carries the beak
+// outboard). The pin's centre is SL_BEAK down the beak from the pivot (0, SL_C);
+// the polygon is makeCylinder's (r·sin φ, −r·cos φ) turned upright, carried
+// through the tilt.
+function slPinVerts(th) {
+  const c = Math.cos(th), sn = Math.sin(th);
+  const cs = SL_BEAK * sn, cl = SL_C - SL_BEAK * c;
+  const out = [];
+  for (let i = 0; i < SL_BEAK_PIN_SEGMENTS; i++) {
+    const phi = (2 * Math.PI * i) / SL_BEAK_PIN_SEGMENTS;
+    const x = SL_BEAK_PIN_R * Math.sin(phi), y = -SL_BEAK_PIN_R * Math.cos(phi);
+    out.push({ s: cs + x * c - y * sn, l: cl + x * sn + y * c });
+  }
+  return out;
+}
+// The pin's support toward a face: side −1 its inboard-most vertex (the one that
+// bears on collar In), +1 its outboard-most. A tie reports the vertex farther
+// from the stem axis, the conservative one for the collar's reach.
+export function slPinSupport(th, side) {
+  let best = null;
+  for (const v of slPinVerts(th))
+    if (!best || side * (v.s - best.s) > 1e-12 || (Math.abs(v.s - best.s) <= 1e-12 && Math.abs(v.l) > Math.abs(best.l))) best = v;
+  return best;
+}
+// How far the bearing vertex stands inboard of the pin's centre at either
+// stroke end — one number for both ends, by the polygon's symmetry.
+export const SL_PIN_SUPPORT = SL_BEAK * Math.sin(SL_TILT) - slPinSupport(SL_TILT, -1).s;
+// COLLAR IN'S WORKING FACE, stem-local: the line less that support and the seat
+// relief the pin parks off it (§99's convention, the clutch's own seat's). At
+// both stroke ends the pin's centre then lands on the line, which is where the
+// §13 law put it.
+export const GROOVE_FACE_IN = GROOVE_LOCAL - SL_PIN_SUPPORT - SEAT_RELIEF;
+// THE LEVER'S LAW, solved against the cut: the tilt at which the pin's inboard
+// vertex stands SEAT_RELIEF off collar In's face at this pull. The support
+// station rises monotonically with the tilt over the whole stroke, so a
+// bisection over a bracket wider than the stroke is exact to float.
+export function slLeverTiltAt(pull) {
+  const want = -CROWN_PULL_DIST / 2 + pull * CROWN_PULL_DIST - SL_PIN_SUPPORT;
+  let lo = -SL_TILT - 0.3, hi = SL_TILT + 0.3;
+  for (let k = 0; k < 64; k++) {
+    const m = (lo + hi) / 2;
+    if (slPinSupport(m, -1).s > want) hi = m; else lo = m;
+  }
+  return (lo + hi) / 2;
+}
+// Over the stroke: the pin's widest extent along the stem (what the groove's
+// play is measured from) and the farthest its bearing vertex stands from the
+// stem axis at its foot (what the collar's face must reach past).
+const SL_STROKE = (() => {
+  let width = 0, reach = 0;
+  for (let i = 0; i <= 64; i++) {
+    const th = slLeverTiltAt(i / 64);
+    const lo = slPinSupport(th, -1), hi = slPinSupport(th, +1);
+    width = Math.max(width, hi.s - lo.s);
+    reach = Math.max(reach, Math.hypot(lo.l, SL_PIN_FOOT));
+  }
+  return Object.freeze({ width, reach });
+})();
+// COLLAR OUT'S FACE: the pin bears on collar In whenever the yoke spring holds
+// it there, so collar Out is never a working face here — it stands past the
+// pin's widest extent by the margin (the pair is not a declared contact), the
+// seat relief and the band. The groove ends one collar beyond it.
+export const GROOVE_FACE_OUT = GROOVE_FACE_IN + SEAT_RELIEF + SL_STROKE.width + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+export const GROOVE_OUTER = GROOVE_FACE_OUT + GROOVE_COLLAR_T;
+// THE COLLARS' RADIUS, TODO 211's rule on the stem's own groove. The bearing
+// generator's lowest point stands GROOVE_BEARING_REACH from the stem axis, and
+// the face must reach past it wherever the two members float on their fits: the
+// stem on its running fit (SAW_FIT, the clutch's own figure on the same stem)
+// and the lever on its stud (PIVOT_BORE_CLEAR), half of each. The collars are
+// GROOVE_COLLAR_SEGMENTS-gons turning with the stem, so the face is certain only
+// inside their inradius. (They were r 0.75 on a 0.924 stem: inside it, TODO 223.)
+export const GROOVE_COLLAR_SEGMENTS = 48;
+export const GROOVE_BEARING_REACH = SL_STROKE.reach;
+export const GROOVE_COLLAR_R = (GROOVE_BEARING_REACH + (SAW_FIT + PIVOT_BORE_CLEAR) / 2)
+  / Math.cos(Math.PI / GROOVE_COLLAR_SEGMENTS);
+// THE LEVER'S PLANES. Its body is the §13 plate's 1-thick stock with the
+// extrude's 0.12 bevel each face (geometry.js's thickness·0.12): it hugs the
+// plate's dial face at the margin, which is the conventional place for a setting
+// lever — on the plate. Its beak LUG crosses over the collars at the margin from
+// their top and rises to the body's top face; main.js asserts the lug's section
+// against §50's floor.
+export const SL_BODY_T = 1;
+export const SL_BODY_BEVEL = SL_BODY_T * 0.12;
+export const Z_SETTING_LEVER = -BACK_PLATE_T - CLEAR_MARGIN - MEASURED_MARGIN_BAND - (SL_BODY_T / 2 + SL_BODY_BEVEL);
+export const SL_LUG_TOP = Z_SETTING_LEVER + SL_BODY_T / 2 + SL_BODY_BEVEL;
+export const SL_LUG_BOT = Z_KEYLESS + GROOVE_COLLAR_R + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+
+// ---- The yoke, canonical. Its pivot is the clutch stroke's mid (the fork
+// tracks the hub groove), YK_C toward the lever; its prong at station a stands
+// at (a, −√(arm² − a²)) from the pivot.
+export const YK_DS = STEM_CLUTCH_OFF + CLUTCH_TRAVEL / 2 + YOKE_TRACK_OFF - CROWN_PULL_DIST / 2 - GROOVE_LOCAL;
+const ykDrop = (a) => Math.sqrt(Math.max(0, YOKE_ARM * YOKE_ARM - a * a));
+export const ykArmHeading = (a) => Math.atan2(-ykDrop(a), a);   // the arm's canonical heading from the pivot
+// THE TAIL: a BELL CRANK of equal arms, the tail the fork's own arm turned a
+// right angle toward the crown. Equal arms make the yoke a 1:1 crank — the
+// tail pin's stroke is the prong's, so the yoke multiplies nothing and the
+// whole ratio of the hop lives in the lever's flank, where it can be read; a
+// right angle puts the pin's stroke square to the arm, so it runs along the
+// lever's line of travel and the pin never swings toward the stem. The pin is
+// the prong's own stock and polygon (one stock for the yoke's two posts).
+export const YK_TAIL_PIN_R = YOKE_PRONG_R;
+export const YK_TAIL_PIN_SEGMENTS = YOKE_PRONG_SEGMENTS;
+function ykTailVerts(a) {
+  const h = ykArmHeading(a), t = h + Math.PI / 2;
+  const cs = YK_DS + YOKE_ARM * Math.cos(t), cl = YK_C + YOKE_ARM * Math.sin(t);
+  const r = h - Math.PI / 2, c = Math.cos(r), sn = Math.sin(r);
+  const out = [];
+  for (let i = 0; i < YK_TAIL_PIN_SEGMENTS; i++) {
+    const phi = (2 * Math.PI * i) / YK_TAIL_PIN_SEGMENTS;
+    const x = YK_TAIL_PIN_R * Math.sin(phi), y = -YK_TAIL_PIN_R * Math.cos(phi);
+    out.push({ s: cs + x * c - y * sn, l: cl + x * sn + y * c });
+  }
+  return { centre: { s: cs, l: cl }, verts: out };
+}
+export const ykTailPinAt = (a) => ykTailVerts(a).centre;
+// …into the lever's own frame at tilt th (relative to its pivot, untilted).
+const toLever = (p, th) => {
+  const x = p.s, y = p.l - SL_C, c = Math.cos(th), sn = Math.sin(th);
+  return { s: x * c + y * sn, l: -x * sn + y * c };
+};
+// THE FLANK. A straight edge on the lever whose normal n̂ (lever frame, pointing
+// out of the metal toward the pin) and offset c are SOLVED so the pin's polygon
+// stands SEAT_RELIEF off it at BOTH stroke ends with the yoke at its two
+// stations: two conditions, two unknowns. n̂ starts square to the pin centre's
+// chord in the lever's frame, takes the sense in which the lever turns the yoke
+// the right way, and is refined by bisection to the exact polygon support.
+const flankGap = (beta, th, a) => {
+  const nx = Math.cos(beta), ny = Math.sin(beta);
+  let m = Infinity;
+  for (const v of ykTailVerts(a).verts) { const q = toLever(v, th); m = Math.min(m, nx * q.s + ny * q.l); }
+  return m;
+};
+export const SL_FLANK = (() => {
+  const th0 = slLeverTiltAt(0), th1 = slLeverTiltAt(1);
+  const L0 = toLever(ykTailVerts(YOKE_A_SEAT).centre, th0), L1 = toLever(ykTailVerts(YOKE_A_FULL).centre, th1);
+  const tl = Math.hypot(L1.s - L0.s, L1.l - L0.l), ts = (L1.s - L0.s) / tl, tlv = (L1.l - L0.l) / tl;
+  // The sense: the lever pushes the pin along +n (world), and that must turn the
+  // yoke CCW in canonical (prong outboard) — (pin − yoke pivot) × n > 0 at seat.
+  const Q0 = ykTailVerts(YOKE_A_SEAT).centre;
+  const nW = (b, th) => ({ s: Math.cos(b + th), l: Math.sin(b + th) });
+  let beta = Math.atan2(-ts, tlv);   // one of the chord's two normals
+  { const n = nW(beta, th0); if ((Q0.s - YK_DS) * n.l - (Q0.l - YK_C) * n.s < 0) beta += Math.PI; }
+  const h = (b) => flankGap(b, th0, YOKE_A_SEAT) - flankGap(b, th1, YOKE_A_FULL);
+  let lo = beta - 0.3, hi = beta + 0.3, flo = h(lo);
+  for (let k = 0; k < 64; k++) { const m = (lo + hi) / 2, fm = h(m); if ((fm > 0) === (flo > 0)) { lo = m; flo = fm; } else hi = m; }
+  beta = (lo + hi) / 2;
+  const c = flankGap(beta, th0, YOKE_A_SEAT) - SEAT_RELIEF;
+  return Object.freeze({ beta, nx: Math.cos(beta), ny: Math.sin(beta), c });
+})();
+// THE YOKE'S STATION AT A PULL — the tail pin SEAT_RELIEF off the flank. The gap
+// rises with the station (the lever pushes the pin the way the yoke turns), so
+// a bisection is exact; at pull 0 and 1 it returns YOKE_A_SEAT and YOKE_A_FULL,
+// by the flank's construction.
+export function ykFlankStationAt(pull) {
+  const th = slLeverTiltAt(pull);
+  const want = SL_FLANK.c + SEAT_RELIEF;
+  let lo = YOKE_A_SEAT - 1, hi = YOKE_A_FULL + 1;
+  for (let k = 0; k < 64; k++) {
+    const m = (lo + hi) / 2;
+    if (flankGap(SL_FLANK.beta, th, m) > want) hi = m; else lo = m;
+  }
+  return (lo + hi) / 2;
+}
+// The clutch is then wherever the farther-out constraint puts it: the prong
+// pushing collar Out, or the saw's ramps lifting it (a backward crown) — the
+// yoke spring holds the prong on collar In, so a lifted clutch carries the yoke
+// out with it, and the tail leaves the flank. Pushing home is the same contact
+// in reverse: the flank retreats and the spring keeps the tail on it.
 export function yokeClutchAt(pull, lift) {
-  const aLever = YOKE_A_SEAT + pull * (YOKE_A_FULL - YOKE_A_SEAT);
+  const aLever = ykFlankStationAt(pull);
   const cDrive = Math.max(0, yokeProngSupport(aLever, +1).s + SEAT_RELIEF - yokeFaceOut(0));
   const c = Math.max(lift, cDrive);
   const a = Math.max(aLever, yokeOffsetForFace(yokeFaceIn(c) + SEAT_RELIEF, -1));
   return { c, a };
 }
-// The stem's setting-lever GROOVE, outboard of everything the clutch can
-// reach: at home plus cam-over lift plus the seat relief, the RIM's
-// BEVELED outboard face — the clutch's leading edge — stands at
-// STEM_CLUTCH_OFF + toothH + SEAT_RELIEF + rim/2 + bevel (stem-local),
-// and the groove's inboard collar face must clear that by the margin
-// (the first cut omitted the bevel and the relief, and the instrument
-// read back exactly their sum). Was a free 4 before TODO 50's split —
-// the compact sliding pinion never reached it; the full clutch body does.
-export const GROOVE_COLLAR_T = 0.5;  // each groove collar's thickness (main.js builds to these)
-export const GROOVE_HALF = 0.95;     // collar stations sit ± this about the groove's centre
-// …plus one SAW_FIT of spare: the reach expression lands the gap EXACTLY
-// on the margin, and a boundary held by float summation over an
-// irrational tooth height loses to epsilon (measured: 0.1500 flagged) —
-// the movement's fit quantum is the machining spare, as on the rim bore.
-export const GROOVE_LOCAL = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF
-  + KW_BEVEL.rimTip   // TODO 136 — the rim's LEADING EDGE is its tooth tips, past the reference face
-  + GROOVE_COLLAR_T / 2 + GROOVE_HALF + CLEAR_MARGIN + SAW_FIT;
+// THE HOP AS A TABLE, sampled over the pull: the lever's tilt, the yoke's
+// station, the contact on the flank, its normal, the moment arms of that normal
+// about each pivot, and the friction cone's worst arm — what TODO 16's format
+// prices the yoke spring against, and what main.js asserts.
+const cross2 = (a, b) => a.s * b.l - a.l * b.s;
+export const KEYLESS_HOP = (() => {
+  const muA = Math.atan(MU_STEEL), rows = [];
+  for (let i = 0; i <= 32; i++) {
+    const pull = i / 32, th = slLeverTiltAt(pull), a = ykFlankStationAt(pull);
+    const n = { s: Math.cos(SL_FLANK.beta + th), l: Math.sin(SL_FLANK.beta + th) };
+    // the contact: the tail pin's vertex nearest the flank
+    let C = null, best = Infinity;
+    for (const v of ykTailVerts(a).verts) {
+      const g = n.s * v.s + n.l * (v.l - SL_C);
+      if (g < best) { best = g; C = v; }
+    }
+    const dY = cross2({ s: C.s - YK_DS, l: C.l - YK_C }, n), dL = cross2({ s: C.s, l: C.l - SL_C }, n);
+    let cone = Infinity;
+    for (const e of [-muA, muA]) {
+      const ne = { s: n.s * Math.cos(e) - n.l * Math.sin(e), l: n.s * Math.sin(e) + n.l * Math.cos(e) };
+      cone = Math.min(cone, cross2({ s: C.s - YK_DS, l: C.l - YK_C }, ne), cross2({ s: C.s, l: C.l - SL_C }, ne));
+    }
+    rows.push(Object.freeze({ pull, th, a, C, n, dY, dL, cone, lever: { s: toLever(C, th).s, l: toLever(C, th).l } }));
+  }
+  return Object.freeze(rows);
+})();
+// The two pivots' staffs (addDialSidePivot's staffR for both keyless levers),
+// declared here because the yoke spring's line is cleared against the yoke's.
+export const KEYLESS_STAFF_R = 0.45;
+// THE YOKE SPRING, in TODO 16's format. A grounded flat blade on a stud bears on
+// the tail pin from the far side of its stroke and holds it on the flank: the
+// restoring element of the whole hop — it returns the yoke, and through the
+// flank the lever, whose beak pin then follows collar In home.
+//   · section: SPRING_FLAT_U thick in the direction it bends (the movement's
+//     flat-spring stock), standing on edge;
+//   · PRELOAD ONE STROKE: the blade is already bent by the tail pin's whole
+//     travel at seat, so its force exactly doubles across the pull — the
+//     flattest a blade of finite length can be made without a longer one;
+//   · FREE LENGTH: what that doubled deflection asks of the stock at the
+//     TARGET stress (0.9 of SPRING_SIGMA_Y_PA, the TARGET convention), from
+//     σ = 3·E·t·δ / (2·L²);
+//   · ANCHOR: back along the stroke's normal at that length, raised just far
+//     enough that the blade clears the yoke's own staff by the margin at every
+//     station — the staff stands squarely in the blade's straight line;
+//   · HEIGHT: what puts the flank's force at the two stroke ends symmetrically
+//     inside SELECTOR_DETENT_WINDOW_MN on a log scale, N(0)·N(1) = lo·hi, so each
+//     end has the same factor of margin to its wall.
+// The blade is drawn rigid, aimed each pose from its anchor to its tangent on
+// the pin (the alarm feeler's blade is the precedent); the force figures are the
+// bent blade's.
+export const YK_SPRING = (() => {
+  const mPerU = UNIT_MM / 1000, E = STEEL_E_PA, t = SPRING_FLAT_U;
+  const sigT = 0.9 * SPRING_SIGMA_Y_PA;
+  const rho = YK_TAIL_PIN_R + t / 2;                  // the blade's centreline stands this off the pin's axis
+  const Q0 = ykTailPinAt(YOKE_A_SEAT), Q1 = ykTailPinAt(YOKE_A_FULL);
+  const stroke = Math.hypot(Q1.s - Q0.s, Q1.l - Q0.l);
+  const sd = { s: (Q1.s - Q0.s) / stroke, l: (Q1.l - Q0.l) / stroke };   // the stroke's direction (outward, the way the spring resists)
+  const L = Math.sqrt((3 * E * t * mPerU * 2 * stroke * mPerU) / (2 * sigT)) / mPerU;
+  // the blade lies across the stroke, on its far side, its tip at the stroke's
+  // mid; the anchor is L back along the side away from the crown (the plate's
+  // rim is the other way), raised by γ until the staff is cleared
+  const Qm = { s: (Q0.s + Q1.s) / 2, l: (Q0.l + Q1.l) / 2 };
+  const across = { s: -sd.l, l: sd.s };               // the stroke turned a right angle
+  const back = across.s < 0 ? across : { s: -across.s, l: -across.l };   // toward −s
+  const tip = { s: Qm.s + sd.s * rho, l: Qm.l + sd.l * rho };
+  const tangent = (A, Q) => {   // the blade from A tangent to the pin circle (Q, rho) on the stroke's far side
+    const dx = Q.s - A.s, dy = Q.l - A.l, d = Math.hypot(dx, dy), phi = Math.asin(rho / d);
+    const base = Math.atan2(dy, dx);
+    let best = null;
+    for (const sgn of [1, -1]) {
+      const ang = base + sgn * phi, len = Math.sqrt(d * d - rho * rho);
+      const T = { s: A.s + Math.cos(ang) * len, l: A.l + Math.sin(ang) * len };
+      const side = (T.s - Q.s) * sd.s + (T.l - Q.l) * sd.l;   // + = on the stroke's far side
+      if (!best || side > best.side) best = { T, len, ang, side };
+    }
+    return best;
+  };
+  const segDist = (A, B, P) => {
+    const vx = B.s - A.s, vy = B.l - A.l, L2 = vx * vx + vy * vy;
+    const u = Math.max(0, Math.min(1, ((P.s - A.s) * vx + (P.l - A.l) * vy) / L2));
+    return Math.hypot(P.s - A.s - u * vx, P.l - A.l - u * vy);
+  };
+  const need = KEYLESS_STAFF_R + t / 2 + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+  const anchorAt = (g) => ({ s: tip.s + L * (back.s * Math.cos(g) + sd.s * Math.sin(g)), l: tip.l + L * (back.l * Math.cos(g) + sd.l * Math.sin(g)) });
+  const clearAt = (g) => {
+    const A = anchorAt(g);
+    let m = Infinity;
+    for (const a of [YOKE_A_SEAT, (YOKE_A_SEAT + YOKE_A_FULL) / 2, YOKE_A_FULL])
+      m = Math.min(m, segDist(A, tangent(A, ykTailPinAt(a)).T, { s: YK_DS, l: YK_C }));
+    return m;
+  };
+  let lo = 0, hi = 0.8;
+  for (let k = 0; k < 64; k++) { const m = (lo + hi) / 2; if (clearAt(m) >= need) hi = m; else lo = m; }
+  const gamma = hi, A = anchorAt(gamma);
+  // the blade's FREE line: through the anchor, bent one stroke short of the seat
+  // tangent at its tip — so the deflection at any station is the tip's distance
+  // from it, measured square to the free line
+  const at = (a) => {
+    const Q = ykTailPinAt(a), tg = tangent(A, Q);
+    return { Q, T: tg.T, len: tg.len, ang: tg.ang, n: { s: -Math.sin(tg.ang), l: Math.cos(tg.ang) } };
+  };
+  const s0 = at(YOKE_A_SEAT);
+  // the free line: A→T0 turned by asin(stroke/len) the way that moves its tip
+  // back along −stroke (the pin has pushed it one stroke out at seat)
+  const turn = Math.asin(Math.min(1, stroke / s0.len));
+  const tipOf = (ang) => ({ s: A.s + Math.cos(ang) * s0.len, l: A.l + Math.sin(ang) * s0.len });
+  const along = (p) => p.s * sd.s + p.l * sd.l;
+  const freeAng = along(tipOf(s0.ang + turn)) < along(tipOf(s0.ang - turn)) ? s0.ang + turn : s0.ang - turn;
+  const fd = { s: Math.cos(freeAng), l: Math.sin(freeAng) }, fn = { s: -fd.l, l: fd.s };
+  const deflAt = (a) => { const T = at(a).T; return Math.abs((T.s - A.s) * fn.s + (T.l - A.l) * fn.l); };
+  // force on the pin: along the bent blade's normal, AWAY from the blade (it
+  // pushes the pin back along −stroke); its moment about the yoke's pivot
+  const endsRaw = [0, 1].map((pull) => {
+    const a = pull ? YOKE_A_FULL : YOKE_A_SEAT, g = at(a), d = deflAt(a);
+    let push = { s: g.n.s, l: g.n.l };
+    if (push.s * sd.s + push.l * sd.l > 0) push = { s: -push.s, l: -push.l };
+    const M = cross2({ s: g.Q.s - YK_DS, l: g.Q.l - YK_C }, push);   // per unit force, in u
+    const row = KEYLESS_HOP[pull ? KEYLESS_HOP.length - 1 : 0];
+    return { a, defl_u: d, armSpring_u: Math.abs(M), dY_u: row.dY, len_u: g.len, turnsBack: M < 0 };
+  });
+  // the scale: N(p) = k·δ(p)·armSpring(p)/dY(p); N(0)·N(1) = lo·hi
+  const [wLo, wHi] = SELECTOR_DETENT_WINDOW_MN;
+  const g0 = endsRaw[0].defl_u * mPerU * endsRaw[0].armSpring_u / endsRaw[0].dY_u;
+  const g1 = endsRaw[1].defl_u * mPerU * endsRaw[1].armSpring_u / endsRaw[1].dY_u;
+  const k = Math.sqrt((wLo * wHi) / (g0 * g1)) / 1000;   // N/m (the window is in mN)
+  const I = (k * (L * mPerU) ** 3) / (3 * E);
+  const w = (12 * I) / (t * mPerU) ** 3 / mPerU;          // the blade's height, u
+  const ends = endsRaw.map((e) => {
+    const F_mN = 1000 * k * e.defl_u * mPerU;
+    return Object.freeze({ ...e, F_mN, N_mN: (F_mN * e.armSpring_u) / e.dY_u,
+      sigma_Pa: (3 * E * t * mPerU * e.defl_u * mPerU) / (2 * (L * mPerU) ** 2) });
+  });
+  return Object.freeze({ t_u: t, w_u: w, L_u: L, k_N_per_m: k, stroke_u: stroke, gamma, anchor: A, freeAng,
+    staffClear_u: clearAt(gamma), staffNeed_u: need, sigmaTarget_Pa: sigT, ends, bladeAt: at });
+})();
+
+// ---------------------------------------------------------------------------
+// TODO 214 — THE TWO LEVERS' OUTLINES, cut from the solves above. MODELING.md
+// rule 1: the builder consumes the outline the solve was written against, so
+// the metal and the arithmetic share one source. Everything here is in the
+// LEVER-CANONICAL frame — the lever's own pivot at the origin, s across (+ =
+// outboard at mid-stroke), l along (the beak at −l, the tail at +l) — and
+// `toLeverLocal` maps it into the group's local frame (x = −sideSign·s,
+// y = −l: a half turn where sideSign = +1, a mirror where −1; the extrude
+// normalises the winding either way).
+export const toLeverLocal = (p, sideSign) => ({ x: -sideSign * p.s, y: -p.l });
+// One convex bite out of a simple polygon: P minus the convex polygon C, where
+// C crosses P's boundary exactly twice. The new boundary follows C's arc that
+// lies inside P. Returns null if the bite is not a single one (the caller warns).
+function insidePoly(P, q) {
+  let w = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const a = P[i], b = P[j];
+    if ((a.l > q.l) !== (b.l > q.l) && q.s < ((b.s - a.s) * (q.l - a.l)) / (b.l - a.l) + a.s) w = !w;
+  }
+  return w;
+}
+function segX(a, b, c, d) {
+  const r = { s: b.s - a.s, l: b.l - a.l }, q = { s: d.s - c.s, l: d.l - c.l };
+  const den = r.s * q.l - r.l * q.s;
+  if (Math.abs(den) < 1e-15) return null;
+  const t = ((c.s - a.s) * q.l - (c.l - a.l) * q.s) / den, u = ((c.s - a.s) * r.l - (c.l - a.l) * r.s) / den;
+  return (t >= 0 && t < 1 && u >= 0 && u < 1) ? { t, u, p: { s: a.s + t * r.s, l: a.l + t * r.l } } : null;
+}
+export function biteConvex(P, C) {
+  const hits = [];
+  for (let i = 0; i < P.length; i++) {
+    const a = P[i], b = P[(i + 1) % P.length];
+    for (let j = 0; j < C.length; j++) {
+      const x = segX(a, b, C[j], C[(j + 1) % C.length]);
+      if (x) hits.push({ i, j, t: x.t, u: x.u, p: x.p });
+    }
+  }
+  if (hits.length !== 2) return null;
+  hits.sort((h1, h2) => (h1.i - h2.i) || (h1.t - h2.t));
+  const [h0, h1] = hits;
+  // which of P's two chains between the hits lies outside C — that one stays
+  const chainA = [];   // h0 → h1 forward along P
+  for (let k = h0.i + 1; k <= h1.i; k++) chainA.push(P[k % P.length]);
+  const aOut = chainA.length ? !insidePoly(C, chainA[Math.floor(chainA.length / 2)]) : false;
+  // simpler and robust: collect C's vertices between the two crossing edges in
+  // each direction, and keep the run whose interior lies inside P
+  const runFwd = [], runBwd = [];
+  for (let j = (h0.j + 1) % C.length; j !== (h1.j + 1) % C.length; j = (j + 1) % C.length) runFwd.push(C[j]);
+  for (let j = h0.j; j !== h1.j; j = (j - 1 + C.length) % C.length) runBwd.push(C[j]);
+  const inP = (run) => run.length ? insidePoly(P, run[Math.floor(run.length / 2)]) : true;
+  const cRun = inP(runFwd) && !inP(runBwd) ? runFwd : runBwd;   // h0 → h1 along C, through P's interior
+  if (aOut) {
+    // keep P's forward chain h0→h1 and close back along C from h1 to h0
+    return [h0.p, ...chainA, h1.p, ...cRun.slice().reverse()];
+  }
+  // keep P's chain h1 → h0 (the rest), bridging h0 → h1 along C
+  const rest = [];
+  for (let k = h1.i + 1; k <= h0.i + P.length; k++) rest.push(P[k % P.length]);
+  return [h1.p, ...rest, h0.p, ...cRun];
+}
+// the convex hull of a point set (monotone chain), CCW
+function hull2(pts) {
+  const P = pts.slice().sort((a, b) => (a.s - b.s) || (a.l - b.l));
+  const cr = (o, a, b) => (a.s - o.s) * (b.l - o.l) - (a.l - o.l) * (b.s - o.s);
+  const lo = [], up = [];
+  for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  up.pop(); lo.pop();
+  return lo.concat(up);
+}
+// a polygonal stadium about the segment a→b, radius r, `n` points per cap (CCW)
+function stadium(a, b, r, n = 24) {
+  const ang = Math.atan2(b.l - a.l, b.s - a.s), out = [];
+  for (let i = 0; i <= n; i++) { const t = ang - Math.PI / 2 + (Math.PI * i) / n; out.push({ s: b.s + r * Math.cos(t), l: b.l + r * Math.sin(t) }); }
+  for (let i = 0; i <= n; i++) { const t = ang + Math.PI / 2 + (Math.PI * i) / n; out.push({ s: a.s + r * Math.cos(t), l: a.l + r * Math.sin(t) }); }
+  return out;
+}
+// THE SETTING LEVER. The §13 plan is kept where nothing asks otherwise: the
+// same 3-wide plate (SL_HW each side), its sides the same quadratic from the
+// tail's corners through (1.8·SL_HW, 0) toward (0.55·SL_HW, −0.85·SL_BEAK). Three
+// things are cut into it:
+//   · THE BEAK ENDS where its bevelled metal clears the groove collars by the
+//     margin at the body's underside — the end's corners are its lowest
+//     points over the stroke, so the end is SOLVED there (SL_BEAK_END);
+//   · a LUG over the collars carries the pin the rest of the way: a stadium from
+//     inside the body's end to the pin's centre, its wall round the pin one §50
+//     floor (STOCK_MIN_U);
+//   · THE FLANK: the yoke's tail pin sweeps a near-straight path in the lever's
+//     frame (it touches the flank at every station, so its centres lie on a
+//     line), and a stadium about that path — the pin plus the margin plus the
+//     extrude's bevel, slid toward the pin by the margin less the relief — is
+//     bitten out of the plate. Its straight side IS the flank, landed so the
+//     BEVELLED wall stands on the solved line; everywhere else the plate stands
+//     the margin off the pin. The path is run on one margin past each end so
+//     the contact never reaches the bite's round ends.
+export const SL_HW = 1.5;
+export const SETTING_LEVER_CUT = (() => {
+  const hw = SL_HW, bev = SL_BODY_BEVEL;
+  const quad = (t, sgn) => {
+    const p0 = { s: sgn * hw, l: SL_TAIL }, p1 = { s: sgn * 1.8 * hw, l: 0 }, p2 = { s: sgn * 0.55 * hw, l: -0.85 * SL_BEAK };
+    const u = 1 - t;
+    return { s: u * u * p0.s + 2 * u * t * p1.s + t * t * p2.s, l: u * u * p0.l + 2 * u * t * p1.l + t * t * p2.l };
+  };
+  // the body's underside, relative to the stem axis, and the collars' keep-out
+  // there: the nominal outline must clear (R + margin) both at the bottom face
+  // and at the top of the bottom chamfer, where the bevel has grown it
+  const dzB = (Z_SETTING_LEVER - SL_BODY_T / 2 - bev) - Z_KEYLESS;
+  const keep = GROOVE_COLLAR_R + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+  // (the bevel grows a CORNER by bev / cos(half its turn), MODELING.md rule 1 —
+  // the beak end's corners are its lowest points, so their miter is the bevel
+  // the end is cleared with: measured, a plain bev left collar Out 0.1492 off)
+  const miter = (() => {
+    let tE = 0, tB = 1;
+    for (let k = 0; k < 60; k++) { const m = (tE + tB) / 2; if (quad(m, 1).l > -0.8 * SL_BEAK) tE = m; else tB = m; }
+    const a = quad(tE - 1e-4, 1), b = quad(tE, 1);
+    const side = Math.atan2(b.l - a.l, b.s - a.s), turn = Math.abs(Math.PI - Math.abs(side - Math.PI));   // the side's heading against the end's (−s)
+    return bev / Math.cos(Math.min(turn, Math.PI - 0.2) / 2);
+  })();
+  const latMin = Math.max(Math.sqrt(keep * keep - dzB * dzB), miter + Math.sqrt(Math.max(0, keep * keep - (dzB + bev) ** 2)));
+  // the side curve's s at a given l (the quadratic is monotone in l)
+  const sideAt = (l) => { let lo = 0, hi = 1; for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (quad(m, 1).l > l) lo = m; else hi = m; } return quad((lo + hi) / 2, 1).s; };
+  // the end's corner's lowest lateral over the stroke: SL_C + s·sin θ + l·cos θ
+  const lowest = (yb) => {
+    const w = sideAt(-yb);
+    let m = Infinity;
+    for (let i = 0; i <= 64; i++) {
+      const th = -SL_TILT + (2 * SL_TILT * i) / 64;
+      for (const s of [-w, w]) m = Math.min(m, SL_C + s * Math.sin(th) - yb * Math.cos(th));
+    }
+    return m;
+  };
+  let lo = 0.5 * SL_BEAK, hi = 0.85 * SL_BEAK;
+  for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (lowest(m) >= latMin) lo = m; else hi = m; }
+  const beakEnd = lo, wEnd = sideAt(-beakEnd);
+  // the body: tail edge, the −s side down, the end, the +s side up (CCW in s,l)
+  const N = 48, body = [];
+  const tEnd = (() => { let a = 0, b = 1; for (let k = 0; k < 60; k++) { const m = (a + b) / 2; if (quad(m, 1).l > -beakEnd) a = m; else b = m; } return (a + b) / 2; })();
+  for (let i = 0; i <= N; i++) body.push(quad((tEnd * i) / N, -1));         // −s side, tail → end
+  for (let i = N; i >= 0; i--) body.push(quad((tEnd * i) / N, 1));          // +s side, end → tail
+  // (the tail edge closes from (hw, SL_TAIL) back to (−hw, SL_TAIL))
+  // the flank bite
+  const P0 = toLever(ykTailPinAt(YOKE_A_SEAT), slLeverTiltAt(0)), P1 = toLever(ykTailPinAt(YOKE_A_FULL), slLeverTiltAt(1));
+  const dl = Math.hypot(P1.s - P0.s, P1.l - P0.l), ex = { s: (P1.s - P0.s) / dl, l: (P1.l - P0.l) / dl };
+  const sh = CLEAR_MARGIN - SEAT_RELIEF;
+  const nF = { s: SL_FLANK.nx, l: SL_FLANK.ny };
+  const A = { s: P0.s - ex.s * CLEAR_MARGIN + nF.s * sh, l: P0.l - ex.l * CLEAR_MARGIN + nF.l * sh };
+  const B = { s: P1.s + ex.s * CLEAR_MARGIN + nF.s * sh, l: P1.l + ex.l * CLEAR_MARGIN + nF.l * sh };
+  const biteR = YK_TAIL_PIN_R + CLEAR_MARGIN + bev + MEASURED_MARGIN_BAND;
+  // …run out through the plate's edge along the flank's normal, so the bite is
+  // an open notch and not a slot: a slot would leave a sliver of plate on the
+  // pin's far side, under §50's floor where it tapers out (the convex hull of
+  // the stadium and its translate is still convex, which is what the bite needs)
+  const run = 4 * hw;
+  const st = stadium(A, B, biteR);
+  const bite = hull2([...st, ...st.map((q) => ({ s: q.s + nF.s * run, l: q.l + nF.l * run }))]);
+  const cut = biteConvex(body, bite);
+  // the boss under the plate (the pivot's screw seat) stands the margin off the
+  // pin's sweep: its radius is the sweep's nearest approach to the pivot less
+  // the pin and the margin — and no more than the §13 boss (1.5·SL_HW)
+  const segNear = (() => {
+    const vx = P1.s - P0.s, vy = P1.l - P0.l, L2 = vx * vx + vy * vy;
+    const u = Math.max(0, Math.min(1, -(P0.s * vx + P0.l * vy) / L2));
+    return Math.hypot(P0.s + u * vx, P0.l + u * vy);
+  })();
+  const bossR = Math.min(1.5 * hw, segNear - YK_TAIL_PIN_R - CLEAR_MARGIN - MEASURED_MARGIN_BAND);
+  // the lug: from one plate-width inside the body's end to the pin's centre
+  const lugHalf = SL_BEAK_PIN_R + STOCK_MIN_U;
+  const lug = stadium({ s: 0, l: -(beakEnd - hw) }, { s: 0, l: -SL_BEAK }, lugHalf, 16);
+  return Object.freeze({ body: cut, bodyUncut: body, bite, lug, beakEnd, wEnd, latMin, bossR, lugHalf,
+    flankFrom: P0, flankTo: P1, flankNormal: nF });
+})();
 
 // ---------------------------------------------------------------------------
 // solveKeyless (§13 step 3b) — the P-dependent XY FRAME as a pure function:
@@ -2371,11 +2915,23 @@ export function solveKeyless({
     x: uWind.x * slMidAlong + sideSign * vPerp.x * SL_C,
     y: uWind.y * slMidAlong + sideSign * vPerp.y * SL_C,
   };
+  // TODO 214 — the lever's angle is the CONTACT's: its beak pin bearing on
+  // collar In's face (slLeverTiltAt, solved on the cut in the canonical frame).
+  // The canonical tilt is CCW where sideSign = +1 and mirrored where −1, so the
+  // world angle is the mid-stroke heading (the beak square to the stem) plus
+  // sideSign·tilt. At both stroke ends it is the §13 law's angle exactly, so
+  // postRel/postEng below are unmoved (main.js asserts the two against the old
+  // expression).
+  const aMidLever = Math.atan2(-sideSign * vPerp.y, -sideSign * vPerp.x) - Math.PI / 2;
   function settingLeverAngleAt(pull) {
-    const along = pinDist + pull * CROWN_PULL_DIST + GROOVE_LOCAL;
-    const gx = uWind.x * along, gy = uWind.y * along;
-    return Math.atan2(gy - settingLeverPivot.y, gx - settingLeverPivot.x) - Math.PI / 2;
+    return aMidLever + sideSign * slLeverTiltAt(pull);
   }
+  // The canonical frame's points in the world's XY (s from the lever pivot's
+  // station along the stem, l toward the lever side).
+  const canonToWorld = (p) => ({
+    x: uWind.x * (slMidAlong + p.s) + sideSign * vPerp.x * p.l,
+    y: uWind.y * (slMidAlong + p.s) + sideSign * vPerp.y * p.l,
+  });
   function tailPostWorldAt(pull) {
     const a = settingLeverAngleAt(pull);
     return {
@@ -2403,24 +2959,23 @@ export function solveKeyless({
   // slides against the spring), so its pivot centres on the clutch's stroke
   // and its angle reads the prong's along-stem station about that mid —
   // `yokeClutchAt` (TODO 211) solves the station from the prong's contact with
-  // the cut collar faces, the cam-over reaching the fork through collar In.
+  // the cut collar faces, and since TODO 214 the station the LEVER asks for
+  // from the tail pin's contact with its flank. TODO 214 moved the pivot to the
+  // lever's side of the stem (+sideSign), off the minute wheel.
   const yokeMidAlong = clutchHomeDist + CLUTCH_TRAVEL / 2 + YOKE_TRACK_OFF;
   const yokePivot = {
-    x: uWind.x * yokeMidAlong - sideSign * vPerp.x * YK_C,
-    y: uWind.y * yokeMidAlong - sideSign * vPerp.y * YK_C,
+    x: uWind.x * yokeMidAlong + sideSign * vPerp.x * YK_C,
+    y: uWind.y * yokeMidAlong + sideSign * vPerp.y * YK_C,
   };
   function yokeAngleAt(a) {
     // The arm is SHORTER than the pivot's offset to the stem line by
     // design (YOKE_ARM's constraint: the prongs are posts that must never
     // stand ON the line). `a` is the prong centre's along-stem station from
-    // the yoke's mid — since TODO 211 the law's OUTPUT (`yokeClutchAt`, which
-    // solves it from the prong's contact with the cut collar faces), no
-    // longer a copy of the clutch's slide — and the prong's perpendicular
-    // height follows as YK_C − √(arm² − a²): the margin against the
-    // spine at mid-stroke, a shade farther out at the ends.
+    // the yoke's mid — the law's OUTPUT (`yokeClutchAt`) — and the prong's
+    // perpendicular height follows as YK_C − √(arm² − a²), toward the stem.
     const drop = Math.sqrt(Math.max(0, YOKE_ARM * YOKE_ARM - a * a));
-    const tx = yokePivot.x + uWind.x * a + sideSign * vPerp.x * drop;
-    const ty = yokePivot.y + uWind.y * a + sideSign * vPerp.y * drop;
+    const tx = yokePivot.x + uWind.x * a - sideSign * vPerp.x * drop;
+    const ty = yokePivot.y + uWind.y * a - sideSign * vPerp.y * drop;
     return Math.atan2(ty - yokePivot.y, tx - yokePivot.x) - Math.PI / 2;
   }
 
@@ -2443,7 +2998,7 @@ export function solveKeyless({
     // (main.js's bushDist, second branch) and its far face stands one foot-half
     // beyond that. Main asserts the foot stands ON the plate; before this term
     // it stood exactly on the rim.
-    pinDist + CROWN_PULL_DIST + (GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2)
+    pinDist + CROWN_PULL_DIST + GROOVE_OUTER
       + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF + STEM_BUSH_FOOT_HALF,
   );
 
@@ -2692,7 +3247,7 @@ export function solveKeyless({
     ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
     cwDist, pinDist, pinOutDist, clutchHomeDist, swDist, mwFoldD, minuteArborXY, windIdler,
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
-    kwPostBow, yokePivot, yokeAngleAt,
+    kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
   };
 }

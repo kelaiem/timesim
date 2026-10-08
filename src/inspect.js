@@ -284,8 +284,10 @@ export const MECH_GRAPH = {
     ['Fusee & great wheel', 'Maintaining detent'], // the maintaining ring's teeth tick past the
                                                // detent's beak as the train runs (never in reverse
                                                // — that is the whole point of the sandwich)
-    ['crown', 'Setting lever'],                // the PULL, via the stem groove
-    ['Setting lever', 'Yoke'],                 // ganged clutch shift (the yoke tracks the clutch)
+    ['crown', 'Setting lever'],                // the PULL, via the stem groove — TODO 214: the beak
+                                               // pin bears on groove collar In, its angle solved there
+    ['Setting lever', 'Yoke'],                 // TODO 214: the lever's flank drives the yoke's tail pin;
+                                               // the yoke spring keeps the pin on the flank
     ['Yoke', 'Winding clutch'],                // TODO 50: the fork slides the clutch — pull out to
                                                // the setting mesh, and the spring re-seats through
                                                // the same prongs after a cam-over
@@ -605,11 +607,13 @@ const EXPECTED_PAIRS = [
   ['Set-up work', 'Mainspring drum'],        // §100: the static arbor and everything on it (square,
                                              // collar, hook pin) thread the rotating body — the
                                              // body's bored floor and lid RUN on the arbor now
-  ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
-  ['Keyless works', 'Yoke'],                 // the fork's body still crosses the stem's band
-                                             // (the prong⇄collar ride moved to the clutch pair)
-                                             // TODO 223: both pairs carry floors rows now, their
-                                             // burials waived by name until the re-lay
+  ['Keyless works', 'Setting lever'],        // beak pin on groove collar In (TODO 214: a cut face, the pull's contact)
+  ['Keyless works', 'Yoke'],                 // TODO 214: the yoke spring's blade (grounded on its stud)
+                                             // bears on the yoke's tail pin; the prong⇄collar ride
+                                             // is the clutch pair's. Both pairs carry floors rows,
+                                             // and TODO 223's burial waivers are retired.
+  ['Setting lever', 'Yoke'],                 // TODO 214: the lever's flank on the yoke's tail pin —
+                                             // the drive edge below has metal at last
   ['Winding clutch', 'Keyless works'],       // TODO 50: the saw coupling, the stem square in the
                                              // rim's bore, and the pulled setting mesh
   ['Winding clutch', 'Yoke'],                // prongs riding the clutch's hub collars
@@ -2670,40 +2674,45 @@ export const EXPECTED_CONTACT_FLOORS = [
     ],
   },
   // TODO 223 — the keyless levers' two EXPECTED pairs, which carried TODO 6's
-  // blanket excuse until now. `Keyless works ⇄ Setting lever` is EXPECTED for
-  // the beak pin in the stem's groove and `Keyless works ⇄ Yoke` for "the
-  // fork's body crossing the stem's band" (the prong's ride moved to the
-  // clutch pair, the row above). Under the blankets the lever's BODY stood in
-  // the setting bevel's whole tooth band at every pose (vertex depth 0.62, its
-  // half-thickness), in the setting wheel and its arbor with the crown pulled,
-  // and across the stem; and the yoke's body and boss stood in the minute
-  // wheel at every pose (0.49). Each burial is waived BY NAME in its own
-  // `only:` row (TODO 177's rule): that row measures nothing else and drops
-  // its pair from the main row, so the main row holds everything else the two
-  // units own to the margin from now on, and each waiver goes STALE — and
-  // fails — the moment its own pair clears. The fix is TODO 223's re-lay.
+  // blanket excuse until TODO 223 gave them rows. Under the blankets the lever's
+  // BODY stood in the setting bevel's whole tooth band at every pose (0.62, its
+  // half-thickness), in the setting wheel and its arbor with the crown pulled
+  // and across the stem, and the yoke's body and boss stood in the minute wheel
+  // at every pose (0.49). TODO 223 waived each burial BY NAME in its own `only:`
+  // row; TODO 214's re-lay cleared every one of them — the lever on the plate,
+  // its beak crossing over the groove collars, the yoke's pivot on the lever's
+  // side — and the six rows went stale and were deleted with it. What the two
+  // rows hold now is the whole of both pairs to the margin but for each pair's
+  // one working contact.
   {
     a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN,
     contacts: [
-      // The pin in the groove — the PULL's contact and the reason the pair is
-      // EXPECTED. TODO 223 records that it is not a working contact today: the
-      // groove is two collars proud of an uncut stem, the pin stands 0.33 off
-      // both collars and reaches 0.80 inside the stem's turned surface, and
-      // the lever's angle is a law of crownPullT. Excused as the pair's
-      // declared joint, not as a measured fit.
-      ['windStem', 'settingLeverBeakPin'],
+      // The PULL: the beak pin bears on groove collar In's outboard face — cut
+      // since TODO 214 at stem stock, the lever's angle solved from this contact
+      // (layout.js slLeverTiltAt), measured by the stem clutch table's row.
+      // Collar Out stands the margin beyond the pin and is held to it here.
+      ['grooveCollarIn', 'settingLeverBeakPin'],
     ],
   },
-  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['settingBevel', 'settingLeverBody']], waived: 'TODO 223' },   // 0 at every pose: the bevel's tooth band lies inside the body's slab
-  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['settingWheel', 'settingLeverBody']], waived: 'TODO 223' },   // both meshes of the spur: its hub ring 0 from crown f≈0.31 out (0.16 deep), its toothed body 0.0378 at every pose
-  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['settingArbor', 'settingLeverBody']], waived: 'TODO 223' },   // 0 at crown f 0.42–0.92 (0.31 deep)
-  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['windStem', 'settingLeverBody']], waived: 'TODO 223' },       // 0 at every pose, 0.042 deep — the BODY, not the beak pin: Z_SETTING_LEVER clears a 0.75 collar, and the stem is 0.924 stock
   {
     a: 'Keyless works', b: 'Yoke', min: CLEAR_MARGIN,
-    contacts: [],   // the pair has no working contact: the prong's ride is the clutch pair's row
+    contacts: [
+      // TODO 214 — the yoke spring is a grounded blade on its stud (a Keyless
+      // works part, like the bushing) bearing on the yoke's tail pin.
+      ['yokeSpring', 'yokeTailPin'],
+    ],
   },
-  { a: 'Keyless works', b: 'Yoke', min: CLEAR_MARGIN, contacts: [], only: [['minuteWheel', 'yokeBody']], waived: 'TODO 223' },   // the wheel's toothed body: 0 at every pose (0.25 deep)
-  { a: 'Keyless works', b: 'Yoke', min: CLEAR_MARGIN, contacts: [], only: [['minuteWheel', 'yokeBoss']], waived: 'TODO 223' },   // the same body: 0 at every pose (0.49 deep)
+  // TODO 214 — the setting lever DRIVES the yoke now: its flank bears on the
+  // yoke's tail pin, and the yoke's station is solved from that contact
+  // (layout.js ykFlankStationAt). Everything else the two own — the lug, the
+  // pin, the boss, the tail post and the yoke's arm, prong and boss — is held
+  // to the margin, which is what the flank's bite is cut to.
+  {
+    a: 'Setting lever', b: 'Yoke', min: CLEAR_MARGIN,
+    contacts: [
+      ['settingLeverBody', 'yokeTailPin'],
+    ],
+  },
   // §198 — the strike side's first two floors rows. Before the lifting lever
   // the cam⇄hammer pair carried TODO 6's blanket excuse; each of these names
   // the ONE working contact and holds everything else between the two units
@@ -3167,6 +3176,9 @@ export const INTRA_UNIT_CONTACTS = [
   // 'CylinderGeometry#7' until TODO 50 named the stem's round journal (the
   // turned-part split — see the strike sleeve above for why that stales a row).
   { unit: 'Keyless works', a: 'windStem', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
+  // TODO 214 — the yoke spring is a grounded blade now, aimed each pose from its
+  // stud to its tangent on the yoke's tail pin: its root is IN the stud.
+  { unit: 'Keyless works', a: 'yokeSpring', b: 'yokeSpringPost', why: 'the yoke spring\'s blade anchored in its stud — the root of a grounded cantilever' },
   // (A pre-split row 'CylinderGeometry#28 ⇄ ExtrudeGeometry#0' — "arbor
   // through the winding pinion" — is retired: TODO 50's roster changes
   // re-numbered the unit and its selectors landed on a detent collar and
@@ -4610,8 +4622,9 @@ export const PLATE_SEATS = [
   { unit: "Fork cock", mesh: "screwShanks", kind: "fastened", why: "the cock screws, tapped through the plate (TODO 184)" },
   { unit: "Keyless works", mesh: "TorusGeometry#30", kind: "housed", why: "the crown stem's bushing, in the plate rim's notch (§186)" },
   { unit: "Keyless works", mesh: "BoxGeometry#31", kind: "housed", why: "the crown-stem sleeve, standing in the plate rim's notch" },
-  { unit: "Setting lever", mesh: "CylinderGeometry#7", kind: "pivot", why: "the lever's pivot, seated mid-plate" },
-  { unit: "Yoke", mesh: "CylinderGeometry#3", kind: "pivot", why: "the yoke's pivot, seated mid-plate" },
+  { unit: "Setting lever", mesh: "CylinderGeometry#8", kind: "pivot", why: "the lever's pivot, seated mid-plate (#7 until TODO 214's boss, lug and screw renumbered the unit)" },
+  { unit: "Yoke", mesh: "CylinderGeometry#4", kind: "pivot", why: "the yoke's pivot, seated mid-plate (#3 until TODO 214's tail pin)" },
+  { unit: "Keyless works", mesh: "yokeSpringPost", kind: "planted", why: "TODO 214: the yoke spring's stud, planted in the plate's dial face" },
   { unit: "Stop lever", mesh: "CylinderGeometry#6", kind: "planted", why: "the lever's arbor post, planted in the plate" },
   { unit: "Maintaining detent", mesh: "CylinderGeometry#1", kind: "planted", why: "the detent's pivot post, on the plate face" },
   { unit: "Set-up work", mesh: "CylinderGeometry#3", kind: "planted", why: "a stud, on the plate face" },
@@ -6292,6 +6305,37 @@ export const STEM_CLUTCH_HANDOFFS = [
     unitA: 'Yoke', meshA: 'yokeProng',
     unitB: 'Winding clutch', meshB: 'clutchHubCollarOut',
     expect: { seated: 'free', backlash: 'free', camming: 'free', pulled: 'contact' },
+  },
+  // TODO 214 — the two hops ahead of the fork, at both crown parities. The
+  // yoke spring holds the yoke's tail pin on the setting lever's flank and,
+  // through the lever, the lever's beak pin on groove collar In's outboard face
+  // — crown in and pulled. At both SLIPPED poses the clutch has climbed the
+  // saw's ramps (measured: the yoke turns 0.0327 rad at `backlash` and 0.0134 at
+  // `camming` off its seated angle — on this movement's sense the backlash
+  // pose's slip lies on the ramp, which the saw row's 'contact' does not
+  // distinguish), the clutch's collar In carries the prong out, and the tail
+  // leaves the flank: FREE there, by the lift's share of the yoke's turn. The
+  // lever stays where the stem put it, its pin on collar In throughout. The pin
+  // never touches collar Out: it stands the margin off it by the groove's cut.
+  // Before these rows the lever and the yoke stood 2.38–4.93 apart across the
+  // stem and the pin 0.33 off both groove collars, inside the stem.
+  {
+    label: 'lever beak pin ⇄ groove collar In (the stem pulls the lever)',
+    unitA: 'Setting lever', meshA: 'settingLeverBeakPin',
+    unitB: 'Keyless works', meshB: 'grooveCollarIn',
+    expect: { seated: 'contact', backlash: 'contact', camming: 'contact', pulled: 'contact' },
+  },
+  {
+    label: 'lever beak pin ⇄ groove collar Out (never a working face)',
+    unitA: 'Setting lever', meshA: 'settingLeverBeakPin',
+    unitB: 'Keyless works', meshB: 'grooveCollarOut',
+    expect: { seated: 'free', backlash: 'free', camming: 'free', pulled: 'free' },
+  },
+  {
+    label: 'lever flank ⇄ yoke tail pin (the lever drives the yoke)',
+    unitA: 'Setting lever', meshA: 'settingLeverBody',
+    unitB: 'Yoke', meshB: 'yokeTailPin',
+    expect: { seated: 'contact', backlash: 'free', camming: 'free', pulled: 'contact' },
   },
 ];
 
@@ -8279,8 +8323,10 @@ export const STOCK_KIND_BY_MESH = {
   alarmClickPawl: 'spring',    // the click blade — same spring-tempered pawl stock as the going side's
   alarmClickSpring: 'spring',  // the solved-arc torus (tube ⌀ 0.2 u) — spring stock
   alarmClickStud: 'pivot',     // the shoulder screw's post — pin-class, ⌀ 1.0 u over the pivot floor
-  yokeSpring: 'spring',        // TODO 50 — the clutch's restoring blade, an arc about the yoke's pivot
-  yokeSpringPost: 'pivot',     // …and the pin its fixed end reacts on
+  yokeSpring: 'spring',        // TODO 50 — the clutch's restoring blade; TODO 214: a grounded flat blade, SPRING_FLAT_U in the direction it bends
+  yokeSpringPost: 'pivot',     // …and the stud it is anchored in (PIVOT_MIN_U)
+  yokeTailPin: 'pivot',        // TODO 214 — the yoke's tail pin, the prong's own stock
+  settingLeverBeakPin: 'pivot', // TODO 214 — the lever's beak pin, ⌀ 0.27 mm pin stock
   // §100 (TODO 39) — the going drum's FIXED arbor, now built where it is
   // static (Set-up work). Shaft stock, kinded as the striking arbor's
   // sleeve is: the census reports each mesh's extent, and both sections
