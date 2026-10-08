@@ -31834,3 +31834,56 @@ pose of the same shape, run 45 times a frame), `ringSd` (3.0 ms: the one solve
 that is drawn), `betaAt` (1.9 ms). The first is the same deferral and was left
 alone because the alarm is idle in a plain fast-forward, so nothing exercises
 the claim that its pose is only ever drawn.
+
+## §256 — Fast-forward poses the alarm column pawl once a frame
+
+§255 left a fast-forward frame at 17.7 ms (median, the same headless Chromium
+over SwiftShader), and named the largest piece it had not touched:
+`alarmPawlSeatPhi`, 4.3 ms a frame. This is that, with the claim §255 could not
+test written down and tested.
+
+The alarm column pawl is posed in `tick` from two numbers: the driver's angle
+(`alarmDriverAngleAt(alarmPusherT)`) and the wheel's (`alarmColShownA`). The
+seat is the most-closed angle at which the nose clears the saw — a bracket scan
+and 12 bisections over `sawClear` against the saw outline — and it is **stateless
+by construction**: it anchors at the spring's free angle precisely so that
+`setPose`, which visits poses in any order, gets one answer per input (the
+comment on the solve says so, and TODO 54's rule is why). The blade is a
+function of the pawl's angle. Both are written in one place and read nowhere in
+a tick; the only other callers are build-time. So, like the detent's, they are
+only ever DRAWN, after the frame, and of a fast-forward frame's 45 ticks only
+the last has to pose them.
+
+The deferral is §255's, widened: `detentPoseDeferred` became `ffPoseDeferred`,
+one flag per tick set for the first 44 and cleared in a `finally`, consulted by
+both poses. What a tick still does every time is everything a later tick
+reads: `alarmPusherT`, the wheel's carry and latch, `alarmColShownA`, and the
+driver's own angle are written as before — only the pawl's seat solve and its
+blade are skipped.
+
+| tree | median frame |
+|---|---|
+| main before this change | 16.8 ms |
+| this change | 12.3 ms |
+
+(`alarmPawlSeatPhi` is 3.9 ms/frame in the profile before and absent after.)
+
+**Held by driving the pawl.** §255 left this alone because the alarm is idle in a
+plain fast-forward, so a test of "its pose is only ever drawn" would pass by
+never moving it. The check presses the alarm (`#btn-alarm`) three times in
+normal time, then three times with fast-forward on, 40 frames after each, and
+records the driver's, the pawl's and the blade's angle and the blade's scale
+every frame: 240 records, the same hash from this tree and from main
+(`ddff50651c2a552b`), with the pawl taking 8 distinct poses in normal time. In
+fast-forward it takes one, and that is the mechanism rather than neglect: a
+coarse tick's `rawDt` of 2 s is sixteen times `ALARM_PRESS_S` (0.12 s), so a
+press runs its stroke and its return inside a tick or two and the frame ends
+with the pusher home and the pawl seated in a root, which is the same pose
+relative to the driver whichever tooth it is. The comparison therefore proves
+the frame-end pose and the state the ticks carry, not the pawl's path between
+ticks, which a deferred frame does not draw.
+
+**Left, measured.** After this a fast-forward frame is about 12 ms: `ringSd`
+3.3 ms (the detent's one drawn solve), `betaAt` 1.6, `clearAt` 1.2,
+`yokeProngVerts` 1.0. Each is now a single-digit-percent item; none is the same
+shape as the two deferred here.

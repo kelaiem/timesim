@@ -11076,14 +11076,24 @@ let MAINT_DETENT_AZ = 0, MAINT_DET_LEVER = 1, MAINT_DET_BASE = 0, MAINT_DET_SIGN
 const MAINT_DET_CLICK_T = MAINT_RING_T * 0.9;
 let MAINT_DET_HOLD_GEOM = null;
 // A fast-forward frame runs FF_TICKS_PER_FRAME coarse ticks and draws the last.
-// The detent's beak, tail and blade are a pure function of the ring's angle (the
-// ride solve is memoised on it and keeps no state), nothing reads them inside a
-// tick, and they are only ever DRAWN after the frame — so the ticks before the
-// last one need not pose them. Each of those posings is a ride solve (about 45
-// clearance passes over 145 beak samples), and 44 of them per frame were 95% of
-// the frame's cost (316 ms against 20 ms, measured before this change).
+// A pose that is a pure function of the state a tick has just written, that
+// nothing inside a tick reads back, and that is only ever DRAWN after the frame,
+// need not be posed by the ticks before the last one: `ffPoseDeferred` is true
+// for those, and such a pose is skipped under it (§255, §256). Two exist:
+//  · the maintaining detent's beak, tail and blade — a pure function of the
+//    ring's angle (the ride solve is memoised on it and keeps no state). Each
+//    posing is a ride solve (about 45 clearance passes over 145 beak samples),
+//    and 44 of them a frame were 95% of the frame's cost (316 ms against 20 ms,
+//    measured before §255);
+//  · the alarm column pawl and its blade — SOLVED against the saw every tick
+//    from the driver's angle and the wheel's (`alarmPawlSeatPhi`, a bracket scan
+//    and 12 bisections over the saw outline), no hysteresis, written only where
+//    the tick poses it. 4.3 ms of the 17.7 a frame once the detent was fixed.
+// What a deferred pose never covers is anything a LATER tick reads: state
+// (alarmPusherT, alarmColShownA, the wheel's carry) is written every tick as
+// before, and so is the driver's own angle.
 const FF_TICKS_PER_FRAME = 45;
-let detentPoseDeferred = false;
+let ffPoseDeferred = false;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
 // The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
 // windBack: zero while running (locked, torque flows), sweeping backward
@@ -11121,7 +11131,7 @@ function updateMaintaining(windBack) {
   // would do if the cam fell away: the follower drops to its seat instead of
   // tracking a profile that is no longer there.
   const followCam = (seat, cam, sign) => (sign > 0 ? Math.min(seat, cam) : Math.max(seat, cam));
-  if (maintDetentBeak && !detentPoseDeferred) {
+  if (maintDetentBeak && !ffPoseDeferred) {
     // TODO 215 — the cam is the ring's CUT, not the linearised profile: the
     // whole beak is solved against the polygon the teeth were cut from (the
     // law's `max(sawRadiusAt − TIP_R, 0)` floated the tip 0.04–0.10 over the
@@ -48179,23 +48189,27 @@ function tick(t) {
     {
       const d = alarmColDriverGroup.userData.drive;
       alarmColDriverGroup.rotation.z = alarmDriverAngleAt(alarmPusherT);
-      const relPost = alarmColDriverGroup.rotation.z + d.postAz - (ALARM_LOCK_ENGAGED - alarmColShownA);
-      const phi = alarmPawlSeatPhi(relPost);
-      if (phi !== null) alarmColPawlGroup.rotation.z = d.postAz + phi;
-      // §192 — the blade tracks the tail it closes: root clamped on the
-      // driver's stud (both live in the driver's frame, so the root needs no
-      // update), free end held on the bear station wherever the seat solve
-      // just put the pawl. The §48 feeler blade's frame law, one mechanism
-      // over — a spring drawn parted from its load would be the display
-      // fiction TODO.md exists to catch.
-      {
-        const a = alarmColPawlSpringBlade.userData.aim;
-        const rot = alarmColPawlGroup.rotation.z;
-        const c = Math.cos(rot), s = Math.sin(rot);
-        const bx = alarmColPawlGroup.position.x + a.bearX * c - a.bearY * s;
-        const by = alarmColPawlGroup.position.y + a.bearX * s + a.bearY * c;
-        alarmColPawlSpringBlade.rotation.z = Math.atan2(by - a.ry, bx - a.rx);
-        alarmColPawlSpringBlade.scale.x = Math.hypot(bx - a.rx, by - a.ry);
+      // The pawl's seat solve and its blade are pure poses (see ffPoseDeferred, §256);
+      // the driver's own angle above is written every tick, as before.
+      if (!ffPoseDeferred) {
+        const relPost = alarmColDriverGroup.rotation.z + d.postAz - (ALARM_LOCK_ENGAGED - alarmColShownA);
+        const phi = alarmPawlSeatPhi(relPost);
+        if (phi !== null) alarmColPawlGroup.rotation.z = d.postAz + phi;
+        // §192 — the blade tracks the tail it closes: root clamped on the
+        // driver's stud (both live in the driver's frame, so the root needs no
+        // update), free end held on the bear station wherever the seat solve
+        // just put the pawl. The §48 feeler blade's frame law, one mechanism
+        // over — a spring drawn parted from its load would be the display
+        // fiction TODO.md exists to catch.
+        {
+          const a = alarmColPawlSpringBlade.userData.aim;
+          const rot = alarmColPawlGroup.rotation.z;
+          const c = Math.cos(rot), s = Math.sin(rot);
+          const bx = alarmColPawlGroup.position.x + a.bearX * c - a.bearY * s;
+          const by = alarmColPawlGroup.position.y + a.bearX * s + a.bearY * c;
+          alarmColPawlSpringBlade.rotation.z = Math.atan2(by - a.ry, bx - a.rx);
+          alarmColPawlSpringBlade.scale.x = Math.hypot(bx - a.rx, by - a.ry);
+        }
       }
     }
     const colBlock = alarmColumnWheel.userData.profileAt(alarmColShownA);
@@ -49681,17 +49695,16 @@ function advanceFrame(realDt) {
     if (fastForward) {
       // ~5400×: 45 coarse 2 s ticks per frame — the whole 30 h reserve pays
       // off in about 20 s of wall time, chain and reserve hand visibly moving.
-      // Only the frame's last tick poses the maintaining detent (see
-      // detentPoseDeferred), because only its pose is drawn.
+      // Only the frame's last tick poses what is drawn (see ffPoseDeferred).
       try {
         for (let i = 0; i < FF_TICKS_PER_FRAME; i++) {
           simTime += 2;
-          detentPoseDeferred = i < FF_TICKS_PER_FRAME - 1;
+          ffPoseDeferred = i < FF_TICKS_PER_FRAME - 1;
           tick(simTime);
           ticksThisFrame++;
         }
       } finally {
-        detentPoseDeferred = false;
+        ffPoseDeferred = false;
       }
       accumulator = 0;
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
