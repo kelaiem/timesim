@@ -366,7 +366,7 @@ export const BATTERY = [
   // (INTRA_UNIT_CONTACTS' rule — a declaration pointing at absent metal reads
   // as an answer and is not one), and a waiver naming a body that IS answered.
   { name: 'restoring', opts: { yieldEvery: YIELD_EVERY },
-    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS; member tier: 0 unwaived in scope, 0 unmatched selectors, 0 stale waivers; every member-named spring reaches its body (TODO 194)',
+    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS; member tier: 0 unwaived in scope, 0 unmatched selectors, 0 stale waivers; every member-named spring reaches its body (TODO 194); every two-way row names two drivers that resolve to an input or a spring, never round a loop (TODO 206)',
     fails: (r) => [
       ...r.unwaived,
       ...r.malformedDeclarations,
@@ -375,13 +375,17 @@ export const BATTERY = [
       ...(r.unmatchedMemberSelectors || []),
       ...(r.memberStaleWaivers || []).map((k) => ({ staleMemberWaiver: k })),
       ...(r.springUnreached || []),   // TODO 194: a member-named spring that touches its body at no pose
+      ...(r.twoWayUnresolved || []),  // TODO 206: a two-way row whose drivers do not resolve to an input or a spring
+      ...(r.twoWayDriverStaleWaivers || []).map((k) => ({ staleDriverWaiver: k })),
+      ...(String(r.twoWayDriverControl).startsWith('PASS') ? [] : [{ driverControl: r.twoWayDriverControl }]),
       ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)`
       + `; members ${(r.memberRows || []).length} bodies (${r.memberUnitWide} unit-wide, `
       + `${r.memberUndeclared} undeclared — REPORTED, §121's convention), `
-      + `scope ${(r.memberScope || []).join('/')}: ${(r.memberWaived || []).length} waived` },
+      + `scope ${(r.memberScope || []).join('/')}: ${(r.memberWaived || []).length} waived`
+      + `; two-way drivers ${(r.twoWayDrivers || []).filter((d) => d.ok).length}/${(r.twoWayDrivers || []).length} resolve` },
   // §137 — the transfer audit. Same shape as `restoring`: the rows are the
   // product (`ok` is always true), and the gate holds what CAN be held — a
   // declaration that is malformed, names a part that no longer exists, whose

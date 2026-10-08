@@ -370,7 +370,11 @@ it into prose either.
    that exercises it, or this passes it in silence. That is not theoretical:
    before TODO 29 no axis anywhere varied `alarmOn`, and the alarm lock —
    the movement's clearest no-spring case — was invisible for exactly that
-   reason),
+   reason. **And since TODO 206 `two-way` is not taken on the declaration**:
+   a two-way row names its two drivers (an input, a spring mesh, or another
+   row) and fails when one is missing or leads only back round a loop of
+   two-way rows, which is how the alarm link and the selector ring passed
+   naming each other while nothing pushed the run toward armed),
    and `transfers` **0 malformed, 0 stale, 0 mismatched, 0 unwaived
    envelope misses, control PASS** (§137 — every corner is one of five
    named idioms declared beside its metal with its force arithmetic, in
