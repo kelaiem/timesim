@@ -11093,6 +11093,7 @@ let MAINT_DET_HOLD_GEOM = null;
 // (alarmPusherT, alarmColShownA, the wheel's carry) is written every tick as
 // before, and so is the driver's own angle.
 const FF_TICKS_PER_FRAME = 45;
+let _forkPull = NaN, _forkLift = NaN, _forkAt = null;   // §257 — tick()'s remembered yokeClutchAt
 let ffPoseDeferred = false;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
 // The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
@@ -11519,6 +11520,28 @@ const maintDetent = new THREE.Group();
       }
       return m;
     };
+    // §257 — `clearAt(net, t) − SEAT_RELIEF >= 0` asked as a question. The solve
+    // below only ever tests that sign, and `m − r >= 0` is `m >= r` for doubles,
+    // so "every term is at least r" is the same answer as "the minimum of the
+    // terms is at least r" — and it can stop at the first term that is not. A
+    // NaN term fails here as it poisons the minimum there. The terms and their
+    // order are clearAt's own; `clearAt` stays whole for the instruments that
+    // read the gap itself.
+    const clearsAt = (net, t, thr) => {
+      const lam = MAINT_DET_SIGN * t, c = Math.cos(lam), s = Math.sin(lam);
+      const cn = Math.cos(net), sn = Math.sin(net);
+      for (const p of samples) {
+        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;
+        if (!(ringSd(ax * cn + ay * sn, -ax * sn + ay * cn) >= thr)) return false;
+      }
+      for (const [vx, vy] of poly) {
+        const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;
+        if (Math.hypot(ax - cx, ay - cy) > reach) continue;
+        const qx = ax - pivR, qy = ay;
+        if (!(beakSd(qx * c + qy * s, -qx * s + qy * c) >= thr)) return false;
+      }
+      return true;
+    };
     // The cap: the turn that carries the tip a margin past the tip circle.
     let cap; {
       let lo = 0, hi = 1.5;
@@ -11526,11 +11549,10 @@ const maintDetent = new THREE.Group();
       cap = hi;
     }
     const liftSolve = (net) => {
-      const f = (t) => clearAt(net, t) - SEAT_RELIEF;
-      if (f(0) >= -1e-9) return 0;
+      if (clearAt(net, 0) - SEAT_RELIEF >= -1e-9) return 0;
       let lo = 0, hi = cap;
-      for (let i = 1; i <= 24; i++) { const cand = (cap * i) / 24; if (f(cand) >= 0) { hi = cand; lo = (cap * (i - 1)) / 24; break; } }
-      for (let i = 0; i < 32; i++) { const m = (lo + hi) / 2; if (f(m) >= 0) hi = m; else lo = m; }
+      for (let i = 1; i <= 24; i++) { const cand = (cap * i) / 24; if (clearsAt(net, cand, SEAT_RELIEF)) { hi = cand; lo = (cap * (i - 1)) / 24; break; } }
+      for (let i = 0; i < 32; i++) { const m = (lo + hi) / 2; if (clearsAt(net, m, SEAT_RELIEF)) hi = m; else lo = m; }
       return hi;
     };
     // The tick calls this every frame and every swept pose, and the solve is
@@ -30354,7 +30376,15 @@ const ALARM_JUMPER_TIP_H = STOCK_MIN_U;
 // FUNCTION of the wheel's, which is what "the wheel indexes and the jumper
 // follows" means when it is driven rather than animated.
 const _jRestDir = _jFold.dirOf(_jFold.beta0);   // and _jFold.restDir is the same direction from the construction — assert 4 holds the two together
-const alarmJumperAngle = (wheelA) => _jFold.dirOf(_jFold.betaAt(wheelA));
+// §257 — remembered on the exact wheel angle: the solve is 44 bisections, the
+// angle is a pure function of its argument and of build-time constants, and in a
+// fast-forward frame (or any frame the alarm is idle) every tick presents the
+// same double. Object.is, so a NaN or a signed zero is never taken for a hit.
+let _jAngW = NaN, _jAngV = 0;
+const alarmJumperAngle = (wheelA) => {
+  if (!Object.is(wheelA, _jAngW)) { _jAngV = _jFold.dirOf(_jFold.betaAt(wheelA)); _jAngW = wheelA; }
+  return _jAngV;
+};
 // …and the tip-centre radius at that pose, for the reports and the probes.
 const alarmJumperSeatR = (wheelA) => {
   const q = _jFold.tipAt(_jFold.betaAt(wheelA));
@@ -32514,7 +32544,21 @@ const alarmLinkParts = {};
       pair[1].A * Math.sin(th) + pair[1].B * Math.cos(th) + pair[1].C);
     // Crossing of envZ = target nearest the seed, scanned over a bracket
     // around it, then bisected. Deterministic: same inputs, same answer.
+    // §257 — remembered on its exact arguments (a pure function of them and of the
+    // pair's fitted constants); only a FOUND crossing is kept, so the registration
+    // warning below fires every time it would have.
+    let _seKey = null;
     const solveEnv = (pair, target, seed, nm) => {
+      if (_seKey !== null && _seKey.pair === pair && Object.is(_seKey.target, target) && Object.is(_seKey.seed, seed)) return _seKey.out;
+      const found = solveEnvScan(pair, target, seed);
+      if (found === null) {
+        console.warn(`TODO 20 registration: ${nm} — no envelope crossing within ±3.2 of the seed`);
+        return seed;
+      }
+      _seKey = { pair, target, seed, out: found };
+      return found;
+    };
+    const solveEnvScan = (pair, target, seed) => {
       // Span covers the full turn: the rod's foot rides only 0.011 above
       // the SHAFT AXIS, so the finger meets it nearly horizontal (|roll|
       // ≈ 1.77 from vertical) — a ±1.6 scan missed every crossing. Ties
@@ -32537,8 +32581,7 @@ const alarmLinkParts = {};
         }
         prevTh = th; prevD = dd;
       }
-      if (best === null) console.warn(`TODO 20 registration: ${nm} — no envelope crossing within ±${SPAN} of the seed`);
-      return best ?? seed;
+      return best;
     };
     // The datums first. (The fork's groove mid — the pin's drive datum —
     // was captured at the shaft build above, from the fork's own box.)
@@ -47095,7 +47138,12 @@ function tick(t) {
   // farther of that push and the ramps' raw lift — the yoke spring holding the
   // prong on collar In, so a cam-over carries the yoke out with it.
   const sawLiftRaw = sawCouplingLiftAt(STEM_SAW_SPEC, stemSlipLocal() + sawSeatOffset(STEM_SAW_SPEC, windSign));   // TODO 115 — the profile's own sense, at the same seat offset the rings are clocked to
-  const fork = yokeClutchAt(crownPullT, sawLiftRaw);
+  // §257 — a pure function of two doubles, remembered on both exactly (a fresh
+  // object is only ever read for .c and .a, never kept or written).
+  if (!Object.is(crownPullT, _forkPull) || !Object.is(sawLiftRaw, _forkLift)) {
+    _forkAt = yokeClutchAt(crownPullT, sawLiftRaw); _forkPull = crownPullT; _forkLift = sawLiftRaw;
+  }
+  const fork = _forkAt;
   // §99's face-relief convention, at the coupling: the analytic seat would
   // park the pair plane-on-plane twice over (tip flats on valley flats in
   // z, drive faces in θ), and exactly-coincident planes are the one case
@@ -48150,7 +48198,12 @@ function tick(t) {
         }
         return min === Infinity ? 1 : min;
       };
+      // §257 — the lift is a pure function of `rel` (rd's own constants are fixed
+      // at build), so it is remembered on the exact ratchet angle: the arbor
+      // stands still through a fast-forward frame, a ring and every idle frame.
       let t = 0;
+      if (rd.liftRel !== undefined && Object.is(rel, rd.liftRel)) t = rd.liftT;
+      else {
       if (clearAt(0) < 0) {
         // lift cap: enough rotation to put the tip past the tip circle
         // everywhere — clear by construction
@@ -48165,6 +48218,8 @@ function tick(t) {
           if (clearAt(mid) >= 0) hi = mid; else lo = mid;
         }
         t = hi;
+      }
+      rd.liftRel = rel; rd.liftT = t;
       }
       const seat = rd.base - rd.sign * rd.preload;               // where the spring alone would put it
       const cam = rd.base + rd.sign * t;                         // where the saw lets it sit
