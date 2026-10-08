@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 222 | OPEN | Found closing TODO 206. Follower B's lift is set from `selT` (`max(hB, ALARM_PINB_LIFT·(1 − selT))`) while the rocker's finger, which is supposed to press its tail, stands 0.91 off the arm at every pose of the arming transition. Its "spring" `alarmPinSpringB` is a ring riding on the arm it would press. Ground a spring on the tube and solve the lift from the finger's contact |
 | 221 | OPEN | Found closing TODO 218. The beak's apex takes the whole 2554 mN hold and the wedge's stress goes as 1/s toward it: under yield at its kindest section (236.1 MPa), it reaches 800 MPa 0.2710 u (0.103 mm) from the apex, and inside that the apex is a sharp line in contact with the face, which nothing prices. Cut a land or radius sized from the load, price its contact, and re-place the stud on the land's resultant |
 | 220 | CLOSED | Regression of TODO 60's fix 2. Each spider leg's pinion and sleeve stood **0.1605** off its side gear: `spiderSpec.hubFaceZ` read `zBoreOut` (1.3182 from the apex) while TODO 136's flat web (17387c21) cuts the blank's back face at `zWebHi` (1.1577). The spec now reads the builder's own `zWebHi`, and a boot assert measures each gear's cut back face and each sleeve's end against it. Both pairs measure 0 (seated); `assembly` with the arrest scoped reads both leg groups as one body. Leg B's pinion, the idler pinion and both columns' tops drop 0.1605 (`pinBZ`'s stock-floor branch); the columns' L/D-derived radius follows, 0.2361 → 0.2316. `halfHeight` still reads `zBoreOut` — [TODO 67] |
 | 219 | OPEN | Found closing TODO 217. The maintaining spring is still a drawn torus: its torque at its working point is derived (the going torque, 3.2307 N·mm — it is a series member of the drive), but its stiffness and preload set how long it keeps the train going through a wind, and the model declares no length of a wind. And the ring is never held: it rides `barrelArbor` through winding, so the spring is never deflected and the hold is never posed |
@@ -32,7 +33,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 209 | PART DONE | Nine of twelve rows retired: the arrest's plane re-floored at the plate face + `CLEAR_MARGIN` (it was a literal 0.1), the set-up square ended at its ratchet's floor, two misfiled rows (the transfer arbor and the alarm climb rod, both running through plate bores) moved to `PLATE_SEATS`, and the three keyless stem rows paid down by TODO 211's derived `Z_KEYLESS`. Left: the transfer wheel and great wheel (0.075, a gear bevel under the margin, a band re-solve) and the case lugs (0.09). |
 | 208 | CLOSED (§254) | The lean was never the cone's: it was the cost of modelling the groove floor as a surface of revolution. §254 cuts the groove as a fusee engine cuts it — a helical shelf, flat across the tool's width at every azimuth — and the chain stands upright on it with no daylight; the §124 stratum raise is spent as band (3.1667, pitch 1.5833), which brings the base flank to 1.81 against the one-wall bound 1.86 an upright stack needs (grooveD over the channel's own half-width), asserted at boot. Per-joint twist on the wrap measures 1.7–3.7° against the 4.88° running fit at every tension (`tools/probe-254-chain-twist.mjs`, acceptance) |
 | 207 | DONE | The design swing is declared and gated: `AMPLITUDE_TARGET_DEG` 200° vertical at the nominal corner, met at 200.4°. The drum grew to the largest the plate carries (`DRUM_R_ACTUAL` 10 → 10.71, held by a boot assert to its plate-edge bound) and the balance was lightened in rim height to the heaviest that reaches the target (`BAL_RIM_F` 0.645: inertia 62%, mass 63%), its hairspring re-solved at the same 0.0239 mm in a 0.3726 ribbon. The favourable dial-flat swing now passes the knocking angle: TODO 214 |
-| 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
+| 206 | CLOSED | The run had no driver toward ARMED: the rod's two ends only push, the ring had no stop, and the nose hung 0.0734 over the gap floor on the tick's `Math.min`. An arming spring on the lay shaft (a blade let into hanger 3, bearing on a keyed arm) drives it through those contacts. The nose SEATS on the gap floor, and the lever ratio is solved from that contact (4.657 → 5.311). Priced at the nose at MU_STEEL, it seats at 5.27 mN and lifts at 47.42 mN, inside 5–50. A two-way row must now name drivers that resolve to an input or a spring; the link ⇄ ring loop was the only one |
 | 205 | CLOSED | The neck's flank ran under the rod's foot face, 0.1091 at the rest roll (the least of the roll; armed 0.2043). The chord now turns 3.0° about its inner end so the shaft's tip stands `ALARM_LINK_ROD_STANDOFF` 0.7600 beside the rod's axis — the least offset at which the foot's rim clears the neck by `CLEAR_MARGIN` — and an `INTRA_UNIT_FLOORS` row reads 0.1657 |
 | 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.973 since TODO 194 thickened the rod; 0.931 when filed) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
 | 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 is built as the `plateSeats` gate: 62 declared seats, 12 frozen debt rows (TODO 209), and a mutation probe that restores the proud plate and watches it fire. |
@@ -28121,7 +28122,7 @@ minimum is a sampled one.
   move. But the solve does not yet judge the tip it now produces. Filed as
   [TODO 213].
 
-## 206. Nothing presses the alarm link's beak onto the castellations: the gap direction is posed, and the restoring audit's two-way declaration hides it
+## 206. Nothing presses the alarm link's beak onto the castellations: the gap direction is posed, and the restoring audit's two-way declaration hides it — CLOSED
 
 Found 2026-10-02, out of an owner question while reading TODO 191's
 schematic: *what is tensioning the beak against the column wheel's
@@ -28212,6 +28213,126 @@ Feasibility: medium · Cost: one blade (geometry, §50 / §54 duties, a stud on
 plate land), its transfers row, a hand-off row, and the audit rule (≈ 40
 lines in `inspect.js` + the check) · Battery: full; moves the alarm switch's
 force arithmetic and possibly the stall record.
+
+**CLOSED 2026-10-08 — an arming spring on the lay shaft, the seat on the gap
+floor, and a restoring rule that makes a two-way row name its drivers.**
+
+**Step 1, measured (the alarmPress axis, one column → gap transition).** The
+nose rides the column top at 0.0000 while the profile under its centre falls
+to 0.27 (it rests on the highest point under its footprint); from f 0.25 to
+0.344 it descends 13.0714 → 12.5281 still touching the flank, which a cam can
+permit and never cause; armed, it hung **0.0734 over the gap floor**
+(`alarmColBase`, its tilted corner; 0.15 at its centre) and 0.6026 off the
+columns, held by the tick's `Math.min` alone. No spring anywhere in the run:
+none of the 20 meshes in 'Alarm link' or the 17 in 'Alarm selector' is one,
+the ring slides on three posts with no detent, and the one part that could
+have loaded the ring from the disc side does not touch it (TODO 222). The
+audit's population held the link as three frames (beak lever; cranks and
+pin; rod), all answered by the unit-wide `'*'` two-way row, and the ring by
+its own two-way row — each row naming the other.
+
+**What the item got wrong, and what that decided.** "Every joint is two-way"
+is false at both of the rod's ends: they only PUSH. With the rod held, turning
+the beak nose-down 0.005 / 0.01 / 0.02 rad lifts the tail off the rod top
+0.0046 / 0.0085 / 0.0161; raising the rod 0.02 with the shaft held opens the
+rim finger 0.0100. So the item's first fix site, a blade on the beak lever,
+cannot arm anything — it would press the nose into the gap and lift the tail
+off the rod while the ring stayed disarmed. A push-only chain is held together
+by a bias at the end OPPOSITE the cam, pushing toward it, so that both
+directions load every contact. The owner chose that (option C1).
+
+**The spring (main.js, "THE ARMING SPRING", in the link's registration
+solve).** It goes on the LAY SHAFT, not the ring. The ring is carried by the
+pin in its groove and stays unloaded, so neither the groove nor the three
+guide posts sit in the force path; the path to the nose is shaft → finger →
+rod → tail → nose. The parts:
+- **The arm.** It is keyed on the shaft's body one margin off bush 2 and
+  stands vertical at the armed roll. Its radius is 0.8524, set so that its
+  corner lands on the blade's face a margin over bush 3's OD at full
+  deflection.
+- **The blade.** It is let into a slot across HANGER 3, which is its stud,
+  planted in the base plate. Its section is 0.1254 × 0.9862 u and its free
+  length is 4.7070 u, solved from 0.9·σy at full deflection. The stock is
+  the thickest that fits the room between the arm and the hanger: a
+  separate stud ran out of room at every stock from the spring floor up.
+  k = 353.3 N/m, with a preload of 0.1414 u (blade R = 3).
+- **Hanger 3.** Its section is re-derived by §192's rule, a ground 10× the
+  blade: 0.2 → 0.3857 u.
+
+**Sizing, TODO 16's format.** It is priced AT THE NOSE, with MU_STEEL charged
+at every sliding joint in the path, against the direction of drive: the
+journals, the blade's face, the finger on the foot (slide 0.947 per unit of
+lift), the rod in its bushes, the tail on the cut top, and the beak post.
+- **Seated** on the gap floor: **5.27 mN**. Every push-only contact in the
+  run is held loaded.
+- **Lifted** by a column: **47.42 mN**.
+- Both sit inside the 5–50 mN detent window, placed equal-margin
+  (product 250). The window is not forked.
+- With no friction the same spring gives 11.21 / 23.55 mN. The adverse
+  corner alone puts lift/seat over 3, which is why R = 3 is applied on the
+  blade rather than at the nose.
+- **The pusher's records**, re-derived: the column now pays the nose's
+  adverse lift as a flank wedge, 0.1332 N·mm on top of the sautoir's
+  forward detent. The riser-and-reach row goes 14.38 → 69.42 mN and the
+  pin-in-slot row 18.32 → 88.42 mN, still more than an order of magnitude
+  under the 1–5 N a finger delivers (`CASE_PUSHER_INPUT_N`).
+- **The lay shaft's series stall** is re-measured by TODO 82's probe:
+  1331.88 → 1318.98 mN (the row 1348.7).
+
+**The seat (C1).** `ALARM_COL_SEAT_DROP_SPEC` was colH − CLEAR_MARGIN, "one
+running margin above the gap floor" with nothing there. It is now solved so
+that the nose's lowest corner lands ON the floor. The tail lifts the rod
+tailLen·θ, which equals the solved stroke. The arms share the run. The
+corner falls (beakLen + W/2)·sinθ − h·(1 − cosθ) = colH, with h the swept
+bar lift, iterated to a fixed point.
+
+| | before | after |
+|---|---|---|
+| ratio | 4.657 | **5.311** |
+| beakLen | 3.577 | 3.6565 |
+| tailLen | 0.768 | 0.6885 |
+| seat tilt | 0.1305 rad | 0.1455 rad |
+
+The rod's top is re-cut to the new tilt; every downstream assert re-derives,
+and boot is silent.
+
+**Handoff, transfers and contact rows.**
+- New `alarmHandoffs` rows: 'gap floor ⇄ beak nose (the arming spring seats
+  it)' reads 0.6167 / **0** / 0.6167 / 0.6167, and 'arming blade ⇄ shaft
+  arm' reads −0.0202 / −0.0201 at the sink.
+- Two §137 `crank` rows, seated and lifted, for the spring.
+- `INTRA_UNIT_CONTACTS` rows for the blade on the arm and in the hanger. The
+  rim crank's row no longer calls the push-only finger "the rod's end in the
+  crank rim's eye".
+
+**The audit rule (inspect.js `auditOscillators`, gated in `restoring`).**
+- **What a row must name.** Every two-way row names two drivers, one per
+  direction. Each is `input:…`, `spring:<mesh>`, or `<unit>/<member>`, and
+  each must resolve to an input or a spring.
+- **What fails.** A row with a missing driver, an unresolved driver, or a
+  path that returns to the row through two-way rows only FAILS. Driver
+  waivers go stale when the row resolves.
+- **The control.** The shipped loop is rebuilt and must fail; the same loop
+  closed by a spring must pass.
+- **What it surfaced.** Of the 14 two-way rows, only the link's `'*'` and
+  the ring's formed the loop, and both are replaced. The link now has
+  per-member rows:
+  - the shaft frame and the rod: springs through the rim crank;
+  - the blade: its own spring;
+  - the beak lever: two-way, from the column and the rod;
+  - the ring: two-way, from the column and the spring.
+
+  The other twelve were given drivers read off their own `why`, and all of
+  them resolve. `RESTORING_DRIVER_WAIVERS` is therefore empty and no unit
+  needed a waiver.
+
+**Record.** The §229 and §192 comments that said the beak "falls until the
+seat catches it" are corrected where they stand. The explainer's arming
+caption states the old gap (modelled, not simulated, in the arming direction)
+and the new force path; its stale translations were removed, so that block
+renders in English until it is re-translated. §252's glossary is a roadmap
+item and has not shipped here, so its `Beak arm` row is owed in the private
+repository.
 
 ## 207. The balance sustains 76–327°: a lever watch runs 200° and up in every position
 
@@ -29571,3 +29692,39 @@ or price the moment the offset puts on the click against the blade. Re-solve
 outline. The face relief (TODO 218, `CLEAR_MARGIN` at the face's far end when
 the face reaches the apex) must be re-solved on the land's outer edge, not the
 old point.
+
+## 222. Alarm follower B's lift is posed from the selector's state: the rocker finger stands 0.91 off its arm and its spring rides the arm it would press
+
+Found closing [TODO 206], while looking for any spring that loads the selector
+ring from the disc side. §34's groove redesign says the rocker on the tube's
+flange "rises to the pin-arm's TAIL and presses it PLATE-ward when the ring is
+up", which lifts follower B's pin clear of the face cam (disarmed), and that
+"ring down (armed): the finger backs off and the pin's own spring seats it".
+Measured over the alarmPress axis's column → gap transition (f 0.20–0.40,
+`selT` 0 → 1), `alarmSelFingerB` stands **0.9103–0.9109** off every mesh of
+`alarmPinArmB` at every pose. The finger touches nothing. The arm's angle is
+the tick's `liftB = max(hB, ALARM_PINB_LIFT·(1 − alarmSelShownT))`: a lift
+assigned from the selector's readout, not delivered by the finger. The
+"pin's own spring" is `alarmPinSpringB`, a ring mesh added to `alarmPinArmB`
+itself. It moves with the load it would press, so it does no work: §48/TODO
+13's grounding defect, again.
+
+So follower B's coupling to the hour train is posed both ways. Disarmed, the
+lift holds the pin off the cam with no contact. Armed, the seat on the cam's
+notch has no force behind it. Nothing gates this, for three reasons:
+- the `restoring` member tier reports the unit's two frames (`alarmPinB` and
+  the selector rocker) as UNDECLARED;
+- 'Alarm disc' is outside `RESTORING_MEMBER_SCOPE`;
+- no `alarmHandoffs` row names the finger or the pin arm.
+
+**Fix path.**
+1. Re-site the rocker's finger on the pin arm's tail at the disarmed
+   parity, so the ring's travel lifts the pin through a contact. Solve the
+   lift from that contact (TODO 19's rocker solve is the template).
+2. Replace `alarmPinSpringB` with a spring grounded on the tube (a stud on
+   the flange) that bears on the arm, sized in TODO 16's format against the
+   face cam's notch.
+3. Add `alarmHandoffs` rows for the finger on the tail (disarmed contact,
+   armed free) and the pin on the cam (armed contact).
+4. Declare both frames in §48, the arm as a `spring` naming the new mesh.
+

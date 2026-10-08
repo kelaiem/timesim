@@ -227,7 +227,7 @@ export const MECH_GRAPH = {
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
     ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
     ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top
-    ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes
+    ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes (TODO 206: hanger 3 is also the arming spring's stud)
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
     ['Alarm click', 'plate'],  // §99/§112: the click's shoulder screw and the spring's post stand on the BASE plate (the idler-stud convention, one plate down)
@@ -3451,7 +3451,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkHangerBush2', b: 'alarmLinkHanger2', why: '§121: the second corner, same construction' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
   { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail on the rod\'s top — TODO 174 cut that top FROM the tail\'s underside through the tick\'s own lift, so the pair kisses at every tilt (0.0008 at rest, 0 at the seat)' },
-  { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rod\'s end in the crank rim\'s eye — the crank joint the arming run turns' },
+  { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rim finger\'s tip under the rod\'s flat foot — a push-only contact, not an eye (TODO 206 corrected the wording: the finger only lifts the rod, and the arming spring is what keeps it pressed there)' },
+  { unit: 'Alarm link', a: 'alarmLinkArmingSpring', b: 'alarmLinkArmingArm', why: 'TODO 206: the arming blade\'s face on the arm\'s tip corner, sunk ALARM_SEAT_SINK — the spring\'s working contact, held by alarmHandoffs at every parity' },
+  { unit: 'Alarm link', a: 'alarmLinkArmingSpring', b: 'alarmLinkHanger3', why: 'TODO 206: the arming blade let into a slot across hanger 3 to its axis — the blade\'s root, hanger 3 being its stud' },
   // Alarm disc — the §34/§48 follower assemblies on the flange. TODO 194
   // re-read the three Type#index rows against the metal they resolve to: the
   // whys named a "follower bar", a "nose bar" and a "follower-spring stud
@@ -6028,6 +6030,32 @@ const ALARM_HANDOFFS = [
     unitA: 'Alarm switch', meshA: 'alarmColCastellations',   // TODO 87 step 4
     unitB: 'Alarm link', meshB: 'alarmLinkBeak',
     expect: { disarmed: 'contact', armed: 'free' },
+    // TODO 206: "armed it hangs at the seat over the gap" — it hung there on
+    // the tick's Math.min and nothing else. Armed, the nose is now PRESSED
+    // into the gap by the arming spring and seats on the gap floor (the row
+    // below); it is still free of the castellations' columns, which is what
+    // this row holds.
+  },
+  {
+    // TODO 206 — THE SEAT, as a contact. The arming spring on the lay shaft
+    // drives the run toward armed through its push-only joints, and what stops
+    // it is the nose's lowest corner on the gap floor — the column base's top,
+    // colH under the column tops. The lever's ratio is SOLVED from that
+    // contact (main.js, "THE SEAT DROP IS THE GAP FLOOR"), so armed it touches
+    // and every disarmed parity stands a whole tier (colH) clear.
+    label: 'gap floor ⇄ beak nose (the arming spring seats it)',
+    unitA: 'Alarm switch', meshA: 'alarmColBase',
+    unitB: 'Alarm link', meshB: 'alarmLinkBeak',
+    expect: { disarmed: 'free', armed: 'contact', setting: 'free', dropped: 'free' },
+  },
+  {
+    // TODO 206 — the spring's own end: the blade, let into hanger 3, bears on
+    // the arm keyed to the lay shaft at every parity (preloaded past the seat),
+    // so the run's return is delivered through a closed joint rather than
+    // posed beside one — the maintaining detent's blade row, here.
+    label: 'arming blade ⇄ shaft arm (the spring turns the shaft toward armed)',
+    unitA: 'Alarm link', meshA: 'alarmLinkArmingSpring',
+    unitB: 'Alarm link', meshB: 'alarmLinkArmingArm',
   },
   {
     // TODO 20 closed this row: the rod's top is BUILT to the tail's
@@ -13382,6 +13410,12 @@ export const RESTORING_MEMBER_WAIVERS = {
   // answered is itself a failure, so this table cannot quietly outlive what it
   // excused.
 };
+// TODO 206 — accepted debt for a two-way row whose drivers do not resolve,
+// keyed `unit\u0000member`, each citing its TODO. EMPTY on arrival: when the
+// rule landed, the alarm link and the selector were the loop it exists to
+// catch (fixed in the same landing — the arming spring), and every other
+// two-way row named drivers that resolve to an input or a spring.
+export const RESTORING_DRIVER_WAIVERS = {};
 // How load-bearing a part is: how much of the movement is downstream of it in
 // MECH_GRAPH.drive, transitively. A missing return on the pallet fork would
 // mis-state the whole train below it; a missing return on a dial-side flag
@@ -13652,6 +13686,81 @@ export async function auditOscillators(clock, opts = {}) {
     (d.kind === 'two-way' ? twoWay : restored).push(row);
   }
 
+  // ——— TODO 206: A TWO-WAY ROW MUST NAME WHAT DRIVES IT, BOTH WAYS ———
+  //
+  // `two-way` was accepted on the declaration alone, and the alarm link is
+  // what that cost: its row said the chain was "pushed and pulled" (true of
+  // the pin in the groove), the selector's row said the ring was driven both
+  // ways by that pin, and each was the other's second direction. Nothing in
+  // the run pushed toward ARMED — the rod's two ends only push, the ring has
+  // no stop — so the nose's descent into a gap was the tick's pose law, and
+  // this audit passed it for as long as the run existed.
+  //
+  // So a two-way row names its two DRIVERS (main.js declareRestoring), and
+  // each must RESOLVE: to an input ('input:…'), to a spring mesh in the scene
+  // ('spring:<mesh>'), or to another declaration ('<unit>/<member>') that is a
+  // spring whose mesh exists, or is itself a two-way row whose own drivers
+  // resolve. A driver that names nothing, or that leads back to the row it
+  // started from through two-way rows only, FAILS — a circle of two-way joints
+  // with one input is a one-way mechanism. Waivers cite a TODO and go stale
+  // when the row resolves, every waiver table's covenant here.
+  const declByKey = new Map([...declared.values()].map((d) => [`${d.unit}\u0000${d.member}`, d]));
+  const resolveDriver = (drv, path) => {
+    if (typeof drv !== 'string' || !drv) return { ok: false, why: 'no driver named' };
+    if (drv.startsWith('input:')) return { ok: true, via: drv };
+    if (drv.startsWith('spring:')) {
+      const m = drv.slice('spring:'.length);
+      return scene && !scene.getObjectByName(m) ? { ok: false, why: `spring mesh '${m}' is not in the scene` } : { ok: true, via: drv };
+    }
+    const cut = drv.indexOf('/');
+    if (cut < 0) return { ok: false, why: `'${drv}' is not input:…, spring:… or unit/member` };
+    const key = `${drv.slice(0, cut)}\u0000${drv.slice(cut + 1)}`;
+    const d = declByKey.get(key);
+    if (!d) return { ok: false, why: `'${drv}' names no declaration` };
+    if (path.includes(key)) return { ok: false, why: `'${drv}' leads back round the loop ${[...path, key].map((k) => k.replace('\u0000', '/')).join(' → ')}` };
+    if (d.kind === 'spring' || d.kind === 'gravity') {
+      if (d.kind === 'spring' && (!d.mesh || (scene && !scene.getObjectByName(d.mesh))))
+        return { ok: false, why: `'${drv}' is a spring row whose mesh is not in the scene` };
+      return { ok: true, via: `${drv} (${d.kind}${d.mesh ? ' ' + d.mesh : ''})` };
+    }
+    if (d.kind !== 'two-way') return { ok: false, why: `'${drv}' has kind '${d.kind}'` };
+    const subs = (d.drivers || [null, null]).map((x) => resolveDriver(x, [...path, key]));
+    const bad = subs.find((r) => !r.ok);
+    return bad ? { ok: false, why: `'${drv}' is two-way, and ${bad.why}` } : { ok: true, via: `${drv} → [${subs.map((r) => r.via).join(' | ')}]` };
+  };
+  const driverRows = [];
+  for (const d of declared.values()) {
+    if (d.kind !== 'two-way') continue;
+    const key = `${d.unit}\u0000${d.member}`;
+    const drivers = Array.isArray(d.drivers) ? d.drivers : [];
+    const res = [0, 1].map((i) => resolveDriver(drivers[i], [key]));
+    const ok = drivers.length === 2 && res.every((r) => r.ok);
+    driverRows.push({ unit: d.unit, member: d.member, drivers, resolved: res.map((r) => r.ok ? r.via : `UNRESOLVED: ${r.why}`),
+      ok, key, waiver: RESTORING_DRIVER_WAIVERS[key] });
+  }
+  // The control, asserted rather than hoped for: the shipped loop, rebuilt —
+  // two two-way rows each naming the other as the second direction, the first
+  // with a real input as its first — must FAIL, and the same row with the
+  // second direction named as a spring must PASS. (The first draft of the
+  // resolver accepted a row when EITHER driver resolved, which is exactly the
+  // old link row: the column is a real input, and it passed.)
+  const driverControl = (() => {
+    const A = '__ctrl206 link\u0000*', B = '__ctrl206 ring\u0000*';
+    declByKey.set(A, { unit: '__ctrl206 link', member: '*', kind: 'two-way', drivers: ['input:a column', '__ctrl206 ring/*'] });
+    declByKey.set(B, { unit: '__ctrl206 ring', member: '*', kind: 'two-way', drivers: ['__ctrl206 link/*', '__ctrl206 link/*'] });
+    const loop = [0, 1].map((i) => resolveDriver(declByKey.get(A).drivers[i], [A]));
+    declByKey.get(B).drivers = ['input:a column', 'spring:' + (scene ? (scene.getObjectByName('hairspringCoil') ? 'hairspringCoil' : '') : 'hairspringCoil')];
+    const fixed = [0, 1].map((i) => resolveDriver(declByKey.get(A).drivers[i], [A]));
+    declByKey.delete(A); declByKey.delete(B);
+    return loop.some((r) => !r.ok) && fixed.every((r) => r.ok)
+      ? 'PASS — the rebuilt link/ring loop fails, and the same loop closed by a spring passes'
+      : `BROKEN — loop ${loop.map((r) => r.ok).join('/')}, closed ${fixed.map((r) => r.ok).join('/')}`;
+  })();
+  const twoWayUnresolved = driverRows.filter((r) => !r.ok && !r.waiver);
+  const twoWayDriverWaived = driverRows.filter((r) => !r.ok && r.waiver);
+  const twoWayDriverStaleWaivers = Object.keys(RESTORING_DRIVER_WAIVERS)
+    .filter((k) => !driverRows.some((r) => r.key === k && !r.ok));
+
   // A declaration for a part that does NOT reverse is not a pass — it is a
   // stale claim, and it is exactly how this report would rot: the part gets
   // re-posed, stops reciprocating, and the declaration outlives the reason
@@ -13816,6 +13925,13 @@ export async function auditOscillators(clock, opts = {}) {
     springUnreached: [...reach.rows.filter((r) => !r.reached && !r.waiver), ...reach.unresolved,
       ...reach.staleWaivers.map((k) => ({ staleReachWaiver: k }))],
     springReachWaived: reach.rows.filter((r) => !r.reached && r.waiver),
+    // TODO 206 — every two-way row's two drivers, resolved. `twoWayUnresolved`
+    // and stale driver waivers GATE.
+    twoWayDrivers: driverRows,
+    twoWayDriverControl: driverControl,
+    twoWayUnresolved,
+    twoWayDriverWaived,
+    twoWayDriverStaleWaivers,
   };
 }
 
