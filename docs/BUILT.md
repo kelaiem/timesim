@@ -31883,6 +31883,14 @@ relative to the driver whichever tooth it is. The comparison therefore proves
 the frame-end pose and the state the ticks carry, not the pawl's path between
 ticks, which a deferred frame does not draw.
 
+The harness agrees, on the same footing as §255's: `node tools/ci-battery.mjs
+--shards 3 --no-incremental --only alarmHandoffs,restoring,transmits,transfers,equalisation,meshPhase`
+is 18/18 gates on this tree and on main, with the same fingerprint (623497375),
+and all 32 check payloads in the two `--report` files are byte-identical. A
+normal tick never sets the flag, so the gates are expected not to move; they are
+run because the claim is "unmoved", not "unlikely to have moved". The full
+battery is CI's.
+
 **Left, measured.** After this a fast-forward frame is about 12 ms: `ringSd`
 3.3 ms (the detent's one drawn solve), `betaAt` 1.6, `clearAt` 1.2,
 `yokeProngVerts` 1.0. Each is now a single-digit-percent item; none is the same
