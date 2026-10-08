@@ -31202,7 +31202,15 @@ zh-Hant, as §236 decided.
 - **The explainer's English says "three acts" and lists four.** TODO 190
   added the fourth act to the alarm-arming ledger, and the sentence before it
   was not updated. That is a fix to the English, and it re-keys the block in
-  all nineteen tables, so it is left for its own change.
+  all nineteen tables, so it is left for its own change. **Closed the next
+  day:** the English reads "four acts", and each table's existing
+  translation was re-keyed with only its number word changed, against the
+  same table's own "third act" and "fourth act" further down the block —
+  *vier Akten*, *quatre actes*, *pedair act* (Welsh *act* is feminine),
+  *בארבע מערכות* (and so is Hebrew's), 四幕. Nothing else in the block was
+  retranslated, so no translation was lost and none was invented.
+  `explain-i18n --check` still reads 762/762 (747 in ja, ko, zh, zh-Hant)
+  with 0 unmatched keys.
 - **zh-Hant writes "winding" two ways**, 上鍊 and 上鏈, in its existing table.
   The new strings follow the nearest neighbour of each. Unifying them is a
   review of that table.
