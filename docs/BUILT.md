@@ -31929,3 +31929,25 @@ None needed the §255 deferral (no flag, nothing skipped): each is a pure functi
 The harness agrees: `node tools/ci-battery.mjs --shards 3 --no-incremental --only alarmHandoffs,restoring,transmits,transfers,equalisation,meshPhase,maintDetentHandoff` is 19/19 gates on this tree and on main, the same fingerprint (623497375), and all 32 check payloads in the two `--report` files are byte-identical. The full battery is CI's.
 
 **Left, measured.** The frame is about 10 ms: `ringSd` 2.7 ms (the drawn solve), `updateMatrixWorld` 0.9, the chain rebuild 1.4, and the renderer. None is a repeated pure solve any more.
+
+## §258 — Fast-forward is a rate: a frame runs the ticks its wall time is owed
+
+§255–§257 took a fast-forward frame's JavaScript from 333 ms to about 10 ms, measured with `advanceFrame` called in a loop. That is the right number for "how much does the sim cost", and it is not the number the claim is about. The claim is "≈5400× — the whole reserve in ~20 s", a rate in wall time, so it was measured as one: the page's real `requestAnimationFrame` loop, fast-forward on from a full reserve, wall clock until the reserve reads flat (same headless Chromium over SwiftShader):
+
+| tree | wall to drain | frames drawn | gap between frames |
+|---|---|---|---|
+| main before this change | 176.1 s | 1,200 | 150 ms median |
+| this change | 20.3 s | 122 | 167 ms median |
+
+The 150 ms is not JavaScript. A CPU profile of the live loop over 20 s has the main thread in `(program)` — idle or native, waiting on the draw — for 96.4% of the time, and `frame()` for 6.5%. It is not the pixel count either: a 320×200 viewport draws at the same 6.3 fps as 1280×800 (190 s against 176 s), which puts it in the per-frame vertex work of a ~460,000-triangle scene on a software rasteriser. On hardware with a GPU that cost is small and a frame is vsync-bound, so 45 ticks a frame is 20 s there; where the draw is slow (software GL, a busy integrated GPU, a high-density display) the same 45 ticks took as long as the frames did.
+
+**The change.** `advanceFrame(realDt, wallDt)` takes the frame's wall time as a second argument, and a fast-forward frame runs `round(wallDt · FF_SIM_RATE / 2)` ticks, never fewer than the 45 it always ran. `FF_SIM_RATE = 45 · 2 s · 60` is derived from the floor, so a 60 Hz frame is exactly 45 ticks and nothing at the old operating point moves; `wallDt` is capped at `FRAME_STALL_MS` (tick()'s own 0.25 s clamp, 675 ticks), so a tab that was away resumes as one slow frame and not an unbounded burst. `frame()` passes the raw frame time. A caller that passes one argument, as every harness frame does (`advanceFrame(1/60)`), gets `wallDt = realDt` and the same 45 ticks.
+
+The floor is kept deliberately: at 144 Hz a pure rate would be 19 ticks a frame, slower than today's 45, and being faster than 5400× on a fast display is the old behaviour, not a bug to fix here. The cost of the rule is a longer main-thread block on a slow-drawing machine (here ~400 ticks, ~90 ms of JavaScript, in a 167 ms frame), bounded at 675 ticks by the clamp.
+
+**Held.**
+- *The 60 Hz point does not move.* The 423-frame whole-scene comparison of §257 (every object's local matrix hashed after each frame of one scenario; sequential runs, since concurrent boots add noise) is `b2d4edbd7dbf60fe` from this tree and from main, three runs of main. The focused harness (`--only alarmHandoffs,restoring,transmits,transfers,equalisation,meshPhase,maintDetentHandoff`) is 19/19 on both with the same fingerprint (2990624975) and all 32 report payloads byte-identical.
+- *Grouping does not change the state.* 900 ticks run as 20 frames of 45 and as 2 frames of 450 give the identical scene hash (3991453489) and τ (1800 s), equal to main's 20×45. The ticks are the same ticks; only how many a frame draws between differs, and the deferred poses (§255, §256) are posed on the last tick of whichever frame it is.
+- *Overshoot is bounded.* The flat-reserve check is per frame, so a large frame can run up to 674 ticks past empty; the balance has stopped by then and the sim is advancing a stopped watch, as the 45-tick frame already did for up to 44.
+
+Not measured here, and worth saying: the machine this was found on has no GPU. On one that does, the live loop was already vsync-bound and this changes nothing; the gain is for whoever is not.
