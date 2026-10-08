@@ -31903,3 +31903,29 @@ battery is CI's.
 3.3 ms (the detent's one drawn solve), `betaAt` 1.6, `clearAt` 1.2,
 `yokeProngVerts` 1.0. Each is now a single-digit-percent item; none is the same
 shape as the two deferred here.
+
+## §257 — Fast-forward: the tick's remaining pure solves are remembered, and the detent ride asks a yes/no question
+
+§256 left a fast-forward frame at about 12 ms and said the rest was not the shape of the two deferrals. Profiled by inclusive time over 100 fast-forward frames (same headless Chromium over SwiftShader, balance running) the tick was 11 ms, and four things in it were being recomputed 45 times a frame from arguments that do not change in a plain fast-forward:
+
+| solve | per frame | why it repeats |
+|---|---|---|
+| `alarmJumperAngle` → `betaAt` | 2.0 ms | 44 bisections from the column wheel's angle; the alarm is idle, so the angle is the same double every tick |
+| the alarm click's ride (`clearAt` in `tick`) | 1.7 ms | up to 44 passes from the arbor ratchet's angle, likewise still |
+| `yokeClutchAt` | 1.3 ms | a pure function of the crown pull and the saw lift; neither moves |
+| `solveEnv` ('rim tick') | 0.6 ms | a 320-step scan from the rod's foot and a seed, both functions of the same still wheel |
+
+None needed the §255 deferral (no flag, nothing skipped): each is a pure function of its arguments and of constants fixed at build, so each is **remembered on its exact arguments** — one entry, compared with `Object.is`, so a `NaN` or a signed zero is never taken for a hit. The answer returned on a hit is the answer the solve returned for those same bits, so there is nothing to compare statistically. Two details: `yokeClutchAt`'s object is only ever read for `.c` and `.a`; and `solveEnv` keeps only a FOUND crossing, so the "no envelope crossing" registration warning still fires every time it would have. This also helps at 1×, where the alarm is idle on almost every frame.
+
+**The detent ride asks a yes/no question.** What is left of `ringSd` (3.7 ms) is the one solve that is drawn, and it is genuinely new each frame (the ring has turned), so it cannot be remembered. But the solve never uses the gap's value: `liftSolve` tests only `clearAt(net, t) − SEAT_RELIEF >= 0`, and for doubles `m − r >= 0` is `m >= r`, so "every sample and every vertex is at least `r`" is the same answer as "the minimum is at least `r`" and can stop at the first term that is not (`clearsAt`, the terms and their order `clearAt`'s own; a `NaN` term fails, as it poisons the minimum). The first test at `t = 0` keeps its `−1e-9` slack through the whole `clearAt`, where the subtraction's rounding is part of the test. `clearAt` itself is untouched for the instruments that read the gap.
+
+| | median frame (100 fast-forward frames, concurrent runs) |
+|---|---|
+| main before this change (§256) | 15.6 ms |
+| this change | 9.8 ms |
+
+**Held two ways.** (1) `liftAt` over the same 12,002 ring angles as §255 (a dense walk over three tooth pitches, random angles over six turns, `NaN` and `Infinity`) is the identical hash from this tree and from main (`dd607f1da5df11109a31`), the solve 33% faster. (2) A whole-scene comparison: every object's local matrix hashed after each of 423 frames of one scenario — a wind sweep by `setPose`, a crown-pull sweep, three alarm presses in normal time, three in fast-forward, 60 more fast-forward frames, then a crown pull and push in fast-forward — gives `486158208ae19ce6` from this tree and from main, three runs of main and two of this tree. The scene needed filtering to be comparable at all (particle `Points` and one unnamed top-level group come and go with boot timing, and the date had to be fixed), which is why the comparison is on the scene's matrices and not on a screenshot.
+
+The harness agrees: `node tools/ci-battery.mjs --shards 3 --no-incremental --only alarmHandoffs,restoring,transmits,transfers,equalisation,meshPhase,maintDetentHandoff` is 19/19 gates on this tree and on main, the same fingerprint (623497375), and all 32 check payloads in the two `--report` files are byte-identical. The full battery is CI's.
+
+**Left, measured.** The frame is about 10 ms: `ringSd` 2.7 ms (the drawn solve), `updateMatrixWorld` 0.9, the chain rebuild 1.4, and the renderer. None is a repeated pure solve any more.
