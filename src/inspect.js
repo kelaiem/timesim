@@ -608,6 +608,8 @@ const EXPECTED_PAIRS = [
   ['Keyless works', 'Setting lever'],        // beak pin in the stem groove
   ['Keyless works', 'Yoke'],                 // the fork's body still crosses the stem's band
                                              // (the prong⇄collar ride moved to the clutch pair)
+                                             // TODO 223: both pairs carry floors rows now, their
+                                             // burials waived by name until the re-lay
   ['Winding clutch', 'Keyless works'],       // TODO 50: the saw coupling, the stem square in the
                                              // rim's bore, and the pulled setting mesh
   ['Winding clutch', 'Yoke'],                // prongs riding the clutch's hub collars
@@ -2667,6 +2669,41 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['clutchHubCollarOut', 'yokeProng'],  // both faces are the working pair
     ],
   },
+  // TODO 223 — the keyless levers' two EXPECTED pairs, which carried TODO 6's
+  // blanket excuse until now. `Keyless works ⇄ Setting lever` is EXPECTED for
+  // the beak pin in the stem's groove and `Keyless works ⇄ Yoke` for "the
+  // fork's body crossing the stem's band" (the prong's ride moved to the
+  // clutch pair, the row above). Under the blankets the lever's BODY stood in
+  // the setting bevel's whole tooth band at every pose (vertex depth 0.62, its
+  // half-thickness), in the setting wheel and its arbor with the crown pulled,
+  // and across the stem; and the yoke's body and boss stood in the minute
+  // wheel at every pose (0.49). Each burial is waived BY NAME in its own
+  // `only:` row (TODO 177's rule): that row measures nothing else and drops
+  // its pair from the main row, so the main row holds everything else the two
+  // units own to the margin from now on, and each waiver goes STALE — and
+  // fails — the moment its own pair clears. The fix is TODO 223's re-lay.
+  {
+    a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN,
+    contacts: [
+      // The pin in the groove — the PULL's contact and the reason the pair is
+      // EXPECTED. TODO 223 records that it is not a working contact today: the
+      // groove is two collars proud of an uncut stem, the pin stands 0.33 off
+      // both collars and reaches 0.80 inside the stem's turned surface, and
+      // the lever's angle is a law of crownPullT. Excused as the pair's
+      // declared joint, not as a measured fit.
+      ['windStem', 'settingLeverBeakPin'],
+    ],
+  },
+  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['settingBevel', 'settingLeverBody']], waived: 'TODO 223' },   // 0 at every pose: the bevel's tooth band lies inside the body's slab
+  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['settingWheel', 'settingLeverBody']], waived: 'TODO 223' },   // both meshes of the spur: its hub ring 0 from crown f≈0.31 out (0.16 deep), its toothed body 0.0378 at every pose
+  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['settingArbor', 'settingLeverBody']], waived: 'TODO 223' },   // 0 at crown f 0.42–0.92 (0.31 deep)
+  { a: 'Keyless works', b: 'Setting lever', min: CLEAR_MARGIN, contacts: [], only: [['windStem', 'settingLeverBody']], waived: 'TODO 223' },       // 0 at every pose, 0.042 deep — the BODY, not the beak pin: Z_SETTING_LEVER clears a 0.75 collar, and the stem is 0.924 stock
+  {
+    a: 'Keyless works', b: 'Yoke', min: CLEAR_MARGIN,
+    contacts: [],   // the pair has no working contact: the prong's ride is the clutch pair's row
+  },
+  { a: 'Keyless works', b: 'Yoke', min: CLEAR_MARGIN, contacts: [], only: [['minuteWheel', 'yokeBody']], waived: 'TODO 223' },   // the wheel's toothed body: 0 at every pose (0.25 deep)
+  { a: 'Keyless works', b: 'Yoke', min: CLEAR_MARGIN, contacts: [], only: [['minuteWheel', 'yokeBoss']], waived: 'TODO 223' },   // the same body: 0 at every pose (0.49 deep)
   // §198 — the strike side's first two floors rows. Before the lifting lever
   // the cam⇄hammer pair carried TODO 6's blanket excuse; each of these names
   // the ONE working contact and holds everything else between the two units

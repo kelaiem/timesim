@@ -3147,7 +3147,9 @@ export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH 
     curveSegments: 6,
   });
   geo.translate(0, 0, -thickness / 2);
-  g.add(new THREE.Mesh(geo, MATS.steel));
+  const body = new THREE.Mesh(geo, MATS.steel);
+  body.name = 'settingLeverBody';   // TODO 223: the keyless floors row waives this body's burials BY NAME
+  g.add(body);
 
   // Pivot boss + blued screw.
   const bossGeo = new THREE.CylinderGeometry(hw * 1.5, hw * 1.5, thickness * 1.6, 16);
@@ -3163,6 +3165,7 @@ export function makeSettingLever({ beakLen, tailLen, width, thickness, beakPinH 
   const pinGeo = new THREE.CylinderGeometry(0.35, 0.35, beakPinH, 10);
   pinGeo.rotateX(Math.PI / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.steel);
+  pin.name = 'settingLeverBeakPin';   // TODO 223: the keyless floors row's one declared contact (the pin in the stem's groove)
   pin.position.set(0, beakLen, thickness / 2 + beakPinH / 2);
   g.add(pin);
 
@@ -3206,11 +3209,15 @@ export function makeYoke({ armLen, width, thickness, prongGap = 3.2, prongH = 2.
     curveSegments: 4,
   });
   geo.translate(0, 0, -thickness / 2);
-  g.add(new THREE.Mesh(geo, MATS.steel));
+  const body = new THREE.Mesh(geo, MATS.steel);
+  body.name = 'yokeBody';   // TODO 223: the keyless floors row waives the body's and boss's burials BY NAME
+  g.add(body);
 
   const bossGeo = new THREE.CylinderGeometry(hw * 1.3, hw * 1.3, thickness * 1.5, 14);
   bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
+  const boss = new THREE.Mesh(bossGeo, MATS.steel);
+  boss.name = 'yokeBoss';
+  g.add(boss);
 
   const prongGeo = new THREE.CylinderGeometry(prongR, prongR, prongH, prongSegments);   // TODO 211: the polygon layout.js solves the fork's bearing against
   prongGeo.rotateX(Math.PI / 2);
