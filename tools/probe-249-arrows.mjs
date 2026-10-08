@@ -17,19 +17,30 @@
 // on-screen x. A → is right when before < arrow < after; a ← when before >
 // arrow > after. Anything else is BACKWARDS. Arrows with nothing on one side
 // (a header link, a continuation line, a physical direction in a figure:
-// "EMPTY →") are EDGE, and arrows whose neighbours sit on another line are
-// WRAP — both reported, never judged, because neither has a flow to point
-// along.
+// "EMPTY →") are EDGE — reported, never judged, because there is no flow to
+// point along.
+//
+// An arrow whose neighbour sits on another LINE is a different case, and it
+// used to be reported beside EDGE as WRAP. It does have a flow; the wrap only
+// hides it from the geometry, and it hid real reversals: §253's gong arrow
+// «(32.9 → 39.3 mg)» wraps in Persian at every width, so the Hebrew fix of
+// the same sentence never reached it, and five of Arabic's backwards arrows
+// were WRAP too (§249's review). So a WRAP arrow is judged again with line
+// wrapping switched off — the same paragraph, the same bidi resolution, every
+// arrow on one line — and only an arrow that still cannot be judged there is
+// reported as WRAP.
 //
 // Two controls, both required before any locale is judged: English must
 // measure at least one arrow and none BACKWARDS, and one of its measured
 // arrows, flipped in place, must then read BACKWARDS — a probe that cannot
 // see a reversal passes every table.
 //
-// OWED names a locale whose reversals are known and filed (Arabic's, recorded
-// under §249's Persian entry and owed to an Arabic landing). Its rows are
+// OWED names a locale whose reversals are known and filed. Its rows are
 // reported, not failed — and a locale in OWED that measures CLEAN fails as
-// stale, so the fix retires the row rather than memory.
+// stale, so the fix retires the row rather than memory. It is EMPTY now:
+// Arabic's 39 (recorded under §249's Persian entry) plus five more the WRAP
+// pass found were flipped in §249's review follow-up, which is when this rule
+// retired Arabic's row.
 //
 //   node tools/probe-249-arrows.mjs [--locales he,fa,ar]
 //
@@ -48,7 +59,7 @@ const argOf = (flag, dflt) => {
   return i >= 0 ? process.argv[i + 1] : dflt;
 };
 const LOCALES = argOf('--locales', 'he,fa,ar').split(',');
-const OWED = new Set(['ar']);
+const OWED = new Set();
 const PAGES = ['explain.html', 'primer.html'];
 
 const freePort = () => new Promise((res, rej) => {
@@ -106,6 +117,7 @@ const measure = (flip) => {
     for (const m of nodes[ni].data.matchAll(ARW)) {
       const r = judge(ni, m.index);
       if (!r) continue;
+      r.key = `${ni}:${m.index}`;
       if (flip && r.v === 'ok') {
         const n = nodes[ni], swap = { '→': '←', '←': '→', '⇒': '⇐', '⇐': '⇒' }[r.g];
         n.data = n.data.slice(0, m.index) + swap + n.data.slice(m.index + 1);
@@ -117,10 +129,18 @@ const measure = (flip) => {
   return out;
 };
 
+const NOWRAP = 'p,li,figcaption,dd,dt,td,th,div,label,summary{white-space:nowrap !important}';
 const run = async (lang, p, flip = false) => {
   await page.goto(`${base}/${p}?lang=${lang}`, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
-  return page.evaluate(measure, flip);
+  const rows = await page.evaluate(measure, flip);
+  if (flip || !rows.some((r) => r.v === 'WRAP')) return rows;
+  // The WRAP pass: the DOM is untouched, so a node index and offset name the
+  // same arrow in both measurements.
+  await page.addStyleTag({ content: NOWRAP });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r())));
+  const again = new Map((await page.evaluate(measure, false)).map((r) => [r.key, r]));
+  return rows.map((r) => (r.v === 'WRAP' && again.get(r.key) ? again.get(r.key) : r));
 };
 
 let failed = 0;
