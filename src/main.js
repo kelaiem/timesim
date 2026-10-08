@@ -11116,7 +11116,18 @@ let MAINT_DET_HOLD_GEOM = null;
 // What a deferred pose never covers is anything a LATER tick reads: state
 // (alarmPusherT, alarmColShownA, the wheel's carry) is written every tick as
 // before, and so is the driver's own angle.
-const FF_TICKS_PER_FRAME = 45;
+const FF_TICKS_PER_FRAME = 45;            // the ticks a 60 Hz frame runs: the FLOOR, and what a harness frame (advanceFrame(1/60)) gets
+const FF_TICK_S = 2;                      // one fast-forward tick's span of simulated time
+// §258 — fast-forward is advertised as a RATE (≈5400×, the whole reserve in about
+// 20 s), and the rate is 45 ticks · 2 s · 60 frames: per SECOND of wall time, not
+// per frame. Run 45 ticks whatever the frame took and a machine that draws at 7 fps
+// (software GL, a busy iGPU) took 176 s to drain a reserve that a 60 fps one drains
+// in 20 — measured, with the page's main thread idle 94% of the time waiting on the
+// draw. So a frame runs the ticks its own wall time is owed. The rate is DERIVED
+// from the floor so a 60 Hz frame is exactly 45 ticks and nothing moves there.
+const FF_SIM_RATE = FF_TICKS_PER_FRAME * FF_TICK_S * 60;
+// …and a frame is owed at most FRAME_STALL_MS of it (= tick()'s own 0.25 s clamp,
+// 675 ticks): a tab that was away resumes as one slow frame, not an unbounded burst.
 let _forkPull = NaN, _forkLift = NaN, _forkAt = null;   // §257 — tick()'s remembered yokeClutchAt
 let ffPoseDeferred = false;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
@@ -50236,17 +50247,19 @@ refreshUnitOptions(); // …and rebuild the selector now that it is (the boot ca
 // frame() so the verification hook (__clock.advanceFrame) can run the guided
 // demo/tour deterministically: rAF is fully paused in a backgrounded
 // automation pane, so scripted behaviour cannot be observed through frame().
-function advanceFrame(realDt) {
+function advanceFrame(realDt, wallDt = realDt) {
   ticksThisFrame = 0; // §14 readout: how many tick() calls this frame costs
   if (!paused) {
     if (fastForward) {
-      // ~5400×: 45 coarse 2 s ticks per frame — the whole 30 h reserve pays
-      // off in about 20 s of wall time, chain and reserve hand visibly moving.
+      // ~5400×: coarse 2 s ticks, FF_SIM_RATE of them per second of WALL time —
+      // 45 a frame at 60 Hz — so the whole 30 h reserve pays off in about 20 s,
+      // chain and reserve hand visibly moving, however long the frames take (§258).
       // Only the frame's last tick poses what is drawn (see ffPoseDeferred).
+      const ffTicks = Math.max(FF_TICKS_PER_FRAME, Math.round((Math.min(wallDt, FRAME_STALL_MS / 1000) * FF_SIM_RATE) / FF_TICK_S));
       try {
-        for (let i = 0; i < FF_TICKS_PER_FRAME; i++) {
-          simTime += 2;
-          ffPoseDeferred = i < FF_TICKS_PER_FRAME - 1;
+        for (let i = 0; i < ffTicks; i++) {
+          simTime += FF_TICK_S;
+          ffPoseDeferred = i < ffTicks - 1;
           tick(simTime);
           ticksThisFrame++;
         }
@@ -50388,7 +50401,7 @@ function frame(now) {
   autoTierUpdate(now); // §14: Auto quality steps down while frames sustained miss vsync
 
   if (sweepHold === 0) {
-    advanceFrame(realDt);                   // sweep hold: geometry frozen, page alive
+    advanceFrame(realDt, frameMs / 1000);   // sweep hold: geometry frozen, page alive; fast-forward is owed the frame's real wall time (§258)
     // §238 — INSIDE the render, not beside it: the screen is allowed to go
     // only once a frame has actually been drawn under it.
     if (bootScreen) retireBootScreen();
@@ -51044,7 +51057,7 @@ window.__clock = {
   // Deterministic per-frame advance for verification (rAF is paused when the
   // automation pane is backgrounded, so the guided demo/tour can't be watched
   // through the real loop). Runs script + sync + sim + camera + render.
-  advanceFrame(realDt) { advanceFrame(realDt); return simTime; },
+  advanceFrame(realDt, wallDt) { advanceFrame(realDt, wallDt); return simTime; },
   // Frame-time readout (§14) — the panel's own numbers, exposed so a perf
   // claim can be checked from automation instead of by eye.
   get frameMs() { return frameMsEma; },
