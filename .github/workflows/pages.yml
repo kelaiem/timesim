@@ -10,6 +10,7 @@
 # and one path that is not an environment at all:
 #
 #   timelapse    https://kelaiem.github.io/timesim/timelapse/
+#   review       https://kelaiem.github.io/timesim/review/
 #
 # §242's film of the release series — a fact about the SERIES, not about any
 # one release, which is why it is neither versioned with one nor carried in
@@ -17,6 +18,13 @@
 # `timelapse/` directory, the same place the stamper comes from, so what the
 # site shows is what main holds. Refreshing it is a capture and a build
 # (tools/timelapse-capture.mjs, tools/timelapse-build.mjs) committed to main.
+#
+# The review path is §249's native-review sheet, the second path that is not an
+# environment. Unlike the film it is BUILT here rather than committed built:
+# every row is read from the translation tables, so a committed copy would be
+# one more copy to fall behind them. It is built from the checkout's tables —
+# main's, the development tier's — because a reviewer's corrections land on
+# main; reviewing production's older wording would correct text already moved.
 #
 # That layout is only possible because §28 decided asset URLs stay RELATIVE and
 # carry ?v=<version> rather than being rebased onto an absolute release path —
@@ -200,6 +208,20 @@ jobs:
           # environment. See the header.
           echo "--- timelapse  <-  checkout"
           cp -R timelapse _site/timelapse
+          # §249's review sheet, from the checkout's tables (see the header). It
+          # must not hold the app's deploy hostage: the same builder GATES every
+          # PR that can break it (explain-i18n.yml), so a failure here means main
+          # moved without that gate, and the right answer is the three
+          # environments published WITHOUT /review/ and an annotation saying so
+          # — not no deploy at all. The verify step reads the marker.
+          echo "--- review  <-  checkout"
+          if node tools/l10n-review-packets.mjs --out _site/review --standalone \
+               --send-to "https://github.com/${GITHUB_REPOSITORY}/issues/new"; then
+            : > review.built
+          else
+            rm -rf _site/review
+            echo "::error::the translation review sheet did not build — publishing without /review/ (run: node tools/l10n-review-packets.mjs)"
+          fi
 
       # Each environment must answer for itself with the version it was built
       # with — a mixed-up artifact is otherwise invisible until a viewer reports
@@ -268,6 +290,18 @@ jobs:
           for d in _site/testing _site/development; do
             [ ! -e "$d/timelapse" ] || fail "$d/timelapse exists — the film leaked into an environment's payload"
           done
+
+          # §249's review sheet, when it built: a complete document (a page
+          # without its doctype renders in quirks mode), noindex, its hand-off
+          # named, and the data it fetches beside it.
+          if [ -f review.built ]; then
+            r=_site/review/index.html
+            head -1 "$r" | grep -qi '^<!doctype html>' || fail "$r has no doctype"
+            grep -q 'name="robots" content="noindex"' "$r" || fail "$r is missing its noindex"
+            grep -q 'name="review-send-to" content="https://github.com/' "$r" || fail "$r names nowhere to send a review"
+            [ -f _site/review/data/index.json ] || fail "_site/review/data/index.json is missing"
+            echo "ok  review  $(ls _site/review/data | wc -l) data files"
+          fi
 
           # No check here that the three versions DIFFER, deliberately: right
           # after a release is cut and promoted with nothing merged since, all
