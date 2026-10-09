@@ -521,13 +521,38 @@ queued or running `timesim-battery` jobs first.
   Linux, where it is the apt work the comment describes. On macOS it was
   measured to download a codec the harness never uses and then stall.
 
+## Splitting one battery across both slots (§259)
+
+A pull request carrying the `battery-matrix` label or `[matrix]` in its title
+runs as §127 tier 3's matrix: two legs, `--matrix 0/2` and `--matrix 1/2`, each
+on whatever runner takes it, and a GitHub-hosted `battery-collect` job (named
+`battery`) that assembles the two files and gates. Routed to this host, the two
+legs land in the two slots. The route job refuses the split when only one
+runner is online — two workers in one slot run in series — and says so in the
+summary.
+
+What to know before asking for it:
+
+- **Both slots, one PR.** A split run holds both slots for its length, so a
+  second PR opted in to the host waits for it. A split buys one PR's latency
+  with the host's throughput.
+- **Worker 0 is the floor.** It carries the anchors, the 36 spec boots
+  (~156 s on a slot) and a PR's point tier (up to 600 s) AFTER its shards, so
+  halving the shards does not halve the job. Spreading those is Landing C.
+- **The slots share ten cores.** Two overlapping jobs measured about +30%
+  slower each (above), and a split IS two overlapping jobs.
+- **K must agree across the two slots.** Each leg reads `BATTERY_SHARDS` from
+  its own slot's `.env`; the collector throws if the two files disagree on the
+  run's shape, so a mismatch fails loudly rather than mis-assembling.
+
+Measured wall, split against single, is recorded in BUILT §259 as runs land.
+It is a per-host number and is not to be carried to another host.
+
 ## Not built, and where it would go
 
-- **A second host, and a matrix across them.** Roadmap §127 tier 3 prices two
-  hosts at −41% of job wall with the sweeps sliced, and Landing A already made
-  the harness assemble across processes (`--matrix`, `--collect`). A
-  self-hosted host makes that fleet heterogeneous, which is one more reason
-  the shard count lives on the host. Landing B is the workflow that carries
-  worker files as artifacts; it is not this.
+- **A second host.** Roadmap §127 tier 3 prices two SEPARATE hosts at −41% of
+  job wall with the sweeps sliced. §259 built the workflow (below), but the two
+  runners it splits across today are two slots of ONE Mac, which is not that
+  table's row.
 - **Routing `offline.yml`.** Two and a half minutes on `ubuntu-latest`; not
   worth a host's attention until the battery has run there for a while.
