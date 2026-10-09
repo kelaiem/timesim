@@ -269,7 +269,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° रिकॉइल डुबाव',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'एस्केप व्हील Δ (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'फोर्क झूला, बैंक → बैंक (forkSwingRad, सामान्यीकृत)',
   ['beat phase p']: 'बीट फेज़ p',

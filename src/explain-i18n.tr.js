@@ -244,7 +244,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° geri tepme dibi',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'eşapman çarkı Δ (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'çapa salınımı, dayanak → dayanak (forkSwingRad, normalize)',
   ['beat phase p']: 'vuruş fazı p',

@@ -244,7 +244,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° 리코일 골',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: '탈진 바퀴 Δ (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: '포크 스윙, 뱅크 → 뱅크 (forkSwingRad, 정규화)',
   ['beat phase p']: '비트 위상 p',

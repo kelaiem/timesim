@@ -251,7 +251,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° 反沖凹',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: '擒縱輪 Δ（escapeDeltaDeg）',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: '叉行程，限位 → 限位（forkSwingRad，正規化）',
   ['beat phase p']: '振相位 p',

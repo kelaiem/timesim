@@ -246,7 +246,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° پس‌زنی',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'Δ چرخ گریز (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'نوسان انکر، حد ← حد (forkSwingRad، نرمال‌شده)',
   ['beat phase p']: 'فاز تیک p',

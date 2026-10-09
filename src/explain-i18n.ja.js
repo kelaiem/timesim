@@ -280,7 +280,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° 反動の窪み',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'がんぎ車 Δ（escapeDeltaDeg）',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'アンクルの振れ、バンク → バンク（forkSwingRad、正規化）',
   ['beat phase p']: '振動位相 p',

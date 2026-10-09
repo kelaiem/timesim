@@ -244,7 +244,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° שקיעת רתע',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'Δ של גלגל המילוט (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'תנודת העוגן, עצירה ← עצירה (forkSwingRad, מנורמל)',
   ['beat phase p']: 'מופע התקתוק p',

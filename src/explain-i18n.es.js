@@ -264,7 +264,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: 'bajada de retroceso −1°',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'Δ de la rueda de escape (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'oscilación del áncora, tope → tope (forkSwingRad, normalizada)',
   ['beat phase p']: 'fase de alternancia p',

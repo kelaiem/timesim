@@ -241,7 +241,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° hạ giật lùi',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'bánh xe thoát Δ (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'càng lắc, chặn → chặn (forkSwingRad, chuẩn hóa)',
   ['beat phase p']: 'pha nhịp p',

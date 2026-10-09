@@ -300,7 +300,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: 'creux de recul −1°',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'Δ roue d’échappement (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'course de l’ancre, butée → butée (forkSwingRad, normalisée)',
   ['beat phase p']: 'phase d’alternance p',
