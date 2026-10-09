@@ -62,6 +62,9 @@ export const INSPECTION_SLICES = [
   // TODO 87 — the alarm pusher's press, one whole actuation (in, then out).
   // poses = n 64 plus the endpoint, the same accounting as every row above.
   { axis: 'alarmPress', poses: 65 },
+  // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
+  // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
+  { axis: 'maintHold', poses: 49 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
@@ -314,10 +317,13 @@ export const CLEARANCE_SLICES = [
   // TODO 87 — the alarm pusher's press, one whole actuation (in, then out).
   // poses = n 64 plus the endpoint, the same accounting as every row above.
   { axis: 'alarmPress', poses: 65 },
+  // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
+  // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
+  { axis: 'maintHold', poses: 49 },
 ];
 
 // TODO 164 — same axis roster as CLEARANCE_SLICES above (this check walks the
-// same 14 axes). Declared separately for CLEARANCE_SLICES' own reason: a
+// same 15 axes). Declared separately for CLEARANCE_SLICES' own reason: a
 // check's roster is a claim about THAT check's loop.
 export const UNDECLARED_CLEARANCE_SLICES = [
   { axis: 'beat', poses: 194 },
@@ -334,6 +340,9 @@ export const UNDECLARED_CLEARANCE_SLICES = [
   { axis: 'alarmToggle', poses: 49 },
   { axis: 'stemSlip', poses: 97 },
   { axis: 'alarmPress', poses: 65 },
+  // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
+  // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
+  { axis: 'maintHold', poses: 49 },
 ];
 
 // The gate's verdict over a payload's rows and the debt table — a TWIN of the
@@ -478,6 +487,9 @@ export const EXPECTED_CONTACT_SLICES = [
   // TODO 87 — the alarm pusher's press, one whole actuation (in, then out).
   // poses = n 64 plus the endpoint, the same accounting as every row above.
   { axis: 'alarmPress', poses: 65 },
+  // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
+  // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
+  { axis: 'maintHold', poses: 49 },
 ];
 
 // §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.

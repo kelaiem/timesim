@@ -2654,7 +2654,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
   // Ruby impulse pin at the roller's edge, in the roller-table plane itself so
   // it seats between the fork horns (the fork plane is level with the roller).
-  const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);
+  const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);   // r is published as userData.pinR
   pinGeo.rotateX(Math.PI / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.ruby);
   pin.position.set(rollerR, 0, pinZ);
@@ -2679,10 +2679,11 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
+  g.userData.pinR = thickness * 0.22;   // TODO 216 — the ruby pin's own radius: the knock is where its SURFACE meets the fork's horn
   // §221 — the safety action's two balance-side members, published so an
   // instrument can measure the guard pin against the roller's OWN outline
   // (TODO 105) rather than re-deriving where they are.
-  g.userData.safety = { roller: safetyRoller, outline: srShape.getPoints(24).map((v) => [v.x, v.y]), pin, pinR: thickness * 0.22 };
+  g.userData.safety = { roller: safetyRoller, outline: srShape.getPoints(24).map((v) => [v.x, v.y]), pin, pinR: g.userData.pinR };
   // TODO 25 tier one — the INERTIA-BEARING DIMENSIONS, published so the
   // oscillator arithmetic in main.js can weigh this wheel without restating
   // a single number the builder already knows (rule 1's single source). Units,
@@ -5204,6 +5205,14 @@ export function makeColumnPawl({ nodes, pivot, nose, w, noseR, boreR, bossR, thi
     m.name = i === 0 ? `${name}Tail` : name;
     m.userData.outline = outline;
     m.userData.centreline = r;
+    // TODO 137 — THE SECTION THE METAL HAS, declared, because a bent member's
+    // geometry-local box is the bend's ENVELOPE and `stockFloor` reads its
+    // smallest side as the stock. A body thickened ±w about a centreline is 2w
+    // across IN the sheet and `thickness` through it; the box of this one is
+    // 4.31 × 1.04 × `thickness`, so its minimum was the extrude depth, read
+    // exactly at the floor, while the arm was 2w = a tooth's depth, 5% under it.
+    // (The same remedy §169 gave the two swept springs, for the same reason.)
+    m.userData.stockSection = Math.min(2 * w, thickness);
     return m;
   });
   if (bodies.length !== 2)

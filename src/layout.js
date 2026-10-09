@@ -368,20 +368,27 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 //    whole degree: a claim that holds wherever and however the watch is
 //    worn. Rounding to the nearest degree can over-claim.
 //  · AMPLITUDE_PEAK_DEG — what every load on the oscillator is PRICED at
-//    (§218's hairspring stress and pivot-load peaks, the hack brake). The
-//    solve's MAXIMUM (favourable, dial-flat: 454.80° since TODO 207; 326.70°
-//    before it), rounded UP: a load priced below the swing the balance can
-//    reach is not a bound. (A real lever escapement knocks its pin on the
-//    fork's horns at about 330°, so the favourable corner's dial-flat swing is
-//    one the watch would bank at, not reach — TODO 216. Pricing at the
-//    solve's figure is the conservative side of that.)
+//    (§218's hairspring stress and pivot-load peaks, the hack brake): the
+//    largest swing the balance can REACH, rounded UP, since a load priced below
+//    it is not a bound. Since TODO 216 that is the SMALLER of two angles: the
+//    solve's MAXIMUM (favourable, dial-flat: 454.80° since TODO 207) and the
+//    KNOCK (main.js ESCAPEMENT_KNOCK: 315.22° since §221's bank, 314.18° before
+//    it, where the impulse pin, carried
+//    round from the far side, strikes the tip of the banked fork's horn, solved
+//    off the fork blank's outline and the pin's radius). The balance cannot
+//    swing past the knock; it banks on the horn. So the favourable dial-flat
+//    corner, which the energy column would carry to 455°, knocks, and the peak
+//    is the knock's 316° (315° before §221 derived the bank from the pin's own
+//    bearing, which banks the fork 4.03° instead of 2.57°; 455° before TODO 216,
+//    327° before TODO 207).
 // Neither can be computed here, since the solve reads the cut ribbon, the
-// pivots and the balance, all built in main.js. So `equalisation` row 14 holds
-// each one to the solve on two sides: the SIDE (claim ≤ minimum,
-// peak ≥ maximum) and the TIGHTNESS (each within one degree). A change that
-// moves the solve fails the gate until these move with it.
+// pivots and the balance, and the knock the fork and the roller, all built in
+// main.js. So `equalisation` row 14 holds each one on two sides: the SIDE
+// (claim ≤ minimum, peak ≥ the reachable maximum) and the TIGHTNESS (each
+// within one degree). A change that moves the solve or the escapement fails
+// the gate until these move with it.
 export const AMPLITUDE_CLAIM_DEG = 126;
-export const AMPLITUDE_PEAK_DEG = 455;
+export const AMPLITUDE_PEAK_DEG = 316;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
 // less as a fault. It is held at the NOMINAL corner, the serviced state; the

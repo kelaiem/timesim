@@ -30684,6 +30684,11 @@ on both pages.
   - The shipped tables read 14, across de, fr, ja, ko, zh and zh-Hant. They
     include German's `0,225` where the explainer keeps source form.
   - Holding prose is owed to its own change, not this landing.
+  - Since held: `explain-i18n --check` compares each prose block's digits
+    outside `<code>` as a multiset, with a mutation control. Re-measured on
+    the base of that change the count was 13, not 14 (French read 2). Five
+    were the checker reading `&frac12;` as 12, fixed in the tokenizer; the
+    other eight were translations, fixed in their tables.
 - **Arabic's 39 backward arrows** are still held by `probe-249-arrows`'
   `OWED` row.
 - **`Version`** still has no entry in any locale's table, and
@@ -31303,6 +31308,48 @@ translator who can only read. Building it found one more instance of the
 Turkish trap the dotted-i probe guards: a column label inside a `lang="tr"`
 cell, uppercased by CSS, read «TURKİSH». Labels that are English carry
 `lang="en"` now.
+
+**It is published on GitHub Pages, at `/review/`, built on every deploy.**
+`pages.yml` runs the builder with `--standalone` beside the film. It is the
+second path on the site that is not an environment, and the first that is
+BUILT there rather than committed built. Every row is read from the tables,
+so a committed copy would be one more copy to fall behind them. It is built
+from the checkout's tables, which are main's, because a reviewer's
+corrections land on main.
+- **A complete document.** `page.html` is an artifact page, and the artifact
+  host supplies its skeleton. Served as it stands, it rendered in quirks
+  mode with no charset. `--standalone` writes it as `index.html` with a
+  doctype, charset and viewport, and with noindex: a review sheet is a
+  working document, `test-geometry.html`'s case, not a page for search.
+- **A hand-off instead of a shared store.** A static host has nowhere to
+  keep verdicts but the reviewer's browser. So `--send-to` names a GitHub
+  new-issue URL, and the page shows a "Send it" button that opens an issue
+  titled with the language, to paste the copied review into. The builder
+  refuses any other kind of URL, and refuses `--send-to` without
+  `--standalone`: the artifact build hands verdicts to its store, and its
+  output is unchanged, byte for byte `page.html`.
+- **It cannot take the app down with it.** The Explainer workflow now runs
+  the builder on every PR touching the tables, the labels or
+  `tools/l10n-review/`. So a build failing in `pages.yml` means main moved
+  without that gate. The answer there is the three environments published
+  without `/review/` and an error annotation, not no deploy at all. Both
+  paths were run on the step's own shell: built, the verify block passes
+  (doctype, noindex, hand-off, data); forced to fail, the step exits 0 with
+  `_site/review` gone and the verify block skipped.
+
+**The pinned bars were measured on a phone and cut down.** The first build
+pinned the language title, all five section tabs and all four filters, and
+fixed the status line, the name box and both buttons to the bottom. On a
+390 × 844 screen that covered 63% of the page at 100% zoom (352 px on top,
+180 px below), leaving the rows about a third of the screen. The title now
+scrolls away, and only the tabs and filters stay pinned. Under 720 px each
+of those is one row that swipes sideways, and the current choice is
+scrolled back into view after every click, because both rows are rebuilt.
+The name box moved into the page's introduction, since it is filled in
+once. The footer is the status, clamped to two lines, above the two
+buttons sharing a row. Measured after: 22% covered at 390 × 844, 25% at
+360 × 740, 32% at 260 × 563 (a 390 px phone at about 150% zoom), 19% at
+desktop width. No page scrolls sideways, in German or in Arabic.
 
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
@@ -32413,7 +32460,7 @@ window, the §36 registry, the `beat` axis and both pages all read it.
 `AMPLITUDE_POSED_DEG`, which IS `AMPLITUDE_TARGET_DEG` (200°): the swing TODO
 207 designed the movement to keep up hanging, at the nominal friction corner.
 The entry named 270° — `AMPLITUDE_TRUE_DEG`, which TODO 192 step 4 had already
-split into the claim (126°) and the peak (455°) because the spring could not
+split into the claim (126°) and the peak (455°, since TODO 216 the knock's 315°) because the spring could not
 honestly sustain 270. The designed target is the one number of the three that
 describes a serviced watch running, so it is the one the mesh performs; the
 other two stay what loads are priced at.
@@ -32483,8 +32530,20 @@ can only have order 1 or at least 3, so the order read between the frame step
 and a fifth of it classifies with 2 as the boundary and no tolerance chosen:
 the shipped overcoil reads **3.000**, and the flat spiral beside it **1.000**
 (the control that the reading can fail). A 1.0-turn overcoil reads 1.0, a
-non-concentric case the tenth also missed. The ratio at 200° and at 455°
-(×0.125) is reported. CLAUDE.md's rule 4 says so.
+non-concentric case the tenth also missed. The ratio at 200° and at the peak
+(×0.092 at 316°) is reported. CLAUDE.md's rule 4 says so.
+
+**The knock moved with the bank.** TODO 216 landed on `main` while this was
+open: `ESCAPEMENT_KNOCK` solves, off the fork blank's outline, the swing at
+which the pin carried round from the far side strikes the banked fork's horn,
+and `AMPLITUDE_PEAK_DEG` became the smaller of that and the energy solve's
+maximum — 315°. It reads `FORK_BANK_DEG`, so the larger bank moves it: the
+knock is **315.22°** (314.18° on the old bank) and the peak **316°**, held by
+`equalisation` row 14 and agreed by `probe-216-knock.mjs` (lift 50.000°, knock
+315.223°, the record AGREES). §218's peaks are priced there: stress 127.5 MPa,
+pivot 0.00212 mN. The lift that probe reads off the metal is now the cited 50°
+exactly — it read 30.95° against the pose law's 21.7° before, which is the gap
+TODO 226 was filed for.
 
 **The safety action, first exercised (TODO 105).** At ±45° the roller's
 crescent never left the guard pin. At ±200° its solid rim passes the pin twice
@@ -32493,11 +32552,15 @@ oscillation at 2000 samples is **min 0.2942** (balance at 170°), max 0.8066.
 Clear, and reported; TODO 105's point 1, that none of those clearances is
 derived, stands.
 
-**Filed, not fixed: TODO 228.** The notch rows also measured where the pin
-works: at the lift's edge its centre stands 0.156 outside the horn tips, so it
+**TODO 226, half closed.** TODO 216 filed the same finding from the other
+side while this landing was open: the pin only enters the fork's mouth, and
+the bank was derived at the notch floor. Its step 2 — derive the bank from the
+pin's real radius about the fork pivot by `d·sin ψ = r·sin(θ + ψ)` — is this
+landing's bank exactly. Its step 1 stands, and the notch rows here measure it:
+at the lift's edge the pin's centre stands 0.156 outside the horn tips, so it
 enters 0.394 of a notch 2.759 deep. The fork's length stops its tip at the
-roller (`− 1.6`, one roller radius authored). A layout fix, P3; the bank reads
-D and follows it.
+roller (`− 1.6`, one roller radius authored); seating the pin is a layout fix,
+P3, and the bank reads D and follows it.
 
 **Instrument.** `tools/probe-221-amplitude.mjs` (acceptance): the swing off the
 mesh, level over the reserve and the arbor's run, the pin's travel equal to the
@@ -32528,7 +32591,7 @@ pointer there. What the filing said against what was built, where they differ:
   for ("the pin measured inside the notch at both ends of the window"): the
   pin works at the notch's mouth, not its floor, and the identity left it
   slipping 0.646 across the notch. The bank is the pin's own bearing at the
-  lift's edge, and the mouth is TODO 228.
+  lift's edge, and TODO 226 (filed by TODO 216 while this was open) keeps the mouth.
 - **"189 frames at the §218 step"** (at 270°). 141 at 200°, and the step had to
   be HAIRSPRING_RATIO_THETA exactly, not merely close, for the builder's clamp
   ratio to agree with the plan's.

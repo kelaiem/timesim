@@ -56,9 +56,10 @@ header.intro { display: grid; gap: 14px; padding-bottom: 22px; border-bottom: 1p
 
 .empty-state { margin-top: 28px; padding: 26px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
 
-.sheet-head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); padding-block: 14px 10px; margin-top: 26px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
-.sheet-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-.tabs, .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Only the section tabs and the filters stay pinned while reading; the title above them scrolls away. */
+.sheet-head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); padding-block: 10px; margin-top: 10px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.sheet-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-top: 26px; }
+.tabs, .filters { display: flex; flex-wrap: wrap; gap: 6px; position: relative; }
 .tab, .filter { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13.5px; display: inline-flex; gap: 6px; align-items: center; }
 .tab[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .tab .n { font: 12px var(--mono); opacity: 0.75; font-variant-numeric: tabular-nums; }
@@ -98,12 +99,25 @@ header.intro { display: grid; gap: 14px; padding-bottom: 22px; border-bottom: 1p
 footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line); padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); }
 .foot { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
 .foot .status { font-size: 13.5px; color: var(--muted); flex: 1 1 240px; min-width: 0; }
-.foot input { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; background: var(--paper); width: 190px; max-width: 100%; }
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; color: var(--muted); }
+.who input { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; background: var(--surface); width: 220px; max-width: 100%; color: var(--ink); }
 .primary { background: var(--ink); color: var(--paper); border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 500; }
+a.primary { text-decoration: none; }
+a.primary:not([hidden]) { display: inline-block; }
 .export { margin-top: 18px; display: grid; gap: 6px; }
 .export textarea { width: 100%; min-height: 180px; font: 12px/1.45 var(--mono); border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--surface); }
 
 @media (max-width: 720px) {
+  .wrap { padding-inline: 16px; }
+  /* A phone keeps the pinned bar to two rows that swipe sideways, and the footer to its status and two buttons. */
+  .tabs, .filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
+  .tabs::-webkit-scrollbar, .filters::-webkit-scrollbar { display: none; }
+  .tab, .filter { flex: none; white-space: nowrap; }
+  .sheet-head { gap: 6px; padding-block: 8px; }
+  footer.bar-foot { padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .foot { gap: 6px 8px; }
+  .foot .status { flex-basis: 100%; font-size: 12.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .foot .primary { flex: 1 1 auto; text-align: center; white-space: nowrap; padding: 7px 10px; }
   .pair { grid-template-columns: 1fr; }
   .cell + .cell { border-left: 0; border-top: 1px solid var(--line); }
   .cell.en { border-start-end-radius: 7px; }
@@ -120,8 +134,9 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     <div class="how">
       <div><b>Pick your language</b><span>Each one has a few hundred rows in five sections. Start with "Start here"; it holds the questions we most need answered.</span></div>
       <div><b>Mark each row</b><span>"Reads well", "Needs a change" with your wording, or "Not sure" with a note. Skip anything you like.</span></div>
-      <div><b>Your work is kept</b><span>Verdicts save as you go. If the page says it saved in this browser only, use "Copy my review" and send us the text.</span></div>
+      <div><b>Your work is kept</b><span id="keptNote">Verdicts save as you go. If the page says it saved in this browser only, use "Copy my review" and send us the text.</span></div>
     </div>
+    <label class="who" for="reviewer">Your name, sent with your review <input id="reviewer" placeholder="Optional" autocomplete="name"></label>
   </header>
 
   <div id="owner" class="owner" hidden></div>
@@ -136,9 +151,8 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
 <footer class="bar-foot">
   <div class="foot">
     <span class="status" id="status">Pick a language to begin.</span>
-    <label class="muted" for="reviewer" style="font-size:13px">Your name</label>
-    <input id="reviewer" placeholder="Optional" autocomplete="name">
     <button class="primary" id="copy" disabled>Copy my review</button>
+    <a class="primary" id="send" target="_blank" rel="noopener" hidden>Send it</a>
   </div>
 </footer>
 
@@ -151,6 +165,10 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
   };
   const VERDICTS = [['ok', 'Reads well'], ['fix', 'Needs a change'], ['unsure', 'Not sure']];
   const FLAG_VERDICTS = [['ok', 'Keep this term'], ['fix', 'Use another term'], ['unsure', 'Not sure']];
+  // A static host has no shared store, so a review travels by "Copy my review" and a hand-off the
+  // HOST names: the builder writes a GitHub new-issue URL here for the Pages build (--send-to) and
+  // nothing for the artifact, whose verdicts reach the shared store instead.
+  const SEND_TO = document.querySelector('meta[name="review-send-to"]')?.content || '';
   const S = { index: null, data: null, code: null, section: 'start', filter: 'all', v: {}, db: null, uid: null, writable: null, timers: {}, saving: 0, dbFailed: false };
 
   const plain = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent; };
@@ -168,7 +186,16 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     setStatus(`${done} of ${rows.length} rows reviewed. ${where}`);
   }
 
+  function sendLink() {
+    const a = $('#send'); if (!SEND_TO || !S.data) { a.hidden = true; return; }
+    const title = `Translation review: ${S.data.english} (${S.code})`;
+    const body = 'Paste the text from "Copy my review" below this line.\n\n';
+    a.href = `${SEND_TO}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+    a.hidden = false;
+  }
+
   async function boot() {
+    if (SEND_TO) $('#keptNote').textContent = 'Verdicts save in this browser as you go. When you are done, press "Copy my review", then "Send it": it opens a GitHub issue to paste the text into (a free GitHub account is needed).';
     try { S.index = await (await fetch('data/index.json')).json(); }
     catch { $('#langs').innerHTML = '<p class="empty-state">The review data did not load. Reload the page; if it still fails, tell whoever sent you the link.</p>'; return; }
     renderLangs();
@@ -227,7 +254,7 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     try { S.data = await (await fetch(`data/${code}.json`)).json(); }
     catch { $('#sheet').innerHTML = '<p class="empty-state">This language did not load. Reload the page and try again.</p>'; return; }
     S.section = 'start'; S.filter = 'all';
-    $('#copy').disabled = false;
+    $('#copy').disabled = false; sendLink();
     renderLangs(); renderSheet();
     if (S.db && S.uid) await pullMine();
     statusLine();
@@ -237,8 +264,8 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     const sh = $('#sheet'); const D = S.data; if (!D) return;
     const sec = D.sections.find((s) => s.id === S.section) || D.sections[0];
     const count = (s) => s.rows.filter((r) => S.v[r.id]?.v).length;
-    sh.innerHTML = `<div class="sheet-head">
-      <div class="sheet-title"><h2></h2><span class="muted"></span></div>
+    sh.innerHTML = `<div class="sheet-title"><h2></h2><span class="muted"></span></div>
+      <div class="sheet-head">
       <div class="tabs" role="tablist" aria-label="Sections"></div>
       <div class="filters" aria-label="Show"></div></div>
       <p class="blurb" style="margin-top:14px"></p><div class="rows"></div>`;
@@ -258,6 +285,10 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
       f.setAttribute('aria-pressed', String(S.filter === k));
       f.addEventListener('click', () => { S.filter = k; renderSheet(); });
       fl.appendChild(f);
+    }
+    // Both rows are rebuilt on every click; on a phone they scroll sideways, so bring the current choice back into view.
+    for (const [row, on] of [[tabs, '[aria-selected="true"]'], [fl, '[aria-pressed="true"]']]) {
+      const cur = row.querySelector(on); if (cur && row.scrollWidth > row.clientWidth) row.scrollLeft = cur.offsetLeft - 16;
     }
     $('.blurb', sh).textContent = sec.blurb;
     const list = $('.rows', sh);
@@ -397,8 +428,8 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
       verdicts: rows.map((r) => ({ id: r.id, section: r.section, verdict: S.v[r.id].v, suggestion: S.v[r.id].s, note: S.v[r.id].n, th: S.v[r.id].th,
         en: plain(r.kind === 'flag' ? r.term : r.en).slice(0, 100) })) };
     const text = `Watch Sim translation review: ${S.data.english} (${S.code})\nReviewer: ${name}\n${rows.length} rows: ${tally.ok} read well, ${tally.fix} need a change, ${tally.unsure} not sure\n---\n${JSON.stringify(payload, null, 1)}\n`;
-    try { await navigator.clipboard.writeText(text); setStatus(`Copied ${rows.length} verdicts. Paste them into an email or message to whoever sent you this page.`); $('#export').hidden = true; }
-    catch { const box = $('#export'); box.hidden = false; const ta = $('#exportText'); ta.value = text; ta.focus(); ta.select(); setStatus('Copying was blocked. The text is shown below the rows, already selected.'); }
+    try { await navigator.clipboard.writeText(text); setStatus(SEND_TO ? `Copied ${rows.length} verdicts. Now press "Send it" and paste them into the issue.` : `Copied ${rows.length} verdicts. Paste them into an email or message to whoever sent you this page.`); $('#export').hidden = true; }
+    catch { const box = $('#export'); box.hidden = false; const ta = $('#exportText'); ta.value = text; ta.focus(); ta.select(); setStatus(SEND_TO ? 'Copying was blocked. The text is shown below the rows, already selected: copy it, then press "Send it".' : 'Copying was blocked. The text is shown below the rows, already selected.'); }
   });
 
   boot();
