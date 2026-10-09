@@ -93,6 +93,9 @@ on:
       # of them changing can stale it
       - 'tools/**.mjs'
       - 'tools/INDEX.md'
+      # §249's review sheet: its page and its questions (the .mjs half is
+      # already covered above)
+      - 'tools/l10n-review/**'
       - '.claude/skills/**'
       - '.github/workflows/explain-i18n.yml'
       # the quote audit compares the page against these, so a constant moving
@@ -149,6 +152,14 @@ jobs:
       # diagnosing the symptom.
       - name: Check the glossary links
         run: node tools/glossary-links.mjs
+
+      # §249's native-review packets. Browser-free; about the translation
+      # tables, so it rides here beside their gate. It is ALSO what pages.yml
+      # runs to build /review/, and this is the gate that keeps that build from
+      # failing on main: every locale has its questions, every question's term
+      # is still in use, every label and glossary row is translated.
+      - name: Check the translation review packets
+        run: node tools/l10n-review-packets.mjs
 
       # The instrument index is GENERATED from the probes' own headers, so it
       # rots the moment someone adds a probe and forgets. It rides this
