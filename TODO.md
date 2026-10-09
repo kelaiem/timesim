@@ -30352,7 +30352,7 @@ since it would flag 10 rows on arrival, and the rows must each be triaged first
 
 ---
 
-## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — PART DONE (step 1, the drive)
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — STEP 1 DONE
 
 Found closing [TODO 216], whose knock solve reads this geometry.
 
