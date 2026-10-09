@@ -478,6 +478,7 @@ jobs:
           DISPATCH_RUNNER: ${{ inputs.runner }}
           READY: ${{ steps.ready.outputs.verdict }}
           ONLINE: ${{ steps.ready.outputs.online }}
+          BUSY: ${{ steps.ready.outputs.busy }}
         run: |
           asked=no
           if [ "$EVENT" = pull_request ]; then
@@ -506,16 +507,26 @@ jobs:
           # request's: every other event may seed a baseline, and a collector
           # writes no digests, so a split run can never become one. Decided
           # AFTER the host, because the one refusal is about the host: two
-          # workers on a label with one runner online run in SERIES, which is
+          # workers on a label with one FREE runner run in SERIES, which is
           # the single process plus a collector, and the opt-in was for speed.
+          #
+          # §260 — FREE, not online. §251 counts a busy runner as ready, which
+          # is right for one job: it takes the next job when it finishes. It is
+          # wrong for two. §260's own split run was accepted with 2 online while
+          # another PR's battery held one slot. Its worker 1 then queued 24 min
+          # behind that job and started as worker 0 finished, so the split ran in
+          # series and lost to the single process it was meant to beat. A busy
+          # runner's remaining time is unknown here, so the split now needs two
+          # IDLE runners. Anything less runs one process, which starts at once on
+          # the free one.
           matrix=false; mwhy=""
           if [ "$EVENT" = pull_request ]; then
             masked=no
             printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'battery-matrix' && masked="label"
             printf '%s' "$TITLE" | grep -qF '[matrix]' && masked="title"
             if [ "$masked" = no ]; then :
-            elif [ "$host" != ubuntu-latest ] && [ "$READY" = READY ] && [ "${ONLINE:-0}" -lt 2 ]; then
-              mwhy="matrix asked for ($masked) but only ${ONLINE:-0} runner is online under '$ROUTE_VAR' — two workers would run in series, so ONE process"
+            elif [ "$host" != ubuntu-latest ] && [ "$READY" = READY ] && [ $(( ${ONLINE:-0} - ${BUSY:-0} )) -lt 2 ]; then
+              mwhy="matrix asked for ($masked) but only $(( ${ONLINE:-0} - ${BUSY:-0} )) of ${ONLINE:-0} online runner(s) under '$ROUTE_VAR' are idle — the second worker would wait behind a job of unknown length, so ONE process"
             else
               matrix=true
               mwhy="matrix asked for ($masked) — split across 2 workers on '$host' plus a browser-free collector"

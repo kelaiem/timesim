@@ -536,9 +536,10 @@ What to know before asking for it:
 - **Both slots, one PR.** A split run holds both slots for its length, so a
   second PR opted in to the host waits for it. A split buys one PR's latency
   with the host's throughput.
-- **Worker 0 is the floor.** It carries the anchors, the 36 spec boots
-  (~156 s on a slot) and a PR's point tier (up to 600 s) AFTER its shards, so
-  halving the shards does not halve the job. Spreading those is Landing C.
+- **Worker 0 used to be the floor.** Under §259 it carried the anchors, the 36
+  spec boots (~156 s on a slot) and a PR's point tier (up to 600 s) after its
+  shards, while worker 1 sat finished for 13 m 27 s. §260 spread both tiers
+  across the workers, and only boot B (~23 s) stays on worker 0 alone.
 - **The slots share ten cores.** Two overlapping jobs measured about +30%
   slower each (above), and a split IS two overlapping jobs.
 - **K must agree across the two slots.** Each leg reads `BATTERY_SHARDS` from

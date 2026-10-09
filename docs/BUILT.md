@@ -32166,6 +32166,148 @@ K=3, a different tree, so one sample and no stronger than that):
   the shards. Moving the point tier to worker 1 is worth about as much again
   as the split itself. Measured, and still to be built.
 
+---
+
+## §260 — Landing C: the spec and point tiers spread across the matrix workers
+
+§259's first split run measured where the wall went. Worker 0 spent 13 m 06 s
+in its shards, then 13 m 15 s more on boot B (23 s), the 36 spec boots
+(2 m 39 s) and the point tier (10 m 13 s). Worker 1 finished its shards and
+three probes in 13 m 33 s and sat idle, holding its slot, for the rest.
+Landing A had put both tiers beside the anchors because worker 0 was the
+tree's representative. Neither tier needs that. A spec boot is one page and
+its gates read its row. A point sweep boots its own build, and the assembly
+judges it against the default's payload (`judgePoint`), which arrives through
+the shard files anyway.
+
+**Ownership is arithmetic, the shards' rule.** Two pure functions of in-repo
+data and the worker count, which every worker and the collector derive alike:
+
+- `specOwner(name, n)`: round-robin by DECLARED index in `SPEC_POINTS`. It is
+  never by the `--only`-narrowed list, so a row's owner does not depend on the
+  flags. A spec boot is a boot, near enough uniform, and a cost column for it
+  would be a number nobody could keep true.
+- `pointOwners(n)`: LPT over `POINT_COSTS` into n bins, the partition's own
+  rule. The bins are handed out from the LAST worker down, so the bin that took
+  the costliest point lands away from worker 0, which alone also carries boot
+  B. A wrong cost costs wall clock, never a verdict. With the column §260
+  refreshed (below), n=2 puts `studr=7.595`, `subdialr=8`, `balstep=60` and
+  `route=2-leg` on worker 1, and `studr=4.71` and `studr=7.1175` on worker 0.
+
+With one worker every row is worker 0's: the spec list is the same list in the
+same order, and the point tier plans the same points. The single process, which
+is the reference, runs both tiers exactly as before.
+
+**The ceiling is per worker, and still bounds what it bounded.** Each worker's
+point tier has `POINT_PR_BUDGET_MS` from its own start. The tiers run at the
+same time on different runners, so the wall they ADD to the run is still at
+most ten minutes, which is the owner's number. A worker that has full points
+boots the default once for its digests. That is one extra ~20 s boot per
+worker, and the digest-determinism gate is what makes the two reads one
+answer.
+
+**The collector holds ownership both ways.**
+
+- A row carried by the wrong worker, or arriving twice, THROWS. That file is a
+  different run, exactly as with a misowned shard.
+- A row that never arrived does NOT throw. Its worker's file is missing, which
+  the shard gate already names, and the tier's own gate names the row too:
+  - A spec point that never arrived is synthesised as a boot that never built
+    (`never collected — worker i's file did not arrive`).
+  - A swept point that never arrived is `broken: never ran`, `judgePoint`'s
+    existing verdict.
+  
+  Missing work stays a red line with a name, never a crash.
+- `workerFormat: 2` is the worker file's own version, kept apart from
+  `REPORT_FORMAT_VERSION`. A bump there would void every cached baseline for a
+  change that never touches one. A Landing A file is refused for its shape
+  rather than misread.
+
+**Instruments.**
+
+- `probe-127-matrix.mjs` gains a fourth identity. A spec row moved into the
+  wrong worker's file must be refused by name, and so must a worker file with
+  no `workerFormat`. Both cases are collect-only and take under a second.
+- The probe's `--only` selection runs no point tier, by `--only`'s own rule,
+  so the point half is accepted on CI. The PR's own split run is whole, so
+  every point sweeps.
+
+**Measured on the host, and what it found.** One tree (`21a9f95`), two runs.
+Neither had a host baseline for the merge base, so both were whole.
+
+- **Single process** (run 37874802663). This was the route REFUSING the split:
+  only 1 runner was online, because #597's re-run still held the other slot.
+  - `54/54 gates pass`, job 44 m 56 s.
+  - Its shards overlapped that re-run until 02:42, so their 28 m 13 s is
+    inflated.
+  - Spec boots 3 m 21 s, point tier 10 m 08 s with **3 of 6 points SKIPPED**
+    by the ceiling.
+- **Split** (run 37878429511, opted in by the `battery-matrix` label):
+  `54/54 gates pass`, and **all 6 points CLEAN, 0 skipped**. Landing B's two
+  split runs skipped 1 each.
+
+| | runner | shards | boot B | spec boots | point tier | job |
+|---|---|---|---|---|---|---|
+| worker 0 | battery-1-3f6b | 13 m 50 s | 26 s | 18 in 1 m 39 s | 3 `studr` in 8 m 08 s | 25 m 09 s |
+| worker 1 | battery-2-2c8c | 10 m 05 s | — | 18 in 1 m 25 s | 3 points in 4 m 24 s | 17 m 58 s (incl. probes 1 m 28 s) |
+
+The run's wall was **not** this landing's: 43 m 03 s. Worker 1 QUEUED for
+24 min and started as worker 0 finished, because another PR's battery
+(`gravity-positional-rate`, 02:56–03:39) held the `battery-2` slot. The
+route had accepted the split on "2 online". So the two jobs ran in series,
+and the per-job times above are what the landing changed:
+
+- **The slowest worker went from 27 m 00 s / 27 m 23 s (Landing B's two runs)
+  to 25 m 09 s.**
+- **The PR's point tier went from skipping to verifying everything.** Each
+  worker's ceiling now covers half the points.
+
+**Two corrections the run forced, both in this landing.**
+
+- **The route's refusal counted the wrong runners.** §251 counts a busy runner
+  as ready, which is right for one job. For two it is wrong: a busy slot's
+  remaining time is unknown, and the second worker waits behind it while a
+  single process would have started at once on the free one. The split now
+  needs two IDLE runners (`online − busy ≥ 2`). On this run's own numbers
+  (2 online, 1 busy) that sends the run to one process. The decide step was
+  re-exercised on five cases.
+- **`POINT_COSTS` was stale, and ownership now reads it.** Its floor was
+  `balstep=60` at 1882 ("the three-quarter plate genuinely re-cut"). On this
+  tree that point changes one unit, [Chain], which is in every changed set
+  by rule, and it swept in 151 s. Each `studr` point, at three changed units,
+  took ~480 s. With the old column, `pointOwners` gave the three heaviest
+  points to worker 0, the worker it meant to spare. The column is refreshed
+  from this run's per-point walls, and n=2 now splits the `studr` points two
+  and one.
+
+**Measured after both corrections: the first parallel Landing C run**
+(run 37881899660, `65cf78d`). Both workers started at 04:01:06, one per slot.
+
+| | runner | shards | boot B | spec boots | point tier | job |
+|---|---|---|---|---|---|---|
+| worker 0 | battery-2-59b6 | 13 m 09 s | 24 s | 18 in 1 m 43 s | `studr=4.71`, `studr=7.1175` in 7 m 38 s | 23 m 34 s |
+| worker 1 | battery-1-0181 | 11 m 26 s | — | 18 in 1 m 37 s | 4 points in 9 m 59 s | 25 m 16 s (incl. probes 1 m 28 s) |
+
+- **Gates:** `54/54 gates pass`, all 6 points CLEAN, 0 skipped. The collector
+  took 9 s.
+- **Wall: 25 m 37 s**, against Landing B's 27 m 22 s and 27 m 40 s (−7%). The
+  two workers' tiers ended 13 s apart (04:24:37 and 04:24:50), so the floor
+  is now the shards plus about ten minutes of tier on each side, not one
+  worker's tail.
+- **Verification is the larger gain.** Landing B verified 5 of 6 points per
+  PR, and the single process on this tree verified 3. A split now verifies
+  all six under the same ceiling.
+
+**One margin to watch, not to tune from one run.** On a PR the point tier
+orders CHEAPEST first, so the ceiling buys the most verified points. Worker 1's
+four points in three lanes put `studr=7.595` last, and that tier finished at
+599 s of its 600 s ceiling. A slower slot would SKIP that point, which is
+unverified-this-run rather than a failure. It is still the tier's own rule
+working. If it starts skipping, the fix is in ownership (a third bin, or a
+lane per point), never in the ceiling.
+
+---
+
 ## §246 — The watch's position, modelled: the rate in each of the six positions, and the hairspring's own weight
 
 **Tier one shipped; tier two remains in the roadmap.** The entry was filed from

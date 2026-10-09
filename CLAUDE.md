@@ -805,8 +805,13 @@ gate count is unchanged), six THROWS for files that are not one run (wrong
 format version, disagreeing shape, shards a worker was not owed, a shard or
 task key arriving twice, workers restricted to different unit sets, a baseline
 on one side of the seam only), and worker 0 alone carrying the indivisible
-anchors — fingerprint A, boot B with the digest pair, the two rosters, and
-(until Landing C) the spec-boot tier. **The single-process path is the
+anchors — fingerprint A, boot B with the digest pair, the two rosters. **Since
+§260 (Landing C) the spec-boot and point tiers are SPREAD**: `specOwner`
+(round-robin by declared index) and `pointOwners` (LPT over `POINT_COSTS`, the
+costliest bin on the LAST worker, away from the anchors) are pure functions the
+collector re-derives. A row in the wrong file throws, and a row that never
+arrived fails its tier's own gate by name. With one worker every row is worker
+0's, so the single process runs both tiers exactly as before. **The single-process path is the
 reference and must stay untouched**, exactly as `--shards 1` and `--no-split`
 are, and the assembly half is CALLED by both paths rather than copied — a
 second gate loop would be two definitions of standing rule 4.
