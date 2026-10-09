@@ -704,6 +704,12 @@ jobs:
     # Pull this number back down only from several green runs that this cap did
     # not truncate.
     #
+    # §264 then took the point tier off this job's critical path: a parallel
+    # `battery points` job measures it, and this job judges the file. Its first
+    # end-to-end run (dispatch 37962011695) took 63.1 min against 89. One run
+    # moves no cap, by the rule above, so 150 stands until several push runs
+    # have measured the new wall.
+    #
     # A PR's point tier is held to POINT_PR_BUDGET_MS (10 min of
     # wall, ci-battery.mjs) on top of a battery that can itself be WHOLE when
     # no baseline exists, so a PR kept fail-fast at 60 rather than 50 — the
