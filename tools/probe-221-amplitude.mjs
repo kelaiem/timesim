@@ -10,9 +10,11 @@
 //     the fork's measured swing is the bank the arc-length identity gives,
 //     both printed beside their derivations (the entry asked for them at
 //     boot; rule 6 keeps boot silent, so they are printed HERE);
-//   · the impulse pin stands inside the fork's notch — between its walls and
-//     between its floor and its mouth — at both ends of the impulse window,
-//     which is what the identity is for.
+//   · the impulse pin stands ON the notch's centreline (to 1e-6), between its
+//     walls and reaching past its mouth, at both ends of the impulse window —
+//     which is what the bank's derivation is for. (Its first draft matched
+//     arcs at the notch FLOOR; this row measured the pin slipping 0.646
+//     across the notch and is why the bank is now the pin's own bearing.)
 // It REPORTS (TODO 105, never a gate here) the guard pin's clearance to the
 // safety roller's own outline over a whole oscillation, sampled finely: at the
 // old ±45° the roller's crescent never left the pin, and this is the first
@@ -50,6 +52,7 @@ const out = await page.evaluate(async () => {
   C.resetInputs();
   const find = (name, key) => { let o = null; C.labelEntries.find((e) => e.name === name).obj.traverse((x) => { if (!o && x.userData?.[key]) o = x; }); return o; };
   const bal = find('Balance', 'safety'), fork = find('Pallet fork', 'safety');
+  const balG = C.labelEntries.find((e) => e.name === 'Balance').obj;   // the group the swing is written to
   const BS = bal.userData.safety, FS = fork.userData.safety;
   const beatT = 1 / (2 * L.F_BALANCE), period = 2 * beatT;
   const base = { crownPullT: 0, leverEngage: 0, tension: 1 };
@@ -58,8 +61,8 @@ const out = await page.evaluate(async () => {
   // about the staff in the balance's PARENT frame, unwrapped
   const pinAz = () => {
     const w = BS.pin.getWorldPosition(new THREE.Vector3());
-    const c = bal.getWorldPosition(new THREE.Vector3());
-    const inv = new THREE.Matrix4().copy(bal.parent.matrixWorld).invert();
+    const c = balG.getWorldPosition(new THREE.Vector3());
+    const inv = new THREE.Matrix4().copy(balG.parent.matrixWorld).invert();
     const a = w.clone().applyMatrix4(inv), b = c.clone().applyMatrix4(inv);
     return Math.atan2(a.y - b.y, a.x - b.x);
   };
@@ -87,7 +90,10 @@ const out = await page.evaluate(async () => {
     pose({ tau });
     const p = BS.pin.getWorldPosition(new THREE.Vector3()).applyMatrix4(new THREE.Matrix4().copy(fork.matrixWorld).invert());
     const { halfW, floorY, mouthY } = FS.notch;
-    return { tau, x: p.x, y: p.y, halfW, floorY, mouthY, inside: Math.abs(p.x) <= halfW && p.y <= floorY && p.y >= mouthY };
+    // ON the centreline is what the bank is derived for; between the walls and
+    // reaching past the mouth is what being in the notch means for the metal
+    return { tau, x: p.x, y: p.y, halfW, floorY, mouthY, pinR: BS.pinR,
+             onLine: Math.abs(p.x) < 1e-6, between: Math.abs(p.x) + BS.pinR <= halfW, reaches: p.y - BS.pinR < mouthY && p.y >= mouthY - BS.pinR };
   };
   const notch = [pinInFork(w0 + 1e-9), pinInFork(w1 - 1e-9), pinInFork(beatT + w0 + 1e-9), pinInFork(beatT + w1 - 1e-9)];
 
@@ -134,14 +140,17 @@ await browser.close();
 const fails = [];
 const row = (name, ok, detail) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); if (!ok) fails.push(name); };
 console.log(`IMPULSE_WIDTH = (2/π)·asin(LIFT_DEG / 2A) = (2/π)·asin(${out.LIFT} / ${2 * out.A}) = ${out.IW.toFixed(5)} of a beat`);
-console.log(`FORK_BANK_DEG = rollerR·LIFT / (2·notchDepth), measured off the posed fork: ±${out.bankMeasDeg.toFixed(3)}° (lever angle ${(2 * out.bankMeasDeg).toFixed(2)}°)`);
+console.log(`FORK_BANK_DEG = atan(rollerR·sin(LIFT/2) / (D − rollerR·cos(LIFT/2))), measured off the posed fork: ±${out.bankMeasDeg.toFixed(3)}° (lever angle ${(2 * out.bankMeasDeg).toFixed(2)}°)`);
 row(`the balance swings ±AMPLITUDE_POSED_DEG, off the mesh`, Math.abs(out.halfDeg - out.A) < 0.05, `±${out.halfDeg.toFixed(3)}° against ${out.A}°`);
 const spread = (rs) => Math.max(...rs.map((r) => r.deg)) - Math.min(...rs.map((r) => r.deg));
 row('the swing does not sag over the reserve (a fusee is level)', spread(out.reserve) < 1e-6, out.reserve.map((r) => `${r.tension}: ${r.deg.toFixed(4)}°`).join(', '));
 row('nor over the arbor\'s run', spread(out.winds) < 1e-6, out.winds.map((r) => `${r.windAccumTurns} turns: ${r.deg.toFixed(4)}°`).join(', '));
 row('the pin travels the cited lift across the impulse window', Math.abs(out.liftMeasDeg - out.LIFT) < 0.05, `${out.liftMeasDeg.toFixed(3)}° against LIFT_DEG ${out.LIFT}°`);
 for (const n of out.notch)
-  row(`impulse pin inside the notch at τ ${n.tau.toFixed(5)}`, n.inside, `fork-local (${n.x.toFixed(3)}, ${n.y.toFixed(3)}); walls ±${n.halfW.toFixed(3)}, floor ${n.floorY.toFixed(3)}, mouth ${n.mouthY.toFixed(3)}`);
+  row(`impulse pin on the notch's centreline, between its walls and past its mouth, at τ ${n.tau.toFixed(5)}`, n.onLine && n.between && n.reaches,
+    `fork-local (${n.x.toExponential(2)}, ${n.y.toFixed(3)}), pin r ${n.pinR.toFixed(3)}; walls ±${n.halfW.toFixed(3)}, mouth ${n.mouthY.toFixed(3)}, floor ${n.floorY.toFixed(3)}`);
+const n0 = out.notch[0];
+console.log(`report · at the window's edge the pin's centre stands ${(n0.mouthY - n0.y).toFixed(3)} OUTSIDE the notch's mouth, so its body enters ${(n0.pinR - (n0.mouthY - n0.y)).toFixed(3)} of a notch ${(n0.floorY - n0.mouthY).toFixed(3)} deep — it works at the mouth`);
 row('control: a point on the roller\'s outline reads −guardR', Math.abs(out.guard.control + out.guard.guardR) < 1e-9, out.guard.control.toFixed(6));
 console.log(`report · TODO 105 · guard pin ⇄ safety roller (z bands ${out.guard.zOverlap ? 'OVERLAP — the pin can meet the roller' : 'apart'}): `
   + `min ${out.guard.min.toFixed(4)} at τ ${out.guard.at.tau.toFixed(4)} s (balance at ${out.guard.at.deg.toFixed(1)}°), max ${out.guard.max.toFixed(4)}; was 0.2356–0.7455 over a beat at ±45°`);

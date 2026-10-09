@@ -975,7 +975,7 @@
     var nTeeth = 15, rWheel = 4.5, embrace = 42 * Math.PI / 180, pitch = 2 * Math.PI / nTeeth;
     var beatRad = 12 * Math.PI / 180, drawRad = 12 * Math.PI / 180, dropRad = 1.5 * Math.PI / 180;
     var window_ = 0.0798, twitchFrac = 0.25, twitchRad = 1.0 * Math.PI / 180;   // the time the balance spends inside its 50° lift at a 200° swing
-    var bankRad = 5.92 * Math.PI / 180;          // the lever's half-swing, as the simulation derives it from that lift
+    var bankRad = 4.03 * Math.PI / 180;          // the lever's half-swing, as the simulation derives it from that lift
     var sense = -1;                            // the wheel turns clockwise, seen from the dial
     var s = 2 * rWheel * Math.sin(embrace), D = s / 2 + Math.sqrt(rWheel * rWheel - s * s / 4);
     var rot = function (p, a) { var c = Math.cos(a), sn = Math.sin(a); return [c * p[0] - sn * p[1], sn * p[0] + c * p[1]]; };

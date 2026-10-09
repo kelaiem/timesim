@@ -1659,29 +1659,32 @@ const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
 // not the whole balance.
 const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
 
-// FORK_BANK_DEG / FORK_RECOIL_DEG — the fork's ±swing must sweep the SAME
-// physical arc-length the impulse pin actually traces during the impulse
-// window, or the two never coincide (the pin sails past the notch on one
-// side, or never reaches it, depending on which is bigger). Matching
-// arc-length: rollerR·Δθ_pin = notchDepth·(2·FORK_BANK_DEG in rad), where
-// notchDepth is the fork's own local-space reach from pivot to notch floor
-// (mirrors the (forkTop + 0.7·thickness) point makePalletFork's V-notch
-// curve actually lands on) and Δθ_pin is the balance's angular travel over
-// the impulse window. §221: that travel IS the lift angle — the window is
-// defined as the time the balance spends inside ±LIFT/2 (layout.js), so
-// Δθ_pin = LIFT_DEG exactly and the amplitude drops out of the bank: the
-// fork's swing is a property of the escapement, not of how hard the watch
-// is running. (Before §221 the window started AT the zero crossing and
-// Δθ_pin was 45°·sin(π·0.16), a readability amplitude's arc.) Discovered by measuring the built pin/notch meshes and
-// finding they never actually touch (~3.5 units of persistent clearance,
-// even at the "locked" extremes) — this ties them together so a future
-// change to rollerR, amplitude, or fork proportions can't silently
-// reintroduce the gap. Solved BEFORE the fork is built: the builder cuts
-// the pallet stones' impulse faces from the same beat/bank pair.
-const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches makePalletFork's V-notch geometry
+// FORK_BANK_DEG / FORK_RECOIL_DEG — the fork's swing is set by the impulse
+// pin it has to carry: at both ends of the impulse window the pin must stand
+// ON the notch's centreline, or the two never coincide (the pin sails past
+// the notch on one side, or never reaches it). The pin rides the roller at
+// rollerR about the balance staff, a distance D from the fork pivot along
+// the line of centres; at balance angle ±θ its bearing from the fork pivot is
+// atan(rollerR·sin θ / (D − rollerR·cos θ)), and the fork's bank IS that
+// bearing at the window's edge. §221: the window is defined as the time the
+// balance spends inside ±LIFT/2 (layout.js), so θ = LIFT_DEG/2 exactly and the
+// amplitude drops out — the fork's swing is a property of the escapement, not
+// of how hard the watch is running: an 8.5° lever angle, inside the real 8–10°.
+// TWO EARLIER FORMS, both measured wrong by the probe that now holds this
+// (probe-221-amplitude.mjs): before §221 the pin's arc was a readability
+// amplitude's (45°·sin(π·0.16)), and through §221's first draft the arc was
+// matched at `notchDepth`, the notch FLOOR (6.84 from the pivot) — but the
+// pin crosses the line of centres at D − rollerR (9.58), at the notch's MOUTH,
+// so the fork out-ran the pin by the ratio of the two and the pin slipped
+// 0.646 across the notch over each window. (That the pin works at the mouth
+// of a notch 2.8 deep at all is the layout's — TODO 105's neighbourhood,
+// filed, not this identity's.) Solved BEFORE the fork is built: the builder
+// cuts the pallet stones' impulse faces from the same beat/bank pair.
 const pinImpulseSweepRad = 2 * (AMPLITUDE_POSED_DEG * DEG2RAD) * Math.sin(Math.PI * IMPULSE_WIDTH / 2); // = LIFT_DEG, by IMPULSE_WIDTH's definition
 if (Math.abs(pinImpulseSweepRad / DEG2RAD - LIFT_DEG) > 1e-9)
   console.warn(`§221: the pin's travel over the impulse window is ${(pinImpulseSweepRad / DEG2RAD).toFixed(6)}°, not the ${LIFT_DEG}° lift it is defined as — IMPULSE_WIDTH and the window's centring have parted`);
+const forkToStaff = escToBalanceDist - palletStoneDist;   // D: the stations are placed from these same two distances
+const pinBearingRad = (th) => Math.atan2(rollerR * Math.sin(th), forkToStaff - rollerR * Math.cos(th));
 // §36A: balanceTheta(tau) = amp*sin(2*pi*F_BALANCE*tau), so the swing is
 // +/-AMPLITUDE_POSED_DEG and the travel is twice that. The hairspring rides
 // the same arbor and takes the same arc. §221: the swing the mesh performs is
@@ -1726,7 +1729,7 @@ declareRestoring('Chain', 'chainRun', 'two-way',
 // arc (400°) passes a revolution — a balance at a real amplitude reaches every
 // angle about its staff — so both stay full revolves, which is the registry's
 // default for a reversing part and the honest bound.
-const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
+const FORK_BANK_DEG = pinBearingRad(pinImpulseSweepRad / 2) / DEG2RAD;
 const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 ratio
 // §36A: the fork banks between ±FORK_BANK_DEG and recoils FORK_RECOIL_DEG past
 // the bank on draw, so its extreme-to-extreme travel is 2*(bank + recoil).

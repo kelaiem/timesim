@@ -43,7 +43,7 @@
 // every stored row for numbers no check can read. The FACTS stay here, where
 // the assert that holds them true against the page's own axes reads them.
 export const INSPECTION_SLICES = [
-  { axis: 'beat', poses: 97 },
+  { axis: 'beat', poses: 194 },
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
@@ -298,7 +298,7 @@ export function mergeExtrema(parts, axisMeta) {
 // claim about THAT check's loop, and the day one of them stops sweeping an
 // axis, the roster that has to change is its own.
 export const CLEARANCE_SLICES = [
-  { axis: 'beat', poses: 97 },
+  { axis: 'beat', poses: 194 },
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
@@ -320,7 +320,7 @@ export const CLEARANCE_SLICES = [
 // same 14 axes). Declared separately for CLEARANCE_SLICES' own reason: a
 // check's roster is a claim about THAT check's loop.
 export const UNDECLARED_CLEARANCE_SLICES = [
-  { axis: 'beat', poses: 97 },
+  { axis: 'beat', poses: 194 },
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
@@ -462,7 +462,7 @@ export function mergeUndeclared(parts, axisMeta) {
 }
 
 export const EXPECTED_CONTACT_SLICES = [
-  { axis: 'beat', poses: 97 },
+  { axis: 'beat', poses: 194 },
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },

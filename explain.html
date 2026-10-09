@@ -1154,10 +1154,12 @@
         contact, not a state: the locking face's LEAN (<code>DRAW_DEG = 12</code>°) converts
         wheel torque into a pull toward the banking (draw), asserted at build with the torque
         sign written out; the −1.0° recoil in the law below is that same draw made visible.
-        Banking is derived from the arc-length match <code>rollerR·Δθ = notchDepth·2·bank</code>
-        — without it the pin and notch never coincide — and since §221 the pin's Δθ is the
-        cited lift, <code>LIFT_DEG = 50</code>°, so the fork swings an 11.8° lever angle
-        whatever the balance's amplitude. The play loop drives every pose through
+        Banking is derived from the impulse pin's own bearing from the fork pivot at the
+        edge of the lift, <code>atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))</code>, so the
+        pin stands on the notch's centreline at both ends of the impulse window — without it
+        the pin and notch never coincide — and since §221 that edge is the cited lift,
+        <code>LIFT_DEG = 50</code>°, so the fork swings an 8.05° lever angle whatever the
+        balance's amplitude. The play loop drives every pose through
         the same ported law plate 2 scrubs (<code>escapeDeltaDeg</code> /
         <code>forkSwingRad</code>); only DISPLAY time is dilated, since the whole action is
         8% of the beat. Watch phase 2 with that in mind: the dot goes OUT. The recoil is
@@ -1235,9 +1237,10 @@
       stays fiction is the recoil: <code>RECOIL_DEG = 1.0</code>° of wheel and a fork dip of a
       quarter bank are two constants a 12° draw does not reconcile, and there is no lock depth
       (TODO 131's residue). Banking:
-      <code>FORK_BANK_DEG = rollerR·Δθ_pin / notchDepth / 2</code>, derived, with
-      <code>FORK_RECOIL_DEG</code> at a quarter of it; Δθ_pin is the lift, so the bank is
-      5.92° (it was 2.57° while the window was a readability amplitude's arc).</p>
+      <code>FORK_BANK_DEG</code> is the pin's bearing at the lift's edge, derived, with
+      <code>FORK_RECOIL_DEG</code> at a quarter of it: 4.03° (it was 2.57° while the window
+      was a readability amplitude's arc, and the arcs were matched at the notch's floor,
+      which the pin never reaches — it works at the notch's mouth).</p>
     </div>
   </details>
 
@@ -3539,7 +3542,7 @@
         var slider = el('escFrameSlider'), btn = el('escPlay'), chipEl = el('escPhaseChip'), readout = el('escFrameReadout');
         var frame = el('escStepFrame'), rideOut = el('escFrameRide');
         var TEETH = 15, R = 4.5, EMBRACE_DEG = 42, DRAW_DEG = 12, DROP_DEG = 1.5;
-        var BANK_DEG = 5.92;                 // FORK_BANK_DEG as main.js derives it (arc-length match, notch ⇄ roller pin, over the 50° lift)
+        var BANK_DEG = 4.03;                 // FORK_BANK_DEG as main.js derives it (the impulse pin's bearing at the 50° lift's edge)
         var MOVEMENT_SENSE = -1;             // layout.js — clockwise seen from the dial; +x stone is the ENTRY stone
         var D2R = Math.PI / 180;
         var embrace = EMBRACE_DEG * D2R, pitch = 2 * Math.PI / TEETH;
