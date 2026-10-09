@@ -4,7 +4,7 @@
 
 # The instruments
 
-270 scripts. **160 are ACCEPTANCE tests** — they decide and exit non-zero.
+271 scripts. **161 are ACCEPTANCE tests** — they decide and exit non-zero.
 **110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -83,6 +83,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-136-profile.mjs` | §136 | acceptance | §136 Landing 0 — THE CYCLOIDAL PROFILE, PRICED BEFORE IT IS CUT. |
 | `probe-136-roll.mjs` | §136 | acceptance | §136 Landing 1 — THE CONJUGACY PROOF, IN FREE SPACE. |
 | `probe-137-elbow.mjs` | §137 | acceptance | §137 — THE TWO ELBOW RODS, READ OFF THE METAL, AND THE DRUM RE-CHECK. |
+| `probe-137-hidden-thin.mjs` | §137 | acceptance | TODO 137 step 2 — HOW MUCH THIN METAL CAN THE STOCK RULER NOT SEE? |
 | `probe-137-jumper-envelope.mjs` | §137 | acceptance | §137 — THE MINUTE JUMPER'S SWEPT ENVELOPE, ALONG THE ALARM LINK'S CHORD. |
 | `probe-138-bevel-roll.mjs` | §138 | acceptance | TODO 138 Landing 1 — DO TWO BEVEL TEETH ACTUALLY ROLL? THE PROOF, IN FREE SPACE. Acceptance, pure Node, no browser. Builds each crossed-axis gear pair — the motion-works bevel corner, the alarm setting corner, the alarm contrate climb, and TODO 136's two keyless crown-wheel-and-pinion pairs — from the real generator (bevelToothSpec + bevelOutline + makeConicalGear), rolls it at the conjugate ratio through a full tooth pitch, and measures interpenetration and working clearance analytically about the shared apex. Answers: do cone-cut flanks interleave at all; is the tooth conjugate (the §136 cycloid developed on the back cone, Tredgold's virtual count z/cosγ); what does the planar-versus-spherical profile approximation cost out of the backlash; is the solid apex-ruled rather than sheared; is the blank watertight. Seven controls, because the defect this answers — a mitre pair whose teeth never touch — passes any penetration column. |
 | `probe-138-coupling.mjs` | §138 | report | TODO 138 Landing 2 — DO THE MOVEMENT'S BEVEL CORNERS TURN THE WAY THEIR CONES DEMAND? Report, browser, on the converted tree. |
