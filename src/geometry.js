@@ -5366,14 +5366,14 @@ export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
 // side, ALARM_SENSE for the alarm's own motor (layout.js says why they are
 // two). The `reverse` flag keeps its meaning against whichever it is given.
 export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null, reverse = false,
-                                      sense = MOVEMENT_SENSE }) {
+                                      sense = MOVEMENT_SENSE, depthF = 0.2 }) {
   const g = new THREE.Group();
   const rShape = new THREE.Shape();
   const outline = [];
   for (let i = 0; i < teeth; i++) {
     const a0 = (i / teeth) * Math.PI * 2;
     const a1 = ((i + 0.72) / teeth) * Math.PI * 2;
-    outline.push([Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8]);
+    outline.push([Math.cos(a0) * radius * (1 - depthF), Math.sin(a0) * radius * (1 - depthF)]);   // TODO 219: depth a caller's fraction (the maintaining ring scales it with its pitch)
     outline.push([Math.cos(a1) * radius, Math.sin(a1) * radius]);
   }
   // TODO 115 — `reverse` means "against this train's running direction", so

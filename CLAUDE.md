@@ -346,7 +346,12 @@ it into prose either.
    its kindest section — since TODO 218 the valley's own offset, its face flank
    relieved so the hold bears on the apex on the stud's line — with
    `HOLD_STRESS_WAIVERS` empty and a waiver whose member is under yield STALE, on
-   the ribbons' rule. And
+   the ribbons' rule. Since TODO 219 the spring itself is metal on the same row
+   (`maintainingHold.spring`): a blade in a great-wheel crossing, of the
+   ribbons' ALLOY and held to its low end — the one member besides the ribbons
+   that is — with its floor re-derived from the NOMINAL corner, its run one ring
+   pitch of recoil plus the margin (so the ring's tooth count is the fewest that
+   fits), and k, the preload and the blade's own compliance at float noise. And
    since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` its

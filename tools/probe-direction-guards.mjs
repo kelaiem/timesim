@@ -161,6 +161,15 @@ const MUTANTS = [
     find: 'const MAINT_RING_RUN = MOVEMENT_SENSE;',
     to:   'const MAINT_RING_RUN = -MOVEMENT_SENSE;',
     note: 'the beak climbs each tooth\'s 28% face while the watch runs and the back-drive pulls the click off its stud — TODO 215\'s own defect, both halves' },
+  // TODO 219 — the maintaining SPRING's hand: which flank of its crossing is
+  // the stop and which side of the pin the blade lies on, both chosen from the
+  // sense. Flipped, the blade and pin are cut mirrored about the crossing and
+  // still fit it — the guard catches that the blade then winds the great wheel
+  // AGAINST the train, and the relaxing pin runs away from its stop.
+  { kind: 'subject', name: 'the maintaining spring\'s side in its crossing', file: 'src/main.js',
+    find: '  const SENSE_REL = +1;\n  const s = SENSE_REL * MOVEMENT_SENSE;',
+    to:   '  const SENSE_REL = -1;\n  const s = SENSE_REL * MOVEMENT_SENSE;',
+    note: 'the blade drives the great wheel backward and its stop flank stands where the relaxing pin never goes — every collision gate still green' },
   { kind: 'subject', name: 'the chain\'s wrap hand', file: 'src/main.js',
     find: '    const ang = thetaT - MOVEMENT_SENSE * (wraps - s) * Math.PI * 2;',
     to:   '    const ang = thetaT + MOVEMENT_SENSE * (wraps - s) * Math.PI * 2;',
