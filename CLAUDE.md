@@ -151,7 +151,18 @@ DOM. **The tool takes its locale roster from the page module's own
 per-locale FACT (which characters that locale groups and points with), and a
 missing row is a hard failure rather than a skipped check. `--check` is the gate and with no `--page` it checks EVERY page (0
 unmatched keys, 0 markup/`<code>`/id drift, 0 number drift, and no label
-overrunning its plate against the English baseline).
+overrunning its plate against the English baseline). **Number drift covers
+the explainer's PROSE too**, not only its plate labels: a paragraph quotes
+its identifiers inside `<code>` but carries bare numbers outside it ("at a
+real 270°"), and those are compared as a MULTISET of digit glyphs outside
+`<code>` — order-free, because a translation reorders a sentence. So a digit
+the English spells out ("seven-leaf", "twenty-four") is written in words in
+the translation too, never as a digit the English does not carry. Character
+references are decoded first (`&frac12;` is ½, not the number 12). The rule
+has a mutation control like the honesty vocabulary's: each run plants a
+changed digit and a re-punctuated decimal in every SOURCE-page table and
+FAILS if the comparison misses either, and the PASS line names what each
+page's numbers were checked by.
 
 **And since §241 it holds the HONESTY VOCABULARY, which is the first thing
 here that reads a sentence rather than counting one.** A translation that
@@ -926,7 +937,16 @@ key is the default's) gets `inspection`, `clearances` and
 changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
-report. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+report. **Since §264 a hosted single process's tier is MEASURED on a
+parallel `battery points` job** (`--points-only`) and handed to the battery
+(`--points-tier-from`, fetched in the background by
+`tools/battery-points-fetch.sh`), which judges it in its one assembly. A file
+that does not prove itself (same tree, same point code, whole, every point
+full), a dead sibling or a fetcher that gave up runs the tier in-process and
+says why, so the worst case is the run as it was. Measured, it took the push
+from 89 to 63 min. Since §263 a push (and a hosted dispatch, unless `single:
+true`) is SPLIT instead, which spreads the tier across its two workers, so the
+sibling serves the hosted single process only. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,

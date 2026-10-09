@@ -89,12 +89,20 @@
 //                           key (§263), so a split run can seed a baseline;
 //                           the workers then need --digests too, which is
 //                           what runs their preflight.
+//         --points-only --points-tier-out FILE   (§264) measure the point
+//                           tier ALONE — every silent spec point, full — and
+//                           write it to FILE for a sibling run to judge.
+//                           No sweeps, no gates, no report.
+//         --points-tier-from FILE --points-tier-wait-s N   (§264) take the
+//                           point tier from that file (waiting up to N s for
+//                           it) instead of sweeping it here; anything wrong
+//                           with the file runs the tier here and says why.
 //         --only NAME[,NAME]  a probe/iteration flag CI never passes: narrow
 //                           the run to these checks (or `check:axis` slices)
 //                           so the assembly half is exercisable in minutes.
 // Exits 0 only when every gate passes; failing gates dump their payloads.
 
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -725,6 +733,56 @@ const POINTS_OUT = argOf('--points-out');
 const POINTS_PR = argv.includes('--points-pr');
 const POINTS_BASE = argOf('--points-base');
 if (POINTS_BASE && !POINTS_PR) throw new Error('--points-base is what a --points-pr run inherits from; a run without --points-pr sweeps every point full');
+
+// §264 — THE PUSH'S POINT TIER, MEASURED ON A PARALLEL RUNNER.
+//
+// A push sweeps all six silent points FULL after its shards, on the job's
+// critical path: 1541 s of an 89-minute run (37924262189). Nothing in that tier
+// needs the shards. A point boots its own build, a full point reads the
+// default's DIGESTS off its own virgin boot (defaultPointDigests), and the
+// union with the default's payloads is the ASSEMBLY's (judgePoint). That is
+// what let §260 spread the tier across matrix workers, and it is what lets a
+// separate job measure it from t=0 while this one sweeps.
+//
+//   --points-only            measure the tier alone and write it out; boots no
+//                            sweep, evaluates no gate, writes no report
+//   --points-tier-out FILE   where --points-only writes it
+//   --points-tier-from FILE  the run that judges: take the tier from FILE
+//                            instead of sweeping it, waiting for the file to
+//                            appear (or for FILE.failed, the fetcher's verdict
+//                            that it never will)
+//   --points-tier-wait-s N   how long to wait, from this process's start
+//
+// THE FILE IS TRUSTED ONLY AS FAR AS IT PROVES ITSELF. It must be this
+// format, measured on this exact TREE (git's tree object, so a single changed
+// byte anywhere refuses it), by this POINT CODE (pointsCodeDigest), whole and
+// not a PR's, and cover every swept point exactly once, full. Anything else, a
+// missing file, a .failed marker or the wait running out, runs the tier HERE
+// and says which. §152's rule: every uncertainty resolves towards more work.
+const POINTS_ONLY = argv.includes('--points-only');
+const POINTS_TIER_OUT = argOf('--points-tier-out');
+const POINTS_TIER_FROM = argOf('--points-tier-from');
+const POINTS_TIER_WAIT_S = argOf('--points-tier-wait-s');
+const POINTS_TIER_FORMAT = 1;
+const PROCESS_T0 = Date.now();
+if (POINTS_ONLY && !POINTS_TIER_OUT) throw new Error('--points-only wants --points-tier-out FILE to write what it measured');
+if (POINTS_TIER_OUT && !POINTS_ONLY) throw new Error('--points-tier-out is what a --points-only run writes');
+if (POINTS_ONLY && (POINTS_PR || POINTS_BASE || POINTS_OUT || POINTS_TIER_FROM)) {
+  throw new Error('--points-only measures every point FULL for a sibling to judge; it takes no --points-pr, --points-base, --points-out or --points-tier-from');
+}
+if (POINTS_TIER_FROM && POINTS_PR) throw new Error('--points-tier-from takes a FULL tier; a PR\'s points are incremental and ceilinged, and run in-process');
+if (POINTS_TIER_FROM && POINTS_TIER_WAIT_S === null) throw new Error('--points-tier-from wants --points-tier-wait-s N: how long the sibling may take is the workflow\'s number, not a default here');
+if (POINTS_TIER_WAIT_S !== null && !POINTS_TIER_FROM) throw new Error('--points-tier-wait-s is how long --points-tier-from waits');
+if (POINTS_TIER_WAIT_S !== null && !(Number(POINTS_TIER_WAIT_S) > 0)) throw new Error(`--points-tier-wait-s wants a positive number of seconds, got "${POINTS_TIER_WAIT_S}"`);
+// §264 — the points-only run and the hand-off are the SINGLE PROCESS's. A
+// matrix already spreads the tier (§260), and a collector judges what its
+// workers measured.
+if (POINTS_ONLY && (MATRIX || COLLECT || SPEC_ONLY || ONLY || REPORT_PATH || argOf('--digests') !== null || argOf('--digests-base') !== null || argOf('--baseline') !== null)) {
+  throw new Error('--points-only measures the point tier and nothing else; it takes no --matrix, --collect, --spec-only, --only, --report, --digests, --digests-base or --baseline');
+}
+if (POINTS_TIER_FROM && (MATRIX || COLLECT || SPEC_ONLY || ONLY)) {
+  throw new Error('--points-tier-from feeds a single whole process\'s point tier; --matrix spreads it, --collect reads it from workers, and --spec-only and --only run none');
+}
 
 // The third argument of the verdict, and the one the scene cannot carry.
 //
@@ -2030,6 +2088,57 @@ async function runPointTier(browser, base, { stored, incremental, owned = SWEEP_
   return { got, entries, plan: plan.map((p) => ({ name: p.point.name, mode: p.mode, why: p.why })), pr: POINTS_PR, ms: Date.now() - tierT0 };
 }
 
+// §264 — WHICH BYTES THIS PROCESS IS MEASURING. git's tree object for HEAD,
+// refused (null) when the working tree differs from it, because then the tree
+// names bytes this process is not running. A null on either side refuses the
+// hand-off, which costs a tier here and never a verdict.
+function measuredTree() {
+  try {
+    const tree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: ROOT, encoding: 'utf8' }).trim();
+    const dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: ROOT, encoding: 'utf8' }).trim();
+    return dirty ? null : tree;
+  } catch {
+    return null;
+  }
+}
+
+// §264 — the judging side of the hand-off. Returns the sibling's tier, or null
+// with the reason logged, in which case the caller sweeps the tier here. It
+// waits because the sibling starts with this job, not before it: measured, it
+// finishes in about half the time this run takes to reach its point tier, so
+// the wait is normally zero and the bound is only for a sibling that died.
+async function pointsTierFrom(file, waitS) {
+  const deadline = PROCESS_T0 + waitS * 1000;
+  const failed = `${file}.failed`;
+  const waitT0 = Date.now();
+  while (!existsSync(file) && !existsSync(failed) && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  const waited = secs(Date.now() - waitT0);
+  const refuse = (why) => { console.log(`point tier: NOT taken from ${file} (${why}) — sweeping it here`); return null; };
+  if (!existsSync(file)) {
+    if (existsSync(failed)) return refuse(`the fetcher gave up: ${readFileSync(failed, 'utf8').trim() || 'no reason written'}; waited ${waited}`);
+    return refuse(`nothing arrived within ${waitS} s of this process's start; waited ${waited}`);
+  }
+  let f;
+  try { f = JSON.parse(readFileSync(file, 'utf8')); } catch (err) { return refuse(`unreadable: ${err.message}`); }
+  if (f?.pointsTierFormat !== POINTS_TIER_FORMAT) return refuse(`format ${f?.pointsTierFormat ?? 'unversioned'}, this harness reads ${POINTS_TIER_FORMAT}`);
+  const tree = measuredTree();
+  if (!tree || f.tree !== tree) return refuse(`measured tree ${f.tree ?? 'unknown'}, this process is running ${tree ?? 'a tree it cannot name (git missing or the working tree is dirty)'}`);
+  if (JSON.stringify(f.checkCode) !== JSON.stringify(pointsCodeDigest())) return refuse('measured by different point code');
+  const t = f.points;
+  if (!t || t.pr !== false) return refuse('not a whole, non-PR tier');
+  const want = SWEEP_POINTS.map((p) => p.name);
+  const names = (t.plan || []).map((p) => p.name);
+  if (names.length !== want.length || want.some((n) => !names.includes(n))) return refuse(`it covers [${names}], the swept points are [${want}]`);
+  const notFull = (t.plan || []).filter((p) => p.mode !== 'full').map((p) => p.name);
+  if (notFull.length) return refuse(`[${notFull}] were not swept full`);
+  const missing = want.filter((n) => !t.got?.[n]);
+  if (missing.length) return refuse(`no measurement for [${missing}]`);
+  console.log(`point tier: taken from ${file} — tree ${tree}, ${names.length} points swept full on the parallel runner in ${secs(t.ms)}; waited ${waited} here`);
+  return t;
+}
+
 // ---- §127 tier 3: THE COLLECTOR -----------------------------------------
 //
 // No browser, no dev server: every payload it needs was measured by a worker.
@@ -2259,6 +2368,19 @@ try {
     '--disable-renderer-backgrounding',
   ] });
 
+  // §264 — THE POINTS-ONLY FORK. The same server, browser and runPointTier a
+  // whole run uses, and nothing else: the tier is measured exactly as the
+  // single process would measure it, and the file names the tree it measured
+  // so the judging run can refuse anything that is not its own bytes.
+  if (POINTS_ONLY) {
+    const tree = measuredTree();
+    if (!tree) console.log('--points-only: this tree cannot be named (git missing or the working tree is dirty) — the file will be refused by any judging run');
+    const points = await runPointTier(browser, base, { stored: null, incremental: false });
+    writeFileSync(resolve(POINTS_TIER_OUT), `${JSON.stringify({ pointsTierFormat: POINTS_TIER_FORMAT, tree, checkCode: pointsCodeDigest(), points })}\n`);
+    const bad = Object.entries(points.got).filter(([, g]) => g.error || g.skipped).map(([n]) => n);
+    console.log(`--points-only: ${Object.keys(points.got).length} point(s) measured in ${secs(points.ms)}${bad.length ? `, ${bad.length} with an error [${bad}] (the judging run's gate reads them)` : ''} — written to ${resolve(POINTS_TIER_OUT)}`);
+  } else {
+
   // ---- §152 PREFLIGHT: the key, and the decision it licenses ---------------
   //
   // One extra VIRGIN boot, taken only when digests were asked for. It costs
@@ -2398,10 +2520,13 @@ try {
   if (!ONLY && !SPEC_ONLY) {
     const owners = pointOwners(workers1);
     const stored = POINTS_PR ? atPointsFormat(readJsonOr(POINTS_BASE, 'stored points baseline')) : null;
-    points = await runPointTier(browser, base, {
-      stored, incremental: POINTS_PR && !NO_INCREMENTAL,
-      owned: SWEEP_POINTS.filter((p) => owners.get(p.name) === me),
-    });
+    // §264 — a push takes the tier its sibling job measured, when the file
+    // proves itself; otherwise, and always elsewhere, it sweeps it here.
+    points = (POINTS_TIER_FROM && await pointsTierFrom(POINTS_TIER_FROM, Number(POINTS_TIER_WAIT_S)))
+      || await runPointTier(browser, base, {
+        stored, incremental: POINTS_PR && !NO_INCREMENTAL,
+        owned: SWEEP_POINTS.filter((p) => owners.get(p.name) === me),
+      });
   }
 
   if (MATRIX) {
@@ -2452,6 +2577,7 @@ try {
       t0,
     });
   }
+  }   // ---- end of the §264 points-only fork
 } finally {
   await browser?.close();
   server?.kill();

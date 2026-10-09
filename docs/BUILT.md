@@ -30684,6 +30684,11 @@ on both pages.
   - The shipped tables read 14, across de, fr, ja, ko, zh and zh-Hant. They
     include German's `0,225` where the explainer keeps source form.
   - Holding prose is owed to its own change, not this landing.
+  - Since held: `explain-i18n --check` compares each prose block's digits
+    outside `<code>` as a multiset, with a mutation control. Re-measured on
+    the base of that change the count was 13, not 14 (French read 2). Five
+    were the checker reading `&frac12;` as 12, fixed in the tokenizer; the
+    other eight were translations, fixed in their tables.
 - **Arabic's 39 backward arrows** are still held by `probe-249-arrows`'
   `OWED` row.
 - **`Version`** still has no entry in any locale's table, and
@@ -32443,6 +32448,93 @@ free-sprung caption no longer says gravity is not modelled. It names the
 position as modelled, gives the spring-weight finding, and keeps "modelled, not
 simulated" and the escapement's share unmodelled, in every locale.
 
+## §264 — The push's point tier on a parallel runner, handed to the battery before judging
+
+**Why.** The battery on a push to `main` had grown to the edge of its cap. The
+green runs took 89 minutes against a 90-minute cap, and five of the last nine
+pushes were killed (#608 raised the cap to 150 as headroom). The six silent
+spec points (TODO 186) were 1541 s of a green 89-minute push (run
+37924262189). They are swept FULL after the shards, on the critical path.
+
+None of that tier needs the shards:
+- A point boots its own build.
+- A full point reads the default's DIGESTS off its own virgin boot
+  (`defaultPointDigests`).
+- The union with the default's payloads, and the verdict, are the assembly's
+  (`judgePoint`).
+
+That independence is what let §260 spread the tier across matrix workers.
+This entry uses it the other way: the tier is measured on a separate runner
+from t=0, while the battery sweeps.
+
+**What was built.**
+- **The producer.** `ci-battery.mjs --points-only --points-tier-out FILE`
+  measures the tier alone, using the same server, browser and `runPointTier`
+  a whole run uses. It writes the result with the git TREE it measured and
+  the point-code digest.
+- **The consumer.** `--points-tier-from FILE --points-tier-wait-s N` is
+  taken at the point where the single process would sweep the tier. If the
+  file proves itself, it is used; anything else sweeps the tier in-process
+  and logs which check refused it.
+- **What "proves itself" means.** The same format, the same tree (a single
+  changed byte anywhere refuses it), the same point code, whole and not a
+  PR's, and every swept point exactly once, full.
+- **The jobs.** On a push, and on a dispatch that stays hosted, the route
+  sets `points_job`. A new `battery points` job runs the producer and
+  uploads the file the moment it exists. The battery job starts
+  `tools/battery-points-fetch.sh` in the background beside the harness.
+  upload-artifact@v4 lists a file on the run as soon as its upload step ends,
+  so the fetcher polls for it and writes either the file (atomically) or
+  `FILE.failed` with a reason.
+- **What does not change.** The judging stays in the battery's one
+  assembly, so there is still one gate loop, and the baseline is still
+  written by the one job that writes it.
+- **Where it does not apply.** Not a PR, whose points are incremental and
+  ceilinged, and which §259's matrix already spreads. Not the host's
+  dispatch or nightly, where a second job would take the slot §260 keeps
+  free. The flags refuse `--matrix`, `--collect`, `--only` and
+  `--spec-only`.
+
+**Where the numbers come from.**
+- **The sibling's cap, 50 min.** The tier alone (1541 s, plus a digest boot
+  and the job's setup) is about 28 min. Times the 1.66× same-tree spread
+  `battery.yml` uses for every cap, that is 46.5, rounded up to 50. It is
+  defined once, in the route (`points_cap_min`, with `points_cap_s` beside
+  it because Actions expressions have no arithmetic). The battery's wait
+  reads the same number, so it stops waiting exactly when the sibling would
+  be killed.
+- **The worst case.** It is the run as it was before this entry. A dead,
+  slow or mismatched sibling sweeps the tier in-process.
+
+**Measured.**
+- **The hand-off, end to end on CI** (dispatch on the branch, run
+  37962011695, hosted, whole because a branch dispatch has no baseline):
+  - `battery points` took 21.6 min (16:50:46–17:12:21), its tier 1260.1 s.
+  - The fetcher had the file at +1281 s.
+  - The battery reached its point tier at 17:50:38, took the file
+    (`point tier: taken from … waited 0.0s here`) and judged all six points
+    CLEAN. 54/54 gates passed.
+  - The battery job took **63.1 min** (16:50:46–17:53:50), against 89 for
+    the last green push. The harness's own total was 3533.8 s, against
+    5081.3 s.
+  - The point tier now costs the push nothing but the time to read a file.
+    The battery's critical path is the shards (~48 min to the last shard
+    task), boot B, the 584 s of spec boots, and the post-battery probes.
+- **The producer, locally** (4-vCPU dev container): `--points-only` measured
+  the six points in 1550.5 s and exited 0.
+- **The fetcher, against a mock of the three API calls it makes:** the
+  artifact arriving, the sibling ending without one, and the wait running
+  out. It wrote the file in the first case and `FILE.failed` with the reason
+  in the other two.
+
+**What it leaves.**
+- **The push cap.** It stays at 150 until several push runs have measured
+  the new wall, by the cap's own rule: pull it back only from green runs it
+  did not truncate.
+- **The spec boots.** They are the next tier off the critical path by the
+  same argument. They are measurement-only, and §260 already spreads them, but
+  at 584 s they were not worth a second sibling in this landing.
+
 ---
 
 ## §263 — Push battery split across the matrix: the collector writes the whole baseline, the point tier leaves the push's critical path
@@ -32579,8 +32671,25 @@ well inside it. The single process keeps 150: a `single: true` dispatch and the
 nightly still carry the whole battery on one runner, which today's reference
 run measured at 87.4. The PR's 125 is untouched.
 
+**How it composes with §264, which landed while these runs were measuring.**
+§264 took the same tier off the same critical path the other way round: a
+sibling `battery points` job measures it from t=0 and hands the file to the
+single process, which judged all six points CLEAN in a 63.1-min job. The two
+are not stacked. A split run already spreads the tier across its legs, and
+§264's consumer is the single process's (its flags refuse `--matrix`). So the
+route sets `points_job` only when the run is NOT split:
+
+- a push and a default hosted dispatch split (§263, measured 29.6–51.9 min);
+- a hosted `single: true` dispatch keeps the single process with §264's
+  sibling, which is also how that hand-off stays exercised.
+
 **Not built.**
 
+- **The sibling under a split.** Handing each leg the tier from §264's
+  sibling would leave a leg its half of the shards, its spec boots and its
+  anchors, about 30 min on a middle runner, against ~45 now. That needs the
+  hand-off's consumer to run under `--matrix` and the collector to accept a
+  tier from a third file. It is harness work this landing did not take.
 - **A third worker.** `pointOwners(3)` would put about two points on each
   worker. That is a worker-count change in four places: the route's `workers`,
   the legs' `--matrix i/2`, the collector's file list, and the probe owner. The
