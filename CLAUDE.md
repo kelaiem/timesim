@@ -889,10 +889,13 @@ and building it established that the push run bounds a key error to minutes
 rather than a day and fires per merge rather than per date. The `schedule:`
 that exists is §200's, not §152's — it seeds the SELF-HOSTED baseline, the
 platform a push can never write, and is skipped when no host is available.
-A push's job cap is 90 min (the dispatch and nightly that seed a baseline
+A push's job cap is 150 min (the dispatch and nightly that seed a baseline
 share it since TODO 186; a PR keeps 60): the push is the
 run that writes the hosted baseline, and three in a row were cancelled at 50
-inside their last sweep, which left the tree with no baseline at all. Every uncertainty — no cache hit, an
+inside their last sweep, which left the tree with no baseline at all. It was
+90 until green pushes reached 89 min and five of the last nine were killed at the cap.
+150 is the slowest green run times the 1.66x same-tree spread `battery.yml`
+measured, because the tail past a cap cannot be read. Every uncertainty — no cache hit, an
 unreadable file, a moved check-code digest, a union that cannot be justified —
 resolves towards MORE work and says so in the log. `--no-incremental` is the
 reference an incremental run must agree with, and `tools/probe-152-restrict.mjs`

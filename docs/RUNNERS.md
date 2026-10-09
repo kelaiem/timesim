@@ -441,7 +441,8 @@ queued or running `timesim-battery` jobs first.
 
 ## What stays the same on any host
 
-- **The job cap (50 min; 90 for a push) and the per-check guard (35 min).**
+- **The job cap (60 min for a PR; 150 for a push, dispatch or nightly) and the
+  per-check guard (35 min).**
   Both are sized by the slow tail of the runner they were measured on, and
   both files say to re-derive them together from several runs. A faster host
   makes them loose, which costs nothing; do not tighten them from one run. The
