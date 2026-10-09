@@ -793,6 +793,14 @@ function pointsCodeDigest() {
 // third landing carries — which is why an ABSENT field counts as a mismatch
 // rather than as a pass.
 const REPORT_FORMAT_VERSION = 2;
+// §260 — the WORKER FILE's own shape, apart from the report's, because a
+// report-format bump would void every cached baseline for a change that never
+// touches one. 2 is Landing C: every worker carries its share of the spec and
+// point tiers, and only worker 0 the anchors. A file without it was written by
+// a Landing A worker, whose worker 0 carried the WHOLE of both tiers. Read
+// under Landing C's ownership rules, that file's rows are misowned and the
+// collector would throw on the first one. Refusing on the shape says why.
+const WORKER_FORMAT = 2;
 
 // Read a JSON side-input. Returns null and says why rather than throwing: a
 // missing baseline is the ordinary case on the first PR after this lands, and
@@ -1095,6 +1103,44 @@ const POINT_COSTS = {
 // dispatch runs have no ceiling — they write the baseline, so they sweep
 // every point whole.
 const POINT_PR_BUDGET_MS = 10 * 60 * 1000;
+
+// §260 (§127 tier 3, Landing C) — WHO BOOTS WHICH SPEC POINT, AND WHO SWEEPS
+// WHICH SILENT ONE. Landing A put both tiers on worker 0 beside the anchors,
+// and §259's first split run measured what that cost: worker 0 spent 13 m 15 s
+// after its shards on boot B, the spec boots and the point tier while worker 1
+// sat finished. Neither tier needs the anchors — a spec boot is one page, a
+// point sweep boots its own build and is judged by the ASSEMBLY against the
+// default's payload — so both spread, by the rule the shards already use:
+// ownership is a pure function of in-repo data and the worker count, so every
+// worker and the collector derive the same answer and the collector can name a
+// row that never arrived. With one worker every row is worker 0's and both
+// tiers run exactly as they did, which keeps the single process the reference.
+//
+// Spec boots are round-robin by DECLARED index (not by the --only-narrowed
+// list, so a row's owner never depends on the flags). Their cost is a boot
+// each, near enough uniform that a cost column would be a number nobody can
+// keep true.
+function specOwner(name, n) {
+  const i = SPEC_POINTS.findIndex((p) => p.name === name);
+  if (i < 0) throw new Error(`specOwner: no SPEC_POINTS row is named ${name}`);
+  return i % n;
+}
+// Swept points are LPT over POINT_COSTS — the partition's own rule — into n
+// bins, and the bins are handed out from the LAST worker down: the bin that
+// took the costliest point (balstep=60, the tier's floor) lands where there is
+// no anchor work, because worker 0 alone also carries boot B. A wrong cost
+// costs wall clock, never a verdict, exactly as for the shards.
+function pointOwners(n) {
+  const bins = Array.from({ length: n }, () => ({ names: [], cost: 0 }));
+  for (const p of [...SWEEP_POINTS].sort((a, b) => POINT_COSTS[b.name] - POINT_COSTS[a.name])) {
+    const lightest = bins.reduce((m, b) => (b.cost < m.cost ? b : m));
+    lightest.names.push(p.name);
+    lightest.cost += POINT_COSTS[p.name];
+  }
+  const owner = new Map();
+  bins.forEach((b, k) => { for (const name of b.names) owner.set(name, n - 1 - k); });
+  return owner;
+}
 
 // TODO 182 step 3 — "builds" must mean "builds METAL". Until this, a spec point
 // passed the tier by producing a `__clock`, and `alarmr=20` / `alarmr=46` did
@@ -1908,21 +1954,26 @@ async function runSpecTier(browser, base, points) {
   return { rows, ms: Date.now() - specT0 };
 }
 
-// TODO 186 B1 — THE POINT TIER. Runs after the spec tier, on the worker that
-// owns the anchors (the spec tier's rule, for the same reason: it boots its
-// own pages and competes with nothing once the shards have closed), in a pool
-// of SHARDS lanes. What it returns is measurement only — the unions and the
+// TODO 186 B1 — THE POINT TIER. Runs after the spec tier, on every worker
+// for the points that worker owns (§260 — pointOwners; one process owns them
+// all). After the shards, for the spec tier's reason: it boots its own pages
+// and competes with nothing once the shards have closed. A pool of SHARDS
+// lanes. What it returns is measurement only — the unions and the
 // verdicts are the assembly's (judgePoint), so a collector judges a worker's
 // points exactly as one process judges its own.
 //
 // The stored entries an incremental point unions against travel WITH the
 // result, so the assembly half needs no second copy of --points-base and a
 // collector cannot be handed a different one than its worker used.
-async function runPointTier(browser, base, { stored, incremental }) {
+async function runPointTier(browser, base, { stored, incremental, owned = SWEEP_POINTS }) {
   const tierT0 = Date.now();
+  // §260 — under a split each worker's tier has its own ceiling from its own
+  // start. The tiers run at the same time on different runners, so the wall
+  // they ADD to the run is still at most POINT_PR_BUDGET_MS, which is what the
+  // ceiling bounds.
   const deadline = POINTS_PR ? tierT0 + POINT_PR_BUDGET_MS : null;
   const checkCode = pointsCodeDigest();
-  const plan = SWEEP_POINTS.map((point) => ({ point, ...decidePointMode({ name: point.name, stored, checkCode, incremental }) }));
+  const plan = owned.map((point) => ({ point, ...decidePointMode({ name: point.name, stored, checkCode, incremental }) }));
   console.log(`point sweeps (${plan.length} silent spec points${POINTS_PR ? `, PR ceiling ${secs(POINT_PR_BUDGET_MS)} of wall` : ', full, no ceiling'})…`);
   for (const p of plan) console.log(`  ${p.point.name.padEnd(16)} ${p.mode.toUpperCase()} — ${p.why}`);
   const bootInTurn = serialiser();
@@ -1981,6 +2032,10 @@ if (COLLECT) {
     if (obj.formatVersion !== REPORT_FORMAT_VERSION) {
       throw new Error(`${path}: worker file at format v${obj.formatVersion ?? 'unversioned'} `
         + `against this harness's v${REPORT_FORMAT_VERSION}`);
+    }
+    if (obj.workerFormat !== WORKER_FORMAT) {
+      throw new Error(`${path}: worker file shape v${obj.workerFormat ?? 1} against this harness's v${WORKER_FORMAT} `
+        + '(§260 spread the spec and point tiers across workers)');
     }
     return { path, ...obj };
   });
@@ -2050,13 +2105,61 @@ if (COLLECT) {
       : '--collect was given a baseline its workers did not use');
   }
 
-  const anchored = files.filter((f) => f.anchors && f.spec);
+  const anchored = files.filter((f) => f.anchors);
   if (anchored.length !== 1) {
-    throw new Error(`exactly one worker carries the anchors (fingerprints, digests, rosters, spec boots); `
+    throw new Error(`exactly one worker carries the anchors (fingerprints, digests, rosters); `
       + `${anchored.length} of ${files.length} do`);
   }
   const [anchor] = anchored;
   if (anchor.matrix.i !== 0) throw new Error(`${anchor.path}: worker ${anchor.matrix.i} carries the anchors, which are worker 0's`);
+
+  // §260 — THE TWO SPREAD TIERS, put back together. Ownership is arithmetic
+  // (specOwner, pointOwners), so a row in the wrong file, or in two, is a
+  // different run and THROWS, the shard rule exactly. A row that never arrived
+  // does not throw: its worker's file is missing, which the shard gate already
+  // names, and the tiers' own gates name the rows too — a spec point that never
+  // arrived is a spec point that never built, and a swept point that never ran
+  // is judged `broken: never ran` by judgePoint. A collector must not be the
+  // thing that turns missing work into a crash instead of a red line.
+  const specDeclared = only ? SPEC_POINTS.filter((p) => p.name === 'identity') : SPEC_POINTS;
+  const specRows = new Map();
+  let specMs = 0;
+  for (const f of files) {
+    if (!f.spec) throw new Error(`${f.path}: worker ${f.matrix.i} carries no spec tier — every worker owes one under §260`);
+    for (const r of f.spec.rows) {
+      const owner = specOwner(r.name, n);
+      if (owner !== f.matrix.i) throw new Error(`${f.path}: spec point ${r.name} is worker ${owner}'s, not worker ${f.matrix.i}'s`);
+      if (specRows.has(r.name)) throw new Error(`spec point ${r.name} arrives twice`);
+      specRows.set(r.name, r);
+    }
+    specMs = Math.max(specMs, f.spec.ms);
+  }
+  const spec = {
+    rows: specDeclared.map((p) => specRows.get(p.name) ?? {
+      ...p, alive: false, warns: null, errors: [],
+      fatal: { message: `never collected — worker ${specOwner(p.name, n)}'s file did not arrive` },
+    }),
+    ms: specMs,
+  };
+  let points = null;
+  if (!only) {
+    const owners = pointOwners(n);
+    points = { got: {}, entries: {}, plan: [], pr: null, ms: 0 };
+    for (const f of files) {
+      if (!f.points) throw new Error(`${f.path}: worker ${f.matrix.i} carries no point tier — every worker owes one under §260`);
+      if (points.pr !== null && points.pr !== f.points.pr) throw new Error(`${f.path}: the workers disagree about whether this is a PR's point tier`);
+      points.pr = f.points.pr;
+      for (const p of f.points.plan) {
+        if (owners.get(p.name) !== f.matrix.i) throw new Error(`${f.path}: point ${p.name} is worker ${owners.get(p.name)}'s, not worker ${f.matrix.i}'s`);
+        if (points.plan.some((x) => x.name === p.name)) throw new Error(`point ${p.name} arrives twice`);
+        points.plan.push(p);
+      }
+      Object.assign(points.got, f.points.got);
+      Object.assign(points.entries, f.points.entries);
+      points.ms = Math.max(points.ms, f.points.ms);
+    }
+    points.plan.sort((a, b) => SWEEP_POINTS.findIndex((p) => p.name === a.name) - SWEEP_POINTS.findIndex((p) => p.name === b.name));
+  }
 
   // The task payloads themselves, keyed as the partition keys them. A key that
   // arrives twice is two measurements of one task, and there is no rule for
@@ -2084,8 +2187,8 @@ if (COLLECT) {
     fpB: anchor.anchors.fpB,
     digestsB: anchor.anchors.digestsB,
     fpShare: anchor.anchors.fpShare ?? null,
-    spec: anchor.spec,
-    points: anchor.points ?? null,
+    spec,
+    points,
     headDigests: anchor.preflight.headDigests,
     restriction,
     baseline,
@@ -2234,23 +2337,36 @@ try {
   // The anchors are worker 0's, because the code above already treats shard 0
   // as the tree's representative — the fingerprint, the axis roster and the
   // check roster are properties of the tree, and reading them twice would only
-  // create two answers to hold against each other. Under --matrix the spec-boot
-  // tier rides with them until a later landing spreads it.
+  // create two answers to hold against each other.
   const { fpB, digestsB, fpShare } = (!SPEC_ONLY && ownsAnchors)
     ? await anchorBootB(browser, base, headDigests)
     : { fpB: null, digestsB: null, fpShare: null };
-  // `--only` narrows this tier to its own control point: the tier stays in the
-  // run (with both its gates) at one boot instead of 26.
-  const spec = ownsAnchors
-    ? await runSpecTier(browser, base, ONLY ? SPEC_POINTS.filter((p) => p.name === 'identity') : SPEC_POINTS)
-    : null;
-  // TODO 186 B1 — the point tier, on the anchors' worker. Not under --only or
-  // --spec-only: a narrowed default payload is not a whole movement, so there
-  // would be nothing sound to union a point against.
+  // §260 — the two tiers are SPREAD (specOwner, pointOwners); with one worker
+  // every row is this process's. `--only` narrows the spec tier to its own
+  // control point: the tier stays in the run (with both its gates) at one boot
+  // instead of 36.
+  const me = MATRIX ? MATRIX.i : 0;
+  const workers1 = MATRIX ? MATRIX.n : 1;
+  if (MATRIX && !SPEC_ONLY) {
+    const owners = pointOwners(workers1);
+    console.log(`§260: worker ${me}/${workers1} boots ${SPEC_POINTS.filter((p) => specOwner(p.name, workers1) === me).length} of ${SPEC_POINTS.length} spec points`
+      + `${ONLY ? ' (--only: the identity control alone, if it is this worker\'s)' : ''} and sweeps `
+      + `[${ONLY ? '' : SWEEP_POINTS.filter((p) => owners.get(p.name) === me).map((p) => p.name).join(', ')}]`);
+  }
+  const spec = await runSpecTier(browser, base,
+    (ONLY ? SPEC_POINTS.filter((p) => p.name === 'identity') : SPEC_POINTS)
+      .filter((p) => specOwner(p.name, workers1) === me));
+  // TODO 186 B1 — the point tier. Not under --only or --spec-only: a narrowed
+  // default payload is not a whole movement, so there would be nothing sound
+  // to union a point against.
   let points = null;
-  if (ownsAnchors && !ONLY && !SPEC_ONLY) {
+  if (!ONLY && !SPEC_ONLY) {
+    const owners = pointOwners(workers1);
     const stored = POINTS_PR ? atPointsFormat(readJsonOr(POINTS_BASE, 'stored points baseline')) : null;
-    points = await runPointTier(browser, base, { stored, incremental: POINTS_PR && !NO_INCREMENTAL });
+    points = await runPointTier(browser, base, {
+      stored, incremental: POINTS_PR && !NO_INCREMENTAL,
+      owned: SWEEP_POINTS.filter((p) => owners.get(p.name) === me),
+    });
   }
 
   if (MATRIX) {
@@ -2260,6 +2376,7 @@ try {
     // collector is the only side that turns any of it into a verdict.
     writeFileSync(resolve(TASKS_OUT), `${JSON.stringify({
       formatVersion: REPORT_FORMAT_VERSION,
+      workerFormat: WORKER_FORMAT,
       matrix: MATRIX,
       shards: SHARDS,
       split: SPLIT,

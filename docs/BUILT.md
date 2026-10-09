@@ -32117,3 +32117,69 @@ K=3, a different tree, so one sample and no stronger than that):
 - The split as built is therefore floored by worker 0's serial work, not by
   the shards. Moving the point tier to worker 1 is worth about as much again
   as the split itself. Measured, and still to be built.
+
+---
+
+## §260 — Landing C: the spec and point tiers spread across the matrix workers
+
+§259's first split run measured where the wall went. Worker 0 spent 13 m 06 s
+in its shards, then 13 m 15 s more on boot B (23 s), the 36 spec boots
+(2 m 39 s) and the point tier (10 m 13 s). Worker 1 finished its shards and
+three probes in 13 m 33 s and sat idle, holding its slot, for the rest.
+Landing A had put both tiers beside the anchors because worker 0 was the
+tree's representative. Neither tier needs that. A spec boot is one page and
+its gates read its row. A point sweep boots its own build, and the assembly
+judges it against the default's payload (`judgePoint`), which arrives through
+the shard files anyway.
+
+**Ownership is arithmetic, the shards' rule.** Two pure functions of in-repo
+data and the worker count, which every worker and the collector derive alike:
+
+- `specOwner(name, n)`: round-robin by DECLARED index in `SPEC_POINTS`. It is
+  never by the `--only`-narrowed list, so a row's owner does not depend on the
+  flags. A spec boot is a boot, near enough uniform, and a cost column for it
+  would be a number nobody could keep true.
+- `pointOwners(n)`: LPT over `POINT_COSTS` into n bins, the partition's own
+  rule. The bins are handed out from the LAST worker down, so the bin that took
+  `balstep=60`, the tier's floor, lands away from worker 0, which alone also
+  carries boot B. A wrong cost costs wall clock, never a verdict. At n=2 that
+  puts `balstep=60`, `subdialr=8` and `route=2-leg` on worker 1, and the three
+  `studr` points on worker 0.
+
+With one worker every row is worker 0's: the spec list is the same list in the
+same order, and the point tier plans the same points. The single process, which
+is the reference, runs both tiers exactly as before.
+
+**The ceiling is per worker, and still bounds what it bounded.** Each worker's
+point tier has `POINT_PR_BUDGET_MS` from its own start. The tiers run at the
+same time on different runners, so the wall they ADD to the run is still at
+most ten minutes, which is the owner's number. A worker that has full points
+boots the default once for its digests. That is one extra ~20 s boot per
+worker, and the digest-determinism gate is what makes the two reads one
+answer.
+
+**The collector holds ownership both ways.**
+
+- A row carried by the wrong worker, or arriving twice, THROWS. That file is a
+  different run, exactly as with a misowned shard.
+- A row that never arrived does NOT throw. Its worker's file is missing, which
+  the shard gate already names, and the tier's own gate names the row too:
+  - A spec point that never arrived is synthesised as a boot that never built
+    (`never collected — worker i's file did not arrive`).
+  - A swept point that never arrived is `broken: never ran`, `judgePoint`'s
+    existing verdict.
+  
+  Missing work stays a red line with a name, never a crash.
+- `workerFormat: 2` is the worker file's own version, kept apart from
+  `REPORT_FORMAT_VERSION`. A bump there would void every cached baseline for a
+  change that never touches one. A Landing A file is refused for its shape
+  rather than misread.
+
+**Instruments.**
+
+- `probe-127-matrix.mjs` gains a fourth identity. A spec row moved into the
+  wrong worker's file must be refused by name, and so must a worker file with
+  no `workerFormat`. Both cases are collect-only and take under a second.
+- The probe's `--only` selection runs no point tier, by `--only`'s own rule,
+  so the point half is accepted on CI. The PR's own split run is whole, so
+  every point sweeps.
