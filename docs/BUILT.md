@@ -32442,3 +32442,100 @@ and the energy column's own `g` rather than restating either. `explain.html`'s
 free-sprung caption no longer says gravity is not modelled. It names the
 position as modelled, gives the spring-weight finding, and keeps "modelled, not
 simulated" and the escapement's share unmodelled, in every locale.
+
+---
+
+## §263 — Push battery split across the matrix: the collector writes the whole baseline, the point tier leaves the push's critical path
+
+The push to `main` is the run that writes §152's hosted baseline, and by
+2026-10-09 it was one serial job of ~89 min on `ubuntu-latest`. Run
+37924262189 broke down as: shards, boot B and the share boot ~49.7 min, then
+spec boots 561 s, then the point tier (TODO 186) 1541 s, then the post-battery
+probes ~3.1 min. PR #608 raised the job cap from 90 to 150 because the slowest
+green push had gone from 78 to 89 min in a week. That bought room but did not
+stop the growth.
+
+**The machinery to move it already existed.** §127 tier 3 assembles a run
+across processes. §259 put that in the workflow, and §260 spread the spec boots
+and the point tier across the workers (`specOwner`, `pointOwners`). Only one
+thing kept a push off it, and §259 wrote it down: a collector wrote no digests,
+so a split run could never become a baseline. §152's baseline is a report plus
+digests plus `points.json`, all under the commit SHA, and the collector had
+two of the three.
+
+**The third was already in worker 0's file.** A worker's §152 preflight reads
+the per-unit key, and the tasks file carries it as `preflight.headDigests`. In
+one process that same object is what `--digests` writes. So:
+
+- `--collect --digests FILE` writes it. It is written before the gates, as one
+  process writes it, and the seeding steps decide whether it is kept.
+- A collect asked for a key that no worker read THROWS. A baseline without
+  digests is one every later PR reads as "no usable baseline", and that shows
+  up only in a log.
+- `--digests-base` and `--points-base` are still refused under `--collect`.
+  They are inputs to the preflight's decision, and each worker made that for
+  itself.
+- A worker's preflight runs only when it is given `--digests`, `--digests-base`
+  or `--baseline`. So the legs of every non-PR run get `--digests` (to
+  `RUNNER_TEMP`; the copy that matters travels in the tasks file).
+
+Worker 0 reads the key on its preflight boot and boot B's on its anchor boot,
+which is where one process reads both. So the digest-determinism gate holds the
+same pair in either shape.
+
+**The seeding rule is one file now.** `tools/battery-seed.sh may|keep` is the
+shell the leg's two seeding steps used to carry inline, moved rather than
+copied, because the collector now applies the same rule. Two changes came with
+the move:
+
+- `keep` refuses a run that wrote no digests. In one process that could not
+  happen. In a split it can, so it fails out loud.
+- `may` takes a `REFUSE` reason. The collector seeds under ITS runner's cache
+  key (`battery-baseline-v1-<os>-<arch>-<sha>`), so it may seed only when both
+  workers recorded that same platform. Each leg writes
+  `platform-worker-<i>.txt` beside its tasks file, and the collector checks
+  them rather than trusting the route.
+
+**Which runs split.** The route splits a run when it is hosted and may seed:
+
+| event | shape |
+|---|---|
+| push | always split |
+| hosted dispatch | split, unless the new `single: true` input asks for the single-process reference |
+| nightly, self-hosted dispatch | single process (the collector is hosted and would seed under the wrong key) |
+| pull request | unchanged: split only on `battery-matrix` / `[matrix]` |
+
+The single-process harness path is untouched: no line of the browser path or
+of `assemble` changed. It still runs on every PR that does not opt in, and on
+demand through `single: true`.
+
+**Every gate still runs on a push.** The collector runs `assemble`, the same
+gate loop in the same order, plus `every expected shard was collected`:
+
+- the point tier's `point sweeps` gate and the three validated-configs gates;
+- the spec-boot gates;
+- the determinism anchors.
+
+The three post-battery probes ride worker 1, as on a split PR. The §227
+promotion shadow asks once, on worker 0. §227's provenance record and its
+publish step stay single-process only, as §259 left them. A split push
+therefore publishes no tree artifact for a later merge to inherit. That tier
+is a shadow and gates nothing, and §259's rule for it stands: it reads a second
+path only after it has agreed with reality on the reference path.
+
+**Instruments.**
+
+- `probe-127-matrix.mjs` (local, 4-vCPU container, 19 min): PASS. Every run in
+  it now reads the key. Identities 1 and 2 hold the collected `--digests` file
+  byte for byte against the single process's, and hold the report's `digests`
+  field present. A fifth case strips worker 0's key and must be refused by
+  name, with no file left behind. The other four identities are unchanged.
+- `actionlint` 1.7.7 clean. The route's decide step was exercised on ten
+  cases: push, hosted dispatch, `single: true`, self-hosted dispatch
+  ready/not-ready, the nightly, a PR with and without the opt-in, the host
+  refusal, and a non-owner push. `battery-seed.sh` was exercised on its five
+  `may` events, a `REFUSE`, and `keep` on a restricted, keyless and good run.
+
+**Measured on CI.** Dispatches on the branch, `runner: ubuntu-latest`, so each
+is the push's job graph exactly, minus the cache save. A branch dispatch may not
+seed, and says so.
