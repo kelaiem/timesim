@@ -18,6 +18,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | item | state | what remains |
 |---|---|---|
 | 226 | OPEN | Found closing TODO 216. The impulse pin's centre sits 9.575 from the fork pivot and the slot's mouth is at 9.595, so the pin only enters the slot's mouth. The bank is derived by matching arc lengths at `notchDepth` (6.83), so the pose law impulses over 21.7° of balance arc while the metal's lift is 30.95°. Seat the pin in the slot and derive the bank from the pin's real radius |
+| 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | OPEN | Filed by TODO 219. Pose the wind: a recorded wind-start state, the ring recoiling onto the beak and held, the great wheel advancing on the blade to run-out at the stop, pick-up when the drive returns; hand-off rows for the hold, the pin on the blade and the pin on the stop; an axis that winds with the train held; the restoring drivers; Plate 3's spring and caption |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
 | 222 | OPEN | Found closing TODO 206. Follower B's lift is set from `selT` (`max(hB, ALARM_PINB_LIFT·(1 − selT))`) while the rocker's finger, which is supposed to press its tail, stands 0.91 off the arm at every pose of the arming transition. Its "spring" `alarmPinSpringB` is a ring riding on the arm it would press. Ground a spring on the tube and solve the lift from the finger's contact |
@@ -97,7 +98,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
-| 137 | OPEN | Found by arithmetic while scoping §226, not by any check. `makeColumnPawl` thickens its centreline ±`ALARM_PAWL_HALF_W`, so the arm is cut **0.30 u = 0.1137 mm** against `STOCK_FLOORS.wheel` 0.12 — 5.3% under. Three instruments look at it and none can say so: `stockFloor` reads the geometry-LOCAL box, and a BENT member's box is the bend's envelope (4.3099 × 1.0427 × 0.3167), so its minimum is the extrude DEPTH and reads **exactly the floor**, 0.1200 against 0.1200, while the metal is 0.1137; `slenderness` reads `len/tMid` = 4.13, the same middle extent; `outlines` asks whether the ring is simple, not how thick. And `STOCK_WAIVERS` waives the whole `Alarm switch` unit under TODO 11, so even a corrected row lands in the waived list — a different debt wearing the same excuse, since TODO 11's population is metal KNOWN to be thin. The ruler's fix already exists and this builder does not use it: §169's `userData.stockSection`, added for the two swept springs reading 1.35 and 0.87 against 0.05 mm wire. Step 1 declares the section (no metal moves, the debt becomes visible); step 2 measures the CLASS, which nobody has counted — every `ExtrudeGeometry` whose authored outline is narrower than its box, readable at all only because TODO 100 made `weldGeometry` carry `parameters.shapes` through the weld; step 3 re-sections, which re-runs §163's free-region map because `ALARM_PAWL_BODY` is that map's output at this exact half-width |
+| 137 | CLOSED | The premise is resolved and the class it pointed at is measured. The column pawl's arm was cut 0.30 u (0.1137 mm) against the 0.12 mm floor when this was filed; §226 part three and §230 re-cut it one ratchet tooth across and it measures clean (under 1% of its area under the floor at 1.0x, 1.2% at 1.5x), so the six microns are gone. Step 1 landed anyway: `makeColumnPawl` declares `stockSection = min(2w, thickness)` on its bodies, so a future narrowing is read by the ruler instead of hidden behind the extrude depth. Step 2, counting every extrude whose outline is narrower than its box, is `tools/probe-137-hidden-thin.mjs` and its answer is [TODO 225]. Step 3 (re-sectioning the pawl) is moot |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
 | 111 | OPEN | The case's seat relief is CUT from a scan that runs once, at build time, at whatever pose the movement is in — so the geometry is a claim about one pose. Item 91 nearly shipped on it: `hackRodPin` reads r 37.801–38.691 at build time and 39.889–40.786 in 33 of the 42 poses the battery visits, half a unit inside a seat with no relief for it. Closed for two populations (build-time occupants, and `LOW_LINKAGE_OBSTACLES` members per standing rule 5) and ungated for a third — any other mover reaching the annulus at some pose. Three fixes in the item; `probe-case-relief.mjs` already asks the question in ~72 s and CI does not run it |
 | 112 | CLOSED | The table stopped restating: every `HAND_SPECS` row now references the hand's BOOT SPEC OBJECT (`HOUR_HAND_SPEC`…`ALARM_HAND_SPEC`), so a row cannot drift from its build. `probe-112-recut.mjs` holds it: both re-cut drivers (flute slider and the §23 panel) reproduce the boot metal byte for byte, and its must-catch control proves the 3.00′→1.16′ collapse is visible to the instrument |
@@ -19999,6 +20000,28 @@ working plane. Same unit, same blind direction, different instrument and
 different fix — that one is a section derived from a z stratum, filed as a
 roadmap entry because it wants a re-station, not a ruler.
 
+**UPDATE — CLOSED. The premise is gone, the ruler is fixed for this builder, and the class is measured.**
+
+The arm is not under the floor any more. §226 part three and §230 cut the pawl
+one ratchet tooth across (the build said so itself: "the boss 0.533 does not reach
+its clipped arms at 0.843"), and `ALARM_PAWL_HALF_W` is `ratchetToothDepth / 2`
+now, so the 0.30 u in this item is a past state. Measured on the built metal
+(`probe-137-hidden-thin.mjs`, opening the outline by a disc of the 0.12 mm floor):
+`alarmColPawl` 0.5% of its area is under the floor at 1.0x and 1.2% at 1.5x, the
+tail 0.6% and 1.8% — nothing but corner rounding. (The 0.1137 mm in this item is
+also the depth of `alarmClickPawl`, a different part, declared `spring` and so
+held to a 0.03 mm floor.)
+
+Step 1 landed regardless, because the remedy is correct for a bent member: the
+bodies declare `stockSection = min(2w, thickness)` (§169's device for the swept
+springs), so if `w` ever drops below the extrude depth the ruler reads it. No
+payload moves — the declared value equals the box minimum today.
+
+Step 2 is the part that had value. The class — every `ExtrudeGeometry` in a
+labelled unit whose outline is narrower than its box — is 182 meshes, 11 of them
+with a quarter of their metal under their own kind's floor, 10 invisible to
+`stockFloor`. That is [TODO 225].
+
 ---
 
 ## 142. Nothing in the pusher train declares where an over-press ends
@@ -30260,6 +30283,74 @@ yet simulated.
    so winding cannot drag it backwards". That describes the unposed gap as a
    virtue: winding does let the ring fall back, onto the beak, and that is the
    recoil the spring's run was sized for.
+
+## 225. The stock ruler cannot see in-plane sub-floor metal: 10 flat members are thinner in the sheet than their kind's floor, and one more is already a waived row
+
+Split out of [TODO 137]'s step 2. `stockFloor` (§50) and `slenderness` (§54) both
+read a mesh's geometry-LOCAL bounding box; for a flat extrude the smallest side
+of that box is the extrude DEPTH, and the in-plane width is only seen if it is the
+smallest side. A member whose sheet is thinner than its depth is read as its depth
+and passes. [TODO 137] found one by arithmetic; nobody had counted the class.
+
+**The instrument.** `tools/probe-137-hidden-thin.mjs` (a REPORT, §40: it exits 1
+only if a control is wrong). For every `ExtrudeGeometry` in a labelled unit — one
+row per mesh, attributed to its nearest unit as the census does — it fills the
+authored outline (`geometry.parameters.shapes`, which TODO 100 made survive the
+weld) and OPENS it by a disc of its own kind's floor (kind resolved as
+`checkStockFloor` does). What the opening removes is the metal no floor-wide disc
+covers, so the thickness spectrum falls out: `t05`/`t10`/`t15` are the fractions of
+the area thinner than 0.5, 1.0 and 1.5 times the floor. A row is FLAGGED when `t10`
+is 0.25 or more, or when the opening splits it into two pieces of 15% or more each.
+Both thresholds are screen settings, not physics, and the first exists because a
+gear tooth tapers to a point by design: the first cut flagged on any area lost
+and returned 39 rows, nearly all wheels. Controls (all fire): a bent strip 0.2 u wide
+is flagged, one 0.5 u wide is not, a fat square is not, a spike on a square (a
+"tooth") is not, and two blocks joined by a 0.2 u neck are flagged by splitting.
+
+**Measured (main aa467a2).** 182 extrudes, 0 without a readable shape, 0 with a
+scaled frame. 171 lose under 25% of their area at their floor (144 under 8%).
+11 are flagged; the stock ruler already reads one of them under its floor
+(`jumperBeak`, waived TODO 12), and the other 10 read AT OR OVER it:
+
+| unit / mesh | kind, floor | what the outline says | waived |
+|---|---|---|---|
+| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor | no |
+| Alarm switch / `alarmPusherReturnAbutment` | wheel 0.12 | an annulus, radii 0.4442 / 0.3689 mm: a 0.075 mm wall, 0.12 mm deep | TODO 11 (unit-wide) |
+| Escape wheel / (unnamed, 0.394 mm deep) | wheel 0.12 | an annulus 0.2728 / 0.1895 mm: a 0.083 mm wall; reads 0.3941 | TODO 12 |
+| Escape wheel / (unnamed, 0.452 mm deep) | wheel 0.12 | the escape PINION's leaves (105-point outline, root 0.227 mm to tip 0.340 mm) | TODO 12 |
+| Small seconds / `smallSecondsBody` | hand 0.10 | blade under 0.10 mm in the sheet throughout (14% under 0.05 mm); reads 0.1023, its depth | TODO 12 |
+| Power reserve / `reserveBody` | hand 0.10 | the same, 12.5% under 0.05 mm; reads 0.1023 | no |
+| Alarm governor / `alarmGovPinion` | wheel 0.12 | pinion leaves; reads 0.4881 | no |
+| Center wheel / (unnamed) | wheel 0.12 | a 7-leaf pinion; 49% under the floor; reads 0.645 | no |
+| Winding clutch / `clutchSleeve` | wheel 0.12 | a bored sleeve, 44% under the floor; reads 0.7507 | no |
+| Alarm winding arrest / `spiderCageWheel` | wheel 0.12 | 26% under the floor, and splits into a 57% piece and the rest; reads 0.3365 | no |
+
+**What this is NOT yet.** A flag is a SCREEN, and none of these is a verdict. Three
+different things look the same to it. (1) A collar or collet SEATED on a shaft
+(the abutment, the escape collet): a thin radial wall is how a pressed ring is
+made, and the floor asks about self-supporting stock; each wants a decision on
+whether the floor applies. (2) A feature FUSED to a neighbour (the sleeve web joins
+the skirt's top band to the bore, "2 x 0.03 apart in radius"): its width is not
+the section of anything, the union is, and the ruler would need the union. (3) Thin
+stock proper (the two hand blades; possibly the pinion leaves, which real pinions
+cut at about 0.1 mm). The pinions and the toothed wheels are not separated from
+(3) by this screen: a leaf and a tooth are both narrow. None of the 10 may be
+waived, thickened or re-kinded on this item's say-so.
+
+**Also found, in passing.** `probe-section-headroom.mjs` (TODO 109's corridor
+probe) prints "0 bars": its target list names the rows that have since been
+retired, so the one remaining `SLENDER_WAIVERS` row (`Alarm release lifter`, λ 71.3)
+cannot be re-measured with it until the list is refreshed.
+
+**Fix path.** (a) Give each of the 10 a verdict and write it where the ruler can
+read it: a `stockSection` for a member whose width is the section (the way §169
+did the springs), a declared kind where the floor is the wrong question, or a
+union rule for fused features. (b) Only then consider teaching `stockFloor` to
+read the outline itself — the probe's method gated as the ruler's second tier —
+since it would flag 10 rows on arrival, and the rows must each be triaged first
+(§50's arc: report, triage, declare, gate).
+
+---
 
 ## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees)
 
