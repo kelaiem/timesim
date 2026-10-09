@@ -20,7 +20,7 @@
 // is ultrasonic and the wire loses 11 dB; C6 holds its level only through a
 // 16 kHz third partial with its fundamental at −10 dBA; C7 keeps the
 // fundamental inside §197's 1–4 kHz band and the overtone that carries the
-// ring at 11.4 kHz, 1.9 dB under 2500 Hz's at equal energy. The fundamental
+// ring at 11.4 kHz, 2 dB under 2500 Hz's at equal energy. The fundamental
 // is under 5 dBA in every in-band row — the wire alone never rings its own
 // note audibly, which is TODO 126's finding restated per octave.
 //

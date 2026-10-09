@@ -31716,33 +31716,57 @@ earned — the raw column rewards it, the equal-energy column does not.
 
 | note | f₁ Hz | f₂ Hz | f₂/f₁ | arc | head mg | blow nJ | dBA raw | dBA at equal blow | f₁ dBA | what carries the ring |
 |---|---|---|---|---|---|---|---|---|---|---|
-| C6 | 1047 | 5098 | 4.87 | 87.47° | 79.6 | 31.11 | 27.9 | 25.2 | −9.7 | mode 3 at 16.0 kHz |
-| 2500 Hz (TODO 17) | 2500 | 13916 | 5.57 | 55.80° | 39.3 | 14.95 | 24.6 | 25.2 | 4.5 | mode 2 at 13.9 kHz |
-| **C7** | **2093** | **11418** | **5.46** | **61.10°** | **44.5** | **16.99** | **23.2** | **23.2** | **1.8** | **mode 2 at 11.4 kHz** |
-| C8 | 4186 | 24334 | 5.81 | 43.04° | 28.2 | 10.65 | 11.8 | 13.9 | 11.8 | mode 1 alone — f₂ ultrasonic |
+| C6 | 1047 | 5097 | 4.87 | 87.52° | 79.2 | 30.93 | 27.8 | 25.2 | −9.7 | mode 3 at 16.0 kHz |
+| 2500 Hz (TODO 17) | 2500 | 13914 | 5.57 | 55.83° | 39.3 | 14.94 | 24.6 | 25.2 | 4.5 | mode 2 at 13.9 kHz |
+| **C7** | **2093** | **11416** | **5.45** | **61.14°** | **44.5** | **16.99** | **23.2** | **23.2** | **1.8** | **mode 2 at 11.4 kHz** |
+| C8 | 4186 | 24332 | 5.81 | 43.06° | 28.2 | 10.64 | 11.8 | 13.9 | 11.8 | mode 1 alone — f₂ ultrasonic |
 
 - **C8** sends the first overtone to 24.3 kHz, past hearing, and the wire
   loses **11 dB**; its fundamental is also outside §197's 1–4 kHz band, and the
   boot says so.
-- **C6** reads loudest, and it is the fiction and a whistle together: 2.7 of
-  its 4.7 dB over C7 is the raw column's heavier blow, and what is left is a
+- **C6** reads loudest, and it is the fiction and a whistle together: 2.6 of
+  its 4.6 dB over C7 is the raw column's heavier blow, and what is left is a
   **16 kHz third partial** with the fundamental at −10 dBA. A-weighting does
   not price age, and a ring most adults cannot hear is not a C6.
 - **C7** keeps the fundamental inside the band and the overtone that carries
-  the ring at 11.4 kHz, 1.4 dB under 2500 Hz raw and **1.9 dB** at equal
+  the ring at 11.4 kHz, 1.4 dB under 2500 Hz raw and **2 dB** at equal
   energy. That is the one lever the wire had left, and it is spent on the note.
 
-**What it moved.** The design arc is **61.10°** on §253's arch law, 60.40° on
-the straight one (`aesthetics.gong.arcDeg` 55.80 → 61.10; the foot walked 0°,
-the ring's radius unchanged at 48.22 — the block's radius is floored by the
-ferrule wall at both lengths). The wire is 19.49 mm, 145.4 mg; the arc
-fundamental's modal fraction 0.296 → **0.306 M**, so the matched head grew
-39.3 → **44.5 mg** (H 4.63 → 4.93 u, still owned by the match, not the band);
-μ 1.19, η 0.80, contact 10.4 µs; f₂/f₁ **5.46** (the arc's ratio falls as the
-arc lengthens); the loud second mode radiates 0.14 nW; the level **23.2 dBA**
+**What it moved.** The design arc is **61.14°** on §253's arch law, 60.44° on
+the straight one (`aesthetics.gong.arcDeg` 55.80 → 61.14; the foot walked 0°;
+the ring's radius 48.22 → 48.19, for the reason the battery found, below —
+the block's radius is floored by the ferrule wall at both lengths). The wire
+is 19.49 mm, 145.4 mg; the arc fundamental's modal fraction 0.296 →
+**0.306 M**, so the matched head grew 39.3 → **44.5 mg** (H 4.63 → 4.95 u,
+still owned by the match, not the band); μ 1.19, η 0.80, contact 10.4 µs;
+f₂/f₁ **5.45** (the arc's ratio falls as the arc lengthens); the loud second
+mode radiates 0.14 nW; the level **23.2 dBA**
 at 0.3 m on axis. The sim's own voice follows (the mix is derived from the
 radiated powers — the fundamental now sits 25 dB under the second mode), and
 the explainer's PLATE 2 strikes the same two partials at the new defaults.
+
+**What the battery found, and the wall it moved.** The first full run on the
+C7 tree failed one gate: `undeclaredClearance` read `Alarm gong ⇄ Case` at
+**0.1446**, `alarmGongPost ⇄ caseMiddle`, 0.0054 under the one margin, at
+every pose and every spec point. The block stands one margin inside the
+bore's authored circle by construction (`R_ANNULUS_OUT = R_BORE_BACK −
+CLEAR_MARGIN`, then the block's radius) — but the band is a sector lathe of
+96 facets per turn, each lying inside that circle by up to
+R·(1 − cos(π/96)) = 0.027 u, and the block's own 16 vertices reach its full
+radius. At 61° the block's nearest vertex faces the middle of a facet (the
+closest case point measured at r 50.116 against the circle's 50.139, same
+azimuth, same z); at 55.8° it had happened to face a facet's end, which is
+the only reason §198 and §253 shipped green on a construction that was
+0.027 short of its own margin at the wrong azimuth. Fixed in position space,
+P3's rule: the annulus's outer wall is now the bore's **inscribed circle**,
+`R_BORE_BACK · cos(π / G.CASE_LATHE_SEG)` less the margin — the facets'
+minimum over every azimuth, so the margin holds wherever a foot lands — and
+`CASE_LATHE_SEG` (96) is exported from `geometry.js` as the one count both
+lathes read, where it had been two bare literals. The ring moved in by
+0.027 u, the fixed point re-closed (61.139°), and the gap reads **0.171**.
+`R_CLAMP` holds the case screws' heads to the same authored circle; those
+heads are the case's own metal and declared joints, so nothing measured them
+short, and the pattern is noted here rather than chased.
 
 **Where the loudness is, stated once.** Every lever inside the wire was
 already at its envelope before this entry — the wire at real gong stock's
@@ -31756,8 +31780,8 @@ about **26 dB**) and TODO 126 (the case as the radiator, about **30 dB**).
 Neither is touched here; both are what "louder" means next.
 
 **Held by.** `probe-262-gong-note.mjs` — ALL PASS on its controls (shipped
-f₁ 2093.3 Hz is the target to 1.5e-4; the rewrite reproduces the shipped
-design arc 61.104500° and head 44.4831 mg exactly, f₁ within the knob's
+f₁ 2093.0 Hz is the target to 2e-5; the rewrite reproduces the shipped
+design arc 61.139340° and head 44.4942 mg exactly, f₁ within the knob's
 rounding) and the table above as its report; `probe-253-arch-modes.mjs`,
 `probe-197-gong-loudness.mjs` and `probe-198-lifting-lever.mjs` re-run green
 at the new note; the §197 band assert and §198's design-point assert at boot;

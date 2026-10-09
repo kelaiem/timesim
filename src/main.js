@@ -23644,10 +23644,19 @@ const STRIKE_REF = (() => {
 // margin (the plate's extrude bevel swells INWARD from plateR, measured —
 // the survey that sited this read the plate's reach at plateR exactly).
 // Outer: the case middle's back bore (§186's R_BORE_BACK — the wall the base
-// plate's rim locates against) less the margin. Ceiling: see GONG_BAND_TOP.
-// Floor: measured below, once the arc's azimuths are known.
+// plate's rim locates against) less the margin — AS CUT, since §262: the
+// band is a sector lathe of G.CASE_LATHE_SEG facets per turn, each lying
+// inside the authored circle by up to R·(1 − cos(π/96)) = 0.027 u, and the
+// gong block's own vertices reach its full radius. Held to the circle, the
+// block at C7's foot azimuth measured 0.1446 from a facet — under the one
+// margin by exactly the sag at that azimuth — while the 55.8° foot had
+// happened to face a facet's end. The wall is the inscribed circle, which is
+// the facets' minimum over every azimuth, so the margin holds wherever the
+// foot lands. Ceiling: see GONG_BAND_TOP. Floor: measured below, once the
+// arc's azimuths are known.
 const R_ANNULUS_IN = plateR + CLEAR_MARGIN;
-const R_ANNULUS_OUT = R_BORE_BACK - CLEAR_MARGIN;
+const R_BORE_BACK_CUT = R_BORE_BACK * Math.cos(Math.PI / G.CASE_LATHE_SEG);   // the facets' inscribed circle
+const R_ANNULUS_OUT = R_BORE_BACK_CUT - CLEAR_MARGIN;
 // §186 — the base plate's mounting rim, measured off the built plate: the
 // face the §198 gong block and hammer post stand on, and (at the case build)
 // what a clamp head seats on. Hoisted here from the case block because the
@@ -23909,7 +23918,7 @@ const gongFreqOf = (Om, R_m, k_m) => Math.sqrt(Om) * k_m * GONG_STEEL_C / (2 * M
 // hearing, and the wire loses 11 dB; C6 (1047 Hz) holds its level only
 // through a 16 kHz third partial with the fundamental at −10 dBA — a whistle,
 // not a C. C7 keeps the fundamental inside §197's 1–4 kHz band and the
-// overtone that carries the ring at 11.4 kHz, 1.9 dB under 2500 Hz's at equal
+// overtone that carries the ring at 11.4 kHz, 2 dB under 2500 Hz's at equal
 // energy — the one lever the wire had left, spent on the note; every other
 // (stock-ceiling wire, the annulus radius, the matched head) was already at
 // its envelope. The name is DERIVED from the semitone count so the two cannot

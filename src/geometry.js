@@ -10024,6 +10024,14 @@ if (TUBE_WALL >= COLLAR_PROUD)
 // the unit labels and fingerprints like any other.
 // dims — all measured/derived by the caller (main.js); nothing recomputed.
 // ---------------------------------------------------------------------------
+// §262 — THE CASE IS LATHED AS A POLYGON, and this is its one segment count.
+// Every facet of the bore lies INSIDE the authored circle by up to
+// R·(1 − cos(π/CASE_LATHE_SEG)) — 0.027 u at the back bore — so a part held
+// one margin off R_BORE_BACK is held off the metal by less wherever its own
+// vertex faces a facet's middle. The annulus the gong lives in reads this
+// (main.js, R_ANNULUS_OUT) and holds itself to the inscribed circle instead;
+// a sector lathe rounds its segments UP, so its facets are never coarser.
+export const CASE_LATHE_SEG = 96;
 export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const {
     UNIT_MM, R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_CRYST, R_BEZEL_IN, R_G, R_PLATE,
@@ -10081,7 +10089,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // cap shipped with a hole exactly the shape of that step. Rather than hope,
   // pave the face from pieces that are each simple. The band's own
   // decomposition is natural: WHOLE = RELIEVED ∪ the seat-step rectangle.
-  const sectorLathe = (pts, a0, a1, capPolys = null, segPerTurn = 96) => {
+  const sectorLathe = (pts, a0, a1, capPolys = null, segPerTurn = CASE_LATHE_SEG) => {
     const span = a1 - a0;
     const seg = Math.max(2, Math.ceil(segPerTurn * span / (Math.PI * 2)));
     const v2 = pts.map(([r, z]) => new THREE.Vector2(r, z));
@@ -10143,7 +10151,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     return out;
   }
 
-  const lathe = (pts, seg = 96) => {
+  const lathe = (pts, seg = CASE_LATHE_SEG) => {
     const [rA, zA] = pts[0], [rB, zB] = pts[pts.length - 1];
     const closed = (Math.abs(rA - rB) < 1e-9 && Math.abs(zA - zB) < 1e-9)
       || (rA === 0 && rB === 0);
