@@ -32165,3 +32165,96 @@ K=3, a different tree, so one sample and no stronger than that):
 - The split as built is therefore floored by worker 0's serial work, not by
   the shards. Moving the point tier to worker 1 is worth about as much again
   as the split itself. Measured, and still to be built.
+
+## §246 — The watch's position, modelled: the rate in each of the six positions, and the hairspring's own weight
+
+**Tier one shipped; tier two remains in the roadmap.** The entry was filed from
+an owner question: can we simulate the effect of gravity in the oscillation? The
+honest answer is still no, and §246 says why. The balance is POSED
+(`balanceTheta` is a sine of τ), so nothing integrates a torque and gravity has
+nothing to act on. Tier two is the driven balance that would earn "simulated".
+Tier one is the MODEL: the rate each position would give the free balance, swung
+on its own torque law, as an instrument.
+
+**What moves the rate between positions, and where each term is read.**
+
+- **Isochronism at the swing the position sustains.** Since §247 the energy
+  column solves a different sustained amplitude dial-flat and hanging, because
+  the balance pivot's friction radius differs: the pivot's own radius hanging,
+  the end's contact radius flat. At the nominal corner that is 292.1° flat and
+  200.4° hanging. The elastica's torque law gives a different rate at each, by
+  §245's method.
+- **The hairspring's own weight.** In a hanging position the spring's centre of
+  mass acts on the balance, and it moves as the spring breathes. The generalised
+  torque on the balance is `m_s·g·d(ĝ·c(θ))/dθ`, the quasi-static derivative of
+  the spring's potential. Here `c(θ)` is the length-weighted centroid of each
+  elastica frame, read off the frames rather than assumed. `m_s` is the ribbon's
+  own mass, now on the oscillator record as `spring.mass_kg` (rhombus4 area 2ac
+  × the planar developed length × `OSC_STEEL_RHO`): 1382 µg for a 0.0239 ×
+  0.1412 mm ribbon 104.48 mm long. The spring's sag under its own weight is
+  neglected; the weight is about five orders under the elastic forces.
+  Dial-flat, ĝ lies along the staff and the term is zero.
+- **Poise, as a sensitivity.** The balance is poised by construction (sixteen
+  symmetric timing screws), so the derived unbalance is zero, and choosing one
+  would be a number that looked right. The record gives the rate per µg·mm of
+  unbalance instead, heavy point low at rest.
+
+**Measured** (`tools/probe-246-positional-rate.mjs`; s/day, a positive rate
+gains):
+
+```
+corner        swing flat/vert    DU/DD     CU      CD      CL      CR    vert spread  flat − vert
+favourable     454.7°/ 292.8°    +8.17   -1.56   +6.92  +16.38  -11.01    27.392       +5.49
+nominal        292.1°/ 200.4°    +2.68   -3.14   +6.86  +17.28  -13.55    30.830       +0.82
+adverse        171.6°/ 126.0°    +1.68  +13.69  -11.21   -1.17   +3.61    24.892       +0.45
+```
+
+Of that, the hairspring's own weight at the nominal corner is CU −5.00, CD
++5.00, CL +15.42 and CR −15.41 s/day. Poise sensitivity is +0.44 s/day per µg·mm
+at the nominal hanging swing, −0.73 at the favourable corner and +2.80 at the
+adverse one. That is Airy's J₁(A)/A, with its sign flip near 220° between the
+corners.
+
+**The finding: the overcoil does not remove the spring's weight effect.** The
+probe's first draft expected it to. Its must-hit control asked the same plan
+without its overcoil to carry ten times the term. Measured, they carry it at the
+same order: at the nominal corner the worst hanging position reads 15.4 s/day
+with the overcoil and 18.0 as a flat spiral. Phillips's condition puts the REST
+centroid on the axis, which is what makes the spring develop concentrically and
+keeps the stud's force off the pivots. It says nothing about how the centroid
+MOVES with θ, which is a weighted sum in which each element turns by its own
+share of the wind. The overcoil changes which positions the term lands in, not
+its size. The term is also large here because the balance is light: TODO 207
+lightened the rim to the heaviest that still reaches the 200° target, which
+makes the spring's weight a larger share of what the balance feels. That is a
+design observation, not a defect: nothing in the movement claims a positional
+rate.
+
+**Controls, all gated.**
+
+1. A linear torque table through the same integrator reads −2.8e-6 s/day.
+2. A synthetic unbalance on a linear spring reproduces Airy's closed form
+   `m·g·e·J₁(A)/(A·k)` at 150°, 219.5° and 270°: +3.56 / +0.00 / −1.20 numeric
+   against the same analytic values, sign flip included.
+3. A frozen centroid gives a spring-weight term of exactly zero.
+4. The term is a gravity term that reads ĝ correctly: it is not negligible, it
+   flips with gravity (CU = −CD and CL = −CR to 5%), and it doubles with the
+   spring's mass (×2.0004).
+
+The spring frame's world transform is a rotation (det 1.000000), so no mirror
+sits between the plan and the world. Every elastica point converged, and the
+torque table (±470°) covers the largest swing asked about (454.7°, favourable
+dial-flat).
+
+**What it does not model.** The escapement's impulse and its own positional
+dependence. Coil contact: the elastica lets coils pass at the largest dial-flat
+swings, and TODO 216 already reports that the favourable corner's dial-flat
+swing is past a lever escapement's knocking angle. Temperature. And the balance
+is still posed, so nothing here is simulated.
+
+**Record changes.** `OSCILLATOR.spring.mass_kg` and
+`EQUALISATION.going.energy.balance.g_mps2` are new, so the probe reads the mass
+and the energy column's own `g` rather than restating either. `explain.html`'s
+free-sprung caption no longer says gravity is not modelled. It names the
+position as modelled, gives the spring-weight finding, and keeps "modelled, not
+simulated" and the escapement's share unmodelled, in every locale.
