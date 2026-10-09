@@ -19617,17 +19617,10 @@ for (const [end, F, M, w] of [
 // nose clears the heart, the tube is free to be turned by the §25 C friction
 // coupling: the hand sweeps while being set. Radii are DERIVED from the pin
 // orbits the chain block computed; the band and travel were priced there.
-// Hoisted above the sleeve build (from the release-complex block below):
-// the web's relief sector needs the feeler's line before the feeler exists.
+// Hoisted above the sleeve build (from the release-complex block below).
 const ALARM_FEELER_AZ_OFF = 0.44;
 const ALARM_RELEASE_AZ = Math.atan2(alarmWorld.y, alarmWorld.x) - ALARM_FEELER_AZ_OFF;
 const ALARM_SLEEVE_THROAT_R = alarmTailRAt(ALARM_A_RELEASE_PHI) + ALARM_A_PIN_R - 0.03; // full-press flank − face cover
-// §124 — the web's relief sector (one source for the cut and its asserts):
-// centred on the feeler's line in the sleeve's dial-mirrored frame, opened
-// so the ring's outer rim clears the ARM's width by the one margin each side.
-const ALARM_WEB_RELIEF_AZ = Math.PI - ALARM_RELEASE_AZ;
-const ALARM_WEB_RELIEF_HALF = Math.asin(
-  (ALARM_PIN_R + CLEAR_MARGIN) / (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H));
 const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03;       // flat bore: rest flank + working clear
 // (ALARM_SLEEVE_R_OUT — hoisted into the §29 chain by TODO 194: the selector's fork bracket starts one margin outside it, and the follower's return spiral is sized inside it.)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
@@ -19690,58 +19683,43 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   // the skirt: a 45° cone shell from the flat's bore down to the throat,
   // built as a lathe strip (crisp, like the §34 face cam: the notchless
   // surface IS the mechanism)
-  // SOLID shell: the working (inner) cone surface carries its STOCK_MIN_U
-  // wall OUTWARD-UP, normal to the face — the pin side and the band floor
-  // are untouched, and the outer face merges into the flat's own band. A
-  // bare strip would be sheet with no stock at all (§50's degenerate class).
+  //
+  // A SOLID shell, WALL STOCK_MIN_U NORMAL TO THE FACE (TODO 225). The working
+  // (inner) face A→B is the derived one — the pin's flank less the face cover —
+  // and the metal stands behind it on its +r, −z side (the funnel's outside; the
+  // pin is on the other). The first cut offset the face by (+wOff, +wOff), which
+  // at 45° slides it ALONG itself: A, B and the "outer" corner were collinear, so
+  // the profile's area was the little triangle at the top cap (0.0177 u²) and the
+  // cone the pin presses was a double-sided sheet of no thickness — the exact
+  // class this comment used to say it avoided. Every gate read it fat, because
+  // the census measures a lathe mesh by the bounding extents of its profile and
+  // the stray corner (it poked 0.112 into the flat) made those 0.317. The wall is
+  // an offset line z = r − c − t·√2 (t normal), the bottom lip is flush with the
+  // declared envelope's floor (zBot — so the band's feeler margin is unspent) and
+  // the cap is flush with the flat's underside, clipped at the flat's own rim.
+  const t = STOCK_MIN_U;
   const zTopS = -ALARM_SLEEVE_T, zBotS = -ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H;
   const rTopS = ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H, rBotS = ALARM_SLEEVE_THROAT_R;
-  const wOff = STOCK_MIN_U; // wall offset in +r and +z — a full floor stock in the census's thinnest-way-through measure (min of axial/radial extent), not just normal to the face
+  const faceC = rTopS - zTopS;                         // the face is z = r − faceC (45°: slope 1)
+  const outerZ = (r) => r - faceC - t * Math.SQRT2;    // the wall's outer surface, t behind the face
+  const capEnd = Math.min(rTopS + t * Math.SQRT2, ALARM_SLEEVE_R_OUT); // the cap stops at the flat's rim
   const skirtProfile = [
-    [rBotS, zBotS], [rTopS, zTopS],                       // the working face
-    [rTopS + wOff, zTopS],                                // flat-flush top cap
-    [rBotS + wOff, zBotS + wOff], [rBotS, zBotS],         // outer face + bottom lip
+    [rBotS, zBotS], [rTopS, zTopS],                     // the working face
+    [capEnd, zTopS],                                    // flat-flush top cap
+    [capEnd, outerZ(capEnd)],                           // rim step (0 where the wall fits whole)
+    [rBotS + t * Math.SQRT2, zBotS],                    // outer face down to the envelope floor
   ];
+  if (capEnd === rTopS + t * Math.SQRT2) skirtProfile.splice(3, 1); // wall fits whole: no step
   const skirtGeo = new THREE.LatheGeometry(
-    skirtProfile.map(([r, z]) => new THREE.Vector2(r, z)), 64);
+    [...skirtProfile, skirtProfile[0]].map(([r, z]) => new THREE.Vector2(r, z)), 64);
   const skirt = new THREE.Mesh(skirtGeo, MATS.nickel);
   skirt.rotation.x = Math.PI / 2; // lathe axis +Y → the sleeve's z, sign preserved
   skirt.name = 'alarmSleeveSkirt';
+  // §169's device: the census reads a lathe mesh's profile box, which for a
+  // 45° wedge is its ENVELOPE (H tall), not its wall. The wall is t normal to
+  // the face by construction above; declare it.
+  skirt.userData.stockSection = t;
   alarmSleeve.add(skirt);
-  // web under the flat's rim, joining the skirt's top band to the bore (the
-  // two derive 2·0.03 apart in radius: face-cover slack + working clearance).
-  //
-  // §124 (TODO 46's last catch) — the web is an ARC ring now, with a RELIEF
-  // SECTOR at the feeler's line. The release trip ROCKS the feeler arm
-  // toward the sleeve (rotation −drop/armLen — the §29 sign the beak-edge
-  // choice is built on), transiently spending rise(r) = ALARM_PIN_DROP·
-  // (PIVOT_R − r)/ARM_LEN of the one margin §45 priced for a STATIC feeler;
-  // and this web stands STOCK_MIN_U − ALARM_SLEEVE_SKIRT_H = 0.111 proud of
-  // the skirt's declared envelope. Where the arm's corner crossed the ring's
-  // bore corner, the two met by 0.0074 at the drop's bottom — a pose only
-  // §124's full-orbit train axis ever visited (the old 8 h sweep covered
-  // 47% of the orbit and never the release alignment; the alignment's tau
-  // also drifts with the dial epoch, which is why no fixed-pose probe could
-  // hold it). The relief is the disc track's own precedent — the notch is
-  // the absence of track: centred on the feeler's line (π − ALARM_RELEASE_AZ
-  // in this dial-mirrored frame), half-angle derived so the opening spans
-  // the arm's width plus the one margin each side at the ring's outer rim.
-  // The tail pin's guide bore is ~0.9 u away tangentially and keeps its full
-  // arc (asserted below, with the follower's stroke spent).
-  const WEB_R_IN = ALARM_SLEEVE_R_IN + 0.05, WEB_R_OUT = rTopS;
-  const webShape = new THREE.Shape();
-  const a0 = ALARM_WEB_RELIEF_AZ + ALARM_WEB_RELIEF_HALF, a1 = ALARM_WEB_RELIEF_AZ - ALARM_WEB_RELIEF_HALF + Math.PI * 2;
-  webShape.moveTo(Math.cos(a0) * WEB_R_OUT, Math.sin(a0) * WEB_R_OUT);
-  webShape.absarc(0, 0, WEB_R_OUT, a0, a1, false);
-  webShape.lineTo(Math.cos(a1) * WEB_R_IN, Math.sin(a1) * WEB_R_IN);
-  webShape.absarc(0, 0, WEB_R_IN, a1, a0, true);
-  webShape.closePath();
-  const webGeo = new THREE.ExtrudeGeometry(webShape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 40 });
-  webGeo.translate(0, 0, -STOCK_MIN_U / 2);
-  const web = new THREE.Mesh(webGeo, MATS.nickel);
-  web.name = 'alarmSleeveWeb'; // TODO 6 contact-floor selector
-  web.position.z = -ALARM_SLEEVE_T - STOCK_MIN_U / 2;
-  alarmSleeve.add(web);
   // guide bosses to the posts
   for (const az of ALARM_SLEEVE_POST_AZ) {
     const dlx = -Math.cos(az), dly = Math.sin(az); // world → dial-local mirror
@@ -19791,44 +19769,22 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   say('flat bore clears the resting pin', ALARM_SLEEVE_R_IN - (alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R), 0.03 - 1e-6);
   say('sleeve outer inside the feeler lugs', 5.32 - CLEAR_MARGIN - ALARM_SLEEVE_R_OUT, 0);
 }
-// §124 (TODO 46's last catch) — the web's relief sector, held to the
-// constraints it was derived from (rule 6: achieved and required numbers).
-// The release trip rocks the feeler arm toward the sleeve, and the arm's
-// corner met the web's bore corner by 0.0074 at the drop bottom — a pose
-// only the full-orbit train axis ever visits, at a tau that drifts with
-// the dial epoch. Four holds:
+// TODO 225 — the skirt's wall, held to the constraints it was derived from
+// (rule 6: achieved and required numbers). The profile's AREA is the proof the
+// shell is metal: the collinear offset this replaced measured 0.0177 u², the
+// triangle at its cap; a parallelogram of face length L and normal wall t is
+// L·t, less the sliver the rim clip takes off the cap's far corner.
 {
-  const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`§124 web relief ${nm}: ${v.toFixed(4)}, need ${need.toFixed ? need.toFixed(4) : need}`); };
-  const webROut = ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H;
-  // 1. The relief's opening spans the arm plus the one margin at the rim —
-  //    exact by the half-angle's own derivation; the assert keeps it true
-  //    if someone re-derives either side.
-  say('opening spans the arm by the margin',
-    webROut * Math.sin(ALARM_WEB_RELIEF_HALF) - ALARM_PIN_R, CLEAR_MARGIN);
-  // 2. The relief's edges keep clear of the tail pin's guide arc: the pin
-  //    rides at (−PIVOT_R − Rt·cosφ, −Rt·sinφ) over the follower stroke
-  //    (both frames share the tube's axes); tangential clearance at the
-  //    pin's radius, minus the pin itself, at both stroke ends × both edges.
-  {
-    const wrap = (x) => Math.atan2(Math.sin(x), Math.cos(x));
-    let worst = Infinity;
-    for (const phi of [ALARM_FOLLOWER_A0, ALARM_A_RELEASE_PHI]) {
-      const px = -ALARM_PIVOT_R - ALARM_A_TAIL_LEN * Math.cos(phi);
-      const py = -ALARM_A_TAIL_LEN * Math.sin(phi);
-      const pr = Math.hypot(px, py), pa = Math.atan2(py, px);
-      for (const edge of [ALARM_WEB_RELIEF_AZ - ALARM_WEB_RELIEF_HALF, ALARM_WEB_RELIEF_AZ + ALARM_WEB_RELIEF_HALF]) {
-        const t = pr * Math.abs(wrap(pa - edge)) - ALARM_A_PIN_R;
-        if (t < worst) worst = t;
-      }
-    }
-    say('edges clear the tail pin guide', worst, CLEAR_MARGIN);
-  }
-  // 3. The web's protrusion past the skirt's declared envelope stays inside
-  //    the static margin — the containment this pair actually lived on,
-  //    asserted now instead of assumed (strict containment would need the
-  //    web thinner than §50's floor; the residual is the declared debt).
-  say('protrusion inside the static margin',
-    CLEAR_MARGIN - (STOCK_MIN_U - ALARM_SLEEVE_SKIRT_H), 0.001);
+  const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`TODO 225 sleeve skirt ${nm}: ${v.toFixed(4)}, need ${need.toFixed ? need.toFixed(4) : need}`); };
+  const sk = alarmSleeve.children.find((c) => c.name === 'alarmSleeveSkirt');
+  const pts = sk.geometry.parameters.points;
+  let area = 0;
+  for (let i = 0; i < pts.length - 1; i++) area += pts[i].x * pts[i + 1].y - pts[i + 1].x * pts[i].y;
+  area = Math.abs(area) / 2;
+  const faceLen = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+  say('profile area (wall × face length, normal to the face)', area, STOCK_MIN_U * faceLen * 0.98); // 0.98: the rim clip's sliver, measured 0.7%
+  say('cap stays inside the flat rim', ALARM_SLEEVE_R_OUT - Math.max(...pts.map((q) => q.x)), 0);
+  say('lip no lower than the envelope floor', Math.min(...pts.map((q) => q.y)) - (-ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H), 0);
 }
 
 // --- 'Alarm setting wheel' — the FRICTION-coupled crown of the centre stack.
