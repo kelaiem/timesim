@@ -1071,19 +1071,29 @@ const SPEC_POINTS = [
 const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
 // The tier's cost column, for ordering its lanes — the COSTS rule exactly: a
 // wrong number costs wall clock, never a verdict, and `--report`'s
-// `points[name].ms` refreshes it. Measured FULL on a 4-vCPU dev container
-// (2026-10-01, the run that landed this; seconds of that container's wall,
-// against which the default's own three sweeps took 3,353 s), so only the
-// ratios between these rows mean anything. Kept apart from COSTS because a
-// point is not a BATTERY row, and assertCosts would rightly refuse it there;
-// held both ways against SWEEP_POINTS for assertCosts' reason.
+// `points[name].ms` refreshes it. Only the ratios between these rows mean
+// anything. Kept apart from COSTS because a point is not a BATTERY row, and
+// assertCosts would rightly refuse it there; held both ways against
+// SWEEP_POINTS for assertCosts' reason.
+//
+// §260 refreshed it. The first column was measured FULL on a 4-vCPU dev
+// container on 2026-10-01, and its floor was `balstep=60` at 1882, "the
+// three-quarter plate genuinely re-cut". §260's split run (37878429511) swept
+// all six points FULL with no ceiling skip, and that row had stopped being
+// true: `balstep=60` changed one unit, [Chain], which is in every changed set
+// by rule, so its restriction reaches almost nothing. It took 151 s against
+// ~480 s for each studr point, which change three units each. With pointOwners
+// reading this column, a stale floor does more than mis-order lanes: it hands
+// the bin it thought was heaviest to the worker it meant to spare. Seconds of
+// a self-hosted slot's wall, each worker running its three points in three
+// concurrent lanes.
 const POINT_COSTS = {
-  'balstep=60': 1882,     // the three-quarter plate is genuinely re-cut (see battery-points.mjs) — the tier's floor
-  'subdialr=8': 528,
-  'studr=7.595': 917,
-  'studr=4.71': 898,
-  'studr=7.1175': 872,
-  'route=2-leg': 192,
+  'balstep=60': 151,      // 1 changed [Chain] on 37878429511 — see above
+  'subdialr=8': 249,
+  'studr=7.595': 504,
+  'studr=4.71': 478,
+  'studr=7.1175': 472,
+  'route=2-leg': 128,
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
@@ -1127,8 +1137,8 @@ function specOwner(name, n) {
 }
 // Swept points are LPT over POINT_COSTS — the partition's own rule — into n
 // bins, and the bins are handed out from the LAST worker down: the bin that
-// took the costliest point (balstep=60, the tier's floor) lands where there is
-// no anchor work, because worker 0 alone also carries boot B. A wrong cost
+// took the costliest point lands where there is no anchor work, because
+// worker 0 alone also carries boot B. A wrong cost
 // costs wall clock, never a verdict, exactly as for the shards.
 function pointOwners(n) {
   const bins = Array.from({ length: n }, () => ({ names: [], cost: 0 }));

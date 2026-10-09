@@ -32141,10 +32141,10 @@ data and the worker count, which every worker and the collector derive alike:
   would be a number nobody could keep true.
 - `pointOwners(n)`: LPT over `POINT_COSTS` into n bins, the partition's own
   rule. The bins are handed out from the LAST worker down, so the bin that took
-  `balstep=60`, the tier's floor, lands away from worker 0, which alone also
-  carries boot B. A wrong cost costs wall clock, never a verdict. At n=2 that
-  puts `balstep=60`, `subdialr=8` and `route=2-leg` on worker 1, and the three
-  `studr` points on worker 0.
+  the costliest point lands away from worker 0, which alone also carries boot
+  B. A wrong cost costs wall clock, never a verdict. With the column §260
+  refreshed (below), n=2 puts `studr=7.595`, `subdialr=8`, `balstep=60` and
+  `route=2-leg` on worker 1, and `studr=4.71` and `studr=7.1175` on worker 0.
 
 With one worker every row is worker 0's: the spec list is the same list in the
 same order, and the point tier plans the same points. The single process, which
@@ -32183,3 +32183,51 @@ answer.
 - The probe's `--only` selection runs no point tier, by `--only`'s own rule,
   so the point half is accepted on CI. The PR's own split run is whole, so
   every point sweeps.
+
+**Measured on the host, and what it found.** One tree (`21a9f95`), two runs.
+Neither had a host baseline for the merge base, so both were whole.
+
+- **Single process** (run 37874802663). This was the route REFUSING the split:
+  only 1 runner was online, because #597's re-run still held the other slot.
+  - `54/54 gates pass`, job 44 m 56 s.
+  - Its shards overlapped that re-run until 02:42, so their 28 m 13 s is
+    inflated.
+  - Spec boots 3 m 21 s, point tier 10 m 08 s with **3 of 6 points SKIPPED**
+    by the ceiling.
+- **Split** (run 37878429511, opted in by the `battery-matrix` label):
+  `54/54 gates pass`, and **all 6 points CLEAN, 0 skipped**. Landing B's two
+  split runs skipped 1 each.
+
+| | runner | shards | boot B | spec boots | point tier | job |
+|---|---|---|---|---|---|---|
+| worker 0 | battery-1-3f6b | 13 m 50 s | 26 s | 18 in 1 m 39 s | 3 `studr` in 8 m 08 s | 25 m 09 s |
+| worker 1 | battery-2-2c8c | 10 m 05 s | — | 18 in 1 m 25 s | 3 points in 4 m 24 s | 17 m 58 s (incl. probes 1 m 28 s) |
+
+The run's wall was **not** this landing's: 43 m 03 s. Worker 1 QUEUED for
+24 min and started as worker 0 finished, because another PR's battery
+(`gravity-positional-rate`, 02:56–03:39) held the `battery-2` slot. The
+route had accepted the split on "2 online". So the two jobs ran in series,
+and the per-job times above are what the landing changed:
+
+- **The slowest worker went from 27 m 00 s / 27 m 23 s (Landing B's two runs)
+  to 25 m 09 s.**
+- **The PR's point tier went from skipping to verifying everything.** Each
+  worker's ceiling now covers half the points.
+
+**Two corrections the run forced, both in this landing.**
+
+- **The route's refusal counted the wrong runners.** §251 counts a busy runner
+  as ready, which is right for one job. For two it is wrong: a busy slot's
+  remaining time is unknown, and the second worker waits behind it while a
+  single process would have started at once on the free one. The split now
+  needs two IDLE runners (`online − busy ≥ 2`). On this run's own numbers
+  (2 online, 1 busy) that sends the run to one process. The decide step was
+  re-exercised on five cases.
+- **`POINT_COSTS` was stale, and ownership now reads it.** Its floor was
+  `balstep=60` at 1882 ("the three-quarter plate genuinely re-cut"). On this
+  tree that point changes one unit, [Chain], which is in every changed set
+  by rule, and it swept in 151 s. Each `studr` point, at three changed units,
+  took ~480 s. With the old column, `pointOwners` gave the three heaviest
+  points to worker 0, the worker it meant to spare. The column is refreshed
+  from this run's per-point walls, and n=2 now splits the `studr` points two
+  and one.
