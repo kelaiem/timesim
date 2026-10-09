@@ -85,7 +85,10 @@
 //                           and writes no report.
 //         --collect FILE…   the ASSEMBLY half over those files — the same
 //                           gates in the same order, and --report. Launches
-//                           no browser.
+//                           no browser. With --digests it writes worker 0's
+//                           key (§263), so a split run can seed a baseline;
+//                           the workers then need --digests too, which is
+//                           what runs their preflight.
 //         --only NAME[,NAME]  a probe/iteration flag CI never passes: narrow
 //                           the run to these checks (or `check:axis` slices)
 //                           so the assembly half is exercisable in minutes.
@@ -631,8 +634,13 @@ if ((MATRIX || COLLECT) && SPEC_ONLY) throw new Error('--spec-only is one proces
 // flag on this side could disagree with the workers, and a collector that
 // disagrees with its workers about the task list is the one thing that must
 // never be resolved silently.
+//
+// `--digests` is the one preflight flag a collector TAKES (§263): it writes the
+// key worker 0's preflight read, the object one process writes, so a split run
+// can leave a whole baseline. The other two are inputs to the preflight's
+// decision, which each worker made for itself.
 if (COLLECT) {
-  for (const flag of ['--digests', '--digests-base', '--points-base']) {
+  for (const flag of ['--digests-base', '--points-base']) {
     if (argOf(flag) !== null) throw new Error(`${flag} is the §152 preflight's, which runs in each worker`);
   }
   if (argv.includes('--points-pr')) throw new Error('--points-pr describes what worker 0 swept; --collect reads it from its file');
@@ -2122,6 +2130,23 @@ if (COLLECT) {
   }
   const [anchor] = anchored;
   if (anchor.matrix.i !== 0) throw new Error(`${anchor.path}: worker ${anchor.matrix.i} carries the anchors, which are worker 0's`);
+
+  // §263 — THE KEY A SPLIT BASELINE IS STORED UNDER. Worker 0 read it on its
+  // §152 preflight boot and boot B's beside it, which is where one process
+  // reads both, so the determinism gate holds the same pair either way. Written
+  // before the gates, as one process writes it: whether the run BECOMES a
+  // baseline is the workflow's call, on the verdict. A key nobody read is
+  // refused rather than written empty, because a baseline with no digests is
+  // one every later PR reads as "no usable baseline", and says so only in a log.
+  if (DIGESTS_OUT) {
+    const key = anchor.preflight.headDigests;
+    if (!key) {
+      throw new Error(`--digests: worker 0 (${anchor.path}) read no per-unit key; a worker's preflight runs `
+        + 'only when it is given --digests, --digests-base or --baseline');
+    }
+    writeFileSync(resolve(DIGESTS_OUT), `${JSON.stringify(key, null, 2)}\n`);
+    console.log(`  digests (worker 0's preflight) written to ${resolve(DIGESTS_OUT)}`);
+  }
 
   // §260 — THE TWO SPREAD TIERS, put back together. Ownership is arithmetic
   // (specOwner, pointOwners), so a row in the wrong file, or in two, is a
