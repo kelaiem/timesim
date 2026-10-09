@@ -30,11 +30,21 @@
 //
 //   node tools/l10n-review-packets.mjs                 # check only
 //   node tools/l10n-review-packets.mjs --out DIR       # check, then write DIR/review.html + DIR/data/*.json
+//   node tools/l10n-review-packets.mjs --out DIR --standalone [--send-to URL]
+//                                                      # ...DIR/index.html, a complete document
 //
 // DIR is the review page's whole file set: publish review.html with data/ beside it (the page
 // fetches data/index.json, then data/<code>.json). The page saves verdicts to the host's shared
 // store when it can, and always keeps a copy in the reviewer's browser with a "Copy my review"
 // export for reviewers who cannot write there.
+//
+// page.html is an artifact page — the artifact host wraps it in its document skeleton — so on any
+// other host it would render in quirks mode with no charset. --standalone writes it as
+// DIR/index.html with that skeleton supplied (doctype, charset, viewport) and noindex: a review
+// sheet is a working document, test-geometry.html's case in tools/build-pages.mjs, not a page to
+// be found by search. A static host has no shared store, so --send-to names where a copied review
+// goes: a GitHub new-issue URL, which the page opens with the locale in the title. pages.yml
+// builds /review/ this way from main's tables on every deploy.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
@@ -45,6 +55,13 @@ import { CORE, QUESTIONS } from './l10n-review/questions.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argOf = (flag) => { const i = process.argv.indexOf(flag); return i >= 0 ? process.argv[i + 1] : null; };
 const OUT = argOf('--out');
+const STANDALONE = process.argv.includes('--standalone');
+const SEND_TO = argOf('--send-to');
+if (SEND_TO && !STANDALONE) { console.error('--send-to needs --standalone: the artifact build hands reviews to its shared store'); process.exit(1); }
+if (SEND_TO && !/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/new$/.test(SEND_TO)) {
+  console.error(`--send-to must be a GitHub new-issue URL (https://github.com/OWNER/REPO/issues/new) — the page appends ?title=&body= to it; got ${JSON.stringify(SEND_TO)}`);
+  process.exit(1);
+}
 
 const el = { setAttribute() {}, getAttribute() { return null; }, style: {}, classList: { add() {}, remove() {}, toggle() {} } };
 globalThis.location = { search: '', href: 'http://localhost/', hash: '', pathname: '/' };
@@ -149,6 +166,15 @@ if (OUT) {
   mkdirSync(join(OUT, 'data'), { recursive: true });
   for (const [code, p] of Object.entries(packets)) writeFileSync(join(OUT, 'data', `${code}.json`), JSON.stringify(p));
   writeFileSync(join(OUT, 'data', 'index.json'), JSON.stringify({ built: new Date().toISOString().slice(0, 10), commit, locales: index }));
-  copyFileSync(join(ROOT, 'tools/l10n-review/page.html'), join(OUT, 'review.html'));
-  console.log(`wrote ${OUT}/review.html and ${index.length + 1} data files (commit ${commit})`);
+  const page = join(ROOT, 'tools/l10n-review/page.html');
+  let wrote = 'review.html';
+  if (STANDALONE) {
+    const attr = (v) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const head = ['<!doctype html>', '<html lang="en">', '<meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">', '<meta name="robots" content="noindex">'];
+    if (SEND_TO) head.push(`<meta name="review-send-to" content="${attr(SEND_TO)}">`);
+    writeFileSync(join(OUT, 'index.html'), head.join('\n') + '\n' + readFileSync(page, 'utf8'));
+    wrote = 'index.html';
+  } else copyFileSync(page, join(OUT, 'review.html'));
+  console.log(`wrote ${OUT}/${wrote} and ${index.length + 1} data files (commit ${commit})`);
 }

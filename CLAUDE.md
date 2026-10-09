@@ -133,7 +133,9 @@ tools/l10n-review-packets.mjs --out DIR` builds the review page (English beside
 each translation, a verdict and suggested wording per row) from the shipped
 tables, and it FAILS when a `LOCALES` row has no entry in
 `tools/l10n-review/questions.mjs` — so a locale landing writes down the terms
-its record says a workshop may dispute, or `[]` to declare there were none. **The static pages are localized too** (§73 tier two,
+its record says a workshop may dispute, or `[]` to declare there were none.
+The Explainer workflow gates it, and `pages.yml` publishes the sheet at
+`/review/` on every deploy. **The static pages are localized too** (§73 tier two,
 §95 tier two): `src/page-i18n.js` is the ENGINE — the walk and the swap, one
 copy — and each page adds a dozen-line module naming its own tables
 (`src/explain-i18n.js`, `src/primer-i18n.js`), one per locale, keyed by the
@@ -637,7 +639,12 @@ environment's own marks. A fourth path, `timelapse/`, is not an
 environment: §242's film of the release series, committed built under
 `timelapse/` and copied from the checkout, cut from every payload by
 `payload.sh` and ignored by the battery — refresh it with
-`tools/timelapse-capture.mjs` then `tools/timelapse-build.mjs`.
+`tools/timelapse-capture.mjs` then `tools/timelapse-build.mjs`. A fifth,
+`review/`, is §249's native-review sheet, and it is BUILT at deploy rather
+than committed: `tools/l10n-review-packets.mjs --standalone` reads every row
+from the checkout's translation tables, so it cannot fall behind them. A
+failed build publishes the three environments without it and says so — the
+Explainer workflow gates the same builder on every PR that can break it.
 
 **The deployed payload is `tools/payload.sh`, and it is the ONLY
 definition** — both `release.yml` (SFTP to QA) and `pages.yml` call it,

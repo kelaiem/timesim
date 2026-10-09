@@ -31304,6 +31304,34 @@ Turkish trap the dotted-i probe guards: a column label inside a `lang="tr"`
 cell, uppercased by CSS, read «TURKİSH». Labels that are English carry
 `lang="en"` now.
 
+**It is published on GitHub Pages, at `/review/`, built on every deploy.**
+`pages.yml` runs the builder with `--standalone` beside the film. It is the
+second path on the site that is not an environment, and the first that is
+BUILT there rather than committed built. Every row is read from the tables,
+so a committed copy would be one more copy to fall behind them. It is built
+from the checkout's tables, which are main's, because a reviewer's
+corrections land on main.
+- **A complete document.** `page.html` is an artifact page, and the artifact
+  host supplies its skeleton. Served as it stands, it rendered in quirks
+  mode with no charset. `--standalone` writes it as `index.html` with a
+  doctype, charset and viewport, and with noindex: a review sheet is a
+  working document, `test-geometry.html`'s case, not a page for search.
+- **A hand-off instead of a shared store.** A static host has nowhere to
+  keep verdicts but the reviewer's browser. So `--send-to` names a GitHub
+  new-issue URL, and the page shows a "Send it" button that opens an issue
+  titled with the language, to paste the copied review into. The builder
+  refuses any other kind of URL, and refuses `--send-to` without
+  `--standalone`: the artifact build hands verdicts to its store, and its
+  output is unchanged, byte for byte `page.html`.
+- **It cannot take the app down with it.** The Explainer workflow now runs
+  the builder on every PR touching the tables, the labels or
+  `tools/l10n-review/`. So a build failing in `pages.yml` means main moved
+  without that gate. The answer there is the three environments published
+  without `/review/` and an error annotation, not no deploy at all. Both
+  paths were run on the step's own shell: built, the verify block passes
+  (doctype, noindex, hand-off, data); forced to fail, the step exits 0 with
+  `_site/review` gone and the verify block skipped.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising

@@ -100,6 +100,8 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
 .foot .status { font-size: 13.5px; color: var(--muted); flex: 1 1 240px; min-width: 0; }
 .foot input { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; background: var(--paper); width: 190px; max-width: 100%; }
 .primary { background: var(--ink); color: var(--paper); border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 500; }
+a.primary { text-decoration: none; }
+a.primary:not([hidden]) { display: inline-block; }
 .export { margin-top: 18px; display: grid; gap: 6px; }
 .export textarea { width: 100%; min-height: 180px; font: 12px/1.45 var(--mono); border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--surface); }
 
@@ -120,7 +122,7 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     <div class="how">
       <div><b>Pick your language</b><span>Each one has a few hundred rows in five sections. Start with "Start here"; it holds the questions we most need answered.</span></div>
       <div><b>Mark each row</b><span>"Reads well", "Needs a change" with your wording, or "Not sure" with a note. Skip anything you like.</span></div>
-      <div><b>Your work is kept</b><span>Verdicts save as you go. If the page says it saved in this browser only, use "Copy my review" and send us the text.</span></div>
+      <div><b>Your work is kept</b><span id="keptNote">Verdicts save as you go. If the page says it saved in this browser only, use "Copy my review" and send us the text.</span></div>
     </div>
   </header>
 
@@ -139,6 +141,7 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     <label class="muted" for="reviewer" style="font-size:13px">Your name</label>
     <input id="reviewer" placeholder="Optional" autocomplete="name">
     <button class="primary" id="copy" disabled>Copy my review</button>
+    <a class="primary" id="send" target="_blank" rel="noopener" hidden>Send it</a>
   </div>
 </footer>
 
@@ -151,6 +154,10 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
   };
   const VERDICTS = [['ok', 'Reads well'], ['fix', 'Needs a change'], ['unsure', 'Not sure']];
   const FLAG_VERDICTS = [['ok', 'Keep this term'], ['fix', 'Use another term'], ['unsure', 'Not sure']];
+  // A static host has no shared store, so a review travels by "Copy my review" and a hand-off the
+  // HOST names: the builder writes a GitHub new-issue URL here for the Pages build (--send-to) and
+  // nothing for the artifact, whose verdicts reach the shared store instead.
+  const SEND_TO = document.querySelector('meta[name="review-send-to"]')?.content || '';
   const S = { index: null, data: null, code: null, section: 'start', filter: 'all', v: {}, db: null, uid: null, writable: null, timers: {}, saving: 0, dbFailed: false };
 
   const plain = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent; };
@@ -168,7 +175,16 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     setStatus(`${done} of ${rows.length} rows reviewed. ${where}`);
   }
 
+  function sendLink() {
+    const a = $('#send'); if (!SEND_TO || !S.data) { a.hidden = true; return; }
+    const title = `Translation review: ${S.data.english} (${S.code})`;
+    const body = 'Paste the text from "Copy my review" below this line.\n\n';
+    a.href = `${SEND_TO}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+    a.hidden = false;
+  }
+
   async function boot() {
+    if (SEND_TO) $('#keptNote').textContent = 'Verdicts save in this browser as you go. When you are done, press "Copy my review", then "Send it": it opens a GitHub issue to paste the text into (a free GitHub account is needed).';
     try { S.index = await (await fetch('data/index.json')).json(); }
     catch { $('#langs').innerHTML = '<p class="empty-state">The review data did not load. Reload the page; if it still fails, tell whoever sent you the link.</p>'; return; }
     renderLangs();
@@ -227,7 +243,7 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
     try { S.data = await (await fetch(`data/${code}.json`)).json(); }
     catch { $('#sheet').innerHTML = '<p class="empty-state">This language did not load. Reload the page and try again.</p>'; return; }
     S.section = 'start'; S.filter = 'all';
-    $('#copy').disabled = false;
+    $('#copy').disabled = false; sendLink();
     renderLangs(); renderSheet();
     if (S.db && S.uid) await pullMine();
     statusLine();
@@ -397,8 +413,8 @@ footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; back
       verdicts: rows.map((r) => ({ id: r.id, section: r.section, verdict: S.v[r.id].v, suggestion: S.v[r.id].s, note: S.v[r.id].n, th: S.v[r.id].th,
         en: plain(r.kind === 'flag' ? r.term : r.en).slice(0, 100) })) };
     const text = `Watch Sim translation review: ${S.data.english} (${S.code})\nReviewer: ${name}\n${rows.length} rows: ${tally.ok} read well, ${tally.fix} need a change, ${tally.unsure} not sure\n---\n${JSON.stringify(payload, null, 1)}\n`;
-    try { await navigator.clipboard.writeText(text); setStatus(`Copied ${rows.length} verdicts. Paste them into an email or message to whoever sent you this page.`); $('#export').hidden = true; }
-    catch { const box = $('#export'); box.hidden = false; const ta = $('#exportText'); ta.value = text; ta.focus(); ta.select(); setStatus('Copying was blocked. The text is shown below the rows, already selected.'); }
+    try { await navigator.clipboard.writeText(text); setStatus(SEND_TO ? `Copied ${rows.length} verdicts. Now press "Send it" and paste them into the issue.` : `Copied ${rows.length} verdicts. Paste them into an email or message to whoever sent you this page.`); $('#export').hidden = true; }
+    catch { const box = $('#export'); box.hidden = false; const ta = $('#exportText'); ta.value = text; ta.focus(); ta.select(); setStatus(SEND_TO ? 'Copying was blocked. The text is shown below the rows, already selected: copy it, then press "Send it".' : 'Copying was blocked. The text is shown below the rows, already selected.'); }
   });
 
   boot();
