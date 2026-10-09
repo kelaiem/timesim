@@ -32231,3 +32231,29 @@ and the per-job times above are what the landing changed:
   points to worker 0, the worker it meant to spare. The column is refreshed
   from this run's per-point walls, and n=2 now splits the `studr` points two
   and one.
+
+**Measured after both corrections: the first parallel Landing C run**
+(run 37881899660, `65cf78d`). Both workers started at 04:01:06, one per slot.
+
+| | runner | shards | boot B | spec boots | point tier | job |
+|---|---|---|---|---|---|---|
+| worker 0 | battery-2-59b6 | 13 m 09 s | 24 s | 18 in 1 m 43 s | `studr=4.71`, `studr=7.1175` in 7 m 38 s | 23 m 34 s |
+| worker 1 | battery-1-0181 | 11 m 26 s | — | 18 in 1 m 37 s | 4 points in 9 m 59 s | 25 m 16 s (incl. probes 1 m 28 s) |
+
+- **Gates:** `54/54 gates pass`, all 6 points CLEAN, 0 skipped. The collector
+  took 9 s.
+- **Wall: 25 m 37 s**, against Landing B's 27 m 22 s and 27 m 40 s (−7%). The
+  two workers' tiers ended 13 s apart (04:24:37 and 04:24:50), so the floor
+  is now the shards plus about ten minutes of tier on each side, not one
+  worker's tail.
+- **Verification is the larger gain.** Landing B verified 5 of 6 points per
+  PR, and the single process on this tree verified 3. A split now verifies
+  all six under the same ceiling.
+
+**One margin to watch, not to tune from one run.** On a PR the point tier
+orders CHEAPEST first, so the ceiling buys the most verified points. Worker 1's
+four points in three lanes put `studr=7.595` last, and that tier finished at
+599 s of its 600 s ceiling. A slower slot would SKIP that point, which is
+unverified-this-run rather than a failure. It is still the tier's own rule
+working. If it starts skipping, the fix is in ownership (a third bin, or a
+lane per point), never in the ceiling.
