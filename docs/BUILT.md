@@ -32539,3 +32539,52 @@ path only after it has agreed with reality on the reference path.
 **Measured on CI.** Dispatches on the branch, `runner: ubuntu-latest`, so each
 is the push's job graph exactly, minus the cache save. A branch dispatch may not
 seed, and says so.
+
+| run | shape | cap | wall (route → last job) | worker 0 | worker 1 | collector |
+|---|---|---|---|---|---|---|
+| 37959811246 | split | 150 | **51.9 min** | 26.3 | 51.4 | 0.3 |
+| 37959896617 | split | 150 | **45.1 min** | 44.7 | 42.3 | 0.2 |
+| 37965443348 | split | 150 | **29.6 min** | 25.4 | 29.1 | 0.3 |
+| 37969199581 | split | 95 | **45.7 min** | 45.3 | 40.0 | 0.2 |
+| 37965511569 | single (`single: true`) | 150 | **87.4 min** | — | — | — |
+
+- **Every split run was green**: `55/55 gates pass`, all six points CLEAN with
+  0 skipped, and the three validated-configs gates passing. The collector
+  wrote the report, the digests (`digests (worker 0's preflight) written`)
+  and `points.json` (6 whole point payloads). The single-process run is 54
+  gates: it has no `every expected shard was collected`.
+- **The same day's single process took 87.4 min.** That is in line with the
+  89.0 that opened this section, so the split's gain is not a quiet day. The
+  four split walls average 43.1 min, a 2.0x cut.
+- **What a leg spends, on a middle runner** (run 37959896617):
+  - worker 0: shards ~24.9 min, boot B and the share boot 1.0, 18 spec boots
+    4.7, its two `studr` points 13.6;
+  - worker 1: shards ~25, 18 spec boots, four points 13.5 (`studr=7.595` the
+    long pole at 781 s), the probes 2.7.
+
+  The two point tiers ended 13 s apart. Before, the tier was 25.7 min serial
+  after everything else.
+- **The runners are the spread now, not the partition.** Run 37959811246's
+  worker 0 swept `studr=4.71` in 434 s while its worker 1, doing the work it
+  always does, needed 970 s for `studr=7.595`. Across the four runs one leg
+  doing fixed work ranged 29.1–51.4 (worker 1) and 25.4–45.3 (worker 0), a
+  1.77x spread.
+
+**The cap, re-derived.** `battery.yml`'s own rule is the slowest green run,
+times the spread, rounded up. The first three runs, none truncated by the 150,
+gave a slowest LEG of 51.4 min. The legs' own 1.77x spread is wider than the
+header's 1.66x, so it is the one applied: 51.4 × 1.77 = 91.0, rounded up to
+**95** for a split leg. The fourth run measured under 95 and finished at 45.3,
+well inside it. The single process keeps 150: a `single: true` dispatch and the
+nightly still carry the whole battery on one runner, which today's reference
+run measured at 87.4. The PR's 125 is untouched.
+
+**Not built.**
+
+- **A third worker.** `pointOwners(3)` would put about two points on each
+  worker. That is a worker-count change in four places: the route's `workers`,
+  the legs' `--matrix i/2`, the collector's file list, and the probe owner. The
+  measured floor is now each leg's shards plus a ~13-min point tier, so a
+  third leg would cut both. Whether that nets out on hosted runners whose own
+  spread is 1.77x is a measurement to take, not a prediction to land.
+- **§227 promotion from a split.** See above.
