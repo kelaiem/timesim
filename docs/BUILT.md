@@ -30684,6 +30684,11 @@ on both pages.
   - The shipped tables read 14, across de, fr, ja, ko, zh and zh-Hant. They
     include German's `0,225` where the explainer keeps source form.
   - Holding prose is owed to its own change, not this landing.
+  - Since held: `explain-i18n --check` compares each prose block's digits
+    outside `<code>` as a multiset, with a mutation control. Re-measured on
+    the base of that change the count was 13, not 14 (French read 2). Five
+    were the checker reading `&frac12;` as 12, fixed in the tokenizer; the
+    other eight were translations, fixed in their tables.
 - **Arabic's 39 backward arrows** are still held by `probe-249-arrows`'
   `OWED` row.
 - **`Version`** still has no entry in any locale's table, and
@@ -31331,6 +31336,20 @@ corrections land on main.
   paths were run on the step's own shell: built, the verify block passes
   (doctype, noindex, hand-off, data); forced to fail, the step exits 0 with
   `_site/review` gone and the verify block skipped.
+
+**The pinned bars were measured on a phone and cut down.** The first build
+pinned the language title, all five section tabs and all four filters, and
+fixed the status line, the name box and both buttons to the bottom. On a
+390 × 844 screen that covered 63% of the page at 100% zoom (352 px on top,
+180 px below), leaving the rows about a third of the screen. The title now
+scrolls away, and only the tabs and filters stay pinned. Under 720 px each
+of those is one row that swipes sideways, and the current choice is
+scrolled back into view after every click, because both rows are rebuilt.
+The name box moved into the page's introduction, since it is filled in
+once. The footer is the status, clamped to two lines, above the two
+buttons sharing a row. Measured after: 22% covered at 390 × 844, 25% at
+360 × 740, 32% at 260 × 563 (a 390 px phone at about 150% zoom), 19% at
+desktop width. No page scrolls sideways, in German or in Arabic.
 
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 

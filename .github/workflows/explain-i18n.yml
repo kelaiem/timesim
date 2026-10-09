@@ -32,6 +32,10 @@
 #     quoted constant, or lost an id an interactive plate looks up.
 #   * plate numbers — a number in a plate label did not survive translation.
 #     The page's whole promise is that its numbers are greppable in src/*.js.
+#   * prose numbers — the same, for the bare numbers in a paragraph outside
+#     <code>, compared as a multiset because a translation reorders a
+#     sentence. Its control line plants a changed digit and a re-punctuated
+#     decimal in each table; a plant it misses fails the run.
 #   * plate fit — a translated label overran its plate or collided with the
 #     next one. German runs ~30% longer and SVG text does not wrap; English
 #     is the baseline, so only what a translation makes WORSE fails.
