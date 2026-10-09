@@ -30684,6 +30684,11 @@ on both pages.
   - The shipped tables read 14, across de, fr, ja, ko, zh and zh-Hant. They
     include German's `0,225` where the explainer keeps source form.
   - Holding prose is owed to its own change, not this landing.
+  - Since held: `explain-i18n --check` compares each prose block's digits
+    outside `<code>` as a multiset, with a mutation control. Re-measured on
+    the base of that change the count was 13, not 14 (French read 2). Five
+    were the checker reading `&frac12;` as 12, fixed in the tokenizer; the
+    other eight were translations, fixed in their tables.
 - **Arabic's 39 backward arrows** are still held by `probe-249-arrows`'
   `OWED` row.
 - **`Version`** still has no entry in any locale's table, and
