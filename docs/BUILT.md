@@ -31256,6 +31256,54 @@ zh-Hant, as §236 decided.
   stale, as the probe's own rule says it must, and is retired: he, fa and ar
   now measure **0 backwards** of 71, 68 and 71, with 0 left unjudged as WRAP.
 
+### The native-review packets
+
+Every locale record here ends on the same IOU, "No native review pass", and
+no gate can pay it: the page gate holds keys, markup, numbers and the honesty
+vocabulary, never whether a sentence reads naturally or a part has the name a
+workshop uses. What tooling can do is make the review cheap. So
+`tools/l10n-review-packets.mjs` builds one review page for all nineteen
+locales. A reviewer picks a language and marks each row "reads well", "needs
+a change" with their wording, or "not sure" with a note. Each packet, built
+from the shipped tables with no copy of any translation of its own:
+- **Start here:** the questions that locale's record left for a fluent
+  reader, then seventeen core part names. The questions live in
+  `tools/l10n-review/questions.mjs`, each taken from the locale's own
+  "No native review pass" bullet. Where the record named none, two came from
+  a scan of the tables for one part spelled two ways: Japanese writes the
+  fusee «フュジー» 37 times and «フュゼ» 3, and the crown «りゅうず» 59 times
+  and «竜頭» 4. German, French and Simplified Chinese declare `[]`.
+- **Vocabulary:** the explainer's 27 glossary rows, term and definition.
+- **Part names:** the other 43 registered labels.
+- **Modelled vs simulated:** every block whose English says either word
+  (24 per locale).
+- **The primer**, in reading order.
+
+Each row carries a stable id and a hash of the translation it showed, so a
+verdict that comes back is matched to its row and recognised as stale if the
+table has moved since.
+
+**It is an acceptance test as well as a builder**, which is why it lives in
+`tools/`. It fails when:
+- a `LOCALES` row has no questions entry (an empty list declares that nothing
+  was recorded; a missing one means nobody decided), or
+- a question's term no longer occurs in its locale's strings, or
+- a part label or glossary row has no translation.
+
+The roster is read from `LOCALES` at run time, so a new locale cannot be left
+out by the builder falling behind. Its three controls were run by breaking
+each check on purpose: drop German's entry, rename Dutch's «snek» to a word no
+table uses, and name a core label that is not registered. Each failed naming
+its cause, and the restored file passed.
+
+**The page's storage follows who the reviewer is.** It saves verdicts to the
+host's shared store for a reader who can write there. It always keeps a copy
+in the reviewer's own browser, with a "Copy my review" export for an outside
+translator who can only read. Building it found one more instance of the
+Turkish trap the dotted-i probe guards: a column label inside a `lang="tr"`
+cell, uppercased by CSS, read «TURKİSH». Labels that are English carry
+`lang="en"` now.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
