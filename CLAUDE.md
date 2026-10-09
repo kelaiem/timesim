@@ -127,7 +127,13 @@ builds from an existing table's keys, so it cannot see one) or NOT APPLIED
 (translated, but its display site never ran `t()` / `localizeTree()`, which is
 what a section built after the one localization pass looks like). Run it at
 every locale landing and after any change that adds UI text; it is not in a
-workflow, for the reason page coverage is reported rather than gated. **The static pages are localized too** (§73 tier two,
+workflow, for the reason page coverage is reported rather than gated. **The
+native review every locale still owes has a packet**: `node
+tools/l10n-review-packets.mjs --out DIR` builds the review page (English beside
+each translation, a verdict and suggested wording per row) from the shipped
+tables, and it FAILS when a `LOCALES` row has no entry in
+`tools/l10n-review/questions.mjs` — so a locale landing writes down the terms
+its record says a workshop may dispute, or `[]` to declare there were none. **The static pages are localized too** (§73 tier two,
 §95 tier two): `src/page-i18n.js` is the ENGINE — the walk and the swap, one
 copy — and each page adds a dozen-line module naming its own tables
 (`src/explain-i18n.js`, `src/primer-i18n.js`), one per locale, keyed by the
@@ -340,7 +346,12 @@ it into prose either.
    its kindest section — since TODO 218 the valley's own offset, its face flank
    relieved so the hold bears on the apex on the stud's line — with
    `HOLD_STRESS_WAIVERS` empty and a waiver whose member is under yield STALE, on
-   the ribbons' rule. And
+   the ribbons' rule. Since TODO 219 the spring itself is metal on the same row
+   (`maintainingHold.spring`): a blade in a great-wheel crossing, of the
+   ribbons' ALLOY and held to its low end — the one member besides the ribbons
+   that is — with its floor re-derived from the NOMINAL corner, its run one ring
+   pitch of recoil plus the margin (so the ring's tooth count is the fewest that
+   fits), and k, the preload and the blade's own compliance at float noise. And
    since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` its
@@ -914,7 +925,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 267 measuring scripts and this file names 22. The rest are named for the
+`tools/` holds 270 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -931,7 +942,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **157 of
+The index also carries the split that decides how to read a result: **160 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -262,6 +262,12 @@ export const MECH_GRAPH = {
     ['mainspring', 'Mainspring drum'],
     ['Mainspring drum', 'Chain'],
     ['Chain', 'Fusee & great wheel'],
+    // TODO 219 — inside this unit the drive runs cone → base ratchet → pawls →
+    // maintaining ring → `maintSpringPin` (hung from the ring) → `maintSpring`
+    // (the blade in a crossing, its foot fastened to the arm whose flank is
+    // Harrison's stop) → great wheel. Both parts are pieces of the unit — the
+    // pin rides the 'Maintaining wheel' sub, the blade the 'Great wheel' — so the
+    // edge is this unit's own; transfers prices the blade at both ends.
     ['Fusee & great wheel', 'Center wheel'],
     ['Center wheel', 'Third wheel'],
     ['Third wheel', 'Fourth wheel'],
@@ -3217,7 +3223,7 @@ export const INTRA_UNIT_CONTACTS = [
   // axis wound them, and two standing contacts that were always there became
   // visible at the rest pose. Both measured (d = 0.0000, seated not buried)
   // and both are the assembly, not a foul:
-  { unit: 'Fusee & great wheel', a: 'ExtrudeGeometry#2', b: 'ExtrudeGeometry#1', why: 'the great wheel plate and its own hub ring — one part, two meshes (makeGear builds the hub as a separate solid riveted through the plate)' },
+  { unit: 'Fusee & great wheel', a: 'ExtrudeGeometry#3', b: 'ExtrudeGeometry#1', why: 'the great wheel plate and its own hub ring — one part, two meshes (makeGear builds the hub as a separate solid riveted through the plate). (#2 until TODO 219: the maintaining spring\'s blade, an extrude, moved the plate\'s index label one on)' },
   { unit: 'Fusee & great wheel', a: 'ratchet', b: 'maintPawl', why: 'the maintaining pawl SEATED in its saw — the working joint the maintaining-power block exists for. (Two meshes in this unit share each name — the base ratchet and the maintaining ratchet, the pawl and its mate — so this row excuses the label pair; the far combination measures 0.1955 clear and never needs the excuse.)' },
   { unit: 'Stop lever', a: 'BoxGeometry#0', b: 'CylinderGeometry#9', why: 'crank bar on the hinge pin — the pivot joint (the repaired TODO 5 unit; its own build assert owns the bracket)' },
   { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
@@ -3259,8 +3265,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'crownWheel', b: 'transferArbor', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives' },
   { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
   { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
-  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#14', why: '§47: a maintaining pawl on its own pivot pin — the pawl rides the pin it rocks about (both pawls carry the same mesh name, so this row covers the pair the check reports)' },
-  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#16', why: '§47: the second maintaining pawl on its own pin — the same joint at the other station' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#15', why: '§47: a maintaining pawl on its own pivot pin — the pawl rides the pin it rocks about (both pawls carry the same mesh name, so this row covers the pair the check reports). (#14 until TODO 219 hung the spring\'s pin, a cylinder, from the ring)' },
+  { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#17', why: '§47: the second maintaining pawl on its own pin — the same joint at the other station (#16 until TODO 219)' },
   // §47 — the arrest's own declared joints: the finger on its stud (a bored
   // hub, running clearance), under its retaining head, seated on its bank
   // by the blade whose fixed end bears its post.
@@ -4607,7 +4613,7 @@ export const PLATE_SEATS = [
   // kind: pivot (an arbor end running in the plate), planted (a stud, post or
   // foot set into or onto it), fastened (a frame joint's leg, screw or tenon),
   // housed (the case and the crown stem's sleeve, which hold the plate's rim).
-  { unit: "Fusee & great wheel", mesh: "CylinderGeometry#11", kind: "pivot", why: "the fusee arbor's lower pivot, seated mid-plate (PIVOT_SEAT_Z)" },
+  { unit: "Fusee & great wheel", mesh: "CylinderGeometry#12", kind: "pivot", why: "the fusee arbor's lower pivot, seated mid-plate (PIVOT_SEAT_Z) — #11 until TODO 219's spring pin, a cylinder, moved its index label one on" },
   { unit: "Center wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
   { unit: "Third wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
   { unit: "Fourth wheel", mesh: "trainPivot", kind: "pivot", why: "the lower pivot, seated mid-plate in its bore" },
@@ -6392,11 +6398,15 @@ export const STRIKE_HANDOFFS = [
 // on the law's floor), `crest` at the tooth's tip (lift 0.3685 = the measured
 // travel), where the blade is deflected most. Located by golden section on the
 // click's pose. A layout move shifts which phase each tau samples, never what
-// the rows expect of it.
+// the rows expect of it. TODO 219 re-cut the ring at 35 teeth (its depth scaled
+// with its pitch) and the phases were re-read the same way: `riding` (τ 0.13)
+// still mid-climb, lift 0.221 of a 0.2957 travel; `seated` τ 2559.2, lift 0 to
+// 1e-6 (an instant: 0.0005 a quarter-second either side); `crest` τ 2340.0, lift
+// 0.29567.
 export const MAINT_DETENT_HANDOFF_POSES = [
   ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
-  ['seated', { tau: 1457.2, crownPullT: 0, leverEngage: 0, tension: 1 }],
-  ['crest', { tau: 1069.4, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['seated', { tau: 2559.2, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['crest', { tau: 2340.0, crownPullT: 0, leverEngage: 0, tension: 1 }],
 ];
 export const MAINT_DETENT_HANDOFFS = [
   {
@@ -10038,6 +10048,12 @@ export function checkOscillator(clock) {
 //     bending plus the whole load axial, the beak's wedge at its kindest
 //     section. Re-derived from the row's own geometry and held under
 //     SPRING_SIGMA_Y_PA, a member over it waived by name in HOLD_STRESS_WAIVERS.
+//     Since TODO 219 it holds the SPRING too: the floor re-derived from the
+//     record's nominal corner (the torque at the great wheel that sustains the
+//     claim), the run one ring pitch of recoil plus the margin and the ring's
+//     tooth count the fewest whose pitch fits, k = (τ_going − τ_floor)/run, the
+//     preload, k again from the blade's own compliance, and the root's stress at
+//     the working point and the stop under the alloy's low end.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 export const RIBBON_STRESS_WAIVERS = {
@@ -10230,6 +10246,65 @@ export function checkEqualisation(clock) {
       }
       for (const k of Object.keys(HOLD_STRESS_WAIVERS))
         if (!['arm', 'beak'].includes(k)) failures.push({ what: 'hold stress waiver names no member', member: k });
+      // Row 16, the SPRING (TODO 219). The floor is re-derived from this
+      // record's own corner — the torque at the great wheel that sustains the
+      // claim there, the stages upstream of the wheel out of the path — and
+      // the spring's law is held to it: the run covers one ring pitch of recoil
+      // plus the margin and is the FEWEST teeth's (one tooth fewer would not fit
+      // inside the run the blade can give), k takes the torque from the
+      // working point to the floor over the run, the preload is the floor's
+      // angle, the blade's own compliance gives the same k, and its root works
+      // under the alloy's low end at the working point and at the stop.
+      const sp = ho.spring;
+      if (!(sp.k_Nm_per_rad > 0) || sp.kDebt) {
+        failures.push({ what: 'maintaining spring unpriced', note: 'maintainingHold.spring has no k (TODO 219 regressed)', kDebt: sp.kDebt || null });
+      } else {
+        const C = en.corners[sp.floorCorner];
+        const ups = sp.upstream || [];
+        if (!C || ups.length !== 3 || !ups.every((n) => C.stages.some((st) => st.name === n))) {
+          failures.push({ what: 'maintaining spring floor: corner or upstream stages unknown', corner: sp.floorCorner, upstream: ups });
+        } else {
+          const etaGreat = C.stages.filter((st) => !ups.includes(st.name)).reduce((p, st) => p * st.eta, 1);
+          const floor = C.claim.needPerBeat_J * en.beats / (etaGreat * 2 * Math.PI * en.fuseeTurns);
+          if (!(rel(sp.floor_Nm, floor) <= 1e-12))
+            failures.push({ what: 'spring identity: floor', record: sp.floor_Nm, fromCorner: floor });
+          if (!(sp.floor_Nm < sp.torqueRun_Nm))
+            failures.push({ what: 'spring floor at or over the working torque — no run is possible', floor_Nm: sp.floor_Nm, work_Nm: sp.torqueRun_Nm });
+        }
+        const pitch = 2 * Math.PI / sp.ringTeeth;
+        if (!(Number.isInteger(sp.ringTeeth) && rel(sp.recoilMax_rad, pitch) <= 1e-12 && rel(sp.run_rad, pitch + sp.marginRun_rad) <= 1e-12))
+          failures.push({ what: 'spring identity: run = one ring pitch + the margin', run: sp.run_rad, pitch, margin: sp.marginRun_rad, teeth: sp.ringTeeth });
+        if (!(sp.run_rad <= sp.runMax_rad && 2 * Math.PI / (sp.ringTeeth - 1) + sp.marginRun_rad > sp.runMax_rad))
+          failures.push({ what: 'ring tooth count is not the fewest whose pitch fits the blade\'s run', teeth: sp.ringTeeth, run: sp.run_rad, runMax: sp.runMax_rad });
+        const k = (sp.torqueRun_Nm - sp.floor_Nm) / sp.run_rad;
+        if (!(rel(sp.k_Nm_per_rad, k) <= 1e-12))
+          failures.push({ what: 'spring identity: k over the run', record: sp.k_Nm_per_rad, fromSpan: k });
+        if (!(rel(sp.preload_rad, sp.floor_Nm / k) <= 1e-12 && rel(sp.thetaWork_rad, sp.torqueRun_Nm / k) <= 1e-12))
+          failures.push({ what: 'spring identity: preload / working angle', preload: sp.preload_rad, thetaWork: sp.thetaWork_rad, k });
+        // the blade's compliance at the contact, δ = F·∫₀ᴸ x²/(E·I(x)) dx, re-integrated
+        // from the record's profile (t = max(tMin, tRoot·√(x/L))) — main.js's rule
+        let c = 0;
+        {
+          const n = 2000, h = sp.L_u / n;
+          for (let i = 0; i <= n; i++) {
+            const x = i * h, tt = Math.max(sp.tMin_u, sp.tRoot_u * Math.sqrt(x / sp.L_u)) * U, I = (sp.b_u * U) * tt ** 3 / 12;
+            c += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * (x * U) ** 2 / (sp.E_Pa * I);
+          }
+          c *= (h * U) / 3;
+        }
+        if (!(rel(sp.compliance_m_per_N, c) <= 1e-12 && rel((sp.rE_u * U) ** 2 / c, k) <= 1e-9))
+          failures.push({ what: 'spring identity: the blade\'s compliance gives k', record: sp.compliance_m_per_N, fromProfile: c, kFromBlade: (sp.rE_u * U) ** 2 / c, kFromSpan: k });
+        if (!(sp.tMin_u >= STOCK_MIN_U - 1e-12))
+          failures.push({ what: 'spring tip under the §50 floor', tMin_u: sp.tMin_u, floor_u: STOCK_MIN_U });
+        const sW = 6 * (sp.torqueRun_Nm / (sp.rE_u * U)) * (sp.L_u * U) / (sp.b_u * U * (sp.tRoot_u * U) ** 2);
+        const sS = sW * sp.floor_Nm / sp.torqueRun_Nm;
+        if (!(rel(sp.sigmaWork_Pa, sW) <= 1e-12 && rel(sp.sigmaStop_Pa, sS) <= 1e-12))
+          failures.push({ what: 'spring identity: root stress', record: [sp.sigmaWork_Pa, sp.sigmaStop_Pa], fromLoad: [sW, sS] });
+        if (!(sp.E_Pa === MAINSPRING_E_PA && sp.limit_Pa === MAINSPRING_SIGMA_Y_PA))
+          failures.push({ what: 'maintaining spring is not held to the cited alloy', E: sp.E_Pa, limit: sp.limit_Pa });
+        if (!(sW <= MAINSPRING_SIGMA_Y_PA * (1 + 1e-9)))
+          failures.push({ what: 'maintaining spring over the alloy\'s low end at its working point', sigma_MPa: sW / 1e6, limit_MPa: MAINSPRING_SIGMA_Y_PA / 1e6 });
+      }
     }
   }
   // Row 13 (TODO 193) — THE RIBBONS AGAINST THEIR MATERIAL. σ = M·a/I at
@@ -10347,6 +10422,12 @@ export function checkEqualisation(clock) {
           arm_MPa: +(en.maintainingHold.arm.sigma_Pa / 1e6).toFixed(1), armMargin: +en.maintainingHold.arm.margin.toFixed(3),
           beak_MPa: +(en.maintainingHold.beak.sigma_Pa / 1e6).toFixed(1), beakMargin: +en.maintainingHold.beak.margin.toFixed(3),
           waived: Object.fromEntries(Object.entries(HOLD_STRESS_WAIVERS).map(([k, v]) => [k, v.split(' — ')[0]])),
+          spring: en.maintainingHold.spring.k_Nm_per_rad ? {
+            floor_Nmm: +(en.maintainingHold.spring.floor_Nm * 1000).toFixed(4), corner: en.maintainingHold.spring.floorCorner,
+            ringTeeth: en.maintainingHold.spring.ringTeeth, run_rad: +en.maintainingHold.spring.run_rad.toFixed(5),
+            k_Nmm_per_rad: +(en.maintainingHold.spring.k_Nm_per_rad * 1000).toFixed(4), preload_rad: +en.maintainingHold.spring.preload_rad.toFixed(5),
+            sigma_MPa: [+(en.maintainingHold.spring.sigmaWork_Pa / 1e6).toFixed(1), +(en.maintainingHold.spring.sigmaStop_Pa / 1e6).toFixed(1)],
+          } : null,
         } : null,
         pivots: en.pivots && en.pivots.strength ? {
           trainPivotR_u: +en.pivots.trainPivotR_u.toFixed(5), balancePivotR_u: +en.pivots.balancePivotR_u.toFixed(5),

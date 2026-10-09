@@ -31256,6 +31256,54 @@ zh-Hant, as §236 decided.
   stale, as the probe's own rule says it must, and is retired: he, fa and ar
   now measure **0 backwards** of 71, 68 and 71, with 0 left unjudged as WRAP.
 
+### The native-review packets
+
+Every locale record here ends on the same IOU, "No native review pass", and
+no gate can pay it: the page gate holds keys, markup, numbers and the honesty
+vocabulary, never whether a sentence reads naturally or a part has the name a
+workshop uses. What tooling can do is make the review cheap. So
+`tools/l10n-review-packets.mjs` builds one review page for all nineteen
+locales. A reviewer picks a language and marks each row "reads well", "needs
+a change" with their wording, or "not sure" with a note. Each packet, built
+from the shipped tables with no copy of any translation of its own:
+- **Start here:** the questions that locale's record left for a fluent
+  reader, then seventeen core part names. The questions live in
+  `tools/l10n-review/questions.mjs`, each taken from the locale's own
+  "No native review pass" bullet. Where the record named none, two came from
+  a scan of the tables for one part spelled two ways: Japanese writes the
+  fusee «フュジー» 37 times and «フュゼ» 3, and the crown «りゅうず» 59 times
+  and «竜頭» 4. German, French and Simplified Chinese declare `[]`.
+- **Vocabulary:** the explainer's 27 glossary rows, term and definition.
+- **Part names:** the other 43 registered labels.
+- **Modelled vs simulated:** every block whose English says either word
+  (24 per locale).
+- **The primer**, in reading order.
+
+Each row carries a stable id and a hash of the translation it showed, so a
+verdict that comes back is matched to its row and recognised as stale if the
+table has moved since.
+
+**It is an acceptance test as well as a builder**, which is why it lives in
+`tools/`. It fails when:
+- a `LOCALES` row has no questions entry (an empty list declares that nothing
+  was recorded; a missing one means nobody decided), or
+- a question's term no longer occurs in its locale's strings, or
+- a part label or glossary row has no translation.
+
+The roster is read from `LOCALES` at run time, so a new locale cannot be left
+out by the builder falling behind. Its three controls were run by breaking
+each check on purpose: drop German's entry, rename Dutch's «snek» to a word no
+table uses, and name a core label that is not registered. Each failed naming
+its cause, and the restored file passed.
+
+**The page's storage follows who the reviewer is.** It saves verdicts to the
+host's shared store for a reader who can write there. It always keeps a copy
+in the reviewer's own browser, with a "Copy my review" export for an outside
+translator who can only read. Building it found one more instance of the
+Turkish trap the dotted-i probe guards: a column label inside a `lang="tr"`
+cell, uppercased by CSS, read «TURKİSH». Labels that are English carry
+`lang="en"` now.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
@@ -32257,3 +32305,98 @@ four points in three lanes put `studr=7.595` last, and that tier finished at
 unverified-this-run rather than a failure. It is still the tier's own rule
 working. If it starts skipping, the fix is in ownership (a third bin, or a
 lane per point), never in the ceiling.
+
+---
+
+## §246 — The watch's position, modelled: the rate in each of the six positions, and the hairspring's own weight
+
+**Tier one shipped; tier two remains in the roadmap.** The entry was filed from
+an owner question: can we simulate the effect of gravity in the oscillation? The
+honest answer is still no, and §246 says why. The balance is POSED
+(`balanceTheta` is a sine of τ), so nothing integrates a torque and gravity has
+nothing to act on. Tier two is the driven balance that would earn "simulated".
+Tier one is the MODEL: the rate each position would give the free balance, swung
+on its own torque law, as an instrument.
+
+**What moves the rate between positions, and where each term is read.**
+
+- **Isochronism at the swing the position sustains.** Since §247 the energy
+  column solves a different sustained amplitude dial-flat and hanging, because
+  the balance pivot's friction radius differs: the pivot's own radius hanging,
+  the end's contact radius flat. At the nominal corner that is 292.1° flat and
+  200.4° hanging. The elastica's torque law gives a different rate at each, by
+  §245's method.
+- **The hairspring's own weight.** In a hanging position the spring's centre of
+  mass acts on the balance, and it moves as the spring breathes. The generalised
+  torque on the balance is `m_s·g·d(ĝ·c(θ))/dθ`, the quasi-static derivative of
+  the spring's potential. Here `c(θ)` is the length-weighted centroid of each
+  elastica frame, read off the frames rather than assumed. `m_s` is the ribbon's
+  own mass, now on the oscillator record as `spring.mass_kg` (rhombus4 area 2ac
+  × the planar developed length × `OSC_STEEL_RHO`): 1382 µg for a 0.0239 ×
+  0.1412 mm ribbon 104.48 mm long. The spring's sag under its own weight is
+  neglected; the weight is about five orders under the elastic forces.
+  Dial-flat, ĝ lies along the staff and the term is zero.
+- **Poise, as a sensitivity.** The balance is poised by construction (sixteen
+  symmetric timing screws), so the derived unbalance is zero, and choosing one
+  would be a number that looked right. The record gives the rate per µg·mm of
+  unbalance instead, heavy point low at rest.
+
+**Measured** (`tools/probe-246-positional-rate.mjs`; s/day, a positive rate
+gains):
+
+```
+corner        swing flat/vert    DU/DD     CU      CD      CL      CR    vert spread  flat − vert
+favourable     454.7°/ 292.8°    +8.17   -1.56   +6.92  +16.38  -11.01    27.392       +5.49
+nominal        292.1°/ 200.4°    +2.68   -3.14   +6.86  +17.28  -13.55    30.830       +0.82
+adverse        171.6°/ 126.0°    +1.68  +13.69  -11.21   -1.17   +3.61    24.892       +0.45
+```
+
+Of that, the hairspring's own weight at the nominal corner is CU −5.00, CD
++5.00, CL +15.42 and CR −15.41 s/day. Poise sensitivity is +0.44 s/day per µg·mm
+at the nominal hanging swing, −0.73 at the favourable corner and +2.80 at the
+adverse one. That is Airy's J₁(A)/A, with its sign flip near 220° between the
+corners.
+
+**The finding: the overcoil does not remove the spring's weight effect.** The
+probe's first draft expected it to. Its must-hit control asked the same plan
+without its overcoil to carry ten times the term. Measured, they carry it at the
+same order: at the nominal corner the worst hanging position reads 15.4 s/day
+with the overcoil and 18.0 as a flat spiral. Phillips's condition puts the REST
+centroid on the axis, which is what makes the spring develop concentrically and
+keeps the stud's force off the pivots. It says nothing about how the centroid
+MOVES with θ, which is a weighted sum in which each element turns by its own
+share of the wind. The overcoil changes which positions the term lands in, not
+its size. The term is also large here because the balance is light: TODO 207
+lightened the rim to the heaviest that still reaches the 200° target, which
+makes the spring's weight a larger share of what the balance feels. That is a
+design observation, not a defect: nothing in the movement claims a positional
+rate.
+
+**Controls, all gated.**
+
+1. A linear torque table through the same integrator reads −2.8e-6 s/day.
+2. A synthetic unbalance on a linear spring reproduces Airy's closed form
+   `m·g·e·J₁(A)/(A·k)` at 150°, 219.5° and 270°: +3.56 / +0.00 / −1.20 numeric
+   against the same analytic values, sign flip included.
+3. A frozen centroid gives a spring-weight term of exactly zero.
+4. The term is a gravity term that reads ĝ correctly: it is not negligible, it
+   flips with gravity (CU = −CD and CL = −CR to 5%), and it doubles with the
+   spring's mass (×2.0004).
+
+The spring frame's world transform is a rotation (det 1.000000), so no mirror
+sits between the plan and the world. Every elastica point converged, and the
+torque table (±470°) covers the largest swing asked about (454.7°, favourable
+dial-flat).
+
+**What it does not model.** The escapement's impulse and its own positional
+dependence. Coil contact: the elastica lets coils pass at the largest dial-flat
+swings, and TODO 216 already reports that the favourable corner's dial-flat
+swing is past a lever escapement's knocking angle. Temperature. And the balance
+is still posed, so nothing here is simulated.
+
+**Record changes.** `OSCILLATOR.spring.mass_kg` and
+`EQUALISATION.going.energy.balance.g_mps2` are new, so the probe reads the mass
+and the energy column's own `g` rather than restating either. `explain.html`'s
+free-sprung caption no longer says gravity is not modelled. It names the
+position as modelled, gives the spring-weight finding, and keeps "modelled, not
+simulated" and the escapement's share unmodelled, in every locale.
