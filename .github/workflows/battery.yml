@@ -438,6 +438,7 @@ jobs:
       # §264 — that job's cap in minutes, read by its `timeout-minutes` and by
       # the battery's wait for it. Derived where it is set, in `decide`.
       points_cap_min: ${{ steps.decide.outputs.points_cap_min }}
+      points_cap_s: ${{ steps.decide.outputs.points_cap_s }}
     env:
       # §200's routing expression, read as: (asked for by a same-repo PR) or
       # (asked for by a dispatch) or (the nightly), and owner-triggered, and
@@ -560,7 +561,7 @@ jobs:
           # up to 50. A sibling that is slower than that is killed, and the
           # battery, which has stopped waiting by then, sweeps the tier itself.
           points_cap_min=50
-          { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; echo "points_job=$points_job"; echo "points_cap_min=$points_cap_min"; } >> "$GITHUB_OUTPUT"
+          { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; echo "points_job=$points_job"; echo "points_cap_min=$points_cap_min"; echo "points_cap_s=$(( points_cap_min * 60 ))"; } >> "$GITHUB_OUTPUT"
           echo "§200/§251: $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$mwhy" ] && echo "§259: $mwhy" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$pwhy" ] && echo "§264: $pwhy" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -656,7 +657,7 @@ jobs:
       # one definition), so the battery stops waiting exactly when the sibling
       # would have been killed.
       POINTS_JOB: ${{ needs.route.outputs.points_job }}
-      POINTS_TIER_WAIT_S: ${{ fromJSON(needs.route.outputs.points_cap_min) * 60 }}
+      POINTS_TIER_WAIT_S: ${{ needs.route.outputs.points_cap_s }}
     # §251 — the route job decides; see it for the trust tiers (§200) and the
     # readiness check that can turn an opt-in back to ubuntu-latest.
     runs-on: ${{ needs.route.outputs.host }}
