@@ -1349,6 +1349,42 @@ export const AXES = [
       alarmPressCycle: f * 2,
     }),
   },
+  {
+    // TODO 224 — THE MAINTAINING WIND, HELD. Every axis above runs the ring at
+    // offset 0 on its arbor: none names `maintHold`, enterAxis clears it, and a
+    // zero-dt pose never edges the wind-start state. So the hold — the ring
+    // backing onto the detent's beak, standing there while the great wheel runs
+    // on the blade, the train stopping at Harrison's stop, the pawls taking the
+    // ring forward again — was reachable only in live frames, and the restoring
+    // audit (whose population is this array's `reversed` flag) could not see the
+    // ring reverse at all. This axis is that whole wind, ONE cycle:
+    //   f = 0          the drive on, at τ 0.13 (where every axis stands);
+    //   0 < f < 1      the drive off at τ 0.13: the recoil at the first sample,
+    //                  then the wheel's advance h = f·n/(n − 1) of the run the
+    //                  recoil leaves — setPose ADVANCES τ by the train's own law —
+    //                  reaching the stop (h = 1) at the last held sample and
+    //                  standing there for any f the refine engine visits past it;
+    //   f = 1          the pick-up at the stop's τ: the ring back on the wheel.
+    // Out and back within the axis, so the reversal is the ring's own motion
+    // (alarmToggle's reason), and a pure function of f (alarmPress's), so the
+    // axis is index-sliceable. tension stays 1, the fusee standing at the
+    // arrest's azimuth: the hand holding the crown at the stop with the drive
+    // off is the wind that reaches run-out, and the flange's own ride under the
+    // pawls is the `wind` axis's.
+    // n = 48: at τ 0.13 the recoil is 0.0985 rad and leaves 0.126 of the run, so
+    // the pin swings 0.42 u along its circle in 47 steps — 0.009 u a sample, a
+    // sixteenth of CLEAR_MARGIN, so no approach of the pin to the flank or the
+    // hub land can step over the margin between samples. (The registry's
+    // inclusive 12-pose grid lands the drive on, ten held fractions and the
+    // pick-up: back, then forward — the reversal it votes on.)
+    name: 'maintHold',
+    n: 48,
+    pose: (f) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
+      maintHold: f < 1 ? Math.min(1, (f * 48) / 47) : 1,
+      maintPickUp: f >= 1 ? 1 : 0,
+    }),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -3223,7 +3259,7 @@ export const INTRA_UNIT_CONTACTS = [
   // axis wound them, and two standing contacts that were always there became
   // visible at the rest pose. Both measured (d = 0.0000, seated not buried)
   // and both are the assembly, not a foul:
-  { unit: 'Fusee & great wheel', a: 'ExtrudeGeometry#3', b: 'ExtrudeGeometry#1', why: 'the great wheel plate and its own hub ring — one part, two meshes (makeGear builds the hub as a separate solid riveted through the plate). (#2 until TODO 219: the maintaining spring\'s blade, an extrude, moved the plate\'s index label one on)' },
+  { unit: 'Fusee & great wheel', a: 'ExtrudeGeometry#3', b: 'ExtrudeGeometry#1', why: 'the winding spur seated against the great wheel\'s hub ring — the spur\'s top face IS the winding band\'s top, WIND_BAND_TOP, the hub\'s underside, by construction (TODO 209). (#2 until TODO 219 put the maintaining spring\'s blade, an extrude, at index 2. This row\'s why called #3 "the great wheel plate" until TODO 224 read the labels off the unit: index 0 is the plate, 1 its hub ring, 2 the blade, 3 the spur — the joint excused was always the spur\'s.)' },
   { unit: 'Fusee & great wheel', a: 'ratchet', b: 'maintPawl', why: 'the maintaining pawl SEATED in its saw — the working joint the maintaining-power block exists for. (Two meshes in this unit share each name — the base ratchet and the maintaining ratchet, the pawl and its mate — so this row excuses the label pair; the far combination measures 0.1955 clear and never needs the excuse.)' },
   { unit: 'Stop lever', a: 'BoxGeometry#0', b: 'CylinderGeometry#9', why: 'crank bar on the hinge pin — the pivot joint (the repaired TODO 5 unit; its own build assert owns the bracket)' },
   { unit: 'Stop lever', a: 'BoxGeometry#2', b: 'CylinderGeometry#9', why: 'drop leg on the same hinge pin' },
@@ -6403,10 +6439,20 @@ export const STRIKE_HANDOFFS = [
 // still mid-climb, lift 0.221 of a 0.2957 travel; `seated` τ 2559.2, lift 0 to
 // 1e-6 (an instant: 0.0005 a quarter-second either side); `crest` τ 2340.0, lift
 // 0.29567.
+//
+// TODO 224 — and two poses of a WIND, the drive off at τ 0.13 (`riding`'s
+// instant, mid-ramp, so the recoil is a real one — 0.0985 rad): `holding` with
+// the great wheel half-way through the run the recoil leaves (maintHold 0.5),
+// `runout` at the stop (maintHold 1, posed from it). The running poses name
+// `maintHold: 0` because the table runs in one check and setPose assigns only
+// the keys a pose names: a running pose after a held one must SAY the drive is
+// on, or it would inherit the hold.
 export const MAINT_DETENT_HANDOFF_POSES = [
-  ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1 }],
-  ['seated', { tau: 2559.2, crownPullT: 0, leverEngage: 0, tension: 1 }],
-  ['crest', { tau: 2340.0, crownPullT: 0, leverEngage: 0, tension: 1 }],
+  ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['seated', { tau: 2559.2, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['crest', { tau: 2340.0, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['holding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 }],
+  ['runout', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 1 }],
 ];
 export const MAINT_DETENT_HANDOFFS = [
   {
@@ -6423,6 +6469,46 @@ export const MAINT_DETENT_HANDOFFS = [
     label: 'detent beak ⇄ maintaining ring (the beak rides the cut)',
     unitA: 'Maintaining detent', meshA: 'maintDetentBeak',
     unitB: 'Fusee & great wheel', meshB: 'maintRing',
+  },
+  // TODO 224 — THE HOLD, three contacts. The row above cannot say WHICH flank
+  // the beak is on: the ring is one mesh, and the beak touches it at every
+  // pose. So the face is read in the ring's own free coordinate (the
+  // sawRideDepth lesson: a pair meant to mesh is measured along the motion it
+  // makes): the arc, at the tip circle, through which the ring could still
+  // RECOIL before it meets the beak. Running on the ramp that is the recoil a
+  // wind would take (riding 0.0985 rad, crest ~0.157) — free; holding and at
+  // run-out it is the relief — contact. `seated` is the one running instant at
+  // which the face IS at the beak (the seat is where the face swung back meets
+  // it: MAINT_HOLD's holdNet, 0 rad from the seat), so it reads contact too,
+  // and is expected to.
+  {
+    label: 'maintaining ring face ⇄ detent beak (the face holds the ring through a wind)',
+    unitA: 'Maintaining detent', meshA: 'maintDetentBeak',
+    unitB: 'Fusee & great wheel', meshB: 'maintRing',
+    measure: 'ringRecoil',
+    expect: { riding: 'free', seated: 'contact', crest: 'free', holding: 'contact', runout: 'contact' },
+  },
+  // The pin on the blade's tip, at every pose: the drive while running (the
+  // blade at its working deflection), and the blade relaxing after the pin
+  // through the hold (MAINT_BLADE's frames, a relief plus at most one frame
+  // step off it) down to its preload at the stop.
+  {
+    label: 'maintaining pin ⇄ spring blade (the pin on the blade\'s free end)',
+    unitA: 'Fusee & great wheel', meshA: 'maintSpringPin',
+    unitB: 'Fusee & great wheel', meshB: 'maintSpring',
+  },
+  // Harrison's stop: the great wheel's plate, whose crossing flank the pin
+  // lands on at run-out. Selected by the unit's index label (the plate is
+  // unnamed — INTRA_UNIT_CONTACTS' convention for this unit): index 0, the
+  // plate (r 15.67, under greatWheel); 1 is its hub ring, 2 the blade, 3 the
+  // winding spur. Free running and
+  // holding (the nearest metal is then the hub land, CLEAR_MARGIN off), contact
+  // at the stop.
+  {
+    label: 'maintaining pin ⇄ great wheel stop flank (Harrison\'s stop)',
+    unitA: 'Fusee & great wheel', meshA: 'maintSpringPin',
+    unitB: 'Fusee & great wheel', meshB: 'ExtrudeGeometry#0',
+    expect: { riding: 'free', seated: 'free', crest: 'free', holding: 'free', runout: 'contact' },
   },
 ];
 
@@ -6474,6 +6560,52 @@ export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = 
   return out;
 }
 
+// TODO 224 — the ring's RECOIL GAP: how far (arc at the tip circle) the
+// maintaining ring could still turn back on its arbor before it meets the
+// detent's beak. A pair meant to mesh needs a measure in its own free
+// coordinate (the sawRideDepth lesson): the beak touches the ring at every pose,
+// so a distance cannot say which flank, and the recoil can — the face is the
+// flank that stops a recoil. The sense is read from the clock (MAINT_HOLD.REC,
+// the one declaration), never restated here. The ring is turned about its
+// parent's axis in WORLD space, so nothing assumes the mesh's local frame;
+// stepped at 1/128 of a pitch to the first intersection, then bisected.
+function ringRecoilGap(clock, beaks, rings) {
+  const law = clock.maintHoldLaw;
+  if (!law) return { sep: NaN, error: 'no maintHoldLaw on __clock' };
+  let best = Infinity;
+  const _o = new THREE.Vector3(), _z = new THREE.Vector3(), _R = new THREE.Matrix4(), _T = new THREE.Matrix4(), _Ti = new THREE.Matrix4();
+  for (const b of rings) {
+    const P = b.parent.matrixWorld;
+    _o.setFromMatrixPosition(P);
+    _z.set(P.elements[8], P.elements[9], P.elements[10]).normalize();
+    // the tip circle, from the ring's own vertices about that axis
+    const pos = b.geometry.attributes.position, v = new THREE.Vector3();
+    let rTip = 0;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(b.matrixWorld).sub(_o);
+      rTip = Math.max(rTip, v.sub(_z.clone().multiplyScalar(v.dot(_z))).length());
+    }
+    const M0 = b.matrixWorld.clone();
+    _T.makeTranslation(_o.x, _o.y, _o.z); _Ti.makeTranslation(-_o.x, -_o.y, -_o.z);
+    const hits = (d) => {
+      _R.makeRotationAxis(_z, law.REC * d);
+      b.matrixWorld.copy(_T).multiply(_R).multiply(_Ti).multiply(M0);
+      return beaks.some((a) => meshesIntersect(a, b));
+    };
+    let d = 0;
+    if (!hits(0)) {
+      const N = 128, span = law.pitch;
+      let lo = 0, hi = null;
+      for (let i = 1; i <= N; i++) { const t = (span * i) / N; if (hits(t)) { hi = t; lo = (span * (i - 1)) / N; break; } }
+      if (hi === null) d = Infinity;
+      else { for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (hits(m)) hi = m; else lo = m; } d = hi; }
+    }
+    b.matrixWorld.copy(M0);
+    best = Math.min(best, d * rTip);
+  }
+  return { sep: best };
+}
+
 export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALARM_HANDOFF_POSES, handoffs = ALARM_HANDOFFS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
   const meshesIn = (unitName, meshName) => {
@@ -6481,6 +6613,13 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
     if (!u) return [];
     const out = [];
     u.obj.traverse((o) => { if (o.isMesh && o.name === meshName) out.push(o); });
+    // TODO 224: an unnamed mesh by its unit INDEX LABEL, the convention
+    // INTRA_UNIT_CONTACTS and the label function use (`type#i` over the
+    // unit's collected meshes) — names first, so no named row changes.
+    if (!out.length && /#\d+$/.test(meshName)) {
+      const m = u.meshes.find((o, i) => !o.name && `${o.geometry.type}#${i}` === meshName);
+      if (m) out.push(m);
+    }
     return out;
   };
   const rows = [];
@@ -6495,11 +6634,18 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
       rows.push({ label: h.label, status: 'ERROR', error: `mesh not found: ${!mA.length ? `${h.unitA}/${h.meshA}` : `${h.unitB}/${h.meshB}`}` });
       continue;
     }
-    const row = { label: h.label, tol, waived: h.waived || null };
+    const row = { label: h.label, tol, waived: h.waived || null, ...(h.measure ? { measure: h.measure } : {}) };
     let bad = false;
     for (const [poseName, pose] of poses) {
       clock.setPose(pose);
       clock.scene.updateMatrixWorld(true);
+      if (h.measure === 'ringRecoil') {
+        const r = ringRecoilGap(clock, mA, mB);
+        row[poseName] = +r.sep.toFixed(4);
+        const expect = (h.expect && h.expect[poseName]) || 'contact';
+        if (expect === 'free' ? !(r.sep >= tol) : !(Math.abs(r.sep) <= tol)) bad = true;
+        continue;
+      }
       let gap = Infinity, depth = 0;
       for (const a of mA) {
         for (const b of mB) {
@@ -12970,6 +13116,13 @@ const FINGERPRINT_POSES = [
   //   wheel — the configuration no pose above can reach, since every one of
   //   them stands the pawl parked.
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmPressCycle: 0.93 },
+  // — TODO 224: a wind HELD, half-way through the run. `maintHold` is the
+  //   movement's newest input (setPose's held wind; before it no pose turned
+  //   the maintaining ring on its arbor or deflected the blade), so the list's
+  //   rule gives it a pose: the ring backed onto the beak, the great wheel half
+  //   way to the stop, the blade on a posed frame — none of which the poses
+  //   above reach, since every one of them has the drive on.
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,

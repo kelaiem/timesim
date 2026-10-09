@@ -845,7 +845,7 @@ match a whole run if entering an axis reproduces that axis's poses whatever ran
 before it. `setPose` assigns ONLY the keys a pose names, so before TODO 54 each
 axis inherited the tail of the axis declared above it and every sweep's
 coverage was a function of `AXES`' order. Every sweep now calls `enterAxis`
-before each axis; the `axisEntry` check gates that over all 182 ordered pairs
+before each axis; the `axisEntry` check gates that over all 210 ordered pairs
 and REPORTS, beside it, what used to ride through.
 
 **Since §152 a PR run can be INCREMENTAL, and the rule is that a check runs
@@ -853,8 +853,8 @@ only when it can change its answer.** A sweep's verdict is
 `f(geometry, pose net, check code)`. `unitDigests()` measures the first per
 unit — SHAPE over the position/index bytes, PLACE over the per-mesh world
 matrices, both at `digestPoses()`: a set DERIVED from `AXES` (every axis at
-f ∈ {0, 0.5, 1}, unioned with the 12 canonical poses for the combined states,
-43 total) rather than borrowed from the fingerprint — measured, the borrowed
+f ∈ {0, 0.5, 1}, unioned with the 13 canonical poses for the combined states,
+47 total) rather than borrowed from the fingerprint — measured, the borrowed
 set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
 `tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
 units install a different geometry at a different pose, which is why every
@@ -935,7 +935,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 272 measuring scripts and this file names 23. The rest are named for the
+`tools/` holds 273 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -952,7 +952,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **162 of
+The index also carries the split that decides how to read a result: **163 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
