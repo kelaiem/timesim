@@ -39632,6 +39632,25 @@ const PART_CALLOUTS = {
   mwMinuteWheel: { name: 'Minute wheel', train: 'Motion works', anchor: 'rim' },
   mwMinutePinion: { name: 'Minute pinion', train: 'Motion works', anchor: 'centre', place: 'above' },
   mwHourWheel: { name: 'Hour wheel', train: 'Motion works', anchor: 'rim', awayFrom: 'mwMinuteWheel', unitLabel: true },
+  // The keyless works: the crown's two paths, named for what the code builds
+  // (the §10 level-2 vocabulary, so the drill-in and these say the same word).
+  // WINDING — stem → winding pinion → crown wheel → transfer wheel; SETTING —
+  // stem → winding pinion → setting wheel → setting bevel → the minute-wheel
+  // arbor's wheel → … the fold … → setting cap, which meshes the motion works'
+  // minute wheel. "Keyless works" alone is one word at the crown for both.
+  windStem: { name: 'Winding stem', train: 'Keyless works', anchor: 'centre' },
+  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  // Two coaxial pairs — the crown wheel on the transfer wheel's arbor, the
+  // setting wheel under its bevel — share one centre, so each pair splits
+  // above / below it, the motion works pinions' rule.
+  // The winding pinion meshes the crown wheel right beside that pair, so its
+  // name is lifted ABOVE its centre, clear of the pair's upper slot.
+  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  settingWheel: { name: 'Setting wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  settingBevel: { name: 'Setting bevel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  minuteWheel: { name: 'Minute-wheel arbor', train: 'Keyless works', anchor: 'centre' },
+  settingCap: { name: 'Setting cap', train: 'Keyless works', anchor: 'centre' },
 };
 // Resolved once: { meshes, unit, train, anchor, el } — one entry per NAME, since
 // a gear builder may leave several meshes under one name; the anchor reads
