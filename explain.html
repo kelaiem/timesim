@@ -925,7 +925,7 @@
             <text class="lbl" x="14" y="140">PAWLS ×2</text>
             <text class="lbl" x="14" y="170">SPRING · under</text>
             <text class="val val-steel" x="14" y="300">inner ring — base ratchet flange, keyed to the fusee</text>
-            <text class="val val-steel" x="14" y="318">MAINT_TEETH 24 both rings · two pawls π apart = 12 pitches, so they act in unison</text>
+            <text class="val val-steel" x="14" y="318">MAINT_TEETH 24 on the flange, 35 on the ring · two pawls π apart = 12 pitches, so they act in unison</text>
             <g id="fmFlow"></g>
             <text class="lbl lbl-strong" x="390" y="40">THE LIVE TORQUE PATH</text>
             <text class="val" x="476" y="68">crown → winding spur</text>
@@ -948,7 +948,7 @@
         backwards. The rates are the movement's own: one pawl snap per flange tooth, 24 to the
         fusee turn and 42 over a full 1.75-turn wind; one detent tick per rim tooth, which at
         one barrel revolution per 120/7 h (≈ 17.14 h, §124's first stage) is a tick every
-        42.9 minutes.</figcaption>
+        29.4 minutes.</figcaption>
       </figure>
 
       <p class="note">Honesty ledger: <b>TODO 40 is closed whole — rows 1 and 2 first,
@@ -1337,8 +1337,15 @@
         the stud's radius moves the second-order residual, and that shrinks steadily inward —
         at 270° the rate the swing itself adds falls from 5.3 to 2.3 s/day between one coil
         pitch in and the root of the cock's stud carrier. So the stud stands at that root, as
-        far in as its post allows. That is the free spring's isochronism alone: the
-        escapement, the pivots and gravity each add their own, and none is modelled. The
+        far in as its post allows. That is the free spring's isochronism alone. The watch's
+        POSITION is modelled beside it (§246): the energy column gives each position its own
+        sustained swing, because the pivot's friction radius differs dial-flat and hanging,
+        and in the hanging positions the hairspring's own weight acts through its centre of
+        mass as the spring breathes. That weight is the larger term, up to 15.4 s/day at the
+        nominal corner, and the overcoil does not remove it: Phillips's condition puts the
+        centre of mass on the axis at rest and says nothing about how it moves with the
+        swing. All of it is modelled, not simulated — the balance is still posed — and the
+        escapement's own share is not modelled at all. The
         terminal's length is still the classical three-quarter turn, and it has a physical
         wall below it: shorter than about 0.45 of a turn and the ribbon would have to be bent
         tighter than the collet it is already formed round. With the stud one pitch in there
@@ -4119,13 +4126,18 @@
         // off the flank and the hold bears on the apex, on the stud's line.
         var pivR = SPUR_R + KW + CM + 0.4;
         var RELIEF = 0.005;                                     // SEAT_RELIEF
-        var pitch = (Math.PI * 2) / TEETH;
+        // TODO 219 — the RING has its own count, solved from the maintaining
+        // spring's run (a wind first recoils the ring up to one pitch onto the
+        // beak, and the blade's run must cover that): 35 teeth, their depth
+        // scaled with the pitch so the valley keeps the 24-tooth cut's shape.
+        var RING_TEETH = 35, RING_DEPTH = 0.2 * TEETH / RING_TEETH;   // MAINT_RING_TEETH, MAINT_RING_DEPTH_F
+        var pitch = (Math.PI * 2) / RING_TEETH;
         var RUN = 1;                                            // this plate's wheel turns + while running
         function sawPoly(R, lean) {                             // the builder's outline: root→tip over 0.72 of the pitch
           var out = [];
-          for (var i = 0; i < TEETH; i++) {
-            var a0 = (i / TEETH) * Math.PI * 2, a1 = ((i + 0.72) / TEETH) * Math.PI * 2;
-            out.push([Math.cos(a0) * R * 0.8, lean * Math.sin(a0) * R * 0.8]);
+          for (var i = 0; i < RING_TEETH; i++) {
+            var a0 = (i / RING_TEETH) * Math.PI * 2, a1 = ((i + 0.72) / RING_TEETH) * Math.PI * 2;
+            out.push([Math.cos(a0) * R * (1 - RING_DEPTH), lean * Math.sin(a0) * R * (1 - RING_DEPTH)]);
             out.push([Math.cos(a1) * R, lean * Math.sin(a1) * R]);
           }
           if (lean < 0) out.reverse();
@@ -4245,9 +4257,10 @@
         ringG.appendChild(svgEl('path', { d: RING.map(function (q, i) { return (i ? 'L' : 'M') + px(q[0]).toFixed(1) + ' ' + py(q[1]).toFixed(1); }).join(' ') + ' Z', fill: 'none', stroke: 'var(--brass)', 'stroke-width': 1.4 }));
         ringG.appendChild(svgEl('circle', { cx: CX, cy: CY, r: RING_ROOT * SC, fill: 'var(--brass-fill)', opacity: 0.16, stroke: 'var(--brass)', 'stroke-width': 1 }));
         flangeG.appendChild(svgEl('path', { d: toothPath(FLANGE_R), fill: 'var(--steel-fill)', stroke: 'var(--steel)', 'stroke-width': 1.4 }));
-        // The maintaining SPRING: the build's flat coil in the gap under the
-        // ring, TorusGeometry(RING_ROOT·0.6, …, π·1.5) — three quarters of a
-        // turn at that radius, drawn here as the arc it is.
+        // The maintaining SPRING, drawn as the arc the build USED to carry
+        // (a 1.5π torus under the ring). Since TODO 219 the build cuts it as
+        // a blade in a great-wheel crossing bearing on a pin hung from the
+        // ring; redrawing this plate with the blade and its stop is TODO 224's.
         (function () {
           var sr = RING_ROOT * 0.6 * SC, d = [];
           for (var i = 0; i <= 48; i++) {
@@ -4313,7 +4326,7 @@
             return poly.map(function (p, i) { var w = place(p); return (i ? 'L' : 'M') + px(w.x).toFixed(1) + ' ' + py(w.y).toFixed(1); }).join(' ') + ' Z';
           }).join(' '));
           detPiv.setAttribute('cx', px(wp.x)); detPiv.setAttribute('cy', py(wp.y));
-          return { pawlIdx: Math.floor((PAWL_TIP_AZ - windBack) / pitch), detIdx: Math.floor((wheelRot - DET_AZ) / pitch) };
+          return { pawlIdx: Math.floor((PAWL_TIP_AZ - windBack) / ((Math.PI * 2) / TEETH)), detIdx: Math.floor((wheelRot - DET_AZ) / pitch) };
         }
 
         var STORE = 'var(--brass)', DELIVER = 'var(--green)', HOLD = 'var(--ruby)', DIM = 'var(--line)';
@@ -4326,7 +4339,7 @@
         var winding = false, playing = false, t0 = null, raf = 0;
         var wheelRot = 0, windBack = 0, snaps = 0, ticks = 0, lastIdx = null;
         // Display-time dilated, both rates from the movement: the wheel creeps
-        // one barrel turn per 120/7 h (so one rim tooth = 42.9 min), and the
+        // one barrel turn per 120/7 h (so one rim tooth = 29.4 min), and the
         // flange reverses one turn per banked winding turn, 24 snaps to the turn.
         var CREEP = 0.13, REVERSE = 0.9;   // rad/s on screen
         function paint() {
@@ -4342,7 +4355,7 @@
             ? tr('WINDING · flange clicks back, the detent holds, the spring feeds the train')
             : tr('RUNNING · pawls locked, the whole sandwich creeps');
           readout.textContent = tr('pawl snaps') + ' ' + snaps + ' / 42 ' + tr('per wind') +
-            ' · ' + tr('detent ticks') + ' ' + ticks + ' × 42.9 min';
+            ' · ' + tr('detent ticks') + ' ' + ticks + ' × 29.4 min';
         }
         function frame(now) {
           if (!playing) return;

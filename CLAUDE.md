@@ -127,7 +127,13 @@ builds from an existing table's keys, so it cannot see one) or NOT APPLIED
 (translated, but its display site never ran `t()` / `localizeTree()`, which is
 what a section built after the one localization pass looks like). Run it at
 every locale landing and after any change that adds UI text; it is not in a
-workflow, for the reason page coverage is reported rather than gated. **The static pages are localized too** (§73 tier two,
+workflow, for the reason page coverage is reported rather than gated. **The
+native review every locale still owes has a packet**: `node
+tools/l10n-review-packets.mjs --out DIR` builds the review page (English beside
+each translation, a verdict and suggested wording per row) from the shipped
+tables, and it FAILS when a `LOCALES` row has no entry in
+`tools/l10n-review/questions.mjs` — so a locale landing writes down the terms
+its record says a workshop may dispute, or `[]` to declare there were none. **The static pages are localized too** (§73 tier two,
 §95 tier two): `src/page-i18n.js` is the ENGINE — the walk and the swap, one
 copy — and each page adds a dozen-line module naming its own tables
 (`src/explain-i18n.js`, `src/primer-i18n.js`), one per locale, keyed by the
@@ -340,7 +346,12 @@ it into prose either.
    its kindest section — since TODO 218 the valley's own offset, its face flank
    relieved so the hold bears on the apex on the stud's line — with
    `HOLD_STRESS_WAIVERS` empty and a waiver whose member is under yield STALE, on
-   the ribbons' rule. And
+   the ribbons' rule. Since TODO 219 the spring itself is metal on the same row
+   (`maintainingHold.spring`): a blade in a great-wheel crossing, of the
+   ribbons' ALLOY and held to its low end — the one member besides the ribbons
+   that is — with its floor re-derived from the NOMINAL corner, its run one ring
+   pitch of recoil plus the margin (so the ring's tooth count is the fewest that
+   fits), and k, the preload and the blade's own compliance at float noise. And
    since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` its
@@ -794,16 +805,29 @@ gate count is unchanged), six THROWS for files that are not one run (wrong
 format version, disagreeing shape, shards a worker was not owed, a shard or
 task key arriving twice, workers restricted to different unit sets, a baseline
 on one side of the seam only), and worker 0 alone carrying the indivisible
-anchors — fingerprint A, boot B with the digest pair, the two rosters, and
-(until Landing C) the spec-boot tier. **The single-process path is the
+anchors — fingerprint A, boot B with the digest pair, the two rosters. **Since
+§260 (Landing C) the spec-boot and point tiers are SPREAD**: `specOwner`
+(round-robin by declared index) and `pointOwners` (LPT over `POINT_COSTS`, the
+costliest bin on the LAST worker, away from the anchors) are pure functions the
+collector re-derives. A row in the wrong file throws, and a row that never
+arrived fails its tier's own gate by name. With one worker every row is worker
+0's, so the single process runs both tiers exactly as before. **The single-process path is the
 reference and must stay untouched**, exactly as `--shards 1` and `--no-split`
 are, and the assembly half is CALLED by both paths rather than copied — a
 second gate loop would be two definitions of standing rule 4.
 `tools/probe-127-matrix.mjs` proves the three identities in ~11 min via
 `--only`, a probe flag CI never passes (its key space is every declared check
 and every slice a check declares — read from `BATTERY`, since a projected slice
-has no `COSTS` row — and it throws on anything else). No workflow uses any of this yet: the matrix itself
-is Landing B, to be sized on CI rather than on a dev container.
+has no `COSTS` row — and it throws on anything else). **Since §259 (Landing B)
+`battery.yml` uses it, on a pull request's opt-in only** — the `battery-matrix`
+label or `[matrix]` in the title: the battery job becomes a matrix of two legs
+(`--matrix i/2`, uploading their tasks files) and a hosted, browser-free
+`battery-collect` job named `battery` gates. With no opt-in the worker list is
+`[0]` and the job is the single process, unchanged. Pushes, dispatches and the
+nightly never split — a collector writes no digests, so a split run can never
+seed a baseline — and a host with one runner online refuses the split rather
+than running two workers in series. Whether it is worth asking for is measured
+per host in `docs/RUNNERS.md`, never predicted from a dev container.
 
 **What makes slicing legal at all is TODO 54's canonical axis entry.** A slice
 runs in its own browser context and starts from `resetInputs()`, so it can only
@@ -901,7 +925,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 267 measuring scripts and this file names 22. The rest are named for the
+`tools/` holds 270 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -918,7 +942,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **157 of
+The index also carries the split that decides how to read a result: **160 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

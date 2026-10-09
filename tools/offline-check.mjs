@@ -377,9 +377,15 @@ try {
   // name; this loop is what makes each one prove itself from cache.
   for (const code of ['de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'id', 'tr', 'cy', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'he', 'fa', 'ar']) {
     await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, NAV);
-    const ok = await page.evaluate((c) =>
+    // WAIT for the swap rather than sampling once: the table arrives by dynamic
+    // import(), which can still be in flight at `load`, so a single read raced
+    // it and failed whichever locale happened to be slowest that run (it on
+    // one run of #598, ar on its re-run, every other row green both times). A
+    // table that never arrives still fails, at the timeout.
+    const ok = await page.waitForFunction((c) =>
       document.documentElement.lang === c
-      && !/^What you are looking at/.test(document.querySelector('p.intro')?.textContent || ''), code);
+      && !/^What you are looking at/.test(document.querySelector('p.intro')?.textContent || ''),
+    code, { timeout: 10000 }).then(() => true, () => false);
     check(`OFFLINE: primer.html localizes (${code} table came from the cache)`, ok);
   }
   await page.goto(`http://127.0.0.1:${relPort}/index.html`, NAV);

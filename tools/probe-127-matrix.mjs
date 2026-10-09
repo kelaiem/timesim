@@ -21,6 +21,11 @@
 //      hazard of this landing: every gate reports only whether its failure
 //      list is empty, so work that silently never happened passes all of them.
 //      This is the assertion the other two cannot make.
+//   4. §260 (Landing C) spread the spec and point tiers, so a tier's row now
+//      has an OWNER the collector re-derives. A row carried by the wrong
+//      worker, and a file written under Landing A's shape (whose spec and
+//      points meant "the whole tier"), must both be refused rather than
+//      assembled. Collect-only, under a second.
 //
 // It drives ci-battery.mjs as a CHILD PROCESS rather than importing it: that
 // file runs its main flow at module scope, so an import IS a run.
@@ -39,7 +44,7 @@
 // carries the argument, because a selection with no SPLIT check in it would
 // leave the cross-process merge unexercised.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -144,6 +149,30 @@ try {
         + `worker carried is named in its failures (${owed.join(' · ')})`);
     }
   }
+
+  // ---- 4. §260: the spread tiers' ownership is held ----------------------
+  // Under the default --only selection the spec tier is the identity control
+  // alone, which is worker 0's by specOwner, so moving that row into worker
+  // 1's file is the smallest possible misownership.
+  const f0 = JSON.parse(readFileSync(join(out, 'b0.json'), 'utf8'));
+  const f1 = JSON.parse(readFileSync(join(out, 'b1.json'), 'utf8'));
+  const moved = f0.spec.rows.find((r) => r.name === 'identity');
+  if (!moved) {
+    bad.push('worker 0 carried no identity spec row — specOwner no longer puts the control on worker 0');
+  } else {
+    writeFileSync(join(out, 'm0.json'), JSON.stringify({ ...f0, spec: { ...f0.spec, rows: f0.spec.rows.filter((r) => r !== moved) } }));
+    writeFileSync(join(out, 'm1.json'), JSON.stringify({ ...f1, spec: { ...f1.spec, rows: [...f1.spec.rows, moved] } }));
+    const c4 = run('collect (a spec row in the wrong file)', ['--collect', join(out, 'm0.json'), join(out, 'm1.json'), '--report', join(out, 'r4.json')]);
+    if (c4.status === 0) bad.push('a spec row carried by the wrong worker was assembled');
+    else if (!c4.text.includes("spec point identity is worker 0's, not worker 1's")) { bad.push('the misowned spec row was refused, but not by name'); console.log(c4.text); }
+    else console.log('REFUSED — a spec row in the wrong worker\'s file, by name');
+  }
+  const { workerFormat, ...landingA } = f1;
+  writeFileSync(join(out, 'v1.json'), JSON.stringify(landingA));
+  const c5 = run('collect (a Landing A worker file)', ['--collect', join(out, 'b0.json'), join(out, 'v1.json'), '--report', join(out, 'r5.json')]);
+  if (c5.status === 0) bad.push('a worker file with no workerFormat was assembled');
+  else if (!c5.text.includes('worker file shape v1')) { bad.push('the Landing A file was refused, but not for its shape'); console.log(c5.text); }
+  else console.log(`REFUSED — a Landing A worker file (workerFormat ${workerFormat} expected), for its shape`);
 } finally {
   rmSync(out, { recursive: true, force: true });
 }
@@ -153,4 +182,4 @@ if (bad.length) {
   console.log(`FAILED: ${bad.join(' · ')}`);
   process.exit(1);
 }
-console.log('PASS — the assembly half reports the same battery from one process, from two, and refuses a short one');
+console.log('PASS — the assembly half reports the same battery from one process, from two, and refuses a short one, a misowned tier row and a Landing A file');

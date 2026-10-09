@@ -416,11 +416,11 @@ jobs:
   # request (pinned hosted above everything else) — and GitHub does not hand
   # secrets to fork PRs in any case.
   route:
-    # A `labeled` event runs only for the two labels that change what a run
-    # is; every other label is skipped, not run — and the battery job, which
-    # needs this one, is skipped with it.
+    # A `labeled` event runs only for the three labels that change what a run
+    # is (§259 added `battery-matrix`); every other label is skipped, not run —
+    # and the battery job, which needs this one, is skipped with it.
     if: >-
-      ${{ (github.event.action != 'labeled' || contains(fromJSON('["self-hosted-battery","full-battery"]'), github.event.label.name))
+      ${{ (github.event.action != 'labeled' || contains(fromJSON('["self-hosted-battery","full-battery","battery-matrix"]'), github.event.label.name))
       && (github.event_name != 'schedule' || (vars.BATTERY_RUNS_ON != '' && github.actor == github.repository_owner)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -428,6 +428,10 @@ jobs:
       host: ${{ steps.decide.outputs.host }}
       run: ${{ steps.decide.outputs.run }}
       verdict: ${{ steps.decide.outputs.verdict }}
+      # §259 — whether this run is split across two workers, and the worker
+      # list the battery job's matrix expands: [0] is the single process.
+      matrix: ${{ steps.decide.outputs.matrix }}
+      workers: ${{ steps.decide.outputs.workers }}
     env:
       # §200's routing expression, read as: (asked for by a same-repo PR) or
       # (asked for by a dispatch) or (the nightly), and owner-triggered, and
@@ -473,6 +477,8 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
           DISPATCH_RUNNER: ${{ inputs.runner }}
           READY: ${{ steps.ready.outputs.verdict }}
+          ONLINE: ${{ steps.ready.outputs.online }}
+          BUSY: ${{ steps.ready.outputs.busy }}
         run: |
           asked=no
           if [ "$EVENT" = pull_request ]; then
@@ -497,12 +503,66 @@ jobs:
             verdict="host asked for ($asked) but no runner is online under '$ROUTE_VAR' — ubuntu-latest instead of queueing for up to 24 h"
           else verdict="host asked for ($asked) — routed to '$ROUTE_VAR', readiness UNCHECKED (RUNNER_READ_TOKEN unset, or the API read failed)"
           fi
-          { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; } >> "$GITHUB_OUTPUT"
+          # §259 — the matrix is a PULL REQUEST's to ask for, and only a pull
+          # request's: every other event may seed a baseline, and a collector
+          # writes no digests, so a split run can never become one. Decided
+          # AFTER the host, because the one refusal is about the host: two
+          # workers on a label with one FREE runner run in SERIES, which is
+          # the single process plus a collector, and the opt-in was for speed.
+          #
+          # §260 — FREE, not online. §251 counts a busy runner as ready, which
+          # is right for one job: it takes the next job when it finishes. It is
+          # wrong for two. §260's own split run was accepted with 2 online while
+          # another PR's battery held one slot. Its worker 1 then queued 24 min
+          # behind that job and started as worker 0 finished, so the split ran in
+          # series and lost to the single process it was meant to beat. A busy
+          # runner's remaining time is unknown here, so the split now needs two
+          # IDLE runners. Anything less runs one process, which starts at once on
+          # the free one.
+          matrix=false; mwhy=""
+          if [ "$EVENT" = pull_request ]; then
+            masked=no
+            printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'battery-matrix' && masked="label"
+            printf '%s' "$TITLE" | grep -qF '[matrix]' && masked="title"
+            if [ "$masked" = no ]; then :
+            elif [ "$host" != ubuntu-latest ] && [ "$READY" = READY ] && [ $(( ${ONLINE:-0} - ${BUSY:-0} )) -lt 2 ]; then
+              mwhy="matrix asked for ($masked) but only $(( ${ONLINE:-0} - ${BUSY:-0} )) of ${ONLINE:-0} online runner(s) under '$ROUTE_VAR' are idle — the second worker would wait behind a job of unknown length, so ONE process"
+            else
+              matrix=true
+              mwhy="matrix asked for ($masked) — split across 2 workers on '$host' plus a browser-free collector"
+              [ "$host" != ubuntu-latest ] && [ "$READY" != READY ] && mwhy="$mwhy (runner count UNCHECKED)"
+            fi
+          fi
+          workers='[0]'; [ "$matrix" = true ] && workers='[0,1]'
+          { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; } >> "$GITHUB_OUTPUT"
           echo "§200/§251: $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ -n "$mwhy" ] && echo "§259: $mwhy" | tee -a "$GITHUB_STEP_SUMMARY"
+          true
 
   battery:
     needs: route
     if: needs.route.outputs.run == 'true'
+    # §259 — ONE JOB, TWO SHAPES. The route's worker list is [0] for the single
+    # process and [0,1] for a split run, so the single process is this job
+    # exactly as it was: one leg, named `battery`, every step below taken. The
+    # reference path is not a second copy kept in step with this one, it IS
+    # this one with the matrix at length 1 — the harness's own rule that
+    # `--matrix` and `--collect` call the path a plain run takes rather than
+    # copying it, carried up one layer into the workflow.
+    #
+    # Under a split, each leg runs `--matrix i/2 --tasks-out` and uploads what
+    # it measured; `battery-collect` below is the only side that gates, and it
+    # takes the name `battery` so the verdict reads in the same place either
+    # way. fail-fast because a worker that dies leaves the collector nothing
+    # to assemble, and its sibling's slot is better spent on the next run.
+    name: ${{ needs.route.outputs.matrix == 'true' && format('battery worker {0}/2', matrix.worker) || 'battery' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        worker: ${{ fromJSON(needs.route.outputs.workers) }}
+    env:
+      MATRIX: ${{ needs.route.outputs.matrix }}
+      WORKER: ${{ matrix.worker }}
     # §251 — the route job decides; see it for the trust tiers (§200) and the
     # readiness check that can turn an opt-in back to ubuntu-latest.
     runs-on: ${{ needs.route.outputs.host }}
@@ -708,14 +768,32 @@ jobs:
             say "SHADOW: this run could have been skipped. It runs anyway — tier one only watches."
           fi
 
+      # §259 — a worker takes the SAME mode arguments as the single process:
+      # each restores the same baseline and runs its own §152 preflight, and the
+      # collector throws if the two derived different restrictions. What it
+      # does not take is --report, --digests or --points-out — a worker gates
+      # nothing, and the collector writes the report and the points. Worker 0
+      # also hands on the baseline report it restricted against, because the
+      # collector runs on a different machine and must union against the very
+      # file the workers used, not a second restore of what should be it.
       - name: Run the battery
         run: |
           mkdir -p .battery-out
-          node tools/ci-battery.mjs \
-            --report .battery-out/report.json \
-            --digests .battery-out/digests.json \
-            --points-out .battery-out/points.json \
-            ${{ steps.mode.outputs.args }}
+          if [ "$MATRIX" = true ]; then
+            node tools/ci-battery.mjs \
+              --matrix "$WORKER/2" \
+              --tasks-out ".battery-out/worker-$WORKER.json" \
+              ${{ steps.mode.outputs.args }}
+            if [ "$WORKER" = 0 ] && [ -f .battery-baseline/report.json ]; then
+              cp .battery-baseline/report.json .battery-out/baseline-report.json
+            fi
+          else
+            node tools/ci-battery.mjs \
+              --report .battery-out/report.json \
+              --digests .battery-out/digests.json \
+              --points-out .battery-out/points.json \
+              ${{ steps.mode.outputs.args }}
+          fi
 
       # ---- §186 / TODO 111: the analytic case sectors, held over the pose net
       #
@@ -730,7 +808,10 @@ jobs:
       # `sweptOverlap` cover the same pairs denser, but neither can state the
       # bearing-coincidence excuses per mesh. ~72 s measured local; an
       # acceptance test, exit non-zero on any unexcused contact.
+      # §259 — under a split the post-battery probes ride WORKER 1, which
+      # carries no anchors, spec boots or point tier and so finishes first.
       - name: Case relief over the pose net (§186 / TODO 111)
+        if: env.MATRIX != 'true' || matrix.worker == 1
         run: node tools/probe-case-relief.mjs
 
       # ---- §187: the casing path, and the back envelope the glass hugs
@@ -747,6 +828,7 @@ jobs:
       #   CLEAR_MARGIN of swept metal. A mover that grows reds CI here, not
       #   the glass.
       - name: Casing path and back envelope (§187)
+        if: env.MATRIX != 'true' || matrix.worker == 1
         run: |
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
@@ -764,8 +846,13 @@ jobs:
       # PUBLISH step below that is choosy, and `battery-promote.mjs` checks
       # every clause again on the reading side. Two independent refusals for
       # one rule is the shape this file already uses for seeding.
+      # §259 — single process only. A split run is always a pull request's
+      # (the route never splits anything else), its report is the collector's,
+      # and no verdict from a split has been promoted yet: the shadow tier
+      # should agree with reality on the reference path before it reads a
+      # second one.
       - name: Record what this run measured (§227)
-        if: success()
+        if: success() && env.MATRIX != 'true'
         id: provenance
         env:
           PLATFORM: ${{ runner.os }}/${{ runner.arch }}
@@ -874,7 +961,8 @@ jobs:
       # `EVENT != pull_request` branch.
       - name: May this run become a baseline?
         id: seed
-        if: success()
+        # §259 — a split run is a pull request's and writes no digests.
+        if: success() && env.MATRIX != 'true'
         env:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref_name }}
@@ -949,7 +1037,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: battery-report-${{ github.run_id }}
+          # §259 — a worker's leg uploads its tasks file under its own name for
+          # the collector; two legs under one name would overwrite each other.
+          name: ${{ env.MATRIX == 'true' && format('battery-worker-{0}-{1}', github.run_id, matrix.worker) || format('battery-report-{0}', github.run_id) }}
           path: .battery-out/
           # REQUIRED because the path is dot-prefixed. upload-artifact@v4
           # defaults include-hidden-files to false, so `.battery-out/` matched
@@ -981,5 +1071,86 @@ jobs:
           # upload zero files — the harness writes the report before this step
           # on every path that reaches it, and `--spec-only`, which writes
           # none, is not a path CI takes.
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---- §259: the collector — §127 tier 3's assembly half, in CI -------------
+  #
+  # Runs only under a split, after BOTH workers succeeded, and it is the only
+  # job of a split run that gates: the same gates in the same order as the
+  # single process, plus "every expected shard was collected" and the six
+  # throws for files that are not one run (BUILT §127, Landing A).
+  #
+  # GitHub-hosted, on purpose. It needs no browser — only node and the
+  # harness's imports (`playwright` is a static import, so `npm ci`, but never
+  # a Chromium) — and on the self-hosted host a third job would take a slot
+  # from the next pull request for a minute of JSON. It does NOT restore a
+  # baseline of its own: the cache key carries the platform, and this is not
+  # the workers' platform. It unions against the report worker 0 handed on,
+  # and passes `--baseline` exactly when the workers say they restricted
+  # against one, because the harness throws on either mismatch.
+  #
+  # Cancellation is the workflow's `concurrency` group, which is per RUN: a
+  # push to the PR cancels the workers and this together, so there is no
+  # half-cancelled matrix for a collector to find (§127's open item).
+  battery-collect:
+    name: battery
+    needs: [route, battery]
+    if: needs.route.outputs.matrix == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Record the split (§259)
+        env:
+          VERDICT: ${{ needs.route.outputs.verdict }}
+          HOST: ${{ needs.route.outputs.host }}
+        run: |
+          echo "§259: collecting 2 workers that ran on '$HOST' — $VERDICT" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright (the package, not a browser)
+        working-directory: tools
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci --no-audit --no-fund
+
+      - name: Fetch the workers' files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: battery-worker-${{ github.run_id }}-*
+          path: .battery-in
+          merge-multiple: true
+
+      # Both files named, never globbed: a glob that matched one would hand the
+      # collector a smaller run, which its shard gate refuses — but refusing
+      # by NAME says which worker's file is missing.
+      - name: Collect
+        run: |
+          set -u
+          mkdir -p .battery-out
+          ls -l .battery-in | sed 's/^/§259 in: /'
+          base=""
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('.battery-in/worker-0.json')).preflight.baselineUsable?0:1)"; then
+            base="--baseline .battery-in/baseline-report.json"
+          fi
+          node tools/ci-battery.mjs \
+            --collect .battery-in/worker-0.json .battery-in/worker-1.json \
+            --report .battery-out/report.json \
+            --points-out .battery-out/points.json \
+            $base
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: battery-report-${{ github.run_id }}
+          path: .battery-out/
+          # The battery job's upload step says why both of these are set.
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

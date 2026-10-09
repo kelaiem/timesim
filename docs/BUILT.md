@@ -31256,6 +31256,54 @@ zh-Hant, as §236 decided.
   stale, as the probe's own rule says it must, and is retired: he, fa and ar
   now measure **0 backwards** of 71, 68 and 71, with 0 left unjudged as WRAP.
 
+### The native-review packets
+
+Every locale record here ends on the same IOU, "No native review pass", and
+no gate can pay it: the page gate holds keys, markup, numbers and the honesty
+vocabulary, never whether a sentence reads naturally or a part has the name a
+workshop uses. What tooling can do is make the review cheap. So
+`tools/l10n-review-packets.mjs` builds one review page for all nineteen
+locales. A reviewer picks a language and marks each row "reads well", "needs
+a change" with their wording, or "not sure" with a note. Each packet, built
+from the shipped tables with no copy of any translation of its own:
+- **Start here:** the questions that locale's record left for a fluent
+  reader, then seventeen core part names. The questions live in
+  `tools/l10n-review/questions.mjs`, each taken from the locale's own
+  "No native review pass" bullet. Where the record named none, two came from
+  a scan of the tables for one part spelled two ways: Japanese writes the
+  fusee «フュジー» 37 times and «フュゼ» 3, and the crown «りゅうず» 59 times
+  and «竜頭» 4. German, French and Simplified Chinese declare `[]`.
+- **Vocabulary:** the explainer's 27 glossary rows, term and definition.
+- **Part names:** the other 43 registered labels.
+- **Modelled vs simulated:** every block whose English says either word
+  (24 per locale).
+- **The primer**, in reading order.
+
+Each row carries a stable id and a hash of the translation it showed, so a
+verdict that comes back is matched to its row and recognised as stale if the
+table has moved since.
+
+**It is an acceptance test as well as a builder**, which is why it lives in
+`tools/`. It fails when:
+- a `LOCALES` row has no questions entry (an empty list declares that nothing
+  was recorded; a missing one means nobody decided), or
+- a question's term no longer occurs in its locale's strings, or
+- a part label or glossary row has no translation.
+
+The roster is read from `LOCALES` at run time, so a new locale cannot be left
+out by the builder falling behind. Its three controls were run by breaking
+each check on purpose: drop German's entry, rename Dutch's «snek» to a word no
+table uses, and name a core label that is not registered. Each failed naming
+its cause, and the restored file passed.
+
+**The page's storage follows who the reviewer is.** It saves verdicts to the
+host's shared store for a reader who can write there. It always keeps a copy
+in the reviewer's own browser, with a "Copy my review" export for an outside
+translator who can only read. Building it found one more instance of the
+Turkish trap the dotted-i probe guards: a column label inside a `lang="tr"`
+cell, uppercased by CSS, read «TURKİSH». Labels that are English carry
+`lang="en"` now.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
@@ -31985,3 +32033,370 @@ The floor is kept deliberately: at 144 Hz a pure rate would be 19 ticks a frame,
 - *Overshoot is bounded.* The flat-reserve check is per frame, so a large frame can run up to 674 ticks past empty; the balance has stopped by then and the sim is advancing a stopped watch, as the 45-tick frame already did for up to 44.
 
 Not measured here, and worth saying: the machine this was found on has no GPU. On one that does, the live loop was already vsync-bound and this changes nothing; the gain is for whoever is not.
+
+---
+
+## §259 — Landing B: the battery split across two runners as a matrix
+
+§127 tier 3's Landing A made the harness assemble across processes —
+`--matrix i/N --tasks-out FILE` runs one worker's shards and writes what it
+measured, `--collect FILE…` runs the gates over the files with no browser — and
+left the workflow alone, on the rule that a wall-clock claim belongs to the
+runner and not to a dev container. This is the workflow.
+
+**The single process is the matrix at length one.** The `battery` job takes
+`strategy.matrix.worker` from the route job's `workers` output: `[0]` unless a
+split was asked for, `[0,1]` when it was. At length one the leg is named
+`battery`, takes every step it took before, and runs `ci-battery.mjs` with
+exactly the arguments it ran with before. That is the harness's own rule — the
+assembly half is CALLED by both paths, never copied — carried up a layer: a
+second job holding a copy of the setup, baseline and mode steps would be two
+definitions of how the battery runs, and the reference would be the copy
+nobody looks at.
+
+**Asked for, never defaulted.** A pull request's `battery-matrix` label or
+`[matrix]` in its title. Both are pull-request-only, and that is a property
+rather than a choice: a push, a dispatch and the nightly are the runs that may
+SEED a baseline, the baseline is a report plus the head's digests, and a
+collector writes no digests (`--digests` is refused under `--collect`, because
+it is the preflight's and the preflight runs in each worker). A split run could
+therefore never become a baseline, and the route never offers one to an event
+that might. The label joins the two that may start a `labeled` run.
+
+**One refusal, about the host.** Routed self-hosted with readiness READY and
+only ONE runner online, the route refuses the split: the second leg would queue
+behind the first in the same slot, which is the single process plus a
+collector, and the opt-in was for speed. UNKNOWN readiness honours the ask and
+says "runner count UNCHECKED", which is §251's rule that an unchecked answer
+changes nothing. On `ubuntu-latest` the split always goes ahead — two hosted
+runners are two machines, which is the row §127's costed table actually
+prices.
+
+**The legs.** Each restores the same baseline, runs its own §152 preflight
+(the collector throws if the two derived different restrictions) and takes the
+same mode arguments as the single process, minus `--report`, `--digests` and
+`--points-out`. Worker 0 runs the anchors, the spec tier and the point tier, as
+Landing A placed them. Worker 1, which carries none of those and finishes
+first, runs the three post-battery probes (`probe-case-relief`,
+`probe-187-casing-path`, `probe-back-envelope`). Each leg uploads its tasks
+file as `battery-worker-<run>-<i>`; worker 0 also hands on the baseline report
+it restricted against. `fail-fast`, because a dead worker leaves the collector
+nothing to assemble.
+
+**The collector is hosted and named `battery`.** It needs `node` and the
+harness's static imports — `npm ci` with the browser download skipped — and no
+Chromium. On the host, a third job would take a slot from the next pull request
+for a minute of JSON. It restores no baseline of its own: the cache key carries
+the platform (§200), and the collector is not on the workers' platform. It
+unions against worker 0's handed-on report instead, and passes `--baseline`
+exactly when worker 0's file says the preflight used one, since the harness
+throws on a mismatch either way. Both worker files are named on the command
+line, never globbed, so a missing file is named rather than surfacing as the
+shard gate's smaller run. The verdict reads in the same check either way.
+
+**Single process only, for now:** §227's provenance record and its publish
+step, and the seeding steps. Seeding cannot apply (above). Provenance could,
+but the promotion tier is still a shadow that has to agree with reality on the
+reference path before it reads a second one.
+
+**Cancellation is per run.** `concurrency` is declared at the workflow level,
+so a push to the PR cancels both legs and the collector together, and there is
+no half-cancelled matrix for a collector to find. That answers §127's open
+item.
+
+**What it costs on the self-hosted host, and why it is not the default there.**
+The two runners are two tart slots on one ten-core Mac (docs/RUNNERS.md), not
+two hosts:
+
+- **A split holds both slots.** A second opted-in pull request waits for the
+  whole split run.
+- **The slots share cores.** Two overlapping jobs measured about +30% slower
+  each.
+- **Worker 0 has a serial tail.** The last self-hosted single run (job
+  113593284148) spent ~24 min in its three shards, then 155.8 s in spec boots
+  and 606.4 s in the point tier, all of which stay on worker 0.
+
+So the split halves at most the ~24 minutes, at the slower overlapped rate,
+and does nothing to the ~13. Whether that nets out, and by how much, is this
+section's measurement to take on the host, not to predict: BUILT §127's K=4
+revert is the worked example of a prediction landing on the wrong sign.
+Moving the tail off worker 0 is Landing C.
+
+**Instruments.**
+
+- `actionlint` is clean.
+- The route's decide step was exercised on the six cases: host with two runners
+  online, host with one, hosted label, UNKNOWN readiness, no ask, and a push.
+  It exits 0 on each.
+- `probe-127-matrix.mjs` re-run on this tree (the harness is unchanged, and
+  this holds the identities the workflow relies on).
+
+- `probe-127-matrix.mjs` locally: PASS. One worker and two workers collected
+  report the same battery byte for byte, and a withheld worker is refused with
+  its shard and tasks named.
+
+**Measured: the first split run** (run 37871395312, PR #597). It was WHOLE:
+no host baseline existed for the merge base, so every point swept full.
+
+- **Verdict:** `54/54 gates pass`, `every expected shard was collected
+  (6/6 shards)`. The collector ran on ubuntu-latest in 10 s.
+- **Wall:** 27 m 22 s from the route starting to the collector finishing.
+
+| | runner | shards | then | job |
+|---|---|---|---|---|
+| worker 0 | battery-1-4936 | 13 m 06 s (shards 0–2) | boot B 23 s · spec boots 2 m 39 s · point tier 10 m 13 s | 27 m 00 s |
+| worker 1 | battery-2-6e97 | 11 m 22 s (shards 3–5) | the three probes, 1 m 34 s | 13 m 33 s |
+
+**Against the last whole single-process run on this host** (job 113593284148,
+K=3, a different tree, so one sample and no stronger than that):
+
+- The shard portion went from ~24 m to 13 m 06 s, about 1.85×, while both
+  slots ran at once. That is better than the +30% overlap penalty predicted
+  for two whole jobs. The likely reason is that each leg is half a battery,
+  so it holds its slot's cores for half as long. That explanation is a guess,
+  not a measurement.
+- The job went from ~40 m to 27 m 22 s.
+
+**What it says about Landing C:**
+
+- Worker 0's tail after its shards is 13 m 15 s, and almost all of it is
+  spec boots and point sweeps.
+- Worker 1 sat finished for 13 m 27 s of that, holding its slot.
+- The split as built is therefore floored by worker 0's serial work, not by
+  the shards. Moving the point tier to worker 1 is worth about as much again
+  as the split itself. Measured, and still to be built.
+
+---
+
+## §260 — Landing C: the spec and point tiers spread across the matrix workers
+
+§259's first split run measured where the wall went. Worker 0 spent 13 m 06 s
+in its shards, then 13 m 15 s more on boot B (23 s), the 36 spec boots
+(2 m 39 s) and the point tier (10 m 13 s). Worker 1 finished its shards and
+three probes in 13 m 33 s and sat idle, holding its slot, for the rest.
+Landing A had put both tiers beside the anchors because worker 0 was the
+tree's representative. Neither tier needs that. A spec boot is one page and
+its gates read its row. A point sweep boots its own build, and the assembly
+judges it against the default's payload (`judgePoint`), which arrives through
+the shard files anyway.
+
+**Ownership is arithmetic, the shards' rule.** Two pure functions of in-repo
+data and the worker count, which every worker and the collector derive alike:
+
+- `specOwner(name, n)`: round-robin by DECLARED index in `SPEC_POINTS`. It is
+  never by the `--only`-narrowed list, so a row's owner does not depend on the
+  flags. A spec boot is a boot, near enough uniform, and a cost column for it
+  would be a number nobody could keep true.
+- `pointOwners(n)`: LPT over `POINT_COSTS` into n bins, the partition's own
+  rule. The bins are handed out from the LAST worker down, so the bin that took
+  the costliest point lands away from worker 0, which alone also carries boot
+  B. A wrong cost costs wall clock, never a verdict. With the column §260
+  refreshed (below), n=2 puts `studr=7.595`, `subdialr=8`, `balstep=60` and
+  `route=2-leg` on worker 1, and `studr=4.71` and `studr=7.1175` on worker 0.
+
+With one worker every row is worker 0's: the spec list is the same list in the
+same order, and the point tier plans the same points. The single process, which
+is the reference, runs both tiers exactly as before.
+
+**The ceiling is per worker, and still bounds what it bounded.** Each worker's
+point tier has `POINT_PR_BUDGET_MS` from its own start. The tiers run at the
+same time on different runners, so the wall they ADD to the run is still at
+most ten minutes, which is the owner's number. A worker that has full points
+boots the default once for its digests. That is one extra ~20 s boot per
+worker, and the digest-determinism gate is what makes the two reads one
+answer.
+
+**The collector holds ownership both ways.**
+
+- A row carried by the wrong worker, or arriving twice, THROWS. That file is a
+  different run, exactly as with a misowned shard.
+- A row that never arrived does NOT throw. Its worker's file is missing, which
+  the shard gate already names, and the tier's own gate names the row too:
+  - A spec point that never arrived is synthesised as a boot that never built
+    (`never collected — worker i's file did not arrive`).
+  - A swept point that never arrived is `broken: never ran`, `judgePoint`'s
+    existing verdict.
+  
+  Missing work stays a red line with a name, never a crash.
+- `workerFormat: 2` is the worker file's own version, kept apart from
+  `REPORT_FORMAT_VERSION`. A bump there would void every cached baseline for a
+  change that never touches one. A Landing A file is refused for its shape
+  rather than misread.
+
+**Instruments.**
+
+- `probe-127-matrix.mjs` gains a fourth identity. A spec row moved into the
+  wrong worker's file must be refused by name, and so must a worker file with
+  no `workerFormat`. Both cases are collect-only and take under a second.
+- The probe's `--only` selection runs no point tier, by `--only`'s own rule,
+  so the point half is accepted on CI. The PR's own split run is whole, so
+  every point sweeps.
+
+**Measured on the host, and what it found.** One tree (`21a9f95`), two runs.
+Neither had a host baseline for the merge base, so both were whole.
+
+- **Single process** (run 37874802663). This was the route REFUSING the split:
+  only 1 runner was online, because #597's re-run still held the other slot.
+  - `54/54 gates pass`, job 44 m 56 s.
+  - Its shards overlapped that re-run until 02:42, so their 28 m 13 s is
+    inflated.
+  - Spec boots 3 m 21 s, point tier 10 m 08 s with **3 of 6 points SKIPPED**
+    by the ceiling.
+- **Split** (run 37878429511, opted in by the `battery-matrix` label):
+  `54/54 gates pass`, and **all 6 points CLEAN, 0 skipped**. Landing B's two
+  split runs skipped 1 each.
+
+| | runner | shards | boot B | spec boots | point tier | job |
+|---|---|---|---|---|---|---|
+| worker 0 | battery-1-3f6b | 13 m 50 s | 26 s | 18 in 1 m 39 s | 3 `studr` in 8 m 08 s | 25 m 09 s |
+| worker 1 | battery-2-2c8c | 10 m 05 s | — | 18 in 1 m 25 s | 3 points in 4 m 24 s | 17 m 58 s (incl. probes 1 m 28 s) |
+
+The run's wall was **not** this landing's: 43 m 03 s. Worker 1 QUEUED for
+24 min and started as worker 0 finished, because another PR's battery
+(`gravity-positional-rate`, 02:56–03:39) held the `battery-2` slot. The
+route had accepted the split on "2 online". So the two jobs ran in series,
+and the per-job times above are what the landing changed:
+
+- **The slowest worker went from 27 m 00 s / 27 m 23 s (Landing B's two runs)
+  to 25 m 09 s.**
+- **The PR's point tier went from skipping to verifying everything.** Each
+  worker's ceiling now covers half the points.
+
+**Two corrections the run forced, both in this landing.**
+
+- **The route's refusal counted the wrong runners.** §251 counts a busy runner
+  as ready, which is right for one job. For two it is wrong: a busy slot's
+  remaining time is unknown, and the second worker waits behind it while a
+  single process would have started at once on the free one. The split now
+  needs two IDLE runners (`online − busy ≥ 2`). On this run's own numbers
+  (2 online, 1 busy) that sends the run to one process. The decide step was
+  re-exercised on five cases.
+- **`POINT_COSTS` was stale, and ownership now reads it.** Its floor was
+  `balstep=60` at 1882 ("the three-quarter plate genuinely re-cut"). On this
+  tree that point changes one unit, [Chain], which is in every changed set
+  by rule, and it swept in 151 s. Each `studr` point, at three changed units,
+  took ~480 s. With the old column, `pointOwners` gave the three heaviest
+  points to worker 0, the worker it meant to spare. The column is refreshed
+  from this run's per-point walls, and n=2 now splits the `studr` points two
+  and one.
+
+**Measured after both corrections: the first parallel Landing C run**
+(run 37881899660, `65cf78d`). Both workers started at 04:01:06, one per slot.
+
+| | runner | shards | boot B | spec boots | point tier | job |
+|---|---|---|---|---|---|---|
+| worker 0 | battery-2-59b6 | 13 m 09 s | 24 s | 18 in 1 m 43 s | `studr=4.71`, `studr=7.1175` in 7 m 38 s | 23 m 34 s |
+| worker 1 | battery-1-0181 | 11 m 26 s | — | 18 in 1 m 37 s | 4 points in 9 m 59 s | 25 m 16 s (incl. probes 1 m 28 s) |
+
+- **Gates:** `54/54 gates pass`, all 6 points CLEAN, 0 skipped. The collector
+  took 9 s.
+- **Wall: 25 m 37 s**, against Landing B's 27 m 22 s and 27 m 40 s (−7%). The
+  two workers' tiers ended 13 s apart (04:24:37 and 04:24:50), so the floor
+  is now the shards plus about ten minutes of tier on each side, not one
+  worker's tail.
+- **Verification is the larger gain.** Landing B verified 5 of 6 points per
+  PR, and the single process on this tree verified 3. A split now verifies
+  all six under the same ceiling.
+
+**One margin to watch, not to tune from one run.** On a PR the point tier
+orders CHEAPEST first, so the ceiling buys the most verified points. Worker 1's
+four points in three lanes put `studr=7.595` last, and that tier finished at
+599 s of its 600 s ceiling. A slower slot would SKIP that point, which is
+unverified-this-run rather than a failure. It is still the tier's own rule
+working. If it starts skipping, the fix is in ownership (a third bin, or a
+lane per point), never in the ceiling.
+
+---
+
+## §246 — The watch's position, modelled: the rate in each of the six positions, and the hairspring's own weight
+
+**Tier one shipped; tier two remains in the roadmap.** The entry was filed from
+an owner question: can we simulate the effect of gravity in the oscillation? The
+honest answer is still no, and §246 says why. The balance is POSED
+(`balanceTheta` is a sine of τ), so nothing integrates a torque and gravity has
+nothing to act on. Tier two is the driven balance that would earn "simulated".
+Tier one is the MODEL: the rate each position would give the free balance, swung
+on its own torque law, as an instrument.
+
+**What moves the rate between positions, and where each term is read.**
+
+- **Isochronism at the swing the position sustains.** Since §247 the energy
+  column solves a different sustained amplitude dial-flat and hanging, because
+  the balance pivot's friction radius differs: the pivot's own radius hanging,
+  the end's contact radius flat. At the nominal corner that is 292.1° flat and
+  200.4° hanging. The elastica's torque law gives a different rate at each, by
+  §245's method.
+- **The hairspring's own weight.** In a hanging position the spring's centre of
+  mass acts on the balance, and it moves as the spring breathes. The generalised
+  torque on the balance is `m_s·g·d(ĝ·c(θ))/dθ`, the quasi-static derivative of
+  the spring's potential. Here `c(θ)` is the length-weighted centroid of each
+  elastica frame, read off the frames rather than assumed. `m_s` is the ribbon's
+  own mass, now on the oscillator record as `spring.mass_kg` (rhombus4 area 2ac
+  × the planar developed length × `OSC_STEEL_RHO`): 1382 µg for a 0.0239 ×
+  0.1412 mm ribbon 104.48 mm long. The spring's sag under its own weight is
+  neglected; the weight is about five orders under the elastic forces.
+  Dial-flat, ĝ lies along the staff and the term is zero.
+- **Poise, as a sensitivity.** The balance is poised by construction (sixteen
+  symmetric timing screws), so the derived unbalance is zero, and choosing one
+  would be a number that looked right. The record gives the rate per µg·mm of
+  unbalance instead, heavy point low at rest.
+
+**Measured** (`tools/probe-246-positional-rate.mjs`; s/day, a positive rate
+gains):
+
+```
+corner        swing flat/vert    DU/DD     CU      CD      CL      CR    vert spread  flat − vert
+favourable     454.7°/ 292.8°    +8.17   -1.56   +6.92  +16.38  -11.01    27.392       +5.49
+nominal        292.1°/ 200.4°    +2.68   -3.14   +6.86  +17.28  -13.55    30.830       +0.82
+adverse        171.6°/ 126.0°    +1.68  +13.69  -11.21   -1.17   +3.61    24.892       +0.45
+```
+
+Of that, the hairspring's own weight at the nominal corner is CU −5.00, CD
++5.00, CL +15.42 and CR −15.41 s/day. Poise sensitivity is +0.44 s/day per µg·mm
+at the nominal hanging swing, −0.73 at the favourable corner and +2.80 at the
+adverse one. That is Airy's J₁(A)/A, with its sign flip near 220° between the
+corners.
+
+**The finding: the overcoil does not remove the spring's weight effect.** The
+probe's first draft expected it to. Its must-hit control asked the same plan
+without its overcoil to carry ten times the term. Measured, they carry it at the
+same order: at the nominal corner the worst hanging position reads 15.4 s/day
+with the overcoil and 18.0 as a flat spiral. Phillips's condition puts the REST
+centroid on the axis, which is what makes the spring develop concentrically and
+keeps the stud's force off the pivots. It says nothing about how the centroid
+MOVES with θ, which is a weighted sum in which each element turns by its own
+share of the wind. The overcoil changes which positions the term lands in, not
+its size. The term is also large here because the balance is light: TODO 207
+lightened the rim to the heaviest that still reaches the 200° target, which
+makes the spring's weight a larger share of what the balance feels. That is a
+design observation, not a defect: nothing in the movement claims a positional
+rate.
+
+**Controls, all gated.**
+
+1. A linear torque table through the same integrator reads −2.8e-6 s/day.
+2. A synthetic unbalance on a linear spring reproduces Airy's closed form
+   `m·g·e·J₁(A)/(A·k)` at 150°, 219.5° and 270°: +3.56 / +0.00 / −1.20 numeric
+   against the same analytic values, sign flip included.
+3. A frozen centroid gives a spring-weight term of exactly zero.
+4. The term is a gravity term that reads ĝ correctly: it is not negligible, it
+   flips with gravity (CU = −CD and CL = −CR to 5%), and it doubles with the
+   spring's mass (×2.0004).
+
+The spring frame's world transform is a rotation (det 1.000000), so no mirror
+sits between the plan and the world. Every elastica point converged, and the
+torque table (±470°) covers the largest swing asked about (454.7°, favourable
+dial-flat).
+
+**What it does not model.** The escapement's impulse and its own positional
+dependence. Coil contact: the elastica lets coils pass at the largest dial-flat
+swings, and TODO 216 already reports that the favourable corner's dial-flat
+swing is past a lever escapement's knocking angle. Temperature. And the balance
+is still posed, so nothing here is simulated.
+
+**Record changes.** `OSCILLATOR.spring.mass_kg` and
+`EQUALISATION.going.energy.balance.g_mps2` are new, so the probe reads the mass
+and the energy column's own `g` rather than restating either. `explain.html`'s
+free-sprung caption no longer says gravity is not modelled. It names the
+position as modelled, gives the spring-weight finding, and keeps "modelled, not
+simulated" and the escapement's share unmodelled, in every locale.
