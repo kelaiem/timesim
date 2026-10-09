@@ -829,15 +829,23 @@ second gate loop would be two definitions of standing rule 4.
 `--only`, a probe flag CI never passes (its key space is every declared check
 and every slice a check declares — read from `BATTERY`, since a projected slice
 has no `COSTS` row — and it throws on anything else). **Since §259 (Landing B)
-`battery.yml` uses it, on a pull request's opt-in only** — the `battery-matrix`
-label or `[matrix]` in the title: the battery job becomes a matrix of two legs
+`battery.yml` uses it**, on a pull request's opt-in (the `battery-matrix` label
+or `[matrix]` in the title): the battery job becomes a matrix of two legs
 (`--matrix i/2`, uploading their tasks files) and a hosted, browser-free
 `battery-collect` job named `battery` gates. With no opt-in the worker list is
-`[0]` and the job is the single process, unchanged. Pushes, dispatches and the
-nightly never split — a collector writes no digests, so a split run can never
-seed a baseline — and a host with one runner online refuses the split rather
-than running two workers in series. Whether it is worth asking for is measured
-per host in `docs/RUNNERS.md`, never predicted from a dev container.
+`[0]` and the job is the single process, unchanged. A host with fewer than two
+IDLE runners refuses the split rather than running two workers in series.
+**Since §263 every hosted run that may seed a baseline splits by default**:
+every push, and a dispatch unless its `single` input asks for the
+single-process reference. `--collect --digests FILE` writes the key worker 0's
+§152 preflight read (the object one process writes, carried in its tasks file,
+and refused when no worker read one), so the collector has the whole baseline,
+report + digests + `points.json`. It seeds it through `tools/battery-seed.sh`,
+the same rule the single process applies, and only when both workers recorded
+the collector's own platform, because that is the cache key it writes. The
+nightly and a self-hosted dispatch keep the single process. Whether a split is
+worth asking for on a host is measured per host in `docs/RUNNERS.md`, never
+predicted from a dev container.
 
 **What makes slicing legal at all is TODO 54's canonical axis entry.** A slice
 runs in its own browser context and starts from `resetInputs()`, so it can only
