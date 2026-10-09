@@ -32083,5 +32083,37 @@ Moving the tail off worker 0 is Landing C.
 - `probe-127-matrix.mjs` re-run on this tree (the harness is unchanged, and
   this holds the identities the workflow relies on).
 
-The first split run on the host, and its single-process twin, are this PR's
-acceptance.
+- `probe-127-matrix.mjs` locally: PASS. One worker and two workers collected
+  report the same battery byte for byte, and a withheld worker is refused with
+  its shard and tasks named.
+
+**Measured: the first split run** (run 37871395312, PR #597). It was WHOLE:
+no host baseline existed for the merge base, so every point swept full.
+
+- **Verdict:** `54/54 gates pass`, `every expected shard was collected
+  (6/6 shards)`. The collector ran on ubuntu-latest in 10 s.
+- **Wall:** 27 m 22 s from the route starting to the collector finishing.
+
+| | runner | shards | then | job |
+|---|---|---|---|---|
+| worker 0 | battery-1-4936 | 13 m 06 s (shards 0–2) | boot B 23 s · spec boots 2 m 39 s · point tier 10 m 13 s | 27 m 00 s |
+| worker 1 | battery-2-6e97 | 11 m 22 s (shards 3–5) | the three probes, 1 m 34 s | 13 m 33 s |
+
+**Against the last whole single-process run on this host** (job 113593284148,
+K=3, a different tree, so one sample and no stronger than that):
+
+- The shard portion went from ~24 m to 13 m 06 s, about 1.85×, while both
+  slots ran at once. That is better than the +30% overlap penalty predicted
+  for two whole jobs. The likely reason is that each leg is half a battery,
+  so it holds its slot's cores for half as long. That explanation is a guess,
+  not a measurement.
+- The job went from ~40 m to 27 m 22 s.
+
+**What it says about Landing C:**
+
+- Worker 0's tail after its shards is 13 m 15 s, and almost all of it is
+  spec boots and point sweeps.
+- Worker 1 sat finished for 13 m 27 s of that, holding its slot.
+- The split as built is therefore floored by worker 0's serial work, not by
+  the shards. Moving the point tier to worker 1 is worth about as much again
+  as the split itself. Measured, and still to be built.
