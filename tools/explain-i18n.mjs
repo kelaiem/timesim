@@ -269,6 +269,10 @@ const MARKS = {
   cy: { group: [','], dec: '.' },        // §249 — the BORROWED en-GB tag (Chromium carries no 'cy'): English's marks, Welsh's own standard
   he: { group: [','], dec: '.' },        // §249 — he-IL is latn by default: English's marks (Chromium 141)
   fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
+  // §249 — lv-LV: Russian's row, measured in Chromium 141 (30,0 · 0,024 · 1000 ·
+  // 18 000, the group U+00A0 and four digits bare); the other two group
+  // characters are accepted for the reason they are for ru and fr.
+  lv: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -360,6 +364,12 @@ const HONESTY = {
   // למדל), never the bare noun מודל: the credit line's "AI model" is מודל
   // בינה מלאכותית. Simulated reads its loan-verb forms and the noun סימולציה.
   he:        { m: /ממודל|מידול|למדל/, s: /מסומלצ|מסומלץ|סימולצי|לסמלץ/ },
+  // §249 — the verb modelēt's stem with its long ē (modelēts, modelēta,
+  // modelēšana, modelējums), never the noun: the credit line's "AI model" is
+  // «MI modelis», and «modeļa» / «modeli» are the noun's own cases, none of
+  // which carries the ē. Simulated is the loan simulēt / simulācija. /i folds
+  // Ē onto ē (measured: MODELĒTS matches), unlike Turkish's İ.
+  lv:        { m: /modelē/i, s: /simul/i },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };

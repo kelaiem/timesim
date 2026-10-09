@@ -175,6 +175,18 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // mutation is a fact about the TABLES, not the code: every string is a whole
 // sentence, so t() never builds a phrase whose first consonant would have to
 // change.
+// §249 — LATVIAN (chunk K). Measured in Chromium 141: 'lv' and 'lv-LV' are
+// both CARRIED (supportedLocalesOf answers for each) and format 30,0 · 0,024 ·
+// 1000 · 18 000 — a decimal comma, a U+00A0 group, and four digits left bare,
+// which is Russian's convention exactly; Node's ICU 77 agrees. Plural
+// categories zero/one/other — free while no chrome string pluralizes a count.
+// The matcher takes 'lav' (ISO 639-2) and 'lvs' (ISO 639-3's Standard
+// Latvian, the macrolanguage's member), both of which Intl canonicalizes to
+// 'lv' — Hebrew's 'iw' case twice over. It is anchored and refuses 'ltg':
+// Latgalian is a written language of its own that Intl keeps distinct, and a
+// Latgalian reader is not served by a standard Latvian table any more than a
+// Fiji Hindi one is by Hindi's (§212's negative row). Latvian's toUpperCase
+// is the root mapping (ģ → Ģ, measured), so no case audit is owed.
 // §249 — PERSIAN, the second right-to-left row and the second DIGIT override.
 // Measured in Chromium 141 and Node's ICU alike: 'fa', 'fa-IR' and 'fa-AF' all
 // default to arabext (۳۰٫۰ · ۰٫۰۲۴ · ۱۸٬۰۰۰), and '-u-nu-latn' turns every one
@@ -203,6 +215,7 @@ export const LOCALES = [
   { code: 'id', face: 'Bahasa Indonesia', tag: 'id-ID', match: (v) => /^(id|in)(-|$)/.test(v) },
   { code: 'tr', face: 'Türkçe', tag: 'tr-TR', match: (v) => /^tr(-|$)/.test(v) },
   { code: 'cy', face: 'Cymraeg', tag: 'en-GB', match: (v) => /^(cy|cym|wel)(-|$)/.test(v) },
+  { code: 'lv', face: 'Latviešu', tag: 'lv-LV', match: (v) => /^(lv|lav|lvs)(-|$)/.test(v) },
   { code: 'hi', face: 'हिन्दी', tag: 'hi-IN', match: (v) => /^hi(-|$)/.test(v) },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
@@ -266,6 +279,10 @@ for (const [input, want] of [
   // the Welsh row BORROWS that tag, it does not claim it.
   ['cy', 'cy'], ['cy-GB', 'cy'], ['cy_GB', 'cy'], ['cym', 'cy'], ['wel', 'cy'],
   ['cyb', null], ['cyo', null],
+  // §249 — 'lav' and 'lvs' are Latvian and land on the one table; 'ltg'
+  // (Latgalian) and 'lvk' (Lavukaleve) are other languages.
+  ['lv', 'lv'], ['lv-LV', 'lv'], ['lv_LV', 'lv'], ['lav', 'lv'], ['lvs', 'lv'],
+  ['ltg', null], ['lvk', null],
   // §212 — the negative row is the decision: 'hif' (Fiji Hindi) is its own
   // language and gets English, not this table.
   ['hi', 'hi'], ['hi-IN', 'hi'], ['hi_IN', 'hi'], ['hif', null], ['hif-FJ', null],
