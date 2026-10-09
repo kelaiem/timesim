@@ -32545,4 +32545,16 @@ pointer there. What the filing said against what was built, where they differ:
   re-proportion the terminal.
 - **"Eight locales each."** Nineteen by the time it landed.
 
-**Battery.** BATTERY_LINE_PLACEHOLDER
+**Battery.** Local, `--no-incremental`, against the base commit on the same
+container the same day: **53/53 both sides** (6,792 s here, 6,858 s base).
+Fingerprint 2435426308 → **3888809417**, moved by construction (every
+escapement mesh re-cut, the hairspring re-meshed). `--report` diffed check by
+check, and every moved row is the change: `penetration` Escape wheel ⇄ Pallet
+fork 0.035 → 0.038 (budget 0.1, the re-cut stones on the denser axis);
+`oscillator` the new swing (performed 45° → 200°, frames 41 → 141, the order
+rows new, the force ratios as above); `jumperMovers` its beat rows read `/193`;
+one `clearances` tie (Stop lever ⇄ Balance, 0.35 unchanged) found on another
+axis now the balance's phase moved; `plateSeats` screening 376 → 373 meshes
+near the plate over the same 43 poses and population, with no row changed;
+and the census counts and slice walls of the three sweeps the doubled `beat`
+axis feeds (×2.2–2.3 on that slice). Nothing else moved.
