@@ -151,7 +151,18 @@ DOM. **The tool takes its locale roster from the page module's own
 per-locale FACT (which characters that locale groups and points with), and a
 missing row is a hard failure rather than a skipped check. `--check` is the gate and with no `--page` it checks EVERY page (0
 unmatched keys, 0 markup/`<code>`/id drift, 0 number drift, and no label
-overrunning its plate against the English baseline).
+overrunning its plate against the English baseline). **Number drift covers
+the explainer's PROSE too**, not only its plate labels: a paragraph quotes
+its identifiers inside `<code>` but carries bare numbers outside it ("at a
+real 270°"), and those are compared as a MULTISET of digit glyphs outside
+`<code>` — order-free, because a translation reorders a sentence. So a digit
+the English spells out ("seven-leaf", "twenty-four") is written in words in
+the translation too, never as a digit the English does not carry. Character
+references are decoded first (`&frac12;` is ½, not the number 12). The rule
+has a mutation control like the honesty vocabulary's: each run plants a
+changed digit and a re-punctuated decimal in every SOURCE-page table and
+FAILS if the comparison misses either, and the PASS line names what each
+page's numbers were checked by.
 
 **And since §241 it holds the HONESTY VOCABULARY, which is the first thing
 here that reads a sentence rather than counting one.** A translation that
@@ -845,7 +856,7 @@ match a whole run if entering an axis reproduces that axis's poses whatever ran
 before it. `setPose` assigns ONLY the keys a pose names, so before TODO 54 each
 axis inherited the tail of the axis declared above it and every sweep's
 coverage was a function of `AXES`' order. Every sweep now calls `enterAxis`
-before each axis; the `axisEntry` check gates that over all 182 ordered pairs
+before each axis; the `axisEntry` check gates that over all 210 ordered pairs
 and REPORTS, beside it, what used to ride through.
 
 **Since §152 a PR run can be INCREMENTAL, and the rule is that a check runs
@@ -853,8 +864,8 @@ only when it can change its answer.** A sweep's verdict is
 `f(geometry, pose net, check code)`. `unitDigests()` measures the first per
 unit — SHAPE over the position/index bytes, PLACE over the per-mesh world
 matrices, both at `digestPoses()`: a set DERIVED from `AXES` (every axis at
-f ∈ {0, 0.5, 1}, unioned with the 12 canonical poses for the combined states,
-43 total) rather than borrowed from the fingerprint — measured, the borrowed
+f ∈ {0, 0.5, 1}, unioned with the 13 canonical poses for the combined states,
+47 total) rather than borrowed from the fingerprint — measured, the borrowed
 set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
 `tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
 units install a different geometry at a different pose, which is why every
@@ -889,10 +900,16 @@ and building it established that the push run bounds a key error to minutes
 rather than a day and fires per merge rather than per date. The `schedule:`
 that exists is §200's, not §152's — it seeds the SELF-HOSTED baseline, the
 platform a push can never write, and is skipped when no host is available.
-A push's job cap is 90 min (the dispatch and nightly that seed a baseline
-share it since TODO 186; a PR keeps 60): the push is the
+A push's job cap is 150 min (the dispatch and nightly that seed a baseline
+share it since TODO 186; a PR's is 125): the push is the
 run that writes the hosted baseline, and three in a row were cancelled at 50
-inside their last sweep, which left the tree with no baseline at all. Every uncertainty — no cache hit, an
+inside their last sweep, which left the tree with no baseline at all. It was
+90 until green pushes reached 89 min and five of the last nine were killed at the cap.
+150 is the slowest green run times the 1.66x same-tree spread `battery.yml`
+measured, because the tail past a cap cannot be read. The PR's was 60, "the old
+cap plus the point ceiling", until a WHOLE PR run, which is any PR after a
+killed push or touching the check code, measured 73.8 min. 125 is that times
+the same spread. Every uncertainty — no cache hit, an
 unreadable file, a moved check-code digest, a union that cannot be justified —
 resolves towards MORE work and says so in the log. `--no-incremental` is the
 reference an incremental run must agree with, and `tools/probe-152-restrict.mjs`

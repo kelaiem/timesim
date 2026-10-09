@@ -11640,10 +11640,15 @@ if (!(MAINT_SPRING.L > 0 && MAINT_SPRING.geom.xTip < MAINT_SPRING.geom.xc))
 }
 // Maintaining wheel: loose on the arbor, rim saw teeth for the detent,
 // carrying two pawls that ride the flange above. Child of barrelArbor
-// WITHOUT windBack — it turns only with the train, so it never reverses.
+// WITHOUT windBack. Running, it rides the train at offset 0; through a wind
+// (TODO 224) the tick turns it back on the arbor — the recoil onto the
+// detent's beak and the wheel's advance on the spring — and the pick-up
+// returns it to 0. So it DOES reverse: onto the beak, which is what the
+// spring's run was sized for.
 const maintWheel = new THREE.Group();
 const MAINT_PAWL_SEATS = []; // filled below; tick rides them on windBack
 let MAINT_SPRING_PIN = null;   // TODO 219: placed in the ring's frame after the great wheel is phased
+let MAINT_BLADE = null;        // TODO 224: the blade's posed frames, built with it below
 // TODO 215 — THE RING'S RUN PAST ITS DETENT, the one declaration the detent's
 // hand is read from. The maintaining wheel rides barrelArbor (the going train,
 // MOVEMENT_SENSE) and the detent stands on the plate, so while the watch runs the
@@ -11730,6 +11735,163 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
   pin.name = 'maintSpringPin';
   maintWheel.add(pin);
   MAINT_SPRING_PIN = pin;
+  // TODO 224 — THE BLADE AS IT RELAXES, posed from the pin. Through a wind the
+  // ring stands on the detent's beak while the great wheel runs on, so in the
+  // wheel's frame the pin swings back about the arbor toward the stop flank —
+  // on its own circle, r_P, from φ_work to φ_stop = φ_work − run — and the
+  // blade's free end follows it, its pin-side face a SEAT_RELIEF off the pin
+  // at every travel s (the contact the cut is seated at). Nothing here is a
+  // coefficient: the blade is the cantilever it was cut as, the same profile
+  // (MAINT_SPRING.tAt) and alloy, and its shape at s is the free shape plus the
+  // load at the pin's NEW station — Maxwell's kernel of a clamped beam,
+  //   w(X; a) = ∫_{max(X,a)}^{x_root} (u − X)(u − a) / (E·I(u)) du,
+  // the deflection at X per newton at a. The cut is the working shape (the
+  // going load F_w at x_c, so the free face is y_B − F_w·w(X; x_c)); at s the
+  // face is the free face plus F·w(X; a), with the load station a and the load
+  // F whatever puts the face's NEAREST point to the pin exactly
+  // r_pin + SEAT_RELIEF from its centre (loadAt, below). That is the contact,
+  // solved — which is why it is not k·(θ_work − s): the pin moves on an arc, so
+  // its offset from the flank falls faster than r_e·s (0.022 u more by the
+  // stop), the bowed face tilts the contact normal (9.3° at the stop) and the
+  // station slides toward the blade's stiffer root (0.115 u by the stop). The
+  // torque the wheel feels is the contact force times its normal's distance
+  // from the arbor: 3.2296 N·mm at s = 0 (the going torque, as cut) falling
+  // monotonically to 1.6334 at the stop, 102.8% of the floor TODO 219 sized the
+  // linear law to (whose k·θ_pre puts exactly the floor there). Small-deflection
+  // theory throughout, the law the spring was SIZED by (MAINT_SPRING's
+  // compliance integral): the working deflection is 1.389 u over a 9.42 u blade.
+  //
+  // MODELING rule 6: the states are DISTINCT geometries, built here, never a
+  // rewrite of one buffer (the inspector caches a BVH per geometry). Frame 0 is
+  // the cut itself — the tick restores whatever geometry the mesh holds after
+  // weldTree, so the running watch never changes a byte — and frames 1..K are
+  // the blade at s_k = k·run/K. K is DERIVED from the pin it bears on: a frame
+  // step moves the blade's face by at most the pin's own facet sagitta,
+  // r_pin·(1 − cos(π/16)) for its 16-sided section, so the frame quantising adds
+  // less to the contact gap than the pin's tessellation already puts there.
+  // The tick shows the frame at or below the pin's travel (floor), so the face
+  // stands the relief PLUS at most that step off the pin, and never inside it.
+  // The schematic tier's zigzag on this mesh is the leaf-spring glyph drawn off
+  // the cut's bounding box: it says "a strip that flexes", which stays true
+  // while the strip flexes, so it is not re-drawn per frame (rule 6's
+  // "say so where the glyph would have been").
+  {
+    const U = OSC_U;
+    const EI = (X) => { const tt = M.tAt(X - gm.xc) * U; return M.E * (M.b * U) * tt ** 3 / 12; };
+    // The kernel splits into three moments of the compliance from the root,
+    //   w(X; a) = I2(m) − (X + a)·I1(m) + X·a·I0(m),  I_k(m) = ∫_m^{x_root} u^k/(E·I(u)) du,
+    // m = max(X, a) — so it is tabulated ONCE (cumulative Simpson panels from
+    // the root, NK of them) and every query is an interpolation, rather than
+    // a fresh quadrature per point: 115 frames of a solved contact cost a
+    // quadrature per probe point otherwise, and held boot's thread for over a
+    // second (BOOT BREATHES — MAX_HELD_MS 700). u in metres, so I_k are SI.
+    const NK = 4096, kLo = Math.min(gm.xTip, gm.xc - 0.8), kH = (gm.xRoot - kLo) / NK;
+    const I0 = new Float64Array(NK + 1), I1 = new Float64Array(NK + 1), I2 = new Float64Array(NK + 1);
+    for (let i = NK - 1; i >= 0; i--) {
+      const u0 = kLo + i * kH, um = u0 + kH / 2, u1 = u0 + kH;
+      const g0 = 1 / EI(u0), gm_ = 1 / EI(um), g1 = 1 / EI(u1), w = (kH * U) / 6;
+      I0[i] = I0[i + 1] + w * (g0 + 4 * gm_ + g1);
+      I1[i] = I1[i + 1] + w * (u0 * U * g0 + 4 * um * U * gm_ + u1 * U * g1);
+      I2[i] = I2[i + 1] + w * ((u0 * U) ** 2 * g0 + 4 * (um * U) ** 2 * gm_ + (u1 * U) ** 2 * g1);
+    }
+    const Ik = (T, m) => {
+      const f = clamp((m - kLo) / kH, 0, NK), i = Math.min(NK - 1, Math.floor(f)), r = f - i;
+      return T[i] + (T[i + 1] - T[i]) * r;
+    };
+    const kern = (X, a) => {                              // m/N
+      const m = Math.max(X, a);
+      if (!(gm.xRoot > m)) return 0;
+      const x = X * U, y = a * U;
+      return Ik(I2, m) - (x + y) * Ik(I1, m) + x * y * Ik(I0, m);
+    };
+    const Fw = M.tauGo / (gm.rE * U);                     // N — the going load at the contact (MAINT_SPRING's F)
+    const pinAt = (s) => ({ x: gm.rP * Math.cos(gm.phiWork - s), y: gm.rP * Math.sin(gm.phiWork - s) });
+    // The CONTACT, solved. Once the blade bows, its face is no longer square
+    // to the flank, so the pin's normal is not the flank's and the load does
+    // not sit straight over the pin's centre. A point load F at station a puts
+    // the face at y(a) = y_B + (F·w(a; a) − F_w·w(a; x_c)) and gives it the
+    // slope y'(a) = F·∂w(a; a) − F_w·∂w(a; x_c), ∂w(X; a) = −I1(m) + a·I0(m)
+    // (the kernel's X-derivative, the same moments). The contact is the pair
+    // (F, a) at which that face is TANGENT to the pin's circle grown by the
+    // relief, at a: the pin's centre a distance r_pin + SEAT_RELIEF back along
+    // the face's normal there,
+    //   p.x = a + d·y'/√(1 + y'²),   p.y = y(a) − d/√(1 + y'²).
+    // For a given a the second fixes F (y rises with F), and the first is then
+    // a residual in a — rising with it, since the station moves the face's
+    // point far more than the slope moves the normal — so both are bisected.
+    // (A fixed point in a, the first draft, did not converge: from the cut's
+    // own solution it walked to a second branch with F 6.6% OVER the working
+    // load while the pin was moving away, and a frame built on its last,
+    // unconverged station was a face loaded where it was not solved.)
+    // The force along the contact normal is F over that normal's y-component,
+    // and the torque on the wheel is it times the normal line's distance from
+    // the arbor.
+    const dkern = (X, a) => {                             // 1/N — ∂w/∂X, X in metres
+      const m = Math.max(X, a);
+      if (!(gm.xRoot > m)) return 0;
+      return -Ik(I1, m) + a * U * Ik(I0, m);
+    };
+    const want = gm.rPin + SEAT_RELIEF;
+    const faceAt = (F, a) => {
+      const y = gm.yB + (F * kern(a, a) - Fw * kern(a, gm.xc)) / U;
+      const sl = F * dkern(a, a) - Fw * dkern(a, gm.xc);
+      return { y, sl, c: 1 / Math.sqrt(1 + sl * sl) };
+    };
+    const forceAt = (p, a) => {                           // the F that stands the tangent circle on p.y
+      let lo = 0, hi = 4 * Fw;
+      for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2, f = faceAt(m, a); if (f.y - want * f.c < p.y) lo = m; else hi = m; }
+      return (lo + hi) / 2;
+    };
+    const loadAt = (s) => {
+      const p = pinAt(s);
+      const resid = (a) => { const F = forceAt(p, a), f = faceAt(F, a); return a + want * f.sl * f.c - p.x; };
+      let lo = p.x - 0.5, hi = p.x + 0.5;
+      for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (resid(m) < 0) lo = m; else hi = m; }
+      const a = (lo + hi) / 2, F = forceAt(p, a), f = faceAt(F, a);
+      const n = { x: -f.sl * f.c, y: f.c };                // the contact normal, pin → face
+      const Fn = F / n.y, arm = Math.abs(p.x * n.y - p.y * n.x);
+      return { p, F, a, Fn, n, arm, tau: Fn * arm * U, residual: resid(a) };
+    };
+    // the face offset at X under the load at s, relative to the cut
+    const dyAt = (X, L) => (L.F * kern(X, L.a) - Fw * kern(X, gm.xc)) / U;
+    const step = gm.rPin * (1 - Math.cos(Math.PI / 16));
+    const tipSpan = gm.yPin - pinAt(M.run).y;             // the pin's whole fall toward the flank, run 0 → stop
+    const K = Math.ceil(tipSpan / step);
+    const NT = 32;
+    // The posed outline samples the pin-side face at the far face's stations:
+    // straight in the cut, it bows once the load moves, and a two-point face
+    // would draw the chord.
+    const xs = [];
+    for (let i = 0; i <= NT; i++) xs.push(gm.xc + (M.L * i) / NT);
+    const outlineAt = (L) => {
+      const pts = [[gm.xTip, gm.yB + dyAt(gm.xTip, L)]];
+      for (let i = 0; i <= NT; i++) pts.push([xs[i], gm.yB + dyAt(xs[i], L)]);
+      pts.push([gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]);
+      for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; pts.push([gm.xc + xr, gm.yB + M.tAt(xr) + dyAt(gm.xc + xr, L)]); }
+      pts.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc) + dyAt(gm.xTip, L)]);
+      return pts;
+    };
+    const frames = [null];
+    let badTri = 0;
+    for (let k = 1; k <= K; k++) {
+      await breathe();                             // 115 contact solves: hand the thread back between them (BOOT BREATHES)
+      const L = loadAt((k * M.run) / K), pts = outlineAt(L);
+      const shp = new THREE.Shape();
+      pts.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) shp.moveTo(q.x, q.y); else shp.lineTo(q.x, q.y); });
+      shp.closePath();
+      const g = new THREE.ExtrudeGeometry(shp, { depth: M.b, bevelEnabled: false });
+      g.translate(0, 0, M.zMid - M.b / 2);
+      if (g.attributes.position.count / 3 !== 4 * pts.length - 4) badTri++;
+      frames.push(G.weldGeometry(g));              // rule 7: indexed before it can reach the scene
+    }
+    if (badTri) console.warn(`TODO 224 maintaining spring: ${badTri} of ${K} posed blade frames extruded short of a simple polygon's 4n − 4 triangles`);
+    const stop = loadAt(M.run);
+    MAINT_BLADE = { mesh: blade, frames, K, rest: null, step, tipSpan, loadAt, pinAt, Fw,
+      // the torque the blade puts on the great wheel at travel s: the contact
+      // force along its normal, times that normal's distance from the arbor
+      tauAt: (s) => loadAt(s).tau,
+      stop: { F_N: stop.Fn, Fy_N: stop.F, a_u: stop.a, arm_u: stop.arm, tau_Nm: stop.tau, tilt_rad: Math.atan2(stop.n.x, stop.n.y) } };
+  }
 }
 // TODO 219 — §137's rows for the maintaining spring, one at each end of the
 // blade. At the TIP the ring's pin presses the blade's free end square to its
@@ -11758,7 +11920,7 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     why: `the tip load's line stands the free length ${M.L.toFixed(4)} off the foot, so the root carries ${(F_mN * M.L * UNIT_MM).toFixed(1)} mN·mm: ${(M.sigmaWork / 1e6).toFixed(0)} MPa at the working point and ${(M.sigmaStop / 1e6).toFixed(0)} at the stop in the ${M.t.toFixed(4)} × ${M.b.toFixed(2)} root (the alloy's low end ${(M.sigLim / 1e6).toFixed(0)}), reacted into the arm across the ${M.geom.footW.toFixed(4)} foot`,
   });
 }
-barrelArbor.add(maintWheel); // train rotation only — tick never adds windBack here
+barrelArbor.add(maintWheel); // the train's rotation, plus the hold's offset through a wind (TODO 224) — never windBack
 registerSub('Fusee & great wheel', 'Maintaining wheel', maintWheel); // §10 level 2 — ring, pawls, studs and spring: the maintaining-power sandwich
 // Pawl ride constants — seat measured from the built geometry, lift sign
 // derived numerically (same scheme the plate click used).
@@ -11841,14 +12003,46 @@ const FF_SIM_RATE = FF_TICKS_PER_FRAME * FF_TICK_S * 60;
 let _forkPull = NaN, _forkLift = NaN, _forkAt = null;   // §257 — tick()'s remembered yokeClutchAt
 let ffPoseDeferred = false;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
-// The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
-// windBack: zero while running (locked, torque flows), sweeping backward
-// during winding (click-click while the detent holds the wheel). The
-// detent rides the wheel's ABSOLUTE rotation — pure train creep, one
-// slow tick per tooth as the watch runs, and NEVER a reverse pass.
+// The pawls ride the RELATIVE angle flange-vs-ring — windBack while the
+// drive is on (zero while running: locked, torque flows), windBack less the
+// hold's offset through a wind (click-click while the detent holds the ring).
+// The detent rides the ring's ABSOLUTE rotation — pure train creep, one slow
+// tick per tooth as the watch runs — and through a wind the ring backs onto it
+// (TODO 224): the recoil is the one reverse pass, and it ends on the face.
+// TODO 224 — THE WIND-START STATE (MAINT_HOLD, below the detent, has the law):
+// null while the drive is on, else { tau0, A0, recoil, onFace, tauStop } — the
+// movement time and the great wheel's angle at which the drive came off, and
+// what the cut makes of them. Written by the live tick's falling edge, cleared
+// at pick-up and by resetInputs, posed by setPose({ maintHold }).
+let maintHold = null;
+// The blade's frame for a pin travel s (MAINT_BLADE): the frame at or below
+// it, so the face never stands inside the pin. Travel 0 puts back the geometry
+// the mesh carried before the first swap — the cut, as weldTree left it — so a
+// running watch never sees a frame at all.
+function maintBladeShow(s) {
+  const B = MAINT_BLADE;
+  if (!B) return;
+  const k = s > 0 ? Math.min(B.K, Math.floor((s / MAINT_SPRING.run) * B.K + 1e-9)) : 0;
+  if (k === 0) { if (B.rest && B.mesh.geometry !== B.rest) B.mesh.geometry = B.rest; return; }
+  if (!B.rest) B.rest = B.mesh.geometry;
+  if (B.mesh.geometry !== B.frames[k]) B.mesh.geometry = B.frames[k];
+}
 function updateMaintaining(windBack) {
+  // TODO 224 — the wind's hold (MAINT_HOLD). Running, the ring rides the wheel
+  // at offset 0 and every line below evaluates exactly what it did before this
+  // item; holding, the ring stands on the beak and the wheel runs on, so the
+  // ring's offset on its arbor is the recoil plus the wheel's advance, against
+  // the run. The pawls are on the ring, so what they ride is the flange's angle
+  // RELATIVE TO THE RING — windBack less that offset — and the detent rides the
+  // ring's own absolute angle, not the arbor's.
+  const H = maintHold ? MAINT_HOLD.poseAt(maintHold, barrelArbor.rotation.z) : null;
+  const rho = H ? H.rho : 0;
+  maintWheel.rotation.z = rho;
+  const rel = H ? windBack - rho : windBack;
+  const ringA = H ? barrelArbor.rotation.z + rho : barrelArbor.rotation.z;
+  maintBladeShow(H ? H.travel : 0);
   for (let k = 0; k < MAINT_PAWL_SEATS.length; k++) {
-    let u = ((MAINT_U_SIGN * (MAINT_PAWL_TIP_AZ - windBack) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    let u = ((MAINT_U_SIGN * (MAINT_PAWL_TIP_AZ - rel) * MAINT_TEETH) / (2 * Math.PI)) % 1;
     if (u < 0) u += 1;
     const lift = Math.max(sawRadiusAt(u, MAINT_FLANGE_R) - MAINT_PAWL_TIP_R, 0) / (MAINT_FLANGE_R * 0.8);
     MAINT_PAWL_SEATS[k].rotation.z = MAINT_PAWL_BASE + MAINT_PAWL_SIGN * lift;
@@ -11882,7 +12076,7 @@ function updateMaintaining(windBack) {
     // whole beak is solved against the polygon the teeth were cut from (the
     // law's `max(sawRadiusAt − TIP_R, 0)` floated the tip 0.04–0.10 over the
     // chords and hung it 0.311 over a root nothing was under).
-    const lift = MAINT_DET_RIDE.liftAt(barrelArbor.rotation.z - MAINT_DETENT_AZ);
+    const lift = MAINT_DET_RIDE.liftAt(ringA - MAINT_DETENT_AZ);
     maintDetentBeak.rotation.z = followCam(
       MAINT_DET_BASE - MAINT_DET_SIGN * MAINT_DET_PRELOAD,   // where the spring alone would seat it
       MAINT_DET_BASE + MAINT_DET_SIGN * lift,                // where the ring lets it sit
@@ -12742,6 +12936,184 @@ for (const [end, F, Fb, arm, L, d, k] of [
     envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: F },
     why: `a grounded blade biasing a pivoted click short of its beak is a crank: the blade bears on the tail’s corner ${arm.toFixed(4)} from the pivot and the beak works at ${MAINT_DET_LEVER.toFixed(4)}, so the ${Fb.toFixed(2)} mN the blade delivers ${end} arrives at the ring as ${F.toFixed(2)} mN — `
       + `placed equal-margin in the window (${MAINT_DET_SPRING.beakF_mN_seated.toFixed(2)} × ${MAINT_DET_SPRING.beakF_mN_crest.toFixed(2)} = 5 × 50 mN²), the click being a detent indexing a ratchet at its tooth run, which is the load class the window’s basis names; the HOLD in winding is the saw face’s, not this spring’s`,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// TODO 224 — THE MAINTAINING WIND, POSED FROM ITS CONTACTS.
+//
+// TODO 219 cut the spring as metal and sized its run; nothing posed a wind.
+// `maintWheel` rode `barrelArbor` with no wind term, so through a wind the ring
+// ran on past the beak exactly as it does running, the detent never held, the
+// blade never deflected and the stop was never reached. The model described a
+// hold the simulation never performed.
+//
+// THE STATE. A pose cannot know when a wind began, so the wind keeps one
+// recorded state, `maintHold` (beside the tick), on windStemSlip's and
+// alarmPusherT's pattern: the movement time and the great wheel's angle at the
+// instant the drive came off. The live tick writes it on the falling edge of
+// windBack — the first tick in which the bank rose, which is the only thing
+// that moves windBack, so the edge is read off its cause rather than off a
+// float difference — and clears it on the first live tick that banks nothing:
+// the mainspring then turns the cone forward until the pawls take the ring,
+// which is the pick-up. Zero-dt ticks never touch it (setPose is a pose, not a
+// wind), `setPose({ maintHold })` writes it as a pure function of its input,
+// and resetInputs clears it. It is never persisted and never a boot assert:
+// BOOT HAS NO POSE (CLAUDE.md), and a hold is nothing but a pose.
+//
+// THE LAW, every step a contact:
+//   1. RECOIL. The drive comes off and the spring drives the ring BACKWARD
+//      against the pawls' drag, the beak following the cut down the ramp, until
+//      the face of the tooth behind it meets the beak's apex. That is read off
+//      the cut by MAINT_DET_RIDE: `holdNet` is the ring's angle in the cock's
+//      frame at which the face, swung back from the valley, comes to SEAT_RELIEF
+//      off the seated beak (the ride's own convention for touch). From a ring
+//      angle on the RAMP the recoil is the way back to it, up to one pitch
+//      less the face's share; from the FACE (the beak descending it, the last
+//      part of every pitch) the face is already at the apex and the recoil is 0.
+//      The boundary is the crest, read off the ride by golden section.
+//   2. HOLD. The ring stands. The great wheel advances on the spring by the
+//      train's own law (barrelMeshAngle — the escapement still governs it), so
+//      the ring's angle on the wheel is θ_work − (recoil + advance): the pin's
+//      travel toward the stop is recoil + advance, and MAINT_BLADE poses the
+//      blade off the pin.
+//   3. RUN-OUT. At travel = MAINT_SPRING.run the pin is on the stop flank
+//      (φ_stop: the pin's circle touching the flank's face), and the wheel can
+//      advance no further than the held ring allows: the TRAIN STOPS. That is a
+//      bound on movement time, τ_stop — the τ at which barrelMeshAngle has
+//      advanced run − recoil past the drive-off — read by inverting the train's
+//      own law, so the stop is a place, not a timer. The tick caps τ there and
+//      the balance loses its drive, the same rate law that stops it when the
+//      mainspring is empty.
+//   4. PICK-UP. The pawls take the ring forward to the working angle: the ring
+//      rides the wheel again at offset 0, which is the running pose bit for bit.
+//
+// What the law does NOT pose: the pawls' own pick-up travel (the cone turning
+// forward until a pawl drops into the flange — up to a flange pitch), because
+// the cone's angle is the bank's (§47) and the bank does not move at pick-up;
+// and the reserve's drain through a hold is booked as the wheel advances, where
+// the metal books it at pick-up, when the cone turns forward through the same
+// angle — the bank after a wind is the same either way.
+const MAINT_HOLD = (() => {
+  const RUN = MAINT_RING_RUN;                    // the ring's run past the beak (TODO 215)
+  // The RECOIL's sense: the spring's reaction on the ring drives it AGAINST
+  // the run. A direction-committed declaration (TODO 115's class) — the guard
+  // below reads the cut, and the one at the spring's guard reads the blade.
+  const REC = -MAINT_RING_RUN;
+  const pitch = (Math.PI * 2) / MAINT_RING_TEETH, R = MAINT_SPRING.run;
+  const pm = (x, p) => x - p * Math.floor(x / p);
+  const ride = MAINT_DET_RIDE, s0 = ride.seatNet;
+  // 1 — the face, swung back from the valley until it reaches the seated beak.
+  const gapBack = (d) => ride.clearAt(s0 + REC * d, 0) - SEAT_RELIEF;
+  let dHold = 0, faceFound = gapBack(0) <= 0;
+  if (!faceFound) {
+    const N = 400;
+    let lo = 0, hi = null;
+    for (let i = 1; i <= N; i++) { const d = (0.5 * pitch * i) / N; if (gapBack(d) <= 0) { hi = d; lo = (0.5 * pitch * (i - 1)) / N; break; } }
+    if (hi !== null) {
+      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (gapBack(m) <= 0) hi = m; else lo = m; }
+      dHold = lo; faceFound = true;              // the last angle still a relief off: the face AT the apex
+    }
+  }
+  if (!faceFound) console.warn(`TODO 224 maintaining hold: swinging the ring back ${(0.5 * pitch).toFixed(4)} rad from the seat meets no face — the recoil has nothing to stand on`);
+  const holdNet = s0 + REC * dHold;
+  // the crest — where the beak tops the ramp (sampled, then golden section).
+  // The SAME nets RIDE_TRAVEL walked (the seat plus j/96 of a pitch, then its
+  // golden section): the ride is periodic in the pitch, so this finds the same
+  // crest, and every liftAt here is a hit on that solve's memo rather than a
+  // second ride solve at boot.
+  const crestNet = (() => {
+    const N = 96;
+    let best = { t: -1, j: 0 };
+    for (let j = 0; j < N; j++) { const t = ride.liftAt(s0 + (j * pitch) / N); if (t > best.t) best = { t, j }; }
+    let a = s0 + ((best.j - 1) * pitch) / N, b = s0 + ((best.j + 1) * pitch) / N;
+    const g = (Math.sqrt(5) - 1) / 2;
+    for (let i = 0; i < 40; i++) {
+      const c = b - g * (b - a), d = a + g * (b - a);
+      if (ride.liftAt(c) > ride.liftAt(d)) b = d; else a = c;
+    }
+    return (a + b) / 2;
+  })();
+  const rCrest = pm(RUN * (crestNet - holdNet), pitch);
+  // GUARD (§115's class, measured on the cut): the recoil must take the beak
+  // DOWN the ramp — the ring backing from mid-ramp lowers the click — and past
+  // the hold the face must block it. Flip REC and the ring "recoils" up the
+  // ramp it was climbing, onto the wrong flank, with every collision gate green.
+  {
+    const mid = holdNet + RUN * rCrest / 2, eps = pitch / 100;
+    const descends = ride.liftAt(mid + REC * eps) < ride.liftAt(mid);
+    const blocked = gapBack(dHold + eps) < 0;
+    if (!descends || !blocked)
+      console.warn(`TODO 224 maintaining hold: the recoil ${!descends ? 'CLIMBS the ramp instead of descending it' : ''}${!descends && !blocked ? ' and ' : ''}${!blocked ? 'passes the face it should stand on' : ''} (REC ${REC}, MAINT_RING_RUN ${RUN}, MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+  }
+  if (!(rCrest < pitch && rCrest + 1e-12 < R))
+    console.warn(`TODO 224 maintaining hold: the worst recoil ${rCrest.toFixed(5)} rad is not inside the spring's run ${R.toFixed(5)} — a wind would bottom the spring on the recoil alone`);
+  // The τ at which the wheel has advanced `adv` past the drive-off, by the
+  // train's own law: the largest τ whose advance does not pass it (so the pin
+  // never crosses the flank by a rounding), bisected — barrelMeshAngle is
+  // monotone in the run's sense (asserted at windLocalAt) and steps with the
+  // escapement, so there is no closed inverse.
+  const tauAt = (tau0, A0, adv) => {
+    if (!(adv > 0)) return tau0;
+    const g = (t) => RUN * (barrelMeshAngle(t) - A0);
+    const omega = Math.abs(barrelMeshAngle(tau0 + 3600) - barrelMeshAngle(tau0)) / 3600;
+    let lo = tau0, hi = tau0 + 2 * adv / omega + 1;
+    for (let i = 0; i < 64 && g(hi) <= adv; i++) hi = tau0 + 2 * (hi - tau0);
+    for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (g(m) <= adv) lo = m; else hi = m; }
+    return lo;
+  };
+  // The drive comes off at movement time τ0: the ring stands where it was on
+  // the wheel, and recoils from there.
+  const begin = (tau0) => {
+    const A0 = barrelMeshAngle(tau0);
+    const r = pm(RUN * (A0 - MAINT_DETENT_AZ - holdNet), pitch);
+    const recoil = r <= rCrest ? r : 0;
+    return { tau0, A0, recoil, onFace: !(r <= rCrest), tauStop: tauAt(tau0, A0, R - recoil) };
+  };
+  // The hold at the great wheel's angle `wheelA`.
+  const poseAt = (H, wheelA) => {
+    const adv = clamp(RUN * (wheelA - H.A0), 0, R - H.recoil);
+    const travel = H.recoil + adv;
+    return { adv, travel, rho: REC * travel };
+  };
+  return { RUN, REC, pitch, run: R, holdNet, dHold, crestNet, rCrest, begin, poseAt, tauAt };
+})();
+// TODO 224 — the hold's restoring answer, on TODO 206's rule. The ring
+// reciprocates now (the maintHold axis takes it back onto the beak and the
+// pick-up brings it forward), and it is TWO-WAY: the blade drives it back onto
+// the beak when the drive comes off, and the mainspring — through the chain,
+// the cone and the pawls — drives it forward at the pick-up. The blade is its
+// own spring, the sautoir's idiom: grounded at its foot, deflected by the pin
+// and returned by its own elasticity.
+declareRestoring('Fusee & great wheel', 'maintSpring', 'spring',
+  'the blade is its own spring: its foot fastened to the crossing\'s arm, deflected by the ring\'s pin while the drive is on and relaxing after it toward the stop flank while a wind holds the ring on the beak — it touches the pin at every pose (maintDetentHandoff)',
+  'maintSpring');
+declareRestoring('Fusee & great wheel', 'maintRing', 'two-way',
+  'driven back onto the detent\'s beak by the blade when a wind takes the drive off (the recoil), and forward to the working angle by the mainspring through the pawls when the wind ends (the pick-up) — the maintHold axis performs both strokes',
+  ['Fusee & great wheel/maintSpring', 'Mainspring drum/mainspringRibbon']);
+// TODO 224 — §137's row for the HOLD AT THE STOP. At run-out the pin stands
+// on the stop flank with the blade's preload on its other side: the pin is
+// clamped between the two, the stop reacts the whole of the blade's load and
+// the great wheel feels none of it — which is why the train stops. A pin
+// bearing on the end of the window it travels in: pinInSlot, the vocabulary's
+// pin-and-slot, here with no conversion of motion at all, only a bound on it.
+// The blade's load at the stop is the POSED one (MAINT_BLADE.stop: the face a
+// relief off the pin at its stop station), which is what the flank carries.
+{
+  const st = MAINT_BLADE.stop, gm = MAINT_SPRING.geom;
+  const F_mN = st.F_N * 1000, tauStop_Nmm = st.tau_Nm * 1000;
+  // The flank's reaction: the pin's centre a pin radius off the flank's face,
+  // its contact square to the flank, at the pin's station along it.
+  const armOut = gm.rP * Math.cos(gm.phiStop);
+  declareTransfer('maintaining spring: the hold at the stop (blade → pin → stop flank)', {
+    unit: 'Fusee & great wheel', meshes: ['maintSpring', 'maintSpringPin'], idiom: 'pinInSlot',
+    load: { value: F_mN, unit: 'mN',
+      source: 'the blade\'s contact force at the stop, POSED (MAINT_BLADE.stop): the cantilever\'s free shape loaded where its face is nearest the pin until that nearest point stands r_pin + SEAT_RELIEF from the pin\'s centre, taken along the contact normal — the contact solved, not k·θ' },
+    quantities: { armIn_u: st.arm_u, armOut_u: armOut, ratio: armOut / st.arm_u, run_rad: MAINT_SPRING.run,
+      station_u: st.a_u, tilt_rad: st.tilt_rad, Fy_mN: st.Fy_N * 1000,
+      torqueStop_Nmm: tauStop_Nmm, torqueFloor_Nmm: MAINT_SPRING.tauFloor * 1000,
+      floorShare: st.tau_Nm / MAINT_SPRING.tauFloor, phiStop_rad: gm.phiStop, rPin_u: gm.rPin, rP_u: gm.rP },
+    why: `at run-out the pin, on its circle r_P ${gm.rP.toFixed(4)}, has swung back the whole run ${MAINT_SPRING.run.toFixed(5)} rad onto the stop flank, and the blade presses it there with ${F_mN.toFixed(0)} mN along a normal tilted ${Math.abs(st.tilt_rad / DEG2RAD).toFixed(2)}° off the flank's (the bowed face, its line ${st.arm_u.toFixed(4)} from the arbor): the flank takes that load with the pin ${armOut.toFixed(4)} along it, so the blade's ${tauStop_Nmm.toFixed(4)} N·mm on the great wheel is met by the flank's on the same wheel and the train gets nothing — it stops, posed from the stop. That preload is ${(100 * st.tau_Nm / MAINT_SPRING.tauFloor).toFixed(1)}% of the floor ${(MAINT_SPRING.tauFloor * 1000).toFixed(4)} N·mm the spring was sized to keep delivering to the last of its run`,
   });
 }
 
@@ -20983,6 +21355,12 @@ await (async () => {
     const side = Math.sign(wrapPi(Math.atan2(P.y, P.x) - azFlank));
     if (torque !== runS || side !== runS)
       console.warn(`TODO 219 maintaining spring: ${torque !== runS ? 'the blade drives the great wheel AGAINST the train' : ''}${torque !== runS && side !== runS ? ' and ' : ''}${side !== runS ? 'the stop flank stands on the run side of the pin, where the relaxing pin never reaches it' : ''} (MOVEMENT_SENSE ${MOVEMENT_SENSE}, train ${runS}, SENSE_REL ${MAINT_SPRING.SENSE_REL})`);
+    // TODO 224 — and the hold's recoil must be the way the blade's REACTION
+    // drives the ring: the same face load, read on the ring, turns it against
+    // the torque it puts on the wheel. MAINT_HOLD.REC declares it; this reads it
+    // off the cut blade and pin.
+    if (MAINT_HOLD.REC !== -torque)
+      console.warn(`TODO 224 maintaining hold: the recoil turns the ring ${MAINT_HOLD.REC > 0 ? '+' : '−'} but the blade's reaction on the pin drives it ${-torque > 0 ? '+' : '−'} — the posed hold would back the ring the way nothing pushes it`);
   }
   // TODO 132 — THE KEYLESS WORKS, the movement's last two unphased spur
   // meshes. Both carried TODO 15's half-pitch idiom and nothing else, and both
@@ -48052,6 +48430,7 @@ function tick(t) {
   // display also uses, so the input and the knob cannot disagree about which
   // direction winds. Everything below is the arithmetic it always was.
   const windIn = windSign * crownRotDelta;
+  let windBankedNow = 0;   // TODO 224 — what this tick banked: windBack falls exactly when it is > 0
   if (windEngaged) {
     if (windIn > 0) {
       // TODO 50 sub-pitch take-up: after a reversal the clutch stands a
@@ -48079,6 +48458,7 @@ function tick(t) {
         // beak-on-block now, which is most of what §47 is.
         const banked = Math.min(turnsDelta, Math.max(0, WIND_ARREST.engageTurns - barrelWindTurns));
         barrelWindTurns += banked;
+        windBankedNow = banked;
         windArrestStalled = turnsDelta - banked > 1e-9; // the hand is on a stopped crown
       } else {
         windArrestStalled = false;
@@ -48102,6 +48482,21 @@ function tick(t) {
   if (setEngaged) {
     setPathRot += crownRotDelta; // bidirectional — no ratchet on the setting path
   }
+  // TODO 224 — THE WIND-START STATE, on the live path only. The drive comes
+  // off on windBack's falling edge — the first tick that banks (nothing else
+  // moves windBack: the drain term cancels by construction, windLocalAt) — and
+  // is picked up on the first tick that banks nothing, when the mainspring
+  // turns the cone forward onto the pawls. A zero-dt tick is a POSE (setPose,
+  // the battery's sweeps) and never edges: what a pose holds is what it names.
+  if (rawDt > 0) {
+    if (windBankedNow > 0) { if (maintHold === null) maintHold = MAINT_HOLD.begin(tauIntegrated); }
+    else if (maintHold !== null) maintHold = null;
+  }
+  // …and the stop bounds movement time: past τ_stop the wheel would carry the
+  // pin through the flank, so neither the drain nor τ may advance beyond it
+  // (MAINT_HOLD's step 3). Infinity while the drive is on, so min() returns
+  // its first argument bit for bit.
+  const maintRoom = maintHold !== null ? Math.max(0, maintHold.tauStop - tauIntegrated) : Infinity;
   // Drain: the barrel does 1 turn per HOURS_PER_FUSEE_TURN of movement time
   // actually elapsed — the SAME mesh ratio RESERVE_BARREL_TURNS is built from
   // (§124: 120/7 h; this line had that ratio's pre-§124 value hard-coded as
@@ -48116,7 +48511,7 @@ function tick(t) {
   // depends on tension, which depends on this drain).
   {
     const before = barrelWindTurns;
-    barrelWindTurns = Math.max(0, barrelWindTurns - (balanceRate * rawDt) / (HOURS_PER_FUSEE_TURN * 3600));
+    barrelWindTurns = Math.max(0, barrelWindTurns - Math.min(balanceRate * rawDt, maintRoom) / (HOURS_PER_FUSEE_TURN * 3600));
     // TODO 50 sub-pitch pickup: with the coupling's faces parted (a
     // reversal parked the clutch mid-pitch), the pinion's run-down advance
     // first CLOSES the gap from its own side — the drive face travels to
@@ -48144,7 +48539,9 @@ function tick(t) {
   // to drive it — both are really "ran out of what keeps it going" — and
   // relaxes back toward 1 as either cause clears. Real per-frame decay
   // toward a moving target, not a snap — it settles over roughly a beat.
-  const rateTarget = (1 - leverEngage) * (tension > 0 ? 1 : 0);
+  // TODO 224: a wind held at Harrison's stop is a third "nothing drives it" —
+  // the spring's preload is met by the flank and the train gets none of it.
+  const rateTarget = (1 - leverEngage) * (tension > 0 && !(maintRoom <= 0) ? 1 : 0);
   const rateTau = rateTarget < balanceRate ? LEVER_DAMP_TAU : LEVER_RELEASE_TAU;
   balanceRate += (rateTarget - balanceRate) * (1 - Math.exp(-rawDt / rateTau));
 
@@ -48152,7 +48549,7 @@ function tick(t) {
   // escapement and gear train below only ever see τ, so when balanceRate is
   // damped to ~0 they stop as a mechanical consequence of the balance being
   // stalled, not because anything told them to.
-  tauIntegrated += balanceRate * rawDt;
+  tauIntegrated += Math.min(balanceRate * rawDt, maintRoom);
 
   const tau = tauIntegrated;
   const fourthA = fourthAngle(tau); // the REAL fourth wheel's angle — never adjusted below
@@ -48594,7 +48991,7 @@ function tick(t) {
       sndBeatN = bev; sndBeatRaw = rawNow;
       // Maintaining pawls while winding — one tooth passage = one snap
       // (the two pawls sit exactly 12 of 24 pitches apart: unison).
-      const pawlIdx = Math.floor((MAINT_PAWL_TIP_AZ - windBack) / ((Math.PI * 2) / MAINT_TEETH));
+      const pawlIdx = Math.floor((MAINT_PAWL_TIP_AZ - (windBack - maintWheel.rotation.z)) / ((Math.PI * 2) / MAINT_TEETH));   // TODO 224: the flange against the RING, which a hold turns on its arbor
       if (sndPawlIdx !== null && pawlIdx !== sndPawlIdx) {
         const n = Math.min(Math.abs(pawlIdx - sndPawlIdx), 3);
         for (let i = 0; i < n; i++) SND.pawl(i * 0.03);
@@ -48608,7 +49005,7 @@ function tick(t) {
       // Maintaining detent while running — one soft tick per rim tooth of
       // movement time (TODO 219: MAINT_RING_TEETH, 35 to a barrel turn of
       // 120/7 h — a tick every 29.4 min).
-      const detIdx = Math.floor((barrelArbor.rotation.z - MAINT_DETENT_AZ) / ((Math.PI * 2) / MAINT_RING_TEETH));
+      const detIdx = Math.floor((barrelArbor.rotation.z + maintWheel.rotation.z - MAINT_DETENT_AZ) / ((Math.PI * 2) / MAINT_RING_TEETH));   // TODO 224: the ring's own angle
       if (sndDetIdx !== null && detIdx !== sndDetIdx) SND.detent();
       sndDetIdx = detIdx;
       // Minute jumper snap while setting.
@@ -51528,6 +51925,22 @@ window.__clock = {
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
   get windStemSlip() { return windStemSlip; },        // TODO 50: the coupling's relative index
+  // TODO 224 — the wind's hold: null while the drive is on, else the
+  // drive-off state and where the hold stands now (the probe's and the
+  // instruments' read; the law is MAINT_HOLD's).
+  get maintHold() {
+    if (!maintHold) return null;
+    const P = MAINT_HOLD.poseAt(maintHold, barrelArbor.rotation.z);
+    return { ...maintHold, ...P, run: MAINT_HOLD.run, atStop: !(tauIntegrated < maintHold.tauStop) };
+  },
+  get maintHoldLaw() {
+    const B = MAINT_BLADE;
+    return { holdNet: MAINT_HOLD.holdNet, dHold: MAINT_HOLD.dHold, crestNet: MAINT_HOLD.crestNet, rCrest: MAINT_HOLD.rCrest,
+      pitch: MAINT_HOLD.pitch, run: MAINT_HOLD.run, REC: MAINT_HOLD.REC, frames: B.K, frameStep: B.step, tipSpan: B.tipSpan,
+      stop: B.stop, tauAt: (s) => B.tauAt(s), loadAt: (s) => { const L = B.loadAt(s); return { F_N: L.F, x: L.p.x, y: L.p.y }; },
+      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ,
+      begin: (tau0) => MAINT_HOLD.begin(tau0) };
+  },
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)
   // TODO 115 — the ONE stem⇄bank gearing constant, exposed because an
   // instrument that hard-codes which way the crown winds measures the old
@@ -51664,6 +52077,7 @@ window.__clock = {
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0;                 // TODO 144: nothing writes it now; reset kept so the knob's sum has one owner
     alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
+    maintHold = null;                    // TODO 224: the drive on — a wind's hold is session state, and canonical is running
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
@@ -51809,6 +52223,26 @@ window.__clock = {
       if (p.alarmBarrelWind === undefined)
         alarmBarrelWind = clamp(ALARM_BARREL_TURNS - alarmStrikePhase / ALARM_STRIKES_PER_BARREL_TURN, 0, ALARM_BARREL_TURNS);
     }
+    // TODO 224 — A HELD WIND, AS A PURE FUNCTION OF ITS INPUT. `maintHold` is
+    // the fraction h ∈ [0, 1] of the run the great wheel has advanced on the
+    // spring since the drive came off, the drive having come off at the pose's
+    // own τ: the ring recoils from there onto the beak (MAINT_HOLD.begin), and
+    // movement time is ADVANCED to the τ at which the train's law has carried
+    // the wheel h·(run − recoil) — so h = 1 is the stop, posed from it. h = 0
+    // is the drive on. `maintPickUp` ends the hold at that instant: the pawls
+    // take the ring forward and the movement stands at the held τ, running —
+    // the pick-up after a wind, whatever it lasted. Derived, never accumulated:
+    // a sweep revisits fractions in any order (alarmPressCycle's rule).
+    if (p.maintHold !== undefined) {
+      const h = clamp(+p.maintHold || 0, 0, 1);
+      if (h > 0) {
+        const H = MAINT_HOLD.begin(tauIntegrated);
+        tauIntegrated = MAINT_HOLD.tauAt(H.tau0, H.A0, h * (MAINT_HOLD.run - H.recoil));
+        maintHold = p.maintPickUp ? null : H;
+      } else maintHold = null;
+    }
+    // A held state the pose did not name still bounds τ: the stop is a place.
+    if (maintHold !== null && tauIntegrated > maintHold.tauStop) tauIntegrated = maintHold.tauStop;
     tick(lastTickRawT);
     // The support sweep measures the chain's REAL geometry against the drum's
     // hook, so a posed tension must rebuild the mesh before the caller reads
