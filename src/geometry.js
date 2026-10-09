@@ -2632,7 +2632,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
   // Ruby impulse pin at the roller's edge, in the roller-table plane itself so
   // it seats between the fork horns (the fork plane is level with the roller).
-  const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);
+  const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);   // r is published as userData.pinR
   pinGeo.rotateX(Math.PI / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.ruby);
   pin.position.set(rollerR, 0, pinZ);
@@ -2656,6 +2656,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
+  g.userData.pinR = thickness * 0.22;   // TODO 216 — the ruby pin's own radius: the knock is where its SURFACE meets the fork's horn
   // TODO 25 tier one — the INERTIA-BEARING DIMENSIONS, published so the
   // oscillator arithmetic in main.js can weigh this wheel without restating
   // a single number the builder already knows (rule 1's single source). Units,

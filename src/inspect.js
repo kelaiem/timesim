@@ -10030,9 +10030,10 @@ export function checkOscillator(clock) {
 //     the record's own corners, and hold layout.js's two declarations to them
 //     on both sides: AMPLITUDE_CLAIM_DEG at or under the minimum and within a
 //     degree of it (the claim is kept up everywhere, and is not a stale
-//     under-statement); AMPLITUDE_PEAK_DEG at or over the maximum and within
-//     a degree (every load priced at it bounds the real swing, and is not a
-//     stale over-pricing). The record's own `amplitude` block must name the
+//     under-statement); AMPLITUDE_PEAK_DEG at or over the largest swing the
+//     balance can REACH and within a degree (every load priced at it bounds the
+//     real swing, and is not a stale over-pricing). Since TODO 216 the reach is
+//     the smaller of the solve's maximum and the knock (row 17). The record's own `amplitude` block must name the
 //     same extremes.
 // 15. THE SWING THE MOVEMENT IS DESIGNED TO (TODO 207) — the nominal corner,
 //     held vertical, sustains at least AMPLITUDE_TARGET_DEG and less than
@@ -10054,6 +10055,14 @@ export function checkOscillator(clock) {
 //     tooth count the fewest whose pitch fits, k = (τ_going − τ_floor)/run, the
 //     preload, k again from the blade's own compliance, and the root's stress at
 //     the working point and the stop under the alloy's low end.
+// 17. THE BALANCE KNOCKS WHERE THE METAL SAYS, AND NOT AS SERVICED (TODO 216) —
+//     `knock` is the swing at which the impulse pin, carried round from the far
+//     side, meets the banked fork's horn, solved off the blank's outline (more
+//     than half a turn, at most the lift-only 360° − λ/2). Row 14's peak is
+//     held to the smaller of it and the solve's maximum; the corners listed as
+//     knocking are exactly those at or past it; and the nominal corner clears it
+//     in both positions. That the favourable corner knocks dial-flat is the
+//     record's to REPORT.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 export const RIBBON_STRESS_WAIVERS = {
@@ -10169,11 +10178,38 @@ export function checkEqualisation(clock) {
         failures.push({ what: 'amplitude record is not layout.js', record: { claim, peak }, declared: { claim: AMPLITUDE_CLAIM_DEG, peak: AMPLITUDE_PEAK_DEG } });
       if (!(claim <= min.deg && min.deg - claim < 1))
         failures.push({ what: 'claimed amplitude is not the sustained minimum rounded down', claimDeg: claim, min });
-      if (!(peak >= max.deg && peak - max.deg < 1))
-        failures.push({ what: 'peak amplitude is not the sustained maximum rounded up', peakDeg: peak, max });
+      // TODO 216 — the peak bounds the swing the balance can REACH: the solve's
+      // maximum, or the knock if the pin strikes the horn first.
+      const K = en.knock;
+      const reach = K && Number.isFinite(K.deg) ? Math.min(max.deg, K.deg) : max.deg;
+      if (!(peak >= reach && peak - reach < 1))
+        failures.push({ what: 'peak amplitude is not the largest reachable swing rounded up', peakDeg: peak, max, knockDeg: K ? K.deg : null });
       const A = en.amplitude;
-      if (!A || A.min.deg !== min.deg || A.max.deg !== max.deg || !A.claimHolds || !A.peakBounds)
-        failures.push({ what: 'amplitude block disagrees with the corners', record: A || null, fromCorners: { min, max } });
+      if (!A || A.min.deg !== min.deg || A.max.deg !== max.deg || A.reachDeg !== reach || !A.claimHolds || !A.peakBounds)
+        failures.push({ what: 'amplitude block disagrees with the corners', record: A || null, fromCorners: { min, max, reach } });
+      // Row 17 (TODO 216) — THE KNOCK. Read off the fork blank and the pin
+      // (main.js ESCAPEMENT_KNOCK; probe-216-knock measures it again off the
+      // meshes). Held here: it is a swing past half a turn and under a whole
+      // one, past the textbook figure's own lift-only bound it cannot exceed,
+      // the list of knocking corners is exactly the corners at or past it, and
+      // the SERVICED corner clears it in both positions — a watch that knocks
+      // as delivered is a fault, where a fresh one fully wound, lying flat at
+      // every band's best value, is reported.
+      if (!K || !Number.isFinite(K.deg)) {
+        failures.push({ what: 'knock record', note: 'going.energy.knock is missing — the peak has no escapement bound' });
+      } else {
+        if (!(K.deg > 180 && K.deg < 360 && K.deg <= K.textbookDeg))
+          failures.push({ what: 'knock angle outside a half turn and the lift-only bound', knockDeg: K.deg, textbookDeg: K.textbookDeg });
+        const knocks = all.filter((a) => a.deg >= K.deg);
+        if (!Array.isArray(K.knocks) || K.knocks.length !== knocks.length
+            || knocks.some((a) => !K.knocks.find((b) => b.corner === a.corner && b.position === a.position)))
+          failures.push({ what: 'knocking corners disagree with the corners', record: K.knocks || null, fromCorners: knocks });
+        const nom = ['vertical', 'flat'].map((pos) => ({ position: pos, deg: en.corners.nominal.sustainedDeg[pos] }));
+        if (nom.some((n) => !(n.deg < K.deg)))
+          failures.push({ what: 'the serviced (nominal) corner knocks', nominal: nom, knockDeg: K.deg });
+        if (K.nominalClears !== nom.every((n) => n.deg < K.deg))
+          failures.push({ what: 'knock record\'s nominalClears disagrees with the nominal corner', record: K.nominalClears });
+      }
       // Row 15 (TODO 207) — the design target, at the nominal corner held
       // vertical: met, and by less than AMPLITUDE_TARGET_SLACK_DEG, so the
       // balance is the heaviest the spring can keep at the target.
@@ -10413,6 +10449,8 @@ export function checkEqualisation(clock) {
         escapeTorque_nNm: +(en.escapeTorque_Nm * 1e9).toFixed(3), perBeat_nJ: +(en.perBeat_J * 1e9).toFixed(4),
         claimedDeg: en.balance.claimedDeg, peakDeg: en.balance.peakDeg, targetDeg: AMPLITUDE_TARGET_DEG,
         sustainedRangeDeg: en.amplitude ? [+en.amplitude.min.deg.toFixed(2), +en.amplitude.max.deg.toFixed(2)] : null,
+        knock: en.knock ? { deg: +en.knock.deg.toFixed(3), liftDeg: +en.knock.liftDeg.toFixed(3), textbookDeg: +en.knock.textbookDeg.toFixed(3),
+          knocks: en.knock.knocks.map((k) => `${k.corner} ${k.position} ${k.deg.toFixed(1)}°`), nominalClears: en.knock.nominalClears } : null,
         ribbons: Object.fromEntries([['going', g], ['alarm', a]].filter(([, R]) => R.stress).map(([h, R]) => [h, {
           shape: R.section.shape, sigma_MPa: R.stress.sigma_Pa.map((x) => +(x / 1e6).toFixed(1)),
           limit_MPa: R.stress.limit_Pa / 1e6, waived: RIBBON_STRESS_WAIVERS[h] ? RIBBON_STRESS_WAIVERS[h].split(' — ')[0] : null,

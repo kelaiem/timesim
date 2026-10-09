@@ -2833,6 +2833,89 @@ movement.add(balanceGroup);
 registerExplode(balanceGroup, L_BALANCE, 7);
 registerLabel('Balance', balanceGroup);
 
+// TODO 216 — THE KNOCK, read off the cut metal. A lever balance carries its
+// impulse pin round past the fork on every swing. Swing far enough and the pin
+// comes all the way round from the far side and strikes the OUTSIDE of the
+// fork's horn, which is still lying banked where the last impulse left it:
+// past that angle the balance cannot swing, it banks on the horn. So the
+// largest swing the oscillator can REACH is the smaller of what the energy
+// column sustains and this angle, and it is that swing every load on the
+// oscillator is priced at (AMPLITUDE_PEAK_DEG, `equalisation` rows 14 and 17).
+//
+// Solved in the plane of the fork blank, against its published outline and
+// the ruby pin's own radius (the pin stands in the blank's z band; the probe
+// checks that). Frame: the balance staff at the origin, the fork pivot at
+// (d, 0) on the line of centres; θ is the balance's turn off PIN_AIM and ψ the
+// fork's off forkBaseAngle, both counter-clockwise as the frame law writes them
+// (balanceGroup.rotation.z = PIN_AIM + θ, forkGroup = forkBaseAngle + ψ).
+// Fork-local (x, y) lands at F + R(ψ)·(y, −x): local −y runs at the balance.
+//  · LIFT — the pin sits on the notch's centre line, fork banked at ±bank,
+//    where d·sin ψ = r·sin(θ ± ψ); the arc between the two is the lift.
+//  · KNOCK — fork at the bank the pin left it on, carry the pin on round until
+//    its surface first meets the blank's outline. Not the textbook 360° − λ/2:
+//    the horn tip and the pin's own radius stand off the centre line, and that
+//    is the whole difference between them.
+// `tools/probe-216-knock.mjs` measures the same two angles off the built
+// meshes' world transforms and gates this record against them.
+const ESCAPEMENT_KNOCK = (() => {
+  const outline = palletFork.userData.blankOutline;
+  const r = rollerR, pinR = balanceWheel.userData.pinR;
+  const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
+  const bank = FORK_BANK_DEG * DEG2RAD;
+  const forkPoly = (psi) => {
+    const c = Math.cos(psi), s = Math.sin(psi);
+    return outline.map(([x, y]) => [d + y * c + x * s, y * s - x * c]);
+  };
+  const pin = (th) => [r * Math.cos(th), r * Math.sin(th)];
+  // the pin's centre against the fork's centre line (cross product; 0 on it)
+  const onAxis = (th, psi) => { const [px, py] = pin(th); return -(px - d) * Math.sin(psi) + py * Math.cos(psi); };
+  const bisect = (f, lo, hi) => {
+    let flo = f(lo);
+    for (let k = 0; k < 100; k++) {
+      const mid = (lo + hi) / 2, fm = f(mid);
+      if ((fm > 0) === (flo > 0)) { lo = mid; flo = fm; } else hi = mid;
+    }
+    return (lo + hi) / 2;
+  };
+  const thA = bisect((th) => onAxis(th, +bank), -0.6, 0.6), thB = bisect((th) => onAxis(th, -bank), -0.6, 0.6);
+  const exits = thA > 0 ? [{ psi: +bank, th: thA }, { psi: -bank, th: thB }] : [{ psi: -bank, th: thB }, { psi: +bank, th: thA }];
+  const clearance = ([px, py], poly) => {
+    let m = Infinity, at = -1, inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [ax, ay] = poly[j], [bx, by] = poly[i];
+      const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / L2)) : 0;
+      const dd = Math.hypot(px - ax - t * ex, py - ay - t * ey);
+      if (dd < m) { m = dd; at = i; }
+      if ((ay > py) !== (by > py) && px < (bx - ax) * (py - ay) / (by - ay) + ax) inside = !inside;
+    }
+    return { c: (inside ? -m : m) - pinR, at };
+  };
+  // dir +1: the pin left counter-clockwise; −1: clockwise (a mirror for this blank)
+  const knockFrom = ({ psi, th: th0 }, dir) => {
+    const poly = forkPoly(psi), step = 0.25 * DEG2RAD;
+    let prev = th0 + dir * 0.05, th = prev;
+    for (; Math.abs(th) < 2 * Math.PI; th += dir * step) {
+      if (clearance(pin(th), poly).c <= 0) break;
+      prev = th;
+    }
+    if (!(Math.abs(th) < 2 * Math.PI)) return null;
+    let lo = prev, hi = th;
+    for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (clearance(pin(mid), poly).c <= 0) hi = mid; else lo = mid; }
+    return { deg: Math.abs(hi) / DEG2RAD, strikes: outline[clearance(pin(hi), poly).at] };
+  };
+  const ccw = knockFrom(exits[0], +1), cw = knockFrom(exits[1], -1);
+  const worst = [ccw, cw].filter(Boolean).reduce((a, b) => (b.deg < a.deg ? b : a), { deg: Infinity });
+  const K = {
+    deg: worst.deg, ccwDeg: ccw && ccw.deg, cwDeg: cw && cw.deg, strikesLocal: worst.strikes,
+    liftDeg: (exits[0].th - exits[1].th) / DEG2RAD, bankDeg: FORK_BANK_DEG,
+    d_u: d, rollerR_u: r, pinR_u: pinR, textbookDeg: 360 - (exits[0].th - exits[1].th) / DEG2RAD / 2,
+  };
+  if (!Number.isFinite(K.deg) || !(K.deg > 180 && K.deg < 360))
+    console.warn(`TODO 216: no knock found on the fork blank within a turn of the pin (ccw ${ccw && ccw.deg}, cw ${cw && cw.deg}) — the outline or the frame law moved`);
+  return Object.freeze(K);
+})();
+
 const hairspringGroup = new THREE.Group();
 hairspringGroup.position.set(P.balance.x, P.balance.y, L_HAIRSPRING);
 hairspring.name = 'hairspringCoil';   // §48: the restoring element has to be nameable to be declared
@@ -8756,18 +8839,19 @@ hammerGroup.add(hammerTailBar);
 //    under the 14.3 mN deflection ceiling below. The figures that follow are
 //    the record the rod was first priced against.)
 //  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
-//    3.067 mm (measured off the built pad). Holding a 455°
-//    (AMPLITUDE_PEAK_DEG — the largest swing the spring sustains, TODO 192
-//    step 4; this was first priced at a 270° the spring could not reach)
-//    swing means absorbing the hairspring's own peak torque. TODO 207
-//    lightened the balance and its spring with it (k 1.234e-7 → 7.663e-8
-//    N·m/rad), so k·θ = 7.663e-8 × 7.941 = 6.09e-7 N·m — 0.20 mN of friction
-//    at that radius, so ≈1.32 mN of normal force at a ruby-on-brass μ 0.15.
-//    The pad closes on the rim 0.495 u per 3.413 u of rod travel (both
-//    measured over the crown cycle), so the rod carries 1.32 × 0.145 =
-//    0.19 mN. (The verdict below was taken at the first pricing, 1.3 mN and
-//    0.18 mN; every hack figure in it scales by 1.02, which moves no
-//    conclusion.)
+//    3.067 mm (measured off the built pad). Holding a 315°
+//    (AMPLITUDE_PEAK_DEG — the largest swing the balance can reach: the
+//    knock since TODO 216, where the pin meets the banked fork's horn; it was
+//    priced at the energy column's 455° before that, and first at a 270° the
+//    spring could not reach) swing means absorbing the hairspring's own peak
+//    torque. TODO 207 lightened the balance and its spring with it (k
+//    1.234e-7 → 7.663e-8 N·m/rad), so k·θ = 7.663e-8 × 5.498 = 4.21e-7 N·m —
+//    0.137 mN of friction at that radius, so ≈0.92 mN of normal force at a
+//    ruby-on-brass μ 0.15. The pad closes on the rim 0.495 u per 3.413 u of
+//    rod travel (both measured over the crown cycle), so the rod carries
+//    0.92 × 0.145 = 0.13 mN. (The verdict below was taken at the first
+//    pricing, 1.3 mN and 0.18 mN; every hack figure in it scales by 0.71,
+//    which moves no conclusion — it only widens the margins.)
 // Both are sub-milliNewton — an order under the 5–50 mN detent budgets
 // the movement already carries (the yoke spring's block names that
 // envelope), which is the first thing the verdict below turns on.
@@ -26881,7 +26965,8 @@ const EQUALISATION = (() => {
   //    it at every corner beside the amplitude the movement CLAIMS
   //    (AMPLITUDE_CLAIM_DEG), with the factor by which the claim exceeds the
   //    supply. Measured at the shipped metal: the sustained swing is 126–293°
-  //    vertical and 172–455° dial-flat, 200° vertical at the nominal corner
+  //    vertical and 172–455° dial-flat (the last past the knock at 314°, so
+  //    the balance banks there, TODO 216), 200° vertical at the nominal corner
   //    (TODO 192's steps and TODO 193 took it from 2–7°: pivots cut, the
   //    strip, then the ribbon proportioned to its alloy and its drum; TODO 207
   //    then grew the drum to the plate and lightened the balance to the
@@ -26889,8 +26974,9 @@ const EQUALISATION = (() => {
   //    the corners' ordering, the amplitude solve plugging back) and, since
   //    TODO 192 step 4, the two amplitudes layout.js declares against the
   //    solve's extremes, published here as `amplitude`: the claim at or under
-  //    the minimum, the peak loads are priced at at or over the maximum, each
-  //    within a degree.
+  //    the minimum, the peak loads are priced at at or over the largest swing
+  //    the balance can reach (the maximum, or the knock if it comes first —
+  //    TODO 216), each within a degree.
   const energy = (() => {
     // TODO 219 — every figure of the walk is GOING_POWER's (hoisted to the
     // train's cut so the maintaining spring's floor reads the same laws).
@@ -27040,13 +27126,26 @@ const EQUALISATION = (() => {
     const all = Object.entries(energy.corners).flatMap(([c, C]) =>
       ['vertical', 'flat'].map((pos) => ({ corner: c, position: pos, deg: C.sustainedDeg[pos] })));
     const min = all.reduce((a, b) => (b.deg < a.deg ? b : a)), max = all.reduce((a, b) => (b.deg > a.deg ? b : a));
-    energy.amplitude = { min, max, claimDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG,
+    // TODO 216 — the balance cannot swing past the KNOCK (ESCAPEMENT_KNOCK,
+    // solved off the fork blank and the pin): there its pin strikes the banked
+    // fork's horn. So the largest swing it REACHES is the smaller of the solve's
+    // maximum and the knock, and that is what the peak is held to. Every
+    // corner and position the energy column would carry past it is listed: the
+    // balance banks there instead of sustaining the solve's figure.
+    const knock = ESCAPEMENT_KNOCK.deg;
+    const reach = Math.min(max.deg, knock);
+    energy.knock = { ...ESCAPEMENT_KNOCK,
+      knocks: all.filter((a) => a.deg >= knock),
+      nominalClears: ['vertical', 'flat'].every((pos) => energy.corners.nominal.sustainedDeg[pos] < knock) };
+    energy.amplitude = { min, max, reachDeg: reach, claimDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG,
       claimHolds: AMPLITUDE_CLAIM_DEG <= min.deg && min.deg - AMPLITUDE_CLAIM_DEG < 1,
-      peakBounds: AMPLITUDE_PEAK_DEG >= max.deg && AMPLITUDE_PEAK_DEG - max.deg < 1 };
+      peakBounds: AMPLITUDE_PEAK_DEG >= reach && AMPLITUDE_PEAK_DEG - reach < 1 };
     if (!energy.amplitude.claimHolds)
       console.warn(`TODO 192: AMPLITUDE_CLAIM_DEG ${AMPLITUDE_CLAIM_DEG}° is not the sustained minimum rounded down — the solve's least is ${min.deg.toFixed(2)}° (${min.corner}, ${min.position})`);
     if (!energy.amplitude.peakBounds)
-      console.warn(`TODO 192: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the sustained maximum rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position})`);
+      console.warn(`TODO 216: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the largest reachable swing rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position}) and the pin knocks at ${knock.toFixed(2)}°`);
+    if (!energy.knock.nominalClears)
+      console.warn(`TODO 216: the serviced (nominal) corner knocks — vertical ${energy.corners.nominal.sustainedDeg.vertical.toFixed(2)}°, dial-flat ${energy.corners.nominal.sustainedDeg.flat.toFixed(2)}° against the knock at ${knock.toFixed(2)}°`);
     // TODO 207 — the DESIGN target, at the nominal corner held vertical: met,
     // and by less than one heavier rim step would cost (BAL_RIM_F is the
     // heaviest rim that reaches it).
