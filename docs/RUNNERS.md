@@ -441,7 +441,7 @@ queued or running `timesim-battery` jobs first.
 
 ## What stays the same on any host
 
-- **The job cap (60 min for a PR; 150 for a push, dispatch or nightly) and the
+- **The job cap (125 min for a PR; 150 for a push, dispatch or nightly) and the
   per-check guard (35 min).**
   Both are sized by the slow tail of the runner they were measured on, and
   both files say to re-derive them together from several runs. A faster host
@@ -451,7 +451,9 @@ queued or running `timesim-battery` jobs first.
   50 min on `ubuntu-latest`, each inside `clearances`, and a cancelled push
   leaves that tree with no baseline — the quiet failure the concurrency note
   describes — so every following hosted PR ran whole into the same cap. A PR
-  inherits rather than writes and keeps 50.
+  inherits rather than writes, but it runs WHOLE after any killed push and
+  whenever it touches the check code. A whole PR measured 73.8 min, so its cap
+  is that times the same 1.66× spread, 125, not the 50 or 60 it used to keep.
 - **The baseline cache key carries the platform, and seeding the host's is a
   DISPATCH.** A §152 baseline's rows are inherited verbatim into a PR's report,
   so they must come from the same browser build on the same architecture; a

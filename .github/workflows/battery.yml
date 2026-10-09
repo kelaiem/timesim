@@ -611,9 +611,26 @@ jobs:
     #
     # A PR's point tier is held to POINT_PR_BUDGET_MS (10 min of
     # wall, ci-battery.mjs) on top of a battery that can itself be WHOLE when
-    # no baseline exists, so a PR keeps fail-fast at 60 rather than 50 — the
+    # no baseline exists, so a PR kept fail-fast at 60 rather than 50 — the
     # old cap plus the ceiling.
-    timeout-minutes: ${{ github.event_name == 'pull_request' && 60 || 150 }}
+    #
+    # RE-DERIVED BY THE SAME RULE, BECAUSE "THE OLD CAP" STOPPED BEING THE
+    # WHOLE BATTERY. A PR is whole more often than the name suggests. It is
+    # whole whenever the base has no baseline (every PR after a killed push),
+    # and whenever it touches one of §152's four check-code files, which voids
+    # 56% of merges. Measured on #606 (run 37931516210, hosted, whole because
+    # its base had no baseline): setup ~1.2 min, then the shards to 2946 s, then
+    # boot B and the share boot ~1.0 min. The spec-boot tier was 9 min in when
+    # the 60 killed it, and it takes 561 s on a push. Add the point tier's
+    # 10-min ceiling and the ~3.1 min of post-battery probes that a PR runs too:
+    # 1.2 + 49.1 + 1.0 + 9.35 + 10 + 3.1 = 73.8 min for a whole PR. That is
+    # 1.23x OVER the 60, before any slow tail. Times the same 1.66x spread,
+    # 73.8 x 1.66 = 122.5, rounded up to 125. An incremental PR still finishes
+    # in its usual 40-50 min, so the cap only decides how long a whole one may
+    # take. A wedge is the per-check guard's (35 min) at either cap. A PR that
+    # wants a faster whole run asks for the matrix (`battery-matrix`, §259) or
+    # the host (`self-hosted-battery`, ~45 min whole), not a tighter cap.
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 125 || 150 }}
     steps:
       # §200 — the pointer is read off the run, never remembered. The routing
       # verdict was written by the route job (§251); this step names the
