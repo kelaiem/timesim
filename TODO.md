@@ -40,7 +40,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 207 | DONE | The design swing is declared and gated: `AMPLITUDE_TARGET_DEG` 200° vertical at the nominal corner, met at 200.4°. The drum grew to the largest the plate carries (`DRUM_R_ACTUAL` 10 → 10.71, held by a boot assert to its plate-edge bound) and the balance was lightened in rim height to the heaviest that reaches the target (`BAL_RIM_F` 0.645: inertia 62%, mass 63%), its hairspring re-solved at the same 0.0239 mm in a 0.3726 ribbon. The favourable dial-flat swing now passes the knocking angle: TODO 214 |
 | 206 | CLOSED | The run had no driver toward ARMED: the rod's two ends only push, the ring had no stop, and the nose hung 0.0734 over the gap floor on the tick's `Math.min`. An arming spring on the lay shaft (a blade let into hanger 3, bearing on a keyed arm) drives it through those contacts. The nose SEATS on the gap floor, and the lever ratio is solved from that contact (4.657 → 5.311). Priced at the nose at MU_STEEL, it seats at 5.27 mN and lifts at 47.42 mN, inside 5–50. A two-way row must now name drivers that resolve to an input or a spring; the link ⇄ ring loop was the only one |
 | 205 | CLOSED | The neck's flank ran under the rod's foot face, 0.1091 at the rest roll (the least of the roll; armed 0.2043). The chord now turns 3.0° about its inner end so the shaft's tip stands `ALARM_LINK_ROD_STANDOFF` 0.7600 beside the rod's axis — the least offset at which the foot's rim clears the neck by `CLEAR_MARGIN` — and an `INTRA_UNIT_FLOORS` row reads 0.1657 |
-| 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.973 since TODO 194 thickened the rod; 0.931 when filed) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
+| 204 | CLOSED | The fulcrum is a PIN on the lever's tilt axis (a post under the lever could never carry it: both loads push the lever up, so the reaction pulls down — 40.5 mN seated, 285.5 mN lifted). The eye (r 0.5332) stands 0.7206 along the axis, clear of the rod by the margin, on a web from the bar. The pin (`STOCK_MIN_R10`, TODO 206's journal, now metal) works at 757 MPa. The post is planted on plate land at s 1.3600, load-bound at ⌀ 0.1244 mm, and measures seated (0.0000, was 0.6183). No arm, ratio or hand-off moves. The back glass step rises 0.3748 |
 | 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 is built as the `plateSeats` gate: 62 declared seats, 12 frozen debt rows (TODO 209), and a mutation probe that restores the proud plate and watches it fire. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
@@ -24496,7 +24496,10 @@ the check's own excusing logic.
 **Closed.** `EXPECTED_PAIRS` now carries `['Alarm link', 'Three-quarter
 plate']`. It sits beside the link's other §35 grants and cites the two contacts the
 floors row already names: the beak's post seated on the plate top, and the rod's
-upper bush pressed into the plate's bore (§202). The floors row's own comment
+upper bush pressed into the plate's bore (§202). (The first of those was not true
+when this closed: the post stood 0.6183 over the plate, and a declared contact is
+excluded before it is measured, so nothing read it. [TODO 204] planted the post on
+plate land, carrying the lever's pin; it measures seated now.) The floors row's own comment
 already said the pair "is EXPECTED", so the two tables now agree on record
 rather than only in `undeclaredClearance`'s excusing logic.
 
@@ -28014,7 +28017,7 @@ Feasibility: medium · Cost: the tab filter and a sleeve-post guard in the
 §112 search (~40 lines), then a possible re-site · Battery: full, with a
 `--report` diff, if the site moves.
 
-## 204. The link beak's post stands 0.618 above the three-quarter plate a floors row declares it seated on
+## 204. The link beak's post stands 0.618 above the three-quarter plate a floors row declares it seated on — CLOSED
 
 Found closing [TODO 191]. `alarmLinkBeakPost` is built from
 `ALARM_LOCK_Z + 0.30` up to the lever's fulcrum height. Measured by
@@ -28052,6 +28055,120 @@ Then delete the post from the floors row's `contacts`, or keep it there
 only once it measures seated. Retire the "seated" wording in
 `EXPECTED_PAIRS` and TODO 171's record if the post stops being what seats
 the pair.
+
+**CLOSED — the fulcrum is a pin on the lever's tilt axis, and its post is
+planted on plate land.** The first option, with one finding that decided its
+shape.
+
+- **A post under the lever could never have been its fulcrum.** Both of the
+  lever's loads push it UP: the column under the nose, and [TODO 206]'s
+  arming spring through finger → rod foot → rod top under the tail. So the
+  fulcrum's reaction points DOWN, `F_nose·(1 + beakLen/tailLen)` — with the
+  journal friction the spring solve already charges, **40.53 mN seated and
+  285.45 mN lifted** at FRICTION's adverse corner (the solve's 5.27 / 47.42 mN
+  at the nose). A post standing under the bar can only push up. And TODO 206's
+  `noseFrom` had been charging `MU_STEEL` at a beak-post journal of
+  `STOCK_MIN_R10` that did not exist in the metal. It reads the pin now
+  (`alarmLinkParts.pivot.pinR`, the same radius), so the solve's numbers do
+  not move.
+- **The pin is ON the tilt axis**, the line through `beakPiv` at the arm's
+  height square to the arm (the tick tilts the arm about its own y under
+  'ZYX'). No arm moves: beakLen 3.6565, tailLen 0.6885, ratio 5.3107, seat
+  tilt 0.1455 rad, the nose and tail contacts and all 19 `alarmHandoffs` rows
+  are unchanged. An eye turned about that line is invariant under the tilt,
+  so it sweeps nothing it does not occupy at rest.
+- **The eye** (`alarmLinkBeakEye`) is bored to the pin's running fit and
+  walled at §50's floor: r 0.1665 + `PIVOT_BORE_CLEAR` + `STOCK_MIN_U` =
+  **0.5332**. Its inner face is derived from the rod it must clear, with its
+  whole radius toward it and the rod's circumradius:
+  hypot(tailLen − r_eye, s) = R_rod + `CLEAR_MARGIN` gives **s = 0.7206** on
+  the lever's −y (TODO 191's measured side). Started at the bar's flank it
+  stood 0.07 off the rod. A **web** (`alarmLinkBeakFulcrum`, [TODO 194]'s lug
+  made permanent and re-derived) carries the lever out to it. It is the pin's
+  diameter wide, from the bar's underside up to the eye's crown, and lapped
+  one `SAW_FIT` into the bar and into the eye. A web only the bar's depth
+  would have landed inside the eye's bore and touched its wall at four
+  corners. The lap plugs the bore's inner end, so the pin stops one running
+  clearance short of it. The journal beyond is `STOCK_MIN_U` long and no
+  more, because every unit of eye lengthens the pin's cantilever. End-shake
+  to the head is `PIVOT_BORE_CLEAR`.
+- **The pin** (`alarmLinkBeakPin`, r `STOCK_MIN_R10`, 0.7121 long) is pressed
+  through the post's head flush with its outer face. The lever's loads act on
+  the arm's line, so it is a cantilever whose moment arm is the head's inner
+  face, **1.1873**. At the 285.45 mN service load it works at **757.1 MPa**
+  across its flats, under `SPRING_SIGMA_Y_PA`. §50's floor binds (margin
+  1.057), so the journal TODO 206 prices is the metal's. The web at the bar's
+  flank works at 47.0 MPa.
+- **The post** (`alarmLinkBeakPost`) is planted on the three-quarter plate's
+  top face, the plate-top stud convention, and lapped one `SAW_FIT` into a
+  **head** (`alarmLinkBeakHead`, r pin + `STOCK_MIN_U` = 0.4831, cross-drilled
+  for the pin). It carries R as tension plus the moment R·s all the way down,
+  because the load line stands s off its axis. So its section is the LOAD
+  where the load binds (TODO 192 step 2's rule for pivots): at §50's floor it
+  would work at ≈ 890 MPa. Load-bound, it is **r 0.1727, ⌀ 0.1244 mm across
+  the flats**, sitting on the yield by construction. Its station is the
+  larger of two rules. The plate-land rule (`linkRodTqLand`'s, for bores):
+  hypot(tailLen, s) = `ALARM_LINK_ROD_PLATE_BORE_R` + `STOCK_MIN_U` + r_post,
+  which gives 1.2757, with the full opening list asserted. And standing wholly
+  under its head: s ≥ headIn + r_post, which gives **1.3600** and binds. The
+  two are iterated to a fixed point with the section. The post is **2.7609**
+  long.
+- **Rule 6.** The build warns, with achieved and required numbers, on:
+  - the eye's and the web's plan clearance to the rod;
+  - the eye standing past the bar's flank;
+  - the post's land to every opening of the plate;
+  - the post under its head;
+  - the pin, the web and the post against `SPRING_SIGMA_Y_PA`;
+  - §172's saw-tip rule, now over the eye (with the lever), the post and the
+    head (where they are built).
+- **Tables.**
+  - `INTRA_UNIT_CONTACTS`: bar⇄post, tail⇄post and lug⇄post were three rows
+    buying silence for a joint that was not there. They are deleted. Added:
+    pin⇄eye (the journal), pin⇄head (pressed), post⇄head (lapped).
+  - `INTRA_UNIT_FLOORS`: rod⇄post is retargeted to the members that now run
+    beside the rod, rod⇄eye and rod⇄web.
+  - The `EXPECTED_CONTACT_FLOORS` contact `alarmLinkBeakPost ⇄
+    threeQuarterPlate` is kept, because it measures seated now: **0.0000**,
+    against 0.6183 before. The "seated" wording in `EXPECTED_PAIRS` and in
+    [TODO 171]'s record is true at last, and both say when it became so.
+  - The beak lever's §137 crank row names the eye and the pin.
+  - TODO 194's lug stops being a fork: the web is always built, since the eye
+    always stands past the bar's flank (asserted).
+  - No new waivers. The web's `stockFloor` row is read under the unit's
+    standing TODO 11 waiver (0.0734 mm), as the lug's was (0.0717). That row
+    measures the web's LENGTH between its two laps as a section, which is
+    [TODO 225]'s defect, not a thin member.
+- **Measured.** These are the scratch scan's numbers, over `AXES` at 5
+  samples:
+  - the eye 0.1594 off the rod and the web 0.1804;
+  - the post 0.7811 off the rod, the eye 0.0568, and nothing of another unit
+    nearer than 0.7839;
+  - the head 0.3200 under the case's back crystal;
+  - the eye 0.2483 off the alarm jumper's blade.
+- **One position-space consequence, automatic.** The eye's crown stands
+  0.5332 over the tilt axis, where the bar's top stood 0.1583. So the back
+  envelope's Alarm link bins rise, and with them the case's back glass step
+  (`backGlass.zStepUnder`): **13.9267 → 14.3015, +0.3748**. That is the
+  crown's rise plus nothing: the unit's 0.12 `BACK_SWEPT_ALLOWANCE` applies to
+  the eye and to the fixed head as it does to every Alarm link mesh, although
+  neither moves in z. A per-mesh allowance would buy 0.12 of it back, and that
+  is not done here.
+- **Acceptance.** The full battery ran locally (`--shards 3
+  --no-incremental`): **53/53**.
+  - `intraUnit`: the new rows measure pin⇄eye 0.0498, pin⇄head 0 and
+    post⇄head 0. The floors read rod⇄eye **0.1594** and rod⇄web **0.1804**
+    (both at `alarm` f=0, against 0.15).
+  - `alarmHandoffs`: 19 rows, 0 waived. `transfers` covers 35 rows.
+  - `stockFloor` waives 40 rows, as before. `turning` reads 246 bars with 0
+    waived.
+  - `undeclaredClearance` finds 0 pairs under the margin. `sweptOverlap`
+    confirms 0.
+  - `probe-back-envelope` passes its §187 gate and its glass gate. The
+    Alarm link's swept z-max is 14.050 at `alarm` f=0.
+  - `probe-power-budget` AGREES (52 figures).
+  - The fingerprint is deterministic and moves 524118476 → 710425327: five
+    new or reshaped meshes (eye, web, pin, head, the re-sited post) and the
+    case's raised glass step.
 
 ## 205. The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld — CLOSED
 
