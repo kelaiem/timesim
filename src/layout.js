@@ -395,14 +395,18 @@ export const AMPLITUDE_PEAK_DEG = 315;
 export const AMPLITUDE_TARGET_DEG = 200;
 export const AMPLITUDE_TARGET_SLACK_DEG = 1.5;   // one 0.005 step of BAL_RIM_F is 1.3° of nominal vertical swing (measured)
 export const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
-export const IMPULSE_WIDTH = 0.16;      // fraction of a beat spent in unlock+impulse (rest = locked)
-export const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
-export const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
-// FORK_BANK_DEG / FORK_RECOIL_DEG are DERIVED in main.js (after the pallet
-// fork and balance geometry exist), from rollerR and the notch's actual
-// reach — see that derivation for why they can't be picked independently of
-// the balance's roller radius without the impulse pin missing the notch. They
-// are NOT pure, so they stay there.
+// IMPULSE_WIDTH survives only as an input to FORK_BANK_DEG's arc-length
+// derivation in main.js. Until TODO 226 it was also the posed window the
+// fork and wheel moved in, with RECOIL_FRACTION and RECOIL_DEG shaping a draw
+// dip inside it; the escapement is driven off the pin now, its window is the
+// balance's own passage through the lift, and those two are retired. TODO 226
+// step 2 derives the bank from the seated pin and retires this one too.
+export const IMPULSE_WIDTH = 0.16;
+// FORK_BANK_DEG is DERIVED in main.js (after the pallet fork and balance
+// geometry exist), from rollerR and the notch's actual reach — see that
+// derivation for why it can't be picked independently of the balance's
+// roller radius without the impulse pin missing the notch. It is NOT pure,
+// so it stays there.
 
 // ---------------------------------------------------------------------------
 // Z-stack — the depth budget between the back plate (z≈0) and the cocks. Each

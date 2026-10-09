@@ -524,7 +524,7 @@
         </div>
         <div class="fig-body">
           <svg viewBox="0 0 780 250" width="780" height="250" role="img"
-               aria-label="Two close-ups of the escapement drawn from the lever's frame, one per pallet stone, driven by the slider through one beat. On the right, a wheel tooth rests on the stone's locking corner, the stone lifts while the wheel backs up a little, then the tooth's tip slides along the stone's slanted end until it drops off; on the left, the next tooth arrives and lands on the other stone's corner, and the wheel is held again.">
+               aria-label="Two close-ups of the escapement drawn from the lever's frame, one per pallet stone, driven by the slider through one beat. On the right, a wheel tooth rests on the stone's locking corner; as the balance swings the lever, the tooth's tip slides along the stone's slanted end until it drops off; on the left, the next tooth arrives and lands on the other stone's corner, and the wheel is held again.">
             <!-- Both panels are computed, not drawn: the script below builds the
                  wheel's teeth and the two stones in the machine's own proportions
                  (tooth circle, embrace, draw, drop) and poses them through the
@@ -556,9 +556,12 @@
         step — the wheel only runs free for the last degree and a half before the other
         stone catches it. Cut the slant the other way and the tip would leave the corner
         into thin air, the wheel would spin the whole step unloaded, and the balance would
-        get nothing. Two things here are honest simplifications: the lever's swing is drawn
-        as the simulation poses it, and the little backward twitch of the wheel at the start
-        of each beat is a posed gesture rather than a measured recoil.</figcaption>
+        get nothing. The lever here is turned by the balance's pin and the wheel follows the
+        lever, so the swing you see is the balance's own. Two things are honest
+        simplifications: nothing pushes back, because only where each part must be is worked
+        out and never a force; and the stone lets go of the wheel the moment the lever moves,
+        where a real stone first slides a little way up its locking face and nudges the wheel
+        backward.</figcaption>
       </figure>
     </div>
   </details>
@@ -963,10 +966,11 @@
   // proportion — a 15-tooth club wheel, the two stones embracing 84° of it,
   // 12° of draw, and each stone's slanted end cut as the chord of the path a
   // tooth tip actually travels past it in the lever's frame, up to a drop of
-  // 1.5° of wheel. The beat law is the one the tick uses (a backward twitch on
-  // a sine for the first quarter of the window, then a smoothstep advance of
-  // 12° while the lever swings bank to bank), so what the slider drives is the
-  // shipped motion, in a frame that makes the contact readable.
+  // 1.5° of wheel. The beat law is the one the tick uses since TODO 226: the
+  // lever's angle is the balance's pin as seen from the lever's pivot while the
+  // pin is in the notch, banked outside it, and the wheel advances 12° in
+  // proportion to the lever's travel bank to bank — so what the slider drives
+  // is the shipped motion, in a frame that makes the contact readable.
   (function () {
     var el = function (id) { return document.getElementById(id); };
     var box = el('escapement');
@@ -974,14 +978,19 @@
     if (!slider) return;
     var nTeeth = 15, rWheel = 4.5, embrace = 42 * Math.PI / 180, pitch = 2 * Math.PI / nTeeth;
     var beatRad = 12 * Math.PI / 180, drawRad = 12 * Math.PI / 180, dropRad = 1.5 * Math.PI / 180;
-    var window_ = 0.16, twitchFrac = 0.25, twitchRad = 1.0 * Math.PI / 180;
-    var bankRad = 2.57 * Math.PI / 180;          // the lever's half-swing, as the simulation derives it
+    var bankRad = 2.5688 * Math.PI / 180;        // the lever's half-swing, as the simulation derives it
+    // the balance (45° either way at full wind), 11.19 from the lever's pivot,
+    // carrying its pin on a 1.62 roller: the pin is on the lever's line at the
+    // bank when the balance stands liftHalf off the line of centres
+    var amp = 45 * Math.PI / 180, dPivot = 11.1948, rPin = 1.62;
+    var liftHalf = Math.asin(dPivot * Math.sin(bankRad) / rPin) - bankRad;
+    var alpha = Math.asin(liftHalf / amp);
+    var window_ = 2 * alpha / Math.PI;            // the pin's passage through the notch, as a fraction of the beat
     var sense = -1;                            // the wheel turns clockwise, seen from the dial
     var s = 2 * rWheel * Math.sin(embrace), D = s / 2 + Math.sqrt(rWheel * rWheel - s * s / 4);
     var rot = function (p, a) { var c = Math.cos(a), sn = Math.sin(a); return [c * p[0] - sn * p[1], sn * p[0] + c * p[1]]; };
     var sub = function (a, b) { return [a[0] - b[0], a[1] - b[1]]; };
     var add = function (a, b) { return [a[0] + b[0], a[1] + b[1]]; };
-    var smooth = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
     var sOff = 1 - dropRad / beatRad;
     var wc = [0, D];
     // One stone: seat, lean and slanted end, from the tooth tip's own path.
@@ -1020,22 +1029,13 @@
       ring.push(P(0.68 * rWheel, -0.72), P(0.78 * rWheel, -0.4), P(0.9 * rWheel, -0.19), P(rWheel, 0), P(0.8 * rWheel, -0.05), P(0.7 * rWheel, 0.12));
     }
     var tipIdx = []; for (var i = 3; i < ring.length; i += 6) tipIdx.push(i);
-    function wheelAt(p) {
-      var f = p / window_, dlt;
-      if (p < window_) {
-        if (f < twitchFrac) dlt = -Math.sin(f / twitchFrac * Math.PI) * twitchRad;
-        else dlt = smooth((f - twitchFrac) / (1 - twitchFrac)) * beatRad;
-      } else dlt = beatRad;
-      return sense * dlt;
+    function swingAt(p) {   // the lever, bank to bank, read off the balance through the pin
+      var th = amp * Math.sin(Math.PI * p - alpha);
+      if (Math.abs(th) >= liftHalf * (1 - 1e-12)) return th < 0 ? -bankRad : bankRad;
+      return Math.atan2(rPin * Math.sin(th), dPivot - rPin * Math.cos(th));
     }
-    function leverAt(p) {
-      var f = p / window_, swing;
-      if (p < window_) {
-        if (f < twitchFrac) swing = -bankRad + Math.sin(f / twitchFrac * Math.PI) * bankRad / 4;
-        else swing = -bankRad + 2 * bankRad * smooth((f - twitchFrac) / (1 - twitchFrac));
-      } else swing = bankRad;
-      return -swing;
-    }
+    function wheelAt(p) { return sense * beatRad * (swingAt(p) + bankRad) / (2 * bankRad); }
+    function leverAt(p) { return -swingAt(p); }
     // Panels: a window of 3.4 units about each stone, y up.
     var pxPerUnit = 74;
     var panels = [
@@ -1071,13 +1071,11 @@
       });
       readout.textContent = tr('beat') + ' ' + fmtNum(p, 2);
       chip.className = 'chip';
-      var f = p / window_;
-      if (p >= window_) { chip.classList.add('ride'); chip.textContent = tr('locked · the stone holds the wheel'); }
-      else if (f < twitchFrac) { chip.classList.add('trip'); chip.textContent = tr('unlock · the stone lifts, the wheel twitches back'); }
+      if (p >= window_ || p === 0) { chip.classList.add('ride'); chip.textContent = tr('locked · the stone holds the wheel'); }
       else if (wheelAt(p) * sense < beatRad - dropRad) { chip.classList.add('ramp'); chip.textContent = tr('impulse · the tip rides the slant'); }  // drop begins when the WHEEL passes the let-off, not at a fraction of the window
       else { chip.classList.add('ramp'); chip.textContent = tr('drop · the wheel runs free to the other stone'); }
     }
-    // Play dilates the beat: the action is 16% of it, so the window gets most
+    // Play dilates the beat: the action is about a fifth of it, so the window gets most
     // of the loop and the lock a short dwell — the explainer's loop, inherited.
     var playing = false, t0 = null, raf = 0, actS = 4.0, dwellS = 1.2;
     function frame(now) {

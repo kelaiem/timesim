@@ -2108,8 +2108,9 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   //     each spelled where it is cut. Flipping any ONE of them is a PARTIAL
   //     mirror and the asserts say so, which is how they were found.
   //   · IMPULSE FACE: during the impulse window the wheel advance
-  //     (beatRad) and the fork swing (2·bankRad) ride the SAME smoothstep
-  //     (see main.js escapeDeltaDeg/forkSwingRad), so in the fork frame
+  //     (beatRad) and the fork swing (2·bankRad) move in PROPORTION — since
+  //     TODO 226 the wheel's angle is read off the fork's (main.js
+  //     escapeAngle/forkSwingRad), so in the fork frame
   //     the tooth tip slides, to first order, along the fixed direction
   //       p = R·beatRad·t̂ − 2·bankRad·|C|·û
   //     (t̂ = tooth-motion tangent, û = wheel radial at the corner), and
@@ -2181,8 +2182,8 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     // other bank (main.js forkSwingRad, whose sign is what seats the +x
     // stone at n even), and the wheel advances MOVEMENT_SENSE·beat about its
     // centre W₀ = (0, D) in the fork's NEUTRAL frame. A world point reads in
-    // the fork's own frame rotated by −φ, so at fraction s of the window,
-    // both advances on one smoothstep:
+    // the fork's own frame rotated by −φ, so at fraction s of the fork's
+    // travel, the wheel's advance being that same fraction (TODO 226):
     //   tip(s) = Rot(−σ·bank·(1 − 2s)) · (W₀ + Rot(MOVEMENT_SENSE·beat·s)·(C − W₀))
     // tip(0) is the SEAT — the corner placed so the lock bank carries it back
     // onto C, on the tooth circle, exactly rather than to bank·|C| — and the
@@ -2427,7 +2428,9 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     curveSegments: CURVE_SEGS_FORK,
   });
   bodyGeo.translate(0, 0, -stock / 2);   // the bevel caps carry it out to ±t/2
-  g.add(new THREE.Mesh(bodyGeo, MATS.steel));
+  const body = new THREE.Mesh(bodyGeo, MATS.steel);
+  body.name = 'forkBlank';   // TODO 226 — named so the pin's floors row can hold it
+  g.add(body);
 
   // NO STEEL IN THE WHEEL'S SWEEP — the bound the old outline paid for with a
   // shape. Every vertex of the blank as EXTRUDED (not as authored) must stand
@@ -2511,6 +2514,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const guardGeo = new THREE.CylinderGeometry(t * 0.18, t * 0.18, t * 1.4, 12);
   guardGeo.rotateX(Math.PI / 2);
   const guard = new THREE.Mesh(guardGeo, MATS.steel);
+  guard.name = 'forkGuardPin';
   guard.position.set(0, forkY + t * 0.5, -t * 0.7);
   g.add(guard);
 
@@ -2628,13 +2632,16 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   const rtGeo = new THREE.CylinderGeometry(radius * 0.15, radius * 0.15, thickness * 0.5, 32);
   rtGeo.rotateX(Math.PI / 2);
   rtGeo.translate(0, 0, rollerZ);
-  g.add(new THREE.Mesh(rtGeo, MATS.steel));
+  const rollerTable = new THREE.Mesh(rtGeo, MATS.steel);
+  rollerTable.name = 'balanceRollerTable';
+  g.add(rollerTable);
 
   // Ruby impulse pin at the roller's edge, in the roller-table plane itself so
   // it seats between the fork horns (the fork plane is level with the roller).
   const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);   // r is published as userData.pinR
   pinGeo.rotateX(Math.PI / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.ruby);
+  pin.name = 'balanceImpulsePin';   // TODO 226 — named so the escapement's working contact can be held by name
   pin.position.set(rollerR, 0, pinZ);
   g.add(pin);
 
@@ -2652,7 +2659,9 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
     curveSegments: 24,
   });
   srGeo.translate(0, 0, srZ - thickness * 0.17);
-  g.add(new THREE.Mesh(srGeo, MATS.steel));
+  const safetyRoller = new THREE.Mesh(srGeo, MATS.steel);
+  safetyRoller.name = 'balanceSafetyRoller';
+  g.add(safetyRoller);
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;

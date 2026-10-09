@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 226 | OPEN | Found closing TODO 216. The impulse pin's centre sits 9.575 from the fork pivot and the slot's mouth is at 9.595, so the pin only enters the slot's mouth. The bank is derived by matching arc lengths at `notchDepth` (6.83), so the pose law impulses over 21.7° of balance arc while the metal's lift is 30.95°. Seat the pin in the slot and derive the bank from the pin's real radius |
+| 226 | PART DONE | Step 1 (the drive) landed: the fork's angle is read off the balance through the pin (`PIN_FORK`, `forkSwingAt`), the escape wheel turns in proportion to the fork, and the lift is centred on the line of centres; the posed window, its recoil dip, `RECOIL_DEG`, `RECOIL_FRACTION` and `FORK_RECOIL_DEG` are retired. `Pallet fork` ⇄ `Balance` has a floors row now, with three pairs waived BY NAME for step 2: the pin through the guard pin's plane, the pin grazing the horn tip it exits by, and the impulse table in the fork's plane. Step 2 remains: the single roller, the pin seated at the notch's depth, the horns and notch cut to it, the bank derived exactly, and the plate's quarter-bank of spare window re-cut |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | OPEN | Filed by TODO 219. Pose the wind: a recorded wind-start state, the ring recoiling onto the beak and held, the great wheel advancing on the blade to run-out at the stop, pick-up when the drive returns; hand-off rows for the hold, the pin on the blade and the pin on the stop; an axis that winds with the train held; the restoring drivers; Plate 3's spring and caption |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -30352,7 +30352,7 @@ since it would flag 10 rows on arrival, and the rows must each be triaged first
 
 ---
 
-## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees)
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — PART DONE (step 1, the drive)
 
 Found closing [TODO 216], whose knock solve reads this geometry.
 
@@ -30394,4 +30394,94 @@ no instrument tracks the pin against the slot's walls through the impulse.
 The knock (`ESCAPEMENT_KNOCK`) re-solves on its own, since it is read off the
 same outline, and `AMPLITUDE_PEAK_DEG` follows it through `equalisation`
 row 14.
+
+### Step 1 — the drive (landed)
+
+Scoping step 1 of the fix path found something under it: the fork was not
+DRIVEN by the pin at all. `forkSwingRad` and `escapeAngle` were laws of beat
+phase — a window of `IMPULSE_WIDTH` (0.16) of each beat, opening at the
+balance's zero crossing, with a recoil dip (`RECOIL_DEG` 1.0° of wheel on the
+first `RECOIL_FRACTION` 0.25 of it, a fork dip of a quarter bank) and a
+smoothstep — and the balance was a sine on the same clock. Two laws that
+shared a period and nothing else. Measured with the old law re-posed
+(`probe-226-drive.mjs`'s control), the pin sat **0.143 inside the horn** at
+the window's opening, every beat. Nothing read it, because `Pallet fork` ⇄
+`Balance` is EXPECTED and had no `EXPECTED_CONTACT_FLOORS` row — TODO 6's
+blanket. So the order was: drive first, then seat.
+
+**The law (main.js `PIN_FORK`, `forkSwingAt`, `balanceTheta`, `escapeAngle`).**
+Balance at the origin, fork pivot at d = 11.1948 on +x, pin at
+r·(cos θ, sin θ) with r = `rollerR` 1.62. The slot's centre line passes
+through the pin when the fork is turned s off the line of centres,
+`tan s = r·sin θ / (d − r·cos θ)`; outside the notch the fork lies on its
+bank. The two meet at the half-lift `θ_L = asin(d·sin(bank)/r) − bank` =
+15.47° (lift 30.95°, the figure TODO 216's solve reads off the outline). The
+balance is phased so each beat opens with the pin entering at ∓θ_L and closes
+with it leaving at ±θ_L — the lift centred on the line of centres. The escape
+wheel advances `BEAT_DEG` in proportion to the fork's travel bank to bank,
+which is the relation the stones' impulse faces were already cut against, so
+the faces and the law are one description now. The balance's amplitude sags
+with wind, so where the pin is inside a beat does too: the train's laws read
+`LAW_TENSION`, which `tick()` writes from the barrel's turns before any law is
+read. The window is 22.35% of a beat at full wind and 43.5% at tension 0; the
+beat's period does not move. Retired with the posed law: `RECOIL_DEG`,
+`RECOIL_FRACTION`, `FORK_RECOIL_DEG` and `escapeDeltaDeg`. `IMPULSE_WIDTH`
+survives ONLY as an input to `FORK_BANK_DEG`'s arc-length match, which step 2
+replaces.
+
+**Measured** (`tools/probe-226-drive.mjs`, acceptance, reading the built
+groups at three winds):
+
+| | worst over the samples |
+|---|---|
+| pin centre off the slot's centre line, fork between its banks | 8.9e-15 |
+| escape wheel off `BEAT_DEG` × the fork's fraction | 2.5e-7° |
+| lift centred: pin at ±θ_L at each beat boundary | 1.5e-13° |
+| pin ⇄ blank, pin in the lift (driven) | **0.3401** |
+| pin ⇄ blank, pin in the lift (the retired law, the control) | **0** (buried) |
+
+`probe-131-escapement-slide.mjs` holds the tip on the impulse face from the
+window's opening (it skipped the recoil dip before; there is no dip to skip):
+56 of 65 samples on the face, worst 0.0012 off it, drop 1.50°.
+
+**The floors row.** `Pallet fork` ⇄ `Balance` is held to `CLEAR_MARGIN` over
+every mesh pair the two units own. There is NO working contact to excuse in
+this landing: the notch (half-width 0.84) is wider than the pin (0.55), so the
+pin rides the slot's centre line without bearing on a wall. Three pairs do not
+meet the margin, and each is waived BY NAME in its own `only:` row citing
+step 2, so each goes STALE (and fails) the day step 2 clears it:
+
+| pair | why |
+|---|---|
+| `forkGuardPin` ⇄ `balanceImpulsePin` | the pin is 3.0 long and stands through the safety roller's plane, where the guard pin sits on the slot's centre line — on the line of centres the two share the plane. A double roller's pin stops at its table |
+| `forkBlank` ⇄ `balanceImpulsePin` | past the lift the pin's surface sweeps within the bevel's miter of the horn tip it exits by (r 0.55 on a 1.62 roller, against tips cut for the notch) |
+| `forkBlank` ⇄ `balanceRollerTable` | the impulse table shares the fork's plane, and at bank the near horn tip stands 0.128 off its rim |
+
+The meshes were unnamed; they are named now (`forkBlank`, `forkGuardPin`,
+`balanceImpulsePin`, `balanceRollerTable`, `balanceSafetyRoller`) so the rows
+can hold them. The rim stands exactly the margin off the blank (0.1500).
+
+**Kept on purpose, so the drive moves no metal.** The three-quarter plate's
+balance window is still cut to the fork's 1.25·bank (the swept footprint the
+recoil dip once needed): a quarter bank of window nothing enters now. Step 2
+re-derives the bank, which moves the stones and the cut anyway, and re-cuts
+the window from the driven swing then.
+
+**One more thing step 2 must carry.** TODO 216's knock solve reads the
+AUTHORED outline (`blankOutline`), but the blank is extruded with
+`bevelSize: bevel` and no `bevelOffset`, so the metal stands up to a bevel
+(and a corner's miter — the horn tips reach 0.165 past the outline) outside
+it. The knock angle is therefore optimistic by that much; when step 2 cuts the
+horns it should either solve the knock on the dilated outline or cut the blank
+with `bevelOffset: -bevel` as the escape wheel is (TODO 131).
+
+### Step 2 — the seat (open)
+
+Fix-path items 1–3 above, plus: merge the impulse table into a single roller
+below the fork so the table leaves the fork's plane and the pin stands only in
+it; cut the notch to the pin's depth and the horns past it; derive the bank
+from `d·sin ψ = r·sin(θ + ψ)` at the seated radius (retiring `IMPULSE_WIDTH`);
+re-cut the plate's window from the driven swing; and turn the three `only:`
+waivers into the one working contact (the pin on the notch's walls) or clear
+them.
 
