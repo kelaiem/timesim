@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | OPEN | Filed by TODO 219. Pose the wind: a recorded wind-start state, the ring recoiling onto the beak and held, the great wheel advancing on the blade to run-out at the stop, pick-up when the drive returns; hand-off rows for the hold, the pin on the blade and the pin on the stop; an axis that winds with the train held; the restoring drivers; Plate 3's spring and caption |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -30233,7 +30234,7 @@ scaled frame. 171 lose under 25% of their area at their floor (144 under 8%).
 
 | unit / mesh | kind, floor | what the outline says | waived |
 |---|---|---|---|
-| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor | no |
+| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — see TODO 227** | no |
 | Alarm switch / `alarmPusherReturnAbutment` | wheel 0.12 | an annulus, radii 0.4442 / 0.3689 mm: a 0.075 mm wall, 0.12 mm deep | TODO 11 (unit-wide) |
 | Escape wheel / (unnamed, 0.394 mm deep) | wheel 0.12 | an annulus 0.2728 / 0.1895 mm: a 0.083 mm wall; reads 0.3941 | TODO 12 |
 | Escape wheel / (unnamed, 0.452 mm deep) | wheel 0.12 | the escape PINION's leaves (105-point outline, root 0.227 mm to tip 0.340 mm) | TODO 12 |
@@ -30268,5 +30269,85 @@ union rule for fused features. (b) Only then consider teaching `stockFloor` to
 read the outline itself — the probe's method gated as the ruler's second tier —
 since it would flag 10 rows on arrival, and the rows must each be triaged first
 (§50's arc: report, triage, declare, gate).
+
+---
+
+## 227. The alarm release sleeve's skirt cone is a zero-thickness sheet, and the web beside it is a patch over that
+
+**Found taking TODO 225's first row.** The question was whether `alarmSleeveWeb`
+(a 0.030 mm arc ring, 0.12 mm deep, hung off the flat's underside) is a feature
+fused to a neighbour, a member, or thin stock. Reading what it is fused TO answered
+a different question.
+
+**The defect.** `alarmSleeveSkirt` is a `LatheGeometry` of a four-corner profile
+built from the working face A→B (the 45° cone the pin presses, derived from the
+pin's flank less the face cover) and a "wall" offset from it by `(+wOff, +wOff)`
+with `wOff = STOCK_MIN_U`. At 45° that offset is a translation ALONG the face, so
+the outer-face corner D lies on the line A–B extended: A, B and D are collinear
+(cross product 2.8e-17) and the profile is the triangle B–C–D at the flat-flush cap
+plus a zero-area spur from B down to A. Measured on the built profile: polygon area
+**0.0177 u²** (the triangle's, to 15 digits); the cone itself, A to B, is a
+double-sided sheet. The comment above the build said it was avoiding exactly this
+("a bare strip would be sheet with no stock at all, §50's degenerate class").
+
+**Why every gate read it fat.** `stockFloor` measures a lathe mesh by the box of
+its profile, axial extent by radial extent. The stray corner D pokes 0.112 u up
+into the flat (z −0.2048 against the flat's underside at −0.3167), so the axial
+extent reads 0.3167 = `STOCK_MIN_U` — the floor, to the digit — and the radial
+reads 0.52. `meshIntegrity` is satisfied by a closed surface and does not ask for
+volume; `outlines` reads extrudes only; `tools/probe-137-hidden-thin.mjs` (TODO
+225) reads extrudes only. The web is what the census still saw as thin once the
+skirt read fat: it stands `STOCK_MIN_U − ALARM_SLEEVE_SKIRT_H = 0.111` proud of the
+skirt's declared envelope, and §124 cut a relief sector in it because the feeler
+arm's transient swing met its bore corner by 0.0074. A rib that has to be relieved
+against a swinging arm to protect a skirt with no body is the patch's own cost.
+
+**The instrument.** `tools/probe-225-lathe-profiles.mjs` (a REPORT, §40) reads
+every `LatheGeometry` profile for the sheet signature (profile edges lying along
+other profile edges), for an open profile that does not close on the axis, and for
+a whisker (area under 5% of the profile's convex hull). Controls fire: the sleeve's
+own broken profile is flagged, a plain ring and a 45° parallelogram wall are not, a
+profile whose ends are on the axis is a solid, one whose ends are off it is a
+surface. **72 lathe meshes, 1 flagged — the skirt.** The class has one member.
+
+**What was tried, and why it is not landed.** A real shell — wall `STOCK_MIN_U`
+normal to the face, so the outer face is z = r − c − t√2, cap flush with the flat
+(clipped at the flat's rim), bottom lip flush with the declared envelope floor,
+`stockSection` declared, web and §124 relief retired — was built and run through
+the whole local battery (commit 641a324, backed out in 395e1a2): 50/53 gates. Two
+failures:
+
+1. `meshIntegrity` — `alarmSleeveSkirt` read INVERTED (signed volume −2.49): the
+   first draft listed the points clockwise. A slip, one line to fix.
+2. `undeclaredClearance` — `Alarm release feeler ⇄ Alarm release sleeve`
+   (`alarmFeelerSpring ⇄ alarmSleeveSkirt`) **0.0807 at beat f=0, need 0.15**, and
+   with it the `subdialr=8` spec point (`validated configs`, a listed point must
+   sweep clean). The lip is `t·√2` = 0.448 wide because a 45° wedge only has wall
+   `t` at the face if the bottom is that wide, so it reaches r 4.452 at the
+   envelope floor. The feeler spring's free end — the blade that bears on the
+   lever at the bear point — sits at r 4.36–4.43, az 154–155.5°, with its top face
+   at lathe-y −0.605 against the lip at −0.5214: **0.084 under the floor**. To
+   clear by 0.15 the lip would have to stop at r 4.2375 (0.234 wide, wall 0.165
+   normal at the tip — under the floor, so it trades one sub-floor section for
+   another) or the shell would need a relief sector at 155°, which the
+   cone-and-pin design cannot take because the pin orbits the tube and the face
+   must reach the floor at every azimuth, and a non-axisymmetric pocket cannot be
+   cut in a lathe (it would be a custom swept surface or a second body).
+
+By CLAUDE.md's design priority that is a LAYOUT problem — P3 resolved in position
+space, never by thinning the member (P1) — so the geometry stays as main has it and
+the finding is filed rather than absorbed.
+
+**Fix path.** Pick the cheaper of: (a) re-site the feeler spring's free end 0.07
+further from the sleeve plane or about 0.12 further out in r (the bear point is the
+lever's, `ALARM_FEELER_BEAR_R`: a P1 ratio, so this is a re-derivation of the
+lever, not a nudge); (b) buy 0.07 of envelope floor in the stratum (§51's
+precedent — `ALARM_FEELER_TOP` is `ALARM_SLEEVE_TOP − ALARM_SLEEVE_ENV −
+(CLEAR_MARGIN + MEASURED_MARGIN_BAND)` and the spring stands 0.06 above it); or
+(c) a swept (non-lathe) skirt with a relief at the spring end. Then rebuild the
+shell as above with the points wound correctly, retire the web, its §124 relief
+and asserts and the `alarmSleeveWeb ⇄ alarmTailPin` contact row, and let
+`stockFloor` read the declared wall (§169's device). Until then the cone the pin
+presses is a modelled surface, not a modelled body.
 
 ---

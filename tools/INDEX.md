@@ -4,7 +4,7 @@
 
 # The instruments
 
-271 scripts. **161 are ACCEPTANCE tests** — they decide and exit non-zero.
+272 scripts. **162 are ACCEPTANCE tests** — they decide and exit non-zero.
 **110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -156,6 +156,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-219-catalogue.mjs` | §219 | acceptance | §219 tier one — CAN THE MOVEMENT'S INVARIANTS BE RE-TOOTHED TO A PARTS CATALOGUE, EXACTLY, AND WHAT DOES THE CATALOGUE REFUSE? Acceptance. The fork §219 proposes is a named copy of the reference spec whose changed rows each re-derive from the constraint that forced them — here LEGO Technic's module-1 catalogue and the stud lattice. This probe is that table, computed rather than written: it reads the steel counts off src/layout.js (never a copy), solves each invariant over the catalogue as an EXACT rational, and prints the §70 row format (key, steel, technic, derivedFrom, kind). |
 | `probe-220-smoke.mjs` | §220 | acceptance | §220 — THE SMOKED SAPPHIRE DIAL: IS THE LAW THE ONE WRITTEN, DOES T = 1 STAY THE SHIPPED CRYSTAL, DOES THE PRINT FLIP WHERE THE COMPOSITE SAYS, DOES X-RAY STILL SHOW THE WORKS? Acceptance (exit 1 on any claim), plus a `--scan` REPORT that measures the knob's floor. |
 | `probe-224-zone-band.mjs` | §224 | report | §224 — WHERE DOES THE RESERVE ZONE GATE WARN AS THE COAT LIGHTENS? A REPORT (prints; judge it yourself), and the instrument that found §224's band. |
+| `probe-225-lathe-profiles.mjs` | §225 | acceptance | TODO 225 — DOES ANY LATHE PROFILE HIDE A SHEET OR A KNIFE-EDGE? |
 | `probe-226-driver-width.mjs` | §226 | acceptance | §226 — HOW MUCH WIDER CAN THE COLUMN-WHEEL DRIVER'S ARMS BE CUT? |
 | `probe-227-promote.mjs` | §227 | acceptance | §227 — DOES THE PROMOTION CHECKER REFUSE FOR EACH REASON IT CLAIMS TO? |
 | `probe-231-lever-width.mjs` | §231 | report | §231/§232 — HOW MUCH WIDER CAN A FLOOR-STOCK MEMBER BE CUT? |
