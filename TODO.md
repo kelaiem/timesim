@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 223 | OPEN | Found by TODO 214's design study. Under the EXPECTED blankets (no floors row), the setting lever's body stood in the setting bevel's whole tooth band at every pose (0.62 deep, its half-thickness), in the setting wheel's hub ring and arbor with the crown pulled, and 0.042 into the stem (the groove collars, r 0.75, lie inside the 0.924 stem). The yoke's body and boss stood 0.49 in the minute wheel. The beak pin stands 0.33 off both collars, so the pull is posed too. Waived by name in six `only:` floors rows; no stratum takes the 1.24 body (widest band 0.58). Fix: the conventional re-lay, which closes TODO 214 |
+| 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
 | 222 | OPEN | Found closing TODO 206. Follower B's lift is set from `selT` (`max(hB, ALARM_PINB_LIFT·(1 − selT))`) while the rocker's finger, which is supposed to press its tail, stands 0.91 off the arm at every pose of the arming transition. Its "spring" `alarmPinSpringB` is a ring riding on the arm it would press. Ground a spring on the tube and solve the lift from the finger's contact |
 | 221 | OPEN | Found closing TODO 218. The beak's apex takes the whole 2554 mN hold and the wedge's stress goes as 1/s toward it: under yield at its kindest section (236.1 MPa), it reaches 800 MPa 0.2710 u (0.103 mm) from the apex, and inside that the apex is a sharp line in contact with the face, which nothing prices. Cut a land or radius sized from the load, price its contact, and re-place the stud on the land's resultant |
 | 220 | CLOSED | Regression of TODO 60's fix 2. Each spider leg's pinion and sleeve stood **0.1605** off its side gear: `spiderSpec.hubFaceZ` read `zBoreOut` (1.3182 from the apex) while TODO 136's flat web (17387c21) cuts the blank's back face at `zWebHi` (1.1577). The spec now reads the builder's own `zWebHi`, and a boot assert measures each gear's cut back face and each sleeve's end against it. Both pairs measure 0 (seated); `assembly` with the arrest scoped reads both leg groups as one body. Leg B's pinion, the idler pinion and both columns' tops drop 0.1605 (`pinBZ`'s stock-floor branch); the columns' L/D-derived radius follows, 0.2361 → 0.2316. `halfHeight` still reads `zBoreOut` — [TODO 67] |
@@ -26,7 +26,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 217 | CLOSED | The hold is priced: the maintaining spring is a series member of the drive, so the detent holds the going torque (3.2307 N·mm) at the first instant of a wind whatever its stiffness — 2554 mN on the face over a 3.3377 u arm. The cranked arm carries it at 686.5 MPa (Winkler bending at its worst section, 1.3211 u off the tip–stud chord, plus the whole load axial), ×1.165 under `SPRING_SIGMA_Y_PA`, so no section change; held as `equalisation` row 16, a §137 `rigidBentLink` row, and in `probe-power-budget`. The beak is over yield (TODO 218); the spring's stiffness is TODO 219 |
 | 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
 | 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
-| 214 | OPEN | The `['Setting lever', 'Yoke']` drive edge has no metal: the two units stand 2.38–4.93 apart over the whole pull, and the yoke's lever law is a law of `crownPullT`, posed. Found closing TODO 211. The fix is [TODO 223]'s re-lay |
+| 214 | CLOSED | The lever's flank drives the yoke's tail pin (a 1:1 bell crank), and the yoke's station is solved from that contact (`ykFlankStationAt`), replacing the law in `crownPullT`. The lever's own angle is solved from its pin on collar In. A grounded blade holds the hop closed: 12.40 / 20.16 mN at the flank, inside 5–50. The handoff rows read 0.0243 / 0.0118 shut, and the tail post's stations are unmoved |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
 | 212 | CLOSED | The finger is one turning body: output pinion, a pipe on the fixed column, a crank carrying the pin, and the locking disc, joined face to face (`assembly` 3 bodies → 1, and the arrest is in `ASSEMBLY_SCOPE`). The disc is cut against the cross's real traced metal, one exact clearance disc per point, so it wraps 360° of its bore with 0.4636 of land (was 155°, land 0): step 3's d growth was not owed. Sections are the §50 floor, checked against the 9.8e-5 N·m stall. The solve re-sited finger and cross about their arbors at the same floor plane |
 | 211 | CLOSED | `HUB_COLLAR_R` is derived from where the prong bears (1.2730 → 1.7513: the farthest bearing vertex 1.6798 from the stem, plus the two running fits' shake, at the 20-gon's inradius), and `yokeClutchAt` solves the yoke's angle from that contact and derives the clutch from it. The new stem-clutch rows read 0.015–0.020 shut and 0.102–0.106 free (before 0.166–0.191 everywhere), and the reach waiver is retired. The keyless plane paid for the wider collars in strata: `Z_KEYLESS` is derived as the plate's dial face − `CLEAR_MARGIN` − the stem stack's widest radius (the pinion's tip circle 1.754052, which binds over the collars), −4.1 → −4.2041, which also retired TODO 209's three keyless rows. The setting lever ⇄ yoke edge is filed as TODO 214 |
@@ -29073,7 +29073,7 @@ re-sync assert silent.
   byte-identical, no focused battery checks were run: nothing they read
   changed.
 
-## 214. The setting lever never touches the yoke it is declared to drive: the yoke's angle is a law of crownPullT
+## 214. The setting lever never touches the yoke it is declared to drive: the yoke's angle is a law of crownPullT — CLOSED
 
 Found closing [TODO 211]. `MECH_GRAPH` declares `['Setting lever', 'Yoke']`
 as a drive edge ("ganged clutch shift"), and since TODO 211 the yoke really
@@ -29103,6 +29103,66 @@ in the minute wheel. It also found that no stratum takes the lever's body. The
 burials are filed and waived by name as [TODO 223]. That item's fix path, the
 conventional re-lay with the yoke's pivot moved to the lever's side and a
 lever flank on the yoke's tail, is this item's fix as well.
+
+**CLOSED — the setting lever's flank drives the yoke's tail pin, and both
+hops are solved from contacts on the cut (landed with [TODO 223]).**
+
+- **The line.** The chain is stem collar In → beak pin → setting lever →
+  flank → yoke tail pin → yoke → prong → clutch collar Out, closed from the
+  other end by the yoke spring. The spring holds the tail pin on the flank, and
+  through the lever it holds the beak pin on collar In. The lever's arms are
+  the §13 ones, KEPT: pivot `SL_C` 10 off the stem, beak
+  `SL_BEAK` = hypot(10, 2.5) = 10.308, tail `SL_TAIL` 6, stroke ±`SL_TILT`
+  14.04°. At both ends of the pull the new solve puts the pin's centre where
+  the old atan2 law put it, so the tail post's two stations do not move (main.js
+  asserts both to 1e-9). The stop work, the reset rods, the jumper's lifter
+  and the plate's slot were solved against those stations and stand where they
+  were.
+- **The yoke.** Its pivot is mirrored onto the lever's side of the stem at the
+  same `YK_C` 7.5, so `YOKE_ARM`, `YOKE_BEARING_LATERAL` and `HUB_COLLAR_R` are
+  untouched. TODO 211's prong ⇄ collar solve closes unchanged: prong ⇄ collar
+  In reads 0.0195 / 0.0191 / 0.0147 in contact, and prong ⇄ collar Out reads
+  0.0192 pulled. Its TAIL is a bell crank of equal arms, the fork's arm turned
+  a right angle toward the crown. That makes the yoke a 1:1 crank, so the whole
+  ratio of the hop is in the lever's flank. The tail pin is the prong's own
+  stock (r 0.4, 10-gon).
+- **The flank** is solved in layout.js (`SL_FLANK`). It is a straight edge whose
+  normal and offset put the pin's polygon `SEAT_RELIEF` off it at both stroke
+  ends with the yoke at `YOKE_A_SEAT` and `YOKE_A_FULL`: two conditions and two
+  unknowns, refined by bisection on the polygon support. `ykFlankStationAt(pull)`
+  then solves the yoke's station from that contact at every pull and REPLACES
+  `yokeClutchAt`'s linear law in the pull. It reproduces both stations to 1e-9
+  (asserted). It is cut into the lever plate as an open notch:
+  a stadium about the pin's near-straight path in the lever's frame, slid so
+  that the BEVELLED wall lands on the solved line, run out through the plate's
+  edge.
+- **Holds at `MU_STEEL`.** Over the stroke, the friction cone at the flank keeps
+  at least 1.708 u of moment arm on the driving side of both pivots (`KEYLESS_HOP`,
+  asserted > 0), so neither member can jam the other. The lever's moment arm
+  runs 3.858 → 1.909 and the yoke's 3.645 → 4.196.
+- **The yoke spring**, in TODO 16's format (`YK_SPRING`). It replaces a torsion
+  arc that RODE the yoke while its post stood still, so "far end on the post"
+  was true at one pose and the force was never a number. It is now a grounded
+  flat blade on a stud from the plate, bearing on the tail pin. Section:
+  SPRING_FLAT_U (0.05 mm) in the bending direction. Preload: one stroke (the
+  pin's 2.122 u), so the force doubles across the pull. Free length: 15.274 u,
+  what that doubled deflection asks at 0.9 × `SPRING_SIGMA_Y_PA`. Anchor: back
+  along the stroke's normal, raised 8.3° so the blade clears the yoke's staff
+  by the margin. Height: 0.773 u, which puts the flank's force symmetrically
+  inside the 5–50 mN envelope on a log scale. The result is k 9.44 N/m, a blade
+  force of 7.59 → 14.67 mN, and **12.40 mN at the flank crown in, 20.16 mN
+  pulled**. σ is 360 → 696 MPa against 800.
+- **Rows.** Handoff, in the stem-clutch table, at both parities:
+  lever flank ⇄ yoke tail pin reads **0.0243 seated, 0.0118 pulled** (contact).
+  It reads 0.1319 and 0.069 free at the two slipped poses, where the clutch has
+  climbed the saw and carried the yoke off the flank. §137: two `crank` rows
+  for the yoke spring and two for the lever, inside `SELECTOR_DETENT_WINDOW_MN`.
+  Floors: a new EXPECTED pair `Setting lever ⇄ Yoke`, whose one contact is
+  `settingLeverBody ⇄ yokeTailPin`; its nearest other approach is 0.1624
+  (the lever's boss to the tail pin). The `restoring` rows for the yoke and the
+  clutch name the blade, which now bears on the tail pin. The lever stays
+  outside §48's population, because no axis cycles the pull (TODO 43's note),
+  and the battery's `restoring` passes.
 
 ## 215. The maintaining detent rides its ring backwards: the beak climbs each tooth's face and floats over the cut ramp — CLOSED
 
@@ -29738,7 +29798,7 @@ notch has no force behind it. Nothing gates this, for three reasons:
 4. Declare both frames in §48, the arm as a `spring` naming the new mesh.
 
 
-## 223. The setting lever is buried in the setting wheel and crosses the stem, and the yoke crosses the minute wheel, behind EXPECTED pairs with no floors row
+## 223. The setting lever is buried in the setting wheel and crosses the stem, and the yoke crosses the minute wheel, behind EXPECTED pairs with no floors row — CLOSED
 
 Found by the design study for [TODO 214], and re-measured here mesh by mesh.
 `['Keyless works', 'Setting lever']` is EXPECTED for "beak pin in the stem
@@ -29855,3 +29915,59 @@ Design the group in a line first and hold its spec through the fold (the
 Design priority section of CLAUDE.md). Each of the six `only:` rows above must
 go stale and be deleted as its pair clears. The two main rows stay, and the
 beak pin's contact line becomes the new pin ⇄ collar pair.
+
+**CLOSED — the keyless levers were re-laid the conventional way, the groove
+is metal, and the six waivers are retired (with [TODO 214]).**
+
+- **The groove.** `GROOVE_COLLAR_R` is TODO 211's rule on the stem's own
+  groove. The face reaches past the bearing generator's lowest point
+  (`GROOVE_BEARING_REACH` 1.1185) by the two fits' shake (0.05), at the
+  48-gon's inradius: **r 0.75 → 1.1710**, proud of the 0.924 stem. Collar In's
+  face is the lever's line (`GROOVE_LOCAL`, HELD) less the pin's support (0.3395)
+  and the seat relief. Collar Out stands the pin's width plus the margin beyond
+  it, because it is never a working face. The groove ends 0.19 nearer the
+  crown wheel than before. The collars clear the setting wheel's web and tooth
+  ring (asserted on the cut), and collar In clears the clutch with 0.3555 to
+  spare.
+- **The lever's plane.** No pin can reach the groove from below: the setting
+  wheel's bevel lies under it at every pull, its web 1.5954 below the stem
+  axis. So the lever lies ON the plate. `Z_SETTING_LEVER` = the plate's dial face
+  − `CLEAR_MARGIN` − the body's half-thickness = **−5.704 → −3.070**. The body's
+  beak ends where its bevelled corners clear the collars by the margin
+  (`SETTING_LEVER_CUT`, the corner's miter included). The beak crosses over
+  the collars as an unbevelled lug, one margin over their top (−2.883 to −2.450,
+  0.433 thick, over §50's 0.317). The pin (r 0.35, 12-gon) hangs from the lug,
+  its foot one margin over the stem's top. The pin's angle is solved from its
+  bearing on collar In (`slLeverTiltAt`), replacing `settingLeverAngleAt`'s
+  atan2 law.
+- **The bushing** got a third wall. Its ring stands over the setting wheel's
+  tooth ring, which the old groove's outer end happened to hold it past. So it
+  is now cleared against the blank directly, sampled on `KW_SPEC`.
+
+**Measured after.** The pairs are taken from the two main floors rows of the
+full battery (`expectedContacts`, the whole pose net). Each row holds every
+mesh of its pair except its one contact, so every burial below is now at least
+the row's least gap. Before is this item's table:
+
+| pair | before (min, depth) | after |
+|---|---|---|
+| `settingBevel` ⇄ `settingLeverBody` | 0, 0.62 deep | ≥ 0.15 |
+| `settingWheel` ⇄ `settingLeverBody` | 0 (hub), 0.0378 (body) | ≥ 0.15 |
+| `settingArbor` ⇄ `settingLeverBody` | 0, 0.31 deep | ≥ 0.15 |
+| `windStem` ⇄ `settingLeverBody` | 0, 0.042 deep | ≥ 0.15 |
+| `minuteWheel` ⇄ `yokeBody` | 0, 0.25 deep | ≥ 0.15 (the yoke is on the other side of the stem) |
+| `minuteWheel` ⇄ `yokeBoss` | 0, 0.49 deep | ≥ 0.15 |
+
+What binds each row now is not a burial pair. `Keyless works ⇄ Setting lever`
+is held at 0.150 by `grooveCollarIn ⇄ settingLeverBeak` (the lug over the
+collar, at the margin by construction). `Keyless works ⇄ Yoke` is held at
+0.150 by `yokeSpring ⇄ yokeBoss` (the blade over the boss, likewise), and the
+new `Setting lever ⇄ Yoke` row at 0.1624. Per-pair minima for the six named
+pairs were not re-measured separately.
+
+The beak pin bears on collar In at **0.005** (the relief) at all four
+stem-clutch poses, and stands **0.1709** off collar Out. Before, it stood 0.33
+off both and 0.80 inside the stem. The six `only:` rows went stale and were
+deleted. Both main rows stay, now holding every mesh of the two pairs to the
+margin except each pair's one contact: `grooveCollarIn ⇄ settingLeverBeakPin`,
+and `yokeSpring ⇄ yokeTailPin` (the spring is a Keyless works part now).

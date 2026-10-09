@@ -64,7 +64,14 @@ import {
   KW_WIND_IDLER_TEETH,
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, HUB_COLLAR_BORE_R, STEM_SQ_BORE_REACH, YOKE_FORK_IN, YOKE_FORK_OUT,
-  YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
+  YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, SEAT_RELIEF, KW_GEAR_BEVEL,
+  // TODO 214 / 223 — the crown → lever → yoke hops as contacts: the groove cut at stem stock, the
+  // lever's pin on collar In, its flank on the yoke's tail pin, the yoke spring, and the cut outlines
+  GROOVE_FACE_IN, GROOVE_FACE_OUT, GROOVE_OUTER, GROOVE_COLLAR_R, GROOVE_COLLAR_SEGMENTS, GROOVE_CLUTCH_REACH,
+  GROOVE_BEARING_REACH, SL_BEAK, SL_TILT, SL_BEAK_PIN_R, SL_BEAK_PIN_SEGMENTS, SL_PIN_FOOT, SL_PIN_SUPPORT,
+  slPinSupport, slLeverTiltAt, SL_BODY_T, SL_BODY_BEVEL, Z_SETTING_LEVER, SL_LUG_TOP, SL_LUG_BOT, SL_HW,
+  YK_DS, ykTailPinAt, YK_TAIL_PIN_R, YK_TAIL_PIN_SEGMENTS, SL_FLANK, ykFlankStationAt, KEYLESS_HOP,
+  KEYLESS_STAFF_R, YK_SPRING, SETTING_LEVER_CUT, toLeverLocal, MEASURED_MARGIN_BAND,
   YOKE_PRONG_SEGMENTS, HUB_COLLAR_SEGMENTS, YOKE_BEARING_LATERAL, YOKE_A_SEAT, YOKE_A_FULL, yokeProngSupport, yokeClutchAt,   // TODO 211: the fork bears on a cut collar face, and the clutch is where it puts it
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
@@ -2388,7 +2395,7 @@ const {
   ratchetR, crownWheelR, windPinionR, settingWheelR, minuteWheelR, windSpurR,
   cwDist, pinDist, pinOutDist, clutchHomeDist, swDist, mwFoldD, minuteArborXY, windIdler,
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
-  kwPostBow, yokePivot, yokeAngleAt,
+  kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
   plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
 } = solveKeyless({
   ...KEYLESS_INPUTS,
@@ -5623,7 +5630,7 @@ const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
 // CLEAR_MARGIN — it cannot move a real clearance decision, and it makes the
 // gate deterministic instead of lucky. This is the PART clearing by slightly
 // more, never the gate asking for less.
-const MEASURED_MARGIN_BAND = 1e-6;
+// (MEASURED_MARGIN_BAND — moved to layout.js by TODO 214: the keyless planes there are cut against it.)
 const SQ_TOP = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + SLEEVE_TOP
   + CLEAR_MARGIN + MEASURED_MARGIN_BAND + SAW_FIT;
 // Backlog (watch case): the stem now reaches THROUGH the case band's tube —
@@ -5652,15 +5659,44 @@ windSpinner.add(stem);
   // (GROOVE_LOCAL derives from the clutch spine's reach), so at FULL PULL
   // the groove's outer collar sweeps to pinDist + pull + grooveOuter — and
   // the FOOT's near face (half its 2.2 box) must clear that by the margin.
-  const grooveOuterLocal = GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2;
+  const grooveOuterLocal = GROOVE_OUTER;   // TODO 214: the groove's outboard end, cut at stem stock
+  // …and a THIRD wall, named by TODO 214: the bushing's ring stands over the
+  // setting wheel's blank, whose tooth ring passes under the stem 1.27–1.45 off
+  // its axis — inside the ring's own radial band. The old groove happened to
+  // hold the bushing out past it; TODO 214's groove ends 0.19 nearer the crown
+  // wheel and the ring met the bevel (intraUnit, settingBevel ⇄ the ring at every
+  // pose). So the ring is cleared against the blank directly: each blank point
+  // at along-offset x from the wheel's axis and radius r from the stem's bounds
+  // the ring's station from below, by the ring section's own circle (centre
+  // radius ringR, minor radius bushWallR) grown by the margin. Sampled over the
+  // whole (ρ, θ) band and the blank's azimuth.
+  const bushWallR = 0.55;
+  const ringR = STEM_R + CLEAR_MARGIN + bushWallR;
+  const bevelWall = (() => {
+    const sw = KW_SPEC.settingWheel, need = bushWallR + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+    let at = -Infinity;
+    for (let i = 0; i <= 48; i++) {
+      const rho = sw.coneRi + ((sw.coneR - sw.coneRi) * i) / 48;
+      for (let j = 0; j <= 24; j++) {
+        const th = sw.thetaRoot + ((sw.thetaTip - sw.thetaRoot) * j) / 24;
+        const h = rho * Math.sin(th), z = rho * Math.cos(th);
+        for (let k = 0; k <= 48; k++) {
+          const psi = (Math.PI * k) / 96;   // the outboard quarter: x = h·cos ψ ≥ 0
+          const x = h * Math.cos(psi), r = Math.hypot(h * Math.sin(psi), z), dr = r - ringR;
+          if (Math.abs(dr) < need) at = Math.max(at, swDist + x + Math.sqrt(need * need - dr * dr));
+        }
+      }
+    }
+    return at;
+  })();
   const bushDist = Math.max(plateR - 2,
-    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF);
+    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF,
+    bevelWall);
   // §234 step 3b — the bore is the running fit over the stem's own ROUND
   // journal (`STEM_R`, not the square it passes below), which was a bare
   // 1.05/0.55 (hole 0.50) sized for the old 0.45 literal and left `windStem`
   // 0.42 through its own support once the journal grew to stem stock. The
   // wall (0.55, the ring's radial metal) is unrelated to the stem and is kept.
-  const bushWallR = 0.55;
   const bush = new THREE.Mesh(new THREE.TorusGeometry(STEM_R + CLEAR_MARGIN + bushWallR, bushWallR, 10, 20), MATS.nickel);
   // Torus plane ⊥ stem: its hole must point along the stem axis.
   bush.rotation.z = stemAngle;
@@ -5902,6 +5938,9 @@ const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dial
 // moved. MEASURED by tools/probe-234-traverse-fold.mjs (its α scan at 0.25°,
 // printed as the heading of the last clearing ray) and carried on the
 // RSV_P0_TOP_Z idiom; the battery's Yoke ⇄ Keyless works sweep is the gate.
+// TODO 214 moved the yoke to the lever's side of the stem, so the post that
+// bounded this heading is gone from this side; the heading is HELD (the fold is
+// solved and proven at it), and the bound it records is now slack.
 const MW_FOLD_LEG1_HEADING_DEG = -46.87;   // the scan at 0.25°: this ray reads 0.55 exactly, the next (−46.62°) 0.5374
 // (§234 Landing 2 step 3a measured that no SECTION closes the straight run —
 // the ceiling wanted r 0.687 in a 1.38 u window, and moving Z_RSV, swinging
@@ -7808,36 +7847,80 @@ registerSub('Keyless works', 'Setting rise', SETTING_METAL.capArbor);
 // layout, up by the plate-radius computation.)
 // ---------------------------------------------------------------------------
 
-// Groove collars on the stem (ride with windSpinner). (GROOVE_LOCAL is
-// hoisted with the XY layout — the lever-angle solve needs it.) The
-// sliding-pinion HUB COLLARS the yoke's fork tracks moved to the CLUTCH
-// with TODO 50's split: the clutch is the member that actually slides
-// against the spring, so the fork tracks it, not the stem. Hub collars
-// slimmed 1.5 → 1.2 back then: the yoke's arm passes UNDER them, and every
-// 0.1 of hub radius is 0.1 of yoke drop — depth the dial gap no longer has
-// to spare. (HUB_COLLAR_R moved to layout.js with TODO 136: YOKE_FORK_OUT's
-// third wall is about this radius, and a constant a layout bound reads belongs
-// beside the bound.)
+// Groove collars on the stem (ride with windSpinner). The sliding-pinion HUB
+// COLLARS the yoke's fork tracks moved to the CLUTCH with TODO 50's split (the
+// clutch is the member that actually slides against the spring), so the fork
+// tracks it, not the stem. (HUB_COLLAR_R moved to layout.js with TODO 136.)
+//
+// TODO 214 / TODO 223 — THE GROOVE IS METAL NOW. Its collars were cut at r 0.75
+// on a stem that has been stem stock (STEM_R 0.924) since §234 step 3b, so both
+// lay inside it, and the beak pin they were meant to drive stood 0.33 off both.
+// layout.js cuts them to the PIN'S bearing (GROOVE_COLLAR_R, TODO 211's rule:
+// the face reaches past the bearing generator's lowest point by the two fits, at
+// the polygon's inradius), with collar In's working face where the pin bears and
+// collar Out the pin's width plus the margin beyond it.
 {
-  const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, GROOVE_COLLAR_T, 12);
-  for (const dy of [-GROOVE_HALF, GROOVE_HALF]) {
+  const collarGeo = new THREE.CylinderGeometry(GROOVE_COLLAR_R, GROOVE_COLLAR_R, GROOVE_COLLAR_T, GROOVE_COLLAR_SEGMENTS);
+  for (const [name, y] of [['grooveCollarIn', GROOVE_FACE_IN - GROOVE_COLLAR_T / 2], ['grooveCollarOut', GROOVE_FACE_OUT + GROOVE_COLLAR_T / 2]]) {
     const collar = new THREE.Mesh(collarGeo, MATS.steel);
-    collar.position.y = GROOVE_LOCAL + dy;
+    collar.name = name;   // TODO 214: collar In is the pull's working face (the beak pin's handoff row)
+    collar.position.y = y;
     windSpinner.add(collar);
   }
+  // Rule 6 — the groove's walls. Collar In's inboard face must still clear the
+  // clutch's leading edge as GROOVE_LOCAL's derivation promised (the line is
+  // HELD, the groove cut under it); the collars must stand clear of the setting
+  // wheel's blank under them at every pull — its web (KW_SPEC's zWebLo, straight
+  // under the stem) and its tooth ring, sampled over the band the two collars
+  // sweep as the stem slides; and the lug that carries the pin over them must be
+  // §50 stock.
+  const inboard = (GROOVE_FACE_IN - GROOVE_COLLAR_T) - GROOVE_CLUTCH_REACH;
+  if (!(inboard >= CLEAR_MARGIN + SAW_FIT - 1e-9))
+    console.warn(`TODO 214 groove: collar In's inboard face stands ${inboard.toFixed(4)} from the clutch's leading edge, `
+      + `need ${(CLEAR_MARGIN + SAW_FIT).toFixed(3)} — the groove is cut into the clutch's reach`);
+  const sw = KW_SPEC.settingWheel;
+  if (!(GROOVE_COLLAR_R + CLEAR_MARGIN <= sw.zWebLo))
+    console.warn(`TODO 214 groove: collars r ${GROOVE_COLLAR_R.toFixed(4)} + margin reach past the setting wheel's web, `
+      + `${sw.zWebLo.toFixed(4)} under the stem`);
+  {
+    // the tooth ring: blank points (h, z) = ρ·(sin θ, cos θ) about the wheel's own
+    // axis, which stands on the stem at swDist; a collar of radius R at stem
+    // station u clears a point at along-offset x = u − swDist if √(z² + (h² − x²)) ≥ R + margin
+    let worst = Infinity;
+    for (const pull of [0, 0.25, 0.5, 0.75, 1]) {
+      for (const [lo, hi] of [[GROOVE_FACE_IN - GROOVE_COLLAR_T, GROOVE_FACE_IN], [GROOVE_FACE_OUT, GROOVE_OUTER]]) {
+        for (let i = 0; i <= 16; i++) {
+          const x = pinDist + pull * CROWN_PULL_DIST + lo + ((hi - lo) * i) / 16 - swDist;
+          for (let j = 0; j <= 24; j++) {
+            const rho = sw.coneRi + ((sw.coneR - sw.coneRi) * j) / 24;
+            for (const th of [sw.thetaRoot, sw.thetaTip]) {
+              const h = rho * Math.sin(th), z = rho * Math.cos(th);
+              if (Math.abs(x) > h) continue;
+              worst = Math.min(worst, Math.sqrt(z * z + (h * h - x * x)) - GROOVE_COLLAR_R);
+            }
+          }
+        }
+      }
+    }
+    if (!(worst >= CLEAR_MARGIN))
+      console.warn(`TODO 214 groove: the setting wheel's tooth ring stands ${worst.toFixed(4)} off the collars, need ${CLEAR_MARGIN}`);
+  }
+  if (!(SL_LUG_TOP - SL_LUG_BOT >= STOCK_MIN_U))
+    console.warn(`TODO 214 setting lever: the beak lug over the collars is ${(SL_LUG_TOP - SL_LUG_BOT).toFixed(4)} thick, under §50's ${STOCK_MIN_U.toFixed(4)}`);
 }
 // (The groove's outboard budget is settled at the bushing's own build:
 // bushDist derives from the groove's full-pull sweep, and the foot's
 // on-plate assert there is the wall that remains.)
 
-// Setting lever: pivoted beside the stem on the balance side; the beak's pin
-// tracks the groove, whose along-stem position is pinDist+pull·slide+local.
-// (SL_C / SL_TAIL / settingLeverPivot and the angle solves are hoisted with
-// the XY layout — the base plate's slot is cut from the tail post's arc.)
-// The lever rides BELOW the wheel plane, toward the dial: its body must
-// clear the stem's groove collars (r 0.75) passing over the beak, so the
-// drop is collar radius + margin + half the 1-thick body + its bevel.
-const Z_SETTING_LEVER = Z_KEYLESS - (0.75 + CLEAR_MARGIN + 0.5 + 0.1);
+// Setting lever: pivoted beside the stem on the balance side. (SL_C / SL_TAIL /
+// settingLeverPivot and the angle solve live in layout.js — the base plate's
+// slot is cut from the tail post's arc.) TODO 214 — the lever lies ON THE PLATE
+// now, its body one margin under the plate's dial face (Z_SETTING_LEVER, layout
+// derives it): nothing else stands between the stem's top and the plate, and
+// the setting wheel's bevel stands under the groove at every pull, so this is
+// the only stratum from which a pin can reach it. The body keeps clear of the
+// groove collars laterally; its beak crosses OVER them as a lug, and the pin
+// hangs from the lug to bear on collar In.
 // Reset-rod plane — declared HERE (ahead of both the lever and the rod
 // linkage below) because it sizes the lever's tail post: the post's whole
 // job is to carry the two rod pins.
@@ -7918,19 +8001,56 @@ if (Z_SECONDS_ARBOR - CAM_T / 2 < ROD_PLANE_Z + ROD_TAILBAR_T / 2 + CLEAR_MARGIN
 const HACK_ROD_PIN_LAND = 0.35; // post material kept above the top pin
 const POST_TOP_Z = ROD2_PLANE_Z + LINK_T / 2 + HACK_ROD_PIN_LAND;   // §234: unchanged by construction — the plane rose by exactly the half-thickness the sheet lost
 const settingLever = G.makeSettingLever({
-  beakLen: Math.hypot(SL_C, CROWN_PULL_DIST / 2),
-  tailLen: SL_TAIL,
-  width: 3,
-  thickness: 1,
-  // Pin top lands 0.1 under the stem's axis — the same 0.65 of engagement
-  // into the groove-collar band the movement-side build had.
-  beakPinH: Z_KEYLESS - 0.1 - (Z_SETTING_LEVER + 0.5),
+  // TODO 214 — the plate, the lug and the pin are CUT from layout.js's solve
+  // (SETTING_LEVER_CUT), mapped from the lever's canonical frame into this
+  // group's local one: the §13 plate with its beak ended where it clears the
+  // groove collars, the flank bitten into it for the yoke's tail pin.
+  body: SETTING_LEVER_CUT.body.map((q) => toLeverLocal(q, sideSign)),
+  thickness: SL_BODY_T,
+  bossR: SETTING_LEVER_CUT.bossR,
+  bossZ: [-(SL_BODY_T / 2 + SL_BODY_BEVEL) - 0.3 * SL_BODY_T, 0],   // the §13 boss's 0.3 proud of the plate, on the dial side now
+  lug: SETTING_LEVER_CUT.lug.map((q) => toLeverLocal(q, sideSign)),
+  lugZ: [SL_LUG_BOT - Z_SETTING_LEVER, SL_LUG_TOP - Z_SETTING_LEVER],
+  pin: { ...toLeverLocal({ s: 0, l: -SL_BEAK }, sideSign), r: SL_BEAK_PIN_R, segments: SL_BEAK_PIN_SEGMENTS,
+    z0: Z_KEYLESS + SL_PIN_FOOT - Z_SETTING_LEVER, z1: SL_LUG_TOP - Z_SETTING_LEVER },
   // The post still does its work on the MOVEMENT side (both rod pins at
   // the LOW plane): from the dial-side lever body it crosses only the
   // BASE plate through the arc slot cut for it (see the plate build) —
   // it no longer reaches the three-quarter plate at all.
-  postH: POST_TOP_Z - (Z_SETTING_LEVER + 0.5),
+  post: { ...toLeverLocal({ s: 0, l: SL_TAIL }, sideSign), h: POST_TOP_Z - (Z_SETTING_LEVER + SL_BODY_T / 2) },
 });
+// Rule 6 — what the cut must keep. (1) The plate exists: one convex bite out of
+// a simple outline, or the solve has failed. (2) The MIRROR: layout.js solves the
+// pin on a copy of its polygon (it cannot import this file's builder), so the
+// built pin's own vertices are read at a stroke end, through the same canonical
+// map, against layout's support. (3) The tail post's two stations are the §13
+// law's, which is what kept the stop work, the reset rods, the jumper's lifter
+// and the plate's slot where they were solved: the contact law and the old
+// atan2 law agree at both ends of the pull.
+{
+  if (!SETTING_LEVER_CUT.body)
+    console.warn('TODO 214 setting lever: the flank bite did not cross the plate\'s outline exactly twice — the outline is not cut');
+  const pin = settingLever.getObjectByName('settingLeverBeakPin');
+  const pos = pin.geometry.attributes.position;
+  const th = SL_TILT, c = Math.cos(th), sn = Math.sin(th);
+  let sMin = Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + pin.position.x, y = pos.getY(i) + pin.position.y;
+    const sc = -sideSign * x, lc = -y;
+    sMin = Math.min(sMin, sc * c - lc * sn);
+  }
+  const want = slPinSupport(th, -1).s;
+  if (Math.abs(sMin - want) > 1e-6)
+    console.warn(`TODO 214 setting lever: the built pin bears at ${sMin.toFixed(6)} but layout.js solved ${want.toFixed(6)} — the groove is cut for a pin that is not the cut`);
+  for (const pull of [0, 1]) {
+    const g = { x: uWind.x * (pinDist + pull * CROWN_PULL_DIST + GROOVE_LOCAL), y: uWind.y * (pinDist + pull * CROWN_PULL_DIST + GROOVE_LOCAL) };
+    const aOld = Math.atan2(g.y - settingLeverPivot.y, g.x - settingLeverPivot.x) - Math.PI / 2;
+    const pOld = { x: settingLeverPivot.x + Math.sin(aOld) * SL_TAIL, y: settingLeverPivot.y - Math.cos(aOld) * SL_TAIL };
+    const pNew = tailPostWorldAt(pull);
+    if (Math.hypot(pOld.x - pNew.x, pOld.y - pNew.y) > 1e-9)
+      console.warn(`TODO 214 setting lever: the tail post at pull ${pull} stands ${Math.hypot(pOld.x - pNew.x, pOld.y - pNew.y).toExponential(3)} off the §13 station the stop work, reset and jumper were solved against`);
+  }
+}
 // --- Minute quick-set LIFTER PLANE (shared by the post drop below and the
 // jumper's lost-motion bar, built with the dial side). The bar spans the
 // whole plate→dial gap from this post to the jumper's tail pin, and the
@@ -7969,7 +8089,7 @@ settingLeverGroup.add(settingLever);
   // plane, below the lever body — extend the post dial-ward so the bar's
   // slot has a pin there. Its end binds at CLEAR_MARGIN above the dial's
   // back face (same constraint the bar itself is planed by).
-  const topW = Z_SETTING_LEVER - 0.5;                  // lever body's dial-side face (world)
+  const topW = Z_SETTING_LEVER - SL_BODY_T / 2;        // lever body's dial-side face (world)
   const endW = Z_JMP_PIN_FACE;                         // the same pin face the bar is planed by
   const drop = new THREE.Mesh(
     new THREE.CylinderGeometry(G.SETTING_LEVER_POST_R, G.SETTING_LEVER_POST_R, topW - endW, 12), MATS.steel);
@@ -7986,13 +8106,16 @@ registerLabel('Setting lever', settingLeverGroup);
 // The lever swings on a stud planted in the plate's BACK face now — the
 // dial-side mirror of the post it used to stand on (checkSupportGeometry
 // keeps its ['Setting lever','plate'] edge honest either way).
-addDialSidePivot(settingLeverGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_SETTING_LEVER });
+addDialSidePivot(settingLeverGroup, { staffR: KEYLESS_STAFF_R, jewelR: 1.0, fromZ: Z_SETTING_LEVER });
 
-// Yoke: on the opposite side of the stem, its fork tracking the sliding
-// pinion's hub (which travels with the crown pull). Its arm passes under
-// the hub collars, so its drop below the keyless plane is the collar
-// radius + margin + half its 1-thick body + bevel; its pivot boss's
-// underside is what sets the keyless plane's floor against the dial.
+// Yoke: on the LEVER's side of the stem since TODO 214 (its pivot mirrored
+// across the stem line at the same YK_C — it stood on the far side, its body and
+// boss inside the minute wheel, TODO 223), its fork tracking the sliding
+// pinion's hub. Its arm passes under the hub collars, so its drop below the
+// keyless plane is the collar radius + margin + half its 1-thick body + bevel;
+// its pivot boss's underside is what sets the keyless plane's floor against the
+// dial. Its TAIL — the bell crank's second arm — carries the pin the setting
+// lever's flank drives it by.
 const Z_YOKE = Z_KEYLESS - (HUB_COLLAR_R + CLEAR_MARGIN + 0.5 + 0.06);
 const yoke = G.makeYoke({
   // TODO 50: the arm's reach is DERIVED in layout.js (YOKE_ARM) — the
@@ -8011,6 +8134,15 @@ const yoke = G.makeYoke({
   prongH: Z_KEYLESS - Z_YOKE + 0.4,
   prongR: YOKE_PRONG_R,
   prongSegments: YOKE_PRONG_SEGMENTS,   // TODO 211: layout.js solves the bearing against this polygon
+  // TODO 214 — the tail: the fork's arm turned a right angle toward the crown
+  // (layout.js's bell crank), the pin at its end the prong's own stock, rising
+  // from the yoke's top face to the lever plate's top working face; the arm is
+  // the pin plus a §50 wall each side.
+  tail: {
+    x: -sideSign * YOKE_ARM, halfW: YK_TAIL_PIN_R + STOCK_MIN_U,
+    pinR: YK_TAIL_PIN_R, pinSegments: YK_TAIL_PIN_SEGMENTS,
+    pinH: (Z_SETTING_LEVER + SL_BODY_T / 2) - (Z_YOKE + 0.5),
+  },
 });
 // Rule 6 — the fork's window has two walls and YOKE_ARM only derives one
 // (the spine margin at mid-stroke). The other was "the prong's inner edge lands
@@ -8050,7 +8182,7 @@ yokeGroup.add(yoke);
 movement.add(yokeGroup);
 registerExplode(yokeGroup, Z_YOKE, 4, -1);
 registerLabel('Yoke', yokeGroup);
-addDialSidePivot(yokeGroup, { staffR: 0.45, jewelR: 1.0, fromZ: Z_YOKE });
+addDialSidePivot(yokeGroup, { staffR: KEYLESS_STAFF_R, jewelR: 1.0, fromZ: Z_YOKE });
 
 // ---------------------------------------------------------------------------
 // THE SLIDING CLUTCH (TODO 50 / BUILT §149) — the member the old dual-purpose windPinion
@@ -8278,52 +8410,133 @@ windClutchMount.add(windClutch);
 // margin inside the CLUTCH's own stroke.
 if (!(STEM_SAW_SPEC.toothH + CLEAR_MARGIN <= CLUTCH_TRAVEL))
   console.warn(`TODO 50: saw interleave ${STEM_SAW_SPEC.toothH.toFixed(3)} + margin does not clear inside the clutch's ${CLUTCH_TRAVEL.toFixed(2)} travel — pulled-out setting would still graze the coupling`);
+// TODO 214 — the hop's rule-6 walls, read off the layout's solve: the flank
+// reproduces the fork's two stations (the yoke at YOKE_A_SEAT with the crown in
+// and at YOKE_A_FULL pulled — which is what makes the clutch land where TODO 211
+// solved it), the friction cone at MU_STEEL stays on the driving side of both
+// pivots at every station (neither the lever nor the spring can jam the other),
+// and the built tail pin is the polygon layout.js solved.
+{
+  const e0 = ykFlankStationAt(0) - YOKE_A_SEAT, e1 = ykFlankStationAt(1) - YOKE_A_FULL;
+  if (Math.abs(e0) > 1e-9 || Math.abs(e1) > 1e-9)
+    console.warn(`TODO 214 flank: the yoke's tail on the lever's flank lands ${e0.toExponential(2)} / ${e1.toExponential(2)} off the fork's seated / pulled stations`);
+  const worst = Math.min(...KEYLESS_HOP.map((r) => r.cone));
+  if (!(worst > 0))
+    console.warn(`TODO 214 flank: at MU_STEEL the friction cone's worst arm about a pivot is ${worst.toFixed(4)} — the hop self-locks`);
+  const tp = yoke.getObjectByName('yokeTailPin');
+  const pos = tp.geometry.attributes.position;
+  // local → canonical at seat: local +Y is the arm (heading h), local +X the arm
+  // turned −sideSign·90° (the map is a mirror where sideSign = −1)
+  const h = Math.atan2(-Math.sqrt(YOKE_ARM ** 2 - YOKE_A_SEAT ** 2), YOKE_A_SEAT);
+  const Yc = { s: Math.cos(h), l: Math.sin(h) }, Xc = { s: Math.cos(h - sideSign * Math.PI / 2), l: Math.sin(h - sideSign * Math.PI / 2) };
+  // the pin's axis (its geometry is centred on its own origin)…
+  const cs = YK_DS + tp.position.x * Xc.s + tp.position.y * Yc.s, cl = YK_C + tp.position.x * Xc.l + tp.position.y * Yc.l;
+  // …and its polygon: the vertex nearest the flank at seat, against layout's
+  const hop0 = KEYLESS_HOP[0], th0 = hop0.th, nW = { s: Math.cos(SL_FLANK.beta + th0), l: Math.sin(SL_FLANK.beta + th0) };
+  let gMin = Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + tp.position.x, y = pos.getY(i) + tp.position.y;
+    const vs = YK_DS + x * Xc.s + y * Yc.s, vl = YK_C + x * Xc.l + y * Yc.l;
+    gMin = Math.min(gMin, nW.s * vs + nW.l * (vl - SL_C));
+  }
+  const gWant = nW.s * hop0.C.s + nW.l * (hop0.C.l - SL_C);
+  if (Math.abs(gMin - gWant) > 1e-6)
+    console.warn(`TODO 214 flank: the built tail pin's nearest vertex stands ${gMin.toFixed(6)} along the flank's normal, layout.js solved ${gWant.toFixed(6)}`);
+  const want = ykTailPinAt(YOKE_A_SEAT);
+  if (Math.hypot(cs - want.s, cl - want.l) > 1e-6)
+    console.warn(`TODO 214 flank: the built tail pin stands at (${cs.toFixed(5)}, ${cl.toFixed(5)}) but layout.js solved (${want.s.toFixed(5)}, ${want.l.toFixed(5)})`);
+}
+
 // §48 — what brings each reciprocating member back, declared at the laws
 // that make the claim. The CLUTCH cams axially out and the yoke spring
 // reseats it; the YOKE swings out with it (and with the pull) and the same
 // blade brings it home — one spring, two declarations, because the audit
 // judges units and both units genuinely reverse under the stemSlip axis.
+// (The SETTING LEVER is returned by the same blade through the flank, but no
+// axis runs the pull both ways, so it is outside §48's population — TODO 43's
+// retirement note at the §36 registry; a row for it would be stale.)
 declareRestoring('Winding clutch', 'clutchSleeve', 'spring',
-  'a backward crown cams the clutch out over the pinion\'s saw ring, one snap per leaf; the yoke spring re-seats it through the fork — the blade is real metal on its own post, and the drive faces need no spring (the crown and the run-down close them from either side)',
+  'a backward crown cams the clutch out over the pinion\'s saw ring, one snap per leaf; the yoke spring re-seats it through the fork — the blade is real metal on its own stud, bearing on the yoke\'s tail pin, and the drive faces need no spring (the crown and the run-down close them from either side)',
   'yokeSpring', 'yokeProng');
 declareRestoring('Yoke', 'yokeProng', 'spring',
-  'the pull drives the fork both ways through the setting lever, but a cam-over lifts it with no crown motion at all — the blade about its own pivot is what brings that stroke home',
+  'the pull drives the fork out through the setting lever\'s flank on the tail pin (TODO 214), and a cam-over lifts it off that flank with no crown motion at all — the grounded blade bearing on the tail pin is what brings either stroke home, and it holds the pin on the flank throughout',
   'yokeSpring');
 
-// THE YOKE'S SPRING — the restoring element the split makes necessary: the
-// clutch cams OUT under a backward crown and something real must reseat it.
-// windArrestSpring's convention, verbatim: a torsion arc about the member's
-// own pivot RIDING THE MEMBER (child of yokeGroup), its far end landing on
-// the line where the fixed post stands — clocked by construction, not
-// placed. P1 arithmetic, TODO 16's format: the preload is one CLEAR_MARGIN
-// of axial travel at the coupling (§99's rd.preload convention); a
-// cam-over costs that preload × tan α = 0.4 handed back through the fork's
-// lever to the crown rim — an order under the 5–50 mN detent budgets the
-// movement already carries, so a backward turn snaps instead of fighting.
-const YOKE_SPRING_R = 1.55;   // arc about the pivot: the 1.0 pivot jewel setting + margin + blade half-stock
+// THE YOKE'S SPRING — TODO 214 rebuilt it as a grounded flat blade bearing on
+// the yoke's tail pin (layout.js YK_SPRING, TODO 16's format: section, free
+// length, anchor and height all solved there). It replaces a torsion arc that
+// RODE the yoke while its post stood still, so that its "far end on the post"
+// was true at one pose only and its force was never a number. The blade is a
+// Keyless works part — grounded on its stud from the plate, like the bushing —
+// and bears on the yoke, which is the Keyless works ⇄ Yoke pair's one contact.
+// Drawn rigid, aimed each pose from the stud to its tangent on the pin.
+const YOKE_SPRING_Z = Z_YOKE + 0.75 + CLEAR_MARGIN + MEASURED_MARGIN_BAND + YK_SPRING.w_u / 2;   // over the yoke's boss (top Z_YOKE + 0.75) by the margin — the blade crosses it in plan
+let yokeSpringBlade = null;
+const _ykBladeAim = (a) => {
+  const g = YK_SPRING.bladeAt(a);
+  const A = canonToWorld(YK_SPRING.anchor), T = canonToWorld(g.T);
+  return { A, T, ang: Math.atan2(T.y - A.y, T.x - A.x), len: Math.hypot(T.x - A.x, T.y - A.y) };
+};
 {
-  const sweep = Math.PI * 1.2;
-  // the yoke's arm line at the SEATED pose (pull 0), in the group's local
-  // frame the arm runs along local −Y (makeYoke's own convention); the
-  // spring's far end parks on that line so its post has the arm's own
-  // corridor, which the fork keeps clear by working there
-  const arc = new THREE.Mesh(
-    new THREE.TorusGeometry(YOKE_SPRING_R, SPRING_FLAT_U / 2, 6, 48, sweep), MATS.blueSteel);
-  arc.name = 'yokeSpring';
-  arc.position.set(0, 0, 0.55);            // just above the yoke body, under the collar band
-  arc.rotation.z = -Math.PI / 2 - sweep;   // arc END lands on the local −Y arm line
-  yokeGroup.add(arc);
-  // …and the post its fixed end reacts on: movement-frame, on the arm's
-  // seated line one blade past the arc, from the plate's back face down.
-  const postAz = yokeAngleAt(YOKE_A_SEAT) - Math.PI / 2; // world azimuth of the local −Y arm line at seat (TODO 211: the prong bearing on collar In)
-  const pr = YOKE_SPRING_R + SPRING_FLAT_U / 2 + PIVOT_MIN_U;
-  const postLen = Math.abs(Z_KEYLESS - Z_YOKE) + 0.9;
-  const sp = new THREE.Mesh(new THREE.CylinderGeometry(PIVOT_MIN_U, PIVOT_MIN_U, postLen, 10), MATS.blueSteel);
+  const A = canonToWorld(YK_SPRING.anchor);
+  const top = -BACK_PLATE_T + 0.3, bot = YOKE_SPRING_Z - YK_SPRING.w_u / 2 - 0.1;   // 0.3 into the plate's dial face; one tenth under the blade
+  const sp = new THREE.Mesh(new THREE.CylinderGeometry(PIVOT_MIN_U, PIVOT_MIN_U, top - bot, 10), MATS.blueSteel);
   sp.name = 'yokeSpringPost';
   sp.rotation.x = Math.PI / 2;
-  sp.position.set(yokePivot.x + Math.cos(postAz) * pr, yokePivot.y + Math.sin(postAz) * pr,
-    Z_YOKE + 0.55 + postLen / 2 - 0.55);
-  movement.add(sp);
+  sp.position.set(A.x, A.y, (top + bot) / 2);
+  keyless.add(sp);
+  const geo = new THREE.BoxGeometry(1, YK_SPRING.t_u, YK_SPRING.w_u);
+  geo.translate(0.5, 0, 0);   // origin at the anchored end
+  const blade = new THREE.Mesh(geo, MATS.blueSteel);
+  blade.name = 'yokeSpring';
+  const aim = _ykBladeAim(YOKE_A_SEAT);
+  blade.position.set(A.x, A.y, YOKE_SPRING_Z);
+  blade.rotation.z = aim.ang;
+  blade.scale.x = aim.len;
+  keyless.add(blade);
+  yokeSpringBlade = blade;
+  // Rule 6 — the blade's own numbers: the flank's force at both stroke ends
+  // inside the detent envelope, the bent stock under its yield, and the line
+  // clear of the yoke's staff.
+  for (const e of YK_SPRING.ends) {
+    if (!(e.N_mN >= SELECTOR_DETENT_WINDOW_MN[0] && e.N_mN <= SELECTOR_DETENT_WINDOW_MN[1]))
+      console.warn(`TODO 214 yoke spring: the flank carries ${e.N_mN.toFixed(2)} mN at station ${e.a.toFixed(4)}, outside the ${SELECTOR_DETENT_WINDOW_MN.join('–')} mN envelope`);
+    if (!(e.sigma_Pa <= SPRING_SIGMA_Y_PA) || !e.turnsBack)
+      console.warn(`TODO 214 yoke spring: ${e.turnsBack ? '' : 'the blade does not turn the yoke back; '}σ ${(e.sigma_Pa / 1e6).toFixed(0)} MPa against ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)}`);
+  }
+  if (!(YK_SPRING.staffClear_u >= YK_SPRING.staffNeed_u - 1e-9))
+    console.warn(`TODO 214 yoke spring: the blade passes ${YK_SPRING.staffClear_u.toFixed(4)} from the yoke's staff, need ${YK_SPRING.staffNeed_u.toFixed(4)}`);
+}
+// §137 — the hop's force, declared beside its metal (TODO 16's format). The
+// blade bears on the tail pin; the yoke, a 1:1 bell crank, carries that moment
+// round its pivot to the flank, where the setting lever takes it. Both stroke
+// ends are published; each is the force the flank carries and must sit in the
+// detent envelope — a figure the lever moves and the spring keeps closed.
+for (const [end, e] of [['crown in', YK_SPRING.ends[0]], ['pulled', YK_SPRING.ends[1]]]) {
+  declareTransfer(`keyless: yoke spring (stud → blade → tail pin → yoke → the setting lever's flank), ${end}`, {
+    unit: 'Yoke', meshes: ['yokeTailPin', 'yokeProng'], idiom: 'crank',
+    load: { value: e.N_mN, unit: 'mN',
+      source: `the blade's 3EI/L³ (cantileverK over SPRING_FLAT_U × ${YK_SPRING.w_u.toFixed(4)} u, free length ${YK_SPRING.L_u.toFixed(4)} u) deflected ${e.defl_u.toFixed(4)} u at the pin, its moment ${e.armSpring_u.toFixed(4)} u about the yoke's pivot carried to the flank's ${e.dY_u.toFixed(4)} u` },
+    quantities: { k_N_per_m: YK_SPRING.k_N_per_m, bladeT_u: YK_SPRING.t_u, bladeW_u: YK_SPRING.w_u, freeLen_u: YK_SPRING.L_u,
+      defl_u: e.defl_u, bladeF_mN: e.F_mN, sigma_MPa: e.sigma_Pa / 1e6,
+      armIn_u: e.armSpring_u, armOut_u: e.dY_u, ratio: e.dY_u / e.armSpring_u },
+    envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: e.N_mN },
+    why: `a grounded blade biasing a pivoted bell crank is a crank: the blade's ${e.F_mN.toFixed(2)} mN acts ${e.armSpring_u.toFixed(3)} u from the yoke's pivot and the flank takes it ${e.dY_u.toFixed(3)} u out, so the lever meets ${e.N_mN.toFixed(2)} mN ${end} — the preload is one stroke, so the force doubles across the pull, and the blade's height puts the two ends symmetrically inside the envelope on a log scale`,
+  });
+}
+// …and the LEVER, the same crank seen from the crown: the collar's push at the
+// beak pin turns the lever about its stud and the flank delivers it to the
+// tail pin. Its arms are the beak (SL_BEAK) and the flank's moment arm about
+// the lever's pivot; the load is the flank's, at each end.
+for (const [end, i] of [['crown in', 0], ['pulled', KEYLESS_HOP.length - 1]]) {
+  const r = KEYLESS_HOP[i], e = YK_SPRING.ends[i ? 1 : 0];
+  declareTransfer(`keyless: setting lever (groove collar In → beak pin → flank → yoke tail pin), ${end}`, {
+    unit: 'Setting lever', meshes: ['settingLeverBeakPin', 'settingLeverBody'], idiom: 'crank',
+    load: { value: e.N_mN, unit: 'mN', source: 'the yoke spring\'s force at the flank (the row above), which the lever carries back to the collar' },
+    quantities: { armIn_u: SL_BEAK * Math.cos(r.th), armOut_u: r.dL, ratio: r.dL / (SL_BEAK * Math.cos(r.th)),
+      collarF_mN: e.N_mN * r.dL / (SL_BEAK * Math.cos(r.th)), tiltDeg: r.th / DEG2RAD, coneArm_u: r.cone },
+    why: `the pull turns the lever about its stud: the collar bears on the pin ${(SL_BEAK * Math.cos(r.th)).toFixed(3)} u from it and the flank works ${r.dL.toFixed(3)} u out, so ${end} the collar meets ${(e.N_mN * r.dL / (SL_BEAK * Math.cos(r.th))).toFixed(2)} mN; the friction cone at MU_STEEL keeps ${r.cone.toFixed(3)} u of arm on the driving side of both pivots, so neither member jams the other`,
+  });
 }
 
 // Reset-hammer transmission — a RIGID connecting rod (fixed length) from the
@@ -47645,26 +47858,34 @@ function tick(t) {
   const clutchDist = clutchHomeDist + fork.c + SEAT_RELIEF;
   windClutch.position.set(uWind.x * clutchDist, uWind.y * clutchDist, Z_KEYLESS);
 
-  // Setting-lever linkage: the lever's angle is SOLVED from where the stem's
-  // groove actually is right now (crownPullT), so the beak pin stays in the
-  // groove through the whole slide; the yoke does the same against the
-  // sliding pinion's hub. The stop crank is NOT keyframed either: the hack
+  // Setting-lever linkage: the lever's angle is SOLVED from the contact — its
+  // beak pin bearing on groove collar In's face at this pull (TODO 214,
+  // layout.js slLeverTiltAt) — and the yoke's from its tail pin on the lever's
+  // flank (inside yokeClutchAt, above). The stop crank is NOT keyframed either: the hack
   // rod is rigid, so the crank's angle is solved from its OWN PIN's actual
   // position each frame (updateStopWork) — crown out levels the pad arm
   // onto the rim's underside, crown in drops it the derived release gap.
   // §87: the pin, not the post. The rod's length was calibrated at the pin
   // and the crank's whole geometry solved from its stroke, so driving the
   // solve from the post here would run a linkage the watch is not built as.
-  // §48: pulling the crown drives these out, pushing it drives them back in.
-  // Both directions are driven by the same input, so no return spring is
-  // required to explain the reversal. (The setting-lever DETENT that holds
-  // each position is a separate mechanism, and a separate question.)
+  // §48: pulling the crown drives the lever out through collar In; pushing it
+  // home, the yoke spring brings the lever back through the flank, its pin
+  // following collar In (TODO 214 — the old note here said the input drove both
+  // ways, which a pin bearing on nothing could not). (The setting-lever DETENT
+  // that holds each position is a separate mechanism, and a separate question.)
   settingLeverGroup.rotation.z = settingLeverAngleAt(crownPullT);
   // TODO 211 — the fork's angle is the prong's SOLVED station (above): bearing
   // on collar In seated and through a cam-over, on collar Out pulled, crossing
   // the play between — one law that also placed the clutch, so the two cannot
   // disagree about where the fork is.
   yokeGroup.rotation.z = yokeAngleAt(fork.a);
+  // TODO 214 — the yoke spring's blade follows the tail pin it bears on, its
+  // root fixed in its stud (the alarm feeler's blade is the precedent).
+  if (yokeSpringBlade) {
+    const aim = _ykBladeAim(fork.a);
+    yokeSpringBlade.rotation.z = aim.ang;
+    yokeSpringBlade.scale.x = aim.len;
+  }
   updateStopWork(hackPinWorldAt(crownPullT));
 
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
@@ -49145,7 +49366,17 @@ const JMP_SITE_MOVERS = [
   { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, alarmHand], bound: 0.81 },   // 0.8124, the small-seconds body
   { name: 'alarm feeler', kind: 'bounded', roots: [alarmFeelerUnit], bound: 0.33 },     // 0.3344, alarmFeelerTip
   { name: 'alarm link', kind: 'bounded', roots: [alarmLinkUnit], bound: 1.46 },         // 1.4671, alarmLinkCentrePin
+  // TODO 214 moved the yoke to the lever's side of the stem, into the census's
+  // view: the yoke stays this far off the region the whole net over…
+  { name: 'yoke', kind: 'bounded', roots: [yokeGroup], bound: 0.81 },                  // 0.8147, yokeBoss at crown 44/48
 ];
+// …and the yoke spring's blade does not — it lies inside the region — so it is
+// LAWED, on its own law: aimed from its stud to its tangent on the tail pin at
+// the yoke's station, which every pose keeps between the seat and the pull
+// (a cam-over lifts the clutch by at most a tooth height, far inside the
+// fork's stroke). Its tip is the fastest point: the tail pin's stroke.
+JMP_SITE_MOVERS.push({ name: 'yoke spring', kind: 'lawed', roots: [yokeSpringBlade], stroke: YK_SPRING.stroke_u,
+  pose: (u) => { const aim = _ykBladeAim(YOKE_A_SEAT + u * (YOKE_A_FULL - YOKE_A_SEAT)); yokeSpringBlade.rotation.z = aim.ang; yokeSpringBlade.scale.x = aim.len; } });
 const JMP_SITE_SAT = 2, JMP_SITE_CAPD_W = 0.02;
 const JMP_SITE = await (async () => {
   const T0 = performance.now();
