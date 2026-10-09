@@ -2091,8 +2091,15 @@ const OSCILLATOR = (() => {
     solved: true, debt: null,
     stockWindowMm: [0.02, 0.04],      // §50's own cited hairspring range
     terms: { rimPct: pct(OSC_I.rim), armsPct: pct(OSC_I.arm), screwsPct: pct(OSC_I.screw), neglectedPct: 0.38 },
+    // §246 — the ribbon's MASS, for the positional-rate instrument: in a
+    // vertical position the spring's own weight acts on the balance through
+    // its centre of mass, which breathes with θ. Rhombus4 of half-diagonals
+    // a, c has area 2ac; the length is the planar developed length the
+    // elastica frames are drawn on, so the mass and the centroid read the
+    // same polyline.
     spring: { h_mm: MM(2 * H.section.a), b_mm: MM(2 * H.section.c), L_mm: MM(H.devLen), shape: H.section.shape,
-              inStock: MM(2 * H.section.a) >= 0.02 && MM(2 * H.section.a) <= 0.04 },
+              inStock: MM(2 * H.section.a) >= 0.02 && MM(2 * H.section.a) <= 0.04,
+              mass_kg: OSC_STEEL_RHO * (2 * H.section.a * H.section.c * OSC_U ** 2) * (H.devLen * OSC_U) },
   });
 })();
 if (!OSCILLATOR.agrees)
@@ -26652,7 +26659,7 @@ const EQUALISATION = (() => {
                 byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
                 fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
       maintainingHold,
-      balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
+      balance: { mass_kg: mB, k_Nm_per_rad: kB, g_mps2: g, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
       corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
     };
   })();
