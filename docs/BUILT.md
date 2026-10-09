@@ -31986,6 +31986,138 @@ The floor is kept deliberately: at 144 Hz a pure rate would be 19 ticks a frame,
 
 Not measured here, and worth saying: the machine this was found on has no GPU. On one that does, the live loop was already vsync-bound and this changes nothing; the gain is for whoever is not.
 
+---
+
+## §259 — Landing B: the battery split across two runners as a matrix
+
+§127 tier 3's Landing A made the harness assemble across processes —
+`--matrix i/N --tasks-out FILE` runs one worker's shards and writes what it
+measured, `--collect FILE…` runs the gates over the files with no browser — and
+left the workflow alone, on the rule that a wall-clock claim belongs to the
+runner and not to a dev container. This is the workflow.
+
+**The single process is the matrix at length one.** The `battery` job takes
+`strategy.matrix.worker` from the route job's `workers` output: `[0]` unless a
+split was asked for, `[0,1]` when it was. At length one the leg is named
+`battery`, takes every step it took before, and runs `ci-battery.mjs` with
+exactly the arguments it ran with before. That is the harness's own rule — the
+assembly half is CALLED by both paths, never copied — carried up a layer: a
+second job holding a copy of the setup, baseline and mode steps would be two
+definitions of how the battery runs, and the reference would be the copy
+nobody looks at.
+
+**Asked for, never defaulted.** A pull request's `battery-matrix` label or
+`[matrix]` in its title. Both are pull-request-only, and that is a property
+rather than a choice: a push, a dispatch and the nightly are the runs that may
+SEED a baseline, the baseline is a report plus the head's digests, and a
+collector writes no digests (`--digests` is refused under `--collect`, because
+it is the preflight's and the preflight runs in each worker). A split run could
+therefore never become a baseline, and the route never offers one to an event
+that might. The label joins the two that may start a `labeled` run.
+
+**One refusal, about the host.** Routed self-hosted with readiness READY and
+only ONE runner online, the route refuses the split: the second leg would queue
+behind the first in the same slot, which is the single process plus a
+collector, and the opt-in was for speed. UNKNOWN readiness honours the ask and
+says "runner count UNCHECKED", which is §251's rule that an unchecked answer
+changes nothing. On `ubuntu-latest` the split always goes ahead — two hosted
+runners are two machines, which is the row §127's costed table actually
+prices.
+
+**The legs.** Each restores the same baseline, runs its own §152 preflight
+(the collector throws if the two derived different restrictions) and takes the
+same mode arguments as the single process, minus `--report`, `--digests` and
+`--points-out`. Worker 0 runs the anchors, the spec tier and the point tier, as
+Landing A placed them. Worker 1, which carries none of those and finishes
+first, runs the three post-battery probes (`probe-case-relief`,
+`probe-187-casing-path`, `probe-back-envelope`). Each leg uploads its tasks
+file as `battery-worker-<run>-<i>`; worker 0 also hands on the baseline report
+it restricted against. `fail-fast`, because a dead worker leaves the collector
+nothing to assemble.
+
+**The collector is hosted and named `battery`.** It needs `node` and the
+harness's static imports — `npm ci` with the browser download skipped — and no
+Chromium. On the host, a third job would take a slot from the next pull request
+for a minute of JSON. It restores no baseline of its own: the cache key carries
+the platform (§200), and the collector is not on the workers' platform. It
+unions against worker 0's handed-on report instead, and passes `--baseline`
+exactly when worker 0's file says the preflight used one, since the harness
+throws on a mismatch either way. Both worker files are named on the command
+line, never globbed, so a missing file is named rather than surfacing as the
+shard gate's smaller run. The verdict reads in the same check either way.
+
+**Single process only, for now:** §227's provenance record and its publish
+step, and the seeding steps. Seeding cannot apply (above). Provenance could,
+but the promotion tier is still a shadow that has to agree with reality on the
+reference path before it reads a second one.
+
+**Cancellation is per run.** `concurrency` is declared at the workflow level,
+so a push to the PR cancels both legs and the collector together, and there is
+no half-cancelled matrix for a collector to find. That answers §127's open
+item.
+
+**What it costs on the self-hosted host, and why it is not the default there.**
+The two runners are two tart slots on one ten-core Mac (docs/RUNNERS.md), not
+two hosts:
+
+- **A split holds both slots.** A second opted-in pull request waits for the
+  whole split run.
+- **The slots share cores.** Two overlapping jobs measured about +30% slower
+  each.
+- **Worker 0 has a serial tail.** The last self-hosted single run (job
+  113593284148) spent ~24 min in its three shards, then 155.8 s in spec boots
+  and 606.4 s in the point tier, all of which stay on worker 0.
+
+So the split halves at most the ~24 minutes, at the slower overlapped rate,
+and does nothing to the ~13. Whether that nets out, and by how much, is this
+section's measurement to take on the host, not to predict: BUILT §127's K=4
+revert is the worked example of a prediction landing on the wrong sign.
+Moving the tail off worker 0 is Landing C.
+
+**Instruments.**
+
+- `actionlint` is clean.
+- The route's decide step was exercised on the six cases: host with two runners
+  online, host with one, hosted label, UNKNOWN readiness, no ask, and a push.
+  It exits 0 on each.
+- `probe-127-matrix.mjs` re-run on this tree (the harness is unchanged, and
+  this holds the identities the workflow relies on).
+
+- `probe-127-matrix.mjs` locally: PASS. One worker and two workers collected
+  report the same battery byte for byte, and a withheld worker is refused with
+  its shard and tasks named.
+
+**Measured: the first split run** (run 37871395312, PR #597). It was WHOLE:
+no host baseline existed for the merge base, so every point swept full.
+
+- **Verdict:** `54/54 gates pass`, `every expected shard was collected
+  (6/6 shards)`. The collector ran on ubuntu-latest in 10 s.
+- **Wall:** 27 m 22 s from the route starting to the collector finishing.
+
+| | runner | shards | then | job |
+|---|---|---|---|---|
+| worker 0 | battery-1-4936 | 13 m 06 s (shards 0–2) | boot B 23 s · spec boots 2 m 39 s · point tier 10 m 13 s | 27 m 00 s |
+| worker 1 | battery-2-6e97 | 11 m 22 s (shards 3–5) | the three probes, 1 m 34 s | 13 m 33 s |
+
+**Against the last whole single-process run on this host** (job 113593284148,
+K=3, a different tree, so one sample and no stronger than that):
+
+- The shard portion went from ~24 m to 13 m 06 s, about 1.85×, while both
+  slots ran at once. That is better than the +30% overlap penalty predicted
+  for two whole jobs. The likely reason is that each leg is half a battery,
+  so it holds its slot's cores for half as long. That explanation is a guess,
+  not a measurement.
+- The job went from ~40 m to 27 m 22 s.
+
+**What it says about Landing C:**
+
+- Worker 0's tail after its shards is 13 m 15 s, and almost all of it is
+  spec boots and point sweeps.
+- Worker 1 sat finished for 13 m 27 s of that, holding its slot.
+- The split as built is therefore floored by worker 0's serial work, not by
+  the shards. Moving the point tier to worker 1 is worth about as much again
+  as the split itself. Measured, and still to be built.
+
 ## §246 — The watch's position, modelled: the rate in each of the six positions, and the hairspring's own weight
 
 **Tier one shipped; tier two remains in the roadmap.** The entry was filed from

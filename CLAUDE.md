@@ -802,8 +802,16 @@ second gate loop would be two definitions of standing rule 4.
 `tools/probe-127-matrix.mjs` proves the three identities in ~11 min via
 `--only`, a probe flag CI never passes (its key space is every declared check
 and every slice a check declares — read from `BATTERY`, since a projected slice
-has no `COSTS` row — and it throws on anything else). No workflow uses any of this yet: the matrix itself
-is Landing B, to be sized on CI rather than on a dev container.
+has no `COSTS` row — and it throws on anything else). **Since §259 (Landing B)
+`battery.yml` uses it, on a pull request's opt-in only** — the `battery-matrix`
+label or `[matrix]` in the title: the battery job becomes a matrix of two legs
+(`--matrix i/2`, uploading their tasks files) and a hosted, browser-free
+`battery-collect` job named `battery` gates. With no opt-in the worker list is
+`[0]` and the job is the single process, unchanged. Pushes, dispatches and the
+nightly never split — a collector writes no digests, so a split run can never
+seed a baseline — and a host with one runner online refuses the split rather
+than running two workers in series. Whether it is worth asking for is measured
+per host in `docs/RUNNERS.md`, never predicted from a dev container.
 
 **What makes slicing legal at all is TODO 54's canonical axis entry.** A slice
 runs in its own browser context and starts from `resetInputs()`, so it can only
