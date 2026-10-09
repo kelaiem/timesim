@@ -631,6 +631,28 @@ jobs:
     # Pull this number back down only from several green runs that this cap did
     # not truncate.
     #
+    # §263 DID THE SPLIT, AND 150 NOW BELONGS TO THE SINGLE PROCESS ONLY. A push
+    # (and a hosted dispatch) runs as two legs and a collector, so the point tier,
+    # the spec boots and half the shards are off its critical path. Three green
+    # split runs of the push's job graph (hosted dispatches on the §263 branch),
+    # none of which the 150 truncated:
+    #
+    #   run           wall    worker 0   worker 1
+    #   37959811246   51.9    26.3       51.4
+    #   37959896617   45.1    44.7       42.3
+    #   37965443348   29.6    25.4       29.1
+    #
+    # Each leg lands on its own runner, and the runners are NOT alike. The same
+    # leg doing the same work ran 29.1 to 51.4 min (worker 1) and 25.4 to 44.7
+    # (worker 0), a 1.77x spread, a little wider than the 1.66x measured above.
+    # So the rule above is applied with the wider of the two: the slowest green
+    # LEG, 51.4 min, times 1.77, is 91.0, rounded up to 95. The collector is
+    # its own job (10 min, ~15 s used) and adds no leg time. 95 is still
+    # 60 above the 35-min per-check guard, which this pair has always kept the cap
+    # above. The single process keeps 150: a `single: true` dispatch and the
+    # nightly still carry everything on one runner, which is the shape that was
+    # measured at 89.
+    #
     # A PR's point tier is held to POINT_PR_BUDGET_MS (10 min of
     # wall, ci-battery.mjs) on top of a battery that can itself be WHOLE when
     # no baseline exists, so a PR kept fail-fast at 60 rather than 50 — the
@@ -652,7 +674,7 @@ jobs:
     # take. A wedge is the per-check guard's (35 min) at either cap. A PR that
     # wants a faster whole run asks for the matrix (`battery-matrix`, §259) or
     # the host (`self-hosted-battery`, ~45 min whole), not a tighter cap.
-    timeout-minutes: ${{ github.event_name == 'pull_request' && 125 || 150 }}
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 125 || needs.route.outputs.matrix == 'true' && 95 || 150 }}
     steps:
       # §200 — the pointer is read off the run, never remembered. The routing
       # verdict was written by the route job (§251); this step names the

@@ -897,13 +897,18 @@ and building it established that the push run bounds a key error to minutes
 rather than a day and fires per merge rather than per date. The `schedule:`
 that exists is §200's, not §152's — it seeds the SELF-HOSTED baseline, the
 platform a push can never write, and is skipped when no host is available.
-A push's job cap is 150 min (the dispatch and nightly that seed a baseline
-share it since TODO 186; a PR's is 125): the push is the
+A single-process seeding run's job cap is 150 min (the push's until §263 split
+it; the dispatch and nightly that seed a baseline share it since TODO 186; a
+PR's is 125): the push is the
 run that writes the hosted baseline, and three in a row were cancelled at 50
 inside their last sweep, which left the tree with no baseline at all. It was
 90 until green pushes reached 89 min and five of the last nine were killed at the cap.
 150 is the slowest green run times the 1.66x same-tree spread `battery.yml`
-measured, because the tail past a cap cannot be read. The PR's was 60, "the old
+measured, because the tail past a cap cannot be read. **Since §263 a push is
+split, and a split leg's cap is 95**: three green split runs walled 29.6–51.9
+min against the single process's 89. 95 is the slowest leg (51.4 min) times the
+1.77x spread those legs showed across runners. 150 stays for the single process
+(a `single: true` dispatch, the nightly). The PR's was 60, "the old
 cap plus the point ceiling", until a WHOLE PR run, which is any PR after a
 killed push or touching the check code, measured 73.8 min. 125 is that times
 the same spread. Every uncertainty — no cache hit, an
