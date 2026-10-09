@@ -2534,11 +2534,16 @@ if (!(AMPLITUDE_VISUAL_DEG * 0.55 * DEG2RAD > PIN_FORK.liftHalf))
 
 // The tension the train's laws read. The balance's amplitude sags with wind,
 // so where the pin is inside a beat (and with it the fork, the escape wheel
-// and the train hung off it) depends on the wind as well as on τ. tick()
-// writes this from the barrel's turns before it reads any law, and every law
-// below defaults to it, so a caller asking "where is the fourth wheel at τ"
-// gets the answer for the movement as it stands.
-let LAW_TENSION = 1;
+// and the train hung off it) depends on the wind as well as on τ. It is READ
+// LIVE off the barrel's turns — tick()'s own expression — never stored: a
+// stored copy written by tick() went stale inside setPose, whose maintHold
+// solve reads barrelMeshAngle before that pose's tick, so the τ it solved
+// depended on the tension the PREVIOUS axis left (axisEntry measured the
+// escape wheel 0.242 rad apart entering maintHold after wind). The source is
+// bound where barrelWindTurns is declared; before that, at build, the movement
+// is fully wound, which is barrelWindTurns' own initial value.
+let lawTensionSrc = null;
+function lawTension() { return lawTensionSrc ? lawTensionSrc() : 1; }
 
 function beatPhase(t) {
   const raw = t * 2 * F_BALANCE;
@@ -2550,15 +2555,15 @@ function beatPhase(t) {
 // Amplitude sags with the state of wind (real movements drop from ~300° to
 // ~200° as the mainspring drains) and the oscillation runs on movement time τ.
 // Phased so beat n opens with the pin at the notch's mouth (see above).
-function balanceAmpRad(tension = LAW_TENSION) {
+function balanceAmpRad(tension = lawTension()) {
   return AMPLITUDE_VISUAL_DEG * (0.55 + 0.45 * tension) * DEG2RAD;
 }
-function balanceTheta(tau, tension = LAW_TENSION) {
+function balanceTheta(tau, tension = lawTension()) {
   const amp = balanceAmpRad(tension);
   return amp * Math.sin(2 * Math.PI * F_BALANCE * tau - Math.asin(PIN_FORK.liftHalf / amp));
 }
 // The fraction of each beat the pin spends in the notch, at a tension.
-function liftWindow(tension = LAW_TENSION) {
+function liftWindow(tension = lawTension()) {
   return (2 / Math.PI) * Math.asin(PIN_FORK.liftHalf / balanceAmpRad(tension));
 }
 
@@ -2572,11 +2577,11 @@ function forkSwingAt(theta) {
 
 function forkBankAt(n) { return (n % 2 === 0) ? -1 : 1; }
 
-function forkSwingRad(t, tension = LAW_TENSION) {
+function forkSwingRad(t, tension = lawTension()) {
   return forkSwingAt(balanceTheta(t, tension));
 }
 
-function escapeAngle(t, tension = LAW_TENSION) {
+function escapeAngle(t, tension = lawTension()) {
   const { n } = beatPhase(t);
   const bs = forkBankAt(n);
   const s = forkSwingRad(t, tension);
@@ -37032,6 +37037,9 @@ await breathe();
 // What the keyless half still needs held is the COUPLING'S CUT against the
 // winding direction, and that assert lives where the rings are built.
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
+// TODO 226 — the train's laws read the wind live from here (lawTension), the
+// same expression tick() computes `tension` from.
+lawTensionSrc = () => clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1);
 
 // TODO 18's gate. The reserve indicator is three quantities that must agree —
 // the arc the well is graduated to, the hand's travel over it, and the
@@ -48530,9 +48538,6 @@ function tick(t) {
     }
   }
   const tension = clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1);
-  // TODO 226 — the escapement is read off the balance, whose swing sags with
-  // this; every train law below defaults to it, so set it before any is read.
-  LAW_TENSION = tension;
 
   // Contact damping: the balance's own angular rate relaxes toward 0 when
   // EITHER the hack lever is braking it OR the mainspring has nothing left

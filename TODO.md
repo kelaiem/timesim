@@ -30622,8 +30622,11 @@ wheel advances `BEAT_DEG` in proportion to the fork's travel bank to bank,
 which is the relation the stones' impulse faces were already cut against, so
 the faces and the law are one description now. The balance's amplitude sags
 with wind, so where the pin is inside a beat does too: the train's laws read
-`LAW_TENSION`, which `tick()` writes from the barrel's turns before any law is
-read. The window is 22.35% of a beat at full wind and 43.5% at tension 0; the
+`lawTension()`, LIVE off the barrel's turns (`tick()`'s own expression). A
+first draft stored it, written by `tick()`, and the full battery's `axisEntry`
+caught it: `setPose`'s `maintHold` solve reads `barrelMeshAngle` before that
+pose's tick, so after the `wind` axis the escape wheel entered `maintHold`
+0.242 rad off. A law's inputs must not be state a tick refreshes. The window is 22.35% of a beat at full wind and 43.5% at tension 0; the
 beat's period does not move. Retired with the posed law: `RECOIL_DEG`,
 `RECOIL_FRACTION`, `FORK_RECOIL_DEG` and `escapeDeltaDeg`. `IMPULSE_WIDTH`
 survives ONLY as an input to `FORK_BANK_DEG`'s arc-length match, which step 2
