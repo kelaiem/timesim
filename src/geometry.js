@@ -5157,6 +5157,14 @@ export function makeColumnPawl({ nodes, pivot, nose, w, noseR, boreR, bossR, thi
     m.name = i === 0 ? `${name}Tail` : name;
     m.userData.outline = outline;
     m.userData.centreline = r;
+    // TODO 137 — THE SECTION THE METAL HAS, declared, because a bent member's
+    // geometry-local box is the bend's ENVELOPE and `stockFloor` reads its
+    // smallest side as the stock. A body thickened ±w about a centreline is 2w
+    // across IN the sheet and `thickness` through it; the box of this one is
+    // 4.31 × 1.04 × `thickness`, so its minimum was the extrude depth, read
+    // exactly at the floor, while the arm was 2w = a tooth's depth, 5% under it.
+    // (The same remedy §169 gave the two swept springs, for the same reason.)
+    m.userData.stockSection = Math.min(2 * w, thickness);
     return m;
   });
   if (bodies.length !== 2)
