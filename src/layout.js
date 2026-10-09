@@ -390,8 +390,27 @@ export const AMPLITUDE_PEAK_DEG = 455;
 // heaviest rim that reaches it, and `equalisation` row 15 holds both.
 export const AMPLITUDE_TARGET_DEG = 200;
 export const AMPLITUDE_TARGET_SLACK_DEG = 1.5;   // one 0.005 step of BAL_RIM_F is 1.3° of nominal vertical swing (measured)
-export const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
-export const IMPULSE_WIDTH = 0.16;      // fraction of a beat spent in unlock+impulse (rest = locked)
+// §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
+// `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is
+// retired: the balance is posed at AMPLITUDE_TARGET_DEG, the swing the energy
+// column holds the movement to (vertical, nominal corner). It does not sag with
+// the reserve — this movement has a FUSEE, whose level product (§104,
+// `equalisation`, held at float noise over the whole reserve) delivers the same
+// torque at hour 30 as at hour 0. At 2.5 Hz the swing is a blur to the eye, as a
+// real balance is; the time-scale slider and §206's scrub are how it is read.
+export const AMPLITUDE_POSED_DEG = AMPLITUDE_TARGET_DEG;
+// §221 — THE LIFT ANGLE, the one authored escapement angle: the balance's
+// rotation while its impulse pin is engaged with the fork, unlock to drop. A
+// design fact of the Swiss lever, about 50° (Reymondin et al., The Theory of
+// Horology, the lever-escapement chapter; Daniels, Watchmaking). The fork's
+// bank (main.js, FORK_BANK_DEG) and the impulse window below both DERIVE from
+// it; neither is chosen.
+export const LIFT_DEG = 50;
+// The fraction of a beat the balance spends inside ±LIFT/2 under
+// θ = A·sin(ωt): the window straddles the zero crossing, entering at −L/2 and
+// leaving at +L/2, so (2/π)·asin(L / 2A). 0.0797 at 50° and 200°; it was an
+// authored 0.16 against a 45° swing.
+export const IMPULSE_WIDTH = (2 / Math.PI) * Math.asin(LIFT_DEG / (2 * AMPLITUDE_POSED_DEG));
 export const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
 export const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
 // FORK_BANK_DEG / FORK_RECOIL_DEG are DERIVED in main.js (after the pallet

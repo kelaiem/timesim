@@ -1065,7 +1065,7 @@
              MOVEMENT_SENSE), then poses them through the ported beat law of
              plate 2 — in the FORK's frame, so the stones stand still and the
              wheel is what moves, which is the frame the impulse face is cut in.
-             The slider scrubs p; play dilates the 16% action window, as before. -->
+             The slider scrubs p; play dilates the 8% action window, as before. -->
         <div class="controls">
           <button id="escPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ play</button>
           <label>beat phase p
@@ -1155,10 +1155,12 @@
         wheel torque into a pull toward the banking (draw), asserted at build with the torque
         sign written out; the −1.0° recoil in the law below is that same draw made visible.
         Banking is derived from the arc-length match <code>rollerR·Δθ = notchDepth·2·bank</code>
-        — without it the pin and notch never coincide. The play loop drives every pose through
+        — without it the pin and notch never coincide — and since §221 the pin's Δθ is the
+        cited lift, <code>LIFT_DEG = 50</code>°, so the fork swings an 11.8° lever angle
+        whatever the balance's amplitude. The play loop drives every pose through
         the same ported law plate 2 scrubs (<code>escapeDeltaDeg</code> /
         <code>forkSwingRad</code>); only DISPLAY time is dilated, since the whole action is
-        16% of the beat. Watch phase 2 with that in mind: the dot goes OUT. The recoil is
+        8% of the beat. Watch phase 2 with that in mind: the dot goes OUT. The recoil is
         posed — <code>RECOIL_DEG = 1.0</code>° of wheel and a quarter-bank of fork on one
         sine, two constants that do not agree — so at mid-dip the tip stands about 0.09 off
         the locking corner in free air, where a real unlock keeps it pressed on the locking
@@ -1185,8 +1187,8 @@
             <text class="val" x="14" y="40">+12°</text>
             <text class="val" x="14" y="164">0°</text>
             <text class="val" x="8" y="188">−1° recoil dip</text>
-            <line x1="169" y1="20" x2="169" y2="160" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
-            <text class="val" x="150" y="176">0.16</text>
+            <line x1="114" y1="20" x2="114" y2="160" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <text class="val" x="92" y="176">0.080</text>
             <path id="escLaw" fill="none" stroke="var(--brass)" stroke-width="2"/>
             <path id="forkLaw" fill="none" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="5 3"/>
             <text class="lbl val-brass" x="240" y="46">escape wheel Δ (escapeDeltaDeg)</text>
@@ -1199,7 +1201,9 @@
         computes them — recoil dip of <code>RECOIL_DEG = 1.0°</code> over the first quarter
         of the impulse window (<code>RECOIL_FRACTION = 0.25</code>), smoothstep advance of
         <code>BEAT_DEG = 12°</code> (half the 24° tooth pitch), all inside
-        <code>IMPULSE_WIDTH = 0.16</code> of the beat; the remaining 84% is lock, with the
+        <code>IMPULSE_WIDTH</code> of the beat — 0.080, the time a balance swinging
+        <code>AMPLITUDE_POSED_DEG = 200</code>° spends inside its 50° lift
+        (<code>(2/π)·asin(LIFT_DEG / 2A)</code>, §221); the remaining 92% is lock, with the
         balance detached. The wheel's angle is <code>n·BEAT_DEG + Δ(p)</code> — the whole
         train hangs off this one function, never integrated, so it cannot drift. Which is the
         position arrow with nothing left over: <code>p</code> is the balance's phase, so the
@@ -1232,7 +1236,8 @@
       quarter bank are two constants a 12° draw does not reconcile, and there is no lock depth
       (TODO 131's residue). Banking:
       <code>FORK_BANK_DEG = rollerR·Δθ_pin / notchDepth / 2</code>, derived, with
-      <code>FORK_RECOIL_DEG</code> at a quarter of it.</p>
+      <code>FORK_RECOIL_DEG</code> at a quarter of it; Δθ_pin is the lift, so the bank is
+      5.92° (it was 2.57° while the window was a readability amplitude's arc).</p>
     </div>
   </details>
 
@@ -1278,16 +1283,18 @@
         state is the elastica of an inextensible ribbon between a collet that turns and a
         stud that does not, so the coils tighten on the wind and dilate on the run-back at
         constant length, and the sideways load the stud's reaction would put on the pivots —
-        the flat spiral's known vice — is measured rather than assumed: 0.0029 mN at the
-        drawn swing for a flat spring of this section, and 0.0001 mN with the Breguet
+        the flat spiral's known vice — is measured rather than assumed: 0.0149 mN at the
+        200° swing for a flat spring of this section, and 0.0015 mN with the Breguet
         overcoil the next plate draws.
         <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and
         <code>checkOscillator</code> gates that solve every battery run, holds every frame
         to one length of steel, and holds the overcoil concentric.
         Still NOT modelled, and this page draws no such mechanism: turning a timing screw to
-        move the rate. Amplitude varies with mainspring tension
-        (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism story a
-        free-sprung balance exists to tell.</figcaption>
+        move the rate. The balance swings <code>AMPLITUDE_POSED_DEG = 200</code>° at every
+        state of wind (§221): the fusee delivers level torque, so the old tension-scaled
+        readability swing told a going-barrel story. What still varies a real fusee watch's
+        amplitude — escapement and pivot losses, the watch's position — is posed out, not
+        driven; a balance whose amplitude is SIMULATED is §246 tier two's.</figcaption>
       </figure>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">The Breguet overcoil — the spring breathes concentrically</span></div>
@@ -1313,8 +1320,8 @@
             <text class="val" x="320" y="118">stud as far in as its post allows: r 3.1751</text>
             <text class="lbl lbl-strong" x="320" y="146">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="162">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.169 at 455°</text>
-            <text class="val" x="320" y="206">flat spring 0.0029 mN → overcoil 0.0001 mN at the drawn swing</text>
+            <text class="lbl" x="320" y="190">measured: pivot load ×0.102 at 200°, ×0.125 at 455°</text>
+            <text class="val" x="320" y="206">flat spring 0.0149 mN → overcoil 0.0015 mN at the 200° swing</text>
           </svg>
         </div>
         <figcaption>The last three quarters of a turn are raised through a knee to a second
@@ -1325,9 +1332,11 @@
         the centroid of the whole flexing length sits on the balance axis. That is Phillips's
         condition, derived rather than quoted, and the elastica verifies it: the clamp
         stiffening the flat spring showed (1.0040) reads 1.000000 with the overcoil, and the
-        pivot load at the drawn swing falls to a thirty-third of the flat spring's. At a real
-        455° a residual survives — the theorem is a small-amplitude statement — and it is
-        reported, not hidden. Phillips's condition alone does not say where the curve should
+        stud's reaction loses its first-order term: its odd part falls as the CUBE of the
+        swing (order 3.00) where a flat spiral's falls as the swing itself (order 1.00), and
+        that order is what <code>checkOscillator</code> gates. What survives is the higher
+        order, and at a real swing it is not small — the pivot load is a tenth of the flat
+        spring's at 200°, an eighth at 455° — so it is reported, not hidden. Phillips's condition alone does not say where the curve should
         END, and for a while this one ended outboard of the spring it rises over — the whole
         benefit of raising it, unclaimed. So the stud is a third condition now, not an output:
         the terminal is solved to finish inside the outer coil, over the body of the spring,
@@ -3464,7 +3473,7 @@
 
     // —— Escapement plate 2: the beat law, ported verbatim (layout.js/main.js) ——
     (function () {
-      var BEAT_DEG = 12, IMPULSE_WIDTH = 0.16, RECOIL_FRACTION = 0.25, RECOIL_DEG = 1.0;
+      var BEAT_DEG = 12, IMPULSE_WIDTH = 0.0798, RECOIL_FRACTION = 0.25, RECOIL_DEG = 1.0;   // IMPULSE_WIDTH as layout.js derives it from LIFT_DEG and AMPLITUDE_POSED_DEG
       var smooth = function (x) { return x * x * (3 - 2 * x); };
       function escDelta(p) {
         if (p < IMPULSE_WIDTH) {
@@ -3530,7 +3539,7 @@
         var slider = el('escFrameSlider'), btn = el('escPlay'), chipEl = el('escPhaseChip'), readout = el('escFrameReadout');
         var frame = el('escStepFrame'), rideOut = el('escFrameRide');
         var TEETH = 15, R = 4.5, EMBRACE_DEG = 42, DRAW_DEG = 12, DROP_DEG = 1.5;
-        var BANK_DEG = 2.57;                 // FORK_BANK_DEG as main.js derives it (arc-length match, notch ⇄ roller pin)
+        var BANK_DEG = 5.92;                 // FORK_BANK_DEG as main.js derives it (arc-length match, notch ⇄ roller pin, over the 50° lift)
         var MOVEMENT_SENSE = -1;             // layout.js — clockwise seen from the dial; +x stone is the ENTRY stone
         var D2R = Math.PI / 180;
         var embrace = EMBRACE_DEG * D2R, pitch = 2 * Math.PI / TEETH;

@@ -2213,9 +2213,18 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // other stone drops by a little more rather than a little less. The old
   // `0.32·pitchArc` had no constraint behind it and dropped the wheel for
   // 4.4° of its 12°.
+  //
+  // §221 — the CEILING is the tip's whole-beat travel across the stone: a face
+  // that reached it would carry the tip to the end of the window and leave no
+  // drop. (It was `0.5·pitchArc`, the wheel-only arc of one beat, which has
+  // no fork swing in it — it stood in for this path while the bank was the
+  // 2.6° a readability amplitude derived, and went false the moment the bank
+  // was derived from a real lift.) The floor keeps a stone a stone.
   const stoneW = Math.min(...paths.map((q) => Math.abs(q.chordLoc.x)));
-  if (!(stoneW > 0.1 && stoneW < 0.5 * pitchArc))
-    console.warn('pallet stone: derived width out of range', stoneW.toFixed(4), 'against a tooth spacing of', pitchArc.toFixed(4));
+  const fullBeatW = Math.min(...paths.map((q) =>
+    Math.abs(q.tipAt(1).sub(q.seat).rotateAround(new THREE.Vector2(), -(q.thetaTau - Math.PI / 2)).x)));
+  if (!(stoneW > 0.1 && stoneW < fullBeatW))
+    console.warn('pallet stone: derived width out of range', stoneW.toFixed(4), 'against the tip\'s whole-beat travel across the stone', fullBeatW.toFixed(4));
   // TODO 115 — ENTRY is the stone a tooth reaches first, so it is on the side
   // the teeth come FROM: the movement's direction names these, it does not
   // just place them. Reverse the movement and the two swap seats.
@@ -2434,7 +2443,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // CLEAR_MARGIN outside the annulus the teeth sweep, at any point of the
   // fork's ±bank swing: the bevel dilates the outline along its outward normal
   // and a corner miters that by 1/cos(θ/2) (three.js clamps the divisor at
-  // 0.1 — MODELING.md rule 1), and the swing moves a point by ~bank·|p|.
+  // 0.1 — MODELING.md rule 1), and the swing carries a point round the pivot.
   // Replaces the old four-corner check on the head blocks, which could not see
   // the belly it shared a part with; the belly is what used to sweep through
   // the teeth (§16).
@@ -2477,7 +2486,17 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
       d1.normalize(); d2.normalize();
       const cosHalf = Math.max(Math.sqrt(Math.max((1 + d1.dot(d2)) / 2, 0)), 0.1);
       const miter = bevel / cosHalf;                       // how far the cut edge grows
-      const clr = b.distanceTo(W) - miter - R - bank * (b.length() + miter);
+      // §221 — the swing moves b on an ARC about the pivot, so its nearest
+      // approach to the wheel centre is exact: the arc angle nearest W's own
+      // bearing, clamped to the ±bank window. (It was |b−W| − bank·|b|, the
+      // swing's displacement counted as if it all pointed at the wheel — a
+      // bound that held while the bank was 2.6° and over-read a head corner
+      // by 0.067 at the lift-derived 5.9°.) The miter grows the edge along
+      // its normal wherever b is, so it stays a plain subtraction.
+      let dPhi = Math.atan2(W.y, W.x) - Math.atan2(b.y, b.x);
+      dPhi = Math.atan2(Math.sin(dPhi), Math.cos(dPhi));
+      const near = b.clone().rotateAround(new THREE.Vector2(), Math.max(-bank, Math.min(bank, dPhi)));
+      const clr = near.distanceTo(W) - miter - R;
       if (clr < worst) { worst = clr; worstAt = b; }
     }
     if (worst < CLEAR_MARGIN)
@@ -2513,6 +2532,9 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const guard = new THREE.Mesh(guardGeo, MATS.steel);
   guard.position.set(0, forkY + t * 0.5, -t * 0.7);
   g.add(guard);
+  // §221 — the guard pin and the notch the impulse pin works in, published
+  // for the same instruments (the arc-length identity's probe, TODO 105).
+  g.userData.safety = { guard, guardR: t * 0.18, notch: { halfW: notchHW, floorY: forkTop + t * 0.7, mouthY: forkY } };
 
   g.userData.entryPos = entryPos;
   g.userData.exitPos = exitPos;
@@ -2652,10 +2674,15 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
     curveSegments: 24,
   });
   srGeo.translate(0, 0, srZ - thickness * 0.17);
-  g.add(new THREE.Mesh(srGeo, MATS.steel));
+  const safetyRoller = new THREE.Mesh(srGeo, MATS.steel);
+  g.add(safetyRoller);
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
+  // §221 — the safety action's two balance-side members, published so an
+  // instrument can measure the guard pin against the roller's OWN outline
+  // (TODO 105) rather than re-deriving where they are.
+  g.userData.safety = { roller: safetyRoller, outline: srShape.getPoints(24).map((v) => [v.x, v.y]), pin, pinR: thickness * 0.22 };
   // TODO 25 tier one — the INERTIA-BEARING DIMENSIONS, published so the
   // oscillator arithmetic in main.js can weigh this wheel without restating
   // a single number the builder already knows (rule 1's single source). Units,
@@ -3617,6 +3644,26 @@ export function hairspringClampRatio(plan) {
   const el = spiralElastica(hairspringRest(plan));
   const a = el.solve(HAIRSPRING_RATIO_THETA), b = el.solve(-HAIRSPRING_RATIO_THETA);
   return { ratio: ((a.torque - b.torque) / (2 * HAIRSPRING_RATIO_THETA)) * el.L, converged: a.converged && b.converged };
+}
+
+// §221 — PHILLIPS'S CLAIM, read as an ORDER. The stud's reaction λ(θ) splits
+// into an odd part (reverses with the swing) and an even part. The theorem
+// says a terminal with its centroid on the axis cancels the FIRST-order term,
+// and an odd function carries only odd powers, so the odd part's order is 1
+// (not cancelled) or at least 3 (cancelled) — nothing in between. Reading it
+// between the frame step h and h/5 (log₅ of the fall) classifies with 2 as the
+// boundary, no tolerance chosen: measured, a flat spiral reads 1.00 and the
+// shipped overcoil 3.00. (§218's gate held the PEAK force at the performed
+// swing under a tenth of a flat spring's — a figure set at a 45° drawn swing
+// with no derivation; at the physical swing it is a report.)
+export function hairspringReactionOrder(plan) {
+  const el = spiralElastica(hairspringRest(plan));
+  const odd = (h) => {
+    const a = el.solve(h), b = el.solve(-h);
+    return { v: Math.hypot((a.lam[0] - b.lam[0]) / 2, (a.lam[1] - b.lam[1]) / 2), converged: a.converged && b.converged };
+  };
+  const h = HAIRSPRING_RATIO_THETA, o1 = odd(h), o2 = odd(h / 5);
+  return { order: Math.log(o1.v / o2.v) / Math.log(5), oddAtStep: o1.v, converged: o1.converged && o2.converged };
 }
 
 // §83 — ONE writer for the schematic's spiral line, shared by both morphing

@@ -305,8 +305,12 @@ it into prose either.
    elastica of one length of steel, measured on the published polylines;
    the section is fitted to the spring AS CLAMPED; and the overcoil is
    concentric — its centroid solve converged, the clamp ratio 1 to 1e-6,
-   the pivot force at the performed swing under a tenth of a flat
-   spring's. The pivot force itself is a REPORT, tier two's number),
+   and since §221 the stud's reaction carrying no FIRST-order term (its
+   odd part's order read off the solve, over 2 — an odd function has
+   order 1 or at least 3 — with the flat spiral beside it reading 1 as
+   the control). The pivot force at the performed and physical swings is
+   a REPORT: §218 gated it under a tenth of a flat spring's at a 45°
+   drawn swing, and at the real 200° it is ×0.102),
    and `equalisation` **0 failures** (TODO 32, closed whole by §104 — the
    going spring's torque law is DERIVED from its ribbon and the fusee cut
    against it: the set-up must land on an integer set-up-ratchet click,
