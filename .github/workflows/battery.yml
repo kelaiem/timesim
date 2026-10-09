@@ -1200,11 +1200,9 @@ jobs:
           path: .battery-in
           merge-multiple: true
 
-      # §263 — decided BEFORE the collect, because it decides an argument:
-      # `--digests` is asked for exactly when the run may seed, so a split pull
-      # request (whose workers read no key on a whole run) is collected as it
-      # always was. Both workers' platforms must be present, agree with each
-      # other, and agree with this runner's, or the run may not seed.
+      # §263 — the seeding rule, plus the collector's own condition: both
+      # workers' platforms must be present, agree with each other, and agree
+      # with this runner's, or the run may not seed.
       - name: May this run become a baseline? (§263)
         id: seed
         env:
@@ -1227,9 +1225,16 @@ jobs:
       # Both files named, never globbed: a glob that matched one would hand the
       # collector a smaller run, which its shard gate refuses — but refusing
       # by NAME says which worker's file is missing.
+      #
+      # §263 — the key is written whenever the workers read one, which is every
+      # event but a pull request (the leg's own condition). That is what one
+      # process does: it writes its digests on every run, and only the seeding
+      # steps decide whether they are kept. Keyed on the event rather than on
+      # `may`, so a dispatch on a branch exercises the write it would make on
+      # main.
       - name: Collect
         env:
-          MAY_SEED: ${{ steps.seed.outputs.may }}
+          EVENT: ${{ github.event_name }}
         run: |
           set -u
           mkdir -p .battery-out
@@ -1239,7 +1244,7 @@ jobs:
             base="--baseline .battery-in/baseline-report.json"
           fi
           key=""
-          [ "$MAY_SEED" = true ] && key="--digests .battery-out/digests.json"
+          [ "$EVENT" != pull_request ] && key="--digests .battery-out/digests.json"
           node tools/ci-battery.mjs \
             --collect .battery-in/worker-0.json .battery-in/worker-1.json \
             --report .battery-out/report.json \
