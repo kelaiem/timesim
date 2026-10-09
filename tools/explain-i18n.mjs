@@ -267,6 +267,7 @@ const MARKS = {
   id: { group: ['.'], dec: ',' },        // §249 — id-ID and the legacy 'in' alike: German's marks (Chromium 141)
   tr: { group: ['.'], dec: ',' },        // §249 — tr-TR and tr-CY alike: German's marks (Chromium 141)
   cy: { group: [','], dec: '.' },        // §249 — the BORROWED en-GB tag (Chromium carries no 'cy'): English's marks, Welsh's own standard
+  fil: { group: [','], dec: '.' },       // §249 — fil-PH, fil, tl and tgl alike: English's marks on latn (Chromium 141, three default locales)
   he: { group: [','], dec: '.' },        // §249 — he-IL is latn by default: English's marks (Chromium 141)
   fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
 };
