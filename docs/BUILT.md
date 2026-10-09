@@ -32400,3 +32400,116 @@ and the energy column's own `g` rather than restating either. `explain.html`'s
 free-sprung caption no longer says gravity is not modelled. It names the
 position as modelled, gives the spring-weight finding, and keeps "modelled, not
 simulated" and the escapement's share unmodelled, in every locale.
+
+## §221 — The balance swings its physical amplitude: the window and the bank derived from the lift, the swing level over the reserve
+
+**Shipped whole.** Filed out of §218's landing, which named the performed
+amplitude as the lever on the visible breathing and left it alone. The mesh
+performed a 45° readability swing, a sixth of a real one, and the smaller
+number reached further than its comment said: the fork's bank, the impulse
+window, the §36 registry, the `beat` axis and both pages all read it.
+
+**One amplitude.** `AMPLITUDE_VISUAL_DEG` is gone. The balance swings
+`AMPLITUDE_POSED_DEG`, which IS `AMPLITUDE_TARGET_DEG` (200°): the swing TODO
+207 designed the movement to keep up hanging, at the nominal friction corner.
+The entry named 270° — `AMPLITUDE_TRUE_DEG`, which TODO 192 step 4 had already
+split into the claim (126°) and the peak (455°) because the spring could not
+honestly sustain 270. The designed target is the one number of the three that
+describes a serviced watch running, so it is the one the mesh performs; the
+other two stay what loads are priced at.
+
+**The lift is cited; the window and the bank are derived from it.**
+
+- `LIFT_DEG = 50` (Reymondin et al., *The Theory of Horology*; Daniels,
+  *Watchmaking*): the balance's rotation from unlock to drop, a design fact of
+  the escapement.
+- `IMPULSE_WIDTH = (2/π)·asin(LIFT_DEG / 2A)` = **0.0798** of a beat, the time
+  a balance at A spends inside ±L/2, against the authored 0.16. The balance's
+  phase moved to meet the escapement's clock: its zero crossing sits half a
+  window after each beat's τ = 0, so every instrument that reads τ = 0 as lock
+  still does. (The first draft shifted `beatPhase` instead and
+  `probe-131-escapement-slide` failed nine rows, all of them that assumption.)
+  A boot assert holds the pin's travel across the window to the lift.
+- `FORK_BANK_DEG` is the impulse pin's own bearing from the fork pivot at the
+  lift's edge, `atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))` with D the
+  fork-to-staff distance: **4.03°** each way, an **8.05°** lever angle, inside
+  the 8–10° of real Swiss levers. The amplitude drops out, so the fork's swing
+  is a property of the escapement and not of how hard the watch is running.
+  Two earlier forms were each measured wrong. Before §221 the pin's arc was the
+  readability swing's, giving 2.57°. The first §221 draft kept the arc-length
+  identity `rollerR·Δθ = notchDepth·2·bank` with the cited lift (5.92°, an
+  11.85° lever) — and the new probe's notch rows found the pin slipping
+  **0.646** across the notch every window, exactly the mismatch of matching
+  arcs at the notch FLOOR (6.84 from the pivot) when the pin crosses the line
+  of centres at D − rollerR = 9.58. Now the pin stands on the notch's
+  centreline at both window edges to 1e-7.
+
+**Two checks whose bounds were readability-era, made exact.** Neither was
+widened. The pallet stone's width ceiling was `0.5·pitchArc`, the wheel-only
+arc of a beat with no fork swing in it; it is now the tip's whole-beat travel
+across the stone in the fork's frame, the physical bound (a face that reached
+it would leave no drop). The blank's wheel-sweep check bounded the swing by
+`bank·|p|`, as if the whole displacement pointed at the wheel; it now takes the
+nearest approach on the arc the point actually travels, clamped to ±bank, and
+the corner it flagged at 0.1125 measures 0.1792 against `CLEAR_MARGIN`.
+
+**The amplitude does not sag on a fusee.** `balanceTheta`'s
+`0.55 + 0.45·tension` is gone. §104 holds the going spring's level product to
+float noise across the reserve, so the balance receives the same impulse at
+hour 30 as at hour 0; the sag was a going-barrel story. A real fusee watch
+still loses a few degrees to its own losses, and no coefficient is invented for
+that — a slope needs a loss model, which is §246 tier two's driven balance.
+
+**What followed the swing.**
+
+- The §36 registry: `Balance` and `Hairspring` declare NO bounded travel. A
+  400° total arc passes a revolution, so both stay full revolves.
+- The hairspring's frames are meshed out to the swing on §218's step exactly
+  (`HAIRSPRING_RATIO_THETA`, 0.05 rad — the builder's clamp ratio reads the
+  frames at ±one step, so the step must be that angle, which a rounded count
+  missed by 0.27%): 141 frames, rounded out to 3.50 rad.
+- The `beat` axis's `n` is derived to hold the old 7.68 samples inside each
+  impulse window: `round(96·0.16 / IMPULSE_WIDTH)` = **193**, and the slice
+  rosters declare 194 poses.
+
+**§218's overcoil gate, restated on the owner's call.** It held the peak pivot
+force at the performed swing under a tenth of a flat spring's, a figure set at
+the 45° swing with no derivation. Measured at 200° it had a second defect: it
+divided the overcoil's peak over ±θ (at −200°) by the flat spring's force at +θ
+only, and neither spring is symmetric (the flat one reads 16% more at −200°).
+Peak to peak, the ratio is **×0.102**. The gate is now what Phillips's theorem
+actually claims: the stud's reaction loses its FIRST-order term. Its odd part
+can only have order 1 or at least 3, so the order read between the frame step
+and a fifth of it classifies with 2 as the boundary and no tolerance chosen:
+the shipped overcoil reads **3.000**, and the flat spiral beside it **1.000**
+(the control that the reading can fail). A 1.0-turn overcoil reads 1.0, a
+non-concentric case the tenth also missed. The ratio at 200° and at 455°
+(×0.125) is reported. CLAUDE.md's rule 4 says so.
+
+**The safety action, first exercised (TODO 105).** At ±45° the roller's
+crescent never left the guard pin. At ±200° its solid rim passes the pin twice
+a swing with the fork banked: guard pin → roller outline over one whole
+oscillation at 2000 samples is **min 0.2942** (balance at 170°), max 0.8066.
+Clear, and reported; TODO 105's point 1, that none of those clearances is
+derived, stands.
+
+**Filed, not fixed: TODO 228.** The notch rows also measured where the pin
+works: at the lift's edge its centre stands 0.156 outside the horn tips, so it
+enters 0.394 of a notch 2.759 deep. The fork's length stops its tip at the
+roller (`− 1.6`, one roller radius authored). A layout fix, P3; the bank reads
+D and follows it.
+
+**Instrument.** `tools/probe-221-amplitude.mjs` (acceptance): the swing off the
+mesh, level over the reserve and the arbor's run, the pin's travel equal to the
+lift, the pin on the notch centreline at all four window edges, the two
+derivations printed beside their formulas (rule 6 keeps boot silent, so the
+entry's "printed at boot" is printed here), and the TODO 105 clearance
+reported.
+
+**Pages.** The escapement entry (the window, the bank and its derivation, the
+ported `IMPULSE_WIDTH` and `BANK_DEG`), the free-sprung caption (the sag story
+replaced by the fusee's, with the pivot loads at 200°) and the overcoil plate,
+and the primer's beat ("a twelfth of each beat") and swing sentences ("drawn
+smaller than life" is now "and so does this one"), in all nineteen locales.
+
+**Battery.** BATTERY_LINE_PLACEHOLDER

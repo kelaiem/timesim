@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 228 | OPEN | Found by BUILT §221's notch probe. The impulse pin works at the fork notch's MOUTH: at the lift's edge its centre stands 0.156 outside the horn tips, so its 0.55 radius enters 0.394 of a notch 2.759 deep. A lever's jewel works deep in the notch at the line of centres; here the fork's length (`forkLeverLength = escToBalanceDist − palletStoneDist − 1.6`, the 1.6 authored) puts the notch floor 2.7 short of where the pin ever reaches. A layout fix — the fork's reach or the balance station — with the bank (now the pin's own bearing) following |
 | 224 | OPEN | Filed by TODO 219. Pose the wind: a recorded wind-start state, the ring recoiling onto the beak and held, the great wheel advancing on the blade to run-out at the stop, pick-up when the drive returns; hand-off rows for the hold, the pin on the blade and the pin on the stop; an axis that winds with the train held; the restoring drivers; Plate 3's spring and caption |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
 | 222 | OPEN | Found closing TODO 206. Follower B's lift is set from `selT` (`max(hB, ALARM_PINB_LIFT·(1 − selT))`) while the rocker's finger, which is supposed to press its tail, stands 0.91 off the arm at every pose of the arming transition. Its "spring" `alarmPinSpringB` is a ring riding on the arm it would press. Ground a spring on the tube and solve the lift from the finger's contact |
@@ -12717,6 +12718,13 @@ better than item 98's scope note claimed, and that note is corrected in place:
   Never touching is CORRECT for normal running — a safety action is a failsafe,
   not a working contact — and the ~0.51 of variation is the crescent passing.
 - The impulse pin does reach the fork body: **0.0000**, the notch contact.
+- **Re-measured at the physical swing (BUILT §221).** At ±45° the crescent
+  never left the guard pin; at ±200° the roller's solid rim passes it twice a
+  swing with the fork at its bank. `probe-221-amplitude.mjs` reads guard pin →
+  safety roller outline, over a whole oscillation at 2000 samples, **min 0.2942
+  (balance at 170°), max 0.8066** — clear in normal running, which is the
+  first time that sentence rests on a swing the movement actually makes. Point
+  1 below is untouched: 0.2942 is still what chosen numbers produce.
 
 **So what is wrong is not the shape. Three things:**
 
@@ -30179,3 +30187,41 @@ yet simulated.
    so winding cannot drag it backwards". That describes the unposed gap as a
    virtue: winding does let the ring fall back, onto the beak, and that is the
    recoil the spring's run was sized for.
+
+## 228. The impulse pin works at the fork notch's mouth, not in the notch
+
+Found by BUILT §221, whose acceptance asked for the impulse pin "measured
+inside the notch at both ends of the window". `probe-221-amplitude.mjs` reads
+it in the fork's own frame: at both edges of the impulse window the pin's
+centre is ON the notch's centreline (to 1e-7 — that is what §221's bank is
+derived for) and stands **0.156 OUTSIDE the horn tips** (fork-local y −9.751
+against the mouth's −9.595), so the pin's 0.55 radius enters only **0.394** of
+a notch **2.759** deep. At the line of centres it is at D − rollerR = 9.58,
+still 0.02 short of the mouth's line, with the notch floor at 6.84.
+
+**Why it matters.** In a lever escapement the impulse jewel works deep in the
+notch at the line of centres: the impulse is delivered across the notch's
+flanks, and the depth is what keeps the jewel from slipping off a horn when the
+contact is not exactly on the centreline. A pin that grazes the horn tips is a
+pin the next imprecision drops. It also made the old arc-length identity wrong
+by a factor of 1.4: it matched arcs at the FLOOR radius the pin never reaches,
+and the pin slipped 0.646 across the notch every window (§221 replaced the
+identity with the pin's own bearing, so the bank no longer depends on where
+the floor is — the geometry still does).
+
+**Where the number comes from.** `forkLeverLength = escToBalanceDist −
+palletStoneDist − 1.6` in `main.js`: "the lever runs from the pivot to just
+short of the balance roller's edge". The 1.6 is authored and is one roller
+radius (1.62) in disguise — it stops the fork's TIP at the roller, which is
+exactly what puts the pin at the mouth. `notchDepth = 0.8·L − 0.7·t` then sets
+the floor 2.76 further in, where nothing works.
+
+**Fix path (P3 — position space, the mechanism's dimensions held).** Derive
+the fork's reach from the pin: the notch floor should sit one pin radius plus a
+clearance beyond the pin's deepest point (D − rollerR at the line of centres),
+which lengthens the fork by about 2.2 or moves the balance station in by the
+same; the escapement group's bank re-derives itself (it reads D) and the
+stones are unaffected. Then the guard pin's seat (TODO 105 point 1) moves with
+the tip and its band is the natural place to derive it. Acceptance: the pin's
+body inside the notch by most of its depth at the window edges, read by
+`probe-221-amplitude.mjs`'s notch rows, which would then GATE depth.
