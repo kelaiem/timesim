@@ -11,7 +11,8 @@
 // TODO 192 step 4 the one literal is two, read off this solve: the CLAIM
 // (AMPLITUDE_CLAIM_DEG, its minimum rounded down — what the "to hold" rows
 // below price) and the PEAK the loads are priced at (AMPLITUDE_PEAK_DEG, its
-// maximum rounded up).
+// maximum rounded up — since TODO 216 the smaller of that and the KNOCK, the
+// swing at which the impulse pin strikes the banked fork's horn).
 //
 // Where the numbers come from. The live figures are read off a booted tree:
 // the equalisation record (k, set-up and full-wind angles, the fusee's radii),
@@ -400,7 +401,19 @@ if (!REC || !REC.corners) {
   if (!REC.amplitude) disagreements.push({ what: 'amplitude block', probe: 'present', record: 'absent' });
   else { same('sustained minimum (deg)', lo, REC.amplitude.min.deg); same('sustained maximum (deg)', hi, REC.amplitude.max.deg); }
   if (L.AMPLITUDE_CLAIM_DEG !== Math.floor(lo)) disagreements.push({ what: 'AMPLITUDE_CLAIM_DEG is not ⌊minimum⌋', probe: Math.floor(lo), record: L.AMPLITUDE_CLAIM_DEG });
-  if (L.AMPLITUDE_PEAK_DEG !== Math.ceil(hi)) disagreements.push({ what: 'AMPLITUDE_PEAK_DEG is not ⌈maximum⌉', probe: Math.ceil(hi), record: L.AMPLITUDE_PEAK_DEG });
+  // TODO 216 — the peak is the largest swing the balance can REACH: this
+  // solve's maximum, or the knock if the pin meets the horn first. The knock is
+  // cut geometry (the fork blank, the roller), so it is read off the record the
+  // way the lengths are; probe-216-knock is its second reader.
+  const knock = REC.knock && Number.isFinite(REC.knock.deg) ? REC.knock.deg : Infinity;
+  if (!Number.isFinite(knock)) disagreements.push({ what: 'knock record', probe: 'present', record: 'absent' });
+  const reach = Math.min(hi, knock);
+  if (L.AMPLITUDE_PEAK_DEG !== Math.ceil(reach)) disagreements.push({ what: 'AMPLITUDE_PEAK_DEG is not ⌈min(maximum, knock)⌉', probe: Math.ceil(reach), record: L.AMPLITUDE_PEAK_DEG });
+  const knocking = Object.entries(results).flatMap(([n, R]) => [['vertical', R.balance.ampVertDeg], ['flat', R.balance.ampFlatDeg]]
+    .filter(([, d]) => d >= knock).map(([pos, d]) => `${n} ${pos} ${d.toFixed(1)}°`));
+  if (Number.isFinite(knock)) console.log(`knock at ${knock.toFixed(2)}° (lift ${REC.knock.liftDeg.toFixed(2)}°): ${knocking.length ? `the energy would carry ${knocking.join(', ')} past it — the balance banks there` : 'no corner reaches it'}`);
+  if ([results.nominal.balance.ampVertDeg, results.nominal.balance.ampFlatDeg].some((d) => !(d < knock)))
+    disagreements.push({ what: 'the nominal corner knocks', probe: [results.nominal.balance.ampVertDeg, results.nominal.balance.ampFlatDeg], record: knock });
   // TODO 207 — the design target, at the nominal corner held vertical: met, and
   // by less than the slack one heavier rim step costs.
   const nv = results.nominal.balance.ampVertDeg;
@@ -445,7 +458,7 @@ if (!REC || !REC.corners) {
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 4 + 8} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way, and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 4 + 8} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way (the peak capped at the knock), and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);

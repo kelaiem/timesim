@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 226 | OPEN | Found closing TODO 216. The impulse pin's centre sits 9.575 from the fork pivot and the slot's mouth is at 9.595, so the pin only enters the slot's mouth. The bank is derived by matching arc lengths at `notchDepth` (6.83), so the pose law impulses over 21.7° of balance arc while the metal's lift is 30.95°. Seat the pin in the slot and derive the bank from the pin's real radius |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | OPEN | Filed by TODO 219. Pose the wind: a recorded wind-start state, the ring recoiling onto the beak and held, the great wheel advancing on the blade to run-out at the stop, pick-up when the drive returns; hand-off rows for the hold, the pin on the blade and the pin on the stop; an axis that winds with the train held; the restoring drivers; Plate 3's spring and caption |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -26,7 +27,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 219 | PART DONE | The spring is metal: a uniform-strength blade of the mainspring alloy in a great-wheel crossing, bearing on a pin hung from the ring, the arm's flank Harrison's stop. Floor 1.5886 N·mm from the NOMINAL corner (the adverse corner has no headroom: claim 126 vs 126.0028°); run = one ring pitch of recoil + the margin, so the ring is re-cut at 35 teeth; k 7.3103 N·mm/rad, preload 0.21731 rad, root 1788 / 880 MPa against the alloy's 1800. Held by `equalisation` row 16 and `probe-power-budget` (52 figures). The wind is not posed: TODO 224 |
 | 218 | CLOSED | The beak is the valley's offset: its stud-side flank parallel to the ramp at `SEAT_RELIEF`, its face flank RELIEVED 9.42° so the hold bears on the APEX, on the stud's line. A face-parallel flank would have taken the hold first at the face's far end, 0.927 up the face, and cammed the click out (μ ≥ 0.38 to hold, `MU_STEEL` 0.2). Wedge 20.40° → 56.73°; beak σ 2075.7 → 236.1 MPa at its kindest section, ×3.39 under yield, and `HOLD_STRESS_WAIVERS.beak` retired. Travel and blade bit-identical. The apex inside 0.271 u is TODO 221 |
 | 217 | CLOSED | The hold is priced: the maintaining spring is a series member of the drive, so the detent holds the going torque (3.2307 N·mm) at the first instant of a wind whatever its stiffness — 2554 mN on the face over a 3.3377 u arm. The cranked arm carries it at 686.5 MPa (Winkler bending at its worst section, 1.3211 u off the tip–stud chord, plus the whole load axial), ×1.165 under `SPRING_SIGMA_Y_PA`, so no section change; held as `equalisation` row 16, a §137 `rigidBentLink` row, and in `probe-power-budget`. The beak is over yield (TODO 218); the spring's stiffness is TODO 219 |
-| 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
+| 216 | CLOSED | The knock is read off the fork blank and the pin (`ESCAPEMENT_KNOCK`: lift 30.95°, knock 314.18°, where the pin meets the banked horn's tip) and `AMPLITUDE_PEAK_DEG` is capped at it (455 → 315). Only the favourable corner dial-flat knocks (reported); the nominal corner clears it in both positions (gated, row 17). Banking impact unpriced; TODO 226 filed |
 | 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
 | 214 | CLOSED | The lever's flank drives the yoke's tail pin (a 1:1 bell crank), and the yoke's station is solved from that contact (`ykFlankStationAt`), replacing the law in `crownPullT`. The lever's own angle is solved from its pin on collar In. A grounded blade holds the hop closed: 12.40 / 20.16 mN at the flank, inside 5–50. The handoff rows read 0.0243 / 0.0118 shut, and the tail post's stations are unmoved |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
@@ -29345,7 +29346,7 @@ re-solved height.
   Fingerprint 1896818507 → 1211654045.
 - **Not closed here, filed as [TODO 217].** The hold is still unpriced.
 
-## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
+## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered — CLOSED
 
 Found closing [TODO 207]. The design swing is now 200° vertical at the nominal
 corner. At the favourable corner, dial-flat, the same balance and spring sustain
@@ -29375,6 +29376,86 @@ a number that looked right.
 
 `AMPLITUDE_PEAK_DEG` stays at the solve's maximum meanwhile, which over-prices
 the hairspring and the hack brake rather than under-pricing them.
+
+### Resolution (2026-10-09)
+
+Fix path 1, taken: the knocking angle is now DERIVED from the cut metal, and
+the peak is capped at it.
+
+**The knock, off the fork blank.** `ESCAPEMENT_KNOCK` (main.js) works in the
+plane of the fork blank. Its inputs are the blank's published outline
+(`userData.blankOutline`), the roller's radius, the ruby pin's own radius (now
+published as `userData.pinR`), the fork-to-balance centre distance and the
+bank. The fork lies at the bank the last impulse left it on, and the solve
+carries the pin round until its surface meets the outline. The answers:
+
+| quantity | value |
+|---|---|
+| bank | ±2.569° |
+| lift (pin on the notch's centre line at ±15.473°) | **30.947°** |
+| knock (the pin meets the tip of the banked horn) | **314.18°** |
+| textbook 360° − λ/2 | 344.53° |
+
+The two knock figures differ because the horn tip and the pin's own radius
+stand off the centre line. That offset is exactly what the textbook figure
+leaves out.
+
+**The peak is the swing the balance can REACH.** Past the knock the balance
+banks on the horn, so it cannot swing further. `AMPLITUDE_PEAK_DEG` is now the
+smaller of the solve's maximum and the knock, rounded up: 455 → **315**.
+Everything priced at the peak moves with it:
+
+| priced at the peak | at 455° | at 315° |
+|---|---|---|
+| §218 ribbon stress | 185 MPa | 125 MPa (against 700) |
+| overcoil pivot load (×flat spring's) | ×0.169 | ×0.115 |
+| hack brake, at the pad | 1.32 mN | 0.92 mN |
+| hack brake, in the rod | 0.19 mN | 0.13 mN |
+
+**Who knocks.** Only the favourable corner held dial-flat, whose energy would
+carry the balance to 454.7°. That corner is a fresh movement, fully wound,
+lying flat, with every band at its best value at once, and it knocks. The
+record lists it (`going.energy.knock.knocks`) and the battery reports it.
+
+The serviced corner does not knock:
+
+| nominal corner | swing | margin under the knock |
+|---|---|---|
+| vertical | 200.4° | 114° |
+| dial-flat | 292.1° | 22° |
+
+That margin is gated. A watch that knocks as serviced is a fault.
+
+**Gated.** `equalisation` row 14 holds the peak to the reachable maximum. New
+row 17 holds three things:
+- the knock lies between half a turn and the lift-only bound;
+- the knocking list is exactly the corners at or past the knock;
+- the nominal corner clears the knock in both positions.
+
+Mutated, both rows fire. Restoring the 455° peak fails row 14 and warns at
+boot. Forcing the knock to 280° fails row 17 ("the serviced (nominal) corner
+knocks") and warns at boot.
+
+**Two readers.** `tools/probe-216-knock.mjs` measures the lift and the knock
+again, through the built groups' world transforms and the pin mesh. It
+confirms the pin stands in the blank's z band, and gates the record against
+its own reading: both agree to 1e-3°. `probe-power-budget` now holds the peak
+to ⌈min(maximum, knock)⌉ and the nominal corner under the knock.
+
+**What it did not do.**
+- Fix path 2 (narrowing the corner spread) is not needed for the serviced
+  watch.
+- The impact of banking on the horn is not priced. The peak prices the
+  hairspring's stress and the hack at the knock, not the pin and horn's
+  collision load.
+- Measuring the knock exposed a separate defect, filed as TODO 226: the pin
+  only enters the mouth of the fork's slot, and the bank is derived at the
+  notch floor. So the pose law's lift is not the metal's. When TODO 226
+  re-proportions the engagement, the knock re-solves with it, because it is
+  read off the same outline.
+
+The swing is still MODELLED by the energy column's solve, and the knock is a
+geometric bound on it. Neither is a simulated balance.
 
 ## 217. The maintaining detent's HOLD is unpriced: the maintaining spring has no torque, and the cranked click carries the back-drive as a bent strut — CLOSED
 
@@ -30270,3 +30351,47 @@ since it would flag 10 rows on arrival, and the rows must each be triaged first
 (§50's arc: report, triage, declare, gate).
 
 ---
+
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees)
+
+Found closing [TODO 216], whose knock solve reads this geometry.
+
+**The pin only enters the mouth.**
+
+| fork-local distance from the pivot | value |
+|---|---|
+| slot's mouth (the horn tips, `forkY = −L`) | 9.595 |
+| slot's closed end (`forkTop + 0.9·t`) | 6.596 |
+| pin centre at rest (`d − rollerR`, d = 11.195, rollerR = 1.62) | 9.575 |
+
+The pin's radius is 0.55, so only 0.57 of it enters the slot. A Swiss lever's
+pin runs well down the slot, between the horns.
+
+**The bank is derived at the wrong radius.** `FORK_BANK_DEG` (main.js) matches
+arc lengths: `rollerR·Δθ_pin = notchDepth·2·bank`. Here `notchDepth` is
+`0.8·L − 0.7·t` = 6.83, the floor of the notch. The pin, though, turns the
+fork at its own radius from the pivot, 9.575, not at the notch floor.
+
+| lift | value |
+|---|---|
+| what the pose law impulses over: `AMPLITUDE_VISUAL_DEG · sin(π·IMPULSE_WIDTH)` | 21.7° |
+| what the cut metal does (pin on the slot's centre line at the bank, `d·sin ψ = r·sin(θ + ψ)`, measured by `probe-216-knock.mjs`) | **30.95°** |
+
+So the fork reaches its bank while the pin is still 4.6° short of where the
+metal puts it. The notch's 0.29 of side play (`notchHW` 0.84 against the pin's
+0.55) is what absorbs the mismatch in the animation. Nothing sees it, because
+no instrument tracks the pin against the slot's walls through the impulse.
+
+**Fix path.**
+1. Seat the pin in the slot, by moving the fork's mouth or the roller. The
+   pin's centre should stand between the horns, about mid-slot.
+2. Derive the bank from the pin's real radius about the fork pivot, by the
+   exact relation `d·sin ψ = r·sin(θ + ψ)` rather than the arc-length
+   approximation.
+3. Hold the result with a contact instrument: through the impulse window,
+   the pin bears on the slot's driving wall within the hand-off tolerance.
+
+The knock (`ESCAPEMENT_KNOCK`) re-solves on its own, since it is read off the
+same outline, and `AMPLITUDE_PEAK_DEG` follows it through `equalisation`
+row 14.
+
