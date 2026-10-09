@@ -924,7 +924,14 @@ key is the default's) gets `inspection`, `clearances` and
 changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
-report. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
+parallel `battery points` job** (`--points-only`) and handed to the battery
+(`--points-tier-from`, fetched in the background by
+`tools/battery-points-fetch.sh`), which judges it in its one assembly. A file
+that does not prove itself (same tree, same point code, whole, every point
+full), a dead sibling or a fetcher that gave up runs the tier in-process and
+says why, so the worst case is the run as it was. Measured, it took the push
+from 89 to 63 min. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,
