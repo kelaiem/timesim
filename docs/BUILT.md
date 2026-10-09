@@ -32512,4 +32512,37 @@ replaced by the fusee's, with the pivot loads at 200°) and the overcoil plate,
 and the primer's beat ("a twelfth of each beat") and swing sentences ("drawn
 smaller than life" is now "and so does this one"), in all nineteen locales.
 
+### The entry as filed, reconciled
+
+Roadmap item 221 shipped whole in one landing, and the entry retires to a
+pointer there. What the filing said against what was built, where they differ:
+
+- **"`AMPLITUDE_TRUE_DEG` the one amplitude", 270°.** Superseded before the
+  landing: TODO 192 step 4 split that literal into the claim and the peak,
+  and TODO 207 designed the movement to 200°. The mesh performs the design
+  target; 270 survives nowhere.
+- **"`IMPULSE_WIDTH` = 0.059 at 50° and 270°."** The formula as filed; at the
+  shipped 200° it gives 0.0798.
+- **"`bank = rollerR·L / (2·notchDepth)` — the identity that already
+  exists."** Wrong, and found by the acceptance row the filing itself asked
+  for ("the pin measured inside the notch at both ends of the window"): the
+  pin works at the notch's mouth, not its floor, and the identity left it
+  slipping 0.646 across the notch. The bank is the pin's own bearing at the
+  lift's edge, and the mouth is TODO 228.
+- **"189 frames at the §218 step"** (at 270°). 141 at 200°, and the step had to
+  be HAIRSPRING_RATIO_THETA exactly, not merely close, for the builder's clamp
+  ratio to agree with the plan's.
+- **"~260 samples per oscillation"** for the beat axis (at 270°). 193 at 200°,
+  derived; the three expensive slices measured ×2.2–2.3 locally.
+- **"`IMPULSE_WIDTH` and `FORK_BANK_DEG` printed at boot."** Rule 6 keeps boot
+  silent, so the probe prints them beside their formulas; the boot asserts
+  hold the derivations instead.
+- **"The guard pin's clearance reported, green or filed under TODO 105."**
+  Green: 0.2942 minimum.
+- **"§218's overcoil decision can be taken at the amplitude where its number
+  is real."** It was: at 200° the tenth fails peak to peak (×0.102), and the
+  owner chose to restate the gate as Phillips's own claim rather than
+  re-proportion the terminal.
+- **"Eight locales each."** Nineteen by the time it landed.
+
 **Battery.** BATTERY_LINE_PLACEHOLDER

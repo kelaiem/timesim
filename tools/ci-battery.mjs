@@ -370,7 +370,7 @@ const COSTS = {
   'undeclaredClearance': 317,
   'sweptOverlap': 260,
 
-  'undeclaredClearance:beat': 11005,
+  'undeclaredClearance:beat': 13870,   // §221: ×1.26, the local before/after of the beat axis's derived n (96 → 193)
   'undeclaredClearance:crown': 2144,
   'undeclaredClearance:reserve': 10488,
   'undeclaredClearance:wind': 108850,
@@ -388,7 +388,7 @@ const COSTS = {
   // §127 — the per-axis walls of the one split check, in MILLISECONDS
   // (`--report`'s `sliceMs`). A slice with no row here is projected from its
   // pose count and labelled `projected` until a sliced run measures it.
-  'inspection:beat': 9840,
+  'inspection:beat': 22630,   // §221: ×2.30, likewise
   'inspection:crown': 4430,
   'inspection:reserve': 6390,
   'inspection:wind': 68040,
