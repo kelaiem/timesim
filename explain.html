@@ -905,20 +905,24 @@
           <span class="chip ride" id="fmChip">RUNNING · pawls locked, the sandwich creeps</span>
         </div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 330" width="780" height="330" role="img"
+          <svg viewBox="0 0 780 500" width="780" height="500" role="img"
                aria-label="Plan view of the maintaining power sandwich: the base ratchet flange keyed to the fusee, two pawls carried on the maintaining wheel, the wheel's rim teeth and the plate detent, with the drive path shown alongside">
             <g id="fmRingG"></g>
             <g id="fmFlangeG"></g>
             <g id="fmPawls"></g>
             <g id="fmDetent"></g>
-            <!-- the spring lies UNDER the ring and under the flange's footprint,
-                 so it is drawn last but dashed: hidden line, §71's convention. -->
-            <path id="fmSpring" fill="none" stroke="var(--ruby)" stroke-width="2"
+            <!-- the spring lies UNDER the ring, in a crossing of the great wheel,
+                 so it is drawn last but dashed: hidden line, §71's convention.
+                 TODO 224: the blade (the great wheel's), the pin (the ring's) and
+                 the crossing's flank the pin stops on. -->
+            <path id="fmFlank" fill="none" stroke="var(--steel)" stroke-width="2" stroke-dasharray="5 4" opacity="0.9"/>
+            <path id="fmSpring" fill="none" stroke="var(--ruby)" stroke-width="1.6"
                   stroke-dasharray="5 4" opacity="0.9"/>
+            <circle id="fmPin" r="8" fill="none" stroke="var(--ruby)" stroke-width="1.6" stroke-dasharray="3 3"/>
             <circle cx="250" cy="165" r="4" fill="var(--muted)"/>
             <path class="leader" d="M 92 108 L 214 56"/>
             <path class="leader" d="M 74 136 L 170 162"/>
-            <path class="leader" d="M 100 166 L 198 168"/>
+            <path class="leader" d="M 100 174 L 176 226"/>
             <text class="lbl" x="14" y="22">PLAN AT THE GREAT WHEEL · barrel axis</text>
             <text class="val val-brass" x="14" y="40">outer ring — maintaining wheel, rim teeth for the detent</text>
             <text class="lbl" x="14" y="112">PLATE DETENT</text>
@@ -935,17 +939,32 @@
             <text class="val" x="476" y="228">maintaining spring → great wheel</text>
             <text class="val val-brass" x="390" y="262">amber stores · green delivers · red holds</text>
             <text class="val" x="390" y="280">the sim's own POWER FLOW verdicts, same three colours</text>
+            <!-- TODO 224 — the spring in its crossing, posed from its pin. -->
+            <line x1="14" y1="336" x2="766" y2="336" stroke="var(--hairline-strong)" stroke-width="1"/>
+            <text class="lbl lbl-strong" x="14" y="356">THE SPRING IN ITS CROSSING · the great wheel's frame, laid along the stop flank</text>
+            <g id="fmInset"></g>
+            <text class="lbl" x="60" y="494">STOP FLANK · Harrison's stop</text>
+            <text class="lbl" x="300" y="430">BLADE · filed to uniform strength</text>
+            <text class="lbl" x="560" y="494">FOOT · fastened to the arm</text>
+            <text class="lbl" x="118" y="467">PIN · hung from the ring</text>
+            <text class="val" id="fmInsetRead" x="180" y="449"></text>
           </svg>
         </div>
         <figcaption>The saw profile is the builder's own — root at 0.8·R, tip over the last
         28% of the pitch (<code>sawRadiusAt</code>) — and both the pawl ride and the detent's
-        return are the shipped laws: the pawls are placed by the relative angle flange-vs-wheel
-        (exactly <code>windBack</code>, zero while running), and the detent is a §48 one-sided
-        follower — a spring seeking a seat it can never reach, with the ring's teeth standing
-        in the way — not a part welded to a profile. <b>The detent never sees reverse
-        motion</b>, which is what makes a fixed pawl legal here and nowhere on the arbor: the
-        maintaining wheel is a child of the train's rotation only, so winding cannot drag it
-        backwards. The rates are the movement's own: one pawl snap per flange tooth, 24 to the
+        return are the shipped laws: the pawls are placed by the relative angle flange-vs-ring
+        (<code>windBack</code> while the drive is on, zero while running), and the detent is a
+        §48 one-sided follower — a spring seeking a seat it can never reach, with the ring's
+        teeth standing in the way — not a part welded to a profile. <b>The detent sees one
+        reverse pass, and it is the one it is there for.</b> A wind takes the drive off, and
+        the blade drives the ring back against the pawls' drag until the face of the tooth
+        behind the beak meets its apex — up to 0.876 of a ring pitch from the crest, nothing
+        at all from the face — and there the ring stands. That recoil is what the spring's run
+        was sized for: one ring pitch and a margin. The great wheel runs on the blade, which
+        relaxes after its pin (the lower panel, the blade posed from the pin's own circle) from
+        3.2296 N·mm to 1.6334 at the end of the run, until the pin lands on the crossing's
+        flank — Harrison's stop — and the train stops; when the wind ends the pawls take the
+        ring forward to where it rode. The rates are the movement's own: one pawl snap per flange tooth, 24 to the
         fusee turn and 42 over a full 1.75-turn wind; one detent tick per rim tooth, which at
         one barrel revolution per 120/7 h (≈ 17.14 h, §124's first stage) is a tick every
         29.4 minutes.</figcaption>
@@ -1313,7 +1332,7 @@
             <text class="val" x="320" y="118">stud as far in as its post allows: r 3.1751</text>
             <text class="lbl lbl-strong" x="320" y="146">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="162">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.169 at 455°</text>
+            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.115 at 315°</text>
             <text class="val" x="320" y="206">flat spring 0.0029 mN → overcoil 0.0001 mN at the drawn swing</text>
           </svg>
         </div>
@@ -1326,7 +1345,7 @@
         condition, derived rather than quoted, and the elastica verifies it: the clamp
         stiffening the flat spring showed (1.0040) reads 1.000000 with the overcoil, and the
         pivot load at the drawn swing falls to a thirty-third of the flat spring's. At a real
-        455° a residual survives — the theorem is a small-amplitude statement — and it is
+        315° a residual survives — the theorem is a small-amplitude statement — and it is
         reported, not hidden. Phillips's condition alone does not say where the curve should
         END, and for a while this one ended outboard of the spring it rises over — the whole
         benefit of raising it, unclaimed. So the stud is a third condition now, not an output:
@@ -4257,18 +4276,144 @@
         ringG.appendChild(svgEl('path', { d: RING.map(function (q, i) { return (i ? 'L' : 'M') + px(q[0]).toFixed(1) + ' ' + py(q[1]).toFixed(1); }).join(' ') + ' Z', fill: 'none', stroke: 'var(--brass)', 'stroke-width': 1.4 }));
         ringG.appendChild(svgEl('circle', { cx: CX, cy: CY, r: RING_ROOT * SC, fill: 'var(--brass-fill)', opacity: 0.16, stroke: 'var(--brass)', 'stroke-width': 1 }));
         flangeG.appendChild(svgEl('path', { d: toothPath(FLANGE_R), fill: 'var(--steel-fill)', stroke: 'var(--steel)', 'stroke-width': 1.4 }));
-        // The maintaining SPRING, drawn as the arc the build USED to carry
-        // (a 1.5π torus under the ring). Since TODO 219 the build cuts it as
-        // a blade in a great-wheel crossing bearing on a pin hung from the
-        // ring; redrawing this plate with the blade and its stop is TODO 224's.
+        // TODO 224 — THE MAINTAINING SPRING, as the build cuts it and poses it
+        // through a wind: a blade in a great-wheel crossing (its foot fastened
+        // to the arm whose flank is Harrison's stop), bearing on a pin hung from
+        // the ring. The crossing's cut and the spring's solve are main.js's
+        // (MAINT_SPRING, read off the wheel's extrude), so their outputs are
+        // QUOTED here as the shipped build reads them, in the frame the build
+        // works in: x along the stop flank from the arbor, y into the crossing.
+        var SP = {
+          rPin: 0.3303178, rP: 3.3366076,               // the pin's section and its circle (MAINT_SPRING.geom)
+          phiWork: 0.3405553, phiStop: 0.1160799,       // its angle from the flank, working and on the stop
+          xc: 3.1449840, yB: 1.4497800,                 // the contact, and the blade's pin-side face as cut
+          xTip: 2.8146661, xRoot: 12.5657836, xFootOut: 14.6121854,
+          t0: 0.6527478, tMin: 0.3166667,               // the root's thickness, and STOCK_MIN_U at the tip
+          deflWork: 1.3894163,                        // the tip's working deflection (deflWork_u)
+          run: 0.2244754,                           // MAINT_SPRING.run: one ring pitch plus a margin
+          tauGo: 3.2296076, tauFloor: 1.5886226           // N·mm: the going torque and the nominal-corner floor
+        };
+        SP.L = SP.xRoot - SP.xc;
+        SP.yPin = SP.rP * Math.sin(SP.phiWork);
+        SP.bevel = SP.rP * Math.sin(SP.phiStop) - SP.rPin;          // on the stop, the pin touches the flank's face
+        SP.rIn = SP.rP - CM - SP.rPin;                               // the hub land, a margin inside the pin
+        SP.rOut = Math.hypot(SP.xFootOut, SP.yB + SP.t0) + CM;       // the rim, a margin outside the foot
+        // The blade POSED FROM ITS PIN, main.js's MAINT_BLADE law at a coarser
+        // grain: filed to uniform strength (t ∝ √x from the root, floored at the
+        // tip), a clamped cantilever whose deflection at X per unit load at a is
+        // ∫ (u − X)(u − a)/t(u)³ du (E and the width cancel); the cut is the
+        // working shape, and at a pin travel s the load sits wherever the face is
+        // nearest the pin and is whatever stands that point r_pin + RELIEF off it.
+        function tB(u) { return Math.max(SP.tMin, SP.t0 * Math.sqrt(Math.max(0, u - SP.xc) / SP.L)); }
+        // …tabulated as main.js tabulates it: three cumulative moments of the
+        // compliance from the root, so w(X; a) = I2 − (X + a)·I1 + X·a·I0 at
+        // m = max(X, a), and its X-derivative −I1 + a·I0.
+        var NK = 4096, KLO = Math.min(SP.xTip, SP.xc - 0.8), KH = (SP.xRoot - KLO) / NK;
+        var I0 = new Float64Array(NK + 1), I1 = new Float64Array(NK + 1), I2 = new Float64Array(NK + 1);
         (function () {
-          var sr = RING_ROOT * 0.6 * SC, d = [];
-          for (var i = 0; i <= 48; i++) {
-            var a = (i / 48) * Math.PI * 1.5;
-            d.push((i ? 'L' : 'M') + (CX + Math.cos(a) * sr).toFixed(1) + ' ' + (CY - Math.sin(a) * sr).toFixed(1));
+          for (var i = NK - 1; i >= 0; i--) {
+            var u0 = KLO + i * KH, um = u0 + KH / 2, u1 = u0 + KH, w = KH / 6;
+            var g0 = 1 / Math.pow(tB(u0), 3), gm = 1 / Math.pow(tB(um), 3), g1 = 1 / Math.pow(tB(u1), 3);
+            I0[i] = I0[i + 1] + w * (g0 + 4 * gm + g1);
+            I1[i] = I1[i + 1] + w * (u0 * g0 + 4 * um * gm + u1 * g1);
+            I2[i] = I2[i + 1] + w * (u0 * u0 * g0 + 4 * um * um * gm + u1 * u1 * g1);
           }
-          springEl.setAttribute('d', d.join(' '));
         })();
+        function Ik(T, m) { var f = Math.max(0, Math.min(NK, (m - KLO) / KH)), i = Math.min(NK - 1, Math.floor(f)); return T[i] + (T[i + 1] - T[i]) * (f - i); }
+        function kern(X, a) { var m = Math.max(X, a); if (!(SP.xRoot > m)) return 0; return Ik(I2, m) - (X + a) * Ik(I1, m) + X * a * Ik(I0, m); }
+        function dkern(X, a) { var m = Math.max(X, a); if (!(SP.xRoot > m)) return 0; return -Ik(I1, m) + a * Ik(I0, m); }
+        var FW = SP.deflWork / kern(SP.xc, SP.xc);
+        function pinAt(s) { return v2(SP.rP * Math.cos(SP.phiWork - s), SP.rP * Math.sin(SP.phiWork - s)); }
+        // The contact is the pair (load, station) at which the loaded face is
+        // tangent to the pin's circle grown by the relief: the second of
+        // p.x = a + d·y'/√(1 + y'²), p.y = y(a) − d/√(1 + y'²) fixes the load
+        // for a station, the first is then a residual in the station, and both
+        // are bisected (main.js's MAINT_BLADE.loadAt, the same two equations).
+        function loadAt(s) {
+          var p = pinAt(s), want = SP.rPin + RELIEF, i;
+          var face = function (F, a) {
+            var sl = F * dkern(a, a) - FW * dkern(a, SP.xc);
+            return { y: SP.yB + F * kern(a, a) - FW * kern(a, SP.xc), sl: sl, c: 1 / Math.sqrt(1 + sl * sl) };
+          };
+          var force = function (a) {
+            var lo = 0, hi = 4 * FW;
+            for (var j = 0; j < 50; j++) { var m = (lo + hi) / 2, f = face(m, a); if (f.y - want * f.c < p.y) lo = m; else hi = m; }
+            return (lo + hi) / 2;
+          };
+          var lo = p.x - 0.5, hi = p.x + 0.5;
+          for (i = 0; i < 40; i++) { var m = (lo + hi) / 2, Fm = force(m), fm = face(Fm, m); if (m + want * fm.sl * fm.c - p.x < 0) lo = m; else hi = m; }
+          var a = (lo + hi) / 2, F = force(a), f = face(F, a), nx = -f.sl * f.c, ny = f.c;
+          // the torque on the wheel, as a share of the going torque: the
+          // contact force along its normal times the normal's arm, against the
+          // cut's own (FW at x_c, square to the flank)
+          return { p: p, F: F, a: a, tau: SP.tauGo * (F / ny) * Math.abs(p.x * ny - p.y * nx) / (FW * SP.xc) };
+        }
+        // 32 frames over the run, built once: the blade outline (pin-side face,
+        // foot, far face) and its torque at each.
+        var NB = 32, BLADE_FRAMES = [];
+        (function () {
+          for (var k = 0; k <= NB; k++) {
+            var Ld = loadAt(SP.run * k / NB), dy = function (X) { return Ld.F * kern(X, Ld.a) - FW * kern(X, SP.xc); };
+            var pts = [v2(SP.xTip, SP.yB + dy(SP.xTip))], j;
+            for (j = 0; j <= 24; j++) { var X = SP.xc + SP.L * j / 24; pts.push(v2(X, SP.yB + dy(X))); }
+            pts.push(v2(SP.xRoot, SP.bevel), v2(SP.xFootOut, SP.bevel), v2(SP.xFootOut, SP.yB + SP.t0));
+            for (j = 24; j >= 0; j--) { var X2 = SP.xc + SP.L * j / 24; pts.push(v2(X2, SP.yB + tB(X2) + dy(X2))); }
+            pts.push(v2(SP.xTip, SP.yB + SP.tMin + dy(SP.xTip)));
+            BLADE_FRAMES.push({ pts: pts, tau: Ld.tau });
+          }
+        })();
+        // In the plan above, the crossing stands at THETA_F in the wheel's
+        // drawing frame, its y (into the crossing) toward DEcreasing angle: the
+        // plan's wheel turns clockwise on the page, so relative to it a held
+        // ring's pin swings the other way — toward the flank.
+        var THETA_F = -2.07;
+        function wl(q) { return v2(q.x * Math.cos(THETA_F) + q.y * Math.sin(THETA_F), q.x * Math.sin(THETA_F) - q.y * Math.cos(THETA_F)); }
+        var flankEl = el('fmFlank'), pinEl = el('fmPin');
+        (function () {
+          var a = wl(v2(SP.rIn, SP.bevel)), b = wl(v2(5.2, SP.bevel));
+          flankEl.setAttribute('d', 'M' + px(a.x).toFixed(1) + ' ' + py(a.y).toFixed(1) + ' L' + px(b.x).toFixed(1) + ' ' + py(b.y).toFixed(1));
+          var c = wl(pinAt(0));
+          pinEl.setAttribute('cx', px(c.x).toFixed(1)); pinEl.setAttribute('cy', py(c.y).toFixed(1)); pinEl.setAttribute('r', (SP.rPin * SC).toFixed(1));
+        })();
+        // the blade in the plan: its two faces out to just past the ring
+        function bladePlan(fr) {
+          var near = fr.pts.slice(0, 26).filter(function (q) { return q.x <= 5.2; });
+          var far = fr.pts.slice(29).filter(function (q) { return q.x <= 5.2; });
+          var line = function (arr) { return arr.map(function (q, i) { var w = wl(q); return (i ? 'L' : 'M') + px(w.x).toFixed(1) + ' ' + py(w.y).toFixed(1); }).join(' '); };
+          return line(near) + ' ' + line(far);
+        }
+        // The inset: the same frame, straightened — x along the flank, true scale.
+        var insetG = el('fmInset'), insetRead = el('fmInsetRead');
+        var IX = function (x) { return 60 + (x - 2.6) * 50; }, IY = function (y) { return 478 - y * 50; };
+        (function () {
+          insetG.appendChild(svgEl('line', { x1: IX(SP.rIn), y1: IY(SP.bevel), x2: IX(SP.rOut - 0.2), y2: IY(SP.bevel), stroke: 'var(--steel)', 'stroke-width': 2 }));
+          for (var x = SP.rIn + 0.1; x < SP.rOut - 0.2; x += 0.25)
+            insetG.appendChild(svgEl('line', { x1: IX(x), y1: IY(SP.bevel), x2: IX(x) - 5, y2: IY(SP.bevel) + 6, stroke: 'var(--steel)', 'stroke-width': 0.8, opacity: 0.7 }));
+          var arc = function (r, y1) {
+            var d = [];
+            for (var i = 0; i <= 16; i++) { var y = SP.bevel + (y1 - SP.bevel) * i / 16; d.push((i ? 'L' : 'M') + IX(Math.sqrt(r * r - y * y)).toFixed(1) + ' ' + IY(y).toFixed(1)); }
+            return d.join(' ');
+          };
+          insetG.appendChild(svgEl('path', { d: arc(SP.rIn, 2.2), fill: 'none', stroke: 'var(--steel)', 'stroke-width': 1.4 }));
+          insetG.appendChild(svgEl('path', { d: arc(SP.rOut, 2.2), fill: 'none', stroke: 'var(--steel)', 'stroke-width': 1.4 }));
+        })();
+        var insetBlade = svgEl('path', { fill: 'var(--ruby-fill)', stroke: 'var(--ruby)', 'stroke-width': 1.2, 'stroke-linejoin': 'round' });
+        var insetFree = svgEl('path', { fill: 'none', stroke: 'var(--ruby)', 'stroke-width': 0.8, 'stroke-dasharray': '3 3', opacity: 0.6,
+          d: BLADE_FRAMES[0].pts.slice(0, 26).map(function (q, i) { return (i ? 'L' : 'M') + IX(q.x).toFixed(1) + ' ' + IY(q.y).toFixed(1); }).join(' ') });
+        var insetPin = svgEl('circle', { r: (SP.rPin * 50).toFixed(1), fill: 'var(--steel-fill)', stroke: 'var(--steel)', 'stroke-width': 1.4 });
+        insetG.appendChild(insetFree); insetG.appendChild(insetBlade); insetG.appendChild(insetPin);
+        function poseSpring(travel, wheelRot, ringRot) {
+          var fr = BLADE_FRAMES[Math.min(NB, Math.floor(travel / SP.run * NB + 1e-9))];
+          springEl.setAttribute('d', bladePlan(fr));
+          var deg = function (a) { return 'rotate(' + (a * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')'; };
+          springEl.setAttribute('transform', deg(wheelRot));
+          flankEl.setAttribute('transform', deg(wheelRot));
+          pinEl.setAttribute('transform', deg(ringRot));
+          insetBlade.setAttribute('d', fr.pts.map(function (q, i) { return (i ? 'L' : 'M') + IX(q.x).toFixed(1) + ' ' + IY(q.y).toFixed(1); }).join(' ') + ' Z');
+          var p = pinAt(travel);
+          insetPin.setAttribute('cx', IX(p.x).toFixed(1)); insetPin.setAttribute('cy', IY(p.y).toFixed(1));
+          insetRead.textContent = tr('pin travel') + ' ' + travel.toFixed(4) + ' / ' + SP.run.toFixed(4) + ' rad · ' + tr('blade torque') + ' ' + fr.tau.toFixed(4) + ' N·mm';
+        }
         // Two pawls, π apart — 12 of 24 pitches, so they act in unison.
         var pawls = [0, 1].map(function (k) {
           var g = svgEl('g', { transform: 'rotate(' + (k * 180) + ' ' + CX + ' ' + CY + ')' });
@@ -4298,13 +4443,17 @@
           return r;
         });
 
-        function poseAt(windBack, wheelRot) {
+        function poseAt(windBack, wheelRot, ringRot, travel) {
           flangeG.setAttribute('transform', 'rotate(' + (windBack * 180 / Math.PI + wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
-          ringG.setAttribute('transform', 'rotate(' + (wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
-          pawlG.setAttribute('transform', 'rotate(' + (wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
-          springEl.setAttribute('transform', 'rotate(' + (wheelRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
-          // updateMaintaining, verbatim: the pawls ride the RELATIVE angle.
-          var u = (((PAWL_TIP_AZ - windBack) * TEETH) / (Math.PI * 2)) % 1;
+          // TODO 224: the ring and its pawls turn with the RING, which a wind
+          // holds on the beak while the great wheel runs on.
+          ringG.setAttribute('transform', 'rotate(' + (ringRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+          pawlG.setAttribute('transform', 'rotate(' + (ringRot * 180 / Math.PI).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+          poseSpring(travel, wheelRot, ringRot);
+          // updateMaintaining, verbatim: the pawls ride the RELATIVE angle —
+          // the flange against the ring (windBack, less the hold's offset).
+          var rel = windBack + wheelRot - ringRot;
+          var u = (((PAWL_TIP_AZ - rel) * TEETH) / (Math.PI * 2)) % 1;
           if (u < 0) u += 1;
           var lift = Math.max(sawR(u, FLANGE_R) - PAWL_TIP_R, 0) / (FLANGE_R * 0.8);
           var rot = PAWL_BASE + PAWL_SIGN * lift;
@@ -4313,10 +4462,10 @@
             ln.setAttribute('x1', px(PAWL_PIV)); ln.setAttribute('y1', py(0));
             ln.setAttribute('x2', px(tip.x)); ln.setAttribute('y2', py(tip.y));
           });
-          // ...and the detent rides the wheel's ABSOLUTE rotation, never a
-          // reverse pass. §48's one-sided law: seek the seat, stop at the cam —
-          // and the cam is the ring's CUT (TODO 215).
-          var a = DET_SIGN * liftAt(wheelRot - DET_AZ);
+          // ...and the detent rides the RING's absolute rotation. §48's
+          // one-sided law: seek the seat, stop at the cam — and the cam is the
+          // ring's CUT (TODO 215).
+          var a = DET_SIGN * liftAt(ringRot - DET_AZ);
           var place = function (p) {
             var q = turn(v2(p.x - pivR, p.y), a);
             return turn(v2(pivR + q.x, q.y), DET_AZ);
@@ -4326,8 +4475,30 @@
             return poly.map(function (p, i) { var w = place(p); return (i ? 'L' : 'M') + px(w.x).toFixed(1) + ' ' + py(w.y).toFixed(1); }).join(' ') + ' Z';
           }).join(' '));
           detPiv.setAttribute('cx', px(wp.x)); detPiv.setAttribute('cy', py(wp.y));
-          return { pawlIdx: Math.floor((PAWL_TIP_AZ - windBack) / ((Math.PI * 2) / TEETH)), detIdx: Math.floor((wheelRot - DET_AZ) / pitch) };
+          return { pawlIdx: Math.floor((PAWL_TIP_AZ - rel) / ((Math.PI * 2) / TEETH)), detIdx: Math.floor((ringRot - DET_AZ) / pitch) };
         }
+        // TODO 224 — THE HOLD, main.js's MAINT_HOLD law on this cut. The face
+        // the recoil stands on: swing the ring back from the seat until the
+        // face comes to RELIEF off the seated beak. The crest: where the beak
+        // tops the ramp. A wind backs the ring from wherever it stands on the
+        // ramp to the face; from the face itself (the beak descending it, the
+        // last eighth of every pitch) it does not move at all.
+        var HOLD_NET = (function () {
+          var g = function (d) { return clearAt(seatNet - RUN * d, 0) - RELIEF; };
+          if (g(0) <= 0) return seatNet;
+          var lo = 0, hi = null, i;
+          for (i = 1; i <= 200; i++) { var d = 0.5 * pitch * i / 200; if (g(d) <= 0) { hi = d; lo = 0.5 * pitch * (i - 1) / 200; break; } }
+          if (hi === null) return seatNet;
+          for (i = 0; i < 40; i++) { var m = (lo + hi) / 2; if (g(m) <= 0) hi = m; else lo = m; }
+          return seatNet - RUN * lo;
+        })();
+        var R_CREST = (function () {
+          var best = -1, at = 0;
+          for (var j = 0; j < 96; j++) { var t = liftAt(HOLD_NET + RUN * j * pitch / 96); if (t > best) { best = t; at = j; } }
+          return at * pitch / 96;
+        })();
+        function pmod(x, p) { return x - p * Math.floor(x / p); }
+        function recoilAt(ringRot) { var r = pmod(RUN * (ringRot - DET_AZ - HOLD_NET), pitch); return r <= R_CREST ? r : 0; }
 
         var STORE = 'var(--brass)', DELIVER = 'var(--green)', HOLD = 'var(--ruby)', DIM = 'var(--line)';
         function setFlow(winding) {
@@ -4337,25 +4508,51 @@
 
         var chip = el('fmChip'), readout = el('fmReadout'), btn = el('fmPlay'), modeBtn = el('fmMode');
         var winding = false, playing = false, t0 = null, raf = 0;
-        var wheelRot = 0, windBack = 0, snaps = 0, ticks = 0, lastIdx = null;
+        var wheelRot = 0, ringRot = 0, windBack = 0, snaps = 0, ticks = 0, lastIdx = null;
+        // 'run' — the ring rides the wheel; 'recoil' — the drive is off and the
+        // blade backs the ring onto the beak; 'hold' — the ring stands, the
+        // wheel runs on the blade; 'stop' — the pin is on the flank and the
+        // train has stopped; 'pickup' — the pawls take the ring forward.
+        var mode = 'run', holdAt = 0;
         // Display-time dilated, both rates from the movement: the wheel creeps
         // one barrel turn per 120/7 h (so one rim tooth = 29.4 min), and the
         // flange reverses one turn per banked winding turn, 24 snaps to the turn.
-        var CREEP = 0.13, REVERSE = 0.9;   // rad/s on screen
+        // The recoil and the pick-up are instants in the build (the pose
+        // stands the ring on the face at once); they are slowed here only so
+        // the eye can follow them.
+        var CREEP = 0.13, REVERSE = 0.9, SNAP = 1.2;   // rad/s on screen
         function paint() {
-          var idx = poseAt(windBack, wheelRot);
+          var travel = Math.max(0, Math.min(SP.run, wheelRot - ringRot));
+          var idx = poseAt(windBack, wheelRot, ringRot, travel);
           if (lastIdx) {
             if (idx.pawlIdx !== lastIdx.pawlIdx) snaps += Math.abs(idx.pawlIdx - lastIdx.pawlIdx);
-            if (idx.detIdx !== lastIdx.detIdx) ticks += Math.abs(idx.detIdx - lastIdx.detIdx);
+            if (idx.detIdx !== lastIdx.detIdx && mode === 'run') ticks += Math.abs(idx.detIdx - lastIdx.detIdx);
           }
           lastIdx = idx;
           setFlow(winding);
           chip.className = 'chip ' + (winding ? 'trip' : 'ride');
-          chip.textContent = winding
-            ? tr('WINDING · flange clicks back, the detent holds, the spring feeds the train')
-            : tr('RUNNING · pawls locked, the whole sandwich creeps');
+          chip.textContent = mode === 'stop'
+            ? tr('RUN-OUT · the pin is on Harrison\'s stop and the train has stopped')
+            : winding
+              ? tr('WINDING · flange clicks back, the detent holds, the spring feeds the train')
+              : tr('RUNNING · pawls locked, the whole sandwich creeps');
           readout.textContent = tr('pawl snaps') + ' ' + snaps + ' / 42 ' + tr('per wind') +
             ' · ' + tr('detent ticks') + ' ' + ticks + ' × 29.4 min';
+        }
+        function step(dt2) {
+          if (mode === 'run') { wheelRot += CREEP * dt2; ringRot = wheelRot; }
+          else if (mode === 'recoil') {
+            ringRot = Math.max(holdAt, ringRot - SNAP * dt2);
+            wheelRot = Math.min(ringRot + SP.run, wheelRot + CREEP * dt2);
+            if (ringRot <= holdAt) mode = 'hold';
+          } else if (mode === 'hold') {
+            wheelRot = Math.min(ringRot + SP.run, wheelRot + CREEP * dt2);   // the train runs on the blade
+            if (wheelRot >= ringRot + SP.run) mode = 'stop';                 // …to Harrison's stop, and stops
+          } else if (mode === 'pickup') {
+            ringRot = Math.min(wheelRot, ringRot + SNAP * dt2);
+            if (ringRot >= wheelRot) { ringRot = wheelRot; mode = 'run'; }
+          }
+          if (winding) windBack -= REVERSE * dt2;        // the fusee goes backward under the pawls
         }
         function frame(now) {
           if (!playing) return;
@@ -4363,8 +4560,7 @@
           if (t0 === null) t0 = now;
           var dt2 = Math.min((now - t0) / 1000, 0.1);
           t0 = now;
-          wheelRot += CREEP * dt2;                       // the train never stops
-          if (winding) windBack -= REVERSE * dt2;        // the fusee goes backward under the pawls
+          step(dt2);
           paint();
           raf = requestAnimationFrame(frame);
         }
@@ -4376,6 +4572,9 @@
         modeBtn.addEventListener('click', function () {
           winding = !winding;
           modeBtn.textContent = winding ? tr('stop winding') : tr('start winding');
+          if (winding) { holdAt = ringRot - recoilAt(ringRot); mode = 'recoil'; }
+          else mode = 'pickup';
+          if (!playing) { if (winding) { ringRot = holdAt; mode = 'hold'; } else { ringRot = wheelRot; mode = 'run'; } }
           paint();
         });
         btn.addEventListener('click', function () { setPlaying(!playing); });

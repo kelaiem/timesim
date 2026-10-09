@@ -170,6 +170,15 @@ const MUTANTS = [
     find: '  const SENSE_REL = +1;\n  const s = SENSE_REL * MOVEMENT_SENSE;',
     to:   '  const SENSE_REL = -1;\n  const s = SENSE_REL * MOVEMENT_SENSE;',
     note: 'the blade drives the great wheel backward and its stop flank stands where the relaxing pin never goes — every collision gate still green' },
+  // TODO 224 — the HOLD's recoil: a wind takes the drive off and the blade's
+  // reaction backs the ring onto the detent's beak, against its run. Flipped,
+  // nothing at the build pose moves (the hold is posed only through a wind), so
+  // the guard is all that can see it: the cut says the "recoil" now climbs the
+  // ramp it was descending, and the blade says nothing pushes the ring that way.
+  { kind: 'subject', name: 'the maintaining ring\'s recoil onto its beak', file: 'src/main.js',
+    find: '  const REC = -MAINT_RING_RUN;',
+    to:   '  const REC = MAINT_RING_RUN;',
+    note: 'through a wind the ring would back up the ramp it climbs and stand on the wrong flank — the hold posed the way nothing drives it' },
   { kind: 'subject', name: 'the chain\'s wrap hand', file: 'src/main.js',
     find: '    const ang = thetaT - MOVEMENT_SENSE * (wraps - s) * Math.PI * 2;',
     to:   '    const ang = thetaT + MOVEMENT_SENSE * (wraps - s) * Math.PI * 2;',
