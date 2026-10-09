@@ -353,6 +353,15 @@ const HONESTY = {
   // the letter after the stem. Simulated is efelych-, and after the feminine
   // ei it takes an h: «wedi'i hefelychu».
   cy:        { m: /\b[mf]odel(?:u|w|i|edig)/i, s: /\bh?efelych/i },
+  // §249 — the Spanish-derived participle modelado (and its linker form
+  // modeladong) and the native verb forms (iminodelo, nagmomodelo, i-model),
+  // never the bare noun «modelo»: the credit line's "AI model" is «ang AI model
+  // ng Anthropic», and «modelo»/«modelong» is what every plain "a model" uses.
+  // Simulated is simulado / simulasyon — NOT the stem «simula», which is the
+  // everyday word for "begin" (nagsimula, sinimulan), so a bare-stem matcher
+  // would call every "starts" a simulation. The English leftovers «simulated»
+  // and «simulation» do not match either: an untranslated word cannot pass.
+  fil:       { m: /modelad|\b(?:imodelo|imomodelo|iminodelo|iminomodelo|minodelo|minomodelo|nagmodelo|nagmomodelo|magmodelo|magmomodelo|pagmodelo|pagmomodelo)|\b(?:i|ini|nag|nagmo|mag|magmo|pag|pagmo)-model/i, s: /imulasi?yon|simulad/i },
   // §249 — the -سازی compound, never the bare noun: the credit line's "AI
   // model" is مدل هوش مصنوعی. The joint is a ZWNJ, a space or nothing, and the
   // page uses all three spellings somewhere, so the matcher takes all three.
