@@ -33700,7 +33700,7 @@ is REPORTED with a nominal volume where that means anything (0.42 g over 17
 nearly closed meshes, 1% of the watch; nine sheets with no claim). The chain is
 skipped by name — it is tessellated after this block, the fingerprint's own
 exclusion — and the probe measures what that leaves out (0.019 g). The result:
-**40.36 g** (steel 21.3, nickel silver 12.3, corundum 5.4, brass 1.1), the
+**40.39 g** (steel 21.3, nickel silver 12.3, corundum 5.5, brass 1.1), the
 centre 0.8 u off the axis, I_zz 1.03e-5 kg·m². The tally is a function
 (`__clock.casePathTally()`) so the probe can run the same arithmetic at the
 posed movement against its own independent tally from a shifted origin — they
