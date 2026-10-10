@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -245,7 +245,7 @@ export const MECH_GRAPH = {
     // spring stud all stand on the BASE plate's mounting rim (§186's) there.
     // The corner that lifts the hammer from out there stays on the plate.
     ['Alarm gong', 'plate'],                 // §198: the gong's block stands on the base plate's rim
-    ['Alarm hammer', 'plate'],               // §198: the hammer's post and its spring stud stand on the base plate's rim
+    ['Alarm hammer', 'plate'],               // §198: the hammer's post and (§268) its spiral's stud stand on the base plate's rim
     ['Alarm lifting lever', 'Three-quarter plate'], // §198: the lever's post plants where §24's hammer post did
     // Alarm striking works (§25 A, re-grounded by §112's tier-split): the
     // power tiers live UNDER the three-quarter plate now, their studs and
@@ -811,7 +811,7 @@ const EXPECTED_PAIRS = [
   ['Alarm crown', 'Case'],                 // §202: the stem's tube liner in the case's alarm tube — likewise
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
   ['Alarm gong', 'plate'],                // §198: the gong's block planted in the base plate's rim
-  ['Alarm hammer', 'plate'],              // §198: the hammer's post and spring stud planted in the base plate's rim
+  ['Alarm hammer', 'plate'],              // §198: the hammer's post and (§268) its spiral's stud planted in the base plate's rim
   ['Alarm lifting lever', 'Three-quarter plate'], // §198: the lever's post planted in the back plate top
   ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
   // Alarm striking works (§25 A) — the declared contacts of the power chain:
@@ -3439,7 +3439,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm setting idler', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: 'idler wheel on its stud' },
   { unit: 'Alarm hammer', a: 'alarmHammerArm', b: 'alarmHammerPost', why: 'hammer arm riveted to the arbor boss' },
   { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerPost', why: 'hammer tail on the same boss' },
-  { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
+  // §268 — the torsion spiral's three joints (TODO 128): the collet is the
+  // hammer's boss, a PIVOT_BORE_CLEAR running fit over the fixed post; the
+  // spiral's inner end is clamped in it and its outer end against the rim's
+  // stud, each sunk ALARM_SEAT_SINK (the seated-contact convention);
+  // ALARM_HANDOFFS and STRIKE_HANDOFFS measure both ends seated at every
+  // parity and every strike phase.
+  { unit: 'Alarm hammer', a: 'alarmHammerCollet', b: 'alarmHammerPost', why: '§268: the hammer\'s collet RUNNING on the fixed post, bored PIVOT_BORE_CLEAR over it — the boss the arm and tail were always riveted to, metal now' },
+  { unit: 'Alarm hammer', a: 'alarmHammerCollet', b: 'alarmHammerSpiral', why: '§268: the spiral\'s INNER end clamped in the hammer\'s collet — sunk ALARM_SEAT_SINK into its face; ALARM_HANDOFFS measures it seated at every parity, STRIKE_HANDOFFS at every strike phase' },
+  { unit: 'Alarm hammer', a: 'alarmHammerStud', b: 'alarmHammerSpiral', why: '§268: the spiral\'s OUTER end clamped against the rim\'s stud, sunk ALARM_SEAT_SINK — the joint the hammer\'s return passes through; measured seated at every parity and strike phase' },
   // §198 — the lifting lever: both bars root at the pivot on the post §24's
   // hammer stood on, the same rivet idiom as the hammer's own arm and tail.
   { unit: 'Alarm lifting lever', a: 'alarmLiftNose', b: 'alarmLiftPost', why: '§198: the nose arm riveted to the lever\'s arbor boss' },
@@ -3632,7 +3640,6 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'alarmSilPivot', why: '§121: the rocker bar on its pivot (kiss — the running fit)' },
   { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'alarmSilBlade', why: '§121: the blade rooted in the rocker bar' },
   // Alarm hammer — §48's return:
-  { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerSpring', why: '§121: the return spring pressing the tail (0.5 of the spring\'s tip 0.05 into the tail\'s face band) — §48\'s sprung row; the spring law is TODO 14\'s open note' },
   // Alarm barrel — TODO 1's morphing ribbon, the tier\'s singleton-frame rule at work:
   { unit: 'Alarm barrel', a: 'ExtrudeGeometry#1', b: 'mainspringRibbon', why: '§121: the wound coil beside the drum wall — its outer turn stands the designed gap 0.5·wallModule − ribbonR inside the cavity (TODO 176: 0.0536 as cut against 0.0549 designed, once TODO 175 cut the cavity true; it was recorded as BEARING while the bevel shrank the cavity into the coil); the ribbon is a MORPH, always its own frame, which is exactly how this pair reached the MM tier' },
   { unit: 'Alarm barrel', a: 'mainspringHook', b: 'mainspringRibbon', why: '§121: the hook formed on the ribbon\'s outer end — the drum\'s mirror row (mainspringHook ⇄ ExtrudeGeometry#0 above) made the same argument' },
@@ -4724,7 +4731,7 @@ export const PLATE_SEATS = [
   { unit: "Alarm release lifter", mesh: "alarmLifterGuidePost", kind: "planted", why: "the guide post, planted in the plate" },
   { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
-  { unit: "Alarm hammer", mesh: "alarmHammerSpringStud", kind: "planted", why: "the spring's stud, planted in the rim (GONG_RIM_PLANT)" },
+  { unit: "Alarm hammer", mesh: "alarmHammerStud", kind: "planted", why: "§268: the hammer spiral's stud, planted in the rim (GONG_RIM_PLANT) beside the post — a short pin up to the spiral band's top" },
   { unit: "Alarm striking wheel", mesh: "CylinderGeometry#0", kind: "pivot", why: "the arbor's lower pivot" },
   { unit: "Alarm barrel", mesh: "LatheGeometry#0", kind: "planted", why: "the barrel arbor's bored boss, on the plate (§99)" },
   { unit: "Alarm barrel", mesh: "alarmBarrelArbor", kind: "pivot", why: "the barrel arbor, running in that boss (§99)" },
@@ -5249,7 +5256,7 @@ export function sawRideDepth(A, B) {
 // (geometry.js RADIAL_SEGS: silhouette sagitta ≈ 0.03 at the largest radii).
 // A truthfully modelled contact can miss exact touch by tri-tri slack of
 // that order, and no more.
-const HANDOFF_TRACK_TOL = 0.03;
+export const HANDOFF_TRACK_TOL = 0.03;   // exported since §268 for the probes that measure a seat by the rows' own tolerance
 
 const PENETRATION_BUDGETS = [
   {
@@ -6291,6 +6298,21 @@ const ALARM_HANDOFFS = [
     unitA: 'Alarm disc', meshA: 'alarmFollowerRiser',
     unitB: 'Alarm disc', meshB: 'alarmFollowerSpiral',
   },
+  // §268 — the hammer's torsion spiral at both of its ends, at every parity
+  // (the alarm table parks the striker, so this is the spring at its free
+  // frame: inner end in the hammer's collet, outer end against the rim's stud).
+  // STRIKE_HANDOFFS carries the same two rows through the lift, the fall and
+  // the rebound — the frames the morph wears under load.
+  {
+    label: 'hammer collet ⇄ hammer spiral (inner end)',
+    unitA: 'Alarm hammer', meshA: 'alarmHammerCollet',
+    unitB: 'Alarm hammer', meshB: 'alarmHammerSpiral',
+  },
+  {
+    label: 'rim stud ⇄ hammer spiral (outer end)',
+    unitA: 'Alarm hammer', meshA: 'alarmHammerStud',
+    unitB: 'Alarm hammer', meshB: 'alarmHammerSpiral',
+  },
 ];
 
 // §66 part two — the schematic tier's contact dots light from THESE rows,
@@ -6423,10 +6445,14 @@ export const STEM_CLUTCH_HANDOFFS = [
 //   lifting  — mid-rise (u = 0.69): the nose is ON the generated flank by
 //              construction, and the tip is on the tail because the cam is
 //              pushing it there;
-//   falling  — mid-fall (u = 0.06): the flank has dropped away faster than
-//              the hammer follows (§25's whole design), so the nose hangs
-//              FREE over the base circle while the blade holds the tail on
-//              the tip — the corner is closed by the spring, not the cam;
+//   falling  — mid-fall (u = 0.0018: §268's fall is √(k/I), 1.5 ms of a
+//              0.42 s cycle, so its middle is 0.75 ms in — it was 0.06 while
+//              §25 chose a third of the window). The flank has dropped away
+//              and the nose has drifted past the lobe tip on its own arc
+//              (measured: 3.8× faster than the ramp falls under it, at any
+//              fall speed), so the nose hangs FREE over the base circle while
+//              the spiral holds the tail on the tip — the corner is closed by
+//              the spring, not the cam;
 //   rebound  — the check (u = 0.30): the nose is clear of the base circle
 //              by the cut-away below the strike (ALARM_CAM_BASE_R's
 //              CLEAR_MARGIN), the tip still on the tail.
@@ -6435,7 +6461,7 @@ export const STEM_CLUTCH_HANDOFFS = [
 // members through this contact) turned into a measurement.
 export const STRIKE_HANDOFF_POSES = [
   ['lifting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 0.69 }],
-  ['falling', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 0.06 }],
+  ['falling', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 0.0018 }],
   ['rebound', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 0.30 }],
 ];
 export const STRIKE_HANDOFFS = [
@@ -6449,6 +6475,23 @@ export const STRIKE_HANDOFFS = [
     label: 'lifting tip ⇄ hammer tail',
     unitA: 'Alarm lifting lever', meshA: 'alarmLiftTip',
     unitB: 'Alarm hammer', meshB: 'alarmTail',
+    expect: { lifting: 'contact', falling: 'contact', rebound: 'contact' },
+  },
+  // §268 — the spring that closes that corner, measured where it works: the
+  // spiral's two clamped ends seated in their metal at every strike phase,
+  // which is the measurement that the frame the morph wears under the lift,
+  // through the fall and in the rebound actually ends in the collet and on
+  // the stud. (The blade these replace was never on either: TODO 128.)
+  {
+    label: 'hammer collet ⇄ hammer spiral (inner end)',
+    unitA: 'Alarm hammer', meshA: 'alarmHammerCollet',
+    unitB: 'Alarm hammer', meshB: 'alarmHammerSpiral',
+    expect: { lifting: 'contact', falling: 'contact', rebound: 'contact' },
+  },
+  {
+    label: 'rim stud ⇄ hammer spiral (outer end)',
+    unitA: 'Alarm hammer', meshA: 'alarmHammerStud',
+    unitB: 'Alarm hammer', meshB: 'alarmHammerSpiral',
     expect: { lifting: 'contact', falling: 'contact', rebound: 'contact' },
   },
 ];
@@ -6470,7 +6513,12 @@ export const STRIKE_HANDOFFS = [
 // with its pitch) and the phases were re-read the same way: `riding` (τ 0.13)
 // still mid-climb, lift 0.221 of a 0.2957 travel; `seated` τ 2559.2, lift 0 to
 // 1e-6 (an instant: 0.0005 a quarter-second either side); `crest` τ 2340.0, lift
-// 0.29567.
+// 0.29567. TODO 221 cut the apex to a radius and moved the stud onto the face's
+// normal through its centre, which moved the crest a fraction of a pitch and
+// the cock's snap with it; re-read the same way (the ring's net angle crossing
+// the law's holdNet and crestNet): `riding` τ 0.13 mid-climb, lift 0.2587 of a
+// 0.2958 travel; `seated` τ 2559.2 unchanged (lift 6e-6); `crest` τ 2067.3
+// (was 2340.0), lift 0.29583.
 //
 // TODO 224 — and two poses of a WIND, the drive off at τ 0.13 (`riding`'s
 // instant, mid-ramp, so the recoil is a real one — 0.0985 rad): `holding` with
@@ -6482,7 +6530,7 @@ export const STRIKE_HANDOFFS = [
 export const MAINT_DETENT_HANDOFF_POSES = [
   ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
   ['seated', { tau: 2559.2, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
-  ['crest', { tau: 2340.0, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['crest', { tau: 2067.3, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
   ['holding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 }],
   ['runout', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 1 }],
 ];
@@ -6508,7 +6556,7 @@ export const MAINT_DETENT_HANDOFFS = [
   // sawRideDepth lesson: a pair meant to mesh is measured along the motion it
   // makes): the arc, at the tip circle, through which the ring could still
   // RECOIL before it meets the beak. Running on the ramp that is the recoil a
-  // wind would take (riding 0.0985 rad, crest ~0.157) — free; holding and at
+  // wind would take (riding 0.0985 rad, crest ~0.129 since TODO 221) — free; holding and at
   // run-out it is the relief — contact. `seated` is the one running instant at
   // which the face IS at the beak (the seat is where the face swung back meets
   // it: MAINT_HOLD's holdNet, 0 rad from the seat), so it reads contact too,
@@ -8471,8 +8519,9 @@ export const STOCK_KIND_BY_MESH = {
   // pivot floor and stay inside the debt below.
   maintSpring: 'spring',
   maintDetentSpring: 'spring',     // TODO 210 — the maintaining detent's blade, SPRING_FLAT_U stock
-  alarmHammerSpring: 'spring',     // §48/TODO 14 — flat blade at SPRING_FLAT_U
-  alarmHammerSpringStud: 'pivot',  // ...and the grounded stud it hangs from
+  alarmHammerSpiral: 'spring',     // §268 — the hammer's torsion spiral, a solved 0.100 mm strip (TODO 128 closed)
+  alarmHammerCollet: 'pivot',      // §268 — the hammer's boss: a sleeve RUNNING on the post, bored the pivot fit with a PIVOT_MIN_U wall — pivot-class stock by construction, the follower's collet's section
+  alarmHammerStud: 'pivot',        // ...and the rim stud its outer end bears on, sized from the spring's couple
   alarmPinSpringB: 'spring',
   alarmReaderPin: 'pivot',        // TODO 117: the orbiting reader's pin — ALARM_PIN_R exactly as the feeler's, so it is the same kind of member; ⌀ 0.1061 mm against the 0.07 pivot floor
   alarmSeatBlade: 'spring',       // TODO 144: the seat's pad blade — SPRING_FLAT_U stock, two widths wide, the feeler blade's own section
@@ -10227,7 +10276,11 @@ export function checkOscillator(clock) {
 //     bending plus the whole load axial, the beak's wedge at its kindest
 //     section. Re-derived from the row's own geometry and held under
 //     SPRING_SIGMA_Y_PA, a member over it waived by name in HOLD_STRESS_WAIVERS.
-//     Since TODO 219 it holds the SPRING too: the floor re-derived from the
+//     Since TODO 221 the beak's apex is an ARC: its line contact's Hertz p0 is
+//     re-derived and held at or under first yield of the click steel's low end
+//     (no waiver), ρ is the larger of the Hertz and beam minima and meets the
+//     one that binds, and the wedge's sections from where the arc begins join
+//     the beak member's stress. Since TODO 219 it holds the SPRING too: the floor re-derived from the
 //     record's nominal corner (the torque at the great wheel that sustains the
 //     claim), the run one ring pitch of recoil plus the margin and the ring's
 //     tooth count the fewest whose pitch fits, k = (τ_going − τ_floor)/run, the
@@ -10448,9 +10501,42 @@ export function checkEqualisation(clock) {
       if (!(rel(a.sigma_Pa, armSigma) <= 1e-12))
         failures.push({ what: 'hold identity: arm stress', record: a.sigma_Pa, fromLoad: armSigma });
       const b = ho.beak, bw = b.width_u * U, bt = b.t_u * U;
-      const beakSigma = F / (bw * bt) + 6 * F * b.offset_u * U / (bt * bw * bw);
-      if (!(rel(b.sigma_Pa, beakSigma) <= 1e-12))
-        failures.push({ what: 'hold identity: beak stress', record: b.sigma_Pa, fromLoad: beakSigma });
+      const secSigma = (q) => F / (q.width_u * U * bt) + 6 * F * q.offset_u * U / (bt * (q.width_u * U) ** 2);
+      const beakRootSigma = secSigma(b);
+      if (!(rel(b.sigma_Pa, beakRootSigma) <= 1e-12))
+        failures.push({ what: 'hold identity: beak stress', record: b.sigma_Pa, fromLoad: beakRootSigma });
+      // TODO 221 — the beak's apex is an ARC. Its line contact is a Hertz
+      // cylinder on the face, one click-thickness long: p0 re-derived from the
+      // load and held at or under first yield of the click steel's LOW end (the
+      // band's, by FRICTION's rule — no waiver: an arc over it is re-cut, not
+      // excused). ρ is the larger of the Hertz radius and the beam minimum, so
+      // the one that binds is met: p0 AT the allowable when Hertz binds, else
+      // the worst section at SPRING_SIGMA_Y_PA. The wedge's sections where the
+      // arc begins and the worst past it join the beak member's stress.
+      const arc = b.arc;
+      let beakSigma = beakRootSigma;
+      if (!arc || !(arc.rho_u > 0)) {
+        failures.push({ what: 'beak arc missing', note: 'maintainingHold.beak.arc — the apex is a sharp line again (TODO 221 regressed)' });
+      } else {
+        const tL = arc.line_u * U;
+        const p0 = Math.sqrt((F / tL) * arc.Estar_Pa / (Math.PI * arc.rho_u * U));
+        const allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * CLICK_STEEL_SIGMA_Y_PA;
+        const Estar = STEEL_E_PA / (2 * (1 - STEEL_NU * STEEL_NU));
+        if (!(rel(arc.p0_Pa, p0) <= 1e-12)) failures.push({ what: 'hold identity: arc contact pressure', record: arc.p0_Pa, fromLoad: p0 });
+        if (!(rel(arc.p0Allow_Pa, allow) <= 1e-12) || !(rel(arc.Estar_Pa, Estar) <= 1e-12) || arc.line_u !== b.t_u)
+          failures.push({ what: 'arc contact constants are not the declared ones', record: { allow: arc.p0Allow_Pa, Estar: arc.Estar_Pa, line: arc.line_u }, declared: { allow, Estar, line: b.t_u } });
+        if (!(p0 <= allow * (1 + 1e-9)))
+          failures.push({ what: 'beak arc over first yield of the click steel', p0_GPa: p0 / 1e9, allow_GPa: allow / 1e9, rho_u: arc.rho_u });
+        const aS = secSigma(arc.arcStart), wS = secSigma(arc.worst);
+        if (!(rel(arc.arcStart.sigma_Pa, aS) <= 1e-12) || !(rel(arc.worst.sigma_Pa, wS) <= 1e-12))
+          failures.push({ what: 'hold identity: arc sections', record: [arc.arcStart.sigma_Pa, arc.worst.sigma_Pa], fromLoad: [aS, wS] });
+        if (!(arc.rho_u === Math.max(arc.rhoHertz_u, arc.rhoBeam_u)))
+          failures.push({ what: 'arc radius is not the larger of its two minima', rho: arc.rho_u, hertz: arc.rhoHertz_u, beam: arc.rhoBeam_u });
+        const binds = arc.rhoHertz_u >= arc.rhoBeam_u;
+        if (binds ? !(rel(p0, allow) <= 1e-9) : !(Math.abs(wS - SPRING_SIGMA_Y_PA) <= 1e-4 * SPRING_SIGMA_Y_PA))
+          failures.push({ what: 'arc radius is not the least that does its job', binds: binds ? 'hertz' : 'beam', p0_GPa: p0 / 1e9, worst_MPa: wS / 1e6 });
+        beakSigma = Math.max(beakRootSigma, aS, wS);
+      }
       for (const [member, sigma] of [['arm', armSigma], ['beak', beakSigma]]) {
         const over = sigma > SPRING_SIGMA_Y_PA * (1 + 1e-9), waiver = HOLD_STRESS_WAIVERS[member];
         if (over && !waiver)
@@ -10598,8 +10684,13 @@ export function checkEqualisation(clock) {
     // holding the sim to §104's ρ = 1 lumping the record no longer states.
     // `?? 1` is deliberately absent: a record without ρ IS the regression
     // this line exists to catch, and NaN here fails the row loudly.
+    // §268 — and the hammer spiral's lift SPEND, taken at the strike arbor
+    // between the two meshes (the record publishes it with the two ratios
+    // and the per-mesh efficiency); the same rule as ρ: a record without
+    // them is the regression, and NaN fails the row loudly.
     const lawAt = (w) => 2 * c.teethPerStrike
-      * Math.sqrt(2 * c.phiRad * c.I_kgm2 / (a.k_Nm_per_rad * (a.setup.sweepRad + w * 2 * Math.PI) * c.meshEff / c.stepUp * c.rho));
+      * Math.sqrt(2 * c.phiRad * c.I_kgm2 / ((a.k_Nm_per_rad * (a.setup.sweepRad + w * 2 * Math.PI) * c.meshEffPer / c.strikeRatio - c.liftSpend_Nm)
+        * c.meshEffPer / c.govRatio * c.rho));
     const full = gapBy(0);
     const empty = gapBy(clock.alarmStrikesPerWind - 2); // two strikes of travel left — still off the stall
     measured.gapFull = +full.gap.toFixed(5);
@@ -10637,6 +10728,9 @@ export function checkEqualisation(clock) {
           load_mN: +(en.maintainingHold.load_N * 1000).toFixed(1), torque_Nmm: +(en.maintainingHold.spring.torqueRun_Nm * 1000).toFixed(4),
           arm_MPa: +(en.maintainingHold.arm.sigma_Pa / 1e6).toFixed(1), armMargin: +en.maintainingHold.arm.margin.toFixed(3),
           beak_MPa: +(en.maintainingHold.beak.sigma_Pa / 1e6).toFixed(1), beakMargin: +en.maintainingHold.beak.margin.toFixed(3),
+          beakArc: en.maintainingHold.beak.arc ? { rho_u: +en.maintainingHold.beak.arc.rho_u.toFixed(5), binds: en.maintainingHold.beak.arc.binds,
+            p0_GPa: +(en.maintainingHold.beak.arc.p0_Pa / 1e9).toFixed(4), allow_GPa: +(en.maintainingHold.beak.arc.p0Allow_Pa / 1e9).toFixed(4),
+            worst_MPa: +(en.maintainingHold.beak.arc.worst.sigma_Pa / 1e6).toFixed(1) } : null,
           waived: Object.fromEntries(Object.entries(HOLD_STRESS_WAIVERS).map(([k, v]) => [k, v.split(' — ')[0]])),
           spring: en.maintainingHold.spring.k_Nm_per_rad ? {
             floor_Nmm: +(en.maintainingHold.spring.floor_Nm * 1000).toFixed(4), corner: en.maintainingHold.spring.floorCorner,

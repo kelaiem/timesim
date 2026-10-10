@@ -1,4 +1,4 @@
-// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak — against the same record, and since TODO 219 the maintaining SPRING: its floor from the nominal corner's need at the claim, the ring's tooth count, k, the preload, k again from the blade's own profile, and its root stress. The verdict itself is a REPORT; the agreement is the acceptance.
+// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak, and since TODO 221 by the beak's ARC as a Hertz line contact against the click steel's first yield — against the same record, and since TODO 219 the maintaining SPRING: its floor from the nominal corner's need at the claim, the ring's tooth count, k, the preload, k again from the blade's own profile, and its root stress. The verdict itself is a REPORT; the agreement is the acceptance.
 //
 // Why it exists. Until TODO 192 every number the movement published about its
 // power was FRICTIONLESS. EQUALISATION holds the fusee's level product to float
@@ -202,13 +202,22 @@ const hold = holdRec && (() => {
   const a = holdRec.arm, ri = a.ri_u * U, ro = a.ro_u * U, h = ro - ri, A = h * a.t_u * U;
   const rn = h / Math.log(ro / ri), M = F * a.offset_u * U;
   const arm = M * (rn - ri) / (A * ((ri + ro) / 2 - rn) * ri) + F / A;
-  const b = holdRec.beak, bw = b.width_u * U, bt = b.t_u * U;
-  const beak = F / (bw * bt) + 6 * F * b.offset_u * U / (bt * bw * bw);
-  // TODO 218 — the wedge's width and offset both grow as s from the apex the
-  // load arrives at, so σ(s) = σ(s_root)·s_root/s: the station where it
-  // reaches the steel's yield, inside which the apex is a contact (TODO 221).
-  const yieldStation = b.s_u * beak / L.SPRING_SIGMA_Y_PA;
-  return { load_N: F, armSigma_Pa: arm, beakSigma_Pa: beak, beakYieldStation_u: yieldStation, armStraight_Pa: 6 * M / (a.t_u * U * h * h) + F / A };
+  const b = holdRec.beak, bt = b.t_u * U;
+  const sec = (q) => F / (q.width_u * U * bt) + 6 * F * q.offset_u * U / (bt * (q.width_u * U) ** 2);
+  const beak = sec(b);
+  // TODO 221 — the apex is an ARC of radius ρ (the record's cut geometry): a
+  // Hertz cylinder on the face, one click-thickness long, p0 = √(F·E*/(π·ρ·t))
+  // with THIS probe's load and E* from layout's steel, held to first yield of
+  // the click steel's low end; and the wedge's sections where the arc begins
+  // and the worst past it. The Hertz radius that allowable asks for, at this
+  // probe's load, is asserted against the record's ρ when Hertz binds.
+  const arc = b.arc;
+  const Estar = L.STEEL_E_PA / (2 * (1 - L.STEEL_NU * L.STEEL_NU));
+  const allow = L.LINE_CONTACT_FIRST_YIELD_P0_PER_Y * L.CLICK_STEEL_SIGMA_Y_PA;
+  const p0 = arc && Math.sqrt((F / (arc.line_u * U)) * Estar / (Math.PI * arc.rho_u * U));
+  const rhoHertz = arc && (F / (arc.line_u * U)) * Estar / (Math.PI * allow * allow) / U;
+  return { load_N: F, armSigma_Pa: arm, beakSigma_Pa: beak, armStraight_Pa: 6 * M / (a.t_u * U * h * h) + F / A,
+    arc: arc && { p0_Pa: p0, allow_Pa: allow, rhoHertz_u: rhoHertz, arcStart_Pa: sec(arc.arcStart), worst_Pa: sec(arc.worst) } };
 })();
 
 // ---- THE CHAIN OF LOSSES, per corner ----
@@ -356,9 +365,13 @@ if (hold) {
   console.log(`\n--- the maintaining detent's hold (TODO 217): the going torque on the ring's face, against SPRING_SIGMA_Y_PA ${f(L.SPRING_SIGMA_Y_PA / 1e6, 0)} MPa ---`);
   console.log(`  face load ${f(hold.load_N * 1000, 1)} mN = ${f(tauFusee * 1e3, 4)} N·mm over a ${f(holdRec.momentArm_u, 4)} u arm (tip r ${f(holdRec.tipR_u, 4)}, root ${f(holdRec.rootR_u, 4)})`);
   console.log(`  arm   σ ${f(hold.armSigma_Pa / 1e6, 1)} MPa at ${f(holdRec.arm.offset_u, 4)} u off the tip–stud chord (straight-bar reading ${f(hold.armStraight_Pa / 1e6, 1)}), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.armSigma_Pa, 3)}`);
-  console.log(`  beak  σ ${f(hold.beakSigma_Pa / 1e6, 1)} MPa at its kindest section (a ${f(holdRec.beak.wedgeRad * 180 / Math.PI, 2)}° wedge, ${f(holdRec.beak.width_u, 4)} u wide), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.beakSigma_Pa, 3)}; the 1/s law reaches yield ${f(hold.beakYieldStation_u, 4)} u from the apex`);
+  console.log(`  beak  σ ${f(hold.beakSigma_Pa / 1e6, 1)} MPa at its kindest section (a ${f(holdRec.beak.wedgeRad * 180 / Math.PI, 2)}° wedge, ${f(holdRec.beak.width_u, 4)} u wide), margin ×${f(L.SPRING_SIGMA_Y_PA / hold.beakSigma_Pa, 3)}`);
+  if (hold.arc) {
+    const ar = holdRec.beak.arc;
+    console.log(`  arc   ρ ${f(ar.rho_u, 4)} u (${f(ar.rho_u * L.UNIT_MM * 1000, 1)} µm; Hertz ${f(ar.rhoHertz_u, 4)}, beam ${f(ar.rhoBeam_u, 4)} — ${ar.binds} binds): p0 ${f(hold.arc.p0_Pa / 1e9, 3)} GPa against ${f(hold.arc.allow_Pa / 1e9, 3)} (${L.LINE_CONTACT_FIRST_YIELD_P0_PER_Y}·${f(L.CLICK_STEEL_SIGMA_Y_PA / 1e6, 0)} MPa); the wedge where the arc begins ${f(hold.arc.arcStart_Pa / 1e6, 1)} MPa, its worst ${f(hold.arc.worst_Pa / 1e6, 1)}`);
+  }
   const ct = holdRec.beak.contact;
-  if (ct) console.log(`  contact: ${ct.model} (TODO 218) — face flank relieved ${f(ct.faceReliefRad * 180 / Math.PI, 2)}°, its far end ${f(ct.cornerGapAtHold_u, 4)} u off when the face reaches the apex; a parallel flank would bear ${f(ct.parallelFlank.offsetAlongFace_u, 4)} u up the face and need μ ≥ ${f(ct.parallelFlank.muToHold, 3)} against the cam-out`);
+  if (ct) console.log(`  contact: ${ct.model} (TODO 218/221) — face flank relieved ${f(ct.faceReliefRad * 180 / Math.PI, 2)}°, its far end ${f(ct.cornerGapAtHold_u, 4)} u off when the face reaches the ${ct.model === 'radius' ? 'arc' : 'apex'}; a parallel flank would bear ${f(ct.parallelFlank.offsetAlongFace_u, 4)} u up the face and need μ ≥ ${f(ct.parallelFlank.muToHold, 3)} against the cam-out`);
 }
 if (spring) {
   console.log(`\n--- the maintaining spring (TODO 219): the floor at the ${spRec.floorCorner} corner, the alloy's low end ${f(L.MAINSPRING_SIGMA_Y_PA / 1e6, 0)} MPa ---`);
@@ -442,7 +455,14 @@ if (!REC || !REC.corners) {
     same('maintaining hold: face load', hold.load_N, holdRec.load_N);
     same('maintaining hold: arm σ', hold.armSigma_Pa, holdRec.arm.sigma_Pa);
     same('maintaining hold: beak σ', hold.beakSigma_Pa, holdRec.beak.sigma_Pa);
-    same('maintaining hold: beak yield station', hold.beakYieldStation_u, holdRec.beak.yieldStation_u);
+    if (!hold.arc) disagreements.push({ what: 'maintaining hold: beak arc', probe: 'computed', record: 'maintainingHold.beak.arc is missing (TODO 221)' });
+    else {
+      same('maintaining hold: arc p0', hold.arc.p0_Pa, holdRec.beak.arc.p0_Pa);
+      same('maintaining hold: arc allowable', hold.arc.allow_Pa, holdRec.beak.arc.p0Allow_Pa);
+      same('maintaining hold: arc Hertz radius', hold.arc.rhoHertz_u, holdRec.beak.arc.rhoHertz_u);
+      same('maintaining hold: arc-start σ', hold.arc.arcStart_Pa, holdRec.beak.arc.arcStart.sigma_Pa);
+      same('maintaining hold: arc worst σ', hold.arc.worst_Pa, holdRec.beak.arc.worst.sigma_Pa);
+    }
   }
   if (!spring) disagreements.push({ what: 'maintaining spring', probe: 'computed', record: 'EQUALISATION.going.energy.maintainingHold.spring has no k (TODO 219)' });
   else {
@@ -458,7 +478,7 @@ if (!REC || !REC.corners) {
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 4 + 8} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way (the peak capped at the knock), and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 3 + 5 + 8} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way (the peak capped at the knock), and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);
