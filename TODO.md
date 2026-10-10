@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 233 | CLOSED | Found closing §261 step 1 (#636): the Latvian explainer and primer tables were keyed to English §221 (#617) rewrote, because the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check read red on `main`. Closed by #611 (c4eea7c), which re-keyed 15 explainer and 5 primer Latvian rows against the current English, more than the ten counted here because TODO 226's drive rewrote further English. Latvian reads 769/769 and 144/144. The race itself is answered by a CLAUDE.md convention (a locale or page-English PR re-merges `main` and waits for the Explainer check before it merges) and by §271 (merge queue). Arabic plate collisions seen locally are font metrics, not CI |
 | 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
 | 230 | OPEN | Found closing TODO 204. The beak lever turns on `alarmLinkBeakPin` with nothing holding it along the pin toward the arm's line (+y): no shoulder, collar or clip, the eye's inner end plugged by the web. It slides **0.1735** (seated) / **0.1855** (lifted) before the eye or web meets the selector rod, its own group's output, with 0.1432 of the 0.3167 journal still engaged; without the rod it leaves the pin at 0.3167. The column's sweep under the nose drags it along exactly that axis. Fix: a retaining shoulder or collar with its own §50 floor, re-deriving the pin's cantilever (757.1 MPa, margin 1.057). P1 |
 | 227 | CLOSED | The alarm release sleeve's SKIRT — the cone the tail pin presses — was a double-sided sheet of no thickness (a collinear offset: profile area 0.0177 u²), and `alarmSleeveWeb` (TODO 225) was a patch over it. It is a real shell now, wall `STOCK_MIN_U` normal to the face, with a relief at the feeler spring's free end (0.084 under the envelope floor): skirt ⇄ spring 0.0807 → 0.1585 against 0.15. The web, its §124 relief and its contact row are gone. Battery 53/53 locally; `tools/probe-225-lathe-profiles.mjs` finds no other lathe like it (72 meshes) |
@@ -31142,3 +31143,110 @@ no mechanism is touched.
 
 Coupled to [TODO 230]: a thicker beak pin raises the eye's crown, and with it
 this step, one for one.
+
+## 233. The Latvian explainer and primer tables are keyed to English §221 rewrote: ten blocks render English and the Explainer workflow is red on main — CLOSED (#611)
+
+**Closed by #611, not by this item's own landing.** TODO 226's drive
+(`claude/spring-friction-efficiency-xdh7ik`) hit the same red and re-keyed the
+Latvian tables in c4eea7c before this item merged: 15 explainer keys and 5
+primer keys, a superset of the ten below, because that drive rewrote more of the
+escapement's English. Translations were made against the current English, and
+the vocabulary row stayed `modelēts / simulēts`. On `main` at 6a14d9f, `node
+tools/explain-i18n.mjs --check` reads Latvian at 769/769 and 144/144 with 0
+unmatched keys on both pages. Steps 1–3 are done there. Step 4 is answered in two parts.
+CLAUDE.md's Conventions now carry the partial guard as a rule:
+a PR that carries locale tables or rewrites the pages' English re-merges `main`
+immediately before merging and waits for the Explainer check on that head. The
+whole fix, a merge queue, is filed as §271 in the roadmap. The record below is
+kept as found.
+
+**Found closing §261 step 1 (#636), whose Explainer check went red for a
+reason outside its diff.** `node tools/explain-i18n.mjs --check` fails on `main`
+and on every pull request inside the Explainer workflow's paths filter, and the
+failure is Latvian alone:
+
+| page | Latvian table | translated | unmatched keys (gated) |
+|---|---|---|---|
+| `explain.html` | `src/explain-i18n.lv.js` | 765 / 772 | **7** |
+| `primer.html` | `src/primer-i18n.lv.js` | 142 / 145 | **3** |
+
+Every other locale reads 0 unmatched on both pages.
+
+**The cause is a merge race between two landings that were each green alone.**
+§221 (#617, the balance swinging its physical amplitude) rewrote the English of
+ten blocks and re-keyed every locale table it could see. It merged at 08:16 on
+2026-10-10. The Latvian landing (§249 chunk K, #619) had last merged `main` at
+06:42, before §221 existed, so its tables were keyed to the old English. It
+merged at 09:35 without re-syncing. Its CI ran against the stale base, where
+those keys matched. The workflow also runs on pushes to `main`, which has read
+red ever since.
+
+**What a Latvian reader sees today is correct, and that is the gate working.**
+An unmatched key renders its block's English, visibly. The stale Latvian rows
+are not just old wording, they are old PHYSICS, so letting them match would
+make the page lie. For example, the overcoil caption's Latvian still carries
+"×0.030 at 45°, ×0.115 at 315°" where the English now reads "×0.102 at 200°,
+×0.092 at 316°". The primer's impulse label still translates "a sixth of the
+beat" where the English now says "a twelfth". §221 changed the swing the sim
+performs from 45° drawn to 200° physical, and these are the numbers that moved
+with it.
+
+The ten blocks, by entry:
+
+- `explain.html`, escapement: the ledger ("the tick models the escapement
+  KINEMATICALLY…"), the plate-reading paragraph ("Read the plate by its
+  arrows…") and "Ported arithmetic, not an animation…".
+- `explain.html`, free-sprung balance: "What the sim models, honestly
+  bounded…", the overcoil paragraph ("The last three quarters of a turn are
+  raised…") and its two measured captions (the pivot load ratios, and flat
+  spring against overcoil force at the swing).
+- `primer.html`: "That cycle is the tick…" (escapement), "Here the balance
+  completes 2½ full oscillations per second…" (balance) and the impulse label
+  ("a twelfth of the beat").
+
+**Not part of this item: Arabic plate collisions read locally.** In this repo's
+dev container the same check also reports two Arabic plate collisions on
+`explain.html` (the fusee plate's "what the cut flank delivers" label, and the
+stop-work caption "The rim swings under a pad that stays put…"). CI reads
+`[ar] plate fit: 0` on the same tree, and the container reports them on trees
+whose CI passed, back to before §221. Plate fit is measured in a browser, so it
+depends on the host's Arabic font metrics. The CI runner's are the ones the
+gate is held to. If a reader's fonts match the container's, those two labels
+may genuinely collide on screen. That is a separate question for the plate-fit
+probe (one host's fonts are not every reader's), not this re-key.
+
+### Fix path
+
+1. **Re-key from the DOM, never by hand.** Run `node tools/explain-i18n.mjs
+   --extract --page explain` and `--page primer` to get the current English
+   keys. Replace the ten stale rows in `src/explain-i18n.lv.js` and
+   `src/primer-i18n.lv.js` with translations of the CURRENT English.
+2. **Translate the content as it now stands.** Carry the new numbers (200°,
+   316°, ×0.102, ×0.092, the forces at the 200° swing, "a twelfth"), keep every
+   `<code>` span and its markup byte for byte, and keep the honesty vocabulary:
+   Latvian's row is `modelēts / simulēts`, and the ledger paragraphs lean on
+   the contrast.
+3. **Acceptance.** `node tools/explain-i18n.mjs --check` exits 0, with Latvian
+   at 0 unmatched on both pages, and Latvian's explainer coverage stays at
+   least what it is (765 of 772). `node tools/glossary-links.mjs` and `node
+   tools/l10n-review-packets.mjs` stay green. The Explainer workflow is green
+   on the pull request and then on `main`. The page is sim-code-free, so the
+   battery does not run (its paths filter ignores the tables and both pages).
+4. **The race itself, as an owner decision rather than code.** A pull
+   request's CI tests its merge with the base AT CI TIME, so two landings that
+   are each green can merge red. Nothing in a PR can close that. The repository
+   can: require branches to be up to date before merging, or use a merge queue,
+   for the Explainer check at least. Both are settings the owner changes; this
+   item records that the race happened, not a decision for them. A cheaper,
+   partial guard is the existing practice made explicit: a locale landing
+   re-merges `main` immediately before it merges, because locale tables are
+   keyed to English that any concurrent landing can rewrite.
+
+### Residue, named and not in scope
+
+Eleven explainer blocks render English in eighteen locales, and twenty-six in
+the four CJK locales: the fusee's maintaining-spring plate and its captions,
+the alarm arming entry's honesty ledger, and the run-out script labels. Those
+are REPORTED as untranslated, never gated, and they are not stale keys. Latvian
+already translates them (which is why it reads 765 where the others read 761).
+They are a translation backlog, not this item's defect.
