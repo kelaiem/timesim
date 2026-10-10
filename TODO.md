@@ -17,6 +17,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
+| 230 | OPEN | Found closing TODO 204. The beak lever turns on `alarmLinkBeakPin` with nothing holding it along the pin toward the arm's line (+y): no shoulder, collar or clip, the eye's inner end plugged by the web. It slides **0.1735** (seated) / **0.1855** (lifted) before the eye or web meets the selector rod, its own group's output, with 0.1432 of the 0.3167 journal still engaged; without the rod it leaves the pin at 0.3167. The column's sweep under the nose drags it along exactly that axis. Fix: a retaining shoulder or collar with its own §50 floor, re-deriving the pin's cantilever (757.1 MPa, margin 1.057). P1 |
 | 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
 | 226 | OPEN | Step 2 DONE by BUILT §221: the bank is the pin's own bearing at the lift's edge (`d·sin ψ = r·sin(θ + ψ)`), 4.03°, and `probe-221-amplitude.mjs` holds the pin on the slot's centre line at both window edges to 1e-7. Step 1 remains: the pin's centre stands 0.156 outside the horn tips at the lift's edge, so its body enters 0.394 of a slot 2.759 deep; seat it by moving the fork's mouth or the roller. Step 3 remains past the window's edges (the pin against the driving wall THROUGH the impulse)
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
@@ -28177,6 +28179,12 @@ shape.
     new or reshaped meshes (eye, web, pin, head, the re-sited post) and the
     case's raised glass step.
 
+**Leftovers, filed.** [TODO 230]: the lever has no axial retention on its pin.
+Toward the arm's line it slides 0.1735 before the eye meets the selector rod.
+[TODO 231]: the back envelope's allowance is per unit. Measured per mesh, it
+recovers 0.1015 of the 0.3748, not the 0.12 estimated above, because the web's
+corner rises 0.0185 as the lever tilts.
+
 ## 205. The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld — CLOSED
 
 Found closing [TODO 191] by the same scan, `meshClearance` over every `AXES`
@@ -30814,3 +30822,182 @@ tips, so its 0.55 radius enters **0.394** of a slot **2.759** deep. Step 1 and
 step 3 (the pin against the driving wall through the window, not only at its
 edges) remain.
 
+---
+
+## 230. The beak lever has no axial retention on its pivot pin: it can slide 0.17 toward the selector rod, which is the first thing it meets
+
+**Found closing [TODO 204].** TODO 204 made the beak lever's fulcrum a real pin.
+`alarmLinkBeakPin` (r `STOCK_MIN_R10` 0.1665) is pressed through the post's head
+(`alarmLinkBeakHead`) and runs in the lever's eye (`alarmLinkBeakEye`) on the
+tilt axis. The eye hangs on the lever's −y side (`ALARM_BEAK_SIDE` −1), so along
+the pin, toward the arm's line, is the lever's local **+y**. Nothing holds the
+lever in that direction:
+- there is no collar, shoulder or E-clip on the pin;
+- the pin's free end stops `PIVOT_BORE_CLEAR` short of the web's lap, inside the
+  eye's bore (`pinEnd` 0.8206 against `webOut` 0.7706), so nothing on the pin
+  can ever face a lever surface that moves +y;
+- the head's inner face retains only the other way.
+
+**What governs it now, measured** (`__clock.beakPivot` for the stations; a
+scratch probe translated the lever's group along its own y and bisected
+`meshClearance` against every mesh within 2 u, at the reset pose and at
+`alarm` / `alarmToggle` f = 0…1):
+- **+y, nothing on the pivot.** The first thing the lever meets is the selector
+  rod `alarmLinkRod`, at **0.1735** of slide when seated (the eye, from its
+  `INTRA_UNIT_FLOORS` gap of 0.1594) and **0.1855** when lifted (the web,
+  `alarmLinkBeakFulcrum`, from 0.1676). The rod is the beak lever's own output in
+  the arming group. It translates, so it is not a thrust face. At that point
+  **0.1432** of the eye's 0.3167 journal (`eyeOut − pinEnd` = `STOCK_MIN_U`)
+  still bears, 45% of it. Without the rod, the lever leaves the pin at 0.3167.
+  The jumper blade (`alarmJumperBlade`) comes next, at 1.15.
+- **−y, the head.** The eye's outer face meets the head after **0.0500**, the
+  `PIVOT_BORE_CLEAR` end-shake. The web's lap closes on the pin's end at the
+  same 0.05. Next behind them is the eye's rim over the post's shank,
+  **0.0568**: the gap TODO 204 recorded, which leaves 0.0068 between the head
+  bearing and that rim touching.
+- **There is an axial load.** `beakAim` points the arm at the column wheel's
+  centre (`ALARM_COL_POS`). The castellations therefore sweep under the nose
+  square to the arm in plan, which is along the pin's axis. At the lifted
+  end's 47.42 mN nose force, `MU_STEEL` (0.2) drags the nose about **9.5 mN**
+  along the pin. The column is indexed one way by its pawl, so the drag has
+  one sign. Which sign it has is not measured. If it is +y, it is resisted
+  only by friction at the rod top and the nose.
+
+**Why it is debt (P1, structural truth within the arming group).** A pivot that
+can walk off its pin cannot do the job as matter, whatever every sweep says. The
+battery cannot see it: every check poses the lever at y = 0, and `intraUnit`
+holds the rod⇄eye/web floors (0.1594 / 0.1804) only at the poses the tick
+writes. The lever's location along the pin is posed, not held.
+
+**Fix path.**
+1. Retain the lever both ways with a real feature, which carries its own §50
+   floor (`STOCK_MIN_U` wall over the pin) and its own `INTRA_UNIT_CONTACTS`
+   row. Two arrangements fit:
+   - (a) Reverse the fit. Press the pin into the eye, so it turns with the
+     lever, and journal it in the head. The eye's outer face becomes the
+     shoulder against the head's inner face (−y, as now), and a collar or clip
+     on the pin's end outboard of the head's outer face (`headOut` 1.5327,
+     which is also the post's outer flank) takes +y. The bending root moves to
+     the eye's outer face.
+   - (b) Open the eye's bore through, by re-routing the web's lap off the bore,
+     and fit a collar or clip on the pin's inner end.
+2. **Re-derive the pin's cantilever. It is now the governing stress.** At the
+   285.45 mN service load (`R_N`), with its moment arm the head's inner face
+   (`headIn` 1.1873), it works at **757.1 MPa** against
+   `SPRING_SIGMA_Y_PA` 800, a margin of **1.057**.
+   - σ goes linearly with the arm, so the arm may grow by 0.0673 u at today's
+     section.
+   - A §50-floor collar (0.3167 long) placed inside the arm, as (b) does,
+     needs the pin about 6.2% thicker (r 0.1665 → ≈ 0.1768).
+   - A thicker pin grows the eye's bore and wall, and so its crown, by the same
+     ≈ 0.0103. The eye's crown is what sets the case's back glass step
+     ([TODO 231]), so the pin's section is a case-height number too.
+3. Keep the end-shake to the head's bearing ahead of the eye rim over the post
+   (0.0500 against 0.0568 today), or move the post.
+4. **Acceptance.** A probe that slides the lever both ways along its pin, at the
+   seated and lifted poses, must find the retaining feature bearing within the
+   declared end-shake before anything else (today: the rod at 0.1735). The
+   build's rule-6 warns hold the pin's and the collar's stress. The
+   `INTRA_UNIT_FLOORS` rows rod⇄eye and rod⇄web keep their 0.15.
+
+---
+
+## 231. The back envelope's swept allowance is per unit, so members that never rise in z raise the case's back glass step
+
+**Found closing [TODO 204].** §187's `BACK_ENVELOPE` (main.js) measures the
+movement at its construction pose, because boot cannot sweep poses ([TODO 111]'s
+structural note). It adds `BACK_SWEPT_ALLOWANCE`, a `Map` keyed by **unit name**
+with one row, `['Alarm link', 0.12]`. The walk applies it per vertex:
+`const allow = (unit && BACK_SWEPT_ALLOWANCE.get(unit)) || 0;`. Every mesh of the
+Alarm link carries the same 0.12, including members that never rise in z: the
+beak lever's eye (`alarmLinkBeakEye`, a ring turned about the tilt axis, which
+the tilt only rotates about itself), and the fixed head, pin and post.
+
+TODO 204's eye crown stands 0.5332 over the tilt axis, where the bar's top stood
+0.1583. It became the unit's construction-pose maximum, **14.0315**, so the
+declared envelope reads 14.0315 + 0.12 = **14.1515**. The case's raised glass
+then stands at `zStepUnder` = envelope + `CLEAR_MARGIN` = **14.3015**, up from
+13.9267, a rise of **0.3748**.
+
+**What the metal asks, measured** by a scratch probe over every `AXES` axis at 9
+fractions plus the reset pose. Each mesh's own worst per-bin rise is taken over
+its own construction pose (reset with the arm's tilt zeroed, the build's
+`beakArm.rotation.y = 0`), in the declaration's binning:
+
+| mesh | construction top | swept top | worst rise |
+|---|---|---|---|
+| `alarmLinkBeakFulcrum` (the web) | 14.0315 | **14.0500** | 0.0185 |
+| `alarmLinkBeakEye` | 14.0315 | 14.0315 | 0.0125 (rim, off the crown) |
+| `alarmLinkBeakHead` | 13.9815 | 13.9815 | 0 |
+| `alarmLinkBeakTail` | 13.6567 | 13.7549 | 0.0982 |
+| `alarmLinkBeakPin` | 13.6649 | 13.6649 | 0 |
+| `alarmLinkBeakBar` / `alarmLinkBeak` | 13.6567 | 13.6567 | 0 |
+| `alarmLinkRod` | 13.3401 | 13.4402 | 0.1002 |
+| `alarmLinkBeakPost` | 13.0652 | 13.0652 | 0 |
+
+- **The unit's swept maximum is 14.0500**: the web's square top corner
+  (0.5332·cos θ + 0.1665·sin θ about the tilt axis) as the lever tilts. The
+  metal therefore asks `zStepUnder` ≥ **14.2000**. The movers the 0.12 was sized
+  for, the tail (0.0982) and the rod (0.1002), stand at least 0.27 under the
+  eye's crown and govern nothing.
+- **Nothing else is near.** The next metal is the jumper blade at 13.1148
+  (`BACK_SWEPT_REGIONS`' highest row is 13.1189), 0.93 below.
+- **A per-mesh allowance, each mesh at its own measured rise, puts the envelope
+  at 14.0500 and the step at 14.2000. That recovers 0.1015 u (0.0385 mm)**, so
+  TODO 204's rise becomes +0.2733 instead of +0.3748.
+- TODO 204's record estimated 0.12. It is short of that because the web's
+  corner rises 0.0185 over the crown. Zeroing every pivot member's allowance,
+  the web included, would under-declare the web, and probe-back-envelope's §187
+  gate would red, correctly. Crowning the web's top round about the tilt axis
+  makes its rise 0. The step would then follow the eye's crown alone, at
+  14.1815, and recover the full **0.1200**. That needs the web's section
+  re-checked (47.0 MPa today, `sigmaWeb_Pa`).
+- **A unit allowance re-measured per bin is not the fix.** Measured that way,
+  the unit's worst bin rises 0.4376 (r 12.74–12.89). That excess is MIGRATION:
+  members entering bins they do not stand in at construction (the nose 2 bins,
+  the bar 1, the web 1). Covering it would raise the step to 14.4691.
+  Migration is what `BACK_SWEPT_REGIONS` exists to express (standing rule 5's
+  pattern in r–z).
+
+**Is the distinction available? Yes.** The walk already holds the mesh `o` (and
+`o.name`) beside `unitOf(o)`, so a per-mesh key is one lookup. What is missing is
+the measurement:
+- `probe-back-envelope.mjs` aggregates per UNIT (its `units` map) and has no
+  per-mesh product.
+- Its "build" column is the canonical reset pose. Its header says [TODO 111]
+  measured that identical to the construction pose, which is no longer true for
+  the beak lever: reset is tilted (lifted), construction is `rotation.y = 0`. At
+  reset the web reads 14.0500, while the boot's construction scan reads 14.0315
+  (= the declared 14.1515 − 0.12).
+- So the probe's delta column cannot source per-mesh rows as it stands.
+- The `BACK_SWEPT_ALLOWANCE` comment's own numbers (12.161 against 12.061,
+  +0.099) are from before the tier moved.
+
+**No existing item covers this.** TODO 111 (closed) made the construction pose
+the boot's, and TODO 114 (closed by §187) built the envelope. Neither asks
+whether the allowance's key is too coarse. The case height is the only cost, and
+no mechanism is touched.
+
+**Fix path (P3, position space: case height).**
+1. Give `probe-back-envelope` a per-mesh product: each labelled mesh's swept top
+   and worst per-bin rise over the **construction** pose (read the boot's own
+   scan, or pose the lever's `rotation.y = 0` as the build does), and the bins
+   it migrates into.
+2. Key `BACK_SWEPT_ALLOWANCE` by mesh name (or unit with per-mesh overrides),
+   each row its measured rise rounded up past margin flicker, as the comment's
+   convention already says. A member that only rotates about its own axis or is
+   fixed in its unit takes 0. Bins a member migrates into stay with
+   `BACK_SWEPT_REGIONS`.
+3. Optionally crown the web round about the tilt axis (the extra 0.0185), with
+   its stress re-held.
+4. **Acceptance.**
+   - `probe-back-envelope`'s §187 gate and glass gate pass: every swept bin at
+     or under the declaration.
+   - The boot's §187 asserts stay silent.
+   - `zStepUnder` lands at 14.2000 (or 14.1815 with the web crowned).
+   - The battery's case rows (`expectedContacts`, `undeclaredClearance` against
+     the back glass) re-run.
+   - The fingerprint moves for the case's glass alone.
+
+Coupled to [TODO 230]: a thicker beak pin raises the eye's crown, and with it
+this step, one for one.
