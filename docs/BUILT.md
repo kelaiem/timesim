@@ -33653,7 +33653,7 @@ container restarted between the two catch-ups and is ~1.6× slower. The
 control is the commit CI had already passed (`87af79a`), which reads here held
 578 ms, worst long task 1,815 ms, input ack 1,666 ms and boot 31 s. On the
 old container it read 322 / 1,047 / 897 ms and 18.9 s. On this container the
-tree holds the thread for **335–414 ms** at worst over two runs, against
+tree holds the thread for **335–520 ms** at worst over three runs, against
 that control's 578 ms. The build's own number passes the 700 ms ceiling with
 room. The long-task and input-ack gates fail on this container for the tree
 and the control alike (1.6–1.9 s). A trace names that task: a frame `Commit`
