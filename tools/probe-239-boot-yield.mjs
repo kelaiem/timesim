@@ -84,32 +84,46 @@ const JSON_OUT = arg('--json', null);
 // A key event every 150 ms: often enough that a 400 ms block is caught by two
 // or three of them, sparse enough that the pump is not itself the load.
 const INPUT_EVERY_MS = 150;
-// The ceilings, each derived from what limits it.
+// The ceilings, each derived from what limits it — and since §266 landing two,
+// from the host that judges them. CI (.github/workflows/boot-yield.yml) runs
+// this on ubuntu-latest, and twelve runs on six runners per batch read:
 //
-// MAX_HELD_MS: the seams can only go where a statement boundary exists in an
-// async context, so the floor of what this build can reach is its largest
-// UNSPLITTABLE call — measured on this container, G.makeGenevaCross at 334 ms,
-// with G.makeHairspring (314) and G.weldTree (252) just behind. The ceiling is
-// that floor doubled: the room a slower machine needs, and still 40x below the
-// 13 s block it replaces. Since §266 the first two are generators main.js steps
-// through (the Geneva cut is now the finger's, which traces the cross's outline
-// first), and G.weldTree (284 ms) is stepped too since main moved again. The
-// largest call left is G.makeBarrel for the alarm barrel, ~0.3 s on a container
-// measured ~1.6x slower. The ceiling is KEPT at 700 rather than re-derived
-// here, because §266's second landing derives every ceiling in this file from
-// the CI host's own spread.
-const MAX_HELD_MS = 700;
-// MAX_TASK_MS: the same bound plus the one browser task that is not the build's
-// (the first composited frame, ~950 ms here), because a long task counts both
-// and this probe will not excuse a row by naming it. Whatever is in it, nothing
-// MULTI-SECOND may survive — that is what raises Chrome's dialog.
-const MAX_TASK_MS = 1800;
-// MAX_INPUT_MS: what a viewer's click waits for is the task in progress plus
-// the pump's own spacing and the dispatch round trip.
-const MAX_INPUT_MS = 1500;
-// The control must fail both by a wide margin or it did not reproduce the old
-// build, and then nothing here was measuring anything.
-const CONTROL_MIN_TASK_MS = 3000;
+//   runner CPU            held, worst   long task, worst   input ack, worst
+//   AMD EPYC 7763         311–329 ms    2253–2320 ms       2103–2290 ms
+//   AMD EPYC 9V74         278 ms        1948 ms            1799 ms
+//   the fastest runner    224 ms        1202 ms            1050 ms
+//
+// Each ceiling is the slowest run times 1.66, battery.yml's measured same-tree
+// spread between two CI runs (the rule every timing cap here follows, because
+// the tail past a ceiling cannot be read), rounded up to the next 50 ms.
+// They are the CI HOST's numbers. A dev container is its own machine: the ones
+// this was built on read 326–520 ms held, which these clear, and a slower one
+// can fail them on a healthy tree — read the held line, which is the build's.
+//
+// MAX_HELD_MS: the BUILD's own number, the sharp gate. 329 × 1.66 = 546. §239's
+// 700 was its dev container's unsplittable floor doubled; the CI host's spread
+// is the tighter and the truer bound, and it still sits 9× under the 4.7 s
+// stretch main had reached when §266 found it.
+const MAX_HELD_MS = 550;
+// MAX_TASK_MS: a long task counts the BROWSER's work too, and on the CI host
+// the worst one in every run is the first composited frame at t+0.2–0.4 s — a
+// frame commit blocked in GLES2::ReadPixels while the GPU process drains the
+// GL queued before the first yield (§266's trace). It is software-GL work that
+// scales with the runner (1.2–2.3 s across the three CPUs above), not build
+// work, and no seam reaches it; every other task in those runs is ~250 ms or
+// under. So this gate is the backstop, not the sharp one: 2320 × 1.66 = 3851.
+// Nothing near Chrome's unresponsive-page threshold may survive.
+const MAX_TASK_MS = 3900;
+// MAX_INPUT_MS: what a viewer's key waits for is the task in progress, and the
+// worst wait in every CI run is that same first frame. 2290 × 1.66 = 3801.
+const MAX_INPUT_MS = 3850;
+// The control must be a run THESE gates would fail, or it did not reproduce the
+// old build and nothing here was measuring anything. §266 landing two tied it
+// to the ceiling: a fixed 3000 sat under the new long-task ceiling, so a
+// control of 3500 ms would have passed as one while the gate passed it too.
+// (On the CI host the control's worst task is 15.2–15.9 s, and it holds the
+// thread 21–22 s.)
+const CONTROL_MIN_TASK_MS = MAX_TASK_MS;
 // The tail control's stall: above MAX_HELD_MS, so a probe that SEES it fails
 // the gate by construction, and the check below asks that it was seen whole.
 const TAIL_STALL_MS = 800;
@@ -241,6 +255,8 @@ else {
 if (!NO_CONTROL) {
   if (!ctrl) fail.push('the control boot produced no measurement, so nothing above is trustworthy');
   else {
+    if (ctrl.held <= MAX_HELD_MS)
+      fail.push(`CONTROL held the thread only ${fmt(ctrl.held)} ms (≤ ${MAX_HELD_MS}) — the held gate would not have caught the un-yielding build`);
     if (ctrl.maxTask < CONTROL_MIN_TASK_MS)
       fail.push(`CONTROL worst long task only ${fmt(ctrl.maxTask)} ms (< ${CONTROL_MIN_TASK_MS}) — it did not reproduce the un-yielding build, so the measurement above proves nothing`);
     if (ctrl.warns !== 0) fail.push(`CONTROL raised ${ctrl.warns} boot warn(s) — the rewrite changed the build, not just its yielding`);
