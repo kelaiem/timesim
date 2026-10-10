@@ -26,6 +26,12 @@
 //      worker, and a file written under Landing A's shape (whose spec and
 //      points meant "the whole tier"), must both be refused rather than
 //      assembled. Collect-only, under a second.
+//   5. §263 lets a split run SEED a baseline, so the collector writes the
+//      per-unit key worker 0's preflight read. Every run below asks for one,
+//      so identities 1 and 2 hold the key inside the report, and the collected
+//      digests FILE must equal the one a single process writes, byte for byte.
+//      A collect asked for a key that no worker read must be refused by name
+//      rather than writing a baseline nothing can restrict against.
 //
 // It drives ci-battery.mjs as a CHILD PROCESS rather than importing it: that
 // file runs its main flow at module scope, so an import IS a run.
@@ -44,7 +50,7 @@
 // carries the argument, because a selection with no SPLIT check in it would
 // leave the cross-process merge unexercised.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -98,26 +104,41 @@ try {
   // The reference. --shards 1 keeps the boots down and costs nothing here: what
   // this probe measures is the seam between processes, and the grouping inside
   // one process is already `--shards 1`'s own identity (§81).
+  //
+  // §263 — every run reads the per-unit key, as a seeding run does: the
+  // reference writes it from its own preflight, each worker reads its own
+  // (the worker-side files are written and ignored), and each collect writes
+  // worker 0's.
   const base = ['--shards', '1', '--only', ONLY];
-  const r0 = run('reference', [...base, '--report', join(out, 'r0.json')]);
+  const r0 = run('reference', [...base, '--report', join(out, 'r0.json'), '--digests', join(out, 'd0.json')]);
   if (r0.status !== 0) { bad.push('the reference run is not green'); console.log(r0.text); }
 
   // ---- 1. one worker ------------------------------------------------------
-  const w1 = run('worker 0/1', [...base, '--matrix', '0/1', '--tasks-out', join(out, 'a.json')]);
+  const w1 = run('worker 0/1', [...base, '--matrix', '0/1', '--tasks-out', join(out, 'a.json'),
+    '--digests', join(out, 'wa.json')]);
   if (w1.status !== 0) { bad.push('worker 0/1'); console.log(w1.text); }
-  const c1 = run('collect (1 file)', ['--collect', join(out, 'a.json'), '--report', join(out, 'r1.json')]);
+  const c1 = run('collect (1 file)', ['--collect', join(out, 'a.json'), '--report', join(out, 'r1.json'),
+    '--digests', join(out, 'd1.json')]);
   if (c1.status !== 0) { bad.push('collect of one worker is not green'); console.log(c1.text); }
   identical('one worker collected', join(out, 'r0.json'), join(out, 'r1.json'));
+  identical('one worker\'s collected digests', join(out, 'd0.json'), join(out, 'd1.json'));
 
   // ---- 2. two workers -----------------------------------------------------
-  const w2a = run('worker 0/2', [...base, '--matrix', '0/2', '--tasks-out', join(out, 'b0.json')]);
+  const w2a = run('worker 0/2', [...base, '--matrix', '0/2', '--tasks-out', join(out, 'b0.json'),
+    '--digests', join(out, 'wb0.json')]);
   if (w2a.status !== 0) { bad.push('worker 0/2'); console.log(w2a.text); }
-  const w2b = run('worker 1/2', [...base, '--matrix', '1/2', '--tasks-out', join(out, 'b1.json')]);
+  const w2b = run('worker 1/2', [...base, '--matrix', '1/2', '--tasks-out', join(out, 'b1.json'),
+    '--digests', join(out, 'wb1.json')]);
   if (w2b.status !== 0) { bad.push('worker 1/2'); console.log(w2b.text); }
   const c2 = run('collect (2 files)', ['--collect', join(out, 'b0.json'), join(out, 'b1.json'),
-    '--report', join(out, 'r2.json')]);
+    '--report', join(out, 'r2.json'), '--digests', join(out, 'd2.json')]);
   if (c2.status !== 0) { bad.push('collect of two workers is not green'); console.log(c2.text); }
   identical('two workers collected', join(out, 'r0.json'), join(out, 'r2.json'));
+  identical('two workers\' collected digests', join(out, 'd0.json'), join(out, 'd2.json'));
+  // The report carries its key too (`digests`), and identity 2 compared it,
+  // but only if both sides HAVE one: a reference that read none would agree
+  // with a collect that read none.
+  if (!JSON.parse(readFileSync(join(out, 'r2.json'), 'utf8')).digests) bad.push('the collected report carries no digests');
 
   // ---- 3. the withheld worker --------------------------------------------
   // What worker 1 carried is read from its own file rather than re-derived
@@ -173,6 +194,18 @@ try {
   if (c5.status === 0) bad.push('a worker file with no workerFormat was assembled');
   else if (!c5.text.includes('worker file shape v1')) { bad.push('the Landing A file was refused, but not for its shape'); console.log(c5.text); }
   else console.log(`REFUSED — a Landing A worker file (workerFormat ${workerFormat} expected), for its shape`);
+
+  // ---- 5. §263: a key nobody read ----------------------------------------
+  // Worker 0's file with its preflight's key taken out is what a worker run
+  // without --digests writes. Asked for --digests, the collect must stop
+  // before any gate, and must not leave a digests file behind.
+  writeFileSync(join(out, 'k0.json'), JSON.stringify({ ...f0, preflight: { ...f0.preflight, headDigests: null } }));
+  const c6 = run('collect (--digests, no worker read a key)', ['--collect', join(out, 'k0.json'), join(out, 'b1.json'),
+    '--report', join(out, 'r6.json'), '--digests', join(out, 'd6.json')]);
+  if (c6.status === 0) bad.push('a collect asked for digests that no worker read exited 0');
+  else if (!c6.text.includes('read no per-unit key')) { bad.push('the keyless collect was refused, but not for its key'); console.log(c6.text); }
+  else if (existsSync(join(out, 'd6.json'))) bad.push('the keyless collect left a digests file behind');
+  else console.log('REFUSED — --digests from workers that read no key, by name, with no file written');
 } finally {
   rmSync(out, { recursive: true, force: true });
 }
@@ -182,4 +215,4 @@ if (bad.length) {
   console.log(`FAILED: ${bad.join(' · ')}`);
   process.exit(1);
 }
-console.log('PASS — the assembly half reports the same battery from one process, from two, and refuses a short one, a misowned tier row and a Landing A file');
+console.log('PASS — the assembly half reports the same battery and the same key from one process and from two, and refuses a short one, a misowned tier row, a Landing A file and a key nobody read');

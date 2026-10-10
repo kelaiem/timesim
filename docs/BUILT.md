@@ -29274,6 +29274,124 @@ today and would inherit `?aes=` too. Confirm it before Landing 3 ships; if it
 holds, it is its own item, and the one-line guard sits beside what Landing 1
 touched.
 
+## §241 — Read the Korean, not the key count: the cone seam and the crown, and a gate that reads one sentence
+
+**Partial ship, recorded by the half that landed.** Filed in the private
+roadmap as §241 on 2026-09-21, out of "review the translation in Korean and
+identify thematic improvement areas", and measured on the shipped tables
+rather than guessed: five themes, A to E. Areas **A** (one part, two
+renderings) and **C** (the honesty vocabulary) shipped the same day; **B**
+(register) and **D** (a canonical-term table) are open, and **E** (blocks that
+stop early) is half-shipped as a report. The roadmap keeps the entry for what
+remains; this is the record of what is built.
+
+### The gap, and why no gate saw it
+
+Korean shipped whole in §211 — chrome, explainer and primer at 100%, ten
+translators, a glossary decided once. Every gate the locale has counts or
+measures SHAPE: `explain-i18n --check` holds 0 unmatched keys, 0
+markup/`<code>`/id drift, 0 number drift and no label overrunning its plate;
+`probe-116-locale-fit` measures the header; §236's `glossary-links` holds the
+page's text identical with the module stubbed. **Not one of them reads a
+Korean sentence.** A page can be complete, fit every plate and carry every
+number and still name one part two ways, and §211's own record is the proof: it
+claimed the fusee's cone was reconciled to 원뿔 and the file never received it.
+That was not a regression. The first commit of `explain-i18n.ko.js` carries the
+identical counts.
+
+### Area A — one part, one word
+
+- **The cone.** 20 occurrences of 콘 in `src/explain-i18n.ko.js` became 원뿔,
+  and the chrome's `'Fusee cone'` label, which the filing had missed, went from
+  퓨지 콘 to 원뿔. 콘트레이트 (the contrate wheel) is a different word and is
+  untouched. §211's paragraph is corrected in place above ("CORRECTED
+  2026-09-21 (§241)"). The chrome label is the one string the page gates do not
+  judge, since it is a `registerSub` piece name rendered in §53's 240 px panel
+  column, so it was measured: `probe-116-locale-fit` reads "panel content wider
+  than its box: none, in any locale", and Korean's chrome bar came out 26.2 px
+  narrower than English.
+- **The crown.** Ten of the eleven standalone 크라운 are the winding crown and
+  are 용두 now, the native term the explainer's own headings and plate labels
+  already carried; only body prose had drifted. **The eleventh is the chain
+  link's crown (the rivet head)**, where 용두 would be a lie about the metal, so
+  it stays. 크라운 휠 (the crown wheel) is likewise a different part.
+- **The crown half was not a substitution.** 콘 and 원뿔 both end in a
+  consonant, so the cone was a straight replace with every particle invariant.
+  크라운 ends in a consonant and 용두 in a vowel, so the particle moves with
+  the noun (이→가, 을→를, 과→와, and 에서 invariant), and the ten sites were
+  edited one at a time. **A per-locale term table can find a Korean terminology
+  seam and cannot fix one**, because the repair reaches past the term into the
+  word behind it. Whoever writes area D should scope it as a reporter, not a
+  codemod.
+- Gates for both halves: `explain-i18n --check` PASS with Korean at 0 new
+  overflow or collision (원뿔 is a syllable longer than 콘, 용두 one shorter than
+  크라운), `explain-quotes` and `glossary-links` PASS. Neither word is a linked
+  glossary term.
+
+### Area C — the first check here that reads a sentence
+
+A translation that renders *modelled* as *simulated* does not read wrong, it
+reads fluent, and it erases the distinction README polices hardest. So
+`tools/explain-i18n.mjs --check` gates the pairing per key (the `HONESTY`
+table, "honesty vocabulary: modelled vs simulated"), over all twelve locales
+and both pages:
+
+- A **CROSSED** row gates: the English asserts one of the two words and the
+  translation drops it and carries the other. Stated any other way, the
+  sentences built on the CONTRAST ("the cam itself is MODELLED and not
+  simulated") become the ones the rule can never fail, which is what the first
+  draft did, found by mutating a row and watching the gate stay silent.
+- A row with **NEITHER** word is ABSENT and only reported, because a terse
+  paraphrase and a dropped sentence look identical from here. One survivor is
+  left alone: ja's 造形された金属 for "modelled metal", an idiom and not a lie.
+- Each locale's stems are **held to the page's own glossary** (the
+  `modelled / simulated` entry it declares to its readers), so the table cannot
+  invent a vocabulary the page does not use. A locale with no row is UNGATED,
+  not skipped.
+- The English matcher is deliberately narrow. Widened to a bare `\bmodel\b` it
+  swallows the credit line's "Anthropic's AI model", which all twelve locales
+  render with their model-word, correctly.
+
+Measured claim for Korean, confirmed and extended: of 12 English keys saying
+"modelled" and 17 saying "simulat\*", **0 are crossed**, in twelve locales.
+
+**What the gate found on arrival is bigger than the gate.** Twelve of its
+thirteen absent rows were one block, and the block was TRUNCATED. Every
+locale's translation of the alarm-corner entry stopped at a colon and dropped
+the last 441 characters of English, whose final sentence is *"The cam itself is
+MODELLED and not simulated"*. A reader in any of twelve languages never saw
+it, and every gate stayed green: the key matched, the markup matched, and the
+numbers matched (the dropped text's `0.00267` sits in bare prose, and
+explain.html checked numbers only in plate labels because prose quotes its
+constants inside `<code>`). The block is **restored in all twelve**, each
+locale's declared words for backlash, cam, flank and stem taken from its own
+tables and its own register (plain style in Korean and Japanese). That is what
+made the gate green rather than red on arrival.
+
+### It generalised, and part of it stays open
+
+`block coverage` in the same tool now REPORTS a translated block far shorter
+than its locale normally runs, ruled by that locale's own median ratio (one
+sided, because the high side is just a quoted identifier surviving inside a
+short CJK block). It does not gate: it cannot tell terse from truncated, and a
+threshold tuned until today's tree is green would be rule 1's "number that
+looked right". Three rows survive and are NOT fixed here, being a different
+size of job; they are filed with their numbers as area E in the roadmap entry.
+CLAUDE.md carries the rule that came out of it, where the honesty vocabulary
+and the report are described beside the gate.
+
+### Open, and where it lives
+
+| area | what | state |
+|---|---|---|
+| **B** | Register: 199 formal against 33 plain sentence endings in the explainer, 87 against 1 in the primer. Some plain endings are correct (a plate title takes plain style); others are mid-paragraph prose. Splitting them needs the English block's role, which a review has and a counter does not. | untouched |
+| **D** | A canonical-term table. Three false positives (멈춤, 크라운 휠, and the chain link's crown) are the finding: a substring list cannot decide either case, and the third one a compound exception would still have got wrong, because the variant stands alone and means something else. | untouched |
+| **E** | The three blocks `block coverage` still reports short. | reported, not fixed |
+
+The roadmap entry (kelaiem/timesim-roadmap, §241) keeps B, D and E; §243
+(the same review for Chinese, Traditional first) is filed from its method and
+has shipped nothing.
+
 ## §242 — The release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline, behind a door in the chrome
 
 > **Status.** SHIPPED whole, in two landings the same day: the film, its
@@ -31820,6 +31938,116 @@ Nothing of TODO 17's. The strike's ENERGY is item 128's, the case path item
 Euler–Bernoulli assumption are named in the item and in `GONG_ARCH`'s
 comment as what the law still assumes, not as debt.
 
+## §262 — The gong rings at C7: the pitch target is a note, the octave chosen by measured level
+
+The owner asked for two things at once: a gong that rings at C, and as loud as
+it can be. The second question has an honest answer and most of it is already
+on the ledger, so this entry is the first thing — the target pitch becomes a
+NOTE — plus the measurement that chose the octave, plus a plain statement of
+where the loudness actually is.
+
+**The target.** TODO 17 named 2.5 kHz, the A-weighted peak of hearing, and
+§198 and §253 rang it. That was never a note. `GONG_F1_TARGET_HZ` is now
+equal temperament on ISO 16's A4: `GONG_PITCH_A4_HZ` (440) × 2^(`GONG_NOTE_SEMITONES`
+/ 12), 27 semitones up, **2093.005 Hz**. The note's NAME is derived from the
+semitone count (`GONG_NOTE_NAME`, C7) rather than written beside it, so the
+two cannot disagree, and the acoustics record carries all three
+(`wire.targetNote`, `targetSemitonesAboveA4`, `concertA4_Hz`). Everything
+downstream re-derived itself: §253's fixed point closed on the new length, the
+knob moved to the arc it derives, the head to the match, the mix to the
+radiated powers.
+
+**The octave was measured, not picked.** `tools/probe-262-gong-note.mjs`
+boots the build at each C with `GONG_F1_TARGET_HZ` rewritten in flight and the
+foot cut to the arc the fixed point derives for it, and reads
+`__clock.acoustics`. Its control is the shipped note booted twice, once
+unmodified and once through the rewrite: design arc and head mass identical,
+f₁ and level within the knob's 0.01° rounding. The column that decides is the
+level AT THE SHIPPED BLOW'S ENERGY, because the fall law (TODO 128) fixes the
+hammer's angular rate and not its energy: a longer wire wants a heavier
+matched head, and the law then credits that head with a bigger blow it never
+earned — the raw column rewards it, the equal-energy column does not.
+
+| note | f₁ Hz | f₂ Hz | f₂/f₁ | arc | head mg | blow nJ | dBA raw | dBA at equal blow | f₁ dBA | what carries the ring |
+|---|---|---|---|---|---|---|---|---|---|---|
+| C6 | 1047 | 5097 | 4.87 | 87.52° | 79.2 | 30.93 | 27.8 | 25.2 | −9.7 | mode 3 at 16.0 kHz |
+| 2500 Hz (TODO 17) | 2500 | 13914 | 5.57 | 55.83° | 39.3 | 14.94 | 24.6 | 25.2 | 4.5 | mode 2 at 13.9 kHz |
+| **C7** | **2093** | **11416** | **5.45** | **61.14°** | **44.5** | **16.99** | **23.2** | **23.2** | **1.8** | **mode 2 at 11.4 kHz** |
+| C8 | 4186 | 24332 | 5.81 | 43.06° | 28.2 | 10.64 | 11.8 | 13.9 | 11.8 | mode 1 alone — f₂ ultrasonic |
+
+- **C8** sends the first overtone to 24.3 kHz, past hearing, and the wire
+  loses **11 dB**; its fundamental is also outside §197's 1–4 kHz band, and the
+  boot says so.
+- **C6** reads loudest, and it is the fiction and a whistle together: 2.6 of
+  its 4.6 dB over C7 is the raw column's heavier blow, and what is left is a
+  **16 kHz third partial** with the fundamental at −10 dBA. A-weighting does
+  not price age, and a ring most adults cannot hear is not a C6.
+- **C7** keeps the fundamental inside the band and the overtone that carries
+  the ring at 11.4 kHz, 1.4 dB under 2500 Hz raw and **2 dB** at equal
+  energy. That is the one lever the wire had left, and it is spent on the note.
+
+**What it moved.** The design arc is **61.14°** on §253's arch law, 60.44° on
+the straight one (`aesthetics.gong.arcDeg` 55.80 → 61.14; the foot walked 0°;
+the ring's radius 48.22 → 48.19, for the reason the battery found, below —
+the block's radius is floored by the ferrule wall at both lengths). The wire
+is 19.49 mm, 145.4 mg; the arc fundamental's modal fraction 0.296 →
+**0.306 M**, so the matched head grew 39.3 → **44.5 mg** (H 4.63 → 4.95 u,
+still owned by the match, not the band); μ 1.19, η 0.80, contact 10.4 µs;
+f₂/f₁ **5.45** (the arc's ratio falls as the arc lengthens); the loud second
+mode radiates 0.14 nW; the level **23.2 dBA**
+at 0.3 m on axis. The sim's own voice follows (the mix is derived from the
+radiated powers — the fundamental now sits 25 dB under the second mode), and
+the explainer's PLATE 2 strikes the same two partials at the new defaults.
+
+**What the battery found, and the wall it moved.** The first full run on the
+C7 tree failed one gate: `undeclaredClearance` read `Alarm gong ⇄ Case` at
+**0.1446**, `alarmGongPost ⇄ caseMiddle`, 0.0054 under the one margin, at
+every pose and every spec point. The block stands one margin inside the
+bore's authored circle by construction (`R_ANNULUS_OUT = R_BORE_BACK −
+CLEAR_MARGIN`, then the block's radius) — but the band is a sector lathe of
+96 facets per turn, each lying inside that circle by up to
+R·(1 − cos(π/96)) = 0.027 u, and the block's own 16 vertices reach its full
+radius. At 61° the block's nearest vertex faces the middle of a facet (the
+closest case point measured at r 50.116 against the circle's 50.139, same
+azimuth, same z); at 55.8° it had happened to face a facet's end, which is
+the only reason §198 and §253 shipped green on a construction that was
+0.027 short of its own margin at the wrong azimuth. Fixed in position space,
+P3's rule: the annulus's outer wall is now the bore's **inscribed circle**,
+`R_BORE_BACK · cos(π / G.CASE_LATHE_SEG)` less the margin — the facets'
+minimum over every azimuth, so the margin holds wherever a foot lands — and
+`CASE_LATHE_SEG` (96) is exported from `geometry.js` as the one count both
+lathes read, where it had been two bare literals. The ring moved in by
+0.027 u, the fixed point re-closed (61.139°), and the gap reads **0.171**.
+`R_CLAMP` holds the case screws' heads to the same authored circle; those
+heads are the case's own metal and declared joints, so nothing measured them
+short, and the pattern is noted here rather than chased.
+
+**Where the loudness is, stated once.** Every lever inside the wire was
+already at its envelope before this entry — the wire at real gong stock's
+1.1 mm ceiling (§198), the ring at the annulus (§198), the head on the
+impedance match (§253) — and the sweep shows the fundamental under **5 dBA in
+every in-band row** (C8's reads 11.8 only because it is the one audible mode
+left): a bare wire never rings its own note audibly, which is TODO 126
+restated per octave. The two levers that are not spent are the ledger's and
+were priced before this entry: TODO 128 (a hammer spring that is a spring,
+about **26 dB**) and TODO 126 (the case as the radiator, about **30 dB**).
+Neither is touched here; both are what "louder" means next.
+
+**Held by.** `probe-262-gong-note.mjs` — ALL PASS on its controls (shipped
+f₁ 2093.0 Hz is the target to 2e-5; the rewrite reproduces the shipped
+design arc 61.139340° and head 44.4942 mg exactly, f₁ within the knob's
+rounding) and the table above as its report; `probe-253-arch-modes.mjs`,
+`probe-197-gong-loudness.mjs` and `probe-198-lifting-lever.mjs` re-run green
+at the new note; the §197 band assert and §198's design-point assert at boot;
+the battery.
+
+**Record.** `TODO.md` 17 and 127 stay closed as the history they are;
+`explain.html`'s gong entry gains the §262 paragraph and re-quotes its three
+plates (every invalidated block re-translated in all 19 locales, the one
+Welsh label that then overran its plate shortened); `primer.html`'s gong
+entry says which C and why; `AESTHETICS.md` and `README.md` say the target is
+a note.
+
 ## §254 — The fusee groove is cut as a fusee engine cuts it, the chain stands upright in it, and its cone end is hooked
 
 Three items closed together, because they were one item wearing three
@@ -32901,3 +33129,184 @@ times:
   remaining time is.
 - **The caps.** Push 150 and PR 125 stay until several runs have measured
   the new wall, by the caps' own rule.
+
+---
+
+## §263 — A split battery run writes the whole baseline: the collector's digests, one seeding rule, and the split as a hosted dispatch's opt-in
+
+**As landed, the push is NOT split.** This entry was built and measured to
+split the push. §264 and §265 landed while it was measuring and took the same
+tiers off the push's critical path with a parallel job instead (the decision is
+at the end of this entry). What shipped is everything that lets a split run be
+a baseline, and the split itself as a hosted dispatch's `split: true`.
+
+The push to `main` is the run that writes §152's hosted baseline, and by
+2026-10-09 it was one serial job of ~89 min on `ubuntu-latest`. Run
+37924262189 broke down as: shards, boot B and the share boot ~49.7 min, then
+spec boots 561 s, then the point tier (TODO 186) 1541 s, then the post-battery
+probes ~3.1 min. PR #608 raised the job cap from 90 to 150 because the slowest
+green push had gone from 78 to 89 min in a week. That bought room but did not
+stop the growth.
+
+**The machinery to move it already existed.** §127 tier 3 assembles a run
+across processes. §259 put that in the workflow, and §260 spread the spec boots
+and the point tier across the workers (`specOwner`, `pointOwners`). Only one
+thing kept a push off it, and §259 wrote it down: a collector wrote no digests,
+so a split run could never become a baseline. §152's baseline is a report plus
+digests plus `points.json`, all under the commit SHA, and the collector had
+two of the three.
+
+**The third was already in worker 0's file.** A worker's §152 preflight reads
+the per-unit key, and the tasks file carries it as `preflight.headDigests`. In
+one process that same object is what `--digests` writes. So:
+
+- `--collect --digests FILE` writes it. It is written before the gates, as one
+  process writes it, and the seeding steps decide whether it is kept.
+- A collect asked for a key that no worker read THROWS. A baseline without
+  digests is one every later PR reads as "no usable baseline", and that shows
+  up only in a log.
+- `--digests-base` and `--points-base` are still refused under `--collect`.
+  They are inputs to the preflight's decision, and each worker made that for
+  itself.
+- A worker's preflight runs only when it is given `--digests`, `--digests-base`
+  or `--baseline`. So the legs of every non-PR run get `--digests` (to
+  `RUNNER_TEMP`; the copy that matters travels in the tasks file).
+
+Worker 0 reads the key on its preflight boot and boot B's on its anchor boot,
+which is where one process reads both. So the digest-determinism gate holds the
+same pair in either shape.
+
+**The seeding rule is one file now.** `tools/battery-seed.sh may|keep` is the
+shell the leg's two seeding steps used to carry inline, moved rather than
+copied, because the collector now applies the same rule. Two changes came with
+the move:
+
+- `keep` refuses a run that wrote no digests. In one process that could not
+  happen. In a split it can, so it fails out loud.
+- `may` takes a `REFUSE` reason. The collector seeds under ITS runner's cache
+  key (`battery-baseline-v1-<os>-<arch>-<sha>`), so it may seed only when both
+  workers recorded that same platform. Each leg writes
+  `platform-worker-<i>.txt` beside its tasks file, and the collector checks
+  them rather than trusting the route.
+
+**Which runs split**, as landed:
+
+| event | shape |
+|---|---|
+| push | single process, with §265's parallel `battery tiers` job |
+| hosted dispatch | single process with the tiers job; split when its `split: true` input asks |
+| nightly, self-hosted dispatch | single process (the collector is hosted and would seed under the wrong key) |
+| pull request | unchanged: split only on `battery-matrix` / `[matrix]` |
+
+While it was measuring, the branch made the split the push's default, with an
+opt-out input (`single`). The runs below were taken that way. The single-process
+harness path is untouched: no line of the browser path or of `assemble`
+changed.
+
+**Every gate still runs on a push.** The collector runs `assemble`, the same
+gate loop in the same order, plus `every expected shard was collected`:
+
+- the point tier's `point sweeps` gate and the three validated-configs gates;
+- the spec-boot gates;
+- the determinism anchors.
+
+The three post-battery probes ride worker 1, as on a split PR. The §227
+promotion shadow asks once, on worker 0. §227's provenance record and its
+publish step stay single-process only, as §259 left them. A split push
+therefore publishes no tree artifact for a later merge to inherit. That tier
+is a shadow and gates nothing, and §259's rule for it stands: it reads a second
+path only after it has agreed with reality on the reference path.
+
+**Instruments.**
+
+- `probe-127-matrix.mjs` (local, 4-vCPU container, 19 min): PASS. Every run in
+  it now reads the key. Identities 1 and 2 hold the collected `--digests` file
+  byte for byte against the single process's, and hold the report's `digests`
+  field present. A fifth case strips worker 0's key and must be refused by
+  name, with no file left behind. The other four identities are unchanged.
+- `actionlint` 1.7.7 clean. The route's decide step was exercised on ten
+  cases: push, hosted dispatch, `single: true`, self-hosted dispatch
+  ready/not-ready, the nightly, a PR with and without the opt-in, the host
+  refusal, and a non-owner push. `battery-seed.sh` was exercised on its five
+  `may` events, a `REFUSE`, and `keep` on a restricted, keyless and good run.
+
+**Measured on CI.** Dispatches on the branch, `runner: ubuntu-latest`, so each
+is the push's job graph exactly, minus the cache save. A branch dispatch may not
+seed, and says so.
+
+| run | shape | cap | wall (route → last job) | worker 0 | worker 1 | collector |
+|---|---|---|---|---|---|---|
+| 37959811246 | split | 150 | **51.9 min** | 26.3 | 51.4 | 0.3 |
+| 37959896617 | split | 150 | **45.1 min** | 44.7 | 42.3 | 0.2 |
+| 37965443348 | split | 150 | **29.6 min** | 25.4 | 29.1 | 0.3 |
+| 37969199581 | split | 95 | **45.7 min** | 45.3 | 40.0 | 0.2 |
+| 37965511569 | single (`single: true`) | 150 | **87.4 min** | — | — | — |
+
+- **Every split run was green**: `55/55 gates pass`, all six points CLEAN with
+  0 skipped, and the three validated-configs gates passing. The collector
+  wrote the report, the digests (`digests (worker 0's preflight) written`)
+  and `points.json` (6 whole point payloads). The single-process run is 54
+  gates: it has no `every expected shard was collected`.
+- **The same day's single process took 87.4 min.** That is in line with the
+  89.0 that opened this section, so the split's gain is not a quiet day. The
+  four split walls average 43.1 min, a 2.0x cut.
+- **What a leg spends, on a middle runner** (run 37959896617):
+  - worker 0: shards ~24.9 min, boot B and the share boot 1.0, 18 spec boots
+    4.7, its two `studr` points 13.6;
+  - worker 1: shards ~25, 18 spec boots, four points 13.5 (`studr=7.595` the
+    long pole at 781 s), the probes 2.7.
+
+  The two point tiers ended 13 s apart. Before, the tier was 25.7 min serial
+  after everything else.
+- **The runners are the spread now, not the partition.** Run 37959811246's
+  worker 0 swept `studr=4.71` in 434 s while its worker 1, doing the work it
+  always does, needed 970 s for `studr=7.595`. Across the four runs one leg
+  doing fixed work ranged 29.1–51.4 (worker 1) and 25.4–45.3 (worker 0), a
+  1.77x spread.
+
+**The cap, re-derived.** `battery.yml`'s own rule is the slowest green run,
+times the spread, rounded up. The first three runs, none truncated by the 150,
+gave a slowest LEG of 51.4 min. The legs' own 1.77x spread is wider than the
+header's 1.66x, so it is the one applied: 51.4 × 1.77 = 91.0, rounded up to
+**95** for a split leg. The fourth run measured under 95 and finished at 45.3,
+well inside it. Every single process keeps 150, the push included: §264 and
+§265 left that cap for several of their own runs to move. The PR's 125 is
+untouched.
+
+**How it composes with §264 and §265, and why the push is not split.** Both
+landed while these runs were measuring, and they took the same tiers off the
+push's critical path the other way round. A sibling job (`battery tiers` since
+§265) measures the spec boots and the point tier from t=0 and hands the file to
+the single process. §265's dispatch measured 40.1 min, and the first push after
+it 51.4. The two designs do not stack: a split run already spreads both tiers
+across its legs, and the hand-off's consumer is the single process's (its flags
+refuse `--matrix`). So the route sets `tiers_job` only when the run is not
+split. Which one a push takes was the owner's call, and the push stays §265's:
+
+- **Speed is a wash.** The split measured a mean of 43.1 over four runs, and
+  §265 measured 40.1 and 51.4. Within both, the runner a leg lands on is the
+  larger term (1.77x across these runs).
+- **§265 fails soft, the split fails hard.** A dead or slow tiers job costs
+  §265 a sweep it then runs itself, and the push still writes its baseline. A
+  dead leg fails a whole split, and a push that fails writes no baseline, which
+  is the quiet failure PR #608 raised the cap to stop.
+- **§265 was on `main`, and its own first push was the next measurement.** The
+  split stays one input away, so the two are compared on the same tree on
+  demand rather than argued.
+
+**Not built.**
+
+- **The tiers job under a split.** §265's addendum names the shards as the
+  push's critical path. A split halves exactly that, and the tiers job could
+  then take both tiers off each leg, leaving a leg its half of the shards and
+  its anchors: about 25–30 min on a middle runner. That needs the hand-off's
+  consumer to run under `--matrix` and the collector to accept the tiers from a
+  third file. It is harness work this landing did not take, and the
+  combination is the one shape neither design measured.
+- **A third worker.** `pointOwners(3)` would put about two points on each
+  worker. That is a worker-count change in four places: the route's `workers`,
+  the legs' `--matrix i/2`, the collector's file list, and the probe owner. The
+  measured floor is now each leg's shards plus a ~13-min point tier, so a
+  third leg would cut both. Whether that nets out on hosted runners whose own
+  spread is 1.77x is a measurement to take, not a prediction to land.
+- **§227 promotion from a split.** See above.
