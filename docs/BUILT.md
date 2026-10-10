@@ -33275,3 +33275,128 @@ governor's honesty ledger re-quoted; `primer.html`'s alarm paragraph, its
 gong honesty note and the honesty section say the fall is sprung now and
 what remains.
 
+
+## §269 — The case as the gong's radiator: the foot's reaction, the rigid watch, the structure-borne path measured
+
+TODO 126, closed as a measurement. §197 radiated the wire alone and called
+every level a floor, because a real alarm watch is loud the way a piano is: the
+string drives a soundboard. The path was drawn to the last screw — foot, rim,
+ledge, clamps, band, back — and carried nothing; the ledger wrote "about
+30 dB" against it. §269 carries it, with the receiver RIGID, and the thirty
+turned out to be a guess about a construction this watch does not have.
+
+**The foot** (`GONG_CASE_PATH`, built after the case, exposed as
+`__clock.casePath` and `acoustics.casePath`). A clamped–free arc ringing in a
+mode pushes its clamp with the inertial force of its own moving metal,
+F⃗ = ω²·X·∫ρA φ⃗ ds — φ⃗ the mode's displacement (radial w and tangential u, which
+§253's arch solve already returns at 161 points, unity at the radial tip) and
+X the tip's amplitude at the mode's energy. The integral is a MASS VECTOR P⃗,
+read by Simpson on the solver's own grid at the wire's azimuths (θ runs from
+the foot toward the free end; n̂ outward, t̂ along +θ), with a moment
+participation Q about the foot for the root couple. Two controls fed through
+the same path: a rigid translation returns the wire's mass along its axis and
+nothing across it (1e-7, a boot assert), and a rigid rotation about the ring's
+centre returns ρAR·(n̂(α) − n̂(0)) — the tangential arithmetic alone (the probe).
+Mode 1: 62.7 mg of the wire's 145, 0.31 N at the design blow, 9° off the
+foot's radial. **The arch's modes are in-plane, so the force lies in the dial's
+plane and the root couple is about the watch's axis** — the geometric fact the
+whole block turns on: nothing here pushes the back glass along its normal.
+
+**The receiver** is the whole watch as a rigid body. Its mass, centre and
+inertia tensor are tallied by signed tetrahedra over every CLOSED mesh under
+`movement`, each at the density of its STOCK — `layout.js`'s new `STOCK` table
+(density, modulus, Poisson's ratio, a representative grade named per row) and
+`materials.js`'s `stockKeyOf`, which maps each material object to a stock; the
+case exterior follows §203's alloy pick, so **density is modelled now**, which
+`materials.js` used to say it must never be. Closedness is two surface
+identities, both float noise on a closed body: Σn⃗A = 0, and ∮x_i n_j dA = Vδ_ij.
+The second was added when the probe's shifted-origin re-tally agreed on mass
+and disagreed on the centre: an annular wall with no end caps has normals that
+cancel and a tetrahedron volume a third short — four such meshes (the two
+subdial walls, the column skirt, one unnamed), invisible to the first test. The
+census over 718 meshes puts closed bodies at ≤ 2.7e-14 and everything open at
+≥ 1.5e-5 (print sheets at 1, the saws' flipped faces at 0.5, open torus
+springs and the gong arc near 1e-2, strips and uncapped rings at 1e-3..1e-5);
+the threshold 1e-10 sits in the nine empty decades between, and what it skips
+is REPORTED with a nominal volume where that means anything (0.42 g over 17
+nearly closed meshes, 1% of the watch; nine sheets with no claim). The chain is
+skipped by name — it is tessellated after this block, the fingerprint's own
+exclusion — and the probe measures what that leaves out (0.019 g). The result:
+**40.36 g** (steel 21.3, nickel silver 12.3, corundum 5.4, brass 1.1), the
+centre 0.8 u off the axis, I_zz 1.03e-5 kg·m². The tally is a function
+(`__clock.casePathTally()`) so the probe can run the same arithmetic at the
+posed movement against its own independent tally from a shifted origin — they
+agree to 1e-9 — and the record's copy is the build pose's; three meshes change
+volume with pose (the jumper's lifter bar's scale, two spring blades), 0.008 g.
+Mass-controlled, the response is V⃗ = F⃗/(iωM) and Ω⃗ = I⁻¹τ⃗/(iω), τ⃗ the force's
+moment about the centre (the foot stands 4.4 u above it) plus the root couple:
+0.59 mm/s of in-plane translation at mode 1, 0.15 mm/s axial at the rim from
+the rocking.
+
+**The radiation.** The case's exterior is a surface of revolution — the
+crystal and bezel in front, the two band radii, the back ring's edge and face,
+the back glass's pane, step wall and step top; lugs, bars, crowns and key lugs
+omitted — so every element's normal velocity is a₀ + a_c cosφ + a_s sinφ and
+the Rayleigh integral's φ-part is exact (J₀ for the piston term, J₁ for the
+dipole terms), ϑ by Simpson over the whole sphere. Over a closed body that is
+the Kirchhoff approximation, and its error is measured rather than assumed: the
+same machinery over a translating sphere of the case's radius against the
+exact (2πρca²/3)·(ka)⁴/(4 + (ka)⁴)·v² reads 1.72 at ka 0.77 and 0.36 at 4.18 —
+a ratio that swings 0.3–4 with ka as a sphere's physical-optics interference
+pattern, which a short cylinder does not share, so it is NOT applied as a
+correction; the figure is raw and the band (−2.3 to +4.4 dB) is stated beside
+it. At ka ≪ 1 the error has a closed form: the integral's dipole is 2·V_body·v
+(Gauss, with the baffled factor 2) where the exact one is (V_body + V_added)·v,
+so a translation is over-read by at most 4×. The piston identity — a baffled
+disc radiates ½ρcπa²(1 − J₁(2ka)/ka)·v², seen from both sides when the sphere
+is walked whole — is a boot assert on the quadrature, held to twice the
+midpoint rule's own (2π/32)²/24. The probe redoes both audible modes by brute
+force in (s, φ) over the record's own profile and field, no Bessel and no
+harmonics: 3.0 nW and 51.9 nW, within 0.1%. Radiation is priced for the
+audible modes only; the ultrasonic rows carry their foot and response with null
+radiation.
+
+**What it says.** The case is a dipole the size of a coin where the wire is one
+the size of a wire, so the structure path lifts the NOTE: the C7 goes from
+31.3 to 40.7 dBA (the case alone 40.1), the overtone from 52.8 to 55.2 —
+**55.4 dBA** in all, on axis at 0.3 m, where the bare wire read 52.8. The
+ding's mix (`SND_GONG_PARTIALS`) reads wire-plus-case power, so the voice gains
+its fundamental. A platinum case (§240's link, `materials.caseMetal.alloy~platinum`)
+weighs 73.3 g and rings 5 dB quieter through this path with the same foot force
+— the probe boots it to check, which is the point of modelling density.
+
+**What it leaves, on the record and in TODO 229.** The receiver is rigid only
+below its own first modes, and `casePath.receiver` holds three estimates: the
+base plate as a clamped disc at the ledge radius, 5.9 kHz; the back glass as a
+clamped disc at the aperture, 9.1 kHz (the step stiffens it: a low bound); the
+band's free-ring n = 2 ovalling, 1.6 kHz, carried with the caveat that both
+its ends are closed by discs the formula does not see. Mode 1 sits below both
+disc modes (the rigid figure is a floor there, magnification 1.15 at the
+plate); mode 2 sits above them, where the rigid figure is neither bound. And
+the wire's own sound, which §197 priced in free air, rings under 0.6 mm of
+sapphire whose mass law costs it 31.6 dB at the fundamental — the structure
+path is the one that does not pay that, which is the whole reason an alarm
+watch drives its case. The loud construction — the foot on the back, or a wire
+bent to ring out of plane — is the roadmap's §270.
+
+**Held by.** `tools/probe-269-case-path.mjs` (ALL PASS, 54 rows): the foot
+participation by trapezoid against the build's Simpson over the GROSS
+participation (≤ 9e-5), the two rigid-motion identities, F = ω·v·|P⃗|; the
+watch re-tallied from a shifted origin at the same (paused) pose to 1e-9 in
+mass, 1e-6 u in centre, 1e-7 in inertia, the tetrahedron formulas on a 2×3×5
+box, the build-pose tally within 0.05% and 0.2 u of the posed one with the
+three volume-changing meshes named, the census band, the chain's 0.019 g; V⃗
+and I·ωΩ⃗ = τ⃗ on every mode; the brute-force Rayleigh integral on the piston,
+the sphere (reproducing the Kirchhoff ratios to 0.1%) and the exterior; the
+three receiver estimates and the pane's mass law from `STOCK`, λ₀₁² re-solved
+from J₀I₁ + I₀J₁ = 0; the levels' arithmetic; the exterior profile against the
+case meshes' own extents; two silent boots, steel and platinum. §239's worst
+held stretch is a REPORT there (3.3 s on this container, main's own figure).
+
+**Record.** `TODO.md` 126 closed with the table, 229 filed; `explain.html`'s
+gong entry gains the §269 paragraph, PLATE 3 a case line and the wire-plus-case
+box (55 dBA), its two captions rewritten; `primer.html`'s gong note and honesty
+section; all twenty locales re-keyed and translated, Tagalog's twenty-six stale
+gong, barrel and governor rows (keyed on English older than §262) re-keyed and
+translated with them. `probe-197`'s header no longer says the path is
+unmodelled and prints the case path's rows beside the wire's.

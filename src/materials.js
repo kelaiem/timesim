@@ -138,9 +138,11 @@ for (const m of BRUSH_MATERIALS) installBrush(m);
 //   whiteGold18k — RHODIUM: 18K white gold is rhodium-plated as standard and
 //                  the plate is what the eye meets;
 //   platinum     — Pt950 reads as platinum.
-// Density is NOT modelled and must not be claimed anywhere: platinum's 21.45
-// g/cm³ against 18K gold's ~15.5 and steel's 7.9 is a real difference nothing
-// in this sim reads.
+// Density IS modelled since §269 — layout.js's STOCK, reached through
+// `stockKeyOf` below: the gong's structure-borne path divides the foot's force
+// by the whole watch's mass, so platinum's 20.7 g/cm³ (Pt950) against 18K
+// gold's 15.5 and steel's 7.85 is a difference that path reads and the
+// acoustics record quotes. Nothing else reads it yet.
 export const ALLOY_COLORS = {
   steel: `#${STEEL_FINISH.color.toString(16).padStart(6, '0')}`,
   yellowGold18k: '#fde3b7',
@@ -390,6 +392,7 @@ const dark = phys({
 // read as striped in one setup, the lines running unbroken across the
 // escapement window. Parameters live in aesthetics.json (decoration.ribbing).
 import { aesthetics } from './aesthetics.js';
+import { ALLOY_STOCK } from './layout.js';   // §269 — the alloy pick's STOCK key; the numbers live there
 const ribbedNickel = phys({
   color: 0xc9ccd1,
   metalness: 1.0,
@@ -539,6 +542,31 @@ export function applyDecorationFromAesthetics() {
     if (ps.uniforms.prlOrder) ps.uniforms.prlOrder.value = prl.shingleFlip ? -1.0 : 1.0;
     if (ps.uniforms.prlJitter) ps.uniforms.prlJitter.value = prl.jitterFrac ?? 0.25;
   }
+}
+
+// §269 — WHICH STOCK A MATERIAL IS CUT FROM. layout.js's STOCK holds the
+// numbers (density, modulus); this map holds the one fact only this file
+// knows, which material object is which metal. A material built outside the
+// roster declares its own `userData.stock` (the chain's, the case crystals'),
+// a glass BY NATURE (`userData.glass`) is corundum, and the case exterior's
+// metal is whatever §203's alloy pick says AT THE CALL — the tally that reads
+// it runs at boot, so a live alloy change moves the colour and not the
+// record, which the record states. `dark` is the gaskets' nylon; the screw
+// slots' inlays wear it too and weigh nothing anyone can hear. Anything the
+// map does not know returns null, and the caller WARNS rather than guessing.
+const MATERIAL_STOCK = new Map([
+  [brass, 'brass'], [bluedHand, 'steel'], [gold, 'gold18k'], [steel, 'steel'], [blueSteel, 'steel'],
+  [ruby, 'corundum'], [nickel, 'nickelSilver'], [ribbedNickel, 'nickelSilver'], [perledNickel, 'nickelSilver'],
+  [sapphire, 'corundum'], [sapphireClear, 'corundum'], [silver, 'silver'], [dark, 'nylon'],
+]);
+export function stockKeyOf(material) {
+  if (!material || Array.isArray(material)) return null;
+  if (material === caseMetal) return ALLOY_STOCK[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] ?? 'steel';
+  const k = MATERIAL_STOCK.get(material);
+  if (k) return k;
+  if (material.userData?.stock) return material.userData.stock;
+  if (material.userData?.glass) return 'corundum';
+  return null;
 }
 
 export const MATS = {

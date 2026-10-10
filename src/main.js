@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
-import { MATS, CRYSTAL_GLASS, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
+import { MATS, CRYSTAL_GLASS, stockKeyOf, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
 import { geometryOverridePaths } from './aesthetics.js';
 import { VALIDATED_CONFIGS } from './validated-configs.js';   // TODO 158: the configuration keys the battery swept
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, importAesthetics, IMPORT_OUTCOME, encodeShare, SHARE_PARAM, stripLinkParams, LINK_OUTCOME, LINK_DROPPED } from './aesthetics.js';
@@ -74,6 +74,7 @@ import {
   KEYLESS_STAFF_R, YK_SPRING, SETTING_LEVER_CUT, toLeverLocal, MEASURED_MARGIN_BAND,
   YOKE_PRONG_SEGMENTS, HUB_COLLAR_SEGMENTS, YOKE_BEARING_LATERAL, YOKE_A_SEAT, YOKE_A_FULL, yokeProngSupport, yokeClutchAt,   // TODO 211: the fork bears on a cut collar face, and the clutch is where it puts it
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
+  STOCK, ALLOY_STOCK,                          // §269: the stocks' densities and moduli, for the watch's mass and the receiver's first modes
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,
   MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_BAND, MAINSPRING_SIGMA_Y_PA,   // TODO 193: the ribbons' alloy, cited  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
@@ -1804,8 +1805,8 @@ if (Math.abs(palletFork.userData.blankHalfZ - FORK_HALF_Z) > 1e-9) {
 // §56's gong voice is built from (GONG_STEEL_C = √(200e9 / 7850)) — one set of
 // numbers for one metal, in both places it is asked to behave physically.
 const OSC_STEEL_E = STEEL_E_PA; // Pa — §137: re-sourced from layout's one copy (§56's value, unmoved)
-const OSC_STEEL_RHO = 7850;     // kg/m³ — steel density (§56's value)
-const OSC_BRASS_RHO = 8500;     // kg/m³ — wrought CuZn brass runs 8400–8730; 8500 for common CuZn37 (the rim's MATS.brass)
+const OSC_STEEL_RHO = STOCK.steel.rho;   // kg/m³ — steel density (§56's value; since §269 layout.js's STOCK is the one table)
+const OSC_BRASS_RHO = STOCK.brass.rho;   // kg/m³ — CuZn37 (the rim's MATS.brass), the same table
 const OSC_U = UNIT_MM / 1000;   // m per model unit — §39's pin, the one conversion
 // The BALANCE'S MOMENT OF INERTIA, from the dimensions the builder publishes
 // (rule 1's single source — nothing restated here that makeBalanceWheel knows).
@@ -10321,6 +10322,7 @@ registerLabel('Mainspring drum', drumGroup);
 // (FUSEE_Z0 / FUSEE_ZSPAN — the groove band's world frame — are declared with
 // CHAIN_TQ_REACH at the fusee constants: the plate-floor bound reads them.)
 const chainMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3d42, metalness: 1, roughness: 0.45 });
+chainMat.userData.stock = 'steel';   // §269 — a material outside the roster names its own stock for the mass tally
 let chainMesh = null;
 // §71: the schematic draws the chain as ITS OWN RUN — rebuildChain hands
 // the same curve it cuts the links from to this proxy line, so the drawing
@@ -26520,9 +26522,18 @@ for (const [end, M, w] of [['drawn', ALARM_HSPIRAL.Mdraw_Nm, ALARM_DRAW_RAD], ['
 // the case is the soundboard. Nothing here models that path, so every figure
 // below is the wire radiating ON ITS OWN. TODO 126 carries it.
 await breathe();
+// §269 — the air, and the ear's weighting, named once: GONG_ACOUSTICS (the
+// wire) and GONG_CASE_PATH (the case) radiate into the same room.
+const AIR_RHO = 1.2, AIR_C = 343;                    // 20 °C, 1 atm
+const gongAWeight = (f) => {                         // IEC 61672 A-weighting, dB
+  const f2 = f * f;
+  const num = 12194 ** 2 * f2 * f2;
+  const den = (f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2);
+  return 20 * Math.log10(num / den) + 2.0;
+};
 const GONG_ACOUSTICS = (() => {
   const U = OSC_U;                                     // m per unit
-  const RHO_AIR = 1.2, C_AIR = 343;                    // 20 °C, 1 atm
+  const RHO_AIR = AIR_RHO, C_AIR = AIR_C;              // §269 hoisted them: the case path shares this air
   const REST = 0.8;                                    // coefficient of restitution, hardened steel on steel
   const NU = 0.29;                                     // Poisson's ratio, steel — the Hertz contact's only extra constant
   const Q = 4000;                                      // the wire's Q: internal damping of hardened steel, the
@@ -26597,12 +26608,7 @@ const GONG_ACOUSTICS = (() => {
   // record (and the explainer) can quote what the curvature term moved.
   const straightLaw_Hz = GONG_MODE_BL.map((bl) => bl * bl * kGyr * GONG_STEEL_C / (2 * Math.PI * L * L));
   const wSum = spec.reduce((t, m) => t + m.w, 0);
-  const aWeight = (f) => {
-    const f2 = f * f;
-    const num = 12194 ** 2 * f2 * f2;
-    const den = (f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2);
-    return 20 * Math.log10(num / den) + 2.0;
-  };
+  const aWeight = gongAWeight;
   // THE RADIATION INTEGRAL, and why it is an integral. §197 wrote it for a
   // LINE of transverse dipoles whose strength follows the mode shape — the far
   // field a direction α off the wire's axis is the shape's Fourier component
@@ -41855,6 +41861,7 @@ const CASE_DIMS = (() => {
 // scene reads through — the x-ray materials' own trick.
 await breathe();
 const caseCrystalMat = new THREE.MeshPhysicalMaterial({ ...CRYSTAL_GLASS });
+caseCrystalMat.userData.stock = 'corundum';   // §269 — the two crystals are sapphire for the mass tally; not `userData.glass`, which is the x-ray set's word
 const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }); // §203 step 1: the case exterior's own material — an alloy reaches this and never the works
 caseSolid.visible = restoredCaseLines;
 movement.add(caseSolid);
@@ -43759,6 +43766,362 @@ function beatEventCount(t) {
 // Timbres per source (tuned by ear; the beat alternates two centres by
 // bank parity — that parity IS the fork's bank side, so tic/toc is
 // mechanically honest for free).
+// §269 — THE CASE AS THE RADIATOR, MEASURED (TODO 126). §197 radiates the wire
+// ALONE and calls every level a floor, because a real alarm watch is loud the
+// way a piano is: the string drives a soundboard. The path is drawn here to
+// the last screw — foot, rim, ledge, clamps, band, back — and until now it
+// carried nothing. This block carries it, with the receiver RIGID, and says
+// where that stops being true.
+//
+// THE FOOT. A clamped–free arc ringing in mode n pushes its clamp with the
+// inertial force of its own moving metal, F⃗ = ω²·X·∫ρA φ⃗ ds — φ⃗ the mode's
+// displacement (radial w and tangential u, §253's arch solve returns both,
+// unity at the radial tip) and X the tip's displacement amplitude at the
+// mode's energy. The integral is a MASS VECTOR P⃗ (kg), with a moment
+// participation Q (kg·m) about the foot for the root couple; both are read by
+// Simpson on the solver's own 161-point shape at the wire's azimuths, and a
+// rigid translation fed through the same quadrature returns the wire's mass
+// (the boot control below). The arch's modes are IN-PLANE, so F⃗ lies in the
+// dial's plane and Q is about the watch's axis — the geometric fact this whole
+// block turns on: nothing here pushes the back glass along its normal.
+//
+// THE RECEIVER. Below its own first modes a body answers a force with its
+// mass: V⃗ = F⃗/(iωM), Ω⃗ = I⁻¹τ⃗/(iω), τ⃗ the force's moment about the mass
+// centre plus the root couple. M, c and the inertia tensor are tallied by
+// signed tetrahedra over every CLOSED mesh under `movement` at its STOCK's
+// density (layout.js STOCK through materials.js stockKeyOf; a sheet — the
+// dial's print layers — is open, has no volume and is skipped by the test
+// that its area-weighted normals do not sum to zero). The watch's mass is 1/M
+// on the whole path, which is why a platinum case rings quieter here than a
+// steel one and the record says by how much. What is NOT rigid is measured
+// and REPORTED beside every row (TODO 229): the base plate's first flexural
+// mode (a disc clamped at the ledge's radius), the band's first ovalling mode
+// (a free thin ring — the plate inside it and the back ring stiffen it, so
+// this is the LOW bound) and the back glass's first mode (a disc clamped at
+// the aperture; the step is a stiffener, the same bound). A gong mode above
+// the lowest of those has a receiver the mass law no longer describes, the
+// row is flagged, and its figure is a floor in §197's sense, not a prediction.
+//
+// THE RADIATION. The rigid velocity field on the case's EXTERIOR — crystal
+// and bezel in front, the two band radii, the back ring's edge and face, the
+// back glass's pane, step wall and step top; lugs, spring bars, crowns and
+// the ring's key lugs omitted — is a surface of revolution, so every
+// element's normal velocity is a₀ + a_c cosφ + a_s sinφ and the Rayleigh
+// integral's φ-part is exact (J₀ for the piston term, J₁ for the dipole
+// terms); ϑ is quadrature over the whole sphere. Over a CLOSED body that is
+// the Kirchhoff approximation (each element radiating as if baffled), and
+// its error is MEASURED rather than assumed: the same machinery run over a
+// sphere of the case's radius, translating, against the oscillating sphere's
+// exact power (2πρca²/3)·(ka)⁴/(4 + (ka)⁴)·v². The ratio is carried per row
+// and is NOT applied as a correction — measured, it swings 0.3–4 with ka as
+// the physical-optics interference pattern of a sphere, which a short
+// cylinder does not share — so the quoted figure is the raw integral and the
+// band the control opens is stated with it. At ka ≪ 1 the error has a
+// closed form: the integral's dipole is 2·V_body·v (Gauss, with the baffled
+// factor 2) where the exact one is (V_body + V_added)·v, so a translation is
+// over-read by at most (2V_b/(V_b+V_a))² ≤ 4, 1.75 on the sphere. The piston
+// identity (a baffled disc radiates ½ρcπa²(1 − J₁(2ka)/ka)·v²) is a boot
+// assert on the quadrature itself.
+//
+// AND THE AIRBORNE PATH, which §197 never named: its "wire alone" is a wire
+// in FREE AIR, and this one rings inside a sealed case under 0.6 mm of
+// sapphire. The pane's mass law is reported per mode; the structure-borne
+// path is the one that does not pay it, which is the whole reason an alarm
+// watch drives its case. tools/probe-268-case-path.mjs re-derives every row.
+let gongCaseTally = null;   // assigned inside the block below; __clock.casePathTally calls it at the posed movement
+const GONG_CASE_PATH = await (async () => {
+  const U = OSC_U, D = CASE_DIMS, rec = GONG_ACOUSTICS;
+  const notes = [], timings_ms = {}; let t0 = performance.now();
+  const lap = (k) => { const t = performance.now(); timings_ms[k] = (timings_ms[k] || 0) + (t - t0); t0 = t; };
+  const arch = gongArchModes(); lap('archModes');
+  // 1 — THE FOOT: mass vector and moment participation on the solver's grid.
+  const aW = GONG_WIRE_R * U, rhoA = OSC_STEEL_RHO * Math.PI * aW * aW;      // kg/m
+  const R_m = GONG_R * U, alpha = Math.abs(GONG_A1 - GONG_A0), NG = arch[0].w.length - 1;
+  const participation = (w, u) => {
+    let px = 0, py = 0, q = 0;
+    const nx0 = Math.cos(GONG_A0), ny0 = Math.sin(GONG_A0);
+    for (let i = 0; i <= NG; i++) {
+      const az = GONG_A0 - GONG_HAND * alpha * i / NG;                        // θ runs from the foot toward the free end
+      const nx = Math.cos(az), ny = Math.sin(az), tx = GONG_HAND * ny, ty = -GONG_HAND * nx;   // n̂ outward, t̂ along +θ
+      const fx = w[i] * nx + u[i] * tx, fy = w[i] * ny + u[i] * ty;
+      const c = (i === 0 || i === NG) ? 1 : (i % 2 ? 4 : 2);                 // Simpson (NG is even)
+      px += c * fx; py += c * fy; q += c * ((nx - nx0) * fy - (ny - ny0) * fx);
+    }
+    const h = alpha / NG / 3;
+    return { Px: rhoA * R_m * px * h, Py: rhoA * R_m * py * h, Q: rhoA * R_m * R_m * q * h };
+  };
+  {
+    const w = new Float64Array(NG + 1), u = new Float64Array(NG + 1);
+    for (let i = 0; i <= NG; i++) { const az = GONG_A0 - GONG_HAND * alpha * i / NG; w[i] = Math.cos(az); u[i] = GONG_HAND * Math.sin(az); }
+    const p = participation(w, u), Mw = rhoA * R_m * alpha;
+    if (NG % 2 || Math.abs(p.Px / Mw - 1) > 1e-7 || Math.abs(p.Py / Mw) > 1e-7)
+      console.warn(`§269: the foot quadrature returns ${(p.Px / Mw).toFixed(9)} M along x̂ and ${(p.Py / Mw).toExponential(2)} M along ŷ `
+        + 'for a rigid translation of the wire — the participation integral is not reading the wire\'s frame');
+  }
+  // 2 — THE RIGID WATCH: mass, centre, inertia, by signed tetrahedra at each stock's density.
+  // A mesh is CLOSED when two surface identities hold: its area-weighted
+  // normals sum to nothing (∮n dA = 0) AND ∮ x_i n_j dA = V δ_ij, the
+  // divergence theorem applied to x_i x_j. The first alone is BLIND to a
+  // symmetric opening — an annular wall with no end caps has normals that
+  // cancel and a tetrahedron volume that is a third short, and the probe's
+  // shifted-origin re-tally found exactly four such meshes (the two subdial
+  // walls, the column skirt, one unnamed) agreeing on mass and disagreeing on
+  // the centre. Measured over the 718 meshes under `movement`
+  // (tools/probe-269-case-path.mjs --census): closed bodies read ≤ 2.6e-14 on
+  // the larger of the two, float noise, and everything open reads ≥ 9e-5 —
+  // the print sheets at 1, the saws' flipped faces at 0.5, the open torus
+  // springs and the gong arc near 1e-2, the strips and the uncapped rings at
+  // 1e-3..1e-5. Nine empty decades between the populations; the threshold
+  // sits in the middle. What it skips is REPORTED with its nominal volume,
+  // because the skipped set holds real metal (the gong arc, the fusee cone,
+  // the ribbons, those rings) whose tetrahedra read wrong: ~1% of the watch,
+  // 1/M on the path, a tenth of a decibel.
+  const OPEN_MESH_DEFECT = 1e-10;
+  // The tally is a FUNCTION (gongCaseTally, exposed as __clock.casePathTally)
+  // so the probe can run the same arithmetic at the posed movement and hold
+  // it against its own independent tally at the same pose; the record's copy
+  // is the BUILD pose's (nothing has ticked yet), and the two differ by what
+  // moving the hands and levers moves — the centre by hundredths of a unit.
+  gongCaseTally = async () => {
+    const U = OSC_U;
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nrm = new THREE.Vector3(), cen = new THREE.Vector3();
+    let M = 0, mx = 0, my = 0, mz = 0; const S = [0, 0, 0, 0, 0, 0];           // u³·ρ, u⁴·ρ, u⁵·ρ (xx yy zz xy xz yz)
+    const byStock = {}, unmapped = new Map(), open = [], perMesh = []; let meshes = 0, hidden = 0, openNominal = 0, slowest = 0, slowestName = '', caseExt = 0;
+    movement.updateWorldMatrix(true, true);
+    // The chain is tessellated LAZILY and after this block (the fingerprint
+    // excludes it by name for the same reason); it is skipped by name here
+    // and the probe measures what that leaves out — ~0.03 g, 0.07% of M.
+    const TALLY_SKIP = ['chainRun'];
+    const list = [];
+    movement.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position && !TALLY_SKIP.includes(o.name)) list.push(o); });
+    for (let li = 0; li < list.length; li++) {
+      if (li % 32 === 31) await breathe();                                      // §239: a seam between meshes, never inside one
+      const o = list[li], tm = performance.now();
+      const key = stockKeyOf(o.material);
+      if (!key || !STOCK[key]) { unmapped.set(o.material?.uuid ?? '?', o.name || o.parent?.name || '?'); continue; }
+      const rho = STOCK[key].rho;
+      const pos = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pos.count;
+      let V = 0, vx = 0, vy = 0, vz = 0, A = 0, Rb = 0; const s = [0, 0, 0, 0, 0, 0], Q = [0, 0, 0, 0, 0, 0, 0, 0, 0]; nrm.set(0, 0, 0);
+      for (let t = 0; t + 2 < n; t += 3) {
+        for (let e = 0; e < 3; e++) { const i = idx ? idx.getX(t + e) : t + e; o.localToWorld((e === 0 ? a : e === 1 ? b : c).fromBufferAttribute(pos, i)); }
+        e1.subVectors(b, a); e2.subVectors(c, a); e1.cross(e2); A += e1.length(); nrm.add(e1);   // e1 = 2·(area·normal)
+        cen.copy(a).add(b).add(c).multiplyScalar(1 / 3);                        // ∮ x_i n_j dA over a flat triangle is exactly centroid ⊗ area-vector
+        Q[0] += cen.x * e1.x; Q[1] += cen.x * e1.y; Q[2] += cen.x * e1.z; Q[3] += cen.y * e1.x; Q[4] += cen.y * e1.y; Q[5] += cen.y * e1.z; Q[6] += cen.z * e1.x; Q[7] += cen.z * e1.y; Q[8] += cen.z * e1.z;
+        Rb = Math.max(Rb, a.lengthSq(), b.lengthSq(), c.lengthSq());
+        const v = (a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x)) / 6;
+        V += v; vx += v * (a.x + b.x + c.x) / 4; vy += v * (a.y + b.y + c.y) / 4; vz += v * (a.z + b.z + c.z) / 4;
+        const sx = a.x + b.x + c.x, sy = a.y + b.y + c.y, sz = a.z + b.z + c.z, w = v / 20;   // tetra (0,a,b,c): (V/20)[(Σpᵢ)(Σpⱼ) + Σpᵢpⱼ]
+        s[0] += w * (sx * sx + a.x * a.x + b.x * b.x + c.x * c.x); s[1] += w * (sy * sy + a.y * a.y + b.y * b.y + c.y * c.y);
+        s[2] += w * (sz * sz + a.z * a.z + b.z * b.z + c.z * c.z); s[3] += w * (sx * sy + a.x * a.y + b.x * b.y + c.x * c.y);
+        s[4] += w * (sx * sz + a.x * a.z + b.x * b.z + c.x * c.z); s[5] += w * (sy * sz + a.y * a.z + b.y * b.z + c.y * c.z);
+      }
+      { const dt = performance.now() - tm; if (dt > slowest) { slowest = dt; slowestName = o.name || '?'; } }
+      // the two identities, each normalised to the surface (A is 2·area here, Q is 2·∮x n): Σn⃗ against the area, Q − Vδ against area × reach
+      let dq = 0; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) dq = Math.max(dq, Math.abs(Q[i * 3 + j] / 2 - (i === j ? V : 0)));
+      const defect = A > 0 ? Math.max(nrm.length() / A, dq / (A / 2 * Math.sqrt(Rb))) : 1;
+      if (defect > OPEN_MESH_DEFECT) {                                           // an open surface has no volume
+        // a NEARLY closed body (a missing end cap, a flipped sliver) still has a nominal volume about `defect` of right;
+        // a sheet or a half-open saw (defect ≥ 0.1) has none, and no mass is claimed for it
+        open.push({ name: o.name || o.parent?.name || '?', defect, nominalV_u3: defect < 0.1 ? Math.abs(V) : null });
+        if (defect < 0.1) openNominal += Math.abs(V) * rho;
+        continue;
+      }
+      const sg = V < 0 ? -rho : rho;                                             // a body wound inside-out is still a body
+      meshes++; if (!o.visible) hidden += sg * V;
+      perMesh.push({ name: o.name || o.parent?.name || '?', key, V_u3: Math.abs(V), defect });
+      M += sg * V; mx += sg * vx; my += sg * vy; mz += sg * vz; for (let i = 0; i < 6; i++) S[i] += sg * s[i];
+      byStock[key] = (byStock[key] || 0) + sg * V;
+      if (o.material === MATS.caseMetal) caseExt += sg * V;                     // the alloy pick's share — what a platinum case adds
+    }
+    if (unmapped.size)
+      console.warn(`§269: ${unmapped.size} material(s) the stock map does not know carried ${[...unmapped.values()].slice(0, 6).join(', ')} — `
+        + 'their mass is missing from the watch; declare userData.stock or add the material to stockKeyOf');
+    const cx = mx / M, cy = my / M, cz = mz / M;                                 // u
+    const Sc = [S[0] - M * cx * cx, S[1] - M * cy * cy, S[2] - M * cz * cz, S[3] - M * cx * cy, S[4] - M * cx * cz, S[5] - M * cy * cz];
+    const tr = Sc[0] + Sc[1] + Sc[2], U5 = U ** 5;
+    return {
+      M_kg: M * U ** 3, com_u: [cx, cy, cz],
+      I_kgm2: { xx: (tr - Sc[0]) * U5, yy: (tr - Sc[1]) * U5, zz: (tr - Sc[2]) * U5, xy: -Sc[3] * U5, xz: -Sc[4] * U5, yz: -Sc[5] * U5 },
+      byStock_g: Object.fromEntries(Object.entries(byStock).map(([k, v]) => [k, v * U ** 3 * 1000])),
+      meshes, perMesh, openSkipped: open, openSkippedNominal_g: openNominal * U ** 3 * 1000, openDefectMax: OPEN_MESH_DEFECT, slowestMesh: { name: slowestName, ms: slowest },
+      caseExterior_g: caseExt * U ** 3 * 1000, skippedByName: TALLY_SKIP,
+      hiddenMass_g: hidden * U ** 3 * 1000, unmapped: [...unmapped.values()],
+      caseAlloy: aesthetics.materials?.caseMetal?.alloy ?? 'steel',
+    };
+  };
+  const watch = await gongCaseTally();
+  watch.pose = 'build';
+  lap('tally');
+  if (!(watch.M_kg > 0)) console.warn('§269: the watch tallied no mass — the receiver has nothing to answer the foot with');
+  const inv3 = (I) => {                                                         // symmetric 3×3 inverse by cofactors
+    const { xx: a, yy: d, zz: f, xy: b, xz: c, yz: e } = I;
+    const det = a * (d * f - e * e) - b * (b * f - e * c) + c * (b * e - d * c);
+    return { det, m: [(d * f - e * e) / det, (c * e - b * f) / det, (b * e - c * d) / det, (a * f - c * c) / det, (b * c - a * e) / det, (a * d - b * b) / det] }; // xx xy xz yy yz zz
+  };
+  const Iinv = inv3(watch.I_kgm2);
+  // 3 — THE EXTERIOR, as revolve profiles in u with their outward normals.
+  const crystT = D.crystT, zCrystOut = D.zMidBack + crystT, rStepOut = D.rStep + crystT;   // the outer pane's INNER face is flush with the band's back face (makeCase)
+  const EXTERIOR = [
+    { name: 'front crystal', r0: 0, z0: D.zCrystOuter, r1: D.R_BEZEL_IN, z1: D.zCrystOuter, nr: 0, nz: -1 },
+    { name: 'bezel lip', r0: D.R_BEZEL_IN, z0: D.zBezelOuter, r1: D.R_BEZEL_IN, z1: D.zCrystOuter, nr: -1, nz: 0 },
+    { name: 'bezel face', r0: D.R_BEZEL_IN, z0: D.zBezelOuter, r1: D.R_OUT_FRONT, z1: D.zBezelOuter, nr: 0, nz: -1 },
+    { name: 'front band', r0: D.R_OUT_FRONT, z0: D.zBezelOuter, r1: D.R_OUT_FRONT, z1: D.zStep, nr: 1, nz: 0 },
+    { name: 'midcase step', r0: D.R_OUT_FRONT, z0: D.zStep, r1: D.R_OUT, z1: D.zStep, nr: 0, nz: -1 },
+    { name: 'back band', r0: D.R_OUT, z0: D.zStep, r1: D.R_OUT, z1: D.zMidBack, nr: 1, nz: 0 },
+    { name: 'band back face', r0: D.R_PLATE, z0: D.zMidBack, r1: D.R_OUT, z1: D.zMidBack, nr: 0, nz: 1 },
+    { name: 'back ring edge', r0: D.R_PLATE, z0: D.zMidBack, r1: D.R_PLATE, z1: D.z0, nr: 1, nz: 0 },
+    { name: 'back ring face', r0: D.apertureR, z0: D.z0, r1: D.R_PLATE, z1: D.z0, nr: 0, nz: 1 },
+    { name: 'back glass pane', r0: rStepOut, z0: zCrystOut, r1: D.apertureR, z1: zCrystOut, nr: 0, nz: 1 },
+    { name: 'glass step wall', r0: rStepOut, z0: zCrystOut, r1: rStepOut, z1: D.zStepTop, nr: 1, nz: 0 },
+    { name: 'glass step top', r0: 0, z0: D.zStepTop, r1: rStepOut, z1: D.zStepTop, nr: 0, nz: 1 },
+  ].filter((s) => Math.hypot(s.r1 - s.r0, s.z1 - s.z0) > 1e-9);
+  // 4 — THE RAYLEIGH INTEGRAL over a revolve, harmonics 0 and 1 exact in φ, ϑ by Simpson.
+  //   field: V (m/s) and Ω (rad/s) about c (m), SI; surfaces in u. Returns W (W) and the peak intensity at 0.3 m.
+  const radiate = (surfaces, k, F, dsMax_m) => {
+    const el = [];
+    for (const s of surfaces) {
+      const L = Math.hypot(s.r1 - s.r0, s.z1 - s.z0) * U, n = Math.max(2, Math.ceil(L / dsMax_m)), ds = L / n;
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n, r = (s.r0 + (s.r1 - s.r0) * t) * U, z = (s.z0 + (s.z1 - s.z0) * t) * U;
+        const a0 = F.Vz * s.nz - F.Ox * F.cy * s.nz + F.Oy * F.cx * s.nz;
+        const ac = F.Vx * s.nr + F.Oy * ((z - F.cz) * s.nr - r * s.nz) + F.Oz * s.nr * F.cy;
+        const as = F.Vy * s.nr + F.Ox * (r * s.nz - (z - F.cz) * s.nr) - F.Oz * s.nr * F.cx;
+        el.push({ r, z, w: 2 * Math.PI * r * ds, a0, ac, as });
+      }
+    }
+    let rMax = 0, zMax = 0; for (const e of el) { rMax = Math.max(rMax, e.r); zMax = Math.max(zMax, Math.abs(e.z)); }
+    const N = 2 * (32 + 4 * Math.ceil(k * Math.hypot(rMax, zMax))) + 1;      // Simpson nodes in μ = cosϑ, odd
+    const PHI = 72;
+    let sum = 0, peak = 0;
+    for (let j = 0; j < N; j++) {
+      const mu = -1 + 2 * j / (N - 1), st = Math.sqrt(Math.max(0, 1 - mu * mu));
+      let Ar = 0, Ai = 0, Br = 0, Bi = 0, Cr = 0, Ci = 0;
+      for (const e of el) {
+        const J = gongBesselJ(1, k * e.r * st), ph = -k * e.z * mu, cp = Math.cos(ph), sp = Math.sin(ph);
+        const g0 = e.w * e.a0 * J[0], gc = e.w * e.ac * J[1], gs = e.w * e.as * J[1];
+        Ar += g0 * cp; Ai += g0 * sp;
+        Br += gc * sp; Bi -= gc * cp;                                           // (−i)·e^{iph}
+        Cr += gs * sp; Ci -= gs * cp;
+      }
+      const ring = 2 * Math.PI * (Ar * Ar + Ai * Ai) + Math.PI * (Br * Br + Bi * Bi + Cr * Cr + Ci * Ci);
+      sum += ring * ((j === 0 || j === N - 1) ? 1 : (j % 2 ? 4 : 2));
+      for (let q = 0; q < PHI; q++) {
+        const ph = 2 * Math.PI * q / PHI, c = Math.cos(ph), s = Math.sin(ph);
+        const fr = Ar + Br * c + Cr * s, fi = Ai + Bi * c + Ci * s;
+        peak = Math.max(peak, fr * fr + fi * fi);
+      }
+    }
+    const integral = sum * (2 / (N - 1)) / 3;
+    const pre = AIR_RHO * AIR_C * k * k / (8 * Math.PI * Math.PI);
+    return { W: pre * integral, Ipeak: pre * peak / 0.09, elements: el.length, nodes: N };
+  };
+  const dsFor = (k) => Math.min(2 * Math.PI / k / 32, 1e-3);
+  lap('setup');
+  // the quadrature's own identity: a baffled piston
+  for (const ka of [1, 3]) {
+    const a = 0.01, k = ka / a;
+    const got = radiate([{ r0: 0, z0: 0, r1: a / U, z1: 0, nr: 0, nz: 1 }], k, { Vx: 0, Vy: 0, Vz: 1, Ox: 0, Oy: 0, Oz: 0, cx: 0, cy: 0, cz: 0 }, dsFor(k)).W / 2;   // the sphere is walked whole, so a lone disc is seen from both sides: twice the baffled figure
+    const J = gongBesselJ(1, 2 * ka), exact = 0.5 * AIR_RHO * AIR_C * Math.PI * a * a * (1 - J[1] / ka);
+    // the elements are midpoint samples λ/32 long, so the identity holds to (2π/32)²/24 ≈ 1.6e-3 (the midpoint rule's own term); twice that is the assert
+    if (Math.abs(got / exact - 1) > 2 * (2 * Math.PI / 32) ** 2 / 24)
+      console.warn(`§269: the exterior integral radiates ${got.toExponential(5)} W from a baffled piston at ka ${ka} where the identity gives ${exact.toExponential(5)} — the quadrature is wrong before it meets the case`);
+  }
+  // the Kirchhoff ratio: the same integral over a translating sphere of the case's radius, against the exact dipole
+  const sphereRatio = (k) => {
+    const a = D.R_OUT * U, NS = 180, prof = [];
+    for (let i = 0; i < NS; i++) {
+      const t0 = Math.PI * i / NS, t1 = Math.PI * (i + 1) / NS, tm = (t0 + t1) / 2;
+      prof.push({ r0: a * Math.sin(t0) / U, z0: a * Math.cos(t0) / U, r1: a * Math.sin(t1) / U, z1: a * Math.cos(t1) / U, nr: Math.sin(tm), nz: Math.cos(tm) });
+    }
+    const got = radiate(prof, k, { Vx: 1, Vy: 0, Vz: 0, Ox: 0, Oy: 0, Oz: 0, cx: 0, cy: 0, cz: 0 }, dsFor(k)).W;
+    const ka = k * a, exact = (2 * Math.PI * AIR_RHO * AIR_C * a * a / 3) * ka ** 4 / (4 + ka ** 4);
+    return got / exact;
+  };
+  lap('pistonControl');
+  // 5 — THE RECEIVER'S OWN FIRST MODES, the rigid model's bound (REPORTS; TODO 229).
+  const clampedDiscF01 = (a_m, h_m, st) => (10.2158 / (2 * Math.PI * a_m * a_m)) * Math.sqrt(st.E * h_m * h_m / (12 * (1 - st.nu * st.nu) * st.rho));   // λ₀₁² = 3.1962²
+  const plateStockKey = (() => { let k = null; backPlate.traverse((o) => { if (!k && o.isMesh && !o.userData.schematic) k = stockKeyOf(o.material); }); return k; })();
+  const caseStock = STOCK[ALLOY_STOCK[watch.caseAlloy] ?? 'steel'];
+  const receiver = {
+    plateF01_Hz: clampedDiscF01(CASE_R_IN * U, BACK_PLATE_T * U, STOCK[plateStockKey] ?? STOCK.nickelSilver), plateStock: plateStockKey,
+    plateClampR_u: CASE_R_IN, plateT_u: BACK_PLATE_T,
+    glassF01_Hz: clampedDiscF01(D.apertureR * U, crystT * U, STOCK.corundum), glassR_u: D.apertureR, glassT_u: crystT,
+    // a thin ring's in-plane bending mode n: f = n(n²−1)/√(n²+1) · (t/√12)·√(E/ρ) / (2πR²) — the band alone, free
+    bandOval2_Hz: (2 * 3 / Math.sqrt(5)) * (CASE_BAND_T * U / Math.sqrt(12)) * Math.sqrt(caseStock.E / caseStock.rho) / (2 * Math.PI * ((D.R_OUT - CASE_BAND_T / 2) * U) ** 2),
+    bandT_u: CASE_BAND_T, bandR_u: D.R_OUT - CASE_BAND_T / 2,
+  };
+  // The two discs bound the mass law directly; the band's figure is a FREE
+  // ring's, and both ends of this band are closed by discs the formula does not
+  // see (the pressed front crystal; the back ring with its glazed pane), so it
+  // is a floor on the assembled band's mode and is carried as its own bound.
+  receiver.discFirst_Hz = Math.min(receiver.plateF01_Hz, receiver.glassF01_Hz);
+  receiver.discFirstOwner = receiver.plateF01_Hz <= receiver.glassF01_Hz ? 'plate' : 'back glass';
+  receiver.bandCaveat = 'a free thin ring\'s n = 2 in-plane mode: the band alone, its two ends unclosed — the assembled band rings above it';
+  // 6 — THE AIRBORNE PATH's pane: the mass law at normal incidence for the back glass.
+  const paneMs = STOCK.corundum.rho * crystT * U;                                // kg/m²
+  const massLaw_dB = (f) => 10 * Math.log10(1 + (2 * Math.PI * f * paneMs / (2 * AIR_RHO * AIR_C)) ** 2);
+  // 7 — PER MODE.
+  const c_m = watch.com_u.map((v) => v * U);
+  const xf = GONG_R * U * Math.cos(GONG_A0) - c_m[0], yf = GONG_R * U * Math.sin(GONG_A0) - c_m[1], zf = Z_GONG * U - c_m[2];   // the foot about the mass centre
+  let countedCase = 0, countedBoth = 0;
+  const modes = [];
+  for (let i = 0; i < rec.modes.length; i++) {
+    const m = rec.modes[i];
+    await breathe();                                                           // §239: one seam per mode; a mode's integral is one block
+    const om = 2 * Math.PI * m.f_Hz, k = om / AIR_C, p = participation(arch[i].w, arch[i].u);
+    const Fx = om * m.tipV_ms * p.Px, Fy = om * m.tipV_ms * p.Py, Mroot = om * m.tipV_ms * p.Q;   // N, N·m amplitudes
+    const tx = -zf * Fy, ty = zf * Fx, tz = xf * Fy - yf * Fx + Mroot;        // (r × F) + the root couple
+    const Vx = Fx / (om * watch.M_kg), Vy = Fy / (om * watch.M_kg);
+    const [m0, m1, m2, m3, m4, m5] = Iinv.m;
+    const Ox = (m0 * tx + m1 * ty + m2 * tz) / om, Oy = (m1 * tx + m3 * ty + m4 * tz) / om, Oz = (m2 * tx + m4 * ty + m5 * tz) / om;
+    const field = { Vx, Vy, Vz: 0, Ox, Oy, Oz, cx: c_m[0], cy: c_m[1], cz: c_m[2] };
+    // The radiation integral is priced for the modes an ear can hear — the
+    // ultrasonic rows keep their foot force and rigid response (cheap) and
+    // carry null radiation: at ka 12–42 the integral costs seconds the boot
+    // does not have and answers a question nothing on the record asks.
+    const rad = m.audible ? radiate(EXTERIOR, k, field, dsFor(k)) : null; lap('radiate' + m.n);
+    const kirch = m.audible ? sphereRatio(k) : null; lap('sphere' + m.n);
+    const W = rad ? rad.W : null, Ipk = rad ? rad.Ipeak : null;
+    const spl = rad ? 10 * Math.log10(Math.max(Ipk, 1e-30) / 1e-12) : null, splA = rad ? spl + gongAWeight(m.f_Hz) : null;
+    const both = rad ? 10 * Math.log10(10 ** (splA / 10) + 10 ** (m.splA_dBA / 10)) : m.splA_dBA;
+    if (m.audible) { countedCase += 10 ** (splA / 10); countedBoth += 10 ** (both / 10); }
+    m.caseW_W = W ?? 0; m.splA_withCase_dBA = both;                             // the ding's mix reads these (SND_GONG_PARTIALS)
+    modes.push({
+      n: m.n, f_Hz: m.f_Hz, audible: m.audible,
+      foot: { P_mg: [p.Px * 1e6, p.Py * 1e6], Pmag_mg: Math.hypot(p.Px, p.Py) * 1e6, Q_kgm: p.Q, F_N: Math.hypot(Fx, Fy), F_dirDeg: Math.atan2(Fy, Fx) / DEG2RAD, Mroot_Nm: Mroot },
+      rigid: { V_ms: Math.hypot(Vx, Vy), Omega_rad_s: Math.hypot(Ox, Oy, Oz), OmegaZ_rad_s: Oz, rimAxialV_ms: Math.hypot(Ox, Oy) * D.R_OUT * U },
+      field: { Vx, Vy, Ox, Oy, Oz, Fx, Fy, tau: [tx, ty, tz] },                // the phasor amplitudes the probe re-integrates
+      caseKa: k * D.R_OUT * U, kirchhoffSphereRatio: kirch, elements: rad ? rad.elements : 0,
+      W_W: W, I_peak_W_m2: Ipk, spl_dB: spl, splA_dBA: splA,
+      wireW_W: m.W_W, wireSplA_dBA: m.splA_dBA, splA_withCase_dBA: both, caseShare: W === null ? null : W / (W + m.W_W),
+      // the receiver's regime at this frequency: below BOTH disc modes the mass law is a FLOOR on the discs' motion;
+      // above either it is neither bound (TODO 229). The band's free-ring figure is a separate, softer bound.
+      belowDiscModes: m.f_Hz <= receiver.discFirst_Hz, belowBandFreeOval: m.f_Hz <= receiver.bandOval2_Hz,
+      regime: m.f_Hz <= receiver.discFirst_Hz ? 'below the plate and glass modes: the rigid figure is a floor' : 'above a disc mode: neither bound (TODO 229)',
+      plateMagnification: 1 / Math.abs(1 - (m.f_Hz / receiver.plateF01_Hz) ** 2),
+      paneMassLaw_dB: massLaw_dB(m.f_Hz), airborneThroughBack_dBA: m.splA_dBA - massLaw_dB(m.f_Hz),
+    });
+  }
+  const audibleRows = modes.filter((r) => r.audible);
+  return {
+    watch, receiver, exterior: EXTERIOR, paneMs_kg_m2: paneMs, foot: { az0Deg: GONG_A0 / DEG2RAD, hand: GONG_HAND, ringZ_u: Z_GONG, R_u: GONG_R },
+    kirchhoff: { sphereRatios: audibleRows.map((r) => [r.caseKa, r.kirchhoffSphereRatio]),
+      band_dB: [Math.min(...audibleRows.map((r) => -10 * Math.log10(r.kirchhoffSphereRatio))), Math.max(...audibleRows.map((r) => -10 * Math.log10(r.kirchhoffSphereRatio)))],
+      lowKaOverreadMax: 4 },
+    modes, splA_dBA: 10 * Math.log10(Math.max(countedCase, 1e-30)), splA_withCase_dBA: 10 * Math.log10(Math.max(countedBoth, 1e-30)),
+    approximations: [
+      'receiver rigid: a mass-controlled 6-DOF response, a floor on the discs\' motion below the plate\'s and glass\'s first modes and neither bound above them (receiver.*, TODO 229); the band\'s free-ring ovalling is a separate bound with its caveat',
+      'exterior as a revolve: lugs, spring bars, crowns, pusher cap and the ring\'s key lugs omitted',
+      'Rayleigh integral over a closed body (Kirchhoff): quoted RAW; the same integral over a translating sphere of the case\'s radius reads the exact answer by kirchhoff.sphereRatios at each audible mode\'s ka, a band of kirchhoff.band_dB; at ka ≪ 1 it over-reads a translation by at most 4× (6 dB)',
+      'wire-plus-case level is the power sum of two on-axis PEAKS that need not share a direction: an upper bound within 3 dB',
+      'radiation priced for audible modes only; ultrasonic rows carry foot and rigid response with null radiation',
+      'case alloy read at boot (watch.caseAlloy); a live alloy change moves the colour, not this record',
+    ],
+    notes, timings_ms,
+  };
+})();
+GONG_ACOUSTICS.casePath = GONG_CASE_PATH;
+await breathe();
 // §197 — the ding's partials, DERIVED from GONG_ACOUSTICS. Audible modes only
 // (the wire's 3rd is 24 kHz and inaudible — the law computes it, the speaker
 // does not sound it, which is the same rule the explainer's plate follows),
@@ -43768,10 +44131,10 @@ function beatEventCount(t) {
 // as the overall LEVEL so this changes the balance and not the volume.
 const SND_GONG_PARTIALS = (() => {
   const heard = GONG_ACOUSTICS.modes.filter((m) => m.audible && m.W_W > 0);
-  const wMax = Math.max(...heard.map((m) => m.W_W));
+  const wMax = Math.max(...heard.map((m) => m.W_W + m.caseW_W));   // §269 — wire AND case: the mix hears both paths
   return heard.map((m) => ({
     n: m.n - 1,
-    gain: 0.30 * Math.sqrt(m.W_W / wMax),
+    gain: 0.30 * Math.sqrt((m.W_W + m.caseW_W) / wMax),
     decay: Math.min(m.ringT60_s, ALARM_STRIKE_GAP),
   })).sort((a, b) => b.gain - a.gain);
 })();
@@ -52153,6 +52516,8 @@ window.__clock = {
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get acoustics() { return GONG_ACOUSTICS; },  // §197 — the gong's blow, modes and radiated level, off the built metal
+  get casePath() { return GONG_CASE_PATH; },   // §269 — the structure-borne path: the foot's reaction, the rigid watch, the case's radiation (also acoustics.casePath)
+  casePathTally: () => gongCaseTally(),        // §269 — the same mass/inertia tally at the CURRENT pose (a promise), for the probe's second method
   // §253 — the arch solve and the arc's radiation integral THEMSELVES, for
   // probe-253-arch-modes to hold their controls on (the straight limit, the
   // brute-force sphere): plain data out, so a page.evaluate can carry it.

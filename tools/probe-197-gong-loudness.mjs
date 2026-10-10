@@ -23,10 +23,13 @@
 // arc's dipoles integrated over the sphere — by a Bessel series in the build,
 // by brute-force quadrature here) are written out in main.js beside the
 // build. What is worth repeating here is the LIMIT: this
-// models the wire radiating ON ITS OWN. A real alarm watch is loud because the
-// gong's foot drives the caseback and the caseback is a diaphragm — the wire
-// is the string and the case is the soundboard — and that path is not
-// modelled. Every level below is a floor, not a prediction of the watch.
+// models the wire radiating ON ITS OWN, in free air. A real alarm watch is loud
+// because the gong's foot drives the case — the wire is the string and the case
+// is the soundboard — and since §269 that path is carried with the receiver
+// RIGID (`__clock.casePath`, held by tools/probe-269-case-path.mjs): the foot's
+// reaction off the mode shapes, the whole watch's mass and inertia, the case's
+// exterior radiating. This probe keeps holding the WIRE's half and prints the
+// case path's rows beside it; the two levels are summed on the record.
 //
 //   node probe-197-gong-loudness.mjs            # measure, compare, verdict
 //   node probe-197-gong-loudness.mjs --json     # the payload, for diffing
@@ -323,7 +326,9 @@ if (JSON_OUT) {
   console.log('  mode      f        SPL @0.3 m     dBA      T60      heard            kind');
   for (const m of modes)
     console.log(`   ${m.n}   ${fmt(m.f_Hz, 0).padStart(8)} Hz  ${fmt(m.spl_dB, 1).padStart(7)} dB  ${fmt(m.splA_dBA, 1).padStart(7)}  ${fmt(m.ringT60_s, 2).padStart(6)} s   ${(m.audible ? 'yes' : 'no (ultrasonic)').padEnd(16)} ${m.kind}`);
-  console.log(`\n  TOTAL           ${fmt(splA, 1)} dBA at 0.3 m, on axis — the WIRE alone (no case path)\n`);
+  console.log(`\n  TOTAL           ${fmt(splA, 1)} dBA at 0.3 m, on axis — the WIRE alone`);
+  const CP = D.casePath;
+  if (CP) console.log(`  CASE PATH (§269, receiver rigid)  ${fmt(CP.splA_dBA, 1)} dBA alone · ${fmt(CP.splA_withCase_dBA, 1)} dBA wire + case (f₁ ${fmt(CP.modes[0].wireSplA_dBA, 1)} → ${fmt(CP.modes[0].splA_withCase_dBA, 1)}) — tools/probe-269-case-path.mjs holds it\n`);
 }
 
 // --- the verdict ------------------------------------------------------------
