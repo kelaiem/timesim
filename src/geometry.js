@@ -2009,7 +2009,7 @@ export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear,
   const Ra = pinR + clear + bevel, Rm = pinR + clear;
   const yDeep = rho(0);                 // the pin's deepest centre, θ = 0
   const yEntry = rho(liftHalf);         // where it enters, on the centre line
-  const yFloor = yDeep - Ra;            // authored floor (metal: yDeep − Rm)
+  let yFloor = yDeep - Ra;              // authored floor (metal: yDeep − Rm), deepened by the miter below
   // HORN TIPS at the depth where the pin enters: its centre then stands between
   // the horns for the whole lift. Longer horns would embrace it more and are
   // bought with KNOCK — the far side of the swing meets the banked horn
@@ -2025,22 +2025,41 @@ export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear,
   const N_SLOT = 48;
   const Ys = [];
   for (let i = 1; i <= N_SLOT; i++) { const u = i / N_SLOT; Ys.push(yFloor + (yTip - yFloor) * u * u); }
-  // The wall is cut as CHORDS between those samples, and each chord stands
-  // inside the curve it spans by its sag: the first cut read the pin 0.1499
-  // off the wall. So every authored width carries the worst sag measured
-  // between samples (the floor's own point, at width 0, included).
-  const pts = [[yFloor, 0], ...Ys.map((Y) => [Y, halfW(Y, Ra)])];
-  let sag = 0;
-  for (let i = 1; i < pts.length; i++) {
-    for (const f of [0.25, 0.5, 0.75]) {
-      const Y = pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f;
-      sag = Math.max(sag, halfW(Y, Ra) - (pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f));
+  // The wall is cut as CHORDS between those samples, and two things stand the
+  // metal proud of the curve the union describes. Each chord stands inside the
+  // curve it spans by its sag (the first cut read the pin 0.1499 off the
+  // wall). And the chamfer's offset is MITRED: at each vertex of the wall,
+  // which is a reflex corner of the blank, the dilation reaches
+  // bevel·sec(turn/2), not bevel — the floor's own point read the pin 0.14998
+  // off at its deepest. So the walls are cut wider by the worst sag between
+  // samples (the floor's point, at width 0, included), and the whole union a
+  // radius wider by the worst miter's excess, both measured off this polyline.
+  const polyline = (R) => [[yFloor - (R - Ra), 0], ...Ys.map((Y) => [Y, halfW(Y, R)])];
+  const sagOf = (P, R) => {
+    let m = 0;
+    for (let i = 1; i < P.length; i++) {
+      for (const f of [0.25, 0.5, 0.75]) {
+        const Y = P[i - 1][0] + (P[i][0] - P[i - 1][0]) * f;
+        m = Math.max(m, halfW(Y, R) - (P[i - 1][1] + (P[i][1] - P[i - 1][1]) * f));
+      }
     }
-  }
-  const profile = Ys.map((Y) => [Y, halfW(Y, Ra) + sag, halfW(Y, Rm) + sag]);   // [depth, authored half-width, metal half-width]
+    return m;
+  };
+  const miterOf = (P) => {   // the floor's point turns between the two walls' first chords
+    const dirs = [];
+    for (let i = 1; i < P.length; i++) dirs.push(Math.atan2(P[i][1] - P[i - 1][1], P[i][0] - P[i - 1][0]));
+    let m = bevel * (1 / Math.cos(Math.PI / 2 - dirs[0]) - 1);
+    for (let i = 1; i < dirs.length; i++) m = Math.max(m, bevel * (1 / Math.cos((dirs[i] - dirs[i - 1]) / 2) - 1));
+    return m;
+  };
+  const miter = miterOf(polyline(Ra));
+  const RaCut = Ra + miter;
+  const sag = sagOf(polyline(RaCut), RaCut);
+  const profile = Ys.map((Y) => [Y, halfW(Y, RaCut) + sag, halfW(Y, Rm + miter) + sag]);   // [depth, authored half-width, metal half-width]
+  yFloor -= miter;
   // guard pin, behind the floor
   const guardR = forkT * 0.18;
-  const yGuard = (yDeep - Rm) - stockMin - guardR;
+  const yGuard = (yDeep - Rm - miter) - stockMin - guardR;
   const gCentred = d - yGuard;
   const gBanked = Math.sqrt(d * d + yGuard * yGuard - 2 * d * yGuard * Math.cos(bank));
   const R = gBanked - guardR - clear;      // full rim
@@ -2056,7 +2075,7 @@ export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear,
   }
   const gap = rel + (guardR + clear) / Rc;
   return Object.freeze({
-    slot: Object.freeze({ profile, sag, yFloor, yFloorMetal: yDeep - Rm, yDeep, yEntry, yTip, tipW: stockMin, clear, bevel }),
+    slot: Object.freeze({ profile, sag, miter, yFloor, yFloorMetal: yDeep - Rm - miter, yDeep, yEntry, yTip, tipW: stockMin, clear, bevel }),
     guard: Object.freeze({ y: yGuard, r: guardR, centred: gCentred, banked: gBanked }),
     roller: Object.freeze({ R, Rc, gap, rel }),
     pinOuter: r + pinR,
