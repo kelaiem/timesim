@@ -981,7 +981,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 278 measuring scripts and this file names 23. The rest are named for the
+`tools/` holds 280 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -998,8 +998,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **168 of
-them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
+The index also carries the split that decides how to read a result: **169 of
+them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
 acceptance — those say so in their own headers. A report saying `0 violations` has not
@@ -1237,13 +1237,14 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   a face the instruments READ**: cap every body, including the faces buried
   inside a joint, and look for cheap geometry somewhere that isn't load
   bearing for a check.
-- **BOOT BREATHES NOW, and each of the four rules that follow is new.** Every
-  part is still cut during `main.js`'s module evaluation, in source order, and
-  the wall is still ~13 s on the SwiftShader container (25–27 s before §239's
-  memo; `tools/probe-239-boot-profile.mjs` splits that block by function and
-  says it is FLAT — nothing above 15%, which is why the remainder was yielding
-  and not more speed). What changed is that the evaluation HANDS THE THREAD
-  BACK, at 173 seams: `await breathe()`, budget `BREATHE_MS = 40` — the
+- **BOOT BREATHES NOW, and each of the five rules that follow is new.** Every
+  part is still cut during `main.js`'s module evaluation, in source order; the
+  wall was ~13 s on the SwiftShader container at §239 (25–27 s before its memo,
+  after which `tools/probe-239-boot-profile.mjs` split the block by function and
+  called it FLAT — nothing above 15%, which is why the remainder was yielding
+  and not more speed) and is ~20 s at §266, the build having grown. What changed
+  is that the evaluation HANDS THE THREAD BACK, at seams: `await breathe()`,
+  budget `BREATHE_MS = 40` — the
   platform's own 50 ms long-task threshold with the margin taken OFF, because a
   seam is chosen against the budget and lands on whatever the machine gives it.
   Measured: the build held the thread **12,474 ms** in one stretch before and
@@ -1251,7 +1252,9 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   in 10,144 ms at worst before and 843 ms worst / 61 ms median after.
   `tools/probe-239-boot-yield.mjs` gates it against a control that rewrites
   `BREATHE_MS` to `Infinity` in flight — same statements, same clock reads, no
-  yields — and `__clock.boot` publishes what the build actually achieved.
+  yields — and `__clock.boot` publishes what the build actually achieved. The
+  probe also COUNTS the seams in the source and prints the number, which is the
+  one to quote: this entry said 173 for as long as it took the file to reach 203.
   **A seam must be in an ASYNC CONTEXT and at a STATEMENT HEAD.** The module
   body and top-level bare blocks already are; an IIFE has to become
   `await (async () => {…})()`, which six of them did. `await` mid-expression is
@@ -1264,6 +1267,25 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   callback stood in the way (`movement.traverse` in `BACK_ENVELOPE`) the walk was
   opened out into a `for` over a collected list, which is the only shape that can
   yield between meshes.
+  **NEW BUILD CODE BRINGS ITS OWN SEAMS, and §266 is what happens when it does
+  not.** Code that landed after §239 landed with none, nothing ran the probe,
+  and `main` was holding the thread for 3 s at a stretch (5.1 s at worst along
+  the way) when a feature question happened to measure it. Chrome's dialog
+  fires at a few seconds. A builder whose cost is a LOOP takes a seam at the
+  head of the loop whose iteration is cheap enough to carry one; a greedy pass
+  in source order cannot find that site for you, because the cost it sees sits
+  in the inner loop that is too hot to seam. A SINGLE CALL longer than the
+  budget cannot be split from `main.js` at all, so it becomes a generator in
+  `geometry.js` that `yield`s between steps of its own arithmetic
+  (`makeGenevaFingerSteps`, `makeHairspringSteps`, `genevaCrossOutlineSteps`,
+  `weldTreeSteps`),
+  with `drainSteps` as the synchronous wrapper for every caller that does not
+  yield, and `main.js` resumes it with `await breathe()` between steps. The
+  steps are the same arithmetic in the same order, and the fingerprint holds
+  that. Measure the result with `probe-239-boot-yield.mjs` before landing
+  anything that adds build work, and place seams along the EXECUTION timeline
+  rather than down the source: a loop that already carries a seam reads as one
+  unsplit stretch to a source-order pass (§266's second catch-up).
   **AND A YIELDING BUILD CAN BE INTERRUPTED, which is a failure class that did
   not exist before.** Every listener this file registers is registered PART WAY
   THROUGH it, closing over constants the lines below have not declared yet — so a
