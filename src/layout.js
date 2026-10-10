@@ -831,6 +831,34 @@ export const SPRING_SIGMA_Y_PA = 800e6;
 // Shear yield by von Mises — what a COIL is limited by, where a blade is
 // limited by SPRING_SIGMA_Y_PA directly. One yield, two loadings.
 export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
+// §269 — THE STOCKS: density, modulus, Poisson's ratio, keyed by the METAL a
+// part is cut from rather than by its finish (three nickel finishes are one
+// nickel-silver plate stock; the case's four alloys are four stocks). Until
+// §269 materials.js said density "is NOT modelled and must not be claimed
+// anywhere"; the gong's structure-borne path claims it, because the foot's
+// force is answered by the whole watch's MASS and a platinum case rings
+// quieter through that path than a steel one by exactly the ratio here. The
+// mass tally reads `rho`; the receiver's first-mode REPORTS read `E` and `nu`
+// for the plate, the band and the back glass. Handbook figures, a
+// representative grade named on each row — the levels they enter are
+// reports, the mass as 1/M, so a grade a workshop would dispute moves a
+// figure by a fraction of a decibel; a grade NOBODY would accept (brass at
+// steel's modulus) would move it by whole ones, which is why the row names
+// its source. materials.js's `stockKeyOf` maps each material here.
+export const STOCK = Object.freeze({
+  steel:        { rho: 7850,  E: STEEL_E_PA, nu: STEEL_NU, why: 'carbon/spring steel — §56\'s density, §137\'s modulus' },
+  brass:        { rho: 8500,  E: 100e9, nu: 0.34, why: 'CuZn37 wrought brass (CDA C27400): 8400–8730 kg/m³, E 97–110 GPa' },
+  nickelSilver: { rho: 8730,  E: 125e9, nu: 0.34, why: 'CuNi18Zn20 (CDA C75200), the German silver a Glashütte plate is cut from under its nickel finish' },
+  gold18k:      { rho: 15500, E: 80e9,  nu: 0.42, why: '18K yellow gold, 3N (75 Au / 12.5 Ag / 12.5 Cu by mass)' },
+  whiteGold18k: { rho: 14700, E: 95e9,  nu: 0.42, why: '18K white gold, palladium-white (its rhodium plate is a finish)' },
+  platinum950:  { rho: 20700, E: 170e9, nu: 0.39, why: 'Pt950Ru; pure platinum is 21450 — the alloy, not the element, is what a case is cut from' },
+  corundum:     { rho: 3980,  E: 345e9, nu: 0.29, why: 'Al₂O₃ — sapphire (the dial, both crystals) and ruby (the jewels) are one stock' },
+  nylon:        { rho: 1140,  E: 2.5e9, nu: 0.40, why: 'PA 6.6 — the gaskets' },
+  silver:       { rho: 10490, E: 83e9,  nu: 0.37, why: 'fine silver — the silvered dial face and its rings' },
+});
+// Which STOCK the case exterior's alloy pick is cut from (§203's ALLOY_COLORS
+// keys): the colour table lives with the materials, the metal here.
+export const ALLOY_STOCK = Object.freeze({ steel: 'steel', yellowGold18k: 'gold18k', whiteGold18k: 'whiteGold18k', platinum: 'platinum950' });
 // TODO 193 — THE MAINSPRING ALLOY, named, and why it is not SPRING_SIGMA_Y_PA.
 // The 800 MPa above is the hardened CARBON band every blade and click in the
 // movement is solved or gated against; the two ribbons that POWER the watch
@@ -853,6 +881,36 @@ export const MAINSPRING_SIGMA_Y_BAND = Object.freeze({
   why: 'Nivaflex 45/18 (DIN 2.4782) Rp0.2 after hardening, 1800–2550 MPa by degree of cold work; Rm up to 3000 MPa (Hempel Metals / VACUUMSCHMELZE data)',
 });
 export const MAINSPRING_SIGMA_Y_PA = MAINSPRING_SIGMA_Y_BAND.low;
+// TODO 221 — THE CLICK STEEL, named, and why a CONTACT needs it where a beam
+// does not. The maintaining detent's beak bears the whole hold (the going
+// torque on the ring's face, ~2.2 N) across a line one click-thickness long
+// (0.149 mm). Cut sharp, a line carries any load at infinite pressure; cut to a
+// radius it is a Hertz line contact, and against SPRING_SIGMA_Y_PA's 800 MPa no
+// radius the tooth can hold carries it (TODO 221's measure: first yield wants a
+// 0.72 u radius where the face has room for ~0.21). A watch click and the
+// ratchet it holds are not spring-band steel: they are cut, then HARDENED AND
+// TEMPERED (the blued click), 48–54 HRC. Rm by the ASTM E140 hardness
+// conversion is about 1.65–2.0 GPa over that range, and Rp0.2 of a
+// quenched-and-tempered carbon steel is about 0.9·Rm (ASM Handbook Vol. 1,
+// Properties of carbon steels), so the band is 1.5–1.8 GPa. A BAND, FRICTION's
+// rule, because the movement does not say how hard its click was drawn back;
+// every gate reads the LOW end. Both bodies of the contact are this steel (the
+// click and the maintaining ring), so one band serves both. The click's BEAM
+// rows (arm and beak sections) stay on SPRING_SIGMA_Y_PA: they pass there, so
+// the conservative limit costs nothing and moving them would be a claim no
+// measurement asked for.
+export const CLICK_STEEL_SIGMA_Y_BAND = Object.freeze({
+  low: 1500e6, high: 1800e6,
+  why: 'hardened and tempered (blued) carbon click steel, 48–54 HRC: Rm ≈ 1.65–2.0 GPa by the ASTM E140 hardness conversion, Rp0.2 ≈ 0.9·Rm for quenched-and-tempered carbon steel (ASM Handbook Vol. 1)',
+});
+export const CLICK_STEEL_SIGMA_Y_PA = CLICK_STEEL_SIGMA_Y_BAND.low;
+// TODO 221 — FIRST YIELD IN A LINE CONTACT. Two elastic cylinders (a radius on
+// a flat is one of them of infinite radius) yield first below the surface, at
+// p0 = 1.79·Y by von Mises for ν = 0.3 (Tresca: 1.67·Y) — Johnson, Contact
+// Mechanics (1985), §4.2 / Table 6.1. The allowable a radius is SIZED to is
+// this factor over the steel's low end: no yield at all in the hold, the
+// strictest of the contact criteria (shakedown, 4k, would allow ~1.3× more).
+export const LINE_CONTACT_FIRST_YIELD_P0_PER_Y = 1.79;
 // §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
 // in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
 // on the winder and its rate is not held — the spring-design handbooks' 4–12.
