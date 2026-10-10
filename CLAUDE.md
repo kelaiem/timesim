@@ -373,9 +373,10 @@ it into prose either.
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the
    largest swing the balance can REACH rounded UP — since TODO 216 the smaller
-   of the solve's maximum and the KNOCK (316: `ESCAPEMENT_KNOCK`, 315.22° on
-   §221's bank, where
-   the impulse pin meets the banked fork's horn, solved off the blank's outline;
+   of the solve's maximum and the KNOCK (302: `ESCAPEMENT_KNOCK`, 301.35° on
+   TODO 226's seated horns, where
+   the impulse pin meets the banked fork's horn, solved off the blank's METAL
+   outline;
    §218's peaks and the hack brake are priced there) — held on both sides and
    within a degree, so a solve that moves leaves neither behind. And since TODO 207 the swing the
    movement is DESIGNED to, `AMPLITUDE_TARGET_DEG` 200° held vertical at the
@@ -981,7 +982,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 280 measuring scripts and this file names 23. The rest are named for the
+`tools/` holds 282 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -998,7 +999,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **169 of
+The index also carries the split that decides how to read a result: **171 of
 them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
