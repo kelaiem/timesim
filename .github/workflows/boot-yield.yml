@@ -20,6 +20,11 @@
 # breathing build too, and only the control (BREATHE_MS rewritten to Infinity
 # in flight) tells the two apart.
 #
+# The ceilings were measured, not chosen: two batches of six identical jobs on
+# this host (the matrix and a measuring branch trigger, both since removed)
+# gave the spread each ceiling in the probe is derived from — see its header
+# and docs/BUILT.md §266, landing two.
+#
 # `paths` is a POSITIVE list, unlike Battery's paths-ignore: everything the
 # boot executes is index.html, a module under src/ or vendor/, and a list of
 # three globs cannot fall behind the module graph the way a list of
@@ -37,7 +42,7 @@ on:
       - 'tools/package-lock.json'
       - '.github/workflows/boot-yield.yml'
   push:
-    branches: [main, claude/loading-screen-initial-pe3u3v]   # MEASUREMENT ONLY — the branch entry goes before the PR
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -51,10 +56,6 @@ jobs:
   boot-yield:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:                                   # MEASUREMENT ONLY — six runners give the host's spread in one push
-      fail-fast: false
-      matrix:
-        sample: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
 
@@ -79,15 +80,11 @@ jobs:
       - name: Probe the boot's yield, with both controls
         run: node tools/probe-239-boot-yield.mjs --json boot-yield.json
 
-      - name: Print the numbers (MEASUREMENT ONLY)
-        if: always()
-        run: node -e "const d=require('./boot-yield.json');const p=r=>r&&{held:Math.round(r.held),task:Math.round(r.maxTask),ack:Math.round(r.maxLat),boot:Math.round(r.bootMs),worst:r.worst.slice(0,3)};console.log('BOOTYIELD',JSON.stringify({cpu:d.host.cpu,cores:d.host.cores,live:p(d.live),ctrl:p(d.control),tail:p(d.tail)}))"
-
       - name: Keep the numbers
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: boot-yield-${{ github.run_id }}-${{ matrix.sample }}
+          name: boot-yield-${{ github.run_id }}
           path: boot-yield.json
           if-no-files-found: warn
           retention-days: 14

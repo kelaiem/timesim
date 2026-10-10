@@ -33685,3 +33685,77 @@ stretch as the gated number, and every ceiling derived from the CI host's
 spread. The regression this landing repaired took three weeks to find because
 the probe runs by hand. CLAUDE.md's boot entry now carries a fifth rule: new
 build code brings its own seams.
+
+## §266, landing two — the probe in CI, and ceilings from the host that judges them
+
+**Why it was owed.** Landing one repaired `main` three times in one day. The
+cause each time was the same: build code merged with no seams, and nothing ran
+`tools/probe-239-boot-yield.mjs`. A repair without a gate just waits for the
+next merge. So the probe now runs on every pull request that can change what
+the boot does, and a builder that lands synchronous goes red on its own PR.
+
+**Its own workflow, `.github/workflows/boot-yield.yml`, not a step in Battery.**
+- **The ceilings are a property of the host.** Battery's host is routed by
+  §200 (a self-hosted ARM64 runner on opt-in, `ubuntu-latest` otherwise), so a
+  step there would be judged against whichever machine took the run. One fixed
+  host means one derivation, written beside each ceiling.
+- **It answers in about two minutes,** where Battery's PR wall is 40–125.
+- **`paths` is a positive list** (`index.html`, `src/**`, `vendor/**`, the probe,
+  the lockfile, the workflow), unlike Battery's `paths-ignore`. Everything the
+  boot executes lives under those three globs, so the list cannot fall behind
+  the module graph the way a list of exceptions can. A translation table under
+  `src/` runs it needlessly; that costs minutes, never a verdict.
+- It also runs on every push to `main`, so a merge whose halves were each fine
+  is measured as merged.
+
+**Measured before any ceiling moved.** The probe gained `--json` and a
+job-summary table. Two batches of six identical jobs on a push-only measuring
+branch then gave the host's spread across runners:
+
+| runner CPU | build held, worst | long task, worst | input ack, worst |
+|---|---|---|---|
+| AMD EPYC 7763 (most runs) | 311–329 ms | 2,253–2,320 ms | 2,103–2,290 ms |
+| AMD EPYC 9V74 | 278 ms | 1,948 ms | 1,799 ms |
+| the fastest runner | 224 ms | 1,202 ms | 1,050 ms |
+
+**Reading them is what the entry asked for, and it split the three gates in
+two.** The held number is the build's own and is stable on CI. The worst long
+task and the worst input ack were the same task in every run: the first
+composited frame at t+0.2–0.4 s, a frame commit blocked in `GLES2::ReadPixels`
+while the GPU process drains the GL queued before the first yield (the trace
+in landing one). That is software-GL work that scales with the runner, 1.2–2.3 s
+across these three CPUs. It is not build work and no seam reaches it. Every
+other task in those runs was ~250 ms or under.
+
+So against §239's dev-container ceilings (700 / 1,800 / 1,500 ms) the yielding
+build failed on five of six runners per batch, every time on that frame.
+
+**The ceilings, each by the rule every timing cap in this repo follows:** the
+slowest run times battery.yml's 1.66 same-tree spread (the tail past a ceiling
+cannot be read), rounded up to the next 50 ms.
+- **Held: 550 ms** (329 × 1.66 = 546). This is the sharp gate. It is tighter
+  than §239's 700, which was its dev container's unsplittable floor doubled,
+  and it still sits 9× under the 4.7 s `main` had reached.
+- **Long task: 3,900 ms** (2,320 × 1.66 = 3,851). This is the backstop: nothing
+  near Chrome's unresponsive-page threshold may survive, the first frame
+  included.
+- **Input ack: 3,850 ms** (2,290 × 1.66 = 3,801), the same frame seen from the
+  keyboard.
+
+These are the CI host's numbers. Dev containers vary at least 1.6× (landing
+one measured two), and a slow one can fail the backstops on a healthy tree. On
+the containers this was built on, the tree read 326–520 ms held, under 550.
+
+**The control is tied to the gates.** Its minimum was a fixed 3,000 ms, which
+now sits under the 3,900 ceiling: a 3,500 ms control would have counted as
+reproducing the un-yielding build while the gate passed it too. A control must
+now be a run both gates would fail: its worst task at or above the long-task
+ceiling, and the thread held past the held ceiling. On CI the control holds the
+thread 21–22 s with a 15–16 s worst task. The tail control (an 800 ms stall
+before the guard's release) still sits above the held ceiling by construction.
+
+**What it leaves.** The self-hosted ARM64 host is not gated by this workflow:
+its ceilings would be its own derivation, and nothing routes there yet. The
+first composited frame itself is reported and backstopped, not reduced. That is
+§238's surviving block, and §267's progress bar, which depends on this
+landing, is the next thing that will want it measured.
