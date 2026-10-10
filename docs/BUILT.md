@@ -29274,6 +29274,124 @@ today and would inherit `?aes=` too. Confirm it before Landing 3 ships; if it
 holds, it is its own item, and the one-line guard sits beside what Landing 1
 touched.
 
+## §241 — Read the Korean, not the key count: the cone seam and the crown, and a gate that reads one sentence
+
+**Partial ship, recorded by the half that landed.** Filed in the private
+roadmap as §241 on 2026-09-21, out of "review the translation in Korean and
+identify thematic improvement areas", and measured on the shipped tables
+rather than guessed: five themes, A to E. Areas **A** (one part, two
+renderings) and **C** (the honesty vocabulary) shipped the same day; **B**
+(register) and **D** (a canonical-term table) are open, and **E** (blocks that
+stop early) is half-shipped as a report. The roadmap keeps the entry for what
+remains; this is the record of what is built.
+
+### The gap, and why no gate saw it
+
+Korean shipped whole in §211 — chrome, explainer and primer at 100%, ten
+translators, a glossary decided once. Every gate the locale has counts or
+measures SHAPE: `explain-i18n --check` holds 0 unmatched keys, 0
+markup/`<code>`/id drift, 0 number drift and no label overrunning its plate;
+`probe-116-locale-fit` measures the header; §236's `glossary-links` holds the
+page's text identical with the module stubbed. **Not one of them reads a
+Korean sentence.** A page can be complete, fit every plate and carry every
+number and still name one part two ways, and §211's own record is the proof: it
+claimed the fusee's cone was reconciled to 원뿔 and the file never received it.
+That was not a regression. The first commit of `explain-i18n.ko.js` carries the
+identical counts.
+
+### Area A — one part, one word
+
+- **The cone.** 20 occurrences of 콘 in `src/explain-i18n.ko.js` became 원뿔,
+  and the chrome's `'Fusee cone'` label, which the filing had missed, went from
+  퓨지 콘 to 원뿔. 콘트레이트 (the contrate wheel) is a different word and is
+  untouched. §211's paragraph is corrected in place above ("CORRECTED
+  2026-09-21 (§241)"). The chrome label is the one string the page gates do not
+  judge, since it is a `registerSub` piece name rendered in §53's 240 px panel
+  column, so it was measured: `probe-116-locale-fit` reads "panel content wider
+  than its box: none, in any locale", and Korean's chrome bar came out 26.2 px
+  narrower than English.
+- **The crown.** Ten of the eleven standalone 크라운 are the winding crown and
+  are 용두 now, the native term the explainer's own headings and plate labels
+  already carried; only body prose had drifted. **The eleventh is the chain
+  link's crown (the rivet head)**, where 용두 would be a lie about the metal, so
+  it stays. 크라운 휠 (the crown wheel) is likewise a different part.
+- **The crown half was not a substitution.** 콘 and 원뿔 both end in a
+  consonant, so the cone was a straight replace with every particle invariant.
+  크라운 ends in a consonant and 용두 in a vowel, so the particle moves with
+  the noun (이→가, 을→를, 과→와, and 에서 invariant), and the ten sites were
+  edited one at a time. **A per-locale term table can find a Korean terminology
+  seam and cannot fix one**, because the repair reaches past the term into the
+  word behind it. Whoever writes area D should scope it as a reporter, not a
+  codemod.
+- Gates for both halves: `explain-i18n --check` PASS with Korean at 0 new
+  overflow or collision (원뿔 is a syllable longer than 콘, 용두 one shorter than
+  크라운), `explain-quotes` and `glossary-links` PASS. Neither word is a linked
+  glossary term.
+
+### Area C — the first check here that reads a sentence
+
+A translation that renders *modelled* as *simulated* does not read wrong, it
+reads fluent, and it erases the distinction README polices hardest. So
+`tools/explain-i18n.mjs --check` gates the pairing per key (the `HONESTY`
+table, "honesty vocabulary: modelled vs simulated"), over all twelve locales
+and both pages:
+
+- A **CROSSED** row gates: the English asserts one of the two words and the
+  translation drops it and carries the other. Stated any other way, the
+  sentences built on the CONTRAST ("the cam itself is MODELLED and not
+  simulated") become the ones the rule can never fail, which is what the first
+  draft did, found by mutating a row and watching the gate stay silent.
+- A row with **NEITHER** word is ABSENT and only reported, because a terse
+  paraphrase and a dropped sentence look identical from here. One survivor is
+  left alone: ja's 造形された金属 for "modelled metal", an idiom and not a lie.
+- Each locale's stems are **held to the page's own glossary** (the
+  `modelled / simulated` entry it declares to its readers), so the table cannot
+  invent a vocabulary the page does not use. A locale with no row is UNGATED,
+  not skipped.
+- The English matcher is deliberately narrow. Widened to a bare `\bmodel\b` it
+  swallows the credit line's "Anthropic's AI model", which all twelve locales
+  render with their model-word, correctly.
+
+Measured claim for Korean, confirmed and extended: of 12 English keys saying
+"modelled" and 17 saying "simulat\*", **0 are crossed**, in twelve locales.
+
+**What the gate found on arrival is bigger than the gate.** Twelve of its
+thirteen absent rows were one block, and the block was TRUNCATED. Every
+locale's translation of the alarm-corner entry stopped at a colon and dropped
+the last 441 characters of English, whose final sentence is *"The cam itself is
+MODELLED and not simulated"*. A reader in any of twelve languages never saw
+it, and every gate stayed green: the key matched, the markup matched, and the
+numbers matched (the dropped text's `0.00267` sits in bare prose, and
+explain.html checked numbers only in plate labels because prose quotes its
+constants inside `<code>`). The block is **restored in all twelve**, each
+locale's declared words for backlash, cam, flank and stem taken from its own
+tables and its own register (plain style in Korean and Japanese). That is what
+made the gate green rather than red on arrival.
+
+### It generalised, and part of it stays open
+
+`block coverage` in the same tool now REPORTS a translated block far shorter
+than its locale normally runs, ruled by that locale's own median ratio (one
+sided, because the high side is just a quoted identifier surviving inside a
+short CJK block). It does not gate: it cannot tell terse from truncated, and a
+threshold tuned until today's tree is green would be rule 1's "number that
+looked right". Three rows survive and are NOT fixed here, being a different
+size of job; they are filed with their numbers as area E in the roadmap entry.
+CLAUDE.md carries the rule that came out of it, where the honesty vocabulary
+and the report are described beside the gate.
+
+### Open, and where it lives
+
+| area | what | state |
+|---|---|---|
+| **B** | Register: 199 formal against 33 plain sentence endings in the explainer, 87 against 1 in the primer. Some plain endings are correct (a plate title takes plain style); others are mid-paragraph prose. Splitting them needs the English block's role, which a review has and a counter does not. | untouched |
+| **D** | A canonical-term table. Three false positives (멈춤, 크라운 휠, and the chain link's crown) are the finding: a substring list cannot decide either case, and the third one a compound exception would still have got wrong, because the variant stands alone and means something else. | untouched |
+| **E** | The three blocks `block coverage` still reports short. | reported, not fixed |
+
+The roadmap entry (kelaiem/timesim-roadmap, §241) keeps B, D and E; §243
+(the same review for Chinese, Traditional first) is filed from its method and
+has shipped nothing.
+
 ## §242 — The release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline, behind a door in the chrome
 
 > **Status.** SHIPPED whole, in two landings the same day: the film, its
@@ -31351,6 +31469,123 @@ buttons sharing a row. Measured after: 22% covered at 390 × 844, 25% at
 360 × 740, 32% at 260 × 563 (a 390 px phone at about 150% zoom), 19% at
 desktop width. No page scrolls sideways, in German or in Arabic.
 
+### Tagalog — a language the browser carries, a glossary that keeps the trade's English, and a stem that is also the word for "begin"
+
+Tagalog (Filipino, `fil`) is the twenty-first locale. The chrome (485 keys),
+`explain.html` (771/771) and `primer.html` (145/145) read Tagalog at 100%.
+
+**The browser carries it, so the row borrows nothing.** Measured in Chromium
+141 in contexts launched as en-US, fr-FR and de-DE, and in Node's ICU 78:
+`Intl.NumberFormat.supportedLocalesOf` answers for `fil`, `fil-PH`, `tl`,
+`tl-PH` and `tgl`, and canonicalizes the last three to `fil`. It formats
+`30.0 · 0.024 · 18,000` on latn with one/other plurals, which are English's
+marks, so `MARKS.fil` is English's row and the row's tag is its own `fil-PH`.
+Welsh needed a borrowed tag; this does not, and the boot assert that holds
+every row's tag to "this browser carries it" passes without a word of
+commentary. The code is `fil`, the form Intl itself returns. The matcher takes
+`tl` (ISO 639-1, what Firefox reports) and `tgl` (ISO 639-3) as well, and is
+anchored: `fi` and `fi-FI` are Finnish, `tlh` is Klingon, `tli` is Tlingit and
+`fit` is Tornedalen Finnish, so the ladder asserts all five land on English.
+The row's face says "Tagalog", which is what a reader looks for in a list.
+
+**The glossary keeps the trade's English.** A Filipino reader of a
+mechanical-watch explainer meets *escapement*, *balance*, *pallet fork*,
+*hairspring*, *mainspring*, *fusee* and *torque* in English only, and a coined
+*gulong ng pagtakas* for the escape wheel reads as parody. So the loans stay in
+English spelling and the generic nouns are native: *gulong*, *ngipin*, *pingga*,
+*kadena*, *martilyo*, *kamay ng orasan* for the clock hands, *makina ng relo*.
+Commands are the bare imperative with the object-focus native verb where one
+exists (*Kopyahin*, *Burahin*, *Ilapat*) and `i-` plus the English stem
+otherwise (*I-wind*, *I-sync*, *I-pause*). A borrowed stem takes a separate
+linker *na* and never a fused *-ng*. The seams the earlier landings predicted
+were fixed in the glossary beforehand: ribbon is *laso*, ledger *talaan*,
+cadence *ritmo*, shipped *inilabas*, lug *tainga*, hand-off *abutan*.
+
+**The honesty pair is `modelado` / `simulado`, and the matcher had two traps.**
+Both are Spanish-derived participles, which makes the contrast read as one
+parallel pair, anchored on *inilalarawan* (is described) for the first and
+*PINAGAGALAW* (is driven) for the second. `HONESTY.fil` is
+`m: /modelad|\b(?:imodelo|…|iminodelo|nagmomodelo|pagmomodelo)|\b(?:i|ini|nag|nagmo|mag|magmo|pag|pagmo)-model/i`
+and `s: /imulasi?yon|simulad/i`.
+- **The bare noun `modelo` and its linker form `modelong` never count.** The
+  credit line's "AI model" is *ang AI model ng Anthropic*, and every plain "a
+  model" uses them. The verb forms are accepted only so that the two English
+  uses of "models" as a verb are not forced into a paraphrase.
+- **The stem `simula` is not the simulation stem.** In Filipino it is the
+  everyday word for "begin" (*nagsimula*, *sinimulan*), so a bare-stem matcher
+  would call every "starts" a simulation. `s` takes *simulasyon* and *simulado*
+  only, and the English leftovers *simulated* and *simulation* do not match
+  either, so an untranslated word cannot pass.
+
+The row is held to the page's own glossary entry: the control reads PASS
+(`modelado / simulado`), 20/20 `HONESTY` rows verified.
+
+**How the tables were made.** One agent built the glossary (about 610 rows, 28
+pre-resolved seams), a translator brief with seven worked examples taken from
+real ids, and the honesty matchers with 46 test strings. Sixteen translators
+then worked in numbered chunks of about 17 KB of English each, every chunk
+returning `{id: string}`. The assembler wrote every key from the extractor's
+own literal, so no key was typed by anyone, and a validator mirroring the page
+gate ran on each chunk: ids, markup, `<code>` spans, number glyphs (explainer)
+or parsed values (primer), the honesty words, and label length.
+- **Counts.** 485 chrome keys, identical to every other table's; 728 explainer
+  blocks, which is eleven more than Welsh's table carries (eleven blocks have
+  been added or rewritten since it landed); 135 primer blocks.
+- **Two chunks died on the monthly spend limit** (7 and 8, mid-run) and were
+  relaunched after it reset. Each had already written its output, so the
+  relaunch validated 100 and 43 ids at 0 problems without redoing them.
+- **The validator's findings that are not defects.** Chunk 04's eleven "label
+  long" flags are glossary rows copied verbatim (vocabulary headings, term
+  cells, hidden variant rows), which the brief says to do and which are not plate
+  labels. Chrome string c436 ("… no models") flags a dropped honesty word
+  because the validator's English matcher takes the plural noun, which here
+  means model files; the translation is correctly *modelo*, and the repo's gate
+  reads only the two page tables, never the chrome.
+- **One sentence spans three SVG text nodes** (e305 to e307, a caption wrapped
+  by hand), so each fragment is its own key. The three Tagalog fragments read as
+  one sentence in order.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **771/771**, primer **145/145**; 0 unmatched, 0 markup / `<code>` / number drift, 0 crossed honesty terms, block coverage 0 short blocks against Tagalog's median ratio 1.23 (explainer) and 1.24 (primer); honesty control PASS, 20/20 rows verified; prose-number control 40/40. **The first run failed only on plate fit**: eight labels ran wider than their plates (1 explainer caption and 7 primer labels; «gulong ng escapement» for the escape wheel was 20 against 12). Each is now shorter: seven are within one character of the English and the longest, a primer caption, is ten over (87 against 77). The second run reads **0 new overflow or collision** on both pages |
+| `probe-chrome-coverage` | control PASS; Tagalog **0 missing, 0 not applied**, 30 cognates on the page at boot (34 entries in the table map to themselves: On, Off, Menu, Escapement, Balance, Hairspring, Pallet fork …), 74 never-translated |
+| `probe-116-locale-fit` | every header **56 px, one line**, both pages, all eight widths; chrome bar **194.8** on «Menu / Tanaw / Mga kontrol» (English 170.2; between Welsh's 185.0 and Dutch's 204.4); longest HUD label «Tumutunog sa» **63.6** against the 150 px box (under Indonesian's 66.2); no panel overflow in either locale measured — run on English and Tagalog only |
+| `glossary-links` | PASS in all 21 locales; Tagalog links **99** words (English 91) and the injection adds no text |
+| `explain-quotes` | PASS, primer quotes 0 identifiers |
+| `l10n-review-packets` | PASS, 20 locale packets; Tagalog 239 rows, 3 questions |
+| `offline-check` | **45/45**; precache 65/65 (63 + the two Tagalog tables); a Tagalog boot from cache |
+| `index-instruments --check`, `check-item-numbers` | OK |
+
+### Residue, recorded
+
+- **No native review.** The terms a workshop is most likely to dispute, which
+  are the review packet's three Start-here questions:
+  - **`modelado` / `simulado`.** Are Spanish participles natural enough in
+    Filipino technical prose, or would readers prefer `naka-model` and
+    `i-simulate`? A different answer changes the matcher, not just the words.
+  - **The mixed part-name register.** *Gulong ng escapement* and *Tambol ng
+    mainspring* stand beside bare English *Pallet fork*, *Balance* and
+    *Hairspring*. Would a workshop keep the English compound throughout? And
+    *governor*, which sits beside the everyday *gobernador*.
+  - **Four native words stand for the project's own abstract terms:** *hagis*
+    (throw), *abutan* (hand-off), *tali* (chord), *puwesto* (station).
+- **The glossary linker's senses were not read in context.** Its refused-word
+  tables are keyed by the English term, so Tagalog inherits them, but whether
+  *hagis*, *abutan*, *puwesto* or *patong* link in their intended sense in the
+  prose has not been read word by word, as Welsh's were. The links are 99 in
+  count and add no text; "a link is a claim" is not yet checked for them.
+- **Thirty-four chrome strings are English loans kept as written**, which is a
+  larger share than any other locale (30 on screen at boot; the next highest is Dutch's 11). That is the
+  register decision made visible, and it is the first thing a native reader
+  will weigh.
+- **Plate labels are tight.** Some read as the English loan because the native
+  word does not fit (`escape wheel`, `great wheel · 120 ngipin`), and a few
+  dropped a qualifier to fit. The translators listed each in their notes.
+- **The battery** is CI's, on the self-hosted runner, and is recorded in the PR
+  rather than here.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
@@ -32693,25 +32928,216 @@ times:
 - `battery`: **40.1 min** (18:29:26–19:09:31), its harness step 37.9 min.
   §264's run was 63.1 min, and the last push before §264 was 89.
 - The battery's harness step ended 24 s after the tiers job handed over its
-  file. That is what a run waiting on its sibling looks like: the critical
-  path is now the parallel job, not the shards.
+  file. On this run that looked like a battery waiting on its sibling, and
+  this entry first read it that way. **The first push to `main` after the
+  landing showed it was runner variance, not the structure** (below).
 - **What I could not read.** The job log is served from a host this session's
   `gh` does not contact, so the `spec tier: taken from` and `point tier: taken
   from` lines were not read here. The wall above is the evidence that both
   tiers were taken and not re-run in-process (36 boots and six sweeps in-process
-  would add the 584 s and 1541 s back). The first push to `main` after this
-  landing is the confirmation, and its log should be read for both lines.
+  would add the 584 s and 1541 s back). The log lines are still unread.
+
+**The first push to `main` after the landing** (merge `54300bc`, hosted):
+- `battery`: **51.4 min** (22:24:13–23:15:36), its harness step 47.8 min.
+- `battery tiers`: **19.8 min** (22:24:12–22:43:58), handed over at 22:43:56.
+  The same job took 37.9 min on the dispatch above. That is 1.9 times the
+  time for the same work, which is what runner variance looks like, and it is
+  why the dispatch could not say which job was the critical path.
+- So the shards are the critical path: the tiers were ready some 28 minutes
+  before the harness step ended. The push went 89 → 63 (§264) → 51 minutes.
 
 **What it leaves.**
-- **The tiers job is the critical path.** At 37.9 min it is now what the push
-  waits on, a little longer than the shards. The next cut is inside it: the
-  tiers are independent of each other, and §260 already knows how to spread
-  them across workers. That is a second parallel job and not this entry's
-  claim.
+- **The critical path is the shards again, at about 48 min.** The tiers job
+  runs 20 to 38 min depending on the runner, and either way it finishes first
+  or close to it. Cutting the push further means cutting the shards, so
+  splitting the tiers job would buy nothing on a typical run. §259's matrix
+  already spreads the shards across two runners, and that is where the
+  remaining time is.
 - **The caps.** Push 150 and PR 125 stay until several runs have measured
   the new wall, by the caps' own rule.
 
-## §266 — The hammer spring is a spring: a torsion spiral on the hammer's post, the fall √(k/I)
+---
+
+## §263 — A split battery run writes the whole baseline: the collector's digests, one seeding rule, and the split as a hosted dispatch's opt-in
+
+**As landed, the push is NOT split.** This entry was built and measured to
+split the push. §264 and §265 landed while it was measuring and took the same
+tiers off the push's critical path with a parallel job instead (the decision is
+at the end of this entry). What shipped is everything that lets a split run be
+a baseline, and the split itself as a hosted dispatch's `split: true`.
+
+The push to `main` is the run that writes §152's hosted baseline, and by
+2026-10-09 it was one serial job of ~89 min on `ubuntu-latest`. Run
+37924262189 broke down as: shards, boot B and the share boot ~49.7 min, then
+spec boots 561 s, then the point tier (TODO 186) 1541 s, then the post-battery
+probes ~3.1 min. PR #608 raised the job cap from 90 to 150 because the slowest
+green push had gone from 78 to 89 min in a week. That bought room but did not
+stop the growth.
+
+**The machinery to move it already existed.** §127 tier 3 assembles a run
+across processes. §259 put that in the workflow, and §260 spread the spec boots
+and the point tier across the workers (`specOwner`, `pointOwners`). Only one
+thing kept a push off it, and §259 wrote it down: a collector wrote no digests,
+so a split run could never become a baseline. §152's baseline is a report plus
+digests plus `points.json`, all under the commit SHA, and the collector had
+two of the three.
+
+**The third was already in worker 0's file.** A worker's §152 preflight reads
+the per-unit key, and the tasks file carries it as `preflight.headDigests`. In
+one process that same object is what `--digests` writes. So:
+
+- `--collect --digests FILE` writes it. It is written before the gates, as one
+  process writes it, and the seeding steps decide whether it is kept.
+- A collect asked for a key that no worker read THROWS. A baseline without
+  digests is one every later PR reads as "no usable baseline", and that shows
+  up only in a log.
+- `--digests-base` and `--points-base` are still refused under `--collect`.
+  They are inputs to the preflight's decision, and each worker made that for
+  itself.
+- A worker's preflight runs only when it is given `--digests`, `--digests-base`
+  or `--baseline`. So the legs of every non-PR run get `--digests` (to
+  `RUNNER_TEMP`; the copy that matters travels in the tasks file).
+
+Worker 0 reads the key on its preflight boot and boot B's on its anchor boot,
+which is where one process reads both. So the digest-determinism gate holds the
+same pair in either shape.
+
+**The seeding rule is one file now.** `tools/battery-seed.sh may|keep` is the
+shell the leg's two seeding steps used to carry inline, moved rather than
+copied, because the collector now applies the same rule. Two changes came with
+the move:
+
+- `keep` refuses a run that wrote no digests. In one process that could not
+  happen. In a split it can, so it fails out loud.
+- `may` takes a `REFUSE` reason. The collector seeds under ITS runner's cache
+  key (`battery-baseline-v1-<os>-<arch>-<sha>`), so it may seed only when both
+  workers recorded that same platform. Each leg writes
+  `platform-worker-<i>.txt` beside its tasks file, and the collector checks
+  them rather than trusting the route.
+
+**Which runs split**, as landed:
+
+| event | shape |
+|---|---|
+| push | single process, with §265's parallel `battery tiers` job |
+| hosted dispatch | single process with the tiers job; split when its `split: true` input asks |
+| nightly, self-hosted dispatch | single process (the collector is hosted and would seed under the wrong key) |
+| pull request | unchanged: split only on `battery-matrix` / `[matrix]` |
+
+While it was measuring, the branch made the split the push's default, with an
+opt-out input (`single`). The runs below were taken that way. The single-process
+harness path is untouched: no line of the browser path or of `assemble`
+changed.
+
+**Every gate still runs on a push.** The collector runs `assemble`, the same
+gate loop in the same order, plus `every expected shard was collected`:
+
+- the point tier's `point sweeps` gate and the three validated-configs gates;
+- the spec-boot gates;
+- the determinism anchors.
+
+The three post-battery probes ride worker 1, as on a split PR. The §227
+promotion shadow asks once, on worker 0. §227's provenance record and its
+publish step stay single-process only, as §259 left them. A split push
+therefore publishes no tree artifact for a later merge to inherit. That tier
+is a shadow and gates nothing, and §259's rule for it stands: it reads a second
+path only after it has agreed with reality on the reference path.
+
+**Instruments.**
+
+- `probe-127-matrix.mjs` (local, 4-vCPU container, 19 min): PASS. Every run in
+  it now reads the key. Identities 1 and 2 hold the collected `--digests` file
+  byte for byte against the single process's, and hold the report's `digests`
+  field present. A fifth case strips worker 0's key and must be refused by
+  name, with no file left behind. The other four identities are unchanged.
+- `actionlint` 1.7.7 clean. The route's decide step was exercised on ten
+  cases: push, hosted dispatch, `single: true`, self-hosted dispatch
+  ready/not-ready, the nightly, a PR with and without the opt-in, the host
+  refusal, and a non-owner push. `battery-seed.sh` was exercised on its five
+  `may` events, a `REFUSE`, and `keep` on a restricted, keyless and good run.
+
+**Measured on CI.** Dispatches on the branch, `runner: ubuntu-latest`, so each
+is the push's job graph exactly, minus the cache save. A branch dispatch may not
+seed, and says so.
+
+| run | shape | cap | wall (route → last job) | worker 0 | worker 1 | collector |
+|---|---|---|---|---|---|---|
+| 37959811246 | split | 150 | **51.9 min** | 26.3 | 51.4 | 0.3 |
+| 37959896617 | split | 150 | **45.1 min** | 44.7 | 42.3 | 0.2 |
+| 37965443348 | split | 150 | **29.6 min** | 25.4 | 29.1 | 0.3 |
+| 37969199581 | split | 95 | **45.7 min** | 45.3 | 40.0 | 0.2 |
+| 37965511569 | single (`single: true`) | 150 | **87.4 min** | — | — | — |
+
+- **Every split run was green**: `55/55 gates pass`, all six points CLEAN with
+  0 skipped, and the three validated-configs gates passing. The collector
+  wrote the report, the digests (`digests (worker 0's preflight) written`)
+  and `points.json` (6 whole point payloads). The single-process run is 54
+  gates: it has no `every expected shard was collected`.
+- **The same day's single process took 87.4 min.** That is in line with the
+  89.0 that opened this section, so the split's gain is not a quiet day. The
+  four split walls average 43.1 min, a 2.0x cut.
+- **What a leg spends, on a middle runner** (run 37959896617):
+  - worker 0: shards ~24.9 min, boot B and the share boot 1.0, 18 spec boots
+    4.7, its two `studr` points 13.6;
+  - worker 1: shards ~25, 18 spec boots, four points 13.5 (`studr=7.595` the
+    long pole at 781 s), the probes 2.7.
+
+  The two point tiers ended 13 s apart. Before, the tier was 25.7 min serial
+  after everything else.
+- **The runners are the spread now, not the partition.** Run 37959811246's
+  worker 0 swept `studr=4.71` in 434 s while its worker 1, doing the work it
+  always does, needed 970 s for `studr=7.595`. Across the four runs one leg
+  doing fixed work ranged 29.1–51.4 (worker 1) and 25.4–45.3 (worker 0), a
+  1.77x spread.
+
+**The cap, re-derived.** `battery.yml`'s own rule is the slowest green run,
+times the spread, rounded up. The first three runs, none truncated by the 150,
+gave a slowest LEG of 51.4 min. The legs' own 1.77x spread is wider than the
+header's 1.66x, so it is the one applied: 51.4 × 1.77 = 91.0, rounded up to
+**95** for a split leg. The fourth run measured under 95 and finished at 45.3,
+well inside it. Every single process keeps 150, the push included: §264 and
+§265 left that cap for several of their own runs to move. The PR's 125 is
+untouched.
+
+**How it composes with §264 and §265, and why the push is not split.** Both
+landed while these runs were measuring, and they took the same tiers off the
+push's critical path the other way round. A sibling job (`battery tiers` since
+§265) measures the spec boots and the point tier from t=0 and hands the file to
+the single process. §265's dispatch measured 40.1 min, and the first push after
+it 51.4. The two designs do not stack: a split run already spreads both tiers
+across its legs, and the hand-off's consumer is the single process's (its flags
+refuse `--matrix`). So the route sets `tiers_job` only when the run is not
+split. Which one a push takes was the owner's call, and the push stays §265's:
+
+- **Speed is a wash.** The split measured a mean of 43.1 over four runs, and
+  §265 measured 40.1 and 51.4. Within both, the runner a leg lands on is the
+  larger term (1.77x across these runs).
+- **§265 fails soft, the split fails hard.** A dead or slow tiers job costs
+  §265 a sweep it then runs itself, and the push still writes its baseline. A
+  dead leg fails a whole split, and a push that fails writes no baseline, which
+  is the quiet failure PR #608 raised the cap to stop.
+- **§265 was on `main`, and its own first push was the next measurement.** The
+  split stays one input away, so the two are compared on the same tree on
+  demand rather than argued.
+
+**Not built.**
+
+- **The tiers job under a split.** §265's addendum names the shards as the
+  push's critical path. A split halves exactly that, and the tiers job could
+  then take both tiers off each leg, leaving a leg its half of the shards and
+  its anchors: about 25–30 min on a middle runner. That needs the hand-off's
+  consumer to run under `--matrix` and the collector to accept the tiers from a
+  third file. It is harness work this landing did not take, and the
+  combination is the one shape neither design measured.
+- **A third worker.** `pointOwners(3)` would put about two points on each
+  worker. That is a worker-count change in four places: the route's `workers`,
+  the legs' `--matrix i/2`, the collector's file list, and the probe owner. The
+  measured floor is now each leg's shards plus a ~13-min point tier, so a
+  third leg would cut both. Whether that nets out on hosted runners whose own
+  spread is 1.77x is a measurement to take, not a prediction to land.
+- **§227 promotion from a split.** See above.
+
+## §268 — The hammer spring is a spring: a torsion spiral on the hammer's post, the fall √(k/I)
 
 TODO 128, closed. §48 drew the hammer's spring as a blade grounded to a stud
 on the rim and bearing on the tail at 45% of its length; TODO 128 measured
@@ -32814,7 +33240,7 @@ at the tail over `ALARM_TAIL_LEN`: 69.5 mN drawn, 22.8 at the wire), and the
 lifting lever's load is the real couple at the draw rather than the implied
 k. `HANDOFF_TRACK_TOL` is exported for the probe.
 
-**Held by.** `tools/probe-266-hammer-spiral.mjs` (ALL PASS, 31 rows): W² =
+**Held by.** `tools/probe-268-hammer-spiral.mjs` (ALL PASS, 31 rows): W² =
 k/I, the released energy equal to the rotor's arrival AND to the elastica's
 stored difference (three readings of one number); the strip at the tail's
 height, above flat stock, the strain on its target; the lift's peak ON its
@@ -32842,7 +33268,7 @@ TODO 126, next. The one coefficient that is not geometry is unchanged: the
 0.9 per cut mesh, cited.
 
 **Record.** `TODO.md` 128 closed, 228 filed; `explain.html`'s gong entry gains
-the §266 paragraph and PLATE 3 re-quotes its chain (every invalidated block
+the §268 paragraph and PLATE 3 re-quotes its chain (every invalidated block
 re-translated in all 19 locales, five plate labels shortened to their
 plates); the alarm barrel and governor entries' cadence endpoints and the
 governor's honesty ledger re-quoted; `primer.html`'s alarm paragraph, its

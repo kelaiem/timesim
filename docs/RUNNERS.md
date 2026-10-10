@@ -552,6 +552,14 @@ What to know before asking for it:
 Measured wall, split against single, is recorded in BUILT §259 as runs land.
 It is a per-host number and is not to be carried to another host.
 
+**The host never splits a seeding run (§263).** Since §263 a dispatch at
+`runner: ubuntu-latest` with `split: true` splits across two HOSTED workers,
+and the collector writes and seeds the baseline. It may seed only
+under its own platform's cache key, and the collector is always GitHub-hosted,
+so the nightly and a self-hosted dispatch keep the single process. Seeding the
+host's baseline from a split would need a collector on the host, and that would
+take a third slot.
+
 ## Not built, and where it would go
 
 - **A second host.** Roadmap §127 tier 3 prices two SEPARATE hosts at −41% of

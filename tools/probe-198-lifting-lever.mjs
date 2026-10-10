@@ -86,7 +86,7 @@ const out = await page.evaluate(async () => {
   clock.setPose({ ...base, alarmStrikePhase: 3 + 0.38 }); clock.scene.updateMatrixWorld(true);   // the hammer at rest: the face's declared station
   const faceLocal = hamPivot.worldToLocal(faceRest.clone().setZ(hamPivot.getWorldPosition(new THREE.Vector3()).z));
   const centre = () => { clock.scene.updateMatrixWorld(true); return hamPivot.localToWorld(faceLocal.clone()); };
-  // §266 — the blow is the FALL, and the fall is √(k/I) now: 1.5 ms of a
+  // §268 — the blow is the FALL, and the fall is √(k/I) now: 1.5 ms of a
   // 0.36 s cycle, not §25's 53 ms third of the free window. The pivot stands
   // on the tangent at the FACE, so the head's path is radial exactly where
   // the hammer passes its rest angle (θ = 0, at t = π/2W under the cos law);
@@ -115,7 +115,7 @@ const out = await page.evaluate(async () => {
   const walls = { rIn: A.band.annulusIn_u, rOut: A.band.annulusOut_u, top: A.band.ceiling };
   const env = { rMin: Infinity, rMax: 0, zMax: -Infinity, zMin: Infinity, ringTop: -Infinity, outside: [] };
   const vv = new THREE.Vector3();
-  for (const name of ['alarmGongArc', 'alarmGongPost', 'alarmHammerHead', 'alarmHammerArm', 'alarmHammerPost', 'alarmHammerStud', 'alarmHammerSpiral', 'alarmHammerCollet']) {   // §266: the spiral, its collet and its stud replaced the blade's stud
+  for (const name of ['alarmGongArc', 'alarmGongPost', 'alarmHammerHead', 'alarmHammerArm', 'alarmHammerPost', 'alarmHammerStud', 'alarmHammerSpiral', 'alarmHammerCollet']) {   // §268: the spiral, its collet and its stud replaced the blade's stud
     const o = mesh(name); const p = o.geometry.attributes.position;
     let worst = 0;
     for (let i = 0; i < p.count; i++) {
@@ -152,7 +152,7 @@ say(tipWorst <= TOL, `tip on tail at every phase — worst gap ${tipWorst.toFixe
 // ALARM_CAM_APPROACH_FRAC (0.06) of the pitch before the 0.38 pickup is cut to
 // close on the RESTING nose, so the gap there shrinks to zero by design. §198's
 // window reached 0.36 and passed only because §25's posed rebound happened to
-// hold the hammer 0.016 rad up through the approach; §266's √(k/I) fall has
+// hold the hammer 0.016 rad up through the approach; §268's √(k/I) fall has
 // the hammer at rest there, and the ramp reads 0.136 at u 0.338 — the cam
 // doing what it was cut to do, not the nose fouling it.
 const rise = cycle.filter((c) => c.u > 0.42 && c.u < 0.97), fall = cycle.filter((c) => c.u > 0.02 && c.u < 0.32);

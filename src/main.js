@@ -24714,7 +24714,7 @@ declareRestoring('Alarm disc', 'alarmFollowerSpiral', 'two-way',
   'the spiral\'s outer end is clamped in the arm\'s riser and its frame is the elastica at the arm\'s angle (setWind), so the arm winds and unwinds it — both directions driven',
   ['Alarm disc/alarmFollowerBar', 'Alarm disc/alarmFollowerBar']);
 // §48 — THE CASE THAT PROMPTED THE ENTRY: the hammer's free swing is a
-// spring-and-inertia law, and until §266 the movement had no such spring —
+// spring-and-inertia law, and until §268 the movement had no such spring —
 // the row that named the blade's mesh lived here. The hammer's restoring
 // answer is declared beside the spiral now (ALARM_HSPIRAL, with the governor's
 // torque law, which sizes it).
@@ -24876,14 +24876,14 @@ if (!(ALARM_LIFT_FORK.tipDelta > -0.01 && ALARM_LIFT_FORK.tipDelta < 0.2))
 // no choice), free after the drop.
 const ALARM_FREE_FRAC = 1 - ALARM_CAM_RISE_FRAC;
 const ALARM_FREE_S = ALARM_FREE_FRAC * ALARM_STRIKE_GAP;
-// §266 — the fall IS √(k/I) now. ALARM_HAMMER_W, ALARM_FALL_S and
+// §268 — the fall IS √(k/I) now. ALARM_HAMMER_W, ALARM_FALL_S and
 // ALARM_HAMMER_DECAY are derived beside the hammer's torsion spiral
 // (ALARM_HSPIRAL, sited with the governor's torque law that sizes its rate),
 // after the rotor's inertia is measured off the cut metal; alarmHammerAngle()
 // below reads them at tick, never at build. §197's note that used to stand
 // here — a fall time CHOSEN as a third of the cam's free window, W solved to
 // match it, the blade a rubber band no rate could be read off — is TODO 128's
-// record, closed by §266.
+// record, closed by §268.
 // §104 — the fall is TIME (a spring law, TODO 14's record), the cycle is
 // PHASE, and the governed cadence made their exchange rate a function of the
 // wind: the phase fraction the fall occupies is fall / gap(θ), no longer a
@@ -25086,7 +25086,7 @@ const ALARM_TAIL_BAR_LEN = ALARM_LIFT_CONTACT_SPAN.hi + ALARM_LIFT_TIP_R;
 // hand-off rows measure that contact shut), so the same spring that returns
 // the hammer returns the lever through the tail — the way a lifting piece
 // that bears on a sprung hammer tail is returned in a real striking work.
-// §266 — the spring it inherits is a spring now (ALARM_HSPIRAL): the blade
+// §268 — the spring it inherits is a spring now (ALARM_HSPIRAL): the blade
 // this row used to name changed length over the draw and could be read no
 // rate; the spiral's couple at the tail is the §137 row beside its metal.
 declareRestoring('Alarm lifting lever', 'alarmLiftNose', 'spring',
@@ -25094,7 +25094,7 @@ declareRestoring('Alarm lifting lever', 'alarmLiftNose', 'spring',
   'alarmHammerSpiral', 'alarmTail');
 declareTravel('Alarm lifting lever', 2 * ALARM_DRAW_RAD, 'follows the hammer through the tip⇄tail contact: ±the hammer\'s draw, a ratio of 1');
 
-// --- §48 / TODO 14 → §266 — THE HAMMER SPRING ---------------------------
+// --- §48 / TODO 14 → §268 — THE HAMMER SPRING ---------------------------
 // The blade §48 drew here — grounded to a stud on the rim, bearing on the
 // tail at 45% of its length, redrawn each frame from its anchor to the
 // moving bearing point and so CHANGING LENGTH by 36% of itself over the draw
@@ -25952,7 +25952,7 @@ const ALARM_GOV_DESIGN_WIND = ALARM_BARREL_TURNS / 2;
 // this solve have to be re-done together: TODO 201.
 const ALARM_GOV_K = OSC_STEEL_E * (alarmSpring.section.I_u4 * OSC_U ** 4) / (alarmSpring.devLen * OSC_U); // N·m/rad
 const alarmMomentAt = (windTurns) => ALARM_GOV_K * (ALARM_SETUP_SWEEP + windTurns * Math.PI * 2); // N·m — the set-up floor is in the law
-// --- §266 — THE HAMMER SPRING, A TORSION SPIRAL ON THE HAMMER'S OWN POST ----
+// --- §268 — THE HAMMER SPRING, A TORSION SPIRAL ON THE HAMMER'S OWN POST ----
 // (TODO 128.) Sited HERE, beside the governor's torque law, because its rate
 // is sized from this train's torque: the cam must draw the hammer against it
 // at the barrel's weakest, and the governor runs on what the lift leaves —
@@ -26177,7 +26177,7 @@ const ALARM_HSPIRAL = await (async () => {
     t *= Math.sqrt(P.b / B);
   }
   if (!P || Math.abs(P.b / B - 1) > 1e-6) {
-    console.warn(`§266 hammer spiral: no plan lands the strip on the tail's height ${B.toFixed(4)} u (got ${P ? P.b.toFixed(4) : 'none'})`);
+    console.warn(`§268 hammer spiral: no plan lands the strip on the tail's height ${B.toFixed(4)} u (got ${P ? P.b.toFixed(4) : 'none'})`);
     return null;
   }
   const bM = B * m, L = P.el.L;
@@ -26213,7 +26213,7 @@ const ALARM_HSPIRAL_Z_HI = ALARM_HSPIRAL_Z_LO + ALARM_HSPIRAL_B;
 {
   // Boot asserts (rule 6) — the line spec's own terms, achieved vs required.
   const S = ALARM_HSPIRAL;
-  const say = (what, ok, got, need) => { if (!ok) console.warn(`§266 hammer spiral: ${what} — ${got}, need ${need}`); };
+  const say = (what, ok, got, need) => { if (!ok) console.warn(`§268 hammer spiral: ${what} — ${got}, need ${need}`); };
   say('the lift\'s peak against the budget', S.liftPeak_Nm <= S.liftBudget_Nm * (1 + 1e-9), `${S.liftPeak_Nm.toExponential(4)} N·m`, `≤ ${S.liftBudget_Nm.toExponential(4)} (${ALARM_HSPIRAL_LIFT_SHARE} of the strike arbor's ${S.arborTqSetup_Nm.toExponential(4)} at set-up)`);
   say('the lift\'s peak ON the budget', Math.abs(S.liftPeak_Nm / S.liftBudget_Nm - 1) < 1e-6, (S.liftPeak_Nm / S.liftBudget_Nm).toFixed(8), '1 (b is solved to it)');
   say('the strip\'s height', Math.abs(S.b / ALARM_TAIL_T - 1) < 1e-6, S.b.toFixed(6), `ALARM_TAIL_T ${ALARM_TAIL_T}`);
@@ -26364,10 +26364,10 @@ const alarmHammerSpiral = await (async () => {
         for (let j = i + half; j < P.length; j++) gap = Math.min(gap, Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]));
       }
     }
-    if (unconv) console.warn(`§266 hammer spiral: ${unconv} of ${n} frames did not converge`);
-    if (gap - S.t < PIVOT_BORE_CLEAR - 1e-9) console.warn(`§266 hammer spiral: coil face gap ${(gap - S.t).toFixed(4)} over the built frames, need PIVOT_BORE_CLEAR ${PIVOT_BORE_CLEAR}`);
-    if (strain > S.strainTarget * (1 + 1e-6)) console.warn(`§266 hammer spiral: strain ${strain.toExponential(4)} over the built frames, target ${S.strainTarget.toExponential(4)}`);
-    if (endErr > 1e-6) console.warn(`§266 hammer spiral: the outer end misses the stud's face by ${endErr.toExponential(3)} over the frames — β or the stud's station has parted from the plan`);
+    if (unconv) console.warn(`§268 hammer spiral: ${unconv} of ${n} frames did not converge`);
+    if (gap - S.t < PIVOT_BORE_CLEAR - 1e-9) console.warn(`§268 hammer spiral: coil face gap ${(gap - S.t).toFixed(4)} over the built frames, need PIVOT_BORE_CLEAR ${PIVOT_BORE_CLEAR}`);
+    if (strain > S.strainTarget * (1 + 1e-6)) console.warn(`§268 hammer spiral: strain ${strain.toExponential(4)} over the built frames, target ${S.strainTarget.toExponential(4)}`);
+    if (endErr > 1e-6) console.warn(`§268 hammer spiral: the outer end misses the stud's face by ${endErr.toExponential(3)} over the frames — β or the stud's station has parted from the plan`);
   }
   return mesh;
 })();
@@ -26393,7 +26393,7 @@ registerSub('Alarm hammer', 'Hammer spring', alarmHammerSpiral);
   // than the ring's radius) by the seat — achieved vs required
   const sunk = top - (Z_STRIKE - ALARM_TAIL_T / 2);
   if (!(ALARM_TAIL_BAR_LEN > ALARM_HSPIRAL_COLLET_R && sunk >= ALARM_SEAT_SINK - 1e-9 && sunk < ALARM_TAIL_T))
-    console.warn(`§266 collet: its top stands ${sunk.toFixed(4)} into the tail's bar (bar ${ALARM_TAIL_BAR_LEN.toFixed(3)} long, ring r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}), need ALARM_SEAT_SINK ${ALARM_SEAT_SINK} — the rotor is not one body`);
+    console.warn(`§268 collet: its top stands ${sunk.toFixed(4)} into the tail's bar (bar ${ALARM_TAIL_BAR_LEN.toFixed(3)} long, ring r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}), need ALARM_SEAT_SINK ${ALARM_SEAT_SINK} — the rotor is not one body`);
 }
 {
   // The STUD — fixed, planted in the rim beside the post, up to the band's top.
@@ -26406,18 +26406,18 @@ registerSub('Alarm hammer', 'Hammer spring', alarmHammerSpiral);
   registerSub('Alarm hammer', 'Spring stud', stud);
   const r = Math.hypot(ALARM_HSPIRAL_STUD.x, ALARM_HSPIRAL_STUD.y);
   if (r - ALARM_HSPIRAL_STUD_R < R_ANNULUS_IN - 1e-9 || r + ALARM_HSPIRAL_STUD_R > R_ANNULUS_OUT + 1e-9)
-    console.warn(`§266: the hammer spring's stud (r ${r.toFixed(3)}) leaves the annulus ${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
+    console.warn(`§268: the hammer spring's stud (r ${r.toFixed(3)}) leaves the annulus ${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
   // its section against the load it was sized from — achieved vs required
   const F = ALARM_HSPIRAL_STUD_F, Lc = ALARM_HSPIRAL_Z * OSC_U, dM = 2 * ALARM_HSPIRAL_STUD_R * Math.cos(Math.PI / 10) * OSC_U;
   const sigma = 32 * F * Lc / (Math.PI * dM ** 3), defl = 64 * F * Lc ** 3 / (3 * STEEL_E_PA * Math.PI * dM ** 4) / OSC_U;
   if (sigma > 0.9 * SPRING_SIGMA_Y_PA + 1)
-    console.warn(`§266 stud: bending ${(sigma / 1e6).toFixed(1)} MPa under the spring's ${(F * 1000).toFixed(1)} mN, need ≤ ${(0.9 * SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa`);
+    console.warn(`§268 stud: bending ${(sigma / 1e6).toFixed(1)} MPa under the spring's ${(F * 1000).toFixed(1)} mN, need ≤ ${(0.9 * SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa`);
   if (defl > ALARM_SEAT_SINK + 1e-9)
-    console.warn(`§266 stud: deflects ${defl.toFixed(4)} u under the spring's couple, need ≤ ALARM_SEAT_SINK ${ALARM_SEAT_SINK} (the seat)`);
+    console.warn(`§268 stud: deflects ${defl.toFixed(4)} u under the spring's couple, need ≤ ALARM_SEAT_SINK ${ALARM_SEAT_SINK} (the seat)`);
   // the force the stud was sized from is the couple over the stud's FINAL
   // radius; the guess used the stock floor, which only ever under-reads
   if (ALARM_HSPIRAL.Mdraw_Nm / (ALARM_HSPIRAL_STUD_RHO * OSC_U) > F + 1e-9)
-    console.warn('§266 stud: the stud\'s arm grew past the sizing guess — the load it was sized from is light');
+    console.warn('§268 stud: the stud\'s arm grew past the sizing guess — the load it was sized from is light');
 }
 alarmHammerSpiral.userData.setWind(0);   // the rest frame until tick poses it
 // THE FALL, at last √(k/I): the energy rate of the elastica over the fall
@@ -26435,7 +26435,7 @@ const ALARM_HAMMER_W = Math.sqrt(ALARM_HSPIRAL.kFall_Nm_per_rad / ALARM_HAMMER_I
 const ALARM_FALL_S = Math.acos(-ALARM_STRIKE_AMP / ALARM_DRAW_RAD) / ALARM_HAMMER_W;  // reaches the wire here
 const ALARM_HAMMER_DECAY = Math.log(20) / (ALARM_FREE_S - ALARM_FALL_S);             // rebound down to 5% by the next pickup
 if (!(ALARM_FALL_S < ALARM_FREE_S / 3))
-  console.warn(`§266: the fall ${(ALARM_FALL_S * 1000).toFixed(2)} ms is not inside §25's old third of the free window ${(ALARM_FREE_S / 3 * 1000).toFixed(1)} ms — the spring is weaker than the law it replaced`);
+  console.warn(`§268: the fall ${(ALARM_FALL_S * 1000).toFixed(2)} ms is not inside §25's old third of the free window ${(ALARM_FREE_S / 3 * 1000).toFixed(1)} ms — the spring is weaker than the law it replaced`);
 // §48 — the hammer's restoring answer, which the audit's reach tier measures
 // (the spiral seated in the collet, which is the arm's own frame), and the
 // spiral's, a morph that is its own reversing frame: its wind is the group's
@@ -26530,7 +26530,7 @@ const GONG_ACOUSTICS = (() => {
                                                        // REPORT, so this number decorates nothing that gates.
   // 1 — the rotor, by signed tetrahedra over its own triangles.
   const pivot = new THREE.Vector3(hammerPiv.x, hammerPiv.y, 0);
-  const rotor = rotorInertiaZ(alarmHammerPivot, pivot);         // §266: one function, shared with the fall law
+  const rotor = rotorInertiaZ(alarmHammerPivot, pivot);         // §268: one function, shared with the fall law
   const mRotor = rotor.vol_u3 * U ** 3 * OSC_STEEL_RHO;         // kg
   // §198 — the HEAD alone, by the same tetrahedra: the match solve sized it
   // to the arc fundamental's modal fraction of the design wire (§253; a
@@ -26553,7 +26553,7 @@ const GONG_ACOUSTICS = (() => {
   })();
   const I_h = rotor.Izz_u5 * U ** 5 * OSC_STEEL_RHO;            // kg·m²
   const rArm = ALARM_ARM_LEN * U;                               // m — the PLAN lever, the crank's rise is not a moment arm
-  // 1a — THE SPRING. §266: ALARM_HAMMER_W is √(k/I) off the torsion spiral's
+  // 1a — THE SPRING. §268: ALARM_HAMMER_W is √(k/I) off the torsion spiral's
   // energy rate and this rotor's inertia, so the blow's energy is the
   // elastica's released energy between the draw and the wire (held as an
   // identity below). §197 published here the k the chosen fall law IMPLIED
@@ -26564,7 +26564,7 @@ const GONG_ACOUSTICS = (() => {
   const vHead = thetaDot * rArm;
   const E_blow = 0.5 * I_h * thetaDot * thetaDot;
   if (Math.abs(I_h / ALARM_HAMMER_I - 1) > 1e-9)
-    console.warn(`§266: the acoustics block's rotor inertia ${I_h.toExponential(4)} is not the fall law's ${ALARM_HAMMER_I.toExponential(4)} — two readings of one rotor`);
+    console.warn(`§268: the acoustics block's rotor inertia ${I_h.toExponential(4)} is not the fall law's ${ALARM_HAMMER_I.toExponential(4)} — two readings of one rotor`);
   const mEff = I_h / (rArm * rArm);                             // the mass the wire actually meets
   // 2 — the wire, and the hand-off. §253: the modes are the arc's (GONG_ARCH),
   // each with its own modal mass at unit radial tip. The impedance the blow
@@ -26694,7 +26694,7 @@ const GONG_ACOUSTICS = (() => {
       cam: { base_u: ALARM_CAM_BASE_R, pickup_u: ALARM_CAM_PICKUP_R, tip_u: ALARM_CAM_TIP_R,
         refBase_u: STRIKE_REF.camBaseR, refPickup_u: STRIKE_REF.camPickupR, refTip_u: STRIKE_REF.camTipR } },
     strike: { energy_J: E_blow, mu, eta, contact_s: tau, restitution: REST },
-    // §266 — THE SPRING, as metal: the torsion spiral's line spec and what the
+    // §268 — THE SPRING, as metal: the torsion spiral's line spec and what the
     // fall law reads off it. `release_J` is ½k(DRAW² − AMP²) on the ENERGY rate
     // (the elastica's own stored energy between the two winds), held against
     // the rotor's arrival below as the fall law's identity; `liftShare` is
@@ -26767,21 +26767,21 @@ await breathe();
   if (!(A.wire.dia_mm >= GONG_STOCK_MM[0] - 1e-3 && A.wire.dia_mm <= GONG_STOCK_MM[1] + 1e-3))   // the knob's 4-decimal quantum, 8e-5 mm, is inside this
     console.warn(`§197: the gong wire is ⌀${A.wire.dia_mm.toFixed(3)} mm — outside real alarm-gong stock (${GONG_STOCK_MM[0]}–${GONG_STOCK_MM[1]} mm)`);
   // The spring releases exactly the energy the rotor arrives with — ½k(θd²−θs²)
-  // against ½Iθ̇² — the fall law's identity, and since §266 k is the ELASTICA's
+  // against ½Iθ̇² — the fall law's identity, and since §268 k is the ELASTICA's
   // energy rate between those two winds, so the identity also says the cos
   // law's energy is the metal's: the spring exists and this is its number.
   if (Math.abs(A.spring.release_J / A.strike.energy_J - 1) > 1e-9)
     console.warn(`§197: the spring releases ${A.spring.release_J.toExponential(4)} J and the rotor `
       + `arrives with ${A.strike.energy_J.toExponential(4)} J — the acoustics block has lost the fall law`);
   if (Math.abs(A.spring.release_J / (A.spring.storedAtDraw_J - A.spring.storedAtWire_J) - 1) > 1e-9)
-    console.warn(`§266: the cos law releases ${A.spring.release_J.toExponential(4)} J and the elastica stores `
+    console.warn(`§268: the cos law releases ${A.spring.release_J.toExponential(4)} J and the elastica stores `
       + `${(A.spring.storedAtDraw_J - A.spring.storedAtWire_J).toExponential(4)} J between the draw and the wire — the energy rate has parted from the solver`);
 }
 
 // §137 — THE LIFTING LEVER'S TRANSFER ROW (§198), the strike side's first.
 // Idiom: a crank — two designed arms about a bearing that takes the side
 // load. The load is what the cam must deliver at the nose to draw the hammer
-// against its spring: since §266 the spiral's REAL couple at the full draw
+// against its spring: since §268 the spiral's REAL couple at the full draw
 // (the elastica's moment, not a fall law's implied rate), referred to the
 // tail's contact arm. With equal arms the tip delivers the same force it
 // receives, and the pivot carries the vector sum of the two — the arms stand
@@ -26798,7 +26798,7 @@ declareTransfer('alarm strike: lifting lever (cam → hammer tail)', {
   why: 'a corner in position space, the fold rule\'s own currency: equal arms about the post §24 planted, so the cam\'s lift arrives at the tail 1:1 and the strike group\'s line spec (tail, draw, arm, blow) is inherited rather than forked — the one fork, the cam tip\'s +0.1, is declared at ALARM_LIFT_FORK',
 });
 
-// §266 — THE GOVERNOR RUNS ON WHAT THE LIFT LEAVES. The barrel's moment
+// §268 — THE GOVERNOR RUNS ON WHAT THE LIFT LEAVES. The barrel's moment
 // reaches the strike arbor through one cut mesh; the cam spends the hammer
 // spiral's lift work there, once per lobe pitch — ALARM_HSPIRAL.liftSpend_Nm,
 // the mean over the pitch (the governor is a flywheel, 40 teeth per strike,
@@ -27061,7 +27061,7 @@ const ALARM_GOV_SAW_PHASE = (ALARM_GOV_ANCHOR_BEARING + ALARM_GOV_LAND_EPS) - (0
 // in the law. The gap-vs-wind curve is ∝ 1/√M pinned at the design point
 // either way, so the measured cadence endpoints (0.374/0.488 s at §113) do
 // not move; only the anchor and the ring's solved section do. Solve the part,
-// never re-target the beat. (§266 subtracts the hammer lift's mean spend from
+// never re-target the beat. (§268 subtracts the hammer lift's mean spend from
 // M(w) before the law reads it — a constant term, so the curve is no longer
 // a pure 1/√M and the endpoints DID move: the record publishes them.)
 const ALARM_GOV_I = (ALARM_STRIKE_GAP / (2 * ALARM_GOV_TEETH_PER_STRIKE)) ** 2
@@ -27081,7 +27081,7 @@ const ALARM_RING_SECONDS = (() => {
   return (s / N) * ALARM_STRIKES_PER_WIND;
 })();
 // The hammer's WINDOW at the fastest governed cadence: the fall is time
-// (√(k/I) off the torsion spiral since §266 — ~1.5 ms, where §25's chosen
+// (√(k/I) off the torsion spiral since §268 — ~1.5 ms, where §25's chosen
 // third of the window was 53), the free fraction is phase, and the shortest
 // free time is at full wind. The gate holds this row; the warn is the
 // boot-silent tripwire behind it.
@@ -28004,7 +28004,7 @@ const EQUALISATION = (() => {
         // ∝ 1/√M pinned at the design point either way, so the endpoints
         // survive the re-derivation untouched; I_a and the ring do not.
         law: 'gap(w) = 2·ALARM_GOV_TEETH_PER_STRIKE·√(2·ALARM_GOV_PHI·ALARM_GOV_I / ((M(w)·η/ALARM_STRIKE_RATIO − liftSpend)·η/ALARM_GOV_RATIO·ALARM_GOV_RHO))',
-        // §266 — the lift's spend at the strike arbor (the hammer spiral's
+        // §268 — the lift's spend at the strike arbor (the hammer spiral's
         // work per strike over one lobe pitch), the one term §104's law lacked
         liftSpend_Nm: ALARM_HSPIRAL.liftSpend_Nm, liftWork_J: ALARM_HSPIRAL.liftWork_J,
         liftPeak_Nm: ALARM_HSPIRAL.liftPeak_Nm, liftBudget_Nm: ALARM_HSPIRAL.liftBudget_Nm, liftShare: ALARM_HSPIRAL.liftShare,
@@ -38007,7 +38007,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All TWENTY
+   what it says, and the box already grows to fit its contents. All TWENTY-ONE
    locales measure inside 150 px on one line today — §249's Indonesian
    "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
    and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
@@ -38021,7 +38021,8 @@ html:lang(ko) { word-break: keep-all; }
    alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
    19.5; §249's Indonesian "Waktu" 28.0; §249's Turkish "Çalma saati" 52.8,
    level with Spanish and Korean, "Zaman" 31.1; §249's Welsh "Canu am" 40.6,
-   level with Russian, "Amser" 28.9) — so the allowance that a
+   level with Russian, "Amser" 28.9; §249's Tagalog "Tumutunog sa" 63.6, just
+   under Indonesian's 66.2, "Oras" 21.7) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -38714,6 +38715,9 @@ function setBarState(id, on) {
 // measured, past Dutch's 204.4 — on "Dewislen / Golwg / Rheolaethau", and 185.0
 // once the panel took the verb-noun Rheoli that Welsh software already uses for
 // a control panel (Panel Rheoli): §208's lesson a fifth time.
+// §249's Tagalog measured 194.8 on "Menu / Tanaw / Mga kontrol" — 24.6 px wider than
+// English's 170.2, between Welsh's 185.0 and Dutch's 204.4 — with no re-cutting
+// needed: the first labels fit, so no face was chosen against the bar this time.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
@@ -40055,6 +40059,25 @@ const PART_CALLOUTS = {
   mwMinuteWheel: { name: 'Minute wheel', train: 'Motion works', anchor: 'rim' },
   mwMinutePinion: { name: 'Minute pinion', train: 'Motion works', anchor: 'centre', place: 'above' },
   mwHourWheel: { name: 'Hour wheel', train: 'Motion works', anchor: 'rim', awayFrom: 'mwMinuteWheel', unitLabel: true },
+  // The keyless works: the crown's two paths, named for what the code builds
+  // (the §10 level-2 vocabulary, so the drill-in and these say the same word).
+  // WINDING — stem → winding pinion → crown wheel → transfer wheel; SETTING —
+  // stem → winding pinion → setting wheel → setting bevel → the minute-wheel
+  // arbor's wheel → … the fold … → setting cap, which meshes the motion works'
+  // minute wheel. "Keyless works" alone is one word at the crown for both.
+  windStem: { name: 'Winding stem', train: 'Keyless works', anchor: 'centre' },
+  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  // Two coaxial pairs — the crown wheel on the transfer wheel's arbor, the
+  // setting wheel under its bevel — share one centre, so each pair splits
+  // above / below it, the motion works pinions' rule.
+  // The winding pinion meshes the crown wheel right beside that pair, so its
+  // name is lifted ABOVE its centre, clear of the pair's upper slot.
+  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  settingWheel: { name: 'Setting wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  settingBevel: { name: 'Setting bevel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  minuteWheel: { name: 'Minute-wheel arbor', train: 'Keyless works', anchor: 'centre' },
+  settingCap: { name: 'Setting cap', train: 'Keyless works', anchor: 'centre' },
 };
 // Resolved once: { meshes, unit, train, anchor, el } — one entry per NAME, since
 // a gear builder may leave several meshes under one name; the anchor reads
@@ -50483,7 +50506,7 @@ function tick(t) {
   // driving the tail, in the fall it is the hammer's blade holding the tail
   // against the tip. Either way one angle, read off the other.
   alarmLiftPivot.rotation.z = alarmLiftFromHam(alarmHammerPivot.rotation.z);
-  // §266 — the hammer's torsion spiral wears the frame its angle winds: the
+  // §268 — the hammer's torsion spiral wears the frame its angle winds: the
   // inner end rides the collet round with the hammer, the outer end stays on
   // the stud, and the elastica between them is what the lift works against
   // and what drives the fall (a consequence of the pose, never a pose).

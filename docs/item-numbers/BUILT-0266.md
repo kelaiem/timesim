@@ -1,5 +1,5 @@
 number: 266
 namespace: BUILT
-title: The hammer spring is a torsion spiral on its own post, and the fall law is √(k/I) off the metal
-branch: claude/todo-128-hammer-spiral
+title: Restore §239's yield on main, and hold it in CI so it cannot regress silently again
+branch: claude/loading-screen-initial-pe3u3v
 claimed: 2026-10-09

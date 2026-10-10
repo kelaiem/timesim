@@ -17,7 +17,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 228 | OPEN | The hammer's rebound after the wire is `−AMP·cos(W·r)·e^(−decay·r)`, a POSED decay (`ALARM_HAMMER_DECAY` is solved to reach 5% by the next pickup, no restitution and no banking in it); at §266's W that is a chatter near 200 Hz nothing in the metal produces or stops. A restitution of 0.8 would rebound to ≈0.22 rad and a real hammer is caught by a banking or rests on the lifting piece — neither is drawn |
+| 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
+| 228 | OPEN | The hammer's rebound after the wire is `−AMP·cos(W·r)·e^(−decay·r)`, a POSED decay (`ALARM_HAMMER_DECAY` is solved to reach 5% by the next pickup, no restitution and no banking in it); at §268's W that is a chatter near 200 Hz nothing in the metal produces or stops. A restitution of 0.8 would rebound to ≈0.22 rad and a real hammer is caught by a banking or rests on the lifting piece — neither is drawn |
 | 226 | OPEN | Found closing TODO 216. The impulse pin's centre sits 9.575 from the fork pivot and the slot's mouth is at 9.595, so the pin only enters the slot's mouth. The bank is derived by matching arc lengths at `notchDepth` (6.83), so the pose law impulses over 21.7° of balance arc while the metal's lift is 30.95°. Seat the pin in the slot and derive the bank from the pin's real radius |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
@@ -135,7 +136,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 17 | CLOSED | §253 solved the wire as the arc it is cut as (Love's thin-arch in-plane modes, exact for a circular arc): f₁ **+1.9%**, f₂ **−9.5%** against the straight law at the same length, so the second partial is 5.57× the first and not 6.27×; the design arc 55.27 → **55.80°**, the head matched to the arc fundamental's **0.296 M** (32.9 → 39.3 mg), the radiation integral the arc's; level 24.6 dBA. §56 took the ratios from the bar, §197 the excitation and the mix; the pitch's bound closed as item 127 |
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
-| 128 | CLOSED (§266) | The blade is gone. The hammer's spring is a torsion spiral on its own post (`ALARM_HSPIRAL`): inner end clamped in a collet that is the hammer's boss, outer end against a stud planted in the rim, k sized from the alarm train's torque budget (the lift's peak at the strike arbor held to `ALARM_HSPIRAL_LIFT_SHARE` 0.9 of that arbor's torque at set-up), the strip at the tail's height with its thickness SOLVED — 0.100 mm, 1.75 turns, strained to 0.9 of yield at the draw. `ALARM_HAMMER_W` is √(k/I) off the built metal: 1246 rad/s, the wire met in 1.533 ms, the blow 17 nJ → 20.47 µJ, the level 23.2 → 52.8 dBA; the governor runs on what the lift leaves (0.365/0.512 s). What it opened: the rebound is still §25's posed decay — item 228 |
+| 128 | CLOSED (§268) | The blade is gone. The hammer's spring is a torsion spiral on its own post (`ALARM_HSPIRAL`): inner end clamped in a collet that is the hammer's boss, outer end against a stud planted in the rim, k sized from the alarm train's torque budget (the lift's peak at the strike arbor held to `ALARM_HSPIRAL_LIFT_SHARE` 0.9 of that arbor's torque at set-up), the strip at the tail's height with its thickness SOLVED — 0.100 mm, 1.75 turns, strained to 0.9 of yield at the draw. `ALARM_HAMMER_W` is √(k/I) off the built metal: 1246 rad/s, the wire met in 1.533 ms, the blow 17 nJ → 20.47 µJ, the level 23.2 → 52.8 dBA; the governor runs on what the lift leaves (0.365/0.512 s). What it opened: the rebound is still §25's posed decay — item 228 |
 | 125 | CLOSED | An underived `+ 0.1` sat on every keyless mesh distance at seven live sites (the item said six; crown wheel ⇄ idler was the seventh), putting two declared meshes 1.337% beyond the centre distance their teeth were cut for. DELETED, and the arithmetic decided it rather than taste: KW_MODULE is 0.34, so 0.1 is **0.29 of a module**, where the centre increase buying even a generous horological backlash is under 0.1·m — no backlash rule derives it. Nor was it a convention: 21 of the 23 declared meshes already stood at module·(P+Q)/2 and the only two that did not were the two these expressions site. What it WAS is visible at `ALARM_TUBE_INNER` — this file's 0.1 running clearance for a tube in its bearing, carried across to a centre distance, on a comment ("the same +0.1 slop every keyless mesh uses, see mwFoldD") that was circular. The deletion was a RE-SOLVE as the item predicted: the keyless cluster floors the plate, dialRadius fell 42.922914475499894 → **42.804991398276**, §125's own D4 assert fired in rule-6 form naming the two bounds it had to meet, and D4 re-derives from its comment's closed form 18.777750373095056 → **18.730557557590057** with the bounds meeting to float noise. Price, stated: the seconds well is 0.047 smaller. Dividend: `meshCoverage` now enumerates **23 of 23** declared meshes where it found 21 — the two it could never see were outside its tolerance BECAUSE of the 0.1. `MESH_CENTRE_WAIVERS` is empty; probe-135-registry's claims rewritten, since they encoded this item's open state. Unblocks [TODO 132]'s keyless rows |
 | 141 | OPEN | The centre stack's coupling BEHAVES correctly and is not a mechanism. Measured with `tools/probe-alarm-disc-coupling.mjs` (both controls green): DISARMED with tau advancing the `Alarm disc` rides the hour at ratio **1.00000** (dHour −0.52342, dDisc −0.52343); ARMED it **HOLDS** at ratio 0.00000 while the hour runs up to it; SETTING with tau frozen it follows the crown at exactly **1/3** (0.13333 per 0.4 rad) with the hour still at 0.00012. All three are what the metal should do — so this is not a behaviour bug and nothing on the dial is wrong. What is wrong is that the regime is SELECTED rather than decided: `tubeTarget = (alarmSelShownT > 0.5 \|\| alarmArmFreed) ? -alarmAngle : hourDialA`, eased toward by `alarmTubeShownA += wrapPi(target − shown)·(1 − exp(−rawDt/τ))`. The seat's own declaration ('Alarm setting wheel') says "ARMED it turns the tube; DISARMED the tube follows the heart underneath it and **slips**" — and nothing slips, because no torque exists anywhere in the path. Half the OR is honest: `alarmArmFreed` is read from the cone's cap, a member's pose, which §45 did on purpose. The other half is a display selector. **The ratios cannot catch this** — a seat and a ternary produce the same three numbers; what separates them is whether the tube can be made to slip. Fix: derive `τ_slip` two-sidedly on §24's cannon-pinion precedent (it must HOLD the tube against the follower nose's drag on the heart or the hand lags the hour; it must SLIP before the setting train back-drives the hour wheel, the same bound the reset rod already publishes from the going ribbon's energy over the reserve), decide the regime by comparing driving torque to it, and make the tube's angle banked state advanced by whichever member drives it. Blocked on POSE COVERAGE before it can be gated: no axis varies `alarmCrownPullT` ([TODO 140]'s residue) and none poses "disarmed, tau varying" ([TODO 129]'s), so all three regimes are reachable only by the probe |
 | 140 | CLOSED | Found by [TODO 139]'s new boot guard, on its first run, on a corner that guard was not written for. Measured at the rest pose off the metal: `alarmDiscBevel` carries its tooth **0.3750 of a pitch** off the contact ray where the convention wants 0, burial **0.2131** (39% of a tooth), and `probe-crossed-axis-mesh` floors at 0.0000 AT PHASE 0.375 — the same number from the other side, so the pair is one constant from meshing and is not on it. The 0.3750 is not the index block's arithmetic: `bevelCornerSpin` indexes both halves at BUILD where `alarmRotor.rotation.z` is 0, and the rest pose puts it at −2.90597, which is −4.625 pitches of a 10-tooth bevel and wraps to exactly the miss. **The two terms of that rotor angle are not alike**: `3 * _bd` (the hour carrying the friction-set disc) IS mirrored into the stem by `alarmCrownCreep` since §194 F, and `-alarmSetRot` — the angle the CROWN put there through this very corner — is not, so standing rule 2 is unsatisfied on one term of one sum. That much of 139's withdrawn diagnosis was right, about the term it did not name. No build constant can close it (`alarmSetRot` varies with the set time), so the fix is to what the CROWN displays, and it has a design question first: disengaged, the crown is free and the relative index is not a kinematic consequence — either the crown carries the disc's total either way (making the knob a readout of the setting) or the index is re-solved at engagement, which is what the metal does and needs an engagement event the tick has not got. Waived at the corner's build with an AUDITED waiver — the guard warns if a waived corner measures IN index, so the fix cannot leave it behind. **The two MOTION-WORKS corners are the same item and are now in its scope**: `addBevelCorner` seeds a bare `BEVEL_PHASE` and never adopted `bevelCornerSpin`, so the ABSOLUTE condition is false on all four members (−0.3479/+0.1528 and −0.3472/−0.1528 of a pitch from the ray). They mesh only because the RELATIVE condition survives — and it lands on the DIFFERENCE in one and the SUM in the other, 0.5007 and −0.5000, because the two corners have opposite handedness. Two accidents, not a solve. Both are registered with the index guard and waived to this item, so the debt is visible at boot rather than only in a probe; converting them moves the motion works' rest pose, which §137's transfer rows, the intra-unit tiers and `meshPhase` all read, so it is a re-measure and belongs with this item's decision  **LANDED (alarm half)**: the index is RE-SOLVED AT ENGAGEMENT, the owner's call and the metal's. A prerequisite went first — the corner's TWO drives disagreed about its sense (crown −1, the HOUR through the same teeth +1), so the pair was not one coupling; the ungated restatement was deleted rather than flipped and the hour now reaches the arbor once, as `alarmArborHourA`. That bought the invariant the re-solve needs: engaged, `d = rotor − spinner` does not move and the teeth interleave when d is a whole number of pitches. Engagement takes the shortest stem rotation making it so — the tip chamfers' cam, never more than half a pitch, the knob clicking in. The moment needs no second threshold, and that is DERIVED: a correctly-indexed pair never touches (its gap is the 0.00267 u of backlash the §136 cut reserves), so there is no contact instant, and d drifts only with the hour at 4.4e-4 rad/s against a 0.3 s ease — any instant in the throw freezes the same index to 2e-4 of a pitch. Six engagements land on valleys 0, 0, 0, 1, 2 and 5, each exactly in mesh, against a parted control that drifts 0.2222. MODELLED not simulated: the cam's force path is not walked, its outcome is. **AND THE MOTION-WORKS HALF LANDED**: `addBevelCorner` takes `bevelCornerSpin` at last, and the build-time solve is legitimate there — unlike the alarm corner — because both mounts hang off `keyless`, whose world transform is the identity, so their frames move with no input. The seed turned out to be written TWICE (the build's `BEVEL_PHASE` and `tick()` restating it as its own base), so either edit alone would have been silently undone; the index is solved once now and only the SPIN travels, the shape `settingWheelBase` already had beside it. All four members satisfy the ABSOLUTE condition where none did: −0.3479/+0.1528 and −0.3472/−0.1528 → **−0.0007/−0.4993** and **+0.0007/+0.4993**, the residual being the scan's resolution. Both corners are GATED now rather than reported, mutation-tested firing 4/4 on the restored seed, and `BEVEL_PHASE` plus the long-dead `ALARM_BEVEL_PHASE` are deleted |
@@ -18288,7 +18289,7 @@ still a floor).
 
 Related: item 17 (the voice), item 126 (the level), [§197], [§198].
 
-## 128. The hammer spring changes LENGTH as the hammer swings: a rubber band where TODO 14 recorded a blade — CLOSED (§266)
+## 128. The hammer spring changes LENGTH as the hammer swings: a rubber band where TODO 14 recorded a blade — CLOSED (§268)
 
 Item 14 closed on a real declaration and a real mesh: `alarmHammerSpring`,
 a flat blade grounded on its own stud, bearing on the tail at 45% of its
@@ -18365,7 +18366,7 @@ torsion spring lands, both declarations move together.
 Related: item 14 (the declaration this refines), item 126 (the case, the
 other order of magnitude), [§197].
 
-**CLOSED by §266.** The blade and its stud are gone; the hammer's spring is
+**CLOSED by §268.** The blade and its stud are gone; the hammer's spring is
 a TORSION SPIRAL coaxial with the hammer's post (`ALARM_HSPIRAL`, built beside
 the governor's torque law because that law sizes it). Inner end clamped in a
 collet that is the hammer's boss (a `PIVOT_BORE_CLEAR` running fit over the
@@ -18387,10 +18388,10 @@ return spiral swap theirs. The numbers, each from its constraint:
 
 The cam did not need to move: the nose drifts past the lobe tip on its own
 arc 3.8× faster than the ramp falls under it, at any fall speed, so the drop
-fraction stands (measured on the cut outline, §266's record). What this item
+fraction stands (measured on the cut outline, §268's record). What this item
 does NOT close is the rebound after the wire, still §25's posed decay — at
 this W a chatter near 200 Hz nothing banks: item 228. Held by
-`tools/probe-266-hammer-spiral.mjs` (31 rows, among them the chosen-third law
+`tools/probe-268-hammer-spiral.mjs` (31 rows, among them the chosen-third law
 NOT reproducing W), `strikeHandoff`/`alarmHandoffs` rows for both ends,
 `restoring`'s reach tier, the `equalisation` cadence rows with the spend in
 the law.
@@ -30545,7 +30546,7 @@ scaled frame. 171 lose under 25% of their area at their floor (144 under 8%).
 
 | unit / mesh | kind, floor | what the outline says | waived |
 |---|---|---|---|
-| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor | no |
+| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — see TODO 227** | no |
 | Alarm switch / `alarmPusherReturnAbutment` | wheel 0.12 | an annulus, radii 0.4442 / 0.3689 mm: a 0.075 mm wall, 0.12 mm deep | TODO 11 (unit-wide) |
 | Escape wheel / (unnamed, 0.394 mm deep) | wheel 0.12 | an annulus 0.2728 / 0.1895 mm: a 0.083 mm wall; reads 0.3941 | TODO 12 |
 | Escape wheel / (unnamed, 0.452 mm deep) | wheel 0.12 | the escape PINION's leaves (105-point outline, root 0.227 mm to tip 0.340 mm) | TODO 12 |
@@ -30580,6 +30581,86 @@ union rule for fused features. (b) Only then consider teaching `stockFloor` to
 read the outline itself — the probe's method gated as the ruler's second tier —
 since it would flag 10 rows on arrival, and the rows must each be triaged first
 (§50's arc: report, triage, declare, gate).
+
+---
+
+## 227. The alarm release sleeve's skirt cone is a zero-thickness sheet, and the web beside it is a patch over that
+
+**Found taking TODO 225's first row.** The question was whether `alarmSleeveWeb`
+(a 0.030 mm arc ring, 0.12 mm deep, hung off the flat's underside) is a feature
+fused to a neighbour, a member, or thin stock. Reading what it is fused TO answered
+a different question.
+
+**The defect.** `alarmSleeveSkirt` is a `LatheGeometry` of a four-corner profile
+built from the working face A→B (the 45° cone the pin presses, derived from the
+pin's flank less the face cover) and a "wall" offset from it by `(+wOff, +wOff)`
+with `wOff = STOCK_MIN_U`. At 45° that offset is a translation ALONG the face, so
+the outer-face corner D lies on the line A–B extended: A, B and D are collinear
+(cross product 2.8e-17) and the profile is the triangle B–C–D at the flat-flush cap
+plus a zero-area spur from B down to A. Measured on the built profile: polygon area
+**0.0177 u²** (the triangle's, to 15 digits); the cone itself, A to B, is a
+double-sided sheet. The comment above the build said it was avoiding exactly this
+("a bare strip would be sheet with no stock at all, §50's degenerate class").
+
+**Why every gate read it fat.** `stockFloor` measures a lathe mesh by the box of
+its profile, axial extent by radial extent. The stray corner D pokes 0.112 u up
+into the flat (z −0.2048 against the flat's underside at −0.3167), so the axial
+extent reads 0.3167 = `STOCK_MIN_U` — the floor, to the digit — and the radial
+reads 0.52. `meshIntegrity` is satisfied by a closed surface and does not ask for
+volume; `outlines` reads extrudes only; `tools/probe-137-hidden-thin.mjs` (TODO
+225) reads extrudes only. The web is what the census still saw as thin once the
+skirt read fat: it stands `STOCK_MIN_U − ALARM_SLEEVE_SKIRT_H = 0.111` proud of the
+skirt's declared envelope, and §124 cut a relief sector in it because the feeler
+arm's transient swing met its bore corner by 0.0074. A rib that has to be relieved
+against a swinging arm to protect a skirt with no body is the patch's own cost.
+
+**The instrument.** `tools/probe-225-lathe-profiles.mjs` (a REPORT, §40) reads
+every `LatheGeometry` profile for the sheet signature (profile edges lying along
+other profile edges), for an open profile that does not close on the axis, and for
+a whisker (area under 5% of the profile's convex hull). Controls fire: the sleeve's
+own broken profile is flagged, a plain ring and a 45° parallelogram wall are not, a
+profile whose ends are on the axis is a solid, one whose ends are off it is a
+surface. **72 lathe meshes, 1 flagged — the skirt.** The class has one member.
+
+**What was tried, and why it is not landed.** A real shell — wall `STOCK_MIN_U`
+normal to the face, so the outer face is z = r − c − t√2, cap flush with the flat
+(clipped at the flat's rim), bottom lip flush with the declared envelope floor,
+`stockSection` declared, web and §124 relief retired — was built and run through
+the whole local battery (commit 641a324, backed out in 395e1a2): 50/53 gates. Two
+failures:
+
+1. `meshIntegrity` — `alarmSleeveSkirt` read INVERTED (signed volume −2.49): the
+   first draft listed the points clockwise. A slip, one line to fix.
+2. `undeclaredClearance` — `Alarm release feeler ⇄ Alarm release sleeve`
+   (`alarmFeelerSpring ⇄ alarmSleeveSkirt`) **0.0807 at beat f=0, need 0.15**, and
+   with it the `subdialr=8` spec point (`validated configs`, a listed point must
+   sweep clean). The lip is `t·√2` = 0.448 wide because a 45° wedge only has wall
+   `t` at the face if the bottom is that wide, so it reaches r 4.452 at the
+   envelope floor. The feeler spring's free end — the blade that bears on the
+   lever at the bear point — sits at r 4.36–4.43, az 154–155.5°, with its top face
+   at lathe-y −0.605 against the lip at −0.5214: **0.084 under the floor**. To
+   clear by 0.15 the lip would have to stop at r 4.2375 (0.234 wide, wall 0.165
+   normal at the tip — under the floor, so it trades one sub-floor section for
+   another) or the shell would need a relief sector at 155°, which the
+   cone-and-pin design cannot take because the pin orbits the tube and the face
+   must reach the floor at every azimuth, and a non-axisymmetric pocket cannot be
+   cut in a lathe (it would be a custom swept surface or a second body).
+
+By CLAUDE.md's design priority that is a LAYOUT problem — P3 resolved in position
+space, never by thinning the member (P1) — so the geometry stays as main has it and
+the finding is filed rather than absorbed.
+
+**Fix path.** Pick the cheaper of: (a) re-site the feeler spring's free end 0.07
+further from the sleeve plane or about 0.12 further out in r (the bear point is the
+lever's, `ALARM_FEELER_BEAR_R`: a P1 ratio, so this is a re-derivation of the
+lever, not a nudge); (b) buy 0.07 of envelope floor in the stratum (§51's
+precedent — `ALARM_FEELER_TOP` is `ALARM_SLEEVE_TOP − ALARM_SLEEVE_ENV −
+(CLEAR_MARGIN + MEASURED_MARGIN_BAND)` and the spring stands 0.06 above it); or
+(c) a swept (non-lathe) skirt with a relief at the spring end. Then rebuild the
+shell as above with the points wound correctly, retire the web, its §124 relief
+and asserts and the `alarmSleeveWeb ⇄ alarmTailPin` contact row, and let
+`stockFloor` read the declared wall (§169's device). Until then the cone the pin
+presses is a modelled surface, not a modelled body.
 
 ---
 
@@ -30626,9 +30707,9 @@ The knock (`ESCAPEMENT_KNOCK`) re-solves on its own, since it is read off the
 same outline, and `AMPLITUDE_PEAK_DEG` follows it through `equalisation`
 row 14.
 
-## 228. The hammer's rebound after the wire is a posed decay, not restitution — with the §266 spring it is a 200 Hz chatter nobody banked
+## 228. The hammer's rebound after the wire is a posed decay, not restitution — with the §268 spring it is a 200 Hz chatter nobody banked
 
-§266 made the hammer's fall a spring law with a spring: `ALARM_HAMMER_W =
+§268 made the hammer's fall a spring law with a spring: `ALARM_HAMMER_W =
 √(k/I)` off the torsion spiral and the rotor, 1246 rad/s, the wire met in
 1.53 ms. What it kept, deliberately, is §25's REBOUND:
 
@@ -30656,7 +30737,7 @@ envelope hides both.
 
 **Fix path.**
 1. Replace the posed decay with the hammer's own equation of motion after the
-   wire: velocity reversed at `REST`, the spring and inertia from §266, and a
+   wire: velocity reversed at `REST`, the spring and inertia from §268, and a
    BANKING the head or tail comes to rest on — a drawn part with a declared
    contact, measured shut at the rebound phase (`STRIKE_HANDOFF_POSES`'
    `rebound` row is the place).
@@ -30665,5 +30746,5 @@ envelope hides both.
 3. The envelope's 5%-by-pickup target then becomes a consequence to assert,
    not a constant to solve.
 
-Related: item 128 (closed by §266 — the spring this motion now rides), §25,
+Related: item 128 (closed by §268 — the spring this motion now rides), §25,
 §197's `REST`, `STRIKE_HANDOFF_POSES`.

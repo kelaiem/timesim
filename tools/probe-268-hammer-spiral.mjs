@@ -1,10 +1,10 @@
-// §266 — THE HAMMER SPRING IS A SPRING NOW: does the fall law read √(k/I) off
+// §268 — THE HAMMER SPRING IS A SPRING NOW: does the fall law read √(k/I) off
 // the metal, and is the metal there? ACCEPTANCE.
 //
 // TODO 128's blade was redrawn each frame from a fixed anchor to a moving
 // bearing point and changed length by 36% of itself over the draw, so the
 // fall's angular frequency was SOLVED from a chosen fall time and the blow's
-// energy with it. §266 replaces it with a torsion spiral coaxial with the
+// energy with it. §268 replaces it with a torsion spiral coaxial with the
 // hammer's post (inner end in the hammer's collet, outer end on a rim stud),
 // its rate sized from the alarm train's torque budget, and the fall is
 // √(k/I) off the built ribbon and the built rotor. This probe boots the build
@@ -27,12 +27,12 @@
 //      record's gap at full and at empty recomputed here from k, the set-up,
 //      the two ratios, the per-mesh efficiency, the spend, I_a, φ and ρ, and
 //      the hammer window still holding the 1.5 ms fall;
-//   5. a CONTROL: the pre-§266 arithmetic (a third of the free window) must
+//   5. a CONTROL: the pre-§268 arithmetic (a third of the free window) must
 //      NOT reproduce the shipped W — a probe that could pass both programs
 //      measures neither.
 //
-//   cd tools && node probe-266-hammer-spiral.mjs     (exit 1 on any failure)
-//   node probe-266-hammer-spiral.mjs --json           (the measured payload)
+//   cd tools && node probe-268-hammer-spiral.mjs     (exit 1 on any failure)
+//   node probe-268-hammer-spiral.mjs --json           (the measured payload)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 
@@ -138,7 +138,7 @@ const freeS = (1 - 0.62) * c.designGap_s, wOld = Math.acos(-AMP / DRAW) / (freeS
 row('CONTROL — the chosen-third law does NOT reproduce W', rel(S.W_rad_s, wOld) > 0.5, `${S.W_rad_s.toFixed(1)} rad/s`, `far from ${wOld.toFixed(1)} (a third of the free window)`);
 row('boot silent', warns.length === 0, `${warns.length} warning(s)`, '0');
 
-console.log('§266 — the hammer\'s torsion spiral, held off the metal\n');
+console.log('§268 — the hammer\'s torsion spiral, held off the metal\n');
 console.log(`  strip     ${S.t_mm.toFixed(4)} mm × ${(S.b_u * 0.379).toFixed(3)} mm, ${S.coils} turns, ${S.devLen_mm.toFixed(2)} mm developed (r ${S.innerR_u.toFixed(3)}–${S.outerR_u.toFixed(3)} u)`);
 console.log(`  rate      k ${S.k_Nm_per_rad.toExponential(4)} N·m/rad (energy rate; secant ${S.kSecant_Nm_per_rad.toExponential(4)}, pure ${S.kPure_Nm_per_rad.toExponential(4)})`);
 console.log(`  the fall  W ${S.W_rad_s.toFixed(1)} rad/s over I ${S.I_kgm2.toExponential(4)} kg·m² → ${(H.fall_s * 1000).toFixed(3)} ms; the blow ${(S.release_J * 1e6).toFixed(2)} µJ, ${H.v_ms.toFixed(3)} m/s at the face`);

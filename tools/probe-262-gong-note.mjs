@@ -16,7 +16,7 @@
 // hammer's angular rate was fixed and not its energy (TODO 128 — the spring
 // was a rubber band), so a longer wire wanted a heavier matched head and the
 // law credited that head with a bigger blow it never earned. Levels are
-// therefore compared at the SHIPPED blow's energy as well as raw. Since §266
+// therefore compared at the SHIPPED blow's energy as well as raw. Since §268
 // the blow is the torsion spiral's released energy, sized from the alarm
 // train's torque and not from the head, so the two columns AGREE — the
 // column stays because it is the comparison that decided, and because it
