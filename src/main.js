@@ -1632,20 +1632,11 @@ const COCK_W = 6;   // the balance cock's width — see its build, where the rea
 // cock face, 0.17 under the endstone, exactly as §120 solved it.
 const BALANCE_SHOULDER_TOP_Z = COCK_MID_Z + G.cockJewelStone({ width: COCK_W, thickness: COCK_T }).bottom - CLEAR_MARGIN;
 const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
-const balanceWheel = G.makeBalanceWheel({
-  radius: 9,
-  thickness: BAL_T,
-  rimF: BAL_RIM_F,   // TODO 207 — lightened to the spring the plate can carry (layout.js says why)
-  staffTop: BALANCE_SHOULDER_TOP_Z - L_BALANCE,
-  // pinDrop + 0.4·t = safety-roller plane (mirrors the builder's stack);
-  // +0.6 pokes the staff just past the roller's underside.
-  staffBottom: (L_BALANCE - PIN_PLANE_Z) + BAL_T * 0.4 + 0.6,
-  // Wheel-centre → impulse-pin distance: holds the pin's WORLD plane at
-  // PIN_PLANE_Z exactly, wherever the balance itself sits — the pin belongs
-  // to the fork's z-band, not the wheel's.
-  pinDrop: L_BALANCE - PIN_PLANE_Z,
-});
-const balanceR = balanceWheel.userData.r || 9;
+// TODO 226 step 1 — the balance is BUILT further down, after the escapement's
+// seat is solved (the roller is cut to the guard pin the fork's notch places);
+// its radius is fixed here because the stations below are laid out from it.
+const BALANCE_R = 9;
+const balanceR = BALANCE_R;
 
 // Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the
 // classic Swiss-lever embrace that makes teeth lock the entry and exit stones
@@ -1659,11 +1650,14 @@ const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan /
 // fork bridging a modest gap, not stretched across open space — so this is
 // a much tighter multiple of the two wheels' combined radius than before.
 const escToBalanceDist = (escapeWheelR + balanceR) * 1.3;
+// The lever length the stations once cut the fork end from. Since TODO 226
+// step 1 the fork END is the seat's, and this survives only as the datum of
+// the lever's flank, which the three-quarter plate's cut reads (see
+// makePalletFork's `flankY`).
 const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
-// Real impulse rollers sit well inside the balance rim (~15-20% of its
-// radius), not at half of it — the pin only needs to clear the fork's notch,
-// not the whole balance.
-const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
+// The pin's circle: the builder's own law (G.balancePinCircle), read before
+// the balance exists because the bank below and the seat are solved from it.
+const rollerR = G.balancePinCircle(BALANCE_R);
 
 // FORK_BANK_DEG — the fork's swing is set by the impulse
 // pin it has to carry: at both ends of the impulse window the pin must stand
@@ -1779,13 +1773,43 @@ declareRestoring('Hairspring', '*', 'spring',
 declareTravel('Pallet fork', 2 * FORK_BANK_DEG * DEG2RAD,
   'banks +/-FORK_BANK_DEG; driven off the impulse pin between the banks (TODO 226)');
 
+// TODO 226 step 1 — THE SEAT (G.escapementSeat says what and why): the notch
+// as the pin's swept path, the guard pin behind its floor, the single roller
+// sized to that guard pin. Solved from the stations, the pin and §221's lift
+// and bank, so neither part is cut until both are known.
+const ESCAPEMENT_SEAT = G.escapementSeat({
+  d: forkToStaff, rollerR, pinR: G.balancePinR(BAL_T),
+  liftHalf: LIFT_DEG * DEG2RAD / 2, bank: FORK_BANK_DEG * DEG2RAD,
+  forkT: FORK_T, clear: CLEAR_MARGIN, stockMin: STOCK_MIN_U,
+});
+// The pin must sit IN the roller it is set in, crescent included.
+if (!(ESCAPEMENT_SEAT.pinOuter <= ESCAPEMENT_SEAT.roller.Rc))
+  console.warn(`TODO 226: the impulse pin reaches ${ESCAPEMENT_SEAT.pinOuter.toFixed(4)} from the staff, past the roller's crescent at ${ESCAPEMENT_SEAT.roller.Rc.toFixed(4)} — the guard pin the notch's floor places leaves no roller to set it in`);
+const balanceWheel = G.makeBalanceWheel({
+  radius: BALANCE_R,
+  thickness: BAL_T,
+  rimF: BAL_RIM_F,   // TODO 207 — lightened to the spring the plate can carry (layout.js says why)
+  staffTop: BALANCE_SHOULDER_TOP_Z - L_BALANCE,
+  // pinDrop + 0.4·t = the roller's plane (mirrors the builder's stack);
+  // +0.6 pokes the staff just past the roller's underside.
+  staffBottom: (L_BALANCE - PIN_PLANE_Z) + BAL_T * 0.4 + 0.6,
+  // Wheel-centre → impulse-pin distance: holds the pin's WORLD plane at
+  // PIN_PLANE_Z exactly, wherever the balance itself sits — the pin belongs
+  // to the fork's z-band, not the wheel's.
+  pinDrop: L_BALANCE - PIN_PLANE_Z,
+  roller: ESCAPEMENT_SEAT.roller,
+  pinTop: L_FORK + FORK_HALF_Z - L_BALANCE,   // the fork's top face: the pin works the whole blank
+});
+if (Math.abs(balanceWheel.userData.r - BALANCE_R) > 1e-12 || Math.abs(balanceWheel.userData.rollerR - rollerR) > 1e-12)
+  console.warn(`TODO 226: the balance was cut at r ${balanceWheel.userData.r}, pin circle ${balanceWheel.userData.rollerR}, not the ${BALANCE_R}, ${rollerR} the seat was solved for`);
+
 // stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
 // L_ESCAPE — the stones must descend by exactly that gap to land centered
 // on the wheel's own Z-thickness rather than grazing one edge of it.
 // beatRad/bankRad feed the stones' impulse-face solve (see makePalletFork).
 await breathe();
 const palletFork = G.makePalletFork({
-  span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T,
+  span: forkSpan, seat: { ...ESCAPEMENT_SEAT.slot, leverL: forkLeverLength }, guard: ESCAPEMENT_SEAT.guard, thickness: FORK_T,
   stoneZReach: L_FORK - L_ESCAPE,
   beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
 });
@@ -2966,7 +2990,11 @@ registerLabel('Balance', balanceGroup);
 // meshes' world transforms and gates this record against them.
 await breathe();
 const ESCAPEMENT_KNOCK = (() => {
-  const outline = palletFork.userData.blankOutline;
+  // TODO 226 step 1 — against the METAL, not the authored outline: the blank's
+  // chamfer stands every side wall `bevel` proud of the outline it was cut
+  // from (more at a mitred corner — 0.165 at the old horn tips), so a solve
+  // on the authored outline found the knock that far late.
+  const outline = palletFork.userData.blankMetalOutline;
   const r = rollerR, pinR = balanceWheel.userData.pinR;
   const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
   const bank = FORK_BANK_DEG * DEG2RAD;
@@ -4997,6 +5025,47 @@ const COCK_SPINE = (() => {
   return { dir, len, half };
 })();
 await breathe();
+// TODO 226 step 1 — THE FORK'S FLOOR DISC IS HELD where the leg below was
+// solved. The disc stands for the fork's whole sweep about its pivot, and the
+// seat's horns reach 10.63 from it where the old ones reached 9.8018: grown,
+// the disc pushed the leg's seat out, the leg is among the vertices the
+// three-quarter plate's cut reads, and the cut is an input to the stop work's
+// solve — so the hack rod re-routed, and the alarm link's rod site and its
+// hoisted constants with it (measured: the mast 0.01 over the cock, eleven
+// warnings down the alarm). None of that was the fork's doing: a disc about
+// the pivot is a coarse stand-in for a lever that swings ±4°, and the metal
+// the horns added lies beside the balance, inside the balance's own disc,
+// which the leg already clears (`discs.push` below). So the radius the leg
+// was solved at is kept, and the assert says why that is enough: every fork
+// vertex past it, at either bank and the recoil margin the plate's cut still
+// carries, stands inside the balance's swept disc. Replacing the disc with
+// the fork's swept SECTOR is the honest model and would move this leg on main
+// too; it is the same layout re-solve as cutting the plate's window to the
+// driven swing, and is filed with it.
+const FORK_LEG_DISC_R = 9.801757916409828;   // xyRadiusAbout(forkGroup, P.fork, FORK_COCK_BOT) before the seat
+{
+  const v = new THREE.Vector3(), swing = FORK_BANK_DEG * 1.25 * DEG2RAD;
+  let worst = -Infinity;
+  forkGroup.updateMatrixWorld(true);
+  forkGroup.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (v.z > FORK_COCK_BOT) continue;
+      const dx = v.x - P.fork.x, dy = v.y - P.fork.y, rho = Math.hypot(dx, dy);
+      if (rho <= FORK_LEG_DISC_R) continue;
+      // the group stands unrotated until the first tick writes its swing, so
+      // the fork is laid on its line of centres here, then swung either way
+      for (const a of [-swing, 0, swing]) {
+        const th = Math.atan2(dy, dx) + forkBaseAngle + a;
+        worst = Math.max(worst, Math.hypot(P.fork.x + rho * Math.cos(th) - P.balance.x, P.fork.y + rho * Math.sin(th) - P.balance.y) - BAL_OUTER_R);
+      }
+    }
+  });
+  if (worst > 0)
+    console.warn(`TODO 226: fork metal past the held leg disc (r ${FORK_LEG_DISC_R}) stands ${worst.toFixed(4)} outside the balance's swept disc — the held disc no longer covers the fork, and the leg must be re-solved against its sweep`);
+}
 const forkCock = (() => {
   // Everything the legs have to miss on the way down to the base plate.
   // Wheels and levers are given as their SWEPT DISCS about their own axes
@@ -5006,7 +5075,7 @@ const forkCock = (() => {
     [barrelArbor, P.barrel], [centerArbor, P.center], [thirdArbor, P.third],
     [fourthArbor, P.fourth], [escapeArbor, P.escape], [forkGroup, P.fork],
     [secondsCamArbor, P.fourth], [hammerGroup, hammerPivotPos],
-  ].map(([o, c]) => ({ x: c.x, y: c.y, r: xyRadiusAbout(o, c, FORK_COCK_BOT) }));
+  ].map(([o, c]) => ({ x: c.x, y: c.y, r: o === forkGroup ? FORK_LEG_DISC_R : xyRadiusAbout(o, c, FORK_COCK_BOT) }));
   // The BALANCE counts for its whole swept radius, not just the staff and
   // roller that share the legs' z band. Mechanically a leg could stand under
   // the rim's overhang; but the fork lies between the escape wheel and the
@@ -5221,14 +5290,21 @@ const TQ_CUT = (() => {
   // Each part contributes its SWEPT footprint, built from its own motion
   // rather than from posed snapshots (poses only exist once tick() runs):
   //  · pallet fork — banks ±FORK_BANK_DEG about its pivot and, since TODO
-  //    226, goes no further; the plate is still cut to the 1.25·bank the
-  //    POSED law's recoil dip once swept. That is a quarter bank of window
-  //    nothing now enters, kept on purpose so the landing that drives the
-  //    fork moves no metal: TODO 226 step 1 seats the pin, which re-cuts
-  //    the horns anyway, and re-cuts this window from the driven swing then;
+  //    226, goes no further: the window is cut to the swing the fork makes.
+  //    Until TODO 226 step 1 it was cut to the 1.25·bank the POSED law's
+  //    recoil dip once swept, and — the larger error — to a fork that was not
+  //    there: this table is built before the first tick writes the fork's
+  //    rotation, so the group stood at 0 and its sweep was read pointing down
+  //    the world's −y, not along its line of centres. The horn tips of that
+  //    phantom fork stood clear of the balance's disc and cut the plate a
+  //    lobe no fork ever entered. The sweep is laid on the line of centres
+  //    (`forkBaseAngle`) now. Neither change reaches the stop work's solve,
+  //    which reads this table (measured: no route, rod site or hoisted
+  //    constant moved); what does reach it is the fork cock's leg, held
+  //    (FORK_LEG_DISC_R);
   //  · the fork cock — static.
   // (The escape wheel no longer contributes: it pivots in this plate.)
-  const bankRad = FORK_BANK_DEG * 1.25 * DEG2RAD;
+  const bankRad = FORK_BANK_DEG * DEG2RAD;
   forkGroup.updateMatrixWorld(true);
   forkGroup.traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position) return;
@@ -5236,7 +5312,7 @@ const TQ_CUT = (() => {
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
       const dx = v.x - P.fork.x, dy = v.y - P.fork.y;
-      const rho = Math.hypot(dx, dy), th = Math.atan2(dy, dx);
+      const rho = Math.hypot(dx, dy), th = Math.atan2(dy, dx) + forkBaseAngle;
       for (let k = -2; k <= 2; k++) {
         const a = th + (k / 2) * bankRad;
         bump(P.fork.x + Math.cos(a) * rho, P.fork.y + Math.sin(a) * rho);

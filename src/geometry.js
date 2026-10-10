@@ -1938,6 +1938,132 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 }
 
 // ---------------------------------------------------------------------------
+// TODO 226 step 1 — THE SEAT: the fork's notch and the balance's roller, cut
+// from the impulse pin's own motion relative to the fork.
+//
+// Until this, the notch was cut from the fork's length (`forkTop`/`forkY`,
+// fractions of the lever) and the pin's circle from the balance's, and the
+// two were never cut against each other: the pin's centre stood 0.156
+// OUTSIDE the horn tips where the lift began and only 0.394 of its body
+// entered a notch 2.759 deep. A notch is the hole the pin passes through, so
+// it is cut here as exactly that: the union of the pin's disc over every
+// pose it takes in the fork's frame, dilated by the movement's one margin.
+// Two motions make up that union, and both are already laws (main.js
+// `forkSwingAt`): through the lift the fork follows the pin, so the pin's
+// centre runs down the fork's centre line between d − r and ρ(θ_L); past the
+// lift the fork lies on its bank and the pin carries on round its circle.
+//
+// The second motion is why the notch is a FUNNEL and not a parallel slot.
+// Where the lift ends the fork stops dead on its bank while the pin is still
+// moving about 61° off the slot's axis, so a parallel slot of pin width
+// would trap it: the pin's leading flank runs into the wall within a few
+// degrees. A real lever escapes this by RUN — the fork carries on past the
+// pin's release to its banking, opening the slot ahead of the pin — and run
+// needs the lock this movement does not model (TODO 131's residue). So the
+// walls stand where the departing pin needs them, and the pin bears on no
+// wall through the lift: the drive stays the law's, and making it a contact
+// is TODO 226 step 3, which waits on run.
+//
+// Inputs are the escapement's own: the stations (`d`, pivot to staff), the
+// pin circle (`rollerR`) and the pin (`pinR`), and the lift and bank that
+// §221 already solved from them. Outputs, in the fork's local frame (pivot
+// at the origin, −y at the balance) and the balance's:
+//  · `slot`: the notch's half-width profile, as AUTHORED (the blank's lapping
+//    chamfer dilates a cut wall INTO the slot by `bevel`, so the authored
+//    radius is pinR + clear + bevel and the metal stands at pinR + clear),
+//    from the floor under the pin's deepest centre to the horn tips, which
+//    reach the depth where the pin enters, so its centre is between the horns
+//    through the whole lift (longer horns cost knock: see `yTip`);
+//  · `guard`: the guard pin, set in the fork's metal behind the floor with one
+//    sheet floor (§50, `stockMin`) between its hole and the slot;
+//  · `roller`: the single roller the pin is set in. Its full rim clears the
+//    guard pin by the margin with the fork on its bank; its crescent clears
+//    it with the fork anywhere in the lift, and spans every azimuth the guard
+//    pin takes relative to the roller while the fork is off its bank.
+// Whether that guard pin CATCHES a displaced fork is the safety action, and
+// that is TODO 105's: here it only has to clear.
+export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear, stockMin }) {
+  const r = rollerR;
+  const bevel = forkT * FORK_BEVEL_FRAC;   // the blank's lapping chamfer: makePalletFork's own
+  const rho = (th) => Math.hypot(d - r * Math.cos(th), r * Math.sin(th));   // pin centre to fork pivot
+  // fork-local coordinates of a balance-frame point, fork at swing ψ (main.js's frame law)
+  const toFork = (wx, wy, psi) => {
+    const dx = wx - d, c = Math.cos(psi), s = Math.sin(psi);
+    return [-(-s * dx + c * wy), c * dx + s * wy];
+  };
+  // the pin's centre over the lift (on the centre line) and past it (fork on
+  // its bank), the far side of the beat being the mirror image
+  const centres = [];
+  const N_LIFT = 200;
+  for (let i = 0; i <= N_LIFT; i++) centres.push([0, -rho(-liftHalf + (2 * liftHalf * i) / N_LIFT)]);
+  const STEP = 0.1 * Math.PI / 180;
+  for (let th = liftHalf; th <= Math.PI; th += STEP) {
+    const [x, y] = toFork(r * Math.cos(th), r * Math.sin(th), -bank);
+    centres.push([x, y], [-x, y]);
+  }
+  const halfW = (Y, R) => {
+    let m = -Infinity;
+    for (const [x, y] of centres) { const dy = Y + y; if (Math.abs(dy) < R) m = Math.max(m, Math.abs(x) + Math.sqrt(R * R - dy * dy)); }
+    return m;
+  };
+  const Ra = pinR + clear + bevel, Rm = pinR + clear;
+  const yDeep = rho(0);                 // the pin's deepest centre, θ = 0
+  const yEntry = rho(liftHalf);         // where it enters, on the centre line
+  const yFloor = yDeep - Ra;            // authored floor (metal: yDeep − Rm)
+  // HORN TIPS at the depth where the pin enters: its centre then stands between
+  // the horns for the whole lift. Longer horns would embrace it more and are
+  // bought with KNOCK — the far side of the swing meets the banked horn
+  // earlier — measured against the metal outline at tips this many pin radii
+  // past entry: −0.25 → 301.10°, 0 → 301.84°, +0.25 → 296.76°, +0.5 → 290.06°,
+  // +1 → 277.89°. Row 17 holds the serviced (nominal) swing clear of the knock
+  // at 292.09° dial-flat, so half a radius past entry would knock in service;
+  // at the entry depth the knock stands 9.75° clear of it, and shorter horns buy
+  // nothing (the floor's flanks, not the tips, then meet the pin).
+  const yTip = yEntry;
+  // Sampled densely at the floor, where the profile leaves the centre line at
+  // a right angle, by u² spacing from the floor to the tips.
+  const N_SLOT = 48;
+  const Ys = [];
+  for (let i = 1; i <= N_SLOT; i++) { const u = i / N_SLOT; Ys.push(yFloor + (yTip - yFloor) * u * u); }
+  // The wall is cut as CHORDS between those samples, and each chord stands
+  // inside the curve it spans by its sag: the first cut read the pin 0.1499
+  // off the wall. So every authored width carries the worst sag measured
+  // between samples (the floor's own point, at width 0, included).
+  const pts = [[yFloor, 0], ...Ys.map((Y) => [Y, halfW(Y, Ra)])];
+  let sag = 0;
+  for (let i = 1; i < pts.length; i++) {
+    for (const f of [0.25, 0.5, 0.75]) {
+      const Y = pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f;
+      sag = Math.max(sag, halfW(Y, Ra) - (pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f));
+    }
+  }
+  const profile = Ys.map((Y) => [Y, halfW(Y, Ra) + sag, halfW(Y, Rm) + sag]);   // [depth, authored half-width, metal half-width]
+  // guard pin, behind the floor
+  const guardR = forkT * 0.18;
+  const yGuard = (yDeep - Rm) - stockMin - guardR;
+  const gCentred = d - yGuard;
+  const gBanked = Math.sqrt(d * d + yGuard * yGuard - 2 * d * yGuard * Math.cos(bank));
+  const R = gBanked - guardR - clear;      // full rim
+  const Rc = gCentred - guardR - clear;    // crescent
+  // the guard pin's azimuth on the roller while the fork follows the pin
+  let rel = 0;
+  for (let i = 0; i <= N_LIFT; i++) {
+    const th = -liftHalf + (2 * liftHalf * i) / N_LIFT;
+    const psi = Math.atan2(r * Math.sin(th), d - r * Math.cos(th));
+    const gx = d - yGuard * Math.cos(psi), gy = -yGuard * Math.sin(psi);
+    const a = Math.atan2(gy, gx) - th;
+    rel = Math.max(rel, Math.abs(Math.atan2(Math.sin(a), Math.cos(a))));
+  }
+  const gap = rel + (guardR + clear) / Rc;
+  return Object.freeze({
+    slot: Object.freeze({ profile, sag, yFloor, yFloorMetal: yDeep - Rm, yDeep, yEntry, yTip, tipW: stockMin, clear, bevel }),
+    guard: Object.freeze({ y: yGuard, r: guardR, centred: gCentred, banked: gBanked }),
+    roller: Object.freeze({ R, Rc, gap, rel }),
+    pinOuter: r + pinR,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Pallet fork — pivots at origin, lever along -Y, anchor + ruby stones at +Y
 // ---------------------------------------------------------------------------
 
@@ -1979,24 +2105,20 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 //     reads that; the boss is part of the flat blank, so nothing stands proud
 //     of it any more.
 //
-// The kinematics are untouched by all of this: horn tips, notch walls, the
-// notch floor at `forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, the
-// `forkTop`/`forkY` anchors, and every stone seat are outputs of solves that
-// still run exactly as they did.
-export function makePalletFork({ span, leverLength, thickness, stoneZReach, beatRad, bankRad }) {
+// The kinematics were untouched by all of this. Since TODO 226 step 1 the fork
+// END is not the lever's at all: horn tips, notch walls and floor are the
+// impulse pin's swept path (`escapementSeat`), and the `forkTop`/`forkY`
+// anchors the notes below still name are retired with the old notch. Every
+// stone seat is still the output of the solve it always was.
+export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZReach, beatRad, bankRad }) {
   const g = new THREE.Group();
   const t = thickness;
-  const L = leverLength;
   const ax = span * 0.5; // stone x offset
   // Stone height above the pivot equals ax: when the assembly places the fork
   // pivot at (span/2 + sqrt(R^2 - (span/2)^2)) from the escape-wheel centre,
   // both stones land exactly ON the wheel rim (radius R), straddling it.
   const sy = ax;
   const leverHW = t * 0.6;
-  const forkHW = t * 1.4;
-  const notchHW = t * 0.7;
-  const forkTop = -L * 0.8;
-  const forkY = -L;
   const bossR = t * 1.1;   // the blank's boss, cut in the outline (was a cylinder)
 
   // §16 — the wheel geometry this fork is CUT TO, derived ONCE and shared by
@@ -2059,10 +2181,43 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // `forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, and the horn
   // tips and `forkY` are where they were. `forkTop` stays what it always
   // was — a datum for those, not a vertex of the silhouette.
-  const notchTopY = forkTop + t * 0.9;         // where the slot's walls begin
-  const hornWall = leverHW;                    // see above: the horns are the bar
-  const mouthHW = notchHW + hornWall;          // outline at the slot's closed end
-  const yWaist = (yJoin + notchTopY) / 2;      // mid-length
+  // TODO 226 step 1 — the fork end is cut from the SEAT (escapementSeat
+  // above), not from fractions of the lever: the notch is the impulse pin's
+  // swept path in this frame, so its walls, floor and horn tips are all
+  // outputs of the pin's motion. The rule above still holds where it was
+  // made: the outline at the fork end stands one lever half-section
+  // (`hornWall`) outside the notch, taken at the pin's deepest centre, where
+  // the slot's flanks begin. The horn TIP keeps one sheet floor of metal
+  // (§50, carried in the seat as `tipW`), so the horn tapers from the bar's
+  // section to a sheet at the tip.
+  const prof = seat.profile;                    // [depth, authored half-width, metal half-width]
+  const hwAt = (Y) => {                         // authored half-width at depth Y, by the sampled profile
+    let i = prof.findIndex((p) => p[0] >= Y);
+    if (i <= 0) return i === 0 ? prof[0][1] : prof[prof.length - 1][1];
+    const [y0, w0] = prof[i - 1], [y1, w1] = prof[i];
+    return w0 + (w1 - w0) * (Y - y0) / (y1 - y0);
+  };
+  const hornWall = leverHW;                     // see above: the horns are the bar
+  const endY = -seat.yDeep;                     // the fork end's full width, at the pin's deepest centre
+  const mouthHW = hwAt(seat.yDeep) + hornWall;  // outline there
+  const tipY = -seat.yTip;
+  const tipIn = prof[prof.length - 1][1];       // the notch at the horn tips
+  const tipOut = tipIn + seat.tipW;             // the horn's tip: one sheet floor of metal
+  // THE LEVER'S FLANK IS LEFT EXACTLY AS IT WAS, to the station where the old
+  // fork end began (0.8·L − 0.9·t below the pivot, L = `seat.leverL`, the
+  // lever length the stations used to set), and runs straight from there to
+  // the seat's fork end. That is not a shape choice: the three-quarter plate's
+  // balance cut reads every fork vertex that stands outside the balance's
+  // running radius — the lever's first length, near the pivot — and the stop
+  // work's hack rod routes off that cut, and the alarm link's rod site and its
+  // hoisted constants off the rod. Re-curving the flank by a few hundredths
+  // there re-routed all of it (measured: the stop work's mast 0.01 over the
+  // cock, the link body 24.51 against its hoisted 11.03, and nine more
+  // warnings down the alarm). Freeing this flank is the same layout re-solve as
+  // re-cutting the window to the driven swing, filed with it.
+  const flankY = -(seat.leverL * 0.8) + t * 0.9;   // the old fork end's station
+  const flankHW = t * 0.7 + hornWall;              // and its half-width there
+  const yWaist = (yJoin + flankY) / 2;             // mid-length, as it was
 
   // -------------------------------------------------------------------------
   // Ruby pallet stones — REAL construction: each stone is a leaning
@@ -2406,14 +2561,17 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
 
   const s = new THREE.Shape();
   s.moveTo(joinL.x, joinL.y);
-  s.quadraticCurveTo(-waistHW, yWaist, -mouthHW, notchTopY); // waisted lever flaring into the fork end
-  s.lineTo(-forkHW, forkY + t * 0.15); // left horn outer
-  s.lineTo(-notchHW - t * 0.15, forkY); // left horn tip
-  s.lineTo(-notchHW, notchTopY); // notch inner left
-  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, notchTopY); // notch floor — the V at forkTop + 0.7t
-  s.lineTo(notchHW + t * 0.15, forkY); // right horn tip
-  s.lineTo(forkHW, forkY + t * 0.15); // right horn outer
-  s.lineTo(mouthHW, notchTopY); // right side of the fork end — the mirror of the left
+  s.quadraticCurveTo(-waistHW, yWaist, -flankHW, flankY); // waisted lever, the flank it always had
+  s.lineTo(-mouthHW, endY); // straight on to the seat's fork end
+  s.lineTo(-tipOut, tipY); // left horn, outer flank to its tip
+  s.lineTo(-tipIn, tipY); // left horn tip
+  for (let i = prof.length - 2; i >= 0; i--) s.lineTo(-prof[i][1], -prof[i][0]); // notch, left wall down
+  s.lineTo(0, -seat.yFloor); // the floor, under the pin's deepest centre
+  for (let i = 0; i < prof.length - 1; i++) s.lineTo(prof[i][1], -prof[i][0]); // notch, right wall up
+  s.lineTo(tipIn, tipY); // right horn tip
+  s.lineTo(tipOut, tipY); // right horn, outer flank
+  s.lineTo(mouthHW, endY); // right side of the fork end — the mirror of the left
+  s.lineTo(flankHW, flankY); // back to the flank's old station
   s.quadraticCurveTo(waistHW, yWaist, joinR.x, joinR.y); // waisted lever, right flank (up)
   let at = leverRight;
   for (const arm of arms) {
@@ -2446,6 +2604,22 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     curveSegments: CURVE_SEGS_FORK,
   });
   bodyGeo.translate(0, 0, -stock / 2);   // the bevel caps carry it out to ±t/2
+  // TODO 226 step 1 (TODO 216's open note) — the outline the METAL stands at.
+  // The chamfer dilates every side wall by `bevel` (a mitred offset: three.js
+  // moves each contour point along its bevel vector), so the knock and every
+  // other solve that asks where the steel is read this, not `pts`. Read off
+  // the extruded body ring itself — the vertices at the side wall's lower
+  // edge, z = −stock/2 after the translate below — one per authored point, so
+  // the two lists stay index for index.
+  const metalOutline = (() => {
+    const P = bodyGeo.attributes.position, ring = [];
+    for (let i = 0; i < P.count; i++) if (Math.abs(P.getZ(i) + stock / 2) < 1e-9) ring.push([P.getX(i), P.getY(i)]);
+    return pts.map((p) => {
+      let best = null, bd = Infinity;
+      for (const q of ring) { const dd = (q[0] - p.x) ** 2 + (q[1] - p.y) ** 2; if (dd < bd) { bd = dd; best = q; } }
+      return best;
+    });
+  })();
   const body = new THREE.Mesh(bodyGeo, MATS.steel);
   body.name = 'forkBlank';   // TODO 226 — named so the pin's floors row can hold it
   g.add(body);
@@ -2539,15 +2713,22 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // Guard pin at the fork tip just under the notch, protruding toward the
   // safety roller (-Z) so it rides close to the roller's crescent edge. A real
   // dart is a separate part too, so this stays its own solid.
-  const guardGeo = new THREE.CylinderGeometry(t * 0.18, t * 0.18, t * 1.4, 12);
+  // TODO 226 step 1 — set in the blank's metal behind the notch's floor (the
+  // seat solves where), in the z band it always had: pressed in from below to
+  // the blank's mid-plane, reaching down into the roller's plane.
+  const guardGeo = new THREE.CylinderGeometry(guardSeat.r, guardSeat.r, t * 1.4, 12);
   guardGeo.rotateX(Math.PI / 2);
   const guard = new THREE.Mesh(guardGeo, MATS.steel);
   guard.name = 'forkGuardPin';
-  guard.position.set(0, forkY + t * 0.5, -t * 0.7);
+  guard.position.set(0, -guardSeat.y, -t * 0.7);
   g.add(guard);
   // §221 — the guard pin and the notch the impulse pin works in, published
   // for the same instruments (the arc-length identity's probe, TODO 105).
-  g.userData.safety = { guard, guardR: t * 0.18, notch: { halfW: notchHW, floorY: forkTop + t * 0.7, mouthY: forkY } };
+  // TODO 226 step 1 — the notch published as the METAL it is (the seat's
+  // profile less the chamfer's dilation), so an instrument holds the pin
+  // against the walls the pin actually meets.
+  g.userData.safety = { guard, guardR: guardSeat.r, notch: {
+    profile: prof.map(([Y, , wm]) => [-Y, wm]), floorY: -seat.yFloorMetal, mouthY: tipY, deepY: endY, entryY: -seat.yEntry } };
 
   g.userData.entryPos = entryPos;
   g.userData.exitPos = exitPos;
@@ -2556,6 +2737,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // that say how far past it the rendered solid stands. `blankHalfZ` is what
   // layout.js's FORK_HALF_Z must equal — main.js asserts the pair (TODO 98).
   g.userData.blankOutline = pts.map((p) => [p.x, p.y]);
+  g.userData.blankMetalOutline = metalOutline;   // TODO 226 step 1: where the chamfered steel stands
   g.userData.blankBevel = bevel;
   g.userData.blankHalfZ = stock / 2 + bevel;   // = t/2, and asserted against FORK_HALF_Z
   return g;
@@ -2571,14 +2753,23 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
 // wheel — with the flat, low balance cock the staff reaches barely 3 up but
 // must still run down past the safety roller; a symmetric staff would poke
 // out through the cock. Defaults preserve the old symmetric behaviour.
-// pinDrop: wheel mid-plane → impulse-pin mid-plane distance. The pin's WORLD
-// plane is pinned by the pallet fork's notch (it must not move when the
-// balance is re-planed), so the caller passes L_BALANCE − pin plane here.
-// The roller table stays 0.2·t above the pin and the safety roller 0.4·t
-// below it, as before; default −t·1.8 keeps the old hard-coded stack.
+// pinDrop: wheel mid-plane → the roller stack's datum (the old impulse-pin
+// mid-plane), pinned to the pallet fork's band (it must not move when the
+// balance is re-planed), so the caller passes L_BALANCE − PIN_PLANE_Z here.
+// The roller hangs 0.4·t below that datum; the pin rises from the roller's
+// underside to `pinTop`, the fork's top face in balance-local z.
+// TODO 226 step 1 — the pin's circle and the pin, exported (MODELING.md rule
+// 1's function case) because the escapement's seat is solved from them BEFORE
+// either the balance or the fork is cut: the notch is the pin's swept path,
+// and the roller is sized to the guard pin the notch's floor places.
+// Real impulse rollers sit well inside the balance rim (~15-20% of its
+// radius); the pin only has to reach the fork's notch, not the whole balance.
+export const balancePinCircle = (radius) => radius * 0.18;
+export const balancePinR = (thickness) => thickness * 0.22;
 export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6,
                                    staffTop = null, staffBottom = null,
-                                   pinDrop = thickness * 1.8, rimF = 1 }) {
+                                   pinDrop = thickness * 1.8, rimF = 1,
+                                   roller: rollerSeat, pinTop }) {
   const g = new THREE.Group();
   const rimO = radius;
   const rimI = radius - thickness * 0.5;
@@ -2646,61 +2837,61 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
     g.add(sc);
   }
 
-  // Roller table (disc) below the balance, carrying the ruby impulse pin.
-  // rollerR sets the pin's actual swept arc-length (rollerR·Δθ) during the
-  // escapement's impulse window; it must be sized against the fork's own
-  // notch-reach and bank angle (FORK_BANK_DEG in main.js) or the pin and
-  // notch trace mismatched arcs and never truly interlock — see that
-  // constant's comment for the paired derivation. Kept well inside the
-  // balance rim (real impulse rollers run small) so the disc itself stays
-  // clear of the fork's lever as it swings past — only the PIN, protruding
-  // past the disc's edge, is meant to reach the fork.
-  const rollerR = radius * 0.18;
-  // The whole roller stack hangs off the PIN's plane (see pinDrop above):
-  // table 0.2·t above it, safety roller 0.4·t below it.
+  // TODO 226 step 1 — ONE roller, below the fork. There were two: an impulse
+  // table coplanar with the fork, carrying the pin, and a crescent-notched
+  // safety roller beneath it. The table had no work to do in the fork's plane
+  // and every reason not to be there — at bank the near horn stood inside the
+  // margin of its rim — and the pin, 3.0 long, stood through the safety
+  // roller's plane exactly where the guard pin sat on the slot's centre line.
+  // A single roller is the lever's other classic arrangement: the pin is set in
+  // the roller's face and rises through the fork's plane, the roller's own
+  // rim is the safety surface, and the passing crescent is cut in front of the
+  // pin. The roller keeps the safety roller's plane and stock (0.4·t under the
+  // pin datum, 0.35·t deep), so the staff, its lower pivot and the guard pin's
+  // z band are where they were; its radius and crescent are the seat's
+  // (`escapementSeat`), solved against the guard pin the notch's floor places.
+  const rollerR = balancePinCircle(radius);
+  const pinR = balancePinR(thickness);
   const pinZ = -pinDrop;
-  const rollerZ = pinZ + thickness * 0.2;
-  const rtGeo = new THREE.CylinderGeometry(radius * 0.15, radius * 0.15, thickness * 0.5, 32);
-  rtGeo.rotateX(Math.PI / 2);
-  rtGeo.translate(0, 0, rollerZ);
-  const rollerTable = new THREE.Mesh(rtGeo, MATS.steel);
-  rollerTable.name = 'balanceRollerTable';
-  g.add(rollerTable);
-
-  // Ruby impulse pin at the roller's edge, in the roller-table plane itself so
-  // it seats between the fork horns (the fork plane is level with the roller).
-  const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);   // r is published as userData.pinR
-  pinGeo.rotateX(Math.PI / 2);
-  const pin = new THREE.Mesh(pinGeo, MATS.ruby);
-  pin.name = 'balanceImpulsePin';   // TODO 226 — named so the escapement's working contact can be held by name
-  pin.position.set(rollerR, 0, pinZ);
-  g.add(pin);
-
-  // Crescent-notched safety roller (smaller disc under the impulse roller).
-  const srR = radius * 0.2;
   const srZ = pinZ - thickness * 0.4;
-  const gap = 0.45;
+  const rollerBottom = srZ - thickness * 0.17, rollerDepth = thickness * 0.35;
+  const { R: srR, Rc: srRc, gap } = rollerSeat;
   const srShape = new THREE.Shape();
-  srShape.absarc(0, 0, srR, gap, Math.PI * 2 - gap, false);
-  srShape.quadraticCurveTo(srR * 0.4, 0, Math.cos(gap) * srR, Math.sin(gap) * srR);
-  srShape.closePath();
-  const srGeo = new THREE.ExtrudeGeometry(srShape, {
-    depth: thickness * 0.35,
+  srShape.absarc(0, 0, srR, gap, Math.PI * 2 - gap, false);           // the full rim, round the far side
+  srShape.lineTo(Math.cos(-gap) * srRc, Math.sin(-gap) * srRc);       // into the crescent
+  srShape.absarc(0, 0, srRc, -gap, gap, false);                       // the passing crescent, in front of the pin
+  srShape.lineTo(Math.cos(gap) * srR, Math.sin(gap) * srR);           // back out to the rim (the start point)
+  const srPts = srShape.getPoints(24);
+  if (srPts.length > 1 && srPts[srPts.length - 1].distanceTo(srPts[0]) < 1e-9) srPts.pop();
+  const srGeo = new THREE.ExtrudeGeometry(new THREE.Shape(srPts), {
+    depth: rollerDepth,
     bevelEnabled: false,
     curveSegments: 24,
   });
-  srGeo.translate(0, 0, srZ - thickness * 0.17);
+  srGeo.translate(0, 0, rollerBottom);
   const safetyRoller = new THREE.Mesh(srGeo, MATS.steel);
-  safetyRoller.name = 'balanceSafetyRoller';
+  safetyRoller.name = 'balanceRoller';
   g.add(safetyRoller);
+
+  // Ruby impulse pin, set in the roller at the pin circle and rising from the
+  // roller's underside to the fork's top face (`pinTop`, balance-local), so it
+  // works the notch through the blank's whole thickness and stops short of the
+  // balance's arm above it.
+  const pinLen = pinTop - rollerBottom;
+  const pinGeo = new THREE.CylinderGeometry(pinR, pinR, pinLen, 12);   // r is published as userData.pinR
+  pinGeo.rotateX(Math.PI / 2);
+  const pin = new THREE.Mesh(pinGeo, MATS.ruby);
+  pin.name = 'balanceImpulsePin';   // TODO 226 — named so the escapement's working contact can be held by name
+  pin.position.set(rollerR, 0, rollerBottom + pinLen / 2);
+  g.add(pin);
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
-  g.userData.pinR = thickness * 0.22;   // TODO 216 — the ruby pin's own radius: the knock is where its SURFACE meets the fork's horn
+  g.userData.pinR = pinR;   // TODO 216 — the ruby pin's own radius: the knock is where its SURFACE meets the fork's horn
   // §221 — the safety action's two balance-side members, published so an
   // instrument can measure the guard pin against the roller's OWN outline
   // (TODO 105) rather than re-deriving where they are.
-  g.userData.safety = { roller: safetyRoller, outline: srShape.getPoints(24).map((v) => [v.x, v.y]), pin, pinR: g.userData.pinR };
+  g.userData.safety = { roller: safetyRoller, outline: srPts.map((v) => [v.x, v.y]), pin, pinR };
   // TODO 25 tier one — the INERTIA-BEARING DIMENSIONS, published so the
   // oscillator arithmetic in main.js can weigh this wheel without restating
   // a single number the builder already knows (rule 1's single source). Units,

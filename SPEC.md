@@ -61,14 +61,21 @@ export function makePinion({ module, teeth, thickness, material })
 // undercut locking faces, light spoked center. userData.r = tip radius.
 export function makeEscapeWheel({ teeth = 15, radius, thickness })
 
+// The escapement's seat (TODO 226): the fork's notch as the impulse pin's swept path,
+// the guard pin behind its floor, the single roller sized to that guard pin — solved
+// before either part is cut. balancePinCircle / balancePinR are the balance's own laws.
+export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear, stockMin })
+
 // Pallet fork pivoted at origin: anchor body, entry & exit pallet arms with ruby
 // pallet stones (angled impulse faces), long lever with fork horns + notch + guard pin
-// pointing along -Y. userData: { entryPos, exitPos } (Vector3 of stone centers).
-export function makePalletFork({ span, leverLength, thickness })
+// pointing along -Y, the fork end cut from the seat. userData: { entryPos, exitPos }
+// (Vector3 of stone centers), blankOutline / blankMetalOutline.
+export function makePalletFork({ span, seat, guard, thickness })
 
-// Balance: bi-metallic-look rim with timing screws, 2-3 arms, roller table underneath
-// with ruby impulse pin at radius rollerR (store userData.rollerR), safety roller.
-export function makeBalanceWheel({ radius, thickness })
+// Balance: bi-metallic-look rim with timing screws, 2-3 arms, ONE roller underneath
+// (crescent cut in front of the pin) with the ruby impulse pin at radius rollerR
+// (store userData.rollerR), sized by the seat.
+export function makeBalanceWheel({ radius, thickness, roller, pinTop })
 
 // Archimedean-spiral hairspring with `coils` turns, terminal curve, collet at center,
 // stud at outside. Flat ribbon cross-section. The collet turns with the staff and the
