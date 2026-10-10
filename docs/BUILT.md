@@ -32906,7 +32906,7 @@ lane per point), never in the ceiling.
 
 ## §246 — The watch's position, modelled: the rate in each of the six positions, and the hairspring's own weight
 
-**Tier one shipped; tier two remains in the roadmap.** The entry was filed from
+**Shipped whole: tier one as a model, tier two (below) as a simulation.** The entry was filed from
 an owner question: can we simulate the effect of gravity in the oscillation? The
 honest answer is still no, and §246 says why. The balance is POSED
 (`balanceTheta` is a sine of τ), so nothing integrates a torque and gravity has
@@ -32996,6 +32996,128 @@ and the energy column's own `g` rather than restating either. `explain.html`'s
 free-sprung caption no longer says gravity is not modelled. It names the
 position as modelled, gives the spring-weight finding, and keeps "modelled, not
 simulated" and the escapement's share unmodelled, in every locale.
+
+### Tier two — the balance, driven
+
+**The balance is an integrated state in the live loop, and τ is what it does.**
+`src/balance-drive.js` is a pure module (no scene) that `tick()` steps on every
+live tick:
+
+    I·θ'' = −τ_spring(θ) + τ_weight(θ) − c·θ' − (T_f + T_brake)·sgn θ' + τ_impulse
+
+Every term is read off something the movement already derives, nothing chosen:
+
+- **τ_spring**: the elastica's own torque, off the hairspring's wind frames
+  (§218) — the shapes the metal wears. The frames now run out to the knock
+  (`AMPLITUDE_PEAK_DEG`, 316°), because the driven balance swings 292°
+  dial-flat; inside ±200° they are the same solves bit for bit (warm-started
+  outward from rest on the same step). Each frame publishes its length-weighted
+  centroid as well.
+- **τ_weight**: tier one's spring-weight term, `m_s·g·d(ĝ·c)/dθ`, from the same
+  frames' centroids, for the hanging positions; ĝ is read off the built crown
+  the way tier one's probe reads it.
+- **c, T_f**: the energy column's losses at the live loop's corner (nominal, the
+  corner TODO 207 designs the swing to) — `c = I·Ω/Q`, a viscous loss that does
+  the column's πkA²/2Q per beat, and the balance pivot's Coulomb friction for
+  the position, dial-flat or hanging.
+- **τ_impulse**: the column's `delivered_J` per beat, spread across the 50°
+  lift as a constant torque in the beat's direction while the pin is inside the
+  window and the train has torque to give. The fusee's torque is level, so the
+  impulse does not depend on the wind.
+- **T_brake**: the hack pad, `leverEngage` × the spring's peak torque — the
+  figure the stop lever's rod was already priced on ("holding a 315° swing
+  means absorbing the hairspring's own peak torque").
+
+**The escapement's clock is an output.** A beat counts when the balance crosses
+into the lift; τ = (n + p)/2F. Inside the window p is the POSED law inverted at
+the balance's own angle, so the impulse pin stands where the battery measured it
+standing at every θ in the window; outside it (wheel locked, fork banked) p
+advances with the balance's phase-plane angle. The two meet at the window's
+edges, so τ is continuous, and at the posed swing the map reproduces the posed
+law to 4e-16 s. The train, the hands and the reserve read τ as before, so they
+run at the rate the oscillator keeps. The drain reads the last tick's dτ, which
+keeps §47's drain ≡ cone-advance identity. The old `balanceRate` relaxation
+toward 1 or 0 is gone: the hack and the run-down stop the balance by the forces
+it described. `balanceRate` survives as a reading (dτ/dt, smoothed over a fifth
+of a second) for the power-flow overlay and the inspection surface.
+
+**Live loop only.** A pose (zero dt: `setPose`, every battery sweep, the boot
+seed) integrates nothing and drops the driven state; the next live tick
+re-seeds from τ. So every sweep stays a pure function of its pose, and §152's
+digests and §127's slicing are untouched by the integrator.
+
+**The position is an input, and it ships with its axis.** `position` is one of
+`DU DD CU CD CL CR` (canonical keys; the default `CU`, because a pocket watch
+hangs pendant up): a state key, `?position=` on a link (only a non-default one
+travels), `setPose({ position })` (an unknown key throws), and a select in the
+panel's Time section beside two live readouts, Amplitude and Rate. The rate
+readout is arithmetic on the integrator's own time-stamped unlockings over the
+last 30 s, never τ read at a frame boundary. A pose shows the swing the driven
+balance settles to in its position: hanging, the designed 200° (the pre-§246
+law exactly, so every hanging pose in the battery is bit for bit what it was);
+dial-flat, the column's own 292.09°. The new `position` axis is the beat axis's
+oscillation posed dial-flat, at the beat axis's angular step on the arc for any
+swing up to the knock (n 305). It sweeps the parts only the flat swing reaches
+— the hairspring's outer frames, the impulse and guard pins further round the
+roller — and on its first run it measured 0 FORBIDDEN, 0 clearance violations,
+0 undeclared pairs under the margin and 0 unwaived expected-contact rows.
+
+**Measured** (`tools/probe-246-driven-rate.mjs`, an acceptance test; s/day,
+positive gains):
+
+```
+pos   swing      driven   escapement   free (tier one's method)   tier one published
+DU    292.09°    +2.37     -0.30        +2.68                      +2.68
+DD    292.09°    +2.37     -0.30        +2.68                      +2.68
+CU    200.33°    -5.16     -2.01        -3.13                      -3.14
+CD    200.38°    +4.83     -2.01        +6.86                      +6.86
+CL    200.32°   +15.26     -2.01       +17.27                     +17.28
+CR    200.32°   -15.57     -2.01       -13.54                     -13.55
+```
+
+The swing emerges where the energy column's solve puts it: 292.086° against
+292.090° dial-flat, and 200.32–200.38° against 200.36° hanging. It is the
+same at tension 0.1 as at 1 (−7e-13°), because the fusee's torque is level.
+The rate is tier one's table less the **escapement's own error**, the term tier
+one did not model: Coulomb friction centres each half-swing behind the
+displacement where the impulse is delivered, and an impulse after the centre
+loses (Airy). That costs **2.01 s/day hanging and 0.30 dial-flat**, where the
+pivot drags less. The probe measures it rather than assuming it: it runs the
+same impulse and losses on a linear spring with no weight, and subtracting that
+leaves the free balance's rate at the settled swing to within 0.011 s/day in
+every position.
+
+**Controls, all gated.** The seed and τ are inverses at the posed swing
+(4.4e-16 s), and the posed law there is the pre-§246 closed form (3e-14 rad).
+The integrator is converged in its sub-step: 400, 100 and 40 per period (40 is
+fast-forward's) agree to 0.02 s/day; window edges and turning points are located
+by Newton on the event, because a linear guess left θ off the edge by up to
+θ''·h² every beat and read 0.1 s/day of rate that was not there. **Airy's known
+answer**: a symmetric impulse on a linear spring with a vanishing loss keeps
+time, −4e-5 s/day. The live loop runs this model: 40 s of `__clock.step()` in
+crown-left reads the module's rate and swing to the printed digit. The hack pad
+stops the balance and holds it; released, the escapement restarts it (a lever
+escapement in beat is self-starting); run down, the balance's losses stop it.
+
+**Residue, named.** With no torque (run down, or held at Harrison's stop) the
+dying balance's beats are still counted, so the train creeps on with no force
+path: **66 beats over 13 s** from the designed swing. Freezing the count would
+leave the pin swinging through a still fork, and jamming the escapement would
+never restart on winding, so it is filed as **TODO 232** with the fix path (the
+fork follows the pin while the wheel stands, and the stone meets the standing
+tooth). A wind held at Harrison's stop also re-seeds the balance from the held τ
+when it lets go — the one place the live balance is re-posed. The impulse is
+spread evenly over the lift rather than following the impulse faces' own
+geometry, and the escapement's losses are the column's single efficiency, so
+the escapement error above is first-order physics on a lumped impulse, not the
+cut faces' own.
+
+**Record changes.** `src/balance-drive.js` is new. `__clock` gains
+`balancePosition`, `setBalancePosition`, `balanceDrive` (state, constants, live
+rate) and `balanceDriveModel` (the integrator's own constants and tables, the
+same objects the live loop steps with, for instruments). `explain.html`'s
+free-sprung plates now say the balance is driven and its amplitude simulated,
+give the escapement's share, and are re-translated in every locale.
 
 ## §221 — The balance swings its physical amplitude: the window and the bank derived from the lift, the swing level over the reserve
 

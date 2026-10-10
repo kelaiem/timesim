@@ -113,9 +113,13 @@ const out = await p.evaluate(async () => {
     const r400 = run(K, pos, { over: { steps: 400 } }), r100 = run(K, pos, { over: { steps: 100 } }), r40 = run(K, pos, { over: { steps: 40 } });
     return { pos, r400: r400.sPerDay, r100: r100.sPerDay, r40: r40.sPerDay };
   });
-  // 3. Airy: linear spring, no losses
-  const lossless = { ...KL, c: 0 };
-  const airy = run(lossless, 'DU', { over: { friction: 0 } });
+  // 3. Airy: a linear spring with a vanishing loss (Q 1e6, no pivot friction)
+  // and the impulse that loss needs at the designed swing — a lossless one
+  // would only pump the swing out to the knock
+  const Qa = 1e6;
+  const airyK = { ...KL, Q: Qa, c: KL.I * Math.sqrt(KL.k / KL.I) / Qa };
+  airyK.impulseJ = Math.PI * KL.k * KL.Ap ** 2 / (2 * Qa); airyK.impulseNm = airyK.impulseJ / (2 * KL.halfLift);
+  const airy = run(airyK, 'DU', { over: { friction: 0 }, A0: KL.Ap });
   // 4–6. per position
   const rows = POS.map((pos) => {
     const d = run(K, pos);
@@ -149,12 +153,16 @@ const out = await p.evaluate(async () => {
     for (let i = 0; i < 240 * 30; i++) BD.step(K, S, dt, env);
     return { before: before / D, held, stoppedOmega, thetaHeldDeg: th1 / D, after: S.ampEst / D };
   })();
+  // run down: no impulse. The residue BUILT §246 names — the dying balance's
+  // beats still unlock the escapement, so the train creeps on with no torque
+  // until the losses stop it — is MEASURED here: how many beats, how long.
   const rundown = (() => {
     const S = BD.seed(K, 0.1, K.Ap), env = { ...envFor('CU'), drive: false }, dt = 1 / 240;
+    const n0 = S.n;
     for (let i = 0; i < 240 * 120; i++) BD.step(K, S, dt, env);
-    const n1 = S.n;
+    const n1 = S.n, lastBeatS = S.entryT;
     for (let i = 0; i < 240 * 5; i++) BD.step(K, S, dt, env);
-    return { n1, n2: S.n, peakDeg: Math.abs(S.theta) / D, omega: S.omega };
+    return { n1, n2: S.n, beatsUnpowered: n1 - n0, lastBeatS, peakDeg: Math.abs(S.theta) / D, omega: S.omega };
   })();
   return { K: { F: K.F, IW: K.IW, Q: K.Q, impulseJ: K.impulseJ, brakeNm: K.brakeNm, knockDeg: K.knockRad / D }, friction: M.friction,
     sustainedDeg: M.sustainedDeg, posedDeg: M.posedDeg, seedErr, closedErr, conv, airy, rows, sag, live, mod, hack, rundown };
@@ -183,6 +191,7 @@ row('the live loop runs this model (CL, 40 s of step())', !!out.live && Math.abs
 row('the hack pad stops the balance and holds it', out.hack.held && out.hack.stoppedOmega === 0, `held at ${out.hack.thetaHeldDeg.toFixed(2)}° from a ${out.hack.before.toFixed(1)}° swing`);
 row('released, the escapement restarts it (self-starting in beat)', Math.abs(out.hack.after - out.hack.before) < 0.5, `${out.hack.after.toFixed(2)}° against ${out.hack.before.toFixed(2)}°`);
 row('run down, the balance\'s own losses stop it', out.rundown.n1 === out.rundown.n2 && out.rundown.peakDeg < 25, `no beat in the last 5 s; resting ${out.rundown.peakDeg.toFixed(2)}°`);
+console.log(`report · run down with no torque: the escapement still counted ${out.rundown.beatsUnpowered} beats over ${out.rundown.lastBeatS.toFixed(1)} s before the losses stopped the balance (the residue BUILT §246 names)`);
 
 console.log('\nreport · rate by position, s/day (+ gains), the driven balance at the nominal corner, settled');
 console.log('pos   swing      driven   escapement   free (tier one\'s method)   tier one published');

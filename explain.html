@@ -1319,11 +1319,14 @@
         <code>checkOscillator</code> gates that solve every battery run, holds every frame
         to one length of steel, and holds the overcoil concentric.
         Still NOT modelled, and this page draws no such mechanism: turning a timing screw to
-        move the rate. The balance swings <code>AMPLITUDE_POSED_DEG = 200</code>° at every
-        state of wind (§221): the fusee delivers level torque, so the old tension-scaled
-        readability swing told a going-barrel story. What still varies a real fusee watch's
-        amplitude — escapement and pivot losses, the watch's position — is posed out, not
-        driven; a balance whose amplitude is SIMULATED is §246 tier two's.</figcaption>
+        move the rate. Since §246 tier two the balance is DRIVEN in the live view: its
+        equation of motion is integrated — the spring's own torque off those frames, the
+        escapement's impulse across the lift, the energy column's losses for the watch's
+        position and, hanging, the spring's own weight — so its amplitude is SIMULATED, and
+        it settles where the column's arithmetic puts it: 200° hanging, 292° dial-flat, and
+        the same at every state of wind, because the fusee delivers level torque. The
+        battery still poses it, swinging <code>AMPLITUDE_POSED_DEG = 200</code>° hanging and
+        the column's 292° dial-flat.</figcaption>
       </figure>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">The Breguet overcoil — the spring breathes concentrically</span></div>
@@ -1383,8 +1386,11 @@
         mass as the spring breathes. That weight is the larger term, up to 15.4 s/day at the
         nominal corner, and the overcoil does not remove it: Phillips's condition puts the
         centre of mass on the axis at rest and says nothing about how it moves with the
-        swing. All of it is modelled, not simulated — the balance is still posed — and the
-        escapement's own share is not modelled at all. The
+        swing. Since §246 tier two it is simulated as well: the live balance is driven
+        through all of it, and the escapement's own share is a term now — when the pivot
+        drags, each half-swing's centre falls behind the impulse, which costs 2.01 s/day
+        hanging and 0.30 dial-flat; take that out and the driven rate meets the free
+        model's to a hundredth of a second a day. The
         terminal's length is still the classical three-quarter turn, and it has a physical
         wall below it: shorter than about 0.45 of a turn and the ribbon would have to be bent
         tighter than the collet it is already formed round. With the stud one pitch in there
