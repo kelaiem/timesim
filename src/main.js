@@ -33193,106 +33193,117 @@ const alarmLinkParts = {};
   beakTail.position.x = -tailLen / 2;
   beakTail.position.z = (ALARM_LINK_TAIL_H - STOCK_MIN_U) / 2;   // underside unmoved
   beakArm.add(beakTail);
-  // The post reaches whatever height the arm derivation put the pivot at —
-  // base end unmoved, length derived rather than the pair drifting apart.
-  const postBase = ALARM_LOCK_Z + 0.30;
-  const postLen = beakArm.position.z - postBase;
-  // TODO 11 tranche five: post stock across the FLATS. At r 0.16 the 10-gon
-  // measured 0.1153 mm — a nominal ⌀ 0.121 bar reading 4% under the floor.
-  // TODO 191 — THE POST STANDS ON THE FULCRUM AXIS, NOT ON THE ARM'S LINE.
-  // The lever is a see-saw: the tick tilts it about its OWN y (rotation.y
-  // under 'ZYX', above), the horizontal line through beakPiv square to the
-  // arm. An arm is a point's distance from that LINE, so a post anywhere
-  // along it carries the same fulcrum and moves no arm — while a post moved
-  // along the arm's own line moves the fulcrum and spends the ratio (4.657
-  // then, 5.311 since TODO 206), which the fork may not touch. On the arm's
-  // line the post stood tailLen = 0.768 from the selector rod's axis (0.6885
-  // since TODO 206), the two running parallel
-  // over the rod's whole top: 0.0811 at TODO 174, and 0.0409 once TODO 190's
-  // longer rod thickened its turned section (ALARM_LINK_ROD_R_SECTION
-  // 0.5692 → 0.5765). Both polygons are bounded by their circumradii here, so
-  // the post's offset is the least that holds CLEAR_MARGIN at any facet
-  // orientation:  hypot(tailLen, s) = R_rod + R_post + CLEAR_MARGIN.
-  // The rod slides only along its own axis and the post is still, so the
-  // plan gap IS the gap at every pose (`intraUnit`'s floors row measures it
-  // on the metal; the assert below holds the derivation).
+  // TODO 204 — THE FULCRUM IS A PIN, CARRIED BY A POST THAT STANDS ON PLATE
+  // LAND. What stood here was a post from ALARM_LOCK_Z + 0.30 up to the bar,
+  // under the lever "on the fulcrum axis" (TODO 191) — and it stood 0.6183
+  // above the three-quarter plate it was declared seated on, while the rod's
+  // plate bore lay under its foot. Seating it is not the whole fix either: a
+  // post UNDER the lever cannot be its fulcrum at all. Both of the lever's
+  // loads push it UP — the column under the nose, and TODO 206's arming
+  // spring through finger → rod foot → rod top under the tail — so the
+  // fulcrum's reaction must pull it DOWN, F_nose·(1 + beakLen/tailLen): about
+  // 33 mN seated and 299 mN lifted at FRICTION's adverse corner. A post under
+  // the bar can only push up. The lever needs a PIN on its tilt axis, held
+  // from above and below alike, and TODO 206's spring solve already charged
+  // MU_STEEL at a journal of STOCK_MIN_R10 that did not exist in the metal.
   //
-  // The SIDE is the lever's −y, measured rather than chosen: at the same
-  // least offset on +y the post stands 0.0667 from the alarm jumper's blade,
-  // on −y 0.593 (TODO 191's scan). And the post still has to be under the
-  // bar it carries, which is the assert's second half — the bar is one
-  // ratchet tooth wide (ALARM_LINK_ARM_W), so the post's outer flank must
-  // stay inside its half-width.
-  const _postReach = ALARM_LINK_ROD_R_SECTION + STOCK_MIN_R10 + CLEAR_MARGIN;
-  const ALARM_BEAK_POST_SIDE = -Math.sqrt(Math.max(0, _postReach * _postReach - tailLen * tailLen));
-  const _postXY = {
-    x: beakPiv.x - Math.sin(beakAim) * ALARM_BEAK_POST_SIDE,   // the arm's local +y in world is (−sin aim, cos aim)
-    y: beakPiv.y + Math.cos(beakAim) * ALARM_BEAK_POST_SIDE,
-  };
+  // THE TILT AXIS IS THE LINE. The tick tilts the arm about its OWN y
+  // (rotation.y under 'ZYX', above) through beakPiv at the arm's height, so a
+  // pin ON that line is the fulcrum exactly — no arm, no ratio, no seat tilt
+  // moves (beakLen, tailLen, 5.3107, 0.1455 rad), and an eye turned about it
+  // is invariant under the tilt, so it sweeps nothing it does not occupy at
+  // rest. The side is TODO 191's measured −y (on +y the alarm jumper's blade
+  // stands 0.0667 off the station; on −y the scan reads ≥ 0.46 to every other
+  // unit from the plate up to the bar).
+  const ALARM_BEAK_SIDE = -1;
+  // The PIN: §50's floor across its flats — the journal TODO 206 prices
+  // (noseFrom's rPin reads this name). Its strength at the service load is
+  // held where that load is solved (the arming spring, below).
+  const ALARM_BEAK_PIN_R = STOCK_MIN_R10;
+  // The EYE the lever turns on: bored to the pin's running fit, a §50 wall.
+  const ALARM_BEAK_EYE_BORE = ALARM_BEAK_PIN_R + PIVOT_BORE_CLEAR;
+  const ALARM_BEAK_EYE_R = ALARM_BEAK_EYE_BORE + STOCK_MIN_U;          // 0.5332
+  // THE EYE'S INNER FACE, from the rod it must clear. The rod stands under
+  // the tail, tailLen behind the axis on the arm's line; take the eye's
+  // whole radius toward it (its silhouette at the axis height, which the
+  // rod's top — cut to the tail's underside — never reaches) and the rod's
+  // circumradius (TODO 191's convention for the two polygons):
+  //   hypot(tailLen − EYE_R, eyeIn) = R_rod + CLEAR_MARGIN
+  // Started at the bar's flank instead, the eye stands 0.07 off the rod.
+  const _eyeDx = Math.max(0, tailLen - ALARM_BEAK_EYE_R);
+  const _eyeReach = ALARM_LINK_ROD_R_SECTION + CLEAR_MARGIN;
+  const ALARM_BEAK_EYE_IN = Math.sqrt(Math.max(0, _eyeReach * _eyeReach - _eyeDx * _eyeDx));   // 0.7304
+  // THE WEB joins the eye at that face, lapped one SAW_FIT into it (the
+  // lever is one body), and it is narrower than the bore, so its lap PLUGS
+  // the bore's inner end: the pin stops one running clearance short of it.
+  // The JOURNAL beyond is §50's floor long and no more: the lever's loads act
+  // on the arm's line (y = 0) and the eye hangs off to one side of it, so the
+  // pin is a cantilever whose moment arm is the HEAD's inner face — every
+  // unit of eye beyond the floor lengthens that arm.
+  const ALARM_BEAK_WEB_OUT = ALARM_BEAK_EYE_IN + SAW_FIT;
+  const ALARM_BEAK_PIN_END = ALARM_BEAK_WEB_OUT + PIVOT_BORE_CLEAR;
+  const ALARM_BEAK_EYE_OUT = ALARM_BEAK_PIN_END + STOCK_MIN_U;
+  // End-shake between the eye and the post's head: the running fit's own
+  // clearance, taken axially.
+  const ALARM_BEAK_HEAD_IN = ALARM_BEAK_EYE_OUT + PIVOT_BORE_CLEAR;   // the pin's root
+  if (ALARM_BEAK_EYE_IN < ALARM_LINK_ARM_W / 2 + 1e-9)
+    console.warn(`TODO 204: the eye's inner face ${ALARM_BEAK_EYE_IN.toFixed(4)} lies inside the bar's half-width ${(ALARM_LINK_ARM_W / 2).toFixed(4)} — the web that carries it has no length, re-derive the lever's fulcrum`);
   {
-    const gap = Math.hypot(_postXY.x - ALARM_LINK_ROD_XY.x, _postXY.y - ALARM_LINK_ROD_XY.y)
-      - ALARM_LINK_ROD_R_SECTION - STOCK_MIN_R10;
+    // rule 6 — the eye's silhouette against the rod, in plan (achieved, required)
+    const gap = Math.hypot(_eyeDx, ALARM_BEAK_EYE_IN) - ALARM_LINK_ROD_R_SECTION;
     if (gap < CLEAR_MARGIN - 1e-9)
-      console.warn(`TODO 191: the beak post stands ${gap.toFixed(4)} from the selector rod in plan, under CLEAR_MARGIN ${CLEAR_MARGIN} (circumradii; the two run parallel)`);
+      console.warn(`TODO 204: the beak's eye stands ${gap.toFixed(4)} off the selector rod in plan, under CLEAR_MARGIN ${CLEAR_MARGIN}`);
   }
-  // TODO 194 — THE FULCRUM LUG, a declared FORK of this group's line spec.
-  // The follower's return spiral bought its band from Z_DIAL (+0.73), the
-  // selector rod's foot rides the dial-side ring, so the rod is exactly that
-  // much longer; its turned section is L/(2·TURN_LD_TARGET) (§233), so it
-  // thickened 0.5765 → 0.5968, and the post's least offset above, which no
-  // one may shorten, carries its outer flank 0.6606 off the arm's line —
-  // past the bar's 0.6270 half-width. One row of the spec changes, and only
-  // where the post is: the lever's WIDTH AT THE FULCRUM, re-derived as the
-  // post's outer flank (it must stand under the lever it carries — TODO 191's
-  // second half). Everything else is held: the bar and tail keep one ratchet
-  // tooth (§226's feature width, the owner's legibility call), the arms keep
-  // 3.577 / 0.768 and the ratio 4.657 (TODO 206's re-solve since: 3.6565 /
-  // 0.6885, 5.3107), the post keeps its §50 section and its
-  // TODO 191 station. The rejected alternatives, measured against the same
-  // constraint: necking the rod's top beside the post would put a narrower
-  // step on a bar §233 judges by its narrowest step (its L/D would go over
-  // TURN_LD_TARGET), and widening the whole bar spends metal over 4.3 units of
-  // arm to buy 0.034 at one point. The lug is a pad on the bar's underside
-  // plane, the post's own diameter long, at the fulcrum where the tilt moves
-  // nothing; it is built only while the post's flank leaves the bar, so the
-  // fork retires itself (and its INTRA_UNIT_CONTACTS row goes stale) the day
-  // the rod is short enough again.
-  const _postFlank = Math.abs(ALARM_BEAK_POST_SIDE) + STOCK_MIN_R10;
-  if (_postFlank > ALARM_LINK_ARM_W / 2 + 1e-9) {
-    const reach = _postFlank;                                  // flush with the post's outer flank, the lever's own allowance before the fork
-    // TODO 206 — FROM THE BAR'S FLANK, not from the arm's line. Inside the
-    // bar's half-width the lug was a second copy of metal the bar and tail
-    // already are, and when the C1 seat shortened the tail (0.768 → 0.6885)
-    // that copy's corner reached over the rod's top, where only the TAIL's
-    // footprint is cut to bear: `intraUnit` read the lug into the rod at the
-    // disarmed parity. The pad now starts at the bar's flank, lapped one
-    // SAW_FIT into it (the repo's one interference quantum — the lever is one
-    // body), and runs out to the post's flank; its inner corner stands clear of
-    // the rod by the plan geometry the post's own TODO 191 derivation uses.
-    const inner = ALARM_LINK_ARM_W / 2 - SAW_FIT;
-    const lug = new THREE.Mesh(new THREE.BoxGeometry(2 * STOCK_MIN_R10, reach - inner, STOCK_MIN_U), MATS.steel);
-    lug.name = 'alarmLinkBeakFulcrum';
-    lug.position.set(0, Math.sign(ALARM_BEAK_POST_SIDE) * (reach + inner) / 2, 0);   // from the bar's flank out to the post's, in the bar's own plane
-    {
-      const gap = Math.hypot(tailLen - STOCK_MIN_R10, inner) - ALARM_LINK_ROD_R_SECTION;
-      if (gap < CLEAR_MARGIN - 1e-9)
-        console.warn(`TODO 206: the fulcrum lug's inner corner stands ${gap.toFixed(4)} off the selector rod in plan, under CLEAR_MARGIN`);
-    }
-    beakArm.add(lug);
+  const beakEye = new THREE.Mesh(ringGeo(ALARM_BEAK_EYE_BORE, ALARM_BEAK_EYE_R, ALARM_BEAK_EYE_OUT - ALARM_BEAK_EYE_IN).rotateX(-Math.PI / 2), MATS.steel);   // ringGeo stands along Z; the eye's axis is the arm's y
+  beakEye.name = 'alarmLinkBeakEye';
+  beakEye.position.set(0, ALARM_BEAK_SIDE * (ALARM_BEAK_EYE_IN + ALARM_BEAK_EYE_OUT) / 2, 0);
+  beakArm.add(beakEye);
+  // THE WEB — TODO 194's fulcrum lug, PERMANENT now and re-derived. TODO 194
+  // built it as a fork of the line spec, only while the post's flank left
+  // the bar; with the fulcrum a pin beside the rod the eye always stands past
+  // the bar's flank (asserted above), so the web that carries the lever to
+  // its eye is part of the lever, not a fork. It starts at the bar's flank,
+  // lapped one SAW_FIT into it (TODO 206: inside the half-width it was a
+  // second copy of the bar and reached over the rod's top), and ends lapped
+  // one SAW_FIT into the eye — the lever is one body. It is the pin's
+  // diameter wide (TODO 194's lug width, whose inner corner the assert below
+  // holds off the rod), and it runs from the bar's underside up to the eye's
+  // crown: a web only the bar's depth would land wholly inside the eye's
+  // bore (the bore is wider than half the bar's depth), touching its wall at
+  // four corners. Downward it stops at the bar's underside — tilted, a web
+  // reaching the eye's foot would carry its lower corner toward the rod.
+  // What it carries (the whole reaction, at the bar's flank) is held with
+  // the pin.
+  const inner = ALARM_LINK_ARM_W / 2 - SAW_FIT;
+  const webOut = ALARM_BEAK_WEB_OUT;
+  const webLo = -STOCK_MIN_U / 2, webHi = ALARM_BEAK_EYE_R;
+  const lug = new THREE.Mesh(new THREE.BoxGeometry(2 * ALARM_BEAK_PIN_R, webOut - inner, webHi - webLo), MATS.steel);
+  lug.name = 'alarmLinkBeakFulcrum';
+  lug.position.set(0, ALARM_BEAK_SIDE * (webOut + inner) / 2, (webHi + webLo) / 2);
+  {
+    const gap = Math.hypot(tailLen - ALARM_BEAK_PIN_R, inner) - ALARM_LINK_ROD_R_SECTION;
+    if (gap < CLEAR_MARGIN - 1e-9)
+      console.warn(`TODO 206: the fulcrum web's inner corner stands ${gap.toFixed(4)} off the selector rod in plan, under CLEAR_MARGIN`);
   }
-  const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, postLen, 10), MATS.steel);
-  beakPost.name = 'alarmLinkBeakPost';
-  beakPost.rotation.x = Math.PI / 2;
-  beakPost.position.set(_postXY.x, _postXY.y, postBase + postLen / 2);
-  alarmLinkUnit.add(beakPost);
+  beakArm.add(lug);
+  // The post, its head and the pin are built where the load they carry is
+  // SOLVED (TODO 206's arming spring, below): the post's section is set by
+  // that load, and its station by its section. Everything they need from here:
+  alarmLinkParts.pivot = { side: ALARM_BEAK_SIDE, pinR: ALARM_BEAK_PIN_R, eyeR: ALARM_BEAK_EYE_R,
+    eyeIn: ALARM_BEAK_EYE_IN, webOut: ALARM_BEAK_WEB_OUT, pinEnd: ALARM_BEAK_PIN_END, eyeOut: ALARM_BEAK_EYE_OUT, headIn: ALARM_BEAK_HEAD_IN,
+    webW: 2 * ALARM_BEAK_PIN_R, webH: webHi - webLo };
   // §172, rule 6 — the three things finding 2 measured, each asserted with its
   // achieved and required number so none of them can quietly come back.
   {
-    // 1. the post's OUTER FACE against the saw's tips (not its axis: the face
-    //    is what sweeps the teeth, §169's correction applied here).
-    const postFace = Math.hypot(pivDist, ALARM_BEAK_POST_SIDE) - STOCK_MIN_R10;   // TODO 191: the post's axis stands off the arm's line, on the fulcrum axis
-    if (postFace < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
-      console.warn(`§172: the link beak's post reaches ${postFace.toFixed(4)} from the wheel's arbor against the saw's tips at ${ALARM_COL_TIP_R.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN}`);
+    // 1. the fulcrum's OUTER FACE against the saw's tips (not its axis: the
+    //    face is what sweeps the teeth, §169's correction applied here). Since
+    //    TODO 204 the fulcrum is the eye (the post and its head stand further
+    //    along the axis and are held where they are built), and its nearest
+    //    point to the wheel is its silhouette's corner on the arm's side —
+    //    taken in plan, so the z band is not credited.
+    const eyeFace = Math.hypot(pivDist - ALARM_BEAK_EYE_R, ALARM_BEAK_EYE_IN);
+    if (eyeFace < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
+      console.warn(`§172: the link beak's eye reaches ${eyeFace.toFixed(4)} from the wheel's arbor against the saw's tips at ${ALARM_COL_TIP_R.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN}`);
     // 2. the BAR's underside over the column tops — the row nothing declared.
     const barUnder = beakArm.position.z - STOCK_MIN_U / 2;
     if (barUnder < ALARM_COL_TOP_Z + _beakBarLift - 1e-9)
@@ -34444,8 +34455,8 @@ const alarmLinkParts = {};
     //     the finger on the rod's foot (it slides `lateral` while the rod rises
     //     |rodTravel|), the rod in its two plate bushes (loaded by that slide's
     //     friction, reacted over the bushes' span), the tail on the rod's cut
-    //     top (it slides ≈ θ/2 per unit of lift), and the beak post (its
-    //     radius, loaded by tail + nose). The SEAT is priced with every one of
+    //     top (it slides ≈ θ/2 per unit of lift), and the beak lever's pin
+    //     (its radius, loaded by tail + nose — TODO 204 built it)). The SEAT is priced with every one of
     //     them against the spring and the LIFT with every one against the
     //     column — the two ends of the band are both read at the corner that
     //     hurts them.
@@ -34475,7 +34486,7 @@ const alarmLinkParts = {};
       const armX = STOCK_MIN_U, armN = STOCK_MIN_U;      // the arm's section, §50's floor both ways
       const span = F.rollRest - F.rollArmed;             // the roll's whole travel (> 0: arming turns it down)
       const rJ = ALARM_LINK_SHAFT_R;                     // journal radius at the bushes
-      const rPost = STOCK_MIN_R10;                       // the beak post's radius
+      const rPin = alarmLinkParts.pivot.pinR;            // TODO 204: the beak lever's pivot PIN — the journal is metal now (it was the radius of a post that stood on air)
       const thS = F.seatNoseDrop / beakLen;              // the seat tilt
       const xSeat = (beakLen + ALARM_LINK_NOSE_W_RAD / 2) * Math.cos(thS) + _seat.h * Math.sin(thS);   // the seated corner's arm about the post
       // rod foot height per roll, the rim envelope's own slope (the finger's tip pair)
@@ -34506,7 +34517,7 @@ const alarmLinkParts = {};
         // tail → nose about the post: seat at the seated corner, lift on the column top (θ 0)
         const lt = dir === 'seat' ? tailLen * Math.cos(thS) : tailLen;
         const ln = dir === 'seat' ? xSeat : beakLen;
-        return (Ft * lt - s * mu * Ft * rPost) / (ln + s * mu * rPost);
+        return (Ft * lt - s * mu * Ft * rPin) / (ln + s * mu * rPin);
       };
       // the deflection law: δ(β) = nFree − (cornerN(β) + SINK) — the face is
       // sunk ALARM_SEAT_SINK into the corner (the seated-contact convention),
@@ -34674,7 +34685,7 @@ const alarmLinkParts = {};
         declareTransfer(`alarm arming: the arming spring (hanger 3 → arm → shaft → rod → tail → nose), ${end}`, {
           unit: 'Alarm link', meshes: ['alarmLinkArmingSpring', 'alarmLinkArmingArm', 'alarmLinkHanger3'], idiom: 'crank',
           load: { value: Fn, unit: 'mN',
-            source: 'the blade’s 3EI/L³ (cantileverK_N_per_m over the solved t × b, free from hanger 3’s face to the arm) × its deflection off the free line, as a moment about the shaft, carried by the rim envelope’s slope and the beak lever to the nose with MU_STEEL charged at every sliding joint between (journals, the blade’s face, finger on foot, rod in its bushes, tail on the cut top, beak post) against the direction of drive' },
+            source: 'the blade’s 3EI/L³ (cantileverK_N_per_m over the solved t × b, free from hanger 3’s face to the arm) × its deflection off the free line, as a moment about the shaft, carried by the rim envelope’s slope and the beak lever to the nose with MU_STEEL charged at every sliding joint between (journals, the blade’s face, finger on foot, rod in its bushes, tail on the cut top, the beak lever’s pin) against the direction of drive' },
           quantities: {
             bladeT_u: S.t_u, bladeB_u: S.b_u, freeLen_u: S.L_u, k_N_per_m: S.k_N_per_m, bladeF_mN: Fb,
             preload_u: S.d0_u, travel_u: S.travelN_u, roll_rad: roll, mu: S.mu,
@@ -34686,6 +34697,136 @@ const alarmLinkParts = {};
           why: `a blade let into hanger 3 biasing the lay shaft through a keyed arm is a crank, and the run carries its moment to the nose: ${Fb.toFixed(2)} mN at the arm’s corner arrives as ${Fn.toFixed(2)} mN ${end} at FRICTION’s adverse corner (${(beta === 0 ? S.noseF_mN_seat_ideal : S.noseF_mN_lift_ideal).toFixed(2)} mN with none) — `
             + `placed equal-margin in the switch’s 5–50 mN detent window (${S.noseF_mN_seat.toFixed(2)} × ${S.noseF_mN_lift.toFixed(2)} = 5 × 50 mN²), the seat being what holds every push-only contact in the run loaded and the nose on the floor, the lift what a column must overcome`,
         });
+      }
+      // ===================================================================
+      // TODO 204 — THE BEAK LEVER'S PIN, ITS POST AND THE POST'S HEAD, built
+      // here because the load they carry is the one just solved. (The eye and
+      // the web are the lever's, built with it; alarmLinkParts.pivot carries
+      // their stations.)
+      //
+      // THE REACTION. Both of the lever's loads push it up, so the pin pulls
+      // it down by their sum. With the journal friction noseFrom charges at
+      // the pin (μ·R·rPin against the drive), the tail force for a nose force
+      // Fn is Fn·(ln ± μ·rPin)/(lt ∓ μ·rPin) — the spring drives at the seat,
+      // the column at the lift — and R = Fn + Ft at each end of the window.
+      {
+        const P = alarmLinkParts.pivot;
+        const rPin = P.pinR;
+        const Rseat = seatN * (1 + (xSeat + mu * rPin) / (tailLen * Math.cos(thS) - mu * rPin));
+        const Rlift = liftN * (1 + (beakLen - mu * rPin) / (tailLen + mu * rPin));
+        const R = Math.max(Rseat, Rlift);                 // N — the service load (the lift end governs)
+        // THE MOMENT. The loads act on the arm's line (y = 0); the pin hangs
+        // the lever's eye off to the −y side, so every member between them
+        // carries R as a bending moment about the arm's direction, its arm
+        // that member's distance from the line. Round bars are judged across
+        // their FLATS (TODO 11 tranche five), solid section, σ = 32·M/(π·d³).
+        const flats = (r) => 2 * r * Math.cos(Math.PI / 10);
+        const sigmaRound = (M_Nm, d_u) => 32 * M_Nm / (Math.PI * (d_u * U) ** 3);
+        //  · the PIN: a cantilever from the head's inner face, its moment arm
+        //    the head's inner face (the eye's floor length plus the end-shake
+        //    put it there; the load line is beyond the pin's free end). At
+        //    §50's floor it holds under SPRING_SIGMA_Y_PA, so the floor binds —
+        //    and TODO 206's journal radius is the metal's, not a placeholder.
+        const sigmaPin = sigmaRound(R * P.headIn * U, flats(rPin));
+        if (sigmaPin > SPRING_SIGMA_Y_PA * (1 + 1e-9))
+          console.warn(`TODO 204: the beak's pin bends at ${(sigmaPin / 1e6).toFixed(1)} MPa at its ${(R * 1000).toFixed(1)} mN service load, over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield — its §50 floor no longer carries the journal TODO 206 prices`);
+        //  · the WEB at the bar's flank, R over (ARM_W/2), its section the
+        //    pin's diameter wide and the bar's underside to the eye's crown
+        //    deep (bending about the arm's direction, so the depth is the
+        //    lever's own z): σ = 6·M/(b·h²).
+        const webB = P.webW * U, webH = P.webH * U;
+        const sigmaWeb = 6 * R * (ALARM_LINK_ARM_W / 2) * U / (webB * webH * webH);
+        if (sigmaWeb > SPRING_SIGMA_Y_PA * (1 + 1e-9))
+          console.warn(`TODO 204: the beak's web bends at ${(sigmaWeb / 1e6).toFixed(1)} MPa at the bar's flank, over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield`);
+        //  · the POST: planted in the plate top, the head on its end; it
+        //    carries R as TENSION (the pin is pushed up) plus the moment
+        //    R·sPost all the way down (the load line stands sPost off its
+        //    axis), so σ = 32·R·sPost/(π·d³) + 4·R/(π·d²). Its diameter is
+        //    §50's floor, or the LOAD where the load binds — TODO 192 step 2's
+        //    rule for pivots, so a load-bound post sits ON the yield by
+        //    construction. It binds: at the floor the post would work at
+        //    ≈ 890 MPa.
+        // ITS STATION — PLATE LAND. The foot stands on the three-quarter
+        // plate's top face, so its axis must leave a land of §50's floor to
+        // every opening — linkRodTqLand's rule for bores (TODO 190), applied
+        // to a post: the rod's own bore is the nearest,
+        //   hypot(tailLen, sPost) = ALARM_LINK_ROD_PLATE_BORE_R + STOCK_MIN_U + rPost
+        // (STOCK_MIN_U > G.PLATE_BEVEL, so the foot is on flat land, outside
+        // the bore's bevel collar), and the full opening list is asserted
+        // below. And the post must stand wholly under its head,
+        //   sPost ≥ headIn + rPost,
+        // which is the one that binds at today's numbers (1.3600 against the
+        // land's 1.2757). The section moves the station and the station the
+        // moment, so the two are iterated to a fixed point; it contracts, the
+        // diameter growing only as the cube root of the station.
+        const sigmaPost = (d_u, s_u) => sigmaRound(R * s_u * U, d_u) + 4 * R / (Math.PI * (d_u * U) ** 2);
+        const sFor = (r) => Math.max(
+          Math.sqrt((ALARM_LINK_ROD_PLATE_BORE_R + STOCK_MIN_U + r) ** 2 - tailLen * tailLen),
+          P.headIn + r);
+        let rPost = STOCK_MIN_R10, sPost = sFor(rPost);
+        for (let it = 0; it < 60; it++) {
+          let dLo = STOCK_MIN_U, dHi = 4 * STOCK_MIN_U;
+          if (sigmaPost(dLo, sPost) > SPRING_SIGMA_Y_PA) {
+            for (let i = 0; i < 80; i++) { const m = (dLo + dHi) / 2; if (sigmaPost(m, sPost) > SPRING_SIGMA_Y_PA) dLo = m; else dHi = m; }
+            dLo = dHi;
+          }
+          const rN = flatsR(dLo, 10), sN = sFor(rN);
+          const done = Math.abs(rN - rPost) < 1e-12 && Math.abs(sN - sPost) < 1e-12;
+          rPost = rN; sPost = sN;
+          if (done) break;
+        }
+        // THE HEAD — the post's top, cross-drilled for the pin and pressed on
+        // it: a disc about the tilt axis whose wall round the pin is §50's
+        // floor, running from the end-shake face out to the post's outer
+        // flank. The post is lapped one SAW_FIT into its underside.
+        const rHead = rPin + STOCK_MIN_U;
+        const headOut = sPost + rPost;
+        const axisZ = beakArm.position.z;
+        const along = (yL) => ({ x: beakPiv.x - Math.sin(beakAim) * yL, y: beakPiv.y + Math.cos(beakAim) * yL });   // the arm's local +y in world, at rest
+        const side = P.side;
+        const postXY = along(side * sPost);
+        // rule 6 — the station, the section and the strength, held
+        {
+          const toRod = Math.hypot(postXY.x - ALARM_LINK_ROD_XY.x, postXY.y - ALARM_LINK_ROD_XY.y);
+          const land = Math.min(linkRodTqLand(postXY.x, postXY.y) + ALARM_LINK_ROD_PLATE_BORE_R, toRod - ALARM_LINK_ROD_PLATE_BORE_R) - rPost;
+          if (land < STOCK_MIN_U - 1e-9)
+            console.warn(`TODO 204: the beak post's foot leaves ${land.toFixed(4)} of plate land to its nearest opening — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(4)}`);
+          if (sPost - rPost < P.headIn - 1e-9)
+            console.warn(`TODO 204: the beak post's inner flank ${(sPost - rPost).toFixed(4)} reaches past its head's face ${P.headIn.toFixed(4)}`);
+          const sig = sigmaPost(flats(rPost), sPost);
+          if (sig > SPRING_SIGMA_Y_PA * (1 + 1e-6))
+            console.warn(`TODO 204: the beak post bends at ${(sig / 1e6).toFixed(1)} MPa, over the ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} MPa yield`);
+          // §172's saw-tip rule for the members that moved out along the
+          // axis: their plan faces against the tips (the z band not credited)
+          const postFace = Math.hypot(pivDist, sPost) - rPost;
+          const headFace = Math.hypot(pivDist - rHead, P.headIn);
+          if (Math.min(postFace, headFace) < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
+            console.warn(`§172: the link beak's post (${postFace.toFixed(4)}) or head (${headFace.toFixed(4)}) reaches inside the saw's tips at ${ALARM_COL_TIP_R.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN}`);
+        }
+        const postTop = axisZ - rHead + SAW_FIT;
+        const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(rPost, rPost, postTop - TQ_TOP_Z, 10), MATS.steel);
+        beakPost.name = 'alarmLinkBeakPost';
+        beakPost.rotation.x = Math.PI / 2;
+        beakPost.position.set(postXY.x, postXY.y, (TQ_TOP_Z + postTop) / 2);   // the plate-top stud convention: the foot ON the top face
+        alarmLinkUnit.add(beakPost);
+        const headC = along(side * (P.headIn + headOut) / 2);
+        const beakHead = new THREE.Mesh(new THREE.CylinderGeometry(rHead, rHead, headOut - P.headIn, 24), MATS.steel);
+        beakHead.name = 'alarmLinkBeakHead';
+        beakHead.rotation.z = beakAim;                     // CylinderGeometry stands along Y; aimed, Y is the arm's own y
+        beakHead.position.set(headC.x, headC.y, axisZ);
+        alarmLinkUnit.add(beakHead);
+        // THE PIN, pressed through the head flush with its outer face and out
+        // through the eye's journal, ending one running clearance short of the
+        // web's lap in the bore's inner end.
+        const pinC = along(side * (P.pinEnd + headOut) / 2);
+        const beakPin = new THREE.Mesh(new THREE.CylinderGeometry(rPin, rPin, headOut - P.pinEnd, 10), MATS.steel);
+        beakPin.name = 'alarmLinkBeakPin';
+        beakPin.rotation.z = beakAim;
+        beakPin.position.set(pinC.x, pinC.y, axisZ);
+        alarmLinkUnit.add(beakPin);
+        Object.assign(P, { R_N: R, Rseat_N: Rseat, Rlift_N: Rlift, sigmaPin_Pa: sigmaPin, sigmaWeb_Pa: sigmaWeb,
+          rPost, sPost, dPost_u: flats(rPost), sigmaPost_Pa: sigmaPost(flats(rPost), sPost), rHead, headOut,
+          postLen: postTop - TQ_TOP_Z, pinLen: headOut - P.pinEnd, pinFree: P.headIn - P.pinEnd });
       }
     }
   }
@@ -34701,7 +34842,7 @@ const alarmLinkParts = {};
   // recomputes from the live solve at every boot.
   //
   // The BEAK LEVER: castellation rise in at the nose, rod driven at the
-  // tail — a crank about the beak post. The load is the tail's own STALL:
+  // tail — a crank about the beak pin. The load is the tail's own STALL:
   // the force at which the blade bends its whole required stroke instead of
   // moving the rod, k (shared cantilever law over the §54-derived section)
   // × the solve's |rodTravel|.
@@ -34754,11 +34895,11 @@ const alarmLinkParts = {};
     const rodTravelU = Math.abs(alarmLinkParts.forward.rodTravel);
     const tailStallMN = kTail * rodTravelU * UNIT_MM; // N/m × (u→m) × 1000 = mN
     declareTransfer('alarm arming: beak lever (castellations → rod)', {
-      unit: 'Alarm link', meshes: ['alarmLinkBeakBar', 'alarmLinkBeakTail', 'alarmLinkBeakPost'], idiom: 'crank',
+      unit: 'Alarm link', meshes: ['alarmLinkBeakBar', 'alarmLinkBeakTail', 'alarmLinkBeakEye', 'alarmLinkBeakPin'], idiom: 'crank',
       load: { value: tailStallMN, unit: 'mN',
         source: 'tail-blade cantilever k over its §54-derived deep section × the registration solve\'s |rodTravel| (the live stroke — the 0.42-unit plan constant both prior records quoted is retired by the solve\'s own comment trail)' },
       quantities: { armIn_u: beakLen, armOut_u: tailLen, ratio: tailLen / beakLen },
-      why: `§229: a pivoted lever with two DESIGNED arms about the beak post, and the design is the ratio itself — the input arm reads the castellation tier whole (TODO 206: down to the gap floor, where the arming spring seats the nose) and the output arm reduces it to the rod's solved travel, so the arms are ${(beakLen / tailLen).toFixed(3)} : 1 the other way — their LENGTHS a declared fork of §229's at the TODO 174 rod distance (see ALARM_BEAK_REF_WRLEN). It amplified 4.55× until §229, which is what let the nose read 3.5% of the cam it rides`,
+      why: `§229: a pivoted lever with two DESIGNED arms about the beak pin (TODO 204: its eye on a pin on the tilt axis, the pin pressed in a post planted on the plate), and the design is the ratio itself — the input arm reads the castellation tier whole (TODO 206: down to the gap floor, where the arming spring seats the nose) and the output arm reduces it to the rod's solved travel, so the arms are ${(beakLen / tailLen).toFixed(3)} : 1 the other way — their LENGTHS a declared fork of §229's at the TODO 174 rod distance (see ALARM_BEAK_REF_WRLEN). It amplified 4.55× until §229, which is what let the nose read 3.5% of the cam it rides`,
     });
     // The rod-end overhang, from the bush declaration rather than a quoted
     // number: 3EI/L³ on the round section (I = πr⁴/4, the same model §137's
@@ -39732,14 +39873,18 @@ const PART_CALLOUTS = {
   // arbor's wheel → … the fold … → setting cap, which meshes the motion works'
   // minute wheel. "Keyless works" alone is one word at the crown for both.
   windStem: { name: 'Winding stem', train: 'Keyless works', anchor: 'centre' },
-  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre', place: 'above' },
-  // Two coaxial pairs — the crown wheel on the transfer wheel's arbor, the
-  // setting wheel under its bevel — share one centre, so each pair splits
-  // above / below it, the motion works pinions' rule.
-  // The winding pinion meshes the crown wheel right beside that pair, so its
-  // name is lifted ABOVE its centre, clear of the pair's upper slot.
-  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
-  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  // The crown wheel rides the transfer wheel's arbor, and the winding pinion
+  // meshes it right beside them, under the winding clutch's unit label: four
+  // names in one column of the drawing. So the transfer wheel is named on its
+  // RIM, on the side facing away from the winding pinion (the hour wheel's
+  // `awayFrom` rule — away from the dial's axis is TOWARD the pinion here),
+  // which empties the column: the pinion and the crown wheel are each named
+  // centred on their own centres, one above the other.
+  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre' },
+  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre' },
+  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'rim', awayFrom: 'windingPinion' },
+  // The setting bevel stands on the setting wheel: one centre, so the pair
+  // splits above / below it, the motion works pinions' rule.
   settingWheel: { name: 'Setting wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
   settingBevel: { name: 'Setting bevel', train: 'Keyless works', anchor: 'centre', place: 'above' },
   minuteWheel: { name: 'Minute-wheel arbor', train: 'Keyless works', anchor: 'centre' },
@@ -39847,6 +39992,56 @@ const LABEL_ANCHOR = new Map();
       return out.copy(ya >= yb ? a : b);
     });
   }
+}
+// The keyless side has the same defect four times over, in two pairs. The
+// keyless works and the winding clutch are both born at the MOVEMENT origin
+// (each group sits at 0 and its metal is placed inside it), so their labels
+// printed on one spot that is neither unit's metal; and the setting lever's
+// and yoke's groups sit on their pivots, which stand close enough that the
+// two names overprinted under "Keyless & winding". The lever and yoke are
+// named at the centre of their OWN metal instead — the world bounds of their
+// real meshes, read live — and the clutch and the keyless works at a point
+// of their own metal chosen below. No offset is authored.
+{
+  const box = new THREE.Box3(), mb = new THREE.Box3();
+  const metalCentre = (unitObj) => {
+    const meshes = [];
+    unitObj.traverse((m) => { if (m.isMesh && !m.userData.schematic) meshes.push(m); });
+    if (!meshes.length) console.warn(`LABEL_ANCHOR: unit "${labelEntries.find((e) => e.obj === unitObj)?.name}" has no metal to centre its label on`);
+    return (out) => {
+      box.makeEmpty();
+      for (const m of meshes) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); box.union(mb.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld)); }
+      return box.isEmpty() ? unitObj.getWorldPosition(out) : box.getCenter(out);
+    };
+  };
+  for (const u of [settingLeverGroup, yokeGroup]) LABEL_ANCHOR.set(u, metalCentre(u));
+  // The clutch slides along the stem right beside the setting wheel, whose
+  // own name hangs at that end, so the clutch is named at the INBOARD end of
+  // its metal — away from the crown, against uWind — still on the part, one
+  // clutch-length clear of the setting wheel's slot. (The outboard end was
+  // tried and measured: the stem runs toward the setting wheel's name there.)
+  {
+    const clutchMeshes = [];
+    windClutchMount.traverse((m) => { if (m.isMesh && !m.userData.schematic) clutchMeshes.push(m); });
+    const corner = new THREE.Vector3(), centre = metalCentre(windClutchMount);
+    LABEL_ANCHOR.set(windClutchMount, (out) => {
+      centre(out);
+      let reach = Infinity;
+      for (const m of clutchMeshes) {
+        const bb = m.geometry.boundingBox;
+        for (let i = 0; i < 8; i++) {
+          corner.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(m.matrixWorld);
+          reach = Math.min(reach, (corner.x - out.x) * uWind.x + (corner.y - out.y) * uWind.y);
+        }
+      }
+      return Number.isFinite(reach) ? out.set(out.x + uWind.x * reach, out.y + uWind.y * reach, out.z) : out;
+    });
+  }
+  // The keyless works is the umbrella for both of the crown's paths, and its
+  // own pieces are named one by one in the part callouts — so the centre of
+  // its metal is the one spot already crowded with their names. The unit is
+  // named at its INPUT instead: the crown, out at the end of the stem.
+  LABEL_ANCHOR.set(keyless, metalCentre(crown));
 }
 
 // --- time-scale (log slider, 0.02..1, default 1 = real time) --------------
@@ -51851,6 +52046,7 @@ window.__clock = {
     straightRoots: GONG_MODE_BL.slice(),
   },
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec
+  get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
