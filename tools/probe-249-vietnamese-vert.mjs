@@ -36,7 +36,7 @@
 // one run — Vietnamese's two directions from a single mark each. The controls
 // are the same three, asked of Latvian's own letters.
 //
-// Usage: node tools/probe-249-vietnamese-vert.mjs [--script vi|lv]   (needs a Playwright Chromium)
+// Usage: node tools/probe-249-vietnamese-vert.mjs [--script vi|lv|hu]   (needs a Playwright Chromium)
 import { chromium } from 'playwright';
 
 const SCRIPT = process.argv.includes('--script') ? process.argv[process.argv.indexOf('--script') + 1] : 'vi';
@@ -92,6 +92,22 @@ const SCRIPTS = {
     lowerKeys: ['markLower', 'below', 'real'],
     faceRun: 'Č Š Ž Ķ Ņ zobratiņš ķēde',
     pairs: [['č', 'c'], ['š', 's'], ['ž', 'z'], ['ā', 'a'], ['ē', 'e'], ['ģ', 'g'], ['ķ', 'k'], ['ņ', 'n'], ['Č', 'C'], ['Ķ', 'K']],
+  },
+  // §216 — Hungarian: ONE mark above, never stacked and never below, but the
+  // double acute (ő ű Ő Ű) is the tallest single mark Latin carries, so the
+  // question is whether it inks past Latvian's caron over a capital.
+  hu: {
+    name: 'Hungarian acutes and double acutes',
+    samples: {
+      markLower: 'á é í ó ö ő ú ü ű',  // one mark above the x-height
+      markUpper: 'Á É Í Ó Ö Ő Ú Ü Ű',  // the same marks above the CAP height
+      below:     'gy ty ny ly gp',      // nothing below but the descenders
+      real:      'gátkerék · hajszálrugó · főrugó · kúpcsiga',
+      realUpper: 'SVÁJCI HORGONYJÁRAT · FŐRUGÓ · ŰRTARTALOM · BILLEGŐ',
+    },
+    lowerKeys: ['markLower', 'below', 'real'],
+    faceRun: 'Ő Ű Á É főrugó gátkerék',
+    pairs: [['á', 'a'], ['é', 'e'], ['ő', 'o'], ['ű', 'u'], ['ö', 'o'], ['Ő', 'O'], ['Ű', 'U'], ['Á', 'A'], ['É', 'E']],
   },
 };
 if (!SCRIPTS[SCRIPT]) { console.error(`unknown --script ${SCRIPT}: ${Object.keys(SCRIPTS).join(', ')}`); process.exit(2); }

@@ -245,7 +245,7 @@ if (known.length) console.log(`      (${known.length}x the known clear-focus tex
 // English. This is the View HUD, not one of the two fixed bars, so wrapping is
 // survivable — what is not is a row wider than the panel it sits in, which
 // clips the button that was just added on the end.
-for (const loc of ['en', 'de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'id', 'tr', 'cy', 'fil', 'lv', 'hi', 'ko', 'ru', 'ja', 'zh-Hant', 'zh', 'he', 'fa', 'ar']) {
+for (const loc of ['en', 'de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'id', 'tr', 'cy', 'fil', 'lv', 'hu', 'hi', 'ko', 'ru', 'ja', 'zh-Hant', 'zh', 'he', 'fa', 'ar']) {
   const lp = await browser.newPage();
   await lp.setViewportSize(VIEWPORT);
   await lp.goto(`${BASE}?lang=${loc}`, { waitUntil: 'load' });

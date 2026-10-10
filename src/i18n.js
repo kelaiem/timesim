@@ -200,6 +200,17 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // Latgalian reader is not served by a standard Latvian table any more than a
 // Fiji Hindi one is by Hindi's (§212's negative row). Latvian's toUpperCase
 // is the root mapping (ģ → Ģ, measured), so no case audit is owed.
+// §216 — HUNGARIAN. Measured in Chromium 141 and Node's ICU 77 alike: 'hu'
+// and 'hu-HU' are both CARRIED and format 30,0 · 0,024 · 1000 · 18 000 — a
+// decimal comma, a U+00A0 group, and four digits left bare: Russian's and
+// Latvian's convention exactly. Plural categories one/other. The matcher takes
+// 'hun' (ISO 639-2), which Intl canonicalizes to 'hu', and is anchored so
+// 'hup' (Hupa) and 'hur' (Halkomelem) do not reach it. Hungarian's
+// toUpperCase is the root mapping (ő → Ő, ű → Ű), so no case audit is owed.
+// The language is agglutinative: a case ending attaches to a quoted
+// identifier or a numeral with a HYPHEN, and the tables put it OUTSIDE the
+// span (`<code>X</code>-ban`), which is the orthography's own rule for a
+// quoted token and the one that keeps the explainer's <code> gate green.
 // §249 — PERSIAN, the second right-to-left row and the second DIGIT override.
 // Measured in Chromium 141 and Node's ICU alike: 'fa', 'fa-IR' and 'fa-AF' all
 // default to arabext (۳۰٫۰ · ۰٫۰۲۴ · ۱۸٬۰۰۰), and '-u-nu-latn' turns every one
@@ -230,6 +241,7 @@ export const LOCALES = [
   { code: 'cy', face: 'Cymraeg', tag: 'en-GB', match: (v) => /^(cy|cym|wel)(-|$)/.test(v) },
   { code: 'fil', face: 'Tagalog', tag: 'fil-PH', match: (v) => /^(fil|tl|tgl)(-|$)/.test(v) },
   { code: 'lv', face: 'Latviešu', tag: 'lv-LV', match: (v) => /^(lv|lav|lvs)(-|$)/.test(v) },
+  { code: 'hu', face: 'Magyar', tag: 'hu-HU', match: (v) => /^(hu|hun)(-|$)/.test(v) },
   { code: 'hi', face: 'हिन्दी', tag: 'hi-IN', match: (v) => /^hi(-|$)/.test(v) },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
@@ -302,6 +314,9 @@ for (const [input, want] of [
   // (Latgalian) and 'lvk' (Lavukaleve) are other languages.
   ['lv', 'lv'], ['lv-LV', 'lv'], ['lv_LV', 'lv'], ['lav', 'lv'], ['lvs', 'lv'],
   ['ltg', null], ['lvk', null],
+  // §216 — 'hun' is Hungarian; 'hup' (Hupa) and 'hur' (Halkomelem) are not.
+  ['hu', 'hu'], ['hu-HU', 'hu'], ['hu_HU', 'hu'], ['hun', 'hu'],
+  ['hup', null], ['hur', null],
   // §212 — the negative row is the decision: 'hif' (Fiji Hindi) is its own
   // language and gets English, not this table.
   ['hi', 'hi'], ['hi-IN', 'hi'], ['hi_IN', 'hi'], ['hif', null], ['hif-FJ', null],
@@ -10786,7 +10801,14 @@ const LV = {
 
 // §249 LV TABLE END
 
-export const TABLES = { de: DE, fr: FR, es: ES, ko: KO, ru: RU, pt: PT, it: IT, vi: VI, nl: NL, id: ID, tr: TR, cy: CY, fil: FIL, lv: LV, hi: HI, ja: JA, zh: ZH, 'zh-Hant': ZH_HANT, he: HE, fa: FA, ar: AR };
+// §216 HU TABLE START
+// §216 — HUNGARIAN. Placeholder while the table is translated: an empty
+// table falls back to English visibly, which is the tier's contract.
+const HU = {
+};
+// §216 HU TABLE END
+
+export const TABLES = { de: DE, fr: FR, es: ES, ko: KO, ru: RU, pt: PT, it: IT, vi: VI, nl: NL, id: ID, tr: TR, cy: CY, fil: FIL, lv: LV, hu: HU, hi: HI, ja: JA, zh: ZH, 'zh-Hant': ZH_HANT, he: HE, fa: FA, ar: AR };
 const TABLE = TABLES[UI_LANG] || null;
 
 // Translate one English source string. English (or a missing entry) returns
