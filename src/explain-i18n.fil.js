@@ -247,7 +247,7 @@ export default {
   ['+12°']: '+12°',
   ['0°']: '0°',
   ['−1° recoil dip']: '−1° recoil dip',
-  ['0.16']: '0.16',
+  ['0.080']: '0.080',
   ['escape wheel Δ (escapeDeltaDeg)']: 'gulong Δ (escapeDeltaDeg)',
   ['fork swing, bank → bank (forkSwingRad, normalised)']: 'fork, pigil → pigil (forkSwingRad, normalisado)',
   ['beat phase p']: 'p ng tibok',
