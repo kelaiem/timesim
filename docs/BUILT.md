@@ -31351,6 +31351,123 @@ buttons sharing a row. Measured after: 22% covered at 390 × 844, 25% at
 360 × 740, 32% at 260 × 563 (a 390 px phone at about 150% zoom), 19% at
 desktop width. No page scrolls sideways, in German or in Arabic.
 
+### Tagalog — a language the browser carries, a glossary that keeps the trade's English, and a stem that is also the word for "begin"
+
+Tagalog (Filipino, `fil`) is the twenty-first locale. The chrome (485 keys),
+`explain.html` (771/771) and `primer.html` (145/145) read Tagalog at 100%.
+
+**The browser carries it, so the row borrows nothing.** Measured in Chromium
+141 in contexts launched as en-US, fr-FR and de-DE, and in Node's ICU 78:
+`Intl.NumberFormat.supportedLocalesOf` answers for `fil`, `fil-PH`, `tl`,
+`tl-PH` and `tgl`, and canonicalizes the last three to `fil`. It formats
+`30.0 · 0.024 · 18,000` on latn with one/other plurals, which are English's
+marks, so `MARKS.fil` is English's row and the row's tag is its own `fil-PH`.
+Welsh needed a borrowed tag; this does not, and the boot assert that holds
+every row's tag to "this browser carries it" passes without a word of
+commentary. The code is `fil`, the form Intl itself returns. The matcher takes
+`tl` (ISO 639-1, what Firefox reports) and `tgl` (ISO 639-3) as well, and is
+anchored: `fi` and `fi-FI` are Finnish, `tlh` is Klingon, `tli` is Tlingit and
+`fit` is Tornedalen Finnish, so the ladder asserts all five land on English.
+The row's face says "Tagalog", which is what a reader looks for in a list.
+
+**The glossary keeps the trade's English.** A Filipino reader of a
+mechanical-watch explainer meets *escapement*, *balance*, *pallet fork*,
+*hairspring*, *mainspring*, *fusee* and *torque* in English only, and a coined
+*gulong ng pagtakas* for the escape wheel reads as parody. So the loans stay in
+English spelling and the generic nouns are native: *gulong*, *ngipin*, *pingga*,
+*kadena*, *martilyo*, *kamay ng orasan* for the clock hands, *makina ng relo*.
+Commands are the bare imperative with the object-focus native verb where one
+exists (*Kopyahin*, *Burahin*, *Ilapat*) and `i-` plus the English stem
+otherwise (*I-wind*, *I-sync*, *I-pause*). A borrowed stem takes a separate
+linker *na* and never a fused *-ng*. The seams the earlier landings predicted
+were fixed in the glossary beforehand: ribbon is *laso*, ledger *talaan*,
+cadence *ritmo*, shipped *inilabas*, lug *tainga*, hand-off *abutan*.
+
+**The honesty pair is `modelado` / `simulado`, and the matcher had two traps.**
+Both are Spanish-derived participles, which makes the contrast read as one
+parallel pair, anchored on *inilalarawan* (is described) for the first and
+*PINAGAGALAW* (is driven) for the second. `HONESTY.fil` is
+`m: /modelad|\b(?:imodelo|…|iminodelo|nagmomodelo|pagmomodelo)|\b(?:i|ini|nag|nagmo|mag|magmo|pag|pagmo)-model/i`
+and `s: /imulasi?yon|simulad/i`.
+- **The bare noun `modelo` and its linker form `modelong` never count.** The
+  credit line's "AI model" is *ang AI model ng Anthropic*, and every plain "a
+  model" uses them. The verb forms are accepted only so that the two English
+  uses of "models" as a verb are not forced into a paraphrase.
+- **The stem `simula` is not the simulation stem.** In Filipino it is the
+  everyday word for "begin" (*nagsimula*, *sinimulan*), so a bare-stem matcher
+  would call every "starts" a simulation. `s` takes *simulasyon* and *simulado*
+  only, and the English leftovers *simulated* and *simulation* do not match
+  either, so an untranslated word cannot pass.
+
+The row is held to the page's own glossary entry: the control reads PASS
+(`modelado / simulado`), 20/20 `HONESTY` rows verified.
+
+**How the tables were made.** One agent built the glossary (about 610 rows, 28
+pre-resolved seams), a translator brief with seven worked examples taken from
+real ids, and the honesty matchers with 46 test strings. Sixteen translators
+then worked in numbered chunks of about 17 KB of English each, every chunk
+returning `{id: string}`. The assembler wrote every key from the extractor's
+own literal, so no key was typed by anyone, and a validator mirroring the page
+gate ran on each chunk: ids, markup, `<code>` spans, number glyphs (explainer)
+or parsed values (primer), the honesty words, and label length.
+- **Counts.** 485 chrome keys, identical to every other table's; 728 explainer
+  blocks, which is eleven more than Welsh's table carries (eleven blocks have
+  been added or rewritten since it landed); 135 primer blocks.
+- **Two chunks died on the monthly spend limit** (7 and 8, mid-run) and were
+  relaunched after it reset. Each had already written its output, so the
+  relaunch validated 100 and 43 ids at 0 problems without redoing them.
+- **The validator's findings that are not defects.** Chunk 04's eleven "label
+  long" flags are glossary rows copied verbatim (vocabulary headings, term
+  cells, hidden variant rows), which the brief says to do and which are not plate
+  labels. Chrome string c436 ("… no models") flags a dropped honesty word
+  because the validator's English matcher takes the plural noun, which here
+  means model files; the translation is correctly *modelo*, and the repo's gate
+  reads only the two page tables, never the chrome.
+- **One sentence spans three SVG text nodes** (e305 to e307, a caption wrapped
+  by hand), so each fragment is its own key. The three Tagalog fragments read as
+  one sentence in order.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **771/771**, primer **145/145**; 0 unmatched, 0 markup / `<code>` / number drift, 0 crossed honesty terms, block coverage 0 short blocks against Tagalog's median ratio 1.23 (explainer) and 1.24 (primer); honesty control PASS, 20/20 rows verified; prose-number control 40/40. **The first run failed only on plate fit**: eight labels ran wider than their plates (1 explainer caption and 7 primer labels; «gulong ng escapement» for the escape wheel was 20 against 12). Each is now shorter: seven are within one character of the English and the longest, a primer caption, is ten over (87 against 77). The second run reads **0 new overflow or collision** on both pages |
+| `probe-chrome-coverage` | control PASS; Tagalog **0 missing, 0 not applied**, 30 cognates on the page at boot (34 entries in the table map to themselves: On, Off, Menu, Escapement, Balance, Hairspring, Pallet fork …), 74 never-translated |
+| `probe-116-locale-fit` | every header **56 px, one line**, both pages, all eight widths; chrome bar **194.8** on «Menu / Tanaw / Mga kontrol» (English 170.2; between Welsh's 185.0 and Dutch's 204.4); longest HUD label «Tumutunog sa» **63.6** against the 150 px box (under Indonesian's 66.2); no panel overflow in either locale measured — run on English and Tagalog only |
+| `glossary-links` | PASS in all 21 locales; Tagalog links **99** words (English 91) and the injection adds no text |
+| `explain-quotes` | PASS, primer quotes 0 identifiers |
+| `l10n-review-packets` | PASS, 20 locale packets; Tagalog 239 rows, 3 questions |
+| `offline-check` | **45/45**; precache 65/65 (63 + the two Tagalog tables); a Tagalog boot from cache |
+| `index-instruments --check`, `check-item-numbers` | OK |
+
+### Residue, recorded
+
+- **No native review.** The terms a workshop is most likely to dispute, which
+  are the review packet's three Start-here questions:
+  - **`modelado` / `simulado`.** Are Spanish participles natural enough in
+    Filipino technical prose, or would readers prefer `naka-model` and
+    `i-simulate`? A different answer changes the matcher, not just the words.
+  - **The mixed part-name register.** *Gulong ng escapement* and *Tambol ng
+    mainspring* stand beside bare English *Pallet fork*, *Balance* and
+    *Hairspring*. Would a workshop keep the English compound throughout? And
+    *governor*, which sits beside the everyday *gobernador*.
+  - **Four native words stand for the project's own abstract terms:** *hagis*
+    (throw), *abutan* (hand-off), *tali* (chord), *puwesto* (station).
+- **The glossary linker's senses were not read in context.** Its refused-word
+  tables are keyed by the English term, so Tagalog inherits them, but whether
+  *hagis*, *abutan*, *puwesto* or *patong* link in their intended sense in the
+  prose has not been read word by word, as Welsh's were. The links are 99 in
+  count and add no text; "a link is a claim" is not yet checked for them.
+- **Thirty-four chrome strings are English loans kept as written**, which is a
+  larger share than any other locale (30 on screen at boot; the next highest is Dutch's 11). That is the
+  register decision made visible, and it is the first thing a native reader
+  will weigh.
+- **Plate labels are tight.** Some read as the English loan because the native
+  word does not fit (`escape wheel`, `great wheel · 120 ngipin`), and a few
+  dropped a qualifier to fit. The translators listed each in their notes.
+- **The battery** is CI's, on the self-hosted runner, and is recorded in the PR
+  rather than here.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
@@ -32535,9 +32652,91 @@ from t=0, while the battery sweeps.
   same argument. They are measurement-only, and §260 already spreads them, but
   at 584 s they were not worth a second sibling in this landing.
 
+## §265 — The push's spec boots join the parallel tier job
+
+**Why.** §264 left this one named: the spec boots are the next tier that does
+not need the shards, and they were left out only because 584 s did not seem to
+justify a second sibling. The better reading was already in §264's own
+argument. A spec boot is one virgin build of one declared point, measurement
+only, and §260 had already spread the tier across matrix workers, which is the
+proof that no spec row reads another's. Putting it in the same job as the point
+tier costs no second runner, no second artifact and no second fetcher. The job
+is already there with its browser installed, and it measures both tiers
+back to back.
+
+**What was built.**
+- **One job, one file.** §264's `battery points` job is now `battery tiers`,
+  and `--points-only --points-tier-out` / `--points-tier-from` /
+  `--points-tier-wait-s` are `--tiers-only --tiers-out` / `--tiers-from` /
+  `--tiers-wait-s`. The file carries both tiers. The route's `points_job`,
+  `points_cap_min` and `points_cap_s` are `tiers_job`, `tiers_cap_min` and
+  `tiers_cap_s`, and the fetcher is `tools/battery-tiers-fetch.sh`. A
+  half-renamed hand-off would be a producer and a consumer disagreeing about a
+  flag, so the rename is the landing's own diff and not a follow-up.
+- **Each tier proves itself on its own terms.** The file as a whole must be the
+  same format and the same git tree. Then the spec tier must have exactly one
+  row per declared `SPEC_POINTS` row, in declared order, because the assembly's
+  gates read them by that order. The point tier keeps §264's rules: the same
+  point code, whole, every point full. A tier that fails its test is run HERE
+  and the log says which check refused it, so one stale half does not throw
+  away the other.
+- **The flags still refuse.** `--tiers-only` takes no `--matrix`,
+  `--collect`, `--only`, `--spec-only` or PR flags. `--tiers-from` is the single
+  process's feed and is refused beside the same four.
+- **The cap, 55 min.** It is §264's rule, re-derived with the new load: the
+  point tier measured 21.6 min alone, the spec boots add about 584 s, and the
+  job's setup is about a minute. Times the 1.66× same-tree spread
+  `battery.yml` uses for every cap, that is 52.0, rounded up to 55. It is
+  defined once, in the route, and the battery's wait reads the same number.
+- **What does not change.** Judging stays in the battery's one assembly.
+  Pushes and hosted dispatches only; a PR, a host dispatch and the nightly run
+  both tiers where they always did.
+
+**Measured.** Dispatch on the branch, run 37973612229, hosted (a branch
+dispatch has no baseline, so the run is whole). From the jobs API's step
+times:
+- `battery tiers`: 37.9 min (18:29:27–19:07:24). Its measuring step took
+  37.3 min and the hand-off step ended at 19:07:21.
+- `battery`: **40.1 min** (18:29:26–19:09:31), its harness step 37.9 min.
+  §264's run was 63.1 min, and the last push before §264 was 89.
+- The battery's harness step ended 24 s after the tiers job handed over its
+  file. On this run that looked like a battery waiting on its sibling, and
+  this entry first read it that way. **The first push to `main` after the
+  landing showed it was runner variance, not the structure** (below).
+- **What I could not read.** The job log is served from a host this session's
+  `gh` does not contact, so the `spec tier: taken from` and `point tier: taken
+  from` lines were not read here. The wall above is the evidence that both
+  tiers were taken and not re-run in-process (36 boots and six sweeps in-process
+  would add the 584 s and 1541 s back). The log lines are still unread.
+
+**The first push to `main` after the landing** (merge `54300bc`, hosted):
+- `battery`: **51.4 min** (22:24:13–23:15:36), its harness step 47.8 min.
+- `battery tiers`: **19.8 min** (22:24:12–22:43:58), handed over at 22:43:56.
+  The same job took 37.9 min on the dispatch above. That is 1.9 times the
+  time for the same work, which is what runner variance looks like, and it is
+  why the dispatch could not say which job was the critical path.
+- So the shards are the critical path: the tiers were ready some 28 minutes
+  before the harness step ended. The push went 89 → 63 (§264) → 51 minutes.
+
+**What it leaves.**
+- **The critical path is the shards again, at about 48 min.** The tiers job
+  runs 20 to 38 min depending on the runner, and either way it finishes first
+  or close to it. Cutting the push further means cutting the shards, so
+  splitting the tiers job would buy nothing on a typical run. §259's matrix
+  already spreads the shards across two runners, and that is where the
+  remaining time is.
+- **The caps.** Push 150 and PR 125 stay until several runs have measured
+  the new wall, by the caps' own rule.
+
 ---
 
-## §263 — Push battery split across the matrix: the collector writes the whole baseline, the point tier leaves the push's critical path
+## §263 — A split battery run writes the whole baseline: the collector's digests, one seeding rule, and the split as a hosted dispatch's opt-in
+
+**As landed, the push is NOT split.** This entry was built and measured to
+split the push. §264 and §265 landed while it was measuring and took the same
+tiers off the push's critical path with a parallel job instead (the decision is
+at the end of this entry). What shipped is everything that lets a split run be
+a baseline, and the split itself as a hosted dispatch's `split: true`.
 
 The push to `main` is the run that writes §152's hosted baseline, and by
 2026-10-09 it was one serial job of ~89 min on `ubuntu-latest`. Run
@@ -32588,18 +32787,19 @@ the move:
   `platform-worker-<i>.txt` beside its tasks file, and the collector checks
   them rather than trusting the route.
 
-**Which runs split.** The route splits a run when it is hosted and may seed:
+**Which runs split**, as landed:
 
 | event | shape |
 |---|---|
-| push | always split |
-| hosted dispatch | split, unless the new `single: true` input asks for the single-process reference |
+| push | single process, with §265's parallel `battery tiers` job |
+| hosted dispatch | single process with the tiers job; split when its `split: true` input asks |
 | nightly, self-hosted dispatch | single process (the collector is hosted and would seed under the wrong key) |
 | pull request | unchanged: split only on `battery-matrix` / `[matrix]` |
 
-The single-process harness path is untouched: no line of the browser path or
-of `assemble` changed. It still runs on every PR that does not opt in, and on
-demand through `single: true`.
+While it was measuring, the branch made the split the push's default, with an
+opt-out input (`single`). The runs below were taken that way. The single-process
+harness path is untouched: no line of the browser path or of `assemble`
+changed.
 
 **Every gate still runs on a push.** The collector runs `assemble`, the same
 gate loop in the same order, plus `every expected shard was collected`:
@@ -32667,29 +32867,40 @@ times the spread, rounded up. The first three runs, none truncated by the 150,
 gave a slowest LEG of 51.4 min. The legs' own 1.77x spread is wider than the
 header's 1.66x, so it is the one applied: 51.4 × 1.77 = 91.0, rounded up to
 **95** for a split leg. The fourth run measured under 95 and finished at 45.3,
-well inside it. The single process keeps 150: a `single: true` dispatch and the
-nightly still carry the whole battery on one runner, which today's reference
-run measured at 87.4. The PR's 125 is untouched.
+well inside it. Every single process keeps 150, the push included: §264 and
+§265 left that cap for several of their own runs to move. The PR's 125 is
+untouched.
 
-**How it composes with §264, which landed while these runs were measuring.**
-§264 took the same tier off the same critical path the other way round: a
-sibling `battery points` job measures it from t=0 and hands the file to the
-single process, which judged all six points CLEAN in a 63.1-min job. The two
-are not stacked. A split run already spreads the tier across its legs, and
-§264's consumer is the single process's (its flags refuse `--matrix`). So the
-route sets `points_job` only when the run is NOT split:
+**How it composes with §264 and §265, and why the push is not split.** Both
+landed while these runs were measuring, and they took the same tiers off the
+push's critical path the other way round. A sibling job (`battery tiers` since
+§265) measures the spec boots and the point tier from t=0 and hands the file to
+the single process. §265's dispatch measured 40.1 min, and the first push after
+it 51.4. The two designs do not stack: a split run already spreads both tiers
+across its legs, and the hand-off's consumer is the single process's (its flags
+refuse `--matrix`). So the route sets `tiers_job` only when the run is not
+split. Which one a push takes was the owner's call, and the push stays §265's:
 
-- a push and a default hosted dispatch split (§263, measured 29.6–51.9 min);
-- a hosted `single: true` dispatch keeps the single process with §264's
-  sibling, which is also how that hand-off stays exercised.
+- **Speed is a wash.** The split measured a mean of 43.1 over four runs, and
+  §265 measured 40.1 and 51.4. Within both, the runner a leg lands on is the
+  larger term (1.77x across these runs).
+- **§265 fails soft, the split fails hard.** A dead or slow tiers job costs
+  §265 a sweep it then runs itself, and the push still writes its baseline. A
+  dead leg fails a whole split, and a push that fails writes no baseline, which
+  is the quiet failure PR #608 raised the cap to stop.
+- **§265 was on `main`, and its own first push was the next measurement.** The
+  split stays one input away, so the two are compared on the same tree on
+  demand rather than argued.
 
 **Not built.**
 
-- **The sibling under a split.** Handing each leg the tier from §264's
-  sibling would leave a leg its half of the shards, its spec boots and its
-  anchors, about 30 min on a middle runner, against ~45 now. That needs the
-  hand-off's consumer to run under `--matrix` and the collector to accept a
-  tier from a third file. It is harness work this landing did not take.
+- **The tiers job under a split.** §265's addendum names the shards as the
+  push's critical path. A split halves exactly that, and the tiers job could
+  then take both tiers off each leg, leaving a leg its half of the shards and
+  its anchors: about 25–30 min on a middle runner. That needs the hand-off's
+  consumer to run under `--matrix` and the collector to accept the tiers from a
+  third file. It is harness work this landing did not take, and the
+  combination is the one shape neither design measured.
 - **A third worker.** `pointOwners(3)` would put about two points on each
   worker. That is a worker-count change in four places: the route's `workers`,
   the legs' `--matrix i/2`, the collector's file list, and the probe owner. The

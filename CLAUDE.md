@@ -846,9 +846,10 @@ or `[matrix]` in the title): the battery job becomes a matrix of two legs
 `battery-collect` job named `battery` gates. With no opt-in the worker list is
 `[0]` and the job is the single process, unchanged. A host with fewer than two
 IDLE runners refuses the split rather than running two workers in series.
-**Since §263 every hosted run that may seed a baseline splits by default**:
-every push, and a dispatch unless its `single` input asks for the
-single-process reference. `--collect --digests FILE` writes the key worker 0's
+**Since §263 a split run may SEED a baseline too**, so a hosted dispatch can ask
+for one (`split: true`); a push stays the single process with §265's tiers job
+beside it, which falls back to sweeping the tiers itself if its sibling dies,
+where a dead leg fails a whole split. `--collect --digests FILE` writes the key worker 0's
 §152 preflight read (the object one process writes, carried in its tasks file,
 and refused when no worker read one), so the collector has the whole baseline,
 report + digests + `points.json`. It seeds it through `tools/battery-seed.sh`,
@@ -915,11 +916,11 @@ run that writes the hosted baseline, and three in a row were cancelled at 50
 inside their last sweep, which left the tree with no baseline at all. It was
 90 until green pushes reached 89 min and five of the last nine were killed at the cap.
 150 is the slowest green run times the 1.66x same-tree spread `battery.yml`
-measured, because the tail past a cap cannot be read. **Since §263 a push is
-split, and a split leg's cap is 95**: three green split runs walled 29.6–51.9
-min against the single process's 89. 95 is the slowest leg (51.4 min) times the
-1.77x spread those legs showed across runners. 150 stays for the single process
-(a `single: true` dispatch, the nightly). The PR's was 60, "the old
+measured, because the tail past a cap cannot be read. **Since §263 a split
+leg's cap is 95** (a `split: true` dispatch): three green split runs walled
+29.6–51.9 min, and 95 is the slowest leg (51.4 min) times the 1.77x spread those
+legs showed across runners. 150 stays for every single process, the push
+included. The PR's was 60, "the old
 cap plus the point ceiling", until a WHOLE PR run, which is any PR after a
 killed push or touching the check code, measured 73.8 min. 125 is that times
 the same spread. Every uncertainty — no cache hit, an
@@ -937,16 +938,17 @@ key is the default's) gets `inspection`, `clearances` and
 changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
-report. **Since §264 a hosted single process's tier is MEASURED on a
-parallel `battery points` job** (`--points-only`) and handed to the battery
-(`--points-tier-from`, fetched in the background by
-`tools/battery-points-fetch.sh`), which judges it in its one assembly. A file
-that does not prove itself (same tree, same point code, whole, every point
-full), a dead sibling or a fetcher that gave up runs the tier in-process and
-says why, so the worst case is the run as it was. Measured, it took the push
-from 89 to 63 min. Since §263 a push (and a hosted dispatch, unless `single:
-true`) is SPLIT instead, which spreads the tier across its two workers, so the
-sibling serves the hosted single process only. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
+parallel `battery tiers` job, and since §265 its 36 spec boots with it**
+(`--tiers-only`). Both are handed to the battery (`--tiers-from`, fetched in
+the background by `tools/battery-tiers-fetch.sh`), which judges them in its
+one assembly. Each tier proves itself or runs in-process and says why. Both
+need the same tree. The spec tier needs one row per declared point, in order.
+The point tier needs the same point code, whole, every point full. A dead
+sibling or a fetcher that gave up runs both here, so the worst case is the run
+as it was. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
+which spreads both tiers across its two workers, so the tiers job runs only on
+an unsplit run. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,
