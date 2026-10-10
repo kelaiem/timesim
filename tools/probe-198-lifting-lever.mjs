@@ -86,8 +86,18 @@ const out = await page.evaluate(async () => {
   clock.setPose({ ...base, alarmStrikePhase: 3 + 0.38 }); clock.scene.updateMatrixWorld(true);   // the hammer at rest: the face's declared station
   const faceLocal = hamPivot.worldToLocal(faceRest.clone().setZ(hamPivot.getWorldPosition(new THREE.Vector3()).z));
   const centre = () => { clock.scene.updateMatrixWorld(true); return hamPivot.localToWorld(faceLocal.clone()); };
-  clock.setPose({ ...base, alarmStrikePhase: 3 + 0.10 }); const c0 = centre();
-  clock.setPose({ ...base, alarmStrikePhase: 3 + 0.12 }); const c1 = centre();
+  // §268 — the blow is the FALL, and the fall is √(k/I) now: 1.5 ms of a
+  // 0.36 s cycle, not §25's 53 ms third of the free window. The pivot stands
+  // on the tangent at the FACE, so the head's path is radial exactly where
+  // the hammer passes its rest angle (θ = 0, at t = π/2W under the cos law);
+  // the two samples straddle that instant symmetrically, a tenth of the fall
+  // either side, read off the acoustics record and the governed gap at this
+  // wind. The literals 0.10/0.12 that stood here straddled θ = 0 under the old
+  // law and would read the posed rebound under this one.
+  const gapHere = clock.equalisation.alarm.cadence.gapFull_s;
+  const tMid = Math.PI / 2 / A.spring.W_rad_s, dt = 0.1 * A.hammer.fall_s;
+  clock.setPose({ ...base, alarmStrikePhase: 3 + (tMid - dt) / gapHere }); const c0 = centre();
+  clock.setPose({ ...base, alarmStrikePhase: 3 + (tMid + dt) / gapHere }); const c1 = centre();
   const v = { x: c1.x - c0.x, y: c1.y - c0.y };
   const az = Math.atan2(c0.y, c0.x), rad = { x: Math.cos(az), y: Math.sin(az) };
   const vLen = Math.hypot(v.x, v.y);
@@ -105,7 +115,7 @@ const out = await page.evaluate(async () => {
   const walls = { rIn: A.band.annulusIn_u, rOut: A.band.annulusOut_u, top: A.band.ceiling };
   const env = { rMin: Infinity, rMax: 0, zMax: -Infinity, zMin: Infinity, ringTop: -Infinity, outside: [] };
   const vv = new THREE.Vector3();
-  for (const name of ['alarmGongArc', 'alarmGongPost', 'alarmHammerHead', 'alarmHammerArm', 'alarmHammerPost', 'alarmHammerSpringStud']) {
+  for (const name of ['alarmGongArc', 'alarmGongPost', 'alarmHammerHead', 'alarmHammerArm', 'alarmHammerPost', 'alarmHammerStud', 'alarmHammerSpiral', 'alarmHammerCollet']) {   // §268: the spiral, its collet and its stud replaced the blade's stud
     const o = mesh(name); const p = o.geometry.attributes.position;
     let worst = 0;
     for (let i = 0; i < p.count; i++) {
@@ -138,7 +148,14 @@ console.log('   u     hammer   lever   tip⇄tail  cam⇄nose');
 for (const c of cycle) console.log(`  ${c.u.toFixed(3)}  ${c.hammer.toFixed(4).padStart(7)}  ${c.lever.toFixed(4).padStart(7)}   ${c.tipTail.toFixed(4)}    ${c.camNose.toFixed(4)}`);
 const tipWorst = Math.max(...cycle.map((c) => c.tipTail));
 say(tipWorst <= TOL, `tip on tail at every phase — worst gap ${tipWorst.toFixed(4)} (tol ${TOL})`);
-const rise = cycle.filter((c) => c.u > 0.42 && c.u < 0.97), fall = cycle.filter((c) => c.u > 0.02 && c.u < 0.36);
+// The freedom claim ends where the APPROACH begins: the ramp over the last
+// ALARM_CAM_APPROACH_FRAC (0.06) of the pitch before the 0.38 pickup is cut to
+// close on the RESTING nose, so the gap there shrinks to zero by design. §198's
+// window reached 0.36 and passed only because §25's posed rebound happened to
+// hold the hammer 0.016 rad up through the approach; §268's √(k/I) fall has
+// the hammer at rest there, and the ramp reads 0.136 at u 0.338 — the cam
+// doing what it was cut to do, not the nose fouling it.
+const rise = cycle.filter((c) => c.u > 0.42 && c.u < 0.97), fall = cycle.filter((c) => c.u > 0.02 && c.u < 0.32);
 const riseWorst = Math.max(...rise.map((c) => c.camNose)), fallBest = Math.min(...fall.map((c) => c.camNose));
 say(riseWorst <= TOL, `nose on the flank through the rise — worst gap ${riseWorst.toFixed(4)} over ${rise.length} phases`);
 say(fallBest >= 0.15, `nose free of the cam through fall and rebound — least gap ${fallBest.toFixed(4)} (≥ CLEAR_MARGIN)`);
