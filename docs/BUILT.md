@@ -32710,3 +32710,138 @@ times:
   claim.
 - **The caps.** Push 150 and PR 125 stay until several runs have measured
   the new wall, by the caps' own rule.
+
+## §266 — The hammer spring is a spring: a torsion spiral on the hammer's post, the fall √(k/I)
+
+TODO 128, closed. §48 drew the hammer's spring as a blade grounded to a stud
+on the rim and bearing on the tail at 45% of its length; TODO 128 measured
+what the drawing did: redrawn every frame from the fixed anchor to a bearing
+point that moved, it CHANGED LENGTH by 36% of itself over the draw, so no
+rate could be read off it in either direction, and `ALARM_HAMMER_W` stayed a
+number solved from a CHOSEN fall time — a third of the cam's free window —
+with the blow's energy following from it: 16.99 nJ, where a spring working
+to its own yield gives twenty microjoules. §197 published that gap as
+`__clock.acoustics.spring` (k implied 1.9e−7, a 48 u blade) so this landing
+could measure its own progress.
+
+**The part.** A spiral torsion spring coaxial with the hammer's post —
+the construction a pivoted hammer actually uses — in three pieces, each the
+spring's anatomy and nothing else (TODO 194's follower return is the
+pattern, read the other way round: there the collet was fixed and the riser
+rode the arm; here the hammer turns ON a fixed post, so the collet is the
+hammer's boss and the stud stands from the plate):
+
+- the COLLET, `alarmHammerCollet`, on the hammer's pivot group: a sleeve bored
+  the running fit over the post (`PIVOT_BORE_CLEAR`, the wall `PIVOT_MIN_U`),
+  from the spiral band's floor up into the arm's root — the bearing the arm
+  and the tail had been "riveted to" with no mesh behind the word. Its top
+  rim is asserted inside the arm's cylinder, so the rotor is one body. The
+  spiral's INNER end is clamped in it, sunk `ALARM_SEAT_SINK`, and turns with
+  the hammer — the elastica's own convention (geometry.js `spiralElastica`
+  turns the inner clamp with the outer held).
+- the SPIRAL, `alarmHammerSpiral`: the clamped–clamped elastica of one length
+  of steel at every hammer angle, frame-swapped on
+  `alarmHammerPivot.rotation.z` as the hairspring and the ribbons are
+  (MODELING rule 6), `OWN_GLYPH`'s `spiral` word for the line drawing, 21
+  frames spaced so the collet's clamp moves at most `ALARM_SEAT_SINK` along
+  the strip between two.
+- the STUD, `alarmHammerStud`, planted `GONG_RIM_PLANT` in the rim beside the
+  post, tangent to the annulus's circle through the post on the side away
+  from the arm, the spiral's OUTER end against it, sunk `ALARM_SEAT_SINK`.
+
+**The line spec (rule 1), every number from its constraint.**
+
+| | derivation | value |
+|---|---|---|
+| k | the alarm train must draw the hammer at its WEAKEST, the barrel at set-up. The lift's torque at the strike arbor peaks on the rise where θ·dθ/dφ does (0.990 of DRAW²/(RISE·pitch) under the smoothstep law, read off the elastica over 48 samples of the rise) and is held to `ALARM_HSPIRAL_LIFT_SHARE` 0.9 of the arbor's torque at set-up (`alarmMomentAt(0)`·0.9/4 = 5.20e−5 N·m) — the 0.9 build-to margin every ceiling here uses | peak 4.68e−5 N·m on a 4.68e−5 budget; k 6.318e−4 N·m/rad (energy rate), 6.334e−4 secant to the draw, 5.955e−4 pure moment |
+| wind | the hammer's whole law: 0 at rest (free — a preload would move the §25 pickup radius), +DRAW at release, −AMP at the wire | [−0.09, +0.27] rad |
+| ε | strain at +DRAW = 0.9·`SPRING_SIGMA_Y_PA`/E (the follower's rule): as short as the steel allows, all of it spent on the swing | 3.600e−3, on the target to 1e−9 |
+| b, t | the strip stands the tail's height (`ALARM_TAIL_T`, the bar the tail is cut from); t from k = E·b·t³/(12L) with L = t·DRAW/(2ε) under a pure moment, then iterated on the elastica (the clamps make the strain non-uniform) until the elastica's own torque lands b on the tail's height | b 0.5 u exactly; t **0.1003 mm** (inside real flat-spring stock, above `SPRING_FLAT_U`'s 0.05) |
+| coils | the most that keep every coil one `PIVOT_BORE_CLEAR` off its neighbour and the later coils off the collet over the whole wind, searched down from the pure-moment pitch bound; a count whose tightest pitch already under-strains the strip is refused | 1.75 turns, r 0.947–1.619 u, 14.12 u (5.35 mm) developed; face gap 0.103, collet gap 0.357 |
+| sense | the draw DILATES the coils (the hairspring's note: tightening crowds the inner coil onto the collet); the frame's handedness follows `ALARM_HAM_LIFT_SIGN`, so +DRAW in the law is +θ on the solver whichever way the group turns | mirrored (the group turns clockwise under a positive draw) |
+| z | the band on the plate: floor one `CLEAR_MARGIN` + the measured band over the rim's back face (TODO 173's rule), so the stud is a short pin rather than a cantilever up to the arm | 0.150–0.650 u |
+| the stud | the larger of the 10-gon stock floor, 0.9-yield bending and a deflection under the spring's full couple below `ALARM_SEAT_SINK` (the seat); the floor governs | r 0.1665 u, ρ 1.898 u from the post, 0.238 N |
+| the fall | W = √(k_fall/I), k_fall the ENERGY rate between the two winds — so the cos law releases exactly what the elastica stores between the draw and the wire — over the rotor's measured inertia, collet included | W **1246.3 rad/s**, I 4.067e−10 kg·m², the wire met in **1.533 ms** (was 53.2 ms); the blow **20.47 µJ** (was 16.99 nJ), θ̇ 317 rad/s, 0.878 m/s at the face |
+
+**What it did to the gong and the governor.** `GONG_ACOUSTICS` reads
+**52.79 dBA** at 0.3 m on axis (was 23.24): the second partial at 11.4 kHz
+radiates 130 nW (was 0.14), μ 1.19 and η 0.80 unchanged (the match is the
+head's, not the blow's), the Hertz contact 10.4 → 5.1 µs. The governor pays
+for it: `alarmGovTorqueAt` is `(M(w)·η/ALARM_STRIKE_RATIO − liftSpend)·η/
+ALARM_GOV_RATIO` now — the lift's work per strike U(DRAW)−U(0) = 23.0 µJ over
+one lobe pitch, 1.46e−5 N·m, taken at the strike arbor between the two
+meshes (`ALARM_GOV_MESH_EFF_PER` = 0.9 each, where §104 had the square), the
+governor being a flywheel that sees the lift's MEAN while the peak is the
+stall bound held at the spiral's build. The §104 I_a solve re-poises the
+anchor on the net: I_a 4.06e−10 → 2.78e−10 kg·m², the brass ring's section
+0.789 mm (in its 0.2–0.8 stock), and the cadence endpoints move
+0.374/0.488 → **0.3645/0.5122 s** (full/empty), the ring 11.93 s. The
+`equalisation` gate's own law recomputation carries the spend (the record
+publishes it with the two ratios and the per-mesh efficiency; a record
+without them fails loudly, ρ's rule), and the measured endpoints agree with
+it to the gate's 0.5%.
+
+**The cam did not have to move, and that was measured before believing it.**
+A 1.5 ms fall against a drop ramp cut over 0.06 of a lobe pitch (25 ms at
+the design cadence) looked like the nose falling into the flank it had just
+climbed. Read on the cut outline (`alarmCam.userData.profile.poly`, the nose
+tip in the wheel's frame at 21 phases), the nose's own azimuth about the
+wheel's centre drifts 15.8° WITH the wheel's turn as the hammer falls — a
+property of the lever's arc, not of time — so the nose is past the lobe tip
+and over the ramp at every fall angle, and the ramp falls 3.8× faster along
+the nose's path than the nose does (0.344 u/° against 0.091). At any fall
+speed the nose clears; the wheel's own turn during the fall (0.27° at the
+slowest cadence) only adds. `ALARM_CAM_DROP_FRAC` stands.
+
+**The handoffs, both ends, every phase.** `ALARM_HANDOFFS` gains the two
+clamps at every parity of the alarm table (the striker parked: the free
+frame), and `STRIKE_HANDOFFS` the same two through the lift, the fall and
+the rebound — the measurement that the frame the morph wears under load
+ends in the collet and on the stud. `STRIKE_HANDOFF_POSES`' `falling` moves
+from u 0.06 to **0.0018**, the fall's real middle (0.75 ms of a 0.42 s
+cycle); at the old value the hammer was 25 ms into a 1.5 ms fall and the row
+would have measured the rebound. The restoring rows name the spiral
+(`Alarm hammer`'s member row, the spiral's own two-way row, and the lifting
+lever's `through: alarmTail`); the reach tier measures the spiral seated in
+the collet, which is the arm's rigid frame. `alarmHammerCollet` is declared
+pivot-class stock (a `PIVOT_MIN_U` sleeve, the follower collet's section).
+The §137 rows: the spiral's couple at both ends of the wind (`crank`, read
+at the tail over `ALARM_TAIL_LEN`: 69.5 mN drawn, 22.8 at the wire), and the
+lifting lever's load is the real couple at the draw rather than the implied
+k. `HANDOFF_TRACK_TOL` is exported for the probe.
+
+**Held by.** `tools/probe-266-hammer-spiral.mjs` (ALL PASS, 31 rows): W² =
+k/I, the released energy equal to the rotor's arrival AND to the elastica's
+stored difference (three readings of one number); the strip at the tail's
+height, above flat stock, the strain on its target; the lift's peak ON its
+budget with the strike arbor's torque re-derived from the ribbon's k, the
+mean spend under it and equal to the work over a pitch; the blade and its
+stud gone, the three meshes present, the strip on edge, the frames
+published; three poses — rest, draw, wire — three distinct geometries; both
+seats ≤ `HANDOFF_TRACK_TOL` at each pose; the three cadence figures
+re-derived with the spend; the hammer window; and a CONTROL — §25's
+chosen-third law must NOT reproduce the shipped W. The battery's own gates:
+`strikeHandoff` (4 rows), `alarmHandoffs` (21), `restoring`, `transfers`
+(37), `equalisation` (with the spend), `stockFloor`, `intraUnit`,
+`plateSeats`, `turning`, `assembly`, `expectedContacts`, `outlines`,
+`meshIntegrity`, `jumperMovers`, `axisEntry` all PASS; the first run of
+`equalisation` FAILED on the measured endpoints (0.366/0.498 against a law
+still without the spend), which is the gate doing what §104 built it for.
+Boot silent.
+
+**What it leaves.** The rebound after the wire is still §25's posed decay,
+`−AMP·cos(W·r)·e^(−decay·r)` with the envelope solved to reach 5% by the
+next pickup — at this W a chatter near 200 Hz that nothing in the metal
+produces or stops, where restitution would carry the head back to ≈0.22 rad
+and a real hammer is caught by a banking: **TODO 228**. The case path is
+TODO 126, next. The one coefficient that is not geometry is unchanged: the
+0.9 per cut mesh, cited.
+
+**Record.** `TODO.md` 128 closed, 228 filed; `explain.html`'s gong entry gains
+the §266 paragraph and PLATE 3 re-quotes its chain (every invalidated block
+re-translated in all 19 locales, five plate labels shortened to their
+plates); the alarm barrel and governor entries' cadence endpoints and the
+governor's honesty ledger re-quoted; `primer.html`'s alarm paragraph, its
+gong honesty note and the honesty section say the fall is sprung now and
+what remains.
+
