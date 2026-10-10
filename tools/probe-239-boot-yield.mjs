@@ -7,9 +7,13 @@
 // and §238's screen keeps moving through that only because its animations run
 // on the compositor.
 //
-// The fix is `await breathe()` at 173 seams through main.js's module
-// evaluation, yielding whenever BREATHE_MS of thread time has been spent. This
-// is what holds it true, and there are three separate claims:
+// The fix is `await breathe()` at seams through main.js's module evaluation,
+// yielding whenever BREATHE_MS of thread time has been spent — 173 of them at
+// §239's landing, and since §266 the probe COUNTS them in the source and prints
+// the number rather than any document restating one that goes stale (the file
+// had 203 by the time §266 measured the build holding the thread for 3 s again,
+// because code that arrived after §239 arrived with none). This is what holds it
+// true, and there are three separate claims:
 //
 //   1. THE BUILD NEVER HOLDS THE THREAD LONG. Read back from
 //      `__clock.boot.worstHeldMs`, which main.js measures at every seam: the
@@ -110,6 +114,11 @@ if (!MAIN.includes(BREATHE_DECL)) {
     + 'so it would have served the yielding build twice and called it a control.');
   process.exit(1);
 }
+// §266 — the seams, counted where they are written: every `await breathe()` in
+// main.js's CODE (a line's text before any `//`), which is what the record and
+// CLAUDE.md quote instead of a number of their own.
+const SEAMS = MAIN.split('\n').reduce((n, l) => n + (l.split('//')[0].match(/await breathe\(\)/g) || []).length, 0);
+console.log(`seams in source       ${SEAMS} \`await breathe()\` sites in src/main.js`);
 const RELEASE_CALL = '\nreleaseBuildInputGuard();\n';
 if (MAIN.split(RELEASE_CALL).length !== 2) {
   console.error('REFUSED: src/main.js must call `releaseBuildInputGuard();` at statement level exactly once — the tail control plants its stall before that line.');
