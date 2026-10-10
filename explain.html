@@ -1084,7 +1084,7 @@
              MOVEMENT_SENSE), then poses them through the ported beat law of
              plate 2 — in the FORK's frame, so the stones stand still and the
              wheel is what moves, which is the frame the impulse face is cut in.
-             The slider scrubs p; play dilates the 16% action window, as before. -->
+             The slider scrubs p; play dilates the 8% action window, as before. -->
         <div class="controls">
           <button id="escPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ play</button>
           <label>beat phase p
@@ -1173,13 +1173,17 @@
         that geometry posed through the law, not a picture of it. Lock is a contact, not a
         state: the locking face's LEAN (<code>DRAW_DEG = 12</code>°) converts wheel torque
         into a pull toward the banking (draw), asserted at build with the torque sign written
-        out. Phase 2 never lights, and that is the plate being honest rather than broken: the
-        stones are seated with no lock depth (TODO 131's residue), so unlocking takes no time
-        here, where a real stone first slides up its locking face — shoving the wheel back by
-        the draw — before the impulse begins. The play loop drives every pose through the same
-        ported law plate 2 scrubs (<code>escapeAngle</code> / <code>forkSwingRad</code>); only
-        DISPLAY time is dilated, since the whole action is the pin's passage through the
-        notch, 22% of the beat at full wind.</figcaption>
+        out. Banking is derived from the impulse pin's own bearing from the fork pivot at the
+        edge of the lift, <code>atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))</code>, and
+        since §221 that edge is the cited lift, <code>LIFT_DEG = 50</code>°, so the fork
+        swings an 8.05° lever angle; the driven law reads the same relation backwards and
+        gives the pin exactly that lift. Phase 2 never lights, and that is the plate being
+        honest rather than broken: the stones are seated with no lock depth (TODO 131's
+        residue), so unlocking takes no time here, where a real stone first slides up its
+        locking face — shoving the wheel back by the draw — before the impulse begins. The
+        play loop drives every pose through the same ported law plate 2 scrubs
+        (<code>escapeAngle</code> / <code>forkSwingRad</code>); only DISPLAY time is dilated,
+        since the whole action is the pin's passage through the notch, 8% of the beat.</figcaption>
       </figure>
 
       <!-- —————— PLATE 2 : THE BEAT LAW, INTERACTIVE —————— -->
@@ -1200,8 +1204,8 @@
             <text class="lbl" x="700" y="180">p (beat)</text>
             <text class="val" x="14" y="40">+12°</text>
             <text class="val" x="14" y="164">0°</text>
-            <line id="escWinLine" x1="212" y1="20" x2="212" y2="160" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
-            <text class="val" id="escWinLbl" x="193" y="176">0.22</text>
+            <line id="escWinLine" x1="114" y1="20" x2="114" y2="160" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <text class="val" id="escWinLbl" x="92" y="176">0.080</text>
             <path id="escLaw" fill="none" stroke="var(--brass)" stroke-width="2"/>
             <path id="forkLaw" fill="none" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="5 3"/>
             <text class="lbl val-brass" x="240" y="46">escape wheel Δ (escapeAngle)</text>
@@ -1211,20 +1215,21 @@
         </div>
         <figcaption>Ported arithmetic, not an animation: the curves are
         <code>escapeAngle</code> and <code>forkSwingRad</code> exactly as the tick computes
-        them at full wind, and not one timing constant is left in them. The balance swings
-        <code>AMPLITUDE_VISUAL_DEG = 45</code>° either way; while the impulse pin is in the
-        notch the fork's angle is the pin as seen from the fork's pivot,
+        them, and not one timing constant is left in them. The balance swings
+        <code>AMPLITUDE_POSED_DEG = 200</code>° either way (§221: the designed swing, level
+        over the reserve because the fusee delivers level torque); while the impulse pin is
+        in the notch the fork's angle is the pin as seen from the fork's pivot,
         <code>atan(r·sin θ / (d − r·cos θ))</code>, and outside it the fork lies on its bank;
         and the wheel advances <code>BEAT_DEG = 12°</code> (half the 24° tooth pitch) in
         proportion to the fork's travel bank to bank. So the window is the pin's own passage
-        through the lift, 15.47° of balance either side of the line of centres: 22% of the
-        beat at full wind, and longer as the swing sags with the wind. The rest is lock, with
-        the balance detached. The wheel's angle is <code>n·BEAT_DEG</code> plus that fraction
-        of a beat — the whole train hangs off this one function, never integrated, so it
-        cannot drift. Which is the position arrow with nothing left over: the balance's angle
-        fixes the fork's, the fork's fixes the wheel's, and every wheel behind it is read out
-        of the wheel. The train does not turn the escape wheel here; the escape wheel is what
-        tells the train where it is.</figcaption>
+        through the lift, <code>LIFT_DEG = 50</code>° of balance centred on the line of
+        centres: 0.080 of the beat, <code>(2/π)·asin(LIFT_DEG / 2A)</code>, at every state of
+        wind. The remaining 92% is lock, with the balance detached. The wheel's angle is
+        <code>n·BEAT_DEG</code> plus that fraction of a beat — the whole train hangs off this
+        one function, never integrated, so it cannot drift. Which is the position arrow with
+        nothing left over: the balance's angle fixes the fork's, the fork's fixes the
+        wheel's, and every wheel behind it is read out of the wheel. The train does not turn
+        the escape wheel here; the escape wheel is what tells the train where it is.</figcaption>
       </figure>
 
       <p class="note">Ledger: the tick models the escapement KINEMATICALLY — the fork's
@@ -1240,17 +1245,19 @@
       — and here they command it absolutely, because there is no torque to argue with.
       Until TODO 226 the position arrow did not pass through the pin at all: fork and wheel
       ran off beat phase in a window of their own, with a recoil dip made of two constants a 12° draw did not
-      reconcile, and at the window's opening the fork met the pin 0.143 inside its horn,
-      every beat, between two parts no gate held apart. Now there is one clock, the balance,
-      and the rest is geometry, and the pair is held to the margin everywhere but three
-      named places. Those three are TODO 226's second step, stated rather than hidden: the
-      pin, 3.0 long, stands through the guard pin's plane on the line of centres; past the
-      lift it grazes the horn tip it leaves by; and the impulse table shares the fork's
-      plane, so at bank the near horn stands inside the margin of its rim. All three are the
-      single roller step 2 builds, which also seats the pin at the notch's depth and derives
-      the bank exactly from it. Until then the bank is still
-      <code>FORK_BANK_DEG = rollerR·Δθ_pin / notchDepth / 2</code>, an arc-length match to a
-      notch floor the pin never reaches, and the lift that bank gives the pin is 30.95°. The
+      reconcile, and the fork met the pin inside its horn, every beat, between two parts no
+      gate held apart. Now there is one clock, the balance, and the rest is geometry, and
+      the pair is held to the margin everywhere but three named places. Those three are
+      TODO 226's first step, stated rather than hidden: the pin, 3.0 long, stands through
+      the guard pin's plane on the line of centres; past the lift it grazes the horn tip it
+      leaves by; and the impulse table shares the fork's plane, so at bank the near horn
+      stands inside the margin of its rim. All three are the single roller that step
+      builds, which also seats the pin at the notch's depth: today its centre stands 0.156
+      outside the horn tips at the lift's edge, so only 0.394 of it enters a slot 2.759
+      deep. The bank itself is already exact (§221): <code>FORK_BANK_DEG</code> is the
+      pin's bearing at the lift's edge, 4.03° (it was 2.57° while the window was a
+      readability amplitude's arc, and the arcs were matched at the notch's floor, which
+      the pin never reaches — it works at the notch's mouth). The
       pallet stones seat in slots whose gap is DERIVED from the blank's own extrude bevel
       (<code>gGap = bevel + SEAT_SHOW</code>) — a guard born from a defect every battery run
       missed; that seat is also TODO 5's fixture-vs-fixture residue: the one intra-unit pair
@@ -1306,16 +1313,18 @@
         state is the elastica of an inextensible ribbon between a collet that turns and a
         stud that does not, so the coils tighten on the wind and dilate on the run-back at
         constant length, and the sideways load the stud's reaction would put on the pivots —
-        the flat spiral's known vice — is measured rather than assumed: 0.0029 mN at the
-        drawn swing for a flat spring of this section, and 0.0001 mN with the Breguet
+        the flat spiral's known vice — is measured rather than assumed: 0.0149 mN at the
+        200° swing for a flat spring of this section, and 0.0015 mN with the Breguet
         overcoil the next plate draws.
         <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and
         <code>checkOscillator</code> gates that solve every battery run, holds every frame
         to one length of steel, and holds the overcoil concentric.
         Still NOT modelled, and this page draws no such mechanism: turning a timing screw to
-        move the rate. Amplitude varies with mainspring tension
-        (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism story a
-        free-sprung balance exists to tell.</figcaption>
+        move the rate. The balance swings <code>AMPLITUDE_POSED_DEG = 200</code>° at every
+        state of wind (§221): the fusee delivers level torque, so the old tension-scaled
+        readability swing told a going-barrel story. What still varies a real fusee watch's
+        amplitude — escapement and pivot losses, the watch's position — is posed out, not
+        driven; a balance whose amplitude is SIMULATED is §246 tier two's.</figcaption>
       </figure>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">The Breguet overcoil — the spring breathes concentrically</span></div>
@@ -1341,8 +1350,8 @@
             <text class="val" x="320" y="118">stud as far in as its post allows: r 3.1751</text>
             <text class="lbl lbl-strong" x="320" y="146">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="162">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.115 at 315°</text>
-            <text class="val" x="320" y="206">flat spring 0.0029 mN → overcoil 0.0001 mN at the drawn swing</text>
+            <text class="lbl" x="320" y="190">measured: pivot load ×0.102 at 200°, ×0.092 at 316°</text>
+            <text class="val" x="320" y="206">flat spring 0.0149 mN → overcoil 0.0015 mN at the 200° swing</text>
           </svg>
         </div>
         <figcaption>The last three quarters of a turn are raised through a knee to a second
@@ -1353,9 +1362,12 @@
         the centroid of the whole flexing length sits on the balance axis. That is Phillips's
         condition, derived rather than quoted, and the elastica verifies it: the clamp
         stiffening the flat spring showed (1.0040) reads 1.000000 with the overcoil, and the
-        pivot load at the drawn swing falls to a thirty-third of the flat spring's. At a real
-        315° a residual survives — the theorem is a small-amplitude statement — and it is
-        reported, not hidden. Phillips's condition alone does not say where the curve should
+        stud's reaction loses its first-order term: its odd part falls as the CUBE of the
+        swing (order 3.00) where a flat spiral's falls as the swing itself (order 1.00), and
+        that order is what <code>checkOscillator</code> gates. What survives is the higher
+        order, and at a real swing it is not small — the pivot load is a tenth of the flat
+        spring's at 200°, and about as much at 316°, the largest swing the balance can reach
+        before its pin knocks — so it is reported, not hidden. Phillips's condition alone does not say where the curve should
         END, and for a while this one ended outboard of the spring it rises over — the whole
         benefit of raising it, unclaimed. So the stud is a third condition now, not an output:
         the terminal is solved to finish inside the outer coil, over the body of the spring,
@@ -3511,16 +3523,19 @@
     // —— Escapement plate 2: the beat law, ported verbatim (layout.js/main.js) ——
     // TODO 226 — the fork is read off the balance through the impulse pin and
     // the wheel off the fork (main.js PIN_FORK / balanceTheta / forkSwingAt /
-    // escapeAngle), at full wind. d is the balance-to-fork-pivot distance and
-    // r the pin's roller radius as the layout places them; the bank is
-    // FORK_BANK_DEG as main.js derives it.
+    // escapeAngle), at §221's swing. d is the balance-to-fork-pivot distance
+    // and r the pin's roller radius as the layout places them; the bank is
+    // FORK_BANK_DEG as main.js derives it, from the cited lift.
     (function () {
-      var BEAT_DEG = 12, AMPLITUDE_VISUAL_DEG = 45, BANK_DEG = 2.5688, D = 11.1948, R_PIN = 1.62;
-      var D2R = Math.PI / 180, bank = BANK_DEG * D2R, amp = AMPLITUDE_VISUAL_DEG * D2R;
-      var liftHalf = Math.asin(D * Math.sin(bank) / R_PIN) - bank;     // the pin on the slot's line at ±bank
+      var BEAT_DEG = 12, AMPLITUDE_POSED_DEG = 200, LIFT_DEG = 50, D = 11.1948, R_PIN = 1.62;
+      var D2R = Math.PI / 180, amp = AMPLITUDE_POSED_DEG * D2R, liftHalf = LIFT_DEG / 2 * D2R;
+      // the bank IS the pin's bearing from the fork pivot at the lift's edge (§221),
+      // so the pin lies on the slot's line at ±bank by construction
+      var bank = Math.atan2(R_PIN * Math.sin(liftHalf), D - R_PIN * Math.cos(liftHalf));
+      var BANK_DEG = bank / D2R;
       var alpha = Math.asin(liftHalf / amp);
       var WINDOW = 2 * alpha / Math.PI;                                 // the pin's passage, as a fraction of the beat
-      function theta(p) { return amp * Math.sin(Math.PI * p - alpha); }  // beat 0: the pin enters at −liftHalf
+      function theta(p) { return amp * Math.sin(Math.PI * p - alpha); }  // beat 0: the pin enters at −LIFT/2
       function forkNorm(p) { // bank −1 → +1: the pin seen from the fork's pivot, banked outside the lift
         var th = theta(p);
         if (Math.abs(th) >= liftHalf * (1 - 1e-12)) return th < 0 ? -1 : 1;

@@ -372,12 +372,15 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 //    largest swing the balance can REACH, rounded UP, since a load priced below
 //    it is not a bound. Since TODO 216 that is the SMALLER of two angles: the
 //    solve's MAXIMUM (favourable, dial-flat: 454.80° since TODO 207) and the
-//    KNOCK (main.js ESCAPEMENT_KNOCK: 314.18°, where the impulse pin, carried
+//    KNOCK (main.js ESCAPEMENT_KNOCK: 315.22° since §221's bank, 314.18° before
+//    it, where the impulse pin, carried
 //    round from the far side, strikes the tip of the banked fork's horn, solved
 //    off the fork blank's outline and the pin's radius). The balance cannot
 //    swing past the knock; it banks on the horn. So the favourable dial-flat
 //    corner, which the energy column would carry to 455°, knocks, and the peak
-//    is the knock's 315° (455° before TODO 216, 327° before TODO 207).
+//    is the knock's 316° (315° before §221 derived the bank from the pin's own
+//    bearing, which banks the fork 4.03° instead of 2.57°; 455° before TODO 216,
+//    327° before TODO 207).
 // Neither can be computed here, since the solve reads the cut ribbon, the
 // pivots and the balance, and the knock the fork and the roller, all built in
 // main.js. So `equalisation` row 14 holds each one on two sides: the SIDE
@@ -385,7 +388,7 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 // within one degree). A change that moves the solve or the escapement fails
 // the gate until these move with it.
 export const AMPLITUDE_CLAIM_DEG = 126;
-export const AMPLITUDE_PEAK_DEG = 315;
+export const AMPLITUDE_PEAK_DEG = 316;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
 // less as a fault. It is held at the NOMINAL corner, the serviced state; the
@@ -394,19 +397,37 @@ export const AMPLITUDE_PEAK_DEG = 315;
 // heaviest rim that reaches it, and `equalisation` row 15 holds both.
 export const AMPLITUDE_TARGET_DEG = 200;
 export const AMPLITUDE_TARGET_SLACK_DEG = 1.5;   // one 0.005 step of BAL_RIM_F is 1.3° of nominal vertical swing (measured)
-export const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
-// IMPULSE_WIDTH survives only as an input to FORK_BANK_DEG's arc-length
-// derivation in main.js. Until TODO 226 it was also the posed window the
-// fork and wheel moved in, with RECOIL_FRACTION and RECOIL_DEG shaping a draw
-// dip inside it; the escapement is driven off the pin now, its window is the
-// balance's own passage through the lift, and those two are retired. TODO 226
-// step 2 derives the bank from the seated pin and retires this one too.
-export const IMPULSE_WIDTH = 0.16;
+// §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
+// `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is
+// retired: the balance is posed at AMPLITUDE_TARGET_DEG, the swing the energy
+// column holds the movement to (vertical, nominal corner). It does not sag with
+// the reserve — this movement has a FUSEE, whose level product (§104,
+// `equalisation`, held at float noise over the whole reserve) delivers the same
+// torque at hour 30 as at hour 0. At 2.5 Hz the swing is a blur to the eye, as a
+// real balance is; the time-scale slider and §206's scrub are how it is read.
+export const AMPLITUDE_POSED_DEG = AMPLITUDE_TARGET_DEG;
+// §221 — THE LIFT ANGLE, the one authored escapement angle: the balance's
+// rotation while its impulse pin is engaged with the fork, unlock to drop. A
+// design fact of the Swiss lever, about 50° (Reymondin et al., The Theory of
+// Horology, the lever-escapement chapter; Daniels, Watchmaking). The fork's
+// bank (main.js, FORK_BANK_DEG) and the impulse window below both DERIVE from
+// it; neither is chosen.
+export const LIFT_DEG = 50;
+// The fraction of a beat the balance spends inside ±LIFT/2 under
+// θ = A·sin(ωt): the window straddles the zero crossing, entering at −L/2 and
+// leaving at +L/2, so (2/π)·asin(L / 2A). 0.0797 at 50° and 200°; it was an
+// authored 0.16 against a 45° swing.
+export const IMPULSE_WIDTH = (2 / Math.PI) * Math.asin(LIFT_DEG / (2 * AMPLITUDE_POSED_DEG));
+// TODO 226 — the window is no longer POSED: the fork and wheel are driven off
+// the pin (main.js, `forkSwingAt`), so the balance's own passage through ±LIFT/2
+// IS the window, and IMPULSE_WIDTH is what that passage measures, quoted by the
+// phase and the beat sounds. RECOIL_FRACTION and RECOIL_DEG, which shaped a
+// draw dip inside a posed window, are retired with it.
 // FORK_BANK_DEG is DERIVED in main.js (after the pallet fork and balance
 // geometry exist), from rollerR and the notch's actual reach — see that
-// derivation for why it can't be picked independently of the balance's
-// roller radius without the impulse pin missing the notch. It is NOT pure,
-// so it stays there.
+// derivation for why it can't be picked independently of the balance's roller
+// radius without the impulse pin missing the notch. It is NOT pure, so it
+// stays there.
 
 // ---------------------------------------------------------------------------
 // Z-stack — the depth budget between the back plate (z≈0) and the cocks. Each

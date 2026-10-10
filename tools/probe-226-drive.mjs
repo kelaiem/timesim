@@ -1,11 +1,11 @@
-// TODO 226 step 1 — is the escapement DRIVEN off the balance? Until 226 the
+// TODO 226 — is the escapement DRIVEN off the balance? Until 226 the
 // fork and the escape wheel were posed off beat phase, two clocks that shared
 // a period with the balance and nothing else: the pin sat 0.143 inside the
 // horn at the impulse window's opening, every beat, under the EXPECTED blanket
 // 'Pallet fork' ⇄ 'Balance' carries. This reads the BUILT groups at the posed
 // movement — never the law's own functions — and asks four things, at three
-// winds (the balance's amplitude sags with wind, so where the pin is inside a
-// beat does too):
+// winds (§221's swing does not sag with wind, and neither may anything driven
+// off it; reading three winds is how that is held rather than assumed):
 //
 //   1. ON THE LINE. While the fork is between its banks, the pin's centre lies
 //      on the fork's slot centre line (the fork's local −y through its pivot),
@@ -24,13 +24,14 @@
 // `meshClearance` over the same samples — the pairs the new
 // EXPECTED_CONTACT_FLOORS row holds — and, separately, the pin against the
 // blank WHILE THE PIN IS IN THE LIFT, beside a CONTROL: the same in-lift sweep
-// with the fork re-posed by the retired law (beat-phase window, recoil dip,
-// smoothstep), which must find the old burial. A clearance sweep that cannot
+// with the fork re-posed by the retired law (§221's beat-phase window, recoil
+// dip, smoothstep — the same balance, the same bank, the fork on its own
+// clock), which must find the burial. A clearance sweep that cannot
 // see 0.143 of ruby inside a horn has measured nothing.
 //
 // ACCEPTANCE: exits non-zero on any of 1–4, on the pin within CLEAR_MARGIN of
 // the blank in the lift, on any pair under the margin that is not one of the
-// three `only:` debts step 2 owes, or on a control that comes back clean.
+// three `only:` debts step 1 (the seat) owes, or on a control that comes back clean.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 
@@ -70,7 +71,11 @@ const out = await page.evaluate(async () => {
   // the fork's banks, read off the posed movement: the two most frequent
   // deflections over a beat are its dwells
   const readFork = () => wrap(forkBase - forkG.rotation.z);   // the swing, sign as main.js forkSwingRad
-  const readTheta = () => wrap(balG.rotation.z - pinAim);
+  // the balance's swing passes ±180° at §221's ±200°, so it is read UNWRAPPED:
+  // rotation.z is PIN_AIM + θ, and PIN_AIM differs from pinAim only by turns
+  clock.setPose({ tau: 1e-9, tension: 1 });
+  const turns = 2 * Math.PI * Math.round((balG.rotation.z - pinAim) / (2 * Math.PI));
+  const readTheta = () => balG.rotation.z - pinAim - turns;
 
   const W = [1, 0.5, 0];
   const res = { winds: [] };
@@ -135,9 +140,9 @@ const out = await page.evaluate(async () => {
     }
     return b1 * BANK;
   };
-  const oldTheta = (tau, tension) => {
-    const amp = L.AMPLITUDE_VISUAL_DEG * (0.55 + 0.45 * tension) * Math.PI / 180;
-    return amp * Math.sin(2 * Math.PI * F_BAL * tau);
+  const oldTheta = (tau) => {         // §221's balance, which the driven law keeps
+    const amp = L.AMPLITUDE_POSED_DEG * Math.PI / 180;
+    return amp * Math.sin(2 * Math.PI * F_BAL * (tau - IW / (4 * F_BAL)));
   };
   // per mesh pair: the minimum over the samples, and — for the pin on the
   // blank — the minimum while the pin is IN THE LIFT (the fork between its
@@ -156,7 +161,7 @@ const out = await page.evaluate(async () => {
         if (control) {
           s = oldSwing(tau);
           forkG.rotation.z = forkBase - s;
-          balG.rotation.z = pinAim + oldTheta(tau, tension);
+          balG.rotation.z = pinAim + oldTheta(tau);
         } else s = readFork();
         const raw = tau * 2 * F_BAL, p = raw - Math.floor(raw);
         const inLift = control ? p < IW : Math.abs(s) < BANK * (1 - 1e-9);
@@ -185,7 +190,7 @@ const out = await page.evaluate(async () => {
 if (out.error) { console.log('FAIL', out.error); await browser.close(); srv.kill(); process.exit(1); }
 console.log(JSON.stringify(out, null, 2));
 const f = [];
-// the EXPECTED_CONTACT_FLOORS `only:` debts, by name — step 2's to clear
+// the EXPECTED_CONTACT_FLOORS `only:` debts, by name — step 1's (the seat) to clear
 const WAIVED = new Set(['forkGuardPin ⇄ balanceImpulsePin', 'forkBlank ⇄ balanceImpulsePin', 'forkBlank ⇄ balanceRollerTable']);
 for (const w of out.winds) console.log(`tension ${w.tension}: bank ±${w.bankDeg.toFixed(4)}°, lift ${w.liftDeg.toFixed(3)}°, pin in the notch ${(100 * w.liftFrac).toFixed(1)}% of the beat`);
 console.log(`1. on the line   worst ${out.worst.line.toExponential(2)}`);
@@ -194,7 +199,7 @@ console.log(`3. wheel ∝ fork   worst ${(out.worst.wheelRad * 180 / Math.PI).to
 console.log(`4. centred        worst ${(out.worst.centreRad * 180 / Math.PI).toExponential(2)}°`);
 console.log(`pin ⇄ blank in the lift: driven ${out.driven.lift.min.toFixed(4)}, control (the retired law) ${out.control.lift.min.toFixed(4)}`);
 console.log('every fork ⇄ balance mesh pair within 2, driven:');
-for (const r of out.driven.pairs) console.log(`  ${r.min.toFixed(4)}  ${r.pair}${WAIVED.has(r.pair) ? '   (waived: TODO 226 step 2)' : ''}`);
+for (const r of out.driven.pairs) console.log(`  ${r.min.toFixed(4)}  ${r.pair}${WAIVED.has(r.pair) ? '   (waived: TODO 226 step 1)' : ''}`);
 if (out.worst.line > 1e-6) f.push(`pin off the slot centre line by ${out.worst.line}`);
 if (out.worst.bank) f.push('fork not banked on the pin\'s side outside the lift');
 if (out.worst.wheelRad > 1e-7) f.push(`escape wheel off the fork's fraction by ${out.worst.wheelRad} rad`);

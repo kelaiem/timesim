@@ -318,8 +318,12 @@ it into prose either.
    elastica of one length of steel, measured on the published polylines;
    the section is fitted to the spring AS CLAMPED; and the overcoil is
    concentric — its centroid solve converged, the clamp ratio 1 to 1e-6,
-   the pivot force at the performed swing under a tenth of a flat
-   spring's. The pivot force itself is a REPORT, tier two's number),
+   and since §221 the stud's reaction carrying no FIRST-order term (its
+   odd part's order read off the solve, over 2 — an odd function has
+   order 1 or at least 3 — with the flat spiral beside it reading 1 as
+   the control). The pivot force at the performed and physical swings is
+   a REPORT: §218 gated it under a tenth of a flat spring's at a 45°
+   drawn swing, and at the real 200° it is ×0.102),
    and `equalisation` **0 failures** (TODO 32, closed whole by §104 — the
    going spring's torque law is DERIVED from its ribbon and the fusee cut
    against it: the set-up must land on an integer set-up-ratchet click,
@@ -369,7 +373,8 @@ it into prose either.
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the
    largest swing the balance can REACH rounded UP — since TODO 216 the smaller
-   of the solve's maximum and the KNOCK (315: `ESCAPEMENT_KNOCK`, 314.18°, where
+   of the solve's maximum and the KNOCK (316: `ESCAPEMENT_KNOCK`, 315.22° on
+   §221's bank, where
    the impulse pin meets the banked fork's horn, solved off the blank's outline;
    §218's peaks and the hack brake are priced there) — held on both sides and
    within a degree, so a solve that moves leaves neither behind. And since TODO 207 the swing the
@@ -976,7 +981,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 276 measuring scripts and this file names 23. The rest are named for the
+`tools/` holds 277 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -993,7 +998,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **166 of
+The index also carries the split that decides how to read a result: **167 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -1051,7 +1051,12 @@ function unitsIntersect(A, B, raw = false) {
 export const AXES = [
   {
     name: 'beat',
-    n: 96,
+    // §221 — the axis exists for the impulse contact, so its density is held
+    // IN THE IMPULSE WINDOW: 96 samples over two beats at the old authored
+    // 0.16-beat window put 7.68 samples across each impulse. The lift-derived
+    // window is half that wide, so the count follows it rather than the
+    // window going under-sampled by a factor of two.
+    n: Math.round(96 * 0.16 / IMPULSE_WIDTH),
     pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
@@ -2343,14 +2348,14 @@ const CLEARANCE_BUDGETS = [
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
   // TODO 226 — the escapement's EXPECTED pair, which carried TODO 6's blanket
-  // until step 1 drove the fork off the pin. Under the blanket the posed fork
+  // until the fork was driven off the pin. Under the blanket the posed fork
   // met the pin 0.143 INSIDE the horn at every impulse window's opening, and
   // nothing read it. Driven, the pin rides the slot's centre line through the
   // lift and the notch is wider than the pin, so in this landing there is NO
   // working contact to excuse: the row holds every pair the two units own to
   // the margin. Three pairs do not meet it, and each is the single roller
-  // TODO 226 step 2 builds, waived by name below so the rest of the pair is
-  // gated and each goes STALE the day step 2 clears it.
+  // TODO 226 step 1 builds as it seats the pin, waived by name below so the
+  // rest of the pair is gated and each goes STALE the day step 1 clears it.
   { a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [] },
   {
     a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [],
@@ -2358,9 +2363,9 @@ export const EXPECTED_CONTACT_FLOORS = [
     // the pin is 3.0 long and stands through the safety roller's plane, where
     // the guard pin sits on the slot's centre line: on the line of centres the
     // two share the plane. A real double roller's pin stops at the impulse
-    // table; step 2 merges table and roller into one below the fork and the
+    // table; step 1 merges table and roller into one below the fork and the
     // pin into its plane alone.
-    waived: 'TODO 226 step 2 — the impulse pin stands through the guard pin\'s plane (a double roller\'s pin stops at its table); the single roller seats it',
+    waived: 'TODO 226 step 1 — the impulse pin stands through the guard pin\'s plane (a double roller\'s pin stops at its table); the single roller seats it',
   },
   {
     a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [],
@@ -2369,14 +2374,14 @@ export const EXPECTED_CONTACT_FLOORS = [
     // past it, on the far side of its swing, the pin's surface sweeps within
     // the bevel's miter of the horn tip it left — r 0.55 on a 1.62 roller
     // against tips cut for the notch, not for the pin.
-    waived: 'TODO 226 step 2 — past the lift the pin grazes the horn tip it exits by (the horns are cut for the notch, not the pin); step 2 cuts the notch and the horns to the seated pin',
+    waived: 'TODO 226 step 1 — past the lift the pin grazes the horn tip it exits by (the horns are cut for the notch, not the pin); step 1 cuts the notch and the horns to the seated pin',
   },
   {
     a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [],
     only: [['forkBlank', 'balanceRollerTable']],
     // the impulse table shares the fork's plane, so at bank the near horn tip
     // (bevel miter included) stands inside the margin of its rim
-    waived: 'TODO 226 step 2 — the impulse table shares the fork\'s plane, and at bank the near horn tip stands inside the margin of its rim; the single roller takes the table out of that plane',
+    waived: 'TODO 226 step 1 — the impulse table shares the fork\'s plane, and at bank the near horn tip stands inside the margin of its rim; the single roller takes the table out of that plane',
   },
   // TODO 215 — the maintaining detent's WORKING contact, and nothing else: the
   // beak on the ring's cut (maintDetentHandoff's beak row owns that bite, at
@@ -10119,7 +10124,7 @@ export function checkOscillator(clock) {
     // §218 tier two — the overcoil is concentric (clamp ratio 1 to 1e-6, the
     // centroid solve converged) and the pivot force at the performed swing is
     // under a tenth of the flat spring's; the physical residual is a report.
-    if (B.overcoil && !B.overcoil.pass) failures.push({ what: 'overcoil', converged: B.overcoil.converged, concentric: B.overcoil.concentric, forceRatioPerformed: B.overcoil.forceRatio.performed });
+    if (B.overcoil && !B.overcoil.pass) failures.push({ what: 'overcoil', converged: B.overcoil.converged, concentric: B.overcoil.concentric, reactionOrder: B.overcoil.reactionOrder.order, reactionOrderFlat: B.overcoil.reactionOrderFlat.order, forceRatioPerformed: B.overcoil.forceRatio.performed });
   }
   return {
     ok: failures.length === 0,       // a GATE since tier two — the spring is cut to the rate

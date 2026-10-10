@@ -135,8 +135,11 @@ if (!out.B) {
     row('overcoil: no terminal bend tighter than the collet the knee is formed round', OC.formable,
       `ρ ${OC.rhoStart_u.toFixed(2)} → ${OC.rhoEnd_u.toFixed(2)}, tightest ${OC.rhoMin_u.toFixed(2)} u against the collet's ${OC.kneeR_u.toFixed(2)}`);
     row('overcoil: concentric — clamp ratio 1 to 1e-6 (Phillips, verified)', OC.concentric, `×${B.clampRatio.toFixed(7)}`);
-    row(`overcoil: pivot force at ${B.peaks.performed.ampDeg}° under a tenth of the flat spring's`, OC.forceRatio.performed < 0.1,
-      `${B.peaks.performed.pivotForce_mN.toExponential(2)} vs flat ${OC.flat.pivotForce_mN.performed.toExponential(2)} mN (×${OC.forceRatio.performed.toFixed(3)}); at ${B.peaks.physical.ampDeg}° ×${OC.forceRatio.physical.toFixed(3)} — second order, reported`);
+    row('overcoil: the stud reaction has no first-order term (Phillips) — odd part of order > 2', OC.firstOrderCancelled,
+      `order ${OC.reactionOrder.order.toFixed(3)}, odd part ${OC.reactionOrder.oddAtStep.toExponential(2)} at the frame step`);
+    row('control: the flat spiral\'s reaction IS first order — the reading can fail', OC.orderControl,
+      `order ${OC.reactionOrderFlat.order.toFixed(3)}`);
+    console.log(`report · pivot force at ${B.peaks.performed.ampDeg}° ×${OC.forceRatio.performed.toFixed(3)} of the flat spring's (${B.peaks.performed.pivotForce_mN.toExponential(2)} vs ${OC.flat.pivotForce_mN.performed.toExponential(2)} mN, peak to peak); at ${B.peaks.physical.ampDeg}° ×${OC.forceRatio.physical.toFixed(3)} — the residual the theorem does not cover`);
     row('overcoil: the mesh climbs to the raised plane', Math.abs(out.zMax - (out.termEndZ + out.height / 2)) < 0.05,
       `tube top ${out.zMax.toFixed(3)} u vs raise ${out.termEndZ} + half-height ${(out.height / 2).toFixed(3)}`);
   }
