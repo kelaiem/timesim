@@ -115,7 +115,7 @@ const out = await page.evaluate(async () => {
     rows, pairs,
     bossToBalance: +bossToBalance.toFixed(4),
     L_FORK: L.L_FORK, FORK_T: L.FORK_T, L_BALANCE: L.L_BALANCE,
-    CLEAR_MARGIN: L.CLEAR_MARGIN, RIM_H: L.RIM_H, FORK_HALF_Z: L.FORK_HALF_Z,
+    CLEAR_MARGIN: L.CLEAR_MARGIN, RIM_H_REF: L.RIM_H_REF, FORK_HALF_Z: L.FORK_HALF_Z,
     MOVEMENT_SENSE: L.MOVEMENT_SENSE,
     stones, outline,
   };
@@ -146,12 +146,14 @@ if (heights.length > 1) {
 
 const top = Math.max(...blank.map((r) => r.zmax));
 const declared = out.L_FORK + out.FORK_HALF_Z;
-const rimUnder = out.L_BALANCE - out.RIM_H / 2;
+// TODO 207 lightened the rim from the TOP: its underside is still the full
+// rim's, which is what L_BALANCE is derived from (RIM_H_REF, not RIM_H)
+const rimUnder = out.L_BALANCE - out.RIM_H_REF / 2;
 const margin = rimUnder - top;
 console.log(`\nL_BALANCE's derivation, against the metal:`);
 console.log(`  blank's top as DECLARED (L_FORK + FORK_HALF_Z)  ${declared.toFixed(4)}`);
 console.log(`  blank's top as BUILT                            ${top.toFixed(4)}   overshoot ${(top - declared).toFixed(4)}`);
-console.log(`  balance rim underside (L_BALANCE - RIM_H/2)     ${rimUnder.toFixed(4)}`);
+console.log(`  balance rim underside (L_BALANCE - RIM_H_REF/2) ${rimUnder.toFixed(4)}`);
 console.log(`  z margin actually left                          ${margin.toFixed(4)}   `
   + `(reserved: ${out.CLEAR_MARGIN})`);
 // 0 here is the impulse pin standing in the fork's notch — the escapement's
