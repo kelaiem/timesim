@@ -31752,9 +31752,9 @@ runs read 0.
   heading's added §262), the §262 paragraph is new, and the number-and-unit
   plate labels that are now pure figures are identity entries, as German and
   Russian keep them, so the explainer is 772/772. Tagalog had the same 16 + 2
-  dead keys on `main`; [kelaiem/timesim#628](https://github.com/kelaiem/timesim/pull/628)
-  fixes them, and its two table files are carried here unchanged so they merge
-  as a no-op.
+  dead keys on `main`; [kelaiem/timesim#629](https://github.com/kelaiem/timesim/pull/629)
+  re-keyed them there, and this branch takes `main`'s two Tagalog table files
+  unchanged.
 - **§53's column:** no content wider than its box.
 
 ### Measured
