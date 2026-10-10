@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -6492,7 +6492,12 @@ export const STRIKE_HANDOFFS = [
 // with its pitch) and the phases were re-read the same way: `riding` (τ 0.13)
 // still mid-climb, lift 0.221 of a 0.2957 travel; `seated` τ 2559.2, lift 0 to
 // 1e-6 (an instant: 0.0005 a quarter-second either side); `crest` τ 2340.0, lift
-// 0.29567.
+// 0.29567. TODO 221 cut the apex to a radius and moved the stud onto the face's
+// normal through its centre, which moved the crest a fraction of a pitch and
+// the cock's snap with it; re-read the same way (the ring's net angle crossing
+// the law's holdNet and crestNet): `riding` τ 0.13 mid-climb, lift 0.2587 of a
+// 0.2958 travel; `seated` τ 2559.2 unchanged (lift 6e-6); `crest` τ 2067.3
+// (was 2340.0), lift 0.29583.
 //
 // TODO 224 — and two poses of a WIND, the drive off at τ 0.13 (`riding`'s
 // instant, mid-ramp, so the recoil is a real one — 0.0985 rad): `holding` with
@@ -6504,7 +6509,7 @@ export const STRIKE_HANDOFFS = [
 export const MAINT_DETENT_HANDOFF_POSES = [
   ['riding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
   ['seated', { tau: 2559.2, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
-  ['crest', { tau: 2340.0, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
+  ['crest', { tau: 2067.3, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0 }],
   ['holding', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 0.5 }],
   ['runout', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, maintHold: 1 }],
 ];
@@ -6530,7 +6535,7 @@ export const MAINT_DETENT_HANDOFFS = [
   // sawRideDepth lesson: a pair meant to mesh is measured along the motion it
   // makes): the arc, at the tip circle, through which the ring could still
   // RECOIL before it meets the beak. Running on the ramp that is the recoil a
-  // wind would take (riding 0.0985 rad, crest ~0.157) — free; holding and at
+  // wind would take (riding 0.0985 rad, crest ~0.129 since TODO 221) — free; holding and at
   // run-out it is the relief — contact. `seated` is the one running instant at
   // which the face IS at the beak (the seat is where the face swung back meets
   // it: MAINT_HOLD's holdNet, 0 rad from the seat), so it reads contact too,
@@ -10249,7 +10254,11 @@ export function checkOscillator(clock) {
 //     bending plus the whole load axial, the beak's wedge at its kindest
 //     section. Re-derived from the row's own geometry and held under
 //     SPRING_SIGMA_Y_PA, a member over it waived by name in HOLD_STRESS_WAIVERS.
-//     Since TODO 219 it holds the SPRING too: the floor re-derived from the
+//     Since TODO 221 the beak's apex is an ARC: its line contact's Hertz p0 is
+//     re-derived and held at or under first yield of the click steel's low end
+//     (no waiver), ρ is the larger of the Hertz and beam minima and meets the
+//     one that binds, and the wedge's sections from where the arc begins join
+//     the beak member's stress. Since TODO 219 it holds the SPRING too: the floor re-derived from the
 //     record's nominal corner (the torque at the great wheel that sustains the
 //     claim), the run one ring pitch of recoil plus the margin and the ring's
 //     tooth count the fewest whose pitch fits, k = (τ_going − τ_floor)/run, the
@@ -10470,9 +10479,42 @@ export function checkEqualisation(clock) {
       if (!(rel(a.sigma_Pa, armSigma) <= 1e-12))
         failures.push({ what: 'hold identity: arm stress', record: a.sigma_Pa, fromLoad: armSigma });
       const b = ho.beak, bw = b.width_u * U, bt = b.t_u * U;
-      const beakSigma = F / (bw * bt) + 6 * F * b.offset_u * U / (bt * bw * bw);
-      if (!(rel(b.sigma_Pa, beakSigma) <= 1e-12))
-        failures.push({ what: 'hold identity: beak stress', record: b.sigma_Pa, fromLoad: beakSigma });
+      const secSigma = (q) => F / (q.width_u * U * bt) + 6 * F * q.offset_u * U / (bt * (q.width_u * U) ** 2);
+      const beakRootSigma = secSigma(b);
+      if (!(rel(b.sigma_Pa, beakRootSigma) <= 1e-12))
+        failures.push({ what: 'hold identity: beak stress', record: b.sigma_Pa, fromLoad: beakRootSigma });
+      // TODO 221 — the beak's apex is an ARC. Its line contact is a Hertz
+      // cylinder on the face, one click-thickness long: p0 re-derived from the
+      // load and held at or under first yield of the click steel's LOW end (the
+      // band's, by FRICTION's rule — no waiver: an arc over it is re-cut, not
+      // excused). ρ is the larger of the Hertz radius and the beam minimum, so
+      // the one that binds is met: p0 AT the allowable when Hertz binds, else
+      // the worst section at SPRING_SIGMA_Y_PA. The wedge's sections where the
+      // arc begins and the worst past it join the beak member's stress.
+      const arc = b.arc;
+      let beakSigma = beakRootSigma;
+      if (!arc || !(arc.rho_u > 0)) {
+        failures.push({ what: 'beak arc missing', note: 'maintainingHold.beak.arc — the apex is a sharp line again (TODO 221 regressed)' });
+      } else {
+        const tL = arc.line_u * U;
+        const p0 = Math.sqrt((F / tL) * arc.Estar_Pa / (Math.PI * arc.rho_u * U));
+        const allow = LINE_CONTACT_FIRST_YIELD_P0_PER_Y * CLICK_STEEL_SIGMA_Y_PA;
+        const Estar = STEEL_E_PA / (2 * (1 - STEEL_NU * STEEL_NU));
+        if (!(rel(arc.p0_Pa, p0) <= 1e-12)) failures.push({ what: 'hold identity: arc contact pressure', record: arc.p0_Pa, fromLoad: p0 });
+        if (!(rel(arc.p0Allow_Pa, allow) <= 1e-12) || !(rel(arc.Estar_Pa, Estar) <= 1e-12) || arc.line_u !== b.t_u)
+          failures.push({ what: 'arc contact constants are not the declared ones', record: { allow: arc.p0Allow_Pa, Estar: arc.Estar_Pa, line: arc.line_u }, declared: { allow, Estar, line: b.t_u } });
+        if (!(p0 <= allow * (1 + 1e-9)))
+          failures.push({ what: 'beak arc over first yield of the click steel', p0_GPa: p0 / 1e9, allow_GPa: allow / 1e9, rho_u: arc.rho_u });
+        const aS = secSigma(arc.arcStart), wS = secSigma(arc.worst);
+        if (!(rel(arc.arcStart.sigma_Pa, aS) <= 1e-12) || !(rel(arc.worst.sigma_Pa, wS) <= 1e-12))
+          failures.push({ what: 'hold identity: arc sections', record: [arc.arcStart.sigma_Pa, arc.worst.sigma_Pa], fromLoad: [aS, wS] });
+        if (!(arc.rho_u === Math.max(arc.rhoHertz_u, arc.rhoBeam_u)))
+          failures.push({ what: 'arc radius is not the larger of its two minima', rho: arc.rho_u, hertz: arc.rhoHertz_u, beam: arc.rhoBeam_u });
+        const binds = arc.rhoHertz_u >= arc.rhoBeam_u;
+        if (binds ? !(rel(p0, allow) <= 1e-9) : !(Math.abs(wS - SPRING_SIGMA_Y_PA) <= 1e-4 * SPRING_SIGMA_Y_PA))
+          failures.push({ what: 'arc radius is not the least that does its job', binds: binds ? 'hertz' : 'beam', p0_GPa: p0 / 1e9, worst_MPa: wS / 1e6 });
+        beakSigma = Math.max(beakRootSigma, aS, wS);
+      }
       for (const [member, sigma] of [['arm', armSigma], ['beak', beakSigma]]) {
         const over = sigma > SPRING_SIGMA_Y_PA * (1 + 1e-9), waiver = HOLD_STRESS_WAIVERS[member];
         if (over && !waiver)
@@ -10659,6 +10701,9 @@ export function checkEqualisation(clock) {
           load_mN: +(en.maintainingHold.load_N * 1000).toFixed(1), torque_Nmm: +(en.maintainingHold.spring.torqueRun_Nm * 1000).toFixed(4),
           arm_MPa: +(en.maintainingHold.arm.sigma_Pa / 1e6).toFixed(1), armMargin: +en.maintainingHold.arm.margin.toFixed(3),
           beak_MPa: +(en.maintainingHold.beak.sigma_Pa / 1e6).toFixed(1), beakMargin: +en.maintainingHold.beak.margin.toFixed(3),
+          beakArc: en.maintainingHold.beak.arc ? { rho_u: +en.maintainingHold.beak.arc.rho_u.toFixed(5), binds: en.maintainingHold.beak.arc.binds,
+            p0_GPa: +(en.maintainingHold.beak.arc.p0_Pa / 1e9).toFixed(4), allow_GPa: +(en.maintainingHold.beak.arc.p0Allow_Pa / 1e9).toFixed(4),
+            worst_MPa: +(en.maintainingHold.beak.arc.worst.sigma_Pa / 1e6).toFixed(1) } : null,
           waived: Object.fromEntries(Object.entries(HOLD_STRESS_WAIVERS).map(([k, v]) => [k, v.split(' — ')[0]])),
           spring: en.maintainingHold.spring.k_Nm_per_rad ? {
             floor_Nmm: +(en.maintainingHold.spring.floor_Nm * 1000).toFixed(4), corner: en.maintainingHold.spring.floorCorner,

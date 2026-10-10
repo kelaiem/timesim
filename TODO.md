@@ -26,7 +26,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
 | 222 | OPEN | Found closing TODO 206. Follower B's lift is set from `selT` (`max(hB, ALARM_PINB_LIFT·(1 − selT))`) while the rocker's finger, which is supposed to press its tail, stands 0.91 off the arm at every pose of the arming transition. Its "spring" `alarmPinSpringB` is a ring riding on the arm it would press. Ground a spring on the tube and solve the lift from the finger's contact |
-| 221 | OPEN | Found closing TODO 218. The beak's apex takes the whole 2554 mN hold and the wedge's stress goes as 1/s toward it: under yield at its kindest section (236.1 MPa), it reaches 800 MPa 0.2710 u (0.103 mm) from the apex, and inside that the apex is a sharp line in contact with the face, which nothing prices. Cut a land or radius sized from the load, price its contact, and re-place the stud on the land's resultant. Since TODO 219 re-cut the ring at 35 teeth: 2367 mN on a 51.54° wedge, 371.5 MPa at its kindest section, yield reached 0.3153 u from the apex |
+| 221 | CLOSED | The beak's apex is a RADIUS, ρ 0.1886 u (71.5 µm), sized as a Hertz line contact at first yield of a declared click steel (`CLICK_STEEL_SIGMA_Y_BAND`, hardened and tempered, 1.5–1.8 GPa; 1.79·1.5 = 2.685 GPa), the beam minimum 0.0573 u not binding. The stud is re-placed on the face's normal through the arc's centre, so the hold is still a strut (0 moment): strut 2.0917 → 1.7529, hold 2366.7 → 2187.9 mN over a 3.8954 u arm, wedge 51.54° → 33.57°, beak 371.5 → 208.5 MPa, arm 544.2 → 395.2 MPa. τ_stop 1237.41 s unchanged |
 | 220 | CLOSED | Regression of TODO 60's fix 2. Each spider leg's pinion and sleeve stood **0.1605** off its side gear: `spiderSpec.hubFaceZ` read `zBoreOut` (1.3182 from the apex) while TODO 136's flat web (17387c21) cuts the blank's back face at `zWebHi` (1.1577). The spec now reads the builder's own `zWebHi`, and a boot assert measures each gear's cut back face and each sleeve's end against it. Both pairs measure 0 (seated); `assembly` with the arrest scoped reads both leg groups as one body. Leg B's pinion, the idler pinion and both columns' tops drop 0.1605 (`pinBZ`'s stock-floor branch); the columns' L/D-derived radius follows, 0.2361 → 0.2316. `halfHeight` still reads `zBoreOut` — [TODO 67] |
 | 219 | CLOSED | The spring is metal: a uniform-strength blade of the mainspring alloy in a great-wheel crossing, bearing on a pin hung from the ring, the arm's flank Harrison's stop. Floor 1.5886 N·mm from the NOMINAL corner (the adverse corner has no headroom: claim 126 vs 126.0028°); run = one ring pitch of recoil + the margin, so the ring is re-cut at 35 teeth; k 7.3103 N·mm/rad, preload 0.21731 rad, root 1788 / 880 MPa against the alloy's 1800. Held by `equalisation` row 16 and `probe-power-budget` (52 figures). The wind is posed by [TODO 224], and the posed blade delivers 1.6334 N·mm at the stop, 102.8% of the floor |
 | 218 | CLOSED | The beak is the valley's offset: its stud-side flank parallel to the ramp at `SEAT_RELIEF`, its face flank RELIEVED 9.42° so the hold bears on the APEX, on the stud's line. A face-parallel flank would have taken the hold first at the face's far end, 0.927 up the face, and cammed the click out (μ ≥ 0.38 to hold, `MU_STEEL` 0.2). Wedge 20.40° → 56.73°; beak σ 2075.7 → 236.1 MPa at its kindest section, ×3.39 under yield, and `HOLD_STRESS_WAIVERS.beak` retired. Travel and blade bit-identical. The apex inside 0.271 u is TODO 221 |
@@ -30135,7 +30135,7 @@ silent, all six swept spec points clean, `validated-configs` unchanged (7 keys).
 container load (no fatal, no page error) — and 36/36 on a `--spec-only`
 re-run of the same tree.
 
-## 221. The maintaining detent's beak apex is a sharp line carrying the hold: the wedge law reaches yield short of the tip
+## 221. The maintaining detent's beak apex is a sharp line carrying the hold: the wedge law reaches yield short of the tip — CLOSED
 
 Found closing [TODO 218]. The beak is now a 56.73° wedge whose apex takes the
 whole hold, **2554.3 mN**, on the stud's line, and `equalisation` row 16 prices
@@ -30170,6 +30170,128 @@ with the pitch): the hold is **2366.7 mN** over a 3.6011 u arm, the wedge
 51.54°, its kindest section 371.5 MPa (×2.15 under yield), and the 1/s law
 reaches yield **0.3153 u** from the apex (was 0.2831 on the 24-tooth cut as
 last measured). The debt grew by 11% and keeps this fix path.
+
+### Closed — the apex is a radius sized as a Hertz contact, and the stud stands on its line
+
+**The steel, declared (an owner decision).** Against `SPRING_SIGMA_Y_PA`'s
+800 MPa no radius the tooth can hold carries the hold. First yield of that
+steel wants ρ 0.72 u, and the face has room for about 0.21 u before the contact
+runs off the tooth. A click and its ratchet are cut, then hardened and
+tempered. So `layout.js` now declares `CLICK_STEEL_SIGMA_Y_BAND`, 1.5–1.8 GPa,
+for the click and the ring both. It is a band by FRICTION's rule, with its
+source: blued carbon click steel at 48–54 HRC, Rm ≈ 1.65–2.0 GPa by the ASTM
+E140 hardness conversion, and Rp0.2 ≈ 0.9·Rm for quenched-and-tempered carbon
+steel (ASM Handbook Vol. 1). The gate reads the LOW end. The contact is held to
+first yield, `LINE_CONTACT_FIRST_YIELD_P0_PER_Y` = 1.79·Y (von Mises, ν 0.3;
+Johnson, *Contact Mechanics* §4.2). So p0 ≤ **2.685 GPa**.
+
+The click's BEAM rows (the arm and the beak's sections) stay on
+`SPRING_SIGMA_Y_PA`. They pass there with room (×2.02 and ×3.84). Moving them
+to the new band would be a claim no measurement asked for.
+
+**The cut** (`main.js`, the click block):
+- **The arc's centre** sits on the valley's bisector at (ρ + `SEAT_RELIEF`)/sin(½V)
+  from the root, so the arc stands `SEAT_RELIEF` off both flanks at the seat.
+  The tip rises **0.1609 u** up the bisector, and `dHold` stays 0.
+- **The ramp flank** keeps TODO 218's line and is tangent to the arc.
+- **The face flank** is tangent to the arc. It is re-solved so the face's far
+  end stands `CLEAR_MARGIN` (0.1500) off it when the face reaches the arc:
+  relief **13.77° → 31.74°**, wedge **51.54° → 33.57°**.
+- **The contact** is where the face is tangent to the arc, **0.2943 u** up the
+  face from the old apex. A vertex is cut there.
+- **The arc's chords** have a sagitta of a fifth of `SEAT_RELIEF`.
+- **ρ is the larger of two least radii.**
+  - The Hertz radius: p0 = √(F·E*/(π·ρ·t)) at the allowable, with t the click's
+    thickness (0.3919 u). F is the going torque over the hold line's own arm,
+    and that arm grows as the contact climbs the face, so ρ is a fixed point.
+  - The beam minimum: every wedge section from where the arc begins out to the
+    kindest one under 800 MPa.
+  - **Hertz binds: ρ = 0.18862 u (71.5 µm)**, against a beam minimum of
+    0.0573 u. p0 = 2.685 GPa exactly, and the contact half-width is 3.5 µm.
+
+**The stud is re-placed** on the face's normal through the arc's centre, at
+`pivR`. Left on the sharp apex's line, the contact 0.29 u up the face would
+cam the click out, held by friction alone. The stud moves **0.4488 u** round
+its circle, and the strut (`MAINT_DET_LEVER`) goes **2.0917 → 1.7529**. The
+moment about the stud reads −1.1e-16 u·N per N, and the line is the face
+normal to 1.1e-16. The cock's snap moved: `MAINT_DETENT_AZ` went 3.2785 →
+3.3677. The ring's net angle at every τ is unchanged modulo a pitch, so the
+seat still falls at τ 2559.2 and the τ0 = 0.13 recoil is unchanged.
+
+**What moved, measured:**
+
+| | before | after |
+|---|---|---|
+| hold's moment arm / load | 3.6011 u / 2366.7 mN | 3.8954 u / 2187.9 mN |
+| arm σ (Winkler + axial) | 544.2 MPa, ×1.470 | 395.2 MPa, ×2.024 |
+| beak, kindest section | 371.5 MPa (51.54°) | 208.5 MPa (33.57°), ×3.84 |
+| beak, where the arc begins | (a sharp line: yield 0.3153 u from it) | 172.1 MPa |
+| contact | a line, unpriced | Hertz p0 2.685 GPa = 1.79 × 1.5 GPa |
+| ride travel | 0.29567 rad | 0.29583 rad |
+| worst recoil (`rCrest`) | 0.15721 rad (0.8757 pitch) | 0.12945 rad (0.7211) |
+| beak on the face, share of a tooth | 12.4% | 27.9% |
+| TODO 210 blade: height / force at the blade | 0.5681 u / 7.69–20.60 mN | 0.4763 u / 6.45–17.27 mN |
+| TODO 210 beak force (5–50 window) | 10.46 / 23.91 mN | 10.46 / 23.91 mN (equal margin, by construction) |
+| face reaches the contact after | 0.001388 rad of ring | 0.001283 rad |
+| τ_stop at τ0 0.13 | 1237.41 s | 1237.41 s (the recoil is 0.09851 either way) |
+
+The blade's beak force stays in the window because the TODO 210 solve
+re-derives it: the travel is nearly unchanged (the shorter lever turns the arc's
+rise into the same angle), and the shorter strut asks for a lower blade at the
+same crest strain.
+
+**Rows.**
+- `EQUALISATION.going.energy.maintainingHold.beak.arc` replaces
+  `yieldStation_u`. It carries ρ, both minima and which one binds, the steel
+  band, E*, the allowable, p0, the half-width, the tip's rise, the contact's
+  climb, the stud's move, and the arc-start and worst sections.
+- `equalisation` row 16 re-derives p0 and both sections from its own load. It
+  holds p0 under the allowable, with no waiver. It holds ρ as the larger
+  minimum and the binding one met (p0 AT the allowable here). The arc sections
+  join the beak member's σ, so `HOLD_STRESS_WAIVERS`' stale rule still applies
+  to both members, and the table stays empty.
+- The `transfers` hold row carries ρ and p0, and both TODO 210 crank rows
+  re-solve.
+- `maintDetentHandoff`'s `crest` pose is re-read: **τ 2340.0 → 2067.3**, lift
+  0.29583. `riding` (lift 0.2587) and `seated` (τ 2559.2) stand.
+- `probe-power-budget` computes p0, the Hertz radius at its own load, and both
+  sections, and asserts them: **56 figures agree** (52 before; the yield
+  station went, five arc figures came).
+- `probe-224-hold` PASSES: worst recoil 0.12945, 0 on the face (27.9% of a
+  pitch), the blade 3.2296 → 1.6334 N·mm, τ_stop 1237.41.
+- Plate 3's script cuts the arc, the moved stud and the re-solved relief, with
+  ρ quoted from the build. No prose changed.
+
+**Measured.**
+- **Full battery** (local container, SwiftShader, `--shards 3
+  --no-incremental`): **53/53 gates pass**.
+  - `equalisation` reads the hold at 2187.9 mN, the arm at 395.2 MPa (×2.024)
+    and the beak at 208.5 MPa.
+  - `maintDetentHandoff`: 5 rows, all OK.
+  - `transfers`: 35 rows, 0 mismatched.
+  - `expectedContacts`: the detent's floors row stays a 0.150 tie on the stud
+    against the fusee cone.
+  - `inspection`, `clearances`, `undeclaredClearance` (0 pairs under the margin)
+    and `sweptOverlap` (0 CONFIRMED) are clean with the stud moved, so the cock
+    needed no P3 move.
+  - Boot is silent. 36/36 spec points build, the same 28 with warnings. The six
+    silent swept points are clean, and `validated-configs` is unchanged
+    (7 keys).
+- **Fingerprint** 2681150822 → **1178235981**, deterministic across virgin boots.
+- **`probe-direction-guards`** catches all four maintaining rows (the click's
+  tooth mapping, the ring's run, the spring's side, the recoil). With the face
+  now 27.9% of a pitch, the ride's rising fraction is about 72%, still over the
+  guard's half. The run as a whole fails only on the stem one-way NO-OP, which
+  predates this.
+- **Explainer checks.** `explain-quotes` PASS, and `glossary-links` PASS.
+  `explain-i18n --check` FAILS on the Latvian tables' unmatched keys (7 on the
+  explainer, 3 on the primer), identically on the base tree, so that failure is
+  not this item's.
+
+**Residue.** The steel band's figures come from a hardness conversion
+(ASTM E140) and the 0.9·Rm proportion for quenched-and-tempered steel. They are
+a cited estimate, not a datasheet for a named click steel. A datasheet that
+moves the low end re-solves ρ through the same law.
 
 ## 222. Alarm follower B's lift is posed from the selector's state: the rocker finger stands 0.91 off its arm and its spring rides the arm it would press
 

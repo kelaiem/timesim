@@ -853,6 +853,36 @@ export const MAINSPRING_SIGMA_Y_BAND = Object.freeze({
   why: 'Nivaflex 45/18 (DIN 2.4782) Rp0.2 after hardening, 1800–2550 MPa by degree of cold work; Rm up to 3000 MPa (Hempel Metals / VACUUMSCHMELZE data)',
 });
 export const MAINSPRING_SIGMA_Y_PA = MAINSPRING_SIGMA_Y_BAND.low;
+// TODO 221 — THE CLICK STEEL, named, and why a CONTACT needs it where a beam
+// does not. The maintaining detent's beak bears the whole hold (the going
+// torque on the ring's face, ~2.2 N) across a line one click-thickness long
+// (0.149 mm). Cut sharp, a line carries any load at infinite pressure; cut to a
+// radius it is a Hertz line contact, and against SPRING_SIGMA_Y_PA's 800 MPa no
+// radius the tooth can hold carries it (TODO 221's measure: first yield wants a
+// 0.72 u radius where the face has room for ~0.21). A watch click and the
+// ratchet it holds are not spring-band steel: they are cut, then HARDENED AND
+// TEMPERED (the blued click), 48–54 HRC. Rm by the ASTM E140 hardness
+// conversion is about 1.65–2.0 GPa over that range, and Rp0.2 of a
+// quenched-and-tempered carbon steel is about 0.9·Rm (ASM Handbook Vol. 1,
+// Properties of carbon steels), so the band is 1.5–1.8 GPa. A BAND, FRICTION's
+// rule, because the movement does not say how hard its click was drawn back;
+// every gate reads the LOW end. Both bodies of the contact are this steel (the
+// click and the maintaining ring), so one band serves both. The click's BEAM
+// rows (arm and beak sections) stay on SPRING_SIGMA_Y_PA: they pass there, so
+// the conservative limit costs nothing and moving them would be a claim no
+// measurement asked for.
+export const CLICK_STEEL_SIGMA_Y_BAND = Object.freeze({
+  low: 1500e6, high: 1800e6,
+  why: 'hardened and tempered (blued) carbon click steel, 48–54 HRC: Rm ≈ 1.65–2.0 GPa by the ASTM E140 hardness conversion, Rp0.2 ≈ 0.9·Rm for quenched-and-tempered carbon steel (ASM Handbook Vol. 1)',
+});
+export const CLICK_STEEL_SIGMA_Y_PA = CLICK_STEEL_SIGMA_Y_BAND.low;
+// TODO 221 — FIRST YIELD IN A LINE CONTACT. Two elastic cylinders (a radius on
+// a flat is one of them of infinite radius) yield first below the surface, at
+// p0 = 1.79·Y by von Mises for ν = 0.3 (Tresca: 1.67·Y) — Johnson, Contact
+// Mechanics (1985), §4.2 / Table 6.1. The allowable a radius is SIZED to is
+// this factor over the steel's low end: no yield at all in the hold, the
+// strictest of the contact criteria (shakedown, 4k, would allow ~1.3× more).
+export const LINE_CONTACT_FIRST_YIELD_P0_PER_Y = 1.79;
 // §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
 // in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
 // on the winder and its rate is not held — the spring-design handbooks' 4–12.

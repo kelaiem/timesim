@@ -4224,27 +4224,51 @@
         var T0 = v2(Vv.x + uB.x * RELIEF / Math.sin(halfV), Vv.y + uB.y * RELIEF / Math.sin(halfV));
         var nF = v2(-uF.y, uF.x);
         if (nF.x * (rampTip.x - Vv.x) + nF.y * (rampTip.y - Vv.y) < 0) nF = v2(-nF.x, -nF.y);
-        var tn = T0.x * nF.x + T0.y * nF.y;
-        var LEVER = -tn + Math.sqrt(tn * tn - (T0.x * T0.x + T0.y * T0.y) + pivR * pivR);   // the strut, tip to stud
-        var phiP = Math.atan2(T0.y + LEVER * nF.y, T0.x + LEVER * nF.x);
-        var Tz = turn(T0, -phiP), uFz = turn(uF, -phiP), uRz = turn(uR, -phiP), seatNet = Math.atan2(Vv.y, Vv.x) - phiP;
+        // TODO 221 — the apex is a RADIUS, the build's MAINT_DET_HOLD_GEOM.arc.rho_u
+        // (the larger of the Hertz radius at first yield of the click steel's
+        // low end and the wedge's beam minimum; the Hertz one binds). Its centre
+        // sits on the valley's bisector (RHO + RELIEF)/sin(½V) from the root, so
+        // the arc stands RELIEF off both flanks at the seat; the hold bears where
+        // the face is tangent to it, and the stud stands on the face's normal
+        // through the centre, so the hold is still a strut.
+        var RHO = 0.1886169;
+        function dot2(a, b) { return a.x * b.x + a.y * b.y; }
+        function crs2(a, b) { return a.x * b.y - a.y * b.x; }
+        var Oc = v2(Vv.x + uB.x * (RHO + RELIEF) / Math.sin(halfV), Vv.y + uB.y * (RHO + RELIEF) / Math.sin(halfV));
+        var Cc = v2(Oc.x - nF.x * RHO, Oc.y - nF.y * RHO);
+        var tn = Cc.x * nF.x + Cc.y * nF.y;
+        var LEVER = -tn + Math.sqrt(tn * tn - (Cc.x * Cc.x + Cc.y * Cc.y) + pivR * pivR);   // the strut, contact to stud
+        var phiP = Math.atan2(Cc.y + LEVER * nF.y, Cc.x + LEVER * nF.x);
+        var uFz = turn(uF, -phiP), uRz = turn(uR, -phiP), seatNet = Math.atan2(Vv.y, Vv.x) - phiP;
+        var Oz = turn(Oc, -phiP), Cz = turn(Cc, -phiP), T0z = turn(T0, -phiP);
+        var Tz = turn(v2(Oc.x - uB.x * RHO, Oc.y - uB.y * RHO), -phiP);   // the arc's point on the bisector: the tip
         var rIn = RING_R + CM, armW = pivR - rIn, rOut = pivR + armW;
-        // The face's relief: swing the face about the ring's axis until it
-        // reaches the apex, then turn the flank in until the face's far end
-        // stands CLEAR_MARGIN off it (main.js's FACE_RELIEF, the same solve).
+        // The face's relief: swing the face about the ring's axis until it is
+        // tangent to the arc, then turn the flank (tangent to the arc) into the
+        // beak until the face's far end stands CLEAR_MARGIN off it (main.js's
+        // FACE_RELIEF, the same solve).
         var nFz = turn(nF, -phiP), Vz = turn(Vv, -phiP), FTz = turn(faceTip, -phiP);
-        var backS = Math.sign(-Tz.y * nFz.x + Tz.x * nFz.y);
+        var backS = Math.sign(crs2(Cz, nFz));
         function sdLine(p, a, b) { var u = unit(v2(b.x - a.x, b.y - a.y)); return (p.x - a.x) * u.y - (p.y - a.y) * u.x; }
-        function tipOff(d) { return sdLine(Tz, turn(Vz, backS * d), turn(FTz, backS * d)); }
-        var hLo = 0, hHi = 4 * RELIEF / Math.hypot(Tz.x, Tz.y), s0 = Math.sign(tipOff(0));
-        for (var hi_ = 0; hi_ < 60; hi_++) { var hm = (hLo + hHi) / 2; if (Math.sign(tipOff(hm)) === s0) hLo = hm; else hHi = hm; }
+        var s0 = Math.sign(sdLine(Oz, Vz, FTz));
+        function arcGap(d) { return s0 * sdLine(Oz, turn(Vz, backS * d), turn(FTz, backS * d)) - RHO; }
+        var hLo = 0, hHi = 4 * RELIEF / Math.hypot(Cz.x, Cz.y);
+        for (var hi_ = 0; hi_ < 60; hi_++) { var hm = (hLo + hHi) / 2; if (arcGap(hm) > 0) hLo = hm; else hHi = hm; }
         var sgnIn = Math.sign(uFz.x * uRz.y - uFz.y * uRz.x);
-        var cH = turn(FTz, backS * hHi), cV = v2(cH.x - Tz.x, cH.y - Tz.y), cL = Math.hypot(cV.x, cV.y);
-        var RELIEF_F = sgnIn * Math.atan2(uFz.x * cV.y - uFz.y * cV.x, uFz.x * cV.x + uFz.y * cV.y) + Math.asin(CM / cL);
-        var uFr = turn(uFz, sgnIn * RELIEF_F);
-        function onFlank(u, rho) { var b = Tz.x * u.x + Tz.y * u.y, c = Tz.x * Tz.x + Tz.y * Tz.y - rho * rho, s = -b + Math.sqrt(b * b - c); return v2(Tz.x + s * u.x, Tz.y + s * u.y); }
-        var sideP = Math.sign(-Math.atan2(Tz.y, Tz.x));
-        var C = onFlank(uFr, rIn), D = onFlank(uFr, rOut), B = onFlank(uFr, pivR), A = onFlank(uRz, pivR);
+        var cH = turn(FTz, backS * hHi);
+        function flankAt(beta) {
+          var u = turn(uFz, sgnIn * beta), m = v2(-u.y, u.x);
+          if (dot2(m, nFz) > 0) m = v2(-m.x, -m.y);
+          var TF = v2(Oz.x + m.x * RHO, Oz.y + m.y * RHO);
+          return { u: u, TF: TF, d: Math.abs(crs2(u, v2(cH.x - TF.x, cH.y - TF.y))) };
+        }
+        var bLo = 0, bHi = Math.PI / 2;
+        for (var bi_ = 0; bi_ < 60; bi_++) { var bm = (bLo + bHi) / 2; if (flankAt(bm).d < CM) bLo = bm; else bHi = bm; }
+        var FL = flankAt(bHi), uFr = FL.u, TFz = FL.TF;
+        var TRz = v2(T0z.x + uRz.x * dot2(v2(Oz.x - T0z.x, Oz.y - T0z.y), uRz), T0z.y + uRz.y * dot2(v2(Oz.x - T0z.x, Oz.y - T0z.y), uRz));
+        function onFlank(p0_, u, rho) { var b = p0_.x * u.x + p0_.y * u.y, c = p0_.x * p0_.x + p0_.y * p0_.y - rho * rho, s = -b + Math.sqrt(b * b - c); return v2(p0_.x + s * u.x, p0_.y + s * u.y); }
+        var sideP = Math.sign(-Math.atan2(Cz.y, Cz.x));
+        var C = onFlank(TFz, uFr, rIn), D = onFlank(TFz, uFr, rOut), B = onFlank(TFz, uFr, pivR), A = onFlank(TRz, uRz, pivR);
         var ARM = [C];
         (function () {
           var azC = Math.atan2(C.y, C.x), n = Math.max(4, Math.ceil(Math.abs(azC) / 0.04)), d = -azC / n, rc = rIn / Math.cos(Math.abs(d) / 2), k;
@@ -4255,7 +4279,15 @@
           ARM[ARM.length - 1] = D;
         })();
         var azM = (Math.atan2(A.y, A.x) + Math.atan2(B.y, B.x)) / 2;
-        var BEAK = [Tz, A, v2(pivR * Math.cos(azM), pivR * Math.sin(azM)), B];
+        var BEAK = [TRz, A, v2(pivR * Math.cos(azM), pivR * Math.sin(azM)), B, TFz];
+        (function () {                                          // the arc, face flank → contact → ramp flank
+          var ang = function (p) { return Math.atan2(p.y - Oz.y, p.x - Oz.x); };
+          var aF = ang(TFz), aC = ang(Cz), aR = ang(TRz), step = 0.2;
+          [[aF, wrapPi(aC - aF), 1], [aC, wrapPi(aR - aC), 0]].forEach(function (leg) {
+            var k = Math.max(1, Math.ceil(Math.abs(leg[1]) / step));
+            for (var j = leg[2]; j < k; j++) { var a = leg[0] + leg[1] * j / k; BEAK.push(v2(Oz.x + RHO * Math.cos(a), Oz.y + RHO * Math.sin(a))); }
+          });
+        })();
         function tipAt(r) { var q = turn(v2(Tz.x - pivR, Tz.y), r); return v2(pivR + q.x, q.y); }
         var DET_SIGN = Math.sign(Math.hypot(tipAt(1e-4).x, tipAt(1e-4).y) - Math.hypot(Tz.x, Tz.y)) || 1;
         // The ride, on the CUT (main.js's MAINT_DET_RIDE): the smallest lift
