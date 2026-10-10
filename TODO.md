@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 233 | OPEN | Found closing §261 step 1 (#636). The Latvian explainer and primer tables carry 7 + 3 rows keyed to English that §221 (#617) rewrote; the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check is red on `main` and every PR in its paths. Re-key from the DOM and translate the current English, which carries §221's new numbers (200°, a twelfth of the beat). The merge race itself is an owner setting (require up-to-date branches or a merge queue). Arabic plate collisions seen locally are font metrics, not CI |
+| 233 | CLOSED | Found closing §261 step 1 (#636): the Latvian explainer and primer tables were keyed to English §221 (#617) rewrote, because the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check read red on `main`. Closed by #611 (c4eea7c), which re-keyed 15 explainer and 5 primer Latvian rows against the current English, more than the ten counted here because TODO 226's drive rewrote further English. Latvian reads 769/769 and 144/144. The race itself is answered by a CLAUDE.md convention (a locale or page-English PR re-merges `main` and waits for the Explainer check before it merges) and by §271 (merge queue). Arabic plate collisions seen locally are font metrics, not CI |
 | 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
 | 230 | OPEN | Found closing TODO 204. The beak lever turns on `alarmLinkBeakPin` with nothing holding it along the pin toward the arm's line (+y): no shoulder, collar or clip, the eye's inner end plugged by the web. It slides **0.1735** (seated) / **0.1855** (lifted) before the eye or web meets the selector rod, its own group's output, with 0.1432 of the 0.3167 journal still engaged; without the rod it leaves the pin at 0.3167. The column's sweep under the nose drags it along exactly that axis. Fix: a retaining shoulder or collar with its own §50 floor, re-deriving the pin's cantilever (757.1 MPa, margin 1.057). P1 |
 | 227 | CLOSED | The alarm release sleeve's SKIRT — the cone the tail pin presses — was a double-sided sheet of no thickness (a collinear offset: profile area 0.0177 u²), and `alarmSleeveWeb` (TODO 225) was a patch over it. It is a real shell now, wall `STOCK_MIN_U` normal to the face, with a relief at the feeler spring's free end (0.084 under the envelope floor): skirt ⇄ spring 0.0807 → 0.1585 against 0.15. The web, its §124 relief and its contact row are gone. Battery 53/53 locally; `tools/probe-225-lathe-profiles.mjs` finds no other lathe like it (72 meshes) |
@@ -31144,7 +31144,21 @@ no mechanism is touched.
 Coupled to [TODO 230]: a thicker beak pin raises the eye's crown, and with it
 this step, one for one.
 
-## 233. The Latvian explainer and primer tables are keyed to English §221 rewrote: ten blocks render English and the Explainer workflow is red on main
+## 233. The Latvian explainer and primer tables are keyed to English §221 rewrote: ten blocks render English and the Explainer workflow is red on main — CLOSED (#611)
+
+**Closed by #611, not by this item's own landing.** TODO 226's drive
+(`claude/spring-friction-efficiency-xdh7ik`) hit the same red and re-keyed the
+Latvian tables in c4eea7c before this item merged: 15 explainer keys and 5
+primer keys, a superset of the ten below, because that drive rewrote more of the
+escapement's English. Translations were made against the current English, and
+the vocabulary row stayed `modelēts / simulēts`. On `main` at 6a14d9f, `node
+tools/explain-i18n.mjs --check` reads Latvian at 769/769 and 144/144 with 0
+unmatched keys on both pages. Steps 1–3 are done there. Step 4 is answered in two parts.
+CLAUDE.md's Conventions now carry the partial guard as a rule:
+a PR that carries locale tables or rewrites the pages' English re-merges `main`
+immediately before merging and waits for the Explainer check on that head. The
+whole fix, a merge queue, is filed as §271 in the roadmap. The record below is
+kept as found.
 
 **Found closing §261 step 1 (#636), whose Explainer check went red for a
 reason outside its diff.** `node tools/explain-i18n.mjs --check` fails on `main`
