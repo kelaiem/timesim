@@ -4,8 +4,8 @@
 
 # The instruments
 
-279 scripts. **169 are ACCEPTANCE tests** — they decide and exit non-zero.
-**110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+281 scripts. **170 are ACCEPTANCE tests** — they decide and exit non-zero.
+**111 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -27,6 +27,7 @@ when a question was asked; the summaries are what it answered.
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
 | `glossary-links.mjs` |  | acceptance | §236 tier one — THE GLOSSARY LINKER'S GATE. explain.html defines 28 project words and, since §236, links their first use in each entry to the definition. Nothing about that is authored: the links are injected at runtime by src/glossary-links.js, after src/explain-i18n.js has swapped the page into the reader's language. Two properties have to hold, and neither is visible by reading the diff. |
+| `height-ledger.mjs` |  | report | THE HEIGHT LEDGER'S HARNESS — one boot measured for the cased-depth chains, copied-tree mutants, and the ledger itself (front and back chains, the back-most metal and its slack), as a module. Not a probe: it measures nothing on its own. |
 | `l10n-review-packets.mjs` |  | acceptance | §249's review follow-up — BUILDS THE NATIVE-REVIEW PACKETS: one page a fluent reader opens to judge a locale's translation row by row, English beside the translation, and to say "reads well", "needs a change" (with their wording) or "not sure". Every locale carries the same IOU in docs/BUILT.md ("No native review pass"), and no gate here can pay it: the page gate holds keys, markup, numbers and the honesty vocabulary, never whether a sentence reads naturally or a part has the name a workshop uses. This makes paying it cheap for whoever can. |
 | `make-favicon.mjs` |  | report | §88 — favicon.svg, generated from the REAL house mark. |
 | `offline-check.mjs` |  | acceptance | §79's instrument — the offline acceptance, scripted. Not part of the PR battery (it exercises the RELEASE machinery, which the battery's source tree deliberately never runs): use it when touching sw.js, stamp-release.mjs, the registration, or the update toast. |
@@ -190,6 +191,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-253-arch-modes.mjs` | §253 | acceptance | §253 — IS THE GONG'S ARCH SOLVE RIGHT, AND DOES IT KNOW WHEN IT IS A STRAIGHT BAR? |
 | `probe-254-chain-twist.mjs` | §254 | acceptance | §254 — DOES THE CHAIN BEND ONLY ABOUT ITS PINS? Acceptance. |
 | `probe-261-height-ledger.mjs` | §261 | acceptance | WHAT SETS THE MOVEMENT'S CASED HEIGHT — the front and back chains read off the metal, the member that governs each named with its slack to the next, and the cased depth reproduced from them. Acceptance, with a mutation tier that proves the ledger PREDICTS rather than restates. |
+| `probe-261-lever-prices.mjs` | §261 | acceptance | WHAT EACH HEIGHT LEVER BUYS — the compaction levers of the private roadmap's §261, each built as a copied tree with one constant moved, measured off the metal for what it does to the cased depth, which member governs after it, and which boot asserts it trips (its cost). Combinations are measured too, beside the superposition of their singles, because the back is governed jointly and a lever bought alone is not the lever bought with its neighbours. |
 | `probe-262-gong-note.mjs` | §262 | acceptance | §262 — WHICH C? The gong's pitch target is a NOTE now, and the octave was measured here rather than chosen: boot the build with GONG_F1_TARGET_HZ rewritten in flight to each C (the foot cut to the arc the fixed point derives for it, since the aesthetics knob only knows the shipped one) and read what `__clock.acoustics` makes of it — the arc, the head the blow is matched to, each partial's level and whether the ear can hear it. |
 | `probe-268-hammer-spiral.mjs` | §268 | acceptance | §268 — THE HAMMER SPRING IS A SPRING NOW: does the fall law read √(k/I) off the metal, and is the metal there? ACCEPTANCE. |
 | `probe-269-case-path.mjs` | §269 | acceptance | §269 — THE CASE AS THE RADIATOR: does the structure-borne path on the record follow from the metal, and does every integral behind it reproduce by a second method? ACCEPTANCE. |
