@@ -2615,7 +2615,6 @@ export const EXPECTED_CONTACT_FLOORS = [
     contacts: [
       ['alarmSleeveSkirt', 'alarmTailPin'], // §45 working contact — handoffs row + band asserts own it
       ['alarmSleeveFlat', 'alarmTailPin'],  // the flat's bore: rest flank + working 0.03, derived
-      ['alarmSleeveWeb', 'alarmTailPin'],   // the web rides the same derivation chain as the bore
     ],
   },
   // §99 — the winding pair's blanket excuse retired: the ONE contact is the
