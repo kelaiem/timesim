@@ -33514,3 +33514,108 @@ split. Which one a push takes was the owner's call, and the push stays §265's:
   third leg would cut both. Whether that nets out on hosted runners whose own
   spread is 1.77x is a measurement to take, not a prediction to land.
 - **§227 promotion from a split.** See above.
+
+## §266, landing one — the build breathes again
+
+**What had happened.** §239 left `main.js`'s module evaluation handing the
+thread back at seams, holding it at worst for 351 ms. When a progress-bar
+question (§267) measured `main` three weeks later, the build was holding it for
+**5,096 ms** (public `main` at #609). At this landing's base, `aa7fcc1`, it was
+**2,999 ms**. The cause was not a fault in any seam. **Build code that landed
+after §239 landed with no seams of its own, and no workflow runs
+`probe-239-boot-yield.mjs`**, so nothing went red. The placement tooling §239
+used lived in a scratchpad and left with it. The second landing (the probe in
+CI) is the half that stops this from happening a third time.
+
+Measured on the base with the probe, on the SwiftShader dev container: thread
+held 2,999 ms, worst input acknowledgement 2,850 ms, boot 25.8 s. **FAIL** on
+two of its gates.
+
+**One cause was repetition, so it was counted before it was cached** (§239's
+method). The jumper's site work bounds the lifter's span by sampling the tail
+post at 201 stations of the stroke, once per azimuth asked. It was asked 924
+times. Each call re-solved all 201 stations, which drove `slLeverTiltAt` to
+**208,643 calls over 293 distinct pulls (712× repeat)** and `slPinVerts` to
+13.35 M calls, about 16% of the build. The stations are the same 201 world
+points whatever the azimuth: only the frame they are read in moves. So
+`jmpTailTrackWorld()` solves the track once and freezes it. That is an
+identity, because `tailPostWorldAt` is a pure function of the pull for the
+life of the page. **The cache is not on `slLeverTiltAt`**, where it would catch
+every caller: `tick()` solves the lever every frame at an easing `crownPullT`,
+so a leaf memo would grow for the whole session. After it: 22,919 calls and
+1.47 M.
+
+**The rest was real work with no seam in it**, and was placed by measurement.
+Every legal seam site (an async context, a statement head, at most two loops
+deep) was instrumented with a recorder that sums time per span and counts hits,
+the same way §239 did it. Seams were then chosen greedily at §239's 20 ms
+placement budget, with the existing ones kept as resets. That placed 148 new
+seams, with adjacent duplicates collapsed, for **276** in all. The probe now
+prints this count from the source; CLAUDE.md quotes the probe rather than a
+number of its own, because it said 173 while the file had 203.
+
+**What the greedy pass cannot find, and why.** It walks the source in order, and
+a loop's cost is charged where the time is spent: to the inner loop. The inner
+loop is the one too hot to carry a seam (§239's rule: a site hit thousands of
+times pays a clock read each time for one yield). The heart-cam lever check
+spent ~1 s in a 61 × n inner scan under a 49-step outer loop, and the cheap,
+seamable site, the outer loop's head, had already been passed. Two of those
+were placed by hand:
+- the head of that 49-step loop, ~20 ms a step;
+- the arrest siting `sweep`'s azimuth and finger loops, with `sweep` made
+  `async` to hold them (its fine pass alone held ~480 ms).
+
+**A single call longer than the budget cannot be split from `main.js` at all**,
+so it is made a generator in `geometry.js` that pauses between steps of its own
+arithmetic. The arithmetic, its order and its result are the synchronous
+builder's exactly. `drainSteps` runs a generator in one go for every caller
+that does not yield, so `makeGenevaFinger`, `genevaCrossOutline` and
+`makeHairspring` keep their signatures. `main.js` resumes each one with
+`await breathe()` between steps. Each step size comes from the measured cost
+per unit of work and is held under the 20 ms placement budget:
+
+| generator | what it steps over | measured | step |
+|---|---|---|---|
+| `makeGenevaFingerSteps` | the 601 driver angles of the finger's envelope sweep | ~1.4 s, ~2.3 ms an angle | 8 angles (~18 ms) |
+| `genevaCrossOutlineSteps` → `traceFieldSteps` | the 770 rows of the cross's field grid (the finger traces it first) | ~0.25 s, ~0.33 ms a row | 48 rows (~16 ms) |
+| `makeHairspringSteps` | the coil-gap scan, one row per wind frame and report row | ~0.23 s, ~5 ms a row | 1 row |
+
+The finger was the longest single stretch boot held the thread, about 1.7 s.
+That is more than twice the probe's 700 ms ceiling on its own, and no
+`main.js` seam could reach inside it.
+
+**Acceptance.**
+
+`tools/probe-239-boot-yield.mjs`, with both controls, on the SwiftShader dev
+container:
+
+| | base `aa7fcc1` | this landing | control (`BREATHE_MS = Infinity`) | ceiling |
+|---|---|---|---|---|
+| thread held, worst stretch | 2,999 ms | **364 ms** | 19,093 ms | 700 ms |
+| worst long task | — | 1,068 ms | 13,652 ms | 1,800 ms |
+| input ack, worst / median | 2,850 ms / — | **918 / 24 ms** | 13,607 / 488 ms | 1,500 ms |
+| hand-backs | — | 327 | 0 | — |
+| boot wall | 25.8 s | 20.4 s | 19.4 s | — |
+| boot warns | 0 | 0 | 0 | 0 |
+
+The tail control (an 800 ms stall planted before the guard's release) read
+802 ms, so the record still sees the end of the build. The worst long task
+is the first composited frame under software GL, the one task §239 recorded as
+not the build's. The CPU profile now names `G.weldTree`, at 284 ms, as the
+largest call still unsplittable from `main.js`. The probe's 700 ms ceiling is
+kept until landing two re-derives it on the CI host.
+
+**The yields change nothing.** Battery, local (dev container, `--shards 3`),
+run on this tree and on the base:
+- **53/53 gates pass on both.**
+- **Geometry fingerprint `524118476` on both**, deterministic across virgin
+  boots, so the generators really are the old builders' arithmetic.
+- `--report` diffed against the base: 130 leaves differ, **every one a
+  wall-clock field** (`ms`, `sliceMs.*`, the census's `exactMs`/`verdictMs`).
+  No verdict, row or count moved.
+
+**What it leaves.** Landing two: the probe in CI with its control, the held
+stretch as the gated number, and every ceiling derived from the CI host's
+spread. The regression this landing repaired took three weeks to find because
+the probe runs by hand. CLAUDE.md's boot entry now carries a fifth rule: new
+build code brings its own seams.
