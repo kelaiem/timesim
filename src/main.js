@@ -41288,6 +41288,15 @@ const BACK_ENVELOPE = await (async () => {
   const bins = new Array(NBIN).fill(-Infinity);
   const owners = new Array(NBIN).fill(null);
   const regBuild = new Array(BACK_SWEPT_REGIONS.length).fill(-Infinity);
+  // §261 — THE SAME WALK, KEPT PER UNIT. A height lever that takes a group out
+  // of the tower (the private roadmap's dial-side fold) is priced by asking
+  // what the envelope would be WITHOUT that group, and a bin keeps only its
+  // winner. So every unit's own per-bin maximum (allowance included, the same
+  // score the bins keep) is recorded beside the totals by this one walk —
+  // a probe re-walking the triangles would be this law written twice.
+  // tools/probe-261-lever-prices.mjs folds them back and requires the shipped
+  // bins to the last digit before it prices anything with them.
+  const unitBins = new Map();
   // Per-mesh unit attribution, so each sample carries its unit's declared
   // allowance: score = z + allowance(unit). The bin keeps the max SCORE —
   // exact for the model "each unit's metal may stand its allowance above
@@ -41308,6 +41317,9 @@ const BACK_ENVELOPE = await (async () => {
     if (!o.isMesh || o.userData.schematic || o.userData.casePart || !o.geometry?.attributes?.position) continue;
     const unit = unitOf(o);
     const allow = (unit && BACK_SWEPT_ALLOWANCE.get(unit)) || 0;
+    const ownerKey = unit || o.name || '(unlabelled)';
+    let ub = unitBins.get(ownerKey);
+    if (!ub) unitBins.set(ownerKey, ub = new Array(NBIN).fill(-Infinity));
     const p = o.geometry.attributes.position;
     const idx = o.geometry.index;
     const n = idx ? idx.count : p.count;
@@ -41316,7 +41328,8 @@ const BACK_ENVELOPE = await (async () => {
       if (r >= rSpan) return;
       const s = Math.floor(r / rSpan * NBIN);
       const score = pt.z + allow;
-      if (score > bins[s]) { bins[s] = score; owners[s] = unit || o.name || '(unlabelled)'; }
+      if (score > bins[s]) { bins[s] = score; owners[s] = ownerKey; }
+      if (score > ub[s]) ub[s] = score;
       // ...and what the ROW'S OWN unit reaches inside each row's band, which
       // is the quantity the assert below holds the row to. Same walk, so it
       // cannot measure a different tree than the bins do.
@@ -41472,6 +41485,7 @@ const BACK_ENVELOPE = await (async () => {
     bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan,
       z: z === -Infinity ? null : z, owner: owners[i] })),
     allowances: [...BACK_SWEPT_ALLOWANCE.entries()].map(([unit, extra]) => ({ unit, extra })),
+    unitBins: Object.fromEntries([...unitBins].map(([u, a]) => [u, a.map((z) => (z === -Infinity ? null : z))])),
     regions: BACK_SWEPT_REGIONS,
   };
 })();
