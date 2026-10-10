@@ -37599,7 +37599,7 @@ html:lang(ko) { word-break: keep-all; }
    19.5; §249's Indonesian "Waktu" 28.0; §249's Turkish "Çalma saati" 52.8,
    level with Spanish and Korean, "Zaman" 31.1; §249's Welsh "Canu am" 40.6,
    level with Russian, "Amser" 28.9; §249's Tagalog "Tumutunog sa" 63.6, just
-   under Indonesian's, "Oras" 21.7) — so the allowance that a
+   under Indonesian's 66.2, "Oras" 21.7) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -38293,7 +38293,7 @@ function setBarState(id, on) {
 // once the panel took the verb-noun Rheoli that Welsh software already uses for
 // a control panel (Panel Rheoli): §208's lesson a fifth time.
 // §249's Tagalog measured 194.8 on "Menu / Tanaw / Mga kontrol" — 24.6 px wider than
-// English's 170.2, inside Welsh's 185.0 and Dutch's 204.4 — with no re-cutting
+// English's 170.2, between Welsh's 185.0 and Dutch's 204.4 — with no re-cutting
 // needed: the first labels fit, so no face was chosen against the bar this time.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
