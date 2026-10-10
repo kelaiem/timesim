@@ -31820,6 +31820,116 @@ Nothing of TODO 17's. The strike's ENERGY is item 128's, the case path item
 Euler–Bernoulli assumption are named in the item and in `GONG_ARCH`'s
 comment as what the law still assumes, not as debt.
 
+## §262 — The gong rings at C7: the pitch target is a note, the octave chosen by measured level
+
+The owner asked for two things at once: a gong that rings at C, and as loud as
+it can be. The second question has an honest answer and most of it is already
+on the ledger, so this entry is the first thing — the target pitch becomes a
+NOTE — plus the measurement that chose the octave, plus a plain statement of
+where the loudness actually is.
+
+**The target.** TODO 17 named 2.5 kHz, the A-weighted peak of hearing, and
+§198 and §253 rang it. That was never a note. `GONG_F1_TARGET_HZ` is now
+equal temperament on ISO 16's A4: `GONG_PITCH_A4_HZ` (440) × 2^(`GONG_NOTE_SEMITONES`
+/ 12), 27 semitones up, **2093.005 Hz**. The note's NAME is derived from the
+semitone count (`GONG_NOTE_NAME`, C7) rather than written beside it, so the
+two cannot disagree, and the acoustics record carries all three
+(`wire.targetNote`, `targetSemitonesAboveA4`, `concertA4_Hz`). Everything
+downstream re-derived itself: §253's fixed point closed on the new length, the
+knob moved to the arc it derives, the head to the match, the mix to the
+radiated powers.
+
+**The octave was measured, not picked.** `tools/probe-262-gong-note.mjs`
+boots the build at each C with `GONG_F1_TARGET_HZ` rewritten in flight and the
+foot cut to the arc the fixed point derives for it, and reads
+`__clock.acoustics`. Its control is the shipped note booted twice, once
+unmodified and once through the rewrite: design arc and head mass identical,
+f₁ and level within the knob's 0.01° rounding. The column that decides is the
+level AT THE SHIPPED BLOW'S ENERGY, because the fall law (TODO 128) fixes the
+hammer's angular rate and not its energy: a longer wire wants a heavier
+matched head, and the law then credits that head with a bigger blow it never
+earned — the raw column rewards it, the equal-energy column does not.
+
+| note | f₁ Hz | f₂ Hz | f₂/f₁ | arc | head mg | blow nJ | dBA raw | dBA at equal blow | f₁ dBA | what carries the ring |
+|---|---|---|---|---|---|---|---|---|---|---|
+| C6 | 1047 | 5097 | 4.87 | 87.52° | 79.2 | 30.93 | 27.8 | 25.2 | −9.7 | mode 3 at 16.0 kHz |
+| 2500 Hz (TODO 17) | 2500 | 13914 | 5.57 | 55.83° | 39.3 | 14.94 | 24.6 | 25.2 | 4.5 | mode 2 at 13.9 kHz |
+| **C7** | **2093** | **11416** | **5.45** | **61.14°** | **44.5** | **16.99** | **23.2** | **23.2** | **1.8** | **mode 2 at 11.4 kHz** |
+| C8 | 4186 | 24332 | 5.81 | 43.06° | 28.2 | 10.64 | 11.8 | 13.9 | 11.8 | mode 1 alone — f₂ ultrasonic |
+
+- **C8** sends the first overtone to 24.3 kHz, past hearing, and the wire
+  loses **11 dB**; its fundamental is also outside §197's 1–4 kHz band, and the
+  boot says so.
+- **C6** reads loudest, and it is the fiction and a whistle together: 2.6 of
+  its 4.6 dB over C7 is the raw column's heavier blow, and what is left is a
+  **16 kHz third partial** with the fundamental at −10 dBA. A-weighting does
+  not price age, and a ring most adults cannot hear is not a C6.
+- **C7** keeps the fundamental inside the band and the overtone that carries
+  the ring at 11.4 kHz, 1.4 dB under 2500 Hz raw and **2 dB** at equal
+  energy. That is the one lever the wire had left, and it is spent on the note.
+
+**What it moved.** The design arc is **61.14°** on §253's arch law, 60.44° on
+the straight one (`aesthetics.gong.arcDeg` 55.80 → 61.14; the foot walked 0°;
+the ring's radius 48.22 → 48.19, for the reason the battery found, below —
+the block's radius is floored by the ferrule wall at both lengths). The wire
+is 19.49 mm, 145.4 mg; the arc fundamental's modal fraction 0.296 →
+**0.306 M**, so the matched head grew 39.3 → **44.5 mg** (H 4.63 → 4.95 u,
+still owned by the match, not the band); μ 1.19, η 0.80, contact 10.4 µs;
+f₂/f₁ **5.45** (the arc's ratio falls as the arc lengthens); the loud second
+mode radiates 0.14 nW; the level **23.2 dBA**
+at 0.3 m on axis. The sim's own voice follows (the mix is derived from the
+radiated powers — the fundamental now sits 25 dB under the second mode), and
+the explainer's PLATE 2 strikes the same two partials at the new defaults.
+
+**What the battery found, and the wall it moved.** The first full run on the
+C7 tree failed one gate: `undeclaredClearance` read `Alarm gong ⇄ Case` at
+**0.1446**, `alarmGongPost ⇄ caseMiddle`, 0.0054 under the one margin, at
+every pose and every spec point. The block stands one margin inside the
+bore's authored circle by construction (`R_ANNULUS_OUT = R_BORE_BACK −
+CLEAR_MARGIN`, then the block's radius) — but the band is a sector lathe of
+96 facets per turn, each lying inside that circle by up to
+R·(1 − cos(π/96)) = 0.027 u, and the block's own 16 vertices reach its full
+radius. At 61° the block's nearest vertex faces the middle of a facet (the
+closest case point measured at r 50.116 against the circle's 50.139, same
+azimuth, same z); at 55.8° it had happened to face a facet's end, which is
+the only reason §198 and §253 shipped green on a construction that was
+0.027 short of its own margin at the wrong azimuth. Fixed in position space,
+P3's rule: the annulus's outer wall is now the bore's **inscribed circle**,
+`R_BORE_BACK · cos(π / G.CASE_LATHE_SEG)` less the margin — the facets'
+minimum over every azimuth, so the margin holds wherever a foot lands — and
+`CASE_LATHE_SEG` (96) is exported from `geometry.js` as the one count both
+lathes read, where it had been two bare literals. The ring moved in by
+0.027 u, the fixed point re-closed (61.139°), and the gap reads **0.171**.
+`R_CLAMP` holds the case screws' heads to the same authored circle; those
+heads are the case's own metal and declared joints, so nothing measured them
+short, and the pattern is noted here rather than chased.
+
+**Where the loudness is, stated once.** Every lever inside the wire was
+already at its envelope before this entry — the wire at real gong stock's
+1.1 mm ceiling (§198), the ring at the annulus (§198), the head on the
+impedance match (§253) — and the sweep shows the fundamental under **5 dBA in
+every in-band row** (C8's reads 11.8 only because it is the one audible mode
+left): a bare wire never rings its own note audibly, which is TODO 126
+restated per octave. The two levers that are not spent are the ledger's and
+were priced before this entry: TODO 128 (a hammer spring that is a spring,
+about **26 dB**) and TODO 126 (the case as the radiator, about **30 dB**).
+Neither is touched here; both are what "louder" means next.
+
+**Held by.** `probe-262-gong-note.mjs` — ALL PASS on its controls (shipped
+f₁ 2093.0 Hz is the target to 2e-5; the rewrite reproduces the shipped
+design arc 61.139340° and head 44.4942 mg exactly, f₁ within the knob's
+rounding) and the table above as its report; `probe-253-arch-modes.mjs`,
+`probe-197-gong-loudness.mjs` and `probe-198-lifting-lever.mjs` re-run green
+at the new note; the §197 band assert and §198's design-point assert at boot;
+the battery.
+
+**Record.** `TODO.md` 17 and 127 stay closed as the history they are;
+`explain.html`'s gong entry gains the §262 paragraph and re-quotes its three
+plates (every invalidated block re-translated in all 19 locales, the one
+Welsh label that then overran its plate shortened); `primer.html`'s gong
+entry says which C and why; `AESTHETICS.md` and `README.md` say the target is
+a note.
+
 ## §254 — The fusee groove is cut as a fusee engine cuts it, the chain stands upright in it, and its cone end is hooked
 
 Three items closed together, because they were one item wearing three
