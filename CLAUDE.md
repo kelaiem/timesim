@@ -1256,6 +1256,14 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   yields — and `__clock.boot` publishes what the build actually achieved. The
   probe also COUNTS the seams in the source and prints the number, which is the
   one to quote: this entry said 173 for as long as it took the file to reach 203.
+  **Since §266 landing two it runs in CI**: `.github/workflows/boot-yield.yml`,
+  on every pull request touching `index.html`, `src/` or `vendor/` and every
+  push to `main`, always on `ubuntu-latest`, because the ceilings are a
+  property of the host. They are that host's: the slowest of twelve runs times
+  1.66, written beside each. HELD (550 ms) is the sharp gate and the build's own
+  number. Long task (3,900) and input ack (3,850) are backstops, because on CI
+  the worst of each is always the first composited frame, 1.2–2.3 s by runner.
+  A slow dev container can fail those two on a healthy tree; read the held line.
   **A seam must be in an ASYNC CONTEXT and at a STATEMENT HEAD.** The module
   body and top-level bare blocks already are; an IIFE has to become
   `await (async () => {…})()`, which six of them did. `await` mid-expression is
