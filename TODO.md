@@ -17,8 +17,11 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
-| 226 | OPEN | Step 2 DONE by BUILT §221: the bank is the pin's own bearing at the lift's edge (`d·sin ψ = r·sin(θ + ψ)`), 4.03°, and `probe-221-amplitude.mjs` holds the pin on the slot's centre line at both window edges to 1e-7. Step 1 remains: the pin's centre stands 0.156 outside the horn tips at the lift's edge, so its body enters 0.394 of a slot 2.759 deep; seat it by moving the fork's mouth or the roller. Step 3 remains past the window's edges (the pin against the driving wall THROUGH the impulse)
+| 233 | CLOSED | Found closing §261 step 1 (#636): the Latvian explainer and primer tables were keyed to English §221 (#617) rewrote, because the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check read red on `main`. Closed by #611 (c4eea7c), which re-keyed 15 explainer and 5 primer Latvian rows against the current English, more than the ten counted here because TODO 226's drive rewrote further English. Latvian reads 769/769 and 144/144. The race itself is answered by a CLAUDE.md convention (a locale or page-English PR re-merges `main` and waits for the Explainer check before it merges) and by §271 (merge queue). Arabic plate collisions seen locally are font metrics, not CI |
+| 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
+| 230 | OPEN | Found closing TODO 204. The beak lever turns on `alarmLinkBeakPin` with nothing holding it along the pin toward the arm's line (+y): no shoulder, collar or clip, the eye's inner end plugged by the web. It slides **0.1735** (seated) / **0.1855** (lifted) before the eye or web meets the selector rod, its own group's output, with 0.1432 of the 0.3167 journal still engaged; without the rod it leaves the pin at 0.3167. The column's sweep under the nose drags it along exactly that axis. Fix: a retaining shoulder or collar with its own §50 floor, re-deriving the pin's cantilever (757.1 MPa, margin 1.057). P1 |
+| 227 | CLOSED | The alarm release sleeve's SKIRT — the cone the tail pin presses — was a double-sided sheet of no thickness (a collinear offset: profile area 0.0177 u²), and `alarmSleeveWeb` (TODO 225) was a patch over it. It is a real shell now, wall `STOCK_MIN_U` normal to the face, with a relief at the feeler spring's free end (0.084 under the envelope floor): skirt ⇄ spring 0.0807 → 0.1585 against 0.15. The web, its §124 relief and its contact row are gone. Battery 53/53 locally; `tools/probe-225-lathe-profiles.mjs` finds no other lathe like it (72 meshes) |
+| 226 | PART DONE | Step 2 DONE by BUILT §221: the bank is the pin's own bearing at the lift's edge (`d·sin ψ = r·sin(θ + ψ)`), 4.03°, and `probe-221-amplitude.mjs` holds the pin on the slot's centre line at both window edges to 1e-7. And the escapement is DRIVEN now: the fork's angle is read off the balance through the pin (`PIN_FORK`, `forkSwingAt`), the escape wheel turns in proportion to the fork, the posed window, its recoil dip, `RECOIL_DEG`, `RECOIL_FRACTION` and `FORK_RECOIL_DEG` are retired, and `Pallet fork` ⇄ `Balance` has a floors row with three pairs waived BY NAME for step 1. Step 1 remains: the pin's centre stands 0.156 outside the horn tips at the lift's edge, so its body enters 0.394 of a slot 2.759 deep; seat it with a single roller, cut the horns and notch to it, and re-cut the plate's quarter-bank of spare window. Step 3 remains past the window's edges (the pin against the driving wall THROUGH the impulse) |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -28177,6 +28180,12 @@ shape.
     new or reshaped meshes (eye, web, pin, head, the re-sited post) and the
     case's raised glass step.
 
+**Leftovers, filed.** [TODO 230]: the lever has no axial retention on its pin.
+Toward the arm's line it slides 0.1735 before the eye meets the selector rod.
+[TODO 231]: the back envelope's allowance is per unit. Measured per mesh, it
+recovers 0.1015 of the 0.3748, not the 0.12 estimated above, because the web's
+corner rises 0.0185 as the lever tilts.
+
 ## 205. The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld — CLOSED
 
 Found closing [TODO 191] by the same scan, `meshClearance` over every `AXES`
@@ -30639,7 +30648,7 @@ scaled frame. 171 lose under 25% of their area at their floor (144 under 8%).
 
 | unit / mesh | kind, floor | what the outline says | waived |
 |---|---|---|---|
-| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — see TODO 227** | no |
+| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — retired with TODO 227 (the mesh no longer exists, so 9 rows remain)** | no |
 | Alarm switch / `alarmPusherReturnAbutment` | wheel 0.12 | an annulus, radii 0.4442 / 0.3689 mm: a 0.075 mm wall, 0.12 mm deep | TODO 11 (unit-wide) |
 | Escape wheel / (unnamed, 0.394 mm deep) | wheel 0.12 | an annulus 0.2728 / 0.1895 mm: a 0.083 mm wall; reads 0.3941 | TODO 12 |
 | Escape wheel / (unnamed, 0.452 mm deep) | wheel 0.12 | the escape PINION's leaves (105-point outline, root 0.227 mm to tip 0.340 mm) | TODO 12 |
@@ -30755,9 +30764,53 @@ and asserts and the `alarmSleeveWeb ⇄ alarmTailPin` contact row, and let
 `stockFloor` read the declared wall (§169's device). Until then the cone the pin
 presses is a modelled surface, not a modelled body.
 
+**UPDATE — closed.** The shell landed with the relief the "swept skirt" path above
+named, and not either layout move. Re-siting the bear point was rejected on the
+design priority's own list: `BEAR_R/ARM_LEN` is the crank's lever arm, and
+"stretching or shrinking a lever arm" is a forbidden way to buy P3 clearance
+whether or not the 0.45 was ever derived. Buying stratum was priced and not
+needed.
+
+*What was built.* `alarmSleeveSkirt` is one custom swept body (not a lathe: the
+relief breaks the axis symmetry). Its profile is `[A, K1, E|K2, K3, G, C, B]` —
+seven corners, so the full ring and the relieved ring share a topology and the
+notch is a MORPH of one corner (E sliding to K2) with smoothstep ramps, one closed
+manifold with no cap faces. The wall is `STOCK_MIN_U` normal to the working face
+(outer face z = r − c − t·√2), the cap flush with the flat's underside and clipped
+at the flat's rim, the lip flush with the envelope floor, `stockSection` declared
+(§169's device — the census reads a profile's envelope, which for a 45° wedge is
+not its wall). In a sector about the lever's line the lip's OUTER corner is absent
+below `zCut` and outboard of `rKeep`, both derived from the spring's metal:
+`zCut` is one `CLEAR_MARGIN` over the blade's end top plus its climb toward the
+rim (the blade rises toward its anchor, `ALARM_FEELER_SPR_LIFT / (SPR_FREE +
+BEAR_R)` per unit of length — the first cut used the end alone and read 0.144);
+`rKeep` is where the kept lip stands a margin from the blade's nearest corner
+through the diagonal. The sector's half-angle covers the blade's lateral reach over
+the ring at the steepest yaw the relief assumes (`ALARM_SPR_YAW_MAX`, 45°),
+asserted at the blade against the lug solve (≈ 30.8°). The face runs to A at every
+azimuth, which is what the pin needs; only the metal behind the face's tip is
+relieved. The feeler's pivot radius, track radius, arm length, bear point, spring
+free length and spring lift were hoisted above the sleeve build to feed it; none
+moved. The web, its §124 relief and `['alarmSleeveWeb', 'alarmTailPin']` retired,
+and the §124 rock assert now binds at the skirt's tip A.
+
+*Measured.* `meshClearance(alarmSleeveSkirt, alarmFeelerSpring)` 0.0807 (the
+unrelieved shell) → **0.1585**; the full local battery on this tree (`node
+tools/ci-battery.mjs --shards 3 --no-incremental`, dev container) **53/53 gates**,
+`meshIntegrity` 0 inverted, `undeclaredClearance` 0 rows under the margin, and
+`assembly` keeps the skirt in the sleeve's one body. Boot is silent.
+
+*What this does NOT claim.* The relief is a pocket, not a thinning of the wall: the
+wall above `zCut` is the full `STOCK_MIN_U` normal everywhere, and the tip's own
+45° taper (a lip is only `t` thick once it is `t·√2` wide) is the same taper the
+rest of the ring has. But in the sector the lip is 0.2 u wide against 0.448, so
+the tapered tip there is longer in proportion to the wall. If a reviewer reads
+that as the thinning P3 forbids, the alternative is the stratum purchase, whose
+price is the dial plane (`Z_DIAL`) and everything keyed to it.
+
 ---
 
-## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees)
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — DRIVEN AND STEP 2 DONE (§221)
 
 Found closing [TODO 216], whose knock solve reads this geometry.
 
@@ -30848,3 +30901,386 @@ pallet cycle's geometry). On winding, the tooth's torque returns through the
 same contact and the balance is released from the fork with the impulse the
 lift gives it. Acceptance: with no torque, τ does not advance at all; the
 balance stops within a swing of the drive going off; winding restarts it.
+### The drive (landed)
+
+Scoping step 1 found something under it: the fork was not DRIVEN by the pin at
+all. `forkSwingRad` and `escapeAngle` were laws of beat phase — a window of
+`IMPULSE_WIDTH` of each beat with a recoil dip (`RECOIL_DEG` 1.0° of wheel on
+the first `RECOIL_FRACTION` 0.25 of it, a fork dip of a quarter bank) and a
+smoothstep — and the balance was a sine on the same clock. Two laws that
+shared a period and nothing else. §221 made the two agree at the window's
+EDGES (the bank is the pin's bearing there); between them the fork still ran
+its own smoothstep, and its recoil dip pressed it a quarter bank past the bank
+into a pin moving the other way. Measured with that law re-posed
+(`probe-226-drive.mjs`'s control, §221's balance and bank, the fork on its own
+clock), the pin is **buried in the horn** inside the window, every beat.
+Before §221, at the old bank and swing, the same control read the pin 0.143
+inside the horn at the window's opening. Nothing read either, because
+`Pallet fork` ⇄ `Balance` is EXPECTED and had no `EXPECTED_CONTACT_FLOORS`
+row — TODO 6's blanket. So the order was: drive first, then seat.
+
+**The law (main.js `PIN_FORK`, `forkSwingAt`, `balanceTheta`, `escapeAngle`).**
+Balance at the origin, fork pivot at d = 11.1948 on +x, pin at
+r·(cos θ, sin θ) with r = `rollerR` 1.62. The slot's centre line passes
+through the pin when the fork is turned s off the line of centres,
+`tan s = r·sin θ / (d − r·cos θ)`; outside the notch the fork lies on its
+bank. The two meet at the half-lift `θ_L = asin(d·sin(bank)/r) − bank` — §221's
+bank derivation run backwards, so θ_L is `LIFT_DEG/2` = 25°, asserted at boot
+(the two read d two ways: the stations, and the two lengths they were placed
+from). §221's balance is kept as it is: `AMPLITUDE_POSED_DEG` 200°, level over
+the reserve, phased so each beat opens with the pin entering at ∓θ_L and
+closes with it leaving at ±θ_L. The escape wheel advances `BEAT_DEG` in
+proportion to the fork's travel bank to bank, which is the relation the
+stones' impulse faces were already cut against, so the faces and the law are
+one description now. The window is `IMPULSE_WIDTH` (0.0797) of every beat at
+every state of wind; the beat sounds fire at its open, middle and close.
+
+A first draft carried the old sagging amplitude and read it through the
+tension, and the full battery's `axisEntry` caught where it read it from: a
+copy stored by `tick()` went stale inside `setPose`, whose `maintHold` solve
+reads `barrelMeshAngle` before that pose's tick, so after the `wind` axis the
+escape wheel entered `maintHold` 0.242 rad off. A law's inputs must not be
+state a tick refreshes. §221's level swing removed the input altogether.
+
+Retired with the posed law: `RECOIL_DEG`, `RECOIL_FRACTION`,
+`FORK_RECOIL_DEG` and `escapeDeltaDeg`.
+
+**Measured** (`tools/probe-226-drive.mjs`, acceptance, reading the built
+groups at three winds):
+
+| | worst over the samples |
+|---|---|
+| pin centre off the slot's centre line, fork between its banks | 7.1e-15 |
+| escape wheel off `BEAT_DEG` × the fork's fraction | 6.8e-7° |
+| lift centred: pin at ±θ_L at each beat boundary | 2.3e-13° |
+| lift read off the posed meshes | 50.000° at each wind |
+| pin ⇄ blank, pin in the lift (driven) | **0.3403** |
+| pin ⇄ blank, pin in the lift (§221's posed fork, the control) | **0** (buried) |
+
+`probe-131-escapement-slide.mjs` holds the tip on the impulse face from the
+window's opening (it skipped the recoil dip before; there is no dip to skip):
+56 of 65 samples on the face, worst 0.0100 off it, drop 1.50°, over a window it
+measures as 7.98% of the beat.
+
+**The floors row.** `Pallet fork` ⇄ `Balance` is held to `CLEAR_MARGIN` over
+every mesh pair the two units own. There is NO working contact to excuse in
+this landing: the notch (half-width 0.84) is wider than the pin (0.55), so the
+pin rides the slot's centre line without bearing on a wall. Three pairs do not
+meet the margin, and each is waived BY NAME in its own `only:` row citing
+step 1, so each goes STALE (and fails) the day step 1 clears it:
+
+| pair | closest | why |
+|---|---|---|
+| `forkGuardPin` ⇄ `balanceImpulsePin` | 0 | the pin is 3.0 long and stands through the safety roller's plane, where the guard pin sits on the slot's centre line — on the line of centres the two share the plane. A double roller's pin stops at its table |
+| `forkBlank` ⇄ `balanceImpulsePin` | 0.0313 | past the lift the pin's surface sweeps within the bevel's miter of the horn tip it exits by (r 0.55 on a 1.62 roller, against tips cut for the notch) |
+| `forkBlank` ⇄ `balanceRollerTable` | 0.0616 | the impulse table shares the fork's plane, and at bank the near horn tip stands inside the margin of its rim |
+
+The meshes were unnamed; they are named now (`forkBlank`, `forkGuardPin`,
+`balanceImpulsePin`, `balanceRollerTable`, `balanceSafetyRoller`) so the rows
+can hold them. The rim stands exactly the margin off the blank (0.1500).
+
+**Kept on purpose, so the drive moves no metal.** The three-quarter plate's
+balance window is still cut to the fork's 1.25·bank (the swept footprint the
+recoil dip once needed): a quarter bank of window nothing enters now. Step 1
+moves the horns anyway, and re-cuts the window from the driven swing then.
+
+**One more thing step 1 must carry.** TODO 216's knock solve reads the
+AUTHORED outline (`blankOutline`), but the blank is extruded with
+`bevelSize: bevel` and no `bevelOffset`, so the metal stands up to a bevel
+(and a corner's miter — the horn tips reach 0.165 past the outline) outside
+it. The knock angle is therefore optimistic by that much; when step 1 cuts the
+horns it should either solve the knock on the dilated outline or cut the blank
+with `bevelOffset: -bevel` as the escape wheel is (TODO 131).
+
+**What step 1 builds.** Merge the impulse table into a single roller below the
+fork so the table leaves the fork's plane and the pin stands only in it; cut
+the notch to the pin's depth and the horns past it; re-cut the plate's window
+from the driven swing; and turn the three `only:` waivers into the one working
+contact (the pin on the notch's walls, step 3's instrument) or clear them.
+
+---
+
+## 230. The beak lever has no axial retention on its pivot pin: it can slide 0.17 toward the selector rod, which is the first thing it meets
+
+**Found closing [TODO 204].** TODO 204 made the beak lever's fulcrum a real pin.
+`alarmLinkBeakPin` (r `STOCK_MIN_R10` 0.1665) is pressed through the post's head
+(`alarmLinkBeakHead`) and runs in the lever's eye (`alarmLinkBeakEye`) on the
+tilt axis. The eye hangs on the lever's −y side (`ALARM_BEAK_SIDE` −1), so along
+the pin, toward the arm's line, is the lever's local **+y**. Nothing holds the
+lever in that direction:
+- there is no collar, shoulder or E-clip on the pin;
+- the pin's free end stops `PIVOT_BORE_CLEAR` short of the web's lap, inside the
+  eye's bore (`pinEnd` 0.8206 against `webOut` 0.7706), so nothing on the pin
+  can ever face a lever surface that moves +y;
+- the head's inner face retains only the other way.
+
+**What governs it now, measured** (`__clock.beakPivot` for the stations; a
+scratch probe translated the lever's group along its own y and bisected
+`meshClearance` against every mesh within 2 u, at the reset pose and at
+`alarm` / `alarmToggle` f = 0…1):
+- **+y, nothing on the pivot.** The first thing the lever meets is the selector
+  rod `alarmLinkRod`, at **0.1735** of slide when seated (the eye, from its
+  `INTRA_UNIT_FLOORS` gap of 0.1594) and **0.1855** when lifted (the web,
+  `alarmLinkBeakFulcrum`, from 0.1676). The rod is the beak lever's own output in
+  the arming group. It translates, so it is not a thrust face. At that point
+  **0.1432** of the eye's 0.3167 journal (`eyeOut − pinEnd` = `STOCK_MIN_U`)
+  still bears, 45% of it. Without the rod, the lever leaves the pin at 0.3167.
+  The jumper blade (`alarmJumperBlade`) comes next, at 1.15.
+- **−y, the head.** The eye's outer face meets the head after **0.0500**, the
+  `PIVOT_BORE_CLEAR` end-shake. The web's lap closes on the pin's end at the
+  same 0.05. Next behind them is the eye's rim over the post's shank,
+  **0.0568**: the gap TODO 204 recorded, which leaves 0.0068 between the head
+  bearing and that rim touching.
+- **There is an axial load.** `beakAim` points the arm at the column wheel's
+  centre (`ALARM_COL_POS`). The castellations therefore sweep under the nose
+  square to the arm in plan, which is along the pin's axis. At the lifted
+  end's 47.42 mN nose force, `MU_STEEL` (0.2) drags the nose about **9.5 mN**
+  along the pin. The column is indexed one way by its pawl, so the drag has
+  one sign. Which sign it has is not measured. If it is +y, it is resisted
+  only by friction at the rod top and the nose.
+
+**Why it is debt (P1, structural truth within the arming group).** A pivot that
+can walk off its pin cannot do the job as matter, whatever every sweep says. The
+battery cannot see it: every check poses the lever at y = 0, and `intraUnit`
+holds the rod⇄eye/web floors (0.1594 / 0.1804) only at the poses the tick
+writes. The lever's location along the pin is posed, not held.
+
+**Fix path.**
+1. Retain the lever both ways with a real feature, which carries its own §50
+   floor (`STOCK_MIN_U` wall over the pin) and its own `INTRA_UNIT_CONTACTS`
+   row. Two arrangements fit:
+   - (a) Reverse the fit. Press the pin into the eye, so it turns with the
+     lever, and journal it in the head. The eye's outer face becomes the
+     shoulder against the head's inner face (−y, as now), and a collar or clip
+     on the pin's end outboard of the head's outer face (`headOut` 1.5327,
+     which is also the post's outer flank) takes +y. The bending root moves to
+     the eye's outer face.
+   - (b) Open the eye's bore through, by re-routing the web's lap off the bore,
+     and fit a collar or clip on the pin's inner end.
+2. **Re-derive the pin's cantilever. It is now the governing stress.** At the
+   285.45 mN service load (`R_N`), with its moment arm the head's inner face
+   (`headIn` 1.1873), it works at **757.1 MPa** against
+   `SPRING_SIGMA_Y_PA` 800, a margin of **1.057**.
+   - σ goes linearly with the arm, so the arm may grow by 0.0673 u at today's
+     section.
+   - A §50-floor collar (0.3167 long) placed inside the arm, as (b) does,
+     needs the pin about 6.2% thicker (r 0.1665 → ≈ 0.1768).
+   - A thicker pin grows the eye's bore and wall, and so its crown, by the same
+     ≈ 0.0103. The eye's crown is what sets the case's back glass step
+     ([TODO 231]), so the pin's section is a case-height number too.
+3. Keep the end-shake to the head's bearing ahead of the eye rim over the post
+   (0.0500 against 0.0568 today), or move the post.
+4. **Acceptance.** A probe that slides the lever both ways along its pin, at the
+   seated and lifted poses, must find the retaining feature bearing within the
+   declared end-shake before anything else (today: the rod at 0.1735). The
+   build's rule-6 warns hold the pin's and the collar's stress. The
+   `INTRA_UNIT_FLOORS` rows rod⇄eye and rod⇄web keep their 0.15.
+
+---
+
+## 231. The back envelope's swept allowance is per unit, so members that never rise in z raise the case's back glass step
+
+**Found closing [TODO 204].** §187's `BACK_ENVELOPE` (main.js) measures the
+movement at its construction pose, because boot cannot sweep poses ([TODO 111]'s
+structural note). It adds `BACK_SWEPT_ALLOWANCE`, a `Map` keyed by **unit name**
+with one row, `['Alarm link', 0.12]`. The walk applies it per vertex:
+`const allow = (unit && BACK_SWEPT_ALLOWANCE.get(unit)) || 0;`. Every mesh of the
+Alarm link carries the same 0.12, including members that never rise in z: the
+beak lever's eye (`alarmLinkBeakEye`, a ring turned about the tilt axis, which
+the tilt only rotates about itself), and the fixed head, pin and post.
+
+TODO 204's eye crown stands 0.5332 over the tilt axis, where the bar's top stood
+0.1583. It became the unit's construction-pose maximum, **14.0315**, so the
+declared envelope reads 14.0315 + 0.12 = **14.1515**. The case's raised glass
+then stands at `zStepUnder` = envelope + `CLEAR_MARGIN` = **14.3015**, up from
+13.9267, a rise of **0.3748**.
+
+**What the metal asks, measured** by a scratch probe over every `AXES` axis at 9
+fractions plus the reset pose. Each mesh's own worst per-bin rise is taken over
+its own construction pose (reset with the arm's tilt zeroed, the build's
+`beakArm.rotation.y = 0`), in the declaration's binning:
+
+| mesh | construction top | swept top | worst rise |
+|---|---|---|---|
+| `alarmLinkBeakFulcrum` (the web) | 14.0315 | **14.0500** | 0.0185 |
+| `alarmLinkBeakEye` | 14.0315 | 14.0315 | 0.0125 (rim, off the crown) |
+| `alarmLinkBeakHead` | 13.9815 | 13.9815 | 0 |
+| `alarmLinkBeakTail` | 13.6567 | 13.7549 | 0.0982 |
+| `alarmLinkBeakPin` | 13.6649 | 13.6649 | 0 |
+| `alarmLinkBeakBar` / `alarmLinkBeak` | 13.6567 | 13.6567 | 0 |
+| `alarmLinkRod` | 13.3401 | 13.4402 | 0.1002 |
+| `alarmLinkBeakPost` | 13.0652 | 13.0652 | 0 |
+
+- **The unit's swept maximum is 14.0500**: the web's square top corner
+  (0.5332·cos θ + 0.1665·sin θ about the tilt axis) as the lever tilts. The
+  metal therefore asks `zStepUnder` ≥ **14.2000**. The movers the 0.12 was sized
+  for, the tail (0.0982) and the rod (0.1002), stand at least 0.27 under the
+  eye's crown and govern nothing.
+- **Nothing else is near.** The next metal is the jumper blade at 13.1148
+  (`BACK_SWEPT_REGIONS`' highest row is 13.1189), 0.93 below.
+- **A per-mesh allowance, each mesh at its own measured rise, puts the envelope
+  at 14.0500 and the step at 14.2000. That recovers 0.1015 u (0.0385 mm)**, so
+  TODO 204's rise becomes +0.2733 instead of +0.3748.
+- TODO 204's record estimated 0.12. It is short of that because the web's
+  corner rises 0.0185 over the crown. Zeroing every pivot member's allowance,
+  the web included, would under-declare the web, and probe-back-envelope's §187
+  gate would red, correctly. Crowning the web's top round about the tilt axis
+  makes its rise 0. The step would then follow the eye's crown alone, at
+  14.1815, and recover the full **0.1200**. That needs the web's section
+  re-checked (47.0 MPa today, `sigmaWeb_Pa`).
+- **A unit allowance re-measured per bin is not the fix.** Measured that way,
+  the unit's worst bin rises 0.4376 (r 12.74–12.89). That excess is MIGRATION:
+  members entering bins they do not stand in at construction (the nose 2 bins,
+  the bar 1, the web 1). Covering it would raise the step to 14.4691.
+  Migration is what `BACK_SWEPT_REGIONS` exists to express (standing rule 5's
+  pattern in r–z).
+
+**Is the distinction available? Yes.** The walk already holds the mesh `o` (and
+`o.name`) beside `unitOf(o)`, so a per-mesh key is one lookup. What is missing is
+the measurement:
+- `probe-back-envelope.mjs` aggregates per UNIT (its `units` map) and has no
+  per-mesh product.
+- Its "build" column is the canonical reset pose. Its header says [TODO 111]
+  measured that identical to the construction pose, which is no longer true for
+  the beak lever: reset is tilted (lifted), construction is `rotation.y = 0`. At
+  reset the web reads 14.0500, while the boot's construction scan reads 14.0315
+  (= the declared 14.1515 − 0.12).
+- So the probe's delta column cannot source per-mesh rows as it stands.
+- The `BACK_SWEPT_ALLOWANCE` comment's own numbers (12.161 against 12.061,
+  +0.099) are from before the tier moved.
+
+**No existing item covers this.** TODO 111 (closed) made the construction pose
+the boot's, and TODO 114 (closed by §187) built the envelope. Neither asks
+whether the allowance's key is too coarse. The case height is the only cost, and
+no mechanism is touched.
+
+**Fix path (P3, position space: case height).**
+1. Give `probe-back-envelope` a per-mesh product: each labelled mesh's swept top
+   and worst per-bin rise over the **construction** pose (read the boot's own
+   scan, or pose the lever's `rotation.y = 0` as the build does), and the bins
+   it migrates into.
+2. Key `BACK_SWEPT_ALLOWANCE` by mesh name (or unit with per-mesh overrides),
+   each row its measured rise rounded up past margin flicker, as the comment's
+   convention already says. A member that only rotates about its own axis or is
+   fixed in its unit takes 0. Bins a member migrates into stay with
+   `BACK_SWEPT_REGIONS`.
+3. Optionally crown the web round about the tilt axis (the extra 0.0185), with
+   its stress re-held.
+4. **Acceptance.**
+   - `probe-back-envelope`'s §187 gate and glass gate pass: every swept bin at
+     or under the declaration.
+   - The boot's §187 asserts stay silent.
+   - `zStepUnder` lands at 14.2000 (or 14.1815 with the web crowned).
+   - The battery's case rows (`expectedContacts`, `undeclaredClearance` against
+     the back glass) re-run.
+   - The fingerprint moves for the case's glass alone.
+
+Coupled to [TODO 230]: a thicker beak pin raises the eye's crown, and with it
+this step, one for one.
+
+## 233. The Latvian explainer and primer tables are keyed to English §221 rewrote: ten blocks render English and the Explainer workflow is red on main — CLOSED (#611)
+
+**Closed by #611, not by this item's own landing.** TODO 226's drive
+(`claude/spring-friction-efficiency-xdh7ik`) hit the same red and re-keyed the
+Latvian tables in c4eea7c before this item merged: 15 explainer keys and 5
+primer keys, a superset of the ten below, because that drive rewrote more of the
+escapement's English. Translations were made against the current English, and
+the vocabulary row stayed `modelēts / simulēts`. On `main` at 6a14d9f, `node
+tools/explain-i18n.mjs --check` reads Latvian at 769/769 and 144/144 with 0
+unmatched keys on both pages. Steps 1–3 are done there. Step 4 is answered in two parts.
+CLAUDE.md's Conventions now carry the partial guard as a rule:
+a PR that carries locale tables or rewrites the pages' English re-merges `main`
+immediately before merging and waits for the Explainer check on that head. The
+whole fix, a merge queue, is filed as §271 in the roadmap. The record below is
+kept as found.
+
+**Found closing §261 step 1 (#636), whose Explainer check went red for a
+reason outside its diff.** `node tools/explain-i18n.mjs --check` fails on `main`
+and on every pull request inside the Explainer workflow's paths filter, and the
+failure is Latvian alone:
+
+| page | Latvian table | translated | unmatched keys (gated) |
+|---|---|---|---|
+| `explain.html` | `src/explain-i18n.lv.js` | 765 / 772 | **7** |
+| `primer.html` | `src/primer-i18n.lv.js` | 142 / 145 | **3** |
+
+Every other locale reads 0 unmatched on both pages.
+
+**The cause is a merge race between two landings that were each green alone.**
+§221 (#617, the balance swinging its physical amplitude) rewrote the English of
+ten blocks and re-keyed every locale table it could see. It merged at 08:16 on
+2026-10-10. The Latvian landing (§249 chunk K, #619) had last merged `main` at
+06:42, before §221 existed, so its tables were keyed to the old English. It
+merged at 09:35 without re-syncing. Its CI ran against the stale base, where
+those keys matched. The workflow also runs on pushes to `main`, which has read
+red ever since.
+
+**What a Latvian reader sees today is correct, and that is the gate working.**
+An unmatched key renders its block's English, visibly. The stale Latvian rows
+are not just old wording, they are old PHYSICS, so letting them match would
+make the page lie. For example, the overcoil caption's Latvian still carries
+"×0.030 at 45°, ×0.115 at 315°" where the English now reads "×0.102 at 200°,
+×0.092 at 316°". The primer's impulse label still translates "a sixth of the
+beat" where the English now says "a twelfth". §221 changed the swing the sim
+performs from 45° drawn to 200° physical, and these are the numbers that moved
+with it.
+
+The ten blocks, by entry:
+
+- `explain.html`, escapement: the ledger ("the tick models the escapement
+  KINEMATICALLY…"), the plate-reading paragraph ("Read the plate by its
+  arrows…") and "Ported arithmetic, not an animation…".
+- `explain.html`, free-sprung balance: "What the sim models, honestly
+  bounded…", the overcoil paragraph ("The last three quarters of a turn are
+  raised…") and its two measured captions (the pivot load ratios, and flat
+  spring against overcoil force at the swing).
+- `primer.html`: "That cycle is the tick…" (escapement), "Here the balance
+  completes 2½ full oscillations per second…" (balance) and the impulse label
+  ("a twelfth of the beat").
+
+**Not part of this item: Arabic plate collisions read locally.** In this repo's
+dev container the same check also reports two Arabic plate collisions on
+`explain.html` (the fusee plate's "what the cut flank delivers" label, and the
+stop-work caption "The rim swings under a pad that stays put…"). CI reads
+`[ar] plate fit: 0` on the same tree, and the container reports them on trees
+whose CI passed, back to before §221. Plate fit is measured in a browser, so it
+depends on the host's Arabic font metrics. The CI runner's are the ones the
+gate is held to. If a reader's fonts match the container's, those two labels
+may genuinely collide on screen. That is a separate question for the plate-fit
+probe (one host's fonts are not every reader's), not this re-key.
+
+### Fix path
+
+1. **Re-key from the DOM, never by hand.** Run `node tools/explain-i18n.mjs
+   --extract --page explain` and `--page primer` to get the current English
+   keys. Replace the ten stale rows in `src/explain-i18n.lv.js` and
+   `src/primer-i18n.lv.js` with translations of the CURRENT English.
+2. **Translate the content as it now stands.** Carry the new numbers (200°,
+   316°, ×0.102, ×0.092, the forces at the 200° swing, "a twelfth"), keep every
+   `<code>` span and its markup byte for byte, and keep the honesty vocabulary:
+   Latvian's row is `modelēts / simulēts`, and the ledger paragraphs lean on
+   the contrast.
+3. **Acceptance.** `node tools/explain-i18n.mjs --check` exits 0, with Latvian
+   at 0 unmatched on both pages, and Latvian's explainer coverage stays at
+   least what it is (765 of 772). `node tools/glossary-links.mjs` and `node
+   tools/l10n-review-packets.mjs` stay green. The Explainer workflow is green
+   on the pull request and then on `main`. The page is sim-code-free, so the
+   battery does not run (its paths filter ignores the tables and both pages).
+4. **The race itself, as an owner decision rather than code.** A pull
+   request's CI tests its merge with the base AT CI TIME, so two landings that
+   are each green can merge red. Nothing in a PR can close that. The repository
+   can: require branches to be up to date before merging, or use a merge queue,
+   for the Explainer check at least. Both are settings the owner changes; this
+   item records that the race happened, not a decision for them. A cheaper,
+   partial guard is the existing practice made explicit: a locale landing
+   re-merges `main` immediately before it merges, because locale tables are
+   keyed to English that any concurrent landing can rewrite.
+
+### Residue, named and not in scope
+
+Eleven explainer blocks render English in eighteen locales, and twenty-six in
+the four CJK locales: the fusee's maintaining-spring plate and its captions,
+the alarm arming entry's honesty ledger, and the run-out script labels. Those
+are REPORTED as untranslated, never gated, and they are not stale keys. Latvian
+already translates them (which is why it reads 765 where the others read 761).
+They are a translation backlog, not this item's defect.

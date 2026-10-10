@@ -245,21 +245,30 @@ function snapshotSubBodyIndex(geo) {
   geo.userData.subBodyIndex = geo.index.array.slice();
 }
 
-export function weldTree(root) {
+// §266 — in steps, as makeGenevaFingerSteps is: the pass over every mesh in
+// the scene is one of boot's longest single calls (~0.3–0.6 s on the
+// SwiftShader container, growing with the build), so the walk is collected
+// first and the generator yields between meshes. The order of the welds and
+// every result are the synchronous pass's; weldTree drains it in one go.
+export function weldTree(root) { return drainSteps(weldTreeSteps(root)); }
+export function* weldTreeSteps(root) {
   const done = new Map();
   let meshes = 0, before = 0, after = 0;
-  root.traverse((o) => {
-    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+  const walk = [];
+  root.traverse((o) => walk.push(o));
+  for (const o of walk) {
+    yield;
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) continue;
     const old = o.geometry;
     meshes++;
     before += old.attributes.position.count;
-    if (old.index) { after += old.attributes.position.count; snapshotSubBodyIndex(old); return; }
+    if (old.index) { after += old.attributes.position.count; snapshotSubBodyIndex(old); continue; }
     let welded = done.get(old);
     if (!welded) { welded = weldGeometry(old); done.set(old, welded); }
     if (welded !== old) o.geometry = welded;
     after += welded.attributes.position.count;
     snapshotSubBodyIndex(o.geometry);
-  });
+  }
   for (const [old, welded] of done) if (welded !== old) old.dispose();
   return { meshes, before, after };
 }
@@ -2108,8 +2117,9 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   //     each spelled where it is cut. Flipping any ONE of them is a PARTIAL
   //     mirror and the asserts say so, which is how they were found.
   //   · IMPULSE FACE: during the impulse window the wheel advance
-  //     (beatRad) and the fork swing (2·bankRad) ride the SAME smoothstep
-  //     (see main.js escapeDeltaDeg/forkSwingRad), so in the fork frame
+  //     (beatRad) and the fork swing (2·bankRad) move in PROPORTION — since
+  //     TODO 226 the wheel's angle is read off the fork's (main.js
+  //     escapeAngle/forkSwingRad), so in the fork frame
   //     the tooth tip slides, to first order, along the fixed direction
   //       p = R·beatRad·t̂ − 2·bankRad·|C|·û
   //     (t̂ = tooth-motion tangent, û = wheel radial at the corner), and
@@ -2181,8 +2191,8 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     // other bank (main.js forkSwingRad, whose sign is what seats the +x
     // stone at n even), and the wheel advances MOVEMENT_SENSE·beat about its
     // centre W₀ = (0, D) in the fork's NEUTRAL frame. A world point reads in
-    // the fork's own frame rotated by −φ, so at fraction s of the window,
-    // both advances on one smoothstep:
+    // the fork's own frame rotated by −φ, so at fraction s of the fork's
+    // travel, the wheel's advance being that same fraction (TODO 226):
     //   tip(s) = Rot(−σ·bank·(1 − 2s)) · (W₀ + Rot(MOVEMENT_SENSE·beat·s)·(C − W₀))
     // tip(0) is the SEAT — the corner placed so the lock bank carries it back
     // onto C, on the tooth circle, exactly rather than to bank·|C| — and the
@@ -2436,7 +2446,9 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     curveSegments: CURVE_SEGS_FORK,
   });
   bodyGeo.translate(0, 0, -stock / 2);   // the bevel caps carry it out to ±t/2
-  g.add(new THREE.Mesh(bodyGeo, MATS.steel));
+  const body = new THREE.Mesh(bodyGeo, MATS.steel);
+  body.name = 'forkBlank';   // TODO 226 — named so the pin's floors row can hold it
+  g.add(body);
 
   // NO STEEL IN THE WHEEL'S SWEEP — the bound the old outline paid for with a
   // shape. Every vertex of the blank as EXTRUDED (not as authored) must stand
@@ -2530,6 +2542,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const guardGeo = new THREE.CylinderGeometry(t * 0.18, t * 0.18, t * 1.4, 12);
   guardGeo.rotateX(Math.PI / 2);
   const guard = new THREE.Mesh(guardGeo, MATS.steel);
+  guard.name = 'forkGuardPin';
   guard.position.set(0, forkY + t * 0.5, -t * 0.7);
   g.add(guard);
   // §221 — the guard pin and the notch the impulse pin works in, published
@@ -2650,13 +2663,16 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   const rtGeo = new THREE.CylinderGeometry(radius * 0.15, radius * 0.15, thickness * 0.5, 32);
   rtGeo.rotateX(Math.PI / 2);
   rtGeo.translate(0, 0, rollerZ);
-  g.add(new THREE.Mesh(rtGeo, MATS.steel));
+  const rollerTable = new THREE.Mesh(rtGeo, MATS.steel);
+  rollerTable.name = 'balanceRollerTable';
+  g.add(rollerTable);
 
   // Ruby impulse pin at the roller's edge, in the roller-table plane itself so
   // it seats between the fork horns (the fork plane is level with the roller).
   const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);   // r is published as userData.pinR
   pinGeo.rotateX(Math.PI / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.ruby);
+  pin.name = 'balanceImpulsePin';   // TODO 226 — named so the escapement's working contact can be held by name
   pin.position.set(rollerR, 0, pinZ);
   g.add(pin);
 
@@ -2675,6 +2691,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   });
   srGeo.translate(0, 0, srZ - thickness * 0.17);
   const safetyRoller = new THREE.Mesh(srGeo, MATS.steel);
+  safetyRoller.name = 'balanceSafetyRoller';
   g.add(safetyRoller);
 
   g.userData.r = radius;
@@ -3683,7 +3700,13 @@ export function writeSpiralLine(line, pts) {
   line.geometry.computeBoundingSphere();
 }
 
-export function makeHairspring(plan) {
+// §266 — in steps, as makeGenevaFingerSteps is: the coil-gap scan below is an
+// O(n²) pass per wind frame (~0.23 s over the frames and report rows on the
+// SwiftShader container, ~5 ms a row), and the 41 elastica solves before it
+// held the first step ~0.35 s, so the builder yields before each solve and
+// each row and changes nothing else; makeHairspring drains it in one go.
+export function makeHairspring(plan) { return drainSteps(makeHairspringSteps(plan)); }
+export function* makeHairspringSteps(plan) {
   const { innerR, outerR, coils = 12, height, overcoil = null,
           windFrames = 41, windMaxRad = 1.0, reportMaxRad = windMaxRad,
           ribbonR: ribbonROverride = null } = plan;
@@ -3721,8 +3744,8 @@ export function makeHairspring(plan) {
   const REST_FRAME = (windFrames - 1) >> 1;   // θ = 0 exactly — windFrames is ODD
   const solved = new Array(windFrames);
   solved[REST_FRAME] = el.solve(0);
-  for (let k = REST_FRAME + 1; k < windFrames; k++) solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k - 1]);
-  for (let k = REST_FRAME - 1; k >= 0; k--) solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k + 1]);
+  for (let k = REST_FRAME + 1; k < windFrames; k++) { yield; solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k - 1]); }
+  for (let k = REST_FRAME - 1; k >= 0; k--) { yield; solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k + 1]); }
   const segsPerTurn = segs / coils;
   const scalars = (sol) => {
     // coil gap: the nearest two centreline points at least half a turn apart
@@ -3750,21 +3773,24 @@ export function makeHairspring(plan) {
     return { theta: sol.theta, torque: sol.torque, lam: Math.hypot(sol.lam[0], sol.lam[1]), energy: sol.energy,
              dkMax: sol.dkMax, gap, len, radialShift: shift, cx: cx / len, cy: cy / len, iters: sol.iters, converged: sol.converged };
   };
-  const frameRows = solved.map(scalars);
+  const frameRows = [];
+  for (const sol of solved) { yield; frameRows.push(scalars(sol)); }
   const reportRows = [];
   {
     const step = 2 * dTheta;
     let up = solved[windFrames - 1], dn = solved[0];
-    for (let th = windMaxRad + step; th <= reportMaxRad + 1e-9; th += step) { up = el.solve(th, up); reportRows.push(scalars(up)); }
-    for (let th = -windMaxRad - step; th >= -reportMaxRad - 1e-9; th -= step) { dn = el.solve(th, dn); reportRows.push(scalars(dn)); }
+    for (let th = windMaxRad + step; th <= reportMaxRad + 1e-9; th += step) { yield; up = el.solve(th, up); reportRows.push(scalars(up)); }
+    for (let th = -windMaxRad - step; th >= -reportMaxRad - 1e-9; th -= step) { yield; dn = el.solve(th, dn); reportRows.push(scalars(dn)); }
   }
   // THE CONTROL: solved against the free spring's own landing, the constraint
   // does no work and λ must come back zero — at the frame edge and at the
   // report edge, both signs. A pivot force the solver invents would show here.
-  const control = [windMaxRad, -windMaxRad, reportMaxRad, -reportMaxRad].map((th) => {
+  const control = [];
+  for (const th of [windMaxRad, -windMaxRad, reportMaxRad, -reportMaxRad]) {
+    yield;   // §266 — each control is a cold solve (no warm start), the costliest step here
     const s = el.solve(th, null, el.freeLanding(th));
-    return { theta: th, lam: Math.hypot(s.lam[0], s.lam[1]), kOverPure: (s.torque / th) * el.L, converged: s.converged };
-  });
+    control.push({ theta: th, lam: Math.hypot(s.lam[0], s.lam[1]), kOverPure: (s.torque / th) * el.L, converged: s.converged });
+  }
   const ratioAt = (th) => { const s = solved[Math.round((th + windMaxRad) / dTheta)]; return s.torque / th; };
   const clampRatio = ((ratioAt(HAIRSPRING_RATIO_THETA) + ratioAt(-HAIRSPRING_RATIO_THETA)) / 2) * el.L;
 
@@ -3774,6 +3800,7 @@ export function makeHairspring(plan) {
   const standZ = Math.max(height / (ribbonR * 2), 1);
   const frames = [];
   for (let k = 0; k < windFrames; k++) {
+    yield;
     const pts = solved[k].pts.map((p, i) => new THREE.Vector3(p[0], p[1], rest.zs[i] / standZ));
     framePolys.push(solved[k].pts.map((p) => [p[0], p[1]]));
     frames.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), rest.pts.length - 1, ribbonR, 4, false));
@@ -4040,7 +4067,9 @@ function genevaCrossTerms(spec, blankAt) {
 // once per (spec, blank) and shared, because both cutters read it and a
 // 770 × 770 field is not a thing to evaluate twice at boot.
 const _crossLoops = new WeakMap();
-export function genevaCrossOutline({ spec, blankAt = 0 }) {
+export function genevaCrossOutline(opts) { return drainSteps(genevaCrossOutlineSteps(opts)); }
+// §266 — the trace in steps (traceFieldSteps), for a builder that yields.
+export function* genevaCrossOutlineSteps({ spec, blankAt = 0 }) {
   let bySpec = _crossLoops.get(spec);
   if (!bySpec) _crossLoops.set(spec, bySpec = new Map());
   if (!bySpec.has(blankAt)) {
@@ -4049,7 +4078,7 @@ export function genevaCrossOutline({ spec, blankAt = 0 }) {
       const t = terms(x, y);
       return Math.min(t.rim, t.bore, t.hollow, t.slot);
     };
-    const loops = traceField(f, spec.b + 0.05, 0.01);
+    const loops = yield* traceFieldSteps(f, spec.b + 0.05, 0.01);
     loops.sort((p, q) => Math.abs(polyArea(q)) - Math.abs(polyArea(p)));
     bySpec.set(blankAt, loops);
   }
@@ -4137,7 +4166,22 @@ export function genevaFingerStack({ thickness, crankT, side = 1, lift = CLEAR_MA
 // crank's outer face to the output pinion — the same section, so the joint is
 // face to face). `blankAt` is the cross's own blank station, so the swept metal
 // is the cross as cut.
-export function makeGenevaFinger({ spec, thickness, boreR, hubR, crankT, side = 1, blankAt = 0, material }) {
+// §266 — THE CUT IN STEPS. The sweep below is ~1.4 s of real arithmetic on the
+// SwiftShader container (601 driver angles over every reachable point of the
+// cross, plus the cross's 0.3 s outline trace when the finger is the first to
+// ask for it), and it was the longest single stretch boot held the thread —
+// twice §239's 700 ms ceiling, and no seam in main.js can split one call. So
+// the builder is a generator that PAUSES, never one that changes: it yields
+// once after the trace and once every FINGER_SWEEP_STEP driver angles, and its
+// arithmetic, order and result are the synchronous builder's exactly (the
+// wrapper below drains it in one go, for every caller that does not yield).
+// The step is sized off that measurement: 1.4 s over 601 angles is ~2.3 ms an
+// angle, so 8 of them is ~18 ms — under §239's 20 ms placement budget, half
+// main.js's BREATHE_MS, so a machine twice as slow still reaches a pause
+// inside the budget. main.js resumes it with `await breathe()` between steps.
+const FINGER_SWEEP_STEP = 8;
+export function makeGenevaFinger(opts) { return drainSteps(makeGenevaFingerSteps(opts)); }
+export function* makeGenevaFingerSteps({ spec, thickness, boreR, hubR, crankT, side = 1, blankAt = 0, material }) {
   const { a, d, beta, lockR, pinR, slotInner, hollowR } = spec;
   const SEG = 1440;
   const env = new Array(SEG).fill(lockR);        // finger-local max radius, per bin
@@ -4155,7 +4199,8 @@ export function makeGenevaFinger({ spec, thickness, boreR, hubR, crankT, side = 
   // held to the margin.
   const seat = hollowR - lockR;
   const terms = genevaCrossTerms(spec, blankAt);
-  const loops = genevaCrossOutline({ spec, blankAt });
+  const loops = yield* genevaCrossOutlineSteps({ spec, blankAt });
+  yield;
   const ON = 1e-3;                                // the trace's own accuracy is ~1e-4; this is an order above it
   const pts0 = loops[0].map(([x, y]) => {
     const t = terms(x, y);
@@ -4212,6 +4257,7 @@ export function makeGenevaFinger({ spec, thickness, boreR, hubR, crankT, side = 
   const EPS = 0.5 * dTh * (spec.b * kMax + lockR + CLEAR_MARGIN_G) + 0.5 * gap;
   const TAU = Math.PI * 2;
   for (let k = 0; k <= NTH; k++) {
+    if (k % FINGER_SWEEP_STEP === 0) yield;
     const th = -sweep + dTh * k;                 // driver angle, 0 = crank pointing at the cross
     // The cross's rotation is what the slot demands of it at this driver angle:
     // the engaging slot's axis, seen from the cross's centre at +d, points at
@@ -4374,11 +4420,25 @@ export function makeGenevaFinger({ spec, thickness, boreR, hubR, crankT, side = 
 // Marching squares over a signed field, returning closed loops in CCW order.
 // Corner values are interpolated, so with a true SDF the traced boundary is
 // accurate to far better than the cell — the grid sets cost, not fidelity.
-function traceField(f, extent, h) {
+//
+// §266 — a GENERATOR, so a boot builder can pause it: the field's evaluation is
+// the whole cost (the Geneva cross's 770 × 770 grid is ~0.25 s on the
+// SwiftShader container, ~0.33 ms a row), so it yields every TRACE_ROW_STEP
+// rows — ~16 ms, under §239's 20 ms placement budget — and changes nothing
+// else. `drainSteps` runs any of these in one go, for a caller that does not
+// yield.
+const TRACE_ROW_STEP = 48;
+function drainSteps(steps) {
+  for (;;) { const r = steps.next(); if (r.done) return r.value; }
+}
+function* traceFieldSteps(f, extent, h) {
   const n = Math.ceil((2 * extent) / h);
   const at = (i, j) => f(-extent + i * h, -extent + j * h);
   const grid = [];
-  for (let i = 0; i <= n; i++) { grid.push([]); for (let j = 0; j <= n; j++) grid[i].push(at(i, j)); }
+  for (let i = 0; i <= n; i++) {
+    if (i % TRACE_ROW_STEP === 0) yield;
+    grid.push([]); for (let j = 0; j <= n; j++) grid[i].push(at(i, j));
+  }
   const segs = [];
   const lerp = (x0, y0, v0, x1, y1, v1) => {
     const t = v0 / (v0 - v1);
