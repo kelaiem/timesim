@@ -365,6 +365,15 @@ export function fmtInt(n) {
   return Number(n).toLocaleString(LANG_TAG, { useGrouping: true, maximumFractionDigits: 0 });
 }
 
+// §267 — a share as a whole percentage, for the boot bar's label. The locales
+// disagree about the sign as well as the digits — Turkish puts it first
+// (%37), French spaces it (37 %), Arabic has its own (٪) — so the browser's
+// percent style formats it, never a template with a literal '%'. FLOORED, not
+// rounded: 99.6% of the way is not done, and only the build's end may say 100.
+export function fmtPct(share) {
+  return (Math.floor(share * 100) / 100).toLocaleString(LANG_TAG, { style: 'percent', maximumFractionDigits: 0 });
+}
+
 // Display-layer CASE mapping (§249 Turkish), fmtNum's twin for letters: a
 // translated string is lowercased in its own locale, because String's
 // toLowerCase is locale-BLIND and Turkish has two i's — 'I' lowers to 'ı', not

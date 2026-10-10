@@ -139,11 +139,12 @@ if (!MAIN.includes(BREATHE_DECL)) {
     + 'so it would have served the yielding build twice and called it a control.');
   process.exit(1);
 }
-// §266 — the seams, counted where they are written: every `await breathe()` in
+// §266 — the seams, counted where they are written: every `await breathe(n)` in
 // main.js's CODE (a line's text before any `//`), which is what the record and
-// CLAUDE.md quote instead of a number of their own.
-const SEAMS = MAIN.split('\n').reduce((n, l) => n + (l.split('//')[0].match(/await breathe\(\)/g) || []).length, 0);
-console.log(`seams in source       ${SEAMS} \`await breathe()\` sites in src/main.js`);
+// CLAUDE.md quote instead of a number of their own. Since §267 a seam carries
+// its id, and a bare `await breathe()` (one not yet numbered) still counts.
+const SEAMS = MAIN.split('\n').reduce((n, l) => n + (l.split('//')[0].match(/await breathe\(\d*\)/g) || []).length, 0);
+console.log(`seams in source       ${SEAMS} \`await breathe(n)\` sites in src/main.js`);
 const RELEASE_CALL = '\nreleaseBuildInputGuard();\n';
 if (MAIN.split(RELEASE_CALL).length !== 2) {
   console.error('REFUSED: src/main.js must call `releaseBuildInputGuard();` at statement level exactly once — the tail control plants its stall before that line.');

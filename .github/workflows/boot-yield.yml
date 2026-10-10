@@ -25,6 +25,15 @@
 # gave the spread each ceiling in the probe is derived from — see its header
 # and docs/BUILT.md §266, landing two.
 #
+# §267 rides the same job, for the same two reasons: the boot screen's bar is
+# held to the clock on this host, and a seam added without its table
+# regenerated is a seconds-long question. tools/boot-progress.mjs --check
+# (browser-free, so it runs before Chromium is even installed) fails when the
+# table no longer describes main.js's seams, and fires its own four mutation
+# controls; tools/probe-267-boot-progress.mjs holds the bar against the true
+# elapsed fraction, with the raw seam ordinal as the control it must beat and a
+# frozen bar as the control its pixel reader must see standing still.
+#
 # `paths` is a POSITIVE list, unlike Battery's paths-ignore: everything the
 # boot executes is index.html, a module under src/ or vendor/, and a list of
 # three globs cannot fall behind the module graph the way a list of
@@ -39,6 +48,8 @@ on:
       - 'src/**'
       - 'vendor/**'
       - 'tools/probe-239-boot-yield.mjs'
+      - 'tools/boot-progress.mjs'
+      - 'tools/probe-267-boot-progress.mjs'
       - 'tools/package-lock.json'
       - '.github/workflows/boot-yield.yml'
   push:
@@ -55,13 +66,16 @@ permissions:
 jobs:
   boot-yield:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: The boot bar's table describes main.js's seams
+        run: node tools/boot-progress.mjs --check
 
       - name: Install pinned Playwright
         working-directory: tools
@@ -80,11 +94,17 @@ jobs:
       - name: Probe the boot's yield, with both controls
         run: node tools/probe-239-boot-yield.mjs --json boot-yield.json
 
+      - name: Probe the boot bar against the clock, with both controls
+        if: success() || failure()
+        run: node tools/probe-267-boot-progress.mjs --boots 2 --json boot-progress.json
+
       - name: Keep the numbers
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: boot-yield-${{ github.run_id }}
-          path: boot-yield.json
+          path: |
+            boot-yield.json
+            boot-progress.json
           if-no-files-found: warn
           retention-days: 14
