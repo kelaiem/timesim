@@ -32583,20 +32583,30 @@ times:
 - `battery`: **40.1 min** (18:29:26–19:09:31), its harness step 37.9 min.
   §264's run was 63.1 min, and the last push before §264 was 89.
 - The battery's harness step ended 24 s after the tiers job handed over its
-  file. That is what a run waiting on its sibling looks like: the critical
-  path is now the parallel job, not the shards.
+  file. On this run that looked like a battery waiting on its sibling, and
+  this entry first read it that way. **The first push to `main` after the
+  landing showed it was runner variance, not the structure** (below).
 - **What I could not read.** The job log is served from a host this session's
   `gh` does not contact, so the `spec tier: taken from` and `point tier: taken
   from` lines were not read here. The wall above is the evidence that both
   tiers were taken and not re-run in-process (36 boots and six sweeps in-process
-  would add the 584 s and 1541 s back). The first push to `main` after this
-  landing is the confirmation, and its log should be read for both lines.
+  would add the 584 s and 1541 s back). The log lines are still unread.
+
+**The first push to `main` after the landing** (merge `54300bc`, hosted):
+- `battery`: **51.4 min** (22:24:13–23:15:36), its harness step 47.8 min.
+- `battery tiers`: **19.8 min** (22:24:12–22:43:58), handed over at 22:43:56.
+  The same job took 37.9 min on the dispatch above. That is 1.9 times the
+  time for the same work, which is what runner variance looks like, and it is
+  why the dispatch could not say which job was the critical path.
+- So the shards are the critical path: the tiers were ready some 28 minutes
+  before the harness step ended. The push went 89 → 63 (§264) → 51 minutes.
 
 **What it leaves.**
-- **The tiers job is the critical path.** At 37.9 min it is now what the push
-  waits on, a little longer than the shards. The next cut is inside it: the
-  tiers are independent of each other, and §260 already knows how to spread
-  them across workers. That is a second parallel job and not this entry's
-  claim.
+- **The critical path is the shards again, at about 48 min.** The tiers job
+  runs 20 to 38 min depending on the runner, and either way it finishes first
+  or close to it. Cutting the push further means cutting the shards, so
+  splitting the tiers job would buy nothing on a typical run. §259's matrix
+  already spreads the shards across two runners, and that is where the
+  remaining time is.
 - **The caps.** Push 150 and PR 125 stay until several runs have measured
   the new wall, by the caps' own rule.
