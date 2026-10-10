@@ -33665,6 +33665,13 @@ is exactly landing two's job, and this is the measurement that says it is owed.
 The geometry fingerprint after the merge is `1133173793` on this branch and on
 `main` alike, deterministic across two virgin boots each.
 
+**Rebased onto `main` at `59ab3ef`** (TODO 204's beak-lever fulcrum, the
+keyless works' labels, Latvian; `main.js` +341 lines). The rebased tree is
+byte-identical to merging the previous tip into that `main`. The probe reads
+**385–482 ms** held over two runs, with the first-frame long task at 1.7–2.3 s
+as above. No new stretch needed a seam. The fingerprint is `2681150822` on
+this branch and on `main` alike, two virgin boots each.
+
 **What it leaves.** Landing two: the probe in CI with its control, the held
 stretch as the gated number, and every ceiling derived from the CI host's
 spread. The regression this landing repaired took three weeks to find because
