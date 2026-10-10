@@ -20,8 +20,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 233 | OPEN | Found closing §261 step 1 (#636). The Latvian explainer and primer tables carry 7 + 3 rows keyed to English that §221 (#617) rewrote; the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check is red on `main` and every PR in its paths. Re-key from the DOM and translate the current English, which carries §221's new numbers (200°, a twelfth of the beat). The merge race itself is an owner setting (require up-to-date branches or a merge queue). Arabic plate collisions seen locally are font metrics, not CI |
 | 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
 | 230 | OPEN | Found closing TODO 204. The beak lever turns on `alarmLinkBeakPin` with nothing holding it along the pin toward the arm's line (+y): no shoulder, collar or clip, the eye's inner end plugged by the web. It slides **0.1735** (seated) / **0.1855** (lifted) before the eye or web meets the selector rod, its own group's output, with 0.1432 of the 0.3167 journal still engaged; without the rod it leaves the pin at 0.3167. The column's sweep under the nose drags it along exactly that axis. Fix: a retaining shoulder or collar with its own §50 floor, re-deriving the pin's cantilever (757.1 MPa, margin 1.057). P1 |
-| 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
-| 226 | OPEN | Step 2 DONE by BUILT §221: the bank is the pin's own bearing at the lift's edge (`d·sin ψ = r·sin(θ + ψ)`), 4.03°, and `probe-221-amplitude.mjs` holds the pin on the slot's centre line at both window edges to 1e-7. Step 1 remains: the pin's centre stands 0.156 outside the horn tips at the lift's edge, so its body enters 0.394 of a slot 2.759 deep; seat it by moving the fork's mouth or the roller. Step 3 remains past the window's edges (the pin against the driving wall THROUGH the impulse)
+| 227 | CLOSED | The alarm release sleeve's SKIRT — the cone the tail pin presses — was a double-sided sheet of no thickness (a collinear offset: profile area 0.0177 u²), and `alarmSleeveWeb` (TODO 225) was a patch over it. It is a real shell now, wall `STOCK_MIN_U` normal to the face, with a relief at the feeler spring's free end (0.084 under the envelope floor): skirt ⇄ spring 0.0807 → 0.1585 against 0.15. The web, its §124 relief and its contact row are gone. Battery 53/53 locally; `tools/probe-225-lathe-profiles.mjs` finds no other lathe like it (72 meshes) |
+| 226 | PART DONE | Step 2 DONE by BUILT §221: the bank is the pin's own bearing at the lift's edge (`d·sin ψ = r·sin(θ + ψ)`), 4.03°, and `probe-221-amplitude.mjs` holds the pin on the slot's centre line at both window edges to 1e-7. And the escapement is DRIVEN now: the fork's angle is read off the balance through the pin (`PIN_FORK`, `forkSwingAt`), the escape wheel turns in proportion to the fork, the posed window, its recoil dip, `RECOIL_DEG`, `RECOIL_FRACTION` and `FORK_RECOIL_DEG` are retired, and `Pallet fork` ⇄ `Balance` has a floors row with three pairs waived BY NAME for step 1. Step 1 remains: the pin's centre stands 0.156 outside the horn tips at the lift's edge, so its body enters 0.394 of a slot 2.759 deep; seat it with a single roller, cut the horns and notch to it, and re-cut the plate's quarter-bank of spare window. Step 3 remains past the window's edges (the pin against the driving wall THROUGH the impulse) |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -30648,7 +30648,7 @@ scaled frame. 171 lose under 25% of their area at their floor (144 under 8%).
 
 | unit / mesh | kind, floor | what the outline says | waived |
 |---|---|---|---|
-| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — see TODO 227** | no |
+| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — retired with TODO 227 (the mesh no longer exists, so 9 rows remain)** | no |
 | Alarm switch / `alarmPusherReturnAbutment` | wheel 0.12 | an annulus, radii 0.4442 / 0.3689 mm: a 0.075 mm wall, 0.12 mm deep | TODO 11 (unit-wide) |
 | Escape wheel / (unnamed, 0.394 mm deep) | wheel 0.12 | an annulus 0.2728 / 0.1895 mm: a 0.083 mm wall; reads 0.3941 | TODO 12 |
 | Escape wheel / (unnamed, 0.452 mm deep) | wheel 0.12 | the escape PINION's leaves (105-point outline, root 0.227 mm to tip 0.340 mm) | TODO 12 |
@@ -30764,9 +30764,53 @@ and asserts and the `alarmSleeveWeb ⇄ alarmTailPin` contact row, and let
 `stockFloor` read the declared wall (§169's device). Until then the cone the pin
 presses is a modelled surface, not a modelled body.
 
+**UPDATE — closed.** The shell landed with the relief the "swept skirt" path above
+named, and not either layout move. Re-siting the bear point was rejected on the
+design priority's own list: `BEAR_R/ARM_LEN` is the crank's lever arm, and
+"stretching or shrinking a lever arm" is a forbidden way to buy P3 clearance
+whether or not the 0.45 was ever derived. Buying stratum was priced and not
+needed.
+
+*What was built.* `alarmSleeveSkirt` is one custom swept body (not a lathe: the
+relief breaks the axis symmetry). Its profile is `[A, K1, E|K2, K3, G, C, B]` —
+seven corners, so the full ring and the relieved ring share a topology and the
+notch is a MORPH of one corner (E sliding to K2) with smoothstep ramps, one closed
+manifold with no cap faces. The wall is `STOCK_MIN_U` normal to the working face
+(outer face z = r − c − t·√2), the cap flush with the flat's underside and clipped
+at the flat's rim, the lip flush with the envelope floor, `stockSection` declared
+(§169's device — the census reads a profile's envelope, which for a 45° wedge is
+not its wall). In a sector about the lever's line the lip's OUTER corner is absent
+below `zCut` and outboard of `rKeep`, both derived from the spring's metal:
+`zCut` is one `CLEAR_MARGIN` over the blade's end top plus its climb toward the
+rim (the blade rises toward its anchor, `ALARM_FEELER_SPR_LIFT / (SPR_FREE +
+BEAR_R)` per unit of length — the first cut used the end alone and read 0.144);
+`rKeep` is where the kept lip stands a margin from the blade's nearest corner
+through the diagonal. The sector's half-angle covers the blade's lateral reach over
+the ring at the steepest yaw the relief assumes (`ALARM_SPR_YAW_MAX`, 45°),
+asserted at the blade against the lug solve (≈ 30.8°). The face runs to A at every
+azimuth, which is what the pin needs; only the metal behind the face's tip is
+relieved. The feeler's pivot radius, track radius, arm length, bear point, spring
+free length and spring lift were hoisted above the sleeve build to feed it; none
+moved. The web, its §124 relief and `['alarmSleeveWeb', 'alarmTailPin']` retired,
+and the §124 rock assert now binds at the skirt's tip A.
+
+*Measured.* `meshClearance(alarmSleeveSkirt, alarmFeelerSpring)` 0.0807 (the
+unrelieved shell) → **0.1585**; the full local battery on this tree (`node
+tools/ci-battery.mjs --shards 3 --no-incremental`, dev container) **53/53 gates**,
+`meshIntegrity` 0 inverted, `undeclaredClearance` 0 rows under the margin, and
+`assembly` keeps the skirt in the sleeve's one body. Boot is silent.
+
+*What this does NOT claim.* The relief is a pocket, not a thinning of the wall: the
+wall above `zCut` is the full `STOCK_MIN_U` normal everywhere, and the tip's own
+45° taper (a lip is only `t` thick once it is `t·√2` wide) is the same taper the
+rest of the ring has. But in the sector the lip is 0.2 u wide against 0.448, so
+the tapered tip there is longer in proportion to the wall. If a reviewer reads
+that as the thinning P3 forbids, the alternative is the stratum purchase, whose
+price is the dial plane (`Z_DIAL`) and everything keyed to it.
+
 ---
 
-## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees)
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — DRIVEN AND STEP 2 DONE (§221)
 
 Found closing [TODO 216], whose knock solve reads this geometry.
 
@@ -30822,6 +30866,103 @@ about: at the lift's edge the pin's centre stands **0.156 outside** the horn
 tips, so its 0.55 radius enters **0.394** of a slot **2.759** deep. Step 1 and
 step 3 (the pin against the driving wall through the window, not only at its
 edges) remain.
+
+### The drive (landed)
+
+Scoping step 1 found something under it: the fork was not DRIVEN by the pin at
+all. `forkSwingRad` and `escapeAngle` were laws of beat phase — a window of
+`IMPULSE_WIDTH` of each beat with a recoil dip (`RECOIL_DEG` 1.0° of wheel on
+the first `RECOIL_FRACTION` 0.25 of it, a fork dip of a quarter bank) and a
+smoothstep — and the balance was a sine on the same clock. Two laws that
+shared a period and nothing else. §221 made the two agree at the window's
+EDGES (the bank is the pin's bearing there); between them the fork still ran
+its own smoothstep, and its recoil dip pressed it a quarter bank past the bank
+into a pin moving the other way. Measured with that law re-posed
+(`probe-226-drive.mjs`'s control, §221's balance and bank, the fork on its own
+clock), the pin is **buried in the horn** inside the window, every beat.
+Before §221, at the old bank and swing, the same control read the pin 0.143
+inside the horn at the window's opening. Nothing read either, because
+`Pallet fork` ⇄ `Balance` is EXPECTED and had no `EXPECTED_CONTACT_FLOORS`
+row — TODO 6's blanket. So the order was: drive first, then seat.
+
+**The law (main.js `PIN_FORK`, `forkSwingAt`, `balanceTheta`, `escapeAngle`).**
+Balance at the origin, fork pivot at d = 11.1948 on +x, pin at
+r·(cos θ, sin θ) with r = `rollerR` 1.62. The slot's centre line passes
+through the pin when the fork is turned s off the line of centres,
+`tan s = r·sin θ / (d − r·cos θ)`; outside the notch the fork lies on its
+bank. The two meet at the half-lift `θ_L = asin(d·sin(bank)/r) − bank` — §221's
+bank derivation run backwards, so θ_L is `LIFT_DEG/2` = 25°, asserted at boot
+(the two read d two ways: the stations, and the two lengths they were placed
+from). §221's balance is kept as it is: `AMPLITUDE_POSED_DEG` 200°, level over
+the reserve, phased so each beat opens with the pin entering at ∓θ_L and
+closes with it leaving at ±θ_L. The escape wheel advances `BEAT_DEG` in
+proportion to the fork's travel bank to bank, which is the relation the
+stones' impulse faces were already cut against, so the faces and the law are
+one description now. The window is `IMPULSE_WIDTH` (0.0797) of every beat at
+every state of wind; the beat sounds fire at its open, middle and close.
+
+A first draft carried the old sagging amplitude and read it through the
+tension, and the full battery's `axisEntry` caught where it read it from: a
+copy stored by `tick()` went stale inside `setPose`, whose `maintHold` solve
+reads `barrelMeshAngle` before that pose's tick, so after the `wind` axis the
+escape wheel entered `maintHold` 0.242 rad off. A law's inputs must not be
+state a tick refreshes. §221's level swing removed the input altogether.
+
+Retired with the posed law: `RECOIL_DEG`, `RECOIL_FRACTION`,
+`FORK_RECOIL_DEG` and `escapeDeltaDeg`.
+
+**Measured** (`tools/probe-226-drive.mjs`, acceptance, reading the built
+groups at three winds):
+
+| | worst over the samples |
+|---|---|
+| pin centre off the slot's centre line, fork between its banks | 7.1e-15 |
+| escape wheel off `BEAT_DEG` × the fork's fraction | 6.8e-7° |
+| lift centred: pin at ±θ_L at each beat boundary | 2.3e-13° |
+| lift read off the posed meshes | 50.000° at each wind |
+| pin ⇄ blank, pin in the lift (driven) | **0.3403** |
+| pin ⇄ blank, pin in the lift (§221's posed fork, the control) | **0** (buried) |
+
+`probe-131-escapement-slide.mjs` holds the tip on the impulse face from the
+window's opening (it skipped the recoil dip before; there is no dip to skip):
+56 of 65 samples on the face, worst 0.0100 off it, drop 1.50°, over a window it
+measures as 7.98% of the beat.
+
+**The floors row.** `Pallet fork` ⇄ `Balance` is held to `CLEAR_MARGIN` over
+every mesh pair the two units own. There is NO working contact to excuse in
+this landing: the notch (half-width 0.84) is wider than the pin (0.55), so the
+pin rides the slot's centre line without bearing on a wall. Three pairs do not
+meet the margin, and each is waived BY NAME in its own `only:` row citing
+step 1, so each goes STALE (and fails) the day step 1 clears it:
+
+| pair | closest | why |
+|---|---|---|
+| `forkGuardPin` ⇄ `balanceImpulsePin` | 0 | the pin is 3.0 long and stands through the safety roller's plane, where the guard pin sits on the slot's centre line — on the line of centres the two share the plane. A double roller's pin stops at its table |
+| `forkBlank` ⇄ `balanceImpulsePin` | 0.0313 | past the lift the pin's surface sweeps within the bevel's miter of the horn tip it exits by (r 0.55 on a 1.62 roller, against tips cut for the notch) |
+| `forkBlank` ⇄ `balanceRollerTable` | 0.0616 | the impulse table shares the fork's plane, and at bank the near horn tip stands inside the margin of its rim |
+
+The meshes were unnamed; they are named now (`forkBlank`, `forkGuardPin`,
+`balanceImpulsePin`, `balanceRollerTable`, `balanceSafetyRoller`) so the rows
+can hold them. The rim stands exactly the margin off the blank (0.1500).
+
+**Kept on purpose, so the drive moves no metal.** The three-quarter plate's
+balance window is still cut to the fork's 1.25·bank (the swept footprint the
+recoil dip once needed): a quarter bank of window nothing enters now. Step 1
+moves the horns anyway, and re-cuts the window from the driven swing then.
+
+**One more thing step 1 must carry.** TODO 216's knock solve reads the
+AUTHORED outline (`blankOutline`), but the blank is extruded with
+`bevelSize: bevel` and no `bevelOffset`, so the metal stands up to a bevel
+(and a corner's miter — the horn tips reach 0.165 past the outline) outside
+it. The knock angle is therefore optimistic by that much; when step 1 cuts the
+horns it should either solve the knock on the dilated outline or cut the blank
+with `bevelOffset: -bevel` as the escape wheel is (TODO 131).
+
+**What step 1 builds.** Merge the impulse table into a single roller below the
+fork so the table leaves the fork's plane and the pin stands only in it; cut
+the notch to the pin's depth and the horns past it; re-cut the plate's window
+from the driven swing; and turn the three `only:` waivers into the one working
+contact (the pin on the notch's walls, step 3's instrument) or clear them.
 
 ---
 

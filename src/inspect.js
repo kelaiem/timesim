@@ -2347,6 +2347,42 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // TODO 226 — the escapement's EXPECTED pair, which carried TODO 6's blanket
+  // until the fork was driven off the pin. Under the blanket the posed fork
+  // met the pin 0.143 INSIDE the horn at every impulse window's opening, and
+  // nothing read it. Driven, the pin rides the slot's centre line through the
+  // lift and the notch is wider than the pin, so in this landing there is NO
+  // working contact to excuse: the row holds every pair the two units own to
+  // the margin. Three pairs do not meet it, and each is the single roller
+  // TODO 226 step 1 builds as it seats the pin, waived by name below so the
+  // rest of the pair is gated and each goes STALE the day step 1 clears it.
+  { a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [] },
+  {
+    a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [],
+    only: [['forkGuardPin', 'balanceImpulsePin']],
+    // the pin is 3.0 long and stands through the safety roller's plane, where
+    // the guard pin sits on the slot's centre line: on the line of centres the
+    // two share the plane. A real double roller's pin stops at the impulse
+    // table; step 1 merges table and roller into one below the fork and the
+    // pin into its plane alone.
+    waived: 'TODO 226 step 1 — the impulse pin stands through the guard pin\'s plane (a double roller\'s pin stops at its table); the single roller seats it',
+  },
+  {
+    a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [],
+    only: [['forkBlank', 'balanceImpulsePin']],
+    // in the lift the pin keeps 0.34 from the notch walls (probe-226-drive);
+    // past it, on the far side of its swing, the pin's surface sweeps within
+    // the bevel's miter of the horn tip it left — r 0.55 on a 1.62 roller
+    // against tips cut for the notch, not for the pin.
+    waived: 'TODO 226 step 1 — past the lift the pin grazes the horn tip it exits by (the horns are cut for the notch, not the pin); step 1 cuts the notch and the horns to the seated pin',
+  },
+  {
+    a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [],
+    only: [['forkBlank', 'balanceRollerTable']],
+    // the impulse table shares the fork's plane, so at bank the near horn tip
+    // (bevel miter included) stands inside the margin of its rim
+    waived: 'TODO 226 step 1 — the impulse table shares the fork\'s plane, and at bank the near horn tip stands inside the margin of its rim; the single roller takes the table out of that plane',
+  },
   // TODO 215 — the maintaining detent's WORKING contact, and nothing else: the
   // beak on the ring's cut (maintDetentHandoff's beak row owns that bite, at
   // SEAT_RELIEF). Under the EXPECTED blanket the straight click's body sat
@@ -2615,7 +2651,6 @@ export const EXPECTED_CONTACT_FLOORS = [
     contacts: [
       ['alarmSleeveSkirt', 'alarmTailPin'], // §45 working contact — handoffs row + band asserts own it
       ['alarmSleeveFlat', 'alarmTailPin'],  // the flat's bore: rest flank + working 0.03, derived
-      ['alarmSleeveWeb', 'alarmTailPin'],   // the web rides the same derivation chain as the bore
     ],
   },
   // §99 — the winding pair's blanket excuse retired: the ONE contact is the
