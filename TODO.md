@@ -17,14 +17,18 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
+| 226 | OPEN | Found closing TODO 216. The impulse pin's centre sits 9.575 from the fork pivot and the slot's mouth is at 9.595, so the pin only enters the slot's mouth. The bank is derived by matching arc lengths at `notchDepth` (6.83), so the pose law impulses over 21.7° of balance arc while the metal's lift is 30.95°. Seat the pin in the slot and derive the bank from the pin's real radius |
+| 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
+| 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
 | 222 | OPEN | Found closing TODO 206. Follower B's lift is set from `selT` (`max(hB, ALARM_PINB_LIFT·(1 − selT))`) while the rocker's finger, which is supposed to press its tail, stands 0.91 off the arm at every pose of the arming transition. Its "spring" `alarmPinSpringB` is a ring riding on the arm it would press. Ground a spring on the tube and solve the lift from the finger's contact |
-| 221 | OPEN | Found closing TODO 218. The beak's apex takes the whole 2554 mN hold and the wedge's stress goes as 1/s toward it: under yield at its kindest section (236.1 MPa), it reaches 800 MPa 0.2710 u (0.103 mm) from the apex, and inside that the apex is a sharp line in contact with the face, which nothing prices. Cut a land or radius sized from the load, price its contact, and re-place the stud on the land's resultant |
+| 221 | OPEN | Found closing TODO 218. The beak's apex takes the whole 2554 mN hold and the wedge's stress goes as 1/s toward it: under yield at its kindest section (236.1 MPa), it reaches 800 MPa 0.2710 u (0.103 mm) from the apex, and inside that the apex is a sharp line in contact with the face, which nothing prices. Cut a land or radius sized from the load, price its contact, and re-place the stud on the land's resultant. Since TODO 219 re-cut the ring at 35 teeth: 2367 mN on a 51.54° wedge, 371.5 MPa at its kindest section, yield reached 0.3153 u from the apex |
 | 220 | CLOSED | Regression of TODO 60's fix 2. Each spider leg's pinion and sleeve stood **0.1605** off its side gear: `spiderSpec.hubFaceZ` read `zBoreOut` (1.3182 from the apex) while TODO 136's flat web (17387c21) cuts the blank's back face at `zWebHi` (1.1577). The spec now reads the builder's own `zWebHi`, and a boot assert measures each gear's cut back face and each sleeve's end against it. Both pairs measure 0 (seated); `assembly` with the arrest scoped reads both leg groups as one body. Leg B's pinion, the idler pinion and both columns' tops drop 0.1605 (`pinBZ`'s stock-floor branch); the columns' L/D-derived radius follows, 0.2361 → 0.2316. `halfHeight` still reads `zBoreOut` — [TODO 67] |
-| 219 | OPEN | Found closing TODO 217. The maintaining spring is still a drawn torus: its torque at its working point is derived (the going torque, 3.2307 N·mm — it is a series member of the drive), but its stiffness and preload set how long it keeps the train going through a wind, and the model declares no length of a wind. And the ring is never held: it rides `barrelArbor` through winding, so the spring is never deflected and the hold is never posed |
+| 219 | CLOSED | The spring is metal: a uniform-strength blade of the mainspring alloy in a great-wheel crossing, bearing on a pin hung from the ring, the arm's flank Harrison's stop. Floor 1.5886 N·mm from the NOMINAL corner (the adverse corner has no headroom: claim 126 vs 126.0028°); run = one ring pitch of recoil + the margin, so the ring is re-cut at 35 teeth; k 7.3103 N·mm/rad, preload 0.21731 rad, root 1788 / 880 MPa against the alloy's 1800. Held by `equalisation` row 16 and `probe-power-budget` (52 figures). The wind is posed by [TODO 224], and the posed blade delivers 1.6334 N·mm at the stop, 102.8% of the floor |
 | 218 | CLOSED | The beak is the valley's offset: its stud-side flank parallel to the ramp at `SEAT_RELIEF`, its face flank RELIEVED 9.42° so the hold bears on the APEX, on the stud's line. A face-parallel flank would have taken the hold first at the face's far end, 0.927 up the face, and cammed the click out (μ ≥ 0.38 to hold, `MU_STEEL` 0.2). Wedge 20.40° → 56.73°; beak σ 2075.7 → 236.1 MPa at its kindest section, ×3.39 under yield, and `HOLD_STRESS_WAIVERS.beak` retired. Travel and blade bit-identical. The apex inside 0.271 u is TODO 221 |
 | 217 | CLOSED | The hold is priced: the maintaining spring is a series member of the drive, so the detent holds the going torque (3.2307 N·mm) at the first instant of a wind whatever its stiffness — 2554 mN on the face over a 3.3377 u arm. The cranked arm carries it at 686.5 MPa (Winkler bending at its worst section, 1.3211 u off the tip–stud chord, plus the whole load axial), ×1.165 under `SPRING_SIGMA_Y_PA`, so no section change; held as `equalisation` row 16, a §137 `rigidBentLink` row, and in `probe-power-budget`. The beak is over yield (TODO 218); the spring's stiffness is TODO 219 |
-| 216 | OPEN | The favourable corner's dial-flat swing is 455° and a lever escapement knocks at about 330°: the band's best corner over-powers the balance. A REPORT until the model has a knocking angle of its own; the fix is the spread between FRICTION's corners, or a knock-limited peak |
+| 216 | CLOSED | The knock is read off the fork blank and the pin (`ESCAPEMENT_KNOCK`: lift 30.95°, knock 314.18°, where the pin meets the banked horn's tip) and `AMPLITUDE_PEAK_DEG` is capped at it (455 → 315). Only the favourable corner dial-flat knocks (reported); the nominal corner clears it in both positions (gated, row 17). Banking impact unpriced; TODO 226 filed |
 | 215 | CLOSED | The ring is cut to the detent's hand from one declaration (`MAINT_RING_RUN`) and the click is cut from the ring's polygon: cranked round the ring a margin outside its tips, the beak seated at the root SEAT_RELIEF off the cut, the stud on the face's normal through the tip (the hold is a strut). The ride is solved on the chords (tip 0.005 off the cut at every pose, arm ≥ 0.150 off the ring); travel 0.2286 → 0.3685 rad; TODO 210's blade re-solved, its stock now 0.0594 mm (from the window: at `SPRING_FLAT_U` it needed a blade taller than the band). A boot guard steps barrelMeshAngle's real run and measures the ramp climbed; `probe-direction-guards` row CAUGHT. The hold itself is unpriced: [TODO 217] |
 | 214 | CLOSED | The lever's flank drives the yoke's tail pin (a 1:1 bell crank), and the yoke's station is solved from that contact (`ykFlankStationAt`), replacing the law in `crownPullT`. The lever's own angle is solved from its pin on collar In. A grounded blade holds the hop closed: 12.40 / 20.16 mN at the flank, inside 5–50. The handoff rows read 0.0243 / 0.0118 shut, and the tail post's stations are unmoved |
 | 213 | CLOSED | The standoff's inputs are hoisted above the §112 site solve and the tip is ONE function, `linkShaftTipXY`, which `scoreChord`, the fork block's plan seat and `ALARM_LINK_SHAFT_TIP_XY` all read. Re-measured, the site did not move (18.96, −2.83, tab 324°, column-bound 0.5830); the chosen chord's score fell 0.6408 → 0.6286, fingerprint unchanged at 124220314 |
@@ -95,7 +99,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
-| 137 | OPEN | Found by arithmetic while scoping §226, not by any check. `makeColumnPawl` thickens its centreline ±`ALARM_PAWL_HALF_W`, so the arm is cut **0.30 u = 0.1137 mm** against `STOCK_FLOORS.wheel` 0.12 — 5.3% under. Three instruments look at it and none can say so: `stockFloor` reads the geometry-LOCAL box, and a BENT member's box is the bend's envelope (4.3099 × 1.0427 × 0.3167), so its minimum is the extrude DEPTH and reads **exactly the floor**, 0.1200 against 0.1200, while the metal is 0.1137; `slenderness` reads `len/tMid` = 4.13, the same middle extent; `outlines` asks whether the ring is simple, not how thick. And `STOCK_WAIVERS` waives the whole `Alarm switch` unit under TODO 11, so even a corrected row lands in the waived list — a different debt wearing the same excuse, since TODO 11's population is metal KNOWN to be thin. The ruler's fix already exists and this builder does not use it: §169's `userData.stockSection`, added for the two swept springs reading 1.35 and 0.87 against 0.05 mm wire. Step 1 declares the section (no metal moves, the debt becomes visible); step 2 measures the CLASS, which nobody has counted — every `ExtrudeGeometry` whose authored outline is narrower than its box, readable at all only because TODO 100 made `weldGeometry` carry `parameters.shapes` through the weld; step 3 re-sections, which re-runs §163's free-region map because `ALARM_PAWL_BODY` is that map's output at this exact half-width |
+| 137 | CLOSED | The premise is resolved and the class it pointed at is measured. The column pawl's arm was cut 0.30 u (0.1137 mm) against the 0.12 mm floor when this was filed; §226 part three and §230 re-cut it one ratchet tooth across and it measures clean (under 1% of its area under the floor at 1.0x, 1.2% at 1.5x), so the six microns are gone. Step 1 landed anyway: `makeColumnPawl` declares `stockSection = min(2w, thickness)` on its bodies, so a future narrowing is read by the ruler instead of hidden behind the extrude depth. Step 2, counting every extrude whose outline is narrower than its box, is `tools/probe-137-hidden-thin.mjs` and its answer is [TODO 225]. Step 3 (re-sectioning the pawl) is moot |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
 | 111 | OPEN | The case's seat relief is CUT from a scan that runs once, at build time, at whatever pose the movement is in — so the geometry is a claim about one pose. Item 91 nearly shipped on it: `hackRodPin` reads r 37.801–38.691 at build time and 39.889–40.786 in 33 of the 42 poses the battery visits, half a unit inside a seat with no relief for it. Closed for two populations (build-time occupants, and `LOW_LINKAGE_OBSTACLES` members per standing rule 5) and ungated for a third — any other mover reaching the annulus at some pose. Three fixes in the item; `probe-case-relief.mjs` already asks the question in ~72 s and CI does not run it |
 | 112 | CLOSED | The table stopped restating: every `HAND_SPECS` row now references the hand's BOOT SPEC OBJECT (`HOUR_HAND_SPEC`…`ALARM_HAND_SPEC`), so a row cannot drift from its build. `probe-112-recut.mjs` holds it: both re-cut drivers (flute slider and the §23 panel) reproduce the boot metal byte for byte, and its must-catch control proves the 3.00′→1.16′ collapse is visible to the instrument |
@@ -19997,6 +20001,28 @@ working plane. Same unit, same blind direction, different instrument and
 different fix — that one is a section derived from a z stratum, filed as a
 roadmap entry because it wants a re-station, not a ruler.
 
+**UPDATE — CLOSED. The premise is gone, the ruler is fixed for this builder, and the class is measured.**
+
+The arm is not under the floor any more. §226 part three and §230 cut the pawl
+one ratchet tooth across (the build said so itself: "the boss 0.533 does not reach
+its clipped arms at 0.843"), and `ALARM_PAWL_HALF_W` is `ratchetToothDepth / 2`
+now, so the 0.30 u in this item is a past state. Measured on the built metal
+(`probe-137-hidden-thin.mjs`, opening the outline by a disc of the 0.12 mm floor):
+`alarmColPawl` 0.5% of its area is under the floor at 1.0x and 1.2% at 1.5x, the
+tail 0.6% and 1.8% — nothing but corner rounding. (The 0.1137 mm in this item is
+also the depth of `alarmClickPawl`, a different part, declared `spring` and so
+held to a 0.03 mm floor.)
+
+Step 1 landed regardless, because the remedy is correct for a bent member: the
+bodies declare `stockSection = min(2w, thickness)` (§169's device for the swept
+springs), so if `w` ever drops below the extrude depth the ruler reads it. No
+payload moves — the declared value equals the box minimum today.
+
+Step 2 is the part that had value. The class — every `ExtrudeGeometry` in a
+labelled unit whose outline is narrower than its box — is 182 meshes, 11 of them
+with a quarter of their metal under their own kind's floor, 10 invisible to
+`stockFloor`. That is [TODO 225].
+
 ---
 
 ## 142. Nothing in the pusher train declares where an over-press ends
@@ -29321,7 +29347,7 @@ re-solved height.
   Fingerprint 1896818507 → 1211654045.
 - **Not closed here, filed as [TODO 217].** The hold is still unpriced.
 
-## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered
+## 216. The balance's favourable dial-flat swing (455 degrees) passes the lever escapement's knocking angle: the band's best corner is over-powered — CLOSED
 
 Found closing [TODO 207]. The design swing is now 200° vertical at the nominal
 corner. At the favourable corner, dial-flat, the same balance and spring sustain
@@ -29351,6 +29377,86 @@ a number that looked right.
 
 `AMPLITUDE_PEAK_DEG` stays at the solve's maximum meanwhile, which over-prices
 the hairspring and the hack brake rather than under-pricing them.
+
+### Resolution (2026-10-09)
+
+Fix path 1, taken: the knocking angle is now DERIVED from the cut metal, and
+the peak is capped at it.
+
+**The knock, off the fork blank.** `ESCAPEMENT_KNOCK` (main.js) works in the
+plane of the fork blank. Its inputs are the blank's published outline
+(`userData.blankOutline`), the roller's radius, the ruby pin's own radius (now
+published as `userData.pinR`), the fork-to-balance centre distance and the
+bank. The fork lies at the bank the last impulse left it on, and the solve
+carries the pin round until its surface meets the outline. The answers:
+
+| quantity | value |
+|---|---|
+| bank | ±2.569° |
+| lift (pin on the notch's centre line at ±15.473°) | **30.947°** |
+| knock (the pin meets the tip of the banked horn) | **314.18°** |
+| textbook 360° − λ/2 | 344.53° |
+
+The two knock figures differ because the horn tip and the pin's own radius
+stand off the centre line. That offset is exactly what the textbook figure
+leaves out.
+
+**The peak is the swing the balance can REACH.** Past the knock the balance
+banks on the horn, so it cannot swing further. `AMPLITUDE_PEAK_DEG` is now the
+smaller of the solve's maximum and the knock, rounded up: 455 → **315**.
+Everything priced at the peak moves with it:
+
+| priced at the peak | at 455° | at 315° |
+|---|---|---|
+| §218 ribbon stress | 185 MPa | 125 MPa (against 700) |
+| overcoil pivot load (×flat spring's) | ×0.169 | ×0.115 |
+| hack brake, at the pad | 1.32 mN | 0.92 mN |
+| hack brake, in the rod | 0.19 mN | 0.13 mN |
+
+**Who knocks.** Only the favourable corner held dial-flat, whose energy would
+carry the balance to 454.7°. That corner is a fresh movement, fully wound,
+lying flat, with every band at its best value at once, and it knocks. The
+record lists it (`going.energy.knock.knocks`) and the battery reports it.
+
+The serviced corner does not knock:
+
+| nominal corner | swing | margin under the knock |
+|---|---|---|
+| vertical | 200.4° | 114° |
+| dial-flat | 292.1° | 22° |
+
+That margin is gated. A watch that knocks as serviced is a fault.
+
+**Gated.** `equalisation` row 14 holds the peak to the reachable maximum. New
+row 17 holds three things:
+- the knock lies between half a turn and the lift-only bound;
+- the knocking list is exactly the corners at or past the knock;
+- the nominal corner clears the knock in both positions.
+
+Mutated, both rows fire. Restoring the 455° peak fails row 14 and warns at
+boot. Forcing the knock to 280° fails row 17 ("the serviced (nominal) corner
+knocks") and warns at boot.
+
+**Two readers.** `tools/probe-216-knock.mjs` measures the lift and the knock
+again, through the built groups' world transforms and the pin mesh. It
+confirms the pin stands in the blank's z band, and gates the record against
+its own reading: both agree to 1e-3°. `probe-power-budget` now holds the peak
+to ⌈min(maximum, knock)⌉ and the nominal corner under the knock.
+
+**What it did not do.**
+- Fix path 2 (narrowing the corner spread) is not needed for the serviced
+  watch.
+- The impact of banking on the horn is not priced. The peak prices the
+  hairspring's stress and the hack at the knock, not the pin and horn's
+  collision load.
+- Measuring the knock exposed a separate defect, filed as TODO 226: the pin
+  only enters the mouth of the fork's slot, and the bank is derived at the
+  notch floor. So the pose law's lift is not the metal's. When TODO 226
+  re-proportions the engagement, the knock re-solves with it, because it is
+  read off the same outline.
+
+The swing is still MODELLED by the energy column's solve, and the knock is a
+geometric bound on it. Neither is a simulated balance.
 
 ## 217. The maintaining detent's HOLD is unpriced: the maintaining spring has no torque, and the cranked click carries the back-drive as a bent strut — CLOSED
 
@@ -29617,7 +29723,7 @@ Boot silent on the default (`boot silent`), 36/36 spec points build with the
 same 28 expected-warning points as the base, and the six silent swept points
 clean; `validated-configs` unchanged (7 keys).
 
-## 219. The maintaining spring is still a drawn torus: its stiffness, preload and section need the length of a wind, which the model does not declare
+## 219. The maintaining spring is still a drawn torus: its stiffness, preload and section need the length of a wind, which the model does not declare — CLOSED
 
 Found closing [TODO 217]. `maintSpring` is a 1.5π torus (r `MAINT_RING_ROOT`·0.6,
 tube 0.08) under the ring, with no stiffness and no section. TODO 217 derived
@@ -29650,6 +29756,170 @@ virtue ("winding cannot drag it backwards").
 3. Pose the wind. Hold the ring on the beak while `windBack` moves, advance the
    great wheel on the spring, and let the run-out (the spring bottoming, or the
    train stopping) be what a long wind does.
+
+### Part done — the floor, the spring as metal, and the ring it fixes (PR 1 of 2; the wind's pose is [TODO 224])
+
+**First finding: the recoil.** A wind takes the drive off, and the ring is free
+until the face of the tooth behind the beak reaches it. While running, the beak
+rides a ramp 87% of the time, so the spring first RECOILS the ring onto the
+beak and only then drives the great wheel on. Measured on the 24-tooth cut over
+τ 0–6000 at 2 s: up to **0.2222 rad** (12.73°) of recoil. The spring's run must
+cover that and still deliver the floor at its stop. With 24 teeth, no spring of
+any steel the space holds could (`V ≥ 3E·τ·R/((1 − f)σ²)` for the best,
+uniform-moment case: 69 u³ of steel at the adverse floor in carbon steel, and
+the concentric gap under the ring is 0.144 u tall, too thin to carry the going
+torque at all). So the ring's tooth count follows from the spring.
+
+**The floor (an owner decision): the NOMINAL corner.** During a wind the
+spring drives the great wheel directly, so the floor is the torque AT THE GREAT
+WHEEL that sustains `AMPLITUDE_CLAIM_DEG` vertical. The ribbon's coil friction,
+the drum and the chain are out of the path; everything from the great wheel's
+bearing to the escapement is in it:
+τ_floor = needAtClaim · beats / (η_great→balance · 2π · `FUSEE_WRAP_TURNS`).
+At the nominal corner η_great→balance is 0.2499 and τ_floor is **1.5886 N·mm**,
+0.4919 of the going 3.2296. A wind keeps a serviced movement at its claimed
+swing. The ADVERSE corner cannot be the floor, and the arithmetic says why:
+`AMPLITUDE_CLAIM_DEG` is that corner's sustained minimum rounded down, **126
+against 126.0028°**, so it holds the claim by a factor of 0.99997 while
+running. The spring there is wound only to τ_going·η_upstream = 2.65255 N·mm,
+against an adverse floor of 2.65248: a 2.7e-5 span, which no spring can give up.
+`MAINT_FLOOR_NM` (main.js) derives the floor live from the energy column. Its
+per-corner walk is hoisted to `GOING_POWER`, beside the train's cut, so the
+floor and `EQUALISATION`'s record read one copy of the law (the record is
+bit-identical: `probe-power-budget`'s 44 earlier figures still agree).
+
+**The spring (`MAINT_SPRING`, main.js).**
+- **Form.** Harrison's conventional place: a blade in one of the great wheel's
+  crossings, flush with its stock (b = `GW_T` 1.4 u). It runs parallel to the
+  crossing's arm flank, its foot fastened to that arm, and its free end bears
+  on a pin (`maintSpringPin`) hung from the ring's underside. That arm's flank
+  is **Harrison's stop**: relaxing, the wheel runs on ahead of the held ring,
+  the pin moves against the run in the wheel's frame, and it lands on the
+  flank.
+- **Filed to uniform strength.** The thickness goes as √x from the root
+  (0.6527 u, 0.247 mm) toward the pin, floored at `STOCK_MIN_U` (0.120 mm).
+  That buys twice a plain blade's deflection at the same root stress. The
+  pin-side face is straight and square to the face load; the tapered far face
+  makes the blade curved in plan.
+- **Material (an owner decision): the mainspring alloy.** The Nivaflex band
+  layout.js already cites: `MAINSPRING_E_PA` 220 GPa, held to
+  `MAINSPRING_SIGMA_Y_PA` 1800 MPa (the band's low end), the way TODO 193 holds
+  the ribbons. It is the one member besides the two ribbons not held to
+  `SPRING_SIGMA_Y_PA`, because it is a power spring.
+- **Run.** One ring pitch of recoil (the most the face behind the beak can be
+  away) plus one `CLEAR_MARGIN` of pin travel at the pin's radius, so after the
+  worst recoil the pin is still a margin short of the stop:
+  R = 2π/N + 0.15/3.3366.
+- **Tooth count.** The blade at the alloy's limit, as long as the crossing
+  holds it, gives at most **0.22666 rad** (L 9.4208 u from the foot, a margin
+  inside the rim, to the contact at r_e 3.1450). The ring takes the fewest
+  teeth whose pitch plus the margin fits: N = ⌈2π/(0.22666 − 0.04496)⌉ = **35**,
+  run **0.22448 rad**. The decision estimated about 52; the uniform-strength
+  taper is the difference, at twice a plain blade's run. Measured on the
+  35-tooth cut, the recoil is 0.1572 rad (0.876 of the 0.1795 pitch), so
+  **0.0673 rad** of the great wheel's run is left after the worst recoil: about
+  11 minutes of drive at one turn per 17.14 h.
+- **Law.** A cantilever loaded through a frictionless contact square to its
+  face: τ = F·r_e, θ = δ/r_e, k = r_e²/c, where c = ∫₀ᴸ x²/(E·I(x)) dx over
+  the tapered profile.
+  - k = (τ_going − τ_floor)/R = **7.3103 N·mm/rad**, and the blade's own
+    compliance gives the same k.
+  - Working angle **0.44179 rad**; preload (the angle at the stop)
+    **0.21731 rad**; tip deflection at work 1.389 u.
+  - Root σ = 6F·L/(b·t²) (= 3E·a·δ/L² for a plain blade: the ribbons' E·a·θ/L
+    in cantilever form, the moment peaking at the root) is **1788.2 MPa**
+    working and **879.6 MPa** at the stop, both under the alloy's 1800.
+- **Pin.** Pin stock sized to the face load (2.71 N, 1.2 u under the ring) at
+  `SPRING_SIGMA_Y_PA`, which is TODO 193's pivot law: ⌀ 0.6606 u, r 0.3303, at
+  radius 3.3366, a margin off the hub land.
+- **Sense.** Which flank is the stop, and which side of the pin the blade lies
+  on, come from `MOVEMENT_SENSE` (`SENSE_REL`). A boot guard reads both off the
+  cut metal against `barrelMeshAngle`: the face load turns the great wheel the
+  way the train runs, and the stop flank lies where the relaxing pin goes.
+  `probe-direction-guards` has its mutant row.
+- The drawn torus is retired.
+- **No run at all, reported.** If a configuration's floor reaches the going
+  torque, no spring has a run. The `vph=28800` spec point is one: its balance
+  was not re-solved for the rate, and the floor is 3.4412 against 3.2296 N·mm.
+  The build then warns with the numbers and cuts the 24-tooth ring and the blade
+  at the alloy's limit, so it survives to report (row 16 fails there, as it
+  should). The first full battery found this point DEAD on the infeasible
+  solve.
+
+**The ring, re-cut.** `MAINT_RING_TEETH` 35 (the pawls' flange keeps
+`MAINT_TEETH` 24). The tooth's depth scales with its pitch
+(`MAINT_RING_DEPTH_F` = 0.2·24/35; `makeRatchetAndClick` gained a `depthF`), so
+the valley keeps the 24-tooth cut's shape and TODO 218's beak, its offset, keeps
+its wedge. Left at 0.2·R, 35 teeth would be a comb of slots. The click, the beak
+and TODO 210's blade follow the polygon:
+
+| | 24 teeth | 35 teeth |
+|---|---|---|
+| hold's moment arm / face load | 3.3377 u / 2553.4 mN | 3.6011 u / 2366.7 mN |
+| arm σ (Winkler + axial) | 717.0 MPa, ×1.116 | 544.2 MPa, ×1.470 |
+| beak wedge / σ at its kindest section | 56.73° / 246.6 MPa | 51.54° / 371.5 MPa, ×2.15 |
+| beak's 1/s law reaches yield (TODO 221) | 0.2831 u from the apex | 0.3153 u |
+| ride travel | 0.3685 rad | 0.2957 rad |
+| blade on the beak, seated / crest | 10.93 / 22.87 mN | 10.46 / 23.91 mN (5–50 window), σ 720 MPa |
+| detent tick | every 42.9 min | every 29.4 min |
+
+The beak stays under yield. TODO 221's apex debt grows by 11% (the sharp line
+inside the yield station) and stays that item's. `maintDetentHandoff`'s phases
+were re-read by golden section on the click's pose: `riding` τ 0.13 (lift 0.221,
+mid-climb), `seated` τ 2559.2 (an instant), `crest` τ 2340.0 (lift 0.29567).
+
+**Rows.**
+- `EQUALISATION.going.energy.maintainingHold.spring` carries the floor and its
+  corner, the upstream stages, the tooth count, the recoil, margin and run, the
+  run the blade can give, k, the preload and the working angle, the blade's
+  profile, compliance and stresses, and the alloy and its band. `kDebt` is
+  gone.
+- `equalisation` **row 16** re-derives the floor from the record's own corner,
+  and checks the run as a pitch plus the margin, that N is the FEWEST teeth
+  that fit, k over the run, the preload, k again from the blade's
+  re-integrated compliance, the tip at §50's floor, and both root stresses
+  under the alloy's low end, at float noise.
+- `probe-power-budget` computes the floor from its own corner walk, the
+  tooth count, run, k, preload, k from the profile, and both stresses: **52
+  figures agree** (44 before).
+- Two §137 rows: `groundedBlade` at the tip (ring pin → blade, 2710 mN working
+  and 1333 mN at the stop) and `rigidBentLink` at the root (the foot puts
+  F·L = 9675 mN·mm into the arm).
+- `MECH_GRAPH`: the path cone → pawls → ring → pin → blade → great wheel is
+  inside 'Fusee & great wheel', its pieces riding the unit's 'Maintaining
+  wheel' and 'Great wheel' subs. The comment at the unit's drive edge says so.
+- The explainer's Plate 3 quoted two numbers this changed. `MAINT_TEETH 24 both
+  rings` now reads 24 on the flange and 35 on the ring, and the tick is every
+  29.4 minutes; its script cuts the ring at 35 teeth. Its spring drawing and the
+  caption's "winding cannot drag it backwards" are TODO 224's.
+
+**Measured.** Full battery, local container (SwiftShader), `--shards 3
+--no-incremental`: **53/53 gates pass**. `equalisation` row 16 holds the spring;
+`transfers` reads 34 rows (4 `rigidBentLink`, 3 `groundedBlade`), 0 mismatched;
+`maintDetentHandoff` passes at the re-read phases; `inspection`, `clearances`,
+`undeclaredClearance` (0 pairs under the margin) and `sweptOverlap` are clean
+with the blade and pin in the crossing, so the window plane needed no P3 move.
+Three `INTRA_UNIT_CONTACTS` rows and one `PLATE_SEATS` row selected this unit's
+meshes by index label, and the new pin and blade moved each label one on
+(`ExtrudeGeometry#2 → #3`, `CylinderGeometry#14/#16 → #15/#17`, `#11 → #12`).
+`intraUnit` and `plateSeats` caught it, and the rows follow. Boot silent; 36/36
+spec points build, the same 28 with expected warnings; the six silent swept
+points are clean; `validated-configs` is unchanged (7 keys).
+`probe-direction-guards` (on a scratch copy) CATCHES the new spring's mutant
+row, and the existing ring row still catches at 35 teeth. The run as a whole
+still fails only on the stem one-way NO-OP, which predates this. Fingerprint
+1315627907 → **2435426308**.
+
+### Closed by [TODO 224] — the wind is posed
+
+Fix-path step 3 landed as TODO 224. A wind takes the drive off, and the ring
+recoils onto the beak by the cut (up to 0.8757 of a pitch, 0 from the face) and
+stands there. The great wheel runs on the blade by the train's own law until the
+pin reaches the stop flank, where the train stops (posed from the stop as a
+bound on τ). The pawls pick the ring up when the wind ends. The blade, posed
+from its pin as a solved contact, delivers 1.6334 N·mm at the stop, 102.8% of
+this item's 1.5886 floor (the linear sizing law puts exactly the floor there),
+so the sizing stands.
 
 ## 220. Spider legs stand 0.1605 off their side gears: hubFaceZ written twice — CLOSED
 
@@ -29761,6 +30031,12 @@ or price the moment the offset puts on the click against the blade. Re-solve
 outline. The face relief (TODO 218, `CLEAR_MARGIN` at the face's far end when
 the face reaches the apex) must be re-solved on the land's outer edge, not the
 old point.
+
+**Re-measured by [TODO 219]** (the ring re-cut at 35 teeth, the depth scaled
+with the pitch): the hold is **2366.7 mN** over a 3.6011 u arm, the wedge
+51.54°, its kindest section 371.5 MPa (×2.15 under yield), and the 1/s law
+reaches yield **0.3153 u** from the apex (was 0.2831 on the 24-tooth cut as
+last measured). The debt grew by 11% and keeps this fix path.
 
 ## 222. Alarm follower B's lift is posed from the selector's state: the rocker finger stands 0.91 off its arm and its spring rides the arm it would press
 
@@ -29971,3 +30247,432 @@ off both and 0.80 inside the stem. The six `only:` rows went stale and were
 deleted. Both main rows stay, now holding every mesh of the two pairs to the
 margin except each pair's one contact: `grooveCollarIn ⇄ settingLeverBeakPin`,
 and `yokeSpring ⇄ yokeTailPin` (the spring is a Keyless works part now).
+
+## 224. Pose the maintaining wind: the ring held on the beak, the great wheel on the spring, run-out at Harrison's stop — CLOSED
+
+Filed by [TODO 219]'s first landing, which sized the maintaining spring as metal
+(a uniform-strength blade in a great-wheel crossing, of the mainspring alloy),
+re-cut the ring at the 35 teeth its run fixes, and priced it all on
+`equalisation` row 16. That landing deliberately does not pose a wind. The pin
+stands at the working point at every pose, `maintWheel` still rides
+`barrelArbor` with no wind term, and so through a wind the ring runs on past
+the beak exactly as it does running. The detent never holds, the blade never
+deflects, and the stop is never reached. The model is described here and not
+yet simulated.
+
+**Fix path (P0, then the instruments).**
+1. **A wind-start state.** A pose cannot know when winding began, so the wind
+   needs a recorded state, on `windStemSlip`'s and `alarmPusherT`'s pattern:
+   the reserve at which the drive came off, written on the falling edge of
+   `windBack`, cleared when the drive picks the ring back up. Boot has no pose
+   (CLAUDE.md), so nothing about it may be a boot assert.
+2. **Pose the hold from contacts.** While `windBack` moves, the ring recoils
+   (the spring drives it back against the pawls' drag) until its face meets
+   the beak's apex. That is up to one pitch, read off the cut by
+   `MAINT_DET_RIDE`, never a coefficient. It then stands, and the great wheel
+   advances on the spring by the train's own law. The ring's angle relative to
+   the wheel is θ_work minus (recoil plus the wheel's advance). The pin and the
+   blade's deflected shape follow from that, the blade by its cantilever
+   elastica (`MAINT_SPRING.tAt`).
+3. **Run-out.** When the pin reaches the stop flank (run 0.22448 rad), the
+   wheel can advance no further than the held ring allows: the train stops.
+   That is what a long wind does, posed from the stop, not from a timer.
+4. **Pick-up.** When the drive returns, the pawls take the ring forward until
+   the spring is back at its working angle. Running behaviour must be
+   bit-identical (the fingerprint's running poses).
+5. **Instruments.** Add `maintDetentHandoff`-class rows for:
+   - the beak holding the ring's face during a wind (contact while holding,
+     free running);
+   - the pin on the blade's tip at every pose;
+   - the pin on the stop flank (contact at run-out, free otherwise).
+   Add or extend an axis so the pose net exercises a wind with the train
+   held, under TODO 54's entry. Under the `restoring` rule a part no axis moves
+   is a part no check can judge. Declare the restoring drivers on TODO 206's
+   rule: the ring is two-way between the blade and the drive, and the blade is
+   its own spring. Add the §137 row for the hold at the stop.
+6. **Plate 3.** Redraw the spring as the blade with its pin and stop, and fix
+   the caption's "the maintaining wheel is a child of the train's rotation only,
+   so winding cannot drag it backwards". That describes the unposed gap as a
+   virtue: winding does let the ring fall back, onto the beak, and that is the
+   recoil the spring's run was sized for.
+
+### Built — the wind is posed, from its contacts
+
+**The wind-start state (`maintHold`, main.js).** `null` while the drive is on,
+else `{ tau0, A0, recoil, onFace, tauStop }`: the movement time and the great
+wheel's angle at which the drive came off, and what the cut makes of them. It
+follows `windStemSlip`'s and `alarmPusherT`'s pattern:
+- The live tick writes it on windBack's falling edge, read off its cause: the
+  first tick whose bank rose (`windBankedNow > 0`). Nothing else moves windBack;
+  the drain term cancels by construction (`windLocalAt`).
+- The first live tick that banks nothing clears it. That is the pick-up: the
+  mainspring turns the cone forward onto the pawls.
+- A zero-dt tick never edges it. setPose is a pose, not a wind, so every
+  existing axis, every fingerprint pose and every hand-off table sees the drive
+  on unless it names a hold.
+- `setPose({ maintHold: h, maintPickUp })` writes it as a pure function of its
+  input (alarmPressCycle's rule). `resetInputs` clears it.
+- It is never persisted and never a boot assert. BOOT HAS NO POSE.
+
+**The law (`MAINT_HOLD`, after the detent's cock), every step a contact.**
+1. *Recoil.* `holdNet` is the ring's angle in the cock's frame at which the
+   face, swung back from the valley, comes to `SEAT_RELIEF` off the seated beak.
+   It is read on `MAINT_DET_RIDE.clearAt`. Measured, it is the seat itself
+   (0 rad back): TODO 218's beak is the valley's offset, so the face already
+   stands a relief off it there. The crest is read by golden section at
+   **0.8757** of a pitch (0.15721 rad, TODO 219's measured worst recoil).
+   - From a ring angle on the ramp, the recoil is the way back to `holdNet`.
+   - From the face (the beak descending it, the last 12.4% of every pitch),
+     the face is already at the apex and the recoil is 0.
+   - The recoil turns the ring against its run: `MAINT_HOLD.REC =
+     −MAINT_RING_RUN`.
+2. *Hold.* The ring stands. The great wheel advances by `barrelMeshAngle`, the
+   train's own law (the escapement still governs it). The ring's offset on its
+   arbor is `REC·(recoil + advance)`, and the pin's travel toward the stop is
+   `recoil + advance`.
+3. *Run-out.* At travel = `MAINT_SPRING.run` (0.22448 rad) the pin is on the
+   stop flank. That is a bound on movement time, `tauStop`, read by bisecting
+   `barrelMeshAngle` for the largest τ whose advance does not pass
+   `run − recoil`. The tick caps both the drain and τ there, and the balance
+   loses its drive (`rateTarget`'s third "nothing drives it"). setPose clamps
+   τ to the same bound. At τ0 = 0.13 the recoil is 0.09851 rad and
+   `tauStop` is 1237.42 s. After the worst recoil 0.06726 rad of advance is
+   left, about 11 min of drive.
+4. *Pick-up.* The ring's offset returns to exactly 0.
+
+**The blade, posed from its pin (`MAINT_BLADE`).** The ring's pin swings back
+on its own circle (r_P 3.3366, φ_work 0.34056 → φ_stop 0.11608), and the blade
+follows it. Its shape at travel s is the cut's free shape plus a load solved as
+a contact. The load stands where the face is nearest the pin, and it is
+whatever puts that point exactly r_pin + `SEAT_RELIEF` from the pin's centre.
+The kernel is the clamped cantilever's Maxwell kernel over the same √-taper
+profile (`MAINT_SPRING.tAt`). That is not TODO 219's linear law k·(θ_work − s),
+for three reasons:
+- the pin falls 0.7280 u toward the flank against r_e·run = 0.7060;
+- the bowed face tilts the contact normal 9.28° by the stop;
+- the contact station slides 0.115 u toward the stiffer root.
+
+Measured: the torque on the wheel falls monotonically from 3.2296 N·mm (the
+going torque, as cut) to **1.6334 N·mm at the stop**, 102.8% of the 1.5886
+floor. The linear law puts exactly the floor there. The contact force at the
+stop is 1293 mN, against the linear law's 1333. The floor holds with 2.8% to
+spare, so TODO 219's sizing stands.
+
+The states are distinct geometries (MODELING rule 6), welded at build (rule 7).
+Frame 0 is the cut itself; the tick restores whatever the mesh held after
+weldTree, so a running watch never sees a frame. K = **115** frames, from the
+pin: each step moves the face by at most the pin's own facet sagitta,
+r_pin·(1 − cos π/16) = 0.006347 u, over the pin's 0.7280 u fall. The tick shows
+the frame at or below the pin's travel, so the face stands the relief plus at
+most one step off the pin and never inside it.
+
+**Running is bit-identical.** The fingerprint over the twelve earlier poses is
+2435426308, unchanged. Every line `updateMaintaining` and the tick changed
+evaluates its old expression when no hold is set:
+- `Math.min(x, Infinity)`;
+- `windBack` rather than `windBack − 0`;
+- the arbor's angle rather than `+ 0`.
+
+**The axis (`maintHold`, n 48).** One wind at τ 0.13:
+- f = 0: the drive on;
+- 0 < f < 1: held, the wheel's advance h = f·48/47 of the run the recoil
+  leaves, reaching the stop at the last held sample;
+- f = 1: the pick-up at the stop's τ.
+
+The axis goes out and back within itself, so the ring's reversal is its own
+motion, and it is a pure function of f, so it is index-sliceable. `axisEntry`
+holds at 0 violations over **210** ordered pairs (420 tests). The digest poses
+grow 43 → 47 (three axis samples and the new fingerprint pose). The three slice
+rosters gain the axis.
+
+**Instruments.**
+- `maintDetentHandoff` gains two poses, `holding` (maintHold 0.5) and `runout`
+  (1). Its running poses now name `maintHold: 0`, since they share one check
+  with held poses. It gains three rows (gaps riding / seated / crest / holding
+  / runout):
+  - *ring face ⇄ beak*, read in the ring's own free coordinate (a new
+    `ringRecoil` measure). It is the arc at the tip circle through which the
+    ring could still recoil before meeting the beak, with the sense read from
+    the clock, never restated: 0.4985 / 0.0062 / (beyond a pitch) / 0.0062 /
+    0.0062. `seated` is the running instant at which the face IS at the beak,
+    so it is expected to read contact.
+  - *pin ⇄ blade*: 0.005 / 0.005 / 0.005 / 0.012 / 0.005, contact at every
+    pose.
+  - *pin ⇄ stop flank* (the great wheel's plate, `ExtrudeGeometry#0`):
+    0.1549 / 0.1549 / 0.1549 / 0.1511 / 0.0048, free until run-out. The
+    checker now resolves an unnamed mesh by the unit's index label,
+    INTRA_UNIT_CONTACTS' convention.
+- `restoring`. `maintRing` is declared two-way, its drivers the blade
+  (`Fusee & great wheel/maintSpring`) and the mainspring (`Mainspring
+  drum/mainspringRibbon`); both resolve. `maintSpring` is its own spring. The
+  member tier sees the ring's frame (ring, pawl studs, pin) and the blade's
+  morph reverse, each answered by its row.
+- `transfers`. A `pinInSlot` row for the hold at the stop: the blade's 1293 mN
+  presses the pin onto the flank, the flank reacts it on the same wheel, and the
+  train gets nothing.
+- Guards (§115's class). `MAINT_HOLD` reads on the cut that the recoil
+  descends the ramp and that the face blocks past the hold. The spring's guard
+  reads off the cut blade that `REC` is the way the blade's reaction drives the
+  ring. `probe-direction-guards` has the mutant row.
+- `tools/probe-224-hold.mjs` (acceptance) measures:
+  - the law over one tooth of drive-off instants;
+  - the posed torque over the run (monotone, never under the floor);
+  - the live path through `step()`. The first banking tick takes the drive
+    off with the law's recoil. The train stops at `tauStop` and stays stopped
+    while the wind goes on (balance rate 0). The first idle tick picks the
+    ring up at offset exactly 0, and the train runs again.
+- One INTRA_UNIT_CONTACTS `why` was wrong, and the labels showed it. The row
+  `ExtrudeGeometry#3 ⇄ #1` called #3 "the great wheel plate". Index 0 is the
+  plate, 1 its hub ring, 2 the blade and 3 the winding spur, so the joint the
+  row excuses was always the spur on the hub. The text now says so; the row is
+  unchanged.
+
+**Plate 3.**
+- The torus arc is gone. The plan draws the blade (the great wheel's), the pin
+  (the ring's) and the crossing's flank, hidden-line.
+- A new lower panel lays the crossing along the stop flank at true scale: the
+  blade posed from its pin by the same contact law (32 frames), the pin, the
+  flank, the hub land and the rim, with a readout of the travel and the
+  blade's torque (3.2296 → 1.6334 N·mm, as the build reads it).
+- "Start winding" runs the hold: the recoil onto the face, the wheel on the
+  blade to the stop (a RUN-OUT state, the train stopped), and the pick-up when
+  the wind stops.
+- The caption's "the maintaining wheel is a child of the train's rotation only,
+  so winding cannot drag it backwards" now says the opposite, which is true: the
+  detent sees one reverse pass, the recoil onto the face, and that recoil is
+  what the run was sized for.
+- The caption's English changed, so its translation is invalidated in all 19
+  tables (the stale keys are removed). The caption and the panel's new labels
+  render English until re-translated, which `explain-i18n --check` reports.
+
+**Not posed, and said where the law is.**
+- The pawls' own pick-up travel: the cone turning forward until a pawl drops
+  into the flange, up to a flange pitch. The cone's angle is the bank's (§47),
+  and the bank does not move at pick-up.
+- The reserve's drain through a hold is booked as the wheel advances. The metal
+  books it at pick-up, when the cone turns forward through the same angle. The
+  bank after a wind is the same either way.
+
+**Measured.** Full battery, local container (SwiftShader), `--shards 3
+--no-incremental`: **53/53 gates pass**.
+- `maintDetentHandoff`: 5 rows, all OK.
+- `restoring`: 24 reversing units; members 44 → 46 (the ring's frame and the
+  blade's morph); two-way drivers 14 → 15, all resolving.
+- `transfers`: 35 rows (2 `pinInSlot`).
+- `axisEntry`: 0 violations over 420 tests.
+- `inspection`: 0 FORBIDDEN; the same 80 pairs, the new axis adding only
+  EXPECTED contacts it shares with τ 0.13.
+- `intraUnit`, `undeclaredClearance` (0 under the margin over 1941 poses),
+  `sweptOverlap` (0 CONFIRMED) and `plateSeats` (47 poses): clean.
+- 36/36 spec points build, the same 28 with expected warnings. The six silent
+  swept points are clean, and `validated-configs` is unchanged (7 keys).
+- Boot silent. `probe-power-budget` AGREES on 52 figures. `probe-224-hold`
+  passes.
+
+Fingerprint: 2435426308 over the twelve earlier poses (unchanged), and
+**524118476** with the thirteenth.
+
+`--report` was diffed against TODO 219's own full-run report. That report's
+tree predates main's #598, so `oscillator`'s new `mass_kg` field and one
+`stockFloor` row are #598's, not this item's. The rest moved for this item's
+reasons:
+- `assembly`: the ring's frame leaves the great wheel's rigid group, 5 bodies
+  → 4.
+- `intraUnit`: the ring and pin are one mover frame, so the FF row
+  `maintRing ⇄ maintSpringPin` is gone, and the pawl-on-stud rows are MM.
+- `meshPhase`, `meshCoverage`, `plateSeats`: 47 digest poses.
+- `expectedContacts`: Heart cam ⇄ Reset hammer reaches its minimum 0.5072 on
+  the new axis's advanced τ (was 0.5196 on `crown`), against a 0.15 floor.
+- `sweptOverlap`: 8 more refuted, and the ring's meshes now swept as paths.
+
+## 225. The stock ruler cannot see in-plane sub-floor metal: 10 flat members are thinner in the sheet than their kind's floor, and one more is already a waived row
+
+Split out of [TODO 137]'s step 2. `stockFloor` (§50) and `slenderness` (§54) both
+read a mesh's geometry-LOCAL bounding box; for a flat extrude the smallest side
+of that box is the extrude DEPTH, and the in-plane width is only seen if it is the
+smallest side. A member whose sheet is thinner than its depth is read as its depth
+and passes. [TODO 137] found one by arithmetic; nobody had counted the class.
+
+**The instrument.** `tools/probe-137-hidden-thin.mjs` (a REPORT, §40: it exits 1
+only if a control is wrong). For every `ExtrudeGeometry` in a labelled unit — one
+row per mesh, attributed to its nearest unit as the census does — it fills the
+authored outline (`geometry.parameters.shapes`, which TODO 100 made survive the
+weld) and OPENS it by a disc of its own kind's floor (kind resolved as
+`checkStockFloor` does). What the opening removes is the metal no floor-wide disc
+covers, so the thickness spectrum falls out: `t05`/`t10`/`t15` are the fractions of
+the area thinner than 0.5, 1.0 and 1.5 times the floor. A row is FLAGGED when `t10`
+is 0.25 or more, or when the opening splits it into two pieces of 15% or more each.
+Both thresholds are screen settings, not physics, and the first exists because a
+gear tooth tapers to a point by design: the first cut flagged on any area lost
+and returned 39 rows, nearly all wheels. Controls (all fire): a bent strip 0.2 u wide
+is flagged, one 0.5 u wide is not, a fat square is not, a spike on a square (a
+"tooth") is not, and two blocks joined by a 0.2 u neck are flagged by splitting.
+
+**Measured (main aa467a2).** 182 extrudes, 0 without a readable shape, 0 with a
+scaled frame. 171 lose under 25% of their area at their floor (144 under 8%).
+11 are flagged; the stock ruler already reads one of them under its floor
+(`jumperBeak`, waived TODO 12), and the other 10 read AT OR OVER it:
+
+| unit / mesh | kind, floor | what the outline says | waived |
+|---|---|---|---|
+| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — see TODO 227** | no |
+| Alarm switch / `alarmPusherReturnAbutment` | wheel 0.12 | an annulus, radii 0.4442 / 0.3689 mm: a 0.075 mm wall, 0.12 mm deep | TODO 11 (unit-wide) |
+| Escape wheel / (unnamed, 0.394 mm deep) | wheel 0.12 | an annulus 0.2728 / 0.1895 mm: a 0.083 mm wall; reads 0.3941 | TODO 12 |
+| Escape wheel / (unnamed, 0.452 mm deep) | wheel 0.12 | the escape PINION's leaves (105-point outline, root 0.227 mm to tip 0.340 mm) | TODO 12 |
+| Small seconds / `smallSecondsBody` | hand 0.10 | blade under 0.10 mm in the sheet throughout (14% under 0.05 mm); reads 0.1023, its depth | TODO 12 |
+| Power reserve / `reserveBody` | hand 0.10 | the same, 12.5% under 0.05 mm; reads 0.1023 | no |
+| Alarm governor / `alarmGovPinion` | wheel 0.12 | pinion leaves; reads 0.4881 | no |
+| Center wheel / (unnamed) | wheel 0.12 | a 7-leaf pinion; 49% under the floor; reads 0.645 | no |
+| Winding clutch / `clutchSleeve` | wheel 0.12 | a bored sleeve, 44% under the floor; reads 0.7507 | no |
+| Alarm winding arrest / `spiderCageWheel` | wheel 0.12 | 26% under the floor, and splits into a 57% piece and the rest; reads 0.3365 | no |
+
+**What this is NOT yet.** A flag is a SCREEN, and none of these is a verdict. Three
+different things look the same to it. (1) A collar or collet SEATED on a shaft
+(the abutment, the escape collet): a thin radial wall is how a pressed ring is
+made, and the floor asks about self-supporting stock; each wants a decision on
+whether the floor applies. (2) A feature FUSED to a neighbour (the sleeve web joins
+the skirt's top band to the bore, "2 x 0.03 apart in radius"): its width is not
+the section of anything, the union is, and the ruler would need the union. (3) Thin
+stock proper (the two hand blades; possibly the pinion leaves, which real pinions
+cut at about 0.1 mm). The pinions and the toothed wheels are not separated from
+(3) by this screen: a leaf and a tooth are both narrow. None of the 10 may be
+waived, thickened or re-kinded on this item's say-so.
+
+**Also found, in passing.** `probe-section-headroom.mjs` (TODO 109's corridor
+probe) prints "0 bars": its target list names the rows that have since been
+retired, so the one remaining `SLENDER_WAIVERS` row (`Alarm release lifter`, λ 71.3)
+cannot be re-measured with it until the list is refreshed.
+
+**Fix path.** (a) Give each of the 10 a verdict and write it where the ruler can
+read it: a `stockSection` for a member whose width is the section (the way §169
+did the springs), a declared kind where the floor is the wrong question, or a
+union rule for fused features. (b) Only then consider teaching `stockFloor` to
+read the outline itself — the probe's method gated as the ruler's second tier —
+since it would flag 10 rows on arrival, and the rows must each be triaged first
+(§50's arc: report, triage, declare, gate).
+
+---
+
+## 227. The alarm release sleeve's skirt cone is a zero-thickness sheet, and the web beside it is a patch over that
+
+**Found taking TODO 225's first row.** The question was whether `alarmSleeveWeb`
+(a 0.030 mm arc ring, 0.12 mm deep, hung off the flat's underside) is a feature
+fused to a neighbour, a member, or thin stock. Reading what it is fused TO answered
+a different question.
+
+**The defect.** `alarmSleeveSkirt` is a `LatheGeometry` of a four-corner profile
+built from the working face A→B (the 45° cone the pin presses, derived from the
+pin's flank less the face cover) and a "wall" offset from it by `(+wOff, +wOff)`
+with `wOff = STOCK_MIN_U`. At 45° that offset is a translation ALONG the face, so
+the outer-face corner D lies on the line A–B extended: A, B and D are collinear
+(cross product 2.8e-17) and the profile is the triangle B–C–D at the flat-flush cap
+plus a zero-area spur from B down to A. Measured on the built profile: polygon area
+**0.0177 u²** (the triangle's, to 15 digits); the cone itself, A to B, is a
+double-sided sheet. The comment above the build said it was avoiding exactly this
+("a bare strip would be sheet with no stock at all, §50's degenerate class").
+
+**Why every gate read it fat.** `stockFloor` measures a lathe mesh by the box of
+its profile, axial extent by radial extent. The stray corner D pokes 0.112 u up
+into the flat (z −0.2048 against the flat's underside at −0.3167), so the axial
+extent reads 0.3167 = `STOCK_MIN_U` — the floor, to the digit — and the radial
+reads 0.52. `meshIntegrity` is satisfied by a closed surface and does not ask for
+volume; `outlines` reads extrudes only; `tools/probe-137-hidden-thin.mjs` (TODO
+225) reads extrudes only. The web is what the census still saw as thin once the
+skirt read fat: it stands `STOCK_MIN_U − ALARM_SLEEVE_SKIRT_H = 0.111` proud of the
+skirt's declared envelope, and §124 cut a relief sector in it because the feeler
+arm's transient swing met its bore corner by 0.0074. A rib that has to be relieved
+against a swinging arm to protect a skirt with no body is the patch's own cost.
+
+**The instrument.** `tools/probe-225-lathe-profiles.mjs` (a REPORT, §40) reads
+every `LatheGeometry` profile for the sheet signature (profile edges lying along
+other profile edges), for an open profile that does not close on the axis, and for
+a whisker (area under 5% of the profile's convex hull). Controls fire: the sleeve's
+own broken profile is flagged, a plain ring and a 45° parallelogram wall are not, a
+profile whose ends are on the axis is a solid, one whose ends are off it is a
+surface. **72 lathe meshes, 1 flagged — the skirt.** The class has one member.
+
+**What was tried, and why it is not landed.** A real shell — wall `STOCK_MIN_U`
+normal to the face, so the outer face is z = r − c − t√2, cap flush with the flat
+(clipped at the flat's rim), bottom lip flush with the declared envelope floor,
+`stockSection` declared, web and §124 relief retired — was built and run through
+the whole local battery (commit 641a324, backed out in 395e1a2): 50/53 gates. Two
+failures:
+
+1. `meshIntegrity` — `alarmSleeveSkirt` read INVERTED (signed volume −2.49): the
+   first draft listed the points clockwise. A slip, one line to fix.
+2. `undeclaredClearance` — `Alarm release feeler ⇄ Alarm release sleeve`
+   (`alarmFeelerSpring ⇄ alarmSleeveSkirt`) **0.0807 at beat f=0, need 0.15**, and
+   with it the `subdialr=8` spec point (`validated configs`, a listed point must
+   sweep clean). The lip is `t·√2` = 0.448 wide because a 45° wedge only has wall
+   `t` at the face if the bottom is that wide, so it reaches r 4.452 at the
+   envelope floor. The feeler spring's free end — the blade that bears on the
+   lever at the bear point — sits at r 4.36–4.43, az 154–155.5°, with its top face
+   at lathe-y −0.605 against the lip at −0.5214: **0.084 under the floor**. To
+   clear by 0.15 the lip would have to stop at r 4.2375 (0.234 wide, wall 0.165
+   normal at the tip — under the floor, so it trades one sub-floor section for
+   another) or the shell would need a relief sector at 155°, which the
+   cone-and-pin design cannot take because the pin orbits the tube and the face
+   must reach the floor at every azimuth, and a non-axisymmetric pocket cannot be
+   cut in a lathe (it would be a custom swept surface or a second body).
+
+By CLAUDE.md's design priority that is a LAYOUT problem — P3 resolved in position
+space, never by thinning the member (P1) — so the geometry stays as main has it and
+the finding is filed rather than absorbed.
+
+**Fix path.** Pick the cheaper of: (a) re-site the feeler spring's free end 0.07
+further from the sleeve plane or about 0.12 further out in r (the bear point is the
+lever's, `ALARM_FEELER_BEAR_R`: a P1 ratio, so this is a re-derivation of the
+lever, not a nudge); (b) buy 0.07 of envelope floor in the stratum (§51's
+precedent — `ALARM_FEELER_TOP` is `ALARM_SLEEVE_TOP − ALARM_SLEEVE_ENV −
+(CLEAR_MARGIN + MEASURED_MARGIN_BAND)` and the spring stands 0.06 above it); or
+(c) a swept (non-lathe) skirt with a relief at the spring end. Then rebuild the
+shell as above with the points wound correctly, retire the web, its §124 relief
+and asserts and the `alarmSleeveWeb ⇄ alarmTailPin` contact row, and let
+`stockFloor` read the declared wall (§169's device). Until then the cone the pin
+presses is a modelled surface, not a modelled body.
+
+---
+
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees)
+
+Found closing [TODO 216], whose knock solve reads this geometry.
+
+**The pin only enters the mouth.**
+
+| fork-local distance from the pivot | value |
+|---|---|
+| slot's mouth (the horn tips, `forkY = −L`) | 9.595 |
+| slot's closed end (`forkTop + 0.9·t`) | 6.596 |
+| pin centre at rest (`d − rollerR`, d = 11.195, rollerR = 1.62) | 9.575 |
+
+The pin's radius is 0.55, so only 0.57 of it enters the slot. A Swiss lever's
+pin runs well down the slot, between the horns.
+
+**The bank is derived at the wrong radius.** `FORK_BANK_DEG` (main.js) matches
+arc lengths: `rollerR·Δθ_pin = notchDepth·2·bank`. Here `notchDepth` is
+`0.8·L − 0.7·t` = 6.83, the floor of the notch. The pin, though, turns the
+fork at its own radius from the pivot, 9.575, not at the notch floor.
+
+| lift | value |
+|---|---|
+| what the pose law impulses over: `AMPLITUDE_VISUAL_DEG · sin(π·IMPULSE_WIDTH)` | 21.7° |
+| what the cut metal does (pin on the slot's centre line at the bank, `d·sin ψ = r·sin(θ + ψ)`, measured by `probe-216-knock.mjs`) | **30.95°** |
+
+So the fork reaches its bank while the pin is still 4.6° short of where the
+metal puts it. The notch's 0.29 of side play (`notchHW` 0.84 against the pin's
+0.55) is what absorbs the mismatch in the animation. Nothing sees it, because
+no instrument tracks the pin against the slot's walls through the impulse.
+
+**Fix path.**
+1. Seat the pin in the slot, by moving the fork's mouth or the roller. The
+   pin's centre should stand between the horns, about mid-slot.
+2. Derive the bank from the pin's real radius about the fork pivot, by the
+   exact relation `d·sin ψ = r·sin(θ + ψ)` rather than the arc-length
+   approximation.
+3. Hold the result with a contact instrument: through the impulse window,
+   the pin bears on the slot's driving wall within the hand-off tolerance.
+
+The knock (`ESCAPEMENT_KNOCK`) re-solves on its own, since it is read off the
+same outline, and `AMPLITUDE_PEAK_DEG` follows it through `equalisation`
+row 14.
+

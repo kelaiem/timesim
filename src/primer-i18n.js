@@ -46,6 +46,7 @@ const LOADERS = {
   id: () => import('./primer-i18n.id.js'),
   tr: () => import('./primer-i18n.tr.js'),
   cy: () => import('./primer-i18n.cy.js'),
+  fil: () => import('./primer-i18n.fil.js'),
   hi: () => import('./primer-i18n.hi.js'),
   ja: () => import('./primer-i18n.ja.js'),
   zh: () => import('./primer-i18n.zh.js'),

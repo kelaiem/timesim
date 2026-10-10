@@ -127,7 +127,15 @@ builds from an existing table's keys, so it cannot see one) or NOT APPLIED
 (translated, but its display site never ran `t()` / `localizeTree()`, which is
 what a section built after the one localization pass looks like). Run it at
 every locale landing and after any change that adds UI text; it is not in a
-workflow, for the reason page coverage is reported rather than gated. **The static pages are localized too** (§73 tier two,
+workflow, for the reason page coverage is reported rather than gated. **The
+native review every locale still owes has a packet**: `node
+tools/l10n-review-packets.mjs --out DIR` builds the review page (English beside
+each translation, a verdict and suggested wording per row) from the shipped
+tables, and it FAILS when a `LOCALES` row has no entry in
+`tools/l10n-review/questions.mjs` — so a locale landing writes down the terms
+its record says a workshop may dispute, or `[]` to declare there were none.
+The Explainer workflow gates it, and `pages.yml` publishes the sheet at
+`/review/` on every deploy. **The static pages are localized too** (§73 tier two,
 §95 tier two): `src/page-i18n.js` is the ENGINE — the walk and the swap, one
 copy — and each page adds a dozen-line module naming its own tables
 (`src/explain-i18n.js`, `src/primer-i18n.js`), one per locale, keyed by the
@@ -143,7 +151,18 @@ DOM. **The tool takes its locale roster from the page module's own
 per-locale FACT (which characters that locale groups and points with), and a
 missing row is a hard failure rather than a skipped check. `--check` is the gate and with no `--page` it checks EVERY page (0
 unmatched keys, 0 markup/`<code>`/id drift, 0 number drift, and no label
-overrunning its plate against the English baseline).
+overrunning its plate against the English baseline). **Number drift covers
+the explainer's PROSE too**, not only its plate labels: a paragraph quotes
+its identifiers inside `<code>` but carries bare numbers outside it ("at a
+real 270°"), and those are compared as a MULTISET of digit glyphs outside
+`<code>` — order-free, because a translation reorders a sentence. So a digit
+the English spells out ("seven-leaf", "twenty-four") is written in words in
+the translation too, never as a digit the English does not carry. Character
+references are decoded first (`&frac12;` is ½, not the number 12). The rule
+has a mutation control like the honesty vocabulary's: each run plants a
+changed digit and a re-punctuated decimal in every SOURCE-page table and
+FAILS if the comparison misses either, and the PASS line names what each
+page's numbers were checked by.
 
 **And since §241 it holds the HONESTY VOCABULARY, which is the first thing
 here that reads a sentence rather than counting one.** A translation that
@@ -340,20 +359,28 @@ it into prose either.
    its kindest section — since TODO 218 the valley's own offset, its face flank
    relieved so the hold bears on the apex on the stud's line — with
    `HOLD_STRESS_WAIVERS` empty and a waiver whose member is under yield STALE, on
-   the ribbons' rule. And
+   the ribbons' rule. Since TODO 219 the spring itself is metal on the same row
+   (`maintainingHold.spring`): a blade in a great-wheel crossing, of the
+   ribbons' ALLOY and held to its low end — the one member besides the ribbons
+   that is — with its floor re-derived from the NOMINAL corner, its run one ring
+   pitch of recoil plus the margin (so the ring's tooth count is the fewest that
+   fits), and k, the preload and the blade's own compliance at float noise. And
    since TODO 192 step 4 the AMPLITUDE: the one 270° literal the spring could
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
-   its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` its
-   maximum rounded UP (455: favourable, dial-flat; §218's peaks and the hack
-   brake are priced there) — held on both sides and within a degree, so a
-   solve that moves leaves neither behind. And since TODO 207 the swing the
+   its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the
+   largest swing the balance can REACH rounded UP — since TODO 216 the smaller
+   of the solve's maximum and the KNOCK (315: `ESCAPEMENT_KNOCK`, 314.18°, where
+   the impulse pin meets the banked fork's horn, solved off the blank's outline;
+   §218's peaks and the hack brake are priced there) — held on both sides and
+   within a degree, so a solve that moves leaves neither behind. And since TODO 207 the swing the
    movement is DESIGNED to, `AMPLITUDE_TARGET_DEG` 200° held vertical at the
    NOMINAL corner (a serviced lever watch): the drum is as large as the plate
    carries (`DRUM_R_ACTUAL`) and the balance's rim (`BAL_RIM_F`) is the
    heaviest that still reaches the target, held both ways — under it fails,
-   and so does more than `AMPLITUDE_TARGET_SLACK_DEG` over it. That the
-   favourable dial-flat swing (455°) passes a lever escapement's knocking
-   angle is TODO 216, a REPORT. `FRICTION` is the one place a coefficient the movement
+   and so does more than `AMPLITUDE_TARGET_SLACK_DEG` over it. Row 17 holds
+   the NOMINAL corner clear of the knock in both positions (a watch that knocks
+   as serviced is a fault); that the favourable corner's dial-flat energy would
+   carry it past (455°) is listed in the record and REPORTED. `FRICTION` is the one place a coefficient the movement
    cannot measure may live, always as a band with its source, never a single
    number, and `MU_STEEL` is the adverse corner of every steel row by
    reference; `tools/probe-power-budget.mjs` computes the same column from the
@@ -626,7 +653,12 @@ environment's own marks. A fourth path, `timelapse/`, is not an
 environment: §242's film of the release series, committed built under
 `timelapse/` and copied from the checkout, cut from every payload by
 `payload.sh` and ignored by the battery — refresh it with
-`tools/timelapse-capture.mjs` then `tools/timelapse-build.mjs`.
+`tools/timelapse-capture.mjs` then `tools/timelapse-build.mjs`. A fifth,
+`review/`, is §249's native-review sheet, and it is BUILT at deploy rather
+than committed: `tools/l10n-review-packets.mjs --standalone` reads every row
+from the checkout's translation tables, so it cannot fall behind them. A
+failed build publishes the three environments without it and says so — the
+Explainer workflow gates the same builder on every PR that can break it.
 
 **The deployed payload is `tools/payload.sh`, and it is the ONLY
 definition** — both `release.yml` (SFTP to QA) and `pages.yml` call it,
@@ -794,8 +826,13 @@ gate count is unchanged), six THROWS for files that are not one run (wrong
 format version, disagreeing shape, shards a worker was not owed, a shard or
 task key arriving twice, workers restricted to different unit sets, a baseline
 on one side of the seam only), and worker 0 alone carrying the indivisible
-anchors — fingerprint A, boot B with the digest pair, the two rosters, and
-(until Landing C) the spec-boot tier. **The single-process path is the
+anchors — fingerprint A, boot B with the digest pair, the two rosters. **Since
+§260 (Landing C) the spec-boot and point tiers are SPREAD**: `specOwner`
+(round-robin by declared index) and `pointOwners` (LPT over `POINT_COSTS`, the
+costliest bin on the LAST worker, away from the anchors) are pure functions the
+collector re-derives. A row in the wrong file throws, and a row that never
+arrived fails its tier's own gate by name. With one worker every row is worker
+0's, so the single process runs both tiers exactly as before. **The single-process path is the
 reference and must stay untouched**, exactly as `--shards 1` and `--no-split`
 are, and the assembly half is CALLED by both paths rather than copied — a
 second gate loop would be two definitions of standing rule 4.
@@ -819,7 +856,7 @@ match a whole run if entering an axis reproduces that axis's poses whatever ran
 before it. `setPose` assigns ONLY the keys a pose names, so before TODO 54 each
 axis inherited the tail of the axis declared above it and every sweep's
 coverage was a function of `AXES`' order. Every sweep now calls `enterAxis`
-before each axis; the `axisEntry` check gates that over all 182 ordered pairs
+before each axis; the `axisEntry` check gates that over all 210 ordered pairs
 and REPORTS, beside it, what used to ride through.
 
 **Since §152 a PR run can be INCREMENTAL, and the rule is that a check runs
@@ -827,8 +864,8 @@ only when it can change its answer.** A sweep's verdict is
 `f(geometry, pose net, check code)`. `unitDigests()` measures the first per
 unit — SHAPE over the position/index bytes, PLACE over the per-mesh world
 matrices, both at `digestPoses()`: a set DERIVED from `AXES` (every axis at
-f ∈ {0, 0.5, 1}, unioned with the 12 canonical poses for the combined states,
-43 total) rather than borrowed from the fingerprint — measured, the borrowed
+f ∈ {0, 0.5, 1}, unioned with the 13 canonical poses for the combined states,
+47 total) rather than borrowed from the fingerprint — measured, the borrowed
 set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
 `tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
 units install a different geometry at a different pose, which is why every
@@ -863,10 +900,16 @@ and building it established that the push run bounds a key error to minutes
 rather than a day and fires per merge rather than per date. The `schedule:`
 that exists is §200's, not §152's — it seeds the SELF-HOSTED baseline, the
 platform a push can never write, and is skipped when no host is available.
-A push's job cap is 90 min (the dispatch and nightly that seed a baseline
-share it since TODO 186; a PR keeps 60): the push is the
+A push's job cap is 150 min (the dispatch and nightly that seed a baseline
+share it since TODO 186; a PR's is 125): the push is the
 run that writes the hosted baseline, and three in a row were cancelled at 50
-inside their last sweep, which left the tree with no baseline at all. Every uncertainty — no cache hit, an
+inside their last sweep, which left the tree with no baseline at all. It was
+90 until green pushes reached 89 min and five of the last nine were killed at the cap.
+150 is the slowest green run times the 1.66x same-tree spread `battery.yml`
+measured, because the tail past a cap cannot be read. The PR's was 60, "the old
+cap plus the point ceiling", until a WHOLE PR run, which is any PR after a
+killed push or touching the check code, measured 73.8 min. 125 is that times
+the same spread. Every uncertainty — no cache hit, an
 unreadable file, a moved check-code digest, a union that cannot be justified —
 resolves towards MORE work and says so in the log. `--no-incremental` is the
 reference an incremental run must agree with, and `tools/probe-152-restrict.mjs`
@@ -881,7 +924,15 @@ key is the default's) gets `inspection`, `clearances` and
 changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
-report. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
+parallel `battery tiers` job, and since §265 its 36 spec boots with it**
+(`--tiers-only`). Both are handed to the battery (`--tiers-from`, fetched in
+the background by `tools/battery-tiers-fetch.sh`), which judges them in its
+one assembly. Each tier proves itself or runs in-process and says why. Both
+need the same tree. The spec tier needs one row per declared point, in order.
+The point tier needs the same point code, whole, every point full. A dead
+sibling or a fetcher that gave up runs both here, so the worst case is the run
+as it was. Measured, §264 took the push from 89 to 63 min. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,
@@ -909,7 +960,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 267 measuring scripts and this file names 22. The rest are named for the
+`tools/` holds 273 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -926,7 +977,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **157 of
+The index also carries the split that decides how to read a result: **163 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

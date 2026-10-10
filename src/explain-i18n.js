@@ -22,8 +22,11 @@
 // quoted from src/*.js"). Rendering CLEAR_MARGIN as "0,15" in German while
 // the source reads 0.15 would break exactly that promise — these are
 // IDENTIFIERS being quoted, not quantities being read aloud. The checker
-// enforces it: <code> spans must be byte-identical across languages and every
-// number in a plate label must survive translation UNCHANGED.
+// enforces it: <code> spans must be byte-identical across languages, every
+// number in a plate label must survive translation UNCHANGED, and so must
+// every bare number in the PROSE outside <code> (compared as a multiset,
+// since a translation reorders a sentence). A number the English spells out
+// is spelled out in the translation too.
 //
 // primer.html is the other way round for the same reason, which is why this
 // is declared per page rather than assumed by the engine: that page quotes no
@@ -72,6 +75,7 @@ const LOADERS = {
   id: () => import('./explain-i18n.id.js'),
   tr: () => import('./explain-i18n.tr.js'),
   cy: () => import('./explain-i18n.cy.js'),
+  fil: () => import('./explain-i18n.fil.js'),
   hi: () => import('./explain-i18n.hi.js'),
   ja: () => import('./explain-i18n.ja.js'),
   zh: () => import('./explain-i18n.zh.js'),

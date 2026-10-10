@@ -1,4 +1,4 @@
-// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak — against the same record. The verdict itself is a REPORT; the agreement is the acceptance.
+// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak — against the same record, and since TODO 219 the maintaining SPRING: its floor from the nominal corner's need at the claim, the ring's tooth count, k, the preload, k again from the blade's own profile, and its root stress. The verdict itself is a REPORT; the agreement is the acceptance.
 //
 // Why it exists. Until TODO 192 every number the movement published about its
 // power was FRICTIONLESS. EQUALISATION holds the fusee's level product to float
@@ -11,7 +11,8 @@
 // TODO 192 step 4 the one literal is two, read off this solve: the CLAIM
 // (AMPLITUDE_CLAIM_DEG, its minimum rounded down — what the "to hold" rows
 // below price) and the PEAK the loads are priced at (AMPLITUDE_PEAK_DEG, its
-// maximum rounded up).
+// maximum rounded up — since TODO 216 the smaller of that and the KNOCK, the
+// swing at which the impulse pin strikes the banked fork's horn).
 //
 // Where the numbers come from. The live figures are read off a booted tree:
 // the equalisation record (k, set-up and full-wind angles, the fusee's radii),
@@ -251,7 +252,7 @@ function run(A, piv = { train: null, bal: Q.balPivR }) {
       ampNoFrictionTrainDeg: (() => { const s = grossPerBeat * A.escEff; const a = Math.PI * k / (2 * A.qOther), b = 2 * tfVert; return (-b + Math.sqrt(b * b + 4 * a * s)) / (2 * a) * 180 / Math.PI; })(),
     },
     atClaim: {
-      needPerBeat_nJ: need * 1e9, shortfall: need / supply,
+      needPerBeat_J: need, needPerBeat_nJ: need * 1e9, shortfall: need / supply,
       springEnergyNeeded_mJ: eNeeded * 1e3,
       workingTurnsNeeded: (thFullNeeded - eq.setup.sweepRad) / (2 * Math.PI),
       torqueRatioThen: thFullNeeded / eq.setup.sweepRad,
@@ -260,6 +261,40 @@ function run(A, piv = { train: null, bal: Q.balPivR }) {
   };
 }
 const results = Object.fromEntries(Object.entries(CORNERS).map(([n, A]) => [n, run(A)]));
+
+// THE MAINTAINING SPRING (TODO 219). During a wind it drives the great wheel
+// directly, so the floor is the torque AT THE GREAT WHEEL that sustains the
+// claim at the record's floor corner: this probe's own need at the claim, over
+// the stages from the great wheel on (its own walk, less the ribbon, the drum
+// and the chain — the first three), per radian of the wheel. The run is one ring
+// pitch of recoil plus the margin (CLEAR_MARGIN at the pin's radius); the ring's
+// tooth count the fewest whose pitch fits inside the run the blade can give at
+// the alloy's limit; k the torque span over the run; the preload the floor's
+// angle; and the blade's compliance — integrated HERE from its uniform-strength
+// profile, t = max(t_min, t_root·√(x/L)) — must give the same k. The GEOMETRY
+// (profile, free length, the normal's arm, the pin's radius, the run the blade
+// can give) is read off the record, cut geometry by the pivot lengths'
+// convention; the torques and the laws are this probe's own.
+const spRec = holdRec?.spring || null;
+const spring = spRec && spRec.k_Nm_per_rad ? (() => {
+  const C = results[spRec.floorCorner];
+  const etaGreat = C.stages.slice(3).reduce((p, s) => p * s.eta, 1);
+  const floor = C.atClaim.needPerBeat_J * beats / (etaGreat * 2 * Math.PI * fuseeTurns);
+  const margin = L.CLEAR_MARGIN / spRec.pinRadius_u;
+  const N = Math.ceil(2 * Math.PI / (spRec.runMax_rad - margin));
+  const runR = 2 * Math.PI / N + margin;
+  const k = (tauFusee - floor) / runR;
+  let c = 0;
+  { const n = 2000, h = spRec.L_u / n;
+    for (let i = 0; i <= n; i++) {
+      const x = i * h, tt = Math.max(spRec.tMin_u, spRec.tRoot_u * Math.sqrt(x / spRec.L_u)) * U, I = (spRec.b_u * U) * tt ** 3 / 12;
+      c += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * (x * U) ** 2 / (L.MAINSPRING_E_PA * I);
+    }
+    c *= (h * U) / 3; }
+  const sigmaWork = 6 * (tauFusee / (spRec.rE_u * U)) * (spRec.L_u * U) / (spRec.b_u * U * (spRec.tRoot_u * U) ** 2);
+  return { floor_Nm: floor, etaGreat, N, run: runR, margin, k, preload: floor / k, thetaWork: tauFusee / k,
+    kBlade: (spRec.rE_u * U) ** 2 / c, sigmaWork, sigmaStop: sigmaWork * floor / tauFusee };
+})() : null;
 // BEFORE THE CUT: TODO 192 step 2 shouldered every jewelled train staff and
 // the balance staff onto pivots at §50's floor; before it, the staffs WERE the
 // pivots (train TRAIN_STAFF_R, balance BALANCE_STAFF_R as the record priced it).
@@ -325,6 +360,13 @@ if (hold) {
   const ct = holdRec.beak.contact;
   if (ct) console.log(`  contact: ${ct.model} (TODO 218) — face flank relieved ${f(ct.faceReliefRad * 180 / Math.PI, 2)}°, its far end ${f(ct.cornerGapAtHold_u, 4)} u off when the face reaches the apex; a parallel flank would bear ${f(ct.parallelFlank.offsetAlongFace_u, 4)} u up the face and need μ ≥ ${f(ct.parallelFlank.muToHold, 3)} against the cam-out`);
 }
+if (spring) {
+  console.log(`\n--- the maintaining spring (TODO 219): the floor at the ${spRec.floorCorner} corner, the alloy's low end ${f(L.MAINSPRING_SIGMA_Y_PA / 1e6, 0)} MPa ---`);
+  console.log(`  floor ${f(spring.floor_Nm * 1e3, 4)} N·mm at the great wheel (η great wheel → balance ${f(spring.etaGreat, 4)}), ${f(spring.floor_Nm / tauFusee, 4)} of the going ${f(tauFusee * 1e3, 4)}`);
+  console.log(`  ring ${spring.N} teeth: run ${f(spring.run, 5)} rad = one pitch ${f(2 * Math.PI / spring.N, 5)} + margin ${f(spring.margin, 5)} (the blade can give ${f(spRec.runMax_rad, 5)})`);
+  console.log(`  k ${e(spring.k)} N·m/rad (blade's own compliance: ${e(spring.kBlade)}), preload ${f(spring.preload, 5)} rad, working ${f(spring.thetaWork, 5)} rad`);
+  console.log(`  root σ ${f(spring.sigmaWork / 1e6, 1)} MPa working, ${f(spring.sigmaStop / 1e6, 1)} at the stop; blade ${f(spRec.tRoot_u * L.UNIT_MM, 4)} → ${f(spRec.tMin_u * L.UNIT_MM, 4)} mm × ${f(spRec.b_u * L.UNIT_MM, 4)} mm, free length ${f(spRec.L_u * L.UNIT_MM, 3)} mm`);
+}
 // ---- THE ASSERT: the record's energy column against this computation -------
 // Same constants, two readers — the record by name inside main.js, this by
 // text from outside — and two writers of the arithmetic. 1e-9 relative is
@@ -359,7 +401,19 @@ if (!REC || !REC.corners) {
   if (!REC.amplitude) disagreements.push({ what: 'amplitude block', probe: 'present', record: 'absent' });
   else { same('sustained minimum (deg)', lo, REC.amplitude.min.deg); same('sustained maximum (deg)', hi, REC.amplitude.max.deg); }
   if (L.AMPLITUDE_CLAIM_DEG !== Math.floor(lo)) disagreements.push({ what: 'AMPLITUDE_CLAIM_DEG is not ⌊minimum⌋', probe: Math.floor(lo), record: L.AMPLITUDE_CLAIM_DEG });
-  if (L.AMPLITUDE_PEAK_DEG !== Math.ceil(hi)) disagreements.push({ what: 'AMPLITUDE_PEAK_DEG is not ⌈maximum⌉', probe: Math.ceil(hi), record: L.AMPLITUDE_PEAK_DEG });
+  // TODO 216 — the peak is the largest swing the balance can REACH: this
+  // solve's maximum, or the knock if the pin meets the horn first. The knock is
+  // cut geometry (the fork blank, the roller), so it is read off the record the
+  // way the lengths are; probe-216-knock is its second reader.
+  const knock = REC.knock && Number.isFinite(REC.knock.deg) ? REC.knock.deg : Infinity;
+  if (!Number.isFinite(knock)) disagreements.push({ what: 'knock record', probe: 'present', record: 'absent' });
+  const reach = Math.min(hi, knock);
+  if (L.AMPLITUDE_PEAK_DEG !== Math.ceil(reach)) disagreements.push({ what: 'AMPLITUDE_PEAK_DEG is not ⌈min(maximum, knock)⌉', probe: Math.ceil(reach), record: L.AMPLITUDE_PEAK_DEG });
+  const knocking = Object.entries(results).flatMap(([n, R]) => [['vertical', R.balance.ampVertDeg], ['flat', R.balance.ampFlatDeg]]
+    .filter(([, d]) => d >= knock).map(([pos, d]) => `${n} ${pos} ${d.toFixed(1)}°`));
+  if (Number.isFinite(knock)) console.log(`knock at ${knock.toFixed(2)}° (lift ${REC.knock.liftDeg.toFixed(2)}°): ${knocking.length ? `the energy would carry ${knocking.join(', ')} past it — the balance banks there` : 'no corner reaches it'}`);
+  if ([results.nominal.balance.ampVertDeg, results.nominal.balance.ampFlatDeg].some((d) => !(d < knock)))
+    disagreements.push({ what: 'the nominal corner knocks', probe: [results.nominal.balance.ampVertDeg, results.nominal.balance.ampFlatDeg], record: knock });
   // TODO 207 — the design target, at the nominal corner held vertical: met, and
   // by less than the slack one heavier rim step costs.
   const nv = results.nominal.balance.ampVertDeg;
@@ -390,14 +444,25 @@ if (!REC || !REC.corners) {
     same('maintaining hold: beak σ', hold.beakSigma_Pa, holdRec.beak.sigma_Pa);
     same('maintaining hold: beak yield station', hold.beakYieldStation_u, holdRec.beak.yieldStation_u);
   }
+  if (!spring) disagreements.push({ what: 'maintaining spring', probe: 'computed', record: 'EQUALISATION.going.energy.maintainingHold.spring has no k (TODO 219)' });
+  else {
+    same('maintaining spring: floor', spring.floor_Nm, spRec.floor_Nm);
+    if (spring.N !== spRec.ringTeeth) disagreements.push({ what: 'maintaining spring: ring teeth', probe: spring.N, record: spRec.ringTeeth });
+    same('maintaining spring: run', spring.run, spRec.run_rad);
+    same('maintaining spring: k', spring.k, spRec.k_Nm_per_rad);
+    same('maintaining spring: preload', spring.preload, spRec.preload_rad);
+    same('maintaining spring: k from the blade', spring.kBlade, spRec.k_Nm_per_rad);
+    same('maintaining spring: σ working', spring.sigmaWork, spRec.sigmaWork_Pa);
+    same('maintaining spring: σ at the stop', spring.sigmaStop, spRec.sigmaStop_Pa);
+  }
 }
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 4} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way, and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 4 + 8} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way (the peak capped at the knock), and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);
 console.log('\nThe verdict above is a REPORT. The only acceptance here is the record agreeing with this computation.\n');
 
-if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, strength, hold, ribbon, alarmRibbon, disagreements }, null, 1));
+if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, strength, hold, spring, ribbon, alarmRibbon, disagreements }, null, 1));
 if (disagreements.length) { console.log(`FAIL — ${disagreements.length} disagreement(s) between the record and this computation`); process.exit(1); }

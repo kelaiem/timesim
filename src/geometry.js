@@ -2632,7 +2632,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
   // Ruby impulse pin at the roller's edge, in the roller-table plane itself so
   // it seats between the fork horns (the fork plane is level with the roller).
-  const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);
+  const pinGeo = new THREE.CylinderGeometry(thickness * 0.22, thickness * 0.22, thickness * 1.2, 12);   // r is published as userData.pinR
   pinGeo.rotateX(Math.PI / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.ruby);
   pin.position.set(rollerR, 0, pinZ);
@@ -2656,6 +2656,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
+  g.userData.pinR = thickness * 0.22;   // TODO 216 — the ruby pin's own radius: the knock is where its SURFACE meets the fork's horn
   // TODO 25 tier one — the INERTIA-BEARING DIMENSIONS, published so the
   // oscillator arithmetic in main.js can weigh this wheel without restating
   // a single number the builder already knows (rule 1's single source). Units,
@@ -5157,6 +5158,14 @@ export function makeColumnPawl({ nodes, pivot, nose, w, noseR, boreR, bossR, thi
     m.name = i === 0 ? `${name}Tail` : name;
     m.userData.outline = outline;
     m.userData.centreline = r;
+    // TODO 137 — THE SECTION THE METAL HAS, declared, because a bent member's
+    // geometry-local box is the bend's ENVELOPE and `stockFloor` reads its
+    // smallest side as the stock. A body thickened ±w about a centreline is 2w
+    // across IN the sheet and `thickness` through it; the box of this one is
+    // 4.31 × 1.04 × `thickness`, so its minimum was the extrude depth, read
+    // exactly at the floor, while the arm was 2w = a tooth's depth, 5% under it.
+    // (The same remedy §169 gave the two swept springs, for the same reason.)
+    m.userData.stockSection = Math.min(2 * w, thickness);
     return m;
   });
   if (bodies.length !== 2)
@@ -5366,14 +5375,14 @@ export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
 // side, ALARM_SENSE for the alarm's own motor (layout.js says why they are
 // two). The `reverse` flag keeps its meaning against whichever it is given.
 export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null, reverse = false,
-                                      sense = MOVEMENT_SENSE }) {
+                                      sense = MOVEMENT_SENSE, depthF = 0.2 }) {
   const g = new THREE.Group();
   const rShape = new THREE.Shape();
   const outline = [];
   for (let i = 0; i < teeth; i++) {
     const a0 = (i / teeth) * Math.PI * 2;
     const a1 = ((i + 0.72) / teeth) * Math.PI * 2;
-    outline.push([Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8]);
+    outline.push([Math.cos(a0) * radius * (1 - depthF), Math.sin(a0) * radius * (1 - depthF)]);   // TODO 219: depth a caller's fraction (the maintaining ring scales it with its pitch)
     outline.push([Math.cos(a1) * radius, Math.sin(a1) * radius]);
   }
   // TODO 115 — `reverse` means "against this train's running direction", so

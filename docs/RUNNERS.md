@@ -441,7 +441,8 @@ queued or running `timesim-battery` jobs first.
 
 ## What stays the same on any host
 
-- **The job cap (50 min; 90 for a push) and the per-check guard (35 min).**
+- **The job cap (125 min for a PR; 150 for a push, dispatch or nightly) and the
+  per-check guard (35 min).**
   Both are sized by the slow tail of the runner they were measured on, and
   both files say to re-derive them together from several runs. A faster host
   makes them loose, which costs nothing; do not tighten them from one run. The
@@ -450,7 +451,9 @@ queued or running `timesim-battery` jobs first.
   50 min on `ubuntu-latest`, each inside `clearances`, and a cancelled push
   leaves that tree with no baseline — the quiet failure the concurrency note
   describes — so every following hosted PR ran whole into the same cap. A PR
-  inherits rather than writes and keeps 50.
+  inherits rather than writes, but it runs WHOLE after any killed push and
+  whenever it touches the check code. A whole PR measured 73.8 min, so its cap
+  is that times the same 1.66× spread, 125, not the 50 or 60 it used to keep.
 - **The baseline cache key carries the platform, and seeding the host's is a
   DISPATCH.** A §152 baseline's rows are inherited verbatim into a PR's report,
   so they must come from the same browser build on the same architecture; a
@@ -536,9 +539,10 @@ What to know before asking for it:
 - **Both slots, one PR.** A split run holds both slots for its length, so a
   second PR opted in to the host waits for it. A split buys one PR's latency
   with the host's throughput.
-- **Worker 0 is the floor.** It carries the anchors, the 36 spec boots
-  (~156 s on a slot) and a PR's point tier (up to 600 s) AFTER its shards, so
-  halving the shards does not halve the job. Spreading those is Landing C.
+- **Worker 0 used to be the floor.** Under §259 it carried the anchors, the 36
+  spec boots (~156 s on a slot) and a PR's point tier (up to 600 s) after its
+  shards, while worker 1 sat finished for 13 m 27 s. §260 spread both tiers
+  across the workers, and only boot B (~23 s) stays on worker 0 alone.
 - **The slots share ten cores.** Two overlapping jobs measured about +30%
   slower each (above), and a split IS two overlapping jobs.
 - **K must agree across the two slots.** Each leg reads `BATTERY_SHARDS` from

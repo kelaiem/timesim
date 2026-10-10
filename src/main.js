@@ -2091,8 +2091,15 @@ const OSCILLATOR = (() => {
     solved: true, debt: null,
     stockWindowMm: [0.02, 0.04],      // §50's own cited hairspring range
     terms: { rimPct: pct(OSC_I.rim), armsPct: pct(OSC_I.arm), screwsPct: pct(OSC_I.screw), neglectedPct: 0.38 },
+    // §246 — the ribbon's MASS, for the positional-rate instrument: in a
+    // vertical position the spring's own weight acts on the balance through
+    // its centre of mass, which breathes with θ. Rhombus4 of half-diagonals
+    // a, c has area 2ac; the length is the planar developed length the
+    // elastica frames are drawn on, so the mass and the centroid read the
+    // same polyline.
     spring: { h_mm: MM(2 * H.section.a), b_mm: MM(2 * H.section.c), L_mm: MM(H.devLen), shape: H.section.shape,
-              inStock: MM(2 * H.section.a) >= 0.02 && MM(2 * H.section.a) <= 0.04 },
+              inStock: MM(2 * H.section.a) >= 0.02 && MM(2 * H.section.a) <= 0.04,
+              mass_kg: OSC_STEEL_RHO * (2 * H.section.a * H.section.c * OSC_U ** 2) * (H.devLen * OSC_U) },
   });
 })();
 if (!OSCILLATOR.agrees)
@@ -2825,6 +2832,89 @@ balanceGroup.add(balanceWheel);
 movement.add(balanceGroup);
 registerExplode(balanceGroup, L_BALANCE, 7);
 registerLabel('Balance', balanceGroup);
+
+// TODO 216 — THE KNOCK, read off the cut metal. A lever balance carries its
+// impulse pin round past the fork on every swing. Swing far enough and the pin
+// comes all the way round from the far side and strikes the OUTSIDE of the
+// fork's horn, which is still lying banked where the last impulse left it:
+// past that angle the balance cannot swing, it banks on the horn. So the
+// largest swing the oscillator can REACH is the smaller of what the energy
+// column sustains and this angle, and it is that swing every load on the
+// oscillator is priced at (AMPLITUDE_PEAK_DEG, `equalisation` rows 14 and 17).
+//
+// Solved in the plane of the fork blank, against its published outline and
+// the ruby pin's own radius (the pin stands in the blank's z band; the probe
+// checks that). Frame: the balance staff at the origin, the fork pivot at
+// (d, 0) on the line of centres; θ is the balance's turn off PIN_AIM and ψ the
+// fork's off forkBaseAngle, both counter-clockwise as the frame law writes them
+// (balanceGroup.rotation.z = PIN_AIM + θ, forkGroup = forkBaseAngle + ψ).
+// Fork-local (x, y) lands at F + R(ψ)·(y, −x): local −y runs at the balance.
+//  · LIFT — the pin sits on the notch's centre line, fork banked at ±bank,
+//    where d·sin ψ = r·sin(θ ± ψ); the arc between the two is the lift.
+//  · KNOCK — fork at the bank the pin left it on, carry the pin on round until
+//    its surface first meets the blank's outline. Not the textbook 360° − λ/2:
+//    the horn tip and the pin's own radius stand off the centre line, and that
+//    is the whole difference between them.
+// `tools/probe-216-knock.mjs` measures the same two angles off the built
+// meshes' world transforms and gates this record against them.
+const ESCAPEMENT_KNOCK = (() => {
+  const outline = palletFork.userData.blankOutline;
+  const r = rollerR, pinR = balanceWheel.userData.pinR;
+  const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
+  const bank = FORK_BANK_DEG * DEG2RAD;
+  const forkPoly = (psi) => {
+    const c = Math.cos(psi), s = Math.sin(psi);
+    return outline.map(([x, y]) => [d + y * c + x * s, y * s - x * c]);
+  };
+  const pin = (th) => [r * Math.cos(th), r * Math.sin(th)];
+  // the pin's centre against the fork's centre line (cross product; 0 on it)
+  const onAxis = (th, psi) => { const [px, py] = pin(th); return -(px - d) * Math.sin(psi) + py * Math.cos(psi); };
+  const bisect = (f, lo, hi) => {
+    let flo = f(lo);
+    for (let k = 0; k < 100; k++) {
+      const mid = (lo + hi) / 2, fm = f(mid);
+      if ((fm > 0) === (flo > 0)) { lo = mid; flo = fm; } else hi = mid;
+    }
+    return (lo + hi) / 2;
+  };
+  const thA = bisect((th) => onAxis(th, +bank), -0.6, 0.6), thB = bisect((th) => onAxis(th, -bank), -0.6, 0.6);
+  const exits = thA > 0 ? [{ psi: +bank, th: thA }, { psi: -bank, th: thB }] : [{ psi: -bank, th: thB }, { psi: +bank, th: thA }];
+  const clearance = ([px, py], poly) => {
+    let m = Infinity, at = -1, inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [ax, ay] = poly[j], [bx, by] = poly[i];
+      const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / L2)) : 0;
+      const dd = Math.hypot(px - ax - t * ex, py - ay - t * ey);
+      if (dd < m) { m = dd; at = i; }
+      if ((ay > py) !== (by > py) && px < (bx - ax) * (py - ay) / (by - ay) + ax) inside = !inside;
+    }
+    return { c: (inside ? -m : m) - pinR, at };
+  };
+  // dir +1: the pin left counter-clockwise; −1: clockwise (a mirror for this blank)
+  const knockFrom = ({ psi, th: th0 }, dir) => {
+    const poly = forkPoly(psi), step = 0.25 * DEG2RAD;
+    let prev = th0 + dir * 0.05, th = prev;
+    for (; Math.abs(th) < 2 * Math.PI; th += dir * step) {
+      if (clearance(pin(th), poly).c <= 0) break;
+      prev = th;
+    }
+    if (!(Math.abs(th) < 2 * Math.PI)) return null;
+    let lo = prev, hi = th;
+    for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (clearance(pin(mid), poly).c <= 0) hi = mid; else lo = mid; }
+    return { deg: Math.abs(hi) / DEG2RAD, strikes: outline[clearance(pin(hi), poly).at] };
+  };
+  const ccw = knockFrom(exits[0], +1), cw = knockFrom(exits[1], -1);
+  const worst = [ccw, cw].filter(Boolean).reduce((a, b) => (b.deg < a.deg ? b : a), { deg: Infinity });
+  const K = {
+    deg: worst.deg, ccwDeg: ccw && ccw.deg, cwDeg: cw && cw.deg, strikesLocal: worst.strikes,
+    liftDeg: (exits[0].th - exits[1].th) / DEG2RAD, bankDeg: FORK_BANK_DEG,
+    d_u: d, rollerR_u: r, pinR_u: pinR, textbookDeg: 360 - (exits[0].th - exits[1].th) / DEG2RAD / 2,
+  };
+  if (!Number.isFinite(K.deg) || !(K.deg > 180 && K.deg < 360))
+    console.warn(`TODO 216: no knock found on the fork blank within a turn of the pin (ccw ${ccw && ccw.deg}, cw ${cw && cw.deg}) — the outline or the frame law moved`);
+  return Object.freeze(K);
+})();
 
 const hairspringGroup = new THREE.Group();
 hairspringGroup.position.set(P.balance.x, P.balance.y, L_HAIRSPRING);
@@ -8749,18 +8839,19 @@ hammerGroup.add(hammerTailBar);
 //    under the 14.3 mN deflection ceiling below. The figures that follow are
 //    the record the rod was first priced against.)
 //  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
-//    3.067 mm (measured off the built pad). Holding a 455°
-//    (AMPLITUDE_PEAK_DEG — the largest swing the spring sustains, TODO 192
-//    step 4; this was first priced at a 270° the spring could not reach)
-//    swing means absorbing the hairspring's own peak torque. TODO 207
-//    lightened the balance and its spring with it (k 1.234e-7 → 7.663e-8
-//    N·m/rad), so k·θ = 7.663e-8 × 7.941 = 6.09e-7 N·m — 0.20 mN of friction
-//    at that radius, so ≈1.32 mN of normal force at a ruby-on-brass μ 0.15.
-//    The pad closes on the rim 0.495 u per 3.413 u of rod travel (both
-//    measured over the crown cycle), so the rod carries 1.32 × 0.145 =
-//    0.19 mN. (The verdict below was taken at the first pricing, 1.3 mN and
-//    0.18 mN; every hack figure in it scales by 1.02, which moves no
-//    conclusion.)
+//    3.067 mm (measured off the built pad). Holding a 315°
+//    (AMPLITUDE_PEAK_DEG — the largest swing the balance can reach: the
+//    knock since TODO 216, where the pin meets the banked fork's horn; it was
+//    priced at the energy column's 455° before that, and first at a 270° the
+//    spring could not reach) swing means absorbing the hairspring's own peak
+//    torque. TODO 207 lightened the balance and its spring with it (k
+//    1.234e-7 → 7.663e-8 N·m/rad), so k·θ = 7.663e-8 × 5.498 = 4.21e-7 N·m —
+//    0.137 mN of friction at that radius, so ≈0.92 mN of normal force at a
+//    ruby-on-brass μ 0.15. The pad closes on the rim 0.495 u per 3.413 u of
+//    rod travel (both measured over the crown cycle), so the rod carries
+//    0.92 × 0.145 = 0.13 mN. (The verdict below was taken at the first
+//    pricing, 1.3 mN and 0.18 mN; every hack figure in it scales by 0.71,
+//    which moves no conclusion — it only widens the margins.)
 // Both are sub-milliNewton — an order under the 5–50 mN detent budgets
 // the movement already carries (the yoke spring's block names that
 // envelope), which is the first thing the verdict below turns on.
@@ -10117,6 +10208,87 @@ for (const row of TRAIN_PIVOT_SIZES) {
   movement.add(jewel);
   lo.jewel = jewel;
 }
+// TODO 219 — THE ENERGY COLUMN'S LAWS, hoisted to where the train is cut. The
+// column itself is published on EQUALISATION (below, beside both ribbons), but
+// its per-corner walk — the losses from the ribbon to the balance and the
+// amplitude the balance sustains — is needed EARLIER now: the maintaining
+// spring's floor is read off it (MAINT_FLOOR_NM, before the maintaining ring is
+// cut, because the ring's tooth count follows from the spring's run). One law,
+// one copy: EQUALISATION's energy block reads every figure through this, so the
+// floor and the record cannot price the train two ways.
+const GOING_POWER = (() => {
+  const k = GOING_K;
+  const released_J = 0.5 * k * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2);
+  const reserve_s = SPEC.reserveHours * 3600;
+  const beats = SPEC.vph * SPEC.reserveHours;
+  const rW = (m) => m.module * m.teeth / 2;
+  const meshes = TRAIN_STAGES.map(({ obj, ...m }) => ({ ...m, rPiv: TRAIN_PIVOT_SIZES.find((p) => p.arbor === m.arbor).rU }));
+  const trainRatio = meshes.reduce((p, m) => p * m.z1 / m.z2, 1);
+  const fuseeTorque_Nm = released_J / (FUSEE_WRAP_TURNS * 2 * Math.PI);
+  const escapeTorque_Nm = fuseeTorque_Nm / trainRatio;
+  const perBeat_J = released_J / beats;
+  const rArbor = G.barrelArborR(DRUM_R_ACTUAL), rWrap = DRUM_WRAP_R;
+  const rFuseeMean = (FUSEE_R_LARGE + FUSEE_TORQUE_K) / 2, rGreat = rW(TRAIN.barrel);
+  const kB = OSCILLATOR.k_Nm_per_rad, mB = OSC_I.mass, g = 9.81;
+  const thetaClaim = AMPLITUDE_CLAIM_DEG * DEG2RAD;
+  // The stages UPSTREAM of the great wheel: the drive's own losses before the
+  // maintaining spring, which a wind takes out of the path (the spring then
+  // drives the great wheel directly). Named once, for the floor's walk.
+  const UPSTREAM = ['mainspring coil friction', 'drum on its fixed arbor', 'chain articulation'];
+  const corner = (cname) => {
+    const A = Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
+    const stages = [];
+    const push = (name, eta, law) => stages.push({ name, eta, law });
+    push('mainspring coil friction', A.springInt, 'FRICTION.springInt');
+    push('drum on its fixed arbor', 1 - A.muPlain * rArbor / rWrap, 'μ_plain·r_arbor/R_wrap');
+    push('chain articulation', 1 - A.muChain * CHAIN_PIN_R * (1 / rFuseeMean + 1 / rWrap), 'μ_chain·r_rivet·(1/r_fusee + 1/R_wrap)');
+    push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)');
+    for (const m of meshes) {
+      push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)');
+      push(`${m.arbor} arbor pivots`, 1 - A.muJewel * m.rPiv * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)');
+    }
+    push('lever escapement', A.escEff, 'FRICTION.escEff');
+    const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
+    const etaTotal = stages.reduce((p, s) => p * s.eta, 1);
+    const delivered_J = etaTotal * perBeat_J;
+    const tfVertical_Nm = A.muJewel * mB * g * BALANCE_PIVOT_R * OSC_U;
+    const tfFlat_Nm = A.muJewel * mB * g * (2 / 3) * (A.endContactMm / 1000);
+    // loss(θ) = (π k_B / 2Q) θ² + 2 T_f θ = delivered  ⇒  the positive root.
+    const sustained = (tf) => { const a = Math.PI * kB / (2 * A.qOther), b = 2 * tf; return (-b + Math.sqrt(b * b + 4 * a * delivered_J)) / (2 * a); };
+    const needAtClaim_J = Math.PI * kB / (2 * A.qOther) * thetaClaim ** 2 + 2 * thetaClaim * tfVertical_Nm;
+    return {
+      stages, etaTrain, etaTotal, delivered_J, qOther: A.qOther,
+      pivot: { vertical_Nm: tfVertical_Nm, flat_Nm: tfFlat_Nm },
+      sustainedDeg: { vertical: sustained(tfVertical_Nm) / DEG2RAD, flat: sustained(tfFlat_Nm) / DEG2RAD },
+      claim: { needPerBeat_J: needAtClaim_J, factorOverSupply: needAtClaim_J / delivered_J,
+               springEnergyNeeded_J: needAtClaim_J / etaTotal * beats },
+    };
+  };
+  return { k, released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
+    rArbor, rWrap, rFuseeMean, rGreat, kB, mB, g, thetaClaim, UPSTREAM, corner };
+})();
+// TODO 219 — THE MAINTAINING SPRING'S FLOOR, from the energy column. During a
+// wind the maintaining spring drives the great wheel DIRECTLY: the ribbon's
+// coil friction, the drum and the chain are out of the path, and every stage
+// from the great wheel's own bearing to the escapement is still in it. So the
+// torque the spring must still deliver at its stop is the torque AT THE GREAT
+// WHEEL that sustains AMPLITUDE_CLAIM_DEG, held vertical:
+//     τ_floor = needAtClaim · beats / (η_great→balance · 2π · FUSEE_WRAP_TURNS)
+// (the great wheel turns FUSEE_WRAP_TURNS over the reserve's `beats`).
+//
+// AT THE NOMINAL CORNER, and that is a decision, not a convenience: the
+// spring keeps a SERVICED movement at its claimed swing through a wind. The
+// adverse corner cannot be the floor — AMPLITUDE_CLAIM_DEG is that corner's
+// sustained minimum rounded down (126 against 126.0028°), so it holds the claim
+// with a factor of 0.99997 while RUNNING, and the spring would be wound there to
+// τ_going·η_upstream, already the adverse floor: no spring could give up any
+// torque at all (TODO 219 records the arithmetic).
+const MAINT_FLOOR_CORNER = 'nominal';
+const MAINT_FLOOR_NM = (() => {
+  const C = GOING_POWER.corner(MAINT_FLOOR_CORNER);
+  const etaGreat = C.stages.filter((s) => !GOING_POWER.UPSTREAM.includes(s.name)).reduce((p, s) => p * s.eta, 1);
+  return C.claim.needPerBeat_J * GOING_POWER.beats / (etaGreat * 2 * Math.PI * FUSEE_WRAP_TURNS);
+})();
 // §48/TODO 29 — the ribbon RECIPROCATES now, so the audit has an opinion about
 // it, and it did not before: the retired readout rotated the spiral rigidly
 // with tension, which the §36 registry read as one more monotonic rotor. The
@@ -11148,7 +11320,7 @@ const MAINT_TEETH = 24;
 // a margin inside it.
 const _cwTipNear = barrelDist - (centerWheel.userData.r || 12) - 0.36; // − pitch r − addendum = tip-circle approach
 const MAINT_RING_R = _cwTipNear - CLEAR_MARGIN;
-const MAINT_RING_ROOT = MAINT_RING_R * 0.8;
+const MAINT_RING_ROOT = MAINT_RING_R * 0.8;   // the PAWLS' footing bound (the 24-tooth cut's root) — TODO 219: the ring's own root is MAINT_RING_ROOT_CUT
 // The pawl pivot studs need SOLID footing on the ring (inside its tooth
 // roots), and the builder pivots a click at 1.28·its radius — so the
 // flange's radius is derived backwards from the footing bound.
@@ -11189,6 +11361,215 @@ const MAINT_RING_TOP = MAINT_RING_BOT + MAINT_RING_T;
 const MAINT_FLANGE_BOT = MAINT_FLANGE_TOP - MAINT_FLANGE_T;
 if (MAINT_FLANGE_BOT < MAINT_RING_TOP + 0.1)
   console.warn(`maintaining power: flange bottom ${MAINT_FLANGE_BOT.toFixed(2)} crowds the ring top ${MAINT_RING_TOP.toFixed(2)} — the sandwich band collapsed`);
+// ---- TODO 219 — THE MAINTAINING SPRING, AND THE RING'S TOOTH COUNT IT FIXES.
+// The spring is a SERIES member of the drive (TODO 217): wound by the drive to
+// the going torque while the watch runs, it gives up angle as it drives the
+// great wheel on through a wind while the detent holds the ring. Three facts
+// size it, and every one is read off something already cut or declared:
+//
+//  · WHERE IT LIVES — Harrison's conventional place: a blade in one of the
+//    great wheel's CROSSINGS, flush with the wheel's stock (b = GW_T), fastened
+//    by a foot to one arm, bearing at its free end on a PIN hung from the
+//    maintaining ring. That arm's flank is HARRISON'S STOP: the pin works in the
+//    crossing, and when the spring has given up its run the pin lands on the
+//    flank and the ring and wheel lock. (The concentric gap under the ring is
+//    0.144 u tall after its two margins, and no ribbon that thin can carry the
+//    going torque at any stress the alloy allows: b·t² ≥ 6τ/σ wants t past the
+//    whole annulus.) The blade runs PARALLEL to the stop flank, so the foot is
+//    as wide as the pin's run plus the pin, wherever it is fastened.
+//  · ITS MATERIAL — the MAINSPRING ALLOY, the Nivaflex band layout.js cites
+//    (MAINSPRING_E_PA, MAINSPRING_SIGMA_Y_PA = the band's low end), held the way
+//    TODO 193 holds the ribbons. This is the one member besides the two ribbons
+//    NOT held to SPRING_SIGMA_Y_PA's carbon steel, by decision: it is a POWER
+//    spring, and in carbon steel no blade the crossing holds stores the run
+//    (TODO 219 records the energy bound).
+//  · ITS RUN — when a wind takes the drive off, the ring is free until its
+//    face reaches the detent's beak, so the spring first RECOILS the ring back
+//    to the beak, and only then drives the wheel on. The beak can be anywhere
+//    on the tooth it is riding, so the recoil is at most ONE PITCH of the ring —
+//    the face of the tooth behind the beak is never further than that. The run
+//    the stop allows must cover that worst recoil and still leave the pin one
+//    CLEAR_MARGIN of travel short of the stop, which is the run the spring then
+//    drives the train through: R = 2π/N + CLEAR_MARGIN/r_pin.
+//  · ITS LAW — a cantilever from its foot, loaded at its free end through the
+//    pin along the face's normal (a frictionless contact). That normal is
+//    square to the blade, so its moment arm about the arbor is the contact's
+//    distance along the flank, r_e, and τ = F·r_e. Tip deflection δ = F·L³/3EI,
+//    the ring's relative turn θ = δ/r_e, so k = 3·E·I·r_e²/L³; the root carries
+//    M = F·L, σ = 6·F·L/(b·t²) = 3·E·a·δ/L² (a = t/2: the cantilever's form of
+//    the ribbons' E·a·θ/L — the moment is not uniform here, it peaks at the
+//    root, and the root is what is priced). The preload is set by the stop: k
+//    takes the torque from τ_going at the working point down to the floor at
+//    the stop, k = (τ_going − τ_floor)/R, θ_work = τ_going/k, θ_preload =
+//    τ_floor/k.
+//
+// THE TOOTH COUNT follows: the longest blade the crossing holds, worked to the
+// alloy's limit at the working point, gives the most run any blade there can
+// (R_max = (1 − τ_floor/τ_going)·θ_work at σ = σ_lim); the ring needs the
+// fewest teeth whose pitch, plus the margin, fits inside it. Then the blade is
+// cut to the run that count needs — stiffer than the limit, so under it.
+const MAINT_SPRING = (() => {
+  const U = OSC_U;
+  const tauGo = GOING_POWER.fuseeTorque_Nm, tauFloor = MAINT_FLOOR_NM;
+  const E = MAINSPRING_E_PA, sigLim = MAINSPRING_SIGMA_Y_PA;
+  const b = GW_T;                                         // flush with the wheel's stock
+  // THE CROSSING, read off the wheel's cut: the extrude's own points (the arcs
+  // at curveSegments 3) and its bevel, which shrinks every hole by bevelSize
+  // through the depth band.
+  const body = greatWheel.children.find((o) => o.isMesh && o.geometry.parameters?.shapes);
+  const params = body.geometry.parameters, bevel = params.options.bevelSize;
+  const shape = Array.isArray(params.shapes) ? params.shapes[0] : params.shapes;
+  const holes = shape.extractPoints(params.options.curveSegments).holes;
+  // A crossing is the hole whose points span the widest radii (the bore is a
+  // circle at one radius). Window 0: the one whose flanks sit nearest +x.
+  const wins = holes.filter((h) => { const r = h.map((p) => Math.hypot(p.x, p.y)); return Math.max(...r) - Math.min(...r) > 1; });
+  const win = wins.reduce((a, h) => {
+    const az = (q) => Math.atan2(q.reduce((s, p) => s + p.y, 0), q.reduce((s, p) => s + p.x, 0));
+    return Math.abs(az(h)) < Math.abs(az(a)) ? h : a;
+  });
+  const rs = win.map((p) => Math.hypot(p.x, p.y));
+  const rOutV = Math.max(...rs), rInV = Math.min(...rs);
+  const outerArc = win.filter((p, i) => rs[i] > rOutV - 1e-6), innerArc = win.filter((p, i) => rs[i] < rInV + 1e-6);
+  const azs = outerArc.map((p) => Math.atan2(p.y, p.x));
+  const halfChord = (Math.max(...azs) - Math.min(...azs)) / (outerArc.length - 1) / 2;
+  const outerMetalR = rOutV * Math.cos(halfChord) - bevel;            // the rim's inner edge in the band, at a chord's middle
+  const innerMetalR = rInV + bevel / Math.cos(halfChord);             // the hub land's outer edge in the band, at a vertex's miter
+  const azLo = Math.min(...azs), azHi = Math.max(...azs);
+  // THE STOP FLANK, by the sense. Relaxing, the spring lets the wheel run on
+  // ahead of the held ring: the pin moves AGAINST MOVEMENT_SENSE in the wheel's
+  // frame, so the stop is the crossing's flank on that side, and the window
+  // opens from it in +sense. (SENSE_REL: the guard below measures it on the cut.)
+  const SENSE_REL = +1;
+  const s = SENSE_REL * MOVEMENT_SENSE;
+  const azStop = s > 0 ? azLo : azHi;
+  // The working frame: x along the stop flank (radially out), y into the
+  // crossing, square to it. Gw-local point of (x, y):
+  const toGw = (x, y) => ({ x: x * Math.cos(azStop) - s * y * Math.sin(azStop), y: x * Math.sin(azStop) + s * y * Math.cos(azStop) });
+  const zMid = 0;                                          // the wheel's mid-plane (makeGear extrudes centred)
+  const pinLever = (MAINT_RING_BOT - L_BARREL) - zMid;     // ring's underside → the blade's band centre
+  const solveGeom = (R, t) => {
+    // The pin: a steel cantilever from the ring's underside, loaded at the
+    // blade's band centre by the face load; its diameter is the thicker of
+    // §50's floor and the one that carries that load at SPRING_SIGMA_Y_PA
+    // (TODO 193's pivot law). It stands a margin off the hub land, at the
+    // least radius the crossing allows (the run per unit of pin travel is
+    // greatest there, and the face load's arm least, which is the soft way).
+    let rPin = STOCK_MIN_U / 2, g = null;
+    for (let it = 0; it < 40; it++) {
+      const rP = innerMetalR + CLEAR_MARGIN + rPin;
+      const phiStop = Math.asin((bevel + rPin) / rP);     // the pin ON the flank's face
+      const phiWork = phiStop + R;
+      const xc = rP * Math.cos(phiWork), yPin = rP * Math.sin(phiWork);
+      const yB = yPin + rPin + SEAT_RELIEF;               // the blade's pin-side face, seated a hairline off
+      const rE = xc;                                       // the normal's moment arm about the arbor
+      const F = tauGo / (rE * U);
+      const dLoad = Math.cbrt(32 * F * (pinLever * U) / (Math.PI * SPRING_SIGMA_Y_PA)) / U;
+      const rNew = Math.max(STOCK_MIN_U, dLoad) / 2;
+      // The foot: square, from the flank's face across to the blade's far face,
+      // its outer corner a margin inside the rim's edge.
+      const footW = yB + t - bevel;
+      const xFootOut = Math.sqrt((outerMetalR - CLEAR_MARGIN) ** 2 - (yB + t) ** 2);
+      const xRoot = xFootOut - footW;
+      const xTip = Math.max(xc - rPin, Math.sqrt(Math.max(0, (innerMetalR + CLEAR_MARGIN) ** 2 - yB * yB)));
+      g = { rPin, rP, phiStop, phiWork, xc, yPin, yB, rE, F, dLoad, footW, xFootOut, xRoot, xTip, L: xRoot - xc, t };
+      if (Math.abs(rNew - rPin) < 1e-13) break;
+      rPin = rNew;
+    }
+    return g;
+  };
+  // THE BLADE'S PROFILE: filed to UNIFORM STRENGTH, as a flat spring is — its
+  // thickness falls as √x from the root toward the pin (x measured from the
+  // contact), so every section under the √ law works at the root's stress, and
+  // a given root stress buys twice the uniform blade's deflection. The tip is
+  // floored at §50's STOCK_MIN_U (the pin bears there; shear wants far less).
+  // The pin-side face is straight and square to the face load; the far face
+  // carries the taper, which is what makes the blade CURVED in plan.
+  const tMin = STOCK_MIN_U;
+  const tAt = (t0, L, x) => Math.max(tMin, t0 * Math.sqrt(Math.max(0, x) / L));
+  // Compliance at the contact, δ = F·c: c = ∫₀ᴸ x²/(E·I(x)) dx (Simpson, SI).
+  const complianceOf = (t0, L) => {
+    const n = 2000, h = L / n;
+    let acc = 0;
+    for (let i = 0; i <= n; i++) {
+      const x = i * h, tt = tAt(t0, L, x) * U, I = (b * U) * tt ** 3 / 12;
+      acc += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * (x * U) ** 2 / (E * I);
+    }
+    return acc * (h * U) / 3;
+  };
+  const sigmaRootOf = (g, t0) => 6 * (tauGo / (g.rE * U)) * (g.L * U) / (b * U * (t0 * U) ** 2);
+  // 1 — the most run the crossing can give: the root at the alloy's limit,
+  //     iterated with the geometry it moves (the run moves the pin, the pin
+  //     the blade's face, the root's thickness the foot).
+  const atLimit = (R) => {
+    let tL = 0.5, gL = null;
+    for (let j = 0; j < 30; j++) {
+      gL = solveGeom(R, tL);
+      const tN = Math.sqrt(6 * tauGo / (gL.rE * U) * (gL.L * U) / (b * U * sigLim)) / U;
+      if (Math.abs(tN - tL) < 1e-13) break;
+      tL = tN;
+    }
+    const thetaWorkLim = tauGo * complianceOf(tL, gL.L) / (gL.rE * U) ** 2;
+    return { g: gL, t: tL, thetaWorkLim, runMax: (1 - tauFloor / tauGo) * thetaWorkLim, margin: CLEAR_MARGIN / gL.rP };
+  };
+  let N = 0, R = 0.15, lim = null;
+  for (let it = 0; it < 60; it++) {
+    lim = atLimit(R);
+    if (!(lim.runMax > lim.margin)) break;               // infeasible: reported below
+    const Nn = Math.ceil((Math.PI * 2) / (lim.runMax - lim.margin));
+    const Rn = (Math.PI * 2) / Nn + lim.margin;
+    if (Nn === N && Math.abs(Rn - R) < 1e-13) break;
+    N = Nn; R = Rn;
+  }
+  // A configuration whose train cannot sustain the claim at the floor corner
+  // even on the going torque (a re-geared rate the balance was not re-solved
+  // for) leaves no run for any spring. Rule 6: say so with the numbers, and
+  // build the 24-tooth ring and the blade at its limit so the build survives
+  // to report it — row 16 then fails, as it should.
+  const feasible = tauFloor < tauGo && lim.runMax > lim.margin;
+  if (!feasible) {
+    console.warn(`TODO 219: the maintaining spring has no run — the floor ${(tauFloor * 1e3).toFixed(4)} N·mm against the going ${(tauGo * 1e3).toFixed(4)} (the ${MAINT_FLOOR_CORNER} corner cannot sustain AMPLITUDE_CLAIM_DEG at this configuration's train), the blade's most run ${lim.runMax.toFixed(5)} rad against the ${lim.margin.toFixed(5)} margin; cut at ${MAINT_TEETH} teeth and the alloy's limit, unpriced`);
+    N = MAINT_TEETH; lim = atLimit((Math.PI * 2) / N + lim.margin); R = (Math.PI * 2) / N + lim.margin;
+  }
+  const gLim = lim.g, tLim = lim.t;
+  gLim.runMax = lim.runMax; gLim.thetaWorkLim = lim.thetaWorkLim;
+  // 2 — the blade cut to that run: k from the torque span over it, the root's
+  //     thickness from k (bisected: the compliance falls monotonically with it).
+  const k = feasible ? (tauGo - tauFloor) / R : (gLim.rE * U) ** 2 / complianceOf(tLim, gLim.L);   // N·m/rad
+  let t = tLim, g = gLim;
+  for (let j = 0; feasible && j < 40; j++) {
+    g = solveGeom(R, t);
+    let lo = tLim, hi = 4 * tLim;
+    for (let i = 0; i < 100; i++) { const m = (lo + hi) / 2; if ((g.rE * U) ** 2 / complianceOf(m, g.L) < k) lo = m; else hi = m; }
+    const tN = (lo + hi) / 2;
+    if (Math.abs(tN - t) < 1e-13) break;
+    t = tN;
+  }
+  const sigmaWork = sigmaRootOf(g, t);
+  const thetaWork = tauGo / k, thetaPre = tauFloor / k;
+  const sigmaStop = sigmaWork * tauFloor / tauGo;
+  const pitch = (Math.PI * 2) / N;
+  return { N, feasible, pitch, run: R, marginRun: CLEAR_MARGIN / g.rP, k, thetaWork, thetaPre, tauGo, tauFloor,
+    floorFrac: tauFloor / tauGo, floorCorner: MAINT_FLOOR_CORNER,
+    E, sigLim, b, t, tMin, L: g.L, rE: g.rE, sigmaWork, sigmaStop,
+    deflWork_u: thetaWork * g.rE, compliance_m_per_N: complianceOf(t, g.L), tAt: (x) => tAt(t, g.L, x),
+    runMax: gLim.runMax, tAtLimit: tLim, geom: g, bevel, innerMetalR, outerMetalR, azStop, azLo, azHi, s, SENSE_REL,
+    pinLever, toGw, zMid };
+})();
+// The ring's tooth count, from the spring (the pawls' flange keeps MAINT_TEETH).
+const MAINT_RING_TEETH = MAINT_SPRING.N;
+// …and its tooth keeps the 24-tooth cut's PROPORTIONS: the depth scales with
+// the pitch (the builder's 0.2 of the radius at MAINT_TEETH), so the valley
+// the beak is cut from keeps its included angle and the beak (the valley's own
+// offset, TODO 218) keeps its wedge. Left at 0.2·R, a 52-tooth saw is a comb
+// of 0.89-deep slots whose valley the TODO 218 beak cannot be cut into.
+const MAINT_RING_DEPTH_F = 0.2 * MAINT_TEETH / MAINT_RING_TEETH;
+const MAINT_RING_ROOT_CUT = MAINT_RING_R * (1 - MAINT_RING_DEPTH_F);
+if (MAINT_RING_TEETH > 60)
+  console.warn(`TODO 219: the maintaining ring needs ${MAINT_RING_TEETH} teeth for its pitch to fit the spring's run — over the 60 the decision allows`);
+if (!(MAINT_SPRING.sigmaWork <= MAINT_SPRING.sigLim * (1 + 1e-12)))
+  console.warn(`TODO 219: the maintaining spring works at ${(MAINT_SPRING.sigmaWork / 1e6).toFixed(0)} MPa, over the alloy's ${(MAINT_SPRING.sigLim / 1e6).toFixed(0)}`);
+if (!(MAINT_SPRING.L > 0 && MAINT_SPRING.geom.xTip < MAINT_SPRING.geom.xc))
+  console.warn(`TODO 219: the maintaining spring's blade does not reach its pin (free length ${MAINT_SPRING.L.toFixed(4)}, tip end ${MAINT_SPRING.geom.xTip.toFixed(4)} vs contact ${MAINT_SPRING.geom.xc.toFixed(4)})`);
 // Base ratchet flange: keyed to the FUSEE (winds backward with it), cut on
 // the cone's base face (§254 — the boss that used to carry it down past the
 // overhanging chain is gone with the overhang).
@@ -11199,9 +11580,15 @@ if (MAINT_FLANGE_BOT < MAINT_RING_TOP + 0.1)
 }
 // Maintaining wheel: loose on the arbor, rim saw teeth for the detent,
 // carrying two pawls that ride the flange above. Child of barrelArbor
-// WITHOUT windBack — it turns only with the train, so it never reverses.
+// WITHOUT windBack. Running, it rides the train at offset 0; through a wind
+// (TODO 224) the tick turns it back on the arbor — the recoil onto the
+// detent's beak and the wheel's advance on the spring — and the pick-up
+// returns it to 0. So it DOES reverse: onto the beak, which is what the
+// spring's run was sized for.
 const maintWheel = new THREE.Group();
 const MAINT_PAWL_SEATS = []; // filled below; tick rides them on windBack
+let MAINT_SPRING_PIN = null;   // TODO 219: placed in the ring's frame after the great wheel is phased
+let MAINT_BLADE = null;        // TODO 224: the blade's posed frames, built with it below
 // TODO 215 — THE RING'S RUN PAST ITS DETENT, the one declaration the detent's
 // hand is read from. The maintaining wheel rides barrelArbor (the going train,
 // MOVEMENT_SENSE) and the detent stands on the plate, so while the watch runs the
@@ -11222,8 +11609,8 @@ const MAINT_PAWL_SEATS = []; // filled below; tick rides them on windBack
 const MAINT_RING_RUN = MOVEMENT_SENSE;
 let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the detent rides THIS, not sawRadiusAt
 {
-  const ring = G.makeRatchetAndClick({ radius: MAINT_RING_R, teeth: MAINT_TEETH, thickness: MAINT_RING_T, includeClick: false,
-    reverse: MAINT_RING_RUN * MOVEMENT_SENSE > 0 });
+  const ring = G.makeRatchetAndClick({ radius: MAINT_RING_R, teeth: MAINT_RING_TEETH, thickness: MAINT_RING_T, includeClick: false,
+    reverse: MAINT_RING_RUN * MOVEMENT_SENSE > 0, depthF: MAINT_RING_DEPTH_F });
   ring.traverse((o) => { if (o.isMesh) o.name = 'maintRing'; });   // TODO 215: named, so EXPECTED_CONTACT_FLOORS can excuse the beak on it and nothing else
   MAINT_RING_POLY = ring.userData.ratchetPoly;
   ring.position.z = MAINT_RING_BOT - L_BARREL;
@@ -11253,15 +11640,227 @@ let MAINT_RING_POLY = null;   // the ring's cut outline, ring-local — the dete
     az.add(stud);
     MAINT_PAWL_SEATS.push(pawl);
   }
-  // The maintaining SPRING: coiled flat in the gap under the ring, hooked
-  // to a stud on the great wheel's face — mostly hidden, as in the real
-  // thing; the power-flow view lights it when it is what feeds the train.
-  const msArc = new THREE.Mesh(new THREE.TorusGeometry(MAINT_RING_ROOT * 0.6, 0.08, 6, 20, Math.PI * 1.5), MATS.blueSteel);
-  msArc.position.z = (GW_HUB_TOP + MAINT_RING_BOT) / 2 - L_BARREL;
-  msArc.name = 'maintSpring';
-  maintWheel.add(msArc);
+  // TODO 219 — THE MAINTAINING SPRING, AS METAL (MAINT_SPRING above sized it).
+  // It replaces a 1.5π torus drawn in the 0.15 gap under the ring, which had no
+  // section, no stiffness and no place to bear. The blade lies in the great
+  // wheel's crossing, flush with its stock: the pin-side face straight and
+  // square to the face load, the far face filed to uniform strength (√ taper,
+  // floored at STOCK_MIN_U) — curved in plan. Its foot spans from the stop
+  // flank's face to the blade and is fastened to that arm. It is cut as it
+  // stands WHILE THE WATCH RUNS, deflected by the working torque: free, its tip
+  // would stand MAINT_SPRING.deflWork_u further toward the stop.
+  const M = MAINT_SPRING, gm = M.geom;
+  const outline = [[gm.xTip, gm.yB], [gm.xRoot, gm.yB], [gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]];
+  const NT = 32;                                        // the taper, sampled from the root to the contact, then the floor to the tip end
+  for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; outline.push([gm.xc + xr, gm.yB + M.tAt(xr)]); }
+  outline.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc)]);
+  const sh = new THREE.Shape();
+  outline.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) sh.moveTo(q.x, q.y); else sh.lineTo(q.x, q.y); });
+  sh.closePath();
+  const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: M.b, bevelEnabled: false }), MATS.blueSteel);
+  blade.geometry.translate(0, 0, M.zMid - M.b / 2);   // flush with the wheel's stock faces
+  if (blade.geometry.attributes.position.count / 3 !== 4 * outline.length - 4)
+    console.warn(`TODO 219 maintaining spring: the blade extruded to ${blade.geometry.attributes.position.count / 3} triangles where a simple ${outline.length}-gon gives ${4 * outline.length - 4}`);
+  blade.name = 'maintSpring';
+  greatWheel.add(blade);
+  // The PIN, hung from the ring's underside into the crossing: pin stock
+  // sized to the face load (MAINT_SPRING's solve), its top let into the ring to
+  // mid-thickness, its foot flush with the wheel's underside. Placed in the
+  // ring's frame once the great wheel's blank is phased (below, after the
+  // train's mesh solve: the crossing turns with that phase).
+  const pinTop = MAINT_RING_BOT - L_BARREL + MAINT_RING_T / 2, pinBot = M.zMid - M.b / 2;
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(gm.rPin, gm.rPin, pinTop - pinBot, 16), MATS.blueSteel);
+  pin.rotation.x = Math.PI / 2;
+  pin.position.z = (pinTop + pinBot) / 2;
+  pin.name = 'maintSpringPin';
+  maintWheel.add(pin);
+  MAINT_SPRING_PIN = pin;
+  // TODO 224 — THE BLADE AS IT RELAXES, posed from the pin. Through a wind the
+  // ring stands on the detent's beak while the great wheel runs on, so in the
+  // wheel's frame the pin swings back about the arbor toward the stop flank —
+  // on its own circle, r_P, from φ_work to φ_stop = φ_work − run — and the
+  // blade's free end follows it, its pin-side face a SEAT_RELIEF off the pin
+  // at every travel s (the contact the cut is seated at). Nothing here is a
+  // coefficient: the blade is the cantilever it was cut as, the same profile
+  // (MAINT_SPRING.tAt) and alloy, and its shape at s is the free shape plus the
+  // load at the pin's NEW station — Maxwell's kernel of a clamped beam,
+  //   w(X; a) = ∫_{max(X,a)}^{x_root} (u − X)(u − a) / (E·I(u)) du,
+  // the deflection at X per newton at a. The cut is the working shape (the
+  // going load F_w at x_c, so the free face is y_B − F_w·w(X; x_c)); at s the
+  // face is the free face plus F·w(X; a), with the load station a and the load
+  // F whatever puts the face's NEAREST point to the pin exactly
+  // r_pin + SEAT_RELIEF from its centre (loadAt, below). That is the contact,
+  // solved — which is why it is not k·(θ_work − s): the pin moves on an arc, so
+  // its offset from the flank falls faster than r_e·s (0.022 u more by the
+  // stop), the bowed face tilts the contact normal (9.3° at the stop) and the
+  // station slides toward the blade's stiffer root (0.115 u by the stop). The
+  // torque the wheel feels is the contact force times its normal's distance
+  // from the arbor: 3.2296 N·mm at s = 0 (the going torque, as cut) falling
+  // monotonically to 1.6334 at the stop, 102.8% of the floor TODO 219 sized the
+  // linear law to (whose k·θ_pre puts exactly the floor there). Small-deflection
+  // theory throughout, the law the spring was SIZED by (MAINT_SPRING's
+  // compliance integral): the working deflection is 1.389 u over a 9.42 u blade.
+  //
+  // MODELING rule 6: the states are DISTINCT geometries, built here, never a
+  // rewrite of one buffer (the inspector caches a BVH per geometry). Frame 0 is
+  // the cut itself — the tick restores whatever geometry the mesh holds after
+  // weldTree, so the running watch never changes a byte — and frames 1..K are
+  // the blade at s_k = k·run/K. K is DERIVED from the pin it bears on: a frame
+  // step moves the blade's face by at most the pin's own facet sagitta,
+  // r_pin·(1 − cos(π/16)) for its 16-sided section, so the frame quantising adds
+  // less to the contact gap than the pin's tessellation already puts there.
+  // The tick shows the frame at or below the pin's travel (floor), so the face
+  // stands the relief PLUS at most that step off the pin, and never inside it.
+  // The schematic tier's zigzag on this mesh is the leaf-spring glyph drawn off
+  // the cut's bounding box: it says "a strip that flexes", which stays true
+  // while the strip flexes, so it is not re-drawn per frame (rule 6's
+  // "say so where the glyph would have been").
+  {
+    const U = OSC_U;
+    const EI = (X) => { const tt = M.tAt(X - gm.xc) * U; return M.E * (M.b * U) * tt ** 3 / 12; };
+    // The kernel splits into three moments of the compliance from the root,
+    //   w(X; a) = I2(m) − (X + a)·I1(m) + X·a·I0(m),  I_k(m) = ∫_m^{x_root} u^k/(E·I(u)) du,
+    // m = max(X, a) — so it is tabulated ONCE (cumulative Simpson panels from
+    // the root, NK of them) and every query is an interpolation, rather than
+    // a fresh quadrature per point: 115 frames of a solved contact cost a
+    // quadrature per probe point otherwise, and held boot's thread for over a
+    // second (BOOT BREATHES — MAX_HELD_MS 700). u in metres, so I_k are SI.
+    const NK = 4096, kLo = Math.min(gm.xTip, gm.xc - 0.8), kH = (gm.xRoot - kLo) / NK;
+    const I0 = new Float64Array(NK + 1), I1 = new Float64Array(NK + 1), I2 = new Float64Array(NK + 1);
+    for (let i = NK - 1; i >= 0; i--) {
+      const u0 = kLo + i * kH, um = u0 + kH / 2, u1 = u0 + kH;
+      const g0 = 1 / EI(u0), gm_ = 1 / EI(um), g1 = 1 / EI(u1), w = (kH * U) / 6;
+      I0[i] = I0[i + 1] + w * (g0 + 4 * gm_ + g1);
+      I1[i] = I1[i + 1] + w * (u0 * U * g0 + 4 * um * U * gm_ + u1 * U * g1);
+      I2[i] = I2[i + 1] + w * ((u0 * U) ** 2 * g0 + 4 * (um * U) ** 2 * gm_ + (u1 * U) ** 2 * g1);
+    }
+    const Ik = (T, m) => {
+      const f = clamp((m - kLo) / kH, 0, NK), i = Math.min(NK - 1, Math.floor(f)), r = f - i;
+      return T[i] + (T[i + 1] - T[i]) * r;
+    };
+    const kern = (X, a) => {                              // m/N
+      const m = Math.max(X, a);
+      if (!(gm.xRoot > m)) return 0;
+      const x = X * U, y = a * U;
+      return Ik(I2, m) - (x + y) * Ik(I1, m) + x * y * Ik(I0, m);
+    };
+    const Fw = M.tauGo / (gm.rE * U);                     // N — the going load at the contact (MAINT_SPRING's F)
+    const pinAt = (s) => ({ x: gm.rP * Math.cos(gm.phiWork - s), y: gm.rP * Math.sin(gm.phiWork - s) });
+    // The CONTACT, solved. Once the blade bows, its face is no longer square
+    // to the flank, so the pin's normal is not the flank's and the load does
+    // not sit straight over the pin's centre. A point load F at station a puts
+    // the face at y(a) = y_B + (F·w(a; a) − F_w·w(a; x_c)) and gives it the
+    // slope y'(a) = F·∂w(a; a) − F_w·∂w(a; x_c), ∂w(X; a) = −I1(m) + a·I0(m)
+    // (the kernel's X-derivative, the same moments). The contact is the pair
+    // (F, a) at which that face is TANGENT to the pin's circle grown by the
+    // relief, at a: the pin's centre a distance r_pin + SEAT_RELIEF back along
+    // the face's normal there,
+    //   p.x = a + d·y'/√(1 + y'²),   p.y = y(a) − d/√(1 + y'²).
+    // For a given a the second fixes F (y rises with F), and the first is then
+    // a residual in a — rising with it, since the station moves the face's
+    // point far more than the slope moves the normal — so both are bisected.
+    // (A fixed point in a, the first draft, did not converge: from the cut's
+    // own solution it walked to a second branch with F 6.6% OVER the working
+    // load while the pin was moving away, and a frame built on its last,
+    // unconverged station was a face loaded where it was not solved.)
+    // The force along the contact normal is F over that normal's y-component,
+    // and the torque on the wheel is it times the normal line's distance from
+    // the arbor.
+    const dkern = (X, a) => {                             // 1/N — ∂w/∂X, X in metres
+      const m = Math.max(X, a);
+      if (!(gm.xRoot > m)) return 0;
+      return -Ik(I1, m) + a * U * Ik(I0, m);
+    };
+    const want = gm.rPin + SEAT_RELIEF;
+    const faceAt = (F, a) => {
+      const y = gm.yB + (F * kern(a, a) - Fw * kern(a, gm.xc)) / U;
+      const sl = F * dkern(a, a) - Fw * dkern(a, gm.xc);
+      return { y, sl, c: 1 / Math.sqrt(1 + sl * sl) };
+    };
+    const forceAt = (p, a) => {                           // the F that stands the tangent circle on p.y
+      let lo = 0, hi = 4 * Fw;
+      for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2, f = faceAt(m, a); if (f.y - want * f.c < p.y) lo = m; else hi = m; }
+      return (lo + hi) / 2;
+    };
+    const loadAt = (s) => {
+      const p = pinAt(s);
+      const resid = (a) => { const F = forceAt(p, a), f = faceAt(F, a); return a + want * f.sl * f.c - p.x; };
+      let lo = p.x - 0.5, hi = p.x + 0.5;
+      for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (resid(m) < 0) lo = m; else hi = m; }
+      const a = (lo + hi) / 2, F = forceAt(p, a), f = faceAt(F, a);
+      const n = { x: -f.sl * f.c, y: f.c };                // the contact normal, pin → face
+      const Fn = F / n.y, arm = Math.abs(p.x * n.y - p.y * n.x);
+      return { p, F, a, Fn, n, arm, tau: Fn * arm * U, residual: resid(a) };
+    };
+    // the face offset at X under the load at s, relative to the cut
+    const dyAt = (X, L) => (L.F * kern(X, L.a) - Fw * kern(X, gm.xc)) / U;
+    const step = gm.rPin * (1 - Math.cos(Math.PI / 16));
+    const tipSpan = gm.yPin - pinAt(M.run).y;             // the pin's whole fall toward the flank, run 0 → stop
+    const K = Math.ceil(tipSpan / step);
+    const NT = 32;
+    // The posed outline samples the pin-side face at the far face's stations:
+    // straight in the cut, it bows once the load moves, and a two-point face
+    // would draw the chord.
+    const xs = [];
+    for (let i = 0; i <= NT; i++) xs.push(gm.xc + (M.L * i) / NT);
+    const outlineAt = (L) => {
+      const pts = [[gm.xTip, gm.yB + dyAt(gm.xTip, L)]];
+      for (let i = 0; i <= NT; i++) pts.push([xs[i], gm.yB + dyAt(xs[i], L)]);
+      pts.push([gm.xRoot, M.bevel], [gm.xFootOut, M.bevel], [gm.xFootOut, gm.yB + M.t]);
+      for (let i = NT; i >= 0; i--) { const xr = (M.L * i) / NT; pts.push([gm.xc + xr, gm.yB + M.tAt(xr) + dyAt(gm.xc + xr, L)]); }
+      pts.push([gm.xTip, gm.yB + M.tAt(gm.xTip - gm.xc) + dyAt(gm.xTip, L)]);
+      return pts;
+    };
+    const frames = [null];
+    let badTri = 0;
+    for (let k = 1; k <= K; k++) {
+      await breathe();                             // 115 contact solves: hand the thread back between them (BOOT BREATHES)
+      const L = loadAt((k * M.run) / K), pts = outlineAt(L);
+      const shp = new THREE.Shape();
+      pts.forEach(([x, y], i) => { const q = M.toGw(x, y); if (i === 0) shp.moveTo(q.x, q.y); else shp.lineTo(q.x, q.y); });
+      shp.closePath();
+      const g = new THREE.ExtrudeGeometry(shp, { depth: M.b, bevelEnabled: false });
+      g.translate(0, 0, M.zMid - M.b / 2);
+      if (g.attributes.position.count / 3 !== 4 * pts.length - 4) badTri++;
+      frames.push(G.weldGeometry(g));              // rule 7: indexed before it can reach the scene
+    }
+    if (badTri) console.warn(`TODO 224 maintaining spring: ${badTri} of ${K} posed blade frames extruded short of a simple polygon's 4n − 4 triangles`);
+    const stop = loadAt(M.run);
+    MAINT_BLADE = { mesh: blade, frames, K, rest: null, step, tipSpan, loadAt, pinAt, Fw,
+      // the torque the blade puts on the great wheel at travel s: the contact
+      // force along its normal, times that normal's distance from the arbor
+      tauAt: (s) => loadAt(s).tau,
+      stop: { F_N: stop.Fn, Fy_N: stop.F, a_u: stop.a, arm_u: stop.arm, tau_Nm: stop.tau, tilt_rad: Math.atan2(stop.n.x, stop.n.y) } };
+  }
 }
-barrelArbor.add(maintWheel); // train rotation only — tick never adds windBack here
+// TODO 219 — §137's rows for the maintaining spring, one at each end of the
+// blade. At the TIP the ring's pin presses the blade's free end square to its
+// face (the groundedBlade idiom at ratio 1: no lever between the spring and its
+// contact); at the ROOT the blade's foot puts that load's moment about the foot,
+// F·L, into the great wheel's arm (the rigidBentLink idiom: a chord, the load
+// line, with the metal standing L off it, legitimate only priced). No window
+// bounds either: the load is the going train's torque, not a detent's.
+{
+  const M = MAINT_SPRING, F_mN = M.tauGo / (M.rE * OSC_U) * 1000, Fstop_mN = M.tauFloor / (M.rE * OSC_U) * 1000;
+  const kTip_N_per_m = 1 / M.compliance_m_per_N;
+  declareTransfer('maintaining spring: the drive into the great wheel (ring pin → blade tip)', {
+    unit: 'Fusee & great wheel', meshes: ['maintSpringPin', 'maintSpring'], idiom: 'groundedBlade',
+    load: { value: F_mN, unit: 'mN',
+      source: 'the going torque at the great wheel (GOING_POWER.fuseeTorque_Nm, the record\'s working point) over the face normal\'s moment arm about the arbor, r_e — the contact\'s distance along the stop flank, the blade\'s pin-side face being square to the load' },
+    quantities: { armIn_u: M.L, armOut_u: M.L, ratio: 1, rE_u: M.rE, k_N_per_m: kTip_N_per_m, deflWork_u: M.deflWork_u,
+      loadStop_mN: Fstop_mN, torqueWork_Nmm: M.tauGo * 1000, torqueStop_Nmm: M.tauFloor * 1000, run_rad: M.run },
+    why: `the ring's pin presses the blade's free end with ${F_mN.toFixed(0)} mN at the working point and ${Fstop_mN.toFixed(0)} mN at the stop — ${(M.tauGo * 1000).toFixed(4)} → ${(M.tauFloor * 1000).toFixed(4)} N·mm over the arm r_e ${M.rE.toFixed(4)} — a grounded blade bearing on its own tip, ratio 1; its tip stiffness ${kTip_N_per_m.toFixed(1)} N/m over r_e² is the spring's k`,
+  });
+  declareTransfer('maintaining spring: the root into the arm (blade foot → great-wheel arm)', {
+    unit: 'Fusee & great wheel', meshes: ['maintSpring'], idiom: 'rigidBentLink',
+    load: { value: F_mN, unit: 'mN',
+      source: 'the face load at the blade\'s tip (the row above), carried along the blade to its foot' },
+    quantities: { offset_e_u: M.L, moment_mNmm: F_mN * M.L * UNIT_MM, tRoot_u: M.t, b_u: M.b,
+      sigma_MPa: M.sigmaWork / 1e6, sigmaStop_MPa: M.sigmaStop / 1e6, limit_MPa: M.sigLim / 1e6, footW_u: M.geom.footW },
+    why: `the tip load's line stands the free length ${M.L.toFixed(4)} off the foot, so the root carries ${(F_mN * M.L * UNIT_MM).toFixed(1)} mN·mm: ${(M.sigmaWork / 1e6).toFixed(0)} MPa at the working point and ${(M.sigmaStop / 1e6).toFixed(0)} at the stop in the ${M.t.toFixed(4)} × ${M.b.toFixed(2)} root (the alloy's low end ${(M.sigLim / 1e6).toFixed(0)}), reacted into the arm across the ${M.geom.footW.toFixed(4)} foot`,
+  });
+}
+barrelArbor.add(maintWheel); // the train's rotation, plus the hold's offset through a wind (TODO 224) — never windBack
 registerSub('Fusee & great wheel', 'Maintaining wheel', maintWheel); // §10 level 2 — ring, pawls, studs and spring: the maintaining-power sandwich
 // Pawl ride constants — seat measured from the built geometry, lift sign
 // derived numerically (same scheme the plate click used).
@@ -11344,14 +11943,46 @@ const FF_SIM_RATE = FF_TICKS_PER_FRAME * FF_TICK_S * 60;
 let _forkPull = NaN, _forkLift = NaN, _forkAt = null;   // §257 — tick()'s remembered yokeClutchAt
 let ffPoseDeferred = false;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
-// The pawls ride the RELATIVE angle flange-vs-wheel — which is exactly
-// windBack: zero while running (locked, torque flows), sweeping backward
-// during winding (click-click while the detent holds the wheel). The
-// detent rides the wheel's ABSOLUTE rotation — pure train creep, one
-// slow tick per tooth as the watch runs, and NEVER a reverse pass.
+// The pawls ride the RELATIVE angle flange-vs-ring — windBack while the
+// drive is on (zero while running: locked, torque flows), windBack less the
+// hold's offset through a wind (click-click while the detent holds the ring).
+// The detent rides the ring's ABSOLUTE rotation — pure train creep, one slow
+// tick per tooth as the watch runs — and through a wind the ring backs onto it
+// (TODO 224): the recoil is the one reverse pass, and it ends on the face.
+// TODO 224 — THE WIND-START STATE (MAINT_HOLD, below the detent, has the law):
+// null while the drive is on, else { tau0, A0, recoil, onFace, tauStop } — the
+// movement time and the great wheel's angle at which the drive came off, and
+// what the cut makes of them. Written by the live tick's falling edge, cleared
+// at pick-up and by resetInputs, posed by setPose({ maintHold }).
+let maintHold = null;
+// The blade's frame for a pin travel s (MAINT_BLADE): the frame at or below
+// it, so the face never stands inside the pin. Travel 0 puts back the geometry
+// the mesh carried before the first swap — the cut, as weldTree left it — so a
+// running watch never sees a frame at all.
+function maintBladeShow(s) {
+  const B = MAINT_BLADE;
+  if (!B) return;
+  const k = s > 0 ? Math.min(B.K, Math.floor((s / MAINT_SPRING.run) * B.K + 1e-9)) : 0;
+  if (k === 0) { if (B.rest && B.mesh.geometry !== B.rest) B.mesh.geometry = B.rest; return; }
+  if (!B.rest) B.rest = B.mesh.geometry;
+  if (B.mesh.geometry !== B.frames[k]) B.mesh.geometry = B.frames[k];
+}
 function updateMaintaining(windBack) {
+  // TODO 224 — the wind's hold (MAINT_HOLD). Running, the ring rides the wheel
+  // at offset 0 and every line below evaluates exactly what it did before this
+  // item; holding, the ring stands on the beak and the wheel runs on, so the
+  // ring's offset on its arbor is the recoil plus the wheel's advance, against
+  // the run. The pawls are on the ring, so what they ride is the flange's angle
+  // RELATIVE TO THE RING — windBack less that offset — and the detent rides the
+  // ring's own absolute angle, not the arbor's.
+  const H = maintHold ? MAINT_HOLD.poseAt(maintHold, barrelArbor.rotation.z) : null;
+  const rho = H ? H.rho : 0;
+  maintWheel.rotation.z = rho;
+  const rel = H ? windBack - rho : windBack;
+  const ringA = H ? barrelArbor.rotation.z + rho : barrelArbor.rotation.z;
+  maintBladeShow(H ? H.travel : 0);
   for (let k = 0; k < MAINT_PAWL_SEATS.length; k++) {
-    let u = ((MAINT_U_SIGN * (MAINT_PAWL_TIP_AZ - windBack) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    let u = ((MAINT_U_SIGN * (MAINT_PAWL_TIP_AZ - rel) * MAINT_TEETH) / (2 * Math.PI)) % 1;
     if (u < 0) u += 1;
     const lift = Math.max(sawRadiusAt(u, MAINT_FLANGE_R) - MAINT_PAWL_TIP_R, 0) / (MAINT_FLANGE_R * 0.8);
     MAINT_PAWL_SEATS[k].rotation.z = MAINT_PAWL_BASE + MAINT_PAWL_SIGN * lift;
@@ -11385,7 +12016,7 @@ function updateMaintaining(windBack) {
     // whole beak is solved against the polygon the teeth were cut from (the
     // law's `max(sawRadiusAt − TIP_R, 0)` floated the tip 0.04–0.10 over the
     // chords and hung it 0.311 over a root nothing was under).
-    const lift = MAINT_DET_RIDE.liftAt(barrelArbor.rotation.z - MAINT_DETENT_AZ);
+    const lift = MAINT_DET_RIDE.liftAt(ringA - MAINT_DETENT_AZ);
     maintDetentBeak.rotation.z = followCam(
       MAINT_DET_BASE - MAINT_DET_SIGN * MAINT_DET_PRELOAD,   // where the spring alone would seat it
       MAINT_DET_BASE + MAINT_DET_SIGN * lift,                // where the ring lets it sit
@@ -11452,7 +12083,7 @@ const maintDetent = new THREE.Group();
   //     almost square to its axis at 2075.7 MPa against SPRING_SIGMA_Y_PA's 800
   //     — and whose face-parallel flank, measured, would have taken the hold at
   //     the face's far end and cammed the click out (the contact block below).
-  const pitchR = (Math.PI * 2) / MAINT_TEETH;
+  const pitchR = (Math.PI * 2) / MAINT_RING_TEETH;   // TODO 219: the RING's pitch (the pawls' flange keeps MAINT_TEETH)
   const rIn = MAINT_RING_R + CLEAR_MARGIN;            // the arm's inner edge
   const armW = pivR - rIn;                             // the arm's half-width: the band from the margin to the stud
   if (!(armW > 0.2 + 0.05))                            // the stud is ⌀0.4 (below); the boss must stand round it
@@ -11465,7 +12096,7 @@ const maintDetent = new THREE.Group();
     let iV = 0, best = Infinity;
     for (let i = 0; i < n; i++) {                      // a root of the cut at azimuth 0 — both hands put one there
       const [x, y] = poly[i];
-      if (Math.hypot(x, y) > MAINT_RING_ROOT + 0.25 * (MAINT_RING_R - MAINT_RING_ROOT)) continue;
+      if (Math.hypot(x, y) > MAINT_RING_ROOT_CUT + 0.25 * (MAINT_RING_R - MAINT_RING_ROOT_CUT)) continue;
       const a = Math.abs(Math.atan2(y, x));
       if (a < best) { best = a; iV = i; }
     }
@@ -11674,7 +12305,7 @@ const maintDetent = new THREE.Group();
       momentAboutStudPerN_u: (Tz.x - P.x) * nFz.y - (Tz.y - P.y) * nFz.x,
       parallelFlank: flankBearing };
     return {
-      strut_u: strutLen, tipR_u: tipR, rootR_u: MAINT_RING_ROOT, beakRoot, contact,
+      strut_u: strutLen, tipR_u: tipR, rootR_u: MAINT_RING_ROOT_CUT, beakRoot, contact,
       // the face's normal and the tip→stud line are one line by construction
       // (TODO 215); a click recut off it would put a moment on the pivot
       lineVsFaceNormal: 1 - Math.abs(n.x * nFz.x + n.y * nFz.y),
@@ -12245,6 +12876,184 @@ for (const [end, F, Fb, arm, L, d, k] of [
     envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: F },
     why: `a grounded blade biasing a pivoted click short of its beak is a crank: the blade bears on the tail’s corner ${arm.toFixed(4)} from the pivot and the beak works at ${MAINT_DET_LEVER.toFixed(4)}, so the ${Fb.toFixed(2)} mN the blade delivers ${end} arrives at the ring as ${F.toFixed(2)} mN — `
       + `placed equal-margin in the window (${MAINT_DET_SPRING.beakF_mN_seated.toFixed(2)} × ${MAINT_DET_SPRING.beakF_mN_crest.toFixed(2)} = 5 × 50 mN²), the click being a detent indexing a ratchet at its tooth run, which is the load class the window’s basis names; the HOLD in winding is the saw face’s, not this spring’s`,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// TODO 224 — THE MAINTAINING WIND, POSED FROM ITS CONTACTS.
+//
+// TODO 219 cut the spring as metal and sized its run; nothing posed a wind.
+// `maintWheel` rode `barrelArbor` with no wind term, so through a wind the ring
+// ran on past the beak exactly as it does running, the detent never held, the
+// blade never deflected and the stop was never reached. The model described a
+// hold the simulation never performed.
+//
+// THE STATE. A pose cannot know when a wind began, so the wind keeps one
+// recorded state, `maintHold` (beside the tick), on windStemSlip's and
+// alarmPusherT's pattern: the movement time and the great wheel's angle at the
+// instant the drive came off. The live tick writes it on the falling edge of
+// windBack — the first tick in which the bank rose, which is the only thing
+// that moves windBack, so the edge is read off its cause rather than off a
+// float difference — and clears it on the first live tick that banks nothing:
+// the mainspring then turns the cone forward until the pawls take the ring,
+// which is the pick-up. Zero-dt ticks never touch it (setPose is a pose, not a
+// wind), `setPose({ maintHold })` writes it as a pure function of its input,
+// and resetInputs clears it. It is never persisted and never a boot assert:
+// BOOT HAS NO POSE (CLAUDE.md), and a hold is nothing but a pose.
+//
+// THE LAW, every step a contact:
+//   1. RECOIL. The drive comes off and the spring drives the ring BACKWARD
+//      against the pawls' drag, the beak following the cut down the ramp, until
+//      the face of the tooth behind it meets the beak's apex. That is read off
+//      the cut by MAINT_DET_RIDE: `holdNet` is the ring's angle in the cock's
+//      frame at which the face, swung back from the valley, comes to SEAT_RELIEF
+//      off the seated beak (the ride's own convention for touch). From a ring
+//      angle on the RAMP the recoil is the way back to it, up to one pitch
+//      less the face's share; from the FACE (the beak descending it, the last
+//      part of every pitch) the face is already at the apex and the recoil is 0.
+//      The boundary is the crest, read off the ride by golden section.
+//   2. HOLD. The ring stands. The great wheel advances on the spring by the
+//      train's own law (barrelMeshAngle — the escapement still governs it), so
+//      the ring's angle on the wheel is θ_work − (recoil + advance): the pin's
+//      travel toward the stop is recoil + advance, and MAINT_BLADE poses the
+//      blade off the pin.
+//   3. RUN-OUT. At travel = MAINT_SPRING.run the pin is on the stop flank
+//      (φ_stop: the pin's circle touching the flank's face), and the wheel can
+//      advance no further than the held ring allows: the TRAIN STOPS. That is a
+//      bound on movement time, τ_stop — the τ at which barrelMeshAngle has
+//      advanced run − recoil past the drive-off — read by inverting the train's
+//      own law, so the stop is a place, not a timer. The tick caps τ there and
+//      the balance loses its drive, the same rate law that stops it when the
+//      mainspring is empty.
+//   4. PICK-UP. The pawls take the ring forward to the working angle: the ring
+//      rides the wheel again at offset 0, which is the running pose bit for bit.
+//
+// What the law does NOT pose: the pawls' own pick-up travel (the cone turning
+// forward until a pawl drops into the flange — up to a flange pitch), because
+// the cone's angle is the bank's (§47) and the bank does not move at pick-up;
+// and the reserve's drain through a hold is booked as the wheel advances, where
+// the metal books it at pick-up, when the cone turns forward through the same
+// angle — the bank after a wind is the same either way.
+const MAINT_HOLD = (() => {
+  const RUN = MAINT_RING_RUN;                    // the ring's run past the beak (TODO 215)
+  // The RECOIL's sense: the spring's reaction on the ring drives it AGAINST
+  // the run. A direction-committed declaration (TODO 115's class) — the guard
+  // below reads the cut, and the one at the spring's guard reads the blade.
+  const REC = -MAINT_RING_RUN;
+  const pitch = (Math.PI * 2) / MAINT_RING_TEETH, R = MAINT_SPRING.run;
+  const pm = (x, p) => x - p * Math.floor(x / p);
+  const ride = MAINT_DET_RIDE, s0 = ride.seatNet;
+  // 1 — the face, swung back from the valley until it reaches the seated beak.
+  const gapBack = (d) => ride.clearAt(s0 + REC * d, 0) - SEAT_RELIEF;
+  let dHold = 0, faceFound = gapBack(0) <= 0;
+  if (!faceFound) {
+    const N = 400;
+    let lo = 0, hi = null;
+    for (let i = 1; i <= N; i++) { const d = (0.5 * pitch * i) / N; if (gapBack(d) <= 0) { hi = d; lo = (0.5 * pitch * (i - 1)) / N; break; } }
+    if (hi !== null) {
+      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (gapBack(m) <= 0) hi = m; else lo = m; }
+      dHold = lo; faceFound = true;              // the last angle still a relief off: the face AT the apex
+    }
+  }
+  if (!faceFound) console.warn(`TODO 224 maintaining hold: swinging the ring back ${(0.5 * pitch).toFixed(4)} rad from the seat meets no face — the recoil has nothing to stand on`);
+  const holdNet = s0 + REC * dHold;
+  // the crest — where the beak tops the ramp (sampled, then golden section).
+  // The SAME nets RIDE_TRAVEL walked (the seat plus j/96 of a pitch, then its
+  // golden section): the ride is periodic in the pitch, so this finds the same
+  // crest, and every liftAt here is a hit on that solve's memo rather than a
+  // second ride solve at boot.
+  const crestNet = (() => {
+    const N = 96;
+    let best = { t: -1, j: 0 };
+    for (let j = 0; j < N; j++) { const t = ride.liftAt(s0 + (j * pitch) / N); if (t > best.t) best = { t, j }; }
+    let a = s0 + ((best.j - 1) * pitch) / N, b = s0 + ((best.j + 1) * pitch) / N;
+    const g = (Math.sqrt(5) - 1) / 2;
+    for (let i = 0; i < 40; i++) {
+      const c = b - g * (b - a), d = a + g * (b - a);
+      if (ride.liftAt(c) > ride.liftAt(d)) b = d; else a = c;
+    }
+    return (a + b) / 2;
+  })();
+  const rCrest = pm(RUN * (crestNet - holdNet), pitch);
+  // GUARD (§115's class, measured on the cut): the recoil must take the beak
+  // DOWN the ramp — the ring backing from mid-ramp lowers the click — and past
+  // the hold the face must block it. Flip REC and the ring "recoils" up the
+  // ramp it was climbing, onto the wrong flank, with every collision gate green.
+  {
+    const mid = holdNet + RUN * rCrest / 2, eps = pitch / 100;
+    const descends = ride.liftAt(mid + REC * eps) < ride.liftAt(mid);
+    const blocked = gapBack(dHold + eps) < 0;
+    if (!descends || !blocked)
+      console.warn(`TODO 224 maintaining hold: the recoil ${!descends ? 'CLIMBS the ramp instead of descending it' : ''}${!descends && !blocked ? ' and ' : ''}${!blocked ? 'passes the face it should stand on' : ''} (REC ${REC}, MAINT_RING_RUN ${RUN}, MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+  }
+  if (!(rCrest < pitch && rCrest + 1e-12 < R))
+    console.warn(`TODO 224 maintaining hold: the worst recoil ${rCrest.toFixed(5)} rad is not inside the spring's run ${R.toFixed(5)} — a wind would bottom the spring on the recoil alone`);
+  // The τ at which the wheel has advanced `adv` past the drive-off, by the
+  // train's own law: the largest τ whose advance does not pass it (so the pin
+  // never crosses the flank by a rounding), bisected — barrelMeshAngle is
+  // monotone in the run's sense (asserted at windLocalAt) and steps with the
+  // escapement, so there is no closed inverse.
+  const tauAt = (tau0, A0, adv) => {
+    if (!(adv > 0)) return tau0;
+    const g = (t) => RUN * (barrelMeshAngle(t) - A0);
+    const omega = Math.abs(barrelMeshAngle(tau0 + 3600) - barrelMeshAngle(tau0)) / 3600;
+    let lo = tau0, hi = tau0 + 2 * adv / omega + 1;
+    for (let i = 0; i < 64 && g(hi) <= adv; i++) hi = tau0 + 2 * (hi - tau0);
+    for (let i = 0; i < 90; i++) { const m = (lo + hi) / 2; if (g(m) <= adv) lo = m; else hi = m; }
+    return lo;
+  };
+  // The drive comes off at movement time τ0: the ring stands where it was on
+  // the wheel, and recoils from there.
+  const begin = (tau0) => {
+    const A0 = barrelMeshAngle(tau0);
+    const r = pm(RUN * (A0 - MAINT_DETENT_AZ - holdNet), pitch);
+    const recoil = r <= rCrest ? r : 0;
+    return { tau0, A0, recoil, onFace: !(r <= rCrest), tauStop: tauAt(tau0, A0, R - recoil) };
+  };
+  // The hold at the great wheel's angle `wheelA`.
+  const poseAt = (H, wheelA) => {
+    const adv = clamp(RUN * (wheelA - H.A0), 0, R - H.recoil);
+    const travel = H.recoil + adv;
+    return { adv, travel, rho: REC * travel };
+  };
+  return { RUN, REC, pitch, run: R, holdNet, dHold, crestNet, rCrest, begin, poseAt, tauAt };
+})();
+// TODO 224 — the hold's restoring answer, on TODO 206's rule. The ring
+// reciprocates now (the maintHold axis takes it back onto the beak and the
+// pick-up brings it forward), and it is TWO-WAY: the blade drives it back onto
+// the beak when the drive comes off, and the mainspring — through the chain,
+// the cone and the pawls — drives it forward at the pick-up. The blade is its
+// own spring, the sautoir's idiom: grounded at its foot, deflected by the pin
+// and returned by its own elasticity.
+declareRestoring('Fusee & great wheel', 'maintSpring', 'spring',
+  'the blade is its own spring: its foot fastened to the crossing\'s arm, deflected by the ring\'s pin while the drive is on and relaxing after it toward the stop flank while a wind holds the ring on the beak — it touches the pin at every pose (maintDetentHandoff)',
+  'maintSpring');
+declareRestoring('Fusee & great wheel', 'maintRing', 'two-way',
+  'driven back onto the detent\'s beak by the blade when a wind takes the drive off (the recoil), and forward to the working angle by the mainspring through the pawls when the wind ends (the pick-up) — the maintHold axis performs both strokes',
+  ['Fusee & great wheel/maintSpring', 'Mainspring drum/mainspringRibbon']);
+// TODO 224 — §137's row for the HOLD AT THE STOP. At run-out the pin stands
+// on the stop flank with the blade's preload on its other side: the pin is
+// clamped between the two, the stop reacts the whole of the blade's load and
+// the great wheel feels none of it — which is why the train stops. A pin
+// bearing on the end of the window it travels in: pinInSlot, the vocabulary's
+// pin-and-slot, here with no conversion of motion at all, only a bound on it.
+// The blade's load at the stop is the POSED one (MAINT_BLADE.stop: the face a
+// relief off the pin at its stop station), which is what the flank carries.
+{
+  const st = MAINT_BLADE.stop, gm = MAINT_SPRING.geom;
+  const F_mN = st.F_N * 1000, tauStop_Nmm = st.tau_Nm * 1000;
+  // The flank's reaction: the pin's centre a pin radius off the flank's face,
+  // its contact square to the flank, at the pin's station along it.
+  const armOut = gm.rP * Math.cos(gm.phiStop);
+  declareTransfer('maintaining spring: the hold at the stop (blade → pin → stop flank)', {
+    unit: 'Fusee & great wheel', meshes: ['maintSpring', 'maintSpringPin'], idiom: 'pinInSlot',
+    load: { value: F_mN, unit: 'mN',
+      source: 'the blade\'s contact force at the stop, POSED (MAINT_BLADE.stop): the cantilever\'s free shape loaded where its face is nearest the pin until that nearest point stands r_pin + SEAT_RELIEF from the pin\'s centre, taken along the contact normal — the contact solved, not k·θ' },
+    quantities: { armIn_u: st.arm_u, armOut_u: armOut, ratio: armOut / st.arm_u, run_rad: MAINT_SPRING.run,
+      station_u: st.a_u, tilt_rad: st.tilt_rad, Fy_mN: st.Fy_N * 1000,
+      torqueStop_Nmm: tauStop_Nmm, torqueFloor_Nmm: MAINT_SPRING.tauFloor * 1000,
+      floorShare: st.tau_Nm / MAINT_SPRING.tauFloor, phiStop_rad: gm.phiStop, rPin_u: gm.rPin, rP_u: gm.rP },
+    why: `at run-out the pin, on its circle r_P ${gm.rP.toFixed(4)}, has swung back the whole run ${MAINT_SPRING.run.toFixed(5)} rad onto the stop flank, and the blade presses it there with ${F_mN.toFixed(0)} mN along a normal tilted ${Math.abs(st.tilt_rad / DEG2RAD).toFixed(2)}° off the flank's (the bowed face, its line ${st.arm_u.toFixed(4)} from the arbor): the flank takes that load with the pin ${armOut.toFixed(4)} along it, so the blade's ${tauStop_Nmm.toFixed(4)} N·mm on the great wheel is met by the flank's on the same wheel and the train gets nothing — it stops, posed from the stop. That preload is ${(100 * st.tau_Nm / MAINT_SPRING.tauFloor).toFixed(1)}% of the floor ${(MAINT_SPRING.tauFloor * 1000).toFixed(4)} N·mm the spring was sized to keep delivering to the last of its run`,
   });
 }
 
@@ -20444,6 +21253,55 @@ await (async () => {
     { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
     { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
   ], TRAIN.barrel.module, ['train']);
+  // TODO 219 — the maintaining spring's pin, into the ring's frame. The
+  // crossing it works in turned with the great wheel's phase just now; the ring
+  // (maintWheel) carries none, so the pin's ring-frame position is its
+  // wheel-frame one turned by that phase.
+  {
+    const gm = MAINT_SPRING.geom, q = MAINT_SPRING.toGw(gm.xc, gm.yPin), a = greatWheel.rotation.z;
+    MAINT_SPRING_PIN.position.x = q.x * Math.cos(a) - q.y * Math.sin(a);
+    MAINT_SPRING_PIN.position.y = q.x * Math.sin(a) + q.y * Math.cos(a);
+    if (maintWheel.rotation.z !== 0) console.warn(`TODO 219: the maintaining wheel carries a rotation ${maintWheel.rotation.z} the pin's placement assumed zero`);
+  }
+  // TODO 219 GUARD (§115's class) — THE SPRING MUST DRIVE THE TRAIN, AND ITS
+  // STOP MUST CATCH THE RELAXING PIN. The blade's side and the stop flank are
+  // chosen from MOVEMENT_SENSE (MAINT_SPRING.SENSE_REL); what that declaration
+  // cannot see is which way the train actually runs. Read here off the CUT
+  // metal in the arbor's frame, against barrelMeshAngle's own law: (1) the face
+  // load the pin puts on the blade — along the line from the pin's centre to
+  // the blade's nearest point — turns the great wheel the way the train runs;
+  // (2) relaxing, the wheel runs on ahead of the held ring, so in the wheel's
+  // frame the pin moves AGAINST the run: the stop flank must lie on that side
+  // of it. Either wrong and the spring winds the train backward, or relaxes
+  // into nothing.
+  {
+    const runS = Math.sign(barrelMeshAngle(3600) - barrelMeshAngle(0));
+    let blade = null; greatWheel.traverse((o) => { if (o.name === 'maintSpring') blade = o; });
+    const a = greatWheel.rotation.z, P = MAINT_SPRING_PIN.position;
+    const pos = blade.geometry.attributes.position;
+    let best = Infinity, C = null;
+    for (let i = 0; i < pos.count; i++) {
+      const x0 = pos.getX(i), y0 = pos.getY(i);
+      const x = x0 * Math.cos(a) - y0 * Math.sin(a), y = x0 * Math.sin(a) + y0 * Math.cos(a);
+      const d = Math.hypot(x - P.x, y - P.y);
+      if (d < best) { best = d; C = { x, y }; }
+    }
+    // the nearest VERTEX is a corner of the pin-side face; its direction from the
+    // pin is the face load's to within the face's own length, and only its SIGN
+    // about the arbor is read.
+    const dx = C.x - P.x, dy = C.y - P.y;
+    const torque = Math.sign(P.x * dy - P.y * dx);
+    const azFlank = MAINT_SPRING.azStop + a;
+    const side = Math.sign(wrapPi(Math.atan2(P.y, P.x) - azFlank));
+    if (torque !== runS || side !== runS)
+      console.warn(`TODO 219 maintaining spring: ${torque !== runS ? 'the blade drives the great wheel AGAINST the train' : ''}${torque !== runS && side !== runS ? ' and ' : ''}${side !== runS ? 'the stop flank stands on the run side of the pin, where the relaxing pin never reaches it' : ''} (MOVEMENT_SENSE ${MOVEMENT_SENSE}, train ${runS}, SENSE_REL ${MAINT_SPRING.SENSE_REL})`);
+    // TODO 224 — and the hold's recoil must be the way the blade's REACTION
+    // drives the ring: the same face load, read on the ring, turns it against
+    // the torque it puts on the wheel. MAINT_HOLD.REC declares it; this reads it
+    // off the cut blade and pin.
+    if (MAINT_HOLD.REC !== -torque)
+      console.warn(`TODO 224 maintaining hold: the recoil turns the ring ${MAINT_HOLD.REC > 0 ? '+' : '−'} but the blade's reaction on the pin drives it ${-torque > 0 ? '+' : '−'} — the posed hold would back the ring the way nothing pushes it`);
+  }
   // TODO 132 — THE KEYLESS WORKS, the movement's last two unphased spur
   // meshes. Both carried TODO 15's half-pitch idiom and nothing else, and both
   // measured a CONSTANT error over the pose net: 22.222% of a pitch on the
@@ -26485,7 +27343,8 @@ const EQUALISATION = (() => {
   //    it at every corner beside the amplitude the movement CLAIMS
   //    (AMPLITUDE_CLAIM_DEG), with the factor by which the claim exceeds the
   //    supply. Measured at the shipped metal: the sustained swing is 126–293°
-  //    vertical and 172–455° dial-flat, 200° vertical at the nominal corner
+  //    vertical and 172–455° dial-flat (the last past the knock at 314°, so
+  //    the balance banks there, TODO 216), 200° vertical at the nominal corner
   //    (TODO 192's steps and TODO 193 took it from 2–7°: pivots cut, the
   //    strip, then the ribbon proportioned to its alloy and its drum; TODO 207
   //    then grew the drum to the plate and lightened the balance to the
@@ -26493,22 +27352,16 @@ const EQUALISATION = (() => {
   //    the corners' ordering, the amplitude solve plugging back) and, since
   //    TODO 192 step 4, the two amplitudes layout.js declares against the
   //    solve's extremes, published here as `amplitude`: the claim at or under
-  //    the minimum, the peak loads are priced at at or over the maximum, each
-  //    within a degree.
+  //    the minimum, the peak loads are priced at at or over the largest swing
+  //    the balance can reach (the maximum, or the knock if it comes first —
+  //    TODO 216), each within a degree.
   const energy = (() => {
-    const released_J = 0.5 * k * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2);
-    const reserve_s = SPEC.reserveHours * 3600;
-    const beats = SPEC.vph * SPEC.reserveHours;
-    const rW = (m) => m.module * m.teeth / 2;
-    const meshes = TRAIN_STAGES.map(({ obj, ...m }) => ({ ...m, rPiv: TRAIN_PIVOT_SIZES.find((p) => p.arbor === m.arbor).rU }));
-    const trainRatio = meshes.reduce((p, m) => p * m.z1 / m.z2, 1);
-    const fuseeTorque_Nm = released_J / (FUSEE_WRAP_TURNS * 2 * Math.PI);
-    const escapeTorque_Nm = fuseeTorque_Nm / trainRatio;
-    const perBeat_J = released_J / beats;
-    const rArbor = G.barrelArborR(DRUM_R_ACTUAL), rWrap = DRUM_WRAP_R;
-    const rFuseeMean = (FUSEE_R_LARGE + FUSEE_TORQUE_K) / 2, rGreat = rW(TRAIN.barrel);
-    const kB = OSCILLATOR.k_Nm_per_rad, mB = OSC_I.mass, g = 9.81;
-    const thetaClaim = AMPLITUDE_CLAIM_DEG * DEG2RAD;
+    // TODO 219 — every figure of the walk is GOING_POWER's (hoisted to the
+    // train's cut so the maintaining spring's floor reads the same laws).
+    const { released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
+      kB, mB, corner } = GOING_POWER;
+    const g = GOING_POWER.g;
+    if (GOING_POWER.k !== k) console.warn(`TODO 219: the energy column's k ${GOING_POWER.k} is not the record's ${k}`);
     // TODO 192 step 2 / TODO 193 — WHY EACH PIVOT IS THE SIZE IT IS, as
     // arithmetic. Each jewelled pivot is a cantilever from its shoulder,
     // loaded at its end by the arbor's radial reaction; the same upper bound
@@ -26603,9 +27456,26 @@ const EQUALISATION = (() => {
       if (Math.abs(H.lineVsFaceNormal) > 1e-9)
         console.warn(`TODO 217: the hold's line of action (tip → stud) has left the face's normal by ${H.lineVsFaceNormal.toExponential(2)} — the click is no longer a strut, and the moment it carries about the stud is unpriced`);
       return {
-        spring: { torqueRun_Nm: torque_Nm, k_Nm_per_rad: null, preload_rad: null,
-          law: 'series member: wound by the drive to the going torque while running; holds that at the first instant of a wind and falls by k·(the great wheel\'s advance) as it drives the train on',
-          kDebt: 'TODO 219' },
+        // TODO 219 — the spring, as cut (MAINT_SPRING, where the ring's tooth
+        // count was solved from it). Row 16 re-derives the floor from this
+        // record's own corner, k and the preload from the torque span over the
+        // run, k again from the blade's compliance, and both stresses.
+        spring: (() => {
+          const M = MAINT_SPRING;
+          if (M.tauGo !== torque_Nm) console.warn(`TODO 219: the maintaining spring was sized to ${M.tauGo} N·m, the record's going torque is ${torque_Nm}`);
+          return {
+            torqueRun_Nm: torque_Nm, floor_Nm: M.tauFloor, floorCorner: M.floorCorner, floorFrac: M.floorFrac,
+            upstream: [...GOING_POWER.UPSTREAM],
+            ringTeeth: M.N, recoilMax_rad: M.pitch, marginRun_rad: M.marginRun, run_rad: M.run, runMax_rad: M.runMax,
+            k_Nm_per_rad: M.k, preload_rad: M.thetaPre, thetaWork_rad: M.thetaWork,
+            form: 'cantilever blade in a great-wheel crossing, filed to uniform strength (t ∝ √x, floored at STOCK_MIN_U), bearing on a pin hung from the ring; the crossing\'s arm flank is the stop',
+            b_u: M.b, tRoot_u: M.t, tMin_u: M.tMin, L_u: M.L, rE_u: M.rE, pinR_u: M.geom.rPin, pinRadius_u: M.geom.rP,
+            compliance_m_per_N: M.compliance_m_per_N, deflWork_u: M.deflWork_u,
+            E_Pa: M.E, limit_Pa: M.sigLim, band: { ...MAINSPRING_SIGMA_Y_BAND },
+            sigmaWork_Pa: M.sigmaWork, sigmaStop_Pa: M.sigmaStop, margin: M.sigLim / M.sigmaWork,
+            law: 'series member: wound by the drive to the going torque while running; at a wind it recoils the ring onto the detent (≤ one ring pitch) and then drives the great wheel on, its torque falling by k·Δ to the floor at the stop',
+          };
+        })(),
         load_N, momentArm_u: H.momentArm_u, tipR_u: H.tipR_u, rootR_u: H.rootR_u, strut_u: H.strut_u,
         lineVsFaceNormal: H.lineVsFaceNormal, yield_Pa: SPRING_SIGMA_Y_PA,
         arm: { ri_u: a.ri_u, ro_u: a.ro_u, t_u: a.t_u, offset_u: a.offsetMax_u, M_Nm,
@@ -26616,35 +27486,6 @@ const EQUALISATION = (() => {
           yieldStation_u: beakYieldStation_u, apexDebt: 'TODO 221', contact: H.contact },
       };
     })();
-    const corner = (cname) => {
-      const A = Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
-      const stages = [];
-      const push = (name, eta, law) => stages.push({ name, eta, law });
-      push('mainspring coil friction', A.springInt, 'FRICTION.springInt');
-      push('drum on its fixed arbor', 1 - A.muPlain * rArbor / rWrap, 'μ_plain·r_arbor/R_wrap');
-      push('chain articulation', 1 - A.muChain * CHAIN_PIN_R * (1 / rFuseeMean + 1 / rWrap), 'μ_chain·r_rivet·(1/r_fusee + 1/R_wrap)');
-      push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)');
-      for (const m of meshes) {
-        push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)');
-        push(`${m.arbor} arbor pivots`, 1 - A.muJewel * m.rPiv * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)');
-      }
-      push('lever escapement', A.escEff, 'FRICTION.escEff');
-      const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
-      const etaTotal = stages.reduce((p, s) => p * s.eta, 1);
-      const delivered_J = etaTotal * perBeat_J;
-      const tfVertical_Nm = A.muJewel * mB * g * BALANCE_PIVOT_R * OSC_U;
-      const tfFlat_Nm = A.muJewel * mB * g * (2 / 3) * (A.endContactMm / 1000);
-      // loss(θ) = (π k_B / 2Q) θ² + 2 T_f θ = delivered  ⇒  the positive root.
-      const sustained = (tf) => { const a = Math.PI * kB / (2 * A.qOther), b = 2 * tf; return (-b + Math.sqrt(b * b + 4 * a * delivered_J)) / (2 * a); };
-      const needAtClaim_J = Math.PI * kB / (2 * A.qOther) * thetaClaim ** 2 + 2 * thetaClaim * tfVertical_Nm;
-      return {
-        stages, etaTrain, etaTotal, delivered_J, qOther: A.qOther,
-        pivot: { vertical_Nm: tfVertical_Nm, flat_Nm: tfFlat_Nm },
-        sustainedDeg: { vertical: sustained(tfVertical_Nm) / DEG2RAD, flat: sustained(tfFlat_Nm) / DEG2RAD },
-        claim: { needPerBeat_J: needAtClaim_J, factorOverSupply: needAtClaim_J / delivered_J,
-                 springEnergyNeeded_J: needAtClaim_J / etaTotal * beats },
-      };
-    };
     return {
       released_J, meanPower_W: released_J / reserve_s, reserve_s, beats,
       fuseeTurns: FUSEE_WRAP_TURNS, fuseeTorque_Nm, trainRatio, escapeTorque_Nm, perBeat_J,
@@ -26652,7 +27493,7 @@ const EQUALISATION = (() => {
                 byArbor: Object.fromEntries(TRAIN_PIVOT_SIZES.map((p) => [p.arbor, { r_u: p.rU, d_u: p.dU, bound: p.bound }])),
                 fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
       maintainingHold,
-      balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
+      balance: { mass_kg: mB, k_Nm_per_rad: kB, g_mps2: g, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
       corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
     };
   })();
@@ -26663,13 +27504,26 @@ const EQUALISATION = (() => {
     const all = Object.entries(energy.corners).flatMap(([c, C]) =>
       ['vertical', 'flat'].map((pos) => ({ corner: c, position: pos, deg: C.sustainedDeg[pos] })));
     const min = all.reduce((a, b) => (b.deg < a.deg ? b : a)), max = all.reduce((a, b) => (b.deg > a.deg ? b : a));
-    energy.amplitude = { min, max, claimDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG,
+    // TODO 216 — the balance cannot swing past the KNOCK (ESCAPEMENT_KNOCK,
+    // solved off the fork blank and the pin): there its pin strikes the banked
+    // fork's horn. So the largest swing it REACHES is the smaller of the solve's
+    // maximum and the knock, and that is what the peak is held to. Every
+    // corner and position the energy column would carry past it is listed: the
+    // balance banks there instead of sustaining the solve's figure.
+    const knock = ESCAPEMENT_KNOCK.deg;
+    const reach = Math.min(max.deg, knock);
+    energy.knock = { ...ESCAPEMENT_KNOCK,
+      knocks: all.filter((a) => a.deg >= knock),
+      nominalClears: ['vertical', 'flat'].every((pos) => energy.corners.nominal.sustainedDeg[pos] < knock) };
+    energy.amplitude = { min, max, reachDeg: reach, claimDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG,
       claimHolds: AMPLITUDE_CLAIM_DEG <= min.deg && min.deg - AMPLITUDE_CLAIM_DEG < 1,
-      peakBounds: AMPLITUDE_PEAK_DEG >= max.deg && AMPLITUDE_PEAK_DEG - max.deg < 1 };
+      peakBounds: AMPLITUDE_PEAK_DEG >= reach && AMPLITUDE_PEAK_DEG - reach < 1 };
     if (!energy.amplitude.claimHolds)
       console.warn(`TODO 192: AMPLITUDE_CLAIM_DEG ${AMPLITUDE_CLAIM_DEG}° is not the sustained minimum rounded down — the solve's least is ${min.deg.toFixed(2)}° (${min.corner}, ${min.position})`);
     if (!energy.amplitude.peakBounds)
-      console.warn(`TODO 192: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the sustained maximum rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position})`);
+      console.warn(`TODO 216: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the largest reachable swing rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position}) and the pin knocks at ${knock.toFixed(2)}°`);
+    if (!energy.knock.nominalClears)
+      console.warn(`TODO 216: the serviced (nominal) corner knocks — vertical ${energy.corners.nominal.sustainedDeg.vertical.toFixed(2)}°, dial-flat ${energy.corners.nominal.sustainedDeg.flat.toFixed(2)}° against the knock at ${knock.toFixed(2)}°`);
     // TODO 207 — the DESIGN target, at the nominal corner held vertical: met,
     // and by less than one heavier rim step would cost (BAL_RIM_F is the
     // heaviest rim that reaches it).
@@ -36050,7 +36904,7 @@ await breathe();
 // the click would have held the back-drive in tension.
 {
   const runS = Math.sign(barrelMeshAngle(3600) - barrelMeshAngle(0));   // the ring rides barrelArbor
-  const pitch = (Math.PI * 2) / MAINT_TEETH, N = 120, s0 = MAINT_DET_RIDE.seatNet;
+  const pitch = (Math.PI * 2) / MAINT_RING_TEETH, N = 120, s0 = MAINT_DET_RIDE.seatNet;
   let rising = 0, prev = MAINT_DET_RIDE.liftAt(s0);
   for (let i = 1; i <= N; i++) {
     const t = MAINT_DET_RIDE.liftAt(s0 + runS * (i * pitch) / N);
@@ -36730,7 +37584,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All TWENTY
+   what it says, and the box already grows to fit its contents. All TWENTY-ONE
    locales measure inside 150 px on one line today — §249's Indonesian
    "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
    and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
@@ -36744,7 +37598,8 @@ html:lang(ko) { word-break: keep-all; }
    alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
    19.5; §249's Indonesian "Waktu" 28.0; §249's Turkish "Çalma saati" 52.8,
    level with Spanish and Korean, "Zaman" 31.1; §249's Welsh "Canu am" 40.6,
-   level with Russian, "Amser" 28.9) — so the allowance that a
+   level with Russian, "Amser" 28.9; §249's Tagalog "Tumutunog sa" 63.6, just
+   under Indonesian's 66.2, "Oras" 21.7) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -37437,6 +38292,9 @@ function setBarState(id, on) {
 // measured, past Dutch's 204.4 — on "Dewislen / Golwg / Rheolaethau", and 185.0
 // once the panel took the verb-noun Rheoli that Welsh software already uses for
 // a control panel (Panel Rheoli): §208's lesson a fifth time.
+// §249's Tagalog measured 194.8 on "Menu / Tanaw / Mga kontrol" — 24.6 px wider than
+// English's 170.2, between Welsh's 185.0 and Dutch's 204.4 — with no re-cutting
+// needed: the first labels fit, so no face was chosen against the bar this time.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
@@ -38778,6 +39636,25 @@ const PART_CALLOUTS = {
   mwMinuteWheel: { name: 'Minute wheel', train: 'Motion works', anchor: 'rim' },
   mwMinutePinion: { name: 'Minute pinion', train: 'Motion works', anchor: 'centre', place: 'above' },
   mwHourWheel: { name: 'Hour wheel', train: 'Motion works', anchor: 'rim', awayFrom: 'mwMinuteWheel', unitLabel: true },
+  // The keyless works: the crown's two paths, named for what the code builds
+  // (the §10 level-2 vocabulary, so the drill-in and these say the same word).
+  // WINDING — stem → winding pinion → crown wheel → transfer wheel; SETTING —
+  // stem → winding pinion → setting wheel → setting bevel → the minute-wheel
+  // arbor's wheel → … the fold … → setting cap, which meshes the motion works'
+  // minute wheel. "Keyless works" alone is one word at the crown for both.
+  windStem: { name: 'Winding stem', train: 'Keyless works', anchor: 'centre' },
+  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  // Two coaxial pairs — the crown wheel on the transfer wheel's arbor, the
+  // setting wheel under its bevel — share one centre, so each pair splits
+  // above / below it, the motion works pinions' rule.
+  // The winding pinion meshes the crown wheel right beside that pair, so its
+  // name is lifted ABOVE its centre, clear of the pair's upper slot.
+  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  settingWheel: { name: 'Setting wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  settingBevel: { name: 'Setting bevel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  minuteWheel: { name: 'Minute-wheel arbor', train: 'Keyless works', anchor: 'centre' },
+  settingCap: { name: 'Setting cap', train: 'Keyless works', anchor: 'centre' },
 };
 // Resolved once: { meshes, unit, train, anchor, el } — one entry per NAME, since
 // a gear builder may leave several meshes under one name; the anchor reads
@@ -47514,6 +48391,7 @@ function tick(t) {
   // display also uses, so the input and the knob cannot disagree about which
   // direction winds. Everything below is the arithmetic it always was.
   const windIn = windSign * crownRotDelta;
+  let windBankedNow = 0;   // TODO 224 — what this tick banked: windBack falls exactly when it is > 0
   if (windEngaged) {
     if (windIn > 0) {
       // TODO 50 sub-pitch take-up: after a reversal the clutch stands a
@@ -47541,6 +48419,7 @@ function tick(t) {
         // beak-on-block now, which is most of what §47 is.
         const banked = Math.min(turnsDelta, Math.max(0, WIND_ARREST.engageTurns - barrelWindTurns));
         barrelWindTurns += banked;
+        windBankedNow = banked;
         windArrestStalled = turnsDelta - banked > 1e-9; // the hand is on a stopped crown
       } else {
         windArrestStalled = false;
@@ -47564,6 +48443,21 @@ function tick(t) {
   if (setEngaged) {
     setPathRot += crownRotDelta; // bidirectional — no ratchet on the setting path
   }
+  // TODO 224 — THE WIND-START STATE, on the live path only. The drive comes
+  // off on windBack's falling edge — the first tick that banks (nothing else
+  // moves windBack: the drain term cancels by construction, windLocalAt) — and
+  // is picked up on the first tick that banks nothing, when the mainspring
+  // turns the cone forward onto the pawls. A zero-dt tick is a POSE (setPose,
+  // the battery's sweeps) and never edges: what a pose holds is what it names.
+  if (rawDt > 0) {
+    if (windBankedNow > 0) { if (maintHold === null) maintHold = MAINT_HOLD.begin(tauIntegrated); }
+    else if (maintHold !== null) maintHold = null;
+  }
+  // …and the stop bounds movement time: past τ_stop the wheel would carry the
+  // pin through the flank, so neither the drain nor τ may advance beyond it
+  // (MAINT_HOLD's step 3). Infinity while the drive is on, so min() returns
+  // its first argument bit for bit.
+  const maintRoom = maintHold !== null ? Math.max(0, maintHold.tauStop - tauIntegrated) : Infinity;
   // Drain: the barrel does 1 turn per HOURS_PER_FUSEE_TURN of movement time
   // actually elapsed — the SAME mesh ratio RESERVE_BARREL_TURNS is built from
   // (§124: 120/7 h; this line had that ratio's pre-§124 value hard-coded as
@@ -47578,7 +48472,7 @@ function tick(t) {
   // depends on tension, which depends on this drain).
   {
     const before = barrelWindTurns;
-    barrelWindTurns = Math.max(0, barrelWindTurns - (balanceRate * rawDt) / (HOURS_PER_FUSEE_TURN * 3600));
+    barrelWindTurns = Math.max(0, barrelWindTurns - Math.min(balanceRate * rawDt, maintRoom) / (HOURS_PER_FUSEE_TURN * 3600));
     // TODO 50 sub-pitch pickup: with the coupling's faces parted (a
     // reversal parked the clutch mid-pitch), the pinion's run-down advance
     // first CLOSES the gap from its own side — the drive face travels to
@@ -47603,7 +48497,9 @@ function tick(t) {
   // to drive it — both are really "ran out of what keeps it going" — and
   // relaxes back toward 1 as either cause clears. Real per-frame decay
   // toward a moving target, not a snap — it settles over roughly a beat.
-  const rateTarget = (1 - leverEngage) * (tension > 0 ? 1 : 0);
+  // TODO 224: a wind held at Harrison's stop is a third "nothing drives it" —
+  // the spring's preload is met by the flank and the train gets none of it.
+  const rateTarget = (1 - leverEngage) * (tension > 0 && !(maintRoom <= 0) ? 1 : 0);
   const rateTau = rateTarget < balanceRate ? LEVER_DAMP_TAU : LEVER_RELEASE_TAU;
   balanceRate += (rateTarget - balanceRate) * (1 - Math.exp(-rawDt / rateTau));
 
@@ -47611,7 +48507,7 @@ function tick(t) {
   // escapement and gear train below only ever see τ, so when balanceRate is
   // damped to ~0 they stop as a mechanical consequence of the balance being
   // stalled, not because anything told them to.
-  tauIntegrated += balanceRate * rawDt;
+  tauIntegrated += Math.min(balanceRate * rawDt, maintRoom);
 
   const tau = tauIntegrated;
   const fourthA = fourthAngle(tau); // the REAL fourth wheel's angle — never adjusted below
@@ -48051,7 +48947,7 @@ function tick(t) {
       sndBeatN = bev; sndBeatRaw = rawNow;
       // Maintaining pawls while winding — one tooth passage = one snap
       // (the two pawls sit exactly 12 of 24 pitches apart: unison).
-      const pawlIdx = Math.floor((MAINT_PAWL_TIP_AZ - windBack) / ((Math.PI * 2) / MAINT_TEETH));
+      const pawlIdx = Math.floor((MAINT_PAWL_TIP_AZ - (windBack - maintWheel.rotation.z)) / ((Math.PI * 2) / MAINT_TEETH));   // TODO 224: the flange against the RING, which a hold turns on its arbor
       if (sndPawlIdx !== null && pawlIdx !== sndPawlIdx) {
         const n = Math.min(Math.abs(pawlIdx - sndPawlIdx), 3);
         for (let i = 0; i < n; i++) SND.pawl(i * 0.03);
@@ -48062,9 +48958,10 @@ function tick(t) {
       // the crown against the stop is one arrival, not a machine gun).
       if (sndArrestStalled !== null && windArrestStalled && !sndArrestStalled) SND.arrestBank();
       sndArrestStalled = windArrestStalled;
-      // Maintaining detent while running — one soft tick per 20 min of
-      // movement time (barrel 1 rev/8 h × 24 rim teeth).
-      const detIdx = Math.floor((barrelArbor.rotation.z - MAINT_DETENT_AZ) / ((Math.PI * 2) / MAINT_TEETH));
+      // Maintaining detent while running — one soft tick per rim tooth of
+      // movement time (TODO 219: MAINT_RING_TEETH, 35 to a barrel turn of
+      // 120/7 h — a tick every 29.4 min).
+      const detIdx = Math.floor((barrelArbor.rotation.z + maintWheel.rotation.z - MAINT_DETENT_AZ) / ((Math.PI * 2) / MAINT_RING_TEETH));   // TODO 224: the ring's own angle
       if (sndDetIdx !== null && detIdx !== sndDetIdx) SND.detent();
       sndDetIdx = detIdx;
       // Minute jumper snap while setting.
@@ -50984,6 +51881,22 @@ window.__clock = {
   get fourthAngle() { return fourthAngle(tauIntegrated); },
   get barrelWindTurns() { return barrelWindTurns; },
   get windStemSlip() { return windStemSlip; },        // TODO 50: the coupling's relative index
+  // TODO 224 — the wind's hold: null while the drive is on, else the
+  // drive-off state and where the hold stands now (the probe's and the
+  // instruments' read; the law is MAINT_HOLD's).
+  get maintHold() {
+    if (!maintHold) return null;
+    const P = MAINT_HOLD.poseAt(maintHold, barrelArbor.rotation.z);
+    return { ...maintHold, ...P, run: MAINT_HOLD.run, atStop: !(tauIntegrated < maintHold.tauStop) };
+  },
+  get maintHoldLaw() {
+    const B = MAINT_BLADE;
+    return { holdNet: MAINT_HOLD.holdNet, dHold: MAINT_HOLD.dHold, crestNet: MAINT_HOLD.crestNet, rCrest: MAINT_HOLD.rCrest,
+      pitch: MAINT_HOLD.pitch, run: MAINT_HOLD.run, REC: MAINT_HOLD.REC, frames: B.K, frameStep: B.step, tipSpan: B.tipSpan,
+      stop: B.stop, tauAt: (s) => B.tauAt(s), loadAt: (s) => { const L = B.loadAt(s); return { F_N: L.F, x: L.p.x, y: L.p.y }; },
+      tauGo: MAINT_SPRING.tauGo, tauFloor: MAINT_SPRING.tauFloor, geom: MAINT_SPRING.geom, detentAz: MAINT_DETENT_AZ,
+      begin: (tau0) => MAINT_HOLD.begin(tau0) };
+  },
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)
   // TODO 115 — the ONE stem⇄bank gearing constant, exposed because an
   // instrument that hard-codes which way the crown winds measures the old
@@ -51120,6 +52033,7 @@ window.__clock = {
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0;                 // TODO 144: nothing writes it now; reset kept so the knob's sum has one owner
     alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
+    maintHold = null;                    // TODO 224: the drive on — a wind's hold is session state, and canonical is running
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
@@ -51265,6 +52179,26 @@ window.__clock = {
       if (p.alarmBarrelWind === undefined)
         alarmBarrelWind = clamp(ALARM_BARREL_TURNS - alarmStrikePhase / ALARM_STRIKES_PER_BARREL_TURN, 0, ALARM_BARREL_TURNS);
     }
+    // TODO 224 — A HELD WIND, AS A PURE FUNCTION OF ITS INPUT. `maintHold` is
+    // the fraction h ∈ [0, 1] of the run the great wheel has advanced on the
+    // spring since the drive came off, the drive having come off at the pose's
+    // own τ: the ring recoils from there onto the beak (MAINT_HOLD.begin), and
+    // movement time is ADVANCED to the τ at which the train's law has carried
+    // the wheel h·(run − recoil) — so h = 1 is the stop, posed from it. h = 0
+    // is the drive on. `maintPickUp` ends the hold at that instant: the pawls
+    // take the ring forward and the movement stands at the held τ, running —
+    // the pick-up after a wind, whatever it lasted. Derived, never accumulated:
+    // a sweep revisits fractions in any order (alarmPressCycle's rule).
+    if (p.maintHold !== undefined) {
+      const h = clamp(+p.maintHold || 0, 0, 1);
+      if (h > 0) {
+        const H = MAINT_HOLD.begin(tauIntegrated);
+        tauIntegrated = MAINT_HOLD.tauAt(H.tau0, H.A0, h * (MAINT_HOLD.run - H.recoil));
+        maintHold = p.maintPickUp ? null : H;
+      } else maintHold = null;
+    }
+    // A held state the pose did not name still bounds τ: the stop is a place.
+    if (maintHold !== null && tauIntegrated > maintHold.tauStop) tauIntegrated = maintHold.tauStop;
     tick(lastTickRawT);
     // The support sweep measures the chain's REAL geometry against the drum's
     // hook, so a posed tension must rebuild the mesh before the caller reads

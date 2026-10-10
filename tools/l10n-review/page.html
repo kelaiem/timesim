@@ -1,0 +1,437 @@
+<title>Watch Sim Translation Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a proof sheet — English and translation side by side on each row, the verdict in a strip beneath, one language at a time. */
+:root {
+  --paper: #eef1f4; --surface: #ffffff; --sunk: #f6f8fa; --ink: #18212b; --muted: #5a6574; --line: #d3dae2;
+  --brass: #8a6614; --brass-soft: #f3ead3;
+  --ok: #2a7a4b; --ok-soft: #e1f1e7; --fix: #b03c28; --fix-soft: #f8e4df; --ask: #5f51ad; --ask-soft: #e9e6f7;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #11161c; --surface: #19202a; --sunk: #151b23; --ink: #e5e9ee; --muted: #9aa5b2; --line: #2b3542;
+  --brass: #d6b061; --brass-soft: #2e2716;
+  --ok: #63bd88; --ok-soft: #17291f; --fix: #e8826c; --fix-soft: #33201b; --ask: #aa9df0; --ask-soft: #241f3a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #11161c; --surface: #19202a; --sunk: #151b23; --ink: #e5e9ee; --muted: #9aa5b2; --line: #2b3542;
+  --brass: #d6b061; --brass-soft: #2e2716;
+  --ok: #63bd88; --ok-soft: #17291f; --fix: #e8826c; --fix-soft: #33201b; --ask: #aa9df0; --ask-soft: #241f3a; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.55 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 120px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: 0.005em; }
+h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.1; }
+h2 { font-size: 21px; }
+p { margin: 0; max-width: 68ch; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); }
+.muted { color: var(--muted); }
+
+header.intro { display: grid; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px 24px; margin-top: 6px; }
+.how div { display: grid; gap: 4px; min-width: 0; }
+.how b { font-family: var(--display); font-weight: 600; font-size: 15px; }
+.how span { color: var(--muted); font-size: 14px; }
+
+.langs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 22px; }
+.lang { text-align: start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 12px; display: grid; gap: 6px; }
+.lang:hover { border-color: var(--brass); }
+.lang[aria-current="true"] { border-color: var(--brass); box-shadow: inset 0 0 0 1px var(--brass); }
+.lang .native { font-size: 20px; font-weight: 600; font-family: var(--display); }
+.lang .meta { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+.bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--brass); width: 0; }
+
+.owner { margin-top: 18px; background: var(--sunk); border: 1px dashed var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; }
+.owner table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.owner td, .owner th { padding: 3px 14px 3px 0; text-align: start; }
+.owner th { font-weight: 500; color: var(--muted); }
+
+.empty-state { margin-top: 28px; padding: 26px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+
+/* Only the section tabs and the filters stay pinned while reading; the title above them scrolls away. */
+.sheet-head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); padding-block: 10px; margin-top: 10px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.sheet-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-top: 26px; }
+.tabs, .filters { display: flex; flex-wrap: wrap; gap: 6px; position: relative; }
+.tab, .filter { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13.5px; display: inline-flex; gap: 6px; align-items: center; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tab .n { font: 12px var(--mono); opacity: 0.75; font-variant-numeric: tabular-nums; }
+.filter[aria-pressed="true"] { border-color: var(--brass); background: var(--brass-soft); }
+.blurb { color: var(--muted); font-size: 14px; }
+
+.rows { display: grid; gap: 12px; margin-top: 16px; }
+.row { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; border-inline-start: 4px solid var(--line); }
+.row[data-v="ok"] { border-inline-start-color: var(--ok); }
+.row[data-v="fix"] { border-inline-start-color: var(--fix); }
+.row[data-v="unsure"] { border-inline-start-color: var(--ask); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; }
+.cell { padding: 14px 16px; min-width: 0; overflow-wrap: anywhere; }
+.cell + .cell { border-left: 1px solid var(--line); }
+.cell .tag { font: 500 11px/1 var(--mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; display: flex; gap: 8px; }
+.cell .term { font-weight: 600; }
+.cell .def { margin-top: 6px; }
+.cell code { font: 0.9em var(--mono); background: var(--sunk); padding: 0 3px; border-radius: 3px; }
+.cell.en { background: var(--sunk); border-start-start-radius: 7px; }
+.q { padding: 14px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.chip { display: inline-block; font-weight: 600; background: var(--brass-soft); color: var(--ink); padding: 1px 8px; border-radius: 4px; }
+.examples { display: grid; gap: 3px; font-size: 13.5px; color: var(--muted); }
+.examples div { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.examples .arrow { color: var(--brass); }
+
+.verdict { display: grid; gap: 10px; padding: 10px 16px 12px; border-top: 1px solid var(--line); }
+.choices { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.choice { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 5px 11px; font-size: 13.5px; }
+.choice[aria-pressed="true"][data-v="ok"] { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.choice[aria-pressed="true"][data-v="fix"] { background: var(--fix-soft); border-color: var(--fix); color: var(--fix); }
+.choice[aria-pressed="true"][data-v="unsure"] { background: var(--ask-soft); border-color: var(--ask); color: var(--ask); }
+.choices .id { margin-inline-start: auto; font: 11px var(--mono); color: var(--muted); }
+.fields { display: grid; gap: 8px; }
+.fields label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.fields textarea { width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); line-height: 1.5; }
+
+footer.bar-foot { position: fixed; inset-inline: 0; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line); padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.foot { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.foot .status { font-size: 13.5px; color: var(--muted); flex: 1 1 240px; min-width: 0; }
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; color: var(--muted); }
+.who input { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; background: var(--surface); width: 220px; max-width: 100%; color: var(--ink); }
+.primary { background: var(--ink); color: var(--paper); border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 500; }
+a.primary { text-decoration: none; }
+a.primary:not([hidden]) { display: inline-block; }
+.export { margin-top: 18px; display: grid; gap: 6px; }
+.export textarea { width: 100%; min-height: 180px; font: 12px/1.45 var(--mono); border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--surface); }
+
+@media (max-width: 720px) {
+  .wrap { padding-inline: 16px; }
+  /* A phone keeps the pinned bar to two rows that swipe sideways, and the footer to its status and two buttons. */
+  .tabs, .filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
+  .tabs::-webkit-scrollbar, .filters::-webkit-scrollbar { display: none; }
+  .tab, .filter { flex: none; white-space: nowrap; }
+  .sheet-head { gap: 6px; padding-block: 8px; }
+  footer.bar-foot { padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .foot { gap: 6px 8px; }
+  .foot .status { flex-basis: 100%; font-size: 12.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .foot .primary { flex: 1 1 auto; text-align: center; white-space: nowrap; padding: 7px 10px; }
+  .pair { grid-template-columns: 1fr; }
+  .cell + .cell { border-left: 0; border-top: 1px solid var(--line); }
+  .cell.en { border-start-end-radius: 7px; }
+  .choices .id { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) { .bar i { transition: width 0.3s ease; } }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <span class="eyebrow">Watch Sim · native-speaker review</span>
+    <h1>Watch Sim Translation Review</h1>
+    <p>Watch Sim is a browser simulation of a fusee-and-chain watch movement. Its interface, its plain-language primer and its technical explainer are translated into nineteen languages, all drafted by machine and checked only by software. Software can confirm that numbers and markup survived. It cannot tell whether a sentence reads naturally, or whether a part has the name a watchmaker in your language would use. That is what this review is for.</p>
+    <div class="how">
+      <div><b>Pick your language</b><span>Each one has a few hundred rows in five sections. Start with "Start here"; it holds the questions we most need answered.</span></div>
+      <div><b>Mark each row</b><span>"Reads well", "Needs a change" with your wording, or "Not sure" with a note. Skip anything you like.</span></div>
+      <div><b>Your work is kept</b><span id="keptNote">Verdicts save as you go. If the page says it saved in this browser only, use "Copy my review" and send us the text.</span></div>
+    </div>
+    <label class="who" for="reviewer">Your name, sent with your review <input id="reviewer" placeholder="Optional" autocomplete="name"></label>
+  </header>
+
+  <div id="owner" class="owner" hidden></div>
+  <nav class="langs" id="langs" aria-label="Languages"></nav>
+  <div id="sheet"></div>
+  <div class="export" id="export" hidden>
+    <label for="exportText" class="muted">Copying was blocked by your browser. Select all of this text and send it to us:</label>
+    <textarea id="exportText" readonly></textarea>
+  </div>
+</div>
+
+<footer class="bar-foot">
+  <div class="foot">
+    <span class="status" id="status">Pick a language to begin.</span>
+    <button class="primary" id="copy" disabled>Copy my review</button>
+    <a class="primary" id="send" target="_blank" rel="noopener" hidden>Send it</a>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+  const VERDICTS = [['ok', 'Reads well'], ['fix', 'Needs a change'], ['unsure', 'Not sure']];
+  const FLAG_VERDICTS = [['ok', 'Keep this term'], ['fix', 'Use another term'], ['unsure', 'Not sure']];
+  // A static host has no shared store, so a review travels by "Copy my review" and a hand-off the
+  // HOST names: the builder writes a GitHub new-issue URL here for the Pages build (--send-to) and
+  // nothing for the artifact, whose verdicts reach the shared store instead.
+  const SEND_TO = document.querySelector('meta[name="review-send-to"]')?.content || '';
+  const S = { index: null, data: null, code: null, section: 'start', filter: 'all', v: {}, db: null, uid: null, writable: null, timers: {}, saving: 0, dbFailed: false };
+
+  const plain = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent; };
+  const safeId = (s) => String(s).replace(/[^A-Za-z0-9_\-~:@+]/g, '_').slice(0, 120);
+  const localKey = () => 'wsr.v1.' + S.code;
+  const allRows = () => S.data ? S.data.sections.flatMap((s) => s.rows.map((r) => ({ ...r, section: s.id }))) : [];
+
+  function setStatus(msg) { $('#status').textContent = msg; }
+  function statusLine() {
+    if (!S.data) return setStatus('Pick a language to begin.');
+    const rows = allRows(), done = rows.filter((r) => S.v[r.id]?.v).length;
+    const where = S.saving ? 'Saving…'
+      : S.db && S.uid && !S.dbFailed && S.writable !== false ? 'Saved to the shared review.'
+      : 'Saved in this browser only — use "Copy my review" to send it.';
+    setStatus(`${done} of ${rows.length} rows reviewed. ${where}`);
+  }
+
+  function sendLink() {
+    const a = $('#send'); if (!SEND_TO || !S.data) { a.hidden = true; return; }
+    const title = `Translation review: ${S.data.english} (${S.code})`;
+    const body = 'Paste the text from "Copy my review" below this line.\n\n';
+    a.href = `${SEND_TO}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+    a.hidden = false;
+  }
+
+  async function boot() {
+    if (SEND_TO) $('#keptNote').textContent = 'Verdicts save in this browser as you go. When you are done, press "Copy my review", then "Send it": it opens a GitHub issue to paste the text into (a free GitHub account is needed).';
+    try { S.index = await (await fetch('data/index.json')).json(); }
+    catch { $('#langs').innerHTML = '<p class="empty-state">The review data did not load. Reload the page; if it still fails, tell whoever sent you the link.</p>'; return; }
+    renderLangs();
+    const name = store.get('wsr.v1.name'); if (name) $('#reviewer').value = name;
+    const last = store.get('wsr.v1.last');
+    if (last && S.index.locales.some((l) => l.code === last)) pick(last);
+    else $('#sheet').innerHTML = '<p class="empty-state">Choose a language above. Its rows appear here, English on the left and the translation on the right.</p>';
+    initRuntime();
+  }
+
+  async function initRuntime() {
+    if (!window.claude?.use) return;
+    const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
+    if (user) {
+      S.uid = await user.id().catch(() => null);
+      const can = await Promise.resolve(user.can?.('data.write')).catch(() => null);
+      S.writable = can === false ? false : can === true ? true : null;
+      if (await Promise.resolve(user.isOwner?.()).catch(() => false)) watchOwner(db);
+    }
+    S.db = db;
+    if (S.db && S.uid && S.code) await pullMine();
+    statusLine();
+  }
+
+  async function pullMine() {
+    if (!S.db || !S.uid || S.writable === false) return;
+    try {
+      const snap = await S.db.collection('verdicts').where('locale', '==', S.code).where('by', '==', S.uid).get();
+      let changed = false;
+      for (const d of snap.docs) {
+        const x = d.data(); const mine = S.v[x.row];
+        if (!mine || (x.at || '') > (mine.at || '')) { S.v[x.row] = { v: x.verdict, s: x.suggestion || '', n: x.note || '', th: x.th, at: x.at }; changed = true; }
+      }
+      if (changed) { store.set(localKey(), S.v); renderSheet(); }
+    } catch { S.dbFailed = true; }
+  }
+
+  function renderLangs() {
+    const nav = $('#langs'); nav.innerHTML = '';
+    for (const L of S.index.locales) {
+      const mine = store.get('wsr.v1.' + L.code) || {};
+      const done = Object.values(mine).filter((x) => x?.v).length;
+      const b = document.createElement('button');
+      b.className = 'lang'; b.type = 'button'; b.setAttribute('aria-current', String(S.code === L.code));
+      b.innerHTML = `<span class="native" lang="${L.code}"></span><span class="muted"></span><span class="meta"><span>${L.rows} rows</span><span>${done} reviewed</span></span><span class="bar"><i style="width:${Math.min(100, (100 * done) / L.rows)}%"></i></span>`;
+      b.querySelector('.native').textContent = L.name; b.querySelector('.muted').textContent = L.english;
+      b.addEventListener('click', () => pick(L.code));
+      nav.appendChild(b);
+    }
+  }
+
+  async function pick(code) {
+    S.code = code; store.set('wsr.v1.last', code);
+    S.v = store.get(localKey()) || {};
+    $('#sheet').innerHTML = '<p class="empty-state">Loading…</p>';
+    try { S.data = await (await fetch(`data/${code}.json`)).json(); }
+    catch { $('#sheet').innerHTML = '<p class="empty-state">This language did not load. Reload the page and try again.</p>'; return; }
+    S.section = 'start'; S.filter = 'all';
+    $('#copy').disabled = false; sendLink();
+    renderLangs(); renderSheet();
+    if (S.db && S.uid) await pullMine();
+    statusLine();
+  }
+
+  function renderSheet() {
+    const sh = $('#sheet'); const D = S.data; if (!D) return;
+    const sec = D.sections.find((s) => s.id === S.section) || D.sections[0];
+    const count = (s) => s.rows.filter((r) => S.v[r.id]?.v).length;
+    sh.innerHTML = `<div class="sheet-title"><h2></h2><span class="muted"></span></div>
+      <div class="sheet-head">
+      <div class="tabs" role="tablist" aria-label="Sections"></div>
+      <div class="filters" aria-label="Show"></div></div>
+      <p class="blurb" style="margin-top:14px"></p><div class="rows"></div>`;
+    $('h2', sh).textContent = `${D.name} · ${D.english}`; $('h2', sh).lang = D.code; $('h2', sh).dir = 'auto';
+    $('.sheet-title .muted', sh).textContent = `Translation data from commit ${S.index.commit}, built ${S.index.built}`;
+    const tabs = $('.tabs', sh);
+    for (const s of D.sections) {
+      const t = document.createElement('button'); t.type = 'button'; t.className = 'tab'; t.setAttribute('role', 'tab');
+      t.setAttribute('aria-selected', String(s.id === sec.id));
+      t.innerHTML = '<span></span><span class="n"></span>'; t.firstChild.textContent = s.title; t.lastChild.textContent = `${count(s)}/${s.rows.length}`;
+      t.addEventListener('click', () => { S.section = s.id; renderSheet(); window.scrollTo({ top: sh.offsetTop - 10 }); });
+      tabs.appendChild(t);
+    }
+    const fl = $('.filters', sh);
+    for (const [k, label] of [['all', 'All'], ['todo', 'Not yet reviewed'], ['fix', 'Needs a change'], ['unsure', 'Not sure']]) {
+      const f = document.createElement('button'); f.type = 'button'; f.className = 'filter'; f.textContent = label;
+      f.setAttribute('aria-pressed', String(S.filter === k));
+      f.addEventListener('click', () => { S.filter = k; renderSheet(); });
+      fl.appendChild(f);
+    }
+    // Both rows are rebuilt on every click; on a phone they scroll sideways, so bring the current choice back into view.
+    for (const [row, on] of [[tabs, '[aria-selected="true"]'], [fl, '[aria-pressed="true"]']]) {
+      const cur = row.querySelector(on); if (cur && row.scrollWidth > row.clientWidth) row.scrollLeft = cur.offsetLeft - 16;
+    }
+    $('.blurb', sh).textContent = sec.blurb;
+    const list = $('.rows', sh);
+    const shown = sec.rows.filter((r) => { const v = S.v[r.id]?.v; return S.filter === 'all' || (S.filter === 'todo' ? !v : v === S.filter); });
+    if (!shown.length) list.innerHTML = '<p class="empty-state">Nothing here with this filter.</p>';
+    for (const r of shown) list.appendChild(rowEl(r, sec.id));
+  }
+
+  function rowEl(r, section) {
+    const el = document.createElement('article'); el.className = 'row'; el.dataset.v = S.v[r.id]?.v || '';
+    const lang = S.data.code, dir = S.data.dir || 'ltr';
+    if (r.kind === 'flag') {
+      el.innerHTML = `<div class="q"><span class="eyebrow" lang="en">Recorded question</span>
+        <div><span class="chip" lang="${lang}" dir="${dir}"></span> <span class="muted">for “<span class="en-word"></span>”</span></div>
+        <p class="qtext"></p><div class="examples"></div></div>`;
+      $('.chip', el).textContent = r.term; $('.en-word', el).textContent = r.en; // A right-to-left phrase quoted inside the English question is isolated, or the bidi algorithm reorders it.
+      const qt = $('.qtext', el);
+      for (const part of r.q.split(/(«[^»]*»)/)) {
+        if (dir === 'rtl' && part.startsWith('«')) { const b = document.createElement('bdi'); b.dir = 'rtl'; b.lang = lang; b.textContent = part; qt.appendChild(b); }
+        else qt.appendChild(document.createTextNode(part));
+      }
+      const ex = $('.examples', el);
+      for (const e of r.examples) {
+        const d = document.createElement('div'); d.innerHTML = '<span class="e"></span><span class="arrow">→</span><span class="t"></span>';
+        d.querySelector('.e').innerHTML = e.en; d.querySelector('.t').innerHTML = e.t; d.querySelector('.t').lang = lang; d.querySelector('.t').dir = dir;
+        ex.appendChild(d);
+      }
+    } else {
+      const tag = r.kind === 'gloss' ? 'Glossary entry' : r.kind === 'term' ? 'Label' : r.page === 'explainer' ? 'Explainer' : 'Primer';
+      el.innerHTML = `<div class="pair"><div class="cell en"><div class="tag"><span>English</span><span>${tag}</span></div><div class="body"></div></div>
+        <div class="cell tr" lang="${lang}" dir="${dir}"><div class="tag" lang="en"><span></span></div><div class="body"></div></div></div>`;
+      $('.cell.tr .tag span', el).textContent = S.data.english;
+      const fill = (cell, term, def) => {
+        const b = $('.body', cell);
+        if (r.kind === 'gloss') { b.innerHTML = '<div class="term"></div><div class="def"></div>'; b.firstChild.innerHTML = term; b.lastChild.innerHTML = def; }
+        else b.innerHTML = term;
+      };
+      fill($('.cell.en', el), r.en, r.enDef); fill($('.cell.tr', el), r.t || '<span class="muted">(no translation)</span>', r.tDef);
+    }
+    el.appendChild(verdictEl(r, section, el));
+    return el;
+  }
+
+  function verdictEl(r, section, rowNode) {
+    const wrap = document.createElement('div'); wrap.className = 'verdict';
+    const cur = S.v[r.id] || {};
+    const choices = document.createElement('div'); choices.className = 'choices';
+    for (const [k, label] of (r.kind === 'flag' ? FLAG_VERDICTS : VERDICTS)) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'choice'; b.dataset.v = k; b.textContent = label;
+      b.setAttribute('aria-pressed', String(cur.v === k));
+      b.addEventListener('click', () => {
+        const prev = S.v[r.id] || {};
+        const v = prev.v === k ? '' : k;
+        const s = v === 'fix' && !prev.s ? (r.kind === 'flag' ? '' : plain(r.kind === 'gloss' ? r.t + ' — ' + r.tDef : r.t)) : prev.s || '';
+        commit(r, section, { v, s, n: prev.n || '' });
+        const fresh = rowEl(r, section); rowNode.replaceWith(fresh);
+        const ta = fresh.querySelector('textarea'); if (ta && v) ta.focus();
+      });
+      choices.appendChild(b);
+    }
+    const id = document.createElement('span'); id.className = 'id'; id.textContent = r.id; choices.appendChild(id);
+    wrap.appendChild(choices);
+    if (cur.v === 'fix' || cur.v === 'unsure') {
+      const f = document.createElement('div'); f.className = 'fields';
+      if (cur.v === 'fix') f.appendChild(field(r, section, 's', r.kind === 'flag' ? 'The term you would use' : 'Your wording (edit the translation as you would write it)', cur.s));
+      f.appendChild(field(r, section, 'n', cur.v === 'fix' ? 'Why (optional)' : 'What you are unsure about', cur.n));
+      wrap.appendChild(f);
+    }
+    return wrap;
+  }
+
+  function field(r, section, key, label, value) {
+    const l = document.createElement('label'); const id = `f-${r.id}-${key}`; l.htmlFor = id;
+    l.textContent = label;
+    const ta = document.createElement('textarea'); ta.id = id; ta.value = value || '';
+    if (key === 's') { ta.lang = S.data.code; ta.dir = S.data.dir || 'ltr'; } else ta.dir = 'auto';
+    ta.addEventListener('input', () => {
+      const prev = S.v[r.id] || {};
+      commit(r, section, { ...prev, [key]: ta.value }, true);
+    });
+    l.appendChild(ta); return l;
+  }
+
+  function commit(r, section, x, typing = false) {
+    const rec = { v: x.v || '', s: x.s || '', n: x.n || '', th: r.th, at: new Date().toISOString() };
+    if (!rec.v && !rec.s && !rec.n) delete S.v[r.id]; else S.v[r.id] = rec;
+    store.set(localKey(), S.v);
+    if (!typing) refreshCounts();
+    clearTimeout(S.timers[r.id]);
+    S.timers[r.id] = setTimeout(() => push(r, section), typing ? 900 : 150);
+    statusLine();
+  }
+
+  function refreshCounts() {
+    const D = S.data; if (!D) return;
+    document.querySelectorAll('.tab').forEach((t, i) => { const s = D.sections[i]; t.lastChild.textContent = `${s.rows.filter((r) => S.v[r.id]?.v).length}/${s.rows.length}`; });
+    renderLangs();
+  }
+
+  async function push(r, section) {
+    if (!S.db || !S.uid || S.writable === false || S.dbFailed) return;
+    const rec = S.v[r.id];
+    const ref = S.db.collection('verdicts').doc(`${safeId(S.code)}.${r.id}.${safeId(S.uid)}`);
+    S.saving++; statusLine();
+    try {
+      if (!rec) await ref.delete();
+      else await ref.set({ locale: S.code, row: r.id, section, verdict: rec.v, suggestion: rec.s, note: rec.n, th: rec.th, at: rec.at, by: S.uid,
+        reviewer: ($('#reviewer').value || '').slice(0, 80), en: plain(r.kind === 'flag' ? r.term : r.en).slice(0, 160) });
+    } catch (e) {
+      if (e && (e.code === 'invalid_argument' || e.code === 'not_granted' || e.code === 'revoked')) S.dbFailed = true;
+    } finally { S.saving--; statusLine(); }
+  }
+
+  function watchOwner(db) {
+    if (!db) return;
+    const box = $('#owner');
+    db.collection('verdicts').onSnapshot((snap) => {
+      const agg = {};
+      for (const d of snap.docs) {
+        const x = d.data(); const a = (agg[x.locale] ||= { people: new Set(), ok: 0, fix: 0, unsure: 0 });
+        a.people.add(x.by); if (a[x.verdict] != null) a[x.verdict]++;
+      }
+      const rows = (S.index?.locales || []).map((L) => { const a = agg[L.code]; return `<tr><td lang="${L.code}"></td><td>${a ? a.people.size : 0}</td><td>${a ? a.ok : 0}</td><td>${a ? a.fix : 0}</td><td>${a ? a.unsure : 0}</td></tr>`; }).join('');
+      box.innerHTML = `<span class="eyebrow">Responses so far · visible to you as owner</span><table><thead><tr><th>Language</th><th>Reviewers</th><th>Reads well</th><th>Needs a change</th><th>Not sure</th></tr></thead><tbody>${rows}</tbody></table>`;
+      box.querySelectorAll('td[lang]').forEach((td, i) => { td.textContent = S.index.locales[i].english; });
+      box.hidden = false;
+    }, () => {});
+  }
+
+  $('#reviewer').addEventListener('change', (e) => store.set('wsr.v1.name', e.target.value));
+  $('#copy').addEventListener('click', async () => {
+    if (!S.data) return;
+    const rows = allRows().filter((r) => S.v[r.id]);
+    const tally = { ok: 0, fix: 0, unsure: 0 }; rows.forEach((r) => { const v = S.v[r.id].v; if (tally[v] != null) tally[v]++; });
+    const name = $('#reviewer').value.trim() || '(no name given)';
+    const payload = { locale: S.code, reviewer: name, data: S.index.commit, copied: new Date().toISOString(),
+      verdicts: rows.map((r) => ({ id: r.id, section: r.section, verdict: S.v[r.id].v, suggestion: S.v[r.id].s, note: S.v[r.id].n, th: S.v[r.id].th,
+        en: plain(r.kind === 'flag' ? r.term : r.en).slice(0, 100) })) };
+    const text = `Watch Sim translation review: ${S.data.english} (${S.code})\nReviewer: ${name}\n${rows.length} rows: ${tally.ok} read well, ${tally.fix} need a change, ${tally.unsure} not sure\n---\n${JSON.stringify(payload, null, 1)}\n`;
+    try { await navigator.clipboard.writeText(text); setStatus(SEND_TO ? `Copied ${rows.length} verdicts. Now press "Send it" and paste them into the issue.` : `Copied ${rows.length} verdicts. Paste them into an email or message to whoever sent you this page.`); $('#export').hidden = true; }
+    catch { const box = $('#export'); box.hidden = false; const ta = $('#exportText'); ta.value = text; ta.focus(); ta.select(); setStatus(SEND_TO ? 'Copying was blocked. The text is shown below the rows, already selected: copy it, then press "Send it".' : 'Copying was blocked. The text is shown below the rows, already selected.'); }
+  });
+
+  boot();
+})();
+</script>

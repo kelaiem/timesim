@@ -20,7 +20,9 @@
 //                 * CONSTANTS preserved: <code> spans byte-identical, and
 //                   every number in an SVG plate label surviving translation
 //                   — the entry's "the convention is the number, not the
-//                   word" made mechanical
+//                   word" made mechanical — and on a SOURCE page every bare
+//                   number in the PROSE outside <code> too (a multiset, with
+//                   a mutation control proving the comparison can fail)
 //
 // §95 — IT TAKES A PAGE. explain.html was hardcoded in four places until the
 // primer earned its translation; both pages now run through --page, and
@@ -147,6 +149,56 @@ const readPage = async (name) => {
 // ---- number rules -----------------------------------------------------------
 // Glyphs, for a page whose numbers are identifiers being quoted.
 const numGlyphs = (s) => (s.replace(/<[^>]+>/g, ' ').match(/\d+(?:\.\d+)?/g) || []).sort();
+// The same glyphs in a SOURCE page's PROSE, read outside <code> — the code
+// spans are held byte-identical by the <code> check, and counting them twice
+// would only report one defect as two. A multiset (the sort), never a
+// sequence: a translation reorders a sentence, and an ordered comparison
+// would fail every German subordinate clause for saying the same numbers in
+// a different order.
+//
+// CHARACTER REFERENCES ARE DECODED FIRST, and that is a tokenizer fix rather
+// than an allowance. A key is the DOM's normalized innerHTML, so it carries ½
+// as the character; a table may write &frac12;, which renders identically and
+// which a bare \d reads as the number 12. That one entity was five of the
+// thirteen mismatches this check found on arrival (de, fr, ja, zh, zh-Hant),
+// every one in the same spider-differential paragraph. No NAMED reference
+// decodes to an ASCII digit (measured over the whole HTML5 table — the nearest
+// are &sup1;-&sup3;, which \d does not match), so a named one is a space here;
+// a NUMERIC one could encode a digit, so it is decoded, never dropped.
+const decodeRefs = (s) => s
+  .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+  .replace(/&[a-z][a-z0-9]*;/gi, ' ');
+const proseGlyphs = (s) => numGlyphs(decodeRefs(s.replace(/<code>.*?<\/code>/g, ' ')));
+// The comparison itself, named so the gate and its mutation control below run
+// the SAME code — a control that re-implemented it would prove nothing.
+const proseNumDrift = (key, v) => {
+  const a = proseGlyphs(key), b = proseGlyphs(v);
+  if (a.join(',') === b.join(',')) return null;
+  // Print the DIFFERENCE, not both lists: a long paragraph carries twenty
+  // numbers, and the one that moved is unfindable in two full multisets.
+  const less = (x, y) => { const r = [...y]; return x.filter((n) => { const i = r.indexOf(n); if (i < 0) return true; r.splice(i, 1); return false; }); };
+  return `${key.replace(/<[^>]+>/g, '').slice(0, 60)} :: English only [${less(a, b).join(' ')}] · translation only [${less(b, a).join(' ')}]`;
+};
+// THE CONTROL. Plant a defect in a translated block that currently passes, and
+// demand the comparison reports it — the honesty vocabulary's rule (a gate is
+// only as good as the evidence that it can fail) applied to numbers. Two
+// plants, because they are the two shapes the check found on arrival: a digit
+// CHANGED (the 270° → 999° class) and a decimal point RE-PUNCTUATED to the
+// locale's comma (German's 0,225). Each touches only text outside <code>,
+// tags and character references, so what it plants is prose a reader sees.
+const PROTECTED = /(<code>.*?<\/code>|<[^>]+>|&[#a-z0-9]+;)/gi;
+const plant = (v, re, fn) => {
+  const parts = v.split(PROTECTED);
+  for (let i = 0; i < parts.length; i += 2) {   // even indices: free text
+    if (re.test(parts[i])) { parts[i] = parts[i].replace(re, fn); return parts.join(''); }
+  }
+  return null;
+};
+const MUTATIONS = {
+  'changed digit': (v) => plant(v, /\d/, (d) => String((Number(d) + 1) % 10)),
+  're-punctuated decimal': (v) => plant(v, /\d\.\d/, (m) => m.replace('.', ',')),
+};
 // Values, for a page whose numbers are quantities being read aloud. Each
 // locale's own grouping and decimal marks are parsed away, so a translation is
 // free to write 18.000 and 0,024 — and still cannot move a decimal point.
@@ -215,6 +267,7 @@ const MARKS = {
   id: { group: ['.'], dec: ',' },        // §249 — id-ID and the legacy 'in' alike: German's marks (Chromium 141)
   tr: { group: ['.'], dec: ',' },        // §249 — tr-TR and tr-CY alike: German's marks (Chromium 141)
   cy: { group: [','], dec: '.' },        // §249 — the BORROWED en-GB tag (Chromium carries no 'cy'): English's marks, Welsh's own standard
+  fil: { group: [','], dec: '.' },       // §249 — fil-PH, fil, tl and tgl alike: English's marks on latn (Chromium 141, three default locales)
   he: { group: [','], dec: '.' },        // §249 — he-IL is latn by default: English's marks (Chromium 141)
   fa: { group: [','], dec: '.' },        // §249 — fa-IR-u-nu-latn: Arabic's row, \d reads a ۱ as a DROPPED quantity
 };
@@ -300,6 +353,15 @@ const HONESTY = {
   // the letter after the stem. Simulated is efelych-, and after the feminine
   // ei it takes an h: «wedi'i hefelychu».
   cy:        { m: /\b[mf]odel(?:u|w|i|edig)/i, s: /\bh?efelych/i },
+  // §249 — the Spanish-derived participle modelado (and its linker form
+  // modeladong) and the native verb forms (iminodelo, nagmomodelo, i-model),
+  // never the bare noun «modelo»: the credit line's "AI model" is «ang AI model
+  // ng Anthropic», and «modelo»/«modelong» is what every plain "a model" uses.
+  // Simulated is simulado / simulasyon — NOT the stem «simula», which is the
+  // everyday word for "begin" (nagsimula, sinimulan), so a bare-stem matcher
+  // would call every "starts" a simulation. The English leftovers «simulated»
+  // and «simulation» do not match either: an untranslated word cannot pass.
+  fil:       { m: /modelad|\b(?:imodelo|imomodelo|iminodelo|iminomodelo|minodelo|minomodelo|nagmodelo|nagmomodelo|magmodelo|magmomodelo|pagmodelo|pagmomodelo)|\b(?:i|ini|nag|nagmo|mag|magmo|pag|pagmo)-model/i, s: /imulasi?yon|simulad/i },
   // §249 — the -سازی compound, never the bare noun: the credit line's "AI
   // model" is مدل هوش مصنوعی. The joint is a ZWNJ, a space or nothing, and the
   // page uses all three spellings somewhere, so the matcher takes all three.
@@ -360,6 +422,12 @@ const vocabVerified = new Set();
 // bootstrap order --extract documents above) would fail on both stems before
 // anyone had written a word.
 const stemTally = new Map();   // lang -> { m, s, nM, nS }
+// The prose-number control's results, per page and locale, asserted at the
+// end: a planted defect the comparison did not report FAILS the run.
+const proseControl = [];       // { doc, lang, kind, caught }
+// What the number rule covered, per page, for the summary line.
+const numbersChecked = [];
+let sourceChecked = false;
 if (MODE === 'extract') {
   const { items, tables } = await readPage(TARGETS[0]);
   // §116 — the bootstrap state, stated rather than inferred. A locale with no
@@ -413,6 +481,10 @@ if (MODE === 'extract') {
   for (const target of TARGETS) {
     const { doc, items, tables, numbers, errors } = await readPage(target);
     console.log(`\n══ ${doc} — numbers: ${numbers === 'source' ? 'SOURCE form (identifiers quoted)' : 'QUANTITIES (localized, checked by value)'}`);
+    if (numbers === 'source') sourceChecked = true;
+    numbersChecked.push(numbers === 'source'
+      ? `${doc}: plate labels and runtime strings by glyph, prose by glyph multiset outside <code>`
+      : `${doc}: every block by value`);
     const keySet = new Set(items.map((i) => i.key));
     // §116 — the roster is the PAGE's, read from its own allTables() keys.
     // Adding a locale is one entry in that module's LOADERS map; this tool
@@ -433,7 +505,11 @@ if (MODE === 'extract') {
       const invariant = items.length - live.length;
       const translated = live.filter((i) => table[i.key]);
       const missing = live.filter((i) => !table[i.key]);
-      const markupBad = [], codeBad = [], numBad = [];
+      const markupBad = [], codeBad = [], numBad = [], proseBad = [];
+      // The control's specimens: the first translated prose block that passes
+      // and offers each mutation a site, so the catch is attributable to the
+      // plant and not to a defect already there.
+      const specimen = {};
       for (const it of items) {
         const v = table[it.key];
         if (!v) continue;
@@ -443,14 +519,23 @@ if (MODE === 'extract') {
           const a = codes(it.key), b = codes(v);
           if (a.join('|') !== b.join('|')) codeBad.push(`${it.key.slice(0, 50)} :: [${a}] vs [${b}]`);
         }
-        // On a SOURCE page only plate labels and runtime strings are checked
-        // (prose quotes its constants inside <code>, already held above). On a
-        // QUANTITY page every block is checked, because there is no <code> to
-        // hold anything and the prose is where the quantities live.
-        const numbered = numbers === 'source'
-          ? (it.kind === 'svg' || it.kind === 'dynamic')
-          : true;
-        if (!numbered) continue;
+        // On a SOURCE page every block is checked, two ways. Plate labels and
+        // runtime strings carry no <code>, so all their glyphs are compared.
+        // PROSE quotes its identifiers inside <code> (held above), but it also
+        // carries bare numbers outside it — "at a real 270°", "17 → 23
+        // clicks" — and a prose-only check was missing until a value edited in
+        // an Indonesian paragraph passed the whole gate. Those are compared as
+        // a multiset outside <code>; see proseGlyphs. On a QUANTITY page every
+        // block is checked by value, because there is no <code> to hold
+        // anything and the prose is where the quantities live.
+        if (numbers === 'source' && it.kind !== 'svg' && it.kind !== 'dynamic') {
+          const d = proseNumDrift(it.key, v);
+          if (d) { proseBad.push(d); continue; }
+          for (const [kind, mutate] of Object.entries(MUTATIONS)) {
+            if (!specimen[kind] && mutate(v) !== null) specimen[kind] = { key: it.key, v };
+          }
+          continue;
+        }
         if (numbers === 'source') {
           const a = numGlyphs(it.key), b = numGlyphs(v);
           if (a.join(',') !== b.join(',')) numBad.push(`${it.key} :: [${a}] vs [${b}]`);
@@ -469,8 +554,21 @@ if (MODE === 'extract') {
           if (a.join(',') !== b.join(',')) numBad.push(`${it.key.slice(0, 60)} :: [${a}] vs [${b}]`);
         }
       }
+      // Run the plants through the gate's own comparison. A locale whose prose
+      // carries no number outside <code> has nothing here to gate, so it has
+      // no specimen and no control row — that is reported, not failed.
+      const ctlRows = [];
+      if (numbers === 'source') {
+        for (const [kind, mutate] of Object.entries(MUTATIONS)) {
+          const sp = specimen[kind];
+          if (!sp) { ctlRows.push(`${kind}: no site`); continue; }
+          const caught = proseNumDrift(sp.key, mutate(sp.v)) !== null;
+          proseControl.push({ doc, lang, kind, caught });
+          ctlRows.push(`${kind} ${caught ? 'caught' : 'MISSED'}`);
+        }
+      }
       const pct = live.length ? ((translated.length / live.length) * 100).toFixed(1) : '100.0';
-      const bad = unmatched.length + markupBad.length + codeBad.length + numBad.length;
+      const bad = unmatched.length + markupBad.length + codeBad.length + numBad.length + proseBad.length;
       if (bad) failed++;
       console.log(`\n[${lang}] ${translated.length}/${live.length} translated (${pct}%) · ${invariant} invariant (numbers/symbols, nothing to translate)`);
       console.log(`  unmatched keys : ${unmatched.length}${unmatched.length ? '  <-- FAIL' : ''}`);
@@ -479,8 +577,15 @@ if (MODE === 'extract') {
       for (const m of markupBad.slice(0, 10)) console.log(`      ${m}`);
       console.log(`  <code> drift   : ${codeBad.length}${codeBad.length ? '  <-- FAIL' : ''}`);
       for (const c of codeBad.slice(0, 10)) console.log(`      ${c}`);
-      console.log(`  plate numbers  : ${numBad.length}${numBad.length ? '  <-- FAIL' : ''}`);
-      for (const n of numBad.slice(0, 10)) console.log(`      ${n}`);
+      if (numbers === 'source') {
+        console.log(`  plate numbers  : ${numBad.length}${numBad.length ? '  <-- FAIL' : ''}`);
+        for (const n of numBad.slice(0, 10)) console.log(`      ${n}`);
+        console.log(`  prose numbers  : ${proseBad.length}${proseBad.length ? '  <-- FAIL' : ''} · control: ${ctlRows.join(', ')}`);
+        for (const n of proseBad.slice(0, 10)) console.log(`      ${n}`);
+      } else {
+        console.log(`  numbers (value): ${numBad.length}${numBad.length ? '  <-- FAIL' : ''}`);
+        for (const n of numBad.slice(0, 10)) console.log(`      ${n}`);
+      }
       // ---- honesty vocabulary (§241 area C) ----
       // CROSSED gates; ABSENT reports. A crossed row is a lie: the English
       // says one word and the translation says only the other. A row with
@@ -648,7 +753,22 @@ if (MODE === 'extract') {
   console.log(`   stale stems: ${stale.length}${stale.length ? '  <-- FAIL' : ''}`);
   for (const x of stale) console.log(`      ${x}`);
   if (stale.length) failed++;
-  console.log(failed ? '\nFAIL' : '\nPASS — 0 unmatched, 0 markup drift, 0 code drift, 0 number drift, 0 crossed honesty terms');
+  // The prose-number gate is only as good as its control, so the run says how
+  // many plants it caught. A missed plant is a comparison that cannot fail.
+  const missed = proseControl.filter((c) => !c.caught);
+  const ctlLocales = new Set(proseControl.map((c) => `${c.doc}:${c.lang}`)).size;
+  if (sourceChecked) console.log(`\n══ prose numbers: control caught ${proseControl.length - missed.length}/${proseControl.length} planted defects (changed digit, re-punctuated decimal) across ${ctlLocales} SOURCE-page table(s)`);
+  for (const m of missed) console.log(`   MISSED ${m.kind} in ${m.doc} [${m.lang}]  <-- FAIL`);
+  if (missed.length) failed++;
+  // A SOURCE page checked with NO plant run is a control that verified
+  // nothing — the HONESTY rows' "unverified" rule, applied here.
+  if (sourceChecked && !proseControl.length) {
+    console.log('   no planted defect could run on a SOURCE page — the prose check is unverified  <-- FAIL');
+    failed++;
+  }
+  // Says WHAT was checked, not only that it passed: "0 number drift" once
+  // read the same whether or not the explainer's prose had been looked at.
+  console.log(failed ? '\nFAIL' : `\nPASS — 0 unmatched, 0 markup drift, 0 code drift, 0 number drift (${numbersChecked.join('; ')}), 0 crossed honesty terms`);
 }
 await browser.close();
 server.kill();
