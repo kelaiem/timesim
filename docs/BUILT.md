@@ -32557,3 +32557,156 @@ and the energy column's own `g` rather than restating either. `explain.html`'s
 free-sprung caption no longer says gravity is not modelled. It names the
 position as modelled, gives the spring-weight finding, and keeps "modelled, not
 simulated" and the escapement's share unmodelled, in every locale.
+
+## §264 — The push's point tier on a parallel runner, handed to the battery before judging
+
+**Why.** The battery on a push to `main` had grown to the edge of its cap. The
+green runs took 89 minutes against a 90-minute cap, and five of the last nine
+pushes were killed (#608 raised the cap to 150 as headroom). The six silent
+spec points (TODO 186) were 1541 s of a green 89-minute push (run
+37924262189). They are swept FULL after the shards, on the critical path.
+
+None of that tier needs the shards:
+- A point boots its own build.
+- A full point reads the default's DIGESTS off its own virgin boot
+  (`defaultPointDigests`).
+- The union with the default's payloads, and the verdict, are the assembly's
+  (`judgePoint`).
+
+That independence is what let §260 spread the tier across matrix workers.
+This entry uses it the other way: the tier is measured on a separate runner
+from t=0, while the battery sweeps.
+
+**What was built.**
+- **The producer.** `ci-battery.mjs --points-only --points-tier-out FILE`
+  measures the tier alone, using the same server, browser and `runPointTier`
+  a whole run uses. It writes the result with the git TREE it measured and
+  the point-code digest.
+- **The consumer.** `--points-tier-from FILE --points-tier-wait-s N` is
+  taken at the point where the single process would sweep the tier. If the
+  file proves itself, it is used; anything else sweeps the tier in-process
+  and logs which check refused it.
+- **What "proves itself" means.** The same format, the same tree (a single
+  changed byte anywhere refuses it), the same point code, whole and not a
+  PR's, and every swept point exactly once, full.
+- **The jobs.** On a push, and on a dispatch that stays hosted, the route
+  sets `points_job`. A new `battery points` job runs the producer and
+  uploads the file the moment it exists. The battery job starts
+  `tools/battery-points-fetch.sh` in the background beside the harness.
+  upload-artifact@v4 lists a file on the run as soon as its upload step ends,
+  so the fetcher polls for it and writes either the file (atomically) or
+  `FILE.failed` with a reason.
+- **What does not change.** The judging stays in the battery's one
+  assembly, so there is still one gate loop, and the baseline is still
+  written by the one job that writes it.
+- **Where it does not apply.** Not a PR, whose points are incremental and
+  ceilinged, and which §259's matrix already spreads. Not the host's
+  dispatch or nightly, where a second job would take the slot §260 keeps
+  free. The flags refuse `--matrix`, `--collect`, `--only` and
+  `--spec-only`.
+
+**Where the numbers come from.**
+- **The sibling's cap, 50 min.** The tier alone (1541 s, plus a digest boot
+  and the job's setup) is about 28 min. Times the 1.66× same-tree spread
+  `battery.yml` uses for every cap, that is 46.5, rounded up to 50. It is
+  defined once, in the route (`points_cap_min`, with `points_cap_s` beside
+  it because Actions expressions have no arithmetic). The battery's wait
+  reads the same number, so it stops waiting exactly when the sibling would
+  be killed.
+- **The worst case.** It is the run as it was before this entry. A dead,
+  slow or mismatched sibling sweeps the tier in-process.
+
+**Measured.**
+- **The hand-off, end to end on CI** (dispatch on the branch, run
+  37962011695, hosted, whole because a branch dispatch has no baseline):
+  - `battery points` took 21.6 min (16:50:46–17:12:21), its tier 1260.1 s.
+  - The fetcher had the file at +1281 s.
+  - The battery reached its point tier at 17:50:38, took the file
+    (`point tier: taken from … waited 0.0s here`) and judged all six points
+    CLEAN. 54/54 gates passed.
+  - The battery job took **63.1 min** (16:50:46–17:53:50), against 89 for
+    the last green push. The harness's own total was 3533.8 s, against
+    5081.3 s.
+  - The point tier now costs the push nothing but the time to read a file.
+    The battery's critical path is the shards (~48 min to the last shard
+    task), boot B, the 584 s of spec boots, and the post-battery probes.
+- **The producer, locally** (4-vCPU dev container): `--points-only` measured
+  the six points in 1550.5 s and exited 0.
+- **The fetcher, against a mock of the three API calls it makes:** the
+  artifact arriving, the sibling ending without one, and the wait running
+  out. It wrote the file in the first case and `FILE.failed` with the reason
+  in the other two.
+
+**What it leaves.**
+- **The push cap.** It stays at 150 until several push runs have measured
+  the new wall, by the cap's own rule: pull it back only from green runs it
+  did not truncate.
+- **The spec boots.** They are the next tier off the critical path by the
+  same argument. They are measurement-only, and §260 already spreads them, but
+  at 584 s they were not worth a second sibling in this landing.
+
+## §265 — The push's spec boots join the parallel tier job
+
+**Why.** §264 left this one named: the spec boots are the next tier that does
+not need the shards, and they were left out only because 584 s did not seem to
+justify a second sibling. The better reading was already in §264's own
+argument. A spec boot is one virgin build of one declared point, measurement
+only, and §260 had already spread the tier across matrix workers, which is the
+proof that no spec row reads another's. Putting it in the same job as the point
+tier costs no second runner, no second artifact and no second fetcher. The job
+is already there with its browser installed, and it measures both tiers
+back to back.
+
+**What was built.**
+- **One job, one file.** §264's `battery points` job is now `battery tiers`,
+  and `--points-only --points-tier-out` / `--points-tier-from` /
+  `--points-tier-wait-s` are `--tiers-only --tiers-out` / `--tiers-from` /
+  `--tiers-wait-s`. The file carries both tiers. The route's `points_job`,
+  `points_cap_min` and `points_cap_s` are `tiers_job`, `tiers_cap_min` and
+  `tiers_cap_s`, and the fetcher is `tools/battery-tiers-fetch.sh`. A
+  half-renamed hand-off would be a producer and a consumer disagreeing about a
+  flag, so the rename is the landing's own diff and not a follow-up.
+- **Each tier proves itself on its own terms.** The file as a whole must be the
+  same format and the same git tree. Then the spec tier must have exactly one
+  row per declared `SPEC_POINTS` row, in declared order, because the assembly's
+  gates read them by that order. The point tier keeps §264's rules: the same
+  point code, whole, every point full. A tier that fails its test is run HERE
+  and the log says which check refused it, so one stale half does not throw
+  away the other.
+- **The flags still refuse.** `--tiers-only` takes no `--matrix`,
+  `--collect`, `--only`, `--spec-only` or PR flags. `--tiers-from` is the single
+  process's feed and is refused beside the same four.
+- **The cap, 55 min.** It is §264's rule, re-derived with the new load: the
+  point tier measured 21.6 min alone, the spec boots add about 584 s, and the
+  job's setup is about a minute. Times the 1.66× same-tree spread
+  `battery.yml` uses for every cap, that is 52.0, rounded up to 55. It is
+  defined once, in the route, and the battery's wait reads the same number.
+- **What does not change.** Judging stays in the battery's one assembly.
+  Pushes and hosted dispatches only; a PR, a host dispatch and the nightly run
+  both tiers where they always did.
+
+**Measured.** Dispatch on the branch, run 37973612229, hosted (a branch
+dispatch has no baseline, so the run is whole). From the jobs API's step
+times:
+- `battery tiers`: 37.9 min (18:29:27–19:07:24). Its measuring step took
+  37.3 min and the hand-off step ended at 19:07:21.
+- `battery`: **40.1 min** (18:29:26–19:09:31), its harness step 37.9 min.
+  §264's run was 63.1 min, and the last push before §264 was 89.
+- The battery's harness step ended 24 s after the tiers job handed over its
+  file. That is what a run waiting on its sibling looks like: the critical
+  path is now the parallel job, not the shards.
+- **What I could not read.** The job log is served from a host this session's
+  `gh` does not contact, so the `spec tier: taken from` and `point tier: taken
+  from` lines were not read here. The wall above is the evidence that both
+  tiers were taken and not re-run in-process (36 boots and six sweeps in-process
+  would add the 584 s and 1541 s back). The first push to `main` after this
+  landing is the confirmation, and its log should be read for both lines.
+
+**What it leaves.**
+- **The tiers job is the critical path.** At 37.9 min it is now what the push
+  waits on, a little longer than the shards. The next cut is inside it: the
+  tiers are independent of each other, and §260 already knows how to spread
+  them across workers. That is a second parallel job and not this entry's
+  claim.
+- **The caps.** Push 150 and PR 125 stay until several runs have measured
+  the new wall, by the caps' own rule.
