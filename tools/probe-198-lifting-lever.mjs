@@ -105,7 +105,7 @@ const out = await page.evaluate(async () => {
   const walls = { rIn: A.band.annulusIn_u, rOut: A.band.annulusOut_u, top: A.band.ceiling };
   const env = { rMin: Infinity, rMax: 0, zMax: -Infinity, zMin: Infinity, ringTop: -Infinity, outside: [] };
   const vv = new THREE.Vector3();
-  for (const name of ['alarmGongArc', 'alarmGongPost', 'alarmHammerHead', 'alarmHammerArm', 'alarmHammerPost', 'alarmHammerSpringStud']) {
+  for (const name of ['alarmGongArc', 'alarmGongPost', 'alarmHammerHead', 'alarmHammerArm', 'alarmHammerPost', 'alarmHammerStud', 'alarmHammerSpiral', 'alarmHammerCollet']) {   // §266: the spiral, its collet and its stud replaced the blade's stud
     const o = mesh(name); const p = o.geometry.attributes.position;
     let worst = 0;
     for (let i = 0; i < p.count; i++) {

@@ -314,11 +314,11 @@ if (JSON_OUT) {
   console.log(`  wire            ⌀${fmt(2 * aW * 1000)} mm  × ${fmt(L * 1000)} mm developed (${fmt(w.span * 180 / Math.PI, 2)}° of r ${fmt(w.R, 2)})  ${fmt(M * 1e6, 2)} mg, modal ${fmt(mModal * 1e6, 2)} mg (the arc fundamental's ${fmt(arch[0].mFrac, 4)} of the wire — §253; S ${fmt(S_arc, 0)})`);
   console.log(`  hammer rotor    ${fmt(out.rotor.vol_u3 * U ** 3 * RHO * 1e6, 2)} mg   I ${I_h.toExponential(4)} kg·m²   effective at the face ${fmt(mEff * 1e6, 2)} mg`);
   console.log(`  the blow        ${fmt(Math.abs(thetaDot), 1)} rad/s → ${fmt(Math.abs(vHead), 3)} m/s at the face,  E = ${E_blow.toExponential(4)} J`);
-  console.log(`                  fall ${fmt(D.hammer.fall_s * 1000, 2)} ms — CHOSEN (a third of the cam's free window), not √(k/I)`);
-  console.log(`  the spring gap  the law implies k = ${D.spring.impliedK_Nm_per_rad.toExponential(3)} N·m/rad, i.e. a ${fmt(D.spring.needLen_u, 2)} u blade`);
-  console.log(`   (TODO 128)     the drawn bar is ${fmt(D.spring.free_u, 2)} u and would bend at ${D.spring.drawnK_Nm_per_rad.toExponential(3)} — ${fmt(D.spring.drawnK_Nm_per_rad / D.spring.impliedK_Nm_per_rad, 0)}× stiffer`);
-  console.log(`                  and it is not a blade at all: it STRETCHES ${fmt(D.spring.stretch_u, 3)} u (${fmt(100 * D.spring.stretch_u / D.spring.free_u, 0)}% of itself) over the draw`);
-  console.log(`                  at 2.2 u a real blade would work to ${fmt(D.spring.rootStress_Pa / 1e6, 0)} MPa against a ${fmt(D.spring.yield_Pa / 1e6, 0)} MPa yield`);
+  console.log(`                  fall ${fmt(D.hammer.fall_s * 1000, 2)} ms — √(k/I) since §266 (W ${fmt(D.spring.W_rad_s, 0)} rad/s), where §25 chose a third of the cam's free window`);
+  console.log(`  the spring      §266's torsion spiral: k = ${D.spring.k_Nm_per_rad.toExponential(3)} N·m/rad (energy rate; secant ${D.spring.kSecant_Nm_per_rad.toExponential(3)}, pure ${D.spring.kPure_Nm_per_rad.toExponential(3)})`);
+  console.log(`   (TODO 128)     a ${fmt(D.spring.t_mm, 3)} mm × ${fmt(D.spring.b_u * UNIT_MM, 3)} mm strip, ${fmt(D.spring.coils, 4)} turns, ${fmt(D.spring.devLen_mm, 2)} mm developed, strain ${D.spring.strainMax.toExponential(3)} at the draw (target ${D.spring.strainTarget.toExponential(3)})`);
+  console.log(`                  the lift's peak ${D.spring.liftPeak_Nm.toExponential(3)} N·m at the strike arbor against its ${D.spring.liftBudget_Nm.toExponential(3)} budget (${D.spring.liftShare} of ${D.spring.arborTqSetup_Nm.toExponential(3)} at set-up); mean spend ${D.spring.liftSpend_Nm.toExponential(3)}`);
+  console.log(`                  stores ${(D.spring.storedAtDraw_J * 1e6).toFixed(2)} µJ at the draw, ${(D.spring.storedAtWire_J * 1e6).toFixed(2)} µJ at the wire — releases ${(D.spring.release_J * 1e6).toFixed(2)} µJ (the blow, held as an identity below)`);
   console.log(`  hand-off        μ = ${fmt(mu)} (matched at 1.0), η = ${fmt(eta)}, contact ${fmt(tau * 1e6, 2)} µs\n`);
   console.log('  mode      f        SPL @0.3 m     dBA      T60      heard            kind');
   for (const m of modes)
