@@ -840,15 +840,24 @@ second gate loop would be two definitions of standing rule 4.
 `--only`, a probe flag CI never passes (its key space is every declared check
 and every slice a check declares — read from `BATTERY`, since a projected slice
 has no `COSTS` row — and it throws on anything else). **Since §259 (Landing B)
-`battery.yml` uses it, on a pull request's opt-in only** — the `battery-matrix`
-label or `[matrix]` in the title: the battery job becomes a matrix of two legs
+`battery.yml` uses it**, on a pull request's opt-in (the `battery-matrix` label
+or `[matrix]` in the title): the battery job becomes a matrix of two legs
 (`--matrix i/2`, uploading their tasks files) and a hosted, browser-free
 `battery-collect` job named `battery` gates. With no opt-in the worker list is
-`[0]` and the job is the single process, unchanged. Pushes, dispatches and the
-nightly never split — a collector writes no digests, so a split run can never
-seed a baseline — and a host with one runner online refuses the split rather
-than running two workers in series. Whether it is worth asking for is measured
-per host in `docs/RUNNERS.md`, never predicted from a dev container.
+`[0]` and the job is the single process, unchanged. A host with fewer than two
+IDLE runners refuses the split rather than running two workers in series.
+**Since §263 a split run may SEED a baseline too**, so a hosted dispatch can ask
+for one (`split: true`); a push stays the single process with §265's tiers job
+beside it, which falls back to sweeping the tiers itself if its sibling dies,
+where a dead leg fails a whole split. `--collect --digests FILE` writes the key worker 0's
+§152 preflight read (the object one process writes, carried in its tasks file,
+and refused when no worker read one), so the collector has the whole baseline,
+report + digests + `points.json`. It seeds it through `tools/battery-seed.sh`,
+the same rule the single process applies, and only when both workers recorded
+the collector's own platform, because that is the cache key it writes. The
+nightly and a self-hosted dispatch keep the single process. Whether a split is
+worth asking for on a host is measured per host in `docs/RUNNERS.md`, never
+predicted from a dev container.
 
 **What makes slicing legal at all is TODO 54's canonical axis entry.** A slice
 runs in its own browser context and starts from `resetInputs()`, so it can only
@@ -900,13 +909,18 @@ and building it established that the push run bounds a key error to minutes
 rather than a day and fires per merge rather than per date. The `schedule:`
 that exists is §200's, not §152's — it seeds the SELF-HOSTED baseline, the
 platform a push can never write, and is skipped when no host is available.
-A push's job cap is 150 min (the dispatch and nightly that seed a baseline
-share it since TODO 186; a PR's is 125): the push is the
+A single-process seeding run's job cap is 150 min (the push's until §263 split
+it; the dispatch and nightly that seed a baseline share it since TODO 186; a
+PR's is 125): the push is the
 run that writes the hosted baseline, and three in a row were cancelled at 50
 inside their last sweep, which left the tree with no baseline at all. It was
 90 until green pushes reached 89 min and five of the last nine were killed at the cap.
 150 is the slowest green run times the 1.66x same-tree spread `battery.yml`
-measured, because the tail past a cap cannot be read. The PR's was 60, "the old
+measured, because the tail past a cap cannot be read. **Since §263 a split
+leg's cap is 95** (a `split: true` dispatch): three green split runs walled
+29.6–51.9 min, and 95 is the slowest leg (51.4 min) times the 1.77x spread those
+legs showed across runners. 150 stays for every single process, the push
+included. The PR's was 60, "the old
 cap plus the point ceiling", until a WHOLE PR run, which is any PR after a
 killed push or touching the check code, measured 73.8 min. 125 is that times
 the same spread. Every uncertainty — no cache hit, an
@@ -932,7 +946,9 @@ one assembly. Each tier proves itself or runs in-process and says why. Both
 need the same tree. The spec tier needs one row per declared point, in order.
 The point tier needs the same point code, whole, every point full. A dead
 sibling or a fetcher that gave up runs both here, so the worst case is the run
-as it was. Measured, §264 took the push from 89 to 63 min. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+as it was. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
+which spreads both tiers across its two workers, so the tiers job runs only on
+an unsplit run. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,

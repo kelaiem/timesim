@@ -23709,10 +23709,19 @@ const STRIKE_REF = (() => {
 // margin (the plate's extrude bevel swells INWARD from plateR, measured —
 // the survey that sited this read the plate's reach at plateR exactly).
 // Outer: the case middle's back bore (§186's R_BORE_BACK — the wall the base
-// plate's rim locates against) less the margin. Ceiling: see GONG_BAND_TOP.
-// Floor: measured below, once the arc's azimuths are known.
+// plate's rim locates against) less the margin — AS CUT, since §262: the
+// band is a sector lathe of G.CASE_LATHE_SEG facets per turn, each lying
+// inside the authored circle by up to R·(1 − cos(π/96)) = 0.027 u, and the
+// gong block's own vertices reach its full radius. Held to the circle, the
+// block at C7's foot azimuth measured 0.1446 from a facet — under the one
+// margin by exactly the sag at that azimuth — while the 55.8° foot had
+// happened to face a facet's end. The wall is the inscribed circle, which is
+// the facets' minimum over every azimuth, so the margin holds wherever the
+// foot lands. Ceiling: see GONG_BAND_TOP. Floor: measured below, once the
+// arc's azimuths are known.
 const R_ANNULUS_IN = plateR + CLEAR_MARGIN;
-const R_ANNULUS_OUT = R_BORE_BACK - CLEAR_MARGIN;
+const R_BORE_BACK_CUT = R_BORE_BACK * Math.cos(Math.PI / G.CASE_LATHE_SEG);   // the facets' inscribed circle
+const R_ANNULUS_OUT = R_BORE_BACK_CUT - CLEAR_MARGIN;
 // §186 — the base plate's mounting rim, measured off the built plate: the
 // face the §198 gong block and hammer post stand on, and (at the case build)
 // what a clamp head seats on. Hoisted here from the case block because the
@@ -23823,9 +23832,10 @@ let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
 // hammer's staff (the §197 idiom, taller), and nothing below wants the room.
 const Z_GONG = GONG_BAND_TOP - GONG_WIRE_R;
 // THE VOICE'S LENGTH, and the block that holds it. §56's law gives the
-// developed length that rings TODO 17's 2.5 kHz (the A-weighted peak) on
-// this wire — the one quantity the whole entry exists to buy, so it is
-// solved here and the arc angle is whatever the radius makes of it.
+// developed length that rings the target pitch (TODO 17's 2.5 kHz until §262
+// made it a note — C7, below) on this wire — the one quantity the whole entry
+// exists to buy, so it is solved here and the arc angle is whatever the
+// radius makes of it.
 const GONG_STEEL_C = Math.sqrt(OSC_STEEL_E / OSC_STEEL_RHO);      // bar wave speed, m/s — §137's one steel pair
 // §56's STRAIGHT clamped-free roots β_nL. Since §253 they are not the voice:
 // they are the α → 0 CONTROL of the arch solve below (which must reproduce
@@ -23963,7 +23973,29 @@ const GONG_ARCH = (() => {
 })();
 // Ω → Hz: ω = √Ω·√(EI/ρA)/R², and √(EI/ρA) = k·c.
 const gongFreqOf = (Om, R_m, k_m) => Math.sqrt(Om) * k_m * GONG_STEEL_C / (2 * Math.PI * R_m * R_m);
-const GONG_F1_TARGET_HZ = 2500;                  // TODO 17 — the ear's A-weighted peak
+// §262 — THE TARGET IS A NOTE. TODO 17 named 2.5 kHz, the ear's A-weighted
+// peak, and §198/§253 rang it; the owner asked for a C. The OCTAVE is not a
+// free choice and was measured, not picked (tools/probe-262-gong-note.mjs
+// boots the build at each C with the arc re-derived and reads the level at
+// the SHIPPED blow's energy — the fall law credits a heavier head with energy
+// it has not got, TODO 128, so a longer wire would otherwise buy decibels it
+// never earned): C8 (4186 Hz) sends the first overtone to 24.3 kHz, past
+// hearing, and the wire loses 11 dB; C6 (1047 Hz) holds its level only
+// through a 16 kHz third partial with the fundamental at −10 dBA — a whistle,
+// not a C. C7 keeps the fundamental inside §197's 1–4 kHz band and the
+// overtone that carries the ring at 11.4 kHz, 2 dB under 2500 Hz's at equal
+// energy — the one lever the wire had left, spent on the note; every other
+// (stock-ceiling wire, the annulus radius, the matched head) was already at
+// its envelope. The name is DERIVED from the semitone count so the two cannot
+// disagree; the frequency is equal temperament on ISO 16's A4.
+const GONG_PITCH_A4_HZ = 440;                    // ISO 16 — concert pitch
+const GONG_NOTE_SEMITONES = 27;                  // above A4: C7
+const GONG_NOTE_NAME = (() => {
+  const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const fromC4 = GONG_NOTE_SEMITONES + 9;        // A4 is 9 semitones above C4
+  return names[((fromC4 % 12) + 12) % 12] + (4 + Math.floor(fromC4 / 12));
+})();
+const GONG_F1_TARGET_HZ = GONG_PITCH_A4_HZ * 2 ** (GONG_NOTE_SEMITONES / 12);   // 2093.005 Hz
 // §56's straight-bar length for that pitch — since §253 the START of the
 // fixed point below (see GONG_DESIGN), not the design; named because the
 // record quotes how far the curvature moved it.
@@ -24028,7 +24060,7 @@ if (GONG_R - GONG_POST_R < R_ANNULUS_IN - 1e-9)
 const GONG_ARC_DESIGN = GONG_DESIGN_LEN_M / (GONG_R * OSC_U);       // rad — the pitch's length at this radius
 if (Math.abs(aesthetics.gong.arcDeg - GONG_ARC_DESIGN / DEG2RAD) > 0.05)
   console.warn(`§198: aesthetics.gong.arcDeg ${aesthetics.gong.arcDeg} is not the ${(GONG_ARC_DESIGN / DEG2RAD).toFixed(2)}° that rings `
-    + `${GONG_F1_TARGET_HZ} Hz on a ${GONG_STOCK_MM[1]} mm wire at r ${GONG_R.toFixed(2)} — the shipped default must BE the derivation`);
+    + `${GONG_NOTE_NAME} (${GONG_F1_TARGET_HZ.toFixed(3)} Hz) on a ${GONG_STOCK_MM[1]} mm wire at r ${GONG_R.toFixed(2)} — the shipped default must BE the derivation`);
 // THE BLOW IS RADIAL, and the head is INBOARD of the wire. Between the
 // plate's rim and the ring there is room for a head; between the ring and
 // the case wall there is a block's width. So the face stands one rest gap
@@ -25554,6 +25586,9 @@ const GONG_ACOUSTICS = (() => {
     wire: { dia_mm: 2 * GONG_WIRE_R * UNIT_MM, devLen_mm: L * 1000, arcDeg: Math.abs(GONG_A1 - GONG_A0) / DEG2RAD,
       designArcDeg: GONG_ARC_DESIGN / DEG2RAD, footWalkedDeg: GONG_FOOT_WALKED / DEG2RAD, hand: GONG_HAND,
       ringR_u: GONG_R, targetF1_Hz: GONG_F1_TARGET_HZ,
+      // §262 — the target is a note: its name (derived from the semitone
+      // count), the count and the concert pitch it is tempered from
+      targetNote: GONG_NOTE_NAME, targetSemitonesAboveA4: GONG_NOTE_SEMITONES, concertA4_Hz: GONG_PITCH_A4_HZ,
       mass_mg: M * 1e6, modalMass_mg: mModal * 1e6,
       // §253 — the arc's fundamental against the straight bar's: its modal
       // fraction of the wire (¼ for a straight bar), the design arc's, and
@@ -25599,7 +25634,9 @@ await breathe();
 {
   const A = GONG_ACOUSTICS;
   // The pitch has to land where an alarm lives. TODO 17 named 2.5 kHz (the
-  // A-weighted peak) and arcDeg's default is derived to hit it; on the plate
+  // A-weighted peak), §262 made the target a note (C7, 2093 Hz — the octave
+  // measured against this band and the overtone's audibility), and arcDeg's
+  // default is derived to hit it; on the plate
   // it never once took effect (TODO 127 — the balance opening left the stud
   // two stations, 97.5° of arc, 1381 Hz), and §198 took the ring outside the
   // rim so that a stud can stand where the pitch wants it. The band is the
