@@ -31588,7 +31588,7 @@ or parsed values (primer), the honesty words, and label length.
 
 ### Latvian — chunk K, the twenty-second locale, held by the prose-number gate from its first build
 
-The chrome (485 keys), `explain.html` (771/771) and `primer.html` (145/145)
+The chrome (485 keys), `explain.html` (772/772) and `primer.html` (145/145)
 read Latvian at 100%. Twenty-two locales now, Tagalog having landed first. Latvian was not one of the
 wave's scoped chunks: it was asked for after Welsh and filed as chunk K in
 the same sitting, on the recipe's terms. The sites it touched:
@@ -31744,13 +31744,24 @@ runs read 0.
   the probe walks, not Latvian's labels): the same 56 px at all eight widths,
   the same 180.5 and 57.3, and `PASS — every header one line, no locale worse
   than English` over `en,fil,lv`.
+- **The gong entry changed under it.** §262 (the C7 note, #613) rewrote the
+  English of that entry while this was in review: four explainer prose blocks,
+  the heading and the plate labels, and two primer paragraphs. The 16 + 2
+  Latvian keys that went dead are updated in place from the old Latvian (only
+  what the English changed is rewritten: 61.1° and 5.45×, 48.19, 25 dB, the
+  heading's added §262), the §262 paragraph is new, and the number-and-unit
+  plate labels that are now pure figures are identity entries, as German and
+  Russian keep them, so the explainer is 772/772. Tagalog had the same 16 + 2
+  dead keys on `main`; [kelaiem/timesim#628](https://github.com/kelaiem/timesim/pull/628)
+  fixes them, and its two table files are carried here unchanged so they merge
+  as a no-op.
 - **§53's column:** no content wider than its box.
 
 ### Measured
 
 | | measured |
 |---|---|
-| `explain-i18n --check` | explainer **771/771**, primer **145/145**; 0 unmatched, 0 markup / `<code>` drift, **0 plate and 0 prose number drift** (the prose gate's control caught both plants), 0 crossed honesty terms, 0 absent; honesty control PASS (*modelēts / simulēts*), **20/20** rows verified; block coverage 0 short blocks against Latvian's median ratio 1.06 (explainer) and 1.01 (primer); **0 new plate overflow** on both pages. The run's one FAIL row is `[ar] plate fit`, which fails identically on an untouched `main` in this container and passes on CI |
+| `explain-i18n --check` | explainer **772/772**, primer **145/145**; 0 unmatched, 0 markup / `<code>` drift, **0 plate and 0 prose number drift** (the prose gate's control caught both plants), 0 crossed honesty terms, 0 absent; honesty control PASS (*modelēts / simulēts*), **20/20** rows verified; block coverage 0 short blocks against Latvian's median ratio 1.06 (explainer) and 1.01 (primer); **0 new plate overflow** on both pages. The run's one FAIL row is `[ar] plate fit`, which fails identically on an untouched `main` in this container and passes on CI |
 | `explain-quotes` | PASS |
 | `glossary-links` | text identical with and without the linker in every locale; lv **81** links (en 91) — PASS |
 | sense audit | 0 wrong-sense links over the linked terms (four flagged blocks read in context, each the glossary's sense) |
