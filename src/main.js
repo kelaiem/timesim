@@ -1310,6 +1310,7 @@ const DRUM_COIL_SLACK_TURNS = 0.3;
 // 1e-10, four orders below the 1e-6-scale quantities the flank feeds.
 const SPRING_WIND_NPT = 4000;                // nodes per unit reserve; t = 1 lands on a node exactly
 const SPRING_WIND_TMAX = 1.2;                // covers the runout: floorAt probes f slightly past 1 (t = f/F_ACTIVE ≤ ~1.16)
+await breathe();
 const SPRING_WIND_SOLVE = (() => {
   const N = Math.round(SPRING_WIND_NPT * SPRING_WIND_TMAX);
   const h = 1 / SPRING_WIND_NPT;
@@ -1432,6 +1433,7 @@ const SPRING_WIND_SOLVE = (() => {
   }
   return sol;
 })();
+await breathe();
 const springWindAt = (t) => {
   const table = SPRING_WIND_SOLVE.u;
   const x = t * SPRING_WIND_NPT;
@@ -1568,6 +1570,7 @@ const fusee = G.makeFusee({
 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
+await breathe();
 const centerPinion = G.makePinion({ name: 'centerPinion', module: TRAIN.barrel.module, teeth: TRAIN.barrel.pinion, mates: [TRAIN.barrel.teeth], thickness: 1.6, material: MATS.steel });
 const centerPinionR = centerPinion.userData.r;
 
@@ -1580,7 +1583,9 @@ const centerWheelR = centerWheel.userData.r;
 const thirdPinion = G.makePinion({ name: 'thirdPinion', module: TRAIN.center.module, teeth: TRAIN.center.pinion, mates: [TRAIN.center.teeth], thickness: 1.6, material: MATS.steel });
 const thirdPinionR = thirdPinion.userData.r;
 
+await breathe();
 const thirdWheel = G.makeGear({ name: 'thirdWheel', module: TRAIN.third.module, teeth: TRAIN.third.teeth, mates: [TRAIN.third.pinion], thickness: 0.9, boreR: 1, spokes: 4, material: MATS.brass });
+await breathe();
 const thirdWheelR = thirdWheel.userData.r;
 
 // --- Fourth arbor: pinion (meshed by third wheel) + fourth wheel ---------
@@ -1775,6 +1780,7 @@ declareTravel('Pallet fork', 2 * (FORK_BANK_DEG + FORK_RECOIL_DEG) * DEG2RAD,
 // L_ESCAPE — the stones must descend by exactly that gap to land centered
 // on the wheel's own Z-thickness rather than grazing one edge of it.
 // beatRad/bankRad feed the stones' impulse-face solve (see makePalletFork).
+await breathe();
 const palletFork = G.makePalletFork({
   span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T,
   stoneZReach: L_FORK - L_ESCAPE,
@@ -1957,6 +1963,7 @@ const OSC_K_TARGET = OSC_I.total * (2 * Math.PI * F_BALANCE) ** 2;
 // the clamped spring and not the formula.
 await breathe();
 const HS_CLAMP = G.hairspringClampRatio(HAIRSPRING_PLAN);
+await breathe();
 if (!HS_CLAMP.converged)
   console.warn('§218: the hairspring clamp-ratio solve did not converge — the section below is fitted to an unproven stiffness');
 const HAIRSPRING_RIBBON_R = (() => {
@@ -1997,6 +2004,7 @@ const hairspringSteps = G.makeHairspringSteps({
 });
 let hairspringStep;
 while (!(hairspringStep = hairspringSteps.next()).done) await breathe();
+await breathe();
 const hairspring = hairspringStep.value;
 
 // --- TODO 25 tier two: THE RATE, NOW A CONSEQUENCE ---------------------------
@@ -2210,6 +2218,7 @@ const sweptR = (obj) => {
 // warnings and all. The spec's train angles (step 3) spread in only when
 // present, so the identity spec passes no argument and stays bit-exact on
 // the default constants.
+await breathe();
 const LAYOUT_INPUTS = {
   radii: {
     barrel: barrelR_actual, centerPinion: centerPinionR,
@@ -2247,6 +2256,7 @@ const LAYOUT_INPUTS = {
       console.warn(`TODO 147: the hairspring's terminal reaches r ${reach.toFixed(4)} — outside the balance's own swept radius ${LAYOUT_INPUTS.swept.balance.toFixed(4)}, so the spring and not the wheel is now what the cock and the plate must clear.`);
   }
 }
+await breathe();
 const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayout({
   ...LAYOUT_INPUTS,
   warn: (m) => console.warn(m),
@@ -2970,6 +2980,7 @@ const ESCAPEMENT_KNOCK = (() => {
   return Object.freeze(K);
 })();
 
+await breathe();
 const hairspringGroup = new THREE.Group();
 hairspringGroup.position.set(P.balance.x, P.balance.y, L_HAIRSPRING);
 hairspring.name = 'hairspringCoil';   // §48: the restoring element has to be nameable to be declared
@@ -5374,8 +5385,10 @@ function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, pivotR = staffR, jewelR 
 }
 // The fusee runs in plain bushes at its staff's size — it carries the chain's
 // pull and the winding torque, and its let-down square must pass its bore.
+await breathe();
 addLowerPivot(barrelArbor);
 for (const arbor of [centerArbor, thirdArbor, fourthArbor, escapeArbor]) {
+  await breathe();
   addLowerPivot(arbor, { pivotR: TRAIN_PIVOT_R });
 }
 // Dial-side counterpart: parts living UNDER the plate (the keyless works'
@@ -5587,6 +5600,7 @@ const windPinionMount = new THREE.Group();
 windPinionMount.position.y = -(KW_SPEC.windPinion.zWebHi + WIND_PINION_BOSS);
 windPinionMount.rotation.x = -Math.PI / 2;   // mount local +Z (the blank's trail) → +Y, outward along the stem
 windPinionGroup.add(windPinionMount);
+await breathe();
 const windPinion = G.makeConicalGear({ name: 'windPinion', module: KW_MODULE, teeth: windPinionTeeth,
   mateTeeth: crownWheelTeeth, boreR: KW_PIN_BORE, mateBoreR: KW_CROWN_BORE, material: MATS.steel });
 windPinion.name = 'windingPinion';
@@ -5649,6 +5663,7 @@ assertWheelSide(crownWheelMount, KW_WIND_WHEEL_SIDE, 'keyless winding corner');
 // a mitre — but all `bevelCornerSpin` reads is the ray's AZIMUTH about each
 // mount, and every vector in the plane the two axes span shares it. So the
 // bisector indexes a 20:8 corner exactly as it indexes a 1:1 one.
+await breathe();
 const crownWheelBase = (() => {
   const ray = bevelCornerRay(bevelCornerAxis(crownWheelMount), bevelCornerAxis(windPinionMount));
   windPinion.rotation.z = bevelCornerSpin(windPinion, ray, windPinionTeeth, true);
@@ -6581,6 +6596,7 @@ async function solveReserveSwing(pts) {
   // window walk below already has.
   await breathe();
   let first = at(0);
+  await breathe();
   for (let d = RSV_SWING_STEP_DEG; !first && d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG)
     for (const sgn of [1, -1]) { await breathe(); first = at(sgn * d * DEG2RAD); if (first) break; }
   if (!first) return { swing: null, bestC: best.c, bestSwing: best.swing, bestMember: best.member };
@@ -6601,6 +6617,7 @@ async function solveReserveSwing(pts) {
       if (Math.abs(dl) > RSV_SWING_MAX_DEG * DEG2RAD + 1e-9) break;
       await breathe();
       const r = at(dl);
+      await breathe();
       if (!r) break;
       const better = score(r.clear) > score(pick.clear) + G.ENVELOPE_DELTA_FINE
         || (Math.abs(score(r.clear) - score(pick.clear)) <= G.ENVELOPE_DELTA_FINE && Math.abs(dl) < Math.abs(pick.swing) - 1e-12);
@@ -7457,7 +7474,9 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
     console.warn(`§234 fold: the cap corner B the bearing solve settled on has no fold worth building (${refused}) — building it anyway; the battery judges it`);
   }
 
+  await breathe();
   const module = foldModuleFor(F.shaftAngleDeg);
+  await breathe();
   const leg1 = makeRodSegment(settingA, F.K, MW_LEG1_R);
   leg1.name = 'settingTraverse1';
   const leg2 = makeRodSegment(F.K, B, MW_LEG2_R);
@@ -7613,6 +7632,7 @@ const CAP_SOLVE = await (async () => {
     // at all — same as the default spec's own early rejections (TODO 162's
     // own build note: only 2 candidates ever pay for the K-phase sweep there).
     const cand0 = meshPoints(scratch);
+    await breathe();
     const arbM0 = arbClear(cand0);
     if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
     const r0 = await solveReserveSwing(staticPts.concat(cand0));
@@ -8526,6 +8546,7 @@ windClutchMount.add(windClutch);
   for (const grp of [windPinionGroup, windClutch]) {
     grp.updateWorldMatrix(true, true);
     _inv.copy(grp.matrixWorld).invert();
+    await breathe();
     grp.traverse((o) => {
       if (!o.isMesh || !o.geometry?.attributes?.position) return;
       _m.multiplyMatrices(_inv, o.matrixWorld);
@@ -14197,6 +14218,7 @@ async function sweepTqKeepsYielding() {
   await breathe();
   return keeps;
 }
+await breathe();
 let TQ_KEEPS = sweepTqKeeps();
 // Distance from (x, y) to the nearest material the plate must keep.
 // (TODO 184: over a keeps list the caller names, so a solve that runs before
@@ -15127,6 +15149,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
           if (c >= CLEAR_MARGIN && (!best || c > best.c + 0.5)) best = { x, y, c, dA };
         }
       }
+      await breathe();
       if (best) break; // nearest feasible bearing to the quadrant's ideal wins
     }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
@@ -16050,6 +16073,7 @@ for (const j of FRAME_JOINTS) {
   for (let ts = 0.1; ts <= 1.0001; ts += 0.025) {
     const { curve, wrapArc } = chainLayoutAt(Math.min(ts, 1));
     curve.arcLengthDivisions = 800;
+    await breathe();
     const len = curve.getLength();
     const M = Math.max(Math.round((len / CHAIN_PITCH) * 4), 8); // L/4 spacing — ENV above carries half of it
     const pts = curve.getSpacedPoints(M);
@@ -16244,8 +16268,10 @@ for (const j of FRAME_JOINTS) {
     // and the closing-arc assert read the same numbers by construction —
     // a family on its own grid re-opens the gap between them.
     const setsClose = [];
+    await breathe();
     for (let k = Math.ceil((0.982 - LAW_T0) / LAW_STEP); k <= LAW_N; k++)
       setsClose.push(builtPtsNear(LAW_T0 + k * LAW_STEP));
+    await breathe();
     const win = (TQ_WINDOWS.report || []).find((w) => w.name === 'fusee');
     const inPoly = (pts, x, y) => {  // eslint-disable-line no-shadow
       let inside = false;
@@ -16272,6 +16298,7 @@ for (const j of FRAME_JOINTS) {
     // testing a stud that is not the one this azimuth builds.
     const NOMINAL_OUT = 0.35; // the outboard shove's own solve runs later; this is its floor, and A7 re-measures the built stud
     for (let az = 0; az < TAU2; az += TAU2 / 720) {
+      await breathe();   // §266 — the seams below sit after two `continue`s most azimuths take
       let ti = -1;
       for (let i = 0; i < T_GRIDN; i++)
         if (proudOf(sets[i], az, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid) > 0) { ti = i; break; }
@@ -16291,6 +16318,7 @@ for (const j of FRAME_JOINTS) {
         await breathe();
         for (const sc of setsClose)
           minClose = Math.min(minClose, proudOf(sc, az, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid));
+        await breathe();
         if (!(minClose >= atFull - 0.03)) continue;
       }
       // P3 feasibility at this azimuth, on this azimuth's own rest radius
@@ -16316,6 +16344,7 @@ for (const j of FRAME_JOINTS) {
     // solve until one comes out with a legal beak — the same fold, decided
     // together instead of in sequence. Ordinary cost is one trial: the
     // best-scoring azimuth usually solves.
+    await breathe();
     candidates.sort((a, b) => b.score - a.score);
   }
   // The rest face that makes full wind an exact kiss: at t = 1 the pad face
@@ -16521,6 +16550,7 @@ for (const j of FRAME_JOINTS) {
   for (const cand of candidates) {
     await breathe();
     const s = solveFinger(cand.az);
+    await breathe();
     if (!s.beakParked) { FINGER ??= { ...s, az: cand.az, tTouch: cand.tTouch }; continue; }
     FINGER = { ...s, az: cand.az, tTouch: cand.tTouch };
     break;
@@ -17013,7 +17043,7 @@ for (const j of FRAME_JOINTS) {
     const bb = new THREE.Box3();
     let worstD = Infinity, worstAt = '';
     await breathe();
-    pawl.traverse((m) => {
+    const visitArrestReach = (m) => {
       if (!m.isMesh || !names.includes(m.name)) return;
       if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
       bb.copy(m.geometry.boundingBox);
@@ -17042,7 +17072,11 @@ for (const j of FRAME_JOINTS) {
           }
         }
       }
-    });
+    };
+    // §266 — a list walk, so the build can yield between meshes (a traverse callback cannot).
+    const walkArrestReach = [];
+    pawl.traverse((m) => walkArrestReach.push(m));
+    for (const m of walkArrestReach) { await breathe(); visitArrestReach(m); }
     await breathe();
     if (worstD < CLEAR_MARGIN - 1e-9)
       console.warn(`§151: ${worstAt} passes ${worstD.toFixed(3)} from the flying span (required ≥ ${CLEAR_MARGIN}) — the corridor rejection let a fold through`);
@@ -18054,6 +18088,7 @@ registerLabel('Motion works', motionWorks);
 // Minute wheel + minute pinion — one compound part on one stud.
 const mwArbor = new THREE.Group();
 mwArbor.position.set(MW_STUD.x, MW_STUD.y, 0);
+await breathe();
 const mwMinuteWheel = G.makeGear({ name: 'mwMinuteWheel',
   module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES, thickness: MW_WHEEL_T, boreR: MW_BORE_R, spokes: 4, material: MATS.brass,   // TODO 144: solved at the stack; TODO 151's (d) landing added the setting cap as the wheel's second real mate
 });
@@ -18063,6 +18098,7 @@ const mwMinuteWheel = G.makeGear({ name: 'mwMinuteWheel',
 // nothing, which the check reports as a hole (and did).
 mwMinuteWheel.traverse((o) => { if (o.isMesh) o.name = 'mwMinuteWheel'; });
 mwMinuteWheel.position.z = MW_Z1;
+await breathe();
 const mwMinutePinion = G.makePinion({ name: 'mwMinutePinion',
   module: MW_MODULE_2, teeth: MW_PINION_TEETH, mates: [MW_HOUR_TEETH], thickness: MW_PINION_T, boreR: MW_BORE_R, material: MATS.steel,
 });
@@ -18943,6 +18979,7 @@ const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1
       console.warn(`reserve train: ${name} measures ${got.toFixed(5)} as cut, the swing solve's own cutTipR says ${want.toFixed(5)} — the swing solve's bound is not the metal's`);
 }
 // TODO 175 — w2 turns on the hand arbor: the arbor plus the one running fit.
+await breathe();
 const rsvWheel2 = G.makeGear({ name: 'rsvWheel2', module: rsvModule1, teeth: rsvTeethW2, mates: [rsvTeethP1], thickness: 1.0, boreR: RSV_HAND_ARBOR_R + PIVOT_BORE_CLEAR, spokes: 0, material: MATS.brass });
 // (TODO 48 — the `Math.PI / teeth` half-pitch idiom that used to sit here
 // phased each wheel against its OWN local +x, with no reference to the line
@@ -20412,7 +20449,9 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // CRISP (bevel: false): the gap to the dial sheet is 0.05 and the extrude
   // bevel would expand the face 0.045 toward it — the full sweep caught the
   // idler's beveled twin actually touching the sheet (MODELING.md rule 1).
+  await breathe();
   const wheel = G.makeGear({ name: 'alarmSettingWheel', module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, mates: [{ teeth: ALARM_SET_I1_TEETH, mates: [ALARM_SET_WHEEL_TEETH, ALARM_SET_I2_TEETH] }], thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
+  await breathe();
   wheel.position.z = -(ALARM_SHEET_GAP + ALARM_SET_T / 2); // band −0.15..−0.33 (TODO 172) (dialFace local; ALARM_SET_Z is this plane in world)
   alarmSetWheelMesh = wheel;   // TODO 15: the chain solve's datum
   alarmSetWheelGroup.add(wheel);
@@ -21130,6 +21169,7 @@ const alarmSetI2Spin = new THREE.Group();
     { teeth: ALARM_SET_WHEEL_TEETH, mates: [ALARM_SET_I1_TEETH] },
     { teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] },
   ], 0, 'alarmSetIdler1');
+  await breathe();
   if (ALARM_SET_I2) mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, [   // TODO 182: omitted with its route
     { teeth: ALARM_SET_I1_TEETH, mates: [ALARM_SET_WHEEL_TEETH, ALARM_SET_I2_TEETH] },
     { teeth: ALARM_SET_PINION_TEETH, mates: [ALARM_SET_I2_TEETH] },
@@ -21647,6 +21687,7 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 // is DERIVED from the closure (m = 2·DW1/(28+30)), so the mesh cannot
 // fail to close, and the whole j problem evaporates.
 {
+  await breathe();
   const i1b = G.makeGear({ name: 'i1b', module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, mates: [ALARM_DISC_TEETH], thickness: ALARM_DISC_BODY_T, boreR: 0.5, spokes: 4, hub: false, material: MATS.brass, bevel: false });
   // §194 — the disc BRANCH. The setting chain's solve covers wheel→i1→i2; this
   // pair is the second entry into it (the hour's back-drive through the disc
@@ -22749,6 +22790,7 @@ alarmSpinner.rotation.order = 'ZYX';
 alarmSpinner.rotation.z = alarmStemAngle - Math.PI / 2;
 alarmCrownUnit.add(alarmSpinner);
 // Stem bevel at the inner end (the corner), axis along the stem (local +Y).
+await breathe();
 const stemBevel = G.makeConicalGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE,
   mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE,
   boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE });   // §234: bored over the stem it rides
@@ -22868,6 +22910,7 @@ alarmStem.position.y = alarmStemLen / 2;
 //
 // The acceptance is that `--only alarmHandoffs,slenderness` agrees with
 // `--only slenderness`.
+await breathe();
 alarmStem.userData.bearings = {
   axis: 'y',
   stations: [ALARM_STEM_BUSH_DIST - ALARM_CD - alarmStemLen / 2],
@@ -24223,7 +24266,7 @@ let GONG_A0 = GONG_A1 + GONG_HAND * aesthetics.gong.arcDeg * DEG2RAD;   // fixed
 // ring and the head must both clear it; the wire being stock-capped means
 // the band is never what sizes them.
 await breathe();
-const GONG_BAND_FLOOR = (() => {
+const GONG_BAND_FLOOR = await (async () => {
   const rLo = R_ANNULUS_IN, rHi = R_ANNULUS_OUT;
   const azSpan = (aesthetics.gong._bounds.arcDeg[1]) * DEG2RAD;
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
@@ -24238,7 +24281,7 @@ const GONG_BAND_FLOOR = (() => {
     return d <= azSpan;
   };
   movement.updateMatrixWorld(true);
-  movement.traverse((o) => {
+  const visitBandFloor = (o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
     if (o.name === 'backPlate') return;       // what the block stands on
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
@@ -24254,7 +24297,11 @@ const GONG_BAND_FLOOR = (() => {
       }
       if (hit && zMax > top && zMax < GONG_BAND_TOP) { top = zMax; owner = o.name || '(unnamed)'; }
     }
-  });
+  };
+  // §266 — a list walk, so the build can yield between meshes (a traverse callback cannot).
+  const walkBandFloor = [];
+  movement.traverse((o) => walkBandFloor.push(o));
+  for (const o of walkBandFloor) { await breathe(); visitBandFloor(o); }
   // the clamp heads, analytically: three stations on R_CLAMP, 0.4 mm proud
   for (const az of CASE_CLAMP_AZ) {
     const dAz = Math.asin(Math.min(1, (CASE_SCREW_HEAD_D / 2) / R_CLAMP));
@@ -24278,14 +24325,14 @@ if (Z_GONG - GONG_WIRE_R < GONG_BAND_FLOOR.z - 1e-9)
 // exists out here, so on the shipped build it walks nowhere: that is the
 // whole of TODO 127's fix, and it is measured rather than assumed.
 await breathe();
-const GONG_FOOT_OBSTACLES = (() => {
+const GONG_FOOT_OBSTACLES = await (async () => {
   const boxes = [];
   const zLo = GONG_RIM_Z - GONG_RIM_PLANT;         // the block's plant depth: it fouls anything reaching this
   const zHi = GONG_POST_TOP;
   const rLo = GONG_R - GONG_POST_R - CLEAR_MARGIN, rHi = GONG_R + GONG_POST_R + CLEAR_MARGIN;
   const v = new THREE.Vector3();
   movement.updateMatrixWorld(true);
-  movement.traverse((o) => {
+  const visitFootObstacle = (o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
     if (o.name === 'backPlate') return;             // the rim is what it stands ON
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
@@ -24306,7 +24353,11 @@ const GONG_FOOT_OBSTACLES = (() => {
       if (rMax < rLo || rMin > rHi) continue;
       boxes.push({ x0, x1, y0, y1, name: o.name || '(unnamed)' });
     }
-  });
+  };
+  // §266 — a list walk, so the build can yield between meshes (a traverse callback cannot).
+  const walkFootObstacle = [];
+  movement.traverse((o) => walkFootObstacle.push(o));
+  for (const o of walkFootObstacle) { await breathe(); visitFootObstacle(o); }
   for (const az of CASE_CLAMP_AZ) {
     const h = CASE_SCREW_HEAD_D / 2, cx = Math.cos(az) * R_CLAMP, cy = Math.sin(az) * R_CLAMP;
     boxes.push({ x0: cx - h, x1: cx + h, y0: cy - h, y1: cy + h, name: 'case clamp head' });
@@ -24390,11 +24441,13 @@ function gongArchModes() {
     .map((m) => ({ ...m, f: gongFreqOf(m.Om, R_m, k_m), kind: m.tanShare > 0.5 ? 'extensional' : 'flexural' }));   // a label on a published share, not a claim
 }
 function gongModes() { return gongArchModes().map((m) => m.f); }
+await breathe();
 let gongF = gongModes();
 
 // Emitter for the bell voice — an empty at the strike point (the gong unit's
 // own origin is the movement axis, which would mis-spatialize the sound to the
 // centre; getWorldPosition of a point AT the ringing end is what we want).
+await breathe();
 const alarmStrikePt = new THREE.Object3D();
 alarmStrikePt.position.set(Math.cos(GONG_A1) * GONG_R, Math.sin(GONG_A1) * GONG_R, Z_GONG);
 movement.add(alarmStrikePt);
@@ -25952,6 +26005,7 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // TODO 11 tail: the sandwich takes floor stock after all. §124's seam fix
   // re-derived the band from the plate top, so both faces clear by exactly
   // ALARM_LOCK_GAP — plate top below, cam underside above — by construction.
+  await breathe();
   const lockCollar = (() => {
     // THE LOCKING FACE IS RADIAL, and that is a departure from §99's saw law
     // rather than an oversight — the two teeth do different jobs. A CLICK's
@@ -26231,7 +26285,8 @@ const arrestStack = (spec) => {
   const columnTop = pinBZ + ALARM_WIND_WHEEL_T / 2 + 0.2;
   return { windTop, cageZ, pinBZ, columnBase, columnTop, columnLen: columnTop - columnBase };
 };
-const solveLegs = (arborR) => {
+// §266 — async: each leg count is a gear-tip and spider solve, ~0.45 s in all.
+const solveLegs = async (arborR) => {
   // TWO wheels stand on the barrel's axis, not one, and the bound is the
   // LARGER: its toothed wall and the arbor's own wind wheel. Both from
   // gearOuterR rather than the nominal tip circle, because §115's relieved
@@ -26251,6 +26306,7 @@ const solveLegs = (arborR) => {
     module: ALARM_TRAIN_MODULE, teeth: ALARM_BARREL_TEETH,
     mates: [ALARM_STRIKE_PINION_TEETH], thickness: ALARM_BARREL_H });
   for (let leg = ARREST_PINION_TEETH; leg <= ALARM_WIND_W; leg++) {
+    await breathe();
     const meshCD = (ALARM_TRAIN_MODULE * (ALARM_WIND_W + leg)) / 2;
     const onAxis = Math.max(barrelTip, G.gearOuterR({
       module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, mates: [leg],
@@ -26260,6 +26316,7 @@ const solveLegs = (arborR) => {
       arborR, stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
       thickness: ALARM_WIND_WHEEL_T, tipBudget: besideR,
     });
+    await breathe();
     if (spec.fitsBudget && spec.teethOk) return { legTeeth: leg, spec, besideR, meshCD };
   }
   console.warn('alarm arrest: no leg count between '
@@ -26275,13 +26332,13 @@ const solveLegs = (arborR) => {
 };
 // pass one, at the floor, to learn the length the radius has to answer for
 await breathe();
-const _legsAtFloor = solveLegs(PIVOT_MIN_U);
+const _legsAtFloor = await solveLegs(PIVOT_MIN_U);
 await breathe();
 const ARREST_COLUMN_R = Math.max(PIVOT_MIN_U,
   arrestStack(_legsAtFloor.spec).columnLen / (2 * TURN_LD_TARGET));
 // pass two, at that radius — the one the build uses
 const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
-  meshCD: ARREST_CD } = solveLegs(ARREST_COLUMN_R);
+  meshCD: ARREST_CD } = await solveLegs(ARREST_COLUMN_R);
 const ARREST_STACK = arrestStack(SUB_SPEC);
 {
   const ld = ARREST_STACK.columnLen / (2 * ARREST_COLUMN_R);
@@ -27201,6 +27258,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
 
   // The strike arbor's new top: the 64T wheel, the sleeve that carries it,
   // and the stud's second length behind both.
+  await breathe();
   const wheel = G.makeGear({ name: 'alarmGovWheel',
     module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, mates: [ALARM_GOV_PINION_TEETH], thickness: ALARM_GOV_WHEEL_T,
     boreR: 0.75, spokes: 6, material: MATS.brass });
@@ -27902,6 +27960,7 @@ const ALARM_WIND_IDLER_MIN = Math.ceil(
 // movement's proven idler stock — reads clean, as do 20 and 24. Until
 // the gauge itself learns small wheels, no chain-solved wheel goes
 // below the size the movement already proves readable.
+await breathe();
 const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5, [ALARM_WIND_PINION_TEETH]), KW_WIND_IDLER_TEETH);
 const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_WIND_W; // §99: ARBOR turns per crown turn — idlers drop out; value unchanged from the rim era (W = the rim's count)
 const alarmWindUnit = new THREE.Group();
@@ -29242,7 +29301,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   const solids = [], rings = [];
   const v = new THREE.Vector3();
   await breathe();
-  movement.traverse((o) => {
+  const visitSwept = (o) => {
     if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
     for (let n = o; n; n = n.parent) if (n.userData && n.userData.schematic) return;
     const p = o.geometry.attributes.position;
@@ -29294,7 +29353,11 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     if (ring) rings.push({ zLo, zHi, x: ring.st.p.x, y: ring.st.p.y, minR: ring.minR, maxR: ring.maxR,
       name: `${nm} swept about ${ring.st.of}`, meshPartner: partnerA, rimPartner: partnerRim });
     else if (xy.length) solids.push({ zLo, zHi, xy, name: nm, meshPartner: partnerA, rimPartner: partnerRim });
-  });
+  };
+  // §266 — a list walk, so the build can yield between meshes (a traverse callback cannot).
+  const walkSwept = [];
+  movement.traverse((o) => walkSwept.push(o));
+  for (const o of walkSwept) { await breathe(); visitSwept(o); }
   // clearance of a point from every swept ring crossing a band
   // `drop` names WHICH mesh partner this piece is allowed to overlap:
   // 'wheel' for leg A on the arbor's wind wheel, 'rim' for the idler wheel on
@@ -29604,6 +29667,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       ];
 
       const opts = [];
+      await breathe();
       for (const idlerTeeth of grid.counts) for (const side of [1, -1]) {
         const geo = subIdlerGeom(idlerTeeth, side);
         if (!geo) continue;
@@ -29629,6 +29693,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
         opts.push({ idlerTeeth, side, ix, iy, rows: idler, pieces, tvi,
           worst: Math.min(idlerWorst.c, tvi.c) });
       }
+      await breathe();
       if (!opts.length) continue;
       opts.sort((p, q) => q.worst - p.worst);
       const keep = opts.slice(0, IDLER_KEEP);
@@ -29978,6 +30043,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   arrestPinionSpin = spin;
 
   // --- THE SPIDER, on the same arbor, apex on top of leg A ------------------
+  await breathe();
   subDiff = G.makeSpiderDifferential({
     spec: SUB_SPEC, material: MATS.steel,
     outModule: SUB_OUT_MODULE, outTeeth: SUB_OUT_TEETH, outMates: [SUB_FINGER_TEETH],
@@ -29989,6 +30055,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   // --- LEG B: the barrel's rim through the compound idler, upper side gear ---
   const pinBSpin = new THREE.Group();
   pinBSpin.position.set(arrestPos.x, arrestPos.y, SUB_PIN_B_Z);
+  await breathe();
   const pinB = G.makePinion({ name: 'pinB',
     module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH, mates: [{ teeth: SUB_IDLER_SOLVED, mates: [ALARM_BARREL_TEETH, SUB_LEG_TEETH] }],
     thickness: ALARM_WIND_WHEEL_T, boreR: SUB_RUN_BORE_R, material: MATS.steel,
@@ -30084,6 +30151,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   });
   let fingerStep;
   while (!(fingerStep = fingerSteps.next()).done) await breathe();
+  await breathe();
   const finger = fingerStep.value;
   await breathe();
   finger.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmArrestFinger'; });
@@ -30230,6 +30298,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   // about it; `measuredToothPhase` reads world vertices through
   // updateWorldMatrix(true, true). The tick overwrites this rotation on every
   // frame, so the assignment is a BUILD pose, not a second owner of the angle.
+  await breathe();
   fpSpin.rotation.z = ARREST_FINGER_CLOCK;
   // TODO 132 — and the OUTPUT stage is reached by BOTH inputs, which is the
   // differential's whole point: the cage takes the mean of the two legs, so
@@ -31319,9 +31388,11 @@ const ALARM_JUMPER_TIP_R = await (async () => {
   let lo = 0.2, hi = 3.0;
   await breathe();
   for (let i = 0; i < 34; i++) { await breathe(); const m = (lo + hi) / 2; if (_sawSeatOf(m).r >= need) hi = m; else lo = m; }
+  await breathe();
   return hi;
 })();
 const _jSeat = _sawSeatOf(ALARM_JUMPER_TIP_R);
+await breathe();
 const ALARM_JUMPER_SEAT_PHI = _jSeat.phi;                                     // the seat's own phase within a tooth pitch
 const ALARM_JUMPER_SEAT_R = _jSeat.r;                                         // tip-centre radius, seated
 // The crest ON A RAY — φ 0 is where the builder puts a tooth point. It is the
@@ -32358,6 +32429,7 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   // box corner at every azimuth. Everything else keeps its box.
   const obs = [];
   for (const e of labelEntries) {
+    await breathe();
     if (EXCLUDE.has(e.name)) continue;
     await breathe();
     e.obj.traverse((o) => {
@@ -32640,6 +32712,7 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   // stage-1 ranking — a top-40 shortlist starved the joint solve to −1.3
   // (measured, this landing).
   for (const rc of rodCands) {
+    await breathe();
     for (let azw = 0; azw < 360; azw += 3) {
       const tx = Math.cos(azw * DEG2RAD) * 5.4, ty = Math.sin(azw * DEG2RAD) * 5.4; // tab mid-reach, the ring's own radius
       // TODO 213 — the chord this candidate's build would cut: tab to the tip
@@ -35454,6 +35527,7 @@ const ALARM_PRESS_S = 0.12;
 // seconds of the last one was swallowed with the head visibly back home.
 const ALARM_RETURN_S = ALARM_PRESS_S;
 let alarmPusherGuideMesh = null;            // §230: seated after the return collar it must clear
+await breathe();
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
 // Cheap because the algebra above reduces the whole geometry to one sign.
@@ -41411,6 +41485,10 @@ const BACK_ENVELOPE = await (async () => {
       }
     };
     for (let t = 0; t < n; t += 3) {
+      // §266 — one heavy mesh is 300–400 ms of this walk on its own (~15.5 µs
+      // a triangle, 145k of them), so a seam every 1000 triangles (~16 ms):
+      // the clock is read 145 times, not once a triangle.
+      if (t % 3000 === 0) await breathe();
       for (let e = 0; e < 3; e++) {
         const i0 = idx ? idx.getX(t + e) : t + e;
         const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
@@ -41802,7 +41880,9 @@ const CASE_DIMS = (() => {
 // scene reads through — the x-ray materials' own trick.
 await breathe();
 const caseCrystalMat = new THREE.MeshPhysicalMaterial({ ...CRYSTAL_GLASS });
+await breathe();
 const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }); // §203 step 1: the case exterior's own material — an alloy reaches this and never the works
+await breathe();
 caseSolid.visible = restoredCaseLines;
 movement.add(caseSolid);
 registerLabel('Case', caseSolid);
@@ -41963,6 +42043,7 @@ registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
       }
     }
   });
+  await breathe();
   if (minR < PLATE_RIM.reach - 1e-3)
     console.warn(`§187: middle metal (${minName}) stands at r ${minR.toFixed(3)} above the rim's back face — `
       + `inboard of the rim's measured reach ${PLATE_RIM.reach.toFixed(4)}, so the movement cannot be cased`);
@@ -42754,6 +42835,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
           const occ = new THREE.Mesh(dp.geometry, SCHEMATIC.occMat);
           occ.userData.schematic = true; occ.layers.set(1); dp.add(occ);
           SCHEMATIC.occluderFills.push(occ);   // §78 part four: the dial IS one of the two things the realistic x-ray glasses
+          await breathe();
           const edges = new THREE.LineSegments(new THREE.EdgesGeometry(dp.geometry, 30), SCHEMATIC.rimMat);
           edges.userData.schematic = true; edges.layers.set(1); dp.add(edges);
         }
@@ -43802,6 +43884,7 @@ const SND = {
     l.userData.schematic = true; l.layers.set(1); em.add(l); SCHEMATIC.proxies.push(l);
   };
   for (const em of new Set([forkGroup, maintDetent, jumperUnit, hammerGroup, crown, alarmEmitter, WIND_ARREST.unit])) {
+    await breathe();
     ring(em, 'xy', 0.45); ring(em, 'xy', 0.85); ring(em, 'xz', 0.65);
   }
 }
@@ -48417,6 +48500,7 @@ function setQualityMode(mode) {
   qualitySelect.value = qualityMode;
 }
 qualitySelect.addEventListener('change', () => setQualityMode(qualitySelect.value));
+await breathe();
 setQualityMode(restoredQualityMode); // persisted panel choice (state.js); default Auto
 
 const projected = new THREE.Vector3();
@@ -50715,6 +50799,7 @@ const JMP_SITE = await (async () => {
       jumperUnit.updateWorldMatrix(true, true);
       for (const m of [...azMeshes, ...leverMeshes]) {
         const pos = m.geometry.attributes.position;
+        await breathe();
         for (let i = 0; i < pos.count; i++) {
           p.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).sub(studO);
           const z = p.dot(studA);
@@ -51278,7 +51363,7 @@ const JMP_SITE = await (async () => {
       }
       if (inside(OBS.main, lg, liftM[0].M) || inside(OBS.plate, lg, liftM[0].M)) return false;
       return true;
-    } finally { lg.dispose(); }
+    } finally { await breathe(); lg.dispose(); }
   };
   // ---- the scan
   const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
@@ -51339,6 +51424,7 @@ const JMP_SITE = await (async () => {
   // did NOT cut; a station there means another B could help ('B-dependent'),
   // none means no B could ('B-independent'), and only the first is worth the
   // late re-cut TODO 160 files. The scan above never sees these sets.
+  await breathe();
   const pick = (lists, flags, want) => lists.filter((_, i) => flags[i] === want);
   const subset = (want) => ({
     main: setOf(pick(staticList, staticBDep, want)), plate: setOf(pick(plateList, plateBDep, want)),
@@ -51671,6 +51757,7 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
   //    this one "movement thickness" would quietly conflate them.
   //    This is what a case has to swallow, so it is the one worth asserting.
   const movBox = new THREE.Box3();
+  await breathe();
   for (const c of movement.children) if (c !== caseSolid && c.name !== 'caseLines') movBox.expandByObject(c);
   const movMM = MM(movBox.getSize(new THREE.Vector3()).z);
   if (!(movMM >= 2.5 && movMM <= 12))
@@ -52775,7 +52862,11 @@ if (routeApplySolve) {
 // rule 6: a mesh that reaches the scene non-indexed says so at boot.
 {
   await breathe();
-  const w = G.weldTree(scene);
+  // §266 — resumed a mesh at a time (geometry.js, weldTreeSteps).
+  const weldSteps = G.weldTreeSteps(scene);
+  let weldStep;
+  while (!(weldStep = weldSteps.next()).done) await breathe();
+  const w = weldStep.value;
   await breathe();
   WELD_CENSUS = { ...w, saved: w.before - w.after };
   G.weldAssert(scene);

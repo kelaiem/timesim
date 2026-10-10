@@ -88,9 +88,11 @@ const INPUT_EVERY_MS = 150;
 // that floor doubled: the room a slower machine needs, and still 40x below the
 // 13 s block it replaces. Since §266 the first two are generators main.js steps
 // through (the Geneva cut is now the finger's, which traces the cross's outline
-// first), so the floor is G.weldTree, 284 ms on the same container — the
-// ceiling is KEPT at 700 rather than re-derived here, because §266's second
-// landing derives every ceiling in this file from the CI host's own spread.
+// first), and G.weldTree (284 ms) is stepped too since main moved again. The
+// largest call left is G.makeBarrel for the alarm barrel, ~0.3 s on a container
+// measured ~1.6x slower. The ceiling is KEPT at 700 rather than re-derived
+// here, because §266's second landing derives every ceiling in this file from
+// the CI host's own spread.
 const MAX_HELD_MS = 700;
 // MAX_TASK_MS: the same bound plus the one browser task that is not the build's
 // (the first composited frame, ~950 ms here), because a long task counts both

@@ -1277,12 +1277,15 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   in the inner loop that is too hot to seam. A SINGLE CALL longer than the
   budget cannot be split from `main.js` at all, so it becomes a generator in
   `geometry.js` that `yield`s between steps of its own arithmetic
-  (`makeGenevaFingerSteps`, `makeHairspringSteps`, `genevaCrossOutlineSteps`),
+  (`makeGenevaFingerSteps`, `makeHairspringSteps`, `genevaCrossOutlineSteps`,
+  `weldTreeSteps`),
   with `drainSteps` as the synchronous wrapper for every caller that does not
   yield, and `main.js` resumes it with `await breathe()` between steps. The
   steps are the same arithmetic in the same order, and the fingerprint holds
   that. Measure the result with `probe-239-boot-yield.mjs` before landing
-  anything that adds build work.
+  anything that adds build work, and place seams along the EXECUTION timeline
+  rather than down the source: a loop that already carries a seam reads as one
+  unsplit stretch to a source-order pass (§266's second catch-up).
   **AND A YIELDING BUILD CAN BE INTERRUPTED, which is a failure class that did
   not exist before.** Every listener this file registers is registered PART WAY
   THROUGH it, closing over constants the lines below have not declared yet — so a

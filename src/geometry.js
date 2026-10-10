@@ -245,21 +245,30 @@ function snapshotSubBodyIndex(geo) {
   geo.userData.subBodyIndex = geo.index.array.slice();
 }
 
-export function weldTree(root) {
+// §266 — in steps, as makeGenevaFingerSteps is: the pass over every mesh in
+// the scene is one of boot's longest single calls (~0.3–0.6 s on the
+// SwiftShader container, growing with the build), so the walk is collected
+// first and the generator yields between meshes. The order of the welds and
+// every result are the synchronous pass's; weldTree drains it in one go.
+export function weldTree(root) { return drainSteps(weldTreeSteps(root)); }
+export function* weldTreeSteps(root) {
   const done = new Map();
   let meshes = 0, before = 0, after = 0;
-  root.traverse((o) => {
-    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+  const walk = [];
+  root.traverse((o) => walk.push(o));
+  for (const o of walk) {
+    yield;
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) continue;
     const old = o.geometry;
     meshes++;
     before += old.attributes.position.count;
-    if (old.index) { after += old.attributes.position.count; snapshotSubBodyIndex(old); return; }
+    if (old.index) { after += old.attributes.position.count; snapshotSubBodyIndex(old); continue; }
     let welded = done.get(old);
     if (!welded) { welded = weldGeometry(old); done.set(old, welded); }
     if (welded !== old) o.geometry = welded;
     after += welded.attributes.position.count;
     snapshotSubBodyIndex(o.geometry);
-  });
+  }
   for (const [old, welded] of done) if (welded !== old) old.dispose();
   return { meshes, before, after };
 }
@@ -3685,8 +3694,9 @@ export function writeSpiralLine(line, pts) {
 
 // §266 — in steps, as makeGenevaFingerSteps is: the coil-gap scan below is an
 // O(n²) pass per wind frame (~0.23 s over the frames and report rows on the
-// SwiftShader container, ~5 ms a row), so the builder yields before each row
-// and changes nothing else; makeHairspring drains it in one go.
+// SwiftShader container, ~5 ms a row), and the 41 elastica solves before it
+// held the first step ~0.35 s, so the builder yields before each solve and
+// each row and changes nothing else; makeHairspring drains it in one go.
 export function makeHairspring(plan) { return drainSteps(makeHairspringSteps(plan)); }
 export function* makeHairspringSteps(plan) {
   const { innerR, outerR, coils = 12, height, overcoil = null,
@@ -3726,8 +3736,8 @@ export function* makeHairspringSteps(plan) {
   const REST_FRAME = (windFrames - 1) >> 1;   // θ = 0 exactly — windFrames is ODD
   const solved = new Array(windFrames);
   solved[REST_FRAME] = el.solve(0);
-  for (let k = REST_FRAME + 1; k < windFrames; k++) solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k - 1]);
-  for (let k = REST_FRAME - 1; k >= 0; k--) solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k + 1]);
+  for (let k = REST_FRAME + 1; k < windFrames; k++) { yield; solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k - 1]); }
+  for (let k = REST_FRAME - 1; k >= 0; k--) { yield; solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k + 1]); }
   const segsPerTurn = segs / coils;
   const scalars = (sol) => {
     // coil gap: the nearest two centreline points at least half a turn apart
@@ -3760,10 +3770,12 @@ export function* makeHairspringSteps(plan) {
   // THE CONTROL: solved against the free spring's own landing, the constraint
   // does no work and λ must come back zero — at the frame edge and at the
   // report edge, both signs. A pivot force the solver invents would show here.
-  const control = [windMaxRad, -windMaxRad, reportMaxRad, -reportMaxRad].map((th) => {
+  const control = [];
+  for (const th of [windMaxRad, -windMaxRad, reportMaxRad, -reportMaxRad]) {
+    yield;   // §266 — each control is a cold solve (no warm start), the costliest step here
     const s = el.solve(th, null, el.freeLanding(th));
-    return { theta: th, lam: Math.hypot(s.lam[0], s.lam[1]), kOverPure: (s.torque / th) * el.L, converged: s.converged };
-  });
+    control.push({ theta: th, lam: Math.hypot(s.lam[0], s.lam[1]), kOverPure: (s.torque / th) * el.L, converged: s.converged });
+  }
   const ratioAt = (th) => { const s = solved[Math.round((th + windMaxRad) / dTheta)]; return s.torque / th; };
   const clampRatio = ((ratioAt(HAIRSPRING_RATIO_THETA) + ratioAt(-HAIRSPRING_RATIO_THETA)) / 2) * el.L;
 
@@ -3773,6 +3785,7 @@ export function* makeHairspringSteps(plan) {
   const standZ = Math.max(height / (ribbonR * 2), 1);
   const frames = [];
   for (let k = 0; k < windFrames; k++) {
+    yield;
     const pts = solved[k].pts.map((p, i) => new THREE.Vector3(p[0], p[1], rest.zs[i] / standZ));
     framePolys.push(solved[k].pts.map((p) => [p[0], p[1]]));
     frames.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), rest.pts.length - 1, ribbonR, 4, false));

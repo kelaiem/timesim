@@ -33621,6 +33621,50 @@ fingerprint (`I.fingerprint` after boot, two virgin boots per tree) is
 `2284144268` on this branch and on `main` alike. The full battery is CI's
 to run on the pull request.
 
+**And `main` moved under it again, which is the finding in one paragraph.** A
+second catch-up, to `73978a4` (§221's physical amplitude, §261's height
+ledger), brought new build work, about 9 s of it on the dev container. That
+work again arrived without seams: **`main` itself now holds the thread for
+4,698 ms**. Merged here, it added a 713 ms stretch and failed the probe. This
+time the seams were placed in **execution order**, not source order. One boot
+records a compute-only timeline (`BREATHE_MS = Infinity`) of every existing
+seam call and every candidate site hit 500 times or fewer. A greedy pass along
+that timeline splits any stretch over the 20 ms placement budget at its latest
+candidate. The source-order pass had misread every loop that already carried
+a seam, the generator drives above included, as one unsplit stretch. The
+timeline placed 72 more seams. It also named what no `main.js` site can split,
+and each of those was opened by hand:
+- `BACK_ENVELOPE`'s triangle walk gets a seam every 1,000 triangles (one heavy
+  mesh was 300–400 ms, at ~15.5 µs a triangle);
+- four more `traverse` callbacks become list walks (the swept-footprint walk,
+  the arrest pawl's check, the gong's two envelopes, whose IIFEs became
+  awaited async ones);
+- `solveLegs` becomes async with a seam per leg count;
+- a seam goes at the head of the 720-azimuth stud loop, whose `continue`s
+  skipped the existing ones;
+- `weldTreeSteps` is a new generator that yields between meshes;
+- `makeHairspringSteps` now also yields per elastica solve, per cold control
+  solve and per tube frame. §221 made its first step ~0.35 s.
+
+The seam count is now 349 (the probe's own count).
+
+**Measured on a different container**, and that matters: this session's
+container restarted between the two catch-ups and is ~1.6× slower. The
+control is the commit CI had already passed (`87af79a`), which reads here held
+578 ms, worst long task 1,815 ms, input ack 1,666 ms and boot 31 s. On the
+old container it read 322 / 1,047 / 897 ms and 18.9 s. On this container the
+tree holds the thread for **335–414 ms** at worst over two runs, against
+that control's 578 ms. The build's own number passes the 700 ms ceiling with
+room. The long-task and input-ack gates fail on this container for the tree
+and the control alike (1.6–1.9 s). A trace names that task: a frame `Commit`
+blocked in `GLES2::ReadPixels` while the GPU process finishes the GL queued
+before the first yield. It is §239's "first composited frame", software GL
+work that scales with the machine. It is not build work, and no seam reaches
+it. The ceilings stay where they are: deriving them from the CI host's spread
+is exactly landing two's job, and this is the measurement that says it is owed.
+The geometry fingerprint after the merge is `1133173793` on this branch and on
+`main` alike, deterministic across two virgin boots each.
+
 **What it leaves.** Landing two: the probe in CI with its control, the held
 stretch as the gated number, and every ceiling derived from the CI host's
 spread. The regression this landing repaired took three weeks to find because
