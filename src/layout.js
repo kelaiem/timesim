@@ -418,13 +418,16 @@ export const LIFT_DEG = 50;
 // leaving at +L/2, so (2/π)·asin(L / 2A). 0.0797 at 50° and 200°; it was an
 // authored 0.16 against a 45° swing.
 export const IMPULSE_WIDTH = (2 / Math.PI) * Math.asin(LIFT_DEG / (2 * AMPLITUDE_POSED_DEG));
-export const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
-export const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
-// FORK_BANK_DEG / FORK_RECOIL_DEG are DERIVED in main.js (after the pallet
-// fork and balance geometry exist), from rollerR and the notch's actual
-// reach — see that derivation for why they can't be picked independently of
-// the balance's roller radius without the impulse pin missing the notch. They
-// are NOT pure, so they stay there.
+// TODO 226 — the window is no longer POSED: the fork and wheel are driven off
+// the pin (main.js, `forkSwingAt`), so the balance's own passage through ±LIFT/2
+// IS the window, and IMPULSE_WIDTH is what that passage measures, quoted by the
+// phase and the beat sounds. RECOIL_FRACTION and RECOIL_DEG, which shaped a
+// draw dip inside a posed window, are retired with it.
+// FORK_BANK_DEG is DERIVED in main.js (after the pallet fork and balance
+// geometry exist), from rollerR and the notch's actual reach — see that
+// derivation for why it can't be picked independently of the balance's roller
+// radius without the impulse pin missing the notch. It is NOT pure, so it
+// stays there.
 
 // ---------------------------------------------------------------------------
 // Z-stack — the depth budget between the back plate (z≈0) and the cocks. Each

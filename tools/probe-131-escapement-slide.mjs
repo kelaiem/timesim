@@ -5,7 +5,9 @@
 // carried through the live world matrices), the tooth tip
 //   · rests ON the locking corner at lock (rest pose, both stones);
 //   · stays within HANDOFF_TRACK_TOL of the impulse face, BETWEEN its two
-//     corners, from the end of the recoil dip until it passes the let-off;
+//     corners, from the window's opening until it passes the let-off (TODO
+//     226 retired the posed law's recoil dip, so there is no prefix to skip:
+//     the wheel turns in proportion to the fork from the first instant);
 //   · then runs free by a drop of under 3° of wheel before the OTHER stone's
 //     corner catches the next tooth at the end of the window;
 //   · never overlaps a stone's outline by more than HANDOFF_TRACK_TOL at any
@@ -80,10 +82,18 @@ const out = await page.evaluate(async (N) => {
     const m = new THREE.Matrix4().multiplyMatrices(forkInv, s.matrixWorld);
     return s.geometry.parameters.shapes.getPoints(1).map((p) => { const v = new THREE.Vector3(p.x, p.y, 0).applyMatrix4(m); return [v.x, v.y]; });
   }).sort((a, b) => a[0][0] - b[0][0]);   // by locking-corner x: [0] is the −x stone
+  // TODO 226 — the window is the pin's passage through the lift, which the
+  // balance sets, so it is MEASURED off the posed movement: the first phase at
+  // which the fork has reached the bank it lies on for the rest of the beat.
+  const forkAt = (ph) => { clock.setPose({ tau: ph * beatT, crownPullT: 0, leverEngage: 0, tension: 1 }); return forkG.rotation.z; };
+  const banked = forkAt(0.5);
+  let lo = 0, hi = 0.5;
+  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (Math.abs(forkAt(mid) - banked) < 1e-12) hi = mid; else lo = mid; }
+  const lift = hi;
   const frames = [];
   for (let k = 0; k <= N; k++) {
     const s = k / N;                                   // fraction of the impulse window
-    const ph = s * L.IMPULSE_WIDTH;
+    const ph = s * lift;
     clock.setPose({ tau: ph * beatT, crownPullT: 0, leverEngage: 0, tension: 1 }); clock.scene.updateMatrixWorld(true);
     const inv = new THREE.Matrix4().copy(forkG.matrixWorld).invert();
     const m = new THREE.Matrix4().multiplyMatrices(inv, prof.matrixWorld);
@@ -97,7 +107,7 @@ const out = await page.evaluate(async (N) => {
     const m = new THREE.Matrix4().multiplyMatrices(inv, prof.matrixWorld);
     const poly = poly0.map(([x, y]) => { const v = new THREE.Vector3(x, y, 0).applyMatrix4(m); return [v.x, v.y]; });
     frames.push({ s: 'rest', ph: 0.5, poly, tips: tipIdx.map((i) => poly[i]) }); }
-  return { radius, reach, stonePolys, frames, tol: I.HANDOFF_TRACK_TOL ?? 0.03, beatDeg: L.BEAT_DEG, recoilFrac: L.RECOIL_FRACTION, sense: L.MOVEMENT_SENSE };
+  return { radius, reach, stonePolys, frames, lift, tol: I.HANDOFF_TRACK_TOL ?? 0.03, beatDeg: L.BEAT_DEG, sense: L.MOVEMENT_SENSE };
 }, N);
 await browser.close(); srv.kill();
 
@@ -112,11 +122,11 @@ const nearestTip = (tips, c) => tips.reduce((b, t) => (Math.hypot(t[0] - c[0], t
 // the let-off corner; and its offset off the face's line.
 const alongFace = (p, st) => { const a = st[0], b = st[1]; const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2; const off = Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / Math.sqrt(L2); return { t, off }; };
 
-const { radius, reach, stonePolys, frames, tol, beatDeg, recoilFrac } = out;
+const { radius, reach, stonePolys, frames, lift, tol, beatDeg } = out;
 const fails = [];
 const say = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`); if (!ok) fails.push(msg); };
 
-console.log(`TODO 131 — escapement slide, ${N + 1} samples over the impulse window, tol ${tol}`);
+console.log(`TODO 131 — escapement slide, ${N + 1} samples over the impulse window (${(100 * lift).toFixed(2)}% of the beat, measured), tol ${tol}`);
 say(Math.abs(reach - radius) <= 1e-5, `wheel metal reaches ${reach.toFixed(6)} in its body band; authored tooth circle ${radius}`);
 
 // Which stone is the tooth leaving? The one whose locking corner a tip sits on at s = 0.
@@ -135,13 +145,13 @@ const tipK = f0.tips.findIndex((t) => t === nearestTip(f0.tips, onto[0]));
 let rideRows = 0, offMax = 0, sLetOff = null, worstDepth = 0, worstAt = null;
 for (const f of frames) {
   for (const st of stonePolys) { const d = depth(f.poly, st); if (d > worstDepth) { worstDepth = d; worstAt = f.s; } }
-  if (f.s === 'rest' || f.s < recoilFrac) continue;
+  if (f.s === 'rest') continue;
   const tip = f.tips[tipK];
   const { t, off } = alongFace(tip, onto);
   if (t <= 1 + 1e-9) { rideRows++; offMax = Math.max(offMax, off); }
   else if (sLetOff === null) sLetOff = f.s;
 }
-say(rideRows >= 4 && offMax <= tol, `tip rides the impulse face for ${rideRows} samples after the recoil dip, at most ${offMax.toFixed(4)} off the face`);
+say(rideRows >= 4 && offMax <= tol, `tip rides the impulse face for ${rideRows} samples from the window's opening, at most ${offMax.toFixed(4)} off the face`);
 say(sLetOff !== null && sLetOff < 1, `tip passes the let-off corner at s = ${sLetOff}`);
 const dropDeg = sLetOff === null ? NaN : beatDeg * (1 - sLetOff);
 say(dropDeg > 0 && dropDeg < 3, `drop ≈ ${dropDeg.toFixed(2)}° of wheel (window-sampled; ${beatDeg}° per beat)`);

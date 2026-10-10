@@ -105,8 +105,8 @@ const MUTANTS = [
     to:   '    const W = -MOVEMENT_SENSE;',
     note: 'the club leads backward; the impulse face is on the wrong flank' },
   { kind: 'subject', name: 'the going train\'s absolute sense', file: 'src/main.js',
-    find: '  return MOVEMENT_SENSE * (n * BEAT_DEG + escapeDeltaDeg(p)) * DEG2RAD;',
-    to:   '  return -MOVEMENT_SENSE * (n * BEAT_DEG + escapeDeltaDeg(p)) * DEG2RAD;',
+    find: '  return MOVEMENT_SENSE * (n + f) * BEAT_DEG * DEG2RAD;',
+    to:   '  return -MOVEMENT_SENSE * (n + f) * BEAT_DEG * DEG2RAD;',
     note: 'the whole train runs backwards — TODO 115\'s own first half' },
   { kind: 'subject', name: 'the mainspring winds\' hand', file: 'src/geometry.js',
     find: '      const ang = sense * (A - a);',
@@ -197,7 +197,10 @@ const MUTANTS = [
     note: 'the crown wheel, the knob and the stem coupling would all be geared to a spur that is not there — the winding train reversed at one end only' },
   { kind: 'subject', name: 'the stem one-way\'s cut', file: 'src/main.js',
     find: "sense: windSign, name: 'windPinionSaw' }",
-    to:   "sense: 1, name: 'windPinionSaw' }",
+    // NEGATED, not a literal: windSign is +1 on this movement, so the literal
+    // 1 this row used to write was the line rewritten to itself — a NO-OP the
+    // probe reported as "tested nothing" (and, under CPU load, as SILENT).
+    to:   "sense: -windSign, name: 'windPinionSaw' }",
     note: 'the crown drives through the coupling\'s ramps and free-wheels on its drive faces — a one-way running backwards' },
   { kind: 'subject', name: 'the mainspring drum\'s rotation', file: 'src/main.js',
     find: 'const drumRotAt = (t) => MOVEMENT_SENSE * (SPRING_WIND_FULL - springWindAt(t));',
