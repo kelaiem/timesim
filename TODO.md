@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
+| 227 | CLOSED | The alarm release sleeve's SKIRT — the cone the tail pin presses — was a double-sided sheet of no thickness (a collinear offset: profile area 0.0177 u²), and `alarmSleeveWeb` (TODO 225) was a patch over it. It is a real shell now, wall `STOCK_MIN_U` normal to the face, with a relief at the feeler spring's free end (0.084 under the envelope floor): skirt ⇄ spring 0.0807 → 0.1585 against 0.15. The web, its §124 relief and its contact row are gone. Battery 53/53 locally; `tools/probe-225-lathe-profiles.mjs` finds no other lathe like it (72 meshes) |
 | 226 | OPEN | Found closing TODO 216. The impulse pin's centre sits 9.575 from the fork pivot and the slot's mouth is at 9.595, so the pin only enters the slot's mouth. The bank is derived by matching arc lengths at `notchDepth` (6.83), so the pose law impulses over 21.7° of balance arc while the metal's lift is 30.95°. Seat the pin in the slot and derive the bank from the pin's real radius |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
@@ -30515,7 +30515,7 @@ scaled frame. 171 lose under 25% of their area at their floor (144 under 8%).
 
 | unit / mesh | kind, floor | what the outline says | waived |
 |---|---|---|---|
-| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — see TODO 227** | no |
+| Alarm release sleeve / `alarmSleeveWeb` | wheel 0.12 | an ARC RING 0.030 mm wide (`WEB_R_OUT − WEB_R_IN`, main.js ~19370), 0.12 mm deep; whole shape under 0.5x the floor. The ruler reads the depth, 0.12000 — exactly the floor. **Verdict: a patch, not a member — retired with TODO 227 (the mesh no longer exists, so 9 rows remain)** | no |
 | Alarm switch / `alarmPusherReturnAbutment` | wheel 0.12 | an annulus, radii 0.4442 / 0.3689 mm: a 0.075 mm wall, 0.12 mm deep | TODO 11 (unit-wide) |
 | Escape wheel / (unnamed, 0.394 mm deep) | wheel 0.12 | an annulus 0.2728 / 0.1895 mm: a 0.083 mm wall; reads 0.3941 | TODO 12 |
 | Escape wheel / (unnamed, 0.452 mm deep) | wheel 0.12 | the escape PINION's leaves (105-point outline, root 0.227 mm to tip 0.340 mm) | TODO 12 |
@@ -30630,6 +30630,50 @@ shell as above with the points wound correctly, retire the web, its §124 relief
 and asserts and the `alarmSleeveWeb ⇄ alarmTailPin` contact row, and let
 `stockFloor` read the declared wall (§169's device). Until then the cone the pin
 presses is a modelled surface, not a modelled body.
+
+**UPDATE — closed.** The shell landed with the relief the "swept skirt" path above
+named, and not either layout move. Re-siting the bear point was rejected on the
+design priority's own list: `BEAR_R/ARM_LEN` is the crank's lever arm, and
+"stretching or shrinking a lever arm" is a forbidden way to buy P3 clearance
+whether or not the 0.45 was ever derived. Buying stratum was priced and not
+needed.
+
+*What was built.* `alarmSleeveSkirt` is one custom swept body (not a lathe: the
+relief breaks the axis symmetry). Its profile is `[A, K1, E|K2, K3, G, C, B]` —
+seven corners, so the full ring and the relieved ring share a topology and the
+notch is a MORPH of one corner (E sliding to K2) with smoothstep ramps, one closed
+manifold with no cap faces. The wall is `STOCK_MIN_U` normal to the working face
+(outer face z = r − c − t·√2), the cap flush with the flat's underside and clipped
+at the flat's rim, the lip flush with the envelope floor, `stockSection` declared
+(§169's device — the census reads a profile's envelope, which for a 45° wedge is
+not its wall). In a sector about the lever's line the lip's OUTER corner is absent
+below `zCut` and outboard of `rKeep`, both derived from the spring's metal:
+`zCut` is one `CLEAR_MARGIN` over the blade's end top plus its climb toward the
+rim (the blade rises toward its anchor, `ALARM_FEELER_SPR_LIFT / (SPR_FREE +
+BEAR_R)` per unit of length — the first cut used the end alone and read 0.144);
+`rKeep` is where the kept lip stands a margin from the blade's nearest corner
+through the diagonal. The sector's half-angle covers the blade's lateral reach over
+the ring at the steepest yaw the relief assumes (`ALARM_SPR_YAW_MAX`, 45°),
+asserted at the blade against the lug solve (≈ 30.8°). The face runs to A at every
+azimuth, which is what the pin needs; only the metal behind the face's tip is
+relieved. The feeler's pivot radius, track radius, arm length, bear point, spring
+free length and spring lift were hoisted above the sleeve build to feed it; none
+moved. The web, its §124 relief and `['alarmSleeveWeb', 'alarmTailPin']` retired,
+and the §124 rock assert now binds at the skirt's tip A.
+
+*Measured.* `meshClearance(alarmSleeveSkirt, alarmFeelerSpring)` 0.0807 (the
+unrelieved shell) → **0.1585**; the full local battery on this tree (`node
+tools/ci-battery.mjs --shards 3 --no-incremental`, dev container) **53/53 gates**,
+`meshIntegrity` 0 inverted, `undeclaredClearance` 0 rows under the margin, and
+`assembly` keeps the skirt in the sleeve's one body. Boot is silent.
+
+*What this does NOT claim.* The relief is a pocket, not a thinning of the wall: the
+wall above `zCut` is the full `STOCK_MIN_U` normal everywhere, and the tip's own
+45° taper (a lip is only `t` thick once it is `t·√2` wide) is the same taper the
+rest of the ring has. But in the sector the lip is 0.2 u wide against 0.448, so
+the tapered tip there is longer in proportion to the wall. If a reviewer reads
+that as the thinning P3 forbids, the alternative is the stratum purchase, whose
+price is the dial plane (`Z_DIAL`) and everything keyed to it.
 
 ---
 
