@@ -5,7 +5,7 @@
 // the hammer's tail at any phase (the corner's restoring answer is that
 // contact), the nose off the cam's flank mid-rise or on it mid-fall, a
 // lever⇄hammer ratio that is not 1 at rest, a blow that is not radial, a
-// fundamental off TODO 17's 2.5 kHz, a foot that had to walk, gong or hammer
+// fundamental off the target (TODO 17's 2.5 kHz; a note since §262), a foot that had to walk, gong or hammer
 // metal outside the annulus's walls or the ring over its declared ceiling, or
 // a cam whose base and pickup radii are not §25's.
 //

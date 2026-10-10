@@ -416,8 +416,10 @@ clamped-free beam's, not a horological source: the mode constants
 `(βₙL)² = 3.516, 22.03` are standard, and the ~6.3× second partial they give is
 why a struck bar clangs where a string sings. Since §253 the bar is solved as
 the circular arc it is bent into (Love's thin-arch equations, the straight
-beam kept as the flat-limit control), which brings that to ~5.6× here — still
-nowhere near a harmonic.
+beam kept as the flat-limit control), which brings that to ~5.5× here — still
+nowhere near a harmonic. The fundamental's TARGET is a note since §262 (C7,
+2093 Hz, the octave measured against the overtone's audibility); the ratios
+above are the bar's, whatever note it is cut to.
 
 ### Watches this movement takes an idea from
 

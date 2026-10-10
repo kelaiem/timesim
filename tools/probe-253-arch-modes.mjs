@@ -27,7 +27,7 @@
 //   5. THE RADIATION AT THE SHIPPED ARC. The build's Bessel series must agree
 //      with a brute-force quadrature over the sphere of the same |F|².
 //   6. THE DESIGN POINT. The length/block/radius fixed point closed, the foot
-//      walked 0°, f₁ is the 2500 Hz target, f₂/f₁ is the arc's ratio and not
+//      walked 0°, f₁ is the target (a note since §262), f₂/f₁ is the arc's ratio and not
 //      the straight bar's 6.27, and the head's mass is the arc fundamental's
 //      modal fraction of the design wire.
 //
