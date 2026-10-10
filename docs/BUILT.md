@@ -31622,6 +31622,10 @@ runs read 0.
   first draft was «Zvana» ("rings"), which dropped the "at". Latvian writes
   a time «plkst.».
 - **Headers:** 56 px at all eight widths on both pages.
+- **Re-measured after Tagalog landed on `main`** (the merge changes the roster
+  the probe walks, not Latvian's labels): the same 56 px at all eight widths,
+  the same 180.5 and 57.3, and `PASS — every header one line, no locale worse
+  than English` over `en,fil,lv`.
 - **§53's column:** no content wider than its box.
 
 ### Measured
@@ -31634,7 +31638,7 @@ runs read 0.
 | sense audit | 0 wrong-sense links over the linked terms (four flagged blocks read in context, each the glossary's sense) |
 | `probe-chrome-coverage --locales de,lv` | control PASS; lv **0 missing, 0 not applied** |
 | `l10n-review-packets` | PASS, 20 locale packets; lv 241 rows, 6 questions |
-| `probe-116-locale-fit` | headers 56 px at all eight widths; `#chrome-bar` lv 180.5 against en 176.6; *Zvana plkst.* 57.3 — PASS |
+| `probe-116-locale-fit` | headers 56 px at all eight widths; `#chrome-bar` lv 180.5 against en 176.6; *Zvana plkst.* 57.3 — PASS, and unchanged when re-measured after the Tagalog merge |
 | `offline-check` | **45/45**, precache **65/65**, the Latvian primer served from cache |
 | boot | `?lang=lv`, `lav`, `lvs` and `lv-LV` (the last in a browser launched as fr-FR) on all three documents: `lang="lv"`, `dir="ltr"`, `fmtNum` reads `30,0 · 0,024 · 18 000`, and the only console lines are Chromium's software-GL notices and the dev server's own `/__state` 404, which English shows too; `ltg` reads English |
 | fingerprint | **524118476** (60 units, 13 poses) at `?lang=lv` and in English, identical to a virgin boot of `origin/main` measured beside it |
