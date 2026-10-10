@@ -338,7 +338,9 @@ try {
   // §249 — 51: Vietnamese's two tables, the two-per-locale rule again. 53: Dutch's.
   // 55: Persian's. 57: Hebrew's. 59: Indonesian's. 61: Turkish's. 63: Welsh's.
   // 65: Tagalog's. 67: Latvian's.
-  check('release: precache complete', counts === 67, `${counts}/67`);
+  // §246 tier two — 68: src/balance-drive.js, the driven balance main.js
+  // imports. One module for the app, like validated-configs.js, so it adds one.
+  check('release: precache complete', counts === 68, `${counts}/68`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
