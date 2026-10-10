@@ -337,7 +337,8 @@ try {
   // module for the app, not a per-locale table, so it adds one.
   // §249 — 51: Vietnamese's two tables, the two-per-locale rule again. 53: Dutch's.
   // 55: Persian's. 57: Hebrew's. 59: Indonesian's. 61: Turkish's. 63: Welsh's.
-  check('release: precache complete', counts === 63, `${counts}/63`);
+  // 65: Tagalog's.
+  check('release: precache complete', counts === 65, `${counts}/65`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -375,7 +376,7 @@ try {
   // missing table from another, and a per-locale dynamic import is exactly the
   // kind of thing that gets added to a LOADERS map and forgotten in a file
   // name; this loop is what makes each one prove itself from cache.
-  for (const code of ['de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'id', 'tr', 'cy', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'he', 'fa', 'ar']) {
+  for (const code of ['de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'id', 'tr', 'cy', 'fil', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'he', 'fa', 'ar']) {
     await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, NAV);
     // WAIT for the swap rather than sampling once: the table arrives by dynamic
     // import(), which can still be in flight at `load`, so a single read raced

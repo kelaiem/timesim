@@ -31351,6 +31351,123 @@ buttons sharing a row. Measured after: 22% covered at 390 × 844, 25% at
 360 × 740, 32% at 260 × 563 (a 390 px phone at about 150% zoom), 19% at
 desktop width. No page scrolls sideways, in German or in Arabic.
 
+### Tagalog — a language the browser carries, a glossary that keeps the trade's English, and a stem that is also the word for "begin"
+
+Tagalog (Filipino, `fil`) is the twenty-first locale. The chrome (485 keys),
+`explain.html` (771/771) and `primer.html` (145/145) read Tagalog at 100%.
+
+**The browser carries it, so the row borrows nothing.** Measured in Chromium
+141 in contexts launched as en-US, fr-FR and de-DE, and in Node's ICU 78:
+`Intl.NumberFormat.supportedLocalesOf` answers for `fil`, `fil-PH`, `tl`,
+`tl-PH` and `tgl`, and canonicalizes the last three to `fil`. It formats
+`30.0 · 0.024 · 18,000` on latn with one/other plurals, which are English's
+marks, so `MARKS.fil` is English's row and the row's tag is its own `fil-PH`.
+Welsh needed a borrowed tag; this does not, and the boot assert that holds
+every row's tag to "this browser carries it" passes without a word of
+commentary. The code is `fil`, the form Intl itself returns. The matcher takes
+`tl` (ISO 639-1, what Firefox reports) and `tgl` (ISO 639-3) as well, and is
+anchored: `fi` and `fi-FI` are Finnish, `tlh` is Klingon, `tli` is Tlingit and
+`fit` is Tornedalen Finnish, so the ladder asserts all five land on English.
+The row's face says "Tagalog", which is what a reader looks for in a list.
+
+**The glossary keeps the trade's English.** A Filipino reader of a
+mechanical-watch explainer meets *escapement*, *balance*, *pallet fork*,
+*hairspring*, *mainspring*, *fusee* and *torque* in English only, and a coined
+*gulong ng pagtakas* for the escape wheel reads as parody. So the loans stay in
+English spelling and the generic nouns are native: *gulong*, *ngipin*, *pingga*,
+*kadena*, *martilyo*, *kamay ng orasan* for the clock hands, *makina ng relo*.
+Commands are the bare imperative with the object-focus native verb where one
+exists (*Kopyahin*, *Burahin*, *Ilapat*) and `i-` plus the English stem
+otherwise (*I-wind*, *I-sync*, *I-pause*). A borrowed stem takes a separate
+linker *na* and never a fused *-ng*. The seams the earlier landings predicted
+were fixed in the glossary beforehand: ribbon is *laso*, ledger *talaan*,
+cadence *ritmo*, shipped *inilabas*, lug *tainga*, hand-off *abutan*.
+
+**The honesty pair is `modelado` / `simulado`, and the matcher had two traps.**
+Both are Spanish-derived participles, which makes the contrast read as one
+parallel pair, anchored on *inilalarawan* (is described) for the first and
+*PINAGAGALAW* (is driven) for the second. `HONESTY.fil` is
+`m: /modelad|\b(?:imodelo|…|iminodelo|nagmomodelo|pagmomodelo)|\b(?:i|ini|nag|nagmo|mag|magmo|pag|pagmo)-model/i`
+and `s: /imulasi?yon|simulad/i`.
+- **The bare noun `modelo` and its linker form `modelong` never count.** The
+  credit line's "AI model" is *ang AI model ng Anthropic*, and every plain "a
+  model" uses them. The verb forms are accepted only so that the two English
+  uses of "models" as a verb are not forced into a paraphrase.
+- **The stem `simula` is not the simulation stem.** In Filipino it is the
+  everyday word for "begin" (*nagsimula*, *sinimulan*), so a bare-stem matcher
+  would call every "starts" a simulation. `s` takes *simulasyon* and *simulado*
+  only, and the English leftovers *simulated* and *simulation* do not match
+  either, so an untranslated word cannot pass.
+
+The row is held to the page's own glossary entry: the control reads PASS
+(`modelado / simulado`), 20/20 `HONESTY` rows verified.
+
+**How the tables were made.** One agent built the glossary (about 610 rows, 28
+pre-resolved seams), a translator brief with seven worked examples taken from
+real ids, and the honesty matchers with 46 test strings. Sixteen translators
+then worked in numbered chunks of about 17 KB of English each, every chunk
+returning `{id: string}`. The assembler wrote every key from the extractor's
+own literal, so no key was typed by anyone, and a validator mirroring the page
+gate ran on each chunk: ids, markup, `<code>` spans, number glyphs (explainer)
+or parsed values (primer), the honesty words, and label length.
+- **Counts.** 485 chrome keys, identical to every other table's; 728 explainer
+  blocks, which is eleven more than Welsh's table carries (eleven blocks have
+  been added or rewritten since it landed); 135 primer blocks.
+- **Two chunks died on the monthly spend limit** (7 and 8, mid-run) and were
+  relaunched after it reset. Each had already written its output, so the
+  relaunch validated 100 and 43 ids at 0 problems without redoing them.
+- **The validator's findings that are not defects.** Chunk 04's eleven "label
+  long" flags are glossary rows copied verbatim (vocabulary headings, term
+  cells, hidden variant rows), which the brief says to do and which are not plate
+  labels. Chrome string c436 ("… no models") flags a dropped honesty word
+  because the validator's English matcher takes the plural noun, which here
+  means model files; the translation is correctly *modelo*, and the repo's gate
+  reads only the two page tables, never the chrome.
+- **One sentence spans three SVG text nodes** (e305 to e307, a caption wrapped
+  by hand), so each fragment is its own key. The three Tagalog fragments read as
+  one sentence in order.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **771/771**, primer **145/145**; 0 unmatched, 0 markup / `<code>` / number drift, 0 crossed honesty terms, block coverage 0 short blocks against Tagalog's median ratio 1.23 (explainer) and 1.24 (primer); honesty control PASS, 20/20 rows verified; prose-number control 40/40. **The first run failed only on plate fit**: eight labels ran wider than their plates (1 explainer caption and 7 primer labels; «gulong ng escapement» for the escape wheel was 20 against 12). Each is now shorter: seven are within one character of the English and the longest, a primer caption, is ten over (87 against 77). The second run reads **0 new overflow or collision** on both pages |
+| `probe-chrome-coverage` | control PASS; Tagalog **0 missing, 0 not applied**, 30 cognates on the page at boot (34 entries in the table map to themselves: On, Off, Menu, Escapement, Balance, Hairspring, Pallet fork …), 74 never-translated |
+| `probe-116-locale-fit` | every header **56 px, one line**, both pages, all eight widths; chrome bar **194.8** on «Menu / Tanaw / Mga kontrol» (English 170.2; between Welsh's 185.0 and Dutch's 204.4); longest HUD label «Tumutunog sa» **63.6** against the 150 px box (under Indonesian's 66.2); no panel overflow in either locale measured — run on English and Tagalog only |
+| `glossary-links` | PASS in all 21 locales; Tagalog links **99** words (English 91) and the injection adds no text |
+| `explain-quotes` | PASS, primer quotes 0 identifiers |
+| `l10n-review-packets` | PASS, 20 locale packets; Tagalog 239 rows, 3 questions |
+| `offline-check` | **45/45**; precache 65/65 (63 + the two Tagalog tables); a Tagalog boot from cache |
+| `index-instruments --check`, `check-item-numbers` | OK |
+
+### Residue, recorded
+
+- **No native review.** The terms a workshop is most likely to dispute, which
+  are the review packet's three Start-here questions:
+  - **`modelado` / `simulado`.** Are Spanish participles natural enough in
+    Filipino technical prose, or would readers prefer `naka-model` and
+    `i-simulate`? A different answer changes the matcher, not just the words.
+  - **The mixed part-name register.** *Gulong ng escapement* and *Tambol ng
+    mainspring* stand beside bare English *Pallet fork*, *Balance* and
+    *Hairspring*. Would a workshop keep the English compound throughout? And
+    *governor*, which sits beside the everyday *gobernador*.
+  - **Four native words stand for the project's own abstract terms:** *hagis*
+    (throw), *abutan* (hand-off), *tali* (chord), *puwesto* (station).
+- **The glossary linker's senses were not read in context.** Its refused-word
+  tables are keyed by the English term, so Tagalog inherits them, but whether
+  *hagis*, *abutan*, *puwesto* or *patong* link in their intended sense in the
+  prose has not been read word by word, as Welsh's were. The links are 99 in
+  count and add no text; "a link is a claim" is not yet checked for them.
+- **Thirty-four chrome strings are English loans kept as written**, which is a
+  larger share than any other locale (30 on screen at boot; the next highest is Dutch's 11). That is the
+  register decision made visible, and it is the first thing a native reader
+  will weigh.
+- **Plate labels are tight.** Some read as the English loan because the native
+  word does not fit (`escape wheel`, `great wheel · 120 ngipin`), and a few
+  dropped a qualifier to fit. The translators listed each in their notes.
+- **The battery** is CI's, on the self-hosted runner, and is recorded in the PR
+  rather than here.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
@@ -32757,20 +32874,30 @@ times:
 - `battery`: **40.1 min** (18:29:26–19:09:31), its harness step 37.9 min.
   §264's run was 63.1 min, and the last push before §264 was 89.
 - The battery's harness step ended 24 s after the tiers job handed over its
-  file. That is what a run waiting on its sibling looks like: the critical
-  path is now the parallel job, not the shards.
+  file. On this run that looked like a battery waiting on its sibling, and
+  this entry first read it that way. **The first push to `main` after the
+  landing showed it was runner variance, not the structure** (below).
 - **What I could not read.** The job log is served from a host this session's
   `gh` does not contact, so the `spec tier: taken from` and `point tier: taken
   from` lines were not read here. The wall above is the evidence that both
   tiers were taken and not re-run in-process (36 boots and six sweeps in-process
-  would add the 584 s and 1541 s back). The first push to `main` after this
-  landing is the confirmation, and its log should be read for both lines.
+  would add the 584 s and 1541 s back). The log lines are still unread.
+
+**The first push to `main` after the landing** (merge `54300bc`, hosted):
+- `battery`: **51.4 min** (22:24:13–23:15:36), its harness step 47.8 min.
+- `battery tiers`: **19.8 min** (22:24:12–22:43:58), handed over at 22:43:56.
+  The same job took 37.9 min on the dispatch above. That is 1.9 times the
+  time for the same work, which is what runner variance looks like, and it is
+  why the dispatch could not say which job was the critical path.
+- So the shards are the critical path: the tiers were ready some 28 minutes
+  before the harness step ended. The push went 89 → 63 (§264) → 51 minutes.
 
 **What it leaves.**
-- **The tiers job is the critical path.** At 37.9 min it is now what the push
-  waits on, a little longer than the shards. The next cut is inside it: the
-  tiers are independent of each other, and §260 already knows how to spread
-  them across workers. That is a second parallel job and not this entry's
-  claim.
+- **The critical path is the shards again, at about 48 min.** The tiers job
+  runs 20 to 38 min depending on the runner, and either way it finishes first
+  or close to it. Cutting the push further means cutting the shards, so
+  splitting the tiers job would buy nothing on a typical run. §259's matrix
+  already spreads the shards across two runners, and that is where the
+  remaining time is.
 - **The caps.** Push 150 and PR 125 stay until several runs have measured
   the new wall, by the caps' own rule.
