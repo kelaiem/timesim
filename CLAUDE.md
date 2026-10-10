@@ -925,13 +925,14 @@ changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
 report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
-parallel `battery points` job** (`--points-only`) and handed to the battery
-(`--points-tier-from`, fetched in the background by
-`tools/battery-points-fetch.sh`), which judges it in its one assembly. A file
-that does not prove itself (same tree, same point code, whole, every point
-full), a dead sibling or a fetcher that gave up runs the tier in-process and
-says why, so the worst case is the run as it was. Measured, it took the push
-from 89 to 63 min. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+parallel `battery tiers` job, and since §265 its 36 spec boots with it**
+(`--tiers-only`). Both are handed to the battery (`--tiers-from`, fetched in
+the background by `tools/battery-tiers-fetch.sh`), which judges them in its
+one assembly. Each tier proves itself or runs in-process and says why. Both
+need the same tree. The spec tier needs one row per declared point, in order.
+The point tier needs the same point code, whole, every point full. A dead
+sibling or a fetcher that gave up runs both here, so the worst case is the run
+as it was. Measured, §264 took the push from 89 to 63 min. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,

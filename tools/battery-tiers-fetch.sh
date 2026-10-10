@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# §264 — fetch the point tier that the parallel `battery points` job measured,
-# for the battery job to judge. battery.yml starts this in the BACKGROUND
-# beside `ci-battery.mjs --points-tier-from "$OUT"`, so it runs while the
-# sweeps do.
+# §264/§265 — fetch the spec boots and the point tier that the parallel
+# `battery tiers` job measured, for the battery job to judge. battery.yml
+# starts this in the BACKGROUND beside `ci-battery.mjs --tiers-from "$OUT"`,
+# so it runs while the sweeps do.
 #
-#   GH_TOKEN, OUT, NAME, POINTS_TIER_WAIT_S   set by the step
+#   GH_TOKEN, OUT, NAME, TIERS_WAIT_S   set by the step
 #   GITHUB_API_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID   set by Actions
 #
 # IT ALWAYS ENDS IN ONE OF TWO FILES. Either "$OUT" (written atomically, by
 # rename, so the harness never reads half of it) or "$OUT.failed" with the
-# reason, by POINTS_TIER_WAIT_S at the latest. That is the sibling's own cap,
+# reason, by TIERS_WAIT_S at the latest. That is the sibling's own cap,
 # so this gives up exactly when the sibling would have been killed. The harness
 # treats a .failed, a missing file and a file that does not prove itself the
 # same way: it sweeps the tier itself and says why. Nothing this script can
@@ -21,14 +21,14 @@
 # is what lets a job read its sibling's file mid-run. The polling is the same
 # curl + node idiom as battery.yml's §227 promotion step.
 set -u
-: "${GH_TOKEN:?}" "${OUT:?}" "${NAME:?}" "${POINTS_TIER_WAIT_S:?}"
+: "${GH_TOKEN:?}" "${OUT:?}" "${NAME:?}" "${TIERS_WAIT_S:?}"
 : "${GITHUB_API_URL:?}" "${GITHUB_REPOSITORY:?}" "${GITHUB_RUN_ID:?}"
 
 API="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
-JOB="battery points"
+JOB="battery tiers"
 DIR=$(dirname "$OUT")
 T0=$(date +%s)
-END=$(( T0 + POINTS_TIER_WAIT_S ))
+END=$(( T0 + TIERS_WAIT_S ))
 
 say() { echo "§264 fetcher +$(( $(date +%s) - T0 ))s: $1"; }
 fail() { echo "$1" > "$OUT.failed"; say "gave up — $1"; exit 0; }
@@ -53,11 +53,11 @@ fetch() {
     && curl -sSL --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
          "$API/actions/artifacts/$1/zip" -o "$DIR/zip/a.zip" \
     && unzip -q -o "$DIR/zip/a.zip" -d "$DIR/zip" \
-    && [ -f "$DIR/zip/points-tier.json" ] \
-    && mv "$DIR/zip/points-tier.json" "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+    && [ -f "$DIR/zip/tiers.json" ] \
+    && mv "$DIR/zip/tiers.json" "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 }
 
-say "waiting up to ${POINTS_TIER_WAIT_S}s for artifact ${NAME}"
+say "waiting up to ${TIERS_WAIT_S}s for artifact ${NAME}"
 while [ "$(date +%s)" -lt "$END" ]; do
   id=$(artifact_id)
   if [ -n "$id" ]; then
@@ -75,4 +75,4 @@ while [ "$(date +%s)" -lt "$END" ]; do
   esac
   sleep 20
 done
-fail "nothing arrived within ${POINTS_TIER_WAIT_S}s"
+fail "nothing arrived within ${TIERS_WAIT_S}s"

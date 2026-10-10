@@ -32534,3 +32534,69 @@ from t=0, while the battery sweeps.
 - **The spec boots.** They are the next tier off the critical path by the
   same argument. They are measurement-only, and §260 already spreads them, but
   at 584 s they were not worth a second sibling in this landing.
+
+## §265 — The push's spec boots join the parallel tier job
+
+**Why.** §264 left this one named: the spec boots are the next tier that does
+not need the shards, and they were left out only because 584 s did not seem to
+justify a second sibling. The better reading was already in §264's own
+argument. A spec boot is one virgin build of one declared point, measurement
+only, and §260 had already spread the tier across matrix workers, which is the
+proof that no spec row reads another's. Putting it in the same job as the point
+tier costs no second runner, no second artifact and no second fetcher. The job
+is already there with its browser installed, and it measures both tiers
+back to back.
+
+**What was built.**
+- **One job, one file.** §264's `battery points` job is now `battery tiers`,
+  and `--points-only --points-tier-out` / `--points-tier-from` /
+  `--points-tier-wait-s` are `--tiers-only --tiers-out` / `--tiers-from` /
+  `--tiers-wait-s`. The file carries both tiers. The route's `points_job`,
+  `points_cap_min` and `points_cap_s` are `tiers_job`, `tiers_cap_min` and
+  `tiers_cap_s`, and the fetcher is `tools/battery-tiers-fetch.sh`. A
+  half-renamed hand-off would be a producer and a consumer disagreeing about a
+  flag, so the rename is the landing's own diff and not a follow-up.
+- **Each tier proves itself on its own terms.** The file as a whole must be the
+  same format and the same git tree. Then the spec tier must have exactly one
+  row per declared `SPEC_POINTS` row, in declared order, because the assembly's
+  gates read them by that order. The point tier keeps §264's rules: the same
+  point code, whole, every point full. A tier that fails its test is run HERE
+  and the log says which check refused it, so one stale half does not throw
+  away the other.
+- **The flags still refuse.** `--tiers-only` takes no `--matrix`,
+  `--collect`, `--only`, `--spec-only` or PR flags. `--tiers-from` is the single
+  process's feed and is refused beside the same four.
+- **The cap, 55 min.** It is §264's rule, re-derived with the new load: the
+  point tier measured 21.6 min alone, the spec boots add about 584 s, and the
+  job's setup is about a minute. Times the 1.66× same-tree spread
+  `battery.yml` uses for every cap, that is 52.0, rounded up to 55. It is
+  defined once, in the route, and the battery's wait reads the same number.
+- **What does not change.** Judging stays in the battery's one assembly.
+  Pushes and hosted dispatches only; a PR, a host dispatch and the nightly run
+  both tiers where they always did.
+
+**Measured.** Dispatch on the branch, run 37973612229, hosted (a branch
+dispatch has no baseline, so the run is whole). From the jobs API's step
+times:
+- `battery tiers`: 37.9 min (18:29:27–19:07:24). Its measuring step took
+  37.3 min and the hand-off step ended at 19:07:21.
+- `battery`: **40.1 min** (18:29:26–19:09:31), its harness step 37.9 min.
+  §264's run was 63.1 min, and the last push before §264 was 89.
+- The battery's harness step ended 24 s after the tiers job handed over its
+  file. That is what a run waiting on its sibling looks like: the critical
+  path is now the parallel job, not the shards.
+- **What I could not read.** The job log is served from a host this session's
+  `gh` does not contact, so the `spec tier: taken from` and `point tier: taken
+  from` lines were not read here. The wall above is the evidence that both
+  tiers were taken and not re-run in-process (36 boots and six sweeps in-process
+  would add the 584 s and 1541 s back). The first push to `main` after this
+  landing is the confirmation, and its log should be read for both lines.
+
+**What it leaves.**
+- **The tiers job is the critical path.** At 37.9 min it is now what the push
+  waits on, a little longer than the shards. The next cut is inside it: the
+  tiers are independent of each other, and §260 already knows how to spread
+  them across workers. That is a second parallel job and not this entry's
+  claim.
+- **The caps.** Push 150 and PR 125 stay until several runs have measured
+  the new wall, by the caps' own rule.
