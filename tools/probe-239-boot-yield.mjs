@@ -67,14 +67,19 @@
 //   node tools/probe-239-boot-yield.mjs                 # this checkout
 //   node tools/probe-239-boot-yield.mjs --tree <path>   # another tree
 //   node tools/probe-239-boot-yield.mjs --no-control    # skip the control run (faster; reports only)
+//   node tools/probe-239-boot-yield.mjs --json <file>    # also write every gated number as JSON
+// Under GitHub Actions it also writes its table to the job summary (§266
+// landing two), so a run's numbers are readable without opening the log.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import os from 'node:os';
 
 const arg = (f, d) => { const i = process.argv.indexOf(f); return i > 0 ? process.argv[i + 1] : d; };
 const ROOT = arg('--tree', new URL('..', import.meta.url).pathname);
 const PORT = 8399;
 const NO_CONTROL = process.argv.includes('--no-control');
+const JSON_OUT = arg('--json', null);
 
 // A key event every 150 ms: often enough that a 400 ms block is caught by two
 // or three of them, sparse enough that the pump is not itself the load.
@@ -214,7 +219,8 @@ function summarise(name, r) {
   // cold builder, a block at second ten is a seam that is missing.
   const worst = r.lt.slice().sort((x, y) => y[1] - x[1]).slice(0, 6);
   for (const [at, d] of worst) console.log(`     ${fmt(d).padStart(6)} ms at t+${(at / 1000).toFixed(1)}s`);
-  return { maxTask, maxLat, warns: r.warns, bootMs: r.bootMs, n: durs.length, held: r.boot.worstHeldMs, breaths: r.boot.breaths, inputBack: r.inputBack };
+  return { maxTask, maxLat, medLat, warns: r.warns, bootMs: r.bootMs, n: durs.length, held: r.boot.worstHeldMs, breaths: r.boot.breaths, inputBack: r.inputBack,
+    worst: worst.map(([at, d]) => ({ atMs: Math.round(at), ms: Math.round(d) })) };
 }
 
 const live = summarise('YIELDING (this tree)', await boot({ stall: false }));
@@ -246,6 +252,29 @@ if (!NO_CONTROL) {
   if (!tailC) fail.push('the tail control produced no measurement, so the build\'s last stretch is unverified');
   else if (tailC.held < TAIL_STALL_MS)
     fail.push(`TAIL CONTROL held only ${fmt(tailC.held)} ms with a ${TAIL_STALL_MS} ms stall planted before the guard's release — the record does not see the end of the build`);
+}
+// §266 landing two — the numbers as data. The ceilings are a property of the
+// host, so a run that cannot be read back as numbers cannot be used to derive
+// them; the summary is the same table for a human reading the Actions page.
+const cpus = os.cpus();
+const record = {
+  format: 1, seams: SEAMS,
+  host: { cpu: cpus[0]?.model || '?', cores: cpus.length, platform: `${os.platform()}/${os.arch()}` },
+  ceilings: { heldMs: MAX_HELD_MS, taskMs: MAX_TASK_MS, inputMs: MAX_INPUT_MS, controlMinTaskMs: CONTROL_MIN_TASK_MS, tailStallMs: TAIL_STALL_MS },
+  live, control: ctrl, tail: tailC, fail,
+};
+if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify(record, null, 2));
+if (process.env.GITHUB_STEP_SUMMARY) {
+  const row = (name, r) => r
+    ? `| ${name} | ${fmt(r.held)} | ${fmt(r.maxTask)} | ${fmt(r.maxLat)} / ${fmt(r.medLat)} | ${r.breaths} | ${(r.bootMs / 1000).toFixed(1)} s |`
+    : `| ${name} | — | — | — | — | — |`;
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
+    `### Boot yield (§239 / §266) — ${fail.length ? 'FAIL' : 'PASS'}`,
+    `${SEAMS} seams in source · ${record.host.cores} × ${record.host.cpu} · ceilings: held ${MAX_HELD_MS}, task ${MAX_TASK_MS}, input ${MAX_INPUT_MS} ms`,
+    '', '| run | held, worst (ms) | long task, worst (ms) | input ack, worst / median (ms) | hand-backs | boot |', '|---|---|---|---|---|---|',
+    row('yielding', live), ...(NO_CONTROL ? [] : [row('control (BREATHE_MS = Infinity)', ctrl), row(`tail control (${TAIL_STALL_MS} ms stall)`, tailC)]),
+    '', ...(fail.length ? fail.map((f) => `- FAIL: ${f}`) : []), '',
+  ].join('\n'));
 }
 console.log('');
 if (fail.length) { for (const f of fail) console.error(`FAIL: ${f}`); process.exit(1); }

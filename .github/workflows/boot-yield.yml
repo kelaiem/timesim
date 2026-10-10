@@ -1,0 +1,89 @@
+# §266 landing two — DOES THE BUILD STILL LET GO OF THE THREAD?
+#
+# tools/probe-239-boot-yield.mjs, run on every pull request that can change
+# what the boot does. §239 made main.js's module evaluation hand the thread
+# back at seams; three weeks later main held it for 5 s at a stretch, because
+# build code that arrived later arrived without seams and NOTHING RAN THE
+# PROBE. §266 landing one restored it (and main moved under it twice more, each
+# time arriving without seams). This is the half that stops a fourth time:
+# a builder that lands synchronous goes red on its own pull request.
+#
+# ITS OWN WORKFLOW, not a step in Battery, for two reasons:
+#   * the ceilings are a property of the HOST. Battery's host is routed
+#     (§200: a self-hosted ARM64 runner on opt-in, ubuntu-latest otherwise), so
+#     a step there would be judged against whichever machine took the run. One
+#     fixed host means one derivation, written beside each ceiling in the probe.
+#   * it answers in minutes. Battery's PR wall is 40-125 min; a missing seam
+#     is a thirty-second question.
+#
+# The CONTROL runs every time. A probe that attached to nothing reports a
+# breathing build too, and only the control (BREATHE_MS rewritten to Infinity
+# in flight) tells the two apart.
+#
+# `paths` is a POSITIVE list, unlike Battery's paths-ignore: everything the
+# boot executes is index.html, a module under src/ or vendor/, and a list of
+# three globs cannot fall behind the module graph the way a list of
+# exceptions can. A translation table under src/ runs it needlessly; that
+# costs three minutes, never a verdict.
+name: Boot yield
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'src/**'
+      - 'vendor/**'
+      - 'tools/probe-239-boot-yield.mjs'
+      - 'tools/package-lock.json'
+      - '.github/workflows/boot-yield.yml'
+  push:
+    branches: [main, claude/loading-screen-initial-pe3u3v]   # MEASUREMENT ONLY — the branch entry goes before the PR
+  workflow_dispatch:
+
+concurrency:
+  group: boot-yield-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  boot-yield:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:                                   # MEASUREMENT ONLY — six runners give the host's spread in one push
+      fail-fast: false
+      matrix:
+        sample: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      - name: Install Chromium
+        working-directory: tools
+        run: npx playwright install --with-deps chromium
+
+      - name: Probe the boot's yield, with both controls
+        run: node tools/probe-239-boot-yield.mjs --json boot-yield.json
+
+      - name: Keep the numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-yield-${{ github.run_id }}-${{ matrix.sample }}
+          path: boot-yield.json
+          if-no-files-found: warn
+          retention-days: 14
