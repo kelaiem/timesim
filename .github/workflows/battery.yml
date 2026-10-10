@@ -251,6 +251,14 @@ on:
         type: choice
         options: [ubuntu-latest, self-hosted]
         default: ubuntu-latest
+      # §263 — a hosted dispatch may run as two workers and a collector that
+      # writes (and, on the default branch, seeds) the whole baseline. Off by
+      # default: the push keeps §265's single process and parallel tiers job,
+      # and this is how the split is measured against it on demand.
+      split:
+        description: '§263 — split across two hosted workers plus a collector that seeds (hosted only; the host never splits a dispatch)'
+        type: boolean
+        default: false
 
 # WHAT MAY CANCEL WHAT, and the rule is one line: a run that WRITES A BASELINE
 # is never cancelled by a run that writes a DIFFERENT one.
@@ -483,6 +491,7 @@ jobs:
           LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
           TITLE: ${{ github.event.pull_request.title }}
           DISPATCH_RUNNER: ${{ inputs.runner }}
+          DISPATCH_SPLIT: ${{ inputs.split }}
           READY: ${{ steps.ready.outputs.verdict }}
           ONLINE: ${{ steps.ready.outputs.online }}
           BUSY: ${{ steps.ready.outputs.busy }}
@@ -510,12 +519,10 @@ jobs:
             verdict="host asked for ($asked) but no runner is online under '$ROUTE_VAR' — ubuntu-latest instead of queueing for up to 24 h"
           else verdict="host asked for ($asked) — routed to '$ROUTE_VAR', readiness UNCHECKED (RUNNER_READ_TOKEN unset, or the API read failed)"
           fi
-          # §259 — the matrix is a PULL REQUEST's to ask for, and only a pull
-          # request's: every other event may seed a baseline, and a collector
-          # writes no digests, so a split run can never become one. Decided
-          # AFTER the host, because the one refusal is about the host: two
-          # workers on a label with one FREE runner run in SERIES, which is
-          # the single process plus a collector, and the opt-in was for speed.
+          # §259 — on a pull request the matrix is ASKED for. Decided AFTER the
+          # host, because the one refusal is about the host: two workers on a
+          # label with one FREE runner run in SERIES, which is the single
+          # process plus a collector, and the opt-in was for speed.
           #
           # §260 — FREE, not online. §251 counts a busy runner as ready, which
           # is right for one job: it takes the next job when it finishes. It is
@@ -539,6 +546,20 @@ jobs:
               mwhy="matrix asked for ($masked) — split across 2 workers on '$host' plus a browser-free collector"
               [ "$host" != ubuntu-latest ] && [ "$READY" != READY ] && mwhy="$mwhy (runner count UNCHECKED)"
             fi
+          # §263 — A HOSTED DISPATCH MAY ASK FOR THE SPLIT, AND THE SPLIT MAY
+          # SEED. §259 kept every seeding run whole in one process because a
+          # collector wrote no digests. It writes worker 0's key now (`--collect
+          # --digests`), and the collector seeds, so a split dispatch on the
+          # default branch leaves a whole baseline like any other. It is ASKED
+          # for (`split: true`), never the default: the push keeps §265's single
+          # process and parallel tiers job, which falls back to sweeping the
+          # tiers itself when its sibling dies, where a dead leg fails the whole
+          # split. Only on `ubuntu-latest`: the collector seeds under ITS
+          # platform's cache key, which is the workers' only when both are
+          # hosted, so the host never splits a dispatch.
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$host" = ubuntu-latest ] && [ "$DISPATCH_SPLIT" = true ]; then
+            matrix=true
+            mwhy="a hosted dispatch with split: true — 2 workers plus a collector that writes and may seed the whole baseline (§263)"
           fi
           workers='[0]'; [ "$matrix" = true ] && workers='[0,1]'
           # §264/§265 — the spec boots and the point tier move to a parallel runner on the runs that
@@ -548,8 +569,14 @@ jobs:
           # a PR (its points are incremental and ceilinged, and §259's matrix
           # already spreads them), and not the host's dispatch or nightly (a
           # second job would take its second slot, which §260 keeps free).
+          #
+          # §263 — and only when the run is NOT split. A split run (a hosted
+          # dispatch with `split: true`, or a PR's opt-in) already spreads both
+          # tiers across its workers (§260's specOwner/pointOwners), and the
+          # hand-off's consumer is the single process's (the flags refuse
+          # --matrix).
           tiers_job=false; pwhy=""
-          if [ "$run" = true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ]; }; then
+          if [ "$run" = true ] && [ "$matrix" != true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ]; }; then
             tiers_job=true
             pwhy="the spec boots and the point tier are measured by the parallel 'battery tiers' job and handed to the battery before it judges"
           fi
@@ -711,6 +738,31 @@ jobs:
     # moves no cap, by the rule above, so 150 stands until several push runs
     # have measured the new wall.
     #
+    # §263 — A SPLIT RUN'S LEGS HAVE THEIR OWN CAP, 95. A hosted dispatch with
+    # `split: true` (and a PR's matrix opt-in) runs as two legs and a collector,
+    # so the point tier, the spec boots and half the shards are off each leg's
+    # critical path. Three green split runs of the whole seeding job graph
+    # (hosted dispatches on the §263 branch), none of which the 150 truncated:
+    #
+    #   run           wall    worker 0   worker 1
+    #   37959811246   51.9    26.3       51.4
+    #   37959896617   45.1    44.7       42.3
+    #   37965443348   29.6    25.4       29.1
+    #
+    # Each leg lands on its own runner, and the runners are NOT alike. The same
+    # leg doing the same work ran 29.1 to 51.4 min (worker 1) and 25.4 to 44.7
+    # (worker 0), a 1.77x spread, a little wider than the 1.66x measured above.
+    # So the rule above is applied with the wider of the two: the slowest green
+    # LEG, 51.4 min, times 1.77, is 91.0, rounded up to 95. The collector is
+    # its own job (10 min, ~15 s used) and adds no leg time. 95 is still
+    # 60 above the 35-min per-check guard, which this pair has always kept the cap
+    # above. The single process keeps 150: the push (with §265's tiers job
+    # beside it), an unsplit dispatch and the nightly, by §264/§265's own rule
+    # that a cap moves only on several runs of the shape it bounds. The split was
+    # not made the push's shape: on one runner per leg it measured about what
+    # §265 does (mean 43.1 against 40.1 and the first §265 push's 51.4), and a
+    # dead leg fails the whole run where §265's dead sibling only costs a sweep.
+    #
     # A PR's point tier is held to POINT_PR_BUDGET_MS (10 min of
     # wall, ci-battery.mjs) on top of a battery that can itself be WHOLE when
     # no baseline exists, so a PR kept fail-fast at 60 rather than 50 — the
@@ -732,7 +784,7 @@ jobs:
     # take. A wedge is the per-check guard's (35 min) at either cap. A PR that
     # wants a faster whole run asks for the matrix (`battery-matrix`, §259) or
     # the host (`self-hosted-battery`, ~45 min whole), not a tighter cap.
-    timeout-minutes: ${{ github.event_name == 'pull_request' && 125 || 150 }}
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 125 || needs.route.outputs.matrix == 'true' && 95 || 150 }}
     steps:
       # §200 — the pointer is read off the run, never remembered. The routing
       # verdict was written by the route job (§251); this step names the
@@ -866,8 +918,11 @@ jobs:
       # EVERY FAILURE PATH HERE MEANS RUN. No artifact, an expired one, an API
       # that does not answer, a zip that will not open, a tree that does not
       # match — each one falls through to `promote=false` and says which.
+      # §263 — a split push asks once, on worker 0; the answer is the same tree's.
       - name: Could this push have inherited a pull request's verdict? (§227, shadow)
-        if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+        if: >-
+          github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+          && (env.MATRIX != 'true' || matrix.worker == 0)
         id: promote
         continue-on-error: true
         env:
@@ -922,15 +977,31 @@ jobs:
       # also hands on the baseline report it restricted against, because the
       # collector runs on a different machine and must union against the very
       # file the workers used, not a second restore of what should be it.
+      #
+      # §263 — A RUN THAT MAY SEED READS ITS KEY IN EVERY WORKER. `--digests` is
+      # what runs a worker's preflight when no baseline was restored, and
+      # worker 0's key reaches the collector inside its tasks file. That file
+      # is the key the collector writes, so the worker-side copy goes to
+      # RUNNER_TEMP rather than into the upload. Every worker reads it, not
+      # only worker 0, because a worker's preflight is also what it holds its
+      # restriction against, and the collector holds those equal. Each leg also
+      # names its platform. The collector seeds under its OWN runner's cache
+      # key, so it checks that the two agree before it may write one.
       - name: Run the battery
         env:
+          EVENT: ${{ github.event_name }}
+          PLATFORM: ${{ runner.os }}/${{ runner.arch }}
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .battery-out
           if [ "$MATRIX" = true ]; then
+            key=""
+            [ "$EVENT" != pull_request ] && key="--digests $RUNNER_TEMP/worker-digests.json"
+            printf '%s\n' "$PLATFORM" > ".battery-out/platform-worker-$WORKER.txt"
             node tools/ci-battery.mjs \
               --matrix "$WORKER/2" \
               --tasks-out ".battery-out/worker-$WORKER.json" \
+              $key \
               ${{ steps.mode.outputs.args }}
             if [ "$WORKER" = 0 ] && [ -f .battery-baseline/report.json ]; then
               cp .battery-baseline/report.json .battery-out/baseline-report.json
@@ -1118,38 +1189,28 @@ jobs:
       # about a run, and this is the run. Which is exactly why widening the
       # trigger is safe HERE and would not have been if the guard sat on the
       # event.
-      # MAY THIS RUN BECOME A BASELINE? Decided once, in shell, and read by the
-      # three steps below through `steps.seed.outputs.may` — one definition,
-      # because a seeding rule spelled out three times is one that will disagree
-      # with itself. It is a STEP rather than an expression so that it lands in
-      # the summary: this job already makes a point of saying why a run was or
-      # was not incremental, so that "the battery was fast today" never has to
-      # be reverse-engineered, and "who wrote the baseline the next PR inherits"
-      # is the same question one merge later. Both arms are WHOLE runs by
-      # construction — the mode step sends every non-PR event down its
-      # `EVENT != pull_request` branch.
+      # MAY THIS RUN BECOME A BASELINE? Decided once, by `tools/battery-seed.sh
+      # may`, and read by the three steps below through `steps.seed.outputs.may`
+      # — one definition, because a seeding rule spelled out three times is one
+      # that will disagree with itself. Since §263 the collector below seeds a
+      # split run, and it calls the SAME script: the rule moved into a file
+      # rather than into a second copy. It is a STEP rather than an expression so
+      # that it lands in the summary: this job already makes a point of saying
+      # why a run was or was not incremental, so that "the battery was fast
+      # today" never has to be reverse-engineered, and "who wrote the baseline
+      # the next PR inherits" is the same question one merge later. Both arms are
+      # WHOLE runs by construction — the mode step sends every non-PR event down
+      # its `EVENT != pull_request` branch.
       - name: May this run become a baseline?
         id: seed
-        # §259 — a split run is a pull request's and writes no digests.
+        # A split run seeds from its collector (§263), never from a leg.
         if: success() && env.MATRIX != 'true'
         env:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref_name }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           PLATFORM: ${{ runner.os }}/${{ runner.arch }}
-        run: |
-          may=false; why="a pull request inherits a baseline, it does not write one"
-          if [ "$EVENT" = push ]; then
-            may=true; why="a push to $REF — this run IS the baseline"
-          elif [ "$EVENT" = workflow_dispatch ] && [ "$REF" = "$DEFAULT_BRANCH" ]; then
-            may=true; why="a dispatch on the default branch — seeding $PLATFORM"
-          elif [ "$EVENT" = schedule ] && [ "$REF" = "$DEFAULT_BRANCH" ]; then
-            may=true; why="the nightly on the default branch — seeding $PLATFORM"
-          elif [ "$EVENT" = workflow_dispatch ]; then
-            why="a dispatch on '$REF', not the default branch — a PR restores by base.sha, so nothing would read it"
-          fi
-          echo "may=$may" >> "$GITHUB_OUTPUT"
-          echo "§152: may seed a baseline: $may — $why" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: sh tools/battery-seed.sh may
 
       - name: Does this platform already have a baseline for this commit?
         if: steps.seed.outputs.may == 'true' && success()
@@ -1171,26 +1232,7 @@ jobs:
         env:
           ALREADY: ${{ steps.seeded.outputs.cache-hit }}
           PLATFORM: ${{ runner.os }}/${{ runner.arch }}
-        run: |
-          if ! node -e "process.exit(JSON.parse(require('fs').readFileSync('.battery-out/report.json')).restrictedTo?1:0)"; then
-            echo "§152: this report is restricted — refusing to cache it as a baseline" >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          if [ "$ALREADY" = "true" ]; then
-            echo "§152: $PLATFORM already has a baseline for $GITHUB_SHA — leaving it alone" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          mkdir -p .battery-baseline
-          cp .battery-out/report.json .battery-out/digests.json .battery-baseline/
-          # TODO 186 — the points' whole payloads ride the same entry. A run
-          # that wrote none (a dead tier) still seeds the default's baseline;
-          # the next PR's points then sweep FULL, under the ceiling, and say so.
-          if [ -f .battery-out/points.json ]; then
-            cp .battery-out/points.json .battery-baseline/
-          else
-            echo "§186: no points file from this run — the next PR's points sweep full" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          ls -l .battery-baseline | sed 's/^/§152 baseline: /' >> "$GITHUB_STEP_SUMMARY"
+        run: sh tools/battery-seed.sh keep
 
       - name: Cache it under this commit
         if: steps.seed.outputs.may == 'true' && success() && steps.seeded.outputs.cache-hit != 'true'
@@ -1262,6 +1304,23 @@ jobs:
   # Cancellation is the workflow's `concurrency` group, which is per RUN: a
   # push to the PR cancels the workers and this together, so there is no
   # half-cancelled matrix for a collector to find (§127's open item).
+  #
+  # §263 — AND ON A HOSTED SEEDING RUN IT WRITES THE BASELINE. The push (and a
+  # hosted dispatch) split across two workers, so the WHOLE baseline §152 stores
+  # (report, digests, points.json) has to come out of this job, because no leg
+  # has all three:
+  #
+  #   · the report and points.json were always the collector's;
+  #   · the digests are worker 0's preflight key, which its tasks file already
+  #     carried. `--collect --digests` writes it, and refuses when no worker
+  #     read one rather than writing a baseline without a key.
+  #
+  # The seeding rule is `tools/battery-seed.sh`, the same file the single
+  # process calls. One condition is new and is this job's alone. The cache key
+  # is this RUNNER's os/arch, so the collector may seed only when that is also
+  # the workers' platform. The route makes it so (it splits a seeding run only
+  # on ubuntu-latest), and the platform-check step below holds it rather than
+  # trusting the route.
   battery-collect:
     name: battery
     needs: [route, battery]
@@ -1295,10 +1354,41 @@ jobs:
           path: .battery-in
           merge-multiple: true
 
+      # §263 — the seeding rule, plus the collector's own condition: both
+      # workers' platforms must be present, agree with each other, and agree
+      # with this runner's, or the run may not seed.
+      - name: May this run become a baseline? (§263)
+        id: seed
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PLATFORM: ${{ runner.os }}/${{ runner.arch }}
+        run: |
+          set -u
+          REFUSE=""
+          for w in 0 1; do
+            got=$(cat ".battery-in/platform-worker-$w.txt" 2>/dev/null || echo "unrecorded")
+            if [ "$got" != "$PLATFORM" ]; then
+              REFUSE="worker $w ran on $got and this collector is $PLATFORM — its cache key would name the wrong platform"
+            fi
+          done
+          export REFUSE
+          sh tools/battery-seed.sh may
+
       # Both files named, never globbed: a glob that matched one would hand the
       # collector a smaller run, which its shard gate refuses — but refusing
       # by NAME says which worker's file is missing.
+      #
+      # §263 — the key is written whenever the workers read one, which is every
+      # event but a pull request (the leg's own condition). That is what one
+      # process does: it writes its digests on every run, and only the seeding
+      # steps decide whether they are kept. Keyed on the event rather than on
+      # `may`, so a dispatch on a branch exercises the write it would make on
+      # main.
       - name: Collect
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
           set -u
           mkdir -p .battery-out
@@ -1307,11 +1397,37 @@ jobs:
           if node -e "process.exit(JSON.parse(require('fs').readFileSync('.battery-in/worker-0.json')).preflight.baselineUsable?0:1)"; then
             base="--baseline .battery-in/baseline-report.json"
           fi
+          key=""
+          [ "$EVENT" != pull_request ] && key="--digests .battery-out/digests.json"
           node tools/ci-battery.mjs \
             --collect .battery-in/worker-0.json .battery-in/worker-1.json \
             --report .battery-out/report.json \
             --points-out .battery-out/points.json \
+            $key \
             $base
+
+      - name: Does this platform already have a baseline for this commit?
+        if: steps.seed.outputs.may == 'true' && success()
+        id: seeded
+        uses: actions/cache/restore@v4
+        with:
+          path: .battery-baseline
+          key: battery-baseline-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          lookup-only: true
+
+      - name: Keep this run as the next baseline
+        if: steps.seed.outputs.may == 'true' && success()
+        env:
+          ALREADY: ${{ steps.seeded.outputs.cache-hit }}
+          PLATFORM: ${{ runner.os }}/${{ runner.arch }}
+        run: sh tools/battery-seed.sh keep
+
+      - name: Cache it under this commit
+        if: steps.seed.outputs.may == 'true' && success() && steps.seeded.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .battery-baseline
+          key: battery-baseline-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
 
       - name: Upload the report
         if: always()
