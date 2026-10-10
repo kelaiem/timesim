@@ -2014,10 +2014,12 @@ export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear,
   // the horns for the whole lift. Longer horns would embrace it more and are
   // bought with KNOCK — the far side of the swing meets the banked horn
   // earlier — measured against the metal outline at tips this many pin radii
-  // past entry: −0.25 → 301.10°, 0 → 301.84°, +0.25 → 296.76°, +0.5 → 290.06°,
+  // past entry (measured before the cut was widened by its sag and miter,
+  // which took 0.49° more off each): −0.25 → 301.10°, 0 → 301.84°, +0.25 →
+  // 296.76°, +0.5 → 290.06°,
   // +1 → 277.89°. Row 17 holds the serviced (nominal) swing clear of the knock
   // at 292.09° dial-flat, so half a radius past entry would knock in service;
-  // at the entry depth the knock stands 9.75° clear of it, and shorter horns buy
+  // at the entry depth, as cut, the knock (301.35°) stands 9.26° clear of it, and shorter horns buy
   // nothing (the floor's flanks, not the tips, then meet the pin).
   const yTip = yEntry;
   // Sampled densely at the floor, where the profile leaves the centre line at

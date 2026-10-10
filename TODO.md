@@ -30965,24 +30965,27 @@ the union of the pin's disc over every pose it takes in the fork's frame — dow
 the centre line through the lift, where the fork follows it, and round its
 circle past the lift, where the fork lies banked — dilated by `CLEAR_MARGIN`,
 and authored `bevel` wider still because the blank's chamfer dilates a cut wall
-into the slot (`pinR + clear + bevel`, sampled at 48 depths, every chord widened
-by the worst sag measured between them: the first cut read 0.1499). From the
+into the slot (`pinR + clear + bevel`, sampled at 48 depths). Two widenings are
+measured off the cut's own polyline: every chord by the worst sag between
+samples (0.0204; the first cut read 0.1499), and the whole union by the worst
+excess of the chamfer's MITRE at a wall vertex (0.0035; the second read the
+pin 0.15 − 2e-5 off the floor, past `FLOOR_TIE_EPS`). From the
 stations (d 11.1948), the pin (r 1.62, pinR 0.55) and §221's lift and bank:
 
 | | before | the seat |
 |---|---|---|
-| notch floor (metal), from the fork pivot | 6.596 (`forkTop + 0.9·t`) | **8.875** (the pin's deepest, less pinR + margin) |
+| notch floor (metal), from the fork pivot | 6.596 (`forkTop + 0.9·t`) | **8.871** (the pin's deepest, less pinR + margin, less the miter) |
 | horn tips, from the pivot | 9.595 (`forkY = −L`) | **9.751** (where the pin enters) |
 | pin centre at the lift's edge | 0.156 OUTSIDE the tips | at the tips |
 | pin centre at its deepest | 0.020 inside | **0.176** inside |
-| notch depth | 2.759 | 0.876 |
+| notch depth | 2.759 | 0.879 |
 
 **It is a FUNNEL, and that is the finding.** Where the lift ends the fork stops
 dead on its bank while the pin is still moving about 61° off the slot's axis
 (its velocity at θ_L against the fork's centre line). A parallel slot of the
 pin's width would trap it: within a few degrees its leading flank meets the
 wall. So the metal half-width runs from about 0.3 near the floor to about 0.9
-where the pin's centre stands deepest and 1.051 at the tips, where it enters,
+where the pin's centre stands deepest and 1.076 at the tips, where it enters,
 against a pin of 0.55, and the pin bears on no wall anywhere in the lift. A real lever escapes this by RUN —
 the fork carries on past the pin's release to its banking, opening the slot
 ahead of the pin — and run needs lock, which this movement does not model
@@ -30990,13 +30993,14 @@ ahead of the pin — and run needs lock, which this movement does not model
 
 **The horns' length is the knock's.** Longer horns embrace the pin further and
 meet it sooner on the far side of the swing. Measured against the metal outline
-at tips this many pin radii past the entry depth: −0.25 → 301.10°, 0 → 301.84°,
+at tips this many pin radii past the entry depth (before the cut's sag and miter
+widening, which takes about 0.5° more off each): −0.25 → 301.10°, 0 → 301.84°,
 +0.25 → 296.76°, +0.5 → 290.06°, +1 → 277.89°. `equalisation` row 17 holds the
 serviced (nominal) swing, 292.09° dial-flat, clear of the knock, so half a
 radius past entry would knock in service. The tips stand at the entry depth.
 `ESCAPEMENT_KNOCK` now reads the METAL outline (`blankMetalOutline`, the
 extruded side-wall ring, one point per authored point), which closes this item's
-"one more thing" from the drive: **301.84°**, and `AMPLITUDE_PEAK_DEG` follows it
+"one more thing" from the drive: **301.35°** as cut, and `AMPLITUDE_PEAK_DEG` follows it
 316 → **302**. At 302° the hairspring's pivot load is ×0.095 of a flat spring's
 (`probe-218-breathing.mjs`).
 
@@ -31007,16 +31011,16 @@ where they were. The pin is set in it and rises to the fork's top face — it
 stood 3.0 long, through the guard pin's plane and 0.13 into the balance's arm.
 The guard pin moved behind the notch's floor, into the blank's metal, one sheet
 floor (`STOCK_MIN_U`) from the slot; it had stood in the empty slot. The roller's
-full rim clears it by the margin with the fork banked (R 2.566) and its crescent
-(R 2.487, ±44.96°) with the fork anywhere in the lift; the pin (to 2.17) sits
+full rim clears it by the margin with the fork banked (R 2.570) and its crescent
+(R 2.490, ±44.93°) with the fork anywhere in the lift; the pin (to 2.17) sits
 inside both. Whether that guard CATCHES a displaced fork is TODO 105's.
 
 **Measured** (`probe-226-drive.mjs`, three winds): every fork ⇄ balance mesh pair
-at or over the margin — pin ⇄ blank 0.1503 through the lift, guard ⇄ roller
+at or over the margin — pin ⇄ blank 0.1533 through the lift, guard ⇄ roller
 0.1505, the rim over the blank 0.1500 — with the control (the retired posed law)
 still reading the pin buried; `probe-221-amplitude.mjs` rows the pin seated at
-both window edges and at its deepest (far side 0.150 off the floor);
-`probe-216-knock.mjs` agrees with the record at 301.835°. The three `only:`
+both window edges and at its deepest (far side 0.153 off the floor);
+`probe-216-knock.mjs` agrees with the record at 301.352°. The three `only:`
 waivers are gone with the metal that made them.
 
 **The plate's window** is cut to the driven swing (bank, not the posed law's

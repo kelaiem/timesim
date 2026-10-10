@@ -372,7 +372,7 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 //    largest swing the balance can REACH, rounded UP, since a load priced below
 //    it is not a bound. Since TODO 216 that is the SMALLER of two angles: the
 //    solve's MAXIMUM (favourable, dial-flat: 454.80° since TODO 207) and the
-//    KNOCK (main.js ESCAPEMENT_KNOCK: 301.84° since TODO 226 step 1 seated the
+//    KNOCK (main.js ESCAPEMENT_KNOCK: 301.35° since TODO 226 step 1 seated the
 //    pin, 315.22° on §221's bank before it, 314.18° before that, where the
 //    impulse pin, carried round from the far side, strikes the banked fork's
 //    horn, solved off the fork blank's METAL outline and the pin's radius). The

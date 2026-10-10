@@ -373,7 +373,7 @@ it into prose either.
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the
    largest swing the balance can REACH rounded UP — since TODO 216 the smaller
-   of the solve's maximum and the KNOCK (302: `ESCAPEMENT_KNOCK`, 301.84° on
+   of the solve's maximum and the KNOCK (302: `ESCAPEMENT_KNOCK`, 301.35° on
    TODO 226's seated horns, where
    the impulse pin meets the banked fork's horn, solved off the blank's METAL
    outline;
