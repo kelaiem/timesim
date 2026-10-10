@@ -29274,6 +29274,124 @@ today and would inherit `?aes=` too. Confirm it before Landing 3 ships; if it
 holds, it is its own item, and the one-line guard sits beside what Landing 1
 touched.
 
+## §241 — Read the Korean, not the key count: the cone seam and the crown, and a gate that reads one sentence
+
+**Partial ship, recorded by the half that landed.** Filed in the private
+roadmap as §241 on 2026-09-21, out of "review the translation in Korean and
+identify thematic improvement areas", and measured on the shipped tables
+rather than guessed: five themes, A to E. Areas **A** (one part, two
+renderings) and **C** (the honesty vocabulary) shipped the same day; **B**
+(register) and **D** (a canonical-term table) are open, and **E** (blocks that
+stop early) is half-shipped as a report. The roadmap keeps the entry for what
+remains; this is the record of what is built.
+
+### The gap, and why no gate saw it
+
+Korean shipped whole in §211 — chrome, explainer and primer at 100%, ten
+translators, a glossary decided once. Every gate the locale has counts or
+measures SHAPE: `explain-i18n --check` holds 0 unmatched keys, 0
+markup/`<code>`/id drift, 0 number drift and no label overrunning its plate;
+`probe-116-locale-fit` measures the header; §236's `glossary-links` holds the
+page's text identical with the module stubbed. **Not one of them reads a
+Korean sentence.** A page can be complete, fit every plate and carry every
+number and still name one part two ways, and §211's own record is the proof: it
+claimed the fusee's cone was reconciled to 원뿔 and the file never received it.
+That was not a regression. The first commit of `explain-i18n.ko.js` carries the
+identical counts.
+
+### Area A — one part, one word
+
+- **The cone.** 20 occurrences of 콘 in `src/explain-i18n.ko.js` became 원뿔,
+  and the chrome's `'Fusee cone'` label, which the filing had missed, went from
+  퓨지 콘 to 원뿔. 콘트레이트 (the contrate wheel) is a different word and is
+  untouched. §211's paragraph is corrected in place above ("CORRECTED
+  2026-09-21 (§241)"). The chrome label is the one string the page gates do not
+  judge, since it is a `registerSub` piece name rendered in §53's 240 px panel
+  column, so it was measured: `probe-116-locale-fit` reads "panel content wider
+  than its box: none, in any locale", and Korean's chrome bar came out 26.2 px
+  narrower than English.
+- **The crown.** Ten of the eleven standalone 크라운 are the winding crown and
+  are 용두 now, the native term the explainer's own headings and plate labels
+  already carried; only body prose had drifted. **The eleventh is the chain
+  link's crown (the rivet head)**, where 용두 would be a lie about the metal, so
+  it stays. 크라운 휠 (the crown wheel) is likewise a different part.
+- **The crown half was not a substitution.** 콘 and 원뿔 both end in a
+  consonant, so the cone was a straight replace with every particle invariant.
+  크라운 ends in a consonant and 용두 in a vowel, so the particle moves with
+  the noun (이→가, 을→를, 과→와, and 에서 invariant), and the ten sites were
+  edited one at a time. **A per-locale term table can find a Korean terminology
+  seam and cannot fix one**, because the repair reaches past the term into the
+  word behind it. Whoever writes area D should scope it as a reporter, not a
+  codemod.
+- Gates for both halves: `explain-i18n --check` PASS with Korean at 0 new
+  overflow or collision (원뿔 is a syllable longer than 콘, 용두 one shorter than
+  크라운), `explain-quotes` and `glossary-links` PASS. Neither word is a linked
+  glossary term.
+
+### Area C — the first check here that reads a sentence
+
+A translation that renders *modelled* as *simulated* does not read wrong, it
+reads fluent, and it erases the distinction README polices hardest. So
+`tools/explain-i18n.mjs --check` gates the pairing per key (the `HONESTY`
+table, "honesty vocabulary: modelled vs simulated"), over all twelve locales
+and both pages:
+
+- A **CROSSED** row gates: the English asserts one of the two words and the
+  translation drops it and carries the other. Stated any other way, the
+  sentences built on the CONTRAST ("the cam itself is MODELLED and not
+  simulated") become the ones the rule can never fail, which is what the first
+  draft did, found by mutating a row and watching the gate stay silent.
+- A row with **NEITHER** word is ABSENT and only reported, because a terse
+  paraphrase and a dropped sentence look identical from here. One survivor is
+  left alone: ja's 造形された金属 for "modelled metal", an idiom and not a lie.
+- Each locale's stems are **held to the page's own glossary** (the
+  `modelled / simulated` entry it declares to its readers), so the table cannot
+  invent a vocabulary the page does not use. A locale with no row is UNGATED,
+  not skipped.
+- The English matcher is deliberately narrow. Widened to a bare `\bmodel\b` it
+  swallows the credit line's "Anthropic's AI model", which all twelve locales
+  render with their model-word, correctly.
+
+Measured claim for Korean, confirmed and extended: of 12 English keys saying
+"modelled" and 17 saying "simulat\*", **0 are crossed**, in twelve locales.
+
+**What the gate found on arrival is bigger than the gate.** Twelve of its
+thirteen absent rows were one block, and the block was TRUNCATED. Every
+locale's translation of the alarm-corner entry stopped at a colon and dropped
+the last 441 characters of English, whose final sentence is *"The cam itself is
+MODELLED and not simulated"*. A reader in any of twelve languages never saw
+it, and every gate stayed green: the key matched, the markup matched, and the
+numbers matched (the dropped text's `0.00267` sits in bare prose, and
+explain.html checked numbers only in plate labels because prose quotes its
+constants inside `<code>`). The block is **restored in all twelve**, each
+locale's declared words for backlash, cam, flank and stem taken from its own
+tables and its own register (plain style in Korean and Japanese). That is what
+made the gate green rather than red on arrival.
+
+### It generalised, and part of it stays open
+
+`block coverage` in the same tool now REPORTS a translated block far shorter
+than its locale normally runs, ruled by that locale's own median ratio (one
+sided, because the high side is just a quoted identifier surviving inside a
+short CJK block). It does not gate: it cannot tell terse from truncated, and a
+threshold tuned until today's tree is green would be rule 1's "number that
+looked right". Three rows survive and are NOT fixed here, being a different
+size of job; they are filed with their numbers as area E in the roadmap entry.
+CLAUDE.md carries the rule that came out of it, where the honesty vocabulary
+and the report are described beside the gate.
+
+### Open, and where it lives
+
+| area | what | state |
+|---|---|---|
+| **B** | Register: 199 formal against 33 plain sentence endings in the explainer, 87 against 1 in the primer. Some plain endings are correct (a plate title takes plain style); others are mid-paragraph prose. Splitting them needs the English block's role, which a review has and a counter does not. | untouched |
+| **D** | A canonical-term table. Three false positives (멈춤, 크라운 휠, and the chain link's crown) are the finding: a substring list cannot decide either case, and the third one a compound exception would still have got wrong, because the variant stands alone and means something else. | untouched |
+| **E** | The three blocks `block coverage` still reports short. | reported, not fixed |
+
+The roadmap entry (kelaiem/timesim-roadmap, §241) keeps B, D and E; §243
+(the same review for Chinese, Traditional first) is filed from its method and
+has shipped nothing.
+
 ## §242 — The release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline, behind a door in the chrome
 
 > **Status.** SHIPPED whole, in two landings the same day: the film, its
