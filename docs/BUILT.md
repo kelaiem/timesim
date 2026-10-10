@@ -34073,7 +34073,7 @@ The fifteen `.gloss-variants` rows list only the case forms the translated
 prose actually uses (*állomáson*, *azimutban*, *pózba*, *felmentést*…), each
 checked in context. *keretében* ("within", the idiom) is left out of
 `budget`'s row. *érintő* is also the participle "concerning", but every use
-on the page is the tangent sense, so it stays. 90 links against English's
+on the page is the tangent sense, so it stays. 91 links against English's
 93, text identical in every locale.
 
 **Widths.** The plate pass found eleven labels over their English boxes on
@@ -34109,3 +34109,12 @@ packets). A boot at `?lang=hu` is silent apart from the container's GL
 driver notice. The same coverage run found Latvian still missing "Setting
 bevel"; that gap was on `main` before this landing and is left to Latvian's
 own record.
+
+**It met the merge race on its way in.** Re-merging `main` before the PR
+(CLAUDE.md's rule for locale tables) brought TODO 226 step 1, which had
+rewritten the escapement ledger's middle passage and moved the hairspring's
+knock figure from 316° to 302° in two blocks, re-translating all twenty-one
+existing locales. Three Hungarian rows went stale exactly as that rule
+predicts: 770/773, 3 unmatched. They were re-keyed from the new English, the
+two number moves carried as numbers, and the ledger's new passage translated
+against the same glossary. Back to 773/773.
