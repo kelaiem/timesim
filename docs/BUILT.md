@@ -33111,6 +33111,14 @@ enters 0.394 of a notch 2.759 deep. The fork's length stops its tip at the
 roller (`− 1.6`, one roller radius authored); seating the pin is a layout fix,
 P3, and the bank reads D and follows it.
 
+This landing kept the fork and the escape wheel POSED off beat phase (the
+smoothstep and its recoil dip, now inside the 0.0797 window). TODO 226's drive,
+merged after it, retired that law: the fork is read off the balance through
+the pin by the same bearing this landing solved the bank from, run backwards
+(so the lift comes back `LIFT_DEG/2` at boot), the wheel follows the fork, and
+`RECOIL_DEG`, `RECOIL_FRACTION` and `FORK_RECOIL_DEG` are gone. TODO 226 has
+the record.
+
 **Instrument.** `tools/probe-221-amplitude.mjs` (acceptance): the swing off the
 mesh, level over the reserve and the arbor's run, the pin's travel equal to the
 lift, the pin on the notch centreline at all four window edges, the two
