@@ -51,11 +51,18 @@
      tightest site, more than Devanagari's 1.238, so the Hindi rule above is
      NOT shared. Lowercase alone needs 1.20; uppercase reaches these boxes
      because English's CAPITALS emphasis is kept as capitals in Vietnamese. */
-  html:lang(vi) header .stamp,
-  html:lang(vi) details.mech > summary .where,
-  html:lang(vi) .fig-no,
-  html:lang(vi) .readout,
-  html:lang(vi) .chip { line-height: 1.3; }
+  /* §249 — Latvian puts ONE mark above a capital (Č Š Ž Ā Ē Ī Ū) and a
+     cedilla under one (Ķ Ļ Ņ Ģ), so an uppercase run inks in both directions
+     from a single mark each. Measured with the same probe (`--script lv`) in
+     one face beside Vietnamese, Latvian inks no more than Vietnamese at every
+     site (13 against 13.82 px at the 10 px sites, 15 against 15 at .readout),
+     so Vietnamese's 1.3 contains it and the rule is SHARED rather than
+     re-derived in a container whose own controls do not pass. */
+  html:lang(vi) header .stamp, html:lang(lv) header .stamp,
+  html:lang(vi) details.mech > summary .where, html:lang(lv) details.mech > summary .where,
+  html:lang(vi) .fig-no, html:lang(lv) .fig-no,
+  html:lang(vi) .readout, html:lang(lv) .readout,
+  html:lang(vi) .chip, html:lang(lv) .chip { line-height: 1.3; }
   :root {
     --bg: #0b0d10;
     --panel: rgba(15,17,20,0.72);
