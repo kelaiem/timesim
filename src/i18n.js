@@ -9857,6 +9857,7 @@ const FIL = {
   ['Setting drop']: 'Pagbaba sa pagtatakda',
   ['Setting rise']: 'Pag-angat sa pagtatakda',
   ['Setting cap']: 'Takip sa pagtatakda',
+  ['Setting bevel']: 'Bevel sa pagtatakda',
   ['Setting bevel corners']: 'Mga bevel na sulok sa pagtatakda',
   ['Setting traverse']: 'Baras ng pagtatakda',
   ['Selector ring']: 'Singsing ng selector',
