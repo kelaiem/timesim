@@ -29,8 +29,17 @@
 //      number printed is the number for that face; DejaVu, Segoe UI, SF and
 //      Noto differ, and that is a limit on the claim, not a footnote.
 //
-// Usage: node tools/probe-249-vietnamese-vert.mjs   (needs a Playwright Chromium)
+// §249 (Latvian) — the same question asked of a THIRD script, with
+// `--script lv`. Latvian stacks nothing, but it puts a caron or a macron ON TOP
+// of a capital (Č Š Ž Ā Ē Ī Ū) and a cedilla UNDER one (Ķ Ļ Ņ, and Ģ), so an
+// uppercase plate label inks above the cap height and below the baseline in
+// one run — Vietnamese's two directions from a single mark each. The controls
+// are the same three, asked of Latvian's own letters.
+//
+// Usage: node tools/probe-249-vietnamese-vert.mjs [--script vi|lv]   (needs a Playwright Chromium)
 import { chromium } from 'playwright';
+
+const SCRIPT = process.argv.includes('--script') ? process.argv[process.argv.indexOf('--script') + 1] : 'vi';
 
 const FAIL = [];
 const ok = (cond, label, detail) => {
@@ -57,23 +66,45 @@ const SITES = [
 
 // Strings chosen to carry the extremes rather than to read well, then the
 // glossary's own words, in both cases because the plates uppercase.
-const VI = {
-  stackLower: 'ế ở ữ ặ ỗ ẫ',       // two marks above the x-height
-  stackUpper: 'Ế Ở Ữ Ặ Ỗ Ẫ',       // the same stack above the CAP height
-  below:      'ạ ệ ộ ụ ỵ Ạ Ộ',     // dot below the baseline
-  real:       'bánh xe thoát · dây tóc · ngựa · bánh xe trung tâm',
-  realUpper:  'BÁNH XE THOÁT · DÂY TÓC · NGỰA · TRỤC CÂN BẰNG',
+const SCRIPTS = {
+  vi: {
+    name: 'Vietnamese tone marks',
+    samples: {
+      stackLower: 'ế ở ữ ặ ỗ ẫ',       // two marks above the x-height
+      stackUpper: 'Ế Ở Ữ Ặ Ỗ Ẫ',       // the same stack above the CAP height
+      below:      'ạ ệ ộ ụ ỵ Ạ Ộ',     // dot below the baseline
+      real:       'bánh xe thoát · dây tóc · ngựa · bánh xe trung tâm',
+      realUpper:  'BÁNH XE THOÁT · DÂY TÓC · NGỰA · TRỤC CÂN BẰNG',
+    },
+    lowerKeys: ['stackLower', 'below', 'real'],
+    faceRun: 'Ế Ở Ữ Ặ bánh xe thoát',
+    pairs: [['ế', 'e'], ['ở', 'o'], ['ữ', 'u'], ['ặ', 'a'], ['Ế', 'E'], ['Ữ', 'U'], ['ạ', 'a'], ['ỵ', 'y']],
+  },
+  lv: {
+    name: 'Latvian carons, macrons and cedillas',
+    samples: {
+      markLower: 'č š ž ā ē ī ū ģ',    // one mark above the x-height (ģ's is a comma)
+      markUpper: 'Č Š Ž Ā Ē Ī Ū',      // the same marks above the CAP height
+      below:     'ķ ļ ņ Ķ Ļ Ņ Ģ',      // a cedilla under the baseline
+      real:      'zobratiņš · ķēdes posms · eskapementa ritenis',
+      realUpper: 'ŠVEICES ENKURA DAKŠA · ĶĒDES POSMS · ĢĒRNIEKS',
+    },
+    lowerKeys: ['markLower', 'below', 'real'],
+    faceRun: 'Č Š Ž Ķ Ņ zobratiņš ķēde',
+    pairs: [['č', 'c'], ['š', 's'], ['ž', 'z'], ['ā', 'a'], ['ē', 'e'], ['ģ', 'g'], ['ķ', 'k'], ['ņ', 'n'], ['Č', 'C'], ['Ķ', 'K']],
+  },
 };
+if (!SCRIPTS[SCRIPT]) { console.error(`unknown --script ${SCRIPT}: ${Object.keys(SCRIPTS).join(', ')}`); process.exit(2); }
+const { samples: VI, lowerKeys, faceRun, pairs: PAIRS } = SCRIPTS[SCRIPT];
 const EN = { upper: 'ESCAPEMENT BALANCE', mixed: 'Rings at 18,000 A/h pygj' };
 
 const b = await chromium.launch();
 const p = await b.newPage();
 await p.setContent('<canvas id=c></canvas>');
 
-const face = await p.evaluate(() => {
+const face = await p.evaluate(({ S, pairs }) => {
   const c = document.getElementById('c').getContext('2d');
   const w = (fam, s) => { c.font = `10px ${fam}`; return +c.measureText(s).width.toFixed(3); };
-  const S = 'Ế Ở Ữ Ặ bánh xe thoát';
   const out = {};
   // The fallback behind each named family is CURSIVE, deliberately unlike
   // both generics: an absent family then measures as cursive, and cannot
@@ -91,10 +122,9 @@ const face = await p.evaluate(() => {
   // must have the advance of its base letter, or the run fell back.
   c.font = '10px ui-monospace, monospace';
   const adv = (s) => c.measureText(s).width;
-  const pairs = [['ế', 'e'], ['ở', 'o'], ['ữ', 'u'], ['ặ', 'a'], ['Ế', 'E'], ['Ữ', 'U'], ['ạ', 'a'], ['ỵ', 'y']];
   out.mono.advance = pairs.map(([v, base]) => ({ v, base, dv: +adv(v).toFixed(3), db: +adv(base).toFixed(3) }));
   return out;
-});
+}, { S: faceRun, pairs: PAIRS });
 
 const measure = await p.evaluate(({ SITES, VI, EN }) => {
   const c = document.getElementById('c').getContext('2d');
@@ -114,7 +144,7 @@ const measure = await p.evaluate(({ SITES, VI, EN }) => {
 }, { SITES, VI, EN });
 await b.close();
 
-console.log('\n══ §249 — Vietnamese tone marks against boxes sized for Latin\n');
+console.log(`\n══ §249 — ${SCRIPTS[SCRIPT].name} against boxes sized for Latin\n`);
 console.log('(a) the face serving each generic stack, by advance width at 10px');
 const owners = {};
 for (const [label, f] of Object.entries(face)) {
@@ -131,7 +161,7 @@ for (const [label, f] of Object.entries(face)) {
 
 console.log('\n(b) controls');
 const mis = face.mono.advance.filter((r) => Math.abs(r.dv - r.db) > 0.001);
-ok(mis.length === 0, 'every precomposed vowel takes its base letter\'s advance at a monospace site — the face carries Vietnamese, no per-glyph fallback',
+ok(mis.length === 0, 'every precomposed letter takes its base letter\'s advance at a monospace site — the face carries the script, no per-glyph fallback',
    mis.length ? mis.map((r) => `${r.v} ${r.dv} vs ${r.base} ${r.db}`).join('; ') : `${face.mono.advance.length} pairs equal`);
 ok(Object.values(face).every((f) => Math.abs(f.generic - f.absent) > 0.01),
    'an absent family measures DIFFERENTLY from both generics, so "serves" below can mean something');
@@ -160,7 +190,7 @@ for (const r of measure) {
 const boxed = measure.filter((r) => r.box !== null && !SITES.find((x) => x.name === r.site).pad);
 const per = (r, keys) => (Math.max(...keys.map((k) => r.vi[k].asc)) + Math.max(...keys.map((k) => r.vi[k].desc))) / r.px;
 const needAll = Math.max(...boxed.map((r) => per(r, Object.keys(VI))));
-const needLower = Math.max(...boxed.map((r) => per(r, ['stackLower', 'below', 'real'])));
+const needLower = Math.max(...boxed.map((r) => per(r, lowerKeys)));
 console.log('\n(d) the derivation');
 console.log(`    worst overrun ${worst} px, at "${worstSite}" (padded sites included; the derivation below excludes them)`);
 console.log(`    every boxed site is contained by line-height ≥ ${needAll.toFixed(3)} (uppercase included) — round UP to ${(Math.ceil(needAll * 20) / 20).toFixed(2)}`);

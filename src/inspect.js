@@ -226,7 +226,7 @@ export const MECH_GRAPH = {
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/350 — TODO 170 moved the third off the silence rocker's lug — the selector's pattern one band deeper)
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
     ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
-    ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top
+    ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top (TODO 204: seated on plate land, carrying the lever's pin)
     ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes (TODO 206: hanger 3 is also the arming spring's stud)
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
@@ -757,7 +757,7 @@ const EXPECTED_PAIRS = [
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
-  ['Alarm link', 'Three-quarter plate'],    // §35/§202: the beak's post seated on the plate top and the rod's
+  ['Alarm link', 'Three-quarter plate'],    // §35/§202: the beak's post seated on the plate top (TODO 204: it was 0.6183 over it until then) and the rod's
                                             // upper bush pressed into its bore — the two contacts the
                                             // EXPECTED_CONTACT_FLOORS row names; everything else holds
                                             // CLEAR_MARGIN there (TODO 171: that row stood without this grant)
@@ -2447,11 +2447,14 @@ export const EXPECTED_CONTACT_FLOORS = [
   // it is EXPECTED for the beak's post standing on the plate top and, now,
   // for the rod's bush pressed into the plate's bore. Everything else —
   // the rod inside its bush's bore, the beak tail above the plate — holds
-  // the margin.
+  // the margin. (TODO 204: for its first life the post's row named a joint
+  // that was not there — the post stood 0.6183 over the plate, and a declared
+  // contact is excluded before measurement, so nothing read it. The post is
+  // planted on plate land now, its foot ON the top face: measured 0.0000.)
   {
     a: 'Alarm link', b: 'Three-quarter plate', min: CLEAR_MARGIN,
     contacts: [
-      ['alarmLinkBeakPost', 'threeQuarterPlate'],   // §35: the beak's post on the plate top
+      ['alarmLinkBeakPost', 'threeQuarterPlate'],   // §35/TODO 204: the beak's post planted on the plate top (the pin's post — seated since TODO 204)
       ['alarmLinkRodBushTop', 'threeQuarterPlate'], // §202: the rod's upper bush in the plate's bore
     ],
   },
@@ -3344,9 +3347,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm switch', a: 'alarmJumperShank', b: 'alarmJumperTip', why: '§173: the tip on its shank, coaxial — the same stepped member, its working diameter' },
   // Both were 'CylinderGeometry#0' until TODO 11 tranche five named the post
   // (see the strike sleeve above for why that stales a row).
-  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkBeakPost', why: 'beak lever on its pivot post' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkBeakPost', why: 'beak tail on the same post' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakFulcrum', b: 'alarmLinkBeakPost', why: 'TODO 194 fork: the fulcrum lug over the post — the lever widened only where its post stands, once the selector rod the post clears thickened with the dial move' },
+  // TODO 204 RETIRED the three rows that stood here — bar⇄post ("beak lever
+  // on its pivot post"), tail⇄post and TODO 194's fulcrum lug⇄post. The post
+  // stood 0.6183 over the plate, under a lever whose loads both push UP, so
+  // it could never have been the fulcrum; the rows bought silence for a joint
+  // that was not there. The fulcrum is a PIN on the tilt axis now, and these
+  // are its three joints:
+  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakEye', why: 'TODO 204: the beak lever\'s eye turning on its pin — the fulcrum, a running fit at PIVOT_BORE_CLEAR on the tilt axis itself, so no arm of the lever moves' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakHead', why: 'TODO 204: the pin pressed through the post\'s head, flush with its outer face — a cantilever from the head\'s inner face' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPost', b: 'alarmLinkBeakHead', why: 'TODO 204: the post lapped one SAW_FIT into its head — one part, the head cross-drilled for the pin' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush1', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations; §202 named the bushes, since a third station renumbers every positional selector)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush2', why: 'lay shaft in hanger bush 2' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
@@ -3713,13 +3722,18 @@ export const INTRA_UNIT_WAIVERS = [
 // labels name one mesh. Seeded with the one pair an item filed; it is not a
 // sweep of every unit's pairs, and nothing here says the unlisted ones clear.
 export const INTRA_UNIT_FLOORS = [
-  // TODO 191 — the selector rod and the beak's post run parallel along the
-  // rod's top. The rod slides on its own axis and the post is still, so the
-  // gap is the plan gap at every pose; it read 0.0811 at TODO 174 and 0.0409
-  // after TODO 190 thickened the rod, with the post on the arm's line. The
-  // post now stands on the fulcrum axis (main.js, ALARM_BEAK_POST_SIDE).
-  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkBeakPost', min: CLEAR_MARGIN,
-    why: 'TODO 191: the post carries the beak\'s fulcrum beside the rod the tail drives — parallel members of one action group, held to the one margin' },
+  // TODO 191 — the selector rod and the beak's post ran parallel along the
+  // rod's top (0.0811 at TODO 174, 0.0409 after TODO 190 thickened the rod,
+  // with the post on the arm's line; TODO 191 moved it onto the fulcrum axis).
+  // TODO 204 planted the post on plate land 0.78 off the rod, and the members
+  // that run beside the rod now are the lever's EYE and the WEB that carries
+  // it: both are derived to clear the rod by the margin in plan (main.js,
+  // ALARM_BEAK_EYE_IN and the web's inner-corner assert), and the rod slides
+  // past them while they tilt, so they are held here on the metal.
+  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkBeakEye', min: CLEAR_MARGIN,
+    why: 'TODO 204: the lever\'s eye on its pin beside the rod the tail drives — its inner face derived from the rod by the one margin' },
+  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkBeakFulcrum', min: CLEAR_MARGIN,
+    why: 'TODO 194/204: the web that carries the lever out to its eye, its inner corner held off the rod by the one margin' },
   // TODO 205 — the lay shaft's rod-end neck ran under the selector rod's foot,
   // its flank 0.1091 below the face at the rest roll (the foot rides the rim
   // finger, so the gap is least at rest and opens as the link arms). The
