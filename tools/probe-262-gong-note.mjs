@@ -12,11 +12,15 @@
 // a shipped row whose f₁ is not the target, exits non-zero. The sweep itself
 // is a REPORT: it prints the table and names the octave the source chose.
 //
-// THE COLUMN THAT DECIDES is "at equal blow": the fall law fixes the hammer's
-// angular rate, not its energy (TODO 128 — the spring is a rubber band), so a
-// longer wire wants a heavier matched head and the law credits that head with
-// a bigger blow it never earned. Levels are therefore compared at the SHIPPED
-// blow's energy as well as raw. What it found on arrival: C8's first overtone
+// THE COLUMN THAT DECIDES is "at equal blow": under §25's fall law the
+// hammer's angular rate was fixed and not its energy (TODO 128 — the spring
+// was a rubber band), so a longer wire wanted a heavier matched head and the
+// law credited that head with a bigger blow it never earned. Levels are
+// therefore compared at the SHIPPED blow's energy as well as raw. Since §266
+// the blow is the torsion spiral's released energy, sized from the alarm
+// train's torque and not from the head, so the two columns AGREE — the
+// column stays because it is the comparison that decided, and because it
+// would catch the credit coming back. What it found on arrival: C8's first overtone
 // is ultrasonic and the wire loses 11 dB; C6 holds its level only through a
 // 16 kHz third partial with its fundamental at −10 dBA; C7 keeps the
 // fundamental inside §197's 1–4 kHz band and the overtone that carries the

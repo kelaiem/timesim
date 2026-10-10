@@ -26375,26 +26375,25 @@ alarmHammerUnit.add(alarmHammerSpiral);
 registerSub('Alarm hammer', 'Hammer spring', alarmHammerSpiral);
 {
   // The COLLET — the hammer's boss, on its pivot group: bored the running fit
-  // over the post, from the band's floor up into the arm's root, so the
-  // rotor is one connected body (its top is asserted INSIDE the arm's
-  // cylinder, on the arm's own azimuth). The arm and the tail still overlap
-  // the post as they did ("riveted to the arbor boss"): the boss is metal now.
-  const top = Z_STRIKE - ALARM_TAIL_T, bot = ALARM_HSPIRAL_Z_LO;
+  // over the post, from the band's floor up through the arm's root and
+  // ALARM_SEAT_SINK into the TAIL's underside (the seated-contact convention),
+  // so the rotor is one connected body whatever the arm's radius — the first
+  // draft stopped at the arm's root and was joined to it only because this
+  // head's eye happened to be wide enough (probe-262's C8 boot, a smaller
+  // head, found the ring 0.05 outside the arm). The arm and the tail still
+  // overlap the post as they did ("riveted to the arbor boss"): the boss is
+  // metal now.
+  const top = Z_STRIKE - ALARM_TAIL_T / 2 + ALARM_SEAT_SINK, bot = ALARM_HSPIRAL_Z_LO;
   const collet = new THREE.Mesh(ringGeo(ALARM_HSPIRAL_COLLET_BORE, ALARM_HSPIRAL_COLLET_R, top - bot), MATS.steel);
   collet.name = 'alarmHammerCollet';
   collet.position.set(0, 0, (top + bot) / 2 - Z_STRIKE);
   alarmHammerPivot.add(collet);
-  // the arm's axis from its root (a) toward the eye (b): the collet's top rim,
-  // on the arm's azimuth, must sit inside the arm's radius of that axis
-  const a = new THREE.Vector3(hammerPiv.x, hammerPiv.y, Z_STRIKE - ALARM_TAIL_T);
-  const b = new THREE.Vector3(headRest.x, headRest.y, Z_GONG);
-  const d = b.clone().sub(a).normalize();
-  const az = Math.atan2(headRest.y - hammerPiv.y, headRest.x - hammerPiv.x);
-  const q = new THREE.Vector3(hammerPiv.x + ALARM_HSPIRAL_COLLET_R * Math.cos(az), hammerPiv.y + ALARM_HSPIRAL_COLLET_R * Math.sin(az), top);
-  const qa = q.clone().sub(a), along = qa.dot(d), perp = qa.clone().sub(d.clone().multiplyScalar(along)).length();
-  const armR = ALARM_HEAD_H / 8;
-  if (!(along >= 0 && perp < armR))
-    console.warn(`§266 collet: its top rim stands ${perp.toFixed(4)} off the arm's axis (arm radius ${armR.toFixed(4)}) — the rotor is not one body`);
+  // the joint: the ring's top must stand inside the tail's bar (the bar runs
+  // from the pivot axis outward, so it covers the ring wherever it is wider
+  // than the ring's radius) by the seat — achieved vs required
+  const sunk = top - (Z_STRIKE - ALARM_TAIL_T / 2);
+  if (!(ALARM_TAIL_BAR_LEN > ALARM_HSPIRAL_COLLET_R && sunk >= ALARM_SEAT_SINK - 1e-9 && sunk < ALARM_TAIL_T))
+    console.warn(`§266 collet: its top stands ${sunk.toFixed(4)} into the tail's bar (bar ${ALARM_TAIL_BAR_LEN.toFixed(3)} long, ring r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}), need ALARM_SEAT_SINK ${ALARM_SEAT_SINK} — the rotor is not one body`);
 }
 {
   // The STUD — fixed, planted in the rim beside the post, up to the band's top.

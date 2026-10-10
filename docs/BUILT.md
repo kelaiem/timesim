@@ -32733,9 +32733,13 @@ hammer's boss and the stud stands from the plate):
 
 - the COLLET, `alarmHammerCollet`, on the hammer's pivot group: a sleeve bored
   the running fit over the post (`PIVOT_BORE_CLEAR`, the wall `PIVOT_MIN_U`),
-  from the spiral band's floor up into the arm's root — the bearing the arm
-  and the tail had been "riveted to" with no mesh behind the word. Its top
-  rim is asserted inside the arm's cylinder, so the rotor is one body. The
+  from the spiral band's floor up through the arm's root and `ALARM_SEAT_SINK`
+  into the tail's underside — the bearing the arm and the tail had been
+  "riveted to" with no mesh behind the word, joined to the tail by the seat so
+  the rotor is one body whatever the arm's radius (a first draft stopped at the
+  arm's root and was joined only because this head's eye happened to be wide
+  enough; probe-262's C8 boot, a smaller head, found the ring 0.05 outside the
+  arm). The
   spiral's INNER end is clamped in it, sunk `ALARM_SEAT_SINK`, and turns with
   the hammer — the elastica's own convention (geometry.js `spiralElastica`
   turns the inner clamp with the outer held).
