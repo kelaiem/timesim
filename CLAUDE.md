@@ -924,7 +924,15 @@ key is the default's) gets `inspection`, `clearances` and
 changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
-report. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
+parallel `battery tiers` job, and since §265 its 36 spec boots with it**
+(`--tiers-only`). Both are handed to the battery (`--tiers-from`, fetched in
+the background by `tools/battery-tiers-fetch.sh`), which judges them in its
+one assembly. Each tier proves itself or runs in-process and says why. Both
+need the same tree. The spec tier needs one row per declared point, in order.
+The point tier needs the same point code, whole, every point full. A dead
+sibling or a fetcher that gave up runs both here, so the worst case is the run
+as it was. Measured, §264 took the push from 89 to 63 min. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is
 held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,
@@ -952,7 +960,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 274 measuring scripts and this file names 23. The rest are named for the
+`tools/` holds 275 measuring scripts and this file names 23. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -969,7 +977,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **164 of
+The index also carries the split that decides how to read a result: **165 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

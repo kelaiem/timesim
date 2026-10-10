@@ -432,6 +432,13 @@ jobs:
       # list the battery job's matrix expands: [0] is the single process.
       matrix: ${{ steps.decide.outputs.matrix }}
       workers: ${{ steps.decide.outputs.workers }}
+      # §264/§265 — whether the spec boots and the point tier are measured by the parallel
+      # `battery tiers` job and handed to the battery.
+      tiers_job: ${{ steps.decide.outputs.tiers_job }}
+      # §264 — that job's cap in minutes, read by its `timeout-minutes` and by
+      # the battery's wait for it. Derived where it is set, in `decide`.
+      tiers_cap_min: ${{ steps.decide.outputs.tiers_cap_min }}
+      tiers_cap_s: ${{ steps.decide.outputs.tiers_cap_s }}
     env:
       # §200's routing expression, read as: (asked for by a same-repo PR) or
       # (asked for by a dispatch) or (the nightly), and owner-triggered, and
@@ -534,10 +541,93 @@ jobs:
             fi
           fi
           workers='[0]'; [ "$matrix" = true ] && workers='[0,1]'
-          { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; } >> "$GITHUB_OUTPUT"
+          # §264/§265 — the spec boots and the point tier move to a parallel runner on the runs that
+          # sweep the points FULL with no ceiling on ubuntu-latest: a push, and a
+          # dispatch that stayed hosted, which is the same whole run and is
+          # how the hand-off is exercised from a branch before it merges. Not
+          # a PR (its points are incremental and ceilinged, and §259's matrix
+          # already spreads them), and not the host's dispatch or nightly (a
+          # second job would take its second slot, which §260 keeps free).
+          tiers_job=false; pwhy=""
+          if [ "$run" = true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ]; }; then
+            tiers_job=true
+            pwhy="the spec boots and the point tier are measured by the parallel 'battery tiers' job and handed to the battery before it judges"
+          fi
+          # The cap. §264's sibling measured the point tier alone in 21.6 min of
+          # job wall (run 37962011695: setup, the default's digest boot, the
+          # 1260 s tier). §265 adds the spec boots, 584 s in that run's battery,
+          # so the job is ~31.3 min. Times the 1.66x same-tree spread above the
+          # battery's cap, that is 52.0, rounded up to 55. A sibling slower than
+          # that is killed, and the battery, which has stopped waiting by then,
+          # runs both tiers itself.
+          tiers_cap_min=55
+          { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; echo "tiers_job=$tiers_job"; echo "tiers_cap_min=$tiers_cap_min"; echo "tiers_cap_s=$(( tiers_cap_min * 60 ))"; } >> "$GITHUB_OUTPUT"
           echo "§200/§251: $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$mwhy" ] && echo "§259: $mwhy" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ -n "$pwhy" ] && echo "§264/§265: $pwhy" | tee -a "$GITHUB_STEP_SUMMARY"
           true
+
+  # §264 — THE PUSH'S POINT TIER, ON A PARALLEL RUNNER, and since §265 its
+  # SPEC BOOTS beside it.
+  #
+  # The six silent spec points are swept FULL on every run that may write a
+  # baseline, after the battery's shards: 1541 s of the 89-minute green push
+  # 37924262189, all on the critical path. Before that tier come the 36 spec
+  # boots, 584 s. Neither needs the shards. A point boots its own build and
+  # reads the default's digests off its own virgin boot, a spec boot is one
+  # page, and both are judged by the assembly. So this job measures both from
+  # t=0 with `--tiers-only` and uploads the file the moment it exists. The
+  # battery job, which reaches its spec tier well after this job finishes,
+  # takes them from there (`--tiers-from`) and judges them in the SAME assembly
+  # as everything else: one gate loop, and the baseline is still written by the
+  # one job that writes it. If this job dies, is slow or measured different
+  # bytes, the battery runs the tiers itself and says why. That is the run as
+  # it was before §264, so that is the worst case.
+  battery-tiers:
+    name: battery tiers
+    needs: route
+    if: needs.route.outputs.tiers_job == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.route.outputs.tiers_cap_min) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      - name: Install Chromium
+        working-directory: tools
+        run: npx playwright install --with-deps chromium
+
+      - name: Measure the spec boots and the point tier (§264, §265)
+        run: |
+          mkdir -p .battery-tiers
+          node tools/ci-battery.mjs --tiers-only --tiers-out .battery-tiers/tiers.json
+
+      # Named for the RUN, not the attempt: a re-run of the battery alone must
+      # still find the file this attempt's sibling wrote, and `overwrite`
+      # because a re-run of this job writes the same name. The battery refuses
+      # a file measured on any other tree, so a stale one costs a sweep, never
+      # a verdict.
+      - name: Hand the tiers to the battery (§264, §265)
+        uses: actions/upload-artifact@v4
+        with:
+          name: battery-tiers-${{ github.run_id }}
+          path: .battery-tiers/tiers.json
+          retention-days: 1
+          overwrite: true
+          if-no-files-found: error
 
   battery:
     needs: route
@@ -563,6 +653,12 @@ jobs:
     env:
       MATRIX: ${{ needs.route.outputs.matrix }}
       WORKER: ${{ matrix.worker }}
+      # §264/§265 — set when the parallel `battery tiers` job measures the spec
+      # boots and the point tier. The wait is that job's own cap (the route's tiers_cap_min, the
+      # one definition), so the battery stops waiting exactly when the sibling
+      # would have been killed.
+      TIERS_JOB: ${{ needs.route.outputs.tiers_job }}
+      TIERS_WAIT_S: ${{ needs.route.outputs.tiers_cap_s }}
     # §251 — the route job decides; see it for the trust tiers (§200) and the
     # readiness check that can turn an opt-in back to ubuntu-latest.
     runs-on: ${{ needs.route.outputs.host }}
@@ -608,6 +704,12 @@ jobs:
     # push's critical path is the structural fix, and that is filed separately.
     # Pull this number back down only from several green runs that this cap did
     # not truncate.
+    #
+    # §264 then took the point tier off this job's critical path: a parallel
+    # `battery tiers` job measures it, and this job judges the file. Its first
+    # end-to-end run (dispatch 37962011695) took 63.1 min against 89. One run
+    # moves no cap, by the rule above, so 150 stands until several push runs
+    # have measured the new wall.
     #
     # A PR's point tier is held to POINT_PR_BUDGET_MS (10 min of
     # wall, ci-battery.mjs) on top of a battery that can itself be WHOLE when
@@ -821,6 +923,8 @@ jobs:
       # collector runs on a different machine and must union against the very
       # file the workers used, not a second restore of what should be it.
       - name: Run the battery
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .battery-out
           if [ "$MATRIX" = true ]; then
@@ -832,11 +936,32 @@ jobs:
               cp .battery-baseline/report.json .battery-out/baseline-report.json
             fi
           else
+            # §264/§265 — when `battery tiers` is measuring the tiers, fetch its
+            # file in the BACKGROUND while the sweeps run, and point the
+            # harness at where it will land. The fetcher always ends by
+            # writing either the file or FILE.failed with its reason, by the
+            # sibling's own cap at the latest, and the harness waits no longer
+            # than that cap either. So a broken fetcher costs a sweep here,
+            # never a hang. Its log is printed after the battery.
+            tiers_args=""
+            if [ "$TIERS_JOB" = true ]; then
+              mkdir -p .battery-tiers
+              GH_TOKEN="$GH_TOKEN" OUT=.battery-tiers/tiers.json \
+                NAME="battery-tiers-${GITHUB_RUN_ID}" \
+                bash tools/battery-tiers-fetch.sh > .battery-tiers/fetch.log 2>&1 &
+              tiers_args="--tiers-from .battery-tiers/tiers.json --tiers-wait-s $TIERS_WAIT_S"
+            fi
+            status=0
             node tools/ci-battery.mjs \
               --report .battery-out/report.json \
               --digests .battery-out/digests.json \
               --points-out .battery-out/points.json \
-              ${{ steps.mode.outputs.args }}
+              $tiers_args \
+              ${{ steps.mode.outputs.args }} || status=$?
+            if [ -f .battery-tiers/fetch.log ]; then
+              echo "--- §264/§265 fetcher"; cat .battery-tiers/fetch.log
+            fi
+            exit $status
           fi
 
       # ---- §186 / TODO 111: the analytic case sectors, held over the pose net

@@ -37652,7 +37652,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All TWENTY
+   what it says, and the box already grows to fit its contents. All TWENTY-ONE
    locales measure inside 150 px on one line today — §249's Indonesian
    "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
    and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
@@ -37666,7 +37666,8 @@ html:lang(ko) { word-break: keep-all; }
    alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
    19.5; §249's Indonesian "Waktu" 28.0; §249's Turkish "Çalma saati" 52.8,
    level with Spanish and Korean, "Zaman" 31.1; §249's Welsh "Canu am" 40.6,
-   level with Russian, "Amser" 28.9) — so the allowance that a
+   level with Russian, "Amser" 28.9; §249's Tagalog "Tumutunog sa" 63.6, just
+   under Indonesian's 66.2, "Oras" 21.7) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -38359,6 +38360,9 @@ function setBarState(id, on) {
 // measured, past Dutch's 204.4 — on "Dewislen / Golwg / Rheolaethau", and 185.0
 // once the panel took the verb-noun Rheoli that Welsh software already uses for
 // a control panel (Panel Rheoli): §208's lesson a fifth time.
+// §249's Tagalog measured 194.8 on "Menu / Tanaw / Mga kontrol" — 24.6 px wider than
+// English's 170.2, between Welsh's 185.0 and Dutch's 204.4 — with no re-cutting
+// needed: the first labels fit, so no face was chosen against the bar this time.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
@@ -39700,6 +39704,25 @@ const PART_CALLOUTS = {
   mwMinuteWheel: { name: 'Minute wheel', train: 'Motion works', anchor: 'rim' },
   mwMinutePinion: { name: 'Minute pinion', train: 'Motion works', anchor: 'centre', place: 'above' },
   mwHourWheel: { name: 'Hour wheel', train: 'Motion works', anchor: 'rim', awayFrom: 'mwMinuteWheel', unitLabel: true },
+  // The keyless works: the crown's two paths, named for what the code builds
+  // (the §10 level-2 vocabulary, so the drill-in and these say the same word).
+  // WINDING — stem → winding pinion → crown wheel → transfer wheel; SETTING —
+  // stem → winding pinion → setting wheel → setting bevel → the minute-wheel
+  // arbor's wheel → … the fold … → setting cap, which meshes the motion works'
+  // minute wheel. "Keyless works" alone is one word at the crown for both.
+  windStem: { name: 'Winding stem', train: 'Keyless works', anchor: 'centre' },
+  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  // Two coaxial pairs — the crown wheel on the transfer wheel's arbor, the
+  // setting wheel under its bevel — share one centre, so each pair splits
+  // above / below it, the motion works pinions' rule.
+  // The winding pinion meshes the crown wheel right beside that pair, so its
+  // name is lifted ABOVE its centre, clear of the pair's upper slot.
+  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  settingWheel: { name: 'Setting wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
+  settingBevel: { name: 'Setting bevel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  minuteWheel: { name: 'Minute-wheel arbor', train: 'Keyless works', anchor: 'centre' },
+  settingCap: { name: 'Setting cap', train: 'Keyless works', anchor: 'centre' },
 };
 // Resolved once: { meshes, unit, train, anchor, el } — one entry per NAME, since
 // a gear builder may leave several meshes under one name; the anchor reads
