@@ -83,6 +83,15 @@ export const QUESTIONS = {
     { term: 'zobratiņ', en: 'pinion', q: 'A pinion is «zobratiņš», the mechanical-engineering word (rack and pinion). Is that what a watchmaker calls a pinion?' },
     { term: 'aizturis', en: 'click / maintaining detent', q: '«aizturis» is the click AND the maintaining detent, against «sprūds» for a driving pawl and «fiksators» for a detent spring. Do the three read as distinct parts?' },
   ],
+  hu: [
+    { term: 'kúpcsiga', en: 'fusee', q: 'The fusee is «kúpcsiga» (cone pulley) throughout, never the bare «csiga», which is also a snail and a pulley. Is there an established Hungarian trade word for the fusee, or is the descriptive compound right?' },
+    { term: 'horgonyjárat', en: 'Swiss lever escapement', q: 'The escapement is «járat» and the Swiss lever escapement «svájci horgonyjárat», with «gátkerék» for the escape wheel and «horgonyvilla» for the pallet fork. Is that the workshop vocabulary?' },
+    { term: 'kiskerék', en: 'pinion', q: 'A pinion is «kiskerék» and its leaves are «fogai». Does a watchmaker say «kiskerék», or another word (e.g. «hajtókerék»)?' },
+    { term: 'kilincs', en: 'click / pawl', q: '«kilincs» stands for both the click and every pawl, against «retesz» for a detent and «ugrórugó» for a jumper (the sautoir kept as «sautoir (ugrórugó)»). Do they read as distinct parts?' },
+    { term: 'platina', en: 'plate', q: 'The movement plate is «platina» (alaplap, háromnegyedes platina), the trade sense, which in the chrome sits beside the metal platinum. Is the collision a problem in context?' },
+    { term: 'ütés', en: 'beat / blow', q: 'A beat of the escapement is «ütés», which is also the alarm hammer\'s blow; «félrezgés/óra» is used for A/h. Would a workshop prefer «félrezgés» for the escapement beat?' },
+    { term: 'átadás', en: 'project vocabulary', q: 'The project\'s own abstract terms are rendered «állomás» (station), «löket» (throw), «átadás» (hand-off), «felmentés» (waiver), «hajtogatás» (fold) and «bemeneti tengely» (a pose axis, kept apart from «tengely», the arbor). Do they read as those senses rather than their everyday ones?' },
+  ],
   hi: [
     { term: 'पैलेट फोर्क', en: 'part names', q: 'Part names are transliterated loanwords («पैलेट फोर्क», «हेयरस्प्रिंग», «बैलेंस व्हील»), as Hindi engineering prose usually writes them. Is that the right side of the register split for these terms?' },
     { term: 'बलाघूर्ण', en: 'torque', q: 'Physical quantities use the standard scientific words («बलाघूर्ण» for torque, «जड़त्व» for inertia, «आयाम» for amplitude). Do they read naturally beside the loanword part names?' },
