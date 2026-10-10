@@ -32955,3 +32955,184 @@ times:
   remaining time is.
 - **The caps.** Push 150 and PR 125 stay until several runs have measured
   the new wall, by the caps' own rule.
+
+---
+
+## §263 — A split battery run writes the whole baseline: the collector's digests, one seeding rule, and the split as a hosted dispatch's opt-in
+
+**As landed, the push is NOT split.** This entry was built and measured to
+split the push. §264 and §265 landed while it was measuring and took the same
+tiers off the push's critical path with a parallel job instead (the decision is
+at the end of this entry). What shipped is everything that lets a split run be
+a baseline, and the split itself as a hosted dispatch's `split: true`.
+
+The push to `main` is the run that writes §152's hosted baseline, and by
+2026-10-09 it was one serial job of ~89 min on `ubuntu-latest`. Run
+37924262189 broke down as: shards, boot B and the share boot ~49.7 min, then
+spec boots 561 s, then the point tier (TODO 186) 1541 s, then the post-battery
+probes ~3.1 min. PR #608 raised the job cap from 90 to 150 because the slowest
+green push had gone from 78 to 89 min in a week. That bought room but did not
+stop the growth.
+
+**The machinery to move it already existed.** §127 tier 3 assembles a run
+across processes. §259 put that in the workflow, and §260 spread the spec boots
+and the point tier across the workers (`specOwner`, `pointOwners`). Only one
+thing kept a push off it, and §259 wrote it down: a collector wrote no digests,
+so a split run could never become a baseline. §152's baseline is a report plus
+digests plus `points.json`, all under the commit SHA, and the collector had
+two of the three.
+
+**The third was already in worker 0's file.** A worker's §152 preflight reads
+the per-unit key, and the tasks file carries it as `preflight.headDigests`. In
+one process that same object is what `--digests` writes. So:
+
+- `--collect --digests FILE` writes it. It is written before the gates, as one
+  process writes it, and the seeding steps decide whether it is kept.
+- A collect asked for a key that no worker read THROWS. A baseline without
+  digests is one every later PR reads as "no usable baseline", and that shows
+  up only in a log.
+- `--digests-base` and `--points-base` are still refused under `--collect`.
+  They are inputs to the preflight's decision, and each worker made that for
+  itself.
+- A worker's preflight runs only when it is given `--digests`, `--digests-base`
+  or `--baseline`. So the legs of every non-PR run get `--digests` (to
+  `RUNNER_TEMP`; the copy that matters travels in the tasks file).
+
+Worker 0 reads the key on its preflight boot and boot B's on its anchor boot,
+which is where one process reads both. So the digest-determinism gate holds the
+same pair in either shape.
+
+**The seeding rule is one file now.** `tools/battery-seed.sh may|keep` is the
+shell the leg's two seeding steps used to carry inline, moved rather than
+copied, because the collector now applies the same rule. Two changes came with
+the move:
+
+- `keep` refuses a run that wrote no digests. In one process that could not
+  happen. In a split it can, so it fails out loud.
+- `may` takes a `REFUSE` reason. The collector seeds under ITS runner's cache
+  key (`battery-baseline-v1-<os>-<arch>-<sha>`), so it may seed only when both
+  workers recorded that same platform. Each leg writes
+  `platform-worker-<i>.txt` beside its tasks file, and the collector checks
+  them rather than trusting the route.
+
+**Which runs split**, as landed:
+
+| event | shape |
+|---|---|
+| push | single process, with §265's parallel `battery tiers` job |
+| hosted dispatch | single process with the tiers job; split when its `split: true` input asks |
+| nightly, self-hosted dispatch | single process (the collector is hosted and would seed under the wrong key) |
+| pull request | unchanged: split only on `battery-matrix` / `[matrix]` |
+
+While it was measuring, the branch made the split the push's default, with an
+opt-out input (`single`). The runs below were taken that way. The single-process
+harness path is untouched: no line of the browser path or of `assemble`
+changed.
+
+**Every gate still runs on a push.** The collector runs `assemble`, the same
+gate loop in the same order, plus `every expected shard was collected`:
+
+- the point tier's `point sweeps` gate and the three validated-configs gates;
+- the spec-boot gates;
+- the determinism anchors.
+
+The three post-battery probes ride worker 1, as on a split PR. The §227
+promotion shadow asks once, on worker 0. §227's provenance record and its
+publish step stay single-process only, as §259 left them. A split push
+therefore publishes no tree artifact for a later merge to inherit. That tier
+is a shadow and gates nothing, and §259's rule for it stands: it reads a second
+path only after it has agreed with reality on the reference path.
+
+**Instruments.**
+
+- `probe-127-matrix.mjs` (local, 4-vCPU container, 19 min): PASS. Every run in
+  it now reads the key. Identities 1 and 2 hold the collected `--digests` file
+  byte for byte against the single process's, and hold the report's `digests`
+  field present. A fifth case strips worker 0's key and must be refused by
+  name, with no file left behind. The other four identities are unchanged.
+- `actionlint` 1.7.7 clean. The route's decide step was exercised on ten
+  cases: push, hosted dispatch, `single: true`, self-hosted dispatch
+  ready/not-ready, the nightly, a PR with and without the opt-in, the host
+  refusal, and a non-owner push. `battery-seed.sh` was exercised on its five
+  `may` events, a `REFUSE`, and `keep` on a restricted, keyless and good run.
+
+**Measured on CI.** Dispatches on the branch, `runner: ubuntu-latest`, so each
+is the push's job graph exactly, minus the cache save. A branch dispatch may not
+seed, and says so.
+
+| run | shape | cap | wall (route → last job) | worker 0 | worker 1 | collector |
+|---|---|---|---|---|---|---|
+| 37959811246 | split | 150 | **51.9 min** | 26.3 | 51.4 | 0.3 |
+| 37959896617 | split | 150 | **45.1 min** | 44.7 | 42.3 | 0.2 |
+| 37965443348 | split | 150 | **29.6 min** | 25.4 | 29.1 | 0.3 |
+| 37969199581 | split | 95 | **45.7 min** | 45.3 | 40.0 | 0.2 |
+| 37965511569 | single (`single: true`) | 150 | **87.4 min** | — | — | — |
+
+- **Every split run was green**: `55/55 gates pass`, all six points CLEAN with
+  0 skipped, and the three validated-configs gates passing. The collector
+  wrote the report, the digests (`digests (worker 0's preflight) written`)
+  and `points.json` (6 whole point payloads). The single-process run is 54
+  gates: it has no `every expected shard was collected`.
+- **The same day's single process took 87.4 min.** That is in line with the
+  89.0 that opened this section, so the split's gain is not a quiet day. The
+  four split walls average 43.1 min, a 2.0x cut.
+- **What a leg spends, on a middle runner** (run 37959896617):
+  - worker 0: shards ~24.9 min, boot B and the share boot 1.0, 18 spec boots
+    4.7, its two `studr` points 13.6;
+  - worker 1: shards ~25, 18 spec boots, four points 13.5 (`studr=7.595` the
+    long pole at 781 s), the probes 2.7.
+
+  The two point tiers ended 13 s apart. Before, the tier was 25.7 min serial
+  after everything else.
+- **The runners are the spread now, not the partition.** Run 37959811246's
+  worker 0 swept `studr=4.71` in 434 s while its worker 1, doing the work it
+  always does, needed 970 s for `studr=7.595`. Across the four runs one leg
+  doing fixed work ranged 29.1–51.4 (worker 1) and 25.4–45.3 (worker 0), a
+  1.77x spread.
+
+**The cap, re-derived.** `battery.yml`'s own rule is the slowest green run,
+times the spread, rounded up. The first three runs, none truncated by the 150,
+gave a slowest LEG of 51.4 min. The legs' own 1.77x spread is wider than the
+header's 1.66x, so it is the one applied: 51.4 × 1.77 = 91.0, rounded up to
+**95** for a split leg. The fourth run measured under 95 and finished at 45.3,
+well inside it. Every single process keeps 150, the push included: §264 and
+§265 left that cap for several of their own runs to move. The PR's 125 is
+untouched.
+
+**How it composes with §264 and §265, and why the push is not split.** Both
+landed while these runs were measuring, and they took the same tiers off the
+push's critical path the other way round. A sibling job (`battery tiers` since
+§265) measures the spec boots and the point tier from t=0 and hands the file to
+the single process. §265's dispatch measured 40.1 min, and the first push after
+it 51.4. The two designs do not stack: a split run already spreads both tiers
+across its legs, and the hand-off's consumer is the single process's (its flags
+refuse `--matrix`). So the route sets `tiers_job` only when the run is not
+split. Which one a push takes was the owner's call, and the push stays §265's:
+
+- **Speed is a wash.** The split measured a mean of 43.1 over four runs, and
+  §265 measured 40.1 and 51.4. Within both, the runner a leg lands on is the
+  larger term (1.77x across these runs).
+- **§265 fails soft, the split fails hard.** A dead or slow tiers job costs
+  §265 a sweep it then runs itself, and the push still writes its baseline. A
+  dead leg fails a whole split, and a push that fails writes no baseline, which
+  is the quiet failure PR #608 raised the cap to stop.
+- **§265 was on `main`, and its own first push was the next measurement.** The
+  split stays one input away, so the two are compared on the same tree on
+  demand rather than argued.
+
+**Not built.**
+
+- **The tiers job under a split.** §265's addendum names the shards as the
+  push's critical path. A split halves exactly that, and the tiers job could
+  then take both tiers off each leg, leaving a leg its half of the shards and
+  its anchors: about 25–30 min on a middle runner. That needs the hand-off's
+  consumer to run under `--matrix` and the collector to accept the tiers from a
+  third file. It is harness work this landing did not take, and the
+  combination is the one shape neither design measured.
+- **A third worker.** `pointOwners(3)` would put about two points on each
+  worker. That is a worker-count change in four places: the route's `workers`,
+  the legs' `--matrix i/2`, the collector's file list, and the probe owner. The
+  measured floor is now each leg's shards plus a ~13-min point tier, so a
+  third leg would cut both. Whether that nets out on hosted runners whose own
+  spread is 1.77x is a measurement to take, not a prediction to land.
+- **§227 promotion from a split.** See above.
