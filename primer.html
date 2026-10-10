@@ -472,7 +472,7 @@
       each stone is cut on a slant that leans <em>toward</em> the wheel, so the tooth
       climbs it rather than falling off it. Then the wheel is caught again, and waits.</p>
       <p>That cycle is the tick: <b>5 per second</b> here, 18,000 per hour, each one an
-      unlock–slide–catch. The wheel is in motion for only about a sixth of each beat —
+      unlock–slide–catch. The wheel is in motion for only about a twelfth of each beat —
       a watch is a machine that is almost always standing still.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Held, then let go — one step at a time</span></div>
@@ -486,7 +486,7 @@
             <text class="val val-ruby" x="200" y="46">stone holds the tooth</text>
             <text class="val" x="200" y="62">pressure seats it deeper</text>
             <text class="val" x="70" y="206">the train pushes; nothing moves</text>
-            <text class="lbl lbl-strong" x="470" y="28">impulse — a sixth of the beat</text>
+            <text class="lbl lbl-strong" x="470" y="28">impulse — a twelfth of the beat</text>
             <circle cx="550" cy="130" r="62" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
             <polygon points="562,70 576,88 560,94" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
             <rect x="580" y="46" width="26" height="14" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.2" transform="rotate(38 580 46)"/>
@@ -602,8 +602,8 @@
         <figcaption>Here the balance completes 2½ full oscillations per second, and each
         oscillation crosses the escapement twice — once each way — giving the 5 ticks per
         second of the previous entry. A healthy real balance swings roughly three-quarters
-        of a turn each way; on screen the swing is drawn smaller than life so the beat
-        stays readable at a glance.</figcaption>
+        of a turn each way, and so does this one: the balance on screen turns 200° each
+        way, the swing the movement is designed to keep up when it hangs upright.</figcaption>
       </figure>
       <p>A flat spiral does not quite pay that bet, and watchmakers have known it since
       Breguet. The spring's outer end is clamped to a fixed post, so the coils do not
@@ -976,8 +976,8 @@
     if (!slider) return;
     var nTeeth = 15, rWheel = 4.5, embrace = 42 * Math.PI / 180, pitch = 2 * Math.PI / nTeeth;
     var beatRad = 12 * Math.PI / 180, drawRad = 12 * Math.PI / 180, dropRad = 1.5 * Math.PI / 180;
-    var window_ = 0.16, twitchFrac = 0.25, twitchRad = 1.0 * Math.PI / 180;
-    var bankRad = 2.57 * Math.PI / 180;          // the lever's half-swing, as the simulation derives it
+    var window_ = 0.0798, twitchFrac = 0.25, twitchRad = 1.0 * Math.PI / 180;   // the time the balance spends inside its 50° lift at a 200° swing
+    var bankRad = 4.03 * Math.PI / 180;          // the lever's half-swing, as the simulation derives it from that lift
     var sense = -1;                            // the wheel turns clockwise, seen from the dial
     var s = 2 * rWheel * Math.sin(embrace), D = s / 2 + Math.sqrt(rWheel * rWheel - s * s / 4);
     var rot = function (p, a) { var c = Math.cos(a), sn = Math.sin(a); return [c * p[0] - sn * p[1], sn * p[0] + c * p[1]]; };
@@ -1079,7 +1079,7 @@
       else if (wheelAt(p) * sense < beatRad - dropRad) { chip.classList.add('ramp'); chip.textContent = tr('impulse · the tip rides the slant'); }  // drop begins when the WHEEL passes the let-off, not at a fraction of the window
       else { chip.classList.add('ramp'); chip.textContent = tr('drop · the wheel runs free to the other stone'); }
     }
-    // Play dilates the beat: the action is 16% of it, so the window gets most
+    // Play dilates the beat: the action is 8% of it, so the window gets most
     // of the loop and the lock a short dwell — the explainer's loop, inherited.
     var playing = false, t0 = null, raf = 0, actS = 4.0, dwellS = 1.2;
     function frame(now) {
