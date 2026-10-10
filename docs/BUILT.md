@@ -33685,3 +33685,267 @@ stretch as the gated number, and every ceiling derived from the CI host's
 spread. The regression this landing repaired took three weeks to find because
 the probe runs by hand. CLAUDE.md's boot entry now carries a fifth rule: new
 build code brings its own seams.
+
+## §268 — The hammer spring is a spring: a torsion spiral on the hammer's post, the fall √(k/I)
+
+TODO 128, closed. §48 drew the hammer's spring as a blade grounded to a stud
+on the rim and bearing on the tail at 45% of its length; TODO 128 measured
+what the drawing did: redrawn every frame from the fixed anchor to a bearing
+point that moved, it CHANGED LENGTH by 36% of itself over the draw, so no
+rate could be read off it in either direction, and `ALARM_HAMMER_W` stayed a
+number solved from a CHOSEN fall time — a third of the cam's free window —
+with the blow's energy following from it: 16.99 nJ, where a spring working
+to its own yield gives twenty microjoules. §197 published that gap as
+`__clock.acoustics.spring` (k implied 1.9e−7, a 48 u blade) so this landing
+could measure its own progress.
+
+**The part.** A spiral torsion spring coaxial with the hammer's post —
+the construction a pivoted hammer actually uses — in three pieces, each the
+spring's anatomy and nothing else (TODO 194's follower return is the
+pattern, read the other way round: there the collet was fixed and the riser
+rode the arm; here the hammer turns ON a fixed post, so the collet is the
+hammer's boss and the stud stands from the plate):
+
+- the COLLET, `alarmHammerCollet`, on the hammer's pivot group: a sleeve bored
+  the running fit over the post (`PIVOT_BORE_CLEAR`, the wall `PIVOT_MIN_U`),
+  from the spiral band's floor up through the arm's root and `ALARM_SEAT_SINK`
+  into the tail's underside — the bearing the arm and the tail had been
+  "riveted to" with no mesh behind the word, joined to the tail by the seat so
+  the rotor is one body whatever the arm's radius (a first draft stopped at the
+  arm's root and was joined only because this head's eye happened to be wide
+  enough; probe-262's C8 boot, a smaller head, found the ring 0.05 outside the
+  arm). The
+  spiral's INNER end is clamped in it, sunk `ALARM_SEAT_SINK`, and turns with
+  the hammer — the elastica's own convention (geometry.js `spiralElastica`
+  turns the inner clamp with the outer held).
+- the SPIRAL, `alarmHammerSpiral`: the clamped–clamped elastica of one length
+  of steel at every hammer angle, frame-swapped on
+  `alarmHammerPivot.rotation.z` as the hairspring and the ribbons are
+  (MODELING rule 6), `OWN_GLYPH`'s `spiral` word for the line drawing, 21
+  frames spaced so the collet's clamp moves at most `ALARM_SEAT_SINK` along
+  the strip between two.
+- the STUD, `alarmHammerStud`, planted `GONG_RIM_PLANT` in the rim beside the
+  post, tangent to the annulus's circle through the post on the side away
+  from the arm, the spiral's OUTER end against it, sunk `ALARM_SEAT_SINK`.
+
+**The line spec (rule 1), every number from its constraint.**
+
+| | derivation | value |
+|---|---|---|
+| k | the alarm train must draw the hammer at its WEAKEST, the barrel at set-up. The lift's torque at the strike arbor peaks on the rise where θ·dθ/dφ does (0.990 of DRAW²/(RISE·pitch) under the smoothstep law, read off the elastica over 48 samples of the rise) and is held to `ALARM_HSPIRAL_LIFT_SHARE` 0.9 of the arbor's torque at set-up (`alarmMomentAt(0)`·0.9/4 = 5.20e−5 N·m) — the 0.9 build-to margin every ceiling here uses | peak 4.68e−5 N·m on a 4.68e−5 budget; k 6.318e−4 N·m/rad (energy rate), 6.334e−4 secant to the draw, 5.955e−4 pure moment |
+| wind | the hammer's whole law: 0 at rest (free — a preload would move the §25 pickup radius), +DRAW at release, −AMP at the wire | [−0.09, +0.27] rad |
+| ε | strain at +DRAW = 0.9·`SPRING_SIGMA_Y_PA`/E (the follower's rule): as short as the steel allows, all of it spent on the swing | 3.600e−3, on the target to 1e−9 |
+| b, t | the strip stands the tail's height (`ALARM_TAIL_T`, the bar the tail is cut from); t from k = E·b·t³/(12L) with L = t·DRAW/(2ε) under a pure moment, then iterated on the elastica (the clamps make the strain non-uniform) until the elastica's own torque lands b on the tail's height | b 0.5 u exactly; t **0.1003 mm** (inside real flat-spring stock, above `SPRING_FLAT_U`'s 0.05) |
+| coils | the most that keep every coil one `PIVOT_BORE_CLEAR` off its neighbour and the later coils off the collet over the whole wind, searched down from the pure-moment pitch bound; a count whose tightest pitch already under-strains the strip is refused | 1.75 turns, r 0.947–1.619 u, 14.12 u (5.35 mm) developed; face gap 0.103, collet gap 0.357 |
+| sense | the draw DILATES the coils (the hairspring's note: tightening crowds the inner coil onto the collet); the frame's handedness follows `ALARM_HAM_LIFT_SIGN`, so +DRAW in the law is +θ on the solver whichever way the group turns | mirrored (the group turns clockwise under a positive draw) |
+| z | the band on the plate: floor one `CLEAR_MARGIN` + the measured band over the rim's back face (TODO 173's rule), so the stud is a short pin rather than a cantilever up to the arm | 0.150–0.650 u |
+| the stud | the larger of the 10-gon stock floor, 0.9-yield bending and a deflection under the spring's full couple below `ALARM_SEAT_SINK` (the seat); the floor governs | r 0.1665 u, ρ 1.898 u from the post, 0.238 N |
+| the fall | W = √(k_fall/I), k_fall the ENERGY rate between the two winds — so the cos law releases exactly what the elastica stores between the draw and the wire — over the rotor's measured inertia, collet included | W **1246.3 rad/s**, I 4.067e−10 kg·m², the wire met in **1.533 ms** (was 53.2 ms); the blow **20.47 µJ** (was 16.99 nJ), θ̇ 317 rad/s, 0.878 m/s at the face |
+
+**What it did to the gong and the governor.** `GONG_ACOUSTICS` reads
+**52.79 dBA** at 0.3 m on axis (was 23.24): the second partial at 11.4 kHz
+radiates 130 nW (was 0.14), μ 1.19 and η 0.80 unchanged (the match is the
+head's, not the blow's), the Hertz contact 10.4 → 5.1 µs. The governor pays
+for it: `alarmGovTorqueAt` is `(M(w)·η/ALARM_STRIKE_RATIO − liftSpend)·η/
+ALARM_GOV_RATIO` now — the lift's work per strike U(DRAW)−U(0) = 23.0 µJ over
+one lobe pitch, 1.46e−5 N·m, taken at the strike arbor between the two
+meshes (`ALARM_GOV_MESH_EFF_PER` = 0.9 each, where §104 had the square), the
+governor being a flywheel that sees the lift's MEAN while the peak is the
+stall bound held at the spiral's build. The §104 I_a solve re-poises the
+anchor on the net: I_a 4.06e−10 → 2.78e−10 kg·m², the brass ring's section
+0.789 mm (in its 0.2–0.8 stock), and the cadence endpoints move
+0.374/0.488 → **0.3645/0.5122 s** (full/empty), the ring 11.93 s. The
+`equalisation` gate's own law recomputation carries the spend (the record
+publishes it with the two ratios and the per-mesh efficiency; a record
+without them fails loudly, ρ's rule), and the measured endpoints agree with
+it to the gate's 0.5%.
+
+**The cam did not have to move, and that was measured before believing it.**
+A 1.5 ms fall against a drop ramp cut over 0.06 of a lobe pitch (25 ms at
+the design cadence) looked like the nose falling into the flank it had just
+climbed. Read on the cut outline (`alarmCam.userData.profile.poly`, the nose
+tip in the wheel's frame at 21 phases), the nose's own azimuth about the
+wheel's centre drifts 15.8° WITH the wheel's turn as the hammer falls — a
+property of the lever's arc, not of time — so the nose is past the lobe tip
+and over the ramp at every fall angle, and the ramp falls 3.8× faster along
+the nose's path than the nose does (0.344 u/° against 0.091). At any fall
+speed the nose clears; the wheel's own turn during the fall (0.27° at the
+slowest cadence) only adds. `ALARM_CAM_DROP_FRAC` stands.
+
+**The handoffs, both ends, every phase.** `ALARM_HANDOFFS` gains the two
+clamps at every parity of the alarm table (the striker parked: the free
+frame), and `STRIKE_HANDOFFS` the same two through the lift, the fall and
+the rebound — the measurement that the frame the morph wears under load
+ends in the collet and on the stud. `STRIKE_HANDOFF_POSES`' `falling` moves
+from u 0.06 to **0.0018**, the fall's real middle (0.75 ms of a 0.42 s
+cycle); at the old value the hammer was 25 ms into a 1.5 ms fall and the row
+would have measured the rebound. The restoring rows name the spiral
+(`Alarm hammer`'s member row, the spiral's own two-way row, and the lifting
+lever's `through: alarmTail`); the reach tier measures the spiral seated in
+the collet, which is the arm's rigid frame. `alarmHammerCollet` is declared
+pivot-class stock (a `PIVOT_MIN_U` sleeve, the follower collet's section).
+The §137 rows: the spiral's couple at both ends of the wind (`crank`, read
+at the tail over `ALARM_TAIL_LEN`: 69.5 mN drawn, 22.8 at the wire), and the
+lifting lever's load is the real couple at the draw rather than the implied
+k. `HANDOFF_TRACK_TOL` is exported for the probe.
+
+**Held by.** `tools/probe-268-hammer-spiral.mjs` (ALL PASS, 31 rows): W² =
+k/I, the released energy equal to the rotor's arrival AND to the elastica's
+stored difference (three readings of one number); the strip at the tail's
+height, above flat stock, the strain on its target; the lift's peak ON its
+budget with the strike arbor's torque re-derived from the ribbon's k, the
+mean spend under it and equal to the work over a pitch; the blade and its
+stud gone, the three meshes present, the strip on edge, the frames
+published; three poses — rest, draw, wire — three distinct geometries; both
+seats ≤ `HANDOFF_TRACK_TOL` at each pose; the three cadence figures
+re-derived with the spend; the hammer window; and a CONTROL — §25's
+chosen-third law must NOT reproduce the shipped W. The battery's own gates:
+`strikeHandoff` (4 rows), `alarmHandoffs` (21), `restoring`, `transfers`
+(37), `equalisation` (with the spend), `stockFloor`, `intraUnit`,
+`plateSeats`, `turning`, `assembly`, `expectedContacts`, `outlines`,
+`meshIntegrity`, `jumperMovers`, `axisEntry` all PASS; the first run of
+`equalisation` FAILED on the measured endpoints (0.366/0.498 against a law
+still without the spend), which is the gate doing what §104 built it for.
+Boot silent.
+
+**What it leaves.** The rebound after the wire is still §25's posed decay,
+`−AMP·cos(W·r)·e^(−decay·r)` with the envelope solved to reach 5% by the
+next pickup — at this W a chatter near 200 Hz that nothing in the metal
+produces or stops, where restitution would carry the head back to ≈0.22 rad
+and a real hammer is caught by a banking: **TODO 228**. The case path is
+TODO 126, next. The one coefficient that is not geometry is unchanged: the
+0.9 per cut mesh, cited.
+
+**Record.** `TODO.md` 128 closed, 228 filed; `explain.html`'s gong entry gains
+the §268 paragraph and PLATE 3 re-quotes its chain (every invalidated block
+re-translated in all 19 locales, five plate labels shortened to their
+plates); the alarm barrel and governor entries' cadence endpoints and the
+governor's honesty ledger re-quoted; `primer.html`'s alarm paragraph, its
+gong honesty note and the honesty section say the fall is sprung now and
+what remains.
+
+
+## §269 — The case as the gong's radiator: the foot's reaction, the rigid watch, the structure-borne path measured
+
+TODO 126, closed as a measurement. §197 radiated the wire alone and called
+every level a floor, because a real alarm watch is loud the way a piano is: the
+string drives a soundboard. The path was drawn to the last screw — foot, rim,
+ledge, clamps, band, back — and carried nothing; the ledger wrote "about
+30 dB" against it. §269 carries it, with the receiver RIGID, and the thirty
+turned out to be a guess about a construction this watch does not have.
+
+**The foot** (`GONG_CASE_PATH`, built after the case, exposed as
+`__clock.casePath` and `acoustics.casePath`). A clamped–free arc ringing in a
+mode pushes its clamp with the inertial force of its own moving metal,
+F⃗ = ω²·X·∫ρA φ⃗ ds — φ⃗ the mode's displacement (radial w and tangential u, which
+§253's arch solve already returns at 161 points, unity at the radial tip) and
+X the tip's amplitude at the mode's energy. The integral is a MASS VECTOR P⃗,
+read by Simpson on the solver's own grid at the wire's azimuths (θ runs from
+the foot toward the free end; n̂ outward, t̂ along +θ), with a moment
+participation Q about the foot for the root couple. Two controls fed through
+the same path: a rigid translation returns the wire's mass along its axis and
+nothing across it (1e-7, a boot assert), and a rigid rotation about the ring's
+centre returns ρAR·(n̂(α) − n̂(0)) — the tangential arithmetic alone (the probe).
+Mode 1: 62.7 mg of the wire's 145, 0.31 N at the design blow, 9° off the
+foot's radial. **The arch's modes are in-plane, so the force lies in the dial's
+plane and the root couple is about the watch's axis** — the geometric fact the
+whole block turns on: nothing here pushes the back glass along its normal.
+
+**The receiver** is the whole watch as a rigid body. Its mass, centre and
+inertia tensor are tallied by signed tetrahedra over every CLOSED mesh under
+`movement`, each at the density of its STOCK — `layout.js`'s new `STOCK` table
+(density, modulus, Poisson's ratio, a representative grade named per row) and
+`materials.js`'s `stockKeyOf`, which maps each material object to a stock; the
+case exterior follows §203's alloy pick, so **density is modelled now**, which
+`materials.js` used to say it must never be. Closedness is two surface
+identities, both float noise on a closed body: Σn⃗A = 0, and ∮x_i n_j dA = Vδ_ij.
+The second was added when the probe's shifted-origin re-tally agreed on mass
+and disagreed on the centre: an annular wall with no end caps has normals that
+cancel and a tetrahedron volume a third short — four such meshes (the two
+subdial walls, the column skirt, one unnamed), invisible to the first test. The
+census over 718 meshes puts closed bodies at ≤ 2.7e-14 and everything open at
+≥ 1.5e-5 (print sheets at 1, the saws' flipped faces at 0.5, open torus
+springs and the gong arc near 1e-2, strips and uncapped rings at 1e-3..1e-5);
+the threshold 1e-10 sits in the nine empty decades between, and what it skips
+is REPORTED with a nominal volume where that means anything (0.42 g over 17
+nearly closed meshes, 1% of the watch; nine sheets with no claim). The chain is
+skipped by name — it is tessellated after this block, the fingerprint's own
+exclusion — and the probe measures what that leaves out (0.019 g). The result:
+**40.39 g** (steel 21.3, nickel silver 12.3, corundum 5.5, brass 1.1), the
+centre 0.8 u off the axis, I_zz 1.03e-5 kg·m². The tally is a function
+(`__clock.casePathTally()`) so the probe can run the same arithmetic at the
+posed movement against its own independent tally from a shifted origin — they
+agree to 1e-9 — and the record's copy is the build pose's; three meshes change
+volume with pose (the jumper's lifter bar's scale, two spring blades), 0.008 g.
+Mass-controlled, the response is V⃗ = F⃗/(iωM) and Ω⃗ = I⁻¹τ⃗/(iω), τ⃗ the force's
+moment about the centre (the foot stands 4.4 u above it) plus the root couple:
+0.59 mm/s of in-plane translation at mode 1, 0.15 mm/s axial at the rim from
+the rocking.
+
+**The radiation.** The case's exterior is a surface of revolution — the
+crystal and bezel in front, the two band radii, the back ring's edge and face,
+the back glass's pane, step wall and step top; lugs, bars, crowns and key lugs
+omitted — so every element's normal velocity is a₀ + a_c cosφ + a_s sinφ and
+the Rayleigh integral's φ-part is exact (J₀ for the piston term, J₁ for the
+dipole terms), ϑ by Simpson over the whole sphere. Over a closed body that is
+the Kirchhoff approximation, and its error is measured rather than assumed: the
+same machinery over a translating sphere of the case's radius against the
+exact (2πρca²/3)·(ka)⁴/(4 + (ka)⁴)·v² reads 1.72 at ka 0.77 and 0.36 at 4.18 —
+a ratio that swings 0.3–4 with ka as a sphere's physical-optics interference
+pattern, which a short cylinder does not share, so it is NOT applied as a
+correction; the figure is raw and the band (−2.3 to +4.4 dB) is stated beside
+it. At ka ≪ 1 the error has a closed form: the integral's dipole is 2·V_body·v
+(Gauss, with the baffled factor 2) where the exact one is (V_body + V_added)·v,
+so a translation is over-read by at most 4×. The piston identity — a baffled
+disc radiates ½ρcπa²(1 − J₁(2ka)/ka)·v², seen from both sides when the sphere
+is walked whole — is a boot assert on the quadrature, held to twice the
+midpoint rule's own (2π/32)²/24. The probe redoes both audible modes by brute
+force in (s, φ) over the record's own profile and field, no Bessel and no
+harmonics: 3.0 nW and 51.9 nW, within 0.1%. Radiation is priced for the
+audible modes only; the ultrasonic rows carry their foot and response with null
+radiation.
+
+**What it says.** The case is a dipole the size of a coin where the wire is one
+the size of a wire, so the structure path lifts the NOTE: the C7 goes from
+31.3 to 40.7 dBA (the case alone 40.1), the overtone from 52.8 to 55.2 —
+**55.4 dBA** in all, on axis at 0.3 m, where the bare wire read 52.8. The
+ding's mix (`SND_GONG_PARTIALS`) reads wire-plus-case power, so the voice gains
+its fundamental. A platinum case (§240's link, `materials.caseMetal.alloy~platinum`)
+weighs 73.3 g and rings 5 dB quieter through this path with the same foot force
+— the probe boots it to check, which is the point of modelling density.
+
+**What it leaves, on the record and in TODO 229.** The receiver is rigid only
+below its own first modes, and `casePath.receiver` holds three estimates: the
+base plate as a clamped disc at the ledge radius, 5.9 kHz; the back glass as a
+clamped disc at the aperture, 9.1 kHz (the step stiffens it: a low bound); the
+band's free-ring n = 2 ovalling, 1.6 kHz, carried with the caveat that both
+its ends are closed by discs the formula does not see. Mode 1 sits below both
+disc modes (the rigid figure is a floor there, magnification 1.15 at the
+plate); mode 2 sits above them, where the rigid figure is neither bound. And
+the wire's own sound, which §197 priced in free air, rings under 0.6 mm of
+sapphire whose mass law costs it 31.6 dB at the fundamental — the structure
+path is the one that does not pay that, which is the whole reason an alarm
+watch drives its case. The loud construction — the foot on the back, or a wire
+bent to ring out of plane — is the roadmap's §270.
+
+**Held by.** `tools/probe-269-case-path.mjs` (ALL PASS, 54 rows): the foot
+participation by trapezoid against the build's Simpson over the GROSS
+participation (≤ 9e-5), the two rigid-motion identities, F = ω·v·|P⃗|; the
+watch re-tallied from a shifted origin at the same (paused) pose to 1e-9 in
+mass, 1e-6 u in centre, 1e-7 in inertia, the tetrahedron formulas on a 2×3×5
+box, the build-pose tally within 0.05% and 0.2 u of the posed one with the
+three volume-changing meshes named, the census band, the chain's 0.019 g; V⃗
+and I·ωΩ⃗ = τ⃗ on every mode; the brute-force Rayleigh integral on the piston,
+the sphere (reproducing the Kirchhoff ratios to 0.1%) and the exterior; the
+three receiver estimates and the pane's mass law from `STOCK`, λ₀₁² re-solved
+from J₀I₁ + I₀J₁ = 0; the levels' arithmetic; the exterior profile against the
+case meshes' own extents; two silent boots, steel and platinum. §239's worst
+held stretch is a REPORT there (3.3 s on this container, main's own figure).
+
+**Record.** `TODO.md` 126 closed with the table, 229 filed; `explain.html`'s
+gong entry gains the §269 paragraph, PLATE 3 a case line and the wire-plus-case
+box (55 dBA), its two captions rewritten; `primer.html`'s gong note and honesty
+section; all twenty locales re-keyed and translated, Tagalog's twenty-six stale
+gong, barrel and governor rows (keyed on English older than §262) re-keyed and
+translated with them. `probe-197`'s header no longer says the path is
+unmodelled and prints the case path's rows beside the wire's.

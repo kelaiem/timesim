@@ -2741,7 +2741,7 @@
       spring's (the <code>EQUALISATION</code> record reports k = 1.47e-5 N·m/rad and a
       moment running 0.231 → 0.393 N·mm over the service band), and the striking governor on
       its own plate below is its consumer &mdash; the ring's cadence is that torque through
-      the anchor's solved inertia, 0.374 s at full wind slowing to 0.488 s at the set-up
+      the anchor's solved inertia, 0.365 s at full wind slowing to 0.512 s at the set-up
       floor, and the record's <code>cadence</code> field states the law with endpoints the
       gate measures by stepping the shipped tick.
       <b>TODO 37 is closed</b> (&sect;99): the arbor's own ratchet and click hold the wind one
@@ -3009,8 +3009,8 @@
       &sect;99 arbor ratchet &mdash; 2.5 turns wound in at the bench, held under the ribbon's
       tested 4.3-turn ceiling with the builder's own solver standing behind it &mdash; so the
       empty-barrel moment is 0.231 N&middot;mm, not zero, and the last strikes arrive slow
-      instead of never. The ring audibly slows, 0.374 s to 0.488 s over the wind, and the
-      whole ring lasts the law's integral: 11.86 s.</p>
+      instead of never. The ring audibly slows, 0.365 s to 0.512 s over the wind, and the
+      whole ring lasts the law's integral: 11.93 s.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The landing, the drop, and the cadence the pair produces</span></div>
         <div class="fig-body">
@@ -3051,8 +3051,8 @@
             <text class="val val-steel" x="12" y="282">anchor &mdash; swing &phi; 13.4&deg;,</text>
             <text class="val val-steel" x="12" y="296">an OUTPUT of the closure</text>
             <text class="lbl" x="480" y="42">STRIKE GAP OVER THE RING, s</text>
-            <text class="val val-ruby" x="676" y="66">0.488 at the set-up floor</text>
-            <text class="val val-ruby" x="484" y="244">0.374 at full wind</text>
+            <text class="val val-ruby" x="676" y="66">0.512 at the set-up floor</text>
+            <text class="val val-ruby" x="484" y="244">0.365 at full wind</text>
             <text class="val val-steel" x="596" y="158">0.42 designed, at mid travel</text>
             <text class="lbl" x="484" y="264">FULL WIND</text>
             <text class="lbl" x="688" y="264">RUN DOWN</text>
@@ -3076,9 +3076,9 @@
       <p class="note">Honesty ledger, opened on day one: the saw wheel advances uniformly
       with the train &mdash; the anchor's recoil is not kicked back through the wheel, the
       same accepted class as the escape wheel's absent draw recoil, and if wheel recoil is
-      ever modelled both parts readmit together. The hammer's own fall frequency still comes
-      from the strike timing rather than from its blade's stiffness &mdash; item 14's open
-      note, deliberately not absorbed here. And the mesh efficiency is an engineering figure
+      ever modelled both parts readmit together. The hammer's own fall frequency is &radic;(k/I)
+      off its torsion spiral since &sect;268 (item 128), and the lift's mean spend is a term
+      in this law now. And the mesh efficiency is an engineering figure
       (0.9 per cut mesh, squared), cited rather than derived &mdash; the one coefficient in
       the law that is not geometry. <b>&sect;107 added two entries.</b> The anchor's arms
       reached a hard-coded radius rather than the blades they carry, so one blade stood
@@ -3231,6 +3231,49 @@
       match. The two that are not spent are the ledger's — TODO 128, about 26 dB, and
       TODO 126, about 30 dB — and in every in-band row of the sweep the fundamental sits under
       5 dBA: a bare wire never rings its own note audibly, which is TODO 126 per octave.</p>
+      <p>§268 built the spring. TODO 128's blade was redrawn each frame from a fixed stud to a
+      bearing point that moved, so it changed length by 36% of itself over the draw and no
+      rate could be read off it; the hammer's fall was a chosen time with an angular frequency
+      solved to fit. The hammer spring is now a <b>torsion spiral</b> on the hammer's own
+      post — its inner end clamped in a collet that is the hammer's boss, its outer end
+      against a stud planted in the rim — and its rate is sized from the alarm train's own
+      torque budget: the lift's peak torque at the strike arbor is held to
+      <code>ALARM_HSPIRAL_LIFT_SHARE</code> (0.9) of that arbor's torque with the barrel at
+      set-up, the strip stands the tail's height (<code>ALARM_TAIL_T</code>) and its
+      thickness is solved from that — <b>0.100 mm</b>, 1.75 turns, 5.35 mm of steel strained
+      to 0.9 of yield at the full draw. The fall is √(k/I) at last: W 1246 rad/s, the wire
+      met in <b>1.53 ms</b> where §25 chose 53, and the blow is the elastica's released
+      energy, <b>20.5 µJ</b> against 17 nJ — the level reads <b>52.8 dBA</b>, 29.6 dB up,
+      the second partial at 11.4 kHz radiating 130 nW. The governor pays for it: the lift's
+      mean spend comes off the strike arbor's torque before the anchor's law reads it, so
+      the ring runs 0.365 s at full wind to 0.512 s at the set-up floor (it was 0.374 to
+      0.488). What remains is the ledger's: the rebound after the wire, still §25's posed
+      decay — at this W a chatter near 200 Hz that nothing banks, filed as TODO 228 — and
+      the case path, which is §269's, next.</p>
+      <p>§269 carried the case path, which closes TODO 126 as a measurement rather than as
+      the thirty decibels the ledger had guessed. A clamped–free arc ringing in a mode
+      pushes its foot with the inertial force of its own moving metal, so the foot's
+      reaction is read off §253's mode shapes as a mass vector: <b>62.7 mg</b> of the
+      wire's 145 for the fundamental, <b>0.31 N</b> at the design blow, in the plane of
+      the dial — the arch's modes are in-plane, and nothing pushes the back glass along
+      its normal. The receiver is the whole watch as a RIGID body: <b>40.4 g</b> tallied
+      by signed tetrahedra over every closed mesh at its stock's density (layout.js's
+      <code>STOCK</code>, the first time this model has claimed a density — a platinum
+      case weighs 73 g here and rings 5 dB quieter through this path, which the probe
+      boots to check), its inertia tensor with it, and the mass-controlled response
+      V = F/(ωM) driven into the case's exterior through the Rayleigh integral over a
+      surface of revolution. What that buys is the <b>fundamental</b>: the case is a
+      dipole the size of a coin where the wire is one the size of a wire, so the C7 goes
+      from 31.3 to <b>40.7 dBA</b> and the overtone from 52.8 to 55.2 — <b>55.4 dBA</b>
+      in all, on axis at 0.3 m, where the bare wire read 52.8. The honest limits are on
+      the record beside every row: the receiver is rigid only below its own first modes
+      (the base plate at 5.9 kHz, the back glass at 9.1 kHz, both inside the gong's
+      spectrum — TODO 229); the Kirchhoff integral over a closed body reads a translating
+      sphere of the case's radius within −2.3 to +4.4 dB of the exact answer at the two
+      audible wavenumbers; and the wire's own sound, which §197 priced in free air, rings
+      under 0.6 mm of sapphire whose mass law costs it 31.6 dB at the fundamental — the
+      structure-borne path is the one that does not pay that, which is the whole reason an
+      alarm watch drives its case.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Two mode shapes, one strike point</span></div>
         <div class="fig-body">
@@ -3255,9 +3298,10 @@
         synthesised gains are computed from the modes rather than chosen, and §253 took the
         bar's curvature, so the modes are the arc's. The shapes drawn here are the straight
         bar's, for legibility: the arc's radial shapes differ from them by a few percent and
-        carry a tangential component a straight bar has none of. What is still open is one
-        item down: the wire radiates on its own here, and a real alarm is loud because its
-        gong drives the caseback (TODO 126).</figcaption>
+        carry a tangential component a straight bar has none of. One plate down, §269
+        carries the foot's reaction into the whole watch as a rigid body and radiates the
+        case's exterior, which is what lifts the fundamental — nine decibels — where a wire
+        alone could not.</figcaption>
       </figure>
       <!-- —————— PLATE 2 : DIMENSION THE WIRE, THEN STRIKE IT (interactive, audible) —————— -->
       <figure>
@@ -3322,27 +3366,28 @@
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 3</span><span class="fig-title">From the blade to a sound pressure level</span></div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 210" width="780" height="210" role="img" aria-label="The chain from the hammer spring's stored energy through the blow, the impedance match at the wire and the dipole radiation, to a level in dBA, with the before and after figures at each step">
+          <svg viewBox="0 0 780 230" width="780" height="230" role="img" aria-label="The chain from the hammer spring's stored energy through the blow, the impedance match at the wire and the dipole radiation, to a level in dBA, with the before and after figures at each step">
             <g>
               <rect x="18" y="30" width="128" height="52" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <text class="lbl lbl-strong" x="30" y="50">the spring</text>
-              <text class="val" x="30" y="66">implied, not built</text>
-              <text class="val val-ruby" x="30" y="78">TODO 128</text>
+              <text class="val" x="30" y="66">0.100 mm × 1.75 turns</text>
+              <text class="val val-brass" x="30" y="78">k 6.32e-4 N·m/rad</text>
               <rect x="176" y="30" width="128" height="52" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <text class="lbl lbl-strong" x="188" y="50">the blow</text>
-              <text class="val" x="188" y="66">½Iθ̇², 0.025 m/s</text>
-              <text class="val val-brass" x="188" y="78">16.99 nJ</text>
+              <text class="val" x="188" y="66">½Iθ̇², 0.878 m/s</text>
+              <text class="val val-brass" x="188" y="78">20.47 µJ</text>
               <rect x="334" y="30" width="128" height="52" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <text class="lbl lbl-strong" x="346" y="50">the hand-off</text>
               <text class="val" x="346" y="66">μ 1.19, η 0.80</text>
-              <text class="val val-brass" x="346" y="78">contact 10.4 µs</text>
+              <text class="val val-brass" x="346" y="78">contact 5.1 µs</text>
               <rect x="492" y="30" width="128" height="52" rx="4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
               <text class="lbl lbl-strong" x="504" y="50">the radiation</text>
               <text class="val" x="504" y="66">an arc of dipoles</text>
-              <text class="val val-brass" x="504" y="78">0.14 nW</text>
+              <text class="val val-brass" x="504" y="78">130 nW</text>
               <rect x="650" y="30" width="112" height="52" rx="4" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
               <text class="lbl lbl-strong" x="662" y="50">at 0.3 m</text>
-              <text class="val val-brass" x="662" y="70">23 dBA</text>
+              <text class="val" x="662" y="66">wire + case</text>
+              <text class="val val-brass" x="662" y="78">55 dBA</text>
               <line x1="146" y1="56" x2="172" y2="56" stroke="var(--text)" stroke-width="1.4" marker-end="url(#arrGL)"/>
               <line x1="304" y1="56" x2="330" y2="56" stroke="var(--text)" stroke-width="1.4" marker-end="url(#arrGL)"/>
               <line x1="462" y1="56" x2="488" y2="56" stroke="var(--text)" stroke-width="1.4" marker-end="url(#arrGL)"/>
@@ -3352,8 +3397,9 @@
             <text class="lbl lbl-strong" x="18" y="126">what moved, and what it was worth</text>
             <text class="val" x="18" y="144">the ring (§198): r 35 on the plate → r 48.20 in the annulus — the arc is the ear's, f₁ 1381 → 2500 Hz; → 2093 Hz = C7 (§262)</text>
             <text class="val" x="18" y="160">the wire and the head: Ø 0.996 → 1.100 mm (stock's ceiling); the head solved to the wire's modal mass (§253: the arc's 0.296, not ¼), μ 0.55 → 1.19</text>
-            <text class="val val-ruby" x="18" y="176">the fall: 53.2 ms, unchanged — a third of the cycle, and no spring that fits gives it</text>
-            <text class="val val-brass" x="18" y="196">−3.7 → 14.0 (§197) → 24.4 (§198) → 24.6 (§253) → 23.2 dBA (§262, C7) at 0.3 m, on axis, the wire radiating alone</text>
+            <text class="val val-brass" x="18" y="176">the spring (§268): a 0.100 mm torsion spiral on the hammer's post — fall 53.2 → 1.53 ms, blow 17 nJ → 20.5 µJ</text>
+            <text class="val val-brass" x="18" y="196">the case (§269): the foot's 0.31 N drives 40.4 g as a rigid body — the fundamental 31.3 → 40.7 dBA, the overtone 52.8 → 55.2</text>
+            <text class="val val-brass" x="18" y="214">−3.7 → 14.0 (§197) → 24.4 (§198) → 24.6 (§253) → 23.2 (§262) → 52.8 (§268) wire alone → 55.4 dBA with the case (§269), at 0.3 m, on axis</text>
             <defs><marker id="arrGL" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--text)"/></marker></defs>
           </svg>
         </div>
@@ -3363,12 +3409,19 @@
         by many tens of dB, and it is why the second mode carries the ring: the radiated power
         goes as ω⁴, so 5.45× the frequency is 25 dB of level from the same joules (§253's arc
         geometry takes a third of the second mode's power back, and that is in the figure). A real alarm
-        watch is loud for a reason this model does not carry: the gong's foot drives the
-        caseback, and the caseback is a 30 mm diaphragm. Ledger: TODO 126 holds that path and
-        TODO 128 holds the spring, so every level here is a floor twice over rather than a
-        prediction of the watch — and both are stated as decibels rather than as notes.
+        watch is loud for a reason this plate now carries: the gong's foot drives the case.
+        §269 reads the foot's reaction off the mode shapes and answers it with the whole
+        watch's mass and inertia, rigid, radiating from the case's exterior — the
+        fundamental gains nine decibels that way and the overtone two, 55.4 dBA in all.
+        Ledger: the receiver is rigid only below its own first modes, and the base plate's
+        (5.9 kHz) and the back glass's (9.1 kHz) sit inside the gong's spectrum, so the
+        figure is a floor at the fundamental and neither bound at the overtone (TODO 229);
+        and the wire's own sound was priced in free air, where a 0.6 mm sapphire pane
+        costs it 31.6 dB by the mass law at the fundamental.
         The numbers are <code>__clock.acoustics</code>, re-derived off the metal by
-        <code>tools/probe-197-gong-loudness.mjs</code>, which fails if the two ever part.</figcaption>
+        <code>tools/probe-197-gong-loudness.mjs</code>, which fails if the two ever part;
+        the case path is <code>__clock.casePath</code>, held the same way by
+        <code>tools/probe-269-case-path.mjs</code>.</figcaption>
       </figure>
     </div>
   </details>
