@@ -6939,8 +6939,8 @@ const ALARM_PIN_R = 0.14;    // pin radius — its diameter equals the arm's wid
                              // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
                              // 0.092 rad pin arc at the track radius; the edge ramp at the feeler
                              // build keeps the arm above the ridge until the pin is truly in the
-                             // gap). Hoisted here from the feeler build: the sleeve web's relief
-                             // sector consumes it (the relief spans the ARM, whose width is 2·this).
+                             // gap). Hoisted here from the feeler build: it was the width the sleeve
+                             // web's §124 relief had to span (that relief retired with the web, TODO 227).
 const ALARM_PIN_DROP = 0.10; // stop-banked travel — TODO 173: the dropped-arm margin is priced at the jog's inboard face now (ALARM_PIN_SHANK), not only at the rim root
                              // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
                              // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
@@ -20477,7 +20477,7 @@ const ALARM_DISC_TEETH = 30; // rim — with i1b (28) the branch nets −(28/30)
 // centre, and the i1b⇄rim mesh must span exactly that — m = 2·DW1/(28+30).
 const ALARM_BRANCH_MODULE = 2 * ALARM_SET_DW1 / (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH);
 // (ALARM_FEELER_AZ_OFF / ALARM_RELEASE_AZ are declared above the sleeve
-// build — its web's relief sector consumes them before this block runs.)
+// build — the skirt's relief sector is centred on the release line, TODO 227.)
 const ALARM_BAND_Z = Z_DIAL - ALARM_DISC_TOP + ALARM_DISC_BODY_T / 2; // WORLD plane of the band gears (= the disc body's mid-plane mirrored)
 // (ALARM_FEELER_PIVOT_R — hoisted above the sleeve build by TODO 227: the skirt's relief reads where the feeler's bear point stands.)
 const _uF = { x: -Math.cos(ALARM_RELEASE_AZ), y: Math.sin(ALARM_RELEASE_AZ) };
@@ -21729,7 +21729,7 @@ alarmReaderUnit.add(alarmReaderLift);
 // in the notch — because the dropped arm still owes the rim its margin
 // (asserted below with the lever fraction written out).
 // (ALARM_PIN_R is declared with ALARM_PIN_DROP in the §29 chain-constants
-// block — the sleeve web's relief consumes it before this build runs.)
+// block — it was hoisted for the sleeve web's §124 relief, retired by TODO 227.)
 const alarmFeelerUnit = new THREE.Group();
 dialFace.add(alarmFeelerUnit);
 registerLabel('Alarm release feeler', alarmFeelerUnit);
