@@ -1350,6 +1350,24 @@ Keep the template and this file in step. It cites standing rule 1, rule 4's
 instruments and the session-link rule below; edit one of those and the
 template is the second place to look.
 
+**A green check is green against the base it RAN on, not the one the PR merges
+into.** CI tests a pull request's merge with `main` as `main` stood when the run
+started, nothing re-runs it when another landing moves `main`, and this
+repository requires neither up-to-date branches nor a merge queue (§271 files
+the queue). So two landings that are each green alone can merge red, and TODO
+233 is the one that did: the Latvian tables (#619) last synced `main` before
+§221 (#617) rewrote ten English blocks, merged after it, and the Explainer check
+read red on `main` until #611 re-keyed them. **So a PR that carries locale
+tables, or rewrites the English of `explain.html` or `primer.html`, re-merges
+`main` immediately before it merges whenever `main` has moved since its last
+run, and merges only once the Explainer check is green on that head.** A
+translation is keyed to English that any concurrent landing can rewrite, which
+makes it the one artifact here that goes stale without a line of it changing,
+and the check that catches it takes minutes rather than the battery's hour.
+This is a partial guard and says so: it closes the race only for the PR that
+follows it, and only while someone remembers. The repository setting is the
+whole fix.
+
 **Never put a session link in a commit message or PR body.** No
 `Claude-Session:` trailer and no `claude.ai/code/session…` URL — anywhere in
 this repo's history or pull requests. A `Co-Authored-By: Claude` trailer is
