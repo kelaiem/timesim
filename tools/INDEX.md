@@ -4,7 +4,7 @@
 
 # The instruments
 
-273 scripts. **163 are ACCEPTANCE tests** — they decide and exit non-zero.
+274 scripts. **164 are ACCEPTANCE tests** — they decide and exit non-zero.
 **110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -158,6 +158,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-220-smoke.mjs` | §220 | acceptance | §220 — THE SMOKED SAPPHIRE DIAL: IS THE LAW THE ONE WRITTEN, DOES T = 1 STAY THE SHIPPED CRYSTAL, DOES THE PRINT FLIP WHERE THE COMPOSITE SAYS, DOES X-RAY STILL SHOW THE WORKS? Acceptance (exit 1 on any claim), plus a `--scan` REPORT that measures the knob's floor. |
 | `probe-224-hold.mjs` | §224 | acceptance | TODO 224 — DOES A WIND HOLD THE MAINTAINING RING, AND DOES THE TRAIN STOP AT HARRISON'S STOP? Acceptance. Before TODO 224 the ring rode the great wheel at offset 0 through a wind: the detent never held, the blade never deflected and the stop was never reached. This probe measures the posed hold three ways: |
 | `probe-224-zone-band.mjs` | §224 | report | §224 — WHERE DOES THE RESERVE ZONE GATE WARN AS THE COAT LIGHTENS? A REPORT (prints; judge it yourself), and the instrument that found §224's band. |
+| `probe-225-lathe-profiles.mjs` | §225 | acceptance | TODO 225 — DOES ANY LATHE PROFILE HIDE A SHEET OR A KNIFE-EDGE? |
 | `probe-226-driver-width.mjs` | §226 | acceptance | §226 — HOW MUCH WIDER CAN THE COLUMN-WHEEL DRIVER'S ARMS BE CUT? |
 | `probe-227-promote.mjs` | §227 | acceptance | §227 — DOES THE PROMOTION CHECKER REFUSE FOR EACH REASON IT CLAIMS TO? |
 | `probe-231-lever-width.mjs` | §231 | report | §231/§232 — HOW MUCH WIDER CAN A FLOOR-STOCK MEMBER BE CUT? |

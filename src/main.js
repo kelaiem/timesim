@@ -37584,7 +37584,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All TWENTY-ONE
+   what it says, and the box already grows to fit its contents. All TWENTY-TWO
    locales measure inside 150 px on one line today — §249's Indonesian
    "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
    and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
@@ -37598,7 +37598,8 @@ html:lang(ko) { word-break: keep-all; }
    alarm label yet, "زمان" 20.0; §249's Hebrew "מצלצל ב־" 41.0, "שעה"
    19.5; §249's Indonesian "Waktu" 28.0; §249's Turkish "Çalma saati" 52.8,
    level with Spanish and Korean, "Zaman" 31.1; §249's Welsh "Canu am" 40.6,
-   level with Russian, "Amser" 28.9; §249's Latvian "Zvana plkst." 57.3,
+   level with Russian, "Amser" 28.9; §249's Tagalog "Tumutunog sa" 63.6, just
+   under Indonesian's 66.2, "Oras" 21.7; §249's Latvian "Zvana plkst." 57.3,
    "Laiks" 24.5, measured in a container where English's "Rings at" reads
    37.9) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
@@ -38293,6 +38294,9 @@ function setBarState(id, on) {
 // measured, past Dutch's 204.4 — on "Dewislen / Golwg / Rheolaethau", and 185.0
 // once the panel took the verb-noun Rheoli that Welsh software already uses for
 // a control panel (Panel Rheoli): §208's lesson a fifth time.
+// §249's Tagalog measured 194.8 on "Menu / Tanaw / Mga kontrol" — 24.6 px wider than
+// English's 170.2, between Welsh's 185.0 and Dutch's 204.4 — with no re-cutting
+// needed: the first labels fit, so no face was chosen against the bar this time.
 // §249's Latvian measured 180.5 on its first pass, on "Izvēlne / Skats /
 // Vadība" — 3.9 over English in the same container (176.6 there, where the
 // figures above were taken at 170.2), so it needed no word chosen against it.

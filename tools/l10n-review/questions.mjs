@@ -70,6 +70,11 @@ export const QUESTIONS = {
     { term: 'bys', en: 'hand / finger', q: '«bys» is both a clock hand and a mechanical finger. Each finger is qualified («bys tawelu»), but readers meet the same word the glossary gives the hands. Does that confuse?' },
     { term: 'fodelu', en: 'modelled (mutated)', q: 'Mutation is what a machine draft most often gets subtly wrong. Please watch for wrong soft, nasal or aspirate mutations anywhere, for example «wedi\'i fodelu», «yr orsaf».' },
   ],
+  fil: [
+    { term: 'modelado', en: 'modelled / simulated', q: 'The honesty pair is «modelado» (described) and «simulado» (driven), both Spanish-derived participles. Are they natural enough in Filipino technical prose, or would readers prefer verb or Taglish forms such as «naka-model» and «i-simulate»?' },
+    { term: 'Gulong ng escapement', en: 'part names', q: 'Trade terms stay in English («escapement», «balance», «pallet fork», «hairspring», «mainspring») inside native compounds («Gulong ng escapement», «Tambol ng mainspring»). Does a workshop keep the English compounds throughout, and is «governor» clear beside the everyday «gobernador»?' },
+    { term: 'abutan', en: 'hand-off', q: 'Four native words stand for the project\'s own abstract terms: «hagis» (throw), «abutan» (hand-off), «tali» (chord) and «puwesto» (station). Do they read as those senses, or as their everyday meanings?' },
+  ],
   lv: [
     { term: 'fuzeja', en: 'fusee', q: 'The fusee is «fuzeja», a declinable loan (fuzejas, fuzeju), where other locales keep «fusee» unchanged. Is there a Latvian trade word, and if not, is the adapted loan right?' },
     { term: 'eskapement', en: 'escapement', q: 'The escapement is the loan «eskapements». Would a Latvian workshop say that, or a native term?' },
