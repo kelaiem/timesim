@@ -75,6 +75,14 @@ export const QUESTIONS = {
     { term: 'Gulong ng escapement', en: 'part names', q: 'Trade terms stay in English («escapement», «balance», «pallet fork», «hairspring», «mainspring») inside native compounds («Gulong ng escapement», «Tambol ng mainspring»). Does a workshop keep the English compounds throughout, and is «governor» clear beside the everyday «gobernador»?' },
     { term: 'abutan', en: 'hand-off', q: 'Four native words stand for the project\'s own abstract terms: «hagis» (throw), «abutan» (hand-off), «tali» (chord) and «puwesto» (station). Do they read as those senses, or as their everyday meanings?' },
   ],
+  lv: [
+    { term: 'fuzeja', en: 'fusee', q: 'The fusee is «fuzeja», a declinable loan (fuzejas, fuzeju), where other locales keep «fusee» unchanged. Is there a Latvian trade word, and if not, is the adapted loan right?' },
+    { term: 'eskapement', en: 'escapement', q: 'The escapement is the loan «eskapements». Would a Latvian workshop say that, or a native term?' },
+    { term: 'spirāle', en: 'hairspring', q: 'The hairspring is «spirāle» (balansa spirāle), which is also the everyday word for any spiral; the mainspring\'s own spiral is written «tinums» to keep them apart. Is «spirāle» what a workshop says?' },
+    { term: 'enkura dakša', en: 'pallet fork', q: 'Is «enkura dakša» right for the pallet fork?' },
+    { term: 'zobratiņ', en: 'pinion', q: 'A pinion is «zobratiņš», the mechanical-engineering word (rack and pinion). Is that what a watchmaker calls a pinion?' },
+    { term: 'aizturis', en: 'click / maintaining detent', q: '«aizturis» is the click AND the maintaining detent, against «sprūds» for a driving pawl and «fiksators» for a detent spring. Do the three read as distinct parts?' },
+  ],
   hi: [
     { term: 'पैलेट फोर्क', en: 'part names', q: 'Part names are transliterated loanwords («पैलेट फोर्क», «हेयरस्प्रिंग», «बैलेंस व्हील»), as Hindi engineering prose usually writes them. Is that the right side of the register split for these terms?' },
     { term: 'बलाघूर्ण', en: 'torque', q: 'Physical quantities use the standard scientific words («बलाघूर्ण» for torque, «जड़त्व» for inertia, «आयाम» for amplitude). Do they read naturally beside the loanword part names?' },

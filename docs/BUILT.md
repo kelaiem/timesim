@@ -31586,6 +31586,210 @@ or parsed values (primer), the honesty words, and label length.
 - **The battery** is CI's, on the self-hosted runner, and is recorded in the PR
   rather than here.
 
+### Latvian — chunk K, the twenty-second locale, held by the prose-number gate from its first build
+
+The chrome (485 keys), `explain.html` (772/772) and `primer.html` (145/145)
+read Latvian at 100%. Twenty-two locales now, Tagalog having landed first. Latvian was not one of the
+wave's scoped chunks: it was asked for after Welsh and filed as chunk K in
+the same sitting, on the recipe's terms. The sites it touched:
+- the `LOCALES` row (`lv`, `tag: 'lv-LV'`, matcher `/^(lv|lav|lvs)(-|$)/`)
+  and seven ladder rows
+- both `LOADERS` entries
+- `MARKS.lv` and `HONESTY.lv`
+- the precache count, two more: 65 → 67 behind Tagalog's
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+- a `tools/l10n-review/questions.mjs` entry, which the packet builder now
+  requires of every row
+
+**The browser carries Latvian, so nothing is borrowed.** Measured in
+Chromium 141, `supportedLocalesOf` answers for both `lv` and `lv-LV`, in
+contexts launched as en-US and fr-FR alike. Both format `30,0 · 0,024 ·
+1000 · 18 000`: a decimal comma, a U+00A0 group, four digits left bare.
+That is Russian's convention exactly, so `MARKS.lv` is Russian's row.
+Node's ICU 77 agrees.
+- **The matcher takes two more codes.** `lav` is ISO 639-2 and `lvs` is
+  ISO 639-3's Standard Latvian, and `Intl.getCanonicalLocales` maps both to
+  `lv`: Hebrew's `iw` case twice over.
+- **It refuses `ltg`.** Latgalian is a written language of its own, and
+  Intl keeps it distinct. A Latgalian reader is no better served by a
+  standard Latvian table than a Fiji Hindi reader is by Hindi's, which is
+  §212's negative row. `lvk` (Lavukaleve) is the other negative.
+- **Plurals** are zero/one/other, free while no chrome string pluralizes a
+  count.
+- **Case mapping** is the root mapping (ģ → Ģ, measured), so no dotted-i
+  audit is owed.
+
+**`HONESTY.lv` reads the verb's stem with its long ē.** *modelēt* gives
+*modelēts, modelēta, modelēšana, modelējums*, all carrying `modelē`. The
+noun *modelis* and its cases (*modeļa, modeli*) never carry the ē, so the
+credit line's «MI modelis» cannot count. Simulated is the loan *simulēt /
+simulācija*, read as `simul`. `/i` folds Ē onto ē (measured: «MODELĒTS»
+matches), unlike Turkish's İ.
+
+### The vertical measurement, shared rather than re-derived
+
+Latvian puts one mark ON a capital (Č Š Ž Ā Ē Ī Ū) and a cedilla UNDER one
+(Ķ Ļ Ņ, and Ģ). So an uppercase plate label inks above the cap height and
+below the baseline in one run, Vietnamese's two directions from a single
+mark each. `probe-249-vietnamese-vert` now takes `--script lv` with Latvian's
+own samples and controls.
+
+**In this container the probe's own controls fail, on an untouched `main`
+too.** No installed face serves the sans stack, and Latin itself measures 11
+in a 10 px box, so the absolute numbers are not evidence. What one face does
+show is the ORDERING:
+
+| site | box | Latvian ink | Vietnamese ink |
+|---|---|---|---|
+| `summary .where`, `.fig-no` | 10 | 13 | 13.82 |
+| `header .stamp`, `.chip` | 10.5 | 13 | 14 |
+| `.readout`, `#gloss-back` | 11 | 15 | 15 |
+| chrome `.clock-label` | 11 | 14 | 16 |
+
+Latvian inks no more than Vietnamese at any site. Vietnamese's 1.3 was derived
+where the controls passed, so it contains Latvian. Both pages therefore extend
+the Vietnamese rule to `html:lang(lv)` at the same five selectors, rather than
+derive a second number in a container that cannot vouch for one.
+
+### The tables
+
+Ten translators worked against one glossary in standard written Latvian, each
+returning `{id: value}` for a numbered chunk; the assembler wrote every key from
+the extractor's own literal. A validator mirroring the page gate ran on every
+chunk. Before any translator used it, it was shown to fail on a changed code
+span, a swapped tag, a re-punctuated decimal, a primer quantity in English's
+marks and a crossed honesty term. **The org's monthly spend limit stopped all
+ten mid-chunk.** What they had written validated clean, and second translators
+finished each chunk from it, keeping the earlier values.
+
+The glossary:
+- **the watch's parts:** mehānisms (movement), Šveices enkura eskapements,
+  eskapementa ritenis, enkura dakša, balanss, spirāle, dzinējatspere,
+  trumulis, ķēde, zobratiņš (pinion), kronis, kolonnu ritenis, modinātāja
+  regulators
+- **the physics:** amplitūda, inerce, griezes moments; the escapement's four
+  phases are bloķēšana / pievilkšana / impulss / kritiens
+- **the loan:** «fuzeja», where other locales keep *fusee* unchanged. Latvian
+  declines every noun, and an indeclinable loan would sit badly in seven
+  cases.
+
+The click is «aizturis», the driving pawl «sprūds» and a detent spring
+«fiksators». Commands take the infinitive, as Latvian software does:
+«Uzvilkt», «Saglabāt», «Kopēt saiti». A numbered figure is «ATTĒLS», because
+«plāksne» is the metal. The primer addresses its reader as «jūs».
+
+**Latvian declines, so the `.gloss-variants` rows carry the case forms the
+prose uses**: genitive, dative, accusative, instrumental and locative,
+singular and plural. That is the same answer Russian gives, for the same
+reason. The linker matches whole words, so «staciju» does not match
+«stacija» without one.
+
+Reconciliation, from what the translators reported and a scan of every chunk
+for the same English rendered differently:
+
+| English | seam | now |
+|---|---|---|
+| collar | «uzmava» (e1, e6), «atloks» (e5), «apkakle» (chrome, e8) | «apkakle» everywhere; «uzmava» is the SLEEVE, which e5's arming chain names beside it («apkakle → pacēlājs → uzmava») |
+| the balance's rim | «loks» ×22 in the explainer, «vainags» in the primer | «loks», a wheel's rim; a disc's, plate's or case's edge stays «apmale» / «mala», a sense rather than a seam |
+| ledger | «Godīguma bilance» in the explainer, «reģistrs» in the primer | «bilance»; the primer's agreeing words follow the gender («noteicošā ir bilance») |
+| arrest | «apstādināšana», «apturēšana» | «apstādināšana», because «apturēšana» is HACKING's word; the winding arrest is «uzvilkšanas ierobežotājs» |
+| the hairspring stud | «stiprinājums» in the explainer, «balsttapa» in the chrome's "Stud radius" | «stiprinājums»; «balsttapa» stays for a structural stud |
+
+Two choices that look like seams and are not:
+- "landing" in the governor entry is a tooth landing on a pallet, a physical
+  event, so «nosēšanās» stays. The code sense is «ieviešana».
+- "the sim", meaning the app, is «lietotne» or «programma», never a
+  *simul-* word. The validator flags any *simul-* the English does not say,
+  and the honesty gate would have nothing to hold it to.
+
+### §236's rule, and the first build's links
+
+**Latvian links 81 times against English's 91**, and the text is identical
+with and without the linker. The sense audit read every linked term's
+Latvian forms (cell plus variants) in the blocks whose English lacks the
+term. Four blocks were flagged:
+- two for *waiver*, where the English says "waived" and "unwaived", the
+  glossary's sense
+- two for *tangent*, where the English says "tangential", the geometric
+  sense
+
+That is **0 wrong-sense links**. «rezerve» is both the glossary's *margin* and
+the power reserve's «gaitas rezerve», but `margin` is refused everywhere
+(`AMBIGUOUS`), so the collision cannot make a link.
+
+### Fit
+
+**The page gate's first pass found nine explainer overruns and collisions**,
+and none on the primer. Each label was set against its English length in the
+label, never the tolerance:
+- «kon. gals 7.9454: atspere nosaka plāksnes grīdu» for the fusee's cone tip
+- «knābis AUGŠĀ → gredz. ↑ (deakt.)», the arrow Turkish and Welsh used
+- the zero-reset pair, both cut, because they collide with each other
+
+The second pass read 0 on both pages. **The final run then found one primer
+collision** the first had not: «lielais ritenis · 120 zobi» against its
+neighbour, at the gate's 2 px threshold, which is why one run passed it and
+one did not. That label now matches its English length, and two consecutive
+runs read 0.
+
+- **The chrome bar:** 180.5 on «Izvēlne / Skats / Vadība», 3.9 over English
+  measured in the same container (176.6 there, where the figures above were
+  taken at 170.2). It needed no word chosen against it.
+- **HUD labels:** «Zvana plkst.» 57.3, «Laiks» 24.5, against 150 px. The
+  first draft was «Zvana» ("rings"), which dropped the "at". Latvian writes
+  a time «plkst.».
+- **Headers:** 56 px at all eight widths on both pages.
+- **Re-measured after Tagalog landed on `main`** (the merge changes the roster
+  the probe walks, not Latvian's labels): the same 56 px at all eight widths,
+  the same 180.5 and 57.3, and `PASS — every header one line, no locale worse
+  than English` over `en,fil,lv`.
+- **The gong entry changed under it.** §262 (the C7 note, #613) rewrote the
+  English of that entry while this was in review: four explainer prose blocks,
+  the heading and the plate labels, and two primer paragraphs. The 16 + 2
+  Latvian keys that went dead are updated in place from the old Latvian (only
+  what the English changed is rewritten: 61.1° and 5.45×, 48.19, 25 dB, the
+  heading's added §262), the §262 paragraph is new, and the number-and-unit
+  plate labels that are now pure figures are identity entries, as German and
+  Russian keep them, so the explainer is 772/772. Tagalog had the same 16 + 2
+  dead keys on `main`; [kelaiem/timesim#629](https://github.com/kelaiem/timesim/pull/629)
+  re-keyed them there, and this branch takes `main`'s two Tagalog table files
+  unchanged.
+- **§53's column:** no content wider than its box.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **772/772**, primer **145/145**; 0 unmatched, 0 markup / `<code>` drift, **0 plate and 0 prose number drift** (the prose gate's control caught both plants), 0 crossed honesty terms, 0 absent; honesty control PASS (*modelēts / simulēts*), **20/20** rows verified; block coverage 0 short blocks against Latvian's median ratio 1.06 (explainer) and 1.01 (primer); **0 new plate overflow** on both pages. The run's one FAIL row is `[ar] plate fit`, which fails identically on an untouched `main` in this container and passes on CI |
+| `explain-quotes` | PASS |
+| `glossary-links` | text identical with and without the linker in every locale; lv **81** links (en 91) — PASS |
+| sense audit | 0 wrong-sense links over the linked terms (four flagged blocks read in context, each the glossary's sense) |
+| `probe-chrome-coverage --locales de,lv` | control PASS; lv **0 missing, 0 not applied** |
+| `l10n-review-packets` | PASS, 20 locale packets; lv 241 rows, 6 questions |
+| `probe-116-locale-fit` | headers 56 px at all eight widths; `#chrome-bar` lv 180.5 against en 176.6; *Zvana plkst.* 57.3 — PASS, and unchanged when re-measured after the Tagalog merge |
+| `offline-check` | **45/45**, precache **65/65**, the Latvian primer served from cache |
+| boot | `?lang=lv`, `lav`, `lvs` and `lv-LV` (the last in a browser launched as fr-FR) on all three documents: `lang="lv"`, `dir="ltr"`, `fmtNum` reads `30,0 · 0,024 · 18 000`, and the only console lines are Chromium's software-GL notices and the dev server's own `/__state` 404, which English shows too; `ltg` reads English |
+| fingerprint | **524118476** (60 units, 13 poses) at `?lang=lv` and in English, identical to a virgin boot of `origin/main` measured beside it |
+| battery | not run locally; CI's Battery job on the PR is the evidence |
+
+### Residue, recorded
+
+- **No native review pass**, the IOU every locale carries. The terms most
+  likely to differ in a Latvian workshop are the six the review packet asks:
+  - «fuzeja», an adapted loan where no trade word was found
+  - «eskapements», a loan where a native term may exist
+  - «spirāle» for the hairspring, also the everyday word for any spiral
+    (the mainspring's own spiral is «tinums» to keep them apart)
+  - «enkura dakša»
+  - «zobratiņš», the engineering word for a pinion
+  - «aizturis» / «sprūds» / «fiksators» read as three distinct parts
+- **The vertical rule is shared, not derived here**, because this
+  container's probe controls fail. Running `probe-249-vietnamese-vert
+  --script lv` where its controls pass would turn the ordering into a
+  derivation.
+- **`index.html`'s `<title>`** is still not localized in any locale.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
