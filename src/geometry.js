@@ -3729,19 +3729,26 @@ export function makeHairspring(plan) {
     // — the self-contact no pair sweep can see, measured here (CLAUDE.md's
     // residue rule); the ribbon's own diameter is subtracted by the caller.
     const half = Math.floor(segsPerTurn / 2);
-    let gap = Infinity, len = 0, shift = 0;
+    let gap = Infinity, len = 0, shift = 0, cx = 0, cy = 0;
     const P = sol.pts;
     const Z = rest.zs;   // §218 tier two — the overcoil's plane: a coil under it is separated in z, and the gap is measured in 3D
     for (let i = 0; i < P.length; i++) {
-      if (i) len += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+      if (i) {
+        const l = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+        len += l; cx += l * (P[i][0] + P[i - 1][0]) / 2; cy += l * (P[i][1] + P[i - 1][1]) / 2;
+      }
       shift = Math.max(shift, Math.abs(Math.hypot(P[i][0], P[i][1]) - Math.hypot(rest.pts[i][0], rest.pts[i][1])));
       for (let j = i + half; j < P.length; j++) {
         const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1], Z[i] - Z[j]);
         if (d < gap) gap = d;
       }
     }
+    // §246 tier two — the frame's length-weighted CENTROID (plan frame, model
+    // units): in a hanging position the spring's own weight acts through it,
+    // and the driven balance reads its motion off these rows rather than off a
+    // second solve (probe-246-positional-rate takes the same sum).
     return { theta: sol.theta, torque: sol.torque, lam: Math.hypot(sol.lam[0], sol.lam[1]), energy: sol.energy,
-             dkMax: sol.dkMax, gap, len, radialShift: shift, iters: sol.iters, converged: sol.converged };
+             dkMax: sol.dkMax, gap, len, radialShift: shift, cx: cx / len, cy: cy / len, iters: sol.iters, converged: sol.converged };
   };
   const frameRows = solved.map(scalars);
   const reportRows = [];

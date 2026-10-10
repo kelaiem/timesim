@@ -393,6 +393,8 @@ const DE = {
   'Pause': 'Pause', 'Beats': 'Halbschwingungen', 'Time-scale': 'Zeitraffer',
   'Wind': 'Aufziehen', 'Crown': 'Krone', 'Sync': 'Synchronisieren', 'Now': 'Jetzt',
   'Power reserve': 'Gangreserve', 'Fast-forward': 'Schnellvorlauf',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Lage', 'Dial up': 'Zifferblatt oben', 'Dial down': 'Zifferblatt unten', 'Crown up': 'Krone oben', 'Crown down': 'Krone unten', 'Crown left': 'Krone links', 'Crown right': 'Krone rechts', 'Amplitude': 'Amplitude', 'Rate': 'Gang', 's/day': 's/Tag',
   'Beat rate': 'Schlagzahl', 'Reserve spec': 'Reserve-Spezifikation',
   'Stud radius': 'Klötzchenradius',
   'Spring torque': 'Federmoment', 'Train torque': 'Räderwerkmoment',
@@ -762,6 +764,8 @@ const ZH = {
   'Pause': '暂停', 'Beats': '摆动次数', 'Time-scale': '时间倍率',
   'Wind': '上链', 'Crown': '表冠', 'Sync': '对时', 'Now': '现在',
   'Power reserve': '动力储存', 'Fast-forward': '快进',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': '位置', 'Dial up': '表盘朝上', 'Dial down': '表盘朝下', 'Crown up': '表冠朝上', 'Crown down': '表冠朝下', 'Crown left': '表冠朝左', 'Crown right': '表冠朝右', 'Amplitude': '摆幅', 'Rate': '日差', 's/day': '秒/天',
   'Beat rate': '振频', 'Reserve spec': '动储规格',
   'Stud radius': '外桩半径',
   'Spring torque': '发条扭矩', 'Train torque': '轮系扭矩',
@@ -1115,6 +1119,8 @@ const FR = {
   ['Now']: 'Maintenant',
   ['Power reserve']: 'Réserve de marche',
   ['Fast-forward']: 'Avance rapide',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Position', 'Dial up': 'Cadran en haut', 'Dial down': 'Cadran en bas', 'Crown up': 'Couronne en haut', 'Crown down': 'Couronne en bas', 'Crown left': 'Couronne à gauche', 'Crown right': 'Couronne à droite', 'Amplitude': 'Amplitude', 'Rate': 'Marche', 's/day': 's/j',
   ['Beat rate']: 'Fréquence',
   ['Reserve spec']: 'Réserve nominale',
   ['Stud radius']: 'Rayon du piton',
@@ -1627,6 +1633,8 @@ const JA = {
   ['Now']: '現在時刻',
   ['Power reserve']: 'パワーリザーブ',
   ['Fast-forward']: '早送り',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': '姿勢', 'Dial up': '文字板上', 'Dial down': '文字板下', 'Crown up': 'りゅうず上', 'Crown down': 'りゅうず下', 'Crown left': 'りゅうず左', 'Crown right': 'りゅうず右', 'Amplitude': '振り角', 'Rate': '日差', 's/day': '秒/日',
   ['Beat rate']: '振動数',
   ['Reserve spec']: '規定持続時間',
   ['Stud radius']: 'スタッド半径',
@@ -2138,6 +2146,8 @@ const ZH_HANT = {
   ['Now']: '現在',
   ['Power reserve']: '動力儲存',
   ['Fast-forward']: '快轉',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': '位置', 'Dial up': '錶盤朝上', 'Dial down': '錶盤朝下', 'Crown up': '錶冠朝上', 'Crown down': '錶冠朝下', 'Crown left': '錶冠朝左', 'Crown right': '錶冠朝右', 'Amplitude': '擺幅', 'Rate': '日差', 's/day': '秒/天',
   ['Beat rate']: '振頻',
   ['Reserve spec']: '規格儲存',
   ['Stud radius']: '外樁半徑',
@@ -2658,6 +2668,8 @@ const AR = {
   'Now': 'الآن',
   'Power reserve': 'احتياطي الطاقة',
   'Fast-forward': 'تقديم سريع',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'الوضعية', 'Dial up': 'الميناء للأعلى', 'Dial down': 'الميناء للأسفل', 'Crown up': 'التاج للأعلى', 'Crown down': 'التاج للأسفل', 'Crown left': 'التاج لليسار', 'Crown right': 'التاج لليمين', 'Amplitude': 'السعة', 'Rate': 'المعدل اليومي', 's/day': 'ث/يوم',
   'Beat rate': 'معدل النبض',
   'Reserve spec': 'مواصفة الاحتياطي',
   'Stud radius': 'نصف قطر المربط',
@@ -3162,6 +3174,8 @@ const ES = {
   'Now': 'Ahora',
   'Power reserve': 'Reserva de marcha',
   'Fast-forward': 'Avance rápido',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Posición', 'Dial up': 'Esfera arriba', 'Dial down': 'Esfera abajo', 'Crown up': 'Corona arriba', 'Crown down': 'Corona abajo', 'Crown left': 'Corona a la izquierda', 'Crown right': 'Corona a la derecha', 'Amplitude': 'Amplitud', 'Rate': 'Marcha', 's/day': 's/día',
   'Beat rate': 'Frecuencia',
   'Reserve spec': 'Reserva nominal',
   'Stud radius': 'Radio del pitón',
@@ -3663,6 +3677,8 @@ const KO = {
   'Now': '현재 시각',
   'Power reserve': '파워 리저브',
   'Fast-forward': '빨리 감기',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': '자세', 'Dial up': '다이얼 위', 'Dial down': '다이얼 아래', 'Crown up': '용두 위', 'Crown down': '용두 아래', 'Crown left': '용두 왼쪽', 'Crown right': '용두 오른쪽', 'Amplitude': '진폭', 'Rate': '일오차', 's/day': '초/일',
   'Beat rate': '진동수',
   'Reserve spec': '리저브 규격',
   'Stud radius': '스터드 반경',
@@ -4166,6 +4182,8 @@ const RU = {
   'Now': 'Сейчас',
   'Power reserve': 'Запас хода',
   'Fast-forward': 'Перемотка',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Положение', 'Dial up': 'Циферблатом вверх', 'Dial down': 'Циферблатом вниз', 'Crown up': 'Головкой вверх', 'Crown down': 'Головкой вниз', 'Crown left': 'Головкой влево', 'Crown right': 'Головкой вправо', 'Amplitude': 'Амплитуда', 'Rate': 'Суточный ход', 's/day': 'с/сут',
   'Beat rate': 'Частота',
   'Reserve spec': 'Заданный запас',
   'Stud radius': 'Радиус колонки',
@@ -4670,6 +4688,8 @@ const PT = {
   'Now': 'Agora',
   'Power reserve': 'Reserva de marcha',
   'Fast-forward': 'Avanço rápido',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Posição', 'Dial up': 'Mostrador para cima', 'Dial down': 'Mostrador para baixo', 'Crown up': 'Coroa para cima', 'Crown down': 'Coroa para baixo', 'Crown left': 'Coroa à esquerda', 'Crown right': 'Coroa à direita', 'Amplitude': 'Amplitude', 'Rate': 'Marcha', 's/day': 's/dia',
   'Beat rate': 'Frequência',
   'Reserve spec': 'Reserva nominal',
   'Stud radius': 'Raio do pitão',
@@ -5173,6 +5193,8 @@ const IT = {
   'Now': 'Adesso',
   'Power reserve': 'Riserva di carica',
   'Fast-forward': 'Avanti veloce',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Posizione', 'Dial up': 'Quadrante in alto', 'Dial down': 'Quadrante in basso', 'Crown up': 'Corona in alto', 'Crown down': 'Corona in basso', 'Crown left': 'Corona a sinistra', 'Crown right': 'Corona a destra', 'Amplitude': 'Ampiezza', 'Rate': 'Marcia', 's/day': 's/giorno',
   'Beat rate': 'Frequenza',
   'Reserve spec': 'Riserva nominale',
   'Stud radius': 'Raggio del piton',
@@ -5673,6 +5695,8 @@ const HI = {
   'Now': 'अभी',
   'Power reserve': 'पावर रिज़र्व',
   'Fast-forward': 'फास्ट-फॉरवर्ड',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'स्थिति', 'Dial up': 'डायल ऊपर', 'Dial down': 'डायल नीचे', 'Crown up': 'क्राउन ऊपर', 'Crown down': 'क्राउन नीचे', 'Crown left': 'क्राउन बाएँ', 'Crown right': 'क्राउन दाएँ', 'Amplitude': 'आयाम', 'Rate': 'दैनिक दर', 's/day': 'से./दिन',
   'Beat rate': 'बीट दर',
   'Reserve spec': 'रिज़र्व स्पेक',
   'Stud radius': 'स्टड त्रिज्या',
@@ -6178,6 +6202,8 @@ const VI = {
   'Now': 'Bây giờ',
   'Power reserve': 'Dự trữ năng lượng',
   'Fast-forward': 'Tua nhanh',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Tư thế', 'Dial up': 'Mặt số hướng lên', 'Dial down': 'Mặt số hướng xuống', 'Crown up': 'Núm vặn hướng lên', 'Crown down': 'Núm vặn hướng xuống', 'Crown left': 'Núm vặn bên trái', 'Crown right': 'Núm vặn bên phải', 'Amplitude': 'Biên độ', 'Rate': 'Sai số ngày', 's/day': 'giây/ngày',
   'Beat rate': 'Tần số nhịp',
   'Reserve spec': 'Dự trữ thiết kế',
   'Stud radius': 'Bán kính cọc',
@@ -6697,6 +6723,8 @@ const NL = {
   'Now': 'Nu',
   'Power reserve': 'Gangreserve',
   'Fast-forward': 'Snel vooruit',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Stand', 'Dial up': 'Wijzerplaat boven', 'Dial down': 'Wijzerplaat onder', 'Crown up': 'Kroon boven', 'Crown down': 'Kroon onder', 'Crown left': 'Kroon links', 'Crown right': 'Kroon rechts', 'Amplitude': 'Amplitude', 'Rate': 'Gang', 's/day': 's/dag',
   'Beat rate': 'Tikfrequentie',
   'Reserve spec': 'Nominale reserve',
   'Stud radius': 'Stiftstraal',
@@ -7216,6 +7244,8 @@ const FA = {
   'Now': 'اکنون',
   'Power reserve': 'ذخیره‌ی نیرو',
   'Fast-forward': 'جلو بردن سریع',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'وضعیت', 'Dial up': 'صفحه رو به بالا', 'Dial down': 'صفحه رو به پایین', 'Crown up': 'تاج رو به بالا', 'Crown down': 'تاج رو به پایین', 'Crown left': 'تاج به چپ', 'Crown right': 'تاج به راست', 'Amplitude': 'دامنه', 'Rate': 'آهنگ روزانه', 's/day': 'ث/روز',
   'Beat rate': 'نرخ تیک',
   'Reserve spec': 'ذخیره‌ی اسمی',
   'Stud radius': 'شعاع گل‌میخ',
@@ -7736,6 +7766,8 @@ const HE = {
   'Now': 'עכשיו',
   'Power reserve': 'עתודת כוח',
   'Fast-forward': 'הרצה מהירה',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'מנח', 'Dial up': 'לוח השעון למעלה', 'Dial down': 'לוח השעון למטה', 'Crown up': 'כתר למעלה', 'Crown down': 'כתר למטה', 'Crown left': 'כתר שמאלה', 'Crown right': 'כתר ימינה', 'Amplitude': 'משרעת', 'Rate': 'סטייה יומית', 's/day': 'ש׳/יום',
   'Beat rate': 'קצב תקתוק',
   'Reserve spec': 'עתודה נומינלית',
   'Stud radius': 'רדיוס הפין',
@@ -8255,6 +8287,8 @@ const ID = {
   'Now': 'Sekarang',
   'Power reserve': 'Cadangan daya',
   'Fast-forward': 'Percepat',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Posisi', 'Dial up': 'Dial ke atas', 'Dial down': 'Dial ke bawah', 'Crown up': 'Mahkota ke atas', 'Crown down': 'Mahkota ke bawah', 'Crown left': 'Mahkota ke kiri', 'Crown right': 'Mahkota ke kanan', 'Amplitude': 'Amplitudo', 'Rate': 'Laju harian', 's/day': 'd/hari',
   'Beat rate': 'Laju ketukan',
   'Reserve spec': 'Spek cadangan',
   'Stud radius': 'Jari-jari pasak',
@@ -8775,6 +8809,8 @@ const TR = {
   'Now': 'Şimdi',
   'Power reserve': 'Güç rezervi',
   'Fast-forward': 'İleri sar',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Pozisyon', 'Dial up': 'Kadran yukarı', 'Dial down': 'Kadran aşağı', 'Crown up': 'Kurma kolu yukarı', 'Crown down': 'Kurma kolu aşağı', 'Crown left': 'Kurma kolu solda', 'Crown right': 'Kurma kolu sağda', 'Amplitude': 'Genlik', 'Rate': 'Günlük sapma', 's/day': 'sn/gün',
   'Beat rate': 'Vuruş hızı',
   'Reserve spec': 'Nominal rezerv',
   'Stud radius': 'Saplama yarıçapı',
@@ -9295,6 +9331,8 @@ const CY = {
   'Now': 'Nawr',
   'Power reserve': 'Cronfa bŵer',
   'Fast-forward': 'Ymlaen yn gyflym',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Safle', 'Dial up': 'Deial i fyny', 'Dial down': 'Deial i lawr', 'Crown up': 'Coron i fyny', 'Crown down': 'Coron i lawr', 'Crown left': 'Coron i’r chwith', 'Crown right': 'Coron i’r dde', 'Amplitude': 'Osgled', 'Rate': 'Cyfradd ddyddiol', 's/day': 'e/dydd',
   'Beat rate': 'Cyfradd curiad',
   'Reserve spec': 'Manyleb cronfa',
   'Stud radius': 'Radiws y styden',
@@ -9817,6 +9855,8 @@ const FIL = {
   ['Now']: 'Ngayon',
   ['Power reserve']: 'Reserba ng lakas',
   ['Fast-forward']: 'Pabilisin',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Posisyon', 'Dial up': 'Dial pataas', 'Dial down': 'Dial pababa', 'Crown up': 'Korona pataas', 'Crown down': 'Korona pababa', 'Crown left': 'Korona sa kaliwa', 'Crown right': 'Korona sa kanan', 'Amplitude': 'Amplitud', 'Rate': 'Bilis bawat araw', 's/day': 's/araw',
   ['Beat rate']: 'Dalas ng tibok',
   ['Reserve spec']: 'Spec ng reserba',
   ['Stud radius']: 'Radius ng stud',
@@ -10315,6 +10355,8 @@ const LV = {
   'Now': 'Tagad',
   'Power reserve': 'Gaitas rezerve',
   'Fast-forward': 'Paātrināti',
+  // §246 tier two — the position select and the driven balance's readouts
+  'Position': 'Stāvoklis', 'Dial up': 'Ciparnīca augšā', 'Dial down': 'Ciparnīca lejā', 'Crown up': 'Kronis augšā', 'Crown down': 'Kronis lejā', 'Crown left': 'Kronis pa kreisi', 'Crown right': 'Kronis pa labi', 'Amplitude': 'Amplitūda', 'Rate': 'Gaita', 's/day': 's/dienā',
   'Beat rate': 'Sitienu biežums',
   'Reserve spec': 'Rezerves spec.',
   'Stud radius': 'Stiprinājuma rādiuss',
