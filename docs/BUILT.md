@@ -33614,6 +33614,13 @@ run on this tree and on the base:
   wall-clock field** (`ms`, `sliceMs.*`, the census's `exactMs`/`verdictMs`).
   No verdict, row or count moved.
 
+**Re-measured after merging `main` at `0958b48`** (§241, §262, §263 and the
+keyless-works labels, about a dozen merges). The probe PASSES at **322 ms**
+held, 897 ms worst input ack, and the 18,188 ms control. The geometry
+fingerprint (`I.fingerprint` after boot, two virgin boots per tree) is
+`2284144268` on this branch and on `main` alike. The full battery is CI's
+to run on the pull request.
+
 **What it leaves.** Landing two: the probe in CI with its control, the held
 stretch as the gated number, and every ceiling derived from the CI host's
 spread. The regression this landing repaired took three weeks to find because
