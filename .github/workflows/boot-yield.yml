@@ -53,7 +53,7 @@ on:
       - 'tools/package-lock.json'
       - '.github/workflows/boot-yield.yml'
   push:
-    branches: [main]
+    branches: [main, claude/loading-screen-initial-pe3u3v]   # MEASURING — removed before review
   workflow_dispatch:
 
 concurrency:
@@ -67,6 +67,10 @@ jobs:
   boot-yield:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:                       # MEASURING — removed before review
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
 
@@ -98,11 +102,17 @@ jobs:
         if: success() || failure()
         run: node tools/probe-267-boot-progress.mjs --boots 2 --json boot-progress.json
 
+      - name: Print the numbers     # MEASURING — removed before review
+        if: always()
+        run: |
+          node -e "const r=require('./boot-progress.json'); console.log('BOOTPROGRESS', JSON.stringify({host:r.host, live:r.live.map(x=>({span:Math.round(x.spanMs), mean:+x.dev.mean.toFixed(4), worst:+x.dev.worst.toFixed(4), ahead:+x.dev.ahead.toFixed(4), behind:+x.dev.behind.toFixed(4), behindAt:Math.round(x.dev.behindAt), omean:+x.ordinal.mean.toFixed(4), oworst:+x.ordinal.worst.toFixed(4)})), painted:r.painted&&r.painted.levels, frozen:r.frozen&&r.frozen.levels, fail:r.fail}))" || true
+          node -e "const r=require('./boot-yield.json'); console.log('BOOTYIELD', JSON.stringify({held:r.live&&r.live.held, task:r.live&&r.live.maxTask, ack:r.live&&r.live.maxLat, fail:r.fail}))" || true
+
       - name: Keep the numbers
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: boot-yield-${{ github.run_id }}
+          name: boot-yield-${{ github.run_id }}-${{ matrix.run }}
           path: |
             boot-yield.json
             boot-progress.json
