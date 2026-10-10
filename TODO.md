@@ -20,7 +20,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 227 | OPEN | Found adjudicating TODO 225's first row. The alarm release sleeve's SKIRT — the cone the tail pin presses — is a double-sided sheet of no thickness: its lathe profile offsets the working face by (+w, +w), which at 45° slides it along itself, so three corners are collinear and the profile's area is the 0.0177 u² triangle at the cap. The census read it fat because the stray corner pokes 0.112 u into the flat and makes the profile box 0.317. `alarmSleeveWeb` (TODO 225) is a patch over it. A real shell was built and measured: it cannot be added without a layout change (the feeler spring's free end sits 0.084 under the envelope floor at r 4.36–4.43, az ~155°; the shell's lip reaches r 4.452 and clears it by 0.0807, need 0.15). `tools/probe-225-lathe-profiles.mjs` reads every lathe profile: 72 meshes, this the only one |
 | 229 | OPEN | The gong's receiver is RIGID in §269 and its own first modes sit inside the gong's spectrum — the base plate at 5.9 kHz, the back glass at 9.1 kHz, the band's free-ring ovalling lower still — so the structure-borne level is a floor at the fundamental and neither bound at the overtone until the plate, the band and the glazing are modelled as the flexible receiver they are |
 | 228 | OPEN | The hammer's rebound after the wire is `−AMP·cos(W·r)·e^(−decay·r)`, a POSED decay (`ALARM_HAMMER_DECAY` is solved to reach 5% by the next pickup, no restitution and no banking in it); at §268's W that is a chatter near 200 Hz nothing in the metal produces or stops. A restitution of 0.8 would rebound to ≈0.22 rad and a real hammer is caught by a banking or rests on the lifting piece — neither is drawn |
-| 226 | OPEN | Found closing TODO 216. The impulse pin's centre sits 9.575 from the fork pivot and the slot's mouth is at 9.595, so the pin only enters the slot's mouth. The bank is derived by matching arc lengths at `notchDepth` (6.83), so the pose law impulses over 21.7° of balance arc while the metal's lift is 30.95°. Seat the pin in the slot and derive the bank from the pin's real radius |
+| 226 | OPEN | Step 2 DONE by BUILT §221: the bank is the pin's own bearing at the lift's edge (`d·sin ψ = r·sin(θ + ψ)`), 4.03°, and `probe-221-amplitude.mjs` holds the pin on the slot's centre line at both window edges to 1e-7. Step 1 remains: the pin's centre stands 0.156 outside the horn tips at the lift's edge, so its body enters 0.394 of a slot 2.759 deep; seat it by moving the fork's mouth or the roller. Step 3 remains past the window's edges (the pin against the driving wall THROUGH the impulse)
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -12722,6 +12722,13 @@ better than item 98's scope note claimed, and that note is corrected in place:
   Never touching is CORRECT for normal running — a safety action is a failsafe,
   not a working contact — and the ~0.51 of variation is the crescent passing.
 - The impulse pin does reach the fork body: **0.0000**, the notch contact.
+- **Re-measured at the physical swing (BUILT §221).** At ±45° the crescent
+  never left the guard pin; at ±200° the roller's solid rim passes it twice a
+  swing with the fork at its bank. `probe-221-amplitude.mjs` reads guard pin →
+  safety roller outline, over a whole oscillation at 2000 samples, **min 0.2942
+  (balance at 170°), max 0.8066** — clear in normal running, which is the
+  first time that sentence rests on a swing the movement actually makes. Point
+  1 below is untouched: 0.2942 is still what chosen numbers produce.
 
 **So what is wrong is not the shape. Three things:**
 
@@ -30733,6 +30740,20 @@ no instrument tracks the pin against the slot's walls through the impulse.
 The knock (`ESCAPEMENT_KNOCK`) re-solves on its own, since it is read off the
 same outline, and `AMPLITUDE_PEAK_DEG` follows it through `equalisation`
 row 14.
+
+**Step 2 done by BUILT §221.** §221 replaced the arc-length identity with the
+pin's own bearing from the fork pivot at the edge of the cited lift,
+`atan(r·sin(L/2) / (d − r·cos(L/2)))` — this item's exact relation solved for
+ψ — so the bank is 4.03° (an 8.05° lever angle) and the lift the pose law
+impulses over IS the lift the metal cuts, 50° by construction. Before that,
+§221's first draft kept the identity with the cited lift and its probe measured
+the pin slipping 0.646 across the slot each window: the 1.4× of 9.575 against
+6.83 this item names. `probe-221-amplitude.mjs` now holds the pin on the slot's
+centre line at all four window edges (to 1e-7) and reports the depth step 1 is
+about: at the lift's edge the pin's centre stands **0.156 outside** the horn
+tips, so its 0.55 radius enters **0.394** of a slot **2.759** deep. Step 1 and
+step 3 (the pin against the driving wall through the window, not only at its
+edges) remain.
 
 ## 228. The hammer's rebound after the wire is a posed decay, not restitution — with the §268 spring it is a 200 Hz chatter nobody banked
 

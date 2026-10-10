@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -1051,7 +1051,12 @@ function unitsIntersect(A, B, raw = false) {
 export const AXES = [
   {
     name: 'beat',
-    n: 96,
+    // §221 — the axis exists for the impulse contact, so its density is held
+    // IN THE IMPULSE WINDOW: 96 samples over two beats at the old authored
+    // 0.16-beat window put 7.68 samples across each impulse. The lift-derived
+    // window is half that wide, so the count follows it rather than the
+    // window going under-sampled by a factor of two.
+    n: Math.round(96 * 0.16 / IMPULSE_WIDTH),
     pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
@@ -10127,7 +10132,7 @@ export function checkOscillator(clock) {
     // §218 tier two — the overcoil is concentric (clamp ratio 1 to 1e-6, the
     // centroid solve converged) and the pivot force at the performed swing is
     // under a tenth of the flat spring's; the physical residual is a report.
-    if (B.overcoil && !B.overcoil.pass) failures.push({ what: 'overcoil', converged: B.overcoil.converged, concentric: B.overcoil.concentric, forceRatioPerformed: B.overcoil.forceRatio.performed });
+    if (B.overcoil && !B.overcoil.pass) failures.push({ what: 'overcoil', converged: B.overcoil.converged, concentric: B.overcoil.concentric, reactionOrder: B.overcoil.reactionOrder.order, reactionOrderFlat: B.overcoil.reactionOrderFlat.order, forceRatioPerformed: B.overcoil.forceRatio.performed });
   }
   return {
     ok: failures.length === 0,       // a GATE since tier two — the spring is cut to the rate

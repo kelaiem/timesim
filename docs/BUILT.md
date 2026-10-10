@@ -31586,6 +31586,210 @@ or parsed values (primer), the honesty words, and label length.
 - **The battery** is CI's, on the self-hosted runner, and is recorded in the PR
   rather than here.
 
+### Latvian — chunk K, the twenty-second locale, held by the prose-number gate from its first build
+
+The chrome (485 keys), `explain.html` (772/772) and `primer.html` (145/145)
+read Latvian at 100%. Twenty-two locales now, Tagalog having landed first. Latvian was not one of the
+wave's scoped chunks: it was asked for after Welsh and filed as chunk K in
+the same sitting, on the recipe's terms. The sites it touched:
+- the `LOCALES` row (`lv`, `tag: 'lv-LV'`, matcher `/^(lv|lav|lvs)(-|$)/`)
+  and seven ladder rows
+- both `LOADERS` entries
+- `MARKS.lv` and `HONESTY.lv`
+- the precache count, two more: 65 → 67 behind Tagalog's
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+- a `tools/l10n-review/questions.mjs` entry, which the packet builder now
+  requires of every row
+
+**The browser carries Latvian, so nothing is borrowed.** Measured in
+Chromium 141, `supportedLocalesOf` answers for both `lv` and `lv-LV`, in
+contexts launched as en-US and fr-FR alike. Both format `30,0 · 0,024 ·
+1000 · 18 000`: a decimal comma, a U+00A0 group, four digits left bare.
+That is Russian's convention exactly, so `MARKS.lv` is Russian's row.
+Node's ICU 77 agrees.
+- **The matcher takes two more codes.** `lav` is ISO 639-2 and `lvs` is
+  ISO 639-3's Standard Latvian, and `Intl.getCanonicalLocales` maps both to
+  `lv`: Hebrew's `iw` case twice over.
+- **It refuses `ltg`.** Latgalian is a written language of its own, and
+  Intl keeps it distinct. A Latgalian reader is no better served by a
+  standard Latvian table than a Fiji Hindi reader is by Hindi's, which is
+  §212's negative row. `lvk` (Lavukaleve) is the other negative.
+- **Plurals** are zero/one/other, free while no chrome string pluralizes a
+  count.
+- **Case mapping** is the root mapping (ģ → Ģ, measured), so no dotted-i
+  audit is owed.
+
+**`HONESTY.lv` reads the verb's stem with its long ē.** *modelēt* gives
+*modelēts, modelēta, modelēšana, modelējums*, all carrying `modelē`. The
+noun *modelis* and its cases (*modeļa, modeli*) never carry the ē, so the
+credit line's «MI modelis» cannot count. Simulated is the loan *simulēt /
+simulācija*, read as `simul`. `/i` folds Ē onto ē (measured: «MODELĒTS»
+matches), unlike Turkish's İ.
+
+### The vertical measurement, shared rather than re-derived
+
+Latvian puts one mark ON a capital (Č Š Ž Ā Ē Ī Ū) and a cedilla UNDER one
+(Ķ Ļ Ņ, and Ģ). So an uppercase plate label inks above the cap height and
+below the baseline in one run, Vietnamese's two directions from a single
+mark each. `probe-249-vietnamese-vert` now takes `--script lv` with Latvian's
+own samples and controls.
+
+**In this container the probe's own controls fail, on an untouched `main`
+too.** No installed face serves the sans stack, and Latin itself measures 11
+in a 10 px box, so the absolute numbers are not evidence. What one face does
+show is the ORDERING:
+
+| site | box | Latvian ink | Vietnamese ink |
+|---|---|---|---|
+| `summary .where`, `.fig-no` | 10 | 13 | 13.82 |
+| `header .stamp`, `.chip` | 10.5 | 13 | 14 |
+| `.readout`, `#gloss-back` | 11 | 15 | 15 |
+| chrome `.clock-label` | 11 | 14 | 16 |
+
+Latvian inks no more than Vietnamese at any site. Vietnamese's 1.3 was derived
+where the controls passed, so it contains Latvian. Both pages therefore extend
+the Vietnamese rule to `html:lang(lv)` at the same five selectors, rather than
+derive a second number in a container that cannot vouch for one.
+
+### The tables
+
+Ten translators worked against one glossary in standard written Latvian, each
+returning `{id: value}` for a numbered chunk; the assembler wrote every key from
+the extractor's own literal. A validator mirroring the page gate ran on every
+chunk. Before any translator used it, it was shown to fail on a changed code
+span, a swapped tag, a re-punctuated decimal, a primer quantity in English's
+marks and a crossed honesty term. **The org's monthly spend limit stopped all
+ten mid-chunk.** What they had written validated clean, and second translators
+finished each chunk from it, keeping the earlier values.
+
+The glossary:
+- **the watch's parts:** mehānisms (movement), Šveices enkura eskapements,
+  eskapementa ritenis, enkura dakša, balanss, spirāle, dzinējatspere,
+  trumulis, ķēde, zobratiņš (pinion), kronis, kolonnu ritenis, modinātāja
+  regulators
+- **the physics:** amplitūda, inerce, griezes moments; the escapement's four
+  phases are bloķēšana / pievilkšana / impulss / kritiens
+- **the loan:** «fuzeja», where other locales keep *fusee* unchanged. Latvian
+  declines every noun, and an indeclinable loan would sit badly in seven
+  cases.
+
+The click is «aizturis», the driving pawl «sprūds» and a detent spring
+«fiksators». Commands take the infinitive, as Latvian software does:
+«Uzvilkt», «Saglabāt», «Kopēt saiti». A numbered figure is «ATTĒLS», because
+«plāksne» is the metal. The primer addresses its reader as «jūs».
+
+**Latvian declines, so the `.gloss-variants` rows carry the case forms the
+prose uses**: genitive, dative, accusative, instrumental and locative,
+singular and plural. That is the same answer Russian gives, for the same
+reason. The linker matches whole words, so «staciju» does not match
+«stacija» without one.
+
+Reconciliation, from what the translators reported and a scan of every chunk
+for the same English rendered differently:
+
+| English | seam | now |
+|---|---|---|
+| collar | «uzmava» (e1, e6), «atloks» (e5), «apkakle» (chrome, e8) | «apkakle» everywhere; «uzmava» is the SLEEVE, which e5's arming chain names beside it («apkakle → pacēlājs → uzmava») |
+| the balance's rim | «loks» ×22 in the explainer, «vainags» in the primer | «loks», a wheel's rim; a disc's, plate's or case's edge stays «apmale» / «mala», a sense rather than a seam |
+| ledger | «Godīguma bilance» in the explainer, «reģistrs» in the primer | «bilance»; the primer's agreeing words follow the gender («noteicošā ir bilance») |
+| arrest | «apstādināšana», «apturēšana» | «apstādināšana», because «apturēšana» is HACKING's word; the winding arrest is «uzvilkšanas ierobežotājs» |
+| the hairspring stud | «stiprinājums» in the explainer, «balsttapa» in the chrome's "Stud radius" | «stiprinājums»; «balsttapa» stays for a structural stud |
+
+Two choices that look like seams and are not:
+- "landing" in the governor entry is a tooth landing on a pallet, a physical
+  event, so «nosēšanās» stays. The code sense is «ieviešana».
+- "the sim", meaning the app, is «lietotne» or «programma», never a
+  *simul-* word. The validator flags any *simul-* the English does not say,
+  and the honesty gate would have nothing to hold it to.
+
+### §236's rule, and the first build's links
+
+**Latvian links 81 times against English's 91**, and the text is identical
+with and without the linker. The sense audit read every linked term's
+Latvian forms (cell plus variants) in the blocks whose English lacks the
+term. Four blocks were flagged:
+- two for *waiver*, where the English says "waived" and "unwaived", the
+  glossary's sense
+- two for *tangent*, where the English says "tangential", the geometric
+  sense
+
+That is **0 wrong-sense links**. «rezerve» is both the glossary's *margin* and
+the power reserve's «gaitas rezerve», but `margin` is refused everywhere
+(`AMBIGUOUS`), so the collision cannot make a link.
+
+### Fit
+
+**The page gate's first pass found nine explainer overruns and collisions**,
+and none on the primer. Each label was set against its English length in the
+label, never the tolerance:
+- «kon. gals 7.9454: atspere nosaka plāksnes grīdu» for the fusee's cone tip
+- «knābis AUGŠĀ → gredz. ↑ (deakt.)», the arrow Turkish and Welsh used
+- the zero-reset pair, both cut, because they collide with each other
+
+The second pass read 0 on both pages. **The final run then found one primer
+collision** the first had not: «lielais ritenis · 120 zobi» against its
+neighbour, at the gate's 2 px threshold, which is why one run passed it and
+one did not. That label now matches its English length, and two consecutive
+runs read 0.
+
+- **The chrome bar:** 180.5 on «Izvēlne / Skats / Vadība», 3.9 over English
+  measured in the same container (176.6 there, where the figures above were
+  taken at 170.2). It needed no word chosen against it.
+- **HUD labels:** «Zvana plkst.» 57.3, «Laiks» 24.5, against 150 px. The
+  first draft was «Zvana» ("rings"), which dropped the "at". Latvian writes
+  a time «plkst.».
+- **Headers:** 56 px at all eight widths on both pages.
+- **Re-measured after Tagalog landed on `main`** (the merge changes the roster
+  the probe walks, not Latvian's labels): the same 56 px at all eight widths,
+  the same 180.5 and 57.3, and `PASS — every header one line, no locale worse
+  than English` over `en,fil,lv`.
+- **The gong entry changed under it.** §262 (the C7 note, #613) rewrote the
+  English of that entry while this was in review: four explainer prose blocks,
+  the heading and the plate labels, and two primer paragraphs. The 16 + 2
+  Latvian keys that went dead are updated in place from the old Latvian (only
+  what the English changed is rewritten: 61.1° and 5.45×, 48.19, 25 dB, the
+  heading's added §262), the §262 paragraph is new, and the number-and-unit
+  plate labels that are now pure figures are identity entries, as German and
+  Russian keep them, so the explainer is 772/772. Tagalog had the same 16 + 2
+  dead keys on `main`; [kelaiem/timesim#629](https://github.com/kelaiem/timesim/pull/629)
+  re-keyed them there, and this branch takes `main`'s two Tagalog table files
+  unchanged.
+- **§53's column:** no content wider than its box.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **772/772**, primer **145/145**; 0 unmatched, 0 markup / `<code>` drift, **0 plate and 0 prose number drift** (the prose gate's control caught both plants), 0 crossed honesty terms, 0 absent; honesty control PASS (*modelēts / simulēts*), **20/20** rows verified; block coverage 0 short blocks against Latvian's median ratio 1.06 (explainer) and 1.01 (primer); **0 new plate overflow** on both pages. The run's one FAIL row is `[ar] plate fit`, which fails identically on an untouched `main` in this container and passes on CI |
+| `explain-quotes` | PASS |
+| `glossary-links` | text identical with and without the linker in every locale; lv **81** links (en 91) — PASS |
+| sense audit | 0 wrong-sense links over the linked terms (four flagged blocks read in context, each the glossary's sense) |
+| `probe-chrome-coverage --locales de,lv` | control PASS; lv **0 missing, 0 not applied** |
+| `l10n-review-packets` | PASS, 20 locale packets; lv 241 rows, 6 questions |
+| `probe-116-locale-fit` | headers 56 px at all eight widths; `#chrome-bar` lv 180.5 against en 176.6; *Zvana plkst.* 57.3 — PASS, and unchanged when re-measured after the Tagalog merge |
+| `offline-check` | **45/45**, precache **65/65**, the Latvian primer served from cache |
+| boot | `?lang=lv`, `lav`, `lvs` and `lv-LV` (the last in a browser launched as fr-FR) on all three documents: `lang="lv"`, `dir="ltr"`, `fmtNum` reads `30,0 · 0,024 · 18 000`, and the only console lines are Chromium's software-GL notices and the dev server's own `/__state` 404, which English shows too; `ltg` reads English |
+| fingerprint | **524118476** (60 units, 13 poses) at `?lang=lv` and in English, identical to a virgin boot of `origin/main` measured beside it |
+| battery | not run locally; CI's Battery job on the PR is the evidence |
+
+### Residue, recorded
+
+- **No native review pass**, the IOU every locale carries. The terms most
+  likely to differ in a Latvian workshop are the six the review packet asks:
+  - «fuzeja», an adapted loan where no trade word was found
+  - «eskapements», a loan where a native term may exist
+  - «spirāle» for the hairspring, also the everyday word for any spiral
+    (the mainspring's own spiral is «tinums» to keep them apart)
+  - «enkura dakša»
+  - «zobratiņš», the engineering word for a pinion
+  - «aizturis» / «sprūds» / «fiksators» read as three distinct parts
+- **The vertical rule is shared, not derived here**, because this
+  container's probe controls fail. Running `probe-249-vietnamese-vert
+  --script lv` where its controls pass would turn the ordering into a
+  derivation.
+- **`index.html`'s `<title>`** is still not localized in any locale.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
@@ -32792,6 +32996,180 @@ and the energy column's own `g` rather than restating either. `explain.html`'s
 free-sprung caption no longer says gravity is not modelled. It names the
 position as modelled, gives the spring-weight finding, and keeps "modelled, not
 simulated" and the escapement's share unmodelled, in every locale.
+
+## §221 — The balance swings its physical amplitude: the window and the bank derived from the lift, the swing level over the reserve
+
+**Shipped whole.** Filed out of §218's landing, which named the performed
+amplitude as the lever on the visible breathing and left it alone. The mesh
+performed a 45° readability swing, a sixth of a real one, and the smaller
+number reached further than its comment said: the fork's bank, the impulse
+window, the §36 registry, the `beat` axis and both pages all read it.
+
+**One amplitude.** `AMPLITUDE_VISUAL_DEG` is gone. The balance swings
+`AMPLITUDE_POSED_DEG`, which IS `AMPLITUDE_TARGET_DEG` (200°): the swing TODO
+207 designed the movement to keep up hanging, at the nominal friction corner.
+The entry named 270° — `AMPLITUDE_TRUE_DEG`, which TODO 192 step 4 had already
+split into the claim (126°) and the peak (455°, since TODO 216 the knock's 315°) because the spring could not
+honestly sustain 270. The designed target is the one number of the three that
+describes a serviced watch running, so it is the one the mesh performs; the
+other two stay what loads are priced at.
+
+**The lift is cited; the window and the bank are derived from it.**
+
+- `LIFT_DEG = 50` (Reymondin et al., *The Theory of Horology*; Daniels,
+  *Watchmaking*): the balance's rotation from unlock to drop, a design fact of
+  the escapement.
+- `IMPULSE_WIDTH = (2/π)·asin(LIFT_DEG / 2A)` = **0.0798** of a beat, the time
+  a balance at A spends inside ±L/2, against the authored 0.16. The balance's
+  phase moved to meet the escapement's clock: its zero crossing sits half a
+  window after each beat's τ = 0, so every instrument that reads τ = 0 as lock
+  still does. (The first draft shifted `beatPhase` instead and
+  `probe-131-escapement-slide` failed nine rows, all of them that assumption.)
+  A boot assert holds the pin's travel across the window to the lift.
+- `FORK_BANK_DEG` is the impulse pin's own bearing from the fork pivot at the
+  lift's edge, `atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))` with D the
+  fork-to-staff distance: **4.03°** each way, an **8.05°** lever angle, inside
+  the 8–10° of real Swiss levers. The amplitude drops out, so the fork's swing
+  is a property of the escapement and not of how hard the watch is running.
+  Two earlier forms were each measured wrong. Before §221 the pin's arc was the
+  readability swing's, giving 2.57°. The first §221 draft kept the arc-length
+  identity `rollerR·Δθ = notchDepth·2·bank` with the cited lift (5.92°, an
+  11.85° lever) — and the new probe's notch rows found the pin slipping
+  **0.646** across the notch every window, exactly the mismatch of matching
+  arcs at the notch FLOOR (6.84 from the pivot) when the pin crosses the line
+  of centres at D − rollerR = 9.58. Now the pin stands on the notch's
+  centreline at both window edges to 1e-7.
+
+**Two checks whose bounds were readability-era, made exact.** Neither was
+widened. The pallet stone's width ceiling was `0.5·pitchArc`, the wheel-only
+arc of a beat with no fork swing in it; it is now the tip's whole-beat travel
+across the stone in the fork's frame, the physical bound (a face that reached
+it would leave no drop). The blank's wheel-sweep check bounded the swing by
+`bank·|p|`, as if the whole displacement pointed at the wheel; it now takes the
+nearest approach on the arc the point actually travels, clamped to ±bank, and
+the corner it flagged at 0.1125 measures 0.1792 against `CLEAR_MARGIN`.
+
+**The amplitude does not sag on a fusee.** `balanceTheta`'s
+`0.55 + 0.45·tension` is gone. §104 holds the going spring's level product to
+float noise across the reserve, so the balance receives the same impulse at
+hour 30 as at hour 0; the sag was a going-barrel story. A real fusee watch
+still loses a few degrees to its own losses, and no coefficient is invented for
+that — a slope needs a loss model, which is §246 tier two's driven balance.
+
+**What followed the swing.**
+
+- The §36 registry: `Balance` and `Hairspring` declare NO bounded travel. A
+  400° total arc passes a revolution, so both stay full revolves.
+- The hairspring's frames are meshed out to the swing on §218's step exactly
+  (`HAIRSPRING_RATIO_THETA`, 0.05 rad — the builder's clamp ratio reads the
+  frames at ±one step, so the step must be that angle, which a rounded count
+  missed by 0.27%): 141 frames, rounded out to 3.50 rad.
+- The `beat` axis's `n` is derived to hold the old 7.68 samples inside each
+  impulse window: `round(96·0.16 / IMPULSE_WIDTH)` = **193**, and the slice
+  rosters declare 194 poses.
+
+**§218's overcoil gate, restated on the owner's call.** It held the peak pivot
+force at the performed swing under a tenth of a flat spring's, a figure set at
+the 45° swing with no derivation. Measured at 200° it had a second defect: it
+divided the overcoil's peak over ±θ (at −200°) by the flat spring's force at +θ
+only, and neither spring is symmetric (the flat one reads 16% more at −200°).
+Peak to peak, the ratio is **×0.102**. The gate is now what Phillips's theorem
+actually claims: the stud's reaction loses its FIRST-order term. Its odd part
+can only have order 1 or at least 3, so the order read between the frame step
+and a fifth of it classifies with 2 as the boundary and no tolerance chosen:
+the shipped overcoil reads **3.000**, and the flat spiral beside it **1.000**
+(the control that the reading can fail). A 1.0-turn overcoil reads 1.0, a
+non-concentric case the tenth also missed. The ratio at 200° and at the peak
+(×0.092 at 316°) is reported. CLAUDE.md's rule 4 says so.
+
+**The knock moved with the bank.** TODO 216 landed on `main` while this was
+open: `ESCAPEMENT_KNOCK` solves, off the fork blank's outline, the swing at
+which the pin carried round from the far side strikes the banked fork's horn,
+and `AMPLITUDE_PEAK_DEG` became the smaller of that and the energy solve's
+maximum — 315°. It reads `FORK_BANK_DEG`, so the larger bank moves it: the
+knock is **315.22°** (314.18° on the old bank) and the peak **316°**, held by
+`equalisation` row 14 and agreed by `probe-216-knock.mjs` (lift 50.000°, knock
+315.223°, the record AGREES). §218's peaks are priced there: stress 127.5 MPa,
+pivot 0.00212 mN. The lift that probe reads off the metal is now the cited 50°
+exactly — it read 30.95° against the pose law's 21.7° before, which is the gap
+TODO 226 was filed for.
+
+**The safety action, first exercised (TODO 105).** At ±45° the roller's
+crescent never left the guard pin. At ±200° its solid rim passes the pin twice
+a swing with the fork banked: guard pin → roller outline over one whole
+oscillation at 2000 samples is **min 0.2942** (balance at 170°), max 0.8066.
+Clear, and reported; TODO 105's point 1, that none of those clearances is
+derived, stands.
+
+**TODO 226, half closed.** TODO 216 filed the same finding from the other
+side while this landing was open: the pin only enters the fork's mouth, and
+the bank was derived at the notch floor. Its step 2 — derive the bank from the
+pin's real radius about the fork pivot by `d·sin ψ = r·sin(θ + ψ)` — is this
+landing's bank exactly. Its step 1 stands, and the notch rows here measure it:
+at the lift's edge the pin's centre stands 0.156 outside the horn tips, so it
+enters 0.394 of a notch 2.759 deep. The fork's length stops its tip at the
+roller (`− 1.6`, one roller radius authored); seating the pin is a layout fix,
+P3, and the bank reads D and follows it.
+
+**Instrument.** `tools/probe-221-amplitude.mjs` (acceptance): the swing off the
+mesh, level over the reserve and the arbor's run, the pin's travel equal to the
+lift, the pin on the notch centreline at all four window edges, the two
+derivations printed beside their formulas (rule 6 keeps boot silent, so the
+entry's "printed at boot" is printed here), and the TODO 105 clearance
+reported.
+
+**Pages.** The escapement entry (the window, the bank and its derivation, the
+ported `IMPULSE_WIDTH` and `BANK_DEG`), the free-sprung caption (the sag story
+replaced by the fusee's, with the pivot loads at 200°) and the overcoil plate,
+and the primer's beat ("a twelfth of each beat") and swing sentences ("drawn
+smaller than life" is now "and so does this one"), in all nineteen locales.
+
+### The entry as filed, reconciled
+
+Roadmap item 221 shipped whole in one landing, and the entry retires to a
+pointer there. What the filing said against what was built, where they differ:
+
+- **"`AMPLITUDE_TRUE_DEG` the one amplitude", 270°.** Superseded before the
+  landing: TODO 192 step 4 split that literal into the claim and the peak,
+  and TODO 207 designed the movement to 200°. The mesh performs the design
+  target; 270 survives nowhere.
+- **"`IMPULSE_WIDTH` = 0.059 at 50° and 270°."** The formula as filed; at the
+  shipped 200° it gives 0.0798.
+- **"`bank = rollerR·L / (2·notchDepth)` — the identity that already
+  exists."** Wrong, and found by the acceptance row the filing itself asked
+  for ("the pin measured inside the notch at both ends of the window"): the
+  pin works at the notch's mouth, not its floor, and the identity left it
+  slipping 0.646 across the notch. The bank is the pin's own bearing at the
+  lift's edge, and TODO 226 (filed by TODO 216 while this was open) keeps the mouth.
+- **"189 frames at the §218 step"** (at 270°). 141 at 200°, and the step had to
+  be HAIRSPRING_RATIO_THETA exactly, not merely close, for the builder's clamp
+  ratio to agree with the plan's.
+- **"~260 samples per oscillation"** for the beat axis (at 270°). 193 at 200°,
+  derived; the three expensive slices measured ×2.2–2.3 locally.
+- **"`IMPULSE_WIDTH` and `FORK_BANK_DEG` printed at boot."** Rule 6 keeps boot
+  silent, so the probe prints them beside their formulas; the boot asserts
+  hold the derivations instead.
+- **"The guard pin's clearance reported, green or filed under TODO 105."**
+  Green: 0.2942 minimum.
+- **"§218's overcoil decision can be taken at the amplitude where its number
+  is real."** It was: at 200° the tenth fails peak to peak (×0.102), and the
+  owner chose to restate the gate as Phillips's own claim rather than
+  re-proportion the terminal.
+- **"Eight locales each."** Nineteen by the time it landed.
+
+**Battery.** Local, `--no-incremental`, against the base commit on the same
+container the same day: **53/53 both sides** (6,792 s here, 6,858 s base).
+Fingerprint 2435426308 → **3888809417**, moved by construction (every
+escapement mesh re-cut, the hairspring re-meshed). `--report` diffed check by
+check, and every moved row is the change: `penetration` Escape wheel ⇄ Pallet
+fork 0.035 → 0.038 (budget 0.1, the re-cut stones on the denser axis);
+`oscillator` the new swing (performed 45° → 200°, frames 41 → 141, the order
+rows new, the force ratios as above); `jumperMovers` its beat rows read `/193`;
+one `clearances` tie (Stop lever ⇄ Balance, 0.35 unchanged) found on another
+axis now the balance's phase moved; `plateSeats` screening 376 → 373 meshes
+near the plate over the same 43 poses and population, with no row changed;
+and the census counts and slice walls of the three sweeps the doubled `beat`
+axis feeds (×2.2–2.3 on that slice). Nothing else moved.
 
 ## §264 — The push's point tier on a parallel runner, handed to the battery before judging
 
