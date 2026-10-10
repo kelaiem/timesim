@@ -39873,14 +39873,18 @@ const PART_CALLOUTS = {
   // arbor's wheel → … the fold … → setting cap, which meshes the motion works'
   // minute wheel. "Keyless works" alone is one word at the crown for both.
   windStem: { name: 'Winding stem', train: 'Keyless works', anchor: 'centre' },
-  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre', place: 'above' },
-  // Two coaxial pairs — the crown wheel on the transfer wheel's arbor, the
-  // setting wheel under its bevel — share one centre, so each pair splits
-  // above / below it, the motion works pinions' rule.
-  // The winding pinion meshes the crown wheel right beside that pair, so its
-  // name is lifted ABOVE its centre, clear of the pair's upper slot.
-  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
-  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'centre', place: 'above' },
+  // The crown wheel rides the transfer wheel's arbor, and the winding pinion
+  // meshes it right beside them, under the winding clutch's unit label: four
+  // names in one column of the drawing. So the transfer wheel is named on its
+  // RIM, on the side facing away from the winding pinion (the hour wheel's
+  // `awayFrom` rule — away from the dial's axis is TOWARD the pinion here),
+  // which empties the column: the pinion and the crown wheel are each named
+  // centred on their own centres, one above the other.
+  windingPinion: { name: 'Winding pinion', train: 'Keyless works', anchor: 'centre' },
+  crownWheel: { name: 'Crown wheel', train: 'Keyless works', anchor: 'centre' },
+  transferWheel: { name: 'Transfer wheel', train: 'Keyless works', anchor: 'rim', awayFrom: 'windingPinion' },
+  // The setting bevel stands on the setting wheel: one centre, so the pair
+  // splits above / below it, the motion works pinions' rule.
   settingWheel: { name: 'Setting wheel', train: 'Keyless works', anchor: 'centre', place: 'below' },
   settingBevel: { name: 'Setting bevel', train: 'Keyless works', anchor: 'centre', place: 'above' },
   minuteWheel: { name: 'Minute-wheel arbor', train: 'Keyless works', anchor: 'centre' },
@@ -39988,6 +39992,56 @@ const LABEL_ANCHOR = new Map();
       return out.copy(ya >= yb ? a : b);
     });
   }
+}
+// The keyless side has the same defect four times over, in two pairs. The
+// keyless works and the winding clutch are both born at the MOVEMENT origin
+// (each group sits at 0 and its metal is placed inside it), so their labels
+// printed on one spot that is neither unit's metal; and the setting lever's
+// and yoke's groups sit on their pivots, which stand close enough that the
+// two names overprinted under "Keyless & winding". The lever and yoke are
+// named at the centre of their OWN metal instead — the world bounds of their
+// real meshes, read live — and the clutch and the keyless works at a point
+// of their own metal chosen below. No offset is authored.
+{
+  const box = new THREE.Box3(), mb = new THREE.Box3();
+  const metalCentre = (unitObj) => {
+    const meshes = [];
+    unitObj.traverse((m) => { if (m.isMesh && !m.userData.schematic) meshes.push(m); });
+    if (!meshes.length) console.warn(`LABEL_ANCHOR: unit "${labelEntries.find((e) => e.obj === unitObj)?.name}" has no metal to centre its label on`);
+    return (out) => {
+      box.makeEmpty();
+      for (const m of meshes) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); box.union(mb.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld)); }
+      return box.isEmpty() ? unitObj.getWorldPosition(out) : box.getCenter(out);
+    };
+  };
+  for (const u of [settingLeverGroup, yokeGroup]) LABEL_ANCHOR.set(u, metalCentre(u));
+  // The clutch slides along the stem right beside the setting wheel, whose
+  // own name hangs at that end, so the clutch is named at the INBOARD end of
+  // its metal — away from the crown, against uWind — still on the part, one
+  // clutch-length clear of the setting wheel's slot. (The outboard end was
+  // tried and measured: the stem runs toward the setting wheel's name there.)
+  {
+    const clutchMeshes = [];
+    windClutchMount.traverse((m) => { if (m.isMesh && !m.userData.schematic) clutchMeshes.push(m); });
+    const corner = new THREE.Vector3(), centre = metalCentre(windClutchMount);
+    LABEL_ANCHOR.set(windClutchMount, (out) => {
+      centre(out);
+      let reach = Infinity;
+      for (const m of clutchMeshes) {
+        const bb = m.geometry.boundingBox;
+        for (let i = 0; i < 8; i++) {
+          corner.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(m.matrixWorld);
+          reach = Math.min(reach, (corner.x - out.x) * uWind.x + (corner.y - out.y) * uWind.y);
+        }
+      }
+      return Number.isFinite(reach) ? out.set(out.x + uWind.x * reach, out.y + uWind.y * reach, out.z) : out;
+    });
+  }
+  // The keyless works is the umbrella for both of the crown's paths, and its
+  // own pieces are named one by one in the part callouts — so the centre of
+  // its metal is the one spot already crowded with their names. The unit is
+  // named at its INPUT instead: the crown, out at the end of the stem.
+  LABEL_ANCHOR.set(keyless, metalCentre(crown));
 }
 
 // --- time-scale (log slider, 0.02..1, default 1 = real time) --------------
