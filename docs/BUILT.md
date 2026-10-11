@@ -34024,6 +34024,142 @@ gong, barrel and governor rows (keyed on English older than §262) re-keyed and
 translated with them. `probe-197`'s header no longer says the path is
 unmodelled and prints the case path's rows beside the wire's.
 
+## §267 — The boot screen's bar, driven by build position against a measured table
+
+**Why the answer changed.** §238 refused a progress bar in its own text: the
+build was one uninterruptible block, so a bar over it could only be a timer.
+§239 broke both premises. The build now hands the thread back about 480 times,
+so a frame can be committed mid-build. And its seams mark positions in the
+PROGRAM, not moments on a clock, so there is a position to report.
+
+**What the bar does NOT read: seams passed over seams total.** The seams are
+as dense as the code that needed them, not as the time it takes. §267's filing
+measured that ordinal 22.6 points ahead of the true elapsed fraction at #609,
+then standing at 98% for ten seconds. On today's tree, whose seams §266 placed
+along the execution timeline, it is still 15 points at worst and 6.5 on
+average on this container (12.8–14.2 and 5.3–5.8 on CI's runners). That bar is now this landing's control.
+
+**What it reads instead.**
+- **Every seam carries a permanent id**: `await breathe(n)`.
+  `node tools/boot-progress.mjs --write` stamps any bare `await breathe()` with
+  the next free id and never renumbers, so a diff touches only the seams it
+  added.
+- **`src/boot-progress.js` is generated, never edited.** It gives each seam a
+  CURVE: the share of the build elapsed at each of its visits, the median over
+  three boots, simplified (Douglas–Peucker) to the fewest knots within 0.2
+  points of every visit. Today that is 607 knots over 356 reached seams, 14 KB.
+  - **Per visit, not per seam**, because the first version keyed on first
+    visits and a loop going round seams it had already passed left the bar
+    standing for up to 2.4 s. One seam is visited 1,484 times.
+  - **Knots, not a straight line from first visit to last**, because the second
+    version did that and ran 12 points ahead. Some seams are visited in two
+    bursts seconds apart, and a line between them jumps across the gap. A knot
+    at each burst's edge keeps the chord off it.
+  - **The visit count is the program's.** It is identical on every boot and
+    every machine, and the writer refuses a table whose boots disagree on it.
+- **Four rules make it a bar and not a clock:**
+  - It shows the largest share reached, so it only goes forwards.
+  - It is written only at a hand-back, when a frame can show it, so
+    `aria-valuenow` changes at most once per hand-back.
+  - 100% belongs to `releaseBuildInputGuard()`, the line that already says the
+    build is done; every seam's share is under 1.
+  - A seam the table does not list warns once at the end of the build (rule 6).
+
+**The screen.**
+- A 180 px track sits under the head line, with the locale's own percentage
+  beside it. The label uses a new `fmtPct` in `i18n.js`, because the locales
+  disagree about the sign: Turkish writes `%39`, French and German `40 %`,
+  Arabic its own sign. It is floored, so 99.6% does not read 100.
+- The fill is `scaleX` with a 0.3 s transition, both on the compositor, which
+  is §238's rule.
+- It fills from the inline start, so under `dir="rtl"` it grows from the right.
+- It is a `role="progressbar"` labelled by the head line. The label is
+  `aria-hidden`, because the whole screen is a live region.
+- The ring stays. It is the only thing moving during the first composited
+  frame, the one block no seam reaches.
+- The bar hides on a failed build, because a part-filled bar over a dead build
+  claims a position nothing is measuring.
+- No new string, so no table changed. `probe-chrome-coverage.mjs`: twenty of
+  twenty-one locales read 0 missing, 0 not applied. Latvian's one MISSING
+  ("Setting bevel") reads identically on `main` and is not this landing's.
+
+**Gates, both in `boot-yield.yml`.**
+- **`node tools/boot-progress.mjs --check`**, browser-free, runs before
+  Chromium is installed. It fails on a bare seam, an id used twice, a stray
+  un-awaited `breathe(`, a malformed knot row, or a seam source order that
+  differs from the table's. Adding, removing or moving a seam is a difference
+  in that order. It then runs itself against four mutated copies of `main.js`
+  (an id dropped, two seams swapped, a seam deleted, a seam added) and fails
+  unless each one fails.
+- **`tools/probe-267-boot-progress.mjs`** holds the bar against the true elapsed
+  fraction t / span, read from `__clock.boot.progress.writes` at both edges of
+  every write. It gates:
+  - the time-averaged distance, which is sharp;
+  - the worst moment, which is a backstop;
+  - that the bar never goes backwards and says 100% only at the guard's
+    release;
+  - that every seam reached is in the table;
+  - and, through a CDP screencast, that the bar PAINTS mid-build, in at least
+    12 distinct widths and never shrinking.
+
+  Its two controls are:
+  - **The ordinal**, rebuilt from the same boot's first visits at the same write
+    times. It must fail the average.
+  - **A frozen bar** (`writeBar` made to return). The pixel reader must see one
+    width.
+
+  The reader scans every row the bar can occupy. Its first version read one
+  row and lost a third of the frames, because the bar sits at a fractional y
+  and the compositor rasterises an animating layer a pixel higher or lower from
+  frame to frame.
+
+**The ceilings, from the CI host.** Twelve boots on six `ubuntu-latest` runners,
+the table being the one this container measured:
+
+| runner CPU | mean, the bar | worst, the bar | mean, the ordinal |
+|---|---|---|---|
+| AMD EPYC 7763 (×3) | 2.30–2.61 pt | 5.43–9.85 pt | 5.28–5.50 pt |
+| AMD EPYC 9V74 | 1.60–1.77 pt | 5.40–5.46 pt | 5.55–5.74 pt |
+| Xeon Platinum 8370C | 2.57–2.69 pt | 5.45–10.34 pt | 5.39–5.57 pt |
+| Xeon Platinum 8573C | 1.49–1.62 pt | 5.38–5.42 pt | 5.76–5.83 pt |
+
+On the container that measured the table, the bar's mean is 0.4–0.5 points.
+The CI figure is the table's error on ANOTHER host, which is the honest
+reading, since no viewer's machine is the one that measured it. Each ceiling
+is the worst run × 1.66, rounded up to the next half point:
+- **Mean: 4.5 points** (2.69 × 1.66 = 4.47). Every ordinal run, 5.28 at its
+  best, is over it.
+- **Worst: 17.5 points** (10.34 × 1.66 = 17.2). On every host the worst moment
+  is the first composited frame. Its position among the seams differs by host:
+  the bar jumps ahead where the measuring host had already paid for it, and
+  falls behind where this one pays. So the worst number reads the host's
+  software GL, not the table. The ordinal cannot be asked to fail it
+  (12.8–14.2 points).
+
+**What it costs.**
+- **Geometry:** the fingerprint is `3302509692` on this branch and on `main`,
+  two fresh boots each, and `2603465796` on both after merging `main` at #641.
+- **`probe-239-boot-yield`**, alternating runs on one container: held 383–415 ms
+  against `main`'s 392–433, worst task 1,565–1,718 ms against 1,526–1,557, and
+  2.6 s of long tasks on both.
+- **`probe-238-boot-screen`:** 8/8 on both trees.
+
+**What it leaves.**
+- The first composited frame is still one block the bar cannot move through;
+  the ring covers it.
+- The table is measured on one host, so on another the bar moves unevenly. On
+  CI that is 1.5–2.7 points on average, never backwards.
+- A spec variant (`?studr=` and the like) visits seams the default build does
+  not. The bar holds at those seams rather than invent a share. Only the
+  default build is measured.
+- A change that alters how often a loop visits a seam, without moving any seam,
+  passes `--check`. Only the probe's average catches it, once it is large
+  enough to matter; regenerate when it does. The first `main` merged into this
+  landing was both cases at once. #641 added build code at a seam, which
+  `--check` failed until the table was regenerated. It also took the build from
+  14,782 seam visits to 14,769, which `--check` cannot see; the regenerated
+  table measured it.
+
 ## §216 — Hungarian — suffixes hyphenated onto code spans and numbers, and space-grouped figures
 
 **Shipped whole.** The chrome (`src/i18n.js`, 486 keys), `explain.html`
