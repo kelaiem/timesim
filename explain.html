@@ -1189,8 +1189,10 @@
         sign written out. The let-off is derived from the impulse pin's own bearing from the
         fork pivot at the edge of the lift,
         <code>atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))</code>, and since §221 that edge
-        is the cited lift, <code>LIFT_DEG = 50</code>°; the fork banks a run past it, so it
-        swings a 9.05° lever angle. The drop is instant in a real watch; here it is paced
+        is the cited lift, <code>LIFT_DEG = 50</code>°; since TODO 226's step 3b the notch
+        is closed to the pin plus a shake, so the fork LEADS that bearing by the shake the
+        pin sits across (the wall behind the pin drives it), and it banks a run past that, so
+        it swings a 9.41° lever angle. The drop is instant in a real watch; here it is paced
         across the run, and both its ends are contacts. The play loop drives every pose
         through the same ported law plate 2 scrubs (<code>escapeAngle</code> /
         <code>forkSwingRad</code>); only DISPLAY time is dilated, since the whole action is
@@ -1230,7 +1232,9 @@
         <code>AMPLITUDE_POSED_DEG = 200</code>° either way (§221: the designed swing, level
         over the reserve because the fusee delivers level torque); while the impulse pin is
         in the notch the fork's angle is the pin as seen from the fork's pivot,
-        <code>atan(r·sin θ / (d − r·cos θ))</code>, and outside it the fork lies on its bank;
+        <code>atan(r·sin θ / (d − r·cos θ))</code>, a shake to one side — trailing the pin
+        while the pin pushes it through the unlock, leading it once the wheel has carried it
+        across the shake and its wall drives the pin — and outside it the fork lies on its bank;
         and the wheel stands where its tooth circle crosses the face the tip is on — the
         locking face through the unlock (the dip at the start: the RECOIL), the impulse face
         to the let-off, then the drop and the run onto the other stone — so across the beat
@@ -1262,28 +1266,34 @@
       reconcile, and the fork met the pin inside its horn, every beat, between two parts no
       gate held apart. Now there is one clock, the balance, and the rest is geometry, and
       since TODO 226's first step, the seat, every pair the fork and the balance own is
-      held to the margin with nothing excused. The notch is cut as the pin's own swept path
-      in the fork's frame — its disc over the lift, where the fork follows it, and past
-      the lift, where the fork lies banked — plus the margin, and its horns run to the depth
-      where the pin enters, so the pin's centre stands between them for the whole lift (it
-      stood 0.156 outside them before, and only 0.394 of it entered a slot 2.759 deep). The
-      pin is set in one roller below the fork, whose rim clears the guard pin set behind the
-      notch's floor. What the cut still shows is the debt it does not pay yet: the notch is a
-      funnel, not a parallel slot, and the pin bears on no wall in it — the fork follows the
-      pin's centre line, so the drive through the notch is the law's and not a contact's.
-      Since TODO 226's third step the escapement has what closing it needs: LOCK and RUN.
-      Each stone is seated so a resting tooth stands <code>LOCK_DEG</code> +
-      <code>RUN_DEG</code> (1.5° + 0.5° of fork) down its locking face, and the fork banks
-      the run past the let-off, so the pin carries it back through the run and the lock
-      before the impulse — the UNLOCK, plate 1's phase 2 — and the wheel RECOILS through it,
-      0.28° on the entry stone and 0.54° on the exit, read off the leaned face rather than
-      posed. Closing the notch on the pin is what is left of that step. Longer horns would
-      embrace the pin further and meet it sooner on the far side of the swing: cut to the
-      depth where the pin meets the banked fork, the balance knocks at 304.12°, which is the
-      largest swing it can reach. The let-off is exact (§221): <code>FORK_LETOFF_DEG</code>
-      is the pin's bearing at the lift's edge, 4.03° (it was 2.57° while the window was a
-      readability amplitude's arc, and the arcs were matched at the notch's floor, which the
-      pin never reached), and <code>FORK_BANK_DEG</code> is that plus the run, 4.53°. The
+      held to the margin, with one contact declared. The pin is set in one roller below
+      the fork, whose rim clears the guard pin set behind the notch's floor. Since TODO 226's
+      third step the escapement has LOCK and RUN: each stone is seated so a resting tooth
+      stands <code>LOCK_DEG</code> + <code>RUN_DEG</code> (1.5° + 0.5° of fork) down its
+      locking face, and the fork banks the run past the let-off, so the pin carries it back
+      through the run and the lock before the impulse — the UNLOCK, plate 1's phase 2 — and
+      the wheel RECOILS through it, 0.28° on the entry stone and 0.54° on the exit, read off
+      the leaned face rather than posed. And since that step's second half the notch is
+      CLOSED on the pin: two parallel walls a shake off its flanks, the shake being
+      <code>HANDOFF_TRACK_TOL</code>, the least play a working contact can be told apart by.
+      Until then it was a funnel cut as the pin's swept path plus the margin, and the pin
+      bore on no wall in it, so the drive through the notch was the law's and not a
+      contact's. Now the pin on the walls is the pair's one working contact, gated through
+      the passage. Closing it found that a round pin of this section cannot leave a parallel
+      slot: once the fork banks, the pin crosses the slot about as fast as it climbs out, and
+      its outer flank strikes the far wall. So the jewel is ground to a D, as real roller
+      jewels are, its flat toward the fork and solved, not chosen: the largest flat that lets
+      the banked pin leave with the play it sat in, 0.282 off a 0.55 pin. Between the
+      unlock and the impulse the wheel carries the fork across the shake with nothing
+      touching the pin, and that crossing is paced from the metal, the fork's and the
+      train's inertia weighed off their own meshes against the escape torque: 1.61 ms, 5.03°
+      of balance. Cut to the depth of the pin's last contact, the horns let the balance swing
+      to 310.46° before the pin knocks on them, which is the largest swing it can reach. The
+      let-off is exact (§221): <code>FORK_LETOFF_DEG</code> is the pin's bearing at the
+      lift's edge plus the shake's lead, 4.20° (4.03° on the centre line while the notch was a
+      funnel, and 2.57° while the window was a readability amplitude's arc and the arcs were
+      matched at the notch's floor, which the pin never reached), and
+      <code>FORK_BANK_DEG</code> is that plus the run, 4.70°. The
       pallet stones seat in slots whose gap is DERIVED from the blank's own extrude bevel
       (<code>gGap = bevel + SEAT_SHOW</code>) — a guard born from a defect every battery run
       missed; that seat is also TODO 5's fixture-vs-fixture residue: the one intra-unit pair
@@ -3698,20 +3708,39 @@
       var EMBRACE_DEG = 42, DRAW_DEG = 12, DROP_DEG = 1.5, LOCK_DEG = 1.5, RUN_DEG = 0.5;
       var MOVEMENT_SENSE = -1;             // layout.js — clockwise seen from the dial; +x stone is the ENTRY stone
       var D2R = Math.PI / 180, amp = AMPLITUDE_POSED_DEG * D2R, liftHalf = LIFT_DEG / 2 * D2R;
-      // the LET-OFF is the pin's bearing from the fork pivot at the lift's edge
-      // (§221); the fork BANKS a run past it (TODO 226 step 3), and the pin
-      // meets the banked fork where its bearing is that bank, a little outside
-      // the lift
-      var bank0 = Math.atan2(R_PIN * Math.sin(liftHalf), D - R_PIN * Math.cos(liftHalf));
+      // TODO 226 step 3b — the notch is closed to the pin plus a SHAKE
+      // (HANDOFF_TRACK_TOL), so the fork is the pin's bearing from its pivot
+      // offset by however far the pin sits across the slot: LAGGING it through
+      // the unlock (the pin pushes the wall ahead of it), LEADING it through
+      // the impulse and run (the wall behind pushes the pin). escapement.js
+      // pinNotch solves that offset against the jewel's D; on the round it is
+      // asin(shake/ρ), and the D moves it by 0.0003 at most, under a pixel.
+      var SHAKE = 0.03, CROSS_END_DEG = -10.16;   // the crossing's end: main.js FORK_CROSSING, integrated at boot
+      function rho(th) { return Math.hypot(D - R_PIN * Math.cos(th), R_PIN * Math.sin(th)); }
+      function bearing(th) { return Math.atan2(R_PIN * Math.sin(th), D - R_PIN * Math.cos(th)); }
+      function lead(th) { return bearing(th) + Math.asin(SHAKE / rho(th)); }
+      function lag(th) { return bearing(th) - Math.asin(SHAKE / rho(th)); }
+      function solve(f, lo, hi) { var flo = f(lo); for (var k = 0; k < 80; k++) { var m = (lo + hi) / 2, fm = f(m); if ((fm > 0) === (flo > 0)) { lo = m; flo = fm; } else hi = m; } return (lo + hi) / 2; }
+      // the LET-OFF is where the leading wall lets the pin go at the lift's
+      // edge (§221's 50°); the fork BANKS a run past it (TODO 226 step 3), and
+      // the pin meets the banked fork's wall a little outside the lift
+      var bank0 = lead(liftHalf);
       var bank = bank0 + RUN_DEG * D2R;
-      var entryHalf = Math.asin(D * Math.sin(bank) / R_PIN) - bank;
+      var entryHalf = solve(function (th) { return lead(th) - bank; }, liftHalf, Math.PI / 2);
+      var unlockHalf = solve(function (th) { return lag(th) + (bank0 - LOCK_DEG * D2R); }, -entryHalf, liftHalf);
+      var crossEnd = CROSS_END_DEG * D2R;
       var alpha = Math.asin(entryHalf / amp);
       var WINDOW = 2 * alpha / Math.PI;                                 // the pin's passage, as a fraction of the beat
       function theta(p) { return amp * Math.sin(Math.PI * p - alpha); }  // beat 0: the pin meets the banked fork
-      function swing(p) {   // the pin seen from the fork's pivot, banked outside its passage
+      function swing(p) {   // the fork, read off the pin; banked outside its passage
         var th = theta(p);
         if (Math.abs(th) >= entryHalf * (1 - 1e-12)) return th < 0 ? -bank : bank;
-        return Math.atan2(R_PIN * Math.sin(th), D - R_PIN * Math.cos(th));
+        if (th <= unlockHalf) return lag(th);
+        if (th >= crossEnd) return lead(th);
+        // across the shake the wheel drives the fork from rest against the
+        // pin, so its lead grows as the square of the time; drawn so
+        var u = (th - unlockHalf) / (crossEnd - unlockHalf);
+        return lag(th) + (lead(th) - lag(th)) * u * u;
       }
       var span = 2 * 4.5 * Math.sin(EMBRACE_DEG * D2R);
       var ESC = leverEscapement({ span: span, beatRad: BEAT_DEG * D2R, bank0Rad: bank0, sense: MOVEMENT_SENSE,

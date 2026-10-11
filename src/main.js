@@ -10903,7 +10903,9 @@ const FORK_CROSSING_SOLVE = (() => {
   const { notch, unlockHalf, liftHalf } = PIN_FORK;
   const delta = (psi) => ESCAPEMENT.deltaAt(1, -psi);   // a +θ half-swing unlocks the +x stone (escapeAngle's σ = +1)
   const h = 1e-6;
-  const G = (psi) => (delta(psi + h) - delta(psi - h)) / (2 * h);
+  // the face's gearing, as a magnitude: through the impulse the tooth drives
+  // the fork the way it is already turning, whichever way the movement runs
+  const G = (psi) => Math.abs(delta(psi + h) - delta(psi - h)) / (2 * h);
   const Ieff = (psi) => { const g = G(psi); return I_fork + I_wheel * g * g; };
   const A = AMPLITUDE_POSED_DEG * DEG2RAD, W = 2 * Math.PI * F_BALANCE;
   const thetaAt = (t) => A * Math.sin(W * t), thetaDot = (t) => A * W * Math.cos(W * t);
@@ -10925,6 +10927,7 @@ const FORK_CROSSING_SOLVE = (() => {
     const th = thetaAt(t), lag = notch.lag(th), lead = notch.lead(th);
     if (psi < lag) { psi = lag; v = dLag(th) * thetaDot(t); pushed++; }   // the pin still pushing
     if (psi >= lead) { rec.push([th, 1]); break; }
+    if (th >= liftHalf) { rec.push([th, 1]); break; }   // never across by the let-off: the assert below says so
     rec.push([th, (psi - lag) / (lead - lag)]);
   }
   const endHalf = rec[rec.length - 1][0];

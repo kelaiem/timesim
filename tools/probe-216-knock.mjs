@@ -47,9 +47,12 @@ const out = await page.evaluate(async () => {
   const outline = blank.userData.blankMetalOutline;
   let pin = null;
   balG.traverse((m) => { if (m.isMesh && m.material?.color?.getHexString?.() === 'b01326' && !pin) pin = m; });
-  pin.geometry.computeBoundingBox();
-  const pb = pin.geometry.boundingBox;
-  const pinR = (pb.max.x - pb.min.x) / 2;
+  // TODO 226 step 3b — the jewel is a D: its section is published on the
+  // balance (`pinOutline`, pin frame), and the knock is where THAT meets the
+  // horn. The radius is the D's round (`pinR`), reported beside it.
+  let wheelData = null;
+  balG.traverse((o) => { if (!wheelData && o.userData?.pinOutline) wheelData = o.userData; });
+  const pinOutline = wheelData.pinOutline, pinR = wheelData.pinR, pinFlat = wheelData.pinFlat;
   const F = forkG.position, B = balG.position;
   const d = Math.hypot(F.x - B.x, F.y - B.y);
   const uX = (B.x - F.x) / d, uY = (B.y - F.y) / d;          // fork → balance
@@ -83,15 +86,30 @@ const out = await page.evaluate(async () => {
     }
     return c;
   };
-  // signed clearance from the pin's surface to the blank's metal (2D: the pin
-  // stands in the fork's z band — checked below)
-  const clear = (p, poly) => {
+  // signed distance from a point to a closed polygon (negative inside)
+  const toPoly = (px, py, poly) => {
     let m = Infinity, at = -1;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const s = segDist(p.x, p.y, poly[j][0], poly[j][1], poly[i][0], poly[i][1]);
+      const s = segDist(px, py, poly[j][0], poly[j][1], poly[i][0], poly[i][1]);
       if (s < m) { m = s; at = i; }
     }
-    return { c: (inside(p.x, p.y, poly) ? -m : m) - pinR, at };
+    return { d: inside(px, py, poly) ? -m : m, at };
+  };
+  // the D's outline in world 2D at balance angle θ
+  const pinPolyAt = (theta) => {
+    balG.rotation.z = pinAim + theta;
+    balG.updateWorldMatrix(true, true);
+    return pinOutline.map(([x, y]) => { v.set(x, y, 0).applyMatrix4(pin.matrixWorld); return [v.x, v.y]; });
+  };
+  // signed clearance from the pin's SECTION to the blank's metal (2D: the pin
+  // stands in the fork's z band — checked below): the nearer of a D point to
+  // the blank and a blank vertex to the D, negative once either is inside
+  const clear = (theta, poly) => {
+    const D = pinPolyAt(theta);
+    let best = { c: Infinity, at: -1 };
+    for (const [x, y] of D) { const q = toPoly(x, y, poly); if (q.d < best.c) best = { c: q.d, at: q.at }; }
+    for (let i = 0; i < poly.length; i++) { const q = toPoly(poly[i][0], poly[i][1], D); if (q.d < best.c) best = { c: q.d, at: i }; }
+    return best;
   };
   // Fork axis direction (world) at deflection psi: local −y.
   const axisAt = (psi) => { const a = forkBase + psi; return { x: Math.sin(a), y: -Math.cos(a) }; };
@@ -132,7 +150,7 @@ const out = await page.evaluate(async () => {
     let th = exit.theta + dir * 0.05, prev = null, hit = null;
     const step = 0.25 * Math.PI / 180;
     for (; Math.abs(th) < 2 * Math.PI; th += dir * step) {
-      const c = clear(pinAt(th), poly);
+      const c = clear(th, poly);
       if (c.c <= 0) { hit = { th, at: c.at }; break; }
       prev = th;
     }
@@ -140,9 +158,9 @@ const out = await page.evaluate(async () => {
     let lo = prev, hi = hit.th;
     for (let k = 0; k < 60; k++) {
       const mid = (lo + hi) / 2;
-      if (clear(pinAt(mid), poly).c <= 0) hi = mid; else lo = mid;
+      if (clear(mid, poly).c <= 0) hi = mid; else lo = mid;
     }
-    const at = clear(pinAt(hi), poly).at;
+    const at = clear(hi, poly).at;
     return { deg: Math.abs(hi) * 180 / Math.PI, vertex: at, local: outline[at] };
   };
   const kCCW = knockFrom(exitCCW, +1), kCW = knockFrom(exitCW, -1);
@@ -152,7 +170,7 @@ const out = await page.evaluate(async () => {
   forkG.updateWorldMatrix(true, true); balG.updateWorldMatrix(true, true);
   const rec = clock.equalisation?.going?.energy?.knock ?? null;
   return {
-    d, pinR, rollerR: Math.hypot(pin.position.x, pin.position.y), bankDeg: bank * 180 / Math.PI,
+    d, pinR, pinFlat, rollerR: Math.hypot(pin.position.x, pin.position.y), bankDeg: bank * 180 / Math.PI,
     liftDeg: lift * 180 / Math.PI, exitDeg: [exitCCW.theta * 180 / Math.PI, exitCW.theta * 180 / Math.PI],
     knock: { ccw: kCCW, cw: kCW },
     zBand: { fork: [fz.min.z, fz.max.z], pin: [pz.min.z, pz.max.z] },
@@ -166,7 +184,7 @@ if (Math.abs(ex[0] + ex[1]) > 0.05) f.push(`exit angles not symmetric about the 
 if (!(out.zBand.pin[0] < out.zBand.fork[1] && out.zBand.pin[1] > out.zBand.fork[0])) f.push('the pin does not stand in the fork blank\'s z band — 2D does not hold');
 if (!out.knock.ccw || !out.knock.cw) f.push('no knock found within a turn');
 const k = Math.min(out.knock.ccw?.deg ?? Infinity, out.knock.cw?.deg ?? Infinity);
-console.log(`lift ${out.liftDeg.toFixed(3)}° (bank ±${out.bankDeg.toFixed(3)}°, d ${out.d.toFixed(4)}, roller ${out.rollerR.toFixed(4)}, pin r ${out.pinR.toFixed(4)})`);
+console.log(`lift ${out.liftDeg.toFixed(3)}° (bank ±${out.bankDeg.toFixed(3)}°, d ${out.d.toFixed(4)}, roller ${out.rollerR.toFixed(4)}, pin r ${out.pinR.toFixed(4)}, a D flat ${out.pinFlat.toFixed(4)} off its centre)`);
 console.log(`knock at ${k.toFixed(3)}° (ccw ${out.knock.ccw?.deg.toFixed(3)}, cw ${out.knock.cw?.deg.toFixed(3)}); textbook 360 − λ/2 = ${(360 - out.liftDeg / 2).toFixed(3)}°`);
 if (out.record) {
   // the record solves the same outline in layout coordinates; this reads the

@@ -2077,7 +2077,7 @@ export function escapementSeat({ notch, forkT, clear, stockMin }) {
   // wall is W + bevel exactly where the pin works.
   const profile = Ys.map((Y) => (Y >= yC
     ? [Y, W + Ra, W]
-    : [Y, halfW(Y, eCut) + sag, halfW(Y, miter) + sag]));
+    : [Y, Math.max(0, halfW(Y, eCut) + sag), Math.max(0, halfW(Y, miter) + sag)]));   // the metal's floor stands a chamfer above the authored one: no width under it
   yFloor -= miter;
   const yFloorMetal = yC - W - miter;
   // guard pin, behind the floor
@@ -2751,7 +2751,12 @@ export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZ
   // profile less the chamfer's dilation), so an instrument holds the pin
   // against the walls the pin actually meets.
   g.userData.safety = { guard, guardR: guardSeat.r, notch: {
-    profile: prof.map(([Y, , wm]) => [-Y, wm]), floorY: -seat.yFloorMetal, mouthY: tipY, deepY: endY, entryY: -seat.yEntry } };
+    // TODO 226 step 3b: the mouth as METAL too — the chamfer's mitre carries
+    // the horn tip a bevel past the authored `tipY`, to the depth of the
+    // pin's last contact (seat.yBand), and that is where the walls end
+    profile: [...prof.map(([Y, , wm]) => [-Y, wm]),
+      ...(seat.yBand > prof[prof.length - 1][0] ? [[-seat.yBand, prof[prof.length - 1][2]]] : [])],   // the metal wall runs on to the mitred tip
+    floorY: -seat.yFloorMetal, mouthY: -(seat.yBand ?? seat.yTip), deepY: endY, entryY: -seat.yEntry } };
 
   g.userData.entryPos = entryPos;
   g.userData.exitPos = exitPos;
