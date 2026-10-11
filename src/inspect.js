@@ -6232,6 +6232,23 @@ const ALARM_HANDOFFS = [
     unitA: 'Alarm selector', meshA: 'alarmSelRing',
     unitB: 'Alarm disc', meshB: 'alarmSelPin',
   },
+  {
+    // TODO 222 — follower-B's pin on the face cam, the coupling §34 claims:
+    // ARMED it seats on the cam (the tick solves the arm's rock for the cap to
+    // stand at the cam's height), DISARMED it is lifted clear. Until TODO 222
+    // nothing read this pair outside the armed 'alarm' axis, and the "lift"
+    // rocked the arm about the wrong axis with the wrong sign: disarmed, the
+    // pin stood 0.082–0.149 INSIDE the cam and 0.055 inside the wheel, armed
+    // 0.021 inside. The two disarmed parities here sit at different relative
+    // angles (τ 0.13 s and 10.15 h); the build's TODO 222 assert holds the
+    // cam's DEEPEST reach, which the wheel brings round at some angle. The
+    // lift is still POSED from the selector's state (TODO 222, open): this row
+    // holds where it puts the pin, not what moves it.
+    label: 'face cam ⇄ follower-B pin (seated armed, lifted clear disarmed)',
+    unitA: 'Alarm setting wheel', meshA: 'alarmFaceCam',
+    unitB: 'Alarm disc', meshB: 'alarmPinB',
+    expect: { disarmed: 'free', armed: 'contact', setting: 'free', dropped: 'free' },
+  },
   // §45 — the release run, in drive order. The blade preloads the head onto
   // the collar at every parity (plateau or ramp), and the fork's plates run
   // at the TODO 20 working clearance, so both measure as contact everywhere;
