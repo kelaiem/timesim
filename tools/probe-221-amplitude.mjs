@@ -89,13 +89,24 @@ const out = await page.evaluate(async () => {
   const pinInFork = (tau) => {
     pose({ tau });
     const p = BS.pin.getWorldPosition(new THREE.Vector3()).applyMatrix4(new THREE.Matrix4().copy(fork.matrixWorld).invert());
-    const { halfW, floorY, mouthY } = FS.notch;
-    // ON the centreline is what the bank is derived for; between the walls and
-    // reaching past the mouth is what being in the notch means for the metal
+    // TODO 226 step 1 — the notch is published as its METAL profile (depth,
+    // half-width), the pin's swept path plus the margin, so "between its walls"
+    // is read at the depth the pin's centre stands at
+    const { profile, floorY, mouthY } = FS.notch;
+    let halfW = NaN;
+    for (let i = 1; i < profile.length; i++) {
+      const [y0, w0] = profile[i - 1], [y1, w1] = profile[i];
+      if ((p.y - y0) * (p.y - y1) <= 0) { halfW = w0 + (w1 - w0) * (p.y - y0) / (y1 - y0); break; }
+    }
+    // ON the centreline is what the bank is derived for; between the walls, and
+    // SEATED — its centre at or inside the horn tips, the floor below its far
+    // side — is what being in the notch means for the metal
     return { tau, x: p.x, y: p.y, halfW, floorY, mouthY, pinR: BS.pinR,
-             onLine: Math.abs(p.x) < 1e-6, between: Math.abs(p.x) + BS.pinR <= halfW, reaches: p.y - BS.pinR < mouthY && p.y >= mouthY - BS.pinR };
+             onLine: Math.abs(p.x) < 1e-6, between: Math.abs(p.x) + BS.pinR <= halfW,
+             seated: p.y >= mouthY - 1e-9 && p.y + BS.pinR < floorY };   // fork-local −y runs at the balance: the floor stands at the larger y
   };
   const notch = [pinInFork(w0 + 1e-9), pinInFork(w1 - 1e-9), pinInFork(beatT + w0 + 1e-9), pinInFork(beatT + w1 - 1e-9)];
+  const atRest = pinInFork((w0 + w1) / 2);   // the balance through its centre: the pin at its deepest
 
   // the guard pin against the safety roller's outline, in the balance frame
   const poly = BS.outline;
@@ -131,7 +142,7 @@ const out = await page.evaluate(async () => {
     A: L.AMPLITUDE_POSED_DEG, LIFT: L.LIFT_DEG, IW: L.IMPULSE_WIDTH,
     halfDeg: ref.half * 180 / Math.PI, reserve: reserve.map((r) => ({ ...r, deg: r.half * 180 / Math.PI })), winds: winds.map((r) => ({ ...r, deg: r.half * 180 / Math.PI })),
     bankMeasDeg: (fMax - fMin) / 2 * 180 / Math.PI, liftMeasDeg: liftRad * 180 / Math.PI,
-    rollerR: bal.userData.rollerR, notch,
+    rollerR: bal.userData.rollerR, notch, atRest,
     guard: { zOverlap, min: worst.c, at: worst, max: Math.max(...rows), control, guardR: FS.guardR },
   };
 });
@@ -147,10 +158,12 @@ row('the swing does not sag over the reserve (a fusee is level)', spread(out.res
 row('nor over the arbor\'s run', spread(out.winds) < 1e-6, out.winds.map((r) => `${r.windAccumTurns} turns: ${r.deg.toFixed(4)}°`).join(', '));
 row('the pin travels the cited lift across the impulse window', Math.abs(out.liftMeasDeg - out.LIFT) < 0.05, `${out.liftMeasDeg.toFixed(3)}° against LIFT_DEG ${out.LIFT}°`);
 for (const n of out.notch)
-  row(`impulse pin on the notch's centreline, between its walls and past its mouth, at τ ${n.tau.toFixed(5)}`, n.onLine && n.between && n.reaches,
+  row(`impulse pin on the notch's centreline, between its walls and seated between the horns, at τ ${n.tau.toFixed(5)}`, n.onLine && n.between && n.seated,
     `fork-local (${n.x.toExponential(2)}, ${n.y.toFixed(3)}), pin r ${n.pinR.toFixed(3)}; walls ±${n.halfW.toFixed(3)}, mouth ${n.mouthY.toFixed(3)}, floor ${n.floorY.toFixed(3)}`);
-const n0 = out.notch[0];
-console.log(`report · at the window's edge the pin's centre stands ${(n0.mouthY - n0.y).toFixed(3)} OUTSIDE the notch's mouth, so its body enters ${(n0.pinR - (n0.mouthY - n0.y)).toFixed(3)} of a notch ${(n0.floorY - n0.mouthY).toFixed(3)} deep — it works at the mouth`);
+const n0 = out.notch[0], nr = out.atRest;
+row('the pin is seated at its deepest too (TODO 226 step 1)', nr.onLine && nr.between && nr.seated,
+  `centre ${(nr.y - nr.mouthY).toFixed(3)} inside the horn tips, its far side ${(nr.floorY - nr.y - nr.pinR).toFixed(3)} off the floor`);
+console.log(`report · at the window's edge the pin's centre stands ${(n0.y - n0.mouthY).toFixed(3)} inside the horn tips and ${(nr.y - nr.mouthY).toFixed(3)} at its deepest, in a notch ${(n0.floorY - n0.mouthY).toFixed(3)} deep (it stood 0.156 OUTSIDE them before TODO 226 step 1, entering 0.394 of a notch 2.759 deep)`);
 row('control: a point on the roller\'s outline reads −guardR', Math.abs(out.guard.control + out.guard.guardR) < 1e-9, out.guard.control.toFixed(6));
 console.log(`report · TODO 105 · guard pin ⇄ safety roller (z bands ${out.guard.zOverlap ? 'OVERLAP — the pin can meet the roller' : 'apart'}): `
   + `min ${out.guard.min.toFixed(4)} at τ ${out.guard.at.tau.toFixed(4)} s (balance at ${out.guard.at.deg.toFixed(1)}°), max ${out.guard.max.toFixed(4)}; was 0.2356–0.7455 over a beat at ±45°`);

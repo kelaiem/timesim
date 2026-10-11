@@ -66,8 +66,8 @@ export const INSPECTION_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 305 plus the endpoint.
-  { axis: 'position', poses: 306 },
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
@@ -324,8 +324,8 @@ export const CLEARANCE_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 305 plus the endpoint.
-  { axis: 'position', poses: 306 },
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // TODO 164 — same axis roster as CLEARANCE_SLICES above (this check walks the
@@ -350,8 +350,8 @@ export const UNDECLARED_CLEARANCE_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 305 plus the endpoint.
-  { axis: 'position', poses: 306 },
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // The gate's verdict over a payload's rows and the debt table — a TWIN of the
@@ -500,8 +500,8 @@ export const EXPECTED_CONTACT_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 305 plus the endpoint.
-  { axis: 'position', poses: 306 },
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.

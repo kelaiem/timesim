@@ -33009,7 +33009,7 @@ Every term is read off something the movement already derives, nothing chosen:
 
 - **τ_spring**: the elastica's own torque, off the hairspring's wind frames
   (§218) — the shapes the metal wears. The frames now run out to the knock
-  (`AMPLITUDE_PEAK_DEG`, 316°), because the driven balance swings 292°
+  (`AMPLITUDE_PEAK_DEG`, 302° since TODO 226 cut the notch), because the driven balance swings 292°
   dial-flat; inside ±200° they are the same solves bit for bit (warm-started
   outward from rest on the same step). Each frame publishes its length-weighted
   centroid as well.
@@ -33057,7 +33057,7 @@ balance settles to in its position: hanging, the designed 200° (the pre-§246
 law exactly, so every hanging pose in the battery is bit for bit what it was);
 dial-flat, the column's own 292.09°. The new `position` axis is the beat axis's
 oscillation posed dial-flat, at the beat axis's angular step on the arc for any
-swing up to the knock (n 305). It sweeps the parts only the flat swing reaches
+swing up to the knock (n 291). It sweeps the parts only the flat swing reaches
 — the hairspring's outer frames, the impulse and guard pins further round the
 roller — and on its first run it measured 0 FORBIDDEN, 0 clearance violations,
 0 undeclared pairs under the margin and 0 unwaived expected-contact rows.
@@ -33808,6 +33808,80 @@ spread. The regression this landing repaired took three weeks to find because
 the probe runs by hand. CLAUDE.md's boot entry now carries a fifth rule: new
 build code brings its own seams.
 
+## §266, landing two — the probe in CI, and ceilings from the host that judges them
+
+**Why it was owed.** Landing one repaired `main` three times in one day. The
+cause each time was the same: build code merged with no seams, and nothing ran
+`tools/probe-239-boot-yield.mjs`. A repair without a gate just waits for the
+next merge. So the probe now runs on every pull request that can change what
+the boot does, and a builder that lands synchronous goes red on its own PR.
+
+**Its own workflow, `.github/workflows/boot-yield.yml`, not a step in Battery.**
+- **The ceilings are a property of the host.** Battery's host is routed by
+  §200 (a self-hosted ARM64 runner on opt-in, `ubuntu-latest` otherwise), so a
+  step there would be judged against whichever machine took the run. One fixed
+  host means one derivation, written beside each ceiling.
+- **It answers in about two minutes,** where Battery's PR wall is 40–125.
+- **`paths` is a positive list** (`index.html`, `src/**`, `vendor/**`, the probe,
+  the lockfile, the workflow), unlike Battery's `paths-ignore`. Everything the
+  boot executes lives under those three globs, so the list cannot fall behind
+  the module graph the way a list of exceptions can. A translation table under
+  `src/` runs it needlessly; that costs minutes, never a verdict.
+- It also runs on every push to `main`, so a merge whose halves were each fine
+  is measured as merged.
+
+**Measured before any ceiling moved.** The probe gained `--json` and a
+job-summary table. Two batches of six identical jobs on a push-only measuring
+branch then gave the host's spread across runners:
+
+| runner CPU | build held, worst | long task, worst | input ack, worst |
+|---|---|---|---|
+| AMD EPYC 7763 (most runs) | 311–329 ms | 2,253–2,320 ms | 2,103–2,290 ms |
+| AMD EPYC 9V74 | 278 ms | 1,948 ms | 1,799 ms |
+| the fastest runner | 224 ms | 1,202 ms | 1,050 ms |
+
+**Reading them is what the entry asked for, and it split the three gates in
+two.** The held number is the build's own and is stable on CI. The worst long
+task and the worst input ack were the same task in every run: the first
+composited frame at t+0.2–0.4 s, a frame commit blocked in `GLES2::ReadPixels`
+while the GPU process drains the GL queued before the first yield (the trace
+in landing one). That is software-GL work that scales with the runner, 1.2–2.3 s
+across these three CPUs. It is not build work and no seam reaches it. Every
+other task in those runs was ~250 ms or under.
+
+So against §239's dev-container ceilings (700 / 1,800 / 1,500 ms) the yielding
+build failed on five of six runners per batch, every time on that frame.
+
+**The ceilings, each by the rule every timing cap in this repo follows:** the
+slowest run times battery.yml's 1.66 same-tree spread (the tail past a ceiling
+cannot be read), rounded up to the next 50 ms.
+- **Held: 550 ms** (329 × 1.66 = 546). This is the sharp gate. It is tighter
+  than §239's 700, which was its dev container's unsplittable floor doubled,
+  and it still sits 9× under the 4.7 s `main` had reached.
+- **Long task: 3,900 ms** (2,320 × 1.66 = 3,851). This is the backstop: nothing
+  near Chrome's unresponsive-page threshold may survive, the first frame
+  included.
+- **Input ack: 3,850 ms** (2,290 × 1.66 = 3,801), the same frame seen from the
+  keyboard.
+
+These are the CI host's numbers. Dev containers vary at least 1.6× (landing
+one measured two), and a slow one can fail the backstops on a healthy tree. On
+the containers this was built on, the tree read 326–520 ms held, under 550.
+
+**The control is tied to the gates.** Its minimum was a fixed 3,000 ms, which
+now sits under the 3,900 ceiling: a 3,500 ms control would have counted as
+reproducing the un-yielding build while the gate passed it too. A control must
+now be a run both gates would fail: its worst task at or above the long-task
+ceiling, and the thread held past the held ceiling. On CI the control holds the
+thread 21–22 s with a 15–16 s worst task. The tail control (an 800 ms stall
+before the guard's release) still sits above the held ceiling by construction.
+
+**What it leaves.** The self-hosted ARM64 host is not gated by this workflow:
+its ceilings would be its own derivation, and nothing routes there yet. The
+first composited frame itself is reported and backstopped, not reduced. That is
+§238's surviving block, and §267's progress bar, which depends on this
+landing, is the next thing that will want it measured.
+
 ## §268 — The hammer spring is a spring: a torsion spiral on the hammer's post, the fall √(k/I)
 
 TODO 128, closed. §48 drew the hammer's spring as a blade grounded to a stud
@@ -34071,3 +34145,98 @@ section; all twenty locales re-keyed and translated, Tagalog's twenty-six stale
 gong, barrel and governor rows (keyed on English older than §262) re-keyed and
 translated with them. `probe-197`'s header no longer says the path is
 unmodelled and prints the case path's rows beside the wire's.
+
+## §216 — Hungarian — suffixes hyphenated onto code spans and numbers, and space-grouped figures
+
+**Shipped whole.** The chrome (`src/i18n.js`, 486 keys), `explain.html`
+(773/773 translatable keys, 700 table rows) and `primer.html` (144/144, 133
+rows) read Hungarian at 100% in one landing, §209's recipe item for item. The
+roster is twenty-three rows with English.
+
+**The suffix rides outside the span, and the gate never had to bend.** This is
+the entry's reason for being: Hungarian is agglutinative, and a case ending
+attaches to whatever noun it governs, including a quoted identifier and a
+numeral. The orthography already answers it, hyphenating the ending onto a
+foreign or quoted token, so the tables write `a <code>CLEAR_MARGIN</code>-ban`
+and `270°-os`. The span's bytes are untouched and the `<code>` check reads
+0 drift with suffixed identifiers on nearly every explainer paragraph. The
+article is *a* or *az* by how the following number is READ (*az 1*, *a 0.15*),
+which is a translator's rule and not a gate's. On the primer, where numbers
+are quantities, a suffix after a figure follows a hyphen that is not in the
+checker's token class, so the value parse stops at the number. That is §216's
+prediction, and the primer's value gate held at 0 drift from the first build.
+
+**Measured (Chromium 141, Node's ICU 77 beside it).** `hu` and `hu-HU` are both
+CARRIED (`supportedLocalesOf` answers for each), so nothing is borrowed. They
+format `30,0 · 0,024 · 1000 · 18 000`: a decimal comma, a U+00A0 group, and
+four digits left bare. That is Russian's row and Latvian's, so `MARKS.hu` is
+theirs. Plural one/other. The matcher takes `hun`, which Intl canonicalizes to
+`hu`, and is anchored: the ladder assert carries `hup` (Hupa) and `hur`
+(Halkomelem) → `null` beside `hu`, `hu-HU`, `hu_HU`. `toUpperCase` is the
+root mapping (ő → Ő), so no case audit is owed.
+
+**`HONESTY.hu` reads the verb, never the noun.** *modellez-* (modellezett,
+modellezi, modellezés) against *szimul-* (szimulált, szimuláció). The credit
+line's "AI model" is *MI-modellje*, which carries no *-ez-*, so the narrow
+English matcher's reason for being narrow holds in Hungarian too. 0 crossed,
+0 absent, control PASS.
+
+**The double acute joins the shared line height.** Ő and Ű are the tallest
+single marks Latin carries, so `probe-249-vietnamese-vert.mjs` gained a
+`--script hu` row. Its controls fail in this container exactly as they did
+for Latvian's, so the measurement is a comparison in one face rather than a
+derivation. Hungarian inks no more than Latvian at any site (13 against 13
+at the 10 px sites, 14 against 15 at `.readout`), so both pages add
+`html:lang(hu)` to Vietnamese's 1.3 rule on Latvian's grounds rather than
+derive a third number.
+
+**Hungarian declines, so the linker's variants rows were read off the table.**
+The fifteen `.gloss-variants` rows list only the case forms the translated
+prose actually uses (*állomáson*, *azimutban*, *pózba*, *felmentést*…), each
+checked in context. *keretében* ("within", the idiom) is left out of
+`budget`'s row. *érintő* is also the participle "concerning", but every use
+on the page is the tangent sense, so it stays. 91 links against English's
+93, text identical in every locale.
+
+**Widths.** The plate pass found eleven labels over their English boxes on
+the first build (ten on the explainer, one on the primer), each shortened
+rather than reflowed: 0 new overflow. The chrome bar measured **182.6** on
+"Menü / Nézet / Vezérlés", 6.0 over English's 176.6 in the same container,
+so no word was chosen against it. The HUD labels are "Csörög:" 37.2 and
+"Idő" 14.8, the shortest Latin label yet. Every header is one line at all
+eight widths.
+
+**Glossary.** szerkezet, svájci horgonyjárat, gátkerék, horgonyvilla and
+horgonykövek, billegő, hajszálrugó, főrugó, rugóház, **kúpcsiga** (never the
+bare *csiga*, which is also a snail and a pulley), lánc, főkerék, kiskerék,
+korona, felhúzószár, kilincs and kilincskerék, retesz, ugrórugó, oszlopkerék,
+mutatómű, számlap, járástartalék, ébresztő, kalapács, ébresztőszabályozó.
+The project's own vocabulary renders as `magyar (english)` in the glossary
+table, the convention ten locales share: *állomás (station)*, *löket
+(throw)*, *átadás (hand-off)*, *felmentés (waiver)*. *bemeneti tengely* is a
+pose axis, kept apart from *tengely*, the arbor. Ten translators against one
+binding glossary. Where it named nothing (pawl, beak, lug, feeler, sautoir),
+each chose a word and recorded it. Those choices are the review packet's
+seven Hungarian questions in `tools/l10n-review/questions.mjs`, with the
+usual IOU: no native review pass yet.
+
+**Instruments.** `explain-i18n --check` reads `[hu]` 100%, 0 unmatched, 0
+markup, 0 `<code>`, 0 plate-number, 0 prose-number drift, 0 crossed honesty
+terms and 0 new plate overflow on both pages. The run's overall FAIL is
+Arabic's two plate collisions, which are on `main` already. `glossary-links`
+PASS. `probe-chrome-coverage --locales hu` missing 0 and not applied 0.
+`probe-116-locale-fit` PASS. `offline-check` precache 69/69, and the primer
+localizes from cache under `?lang=hu`. `l10n-review-packets` PASS (22
+packets). A boot at `?lang=hu` is silent apart from the container's GL
+driver notice. The same coverage run found Latvian still missing "Setting
+bevel"; that gap was on `main` before this landing and is left to Latvian's
+own record.
+
+**It met the merge race on its way in.** Re-merging `main` before the PR
+(CLAUDE.md's rule for locale tables) brought TODO 226 step 1, which had
+rewritten the escapement ledger's middle passage and moved the hairspring's
+knock figure from 316° to 302° in two blocks, re-translating all twenty-one
+existing locales. Three Hungarian rows went stale exactly as that rule
+predicts: 770/773, 3 unmatched. They were re-keyed from the new English, the
+two number moves carried as numbers, and the ledger's new passage translated
+against the same glossary. Back to 773/773.

@@ -1635,20 +1635,11 @@ const COCK_W = 6;   // the balance cock's width — see its build, where the rea
 // cock face, 0.17 under the endstone, exactly as §120 solved it.
 const BALANCE_SHOULDER_TOP_Z = COCK_MID_Z + G.cockJewelStone({ width: COCK_W, thickness: COCK_T }).bottom - CLEAR_MARGIN;
 const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
-const balanceWheel = G.makeBalanceWheel({
-  radius: 9,
-  thickness: BAL_T,
-  rimF: BAL_RIM_F,   // TODO 207 — lightened to the spring the plate can carry (layout.js says why)
-  staffTop: BALANCE_SHOULDER_TOP_Z - L_BALANCE,
-  // pinDrop + 0.4·t = safety-roller plane (mirrors the builder's stack);
-  // +0.6 pokes the staff just past the roller's underside.
-  staffBottom: (L_BALANCE - PIN_PLANE_Z) + BAL_T * 0.4 + 0.6,
-  // Wheel-centre → impulse-pin distance: holds the pin's WORLD plane at
-  // PIN_PLANE_Z exactly, wherever the balance itself sits — the pin belongs
-  // to the fork's z-band, not the wheel's.
-  pinDrop: L_BALANCE - PIN_PLANE_Z,
-});
-const balanceR = balanceWheel.userData.r || 9;
+// TODO 226 step 1 — the balance is BUILT further down, after the escapement's
+// seat is solved (the roller is cut to the guard pin the fork's notch places);
+// its radius is fixed here because the stations below are laid out from it.
+const BALANCE_R = 9;
+const balanceR = BALANCE_R;
 
 // Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the
 // classic Swiss-lever embrace that makes teeth lock the entry and exit stones
@@ -1662,11 +1653,14 @@ const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan /
 // fork bridging a modest gap, not stretched across open space — so this is
 // a much tighter multiple of the two wheels' combined radius than before.
 const escToBalanceDist = (escapeWheelR + balanceR) * 1.3;
+// The lever length the stations once cut the fork end from. Since TODO 226
+// step 1 the fork END is the seat's, and this survives only as the datum of
+// the lever's flank, which the three-quarter plate's cut reads (see
+// makePalletFork's `flankY`).
 const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
-// Real impulse rollers sit well inside the balance rim (~15-20% of its
-// radius), not at half of it — the pin only needs to clear the fork's notch,
-// not the whole balance.
-const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
+// The pin's circle: the builder's own law (G.balancePinCircle), read before
+// the balance exists because the bank below and the seat are solved from it.
+const rollerR = G.balancePinCircle(BALANCE_R);
 
 // FORK_BANK_DEG — the fork's swing is set by the impulse
 // pin it has to carry: at both ends of the impulse window the pin must stand
@@ -1782,13 +1776,43 @@ declareRestoring('Hairspring', '*', 'spring',
 declareTravel('Pallet fork', 2 * FORK_BANK_DEG * DEG2RAD,
   'banks +/-FORK_BANK_DEG; driven off the impulse pin between the banks (TODO 226)');
 
+// TODO 226 step 1 — THE SEAT (G.escapementSeat says what and why): the notch
+// as the pin's swept path, the guard pin behind its floor, the single roller
+// sized to that guard pin. Solved from the stations, the pin and §221's lift
+// and bank, so neither part is cut until both are known.
+const ESCAPEMENT_SEAT = G.escapementSeat({
+  d: forkToStaff, rollerR, pinR: G.balancePinR(BAL_T),
+  liftHalf: LIFT_DEG * DEG2RAD / 2, bank: FORK_BANK_DEG * DEG2RAD,
+  forkT: FORK_T, clear: CLEAR_MARGIN, stockMin: STOCK_MIN_U,
+});
+// The pin must sit IN the roller it is set in, crescent included.
+if (!(ESCAPEMENT_SEAT.pinOuter <= ESCAPEMENT_SEAT.roller.Rc))
+  console.warn(`TODO 226: the impulse pin reaches ${ESCAPEMENT_SEAT.pinOuter.toFixed(4)} from the staff, past the roller's crescent at ${ESCAPEMENT_SEAT.roller.Rc.toFixed(4)} — the guard pin the notch's floor places leaves no roller to set it in`);
+const balanceWheel = G.makeBalanceWheel({
+  radius: BALANCE_R,
+  thickness: BAL_T,
+  rimF: BAL_RIM_F,   // TODO 207 — lightened to the spring the plate can carry (layout.js says why)
+  staffTop: BALANCE_SHOULDER_TOP_Z - L_BALANCE,
+  // pinDrop + 0.4·t = the roller's plane (mirrors the builder's stack);
+  // +0.6 pokes the staff just past the roller's underside.
+  staffBottom: (L_BALANCE - PIN_PLANE_Z) + BAL_T * 0.4 + 0.6,
+  // Wheel-centre → impulse-pin distance: holds the pin's WORLD plane at
+  // PIN_PLANE_Z exactly, wherever the balance itself sits — the pin belongs
+  // to the fork's z-band, not the wheel's.
+  pinDrop: L_BALANCE - PIN_PLANE_Z,
+  roller: ESCAPEMENT_SEAT.roller,
+  pinTop: L_FORK + FORK_HALF_Z - L_BALANCE,   // the fork's top face: the pin works the whole blank
+});
+if (Math.abs(balanceWheel.userData.r - BALANCE_R) > 1e-12 || Math.abs(balanceWheel.userData.rollerR - rollerR) > 1e-12)
+  console.warn(`TODO 226: the balance was cut at r ${balanceWheel.userData.r}, pin circle ${balanceWheel.userData.rollerR}, not the ${BALANCE_R}, ${rollerR} the seat was solved for`);
+
 // stoneZReach: the fork body sits at L_FORK while the escape wheel sits at
 // L_ESCAPE — the stones must descend by exactly that gap to land centered
 // on the wheel's own Z-thickness rather than grazing one edge of it.
 // beatRad/bankRad feed the stones' impulse-face solve (see makePalletFork).
 await breathe();
 const palletFork = G.makePalletFork({
-  span: forkSpan, leverLength: forkLeverLength, thickness: FORK_T,
+  span: forkSpan, seat: { ...ESCAPEMENT_SEAT.slot, leverL: forkLeverLength }, guard: ESCAPEMENT_SEAT.guard, thickness: FORK_T,
   stoneZReach: L_FORK - L_ESCAPE,
   beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
 });
@@ -3044,7 +3068,11 @@ registerLabel('Balance', balanceGroup);
 // meshes' world transforms and gates this record against them.
 await breathe();
 const ESCAPEMENT_KNOCK = (() => {
-  const outline = palletFork.userData.blankOutline;
+  // TODO 226 step 1 — against the METAL, not the authored outline: the blank's
+  // chamfer stands every side wall `bevel` proud of the outline it was cut
+  // from (more at a mitred corner — 0.165 at the old horn tips), so a solve
+  // on the authored outline found the knock that far late.
+  const outline = palletFork.userData.blankMetalOutline;
   const r = rollerR, pinR = balanceWheel.userData.pinR;
   const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
   const bank = FORK_BANK_DEG * DEG2RAD;
@@ -5075,6 +5103,47 @@ const COCK_SPINE = (() => {
   return { dir, len, half };
 })();
 await breathe();
+// TODO 226 step 1 — THE FORK'S FLOOR DISC IS HELD where the leg below was
+// solved. The disc stands for the fork's whole sweep about its pivot, and the
+// seat's horns reach 10.63 from it where the old ones reached 9.8018: grown,
+// the disc pushed the leg's seat out, the leg is among the vertices the
+// three-quarter plate's cut reads, and the cut is an input to the stop work's
+// solve — so the hack rod re-routed, and the alarm link's rod site and its
+// hoisted constants with it (measured: the mast 0.01 over the cock, eleven
+// warnings down the alarm). None of that was the fork's doing: a disc about
+// the pivot is a coarse stand-in for a lever that swings ±4°, and the metal
+// the horns added lies beside the balance, inside the balance's own disc,
+// which the leg already clears (`discs.push` below). So the radius the leg
+// was solved at is kept, and the assert says why that is enough: every fork
+// vertex past it, at either bank and the recoil margin the plate's cut still
+// carries, stands inside the balance's swept disc. Replacing the disc with
+// the fork's swept SECTOR is the honest model and would move this leg on main
+// too; it is the same layout re-solve as cutting the plate's window to the
+// driven swing, and is filed with it.
+const FORK_LEG_DISC_R = 9.801757916409828;   // xyRadiusAbout(forkGroup, P.fork, FORK_COCK_BOT) before the seat
+{
+  const v = new THREE.Vector3(), swing = FORK_BANK_DEG * 1.25 * DEG2RAD;
+  let worst = -Infinity;
+  forkGroup.updateMatrixWorld(true);
+  forkGroup.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      if (v.z > FORK_COCK_BOT) continue;
+      const dx = v.x - P.fork.x, dy = v.y - P.fork.y, rho = Math.hypot(dx, dy);
+      if (rho <= FORK_LEG_DISC_R) continue;
+      // the group stands unrotated until the first tick writes its swing, so
+      // the fork is laid on its line of centres here, then swung either way
+      for (const a of [-swing, 0, swing]) {
+        const th = Math.atan2(dy, dx) + forkBaseAngle + a;
+        worst = Math.max(worst, Math.hypot(P.fork.x + rho * Math.cos(th) - P.balance.x, P.fork.y + rho * Math.sin(th) - P.balance.y) - BAL_OUTER_R);
+      }
+    }
+  });
+  if (worst > 0)
+    console.warn(`TODO 226: fork metal past the held leg disc (r ${FORK_LEG_DISC_R}) stands ${worst.toFixed(4)} outside the balance's swept disc — the held disc no longer covers the fork, and the leg must be re-solved against its sweep`);
+}
 const forkCock = (() => {
   // Everything the legs have to miss on the way down to the base plate.
   // Wheels and levers are given as their SWEPT DISCS about their own axes
@@ -5084,7 +5153,7 @@ const forkCock = (() => {
     [barrelArbor, P.barrel], [centerArbor, P.center], [thirdArbor, P.third],
     [fourthArbor, P.fourth], [escapeArbor, P.escape], [forkGroup, P.fork],
     [secondsCamArbor, P.fourth], [hammerGroup, hammerPivotPos],
-  ].map(([o, c]) => ({ x: c.x, y: c.y, r: xyRadiusAbout(o, c, FORK_COCK_BOT) }));
+  ].map(([o, c]) => ({ x: c.x, y: c.y, r: o === forkGroup ? FORK_LEG_DISC_R : xyRadiusAbout(o, c, FORK_COCK_BOT) }));
   // The BALANCE counts for its whole swept radius, not just the staff and
   // roller that share the legs' z band. Mechanically a leg could stand under
   // the rim's overhang; but the fork lies between the escape wheel and the
@@ -5299,14 +5368,21 @@ const TQ_CUT = (() => {
   // Each part contributes its SWEPT footprint, built from its own motion
   // rather than from posed snapshots (poses only exist once tick() runs):
   //  · pallet fork — banks ±FORK_BANK_DEG about its pivot and, since TODO
-  //    226, goes no further; the plate is still cut to the 1.25·bank the
-  //    POSED law's recoil dip once swept. That is a quarter bank of window
-  //    nothing now enters, kept on purpose so the landing that drives the
-  //    fork moves no metal: TODO 226 step 1 seats the pin, which re-cuts
-  //    the horns anyway, and re-cuts this window from the driven swing then;
+  //    226, goes no further: the window is cut to the swing the fork makes.
+  //    Until TODO 226 step 1 it was cut to the 1.25·bank the POSED law's
+  //    recoil dip once swept, and — the larger error — to a fork that was not
+  //    there: this table is built before the first tick writes the fork's
+  //    rotation, so the group stood at 0 and its sweep was read pointing down
+  //    the world's −y, not along its line of centres. The horn tips of that
+  //    phantom fork stood clear of the balance's disc and cut the plate a
+  //    lobe no fork ever entered. The sweep is laid on the line of centres
+  //    (`forkBaseAngle`) now. Neither change reaches the stop work's solve,
+  //    which reads this table (measured: no route, rod site or hoisted
+  //    constant moved); what does reach it is the fork cock's leg, held
+  //    (FORK_LEG_DISC_R);
   //  · the fork cock — static.
   // (The escape wheel no longer contributes: it pivots in this plate.)
-  const bankRad = FORK_BANK_DEG * 1.25 * DEG2RAD;
+  const bankRad = FORK_BANK_DEG * DEG2RAD;
   forkGroup.updateMatrixWorld(true);
   forkGroup.traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position) return;
@@ -5314,7 +5390,7 @@ const TQ_CUT = (() => {
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
       const dx = v.x - P.fork.x, dy = v.y - P.fork.y;
-      const rho = Math.hypot(dx, dy), th = Math.atan2(dy, dx);
+      const rho = Math.hypot(dx, dy), th = Math.atan2(dy, dx) + forkBaseAngle;
       for (let k = -2; k <= 2; k++) {
         const a = th + (k / 2) * bankRad;
         bump(P.fork.x + Math.cos(a) * rho, P.fork.y + Math.sin(a) * rho);
@@ -6849,7 +6925,7 @@ const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30
 // hoisted here from the arm build — the chain must price the swing):
 //   seated:   nose orbit at RMIN + noseR
 //   released: nose clear of the heart's MAX radius by the 0.05 lift
-//             clearance follower-B's ALARM_PINB_LIFT already uses
+//             clearance (the figure §34's follower-B lift was once asserted against)
 // The tail is the SHORTEST that physically exists past the pivot (post radius
 // + pin boss + web) — the pin's radial stroke GROWS with tail length, so
 // short is cheap. The cone is 45°: axial travel ≡ radial stroke, no invented
@@ -19837,9 +19913,13 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
 // spring presses the pin dial-ward, so the pin seeks the cam's minimum —
 // the notch — and the slopes cam the tube to the wheel's phase. The arm's
 // slice is the band floor (−0.48..−0.53, one margin below the cam's max
-// reach −0.33, asserted); its tail extends to the rocker's finger, which
-// PRESSES it plate-ward to lift the pin clear: the disarmed state, a
-// clean toggle.
+// reach −0.33, asserted); its tail extends toward the rocker's finger.
+// TODO 222 CORRECTED this: it said the finger "PRESSES it plate-ward to lift
+// the pin clear", which is backwards — the pin hangs plate-ward of the cam, so
+// lifting it clear moves the PIN plate-ward and the TAIL dial-ward, which a
+// finger can only do from UNDER the tail. The finger has never touched the arm
+// (0.91 off it at every pose); the disarmed lift is posed from the selector's
+// state, and TODO 222 records why the selector ring cannot carry it.
 // §51 postscript — THE ARM-BAND CHAIN, derived at last. Every plane in the
 // tube-B band descended from the setting wheel's plate-side face, but as
 // LITERALS frozen at the old 0.18 wheel (−0.23, −0.53, −0.505, −0.48):
@@ -19850,10 +19930,25 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
 const ALARM_WHEEL_BOT_B = -ALARM_SHEET_GAP - ALARM_SET_T;                    // the wheel's plate-side face (the old −0.23)
 const ALARM_BAND_FLOOR_B = ALARM_WHEEL_BOT_B - ALARM_HEART_B_T;   // heart-B/follower band floor (the old −0.53)
 const ALARM_ARMB_Z = ALARM_BAND_FLOOR_B + 0.05 / 2;               // the pin-arm's slice centre (arm 0.05 thick; the old −0.505)
+// TODO 20 (fork) — the working clearance δ of a running fit: small enough that
+// the alarmHandoffs rows read a fit as contact (±0.03), large enough to clear
+// tri-tri slack. Hoisted here from the selector's fork (its groove is
+// pin ⌀ + 2δ) because TODO 222 banks follower-B's arm one δ over the flange.
+const ALARM_FORK_CLEAR = 0.01;
 const ALARM_PINB_AZ = ALARM_NOSE_AZ;   // the pin rides at the same azimuth convention heart-A's nose does
-const ALARM_PINB_R = 3.6;              // mid of the cam ring (3.3..3.9)
+// §34's face cam: ONE law, read by the cut (camGeo, on the setting wheel) and
+// by the follower's lift (the tick) alike — heights grow PLATE-ward from the
+// wheel's plate-side face, a cosine from HMIN at the notch to HMAX opposite,
+// over the ring CAM_R_IN..CAM_R_OUT.
 const ALARM_CAM_HMAX = 0.10, ALARM_CAM_HMIN = 0.02;
-const ALARM_PINB_LIFT = 0.16;          // fork-lifted pin tip clearance below the wheel face: hMax + margin-ish (asserted)
+const ALARM_CAM_R_IN = 3.3, ALARM_CAM_R_OUT = 3.9;
+const alarmCamHAt = (th) => ALARM_CAM_HMIN + (ALARM_CAM_HMAX - ALARM_CAM_HMIN) * (1 - Math.cos(th)) / 2;
+const ALARM_PINB_R = (ALARM_CAM_R_IN + ALARM_CAM_R_OUT) / 2;   // mid of the cam ring
+// follower-B's pin, in the pin arm's own frame (hinge at the origin, +x toward
+// the pin, +z dial-ward): ruby ⌀ 2·PINB_PIN_R standing PINB_PIN_H off the
+// arm's top face, so its cap — the face that meets the cam — is at local z
+// ARMB_T/2 + PINB_PIN_H.
+const ALARM_PINB_PIN_R = 0.09, ALARM_PINB_PIN_H = 0.26, ALARM_ARMB_T = 0.05;
 const alarmPinArmB = new THREE.Group();
 {
   const postB = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.22, 10), MATS.steel);
@@ -19864,18 +19959,27 @@ const alarmPinArmB = new THREE.Group();
   // cam ring's mid radius, tail onward to the rocker's finger azimuth
   alarmPinArmB.position.set(-ALARM_PIVOT_R, 0, ALARM_ARMB_Z); // the band-floor slice, riding the chain
   const aimB = Math.atan2(ALARM_PINB_R * Math.sin(ALARM_PINB_AZ) - 0, ALARM_PINB_R * Math.cos(ALARM_PINB_AZ) - (-ALARM_PIVOT_R));
+  // TODO 222 — the arm rocks about its OWN tangential axis (local y after the
+  // azimuth), TODO 19's rocker template: 'ZYX'. Under the default 'XYZ' the
+  // tick's rotation.y tipped it about the TUBE's y, which runs nearly along
+  // the arm (it aims 69.6° off tube x), so the pin's lever about that axis was
+  // 0.641 rather than its 1.841 reach — and with the sign the old law
+  // carried, the "lift" drove the pin +0.348·lift DIAL-ward, into the cam it
+  // was meant to clear (measured 0.082–0.149 into alarmFaceCam and 0.055 into
+  // the wheel disarmed, 0.021 into the cam armed).
+  alarmPinArmB.rotation.order = 'ZYX';
   alarmPinArmB.rotation.z = aimB;
   alarmTubeGroup.add(alarmPinArmB);
   const reachB = Math.hypot(ALARM_PINB_R * Math.cos(ALARM_PINB_AZ) + ALARM_PIVOT_R, ALARM_PINB_R * Math.sin(ALARM_PINB_AZ));
-  const armBar = new THREE.Mesh(new THREE.BoxGeometry(reachB, 0.22, 0.05), MATS.steel);
+  const armBar = new THREE.Mesh(new THREE.BoxGeometry(reachB, 0.22, ALARM_ARMB_T), MATS.steel);
   armBar.position.x = reachB / 2;
   alarmPinArmB.add(armBar);
-  const pinB = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.26, 10), MATS.ruby);
+  const pinB = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PINB_PIN_R, ALARM_PINB_PIN_R, ALARM_PINB_PIN_H, 10), MATS.ruby);
   pinB.name = 'alarmPinB';
   pinB.rotation.x = Math.PI / 2;
-  pinB.position.set(reachB, 0, 0.13 + 0.025);
+  pinB.position.set(reachB, 0, ALARM_PINB_PIN_H / 2 + ALARM_ARMB_T / 2);
   alarmPinArmB.add(pinB);
-  const tailB = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, 0.05), MATS.steel);
+  const tailB = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, ALARM_ARMB_T), MATS.steel);
   tailB.position.x = -0.4;
   alarmPinArmB.add(tailB);
   const coil = new THREE.Mesh(ringGeo(0.10, 0.16, 0.14), MATS.blueSteel);
@@ -19884,14 +19988,66 @@ const alarmPinArmB = new THREE.Group();
   alarmPinArmB.add(coil);
   alarmPinArmB.userData.reach = reachB;
 }
+// TODO 222 — THE LIFT, IN THE ARM'S OWN ANGLE. The tick poses the pin's depth
+// below the wheel's plate-side face (liftB: the cam's height armed, the full
+// lift disarmed) and this turns it into the arm's rock β about its tangential
+// hinge. A point (x, z) of the arm frame stands at ARMB_Z − x·sinβ + z·cosβ, so
+// a positive β carries the pin PLATE-ward, away from the cam. The cap meets the
+// cam at its HINGE-side edge (x = reach − r: the edge the rock raises), and
+// A·sinβ + B·cosβ = c is solved on the small branch — the physical one.
+const ALARM_PINB_REACH = Math.hypot(ALARM_PINB_R * Math.cos(ALARM_PINB_AZ) + ALARM_PIVOT_R, ALARM_PINB_R * Math.sin(ALARM_PINB_AZ));
+const ALARM_PINB_CAP_Z = ALARM_ARMB_T / 2 + ALARM_PINB_PIN_H;
+const alarmSmallRock = (A, B, c) => {
+  const R = Math.hypot(A, B), phi = Math.atan2(B, A), s0 = Math.asin(Math.max(-1, Math.min(1, c / R)));
+  return [s0 - phi, Math.PI - s0 - phi].map(wrapPi).reduce((a, b) => (Math.abs(b) < Math.abs(a) ? b : a));
+};
+const alarmPinBRockAt = (lift) => alarmSmallRock(-(ALARM_PINB_REACH - ALARM_PINB_PIN_R), ALARM_PINB_CAP_Z, (ALARM_WHEEL_BOT_B - lift) - ALARM_ARMB_Z);
+// The disarmed lift is the most the arm HAS: rocking pin-down, its lowest point
+// is the bar's underside at the pin end (x = reach), and that may come down to
+// one working clearance δ over the flange it is hinged on —
+//   ARMB_Z − reach·sinβ − (T/2)·cosβ = TUBE_BACK + δ,
+// and the lift is the pin cap's depth below the wheel at that β. It replaces a
+// bare 0.16 ("hMax + margin-ish") that was never a reachable pose of this arm.
+// What it buys is measured, not hoped for: the cap clears the cam's deepest
+// reach (HMAX, which the wheel turns under it at every relative angle) by the
+// remainder, asserted below over the hand-off tolerance. CLEAR_MARGIN does not
+// fit here: the arm's whole stroke between the flange and the cam band is
+// 0.0504 of cap clearance at a flange TOUCH, and a margin would bury the arm's
+// pin end 0.19 into the flange — a restratification, TODO 222's residue.
+const ALARM_PINB_BANK_ROCK = alarmSmallRock(-ALARM_PINB_REACH, -ALARM_ARMB_T / 2, (ALARM_TUBE_BACK + ALARM_FORK_CLEAR) - ALARM_ARMB_Z);
+const ALARM_PINB_LIFT = ALARM_WHEEL_BOT_B - (ALARM_ARMB_Z
+  - (ALARM_PINB_REACH - ALARM_PINB_PIN_R) * Math.sin(ALARM_PINB_BANK_ROCK) + ALARM_PINB_CAP_Z * Math.cos(ALARM_PINB_BANK_ROCK));
 // §34 band-fit asserts (the groove redesign's own):
 {
   const camMax = ALARM_WHEEL_BOT_B - ALARM_CAM_HMAX;
-  const armTop = ALARM_ARMB_Z + 0.05 / 2;
+  const armTop = ALARM_ARMB_Z + ALARM_ARMB_T / 2;
   if (armTop - camMax > -CLEAR_MARGIN + 1e-9 && camMax - armTop < CLEAR_MARGIN - 1e-9)
     console.warn(`§34 cam band: arm top ${armTop.toFixed(2)} within ${(camMax - armTop).toFixed(2)} of the cam's max reach ${camMax.toFixed(2)} — need ${CLEAR_MARGIN}`);
-  if (ALARM_PINB_LIFT < ALARM_CAM_HMAX + 0.05)
-    console.warn(`§34 pin lift ${ALARM_PINB_LIFT} does not clear the cam's max height ${ALARM_CAM_HMAX} by 0.05`);
+  // TODO 222 — the disarmed pin, MEASURED off the built mesh at the solved rock
+  // (the arm's own matrix, local to the tube, so no pose is needed): every
+  // vertex of the pin must stand clear of the cam's deepest reach by more than
+  // the hand-off tolerance (0.03, inspect.js HANDOFF_TRACK_TOL — the line a
+  // 'free' row is judged by), and the arm's lowest vertex must stay over the
+  // flange. The wheel turns the cam's whole profile under the pin disarmed, so
+  // its deepest reach is the bound at every relative angle.
+  const pin = alarmPinArmB.getObjectByName('alarmPinB'), bar = alarmPinArmB.children[0];
+  const ry0 = alarmPinArmB.rotation.y;
+  alarmPinArmB.rotation.y = alarmPinBRockAt(ALARM_PINB_LIFT);
+  alarmPinArmB.updateMatrix();
+  const zExt = (m, pick) => {
+    m.updateMatrix();
+    const M = alarmPinArmB.matrix.clone().multiply(m.matrix), p = m.geometry.attributes.position, v = new THREE.Vector3();
+    let z = pick === 'max' ? -Infinity : Infinity;
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(M); z = pick === 'max' ? Math.max(z, v.z) : Math.min(z, v.z); }
+    return z;
+  };
+  const pinTop = zExt(pin, 'max'), barLow = zExt(bar, 'min');
+  alarmPinArmB.rotation.y = ry0;
+  alarmPinArmB.updateMatrix();
+  if (camMax - pinTop < 0.03 + 1e-9)
+    console.warn(`TODO 222: the disarmed pin stands ${(camMax - pinTop).toFixed(4)} under the cam's deepest reach ${camMax.toFixed(4)} — need over the 0.03 hand-off tolerance`);
+  if (barLow - ALARM_TUBE_BACK < ALARM_FORK_CLEAR - 1e-6)
+    console.warn(`TODO 222: the disarmed arm's lowest point stands ${(barLow - ALARM_TUBE_BACK).toFixed(4)} over the flange — need ${ALARM_FORK_CLEAR}`);
 }
 
 // --- '(§34 pass 2b) Alarm selector' — the CHOICE as parts ------------------
@@ -19985,7 +20141,8 @@ const alarmSelBossSeg = (p) => [
 // alarmHandoffs row reads the running fit as contact (±0.03) and large
 // enough to clear tri-tri slack.
 const ALARM_FORK_PIN_R = 0.14;
-const ALARM_FORK_CLEAR = 0.01;
+// (ALARM_FORK_CLEAR, δ, is hoisted above follower-B's pin arm — TODO 222 banks
+// that arm one working clearance over the flange with the same number.)
 const ALARM_FORK_GROOVE_H = 2 * (ALARM_FORK_PIN_R + ALARM_FORK_CLEAR);
 const alarmSelectorUnit = new THREE.Group();
 dialFace.add(alarmSelectorUnit);
@@ -20125,11 +20282,12 @@ const alarmRocker = new THREE.Group();
   pin.rotation.x = Math.PI / 2;
   pin.position.set(0.7, 0, -0.04);
   alarmRocker.add(pin);
-  // §34 (groove redesign): ONE finger — the toggle is clean now. The
-  // rocker's inboard arm rises to the pin-arm's TAIL (the band floor) and
-  // presses it PLATE-ward when the ring is up: pin lifted clear of the cam
-  // = disarmed. Ring down (armed): the finger backs off and the pin's own
-  // spring seats it. Follower-A never needed a finger — §29 moved the trip
+  // §34 (groove redesign): ONE finger, meant to rise to the pin-arm's TAIL and
+  // lift the pin clear when the ring is up. TODO 222: it stands 0.91 off the
+  // arm at every pose and touches nothing, and §34's "presses it PLATE-ward"
+  // was the wrong direction (clearing the pin needs the tail pushed DIAL-ward,
+  // from under it). The lift is posed in the tick; the finger is a part with
+  // no job until TODO 222's redesign. Follower-A never needed a finger — §29 moved the trip
   // off it, and armed it simply keeps riding heart-A (the §25 pumping).
   const yokeBar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.30), MATS.steel);
   yokeBar.position.set(0.25, 0, 0.15);
@@ -20807,8 +20965,8 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // grooved-face-cam principle with the §29 track's no-CSG construction
   // (the notch is the ABSENCE of height).
   const camGeo = (() => {
-    const N = 96, rIn = 3.3, rOut = 3.9;
-    const hAt = (th) => 0.02 + (0.10 - 0.02) * (1 - Math.cos(th)) / 2;
+    const N = 96, rIn = ALARM_CAM_R_IN, rOut = ALARM_CAM_R_OUT;
+    const hAt = alarmCamHAt;   // the cam law's one source (TODO 222) — the tick's follower reads the same function
     const pos = [], idx = [];
     for (let i = 0; i <= N; i++) {
       const th = (i / N) * Math.PI * 2;
@@ -38723,7 +38881,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All TWENTY-TWO
+   what it says, and the box already grows to fit its contents. All TWENTY-THREE
    locales measure inside 150 px on one line today — §249's Indonesian
    "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
    and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
@@ -38740,7 +38898,8 @@ html:lang(ko) { word-break: keep-all; }
    level with Russian, "Amser" 28.9; §249's Tagalog "Tumutunog sa" 63.6, just
    under Indonesian's 66.2, "Oras" 21.7; §249's Latvian "Zvana plkst." 57.3,
    "Laiks" 24.5, measured in a container where English's "Rings at" reads
-   37.9) — so the allowance that a
+   37.9; §216's Hungarian "Csörög:" 37.2, "Idő" 14.8, the shortest Latin
+   label yet) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -39445,6 +39604,9 @@ function setBarState(id, on) {
 // §249's Latvian measured 180.5 on its first pass, on "Izvēlne / Skats /
 // Vadība" — 3.9 over English in the same container (176.6 there, where the
 // figures above were taken at 170.2), so it needed no word chosen against it.
+// §216's Hungarian measured 182.6 on its first pass, on "Menü / Nézet /
+// Vezérlés" — 6.0 over English's 176.6 in the same container, so it needed no
+// word chosen against it either.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
@@ -51335,9 +51497,15 @@ function tick(t) {
     // beneath it.
     {
       const relB = wrapPi(alarmTubeShownA - (-alarmSetRot * ALARM_SET_RATIO));
-      const hB = ALARM_CAM_HMIN + (ALARM_CAM_HMAX - ALARM_CAM_HMIN) * (1 - Math.cos(relB)) / 2;
+      const hB = alarmCamHAt(relB);
+      // TODO 222 — STILL POSED: the disarmed lift is read off the selector's
+      // readout (alarmSelShownT), not delivered by the rocker's finger, which
+      // stands 0.91 off the arm (TODO 222 records why the ring cannot carry
+      // that load). What this law now gets right is the DIRECTION: the rock is
+      // solved for the pin's cap, about the arm's own hinge, so the lift
+      // carries the pin plate-ward off the cam and the armed seat lands on it.
       const liftB = Math.max(hB, ALARM_PINB_LIFT * (1 - alarmSelShownT));
-      alarmPinArmB.rotation.y = -liftB / alarmPinArmB.userData.reach; // small-angle rock: the pin tip wears the lift
+      alarmPinArmB.rotation.y = alarmPinBRockAt(liftB);
     }
   }
   // §25 C stage 3 — the setting train, derived FORWARD from the crown (Rule
@@ -51873,8 +52041,11 @@ const JMP_SITE_MOVERS = [
   { name: 'cannon nose', kind: 'revolve', roots: [cannonNose], onto: cannonPinion, slack: 0 },
   { name: 'alarm tube', kind: 'revolve', roots: [alarmTubeGroup], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0 },
   // the pin arm rocks on its face cam and the selector rocker see-saws: slack
-  // MEASURED by the census (0.0647, 0.3229) and rounded up
-  { name: 'pin arm B', kind: 'revolve', roots: [alarmPinArmB], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0.07 },
+  // MEASURED by the census (0.0647, 0.3229) and rounded up. TODO 222 moved the
+  // arm's: it rocked about the tube's y, where the pin's lever was 0.641, and
+  // now rocks about its own hinge through the whole lift, so the census reads
+  // 0.1474 (pin), 0.1401 (bar), 0.1147 (spring ring) — 0.15, rounded up
+  { name: 'pin arm B', kind: 'revolve', roots: [alarmPinArmB], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0.15 },
   { name: 'selector rocker', kind: 'revolve', roots: [alarmRocker], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0.33 },
   // The follower swings on the tube far past any slack worth widening a
   // revolution by (measured 2.17 as one pose), so its revolution is SAMPLED

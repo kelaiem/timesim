@@ -373,9 +373,10 @@ it into prose either.
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the
    largest swing the balance can REACH rounded UP — since TODO 216 the smaller
-   of the solve's maximum and the KNOCK (316: `ESCAPEMENT_KNOCK`, 315.22° on
-   §221's bank, where
-   the impulse pin meets the banked fork's horn, solved off the blank's outline;
+   of the solve's maximum and the KNOCK (302: `ESCAPEMENT_KNOCK`, 301.35° on
+   TODO 226's seated horns, where
+   the impulse pin meets the banked fork's horn, solved off the blank's METAL
+   outline;
    §218's peaks and the hack brake are priced there) — held on both sides and
    within a degree, so a solve that moves leaves neither behind. And since TODO 207 the swing the
    movement is DESIGNED to, `AMPLITUDE_TARGET_DEG` 200° held vertical at the
@@ -1263,6 +1264,14 @@ and `balanceDriveModel` hands an instrument the very constants the loop steps wi
   yields — and `__clock.boot` publishes what the build actually achieved. The
   probe also COUNTS the seams in the source and prints the number, which is the
   one to quote: this entry said 173 for as long as it took the file to reach 203.
+  **Since §266 landing two it runs in CI**: `.github/workflows/boot-yield.yml`,
+  on every pull request touching `index.html`, `src/` or `vendor/` and every
+  push to `main`, always on `ubuntu-latest`, because the ceilings are a
+  property of the host. They are that host's: the slowest of twelve runs times
+  1.66, written beside each. HELD (550 ms) is the sharp gate and the build's own
+  number. Long task (3,900) and input ack (3,850) are backstops, because on CI
+  the worst of each is always the first composited frame, 1.2–2.3 s by runner.
+  A slow dev container can fail those two on a healthy tree; read the held line.
   **A seam must be in an ASYNC CONTEXT and at a STATEMENT HEAD.** The module
   body and top-level bare blocks already are; an IIFE has to become
   `await (async () => {…})()`, which six of them did. `await` mid-expression is
