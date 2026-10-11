@@ -345,6 +345,60 @@ const between = feasible.map((r) => {
   return { deg: r.deg, clear, best, pick, drop: riserDrop(phi, pick.z) };
 });
 
+// ---- THE CORNER: a bell crank from today's stem to the folded pawl ------------
+// No feasible φ has a straight stem in either band, so the pusher needs a
+// corner. Today's stem is proven clear (K5), so it stays as it is, and a bell
+// crank carries its stroke to the folded pin. A crank's geometry is not a
+// choice: each arm's end moves square to the arm, so the pivot stands where the
+// line through today's pin square to today's press meets the line through the
+// folded pin square to the folded press. What this reports is what that
+// construction leaves room for — each arm's swept path, and the tallest z
+// window free in every cell it sweeps, in each band. No section is assumed;
+// the arms' section is derived from their load at design time (P1), and a
+// window is only an upper bound on it.
+const freeOf = (c) => { const out = []; let p = c.lo; for (const [a, b] of c.ivs) { if (a > p) out.push([p, Math.min(a, c.hi)]); p = Math.max(p, b); } if (c.hi > p) out.push([p, c.hi]); return out; };
+const meet = (A, B) => { const out = []; for (const [a0, a1] of A) for (const [b0, b1] of B) { const lo = Math.max(a0, b0), hi = Math.min(a1, b1); if (hi > lo) out.push([lo, hi]); } return out; };
+function armWindow(cellsB, Px, Py, Ex, Ey, sweep) {
+  // the arm from the pivot to its end, at five angles over its swing
+  let win = null; const ks = new Set();
+  for (let i = 0; i <= 4; i++) {
+    const th = sweep * i / 4, c = Math.cos(th), sn = Math.sin(th);
+    const ex = Px + c * (Ex - Px) - sn * (Ey - Py), ey = Py + sn * (Ex - Px) + c * (Ey - Py);
+    const L = Math.hypot(ex - Px, ey - Py), n = Math.max(1, Math.ceil(L / 0.25));
+    for (let j = 0; j <= n; j++) for (const k of nearCellsR(Px + (ex - Px) * j / n, Py + (ey - Py) * j / n, CM)) ks.add(k);
+  }
+  for (const k of ks) { win = win === null ? freeOf(cellsB[k]) : meet(win, freeOf(cellsB[k])); if (!win.length) break; }
+  const best = (win || []).reduce((m, w) => (w[1] - w[0] > (m ? m[1] - m[0] : 0) ? w : m), null);
+  return best;
+}
+const stroke = Math.hypot(cl.pin[1].x - cl.pin[0].x, cl.pin[1].y - cl.pin[0].y);
+const crank = feasible.map((r) => {
+  const phi = r.deg * DEG;
+  const p0 = cl.pin[0], p1 = cl.pin[1];
+  const d0 = { x: (p1.x - p0.x) / stroke, y: (p1.y - p0.y) / stroke };
+  const [qx0, qy0] = fold(p0.x, p0.y, 0, phi), [qx1, qy1] = fold(p1.x, p1.y, 0, phi);
+  const dq = { x: (qx1 - qx0) / stroke, y: (qy1 - qy0) / stroke };
+  // p0 + s·n0 = q0 + t·nq, n = d rotated a quarter turn
+  const n0 = { x: -d0.y, y: d0.x }, nq = { x: -dq.y, y: dq.x };
+  const det = n0.x * -nq.y - n0.y * -nq.x;
+  if (Math.abs(det) < 1e-9) return { deg: r.deg, parallel: true };
+  const bx = qx0 - p0.x, by = qy0 - p0.y;
+  const sP = (bx * -nq.y - by * -nq.x) / det;
+  const Px = p0.x + sP * n0.x, Py = p0.y + sP * n0.y;
+  const a1 = Math.hypot(Px - p0.x, Py - p0.y), a2 = Math.hypot(Px - qx0, Py - qy0);
+  const sw1 = stroke / a1, sw2 = stroke * (a2 / a1) / a2;            // one swing, both arms (the crank is rigid)
+  // turning by +Δ moves a point square to its arm, (−(y−Py), x−Px); the sense
+  // that drives today's pin ALONG its press is the one whose motion has a
+  // positive dot with d0. The same turn moves the folded pin along +dq (the
+  // crank PUSHES the pawl, as the stem does today) or −dq (it would PULL).
+  const sgn = Math.sign(-(p0.y - Py) * d0.x + (p0.x - Px) * d0.y) || 1;
+  const push = Math.sign(-(qy0 - Py) * dq.x + (qx0 - Px) * dq.y) * sgn > 0;
+  const w = { plates: [armWindow(IC, Px, Py, p0.x, p0.y, sgn * sw1), armWindow(IC, Px, Py, qx0, qy0, sgn * sw2)],
+              dial: [armWindow(cells, Px, Py, p0.x, p0.y, sgn * sw1), armWindow(cells, Px, Py, qx0, qy0, sgn * sw2)] };
+  const pr = Math.hypot(Px, Py);
+  return { deg: r.deg, Px, Py, pr, a1, a2, ratio: a2 / a1, push, w };
+});
+
 // ---- controls ----------------------------------------------------------------
 const fails = [];
 const tipR = cl.collarTipR;
@@ -444,6 +498,13 @@ for (const b of between) {
 }
 const direct2 = between.filter((b) => b.clear.length && !b.drop.inPlates && !b.drop.inDial);
 console.log(`    feasible, a straight stem between the plates, and a clear riser drop: ${direct2.length ? direct2.map((b) => b.deg + '°').join(', ') : 'none'}`);
+const fw = (w) => (w ? `${fz(w[0])}..${fz(w[1])} (${(w[1] - w[0]).toFixed(2)})` : 'none');
+console.log(`\n  THE CORNER: a bell crank from today's stem (pin at r ${f(Math.hypot(cl.pin[0].x, cl.pin[0].y), 2)}, stroke ${f(stroke)}) to the folded pin — pivot where the two arms' normals meet; free z window per arm (today's arm, folded arm):`);
+for (const c of crank) {
+  if (c.parallel) { console.log(`    φ ${String(c.deg).padStart(3)}°  the two presses are parallel: no crank`); continue; }
+  const off = c.pr > CASE_R_IN - CM ? '  PIVOT OUTSIDE THE CASE' : '';
+  console.log(`    φ ${String(c.deg).padStart(3)}°  pivot r ${f(c.pr, 2)}${off}  ${c.push ? 'push' : 'PULL'}  arms ${f(c.a1, 2)} / ${f(c.a2, 2)} (ratio ${f(c.ratio, 3)})  plates ${fw(c.w.plates[0])} | ${fw(c.w.plates[1])}  dial ${fw(c.w.dial[0])} | ${fw(c.w.dial[1])}`);
+}
 console.log(`\n  every 30°, for the shape of it:`);
 for (let d = 0; d < 360; d += 30) console.log('    ' + show(results[d]));
 console.log(`\n  controls:`);
