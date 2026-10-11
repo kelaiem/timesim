@@ -85,7 +85,7 @@ export async function dialBandScan({ GRID, exclude = [], band = 'dial' }) {
   clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
   const box = new THREE.Box3();
   const bbOf = (list) => { const b = new THREE.Box3(); for (const m of list) b.union(box.setFromObject(m, true)); return b; };
-  const plateBox = bbOf(plateMeshes), floorBox = bbOf(floorMeshes), ceilBox = bbOf(ceilMeshes);
+  const plateBox = bbOf(plateMeshes), dialBox = bbOf(dialMeshes), floorBox = bbOf(floorMeshes), ceilBox = bbOf(ceilMeshes);
   // The floor wall's top face and the ceiling wall's bottom face (dial: the
   // dial's back, the plate's dial face). Between the plates the ceiling is read
   // off the plate BODY ('threeQuarterPlate'): its pillar screws run on below
