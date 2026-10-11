@@ -26,7 +26,8 @@
 //
 // Since TODO 226 step 3b the line check runs DIAL-FLAT too (the posed 292°,
 // whose arc outside the lift is not the hanging law's) and in the LIVE LOOP
-// (the driven balance stepped, at DU and CL), counting samples in the run and
+// (the driven balance stepped through balance-drive.js with the live loop's own
+// constants, at DU and CL), counting samples in the run and
 // the unlock so a run that never reached them cannot pass; its control
 // re-poses the flat balance by the pre-3b map (τ inverted inside the lift
 // only) and must read the seam that map left.
@@ -243,25 +244,38 @@ const out = await page.evaluate(async () => {
     }
     res.passageControl = ctrl;
   }
-  // Live: the driven balance, stepped, in a flat and a hanging position — the
-  // fork read off τ must hold the pin on its line wherever the pin carries it
-  // (the run and the unlock included, counted so a run that never reached
-  // them cannot pass), with the balance shown where the integrator has it.
-  res.live = [];
-  for (const position of ['DU', 'CL']) {
-    clock.resetInputs();
-    clock.setBalancePosition(position);
-    clock.setPose({ tau: 0.13, tension: 1, position });
-    const bankL = res.winds[0].bankDeg * Math.PI / 180;
-    let worst = 0, inLift = 0, inRunUnlock = 0;
-    for (let k = 0; k < 600; k++) {   // 2 s of swing, ten beats, in ticks of 1/300 s
-      clock.step(1 / 300);
-      const s = readFork(), th = clock.balanceDrive.state.theta;
-      if (!(Math.abs(s) < bankL * (1 - 1e-9))) continue;
-      worst = Math.max(worst, Math.abs(off()));
-      if (Math.abs(th) <= L.LIFT_DEG * Math.PI / 360) inLift++; else inRunUnlock++;
+  // Live: the driven balance, stepped by the module the live loop runs
+  // (balance-drive.js, with the constants and the position's weight the loop
+  // itself uses), in a flat and a hanging position. The fork and the train are
+  // read off τ through the hanging law, so the property is that law AT τ: it
+  // must equal the balance's own angle wherever the pin is in its passage —
+  // the run and the unlock included, counted so a run that never reached them
+  // cannot pass. __clock.step() is not used: stepped dial-flat it is
+  // pathologically slow on main as merged (a separate finding), and the
+  // property is the module's τ map, which this reads exactly. Its CONTROL is the
+  // pre-3b map (the passage narrowed to the lift), which must miss.
+  {
+    const BD = await import('./src/balance-drive.js');
+    const model = clock.balanceDriveModel, K = model.K;
+    const Kold = { ...K, halfPass: K.halfLift, pw: K.IW / 2 };
+    const lawAt = (tau) => K.Ap * Math.sin(2 * Math.PI * K.F * tau - Math.PI * K.IW / 2);
+    res.live = [];
+    for (const position of ['DU', 'CL']) {
+      const flat = position === 'DU';
+      const env = { drive: true, brake: 0, friction: flat ? model.friction.flat : model.friction.vertical, weight: model.weight(position) };
+      const A0 = (flat ? model.posedDeg.flat : model.posedDeg.vertical) * Math.PI / 180;
+      const S = BD.seed(K, 0.13, A0), So = BD.seed(Kold, 0.13, A0);
+      let worst = 0, ctrl = 0, inLift = 0, inRunUnlock = 0;
+      for (let k = 0; k < 600; k++) {
+        BD.step(K, S, 1 / 300, env); BD.step(Kold, So, 1 / 300, env);
+        if (Math.abs(S.theta) < K.halfPass) {
+          worst = Math.max(worst, Math.abs(lawAt(BD.tauOf(K, S)) - S.theta));
+          if (Math.abs(S.theta) <= K.halfLift) inLift++; else inRunUnlock++;
+        }
+        if (Math.abs(So.theta) < K.halfPass) ctrl = Math.max(ctrl, Math.abs(lawAt(BD.tauOf(Kold, So)) - So.theta));
+      }
+      res.live.push({ position, worst, ctrl, inLift, inRunUnlock });
     }
-    res.live.push({ position, worst, inLift, inRunUnlock });
   }
   clock.resetInputs();
   res.worst = { line: worstLine, wheelRad: worstWheel, bank: worstBank, centreRad: worstCentre };
@@ -283,11 +297,12 @@ console.log(`pin ⇄ blank in the lift: driven ${out.driven.lift.min.toFixed(4)}
 console.log('every fork ⇄ balance mesh pair within 2, driven:');
 for (const r of out.driven.pairs) console.log(`  ${r.min.toFixed(4)}  ${r.pair}${WAIVED.has(r.pair) ? '   (waived: TODO 226 step 1)' : ''}`);
 console.log(`passage control (the pre-3b map, flat): the line check reads ${out.passageControl.toFixed(4)} off the line`);
-for (const l of out.live) console.log(`live ${l.position}: pin off the line worst ${l.worst.toExponential(2)} over ${l.inLift} samples in the lift and ${l.inRunUnlock} in the run and the unlock`);
+for (const l of out.live) console.log(`live ${l.position}: the hanging law at τ is the balance's angle to ${l.worst.toExponential(2)} rad over ${l.inLift} samples in the lift and ${l.inRunUnlock} in the run and the unlock (control, the pre-3b map: ${l.ctrl.toExponential(2)})`);
 if (out.worst.line > 1e-6) f.push(`pin off the slot centre line by ${out.worst.line}`);
 if (!(out.passageControl > 1e-3)) f.push(`CONTROL clean: the pre-3b passage reads only ${out.passageControl} off the line — the check cannot see the seam it holds`);
 for (const l of out.live) {
-  if (l.worst > 1e-6) f.push(`live ${l.position}: the pin leaves the fork's line by ${l.worst}`);
+  if (l.worst > 1e-9) f.push(`live ${l.position}: τ is not the posed law's inverse in the passage (${l.worst} rad)`);
+  if (l.position === 'DU' && !(l.ctrl > 1e-3)) f.push(`live CONTROL clean: the pre-3b map reads only ${l.ctrl} rad off in the passage`);
   if (!(l.inRunUnlock > 0 && l.inLift > 0)) f.push(`live ${l.position}: the run never sampled the lift and the run/unlock both (${l.inLift}, ${l.inRunUnlock})`);
 }
 if (out.worst.bank) f.push('fork not banked on the pin\'s side outside the lift');
