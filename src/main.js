@@ -33351,6 +33351,16 @@ const _linkBeakAz0 = Math.atan2(alarmLockPivot.y - ALARM_COL_POS.y, alarmLockPiv
 // registration solve's own `for (const th of […])` search would pick; that
 // selection only matters for the SIGN of the roll, not for how far it has
 // to turn.
+// §70 step 3 — THE LINK'S LAWS, published for its line spec. Each is the
+// function the build itself calls, so the reference in inspect.js evaluates
+// the very law the metal was cut by at the reference's own inputs (§229's rod
+// distance, §51's level groove) instead of a second copy of it.
+const ALARM_LINK_LAWS = {};
+// The shaft's roll over a whole arming — §234 Landing 5's budget, sized
+// against the rim finger's lateral sweep (span 0.35 → sweep ≈ 0.10, inside the
+// 0.2685 ray-probed corridor). Hoisted out of the pin arm's solve below
+// because the rod's stroke reads it too (ALARM_LINK_ROD_TRAVEL_SPEC).
+const ALARM_LINK_SPAN_BUDGET = 0.35;
 const ALARM_FORK_PIN_ARM_R = (() => {
   // §234 Landing 5, course-corrected — the SAME 0.35 rad budget the retired
   // D = 0 derivation used (sized against the RIM crank's own lateral sweep:
@@ -33372,14 +33382,19 @@ const ALARM_FORK_PIN_ARM_R = (() => {
   // which reproduces the retired D = 0 derivation exactly (r = travelW/sinS)
   // — algebra, not a coincidence: at D = 0 the bracket collapses to
   // (travelW/2)²·(1/sin² + 1/cos²)(S/2) = (travelW/2)²·4/sin²S.
-  const SPAN_BUDGET = 0.35;
+  const SPAN_BUDGET = ALARM_LINK_SPAN_BUDGET;
   alarmSelectorUnit.updateWorldMatrix(true, true);
   const grooveMidRest = new THREE.Vector3(0, 0, 0).applyMatrix4(alarmSelRing.matrixWorld).z;
   const D = grooveMidRest - ALARM_LINK_SHAFT_Z;
   const zCol = new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.parent.matrixWorld);
-  const travelW = -ALARM_SEL_TRAVEL * Math.sign(zCol.z);
-  const S = SPAN_BUDGET;
-  return 0.5 * Math.hypot(travelW / Math.sin(S / 2), (2 * D + travelW) / Math.cos(S / 2));
+  const sense = -Math.sign(zCol.z);   // the ring's travel in world sign, from the dial flip
+  // the law, for the line spec: the arm that spends `span` of roll on `travel`
+  // at the groove's offset D above the axis (D = 0 is §51's level groove)
+  ALARM_LINK_LAWS.pinArm = (Dz, travel, span) => {
+    const tW = sense * travel;
+    return 0.5 * Math.hypot(tW / Math.sin(span / 2), (2 * Dz + tW) / Math.cos(span / 2));
+  };
+  return ALARM_LINK_LAWS.pinArm(D, ALARM_SEL_TRAVEL, SPAN_BUDGET);
 })();
 // TODO 174 — three design lengths hoisted beside the seat, which derives from
 // all of them (each one's derivation stays at its build, which now reads it):
@@ -33501,8 +33516,12 @@ const ALARM_LINK_RIM_REST_FROM_ZENITH = 1.05;    // the finger's DESIGNED rest, 
 // RIM_TIP_D·cosθ + (CRANK_T/2)·sinθ — the envelope the registration solve
 // bisects, closed here because the zenith of the pair is the arm's own centre
 // line. Asserted against the solved foot at the rod build.
-const ALARM_LINK_RIM_H_REST = ALARM_LINK_RIM_TIP_D * Math.cos(ALARM_LINK_RIM_REST_FROM_ZENITH)
-  + (ALARM_LINK_CRANK_T / 2) * Math.sin(ALARM_LINK_RIM_REST_FROM_ZENITH);   // 0.2635
+// (|sin θ|, because which corner is upper swaps at the zenith — the
+// registration solve's envelope; at the rest's θ > 0 it is the sin itself.)
+const alarmLinkRimTopAt = (theta) => ALARM_LINK_RIM_TIP_D * Math.cos(theta)
+  + (ALARM_LINK_CRANK_T / 2) * Math.abs(Math.sin(theta));
+const ALARM_LINK_RIM_H_REST = alarmLinkRimTopAt(ALARM_LINK_RIM_REST_FROM_ZENITH);   // 0.2635
+ALARM_LINK_LAWS.rimTop = alarmLinkRimTopAt;
 const ALARM_LINK_ROD_STANDOFF = (() => {
   const reach = ALARM_LINK_SHAFT_NECK_R + CLEAR_MARGIN;
   // a foot already high enough clears the neck vertically, at any plan offset
@@ -34156,9 +34175,22 @@ function alarmLinkReadClean(colX, colY, lockEngaged) {
 // the standing answer to that ordering: quote the figure where it is needed,
 // re-derive it live where it is produced, and warn if the two part. The
 // deleted constant had no such assert, which is exactly why it could sit
-// wrong for the life of a section; this one is held to 1e-3 by the solve
-// itself and cannot.
-const ALARM_LINK_ROD_TRAVEL_SPEC = 0.10020;   // §234 Landing 5, course-corrected, re-measured: the SHAFT's own roll SPAN is exactly SPAN_BUDGET (0.35 rad) again, as it was pre-Landing-5 — but rollRest itself is a registration-solve OUTPUT, fit to the rod's own foot datum, and that foot moved slightly (the honest ALARM_LINK_ROD_END_OVERHANG re-derivation and the raised, dial-clearance-derived stratum both touch the rod's build) — so the sinusoid the rim crank reads is evaluated at a slightly different absolute angle even though its own shape (ALARM_LINK_CRANK_OFF/_T, rimLen) never moved. Was 0.09932 pre-Landing-5; the boot warning below re-measures and asserts against THIS number
+// wrong for the life of a section; this one is held by the solve itself (to
+// 1e-3 while it was a quotation, to 1e-9 since §70 step 3 made it the law).
+// §70 step 3 — AND IT IS THE LAW'S OWN ANSWER NOW, not a quotation of it. The
+// rim finger's top is a closed form (alarmLinkRimTopAt), the rest is
+// ALARM_LINK_RIM_REST_FROM_ZENITH and the armed roll is one span toward the
+// zenith, so the stroke is top(rest − span) − top(rest) = 0.1001979 — which is
+// exactly what the registration solve then measures off the built finger
+// (4e-15). The quoted 0.10020 below was that number rounded, and the beak's
+// seat was solved on the rounding: the tick tilts the lever by the rod's REAL
+// stroke, so the nose stopped 1.27e-5 above the gap floor it is declared to
+// stand on — inside the 1e-4 the boot assert allowed, and found by the link's
+// line spec, whose `seat` row holds it to float noise.
+const ALARM_LINK_ROD_TRAVEL_SPEC = alarmLinkRimTopAt(ALARM_LINK_RIM_REST_FROM_ZENITH - ALARM_LINK_SPAN_BUDGET)
+  - alarmLinkRimTopAt(ALARM_LINK_RIM_REST_FROM_ZENITH);
+// (Its quotations, for the record: 0.09932 before §234 Landing 5, which put the
+// shaft's span back on SPAN_BUDGET exactly; 0.10020 after it, re-measured.)
 // TODO 206 — the arming spring's solved line spec, published by the link's
 // registration solve (where its inputs live) and read by the tick and the
 // pusher's force rows below it.
@@ -34271,7 +34303,15 @@ const alarmLinkParts = {};
       const tilt = drop / beakLen;
       for (let r = ALARM_COL_INNER; r <= ALARM_COL_BASE_R + 1e-9; r += (ALARM_COL_BASE_R - ALARM_COL_INNER) / 12) {
         const x = pivDist - r;                      // arm-local distance from the pivot
-        if (x < 0 || x > beakLen) continue;
+        // §70 step 3 — the NOSE's own station is not the bar's. The grid lands
+        // a sample exactly on the landing radius (x = beakLen), and whether
+        // `x > beakLen` kept it was a float rounding: the build's run
+        // (8.999999999999998 − landR) dropped it, lift 0.2687; the line spec
+        // evaluating this law at a run of exactly 9 kept it, lift 0.2983 — the
+        // same lever, two answers 0.03 apart. The bar clears the columns and
+        // the nose alone reads them (§172), so the station the nose hangs from
+        // is excluded on purpose, by a margin rather than by rounding.
+        if (x < 0 || x > beakLen - 1e-9) continue;
         const dAz = Math.atan2(halfW, r);           // what the bar's corner overhangs in azimuth
         for (const e of [-dAz, 0, dAz]) {
           const surf = colH * p(phi + ALARM_LINK_BEAK_OFF + e);   // column height under that corner
@@ -34281,8 +34321,11 @@ const alarmLinkParts = {};
     }
     return need;
   };
-  const _seat = (() => {
-    const run = wrLen - ALARM_LINK_NOSE_LAND_R, rodT = ALARM_LINK_ROD_TRAVEL_SPEC;
+  // §70 step 3 — the seat solve is a FUNCTION of the run and the rod's
+  // stroke, so the link's line spec can evaluate the same law at its own
+  // reference run (§229's wr 16) rather than restating it: one law, two
+  // callers, and the build's call below is the arithmetic it always was.
+  const alarmLinkSeatSolve = (run, rodT) => {
     const halfRad = ALARM_LINK_NOSE_W_RAD / 2;
     let h = CLEAR_MARGIN + STOCK_MIN_U / 2, th = 0, lift = CLEAR_MARGIN;
     for (let pass = 0; pass < 40; pass++) {
@@ -34299,7 +34342,9 @@ const alarmLinkParts = {};
     const tailLen = rodT / th, beakLen = run - tailLen;
     return { theta: th, tailLen, beakLen, lift, h, seatDrop: beakLen * th,
       deepest: (beakLen + halfRad) * Math.sin(th) - h * (1 - Math.cos(th)) };
-  })();
+  };
+  ALARM_LINK_LAWS.seat = alarmLinkSeatSolve;
+  const _seat = alarmLinkSeatSolve(wrLen - ALARM_LINK_NOSE_LAND_R, ALARM_LINK_ROD_TRAVEL_SPEC);
   const ALARM_COL_SEAT_DROP_SPEC = _seat.seatDrop;
   if (Math.abs(_seat.deepest - ALARM_COL_H) > 1e-9)
     console.warn(`TODO 206: the seat solve did not land the nose's corner on the gap floor — ${_seat.deepest.toFixed(6)} of colH ${ALARM_COL_H.toFixed(6)}`);
@@ -34457,19 +34502,26 @@ const alarmLinkParts = {};
   // run (the corner's dip scales with the arm), and the arms follow by the same
   // law: at wr 9, beakLen 3.6565, tailLen 0.6885, ratio 5.3107, seat tilt
   // 0.1455 rad (the rod's top is cut to it), tail stall 87771 mN; the lay
-  // shaft's row 1348.7 mN against TODO 82's probe 1318.98. The reference
-  // column's own numbers re-derive the same way and are not re-quoted here —
-  // `fork.beakLenRef`/`tailLenRef` carry them live.
+  // shaft's row 1348.7 mN against TODO 82's probe 1318.98.
+  //
+  // §70 step 3 — AND THE RATIO IS NOT HELD ANY MORE. The table's "HELD" was
+  // true until TODO 206 made the seat a contact whose corner dip scales with
+  // the arm: since then the ratio is solved per run, so a fork of the run
+  // moves it by consequence — the seat law gives 5.791 at §229's wr 16 and
+  // 5.311 here. This record's reference columns were computed with the FORK's
+  // ratio, which made the "reference" a function of the fold, and its first
+  // assert compared the fork's ratio with itself (both at this run), so it
+  // could not fire. The reference columns are the law's own answer at the
+  // reference run now, and the fork is DECLARED where the battery holds it:
+  // `LINE_SPEC_FORKS` in inspect.js, 'alarm link as built', which forks the
+  // run (and the pin's groove offset, below) and lets every arm re-derive from
+  // the line's own laws. The one input this build owes it stays asserted here.
   const ALARM_BEAK_REF_WRLEN = 16;   // §229's reference fold — the record the fork is measured against, not a live input
   {
-    const refRun = ALARM_BEAK_REF_WRLEN - ALARM_LINK_NOSE_LAND_R;
-    const fork = { wrLenRef: ALARM_BEAK_REF_WRLEN, wrLen,
-      beakLenRef: refRun * beakToTail / (1 + beakToTail), beakLen,
-      tailLenRef: refRun / (1 + beakToTail), tailLen,
-      ratio: beakLen / tailLen, ratioLine: beakToTail };
-    alarmLinkParts.fork = fork;
-    if (Math.abs(fork.ratio - beakToTail) > 1e-9 * beakToTail)
-      console.warn(`TODO 174: the beak's fork moved the RATIO — ${fork.ratio.toFixed(6)} against the line's ${beakToTail.toFixed(6)}; a fork of the arm lengths may not touch it`);
+    const ref = alarmLinkSeatSolve(ALARM_BEAK_REF_WRLEN - ALARM_LINK_NOSE_LAND_R, ALARM_LINK_ROD_TRAVEL_SPEC);
+    alarmLinkParts.fork = { wrLenRef: ALARM_BEAK_REF_WRLEN, wrLen,
+      beakLenRef: ref.beakLen, beakLen, tailLenRef: ref.tailLen, tailLen,
+      ratioRef: ref.beakLen / ref.tailLen, ratio: beakLen / tailLen };
     if (Math.abs(wrLen - ALARM_LINK_ROD_DIST) > 1e-6)
       console.warn(`TODO 174: the beak's rod distance ${wrLen.toFixed(4)} is not the site solve's ${ALARM_LINK_ROD_DIST} — the one input the fork declares`);
   }
@@ -35680,7 +35732,7 @@ const alarmLinkParts = {};
       beakArm.rotation.y = 0;
       scene.updateMatrixWorld(true);
       F.seatFloorGap = seatBot - (ALARM_COL_TOP_Z - ALARM_COL_H);
-      if (Math.abs(F.seatFloorGap) > 1e-4)
+      if (Math.abs(F.seatFloorGap) > 1e-6)   // §70 step 3: was 1e-4, which a 1.27e-5 miss passed
         say('the nose does not seat on the gap floor', `its lowest point stands ${F.seatFloorGap.toFixed(5)} off it at the seat tilt`);
     }
     // §192 — the two claims the tier's height now rests on. The spec at the
@@ -35697,7 +35749,7 @@ const alarmLinkParts = {};
     // the quote is still true. Without this the station would silently encode
     // a stroke the rod no longer makes — which is precisely how the deleted
     // ALARM_LINK_ROD_TRAVEL = 0.42 survived a whole section.
-    if (Math.abs(Math.abs(F.rodTravel) - ALARM_LINK_ROD_TRAVEL_SPEC) > 1e-3)
+    if (Math.abs(Math.abs(F.rodTravel) - ALARM_LINK_ROD_TRAVEL_SPEC) > 1e-9)   // §70 step 3: the spec IS the law now, so they agree to float, not to a quotation's 1e-3
       say('rod travel parted from its spec', `${Math.abs(F.rodTravel).toFixed(4)} vs ALARM_LINK_ROD_TRAVEL_SPEC ${ALARM_LINK_ROD_TRAVEL_SPEC} — the beak's pivot station is cut from this ratio, so re-quote it here and let the station follow`);
     // (§229's `colH < seatNoseDrop + CLEAR_MARGIN` assert — "the beak would
     // ride the gap floor, not the seat" — is RETIRED by TODO 206: riding the
@@ -53904,6 +53956,7 @@ window.__clock = {
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec
   get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get lineLaws() { return ALARM_LINK_LAWS; }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows

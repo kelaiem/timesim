@@ -34467,8 +34467,9 @@ payload, so the roadmap is visible in the repository only.
 > one group §261 step 4 is about to fold under the dial, so that the fold has
 > a reference to measure back to BEFORE it moves a part. Step 3 (declared
 > forks) and step 4 (the §35 control-case seeds) remain. A second landing added
-> the LOCK that reads the wheel (§183's seed, below); the selector link, the
-> §35 seed, is the reference still owed.
+> the LOCK that reads the wheel (§183's seed, below). A third built **step 3,
+> FORKS**, with the selector link as the first reference that needs one (the
+> last section below); step 4's seeds are what remains.
 
 **Why.** Every battery gate before this was SPATIAL: it asked whether the
 packaged movement fouls itself. None asked whether the packaged mechanism is
@@ -34596,4 +34597,91 @@ to half a saw tooth, 0.627, which shortened the Thales arm and lowered the
 chamfer, and lowered its ceiling faster. **The headroom under the ceiling fell
 from 0.328 to 0.039**, with nothing positioned to say so. That is the number the
 fold has to keep, and now a row holds it.
+
+### Step 3 — forks, and the third reference: the selector link
+
+The link is the first reference whose numbers are mostly the OUTPUT of solves
+rather than literals, and the first the movement could not keep. Its path is
+column wheel → beak lever (nose on the columns, tail on the rod) → selector rod
+→ rim finger on the lay shaft → centre pin in the fork → selector ring.
+
+**A reference may call the build's laws.** Its value functions take a second
+argument, the laws `main.js` publishes as `__clock.lineLaws`: the beak's seat
+solve, the fork pin's arm and the rim finger's top. They are the functions the
+build itself calls, refactored out of the IIFEs that held them with the
+arithmetic unchanged, so the reference evaluates the law the metal was cut by,
+at its own inputs, and no law is written twice.
+
+**A fork moves an input, never a law** (`LINE_SPEC_FORKS`, `inspect.js`). A
+fork names one reference and overrides some of its LITERAL spec rows, each with
+the constraint in the movement that forced it (`forcedBy`). Every derived row
+then re-derives from the reference's own laws at the forked inputs, and the
+gate measures the build against those values and lists what the fork moved,
+and by which route. Four things are MALFORMED rather than trusted: overriding a
+law, overriding an envelope (inherited whole, so §35's tail fails as a fork
+too), an override with no forcing constraint, and a second fork of one
+reference. An override equal to the reference is a STALE fork and fails, on the
+waivers' rule.
+
+| row | reference (§229's fold) | as built (the fork) | how |
+|---|---|---|---|
+| `wrLen`, the rod's distance from the wheel | 16 | **9** | INPUT — the §112 site solve (TODO 174's corrected guard; TODO 190's next parity ray) |
+| `pinD`, the groove's offset from the shaft's axis | 0 (§51's level groove) | **−0.161475** | INPUT — §234 Landing 5 raised the shaft's stratum |
+| `ratio`, beakLen / tailLen | 5.7906 | 5.3108 | law: the seat solve at the run |
+| `beakLen` / `tailLen` | 9.6743 / 1.6707 | 3.6565 / 0.6885 | law |
+| `pinArm` | 0.554101 (T / sin S) | 0.549798 | law: the closed form at D |
+
+The other nine spec rows are the reference's own values: the nose's landing
+radius (4.655), the lever collinear and its pin square to it, the shaft's span
+(0.35 rad), the finger's rest 60° off its zenith, the rod's foot over the axis
+(0.263513) and its stroke (0.100198), the nose's fall onto the gap floor (the
+whole column tier, 0.616667), and the ring's travel (0.19). The sixteenth, the
+stall, is the envelope: what the chain delivers must COVER the 5–50 mN detent window,
+`bound: 'min'` at 50 mN, read as TODO 16's arithmetic (§70 step 2 allows forces
+so), from the §137 lay-shaft row, which is itself asserted against TODO 82's
+posed probe. It reads 1348.7 mN. The drive reference grew `colH` (the column
+tier, measured off the castellations' z extent) for the seat to read.
+
+Every row is measured at `alarmToggle`'s two states off world-box centres of
+centrally symmetric meshes, which in 3D as in plan are exact at any rotation.
+The shaft's axis is the line through two hanger bushes, which are rings on it,
+and the stall is the one row read from a computed record. **The control moves
+metal**: the selector rod is carried 0.05 out along the lever's line, the
+measured run must follow it to 1e-9, and the rod goes back.
+
+**What the reference found, all three fixed in this landing:**
+
+- **The seat solve was discontinuous in its input.** The bar-lift sweep's grid
+  puts a sample exactly at the nose's landing radius (x = beakLen), and whether
+  `x > beakLen` kept it was a float rounding. The build's run,
+  8.999999999999998 − landR, dropped it (lift 0.2687); the reference evaluating
+  the same law at a run of exactly 9 kept it (lift 0.2983). That is one lever
+  with two answers 0.03 apart. The sample is now excluded by a margin, which is
+  what the build had landed on and what §172 says: the bar clears the columns,
+  and only the nose reads them. The metal did not move.
+- **The rod's stroke was a rounded quotation.** `ALARM_LINK_ROD_TRAVEL_SPEC` was
+  0.10020, while the rim finger's law gives 0.1001979 exactly (the registration
+  solve measures the same to 4e-15). The beak's seat was solved on the
+  rounding, while the tick tilts the lever by the rod's real stroke. So the nose
+  stopped **1.27e-5 above the gap floor** it is declared to stand on, inside the
+  1e-4 the boot assert allowed. The spec is the law's own answer now. The beak's
+  arms moved by 1.2e-5 to re-seat it, and the two asserts that judge the pair are
+  tightened from 1e-3 and 1e-4 to 1e-9 and 1e-6.
+- **TODO 174's fork record held its ratio "HELD" and computed its reference
+  with the fork's own ratio.** That was true until TODO 206 made the seat a
+  contact whose corner dip scales with the arm. Since then the ratio is solved
+  per run, so forking the run moves it: 5.791 at wr 16, 5.311 at 9. The
+  record's reference columns now come from the law at the reference run. Its
+  first assert compared the fork's ratio with itself and could not fire, so it
+  is gone. The fork itself now lives where the battery holds it.
+
+`probe-70-line-spec.mjs` grew to eleven trees. The six new ones move only the
+declaration, never the metal:
+
+- deleting the fork fails exactly the six rows it carried;
+- mis-declaring the run (9.5) fails the run and the three rows that derive from
+  it;
+- forking to the reference's own 16 fails them and reports the fork STALE;
+- forking a law, forking the stall envelope, or forking with no `forcedBy` each
+  come back MALFORMED, on the row named.
 

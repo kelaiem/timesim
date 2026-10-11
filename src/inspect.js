@@ -12860,8 +12860,9 @@ export function checkAestheticsMerge() {
 // Quoting a constant would gate nothing (§70: the §66 lever spans are the
 // cautionary case).
 //   kind 'spec'     — what the line design chose. A fold that must change one
-//                     declares a FORK (§70 step 3, not built yet: until it is,
-//                     a moved spec row simply fails).
+//                     declares a FORK (§70 step 3, LINE_SPEC_FORKS below): it
+//                     may override a LITERAL spec row with the constraint that
+//                     forced it, and every derived row re-derives.
 //   kind 'envelope' — a window the mechanism must live inside whatever the
 //                     integration. Inherited, never forkable. With `bound`
 //                     'max' or 'min' it is one side of a window (the lock's
@@ -12874,7 +12875,7 @@ export function checkAestheticsMerge() {
 // Tolerances are float noise of the constructions, not budgets: a fold that
 // moves a row moves it by orders more. Waivers follow stockFloor's convention
 // (cite a TODO; a waiver whose row passes is STALE and fails).
-export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, ratio: 1e-6, count: 0 };
+export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, ratio: 1e-6, count: 0, mN: 1e-6 };
 export const LINE_SPECS = [
   {
     name: 'alarm switch drive',
@@ -12893,6 +12894,8 @@ export const LINE_SPECS = [
         derivedFrom: 'the saw’s tip circle at 1.12 · baseR (makeColumnWheel): what every rod crossing the saw’s band stands clear of (§171), and with the root the tooth depth the riders’ noses are cut to' },
       { key: 'colInner', kind: 'spec', unit: 'u', value: (r) => r.baseR * 0.95 / 1.5, measure: 'colInnerR',
         derivedFrom: 'the castellations’ inner wall at the original 0.95 : 1.5 proportion, kept through every regrowth of the wheel (ALARM_COL_INNER) — the §35 link beak lands between it and the base radius' },
+      { key: 'colH', kind: 'spec', unit: 'u', value: STOCK_MIN_U + 2 * CLEAR_MARGIN, measure: 'colH',
+        derivedFrom: 'the column tier (ALARM_COL_H): floor stock for the lock rocker’s beak, one running margin at each column face — the height every rider reads' },
       { key: 'step', kind: 'spec', unit: 'rad', value: (r) => Math.PI / r.columns, measure: 'driverSweep',
         derivedFrom: 'half a column pitch per actuation; measured as the DRIVER’s sweep over the press stroke, because a radial slot makes the driver’s angle the pin’s azimuth (§163)' },
       { key: 'travel', kind: 'spec', unit: 'u', value: (r) => (2 * Math.PI / r.teeth) * r.rootR, measure: 'pinTravel',
@@ -12959,6 +12962,79 @@ export const LINE_SPECS = [
         value: (r) => r.baseR - ((r.colInner + r.baseR) / 2 + r.noseR + CLEAR_MARGIN), measure: 'noseDrop',
         derivedFrom: 'the §35 link beak lands mid-castellation, and the chamfer may not come inboard of that landing plus a nose plus a margin (ALARM_COL_RCHAM_MAX). §183’s whole argument: re-siting the beak needed 0.5448 or 0.6723 against it, the fold needs arm × lift' },
     ],
+  },
+];
+// The third reference is the first whose numbers are mostly the OUTPUT of
+// solves rather than literals, and the first that needs a fork. Its value
+// functions take a second argument, `L` — the build's own laws
+// (`clock.lineLaws`: the beak's seat solve, the fork pin's arm, the rim
+// finger's top), so the reference evaluates the very law the metal was cut by
+// at ITS inputs. Writing those laws here instead would be the law-twice defect
+// CLAUDE.md's traps list names; passing them in keeps one copy.
+LINE_SPECS.push({
+  name: 'alarm link',
+  group: 'Alarm link',
+  inherits: 'alarm switch drive',   // the wheel the nose reads: colInner, baseR, colH
+  path: 'column wheel → beak lever (nose on the columns, tail on the rod) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
+  rows: [
+    { key: 'landR', kind: 'spec', unit: 'u', value: (r) => (r.colInner + r.baseR) / 2, measure: 'noseLandR',
+      derivedFrom: '§35/§229: the nose lands mid-castellation (ALARM_LINK_NOSE_LAND_R) — the landing the lock rocker’s chamfer ceiling is measured against' },
+    { key: 'wrLen', kind: 'spec', unit: 'u', value: 16, measure: 'rodDist',
+      derivedFrom: '§229’s reference fold: the rod 16 from the wheel. A RUN, not a law — where the rod stands is the movement’s to decide, so it is the input a fold forks' },
+    { key: 'noseLine', kind: 'spec', unit: 'u', value: 0, measure: 'noseOffLine',
+      derivedFrom: '§229: the lever is collinear — nose, pivot and rod on the wheel→rod ray — which is what makes beakLen + tailLen = wrLen − landR' },
+    { key: 'pivotSquare', kind: 'spec', unit: 'ratio', value: 0, measure: 'pivotAxisCos',
+      derivedFrom: 'TODO 204: the lever tilts on a pin square to its own line, so the nose falls and the tail lifts in one plane' },
+    { key: 'span', kind: 'spec', unit: 'rad', value: 0.35, measure: 'shaftRoll',
+      derivedFrom: '§234 Landing 5’s SPAN_BUDGET: the shaft’s roll over a whole arming, sized so the rim finger’s lateral sweep stays ≈ 0.10, inside the 0.2685 corridor ray-probed for it' },
+    { key: 'restFromZenith', kind: 'spec', unit: 'rad', value: 1.05, measure: 'rimRestFromZenith',
+      derivedFrom: 'TODO 20: the rim finger RESTS 60° off its own zenith (ALARM_LINK_RIM_REST_FROM_ZENITH), so it presses the rod’s foot with its tip corner on a working flank' },
+    { key: 'footRest', kind: 'spec', unit: 'u', value: (r, L) => L.rimTop(r.restFromZenith), measure: 'rodFootOverAxis',
+      derivedFrom: 'TODO 205: the rod’s foot is READ off the finger’s designed rest — the corner envelope’s top at that roll, over the shaft’s axis' },
+    { key: 'rodTravel', kind: 'spec', unit: 'u', value: (r, L) => L.rimTop(r.restFromZenith - r.span) - L.rimTop(r.restFromZenith), measure: 'rodTravel',
+      derivedFrom: 'TODO 20: the rod’s stroke FALLS OUT of the finger’s two rolls — nobody assigns it (ALARM_LINK_ROD_TRAVEL_SPEC quotes it where it is needed first)' },
+    { key: 'seat', kind: 'spec', unit: 'u', value: (r) => r.colH, measure: 'noseFall',
+      derivedFrom: 'TODO 206 (C1): the nose falls until its lowest corner stands on the gap floor — the whole column tier, read whole' },
+    { key: 'ratio', kind: 'spec', unit: 'ratio', value: (r, L) => { const q = L.seat(r.wrLen - r.landR, r.rodTravel); return q.beakLen / q.tailLen; }, measure: 'armRatio',
+      derivedFrom: '§229 + TODO 206: beakLen / tailLen = seat drop / rod stroke, the seat a contact whose corner dip scales with the arm — so the ratio is SOLVED per run (the build’s own seat law), and a fork of the run moves it' },
+    { key: 'beakLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel).beakLen, measure: 'beakArm',
+      derivedFrom: '§229: the input arm, (wrLen − landR)·ρ/(1 + ρ) at the solved ratio' },
+    { key: 'tailLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel).tailLen, measure: 'tailArm',
+      derivedFrom: '§229: the output arm, (wrLen − landR)/(1 + ρ) — the lever REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
+    { key: 'ringTravel', kind: 'spec', unit: 'u', value: 0.19, measure: 'ringTravel',
+      derivedFrom: 'ALARM_SEL_TRAVEL: sized by the selector ring’s bias assert — the finger throw it buys' },
+    { key: 'pinD', kind: 'spec', unit: 'u', value: 0, measure: 'pinOffsetZ',
+      derivedFrom: '§51’s stratification: the fork’s groove mid on the shaft’s axis plane, so the pin rests horizontal. A STRATUM, not a law — the input a fold forks' },
+    { key: 'pinArm', kind: 'spec', unit: 'u', value: (r, L) => L.pinArm(r.pinD, r.ringTravel, r.span), measure: 'pinArmR',
+      derivedFrom: '§234 Landing 5: the arm that spends exactly the span on the ring’s travel at the groove’s offset D — ½·√((T/sin(S/2))² + ((2D+T)/cos(S/2))²), T/sin S at D = 0' },
+    { key: 'stall', kind: 'envelope', bound: 'min', unit: 'mN', value: SELECTOR_DETENT_WINDOW_MN[1], measure: 'stallMN',
+      derivedFrom: 'SELECTOR_DETENT_WINDOW_MN: what the chain DELIVERS to the ring must COVER the 5–50 mN detent band (§232) — TODO 16’s 1.5 mN is this row failing. Read as TODO 16’s arithmetic (§70 step 2 allows forces so), the §137 row’s series stall, itself asserted against TODO 82’s posed probe' },
+  ],
+});
+
+// §70 step 3 — FORKS. A fold that cannot keep a spec row declares a fork: a
+// named copy of one reference whose changed rows each carry the movement
+// constraint that forced them, written in place. Three rules, all enforced by
+// the gate as MALFORMED rather than trusted:
+//   · a fork moves an INPUT, never a LAW — it may override only a row whose
+//     value is a literal; every derived row re-derives from the reference's
+//     own law at the forked inputs, and the gate lists what that moved;
+//   · an ENVELOPE can never be forked (§35's 26.79 tail fails as a fork too,
+//     which is the point);
+//   · every override says what forced it (`forcedBy`), and an override equal
+//     to the reference is STALE — a fork that no longer forks.
+// One fork per reference: the movement integrates one, and two would make
+// the measured build ambiguous.
+export const LINE_SPEC_FORKS = [
+  {
+    name: 'alarm link as built',
+    ref: 'alarm link',
+    rows: {
+      wrLen: { value: 9,
+        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST): TODO 174 corrected its guide-post guard, which had seated §229’s wr-16 fork ON guide post 1, and the best legal site stands the rod 9 from the wheel (TODO 190 kept the distance on the next parity ray)' },
+      pinD: { value: -0.161475,
+        forcedBy: '§234 Landing 5 raised the lay shaft’s stratum (ALARM_LINK_SHAFT_Z) for the dial’s clearance, so the groove mid no longer sits on the axis plane — D = groove mid − shaft z, read off the metal as the pin’s rest height over the axis' },
+    },
   },
 ];
 export const LINE_SPEC_WAIVERS = {};
@@ -13061,7 +13137,13 @@ function lineSpecDrive(clock, { pinShift = 0 } = {}) {
   // the castellations' columns: their mid radius is between the base's inner
   // ring and its rim, read off their own vertices
   let cMin = Infinity, cMax = 0; { const pos = cast.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); const r = Math.hypot(v.x, v.y); if (r > 1e-6) { cMin = Math.min(cMin, r); cMax = Math.max(cMax, r); } } }
+  // the column tier's height off the castellations' own vertices: base top
+  // (their inner floor) to column top, along the wheel's axis (world z)
+  let zMin = Infinity, zMax = -Infinity;
+  { cast.updateWorldMatrix(true, false); const pos = cast.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(cast.matrixWorld); zMin = Math.min(zMin, v.z); zMax = Math.max(zMax, v.z); } }
   return {
+    colH: zMax - zMin,
     castellationCount: runs(cast, (cMin + cMax) / 2),
     sawToothCount: Number.isFinite(rootR) ? runs(skirt, (rootR + tipR) / 2) : NaN,
     wheelBaseR: baseR,
@@ -13211,6 +13293,117 @@ function lineSpecLockControl(clock, m) {
     : `FAIL — carried ${D}, the stand-off moved ${moved}; restored ${back} vs ${read0.rockerPostW}; lift ${m.leverLift}`;
 }
 
+// THE LINK'S READERS. The same two `alarmToggle` states as the lock's — the
+// axis steps the column wheel, and the beak, the rod, the lay shaft and the
+// ring follow by the build's own laws. Which state is REST is read (the nose's
+// lowest point higher, standing on a column top), not assumed.
+//
+// Centres are world-box centres of centrally symmetric meshes, in 3D now as
+// well as in plan: the nose and the rim finger are boxes, the rod a 12-gon,
+// the pins 10-gons, the bushes 40-segment rings, and a centrally symmetric
+// point set's axis-aligned box is centred on its centre at ANY rotation. The
+// shaft's axis is the line through its first and third hanger bushes, which
+// are rings concentric with it; the wheel's is its saw outline's centroid.
+const lineSpecCentre3 = (mesh) => {
+  mesh.updateWorldMatrix(true, false);
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+  const lo = new THREE.Vector3(Infinity, Infinity, Infinity), hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld); lo.min(v); hi.max(v); }
+  return { c: lo.clone().add(hi).multiplyScalar(0.5), lo, hi };
+};
+function lineSpecLink(clock) {
+  const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
+  const meshes = {
+    nose: find('alarmLinkBeak'), beakPin: find('alarmLinkBeakPin'), rod: find('alarmLinkRod'),
+    bush1: find('alarmLinkHangerBush1'), bush3: find('alarmLinkHangerBush3'), rim: find('alarmLinkCrankRim'),
+    pin: find('alarmLinkCentrePin'), ring: find('alarmSelRing'), skirt: find('alarmColSkirt'),
+  };
+  const missing = Object.entries(meshes).filter(([, x]) => !x).map(([k]) => k);
+  if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
+  const { nose, beakPin, rod, bush1, bush3, rim, pin, ring, skirt } = meshes;
+  if (!lineSpecOutline(skirt)) return { error: 'the saw’s cut outline is unreadable — the wheel’s axis cannot be measured' };
+  const toggle = AXES.find((a) => a.name === 'alarmToggle');
+  const transfer = (clock.transfers?.rows || []).find((r) => r.site === 'alarm arming: lay shaft cranks (rod foot → ring drive tab)');
+  const read = (f) => {
+    enterAxis(clock); clock.setPose(toggle.pose(f)); clock.scene.updateMatrixWorld(true);
+    beakPin.updateWorldMatrix(true, false);
+    const pinAxis = new THREE.Vector3(0, 1, 0).transformDirection(beakPin.matrixWorld);   // CylinderGeometry stands along its local y
+    const n = lineSpecCentre3(nose);
+    return {
+      W: lineSpecOutlineCentre(skirt), N: n.c, noseMinZ: n.lo.z, Pv: lineSpecCentre3(beakPin).c, pinAxis,
+      R: lineSpecCentre3(rod).c, rodMinZ: lineSpecCentre3(rod).lo.z,
+      A1: lineSpecCentre3(bush1).c, A3: lineSpecCentre3(bush3).c, Rc: lineSpecCentre3(rim).c,
+      Pc: lineSpecCentre3(pin).c, ringZ: lineSpecCentre3(ring).c.z,
+    };
+  };
+  const a = read(0), b = read(0.5);
+  enterAxis(clock);
+  const rest = a.noseMinZ >= b.noseMinZ ? a : b, armed = rest === a ? b : a;
+  const plan = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+  // the shaft's axis, and a point's radial vector off it
+  const axU = rest.A3.clone().sub(rest.A1).normalize();
+  const radial = (s, p) => { const d = p.clone().sub(s.A1); return d.sub(axU.clone().multiplyScalar(d.dot(axU))); };
+  const footZ = (s, p) => { const d = p.clone().sub(s.A1); return s.A1.z + axU.z * d.dot(axU); };
+  // the lever's line in plan, wheel → rod, and where the beak pin's axis crosses it
+  const W = rest.W, R = rest.R;
+  const lu = { x: R.x - W.x, y: R.y - W.y }; const lL = Math.hypot(lu.x, lu.y); lu.x /= lL; lu.y /= lL;
+  const offLine = (p) => Math.abs((p.x - W.x) * lu.y - (p.y - W.y) * lu.x);
+  const pa = { x: rest.pinAxis.x, y: rest.pinAxis.y }; const paL = Math.hypot(pa.x, pa.y);
+  // crossing: W + t·lu = Pv + s·pa  (2×2, by Cramer)
+  const den = lu.x * (-pa.y) - lu.y * (-pa.x);
+  const t = ((rest.Pv.x - W.x) * (-pa.y) - (rest.Pv.y - W.y) * (-pa.x)) / den;
+  const C = { x: W.x + lu.x * t, y: W.y + lu.y * t };
+  const beakArm = plan(C, rest.N), tailArm = plan(C, R);
+  const vRest = radial(rest, rest.Rc), vArm = radial(armed, armed.Rc);
+  const pinR = radial(rest, rest.Pc);
+  return {
+    noseLandR: plan(rest.N, W),
+    rodDist: plan(R, W),
+    noseOffLine: offLine(rest.N),
+    pivotAxisCos: paL > 0 ? Math.abs((pa.x * lu.x + pa.y * lu.y) / paL) : NaN,
+    shaftRoll: vRest.angleTo(vArm),
+    rimRestFromZenith: vRest.angleTo(new THREE.Vector3(0, 0, 1)),
+    rodFootOverAxis: rest.rodMinZ - footZ(rest, rest.R),
+    rodTravel: armed.R.z - rest.R.z,
+    noseFall: rest.noseMinZ - armed.noseMinZ,
+    armRatio: beakArm / tailArm,
+    beakArm, tailArm,
+    ringTravel: Math.abs(armed.ringZ - rest.ringZ),
+    pinOffsetZ: rest.Pc.z - footZ(rest, rest.Pc),
+    pinArmR: pinR.length(),
+    stallMN: transfer ? transfer.load.value : NaN,
+    stallRead: !!transfer,
+  };
+}
+// The link's CONTROL moves metal too: the selector rod is carried a known
+// distance out along the lever's own line, and the measured run must follow it
+// exactly — then the rod goes back. A reader that quoted ALARM_LINK_ROD_DIST,
+// or the rod's build-time position, would not move.
+function lineSpecLinkControl(clock, m) {
+  let rod = null, skirt = null;
+  clock.scene.traverse((o) => { if (o.isMesh && !o.userData.schematic) { if (!rod && o.name === 'alarmLinkRod') rod = o; if (!skirt && o.name === 'alarmColSkirt') skirt = o; } });
+  if (!rod || !skirt) return 'FAIL — the rod or the wheel is not in the scene';
+  if (!m.stallRead) return 'FAIL — the §137 lay-shaft row is not in the transfer record, so the stall envelope read nothing';
+  const D = 0.05;
+  enterAxis(clock); clock.setPose(AXES.find((x) => x.name === 'alarmToggle').pose(0)); clock.scene.updateMatrixWorld(true);
+  const W = lineSpecOutlineCentre(skirt);
+  const R0 = lineSpecCentre3(rod).c;
+  const L = Math.hypot(R0.x - W.x, R0.y - W.y);
+  const parent = rod.parent; parent.updateWorldMatrix(true, false);
+  const from = parent.worldToLocal(R0.clone());
+  const to = parent.worldToLocal(new THREE.Vector3(R0.x + (R0.x - W.x) / L * D, R0.y + (R0.y - W.y) / L * D, R0.z));
+  const delta = to.sub(from);
+  let moved;
+  rod.position.add(delta);
+  try { clock.scene.updateMatrixWorld(true); const R1 = lineSpecCentre3(rod).c; moved = Math.hypot(R1.x - W.x, R1.y - W.y) - L; }
+  finally { rod.position.sub(delta); clock.scene.updateMatrixWorld(true); }
+  const R2 = lineSpecCentre3(rod).c;
+  enterAxis(clock);
+  return Math.abs(moved - D) <= 1e-9 && R2.distanceTo(R0) === 0 && m.ringTravel > 0
+    ? `PASS — the selector rod carried ${D} out along the lever’s line moves the measured run by ${moved.toFixed(9)}, and restored reads the same; the toggle applied (ring ${m.ringTravel.toFixed(6)})`
+    : `FAIL — carried ${D}, the run moved ${moved}; restored off by ${R2.distanceTo(R0)}; ring ${m.ringTravel}`;
+}
+
 // One reader and one control per reference. A reference with no reader is
 // MALFORMED, never skipped: a table row nothing measures is the §66 lever
 // spans' failure, a number checkable by a reader and by nothing else.
@@ -13231,11 +13424,49 @@ const LINE_SPEC_READERS = {
     check: (m) => (m.outlineRead ? null : 'the saw’s cut outline is unreadable (no ExtrudeGeometry shapes) — the root circle cannot be measured'),
   },
   'alarm lock': { read: (clock) => lineSpecLock(clock), control: (clock, m) => lineSpecLockControl(clock, m) },
+  'alarm link': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
 };
 
 export async function checkLineSpec(clock) {
-  const rows = [], violations = [], staleWaivers = [], malformed = [], controls = {};
+  const rows = [], violations = [], staleWaivers = [], malformed = [], controls = {}, forks = [], staleForks = [];
   const specs = {};
+  const laws = clock.lineLaws || {};
+  const isLaw = (row) => typeof row.value === 'function';
+  // A reference's values at a given set of input overrides: every literal row
+  // takes the override if one is given, every function row re-derives from
+  // the rows above it and the build's laws. Called twice per forked reference
+  // (reference inputs, fork inputs), so what a fork MOVED is a difference of
+  // two evaluations of one table, never a second table.
+  const evaluate = (ref, base, over) => {
+    const out = { ...base }, errs = [];
+    for (const row of ref.rows) {
+      let want;
+      // an override reaches only a literal SPEC row: a law re-derives, and an
+      // envelope is inherited whole — both are refused as malformed below, and
+      // neither may move the value the metal is held to while that is reported
+      const forkable = !isLaw(row) && row.kind !== 'envelope';
+      try { want = isLaw(row) ? row.value(out, laws) : (forkable && over && row.key in over ? over[row.key].value : row.value); }
+      catch (e) { errs.push({ ref: ref.name, key: row.key, error: `its value threw: ${e.message}` }); want = NaN; }
+      out[row.key] = want;
+    }
+    return { out, errs };
+  };
+  // the fork table's own structure, judged before anything is measured
+  const forkFor = {};
+  for (const f of LINE_SPEC_FORKS) {
+    const ref = LINE_SPECS.find((r) => r.name === f.ref);
+    if (!ref) { malformed.push({ fork: f.name, error: `forks '${f.ref}', which is not a reference` }); continue; }
+    if (forkFor[f.ref]) { malformed.push({ fork: f.name, error: `'${f.ref}' already has the fork '${forkFor[f.ref].name}' — one fork per reference` }); continue; }
+    for (const [key, o] of Object.entries(f.rows || {})) {
+      const row = ref.rows.find((x) => x.key === key);
+      if (!row) malformed.push({ fork: f.name, key, error: 'names no row of its reference' });
+      else if (row.kind === 'envelope') malformed.push({ fork: f.name, key, error: 'an envelope is inherited whole and can never be forked' });
+      else if (isLaw(row)) malformed.push({ fork: f.name, key, error: 'a fork moves an INPUT, never a law — this row derives from the rows above it' });
+      if (!o || !Number.isFinite(o.value)) malformed.push({ fork: f.name, key, error: 'the override has no finite value' });
+      if (!o || typeof o.forcedBy !== 'string' || o.forcedBy.trim().length < 20) malformed.push({ fork: f.name, key, error: 'the override does not say what in the movement forced it (forcedBy)' });
+    }
+    forkFor[f.ref] = f;
+  }
   for (const ref of LINE_SPECS) {
     const reader = LINE_SPEC_READERS[ref.name];
     if (!reader) { malformed.push({ ref: ref.name, error: 'no reader for this reference' }); continue; }
@@ -13244,16 +13475,20 @@ export async function checkLineSpec(clock) {
     if (m.error) { malformed.push({ ref: ref.name, error: m.error }); continue; }
     const why = reader.check && reader.check(m);
     if (why) malformed.push({ ref: ref.name, error: why });
-    // an inherited row is the parent's DERIVED value, never re-measured here:
-    // the parent's own rows already hold it to the metal
-    const spec = ref.inherits ? { ...specs[ref.inherits] } : {};
+    // an inherited row is the parent's DERIVED value (its fork's, if it has
+    // one), never re-measured here: the parent's own rows hold it to the metal
+    const base = ref.inherits ? specs[ref.inherits] : {};
+    const fork = forkFor[ref.name] || null;
+    const refEval = evaluate(ref, base, null);
+    const useEval = fork ? evaluate(ref, base, fork.rows) : refEval;
+    malformed.push(...refEval.errs, ...(fork ? useEval.errs : []));
+    const moved = [];
     for (const row of ref.rows) {
       if (row.kind === 'envelope' && row.bound && row.bound !== 'max' && row.bound !== 'min')
         malformed.push({ ref: ref.name, key: row.key, error: `bound '${row.bound}' is neither 'max' nor 'min'` });
       if (row.kind !== 'envelope' && row.bound)
         malformed.push({ ref: ref.name, key: row.key, error: 'only an envelope may be a bound; a spec row is an equality' });
-      const want = typeof row.value === 'function' ? row.value(spec) : row.value;
-      spec[row.key] = want;
+      const want = useEval.out[row.key], refWant = refEval.out[row.key];
       const got = m[row.measure];
       const tol = LINE_SPEC_TOL[row.unit];
       if (tol === undefined) malformed.push({ ref: ref.name, key: row.key, error: `unit '${row.unit}' has no tolerance` });
@@ -13262,14 +13497,26 @@ export async function checkLineSpec(clock) {
       // without one it is an equality like §163's carry
       const pass = Number.isFinite(got) && Number.isFinite(want) && (
         row.bound === 'max' ? delta <= tol : row.bound === 'min' ? delta >= -tol : Math.abs(delta) <= tol);
+      // only a literal spec row can be forked: an override of a law or an
+      // envelope is malformed (above) and is neither applied, moved nor stale
+      const forkedHere = !!(fork && fork.rows && row.key in fork.rows) && !isLaw(row) && row.kind !== 'envelope';
+      const movedByFork = !!fork && !forkedHere && Number.isFinite(want) && Number.isFinite(refWant) && Math.abs(want - refWant) > (tol ?? 0);
+      if (forkedHere && Number.isFinite(refWant) && Math.abs(want - refWant) <= (tol ?? 0))
+        staleForks.push({ fork: fork.name, key: row.key, value: want, reference: refWant });
+      if (forkedHere || movedByFork) moved.push({ key: row.key, reference: refWant, forked: want, by: forkedHere ? 'input' : 'law' });
       const wkey = `${ref.name}/${row.key}`;
       const waiver = LINE_SPEC_WAIVERS[wkey];
-      const out = { ref: ref.name, key: row.key, kind: row.kind, unit: row.unit, bound: row.bound || null, spec: want, measured: got, delta, tol, pass, waived: !pass && !!waiver, derivedFrom: row.derivedFrom };
+      const out = { ref: ref.name, key: row.key, kind: row.kind, unit: row.unit, bound: row.bound || null, spec: want, measured: got, delta, tol, pass,
+        reference: refWant, fork: forkedHere ? 'input' : movedByFork ? 'law' : null,
+        forcedBy: forkedHere ? fork.rows[row.key].forcedBy : null,
+        waived: !pass && !!waiver, derivedFrom: row.derivedFrom };
       rows.push(out);
       if (!pass && !waiver) violations.push(out);
       if (pass && waiver) staleWaivers.push({ key: wkey, waiver });
     }
-    specs[ref.name] = spec;
+    if (fork) forks.push({ name: fork.name, ref: ref.name, inputs: moved.filter((x) => x.by === 'input').map((x) => x.key),
+      derived: moved.filter((x) => x.by === 'law').map((x) => x.key), rows: moved });
+    specs[ref.name] = useEval.out;
     controls[ref.name] = reader.control ? reader.control(clock, m) : 'FAIL — no control declared';
   }
   enterAxis(clock);
@@ -13284,11 +13531,12 @@ export async function checkLineSpec(clock) {
     ? `PASS — ${ctl.map(([n, c]) => `${n}: ${c.slice(7)}`).join('; ')}`
     : `FAIL — ${ctl.filter(([, c]) => !String(c).startsWith('PASS')).map(([n, c]) => `${n}: ${c}`).join('; ') || 'no control ran'}`;
   return {
-    references: LINE_SPECS.length, rows, violations, staleWaivers, malformed, control, controls,
+    references: LINE_SPECS.length, rows, violations, staleWaivers, malformed, control, controls, forks, staleForks,
     waivedCount: rows.filter((r) => r.waived).length,
     gate: 'GATING — every row of every reference measured off the posed metal within float noise of its derived value '
-      + '(an envelope with a bound only on its side), 0 unwaived, 0 stale waivers, 0 malformed, every reference’s control PASS '
-      + '(§70 steps 1–2, scoped by §261 to the switch it is about to fold and the lock that reads it)',
+      + '(an envelope with a bound only on its side), a forked reference measured against its fork (inputs overridden, '
+      + 'every law re-derived), 0 unwaived, 0 stale waivers, 0 stale forks, 0 malformed (a fork of a law, of an envelope, '
+      + 'or with no forcing constraint is malformed), every reference’s control PASS (§70 steps 1–3)',
   };
 }
 
