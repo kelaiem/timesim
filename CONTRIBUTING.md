@@ -180,7 +180,8 @@ look ignorable. Changing the list is its own PR.
   ships or changes, add or update its entry. `tools/explain-quotes.mjs` gates
   the page's promise that its numbers are the real constants.
 - `BACKLOG.md` must never be committed here. Shipped roadmap entries move from
-  the private repo into `docs/BUILT.md`.
+  the private repo into `docs/BUILT.md`. Work in progress that you choose to
+  show goes in `docs/ROADMAP.md` (see `docs/ROADMAP-PROCESS.md`), written fresh.
 
 ## Recipes
 

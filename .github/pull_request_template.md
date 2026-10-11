@@ -124,6 +124,9 @@ abandoned approach is worse than no plan.
 - [ ] `TODO.md` — honesty debt this change closed, opened, or re-measured
 - [ ] `docs/BUILT.md` — a shipped roadmap entry, reconciled with what was
       actually built and moved over from the private roadmap repo
+- [ ] `docs/ROADMAP.md` — a public in-progress row added, updated, or deleted
+      because the item shipped (the checker fails if both exist); the text
+      written fresh for the public, not pasted from the private backlog
 - [ ] `explain.html` — a mechanism shipped or changed, with its plate numbers
       re-quoted and its open TODO debt stated rather than hidden
 - [ ] `primer.html` — the same mechanism in the reader's register, if it has an

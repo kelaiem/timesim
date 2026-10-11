@@ -4,7 +4,7 @@
 
 # The instruments
 
-286 scripts. **175 are ACCEPTANCE tests** — they decide and exit non-zero.
+287 scripts. **176 are ACCEPTANCE tests** — they decide and exit non-zero.
 **111 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -22,6 +22,7 @@ when a question was asked; the summaries are what it answered.
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
 | `check-bvh-patches.mjs` |  | acceptance | Verifies the three local patches in vendor/three-mesh-bvh.module.js (see vendor/README.md) still hold — run after any vendor bump, before trusting a single clearance number. |
 | `check-item-numbers.mjs` |  | acceptance | The item-number gate. See docs/item-numbers/README.md for why it exists. |
+| `check-roadmap.mjs` |  | acceptance | The public-roadmap gate (§272). docs/ROADMAP.md lists the work that is IN PROGRESS and has been deliberately published; this holds it true. |
 | `ci-battery.mjs` |  | acceptance | §52 — the inspector battery as a CI gate. |
 | `claim-item.mjs` |  | acceptance | Reserve the next item number, and write the claim file that reserves it. |
 | `derive-203-alloys.mjs` |  | acceptance | §203 step 3 — DERIVE the case alloys' base colours from measured optical constants. ACCEPTANCE: exits non-zero if its own controls fail. |
