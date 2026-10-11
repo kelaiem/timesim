@@ -48,6 +48,16 @@
 //    corner — a fold-added part (CLAUDE.md's corners/idlers currency).
 //  · THE LINK, as a distance: from the folded column wheel's axis to the
 //    selector ring's — the run the re-routed link has to make.
+//  · BETWEEN THE PLATES (the owner's call for landing 2: the button stays
+//    there, its riser dropping through the base plate): the same scan with
+//    the base plate's top face and the three-quarter plate's underside as
+//    walls, the folded pin's line run at every stratum a stem of its own
+//    section fits, and the riser's drop checked in both bands.
+//  · THE CORNER: a bell crank from today's stem (proven clear by K5) to the
+//    folded pin. Its pivot is forced, where the normals through the two pins
+//    meet, so what is reported is where that lands, its arm ratio, whether it
+//    pushes the pawl, and the tallest z window each arm's swing leaves free in
+//    either band. No section is assumed; a window only bounds one.
 //
 // CONTROLS (fatal):
 //  K1 the pivot: the stop wheel's samples stand in its own annulus about the
@@ -62,6 +72,11 @@
 //     cluster six across, and the control failed on the cluster's own metal.)
 //  K4 the cloud is swept: it holds more points than the cluster at rest, and
 //     the lock's finger stands in different cells at the two parities.
+//  K5 the line test finds a line where one exists: today's own stem, unfolded
+//     at its own stratum, reads clear between the plates and leaves the case
+//     at its own azimuth (it is the shipped stem, green in every gate).
+//  K6 and a block where one exists: a sliver planted on that line blocks it.
+//  K7 the between-plates band reads its walls, and today's stem stands in it.
 //
 // Run from tools/: node probe-261-fold-site.mjs
 import { chromium } from 'playwright';
