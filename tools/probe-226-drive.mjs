@@ -176,7 +176,12 @@ const out = await page.evaluate(async () => {
     const per = new Map();
     let lift = { min: Infinity, at: null };
     const blank = forkMeshes.find((m) => m.name === 'forkBlank');
-    for (const { tension, position } of W) {
+    // full wind only, hanging and dial-flat: the swing does not sag with the
+    // wind (the line check above holds that at three winds), and the sweep is
+    // every mesh pair at every sample, so a third and fourth wind bought time
+    // and no coverage — with the flat position added, four configurations
+    // outran the probe's ceiling
+    for (const { tension, position } of W.filter((c) => c.tension === 1)) {
       const N = 240;
       for (let k = 0; k <= N; k++) {
         const tau = (k / N) * 2 / (2 * F_BAL) + 1e-9;
