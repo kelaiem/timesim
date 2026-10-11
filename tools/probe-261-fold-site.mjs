@@ -328,10 +328,10 @@ for (const r of ranked.slice(0, 10)) console.log('    ' + show(r));
 // keeps the pin's line of travel fixed to the cluster, so the pusher is only
 // straight where the line happens to face out; anywhere else it needs a
 // fold-added corner, which is a real part with its own P1 duties.
-const direct = results.map((r) => ({ r, pl: pusherLine(r.deg * DEG) })).filter(({ pl }) => pl.exitAz !== null && pl.blockedSteps === 0);
+const direct = results.map((r) => ({ r, pl: pusherLine(r.deg * DEG) })).filter(({ pl }) => pl.exitAz !== null && pl.steps > 0 && pl.blockedSteps === 0);   // steps 0: the pin already stands past the case wall, which is no line at all
 const dRuns = []; { let s0 = null, prev = null; for (const { r } of direct) { if (s0 === null) s0 = r.deg; else if (r.deg !== prev + 1) { dRuns.push([s0, prev]); s0 = r.deg; } prev = r.deg; } if (s0 !== null) dRuns.push([s0, prev]); }
 const both = direct.filter(({ r }) => r.conflicts === 0);
-console.log(`\n  the pusher's trade: a DIRECT line (unblocked to the case) at ${direct.length} of 360 rotations — ${dRuns.map(([a, b]) => (a === b ? `${a}°` : `${a}–${b}°`)).join(', ') || 'none'}; feasible AND direct: ${both.length ? both.map(({ r }) => r.deg + '°').join(', ') : 'none'}`);
+console.log(`\n  the pusher's trade: a DIRECT line (from inside the case, unblocked to its wall) at ${direct.length} of 360 rotations — ${dRuns.map(([a, b]) => (a === b ? `${a}°` : `${a}–${b}°`)).join(', ') || 'none'}; feasible AND direct: ${both.length ? both.map(({ r }) => r.deg + '°').join(', ') : 'none'}`);
 if (direct.length) {
   const least = [...direct].sort((a, b) => a.r.conflicts - b.r.conflicts)[0];
   console.log(`    the least-conflicted direct rotation: ${show(least.r)}`);
