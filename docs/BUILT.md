@@ -33081,6 +33081,19 @@ the axis saw at 292°, and the solve lands **18°** round, where the same metric
 reads 0.163 and the axis measures the pair at **0.2202**. No seat within ±30°
 warns, because the fix would then be the spring's station or stratum.
 
+That turn put the spring's raised end **0.0569** from the fork cock, and the
+cause was not the turn. TODO 234 seated the cock's leg against `BAL_OUTER_R`,
+which reads the hairspring at the frame it was built in: rest, radius 7.96.
+The spring's widest frame reaches **9.51**. So the leg had been planned
+against a disc 1.5 units smaller than the metal it stands beside, and every
+seat a half-degree scan tried left one neighbour or the other under the
+margin (the best, near −2.75°, about 0.150 to each). `HAIRSPRING_SWEPT_R` is
+that disc, read off every published frame's centreline about the staff and
+widened by the ribbon. The fork cock's leg solve keeps clear of it.
+`BAL_OUTER_R` is unchanged, because the plate's cut, the stop work and the
+cock scan read it in bands the spring never enters. With both: `Fourth wheel ⇄
+Hairspring` **0.2202** and `Fork cock ⇄ Hairspring` **0.2458** over every axis.
+
 **Measured** (`tools/probe-246-driven-rate.mjs`, an acceptance test; s/day,
 positive gains):
 

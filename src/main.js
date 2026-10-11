@@ -4600,6 +4600,21 @@ const BAL_OUTER_R = Math.max(
   xyRadiusAbout(balanceGroup, P.balance),
   xyRadiusAbout(hairspringGroup, P.balance),
 );
+// §246 tier two — THE HAIRSPRING'S SWEPT DISC, which BAL_OUTER_R is not:
+// that reads the spring at the frame it was BUILT in (rest, 7.96), and the
+// spring breathes. Every published wind frame is one the driven balance can
+// wear (out to the knock), and its outer coil swings out to 9.5 on the
+// widest — the disc a part sharing the spring's band must keep clear of.
+// Read off the published centrelines (about the staff, every azimuth: the
+// stud's seat is solved long after the parts that need this), widened by
+// the ribbon. Kept apart from BAL_OUTER_R on purpose: the plate's cut, the
+// stop work and the cock scan all read that number in bands the spring
+// never enters.
+const HAIRSPRING_SWEPT_R = (() => {
+  let r = 0;
+  for (const poly of hairspring.userData.spiralFrames) for (const [x, y] of poly) r = Math.max(r, Math.hypot(x, y));
+  return r + hairspring.userData.ribbonR;
+})();
 
 // (The balance cock, and the plate itself, are built at the end of the
 // movement assembly — both need the drum, the setting lever's post sweep and
@@ -5273,6 +5288,10 @@ const forkCock = (() => {
   // through the staff. Excluding the wheel's whole footprint also keeps the
   // legs out of the one view this bridge exists to open up.
   discs.push({ x: P.balance.x, y: P.balance.y, r: BAL_OUTER_R });
+  // ...and the hairspring's BREATHING, which the leg's shaft crosses on its
+  // way down (§246 tier two: it swings out past BAL_OUTER_R, which reads it
+  // at rest, and TODO 234's first seat stood 0.13 off its widest frame).
+  discs.push({ x: P.balance.x, y: P.balance.y, r: HAIRSPRING_SWEPT_R });
   const floorClear = (x, y) => {
     let c = FORK_SWEEP.clear(x, y); // the fork: its swept sector (TODO 234)
     for (const d of discs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
@@ -14384,12 +14403,12 @@ const balanceCock = G.makeCock({
   // (BALANCE_COCK) that any obstacle in the train's band can turn — TODO 234's
   // fork-cock leg turned it 4° — while the spring's outer coil, in the fourth
   // wheel's band (both bands are measured below), swings out on every wind
-  // frame toward the fourth wheel's tips. The driven balance reaches the
-  // knock (AMPLITUDE_PEAK_DEG; dial-flat it sustains 292°, the `position`
-  // axis' pose), so EVERY published frame is reachable, and the spring's
-  // centreline on each, widened by its ribbon (the rhombus' radial
-  // half-diagonal), must stand CLEAR_MARGIN off the fourth wheel's swept
-  // radius. The seat is the design azimuth when that holds, else the nearest
+  // frame toward the fourth wheel's tips. The frames held are EVERY frame the
+  // spring publishes, out to the knock (AMPLITUDE_PEAK_DEG), the same set
+  // HAIRSPRING_SWEPT_R sweeps: the driven balance can reach it (dial-flat it
+  // sustains 292°, the `position` axis' pose). On each, the spring's in-band
+  // centreline, widened by its ribbon (the rhombus' radial half-diagonal),
+  // must stand CLEAR_MARGIN off the fourth wheel's swept radius. The seat is the design azimuth when that holds, else the nearest
   // whole degree either side of it that does (the cock scan's own step);
   // none within ±30° warns, because then the spring must move in position
   // space (stratum or station), not the stud.
