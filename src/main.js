@@ -54133,7 +54133,13 @@ window.__clock = {
       unlockHalf: PIN_FORK.unlockHalf, unlockSwing: N.unlockSwing, yBand: N.yBand, exitGap: N.exitGap, offRound: N.offRound,
       seat: ESCAPEMENT_SEAT.slot, crossing: C && { endHalf: C.endHalf, ms: C.ms, sweptDeg: C.sweptDeg, I_fork: C.I_fork, I_wheel: C.I_wheel,
         torque: C.torque, pushedSteps: C.pushedSteps, th: [...C.th], u: [...C.u] },
-      swingAt: (theta, dir) => forkSwingAt(theta, dir), lag: (th) => N.lag(th), lead: (th) => N.lead(th) };
+      swingAt: (theta, dir) => forkSwingAt(theta, dir), lag: (th) => N.lag(th), lead: (th) => N.lead(th),
+      // the τ at which the posed law stands the balance at θ turning `dir`,
+      // in the first beat pair (dir +1 on the rising side of the sine)
+      tauAt: (theta, dir) => {
+        const a = Math.asin(theta / (AMPLITUDE_POSED_DEG * DEG2RAD));
+        return BALANCE_PHASE_TAU + (dir > 0 ? a : Math.PI - a) / (2 * Math.PI * F_BALANCE);
+      } };
   },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate

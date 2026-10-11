@@ -2035,7 +2035,16 @@ export function escapementSeat({ notch, forkT, clear, stockMin }) {
   let yFloor = yC - (W + Ra);             // authored floor, deepened by the mitre below
   const Ys = [];
   for (let i = 1; i <= N_FLOOR; i++) { const u = i / N_FLOOR; Ys.push(yFloor + (yC - yFloor) * u * u); }
-  Ys.push(yTip);
+  // The walls are WORKING faces, so they carry vertices at the pitch a contact
+  // on them is read at: the contact instruments arbitrate an exact distance
+  // against a vertex-sampled one, and a vertex h/2 along a flat face from the
+  // touch point reads a round pin h²/(8·pinR) off it. One long face read a
+  // pin at the floor's depth 0.045 off a wall it stood 0.0002 from (its
+  // nearest vertex was the horn tip). A tenth of the shake is the most that
+  // reading may cost, so h ≤ √(0.8·pinR·shake).
+  const hWall = Math.sqrt(0.8 * notch.pinR * notch.shake);
+  const nWall = Math.max(1, Math.ceil((yTip - yC) / hWall));
+  for (let i = 1; i <= nWall; i++) Ys.push(yC + (yTip - yC) * (i / nWall));
   // The wall is cut as CHORDS between those samples, and two things stand the
   // metal proud of the curve: each chord's sag inside the curve it spans, and
   // the chamfer's MITRE at each vertex of the wall (a reflex corner of the
@@ -2606,12 +2615,28 @@ export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZ
   // the extruded body ring itself — the vertices at the side wall's lower
   // edge, z = −stock/2 after the translate below — one per authored point, so
   // the two lists stay index for index.
+  // TODO 226 step 3b — matched to each authored point by where the mitre
+  // PUTS it, not by which ring vertex is nearest the authored point: the
+  // chamfer moves every point at least `bevel`, so once the closed notch's
+  // walls carried a vertex every 0.107 against a bevel of 0.144 the nearest
+  // vertex to the horn tip's corner was its neighbour's, and the published
+  // outline cut the wall's last 0.25 off. The estimate is the plain mitre
+  // (bevel along the bisector, ×sec of half the turn), outward of the solid
+  // whichever way the contour runs; three.js clamps that secant, which only
+  // moves the estimate toward the vertex it is looking for.
   const metalOutline = (() => {
     const P = bodyGeo.attributes.position, ring = [];
     for (let i = 0; i < P.count; i++) if (Math.abs(P.getZ(i) + stock / 2) < 1e-9) ring.push([P.getX(i), P.getY(i)]);
-    return pts.map((p) => {
+    let area2 = 0;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) area2 += pts[j].x * pts[i].y - pts[i].x * pts[j].y;
+    const out = area2 > 0 ? 1 : -1;   // CCW: the outward normal of a→b is (dy, −dx)
+    const nrm = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1; return [out * dy / L, -out * dx / L]; };
+    return pts.map((p, i) => {
+      const n1 = nrm(pts[(i - 1 + pts.length) % pts.length], p), n2 = nrm(p, pts[(i + 1) % pts.length]);
+      const k = 1 + n1[0] * n2[0] + n1[1] * n2[1];
+      const ex = p.x + bevel * (n1[0] + n2[0]) / Math.max(k, 0.1), ey = p.y + bevel * (n1[1] + n2[1]) / Math.max(k, 0.1);
       let best = null, bd = Infinity;
-      for (const q of ring) { const dd = (q[0] - p.x) ** 2 + (q[1] - p.y) ** 2; if (dd < bd) { bd = dd; best = q; } }
+      for (const q of ring) { const dd = (q[0] - ex) ** 2 + (q[1] - ey) ** 2; if (dd < bd) { bd = dd; best = q; } }
       return best;
     });
   })();
