@@ -93,7 +93,9 @@ export const MEASURE = async () => {
   };
 };
 
-export async function boot(dir = ROOT) {
+// `query` boots a reconfigured build (a ?spec= deep link, without the '?') — the
+// height cap's stale half reads only the default config, and that needs testing.
+export async function boot(dir = ROOT, query = '') {
   const p0 = port++;
   const srv = spawn('python3', ['-m', 'http.server', String(p0), '--bind', '127.0.0.1'], { cwd: dir, stdio: 'ignore' });
   servers.push(srv);
@@ -104,7 +106,7 @@ export async function boot(dir = ROOT) {
     const page = await browser.newPage();
     page.on('console', (m) => { if (m.type() === 'warning' && !/WebGL|GPU stall|GroupMarker/.test(m.text())) warns.push(m.text()); });
     page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
-    await page.goto(`http://127.0.0.1:${p0}/index.html`, { waitUntil: 'load', timeout: 180000 });
+    await page.goto(`http://127.0.0.1:${p0}/index.html${query ? '?' + query : ''}`, { waitUntil: 'load', timeout: 180000 });
     await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 180000 });
     const bootError = await page.evaluate(() => window.__bootError ? String(window.__bootError) : null);
     if (bootError) throw new Error('boot failed: ' + bootError);

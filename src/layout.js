@@ -490,6 +490,25 @@ export const MM = (units) => units * UNIT_MM;          // for readouts and asser
 // units; the boot assert in main.js refuses a layout that outgrows them.
 export const CASE_WIDTH_MAX = 40 / UNIT_MM / 2;   // radius cap, 52.77 units
 export const CASE_LUG_SPAN_MAX = 20 / UNIT_MM;    // 52.77 units across the spring bar
+// §261 step 5 — THE HEIGHT CAP, and it is a RATCHET rather than a target (the
+// owner's call, 2026-10-11). No real calibre carries this stack — the L044.1
+// has the fusee at 6.0 mm and the Memovox 489 the alarm at 5.2 mm, and none has
+// both plus a column-wheel switch and a reserve train — so there is no depth to
+// cite. The constraint is instead that the cased depth may not GROW
+// unannounced: TODO 69's plate, §218's overcoil and TODO 204's post each raised
+// it with every gate green, because §39's 14 mm ceiling stood two millimetres
+// clear. So the cap is the depth the tree MEASURED when it was set, rounded up
+// to its resolution, and main.js holds it both ways: deeper fails, and the
+// default build standing more than one step under it fails too, so a landing
+// that buys depth lowers the cap in the same change and the bought millimetres
+// stay bought. A landing that must spend depth raises it in the open, where
+// the diff names the price.
+//   Set at 12.2266 mm (32.2646 u, case metal front to back), measured by
+//   `tools/probe-261-height-ledger.mjs` on the merge of main into §261's
+//   branch (2026-10-11): back governed by the raised glass step.
+// The step is the resolution every §261 table quotes depth at, a micron.
+export const CASE_HEIGHT_STEP_MM = 0.001;
+export const CASE_HEIGHT_MAX_MM = 12.227;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
