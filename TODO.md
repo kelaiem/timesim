@@ -31415,6 +31415,12 @@ Then the wheel is wherever its tooth circle crosses the face the tip is on:
   which the deeper seat and wider swing took to 0.077 of daylight).
 - The KNOCK moves with the banking and the entry-depth horns: 304.12°, so
   `AMPLITUDE_PEAK_DEG` is 305 (row 14 holds it; the nominal 292.09° stays clear).
+- The recoil REVERSES THE TRAIN, so §48's `restoring` audit readmitted the six
+  units it turns (the escape, fourth, third and centre wheels, the small seconds
+  and the heart cam) restored-by-nothing on the battery's first run — the
+  readmission TODO 43's retirement note predicted. Each is declared two-way
+  with both drivers real: the mainspring forward, and back through the stone's
+  locking face, the fork and the pin to the balance's spring. No waiver.
 
 **Measured.** `probe-131-escapement-slide.mjs`, re-cut for the locked beat, from
 banking to banking: tip at rest 0.149 down the +x locking face; on the stone

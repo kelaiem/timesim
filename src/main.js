@@ -1844,17 +1844,30 @@ const PIN_ENTRY_HALF = Math.asin((forkToStaff * Math.sin(FORK_BANK_DEG * DEG2RAD
 declareRestoring('Pallet fork', '*', 'two-way',
   'escape-wheel teeth impulse the entry and exit pallets alternately; draw holds it banked between',
   ['Mainspring drum/mainspringRibbon', 'Balance/*']);
-// RETIRED (TODO 43): 'Escape wheel' and 'Third wheel' left the §36
-// population with the detector fixes — measured monotone in every axis at
-// 4× the registry's rate. Their old declarations claimed RECOIL (the
-// fork's draw pushing the wheel backward before unlocking), and that was
-// the model's prose running ahead of its metal: the wheel's pose law
-// advances and dwells, it never backs up — the FORK recoils past its
-// bank, the wheel it holds does not. What set `reversed` was the
-// witness-fit artifact, not recoil. If draw recoil is ever modelled on
-// the wheel (TODO.md's class — a real escapement's wheel does kick back),
-// the population readmits it and a two-way declaration becomes true of
-// the model rather than of the watch it describes.
+// RETIRED (TODO 43), RESTORED (TODO 226 step 3a). 'Escape wheel' and 'Third
+// wheel' left the §36 population with the detector fixes, measured monotone in
+// every axis: their declarations had claimed recoil while the wheel's pose law
+// only advanced and dwelt, the model's prose running ahead of its metal. The
+// comment that retired them said what would bring them back — "if draw recoil
+// is ever modelled on the wheel, the population readmits it and a two-way
+// declaration becomes true of the model" — and step 3a is that: the wheel's
+// angle is read off the stone's faces (src/escapement.js), so while the fork
+// lifts the stone off its lock the leaned locking face drives the tooth
+// BACKWARD (0.28° and 0.54° of wheel), and the recoil travels back up the
+// train it is geared to. The battery's first run on it readmitted all six
+// units the train turns, which is the population rule working.
+// So each is two-way, and both drivers are real: the mainspring drives the
+// train forward; the balance drives it back, through the pin, the fork and the
+// stone's face into the escape wheel — named as the escape wheel for every
+// member further up, which resolves through the fork to the balance's spring,
+// never round a loop of two-way rows.
+declareRestoring('Escape wheel', '*', 'two-way',
+  'the train drives it forward; during the unlock the leaned locking face of the stone the fork is lifting drives it back (draw recoil, read off the faces)',
+  ['Mainspring drum/mainspringRibbon', 'Pallet fork/*']);
+for (const unit of ['Fourth wheel', 'Third wheel', 'Center wheel', 'Small seconds', 'Heart cam (seconds reset)'])
+  declareRestoring(unit, '*', 'two-way',
+    'geared to the escape wheel: the mainspring drives it forward, and the escape wheel\'s draw recoil drives it back through the same teeth',
+    ['Mainspring drum/mainspringRibbon', 'Escape wheel/*']);
 // The balance IS a spring oscillator, and the hairspring is what makes it
 // one. SCOPE, stated: §48 asks whether a restoring element is DECLARED, not
 // whether its rate is modelled from stiffness — rate and force modelling are
