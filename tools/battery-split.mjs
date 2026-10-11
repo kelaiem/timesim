@@ -65,6 +65,9 @@ export const INSPECTION_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // §246 tier two — the position, posed dial-flat (the driven balance's
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
@@ -320,10 +323,13 @@ export const CLEARANCE_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // §246 tier two — the position, posed dial-flat (the driven balance's
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // TODO 164 — same axis roster as CLEARANCE_SLICES above (this check walks the
-// same 15 axes). Declared separately for CLEARANCE_SLICES' own reason: a
+// same 16 axes). Declared separately for CLEARANCE_SLICES' own reason: a
 // check's roster is a claim about THAT check's loop.
 export const UNDECLARED_CLEARANCE_SLICES = [
   { axis: 'beat', poses: 194 },
@@ -343,6 +349,9 @@ export const UNDECLARED_CLEARANCE_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // §246 tier two — the position, posed dial-flat (the driven balance's
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // The gate's verdict over a payload's rows and the debt table — a TWIN of the
@@ -490,6 +499,9 @@ export const EXPECTED_CONTACT_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // §246 tier two — the position, posed dial-flat (the driven balance's
+  // ~292° swing). poses = n 291 plus the endpoint.
+  { axis: 'position', poses: 292 },
 ];
 
 // §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.

@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -1389,6 +1389,22 @@ export const AXES = [
       maintHold: f < 1 ? Math.min(1, (f * 48) / 47) : 1,
       maintPickUp: f >= 1 ? 1 : 0,
     }),
+  },
+  {
+    // §246 tier two — THE POSITION, exercised. The driven balance swings what
+    // the energy column sustains in its position, and dial-flat that is ~292°
+    // at the live loop's corner against the 200° every other axis poses: the
+    // hairspring wears frames out to it, the impulse pin and the guard pin run
+    // further round the roller, and no other axis puts the metal there. So the
+    // axis is the beat axis's oscillation posed dial-flat (setPose's position
+    // key — CLAUDE.md's rule that an input ships with the axis that moves it).
+    // Inside the impulse window the pose is the beat axis's own; the arc
+    // outside it is the flat swing. Its density keeps the beat axis's ANGULAR
+    // step on the arc at any swing up to the knock (AMPLITUDE_PEAK_DEG, the
+    // largest the balance can reach): n scales with the swing it may carry.
+    name: 'position',
+    n: Math.round(Math.round(96 * 0.16 / IMPULSE_WIDTH) * AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG),
+    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1, position: 'DU' }),
   },
 ];
 

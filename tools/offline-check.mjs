@@ -344,7 +344,9 @@ try {
   // (TODO 158's validated-configs.js and §236's glossary linker are the
   // precedents). It has to be in the manifest: addAll is all-or-nothing and the
   // app does not boot offline without it, which the OFFLINE boots below prove.
-  check('release: precache complete', counts === 70, `${counts}/70`);
+  // §246 tier two — 71: src/balance-drive.js, the driven balance main.js
+  // imports. One module for the app, like validated-configs.js, so it adds one.
+  check('release: precache complete', counts === 71, `${counts}/71`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');

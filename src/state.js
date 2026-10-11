@@ -57,6 +57,7 @@ const defaultState = {
   jumpCorr: 0,
   crownOut: false,
   fastForward: false,
+  position: 'CU',     // §246 — the watch's position in gravity; balance-drive.js DEFAULT_POSITION (a pocket watch hangs pendant up)
   timeScale: 1, // real time — matches main.js's own default
   showLabels: false,
   plateXray: false,   // three-quarter plate see-through (UI toggle)
@@ -98,6 +99,7 @@ function sanitize(state) {
     jumpCorr: state.jumpCorr,
     crownOut: state.crownOut,
     fastForward: state.fastForward,
+    position: state.position,   // §246 — emitted by captureState, so it must round-trip
     timeScale: state.timeScale,
     showLabels: state.showLabels,
     plateXray: state.plateXray,
