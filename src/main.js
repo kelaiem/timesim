@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { leverEscapement, pinNotch, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
+import { leverEscapement, pinNotchSteps, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, stockKeyOf, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
 import { geometryOverridePaths } from './aesthetics.js';
@@ -1832,10 +1832,16 @@ declareRestoring('Chain', 'chainRun', 'two-way',
 // solves the D the jewel is ground to). The shake is HANDOFF_TRACK_TOL: the
 // pin bears on one wall or the other, and the play across it is the least a
 // working contact can be told apart by, not a clearance.
-const PIN_NOTCH = pinNotch({
-  d: forkToStaff, r: rollerR, pinR: G.balancePinR(BAL_T), shake: HANDOFF_TRACK_TOL,
-  letoffHalfRad: pinImpulseSweepRad / 2, runRad: RUN_DEG * DEG2RAD, lockRad: LOCK_DEG * DEG2RAD,
-});
+const pinNotchAt = async (d) => {   // the solve yields between its sweeps (escapement.js says why)
+  const steps = pinNotchSteps({
+    d, r: rollerR, pinR: G.balancePinR(BAL_T), shake: HANDOFF_TRACK_TOL,
+    letoffHalfRad: pinImpulseSweepRad / 2, runRad: RUN_DEG * DEG2RAD, lockRad: LOCK_DEG * DEG2RAD,
+  });
+  let st;
+  while (!(st = steps.next()).done) await breathe();
+  return st.value;
+};
+const PIN_NOTCH = await pinNotchAt(forkToStaff);
 const FORK_LETOFF_DEG = PIN_NOTCH.bank0 / DEG2RAD;
 const FORK_BANK_DEG = FORK_LETOFF_DEG + RUN_DEG;
 // The balance angle at which the leading fork reaches its bank — and, mirrored,
@@ -2754,12 +2760,9 @@ function meshOffset(driverPos, drivenPos, drivenTeeth, ratio, driverAngleAtRef) 
 // fork: `entryHalf`). TODO 226 step 3b re-solves both at the STATIONS' own
 // distance (the layout solved them at forkToStaff before the stations were
 // placed), with the shake and the D, and asserts the two agree.
-const PIN_FORK = (() => {
+const PIN_FORK = await (async () => {
   const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
-  const N = pinNotch({
-    d, r: rollerR, pinR: G.balancePinR(BAL_T), shake: HANDOFF_TRACK_TOL,
-    letoffHalfRad: pinImpulseSweepRad / 2, runRad: RUN_DEG * DEG2RAD, lockRad: LOCK_DEG * DEG2RAD,
-  });
+  const N = await pinNotchAt(d);
   const bank = FORK_BANK_DEG * DEG2RAD, bank0 = FORK_LETOFF_DEG * DEG2RAD;
   // the half-lift, read back: where the leading wall lets the pin go at bank0
   let lo = 0, hi = N.entryHalf;
@@ -10912,7 +10915,7 @@ const FORK_CROSSING_SOLVE = (() => {
   const dLag = (th) => (notch.lag(th + h) - notch.lag(th - h)) / (2 * h);
   let t = Math.asin(unlockHalf / A) / W;
   let psi = notch.lag(unlockHalf), v = dLag(unlockHalf) * thetaDot(t);
-  const t0 = t, dt = 1e-7, rec = [[unlockHalf, 0]];
+  const t0 = t, dt = 1e-6, rec = [[unlockHalf, 0]];   // ~1600 RK4 steps across the crossing
   const acc = (p, vv) => { const I = Ieff(p), dI = (Ieff(p + h) - Ieff(p - h)) / (2 * h); return (T * G(p) - 0.5 * dI * vv * vv) / I; };
   let pushed = 0;
   for (let k = 0; k < 1e6; k++) {

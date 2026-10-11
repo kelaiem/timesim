@@ -306,7 +306,15 @@ export function leverEscapement({ span, beatRad, bank0Rad, sense, lockDeg = LOCK
 // pin's centre lands at x = ρ·sin(ψ − β): x > 0 means the fork is AHEAD of
 // the pin in +θ, so a fork leading a +θ swing presses the pin onto the +x
 // wall, lagging it onto the −x wall.
-export function pinNotch({ d, r, pinR, shake, letoffHalfRad, runRad, lockRad }) {
+// The solve is a GENERATOR (CLAUDE.md, BOOT BREATHES): the flat's bisection
+// sweeps the banked pin's whole exit at every step, ~80 sweeps, which on the
+// boot's software GL is far over a seam's 40 ms. It yields after each sweep;
+// `pinNotch` drains it for every caller that does not yield.
+export function pinNotch(opts) {
+  const it = pinNotchSteps(opts);
+  for (;;) { const r = it.next(); if (r.done) return r.value; }
+}
+export function* pinNotchSteps({ d, r, pinR, shake, letoffHalfRad, runRad, lockRad }) {
   const rho = (th) => Math.hypot(d - r * Math.cos(th), r * Math.sin(th));
   const bearing = (th) => Math.atan2(r * Math.sin(th), d - r * Math.cos(th));
   const W = pinR + shake;   // the wall's distance off the slot's centre line
@@ -372,10 +380,15 @@ export function pinNotch({ d, r, pinR, shake, letoffHalfRad, runRad, lockRad }) 
     const outline = outlineOf(f);
     let g = Infinity;
     for (let th = A.entryHalf; th <= A.entryHalf + 1.6; th += 0.1 * Math.PI / 180) {
+      let shallowest = Infinity;   // the pin's nearest point to the wall's top, in depth
       for (const [x, y] of placed(f, th, A.bank, outline)) {
         const dep = -y;
         g = Math.min(g, dep <= A.yBand ? x + W : Math.hypot(x + W, dep - A.yBand));
+        shallowest = Math.min(shallowest, dep - A.yBand);
       }
+      // the pin only climbs from here: once all of it stands further past
+      // the wall's top than the nearest approach so far, nothing later is nearer
+      if (shallowest > g) break;
     }
     return g;
   };
@@ -383,8 +396,18 @@ export function pinNotch({ d, r, pinR, shake, letoffHalfRad, runRad, lockRad }) 
   // angles move with f only where a working contact lands off the round).
   let f = pinR, A = anglesFor(f);
   for (let k = 0; k < 4; k++) {
-    f = bisect((ff) => exitGap(ff, A) - 2 * shake, 0, pinR);
+    const f0 = f;
+    // the bisection, written out so it can yield between sweeps; 2⁻⁴⁰ of the
+    // pin is far under float noise in the cut
+    let lo = 0, hi = pinR, flo = exitGap(lo, A) - 2 * shake;
+    for (let n = 0; n < 40; n++) {
+      yield;
+      const mid = (lo + hi) / 2, fm = exitGap(mid, A) - 2 * shake;
+      if ((fm > 0) === (flo > 0)) { lo = mid; flo = fm; } else hi = mid;
+    }
+    f = (lo + hi) / 2;
     A = anglesFor(f);
+    if (Math.abs(f - f0) < 1e-12) break;
   }
   const lag = (th) => contactSwing(f, th, -1);    // a +θ swing's unlock
   const lead = (th) => contactSwing(f, th, +1);   // a +θ swing's impulse and run
