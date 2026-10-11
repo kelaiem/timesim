@@ -34047,7 +34047,7 @@ average on this container (12.8–14.2 and 5.3–5.8 on CI's runners). That bar 
 - **`src/boot-progress.js` is generated, never edited.** It gives each seam a
   CURVE: the share of the build elapsed at each of its visits, the median over
   three boots, simplified (Douglas–Peucker) to the fewest knots within 0.2
-  points of every visit. Today that is 604 knots over 356 reached seams, 14 KB.
+  points of every visit. Today that is 607 knots over 356 reached seams, 14 KB.
   - **Per visit, not per seam**, because the first version keyed on first
     visits and a loop going round seams it had already passed left the bar
     standing for up to 2.4 s. One seam is visited 1,484 times.
@@ -34138,7 +34138,7 @@ is the worst run × 1.66, rounded up to the next half point:
 
 **What it costs.**
 - **Geometry:** the fingerprint is `3302509692` on this branch and on `main`,
-  two fresh boots each.
+  two fresh boots each, and `2603465796` on both after merging `main` at #641.
 - **`probe-239-boot-yield`**, alternating runs on one container: held 383–415 ms
   against `main`'s 392–433, worst task 1,565–1,718 ms against 1,526–1,557, and
   2.6 s of long tasks on both.
@@ -34154,4 +34154,8 @@ is the worst run × 1.66, rounded up to the next half point:
   default build is measured.
 - A change that alters how often a loop visits a seam, without moving any seam,
   passes `--check`. Only the probe's average catches it, once it is large
-  enough to matter; regenerate when it does.
+  enough to matter; regenerate when it does. The first `main` merged into this
+  landing was both cases at once. #641 added build code at a seam, which
+  `--check` failed until the table was regenerated. It also took the build from
+  14,782 seam visits to 14,769, which `--check` cannot see; the regenerated
+  table measured it.
