@@ -57,12 +57,17 @@
      one face beside Vietnamese, Latvian inks no more than Vietnamese at every
      site (13 against 13.82 px at the 10 px sites, 15 against 15 at .readout),
      so Vietnamese's 1.3 contains it and the rule is SHARED rather than
-     re-derived in a container whose own controls do not pass. */
-  html:lang(vi) header .stamp, html:lang(lv) header .stamp,
-  html:lang(vi) details.mech > summary .where, html:lang(lv) details.mech > summary .where,
-  html:lang(vi) .fig-no, html:lang(lv) .fig-no,
-  html:lang(vi) .readout, html:lang(lv) .readout,
-  html:lang(vi) .chip, html:lang(lv) .chip { line-height: 1.3; }
+     re-derived in a container whose own controls do not pass.
+     §216 — Hungarian's double acute (Ő Ű) is the tallest single mark Latin
+     carries, and nothing sits below the baseline. The same probe
+     (`--script hu`), same face, same failing controls: Hungarian inks no more
+     than Latvian anywhere (13 against 13 at the 10 px sites, 14 against 15 at
+     .readout), so it joins the shared rule on Latvian's grounds. */
+  html:lang(vi) header .stamp, html:lang(lv) header .stamp, html:lang(hu) header .stamp,
+  html:lang(vi) details.mech > summary .where, html:lang(lv) details.mech > summary .where, html:lang(hu) details.mech > summary .where,
+  html:lang(vi) .fig-no, html:lang(lv) .fig-no, html:lang(hu) .fig-no,
+  html:lang(vi) .readout, html:lang(lv) .readout, html:lang(hu) .readout,
+  html:lang(vi) .chip, html:lang(lv) .chip, html:lang(hu) .chip { line-height: 1.3; }
   :root {
     --bg: #0b0d10;
     --panel: rgba(15,17,20,0.72);
@@ -1254,17 +1259,24 @@
       ran off beat phase in a window of their own, with a recoil dip made of two constants a 12° draw did not
       reconcile, and the fork met the pin inside its horn, every beat, between two parts no
       gate held apart. Now there is one clock, the balance, and the rest is geometry, and
-      the pair is held to the margin everywhere but three named places. Those three are
-      TODO 226's first step, stated rather than hidden: the pin, 3.0 long, stands through
-      the guard pin's plane on the line of centres; past the lift it grazes the horn tip it
-      leaves by; and the impulse table shares the fork's plane, so at bank the near horn
-      stands inside the margin of its rim. All three are the single roller that step
-      builds, which also seats the pin at the notch's depth: today its centre stands 0.156
-      outside the horn tips at the lift's edge, so only 0.394 of it enters a slot 2.759
-      deep. The bank itself is already exact (§221): <code>FORK_BANK_DEG</code> is the
-      pin's bearing at the lift's edge, 4.03° (it was 2.57° while the window was a
-      readability amplitude's arc, and the arcs were matched at the notch's floor, which
-      the pin never reaches — it works at the notch's mouth). The
+      since TODO 226's first step, the seat, every pair the fork and the balance own is
+      held to the margin with nothing excused. The notch is cut as the pin's own swept path
+      in the fork's frame — its disc over the lift, where the fork follows it, and past
+      the lift, where the fork lies banked — plus the margin, and its horns run to the depth
+      where the pin enters, so the pin's centre stands between them for the whole lift (it
+      stood 0.156 outside them before, and only 0.394 of it entered a slot 2.759 deep). The
+      pin is set in one roller below the fork, whose rim clears the guard pin set behind the
+      notch's floor. What the cut shows is the debt it does not pay: the notch is a funnel,
+      not a parallel slot, because the fork stops dead on its bank while the pin is still
+      moving across the slot, and a slot of the pin's width would trap it. A real lever
+      escapes by its run to the banking, which needs the lock this movement does not have
+      (TODO 131), so here the pin bears on no wall through the lift: the drive is the law's
+      and not a contact's, and making it one is TODO 226's third step. Longer horns would
+      embrace the pin further and meet it sooner on the far side of the swing: cut to the
+      entry depth, the balance knocks at 301.35°, which is the largest swing it can reach.
+      The bank itself is exact (§221): <code>FORK_BANK_DEG</code> is the pin's bearing at the
+      lift's edge, 4.03° (it was 2.57° while the window was a readability amplitude's arc,
+      and the arcs were matched at the notch's floor, which the pin never reached). The
       pallet stones seat in slots whose gap is DERIVED from the blank's own extrude bevel
       (<code>gGap = bevel + SEAT_SHOW</code>) — a guard born from a defect every battery run
       missed; that seat is also TODO 5's fixture-vs-fixture residue: the one intra-unit pair
@@ -1357,7 +1369,7 @@
             <text class="val" x="320" y="118">stud as far in as its post allows: r 3.1751</text>
             <text class="lbl lbl-strong" x="320" y="146">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="162">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="190">measured: pivot load ×0.102 at 200°, ×0.092 at 316°</text>
+            <text class="lbl" x="320" y="190">measured: pivot load ×0.102 at 200°, ×0.095 at 302°</text>
             <text class="val" x="320" y="206">flat spring 0.0149 mN → overcoil 0.0015 mN at the 200° swing</text>
           </svg>
         </div>
@@ -1373,7 +1385,7 @@
         swing (order 3.00) where a flat spiral's falls as the swing itself (order 1.00), and
         that order is what <code>checkOscillator</code> gates. What survives is the higher
         order, and at a real swing it is not small — the pivot load is a tenth of the flat
-        spring's at 200°, and about as much at 316°, the largest swing the balance can reach
+        spring's at 200°, and about as much at 302°, the largest swing the balance can reach
         before its pin knocks — so it is reported, not hidden. Phillips's condition alone does not say where the curve should
         END, and for a while this one ended outboard of the spring it rises over — the whole
         benefit of raising it, unclaimed. So the stud is a third condition now, not an output:

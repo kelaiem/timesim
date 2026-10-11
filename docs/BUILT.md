@@ -34023,3 +34023,234 @@ section; all twenty locales re-keyed and translated, Tagalog's twenty-six stale
 gong, barrel and governor rows (keyed on English older than §262) re-keyed and
 translated with them. `probe-197`'s header no longer says the path is
 unmodelled and prints the case path's rows beside the wire's.
+
+## §267 — The boot screen's bar, driven by build position against a measured table
+
+**Why the answer changed.** §238 refused a progress bar in its own text: the
+build was one uninterruptible block, so a bar over it could only be a timer.
+§239 broke both premises. The build now hands the thread back about 480 times,
+so a frame can be committed mid-build. And its seams mark positions in the
+PROGRAM, not moments on a clock, so there is a position to report.
+
+**What the bar does NOT read: seams passed over seams total.** The seams are
+as dense as the code that needed them, not as the time it takes. §267's filing
+measured that ordinal 22.6 points ahead of the true elapsed fraction at #609,
+then standing at 98% for ten seconds. On today's tree, whose seams §266 placed
+along the execution timeline, it is still 15 points at worst and 6.5 on
+average on this container (12.8–14.2 and 5.3–5.8 on CI's runners). That bar is now this landing's control.
+
+**What it reads instead.**
+- **Every seam carries a permanent id**: `await breathe(n)`.
+  `node tools/boot-progress.mjs --write` stamps any bare `await breathe()` with
+  the next free id and never renumbers, so a diff touches only the seams it
+  added.
+- **`src/boot-progress.js` is generated, never edited.** It gives each seam a
+  CURVE: the share of the build elapsed at each of its visits, the median over
+  three boots, simplified (Douglas–Peucker) to the fewest knots within 0.2
+  points of every visit. Today that is 607 knots over 356 reached seams, 14 KB.
+  - **Per visit, not per seam**, because the first version keyed on first
+    visits and a loop going round seams it had already passed left the bar
+    standing for up to 2.4 s. One seam is visited 1,484 times.
+  - **Knots, not a straight line from first visit to last**, because the second
+    version did that and ran 12 points ahead. Some seams are visited in two
+    bursts seconds apart, and a line between them jumps across the gap. A knot
+    at each burst's edge keeps the chord off it.
+  - **The visit count is the program's.** It is identical on every boot and
+    every machine, and the writer refuses a table whose boots disagree on it.
+- **Four rules make it a bar and not a clock:**
+  - It shows the largest share reached, so it only goes forwards.
+  - It is written only at a hand-back, when a frame can show it, so
+    `aria-valuenow` changes at most once per hand-back.
+  - 100% belongs to `releaseBuildInputGuard()`, the line that already says the
+    build is done; every seam's share is under 1.
+  - A seam the table does not list warns once at the end of the build (rule 6).
+
+**The screen.**
+- A 180 px track sits under the head line, with the locale's own percentage
+  beside it. The label uses a new `fmtPct` in `i18n.js`, because the locales
+  disagree about the sign: Turkish writes `%39`, French and German `40 %`,
+  Arabic its own sign. It is floored, so 99.6% does not read 100.
+- The fill is `scaleX` with a 0.3 s transition, both on the compositor, which
+  is §238's rule.
+- It fills from the inline start, so under `dir="rtl"` it grows from the right.
+- It is a `role="progressbar"` labelled by the head line. The label is
+  `aria-hidden`, because the whole screen is a live region.
+- The ring stays. It is the only thing moving during the first composited
+  frame, the one block no seam reaches.
+- The bar hides on a failed build, because a part-filled bar over a dead build
+  claims a position nothing is measuring.
+- No new string, so no table changed. `probe-chrome-coverage.mjs`: twenty of
+  twenty-one locales read 0 missing, 0 not applied. Latvian's one MISSING
+  ("Setting bevel") reads identically on `main` and is not this landing's.
+
+**Gates, both in `boot-yield.yml`.**
+- **`node tools/boot-progress.mjs --check`**, browser-free, runs before
+  Chromium is installed. It fails on a bare seam, an id used twice, a stray
+  un-awaited `breathe(`, a malformed knot row, or a seam source order that
+  differs from the table's. Adding, removing or moving a seam is a difference
+  in that order. It then runs itself against four mutated copies of `main.js`
+  (an id dropped, two seams swapped, a seam deleted, a seam added) and fails
+  unless each one fails.
+- **`tools/probe-267-boot-progress.mjs`** holds the bar against the true elapsed
+  fraction t / span, read from `__clock.boot.progress.writes` at both edges of
+  every write. It gates:
+  - the time-averaged distance, which is sharp;
+  - the worst moment, which is a backstop;
+  - that the bar never goes backwards and says 100% only at the guard's
+    release;
+  - that every seam reached is in the table;
+  - and, through a CDP screencast, that the bar PAINTS mid-build, in at least
+    12 distinct widths and never shrinking.
+
+  Its two controls are:
+  - **The ordinal**, rebuilt from the same boot's first visits at the same write
+    times. It must fail the average.
+  - **A frozen bar** (`writeBar` made to return). The pixel reader must see one
+    width.
+
+  The reader scans every row the bar can occupy. Its first version read one
+  row and lost a third of the frames, because the bar sits at a fractional y
+  and the compositor rasterises an animating layer a pixel higher or lower from
+  frame to frame.
+
+**The ceilings, from the CI host.** Twelve boots on six `ubuntu-latest` runners,
+the table being the one this container measured:
+
+| runner CPU | mean, the bar | worst, the bar | mean, the ordinal |
+|---|---|---|---|
+| AMD EPYC 7763 (×3) | 2.30–2.61 pt | 5.43–9.85 pt | 5.28–5.50 pt |
+| AMD EPYC 9V74 | 1.60–1.77 pt | 5.40–5.46 pt | 5.55–5.74 pt |
+| Xeon Platinum 8370C | 2.57–2.69 pt | 5.45–10.34 pt | 5.39–5.57 pt |
+| Xeon Platinum 8573C | 1.49–1.62 pt | 5.38–5.42 pt | 5.76–5.83 pt |
+
+On the container that measured the table, the bar's mean is 0.4–0.5 points.
+The CI figure is the table's error on ANOTHER host, which is the honest
+reading, since no viewer's machine is the one that measured it. Each ceiling
+is the worst run × 1.66, rounded up to the next half point:
+- **Mean: 4.5 points** (2.69 × 1.66 = 4.47). Every ordinal run, 5.28 at its
+  best, is over it.
+- **Worst: 17.5 points** (10.34 × 1.66 = 17.2). On every host the worst moment
+  is the first composited frame. Its position among the seams differs by host:
+  the bar jumps ahead where the measuring host had already paid for it, and
+  falls behind where this one pays. So the worst number reads the host's
+  software GL, not the table. The ordinal cannot be asked to fail it
+  (12.8–14.2 points).
+
+**What it costs.**
+- **Geometry:** the fingerprint is `3302509692` on this branch and on `main`,
+  two fresh boots each, and `2603465796` on both after merging `main` at #641.
+- **`probe-239-boot-yield`**, alternating runs on one container: held 383–415 ms
+  against `main`'s 392–433, worst task 1,565–1,718 ms against 1,526–1,557, and
+  2.6 s of long tasks on both.
+- **`probe-238-boot-screen`:** 8/8 on both trees.
+
+**What it leaves.**
+- The first composited frame is still one block the bar cannot move through;
+  the ring covers it.
+- The table is measured on one host, so on another the bar moves unevenly. On
+  CI that is 1.5–2.7 points on average, never backwards.
+- A spec variant (`?studr=` and the like) visits seams the default build does
+  not. The bar holds at those seams rather than invent a share. Only the
+  default build is measured.
+- A change that alters how often a loop visits a seam, without moving any seam,
+  passes `--check`. Only the probe's average catches it, once it is large
+  enough to matter; regenerate when it does. The first `main` merged into this
+  landing was both cases at once. #641 added build code at a seam, which
+  `--check` failed until the table was regenerated. It also took the build from
+  14,782 seam visits to 14,769, which `--check` cannot see; the regenerated
+  table measured it.
+
+## §216 — Hungarian — suffixes hyphenated onto code spans and numbers, and space-grouped figures
+
+**Shipped whole.** The chrome (`src/i18n.js`, 486 keys), `explain.html`
+(773/773 translatable keys, 700 table rows) and `primer.html` (144/144, 133
+rows) read Hungarian at 100% in one landing, §209's recipe item for item. The
+roster is twenty-three rows with English.
+
+**The suffix rides outside the span, and the gate never had to bend.** This is
+the entry's reason for being: Hungarian is agglutinative, and a case ending
+attaches to whatever noun it governs, including a quoted identifier and a
+numeral. The orthography already answers it, hyphenating the ending onto a
+foreign or quoted token, so the tables write `a <code>CLEAR_MARGIN</code>-ban`
+and `270°-os`. The span's bytes are untouched and the `<code>` check reads
+0 drift with suffixed identifiers on nearly every explainer paragraph. The
+article is *a* or *az* by how the following number is READ (*az 1*, *a 0.15*),
+which is a translator's rule and not a gate's. On the primer, where numbers
+are quantities, a suffix after a figure follows a hyphen that is not in the
+checker's token class, so the value parse stops at the number. That is §216's
+prediction, and the primer's value gate held at 0 drift from the first build.
+
+**Measured (Chromium 141, Node's ICU 77 beside it).** `hu` and `hu-HU` are both
+CARRIED (`supportedLocalesOf` answers for each), so nothing is borrowed. They
+format `30,0 · 0,024 · 1000 · 18 000`: a decimal comma, a U+00A0 group, and
+four digits left bare. That is Russian's row and Latvian's, so `MARKS.hu` is
+theirs. Plural one/other. The matcher takes `hun`, which Intl canonicalizes to
+`hu`, and is anchored: the ladder assert carries `hup` (Hupa) and `hur`
+(Halkomelem) → `null` beside `hu`, `hu-HU`, `hu_HU`. `toUpperCase` is the
+root mapping (ő → Ő), so no case audit is owed.
+
+**`HONESTY.hu` reads the verb, never the noun.** *modellez-* (modellezett,
+modellezi, modellezés) against *szimul-* (szimulált, szimuláció). The credit
+line's "AI model" is *MI-modellje*, which carries no *-ez-*, so the narrow
+English matcher's reason for being narrow holds in Hungarian too. 0 crossed,
+0 absent, control PASS.
+
+**The double acute joins the shared line height.** Ő and Ű are the tallest
+single marks Latin carries, so `probe-249-vietnamese-vert.mjs` gained a
+`--script hu` row. Its controls fail in this container exactly as they did
+for Latvian's, so the measurement is a comparison in one face rather than a
+derivation. Hungarian inks no more than Latvian at any site (13 against 13
+at the 10 px sites, 14 against 15 at `.readout`), so both pages add
+`html:lang(hu)` to Vietnamese's 1.3 rule on Latvian's grounds rather than
+derive a third number.
+
+**Hungarian declines, so the linker's variants rows were read off the table.**
+The fifteen `.gloss-variants` rows list only the case forms the translated
+prose actually uses (*állomáson*, *azimutban*, *pózba*, *felmentést*…), each
+checked in context. *keretében* ("within", the idiom) is left out of
+`budget`'s row. *érintő* is also the participle "concerning", but every use
+on the page is the tangent sense, so it stays. 91 links against English's
+93, text identical in every locale.
+
+**Widths.** The plate pass found eleven labels over their English boxes on
+the first build (ten on the explainer, one on the primer), each shortened
+rather than reflowed: 0 new overflow. The chrome bar measured **182.6** on
+"Menü / Nézet / Vezérlés", 6.0 over English's 176.6 in the same container,
+so no word was chosen against it. The HUD labels are "Csörög:" 37.2 and
+"Idő" 14.8, the shortest Latin label yet. Every header is one line at all
+eight widths.
+
+**Glossary.** szerkezet, svájci horgonyjárat, gátkerék, horgonyvilla and
+horgonykövek, billegő, hajszálrugó, főrugó, rugóház, **kúpcsiga** (never the
+bare *csiga*, which is also a snail and a pulley), lánc, főkerék, kiskerék,
+korona, felhúzószár, kilincs and kilincskerék, retesz, ugrórugó, oszlopkerék,
+mutatómű, számlap, járástartalék, ébresztő, kalapács, ébresztőszabályozó.
+The project's own vocabulary renders as `magyar (english)` in the glossary
+table, the convention ten locales share: *állomás (station)*, *löket
+(throw)*, *átadás (hand-off)*, *felmentés (waiver)*. *bemeneti tengely* is a
+pose axis, kept apart from *tengely*, the arbor. Ten translators against one
+binding glossary. Where it named nothing (pawl, beak, lug, feeler, sautoir),
+each chose a word and recorded it. Those choices are the review packet's
+seven Hungarian questions in `tools/l10n-review/questions.mjs`, with the
+usual IOU: no native review pass yet.
+
+**Instruments.** `explain-i18n --check` reads `[hu]` 100%, 0 unmatched, 0
+markup, 0 `<code>`, 0 plate-number, 0 prose-number drift, 0 crossed honesty
+terms and 0 new plate overflow on both pages. The run's overall FAIL is
+Arabic's two plate collisions, which are on `main` already. `glossary-links`
+PASS. `probe-chrome-coverage --locales hu` missing 0 and not applied 0.
+`probe-116-locale-fit` PASS. `offline-check` precache 69/69, and the primer
+localizes from cache under `?lang=hu`. `l10n-review-packets` PASS (22
+packets). A boot at `?lang=hu` is silent apart from the container's GL
+driver notice. The same coverage run found Latvian still missing "Setting
+bevel"; that gap was on `main` before this landing and is left to Latvian's
+own record.
+
+**It met the merge race on its way in.** Re-merging `main` before the PR
+(CLAUDE.md's rule for locale tables) brought TODO 226 step 1, which had
+rewritten the escapement ledger's middle passage and moved the hairspring's
+knock figure from 316° to 302° in two blocks, re-translating all twenty-one
+existing locales. Three Hungarian rows went stale exactly as that rule
+predicts: 770/773, 3 unmatched. They were re-keyed from the new English, the
+two number moves carried as numbers, and the ledger's new passage translated
+against the same glossary. Back to 773/773.

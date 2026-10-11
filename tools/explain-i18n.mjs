@@ -274,6 +274,11 @@ const MARKS = {
   // 18 000, the group U+00A0 and four digits bare); the other two group
   // characters are accepted for the reason they are for ru and fr.
   lv: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
+  // §216 — hu-HU: Russian's and Latvian's row, measured in Chromium 141 (30,0 ·
+  // 0,024 · 1000 · 18 000, the group U+00A0 and four digits bare). A case
+  // ending hyphenated onto a number (18 000-ből) stops the parse at the
+  // hyphen, so the value reads correctly.
+  hu: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -380,6 +385,10 @@ const HONESTY = {
   // which carries the ē. Simulated is the loan simulēt / simulācija. /i folds
   // Ē onto ē (measured: MODELĒTS matches), unlike Turkish's İ.
   lv:        { m: /modelē/i, s: /simul/i },
+  // §216 — the verb modellez- (modellezett, modellezi, modellezés), never the
+  // noun: the credit line's "AI model" is «MI-modellje», which carries no
+  // -ez-. Simulated is the loan szimulál / szimuláció.
+  hu:        { m: /modellez/i, s: /szimul/i },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };

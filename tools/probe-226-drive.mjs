@@ -30,8 +30,10 @@
 // see 0.143 of ruby inside a horn has measured nothing.
 //
 // ACCEPTANCE: exits non-zero on any of 1–4, on the pin within CLEAR_MARGIN of
-// the blank in the lift, on any pair under the margin that is not one of the
-// three `only:` debts step 1 (the seat) owes, or on a control that comes back clean.
+// the blank in the lift, on ANY pair under the margin (the drive landed with
+// three `only:` debts; step 1's seat — the notch cut as the pin's swept path,
+// one roller below the fork, the guard pin behind the floor — retired all
+// three, so nothing is waived), or on a control that comes back clean.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 
@@ -190,8 +192,8 @@ const out = await page.evaluate(async () => {
 if (out.error) { console.log('FAIL', out.error); await browser.close(); srv.kill(); process.exit(1); }
 console.log(JSON.stringify(out, null, 2));
 const f = [];
-// the EXPECTED_CONTACT_FLOORS `only:` debts, by name — step 1's (the seat) to clear
-const WAIVED = new Set(['forkGuardPin ⇄ balanceImpulsePin', 'forkBlank ⇄ balanceImpulsePin', 'forkBlank ⇄ balanceRollerTable']);
+// the EXPECTED_CONTACT_FLOORS `only:` debts, by name: none since TODO 226 step 1
+const WAIVED = new Set();   // TODO 226 step 1 retired all three: the seat leaves nothing under the margin
 for (const w of out.winds) console.log(`tension ${w.tension}: bank ±${w.bankDeg.toFixed(4)}°, lift ${w.liftDeg.toFixed(3)}°, pin in the notch ${(100 * w.liftFrac).toFixed(1)}% of the beat`);
 console.log(`1. on the line   worst ${out.worst.line.toExponential(2)}`);
 console.log(`2. banked outside ${out.worst.bank ? 'FAILS ' + out.worst.bank : 'every sample'}`);
