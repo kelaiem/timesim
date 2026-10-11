@@ -14,6 +14,7 @@ lever escapement. Everything is procedural — there are no model assets.
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |
 | `docs/RUNNERS.md` | Where the battery job runs (§200): the fork-routing rule, the `BATTERY_RUNS_ON` variable, and how a host is set up. |
+| `docs/LOCALIZATION.md` | How the chrome and the two static pages are localized, the rules for changing UI text, and the checklist for adding a locale. |
 | `.github/pull_request_template.md` | The PR body's layout. Read before opening one — see Conventions. |
 
 `test-geometry.html` is a per-part visual smoke test, separate from the
@@ -518,7 +519,20 @@ it into prose either.
    `PLATE_SEATS` row — pivot, planted, fastened, housed — or a row of
    `PLATE_CLEARANCE_DEBT`, the CLOSED arrival inventory TODO 209 pays down on
    `UNDECLARED_CLEARANCE_DEBT`'s rule; both tables are judged both ways.
-   `probe-202-plate-tier.mjs` restores the proud plate and watches it fire).
+   `probe-202-plate-tier.mjs` restores the proud plate and watches it fire),
+   and `lineSpec` **control PASS, 0 unwaived, 0 stale, 0 malformed** (§70
+   steps 1–2, landed by §261 for the group it is about to fold — the one gate
+   that asks whether the packaged MECHANISM is still the one designed rather
+   than whether the movement fouls itself. Each `LINE_SPECS` reference in
+   `inspect.js` is movement-independent rows, every derived row computed from
+   its constraint in the table, every row MEASURED off the posed metal: the
+   switch's drive line today, tooth count to one-step carry. A fold that moves
+   a spec row fails until §70 step 3 builds forks; an `envelope` row is never
+   forkable. The control shifts the pin's line a known distance and requires
+   the reading to follow exactly, and `probe-70-line-spec.mjs` sabotages the
+   switch and watches the gate name the rows it moved. Its first run also
+   found the trap again: the mean of a cylinder's vertices read its axis
+   0.0104 off, because the seam's vertices repeat).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
@@ -982,7 +996,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 287 measuring scripts and this file names 39. The rest are named for the
+`tools/` holds 289 measuring scripts and this file names 39. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -999,7 +1013,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **176 of
+The index also carries the split that decides how to read a result: **178 of
 them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
