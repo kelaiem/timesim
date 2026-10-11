@@ -7,19 +7,21 @@
 // (LINE_SPECS in src/inspect.js). A gate that passes on the shipped tree has
 // proved only that it does not fail; this proves it fails, and fails on the
 // RIGHT rows, which is what makes its silence on the shipped tree mean
-// something. Five boots, each a copied tree (height-ledger's mutantTree), over
-// both references — the switch's drive line and the lock that reads it:
+// something. Eleven boots, each a copied tree (height-ledger's mutantTree),
+// over the three references — the switch's drive line, the lock that reads it
+// and the link that carries it to the ring — and the link's fork:
 //
-//   1. identity — 0 violations, both controls PASS.
+//   1. identity — 0 violations, every control PASS.
 //   2. the wheel grown, ALARM_COL_BASE_R 5.7 → 5.8 — a fold that resized the
 //      wheel without declaring a fork. The drive's radii and its derived chain
 //      fail (baseR, rootR, tipR, colInner, travel, offset), and columns, teeth,
 //      step, straddle, straight and carry must NOT, because the build still
 //      derives its own pin from its own wheel: the mechanism is coherent, it is
-//      just no longer the one specified. The LOCK fails too, through
-//      `inherits` and nothing else: its nose, read radius, post stand-off, arm
-//      and chamfer all follow the wheel, while its lever, finger and stop wheel
-//      stay green — the inheritance reaching exactly as far as the rocker.
+//      just no longer the one specified. The LOCK fails too, through `inherits`
+//      and nothing else (nose, read radius, post stand-off, arm, chamfer — its
+//      lever, finger and stop wheel stay green), and so does the LINK: its nose
+//      lands further out, so the run shortens and the ratio and both arms move,
+//      while the rod's site, the shaft, the pin and the ring stay where they are.
 //   3. the offset hand-tuned, ALARM_DRIVE_OFFSET × 1.02 — §163's history, a
 //      moment arm "that looked right" in place of the coupling's derivation.
 //      offset AND step must fail: a pin at the wrong offset sweeps the driver
@@ -31,20 +33,31 @@
 //      coupling, and the first draft of this probe predicted otherwise.
 //   4. the lock lever lengthened, ALARM_LOCK_L 5.0 → 5.2 — the lever's own
 //      triangle. lockL, lift and rCham fail, and the finger's seat and release
-//      must NOT: the build re-solves both angles from the stop wheel's radii,
-//      so the finger still lands on the root and one margin off the tips. The
-//      lift it takes to get there is what moved, and the chamfer with it.
+//      must NOT: the build re-solves both angles from the stop wheel's radii.
 //   5. the rocker post thickened past the ceiling, ALARM_ROCKER_POST_R
-//      0.22 → 0.40 — the ENVELOPE firing. §171's rule stands the post further
-//      out, the Thales arm lengthens to 2.837, the chamfer it owes grows to
-//      0.2753 and crosses the 0.268 the §35 link beak's landing leaves: the
-//      one row a fork could never declare away.
+//      0.22 → 0.40 — the ENVELOPE firing: the chamfer the longer Thales arm
+//      owes crosses the 0.268 the §35 link beak's landing leaves.
+//
+// §70 step 3 — the FORK. In each of the six trees below the metal is the
+// shipped link and only the declaration moves:
+//
+//   6. the fork deleted — the fold, undeclared. Exactly the six rows the fork
+//      carries fail: its two inputs (the run, the groove's offset) and the four
+//      rows the laws derive from them (ratio, both arms, the pin's arm).
+//   7. the run mis-declared, 9 → 9.5 — the input and the three rows the seat
+//      law derives from it fail; the pin's side does not.
+//   8. the run forked to the reference's own 16 — the same four fail, and the
+//      fork is reported STALE: a fork that no longer forks.
+//   9–11. a fork of a LAW (the ratio), of an ENVELOPE (the stall floor §35
+//      failed), and one with no forcing constraint — each MALFORMED on the row
+//      named, and none of them moves a value the metal is held to.
 //
 // What it is NOT: probe-261-height-cap.mjs fires the height ratchet; this
 // fires the mechanism reference. The check's own controls (a known shift of
 // the pin's line moving the measured offset by exactly that much; the rocker's
-// post carried a known distance and the stand-off following it) hold the
-// READERS; this holds the GATE.
+// post and the link's selector rod each carried a known distance and the
+// reading following it) hold the
+// READERS; this holds the GATE, and its last six trees hold the FORK SCHEMA.
 //
 // Run from tools/: node probe-70-line-spec.mjs
 import { chromium } from 'playwright';
@@ -77,22 +90,42 @@ async function lineSpecOn(dir) {
   }
 }
 
-const SRC = 'src/main.js';
+const SRC = 'src/main.js', INS = 'src/inspect.js';
+const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link/${k}`;
+const FORKS_HEAD = 'export const LINE_SPEC_FORKS = [';
+const WRLEN_FORK = "      wrLen: { value: 9,";
 const cases = [
   { name: 'identity', patches: [], fail: [] },
   { name: 'the wheel grown (ALARM_COL_BASE_R 5.7 → 5.8)',
-    fail: ['alarm switch drive/baseR', 'alarm switch drive/rootR', 'alarm switch drive/tipR', 'alarm switch drive/colInner',
-      'alarm switch drive/travel', 'alarm switch drive/offset',
-      'alarm lock/noseR', 'alarm lock/readR', 'alarm lock/postW', 'alarm lock/arm', 'alarm lock/rCham'],
+    fail: [...['baseR', 'rootR', 'tipR', 'colInner', 'travel', 'offset'].map(DRIVE),
+      ...['noseR', 'readR', 'postW', 'arm', 'rCham'].map(LOCK),
+      ...['landR', 'ratio', 'beakLen', 'tailLen'].map(LINK)],
     patches: [{ file: SRC, find: 'const ALARM_COL_BASE_R = 5.7;', to: 'const ALARM_COL_BASE_R = 5.8;' }] },
-  { name: 'the offset hand-tuned (ALARM_DRIVE_OFFSET × 1.02)', fail: ['alarm switch drive/offset', 'alarm switch drive/step'],
+  { name: 'the offset hand-tuned (ALARM_DRIVE_OFFSET × 1.02)', fail: ['offset', 'step'].map(DRIVE),
     patches: [{ file: SRC, find: 'const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));',
       to: 'const ALARM_DRIVE_OFFSET = 1.02 * ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));' }] },
-  { name: 'the lock lever lengthened (ALARM_LOCK_L 5.0 → 5.2)', fail: ['alarm lock/lockL', 'alarm lock/lift', 'alarm lock/rCham'],
+  { name: 'the lock lever lengthened (ALARM_LOCK_L 5.0 → 5.2)', fail: ['lockL', 'lift', 'rCham'].map(LOCK),
     patches: [{ file: SRC, find: 'const ALARM_LOCK_L = 5.0;', to: 'const ALARM_LOCK_L = 5.2;' }] },
   { name: 'the rocker post thickened past the ceiling (ALARM_ROCKER_POST_R 0.22 → 0.40)',
-    fail: ['alarm lock/postR', 'alarm lock/postW', 'alarm lock/arm', 'alarm lock/rCham', 'alarm lock/chamCeiling'],
+    fail: ['postR', 'postW', 'arm', 'rCham', 'chamCeiling'].map(LOCK),
     patches: [{ file: SRC, find: 'const ALARM_ROCKER_POST_R = 0.22;', to: 'const ALARM_ROCKER_POST_R = 0.40;' }] },
+  // §70 step 3 — the FORK. The metal is the shipped link in every case below;
+  // only the declaration moves.
+  { name: 'the link’s fork deleted (the fold, undeclared)',
+    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen', 'pinD', 'pinArm'].map(LINK),
+    patches: [{ file: INS, find: FORKS_HEAD, to: 'export const LINE_SPEC_FORKS = [];\nconst _PROBE_DELETED_FORKS = [' }] },
+  { name: 'the fork’s run mis-declared (wrLen 9 → 9.5)',
+    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK),
+    patches: [{ file: INS, find: WRLEN_FORK, to: "      wrLen: { value: 9.5," }] },
+  { name: 'a stale fork (wrLen forked to the reference’s own 16)',
+    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK), stale: ['wrLen'],
+    patches: [{ file: INS, find: WRLEN_FORK, to: "      wrLen: { value: 16," }] },
+  { name: 'a fork of a LAW (ratio overridden)', fail: [], malformed: ['ratio: a fork moves an INPUT, never a law'],
+    patches: [{ file: INS, find: WRLEN_FORK, to: "      ratio: { value: 5.31, forcedBy: 'the probe forks a law to watch the schema refuse it' },\n" + WRLEN_FORK }] },
+  { name: 'a fork of an ENVELOPE (the stall floor lowered)', fail: [], malformed: ['stall: an envelope is inherited whole'],
+    patches: [{ file: INS, find: WRLEN_FORK, to: "      stall: { value: 1, forcedBy: 'the probe forks the envelope §35 failed, to watch it refused' },\n" + WRLEN_FORK }] },
+  { name: 'a fork with no forcing constraint', fail: [], malformed: ['wrLen: the override does not say what in the movement forced it'],
+    patches: [{ file: INS, find: "        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST)", to: "        forcedBy: '', _was: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST)" }] },
 ];
 let ok = true;
 for (const c of cases) {
@@ -101,11 +134,20 @@ for (const c of cases) {
   const want = [...c.fail].sort();
   const rowsOk = JSON.stringify(failed) === JSON.stringify(want);
   const ctlOk = String(r.control).startsWith('PASS');
-  const good = rowsOk && ctlOk && r.malformed.length === 0;
+  // malformed and stale are judged by WHAT they name, not only how many: a
+  // schema check that fired on the wrong row would otherwise read as working
+  const mal = r.malformed.map((x) => `${x.key ?? x.ref ?? x.waiver}: ${x.error}`);
+  const malWant = c.malformed || [];
+  const malOk = mal.length === malWant.length && malWant.every((w) => mal.some((x) => x.startsWith(w)));
+  const stale = (r.staleForks || []).map((x) => x.key).sort();
+  const staleOk = JSON.stringify(stale) === JSON.stringify([...(c.stale || [])].sort());
+  const good = rowsOk && ctlOk && malOk && staleOk;
   if (!good) ok = false;
-  console.log(`${good ? 'PASS' : 'FAIL'}  ${c.name}: failing rows [${failed.join(', ')}], want [${want.join(', ')}]; control ${ctlOk ? 'PASS' : r.control}${r.malformed.length ? `; malformed ${JSON.stringify(r.malformed)}` : ''}`);
+  console.log(`${good ? 'PASS' : 'FAIL'}  ${c.name}: failing rows [${failed.join(', ')}], want [${want.join(', ')}]; control ${ctlOk ? 'PASS' : r.control}`
+    + `${mal.length || malWant.length ? `; malformed ${JSON.stringify(mal)}, want ${JSON.stringify(malWant)}` : ''}`
+    + `${stale.length || (c.stale || []).length ? `; stale forks [${stale.join(', ')}], want [${(c.stale || []).join(', ')}]` : ''}`);
   for (const x of r.rows.filter((y) => !y.pass)) console.log(`      ${(x.ref + '/' + x.key).padEnd(30)} spec ${Number(x.spec).toFixed(6)}  measured ${Number(x.measured).toFixed(6)}`);
 }
-console.log(ok ? '\nPASS — lineSpec is silent on the shipped switch and names exactly the rows each sabotage moved'
+console.log(ok ? '\nPASS — lineSpec is silent on the shipped mechanism and names exactly the rows (and the malformed or stale forks) each sabotage moved'
   : '\nFAIL — lineSpec does not fire as declared');
 process.exit(ok ? 0 : 2);

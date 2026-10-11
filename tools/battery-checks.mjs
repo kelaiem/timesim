@@ -140,21 +140,22 @@ export const BATTERY = [
       ...r.violations, ...r.staleWaivers],
     note: (r) => `${r.barsChecked} bars, ${r.waivedCount} waived (accepted debt), `
       + `${r.needRestCount} want a follower rest, ${r.ambiguousCount} refused as axis-ambiguous` },
-  // §70 steps 1–2, scoped by §261 step 4 — LINE SPECS. Every other gate asks
+  // §70 steps 1–3, scoped by §261 step 4 — LINE SPECS. Every other gate asks
   // whether the packaged movement fouls itself; this asks whether the packaged
   // MECHANISM is still the one designed, row by row off the posed metal
-  // (LINE_SPECS in inspect.js: the switch's drive line, which §261 is about to
-  // fold under the dial). It gates on arrival with no waivers: the reference IS
-  // today's switch, so every row measures green, and a fold that moves a spec
-  // row fails until it declares a fork (§70 step 3, not yet built). The
-  // control shifts the pin's line by a known distance and requires the offset
-  // to move by exactly that much, so a reader that quoted a constant fails.
+  // (LINE_SPECS in inspect.js: the switch's drive line, the lock that reads it,
+  // and the link that carries it to the selector ring). A fold that moves a
+  // spec row fails unless a FORK declares it (LINE_SPEC_FORKS: inputs only,
+  // never a law or an envelope, each with the constraint that forced it); the
+  // link's as-built fork is the first. Each reference's control moves a known
+  // distance — of a measurement or of metal — and requires the reading to
+  // follow exactly, so a reader that quoted a constant fails.
   { name: 'lineSpec', opts: {},
-    gate: 'control PASS, every row within float noise of its derived value, 0 unwaived, 0 stale waivers, 0 malformed',
+    gate: 'controls PASS, every row within float noise of its derived value (a forked reference against its fork), 0 unwaived, 0 stale waivers, 0 stale forks, 0 malformed',
     fails: (r) => [
       ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
-      ...r.violations, ...r.staleWaivers, ...r.malformed],
-    note: (r) => `${r.references} reference(s), ${r.rows.length} rows, ${r.waivedCount} waived` },
+      ...r.violations, ...r.staleWaivers, ...(r.staleForks || []), ...r.malformed],
+    note: (r) => `${r.references} reference(s), ${r.rows.length} rows, ${(r.forks || []).length} fork(s) moving ${(r.forks || []).reduce((n, f) => n + f.rows.length, 0)} rows, ${r.waivedCount} waived` },
   // TODO 181 — the minute jumper's siting solve reads the metal at the BUILD
   // pose, so every obstacle that moves carries a JMP_SITE_MOVERS row saying why
   // that is safe (lawed / revolve / bounded). The census walks the dense pose
