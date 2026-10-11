@@ -38753,7 +38753,7 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All TWENTY-TWO
+   what it says, and the box already grows to fit its contents. All TWENTY-THREE
    locales measure inside 150 px on one line today — §249's Indonesian
    "Berbunyi pukul" is the long one at 66.2 px, past Spanish's "Suena a las"
    and Korean's "울리는 시각" tied at 52.8 px (§209, §211) and German's
@@ -38770,7 +38770,8 @@ html:lang(ko) { word-break: keep-all; }
    level with Russian, "Amser" 28.9; §249's Tagalog "Tumutunog sa" 63.6, just
    under Indonesian's 66.2, "Oras" 21.7; §249's Latvian "Zvana plkst." 57.3,
    "Laiks" 24.5, measured in a container where English's "Rings at" reads
-   37.9) — so the allowance that a
+   37.9; §216's Hungarian "Csörög:" 37.2, "Idő" 14.8, the shortest Latin
+   label yet) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -39469,6 +39470,9 @@ function setBarState(id, on) {
 // §249's Latvian measured 180.5 on its first pass, on "Izvēlne / Skats /
 // Vadība" — 3.9 over English in the same container (176.6 there, where the
 // figures above were taken at 170.2), so it needed no word chosen against it.
+// §216's Hungarian measured 182.6 on its first pass, on "Menü / Nézet /
+// Vezérlés" — 6.0 over English's 176.6 in the same container, so it needed no
+// word chosen against it either.
 // §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
 // Latin-script locale including English, because Devanagari spends its
 // complexity vertically rather than horizontally: the same script that is the
