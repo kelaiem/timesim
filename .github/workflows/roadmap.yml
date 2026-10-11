@@ -1,0 +1,46 @@
+# Public roadmap — the gate for docs/ROADMAP.md (§272).
+#
+# Its own workflow rather than a battery step, for item-numbers.yml's reasons:
+# it reads markdown and git refs in well under a second, which the battery
+# deliberately ignores, and the sweeps have no business judging prose.
+#
+# The schedule is the one trigger that can see a row go stale: nothing happens
+# in this repository when a branch simply stops getting commits. Pull requests
+# REPORT staleness without failing, so one forgotten row does not block every
+# unrelated PR; the nightly fails on it. A schedule runs on the default branch.
+name: Roadmap
+
+on:
+  pull_request:
+    paths:
+      - 'docs/ROADMAP.md'
+      - 'docs/BUILT.md'
+      - 'TODO.md'
+      - 'docs/item-numbers/**'
+      - 'tools/check-roadmap.mjs'
+      - '.github/workflows/roadmap.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/ROADMAP.md'
+      - 'docs/BUILT.md'
+      - 'TODO.md'
+      - 'docs/item-numbers/**'
+      - 'tools/check-roadmap.mjs'
+  schedule:
+    - cron: '52 5 * * *'
+
+jobs:
+  roadmap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # branch tips are read from refs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Controls
+        run: node tools/check-roadmap.mjs --self-test
+      - name: Check the roadmap
+        run: node tools/check-roadmap.mjs ${{ github.event_name == 'schedule' && '--gate-stale' || '' }}

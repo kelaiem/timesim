@@ -10,6 +10,7 @@ lever escapement. Everything is procedural — there are no model assets.
 | `SPEC.md` | The architecture contract. Read before changing structure. |
 | `docs/BUILT.md` | How shipped features were designed — numbered (§n); source comments cite these. |
 | `BACKLOG.md` | Unshipped roadmap. **Private** — lives in `kelaiem/timesim-roadmap`, not this repo. |
+| `docs/ROADMAP.md` | The PUBLIC list of work in progress (§272) — published per item by explicit act, never mirrored from the backlog. `docs/ROADMAP-PROCESS.md` says how to add a row; `tools/check-roadmap.mjs` holds it. |
 | `TODO.md` | Mechanical-realism debt: honesty fixes to what exists. |
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |

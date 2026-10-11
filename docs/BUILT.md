@@ -34411,6 +34411,55 @@ predicts: 770/773, 3 unmatched. They were re-keyed from the new English, the
 two number moves carried as numbers, and the ledger's new passage translated
 against the same glossary. Back to 773/773.
 
+## §272 — The public roadmap: in-progress items, published by explicit act
+
+The feature backlog is private and was purged from this history, so a public
+list of what is being built cannot be a mirror of it. `docs/ROADMAP.md` is a
+separate, hand-written list of in-progress work, and an item reaches it only
+because its owner decided to show it. `docs/ROADMAP-PROCESS.md` is the
+procedure: mark the private entry `Public: yes`, have a claimed number, write
+the row fresh in the first PR, update Status at milestones, and delete the row
+in the PR that adds the BUILT section (or move it to *Stopped* with a reason).
+
+**What is held, and why it is a checker.** The private roadmap's README records
+that a shipped entry's second edit, in a second place, was forgotten five times
+before a watcher existed. Here that edit is deleting the row, so
+`tools/check-roadmap.mjs` makes "in progress" and "shipped" mutually exclusive
+for one number: a row fails when it has no claim file, its § has a BUILT
+section (or its TODO is CLOSED), its branch is gone, it is listed twice, or a
+cell is malformed. `Continues` at the head of Status waives the BUILT test for
+a genuine partial ship (§10 and §36 are the precedents for a § in both files).
+
+**`STALE_DAYS = 7` is derived.** The constraint: a row must not outlive the
+work. Over the 77 merge-commit merges to `main` since 2026-06-01 the oldest
+branch commit to merge was median 1 h, p90 13 h, max 26 h, so seven days is
+6.5 times the longest and reads as a stalled branch, not a slow one. The sample
+omits squash merges, which leave nothing to measure, so it understates how long
+real work runs; the derivation is in the script's header for re-measuring. The
+branch tip's committer date is used, so merging `main` into a stalled branch
+resets it, which is lenient on purpose. Staleness is REPORTED on pull requests,
+so one forgotten row does not block unrelated work, and FAILS the nightly,
+because nothing in the repository happens when a branch just stops.
+
+**What it cannot hold.** Whether a row's text is safe to publish. A 400-character
+cap per cell and a short list of private-roadmap phrases catch an entry pasted
+wholesale; that is a tripwire, not a review, and the PR template's Record line
+is where a person is asked. `--self-test` plants eighteen cases (a clean row as
+control, then each defect) and fails if the gate misses one; `roadmap.yml`
+runs it before the real check.
+
+**Instruments.** `check-roadmap --self-test`: 18/18. `check-roadmap` on the
+shipped tree: 0 in progress, 0 stopped, exit 0. Run by hand with one valid and
+one invented row: the valid row passed, the invented one failed on its missing
+claim and its missing branch. The battery was not run; CI's path filter decides
+whether it does (`tools/**` and `.github/workflows/**` are deliberately not
+ignored).
+
+**Not built.** The cross-check against the private repo (every `Public: yes`
+entry has a row and the reverse) would be another two-repo edit, and is left to
+whoever wants it. There is no site page; `docs/*.md` is not in `payload.sh`'s
+payload, so the roadmap is visible in the repository only.
+
 ## §70, steps 1–2 for one group — LINE SPECS: the switch's drive line measured off the metal, landed for the fold §261 is about to make
 
 > **PARTIAL.** §70 (roadmap) is the instrument behind CLAUDE.md's "design in a
