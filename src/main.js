@@ -8,6 +8,7 @@ import { geometryOverridePaths } from './aesthetics.js';
 import { VALIDATED_CONFIGS } from './validated-configs.js';   // TODO 158: the configuration keys the battery swept
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, importAesthetics, IMPORT_OUTCOME, encodeShare, SHARE_PARAM, stripLinkParams, LINK_OUTCOME, LINK_DROPPED } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
+import * as BD from './balance-drive.js';   // §246 tier two — the driven balance (pure; the live loop steps it)
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
@@ -2108,10 +2109,16 @@ const hairspringSteps = G.makeHairspringSteps({
   // §218's step exactly (HAIRSPRING_RATIO_THETA: the clamp ratio reads the
   // frames at ±one step, so the step must BE that angle), rounded OUT to a
   // whole step so the swing is covered; an odd count keeps the rest frame at
-  // θ = 0. Beyond it the law is only EVALUATED, out to the largest swing.
-  windMaxRad: Math.ceil(AMPLITUDE_POSED_DEG * DEG2RAD / G.HAIRSPRING_RATIO_THETA) * G.HAIRSPRING_RATIO_THETA,
-  windFrames: 2 * Math.ceil(AMPLITUDE_POSED_DEG * DEG2RAD / G.HAIRSPRING_RATIO_THETA) + 1,
-  reportMaxRad: AMPLITUDE_PEAK_DEG * DEG2RAD, // §218 — the law is EVALUATED (not meshed) out to the largest physical swing (TODO 192 step 4)
+  // θ = 0. §246 tier two — and the swing the balance performs is no longer
+  // one number: the driven balance settles to the energy column's swing for
+  // its position (dial-flat 292° at the nominal corner), so the frames run to
+  // the largest swing the balance can REACH at all, AMPLITUDE_PEAK_DEG (the
+  // knock). The frames inside ±200° are the same solves as before, bit for
+  // bit — each is warm-started from its neighbour outward from rest, and the
+  // grid is the same step from the same rest frame.
+  windMaxRad: Math.ceil(AMPLITUDE_PEAK_DEG * DEG2RAD / G.HAIRSPRING_RATIO_THETA) * G.HAIRSPRING_RATIO_THETA,
+  windFrames: 2 * Math.ceil(AMPLITUDE_PEAK_DEG * DEG2RAD / G.HAIRSPRING_RATIO_THETA) + 1,
+  reportMaxRad: AMPLITUDE_PEAK_DEG * DEG2RAD, // §218 — the physical swing the peaks are read to (TODO 192 step 4); since §246 the frames cover it
 });
 let hairspringStep;
 while (!(hairspringStep = hairspringSteps.next()).done) await breathe(24);
@@ -2163,8 +2170,12 @@ const OSCILLATOR = (() => {
   const frames = EL.frames.map(rowSI), report = EL.report.map(rowSI);
   const peak = (rows, key) => rows.reduce((m, r) => Math.max(m, r[key]), 0);
   const worn = frames.filter((r) => Math.abs(r.thetaRad) <= AMPLITUDE_POSED_DEG * DEG2RAD + EL.dTheta / 2 + 1e-9);
-  const all = frames.concat(report);
-  const lenErr = all.reduce((m, r) => Math.max(m, Math.abs(r.len_u - H.devLen) / H.devLen), 0);
+  // §246 — the frames now run a rounded-OUT step past the peak, so the
+  // physical rows are read to the peak itself, as they were when the report
+  // rows carried them.
+  const every = frames.concat(report);
+  const all = every.filter((r) => Math.abs(r.thetaRad) <= EL.reportMaxRad + 1e-9);
+  const lenErr = every.reduce((m, r) => Math.max(m, Math.abs(r.len_u - H.devLen) / H.devLen), 0);
   // the builder's own small-θ stiffening against the plan-level solve the
   // section was fitted with — one law read on two paths, held to float noise
   const ratioErr = Math.abs(EL.clampRatio / HS_CLAMP.ratio - 1);
@@ -2203,7 +2214,7 @@ const OSCILLATOR = (() => {
     law: 'clamped–clamped planar elastica, inextensible segments, EI scaled out (geometry.js spiralElastica)',
     frames, report, dThetaRad: EL.dTheta, windMaxRad: EL.windMaxRad, reportMaxRad: EL.reportMaxRad,
     lengthHeld: lenErr < 1e-9, lengthMaxRelErr: lenErr,
-    converged: all.every((r) => r.converged) && EL.control.every((c) => c.converged) && HS_CLAMP.converged,
+    converged: every.every((r) => r.converged) && EL.control.every((c) => c.converged) && HS_CLAMP.converged,
     clampRatio: HS_CLAMP.ratio, clampRatioBuilder: EL.clampRatio, clampRatioAgrees: ratioErr < 1e-9,
     kFrames_Nm_per_rad: kFrames, kFramesAgrees: Math.abs(kFrames / k - 1) * 100 <= 0.5,
     control: { maxPivotForce_mN: controlLam, pass: controlLam < 1e-9, rows: EL.control.map((c) => ({ thetaRad: c.theta, pivotForce_mN: c.lam * EI / OSC_U ** 2 * 1e3, kOverPure: c.kOverPure })) },
@@ -2709,9 +2720,12 @@ function beatPhase(t) {
 // level product (§104, held at float noise over the reserve) delivers the same
 // torque at every state of wind. A real fusee watch still loses a few degrees
 // to its own escapement losses over the reserve; no coefficient is invented
-// for that here — it needs a loss model, which is §246 tier two's driven
-// balance. Because the swing does not read the wind, neither does anything
-// driven off it: the fork, the wheel and the train are functions of τ alone.
+// for that here. §246 tier two's driven balance (balance-drive.js) is that loss
+// model, and with the fusee's level torque its swing does not read the wind
+// either. This law is the POSED swing — every pose, and the window the driven
+// balance's τ is inverted through — so the fork, the wheel and the train read
+// the balance through τ: at a pose by this law, live because the driven τ is
+// chosen so that this law, inside the window, IS the balance's own angle.
 //
 // The PHASE: the impulse window straddles the balance's zero crossing as the
 // real escapement's does — the pin enters the notch at θ = −LIFT/2 and leaves
@@ -2844,6 +2858,68 @@ function windLocalAt(turns, t) {
 if (!(MOVEMENT_SENSE * (barrelMeshAngle(1) - barrelMeshAngle(0)) > 0))
   console.warn(`§47: barrelMeshAngle runs AGAINST MOVEMENT_SENSE ${MOVEMENT_SENSE} (${barrelMeshAngle(1) - barrelMeshAngle(0)} over 1 s) — the wind-local law assumes the train advances the barrel arbor in the chain's pay-out sense`);
 
+// §246 tier two — THE POSED BALANCE, BY POSITION. The swing a pose shows is
+// the one the driven balance settles to there: hanging, the designed target
+// (AMPLITUDE_POSED_DEG — exactly the law above, so a hanging pose is the
+// pre-§246 pose bit for bit); dial-flat, the energy column's own sustained
+// swing at the live loop's corner. Inside the impulse window both are the
+// SAME law (the pin's geometry is the escapement's, whatever the swing); the
+// flat swing differs only on the supplementary arc (balance-drive.js
+// posedTheta). Called from tick() only, after module init.
+function balancePosedDeg(pos = balancePosition) {
+  return BD.FLAT_POSITIONS.has(pos) ? BALANCE_DRIVE.posedDeg.flat : BALANCE_DRIVE.posedDeg.vertical;
+}
+function balancePosedTheta(tau) {
+  const A = balancePosedDeg();
+  return A === AMPLITUDE_POSED_DEG ? balanceTheta(tau) : BD.posedTheta(BALANCE_DRIVE.K, tau, A * DEG2RAD);
+}
+// §246 — the spring's own weight, per hanging position, in the spring's plan
+// frame. The directions are read off the BUILT watch, as tier one's probe
+// reads them: the crown's azimuth from the dial's centre, the dial facing −z
+// (a viewer of the dial looks along +z), "crown left" the crown on that
+// viewer's left with the watch hanging (ĝ = n × c). Built on first use — the
+// crown is cut long after the energy column — and cached: nothing it reads
+// moves (the crown slides radially, which leaves its azimuth alone).
+const BALANCE_WEIGHT = new Map();
+function balanceWeightTable(pos) {
+  if (BD.FLAT_POSITIONS.has(pos)) return null;
+  if (BALANCE_WEIGHT.has(pos)) return BALANCE_WEIGHT.get(pos);
+  let crownObj = null;
+  scene.traverse((o) => { if (!crownObj && o.userData && o.userData.crown) crownObj = o; });
+  const crownW = crownObj.getWorldPosition(new THREE.Vector3());
+  const c = new THREE.Vector3(crownW.x - P.dial.x, crownW.y - P.dial.y, 0).normalize();
+  const n = new THREE.Vector3(0, 0, -1);
+  const qInv = hairspring.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const dirs = { CD: c.clone(), CU: c.clone().negate(), CL: new THREE.Vector3().crossVectors(n, c), CR: new THREE.Vector3().crossVectors(c, n) };
+  for (const [k, v] of Object.entries(dirs)) {
+    const l = v.clone().applyQuaternion(qInv);
+    BALANCE_WEIGHT.set(k, BD.weightTable(BALANCE_DRIVE.rows, l.x, l.y, BALANCE_DRIVE.massKg, BALANCE_DRIVE.g, OSC_U));
+  }
+  return BALANCE_WEIGHT.get(pos);
+}
+// §246 — THE RATE, MEASURED: the live balance's beats against the sim's own
+// clock. Every unlocking is time-stamped to the integrator's sub-step
+// (balance-drive.js `entryT`), so the rate over the last RATE_WINDOW_S of
+// beats is exact arithmetic on events, not a reading of τ at a frame boundary
+// (the escapement's phase map is not uniform inside a beat, and a 1 s/day rate
+// is 1e-5 of a second's worth). Cleared whenever the balance is re-seeded.
+const RATE_WINDOW_S = 30;
+const rateBeats = [];
+let rateSeed = null;
+function recordBeat(S) {
+  if (rateSeed !== S) { rateBeats.length = 0; rateSeed = S; }
+  const last = rateBeats[rateBeats.length - 1];
+  if (S.entryT === undefined || (last && last.n === S.n)) return;
+  rateBeats.push({ n: S.n, t: S.entryT });
+  while (rateBeats.length > 2 && rateBeats[rateBeats.length - 1].t - rateBeats[0].t > RATE_WINDOW_S) rateBeats.shift();
+}
+function liveRate() {
+  if (driveState === null || rateSeed !== driveState || rateBeats.length < 3) return null;
+  const a = rateBeats[0], b = rateBeats[rateBeats.length - 1];
+  if (!(b.t > a.t)) return null;
+  return { sPerDay: (((b.n - a.n) / (2 * F_BALANCE)) / (b.t - a.t) - 1) * 86400, overS: b.t - a.t, beats: b.n - a.n,
+           ampDeg: driveState.ampEst / DEG2RAD };
+}
 
 // ---------------------------------------------------------------------------
 // Assemble arbor groups
@@ -10570,6 +10646,49 @@ const GOING_POWER = (() => {
   return { k, released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
     rArbor, rWrap, rFuseeMean, rGreat, kB, mB, g, thetaClaim, UPSTREAM, corner };
 })();
+// §246 tier two — THE DRIVEN BALANCE'S CONSTANTS, read off the metal and the
+// energy column, never restated. The column prices a SERVICED movement at its
+// NOMINAL corner (the corner TODO 207 designed the swing to), so the live loop
+// runs there: the impulse is the energy that corner delivers per beat, the
+// losses are its Q and its pivot friction for the position, and the swing is
+// whatever those balance to — 292° dial-flat and 200° hanging, measured by
+// probe-246-driven-rate rather than assumed. The spring's torque law is the
+// elastica's own frames (the shape the metal wears at each θ), and its weight
+// acts through the same frames' centroids. The hack pad holds the spring's
+// PEAK torque — the figure the stop lever's rod is priced on above ("holding a
+// 315° swing means absorbing the hairspring's own peak torque").
+const BALANCE_DRIVE_CORNER = 'nominal';
+const BALANCE_DRIVE = (() => {
+  const C = GOING_POWER.corner(BALANCE_DRIVE_CORNER);
+  const H = hairspring.userData, EL = H.elastica;
+  const EI = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4);                 // N·m² — OSCILLATOR's own conversion
+  const rows = EL.frames.map((r) => ({ theta: r.theta, torque: r.torque * EI / OSC_U, cx: r.cx, cy: r.cy }));
+  const peakRad = AMPLITUDE_PEAK_DEG * DEG2RAD;
+  const brakeNm = rows.filter((r) => Math.abs(r.theta) <= peakRad + 1e-9).reduce((m, r) => Math.max(m, Math.abs(r.torque)), 0);
+  const K = BD.makeDrive({
+    F: F_BALANCE, liftDeg: LIFT_DEG, posedAmpDeg: AMPLITUDE_POSED_DEG, knockDeg: ESCAPEMENT_KNOCK.deg,
+    I: OSC_I.total, k: OSCILLATOR.k_Nm_per_rad, Q: C.qOther, impulseJ: C.delivered_J, brakeNm, springRows: rows,
+  });
+  return {
+    K, rows, corner: BALANCE_DRIVE_CORNER,
+    friction: { flat: C.pivot.flat_Nm, vertical: C.pivot.vertical_Nm },
+    // the posed swing per position: hanging, the designed target (what the
+    // battery has always swept, bit for bit); dial-flat, the column's own
+    // sustained swing there, so the battery sweeps the swing the live loop
+    // reaches (§246's position axis)
+    posedDeg: { flat: C.sustainedDeg.flat, vertical: AMPLITUDE_POSED_DEG },
+    sustainedDeg: { ...C.sustainedDeg },
+    massKg: OSCILLATOR.spring.mass_kg, g: GOING_POWER.g,
+  };
+})();
+// The frames must cover the largest swing the live loop can reach, or the
+// spring's torque law would be extrapolated off its last frame (rule 6: a
+// warning says the frame plan and the knock have parted).
+if (!(BALANCE_DRIVE.rows[BALANCE_DRIVE.rows.length - 1].theta >= BALANCE_DRIVE.K.knockRad - 1e-9))
+  console.warn(`§246: the hairspring's frames end at ${(BALANCE_DRIVE.rows[BALANCE_DRIVE.rows.length - 1].theta / DEG2RAD).toFixed(2)}°, short of the knock at ${(BALANCE_DRIVE.K.knockRad / DEG2RAD).toFixed(2)}° the driven balance can reach`);
+// (That the nominal corner's dial-flat swing stays under the knock is TODO
+// 216's own boot row — the live loop runs at that corner, so it inherits it.)
+
 // TODO 219 — THE MAINTAINING SPRING'S FLOOR, from the energy column. During a
 // wind the maintaining spring drives the great wheel DIRECTLY: the ribbon's
 // coil friction, the drum and the chain are out of the path, and every stage
@@ -38282,28 +38401,30 @@ let reserveShown = 1; // = tension each frame; kept as its own var for the UI re
 
 // ---------------------------------------------------------------------------
 // Hacking seconds — pulling the crown swings the hacking lever's ruby pad
-// onto the balance rim (see the stop lever above). This is modelled as an
-// actual contact: the pad's braking force ramps in with the lever's swing
-// and damps the BALANCE's own angular rate (balanceRate, below) toward
-// zero over roughly a beat, exactly as friction would. Movement time τ is
-// then just the running integral of that rate (tauIntegrated) — it is not
-// set or frozen directly. balanceRate's target is ALSO gated on the
-// mainspring actually having tension (see tick()) — a depleted spring
-// stops the balance through the exact same damping, not a separate
-// snap-to-formula path, since both are really "the balance ran out of
-// something driving it." Because the whole train (escapeAngle, fourthAngle,
-// … down to the barrel) is a closed-form function of τ, the escapement lock
-// and the gear train's stoppage are a CONSEQUENCE of the balance being
-// stalled, not a separately-flagged freeze. Recovering (lever release OR
-// rewinding) ramps the rate back toward 1, as the escapement's impulses
-// pick the balance back up.
+// onto the balance rim (see the stop lever above). Since §246 tier two this
+// is a FORCE on the driven balance: the pad's friction ramps in with the
+// lever's swing (leverEngage) up to the torque that holds the spring's peak,
+// and the balance stops because it is braked — it then holds wherever it
+// stopped, as a braked rim does. A run-down spring stops it the same way, by
+// the escapement having nothing left to impulse it with: the balance's own
+// losses do the rest. Because the whole train (escapeAngle, fourthAngle, … down
+// to the barrel) is a closed-form function of τ, and τ is the escapement's
+// count of the balance's beats, the train's stoppage is a CONSEQUENCE of the
+// balance being stalled, not a separately-flagged freeze. Releasing the pad, or
+// winding, lets the escapement pick the balance back up: a lever escapement in
+// beat is self-starting, because the balance comes to rest with the impulse pin
+// in the fork.
 // ---------------------------------------------------------------------------
 let fastForward = false;     // fun mode: rip through hours so the fusee chain visibly pays off
 let crownOut = false;        // target: is the crown pulled to the setting position?
 let crownPullT = 0;          // 0..1 eased stem-slide animation toward crownOut
 let leverEngage = 0;         // 0..1 eased lever swing-in (0=clear, 1=pad on rim)
 let balanceRate = 1;         // dτ/dt — the balance's own angular rate (1 = free-running)
-let tauIntegrated = 0;       // ∫ balanceRate dt — movement time τ's actual source
+let tauIntegrated = 0;       // movement time τ — since §246 the driven balance's escapement count (see tick())
+let balancePosition = BD.DEFAULT_POSITION; // §246 — the watch's position in gravity (canonical English key, never translated)
+let driveState = null;       // §246 — the driven balance; null = re-seed from τ on the next live tick
+let driveDesync = false;     // §246 — Harrison's stop held τ while the balance swung on (re-seed on release)
+let lastDTau = 0;            // §246 — the last live tick's advance of τ (the drain reads it, one tick late)
 let lastTickRawT = 0;        // raw simTime as of the previous tick(), for dt
 let handSetOffsetNow = 0;    // last value tick() gave the hands — displayedSeconds()'s other half (declared here so a boot-time readout can't hit its TDZ)
 
@@ -38320,8 +38441,14 @@ let restoredFocus = null;  // §69: tap-focus unit name, applied once the scene 
 // A beat (one lock-to-lock swing) is 1/(2·F_BALANCE) ≈ 0.2 s here; contact
 // (or running dry) kills the balance's rate within a fraction of that;
 // recovery (release, or rewinding) takes it back up over a similar span.
-const LEVER_DAMP_TAU = 0.09;    // s — rate decay time constant while decelerating
-const LEVER_RELEASE_TAU = 0.11; // s — rate recovery time constant while accelerating
+// §246 — balanceRate is now READ off the driven balance (dτ/dt), smoothed so
+// a reader sees a rate and not the escapement's beat-by-beat stepping: one
+// beat is 1/(2F) s, and a fifth of a second spans one to two of them at every
+// rate the spec offers. Fast-forward strides are seconds long, so it steps the
+// balance at the coarsest sub-step the integrator's own convergence test (the
+// rate instrument's control) holds to its tolerance.
+const BALANCE_RATE_EMA_S = 0.2;
+const BALANCE_FF_STEPS = 40;
 
 function setCrownOut(out) {
   crownOut = out;
@@ -38461,6 +38588,7 @@ let mmPerPxCal = null;
   jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
+  if (BD.POSITIONS.includes(savedState.position)) balancePosition = savedState.position; // §246 — absent or unknown keeps the default
   restoredCamera = savedState.camera;
   restoredXray = !!savedState.plateXray;
   // §69: ?? true, not !! — schematic is the DEFAULT view, so a state saved
@@ -39070,6 +39198,12 @@ panel.innerHTML = `
       <div class="row label-small"><span>Sync</span><button id="btn-sync">Now</button></div>
       <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
       <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
+      <!-- §246 tier two: the watch's position in gravity, and what the driven
+           balance does in it — its swing and the rate it keeps, both MEASURED
+           off the integrator's own beats (option values are canonical keys). -->
+      <div class="row label-small"><span>Position</span><select id="sel-position"><option value="DU">Dial up</option><option value="DD">Dial down</option><option value="CU">Crown up</option><option value="CD">Crown down</option><option value="CL">Crown left</option><option value="CR">Crown right</option></select></div>
+      <div class="row label-small"><span>Amplitude</span><span class="readout" id="readout-amplitude" style="font-size:13px;">—</span></div>
+      <div class="row label-small"><span>Rate</span><span class="readout" id="readout-rate" style="font-size:13px;">—</span></div>
       <div class="row label-small"><span>Beat rate</span><select id="spec-vph"></select></div>
       <div class="row label-small"><span>Reserve spec</span><select id="spec-reserve"></select></div>
       <div class="row label-small"><span>Stud radius</span><select id="spec-studr"></select></div>
@@ -47876,6 +48010,7 @@ function captureState() {
     jumpCorr,
     crownOut,
     fastForward,
+    position: balancePosition,   // §246 — the watch's position in gravity (canonical key)
     timeScale: Math.pow(10, (Number(document.getElementById('scale-slider').value) / 1000) * 3 - 3),
     showLabels: labelsOn,
     plateXray: xrayOn,
@@ -48706,6 +48841,7 @@ function currentViewLink() {
   if (selectedUnit !== 'All') p.set('unit', selectedUnit);
   if (explodeAmount > 0) p.set('explode', explodeAmount.toFixed(CAM_LINK_DP));
   if (crownOut) p.set('crown', 'out');
+  if (balancePosition !== BD.DEFAULT_POSITION) p.set('position', balancePosition); // §246: only a non-default position travels
   // §240 Landing 3 — THE TUNED LOOK travels, one parameter for the whole
   // shareable class (it replaced §185's `dialcol` and §203's `metal`, which
   // are still read and never written). Same "only non-default" rule as the
@@ -49558,6 +49694,8 @@ function applyDeepLink() {
     document.getElementById('explode-slider').value = String(Math.round(v * 100));
   }
   if (params.has('crown')) { setCrownOut(params.get('crown') === 'out'); updateCrownUI(); }
+  // §246 — ?position=DU|DD|CU|CD|CL|CR; an unknown key degrades to the live value (this block's rule).
+  if (params.has('position') && BD.POSITIONS.includes(params.get('position'))) setBalancePosition(params.get('position'));
   // Fraction of the 30h reserve (RESERVE_BARREL_TURNS), same 0..1 tension
   // vocabulary __clock.setPose's p.tension already uses — so winding has
   // somewhere to go on load instead of starting flat against the full stop.
@@ -49744,6 +49882,27 @@ function setQualityMode(mode) {
   qualitySelect.value = qualityMode;
 }
 qualitySelect.addEventListener('change', () => setQualityMode(qualitySelect.value));
+// §246 tier two — the position select. Its option values are the canonical
+// keys (balance-drive.js POSITIONS); only their text is translated. Changing
+// it tilts the watch: the driven balance carries on from where it is, under
+// the new position's friction and weight, and settles to that position's swing.
+const positionSelect = document.getElementById('sel-position');
+function syncPositionUI() { positionSelect.value = balancePosition; }
+function setBalancePosition(pos) {
+  if (!BD.POSITIONS.includes(pos)) return;
+  balancePosition = pos;
+  syncPositionUI();
+}
+positionSelect.addEventListener('change', () => setBalancePosition(positionSelect.value));
+syncPositionUI();
+const amplitudeReadout = document.getElementById('readout-amplitude');
+const rateReadout = document.getElementById('readout-rate');
+function paintBalanceReadouts() {
+  const r = liveRate();
+  if (!r) { amplitudeReadout.textContent = '—'; rateReadout.textContent = '—'; return; }
+  amplitudeReadout.textContent = `${fmtNum(r.ampDeg, 0)}°`;
+  rateReadout.textContent = `${r.sPerDay >= 0 ? '+' : '−'}${fmtNum(Math.abs(r.sPerDay), 1)} ${t('s/day')}`;
+}
 await breathe(326);
 setQualityMode(restoredQualityMode); // persisted panel choice (state.js); default Auto
 
@@ -50164,14 +50323,15 @@ function tick(t) {
   // display slipped on the cone all the way down and the 30 h the readout
   // promises ran ~14). §47 leans on the sync: drain-turns ≡ cone advance,
   // pathwise, because this line and barrelMeshAngle integrate the same
-  // balanceRate·rawDt — that identity is what pins the arrest's world azimuth
+  // advance of τ — that identity is what pins the arrest's world azimuth
   // (see windLocalAt). Only the 0 floor remains; the ceiling is the arrest's.
-  // Uses balanceRate as it stood at the END of the last tick, a one-frame lag
-  // that's imperceptible but avoids a circular dependency (this frame's rate
-  // depends on tension, which depends on this drain).
+  // Uses the LAST tick's dτ (§246: τ is the driven balance's count now, and
+  // this tick's is decided below), a one-frame lag that's imperceptible but
+  // avoids a circular dependency (this frame's impulse depends on tension,
+  // which depends on this drain). A pose (zero dt) drains nothing.
   {
     const before = barrelWindTurns;
-    barrelWindTurns = Math.max(0, barrelWindTurns - Math.min(balanceRate * rawDt, maintRoom) / (HOURS_PER_FUSEE_TURN * 3600));
+    barrelWindTurns = Math.max(0, barrelWindTurns - (rawDt > 0 ? Math.min(lastDTau, maintRoom) : 0) / (HOURS_PER_FUSEE_TURN * 3600));
     // TODO 50 sub-pitch pickup: with the coupling's faces parted (a
     // reversal parked the clutch mid-pitch), the pinion's run-down advance
     // first CLOSES the gap from its own side — the drive face travels to
@@ -50191,22 +50351,54 @@ function tick(t) {
   }
   const tension = clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1);
 
-  // Contact damping: the balance's own angular rate relaxes toward 0 when
-  // EITHER the hack lever is braking it OR the mainspring has nothing left
-  // to drive it — both are really "ran out of what keeps it going" — and
-  // relaxes back toward 1 as either cause clears. Real per-frame decay
-  // toward a moving target, not a snap — it settles over roughly a beat.
-  // TODO 224: a wind held at Harrison's stop is a third "nothing drives it" —
-  // the spring's preload is met by the flank and the train gets none of it.
-  const rateTarget = (1 - leverEngage) * (tension > 0 && !(maintRoom <= 0) ? 1 : 0);
-  const rateTau = rateTarget < balanceRate ? LEVER_DAMP_TAU : LEVER_RELEASE_TAU;
-  balanceRate += (rateTarget - balanceRate) * (1 - Math.exp(-rawDt / rateTau));
-
-  // Movement time τ is the running integral of the balance's own rate — the
-  // escapement and gear train below only ever see τ, so when balanceRate is
-  // damped to ~0 they stop as a mechanical consequence of the balance being
-  // stalled, not because anything told them to.
-  tauIntegrated += Math.min(balanceRate * rawDt, maintRoom);
+  // §246 tier two — THE BALANCE IS DRIVEN, and τ is what it does. In the live
+  // loop (a tick with time in it) the balance's equation of motion is
+  // integrated (src/balance-drive.js): the elastica's torque, the spring's own
+  // weight in a hanging position, the energy column's losses for the position,
+  // the hack pad's brake, and the escapement's impulse whenever the train has
+  // torque to give. τ is then the escapement's count — the beats the balance
+  // has unlocked plus the phase of the one under way — so the train, the hands
+  // and the reserve run at the rate the oscillator keeps, not at 1. What used
+  // to be a relaxation of a rate toward 1 or 0 (the hack and the run-down
+  // both "ran out of what keeps it going") is now the consequence it described:
+  // with no impulse the balance's own losses stop it, and the pad's brake
+  // stops it faster.
+  //
+  // A POSE (zero dt: setPose, the battery's sweeps, the boot seed) integrates
+  // nothing: the balance is posed from τ by the posed law for its position,
+  // and the driven state is dropped so the next live tick re-seeds from the
+  // pose. That keeps every sweep a pure function of its pose (§246's decision:
+  // the integrator runs in the live loop only).
+  //
+  // Harrison's stop (TODO 224) still bounds τ: a held train cannot be unlocked
+  // past it. The balance swings on, and when the hold lets go the state is
+  // re-seeded from the held τ at the swing it had — the one place the live
+  // balance is re-posed (a residue, named in BUILT §246).
+  if (rawDt > 0) {
+    const K = BALANCE_DRIVE.K;
+    if (driveState === null || driveDesync && maintRoom === Infinity) {
+      driveState = BD.seed(K, tauIntegrated, driveState ? driveState.ampEst : balancePosedDeg() * DEG2RAD);
+      driveDesync = false;
+    }
+    const flat = BD.FLAT_POSITIONS.has(balancePosition);
+    BD.step(K, driveState, rawDt, {
+      drive: tension > 0 && !(maintRoom <= 0),
+      brake: leverEngage,
+      friction: flat ? BALANCE_DRIVE.friction.flat : BALANCE_DRIVE.friction.vertical,
+      weight: balanceWeightTable(balancePosition),
+      steps: fastForward ? BALANCE_FF_STEPS : undefined,
+    });
+    recordBeat(driveState);
+    let tauNew = BD.tauOf(K, driveState);
+    if (tauNew - tauIntegrated > maintRoom) { tauNew = tauIntegrated + Math.max(0, maintRoom); driveDesync = true; }
+    lastDTau = tauNew - tauIntegrated;
+    tauIntegrated = tauNew;
+    // balanceRate keeps its meaning for its readers (the power-flow overlay's
+    // "running", the inspection surface): dτ/dt, smoothed over a beat or so.
+    balanceRate += (lastDTau / rawDt - balanceRate) * (1 - Math.exp(-rawDt / BALANCE_RATE_EMA_S));
+  } else {
+    driveState = null; driveDesync = false;
+  }
 
   const tau = tauIntegrated;
   const fourthA = fourthAngle(tau); // the REAL fourth wheel's angle — never adjusted below
@@ -50277,7 +50469,9 @@ function tick(t) {
   // rotations below are one motion seen from its two pivots.
   forkGroup.rotation.z = forkBaseAngle - forkSwingRad(tau);
 
-  const theta = balanceTheta(tau);
+  // §246 — a live tick shows the balance where the integrator has it; a pose
+  // shows the posed law for the position (balancePosedTheta, below).
+  const theta = driveState !== null ? driveState.theta : balancePosedTheta(tau);
   balanceGroup.rotation.z = PIN_AIM + theta;
   // The spring's outer end is PINNED (stud on the cock): winding is a
   // geometry change — the inner boundary follows the staff while the
@@ -53156,6 +53350,7 @@ function advanceFrame(realDt, wallDt = realDt) {
   paintScale();
   updateSyncUI();
   document.getElementById('readout-beats').textContent = String(beatPhase(tauNow).n);
+  paintBalanceReadouts();
   document.getElementById('reserve-value').textContent =
     fmtNum(reserveShown * (RELAX_SECONDS / 3600), 1) + ' h';
 
@@ -53468,6 +53663,32 @@ window.__clock = {
   get displayTime() { return displayedSeconds(); },
   get dialEpoch() { return DIAL_EPOCH_S; },
   get balanceRate() { return balanceRate; },
+  // §246 tier two — the driven balance, for instruments: the position, the
+  // live state (null while the movement stands at a pose), and the constants
+  // it runs on. setBalancePosition is the panel's own setter.
+  get balancePosition() { return balancePosition; },
+  setBalancePosition(pos) { setBalancePosition(pos); },
+  get balanceDrive() {
+    const S = driveState;
+    return {
+      position: balancePosition, corner: BALANCE_DRIVE.corner,
+      state: S ? { theta: S.theta, omega: S.omega, n: S.n, inWindow: S.inWindow, lockFrac: S.lockFrac, ampEst: S.ampEst, peak: S.peak, knocks: S.knocks, entryT: S.entryT, t: S.t } : null,
+      posedDeg: { ...BALANCE_DRIVE.posedDeg }, sustainedDeg: { ...BALANCE_DRIVE.sustainedDeg }, friction: { ...BALANCE_DRIVE.friction },
+      K: { F: BALANCE_DRIVE.K.F, IW: BALANCE_DRIVE.K.IW, I: BALANCE_DRIVE.K.I, k: BALANCE_DRIVE.K.k, Q: BALANCE_DRIVE.K.Q, c: BALANCE_DRIVE.K.c,
+           impulseJ: BALANCE_DRIVE.K.impulseJ, impulseNm: BALANCE_DRIVE.K.impulseNm, brakeNm: BALANCE_DRIVE.K.brakeNm, knockDeg: BALANCE_DRIVE.K.knockRad / DEG2RAD,
+           steps: BALANCE_DRIVE.K.STEPS_PER_PERIOD, ffSteps: BALANCE_FF_STEPS },
+      rate: liveRate(),
+    };
+  },
+  // §246 — the integrator's own inputs, for an instrument that runs the
+  // equation off-screen (probe-246-driven-rate): the constants object the live
+  // loop steps with, the spring frames it was built from, and the per-position
+  // weight table — the same objects, not copies, so the probe and the live
+  // loop cannot be running two models.
+  get balanceDriveModel() {
+    return { K: BALANCE_DRIVE.K, rows: BALANCE_DRIVE.rows, weight: (pos) => balanceWeightTable(pos), friction: { ...BALANCE_DRIVE.friction },
+             posedDeg: { ...BALANCE_DRIVE.posedDeg }, sustainedDeg: { ...BALANCE_DRIVE.sustainedDeg }, massKg: BALANCE_DRIVE.massKg, g: BALANCE_DRIVE.g };
+  },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get acoustics() { return GONG_ACOUSTICS; },  // §197 — the gong's blow, modes and radiated level, off the built metal
@@ -53770,6 +53991,8 @@ window.__clock = {
     alarmCrownCreep = 0;                 // TODO 144: nothing writes it now; reset kept so the knob's sum has one owner
     alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
     maintHold = null;                    // TODO 224: the drive on — a wind's hold is session state, and canonical is running
+    balancePosition = BD.DEFAULT_POSITION; driveState = null; driveDesync = false; lastDTau = 0; // §246: canonical is hanging, posed
+    syncPositionUI();
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
@@ -53777,6 +54000,13 @@ window.__clock = {
   // forms without integrating anything — a pure, deterministic pose.
   setPose(p = {}) {
     if (p.tau !== undefined) tauIntegrated = p.tau;
+    // §246 — the position poses the swing (hanging: the designed target;
+    // dial-flat: the energy column's swing there). An unknown key throws:
+    // a typo that posed the default would sweep the wrong swing in silence.
+    if (p.position !== undefined) {
+      if (!BD.POSITIONS.includes(p.position)) throw new Error(`setPose: unknown position '${p.position}' (one of ${BD.POSITIONS.join(', ')})`);
+      balancePosition = p.position;
+    }
     if (p.crownPullT !== undefined) { crownPullT = p.crownPullT; crownOut = p.crownPullT > 0.5; }
     if (p.leverEngage !== undefined) leverEngage = p.leverEngage;
     // §47: tension is the ONE winding knob — the fusee/spur/square/knob all

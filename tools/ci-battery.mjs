@@ -396,6 +396,10 @@ const COSTS = {
   'undeclaredClearance:alarmToggle': 1732,
   'undeclaredClearance:stemSlip': 3094,
   'undeclaredClearance:alarmPress': 1981,
+  // §246 tier two — the position axis, seeded at the beat axis's measured wall
+  // scaled by pose count (292 / 194: the same oscillation, posed dial-flat);
+  // `--report` replaces it with a measured one.
+  'undeclaredClearance:position': 20877,
 
   // §127 — the per-axis walls of the one split check, in MILLISECONDS
   // (`--report`'s `sliceMs`). A slice with no row here is projected from its
@@ -416,6 +420,7 @@ const COSTS = {
   'inspection:alarmToggle': 6440,
   // TODO 50 — measured on a dev container battery run.
   'inspection:stemSlip': 9640,
+  'inspection:position': 34061,   // §246 — seeded as undeclaredClearance:position is (beat × 292/194)
 };
 
 // DECLARED HERE, ASSERTED AGAINST THE BATTERY IT DESCRIBES — both ways, and it

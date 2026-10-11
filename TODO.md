@@ -31141,6 +31141,40 @@ tips, so its 0.55 radius enters **0.394** of a slot **2.759** deep. Step 1 and
 step 3 (the pin against the driving wall through the window, not only at its
 edges) remain.
 
+
+## 232. The run-down balance counts beats with no torque: the escapement advances the train while the dying balance swings
+
+§246 tier two drives the balance in the live loop, and τ is the escapement's
+count of the beats it unlocks. When the train has no torque to give — the
+fusee run down, or a wind held at Harrison's stop (TODO 224) — the impulse is
+switched off and the balance's own losses stop it, which is right. But until
+they do, every swing that still crosses the lift is COUNTED, and the train,
+the hands and the reserve advance by that beat as if the escape wheel had been
+driven through it. Nothing drives it: the wheel is moved by spring torque only,
+and there is none. **Measured** (`tools/probe-246-driven-rate.mjs`, crown up,
+nominal corner): from the designed 200° swing the balance unlocks **66 beats
+over 13.0 s** with no torque before it stops (6.6 s of movement time on the
+hands). The train turning with no force path is a simulation fiction by the
+README's definition.
+
+Why it was not fixed in §246: the two simple alternatives are each a worse lie.
+Freezing the count leaves the escapement pose (fork and wheel, both functions
+of τ) still while the pin swings through the fork's notch — a contact the pose
+does not close. And a jammed escapement (the balance stopped dead at the lift's
+edge, the pin against the locked fork's horn) is what a real jammed train does,
+but it never restarts on winding, where the sim's run-down → wind round trip
+must.
+
+**Fix path.** Decouple the fork's pose from the wheel's when there is no drive:
+the fork follows the pin through the window (its phase from the balance's own
+angle, as the live loop already computes it) while the escape wheel and the
+train stay at the last locked τ; the pallet stone's impulse face then meets the
+standing tooth's tip, and THAT contact stops the fork and the balance — the
+real physics of a stopped train, measured on the cut metal (the §120 saw ⇄
+pallet cycle's geometry). On winding, the tooth's torque returns through the
+same contact and the balance is released from the fork with the impulse the
+lift gives it. Acceptance: with no torque, τ does not advance at all; the
+balance stops within a swing of the drive going off; winding restarts it.
 ### The drive (landed)
 
 Scoping step 1 found something under it: the fork was not DRIVEN by the pin at
