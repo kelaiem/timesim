@@ -121,6 +121,13 @@ translation runs.
 Run the gates on the wired build before translating anything. They should
 report the locale as empty, not crash.
 
+Staging is allowed today but not yet declared anywhere: the chrome probe fails
+on a missing chrome string, while `explain-i18n.mjs --check` reports a
+missing page block as `untranslated` without failing. A chrome-first landing
+therefore passes the gates with the pages silently in English. Roadmap §274
+files making that a declared, gated state; until it lands, say in the PR
+which surfaces are translated.
+
 ### B. Translation (fills the three tables)
 
 - Chrome: translate the English keys into `TABLES`. The key set to build from
