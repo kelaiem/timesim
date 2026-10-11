@@ -101,7 +101,7 @@ app, which is what lets it be loaded from a console against any deployed build.
 | `aesthetics.js` | 91 | Loads `aesthetics.json`, merges session overrides from the tuning panel, and carries the crash-recovery guard that drops overrides which killed the previous build. |
 | `aesthetics.json` | 250 | The visual configuration of record. **It is part of the build**, not documentation — the battery does not ignore it. |
 | `state.js` | 180 | Persistence. `/__state` primary, `localStorage` fallback, plus the `?trial=1` guard that stops a throwaway verdict boot from reading or writing the session's state. |
-| `i18n.js` | 1,828 | Tier one — the chrome's strings, keyed by the English source, five locales. Resolution order: `?lang` → `localStorage` → `navigator.language` → English. Missing entries fall back to English *visibly*. |
+| `i18n.js` | 1,828 | Tier one — the chrome's strings, keyed by the English source, one table per `LOCALES` row. Resolution order: `?lang` → `localStorage` → `navigator.language` → English. Missing entries fall back to English *visibly*. |
 | `page-i18n.js` | 93 | Tier two engine — the DOM walk and swap shared by the static pages. |
 | `explain-i18n*.js`, `primer-i18n*.js` | ~3,300 | Tier two tables, one module per page plus one per locale. The explainer does **not** localize numbers (it quotes source constants); the primer does (it reads quantities aloud). |
 

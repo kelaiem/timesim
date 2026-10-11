@@ -217,6 +217,8 @@ cost costs wall clock, never a verdict). If its outer loop is
 
 ### Adding or changing UI text
 
+The full guide, including how to add a locale, is `docs/LOCALIZATION.md`.
+
 Author in English. Tier one (`src/i18n.js`) is keyed by the English source, so
 editing the English invalidates its translations *on purpose* — that block
 renders English until someone retranslates, which beats a stale paragraph
