@@ -25,7 +25,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 229 | OPEN | The gong's receiver is RIGID in §269 and its own first modes sit inside the gong's spectrum — the base plate at 5.9 kHz, the back glass at 9.1 kHz, the band's free-ring ovalling lower still — so the structure-borne level is a floor at the fundamental and neither bound at the overtone until the plate, the band and the glazing are modelled as the flexible receiver they are |
 | 228 | OPEN | The hammer's rebound after the wire is `−AMP·cos(W·r)·e^(−decay·r)`, a POSED decay (`ALARM_HAMMER_DECAY` is solved to reach 5% by the next pickup, no restitution and no banking in it); at §268's W that is a chatter near 200 Hz nothing in the metal produces or stops. A restitution of 0.8 would rebound to ≈0.22 rad and a real hammer is caught by a banking or rests on the lifting piece — neither is drawn |
 | 227 | CLOSED | The alarm release sleeve's SKIRT — the cone the tail pin presses — was a double-sided sheet of no thickness (a collinear offset: profile area 0.0177 u²), and `alarmSleeveWeb` (TODO 225) was a patch over it. It is a real shell now, wall `STOCK_MIN_U` normal to the face, with a relief at the feeler spring's free end (0.084 under the envelope floor): skirt ⇄ spring 0.0807 → 0.1585 against 0.15. The web, its §124 relief and its contact row are gone. Battery 53/53 locally; `tools/probe-225-lathe-profiles.mjs` finds no other lathe like it (72 meshes) |
-| 226 | PART DONE | Steps 1 and 2 DONE, and the escapement is DRIVEN. Step 2 by BUILT §221 (the bank is the pin's own bearing at the lift's edge, 4.03°). Step 1, the seat: the notch is cut as the pin's own swept path in the fork's frame plus the margin, its horns run to the depth where the pin enters (its centre stood 0.156 OUTSIDE them, and is now between them through the whole lift), the pin is set in ONE roller below the fork, the guard pin stands in metal behind the notch's floor, and `Pallet fork` ⇄ `Balance` is held to the margin with no waiver. Step 3 remains and is now known to need RUN: the fork stops dead on its bank while the pin still moves ~61° across the slot, so a pin-wide slot would trap it and the notch is a funnel the pin bears on nowhere; a pin on the driving wall needs the fork to run on past release, which needs the lock TODO 131 owes |
+| 226 | PART DONE | Steps 1, 2 and 3a DONE, and the escapement is DRIVEN. Step 2 by BUILT §221 (the bank is the pin's own bearing at the lift's edge). Step 1, the seat: the notch is cut as the pin's swept path, the pin set in one roller below the fork, the guard pin behind the notch's floor, `Pallet fork` ⇄ `Balance` held to the margin with no waiver. Step 3a, LOCK AND RUN: the stones lock a 1.5° lock + 0.5° run deep (`LOCK_DEG`, `RUN_DEG`, src/escapement.js), the fork banks the run past the let-off (4.53°, the let-off held at the 50° lift's 4.03°), and the wheel is read off the faces — it RECOILS 0.28°/0.54° through the unlock, rides the impulse face exactly, drops 1.50°/1.71° and lands a lock deep; the teeth are undercut 24° so only the tip touches. Step 3b remains: close the notch to the pin plus a shake and declare the pin on its walls as the pair's working contact |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -18748,6 +18748,9 @@ instrument to it, which is what a control is for.
   unlock's recoil is that depth times the draw. Adding it means seating the
   corner past the tip by the lock and giving the tick an unlock phase — the
   same change as the point above, from the other end.
+  **Closed by TODO 226 step 3a**, with the point above: the stones lock a
+  `LOCK_DEG` + `RUN_DEG` deep, the tick has an unlock phase, and the recoil is
+  read off the locking face (src/escapement.js) rather than posed.
 - **The club's own face does not share the impulse.** The tooth's impulse
   face runs tip→heel at ≈51° to the tangent (heel at 0.9R, 0.19 pitch behind
   the tip), so the tip is the contact for the whole slide and the stone's
@@ -31092,7 +31095,7 @@ price is the dial plane (`Z_DIAL`) and everything keyed to it.
 
 ---
 
-## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — DRIVEN AND STEPS 1 AND 2 DONE (§221)
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — DRIVEN AND STEPS 1 TO 3A DONE (§221)
 
 Found closing [TODO 216], whose knock solve reads this geometry.
 
@@ -31351,15 +31354,115 @@ old fork end's station for the same reason (the cut reads those vertices).
 (Both released by TODO 234, which re-seats the leg against the fork's swept
 sector; the stop work did not move.)
 
-### Step 3 — the pin on the driving wall (open, waits on TODO 131)
+### Step 3 — the pin on the driving wall
 
 Through the impulse a real lever's pin bears on the wall that drives it. Here it
-cannot: with no run, a wall at the pin's flank traps it on release (above), so
-the drive is the law's and not a contact's. Once TODO 131 gives the stones lock
-and the fork a run to its banking, the notch can close to the pin plus a shake,
-the law can lead the pin by that shake, and `expectedContacts` can declare the
-pin on the notch's walls as the pair's one working contact, held within
-`HANDOFF_TRACK_TOL`.
+could not: with no run, a wall at the pin's flank traps it on release (above), so
+the drive is the law's and not a contact's. It needed the stones to LOCK and the
+fork to RUN to its banking, which TODO 131 left as residue. Two landings.
+
+#### 3a — lock, run and the unlock, read off the faces (landed)
+
+**One solve.** `src/escapement.js` (`leverEscapement`) is the escapement now:
+the stones' seats, leans, widths and let-off corners, AND the wheel's angle at
+every fork angle. `makePalletFork` cuts the stones from it, `escapeAngle` runs
+it, and the fork carries it (`userData.escapement`) so an instrument reads it.
+Until here the impulse face was cut (geometry.js) from a slide path that
+assumed the wheel turned in proportion to the fork, and the tick (main.js) ran
+that proportion: two copies of one law that agreed at the ends.
+
+**Lock and run.** Declared beside `DRAW_DEG`, `DROP_DEG` and `EMBRACE_DEG` (all
+moved into the module), with their source: `LOCK_DEG = 1.5`, `RUN_DEG = 0.5`,
+Swiss lever practice (total lock under 2°). The 50° lift is HELD, as the
+balance's angle between the two let-offs, so the let-off stays at 4.03° of fork
+and the fork BANKS the run past it, at 4.53° (`FORK_LETOFF_DEG`,
+`FORK_BANK_DEG`). The pin meets the banked fork at ±28.52° (`PIN_ENTRY_HALF`),
+so its passage through the notch is 57.04°.
+
+**The beat, in fork angle from the banking.** Each stone is seated so the fork
+at the END of the unlock (2.53°) carries its corner onto the tip standing at
+`C`, so at the banking the corner stands a lock + run past the resting tip.
+Then the wheel is wherever its tooth circle crosses the face the tip is on:
+
+- UNLOCK, 4.53° → 2.53°: the pin carries the fork back through run and lock;
+  the tip slides up the locking face and the wheel RECOILS, 0.280° on the +x
+  stone and 0.537° on the −x (their faces lean differently off the wheel's
+  radial: the draw plus the fork-radial angle, 4.2° and 19.0°). The recoil is
+  read off the face, so TODO 131's first residue point (two posed constants
+  that did not agree) has nothing left to disagree about.
+- IMPULSE, 2.53° → let-off: the tip rides the impulse face EXACTLY (the face is
+  a line, the contact its crossing with the tooth circle), not within a chord's
+  sagitta.
+- DROP and RUN: the let-off corner is placed so the tip leaves it a DROP behind
+  the next tooth's landing, `lock` down the other stone's locking face; the
+  drops come out 1.500° and 1.708° (one width for both stones, the smaller
+  travel, so the drop is a floor). The wheel's drop is instant in a real watch;
+  here it is PACED across the run (a timing, not a coefficient: both ends are
+  contacts), asserted at boot to stay behind the face it lands on.
+- Each beat now ends on the other stone a lock + run deep, and the two stones'
+  recoils differ, so the escapement's phase repeats every TWO beats. §47's
+  creep assert samples whole beat pairs for that reason.
+
+**What lock made necessary, each derived.**
+- The TOOTH's locking face is undercut: a locked corner stands 0.148 inside the
+  tip circle, 19.0° behind the tip on the −x stone, and the tooth's flank (4.8°
+  of rake) was 0.039 into it. `makeEscapeWheel` now leaves the tip at
+  `TOOTH_RAKE_DEG = 24` (Swiss club-tooth practice) down to the corners' reach
+  plus `CLEAR_MARGIN` (0.298 below the tip circle), then on to the old foot.
+- The ruby's PROTRUSION past the arm's nose is solved as the least that keeps
+  the nose, mitred, `CLEAR_MARGIN` outside the wheel's sweep over the ±bank
+  swing: 0.756 (it was `0.4·stoneL` = 0.679, a fraction with no constraint,
+  which the deeper seat and wider swing took to 0.077 of daylight).
+- The KNOCK moves with the banking and the entry-depth horns: 304.12°, so
+  `AMPLITUDE_PEAK_DEG` is 305 (row 14 holds it; the nominal 292.09° stays clear).
+- The recoil REVERSES THE TRAIN, so §48's `restoring` audit readmitted the six
+  units it turns (the escape, fourth, third and centre wheels, the small seconds
+  and the heart cam) restored-by-nothing on the battery's first run — the
+  readmission TODO 43's retirement note predicted. Each is declared two-way
+  with both drivers real: the mainspring forward, and back through the stone's
+  locking face, the fork and the pin to the balance's spring. No waiver.
+
+**Measured.** `probe-131-escapement-slide.mjs`, re-cut for the locked beat, from
+banking to banking: tip at rest 0.149 down the +x locking face; on the stone
+from the banking to the let-off, 0.0000 off a face; recoil 0.27° before the
+corner; the next tooth at rest 0.157 down the −x locking face; worst
+outline overlap 0.0072; must-miss 0.131 clear; must-hit reads its prediction.
+`probe-226-drive.mjs` restates its checks 3 and 4 (the wheel still while the
+fork dwells and two beats a period; the let-offs at ±LIFT/2) and passes, every
+fork ⇄ balance pair at or over the margin. `probe-216-knock.mjs` AGREES at
+304.118°. `probe-221-amplitude.mjs` PASS.
+
+#### 3b — the notch closes on the pin (open)
+
+The notch is still the funnel step 1 cut: the pin bears on no wall, and the
+fork follows the pin's centre line. With run, the fork now leaves the pin at
+the let-off and the pin re-enters to meet a banked fork, so the notch can close
+to the pin plus a shake, the law can lead the pin by that shake through the
+impulse (the fork's wall drives the pin) and trail it through the unlock (the
+pin's push drives the fork), and `expectedContacts` can declare the pin on the
+notch's walls as the pair's one working contact, held within
+`HANDOFF_TRACK_TOL`. The horns, and with them the knock, move again there.
+
+**Prerequisite, found when 3a met §246 tier two: the driven balance's window
+is the LIFT, and the pin's passage is wider.** §246's `balance-drive.js` maps
+τ to the balance's own angle only inside ±`LIFT_DEG`/2 — the window where it
+counts beats, times the rate (`entryT`) and lays the impulse torque — and runs
+the supplementary arc of the position's own swing outside it. The tick reads
+the fork (`forkSwingRad`) and the whole train (`escapeAngle` and the gear
+chain) off τ through the HANGING law. Before 3a nothing moved the fork outside
+±L/2, so the two always agreed. Since 3a the pin also carries the fork through
+the run and the unlock, out to the entry half-angle 28.52°, so for a dial-flat
+pose (the posed 292°) and in the live loop the fork reads a different balance
+angle from the one the balance shows in that slice. Measured, analytically, on
+the flat posed law: at worst 0.17° of fork (θ 28.52° against the hanging law's
+27.34° at the same τ), 0.032 at the pin's radius. That is inside the funnel's
+room, so no gate sees it today, but it is exactly the error a pin-plus-shake
+notch turns into a contact fault. The fix belongs at the source, before the
+notch closes: §246's phase window becomes the pin's passage (±entry half,
+derived beside `PIN_FORK`), and the impulse torque keeps the lift (±L/2). That
+moves where a beat is counted and timed, so `IMPULSE_WIDTH`'s role, the
+rate's `entryT` and the sound events must be re-derived with it, and the
+hanging pose must stay bit for bit.
 
 ## 228. The hammer's rebound after the wire is a posed decay, not restitution — with the §268 spring it is a 200 Hz chatter nobody banked
 

@@ -346,7 +346,10 @@ try {
   // app does not boot offline without it, which the OFFLINE boots below prove.
   // §246 tier two — 71: src/balance-drive.js, the driven balance main.js
   // imports. One module for the app, like validated-configs.js, so it adds one.
-  check('release: precache complete', counts === 71, `${counts}/71`);
+  // TODO 226 step 3a — 72: src/escapement.js, the lever escapement's one solve
+  // (stones, faces and the wheel's angle off them), which main.js imports
+  // statically. One module for the app, so it adds one, on the same precedents.
+  check('release: precache complete', counts === 72, `${counts}/72`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
