@@ -1838,7 +1838,7 @@ const pinNotchAt = async (d) => {   // the solve yields between its sweeps (esca
     letoffHalfRad: pinImpulseSweepRad / 2, runRad: RUN_DEG * DEG2RAD, lockRad: LOCK_DEG * DEG2RAD,
   });
   let st;
-  while (!(st = steps.next()).done) await breathe();
+  while (!(st = steps.next()).done) await breathe(358);
   return st.value;
 };
 const PIN_NOTCH = await pinNotchAt(forkToStaff);
