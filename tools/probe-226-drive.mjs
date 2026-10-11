@@ -249,8 +249,8 @@ const out = await page.evaluate(async () => {
     clock.setPose({ tau: 0.13, tension: 1, position });
     const bankL = res.winds[0].bankDeg * Math.PI / 180;
     let worst = 0, inLift = 0, inRunUnlock = 0;
-    for (let k = 0; k < 2400; k++) {
-      clock.step(1 / 1200);
+    for (let k = 0; k < 600; k++) {   // 2 s of swing, ten beats, in ticks of 1/300 s
+      clock.step(1 / 300);
       const s = readFork(), th = clock.balanceDrive.state.theta;
       if (!(Math.abs(s) < bankL * (1 - 1e-9))) continue;
       worst = Math.max(worst, Math.abs(off()));
