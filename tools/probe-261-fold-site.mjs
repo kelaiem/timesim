@@ -15,7 +15,8 @@
 //
 // METHOD.
 //  · THE BAND: `dialBandScan` (tools/dial-band-scan.mjs, probe-261-dial-band's
-//    own scan) with the three units the fold moves EXCLUDED — the switch, the
+//    own scan, every mesh owned by its NEAREST label) with the three units the
+//    fold moves EXCLUDED — the switch, the
 //    lock and the link (the link is re-routed by the fold and its dial-side
 //    shaft goes with it). Everything else under the dial is a tenant, over the
 //    pose net, with the plate's dial face and the dial's back as the walls.
@@ -41,6 +42,10 @@
 //    the cluster and run outward from its rest until it meets the case wall;
 //    reported is where it meets the case (azimuth) and whether a stem of the
 //    pusher's own section clears the band along it at the driver's folded z.
+//    Then THE TRADE: the rotations whose line is direct (no tenant on it), and
+//    which of those the cluster also fits at. The line is fixed to the
+//    cluster, so where the two sets do not meet the fold owes the pusher a
+//    corner — a fold-added part (CLAUDE.md's corners/idlers currency).
 //  · THE LINK, as a distance: from the folded column wheel's axis to the
 //    selector ring's — the run the re-routed link has to make.
 //
@@ -51,8 +56,10 @@
 //  K2 the exclusion took: meshes were excluded, no cell lists a moved unit as a
 //     tenant, and the selector (which stays) is a tenant somewhere.
 //  K3 the detector fires: a sliver of metal planted at one folded point of the
-//     best rotation makes that rotation conflict, and the same sliver a cell
-//     away does not.
+//     best rotation makes that rotation conflict, and the same sliver planted
+//     in the same ring OFF the cluster's folded footprint does not. (The first
+//     draft planted it eight cells out radially — four units, still under a
+//     cluster six across, and the control failed on the cluster's own metal.)
 //  K4 the cloud is swept: it holds more points than the cluster at rest, and
 //     the lock's finger stands in different cells at the two parities.
 //
@@ -87,10 +94,18 @@ const cl = await page.evaluate(async () => {
   const STEP = 0.25, Q = 0.05;                       // sample pitch on each triangle; dedupe lattice
   const members = [];
   let collar = null, riser = null, driver = null, skirt = null, post = null, pad = null, stem = null;
+  // membership by NEAREST label (§40's hops rule, as the band's scan owns its
+  // meshes): a plain subtree walk would count a nested unit's meshes twice, or
+  // carry another unit nested inside the switch along with it
+  const labelOf = new Map();
+  for (const e of clock.labelEntries) if (!labelOf.has(e.obj)) labelOf.set(e.obj, e.name);
+  const nearest = (o) => { for (let p = o; p; p = p.parent) if (labelOf.has(p)) return labelOf.get(p); return null; };
+  const taken = new Set();
   for (const e of clock.labelEntries) {
     if (e.name !== 'Alarm switch' && e.name !== 'Alarm lock') continue;
     e.obj.traverse((o) => {
-      if (!o.isMesh || o.userData.schematic) return;
+      if (!o.isMesh || o.userData.schematic || taken.has(o) || nearest(o) !== e.name) return;
+      taken.add(o);
       if (o.name === 'alarmPusherRiser') riser = o;
       if (o.name === 'alarmPusherStem') stem = o;
       if (/^alarmPusher/.test(o.name)) return;        // the pusher is a line, below
@@ -102,7 +117,7 @@ const cl = await page.evaluate(async () => {
     });
   }
   clock.scene.traverse((o) => { if (!collar && o.isMesh && o.name === 'alarmLockCollar' && !o.userData.schematic) collar = o; });
-  if (collar) members.push(collar);
+  if (collar && !taken.has(collar)) members.push(collar);
   const v = new THREE.Vector3();
   const outlineCentre = (mesh) => {
     const sh = mesh.geometry.parameters?.shapes; const shp = Array.isArray(sh) ? sh[0] : sh;
@@ -204,14 +219,9 @@ const nearCells = (x, y) => {
   }
   return out;
 };
-const unitOfIv = (k, z0, z1) => {
-  // which tenant owns the interval: the largest-span unit listed in the cell
-  let best = null, span = -1; for (const [u, d] of Object.entries(cells[k].units)) if (d > span) { span = d; best = u; }
-  return best;
-};
 function judge(phi, extra = null) {
   let conflicts = 0, minGap = Infinity;
-  const by = {};
+  const by = {}, gapBy = {};
   for (const [x, y, z] of cl.points) {
     const [X, Y, Z] = fold(x, y, z, phi);
     const r = Math.hypot(X, Y);
@@ -221,15 +231,16 @@ function judge(phi, extra = null) {
     if (Z > cells[own].hi) continue;                 // inside the plate: planted, not a tenant's
     if (Z < cells[own].lo + CM) { conflicts++; by.dial = (by.dial || 0) + 1; continue; }
     for (const k of nearCells(X, Y)) {
-      const ivs = extra && extra.k === k ? [...cells[k].ivs, extra.iv] : cells[k].ivs;
-      for (const [z0, z1] of ivs) {
+      const owned = extra && extra.k === k ? [...cells[k].uivs, ['PLANT', [extra.iv]]] : cells[k].uivs;
+      for (const [u, ivs] of owned) for (const [z0, z1] of ivs) {
         const g = Z < z0 ? z0 - Z : Z > z1 ? Z - z1 : -Math.min(Z - z0, z1 - Z);
         if (g < minGap) minGap = g;
-        if (g < CM) { conflicts++; const u = extra && extra.k === k && z0 === extra.iv[0] ? 'PLANT' : unitOfIv(k, z0, z1); by[u] = (by[u] || 0) + 1; }
+        if (!(gapBy[u] <= g)) gapBy[u] = g;
+        if (g < CM) { conflicts++; by[u] = (by[u] || 0) + 1; }
       }
     }
   }
-  return { phi, conflicts, minGap, by };
+  return { phi, conflicts, minGap, by, gapBy };
 }
 // the pusher's line, folded, run out to the case wall
 function pusherLine(phi) {
@@ -241,9 +252,11 @@ function pusherLine(phi) {
   const owners = {};
   while (Math.hypot(x, y) < CASE_R_IN && steps < 400) {
     steps++;
-    for (const k of nearCells(x, y)) for (const [z0, z1] of cells[k].ivs) {
-      if (zDrv + rad + CM > z0 && zDrv - rad - CM < z1) { blocked++; const u = unitOfIv(k, z0, z1); owners[u] = (owners[u] || 0) + 1; break; }
+    let hitU = null;
+    for (const k of nearCells(x, y)) for (const [u, ivs] of cells[k].uivs) for (const [z0, z1] of ivs) {
+      if (!hitU && zDrv + rad + CM > z0 && zDrv - rad - CM < z1) hitU = u;
     }
+    if (hitU) { blocked++; owners[hitU] = (owners[hitU] || 0) + 1; }
     x += dx * 0.25; y += dy * 0.25;
   }
   const hitR = Math.hypot(x, y) >= CASE_R_IN;
@@ -272,10 +285,18 @@ let k3 = 'not run';
   const [X, Y, Z] = fold(x, y, z, trial.deg * DEG);
   const k = cellOf(X, Y);
   const hit = judge(trial.deg * DEG, { k, iv: [Z - 0.01, Z + 0.01] });
-  const kFar = Math.min(NR - 1, Math.floor(Math.hypot(X, Y) / GRID.DR) + 8) * NA + (k % NA);
-  const far = judge(trial.deg * DEG, { k: kFar, iv: [Z - 0.01, Z + 0.01] });
+  // the far plant: the same sliver in the first cell of the same ring that no
+  // folded point reaches, even a margin away — off the cluster's footprint,
+  // where nothing of the cluster can see it
+  const foot = new Set();
+  for (const [px, py, pz] of cl.points) { const [FX, FY] = fold(px, py, pz, trial.deg * DEG); for (const q of nearCells(FX, FY)) foot.add(q); }
+  const ring = Math.floor(k / NA);
+  let kFar = -1;
+  for (let i = 1; i < NA && kFar < 0; i++) { const q = ring * NA + ((k % NA) + i) % NA; if (!foot.has(q) && !foot.has(q - NA) && !foot.has(q + NA)) kFar = q; }
+  const far = kFar < 0 ? { by: { PLANT: Infinity } } : judge(trial.deg * DEG, { k: kFar, iv: [Z - 0.01, Z + 0.01] });
   const plantedFar = (far.by.PLANT || 0);
-  k3 = `planted at φ ${trial.deg}°: ${hit.by.PLANT || 0} conflicts on the sliver; four units out: ${plantedFar}`;
+  const farAz = kFar < 0 ? '—' : (((kFar % NA) + 0.5) * GRID.DAZ_DEG).toFixed(1);
+  k3 = `planted at φ ${trial.deg}°: ${hit.by.PLANT || 0} conflicts on the sliver; the same sliver off the footprint (ring ${ring}, az ${farAz}°): ${plantedFar}`;
   if (!((hit.by.PLANT || 0) > 0) || plantedFar > 0) fails.push(`K3 the detector: ${k3}`);
 }
 const padMoved = Math.hypot(cl.padCell[0].x - cl.padCell[0.5].x, cl.padCell[0].y - cl.padCell[0.5].y);
@@ -296,16 +317,30 @@ const show = (r) => {
   return `φ ${String(r.deg).padStart(3)}°  conflicts ${String(r.conflicts).padStart(6)}  min gap ${f(r.minGap)}  wheel at r ${f(Math.hypot(wx, wy), 2)} az ${f(azOf({ x: wx, y: wy }), 1)}°`
     + `  link run ${f(linkRun(r.deg * DEG), 2)}  pusher exits az ${pl.exitAz === null ? '—' : f(pl.exitAz, 1)}° after ${f(pl.run, 2)}, blocked ${pl.blockedSteps}/${pl.steps}`
     + (pl.blockedSteps ? ` by ${Object.entries(pl.owners).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([u, n]) => `${u} ${n}`).join(', ')}` : '')
+    + `\n          nearest: ${Object.entries(r.gapBy).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([u, g]) => `${u} ${f(g)}`).join(', ')}`
     + (r.conflicts ? `  — ${Object.entries(r.by).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([u, n]) => `${u} ${n}`).join(', ')}` : '');
 };
 console.log(`\n  the best ten by margin${feasible.length ? '' : ' (none is feasible: the least-conflicted ten)'}:`);
 const ranked = feasible.length ? [...feasible].sort((a, b) => b.minGap - a.minGap) : [...results].sort((a, b) => a.conflicts - b.conflicts);
 for (const r of ranked.slice(0, 10)) console.log('    ' + show(r));
+// THE PUSHER'S TRADE: which rotations give the pusher a DIRECT line (no tenant
+// on it, out to the case), and what those rotations collide with. A rigid fold
+// keeps the pin's line of travel fixed to the cluster, so the pusher is only
+// straight where the line happens to face out; anywhere else it needs a
+// fold-added corner, which is a real part with its own P1 duties.
+const direct = results.map((r) => ({ r, pl: pusherLine(r.deg * DEG) })).filter(({ pl }) => pl.exitAz !== null && pl.blockedSteps === 0);
+const dRuns = []; { let s0 = null, prev = null; for (const { r } of direct) { if (s0 === null) s0 = r.deg; else if (r.deg !== prev + 1) { dRuns.push([s0, prev]); s0 = r.deg; } prev = r.deg; } if (s0 !== null) dRuns.push([s0, prev]); }
+const both = direct.filter(({ r }) => r.conflicts === 0);
+console.log(`\n  the pusher's trade: a DIRECT line (unblocked to the case) at ${direct.length} of 360 rotations — ${dRuns.map(([a, b]) => (a === b ? `${a}°` : `${a}–${b}°`)).join(', ') || 'none'}; feasible AND direct: ${both.length ? both.map(({ r }) => r.deg + '°').join(', ') : 'none'}`);
+if (direct.length) {
+  const least = [...direct].sort((a, b) => a.r.conflicts - b.r.conflicts)[0];
+  console.log(`    the least-conflicted direct rotation: ${show(least.r)}`);
+}
 console.log(`\n  every 30°, for the shape of it:`);
 for (let d = 0; d < 360; d += 30) console.log('    ' + show(results[d]));
 console.log(`\n  controls:`);
 console.log(`    K1 the stop wheel stays in its annulus about the arbor: ${f(cl.collarAnnulus[0])}–${f(cl.collarAnnulus[1])} (tip ${f(tipR)})`);
-console.log(`    K2 ${band.excludedMeshes} meshes excluded; no moved unit is a tenant; the selector is`);
+console.log(`    K2 ${band.excludedMeshes} meshes excluded; no moved unit is a tenant; the selector is a tenant`);
 console.log(`    K3 ${k3}`);
 console.log(`    K4 ${cl.points.length} swept samples against ${cl.atRest} at rest; the finger moves ${f(padMoved, 4)} between parities`);
 if (fails.length) { console.log('\nCONTROL FAILED:\n  ' + fails.join('\n  ')); process.exit(2); }

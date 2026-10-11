@@ -4,8 +4,8 @@
 
 # The instruments
 
-290 scripts. **179 are ACCEPTANCE tests** — they decide and exit non-zero.
-**111 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+292 scripts. **180 are ACCEPTANCE tests** — they decide and exit non-zero.
+**112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -26,6 +26,7 @@ when a question was asked; the summaries are what it answered.
 | `ci-battery.mjs` |  | acceptance | §52 — the inspector battery as a CI gate. |
 | `claim-item.mjs` |  | acceptance | Reserve the next item number, and write the claim file that reserves it. |
 | `derive-203-alloys.mjs` |  | acceptance | §203 step 3 — DERIVE the case alloys' base colours from measured optical constants. ACCEPTANCE: exits non-zero if its own controls fail. |
+| `dial-band-scan.mjs` |  | report | THE DIAL-SIDE BAND'S TENANTS, OVER THE POSE NET — the scan itself, as a function a page can run, shared by its two callers: probe-261-dial-band.mjs (the free-volume map, §261 step 2) and probe-261-fold-site.mjs (where the alarm switch can stand under the dial, §261 step 4). One copy, because two copies of a measuring method drift the way two copies of a law do. |
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
 | `glossary-links.mjs` |  | acceptance | §236 tier one — THE GLOSSARY LINKER'S GATE. explain.html defines 28 project words and, since §236, links their first use in each entry to the definition. Nothing about that is authored: the links are injected at runtime by src/glossary-links.js, after src/explain-i18n.js has swapped the page into the reader's language. Two properties have to hold, and neither is visible by reading the diff. |
@@ -196,6 +197,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-254-chain-twist.mjs` | §254 | acceptance | §254 — DOES THE CHAIN BEND ONLY ABOUT ITS PINS? Acceptance. |
 | `probe-261-dial-band.mjs` | §261 | acceptance | THE DIAL-SIDE BAND'S FREE VOLUME, OVER THE POSE NET — where, between the base plate's dial face and the dial's back, a folded action group could stand. |
 | `probe-261-dial-visibility.mjs` | §261 | acceptance | WOULD THE SWITCH BE SEEN UNDER THE DIAL? — the free annulus seen from the FRONT through the smoked sapphire, against the switch as it is seen today from the BACK through the exhibition crystal, both over the pose net. |
+| `probe-261-fold-site.mjs` | §261 | acceptance | WHERE CAN THE ALARM SWITCH STAND UNDER THE DIAL? — §261 step 4's siting study, landing one of the fold: the whole switch-and-lock cluster carried to the dial side of the base plate, tried at every rotation about the striking wheel's arbor, and tested against the band's tenants over the pose net. |
 | `probe-261-height-cap.mjs` | §261 | acceptance | THE HEIGHT CAP FIRES BOTH WAYS — §261 step 5's CASE_HEIGHT_MAX_MM, mutated and booted, so the ratchet is a guard someone has seen fire rather than a comment. |
 | `probe-261-height-ledger.mjs` | §261 | acceptance | WHAT SETS THE MOVEMENT'S CASED HEIGHT — the front and back chains read off the metal, the member that governs each named with its slack to the next, and the cased depth reproduced from them. Acceptance, with a mutation tier that proves the ledger PREDICTS rather than restates. |
 | `probe-261-lever-prices.mjs` | §261 | acceptance | WHAT EACH HEIGHT LEVER BUYS — the compaction levers of the private roadmap's §261, each built as a copied tree with one constant moved, measured off the metal for what it does to the cased depth, which member governs after it, and which boot asserts it trips (its cost). Combinations are measured too, beside the superposition of their singles, because the back is governed jointly and a lever bought alone is not the lever bought with its neighbours. |

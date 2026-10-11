@@ -13,10 +13,20 @@
 //   exclude  unit names whose meshes are NOT tenants (a fold's own members,
 //            which the caller is about to move) — empty for the plain map
 //
-// Every cell also carries `ivs`, its union of occupied z intervals, for a
-// caller that tests a body against the band rather than reading its gaps.
+// Every cell also carries `ivs`, its union of occupied z intervals, and
+// `uivs`, the same per owning unit ([unit, intervals] pairs), for a caller
+// that tests a body against the band rather than reading its gaps.
 // The method, the walls, the pose net and controls C2/C5/C6's raw readings are
 // documented in probe-261-dial-band.mjs's header, which owns them.
+//
+// KNOWN VARIANCE, measured when the scan was lifted here (§261 step 4): the
+// eased members (the keyless lane, the minute jumper) stand wherever the live
+// loop's eases had got to when the scan began — setPose ticks with zero dt and
+// cannot move an ease — so their placement keys, and the extra placements they
+// buy, vary with boot timing: 1876 against 1882 placements and 357998–358086
+// rays over four runs of one tree, every difference in those units, at most
+// one point of one cell in the occupancy table. A REPORT may carry that; a
+// gate built on this scan would have to settle the eases first.
 export async function dialBandScan({ GRID, exclude = [] }) {
   const THREE = await import('three');
   const I = await import('./src/inspect.js');
@@ -25,8 +35,18 @@ export async function dialBandScan({ GRID, exclude = [] }) {
   const NEAR = -60, FAR = 60;                       // in front of the crystal, behind the case back
 
   // ---- populations -------------------------------------------------------
-  const owner = new Map();                          // mesh → unit
-  for (const e of clock.labelEntries) e.obj.traverse((o) => { if (o.isMesh && !owner.has(o)) owner.set(o, e.name); });
+  // mesh → unit, NEAREST labelled ancestor (§40's hops rule). Labels nest —
+  // the whole dial-side alarm works hang inside 'Dial' — so the first label to
+  // traverse a mesh is not its owner: the selector ring read as 'Dial', and an
+  // exclusion by unit name would have left a moved unit's nested parts in the
+  // band as obstacles and a staying unit's parts out of it.
+  const labelOf = new Map();
+  for (const e of clock.labelEntries) if (!labelOf.has(e.obj)) labelOf.set(e.obj, e.name);
+  const owner = new Map();
+  clock.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    for (let p = o; p; p = p.parent) if (labelOf.has(p)) { owner.set(o, labelOf.get(p)); break; }
+  });
   const plateMeshes = I.heldFixtureEntries(clock).find((h) => h.name === 'Base plate')?.meshes ?? [];
   const dialMeshes = [];
   clock.scene.traverse((o) => { if (o.isMesh && o.name === 'dialPlate' && !o.userData.schematic) dialMeshes.push(o); });
@@ -236,7 +256,10 @@ export async function dialBandScan({ GRID, exclude = [] }) {
     if (H - prev > gap) { gap = H - prev; gapAt = [prev, H]; }
     const units = {};
     for (const o of occ[k]) units[o.unit] = Math.max(units[o.unit] || 0, o.z1 - o.z0);
-    cell[k] = { depth: H - L, filled, gap, gapAt, units, n: u.length, refFilled: union(refOcc[k]).reduce((s, [a, b]) => s + b - a, 0), ivs: u, lo: L, hi: H };
+    const byUnit = {};                                // unit → its own intervals, unioned: who owns each piece of metal
+    for (const o of occ[k]) (byUnit[o.unit] ||= []).push(o);
+    const uivs = Object.entries(byUnit).map(([unit, list]) => [unit, union(list)]);
+    cell[k] = { depth: H - L, filled, gap, gapAt, units, n: u.length, refFilled: union(refOcc[k]).reduce((s, [a, b]) => s + b - a, 0), ivs: u, uivs, lo: L, hi: H };
   }
 
   // ---- C2: the same cells cast from both faces ----------------------------
