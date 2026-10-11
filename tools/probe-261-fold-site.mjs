@@ -77,143 +77,171 @@
 //     at its own azimuth (it is the shipped stem, green in every gate).
 //  K6 and a block where one exists: a sliver planted on that line blocks it.
 //  K7 the between-plates band reads its walls, and today's stem stands in it.
+//  K8 the linkage is 1:1 over the whole stroke: the shortest one, swung by
+//     forward kinematics (the rod pinned at both ends), moves the pawl forward
+//     by the stem's travel to within one CLEAR_MARGIN.
+//
+// THE LINKAGE (the owner's call after the single crank's forced ratio): two
+// 1:1 cranks and a rod, today's stem held exactly. Each crank is determined by
+// the rod's line, so the search runs over φ, the rod line and which band the
+// rod runs in, and reports the shortest linkages whose every member finds room
+// over the stroke — see the block above `linkagesAt` for its bounds.
+//
+// `--dump FILE` writes the browser half's measurements; `--from FILE` reads
+// them back and skips the browser (the Node half takes ~4 min). A run from a
+// dump is only as current as the tree that wrote it.
 //
 // Run from tools/: node probe-261-fold-site.mjs
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dialBandScan } from './dial-band-scan.mjs';
-const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = 8596;
-const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
-process.on('exit', () => { try { srv.kill(); } catch {} });
-await new Promise((r) => setTimeout(r, 1200));
-const browser = await chromium.launch();
-const page = await browser.newPage();
-await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', timeout: 300000 });
-await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 300000 });
-const bootError = await page.evaluate(() => (window.__bootError ? String(window.__bootError) : null));
-if (bootError) { console.log('boot failed: ' + bootError); process.exit(2); }
-
 const GRID = { DR: 0.5, DAZ_DEG: 2.5 };
 const MOVED = ['Alarm switch', 'Alarm lock', 'Alarm link'];
-const band = await page.evaluate(dialBandScan, { GRID, exclude: MOVED });
-// the stratum the pusher's stem keeps (the owner's call for landing 2: the
-// button stays between the plates and its riser drops through the base plate)
-const inter = await page.evaluate(dialBandScan, { GRID, exclude: MOVED, band: 'interplate' });
+const argv = process.argv.slice(2);
+const argOf = (k) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : null);
+const FROM = argOf('--from'), DUMP = argOf('--dump');
 
-// ---- the cluster's swept cloud ---------------------------------------------
-const cl = await page.evaluate(async () => {
-  const THREE = await import('three');
-  const I = await import('./src/inspect.js');
-  const L = await import('./src/layout.js');
-  const clock = window.__clock;
-  const STEP = 0.25, Q = 0.05;                       // sample pitch on each triangle; dedupe lattice
-  const members = [];
-  let collar = null, riser = null, driver = null, skirt = null, post = null, pad = null, stem = null;
-  // membership by NEAREST label (§40's hops rule, as the band's scan owns its
-  // meshes): a plain subtree walk would count a nested unit's meshes twice, or
-  // carry another unit nested inside the switch along with it
-  const labelOf = new Map();
-  for (const e of clock.labelEntries) if (!labelOf.has(e.obj)) labelOf.set(e.obj, e.name);
-  const nearest = (o) => { for (let p = o; p; p = p.parent) if (labelOf.has(p)) return labelOf.get(p); return null; };
-  const taken = new Set();
-  for (const e of clock.labelEntries) {
-    if (e.name !== 'Alarm switch' && e.name !== 'Alarm lock') continue;
-    e.obj.traverse((o) => {
-      if (!o.isMesh || o.userData.schematic || taken.has(o) || nearest(o) !== e.name) return;
-      taken.add(o);
-      if (o.name === 'alarmPusherRiser') riser = o;
-      if (o.name === 'alarmPusherStem') stem = o;
-      if (/^alarmPusher/.test(o.name)) return;        // the pusher is a line, below
-      if (o.name === 'alarmColDriver') driver = o;
-      if (o.name === 'alarmColSkirt') skirt = o;
-      if (o.name === 'alarmLockBeakRiser') post = o;
-      if (o.name === 'alarmLockPad') pad = o;
-      members.push(o);
-    });
-  }
-  clock.scene.traverse((o) => { if (!collar && o.isMesh && o.name === 'alarmLockCollar' && !o.userData.schematic) collar = o; });
-  if (collar && !taken.has(collar)) members.push(collar);
-  const v = new THREE.Vector3();
-  const outlineCentre = (mesh) => {
-    const sh = mesh.geometry.parameters?.shapes; const shp = Array.isArray(sh) ? sh[0] : sh;
-    const p = shp.getPoints(); const ring = p.length > 1 && p[0].distanceTo(p[p.length - 1]) < 1e-9 ? p.slice(0, -1) : p;
-    mesh.updateWorldMatrix(true, false);
-    const c = new THREE.Vector3(); for (const q of ring) c.add(new THREE.Vector3(q.x, q.y, 0).applyMatrix4(mesh.matrixWorld));
-    return c.multiplyScalar(1 / ring.length);
-  };
-  const boxOf = (m) => new THREE.Box3().setFromObject(m);
-  const centre = (m) => { const b = boxOf(m); return { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2, z0: b.min.z, z1: b.max.z }; };
-  const cloud = new Map();                           // lattice key → [x, y, z, memberIndex]
-  const sample = (tag) => {
-    clock.scene.updateMatrixWorld(true);
-    let added = 0;
-    members.forEach((m, mi) => {
-      const g = m.geometry, pos = g.attributes.position, idx = g.index;
-      const n = pos.count, W = new Float64Array(n * 3);
-      for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); W[3 * i] = v.x; W[3 * i + 1] = v.y; W[3 * i + 2] = v.z; }
-      const T = idx ? idx.count / 3 : n / 3;
-      for (let t = 0; t < T; t++) {
-        const a = idx ? idx.getX(3 * t) : 3 * t, b = idx ? idx.getX(3 * t + 1) : 3 * t + 1, c = idx ? idx.getX(3 * t + 2) : 3 * t + 2;
-        const L0 = Math.max(Math.hypot(W[3*b]-W[3*a], W[3*b+1]-W[3*a+1], W[3*b+2]-W[3*a+2]), Math.hypot(W[3*c]-W[3*a], W[3*c+1]-W[3*a+1], W[3*c+2]-W[3*a+2]), Math.hypot(W[3*c]-W[3*b], W[3*c+1]-W[3*b+1], W[3*c+2]-W[3*b+2]));
-        const s = Math.max(1, Math.ceil(L0 / STEP));
-        for (let i = 0; i <= s; i++) for (let j = 0; j <= s - i; j++) {
-          const u = i / s, w = j / s;
-          const x = W[3*a] + (W[3*b]-W[3*a]) * u + (W[3*c]-W[3*a]) * w;
-          const y = W[3*a+1] + (W[3*b+1]-W[3*a+1]) * u + (W[3*c+1]-W[3*a+1]) * w;
-          const z = W[3*a+2] + (W[3*b+2]-W[3*a+2]) * u + (W[3*c+2]-W[3*a+2]) * w;
-          const key = `${Math.round(x / Q)},${Math.round(y / Q)},${Math.round(z / Q)}`;
-          if (!cloud.has(key)) { cloud.set(key, [x, y, z, mi]); added++; }
+// ---- the browser half: two band scans and the cluster's swept cloud ----------
+// `--dump FILE` writes what it measured and `--from FILE` reads it back instead
+// of booting, so the Node half (the fold, the line tests, the linkage search)
+// can be iterated in seconds. A run from a dump is only as current as the tree
+// that wrote it: the acceptance run is always the one without `--from`.
+async function measure() {
+  const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
+  const PORT = 8596;
+  const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
+  process.on('exit', () => { try { srv.kill(); } catch {} });
+  await new Promise((r) => setTimeout(r, 1200));
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', timeout: 300000 });
+  await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 300000 });
+  const bootError = await page.evaluate(() => (window.__bootError ? String(window.__bootError) : null));
+  if (bootError) { console.log('boot failed: ' + bootError); process.exit(2); }
+
+  const band = await page.evaluate(dialBandScan, { GRID, exclude: MOVED });
+  // the stratum the pusher's stem keeps (the owner's call for landing 2: the
+  // button stays between the plates and its riser drops through the base plate)
+  const inter = await page.evaluate(dialBandScan, { GRID, exclude: MOVED, band: 'interplate' });
+
+  // ---- the cluster's swept cloud ---------------------------------------------
+  const cl = await page.evaluate(async () => {
+    const THREE = await import('three');
+    const I = await import('./src/inspect.js');
+    const L = await import('./src/layout.js');
+    const clock = window.__clock;
+    const STEP = 0.25, Q = 0.05;                       // sample pitch on each triangle; dedupe lattice
+    const members = [];
+    let collar = null, riser = null, driver = null, skirt = null, post = null, pad = null, stem = null;
+    // membership by NEAREST label (§40's hops rule, as the band's scan owns its
+    // meshes): a plain subtree walk would count a nested unit's meshes twice, or
+    // carry another unit nested inside the switch along with it
+    const labelOf = new Map();
+    for (const e of clock.labelEntries) if (!labelOf.has(e.obj)) labelOf.set(e.obj, e.name);
+    const nearest = (o) => { for (let p = o; p; p = p.parent) if (labelOf.has(p)) return labelOf.get(p); return null; };
+    const taken = new Set();
+    for (const e of clock.labelEntries) {
+      if (e.name !== 'Alarm switch' && e.name !== 'Alarm lock') continue;
+      e.obj.traverse((o) => {
+        if (!o.isMesh || o.userData.schematic || taken.has(o) || nearest(o) !== e.name) return;
+        taken.add(o);
+        if (o.name === 'alarmPusherRiser') riser = o;
+        if (o.name === 'alarmPusherStem') stem = o;
+        if (/^alarmPusher/.test(o.name)) return;        // the pusher is a line, below
+        if (o.name === 'alarmColDriver') driver = o;
+        if (o.name === 'alarmColSkirt') skirt = o;
+        if (o.name === 'alarmLockBeakRiser') post = o;
+        if (o.name === 'alarmLockPad') pad = o;
+        members.push(o);
+      });
+    }
+    clock.scene.traverse((o) => { if (!collar && o.isMesh && o.name === 'alarmLockCollar' && !o.userData.schematic) collar = o; });
+    if (collar && !taken.has(collar)) members.push(collar);
+    const v = new THREE.Vector3();
+    const outlineCentre = (mesh) => {
+      const sh = mesh.geometry.parameters?.shapes; const shp = Array.isArray(sh) ? sh[0] : sh;
+      const p = shp.getPoints(); const ring = p.length > 1 && p[0].distanceTo(p[p.length - 1]) < 1e-9 ? p.slice(0, -1) : p;
+      mesh.updateWorldMatrix(true, false);
+      const c = new THREE.Vector3(); for (const q of ring) c.add(new THREE.Vector3(q.x, q.y, 0).applyMatrix4(mesh.matrixWorld));
+      return c.multiplyScalar(1 / ring.length);
+    };
+    const boxOf = (m) => new THREE.Box3().setFromObject(m);
+    const centre = (m) => { const b = boxOf(m); return { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2, z0: b.min.z, z1: b.max.z }; };
+    const cloud = new Map();                           // lattice key → [x, y, z, memberIndex]
+    const sample = (tag) => {
+      clock.scene.updateMatrixWorld(true);
+      let added = 0;
+      members.forEach((m, mi) => {
+        const g = m.geometry, pos = g.attributes.position, idx = g.index;
+        const n = pos.count, W = new Float64Array(n * 3);
+        for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); W[3 * i] = v.x; W[3 * i + 1] = v.y; W[3 * i + 2] = v.z; }
+        const T = idx ? idx.count / 3 : n / 3;
+        for (let t = 0; t < T; t++) {
+          const a = idx ? idx.getX(3 * t) : 3 * t, b = idx ? idx.getX(3 * t + 1) : 3 * t + 1, c = idx ? idx.getX(3 * t + 2) : 3 * t + 2;
+          const L0 = Math.max(Math.hypot(W[3*b]-W[3*a], W[3*b+1]-W[3*a+1], W[3*b+2]-W[3*a+2]), Math.hypot(W[3*c]-W[3*a], W[3*c+1]-W[3*a+1], W[3*c+2]-W[3*a+2]), Math.hypot(W[3*c]-W[3*b], W[3*c+1]-W[3*b+1], W[3*c+2]-W[3*b+2]));
+          const s = Math.max(1, Math.ceil(L0 / STEP));
+          for (let i = 0; i <= s; i++) for (let j = 0; j <= s - i; j++) {
+            const u = i / s, w = j / s;
+            const x = W[3*a] + (W[3*b]-W[3*a]) * u + (W[3*c]-W[3*a]) * w;
+            const y = W[3*a+1] + (W[3*b+1]-W[3*a+1]) * u + (W[3*c+1]-W[3*a+1]) * w;
+            const z = W[3*a+2] + (W[3*b+2]-W[3*a+2]) * u + (W[3*c+2]-W[3*a+2]) * w;
+            const key = `${Math.round(x / Q)},${Math.round(y / Q)},${Math.round(z / Q)}`;
+            if (!cloud.has(key)) { cloud.set(key, [x, y, z, mi]); added++; }
+          }
         }
-      }
-    });
-    return added;
-  };
-  // the poses: the digest net, a whole press, both parities, a turn of the strike
-  const poses = [];
-  for (const p of I.digestPoses(clock)) poses.push({ axis: null, p });
-  const ax = (n) => I.AXES.find((a) => a.name === n);
-  for (let i = 0; i <= 32; i++) poses.push({ axis: 'alarmPress', p: ax('alarmPress').pose(i / 32) });
-  for (const f of [0, 0.5]) poses.push({ axis: 'alarmToggle', p: ax('alarmToggle').pose(f) });
-  for (let i = 0; i < 24; i++) poses.push({ axis: 'alarmStrike', p: ax('alarmStrike').pose(i / 24, clock) });
-  // rest first, so K4 can compare the swept union against it
-  I.enterAxis(clock); clock.resetInputs(); clock.setPose({});
-  const atRest = sample('rest');
-  const padCell = {};
-  for (const { axis, p } of poses) {
-    I.enterAxis(clock); clock.resetInputs(); clock.setPose(p);
-    sample(axis || 'net');
-  }
-  for (const f of [0, 0.5]) { I.enterAxis(clock); clock.setPose(ax('alarmToggle').pose(f)); clock.scene.updateMatrixWorld(true); padCell[f] = centre(pad); }
-  // the pivot, the floor, the pin's line, the driver's band, the wheel's axis
-  I.enterAxis(clock); clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
-  const A = outlineCentre(collar);
-  const W = outlineCentre(skirt);
-  const zBase = boxOf(post).min.z;                   // the beak riser is planted in the three-quarter plate: its foot IS the plate's top
-  const pin = [];
-  for (const f of [0, 0.5]) { I.enterAxis(clock); clock.setPose(ax('alarmPress').pose(f)); clock.scene.updateMatrixWorld(true); pin.push(centre(riser)); }
-  I.enterAxis(clock); clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
-  const drv = centre(driver);
-  const stemBox = boxOf(stem);
-  // the stop wheel's annulus about A, over every pose, for K1
-  const collarIdx = members.indexOf(collar);
-  let cMin = Infinity, cMax = 0;
-  for (const [x, y, , mi] of cloud.values()) if (mi === collarIdx) { const r = Math.hypot(x - A.x, y - A.y); cMin = Math.min(cMin, r); cMax = Math.max(cMax, r); }
-  let selector = null; clock.scene.traverse((o) => { if (!selector && o.isMesh && o.name === 'alarmSelRing') selector = o; });
-  const sel = centre(selector);
-  return {
-    points: [...cloud.values()], members: members.map((m) => m.name || m.geometry.type), atRest, poses: poses.length + 1,
-    A: { x: A.x, y: A.y }, W: { x: W.x, y: W.y }, zBase, pin, drv, sel,
-    stemD: stemBox.max.z - stemBox.min.z,             // a round stem lying in plan: its z extent is its diameter
-    stemZ: (stemBox.min.z + stemBox.max.z) / 2,        // its axis, today: the stratum it runs in between the plates
-    riserHalf: (() => { const b = boxOf(riser); return Math.min(b.max.x - b.min.x, b.max.y - b.min.y) / 2; })(),
-    pushAz: (() => { const b = boxOf(stem); const c = { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2 }; return Math.atan2(c.y, c.x); })(),
-    collarAnnulus: [cMin, cMax], collarTipR: (() => { const sh = collar.geometry.parameters.shapes; const s = Array.isArray(sh) ? sh[0] : sh; return Math.max(...s.getPoints().map((q) => Math.hypot(q.x, q.y))); })(),
-    padCell, CLEAR_MARGIN: L.CLEAR_MARGIN,
-  };
-});
+      });
+      return added;
+    };
+    // the poses: the digest net, a whole press, both parities, a turn of the strike
+    const poses = [];
+    for (const p of I.digestPoses(clock)) poses.push({ axis: null, p });
+    const ax = (n) => I.AXES.find((a) => a.name === n);
+    for (let i = 0; i <= 32; i++) poses.push({ axis: 'alarmPress', p: ax('alarmPress').pose(i / 32) });
+    for (const f of [0, 0.5]) poses.push({ axis: 'alarmToggle', p: ax('alarmToggle').pose(f) });
+    for (let i = 0; i < 24; i++) poses.push({ axis: 'alarmStrike', p: ax('alarmStrike').pose(i / 24, clock) });
+    // rest first, so K4 can compare the swept union against it
+    I.enterAxis(clock); clock.resetInputs(); clock.setPose({});
+    const atRest = sample('rest');
+    const padCell = {};
+    for (const { axis, p } of poses) {
+      I.enterAxis(clock); clock.resetInputs(); clock.setPose(p);
+      sample(axis || 'net');
+    }
+    for (const f of [0, 0.5]) { I.enterAxis(clock); clock.setPose(ax('alarmToggle').pose(f)); clock.scene.updateMatrixWorld(true); padCell[f] = centre(pad); }
+    // the pivot, the floor, the pin's line, the driver's band, the wheel's axis
+    I.enterAxis(clock); clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
+    const A = outlineCentre(collar);
+    const W = outlineCentre(skirt);
+    const zBase = boxOf(post).min.z;                   // the beak riser is planted in the three-quarter plate: its foot IS the plate's top
+    const pin = [];
+    for (const f of [0, 0.5]) { I.enterAxis(clock); clock.setPose(ax('alarmPress').pose(f)); clock.scene.updateMatrixWorld(true); pin.push(centre(riser)); }
+    I.enterAxis(clock); clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
+    const drv = centre(driver);
+    const stemBox = boxOf(stem);
+    // the stop wheel's annulus about A, over every pose, for K1
+    const collarIdx = members.indexOf(collar);
+    let cMin = Infinity, cMax = 0;
+    for (const [x, y, , mi] of cloud.values()) if (mi === collarIdx) { const r = Math.hypot(x - A.x, y - A.y); cMin = Math.min(cMin, r); cMax = Math.max(cMax, r); }
+    let selector = null; clock.scene.traverse((o) => { if (!selector && o.isMesh && o.name === 'alarmSelRing') selector = o; });
+    const sel = centre(selector);
+    return {
+      points: [...cloud.values()], members: members.map((m) => m.name || m.geometry.type), atRest, poses: poses.length + 1,
+      A: { x: A.x, y: A.y }, W: { x: W.x, y: W.y }, zBase, pin, drv, sel,
+      stemD: stemBox.max.z - stemBox.min.z,             // a round stem lying in plan: its z extent is its diameter
+      stemZ: (stemBox.min.z + stemBox.max.z) / 2,        // its axis, today: the stratum it runs in between the plates
+      riserHalf: (() => { const b = boxOf(riser); return Math.min(b.max.x - b.min.x, b.max.y - b.min.y) / 2; })(),
+      pushAz: (() => { const b = boxOf(stem); const c = { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2 }; return Math.atan2(c.y, c.x); })(),
+      collarAnnulus: [cMin, cMax], collarTipR: (() => { const sh = collar.geometry.parameters.shapes; const s = Array.isArray(sh) ? sh[0] : sh; return Math.max(...s.getPoints().map((q) => Math.hypot(q.x, q.y))); })(),
+      padCell, CLEAR_MARGIN: L.CLEAR_MARGIN,
+    };
+  });
+  return { band, inter, cl };
+}
+const { band, inter, cl } = FROM ? JSON.parse(readFileSync(FROM, 'utf8')) : await measure();
+if (DUMP) writeFileSync(DUMP, JSON.stringify({ band, inter, cl }));
 
 // ---- the fold, in Node -------------------------------------------------------
 const { NR, NA, Z_CEIL, cells } = band;
@@ -414,6 +442,174 @@ const crank = feasible.map((r) => {
   return { deg: r.deg, Px, Py, pr, a1, a2, ratio: a2 / a1, push, w };
 });
 
+// ---- THE LINKAGE: two 1:1 cranks joined by a rod (the owner's call) ---------
+// The single crank's pivot is forced and its ratio with it, so the corner is
+// two cranks with EQUAL arms and a rod between them: the button keeps its
+// station, its stroke and its force, and the pawl gets exactly what the stem
+// gives today. Given the rod's line, each crank is determined: its pivot stands
+// on the line through its pin square to that pin's travel, at the distance a
+// that puts it as far from the rod's line as from the pin (two mirror
+// solutions), and its other arm ends on the rod's line square to it. So the
+// search runs over the fold φ, the rod line (angle θ, offset c), the two mirror
+// choices and the band the rod runs in, and keeps a linkage only when:
+//  · both arms of each crank are at least A_MIN — an arm shorter than s²/(8·CM)
+//    sags off its chord by more than one CLEAR_MARGIN over the stroke, so a pin
+//    coupling would need a slot longer than the margin the movement carries
+//    (a SCOPING bound, like step 2's 3.1 u depth: the design derives its own),
+//    and at most A_MAX, half the case radius — a search bound, reported when hit;
+//  · the crank driven by the rod turns the folded pawl the way the stem does
+//    today (the rod may push or pull);
+//  · every member, swept over the stroke, finds a z window at least the §50
+//    floor plus a margin each side, common to every cell it sweeps, in its
+//    band; at the crank that crosses the base plate the metal is clear from
+//    each window to the plate (its arbor runs through it), while the other
+//    members may stand at any stratum, a riser carrying the last arm's end to
+//    the pawl as the stem's riser does today; and in the dial band the
+//    folded cluster itself is an obstacle, except where the last arm meets the
+//    pawl, which is the coupling.
+// Ranked by total length (four arms and the rod), shortest first.
+const LAY = await import('../src/layout.js');
+const A_MIN = stroke * stroke / (8 * CM), A_MAX = CASE_R_IN / 2;
+const MIN_WIN = LAY.STOCK_MIN_U + 2 * CM;
+const perp = (v) => ({ x: -v.y, y: v.x });
+const dot = (u, v) => u.x * v.x + u.y * v.y;
+const sub = (u, v) => ({ x: u.x - v.x, y: u.y - v.y });
+const rotAbout = (P, X, th) => { const c = Math.cos(th), s2 = Math.sin(th), dx = X.x - P.x, dy = X.y - P.y; return { x: P.x + c * dx - s2 * dy, y: P.y + s2 * dx + c * dy }; };
+function segCells(A, B, out) {
+  const L = Math.hypot(B.x - A.x, B.y - A.y), n = Math.max(1, Math.ceil(L / 0.25));
+  for (let j = 0; j <= n; j++) for (const k of nearCellsR(A.x + (B.x - A.x) * j / n, A.y + (B.y - A.y) * j / n, CM)) out.add(k);
+}
+function armCells(P, E, th, out) { for (let i = 0; i <= 4; i++) segCells(P, rotAbout(P, E, th * i / 4), out); }
+function rodCells(A, B, v, out) { for (let i = 0; i <= 4; i++) { const d = stroke * i / 4; segCells({ x: A.x + v.x * d, y: A.y + v.y * d }, { x: B.x + v.x * d, y: B.y + v.y * d }, out); } }
+const minus = (ivs, o) => { if (!o) return ivs; const out = []; for (const [a, b] of ivs) { if (o[1] <= a || o[0] >= b) out.push([a, b]); else { if (o[0] > a) out.push([a, o[0]]); if (o[1] < b) out.push([o[1], b]); } } return out; };
+// a group's common windows (every free interval at least MIN_WIN tall, common
+// to every cell it sweeps), and the crossing arbor's column: at the pivot that
+// runs through the base plate the metal must be clear from the window to the
+// plate itself, on that band's plate side (the floor between the plates, the
+// ceiling under the dial). The other members may stand at any stratum: a riser
+// carries the last arm's end to the pawl, as the stem's riser does today.
+function groupWindows(cellsB, ks, obs) {
+  let win = null;
+  for (const k of ks) { const f = minus(freeOf(cellsB[k]), obs && obs.get(k)); win = win === null ? f : meet(win, f); if (!win.length) return []; }
+  return (win || []).filter(([a, b]) => b - a >= MIN_WIN);
+}
+function columnClear(cellsB, ks, obs, w, side) {
+  for (const k of ks) {
+    const c = cellsB[k], f = minus(freeOf(c), obs && obs.get(k));
+    const need = side === 'floor' ? [c.lo, w[1]] : [w[0], c.hi];
+    if (!f.some(([a, b]) => a <= need[0] + 1e-6 && b >= need[1] - 1e-6)) return false;
+  }
+  return true;
+}
+function pickWindow(cellsB, ks, obs, pivot, side) {
+  const ws = groupWindows(cellsB, ks, obs).filter((w) => !pivot || columnClear(cellsB, pivot, obs, w, side));
+  return ws.length ? ws.reduce((m, w) => (w[1] - w[0] > m[1] - m[0] ? w : m)) : null;
+}
+const p0 = { x: cl.pin[0].x, y: cl.pin[0].y };
+const d0 = { x: (cl.pin[1].x - p0.x) / stroke, y: (cl.pin[1].y - p0.y) / stroke }, n0 = perp(d0);
+// forward kinematics over the whole stroke: crank A turned by the stem, the rod
+// pinned at both ends (its far end found on crank B's circle), crank B turned by
+// the rod. Returns the stem pin's travel along its press and the pawl's along its.
+function swing(k, q0, dq) {
+  const th = k.sA * stroke / Math.abs(k.a);
+  const pin1 = rotAbout(k.PA, p0, th), EA1 = rotAbout(k.PA, k.EA, th);
+  const rb = Math.abs(k.b), dxy = sub(EA1, k.PB), D = Math.hypot(dxy.x, dxy.y);
+  const aa = (rb * rb - k.rod * k.rod + D * D) / (2 * D), h2 = rb * rb - aa * aa;
+  if (!(h2 >= 0)) return null;                        // the rod cannot reach: the linkage locks
+  const hh = Math.sqrt(h2), mid = { x: k.PB.x + aa * dxy.x / D, y: k.PB.y + aa * dxy.y / D };
+  const cA = { x: mid.x - hh * dxy.y / D, y: mid.y + hh * dxy.x / D }, cB = { x: mid.x + hh * dxy.y / D, y: mid.y - hh * dxy.x / D };
+  const EB1 = Math.hypot(cA.x - k.EB.x, cA.y - k.EB.y) < Math.hypot(cB.x - k.EB.x, cB.y - k.EB.y) ? cA : cB;
+  const thB = Math.atan2(EB1.y - k.PB.y, EB1.x - k.PB.x) - Math.atan2(k.EB.y - k.PB.y, k.EB.x - k.PB.x);
+  const q1 = rotAbout(k.PB, q0, thB);
+  return { inp: dot(sub(pin1, p0), d0), outp: dot(sub(q1, q0), dq) };
+}
+// the sweep is the slow half, so each φ sweeps at most SWEEP_CAP candidates,
+// shortest first; a band that found nothing BEFORE the cap is reported as such,
+// never as infeasible
+const SWEEP_CAP = 4000;
+let obsBites = 0;
+const stemCol = new Set(); segCells(p0, { x: cl.pin[1].x, y: cl.pin[1].y }, stemCol);
+function linkagesAt(r) {
+  const phi = r.deg * DEG;
+  const [qx0, qy0] = fold(cl.pin[0].x, cl.pin[0].y, 0, phi), [qx1, qy1] = fold(cl.pin[1].x, cl.pin[1].y, 0, phi);
+  const q0 = { x: qx0, y: qy0 }, dq = { x: (qx1 - qx0) / stroke, y: (qy1 - qy0) / stroke }, nq = perp(dq);
+  // the folded cluster in the dial band, per cell (its z hull there), the coupling exempt
+  const obs = new Map(), cpl = new Set();
+  segCells(q0, { x: qx1, y: qy1 }, cpl);
+  for (const [x, y, z] of cl.points) {
+    const [X, Y, Z] = fold(x, y, z, phi), k = cellOf(X, Y);
+    if (k < 0 || cpl.has(k) || Z > cells[k].hi) continue;
+    const o = obs.get(k); if (!o) obs.set(k, [Z, Z]); else { if (Z < o[0]) o[0] = Z; if (Z > o[1]) o[1] = Z; }
+  }
+  const cand = [];
+  for (let td = 0; td < 180; td += 1) {
+    const m = { x: Math.cos(td * DEG), y: Math.sin(td * DEG) }, t = perp(m);
+    for (let c = -CASE_R_IN; c <= CASE_R_IN; c += 0.5) {
+      for (const sa of [1, -1]) for (const sb of [1, -1]) {
+        const gA = dot(m, n0), gB = dot(m, nq);
+        if (Math.abs(sa - gA) < 1e-6 || Math.abs(sb - gB) < 1e-6) continue;
+        const a = (c - dot(m, p0)) / (gA - sa), b = (c - dot(m, q0)) / (gB - sb);
+        if (!(Math.abs(a) >= A_MIN && Math.abs(a) <= A_MAX && Math.abs(b) >= A_MIN && Math.abs(b) <= A_MAX)) continue;
+        const PA = { x: p0.x + a * n0.x, y: p0.y + a * n0.y }, PB = { x: q0.x + b * nq.x, y: q0.y + b * nq.y };
+        const hA = dot(m, PA) - c, hB = dot(m, PB) - c;
+        const EA = { x: PA.x - hA * m.x, y: PA.y - hA * m.y }, EB = { x: PB.x - hB * m.x, y: PB.y - hB * m.y };
+        const rod = Math.hypot(EB.x - EA.x, EB.y - EA.y);
+        if (rod < 2 * CM) continue;
+        const inCase = (P) => Math.hypot(P.x, P.y) <= CASE_R_IN - CM;
+        if (![PA, PB, EA, EB].every(inCase)) continue;
+        // senses: the stem drives p0 along +d0; the rod carries E_A's motion to E_B
+        const sA = Math.sign(dot(perp(sub(p0, PA)), d0)) || 1;
+        const pA = perp(sub(EA, PA)), vA = { x: sA * pA.x / Math.abs(a), y: sA * pA.y / Math.abs(a) };
+        const sB = Math.sign(dot(perp(sub(EB, PB)), vA)) || 1;
+        const out = perp(sub(q0, PB));
+        if (!(sB * dot(out, dq) > 0)) continue;
+        const k0 = { a, b, PA, PB, EA, EB, rod, sA };
+        const sw = swing(k0, q0, dq);
+        // 1:1 over the WHOLE stroke, not only at its start: the pawl's travel
+        // within one CLEAR_MARGIN of the stem's (the same bound A_MIN holds the sag to)
+        if (!sw || !(sw.outp > 0) || Math.abs(sw.outp - sw.inp) > CM) continue;
+        cand.push({ td, c, a, b, PA, PB, EA, EB, rod, vA, sA, sB, sw, len: 2 * Math.abs(a) + 2 * Math.abs(b) + rod });
+      }
+    }
+  }
+  cand.sort((u, v) => u.len - v.len);
+  const found = { dial: [], plates: [] };
+  let checked = 0;
+  for (const k of cand) {
+    if ((found.dial.length >= 3 && found.plates.length >= 3) || checked >= SWEEP_CAP) break;
+    checked++;
+    const thA = k.sA * stroke / Math.abs(k.a), thB = k.sB * stroke / Math.abs(k.b);
+    const aIn = new Set(), aOut = new Set(), rodS = new Set(), bIn = new Set(), bOut = new Set(), pvA = new Set(), pvB = new Set();
+    armCells(k.PA, p0, thA, aIn); armCells(k.PA, k.EA, thA, aOut); rodCells(k.EA, k.EB, k.vA, rodS);
+    armCells(k.PB, k.EB, thB, bIn); armCells(k.PB, q0, thB, bOut);
+    for (const kk of nearCellsR(k.PA.x, k.PA.y, CM)) pvA.add(kk); for (const kk of nearCellsR(k.PB.x, k.PB.y, CM)) pvB.add(kk);
+    const U = (...ss) => { const o = new Set(); for (const x of ss) for (const y of x) o.add(y); return o; };
+    for (const cfg of ['dial', 'plates']) {
+      if (found[cfg].length >= 3) continue;
+      // dial: crank A crosses the plate (its input arm between the plates), rod and crank B under the dial
+      // plates: crank A and the rod between the plates, crank B crosses the plate (its output arm under the dial)
+      const gP = cfg === 'dial' ? U(aIn, pvA) : U(aIn, aOut, rodS, bIn, pvA, pvB);
+      const gD = cfg === 'dial' ? U(aOut, rodS, bIn, bOut, pvA, pvB) : U(bOut, pvB);
+      const cross = cfg === 'dial' ? pvA : pvB;          // the pivot whose arbor runs through the base plate
+      const wP = pickWindow(IC, gP, null, cross, 'floor');
+      if (!wP) continue;
+      // the stem meets crank A's input arm: at the stem's own stratum, or by a
+      // riser from it, whose column over the pin's travel must be clear
+      if (!(wP[0] <= cl.stemZ + rad && wP[1] >= cl.stemZ - rad)) {
+        const lo2 = Math.min(wP[1], cl.stemZ), hi2 = Math.max(wP[0], cl.stemZ);
+        if ([...stemCol].some((kk) => !freeOf(IC[kk]).some(([a2, b2]) => a2 <= lo2 + 1e-6 && b2 >= hi2 - 1e-6))) continue;
+      }
+      const wD = pickWindow(cells, gD, obs, cross, 'ceiling');
+      if (!wD) { if (pickWindow(cells, gD, null, cross, 'ceiling')) obsBites++; continue; }
+      found[cfg].push({ ...k, wP, wD, cfg });
+    }
+  }
+  return { deg: r.deg, n: cand.length, checked, found };
+}
+const linkage = feasible.map(linkagesAt);
+const allFound = linkage.flatMap((L) => [...L.found.dial, ...L.found.plates].map((x) => ({ ...x, deg: L.deg })));
+const shortest = allFound.sort((u, v) => u.len - v.len)[0];
+
 // ---- controls ----------------------------------------------------------------
 const fails = [];
 const tipR = cl.collarTipR;
@@ -464,6 +660,20 @@ let k5 = 'not run', k6 = 'not run';
 // K7 the between-plates band reads its walls, and today's stem stands inside it
 const k7 = `band z ${inter.Z_FLOOR.toFixed(3)} .. ${inter.Z_CEIL.toFixed(3)} (${(inter.Z_CEIL - inter.Z_FLOOR).toFixed(3)} u); strata for a stem of ⌀ ${cl.stemD.toFixed(3)}: ${zLo.toFixed(3)} .. ${zHi.toFixed(3)}; today's stem axis ${cl.stemZ.toFixed(3)}`;
 if (!(inter.Z_CEIL > inter.Z_FLOOR) || !(cl.stemZ > inter.Z_FLOOR && cl.stemZ < inter.Z_CEIL) || inter.excludedMeshes <= 0) fails.push(`K7 the between-plates band: ${k7}`);
+// K8 the construction is 1:1: swing the shortest linkage through the stroke by
+// forward kinematics — crank A turned by the stem, the rod pinned at both ends
+// (its far end found on crank B's circle), crank B turned by the rod — and the
+// pawl must move forward along its own press by the stem's travel, to within
+// one CLEAR_MARGIN. A forced ratio (the single crank's 1.96), a wrong sense or a
+// linkage that is 1:1 only at the start of its stroke fails it. (The search
+// applies the same test to every candidate; this re-runs it on the winner.)
+let k8 = 'no linkage to swing';
+if (shortest) {
+  const [qx0, qy0] = fold(cl.pin[0].x, cl.pin[0].y, 0, shortest.deg * DEG), [qx1, qy1] = fold(cl.pin[1].x, cl.pin[1].y, 0, shortest.deg * DEG);
+  const sw = swing(shortest, { x: qx0, y: qy0 }, { x: (qx1 - qx0) / stroke, y: (qy1 - qy0) / stroke });
+  k8 = sw ? `the shortest linkage swung through the stroke: the stem's pin moves ${sw.inp.toFixed(4)} along its press, the pawl's ${sw.outp.toFixed(4)} along its own (${(sw.outp - sw.inp).toFixed(4)} apart)` : 'the shortest linkage locks';
+  if (!sw || !(sw.outp > 0) || Math.abs(sw.outp - sw.inp) > CM) fails.push(`K8 the linkage is not 1:1: ${k8}`);
+}
 const padMoved = Math.hypot(cl.padCell[0].x - cl.padCell[0.5].x, cl.padCell[0].y - cl.padCell[0.5].y);
 if (!(cl.points.length > cl.atRest) || !(padMoved > 0.05)) fails.push(`K4 the sweep: ${cl.points.length} swept vs ${cl.atRest} at rest; the finger moved ${padMoved.toFixed(4)}`);
 
@@ -520,6 +730,21 @@ for (const c of crank) {
   const off = c.pr > CASE_R_IN - CM ? '  PIVOT OUTSIDE THE CASE' : '';
   console.log(`    φ ${String(c.deg).padStart(3)}°  pivot r ${f(c.pr, 2)}${off}  ${c.push ? 'push' : 'PULL'}  arms ${f(c.a1, 2)} / ${f(c.a2, 2)} (ratio ${f(c.ratio, 3)})  plates ${fw(c.w.plates[0])} | ${fw(c.w.plates[1])}  dial ${fw(c.w.dial[0])} | ${fw(c.w.dial[1])}`);
 }
+const fw2 = (w) => `${fz(w[0])}..${fz(w[1])} (${(w[1] - w[0]).toFixed(2)})`;
+console.log(`\n  THE LINKAGE: two 1:1 cranks and a rod, today's stem held (arms ${f(A_MIN, 2)} .. ${f(A_MAX, 2)}, member window ≥ ${f(MIN_WIN)}; the shortest three per band the rod runs in):`);
+for (const L of linkage) {
+  const parts = [];
+  for (const cfg of ['dial', 'plates']) {
+    const b = L.found[cfg][0];
+    parts.push(b ? `${cfg === 'dial' ? 'rod under the dial' : 'rod between the plates'} ${f(b.len, 2)} (arms ${f(Math.abs(b.a), 2)} / ${f(Math.abs(b.b), 2)}, rod ${f(b.rod, 2)} at ${b.td}°, ${dot(b.vA, sub(b.EB, b.EA)) > 0 ? 'the rod pushes' : 'the rod pulls'}; plates ${fw2(b.wP)}, dial ${fw2(b.wD)})` : `${cfg === 'dial' ? 'rod under the dial' : 'rod between the plates'} ${L.checked >= SWEEP_CAP ? 'none before the sweep cap' : 'none'}`);
+  }
+  console.log(`    φ ${String(L.deg).padStart(3)}°  ${L.n} geometric candidates, ${L.checked} swept — ${parts.join('; ')}`);
+}
+if (shortest) {
+  const pr = (P) => `(${f(P.x, 2)}, ${f(P.y, 2)})`;
+  console.log(`    shortest: φ ${shortest.deg}°, rod ${shortest.cfg === 'dial' ? 'under the dial' : 'between the plates'}: crank A pivot ${pr(shortest.PA)} arms ${f(Math.abs(shortest.a), 3)}, rod ${pr(shortest.EA)} → ${pr(shortest.EB)} (${f(shortest.rod, 3)}), crank B pivot ${pr(shortest.PB)} arms ${f(Math.abs(shortest.b), 3)}; total ${f(shortest.len, 2)}`);
+}
+console.log(`    the folded cluster as an obstacle rejected ${obsBites} linkage(s) the band alone would have passed`);
 console.log(`\n  every 30°, for the shape of it:`);
 for (let d = 0; d < 360; d += 30) console.log('    ' + show(results[d]));
 console.log(`\n  controls:`);
@@ -529,6 +754,7 @@ console.log(`    K3 ${k3}`);
 console.log(`    K5 ${k5}`);
 console.log(`    K6 ${k6}`);
 console.log(`    K7 ${k7}`);
+console.log(`    K8 ${k8}`);
 console.log(`    K4 ${cl.points.length} swept samples against ${cl.atRest} at rest; the finger moves ${f(padMoved, 4)} between parities`);
 if (fails.length) { console.log('\nCONTROL FAILED:\n  ' + fails.join('\n  ')); process.exit(2); }
 console.log(`\nREPORT — controls pass; ${feasible.length ? `${feasible.length} feasible rotation(s)` : 'NO rotation of the rigid cluster fits the band as it stands'}`);
