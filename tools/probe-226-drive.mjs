@@ -250,9 +250,11 @@ const out = await page.evaluate(async () => {
   // read off τ through the hanging law, so the property is that law AT τ: it
   // must equal the balance's own angle wherever the pin is in its passage —
   // the run and the unlock included, counted so a run that never reached them
-  // cannot pass. __clock.step() is not used: stepped dial-flat it is
-  // pathologically slow on main as merged (a separate finding), and the
-  // property is the module's τ map, which this reads exactly. Its CONTROL is the
+  // cannot pass. __clock.step() is not used: each step is cheap (~20 ms in
+  // the page) but the page renders its own frames between them, and under
+  // software GL on a loaded dev container a frame measured ~14 s — the run
+  // outran its ceiling three times. The property is the module's τ map, which
+  // this reads exactly and without the renderer. Its CONTROL is the
   // pre-3b map (the passage narrowed to the lift), which must miss.
   {
     const BD = await import('./src/balance-drive.js');
