@@ -19498,14 +19498,16 @@ arm = √(postW² − readR²)   postW = ALARM_COL_TIP_R + CLEAR_MARGIN + postR 
 | `ALARM_ROCKER_ARM` | **3.1400** (Thales, so radial gain is 1 by construction) |
 | `ALARM_COL_RCHAM` | arm × `ALARM_LOCK_LIFT` = **0.3047** (ceiling 0.6327) |
 
-*(TODO 121's audit: these two rows and `main.js`'s own §183 comment
-disagree — the comment beside the fold quotes a chamfer of 0.3516 and an
-arm standing ~3.62 off to the side. Both derivations are live in the
-source (`ALARM_ROCKER_ARM = √(postW² − readR²)`, chamfer = arm ×
-`ALARM_LOCK_LIFT`), so one of the two quotations went stale when an
-input moved after its record froze; the source expression, not either
-frozen number, is the authority. Re-derive from the code before quoting
-either figure anywhere new.)*
+*(TODO 121, closed by §70's lock reference: these two rows were right on
+this landing's tree, where the rider nose was the bare 0.28 — the read
+radius 5.98 is the "5.9800" below. §226 cut the nose to half a saw tooth,
+0.627, and the same live expressions now give an arm of 2.3634 and a
+chamfer of 0.2293 against a ceiling of 0.2680. `main.js`'s comment had
+quoted 0.3516 and an arm "3.62 off": the first draft's, read at the bare
+wall radius 5.70 before the box beak became a round nose, so no landed tree
+ever carried it. The
+`alarm lock` line spec measures all three off the metal every battery run,
+so no frozen copy is the authority any more; §70's record has the table.)*
 | nose centre, column → gap | **5.9800 → 5.6754** (was an excursion of 0.00114) |
 | finger, seated → clear | **3.5000 → 3.9667**, both its solved stations |
 
@@ -34261,7 +34263,9 @@ against the same glossary. Back to 773/773.
 > line, fold to fit". This landing builds its first two steps, scoped to the
 > one group §261 step 4 is about to fold under the dial, so that the fold has
 > a reference to measure back to BEFORE it moves a part. Step 3 (declared
-> forks) and step 4 (the §35 control-case seeds) remain.
+> forks) and step 4 (the §35 control-case seeds) remain. A second landing added
+> the LOCK that reads the wheel (§183's seed, below); the selector link, the
+> §35 seed, is the reference still owed.
 
 **Why.** Every battery gate before this was SPATIAL: it asked whether the
 packaged movement fouls itself. None asked whether the packaged mechanism is
@@ -34279,7 +34283,12 @@ form `{ key, kind, value, unit, derivedFrom, measure }`.
   change one will declare a fork, once step 3 exists; until then a moved
   spec row fails.
 - **`kind: 'envelope'`** rows are windows the mechanism must live inside
-  whatever the integration, and they are never forkable.
+  whatever the integration, and they are never forkable. With `bound: 'max'`
+  or `'min'` an envelope is one side of a window and fails only on crossing
+  it; without one it is an equality, like `carry` below.
+- **`inherits`** names an earlier reference whose DERIVED rows are in scope
+  for this one's value functions. They are not measured again, because their
+  own reference already holds them to the metal.
 
 The first reference is the alarm switch's drive line, pusher → pin in the
 driver's radial slot → driver on the wheel's arbor → pawl → column wheel:
@@ -34299,7 +34308,8 @@ driver's radial slot → driver on the wheel's arbor → pawl → column wheel:
 
 **The `lineSpec` check** gates every row within float noise of its derived
 value (1e-6 u or rad, exact counts), 0 unwaived, 0 stale waivers and 0
-malformed, and a control. On the shipped tree all ten rows measure within
+malformed, and a control. On the shipped tree all ten rows (twelve since the
+lock's landing) measure within
 3e-15, except `baseR` at 2.5e-7, which is the float32 vertex store.
 - **The control:** the pin's line is shifted a known 0.05 and the measured
   offset must move by exactly that much. A reader that quoted a constant would
@@ -34307,7 +34317,7 @@ malformed, and a control. On the shipped tree all ten rows measure within
 - **`tools/probe-70-line-spec.mjs`** (acceptance) holds the GATE where the
   control holds the reader. It boots copied trees built wrong on purpose:
   - the wheel grown 5.7 → 5.8 fails exactly `baseR`, `rootR`, `travel` and
-    `offset`;
+    `offset` (and `tipR` and `colInner`, the two rows the lock's landing added);
   - the offset hand-tuned ×1.02 fails exactly `offset` and `step`.
 
 **Two findings from building it.**
@@ -34322,3 +34332,65 @@ malformed, and a control. On the shipped tree all ten rows measure within
   the whole actuation still carries the wheel one exact step, because the click
   banks it the rest of the way. A reference that held only the wheel's carry
   would have passed the very defect §163 removed.
+
+### The second reference: the alarm lock, §183's seed
+
+§70 named §183's fold as the seed that would land GREEN beside a §35 seed that
+would land red: a fold whose line spec was derived first and written at the
+constants, and checkable by a reader and by nothing else. It is also the second
+link out of the switch §261 folds, and the one most likely to fork, because the
+lever, its finger and the stop wheel stay on the striking arbor wherever the
+wheel goes. Its path is column wheel → rocker beak on the columns' outer wall →
+rocker → pin in the lever's radial slot → lock lever → finger in the stop wheel.
+
+It `inherits` the drive reference for the wheel it reads, which grew two rows
+to carry what the lock needs: `tipR` = 1.12·baseR (what a rod crossing the saw
+stands clear of) and `colInner` = baseR·0.95/1.5 (where the §35 link beak
+lands). Seventeen rows, read at `alarmToggle`'s two states — the axis steps
+the wheel, so the rocker, the lever and the finger are posed by the build's own
+law and nothing in the reader poses them:
+
+| row | value today | derived from | measured off |
+|---|---|---|---|
+| `noseR` = (tipR − rootR)/2 | 0.6270 | half a saw tooth, §226 | the beak cylinder's vertices |
+| `readR` = baseR + noseR | 6.3270 | the nose's centre rides one radius off the wall | the beak's centre to the wheel's axis, beak on a column |
+| `postR` | 0.22 | post stock | the post's vertices |
+| `postW` = tipR + `CLEAR_MARGIN` + postR | 6.7540 | §171's rule | the post's centre to the wheel's axis |
+| `arm` = √(postW² − readR²) | **2.3634** | Thales | the post's centre to the beak's |
+| `gain` | 1 | the read is radial | the beak's rest motion against the wheel radius |
+| `pinLine` | 0 | the pin on the lever-pivot → rocker-pivot line | the pin's distance off that line |
+| `stopRootR` | 3.2 | §25 B's band, unmoved | the stop wheel's cut outline |
+| `stopDepth` | `STOCK_MIN_U` | a radial face cannot cam out | the same |
+| `lockD`, `lockL`, `padR` | 7.0, 5.0, 0.3 | §25 B's lever | the pivot post, the finger and the stop wheel's axis |
+| `seat` = stopRootR + padR | 3.5000 | engaged: the finger on the root circle | the finger's centre to the stop axis, beak on a column |
+| `release` = tip + padR + `CLEAR_MARGIN` | 3.9667 | lifted: one margin off the tips | the same, beak in a gap |
+| `lift` | 0.097031 rad | the lever's triangle inverted, seat to release | the lever's rotation between the states |
+| `rCham` = arm × lift | **0.2293** | the chamfer the pillars owe the follower | the beak's fall, column to gap |
+| `chamCeiling`, bound max | **0.2680** | the §35 link beak's landing plus a nose plus a margin | the same fall |
+
+All seventeen read within 2e-15 on the shipped tree (the vertex-read radii at
+float32's 1e-8). **The lock's control moves metal**, where the drive's shifts
+a measurement: the rocker's post is carried 0.05 out along the wheel's radius,
+the measured stand-off must follow it to 1e-9, and the post goes back.
+`probe-70-line-spec.mjs` grew to five trees. The wheel grown 5.7 → 5.8 now also
+fails the lock's `noseR`, `readR`, `postW`, `arm` and `rCham` through
+`inherits` and nothing else, and leaves its lever, finger and stop wheel green.
+The lever lengthened 5.0 → 5.2 fails `lockL`, `lift` and `rCham`, and not the
+finger's seat or release, because the build re-solves both angles from the
+stop wheel's radii. And the rocker's post thickened 0.22 → 0.40 carries the
+chamfer to 0.2753, over the ceiling: the envelope firing, the one row a fork
+could never declare away.
+
+**What the reference found, and closed.** §183's record quoted the arm at
+3.1400 and the chamfer at 0.3047 against a 0.6327 ceiling, and its `main.js`
+comment quoted 0.3516 and an arm "3.62 off to the side" (the first draft's,
+read at the bare wall radius before the beak became a round nose). TODO 121
+caught the two disagreeing and left the live expression as the authority. The
+gate read neither: the arm is **2.3634** and the chamfer **0.2293** against a **0.2680**
+ceiling. §183's table was right on its own tree, where the nose was the bare
+0.28 (read radius 5.98, the table's own "5.9800 → 5.6754"). §226 cut the nose
+to half a saw tooth, 0.627, which shortened the Thales arm and lowered the
+chamfer, and lowered its ceiling faster. **The headroom under the ceiling fell
+from 0.328 to 0.039**, with nothing positioned to say so. That is the number the
+fold has to keep, and now a row holds it.
+

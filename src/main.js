@@ -31896,10 +31896,13 @@ const ALARM_COL_RCHAM = ALARM_ROCKER_ARM * ALARM_LOCK_LIFT;
 // The arm is the smallest that stands the post clear of the saw it crosses —
 // §171's rule, the same one that sited this beak's old riser — and the chamfer
 // the pillars owe is then arm × the lever's travel, which is the fold's whole
-// argument: 0.3516, where re-siting the beak needed 0.5448 or 0.6723.
+// argument: 0.3047 at §183's landing, where re-siting the beak needed 0.5448
+// or 0.6723. (The live figures are the `alarm lock` reference's in
+// inspect.js's LINE_SPECS, measured off the metal every battery run — §226's
+// half-tooth nose has since moved all of them; TODO 121.)
 //
 // THE PIN IS ON THE P–Q LINE, and that is kinematics rather than tidiness. Q
-// stands 3.62 off to the side to clear the saw, so a pin anywhere else has the
+// stands an arm off to the side to clear the saw, so a pin anywhere else has the
 // rocker's velocity nearly ORTHOGONAL to the lever's — two arrangements were
 // tried on paper and both transmitted almost nothing. Collinear, both
 // velocities are perpendicular to the same line and therefore parallel, and
@@ -32127,8 +32130,9 @@ const SPRING_STRAIN_MAX = SPRING_SIGMA_Y_PA / STEEL_E_PA;
 // duties — and it buys the quantity the direct repairs could not afford:
 //
 //   the chamfer the pillars must carry falls to ARM · θ, because the beak no
-//   longer rides a 5.6-long lever arm. 0.3516 against a 0.6327 ceiling, where
-//   the direct options needed 0.5448 and 0.6723.
+//   longer rides a 5.6-long lever arm. 0.3047 against a 0.6327 ceiling at
+//   §183's landing, where the direct options needed 0.5448 and 0.6723; the
+//   `alarm lock` line spec holds the live pair (TODO 121).
 //
 // THE LINE SPEC, every row a consequence:
 //

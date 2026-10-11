@@ -526,13 +526,18 @@ it into prose either.
    than whether the movement fouls itself. Each `LINE_SPECS` reference in
    `inspect.js` is movement-independent rows, every derived row computed from
    its constraint in the table, every row MEASURED off the posed metal: the
-   switch's drive line today, tooth count to one-step carry. A fold that moves
-   a spec row fails until §70 step 3 builds forks; an `envelope` row is never
-   forkable. The control shifts the pin's line a known distance and requires
-   the reading to follow exactly, and `probe-70-line-spec.mjs` sabotages the
-   switch and watches the gate name the rows it moved. Its first run also
-   found the trap again: the mean of a cylinder's vertices read its axis
-   0.0104 off, because the seam's vertices repeat).
+   switch's drive line (tooth count to one-step carry) and the lock that reads
+   it (§183's rocker to the finger in the stop wheel), which `inherits` the
+   wheel's rows rather than restating them. A fold that moves a spec row fails
+   until §70 step 3 builds forks; an `envelope` row is never forkable, and
+   with a `bound` it is one side of a window. Every reference carries its own
+   control — the drive shifts the pin's line a known distance, the lock MOVES
+   its rocker's post — and requires the reading to follow exactly;
+   `probe-70-line-spec.mjs` sabotages both and watches the gate name the rows
+   each sabotage moved. Its first run found the trap again: the mean of a
+   cylinder's vertices read its axis 0.0104 off, because the seam's vertices
+   repeat. The lock's first run found the reason the gate exists: §183's
+   recorded chamfer headroom was 0.328 and the metal's is 0.039).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
