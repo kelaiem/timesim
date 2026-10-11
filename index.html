@@ -59,6 +59,31 @@
     margin: 0; max-width: 34ch; color: #8fa6bf; font-size: 13px;
     opacity: 0; animation: bootNote 0.8s ease 4s both;
   }
+  /* §267 — THE BAR. Where the build is, read from a MEASURED share per seam
+     (src/boot-progress.js), written by main.js only when it hands the thread
+     back. Its fill is scaleX — §238's rule, since a transform is the one
+     property the compositor can carry on its own — and the short transition
+     between writes runs there too, so it eases through a hand-back without
+     the main thread. It fills from the INLINE start: a bar is read in the
+     direction the text is, so under `dir="rtl"` it grows from the right. The
+     label is aria-hidden because the bar already carries the number for a
+     screen reader, and the whole screen is a live region that would otherwise
+     read every step aloud. */
+  #boot .boot-progress { display: flex; align-items: center; gap: 10px; }
+  #boot .boot-bar {
+    width: 180px; height: 3px; border-radius: 2px; overflow: hidden;
+    background: rgba(255,255,255,0.12);
+  }
+  #boot .boot-bar-fill {
+    width: 100%; height: 100%; background: #7a3ad8;
+    transform: scaleX(0); transform-origin: left center;
+    transition: transform 0.3s linear;
+  }
+  :root[dir="rtl"] #boot .boot-bar-fill { transform-origin: right center; }
+  #boot .boot-pct {
+    margin: 0; min-width: 4.5ch; text-align: end;
+    color: #8fa6bf; font-size: 12px; font-variant-numeric: tabular-nums;
+  }
   @keyframes bootSpin { to { transform: rotate(360deg); } }
   @keyframes bootNote { from { opacity: 0; } to { opacity: 1; } }
   /* The failure state (the entry script's catch): the ring stops — a spinner
@@ -66,12 +91,16 @@
      waiting for its 4 s, because at that point it carries the diagnosis. */
   #boot.failed .boot-ring { animation: none; border-top-color: rgba(255,255,255,0.12); }
   #boot.failed .boot-note { animation: none; opacity: 1; }
+  /* …and the bar goes: a part-filled bar over a dead build is a claim about
+     how far it got that nothing is still measuring. */
+  #boot.failed .boot-progress { visibility: hidden; }
   /* §72's tier, applied here: a viewer who has asked for less motion gets a
      static ring and the note immediately, because with the spinner stopped
      the note is the only thing left saying the page is alive. */
   @media (prefers-reduced-motion: reduce) {
     #boot .boot-ring { animation: none; }
     #boot .boot-note { animation-delay: 0s; }
+    #boot .boot-bar-fill { transition: none; }
   }
 </style>
 <!-- The import map comes FIRST, before anything that starts a module fetch.
@@ -102,7 +131,13 @@
 <div id="app"></div>
 <div id="boot" role="status" aria-live="polite">
   <div class="boot-ring" aria-hidden="true"></div>
-  <p class="boot-head">Building the movement</p>
+  <p class="boot-head" id="boot-head">Building the movement</p>
+  <div class="boot-progress">
+    <div class="boot-bar" role="progressbar" aria-labelledby="boot-head" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="boot-bar-fill"></div>
+    </div>
+    <p class="boot-pct" aria-hidden="true"></p>
+  </div>
   <p class="boot-note">Every part is cut from code — nothing is loaded from a file.</p>
 </div>
 <script>
@@ -195,12 +230,16 @@
   // worth a watch that never builds. 250 ms is two orders of magnitude
   // clear of a 60 Hz frame and invisible against a build measured in
   // seconds. Whichever fires first wins; the loser is a no-op.
-  import { t, localizeTree } from './src/i18n.js';
+  import { t, localizeTree, fmtPct } from './src/i18n.js';
   // Guarded, and the guard is the point: everything below this line is the
   // app, and the app must not fail to start because its loading screen is
   // missing. A markup edit that loses #boot costs the screen, never the watch.
   const boot = document.getElementById('boot');
   if (boot) localizeTree(boot);
+  // §267 — the label starts at the locale's own 0%, written here so it is on
+  // glass with the rest of the screen; main.js moves it from the first hand-back.
+  const pct = boot && boot.querySelector('.boot-pct');
+  if (pct) pct.textContent = fmtPct(0);
   await new Promise((resolve) => {
     let settled = false;
     const go = () => { if (!settled) { settled = true; resolve(); } };
