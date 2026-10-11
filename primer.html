@@ -56,12 +56,17 @@
      one face beside Vietnamese, Latvian inks no more than Vietnamese at every
      site (13 against 13.82 px at the 10 px sites, 15 against 15 at .readout),
      so Vietnamese's 1.3 contains it and the rule is SHARED rather than
-     re-derived in a container whose own controls do not pass. */
-  html:lang(vi) header .stamp, html:lang(lv) header .stamp,
-  html:lang(vi) details.mech > summary .where, html:lang(lv) details.mech > summary .where,
-  html:lang(vi) .fig-no, html:lang(lv) .fig-no,
-  html:lang(vi) .readout, html:lang(lv) .readout,
-  html:lang(vi) .chip, html:lang(lv) .chip { line-height: 1.3; }
+     re-derived in a container whose own controls do not pass.
+     §216 — Hungarian's double acute (Ő Ű) is the tallest single mark Latin
+     carries, and nothing sits below the baseline. The same probe
+     (`--script hu`), same face, same failing controls: Hungarian inks no more
+     than Latvian anywhere (13 against 13 at the 10 px sites, 14 against 15 at
+     .readout), so it joins the shared rule on Latvian's grounds. */
+  html:lang(vi) header .stamp, html:lang(lv) header .stamp, html:lang(hu) header .stamp,
+  html:lang(vi) details.mech > summary .where, html:lang(lv) details.mech > summary .where, html:lang(hu) details.mech > summary .where,
+  html:lang(vi) .fig-no, html:lang(lv) .fig-no, html:lang(hu) .fig-no,
+  html:lang(vi) .readout, html:lang(lv) .readout, html:lang(hu) .readout,
+  html:lang(vi) .chip, html:lang(lv) .chip, html:lang(hu) .chip { line-height: 1.3; }
   :root {
     --bg: #0b0d10;
     --panel: rgba(15,17,20,0.72);
