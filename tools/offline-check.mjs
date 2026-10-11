@@ -338,7 +338,13 @@ try {
   // §249 — 51: Vietnamese's two tables, the two-per-locale rule again. 53: Dutch's.
   // 55: Persian's. 57: Hebrew's. 59: Indonesian's. 61: Turkish's. 63: Welsh's.
   // 65: Tagalog's. 67: Latvian's. 69: Hungarian's.
-  check('release: precache complete', counts === 69, `${counts}/69`);
+  // §267 — 70: src/boot-progress.js, the boot bar's generated table, which
+  // main.js imports statically. One module for the app, not a per-locale table,
+  // so it adds one and the two-per-locale parity argument is untouched
+  // (TODO 158's validated-configs.js and §236's glossary linker are the
+  // precedents). It has to be in the manifest: addAll is all-or-nothing and the
+  // app does not boot offline without it, which the OFFLINE boots below prove.
+  check('release: precache complete', counts === 70, `${counts}/70`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
