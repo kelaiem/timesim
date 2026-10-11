@@ -981,7 +981,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 280 measuring scripts and this file names 23. The rest are named for the
+`tools/` holds 284 measuring scripts and this file names 39. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -998,7 +998,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **169 of
+The index also carries the split that decides how to read a result: **173 of
 them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
@@ -1237,13 +1237,13 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   a face the instruments READ**: cap every body, including the faces buried
   inside a joint, and look for cheap geometry somewhere that isn't load
   bearing for a check.
-- **BOOT BREATHES NOW, and each of the five rules that follow is new.** Every
+- **BOOT BREATHES NOW, and each of the six rules that follow is new.** Every
   part is still cut during `main.js`'s module evaluation, in source order; the
   wall was ~13 s on the SwiftShader container at §239 (25–27 s before its memo,
   after which `tools/probe-239-boot-profile.mjs` split the block by function and
   called it FLAT — nothing above 15%, which is why the remainder was yielding
   and not more speed) and is ~20 s at §266, the build having grown. What changed
-  is that the evaluation HANDS THE THREAD BACK, at seams: `await breathe()`,
+  is that the evaluation HANDS THE THREAD BACK, at seams: `await breathe(n)`,
   budget `BREATHE_MS = 40` — the
   platform's own 50 ms long-task threshold with the margin taken OFF, because a
   seam is chosen against the budget and lands on whatever the machine gives it.
@@ -1304,6 +1304,25 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   lost. Add a `window.addEventListener` or `document.addEventListener` to
   `main.js` and its event belongs on that list; the probe dispatches a key after
   boot and fails if it does not arrive.
+  **AND EVERY SEAM IS A ROW IN THE BOOT BAR'S TABLE (§267).** The boot screen's
+  bar reads, per seam VISIT, the share of the build a measured boot had spent
+  there, from `src/boot-progress.js`, which is GENERATED. So write a new seam
+  BARE, `await breathe()`, and run `node tools/boot-progress.mjs --write`
+  (three boots, a few minutes): it gives the seam the next free id and
+  re-measures the table. Never retype an id or edit the table.
+  `--check` is browser-free and runs in `boot-yield.yml`. It fails on a bare
+  seam, a duplicate id, or any seam added, removed or MOVED against the table's
+  order, so §266-style re-placement owes a regeneration too.
+  `tools/probe-267-boot-progress.mjs` holds the bar to the true elapsed
+  fraction on the CI host: 4.5 points on average, and 17.5 at worst as a
+  backstop, because the worst moment on every host is the first composited
+  frame. The raw seam ordinal is the control the average must fail.
+  A trap it measured: while the build runs, the PAGE'S TIMERS STARVE, because
+  `scheduler.yield()` continues ahead of freshly posted tasks. A
+  `page.waitForFunction` poll or an in-page `setTimeout` therefore resolves only
+  once the build is done, even though key events are answered within 40 ms.
+  Read mid-build state from `__clock.boot.progress` afterwards, or from a
+  screencast.
   **And the boot screen does NOT retire.** One ~950 ms block survives on this
   container and it is not the build: measured with `BREATHE_MS = 0` (2,958
   yields, every one of the others 6 ms or under), it is the first composited

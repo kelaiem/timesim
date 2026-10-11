@@ -59,14 +59,33 @@ const PORT = 8403;
 const BOOTS = Number(arg('--boots', 1));
 const JSON_OUT = arg('--json', null);
 
-// The ceilings on claim 1, in shares of the build (0.01 = one percentage point).
-// PROVISIONAL until measured on the CI host.
-// MAX_MEAN is the sharp gate: the time-averaged distance from the diagonal.
-const MAX_MEAN = 0.03;
+// The ceilings on claim 1, in shares of the build (0.01 = one percentage point),
+// and like every timing cap here they are the CI HOST's: boot-yield.yml runs
+// this on ubuntu-latest, and twelve boots on six runners (two batches' worth of
+// the matrix §266 landing two measured with, since removed) read, against the
+// table measured on the dev container that wrote it:
+//
+//   runner CPU            mean, the bar    worst, the bar    mean, the ordinal
+//   AMD EPYC 7763 (×3)    2.30–2.61 pt     5.43–9.85 pt      5.28–5.50 pt
+//   AMD EPYC 9V74         1.60–1.77 pt     5.40–5.46 pt      5.55–5.74 pt
+//   Xeon Platinum 8370C   2.57–2.69 pt     5.45–10.34 pt     5.39–5.57 pt
+//   Xeon Platinum 8573C   1.49–1.62 pt     5.38–5.42 pt      5.76–5.83 pt
+//
+// (On the container the table was measured on, the bar's mean is 0.4–0.5 pt:
+// the CI figure is the table's error on ANOTHER host, which is the honest
+// reading — no viewer's machine is the one that measured it.) Each ceiling is
+// the worst run times 1.66, battery.yml's same-tree spread, rounded up to the
+// next half point.
+// MAX_MEAN is the sharp gate: 2.69 × 1.66 = 4.47. Every ordinal run (5.28 pt at
+// its best) sits over it, which is what makes the control a control.
+const MAX_MEAN = 0.045;
 // MAX_WORST is the backstop: on every host the worst moment is the first
-// composited frame, one unsplittable task near the start that no seam reaches,
-// so it reads the host's GL rather than the table.
-const MAX_WORST = 0.25;
+// composited frame, one unsplittable task near the start that no seam reaches
+// and whose position among the seams differs by host (the bar jumps AHEAD where
+// the measuring host had already paid for it, and falls BEHIND where this one
+// pays), so it reads the host's software GL rather than the table.
+// 10.34 × 1.66 = 17.2. The ordinal cannot be asked to fail it (12.8–14.2 pt).
+const MAX_WORST = 0.175;
 // Claim 5: distinct painted widths inside the build. The table has ~350 shares
 // and the bar ~400 write opportunities; a bar that paints a dozen distinct
 // widths over a 15–30 s build is moving, and one that paints two is not.
