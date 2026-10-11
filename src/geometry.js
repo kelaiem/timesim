@@ -2224,21 +2224,16 @@ export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZ
   const tipY = -seat.yTip;
   const tipIn = prof[prof.length - 1][1];       // the notch at the horn tips
   const tipOut = tipIn + seat.tipW;             // the horn's tip: one sheet floor of metal
-  // THE LEVER'S FLANK IS LEFT EXACTLY AS IT WAS, to the station where the old
-  // fork end began (0.8·L − 0.9·t below the pivot, L = `seat.leverL`, the
-  // lever length the stations used to set), and runs straight from there to
-  // the seat's fork end. That is not a shape choice: the three-quarter plate's
-  // balance cut reads every fork vertex that stands outside the balance's
-  // running radius — the lever's first length, near the pivot — and the stop
-  // work's hack rod routes off that cut, and the alarm link's rod site and its
-  // hoisted constants off the rod. Re-curving the flank by a few hundredths
-  // there re-routed all of it (measured: the stop work's mast 0.01 over the
-  // cock, the link body 24.51 against its hoisted 11.03, and nine more
-  // warnings down the alarm). Freeing this flank is the same layout re-solve as
-  // re-cutting the window to the driven swing, filed with it.
-  const flankY = -(seat.leverL * 0.8) + t * 0.9;   // the old fork end's station
-  const flankHW = t * 0.7 + hornWall;              // and its half-width there
-  const yWaist = (yJoin + flankY) / 2;             // mid-length, as it was
+  // THE LEVER'S FLANK IS ONE CURVE FROM THE BOSS TO THE FORK END (TODO 234),
+  // the rule above restored. TODO 226 step 1 had held the flank at the station
+  // where the OLD fork end began (0.8·L − 0.9·t below the pivot, L the lever
+  // length the stations once set) because the three-quarter plate's cut read
+  // those vertices and a re-curved flank re-routed the stop work and the alarm
+  // behind it. The fork cock's leg now clears the fork's swept sector rather
+  // than a disc about its pivot, which is what had bound that chain, so the
+  // flank waists from the boss join straight into the seat's fork end, its
+  // waist at mid-length as it always was.
+  const yWaist = (yJoin - seat.yDeep) / 2;          // mid-length, boss join to fork end
 
   // -------------------------------------------------------------------------
   // Ruby pallet stones — REAL construction: each stone is a leaning
@@ -2582,8 +2577,7 @@ export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZ
 
   const s = new THREE.Shape();
   s.moveTo(joinL.x, joinL.y);
-  s.quadraticCurveTo(-waistHW, yWaist, -flankHW, flankY); // waisted lever, the flank it always had
-  s.lineTo(-mouthHW, endY); // straight on to the seat's fork end
+  s.quadraticCurveTo(-waistHW, yWaist, -mouthHW, endY); // waisted lever, boss to the fork end
   s.lineTo(-tipOut, tipY); // left horn, outer flank to its tip
   s.lineTo(-tipIn, tipY); // left horn tip
   for (let i = prof.length - 2; i >= 0; i--) s.lineTo(-prof[i][1], -prof[i][0]); // notch, left wall down
@@ -2592,7 +2586,6 @@ export function makePalletFork({ span, seat, guard: guardSeat, thickness, stoneZ
   s.lineTo(tipIn, tipY); // right horn tip
   s.lineTo(tipOut, tipY); // right horn, outer flank
   s.lineTo(mouthHW, endY); // right side of the fork end — the mirror of the left
-  s.lineTo(flankHW, flankY); // back to the flank's old station
   s.quadraticCurveTo(waistHW, yWaist, joinR.x, joinR.y); // waisted lever, right flank (up)
   let at = leverRight;
   for (const arm of arms) {

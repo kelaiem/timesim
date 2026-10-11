@@ -17,7 +17,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 234 | OPEN | Found seating TODO 226's pin. The fork cock's leg is solved against a DISC about the fork's pivot, held at 9.8018 (the pre-seat horns' reach) because the seat's horns reach 10.63 and the grown disc moved the leg, which the three-quarter plate's cut reads, which the stop work's hack rod routes off, which the alarm link's rod site and hoisted constants follow. The held disc is asserted to cover every fork vertex outside the balance's own disc; replace it with the fork's swept sector and re-solve the leg and everything downstream |
+| 235 | OPEN | Found deciding §261 step 3 (the owner kept §218's overcoil). `L_HAIRSPRING = L_BALANCE + 1.2` carries no derivation, and it is a datum: `SPRING_TOP_Z`, the three-quarter plate's floor and `TRAIN_CEILING_Z` (the going train's ceiling, §254's fusee groove and §47's arrest stations) all ride it. §261's step 1 built it at +1.0 and bought 0.076 mm of cased depth 1:1, and boot raised 6 asserts. Derive the spring's plane from the balance stack it sits on, then re-solve whatever the derived value moves. Rule 1, P1 |
+| 234 | CLOSED | The fork cock's leg cleared a DISC about the fork's pivot, held at 9.8018 after TODO 226's seat. It now clears the fork's swept SECTOR (`FORK_SWEEP`: every fork vertex under the slab over ±bank, by 0.5° bin) and re-seats from 11.75 to 5.5 from the pivot. The plate's cut gives back the old leg's lobe (300–327°, out to 17.0) and takes a shorter one (295–305°, 14.9); the stop work's bearing, pivot, rod and mast are bit-identical, so nothing down the alarm moved. The lever's flank is one curve again, boss to fork end. Boot silent; `FORK_LEG_DISC_R` and its assert retired |
 | 233 | CLOSED | Found closing §261 step 1 (#636): the Latvian explainer and primer tables were keyed to English §221 (#617) rewrote, because the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check read red on `main`. Closed by #611 (c4eea7c), which re-keyed 15 explainer and 5 primer Latvian rows against the current English, more than the ten counted here because TODO 226's drive rewrote further English. Latvian reads 769/769 and 144/144. The race itself is answered by a CLAUDE.md convention (a locale or page-English PR re-merges `main` and waits for the Explainer check before it merges) and by §271 (merge queue). Arabic plate collisions seen locally are font metrics, not CI |
 | 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
 | 230 | OPEN | Found closing TODO 204. The beak lever turns on `alarmLinkBeakPin` with nothing holding it along the pin toward the arm's line (+y): no shoulder, collar or clip, the eye's inner end plugged by the web. It slides **0.1735** (seated) / **0.1855** (lifted) before the eye or web meets the selector rod, its own group's output, with 0.1432 of the 0.3167 journal still engaged; without the rod it leaves the pin at 0.3167. The column's sweep under the nose drags it along exactly that axis. Fix: a retaining shoulder or collar with its own §50 floor, re-deriving the pin's cantilever (757.1 MPa, margin 1.057). P1 |
@@ -31340,6 +31341,8 @@ whose floor disc about the fork's pivot grew with the horns: that cascaded into
 the plate's cut, the stop work's hack rod and eleven warnings down the alarm,
 and is held and filed as TODO 234. The lever's flank keeps its old curve to the
 old fork end's station for the same reason (the cut reads those vertices).
+(Both released by TODO 234, which re-seats the leg against the fork's swept
+sector; the stop work did not move.)
 
 ### Step 3 — the pin on the driving wall (open, waits on TODO 131)
 
@@ -31735,7 +31738,7 @@ They are a translation backlog, not this item's defect.
 
 ---
 
-## 234. The fork cock's leg is solved against a disc about the fork's pivot, held at the pre-seat horns' radius
+## 234. The fork cock's leg is solved against a disc about the fork's pivot, held at the pre-seat horns' radius — CLOSED
 
 **Found seating [TODO 226]'s pin.** `forkCock`'s leg solve (main.js) keeps its
 legs clear of "every swept disc below the slab": each moving part as a disc
@@ -31774,3 +31777,96 @@ balance's swept disc, which the leg already clears.
 This is a layout re-solve (P3), and the order is the design priority's: the
 escapement's seat is proven first and held fixed; the leg, the cut and the
 alarm's route move around it.
+
+### Closed
+
+**The sector.** `FORK_SWEEP` (main.js) bins every fork vertex under the slab
+by azimuth about the pivot, laid on the line of centres (`forkBaseAngle`, since
+the group stands unrotated until the first tick) and swung over ±`FORK_BANK_DEG`
+in 33 steps, to its farthest reach per 0.5° bin. A bin claims its whole width
+at that reach, so the region is covered, never shaved: the over-claim is a
+quarter degree of arc, 0.05 at the horns. Its clearance is the distance to the
+nearest occupied bin's sector, and the leg solve's `floorClear` reads it in
+place of the fork's disc. The other parts under the slab rotate, so they keep
+their discs.
+
+**The leg.** On main the leg stood at (18.98, −28.58), 11.75 from the fork's
+pivot, bound by the floor (the disc) at 0.228. Against the sector it seats at
+(14.25, −24.41), 5.5 from the pivot at bearing 330°. The floor still binds
+(0.003), the spine corridor stands 0.058 clear and the bar 0.106. So, as this
+item predicted, the disc had been the binding wall on main too, not only once
+the horns grew.
+
+**Downstream.** The three-quarter plate's cut reads the cock's vertices.
+Measured over the cut's 360 bins, 56 moved: the old leg's lobe at 300–327°
+(out to 17.0) falls back to the balance's own edge (9.81), and a shorter lobe
+appears at 295–305° (out to 14.9) where the leg now stands. The stop work's
+solve reads the cut, and its outputs are bit-identical to main: `STOP_BEARING`,
+`STOP_PIVOT`, `HACK_ROD_LEN`, `HACK_ROD_ELBOW` and `STOP_MAST_TOP`. The hack rod
+did not re-route, so the alarm link's rod site, its hoisted constants
+(`ALARM_LINK_BODY_LEN_U`, `ALARM_LINK_BUSH_OD_U`), TODO 206's arming forces and
+TODO 204's beak pin have nothing to re-derive. The boot is silent.
+
+**The flank.** `makePalletFork`'s lever now waists in one curve from the boss
+join to the seat's fork end, as the rule TODO 98 wrote. The old fork end's
+station (`flankY`) and the lever length it came from (`forkLeverLength`,
+`seat.leverL`) are gone. The blank stays one simple outline (214 points, 0
+self-intersections). The knock still reads 301.352° (`probe-216-knock.mjs`
+AGREES), and every fork⇄balance pair holds the margin as before: pin⇄blank
+0.1533, guard⇄roller 0.1505, blank⇄rim 0.1500 (`probe-226-drive.mjs`).
+
+**A correction.** The horns reach 10.03 from the pivot as seated, not the
+10.63 quoted above: 10.63 was the first draft's horns, cut at the pin's full
+radius before the tips were set at the entry depth.
+
+## 235. L_HAIRSPRING is the balance's mid-plane plus a bare 1.2: the spring's plane, which the going train's datum rides, is not derived
+
+**Found deciding §261 step 3**, when the owner kept §218's Breguet overcoil.
+That call left one oscillator lever standing, and it is not a design choice
+but a debt: `src/layout.js` sets the hairspring's plane as
+
+    export const L_HAIRSPRING = L_BALANCE + 1.2;
+
+with no comment saying what the 1.2 is. Standing rule 1 calls that a bug in
+waiting. This one is load-bearing, because the plane is a DATUM:
+
+- `SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_OVERCOIL_RAISE + HAIRSPRING_H / 2`
+  sets the balance cock's slab and the three-quarter plate's floor, and so
+  every member stacked on that plate, the alarm's strike tier included.
+- `TRAIN_CEILING_Z = L_HAIRSPRING + HAIRSPRING_H_REF · 0.7` is the going
+  train's ceiling. §218 introduced it so that the overcoil's raise would not
+  move the mainspring or the arrest, and §254's fusee groove band and §47's
+  winding arrest are stationed from it.
+
+**What it costs to leave, measured.** §261 step 1
+(`tools/probe-261-lever-prices.mjs`) built the tree at +1.0. That bought
+**0.076 mm of cased depth, 1:1**, with the glass step still governing. Boot
+raised **6 asserts**: the fusee groove's one-wall slope (§254) and §47's
+arrest. The second half is why the 1.2 is not simply "free to lower". Moving
+it moves the going train's datum, so whatever value is right has to be
+re-solved through the train, not typed in.
+
+**Fix path.**
+
+1. **Derive the plane** from the stack it actually sits on. The spring is
+   carried by the collet on the balance staff above the rim, and its coils
+   breathe over the rim and arms. So its underside wants one `CLEAR_MARGIN`
+   over the balance's highest metal under the coils: the rim's top at
+   `L_BALANCE + RIM_H_REF / 2`, or the arms and the collet's seat if those
+   stand higher. That gives the plane as that face plus the margin plus
+   `HAIRSPRING_H / 2`. The comment states the stack. If the collet's seat
+   governs, it is the member that should be read, not restated.
+2. **Re-solve what the derived value moves.** If the derived plane comes out
+   below today's, `TRAIN_CEILING_Z`, the groove band and the arrest stations
+   follow it as a P3 re-solve, in position space. The 6 asserts step 1 raised
+   are the blast radius to clear, and the oscillator gate re-solves the
+   ribbon. If it comes out ABOVE today's, the 1.2 was hiding an interference,
+   and that is a finding in its own right.
+3. **Price it with the ledger.** `probe-261-height-ledger.mjs` reads the
+   cased depth, and §261's `CASE_HEIGHT_MAX_MM` must move with it: down if
+   depth was bought, and in the open if it was spent.
+
+**Not in scope:** the overcoil itself. Its 0.75 u raise is derived
+(`HAIRSPRING_H + CLEAR_MARGIN`) and the owner kept it on 2026-10-11. This item
+is the plane the overcoil rises FROM.
+

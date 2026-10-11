@@ -43,7 +43,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
@@ -1735,11 +1735,6 @@ const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan /
 // fork bridging a modest gap, not stretched across open space — so this is
 // a much tighter multiple of the two wheels' combined radius than before.
 const escToBalanceDist = (escapeWheelR + balanceR) * 1.3;
-// The lever length the stations once cut the fork end from. Since TODO 226
-// step 1 the fork END is the seat's, and this survives only as the datum of
-// the lever's flank, which the three-quarter plate's cut reads (see
-// makePalletFork's `flankY`).
-const forkLeverLength = escToBalanceDist - palletStoneDist - 1.6;
 // The pin's circle: the builder's own law (G.balancePinCircle), read before
 // the balance exists because the bank below and the seat are solved from it.
 const rollerR = G.balancePinCircle(BALANCE_R);
@@ -1894,7 +1889,7 @@ if (Math.abs(balanceWheel.userData.r - BALANCE_R) > 1e-12 || Math.abs(balanceWhe
 // beatRad/bankRad feed the stones' impulse-face solve (see makePalletFork).
 await breathe(20);
 const palletFork = G.makePalletFork({
-  span: forkSpan, seat: { ...ESCAPEMENT_SEAT.slot, leverL: forkLeverLength }, guard: ESCAPEMENT_SEAT.guard, thickness: FORK_T,
+  span: forkSpan, seat: ESCAPEMENT_SEAT.slot, guard: ESCAPEMENT_SEAT.guard, thickness: FORK_T,
   stoneZReach: L_FORK - L_ESCAPE,
   beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
 });
@@ -5185,27 +5180,27 @@ const COCK_SPINE = (() => {
   return { dir, len, half };
 })();
 await breathe(40);
-// TODO 226 step 1 — THE FORK'S FLOOR DISC IS HELD where the leg below was
-// solved. The disc stands for the fork's whole sweep about its pivot, and the
-// seat's horns reach 10.63 from it where the old ones reached 9.8018: grown,
-// the disc pushed the leg's seat out, the leg is among the vertices the
-// three-quarter plate's cut reads, and the cut is an input to the stop work's
-// solve — so the hack rod re-routed, and the alarm link's rod site and its
-// hoisted constants with it (measured: the mast 0.01 over the cock, eleven
-// warnings down the alarm). None of that was the fork's doing: a disc about
-// the pivot is a coarse stand-in for a lever that swings ±4°, and the metal
-// the horns added lies beside the balance, inside the balance's own disc,
-// which the leg already clears (`discs.push` below). So the radius the leg
-// was solved at is kept, and the assert says why that is enough: every fork
-// vertex past it, at either bank and the recoil margin the plate's cut still
-// carries, stands inside the balance's swept disc. Replacing the disc with
-// the fork's swept SECTOR is the honest model and would move this leg on main
-// too; it is the same layout re-solve as cutting the plate's window to the
-// driven swing, and is filed with it.
-const FORK_LEG_DISC_R = 9.801757916409828;   // xyRadiusAbout(forkGroup, P.fork, FORK_COCK_BOT) before the seat
-{
-  const v = new THREE.Vector3(), swing = FORK_BANK_DEG * 1.25 * DEG2RAD;
-  let worst = -Infinity;
+// TODO 234 — THE FORK IS ITS SWEPT SECTOR, NOT A DISC. The leg solve below
+// keeps its legs off everything that moves under the slab, each part as the
+// region it sweeps. For a wheel that is a disc about its axis; for the pallet
+// fork it is not — the lever banks ±FORK_BANK_DEG about its pivot and points
+// at the balance, and a disc about the pivot claimed a ring of horn-tip radius
+// round the whole pivot, which the fork never enters. Until TODO 234 the disc
+// was used and, after TODO 226's seat moved the horns from 9.80 to 10.03 from
+// the pivot, HELD at the old radius so the leg would not move. Measured
+// against the sector the leg re-seats from 11.75 to 5.5 from the fork's pivot
+// (bearing 330°): the disc had been the binding wall on main as well. This is the
+// sweep TQ_CUT cuts the plate's window to: every fork vertex under the slab
+// laid on the line of centres (`forkBaseAngle` — the group stands unrotated
+// until the first tick) and swung to either bank, binned by azimuth about the
+// pivot to its farthest reach. A bin claims its whole width at that reach, so
+// the region is covered, never shaved; the half-bin over-claim is 0.25° of arc
+// (0.05 at the horns), well inside the margin the seat already keeps.
+const FORK_SWEEP = (() => {
+  const BIN = 0.5 * DEG2RAD, N = Math.round((2 * Math.PI) / BIN);
+  const reach = new Array(N).fill(0);
+  const bankRad = FORK_BANK_DEG * DEG2RAD, STEPS = 16;
+  const v = new THREE.Vector3();
   forkGroup.updateMatrixWorld(true);
   forkGroup.traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position) return;
@@ -5214,28 +5209,62 @@ const FORK_LEG_DISC_R = 9.801757916409828;   // xyRadiusAbout(forkGroup, P.fork,
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
       if (v.z > FORK_COCK_BOT) continue;
       const dx = v.x - P.fork.x, dy = v.y - P.fork.y, rho = Math.hypot(dx, dy);
-      if (rho <= FORK_LEG_DISC_R) continue;
-      // the group stands unrotated until the first tick writes its swing, so
-      // the fork is laid on its line of centres here, then swung either way
-      for (const a of [-swing, 0, swing]) {
-        const th = Math.atan2(dy, dx) + forkBaseAngle + a;
-        worst = Math.max(worst, Math.hypot(P.fork.x + rho * Math.cos(th) - P.balance.x, P.fork.y + rho * Math.sin(th) - P.balance.y) - BAL_OUTER_R);
+      const th = Math.atan2(dy, dx) + forkBaseAngle;
+      for (let k = -STEPS; k <= STEPS; k++) {
+        const a = th + (k / STEPS) * bankRad;
+        const j = ((Math.floor(a / BIN) % N) + N) % N;
+        if (rho > reach[j]) reach[j] = rho;
       }
     }
   });
-  if (worst > 0)
-    console.warn(`TODO 226: fork metal past the held leg disc (r ${FORK_LEG_DISC_R}) stands ${worst.toFixed(4)} outside the balance's swept disc — the held disc no longer covers the fork, and the leg must be re-solved against its sweep`);
-}
+  // Clearance from (x, y) to the swept region: the least distance to any bin's
+  // sector {r ≤ reach, φ in the bin}. Inside a sector's span it is radial;
+  // outside it, the nearer of its two edge segments. The leg scan asks this per
+  // candidate, so the bins are grouped in BLOCKS of 16 (8°), each block a
+  // sector at its farthest bin's reach: that sector contains every bin in it,
+  // so its distance is a lower bound on theirs, and a block whose bound is no
+  // nearer than the best found so far is skipped. The answer is the bin-exact
+  // one; only the work changes (683 bins per call → the blocks plus the few
+  // refined).
+  const TAU = 2 * Math.PI;
+  const sector = (a0, span, R) => ({ a0, span, R,
+    u0x: Math.cos(a0), u0y: Math.sin(a0), u1x: Math.cos(a0 + span), u1y: Math.sin(a0 + span) });
+  const sectorDist = (px, py, rho, phi, q) => {
+    const d = (((phi - q.a0) % TAU) + TAU) % TAU;
+    if (d <= q.span) return rho - q.R;
+    const t0 = clamp(px * q.u0x + py * q.u0y, 0, q.R), t1 = clamp(px * q.u1x + py * q.u1y, 0, q.R);
+    return Math.min(Math.hypot(px - t0 * q.u0x, py - t0 * q.u0y), Math.hypot(px - t1 * q.u1x, py - t1 * q.u1y));
+  };
+  const BLOCK = 16, blocks = [];
+  for (let j0 = 0; j0 < N; j0 += BLOCK) {
+    const bins = [];
+    for (let j = j0; j < Math.min(j0 + BLOCK, N); j++) if (reach[j] > 0) bins.push(sector(j * BIN, BIN, reach[j]));
+    if (bins.length) blocks.push({ hull: sector(j0 * BIN, Math.min(BLOCK, N - j0) * BIN, Math.max(...bins.map((b) => b.R))), bins });
+  }
+  const clear = (x, y) => {
+    const px = x - P.fork.x, py = y - P.fork.y;
+    const rho = Math.hypot(px, py), phi = Math.atan2(py, px);
+    const order = blocks.map((b) => ({ b, lo: sectorDist(px, py, rho, phi, b.hull) })).sort((p, q) => p.lo - q.lo);
+    let c = Infinity;
+    for (const { b, lo } of order) {
+      if (lo >= c) break;
+      for (const q of b.bins) c = Math.min(c, sectorDist(px, py, rho, phi, q));
+    }
+    return c;
+  };
+  return { reach, BIN, clear, maxReach: Math.max(...reach) };
+})();
 const forkCock = (() => {
   // Everything the legs have to miss on the way down to the base plate.
-  // Wheels and levers are given as their SWEPT DISCS about their own axes
-  // (exact for a rotating part, and a bounding box is useless here — the
-  // fourth wheel's box contains the whole escapement).
+  // Wheels are given as their SWEPT DISCS about their own axes (exact for a
+  // rotating part, and a bounding box is useless here — the fourth wheel's box
+  // contains the whole escapement); the pallet fork, which only banks, as its
+  // swept SECTOR (FORK_SWEEP above, TODO 234).
   const discs = [
     [barrelArbor, P.barrel], [centerArbor, P.center], [thirdArbor, P.third],
-    [fourthArbor, P.fourth], [escapeArbor, P.escape], [forkGroup, P.fork],
+    [fourthArbor, P.fourth], [escapeArbor, P.escape],
     [secondsCamArbor, P.fourth], [hammerGroup, hammerPivotPos],
-  ].map(([o, c]) => ({ x: c.x, y: c.y, r: o === forkGroup ? FORK_LEG_DISC_R : xyRadiusAbout(o, c, FORK_COCK_BOT) }));
+  ].map(([o, c]) => ({ x: c.x, y: c.y, r: xyRadiusAbout(o, c, FORK_COCK_BOT) }));
   // The BALANCE counts for its whole swept radius, not just the staff and
   // roller that share the legs' z band. Mechanically a leg could stand under
   // the rim's overhang; but the fork lies between the escape wheel and the
@@ -5245,7 +5274,7 @@ const forkCock = (() => {
   // legs out of the one view this bridge exists to open up.
   discs.push({ x: P.balance.x, y: P.balance.y, r: BAL_OUTER_R });
   const floorClear = (x, y) => {
-    let c = Infinity;
+    let c = FORK_SWEEP.clear(x, y); // the fork: its swept sector (TODO 234)
     for (const d of discs) c = Math.min(c, Math.hypot(x - d.x, y - d.y) - d.r);
     return c;
   };
@@ -5460,8 +5489,11 @@ const TQ_CUT = (() => {
   //    lobe no fork ever entered. The sweep is laid on the line of centres
   //    (`forkBaseAngle`) now. Neither change reaches the stop work's solve,
   //    which reads this table (measured: no route, rod site or hoisted
-  //    constant moved); what does reach it is the fork cock's leg, held
-  //    (FORK_LEG_DISC_R);
+  //    constant moved). Nor, since TODO 234, does the fork cock's leg
+  //    re-seating against the fork's swept sector: it took the lobe the old
+  //    leg cut at 300–327° (out to 17.0) back to the balance's own edge and
+  //    cut a shorter one at 295–305° (out to 14.9) where it stands now, and
+  //    the stop work's bearing, pivot, rod and mast read bit-identical;
   //  · the fork cock — static.
   // (The escape wheel no longer contributes: it pivots in this plate.)
   const bankRad = FORK_BANK_DEG * DEG2RAD;
@@ -53154,6 +53186,10 @@ assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label
 refreshDrillRow();    // §10 level 2: a deep-linked ?unit= may already be drillable
 confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned overrides
 
+// §261 step 5: the cased depth §39's box measures, published for the height
+// cap's assert, which needs the build's config key and so runs after it.
+let CASED_DEPTH_MM = NaN;
+
 // §39 — the SIZE PREDICTIONS. UNIT_MM is pinned to fusee chain pitch (see
 // layout.js), so none of these three numbers was tuned to come out right.
 // They are the falsifiable half of that pin: if the scale is wrong, or the
@@ -53224,6 +53260,7 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
   const casedMM = MM(casedBox.getSize(new THREE.Vector3()).z);
   if (!(casedMM >= movMM && casedMM <= 14))
     console.warn(`§39: cased assembly ${casedMM.toFixed(2)} mm deep, outside the movement–14 mm envelope (stack budget 14.11)`);
+  CASED_DEPTH_MM = casedMM;   // §261 step 5 holds it to CASE_HEIGHT_MAX_MM once the config is known (below)
 
   // The chain pitch itself is not asserted — it IS the pin, so checking it
   // against its own definition would be the circularity this entry exists to
@@ -53530,6 +53567,26 @@ function refreshConfigMark() {
   pill.querySelector('#btn-config-as-designed').style.display = (s.reasons.includes('spec') || s.reasons.includes('route')) ? '' : 'none';
 }
 refreshConfigMark();
+
+// §261 step 5 — THE HEIGHT CAP, held both ways (layout.js CASE_HEIGHT_MAX_MM
+// says why it is a ratchet). Deeper than the cap is the case GROWING, and it
+// fails on every build, because a spec or a tuning that deepens the case has
+// spent depth too. Under the cap by more than a step is the cap going STALE,
+// and that half reads only the DEFAULT build — the identity row the battery
+// sweeps — since a reconfigured build may honestly stand shallower and owes
+// the cap nothing. Both faces are case metal (the bezel's crystal, the back's
+// glass step or its keys), so the reading is pose-free: BOOT HAS NO POSE, and
+// this does not need one. A movement part reaching past the case would read
+// here first, which is the point.
+{
+  const identity = VALIDATED_CONFIGS.find((r) => r.point === 'identity');
+  if (!(CASED_DEPTH_MM <= CASE_HEIGHT_MAX_MM))
+    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, over CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM} — the case grew; spend depth in the open by raising the cap in layout.js, or take the growth back`);
+  else if (!identity)
+    console.warn('§261: no identity row in validated-configs.js — the height cap cannot tell the default build, so its stale half is not held');
+  else if (configState().key === identity.key && CASE_HEIGHT_MAX_MM - CASED_DEPTH_MM > CASE_HEIGHT_STEP_MM)
+    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, more than ${CASE_HEIGHT_STEP_MM} mm under CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM} — this change bought depth; lower the cap to ${(Math.ceil(CASED_DEPTH_MM / CASE_HEIGHT_STEP_MM) * CASE_HEIGHT_STEP_MM).toFixed(3)} so it stays bought`);
+}
 
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
