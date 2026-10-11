@@ -13497,7 +13497,9 @@ export async function checkLineSpec(clock) {
       // without one it is an equality like §163's carry
       const pass = Number.isFinite(got) && Number.isFinite(want) && (
         row.bound === 'max' ? delta <= tol : row.bound === 'min' ? delta >= -tol : Math.abs(delta) <= tol);
-      const forkedHere = !!(fork && fork.rows && row.key in fork.rows);
+      // only a literal spec row can be forked: an override of a law or an
+      // envelope is malformed (above) and is neither applied, moved nor stale
+      const forkedHere = !!(fork && fork.rows && row.key in fork.rows) && !isLaw(row) && row.kind !== 'envelope';
       const movedByFork = !!fork && !forkedHere && Number.isFinite(want) && Number.isFinite(refWant) && Math.abs(want - refWant) > (tol ?? 0);
       if (forkedHere && Number.isFinite(refWant) && Math.abs(want - refWant) <= (tol ?? 0))
         staleForks.push({ fork: fork.name, key: row.key, value: want, reference: refWant });
