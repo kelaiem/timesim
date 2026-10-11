@@ -7,15 +7,19 @@
 // (LINE_SPECS in src/inspect.js). A gate that passes on the shipped tree has
 // proved only that it does not fail; this proves it fails, and fails on the
 // RIGHT rows, which is what makes its silence on the shipped tree mean
-// something. Three boots, each a copied tree (height-ledger's mutantTree):
+// something. Five boots, each a copied tree (height-ledger's mutantTree), over
+// both references — the switch's drive line and the lock that reads it:
 //
-//   1. identity — 0 violations, control PASS.
+//   1. identity — 0 violations, both controls PASS.
 //   2. the wheel grown, ALARM_COL_BASE_R 5.7 → 5.8 — a fold that resized the
-//      wheel without declaring a fork. baseR, rootR, travel and offset must
-//      fail (the derived chain follows the base radius), and columns, teeth,
+//      wheel without declaring a fork. The drive's radii and its derived chain
+//      fail (baseR, rootR, tipR, colInner, travel, offset), and columns, teeth,
 //      step, straddle, straight and carry must NOT, because the build still
 //      derives its own pin from its own wheel: the mechanism is coherent, it is
-//      just no longer the one specified.
+//      just no longer the one specified. The LOCK fails too, through
+//      `inherits` and nothing else: its nose, read radius, post stand-off, arm
+//      and chamfer all follow the wheel, while its lever, finger and stop wheel
+//      stay green — the inheritance reaching exactly as far as the rocker.
 //   3. the offset hand-tuned, ALARM_DRIVE_OFFSET × 1.02 — §163's history, a
 //      moment arm "that looked right" in place of the coupling's derivation.
 //      offset AND step must fail: a pin at the wrong offset sweeps the driver
@@ -25,11 +29,22 @@
 //      the wheel's whole-actuation carry reads one exact step while the driver
 //      under-delivers — the driver's sweep is the row that sees a mis-set
 //      coupling, and the first draft of this probe predicted otherwise.
+//   4. the lock lever lengthened, ALARM_LOCK_L 5.0 → 5.2 — the lever's own
+//      triangle. lockL, lift and rCham fail, and the finger's seat and release
+//      must NOT: the build re-solves both angles from the stop wheel's radii,
+//      so the finger still lands on the root and one margin off the tips. The
+//      lift it takes to get there is what moved, and the chamfer with it.
+//   5. the rocker post thickened past the ceiling, ALARM_ROCKER_POST_R
+//      0.22 → 0.40 — the ENVELOPE firing. §171's rule stands the post further
+//      out, the Thales arm lengthens to 2.837, the chamfer it owes grows to
+//      0.2753 and crosses the 0.268 the §35 link beak's landing leaves: the
+//      one row a fork could never declare away.
 //
 // What it is NOT: probe-261-height-cap.mjs fires the height ratchet; this
-// fires the mechanism reference. The check's own control (a known shift of
-// the pin's line moving the measured offset by exactly that much) holds the
-// READER; this holds the GATE.
+// fires the mechanism reference. The check's own controls (a known shift of
+// the pin's line moving the measured offset by exactly that much; the rocker's
+// post carried a known distance and the stand-off following it) hold the
+// READERS; this holds the GATE.
 //
 // Run from tools/: node probe-70-line-spec.mjs
 import { chromium } from 'playwright';
@@ -65,23 +80,31 @@ async function lineSpecOn(dir) {
 const SRC = 'src/main.js';
 const cases = [
   { name: 'identity', patches: [], fail: [] },
-  { name: 'the wheel grown (ALARM_COL_BASE_R 5.7 → 5.8)', fail: ['baseR', 'rootR', 'travel', 'offset'],
+  { name: 'the wheel grown (ALARM_COL_BASE_R 5.7 → 5.8)',
+    fail: ['alarm switch drive/baseR', 'alarm switch drive/rootR', 'alarm switch drive/tipR', 'alarm switch drive/colInner',
+      'alarm switch drive/travel', 'alarm switch drive/offset',
+      'alarm lock/noseR', 'alarm lock/readR', 'alarm lock/postW', 'alarm lock/arm', 'alarm lock/rCham'],
     patches: [{ file: SRC, find: 'const ALARM_COL_BASE_R = 5.7;', to: 'const ALARM_COL_BASE_R = 5.8;' }] },
-  { name: 'the offset hand-tuned (ALARM_DRIVE_OFFSET × 1.02)', fail: ['offset', 'step'],
+  { name: 'the offset hand-tuned (ALARM_DRIVE_OFFSET × 1.02)', fail: ['alarm switch drive/offset', 'alarm switch drive/step'],
     patches: [{ file: SRC, find: 'const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));',
       to: 'const ALARM_DRIVE_OFFSET = 1.02 * ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));' }] },
+  { name: 'the lock lever lengthened (ALARM_LOCK_L 5.0 → 5.2)', fail: ['alarm lock/lockL', 'alarm lock/lift', 'alarm lock/rCham'],
+    patches: [{ file: SRC, find: 'const ALARM_LOCK_L = 5.0;', to: 'const ALARM_LOCK_L = 5.2;' }] },
+  { name: 'the rocker post thickened past the ceiling (ALARM_ROCKER_POST_R 0.22 → 0.40)',
+    fail: ['alarm lock/postR', 'alarm lock/postW', 'alarm lock/arm', 'alarm lock/rCham', 'alarm lock/chamCeiling'],
+    patches: [{ file: SRC, find: 'const ALARM_ROCKER_POST_R = 0.22;', to: 'const ALARM_ROCKER_POST_R = 0.40;' }] },
 ];
 let ok = true;
 for (const c of cases) {
   const { r } = await lineSpecOn(mutantTree(c.patches));
-  const failed = r.rows.filter((x) => !x.pass).map((x) => x.key).sort();
+  const failed = r.rows.filter((x) => !x.pass).map((x) => `${x.ref}/${x.key}`).sort();
   const want = [...c.fail].sort();
   const rowsOk = JSON.stringify(failed) === JSON.stringify(want);
   const ctlOk = String(r.control).startsWith('PASS');
   const good = rowsOk && ctlOk && r.malformed.length === 0;
   if (!good) ok = false;
   console.log(`${good ? 'PASS' : 'FAIL'}  ${c.name}: failing rows [${failed.join(', ')}], want [${want.join(', ')}]; control ${ctlOk ? 'PASS' : r.control}${r.malformed.length ? `; malformed ${JSON.stringify(r.malformed)}` : ''}`);
-  for (const x of r.rows.filter((y) => !y.pass)) console.log(`      ${x.key.padEnd(9)} spec ${Number(x.spec).toFixed(6)}  measured ${Number(x.measured).toFixed(6)}`);
+  for (const x of r.rows.filter((y) => !y.pass)) console.log(`      ${(x.ref + '/' + x.key).padEnd(30)} spec ${Number(x.spec).toFixed(6)}  measured ${Number(x.measured).toFixed(6)}`);
 }
 console.log(ok ? '\nPASS — lineSpec is silent on the shipped switch and names exactly the rows each sabotage moved'
   : '\nFAIL — lineSpec does not fire as declared');

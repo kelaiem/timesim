@@ -12863,11 +12863,18 @@ export function checkAestheticsMerge() {
 //                     declares a FORK (§70 step 3, not built yet: until it is,
 //                     a moved spec row simply fails).
 //   kind 'envelope' — a window the mechanism must live inside whatever the
-//                     integration. Inherited, never forkable.
+//                     integration. Inherited, never forkable. With `bound`
+//                     'max' or 'min' it is one side of a window (the lock's
+//                     chamfer ceiling); without one it is an equality (§163's
+//                     carry).
+// A reference may `inherits` an earlier one: the parent's DERIVED rows are in
+// scope for its value functions and are not measured again, so the lock reads
+// the wheel's radii from the reference that already holds them to the metal
+// rather than restating them.
 // Tolerances are float noise of the constructions, not budgets: a fold that
 // moves a row moves it by orders more. Waivers follow stockFloor's convention
 // (cite a TODO; a waiver whose row passes is STALE and fails).
-export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, count: 0 };
+export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, ratio: 1e-6, count: 0 };
 export const LINE_SPECS = [
   {
     name: 'alarm switch drive',
@@ -12882,6 +12889,10 @@ export const LINE_SPECS = [
         derivedFrom: '§68: Ø 4.32 mm, real chronograph scale (4–6 mm on a 30 mm movement); TODO 11 grew the wheel to it' },
       { key: 'rootR', kind: 'spec', unit: 'u', value: (r) => 0.9 * r.baseR, measure: 'sawRootR',
         derivedFrom: 'the saw’s root circle at 0.9 · baseR (makeColumnWheel): the circle the pawl’s tooth pitch is laid on' },
+      { key: 'tipR', kind: 'spec', unit: 'u', value: (r) => 1.12 * r.baseR, measure: 'sawTipR',
+        derivedFrom: 'the saw’s tip circle at 1.12 · baseR (makeColumnWheel): what every rod crossing the saw’s band stands clear of (§171), and with the root the tooth depth the riders’ noses are cut to' },
+      { key: 'colInner', kind: 'spec', unit: 'u', value: (r) => r.baseR * 0.95 / 1.5, measure: 'colInnerR',
+        derivedFrom: 'the castellations’ inner wall at the original 0.95 : 1.5 proportion, kept through every regrowth of the wheel (ALARM_COL_INNER) — the §35 link beak lands between it and the base radius' },
       { key: 'step', kind: 'spec', unit: 'rad', value: (r) => Math.PI / r.columns, measure: 'driverSweep',
         derivedFrom: 'half a column pitch per actuation; measured as the DRIVER’s sweep over the press stroke, because a radial slot makes the driver’s angle the pin’s azimuth (§163)' },
       { key: 'travel', kind: 'spec', unit: 'u', value: (r) => (2 * Math.PI / r.teeth) * r.rootR, measure: 'pinTravel',
@@ -12894,6 +12905,59 @@ export const LINE_SPECS = [
         derivedFrom: 'the pin travels a straight line (a pusher in a bored tube), which is the premise of the offset row' },
       { key: 'carry', kind: 'envelope', unit: 'rad', value: (r) => r.step, measure: 'wheelCarry',
         derivedFrom: '§163’s EQUALITY: one whole actuation carries the wheel exactly one step. TODO 87 finding 1 measured 117.39 % of a tooth when this was a floor, and the surplus was displacement into metal' },
+    ],
+  },
+  {
+    // §183's fold, written down as the reference it was designed from: the
+    // seed §70 names as the one that lands GREEN, beside a §35 seed that would
+    // land red. It is the second link out of the switch §261 folds under the
+    // dial, and the one most likely to fork — the lever, its finger and the
+    // stop wheel stay on the striking arbor wherever the wheel goes.
+    name: 'alarm lock',
+    group: 'Alarm lock',
+    inherits: 'alarm switch drive',   // the wheel it reads: baseR, rootR, tipR and colInner come from there, never restated
+    path: 'column wheel → rocker beak on the columns’ outer wall → rocker → pin in the lever’s radial slot → lock lever → finger in the stop wheel',
+    rows: [
+      { key: 'noseR', kind: 'spec', unit: 'u', value: (r) => (r.tipR - r.rootR) / 2, measure: 'beakNoseR',
+        derivedFrom: 'half a saw tooth (ALARM_COL_RIDER_NOSE_R = ratchetToothDepth / 2): a rider no thinner than the teeth beside it, and the radius the wheel sizes its flat tops for' },
+      { key: 'readR', kind: 'spec', unit: 'u', value: (r) => r.baseR + r.noseR, measure: 'beakReadR',
+        derivedFrom: '§183: the nose’s CENTRE rides one nose radius outside the column’s outer wall; a box laid along the arm buried itself −0.3022 there' },
+      { key: 'postR', kind: 'spec', unit: 'u', value: 0.22, measure: 'rockerPostR',
+        derivedFrom: 'post stock, the alarmLockSpringStud precedent (ALARM_ROCKER_POST_R)' },
+      { key: 'postW', kind: 'spec', unit: 'u', value: (r) => r.tipR + CLEAR_MARGIN + r.postR, measure: 'rockerPostW',
+        derivedFrom: '§171’s rule: a rod crossing the saw’s band stands one margin clear of its tips' },
+      { key: 'arm', kind: 'spec', unit: 'u', value: (r) => Math.sqrt(r.postW ** 2 - r.readR ** 2), measure: 'rockerArm',
+        derivedFrom: '§183, Thales: the pivot stands perpendicular to the wheel radius at the read station, so the smallest arm whose post clears the saw is √(postW² − readR²)' },
+      { key: 'gain', kind: 'spec', unit: 'ratio', value: 1, measure: 'readGain',
+        derivedFrom: 'the read is RADIAL, which is the rocker’s reason to exist: TODO 90 finding 5 measured 0.00114 of radial excursion when the beak rode the lever’s own tail' },
+      { key: 'pinLine', kind: 'spec', unit: 'u', value: 0, measure: 'pinOffLine',
+        derivedFrom: '§183: the pin stands on the lever-pivot → rocker-pivot line, so both members’ velocities at it are parallel; off it, two paper layouts transmitted almost nothing' },
+      { key: 'stopRootR', kind: 'spec', unit: 'u', value: 3.2, measure: 'stopRootR',
+        derivedFrom: '§25 B’s band, unmoved: TODO 90 finding 4 stood the teeth OUTWARD from it so the engaged seat, and the column wheel’s station laid off it, stayed bit-identical' },
+      { key: 'stopDepth', kind: 'spec', unit: 'u', value: STOCK_MIN_U, measure: 'stopDepth',
+        derivedFrom: 'TODO 90 finding 4: a radial locking face cannot cam out at any depth, so the tooth only has to be stock that stays metal (§50’s floor)' },
+      { key: 'lockD', kind: 'spec', unit: 'u', value: 7.0, measure: 'lockD',
+        derivedFrom: '§25 B: lever pivot → striking axis (ALARM_LOCK_D)' },
+      { key: 'lockL', kind: 'spec', unit: 'u', value: 5.0, measure: 'lockL',
+        derivedFrom: '§25 B: lever pivot → finger centre (ALARM_LOCK_L)' },
+      { key: 'padR', kind: 'spec', unit: 'u', value: 0.3, measure: 'padR',
+        derivedFrom: '§25 B: the finger (ALARM_LOCK_PAD_R)' },
+      { key: 'seat', kind: 'spec', unit: 'u', value: (r) => r.stopRootR + r.padR, measure: 'padSeat',
+        derivedFrom: 'ENGAGED, the beak on a column: the finger on the stop wheel’s root circle, inside a tooth space — a form-locking stop, where the smooth band it replaced held by a kiss carrying nothing (TODO 90 finding 4)' },
+      { key: 'release', kind: 'spec', unit: 'u', value: (r) => r.stopRootR + r.stopDepth + r.padR + CLEAR_MARGIN, measure: 'padRelease',
+        derivedFrom: 'LIFTED, the beak in a gap: the finger one margin clear of the tips' },
+      { key: 'lift', kind: 'spec', unit: 'rad',
+        value: (r) => {
+          const at = (d) => Math.acos((r.lockD ** 2 + r.lockL ** 2 - d * d) / (2 * r.lockD * r.lockL));
+          return at(r.release) - at(r.seat);
+        },
+        measure: 'leverLift',
+        derivedFrom: '§102, re-derived by TODO 90 finding 4: the lever’s own triangle inverted in closed form, seat to release — §102’s first form bought the ARC and delivered 94.94 % of the radial clearance' },
+      { key: 'rCham', kind: 'spec', unit: 'u', value: (r) => r.arm * r.lift, measure: 'noseDrop',
+        derivedFrom: '§183: the chamfer the pillars owe the follower is exactly its radial travel, arm × the lever’s lift (the pin-in-slot is cut at equal radii) — measured as the beak’s fall, column to gap' },
+      { key: 'chamCeiling', kind: 'envelope', bound: 'max', unit: 'u',
+        value: (r) => r.baseR - ((r.colInner + r.baseR) / 2 + r.noseR + CLEAR_MARGIN), measure: 'noseDrop',
+        derivedFrom: 'the §35 link beak lands mid-castellation, and the chamfer may not come inboard of that landing plus a nose plus a margin (ALARM_COL_RCHAM_MAX). §183’s whole argument: re-siting the beak needed 0.5448 or 0.6723 against it, the fold needs arm × lift' },
     ],
   },
 ];
@@ -13002,6 +13066,8 @@ function lineSpecDrive(clock, { pinShift = 0 } = {}) {
     sawToothCount: Number.isFinite(rootR) ? runs(skirt, (rootR + tipR) / 2) : NaN,
     wheelBaseR: baseR,
     sawRootR: rootR,
+    sawTipR: tipR,
+    colInnerR: cMin,
     driverSweep: Math.abs(wrap(drv1 - drv0)),
     pinTravel: L,
     pinOffset: offset,
@@ -13013,50 +13079,216 @@ function lineSpecDrive(clock, { pinShift = 0 } = {}) {
   };
 }
 
+// THE LOCK'S READERS. Two states of `alarmToggle` — f 0 (disarmed) and f 0.5
+// (armed) — which the axis reaches by stepping the column wheel, so the rocker,
+// the lever and the finger are posed by the build's own law from the wheel's
+// angle and nothing here poses them. Which state puts the beak on a column is
+// READ (the larger nose radius), not assumed, and the gate's rows then say
+// whether the finger agrees.
+//
+// Every centre is the middle of a mesh's world box in plan: the beak, both
+// posts, the pin and the finger are even-sided cylinders, centrally symmetric,
+// so the box is centred on the axis at any rotation (the vertex mean is not —
+// the drive reader's pin read 0.0104 off that way). The two wheels' axes are
+// the centroids of their own cut outlines, whose tips and roots are evenly
+// spaced.
+const lineSpecPlanCentre = (mesh) => {
+  mesh.updateWorldMatrix(true, false);
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+    if (v.x < x0) x0 = v.x; if (v.x > x1) x1 = v.x; if (v.y < y0) y0 = v.y; if (v.y > y1) y1 = v.y;
+  }
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+};
+const lineSpecOutline = (mesh) => {
+  const sh = mesh.geometry.parameters?.shapes;
+  const shp = Array.isArray(sh) ? sh[0] : sh;
+  if (!shp || !shp.getPoints) return null;
+  const p = shp.getPoints();
+  return p.length > 1 && Math.hypot(p[0].x - p[p.length - 1].x, p[0].y - p[p.length - 1].y) < 1e-9 ? p.slice(0, -1) : p;
+};
+const lineSpecOutlineCentre = (mesh) => {
+  const ring = lineSpecOutline(mesh);
+  if (!ring) return null;
+  mesh.updateWorldMatrix(true, false);
+  const c = new THREE.Vector3();
+  for (const q of ring) c.add(new THREE.Vector3(q.x, q.y, 0).applyMatrix4(mesh.matrixWorld));
+  c.multiplyScalar(1 / ring.length);
+  return { x: c.x, y: c.y };
+};
+// A cylinder's radius off its own vertices, about its LOCAL axis (three.js
+// builds CylinderGeometry along +y; the meshes are turned by rotation.x, which
+// does not touch the geometry).
+const lineSpecCylR = (mesh) => {
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+  let r = 0;
+  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); r = Math.max(r, Math.hypot(v.x, v.z)); }
+  return r;
+};
+function lineSpecLock(clock) {
+  const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
+  const meshes = {
+    beak: find('alarmLockBeak'), post: find('alarmLockBeakRiser'), pin: find('alarmLockRockerPin'),
+    pivot: find('alarmLockPivotPost'), pad: find('alarmLockPad'), stop: find('alarmLockCollar'), skirt: find('alarmColSkirt'),
+  };
+  const missing = Object.entries(meshes).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
+  const { beak, post, pin, pivot, pad, stop, skirt } = meshes;
+  const stopRing = lineSpecOutline(stop);
+  if (!stopRing || !lineSpecOutline(skirt)) return { error: 'a wheel’s cut outline is unreadable (no ExtrudeGeometry shapes) — its axis and radii cannot be measured' };
+  const toggle = AXES.find((a) => a.name === 'alarmToggle');
+  const lever = pad.parent;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const read = (f) => {
+    enterAxis(clock); clock.setPose(toggle.pose(f)); clock.scene.updateMatrixWorld(true);
+    lever.updateWorldMatrix(true, false);
+    const e = lever.matrixWorld.elements;
+    return {
+      W: lineSpecOutlineCentre(skirt), S: lineSpecOutlineCentre(stop),
+      B: lineSpecPlanCentre(beak), Q: lineSpecPlanCentre(post), Pin: lineSpecPlanCentre(pin),
+      P: lineSpecPlanCentre(pivot), F: lineSpecPlanCentre(pad), leverA: Math.atan2(e[1], e[0]),
+    };
+  };
+  const a = read(0), b = read(0.5);
+  enterAxis(clock);
+  const onCol = dist(a.B, a.W) >= dist(b.B, b.W) ? a : b, inGap = onCol === a ? b : a;
+  // the read's radial gain at rest: the beak moves perpendicular to its arm,
+  // so the gain is the cosine between that direction and the wheel radius
+  const arm = { x: onCol.B.x - onCol.Q.x, y: onCol.B.y - onCol.Q.y }, armL = Math.hypot(arm.x, arm.y);
+  const rad = { x: onCol.W.x - onCol.B.x, y: onCol.W.y - onCol.B.y }, radL = Math.hypot(rad.x, rad.y);
+  const gain = Math.abs((-arm.y * rad.x + arm.x * rad.y) / (armL * radL));
+  // the pin's distance off the lever-pivot → rocker-pivot line, at rest
+  const pq = { x: onCol.Q.x - onCol.P.x, y: onCol.Q.y - onCol.P.y }, pqL = Math.hypot(pq.x, pq.y);
+  const pinOff = Math.abs((onCol.Pin.x - onCol.P.x) * pq.y - (onCol.Pin.y - onCol.P.y) * pq.x) / pqL;
+  const radii = stopRing.map((q) => Math.hypot(q.x, q.y));
+  const wrap = (x) => { while (x > Math.PI) x -= 2 * Math.PI; while (x <= -Math.PI) x += 2 * Math.PI; return x; };
+  return {
+    beakNoseR: lineSpecCylR(beak),
+    beakReadR: dist(onCol.B, onCol.W),
+    rockerPostR: lineSpecCylR(post),
+    rockerPostW: dist(onCol.Q, onCol.W),
+    rockerArm: armL,
+    readGain: gain,
+    pinOffLine: pinOff,
+    stopRootR: Math.min(...radii),
+    stopDepth: Math.max(...radii) - Math.min(...radii),
+    lockD: dist(onCol.P, onCol.S),
+    lockL: dist(onCol.P, onCol.F),
+    padR: lineSpecCylR(pad),
+    padSeat: dist(onCol.F, onCol.S),
+    padRelease: dist(inGap.F, inGap.S),
+    leverLift: Math.abs(wrap(inGap.leverA - onCol.leverA)),
+    noseDrop: dist(onCol.B, onCol.W) - dist(inGap.B, inGap.W),
+    columnState: onCol === a ? 'alarmToggle f 0' : 'alarmToggle f 0.5',
+  };
+}
+// The lock's CONTROL moves METAL: the rocker's post is carried a known distance
+// along the wheel's radius and the measured stand-off must follow it exactly,
+// then the post goes back. A reader that quoted ALARM_ROCKER_POST_W, or read
+// the post's build-time position, would not move.
+function lineSpecLockControl(clock, m) {
+  let post = null; clock.scene.traverse((o) => { if (!post && o.isMesh && o.name === 'alarmLockBeakRiser' && !o.userData.schematic) post = o; });
+  if (!post) return 'FAIL — the rocker post is not in the scene';
+  const D = 0.05;
+  const read0 = lineSpecLock(clock);
+  const W = (() => { let sk = null; clock.scene.traverse((o) => { if (!sk && o.isMesh && o.name === 'alarmColSkirt') sk = o; }); return lineSpecOutlineCentre(sk); })();
+  const Q = lineSpecPlanCentre(post);
+  const L = Math.hypot(Q.x - W.x, Q.y - W.y);
+  post.updateWorldMatrix(true, false);
+  const parent = post.parent;
+  const from = parent.worldToLocal(new THREE.Vector3(Q.x, Q.y, 0));
+  const to = parent.worldToLocal(new THREE.Vector3(Q.x + (Q.x - W.x) / L * D, Q.y + (Q.y - W.y) / L * D, 0));
+  const delta = to.sub(from);
+  post.position.add(delta);
+  let moved;
+  try { moved = lineSpecLock(clock).rockerPostW - read0.rockerPostW; }
+  finally { post.position.sub(delta); clock.scene.updateMatrixWorld(true); }
+  const back = lineSpecLock(clock).rockerPostW;
+  return Math.abs(moved - D) <= 1e-9 && back === read0.rockerPostW && m.leverLift > 0
+    ? `PASS — the rocker post carried ${D} out along the wheel radius moves the measured stand-off by ${moved.toFixed(9)}, and restored reads the same; the toggle applied (lift ${m.leverLift.toFixed(6)} rad)`
+    : `FAIL — carried ${D}, the stand-off moved ${moved}; restored ${back} vs ${read0.rockerPostW}; lift ${m.leverLift}`;
+}
+
+// One reader and one control per reference. A reference with no reader is
+// MALFORMED, never skipped: a table row nothing measures is the §66 lever
+// spans' failure, a number checkable by a reader and by nothing else.
+const LINE_SPEC_READERS = {
+  'alarm switch drive': {
+    read: (clock) => lineSpecDrive(clock),
+    // shift the pin's line sideways by a known amount and the offset must move
+    // by EXACTLY that — the linearity control the MTV trap asks of any reading
+    // that could be a search artefact. A re-quoted constant would not move.
+    control: (clock, m) => {
+      const D = 0.05;
+      const shifted = lineSpecDrive(clock, { pinShift: D });
+      const moved = Math.abs(shifted.pinOffset - m.pinOffset);
+      return Math.abs(moved - D) <= 1e-9 && m.wheelCarry > 0
+        ? `PASS — the pin's line shifted ${D} moves the measured offset by ${moved.toFixed(12)}; the press poses applied (carry ${m.wheelCarry.toFixed(6)} rad)`
+        : `FAIL — shifted ${D}, the offset moved ${moved}; carry ${m.wheelCarry}`;
+    },
+    check: (m) => (m.outlineRead ? null : 'the saw’s cut outline is unreadable (no ExtrudeGeometry shapes) — the root circle cannot be measured'),
+  },
+  'alarm lock': { read: (clock) => lineSpecLock(clock), control: (clock, m) => lineSpecLockControl(clock, m) },
+};
+
 export async function checkLineSpec(clock) {
-  const rows = [], violations = [], staleWaivers = [], malformed = [];
-  let control = 'not run';
+  const rows = [], violations = [], staleWaivers = [], malformed = [], controls = {};
+  const specs = {};
   for (const ref of LINE_SPECS) {
-    const m = ref.name === 'alarm switch drive' ? lineSpecDrive(clock) : { error: 'no reader for this reference' };
+    const reader = LINE_SPEC_READERS[ref.name];
+    if (!reader) { malformed.push({ ref: ref.name, error: 'no reader for this reference' }); continue; }
+    if (ref.inherits && !specs[ref.inherits]) { malformed.push({ ref: ref.name, error: `inherits '${ref.inherits}', which is not declared above it` }); continue; }
+    const m = reader.read(clock);
     if (m.error) { malformed.push({ ref: ref.name, error: m.error }); continue; }
-    if (!m.outlineRead) malformed.push({ ref: ref.name, error: 'the saw’s cut outline is unreadable (no ExtrudeGeometry shapes) — the root circle cannot be measured' });
-    const spec = {};
+    const why = reader.check && reader.check(m);
+    if (why) malformed.push({ ref: ref.name, error: why });
+    // an inherited row is the parent's DERIVED value, never re-measured here:
+    // the parent's own rows already hold it to the metal
+    const spec = ref.inherits ? { ...specs[ref.inherits] } : {};
     for (const row of ref.rows) {
+      if (row.kind === 'envelope' && row.bound && row.bound !== 'max' && row.bound !== 'min')
+        malformed.push({ ref: ref.name, key: row.key, error: `bound '${row.bound}' is neither 'max' nor 'min'` });
+      if (row.kind !== 'envelope' && row.bound)
+        malformed.push({ ref: ref.name, key: row.key, error: 'only an envelope may be a bound; a spec row is an equality' });
       const want = typeof row.value === 'function' ? row.value(spec) : row.value;
       spec[row.key] = want;
       const got = m[row.measure];
-      const tol = LINE_SPEC_TOL[row.unit === 'count' ? 'count' : row.unit];
+      const tol = LINE_SPEC_TOL[row.unit];
+      if (tol === undefined) malformed.push({ ref: ref.name, key: row.key, error: `unit '${row.unit}' has no tolerance` });
       const delta = got - want;
-      const pass = Number.isFinite(got) && Math.abs(delta) <= tol;
+      // an envelope with a bound is a WINDOW, so only crossing its side fails;
+      // without one it is an equality like §163's carry
+      const pass = Number.isFinite(got) && Number.isFinite(want) && (
+        row.bound === 'max' ? delta <= tol : row.bound === 'min' ? delta >= -tol : Math.abs(delta) <= tol);
       const wkey = `${ref.name}/${row.key}`;
       const waiver = LINE_SPEC_WAIVERS[wkey];
-      const out = { ref: ref.name, key: row.key, kind: row.kind, unit: row.unit, spec: want, measured: got, delta, tol, pass, waived: !pass && !!waiver, derivedFrom: row.derivedFrom };
+      const out = { ref: ref.name, key: row.key, kind: row.kind, unit: row.unit, bound: row.bound || null, spec: want, measured: got, delta, tol, pass, waived: !pass && !!waiver, derivedFrom: row.derivedFrom };
       rows.push(out);
       if (!pass && !waiver) violations.push(out);
       if (pass && waiver) staleWaivers.push({ key: wkey, waiver });
     }
-    // THE CONTROL: shift the pin's measured line sideways by a known amount and
-    // the offset must move by EXACTLY that amount — the linearity control the
-    // MTV trap asks of any reading that could be a search artefact. A reader
-    // that re-quoted the constant would not move at all.
-    if (ref.name === 'alarm switch drive') {
-      const D = 0.05;
-      const shifted = lineSpecDrive(clock, { pinShift: D });
-      const moved = Math.abs(shifted.pinOffset - m.pinOffset);
-      control = Math.abs(moved - D) <= 1e-9 && m.wheelCarry > 0
-        ? `PASS — the pin's line shifted ${D} moves the measured offset by ${moved.toFixed(12)}; the press poses applied (carry ${m.wheelCarry.toFixed(6)} rad)`
-        : `FAIL — shifted ${D}, the offset moved ${moved}; carry ${m.wheelCarry}`;
-    }
+    specs[ref.name] = spec;
+    controls[ref.name] = reader.control ? reader.control(clock, m) : 'FAIL — no control declared';
   }
+  enterAxis(clock);
   for (const k of Object.keys(LINE_SPEC_WAIVERS)) {
     const [refName, key] = k.split('/');
-    if (!LINE_SPECS.some((r) => r.name === refName && r.rows.some((x) => x.key === key))) malformed.push({ waiver: k, error: 'names no row' });
+    const row = LINE_SPECS.find((r) => r.name === refName)?.rows.find((x) => x.key === key);
+    if (!row) malformed.push({ waiver: k, error: 'names no row' });
+    else if (!/TODO \d+/.test(String(LINE_SPEC_WAIVERS[k]))) malformed.push({ waiver: k, error: 'a waiver must cite the TODO that pays it' });
   }
+  const ctl = Object.entries(controls);
+  const control = ctl.length === LINE_SPECS.length && ctl.every(([, c]) => String(c).startsWith('PASS'))
+    ? `PASS — ${ctl.map(([n, c]) => `${n}: ${c.slice(7)}`).join('; ')}`
+    : `FAIL — ${ctl.filter(([, c]) => !String(c).startsWith('PASS')).map(([n, c]) => `${n}: ${c}`).join('; ') || 'no control ran'}`;
   return {
-    references: LINE_SPECS.length, rows, violations, staleWaivers, malformed, control,
+    references: LINE_SPECS.length, rows, violations, staleWaivers, malformed, control, controls,
     waivedCount: rows.filter((r) => r.waived).length,
-    gate: 'GATING — every row of every reference measured off the posed metal within float noise of its derived value, '
-      + '0 unwaived, 0 stale waivers, 0 malformed, control PASS (§70 steps 1–2, scoped by §261 to the switch it is about to fold)',
+    gate: 'GATING — every row of every reference measured off the posed metal within float noise of its derived value '
+      + '(an envelope with a bound only on its side), 0 unwaived, 0 stale waivers, 0 malformed, every reference’s control PASS '
+      + '(§70 steps 1–2, scoped by §261 to the switch it is about to fold and the lock that reads it)',
   };
 }
 

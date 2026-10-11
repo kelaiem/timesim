@@ -119,7 +119,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 119 | CLOSED (same landing) | `handsGroupZOffset` carried 0.82 u of dead air: §188's binder (≥ 2.402) and item 118's correction (≥ 2.002) both held apart planes that never radially meet — the real governing pair is alarm blade top ↔ hour blade keel, and the offset now derives at 1.778 from it (owner-directed respend, 0.31 mm off the cased depth); §125's lane assert rewritten two-sided with a measured radial guard |
 | 120 | CLOSED | The central hands ride bored PIPES pressed on their arbors (hour on the tube's outside, minute on the cannon pinion's new NOSE), full 0.4 mm land, §50 walls across the flats; the blades open at the pivot and join their pipes through an eye. The hour tube RIDES the nose at a `PIVOT_BORE_CLEAR` running fit, declared as a support edge and a floors-row contact; 'Hour wheel' is in `ASSEMBLY_SCOPE`. Residue: the display is still posed by parenting (TODO 115's half) |
 | 101 | CLOSED (with TODO 120) | The alarm leaf is open at its pivot (eye bore 2.9791, clearing the hour hand's pipe); the `Alarm disc ⇄ Hour wheel` row is unwaived; `probe-95-interpenetration` finds 0 tube-surface points inside either run |
-| 121 | PART DONE | The strike tier's stale self-descriptions, found by §191/§192's audit. FIXED: the §163 skirt assert read a plane 0.30 above the real underside AND omitted the §169 pawl coil from its band need — 1.14 of phantom headroom against a real 0.000, blind to exactly the downward re-station §192 prices (both sides now read the raise solve's own inventory, sitting at equality); the λ "= 30" comment vs the code's SLENDER_TARGET 27; EXPECTED_PAIRS' claim of a Stop lever ⇄ plate budget row that did not exist (the row exists now). OPEN: main.js's `TQ_TOP_Z + 2.5` strike-band literal understates the built tier by ~2.4 (real ceiling Δ4.89, probe-192-tier-price) — re-authoring it can move the solved link-rod site, so it is priced in §192 rather than patched; and BUILT.md §183's arm/chamfer table disagrees with main.js's §183 comment (3.1400/0.3047 vs ~3.62/0.3516) — annotated in both places, the live derivation is the authority |
+| 121 | CLOSED | The strike tier's stale self-descriptions, found by §191/§192's audit. FIXED: the §163 skirt assert read a plane 0.30 above the real underside AND omitted the §169 pawl coil from its band need — 1.14 of phantom headroom against a real 0.000, blind to exactly the downward re-station §192 prices (both sides now read the raise solve's own inventory, sitting at equality); the λ "= 30" comment vs the code's SLENDER_TARGET 27; EXPECTED_PAIRS' claim of a Stop lever ⇄ plate budget row that did not exist (the row exists now). The rod-literal half CLOSED by §192 (the strike-band bound derives from the column stack). The quotation half CLOSED by §70's lock reference: §183's arm/chamfer figures (3.1400/0.3047, right on §183's tree) and main.js's (~3.62/0.3516, a draft's) are both superseded — §226's half-tooth nose moved them to arm 2.3634, chamfer 0.2293 under a 0.2680 ceiling (headroom 0.328 → 0.039, unnoticed), and the `lineSpec` gate's `alarm lock` reference now measures all three every run |
 | 124 | CLOSED | Reported by eye through §220's sapphire dial, and TWO defects wearing one symptom — the movement's headline 12:1, standing rule 2's own worked example. First, the pair CO-ROTATED: `mwArbor` was the only one of the movement's six dial-side rotation writes without TODO 115's negation, sitting between two members (`cannonPinion`, `hourWheelGroup`) that both carry it, so the minute wheel turned WITH the cannon pinion driving it (+0.333333 against a bar of −0.333333). The item's first diagnosis — "the angles are computed from the ratio rather than arriving through the teeth" — was WRONG and is retracted in place: `MW_RATIO_1/2` are already SIGNED tooth-count quotients, so 12:1 always arrived through the counts and the sign was dropped after it arrived. Second, underneath that, the teeth had never been CLOCKED — no `solveGearChain` call covered the chain — and fixing the sense alone left a CONSTANT 50.00% of a pitch, tooth on tooth at every pose rather than at the worst of them. The spread column is what tells the two apart (42.871 → 0.049, 37.305 → 0.781: a residual sweeps only while a pair does not transmit), and it is why the ORDER is the transferable part — clocking a pair that does not transmit is true at the build pose and false everywhere else. Solved in TODO 48's two-stage form with a new `mwPair` rigid group; `minuteStar` stays OUTSIDE it (clocked to the jumper, not the mesh — beak reads u = 0.500000 at all 13 detents sampled) and stage two turns `mwHourWheel`, never `hourWheelGroup` (which carries the hand, tube and alarm heart). Measured 50.00% → **0.049%** and **0.781%** against a 2% bar; both `MESH_PHASE_WAIVERS` and both `TRANSMITS_WAIVERS` entries deleted by their own stale gates. Gated by `probe-124-motionworks-sense.mjs`. Residue rehomed to [TODO 132] |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number. **§202**: the pusher stem's row (λ 38.1, the item's unwaived "next customer") is RETIRED — its abutment and guide bores declared and the case's Ø1.2 mm bore given a liner, three stations, worst λₑ 15; the alarm stem's crown-end overhang is held by a tube liner (λₑ 53.5 → 26.0) while its inboard 25.5 u overhang stays at 76.6 and is now MEASURED as no bearing's to fix — the pinion sweeps x 15.8–22.5 and the collars 22.8–33.6 under the 5 u throw, so no fixed bore fits inboard of x ≈ 34; a corner re-layout, not a bush. The report reads 8 over ceiling, **0 unwaived, 0 stale**. What remains is position-space, per row, walls named |
@@ -16968,7 +16968,7 @@ split), so that fit is held by probe-hand-stack's land clause. No
 `declaredNeverCompared` (a pipe and its arbor turn as one), so they would
 have measured nothing.
 
-## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — PART DONE
+## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — CLOSED
 
 Found by the §191/§192 audit (the per-member z-anatomy walk that priced
 the tier), filed together because they are one defect class: **the tier
@@ -17008,13 +17008,20 @@ neighbourhood. (The same landing also took the §169 coil term OUT of
 the skirt assert this item fixed, both sides still reading the raise
 solve's own inventory — see §192's record.)
 
-**OPEN:**
-
-- `docs/BUILT.md` §183's table and `main.js`'s §183 comment quote
-  incompatible arm/chamfer figures (3.1400/0.3047 vs ~3.62/0.3516); one
-  went stale when an input moved. Both places now carry the annotation;
-  closing this half means re-deriving from the live expressions and
-  correcting whichever quotation is wrong.
+**CLOSED by §70's lock reference (the quotation half):** `docs/BUILT.md`
+§183's table and `main.js`'s §183 comment quoted incompatible arm/chamfer
+figures (3.1400/0.3047 vs ~3.62/0.3516). Re-derived from the live
+expressions, and then measured off the metal by the `lineSpec` gate's
+`alarm lock` reference, NEITHER is today's: the arm is **2.3634** and the
+chamfer **0.2293**, under a ceiling of **0.2680**. §183's table was right on
+its own tree (rider nose 0.28, read radius 5.98); §226's half-tooth nose
+(0.627) moved all three, and the headroom under the ceiling fell from 0.328
+to 0.039 unnoticed. The comment's pair was the first draft's, read at the
+bare wall radius before the box beak became a round nose, and no landed tree
+carried it. Both places now give §183's figures as §183's and point at the
+reference for the live ones, which is the fix that keeps working: a number
+the battery measures every run cannot go stale in silence the way a copy
+did.
 
 ## 122. The exhibition crystals are glazed by coordinates: no gasket, no press, nothing fixes them in place
 
