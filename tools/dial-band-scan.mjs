@@ -12,6 +12,9 @@
 //   GRID     { DR, DAZ_DEG } — the polar cell pitch
 //   exclude  unit names whose meshes are NOT tenants (a fold's own members,
 //            which the caller is about to move) — empty for the plain map
+//   band     'dial' (default: dial back to the base plate's dial face) or
+//            'interplate' (the base plate's top face to the three-quarter
+//            plate's underside)
 //
 // Every cell also carries `ivs`, its union of occupied z intervals, and
 // `uivs`, the same per owning unit ([unit, intervals] pairs), for a caller
@@ -27,7 +30,7 @@
 // rays over four runs of one tree, every difference in those units, at most
 // one point of one cell in the occupancy table. A REPORT may carry that; a
 // gate built on this scan would have to settle the eases first.
-export async function dialBandScan({ GRID, exclude = [] }) {
+export async function dialBandScan({ GRID, exclude = [], band = 'dial' }) {
   const THREE = await import('three');
   const I = await import('./src/inspect.js');
   const clock = window.__clock;
@@ -47,10 +50,24 @@ export async function dialBandScan({ GRID, exclude = [] }) {
     if (!o.isMesh) return;
     for (let p = o; p; p = p.parent) if (labelOf.has(p)) { owner.set(o, labelOf.get(p)); break; }
   });
-  const plateMeshes = I.heldFixtureEntries(clock).find((h) => h.name === 'Base plate')?.meshes ?? [];
-  const dialMeshes = [];
-  clock.scene.traverse((o) => { if (o.isMesh && o.name === 'dialPlate' && !o.userData.schematic) dialMeshes.push(o); });
-  const walls = new Set([...plateMeshes, ...dialMeshes]);
+  const baseMeshes = I.heldFixtureEntries(clock).find((h) => h.name === 'Base plate')?.meshes ?? [];
+  // THE WALLS name the band. 'dial': the dial plate below, the base plate's
+  // dial face above (§261 step 2). 'interplate': the base plate's top face
+  // below, the three-quarter plate's underside above — the stratum the
+  // pusher's stem runs in (§261 step 4). The per-cell reads below are the
+  // same either way: a floor wall gives its metal's top, a ceiling its bottom.
+  const dialMeshes = [], tqMeshes = [];
+  clock.scene.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic) return;
+    if (o.name === 'dialPlate') dialMeshes.push(o);
+    if (owner.get(o) === 'Three-quarter plate') tqMeshes.push(o);
+  });
+  if (band !== 'dial' && band !== 'interplate') throw new Error(`dialBandScan: unknown band '${band}'`);
+  const floorMeshes = band === 'dial' ? dialMeshes : baseMeshes;
+  const ceilMeshes = band === 'dial' ? baseMeshes : tqMeshes;
+  if (!floorMeshes.length || !ceilMeshes.length) throw new Error(`dialBandScan: band '${band}' found ${floorMeshes.length} floor and ${ceilMeshes.length} ceiling meshes`);
+  const plateMeshes = baseMeshes;                     // the plate whose radius bounds the grid, in either band
+  const walls = new Set([...floorMeshes, ...ceilMeshes]);
   const caseRoot = clock.scene.getObjectByName('case');
   const inCase = (o) => { for (let p = o; p; p = p.parent) if (p === caseRoot) return true; return false; };
   const tenantsAll = [];
@@ -68,8 +85,14 @@ export async function dialBandScan({ GRID, exclude = [] }) {
   clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
   const box = new THREE.Box3();
   const bbOf = (list) => { const b = new THREE.Box3(); for (const m of list) b.union(box.setFromObject(m, true)); return b; };
-  const plateBox = bbOf(plateMeshes), dialBox = bbOf(dialMeshes);
-  const Z_FLOOR = dialBox.max.z, Z_CEIL = plateBox.min.z;      // dial back (most +z of the dial plate) and plate's dial face
+  const plateBox = bbOf(plateMeshes), dialBox = bbOf(dialMeshes), floorBox = bbOf(floorMeshes), ceilBox = bbOf(ceilMeshes);
+  // The floor wall's top face and the ceiling wall's bottom face (dial: the
+  // dial's back, the plate's dial face). Between the plates the ceiling is read
+  // off the plate BODY ('threeQuarterPlate'): its pillar screws run on below
+  // the underside into the pillars, so the unit's own box bottom is not a face.
+  const tqBody = tqMeshes.filter((m) => m.name === 'threeQuarterPlate');
+  if (band === 'interplate' && tqBody.length !== 1) throw new Error(`dialBandScan: expected one 'threeQuarterPlate' body, found ${tqBody.length}`);
+  const Z_FLOOR = floorBox.max.z, Z_CEIL = band === 'dial' ? ceilBox.min.z : bbOf(tqBody).min.z;
   // The plate is a disc, so its box's half-width IS its radius (the box's
   // corner is not: hypot of the two half-widths reads √2 × plateR, and the
   // first run scanned the case band out to r 70.8 for it). The case's inner
@@ -134,13 +157,13 @@ export async function dialBandScan({ GRID, exclude = [] }) {
   // ---- walls, per cell (fixtures: one cast) -------------------------------
   const floorZ = new Float64Array(N).fill(NaN), ceilZ = new Float64Array(N).fill(NaN);
   const mid = (Z_FLOOR + Z_CEIL) / 2;
-  for (const m of dialMeshes) { prepare(m); withDoubleSide(m, () => {
+  for (const m of floorMeshes) { prepare(m); withDoubleSide(m, () => {
     for (const k of cellsUnder(box.setFromObject(m, true))) for (const [, z1] of intervals(m, cx[k], cy[k]))
-      if (z1 < mid && !(z1 <= floorZ[k])) floorZ[k] = z1;            // the dial's metal nearest the band
+      if (z1 < mid && !(z1 <= floorZ[k])) floorZ[k] = z1;            // the floor wall's metal nearest the band
   }); }
-  for (const m of plateMeshes) { prepare(m); withDoubleSide(m, () => {
+  for (const m of ceilMeshes) { prepare(m); withDoubleSide(m, () => {
     for (const k of cellsUnder(box.setFromObject(m, true))) for (const [z0] of intervals(m, cx[k], cy[k]))
-      if (z0 > mid && !(z0 >= ceilZ[k])) ceilZ[k] = z0;               // the plate's metal nearest the band
+      if (z0 > mid && !(z0 >= ceilZ[k])) ceilZ[k] = z0;               // the ceiling wall's metal nearest the band
   }); }
   const lo = (k) => (Number.isNaN(floorZ[k]) ? Z_FLOOR : floorZ[k]);
   const hi = (k) => (Number.isNaN(ceilZ[k]) ? Z_CEIL : ceilZ[k]);
