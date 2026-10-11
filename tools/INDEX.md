@@ -4,7 +4,7 @@
 
 # The instruments
 
-286 scripts. **175 are ACCEPTANCE tests** — they decide and exit non-zero.
+287 scripts. **176 are ACCEPTANCE tests** — they decide and exit non-zero.
 **111 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -193,6 +193,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-253-arch-modes.mjs` | §253 | acceptance | §253 — IS THE GONG'S ARCH SOLVE RIGHT, AND DOES IT KNOW WHEN IT IS A STRAIGHT BAR? |
 | `probe-254-chain-twist.mjs` | §254 | acceptance | §254 — DOES THE CHAIN BEND ONLY ABOUT ITS PINS? Acceptance. |
 | `probe-261-dial-band.mjs` | §261 | acceptance | THE DIAL-SIDE BAND'S FREE VOLUME, OVER THE POSE NET — where, between the base plate's dial face and the dial's back, a folded action group could stand. |
+| `probe-261-dial-visibility.mjs` | §261 | acceptance | WOULD THE SWITCH BE SEEN UNDER THE DIAL? — the free annulus seen from the FRONT through the smoked sapphire, against the switch as it is seen today from the BACK through the exhibition crystal, both over the pose net. |
 | `probe-261-height-cap.mjs` | §261 | acceptance | THE HEIGHT CAP FIRES BOTH WAYS — §261 step 5's CASE_HEIGHT_MAX_MM, mutated and booted, so the ratchet is a guard someone has seen fire rather than a comment. |
 | `probe-261-height-ledger.mjs` | §261 | acceptance | WHAT SETS THE MOVEMENT'S CASED HEIGHT — the front and back chains read off the metal, the member that governs each named with its slack to the next, and the cased depth reproduced from them. Acceptance, with a mutation tier that proves the ledger PREDICTS rather than restates. |
 | `probe-261-lever-prices.mjs` | §261 | acceptance | WHAT EACH HEIGHT LEVER BUYS — the compaction levers of the private roadmap's §261, each built as a copied tree with one constant moved, measured off the metal for what it does to the cased depth, which member governs after it, and which boot asserts it trips (its cost). Combinations are measured too, beside the superposition of their singles, because the back is governed jointly and a lever bought alone is not the lever bought with its neighbours. |
