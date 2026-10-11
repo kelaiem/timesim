@@ -42,7 +42,7 @@ import {
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
-  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T, rigidSplit,
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
@@ -52960,6 +52960,10 @@ assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label
 refreshDrillRow();    // §10 level 2: a deep-linked ?unit= may already be drillable
 confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned overrides
 
+// §261 step 5: the cased depth §39's box measures, published for the height
+// cap's assert, which needs the build's config key and so runs after it.
+let CASED_DEPTH_MM = NaN;
+
 // §39 — the SIZE PREDICTIONS. UNIT_MM is pinned to fusee chain pitch (see
 // layout.js), so none of these three numbers was tuned to come out right.
 // They are the falsifiable half of that pin: if the scale is wrong, or the
@@ -53030,6 +53034,7 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
   const casedMM = MM(casedBox.getSize(new THREE.Vector3()).z);
   if (!(casedMM >= movMM && casedMM <= 14))
     console.warn(`§39: cased assembly ${casedMM.toFixed(2)} mm deep, outside the movement–14 mm envelope (stack budget 14.11)`);
+  CASED_DEPTH_MM = casedMM;   // §261 step 5 holds it to CASE_HEIGHT_MAX_MM once the config is known (below)
 
   // The chain pitch itself is not asserted — it IS the pin, so checking it
   // against its own definition would be the circularity this entry exists to
@@ -53335,6 +53340,26 @@ function refreshConfigMark() {
   pill.querySelector('#btn-config-as-designed').style.display = (s.reasons.includes('spec') || s.reasons.includes('route')) ? '' : 'none';
 }
 refreshConfigMark();
+
+// §261 step 5 — THE HEIGHT CAP, held both ways (layout.js CASE_HEIGHT_MAX_MM
+// says why it is a ratchet). Deeper than the cap is the case GROWING, and it
+// fails on every build, because a spec or a tuning that deepens the case has
+// spent depth too. Under the cap by more than a step is the cap going STALE,
+// and that half reads only the DEFAULT build — the identity row the battery
+// sweeps — since a reconfigured build may honestly stand shallower and owes
+// the cap nothing. Both faces are case metal (the bezel's crystal, the back's
+// glass step or its keys), so the reading is pose-free: BOOT HAS NO POSE, and
+// this does not need one. A movement part reaching past the case would read
+// here first, which is the point.
+{
+  const identity = VALIDATED_CONFIGS.find((r) => r.point === 'identity');
+  if (!(CASED_DEPTH_MM <= CASE_HEIGHT_MAX_MM))
+    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, over CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM} — the case grew; spend depth in the open by raising the cap in layout.js, or take the growth back`);
+  else if (!identity)
+    console.warn('§261: no identity row in validated-configs.js — the height cap cannot tell the default build, so its stale half is not held');
+  else if (configState().key === identity.key && CASE_HEIGHT_MAX_MM - CASED_DEPTH_MM > CASE_HEIGHT_STEP_MM)
+    console.warn(`§261: cased assembly ${CASED_DEPTH_MM.toFixed(4)} mm deep, more than ${CASE_HEIGHT_STEP_MM} mm under CASE_HEIGHT_MAX_MM ${CASE_HEIGHT_MAX_MM} — this change bought depth; lower the cap to ${(Math.ceil(CASED_DEPTH_MM / CASE_HEIGHT_STEP_MM) * CASE_HEIGHT_STEP_MM).toFixed(3)} so it stays bought`);
+}
 
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
