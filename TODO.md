@@ -31095,7 +31095,7 @@ price is the dial plane (`Z_DIAL`) and everything keyed to it.
 
 ---
 
-## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — DRIVEN, STEPS 1, 2 AND 3a DONE (§221)
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — DRIVEN AND STEPS 1 TO 3A DONE (§221)
 
 Found closing [TODO 216], whose knock solve reads this geometry.
 
