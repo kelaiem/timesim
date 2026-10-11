@@ -174,8 +174,10 @@ with `tools/l10n-review-packets.mjs --out DIR`, or read the published sheet at
 
 ## Known gaps in this guide
 
-- `ARCHITECTURE.md` and `README.md` quote stale locale counts ("five"). They
-  predate the current roster.
 - The checklist is read off one landing. A locale with a new problem (a
   non-Latin script, a different plural system) will find steps this page does
   not have. Add them when you hit them.
+- `ARCHITECTURE.md`'s module table still quotes line counts for `i18n.js` and
+  the tier-two tables that the tables have long outgrown. Locale counts are
+  gone from it and `README.md` (both now point at `LOCALES`); do not
+  reintroduce one.
