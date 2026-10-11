@@ -4,7 +4,7 @@
 
 # The instruments
 
-287 scripts. **176 are ACCEPTANCE tests** — they decide and exit non-zero.
+288 scripts. **177 are ACCEPTANCE tests** — they decide and exit non-zero.
 **111 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -213,6 +213,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-53-labels.mjs` | §53 | acceptance | §53 — CAN EVERY ADVANCED-SETTINGS LABEL BE READ ON A PHONE? Acceptance for the entry's remainder, which the shipped half's code says it already covers (authored `_labels`, stacked rows, wrapping); this MEASURES it rather than trusting the comment, at the phone width §15 fits (375×667) and on desktop: 1. boot silent — no "§53: no _labels entry" fallback fired, so every leaf carries an authored name (the key path is shown nowhere); 2. no label overflows its row: scrollWidth ≤ clientWidth on every .adv-label, and its box lies inside the panel's box; 3. no label is ellipsised: computed text-overflow is not 'ellipsis' and white-space allows wrapping; 4. a deliberately long label WRAPS: one label is set to a 70-character string and its box grows in height rather than in width; 5. the section still collapses (details closed by default) and the panel scrolls within a 667 px viewport (scrollHeight > clientHeight is allowed; the panel's own box fits the viewport). cd tools && node probe-53-labels.mjs (exit 1 on any claim) |
 | `probe-60-checks.mjs` | §60 | report | TODO 60 — the focused instruments this change can move, before the full battery. Extending the tower arbor past leg B's pinion puts steel through two bores that had none, so the checks at risk are the ones that judge contact INSIDE a unit and the ones that judge a rigid group's connectedness: |
 | `probe-60-reach.mjs` | §60 | acceptance | TODO 60 — DOES EVERY ROTOR HAVE AN ARBOR IN ITS BORE? |
+| `probe-70-line-spec.mjs` | §70 | acceptance | DOES THE LINE-SPEC GATE FIRE? — `lineSpec` (§70 steps 1–2, scoped by §261 step 4) booted on copied trees whose switch is built wrong on purpose, so the gate is one somebody has seen fire rather than a comment. |
 | `probe-77-census.mjs` | §77 | acceptance | §77 — run `meshIntegrity` headless and print its summary: the control, the aggregates (builder-owned cause patterns), the top zeroArea and inverted rows, sub-body declarations, and the triangle census's head. The full payload is written to the file named in argv[2] (default meshintegrity-payload.json beside this script) for report-diff work. |
 | `probe-77-chain.mjs` | §77 | acceptance | §77 tier 3 — the chain's sub-body declaration, held at three tensions. |
 | `probe-77-threshold.mjs` | §77 | report | §77 tier 1 — derive ZERO_AREA_MAX from the scene, not from taste. |

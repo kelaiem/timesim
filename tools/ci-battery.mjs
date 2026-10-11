@@ -286,6 +286,10 @@ const COSTS = {
   // 272 revolves. No pose sweep and no BVH. Measured 6.6 s on the first full
   // local run, which is the number here; refresh it like every row.
   'turning': 7,
+  // §70/§261 — one reference, 25 press poses twice (the control re-reads
+  // the stroke) and 2,880 rays round the wheel's own frame. Measured on the
+  // dev container; refresh with --report like every row.
+  'lineSpec': 2,
   // TODO 181 — the census walks the dense pose net (1892 poses) over the 687
   // meshes JMP_SITE visits, corner bounds per pose and the exact walk only
   // where they cannot decide; the bounded rows' meshClearance to the region
