@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
+import { leverEscapement, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, stockKeyOf, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
 import { geometryOverridePaths } from './aesthetics.js';
@@ -1701,8 +1702,12 @@ const ESC_PINION_T = FOURTH_WHEEL_T + 2 * fourthWheelBevel + 2 * CLEAR_MARGIN - 
 const escapePinion = G.makePinion({ name: 'escapePinion', module: TRAIN.fourth.module, teeth: TRAIN.fourth.pinion, mates: [TRAIN.fourth.teeth], thickness: ESC_PINION_T, material: MATS.steel });
 const escapePinionR = escapePinion.userData.r;
 
-const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 0.8 });
-const escapeWheelR = escapeWheel.userData.r || 4.5;
+// TODO 226 step 3 — the wheel is CUT after the escapement is solved (below,
+// beside the pallet fork): its teeth's undercut is sized to how deep a locked
+// stone's corner reaches, which the solve measures. Its radius is declared
+// here because the stations are laid out from it.
+const ESCAPE_WHEEL_R = 4.5;
+const escapeWheelR = ESCAPE_WHEEL_R;
 
 // --- Pallet fork + balance ------------------------------------------------
 // The staff is ASYMMETRIC now: up through the flat cock's jewel (poking 0.5
@@ -1726,7 +1731,7 @@ const balanceR = BALANCE_R;
 // Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the
 // classic Swiss-lever embrace that makes teeth lock the entry and exit stones
 // on alternating beats: half-span = R·sin(42°).
-const forkSpan = 2 * escapeWheelR * Math.sin(THREE.MathUtils.degToRad(42));
+const forkSpan = 2 * escapeWheelR * Math.sin(THREE.MathUtils.degToRad(EMBRACE_DEG));
 // Pivot distance from the escape-wheel centre that puts both stones exactly on
 // the wheel rim (stones sit at (±span/2, span/2) in fork-local coordinates).
 const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan / 2) ** 2);
@@ -1813,7 +1818,19 @@ declareRestoring('Chain', 'chainRun', 'two-way',
 // arc (400°) passes a revolution — a balance at a real amplitude reaches every
 // angle about its staff — so both stay full revolves, which is the registry's
 // default for a reversing part and the honest bound.
-const FORK_BANK_DEG = pinBearingRad(pinImpulseSweepRad / 2) / DEG2RAD;
+// TODO 226 step 3 — that bearing is where the pin LETS OFF, not where the
+// fork banks. A lever runs on past the let-off: the draw carries it RUN_DEG
+// further onto its banking (src/escapement.js, which declares lock and run and
+// says why), so the banking is the let-off plus the run, and the 50° lift is
+// held as the balance's angle between the two let-offs. The pin meets the
+// banked fork a little outside ±LIFT/2 (PIN_ENTRY_HALF below) and carries it
+// back through the run and the lock before the impulse.
+const FORK_LETOFF_DEG = pinBearingRad(pinImpulseSweepRad / 2) / DEG2RAD;
+const FORK_BANK_DEG = FORK_LETOFF_DEG + RUN_DEG;
+// The balance angle at which the pin, centred in the notch, stands on the
+// banked fork's centre line: d·sin(bank) = r·sin(θ + bank), the bank relation
+// read at the banking rather than at the let-off.
+const PIN_ENTRY_HALF = Math.asin((forkToStaff * Math.sin(FORK_BANK_DEG * DEG2RAD)) / rollerR) - FORK_BANK_DEG * DEG2RAD;
 // §36A: the fork banks between ±FORK_BANK_DEG and, since TODO 226 drives it
 // off the pin, never goes past them — the posed law's recoil dip (a quarter
 // bank past the bank on draw, a constant no draw angle derived) is retired
@@ -1857,9 +1874,11 @@ declareTravel('Pallet fork', 2 * FORK_BANK_DEG * DEG2RAD,
 // as the pin's swept path, the guard pin behind its floor, the single roller
 // sized to that guard pin. Solved from the stations, the pin and §221's lift
 // and bank, so neither part is cut until both are known.
+// TODO 226 step 3: the pin rides the notch from the banking's entry
+// (±PIN_ENTRY_HALF) and the fork stands banked past it, at the bank WITH run.
 const ESCAPEMENT_SEAT = G.escapementSeat({
   d: forkToStaff, rollerR, pinR: G.balancePinR(BAL_T),
-  liftHalf: LIFT_DEG * DEG2RAD / 2, bank: FORK_BANK_DEG * DEG2RAD,
+  liftHalf: PIN_ENTRY_HALF, bank: FORK_BANK_DEG * DEG2RAD,
   forkT: FORK_T, clear: CLEAR_MARGIN, stockMin: STOCK_MIN_U,
 });
 // The pin must sit IN the roller it is set in, crescent included.
@@ -1888,10 +1907,24 @@ if (Math.abs(balanceWheel.userData.r - BALANCE_R) > 1e-12 || Math.abs(balanceWhe
 // on the wheel's own Z-thickness rather than grazing one edge of it.
 // beatRad/bankRad feed the stones' impulse-face solve (see makePalletFork).
 await breathe(20);
+// TODO 226 step 3 — the escapement's ONE solve: the stones' seats and faces
+// and the wheel's angle at every fork angle (escapeAngle below) read it.
+const ESCAPEMENT = leverEscapement({
+  span: forkSpan, beatRad: BEAT_DEG * DEG2RAD, bank0Rad: FORK_LETOFF_DEG * DEG2RAD, sense: MOVEMENT_SENSE,
+});
+for (const w of ESCAPEMENT.warns) console.warn(`TODO 226 step 3 escapement: ${w}`);
+if (Math.abs(ESCAPEMENT.bank - FORK_BANK_DEG * DEG2RAD) > 1e-12 || Math.abs(ESCAPEMENT.R - escapeWheelR) > 1e-9)
+  console.warn(`TODO 226 step 3: the escapement solve banks at ${(ESCAPEMENT.bank / DEG2RAD).toFixed(9)}° on a wheel of ${ESCAPEMENT.R}, the movement at ${FORK_BANK_DEG}° on ${escapeWheelR}`);
+const escapeWheel = G.makeEscapeWheel({
+  teeth: 15, radius: ESCAPE_WHEEL_R, thickness: 0.8,
+  rakeDeg: TOOTH_RAKE_DEG, undercut: ESCAPEMENT.lockReach + CLEAR_MARGIN,
+});
+if (Math.abs(escapeWheel.userData.r - escapeWheelR) > 1e-12)
+  console.warn(`TODO 226 step 3: the escape wheel was cut at r ${escapeWheel.userData.r}, not the ${escapeWheelR} the stations were laid out from`);
 const palletFork = G.makePalletFork({
   span: forkSpan, seat: ESCAPEMENT_SEAT.slot, guard: ESCAPEMENT_SEAT.guard, thickness: FORK_T,
   stoneZReach: L_FORK - L_ESCAPE,
-  beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
+  escapement: ESCAPEMENT,
 });
 // TODO 98 — the blank is ONE solid of ONE thickness, and `L_BALANCE` is
 // derived from how far that solid actually reaches. Hold the two paths
@@ -2683,20 +2716,27 @@ function meshOffset(driverPos, drivenPos, drivenTeeth, ratio, driverAngleAtRef) 
 // (±θ_L), which is where a lever escapement's impulse sits. The amplitude is
 // §221's constant AMPLITUDE_POSED_DEG, so that passage is IMPULSE_WIDTH of
 // every beat at every state of wind.
+// TODO 226 step 3 — the fork BANKS a run past the let-off, so the law reads
+// two angles off one relation: the let-off bank (where the pin's half-lift is
+// LIFT/2) and the banking (where the pin, coming back, first stands on the
+// banked fork's centre line: `entryHalf`).
 const PIN_FORK = (() => {
   const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
-  const r = rollerR, bank = FORK_BANK_DEG * DEG2RAD;
-  const liftHalf = Math.asin((d * Math.sin(bank)) / r) - bank;
-  return Object.freeze({ d, r, bank, liftHalf });
+  const r = rollerR, bank = FORK_BANK_DEG * DEG2RAD, bank0 = FORK_LETOFF_DEG * DEG2RAD;
+  const liftHalf = Math.asin((d * Math.sin(bank0)) / r) - bank0;
+  const entryHalf = Math.asin((d * Math.sin(bank)) / r) - bank;
+  return Object.freeze({ d, r, bank, bank0, liftHalf, entryHalf });
 })();
 // The bank and the lift are one relation read two ways: §221 solved the bank
 // from LIFT/2 at forkToStaff, and the law inverts it at the stations.
 if (Math.abs(PIN_FORK.liftHalf - LIFT_DEG * DEG2RAD / 2) > 1e-9)
-  console.warn(`TODO 226: the pin's half-lift at the fork's bank is ${(PIN_FORK.liftHalf / DEG2RAD).toFixed(9)}°, not LIFT_DEG/2 = ${LIFT_DEG / 2}° — the stations and the bank derivation disagree on the fork's distance from the staff`);
+  console.warn(`TODO 226: the pin's half-lift at the fork's let-off is ${(PIN_FORK.liftHalf / DEG2RAD).toFixed(9)}°, not LIFT_DEG/2 = ${LIFT_DEG / 2}° — the stations and the bank derivation disagree on the fork's distance from the staff`);
+if (Math.abs(PIN_FORK.entryHalf - PIN_ENTRY_HALF) > 1e-9)
+  console.warn(`TODO 226 step 3: the pin meets the banked fork at ${(PIN_FORK.entryHalf / DEG2RAD).toFixed(9)}° by the stations and ${(PIN_ENTRY_HALF / DEG2RAD).toFixed(9)}° by the seat's solve`);
 // The posed swing must carry the pin through the notch and out, or the fork
 // would never reach its far bank.
-if (!(AMPLITUDE_POSED_DEG * DEG2RAD > PIN_FORK.liftHalf))
-  console.warn(`TODO 226: the posed swing ${AMPLITUDE_POSED_DEG}° does not clear the half-lift ${(PIN_FORK.liftHalf / DEG2RAD).toFixed(3)}° — the pin would turn back inside the notch`);
+if (!(AMPLITUDE_POSED_DEG * DEG2RAD > PIN_FORK.entryHalf))
+  console.warn(`TODO 226: the posed swing ${AMPLITUDE_POSED_DEG}° does not clear the pin's entry ${(PIN_FORK.entryHalf / DEG2RAD).toFixed(3)}° — the pin would turn back inside the notch`);
 
 // The beat is counted from the moment the balance ENTERS the lift: τ = 0 is
 // the unlocking, and the impulse window is [0, IMPULSE_WIDTH) of each beat.
@@ -2730,30 +2770,42 @@ function balanceTheta(tau) {
   return AMPLITUDE_POSED_DEG * DEG2RAD * Math.sin(2 * Math.PI * F_BALANCE * (tau - BALANCE_PHASE_TAU));
 }
 
-// The fork's deflection off the line of centres, read off the balance.
+// The fork's deflection off the line of centres, read off the balance. The pin
+// carries it from bank to bank: through the run and the lock (the unlock), the
+// impulse, and — past its let-off at ±θ_L — the run onto the far banking,
+// which a real lever's draw does faster than the pin turns; the escape wheel's
+// drop is paced across the same stretch (escapement.js says why).
 function forkSwingAt(theta) {
-  const { d, r, bank, liftHalf } = PIN_FORK;
-  // the beat's own ends land on ±θ_L to the last bit; read them as banked
-  if (Math.abs(theta) >= liftHalf * (1 - 1e-12)) return Math.sign(theta) * bank;
+  const { d, r, bank, entryHalf } = PIN_FORK;
+  // the pin's entries land on ±θ_B to the last bit; read them as banked
+  if (Math.abs(theta) >= entryHalf * (1 - 1e-12)) return Math.sign(theta) * bank;
   return Math.atan2(r * Math.sin(theta), d - r * Math.cos(theta));
 }
-
-function forkBankAt(n) { return (n % 2 === 0) ? -1 : 1; }
 
 function forkSwingRad(t) {
   return forkSwingAt(balanceTheta(t));
 }
 
+// TODO 226 step 3 — the wheel is read off the FACES. Each half-swing of the
+// balance carries the fork from one banking to the other; the stone locked at
+// its start is σ (+1 on even half-swings, the +x stone, as the seats have it),
+// and the wheel's advance inside the half-swing is wherever its tooth circle
+// crosses the face the tip is on (ESCAPEMENT.deltaAt: the locking face through
+// the unlock — the RECOIL — the impulse face to the let-off, then the drop and
+// the run). The half-swing is counted between the balance's extremes, where
+// the fork is banked and the wheel locked, so consecutive beats meet at rest:
+// one beat ends on the other stone's banking, BEAT_DEG further on, exactly
+// where the next begins. δ = 0 is a tip standing at the +x stone's corner
+// position, which is what the wheel is phased to below.
 function escapeAngle(t) {
-  const { n } = beatPhase(t);
-  const bs = forkBankAt(n);
-  const s = forkSwingRad(t);
-  const f = clamp((s - bs * PIN_FORK.bank) / (-2 * bs * PIN_FORK.bank), 0, 1);
+  const h = Math.round((t - BALANCE_PHASE_TAU) * 2 * F_BALANCE);
+  const sigma = (h % 2 === 0) ? 1 : -1;
+  const phi = -forkSwingRad(t);   // the fork's turn off neutral (forkGroup.rotation.z = base − swing)
   // TODO 115 — the train's ABSOLUTE sense. Every relative sense in the chain
   // below was already right (each mesh reverses its neighbour, and the §47
   // control pair measures that); what was wrong was which way the whole thing
   // ran, which is one factor here rather than a sign per wheel.
-  return MOVEMENT_SENSE * (n + f) * BEAT_DEG * DEG2RAD;
+  return MOVEMENT_SENSE * (h * ESCAPEMENT.beat + ESCAPEMENT.deltaAt(sigma, phi));
 }
 
 // Chain the rest of the train backwards off the escape wheel — pure
@@ -3054,7 +3106,10 @@ escapeWheel.position.z = L_ESCAPE - L_FOURTH;
   const exitLocal = Math.atan2(half - palletStoneDist, half);
   const exitWorld = exitLocal + forkBaseAngle;
   const tipPhase = MOVEMENT_SENSE * 0.22 * pitch;
-  const raw = exitWorld - tipPhase - escapeAngle(0);
+  // TODO 226 step 3 — phased at escapeAngle = 0, the law's own reference (a
+  // tip standing at the +x corner's position), not at τ = 0: with lock, the
+  // tooth at τ = 0 is part-way up the locking face, not on the corner.
+  const raw = exitWorld - tipPhase;
   escapeWheel.rotation.z = ((raw % pitch) + pitch) % pitch;
 
   // TODO 115 GUARD — the two lines above are ARITHMETIC; this reads the metal
@@ -3076,7 +3131,7 @@ escapeWheel.position.z = L_ESCAPE - L_FOURTH;
   let worst = Infinity;
   for (const [x, y] of poly) {
     if (Math.hypot(x, y) < tipR - 1e-9) continue;      // club tips only
-    let d = Math.atan2(y, x) + escapeWheel.rotation.z + escapeAngle(0) - exitWorld;
+    let d = Math.atan2(y, x) + escapeWheel.rotation.z - exitWorld;
     d = ((d % pitch) + pitch + pitch / 2) % pitch - pitch / 2;   // fold into ±half a pitch
     if (Math.abs(d) < Math.abs(worst)) worst = d;
   }
@@ -38273,9 +38328,12 @@ if (Math.abs(RESERVE_BARREL_TURNS - WIND_ARREST.engageTurns) > 1e-9)
   // the comparison and the drift reads 3e-6 rad of the escapement's own
   // quantisation rather than anything about the cone. Landing on a beat
   // boundary makes both samples share the same phase and the identity exact,
-  // which is the difference between a tolerance and a measurement.
-  const beatS = 1 / (2 * F_BALANCE);
-  const DT = Math.round(3600 * HOURS_PER_FUSEE_TURN * 0.25 / beatS) * beatS;
+  // which is the difference between a tolerance and a measurement. TODO 226
+  // step 3: a whole number of beat PAIRS — the two stones lock at different
+  // recoils (their draw leans differ by 2·DRAW_DEG), so the escapement's
+  // phase repeats every two beats, not every one.
+  const pairS = 1 / F_BALANCE;
+  const DT = Math.round(3600 * HOURS_PER_FUSEE_TURN * 0.25 / pairS) * pairS;
   const drained = DT / (3600 * HOURS_PER_FUSEE_TURN);          // turns per second of τ, by the same ratio
   const drift = windLocalAt(RESERVE_BARREL_TURNS - drained, DT) - windLocalAt(RESERVE_BARREL_TURNS, 0);
   if (!(Math.abs(drift) < 1e-9))

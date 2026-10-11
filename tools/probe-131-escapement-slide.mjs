@@ -1,31 +1,36 @@
-// TODO 131 — does the escape wheel's tooth tip RIDE the pallet stone's impulse
-// face, or does it leave the locking corner into free air? ACCEPTANCE: it
-// exits non-zero unless, over one beat measured in the FORK's own frame
-// (wheel outline and stone cross-sections both read off the built meshes and
-// carried through the live world matrices), the tooth tip
-//   · rests ON the locking corner at lock (rest pose, both stones);
-//   · stays within HANDOFF_TRACK_TOL of the impulse face, BETWEEN its two
-//     corners, from the window's opening until it passes the let-off (TODO
-//     226 retired the posed law's recoil dip, so there is no prefix to skip:
-//     the wheel turns in proportion to the fork from the first instant);
-//   · then runs free by a drop of under 3° of wheel before the OTHER stone's
-//     corner catches the next tooth at the end of the window;
-//   · never overlaps a stone's outline by more than HANDOFF_TRACK_TOL at any
-//     sampled pose (the 2D outline-vs-outline depth, which the wheel's bevel
-//     can no longer inflate because the wheel's metal is held to its authored
-//     tooth circle — that reach is measured here too, off the vertices).
-// Two controls hold the measure honest: a must-hit (the tooth outline shoved
-// 0.1 into the locked stone reads a depth of at least 0.09) and a must-miss
-// (at rest the stone the tooth is NOT on stands clear by more than 0.1).
+// TODO 131, re-cut for TODO 226 step 3 — does the escape wheel's tooth RIDE the
+// pallet stones through a whole beat, with the LOCK the escapement now has?
+// ACCEPTANCE: it exits non-zero unless, over one beat from banking to banking
+// (the +x stone locked at the start, the −x stone at the end), measured in the
+// FORK's own frame — the wheel outline and the stone cross-sections read off
+// the built meshes and carried through the live world matrices — the tooth tip
+//   · rests DOWN the +x stone's locking face at the banking, a total lock deep
+//     (not on the corner: that was the escapement with no lock);
+//   · stays ON that stone, within HANDOFF_TRACK_TOL of the locking face or the
+//     impulse face, from the banking until it passes the let-off corner — the
+//     unlock and the impulse with no free air between them;
+//   · makes the wheel RECOIL through the unlock (it turns back as the face
+//     lifts, which is what draw is), and reaches the corner before it impulses;
+//   · and the NEXT tooth comes to rest down the −x stone's locking face, a
+//     total lock deep, at the far banking;
+//   · and no tooth outline overlaps a stone's by more than HANDOFF_TRACK_TOL at
+//     any sampled pose (the 2D outline-vs-outline depth; the wheel's metal is
+//     held to its authored tooth circle, measured here off the vertices).
+// The drop is read off the solve the parts were cut from (the fork's
+// `userData.escapement`) and held to its declared floor. Two controls hold the
+// measure honest: a must-hit (the tooth shoved 0.3 through the locked stone's
+// locking face reads the depth the tip's own position predicts, within 10%)
+// and a must-miss (at the banking the stone the tooth is NOT on stands clear by
+// more than 0.1).
 //
 // It is NOT probe-fork-blank (one blank, one thickness, the seats' mirror
 // symmetry — that probe never looks at a tooth) and NOT the battery's
 // `penetration` row (an MTV over two meshes, which reads a whole tooth for any
 // interleaved pair and cannot say WHERE on the stone the tip is). This is the
 // probe that would have said, at §16 and again at TODO 115, that the impulse
-// face was cut 45° off the path the tip travels: measured before the fix, the
-// tip left the corner at s = 0 and stood 0.76 clear of the stone at s = 1,
-// with the row's `penetration` reading 0.078 — green — at rest.
+// face was cut 45° off the path the tip travels; and, at TODO 226 step 3, that
+// a lock deep enough to hold puts the stone's corner inside the tooth unless
+// the tooth's locking face is undercut (it read 0.039 before it was).
 //
 // Run from tools/ (ROOT is '..'):  node probe-131-escapement-slide.mjs
 import { chromium } from 'playwright';
@@ -50,7 +55,7 @@ await page.goto(`http://127.0.0.1:${PORT}/index.html?schematic=0`, { waitUntil: 
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
 await new Promise((r) => setTimeout(r, 1500));
 
-const N = Number(process.env.N || 64);
+const N = Number(process.env.N || 240);
 const out = await page.evaluate(async (N) => {
   const THREE = await import('three');
   const L = await import('./src/layout.js');
@@ -63,8 +68,7 @@ const out = await page.evaluate(async (N) => {
   let wheel = null, br = 0;
   prof.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingSphere(); if (o.geometry.boundingSphere.radius > br) { br = o.geometry.boundingSphere.radius; wheel = o; } } });
   const stones = []; forkG.traverse((o) => { if (o.isMesh && o.material.color.getHex() === 0xb01326) stones.push(o); });
-  // The wheel's metal reach in its body band, off the vertices (the welded
-  // geometry is what the scene carries; its z band is ±thickness/2 = ±0.4).
+  let esc = null; forkG.traverse((o) => { if (o.userData?.escapement) esc = o.userData.escapement; });
   const radius = prof.userData.r;
   let reach = 0;
   { const pos = wheel.geometry.attributes.position;
@@ -72,42 +76,31 @@ const out = await page.evaluate(async (N) => {
   const poly0 = prof.userData.profile.poly;
   let tipR = 0; for (const [x, y] of poly0) tipR = Math.max(tipR, Math.hypot(x, y));
   const tipIdx = poly0.map(([x, y], i) => [Math.hypot(x, y), i]).filter(([r]) => r > tipR - 1e-9).map(([, i]) => i);
-  const beatT = 1 / (2 * L.F_BALANCE);
-  const O = new THREE.Vector2();
-  // Stone polygons in the fork frame — fixed for the whole beat (they ride
-  // the fork). Vertex 0 = locking corner, 1 = let-off corner (geometry.js).
-  clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 }); clock.scene.updateMatrixWorld(true);
-  const forkInv = new THREE.Matrix4().copy(forkG.matrixWorld).invert();
+  // ONE BEAT, banking to banking: the balance's half-swing h = 0, from its
+  // extreme at p = −½ to the next at p = +½ (θ = A·sin πp, p = 2F(τ − τφ),
+  // τφ = IMPULSE_WIDTH/(4F) — main.js balanceTheta / BALANCE_PHASE_TAU). The
+  // fork moves only while the pin is in the notch, so p is sampled densely
+  // across the middle and the two extremes are the rests.
+  const F = L.F_BALANCE, tauPh = L.IMPULSE_WIDTH / (4 * F);
+  const tauOf = (p) => tauPh + p / (2 * F);
+  const forkInv = (() => { clock.setPose({ tau: tauOf(-0.5), crownPullT: 0, leverEngage: 0, tension: 1 }); clock.scene.updateMatrixWorld(true); return new THREE.Matrix4().copy(forkG.matrixWorld).invert(); })();
   const stonePolys = stones.map((s) => {
     const m = new THREE.Matrix4().multiplyMatrices(forkInv, s.matrixWorld);
     return s.geometry.parameters.shapes.getPoints(1).map((p) => { const v = new THREE.Vector3(p.x, p.y, 0).applyMatrix4(m); return [v.x, v.y]; });
   }).sort((a, b) => a[0][0] - b[0][0]);   // by locking-corner x: [0] is the −x stone
-  // TODO 226 — the window is the pin's passage through the lift, which the
-  // balance sets, so it is MEASURED off the posed movement: the first phase at
-  // which the fork has reached the bank it lies on for the rest of the beat.
-  const forkAt = (ph) => { clock.setPose({ tau: ph * beatT, crownPullT: 0, leverEngage: 0, tension: 1 }); return forkG.rotation.z; };
-  const banked = forkAt(0.5);
-  let lo = 0, hi = 0.5;
-  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (Math.abs(forkAt(mid) - banked) < 1e-12) hi = mid; else lo = mid; }
-  const lift = hi;
-  const frames = [];
-  for (let k = 0; k <= N; k++) {
-    const s = k / N;                                   // fraction of the impulse window
-    const ph = s * lift;
-    clock.setPose({ tau: ph * beatT, crownPullT: 0, leverEngage: 0, tension: 1 }); clock.scene.updateMatrixWorld(true);
+  const frameAt = (p, label) => {
+    clock.setPose({ tau: tauOf(p), crownPullT: 0, leverEngage: 0, tension: 1 }); clock.scene.updateMatrixWorld(true);
     const inv = new THREE.Matrix4().copy(forkG.matrixWorld).invert();
     const m = new THREE.Matrix4().multiplyMatrices(inv, prof.matrixWorld);
     const poly = poly0.map(([x, y]) => { const v = new THREE.Vector3(x, y, 0).applyMatrix4(m); return [v.x, v.y]; });
-    const tips = tipIdx.map((i) => poly[i]);
-    frames.push({ s, ph, poly, tips });
-  }
-  // The rest pose, well inside the lock.
-  clock.setPose({ tau: 0.5 * beatT, crownPullT: 0, leverEngage: 0, tension: 1 }); clock.scene.updateMatrixWorld(true);
-  { const inv = new THREE.Matrix4().copy(forkG.matrixWorld).invert();
-    const m = new THREE.Matrix4().multiplyMatrices(inv, prof.matrixWorld);
-    const poly = poly0.map(([x, y]) => { const v = new THREE.Vector3(x, y, 0).applyMatrix4(m); return [v.x, v.y]; });
-    frames.push({ s: 'rest', ph: 0.5, poly, tips: tipIdx.map((i) => poly[i]) }); }
-  return { radius, reach, stonePolys, frames, lift, tol: I.HANDOFF_TRACK_TOL ?? 0.03, beatDeg: L.BEAT_DEG, sense: L.MOVEMENT_SENSE };
+    return { p: label ?? p, poly, tips: tipIdx.map((i) => poly[i]), wheelA: wheelG.rotation.z, forkA: forkG.rotation.z };
+  };
+  const frames = [frameAt(-0.5, 'rest0')];
+  for (let k = 0; k <= N; k++) frames.push(frameAt(-0.12 + 0.24 * (k / N)));
+  frames.push(frameAt(0.5, 'rest1'));
+  const s0 = esc.stones.map((q) => ({ sigma: q.sigma, dropDeg: q.dropDeg, faceRakeDeg: q.faceRake * 180 / Math.PI }));
+  return { radius, reach, stonePolys, frames, tol: I.HANDOFF_TRACK_TOL ?? 0.03, beatDeg: L.BEAT_DEG, sense: L.MOVEMENT_SENSE,
+    esc: { lockDeg: esc.lock * 180 / Math.PI, runDeg: esc.run * 180 / Math.PI, dropDeclared: esc.drop * 180 / Math.PI, stones: s0 } };
 }, N);
 await browser.close(); srv.kill();
 
@@ -117,78 +110,80 @@ const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1]; const t = 
 const bd = (p, poly) => { let m = Infinity; for (let i = 0; i < poly.length; i++) m = Math.min(m, segD(p, poly[i], poly[(i + 1) % poly.length])); return m; };
 const dense = (poly, n) => { const o = []; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; for (let k = 0; k < n; k++) o.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]); } return o; };
 const depth = (A, B) => { let d = 0; for (const p of dense(A, 6)) if (inside(p, B)) d = Math.max(d, bd(p, B)); for (const p of dense(B, 24)) if (inside(p, A)) d = Math.max(d, bd(p, A)); return d; };
-const nearestTip = (tips, c) => tips.reduce((b, t) => (Math.hypot(t[0] - c[0], t[1] - c[1]) < Math.hypot(b[0] - c[0], b[1] - c[1]) ? t : b));
-// Position of a point along the impulse face: 0 at the locking corner, 1 at
-// the let-off corner; and its offset off the face's line.
-const alongFace = (p, st) => { const a = st[0], b = st[1]; const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2; const off = Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / Math.sqrt(L2); return { t, off }; };
 
-const { radius, reach, stonePolys, frames, lift, tol, beatDeg } = out;
+const { radius, reach, stonePolys, frames, tol, sense, esc } = out;
 const fails = [];
 const say = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`); if (!ok) fails.push(msg); };
+// Along-segment parameter and distance: 0 at a, 1 at b.
+const seg = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2; const tc = Math.max(0, Math.min(1, t)); return { t, d: Math.hypot(p[0] - a[0] - tc * dx, p[1] - a[1] - tc * dy), along: t * Math.sqrt(L2) }; };
+// Stone vertex 0 = locking corner, 1 = let-off corner, 3 = the locking face's far end.
+const lockFace = (st, p) => seg(p, st[0], st[3]);
+const impFace = (st, p) => seg(p, st[0], st[1]);
+const R2D = 180 / Math.PI;
 
-console.log(`TODO 131 — escapement slide, ${N + 1} samples over the impulse window (${(100 * lift).toFixed(2)}% of the beat, measured), tol ${tol}`);
+console.log(`TODO 131 / 226 step 3 — one beat banking to banking, ${frames.length} poses, tol ${tol}; lock ${esc.lockDeg}° + run ${esc.runDeg}° of fork`);
 say(Math.abs(reach - radius) <= 1e-5, `wheel metal reaches ${reach.toFixed(6)} in its body band; authored tooth circle ${radius}`);
 
-// Which stone is the tooth leaving? The one whose locking corner a tip sits on at s = 0.
-const f0 = frames[0];
-const dist0 = stonePolys.map((st) => bd(nearestTip(f0.tips, st[0]), [st[0], st[0]]));
-const from = dist0[0] < dist0[1] ? 0 : 1, to = 1 - from;
-const onto = stonePolys[from], catcher = stonePolys[to];
-say(dist0[from] <= tol, `at lock the tip rests on the ${from ? '+x' : '−x'} stone's locking corner (${dist0[from].toFixed(4)})`);
+const [minus, plus] = stonePolys;
+const r0 = frames[0], r1 = frames[frames.length - 1];
+// The tooth locked at the start: the tip nearest the +x stone's locking face.
+const tipK = r0.tips.map((t, i) => [lockFace(plus, t).d, i]).sort((a, b) => a[0] - b[0])[0][1];
+const lock0 = lockFace(plus, r0.tips[tipK]);
+say(lock0.d <= tol && lock0.along > tol,
+  `at the banking the tip rests DOWN the +x stone's locking face: ${lock0.d.toFixed(4)} off it, ${lock0.along.toFixed(4)} from the corner`);
 
-// Ride: from the end of the recoil dip to the let-off, the tip is on the
-// face between its corners; after it passes t = 1 it is free. THE TIP IS
-// TRACKED BY INDEX from s = 0 — re-picking "the tip nearest the corner" each
-// frame swaps to the upstream tooth once the riding tip has travelled half a
-// pitch, and read 0.85 off the face on a stone the tip was riding perfectly.
-const tipK = f0.tips.findIndex((t) => t === nearestTip(f0.tips, onto[0]));
-let rideRows = 0, offMax = 0, sLetOff = null, worstDepth = 0, worstAt = null;
-for (const f of frames) {
-  for (const st of stonePolys) { const d = depth(f.poly, st); if (d > worstDepth) { worstDepth = d; worstAt = f.s; } }
-  if (f.s === 'rest') continue;
-  const tip = f.tips[tipK];
-  const { t, off } = alongFace(tip, onto);
-  if (t <= 1 + 1e-9) { rideRows++; offMax = Math.max(offMax, off); }
-  else if (sLetOff === null) sLetOff = f.s;
+// Ride: from the banking until the tip passes the let-off corner it is on one
+// of the stone's two faces; the unlock ends where it reaches the corner.
+let worstOff = 0, letOffAt = null, cornerAt = null, recoil = 0, wheelAtCorner = null, onLockFrames = 0, onImpFrames = 0;
+const a0 = r0.wheelA;
+for (let i = 0; i < frames.length - 1; i++) {
+  const f = frames[i], tip = f.tips[tipK];
+  const lf = lockFace(plus, tip), im = impFace(plus, tip);
+  if (im.t > 1 + 1e-6 && lf.d > tol) { letOffAt = f.p; break; }
+  const off = Math.min(lf.d, im.d);
+  worstOff = Math.max(worstOff, off);
+  if (cornerAt === null && lf.along <= 1e-3) { cornerAt = f.p; wheelAtCorner = f.wheelA; }
+  if (cornerAt === null) { onLockFrames++; recoil = Math.max(recoil, -sense * (f.wheelA - a0)); } else onImpFrames++;
 }
-say(rideRows >= 4 && offMax <= tol, `tip rides the impulse face for ${rideRows} samples from the window's opening, at most ${offMax.toFixed(4)} off the face`);
-say(sLetOff !== null && sLetOff < 1, `tip passes the let-off corner at s = ${sLetOff}`);
-const dropDeg = sLetOff === null ? NaN : beatDeg * (1 - sLetOff);
-say(dropDeg > 0 && dropDeg < 3, `drop ≈ ${dropDeg.toFixed(2)}° of wheel (window-sampled; ${beatDeg}° per beat)`);
-const fEnd = frames[frames.length - 2];
-const dEnd = bd(nearestTip(fEnd.tips, catcher[0]), [catcher[0], catcher[0]]);
-say(dEnd <= tol, `at the end of the window a tip rests on the ${to ? '+x' : '−x'} stone's locking corner (${dEnd.toFixed(4)})`);
-say(worstDepth <= tol, `worst outline-vs-outline overlap ${worstDepth.toFixed(4)} at s = ${worstAt}`);
+say(letOffAt !== null && worstOff <= tol,
+  `the tip stays on the stone from the banking to the let-off (${onLockFrames} poses on the locking face, ${onImpFrames} on the impulse face), at most ${worstOff.toFixed(4)} off a face`);
+say(cornerAt !== null && recoil > 0,
+  `the unlock RECOILS the wheel ${(recoil * R2D).toFixed(3)}° before the tip reaches the corner (draw)`);
+say(cornerAt !== null && Math.abs(sense * (wheelAtCorner - a0)) <= recoil + 1e-6,
+  `the wheel has not advanced when the tip reaches the corner: it impulses only after the unlock`);
+
+// Landing: the next tooth rests down the −x stone's locking face at the far banking.
+const tipL = r1.tips.map((t, i) => [lockFace(minus, t).d, i]).sort((a, b) => a[0] - b[0])[0][1];
+const lock1 = lockFace(minus, r1.tips[tipL]);
+say(lock1.d <= tol && lock1.along > tol,
+  `at the far banking the next tooth rests DOWN the −x stone's locking face: ${lock1.d.toFixed(4)} off it, ${lock1.along.toFixed(4)} from the corner`);
+const minDrop = Math.min(...esc.stones.map((q) => q.dropDeg));
+say(minDrop >= esc.dropDeclared - 1e-9,
+  `drop ${esc.stones.map((q) => `${q.sigma > 0 ? '+x' : '−x'} ${q.dropDeg.toFixed(3)}°`).join(', ')} (the solve), floor ${esc.dropDeclared}°`);
+
+let worstDepth = 0, worstAt = null;
+for (const f of frames) for (const st of stonePolys) { const d = depth(f.poly, st); if (d > worstDepth) { worstDepth = d; worstAt = f.p; } }
+say(worstDepth <= tol, `worst outline-vs-outline overlap ${worstDepth.toFixed(4)} at p = ${worstAt}`);
 
 // Controls.
-const rest = frames[frames.length - 1];
-const restOnto = stonePolys.findIndex((st) => bd(nearestTip(rest.tips, st[0]), [st[0], st[0]]) <= tol);
-say(restOnto >= 0, `control: at rest a tip sits on a locking corner (stone ${restOnto})`);
-const other = stonePolys[1 - restOnto] ?? stonePolys[0];
-let miss = Infinity; for (const p of dense(other, 24)) miss = Math.min(miss, bd(p, rest.poly));
-say(miss > 0.1, `control (must-miss): the other stone stands ${miss.toFixed(4)} clear at rest`);
-// Must-hit: the whole tooth outline translated a known distance PERPENDICULAR
-// to the locking face, into the body (the side the let-off corner is on). A
-// shove along the locking face slides the tip and reads nothing (the first
-// draft of this control). And the reading is NOT the shove: the tip sits in
-// the wedge between the locking face and the impulse face, so a point `d` in
-// from the locking face stands only d·sin(incline) from the impulse face,
-// with `incline` the angle the impulse face makes with the locking face's
-// normal — read off the same polygon. So the control PREDICTS its reading
-// and holds the instrument to it within 10%, which is what makes it a
-// control rather than a threshold.
-const c = stonePolys[restOnto] ?? stonePolys[0];
-const face = [c[3][0] - c[0][0], c[3][1] - c[0][1]]; const fl = Math.hypot(...face);
+let miss = Infinity; for (const p of dense(minus, 24)) miss = Math.min(miss, bd(p, r0.poly));
+say(miss > 0.1, `control (must-miss): at the banking the −x stone stands ${miss.toFixed(4)} clear of the wheel`);
+// Must-hit: the tooth translated a known distance PERPENDICULAR to the locked
+// stone's locking face, into the stone. The reading is predicted by the tip's
+// own shoved position (its distance to the nearest edge of the stone, which
+// is the locking face only when the shove is the smaller distance), and the
+// instrument is held to it within 10%: a control, not a threshold.
+const face = [plus[3][0] - plus[0][0], plus[3][1] - plus[0][1]]; const fl = Math.hypot(...face);
 let nrm = [-face[1] / fl, face[0] / fl];
-const imp = [c[1][0] - c[0][0], c[1][1] - c[0][1]]; const il = Math.hypot(...imp);
+const imp = [plus[1][0] - plus[0][0], plus[1][1] - plus[0][1]];
 if (imp[0] * nrm[0] + imp[1] * nrm[1] < 0) nrm = [-nrm[0], -nrm[1]];
-const cosInc = (imp[0] * nrm[0] + imp[1] * nrm[1]) / il;
 const SHOVE = 0.3;
-const expected = SHOVE * Math.sqrt(1 - cosInc * cosInc);
-const shoved = rest.poly.map(([x, y]) => [x + SHOVE * nrm[0], y + SHOVE * nrm[1]]);
-const hit = depth(shoved, c);
-say(Math.abs(hit - expected) <= 0.1 * expected,
-  `control (must-hit): the tooth shoved ${SHOVE} through the locking face reads ${hit.toFixed(4)}, predicted ${expected.toFixed(4)} (incline ${(Math.acos(cosInc) * 180 / Math.PI).toFixed(1)}° off the face normal)`);
+const shoved = r0.poly.map(([x, y]) => [x + SHOVE * nrm[0], y + SHOVE * nrm[1]]);
+const tipS = [r0.tips[tipK][0] + SHOVE * nrm[0], r0.tips[tipK][1] + SHOVE * nrm[1]];
+const expected = inside(tipS, plus) ? bd(tipS, plus) : 0;
+const hit = depth(shoved, plus);
+say(expected > 0.05 && Math.abs(hit - expected) <= 0.1 * expected,
+  `control (must-hit): the tooth shoved ${SHOVE} through the locking face reads ${hit.toFixed(4)}, the tip's own position predicts ${expected.toFixed(4)}`);
 say(bootWarns.length === 0, `boot silent (${bootWarns.length} warning(s))${bootWarns.length ? '\n  ' + bootWarns.join('\n  ') : ''}`);
 
 console.log(fails.length ? `\n${fails.length} FAILURE(S)` : '\nALL PASS');

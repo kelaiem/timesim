@@ -1108,7 +1108,7 @@
         </div>
         <div class="fig-body">
           <svg viewBox="0 0 780 346" width="780" height="346" role="img"
-               aria-label="Two close-ups of the escapement in the pallet fork's frame, one per stone, driven through one beat by the slider. On the right the entry stone holds a wheel tooth on its locking corner, the wheel backs up a little while the stone slides off the corner, then the tooth's tip rides the stone's inclined impulse face until it drops off; on the left the next tooth arrives and lands on the exit stone's locking corner. Solid arrows mark the part that drives, dashed arrows the motion that follows, and a strip beneath names the four phases with the current one framed.">
+               aria-label="Two close-ups of the escapement in the pallet fork's frame, one per stone, driven through one beat by the slider. On the right the entry stone holds a wheel tooth a little way down its locking face, the wheel backs up a little while the stone slides off the tooth, then the tooth's tip rides the stone's inclined impulse face until it drops off; on the left the next tooth arrives and lands a little way down the exit stone's locking face. Solid arrows mark the part that drives, dashed arrows the motion that follows, and a strip beneath names the four phases with the current one framed.">
             <text class="lbl lbl-strong" x="24" y="22">EXIT stone (−x) — about to catch</text>
             <text class="lbl lbl-strong" x="414" y="22">ENTRY stone (+x) — holds, unlocks, impels, lets go</text>
             <clipPath id="escClipL"><rect x="14" y="30" width="366" height="186"/></clipPath>
@@ -1143,9 +1143,9 @@
             <g transform="translate(212 244)">
               <text class="lbl lbl-strong" x="0" y="0">2 · unlock</text>
               <text class="val" x="0" y="14">the PIN swings the fork</text>
-              <text class="val" x="0" y="27">off its bank; with no lock</text>
-              <text class="val" x="0" y="40">depth, the STONE leaves</text>
-              <text class="val" x="0" y="53">the corner at once</text>
+              <text class="val" x="0" y="27">off its bank; the STONE</text>
+              <text class="val" x="0" y="40">slides off the tooth and</text>
+              <text class="val" x="0" y="53">shoves the wheel back</text>
             </g>
             <g transform="translate(402 244)">
               <text class="lbl lbl-strong" x="0" y="0">3 · impulse</text>
@@ -1162,7 +1162,7 @@
               <text class="val" x="0" y="53">the EXIT stone stops it</text>
             </g>
             <text class="lbl" x="20" y="322">solid arrow — the part that DRIVES; dashed — the motion that follows; the dot is a touch</text>
-            <text class="lbl" x="20" y="338">computed, not drawn — 15 teeth; stones from EMBRACE_DEG 42 · DRAW_DEG 12 · DROP_DEG 1.5 (makePalletFork)</text>
+            <text class="lbl" x="20" y="338">computed, not drawn — 15 teeth; EMBRACE_DEG 42 · DRAW_DEG 12 · DROP_DEG 1.5 · LOCK_DEG 1.5 · RUN_DEG 0.5</text>
             <defs>
               <marker id="arrE" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--ruby)"/></marker>
               <marker id="arrEb" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--brass)"/></marker>
@@ -1174,28 +1174,27 @@
         (2), and it decides where the wheel stops (4). The wheel leads exactly once, in phase
         3, and what it delivers there is ENERGY, not timing: the impulse face is where the
         train pays the oscillator for the swing it just borrowed. The drawing is in the
-        FORK's frame — stones still, wheel moving — because that is the frame the face is cut
-        in: <code>makePalletFork</code> traces the tooth tip's path past the seated stone as
-        the wheel turns <code>BEAT_DEG = 12</code>° while the fork swings bank to bank, and
-        the impulse face is the chord of that path from the locking corner to the point where
-        <code>DROP_DEG = 1.5</code>° of wheel remain. Since TODO 226 the law poses exactly that
-        pair — the fork's angle is read off the impulse pin, and the wheel turns in proportion
-        to the fork — so the tip leaves the corner the instant the fork moves, rides the face
-        for the whole advance and leaves at the let-off corner, and what the panel shows is
-        that geometry posed through the law, not a picture of it. Lock is a contact, not a
-        state: the locking face's LEAN (<code>DRAW_DEG = 12</code>°) converts wheel torque
-        into a pull toward the banking (draw), asserted at build with the torque sign written
-        out. Banking is derived from the impulse pin's own bearing from the fork pivot at the
-        edge of the lift, <code>atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))</code>, and
-        since §221 that edge is the cited lift, <code>LIFT_DEG = 50</code>°, so the fork
-        swings an 8.05° lever angle; the driven law reads the same relation backwards and
-        gives the pin exactly that lift. Phase 2 never lights, and that is the plate being
-        honest rather than broken: the stones are seated with no lock depth (TODO 131's
-        residue), so unlocking takes no time here, where a real stone first slides up its
-        locking face — shoving the wheel back by the draw — before the impulse begins. The
-        play loop drives every pose through the same ported law plate 2 scrubs
-        (<code>escapeAngle</code> / <code>forkSwingRad</code>); only DISPLAY time is dilated,
-        since the whole action is the pin's passage through the notch, 8% of the beat.</figcaption>
+        FORK's frame — stones still, wheel moving — because that is the frame the faces are cut
+        in, and since TODO 226's third step the faces and the motion are one solve
+        (<code>leverEscapement</code>): the wheel stands wherever its tooth circle crosses the
+        face the tip is on. A resting tooth sits <code>LOCK_DEG</code> + <code>RUN_DEG</code>
+        (1.5° + 0.5° of fork) down the locking face; through the UNLOCK the pin carries the
+        fork off its bank and the tip slides up the face to the corner, and because the face
+        leans (<code>DRAW_DEG = 12</code>°) the wheel is shoved BACK as it goes — the recoil,
+        read off the face, not posed. Then the tip rides the impulse face to the let-off
+        corner, which is placed so the wheel has <code>DROP_DEG = 1.5</code>° left to run
+        before the next tooth lands a lock down the exit stone's face, and the draw carries
+        the fork the run on to its banking. Lock is a contact, not a state: the lean converts
+        wheel torque into a pull toward the banking (draw), asserted at build with the torque
+        sign written out. The let-off is derived from the impulse pin's own bearing from the
+        fork pivot at the edge of the lift,
+        <code>atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))</code>, and since §221 that edge
+        is the cited lift, <code>LIFT_DEG = 50</code>°; the fork banks a run past it, so it
+        swings a 9.05° lever angle. The drop is instant in a real watch; here it is paced
+        across the run, and both its ends are contacts. The play loop drives every pose
+        through the same ported law plate 2 scrubs (<code>escapeAngle</code> /
+        <code>forkSwingRad</code>); only DISPLAY time is dilated, since the whole action is
+        the pin's passage through the notch, 9% of the beat.</figcaption>
       </figure>
 
       <!-- —————— PLATE 2 : THE BEAT LAW, INTERACTIVE —————— -->
@@ -1210,14 +1209,14 @@
         </div>
         <div class="fig-body">
           <svg viewBox="0 0 780 200" width="780" height="200" role="img"
-               aria-label="Graph of escape wheel advance and fork swing across one beat: while the impulse pin is in the notch the fork follows it from bank to bank and the wheel advances twelve degrees in proportion, then lock">
+               aria-label="Graph of escape wheel advance and fork swing across one beat: while the impulse pin is in the notch the fork follows it from bank to bank; the wheel first backs up a little as the stone unlocks, advances on the impulse face, drops and comes to rest twelve degrees on, then lock">
             <line x1="60" y1="160" x2="740" y2="160" stroke="var(--text)" stroke-width="1"/>
             <line x1="60" y1="20" x2="60" y2="160" stroke="var(--text)" stroke-width="1"/>
             <text class="lbl" x="700" y="180">p (beat)</text>
             <text class="val" x="14" y="40">+12°</text>
             <text class="val" x="14" y="164">0°</text>
             <line id="escWinLine" x1="114" y1="20" x2="114" y2="160" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
-            <text class="val" id="escWinLbl" x="92" y="176">0.080</text>
+            <text class="val" id="escWinLbl" x="104" y="176">0.091</text>
             <path id="escLaw" fill="none" stroke="var(--brass)" stroke-width="2"/>
             <path id="forkLaw" fill="none" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="5 3"/>
             <text class="lbl val-brass" x="240" y="46">escape wheel Δ (escapeAngle)</text>
@@ -1232,13 +1231,16 @@
         over the reserve because the fusee delivers level torque); while the impulse pin is
         in the notch the fork's angle is the pin as seen from the fork's pivot,
         <code>atan(r·sin θ / (d − r·cos θ))</code>, and outside it the fork lies on its bank;
-        and the wheel advances <code>BEAT_DEG = 12°</code> (half the 24° tooth pitch) in
-        proportion to the fork's travel bank to bank. So the window is the pin's own passage
-        through the lift, <code>LIFT_DEG = 50</code>° of balance centred on the line of
-        centres: 0.080 of the beat, <code>(2/π)·asin(LIFT_DEG / 2A)</code>, at every state of
-        wind. The remaining 92% is lock, with the balance detached. The wheel's angle is
-        <code>n·BEAT_DEG</code> plus that fraction of a beat — the whole train hangs off this
-        one function, never integrated, so it cannot drift. Which is the position arrow with
+        and the wheel stands where its tooth circle crosses the face the tip is on — the
+        locking face through the unlock (the dip at the start: the RECOIL), the impulse face
+        to the let-off, then the drop and the run onto the other stone — so across the beat
+        it advances <code>BEAT_DEG = 12°</code> (half the 24° tooth pitch), from one stone's
+        rest to the other's. So the window is the pin's own passage through the notch: the
+        <code>LIFT_DEG = 50</code>° of balance between the two let-offs, centred on the line
+        of centres, and the run either side, 57° of balance and 0.091 of the beat, at every
+        state of wind. The remaining 91% is lock, with the balance detached. The wheel's angle
+        is <code>n·BEAT_DEG</code> plus that solve — the whole train hangs off this one
+        function, never integrated, so it cannot drift. Which is the position arrow with
         nothing left over: the balance's angle fixes the fork's, the fork's fixes the
         wheel's, and every wheel behind it is read out of the wheel. The train does not turn
         the escape wheel here; the escape wheel is what tells the train where it is.</figcaption>
@@ -1266,27 +1268,35 @@
       where the pin enters, so the pin's centre stands between them for the whole lift (it
       stood 0.156 outside them before, and only 0.394 of it entered a slot 2.759 deep). The
       pin is set in one roller below the fork, whose rim clears the guard pin set behind the
-      notch's floor. What the cut shows is the debt it does not pay: the notch is a funnel,
-      not a parallel slot, because the fork stops dead on its bank while the pin is still
-      moving across the slot, and a slot of the pin's width would trap it. A real lever
-      escapes by its run to the banking, which needs the lock this movement does not have
-      (TODO 131), so here the pin bears on no wall through the lift: the drive is the law's
-      and not a contact's, and making it one is TODO 226's third step. Longer horns would
+      notch's floor. What the cut still shows is the debt it does not pay yet: the notch is a
+      funnel, not a parallel slot, and the pin bears on no wall in it — the fork follows the
+      pin's centre line, so the drive through the notch is the law's and not a contact's.
+      Since TODO 226's third step the escapement has what closing it needs: LOCK and RUN.
+      Each stone is seated so a resting tooth stands <code>LOCK_DEG</code> +
+      <code>RUN_DEG</code> (1.5° + 0.5° of fork) down its locking face, and the fork banks
+      the run past the let-off, so the pin carries it back through the run and the lock
+      before the impulse — the UNLOCK, plate 1's phase 2 — and the wheel RECOILS through it,
+      0.28° on the entry stone and 0.54° on the exit, read off the leaned face rather than
+      posed. Closing the notch on the pin is what is left of that step. Longer horns would
       embrace the pin further and meet it sooner on the far side of the swing: cut to the
-      entry depth, the balance knocks at 301.35°, which is the largest swing it can reach.
-      The bank itself is exact (§221): <code>FORK_BANK_DEG</code> is the pin's bearing at the
-      lift's edge, 4.03° (it was 2.57° while the window was a readability amplitude's arc,
-      and the arcs were matched at the notch's floor, which the pin never reached). The
+      depth where the pin meets the banked fork, the balance knocks at 304.12°, which is the
+      largest swing it can reach. The let-off is exact (§221): <code>FORK_LETOFF_DEG</code>
+      is the pin's bearing at the lift's edge, 4.03° (it was 2.57° while the window was a
+      readability amplitude's arc, and the arcs were matched at the notch's floor, which the
+      pin never reached), and <code>FORK_BANK_DEG</code> is that plus the run, 4.53°. The
       pallet stones seat in slots whose gap is DERIVED from the blank's own extrude bevel
       (<code>gGap = bevel + SEAT_SHOW</code>) — a guard born from a defect every battery run
       missed; that seat is also TODO 5's fixture-vs-fixture residue: the one intra-unit pair
       class the interim instrument still cannot see. The stones' WIDTH is the impulse they
-      carry: <code>stoneW</code> is the tip's travel across the stone up to the drop, so the
-      wheel runs free for 1.5° and not, as it did until TODO 131, for 4.4° of its 12°; and
-      the wheel's chamfer comes out of its stock (<code>bevelOffset: -bevel</code>), so the
-      metal's tip circle is the <code>radius</code> the stones are seated on — until then it
-      reached 4.62 against 4.5 and buried the tip 0.078 in the corner at rest. There is no
-      lock depth (TODO 131's residue), which is why plate 1's phase 2 never lights.</p>
+      carry: the let-off corner is placed a <code>DROP_DEG</code> of wheel behind where the
+      next tooth lands, so the wheel runs free for 1.5° (1.71° past the wider stone) and not,
+      as it did until TODO 131, for 4.4° of its 12°; and the wheel's chamfer comes out of its
+      stock (<code>bevelOffset: -bevel</code>), so the metal's tip circle is the
+      <code>radius</code> the stones are seated on — until then it reached 4.62 against 4.5
+      and buried the tip 0.078 in the corner at rest. With lock, a resting stone's corner
+      stands inside the tip circle, so the tooth's locking face is undercut
+      <code>TOOTH_RAKE_DEG = 24</code>° from the radial as deep as that corner reaches: only
+      the tip touches.</p>
     </div>
   </details>
 
@@ -3598,28 +3608,125 @@
 
     update();
 
-    // —— Escapement plate 2: the beat law, ported verbatim (layout.js/main.js) ——
-    // TODO 226 — the fork is read off the balance through the impulse pin and
-    // the wheel off the fork (main.js PIN_FORK / balanceTheta / forkSwingAt /
-    // escapeAngle), at §221's swing. d is the balance-to-fork-pivot distance
-    // and r the pin's roller radius as the layout places them; the bank is
-    // FORK_BANK_DEG as main.js derives it, from the cited lift.
+    // —— The lever escapement, ported (src/escapement.js `leverEscapement`) ——
+    // TODO 226 step 3 — ONE solve, ported once for both plates below: the
+    // stones' seats, leans, widths and let-off corners and the wheel's angle at
+    // every fork angle, from the declared quantities. The page is sim-code-free
+    // by design, so this is a copy kept in step by hand with the module and
+    // with the primer's "One beat, slowed down" plate: change one, change all.
+    function leverEscapement(o) {
+      var D2R = Math.PI / 180;
+      var rot = function (p, a) { var c = Math.cos(a), sn = Math.sin(a); return [c * p[0] - sn * p[1], sn * p[0] + c * p[1]]; };
+      var add = function (a, b) { return [a[0] + b[0], a[1] + b[1]]; };
+      var sub = function (a, b) { return [a[0] - b[0], a[1] - b[1]]; };
+      var mul = function (a, k) { return [a[0] * k, a[1] * k]; };
+      var dot = function (a, b) { return a[0] * b[0] + a[1] * b[1]; };
+      var len = function (a) { return Math.hypot(a[0], a[1]); };
+      var wrap = function (a) { return Math.atan2(Math.sin(a), Math.cos(a)); };
+      var R = o.span / (2 * Math.sin(o.embraceDeg * D2R));
+      var Dd = o.span / 2 + Math.sqrt(Math.max(R * R - o.span * o.span / 4, 0)), W0 = [0, Dd];
+      var lock = o.lockDeg * D2R, run = o.runDeg * D2R, drop = o.dropDeg * D2R, draw = o.drawDeg * D2R;
+      var beat = o.beatRad, sense = o.sense, bank0 = o.bank0Rad, bank = bank0 + run, unlock = bank0 - lock;
+      var lineCircle = function (A, v, t0) {
+        var w = sub(A, W0), a = dot(v, v), b = 2 * dot(w, v), c = dot(w, w) - R * R, disc = b * b - 4 * a * c;
+        if (disc < 0) return NaN;
+        var sq = Math.sqrt(disc), t1 = (-b - sq) / (2 * a), t2 = (-b + sq) / (2 * a);
+        return Math.abs(t1 - t0) <= Math.abs(t2 - t0) ? t1 : t2;
+      };
+      var wheelTurn = function (d) { return sense * d; };          // which way the wheel turns, written once
+      var tipAngle0 = function (C) { return Math.atan2(C[1] - Dd, C[0]); };
+      var tipAt = function (C, d) { return add(W0, rot(sub(C, W0), wheelTurn(d))); };
+      var deltaOf = function (C, P) { return wheelTurn(wrap(Math.atan2(P[1] - Dd, P[0]) - tipAngle0(C))); };
+      var stones = [-1, 1].map(function (sg) {
+        var C = [sg * o.span / 2, o.span / 2], u = mul(sub(C, W0), 1 / R), cHat = mul(C, 1 / len(C));
+        var f0 = [-cHat[1], cHat[0]];
+        if (dot(f0, u) < 0) f0 = mul(f0, -1);
+        var tau = rot(f0, sense * draw);
+        return { sig: sg, C: C, tau: tau, th: Math.atan2(tau[1], tau[0]), K: rot(C, -sg * unlock) };
+      });
+      var by = function (sg) { return stones[sg < 0 ? 0 : 1]; };
+      function onLockFace(sg, phi) {
+        var st = by(sg), A = rot(st.K, phi), v = rot(st.tau, phi), t = lineCircle(A, v, 0);
+        return deltaOf(st.C, add(A, mul(v, t)));
+      }
+      stones.forEach(function (st) {   // the let-off corner, from the drop to the next tooth's landing
+        var phiL = -st.sig * bank0, land = onLockFace(-st.sig, phiL) + beat;
+        st.Estar = rot(tipAt(st.C, land - drop), -phiL);
+        st.chordLoc = rot(sub(st.Estar, st.K), -(st.th - Math.PI / 2));
+      });
+      var stoneW = Math.min(Math.abs(stones[0].chordLoc[0]), Math.abs(stones[1].chordLoc[0]));
+      var bodyX = sense < 0 ? stoneW : -stoneW;
+      stones.forEach(function (st) {
+        st.lead = bodyX * (st.chordLoc[1] / st.chordLoc[0]);
+        st.E = add(st.K, rot([bodyX, st.lead], st.th - Math.PI / 2));
+      });
+      function onImpulseFace(sg, phi) {
+        var st = by(sg), A = rot(st.K, phi), v = rot(sub(st.E, st.K), phi), t = lineCircle(A, v, 0.5);
+        return deltaOf(st.C, add(A, mul(v, t)));
+      }
+      stones.forEach(function (st) {
+        var lo = unlock, hi = -bank, g = function (x) { return len(sub(rot(st.E, st.sig * x), W0)) - R; }, glo = g(lo);
+        for (var i = 0; i < 80; i++) { var m = (lo + hi) / 2, gm = g(m); if ((gm < 0) === (glo < 0)) { lo = m; glo = gm; } else hi = m; }
+        st.xE = (lo + hi) / 2;
+        st.deltaE = onImpulseFace(st.sig, st.sig * st.xE);
+        st.deltaRest = onLockFace(st.sig, st.sig * bank);
+        var A = rot(st.K, st.sig * bank);
+        st.cornerDepth = R - len(sub(A, W0));
+      });
+      function deltaAt(sg, phi) {
+        var st = by(sg), other = by(-sg), x = sg * phi;
+        if (x >= bank) return st.deltaRest;
+        if (x >= unlock) return onLockFace(sg, phi);
+        if (x >= st.xE) return onImpulseFace(sg, phi);
+        if (x <= -bank) return beat + other.deltaRest;
+        var f = (st.xE - x) / (st.xE + bank);                    // the drop, paced across the run
+        return st.deltaE + f * (beat + other.deltaRest - st.deltaE);
+      }
+      return { R: R, D: Dd, W0: W0, bank0: bank0, bank: bank, unlock: unlock, stones: stones, stoneW: stoneW, bodyX: bodyX,
+        lockReach: Math.max(stones[0].cornerDepth, stones[1].cornerDepth), deltaAt: deltaAt };
+    }
+
+    // —— Escapement plate 2: the beat law, ported (layout.js/main.js/escapement.js) ——
+    // The fork is read off the balance through the impulse pin (main.js
+    // PIN_FORK / forkSwingAt) at §221's swing, and the wheel off the fork
+    // through the stones' faces (escapement.js deltaAt). d is the balance-to-
+    // fork-pivot distance and r the pin's roller radius as the layout places
+    // them. The beat runs from the pin meeting the banked fork to its meeting
+    // the other bank, so p = 0 is the start of the unlock.
     (function () {
       var BEAT_DEG = 12, AMPLITUDE_POSED_DEG = 200, LIFT_DEG = 50, D = 11.1948, R_PIN = 1.62;
+      var EMBRACE_DEG = 42, DRAW_DEG = 12, DROP_DEG = 1.5, LOCK_DEG = 1.5, RUN_DEG = 0.5;
+      var MOVEMENT_SENSE = -1;             // layout.js — clockwise seen from the dial; +x stone is the ENTRY stone
       var D2R = Math.PI / 180, amp = AMPLITUDE_POSED_DEG * D2R, liftHalf = LIFT_DEG / 2 * D2R;
-      // the bank IS the pin's bearing from the fork pivot at the lift's edge (§221),
-      // so the pin lies on the slot's line at ±bank by construction
-      var bank = Math.atan2(R_PIN * Math.sin(liftHalf), D - R_PIN * Math.cos(liftHalf));
-      var BANK_DEG = bank / D2R;
-      var alpha = Math.asin(liftHalf / amp);
+      // the LET-OFF is the pin's bearing from the fork pivot at the lift's edge
+      // (§221); the fork BANKS a run past it (TODO 226 step 3), and the pin
+      // meets the banked fork where its bearing is that bank, a little outside
+      // the lift
+      var bank0 = Math.atan2(R_PIN * Math.sin(liftHalf), D - R_PIN * Math.cos(liftHalf));
+      var bank = bank0 + RUN_DEG * D2R;
+      var entryHalf = Math.asin(D * Math.sin(bank) / R_PIN) - bank;
+      var alpha = Math.asin(entryHalf / amp);
       var WINDOW = 2 * alpha / Math.PI;                                 // the pin's passage, as a fraction of the beat
-      function theta(p) { return amp * Math.sin(Math.PI * p - alpha); }  // beat 0: the pin enters at −LIFT/2
-      function forkNorm(p) { // bank −1 → +1: the pin seen from the fork's pivot, banked outside the lift
+      function theta(p) { return amp * Math.sin(Math.PI * p - alpha); }  // beat 0: the pin meets the banked fork
+      function swing(p) {   // the pin seen from the fork's pivot, banked outside its passage
         var th = theta(p);
-        if (Math.abs(th) >= liftHalf * (1 - 1e-12)) return th < 0 ? -1 : 1;
-        return Math.atan2(R_PIN * Math.sin(th), D - R_PIN * Math.cos(th)) / bank;
+        if (Math.abs(th) >= entryHalf * (1 - 1e-12)) return th < 0 ? -bank : bank;
+        return Math.atan2(R_PIN * Math.sin(th), D - R_PIN * Math.cos(th));
       }
-      function escDelta(p) { return BEAT_DEG * (forkNorm(p) + 1) / 2; }  // the wheel in proportion to the fork
+      var span = 2 * 4.5 * Math.sin(EMBRACE_DEG * D2R);
+      var ESC = leverEscapement({ span: span, beatRad: BEAT_DEG * D2R, bank0Rad: bank0, sense: MOVEMENT_SENSE,
+        embraceDeg: EMBRACE_DEG, drawDeg: DRAW_DEG, dropDeg: DROP_DEG, lockDeg: LOCK_DEG, runDeg: RUN_DEG });
+      var entry = ESC.stones[1];          // the +x stone, locked as beat 0 opens
+      function forkNorm(p) { return swing(p) / bank; }
+      // the wheel's advance from where it rests at the banking, in degrees
+      function escDelta(p) { return (ESC.deltaAt(1, -swing(p)) - entry.deltaRest) / D2R; }
+      function phaseOf(p) {   // 1 locked · 2 unlock · 3 impulse · 4 drop and run
+        if (p >= WINDOW || p === 0) return 1;
+        var x = -swing(p);
+        if (x > ESC.unlock) return 2;
+        if (x > entry.xE) return 3;
+        return 4;
+      }
       var IMPULSE_WIDTH = WINDOW;                                       // plate 1's play loop reads the window by this name
       var winX = (60 + WINDOW * 680).toFixed(1);
       document.getElementById('escWinLine').setAttribute('x1', winX);
@@ -3636,88 +3743,74 @@
       var sl = document.getElementById('escSlider'), ro = document.getElementById('escReadout');
       var ch = document.getElementById('escChip'), mk = document.getElementById('escMarker');
       function upd() {
-        var p = sl.value / 1000;
+        var p = sl.value / 1000, ph = phaseOf(p);
         ro.textContent = 'p ' + p.toFixed(3);
         mk.setAttribute('cx', X0 + p * XW);
         mk.setAttribute('cy', Y0 - escDelta(p) * YSC);
         ch.className = 'chip';
-        if (p >= IMPULSE_WIDTH || p === 0) { ch.classList.add('ride'); ch.textContent = tr('LOCKED · draw on the bank — balance detached'); }
-        else if (escDelta(p) < BEAT_DEG - 1.5) { ch.classList.add('ramp'); ch.textContent = tr('IMPULSE · tooth on the impulse face'); }
+        if (ph === 1) { ch.classList.add('ride'); ch.textContent = tr('LOCKED · draw on the bank — balance detached'); }
+        else if (ph === 2) { ch.classList.add('trip'); ch.textContent = tr('UNLOCK · the pin lifts the stone, the wheel recoils'); }
+        else if (ph === 3) { ch.classList.add('ramp'); ch.textContent = tr('IMPULSE · tooth on the impulse face'); }
         else { ch.classList.add('trip'); ch.textContent = tr('DROP · onto the exit stone'); }
       }
       sl.addEventListener('input', upd);
       upd();
 
-      // —— Plate 1: the four contacts, computed in the fork's frame (TODO 131) ——
-      // The same geometry makePalletFork solves, in the machine's own
-      // proportions: the escape wheel's 15 club teeth on the tooth circle
-      // (radius 4.5), the two stones seated at EMBRACE_DEG about the fork
-      // pivot, each locking face leaned by DRAW_DEG, and each impulse face cut
-      // as the CHORD of the tooth tip's own path past the seated stone in the
-      // fork's frame — from the locking corner to the point where DROP_DEG of
-      // wheel remain. Poses come from the ported law above (escDelta /
-      // forkNorm), so a scrub of p is the shipped motion; the frame is the
-      // fork's, which is where the impulse face was cut and so the one frame
-      // in which "does the tip ride the face" is readable at a glance.
-      // Arrows are computed too: the wheel's drive line is the tip's motion
-      // tangent (MOVEMENT_SENSE about the wheel centre), the stone's is the
-      // corner's motion under the fork's swing; SOLID on whichever part
-      // drives the phase, DASHED on what follows — plate 2's vocabulary.
-      // The primer's "One beat, slowed down" plate is this model without the
-      // names; the two are kept in step by hand, so change one, change both.
+      // —— Plate 1: the four contacts, computed in the fork's frame ——
+      // The same solve makePalletFork cuts the stones from (escapement.js,
+      // ported above), in the machine's own proportions: the escape wheel's 15
+      // club teeth on the tooth circle (radius 4.5), their locking faces
+      // undercut TOOTH_RAKE_DEG from the radial as deep as a locked stone's
+      // corner reaches plus CLEAR_MARGIN; the two stones seated at EMBRACE_DEG
+      // about the fork pivot a LOCK_DEG + RUN_DEG deep at the banking, each
+      // locking face leaned by DRAW_DEG, each impulse face from the locking
+      // corner to the let-off corner the DROP places. Poses come from the law
+      // above (ESC.deltaAt off the fork's swing), so a scrub of p is the
+      // shipped motion; the frame is the fork's, where "does the tip ride the
+      // face" is readable at a glance. Arrows are computed too: the wheel's
+      // drive line is the tip's motion tangent (MOVEMENT_SENSE about the wheel
+      // centre), the stone's is the corner's motion under the fork's swing;
+      // SOLID on whichever part drives the phase, DASHED on what follows.
       (function () {
         var el = function (id) { return document.getElementById(id); };
         var box = document.getElementById('escapement');
         var slider = el('escFrameSlider'), btn = el('escPlay'), chipEl = el('escPhaseChip'), readout = el('escFrameReadout');
         var frame = el('escStepFrame'), rideOut = el('escFrameRide');
-        var TEETH = 15, R = 4.5, EMBRACE_DEG = 42, DRAW_DEG = 12, DROP_DEG = 1.5;
-        var MOVEMENT_SENSE = -1;             // layout.js — clockwise seen from the dial; +x stone is the ENTRY stone
-        var D2R = Math.PI / 180;
-        var embrace = EMBRACE_DEG * D2R, pitch = 2 * Math.PI / TEETH;
-        var beatRad = BEAT_DEG * D2R, drawRad = DRAW_DEG * D2R, dropRad = DROP_DEG * D2R, bankRad = BANK_DEG * D2R;
-        var span = 2 * R * Math.sin(embrace), Dist = span / 2 + Math.sqrt(R * R - span * span / 4);
+        var TEETH = 15, R = ESC.R, TOOTH_RAKE_DEG = 24, CLEAR_MARGIN = 0.15;
+        var pitch = 2 * Math.PI / TEETH;
         var rot = function (p, a) { var c = Math.cos(a), sn = Math.sin(a); return [c * p[0] - sn * p[1], sn * p[0] + c * p[1]]; };
         var sub = function (a, b) { return [a[0] - b[0], a[1] - b[1]]; };
         var add = function (a, b) { return [a[0] + b[0], a[1] + b[1]]; };
         var unit = function (v) { var n = Math.hypot(v[0], v[1]) || 1; return [v[0] / n, v[1] / n]; };
-        var sOff = 1 - dropRad / beatRad;    // the beat fraction at which the tip leaves the face
-        var wc = [0, Dist];                  // wheel centre, fork pivot at the origin, fork frame neutral
-        // One stone: seat on the tooth circle, locking face leaned by draw,
-        // impulse face from the tip path (makePalletFork's slidePath/solveStone).
-        function stone(sig) {
-          var C = [sig * span / 2, span / 2], cl = Math.hypot(C[0], C[1]);
-          var u = [(C[0] - wc[0]) / R, (C[1] - wc[1]) / R];
-          var f0 = [-C[1] / cl, C[0] / cl];
-          if (f0[0] * u[0] + f0[1] * u[1] < 0) f0 = [-f0[0], -f0[1]];
-          var tau = rot(f0, MOVEMENT_SENSE * drawRad), th = Math.atan2(tau[1], tau[0]);
-          var tipAt = function (f) { return rot(add(rot(sub(C, wc), MOVEMENT_SENSE * beatRad * f), wc), -sig * bankRad * (1 - 2 * f)); };
-          var seat = tipAt(0), chord = sub(tipAt(sOff), seat);
-          var loc = rot(chord, -(th - Math.PI / 2));
-          return { sig: sig, seat: seat, th: th, xTravel: Math.abs(loc[0]), slope: loc[1] / loc[0] };
-        }
-        var stones = [stone(-1), stone(1)];
-        var stoneW = Math.min(stones[0].xTravel, stones[1].xTravel), len = 0.9 * pitch * R;
-        stones.forEach(function (st) {
-          var bodyX = MOVEMENT_SENSE < 0 ? stoneW : -stoneW, delta = bodyX * st.slope, e = bodyX > 0 ? 0.6 : -0.6;
-          var local = [[0, 0], [bodyX, delta], [bodyX, len], [0, len]];
+        var wc = ESC.W0;                     // wheel centre, fork pivot at the origin, fork frame neutral
+        var len = 0.9 * pitch * R;
+        ESC.stones.forEach(function (st) {
+          var bodyX = ESC.bodyX, e = bodyX > 0 ? 0.6 : -0.6;
+          var local = [[0, 0], [bodyX, st.lead], [bodyX, len], [0, len]];
           var arm = [[bodyX + e, 0.5 * len], [bodyX + e, len + 0.6], [-e, len + 0.6], [-e, 0.5 * len]];
-          var place = function (q) { return add(st.seat, rot(q, st.th - Math.PI / 2)); };
+          var place = function (q) { return add(st.K, rot(q, st.th - Math.PI / 2)); };
           st.poly = local.map(place); st.arm = arm.map(place);
-          st.corner = st.poly[0]; st.letOff = st.poly[1];
-          st.faceW = Math.hypot(st.letOff[0] - st.corner[0], st.letOff[1] - st.corner[1]);
+          st.corner = st.poly[0]; st.letOff = st.poly[1]; st.faceEnd = st.poly[3];
         });
+        var stones = ESC.stones;
         // The wheel: one closed outline walked the way the wheel turns —
-        // valley, back, heel, TIP on the tooth circle, undercut locking foot,
-        // scallop — phased so a tip rests on the entry stone's corner at p = 0.
+        // valley, back, heel, TIP on the tooth circle, the locking face's
+        // undercut, the locking foot, scallop — phased so a tip stands at the
+        // entry stone's corner position at δ = 0.
         var az0 = Math.atan2(span / 2 - wc[1], span / 2), ring = [];
+        var undercut = ESC.lockReach + CLEAR_MARGIN, rk = TOOTH_RAKE_DEG * D2R;
         for (var k = 0; k < TEETH; k++) {
           var a = az0 + MOVEMENT_SENSE * k * pitch;
           var P = function (r, d) { return [r * Math.cos(a + MOVEMENT_SENSE * d * pitch), r * Math.sin(a + MOVEMENT_SENSE * d * pitch)]; };
-          ring.push(P(0.68 * R, -0.72), P(0.78 * R, -0.4), P(0.9 * R, -0.19), P(R, 0), P(0.8 * R, -0.05), P(0.7 * R, 0.12));
+          var T = P(R, 0), n = [-Math.cos(a), -Math.sin(a)], back = [MOVEMENT_SENSE * Math.sin(a), -MOVEMENT_SENSE * Math.cos(a)];
+          var dir = [Math.cos(rk) * n[0] + Math.sin(rk) * back[0], Math.cos(rk) * n[1] + Math.sin(rk) * back[1]];
+          var b2 = 2 * (T[0] * dir[0] + T[1] * dir[1]), c2 = R * R - (R - undercut) * (R - undercut);
+          var sd = (-b2 - Math.sqrt(b2 * b2 - 4 * c2)) / 2, U = [T[0] + sd * dir[0], T[1] + sd * dir[1]];
+          ring.push(P(0.68 * R, -0.72), P(0.78 * R, -0.4), P(0.9 * R, -0.19), T, U, P(0.8 * R, -0.05), P(0.7 * R, 0.12));
         }
-        var tipIdx = []; for (var i = 3; i < ring.length; i += 6) tipIdx.push(i);
-        var wheelAt = function (p) { return MOVEMENT_SENSE * escDelta(p) * D2R; };
-        var forkAt = function (p) { return -forkNorm(p) * bankRad; };   // main.js forkSwingRad, sign as the +x stone seats
+        var tipIdx = []; for (var i = 3; i < ring.length; i += 7) tipIdx.push(i);
+        var wheelAt = function (p) { return MOVEMENT_SENSE * ESC.deltaAt(1, -swing(p)); };
+        var forkAt = function (p) { return -swing(p); };   // main.js: the fork turns −forkSwingRad off its base
         var pxPerUnit = 74;
         var panels = [
           { st: stones[0], cx: 197, cy: 123, wheel: el('escWheelL'), stone: el('escStoneL'), arm: el('escArmL'), dot: el('escDotL'), arrW: el('escArrWL'), arrS: el('escArrSL') },
@@ -3740,58 +3833,59 @@
         }
         var CHIP = { // plate 2's chip vocabulary, verbatim
           1: ['ride', 'LOCKED · draw on the bank'],
+          2: ['trip', 'UNLOCK · the pin lifts the stone, the wheel recoils'],
           3: ['ramp', 'IMPULSE · tooth on the impulse face'],
           4: ['trip', 'DROP · onto the exit stone'],
         };
         var FRAME_X = { 1: 14, 2: 204, 3: 394, 4: 584 };
-        function phaseOf(p) {
-          // Drop begins when the WHEEL has advanced past the let-off corner —
-          // BEAT_DEG − DROP_DEG of it — not at a fraction of the window: the
-          // wheel follows the fork, which follows the pin round a circle, so
-          // the two are not the same instant. Phase 2 is never returned: with
-          // no lock depth (TODO 131) unlocking takes no time (the caption says so).
-          if (p >= IMPULSE_WIDTH || p === 0) return 1;
-          return escDelta(p) < BEAT_DEG - DROP_DEG ? 3 : 4;
-        }
+        // Nearest tip to a stone's working faces: the locking face (corner →
+        // its far end) or the impulse face (corner → let-off), whichever is nearer.
+        var seg = function (q, a, b) {
+          var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+          var t = Math.max(0, Math.min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / L2));
+          return { d: Math.hypot(q[0] - a[0] - t * dx, q[1] - a[1] - t * dy), t: t, along: t * Math.sqrt(L2) };
+        };
         function draw(p) {
           var thW = wheelAt(p), phi = forkAt(p), ph = phaseOf(p);
           var toFork = function (q) { return rot(add(rot(q, thW), wc), -phi); };
           var ringF = ring.map(toFork), wcF = rot(wc, -phi);
-          var ride = null;
+          var ride = null, lockRide = null;
           panels.forEach(function (pn) {
             pn.wheel.setAttribute('d', pn.path(ringF));
             pn.dot.setAttribute('opacity', '0'); pn.arrW.setAttribute('opacity', '0'); pn.arrS.setAttribute('opacity', '0');
-            // The nearest tip to this stone's working faces (corner → let-off).
-            var a = pn.st.corner, b = pn.st.letOff, dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
-            var best = 1e9, tip = null, tt = 0;
+            var best = { d: 1e9 }, tip = null;
             tipIdx.forEach(function (ti) {
-              var q = ringF[ti], t = Math.max(0, Math.min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / L2));
-              var dd = Math.hypot(q[0] - a[0] - t * dx, q[1] - a[1] - t * dy);
-              if (dd < best) { best = dd; tip = q; tt = t; }
+              var q = ringF[ti], lf = seg(q, pn.st.corner, pn.st.faceEnd), im = seg(q, pn.st.corner, pn.st.letOff);
+              var c = lf.d <= im.d ? { d: lf.d, face: 'lock', t: lf.t, along: lf.along } : { d: im.d, face: 'impulse', t: im.t, along: im.along };
+              if (c.d < best.d) { best = c; tip = q; }
             });
-            var touching = best < 0.03;
+            var touching = best.d < 0.03;
             if (touching) { var xy = pn.X(tip); pn.dot.setAttribute('cx', xy[0].toFixed(1)); pn.dot.setAttribute('cy', xy[1].toFixed(1)); pn.dot.setAttribute('opacity', '1'); }
-            if (pn.st.sig > 0) ride = { t: tt, off: Math.hypot(tip[0] - a[0], tip[1] - a[1]) };
+            if (pn.st.sig > 0) ride = best;
+            if (best.face === 'lock' && best.d < 0.03 && (!lockRide || best.d < lockRide.d)) lockRide = best;
             // Drive lines. Wheel: the tip's motion tangent for a forward turn.
             // Stone: the corner's motion in the wheel's frame for the fork's
             // unlock swing (bank → bank); draw is that pull reversed.
             var tanW = unit([-(tip[1] - wcF[1]) * MOVEMENT_SENSE, (tip[0] - wcF[0]) * MOVEMENT_SENSE]);
             var sw = rot(pn.st.corner, phi + 0.001), sw0 = rot(pn.st.corner, phi);
             var unlockDir = unit(sub(sw, sw0)), drawDir = [-unlockDir[0], -unlockDir[1]];
-            var Lpx = 0.42 * pxPerUnit, seg = function (d, s) { return [d[0] * s, -d[1] * s]; };  // svg y is down
+            var Lpx = 0.42 * pxPerUnit, sg = function (d, s) { return [d[0] * s, -d[1] * s]; };  // svg y is down
             var tipPx = pn.X(tip), cornerPx = pn.X(add(pn.st.corner, [0, 0]));
-            var back = function (d, s) { return [tipPx[0] - d[0] * s, tipPx[1] + d[1] * s]; };
+            var backAt = function (d, s) { return [tipPx[0] - d[0] * s, tipPx[1] + d[1] * s]; };
             var isEntry = pn.st.sig > 0;
             if (ph === 1 && isEntry) {             // wheel pushes and gets nowhere; the lean pulls the fork onto its bank
-              arrow(pn.arrW, back(tanW, Lpx * 1.3), seg(tanW, Lpx), true, 'arrEb');
-              arrow(pn.arrS, cornerPx, seg(drawDir, Lpx), false, 'arrE');
+              arrow(pn.arrW, backAt(tanW, Lpx * 1.3), sg(tanW, Lpx), true, 'arrEb');
+              arrow(pn.arrS, cornerPx, sg(drawDir, Lpx), false, 'arrE');
+            } else if (ph === 2 && isEntry) {      // the pin drives the stone off; the face shoves the tooth back (recoil)
+              arrow(pn.arrS, cornerPx, sg(unlockDir, Lpx), true, 'arrE');
+              arrow(pn.arrW, backAt(tanW, -Lpx * 0.3), sg(tanW, -Lpx), false, 'arrEb');
             } else if (ph === 3 && isEntry) {      // the wheel leads: the tip drives down the face, the fork follows
-              arrow(pn.arrW, back(tanW, Lpx * 1.3), seg(tanW, Lpx), true, 'arrEb');
-              arrow(pn.arrS, cornerPx, seg(unlockDir, Lpx), false, 'arrE');
-            } else if (ph === 4) {                 // free flight, on both panels; the exit corner is what stops it
-              arrow(pn.arrW, back(tanW, Lpx * 1.3), seg(tanW, Lpx), false, 'arrEb');
+              arrow(pn.arrW, backAt(tanW, Lpx * 1.3), sg(tanW, Lpx), true, 'arrEb');
+              arrow(pn.arrS, cornerPx, sg(unlockDir, Lpx), false, 'arrE');
+            } else if (ph === 4) {                 // free flight, on both panels; the exit stone is what stops it
+              arrow(pn.arrW, backAt(tanW, Lpx * 1.3), sg(tanW, Lpx), false, 'arrEb');
             } else if (ph === 1 && !isEntry) {     // the exit stone waits: the tooth that will land is still a pitch away
-              arrow(pn.arrW, back(tanW, Lpx * 1.3), seg(tanW, Lpx), true, 'arrEb');
+              arrow(pn.arrW, backAt(tanW, Lpx * 1.3), sg(tanW, Lpx), true, 'arrEb');
             }
           });
           frame.setAttribute('x', FRAME_X[ph]); frame.setAttribute('opacity', '0.55');
@@ -3801,12 +3895,12 @@
           // The state line says what the entry stone's nearest tip is doing —
           // measured off the drawn geometry, so a tip that left the face would
           // be a number here, not a claim.
-          if (ph === 1) rideOut.textContent = tr('tip on the locking corner');
+          if ((ph === 1 || ph === 2) && lockRide) rideOut.textContent = tr('tip on the locking face,') + ' ' + lockRide.along.toFixed(2) + ' ' + tr('below the corner');
           else if (ph === 3) rideOut.textContent = tr('tip on the impulse face at') + ' ' + ride.t.toFixed(2) + ' ' + tr('of its width');
           else rideOut.textContent = tr('tip past the let-off — the wheel runs free');
         }
-        // Play dilates the beat: the action is the pin's passage (22% of it at
-        // full wind), so the window gets most of the loop and the lock a short dwell.
+        // Play dilates the beat: the action is the pin's passage through the
+        // notch, so the window gets most of the loop and the lock a short dwell.
         var playing = false, t0 = null, raf = 0, actS = 4.0, dwellS = 1.2;
         function tick(now) {
           if (!playing) return;

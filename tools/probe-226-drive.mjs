@@ -13,12 +13,16 @@
 //      means as a measurement.
 //   2. BANKED OUTSIDE. Whenever the pin is outside the lift, the fork lies on
 //      a bank, and the bank it lies on is the side the pin left it.
-//   3. THE WHEEL FOLLOWS THE FORK. Within each beat the escape wheel's advance
-//      is BEAT_DEG times the fork's fraction of its bank-to-bank travel — the
-//      relation the pallet stones' impulse faces are cut against.
-//   4. CENTRED. Each beat opens with the pin entering at −θ_L and closes with
-//      it leaving at +θ_L (or the mirror), symmetric about the line of
-//      centres.
+//   3. THE WHEEL FOLLOWS THE FORK. The escape wheel is STILL while the fork
+//      dwells on a bank, and over each balance period (two beats) it advances
+//      exactly 2·BEAT_DEG. Since TODO 226 step 3 the wheel's angle inside a
+//      beat is read off the stones' faces (src/escapement.js) — the recoil,
+//      the impulse, the drop — and probe-131-escapement-slide holds that
+//      contact; this holds the wheel to the fork and the count.
+//   4. CENTRED. Every beat boundary (τ = n/2F) has the pin at ±LIFT/2 — the
+//      let-offs symmetric about the line of centres. (The fork banks a RUN past
+//      the let-off since TODO 226 step 3, so the pin meets the banked fork at
+//      ±θ_B, a little outside the lift; check 2 reads the bank at θ_B.)
 //
 // And it measures every mesh pair of the two units with inspect.js's own
 // `meshClearance` over the same samples — the pairs the new
@@ -100,23 +104,29 @@ const out = await page.evaluate(async () => {
     }
     const bank = Math.max(...rows.map((r) => Math.abs(r.s)));
     const sense = Math.sign(rows[rows.length - 1].esc - rows[0].esc);
-    // θ_L from the triangle, at the measured bank
+    // θ_B from the triangle, at the measured bank: where the pin meets the
+    // banked fork. θ_L is the let-off, the cited lift's half.
     const r = Math.hypot(pin.position.x, pin.position.y);
-    const thL = Math.asin(d * Math.sin(bank) / r) - bank;
-    const esc0 = rows[0].esc;
-    for (const row of rows) {
+    const thB = Math.asin(d * Math.sin(bank) / r) - bank;
+    const thL = L.LIFT_DEG * Math.PI / 360;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       const inLift = Math.abs(row.s) < bank * (1 - 1e-9);
       if (inLift) worstLine = Math.max(worstLine, Math.abs(row.off));
       else {
         // banked on the side the pin is on
         if (Math.sign(row.s) !== Math.sign(row.th)) worstBank = Math.max(worstBank, 1);
-        if (Math.abs(row.th) < thL * (1 - 1e-6)) worstBank = Math.max(worstBank, thL - Math.abs(row.th));
+        if (Math.abs(row.th) < thB * (1 - 1e-6)) worstBank = Math.max(worstBank, thB - Math.abs(row.th));
+        // the wheel stands still while the fork dwells
+        const prev = rows[i - 1];
+        if (prev && Math.abs(prev.s) >= bank * (1 - 1e-9) && Math.sign(prev.s) === Math.sign(row.s))
+          worstWheel = Math.max(worstWheel, Math.abs(wrap(row.esc - prev.esc)));
       }
-      // the wheel: n beats plus the fork's fraction, bank to bank
-      const bs = (row.n % 2 === 0) ? -1 : 1;
-      const f = Math.min(1, Math.max(0, (row.s - bs * bank) / (-2 * bs * bank)));
-      const want = sense * (row.n + f) * BEAT;
-      worstWheel = Math.max(worstWheel, Math.abs(wrap(row.esc - esc0 - want)));
+    }
+    // and each balance period advances it exactly two beats
+    for (const row of rows) {
+      clock.setPose({ tau: row.tau + 1 / F_BAL, tension });
+      worstWheel = Math.max(worstWheel, Math.abs(escG.rotation.z - row.esc - sense * 2 * BEAT));
     }
     // centred: at each beat boundary the pin stands at ±θ_L
     for (let n = 0; n < 4; n++) {
@@ -124,7 +134,7 @@ const out = await page.evaluate(async () => {
       worstCentre = Math.max(worstCentre, Math.abs(Math.abs(readTheta()) - thL));
     }
     const liftFrac = rows.filter((x) => Math.abs(x.s) < bank * (1 - 1e-9)).length / rows.length;
-    res.winds.push({ tension, bankDeg: bank * 180 / Math.PI, liftDeg: 2 * thL * 180 / Math.PI, liftFrac });
+    res.winds.push({ tension, bankDeg: bank * 180 / Math.PI, liftDeg: 2 * thL * 180 / Math.PI, entryDeg: 2 * thB * 180 / Math.PI, liftFrac });
   }
 
   // CLEARANCE: every mesh pair of the two units, at the driven pose and at
@@ -197,14 +207,14 @@ const WAIVED = new Set();   // TODO 226 step 1 retired all three: the seat leave
 for (const w of out.winds) console.log(`tension ${w.tension}: bank ±${w.bankDeg.toFixed(4)}°, lift ${w.liftDeg.toFixed(3)}°, pin in the notch ${(100 * w.liftFrac).toFixed(1)}% of the beat`);
 console.log(`1. on the line   worst ${out.worst.line.toExponential(2)}`);
 console.log(`2. banked outside ${out.worst.bank ? 'FAILS ' + out.worst.bank : 'every sample'}`);
-console.log(`3. wheel ∝ fork   worst ${(out.worst.wheelRad * 180 / Math.PI).toExponential(2)}°`);
+console.log(`3. wheel follows worst ${(out.worst.wheelRad * 180 / Math.PI).toExponential(2)}°`);
 console.log(`4. centred        worst ${(out.worst.centreRad * 180 / Math.PI).toExponential(2)}°`);
 console.log(`pin ⇄ blank in the lift: driven ${out.driven.lift.min.toFixed(4)}, control (the retired law) ${out.control.lift.min.toFixed(4)}`);
 console.log('every fork ⇄ balance mesh pair within 2, driven:');
 for (const r of out.driven.pairs) console.log(`  ${r.min.toFixed(4)}  ${r.pair}${WAIVED.has(r.pair) ? '   (waived: TODO 226 step 1)' : ''}`);
 if (out.worst.line > 1e-6) f.push(`pin off the slot centre line by ${out.worst.line}`);
 if (out.worst.bank) f.push('fork not banked on the pin\'s side outside the lift');
-if (out.worst.wheelRad > 1e-7) f.push(`escape wheel off the fork's fraction by ${out.worst.wheelRad} rad`);
+if (out.worst.wheelRad > 1e-7) f.push(`escape wheel moves while the fork dwells, or misses two beats a period, by ${out.worst.wheelRad} rad`);
 if (out.worst.centreRad > 1e-9) f.push(`lift not centred on the line of centres (${out.worst.centreRad} rad)`);
 if (!(out.driven.lift.min >= out.margin)) f.push(`the pin comes within ${out.driven.lift.min} of the blank in the lift — under CLEAR_MARGIN ${out.margin}`);
 if (!(out.control.lift.min <= 0)) f.push(`CONTROL clean (${out.control.lift.min}) — the sweep cannot see the burial it exists for`);
