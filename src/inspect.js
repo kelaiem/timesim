@@ -12822,7 +12822,230 @@ export function checkAestheticsMerge() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// §70 steps 1–2, SCOPED TO ONE GROUP by §261 step 4 — LINE SPECS.
+//
+// Every gate above is SPATIAL: does the packaged movement foul itself? None
+// asks whether the packaged mechanism is still the one that was DESIGNED, and
+// that is the hole §35 fell through. Packaging pressure grew the link beak's
+// tail to 26.79, the displacement gain to 36.5× and the stall force to 1.5 mN
+// against a 5–50 mN window, and every gate stayed green, because no gate knew
+// what the tail was SUPPOSED to be. CLAUDE.md names the method ("design in a
+// line, fold to fit"); this is its instrument, landed for the group §261 is
+// about to fold under the dial, so that the fold has a reference to measure
+// back to BEFORE it moves a part.
+//
+// A reference is MOVEMENT-INDEPENDENT: no stations, azimuths or strata, only
+// what the straight-chain design chose. Each row is
+//   { key, kind, value, unit, derivedFrom, measure }
+// where `value` is a literal or a function of the rows above it (so a derived
+// row is derived HERE, from its constraint, and never quoted from the build),
+// and `measure` names a reader that takes the number off the POSED METAL.
+// Quoting a constant would gate nothing (§70: the §66 lever spans are the
+// cautionary case).
+//   kind 'spec'     — what the line design chose. A fold that must change one
+//                     declares a FORK (§70 step 3, not built yet: until it is,
+//                     a moved spec row simply fails).
+//   kind 'envelope' — a window the mechanism must live inside whatever the
+//                     integration. Inherited, never forkable.
+// Tolerances are float noise of the constructions, not budgets: a fold that
+// moves a row moves it by orders more. Waivers follow stockFloor's convention
+// (cite a TODO; a waiver whose row passes is STALE and fails).
+export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, count: 0 };
+export const LINE_SPECS = [
+  {
+    name: 'alarm switch drive',
+    group: 'Alarm switch',
+    path: 'pusher → pin in the driver’s radial slot → driver on the wheel’s arbor → pawl → column wheel',
+    rows: [
+      { key: 'columns', kind: 'spec', unit: 'count', value: 6, measure: 'castellationCount',
+        derivedFrom: '§25 D rev 2 (the owner’s ask): the switch IS a column wheel — a beak on a column holds the brake, a beak over a gap frees it' },
+      { key: 'teeth', kind: 'spec', unit: 'count', value: (r) => 2 * r.columns, measure: 'sawToothCount',
+        derivedFrom: 'one saw tooth per HALF column pitch, because one actuation steps the wheel half a pitch (column → gap)' },
+      { key: 'baseR', kind: 'spec', unit: 'u', value: 5.7, measure: 'wheelBaseR',
+        derivedFrom: '§68: Ø 4.32 mm, real chronograph scale (4–6 mm on a 30 mm movement); TODO 11 grew the wheel to it' },
+      { key: 'rootR', kind: 'spec', unit: 'u', value: (r) => 0.9 * r.baseR, measure: 'sawRootR',
+        derivedFrom: 'the saw’s root circle at 0.9 · baseR (makeColumnWheel): the circle the pawl’s tooth pitch is laid on' },
+      { key: 'step', kind: 'spec', unit: 'rad', value: (r) => Math.PI / r.columns, measure: 'driverSweep',
+        derivedFrom: 'half a column pitch per actuation; measured as the DRIVER’s sweep over the press stroke, because a radial slot makes the driver’s angle the pin’s azimuth (§163)' },
+      { key: 'travel', kind: 'spec', unit: 'u', value: (r) => (2 * Math.PI / r.teeth) * r.rootR, measure: 'pinTravel',
+        derivedFrom: 'one tooth pitch at the root circle — a real pusher’s throw (~1 mm), and the stroke one tooth needs' },
+      { key: 'offset', kind: 'spec', unit: 'u', value: (r) => r.travel / (2 * Math.tan(r.step / 2)), measure: 'pinOffset',
+        derivedFrom: '§163: a pin on a straight line at perpendicular offset d sweeps 2·atan(h/d) over a half-stroke h, so one step needs d = travel / (2·tan(step/2))' },
+      { key: 'straddle', kind: 'spec', unit: 'u', value: 0, measure: 'pinStraddle',
+        derivedFrom: '§163: the stroke straddles the foot of the perpendicular (+h → −h), or it sweeps less than a step' },
+      { key: 'straight', kind: 'spec', unit: 'u', value: 0, measure: 'pinStraightness',
+        derivedFrom: 'the pin travels a straight line (a pusher in a bored tube), which is the premise of the offset row' },
+      { key: 'carry', kind: 'envelope', unit: 'rad', value: (r) => r.step, measure: 'wheelCarry',
+        derivedFrom: '§163’s EQUALITY: one whole actuation carries the wheel exactly one step. TODO 87 finding 1 measured 117.39 % of a tooth when this was a floor, and the surplus was displacement into metal' },
+    ],
+  },
+];
+export const LINE_SPEC_WAIVERS = {};
+
+// The readers. Each takes the posed metal, never a constant. `ctx` carries the
+// press samples so the stroke is walked once for the five rows that read it.
+function lineSpecDrive(clock, { pinShift = 0 } = {}) {
+  const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
+  const skirt = find('alarmColSkirt'), cast = find('alarmColCastellations'), base = find('alarmColBase');
+  const pin = find('alarmPusherRiser'), driver = find('alarmColDriver');
+  const missing = Object.entries({ skirt, cast, base, pin, driver }).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
+  const wheel = skirt.parent;
+  const press = AXES.find((a) => a.name === 'alarmPress');
+  const v = new THREE.Vector3();
+  const angleOf = (o) => { o.updateWorldMatrix(true, false); const e = o.matrixWorld.elements; return Math.atan2(e[1], e[0]); };
+  const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a <= -Math.PI) a += 2 * Math.PI; return a; };
+  const pinAt = () => {
+    // The pin's centre in plan: the centre of its own vertices' world BOX. Not
+    // their mean — a cylinder repeats vertices at its seam, and the mean of the
+    // pin's read 0.0104 u off its axis, which the first run of this check took
+    // for a 4 µm defect in the coupling (CLAUDE.md: vertices are not the
+    // surface). The pin is a 10-gon, centrally symmetric, so its box is
+    // centred on its axis at any rotation.
+    pin.updateWorldMatrix(true, false);
+    const pos = pin.geometry.attributes.position;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(pin.matrixWorld);
+      if (v.x < x0) x0 = v.x; if (v.x > x1) x1 = v.x; if (v.y < y0) y0 = v.y; if (v.y > y1) y1 = v.y;
+    }
+    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+  };
+  const poseAt = (f) => { enterAxis(clock); clock.setPose(press.pose(f)); clock.scene.updateMatrixWorld(true); };
+  // Samples over the IN half (cycle 0 → 1, f 0 → 0.5), then the whole actuation.
+  const N = 20, pts = [];
+  for (let i = 0; i <= N; i++) { poseAt(0.5 * i / N); pts.push(pinAt()); }
+  poseAt(0); const wheel0 = angleOf(wheel), drv0 = angleOf(driver);
+  // The wheel's AXIS, off its own metal at the reference pose: the centroid of
+  // the saw's cut outline (12 tips and 12 roots, evenly spaced, so the
+  // centroid IS the axis) mapped through the skirt's world matrix. Reading the
+  // parent group's origin instead assumes the cut is centred on it.
+  const shp0 = Array.isArray(skirt.geometry.parameters?.shapes) ? skirt.geometry.parameters.shapes[0] : skirt.geometry.parameters?.shapes;
+  const wc = new THREE.Vector3();
+  if (shp0 && shp0.getPoints) {
+    skirt.updateWorldMatrix(true, false);
+    const ptsW = shp0.getPoints().map((q) => new THREE.Vector3(q.x, q.y, 0).applyMatrix4(skirt.matrixWorld));
+    // getPoints closes the ring by repeating the first point: drop it
+    const ring = ptsW.length > 1 && ptsW[0].distanceTo(ptsW[ptsW.length - 1]) < 1e-9 ? ptsW.slice(0, -1) : ptsW;
+    for (const q of ring) wc.add(q);
+    wc.multiplyScalar(1 / ring.length);
+  } else { wheel.updateWorldMatrix(true, false); wc.setFromMatrixPosition(wheel.matrixWorld); }
+  const wheelOrigin = new THREE.Vector3().setFromMatrixPosition(wheel.matrixWorld);
+  poseAt(0.5); const drv1 = angleOf(driver);
+  poseAt(1); const wheel2 = angleOf(wheel);
+  enterAxis(clock);
+  // the line of travel, from its ends; the control shifts every sample by the
+  // same perpendicular amount, so the offset must move by exactly that much
+  const p0 = pts[0], p1 = pts[N];
+  const L = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+  const u = { x: (p1.x - p0.x) / L, y: (p1.y - p0.y) / L }, n = { x: -u.y, y: u.x };
+  const sh = (p) => ({ x: p.x + n.x * pinShift, y: p.y + n.y * pinShift });
+  const q0 = sh(p0);
+  const w = { x: wc.x - q0.x, y: wc.y - q0.y };
+  const offset = Math.abs(w.x * n.x + w.y * n.y);
+  const tFoot = w.x * u.x + w.y * u.y;
+  let straight = 0;
+  for (const p of pts) { const q = sh(p); straight = Math.max(straight, Math.abs((q.x - q0.x) * n.x + (q.y - q0.y) * n.y)); }
+  // the wheel's own metal, counted in ITS frame: rays along its axis at a ring
+  // of azimuths through the castellations and the saw, and the root and base
+  // radii off the cut outline and the base disc's vertices
+  const runs = (mesh, r, steps = 1440) => {
+    mesh.updateWorldMatrix(true, false);
+    const inv = new THREE.Matrix4().copy(wheel.matrixWorld);
+    const ray = new THREE.Raycaster(), dir = new THREE.Vector3(0, 0, 1).transformDirection(inv);
+    const side = mesh.material.side; mesh.material.side = THREE.DoubleSide;
+    let count = 0, prev = null, first = null;
+    for (let k = 0; k < steps; k++) {
+      const a = (k + 0.5) / steps * 2 * Math.PI;
+      const o = new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), -50).applyMatrix4(inv);
+      ray.set(o, dir); ray.near = 0; ray.far = 100;
+      const hit = mesh.raycast ? (() => { const h = []; mesh.raycast(ray, h); return h.length > 0; })() : false;
+      if (first === null) first = hit;
+      if (hit && prev === false) count++;
+      prev = hit;
+    }
+    mesh.material.side = side;
+    if (prev === true && first === true && count === 0) return 0;       // one band all round: no teeth
+    if (first === true && prev === false) count++;                       // a run that started at azimuth 0
+    return count;
+  };
+  const outline = skirt.geometry.parameters?.shapes;
+  const shp = Array.isArray(outline) ? outline[0] : outline;
+  let rootR = NaN, tipR = NaN;
+  if (shp && shp.getPoints) {
+    const radii = shp.getPoints().map((q) => Math.hypot(q.x, q.y));
+    rootR = Math.min(...radii); tipR = Math.max(...radii);
+  }
+  let baseR = 0; { const pos = base.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); baseR = Math.max(baseR, Math.hypot(v.x, v.y)); } }
+  // the castellations' columns: their mid radius is between the base's inner
+  // ring and its rim, read off their own vertices
+  let cMin = Infinity, cMax = 0; { const pos = cast.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); const r = Math.hypot(v.x, v.y); if (r > 1e-6) { cMin = Math.min(cMin, r); cMax = Math.max(cMax, r); } } }
+  return {
+    castellationCount: runs(cast, (cMin + cMax) / 2),
+    sawToothCount: Number.isFinite(rootR) ? runs(skirt, (rootR + tipR) / 2) : NaN,
+    wheelBaseR: baseR,
+    sawRootR: rootR,
+    driverSweep: Math.abs(wrap(drv1 - drv0)),
+    pinTravel: L,
+    pinOffset: offset,
+    pinStraddle: tFoot - L / 2,
+    pinStraightness: straight,
+    wheelCarry: Math.abs(wrap(wheel2 - wheel0)),
+    outlineRead: !!(shp && shp.getPoints),
+    axisFromOutline: { x: wc.x, y: wc.y }, groupOrigin: { x: wheelOrigin.x, y: wheelOrigin.y },
+  };
+}
+
+export async function checkLineSpec(clock) {
+  const rows = [], violations = [], staleWaivers = [], malformed = [];
+  let control = 'not run';
+  for (const ref of LINE_SPECS) {
+    const m = ref.name === 'alarm switch drive' ? lineSpecDrive(clock) : { error: 'no reader for this reference' };
+    if (m.error) { malformed.push({ ref: ref.name, error: m.error }); continue; }
+    if (!m.outlineRead) malformed.push({ ref: ref.name, error: 'the saw’s cut outline is unreadable (no ExtrudeGeometry shapes) — the root circle cannot be measured' });
+    const spec = {};
+    for (const row of ref.rows) {
+      const want = typeof row.value === 'function' ? row.value(spec) : row.value;
+      spec[row.key] = want;
+      const got = m[row.measure];
+      const tol = LINE_SPEC_TOL[row.unit === 'count' ? 'count' : row.unit];
+      const delta = got - want;
+      const pass = Number.isFinite(got) && Math.abs(delta) <= tol;
+      const wkey = `${ref.name}/${row.key}`;
+      const waiver = LINE_SPEC_WAIVERS[wkey];
+      const out = { ref: ref.name, key: row.key, kind: row.kind, unit: row.unit, spec: want, measured: got, delta, tol, pass, waived: !pass && !!waiver, derivedFrom: row.derivedFrom };
+      rows.push(out);
+      if (!pass && !waiver) violations.push(out);
+      if (pass && waiver) staleWaivers.push({ key: wkey, waiver });
+    }
+    // THE CONTROL: shift the pin's measured line sideways by a known amount and
+    // the offset must move by EXACTLY that amount — the linearity control the
+    // MTV trap asks of any reading that could be a search artefact. A reader
+    // that re-quoted the constant would not move at all.
+    if (ref.name === 'alarm switch drive') {
+      const D = 0.05;
+      const shifted = lineSpecDrive(clock, { pinShift: D });
+      const moved = Math.abs(shifted.pinOffset - m.pinOffset);
+      control = Math.abs(moved - D) <= 1e-9 && m.wheelCarry > 0
+        ? `PASS — the pin's line shifted ${D} moves the measured offset by ${moved.toFixed(12)}; the press poses applied (carry ${m.wheelCarry.toFixed(6)} rad)`
+        : `FAIL — shifted ${D}, the offset moved ${moved}; carry ${m.wheelCarry}`;
+    }
+  }
+  for (const k of Object.keys(LINE_SPEC_WAIVERS)) {
+    const [refName, key] = k.split('/');
+    if (!LINE_SPECS.some((r) => r.name === refName && r.rows.some((x) => x.key === key))) malformed.push({ waiver: k, error: 'names no row' });
+  }
+  return {
+    references: LINE_SPECS.length, rows, violations, staleWaivers, malformed, control,
+    waivedCount: rows.filter((r) => r.waived).length,
+    gate: 'GATING — every row of every reference measured off the posed metal within float noise of its derived value, '
+      + '0 unwaived, 0 stale waivers, 0 malformed, control PASS (§70 steps 1–2, scoped by §261 to the switch it is about to fold)',
+  };
+}
+
 const CHECKS = {
+  lineSpec: (clock, opts) => checkLineSpec(clock, opts),   // §70 steps 1–2 (scoped by §261 step 4) — is the packaged mechanism still the one designed?
   clearances: (clock, opts) => checkClearances(clock, opts),
   // §161 — a pure-function check: it takes `clock` like every sibling and
   // ignores it, so the dispatch stays uniform (see the fixture table above).

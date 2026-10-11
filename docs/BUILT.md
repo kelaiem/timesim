@@ -34254,3 +34254,71 @@ existing locales. Three Hungarian rows went stale exactly as that rule
 predicts: 770/773, 3 unmatched. They were re-keyed from the new English, the
 two number moves carried as numbers, and the ledger's new passage translated
 against the same glossary. Back to 773/773.
+
+## §70, steps 1–2 for one group — LINE SPECS: the switch's drive line measured off the metal, landed for the fold §261 is about to make
+
+> **PARTIAL.** §70 (roadmap) is the instrument behind CLAUDE.md's "design in a
+> line, fold to fit". This landing builds its first two steps, scoped to the
+> one group §261 step 4 is about to fold under the dial, so that the fold has
+> a reference to measure back to BEFORE it moves a part. Step 3 (declared
+> forks) and step 4 (the §35 control-case seeds) remain.
+
+**Why.** Every battery gate before this was SPATIAL: it asked whether the
+packaged movement fouls itself. None asked whether the packaged mechanism is
+still the one that was designed. §35 fell through exactly that hole:
+packaging pressure grew a beak tail to a 36.5× displacement gain and a stall
+force a thirtieth of its detent window, with every gate green.
+
+**`LINE_SPECS`** (`src/inspect.js`) is movement-independent declared data.
+Each reference names its group and its drive path, and carries rows of the
+form `{ key, kind, value, unit, derivedFrom, measure }`.
+- **`value`** is a literal, or a function of the rows above it. A derived row
+  is derived in the table, from its constraint, and never quoted from the
+  build.
+- **`kind: 'spec'`** rows are what the line design chose. A fold that must
+  change one will declare a fork, once step 3 exists; until then a moved
+  spec row fails.
+- **`kind: 'envelope'`** rows are windows the mechanism must live inside
+  whatever the integration, and they are never forkable.
+
+The first reference is the alarm switch's drive line, pusher → pin in the
+driver's radial slot → driver on the wheel's arbor → pawl → column wheel:
+
+| row | kind | derived from | measured off |
+|---|---|---|---|
+| `columns` 6 | spec | §25 D rev 2, the owner's column-wheel architecture | rays round the castellations, in the wheel's frame |
+| `teeth` = 2·columns | spec | one saw tooth per half pitch, because a press steps half a pitch | rays round the saw |
+| `baseR` 5.7 | spec | §68's real chronograph scale | the base disc's vertices |
+| `rootR` = 0.9·baseR | spec | the saw's root circle | the skirt's cut outline |
+| `step` = π/columns | spec | half a pitch per actuation | the DRIVER's sweep over the press (§163: its angle is the pin's azimuth) |
+| `travel` = (2π/teeth)·rootR | spec | one tooth pitch at the root circle | the pin's posed positions, cycle 0 → 1 |
+| `offset` = travel / (2·tan(step/2)) | spec | §163's coupling | the pin's line against the wheel's axis |
+| `straddle` 0 | spec | the stroke straddles the foot of the perpendicular | the same |
+| `straight` 0 | spec | a pusher in a bored tube | the pin's deviation from its line |
+| `carry` = step | envelope | §163's equality: TODO 87 measured 117 % when it was a floor | the wheel's rotation over a whole actuation |
+
+**The `lineSpec` check** gates every row within float noise of its derived
+value (1e-6 u or rad, exact counts), 0 unwaived, 0 stale waivers and 0
+malformed, and a control. On the shipped tree all ten rows measure within
+3e-15, except `baseR` at 2.5e-7, which is the float32 vertex store.
+- **The control:** the pin's line is shifted a known 0.05 and the measured
+  offset must move by exactly that much. A reader that quoted a constant would
+  not move.
+- **`tools/probe-70-line-spec.mjs`** (acceptance) holds the GATE where the
+  control holds the reader. It boots copied trees built wrong on purpose:
+  - the wheel grown 5.7 → 5.8 fails exactly `baseR`, `rootR`, `travel` and
+    `offset`;
+  - the offset hand-tuned ×1.02 fails exactly `offset` and `step`.
+
+**Two findings from building it.**
+- **The vertices trap, again.** The first run read the pin's line 0.0104 u off
+  its derived offset. It looked like a 4 µm defect in the coupling, and it was
+  the reader: the mean of a cylinder's vertices is pulled off its axis by the
+  seam's repeated vertices. The centre of the pin's world box is exact,
+  because a 10-gon is centrally symmetric.
+- **`step` is the row that sees a mis-set coupling, and `carry` is not.** The
+  first draft predicted otherwise. With the offset wrong, the driver sweeps
+  29.44° of the 30° a tooth needs, which is §163's own finding reproduced. But
+  the whole actuation still carries the wheel one exact step, because the click
+  banks it the rest of the way. A reference that held only the wheel's carry
+  would have passed the very defect §163 removed.
