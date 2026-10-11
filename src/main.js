@@ -10785,7 +10785,11 @@ const BALANCE_DRIVE = (() => {
   const peakRad = AMPLITUDE_PEAK_DEG * DEG2RAD;
   const brakeNm = rows.filter((r) => Math.abs(r.theta) <= peakRad + 1e-9).reduce((m, r) => Math.max(m, Math.abs(r.torque)), 0);
   const K = BD.makeDrive({
-    F: F_BALANCE, liftDeg: LIFT_DEG, posedAmpDeg: AMPLITUDE_POSED_DEG, knockDeg: ESCAPEMENT_KNOCK.deg,
+    // TODO 226 step 3b — the pin's PASSAGE, not only its lift: τ is the posed
+    // law's inverse wherever the pin carries the fork (the unlock and the run
+    // either side of the lift), so the fork and the train, read off τ, follow
+    // the balance the tick shows in every position
+    F: F_BALANCE, liftDeg: LIFT_DEG, passHalfDeg: PIN_FORK.entryHalf / DEG2RAD, posedAmpDeg: AMPLITUDE_POSED_DEG, knockDeg: ESCAPEMENT_KNOCK.deg,
     I: OSC_I.total, k: OSCILLATOR.k_Nm_per_rad, Q: C.qOther, impulseJ: C.delivered_J, brakeNm, springRows: rows,
   });
   return {

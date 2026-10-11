@@ -24,6 +24,13 @@
 //      the let-off since TODO 226 step 3, so the pin meets the banked fork at
 //      ±θ_B, a little outside the lift; check 2 reads the bank at θ_B.)
 //
+// Since TODO 226 step 3b the line check runs DIAL-FLAT too (the posed 292°,
+// whose arc outside the lift is not the hanging law's) and in the LIVE LOOP
+// (the driven balance stepped, at DU and CL), counting samples in the run and
+// the unlock so a run that never reached them cannot pass; its control
+// re-poses the flat balance by the pre-3b map (τ inverted inside the lift
+// only) and must read the seam that map left.
+//
 // And it measures every mesh pair of the two units with inspect.js's own
 // `meshClearance` over the same samples — the pairs the new
 // EXPECTED_CONTACT_FLOORS row holds — and, separately, the pin against the
@@ -83,15 +90,20 @@ const out = await page.evaluate(async () => {
   const turns = 2 * Math.PI * Math.round((balG.rotation.z - pinAim) / (2 * Math.PI));
   const readTheta = () => balG.rotation.z - pinAim - turns;
 
-  const W = [1, 0.5, 0];
+  // TODO 226 step 3b — every configuration names its POSITION: hanging (CU,
+  // the designed 200°) at three winds, and dial-flat (DU, the energy column's
+  // 292°), where the posed balance runs a different arc outside the lift and
+  // the fork, read off τ, must still follow the pin through the run and the
+  // unlock. setPose assigns only the keys a pose names, so each row names its own.
+  const W = [{ tension: 1, position: 'CU' }, { tension: 0.5, position: 'CU' }, { tension: 0, position: 'CU' }, { tension: 1, position: 'DU' }];
   const res = { winds: [] };
   let worstLine = 0, worstWheel = 0, worstBank = 0, worstCentre = 0;
-  for (const tension of W) {
+  for (const { tension, position } of W) {
     const N = 480, beats = 4;
     const rows = [];
     for (let k = 0; k <= N; k++) {
       const tau = (k / N) * beats / (2 * F_BAL) + 1e-9;
-      clock.setPose({ tau, tension });
+      clock.setPose({ tau, tension, position });
       forkG.updateWorldMatrix(true, true); balG.updateWorldMatrix(true, true);
       const s = readFork(), th = readTheta();
       pin.getWorldPosition(v);
@@ -125,16 +137,16 @@ const out = await page.evaluate(async () => {
     }
     // and each balance period advances it exactly two beats
     for (const row of rows) {
-      clock.setPose({ tau: row.tau + 1 / F_BAL, tension });
+      clock.setPose({ tau: row.tau + 1 / F_BAL, tension, position });
       worstWheel = Math.max(worstWheel, Math.abs(escG.rotation.z - row.esc - sense * 2 * BEAT));
     }
     // centred: at each beat boundary the pin stands at ±θ_L
     for (let n = 0; n < 4; n++) {
-      clock.setPose({ tau: n / (2 * F_BAL), tension });
+      clock.setPose({ tau: n / (2 * F_BAL), tension, position });
       worstCentre = Math.max(worstCentre, Math.abs(Math.abs(readTheta()) - thL));
     }
     const liftFrac = rows.filter((x) => Math.abs(x.s) < bank * (1 - 1e-9)).length / rows.length;
-    res.winds.push({ tension, bankDeg: bank * 180 / Math.PI, liftDeg: 2 * thL * 180 / Math.PI, entryDeg: 2 * thB * 180 / Math.PI, liftFrac });
+    res.winds.push({ tension, position, bankDeg: bank * 180 / Math.PI, liftDeg: 2 * thL * 180 / Math.PI, entryDeg: 2 * thB * 180 / Math.PI, liftFrac });
   }
 
   // CLEARANCE: every mesh pair of the two units, at the driven pose and at
@@ -164,11 +176,11 @@ const out = await page.evaluate(async () => {
     const per = new Map();
     let lift = { min: Infinity, at: null };
     const blank = forkMeshes.find((m) => m.name === 'forkBlank');
-    for (const tension of W) {
+    for (const { tension, position } of W) {
       const N = 240;
       for (let k = 0; k <= N; k++) {
         const tau = (k / N) * 2 / (2 * F_BAL) + 1e-9;
-        clock.setPose({ tau, tension });
+        clock.setPose({ tau, tension, position });
         let s;
         if (control) {
           s = oldSwing(tau);
@@ -193,6 +205,59 @@ const out = await page.evaluate(async () => {
   };
   res.driven = sweep(false);
   res.control = sweep(true);
+
+  // TODO 226 step 3b — THE PASSAGE, held where it was broken. The line check
+  // above runs dial-flat too; this is its CONTROL, and the live loop.
+  // Control: re-pose the flat balance by the pre-3b map (τ inverted only
+  // inside the LIFT, the flat arc outside it) and the line check must see the
+  // fork read a different balance in the run and the unlock — a line check
+  // that cannot see that seam has not measured the passage.
+  const off = () => {
+    forkG.updateWorldMatrix(true, true); balG.updateWorldMatrix(true, true);
+    pin.getWorldPosition(v);
+    const a = forkG.rotation.z, ax = { x: Math.sin(a), y: -Math.cos(a) };
+    return (v.x - F.x) * ax.y - (v.y - F.y) * ax.x;
+  };
+  {
+    const model = clock.balanceDriveModel, K = model.K;
+    const A = model.posedDeg.flat * Math.PI / 180, Ap = L.AMPLITUDE_POSED_DEG * Math.PI / 180;
+    const oldArc = (tau) => {
+      const raw = tau * 2 * F_BAL, n = Math.floor(raw), p = raw - n, dir = n % 2 === 0 ? 1 : -1;
+      if (p < K.IW) return dir * Ap * Math.sin(Math.PI * (p - K.IW / 2));
+      const ae = Math.asin(K.halfLift / A), frac = (p - K.IW) / (1 - K.IW);
+      return dir * A * Math.sin(ae + frac * (Math.PI - 2 * ae));
+    };
+    const bankC = res.winds[0].bankDeg * Math.PI / 180;
+    let ctrl = 0;
+    for (let k = 0; k <= 2000; k++) {
+      const tau = (k / 2000) * 2 / (2 * F_BAL) + 1e-9;
+      clock.setPose({ tau, tension: 1, position: 'DU' });
+      if (!(Math.abs(readFork()) < bankC * (1 - 1e-9))) continue;
+      balG.rotation.z = pinAim + turns + oldArc(tau);
+      ctrl = Math.max(ctrl, Math.abs(off()));
+    }
+    res.passageControl = ctrl;
+  }
+  // Live: the driven balance, stepped, in a flat and a hanging position — the
+  // fork read off τ must hold the pin on its line wherever the pin carries it
+  // (the run and the unlock included, counted so a run that never reached
+  // them cannot pass), with the balance shown where the integrator has it.
+  res.live = [];
+  for (const position of ['DU', 'CL']) {
+    clock.resetInputs();
+    clock.setBalancePosition(position);
+    clock.setPose({ tau: 0.13, tension: 1, position });
+    const bankL = res.winds[0].bankDeg * Math.PI / 180;
+    let worst = 0, inLift = 0, inRunUnlock = 0;
+    for (let k = 0; k < 2400; k++) {
+      clock.step(1 / 1200);
+      const s = readFork(), th = clock.balanceDrive.state.theta;
+      if (!(Math.abs(s) < bankL * (1 - 1e-9))) continue;
+      worst = Math.max(worst, Math.abs(off()));
+      if (Math.abs(th) <= L.LIFT_DEG * Math.PI / 360) inLift++; else inRunUnlock++;
+    }
+    res.live.push({ position, worst, inLift, inRunUnlock });
+  }
   clock.resetInputs();
   res.worst = { line: worstLine, wheelRad: worstWheel, bank: worstBank, centreRad: worstCentre };
   res.margin = I.CLEAR_MARGIN ?? L.CLEAR_MARGIN;
@@ -212,7 +277,14 @@ console.log(`4. centred        worst ${(out.worst.centreRad * 180 / Math.PI).toE
 console.log(`pin ⇄ blank in the lift: driven ${out.driven.lift.min.toFixed(4)}, control (the retired law) ${out.control.lift.min.toFixed(4)}`);
 console.log('every fork ⇄ balance mesh pair within 2, driven:');
 for (const r of out.driven.pairs) console.log(`  ${r.min.toFixed(4)}  ${r.pair}${WAIVED.has(r.pair) ? '   (waived: TODO 226 step 1)' : ''}`);
+console.log(`passage control (the pre-3b map, flat): the line check reads ${out.passageControl.toFixed(4)} off the line`);
+for (const l of out.live) console.log(`live ${l.position}: pin off the line worst ${l.worst.toExponential(2)} over ${l.inLift} samples in the lift and ${l.inRunUnlock} in the run and the unlock`);
 if (out.worst.line > 1e-6) f.push(`pin off the slot centre line by ${out.worst.line}`);
+if (!(out.passageControl > 1e-3)) f.push(`CONTROL clean: the pre-3b passage reads only ${out.passageControl} off the line — the check cannot see the seam it holds`);
+for (const l of out.live) {
+  if (l.worst > 1e-6) f.push(`live ${l.position}: the pin leaves the fork's line by ${l.worst}`);
+  if (!(l.inRunUnlock > 0 && l.inLift > 0)) f.push(`live ${l.position}: the run never sampled the lift and the run/unlock both (${l.inLift}, ${l.inRunUnlock})`);
+}
 if (out.worst.bank) f.push('fork not banked on the pin\'s side outside the lift');
 if (out.worst.wheelRad > 1e-7) f.push(`escape wheel moves while the fork dwells, or misses two beats a period, by ${out.worst.wheelRad} rad`);
 if (out.worst.centreRad > 1e-9) f.push(`lift not centred on the line of centres (${out.worst.centreRad} rad)`);
