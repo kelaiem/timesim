@@ -14,6 +14,7 @@ lever escapement. Everything is procedural — there are no model assets.
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |
 | `docs/RUNNERS.md` | Where the battery job runs (§200): the fork-routing rule, the `BATTERY_RUNS_ON` variable, and how a host is set up. |
+| `docs/LOCALIZATION.md` | How the chrome and the two static pages are localized, the rules for changing UI text, and the checklist for adding a locale. |
 | `.github/pull_request_template.md` | The PR body's layout. Read before opening one — see Conventions. |
 
 `test-geometry.html` is a per-part visual smoke test, separate from the
