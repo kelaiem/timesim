@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
+import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
@@ -5267,12 +5267,10 @@ export function sawRideDepth(A, B) {
 }
 
 // A working contact's tolerance, shared by the selector-family penetration
-// budgets below and the alarmHandoffs check that owns the gap side: the
-// tessellation-sag scale the finish already accepts as invisible
-// (geometry.js RADIAL_SEGS: silhouette sagitta ≈ 0.03 at the largest radii).
-// A truthfully modelled contact can miss exact touch by tri-tri slack of
-// that order, and no more.
-export const HANDOFF_TRACK_TOL = 0.03;   // exported since §268 for the probes that measure a seat by the rows' own tolerance
+// budgets below and the alarmHandoffs check that owns the gap side. Declared
+// in layout.js since TODO 226 step 3b, because the build reads it too (the
+// fork notch's shake is this tolerance); re-exported here for the probes.
+export { HANDOFF_TRACK_TOL };
 
 const PENETRATION_BUDGETS = [
   {

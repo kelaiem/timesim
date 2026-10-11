@@ -1958,110 +1958,97 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness, rakeDeg = 0, un
 // TODO 226 step 1 — THE SEAT: the fork's notch and the balance's roller, cut
 // from the impulse pin's own motion relative to the fork.
 //
-// Until this, the notch was cut from the fork's length (`forkTop`/`forkY`,
+// Until step 1, the notch was cut from the fork's length (`forkTop`/`forkY`,
 // fractions of the lever) and the pin's circle from the balance's, and the
 // two were never cut against each other: the pin's centre stood 0.156
 // OUTSIDE the horn tips where the lift began and only 0.394 of its body
-// entered a notch 2.759 deep. A notch is the hole the pin passes through, so
-// it is cut here as exactly that: the union of the pin's disc over every
-// pose it takes in the fork's frame, dilated by the movement's one margin.
-// Two motions make up that union, and both are already laws (main.js
-// `forkSwingAt`): through the lift the fork follows the pin, so the pin's
-// centre runs down the fork's centre line between d − r and ρ(θ_L); past the
-// lift the fork lies on its bank and the pin carries on round its circle.
+// entered a notch 2.759 deep. Step 1 cut the notch as the pin's swept path
+// plus the margin, a FUNNEL the pin bore on nowhere, because a fork that
+// stopped dead at the let-off would have trapped a pin in a slot of its width.
 //
-// The second motion is why the notch is a FUNNEL and not a parallel slot.
-// Where the lift ends the fork stops dead on its bank while the pin is still
-// moving about 61° off the slot's axis, so a parallel slot of pin width
-// would trap it: the pin's leading flank runs into the wall within a few
-// degrees. A real lever escapes this by RUN — the fork carries on past the
-// pin's release to its banking, opening the slot ahead of the pin — and run
-// needs the lock this movement does not model (TODO 131's residue). So the
-// walls stand where the departing pin needs them, and the pin bears on no
-// wall through the lift: the drive stays the law's, and making it a contact
-// is TODO 226 step 3, which waits on run.
+// TODO 226 step 3b — THE NOTCH CLOSES ON THE PIN. Step 3a gave the fork its
+// run, and src/escapement.js `pinNotch` solves the pin in the notch: two
+// parallel walls `shake` off the pin's flanks, the fork lagging the pin by
+// that shake through the unlock and leading it through the impulse and run,
+// and the roller jewel cut to a D so that the banked pin leaves the slot with
+// the play it sat in (its header says why a round pin of this section cannot).
+// The seat cuts that slot:
 //
-// Inputs are the escapement's own: the stations (`d`, pivot to staff), the
-// pin circle (`rollerR`) and the pin (`pinR`), and the lift and bank that
-// §221 already solved from them. Outputs, in the fork's local frame (pivot
-// at the origin, −y at the balance) and the balance's:
+//  · WALLS at `W = pinR + shake` off the centre line, parallel, from the floor
+//    to `yBand`, the depth of the last working contact (the pin at the
+//    banking, θ_E). The METAL's wall ends there: the chamfer's mitre carries
+//    a blank's convex corner `bevel` past the authored outline in both
+//    directions, so the authored tip stands one `bevel` short of `yBand`
+//    (`yTip`), and the metal's corner is the corner `pinNotch` solved the
+//    D's flat against.
+//  · FLOOR, a half-round of the walls' own radius W, as shallow as holds the
+//    pin's deepest reach — the D's flat, through the whole engaged swing at
+//    either wall — `clear` off it. The pin bears on the walls, never the floor.
+//
+// Outputs, in the fork's local frame (pivot at the origin, −y at the
+// balance) and the balance's:
 //  · `slot`: the notch's half-width profile, as AUTHORED (the blank's lapping
 //    chamfer dilates a cut wall INTO the slot by `bevel`, so the authored
-//    radius is pinR + clear + bevel and the metal stands at pinR + clear),
-//    from the floor under the pin's deepest centre to the horn tips, which
-//    reach the depth where the pin enters, so its centre is between the horns
-//    through the whole lift (longer horns cost knock: see `yTip`);
+//    half-width is W + bevel and the metal stands at W), from the floor to the
+//    horn tips;
 //  · `guard`: the guard pin, set in the fork's metal behind the floor with one
 //    sheet floor (§50, `stockMin`) between its hole and the slot;
 //  · `roller`: the single roller the pin is set in. Its full rim clears the
 //    guard pin by the margin with the fork on its bank; its crescent clears
-//    it with the fork anywhere in the lift, and spans every azimuth the guard
-//    pin takes relative to the roller while the fork is off its bank.
+//    it with the fork anywhere in the swing, and spans every azimuth the
+//    guard pin takes relative to the roller while the fork is off its bank.
 // Whether that guard pin CATCHES a displaced fork is the safety action, and
 // that is TODO 105's: here it only has to clear.
-export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear, stockMin }) {
-  const r = rollerR;
+export function escapementSeat({ notch, forkT, clear, stockMin }) {
+  const { d, r, W, flatF, entryHalf, yBand, rho } = notch;
   const bevel = forkT * FORK_BEVEL_FRAC;   // the blank's lapping chamfer: makePalletFork's own
-  const rho = (th) => Math.hypot(d - r * Math.cos(th), r * Math.sin(th));   // pin centre to fork pivot
-  // fork-local coordinates of a balance-frame point, fork at swing ψ (main.js's frame law)
-  const toFork = (wx, wy, psi) => {
-    const dx = wx - d, c = Math.cos(psi), s = Math.sin(psi);
-    return [-(-s * dx + c * wy), c * dx + s * wy];
-  };
-  // the pin's centre over the lift (on the centre line) and past it (fork on
-  // its bank), the far side of the beat being the mirror image
-  const centres = [];
-  const N_LIFT = 200;
-  for (let i = 0; i <= N_LIFT; i++) centres.push([0, -rho(-liftHalf + (2 * liftHalf * i) / N_LIFT)]);
-  const STEP = 0.1 * Math.PI / 180;
-  for (let th = liftHalf; th <= Math.PI; th += STEP) {
-    const [x, y] = toFork(r * Math.cos(th), r * Math.sin(th), -bank);
-    centres.push([x, y], [-x, y]);
+  // The pin's outline at every engaged pose, at either wall: the floor is
+  // held off the deepest of them.
+  const N_SWING = 200;
+  const engaged = [];
+  const outline = notch.outlineOf(flatF, 48);
+  for (let i = 0; i <= N_SWING; i++) {
+    const th = -entryHalf + (2 * entryHalf * i) / N_SWING;
+    for (const s of [-1, +1]) for (const [x, y] of notch.placed(flatF, th, notch.contactSwing(flatF, th, s), outline)) engaged.push([x, -y]);
   }
-  const halfW = (Y, R) => {
-    let m = -Infinity;
-    for (const [x, y] of centres) { const dy = Y + y; if (Math.abs(dy) < R) m = Math.max(m, Math.abs(x) + Math.sqrt(R * R - dy * dy)); }
-    return m;
+  // The floor's half-round is centred on the slot's line at depth yC, as
+  // shallow as keeps every engaged point `clear` inside it (a point standing
+  // wider than W − clear is in the walls' reach, not the floor's).
+  const Rf = W - clear;
+  let yC = Infinity;
+  for (const [x, dep] of engaged) yC = Math.min(yC, Math.abs(x) <= Rf ? dep + Math.sqrt(Rf * Rf - x * x) : dep);
+  // half-width at depth Y, of the cut dilated by `e` off the metal
+  const halfW = (Y, e) => {
+    const R = W + e;
+    if (Y >= yC) return R;
+    const dy = yC - Y;
+    return dy < R ? Math.sqrt(R * R - dy * dy) : -Infinity;
   };
-  const Ra = pinR + clear + bevel, Rm = pinR + clear;
-  const yDeep = rho(0);                 // the pin's deepest centre, θ = 0
-  const yEntry = rho(liftHalf);         // where it enters, on the centre line
-  let yFloor = yDeep - Ra;              // authored floor (metal: yDeep − Rm), deepened by the miter below
-  // HORN TIPS at the depth where the pin enters: its centre then stands between
-  // the horns for the whole lift. Longer horns would embrace it more and are
-  // bought with KNOCK — the far side of the swing meets the banked horn
-  // earlier — measured against the metal outline at tips this many pin radii
-  // past entry (measured before the cut was widened by its sag and miter,
-  // which took 0.49° more off each): −0.25 → 301.10°, 0 → 301.84°, +0.25 →
-  // 296.76°, +0.5 → 290.06°,
-  // +1 → 277.89°. Row 17 holds the serviced (nominal) swing clear of the knock
-  // at 292.09° dial-flat, so half a radius past entry would knock in service;
-  // at the entry depth, as cut, the knock (301.35°; 304.12° since TODO 226
-  // step 3 banks the fork a run further and the pin enters there) stands
-  // clear of it, and shorter horns buy
-  // nothing (the floor's flanks, not the tips, then meet the pin).
-  const yTip = yEntry;
-  // Sampled densely at the floor, where the profile leaves the centre line at
-  // a right angle, by u² spacing from the floor to the tips.
-  const N_SLOT = 48;
+  const yDeep = rho(0);                   // the pin's deepest centre, θ = 0
+  const yEntry = yBand;                   // where the banked pin's contact is, at ±θ_E
+  const yTip = yBand - bevel;             // authored: the mitre carries the metal's corner to yBand
+  // Sampled densely round the floor, where the profile leaves the centre line
+  // at a right angle, by u² spacing from the floor to the half-round's top,
+  // and at the walls' two ends above it.
+  const N_FLOOR = 40;
+  const Ra = bevel;
+  let yFloor = yC - (W + Ra);             // authored floor, deepened by the mitre below
   const Ys = [];
-  for (let i = 1; i <= N_SLOT; i++) { const u = i / N_SLOT; Ys.push(yFloor + (yTip - yFloor) * u * u); }
+  for (let i = 1; i <= N_FLOOR; i++) { const u = i / N_FLOOR; Ys.push(yFloor + (yC - yFloor) * u * u); }
+  Ys.push(yTip);
   // The wall is cut as CHORDS between those samples, and two things stand the
-  // metal proud of the curve the union describes. Each chord stands inside the
-  // curve it spans by its sag (the first cut read the pin 0.1499 off the
-  // wall). And the chamfer's offset is MITRED: at each vertex of the wall,
-  // which is a reflex corner of the blank, the dilation reaches
-  // bevel·sec(turn/2), not bevel — the floor's own point read the pin 0.14998
-  // off at its deepest. So the walls are cut wider by the worst sag between
-  // samples (the floor's point, at width 0, included), and the whole union a
-  // radius wider by the worst miter's excess, both measured off this polyline.
-  const polyline = (R) => [[yFloor - (R - Ra), 0], ...Ys.map((Y) => [Y, halfW(Y, R)])];
-  const sagOf = (P, R) => {
+  // metal proud of the curve: each chord's sag inside the curve it spans, and
+  // the chamfer's MITRE at each vertex of the wall (a reflex corner of the
+  // blank), where the dilation reaches bevel·sec(turn/2), not bevel. So the
+  // cut is widened by the worst sag between samples and the worst mitre's
+  // excess, both measured off this polyline (step 1's rule, kept).
+  const polyline = (e) => [[yC - (W + e), 0], ...Ys.map((Y) => [Y, halfW(Y, e)])];
+  const sagOf = (P, e) => {
     let m = 0;
     for (let i = 1; i < P.length; i++) {
       for (const f of [0.25, 0.5, 0.75]) {
         const Y = P[i - 1][0] + (P[i][0] - P[i - 1][0]) * f;
-        m = Math.max(m, halfW(Y, R) - (P[i - 1][1] + (P[i][1] - P[i - 1][1]) * f));
+        m = Math.max(m, halfW(Y, e) - (P[i - 1][1] + (P[i][1] - P[i - 1][1]) * f));
       }
     }
     return m;
@@ -2074,32 +2061,42 @@ export function escapementSeat({ d, rollerR, pinR, liftHalf, bank, forkT, clear,
     return m;
   };
   const miter = miterOf(polyline(Ra));
-  const RaCut = Ra + miter;
-  const sag = sagOf(polyline(RaCut), RaCut);
-  const profile = Ys.map((Y) => [Y, halfW(Y, RaCut) + sag, halfW(Y, Rm + miter) + sag]);   // [depth, authored half-width, metal half-width]
+  const eCut = Ra + miter;
+  const sag = sagOf(polyline(eCut), eCut);
+  // [depth, authored half-width, metal half-width]. The walls are straight
+  // above the half-round, so neither correction reaches them: the authored
+  // wall is W + bevel exactly where the pin works.
+  const profile = Ys.map((Y) => (Y >= yC
+    ? [Y, W + Ra, W]
+    : [Y, halfW(Y, eCut) + sag, halfW(Y, miter) + sag]));
   yFloor -= miter;
+  const yFloorMetal = yC - W - miter;
   // guard pin, behind the floor
   const guardR = forkT * 0.18;
-  const yGuard = (yDeep - Rm - miter) - stockMin - guardR;
+  const yGuard = yFloorMetal - stockMin - guardR;
   const gCentred = d - yGuard;
+  const bank = notch.bank;
   const gBanked = Math.sqrt(d * d + yGuard * yGuard - 2 * d * yGuard * Math.cos(bank));
   const R = gBanked - guardR - clear;      // full rim
   const Rc = gCentred - guardR - clear;    // crescent
-  // the guard pin's azimuth on the roller while the fork follows the pin
+  // the guard pin's azimuth on the roller while the fork is off its bank, at
+  // either wall
   let rel = 0;
-  for (let i = 0; i <= N_LIFT; i++) {
-    const th = -liftHalf + (2 * liftHalf * i) / N_LIFT;
-    const psi = Math.atan2(r * Math.sin(th), d - r * Math.cos(th));
-    const gx = d - yGuard * Math.cos(psi), gy = -yGuard * Math.sin(psi);
-    const a = Math.atan2(gy, gx) - th;
-    rel = Math.max(rel, Math.abs(Math.atan2(Math.sin(a), Math.cos(a))));
+  for (let i = 0; i <= N_SWING; i++) {
+    const th = -entryHalf + (2 * entryHalf * i) / N_SWING;
+    for (const s of [-1, +1]) {
+      const psi = notch.contactSwing(flatF, th, s);
+      const gx = d - yGuard * Math.cos(psi), gy = -yGuard * Math.sin(psi);
+      const a = Math.atan2(gy, gx) - th;
+      rel = Math.max(rel, Math.abs(Math.atan2(Math.sin(a), Math.cos(a))));
+    }
   }
   const gap = rel + (guardR + clear) / Rc;
   return Object.freeze({
-    slot: Object.freeze({ profile, sag, miter, yFloor, yFloorMetal: yDeep - Rm - miter, yDeep, yEntry, yTip, tipW: stockMin, clear, bevel }),
+    slot: Object.freeze({ profile, sag, miter, yFloor, yFloorMetal, yC, yDeep, yEntry, yBand, yTip, W, tipW: stockMin, clear, bevel }),
     guard: Object.freeze({ y: yGuard, r: guardR, centred: gCentred, banked: gBanked }),
     roller: Object.freeze({ R, Rc, gap, rel }),
-    pinOuter: r + pinR,
+    pinOuter: notch.pinOuter,
   });
 }
 
@@ -2770,7 +2767,7 @@ export const balancePinR = (thickness) => thickness * 0.22;
 export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6,
                                    staffTop = null, staffBottom = null,
                                    pinDrop = thickness * 1.8, rimF = 1,
-                                   roller: rollerSeat, pinTop }) {
+                                   roller: rollerSeat, pinTop, pinFlat = null }) {
   const g = new THREE.Group();
   const rimO = radius;
   const rimI = radius - thickness * 0.5;
@@ -2878,9 +2875,26 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // roller's underside to the fork's top face (`pinTop`, balance-local), so it
   // works the notch through the blank's whole thickness and stops short of the
   // balance's arm above it.
+  // TODO 226 step 3b — the jewel is a D: round where it works the notch's
+  // walls, ground flat toward the fork at `pinFlat` from its centre along its
+  // radius from the staff (src/escapement.js `pinNotch` solves the flat and
+  // says why). Its outline, in the pin's own frame (+x along that radius), is
+  // published as `pinOutline`, so the knock and the instruments read the
+  // section that was cut. The round is cut at 5° chords: a working contact on
+  // it then misses true touch by 0.0005 at most, a sixtieth of the shake.
   const pinLen = pinTop - rollerBottom;
-  const pinGeo = new THREE.CylinderGeometry(pinR, pinR, pinLen, 12);   // r is published as userData.pinR
-  pinGeo.rotateX(Math.PI / 2);
+  const flat = pinFlat ?? pinR;
+  const a0 = Math.acos(Math.max(-1, Math.min(1, flat / pinR)));
+  const nArc = Math.max(8, Math.ceil((2 * Math.PI - 2 * a0) / (5 * Math.PI / 180)));
+  const pinOutline = [];
+  for (let i = 0; i <= nArc; i++) {
+    const a = a0 + (2 * Math.PI - 2 * a0) * (i / nArc);
+    pinOutline.push([pinR * Math.cos(a), pinR * Math.sin(a)]);
+  }
+  if (a0 < 1e-9) pinOutline.pop();   // a round pin closes on itself
+  const pinShape = new THREE.Shape(pinOutline.map(([x, y]) => new THREE.Vector2(x, y)));
+  const pinGeo = new THREE.ExtrudeGeometry(pinShape, { depth: pinLen, bevelEnabled: false, curveSegments: 1 });
+  pinGeo.translate(0, 0, -pinLen / 2);
   const pin = new THREE.Mesh(pinGeo, MATS.ruby);
   pin.name = 'balanceImpulsePin';   // TODO 226 — named so the escapement's working contact can be held by name
   pin.position.set(rollerR, 0, rollerBottom + pinLen / 2);
@@ -2889,6 +2903,8 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
   g.userData.pinR = pinR;   // TODO 216 — the ruby pin's own radius: the knock is where its SURFACE meets the fork's horn
+  g.userData.pinFlat = flat;          // TODO 226 step 3b — the D's flat, from the pin's centre
+  g.userData.pinOutline = pinOutline; // and its section, pin frame (+x along the radius from the staff)
   // §221 — the safety action's two balance-side members, published so an
   // instrument can measure the guard pin against the roller's OWN outline
   // (TODO 105) rather than re-deriving where they are.
