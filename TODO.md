@@ -31443,6 +31443,27 @@ pin's push drives the fork), and `expectedContacts` can declare the pin on the
 notch's walls as the pair's one working contact, held within
 `HANDOFF_TRACK_TOL`. The horns, and with them the knock, move again there.
 
+**Prerequisite, found when 3a met §246 tier two: the driven balance's window
+is the LIFT, and the pin's passage is wider.** §246's `balance-drive.js` maps
+τ to the balance's own angle only inside ±`LIFT_DEG`/2 — the window where it
+counts beats, times the rate (`entryT`) and lays the impulse torque — and runs
+the supplementary arc of the position's own swing outside it. The tick reads
+the fork (`forkSwingRad`) and the whole train (`escapeAngle` and the gear
+chain) off τ through the HANGING law. Before 3a nothing moved the fork outside
+±L/2, so the two always agreed. Since 3a the pin also carries the fork through
+the run and the unlock, out to the entry half-angle 28.52°, so for a dial-flat
+pose (the posed 292°) and in the live loop the fork reads a different balance
+angle from the one the balance shows in that slice. Measured, analytically, on
+the flat posed law: at worst 0.17° of fork (θ 28.52° against the hanging law's
+27.34° at the same τ), 0.032 at the pin's radius. That is inside the funnel's
+room, so no gate sees it today, but it is exactly the error a pin-plus-shake
+notch turns into a contact fault. The fix belongs at the source, before the
+notch closes: §246's phase window becomes the pin's passage (±entry half,
+derived beside `PIN_FORK`), and the impulse torque keeps the lift (±L/2). That
+moves where a beat is counted and timed, so `IMPULSE_WIDTH`'s role, the
+rate's `entryT` and the sound events must be re-derived with it, and the
+hanging pose must stay bit for bit.
+
 ## 228. The hammer's rebound after the wire is a posed decay, not restitution — with the §268 spring it is a 200 Hz chatter nobody banked
 
 §268 made the hammer's fall a spring law with a spring: `ALARM_HAMMER_W =
