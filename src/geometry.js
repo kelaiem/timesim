@@ -4069,6 +4069,11 @@ export function* makeHairspringSteps(plan) {
   // The plan stays the REST spiral (the three numbers TODO 25's rate solve
   // turns on); `spiralFrames` is what the metal is actually wearing.
   g.userData.spiralFrames = framePolys;
+  // §246 tier two — and each frame point's RAISE above mid-plane (the
+  // overcoil's z profile, 0 on the flat spiral): one array, since every frame
+  // is one length of steel on the same profile. The stud seat's solve reads it
+  // to keep only the metal that shares a band with the wheel it is clearing.
+  g.userData.spiralZs = rest.zs.slice();
   g.userData.spiralFrame = REST_FRAME;
   // §218 — what the solve measured, in MODEL units with EI = 1: the caller
   // (main.js, which owns the physics) multiplies EI back in and converts.

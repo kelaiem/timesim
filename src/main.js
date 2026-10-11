@@ -14371,12 +14371,59 @@ const balanceCock = G.makeCock({
   const jyStaff = balanceCockLen * COCK_JEWEL_AT; // staff axis in cock-local y
   const hsUD = hairspring.userData;
 
-  // Re-anchor the SPRING so its terminal end lands 0.9 rad off the cock
+  // Re-anchor the SPRING so its terminal end lands STUD_OFF off the cock
   // axis, over the OPEN cutaway — the stud that clamps it hangs from a
   // cantilevered carrier arm there, in plain view beside the cock, not
   // buried under the slab. Free-sprung: the terminal runs uninterrupted
   // from the spiral's outer end to the stud.
-  hairspringGroup.rotation.z = toJewel + 0.9 - hsUD.endAngle;
+  //
+  // §246 tier two — STUD_OFF IS SOLVED, and it is ONE number for the spring
+  // and its carrier (it was the literal 0.9 written at both). The design seat
+  // is 0.9 rad, over the cutaway; what moves it is the spring's own BREATHING.
+  // The stud turns with the cock, and the cock's bearing is a scan
+  // (BALANCE_COCK) that any obstacle in the train's band can turn — TODO 234's
+  // fork-cock leg turned it 4° — while the spring's outer coil, in the fourth
+  // wheel's band (both bands are measured below), swings out on every wind
+  // frame toward the fourth wheel's tips. The driven balance reaches the
+  // knock (AMPLITUDE_PEAK_DEG; dial-flat it sustains 292°, the `position`
+  // axis' pose), so EVERY published frame is reachable, and the spring's
+  // centreline on each, widened by its ribbon (the rhombus' radial
+  // half-diagonal), must stand CLEAR_MARGIN off the fourth wheel's swept
+  // radius. The seat is the design azimuth when that holds, else the nearest
+  // whole degree either side of it that does (the cock scan's own step);
+  // none within ±30° warns, because then the spring must move in position
+  // space (stratum or station), not the stud.
+  const STUD_OFF = (() => {
+    const DESIGN = 0.9;
+    fourthWheel.updateWorldMatrix(true, true);
+    const wb = new THREE.Box3().setFromObject(fourthWheel);
+    const tipR = LAYOUT_INPUTS.swept.fourth, rib = hsUD.ribbonR;
+    // Only the coil that SHARES the band: the overcoil climbs out of it on its
+    // way to the stud (spiralZs), and a raised point cannot meet the tips.
+    const inBand = hsUD.spiralZs.map((z) => L_HAIRSPRING + z - HAIRSPRING_H / 2 < wb.max.z && L_HAIRSPRING + z + HAIRSPRING_H / 2 > wb.min.z);
+    const clearAt = (off) => {
+      const rot = toJewel + off - hsUD.endAngle, cs = Math.cos(rot), sn = Math.sin(rot);
+      let c = Infinity;
+      for (const poly of hsUD.spiralFrames) {
+        for (let i = 0; i < poly.length; i++) {
+          if (!inBand[i]) continue;
+          const [x, y] = poly[i];
+          const wx = P.balance.x + cs * x - sn * y, wy = P.balance.y + sn * x + cs * y;
+          c = Math.min(c, Math.hypot(wx - P.fourth.x, wy - P.fourth.y) - tipR - rib);
+        }
+      }
+      return c;
+    };
+    for (let d = 0; d <= 30; d++) {
+      for (const s of d === 0 ? [1] : [1, -1]) {
+        const off = DESIGN + s * d * DEG2RAD;
+        if (clearAt(off) >= CLEAR_MARGIN) return off;
+      }
+    }
+    console.warn(`§246: no stud seat within ±30° of the design azimuth keeps the breathing hairspring ${CLEAR_MARGIN} off the fourth wheel's tips (${clearAt(DESIGN).toFixed(4)} at the design seat) — re-site the spring in position space`);
+    return DESIGN;
+  })();
+  hairspringGroup.rotation.z = toJewel + STUD_OFF - hsUD.endAngle;
 
   // Small ring builder (extrude spans local z 0..h) for the concentric
   // collars below — CylinderGeometry has no bore, and the staff pokes 0.5
@@ -14420,8 +14467,8 @@ const balanceCock = G.makeCock({
 
   // STUD CARRIER: the spring's outer end belongs to a fixture on the
   // cock, not to bare plate. A concentric ring around the shock setting
-  // cantilevers an arm out over the open cutaway (0.9 rad off the cock
-  // axis); at the terminal-end radius its stud drops to the spring plane
+  // cantilevers an arm out over the open cutaway (STUD_OFF off the cock
+  // axis, solved above); at the terminal-end radius its stud drops to the spring plane
   // and clamps the terminal, pinned from the side — the whole attachment
   // visible from the back. On a free-sprung balance this is the spring's
   // ONLY fixture: no index, no curb pins.
@@ -14430,7 +14477,7 @@ const balanceCock = G.makeCock({
     const carrier = new THREE.Group();
     carrier.name = 'studCarrier';
     carrier.position.set(0, jyStaff, COCK_T / 2);
-    carrier.rotation.z = 0.9;
+    carrier.rotation.z = STUD_OFF;
     const ring = ringMesh(2.55, 2.95, STOCK_MIN_U, MATS.steel); // outer trimmed inside the head's half-width (3.0); TODO 12: floor stock, free outward
     ring.position.z = 0.02;
     carrier.add(ring);

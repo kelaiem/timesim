@@ -33062,6 +33062,25 @@ swing up to the knock (n 291). It sweeps the parts only the flat swing reaches
 roller — and on its first run it measured 0 FORBIDDEN, 0 clearance violations,
 0 undeclared pairs under the margin and 0 unwaived expected-contact rows.
 
+**The stud's seat is solved, because the axis found the spring's reach.** The
+first run's clean `undeclaredClearance` was 0.1549 for `Fourth wheel ⇄
+Hairspring`, five thousandths over the margin. TODO 234's fork-cock leg then
+turned the balance cock 4° (its bearing is a scan over the train's obstacles),
+the stud turns with the cock, and the axis read **0.1379**: the spring's outer
+coil, in the fourth wheel's own band, swinging out toward its tips on the
+dial-flat frames. The stud's azimuth off the cock axis was the literal `0.9`,
+written twice, at the spring and at its carrier. It is one number now,
+`STUD_OFF`, solved at build: the design seat over the cutaway when the spring
+clears, else the nearest whole degree either side of it that does (the cock
+scan's step). The constraint is every published wind frame, out to the knock,
+because the driven balance can reach it: the in-band centreline (the overcoil
+climbs out of the band on its way to the stud, which `spiralZs` says per point)
+widened by the ribbon must stand `CLEAR_MARGIN` off the fourth wheel's swept
+radius. At the design seat the knock's frames came to **0.065**, tighter than
+the axis saw at 292°, and the solve lands **18°** round, where the same metric
+reads 0.163 and the axis measures the pair at **0.2202**. No seat within ±30°
+warns, because the fix would then be the spring's station or stratum.
+
 **Measured** (`tools/probe-246-driven-rate.mjs`, an acceptance test; s/day,
 positive gains):
 
