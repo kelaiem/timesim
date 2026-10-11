@@ -4,8 +4,10 @@
 // OUTSIDE of the fork's horn, which is still lying banked where the last
 // impulse left it. Past that angle the balance cannot swing: it banks on the
 // horn. This measures that angle on the CUT METAL — the fork blank's published
-// outline (`userData.blankOutline`) and the ruby pin's own mesh, placed by the
-// groups' own world transforms — rather than quoting the textbook 360° − λ/2.
+// METAL outline (`userData.blankMetalOutline`, the authored outline with the
+// chamfer's dilation, read off the extruded ring since TODO 226 step 1) and the
+// ruby pin's own mesh, placed by the groups' own world transforms — rather than
+// quoting the textbook 360° − λ/2.
 //
 // Also measured, as its control: the LIFT — the balance arc over which the pin
 // sits in the notch while the fork swings bank to bank. The build derives the
@@ -42,7 +44,7 @@ const out = await page.evaluate(async () => {
   const entry = (n) => clock.labelEntries.find((e) => e.name === n).obj;
   const forkG = entry('Pallet fork'), balG = entry('Balance');
   const blank = forkG.children.find((c) => c.userData?.blankOutline);
-  const outline = blank.userData.blankOutline;
+  const outline = blank.userData.blankMetalOutline;
   let pin = null;
   balG.traverse((m) => { if (m.isMesh && m.material?.color?.getHexString?.() === 'b01326' && !pin) pin = m; });
   pin.geometry.computeBoundingBox();
