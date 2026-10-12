@@ -20,7 +20,7 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, fmtPct, lowerUi, locali
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, balanceWheelDims, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
@@ -1726,7 +1726,7 @@ const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
 // TODO 226 step 1 — the balance is BUILT further down, after the escapement's
 // seat is solved (the roller is cut to the guard pin the fork's notch places);
 // its radius is fixed here because the stations below are laid out from it.
-const BALANCE_R = 9;
+const BALANCE_R = BALANCE_R_SPEC;   // TODO 242 — the spec's RATE_TABLE row (9 at 18,000; a faster row may carry a smaller balance)
 const balanceR = BALANCE_R;
 
 // Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the

@@ -83,10 +83,10 @@
 // re-solves the escapement (the impulse pin's circle scales with the
 // balance's radius) — TODO 242's open half.
 const RATE_TABLE = {
-  18000: { fourthTeeth: 80, escPinion: 8, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
-  28800: { fourthTeeth: 96, escPinion: 6, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
+  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6, balanceR: 9, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, rimF: 0.25, claimDeg: 126, peakDeg: 311 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
@@ -415,6 +415,10 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 // the gate until these move with it.
 // TODO 242 — both are the spec's rate row's, since each row has its own balance.
 export const AMPLITUDE_CLAIM_DEG = rateBalanceRow(SPEC.vph).claimDeg;
+// TODO 242 — the balance's RADIUS, the row's too: main.js lays the escapement's
+// stations out from it (the pin circle, the fork's length), so it is the one
+// size the escapement's whole solve follows.
+export const BALANCE_R_SPEC = rateBalanceRow(SPEC.vph).balanceR;
 export const AMPLITUDE_PEAK_DEG = rateBalanceRow(SPEC.vph).peakDeg;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
