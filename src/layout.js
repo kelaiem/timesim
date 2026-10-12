@@ -515,7 +515,15 @@ export const CASE_HEIGHT_STEP_MM = 0.001;
 // blade needs its root on the flange, and the sixth §51 spend that buys it
 // (ALARM_B_BAND_SPEND, 0.4098 u, Z_DIAL −9.13 → −9.54) is 0.155 mm of cased
 // depth, 1:1 — the price of driving the lift, named here.
-export const CASE_HEIGHT_MAX_MM = 12.382;
+// §261 step 4 (landing 2c) LOWERED it, 12.382 → 12.152: the fold took the
+// alarm switch, its lock and the link's beak under the dial, and with them
+// the two declared swept rows that stood the switch over the plate — and the
+// skirt row (r 48.3–49.6) re-authored from §226's open 10.08 to the 8.614 the
+// pusher's case liner measures at its worst pose (8.62). The back now stands
+// on the hammer's plane (the pane floor, 11.591 + CLEAR_MARGIN), the skirt
+// arm meeting it exactly; 0.230 mm bought, the step-1 price table's L2 to the
+// micron. The keys govern the back-most metal, 0.140 mm over the ring face.
+export const CASE_HEIGHT_MAX_MM = 12.152;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE

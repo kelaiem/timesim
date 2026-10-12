@@ -3474,7 +3474,17 @@ const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW
 // what it carries is the governor train's reaction, still TODO 90's open sum.
 // Hoisted with the station because the base plate is cut long before the
 // alarm block runs (BACK_PLATE_HOLES, below).
-const ALARM_STRIKE_STAFF_R = 0.35;
+// §261 2c — AND IT IS SIZED FOR THE LATHE NOW. The fold ran the foot on below
+// the base plate to carry the stop wheel under the dial, and the staff grew to
+// 14.8177 u (5.62 mm) at §112's 0.35: L/D 21.2, over `turning`'s 20 (§233 —
+// one bar of stock, judged whole, because the sleeve concentric on it is a
+// separate part). So the radius is the turning target's at the staff's length,
+// floored at §112's 0.35: r = L / (2 · TURN_LD_TARGET). The length is a
+// quotation (the cam's station is cut thousands of lines below — §169's
+// convention), re-derived at the build and warned on drift; rounded UP, so the
+// section is never thinner than the length it turns.
+const ALARM_STRIKE_STAFF_LEN_U = 14.8177;
+const ALARM_STRIKE_STAFF_R = Math.max(0.35, ALARM_STRIKE_STAFF_LEN_U / (2 * TURN_LD_TARGET));   // 0.4116
 // The base plate's PLANE is declared here, where the layout needs it; the
 // plate itself is CUT further down, once the keyless linkage has solved
 // (search BASE PLATE — CUT). §87 is why: the setting lever carries a second
@@ -3690,7 +3700,7 @@ if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 21.5534; // TODO 222: re-measured after the B band's spend (ALARM_B_BAND_SPEND, 0.41) moved the dial — the rod's foot rides the dial-side selector, so the rod is the spend longer — was 21.1389. TODO 207: re-measured after the lightened balance's shorter hairspring (HAIRSPRING_H 0.6 → 0.3726) lowered the stack the plate floor stands on by 1.5·ΔH = 0.341, and the rod's top end stands on the plate — was 21.4835. TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
+const ALARM_LINK_ROD_LEN_U = 2.5312; // §261 2c: re-measured (2.5585 before the fork was guarded against the guide plates) — the rod runs only from the rim finger up to the folded beak's bar now, under the dial, and crosses no plate — was 21.5534. TODO 222: re-measured after the B band's spend (ALARM_B_BAND_SPEND, 0.41) moved the dial — the rod's foot rides the dial-side selector, so the rod is the spend longer — was 21.1389. TODO 207: re-measured after the lightened balance's shorter hairspring (HAIRSPRING_H 0.6 → 0.3726) lowered the stack the plate floor stands on by 1.5·ΔH = 0.341, and the rod's top end stands on the plate — was 21.4835. TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
 const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5968 (TODO 194; 0.5765 before the dial move)
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.647 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.963 — a wall at the §50 floor
@@ -3704,7 +3714,7 @@ const BACK_PLATE_HOLES = [
   // MW_FOLD_PLATE_HOLE, once the corner exists.
   { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
   { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_STRIKE_STAFF_R + PIVOT_BORE_CLEAR }, // §261 landing 2a: the striking staff's lower bearing IS this bore — the running fit, through the plate so the staff can carry the stop wheel to the dial side
-  { x: 18.96, y: -2.83, r: ALARM_LINK_ROD_PLATE_BORE_R, linkRod: true }, // §35/§68 (§112: re-synced to the SOLVED rod site; band swap: the tab-zone score re-ranked the solve; TODO 174: re-synced to the corrected guard's site; TODO 190: re-synced when the retired tail run released the tab zone and the search learned to hold a land to each plate's openings — was (27.88, −4.07)) — the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
+  // (§261 2c retired the selector rod's bore here: the rod runs under the dial now, between the folded beak and the lay shaft, and crosses no plate)
 ];
 // A single stud's slot, from the arc it sweeps between the two crown poses:
 // the track is an ARC, not the chord, so the bow joins the stud's own radius
@@ -5296,6 +5306,9 @@ const COCK_PLATE_TAP_R = G.screwTapR(COCK_SCREW_HEAD_R);
 // (the balance cock's legs; the pillar tenons next). recutBackPlate() re-runs
 // the one cut with these added — see it at the balance cock's build.
 const BACK_PLATE_LATE_HOLES = [];
+// §261 2c — and SLOTS on the same rule: the alarm linkage's pin track is solved
+// at the pusher's build, long after the plate is cut.
+const BACK_PLATE_LATE_SLOTS = [];
 // frame: the Object3D the screw is built in; top: the head's top face
 // (frame-local z, the value passed to makeScrews); headT: head height;
 // clamp: the thickness of the member the head clamps, below the head.
@@ -7347,7 +7360,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 //   slope — the blade passes one CLEAR_MARGIN under the arm's pin end at full
 //     lift (the blade is drawn rigid about its root, TODO 206's convention), so
 //     its root sits that far below the bearing — which is what the spend buys.
-const ALARM_PINB_SEAT_MN = 5.2502;   // mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN)
+const ALARM_PINB_SEAT_MN = 5.4263;   // mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
 const ALARM_PINB_BLADE = (() => {
   const t = SPRING_FLAT_U, eps = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA, mu = MU_STEEL, U = UNIT_MM / 1000;
   const xb = ALARM_PINB_POST_R + 2 * CLEAR_MARGIN;
@@ -10191,7 +10204,7 @@ const backPlate = G.makeBackPlate(BACK_PLATE_CUT);
 // adds a late hole calls this after its push.
 await breathe(92);
 const recutBackPlate = () => {
-  const cut = G.makeBackPlate({ ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES] });
+  const cut = G.makeBackPlate({ ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES], slots: [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS] });
   backPlate.geometry.dispose();
   backPlate.geometry = cut.geometry;
   // TODO 172 — only the SLAB is swapped: the pockets' floors are children the
@@ -14471,7 +14484,7 @@ const tqPolyHoles = tqPivots.filter((p) => p.chaton)
     console.warn(`§132: chaton outline disagrees with its circles — ${worstIn.toExponential(1)} inside, `
       + `${worstOn.toExponential(1)} off the boundary`);
 }
-tqHoles.push({ x: 18.96, y: -2.83, r: ALARM_LINK_ROD_PLATE_BORE_R, linkRod: true }); // §35/§68 (§112: re-synced to the SOLVED rod site; TODO 174: re-synced to the corrected guard's site; TODO 190: re-synced when the retired tail run released the tab zone and the search learned to hold a land to each plate's openings — was (27.88, −4.07)) — the selector rod passes the plate top at the re-sited rod (= ALARM_LINK_ROD_XY, asserted at the link build); r matches the back plate's bevel-safe bore
+// (§261 2c retired the selector rod's bore here — see the base plate's list)
 // The three-quarter plate carries NO slot for the setting lever's tail
 // post any more: with the whole reset/hack linkage on the LOW plane, the
 // post tops out ~1.4 — it crosses only the BASE plate (whose arc slot,
@@ -14483,7 +14496,9 @@ const tqSlots = [];
 // CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
 // derive long after this plate is cut — and the pusher build asserts the
 // derived track equals this slot (the §35/§68 tripwire pattern).
-tqSlots.push({ ax: 23.00, ay: -0.70, bx: 25.68, by: -0.78, r: 0.32 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module; §163 re-froze it TWICE — once when ALARM_PUSH_CHORD stopped being a literal, and again when the coupling moved the riser from the stem's inner end to the PIN's station, which straddles the foot of the perpendicular and so sits under the wheel rather than outside it; §170 re-froze it a fourth time when the press line was rotated to pass through the movement's centre — the slot is nearly TANGENTIAL to the old one, which is the point: the track's own direction turned by Δ)
+// (§261 2c retired the alarm pusher's riser slot that stood here: the fold took the
+// driver to the dial side, so the riser stops at the linkage's first crank between
+// the plates and nothing of the pusher crosses this plate any more.)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -20835,6 +20850,10 @@ const ALARM_FORK_ROLLER_R = ALARM_FORK_PIN_R + PIVOT_MIN_U;
 // TODO 222 — the radius the helix is CUT at: the guide rollers' centres, mid
 // plate (the slots are cut on this circle, and the force on a roller acts here).
 const ALARM_SEL_HELIX_R = ALARM_SEL_GUIDE_R0 + ALARM_SEL_GUIDE_T / 2;
+// §261 2c — the guide plates' reach along the ring's tangent either side of
+// their station, quoted for the link's site solve (which runs before the
+// plates are cut from the helix it sites) and held at their build.
+const ALARM_SEL_GUIDE_HALF_T_U = 1.0931;
 // TODO 222 — THE RING'S PRICE, one law for the two readers (the arm's budget
 // solve at the crank build and follower-B's lift at the nose): the work the
 // drive spends per unit of lift work, with the ring held on three helices of
@@ -26799,7 +26818,11 @@ const ALARM_STRIKE_SLEEVE_R = 0.75;
 // exactly that: one radial weld spent as enclosed metal rather than a running
 // gap, so the joint is neither a coincident-cap knife edge nor a burial the
 // proximity instruments cannot arbitrate.
-const ALARM_STOP_BORE_R = ALARM_STRIKE_SLEEVE_R - SAW_FIT;
+// §261 2c: and the shaft it grips is the STAFF now. The fold carries the stop
+// wheel to the dial side with the lock that reads it, below the base plate,
+// where the striking arbor is the staff's foot alone — the sleeve stops at the
+// pinion, between the plates. Same idiom, same quantum, the staff's radius.
+const ALARM_STOP_BORE_R = ALARM_STRIKE_STAFF_R - SAW_FIT;
 // WHAT THE STOP CARRIES, and what is still owed. The barrel's moment through
 // the 44/11 wall-to-pinion mesh arrives at this tip circle as a tangential
 // reaction of ≈72.9 mN (0.08843 N·mm at full wind over MM(3.5167)) — a
@@ -26809,6 +26832,66 @@ const ALARM_STOP_BORE_R = ALARM_STRIKE_SLEEVE_R - SAW_FIT;
 // the three riders' contacts priced against the column's drive torque, which
 // has never been summed — and pricing this one alone would answer a third of
 // it while looking like the whole. The arithmetic lives at the finding.
+// §261 step 4, landing 2c — THE FOLD. The switch-and-lock cluster stood on the
+// three-quarter plate's top face, and that tower is what set the case's depth
+// (the §261 back-envelope walk priced it). It is carried to the DIAL side of
+// the base plate as a rigid body, which keeps every row of the switch's and
+// the lock's line specs: a fold's currencies are position-space (CLAUDE.md,
+// "design in a line, fold to fit"), and a rigid map moves no lever arm.
+//
+// The map is a REFLECTION of the stacking, not a turn-over: z ↦ Z_SUM − z,
+// so the cluster's floor (the three-quarter plate's top face) lands on the
+// base plate's DIAL face, everything that stood above the plate hangs below
+// it, and every stud that was planted in the three-quarter plate is planted
+// in the base plate. A mirror in z leaves PLAN alone — every cut outline,
+// every saw's hand (the switch's ratchet is cut with ratchetDrive −1 in
+// geometry.js) and every turning sense in plan survives — so nothing is
+// re-cut; the renderer flips the winding of a negative-determinant world
+// matrix itself (three.js `frontFaceCW`). Then a turn by φ about the
+// striking staff, the one axis the cluster shares with the rest of the
+// movement.
+//
+// φ IS FORCED. The lock's finger meets the stop wheel on that staff, and the
+// stop wheel's phase against the cam is WHEN the stop catches (TODO 90's
+// derivation of ALARM_STOP_TEETH), so a turn that is not a whole stop pitch
+// re-clocks the stop against the hammer. tools/probe-261-fold-site.mjs swept
+// every φ against the dial band's tenants over the pose net and found the
+// cluster fits at 215–246° only; 240° is the one whole pitch (360°/12 × 8) in
+// that window. A whole pitch is also why the stop wheel itself needs no turn
+// below — it is its own image under it.
+const ALARM_FOLD_PITCHES = 8;
+const ALARM_FOLD_PHI = ALARM_FOLD_PITCHES * (2 * Math.PI / ALARM_STOP_TEETH);
+const ALARM_FOLD_Z_SUM = PLATE_BACK + TQ_TOP_Z;   // z ↦ Z_SUM − z: the TQ plate's top face onto the base plate's dial face
+const alarmFoldMatrix = new THREE.Matrix4()
+  .makeTranslation(alarmSwPos.x, alarmSwPos.y, ALARM_FOLD_Z_SUM)
+  .multiply(new THREE.Matrix4().makeRotationZ(ALARM_FOLD_PHI))
+  .multiply(new THREE.Matrix4().makeScale(1, 1, -1))
+  .multiply(new THREE.Matrix4().makeTranslation(-alarmSwPos.x, -alarmSwPos.y, 0));
+if (Math.abs(alarmFoldMatrix.determinant() + 1) > 1e-12)
+  console.warn(`§261 2c: the fold's determinant is ${alarmFoldMatrix.determinant()}, not −1 — it is not a pure reflection`);
+// The fold is carried by a CHILD of each unit, never by the unit: the explode
+// view writes the unit's position every frame (registerExplode), and a group
+// whose matrix is pinned ignores its position. So the unit keeps its identity
+// transform and its label, and the members that fold hang in this frame.
+function makeAlarmFold(name) {
+  const g = new THREE.Group();
+  g.name = name;
+  g.matrixAutoUpdate = false;
+  g.matrix.copy(alarmFoldMatrix);
+  return g;
+}
+// The cluster's frame → world, for the few build sites that place an UNFOLDED
+// part against a folded one (the stop wheel's band, the pusher's cranks, the
+// beak's ray).
+const alarmFoldPoint = (x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(alarmFoldMatrix);
+const alarmFoldZ = (z) => ALARM_FOLD_Z_SUM - z;
+// ...and back: world → the cluster's frame, for a build site that MEASURES a
+// folded part against a datum written in that frame (the column-top plane, the
+// gap floor). A box carried through a pure reflection keeps its z extent
+// exactly, so a z read off it is the cluster's own.
+const alarmFoldInv = alarmFoldMatrix.clone().invert();
+const alarmClusterBox = (o) => new THREE.Box3().setFromObject(o).applyMatrix4(alarmFoldInv);
+
 const alarmStrikeRotor = new THREE.Group(); // everything that turns with the striking train
 alarmStrikeRotor.position.set(alarmSwPos.x, alarmSwPos.y, 0);
 alarmStrikeUnit.add(alarmStrikeRotor);
@@ -26821,7 +26904,12 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // §112's 0.5 into the plate (the bore runs on through, for the stop wheel
   // the fold will carry down); the rotor's members, which ran on it, ride it.
   const staffTop = ALARM_CAM_Z1 + 0.3;
-  const staffBase = ALARM_U_FLOOR - 0.5;
+  // §261 2c: and through it — the foot runs on below the base plate to carry
+  // the stop wheel in the folded lock band, ending flush with its dial face.
+  const staffBase = alarmFoldZ(ALARM_LOCK_Z) - STOCK_MIN_U / 2;
+  if (staffTop - staffBase > ALARM_STRIKE_STAFF_LEN_U + 1e-9 || ALARM_STRIKE_STAFF_LEN_U - (staffTop - staffBase) > 1e-3)
+    console.warn(`§261 2c: the striking staff is ${(staffTop - staffBase).toFixed(5)} long, but ALARM_STRIKE_STAFF_LEN_U `
+      + `quotes ${ALARM_STRIKE_STAFF_LEN_U} — its radius was sized for the quotation; re-measure (rounded up)`);
   const staff = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_STRIKE_STAFF_R, ALARM_STRIKE_STAFF_R, staffTop - staffBase, 12), MATS.steel);
   staff.name = 'alarmStrikeStaff';
   staff.rotation.x = Math.PI / 2;
@@ -26985,7 +27073,11 @@ alarmStrikeUnit.add(alarmStrikeRotor);
     return m;
   })();
   lockCollar.name = 'alarmLockCollar';
-  lockCollar.position.z = ALARM_LOCK_Z; // world (the rotor sits at z 0): the shared §25 B lock band, derived at the §124 seam block
+  // §261 2c: the shared §25 B lock band, FOLDED with the lock that reads it —
+  // the band's image under the fold (the rotor sits at z 0, so this is world).
+  // The wheel itself needs no turn: φ is a whole number of its pitches, and a
+  // mirror in z leaves a flat cut ring its own image.
+  lockCollar.position.z = alarmFoldZ(ALARM_LOCK_Z);
   alarmStrikeRotor.add(lockCollar);
   sleeve.rotation.x = Math.PI / 2;
   sleeve.position.z = (sleeveZ0 + sleeveZ1) / 2;
@@ -32443,13 +32535,18 @@ if (!(alarmStopClearAt(ALARM_LOCK_THETA) <= -ALARM_STOP_DEPTH + 1e-9))
 if (Math.abs(alarmStopClearAt(ALARM_LOCK_THETA + ALARM_LOCK_LIFT) - CLEAR_MARGIN) > 1e-9)
   console.warn(`TODO 90: the released finger stands ${alarmStopClearAt(ALARM_LOCK_THETA + ALARM_LOCK_LIFT).toFixed(4)} off the stop wheel's tips, not ${CLEAR_MARGIN}`);
 
+
+// (THE FOLD — the matrix both units' fold groups carry — is declared above the
+// striking rotor, whose staff carries the stop wheel down to the folded band.)
 const alarmLockUnit = new THREE.Group();
 movement.add(alarmLockUnit);
 registerLabel('Alarm lock', alarmLockUnit);
 registerExplode(alarmLockUnit, 0, 9);
+const alarmLockFold = makeAlarmFold('alarmLockFold');
+alarmLockUnit.add(alarmLockFold);
 const alarmLockLever = new THREE.Group();
 alarmLockLever.position.set(alarmLockPivot.x, alarmLockPivot.y, ALARM_LOCK_Z);
-alarmLockUnit.add(alarmLockLever);
+alarmLockFold.add(alarmLockLever);
 {
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.62, 10), MATS.nickel);
   // NAMED by §171, and the name is the fix rather than a label. Both of this
@@ -32463,7 +32560,7 @@ alarmLockUnit.add(alarmLockLever);
   post.name = 'alarmLockPivotPost';
   post.rotation.x = Math.PI / 2;
   post.position.set(alarmLockPivot.x, alarmLockPivot.y, TQ_TOP_Z + 0.31 - 0.01);
-  alarmLockUnit.add(post);
+  alarmLockFold.add(post);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LOCK_L, 0.5, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top lever
   // NAMED by TODO 90 finding 5, for §171's reason and the third time in this
   // unit: its INTRA_UNIT_CONTACTS rows selected it as 'BoxGeometry#0', a
@@ -32493,6 +32590,12 @@ const alarmSwitchUnit = new THREE.Group();
 movement.add(alarmSwitchUnit);
 registerLabel('Alarm switch', alarmSwitchUnit);
 registerExplode(alarmSwitchUnit, 0, 9);
+// §261 2c: the column wheel, its stud, the jumper and the driver fold with the
+// lock (see THE FOLD above); the pusher and its guide, return work and case
+// liner stay where the button is — between the plates, at the case wall — and
+// reach the folded driver through the two cranks and the rod.
+const alarmSwitchFold = makeAlarmFold('alarmSwitchFold');
+alarmSwitchUnit.add(alarmSwitchFold);
 // §25 D rev 2 (owner's ask): the switch IS a COLUMN WHEEL — the chronograph
 // architecture. The lock lever's TAIL BEAK rides its castellations: beak on a
 // COLUMN → the tail is blocked and the brake cannot lift (alarm OFF); beak
@@ -32981,12 +33084,12 @@ if (Math.abs(ALARM_ROCKER.dQW - (ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_P
   stud.name = 'alarmLockSpringStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(anchor.x, anchor.y, (ALARM_LOCK_Z + 0.1 + TQ_TOP_Z) / 2);
-  alarmLockUnit.add(stud);
+  alarmLockFold.add(stud);
   const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, SPRING_FLAT_U, 0.2), MATS.blueSteel);
   blade.name = 'alarmLockSpring';
   blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z);
   blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
-  alarmLockUnit.add(blade);
+  alarmLockFold.add(blade);
 }
 declareRestoring('Alarm lock', 'alarmLockPad', 'spring',
   'the return blade biases the lever toward LIFTED (finger out of the stop teeth) and the column presses it ENGAGED against this spring — a real blade on its own stud, bearing on the arm\'s flank. TODO 90 finding 4 cut the collar it holds by into a stop wheel, and finding 5 gave the column a rocker to press through, so the HOLD is form-locking now and the PRESS reaches the lever through metal that moves',
@@ -33098,7 +33201,7 @@ alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + ALARM
 // starts at step 0 = column = alarm OFF (the boot default).
 alarmColSpin.rotation.z = ALARM_LOCK_ENGAGED;
 alarmColSpin.add(alarmColumnWheel);
-alarmSwitchUnit.add(alarmColSpin);
+alarmSwitchFold.add(alarmColSpin);
 {
   // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
   // (under the base's top face) — a pivot, not a pole through the crown.
@@ -33116,7 +33219,7 @@ alarmSwitchUnit.add(alarmColSpin);
   stud.name = 'alarmColStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, (studBot + studTip) / 2);
-  alarmSwitchUnit.add(stud);
+  alarmSwitchFold.add(stud);
 }
 // ————————————————— §173 — THE SAUTOIR: THE WHEEL'S INDEX —————————————————
 //
@@ -33403,7 +33506,7 @@ const ALARM_COL_BAND_MID = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL
 // only the metal.
 const alarmLockRocker = new THREE.Group();
 alarmLockRocker.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
-alarmLockUnit.add(alarmLockRocker);
+alarmLockFold.add(alarmLockRocker);
 registerSub('Alarm lock', 'Lock lever', alarmLockLever); // §10 level 2
 registerSub('Alarm lock', 'Lock rocker', alarmLockRocker);
 {
@@ -33440,7 +33543,7 @@ registerSub('Alarm lock', 'Lock rocker', alarmLockRocker);
   post.name = 'alarmLockBeakRiser';
   post.rotation.x = Math.PI / 2;
   post.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, (postTop + TQ_TOP_Z) / 2);
-  alarmLockUnit.add(post);            // planted in the plate, NOT on the rocker it carries
+  alarmLockFold.add(post);            // planted in the plate, NOT on the rocker it carries
   // THE PIN — on the P-Q line at the radius the ratio solve fixed, spanning
   // DOWN from the rocker's plane to the lever's, where the slot is cut.
   const pinTop = ALARM_LOCK_Z + ALARM_COL_BAND_MID;
@@ -33604,7 +33707,7 @@ const alarmJumperSeatR = (wheelA) => {
 const alarmJumperArm = new THREE.Group();
 alarmJumperArm.position.set(alarmJumperAnchor.x, alarmJumperAnchor.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
 alarmJumperArm.rotation.z = _jRestDir;
-alarmSwitchUnit.add(alarmJumperArm);
+alarmSwitchFold.add(alarmJumperArm);
 {
   // The blade. Local +x runs anchor → tip; local y is the bending direction
   // (radial at the tip, which is what makes the tip force radial); local z is
@@ -33657,7 +33760,7 @@ const ALARM_JUMPER_STUD_R = Math.max(STOCK_MIN_R10, (() => {
   stud.name = 'alarmJumperStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(alarmJumperAnchor.x, alarmJumperAnchor.y, TQ_TOP_Z + _jStudLen / 2);
-  alarmSwitchUnit.add(stud);
+  alarmSwitchFold.add(stud);
 }
 // ————————————————— WHAT THE JUMPER IS WORTH, IN TWO FIGURES ————————————————
 // The click published ONE number and made it do two jobs badly. There are two
@@ -33884,11 +33987,15 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 11.0211;   // TODO 222: re-measured after the B band's spend lengthened the selector rod (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0121 shorter — was 11.0331; rounded UP from the built 11.0210x. TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+const ALARM_LINK_BODY_LEN_U = 12.0141;   // §261 2c: re-measured at the folded beak's rod site (the §112 solve re-sited with the hangers' columns scored, and the fork guarded against the guide PLATES TODO 222 hung where the posts stood — at 11.1138 the fork was cut through guide 1), rounded UP so the stratum is derived for a bush no thinner than the one built — was 11.0211. TODO 222: re-measured after the B band's spend lengthened the selector rod (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0121 shorter — was 11.0331; rounded UP from the built 11.0210x. TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
 // needs the bush's own OD before that loop runs, at the SAME radius the
 // bush is actually cut to.
+// The hanger bush's own axial length (the bush build, at the shaft's own
+// three stations) — hoisted because the rod-end overhang derivation below
+// needs the bush's HALF-length to know where its outer face lands.
+const ALARM_LINK_BUSH_LEN = 0.3;
 const ALARM_LINK_BUSH_CLEAR = 0.02;   // running fit, shipped value
 const ALARM_LINK_BUSH_WALL = 0.12;    // stock-floor wall — the bush is a real part
 // r_target, the shaft's own governing radius floor (bodyLen/(2·TURN_LD_
@@ -34164,6 +34271,195 @@ const ALARM_LINK_ROD_STANDOFF = (() => {
 // dR/dL = 1/(2·TURN_LD_TARGET) ≈ 0.028, so even the 0.73 the rod grew in
 // TODO 194 moved the standoff 0.02 — against the 0.76 offset the old score
 // ignored outright.
+// ---- §261 2c — THE SEAT LAW, HOISTED above the site solve, which now sizes a
+// same-side beak at every candidate it scores. Nothing here reads the site.
+// §33 (pusher handle) — the link beak's read, MEASURED. The link beak
+// reads the SAME castellations as the lock beak, but from the ROD's
+// direction — and the rod is a §35 corridor solution in the WORLD frame
+// (az 210°), while the wheel's phase rides the module (?alarmmod=). So
+// the offset between the two readers is geometry, not a constant. At
+// identity the literal two-full-pitches stands VERBATIM (the law
+// idealizes the nose's read at a column centre; the built nose centre
+// measures 5.7° off the top's edge and the contact still closes because
+// the nose's own 0.35 footprint spans ±~3.5° at its radius — the
+// footprint-credited check below is the honest form of that fact). Under
+// a rotated module the offset derives from the built directions and
+// snaps to the nearest column centre — the same idealization the
+// literal always encoded, now earned rather than assumed.
+// §261 2c: read off the site solve's ray FAMILY rather than the solved site —
+// every candidate ray is a whole column pitch from the family's first, and
+// the profile repeats per pitch, so the offset is the same for all of them
+// and can be known before the solve picks one (which it needs, to size them).
+const ALARM_LINK_BEAK_OFF = SPEC.alarmModAzDeg !== null
+  ? Math.round((_linkBeakAz0 + Math.PI - ALARM_LOCK_ENGAGED) / (2 * ALARM_COL_STEP)) * (2 * ALARM_COL_STEP)
+  : (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
+// §229 — THE BEAK NOSE'S PLAN SECTION, both dimensions derived from the cam
+// it reads. It was `BoxGeometry(0.35, 0.18, …)`: two bare literals, and the
+// narrower of them 0.18 — well under the movement's own 0.3167 stock floor.
+// A wire laid across a 0.6167 tier, and the only face in this mechanism that
+// is supposed to TELL you which state the wheel is in.
+//
+// AZIMUTH is bounded by the column's own FLAT. makeColumnWheel cuts that flat
+// to `colFlatHalf` half-angle around each column centre, and a follower wider
+// than it stands on a flank corner instead of on the top it claims to read.
+// The widest the flat carries, one running margin in from each edge AT THE
+// RADIUS THE NOSE ACTUALLY LANDS ON:
+//
+//     halfW = colFlatHalf · landR − CLEAR_MARGIN
+//
+// The land radius matters and is the part the wheel's own rule cannot supply:
+// `flatHalf = (riderNoseR + CLEAR_MARGIN) / baseR` sizes the flat as an ANGLE
+// from a rider riding at baseR, and this beak lands mid-castellation, INBOARD
+// of that — so the arc it is actually given is smaller than the wheel's rule
+// assumes. Measured here rather than inherited.
+//
+// RADIALLY the castellation annulus is baseR − colInner wide with the nose
+// centred in it, so a running margin at each face leaves far more room than
+// the nose needs. It takes ONE RATCHET TOOTH — §226's reference, the width
+// the driver's three arms and every rider nose are already cut to — because a
+// reader sees the teeth, the driver and this beak in one glance and a
+// different width in each is three parts pretending not to be one mechanism.
+const ALARM_LINK_NOSE_W_AZ = 2 * (alarmColumnWheel.userData.colFlatHalf * ALARM_LINK_NOSE_LAND_R - CLEAR_MARGIN);
+const ALARM_LINK_NOSE_W_RAD = G.ratchetToothDepth(ALARM_COL_BASE_R);
+// The angular footprint that width subtends at the landing radius — ONE
+// source, consulted by the readability check, the bar's clearance sweep and
+// the tick's own pose law. Before §229 the check reached for `0.35 / 2`, the
+// nose's RADIAL extent used as if it were the azimuthal one: conservative by
+// 1.9× and therefore harmless, but a second copy of a dimension all the same.
+const ALARM_LINK_NOSE_HALF_AZ = Math.atan2(ALARM_LINK_NOSE_W_AZ / 2, ALARM_LINK_NOSE_LAND_R);
+// Rule 6, both ways, with the achieved and required numbers.
+if (ALARM_LINK_NOSE_W_AZ < STOCK_MIN_U - 1e-9)
+  console.warn(`§229: the column's flat gives the link beak only ${ALARM_LINK_NOSE_W_AZ.toFixed(4)} of nose at r ${ALARM_LINK_NOSE_LAND_R.toFixed(3)}, under the ${STOCK_MIN_U.toFixed(4)} stock floor — the flat is sized at baseR and this rider lands inboard of it`);
+if (ALARM_LINK_NOSE_W_RAD + 2 * CLEAR_MARGIN > ALARM_COL_BASE_R - ALARM_COL_INNER + 1e-9)
+  console.warn(`§229: a ${ALARM_LINK_NOSE_W_RAD.toFixed(4)} radial nose plus a margin at each face wants ${(ALARM_LINK_NOSE_W_RAD + 2 * CLEAR_MARGIN).toFixed(4)} of a ${(ALARM_COL_BASE_R - ALARM_COL_INNER).toFixed(4)} castellation annulus`);
+// THE SURFACE THE NOSE ACTUALLY RIDES. A flat-bottomed follower rests on the
+// HIGHEST point under it, not on the point under its centre — and at 0.18
+// wide that distinction was worth 1% of a flank and could be ignored. At the
+// width above it is worth a quarter of one, so the profile is read over the
+// footprint everywhere the nose's height is wanted: the clearance sweep that
+// stations the arm, and the tick's own pose law.
+//
+// ITS SAMPLE COUNT IS A BUDGET, not a round number. profileAt is piecewise
+// linear, so a sampled max under-reads the true one by at most the flank's
+// slope times the spacing — and that error puts the nose's underside that far
+// INSIDE the flank it is riding. Budgeted at a tenth of the movement's one
+// clearance margin, which is comfortably inside what the handoff rows price a
+// working ride at: the flank climbs colH over `colFlank` radians, so
+//
+//     spacing = (CLEAR_MARGIN / 10) · colFlank / colH
+//
+// and the count is the half-footprint over that (the loop runs ±N, so N
+// intervals span the half-footprint).
+const ALARM_LINK_NOSE_SAMPLES = Math.max(8, Math.ceil(ALARM_LINK_NOSE_HALF_AZ
+  / ((CLEAR_MARGIN / 10) * alarmColumnWheel.userData.colFlank / ALARM_COL_H)));
+const alarmLinkNoseSurface = (phi) => {
+  const p = alarmColumnWheel.userData.profileAt;
+  const N = ALARM_LINK_NOSE_SAMPLES;
+  let m = 0;
+  for (let i = -N; i <= N; i++) m = Math.max(m, p(phi + (i / N) * ALARM_LINK_NOSE_HALF_AZ));
+  return m;
+};
+const ALARM_LINK_ROD_TRAVEL_SPEC = alarmLinkRimTopAt(ALARM_LINK_RIM_REST_FROM_ZENITH - ALARM_LINK_SPAN_BUDGET)
+  - alarmLinkRimTopAt(ALARM_LINK_RIM_REST_FROM_ZENITH);
+// (Its quotations, for the record: 0.09932 before §234 Landing 5, which put the
+// shaft's span back on SPAN_BUDGET exactly; 0.10020 after it, re-measured.)
+const ALARM_LINK_ARM_W = G.ratchetToothDepth(ALARM_COL_BASE_R);   // hoisted from the bar's build (the sweep below needs it)
+const _barLiftFor = (beakLen, pivDist, seatDrop) => {
+  const p = alarmColumnWheel.userData.profileAt;
+  const colH = ALARM_COL_H;
+  const halfW = ALARM_LINK_ARM_W / 2;      // §229: the bar's own width, not a copy of the floor it used to be
+  let need = CLEAR_MARGIN;                       // the floor, with no tilt and no width
+  const STEPS = 240;
+  for (let i = 0; i < STEPS; i++) {
+    const phi = (i / STEPS) * (2 * ALARM_COL_STEP);        // one whole column pitch
+    // §229 — the tick's own law, WHOLE: the nose rests on the highest point
+    // under its footprint (alarmLinkNoseSurface), and the SEAT catches the
+    // fall at the seat drop (TODO 206: the gap floor). The sweep used the bare
+    // centre profile and the uncapped tier, which over-stated the tilt 28×
+    // while the seat drop was 0.0218 and made this lift a number about a
+    // motion the arm does not perform. Both halves are the pose law now.
+    const drop = Math.min(colH * (1 - alarmLinkNoseSurface(phi + ALARM_LINK_BEAK_OFF)), seatDrop);
+    const tilt = drop / beakLen;
+    for (let r = ALARM_COL_INNER; r <= ALARM_COL_BASE_R + 1e-9; r += (ALARM_COL_BASE_R - ALARM_COL_INNER) / 12) {
+      const x = pivDist - r;                      // arm-local distance from the pivot
+      // §70 step 3 — the NOSE's own station is not the bar's. The grid lands
+      // a sample exactly on the landing radius (x = beakLen), and whether
+      // `x > beakLen` kept it was a float rounding: the build's run
+      // (8.999999999999998 − landR) dropped it, lift 0.2687; the line spec
+      // evaluating this law at a run of exactly 9 kept it, lift 0.2983 — the
+      // same lever, two answers 0.03 apart. The bar clears the columns and
+      // the nose alone reads them (§172), so the station the nose hangs from
+      // is excluded on purpose, by a margin rather than by rounding.
+      if (x < 0 || x > beakLen - 1e-9) continue;
+      const dAz = Math.atan2(halfW, r);           // what the bar's corner overhangs in azimuth
+      for (const e of [-dAz, 0, dAz]) {
+        const surf = colH * p(phi + ALARM_LINK_BEAK_OFF + e);   // column height under that corner
+        need = Math.max(need, surf - colH + CLEAR_MARGIN + x * tilt);
+      }
+    }
+  }
+  return need;
+};
+// §70 step 3 — the seat solve is a FUNCTION of the run and the rod's
+// stroke, so the link's line spec can evaluate the same law at its own
+// reference run (§229's wr 16) rather than restating it: one law, two
+// callers, and the build's call below is the arithmetic it always was.
+//
+// §261 step 4, landing 2b — AND OF THE LEVER'S CLASS, `side`. This beak is
+// FIRST-class (side −1): nose, pivot, tail in that order along the run, so
+// the arms share it, beakLen = run − tailLen, and the tail moves opposite to
+// the nose. The fold carries the column wheel under the dial REFLECTED, so
+// its nose falls into a gap TOWARD the plate while the lay shaft's rim (which
+// stays as it is) still has to RISE to arm: the dial-side beak must move its
+// tail WITH its nose, which is the same-side lever (side +1) — pivot, tail,
+// nose along the run, the pivot beyond the tail, beakLen = run + tailLen.
+// Everything else is one law for both: the tail makes the rim's stroke at the
+// seat tilt (tailLen = rodT/θs), the nose's deepest corner lands on the gap
+// floor, the bar clears the columns, and beakLen/tailLen = seat drop/stroke.
+// (`run` is the plan distance from the nose's landing to the tail's contact
+// in both classes; the default keeps every existing caller's arithmetic.)
+const alarmLinkSeatSolve = (run, rodT, side = -1) => {
+  if (side !== -1 && side !== 1) throw new Error(`alarmLinkSeatSolve: side must be -1 (first-class) or +1 (same-side), not ${side}`);
+  const halfRad = ALARM_LINK_NOSE_W_RAD / 2;
+  let h = CLEAR_MARGIN + STOCK_MIN_U / 2, th = 0, lift = CLEAR_MARGIN;
+  for (let pass = 0; pass < 40; pass++) {
+    const deepest = (t) => (run + side * rodT / t + halfRad) * Math.sin(t) - h * (1 - Math.cos(t));
+    // first-class: tailLen ≤ run; same-side: any tail, from the shallowest
+    // tilt that still moves the rim … a quarter turn either way
+    let lo = side < 0 ? rodT / run * 1.0001 : 1e-9, hi = Math.PI / 4;
+    for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (deepest(m) < ALARM_COL_H) lo = m; else hi = m; }
+    const thN = (lo + hi) / 2;
+    const tailL = rodT / thN, beakL = run + side * tailL;
+    const liftN = _barLiftFor(beakL, ALARM_LINK_NOSE_LAND_R + beakL, beakL * thN);
+    const done = Math.abs(thN - th) < 1e-12 && Math.abs(liftN - lift) < 1e-12;
+    th = thN; lift = liftN; h = lift + STOCK_MIN_U / 2;
+    if (done) break;
+  }
+  const tailLen = rodT / th, beakLen = run + side * tailLen;
+  return { theta: th, tailLen, beakLen, lift, h, side, seatDrop: beakLen * th,
+    deepest: (beakLen + halfRad) * Math.sin(th) - h * (1 - Math.cos(th)) };
+};
+ALARM_LINK_LAWS.seat = alarmLinkSeatSolve;
+
+// §261 2c — THE ROD-END HANGER'S JOG, one law for the site solve that scores
+// it and the build that cuts it (the reasoning is at the solve's hanger
+// scoring). From the hanger's station (hx, hy) and the bar's line in world plan
+// (pivot P → nose N), the arm's length J and its unit direction m, off the
+// line on the hanger's own side, and the upper column's station — long enough
+// that the column clears the bar's line AND the pivot post's reach about P
+// (`pivReach`, the post, its head and the eye at floor stock), each by the
+// column's plan radius and the margin.
+const alarmLinkHangerJog = (hx, hy, P, N, pivReach) => {
+  const bx = N.x - P.x, by = N.y - P.y, bl = Math.hypot(bx, by);
+  const side = ((hx - P.x) * by - (hy - P.y) * bx) / bl;   // signed distance off the bar's line
+  const m = { x: (side >= 0 ? 1 : -1) * by / bl, y: (side >= 0 ? 1 : -1) * -bx / bl };
+  let J = Math.max(0, ALARM_LINK_ARM_W / 2 + ALARM_LINK_BUSH_OD_U + CLEAR_MARGIN - Math.abs(side));
+  // |H + m·J − P| ≥ R: the smallest J at or past the bar's that clears the post
+  const R = pivReach + ALARM_LINK_BUSH_OD_U + CLEAR_MARGIN;
+  const wx = hx - P.x, wy = hy - P.y, bq = wx * m.x + wy * m.y, cq = wx * wx + wy * wy - R * R;
+  if (Math.hypot(wx + m.x * J, wy + m.y * J) < R) J = Math.max(J, -bq + Math.sqrt(Math.max(0, bq * bq - cq)));
+  return { J, m, ux: hx + m.x * J, uy: hy + m.y * J };
+};
 const linkShaftTipXY = (rod, inner) => {
   const dx = rod.x - inner.x, dy = rod.y - inner.y;
   const D = Math.hypot(dx, dy);
@@ -34172,14 +34468,20 @@ const linkShaftTipXY = (rod, inner) => {
   const vx = ux * Math.cos(a) - uy * Math.sin(a), vy = ux * Math.sin(a) + uy * Math.cos(a);
   return { x: inner.x + vx * L, y: inner.y + vy * L };
 };
-const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_AZ_DEG, colClear: ALARM_LINK_ROD_COL_CLEAR } = await (async () => {
+const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_AZ_DEG, colClear: ALARM_LINK_ROD_COL_CLEAR, barLine: ALARM_LINK_BAR_LINE_W } = await (async () => {
   // The low rods enter through LOW_LINKAGE_OBSTACLES (rule 5), not their
   // mesh boxes: a diagonal rod segment's box is a rectangle the rod never
   // fills, and scored raw it reads the whole quadrant as occupied — the
   // tier-split gate paid for that lesson three times before slicing.
-  const EXCLUDE = new Set(['Alarm link', 'Alarm switch', 'Alarm lock',
+  // §261 2c: the switch and the lock are NEIGHBOURS now, not the link's own
+  // neighbourhood — folded under the dial, the beak's bar and post pass among
+  // them — so they are scored, all but the two members of the wheel the nose
+  // reads (the seat law prices the bar over those: _barLiftFor).
+  const EXCLUDE = new Set(['Alarm link',
     'Three-quarter plate', 'plate', 'Dial', 'Hack rod', 'Reset rod',
     'Alarm selector']); // the selector is the link's OUTPUT — the chord ends on its ring tab
+  const SEAT_PRICED = /^alarmCol(Base|Castellations)$/;
+  movement.updateMatrixWorld(true);   // the fold groups' members are read in world below
   // §234 Landing 5 — THE SEARCH READS THE PRE-RISE PLANE, ON PURPOSE. The
   // task record is explicit that this landing spends no P3 currency: "the
   // §112 site does not move". `ALARM_LINK_SHAFT_Z` now carries the raised
@@ -34218,6 +34520,7 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     await breathe(278);
     e.obj.traverse((o) => {
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      if (SEAT_PRICED.test(o.name)) return;
       const b = boxOf(o);
       if (b.isEmpty()) return;
       // §198 — a part whose every vertex stands OUTSIDE the plate's rim is
@@ -34341,24 +34644,61 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     for (const o of LOW_LINKAGE_OBSTACLES) c = Math.min(c, _stad(x, y, o) - ALARM_LINK_ROD_PLATE_BORE_R);
     return c;
   };
-  // Stage 1 — the rod's COLUMN, over the parity family × distance.
+  // Stage 1 — §261 2c: THE BEAK AND ITS ROD, over the parity family × run.
+  // The beak is built in the cluster's frame (it reads the wheel the fold
+  // carried), so each candidate is a station T on a ray of the family there,
+  // the seat law sizes a SAME-SIDE beak for its run (pivot beyond the tail,
+  // the rod pressing the bar between pivot and nose), and the fold carries
+  // the three stations to the world where their neighbours are scored:
+  //   · the ROD's column, from the rim finger's top up to the bar's dial face,
+  //     at its own section (the lathe's L/D on its length, §50's floor under it);
+  //   · the BAR, pivot to nose, one tooth wide, through its dial-side depth and
+  //     the seat drop it dips toward the plate as the nose falls;
+  //   · the PIVOT — eye, web, post and head, at floor stock — from the bar up
+  //     to the plate it is planted in (the reach is TODO 204's chain at its
+  //     floor; the post is re-derived and asserted where it is built).
+  // Every candidate ray is a whole column pitch from the family's first, so
+  // the nose reads the castellations in the same phase on all of them.
+  const colTopC = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H;
+  const rimTopW = _searchShaftZ + ALARM_LINK_RIM_H_REST;
+  const pivReach = ALARM_LINK_ARM_W / 2 + SAW_FIT + 2 * PIVOT_BORE_CLEAR + STOCK_MIN_U + 2 * STOCK_MIN_U;
+  const clearOver = (pts, r, band) => {
+    let c = Infinity, who = '';
+    for (const b of obs) {
+      if (!inBand(b, band)) continue;
+      for (const q of pts) { const d = dToBox(q.x, q.y, b) - r; if (d < c) { c = d; who = b._who; } }
+    }
+    return { c, who };
+  };
   const rodCands = [];
-  for (let k = -2; k <= 2; k++) {
+  for (let k = 0; k < ALARM_COL_COLUMNS; k++) {
     const a = _linkBeakAz0 + Math.PI + k * (Math.PI * 2 / ALARM_COL_COLUMNS);
-    for (let d = 8; d <= 16 + 1e-9; d += 0.5) {
-      const x = ALARM_COL_POS.x + Math.cos(a) * d, y = ALARM_COL_POS.y + Math.sin(a) * d;
-      if (Math.hypot(x, y) > plateR - ALARM_LINK_ROD_PLATE_BORE_R - CLEAR_MARGIN) continue; // both plates must carry the bore…
-      if (linkRodTqLand(x, y) < STOCK_MIN_U || linkRodBackLand(x, y) < STOCK_MIN_U) continue; // …with a land to every opening each already has (TODO 190)
+    const u = { x: Math.cos(a), y: Math.sin(a) };
+    for (let run = 1.5; run <= 16 + 1e-9; run += 0.5) {
       await breathe(279);
-      let { c, who } = scoreCol(x, y);
-      const lc = scoreLow(x, y);
-      if (lc < c) { c = lc; who = 'low-corridor'; }
-      rodCands.push({ c, x, y, d, k, who });
+      const seat = alarmLinkSeatSolve(run, ALARM_LINK_ROD_TRAVEL_SPEC, 1);
+      const d = ALARM_LINK_NOSE_LAND_R + run, piv = ALARM_LINK_NOSE_LAND_R + seat.beakLen;
+      const at = (r) => { const v = alarmFoldPoint(ALARM_COL_POS.x + u.x * r, ALARM_COL_POS.y + u.y * r, 0); return { x: v.x, y: v.y }; };
+      const Tw = at(d), Pw = at(piv), Nw = at(ALARM_LINK_NOSE_LAND_R);
+      if (Math.hypot(Pw.x, Pw.y) > plateR - pivReach - CLEAR_MARGIN) continue;    // the post plants in the plate
+      const H = Math.max(STOCK_MIN_U, seat.beakLen / SLENDER_TARGET);
+      const barDialW = alarmFoldZ(colTopC + seat.lift + H), barPlateW = alarmFoldZ(colTopC + seat.lift);
+      const rodLen = barDialW - rimTopW, rodR = Math.max(STOCK_MIN_R10, rodLen / (2 * TURN_LD_TARGET));
+      if (!(rodLen > 0)) continue;
+      const barPts = []; for (let i = 0; i <= 24; i++) barPts.push({ x: Pw.x + (Nw.x - Pw.x) * i / 24, y: Pw.y + (Nw.y - Pw.y) * i / 24 });
+      const terms = [
+        ['rod', clearOver([Tw], rodR, [rimTopW, barDialW])],
+        ['bar', clearOver(barPts, ALARM_LINK_ARM_W / 2, [barDialW, barPlateW + seat.seatDrop])],
+        ['pivot', clearOver([Pw], pivReach, [barDialW, PLATE_BACK])],
+      ];
+      let c = Infinity, who = '';
+      for (const [nm, t] of terms) if (t.c < c) { c = t.c; who = `${nm}:${t.who}`; }
+      rodCands.push({ c, x: Tw.x, y: Tw.y, xC: ALARM_COL_POS.x + u.x * d, yC: ALARM_COL_POS.y + u.y * d, d, k, run, who, Pw, Nw, pivReach });
     }
   }
   rodCands.sort((p, q) => q.c - p.c);
   if (!rodCands.length || rodCands[0].c < CLEAR_MARGIN)
-    console.warn(`§112: link rod stage 1 — best COLUMN clears ${rodCands.length ? rodCands[0].c.toFixed(3) : 'none'} (k ${rodCands.length ? rodCands[0].k : '-'}, d ${rodCands.length ? rodCands[0].d : '-'}, bound by ${rodCands.length ? rodCands[0].who : '-'})`);
+    console.warn(`§261 2c: link stage 1 — the best beak and rod clear ${rodCands.length ? rodCands[0].c.toFixed(3) : 'none'} (k ${rodCands.length ? rodCands[0].k : '-'}, run ${rodCands.length ? rodCands[0].run : '-'}, bound by ${rodCands.length ? rodCands[0].who : '-'})`);
   // Stage 2 — the drive tab's azimuth on the ring, jointly with the chord.
   // TODO 174 — THE GUIDE-POST GUARD IS A PLAN CLEARANCE, IN ONE FRAME. The §34
   // guard it replaces converted the WORLD tab azimuth to dial-local
@@ -34375,6 +34715,21 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   // CLEAR_MARGIN. (The fixed post itself, r ALARM_FORK_PIN_R, sits inside the
   // sleeve, so the sleeve term covers it.) The fork build asserts the same
   // wall against the BUILT block and pin (rule 6).
+  // §261 2c — AND EACH STATION'S GUIDE PLATE. TODO 222 hung a slotted helix
+  // plate at every post station where the post stood, and this guard went on
+  // modelling the post: the plate is far wider than the sleeve along the ring's
+  // tangent, so the re-sited fork (tab 75°, guide 1 at 60°) was cut straight
+  // through guide 1 and `intraUnit` read the fork's foot, riser and tab in it at
+  // every pose. The plate's plan footprint is its slab at the helix's radius,
+  // ALARM_SEL_GUIDE_T thick, reaching ALARM_SEL_GUIDE_HALF_T_U along the
+  // tangent either side of its station — the larger of its two ends, a
+  // quotation of the built plates (they are cut from the helix, which is cut
+  // from this site), re-derived at their build and warned on drift.
+  const _plateSegs = ALARM_SEL_POST_AZ.map((az) => {
+    const c = { x: P.dial.x + Math.cos(az) * ALARM_SEL_HELIX_R, y: P.dial.y + Math.sin(az) * ALARM_SEL_HELIX_R };
+    const t = { x: -Math.sin(az), y: Math.cos(az) }, H = ALARM_SEL_GUIDE_HALF_T_U;
+    return [{ x: c.x - t.x * H, y: c.y - t.y * H }, { x: c.x + t.x * H, y: c.y + t.y * H }];
+  });
   const _postClear = (tx, ty, s) => {
     const A = { x: tx - _rimGuardArmR * s.vx, y: ty - _rimGuardArmR * s.vy };
     const B = { x: A.x + ALARM_FORK_RETREAT * s.ux, y: A.y + ALARM_FORK_RETREAT * s.uy };
@@ -34385,6 +34740,8 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
         planPtSegDist(p.x, p.y, A.x, A.y, B.x, B.y) - (_FORK_HALF_W + ALARM_SEL_SLEEVE_R + CLEAR_MARGIN),
         planSegSegDist(A, B, b0, b1) - (_FORK_HALF_W + ALARM_SEL_BOSS_W / 2 + CLEAR_MARGIN));
     }
+    for (const [p0, p1] of _plateSegs)
+      c = Math.min(c, planSegSegDist(A, B, p0, p1) - (_FORK_HALF_W + ALARM_SEL_GUIDE_T / 2 + CLEAR_MARGIN));
     return c;
   };
   // THE TAB ZONE IS SCORED TOO: scoreChord deliberately trims its last 1.8
@@ -34489,6 +34846,56 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
       if (Math.hypot(s.bx + a * s.ux + b * s.vx, s.by + a * s.uy + b * s.vy) < _rimGuardR) return false;
     return true;
   };
+  // §261 2c — THE HANGERS' COLUMNS. Each of the shaft's three bushes hangs
+  // from the base plate's dial face (the build's stations: ALARM_LINK_FORK_STATION
+  // from the fork end, the rod end's, and midway), so its column runs from the
+  // shaft up to the plate through the whole dial band — where the FOLDED
+  // cluster now stands. A chord whose hangers would rise through it is no
+  // site, however clear the chord itself runs; tools/probe-261-fold-site.mjs
+  // found exactly that column refusing chords across the cluster. Scored at the
+  // bush's outside radius (the hanger is narrower), the rod-end station taken a
+  // crank and a bush in from the tip.
+  const hangerBand = [_searchShaftZ, PLATE_BACK];
+  const hangerObs = obs.filter((b) => inBand(b, hangerBand));
+  // ...and the candidate's OWN beak. The hanger columns rise through the
+  // bar's dial-side band, so a column standing under the bar is no site
+  // (intraUnit read the bar through hanger 3 at every pose the first time the
+  // solve was blind to it). Hangers 1 and 2 are scored against it whole. The
+  // ROD-END hanger cannot simply avoid it — it stands a standoff beside the
+  // rod, and the bar passes over the rod — and no chord in the movement puts
+  // it clear (measured: with the bar scored, every candidate's hanger 3 fails),
+  // so it is JOGGED: its lower column stands at the bush (it is the arming
+  // blade's stud and the rod guide's ground, both below the bar), and above
+  // them a horizontal arm carries it sideways off the bar's line by what the
+  // bar, the column's plan radius and the margin need, to an upper column that
+  // rises to the plate clear of the bar and its post. The bar's plan radius
+  // is half its tooth width; the column's is the bush's (the hanger is
+  // narrower — asserted at the build). The arm and the upper column are scored
+  // over the whole hanger band, which over-reads, on the safe side.
+  const scoreHangers = (x, y, tx, ty, rc) => {
+    const len = Math.hypot(x - tx, y - ty), ux = (x - tx) / len, uy = (y - ty) / len;
+    const t1 = 2.45, t3 = len - (ALARM_LINK_CRANK_T + CLEAR_MARGIN + ALARM_LINK_BUSH_LEN);
+    let c = Infinity, who = '', jog = null;
+    const stations = [t1, (t1 + t3) / 2, t3];
+    for (let i = 0; i < 3; i++) {
+      const t = stations[i];
+      let hx = tx + ux * t, hy = ty + uy * t;
+      const pts = [{ x: hx, y: hy }];
+      if (i === 2 && rc && rc.Pw) {
+        jog = alarmLinkHangerJog(hx, hy, rc.Pw, rc.Nw, rc.pivReach);
+        for (let k = 1; k <= 8; k++) pts.push({ x: hx + jog.m.x * jog.J * k / 8, y: hy + jog.m.y * jog.J * k / 8 });
+        hx = jog.ux; hy = jog.uy;
+      }
+      for (const p of pts) for (const b of hangerObs) { const d = dToBox(p.x, p.y, b) - ALARM_LINK_BUSH_OD_U; if (d < c) { c = d; who = 'hanger:' + b._who; } }
+      if (rc && rc.Pw) {
+        const dBar = planPtSegDist(hx, hy, rc.Pw.x, rc.Pw.y, rc.Nw.x, rc.Nw.y) - (ALARM_LINK_BUSH_OD_U + ALARM_LINK_ARM_W / 2);
+        if (dBar < c) { c = dBar; who = 'hanger:its own beak bar'; }
+        const dPiv = Math.hypot(hx - rc.Pw.x, hy - rc.Pw.y) - (ALARM_LINK_BUSH_OD_U + rc.pivReach);
+        if (dPiv < c) { c = dPiv; who = 'hanger:its own beak post'; }
+      }
+    }
+    return { c, who, jog };
+  };
   let best = null;
   // Every stage-1 candidate is searched, not a top-N: the rim guard
   // confines each rod to the tab sectors whose block seats outboard, and
@@ -34509,9 +34916,10 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
       if (_postClear(tx, ty, seat) < 0) continue;   // TODO 174 — the fork clears every guide post station
       const { c: cc, who } = scoreChord(tip.x, tip.y, tx, ty);
       const tb = scoreTab(tx, ty, seat.bx, seat.by);
-      const c = Math.min(rc.c, cc, tb.c);
-      const boundBy = c === rc.c ? rc.who : (c === cc ? who : tb.who);
-      if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw };
+      const hg = scoreHangers(tip.x, tip.y, tx, ty, rc);
+      const c = Math.min(rc.c, cc, tb.c, hg.c);
+      const boundBy = c === rc.c ? rc.who : (c === cc ? who : c === tb.c ? tb.who : hg.who);
+      if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
     }
   }
   await breathe(281);
@@ -34519,9 +34927,10 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     console.warn(`§112: the link's best solve clears ${best ? best.c.toFixed(3) : 'nothing'} < ${CLEAR_MARGIN} — (pitch step ${best ? best.k : '-'}, d ${best ? best.d : '-'}, tab ${best ? best.tabAzDeg : '-'}°, bound by ${best ? best.who : '-'})`);
   if (!best) { // survive to report: beak-opposite at §68's 10, tab at §35's 146
     const a0 = _linkBeakAz0 + Math.PI;
-    return { xy: { x: ALARM_COL_POS.x + Math.cos(a0) * 10, y: ALARM_COL_POS.y + Math.sin(a0) * 10 }, dist: 10, tabAzDeg: 146, colClear: 10 };
+    const xyC = { x: ALARM_COL_POS.x + Math.cos(a0) * 10, y: ALARM_COL_POS.y + Math.sin(a0) * 10 }, w = alarmFoldPoint(xyC.x, xyC.y, 0);
+    return { xy: { x: w.x, y: w.y }, xyC, dist: 10, tabAzDeg: 146, colClear: 10 };
   }
-  return { xy: { x: best.x, y: best.y }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC };
+  return { xy: { x: best.x, y: best.y }, xyC: { x: best.xC, y: best.yC }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC, barLine: { P: best.Pw, N: best.Nw, pivReach: best.pivReach } };
 })();
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * ALARM_SEL_TAB_R, y: Math.sin(_linkInnerAz) * ALARM_SEL_TAB_R }; // inner end r = the tab's mid-reach
@@ -34648,10 +35057,6 @@ const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY
 // over TURN_LAP_MAX_FRAC (0.5), so `turnedBars` reads three parts, not one
 // connected body.
 const ALARM_LINK_PRESS_LAP_FRAC = 0.51;
-// The hanger bush's own axial length (the bush build, at the shaft's own
-// three stations) — hoisted because the rod-end overhang derivation below
-// needs the bush's HALF-length to know where its outer face lands.
-const ALARM_LINK_BUSH_LEN = 0.3;
 const ALARM_LINK_SHAFT_TIP_XY = linkShaftTipXY(ALARM_LINK_ROD_XY, ALARM_LINK_INNER_XY);   // TODO 213: the solve scored this same law (the function is hoisted above it)
 const ALARM_LINK_CHORD_LEN = Math.hypot(
   ALARM_LINK_SHAFT_TIP_XY.x - ALARM_LINK_INNER_XY.x, ALARM_LINK_SHAFT_TIP_XY.y - ALARM_LINK_INNER_XY.y);
@@ -34663,90 +35068,12 @@ const ALARM_LINK_CHORD_LEN = Math.hypot(
 // answered there: the two crank contacts have different effective radii,
 // so the rod's travel is not the ring's and never was — forcing both to
 // 0.19 is exactly what held TODO 9's gaps open.)
-// §33 (pusher handle) — the link beak's read, MEASURED. The link beak
-// reads the SAME castellations as the lock beak, but from the ROD's
-// direction — and the rod is a §35 corridor solution in the WORLD frame
-// (az 210°), while the wheel's phase rides the module (?alarmmod=). So
-// the offset between the two readers is geometry, not a constant. At
-// identity the literal two-full-pitches stands VERBATIM (the law
-// idealizes the nose's read at a column centre; the built nose centre
-// measures 5.7° off the top's edge and the contact still closes because
-// the nose's own 0.35 footprint spans ±~3.5° at its radius — the
-// footprint-credited check below is the honest form of that fact). Under
-// a rotated module the offset derives from the built directions and
-// snaps to the nearest column centre — the same idealization the
-// literal always encoded, now earned rather than assumed.
-const ALARM_LINK_BEAK_TRUE = Math.atan2(ALARM_LINK_ROD_XY.y - ALARM_COL_POS.y,
-  ALARM_LINK_ROD_XY.x - ALARM_COL_POS.x) - ALARM_LOCK_ENGAGED;
-const ALARM_LINK_BEAK_OFF = SPEC.alarmModAzDeg !== null
-  ? Math.round(ALARM_LINK_BEAK_TRUE / (2 * ALARM_COL_STEP)) * (2 * ALARM_COL_STEP)
-  : (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
-// §229 — THE BEAK NOSE'S PLAN SECTION, both dimensions derived from the cam
-// it reads. It was `BoxGeometry(0.35, 0.18, …)`: two bare literals, and the
-// narrower of them 0.18 — well under the movement's own 0.3167 stock floor.
-// A wire laid across a 0.6167 tier, and the only face in this mechanism that
-// is supposed to TELL you which state the wheel is in.
-//
-// AZIMUTH is bounded by the column's own FLAT. makeColumnWheel cuts that flat
-// to `colFlatHalf` half-angle around each column centre, and a follower wider
-// than it stands on a flank corner instead of on the top it claims to read.
-// The widest the flat carries, one running margin in from each edge AT THE
-// RADIUS THE NOSE ACTUALLY LANDS ON:
-//
-//     halfW = colFlatHalf · landR − CLEAR_MARGIN
-//
-// The land radius matters and is the part the wheel's own rule cannot supply:
-// `flatHalf = (riderNoseR + CLEAR_MARGIN) / baseR` sizes the flat as an ANGLE
-// from a rider riding at baseR, and this beak lands mid-castellation, INBOARD
-// of that — so the arc it is actually given is smaller than the wheel's rule
-// assumes. Measured here rather than inherited.
-//
-// RADIALLY the castellation annulus is baseR − colInner wide with the nose
-// centred in it, so a running margin at each face leaves far more room than
-// the nose needs. It takes ONE RATCHET TOOTH — §226's reference, the width
-// the driver's three arms and every rider nose are already cut to — because a
-// reader sees the teeth, the driver and this beak in one glance and a
-// different width in each is three parts pretending not to be one mechanism.
-const ALARM_LINK_NOSE_W_AZ = 2 * (alarmColumnWheel.userData.colFlatHalf * ALARM_LINK_NOSE_LAND_R - CLEAR_MARGIN);
-const ALARM_LINK_NOSE_W_RAD = G.ratchetToothDepth(ALARM_COL_BASE_R);
-// The angular footprint that width subtends at the landing radius — ONE
-// source, consulted by the readability check, the bar's clearance sweep and
-// the tick's own pose law. Before §229 the check reached for `0.35 / 2`, the
-// nose's RADIAL extent used as if it were the azimuthal one: conservative by
-// 1.9× and therefore harmless, but a second copy of a dimension all the same.
-const ALARM_LINK_NOSE_HALF_AZ = Math.atan2(ALARM_LINK_NOSE_W_AZ / 2, ALARM_LINK_NOSE_LAND_R);
-// Rule 6, both ways, with the achieved and required numbers.
-if (ALARM_LINK_NOSE_W_AZ < STOCK_MIN_U - 1e-9)
-  console.warn(`§229: the column's flat gives the link beak only ${ALARM_LINK_NOSE_W_AZ.toFixed(4)} of nose at r ${ALARM_LINK_NOSE_LAND_R.toFixed(3)}, under the ${STOCK_MIN_U.toFixed(4)} stock floor — the flat is sized at baseR and this rider lands inboard of it`);
-if (ALARM_LINK_NOSE_W_RAD + 2 * CLEAR_MARGIN > ALARM_COL_BASE_R - ALARM_COL_INNER + 1e-9)
-  console.warn(`§229: a ${ALARM_LINK_NOSE_W_RAD.toFixed(4)} radial nose plus a margin at each face wants ${(ALARM_LINK_NOSE_W_RAD + 2 * CLEAR_MARGIN).toFixed(4)} of a ${(ALARM_COL_BASE_R - ALARM_COL_INNER).toFixed(4)} castellation annulus`);
-// THE SURFACE THE NOSE ACTUALLY RIDES. A flat-bottomed follower rests on the
-// HIGHEST point under it, not on the point under its centre — and at 0.18
-// wide that distinction was worth 1% of a flank and could be ignored. At the
-// width above it is worth a quarter of one, so the profile is read over the
-// footprint everywhere the nose's height is wanted: the clearance sweep that
-// stations the arm, and the tick's own pose law.
-//
-// ITS SAMPLE COUNT IS A BUDGET, not a round number. profileAt is piecewise
-// linear, so a sampled max under-reads the true one by at most the flank's
-// slope times the spacing — and that error puts the nose's underside that far
-// INSIDE the flank it is riding. Budgeted at a tenth of the movement's one
-// clearance margin, which is comfortably inside what the handoff rows price a
-// working ride at: the flank climbs colH over `colFlank` radians, so
-//
-//     spacing = (CLEAR_MARGIN / 10) · colFlank / colH
-//
-// and the count is the half-footprint over that (the loop runs ±N, so N
-// intervals span the half-footprint).
-const ALARM_LINK_NOSE_SAMPLES = Math.max(8, Math.ceil(ALARM_LINK_NOSE_HALF_AZ
-  / ((CLEAR_MARGIN / 10) * alarmColumnWheel.userData.colFlank / ALARM_COL_H)));
-const alarmLinkNoseSurface = (phi) => {
-  const p = alarmColumnWheel.userData.profileAt;
-  const N = ALARM_LINK_NOSE_SAMPLES;
-  let m = 0;
-  for (let i = -N; i <= N; i++) m = Math.max(m, p(phi + (i / N) * ALARM_LINK_NOSE_HALF_AZ));
-  return m;
-};
+// (The beak's phase offset, its nose's section and the surface it rides are
+// declared above the §112 site solve since §261 2c: the solve sizes a real
+// beak at every candidate, so the seat law has to exist before it.)
+// The site's own direction, for the module's snapped offset's record.
+const ALARM_LINK_BEAK_TRUE = Math.atan2(ALARM_LINK_ROD_XY_C.y - ALARM_COL_POS.y,
+  ALARM_LINK_ROD_XY_C.x - ALARM_COL_POS.x) - ALARM_LOCK_ENGAGED;
 // Can the nose actually read the toggle at a given wheel placement? The
 // wheel's own law (profileAt — the mesh's single source) sampled across
 // the nose's angular FOOTPRINT: disarmed needs full material under some
@@ -34755,7 +35082,7 @@ const alarmLinkNoseSurface = (phi) => {
 // handle's live shadow, so the drag warns with the same measure the
 // boot judges.
 function alarmLinkReadClean(colX, colY, lockEngaged) {
-  const trueOff = Math.atan2(ALARM_LINK_ROD_XY.y - colY, ALARM_LINK_ROD_XY.x - colX) - lockEngaged;
+  const trueOff = Math.atan2(ALARM_LINK_ROD_XY_C.y - colY, ALARM_LINK_ROD_XY_C.x - colX) - lockEngaged;   // §261 2c: the cluster's frame, where the wheel is
   const noseHalf = ALARM_LINK_NOSE_HALF_AZ;
   const p = alarmColumnWheel.userData.profileAt;
   let onTop = false, armedFree = true;
@@ -34795,10 +35122,6 @@ function alarmLinkReadClean(colX, colY, lockEngaged) {
 // stroke, so the nose stopped 1.27e-5 above the gap floor it is declared to
 // stand on — inside the 1e-4 the boot assert allowed, and found by the link's
 // line spec, whose `seat` row holds it to float noise.
-const ALARM_LINK_ROD_TRAVEL_SPEC = alarmLinkRimTopAt(ALARM_LINK_RIM_REST_FROM_ZENITH - ALARM_LINK_SPAN_BUDGET)
-  - alarmLinkRimTopAt(ALARM_LINK_RIM_REST_FROM_ZENITH);
-// (Its quotations, for the record: 0.09932 before §234 Landing 5, which put the
-// shaft's span back on SPAN_BUDGET exactly; 0.10020 after it, re-measured.)
 // TODO 206 — the arming spring's solved line spec, published by the link's
 // registration solve (where its inputs live) and read by the tick and the
 // pusher's force rows below it.
@@ -34808,12 +35131,21 @@ const alarmLinkUnit = new THREE.Group();
 movement.add(alarmLinkUnit);
 registerLabel('Alarm link', alarmLinkUnit);
 registerExplode(alarmLinkUnit, 0, 4, -1); // dial-side chain: explodes toward the dial
+// §261 2c — the beak reads the FOLDED wheel, so it is built in the cluster's
+// frame (THE FOLD, at the striking rotor): there its station, its seat law and
+// its nose surface are the ones written for the wheel, and the fold carries
+// the lever under the dial with the wheel it reads. The rod and the lay shaft
+// stay in the world frame — they meet the beak at the bar's dial-side face.
+const alarmLinkFold = makeAlarmFold('alarmLinkFold');
+alarmLinkUnit.add(alarmLinkFold);
 const alarmLinkParts = {};
 {
   // The BEAK: one plate-top lever, COLLINEAR by construction — the pivot
   // sits ON the wheel→rod segment, so the nose (toward the wheel) reads
   // the castellations and the long tail lands exactly over the rod.
-  const wr = { x: ALARM_LINK_ROD_XY.x - ALARM_COL_POS.x, y: ALARM_LINK_ROD_XY.y - ALARM_COL_POS.y };
+  // §261 2c: the beak is built in the CLUSTER's frame (a fold group, below),
+  // where the wheel it reads stands, so its ray is the site's cluster station
+  const wr = { x: ALARM_LINK_ROD_XY_C.x - ALARM_COL_POS.x, y: ALARM_LINK_ROD_XY_C.y - ALARM_COL_POS.y };
   const wrLen = Math.hypot(wr.x, wr.y);
   const uwr = { x: wr.x / wrLen, y: wr.y / wrLen };
   // §172 (TODO 90 finding 2) — THE POST'S RADIUS, AGAINST THE FACE THAT SWEEPS IT.
@@ -34893,90 +35225,17 @@ const alarmLinkParts = {};
   // is beakLen·θs — that is what ALARM_COL_SEAT_DROP_SPEC now names, and the
   // ratio beakLen/tailLen = seat/rodT is the same identity §229 wrote, its
   // numerator now a consequence of the floor instead of a margin under it.
-  const ALARM_LINK_ARM_W = G.ratchetToothDepth(ALARM_COL_BASE_R);   // hoisted from the bar's build (the sweep below needs it)
-  const _barLiftFor = (beakLen, pivDist, seatDrop) => {
-    const p = alarmColumnWheel.userData.profileAt;
-    const colH = ALARM_COL_H;
-    const halfW = ALARM_LINK_ARM_W / 2;      // §229: the bar's own width, not a copy of the floor it used to be
-    let need = CLEAR_MARGIN;                       // the floor, with no tilt and no width
-    const STEPS = 240;
-    for (let i = 0; i < STEPS; i++) {
-      const phi = (i / STEPS) * (2 * ALARM_COL_STEP);        // one whole column pitch
-      // §229 — the tick's own law, WHOLE: the nose rests on the highest point
-      // under its footprint (alarmLinkNoseSurface), and the SEAT catches the
-      // fall at the seat drop (TODO 206: the gap floor). The sweep used the bare
-      // centre profile and the uncapped tier, which over-stated the tilt 28×
-      // while the seat drop was 0.0218 and made this lift a number about a
-      // motion the arm does not perform. Both halves are the pose law now.
-      const drop = Math.min(colH * (1 - alarmLinkNoseSurface(phi + ALARM_LINK_BEAK_OFF)), seatDrop);
-      const tilt = drop / beakLen;
-      for (let r = ALARM_COL_INNER; r <= ALARM_COL_BASE_R + 1e-9; r += (ALARM_COL_BASE_R - ALARM_COL_INNER) / 12) {
-        const x = pivDist - r;                      // arm-local distance from the pivot
-        // §70 step 3 — the NOSE's own station is not the bar's. The grid lands
-        // a sample exactly on the landing radius (x = beakLen), and whether
-        // `x > beakLen` kept it was a float rounding: the build's run
-        // (8.999999999999998 − landR) dropped it, lift 0.2687; the line spec
-        // evaluating this law at a run of exactly 9 kept it, lift 0.2983 — the
-        // same lever, two answers 0.03 apart. The bar clears the columns and
-        // the nose alone reads them (§172), so the station the nose hangs from
-        // is excluded on purpose, by a margin rather than by rounding.
-        if (x < 0 || x > beakLen - 1e-9) continue;
-        const dAz = Math.atan2(halfW, r);           // what the bar's corner overhangs in azimuth
-        for (const e of [-dAz, 0, dAz]) {
-          const surf = colH * p(phi + ALARM_LINK_BEAK_OFF + e);   // column height under that corner
-          need = Math.max(need, surf - colH + CLEAR_MARGIN + x * tilt);
-        }
-      }
-    }
-    return need;
-  };
-  // §70 step 3 — the seat solve is a FUNCTION of the run and the rod's
-  // stroke, so the link's line spec can evaluate the same law at its own
-  // reference run (§229's wr 16) rather than restating it: one law, two
-  // callers, and the build's call below is the arithmetic it always was.
-  //
-  // §261 step 4, landing 2b — AND OF THE LEVER'S CLASS, `side`. This beak is
-  // FIRST-class (side −1): nose, pivot, tail in that order along the run, so
-  // the arms share it, beakLen = run − tailLen, and the tail moves opposite to
-  // the nose. The fold carries the column wheel under the dial REFLECTED, so
-  // its nose falls into a gap TOWARD the plate while the lay shaft's rim (which
-  // stays as it is) still has to RISE to arm: the dial-side beak must move its
-  // tail WITH its nose, which is the same-side lever (side +1) — pivot, tail,
-  // nose along the run, the pivot beyond the tail, beakLen = run + tailLen.
-  // Everything else is one law for both: the tail makes the rim's stroke at the
-  // seat tilt (tailLen = rodT/θs), the nose's deepest corner lands on the gap
-  // floor, the bar clears the columns, and beakLen/tailLen = seat drop/stroke.
-  // (`run` is the plan distance from the nose's landing to the tail's contact
-  // in both classes; the default keeps every existing caller's arithmetic.)
-  const alarmLinkSeatSolve = (run, rodT, side = -1) => {
-    if (side !== -1 && side !== 1) throw new Error(`alarmLinkSeatSolve: side must be -1 (first-class) or +1 (same-side), not ${side}`);
-    const halfRad = ALARM_LINK_NOSE_W_RAD / 2;
-    let h = CLEAR_MARGIN + STOCK_MIN_U / 2, th = 0, lift = CLEAR_MARGIN;
-    for (let pass = 0; pass < 40; pass++) {
-      const deepest = (t) => (run + side * rodT / t + halfRad) * Math.sin(t) - h * (1 - Math.cos(t));
-      // first-class: tailLen ≤ run; same-side: any tail, from the shallowest
-      // tilt that still moves the rim … a quarter turn either way
-      let lo = side < 0 ? rodT / run * 1.0001 : 1e-9, hi = Math.PI / 4;
-      for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (deepest(m) < ALARM_COL_H) lo = m; else hi = m; }
-      const thN = (lo + hi) / 2;
-      const tailL = rodT / thN, beakL = run + side * tailL;
-      const liftN = _barLiftFor(beakL, ALARM_LINK_NOSE_LAND_R + beakL, beakL * thN);
-      const done = Math.abs(thN - th) < 1e-12 && Math.abs(liftN - lift) < 1e-12;
-      th = thN; lift = liftN; h = lift + STOCK_MIN_U / 2;
-      if (done) break;
-    }
-    const tailLen = rodT / th, beakLen = run + side * tailLen;
-    return { theta: th, tailLen, beakLen, lift, h, side, seatDrop: beakLen * th,
-      deepest: (beakLen + halfRad) * Math.sin(th) - h * (1 - Math.cos(th)) };
-  };
-  ALARM_LINK_LAWS.seat = alarmLinkSeatSolve;
-  const _seat = alarmLinkSeatSolve(wrLen - ALARM_LINK_NOSE_LAND_R, ALARM_LINK_ROD_TRAVEL_SPEC);
+  // §261 2c — AND THE LEVER IS SAME-SIDE (landing 2b's class, side +1). The
+  // fold reflects the wheel, so the nose falls into a gap TOWARD the plate
+  // while the rim still rises to arm: the rod must move WITH the nose, which
+  // puts the pivot beyond the rod — pivot, rod, nose along the ray — and the
+  // arms share the run the other way, beakLen = run + tailLen. The rod presses
+  // the BAR itself at tailLen from the pivot: there is no arm past the pivot.
+  const _seat = alarmLinkSeatSolve(wrLen - ALARM_LINK_NOSE_LAND_R, ALARM_LINK_ROD_TRAVEL_SPEC, 1);
   const ALARM_COL_SEAT_DROP_SPEC = _seat.seatDrop;
   if (Math.abs(_seat.deepest - ALARM_COL_H) > 1e-9)
     console.warn(`TODO 206: the seat solve did not land the nose's corner on the gap floor — ${_seat.deepest.toFixed(6)} of colH ${ALARM_COL_H.toFixed(6)}`);
-  const beakToTail = ALARM_COL_SEAT_DROP_SPEC / ALARM_LINK_ROD_TRAVEL_SPEC;
-  const pivDist = ALARM_LINK_NOSE_LAND_R
-    + (wrLen - ALARM_LINK_NOSE_LAND_R) * (beakToTail / (1 + beakToTail));
+  const pivDist = ALARM_LINK_NOSE_LAND_R + _seat.beakLen;
   const beakPiv = { x: ALARM_COL_POS.x + uwr.x * pivDist, y: ALARM_COL_POS.y + uwr.y * pivDist };
   const beakArm = new THREE.Group();
   // §54 postscript — THE SAME EULER-ORDER TRAP THE SHAFT ALREADY CARRIES A FIX
@@ -35093,7 +35352,9 @@ const alarmLinkParts = {};
   beakNose.position.set(beakLen, 0, STOCK_MIN_U / 2 - ALARM_BEAK_NOSE_H / 2);
   beakArm.add(beakNose);
   // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
-  const tailLen = wrLen - pivDist;
+  const tailLen = pivDist - wrLen;   // §261 2c: the rod stands between the pivot and the nose
+  if (Math.abs(tailLen - _seat.tailLen) > 1e-9)
+    console.warn(`§261 2c: the rod stands ${tailLen.toFixed(6)} from the pivot, not the seat law's ${_seat.tailLen.toFixed(6)}`);
   // TODO 174 — THE ARMS ARE A DECLARED FORK of §229's line, written here.
   // The LINE is movement-independent and unchanged: beakLen / tailLen =
   // ALARM_COL_SEAT_DROP_SPEC / ALARM_LINK_ROD_TRAVEL_SPEC (4.657), the nose
@@ -35176,12 +35437,10 @@ const alarmLinkParts = {};
   // the floor is what the metal is — the case §172's assert 4 named as "the
   // ceiling and the floor have met" and left as a warning. It is a max() now,
   // and what is asserted below is the ratio itself.
-  const ALARM_LINK_TAIL_H = Math.max(STOCK_MIN_U, tailLen / SLENDER_TARGET);
-  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, ALARM_LINK_ARM_W, ALARM_LINK_TAIL_H), MATS.steel);
-  beakTail.name = 'alarmLinkBeakTail'; // §54: was λ 83.7 — TODO 16's headline member
-  beakTail.position.x = -tailLen / 2;
-  beakTail.position.z = (ALARM_LINK_TAIL_H - STOCK_MIN_U) / 2;   // underside unmoved
-  beakArm.add(beakTail);
+  // §261 2c — the same-side lever HAS no tail member: the rod presses the bar
+  // between the pivot and the nose, so the bar carries both moments and its
+  // depth (above) is §54's over its whole length. alarmLinkBeakTail retired.
+  const ALARM_LINK_TAIL_H = null;
   // TODO 204 — THE FULCRUM IS A PIN, CARRIED BY A POST THAT STANDS ON PLATE
   // LAND. What stood here was a post from ALARM_LOCK_Z + 0.30 up to the bar,
   // under the lever "on the fulcrum axis" (TODO 191) — and it stood 0.6183
@@ -35260,7 +35519,11 @@ const alarmLinkParts = {};
   // Started at the bar's flank instead, the eye stands 0.07 off the rod.
   const _eyeDx = Math.max(0, tailLen - ALARM_BEAK_EYE_R);
   const _eyeReach = ALARM_LINK_ROD_R_SECTION + CLEAR_MARGIN;
-  const ALARM_BEAK_EYE_IN = Math.sqrt(Math.max(0, _eyeReach * _eyeReach - _eyeDx * _eyeDx));   // 0.7304
+  // §261 2c: and never inside the bar it hangs off — the same-side lever's rod
+  // stands far out along the arm, so the rod's circle often does not reach the
+  // eye's station at all, and the bar's flank (lapped, below) is the face that binds
+  const ALARM_BEAK_EYE_IN = Math.max(ALARM_LINK_ARM_W / 2 + SAW_FIT,
+    Math.sqrt(Math.max(0, _eyeReach * _eyeReach - _eyeDx * _eyeDx)));
   // THE WEB joins the eye at that face, lapped one SAW_FIT into it (the
   // lever is one body), and its lap PLUGS the bore's inner end: the pin is
   // pressed home against it (TODO 230 — it turned on the pin before, and
@@ -35352,14 +35615,14 @@ const alarmLinkParts = {};
     // and only against the floor, which was the right half while the tail was
     // the long arm; the station move makes the bar the long one and the two
     // checks have to travel with the ratio rather than with the member names.
-    for (const [what, L, h] of [['bar', beakLen, ALARM_LINK_BAR_H], ['tail', tailLen, ALARM_LINK_TAIL_H]]) {
+    for (const [what, L, h] of [['bar', beakLen, ALARM_LINK_BAR_H]]) {
       if (h < STOCK_MIN_U - 1e-9)
         console.warn(`§229: the beak ${what}'s depth ${h.toFixed(4)} is under the ${STOCK_MIN_U.toFixed(4)} stock floor`);
       if (L / h > SLENDER_TARGET + 1e-9)
         console.warn(`§229: the beak ${what} runs ${L.toFixed(3)} at depth ${h.toFixed(4)} — λ ${(L / h).toFixed(1)} over the ${SLENDER_TARGET} ceiling`);
     }
   }
-  alarmLinkUnit.add(beakArm);
+  alarmLinkFold.add(beakArm);    // §261 2c: in the cluster's frame, with the wheel it reads
   alarmLinkParts.beakArm = beakArm;
   alarmLinkParts.beakAim = beakAim;
   alarmLinkParts.colTopZ = ALARM_COL_TOP_Z;
@@ -35367,7 +35630,12 @@ const alarmLinkParts = {};
   // (The ROD is built AFTER the shaft and cranks now — its foot derives
   // from the rim finger's designed rest contact, which needs the finger's
   // probe fits. See the registration solve below.)
-  const ALARM_ROD_TOP_BUILT = beakArm.position.z - STOCK_MIN_U / 2;
+  // §261 2c — the rod meets the bar's FAR face from the wheel (its top in the
+  // cluster's frame, its dial-side face in the world's), at tailLen from the
+  // pivot: the bar's underside sits at the arm's z − STOCK/2 and it grows away
+  // from the wheel by its own depth. The rod is world-frame, so its top is that
+  // face's image under the fold.
+  const ALARM_ROD_TOP_BUILT = alarmFoldZ(beakArm.position.z - STOCK_MIN_U / 2 + ALARM_LINK_BAR_H);
   // Rod SECTION. It was derived from the plate bore — "a hole that had to be
   // opened to 0.45 for a rod implies a rod that fills it, less one clearance
   // margin" — which gave 0.30 and put the section downstream of a hole whose
@@ -35535,6 +35803,17 @@ const alarmLinkParts = {};
   const ALARM_LINK_BUSH_T = (() => {
     const t1 = ALARM_LINK_FORK_STATION, t3 = fullChordLen - ALARM_LINK_ROD_END_OVERHANG;   // §232: one definition of station one
     return [t1, (t1 + t3) / 2, t3];
+  })();
+  // §261 2c — THE ROD-END HANGER'S JOG, at its built station (the law is
+  // alarmLinkHangerJog, the one the site solve scored). Its arm's top is one
+  // margin under the bar's dial-side face at rest — the lowest the bar comes,
+  // since arming lifts it toward the plate — which is the rod's top.
+  const ALARM_LINK_H3 = (() => {
+    const hx = ALARM_LINK_INNER_XY.x + chord.x / fullChordLen * ALARM_LINK_BUSH_T[2];
+    const hy = ALARM_LINK_INNER_XY.y + chord.y / fullChordLen * ALARM_LINK_BUSH_T[2];
+    const B = ALARM_LINK_BAR_LINE_W;
+    const jog = B ? alarmLinkHangerJog(hx, hy, B.P, B.N, B.pivReach) : { J: 0, m: { x: 0, y: 0 }, ux: hx, uy: hy };
+    return { hx, hy, ...jog, armTop: ALARM_ROD_TOP_BUILT - CLEAR_MARGIN };
   })();
   const shaft = new THREE.Group();
   shaft.position.set((innerEnd.x + ALARM_LINK_SHAFT_TIP_XY.x) / 2, (innerEnd.y + ALARM_LINK_SHAFT_TIP_XY.y) / 2, ALARM_LINK_SHAFT_Z);
@@ -36076,18 +36355,47 @@ const alarmLinkParts = {};
     // 6.3 u: λₑ = 6.3 · K / 2r = 26.6, under the 27 target by construction —
     // asserted, because rodFootRest is a solve output and a deeper foot
     // would need the back bush to grow a skirt downward by the difference.
-    for (const [nm, z, len] of [['alarmLinkRodBushTop', TQ_MID_Z, TQ_T], ['alarmLinkRodBushBack', BACK_PLATE_Z, BACK_PLATE_T]]) {
-      const b = new THREE.Mesh(ringGeo(ALARM_LINK_ROD_BUSH_BORE, ALARM_LINK_ROD_BUSH_OD, len), MATS.nickel);
-      b.name = nm;
-      b.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, z);
-      alarmLinkUnit.add(b);
-    }
-    rod.userData.bearings = { axis: 'y', stations: [TQ_MID_Z, BACK_PLATE_Z].map((z) => z - rod.position.z).sort((a, b) => a - b) };
+    // §261 2c — the rod no longer crosses the plates (it runs under the dial,
+    // from the rim finger up to the folded beak's bar), so the two plate
+    // bushes §202 cut for it are retired with the bores they lined.
+    //
+    // ITS GUIDE IS A SLEEVE ON HANGER 3, the lay shaft's rod-end hanger, which
+    // already stands 0.96 off the rod's axis from the base plate down to the
+    // shaft. A loose pushrod between a crank's tip and a lever's face falls
+    // over, so the rod still needs a bearing; with no plate to bore, the
+    // nearest metal grounded on the frame carries it. The sleeve is §202's
+    // bush section unchanged (ALARM_LINK_ROD_BUSH_BORE: the rod's own section
+    // plus PIVOT_BORE_CLEAR, a §50-floor wall), and it is as LONG as the rod's
+    // free run lets it be: from one CLEAR_MARGIN over the rim's highest reach
+    // under the rod (its tip at the armed foot — the finger is the only rim
+    // metal that comes up under the rod) to one CLEAR_MARGIN under the bar's
+    // face at rest (its lowest; the bar's underside IS the rod's top there,
+    // flat, the cut that makes the rod). The length is what the guide's
+    // drawer rule asks for: the finger's tip slides across the rod's flat
+    // foot with friction μ·N, and a sleeve of length L with that lateral load
+    // a off its middle does not jam while 2μa/L < 1 — held below at
+    // FRICTION's adverse steel corner. The web that carries it is a floor-stock
+    // strip from the hanger's face to the sleeve's mid-wall, the sleeve's
+    // length tall, welded to both (one part with the hanger, as the hanger's
+    // bush already is).
     {
-      const foot = BACK_PLATE_Z - (rod.position.z - rodLen / 2);
-      const allowed = SLENDER_TARGET * 2 * ALARM_LINK_ROD_R_SECTION / SLENDER_OVERHANG_K;
-      if (foot > allowed + 1e-9)
-        console.warn(`§202: the selector rod's foot overhang ${foot.toFixed(3)} exceeds the ${allowed.toFixed(3)} its section allows under λ ${SLENDER_TARGET} — the back bush wants a skirt of ${(foot - allowed).toFixed(3)}`);
+      const sleeveBot = rodFootRest + ALARM_LINK_ROD_TRAVEL_SPEC + CLEAR_MARGIN;
+      const sleeveTop = ALARM_ROD_TOP_BUILT - CLEAR_MARGIN;
+      const sleeveLen = sleeveTop - sleeveBot;
+      const sleeve = new THREE.Mesh(ringGeo(ALARM_LINK_ROD_BUSH_BORE, ALARM_LINK_ROD_BUSH_OD, sleeveLen), MATS.nickel);
+      sleeve.name = 'alarmLinkRodGuide';
+      sleeve.userData.len = sleeveLen;
+      sleeve.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, (sleeveBot + sleeveTop) / 2);
+      alarmLinkUnit.add(sleeve);
+      rod.userData.bearings = { axis: 'y', stations: [sleeve.position.z - rod.position.z] };
+      // The drawer rule (2μa/L < 1): the finger's load acts at the rod's foot,
+      // a = the sleeve's middle less the foot at rest (the farthest it gets).
+      const a = sleeve.position.z - rodFootRest;
+      const jam = 2 * MU_STEEL * a / sleeveLen;
+      if (!(sleeveLen >= 2 * STOCK_MIN_U) || !(jam < 1))
+        console.warn(`§261 2c: the rod's guide sleeve is ${sleeveLen.toFixed(4)} long with the finger's load ${a.toFixed(4)} off its middle — `
+          + `2μa/L ${jam.toFixed(3)}, need under 1 (and the sleeve at least two floor sections, ${(2 * STOCK_MIN_U).toFixed(4)}) — the rod jams in its guide`);
+      alarmLinkParts.rodGuide = sleeve;
     }
     // 3. TODO 222 — THE CENTRE CRANK DRIVES THE RING ROUND, not up. The
     //    pin used to work in the shaft's axis plane, moving AXIALLY, and pushed
@@ -36215,6 +36523,11 @@ const alarmLinkParts = {};
         alarmSelectorUnit.add(plate);
         registerSub('Alarm selector', 'Selector guide', plate);
         ALARM_SEL_HELIX.plates.push({ plate, a, b, tMin, tMax, zBot });
+        // §261 2c — the site solve's quotation of this footprint, held
+        const H = Math.max(Math.abs(tMin), Math.abs(tMax));
+        if (H > ALARM_SEL_GUIDE_HALF_T_U + 1e-9 || ALARM_SEL_GUIDE_HALF_T_U - H > 1e-3)
+          console.warn(`§261 2c: guide plate ${ix + 1} reaches ${H.toFixed(5)} along the ring's tangent, but the link's site solve `
+            + `guarded the fork against ALARM_SEL_GUIDE_HALF_T_U ${ALARM_SEL_GUIDE_HALF_T_U} — re-quote it (rounded up)`);
       }
       alarmSelectorUnit.updateWorldMatrix(true, true);
     }
@@ -36514,7 +36827,7 @@ const alarmLinkParts = {};
       // level crosses the setting wheel's band on its way out to the fork
       // (the same 0.03 that forbids the lower plate inside the rim). The
       // block hangs from above, carried by the bar and its two side webs.
-      const azF = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
+      const azF0 = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
       // TODO 170 — the bar's inboard end was cut to lap the ring's rim
       // (ALARM_SEL_R_OUT − 0.15) in PLAN only: at this plate level it stands
       // 0.1817 off the ring (filed, TODO 174), and armed with the crown pulled
@@ -36522,6 +36835,36 @@ const alarmLinkParts = {};
       // gap. It starts one margin off that rim radially, independent of the z
       // the link solve lands the groove at; it still laps post 1.
       const brIn = ALARM_SLEEVE_R_OUT + CLEAR_MARGIN;
+      // §261 2c — THE BRACKET'S AZIMUTH YIELDS TO THE ROLLER. The bracket ran on
+      // the block's own azimuth, so its riser (one margin outside the sleeve's
+      // flat) stood on the line the block's mid lies on — and the centre pin's
+      // roller, a capsule along the CHORD in the block's groove, points its
+      // inboard end down that line whenever the chord runs near radial: at
+      // 2c's tab the two stood 0.143 apart (expectedContacts, Alarm link ⇄
+      // Alarm selector). The bracket turns about the ring's axis by the least
+      // δ that stands the riser one margin off the roller, read off the built
+      // roller at rest in the ring's frame, and no further than leaves the bar
+      // lapping the block's plate across its whole width.
+      const azF = (() => {
+        const roller = alarmLinkParts.centreKey.getObjectByName('alarmLinkCentreRoller');
+        if (!roller) return azF0;
+        alarmSelRing.updateWorldMatrix(true, false); roller.updateWorldMatrix(true, false);
+        const c = alarmSelRing.worldToLocal(roller.getWorldPosition(new THREE.Vector3()));
+        const ax = new THREE.Vector3(0, 1, 0).transformDirection(roller.matrixWorld);   // the cylinder's own axis
+        const axL = alarmSelRing.worldToLocal(roller.getWorldPosition(new THREE.Vector3()).add(ax)).sub(c);
+        const aL = Math.hypot(axL.x, axL.y), ux = axL.x / aL, uy = axL.y / aL;
+        const h = roller.geometry.parameters.height / 2, rRoll = roller.geometry.parameters.radiusTop;
+        const rR = brIn + STOCK_MIN_U / 2, need = rRoll + STOCK_MIN_U * Math.SQRT1_2 + CLEAR_MARGIN;
+        const clear = (az) => planPtSegDist(Math.cos(az) * rR, Math.sin(az) * rR, c.x - ux * h, c.y - uy * h, c.x + ux * h, c.y + uy * h) - need;
+        const dMax = Math.asin(Math.max(0, Math.min(1, (blockW / 2 - STOCK_MIN_U / 2) / rF)));
+        if (clear(azF0) >= 0) return azF0;
+        for (let k = 1; k <= 400; k++) {
+          const d = dMax * k / 400;
+          for (const sgn of [1, -1]) if (clear(azF0 + sgn * d) >= 0) return azF0 + sgn * d;
+        }
+        console.warn(`§261 2c: no bracket azimuth within the block's lap (±${dMax.toFixed(4)} rad) stands the fork's riser a margin off the centre pin's roller (${clear(azF0).toFixed(4)} at the block's own)`);
+        return azF0;
+      })();
       const brLen = Math.max(0.2, (rF + 0.15) - brIn);
       // TODO 11 tranche five: the bar's WIDTH was a 0.3 literal (0.1137 mm,
       // under the floor) while its thickness was already ALARM_SEL_T. Floor
@@ -36574,41 +36917,44 @@ const alarmLinkParts = {};
     F.rodFootRest = rodFootRest;
     // 5. Which beakArm.rotation.y sign LOWERS the nose (frame-dependent):
     const noseTip = new THREE.Vector3(beakLen, 0, 0);
-    const noseZAt = (ry) => { beakArm.rotation.y = ry; beakArm.updateWorldMatrix(true, false); return _v.copy(noseTip).applyMatrix4(beakArm.matrixWorld).z; };
+    // §261 2c: in the CLUSTER's frame — the fold mirrors world z, and "lower"
+    // means toward the wheel the nose reads
+    const noseZAt = (ry) => { beakArm.rotation.y = ry; beakArm.updateWorldMatrix(true, false); return _v.copy(noseTip).applyMatrix4(beakArm.matrixWorld).applyMatrix4(alarmFoldInv).z; };
     F.noseRySign = noseZAt(0.05) < noseZAt(-0.05) ? 1 : -1;
     beakArm.rotation.y = 0;
 
-    // TODO 174 — THE ROD'S TOP IS CUT FROM THE TAIL, through the tick's own
-    // law (MODELING.md rule 9). The tick tilts the beak θ = noseDrop/beakLen
-    // about its post and lifts the rod tailLen·θ — the lever's law, read at the
-    // rod's AXIS. The tail is a flat blade, so a flat rod top agrees with it on
-    // that axis only: inboard of it (toward the post, u > 0) the tilted blade
-    // stands u·tanθ lower than the lift carries the top, and the rod's inboard
-    // half buried itself in the tail by up to R·tanθ at the seat — −0.0264 at
-    // §229's 16 u rod distance, −0.0708 at TODO 174's 9 u fork, where the arms
-    // are shorter and the seat's tilt larger. That is not the lever's fault and
-    // not a tolerance question: the top was never cut to the part it bears on.
-    // So it is cut from that part: the tail's underside at the SEAT (the largest
-    // tilt the tick reaches, seatNoseDrop/beakLen), carried into the rod's frame
-    // by the tick's lift,
-    //     g(u) = h·(1 − sec θ) + (L − u)·tan θ − L·θ      (h: the underside's drop below the post's axis)
-    // wherever it lies below the rest plane — a facet on the post side meeting
-    // the rest top in a crease just outboard of the axis. At the seat the blade
-    // lies FLAT on the facet; through the travel it stands on the crease (the
-    // gap there is g(u0, θ) ≥ 0); at rest it stands h(sec θ − 1) − L(tan θ − θ)
-    // above the axis — the lever law's own small-angle residue, not the cut's.
+    // TODO 174 — THE ROD'S TOP IS CUT FROM THE FACE IT BEARS ON, through the
+    // tick's own law (MODELING.md rule 9). The tick tilts the beak θ =
+    // noseDrop/beakLen about its post and lifts the rod tailLen·θ — the lever's
+    // law, read at the rod's AXIS. The face is flat, so a flat rod top agrees
+    // with it on that axis only: on the post side the tilted face stands
+    // u·tanθ short of where the lift carries the top, and the rod's post-side
+    // half would bury itself in it by up to R·tanθ at the seat.
+    // §261 2c — the face is the BAR's far face from the wheel now (the
+    // same-side lever has no tail; its dial-side face in the world), at h′ =
+    // BAR_H − STOCK/2 from the tilt axis on the side away from the wheel, and
+    // the post lies BEYOND the rod (pivot, rod, nose). In the cluster's frame a
+    // plane at h′ over the axis, turned θ toward the wheel, stands at
+    // h′·secθ − x·tanθ at plan distance x from the axis, so against the rod's
+    // flat top lifted tailLen·θ the gap at u toward the post (x = tailLen − u) is
+    //     g(u) = h′·(1 − sec θ) + (L − u)·tan θ − L·θ
+    // — TODO 174's own form with the face's offset — and wherever it is
+    // negative at the SEAT the top is cut by it: a facet on the post side,
+    // meeting the rest top in a crease just outboard of the axis.
     {
       const rod = alarmLinkParts.rod, pos = rod.geometry.attributes.position;
-      const thSeat = F.seatNoseDrop / beakLen, hU = STOCK_MIN_U / 2, tn = Math.tan(thSeat);
+      const thSeat = F.seatNoseDrop / beakLen, hU = ALARM_LINK_BAR_H - STOCK_MIN_U / 2, tn = Math.tan(thSeat);
       const cutG = (uu) => hU * (1 - 1 / Math.cos(thSeat)) + (tailLen - uu) * tn - tailLen * thSeat;
       const yTop = alarmLinkParts.rodLen / 2;
       if (!(F.rodTravel > 0))
-        console.warn(`TODO 174: the rod-top cut assumes the tail LIFTS the rod — rodTravel ${F.rodTravel.toFixed(4)}`);
+        console.warn(`TODO 174: the rod-top cut assumes the bar LIFTS the rod's top — rodTravel ${F.rodTravel.toFixed(4)}`);
+      // the post's direction from the rod, in the WORLD plan (the rod's frame):
+      // the cluster's wheel→rod ray turned by the fold (a mirror in z leaves plan alone)
+      const uPost = new THREE.Vector3(uwr.x, uwr.y, 0).transformDirection(alarmFoldMatrix);
       for (let i = 0; i < pos.count; i++) {
         if (Math.abs(pos.getY(i) - yTop) > 1e-5) continue;   // Float32 storage
-        // rod-local (x, z) is the world plan offset (x, −z) (rotation.x = π/2);
-        // u runs from the rod's axis toward the post, along −uwr
-        const uu = -(uwr.x * pos.getX(i) - uwr.y * pos.getZ(i));
+        // rod-local (x, z) is the world plan offset (x, −z) (rotation.x = π/2)
+        const uu = uPost.x * pos.getX(i) - uPost.y * pos.getZ(i);
         pos.setY(i, yTop + Math.min(0, cutG(uu)));
       }
       pos.needsUpdate = true;
@@ -36616,12 +36962,12 @@ const alarmLinkParts = {};
       rod.geometry.computeBoundingBox();
       rod.geometry.computeBoundingSphere();
       // rule 6 — posed through the tick's own two lines at every tilt it
-      // reaches, the blade stands ON the cut: never inside it, and never off it
-      // by more than a tenth of the one margin. A plane's nearest point on a
-      // faceted top is a vertex, so the rod's top vertices under the blade's
-      // footprint are the whole measurement.
-      const tailM = beakArm.getObjectByName('alarmLinkBeakTail');
-      const z0 = rod.position.z, hx = tailLen / 2, hy = ALARM_LINK_ARM_W / 2, zu = -ALARM_LINK_TAIL_H / 2;
+      // reaches, the face stands ON the cut: never inside it, and never off it
+      // by more than a tenth of the one margin. Read in the BAR's own frame
+      // (which carries the fold), where the far face is local z = +BAR_H/2 and
+      // the rod stands beyond it.
+      const barM = beakArm.getObjectByName('alarmLinkBeakBar');
+      const z0 = rod.position.z, hx = beakLen / 2, hy = ALARM_LINK_ARM_W / 2, zf = ALARM_LINK_BAR_H / 2;
       const inv = new THREE.Matrix4();
       let cutIn = 0, cutOff = 0;
       for (let k = 0; k <= 16; k++) {
@@ -36630,13 +36976,13 @@ const alarmLinkParts = {};
         rod.position.z = z0 + th * tailLen;
         beakArm.updateWorldMatrix(true, true);
         rod.updateWorldMatrix(true, false);
-        inv.copy(tailM.matrixWorld).invert();
+        inv.copy(barM.matrixWorld).invert();
         let m = Infinity;
         for (let i = 0; i < pos.count; i++) {
           if (pos.getY(i) < yTop - 0.5) continue;
           _v.fromBufferAttribute(pos, i).applyMatrix4(rod.matrixWorld).applyMatrix4(inv);
           if (Math.abs(_v.x) > hx + 1e-9 || Math.abs(_v.y) > hy + 1e-9) continue;
-          m = Math.min(m, (zu - _v.z) * Math.cos(th));
+          m = Math.min(m, (_v.z - zf) * Math.cos(th));
         }
         cutIn = Math.min(cutIn, m);
         cutOff = Math.max(cutOff, m);
@@ -36646,13 +36992,13 @@ const alarmLinkParts = {};
       beakArm.updateWorldMatrix(true, true);
       rod.updateWorldMatrix(true, false);
       if (cutIn < -1e-6 || cutOff > CLEAR_MARGIN / 10)
-        console.warn(`TODO 174: the rod top is not cut to the tail — over the travel the blade stands ${cutIn.toFixed(5)} (deepest) to ${cutOff.toFixed(5)} (widest) off the cut — wants ≥ 0 and ≤ ${(CLEAR_MARGIN / 10).toFixed(3)}`);
+        console.warn(`TODO 174: the rod top is not cut to the bar — over the travel the face stands ${cutIn.toFixed(5)} (deepest) to ${cutOff.toFixed(5)} (widest) off the cut — wants ≥ 0 and ≤ ${(CLEAR_MARGIN / 10).toFixed(3)}`);
       alarmLinkParts.rodCut = { thSeat, cutIn, cutOff };
     }
     // 6. The nose's rest seat: its underside on the column top plane — the
     //    build derivation above owes exactly this; measure, don't trust.
     scene.updateMatrixWorld(true);
-    const noseBox = new THREE.Box3().setFromObject(beakArm.getObjectByName('alarmLinkBeak'));
+    const noseBox = alarmClusterBox(beakArm.getObjectByName('alarmLinkBeak'));   // §261 2c: the cluster's frame
     const say = (nm, v) => console.warn(`TODO 20 registration: ${nm} — ${v}`);
     if (Math.abs(noseBox.min.z - ALARM_COL_TOP_Z) > 0.02)
       say('nose underside off the column top plane', `${noseBox.min.z.toFixed(3)} vs ${ALARM_COL_TOP_Z.toFixed(3)}`);
@@ -36664,7 +37010,7 @@ const alarmLinkParts = {};
       const noseM = beakArm.getObjectByName('alarmLinkBeak');
       beakArm.rotation.y = F.noseRySign * (F.seatNoseDrop / beakLen);
       scene.updateMatrixWorld(true);
-      const seatBot = new THREE.Box3().setFromObject(noseM).min.z;
+      const seatBot = alarmClusterBox(noseM).min.z;   // §261 2c: the cluster's frame
       beakArm.rotation.y = 0;
       scene.updateMatrixWorld(true);
       F.seatFloorGap = seatBot - (ALARM_COL_TOP_Z - ALARM_COL_H);
@@ -36947,9 +37293,19 @@ const alarmLinkParts = {};
       const HANGER_S = 0.2;                              // the hangers' shipped section (their build, below)
       const tArm = ALARM_LINK_BUSH_T[1] + ALARM_LINK_BUSH_LEN / 2 + CLEAR_MARGIN + armX / 2;
       const tC = tArm + armX / 2;
+      // §261 2c — hanger 3 is JOGGED round the beak's bar (ALARM_LINK_H3), so
+      // the blade's ground is a frame, not a straight column: lower column, arm,
+      // upper column to the plate. Its compliance at the clamp is bounded by the
+      // DEVELOPED length's: every member's moment is at most the load times the
+      // path length from the clamp, so its bending energy is at most a straight
+      // cantilever's of that length, and the part of the moment it carries as
+      // TORSION costs EI/GJ more — for a square section β = 0.1406 (Roark),
+      // GJ = 0.1406·G·s⁴ against EI = E·s⁴/12. So k_frame ≥ 3EI / ((1 + EI/GJ)·Ld³),
+      // and with no jog it is the straight column exactly.
+      const JOG_K = ALARM_LINK_H3.J > 0 ? 1 + (STEEL_E_PA / 12) / (0.1406 * STEEL_G_PA) : 1;
       const hangerSFor = (sol) => {
         const zClamp = ALARM_LINK_SHAFT_Z + sol.a;       // ≈ the blade's mid height
-        const Lh = (-BACK_PLATE_T - zClamp) * U;
+        const Lh = (-BACK_PLATE_T - zClamp + ALARM_LINK_H3.J) * U * Math.cbrt(JOG_K);   // the developed length, scaled so the column law below carries the frame's bound
         // TODO 222: and wide enough to HOLD the root it is slotted for — the
         // root's face stands at the free line, cornerN + SINK + d0 off the
         // chord, which the lower ratio's larger preload carried past the 10×
@@ -37160,8 +37516,10 @@ const alarmLinkParts = {};
         // moment, so the two are iterated to a fixed point; it contracts, the
         // diameter growing only as the cube root of the station.
         const sigmaPost = (d_u, s_u) => sigmaRound(R * s_u * U, d_u) + 4 * R / (Math.PI * (d_u * U) ** 2);
+        // §261 2c: clear of the ROD itself (it crosses no plate now, so there
+        // is no bore round it to leave land to) by one margin
         const sFor = (r) => Math.max(
-          Math.sqrt((ALARM_LINK_ROD_PLATE_BORE_R + STOCK_MIN_U + r) ** 2 - tailLen * tailLen),
+          Math.sqrt(Math.max(0, (ALARM_LINK_ROD_R_SECTION + CLEAR_MARGIN + r) ** 2 - tailLen * tailLen)),
           P.headIn + r);
         let rPost = STOCK_MIN_R10, sPost = sFor(rPost);
         for (let it = 0; it < 60; it++) {
@@ -37190,10 +37548,16 @@ const alarmLinkParts = {};
         const postXY = along(side * sPost);
         // rule 6 — the station, the section and the strength, held
         {
-          const toRod = Math.hypot(postXY.x - ALARM_LINK_ROD_XY.x, postXY.y - ALARM_LINK_ROD_XY.y);
-          const land = Math.min(linkRodTqLand(postXY.x, postXY.y) + ALARM_LINK_ROD_PLATE_BORE_R, toRod - ALARM_LINK_ROD_PLATE_BORE_R) - rPost;
+          // §261 2c: the post is planted in the BASE plate's dial face now (the
+          // fold's image of the three-quarter plate's top), so its land is read
+          // against that plate's openings, at the post's world station
+          const postW = alarmFoldPoint(postXY.x, postXY.y, 0);
+          const land = linkRodBackLand(postW.x, postW.y) + ALARM_LINK_ROD_PLATE_BORE_R - rPost;
           if (land < STOCK_MIN_U - 1e-9)
             console.warn(`TODO 204: the beak post's foot leaves ${land.toFixed(4)} of plate land to its nearest opening — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(4)}`);
+          const toRod = Math.hypot(postXY.x - ALARM_LINK_ROD_XY_C.x, postXY.y - ALARM_LINK_ROD_XY_C.y) - ALARM_LINK_ROD_R_SECTION - rPost;
+          if (toRod < CLEAR_MARGIN - 1e-9)
+            console.warn(`§261 2c: the beak post stands ${toRod.toFixed(4)} off the rod, under CLEAR_MARGIN`);
           if (sPost - rPost < P.headIn - 1e-9)
             console.warn(`TODO 204: the beak post's inner flank ${(sPost - rPost).toFixed(4)} reaches past its head's face ${P.headIn.toFixed(4)}`);
           const sig = sigmaPost(flats(rPost), sPost);
@@ -37211,14 +37575,14 @@ const alarmLinkParts = {};
         beakPost.name = 'alarmLinkBeakPost';
         beakPost.rotation.x = Math.PI / 2;
         beakPost.position.set(postXY.x, postXY.y, (TQ_TOP_Z + postTop) / 2);   // the plate-top stud convention: the foot ON the top face
-        alarmLinkUnit.add(beakPost);
+        alarmLinkFold.add(beakPost);   // §261 2c: the cluster's frame
         const headC = along(side * (P.headIn + headOut) / 2);
         // ringGeo stands along Z; turned onto Y it is the arm's own y once aimed
         const beakHead = new THREE.Mesh(ringGeo(rHeadBore, rHead, headOut - P.headIn).rotateX(-Math.PI / 2), MATS.steel);
         beakHead.name = 'alarmLinkBeakHead';
         beakHead.rotation.z = beakAim;
         beakHead.position.set(headC.x, headC.y, axisZ);
-        alarmLinkUnit.add(beakHead);
+        alarmLinkFold.add(beakHead);   // §261 2c: the cluster's frame
         // THE PIN (TODO 230), the lever's own: pressed into the eye home
         // against the web's lap, out through the bush, and turned with an
         // integral HEAD half the end-shake beyond the bush's outer face — so
@@ -37312,13 +37676,16 @@ const alarmLinkParts = {};
   // agreeing with it by eye. It is still first-order and not a measured load
   // path; what it claims is the comparison, and TODO 79 owns the fix.
   {
-    const kTail = cantileverK_N_per_m(ALARM_LINK_ARM_W, ALARM_LINK_TAIL_H, tailLen);   // §229: the arm's real width, which is no longer the stock floor
+    // §261 2c: the same-side lever has no tail — the rod presses the BAR itself
+    // tailLen from the pivot, so the member it bends is the bar's own span over
+    // that run, at the bar's section (one tooth wide, §54's depth over beakLen)
+    const kTail = cantileverK_N_per_m(ALARM_LINK_ARM_W, ALARM_LINK_BAR_H, tailLen);
     const rodTravelU = Math.abs(alarmLinkParts.forward.rodTravel);
     const tailStallMN = kTail * rodTravelU * UNIT_MM; // N/m × (u→m) × 1000 = mN
     declareTransfer('alarm arming: beak lever (castellations → rod)', {
-      unit: 'Alarm link', meshes: ['alarmLinkBeakBar', 'alarmLinkBeakTail', 'alarmLinkBeakEye', 'alarmLinkBeakPin'], idiom: 'crank',
+      unit: 'Alarm link', meshes: ['alarmLinkBeakBar', 'alarmLinkBeakEye', 'alarmLinkBeakPin'], idiom: 'crank',
       load: { value: tailStallMN, unit: 'mN',
-        source: 'tail-blade cantilever k over its §54-derived deep section × the registration solve\'s |rodTravel| (the live stroke — the 0.42-unit plan constant both prior records quoted is retired by the solve\'s own comment trail)' },
+        source: '§261 2c: the bar\'s cantilever k over its span from the pivot to the rod (tailLen), at its §54-derived deep section, × the registration solve\'s |rodTravel| — the same-side lever has no tail blade' },
       quantities: { armIn_u: beakLen, armOut_u: tailLen, ratio: tailLen / beakLen },
       why: `§229: a pivoted lever with two DESIGNED arms about the beak pin (TODO 204: a pin on the tilt axis, carried by a post planted on the plate; since TODO 230 the pin pressed in the lever's eye and running in the post's head), and the design is the ratio itself — the input arm reads the castellation tier whole (TODO 206: down to the gap floor, where the arming spring seats the nose) and the output arm reduces it to the rod's solved travel, so the arms are ${(beakLen / tailLen).toFixed(3)} : 1 the other way — their LENGTHS a declared fork of §229's at the TODO 174 rod distance (see ALARM_BEAK_REF_WRLEN). It amplified 4.55× until §229, which is what let the nose read 3.5% of the cam it rides`,
     });
@@ -37351,7 +37718,7 @@ const alarmLinkParts = {};
     // ROD-END-LIMITED and an order of magnitude below the band"), and its own
     // precondition honoured — it forbade re-deriving the section "before
     // TODO 79's stations are re-solved", which §202 did.
-    const ALARM_LINK_STALL_PROBE_MN = 429.50;          // TODO 222: re-measured on the sideways drive — the arm the force budget derives (1.1306) throws the pin 2.07 ring travels along the fork's wall normal, so the probe now reads the pin ALONG THE WALL NORMAL (it read the ring's travel direction, which the sideways drive no longer loads: n 0) and both paths reflect the shaft members by nPin 2.07 (the row reads 431.19) — was 1318.98. (Whether n²/k is the right reflection is TODO 237's question.) TODO 206: re-measured after the C1 seat re-solved the beak's arms (tail 0.768 → 0.6885, so the tail blade stiffened; it carries 0.1% of the compliance, so the stall barely moved) — was 1331.88. TODO 190: re-measured at the re-solved site (18.96, −2.83), d 9 on the next parity ray, tab 324°, body 11.0631 — was 1221.13. The shorter chord halved the spans (5.53 each), which stiffened the rod-end cantilever through its back-span coupling (span + overhang)/overhang, so the stall ROSE and the FORK-end overhang, which no site move touches, now carries the largest share (see ALARM_LINK_GOVERNING). TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 1006.54. §234 Landing 5: tools/probe-82-alarm-stall.mjs on the raised, bored body with its pressed necks, the rod-end bush at its clearance-derived station, the middle station at the equal-span midpoint, and the pin arm at the derived 0.35 rad span (was 81.02 before this landing). Two of the probe's own readings had to be corrected first for the two paths to meet: the pin's reflection ratio is its displacement ALONG THE LOAD (the ring's travel), not its path (the arc now slides 0.2 u along the groove, and sliding does no work), and the tail blade bends about its THIN dimension (the probe had cubed its width). Still `covers` the 5–50 mN band, by 27× (20× at TODO 174's site)
+    const ALARM_LINK_STALL_PROBE_MN = 461.26;          // §261 2c: re-measured — the folded same-side beak's bar carries the rod (its span pivot→rod replaces the retired tail blade, 0.6% of the compliance) and the §112 site re-solved with the hangers scored and the fork guarded against the guide plates (spans 6.01 each); the fork-end overhang still governs — was 429.50. TODO 222: re-measured on the sideways drive — the arm the force budget derives (1.1306) throws the pin 2.07 ring travels along the fork's wall normal, so the probe now reads the pin ALONG THE WALL NORMAL (it read the ring's travel direction, which the sideways drive no longer loads: n 0) and both paths reflect the shaft members by nPin 2.07 (the row reads 431.19) — was 1318.98. (Whether n²/k is the right reflection is TODO 237's question.) TODO 206: re-measured after the C1 seat re-solved the beak's arms (tail 0.768 → 0.6885, so the tail blade stiffened; it carries 0.1% of the compliance, so the stall barely moved) — was 1331.88. TODO 190: re-measured at the re-solved site (18.96, −2.83), d 9 on the next parity ray, tab 324°, body 11.0631 — was 1221.13. The shorter chord halved the spans (5.53 each), which stiffened the rod-end cantilever through its back-span coupling (span + overhang)/overhang, so the stall ROSE and the FORK-end overhang, which no site move touches, now carries the largest share (see ALARM_LINK_GOVERNING). TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 1006.54. §234 Landing 5: tools/probe-82-alarm-stall.mjs on the raised, bored body with its pressed necks, the rod-end bush at its clearance-derived station, the middle station at the equal-span midpoint, and the pin arm at the derived 0.35 rad span (was 81.02 before this landing). Two of the probe's own readings had to be corrected first for the two paths to meet: the pin's reflection ratio is its displacement ALONG THE LOAD (the ring's travel), not its path (the arc now slides 0.2 u along the groove, and sliding does no work), and the tail blade bends about its THIN dimension (the probe had cubed its width). Still `covers` the 5–50 mN band, by 27× (20× at TODO 174's site)
     // The governor moved with the section: the spans were the soft members
     // while the whole rod was 0.1233, and then the NECK's rod-end cantilever
     // was. That is the honest outcome — the compliance is where the metal is
@@ -37406,7 +37773,7 @@ const alarmLinkParts = {};
     const nRod = rodTravelU / ALARM_SEL_TRAVEL;
     const nPin = Math.abs(alarmLinkParts.forward.pinTravel) / ALARM_SEL_TRAVEL;
     const series = [
-      { name: 'beak tail blade', k: kTail, n: nRod },
+      { name: 'beak bar, pivot to rod', k: kTail, n: nRod },   // §261 2c: the same-side lever's bar carries the rod
       { name: 'shaft, rod-end overhang', k: kRodEnd, n: nRod },
       ...spans.map((L, i) => ({ name: `shaft, span ${i + 1} (t ${stations[i].toFixed(2)} → ${stations[i + 1].toFixed(2)})`, k: kBend(ALARM_LINK_SHAFT_R, L, 48), n: nPin })),
       { name: 'shaft, fork-end overhang', k: kBend(ALARM_LINK_SHAFT_NECK_R, forkEndU, 3), n: nPin },   // §232: neck stock
@@ -37519,27 +37886,68 @@ const alarmLinkParts = {};
     // ground (10× the blade's rate, solved at the spring); the other two keep
     // the shipped 0.2.
     const hangerS = hi === 2 ? ALARM_LINK_ARMING_SPRING.hanger3S_u : ALARM_LINK_ARMING_SPRING.hangerS_u;
+    alarmLinkUnit.add(bush);
+    if (hi === 2 && ALARM_LINK_H3.J > 0) {
+      // §261 2c — JOGGED round the beak's bar (ALARM_LINK_H3): the lower column
+      // from the bush to the arm (the blade's stud and the guide's ground), the
+      // arm along m to the upper station, and the upper column on to the plate.
+      // The arm laps both columns, one part welded; same section throughout.
+      const H = ALARM_LINK_H3, aTop = H.armTop, aBot = aTop - hangerS;
+      if (Math.hypot(hx - H.hx, hy - H.hy) > 1e-9)
+        console.warn('§261 2c: hanger 3 is built off the station its jog was solved for');
+      const lower = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, aTop - hangerFootZ), MATS.nickel);
+      lower.name = 'alarmLinkHanger3';
+      lower.position.set(hx, hy, (hangerFootZ + aTop) / 2);
+      const armL = H.J + hangerS;
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(armL, hangerS, hangerS), MATS.nickel);
+      arm.name = 'alarmLinkHanger3Jog';
+      arm.position.set((hx + H.ux) / 2, (hy + H.uy) / 2, (aTop + aBot) / 2);
+      arm.rotation.z = Math.atan2(H.m.y, H.m.x);
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, -2 - aBot), MATS.nickel);
+      upper.name = 'alarmLinkHanger3Upper';
+      upper.position.set(H.ux, H.uy, (aBot - 2) / 2);
+      for (const m of [lower, arm, upper]) alarmLinkUnit.add(m);
+      // the column's plan footprint the solve scored it at (the bush's OD) must
+      // cover the hanger as cut, or the scoring was optimistic
+      if (hangerS * Math.SQRT1_2 > ALARM_LINK_BUSH_OD_U + 1e-9)
+        console.warn(`§261 2c: hanger 3's section ${hangerS.toFixed(4)} reaches ${(hangerS * Math.SQRT1_2).toFixed(4)} off its axis, past the ${ALARM_LINK_BUSH_OD_U.toFixed(4)} the site solve scored its jog at`);
+      return;
+    }
     const hanger = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, hangerH), MATS.nickel); // runs the same congested dial-side column
     hanger.name = `alarmLinkHanger${hi + 1}`;
     hanger.position.set(hx, hy, hangerFootZ + hangerH / 2);
-    alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);
   });
-  // The plates' bores are LITERALS (they build long before ALARM_COL_POS
-  // exists) — assert they sit on the derived rod site:
-  // The bores are literals up at the two plate-hole sites and cannot see this
-  // constant, so this is the tripwire between them. It has already earned its
-  // keep once: moving the rod to az 210 left both bores behind at az 212 and
-  // this is what said so.
-  const _boreXY = { x: 18.96, y: -2.83 };     // MUST equal both tqHoles entries for this rod (§68 re-site; §112 froze it at the solved site; TODO 190 re-synced it)
-  if (Math.hypot(ALARM_LINK_ROD_XY.x - _boreXY.x, ALARM_LINK_ROD_XY.y - _boreXY.y) > 0.25)
-    console.warn(`§35: the plate bores (${_boreXY.x}, ${_boreXY.y}) drifted from the derived rod site (${ALARM_LINK_ROD_XY.x.toFixed(2)}, ${ALARM_LINK_ROD_XY.y.toFixed(2)})`);
-  // TODO 190 — and the bores as CUT leave each plate its land (the search
-  // held the solved site to it; this holds the literal the plates were cut at).
-  if (linkRodTqLand(_boreXY.x, _boreXY.y) < STOCK_MIN_U - 1e-9)
-    console.warn(`TODO 190: the three-quarter plate's rod bore at (${_boreXY.x}, ${_boreXY.y}) leaves a ${linkRodTqLand(_boreXY.x, _boreXY.y).toFixed(3)} land to its nearest opening — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
-  if (linkRodBackLand(_boreXY.x, _boreXY.y) < STOCK_MIN_U - 1e-9)
-    console.warn(`TODO 190: the base plate's rod bore at (${_boreXY.x}, ${_boreXY.y}) leaves a ${linkRodBackLand(_boreXY.x, _boreXY.y).toFixed(3)} land to its nearest opening — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
+  // §261 2c — the rod guide's WEB, hanger 3 to the sleeve (the sleeve is cut
+  // at the rod's build, above; the hangers are cut here, so the web is too).
+  // Hanger 3's station is read off its built mesh.
+  {
+    const sleeve = alarmLinkParts.rodGuide, sleeveLen = sleeve.userData.len;
+    const sleeveBot = sleeve.position.z - sleeveLen / 2;
+    const h3 = alarmLinkUnit.getObjectByName('alarmLinkHanger3');
+    if (!h3) console.warn('§261 2c: the rod guide\'s web found no alarmLinkHanger3 to stand on');
+    else {
+      const dx = ALARM_LINK_ROD_XY.x - h3.position.x, dy = ALARM_LINK_ROD_XY.y - h3.position.y;
+      const d = Math.hypot(dx, dy);
+      const rEnd = (ALARM_LINK_ROD_BUSH_BORE + ALARM_LINK_ROD_BUSH_OD) / 2;   // the sleeve's mid-wall
+      const webLen = d - rEnd;
+      const web = new THREE.Mesh(new THREE.BoxGeometry(webLen, STOCK_MIN_U, sleeveLen), MATS.nickel);
+      web.name = 'alarmLinkRodGuideWeb';
+      web.position.set(h3.position.x + dx / d * webLen / 2, h3.position.y + dy / d * webLen / 2, sleeve.position.z);
+      web.rotation.z = Math.atan2(dy, dx);
+      alarmLinkUnit.add(web);
+      // its corners must stay out of the bore: the web ends at the mid-wall,
+      // so its corner stands hypot(rEnd, STOCK/2) off the rod's axis
+      if (!(Math.hypot(rEnd, STOCK_MIN_U / 2) > ALARM_LINK_ROD_BUSH_BORE + 1e-9))
+        console.warn('§261 2c: the rod guide\'s web reaches into the sleeve\'s bore');
+      // and hanger 3 must stand over the sleeve's whole run
+      const h3Bot = h3.position.z - h3.geometry.parameters.depth / 2;
+      if (!(h3Bot <= sleeveBot + 1e-9))
+        console.warn(`§261 2c: hanger 3 stops at ${h3Bot.toFixed(4)}, above the rod guide's foot ${sleeveBot.toFixed(4)} — the web hangs off nothing`);
+    }
+  }
+  // (§261 2c retired the plates' rod-bore tripwire and its two land checks: the
+  // rod crosses no plate now.)
   // the shaft's bottom vs the keyless piece under the run. §35 measured that
   // piece's top at −6.549 WITH THE DIAL AT −7 — and the piece is dial-side,
   // so the measurement is really Z_DIAL + 0.451 and rides the dial (§51
@@ -37678,9 +38086,158 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 // rest station. It is not a small correction to the old law — it is a
 // different function with the same endpoints, and the difference is where the
 // wheel stands mid-press, which is half the poses the alarmPress axis visits.
-const alarmDriverCarry = (T) =>
+// §261 2c — THE PUSHER'S LINKAGE. The fold carries the driver to the dial side
+// and leaves the button where it is, so the stem's pin and the driver's slot no
+// longer share a line: two cranks and a rod carry one to the other (the owner's
+// call, 2026-10-12), a fold-added corner pair with its own P1 duties.
+//
+// WHERE IT RUNS IS FORCED. At the folded driver the pin's track lies INSIDE the
+// column wheel's footprint (r ≈ 5.1 from its axis, against a solid base to 5.7
+// and a saw to 6.4), so nothing can reach the slot from the dial side — the
+// wheel is in the way. In the cluster's own frame the pin always rose to the
+// driver from the PLATE side, through a slot in the three-quarter plate; folded,
+// it comes DOWN through a slot in the base plate, from between the plates. So
+// the whole linkage runs between the plates, both cranks on studs planted in the
+// base plate, and crank B's pin drops through the base plate into the driver.
+// tools/probe-261-fold-site.mjs searched the rod line over the interplate band
+// and the pose net (its 'slot' configuration) and these two numbers are its
+// pick at φ = 240°: the line's direction and offset (m·x = c), on the search's
+// own grid (1°, 0.5 u). Everything else derives from the two pin tracks.
+//
+// EXACT AT BOTH ENDS. A radial slot makes the driver's angle the pin's
+// AZIMUTH about the wheel (§163), so the carry depends only on where the pin
+// starts and stops, never on the path between. Crank B's pivot therefore
+// stands on the perpendicular BISECTOR of the folded track, its pin's arc
+// passing through both of today's stations; crank A takes the stem's pin in
+// its own radial slot, the same coupling; and crank B's input arm is SOLVED so
+// the rod closes the four-bar onto that arc's end at full press. The sweep is
+// then one column step by construction, exactly as §163's straight track gave
+// it, and the switch's drive line is untouched — the path between the ends is
+// the linkage's, and the tick reads it rather than the straight line.
+const ALARM_LINKAGE_ROD_DIR = 105 * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
+const ALARM_LINKAGE_ROD_C = 25.34;                             // and its offset, m·x = c (rotation about the centre leaves c)
+const ALARM_LINKAGE_SIDE = 1;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
+const ALARM_LINKAGE = (() => {
+  const m = { x: Math.cos(ALARM_LINKAGE_ROD_DIR), y: Math.sin(ALARM_LINKAGE_ROD_DIR) };
+  const dotv = (u, v) => u.x * v.x + u.y * v.y;
+  const perpv = (v) => ({ x: -v.y, y: v.x });
+  const rot = (P, X, th) => { const c = Math.cos(th), s = Math.sin(th), dx = X.x - P.x, dy = X.y - P.y; return { x: P.x + c * dx - s * dy, y: P.y + s * dx + c * dy }; };
+  const ang = (P, A, B) => Math.atan2((A.x - P.x) * (B.y - P.y) - (A.y - P.y) * (B.x - P.x), (A.x - P.x) * (B.x - P.x) + (A.y - P.y) * (B.y - P.y));
+  // the stem's pin stations (unfolded, between the plates) and their images
+  const base = { x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD, y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD };
+  const pinAt = (T) => ({ x: base.x + _pushU.x * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T), y: base.y + _pushU.y * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T) });
+  const p0 = pinAt(0), p1 = pinAt(1);
+  const fp = (P) => { const v = alarmFoldPoint(P.x, P.y, 0); return { x: v.x, y: v.y }; };
+  const q0 = fp(p0), q1 = fp(p1);
+  const n0 = perpv({ x: -_pushU.x, y: -_pushU.y });
+  // crank A: its pivot on the stem's normal at rest, its output arm square to
+  // the rod line and as long as its input — 1:1 at rest (the search's form)
+  const gA = dotv(m, n0), a = (ALARM_LINKAGE_ROD_C - dotv(m, p0)) / (gA - ALARM_LINKAGE_SIDE);
+  const PA = { x: p0.x + a * n0.x, y: p0.y + a * n0.y };
+  const EA = { x: PA.x - a * ALARM_LINKAGE_SIDE * m.x, y: PA.y - a * ALARM_LINKAGE_SIDE * m.y };
+  // crank B: on the folded track's bisector, at distance b; its input arm the
+  // foot of the perpendicular from the pivot to the rod line
+  const mq = { x: (q0.x + q1.x) / 2, y: (q0.y + q1.y) / 2 };
+  const nq = perpv({ x: (q1.x - q0.x), y: (q1.y - q0.y) }), nL = Math.hypot(nq.x, nq.y);
+  nq.x /= nL; nq.y /= nL;
+  // the search's crank B stood on the normal at q0, 1:1 at rest; here its pivot
+  // is the BISECTOR point nearest that one (the same b — q0's offset from the
+  // midpoint lies along the track, square to the normal), so its pin's arc
+  // passes through both stations
+  const bq = (ALARM_LINKAGE_ROD_C - dotv(m, q0)) / (dotv(m, nq) - ALARM_LINKAGE_SIDE);
+  const PB = { x: mq.x + bq * nq.x, y: mq.y + bq * nq.y };
+  const hB = dotv(m, PB) - ALARM_LINKAGE_ROD_C;
+  const uB = { x: -Math.sign(hB) * m.x, y: -Math.sign(hB) * m.y };      // toward the rod line, square to it
+  const geomAt = (rho) => {
+    const EB = { x: PB.x + rho * uB.x, y: PB.y + rho * uB.y };
+    return { PB, EB, rod: Math.hypot(EB.x - EA.x, EB.y - EA.y) };
+  };
+  // forward kinematics over the press: the stem's pin turns crank A (its
+  // azimuth about A — the slot), the rod is pinned at both ends, crank B turns
+  // to keep it that long (the branch continuous from rest), its pin rides the arc
+  const STEPS = 64;
+  const run = (g) => {
+    const rB = Math.hypot(g.EB.x - g.PB.x, g.EB.y - g.PB.y);
+    let EBprev = g.EB, thB = 0;
+    const out = [{ T: 0, thA: 0, thB: 0, EA, EB: g.EB }];
+    for (let i = 1; i <= STEPS; i++) {
+      const T = i / STEPS, thA = ang(PA, p0, pinAt(T)), EAt = rot(PA, EA, thA);
+      const dx = EAt.x - g.PB.x, dy = EAt.y - g.PB.y, D = Math.hypot(dx, dy);
+      const aa = (rB * rB - g.rod * g.rod + D * D) / (2 * D), h2 = rB * rB - aa * aa;
+      if (!(h2 >= 0)) return null;                        // the rod cannot reach: the linkage locks
+      const hh = Math.sqrt(h2), mx = g.PB.x + aa * dx / D, my = g.PB.y + aa * dy / D;
+      const c1 = { x: mx - hh * dy / D, y: my + hh * dx / D }, c2 = { x: mx + hh * dy / D, y: my - hh * dx / D };
+      const EBt = Math.hypot(c1.x - EBprev.x, c1.y - EBprev.y) < Math.hypot(c2.x - EBprev.x, c2.y - EBprev.y) ? c1 : c2;
+      thB = ang(g.PB, g.EB, EBt);
+      out.push({ T, thA, thB, EA: EAt, EB: EBt });
+      EBprev = EBt;
+    }
+    return out;
+  };
+  // closure: crank B's input arm is the one free length — it sets how far the
+  // rod's stroke turns crank B, and the turn must land the pin on q1 exactly.
+  // A longer arm turns less, so the miss rises with the arm; too short an arm
+  // and the rod cannot reach at all (the linkage locks). The root is bracketed
+  // by a scan from half to three times the 1:1 arm — the first sign change
+  // between two arms that both run — and bisected.
+  const target = ang(PB, q0, q1);
+  const miss = (rho) => { const r = run(geomAt(rho)); return r ? r[STEPS].thB - target : NaN; };
+  let lo = NaN, hi = NaN;
+  for (let f = 0.5; f < 3 && Number.isNaN(lo); f += 0.02) {
+    const u = Math.abs(hB) * f, v = Math.abs(hB) * (f + 0.02), mu = miss(u), mv = miss(v);
+    if (Number.isFinite(mu) && Number.isFinite(mv) && mu * mv <= 0) { lo = u; hi = v; }
+  }
+  if (Number.isNaN(lo)) console.warn(`§261 2c: the linkage's closure is not bracketed by any input arm from ${(Math.abs(hB) / 2).toFixed(3)} to ${(3 * Math.abs(hB)).toFixed(3)}`);
+  for (let k = 0; k < 100; k++) { const mid = (lo + hi) / 2; if (miss(lo) * miss(mid) <= 0) hi = mid; else lo = mid; }
+  const rho = (lo + hi) / 2, g = geomAt(rho), path = run(g);
+  const b = bq;
+  return { m, a, b, PA, EA, PB: g.PB, EB: g.EB, rod: g.rod, p0, p1, q0, q1, pinAt, path,
+    armA: Math.abs(a), armBin: Math.hypot(g.EB.x - g.PB.x, g.EB.y - g.PB.y), armBout: Math.hypot(q0.x - g.PB.x, q0.y - g.PB.y),
+    thBTotal: target, closure: miss(rho),
+    // crank B's pin at press fraction T (world plan), interpolated on the FK
+    pinBAt(T) {
+      const f = Math.max(0, Math.min(1, T)) * STEPS, i = Math.min(STEPS - 1, Math.floor(f)), u = f - i;
+      const th = path[i].thB + (path[i + 1].thB - path[i].thB) * u;
+      return rot(g.PB, q0, th);
+    },
+    crankAAt(T) { return ang(PA, p0, pinAt(T)); },
+    crankBAt(T) { const f = Math.max(0, Math.min(1, T)) * STEPS, i = Math.min(STEPS - 1, Math.floor(f)), u = f - i; return path[i].thB + (path[i + 1].thB - path[i].thB) * u; },
+  };
+})();
+if (!(Math.abs(ALARM_LINKAGE.closure) < 1e-9))
+  console.warn(`§261 2c: the linkage does not close — crank B's turn misses the folded track's end by ${ALARM_LINKAGE.closure.toExponential(3)} rad`);
+// the carry: the azimuth crank B's pin sweeps about the wheel, read in the
+// CLUSTER's frame (the fold's inverse), signed by the ratchet's drive exactly
+// as §163's straight track was — so carry(1) is one step by the closure above
+const _alarmFoldInv = alarmFoldInv;
+const _carryAz = (P) => { const v = new THREE.Vector3(P.x, P.y, 0).applyMatrix4(_alarmFoldInv); return Math.atan2(v.y - ALARM_COL_POS.y, v.x - ALARM_COL_POS.x); };
+const _carryAz0 = _carryAz(ALARM_LINKAGE.q0);
+const alarmDriverCarry = (T) => {
+  let d = _carryAz(ALARM_LINKAGE.pinBAt(T)) - _carryAz0;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  return alarmColumnWheel.userData.ratchetDrive * d;
+};
+// §163's straight track, kept as the REFERENCE the linkage is held to at its
+// two ends (and the moment-arm arithmetic below is still that coupling's)
+const alarmDriverCarryLine = (T) =>
   Math.atan2(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T)
   - Math.atan2(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF);
+if (Math.abs(alarmDriverCarry(1) - alarmDriverCarryLine(1)) > 1e-9 || Math.abs(alarmDriverCarry(0)) > 1e-12)
+  console.warn(`§261 2c: the linkage's carry ${alarmDriverCarry(1).toFixed(9)} at full press parts from §163's ${alarmDriverCarryLine(1).toFixed(9)} — the pin does not end where the straight track did`);
+{
+  // monotone over the press: a crank that reverses mid-stroke would walk the
+  // pawl back, and a rod near dead centre turns a press into a lock
+  let prev = -Infinity, worstTx = Math.PI / 2;
+  for (const s of ALARM_LINKAGE.path) {
+    const c = alarmDriverCarry(s.T);
+    if (c < prev - 1e-12) { console.warn(`§261 2c: the linkage's carry reverses at T ${s.T.toFixed(3)}`); break; }
+    prev = c;
+    const rx = s.EB.x - s.EA.x, ry = s.EB.y - s.EA.y, bx = s.EB.x - ALARM_LINKAGE.PB.x, by = s.EB.y - ALARM_LINKAGE.PB.y;
+    const tx = Math.abs(Math.asin(Math.max(-1, Math.min(1, (rx * by - ry * bx) / (Math.hypot(rx, ry) * Math.hypot(bx, by))))));
+    worstTx = Math.min(worstTx, tx);
+  }
+  ALARM_LINKAGE.worstTransmission = worstTx;
+}
 // The MOMENT ARM is no longer one number. By virtual work the driver's is
 // ds/dθ = (d² + s²)/d, smallest at the foot and largest at either end of the
 // stroke — 5.01226 → 5.37213, a 7.18% swing, and the same 7.18% appears as the
@@ -37847,6 +38404,29 @@ let ALARM_PUSH_ABUT_S = null;
 if (ALARM_PUSH_GUIDE_BORE <= ALARM_PUSH_STEM_R)
   console.warn(`TODO 87: the guide bore ${ALARM_PUSH_GUIDE_BORE} does not clear the stem ${ALARM_PUSH_STEM_R} — the pusher cannot slide in its own bearing`);
 const ALARM_PUSH_AXIS_REL = (TQ_BOT_Z - CLEAR_MARGIN - ALARM_PUSH_GUIDE_HALF) - ALARM_LOCK_Z;
+// §261 2c — the linkage's planes, stacked up from the reach bar the riser
+// rises off: the cranks' arms one margin over the bar's top face, the rod lying
+// ON the arms (it is pinned through both, so its underside meets their top
+// faces at the joints, the beak-post precedent). Sections: §50's floor in the
+// thin direction, one ratchet tooth across (the width §226 gave every lever in
+// this complex, ALARM_PUSH_REACH_W) — P1 sizing against the press is the
+// linkage's transfer rows, below.
+const ALARM_LINKAGE_ARM_T = STOCK_MIN_U;
+const ALARM_LINKAGE_ARM_W = ALARM_PUSH_REACH_W;
+const ALARM_LINKAGE_ARM_Z = (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL) + ALARM_PUSH_REACH_T / 2 + CLEAR_MARGIN + ALARM_LINKAGE_ARM_T / 2;
+const ALARM_LINKAGE_ROD_Z = ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T;
+// the studs the cranks turn on (hung from the three-quarter plate, the alarm's
+// studs' rule) at §50's floor, the hub one floor of wall round its running bore, and
+// crank B's pin shank the lathe's L/D target over the WHOLE post it is turned
+// from — the shank and the reduced tip at its end. The tip is an end pivot
+// (turning judges it alone, TURN_END_PIVOTS), but the body still stands out of
+// the chuck the post's whole length while it is cut (§233), so it is that
+// length the shank's section answers to, not its own
+const ALARM_LINKAGE_STUD_R = STOCK_MIN_U;
+const ALARM_LINKAGE_HUB_R = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U;
+const ALARM_LINKAGE_SHANK_R = Math.max(STOCK_MIN_R10,
+  ((ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - alarmFoldZ(ALARM_DRIVER_TOP_Z)) / (2 * TURN_LD_TARGET));
+const alarmLinkageParts = { crankA: null, crankB: null, rod: null };
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
 registerSub('Alarm switch', 'Column wheel', alarmColSpin); // §10 level 2
@@ -38036,7 +38616,10 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   {
     // TODO 11 tranche five: riser stock across the FLATS (see STOCK_MIN_R10) —
     // the 0.16 radius read 0.1153 mm on the 10-gon, under the floor.
-    const riserTop = ALARM_DRIVER_TOP_Z - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // group-local: the post runs to the driver's top face
+    // §261 2c: the riser no longer climbs to the driver (folded to the dial
+    // side) — it rises only into crank A's slot, the linkage's first member,
+    // in the plane just over this bar (ALARM_LINKAGE_ARM_Z, below)
+    const riserTop = (ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // group-local: through crank A's arm
     const riserBot = -ALARM_PUSH_REACH_T / 2;                                    // seated on the bar's underside
     const drop = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, riserTop - riserBot, 10), MATS.steel);
     drop.name = 'alarmPusherRiser';
@@ -38080,6 +38663,141 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
           + `${wFloor.toFixed(4)} — the tooth no longer clears the load it was chosen over`);
     }
   }
+  // §261 2c — THE LINKAGE'S METAL (the solve is ALARM_LINKAGE, at the carry
+  // law). Two cranks on studs hung from the three-quarter plate and a rod between them,
+  // all between the plates in the band just over the reach bar; crank A takes
+  // the riser in a radial slot (the driver's own coupling, §163), crank B's
+  // output arm carries the pin down through a slot in the base plate into the
+  // folded driver's slot. Each crank is a rigid group posed about its stud by
+  // the solve's forward kinematics at the press fraction (the tick).
+  {
+    const L = ALARM_LINKAGE;
+    const T_ = ALARM_LINKAGE_ARM_T, W_ = ALARM_LINKAGE_ARM_W;
+    const armMesh = (name, from, to, extra = 0, slot = null) => {
+      // an arm from `from` to `to` (world plan), cut in its own frame along +x,
+      // its far end square past the joint by half its width; `slot` = { s0, s1,
+      // hw } along the arm, a stadium cut through it. Its INNER end starts at
+      // the hub's bore, not past the pivot: every arm springs from a crank's
+      // hub, and an arm run through the centre buries itself in the stud the
+      // hub turns on (intraUnit read all four, MF, at every pose)
+      const len = Math.hypot(to.x - from.x, to.y - from.y) + extra;
+      const x0 = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR;
+      const sh = new THREE.Shape();
+      sh.moveTo(x0, -W_ / 2); sh.lineTo(len + W_ / 2, -W_ / 2); sh.lineTo(len + W_ / 2, W_ / 2); sh.lineTo(x0, W_ / 2); sh.closePath();
+      if (slot) {
+        const h = new THREE.Path();
+        h.moveTo(slot.s0, -slot.hw); h.lineTo(slot.s1, -slot.hw);
+        h.absarc(slot.s1, 0, slot.hw, -Math.PI / 2, Math.PI / 2, false);
+        h.lineTo(slot.s0, slot.hw);
+        h.absarc(slot.s0, 0, slot.hw, Math.PI / 2, 3 * Math.PI / 2, false);
+        sh.holes.push(h);
+      }
+      const g = new THREE.ExtrudeGeometry(sh, { depth: T_, bevelEnabled: false, curveSegments: 6 });
+      g.translate(0, 0, -T_ / 2);
+      const m = new THREE.Mesh(g, MATS.blueSteel);
+      m.name = name;
+      m.rotation.z = Math.atan2(to.y - from.y, to.x - from.x);
+      return m;
+    };
+    const stud = (name, P) => {
+      // HUNG from the three-quarter plate, planted 0.5 into it (the alarm
+      // studs' rule): the arms ride under that plate, so the stud is short, and
+      // it stays out of the low stratum where the governor turns (a stud stood
+      // up from the base plate reached through the governor wheel's band —
+      // measured, undeclaredClearance at 0)
+      const top = TQ_BOT_Z + 0.5, bot = ALARM_LINKAGE_ARM_Z - T_ / 2;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINKAGE_STUD_R, ALARM_LINKAGE_STUD_R, top - bot, 16), MATS.nickel);
+      m.name = name; m.rotation.x = Math.PI / 2; m.position.set(P.x, P.y, (top + bot) / 2);
+      alarmSwitchUnit.add(m);
+    };
+    const hub = (name) => {
+      const sh = new THREE.Shape(); sh.absarc(0, 0, ALARM_LINKAGE_HUB_R, 0, 2 * Math.PI, false);
+      const h = new THREE.Path(); h.absarc(0, 0, ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR, 0, 2 * Math.PI, true); sh.holes.push(h);
+      const g = new THREE.ExtrudeGeometry(sh, { depth: T_, bevelEnabled: false, curveSegments: 12 }); g.translate(0, 0, -T_ / 2);
+      const m = new THREE.Mesh(g, MATS.blueSteel); m.name = name; return m;
+    };
+    const jointPin = (name, at, from) => {
+      // the crank's own pin at its rod joint: through the arm and the rod above it
+      const z0 = ALARM_LINKAGE_ARM_Z - T_ / 2, z1 = ALARM_LINKAGE_ROD_Z + T_ / 2;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, z1 - z0, 10), MATS.steel);
+      m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x - from.x, at.y - from.y, (z0 + z1) / 2 - ALARM_LINKAGE_ARM_Z);
+      return m;
+    };
+    // ---- crank A
+    const crankA = new THREE.Group();
+    crankA.position.set(L.PA.x, L.PA.y, ALARM_LINKAGE_ARM_Z);
+    alarmSwitchUnit.add(crankA);
+    const pinFar = Math.hypot(L.armA, ALARM_PUSH_TRAVEL);                  // the riser's farthest reach along the slot
+    const slotHW = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;                        // a running fit on the riser, the driver's own
+    const inA = armMesh('alarmLinkageCrankAIn', L.PA, L.p0, pinFar - L.armA + CLEAR_MARGIN + slotHW,
+      { s0: L.armA - CLEAR_MARGIN, s1: pinFar + CLEAR_MARGIN, hw: slotHW });
+    crankA.add(inA);
+    crankA.add(armMesh('alarmLinkageCrankAOut', L.PA, L.EA));
+    crankA.add(hub('alarmLinkageCrankAHub'));
+    crankA.add(jointPin('alarmLinkageCrankAPin', L.EA, L.PA));
+    stud('alarmLinkageStudA', L.PA);
+    // ---- crank B
+    const crankB = new THREE.Group();
+    crankB.position.set(L.PB.x, L.PB.y, ALARM_LINKAGE_ARM_Z);
+    alarmSwitchUnit.add(crankB);
+    crankB.add(armMesh('alarmLinkageCrankBIn', L.PB, L.EB));
+    crankB.add(armMesh('alarmLinkageCrankBOut', L.PB, L.q0));
+    crankB.add(hub('alarmLinkageCrankBHub'));
+    crankB.add(jointPin('alarmLinkageCrankBPin', L.EB, L.PB));
+    {
+      // the pin into the driver: a stepped post — the shank from the arm down to
+      // a margin over the plate, the tip on through the plate's slot into the
+      // folded driver, ending at its dial-side face (the face the old riser
+      // ended at, its top in the cluster's frame)
+      const shankTop = ALARM_LINKAGE_ARM_Z + T_ / 2, shankBot = ALARM_U_FLOOR + CLEAR_MARGIN;
+      const tipBot = alarmFoldZ(ALARM_DRIVER_TOP_Z);
+      const shank = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINKAGE_SHANK_R, ALARM_LINKAGE_SHANK_R, shankTop - shankBot, 12), MATS.steel);
+      shank.name = 'alarmLinkageDriverPinShank'; shank.rotation.x = Math.PI / 2;
+      shank.position.set(L.q0.x - L.PB.x, L.q0.y - L.PB.y, (shankTop + shankBot) / 2 - ALARM_LINKAGE_ARM_Z);
+      crankB.add(shank);
+      const tip = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, shankBot - tipBot, 10), MATS.steel);
+      tip.name = 'alarmLinkageDriverPin'; tip.rotation.x = Math.PI / 2;
+      tip.position.set(L.q0.x - L.PB.x, L.q0.y - L.PB.y, (shankBot + tipBot) / 2 - ALARM_LINKAGE_ARM_Z);
+      crankB.add(tip);
+    }
+    stud('alarmLinkageStudB', L.PB);
+    // §48/TODO 206 — every member of the linkage is DRIVEN both ways: the
+    // riser runs captive in crank A's radial slot, the rod is pinned through
+    // both cranks' joints, and crank B's pin runs captive in the driver's
+    // slot. Nothing in it is sprung; the press brings it in, the pusher's
+    // return coil brings the stem — and so the whole chain — home.
+    declareRestoring('Alarm switch', 'alarmLinkageCrankAIn', 'two-way',
+      '§261 2c: crank A is pushed AND pulled by the pusher’s riser, captive in its radial slot (metal on both flanks — the driver’s own coupling, §163)',
+      ['input:the alarm pusher', 'Alarm switch/alarmPusherStem']);
+    declareRestoring('Alarm switch', 'alarmLinkageRod', 'two-way',
+      '§261 2c: the rod is bored onto crank A’s joint pin at one end and crank B’s at the other, so crank A carries it both ways',
+      ['Alarm switch/alarmLinkageCrankAIn', 'Alarm switch/alarmLinkageCrankAIn']);
+    declareRestoring('Alarm switch', 'alarmLinkageCrankBIn', 'two-way',
+      '§261 2c: crank B is pinned to the rod at its joint, so the rod turns it both ways',
+      ['Alarm switch/alarmLinkageRod', 'Alarm switch/alarmLinkageRod']);
+    // ---- the rod: a bar bored at both ends onto the cranks' joint pins, in
+    // the plane on top of the arms; posed from the two joints each frame
+    const rodGrp = new THREE.Group();
+    rodGrp.position.set(L.EA.x, L.EA.y, ALARM_LINKAGE_ROD_Z);
+    rodGrp.rotation.z = Math.atan2(L.EB.y - L.EA.y, L.EB.x - L.EA.x);
+    alarmSwitchUnit.add(rodGrp);
+    {
+      const sh = new THREE.Shape(), w = W_ / 2, r = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;
+      sh.moveTo(-w, -w); sh.lineTo(L.rod + w, -w); sh.lineTo(L.rod + w, w); sh.lineTo(-w, w); sh.closePath();
+      for (const x of [0, L.rod]) { const h = new THREE.Path(); h.absarc(x, 0, r, 0, 2 * Math.PI, true); sh.holes.push(h); }
+      const g = new THREE.ExtrudeGeometry(sh, { depth: T_, bevelEnabled: false, curveSegments: 10 }); g.translate(0, 0, -T_ / 2);
+      const m = new THREE.Mesh(g, MATS.blueSteel); m.name = 'alarmLinkageRod';
+      rodGrp.add(m);
+    }
+    alarmLinkageParts.crankA = crankA; alarmLinkageParts.crankB = crankB; alarmLinkageParts.rod = rodGrp;
+    // ---- the base plate's slot for crank B's pin: the pin's arc about B from
+    // rest to full press, cut as the chord's stadium widened by the arc's bow
+    // (it bulges up to the sagitta off the chord) — the setting lever's stud
+    // slot, the same rule — and a margin, so the pin runs clear of the plate
+    const sag = L.armBout * (1 - Math.cos(Math.abs(L.thBTotal) / 2));
+    BACK_PLATE_LATE_SLOTS.push({ ax: L.q0.x, ay: L.q0.y, bx: L.q1.x, by: L.q1.y, r: STOCK_MIN_R10 + sag + CLEAR_MARGIN, alarmLinkagePin: true });
+    recutBackPlate();
+  }
   // §137 — the pusher's transfer row, and the PAWL'S FORCE AT THE SAW ROOT
   // (TODO 63: the input end of the arming chain had no arithmetic). The
   // riser-and-reach is a plane change at ratio 1 — no lever anywhere, so the
@@ -38111,6 +38829,52 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       quantities: { armIn_u: 1, armOut_u: 1, ratio: 1, sautoirTq_Nmm: ALARM_JUMPER_DETENT_NMM, beakLiftTq_Nmm: ALARM_LINK_ARMING_SPRING.liftTq_Nmm },
       why: `displacement through a plane change with no direction change: climb and reach, loaded axially, ratio 1 by construction — the anatomy a real case-pusher's under-plate operating lever has; needs ~${pawlNeedMN.toFixed(1)} mN against the ${CASE_PUSHER_INPUT_N[0]}–${CASE_PUSHER_INPUT_N[1]} N a finger delivers`,
     });
+    // §261 2c — THE LINKAGE'S TWO CRANKS, in the same format. What the chain
+    // asks at the driver's pin is the same detent torque, paid back at the
+    // pin's own radius about the wheel (its arc ends where the reference line
+    // did, so the radius is the line's at the rest end). Crank B carries that
+    // force at its output arm; the rod carries it reflected by crank B's arms;
+    // crank A carries the rod's force at its output, and its slotted input arm
+    // takes the riser at the same radius (1:1 — the owner's call, two equal
+    // cranks and a rod). Each arm is a cantilever off its hub in-plane, its
+    // section the floor-stock T by one ratchet tooth W, so its root stress is
+    // F·arm / (T·W²/6). In USE that is 117 MPa at crank A and 47 at crank B,
+    // under the 800 MPa spring-steel yield. The survival ceiling is not:
+    // nothing bottoms this stroke (TODO 92's head stands CLEAR_MARGIN off the
+    // case at full press), so a heavy press loads crank A's input arm with the
+    // whole CASE_PUSHER_INPUT_N ceiling — 7,018 MPa, nearly nine times
+    // yield. The fix is a stroke stop that takes the finger at the end of the
+    // carry (TODO 241), not a crank as wide as the gap between the plates; the
+    // driver's arms carried the same load unpriced before the fold.
+    {
+      const L = ALARM_LINKAGE;
+      alarmColumnWheel.updateWorldMatrix(true, false);
+      const axW = new THREE.Vector3().setFromMatrixPosition(alarmColumnWheel.matrixWorld);
+      const rPin = Math.hypot(L.q0.x - axW.x, L.q0.y - axW.y);
+      const pinNeedMN = detentTq_Nmm / (rPin * UNIT_MM) * 1000;
+      const rodNeedMN = pinNeedMN * L.armBout / L.armBin;
+      const Z_mm3 = (ALARM_LINKAGE_ARM_T * UNIT_MM) * (ALARM_LINKAGE_ARM_W * UNIT_MM) ** 2 / 6;
+      const sigma = (F_mN, arm_u) => (F_mN / 1000) * (arm_u * UNIT_MM) / Z_mm3;   // MPa (N·mm / mm³)
+      const sB = sigma(pinNeedMN, L.armBout), sA = sigma(rodNeedMN, L.armA);
+      const sSurvive = sigma(CASE_PUSHER_INPUT_N[1] * 1000, L.armA);
+      const yieldMPa = SPRING_SIGMA_Y_PA / 1e6;
+      if (!(sA < yieldMPa) || !(sB < yieldMPa))
+        console.warn(`§261 2c: the linkage's cranks work at ${sA.toFixed(0)} / ${sB.toFixed(0)} MPa in USE against the ${yieldMPa} MPa yield — the arms are under their own working load`);
+      declareTransfer('alarm arming: pusher linkage crank B (rod → driver pin)', {
+        unit: 'Alarm switch', meshes: ['alarmLinkageCrankBIn', 'alarmLinkageCrankBOut', 'alarmLinkageDriverPin'], idiom: 'crank',
+        load: { value: pinNeedMN, unit: 'mN',
+          source: 'the same detent torque the riser row prices (the sautoir\'s forward detent plus the link nose\'s lift), paid back at the drive pin\'s radius about the column wheel at the rest end of its arc' },
+        quantities: { armIn_u: L.armBin, armOut_u: L.armBout, ratio: L.armBout / L.armBin, rPin_u: rPin, sigmaUse_MPa: sB },
+        why: `a bell crank on a stud hung from the three-quarter plate, carrying the press down through the base plate's slot into the folded driver — 1:1 to closure (ρ solved, ${(L.armBout / L.armBin).toFixed(4)}); ${pinNeedMN.toFixed(1)} mN at the pin, ${sB.toFixed(0)} MPa at the output arm's root against ${yieldMPa} MPa`,
+      });
+      declareTransfer('alarm arming: pusher linkage crank A (riser → rod)', {
+        unit: 'Alarm switch', meshes: ['alarmLinkageCrankAIn', 'alarmLinkageCrankAOut', 'alarmLinkageRod'], idiom: 'crank',
+        load: { value: rodNeedMN, unit: 'mN',
+          source: 'crank B\'s pin load reflected to the rod by crank B\'s arms (armBout / armBin)' },
+        quantities: { armIn_u: L.armA, armOut_u: L.armA, ratio: 1, sigmaUse_MPa: sA, sigmaSurvive_MPa: sSurvive, survive_N: CASE_PUSHER_INPUT_N[1] },
+        why: `a 1:1 crank on a stud hung from the three-quarter plate, its input arm slotted on the riser — ${rodNeedMN.toFixed(1)} mN through the rod, ${sA.toFixed(0)} MPa at the arm's root in use; at the ${CASE_PUSHER_INPUT_N[1]} N survival ceiling the input arm would see ${sSurvive.toFixed(0)} MPa, which no section between the plates carries — TODO 241, a stroke stop`,
+      });
+    }
   }
   // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
   // A vertical torus spans its RING DIAMETER in z (0.48 here) — the first two
@@ -38146,21 +38910,6 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // station and the assert that holds it belong at the same place.
   alarmPusherGuideMesh = boss;
   alarmSwitchUnit.add(boss);
-  // §43 riser-slot tripwire (the §35/§68 rod-bore pattern): the plate's slot
-  // is a literal cut long before these constants exist — assert the derived
-  // riser track (rest → pressed, at the riser's own radius + CLEAR_MARGIN)
-  // sits on it. Grace 0.02, same as the rod bore's.
-  {
-    const riserS = ALARM_PIN_HALF;                    // §163: the riser stands at the pin, which straddles the foot
-    const rest = { x: _pushBase.x + _pushU.x * riserS, y: _pushBase.y + _pushU.y * riserS };
-    const pressed = { x: rest.x - _pushU.x * ALARM_PUSH_TRAVEL, y: rest.y - _pushU.y * ALARM_PUSH_TRAVEL };
-    const slot = tqSlots[tqSlots.length - 1];
-    const need = STOCK_MIN_R10 + CLEAR_MARGIN;   // §163: the riser's own stock, not a literal beside it
-    if (Math.hypot(rest.x - slot.bx, rest.y - slot.by) > 0.02 ||
-        Math.hypot(pressed.x - slot.ax, pressed.y - slot.ay) > 0.02 ||
-        Math.abs(slot.r - need) > 0.02)
-      console.warn(`§43: the plate's riser slot is off the derived track — literal (${slot.ax}, ${slot.ay})→(${slot.bx}, ${slot.by}) r ${slot.r} vs derived (${pressed.x.toFixed(2)}, ${pressed.y.toFixed(2)})→(${rest.x.toFixed(2)}, ${rest.y.toFixed(2)}) r ${need.toFixed(2)}`);
-  }
   // §71 — the schematic tier draws the pusher from these spans (the
   // userData.r convention, generalized to a slider): everything here is
   // group-local, so the proxy slides with the press exactly as the metal
@@ -38247,8 +38996,16 @@ const ALARM_DRIVER_POST_R = ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_PAWL_BOSS_R;
 // The SLOT spans the pin's own reach over the stroke — d at the foot, and
 // hypot(d, travel/2) at either end — plus one margin of end freedom, because a
 // pin that bottoms in its slot stops being a pin in a slot.
-const ALARM_DRIVER_SLOT_IN = ALARM_DRIVE_OFFSET - CLEAR_MARGIN;
-const ALARM_DRIVER_SLOT_OUT = Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF) + CLEAR_MARGIN;
+// §261 2c: and the pin's reach is the LINKAGE's now — crank B's arc, not the
+// straight track, so the span is read off the arc it actually rides (in the
+// cluster's frame, where the slot is cut). The ends are §163's stations
+// exactly; between them the arc is the linkage's.
+const _alarmPinR = ALARM_LINKAGE.path.map((s) => {
+  const P = ALARM_LINKAGE.pinBAt(s.T), v = new THREE.Vector3(P.x, P.y, 0).applyMatrix4(_alarmFoldInv);
+  return Math.hypot(v.x - ALARM_COL_POS.x, v.y - ALARM_COL_POS.y);
+});
+const ALARM_DRIVER_SLOT_IN = Math.min(..._alarmPinR) - CLEAR_MARGIN;
+const ALARM_DRIVER_SLOT_OUT = Math.max(..._alarmPinR) + CLEAR_MARGIN;
 // The pawl lives in the skirt's band, which is the only place it can meet the
 // teeth; group-local to the driver, which sits a stratum below it. §169 —
 // CENTRED in that band rather than filling it. It used to be the band's own
@@ -38552,6 +39309,12 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       // identical from the outside.
       const v = new THREE.Vector3();
       movement.updateWorldMatrix(true, true);
+      // §261 2c: read in the CLUSTER's frame. The band and the wheel's axis
+      // below are the pre-fold ones, so each vertex goes to world and back
+      // through the fold — which also puts the unfolded pusher where it truly
+      // stands relative to the folded driver, rather than where it once did.
+      const toCluster = alarmFoldMatrix.clone().invert();
+      const m = new THREE.Matrix4();
       alarmSwitchUnit.traverse((o) => {
         if (!o.isMesh || o.userData.schematic) return;
         // The WHEEL is not an obstacle to its own pawl — the nose is meant to
@@ -38563,7 +39326,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         const pts = [];
         let zLo = Infinity, zHi = -Infinity;
         for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          v.fromBufferAttribute(pos, i).applyMatrix4(m.multiplyMatrices(toCluster, o.matrixWorld));
           zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z);
           const dx = v.x - ALARM_COL_POS.x, dy = v.y - ALARM_COL_POS.y;
           if (Math.hypot(dx, dy) <= ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) pts.push([dx, dy]);
@@ -38710,7 +39473,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   alarmColDriverGroup = new THREE.Group();
   alarmColDriverGroup.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_DRIVER_BOT_Z);
   alarmColDriverGroup.rotation.z = ALARM_DRIVER_REST_A;
-  alarmSwitchUnit.add(alarmColDriverGroup);
+  alarmSwitchFold.add(alarmColDriverGroup);
   const driver = G.makeColumnDriver({
     boreR: ALARM_COL_STUD_R + PIVOT_BORE_CLEAR,          // the stud it turns on, plus the movement's running clearance
     hubR: ALARM_COL_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U,
@@ -38985,8 +39748,8 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       '§192: the pawl rocks through its whole stroke on every press and is closed by alarmColPawlSpring, an in-plane cantilever blade of the movement’s one flat-spring stock, coplanar with the pawl in the skirt band — clamped to a stud on the driver’s third arm (cut to reach it; the ground §163’s blade never had), bearing on the tail’s flank at the boss’s edge. Its free angle is derived a full working stroke inside the metal, so it is never slack (asserted at the build)',
       'alarmColPawlSpring');
     declareRestoring('Alarm switch', 'alarmColDriver', 'two-way',
-      '§163: the driver is pushed AND pulled by the pusher’s pin, which runs captive in its radial slot — the slot has metal on both flanks, so the return is driven rather than sprung',
-      ['input:the alarm pusher', 'Alarm switch/alarmPusherStem']);
+      '§163: the driver is pushed AND pulled by the pin that runs captive in its radial slot — the slot has metal on both flanks, so the return is driven rather than sprung. Since §261 2c the pin is crank B’s (the linkage carries the press under the dial), so crank B drives it both ways',
+      ['Alarm switch/alarmLinkageCrankBIn', 'Alarm switch/alarmLinkageCrankBIn']);
   }
 
 }
@@ -43587,13 +44350,14 @@ const CASE_SECTORS = (() => {
 // its vertices never visit, probe-ledge-occupancy's own lesson.
 await breathe(303);
 const BACK_SWEPT_ALLOWANCE = new Map([
-  // The one unit whose pose-net z-max exceeds its build pose, measured by
-  // probe-back-envelope's build-pose product: the alarm link's beak rides
-  // to 12.161 at `alarm` f=0 against 12.061 at build (+0.099 — the lift is
-  // the axis's own and rode §192's descent unchanged). Declared 0.12 —
-  // rounded UP past the excess so no clearance row the glass derivation
-  // produces can sit at exactly CLEAR_MARGIN and flicker.
-  ['Alarm link', 0.12],
+  // EMPTY since §261 2c. Its one row was the alarm link (+0.12): the beak rode
+  // the column tops above the three-quarter plate and lifted 0.099 past its
+  // build pose on the `alarm` axis. The fold took the column wheel under the
+  // dial and the beak with it — the link's highest metal now stands at -2.000,
+  // under the base plate, and no part of it reaches this envelope at any pose
+  // (probe-back-envelope's product 1 lists no 'Alarm link' row at all). A row
+  // for a unit with no metal here is a declaration of nothing, so it is gone
+  // rather than left to round the glass up.
 ]);
 // ...and the movers that MIGRATE RADIALLY — metal that stands in bins its
 // build pose leaves empty, which no per-unit z allowance can express
@@ -43614,69 +44378,19 @@ const BACK_SWEPT_REGIONS = [
   // (r 34.6–42.0 at 12.07, r 42.0–44.5 at 11.54) described the over-plate
   // hammer and are retired with it — a row nothing measures is a stale
   // declaration, and this table's rule is that every row is measured.
-  // The switch cluster's press/castellation swing spreads its metal across
-  // r 17.3–31.3 (measured swept 10.629 at r 17.2–18.0 against build 9.872 —
-  // the inner bins are where this row is LIVE, because the tower's own
-  // metal already fills the outer ones at build pose). One row at the
-  // unit's swept ceiling, rounded up past margin flicker — conservative in
-  // the inner bins, which is §192's choice and is kept.
-  //
-  // RE-AUTHORED, and it was wrong in TWO independent ways — one of them
-  // from the day it was written. Measured by booting §192's own tree
-  // (a178fd7) beside HEAD:
-  //
-  //                       §192 (a178fd7)    HEAD        Δ
-  //   three-quarter plate top   8.9945     9.5554    0.5609
-  //   alarmColCastellations    11.4678    12.0287    0.5609
-  //   alarmJumper* (sautoir)   11.5112    12.0722    0.5609
-  //
-  //   · IT WENT STALE by 0.5609. Nothing in this unit changed — every
-  //     constant the tower's height derives from is bit-identical across
-  //     those two trees. TQ_BOT_Z is MEASURED off whatever stands under the
-  //     three-quarter plate, something below it grew, the plate rose, and
-  //     the whole strike tower rode up 1:1 while this authored row stayed
-  //     where §192 typed it.
-  //   · AND IT NAMED THE WRONG MEMBER, before it went anywhere. §192 wrote
-  //     "the unit's swept ceiling (the castellation top)" and 11.47 was
-  //     exactly the castellation top — but §173's sautoir already stood
-  //     11.5112, 0.0434 ABOVE it, in that same tree. The row was never the
-  //     unit's ceiling; it was the second-tallest member of its own band.
-  //     probe-192-tier-price's control could not catch that, because the
-  //     control was derived from the same sentence as the row — it looked
-  //     up `alarmColCastellations` BY NAME. §226 re-derives it from the
-  //     scan's own per-unit maximum, so the member is free to change hands.
-  //
-  // Nothing was ever unsafe — the fold below is a FLOOR, and the build-pose
-  // scan already read 12.029/12.072 in every outer bin — which is exactly
-  // why both errors survived, and why the assert in BACK_ENVELOPE below now
-  // exists. Re-authoring costs no glass: envMaxAll is the alarm link's
-  // 12.742 either way, and every bin this row lifts lies well inside rStep.
-  //
-  // §226 route A moved it again, and the assert below is what said so — on
-  // the first boot of the thickened driver, before any sweep ran: the whole
-  // tower rides the driver's section, so this row rises with it. Re-authored
-  // from the measurement it printed, 12.3559 (alarmJumperBlade — still the
-  // sautoir, not the castellations), rounded up past margin flicker.
-  //
-  // TODO 69 KEYS IT TO THE PLATE, because this is the third time it has gone
-  // stale for the same reason: the whole tower stands on the three-quarter
-  // plate's top face and rides it 1:1 (the 0.5609 above; TODO 69's thicker
-  // plate moved it 1.1000). So the row is the plate top plus the tower's
-  // measured RISE above it, not a height typed in world z: the sautoir's
-  // 12.3559 over §226's plate top 9.5454 is 2.8105, kept as the 2.8146 the
-  // last re-authoring rounded to. A plate that moves now carries the row.
-  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: TQ_TOP_Z + 2.8146 },
-  // TODO 69 — the column driver's pawl-spring stud, which the build pose cannot
-  // see: it rides the driver, and the press swings it outward, so at the build
-  // pose it reads r 39.755–40.088 and at alarmPress it reaches 40.418 (measured
-  // over all 14 axes × 33 poses; only alarmPress carries it past 40.088). Its
-  // top is 12.0125 in TODO 69's tree, 1.3671 over the plate top it rides
-  // (ALARM_DRIVER_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN), rounded up here. Under the
-  // 0.303 mm plate it stood 1.1 lower and the pane never cared. At 0.720 mm the
-  // glass step's wall, sized from the build pose, stopped at 40.24, and the
-  // battery's expectedContacts read the swung stud 0.0696 under the outer pane
-  // (alarmPress f 0.125, floor 0.15). This row widens the step to cover it.
-  { unit: 'Alarm switch', r0: 39.7, r1: 40.5, z: TQ_TOP_Z + 1.368 },
+  // §261 2c RETIRED the two 'Alarm switch' rows that stood here — the
+  // castellation/sautoir ceiling over r 17.3–31.3 (TQ_TOP_Z + 2.8146, the
+  // tower's own rise over the plate) and the column driver's pawl-spring stud
+  // over r 39.7–40.5 (TQ_TOP_Z + 1.368). Both described metal standing ON the
+  // three-quarter plate, and the fold carried every member of it — the column
+  // wheel, its jumper, the driver and its stud — under the dial. What the unit
+  // keeps between the plates (the pusher's two cranks, the rod and the riser)
+  // tops out at 8.904, under the plate's own underside, so neither band holds
+  // any of its metal above the plate top at any pose: probe-back-envelope's
+  // gate holds that swept, not this sentence. Left in, the first row alone
+  // would have held the glass 1.078 over the tallest metal there is (13.119
+  // declared against the striking wheel's 12.041) — the height the fold was
+  // built to give back.
   // The striking wheel's rotation is not axisymmetric at bin scale: measured
   // swept 10.982 at r 33.6–34.5 against build 10.582 (probe-back-envelope,
   // 43 poses, 2026-09-14).
@@ -43717,7 +44431,20 @@ const BACK_SWEPT_REGIONS = [
   // making it two-sided today would red a shipped boot on a question nobody
   // has answered yet. probe-192-tier-price reports this row rather than
   // judging it, and says why.
-  { unit: 'Alarm switch', r0: 48.3, r1: 49.6, z: 10.08 },
+  //
+  // §261 2c ANSWERED IT, because the fold made it the cased depth's governor:
+  // with the tower gone, this row alone set the skirt, the skirt the band's
+  // back face, and the band the ring. Measured over the pose net (every axis
+  // at f ∈ {0, ¼, ½, ¾, 1}), the unit's highest metal over the skirt annulus is
+  // the pusher's case liner, 8.614 at r 49.97 (`position` f=1) — 1.466 under
+  // the 10.08 declared, which is the over-statement §226 suspected. Re-authored
+  // to it, rounded up past margin flicker, and WIDENED to r 50.1: the liner
+  // stands at 49.97, outboard of the old r1 49.6, so the row had never covered
+  // the metal it was answering for. probe-back-envelope now sweeps the skirt
+  // annulus below the plate top too (the skirt descends there now), and that
+  // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
+  // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
+  { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: 8.62 },
 ];
 const BACK_ENVELOPE = await (async () => {
   // §234 — THE BIN IS NO WIDER THAN THE ONE MARGIN. A reader asks this
@@ -43830,9 +44557,8 @@ const BACK_ENVELOPE = await (async () => {
     }
   }
   // The probe's two controls, mirrored as boot warns (rule 6 — silence when
-  // healthy): the alarm link tower is the envelope's governor and must be
-  // seen; the alarm barrel lives under the plate since §112 and must not
-  // stand above it. Either failing means the scan measured the wrong thing
+  // healthy): the envelope's governor must be seen; the alarm barrel lives
+  // under the plate since §112 and must not stand above it. Either failing means the scan measured the wrong thing
   // — and a glass derived from a wrong scan is metal through the movement.
   await breathe(306);
   {
@@ -43856,17 +44582,30 @@ const BACK_ENVELOPE = await (async () => {
       });
       return z;
     };
-    const tower = zOf('Alarm link'), barrel = zOf('Alarm barrel');
-    // §192 — the governor's floor is DERIVED now, where it was a snapshot
-    // (`> 13.0`, from a 13.877 build the strike-tower descent retired): the
-    // link's beak arm rides the column tops, so its tower must stand at
-    // least above the stack it rides — a threshold that tracks every future
-    // re-station instead of naming one build's number.
-    const colStackTop = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H;
-    if (!(tower > colStackTop))
-      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)}, under the column `
-        + `stack top ${colStackTop.toFixed(3)} it rides — the envelope's governor was not seen, and a glass derived `
-        + 'from this scan is unfounded');
+    const barrel = zOf('Alarm barrel');
+    // §261 2c — THE GOVERNOR IS FOUND, NOT NAMED. Until the fold this was the
+    // alarm link's tower held over the column stack it rode (§192's derived
+    // floor, which replaced §187's typed 13.0). The fold took both under the
+    // dial — the link now tops out at -2.000 — so the control naming them
+    // would read a unit that has left the envelope, and naming its successor
+    // (the striking wheel, 12.041) is the snapshot §192 retired. What the
+    // control has to establish is unchanged: the scan SAW the tallest metal.
+    // So the governor is the unit the scan itself ranks tallest (allowance
+    // taken back off), and an independent vertex walk of that unit must read
+    // the same top — a scan that skipped meshes, read the wrong frame or lost
+    // its unit attribution parts from the walk — and it must stand over the
+    // plate's measured top, or the scan found no tenant to derive a glass from.
+    let gov = null, govScan = -Infinity;
+    for (const [u, arr] of unitBins) {
+      if (!labelEntries.some((e) => e.name === u)) continue;
+      const top = Math.max(...arr) - ((BACK_SWEPT_ALLOWANCE.get(u)) || 0);
+      if (top > govScan) { govScan = top; gov = u; }
+    }
+    const govWalk = gov ? zOf(gov) : -Infinity;
+    if (!gov || !(Math.abs(govWalk - govScan) <= 1e-6) || !(govScan > tqTop))
+      console.warn(`§187: the back-envelope scan's governor ${gov ?? '(none)'} reads ${govScan.toFixed(3)} against `
+        + `${govWalk.toFixed(3)} walked off its own metal, over the plate top ${tqTop.toFixed(3)} — the envelope's `
+        + 'governor was not seen, and a glass derived from this scan is unfounded');
     if (barrel > tqTop)
       console.warn(`§187: the alarm barrel reads ${barrel.toFixed(3)}, above the three-quarter plate's measured top `
         + `${tqTop.toFixed(3)} — §112 put it below; the scan or the tree is wrong`);
@@ -43881,7 +44620,7 @@ const BACK_ENVELOPE = await (async () => {
     // watch gets thicker — a real cost, and one nobody would otherwise
     // attribute to the gong.
     await breathe(309);
-    const govern = Math.max(tower, zOf('Alarm switch'), zOf('Alarm striking wheel'));
+    const govern = Math.max(govWalk, zOf('Alarm switch'), zOf('Alarm striking wheel'));
     for (const name of ['Alarm hammer', 'Alarm lifting lever']) {
       const z = zOf(name);
       if (z > govern + 1e-6)
@@ -44051,7 +44790,19 @@ const CASE_DIMS = (() => {
   // 0.005 inside the margin of the shipped 12.077, and this term is what pays
   // for it, in case height rather than in the hammer. Inert on any movement
   // whose outboard metal already clears the threaded mouth.
-  const zPaneFloor = envMaxOver(RA - 2 * CLEAR_MARGIN, CASE_R_OUT) + CLEAR_MARGIN;
+  // §261 2c — the glass's two faces are cut ONE margin over measured metal,
+  // and since the fold took the tower and the over-stated skirt row away there
+  // is nothing between them and it: the pane stands exactly a margin over the
+  // hammer's plane, the step exactly a margin over the striking wheel. The
+  // battery reads such a face at 0.15 less float noise — the vertices are
+  // float32 (an ulp of ~1e-6 at this z) and a mover's pose is not bit-identical
+  // to the build's — so undeclaredClearance reported the hammer, its lever and
+  // the striking staff 'under' the margin they were built to (measured, the
+  // shortfall is 7e-8). A guard three orders past that noise keeps a designed
+  // margin from reading as a breach; at 1e-4 u it is 0.04 µm of depth, far
+  // under CASE_HEIGHT_STEP_MM.
+  const CASE_GLASS_FLOAT_GUARD = 1e-4;
+  const zPaneFloor = envMaxOver(RA - 2 * CLEAR_MARGIN, CASE_R_OUT) + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD;
   const zMidBack = Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
   // The bore wall must still contain the pusher's bore window whole
   // (§186's boredProfiles carries the degenerate-piece assert; this is the
@@ -44098,7 +44849,7 @@ const CASE_DIMS = (() => {
   //  · rStep is the outer edge of the outermost bin too tall for the pane,
   //    plus one CLEAR_MARGIN so the step's wall clears the bin's own metal.
   const envMaxAll = envMaxOver(0, CASE_R_OUT);
-  const zStepUnder = envMaxAll + CLEAR_MARGIN;
+  const zStepUnder = envMaxAll + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD;
   const zStepTop = zStepUnder + CASE_CRYSTAL_T;
   let rStep = 0;
   for (const b of envBins) if (b.z !== null && b.z + CLEAR_MARGIN > zMidBack) rStep = Math.max(rStep, b.r1);
@@ -44150,7 +44901,7 @@ const CASE_DIMS = (() => {
     // measured floors against it at boot.
     tubeClearR: plateR * (1 + G.PLATE_BEVEL_F),
     // §186 — the clamp screws (derived at the ~1810 block, built by makeCase).
-    clampN: CASE_CLAMP_N, clampR: R_CLAMP, clampAz: CASE_CLAMP_AZ, clampEng: CASE_CLAMP_ENG,
+    clampN: CASE_CLAMP_N, clampR: R_CLAMP, clampAz: CASE_CLAMP_AZ, clampEng: CASE_CLAMP_ENG, glassFloatGuard: CASE_GLASS_FLOAT_GUARD,
     zCrystInner, zCrystOuter,
     zBezelOuter: zCrystOuter - 0.25 / UNIT_MM,  // bezel lip over the crystal edge
     zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
@@ -52710,23 +53461,7 @@ function tick(t) {
       // the readability check.
       const profile = alarmLinkNoseSurface(alarmColShownA + ALARM_LINK_BEAK_OFF);
       const noseDrop = Math.min(colH * (1 - profile), F.seatNoseDrop);
-      alarmLinkParts.beakArm.rotation.y = F.noseRySign * (noseDrop / alarmLinkParts.beakLen);
-      // The tail's far end — the rod's station — rises by the lever ratio;
-      // the rod rides it, foot-down onto the rim finger.
-      const rodLift = noseDrop * (alarmLinkParts.tailLen / alarmLinkParts.beakLen) * Math.sign(F.rodTravel);
-      alarmLinkParts.rod.position.z = alarmLinkParts.rodZRest + rodLift + subDrillZ(alarmLinkParts.rod); // §10 level 2: the drill composes here
-      // The rim finger follows its contact with the rod's foot: the
-      // envelope solve, seeded deterministically along the derived roll
-      // span so the answer is a pure function of the pose.
-      const rodFoot = F.rodFootRest + rodLift;
-      const tSeed = Math.max(0, Math.min(1, F.rodTravel === 0 ? 0 : (rodFoot - F.rodFootRest) / F.rodTravel));
-      const roll = F.solveEnv(F.rimPair, rodFoot, F.rollRest + (F.rollArmed - F.rollRest) * tSeed, 'rim tick');
-      alarmLinkParts.shaft.rotation.x = roll;
-      // TODO 206 — the arming spring's blade bears on the arm's tip corner at
-      // every roll: its frame is aimed through the corner the roll puts there
-      // (the feeler blade's rigid-drawn convention), so the spring is a
-      // consequence of the shaft's angle, never a pose of its own.
-      alarmLinkParts.armingBlade.rotation.z = alarmLinkParts.armingBlade.userData.aim(roll);
+      const roll = poseAlarmLinkRun(noseDrop);
       // The ring stands where the fork's groove holds its pin — the travel
       // READ from that engagement, not assigned to it. Positive both ways:
       // the pin lifts the ring through the groove's ceiling and lowers it
@@ -53088,6 +53823,20 @@ function tick(t) {
     if (alarmPusherReturnFrames)
       alarmPusherReturnSpring.geometry =
         alarmPusherReturnFrames[Math.round(alarmPusherT * (alarmPusherReturnFrames.length - 1))];
+    // §261 2c — the linkage, driven by the press it carries: crank A by the
+    // riser in its slot, crank B by the rod, the rod between their joints. The
+    // carry above read the same solve, so the wheel and the cranks cannot part.
+    {
+      const L = ALARM_LINKAGE, T = alarmPusherT;
+      const thA = L.crankAAt(T), thB = L.crankBAt(T);
+      alarmLinkageParts.crankA.rotation.z = thA;
+      alarmLinkageParts.crankB.rotation.z = thB;
+      const cA = Math.cos(thA), sA = Math.sin(thA), cB = Math.cos(thB), sB = Math.sin(thB);
+      const ax = L.PA.x + cA * (L.EA.x - L.PA.x) - sA * (L.EA.y - L.PA.y), ay = L.PA.y + sA * (L.EA.x - L.PA.x) + cA * (L.EA.y - L.PA.y);
+      const bx = L.PB.x + cB * (L.EB.x - L.PB.x) - sB * (L.EB.y - L.PB.y), by = L.PB.y + sB * (L.EB.x - L.PB.x) + cB * (L.EB.y - L.PB.y);
+      alarmLinkageParts.rod.position.x = ax; alarmLinkageParts.rod.position.y = ay;
+      alarmLinkageParts.rod.rotation.z = Math.atan2(by - ay, bx - ax);
+    }
   }
   // TODO 144 — THE CROWN'S CREEP IS GONE WITH ITS CAUSE. §29 step 2 gave the
   // pulled crown a visible back-turn: "the rod creeps with the hour back-drive
@@ -53332,6 +54081,86 @@ function tick(t) {
 // margin, a revolve onto something that is not a rotor — is a fact about the
 // declaration and warns at boot; the motion half needs a posed movement and is
 // the census's.
+// §261 2c — THE LINK'S RUN, as one function of the nose's drop: tick() poses
+// it through this, and so does the jumper census's lawed row (JMP_SITE_MOVERS,
+// below), which is why it is a function — the fold sited the lay shaft inside
+// the jumper's region, so the run is judged over its own travel rather than
+// read as built. The body is tick's, moved here unchanged.
+const poseAlarmLinkRun = (noseDrop, drill = true) => {
+  const F = alarmLinkParts.forward;
+  alarmLinkParts.beakArm.rotation.y = F.noseRySign * (noseDrop / alarmLinkParts.beakLen);
+  // The tail's far end — the rod's station — rises by the lever ratio;
+  // the rod rides it, foot-down onto the rim finger.
+  const rodLift = noseDrop * (alarmLinkParts.tailLen / alarmLinkParts.beakLen) * Math.sign(F.rodTravel);
+  alarmLinkParts.rod.position.z = alarmLinkParts.rodZRest + rodLift + (drill ? subDrillZ(alarmLinkParts.rod) : 0); // §10 level 2: the drill composes here
+  // The rim finger follows its contact with the rod's foot: the
+  // envelope solve, seeded deterministically along the derived roll
+  // span so the answer is a pure function of the pose.
+  const rodFoot = F.rodFootRest + rodLift;
+  const tSeed = Math.max(0, Math.min(1, F.rodTravel === 0 ? 0 : (rodFoot - F.rodFootRest) / F.rodTravel));
+  const roll = F.solveEnv(F.rimPair, rodFoot, F.rollRest + (F.rollArmed - F.rollRest) * tSeed, 'rim tick');
+  alarmLinkParts.shaft.rotation.x = roll;
+  // TODO 206 — the arming spring's blade bears on the arm's tip corner at
+  // every roll: its frame is aimed through the corner the roll puts there
+  // (the feeler blade's rigid-drawn convention), so the spring is a
+  // consequence of the shaft's angle, never a pose of its own.
+  alarmLinkParts.armingBlade.rotation.z = alarmLinkParts.armingBlade.userData.aim(roll);
+  return roll;
+};
+// §261 2c — THE DRIVER, PAWL AND BLADE as one function of the press, for the
+// same census: the fold sited the column driver inside the jumper's region.
+// tick() writes the driver's angle from the press fraction and solves the pawl
+// against the saw at the wheel's shown angle; a press is the stroke in (the
+// wheel carried with the driver, the pawl bottomed) and the stroke back (the
+// wheel banked a step on, the pawl riding out over a tip), so the law's one
+// parameter walks the cycle: u ∈ [0, ½] is T 0 → 1 carrying, (½, 1] is T 1 → 0
+// banked. The held angle is taken at 0 — the seat is periodic in the tooth
+// pitch the wheel steps by, so every held step poses the same metal.
+const poseAlarmDriverCycle = (u) => {
+  const banked = u > 0.5, T = banked ? 2 - 2 * u : 2 * u;
+  const shown = banked ? ALARM_COL_STEP : Math.min(ALARM_COL_STEP, alarmDriverCarry(T));
+  const d = alarmColDriverGroup.userData.drive;
+  alarmColDriverGroup.rotation.z = alarmDriverAngleAt(T);
+  const phi = alarmPawlSeatPhi(alarmColDriverGroup.rotation.z + d.postAz - (ALARM_LOCK_ENGAGED - shown));
+  if (phi !== null) alarmColPawlGroup.rotation.z = d.postAz + phi;
+  const a = alarmColPawlSpringBlade.userData.aim;
+  const rot = alarmColPawlGroup.rotation.z, c = Math.cos(rot), sn = Math.sin(rot);
+  const bx = alarmColPawlGroup.position.x + a.bearX * c - a.bearY * sn;
+  const by = alarmColPawlGroup.position.y + a.bearX * sn + a.bearY * c;
+  alarmColPawlSpringBlade.rotation.z = Math.atan2(by - a.ry, bx - a.rx);
+  alarmColPawlSpringBlade.scale.x = Math.hypot(bx - a.rx, by - a.ry);
+};
+// A lawed row's stroke is how far its FASTEST point travels over u ∈ [0, 1],
+// which sets the sampling (no point more than CLEAR_MARGIN/2 between samples).
+// For these two it is MEASURED off the law itself: the path length, summed
+// over a fine walk, of the vertex that moves most per step — an over-count of
+// the true fastest point's arc, which is the safe side for a sample spacing.
+const jmpStrokeOf = (roots, pose, n = 64) => {
+  const saved = roots.map((r) => [r.position.clone(), r.rotation.clone(), r.scale.clone()]);
+  const meshes = [];
+  for (const r of roots) r.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData.schematic) meshes.push(o); });
+  const v = new THREE.Vector3(), w = new THREE.Vector3();
+  let prev = null, len = 0;
+  for (let k = 0; k <= n; k++) {
+    pose(k / n);
+    for (const r of roots) r.updateWorldMatrix(true, true);
+    const now = meshes.map((m) => m.matrixWorld.clone());
+    if (prev) {
+      let step = 0;
+      meshes.forEach((m, i) => {
+        const pos = m.geometry.attributes.position;
+        for (let j = 0; j < pos.count; j += Math.max(1, Math.floor(pos.count / 64))) {
+          v.fromBufferAttribute(pos, j).applyMatrix4(now[i]); w.fromBufferAttribute(pos, j).applyMatrix4(prev[i]);
+          step = Math.max(step, v.distanceTo(w));
+        }
+      });
+      len += step;
+    }
+    prev = now;
+  }
+  roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.scale.copy(saved[i][2]); r.updateWorldMatrix(true, true); });
+  return len;
+};
 const jmpRotorNamed = (root, name) => {
   let hit = null;
   root.traverse((o) => { if (!hit && o.name === name && o.userData && o.userData.r > 0 && o.userData.teeth > 0) hit = o; });
@@ -53397,7 +54226,16 @@ const JMP_SITE_MOVERS = [
   { name: 'hack rod', kind: 'bounded', roots: [hackRod], bound: 2.72 },                 // 2.7278
   { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, alarmHand], bound: 0.81 },   // 0.8124, the small-seconds body
   { name: 'alarm feeler', kind: 'bounded', roots: [alarmFeelerUnit], bound: 0.33 },     // 0.3344, alarmFeelerTip
-  { name: 'alarm link', kind: 'bounded', roots: [alarmLinkUnit], bound: 1.46 },         // 1.4671, alarmLinkCentrePin
+  // §261 2c — the link's run and the column driver are LAWED: the fold sited
+  // the lay shaft and the driver inside the jumper's region (the link's old
+  // bounded row read its fork-end neck at 0, against the 1.46 it was declared
+  // at from the old site). The link's still metal — hangers, post, sleeve —
+  // does not move and needs no row.
+  { name: 'alarm link run', kind: 'lawed',
+    roots: [alarmLinkParts.beakArm, alarmLinkParts.rod, alarmLinkParts.shaft, alarmLinkParts.armingBlade],
+    pose: (u) => poseAlarmLinkRun(u * alarmLinkParts.forward.seatNoseDrop, false) },
+  { name: 'column driver', kind: 'lawed', roots: [alarmColDriverGroup, alarmColPawlGroup, alarmColPawlSpringBlade],
+    pose: poseAlarmDriverCycle },
   // TODO 214 moved the yoke to the lever's side of the stem, into the census's
   // view: the yoke stays this far off the region the whole net over…
   { name: 'yoke', kind: 'bounded', roots: [yokeGroup], bound: 0.81 },                  // 0.8147, yokeBoss at crown 44/48
@@ -53407,6 +54245,8 @@ const JMP_SITE_MOVERS = [
 // the yoke's station, which every pose keeps between the seat and the pull
 // (a cam-over lifts the clutch by at most a tooth height, far inside the
 // fork's stroke). Its tip is the fastest point: the tail pin's stroke.
+for (const r of JMP_SITE_MOVERS) if (r.kind === 'lawed' && r.stroke === undefined && r.pose && (r.name === 'alarm link run' || r.name === 'column driver'))
+  r.stroke = jmpStrokeOf(r.roots, r.pose);
 JMP_SITE_MOVERS.push({ name: 'yoke spring', kind: 'lawed', roots: [yokeSpringBlade], stroke: YK_SPRING.stroke_u,
   pose: (u) => { const aim = _ykBladeAim(YOKE_A_SEAT + u * (YOKE_A_FULL - YOKE_A_SEAT)); yokeSpringBlade.rotation.z = aim.ang; yokeSpringBlade.scale.x = aim.len; } });
 const JMP_SITE_SAT = 2, JMP_SITE_CAPD_W = 0.02;
@@ -53650,7 +54490,7 @@ const JMP_SITE = await (async () => {
   const lawedSamples = [];
   const unitOf = (o) => (labelEntries.find((e) => under(o, e.obj)) || {}).name || null;
   for (const L of LAWED) {
-    const saved = L.roots.map((r) => [r.position.clone(), r.rotation.clone()]);
+    const saved = L.roots.map((r) => [r.position.clone(), r.rotation.clone(), r.scale.clone()]);
     const recs = new Map();
     for (const r of L.roots) r.traverse((o) => {
       if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o) || recs.has(o)) return;
@@ -53671,7 +54511,7 @@ const JMP_SITE = await (async () => {
         });
       }
     }
-    L.roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.updateWorldMatrix(true, true); });
+    L.roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.scale.copy(saved[i][2]); r.updateWorldMatrix(true, true); });
     lawedSamples.push({ name: L.name, samples: n + 1 });
   }
   const swungSamples = [];
@@ -54989,6 +55829,7 @@ window.__clock = {
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec
   get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get alarmLinkage() { return ALARM_LINKAGE; }, // §261 2c — the pusher's two cranks and rod: the solved geometry and its forward kinematics
   get lineLaws() { return ALARM_LINK_LAWS; }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
@@ -55514,6 +56355,13 @@ window.__clock = {
     apertureR: CASE_DIMS.apertureR, rStep: CASE_DIMS.rStep,
     zStepUnder: CASE_DIMS.zStepUnder, paneInner: CASE_DIMS.zMidBack,
     skirtBot: CASE_DIMS.zSkirtBot, skirtID: CASE_DIMS.skirtID, skirtOD: CASE_DIMS.skirtOD,
+    // §261 2c — the skirt arm's thread engagement, which probe-261-height-ledger
+    // had IMPLIED as paneInner − skirtBot. That is the engagement only while
+    // the skirt arm governs the band's back face; the fold handed it to the
+    // pane floor, and the implied figure then read 2.971 for a 1.847 thread.
+    clampEng: CASE_DIMS.clampEng,
+    // ...and the float guard the pane and the step stand over their margin by
+    floatGuard: CASE_DIMS.glassFloatGuard,
   },
   // §158 Gate 0 — THE RESERVE TRAIN DECLARES ITS OWN TEETH. `probe-reserve-mesh`
   // is built to refuse any silhouette reading whose gap count disagrees with the

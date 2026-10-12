@@ -153,11 +153,12 @@ export function backChain(m, bins, eng, ringRise, keyRise) {
     : { z: clampTop, by: 'the clamp screws\' heads (measured)' };
   const skirtBot = skirtBand.z + CM;
   const outboard = envMaxOver(bins, m.glass.apertureR - 2 * CM, CASE_WIDTH_MAX);
-  const paneFloor = outboard.z + CM;
+  const G = m.glass.floatGuard ?? 0;   // §261 2c: the glass faces' float guard over the margin (main.js CASE_GLASS_FLOAT_GUARD)
+  const paneFloor = outboard.z + CM + G;
   const skirtArm = skirtBot + eng;
   const midBack = Math.max(skirtArm, paneFloor);
   const all = envMaxOver(bins, 0, CASE_WIDTH_MAX);
-  const stepUnder = all.z + CM;
+  const stepUnder = all.z + CM + G;
   const z0 = midBack + ringRise;
   return {
     skirtBand, skirtBot, outboard, paneFloor, skirtArm, midBack,
@@ -182,7 +183,12 @@ export function backMost(m, chain, base) {
 }
 export function ledger(m) {
   const g = m.glass;
-  const eng = g.paneInner - g.skirtBot;                 // implied; held constant across mutants below
+  // The skirt arm's thread engagement, read off the build (CASE_CLAMP_ENG) when
+  // the tree exposes it. The older fallback IMPLIES it as paneInner − skirtBot,
+  // which is the engagement only while the skirt arm governs the band's back
+  // face — §261's fold handed that face to the pane floor, and the implied
+  // figure then read 2.971 for a 1.847 thread. Held constant across mutants.
+  const eng = g.clampEng ?? (g.paneInner - g.skirtBot);
   const ringRise = m.caseParts.caseBack.zMax - g.paneInner;
   const keyRise = (m.caseParts.caseBackKey?.zMax ?? m.caseParts.caseBack.zMax) - m.caseParts.caseBack.zMax;
   const back = backChain(m, m.env.bins, eng, ringRise, keyRise);

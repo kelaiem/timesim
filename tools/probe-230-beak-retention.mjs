@@ -73,8 +73,9 @@ const R = await page.evaluate(async () => {
   // flank's push along the pin is the very load the retention carries — TODO
   // 239), and the tail rides the rod's top, cut from the tail's own underside.
   // Both stand at or within a hairline of touching through the stroke, and a
-  // slide into them measures the cam, not the pivot.
-  const WORKING = new Set(['alarmLinkBeak⇄alarmColCastellations', 'alarmLinkBeak⇄alarmColBase', 'alarmLinkBeakTail⇄alarmLinkRod']);
+  // slide into them measures the cam, not the pivot. (§261 2c: the same-side
+  // beak has no tail — its BAR presses the rod between pivot and nose.)
+  const WORKING = new Set(['alarmLinkBeak⇄alarmColCastellations', 'alarmLinkBeak⇄alarmColBase', 'alarmLinkBeakTail⇄alarmLinkRod', 'alarmLinkBeakBar⇄alarmLinkRod']);
   const slide = (lever, dir) => {
     const base = arm.position.clone();
     const yW = new THREE.Vector3(0, 1, 0).applyQuaternion(arm.getWorldQuaternion(new THREE.Quaternion()));

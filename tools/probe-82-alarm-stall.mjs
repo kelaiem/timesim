@@ -72,7 +72,10 @@ const V = await page.evaluate(async () => {
   const ring = need('alarmSelRing');
   const pin = need('alarmLinkCentrePin');
   const rimCrank = need('alarmLinkCrankRim');
-  const tail = need('alarmLinkBeakTail');
+  // §261 2c: the same-side lever has no tail — the rod presses the BAR itself,
+  // between the pivot and the nose, so the member it bends is the bar's span
+  // from the pivot (its arm group's origin, folded to the world) to the rod
+  const tail = need('alarmLinkBeakBar');
 
   const wpos = (o) => new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
   const snap = () => {
@@ -84,7 +87,7 @@ const V = await page.evaluate(async () => {
       ringM: ring.matrixWorld.toArray(),
       pinW: wpos(pin).toArray(),
       rimW: wpos(rimCrank).toArray(),
-      tailW: wpos(tail).toArray(),   // the mesh CENTRE, so it reads half the tip's travel — informational only; the blade is loaded at its TIP, which moves with the rod
+      tailW: wpos(tail).toArray(),   // the bar's mesh CENTRE — informational only; the bar is loaded where the rod presses it
       alarmOn: clock.alarmDebug.alarmOn,
       colSteps: clock.alarmDebug.alarmColShownA,
     };
@@ -258,10 +261,16 @@ const V = await page.evaluate(async () => {
   // factor, which is the mistake this line exists to avoid.
   const coupling = rodEnd && span ? (span.L_u + rodEnd.L_u) / rodEnd.L_u : 1;
 
-  // Tail blade section, read off its own mesh.
+  // The bar's section, read off its own mesh in its own frame: x is its length,
+  // y its width (one tooth), z its depth — the direction the rod loads it. Its
+  // loaded span is the plan distance from the pivot (the arm group's origin)
+  // to the rod's axis, both read in the world.
   tail.geometry.computeBoundingBox();
   const tb = tail.geometry.boundingBox;
-  const td = [tb.max.x - tb.min.x, tb.max.y - tb.min.y, tb.max.z - tb.min.z].sort((a, b) => a - b);
+  const barW = tb.max.y - tb.min.y, barH = tb.max.z - tb.min.z;
+  clock.resetInputs(); clock.setPose({ ...BASE, alarmOn: 0 }); clock.scene.updateMatrixWorld(true);
+  const pivW = wpos(tail.parent), rodW = wpos(rod);
+  const barSpan = Math.hypot(pivW.x - rodW.x, pivW.y - rodW.y);
 
   const ringTravel = posed.ring;
   const n = (d) => (ringTravel > 1e-9 ? d / ringTravel : NaN);   // δ_member per unit ring travel
@@ -280,8 +289,8 @@ const V = await page.evaluate(async () => {
   // ALARM_LINK_TAIL_H, tailLen) computes, invisible while the tail carried
   // under 1% of the chain's compliance and a 4% disagreement between the two
   // paths the moment §234 Landing 5's shaft stopped governing them.
-  add('beak tail blade', kRect(td[1], td[0], td[2], 3), n(posed.rod),
-    'flat blade, rectangular by construction; loaded at the tail tip by the rod reaction, bending about its thin dimension');
+  add('beak bar, pivot to rod', kRect(barW, barH, barSpan, 3), n(posed.rod),
+    '§261 2c: the same-side lever\'s bar, cantilevered from the pivot to where the rod presses it, bending about its depth (the load\'s direction)');
   if (rodEnd) add('shaft, rod-end overhang', kBend(rodEnd.r_u || shaftR, rodEnd.L_u, 3) / coupling, n(posed.rod),
     `coupled by (L+a)/a = ${coupling.toFixed(3)}; ABSENT from every previously published figure`);
   if (forkEnd) add('shaft, fork-end overhang', kBend(forkEnd.r_u || shaftR, forkEnd.L_u, 3), n(posed.pin),
