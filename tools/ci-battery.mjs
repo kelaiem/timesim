@@ -1001,7 +1001,7 @@ const SPEC_POINTS = [
   //   · 16 is inside the [16, 17] window where solveKeyless reports the
   //     side sign nearly degenerate (balance −0.48 off the stem line). It
   //     WARNS HEAVILY, not once — the §234 fold's refusals repeat per bevel
-  //     pair, 83 warns before §261's landing 2c and 93 after — and it is the
+  //     pair, 83 warns before §261's landing 2c, 93 after, 97 at §276 — and it is the
   //     SLOWEST declared boot: no station near the setting cap clears the
   //     jumper there, so the siting scan refuses almost every candidate
   //     (463 of 720 tested at §261 2c). §276 made that cheap again; this is
