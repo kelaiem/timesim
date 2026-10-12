@@ -33127,3 +33127,33 @@ only.
    float tolerance, which proves the fix.
 3. Re-measure every reader of the wheel's tops: the lock rocker's face row,
    `alarmHandoffs`' two nose rows, and the bar's lift sweep.
+
+## 244. probe-261-fold-site's control K9 cannot run once the fold has landed, so the study exits 2 on main
+
+**Found re-validating [TODO 240].** TODO 240 re-pointed the study's link reference to
+`alarm link tangential`, and the re-validation ran it.
+`tools/probe-261-fold-site.mjs` exits 2 with
+`K9 not run: no single fold on the stop wheel's pitch (null) or the link's inputs are missing`.
+
+The failure predates TODO 240. A detached `origin/main` (fb36a51e) gives the same
+exit and the same K9 line. The two runs' outputs differ only by the one mesh TODO
+240 added (82 excluded meshes against 81) and by third-decimal changes in its
+nearest-tenant figures.
+
+The study was written to site the cluster BEFORE the fold (§261 step 4, landing
+one), and it searches for the one fold angle a whole stop pitch inside the
+window it finds. With the cluster already folded under the dial, the window it
+reads contains the cluster's own image. `PHI_FOLD_DEG` comes back null, and
+`beakSite`, which K9 holds, refuses to run. K1–K8 still run and pass.
+
+**Why it is debt.** INDEX files this probe as ACCEPTANCE, because it can exit
+non-zero. On main it exits 2 whatever the tree, so it no longer distinguishes a
+broken fold from a sound one. A control that cannot run is a control nobody has
+seen fire (CLAUDE.md).
+
+**Fix path.** Pick one:
+- Read the shipped fold's angle (`ALARM_FOLD_PHI`, published on `__clock`) when
+  the search finds none, and run `beakSite` against it, so K9 again holds the
+  shipped lay shaft.
+- Or retire the study as the record of a landed siting, and move K9's
+  shaft-corridor test into an instrument about the shipped shaft.
