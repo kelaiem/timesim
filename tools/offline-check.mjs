@@ -107,7 +107,7 @@ const touchTree = (dir, when) => {
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;
@@ -349,7 +349,11 @@ try {
   // TODO 226 step 3a — 72: src/escapement.js, the lever escapement's one solve
   // (stones, faces and the wheel's angle off them), which main.js imports
   // statically. One module for the app, so it adds one, on the same precedents.
-  check('release: precache complete', counts === 72, `${counts}/72`);
+  // §219 tier two (a) — 73: technic.html, an ADOPTED document like the
+  // primer. Its one module import, src/layout.js, is already here through
+  // main.js, so the page adds one. This count is also what catches a
+  // mis-listed technic seed: drop it from ADOPTED and this reads 72.
+  check('release: precache complete', counts === 73, `${counts}/73`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');

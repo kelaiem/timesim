@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>timesim — the technic fork</title>
+<!--
+  BUILT §219 tier two (a) — THE TECHNIC FORK DRAWN. The four rows src/layout.js
+  declares in TECHNIC_FORK, built as module-1 gears on axles and turned through
+  their own tooth counts. A separate page on purpose: LEGO gears are 3–4× the
+  watch's, so the fork cannot sit inside the movement (the scoping note's F4),
+  and nothing here touches the sim or its battery.
+
+  WHAT IS A CLAIM AND WHAT IS DRAWN. Claims, read from layout.js and never
+  restated: every tooth count, every pair's kind and mesh class
+  (catalogueMesh), every parallel centre distance (half the sum of the counts,
+  on the 4 mm lattice), and every shaft's speed, which is the running product
+  of the pairs before it (standing rule 2). Drawn, and not LEGO's CAD: the
+  involute outline, the cross bore, the 4 mm face, the 8 mm layer step, the
+  turntable's face teeth and the colours. No beams or frames are drawn —
+  whether a chain can be BRACED is the LDraw export's question (§219 tier
+  three), not this page's. Right-angle meshes are placed but not phased.
+-->
+<style>
+:root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.45 system-ui,sans-serif}
+#panel{position:fixed;top:12px;inset-inline-start:12px;width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-sizing:border-box;z-index:2}
+h1{font-size:15px;margin:0 0 6px}
+p{margin:6px 0;color:var(--dim)}
+.gen{display:flex;gap:6px;margin:8px 0}
+button{background:#272b33;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:4px 10px;cursor:pointer;font:inherit}
+button[data-state="on"]{background:#3a4352;border-color:#5b6b85}
+.row{border-top:1px solid var(--line);padding:7px 0}
+.row b{display:block}
+code{font:12px ui-monospace,monospace;color:#c8d3e6}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
+#log{white-space:pre-wrap;color:var(--bad);font:12px ui-monospace,monospace}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js",
+  "three/addons/controls/OrbitControls.js": "./vendor/OrbitControls.js" } }
+</script>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+<link rel="alternate icon" href="./favicon.png" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+</head>
+<body>
+<div id="panel">
+  <h1>The technic fork</h1>
+  <p>The movement's going, motion and reserve trains re-toothed to LEGO Technic's
+  module-1 catalogue. Each chain below multiplies EXACTLY to the ratio the steel
+  train serves, and each shaft turns by the product of the tooth counts before
+  it.</p>
+  <div class="gen" id="gens"></div>
+  <label>speed <input id="speed" type="range" min="0" max="4" step="0.05" value="1" /></label>
+  <div id="rows"></div>
+  <p>Tooth counts, kinds, centre distances and ratios come from the declared rows.
+  Part shapes, faces and colours are drawn, not LEGO's CAD; beams and frames are
+  not drawn. The 90° meshes on the 60T turntable's bevel top are placed but their
+  teeth are not phased. The escapement, balance and fusee have no LEGO row and
+  are not here.</p>
+  <div id="log"></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CATALOGUES, TECHNIC_FORK, catalogueMesh, technicForkTargets,
+         ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
+
+const logEl = document.getElementById('log');
+const log = (m) => { logEl.textContent += m + '\n'; console.warn(m); };
+window.addEventListener('error', (e) => log('ERROR: ' + e.message));
+
+// --- drawn dimensions (mm). None of these is a catalogue fact; each is the
+// smallest choice that draws the claim legibly, and the comment says which.
+const FACE = 4;          // a gear's drawn face — half a stud, so two layers never touch
+const LAYER = 8;         // one stud: the axial step between a shaft's gears, so a
+                         // compound pair sits in two planes and each mesh is coplanar
+const AXLE_ARM = 2.4, AXLE_WEB = 0.9;   // the cross: 4.8 across the arms, 1.8 thick (drawn)
+const CELL = [190, 160]; // rows on a 2×2 grid; each cell wider and taller than the largest chain
+const PRESSURE = 20 * Math.PI / 180;    // involute pressure angle, drawn
+
+const COLOR = { spur: 0xa0a5a9, doubleBevel: 0xd9c08c, turntable: 0x6c6e68, turntableBevel: 0x3b3d40, axle: 0x1c1d20 };
+
+// --- the outline: a module-1 involute spur with a cross bore -----------------
+const inv = (a) => Math.tan(a) - a;
+function spurShape(N) {
+  const rp = N / 2, ra = rp + 1, rr = rp - 1.25, rb = rp * Math.cos(PRESSURE);
+  const r0 = Math.max(rb, rr);
+  const half = (r) => Math.max(0.02, Math.PI / (2 * N) + inv(PRESSURE) - inv(Math.acos(Math.min(1, rb / r))));
+  const pts = [];
+  const S = 6;
+  for (let i = 0; i < N; i++) {
+    const c = (2 * Math.PI * i) / N;
+    pts.push([rr, c - half(r0)]);
+    for (let k = 0; k <= S; k++) { const r = r0 + (ra - r0) * k / S; pts.push([r, c - half(r)]); }
+    for (let k = S; k >= 0; k--) { const r = r0 + (ra - r0) * k / S; pts.push([r, c + half(r)]); }
+    pts.push([rr, c + half(r0)]);
+  }
+  const shape = new THREE.Shape(pts.map(([r, a]) => new THREE.Vector2(r * Math.cos(a), r * Math.sin(a))));
+  shape.holes.push(crossPath());
+  return shape;
+}
+function crossPath() {
+  const a = AXLE_ARM, b = AXLE_WEB;
+  return new THREE.Path([[a, b], [b, b], [b, a], [-b, a], [-b, b], [-a, b], [-a, -b], [-b, -b], [-b, -a], [b, -a], [b, -b], [a, -b]]
+    .map(([x, y]) => new THREE.Vector2(x, y)));
+}
+const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0 });
+const extrude = (shape, depth) => {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 8 });
+  g.translate(0, 0, -depth / 2);
+  return g;
+};
+
+// One gear, local z its axis. A turntable's bevel top is a disc with face
+// teeth on its +z side, the side the pinion rides.
+function gearMesh(row) {
+  const g = new THREE.Group();
+  if (row.kind === 'turntableBevel') {
+    const R = row.teeth / 2;
+    const disc = new THREE.Shape(); disc.absarc(0, 0, R - 1, 0, Math.PI * 2, false); disc.holes.push(crossPath());
+    g.add(new THREE.Mesh(extrude(disc, FACE), mat(COLOR.turntableBevel)));
+    const tooth = new THREE.BoxGeometry(3, Math.PI * 2 * R / row.teeth * 0.5, 1.6);
+    for (let i = 0; i < row.teeth; i++) {
+      const a = (2 * Math.PI * i) / row.teeth, t = new THREE.Mesh(tooth, mat(COLOR.turntableBevel));
+      t.position.set((R - 1.5) * Math.cos(a), (R - 1.5) * Math.sin(a), FACE / 2 + 0.8); t.rotation.z = a;
+      g.add(t);
+    }
+  } else {
+    g.add(new THREE.Mesh(extrude(spurShape(row.teeth), FACE), mat(COLOR[row.kind] ?? COLOR.spur)));
+  }
+  return g;
+}
+
+// --- the chain: shafts placed by the mesh rule, turned by the tooth counts ----
+const Z = new THREE.Vector3(0, 0, 1), X = new THREE.Vector3(1, 0, 0);
+// The side a parallel successor sits on is a function of the axis alone, so a
+// parallel pair's two shafts share one frame and their line of centres is
+// local +x from the driver — which is what lets the phase below be exact.
+const sideOf = (u) => (Math.abs(u.z) > 0.9 ? X.clone() : Z.clone());
+function newShaft(parent, pos, u, speed) {
+  const w = sideOf(u), v = new THREE.Vector3().crossVectors(u, w);
+  const frame = new THREE.Group();
+  frame.position.copy(pos);
+  frame.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(w, v, u));
+  const rotor = new THREE.Group(); frame.add(rotor); parent.add(frame);
+  return { frame, rotor, pos: pos.clone(), u: u.clone(), w, speed, lo: 0, hi: 0 };
+}
+function addGear(shaft, row, along, phase) {
+  const g = gearMesh(row);
+  g.position.z = along; g.rotation.z = phase;
+  shaft.rotor.add(g);
+  shaft.lo = Math.min(shaft.lo, along); shaft.hi = Math.max(shaft.hi, along);
+}
+function addAxle(shaft) {
+  const len = shaft.hi - shaft.lo + LAYER;
+  for (const [sx, sy] of [[2 * AXLE_ARM, 2 * AXLE_WEB], [2 * AXLE_WEB, 2 * AXLE_ARM]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, len), mat(COLOR.axle));
+    m.position.z = (shaft.lo + shaft.hi) / 2; shaft.rotor.add(m);
+  }
+}
+
+const BEVEL = new Set(['bevel', 'turntableBevel']);
+function buildChain(gen, chain, parent) {
+  const cat = CATALOGUES[gen];
+  const find = (t) => cat.counts.find((c) => c.teeth === t);
+  const shafts = [];
+  let s = newShaft(parent, new THREE.Vector3(), Z, 1); shafts.push(s);
+  let along = 0, phase = 0, offLattice = [];
+  for (const [ta, tb] of chain) {
+    const a = find(ta), b = find(tb), m = a && b && catalogueMesh(a, b, cat);
+    if (!m) { log(`${gen}: ${ta}:${tb} is not an admissible mesh — layout.js's boot assert should have said so`); return null; }
+    addGear(s, a, along, phase);
+    const at = s.pos.clone().addScaledVector(s.u, along);
+    let next, nextPhase = 0;
+    if (m.class === 'right-angle') {
+      if (!BEVEL.has(a.kind)) { log(`${gen}: ${ta}:${tb} — a bevel DRIVEN member is not drawn (no declared row needs one)`); return null; }
+      // The pinion rides the face teeth at the turntable's pitch radius, its
+      // axis radial (the turntable's side vector), above the toothed face.
+      const pos = at.clone().addScaledVector(s.w, ta / 2).addScaledVector(s.u, FACE / 2 + 1.6 + tb / 2);
+      next = newShaft(parent, pos, s.w, s.speed * ta / tb);
+    } else {
+      // Parallel: half the sum of the counts, the lattice distance catalogueMesh
+      // admitted. A turntable rides its own frame, so its distance may be off
+      // the lattice, and the panel says so.
+      if (m.class === 'parallel-exempt' && m.cd % cat.lattice_mm !== 0) offLattice.push(`${ta}:${tb} at ${m.cd} mm`);
+      const pos = at.clone().addScaledVector(s.w, m.cd);
+      next = newShaft(parent, pos, s.u, -s.speed * ta / tb);
+      // Exact mesh phase for external gears in one frame: with the driver's
+      // tooth offset pa from the line of centres, the driven gear's gap faces
+      // it when Na·pa + Nb·(pb − π) ≡ π (mod 2π); and since the driven turns
+      // −Na/Nb as fast, the relation holds at every angle, not just at rest.
+      nextPhase = Math.PI + (Math.PI - ta * phase) / tb;
+    }
+    addGear(next, b, 0, nextPhase);
+    shafts.push(next); s = next; along = LAYER; phase = 0;
+  }
+  for (const sh of shafts) addAxle(sh);
+  return { shafts, offLattice };
+}
+
+// --- the page ---------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x14161a);
+const cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 5000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+const controls = new OrbitControls(cam, renderer.domElement);
+// The panel covers the left of a wide screen, so the view's centre moves right
+// by half its width; on a narrow one the panel is the page and nothing moves.
+function fit() {
+  renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight;
+  const shift = innerWidth > 800 ? document.getElementById('panel').offsetWidth / 2 + 12 : 0;
+  cam.setViewOffset(innerWidth, innerHeight, -shift, 0, innerWidth, innerHeight);
+  cam.updateProjectionMatrix();
+}
+addEventListener('resize', fit); fit();
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x202018, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(80, -120, 260); scene.add(sun);
+
+const targets = technicForkTargets();   // three rows; the reserve's is derived in main.js from its sweep
+const gens = Object.keys(CATALOGUES).filter((k) => CATALOGUES[k]);
+let world = null, built = [], inputAngle = 0;
+
+function labelSprite(text) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 64;
+  const x = c.getContext('2d'); x.font = '600 34px system-ui, sans-serif'; x.fillStyle = '#d9dde3'; x.fillText(text, 4, 44);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+  s.scale.set(80, 10, 1); s.center.set(0, 0.5); s.position.set(-30, 52, 0);
+  return s;
+}
+
+function build(gen) {
+  if (world) scene.remove(world);
+  world = new THREE.Group(); scene.add(world); built = [];
+  const rowsEl = document.getElementById('rows'); rowsEl.textContent = '';
+  TECHNIC_FORK.rows.forEach((row, k) => {
+    const chain = row.chains[gen];
+    const band = new THREE.Group(); band.position.set((k % 2) * CELL[0], -Math.floor(k / 2) * CELL[1], 0); world.add(band);
+    band.add(labelSprite(`${k + 1}. ${row.key}`));
+    // The lattice under the chain's plane: 8 mm studs, 4 mm half-studs.
+    const g8 = new THREE.GridHelper(160, 20, 0x3a4150, 0x2a3040), g4 = new THREE.GridHelper(160, 40, 0x20252e, 0x20252e);
+    for (const g of [g4, g8]) { g.rotation.x = Math.PI / 2; g.position.set(40, 0, -LAYER); band.add(g); }
+    const res = buildChain(gen, chain, band);
+    if (!res) return;
+    built.push(res);
+    const product = chain.reduce((acc, [a, b]) => ratMul(acc, ratQ(a, b)), ratQ(1));
+    const t = targets[row.key];
+    const verdict = t ? (ratEq(product, t) ? `<span class="ok">= the steel invariant</span>` : `<span class="bad">≠ the steel invariant ${ratStr(t)}</span>`)
+                      : `<span>held against the reserve's scale by main.js</span>`;
+    const div = document.createElement('div'); div.className = 'row';
+    div.innerHTML = `<b>${k + 1}. ${row.key}</b><code>${chain.map(([a, b]) => `${a}:${b}`).join(' × ')}</code> = <code>${ratStr(product)}</code> ${verdict}`
+      + `<br><span style="color:var(--dim)">${row.derivedFrom}</span>`
+      + (res.offLattice.length ? `<br><span style="color:var(--dim)">off the lattice, on a turntable's own frame: ${res.offLattice.join(', ')}</span>` : '')
+      + `<br>measured <code data-meter="${built.length - 1}">—</code>`;
+    rowsEl.appendChild(div);
+  });
+  for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
+  const box = new THREE.Box3().setFromObject(world), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  controls.target.copy(c);
+  cam.position.set(c.x, c.y - size.y * 0.75, c.z + Math.max(size.x, size.y) * 1.05);
+  controls.update();
+  inputAngle = 0;
+}
+
+const gensEl = document.getElementById('gens');
+for (const g of gens) {
+  const b = document.createElement('button'); b.textContent = g.replace('technic_', ''); b.dataset.gen = g;
+  b.addEventListener('click', () => build(g)); gensEl.appendChild(b);
+}
+const speedEl = document.getElementById('speed');
+const params = new URLSearchParams(location.search);
+build(gens.includes(params.get('gen')) ? params.get('gen') : 'technic_2026');
+
+// The input shaft turns once a minute at speed 1, which turns the centre→fourth
+// row's output once a second — the steel fourth wheel's own rate.
+const INPUT_RAD_S = (2 * Math.PI) / 60;
+let last = performance.now();
+renderer.setAnimationLoop((now) => {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  inputAngle += dt * INPUT_RAD_S * Number(speedEl.value);
+  built.forEach((res, i) => {
+    for (const sh of res.shafts) sh.rotor.rotation.z = sh.speed * inputAngle;
+    const out = res.shafts[res.shafts.length - 1].rotor.rotation.z, inp = res.shafts[0].rotor.rotation.z;
+    const el = document.querySelector(`[data-meter="${i}"]`);
+    if (el && inp) el.textContent = `output ÷ input = ${Math.abs(out / inp).toFixed(4)}`;
+  });
+  renderer.render(scene, cam);
+});
+window.__technic = { build, get built() { return built; } };
+</script>
+</body>
+</html>
