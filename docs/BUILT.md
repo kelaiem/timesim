@@ -35278,12 +35278,17 @@ and holds four claims:
   recorded at every stop; then every stop is reached by a jump from the first
   stop and by a jump back from the last, and compared. The control: entering a
   stop cold (`scriptJump`, the view-only entry §142 added) is NOT the
-  straight-through state. The comparison's first run read 2 of 11 stops
-  different, both `alarmOn`: the pusher is a press, so `alarmOn` trails
-  `setAlarm` by its travel in the frame loop, and the straight-through side was
-  read mid-press. Both sides are read after the same wait now; the lesson is the
-  one this repo keeps recording, that an instrument can fail by comparing two
-  sides at different times.
+  straight-through state. All 11 stops agree in both directions, 25 checks in
+  all. The comparison needed two corrections, both about the alarm, and both
+  were the instrument's: (1) `alarmOn` trails `setAlarm` by the pusher's travel
+  in the frame loop, and a software-GL frame is long, so the jump side is read
+  by polling for the state the route authored, up to 15 s, not after a fixed
+  wait; (2) a straight run is not a valid reference for `alarmOn` at all — it
+  spends route and sim time at an armed alarm, which can ring and disarm itself
+  (measured: the straight side read opposite to the route's authored value at
+  stops 4, 6, 7, 8 and 10 with no jump involved). So that one key is held to what
+  the route authored (the last `alarm` any stop up to the target wrote) and every
+  other key to the straight run.
 - **One-shots.** On Tour: a wind runs when its stop is landed on; going back over
   it and landing again adds nothing; skipping from the first stop to the last
   applies the winds passed, summed (7 turns).
