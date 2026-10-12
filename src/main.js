@@ -5211,6 +5211,9 @@ const COCK_PLATE_TAP_R = G.screwTapR(COCK_SCREW_HEAD_R);
 // (the balance cock's legs; the pillar tenons next). recutBackPlate() re-runs
 // the one cut with these added — see it at the balance cock's build.
 const BACK_PLATE_LATE_HOLES = [];
+// §261 2c — and SLOTS on the same rule: the alarm linkage's pin track is solved
+// at the pusher's build, long after the plate is cut.
+const BACK_PLATE_LATE_SLOTS = [];
 // frame: the Object3D the screw is built in; top: the head's top face
 // (frame-local z, the value passed to makeScrews); headT: head height;
 // clamp: the thickness of the member the head clamps, below the head.
@@ -10106,7 +10109,7 @@ const backPlate = G.makeBackPlate(BACK_PLATE_CUT);
 // adds a late hole calls this after its push.
 await breathe(92);
 const recutBackPlate = () => {
-  const cut = G.makeBackPlate({ ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES] });
+  const cut = G.makeBackPlate({ ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES], slots: [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS] });
   backPlate.geometry.dispose();
   backPlate.geometry = cut.geometry;
   // TODO 172 — only the SLAB is swapped: the pockets' floors are children the
@@ -14294,7 +14297,9 @@ const tqSlots = [];
 // CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
 // derive long after this plate is cut — and the pusher build asserts the
 // derived track equals this slot (the §35/§68 tripwire pattern).
-tqSlots.push({ ax: 23.00, ay: -0.70, bx: 25.68, by: -0.78, r: 0.32 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module; §163 re-froze it TWICE — once when ALARM_PUSH_CHORD stopped being a literal, and again when the coupling moved the riser from the stem's inner end to the PIN's station, which straddles the foot of the perpendicular and so sits under the wheel rather than outside it; §170 re-froze it a fourth time when the press line was rotated to pass through the movement's centre — the slot is nearly TANGENTIAL to the old one, which is the point: the track's own direction turned by Δ)
+// (§261 2c retired the alarm pusher's riser slot that stood here: the fold took the
+// driver to the dial side, so the riser stops at the linkage's first crank between
+// the plates and nothing of the pusher crosses this plate any more.)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -37487,9 +37492,158 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 // rest station. It is not a small correction to the old law — it is a
 // different function with the same endpoints, and the difference is where the
 // wheel stands mid-press, which is half the poses the alarmPress axis visits.
-const alarmDriverCarry = (T) =>
+// §261 2c — THE PUSHER'S LINKAGE. The fold carries the driver to the dial side
+// and leaves the button where it is, so the stem's pin and the driver's slot no
+// longer share a line: two cranks and a rod carry one to the other (the owner's
+// call, 2026-10-12), a fold-added corner pair with its own P1 duties.
+//
+// WHERE IT RUNS IS FORCED. At the folded driver the pin's track lies INSIDE the
+// column wheel's footprint (r ≈ 5.1 from its axis, against a solid base to 5.7
+// and a saw to 6.4), so nothing can reach the slot from the dial side — the
+// wheel is in the way. In the cluster's own frame the pin always rose to the
+// driver from the PLATE side, through a slot in the three-quarter plate; folded,
+// it comes DOWN through a slot in the base plate, from between the plates. So
+// the whole linkage runs between the plates, both cranks on studs planted in the
+// base plate, and crank B's pin drops through the base plate into the driver.
+// tools/probe-261-fold-site.mjs searched the rod line over the interplate band
+// and the pose net (its 'slot' configuration) and these two numbers are its
+// pick at φ = 240°: the line's direction and offset (m·x = c), on the search's
+// own grid (1°, 0.5 u). Everything else derives from the two pin tracks.
+//
+// EXACT AT BOTH ENDS. A radial slot makes the driver's angle the pin's
+// AZIMUTH about the wheel (§163), so the carry depends only on where the pin
+// starts and stops, never on the path between. Crank B's pivot therefore
+// stands on the perpendicular BISECTOR of the folded track, its pin's arc
+// passing through both of today's stations; crank A takes the stem's pin in
+// its own radial slot, the same coupling; and crank B's input arm is SOLVED so
+// the rod closes the four-bar onto that arc's end at full press. The sweep is
+// then one column step by construction, exactly as §163's straight track gave
+// it, and the switch's drive line is untouched — the path between the ends is
+// the linkage's, and the tick reads it rather than the straight line.
+const ALARM_LINKAGE_ROD_DIR = 105 * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
+const ALARM_LINKAGE_ROD_C = 25.34;                             // and its offset, m·x = c (rotation about the centre leaves c)
+const ALARM_LINKAGE_SIDE = 1;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
+const ALARM_LINKAGE = (() => {
+  const m = { x: Math.cos(ALARM_LINKAGE_ROD_DIR), y: Math.sin(ALARM_LINKAGE_ROD_DIR) };
+  const dotv = (u, v) => u.x * v.x + u.y * v.y;
+  const perpv = (v) => ({ x: -v.y, y: v.x });
+  const rot = (P, X, th) => { const c = Math.cos(th), s = Math.sin(th), dx = X.x - P.x, dy = X.y - P.y; return { x: P.x + c * dx - s * dy, y: P.y + s * dx + c * dy }; };
+  const ang = (P, A, B) => Math.atan2((A.x - P.x) * (B.y - P.y) - (A.y - P.y) * (B.x - P.x), (A.x - P.x) * (B.x - P.x) + (A.y - P.y) * (B.y - P.y));
+  // the stem's pin stations (unfolded, between the plates) and their images
+  const base = { x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD, y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD };
+  const pinAt = (T) => ({ x: base.x + _pushU.x * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T), y: base.y + _pushU.y * (ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T) });
+  const p0 = pinAt(0), p1 = pinAt(1);
+  const fp = (P) => { const v = alarmFoldPoint(P.x, P.y, 0); return { x: v.x, y: v.y }; };
+  const q0 = fp(p0), q1 = fp(p1);
+  const n0 = perpv({ x: -_pushU.x, y: -_pushU.y });
+  // crank A: its pivot on the stem's normal at rest, its output arm square to
+  // the rod line and as long as its input — 1:1 at rest (the search's form)
+  const gA = dotv(m, n0), a = (ALARM_LINKAGE_ROD_C - dotv(m, p0)) / (gA - ALARM_LINKAGE_SIDE);
+  const PA = { x: p0.x + a * n0.x, y: p0.y + a * n0.y };
+  const EA = { x: PA.x - a * ALARM_LINKAGE_SIDE * m.x, y: PA.y - a * ALARM_LINKAGE_SIDE * m.y };
+  // crank B: on the folded track's bisector, at distance b; its input arm the
+  // foot of the perpendicular from the pivot to the rod line
+  const mq = { x: (q0.x + q1.x) / 2, y: (q0.y + q1.y) / 2 };
+  const nq = perpv({ x: (q1.x - q0.x), y: (q1.y - q0.y) }), nL = Math.hypot(nq.x, nq.y);
+  nq.x /= nL; nq.y /= nL;
+  // the search's crank B stood on the normal at q0, 1:1 at rest; here its pivot
+  // is the BISECTOR point nearest that one (the same b — q0's offset from the
+  // midpoint lies along the track, square to the normal), so its pin's arc
+  // passes through both stations
+  const bq = (ALARM_LINKAGE_ROD_C - dotv(m, q0)) / (dotv(m, nq) - ALARM_LINKAGE_SIDE);
+  const PB = { x: mq.x + bq * nq.x, y: mq.y + bq * nq.y };
+  const hB = dotv(m, PB) - ALARM_LINKAGE_ROD_C;
+  const uB = { x: -Math.sign(hB) * m.x, y: -Math.sign(hB) * m.y };      // toward the rod line, square to it
+  const geomAt = (rho) => {
+    const EB = { x: PB.x + rho * uB.x, y: PB.y + rho * uB.y };
+    return { PB, EB, rod: Math.hypot(EB.x - EA.x, EB.y - EA.y) };
+  };
+  // forward kinematics over the press: the stem's pin turns crank A (its
+  // azimuth about A — the slot), the rod is pinned at both ends, crank B turns
+  // to keep it that long (the branch continuous from rest), its pin rides the arc
+  const STEPS = 64;
+  const run = (g) => {
+    const rB = Math.hypot(g.EB.x - g.PB.x, g.EB.y - g.PB.y);
+    let EBprev = g.EB, thB = 0;
+    const out = [{ T: 0, thA: 0, thB: 0, EA, EB: g.EB }];
+    for (let i = 1; i <= STEPS; i++) {
+      const T = i / STEPS, thA = ang(PA, p0, pinAt(T)), EAt = rot(PA, EA, thA);
+      const dx = EAt.x - g.PB.x, dy = EAt.y - g.PB.y, D = Math.hypot(dx, dy);
+      const aa = (rB * rB - g.rod * g.rod + D * D) / (2 * D), h2 = rB * rB - aa * aa;
+      if (!(h2 >= 0)) return null;                        // the rod cannot reach: the linkage locks
+      const hh = Math.sqrt(h2), mx = g.PB.x + aa * dx / D, my = g.PB.y + aa * dy / D;
+      const c1 = { x: mx - hh * dy / D, y: my + hh * dx / D }, c2 = { x: mx + hh * dy / D, y: my - hh * dx / D };
+      const EBt = Math.hypot(c1.x - EBprev.x, c1.y - EBprev.y) < Math.hypot(c2.x - EBprev.x, c2.y - EBprev.y) ? c1 : c2;
+      thB = ang(g.PB, g.EB, EBt);
+      out.push({ T, thA, thB, EA: EAt, EB: EBt });
+      EBprev = EBt;
+    }
+    return out;
+  };
+  // closure: crank B's input arm is the one free length — it sets how far the
+  // rod's stroke turns crank B, and the turn must land the pin on q1 exactly.
+  // A longer arm turns less, so the miss rises with the arm; too short an arm
+  // and the rod cannot reach at all (the linkage locks). The root is bracketed
+  // by a scan from half to three times the 1:1 arm — the first sign change
+  // between two arms that both run — and bisected.
+  const target = ang(PB, q0, q1);
+  const miss = (rho) => { const r = run(geomAt(rho)); return r ? r[STEPS].thB - target : NaN; };
+  let lo = NaN, hi = NaN;
+  for (let f = 0.5; f < 3 && Number.isNaN(lo); f += 0.02) {
+    const u = Math.abs(hB) * f, v = Math.abs(hB) * (f + 0.02), mu = miss(u), mv = miss(v);
+    if (Number.isFinite(mu) && Number.isFinite(mv) && mu * mv <= 0) { lo = u; hi = v; }
+  }
+  if (Number.isNaN(lo)) console.warn(`§261 2c: the linkage's closure is not bracketed by any input arm from ${(Math.abs(hB) / 2).toFixed(3)} to ${(3 * Math.abs(hB)).toFixed(3)}`);
+  for (let k = 0; k < 100; k++) { const mid = (lo + hi) / 2; if (miss(lo) * miss(mid) <= 0) hi = mid; else lo = mid; }
+  const rho = (lo + hi) / 2, g = geomAt(rho), path = run(g);
+  const b = bq;
+  return { m, a, b, PA, EA, PB: g.PB, EB: g.EB, rod: g.rod, p0, p1, q0, q1, pinAt, path,
+    armA: Math.abs(a), armBin: Math.hypot(g.EB.x - g.PB.x, g.EB.y - g.PB.y), armBout: Math.hypot(q0.x - g.PB.x, q0.y - g.PB.y),
+    thBTotal: target, closure: miss(rho),
+    // crank B's pin at press fraction T (world plan), interpolated on the FK
+    pinBAt(T) {
+      const f = Math.max(0, Math.min(1, T)) * STEPS, i = Math.min(STEPS - 1, Math.floor(f)), u = f - i;
+      const th = path[i].thB + (path[i + 1].thB - path[i].thB) * u;
+      return rot(g.PB, q0, th);
+    },
+    crankAAt(T) { return ang(PA, p0, pinAt(T)); },
+    crankBAt(T) { const f = Math.max(0, Math.min(1, T)) * STEPS, i = Math.min(STEPS - 1, Math.floor(f)), u = f - i; return path[i].thB + (path[i + 1].thB - path[i].thB) * u; },
+  };
+})();
+if (!(Math.abs(ALARM_LINKAGE.closure) < 1e-9))
+  console.warn(`§261 2c: the linkage does not close — crank B's turn misses the folded track's end by ${ALARM_LINKAGE.closure.toExponential(3)} rad`);
+// the carry: the azimuth crank B's pin sweeps about the wheel, read in the
+// CLUSTER's frame (the fold's inverse), signed by the ratchet's drive exactly
+// as §163's straight track was — so carry(1) is one step by the closure above
+const _alarmFoldInv = alarmFoldMatrix.clone().invert();
+const _carryAz = (P) => { const v = new THREE.Vector3(P.x, P.y, 0).applyMatrix4(_alarmFoldInv); return Math.atan2(v.y - ALARM_COL_POS.y, v.x - ALARM_COL_POS.x); };
+const _carryAz0 = _carryAz(ALARM_LINKAGE.q0);
+const alarmDriverCarry = (T) => {
+  let d = _carryAz(ALARM_LINKAGE.pinBAt(T)) - _carryAz0;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  return alarmColumnWheel.userData.ratchetDrive * d;
+};
+// §163's straight track, kept as the REFERENCE the linkage is held to at its
+// two ends (and the moment-arm arithmetic below is still that coupling's)
+const alarmDriverCarryLine = (T) =>
   Math.atan2(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T)
   - Math.atan2(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF);
+if (Math.abs(alarmDriverCarry(1) - alarmDriverCarryLine(1)) > 1e-9 || Math.abs(alarmDriverCarry(0)) > 1e-12)
+  console.warn(`§261 2c: the linkage's carry ${alarmDriverCarry(1).toFixed(9)} at full press parts from §163's ${alarmDriverCarryLine(1).toFixed(9)} — the pin does not end where the straight track did`);
+{
+  // monotone over the press: a crank that reverses mid-stroke would walk the
+  // pawl back, and a rod near dead centre turns a press into a lock
+  let prev = -Infinity, worstTx = Math.PI / 2;
+  for (const s of ALARM_LINKAGE.path) {
+    const c = alarmDriverCarry(s.T);
+    if (c < prev - 1e-12) { console.warn(`§261 2c: the linkage's carry reverses at T ${s.T.toFixed(3)}`); break; }
+    prev = c;
+    const rx = s.EB.x - s.EA.x, ry = s.EB.y - s.EA.y, bx = s.EB.x - ALARM_LINKAGE.PB.x, by = s.EB.y - ALARM_LINKAGE.PB.y;
+    const tx = Math.abs(Math.asin(Math.max(-1, Math.min(1, (rx * by - ry * bx) / (Math.hypot(rx, ry) * Math.hypot(bx, by))))));
+    worstTx = Math.min(worstTx, tx);
+  }
+  ALARM_LINKAGE.worstTransmission = worstTx;
+}
 // The MOMENT ARM is no longer one number. By virtual work the driver's is
 // ds/dθ = (d² + s²)/d, smallest at the foot and largest at either end of the
 // stroke — 5.01226 → 5.37213, a 7.18% swing, and the same 7.18% appears as the
@@ -37656,6 +37810,25 @@ let ALARM_PUSH_ABUT_S = null;
 if (ALARM_PUSH_GUIDE_BORE <= ALARM_PUSH_STEM_R)
   console.warn(`TODO 87: the guide bore ${ALARM_PUSH_GUIDE_BORE} does not clear the stem ${ALARM_PUSH_STEM_R} — the pusher cannot slide in its own bearing`);
 const ALARM_PUSH_AXIS_REL = (TQ_BOT_Z - CLEAR_MARGIN - ALARM_PUSH_GUIDE_HALF) - ALARM_LOCK_Z;
+// §261 2c — the linkage's planes, stacked up from the reach bar the riser
+// rises off: the cranks' arms one margin over the bar's top face, the rod lying
+// ON the arms (it is pinned through both, so its underside meets their top
+// faces at the joints, the beak-post precedent). Sections: §50's floor in the
+// thin direction, one ratchet tooth across (the width §226 gave every lever in
+// this complex, ALARM_PUSH_REACH_W) — P1 sizing against the press is the
+// linkage's transfer rows, below.
+const ALARM_LINKAGE_ARM_T = STOCK_MIN_U;
+const ALARM_LINKAGE_ARM_W = ALARM_PUSH_REACH_W;
+const ALARM_LINKAGE_ARM_Z = (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL) + ALARM_PUSH_REACH_T / 2 + CLEAR_MARGIN + ALARM_LINKAGE_ARM_T / 2;
+const ALARM_LINKAGE_ROD_Z = ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T;
+// the studs the cranks turn on (planted in the base plate, the alarm's studs'
+// rule) at §50's floor, the hub one floor of wall round its running bore, and
+// crank B's pin shank the lathe's L/D target over its own length (TURN_LD_TARGET)
+const ALARM_LINKAGE_STUD_R = STOCK_MIN_U;
+const ALARM_LINKAGE_HUB_R = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U;
+const ALARM_LINKAGE_SHANK_R = Math.max(STOCK_MIN_R10,
+  ((ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - (ALARM_U_FLOOR + CLEAR_MARGIN)) / (2 * TURN_LD_TARGET));
+const alarmLinkageParts = { crankA: null, crankB: null, rod: null };
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
 registerSub('Alarm switch', 'Column wheel', alarmColSpin); // §10 level 2
@@ -37845,7 +38018,10 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   {
     // TODO 11 tranche five: riser stock across the FLATS (see STOCK_MIN_R10) —
     // the 0.16 radius read 0.1153 mm on the 10-gon, under the floor.
-    const riserTop = ALARM_DRIVER_TOP_Z - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // group-local: the post runs to the driver's top face
+    // §261 2c: the riser no longer climbs to the driver (folded to the dial
+    // side) — it rises only into crank A's slot, the linkage's first member,
+    // in the plane just over this bar (ALARM_LINKAGE_ARM_Z, below)
+    const riserTop = (ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // group-local: through crank A's arm
     const riserBot = -ALARM_PUSH_REACH_T / 2;                                    // seated on the bar's underside
     const drop = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, riserTop - riserBot, 10), MATS.steel);
     drop.name = 'alarmPusherRiser';
@@ -37888,6 +38064,118 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
         console.warn(`§231: the reach bar is cut ${ALARM_PUSH_REACH_W.toFixed(4)} wide against a buckling floor of `
           + `${wFloor.toFixed(4)} — the tooth no longer clears the load it was chosen over`);
     }
+  }
+  // §261 2c — THE LINKAGE'S METAL (the solve is ALARM_LINKAGE, at the carry
+  // law). Two cranks on studs planted in the base plate and a rod between them,
+  // all between the plates in the band just over the reach bar; crank A takes
+  // the riser in a radial slot (the driver's own coupling, §163), crank B's
+  // output arm carries the pin down through a slot in the base plate into the
+  // folded driver's slot. Each crank is a rigid group posed about its stud by
+  // the solve's forward kinematics at the press fraction (the tick).
+  {
+    const L = ALARM_LINKAGE;
+    const T_ = ALARM_LINKAGE_ARM_T, W_ = ALARM_LINKAGE_ARM_W;
+    const armMesh = (name, from, to, extra = 0, slot = null) => {
+      // an arm from `from` to `to` (world plan), cut in its own frame along +x,
+      // square ends overlapping the hub and the joint by half its width;
+      // `slot` = { s0, s1, hw } along the arm, a stadium cut through it
+      const len = Math.hypot(to.x - from.x, to.y - from.y) + extra;
+      const sh = new THREE.Shape();
+      sh.moveTo(-W_ / 2, -W_ / 2); sh.lineTo(len + W_ / 2, -W_ / 2); sh.lineTo(len + W_ / 2, W_ / 2); sh.lineTo(-W_ / 2, W_ / 2); sh.closePath();
+      if (slot) {
+        const h = new THREE.Path();
+        h.moveTo(slot.s0, -slot.hw); h.lineTo(slot.s1, -slot.hw);
+        h.absarc(slot.s1, 0, slot.hw, -Math.PI / 2, Math.PI / 2, false);
+        h.lineTo(slot.s0, slot.hw);
+        h.absarc(slot.s0, 0, slot.hw, Math.PI / 2, 3 * Math.PI / 2, false);
+        sh.holes.push(h);
+      }
+      const g = new THREE.ExtrudeGeometry(sh, { depth: T_, bevelEnabled: false, curveSegments: 6 });
+      g.translate(0, 0, -T_ / 2);
+      const m = new THREE.Mesh(g, MATS.blueSteel);
+      m.name = name;
+      m.rotation.z = Math.atan2(to.y - from.y, to.x - from.x);
+      return m;
+    };
+    const stud = (name, P) => {
+      const top = ALARM_LINKAGE_ARM_Z + T_ / 2, bot = ALARM_U_FLOOR - 0.5;     // planted 0.5 into the base plate, the alarm studs' rule
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINKAGE_STUD_R, ALARM_LINKAGE_STUD_R, top - bot, 16), MATS.nickel);
+      m.name = name; m.rotation.x = Math.PI / 2; m.position.set(P.x, P.y, (top + bot) / 2);
+      alarmSwitchUnit.add(m);
+    };
+    const hub = (name) => {
+      const sh = new THREE.Shape(); sh.absarc(0, 0, ALARM_LINKAGE_HUB_R, 0, 2 * Math.PI, false);
+      const h = new THREE.Path(); h.absarc(0, 0, ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR, 0, 2 * Math.PI, true); sh.holes.push(h);
+      const g = new THREE.ExtrudeGeometry(sh, { depth: T_, bevelEnabled: false, curveSegments: 12 }); g.translate(0, 0, -T_ / 2);
+      const m = new THREE.Mesh(g, MATS.blueSteel); m.name = name; return m;
+    };
+    const jointPin = (name, at, from) => {
+      // the crank's own pin at its rod joint: through the arm and the rod above it
+      const z0 = ALARM_LINKAGE_ARM_Z - T_ / 2, z1 = ALARM_LINKAGE_ROD_Z + T_ / 2;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, z1 - z0, 10), MATS.steel);
+      m.name = name; m.rotation.x = Math.PI / 2; m.position.set(at.x - from.x, at.y - from.y, (z0 + z1) / 2 - ALARM_LINKAGE_ARM_Z);
+      return m;
+    };
+    // ---- crank A
+    const crankA = new THREE.Group();
+    crankA.position.set(L.PA.x, L.PA.y, ALARM_LINKAGE_ARM_Z);
+    alarmSwitchUnit.add(crankA);
+    const pinFar = Math.hypot(L.armA, ALARM_PUSH_TRAVEL);                  // the riser's farthest reach along the slot
+    const slotHW = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;                        // a running fit on the riser, the driver's own
+    const inA = armMesh('alarmLinkageCrankAIn', L.PA, L.p0, pinFar - L.armA + CLEAR_MARGIN + slotHW,
+      { s0: L.armA - CLEAR_MARGIN, s1: pinFar + CLEAR_MARGIN, hw: slotHW });
+    crankA.add(inA);
+    crankA.add(armMesh('alarmLinkageCrankAOut', L.PA, L.EA));
+    crankA.add(hub('alarmLinkageCrankAHub'));
+    crankA.add(jointPin('alarmLinkageCrankAPin', L.EA, L.PA));
+    stud('alarmLinkageStudA', L.PA);
+    // ---- crank B
+    const crankB = new THREE.Group();
+    crankB.position.set(L.PB.x, L.PB.y, ALARM_LINKAGE_ARM_Z);
+    alarmSwitchUnit.add(crankB);
+    crankB.add(armMesh('alarmLinkageCrankBIn', L.PB, L.EB));
+    crankB.add(armMesh('alarmLinkageCrankBOut', L.PB, L.q0));
+    crankB.add(hub('alarmLinkageCrankBHub'));
+    crankB.add(jointPin('alarmLinkageCrankBPin', L.EB, L.PB));
+    {
+      // the pin into the driver: a stepped post — the shank from the arm down to
+      // a margin over the plate, the tip on through the plate's slot into the
+      // folded driver, ending at its dial-side face (the face the old riser
+      // ended at, its top in the cluster's frame)
+      const shankTop = ALARM_LINKAGE_ARM_Z + T_ / 2, shankBot = ALARM_U_FLOOR + CLEAR_MARGIN;
+      const tipBot = alarmFoldZ(ALARM_DRIVER_TOP_Z);
+      const shank = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINKAGE_SHANK_R, ALARM_LINKAGE_SHANK_R, shankTop - shankBot, 12), MATS.steel);
+      shank.name = 'alarmLinkageDriverPinShank'; shank.rotation.x = Math.PI / 2;
+      shank.position.set(L.q0.x - L.PB.x, L.q0.y - L.PB.y, (shankTop + shankBot) / 2 - ALARM_LINKAGE_ARM_Z);
+      crankB.add(shank);
+      const tip = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, shankBot - tipBot, 10), MATS.steel);
+      tip.name = 'alarmLinkageDriverPin'; tip.rotation.x = Math.PI / 2;
+      tip.position.set(L.q0.x - L.PB.x, L.q0.y - L.PB.y, (shankBot + tipBot) / 2 - ALARM_LINKAGE_ARM_Z);
+      crankB.add(tip);
+    }
+    stud('alarmLinkageStudB', L.PB);
+    // ---- the rod: a bar bored at both ends onto the cranks' joint pins, in
+    // the plane on top of the arms; posed from the two joints each frame
+    const rodGrp = new THREE.Group();
+    rodGrp.position.set(L.EA.x, L.EA.y, ALARM_LINKAGE_ROD_Z);
+    rodGrp.rotation.z = Math.atan2(L.EB.y - L.EA.y, L.EB.x - L.EA.x);
+    alarmSwitchUnit.add(rodGrp);
+    {
+      const sh = new THREE.Shape(), w = W_ / 2, r = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;
+      sh.moveTo(-w, -w); sh.lineTo(L.rod + w, -w); sh.lineTo(L.rod + w, w); sh.lineTo(-w, w); sh.closePath();
+      for (const x of [0, L.rod]) { const h = new THREE.Path(); h.absarc(x, 0, r, 0, 2 * Math.PI, true); sh.holes.push(h); }
+      const g = new THREE.ExtrudeGeometry(sh, { depth: T_, bevelEnabled: false, curveSegments: 10 }); g.translate(0, 0, -T_ / 2);
+      const m = new THREE.Mesh(g, MATS.blueSteel); m.name = 'alarmLinkageRod';
+      rodGrp.add(m);
+    }
+    alarmLinkageParts.crankA = crankA; alarmLinkageParts.crankB = crankB; alarmLinkageParts.rod = rodGrp;
+    // ---- the base plate's slot for crank B's pin: the pin's arc about B from
+    // rest to full press, cut as the chord's stadium widened by the arc's bow
+    // (it bulges up to the sagitta off the chord) — the setting lever's stud
+    // slot, the same rule — and a margin, so the pin runs clear of the plate
+    const sag = L.armBout * (1 - Math.cos(Math.abs(L.thBTotal) / 2));
+    BACK_PLATE_LATE_SLOTS.push({ ax: L.q0.x, ay: L.q0.y, bx: L.q1.x, by: L.q1.y, r: STOCK_MIN_R10 + sag + CLEAR_MARGIN, alarmLinkagePin: true });
+    recutBackPlate();
   }
   // §137 — the pusher's transfer row, and the PAWL'S FORCE AT THE SAW ROOT
   // (TODO 63: the input end of the arming chain had no arithmetic). The
@@ -37955,21 +38243,6 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // station and the assert that holds it belong at the same place.
   alarmPusherGuideMesh = boss;
   alarmSwitchUnit.add(boss);
-  // §43 riser-slot tripwire (the §35/§68 rod-bore pattern): the plate's slot
-  // is a literal cut long before these constants exist — assert the derived
-  // riser track (rest → pressed, at the riser's own radius + CLEAR_MARGIN)
-  // sits on it. Grace 0.02, same as the rod bore's.
-  {
-    const riserS = ALARM_PIN_HALF;                    // §163: the riser stands at the pin, which straddles the foot
-    const rest = { x: _pushBase.x + _pushU.x * riserS, y: _pushBase.y + _pushU.y * riserS };
-    const pressed = { x: rest.x - _pushU.x * ALARM_PUSH_TRAVEL, y: rest.y - _pushU.y * ALARM_PUSH_TRAVEL };
-    const slot = tqSlots[tqSlots.length - 1];
-    const need = STOCK_MIN_R10 + CLEAR_MARGIN;   // §163: the riser's own stock, not a literal beside it
-    if (Math.hypot(rest.x - slot.bx, rest.y - slot.by) > 0.02 ||
-        Math.hypot(pressed.x - slot.ax, pressed.y - slot.ay) > 0.02 ||
-        Math.abs(slot.r - need) > 0.02)
-      console.warn(`§43: the plate's riser slot is off the derived track — literal (${slot.ax}, ${slot.ay})→(${slot.bx}, ${slot.by}) r ${slot.r} vs derived (${pressed.x.toFixed(2)}, ${pressed.y.toFixed(2)})→(${rest.x.toFixed(2)}, ${rest.y.toFixed(2)}) r ${need.toFixed(2)}`);
-  }
   // §71 — the schematic tier draws the pusher from these spans (the
   // userData.r convention, generalized to a slider): everything here is
   // group-local, so the proxy slides with the press exactly as the metal
@@ -38056,8 +38329,16 @@ const ALARM_DRIVER_POST_R = ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_PAWL_BOSS_R;
 // The SLOT spans the pin's own reach over the stroke — d at the foot, and
 // hypot(d, travel/2) at either end — plus one margin of end freedom, because a
 // pin that bottoms in its slot stops being a pin in a slot.
-const ALARM_DRIVER_SLOT_IN = ALARM_DRIVE_OFFSET - CLEAR_MARGIN;
-const ALARM_DRIVER_SLOT_OUT = Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF) + CLEAR_MARGIN;
+// §261 2c: and the pin's reach is the LINKAGE's now — crank B's arc, not the
+// straight track, so the span is read off the arc it actually rides (in the
+// cluster's frame, where the slot is cut). The ends are §163's stations
+// exactly; between them the arc is the linkage's.
+const _alarmPinR = ALARM_LINKAGE.path.map((s) => {
+  const P = ALARM_LINKAGE.pinBAt(s.T), v = new THREE.Vector3(P.x, P.y, 0).applyMatrix4(_alarmFoldInv);
+  return Math.hypot(v.x - ALARM_COL_POS.x, v.y - ALARM_COL_POS.y);
+});
+const ALARM_DRIVER_SLOT_IN = Math.min(..._alarmPinR) - CLEAR_MARGIN;
+const ALARM_DRIVER_SLOT_OUT = Math.max(..._alarmPinR) + CLEAR_MARGIN;
 // The pawl lives in the skirt's band, which is the only place it can meet the
 // teeth; group-local to the driver, which sits a stratum below it. §169 —
 // CENTRED in that band rather than filling it. It used to be the band's own
@@ -52903,6 +53184,20 @@ function tick(t) {
     if (alarmPusherReturnFrames)
       alarmPusherReturnSpring.geometry =
         alarmPusherReturnFrames[Math.round(alarmPusherT * (alarmPusherReturnFrames.length - 1))];
+    // §261 2c — the linkage, driven by the press it carries: crank A by the
+    // riser in its slot, crank B by the rod, the rod between their joints. The
+    // carry above read the same solve, so the wheel and the cranks cannot part.
+    {
+      const L = ALARM_LINKAGE, T = alarmPusherT;
+      const thA = L.crankAAt(T), thB = L.crankBAt(T);
+      alarmLinkageParts.crankA.rotation.z = thA;
+      alarmLinkageParts.crankB.rotation.z = thB;
+      const cA = Math.cos(thA), sA = Math.sin(thA), cB = Math.cos(thB), sB = Math.sin(thB);
+      const ax = L.PA.x + cA * (L.EA.x - L.PA.x) - sA * (L.EA.y - L.PA.y), ay = L.PA.y + sA * (L.EA.x - L.PA.x) + cA * (L.EA.y - L.PA.y);
+      const bx = L.PB.x + cB * (L.EB.x - L.PB.x) - sB * (L.EB.y - L.PB.y), by = L.PB.y + sB * (L.EB.x - L.PB.x) + cB * (L.EB.y - L.PB.y);
+      alarmLinkageParts.rod.position.x = ax; alarmLinkageParts.rod.position.y = ay;
+      alarmLinkageParts.rod.rotation.z = Math.atan2(by - ay, bx - ax);
+    }
   }
   // TODO 144 — THE CROWN'S CREEP IS GONE WITH ITS CAUSE. §29 step 2 gave the
   // pulled crown a visible back-turn: "the rod creeps with the hour back-drive
@@ -54785,6 +55080,7 @@ window.__clock = {
   get armingSpring() { return ALARM_LINK_ARMING_SPRING; }, // TODO 206 — the alarm link's arming spring, its solved line spec
   get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get alarmLinkage() { return ALARM_LINKAGE; }, // §261 2c — the pusher's two cranks and rod: the solved geometry and its forward kinematics
   get lineLaws() { return ALARM_LINK_LAWS; }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
