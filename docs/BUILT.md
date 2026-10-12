@@ -35047,8 +35047,8 @@ also prints a MEASURED output ÷ input read off the shaft angles.
 **Phasing:** a parallel pair is phased exactly. With the driver's tooth `pa`
 off the line of centres, the driven gear's gap faces it when
 `Na·pa + Nb·(pb − π) ≡ π (mod 2π)`, and since the driven gear turns `−Na/Nb`
-as fast, that holds at every angle. The 90° meshes on the bevel top are placed
-but not phased.
+as fast, that holds at every angle. The 90° meshes on the bevel top were
+placed but not phased when the page shipped; they are phased now (below).
 
 ### What it measured on its first run
 
@@ -35078,3 +35078,46 @@ source tree, where a mis-listed seed fails. `build-pages.mjs` marks it noindex
 in every environment, like `test-geometry.html`. `battery.yml`'s `paths-ignore`
 lists it: it imports `src/layout.js`, but nothing on `index.html`'s graph
 imports it, and the battery's own check holds that.
+
+### The 90° mesh, phased
+
+The page shipped with its one right-angle mesh — the 60T turntable's face teeth
+driving an 8T pinion, in both generations' fourth→escape row and in 2026's
+centre→fourth — phased at 0. Measured, that is the worst index there is:
+**exactly tooth on tooth**, half a pitch out, in all three places it appears.
+
+It is the parallel rule in another frame. The contact is the pinion's point
+nearest the face, `−u` from its centre. There the face moves along the
+turntable's tangent `v` at `R·ω_A`, and the pinion's rim along `u_B × (−u)` at
+`r·ω_B`. Those two directions are parallel, and `σ` is the sign between them.
+`σ` is read off the frames rather than written down, and it sets the pinion's
+sense: `ω_B = σ·ω_A·Na/Nb`. Measured along `v`, the driver's tooth arc is
+`R·pA` and the pinion's is `σ·r·(pB − βc)`, where `βc` is the contact's angle
+in the pinion's own frame. The pair meshes when the two arcs differ by half the
+module-1 pitch `π`. Both arcs advance at `R·ω_A`, so a phase that holds at rest
+holds at every angle:
+
+    pB = βc + σ·(Na·pA − π)/Nb
+
+`σ` came out `+1` for every placement the page makes, so no shaft's speed
+changed. Only the pinion's index moved.
+
+**`tools/probe-technic-phase.mjs` measures it off the drawn gears**, never off
+the phase the page computed. For each mesh it finds:
+- the contact point;
+- the tangent the two surfaces share there;
+- each gear's tooth-0 direction.
+
+It converts both tooth offsets to arc along that tangent. It reads the result
+at five input angles, set the way the page's loop sets them. A phase solved at
+rest but turned the wrong way reads ½ at angle 0 and drifts at every other
+angle, so the spread across angles is what catches a sign error.
+
+Controls:
+- **must-hit:** the 14 parallel meshes, which the page's closed form already
+  phased, read ½.
+- **must-fail:** half a pitch injected into every driven gear reads 0.
+
+**17/17 meshes read ½ at every angle**, worst `2.9e-13` of a pitch, and every
+injection reads tooth on tooth. The bar is `1e-6`: both sides are closed forms
+in float64.
