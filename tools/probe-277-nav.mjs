@@ -67,7 +67,15 @@ for (let i = 0; i < n; i++) {
   }
   straight.push(await settled());
 }
-const same = (a, b) => Object.keys(a).every((k) => typeof a[k] === 'number' ? Math.abs(a[k] - b[k]) < 1e-2 : a[k] === b[k]);
+// alarmOn is the ONE key the straight-through side cannot be the reference for:
+// the armed alarm is a live mechanism, and a straight run spends route time (and
+// sim time) at it, after which it can ring and disarm itself (measured: straight
+// reads off by one stop at 4, 6, 7, 8, 10 in both directions, with no jump
+// involved). So it is compared to what the ROUTE AUTHORED instead: the last
+// `alarm` written by any stop up to the target.
+const route = await pg.evaluate(() => window.__clock.scriptRoute);
+const authoredAlarm = (i) => { let a = false; for (let j = 0; j <= i; j++) if (route[j].alarm !== undefined) a = route[j].alarm; return a; };
+const same = (a, b, i) => (b.alarmOn === authoredAlarm(i)) && Object.keys(a).filter((k) => k !== 'alarmOn').every((k) => typeof a[k] === 'number' ? Math.abs(a[k] - b[k]) < 1e-2 : a[k] === b[k]);
 const fromStart = [], fromEnd = [];
 for (let i = 0; i < n; i++) {
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(a); }, i);
@@ -75,9 +83,9 @@ for (let i = 0; i < n; i++) {
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(c.scriptState.of - 1); c.scriptGoto(a); }, i);
   fromEnd.push({ v: await settled(), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
 }
-const bad = (set) => set.map((r, i) => (r.idx === i && same(straight[i], r.v)) ? null : i).filter((x) => x !== null);
+const bad = (set) => set.map((r, i) => (r.idx === i && same(straight[i], r.v, i)) ? null : i).filter((x) => x !== null);
 for (const [nm, set] of [['start', fromStart], ['end', fromEnd]]) for (const i of bad(set)) {
-  const d = Object.keys(straight[i]).filter((k) => straight[i][k] !== set[i].v[k]);
+  const d = Object.keys(straight[i]).filter((k) => k !== 'alarmOn' && straight[i][k] !== set[i].v[k]);
   console.log('   ', nm, 'stop', i, 'idx', set[i].idx, d.map((k) => `${k}: straight ${straight[i][k]} vs jump ${set[i].v[k]}`).join('; '));
 }
 ok('jump from the first stop = running straight through (every stop)', bad(fromStart).length === 0, `bad: ${bad(fromStart)}`);
@@ -85,7 +93,7 @@ ok('jump back from the last stop = running straight through (every stop)', bad(f
 // the control: entering a stop COLD (no fold) must differ somewhere, or the comparison measures nothing
 await pg.evaluate(() => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptJump(c.scriptState.of - 2); });
 const cold = await settled();
-ok('CONTROL: a cold entry (scriptJump) is NOT the straight-through state', !same(straight[n - 2], cold), JSON.stringify(cold));
+ok('CONTROL: a cold entry (scriptJump) is NOT the straight-through state', !same(straight[n - 2], cold, n - 2), JSON.stringify(cold));
 
 // ---- 2. ONE-SHOTS (Tour carries winds and a sync)
 await pg.evaluate(() => window.__clock.scriptStop());

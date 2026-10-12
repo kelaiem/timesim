@@ -56922,7 +56922,7 @@ window.__clock = {
   goToPose(pos, look, opts) { goToPose(new THREE.Vector3(...pos), new THREE.Vector3(...look), opts); }, // §37 — the primitive, for review sessions (this is what §35 lacked)
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
   startInspect() { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); },  // §277
-  get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0) })) : null; }, // §277
+  get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0), alarm: st.alarm })) : null; }, // §277
   startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
   scriptGoto(i) { scriptGoto(i); },
