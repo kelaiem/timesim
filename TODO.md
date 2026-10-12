@@ -33205,10 +33205,19 @@ At 18,000, 21,600 and 28,800 the cock seats at the cut edge and no earlier
 window reaches the arrest's, so all three build as before. Measured at 18,000:
 the same window centres as `main` to 1e-4, and a silent boot.
 
-36,000 boots with three warnings, down from eight on `main`. TODO 175's
-six-leaf pinion bore band and the reset hammer's 0.1486 against `CLEAR_MARGIN`
-boot on `main` at 36,000 too. TODO 221's detent-beak bracket (ρ 0.2006) fires
-on the solved claim of 133, as it does at 28,800's 132, and is that item's.
+36,000 booted with three warnings, down from eight on `main`. TODO 175's
+six-leaf pinion bore band booted on `main` at 36,000 too. TODO 221's
+detent-beak bracket (ρ 0.2006) fires on the solved claim of 133, as it does at
+28,800's 132, and is that item's.
+
+The third was the reset hammer's head, 0.1486 from the heart against
+`CLEAR_MARGIN`, and it was not the head's: the roller was 0.0021 into the lobe
+and the head rides inside its shadow. `heartFreeAngleAt` read its 256-sample
+table by linear interpolation, and free(d) is convex where it climbs to π, so
+the chord overstates the band. At 18,000 the roller works on the gentle part
+(2e-6); at 36,000, with the arm 9.27 against 7.73, at 176°. Each interval now
+carries its solved midpoint and the lookup is the quadratic through the three,
+third order in place of second. 36,000 boots with the two above.
 36,000 is not a swept spec point, so the battery does not see it; the boot is
 the evidence.
 
