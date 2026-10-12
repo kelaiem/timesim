@@ -29,8 +29,10 @@
 //  R3 the ratio: beakLen / tailLen = seat drop / stroke (§229's identity);
 //  R4 the arms share the run by class: beak − tail = run (same-side), and
 //     beak + tail = run for the first-class lever beside it;
-//  R5 the default path is untouched: the first-class solve at the reference
-//     run equals the reference's own beakLen and tailLen;
+//  R5 the reference's own path: the same-side solve at the reference run
+//     equals the reference's own beakLen and tailLen (landing 2c re-classed
+//     the 'alarm link' reference to this lever; until then R5 held the
+//     first-class solve to it, the default path the reference then took);
 //  R6 the sense under the fold: with the nose moving toward the plate by the
 //     seat drop, the same-side tail moves the rim UP by the stroke, and the
 //     first-class tail would move it DOWN — the reason for the class.
@@ -91,8 +93,8 @@ for (const [name, a] of [['reference (§229\'s run)', res.reference], [`as built
     ['R4 the arms: beak + tail = run (first-class)', q.beakLen + q.tailLen - a.run, 1e-12],
   ];
   if (name.startsWith('reference')) {
-    rows.push(['R5 the default path: first-class beak = the reference\'s', q.beakLen - a.refBeak, 1e-12]);
-    rows.push(['R5 the default path: first-class tail = the reference\'s', q.tailLen - a.refTail, 1e-12]);
+    rows.push(['R5 the reference\'s path: same-side beak = the reference\'s', s.beakLen - a.refBeak, 1e-12]);
+    rows.push(['R5 the reference\'s path: same-side tail = the reference\'s', s.tailLen - a.refTail, 1e-12]);
   }
   // R6 — the sense under the fold. The nose moves +seatDrop toward the plate
   // (the reflection); a lever tilting θs about its pivot moves the tail by

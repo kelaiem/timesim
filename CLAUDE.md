@@ -538,8 +538,11 @@ it into prose either.
    with the constraint that forced it (`forcedBy`), and every derived row
    re-derives from the reference's own laws at those inputs; forking a law or
    an envelope, or forking with no `forcedBy`, is malformed, and a fork equal
-   to its reference is stale. The link's as-built fork (the rod at 9 where
-   §229 put it at 16, the groove off the axis plane) is the first. An
+   to its reference is stale. The link's as-built fork (the rod at 9.655 where
+   §229 put it at 16, and the drive radius the site leaves) was the first;
+   since §261's fold the link's reference is the SAME-SIDE lever, and the
+   drive's fork (`straight`, crank B's arc through the line's two ends) is the
+   second. An
    `envelope` row with a `bound` is one side of a window. Every reference
    carries its own control — the drive shifts the pin's line a known
    distance, the lock MOVES its rocker's post, the link its rod — and

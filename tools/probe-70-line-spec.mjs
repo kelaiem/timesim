@@ -111,19 +111,30 @@ async function lineSpecOn(dir) {
 const SRC = 'src/main.js', INS = 'src/inspect.js';
 const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link/${k}`;
 const FORKS_HEAD = 'export const LINE_SPEC_FORKS = [';
-const WRLEN_FORK = "      wrLen: { value: 9,";
+const WRLEN_FORK = "      wrLen: { value: 9.655,";
 const cases = [
   { name: 'identity', patches: [], fail: [] },
+  // §261 2c — since the fold the wheel's size moves two more things the drive
+  // and the link measure: the pusher linkage is SOLVED onto the reference
+  // line's two ends, so a wheel whose line moves bends crank B's arc off the
+  // forked sagitta (`straight`); and the link's site is re-solved in the folded
+  // world at the same run past a moved landing, so the rod's distance from the
+  // wheel (`wrLen`) moves while the arms the run sets stay on the fork.
   { name: 'the wheel grown (ALARM_COL_BASE_R 5.7 → 5.8)',
-    fail: [...['baseR', 'rootR', 'tipR', 'colInner', 'travel', 'offset'].map(DRIVE),
+    fail: [...['baseR', 'rootR', 'tipR', 'colInner', 'travel', 'offset', 'straight'].map(DRIVE),
       ...['noseR', 'readR', 'postW', 'arm', 'rCham'].map(LOCK),
-      ...['landR', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK)],
+      ...['landR', 'wrLen', 'rEff', 'turn', 'helixTan'].map(LINK)],
     patches: [{ file: SRC, find: 'const ALARM_COL_BASE_R = 5.7;', to: 'const ALARM_COL_BASE_R = 5.8;' }] },
-  { name: 'the offset hand-tuned (ALARM_DRIVE_OFFSET × 1.02)', fail: ['offset', 'step'].map(DRIVE),
+  // (§261 2c: and the arc crank B is solved onto moves with the line, so its
+  // sagitta leaves the fork's `straight` too)
+  { name: 'the offset hand-tuned (ALARM_DRIVE_OFFSET × 1.02)', fail: ['offset', 'step', 'straight'].map(DRIVE),
     patches: [{ file: SRC, find: 'const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));',
       to: 'const ALARM_DRIVE_OFFSET = 1.02 * ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));' }] },
+  // (§261 2c: the folded lock is one of the pusher linkage's obstacles, so a
+  // longer lever re-solves the linkage — crank B's arc, and the fork's
+  // `straight` with it)
   { name: 'the lock lever lengthened (ALARM_LOCK_L 5.0 → 5.2)', fail: [...['lockL', 'lift', 'rCham'].map(LOCK),
-      ...['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK)],
+      ...['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
     patches: [{ file: SRC, find: 'const ALARM_LOCK_L = 5.0;', to: 'const ALARM_LOCK_L = 5.2;' }] },
   { name: 'the rocker post thickened past the ceiling (ALARM_ROCKER_POST_R 0.22 → 0.40)',
     fail: ['postR', 'postW', 'arm', 'rCham', 'chamCeiling'].map(LOCK),
@@ -143,10 +154,11 @@ const cases = [
     patches: [{ file: SRC, find: '    ALARM_FORK_PIN_ARM_R = sol.r;', to: '    ALARM_FORK_PIN_ARM_R = 1.02 * sol.r;' }] },
   // §70 step 3 — the FORK. The metal is the shipped link in every case below;
   // only the declaration moves.
+  // (§261 2c: the table's two forks go together — the drive's `straight` too)
   { name: 'the link’s fork deleted (the fold, undeclared)',
-    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK),
+    fail: [...['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
     patches: [{ file: INS, find: FORKS_HEAD, to: 'export const LINE_SPEC_FORKS = [];\nconst _PROBE_DELETED_FORKS = [' }] },
-  { name: 'the fork’s run mis-declared (wrLen 9 → 9.5)',
+  { name: 'the fork’s run mis-declared (wrLen 9.655 → 9.5)',
     fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK),
     patches: [{ file: INS, find: WRLEN_FORK, to: "      wrLen: { value: 9.5," }] },
   { name: 'a stale fork (wrLen forked to the reference’s own 16)',
