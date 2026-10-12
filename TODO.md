@@ -33338,6 +33338,11 @@ K1–K7 and K4 print the same numbers before and after. The final line now reads
 stands`, which is the search's honest answer for a cluster that is already
 folded.
 
+The getter is the change's only `src/` line. The full battery ran locally
+(`node ci-battery.mjs --shards 3 --no-incremental`, SwiftShader container):
+`55/55 gates pass · total 4417.5s`, with boot silent and the fingerprint
+3968809484 deterministic across virgin boots.
+
 **Residue, named.** K8 reads `no linkage to swing` and does not fail. Its
 linkage search runs only over feasible rotations, and there are none once the
 fold has landed. So K8, like K9 before this change, tests nothing on main. It
