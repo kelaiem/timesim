@@ -37116,7 +37116,7 @@ const alarmLinkParts = {};
         //    half shake put the face there). At §50's floor it holds under
         //    SPRING_SIGMA_Y_PA, so the floor binds — and TODO 206's journal
         //    radius is the metal's, not a placeholder.
-        //    NOT PRICED HERE, and owned by TODO 238: the column's flank pushes
+        //    NOT PRICED HERE, and owned by TODO 239: the column's flank pushes
         //    the nose ALONG this pin (the arm aims at the wheel's centre), up to
         //    89 mN climbing and 39 mN descending. That load twists the lever
         //    about the vertical, adding F·beakLen to this moment and putting the
@@ -37124,7 +37124,7 @@ const alarmLinkParts = {};
         //    below, whose friction is absent from TODO 206's arming-spring solve
         //    (noseFrom charges the journal only). The faces did not create that
         //    load: today's eye already bore on the head's inner face under it.
-        //    The section and that solve are TODO 238's, and TODO 239 re-aims the
+        //    The section and that solve are TODO 239's, and TODO 240 re-aims the
         //    arm so the push lies in the lever's own plane.
         const pinArm = P.headIn + P.endShake / 2;
         const sigmaPin = sigmaRound(R * pinArm * U, flats(rPin));

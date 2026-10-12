@@ -71,7 +71,7 @@ const R = await page.evaluate(async () => {
   const CAP = 0.25;
   // The lever's WORKING contacts are not stops: the nose rides the column (its
   // flank's push along the pin is the very load the retention carries — TODO
-  // 238), and the tail rides the rod's top, cut from the tail's own underside.
+  // 239), and the tail rides the rod's top, cut from the tail's own underside.
   // Both stand at or within a hairline of touching through the stroke, and a
   // slide into them measures the cam, not the pivot.
   const WORKING = new Set(['alarmLinkBeak⇄alarmColCastellations', 'alarmLinkBeak⇄alarmColBase', 'alarmLinkBeakTail⇄alarmLinkRod']);
