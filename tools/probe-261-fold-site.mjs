@@ -278,7 +278,9 @@ async function measure() {
     const byName = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
     const LL = clock.lineLaws, refOf = (n) => I.LINE_SPECS.find((r) => r.name === n);
     const drvRef = I.lineSpecEvaluate(refOf('alarm switch drive'), {}, null, LL).out;
-    const lk = I.lineSpecEvaluate(refOf('alarm link'), drvRef, null, LL).out;
+    // (TODO 240 retired the radial 'alarm link' reference for the tangential
+    // lever's; the seat law below is that lever's now, so this table describes it)
+    const lk = I.lineSpecEvaluate(refOf('alarm link tangential'), drvRef, null, LL).out;
     const seatTable = [];
     for (let run = 1.5; run <= 16 + 1e-9; run += 0.25) { const q = LL.seat(run, lk.rodTravel, 1); seatTable.push({ run, beakLen: q.beakLen, tailLen: q.tailLen, theta: q.theta, lift: q.lift, h: q.h }); }
     const rodM = byName('alarmLinkRod'), shaftM = byName('alarmLinkShaft'), tabM = byName('alarmSelTab'), castM = byName('alarmColCastellations');

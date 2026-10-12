@@ -2,12 +2,12 @@
   "unitMm": 0.37894736842105264,
   "sectionModel": "circular I = πr⁴/4 (the shaft is round; §137 is circular)",
   "shaft": {
-    "stock_u": 12.014,
-    "r_u": 0.3337,
+    "stock_u": 9.9909,
+    "r_u": 0.2775,
     "stations": [
-      -6.007,
+      -4.9954,
       0,
-      6.007
+      4.9954
     ],
     "segments": [
       {
@@ -16,18 +16,18 @@
       },
       {
         "kind": "span",
-        "L_u": 6.007
+        "L_u": 4.9954
       },
       {
         "kind": "span",
-        "L_u": 6.007
+        "L_u": 4.9954
       },
       {
         "kind": "overhang",
         "L_u": 0
       }
     ],
-    "coupling": 8.2665
+    "coupling": 7.0429
   },
   "stroke": {
     "posed_u": 0.1002,
@@ -43,22 +43,22 @@
   },
   "travels": {
     "posed": {
-      "rod": 0.10019790194054146,
-      "roll": 0.34999999999999964,
-      "ring": 0.1899999999999995,
-      "pin": 0.39608467077173404,
-      "pinAlongRingTravel": 3.1356160887023226e-17,
-      "pinPath": 0.3961389587278365,
-      "rim": 0.07660758054118312,
-      "tailMeshCentre": 0.28066127302071214
+      "rod": 0.10019790177868337,
+      "roll": 0.34999999952222627,
+      "ring": 0.18999999974329107,
+      "pin": 0.39114693898234504,
+      "pinAlongRingTravel": 9.344166278242831e-11,
+      "pinPath": 0.3911558387599755,
+      "rim": 0.076607580437677,
+      "tailMeshCentre": 0.3151179330774961
     },
     "stepped": {
-      "rod": 0.10019790194054146,
-      "roll": 0.34999999999999964,
-      "ring": 0.1899999999999995,
-      "pin": 0.3961389587278365,
-      "rim": 0.07660758054118312,
-      "tailMeshCentre": 0.28066127302071214
+      "rod": 0.10019790177868337,
+      "roll": 0.34999999952222627,
+      "ring": 0.18999999974329107,
+      "pin": 0.3911558387599755,
+      "rim": 0.076607580437677,
+      "tailMeshCentre": 0.3151179330774961
     }
   },
   "ringTravel_u": 0.19,
@@ -66,62 +66,62 @@
   "members": [
     {
       "name": "beak bar, pivot to rod",
-      "k_N_per_m": 589094.71,
+      "k_N_per_m": 384114.58,
       "n": 0.5274,
-      "reflectedCompliance": 4.7209014059543295e-7,
+      "reflectedCompliance": 7.240178324055008e-7,
       "note": "§261 2c: the same-side lever's bar, cantilevered from the pivot to where the rod presses it, bending about its depth (the load's direction)"
     },
     {
       "name": "shaft, rod-end overhang",
-      "k_N_per_m": 25060.29,
+      "k_N_per_m": 29414.32,
       "n": 0.5274,
-      "reflectedCompliance": 0.00001109746802208092,
-      "note": "coupled by (L+a)/a = 8.267; ABSENT from every previously published figure"
+      "reflectedCompliance": 0.000009454777438819059,
+      "note": "coupled by (L+a)/a = 7.043; ABSENT from every previously published figure"
     },
     {
       "name": "shaft, fork-end overhang",
-      "k_N_per_m": 47566.2,
-      "n": 2.0847,
-      "reflectedCompliance": 0.00009136301272524845,
+      "k_N_per_m": 47566.22,
+      "n": 2.0587,
+      "reflectedCompliance": 0.00008909924677074428,
       "note": "the only one §137 Landing 2 sized the section against"
     },
     {
-      "name": "shaft, span 1 (6.01 u)",
-      "k_N_per_m": 163495.76,
-      "n": 2.0847,
-      "reflectedCompliance": 0.000026580452421238368,
+      "name": "shaft, span 1 (5.00 u)",
+      "k_N_per_m": 135964.03,
+      "n": 2.0587,
+      "reflectedCompliance": 0.00003117084907599306,
       "note": "simply supported, load at midspan — one member per gap between hangers (§202)"
     },
     {
-      "name": "shaft, span 2 (6.01 u)",
-      "k_N_per_m": 163495.76,
-      "n": 2.0847,
-      "reflectedCompliance": 0.000026580452421238368,
+      "name": "shaft, span 2 (5.00 u)",
+      "k_N_per_m": 135964.03,
+      "n": 2.0587,
+      "reflectedCompliance": 0.00003117084907599304,
       "note": "simply supported, load at midspan — one member per gap between hangers (§202)"
     }
   ],
-  "kEff_N_per_m": 6406.42,
-  "stall_mN": 461.26,
+  "kEff_N_per_m": 6187.36,
+  "stall_mN": 445.49,
   "legacyMinConstruction": [
     {
       "name": "shaft, rod-end overhang",
-      "stall_mN": 951.61
+      "stall_mN": 1116.94
     },
     {
       "name": "shaft, fork-end overhang",
-      "stall_mN": 7139.61
+      "stall_mN": 7050.57
     },
     {
       "name": "beak bar, pivot to rod",
-      "stall_mN": 22369.58
+      "stall_mN": 14585.91
     },
     {
-      "name": "shaft, span 1 (6.01 u)",
-      "stall_mN": 24540.45
+      "name": "shaft, span 1 (5.00 u)",
+      "stall_mN": 20153.46
     },
     {
-      "name": "shaft, span 2 (6.01 u)",
-      "stall_mN": 24540.45
+      "name": "shaft, span 2 (5.00 u)",
+      "stall_mN": 20153.46
     }
   ],
   "detentBand_mN": [

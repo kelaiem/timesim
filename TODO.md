@@ -17,9 +17,11 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 244 | OPEN | Found re-validating TODO 240, pre-existing on main: `probe-261-fold-site.mjs` exits 2 because its control K9 cannot run once the fold has landed (`PHI_FOLD_DEG` null), so an ACCEPTANCE-filed probe no longer separates a broken fold from a sound one. Read the shipped fold's angle when the search finds none, or retire the study and move K9 to an instrument about the shipped shaft |
+| 243 | OPEN | Found closing TODO 240. `makeColumnWheel` samples each column's top at stations that miss the profile's breakpoints, so the mesh is straight across them: at a flank's foot it stands up to 0.0169 over the `profileAt` law the beak's pose law reads (measured: the nose posed 0.0050 into the metal, inside `HANDOFF_TRACK_TOL`). Cut the columns with stations on the breakpoints, then tighten probe-240's M3 to float. P0 |
 | 242 | CLOSED | Every faster rate carries its own balance (RATE_TABLE `rimF`, and at 36,000 `balanceR` 7.5 too): each is the heaviest that reaches 200° hanging at the nominal corner and starts itself, held by `equalisation` row 15. A smaller balance re-solves the escapement it drives. 36,000 also needed the cock's slab lengthened to seat its foot, and the late plate windows held to a land from the early ones |
-| 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
-| 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
+| 240 | CLOSED | The beak lever is re-aimed: its pin lies along the nose's RADIUS and the lever along the wheel's tangent, so the flank pushes in the lever's own plane (65.9–89.2 mN; 6.0–10.7 mN still along the pin, the leading corner's skew). A bar clear of the columns at r 6.477 and a radial stub 1.822 carry the nose, the pivot trails. The pose law is a flat follower tilting along the flank, solved on the cut. The rod is RE-SITED by the generalised site solve (nose ray k 1, run 6.0, tab 87°, clear 0.422): arms 7.2524 / 1.2524, ratio 5.7909. A new line-spec reference, `alarm link tangential`, retires `alarm link`; its fork moves `run` and `rEff`. `probe-240-tangential-beak.mjs` holds the line, the pin and the pose law on the metal |
+| 239 | CLOSED | Closed by TODO 240, which removed the along-pin load at its source. Re-read on the §261 2c lever it was 64–87 mN climbing, a 390–526 mN·u twist, the pin at 1.1–1.4 GPa. The pin's reaction was priced first-class (`Fn·(1 + ρ)`, 295 mN) on a same-side lever (`Fn·(ρ − 1)`, 222); corrected, with `noseFrom`'s journal. The flank's push is in the record (`beakPivot.flank`); the pin works at 667.0 MPa and the post is load-bound on the new load (⌀ ×1.047) |
 | 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
 | 237 | OPEN | Found closing TODO 222: the alarm link's series stall (the §137 lay-shaft row and `probe-82-alarm-stall.mjs`) reflects each member by n²/k, which inverts the lever. A member moving n per unit of ring travel is seen at the ring as 1/(n²k). The error was invisible while nPin was 1. The rod-side members (n 0.527) are read 3.6× too stiff and the shaft members (n 2.07 since TODO 222) 4.3× too soft. The stall still covers the 5–50 mN window either way, but the figure and the named governor are wrong |
 | 236 | OPEN | Found closing TODO 222: the §45 release sleeve is the selector ring's old construction — three eyes on posts (ℓ 0.4567) driven axially at one tab (r ≈ 4.90) — loaded at the tail pin, which turns with the tube, so it jams wherever d ≥ ℓ/(2μ) = 1.14 u, essentially every hour. Its load is unpriced: follower A's released 22.43 mN·mm over the tail ≈ 130 mN through a 45° cone. Fix path: TODO 222's helical guides with a tangential drive, or a centred collar; price the lift as a `transfers` row |
@@ -154,6 +156,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 141 | OPEN | The centre stack's coupling BEHAVES correctly and is not a mechanism. Measured with `tools/probe-alarm-disc-coupling.mjs` (both controls green): DISARMED with tau advancing the `Alarm disc` rides the hour at ratio **1.00000** (dHour −0.52342, dDisc −0.52343); ARMED it **HOLDS** at ratio 0.00000 while the hour runs up to it; SETTING with tau frozen it follows the crown at exactly **1/3** (0.13333 per 0.4 rad) with the hour still at 0.00012. All three are what the metal should do — so this is not a behaviour bug and nothing on the dial is wrong. What is wrong is that the regime is SELECTED rather than decided: `tubeTarget = (alarmSelShownT > 0.5 \|\| alarmArmFreed) ? -alarmAngle : hourDialA`, eased toward by `alarmTubeShownA += wrapPi(target − shown)·(1 − exp(−rawDt/τ))`. The seat's own declaration ('Alarm setting wheel') says "ARMED it turns the tube; DISARMED the tube follows the heart underneath it and **slips**" — and nothing slips, because no torque exists anywhere in the path. Half the OR is honest: `alarmArmFreed` is read from the cone's cap, a member's pose, which §45 did on purpose. The other half is a display selector. **The ratios cannot catch this** — a seat and a ternary produce the same three numbers; what separates them is whether the tube can be made to slip. Fix: derive `τ_slip` two-sidedly on §24's cannon-pinion precedent (it must HOLD the tube against the follower nose's drag on the heart or the hand lags the hour; it must SLIP before the setting train back-drives the hour wheel, the same bound the reset rod already publishes from the going ribbon's energy over the reserve), decide the regime by comparing driving torque to it, and make the tube's angle banked state advanced by whichever member drives it. Blocked on POSE COVERAGE before it can be gated: no axis varies `alarmCrownPullT` ([TODO 140]'s residue) and none poses "disarmed, tau varying" ([TODO 129]'s), so all three regimes are reachable only by the probe |
 | 140 | CLOSED | Found by [TODO 139]'s new boot guard, on its first run, on a corner that guard was not written for. Measured at the rest pose off the metal: `alarmDiscBevel` carries its tooth **0.3750 of a pitch** off the contact ray where the convention wants 0, burial **0.2131** (39% of a tooth), and `probe-crossed-axis-mesh` floors at 0.0000 AT PHASE 0.375 — the same number from the other side, so the pair is one constant from meshing and is not on it. The 0.3750 is not the index block's arithmetic: `bevelCornerSpin` indexes both halves at BUILD where `alarmRotor.rotation.z` is 0, and the rest pose puts it at −2.90597, which is −4.625 pitches of a 10-tooth bevel and wraps to exactly the miss. **The two terms of that rotor angle are not alike**: `3 * _bd` (the hour carrying the friction-set disc) IS mirrored into the stem by `alarmCrownCreep` since §194 F, and `-alarmSetRot` — the angle the CROWN put there through this very corner — is not, so standing rule 2 is unsatisfied on one term of one sum. That much of 139's withdrawn diagnosis was right, about the term it did not name. No build constant can close it (`alarmSetRot` varies with the set time), so the fix is to what the CROWN displays, and it has a design question first: disengaged, the crown is free and the relative index is not a kinematic consequence — either the crown carries the disc's total either way (making the knob a readout of the setting) or the index is re-solved at engagement, which is what the metal does and needs an engagement event the tick has not got. Waived at the corner's build with an AUDITED waiver — the guard warns if a waived corner measures IN index, so the fix cannot leave it behind. **The two MOTION-WORKS corners are the same item and are now in its scope**: `addBevelCorner` seeds a bare `BEVEL_PHASE` and never adopted `bevelCornerSpin`, so the ABSOLUTE condition is false on all four members (−0.3479/+0.1528 and −0.3472/−0.1528 of a pitch from the ray). They mesh only because the RELATIVE condition survives — and it lands on the DIFFERENCE in one and the SUM in the other, 0.5007 and −0.5000, because the two corners have opposite handedness. Two accidents, not a solve. Both are registered with the index guard and waived to this item, so the debt is visible at boot rather than only in a probe; converting them moves the motion works' rest pose, which §137's transfer rows, the intra-unit tiers and `meshPhase` all read, so it is a re-measure and belongs with this item's decision  **LANDED (alarm half)**: the index is RE-SOLVED AT ENGAGEMENT, the owner's call and the metal's. A prerequisite went first — the corner's TWO drives disagreed about its sense (crown −1, the HOUR through the same teeth +1), so the pair was not one coupling; the ungated restatement was deleted rather than flipped and the hour now reaches the arbor once, as `alarmArborHourA`. That bought the invariant the re-solve needs: engaged, `d = rotor − spinner` does not move and the teeth interleave when d is a whole number of pitches. Engagement takes the shortest stem rotation making it so — the tip chamfers' cam, never more than half a pitch, the knob clicking in. The moment needs no second threshold, and that is DERIVED: a correctly-indexed pair never touches (its gap is the 0.00267 u of backlash the §136 cut reserves), so there is no contact instant, and d drifts only with the hour at 4.4e-4 rad/s against a 0.3 s ease — any instant in the throw freezes the same index to 2e-4 of a pitch. Six engagements land on valleys 0, 0, 0, 1, 2 and 5, each exactly in mesh, against a parted control that drifts 0.2222. MODELLED not simulated: the cam's force path is not walked, its outcome is. **AND THE MOTION-WORKS HALF LANDED**: `addBevelCorner` takes `bevelCornerSpin` at last, and the build-time solve is legitimate there — unlike the alarm corner — because both mounts hang off `keyless`, whose world transform is the identity, so their frames move with no input. The seed turned out to be written TWICE (the build's `BEVEL_PHASE` and `tick()` restating it as its own base), so either edit alone would have been silently undone; the index is solved once now and only the SPIN travels, the shape `settingWheelBase` already had beside it. All four members satisfy the ABSOLUTE condition where none did: −0.3479/+0.1528 and −0.3472/−0.1528 → **−0.0007/−0.4993** and **+0.0007/+0.4993**, the residual being the scan's resolution. Both corners are GATED now rather than reported, mutation-tested firing 4/4 on the restored seed, and `BEVEL_PHASE` plus the long-dead `ALARM_BEVEL_PHASE` are deleted |
 | 139 | WITHDRAWN — TWO LANDINGS UNDER IT | Filed from a symptom and reasoned to a cause without measuring the second member. It claimed `alarmSpinner.rotation.y` "carries `alarmCrownRotation` alone and knows nothing about the hour"; `alarmCrownCreep` had been accumulating `-3 * Δ_bd` there since §194 F, three weeks earlier. Measured over six engaged hours, rotor and spinner move −0.00654 and +0.00654 per hour and `rotor + spin` is CONSTANT — the 1:1 mitre's conjugate relation, a loop that is closed while engaged and opens when the crown is pushed in. So the conclusion fails too: the relative index does NOT vary with the hour, there IS a build-time constant, and sweeping the one index knob finds it (floor **0.0000** at phase 0.875). **A symptom consistent with a story is not evidence for it.** What the chase found instead is the item's value: `probe-crossed-axis-mesh` had been REFUSING every conical row since [TODO 136] gave the blank a flat web the solid declaration did not name, and with it measuring again — and TODO 136's two keyless corners finally added to `probe-138-coupling`, which that item cut and never put in the table — **both read +2.5 against a wanted −2.5**: right magnitude, inverted sense, because moving a wheel below the stem and negating its local angle leaves the WORLD motion right and the MESH inverted. Fixed as a named factor in both chains (`KW_WIND_WHEEL_SIDE`/`KW_SET_WHEEL_SIDE`), guarded by `assertWheelSide` and mutation-tested; the crown now winds and sets the other way round, which is the gearing's consequence and is carried, not suppressed. 6/6 corners conjugate, battery 40/40. RESIDUE, and it is a plain indexing error rather than this item: `bevelCornerSpin` misses the best index on BOTH corners (alarm 0.1108 shipped / 0.0000 at 0.875; winding 0.2653 / 0.0571 at 0.833) and not by one systematic offset. Three hypotheses were refuted before the instrument was built; the fourth, the right one, was ALSO refuted first by a control that compared a quantity with itself. `tools/probe-bevel-corner-index.mjs` settled it off the METAL — sweep the contact ray about each member's axis through one pitch, ask its solid metal-or-void at the pitch cone, the tooth is one run. **`updateMatrixWorld(true)` recomputes from `parent.matrixWorld` AS IT STANDS and never walks UP**: at build time the keyless and alarm groups still carry a fresh `Object3D`'s identity, and both STEM-side mounts hang under a group holding the stem's azimuth, so that rotation was dropped — while the PLATE-side mounts hang off `keyless`, whose world transform IS the identity and which therefore came out exact. One member of each corner wrong, by a different amount each, and the stale-frame arithmetic reproduces the shipped numbers to 1e-4 (0.49190 vs 0.49179; 0.29350 vs 0.29361). Fixed at the source: `getWorldQuaternion` walks up, `bevelCornerSpin` takes the GEAR so no caller can pass one object's frame while writing another's `rotation.z`, and `bevelCornerAxis` is the axis reader ONCE where three sites had three copies. **A boot guard now measures the metal rather than restating the solve**, with audited waivers. After: winding 0.0000/0.5000, setting 0.0000/0.4938 (the 0.0062 is the clutch's own seat clocking), burial 0.2653 → 0.0760 and both corners now FLOOR at the shipped index. Residue, both named: the alarm corner is [TODO 140], and `probe-crossed-axis-mesh`'s SETTING row had been naming `settingWheel` — the spur, 4.2 away — so it read 0.0000 at every phase and could not have failed |
+| 138 | CLOSED | The shear-cone `makeBevelGear` could never interleave (two such solids meet on a line, at every index). Landing 1 proved a conjugate form in free space — the §136 cycloid developed on the back cone (Tredgold) and ruled to the apex — and Landing 2 retired the builder, cutting all five call sites with `makeConicalGear` at a pitch angle DERIVED from the counts and the shaft angle, and fixed the alarm corners' SENSE (+1 against the −1 two cones demand, written twice, in `tick` and `setPose`). Closed on a whole re-measure: free space 5/5 at zero penetration; in the movement the winding and alarm corners read **0.0000** at the shipped index; every corner turns at −z_A/z_B (8/8). Two later sentences claiming residue were wrong and are corrected in the body — [TODO 139]'s 0.067 "Tredgold residue" (the same pair reads zero in free space) and [TODO 163]'s "motion-works corners are rods" (`probe-138-coupling` used the 90° rolling condition on §234's 99.5° and 162.2° corners). The setting corner's flat 0.2187 is [TODO 163]'s two-law pose, deferred to roadmap §4 |
 | 136 | CLOSED | Reported by eye (gears colliding while setting the time) and confirmed by `tools/probe-crossed-axis-mesh.mjs`: `crownWheel ⇄ windingPinion` buried **0.2065** (27% of a tooth) and `clutchRim ⇄ settingWheel` **0.1372** (18%), deeper than the deliberate half-pitch defect the control injects — because two flat SPUR cuts meeting at a right angle are not a mesh of any kind and no indexing could have fixed them (floors 0.1811 / 0.0971 over a whole pitch). Blocked on [TODO 138] for a conjugate crossed-axis FORM, then landed whole: both corners are Σ = 90° BEVEL pairs, cut on cones whose half-angles come from the counts (68.199°/21.801°) and sharing the apex where the axes cross, with the stations derived from it — a member's pitch plane stands coneR·cos γ from the apex, which at a right angle is the MATE's pitch radius, so `layout.js`'s two `windPinionR * 0.55` terms were wrong by 0.7480 apiece and are deleted. The index is a solve after all, just not the parallel-axis one: a tooth of the wheel and a gap of the pinion on the pair's line of contact. **The FOLD cost more than the corner** — the setting wheel became a compound below the stem (its two halves cannot straddle a stem that runs through the station), the minute pinion's step reversed and is solved against the traverse rod, the traverse plane went under the crown wheel's cone, the winding pinion gained a coupling boss at the §50 stock floor, the clutch's spine cap and hub collar got new bounds against a blank that overhangs the stem on both sides of the apex, the plate's keyless floor learned the stem bushing was now its outermost member, and D4 re-derived with the plate. Two instruments were wrong in ways only a cone could show: `meshCandidates` took its axial extents from `setFromObject` and so measured the §66 schematic proxy (at the APEX, 0.79 outside the metal), and `userData.bevel` was both a NUMBER and a cone SPEC, which produced a NaN movement depth. RESIDUE, unchanged by the repair: `meshCandidates` still cannot PROPOSE a crossed-axis pair, so both corners are declared by hand and no coverage check can find the next one — the item's opening finding, and [TODO 139] is where the same blindness is filed for the alarm corner |
 | 135 | CLOSED | `setPose` clears `jumpDisp` when a pose names `setPathRot`, so a zero-dt `handSet` sweep seats the jumper and moves the hands; `probe-handset-reach.mjs` holds it |
 | 132 | CLOSED | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; **`leg B pinion ⇄ idler pinion` and both keyless rows were the item's SECOND wrong triage**: all three read 0|0 and none was unexercised. The keyless pair was blocked on [TODO 125] (0.1 centre miss over solveGearChain's 0.05 tripwire, which refused them aloud, correctly); 125 lifted it and each took a solve whose knob is a BASE CONSTANT rather than a rotation, since tick() writes those rotors as `base + spin` and a phase left on the object dies on the first frame — **22.222% → 0.043%** and **34.345% → 0.079%**, `minuteWheelBase` and a new `transferWheelClock` (the transfer wheel's index on the crown wheel's arbor). The winding pair's `0|0` was the CHECKER: `transmits` accumulated the NET turn and `wind` is a cycle by construction, so the spur travelled 21.99 rad, came home, and read as a still driver — fixed by keeping the PATH LENGTH beside the net, which also unblocked both reserve stages under `wind`. Leg B's `0|0` was the ROW: it reads the barrel BODY's rim (`arrestAngles` computes `idler` from bodyA alone) and the body turns on `alarmStrike`, while `alarmWind` turns the arbor — leg A's input. Re-declared and clocked by a second stage carrying the chain past the idler wheel to its pinion, **34.334% → 0.008%**. `crown` was likewise never an input to either keyless pair (that axis is the PULL), and the output stage named `alarmWind` alone where a differential's cage is reached by BOTH legs (-2.727273 under each). A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
@@ -19616,7 +19619,15 @@ whose cost out of the backlash that item measured and did not close — rather
 than in anything this landing touched. Naming it here so the next reader does
 not re-derive the elimination.
 
-## 138. `makeBevelGear`'s shear-cone teeth can never interleave, so no bevel pair in the movement meshes
+**That attribution was wrong, and [TODO 138]'s close measured why.**
+`probe-138-bevel-roll` builds the same keyless pair from the same generator in
+free space and reads ZERO penetration with 0.0130 of clearance, so the
+planar-versus-spherical approximation cannot cost 0.067 in the movement. Re-run
+on the tree 138 closed on, the winding corner reads **0.0000** at its shipped
+index, and the setting corner reads a phase-INVARIANT **0.2187**, which a tooth
+profile cannot produce and which is [TODO 163]'s two-law pose.
+
+## 138. `makeBevelGear`'s shear-cone teeth can never interleave, so no bevel pair in the movement meshes — CLOSED
 
 Found while running [TODO 136]'s line proof, which built a correct bevel pair
 from first principles and measured it as not a mesh. The build was right; the
@@ -20090,6 +20101,52 @@ conjugate crossed-axis form to be cut in. 136's station correction (0.7480,
 whatever form lands — and this one agrees with it, since `bevelToothSpec`
 derives the mate's centre as `coneR·cos γ_mate`, which at Σ = 90° is the
 member's own pitch radius.
+
+### CLOSED — re-measured whole on the tree it closes on
+
+Both landings had shipped, and the heading still read open, because two later
+items each left a sentence saying 138 had residue. Measured today, neither
+sentence holds, and the item closes on these numbers rather than on the
+landings' own:
+
+| instrument | reading | what it settles |
+|---|---|---|
+| `probe-138-bevel-roll` (free space) | **5/5** pairs, worst pen **0** on every one, min clear 0.0100–0.0130, all seven controls firing | the FORM rolls, at every shipped count and shaft angle |
+| `probe-crossed-axis-mesh` (in the movement) | WINDING **0.0000**, floor 0.0000 at phase 0.000; ALARM **0.0000**, floor 0.0000 at phase 0.000; SETTING a flat **0.2187** at every phase | two corners mesh at the SHIPPED index; the third is [TODO 163] |
+| `probe-138-coupling` (in the movement) | **8/8**: every corner turns at −z_A/z_B, each cut's γ_A + γ_B equal to its mounting's Σ to 1e-4° | the tick drives each pair the way its cones roll |
+
+**[TODO 139]'s "~0.067 residue is 138's Tredgold approximation" was wrong**, and
+the free-space row is what refutes it: the same pair, cut by the same generator,
+reads ZERO penetration there, so the approximation cannot cost 0.067 in the
+movement. The winding corner's residue has since gone to 0.0000 at its shipped
+index. The setting corner's burial is phase-INVARIANT — 0.2187 at all 24
+indexings — which an approximation in the tooth profile cannot produce (it would
+move with the index, as every real-mesh row above does). It is [TODO 163]'s:
+the clutch rim and the setting bevel posed by two laws that agree only at the
+solve pose. That item is deferred to roadmap §4 by the owner's decision, so the
+burial stays, with its own number.
+
+**[TODO 163]'s "the motion-works rise and fold corners are RODS threaded by a
+fixed ±1, not conjugate pairs" was the PROBE'S error, and is corrected there.**
+`probe-138-coupling` wrote the rolling condition as `ω_B = −ω_A·tan γ_A`, which is
+the Σ = 90° special case: its contact ray `cos γ_A·û_A + cos γ_B·û_B` is a unit
+vector only when the axes are perpendicular. The general condition is
+`ω_A·sin γ_A + ω_B·sin γ_B = 0`, i.e. `ω_B/ω_A = −z_A/z_B` at any shaft angle,
+because each pitch radius is `coneR·sin γ = m·z/2`. §234's fold added two 10/10
+corners at Σ 99.5° and 162.2°, the first non-right-angle pairs, and the probe
+asked them for −1.18 and −6.40 where two equal cones can only roll at −1. They
+turn at −1 and are cut at γ 49.732° and 81.118°, each half its Σ, which the
+probe now reads off `userData.solid.gamma` and holds to the mounting before any
+ratio is compared. The same run also stopped flagging the alarm setting
+corner's HOUR row: since [TODO 144] the hour does not reach that branch, so both
+members still is the right answer and the row declares it, while one member
+moving would read ORPHAN.
+
+**One reading left on the record, not a defect of this item:** the keyless
+SETTING row's apex guard reads a gap of 0.005 while the crown is pulled, against
+0 on every other corner. It sits on the corner [TODO 163] owns, whose clutch is
+posed from the crown's pull directly, and is noted there rather than chased
+here.
 
 ## 137. The column pawl's arm is cut under the stock floor, and every instrument misses it for a different reason
 
@@ -24083,6 +24140,15 @@ opposite about their own axes) against a cone-geometry-demanded ratio of
 conjugate pairs, a different (and pre-existing, unrelated to this item)
 characteristic of the fold's own design, not the clutch coupling this item
 is about.
+
+**That paragraph's second half is WRONG, and the error was the probe's
+(corrected under [TODO 138]'s close).** `probe-138-coupling` wrote the rolling
+condition as `−tan γ_A`, which holds only at Σ = 90°. In general two cones on a
+shared apex roll at `ω_B/ω_A = −sin γ_A / sin γ_B = −z_A/z_B`, so two 10/10
+corners must turn at −1 whatever their shaft angle — and both do, cut at γ
+49.732° and 81.118°, half their Σ of 99.5° and 162.2°. They are conjugate pairs;
+the −1.18 and −4.06 (−6.40 on today's tree) were the 90° formula applied where
+it does not hold.
 
 Rough figures on the clutch coupling itself, from the same probe family
 and the mesh's own tooth counts (`KW_MODULE`, 20/10 teeth): while the
@@ -30752,9 +30818,14 @@ lever: [TODO 237].
 
 | member | seat | lift | window |
 |---|---|---|---|
-| arming spring at the column nose | 5.25 mN | 47.62 mN (29.51 arming + 18.11 follower B) | 5–50, product 250 = 5 × 50 |
-| follower B's seat blade, at the pin | 5.25 mN | 10.45 mN | 5–50 |
-| pusher (records) | 69.65 mN riser, 88.71 mN at the driver's pin | — | (was 69.42 / 88.42) |
+| arming spring at the column nose | 5.27 mN | 47.48 mN (30.20 arming + 17.28 follower B) | 5–50, product 250 = 5 × 50 |
+| follower B's seat blade, at the pin | 5.27 mN | 10.45 mN | 5–50 |
+| pusher (records) | 69.49 mN riser, 88.51 mN at the driver's pin | — | (was 69.42 / 88.42; 69.65 / 88.71 until TODO 240) |
+
+(Regenerated by TODO 240: the re-aimed beak reflects the blade to the nose by
+its new ratio, 5.7909, on the same-side reaction, and the arming blade re-solves
+inside the same window, its ratio 2.402. This table read 5.25 / 47.62 (29.51 +
+18.11) as TODO 222 left it.)
 
 The arming blade's ratio is the least its hanger room allows, **R 1.863**
 (TODO 206's was 3), at `SPRING_MIN_U` × 1.1 stock. B's lift reaches the nose
@@ -32584,7 +32655,7 @@ transmission is one lumped number, so the escapement's losses are not yet
 split into face friction and drop momentum, which is what would make the
 self-start test exact.
 
-## 239. The column's flank pushes the beak lever's nose along its pivot pin: the side load twists the lever and puts the pin and post over yield
+## 239. The column's flank pushes the beak lever's nose along its pivot pin: the side load twists the lever and puts the pin and post over yield — CLOSED
 
 **Found investigating [TODO 230].** The beak lever's arm is aimed at the column
 wheel's centre (`beakAim` → `ALARM_COL_POS`), so its nose sits on the wheel's
@@ -32702,7 +32773,34 @@ column is the going train's.
    the flank's push lies in the lever's own plane, and none of 1–4 is needed in
    this form. Decide 240 before building 1–4.
 
-## 240. Re-aim the beak arm: the arm points at the column wheel's centre, so the flank's push runs along the pivot axis
+**Closed by [TODO 240], against the measurement.** 240 was decided first, as
+step 5 says, and it removed the load at its source; steps 1–4 were then built
+in the form the re-aimed lever needs.
+- **Re-read on today's lever first.** The figures above were taken on the
+  first-class lever before §261 2c. On the same-side lever 2c built (beakLen
+  6.086, ratio 5.604) the push along the pin was 64.0–86.5 mN climbing and
+  28.4–37.8 mN descending, the twist 390–526 mN·u, and the pin 1119–1370 MPa
+  (1018–1289 on the corrected reaction below). The post read 977 MPa.
+- **The reaction was wrong too, and on the safe side.** Since §261 2c the build
+  priced the pin's reaction as a first-class lever's, `Fn·(1 + ρ)`. A
+  same-side lever's pin carries the difference of its loads, `Fn·(ρ − 1)`:
+  221.7 against 295.2 mN. `noseFrom` and follower B's reflection charged the
+  pin's journal on the same sum. All three are the same-side form now.
+- **Step 1, the record.** `beakPivot.flank` carries the flank's push per
+  contact radius, climbing and descending, beside `noseFrom`. On the re-aimed
+  lever it is 65.9–89.2 mN in the lever's plane, and 6.0–10.7 mN along the pin
+  (the leading corner's own skew).
+- **Step 2, the sections.** The pin bends at 667.0 MPa (§50's floor still
+  binds). The post is load-bound on the new load, the flank's push at the
+  axis's height now included: ⌀ 0.3363 across the flats against 0.3211.
+- **Step 3, the bush.** It did not grow: the pin's section did not move.
+- **Step 4, the thrust friction.** It is recorded per radius
+  (`flank[].thrustTq_Nu`, at most 0.75 mN·u against the nose's 344 mN·u lift
+  moment, 0.2%). It is not charged in `noseFrom`, and the reason is
+  geometric: both ends of the 5–50 mN window stand on FLAT surfaces (the gap
+  floor, a column top), where the flank pushes nothing.
+
+## 240. Re-aim the beak arm: the arm points at the column wheel's centre, so the flank's push runs along the pivot axis — CLOSED
 
 **Filed with [TODO 230], as the root fix for [TODO 239].** The beak lever rides
 the column wheel's castellations as a FACE cam: the nose follows the tops in z,
@@ -32751,6 +32849,130 @@ So it is a fork of §229's line spec (`LINE_SPEC_FORKS`), with each moved row's
 3. Re-run [TODO 239]'s arithmetic. The along-pin load should be friction alone
    (μ·F, about 9.5 mN at the lift end), and the pin and post sections need
    re-reading only for the residue. Close 239 against the measurement.
+
+**Built — the lever re-aimed (the owner's calls, 2026-10-12: a cranked lever on
+the trailing side; the rod RE-SITED by a generalised site solve; a NEW line-spec
+reference; the post grown on its own rule; the reaction corrected).**
+
+*The re-read first.* TODO 239's figures were taken on the first-class lever
+before §261 2c. On the same-side lever that 2c built (beakLen 6.086, tailLen
+1.086, ratio 5.604) the flank pushed 64.0–86.5 mN climbing and 28.4–37.8 mN
+descending ALONG the pin, a twist of 390–526 mN·u, and the pin read 1119–1370
+MPa. The build also priced that lever's pin reaction as first-class,
+`Fn·(1 + ρ)`, while a same-side lever's pin carries the DIFFERENCE of its two
+loads, `Fn·(ρ − 1)`: 295.2 against 221.7 mN, an overstatement of
+(ρ + 1)/(ρ − 1) = 1.33 on which the post had been sized "load-bound".
+`noseFrom` and follower B's reflection charged the journal on the same wrong
+sum. All three are the same-side form now (TODO 239's record).
+
+*P0, in a line.* The flanks are cut as a rise over wheel angle (`profileAt`),
+so their slope lies only along the wheel's tangent. The lever's pin now lies
+along the nose's RADIUS and its arms are tangential distances from that axis,
+so the flank's push lies in the lever's own plane:
+- the **bar** runs along the tangent at `ALARM_LINK_BAR_LINE_R` 6.477 (the
+  castellations' outer face + `CLEAR_MARGIN` + half a tooth), so only the stub
+  and the nose stand over the columns;
+- a **stub** (`alarmLinkBeakStub`, the bar's section) carries the nose
+  `ALARM_LINK_STUB_D` 1.822 inward onto the landing radius;
+- the pivot stands on the **trailing** side (`ALARM_LINK_PIVOT_T`, from the
+  wheel's `ratchetDrive`): the wheel carries the nose with it on the climb, so
+  the arm is in tension then and the push, acting 0.525 under the axis, helps
+  the lift;
+- the **seat law** (`alarmLinkSeatSolve(run, rodT)`) lands the nose's deepest
+  corner on the gap floor with that corner half the nose's TANGENTIAL width
+  beyond the arm (`ALARM_LINK_NOSE_W_AZ / 2`, 0.4846; it was the radial half);
+- the **pose law** is a flat-faced follower tilting ALONG the flank
+  (`alarmLinkNoseTheta`): the tilt is solved so no point of the face stands
+  under the cut, the face's corners and the profile's breakpoints evaluated
+  exactly, with the arc the tilt swings it through. The old law (rest on the
+  highest point under the footprint) was exact only while the tilt lay across
+  the flank. The gap floor is part of the surface, so the seat is the same
+  contact;
+- the **lift** the stub needs over the columns is swept at that law through a
+  pitch (`_stubLiftFor`): 0.3669, where the radial bar's was 0.2711 (the stub
+  is a tooth wide, the nose 0.969, so its corners overhang the flat).
+
+*P3, the fold.* The §112 site solve's stage 1 is generalised to the new class:
+nose ray (whole column pitches) × run, the pivot on the trailing side, the rod
+on the bar's line at the run, scoring the rod's column, the bar, the stub and
+the pivot's reach in the folded world. Its first boots exposed a defect in the
+solve: hanger 3's jog is SIZED to stand exactly `CLEAR_MARGIN` off the beak's
+post, and scored as a clearance it capped every jogged candidate at 0.15, so
+the site fell to whichever tied candidate the loop met first, and two sites a
+hair apart in the hoisted shaft length each sent the solve to the other. That
+term is now a constraint the construction meets, not a figure of merit. The
+solve lands the nose on the **k 1** ray, the rod a tangential **run of 6.0**
+from it (8.829 from the wheel), the tab at **87°**, clearing **0.422** (bound by
+hanger 3 against its own beak bar). The rod, the lay shaft, the hangers, the
+tab, the fork and the guide plates moved with it, position space only. Four
+quotations went to their fixed points at the new site: `ALARM_LINK_BODY_LEN_U`
+12.0141 → 9.9910, `ALARM_LINK_ROD_LEN_U` 2.5312 → 2.4917,
+`ALARM_SEL_GUIDE_HALF_T_U` 1.0931 → 1.0335, `ALARM_PINB_SEAT_MN` 5.4263 →
+5.2650; and `ALARM_LINK_STALL_PROBE_MN` 461.26 → 445.49 (probe-82).
+
+The battery then found two joints of hanger 3 the new site broke, both fixed
+in position space. The jog's arm came out 0.651 against 0.5186 square columns,
+so the upper column stood through the lower at a corner: a jog at all is now at
+least two of the solve's column discs (`2·ALARM_LINK_BUSH_OD_U`). And the rod
+guide's web, run in to the hanger's axis, crossed the arming blade's slot there:
+it is welded to the hanger's face now, lapped one `SAW_FIT`.
+
+*The lever, as built:* beakLen **7.2524**, tailLen **1.2524**, ratio **5.7909**,
+seat tilt 0.08001, seat drop 0.58024, bar 7.879 long at §50's 0.3167 deep (λ
+22.9).
+
+*P1.*
+- The flank's push is carried in the record beside `noseFrom`
+  (`beakPivot.flank`, per contact radius, climbing and descending): 65.9–89.2
+  mN climbing, in the lever's plane. What still bears along the pin is the
+  leading corner's own skew, sin(atan(W_AZ/2 / r)) of the push: **6.0–10.7 mN**
+  (9.1–11.9%), a twist of 43.7–77.3 mN·u where the radial lever's was 390–526.
+- **Pin**: the vertical reaction (221.6 mN at the lift end, same-side) acts at
+  `yR` = −noseY/(ρ − 1) = 0.380 along the pin, the flank's push at the nose's
+  station 1.822 the other way. The eye hangs on yR's side (`ALARM_BEAK_SIDE`
+  now derived, +1), which shortens the pin's arm to the governing load to
+  0.683; |M| = √((R·aV)² + (Ft·aH)²) bends it at **667.0 MPa** against
+  `SPRING_SIGMA_Y_PA` 800. §50's floor still binds the pin.
+- **Post**: von Mises over R's tension, its offset as bending, the flank's push
+  at the axis's height (3.292) as bending square to that, and the push's offset
+  along the pin as torsion. It stays load-bound, re-derived on that load:
+  r **0.1768**, ⌀ 0.3363 across the flats (×1.047 on 0.3211), at s 1.230.
+- The **stub** bends at 42.4 MPa at the bar.
+- **End-shake**: yaw now swings the nose RADIALLY; held to `CLEAR_MARGIN` there
+  as it was along the flat, e = 0.0200, and asserted against the nose's radial
+  room (0.418 in, 0.189 out to the lock rocker's chamfer).
+
+*The arming blade* re-solved inside the 5–50 mN window, never widened: seat
+**5.265 mN**, lift **47.48 mN** (follower B's 17.28 of it), blade ratio 2.402, k
+246.9 N/m.
+
+*Instruments.*
+- A NEW line-spec reference, `alarm link tangential` (inspect.js), retires `alarm
+  link`: its own rows `pinRadial`, `barLineR`, `noseHalf` and `run` (a
+  tangential distance; reference 11.345 = §229's 16 − landR), the seat law on
+  the along-plane half, the rest inherited unchanged. Its reader measures arms
+  as plan distances from the pin's axis; its control carries the rod 0.05 along
+  the lever, square to the pin, and the run must fall by exactly that. The fork
+  `alarm link tangential as built` moves `run` (6) and `rEff` (4.8334), each
+  with its `forcedBy`.
+- `probe-240-tangential-beak.mjs` (acceptance) holds the line at both runs, the
+  pin on the radius (5e-12), the flank's skew under an eighth, and the pose law
+  on the METAL at 66 poses: the posed nose within 1.8e-8 of the cut and never
+  deeper in it than the cut's own chord bound (0.0050 against 0.0169). Its
+  controls: a 0.9-scaled tilt leaves the nose off the cut at 48 of 66 poses, and
+  a 10% wrong stroke breaks the seat.
+- `probe-230-beak-retention.mjs` slides along the radial pin. Its slide had run
+  the wrong way along the pin since §261 2c: it took the direction through a
+  world QUATERNION, which cannot carry the fold's reflection. The faces bear
+  first at 0.0100 each way; the next metal is the eye on the post at 0.0153.
+- `probe-70-line-spec.mjs` fires on the new reference and its fork.
+- `probe-261-dial-beak.mjs` is retired with the class it chose.
+
+**What it found and did not fix.** The castellation mesh misses the profile's
+breakpoints, so at a flank's foot the metal stands up to 0.0169 over the law the
+nose is posed on. The nose is measured 0.0050 into it at worst, inside the
+handoff tolerance, and the radial lever rode the same corners. Filed as
+[TODO 243].
 
 ## 241. The alarm press chain survives the finger only if something bottoms it: a stroke stop for the pusher — CLOSED
 
@@ -32990,3 +33212,65 @@ on the solved claim of 133, as it does at 28,800's 132, and is that item's.
 36,000 is not a swept spec point, so the battery does not see it; the boot is
 the evidence.
 
+## 243. The column wheel's castellation mesh misses the profile's breakpoints, so at a flank's foot the metal stands up to 0.017 over the law the beak rides
+
+**Found closing [TODO 240].** `makeColumnWheel` cuts each column's top surface
+by sampling `colH·profileAt(θ)` at `M = round(9·edge/flank)` stations across
+the column's half-arc, and the mesh is straight between stations. The profile
+is piecewise linear in angle, with breakpoints at the flat's edges (±`colFlatHalf`)
+and the flanks' feet (±edge). The stations do not land on those breakpoints.
+So:
+- at a flat's edge (a convex corner) the mesh's chord cuts UNDER the law;
+- at a flank's foot (a concave corner) it stands OVER the law, by up to
+  slope·spacing/4 = (colH/colFlank)·(2·edge/2M)/4 = **0.0169** on today's
+  wheel.
+
+The beak's pose law (`alarmLinkNoseTheta`) reads `profileAt` exactly, so where
+the nose's corner rides a flank's foot it is posed into the metal.
+`probe-240-tangential-beak.mjs` measures the deepest stand at **0.0050**
+(`alarmPress` f 0.3438), inside the chord bound and inside `HANDOFF_TRACK_TOL`
+0.03, and every battery gate is green. It is still a mesh and a law that
+disagree about the cut. The radial lever before TODO 240 rode the same
+corners, so this predates TODO 240.
+
+**Why it is debt (P0, the cut against its law).** TODO 20's invariant is that
+the top of every column IS `colH·profileAt(θ)`. That holds at the stations
+only.
+
+**Fix path.**
+1. Cut the columns with stations ON the breakpoints: each flank and each flat
+   as its own run of samples, so the mesh is exact wherever the law is linear.
+2. Then tighten `probe-240-tangential-beak.mjs`'s M3 from the chord bound to a
+   float tolerance, which proves the fix.
+3. Re-measure every reader of the wheel's tops: the lock rocker's face row,
+   `alarmHandoffs`' two nose rows, and the bar's lift sweep.
+
+## 244. probe-261-fold-site's control K9 cannot run once the fold has landed, so the study exits 2 on main
+
+**Found re-validating [TODO 240].** TODO 240 re-pointed the study's link reference to
+`alarm link tangential`, and the re-validation ran it.
+`tools/probe-261-fold-site.mjs` exits 2 with
+`K9 not run: no single fold on the stop wheel's pitch (null) or the link's inputs are missing`.
+
+The failure predates TODO 240. A detached `origin/main` (fb36a51e) gives the same
+exit and the same K9 line. The two runs' outputs differ only by the one mesh TODO
+240 added (82 excluded meshes against 81) and by third-decimal changes in its
+nearest-tenant figures.
+
+The study was written to site the cluster BEFORE the fold (§261 step 4, landing
+one), and it searches for the one fold angle a whole stop pitch inside the
+window it finds. With the cluster already folded under the dial, the window it
+reads contains the cluster's own image. `PHI_FOLD_DEG` comes back null, and
+`beakSite`, which K9 holds, refuses to run. K1–K8 still run and pass.
+
+**Why it is debt.** INDEX files this probe as ACCEPTANCE, because it can exit
+non-zero. On main it exits 2 whatever the tree, so it no longer distinguishes a
+broken fold from a sound one. A control that cannot run is a control nobody has
+seen fire (CLAUDE.md).
+
+**Fix path.** Pick one:
+- Read the shipped fold's angle (`ALARM_FOLD_PHI`, published on `__clock`) when
+  the search finds none, and run `beakSite` against it, so K9 again holds the
+  shipped lay shaft.
+- Or retire the study as the record of a landed siting, and move K9's
+  shaft-corridor test into an instrument about the shipped shaft.

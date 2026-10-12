@@ -21,6 +21,13 @@
 // the working contacts (the nose on its column, the tail on the rod top) and
 // are listed, not slid against.
 //
+// TODO 240 re-aimed the lever: its pin now lies along the column wheel's
+// radius at the nose and the eye hangs on the lever's +y (the side the
+// reaction's load line stands), so the slide runs along the RADIAL pin, and
+// "toward the arm's line" is −side. The slide direction is read off the arm's
+// LOCAL rotation, because its parent is the §261 2c fold, a reflection no
+// world quaternion carries.
+//
 // Acceptance, at the LIFTED pose (reset), the SEATED pose (alarmToggle f 0.5)
 // and the press stroke (alarmPress at its 64 net samples plus a fine sweep of
 // the mid-press window where the jumper's blade passes the eye):
@@ -78,8 +85,12 @@ const R = await page.evaluate(async () => {
   const WORKING = new Set(['alarmLinkBeak⇄alarmColCastellations', 'alarmLinkBeak⇄alarmColBase', 'alarmLinkBeakTail⇄alarmLinkRod', 'alarmLinkBeakBar⇄alarmLinkRod']);
   const slide = (lever, dir) => {
     const base = arm.position.clone();
-    const yW = new THREE.Vector3(0, 1, 0).applyQuaternion(arm.getWorldQuaternion(new THREE.Quaternion()));
-    const yP = yW.applyQuaternion(arm.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    // the arm's own y (its pin) in its PARENT's frame, read off its local
+    // rotation: since §261 2c the parent is the fold group, whose matrix is a
+    // reflection, and a world QUATERNION cannot carry a reflection — taken
+    // through getWorldQuaternion the slide ran the wrong way along the pin
+    // (TODO 240 found it when the eye moved to the lever's +y side)
+    const yP = new THREE.Vector3(0, 1, 0).applyQuaternion(arm.quaternion);
     const setD = (d) => { arm.position.copy(base).addScaledVector(yP, dir * d); arm.updateMatrixWorld(true); };
     setD(0);
     const lb = new THREE.Box3(); for (const m of lever) lb.expandByObject(m);
@@ -110,7 +121,7 @@ const R = await page.evaluate(async () => {
   for (const { label, pose } of poses) {
     I.enterAxis(clock); if (pose) clock.setPose(pose); clock.scene.updateMatrixWorld(true);
     const plus = slide(leverAll, +1), minus = slide(leverAll, -1);
-    const ctl = label.startsWith('seated') || label.startsWith('lifted') || label === 'alarmPress f 0.3885' ? slide(noHead, +1) : null;
+    const ctl = label.startsWith('seated') || label.startsWith('lifted') || label === 'alarmPress f 0.3885' ? slide(noHead, P.side < 0 ? +1 : -1) : null;   // toward the arm's line: −side (TODO 240 put the eye on +y)
     out.push({ label, tilt: arm.rotation.y, plus: plus.rows, minus: minus.rows, touching: plus.touching, ctl: ctl && ctl.rows });
   }
   I.enterAxis(clock);
@@ -124,7 +135,7 @@ const ok = (c, msg) => { if (!c) fails.push(msg); return c; };
 ok(bootWarns.length === 0, `boot not silent: ${bootWarns.slice(0, 3).join(' | ')}`);
 ok(R.haveHead, 'no alarmLinkBeakPinHead mesh');
 ok(R.pinInArm, 'the pin is not on the lever\'s arm');
-// lever local +y is TOWARD the arm's line (the eye hangs on side −1)
+// TOWARD the arm's line is −side along the lever's y (the eye hangs on `side`: −1 until TODO 240, +1 since)
 const toward = R.side < 0 ? 'plus' : 'minus', away = R.side < 0 ? 'minus' : 'plus';
 let worstNext = { d: Infinity }, ctlFound = 0, ctlBad = 0;
 for (const r of R.out) {
