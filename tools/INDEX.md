@@ -4,7 +4,7 @@
 
 # The instruments
 
-294 scripts. **182 are ACCEPTANCE tests** — they decide and exit non-zero.
+295 scripts. **183 are ACCEPTANCE tests** — they decide and exit non-zero.
 **112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -168,6 +168,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-226-driver-width.mjs` | §226 | acceptance | §226 — HOW MUCH WIDER CAN THE COLUMN-WHEEL DRIVER'S ARMS BE CUT? |
 | `probe-226-notch.mjs` | §226 | acceptance | TODO 226 step 3b — is the pin on the RIGHT wall? The battery's `escapementHandoff` holds the impulse pin within HANDOFF_TRACK_TOL of the notch's metal through the passage, and that is all it can hold: the notch is closed to the pin plus a shake, and the shake IS that tolerance, so a pin centred in the slot, or on the wrong wall, reads "contact" there too. This reads the side. In the fork blank's own frame, off the blank's published METAL outline and the jewel's published D (`pinOutline`), placed by the built groups' world transforms, it measures the pin's gap to EACH wall: |
 | `probe-227-promote.mjs` | §227 | acceptance | §227 — DOES THE PROMOTION CHECKER REFUSE FOR EACH REASON IT CLAIMS TO? |
+| `probe-230-beak-retention.mjs` | §230 | acceptance | TODO 230 — IS THE BEAK LEVER HELD ALONG ITS PIN, BOTH WAYS, BY ITS OWN THRUST FACES? TODO 204 put the lever's eye on a pin pressed into the post's head and nothing held it toward the arm's line: it slid 0.1735 (seated) / 0.1855 (lifted) before the selector rod — its own group's output — stopped it, and mid-press 0.0512 before the alarm jumper's blade did. Every battery check poses the lever at y = 0, so none of them can see a location along the pin that is posed rather than held. |
 | `probe-231-lever-width.mjs` | §231 | report | §231/§232 — HOW MUCH WIDER CAN A FLOOR-STOCK MEMBER BE CUT? |
 | `probe-233-manufacturability.mjs` | §233 | acceptance | §233 — CAN THE MOVEMENT'S MEMBERS ACTUALLY BE MADE? |
 | `probe-234-cap-bearing.mjs` | §234 | acceptance | §234 fold — WHERE DID THE CAP BEARING SETTLE, AND WHAT REFUSED EVERY BEARING NEARER THE SHORT WAY IN? A REPORT, with two controls. |
