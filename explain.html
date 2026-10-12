@@ -173,6 +173,7 @@
      90° points down, '◂' rotated 90° points up, so the rtl open state turns
      the other way. */
   figure svg { direction: ltr; }
+  [dir="rtl"] #hpPlate text { unicode-bidi: plaintext; }
   [dir="rtl"] details.mech > summary::before { content: '◂'; }
   [dir="rtl"] details.mech[open] > summary::before { transform: rotate(-90deg); }
   .mech-body { border-top: 1px solid var(--hairline); padding: 14px 0 18px; }
@@ -1189,8 +1190,10 @@
         sign written out. The let-off is derived from the impulse pin's own bearing from the
         fork pivot at the edge of the lift,
         <code>atan(rollerR·sin(L/2) / (D − rollerR·cos(L/2)))</code>, and since §221 that edge
-        is the cited lift, <code>LIFT_DEG = 50</code>°; the fork banks a run past it, so it
-        swings a 9.05° lever angle. The drop is instant in a real watch; here it is paced
+        is the cited lift, <code>LIFT_DEG = 50</code>°; since TODO 226's step 3b the notch
+        is closed to the pin plus a shake, so the fork LEADS that bearing by the shake the
+        pin sits across (the wall behind the pin drives it), and it banks a run past that, so
+        it swings a 9.41° lever angle. The drop is instant in a real watch; here it is paced
         across the run, and both its ends are contacts. The play loop drives every pose
         through the same ported law plate 2 scrubs (<code>escapeAngle</code> /
         <code>forkSwingRad</code>); only DISPLAY time is dilated, since the whole action is
@@ -1230,7 +1233,9 @@
         <code>AMPLITUDE_POSED_DEG = 200</code>° either way (§221: the designed swing, level
         over the reserve because the fusee delivers level torque); while the impulse pin is
         in the notch the fork's angle is the pin as seen from the fork's pivot,
-        <code>atan(r·sin θ / (d − r·cos θ))</code>, and outside it the fork lies on its bank;
+        <code>atan(r·sin θ / (d − r·cos θ))</code>, a shake to one side — trailing the pin
+        while the pin pushes it through the unlock, leading it once the wheel has carried it
+        across the shake and its wall drives the pin — and outside it the fork lies on its bank;
         and the wheel stands where its tooth circle crosses the face the tip is on — the
         locking face through the unlock (the dip at the start: the RECOIL), the impulse face
         to the let-off, then the drop and the run onto the other stone — so across the beat
@@ -1262,28 +1267,34 @@
       reconcile, and the fork met the pin inside its horn, every beat, between two parts no
       gate held apart. Now there is one clock, the balance, and the rest is geometry, and
       since TODO 226's first step, the seat, every pair the fork and the balance own is
-      held to the margin with nothing excused. The notch is cut as the pin's own swept path
-      in the fork's frame — its disc over the lift, where the fork follows it, and past
-      the lift, where the fork lies banked — plus the margin, and its horns run to the depth
-      where the pin enters, so the pin's centre stands between them for the whole lift (it
-      stood 0.156 outside them before, and only 0.394 of it entered a slot 2.759 deep). The
-      pin is set in one roller below the fork, whose rim clears the guard pin set behind the
-      notch's floor. What the cut still shows is the debt it does not pay yet: the notch is a
-      funnel, not a parallel slot, and the pin bears on no wall in it — the fork follows the
-      pin's centre line, so the drive through the notch is the law's and not a contact's.
-      Since TODO 226's third step the escapement has what closing it needs: LOCK and RUN.
-      Each stone is seated so a resting tooth stands <code>LOCK_DEG</code> +
-      <code>RUN_DEG</code> (1.5° + 0.5° of fork) down its locking face, and the fork banks
-      the run past the let-off, so the pin carries it back through the run and the lock
-      before the impulse — the UNLOCK, plate 1's phase 2 — and the wheel RECOILS through it,
-      0.28° on the entry stone and 0.54° on the exit, read off the leaned face rather than
-      posed. Closing the notch on the pin is what is left of that step. Longer horns would
-      embrace the pin further and meet it sooner on the far side of the swing: cut to the
-      depth where the pin meets the banked fork, the balance knocks at 304.12°, which is the
-      largest swing it can reach. The let-off is exact (§221): <code>FORK_LETOFF_DEG</code>
-      is the pin's bearing at the lift's edge, 4.03° (it was 2.57° while the window was a
-      readability amplitude's arc, and the arcs were matched at the notch's floor, which the
-      pin never reached), and <code>FORK_BANK_DEG</code> is that plus the run, 4.53°. The
+      held to the margin, with one contact declared. The pin is set in one roller below
+      the fork, whose rim clears the guard pin set behind the notch's floor. Since TODO 226's
+      third step the escapement has LOCK and RUN: each stone is seated so a resting tooth
+      stands <code>LOCK_DEG</code> + <code>RUN_DEG</code> (1.5° + 0.5° of fork) down its
+      locking face, and the fork banks the run past the let-off, so the pin carries it back
+      through the run and the lock before the impulse — the UNLOCK, plate 1's phase 2 — and
+      the wheel RECOILS through it, 0.28° on the entry stone and 0.54° on the exit, read off
+      the leaned face rather than posed. And since that step's second half the notch is
+      CLOSED on the pin: two parallel walls a shake off its flanks, the shake being
+      <code>HANDOFF_TRACK_TOL</code>, the least play a working contact can be told apart by.
+      Until then it was a funnel cut as the pin's swept path plus the margin, and the pin
+      bore on no wall in it, so the drive through the notch was the law's and not a
+      contact's. Now the pin on the walls is the pair's one working contact, gated through
+      the passage. Closing it found that a round pin of this section cannot leave a parallel
+      slot: once the fork banks, the pin crosses the slot about as fast as it climbs out, and
+      its outer flank strikes the far wall. So the jewel is ground to a D, as real roller
+      jewels are, its flat toward the fork and solved, not chosen: the largest flat that lets
+      the banked pin leave with the play it sat in, 0.282 off a 0.55 pin. Between the
+      unlock and the impulse the wheel carries the fork across the shake with nothing
+      touching the pin, and that crossing is paced from the metal, the fork's and the
+      train's inertia weighed off their own meshes against the escape torque: 1.61 ms, 5.03°
+      of balance. Cut to the depth of the pin's last contact, the horns let the balance swing
+      to 310.46° before the pin knocks on them, which is the largest swing it can reach. The
+      let-off is exact (§221): <code>FORK_LETOFF_DEG</code> is the pin's bearing at the
+      lift's edge plus the shake's lead, 4.20° (4.03° on the centre line while the notch was a
+      funnel, and 2.57° while the window was a readability amplitude's arc and the arcs were
+      matched at the notch's floor, which the pin never reached), and
+      <code>FORK_BANK_DEG</code> is that plus the run, 4.70°. The
       pallet stones seat in slots whose gap is DERIVED from the blank's own extrude bevel
       (<code>gGap = bevel + SEAT_SHOW</code>) — a guard born from a defect every battery run
       missed; that seat is also TODO 5's fixture-vs-fixture residue: the one intra-unit pair
@@ -1922,6 +1933,19 @@
         parked kiss is a declared contact the <code>alarmHandoffs</code> battery asserts
         every run.</figcaption>
       </figure>
+      <p><b>Since §261 (landing 2c) all of that stands under the dial.</b> The wheel, its
+      driver, pawl and sautoir, and the lock that reads it were folded as one rigid group:
+      turned 240° about the striking arbor (eight stop-wheel pitches, so the lock's stop
+      wheel is its own image) and reflected through the plates, so the castellations face
+      the dial, and the stop wheel rides down the striking staff to meet them. Nothing of
+      the switch stands over the three-quarter plate now, and that is height: the cased
+      watch is 12.152 mm deep where it was 12.382, and <code>CASE_HEIGHT_MAX_MM</code>
+      12.152 holds it there as a ratchet. The pusher stays between the plates and reaches
+      the folded driver through two 1:1 cranks and a rod: crank A takes the riser in a radial
+      slot, and crank B's pin drops through a slot in the base plate into the driver's. That
+      pin swings an arc, not a line, but the arc passes through both ends of the line §163
+      designed, so one press still carries exactly one tooth. Open debt, stated: nothing
+      bottoms the press, so a heavy finger loads crank A far past yield (TODO 241).</p>
       <!-- —————— PLATE 2 : PRESS THE PUSHER (interactive) —————— -->
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Press the pusher — one saw tooth, half a pitch, every rider answers</span></div>
@@ -2022,16 +2046,16 @@
     <div class="mech-body">
       <p>The column wheel lives out near the rim; the selector ring that actually arms the
       alarm lives at the centre — a span no lever should cross. The real-watch answer is a
-      <b>lay shaft</b>: the §35 link beak reads the castellations (same parity as the lock
-      beak — §68 re-sited the rod diametrically opposite it, three whole pitches, so
-      parity holds by construction), and its tail — a lever that REDUCES, 5.31:1, the beak arm (3.66) reading the
-      castellations whole and the tail (0.69) driving the rod; §229's ratio, at arm lengths
-      declared as a fork of it when TODO 174 moved the rod to the site the corrected
-      guide-post guard allows (the 26.79 tail §35 grew to reach a corridor-fixed rod is
-      long retired) — drives a vertical <b>rod</b>
-      down through bores in both plates, then a rim <b>crank</b>, the radial <b>shaft</b>,
-      and a centre <b>crank</b> turning the ring's drive tab. Rod down = ring turned =
-      armed; <code>alarmOn</code> is a readout of the geometry, not a flag.</p>
+      <b>lay shaft</b>. Since §261 the switch stands under the dial, so the link that reads
+      it is a new lever, designed in a line before it was folded in: a SAME-SIDE beak, its
+      pivot, the rod and its nose on one ray from the wheel (three whole column pitches
+      round from the lock beak's, so the two read the same parity by construction). It
+      REDUCES, 5.60:1: the nose's arm (6.09) reads the castellations whole, and the bar
+      presses the <b>rod</b> 1.09 from the pivot. The rod is short now, 2.53 under the dial,
+      sliding in a guide sleeve on the lay shaft's third hanger, and its foot rides a rim
+      <b>crank</b> on the radial <b>shaft</b>, whose centre <b>crank</b> turns the ring's drive
+      tab. Rod risen toward the plate = ring turned = armed; <code>alarmOn</code> is a
+      readout of the geometry, not a flag.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The unbroken link — every member real</span></div>
         <div class="fig-body">
@@ -2039,10 +2063,10 @@
             <circle cx="70" cy="60" r="30" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
             <text class="lbl" x="42" y="112">column wheel</text>
             <rect x="104" y="52" width="120" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
-            <text class="lbl lbl-strong" x="104" y="40">beak + tail (5.31:1, reducing)</text>
+            <text class="lbl lbl-strong" x="104" y="40">same-side beak (5.60:1, reducing)</text>
             <circle cx="104" cy="58" r="4" fill="var(--ruby)"/>
             <rect x="224" y="58" width="10" height="70" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
-            <text class="lbl lbl-strong" x="244" y="80">rod ↓ through both plates</text>
+            <text class="lbl lbl-strong" x="244" y="80">rod ↑ in its guide sleeve</text>
             <circle cx="229" cy="128" r="4" fill="var(--ruby)"/>
             <rect x="229" y="124" width="330" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
             <text class="lbl lbl-strong" x="320" y="118">rim crank → lay shaft → centre crank</text>
@@ -2067,9 +2091,9 @@
         simulated</b>. Now an arming spring — a blade let into the third hanger, bearing on
         an arm keyed to the lay shaft — drives the run toward ON through those same
         push-only contacts and seats the nose on the gap floor, where the lever's ratio is
-        now solved from (5.31:1, on arms of 3.66 and 0.69). Priced at the nose with
-        steel-on-steel friction charged at every sliding joint, it seats at 5.25 mN and a
-        column lifts it at 47.62 mN, both inside the selector detent's 5–50 mN window.
+        now solved from (5.60:1, on arms of 6.09 and 1.09). Priced at the nose with
+        steel-on-steel friction charged at every sliding joint, it seats at 5.43 mN and a
+        column lifts it at 46.07 mN, both inside the selector detent's 5–50 mN window.
         What the plate still must not imply is DYNAMICS: the spring's force is priced, not
         integrated, and every pose is still read off the cam, so this is a kinematic chain
         whose contacts and return are real, not an integrated one. The rod's site itself is a
@@ -2097,9 +2121,9 @@
       and pushed at one tab jams under a load far from that tab. So the centre pin, on a
       roller, pushes the tab sideways, and three rollers on the ring climb helical slots in
       three fixed guide plates: the ring rises as it turns. The lift is priced at the nose
-      with the rest of the run. Of the 47.62 mN a column must overcome, 18.11 mN is follower
+      with the rest of the run. Of the 46.07 mN a column must overcome, 20.45 mN is follower
       B's seat spring, and the arming blade is re-solved to the smallest stiffness ratio its
-      hanger has room for, 1.86 against TODO 206's 3.</p>
+      hanger has room for, 8.49 against TODO 206's 3.</p>
       <p><b>What holds it there is a SAUTOIR on the saw</b>, and §173 moved it off the
       castellations for reasons that are structural rather than stylistic. A part rode
       the columns until then, and it could not detent the wheel in any state: the wheel
@@ -2169,7 +2193,7 @@
       <p><b>Since TODO 222, which heart holds the tube is driven; both swings are still
       posed.</b> Arming raises the ring, the rocker's finger drops, and a blade clamped on the
       tube's flange presses follower B's pin into a slot with vertical walls, cut in a lock
-      ring on the setting wheel, at 5.25 mN. Disarming lowers the ring, and the finger lifts
+      ring on the setting wheel, at 5.43 mN. Disarming lowers the ring, and the finger lifts
       the pin clear again. The slot holds the tube to the wheel, but it cannot turn the tube
       to the set time, and nothing centred on the tube could: the face cam it replaces had a
       steepest flank of 0.64° against a friction angle of 11.3°, so it locked. The hand's
@@ -2201,6 +2225,152 @@
         shadow (the §45 stage-0 styling). In the movement this is geometry end to end:
         ring parity → clamp, collar plateau → lifter → sleeve → tube — every hand-off an
         <code>alarmHandoffs</code> row.</figcaption>
+      </figure>
+      <!-- —————— PLATE 2 : THE FORCE PATH, ARMED AND DISARMED (TODO 222) —————— -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Who holds the tube — the force path, armed and disarmed</span></div>
+        <div class="controls">
+          <button id="hpToggle" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">▶ disarm</button>
+          <span class="chip trip" id="hpChip">ARMED · pin in the slot, tube held to the setting wheel</span>
+        </div>
+        <div class="fig-body">
+          <svg id="hpPlate" viewBox="0 0 780 462" width="780" height="462" role="img"
+               aria-label="Two schematic views of the alarm hand's hold. Left, seen along the lay shaft with the selector ring unrolled: the centre crank's roller pushes the ring's fork sideways, and a roller on the ring climbs a helical slot in a fixed guide plate, so the ring rises as it turns. Right, a section through follower B: the ring's face tilts the selector rocker, whose finger raises or drops follower B's tail, so B's pin seats in the lock ring's slot under the setting wheel, pressed by the seat blade on the tube's flange, or comes out of it. Below: the alarm hand shown or hidden, why the old face cam locked, and which motions are driven and which are posed.">
+            <defs>
+              <clipPath id="hpClipL"><rect x="8" y="24" width="370" height="178"/></clipPath>
+              <marker id="hpArrM" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--muted)"/></marker>
+            </defs>
+            <text class="lbl lbl-strong" x="14" y="16">① ② drive · along the lay shaft</text>
+            <text class="lbl lbl-strong" x="392" y="16">③ ④ ⑤ lift · section through follower B</text>
+            <line x1="384" y1="6" x2="384" y2="202" stroke="var(--line)" stroke-width="0.75"/>
+
+            <!-- LEFT: the sideways drive and the helix (70 px per unit) -->
+            <g clip-path="url(#hpClipL)">
+              <!-- fixed guide plate with its helical slot (α = 23.97° at ALARM_SEL_HELIX_R) -->
+              <rect x="222" y="140" width="96" height="50" rx="3" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2" opacity="0.8"/>
+              <line x1="246" y1="177" x2="275.9" y2="163.7" stroke="var(--steel)" stroke-width="16" stroke-linecap="round"/>
+              <line x1="246" y1="177" x2="275.9" y2="163.7" stroke="var(--bg)" stroke-width="13.5" stroke-linecap="round"/>
+              <!-- the ring (unrolled) and its fork tab, moved together -->
+              <g id="hpRingL">
+                <rect x="-40" y="172" width="460" height="10" fill="var(--brass-fill)" fill-opacity="0.6" stroke="var(--brass)" stroke-width="1.2"/>
+                <rect x="63.24" y="112" width="5" height="60" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1"/>
+                <rect x="88.24" y="112" width="5" height="60" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1"/>
+                <rect x="63.24" y="166" width="30" height="6" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1"/>
+              </g>
+              <circle id="hpGuideRoller" cx="246" cy="177" r="6" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+              <!-- the pin's arc across dead centre -->
+              <path d="M 78.25 127.8 A 79 79 0 0 0 105.75 127.8" fill="none" stroke="var(--muted)" stroke-width="0.9" stroke-dasharray="3 3"/>
+              <g id="hpCrank">
+                <circle cx="92" cy="50" r="9" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
+                <line x1="92" y1="50" x2="92" y2="129" stroke="var(--steel)" stroke-width="5"/>
+                <circle cx="92" cy="129" r="9" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+                <circle cx="92" cy="129" r="2.5" fill="var(--steel)"/>
+              </g>
+              <circle cx="92" cy="50" r="2.5" fill="var(--muted)"/>
+              <circle id="hpDotFork" cx="101" cy="129" r="3" fill="var(--ruby)"/>
+            </g>
+            <text class="lbl" x="106" y="44">lay shaft</text>
+            <text class="lbl lbl-strong" x="112" y="86">① crank, arm 1.1306</text>
+            <text class="val val-steel" x="132" y="124">fork tab</text>
+            <text class="val val-ruby" x="138" y="106">throw 0.3937</text>
+            <text class="lbl lbl-strong" x="226" y="134">② guide plate</text>
+            <text class="val" x="230" y="201">α 23.97°</text>
+            <text class="val val-ruby" x="292" y="201">↑ rise 0.19</text>
+            <text class="lbl" x="14" y="201">selector ring</text>
+
+            <!-- RIGHT: the lift, a section through follower B (100 px per unit) -->
+            <text class="val" x="392" y="30">↑ dial side</text>
+            <text class="lbl" x="470" y="42">setting wheel</text>
+            <text class="lbl" x="640" y="42">selector ring</text>
+            <rect x="410" y="46" width="220" height="14" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+            <rect x="410" y="60" width="20" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1"/>
+            <rect x="450" y="60" width="180" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1"/>
+            <text class="lbl" x="470" y="84">lock ring, slotted</text>
+            <!-- the tube's flange, post B, the rocker's cheek, the blade's stud -->
+            <rect x="392" y="126" width="308" height="8" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1"/>
+            <rect x="586" y="96" width="8" height="30" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
+            <rect x="676" y="104" width="8" height="22" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
+            <rect x="404" y="110" width="12" height="16" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
+            <!-- the seat blade, root in its stud, drawn rigid as the build draws it -->
+            <line id="hpBlade" x1="416" y1="115" x2="540" y2="96.7" stroke="var(--steel)" stroke-width="2.4"/>
+            <path id="hpBladeArr" d="M 535 107 L 545 107 L 540 100 Z" fill="var(--ruby)"/>
+            <text id="hpBladeMN" class="val val-ruby" x="486" y="121"></text>
+            <!-- the selector ring's section -->
+            <g id="hpRingR"><rect x="722" y="79.8" width="30" height="12" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/></g>
+            <!-- follower B's arm: pin, hinge on post B, tail -->
+            <g id="hpArmB">
+              <rect x="431" y="94" width="237" height="5" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1"/>
+              <rect x="431" y="68" width="18" height="26" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.3"/>
+            </g>
+            <circle cx="590" cy="96.5" r="3.5" fill="var(--bg)" stroke="var(--steel)" stroke-width="1.2"/>
+            <!-- the selector rocker, a see-saw on its pivot in the flange's rim -->
+            <g id="hpRocker">
+              <rect x="655" y="102.5" width="86" height="3" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
+              <circle cx="660" cy="104" r="5" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.3"/>
+              <rect x="735" y="82" width="6" height="22" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.1"/>
+            </g>
+            <circle cx="680" cy="104" r="3" fill="var(--bg)" stroke="var(--steel)" stroke-width="1.2"/>
+            <circle id="hpDotSlot" cx="440" cy="61" r="2.6" fill="var(--ruby)"/>
+            <circle id="hpDotTail" cx="660" cy="99" r="2.6" fill="var(--ruby)"/>
+            <circle id="hpDotSense" cx="738" cy="79.8" r="2.6" fill="var(--ruby)"/>
+            <line x1="430" y1="144" x2="470" y2="110" class="leader"/>
+            <line x1="556" y1="144" x2="560" y2="102" class="leader"/>
+            <line x1="672" y1="144" x2="700" y2="108" class="leader"/>
+            <text class="lbl lbl-strong" x="392" y="154">⑤ seat blade</text>
+            <text class="lbl lbl-strong" x="520" y="154">④ follower B</text>
+            <text class="lbl lbl-strong" x="652" y="154">③ rocker</text>
+            <text class="lbl" x="392" y="170">tube flange</text>
+            <text class="val" x="392" y="196">● ruby: a contact, held shut by the one blade</text>
+
+            <!-- RESULT -->
+            <line x1="8" y1="208" x2="772" y2="208" stroke="var(--line)" stroke-width="0.75"/>
+            <circle cx="52" cy="258" r="36" fill="none" stroke="var(--line)" stroke-width="1.2"/>
+            <line id="hpAlarmHand" x1="52" y1="258" x2="52" y2="226" stroke="var(--ruby)" stroke-width="3" stroke-linecap="round"/>
+            <line id="hpHourHand" x1="52" y1="258" x2="52" y2="236" stroke="var(--steel)" stroke-width="4.5" stroke-linecap="round" transform="rotate(300 52 258)"/>
+            <circle cx="52" cy="258" r="4" fill="var(--muted)"/>
+            <text id="hpRes0" class="lbl lbl-strong" x="104" y="236">⑥ ARMED — the alarm hand shows the set time</text>
+            <text id="hpRes1" class="val" x="104" y="254">B's pin in the slot holds the tube to the setting wheel</text>
+            <text id="hpRes2" class="val" x="104" y="270">the swing out to the set time is an ease (posed)</text>
+            <text class="val" x="104" y="294">schematic · alarm crown pushed in · heights exaggerated, motion slowed</text>
+
+            <!-- WHY NOT THE FACE CAM -->
+            <line x1="8" y1="306" x2="772" y2="306" stroke="var(--line)" stroke-width="0.75"/>
+            <line x1="384" y1="306" x2="384" y2="456" stroke="var(--line)" stroke-width="0.75"/>
+            <text class="lbl lbl-strong" x="14" y="324">why the old face cam had to go</text>
+            <polygon points="120,419 105.1,348.5 133.3,348.2" fill="var(--ruby-fill)" opacity="0.65"/>
+            <line x1="120" y1="419" x2="105.1" y2="348.5" stroke="var(--ruby)" stroke-width="0.9"/>
+            <line x1="120" y1="419" x2="133.3" y2="348.2" stroke="var(--ruby)" stroke-width="0.9"/>
+            <polygon points="30,420 250,417.5 250,436 30,436" fill="var(--brass-fill)" stroke="none"/>
+            <line x1="30" y1="420" x2="250" y2="417.5" stroke="var(--brass)" stroke-width="2"/>
+            <rect x="114" y="372" width="12" height="47" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.1" opacity="0.85"/>
+            <line x1="120" y1="338" x2="120" y2="368" stroke="var(--steel)" stroke-width="1.4" marker-end="url(#hpArrM)"/>
+            <text class="val val-ruby" x="142" y="352">friction cone ±11.3° · MU_STEEL 0.2</text>
+            <text class="val val-brass" x="150" y="410">steepest flank 0.64°</text>
+            <text class="val" x="14" y="452">inside the cone: no slip, so it locks</text>
+
+            <!-- DRIVEN / POSED -->
+            <text class="lbl lbl-strong" x="398" y="324">driven · through contacts</text>
+            <text class="val" x="398" y="342">the ring's turn and rise (crank, helices)</text>
+            <text class="val" x="398" y="358">B's pin drawn out by the rocker's finger</text>
+            <text class="val" x="398" y="374">B's pin seated by its blade · 5.43 mN</text>
+            <text class="val" x="398" y="390">snap home's direction · 7.86–31.79 mN</text>
+            <text class="lbl lbl-strong" x="398" y="414">posed · eases, not forces</text>
+            <text id="hpPosedArm" class="val" x="398" y="432">swing out to the set time · 0.12 s</text>
+            <text id="hpPosedSnap" class="val" x="398" y="448">snap home's speed · CAM_SNAP_TAU 0.06 s</text>
+          </svg>
+        </div>
+        <figcaption>Follow the numbers. ① The lay shaft rolls <code>ALARM_LINK_SPAN_BUDGET</code>
+        0.35 rad; its crank, whose arm of 1.1306 is the length that makes follower B's lift
+        cheapest at the column, carries a roller through dead centre, so the roller pushes the
+        ring's fork tab SIDEWAYS. ② Rollers on the ring climb helical slots in three fixed guide
+        plates, so the ring rises <code>ALARM_SEL_TRAVEL</code> 0.19 as it turns. ③ The ring's
+        face tilts the selector rocker. ④ Its finger drops or raises follower B's tail. ⑤ The
+        seat blade presses B's pin into the lock ring's slot with
+        <code>ALARM_PINB_SEAT_MN</code> 5.4263 mN, or the finger draws it out until its cap
+        stands <code>ALARM_SLEEVE_GAP</code> 0.05 clear. ⑥ Pinned, the tube turns with the
+        setting wheel; free, heart A returns it under the hour hand. The slot's walls are
+        vertical, so it holds the tube but cannot turn it: the hand's two swings are still
+        eases.</figcaption>
       </figure>
     </div>
   </details>
@@ -3716,20 +3886,39 @@
       var EMBRACE_DEG = 42, DRAW_DEG = 12, DROP_DEG = 1.5, LOCK_DEG = 1.5, RUN_DEG = 0.5;
       var MOVEMENT_SENSE = -1;             // layout.js — clockwise seen from the dial; +x stone is the ENTRY stone
       var D2R = Math.PI / 180, amp = AMPLITUDE_POSED_DEG * D2R, liftHalf = LIFT_DEG / 2 * D2R;
-      // the LET-OFF is the pin's bearing from the fork pivot at the lift's edge
-      // (§221); the fork BANKS a run past it (TODO 226 step 3), and the pin
-      // meets the banked fork where its bearing is that bank, a little outside
-      // the lift
-      var bank0 = Math.atan2(R_PIN * Math.sin(liftHalf), D - R_PIN * Math.cos(liftHalf));
+      // TODO 226 step 3b — the notch is closed to the pin plus a SHAKE
+      // (HANDOFF_TRACK_TOL), so the fork is the pin's bearing from its pivot
+      // offset by however far the pin sits across the slot: LAGGING it through
+      // the unlock (the pin pushes the wall ahead of it), LEADING it through
+      // the impulse and run (the wall behind pushes the pin). escapement.js
+      // pinNotch solves that offset against the jewel's D; on the round it is
+      // asin(shake/ρ), and the D moves it by 0.0003 at most, under a pixel.
+      var SHAKE = 0.03, CROSS_END_DEG = -10.16;   // the crossing's end: main.js FORK_CROSSING, integrated at boot
+      function rho(th) { return Math.hypot(D - R_PIN * Math.cos(th), R_PIN * Math.sin(th)); }
+      function bearing(th) { return Math.atan2(R_PIN * Math.sin(th), D - R_PIN * Math.cos(th)); }
+      function lead(th) { return bearing(th) + Math.asin(SHAKE / rho(th)); }
+      function lag(th) { return bearing(th) - Math.asin(SHAKE / rho(th)); }
+      function solve(f, lo, hi) { var flo = f(lo); for (var k = 0; k < 80; k++) { var m = (lo + hi) / 2, fm = f(m); if ((fm > 0) === (flo > 0)) { lo = m; flo = fm; } else hi = m; } return (lo + hi) / 2; }
+      // the LET-OFF is where the leading wall lets the pin go at the lift's
+      // edge (§221's 50°); the fork BANKS a run past it (TODO 226 step 3), and
+      // the pin meets the banked fork's wall a little outside the lift
+      var bank0 = lead(liftHalf);
       var bank = bank0 + RUN_DEG * D2R;
-      var entryHalf = Math.asin(D * Math.sin(bank) / R_PIN) - bank;
+      var entryHalf = solve(function (th) { return lead(th) - bank; }, liftHalf, Math.PI / 2);
+      var unlockHalf = solve(function (th) { return lag(th) + (bank0 - LOCK_DEG * D2R); }, -entryHalf, liftHalf);
+      var crossEnd = CROSS_END_DEG * D2R;
       var alpha = Math.asin(entryHalf / amp);
       var WINDOW = 2 * alpha / Math.PI;                                 // the pin's passage, as a fraction of the beat
       function theta(p) { return amp * Math.sin(Math.PI * p - alpha); }  // beat 0: the pin meets the banked fork
-      function swing(p) {   // the pin seen from the fork's pivot, banked outside its passage
+      function swing(p) {   // the fork, read off the pin; banked outside its passage
         var th = theta(p);
         if (Math.abs(th) >= entryHalf * (1 - 1e-12)) return th < 0 ? -bank : bank;
-        return Math.atan2(R_PIN * Math.sin(th), D - R_PIN * Math.cos(th));
+        if (th <= unlockHalf) return lag(th);
+        if (th >= crossEnd) return lead(th);
+        // across the shake the wheel drives the fork from rest against the
+        // pin, so its lead grows as the square of the time; drawn so
+        var u = (th - unlockHalf) / (crossEnd - unlockHalf);
+        return lag(th) + (lead(th) - lag(th)) * u * u;
       }
       var span = 2 * 4.5 * Math.sin(EMBRACE_DEG * D2R);
       var ESC = leverEscapement({ span: span, beatRad: BEAT_DEG * D2R, bank0Rad: bank0, sense: MOVEMENT_SENSE,
@@ -5246,6 +5435,121 @@
       armed.addEventListener('change', upd);
       setting.addEventListener('change', upd);
       upd();
+    })();
+    // —— TODO 222's force path: one stroke, posed from ONE parameter u ——
+    // u is the ring's progress along its helix (0 disarmed, 1 armed). Every
+    // member below is SOLVED from the one that drives it, in the order the
+    // movement's contacts run, so no member is assigned a pose of its own:
+    // crank angle → fork throw → ring turn and rise → rocker tilt (its sensing
+    // pin on the ring's face) → follower B's rock (its tail on the finger) →
+    // pin and blade. The drawing is schematic (heights exaggerated); the
+    // numbers it prints are the source's, and the caption quotes them.
+    (function () {
+      var btn = document.getElementById('hpToggle'), chip = document.getElementById('hpChip');
+      var ringL = document.getElementById('hpRingL'), crank = document.getElementById('hpCrank');
+      var groller = document.getElementById('hpGuideRoller'), dotFork = document.getElementById('hpDotFork');
+      var ringR = document.getElementById('hpRingR'), rocker = document.getElementById('hpRocker');
+      var armB = document.getElementById('hpArmB'), blade = document.getElementById('hpBlade');
+      var bladeArr = document.getElementById('hpBladeArr'), bladeMN = document.getElementById('hpBladeMN');
+      var dotSlot = document.getElementById('hpDotSlot'), dotTail = document.getElementById('hpDotTail');
+      var dotSense = document.getElementById('hpDotSense');
+      var hand = document.getElementById('hpAlarmHand');
+      var res0 = document.getElementById('hpRes0'), res1 = document.getElementById('hpRes1'), res2 = document.getElementById('hpRes2');
+      var posedArm = document.getElementById('hpPosedArm'), posedSnap = document.getElementById('hpPosedSnap');
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var D = 180 / Math.PI;
+      // left: ALARM_LINK_SPAN_BUDGET 0.35 rad of roll, arm 1.1306 at 70 px/u
+      var HALF = 0.175, ARM = 79, SX = 92, SY = 50, THROW = 2 * ARM * Math.sin(HALF);
+      var RISE_L = 13.3;                               // ALARM_SEL_TRAVEL 0.19 at 70 px/u
+      var G0 = { x: 246, y: 177 }, G1 = { x: 275.9, y: 163.7 };   // the slot: 29.9 along, 13.3 up = 23.97°
+      // right: 100 px/u, schematic
+      var RISE_R = 19, RING_BOT0 = 91.8;               // ALARM_SEL_TRAVEL 0.19
+      var PX = 680, PY = 104, LF = 20, FR = 5, LS = 58, HS = 22;   // rocker: pivot, finger lever and radius, sensing lever and pin
+      var HX = 590, HY = 96.5, HT = 2.5, REACH = 150, PIN_TOP = 28.5, XB = 50;   // follower B: hinge, half-thickness, pin, bearing
+      var BLADE_ROOT = { x: 416, y: 115 };
+      var SET_A = 150, HOUR_A = 300;                   // the dial: set time 5 o'clock, hour hand 10 o'clock
+      var u = 1, from = 1, to = 1, t0 = null, anim = null, dir = 1;
+      var handA = SET_A, lastNow = null;
+      function rot(px, py, a, x, y) {                  // (x, y) about (px, py) by a (SVG sense, rad)
+        var c = Math.cos(a), s = Math.sin(a), dx = x - px, dy = y - py;
+        return { x: px + dx * c - dy * s, y: py + dx * s + dy * c };
+      }
+      function pose(uu) {
+        // ① the crank: its roll is linear in the shaft's, the throw is the chord
+        var phi = -HALF + 2 * HALF * uu;
+        crank.setAttribute('transform', 'rotate(' + (-phi * D) + ' ' + SX + ' ' + SY + ')');
+        var pinX = SX + ARM * Math.sin(phi), pinY = SY + ARM * Math.cos(phi);
+        var f = (pinX - (SX - ARM * Math.sin(HALF))) / THROW;   // the ring follows the roller: turn ∝ throw
+        ringL.setAttribute('transform', 'translate(' + (f * THROW) + ' ' + (-RISE_L * f) + ')');
+        groller.setAttribute('cx', G0.x + (G1.x - G0.x) * f);
+        groller.setAttribute('cy', G0.y + (G1.y - G0.y) * f);
+        dotFork.setAttribute('cx', pinX + dir * 9);
+        dotFork.setAttribute('cy', pinY);
+        // ② → ③ the ring's plate-side face carries the rocker's sensing pin
+        ringR.setAttribute('transform', 'translate(0 ' + (-RISE_R * f) + ')');
+        var yR = RING_BOT0 - RISE_R * f;
+        var th = Math.asin((yR - PY) / Math.hypot(LS, HS)) + Math.atan2(HS, LS);
+        rocker.setAttribute('transform', 'rotate(' + (th * D) + ' ' + PX + ' ' + PY + ')');
+        var fing = rot(PX, PY, th, PX - LF, PY);
+        var cap = rot(PX, PY, th, PX + LS, PY - HS);
+        dotSense.setAttribute('cx', cap.x + 3); dotSense.setAttribute('cy', yR);
+        // ④ the finger carries follower B's tail
+        var d = fing.x - HX, yTop = fing.y - FR;
+        var be = Math.asin((yTop - HY) / Math.hypot(d, HT)) - Math.atan2(HT, d);
+        armB.setAttribute('transform', 'rotate(' + (be * D) + ' ' + HX + ' ' + HY + ')');
+        dotTail.setAttribute('cx', fing.x); dotTail.setAttribute('cy', yTop);
+        // ⑤ the pin and the blade that presses it
+        var pinTop = rot(HX, HY, be, HX - REACH, HY - PIN_TOP);
+        dotSlot.setAttribute('cx', pinTop.x); dotSlot.setAttribute('cy', pinTop.y);
+        dotSlot.setAttribute('visibility', f > 0.97 ? 'visible' : 'hidden');
+        var bear = rot(HX, HY, be, HX - XB, HY + HT);
+        blade.setAttribute('x1', BLADE_ROOT.x); blade.setAttribute('y1', BLADE_ROOT.y);
+        blade.setAttribute('x2', bear.x); blade.setAttribute('y2', bear.y);
+        bladeArr.setAttribute('d', 'M ' + (bear.x - 5) + ' ' + (bear.y + 9) + ' L ' + (bear.x + 5) + ' ' + (bear.y + 9) + ' L ' + bear.x + ' ' + (bear.y + 2) + ' Z');
+        // the blade's force at the pin: 5.25 mN seated, 10.45 mN at full lift (linear in its deflection)
+        bladeMN.textContent = (5.25 + (10.45 - 5.25) * (1 - f)).toFixed(2) + ' mN';
+      }
+      function words(armed) {
+        chip.className = 'chip ' + (armed ? 'trip' : 'held');
+        chip.textContent = tr(armed ? 'ARMED · pin in the slot, tube held to the setting wheel' : 'DISARMED · pin out, heart A returns the tube');
+        btn.textContent = tr(armed ? '▶ disarm' : '▶ arm');
+        res0.textContent = tr(armed ? '⑥ ARMED — the alarm hand shows the set time' : '⑥ DISARMED — the alarm hand hides');
+        res1.textContent = tr(armed ? 'B\'s pin in the slot holds the tube to the setting wheel' : 'B\'s pin is out: heart A\'s spring returns the tube');
+        res2.textContent = tr(armed ? 'the swing out to the set time is an ease (posed)' : 'under the hour hand; the snap\'s speed is an ease (posed)');
+        posedArm.setAttribute('class', 'val' + (armed ? ' val-ruby' : ''));
+        posedSnap.setAttribute('class', 'val' + (armed ? '' : ' val-ruby'));
+        hand.setAttribute('stroke', armed ? 'var(--ruby)' : 'var(--steel)');
+        hand.setAttribute('opacity', armed ? '1' : '0.55');
+      }
+      function drawHand() { hand.setAttribute('transform', 'rotate(' + handA + ' 52 258)'); }
+      function tick(now) {
+        if (t0 === null) { t0 = now; lastNow = now; }
+        var k = Math.min(1, (now - t0) / 1600);
+        var e = k * k * (3 - 2 * k);
+        u = from + (to - from) * e;
+        pose(u);
+        // the tube's target flips when the ring passes half travel — the tick's
+        // own alarmSelShownT > 0.5 — and the hand EASES there: 0.12 s arming,
+        // CAM_SNAP_TAU 0.06 s home, both shown ×8 slowed
+        var target = u > 0.5 ? SET_A : HOUR_A;
+        var tau = (u > 0.5 ? 0.12 : 0.06) * 8;
+        var dt = (now - lastNow) / 1000; lastNow = now;
+        var diff = ((target - handA + 540) % 360) - 180;
+        handA += diff * (1 - Math.exp(-dt / tau));
+        drawHand();
+        var settled = Math.abs(diff) < 0.2;
+        if (k >= 1 && settled) { handA = target; drawHand(); anim = null; return; }
+        anim = requestAnimationFrame(tick);
+      }
+      btn.addEventListener('click', function () {
+        var armed = to < 0.5;                          // the state we are going to
+        from = u; to = armed ? 1 : 0; dir = armed ? 1 : -1;
+        words(armed);
+        if (reduce) { u = to; pose(u); handA = armed ? SET_A : HOUR_A; drawHand(); return; }
+        if (anim) cancelAnimationFrame(anim);
+        t0 = null; anim = requestAnimationFrame(tick);
+      });
+      pose(u); drawHand(); words(true);
     })();
 
     // —— The gong's voice: GONG_ARCH ported, sndTone's envelope ported, audible ——

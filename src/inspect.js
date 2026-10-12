@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
+import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
@@ -226,15 +226,18 @@ export const MECH_GRAPH = {
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/350 — TODO 170 moved the third off the silence rocker's lug — the selector's pattern one band deeper)
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
     ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
-    ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top (TODO 204: seated on plate land, carrying the lever's pin)
-    ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes (TODO 206: hanger 3 is also the arming spring's stud)
+    // §261 2c: the link left the three-quarter plate with the fold — its beak's
+    // post is planted in the base plate's dial face now, and the rod crosses no
+    // plate (its guide sleeve rides hanger 3).
+    ['Alarm link', 'plate'],                 // §35/§261 2c: the lay shaft's three hangers, the beak's post planted in the base plate's dial face, and (via hanger 3) the rod's guide sleeve (TODO 206: hanger 3 is also the arming spring's stud)
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
     ['Alarm click', 'plate'],  // §99/§112: the click's shoulder screw and the spring's post stand on the BASE plate (the idler-stud convention, one plate down)
     ['Alarm winding arrest', 'plate'],  // §106/§129: FOUR plate-top columns now — the subtractor's arbor, the compound idler's, the Geneva's own arbor and the cross's stud, all the idler-stud convention
     ['Winding arrest', 'Three-quarter plate'], // §47: the bracket hangs the whole group from the plate's UNDERSIDE, top face flush (§29's lug idiom inverted)
-    ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
-    ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
+    ['Alarm lock', 'plate'],                 // §25 B, folded by §261 2c: the brake lever's pivot post, its spring stud and the beak riser planted in the base plate's dial face
+    ['Alarm switch', 'plate'],               // §25 D, folded by §261 2c: the column wheel's stud and the jumper's stud planted in the base plate's dial face
+    ['Alarm switch', 'Three-quarter plate'], // §261 2c: the pusher linkage's two crank studs hung from the plate's underside
     ['Alarm switch', 'Case'],                // §202: the pusher's bore liner, pressed into the case's pusher bore
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
@@ -253,7 +256,7 @@ export const MECH_GRAPH = {
     // top face, through the plate's bore — which is a bearing, so the
     // striking wheel is carried by BOTH plates.
     ['Alarm barrel', 'plate'],        // §112: barrel arbor's floor boss stands in the base plate
-    ['Alarm striking wheel', 'plate'], // §112: the stud plants in the base plate...
+    ['Alarm striking wheel', 'plate'], // §261 landing 2a: the staff's foot runs in the base plate's bore (it was §112's planted stud)...
     ['Alarm striking wheel', 'Three-quarter plate'], // ...and the rotor's sleeve runs in the plate's bore (§112 — the tier-split's cut)
     ['Alarm governor', 'plate'],       // §112: stud in the base plate
   ['Alarm governor anchor', 'plate'],   // §107's own stud, §112's face — planted beside the governor's
@@ -761,10 +764,11 @@ const EXPECTED_PAIRS = [
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact (TODO 222: its plate-side face)
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
-  ['Alarm link', 'Three-quarter plate'],    // §35/§202: the beak's post seated on the plate top (TODO 204: it was 0.6183 over it until then) and the rod's
-                                            // upper bush pressed into its bore — the two contacts the
-                                            // EXPECTED_CONTACT_FLOORS row names; everything else holds
-                                            // CLEAR_MARGIN there (TODO 171: that row stood without this grant)
+  // (§261 2c RETIRED ['Alarm link', 'Three-quarter plate'] — the beak's post
+  // and the rod's upper bush were its two contacts, and the fold took the post
+  // under the dial and the bush with the rod's plate bores. The pair falls to
+  // undeclaredClearance, which holds it to the margin; the link is now under
+  // the base plate, the whole movement's depth away.)
   ['Alarm link', 'Dial'],                  // the SAME tab contact re-attributed through nesting: the ring
                                             // (and its tab) is a dialFace descendant, so the Dial's traverse
                                             // carries it (the Dial ⇄ Hour wheel precedent); the link's real
@@ -809,8 +813,9 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
   ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the stop finger IN the lock collar's teeth — the hold itself. TODO 90 finding 4: it was a brake PAD on a smooth collar, measured tangent at every engaged pose (zero normal force, zero friction torque) while a boolean did the holding; the band is cut now and tick() runs the train on the finger's real gap
   ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
-  ['Alarm lock', 'Three-quarter plate'],   // pivot post
-  ['Alarm switch', 'Three-quarter plate'], // guide stud
+  // (§261 2c RETIRED ['Alarm lock', 'Three-quarter plate']: the pivot post is
+  // planted in the base plate's dial face under the fold.)
+  ['Alarm switch', 'Three-quarter plate'], // §261 2c: the two crank studs hung from the plate's underside (the column wheel's guide stud went under the dial)
   ['Alarm switch', 'Case'],                // §202: the pusher's bore liner in the case's bore — floors row names the one contact
   ['Alarm crown', 'Case'],                 // §202: the stem's tube liner in the case's alarm tube — likewise
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
@@ -820,7 +825,7 @@ const EXPECTED_PAIRS = [
   ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
   // Alarm striking works (§25 A) — the declared contacts of the power chain:
   ['Alarm barrel', 'plate'],        // §112: arbor boss planted in the base plate
-  ['Alarm striking wheel', 'plate'],// §112: the stud's base, likewise
+  ['Alarm striking wheel', 'plate'],// §261 landing 2a: the staff's journal in its plate bore
   ['Alarm striking wheel', 'Three-quarter plate'],// §112: the rotor's sleeve in the plate's bore
   ['Alarm barrel', 'Alarm striking wheel'],       // the gear mesh (barrel wall ⇄ strike pinion)
   ['Alarm striking wheel', 'Alarm lifting lever'],// §198: the cam under the lever's nose — the lift (floors row + penetration budget own it)
@@ -2380,7 +2385,12 @@ export const EXPECTED_CONTACT_FLOORS = [
   // tip it left by, the impulse table in the fork's plane) are gone with the
   // metal that made them. That the pin bears on NO wall is the other half:
   // the drive is the law's, not a contact's, and making it one is step 3.
-  { a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [] },
+  // TODO 226 step 3b — and step 3 is here: the notch closes on the pin to a
+  // shake, so the pin on the notch's walls is the pair's ONE working contact
+  // (escapementHandoff holds it within HANDOFF_TRACK_TOL through the passage).
+  // Everything else the two units own — the guard pin, the roller, the horns'
+  // outsides — still owes the margin.
+  { a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [['balanceImpulsePin', 'forkBlank']] },
   // TODO 215 — the maintaining detent's WORKING contact, and nothing else: the
   // beak on the ring's cut (maintDetentHandoff's beak row owns that bite, at
   // SEAT_RELIEF). Under the EXPECTED blanket the straight click's body sat
@@ -2477,21 +2487,9 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmStemTubeLiner', 'caseAlarmTubeCollar'], // …and through the tube's flanged collar, bored to the same radius (the battery found this one: 0.01 at every pose)
     ],
   },
-  // §202 — the link's plate pair had the blanket excuse (TODO 6's residue):
-  // it is EXPECTED for the beak's post standing on the plate top and, now,
-  // for the rod's bush pressed into the plate's bore. Everything else —
-  // the rod inside its bush's bore, the beak tail above the plate — holds
-  // the margin. (TODO 204: for its first life the post's row named a joint
-  // that was not there — the post stood 0.6183 over the plate, and a declared
-  // contact is excluded before measurement, so nothing read it. The post is
-  // planted on plate land now, its foot ON the top face: measured 0.0000.)
-  {
-    a: 'Alarm link', b: 'Three-quarter plate', min: CLEAR_MARGIN,
-    contacts: [
-      ['alarmLinkBeakPost', 'threeQuarterPlate'],   // §35/TODO 204: the beak's post planted on the plate top (the pin's post — seated since TODO 204)
-      ['alarmLinkRodBushTop', 'threeQuarterPlate'], // §202: the rod's upper bush in the plate's bore
-    ],
-  },
+  // (§261 2c RETIRED the Alarm link ⇄ Three-quarter plate floors row with its
+  // grant: its two contacts — the beak's post on the plate top, the rod's upper
+  // bush in its bore — left with the fold.)
   {
     a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
     // TODO 101 CLOSED by TODO 120 — the row is UNWAIVED. Its whole-row waiver
@@ -3312,8 +3310,6 @@ export const INTRA_UNIT_CONTACTS = [
   // whole unit, so no OTHER row renumbers — only the named mesh's own). This
   // check is what caught it. Naming also let the row say what the joint is:
   // it was recorded as the collar, and the collar is the separate row below.
-  { unit: 'Alarm striking wheel', a: 'alarmStrikeSleeve', b: 'CylinderGeometry#0', why: 'the sleeve is a turned step ON the strike arbor — one shaft, two meshes' },
-  { unit: 'Alarm striking wheel', a: 'alarmStrikePinion', b: 'CylinderGeometry#0', why: 'strike pinion RUNNING on the same arbor, a PIVOT_BORE_CLEAR fit (TODO 175 — this row called it pressed; it is bored the running fit, and read as buried only while the extrude bevel shrank every bore) (named by §112\'s placement gate — the row followed the name)' },
   // §89 split the alarm barrel into a fixed arbor and a body wound at its
   // teeth, so its rows changed shape the way the drum's did at TODO 1. The
   // arbor row is kept as the record of a joint that is still there and no
@@ -3387,9 +3383,11 @@ export const INTRA_UNIT_CONTACTS = [
   // it could never have been the fulcrum; the rows bought silence for a joint
   // that was not there. The fulcrum is a PIN on the tilt axis now, and these
   // are its three joints:
-  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakEye', why: 'TODO 204: the beak lever\'s eye turning on its pin — the fulcrum, a running fit at PIVOT_BORE_CLEAR on the tilt axis itself, so no arm of the lever moves' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakHead', why: 'TODO 204: the pin pressed through the post\'s head, flush with its outer face — a cantilever from the head\'s inner face' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakPost', b: 'alarmLinkBeakHead', why: 'TODO 204: the post lapped one SAW_FIT into its head — one part, the head cross-drilled for the pin' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakEye', why: 'TODO 230 (NOTE, not an audited contact — same-frame movers, no tier compares them): the beak lever\'s pin PRESSED into its eye, home against the web\'s lap (bore r = pin r − SAW_FIT, §234\'s construction) — the pin turns with the lever' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakHead', why: 'TODO 230: the lever\'s pin running in the post\'s head — the fulcrum\'s journal, PIVOT_BORE_CLEAR on the tilt axis itself, so no arm of the lever moves (TODO 204 had the fit the other way round, the pin pressed in the head)' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakEye', b: 'alarmLinkBeakHead', why: 'TODO 230: the eye\'s outer face on the bush\'s inner face — the thrust face that holds the lever away from the arm\'s line, half the derived end-shake (ALARM_BEAK_END_SHAKE) off at the build' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPinHead', b: 'alarmLinkBeakHead', why: 'TODO 230: the pin\'s integral head on the bush\'s outer face — the thrust face that holds the lever toward the arm\'s line, which nothing held before (the lever slid 0.17 into the selector rod); half the end-shake off at the build' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPost', b: 'alarmLinkBeakHead', why: 'TODO 204: the post lapped one SAW_FIT into its head — one part, the head cross-drilled for the pin (since TODO 230 the bush the pin runs in)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush1', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations; §202 named the bushes, since a third station renumbers every positional selector)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush2', why: 'lay shaft in hanger bush 2' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
@@ -3401,8 +3399,11 @@ export const INTRA_UNIT_CONTACTS = [
   // audited. Read plainly: this is a NOTE, not a measured contact.
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckFork', why: '§234 Landing 5 (NOTE, not an audited contact — same-frame movers, no tier compares them): the fork-end neck PRESSED into the body\'s counterbore (bore r = neck r − SAW_FIT, genuine interference) — the stub embeds 51% of its own length, over turnedBars\' TURN_LAP_MAX_FRAC, so the census reads it as a separate pressed part rather than a turned shoulder' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckRod', why: '§234 Landing 5 (NOTE, not an audited contact — same-frame movers, no tier compares them): the rod-end neck, same press-fit construction; its own bar\'s L/D is measured live by `turning`, no longer inherited from a waiver here' },
-  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushTop', why: '§202: the selector rod sliding in its three-quarter-plate bush at PIVOT_BORE_CLEAR — the rod\'s upper bearing, declared on the rod' },
-  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushBack', why: '§202: the same rod in its back-plate bush — the lower bearing' },
+  // §261 2c: the rod crosses no plate now — its two plate bushes went with the
+  // bores, and it slides in one guide sleeve carried on hanger 3 by a web.
+  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodGuide', why: '§261 2c: the selector rod sliding in its guide sleeve at PIVOT_BORE_CLEAR (§202\'s bush section, as long as the rod\'s free run allows) — its one bearing' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkRodGuide', why: '§261 2c: the web welded to the sleeve, ending at its mid-wall' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3', why: '§261 2c: the web welded to hanger 3 from its axis — the sleeve\'s ground' },
   // TODO 138 Landing 2 — RE-POINTED, and the three rows below said the wrong
   // thing before it. Indices 40–43 of this unit are the motion-works BEVEL
   // GEARS, not wheels on arbors: the conversion from the sheared extrude to
@@ -3491,8 +3492,6 @@ export const INTRA_UNIT_CONTACTS = [
   // side's own idiom: rotating members drawn coincident over their static
   // studs (the strike sleeve's "one shaft, two meshes"), and the strike
   // arbor's stud grown by a second turned length behind its new wheel.
-  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104: the governor-wheel sleeve is the strike arbor\'s next turned step over its stud — one shaft, two meshes; §112: the sleeve over the stud, one full-column post since the tier-split retired the upper length (§121 collapsed the two duplicate rows into this one, both citations kept)' },
-  { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'CylinderGeometry#0', why: '§104/§112: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
   // §111 — these three rows used to say "coincident solids are the bearing".
   // They no longer have to: both governor arbors are BORED, the way every
   // upper pivot in the going train is, so each stud occupies a real hole and
@@ -3570,7 +3569,7 @@ export const INTRA_UNIT_CONTACTS = [
   // would assemble, which is the test this table applies: a bore on a stud, a
   // pin in a slot, a blade on the arm it closes.
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColStud', why: '§163: the driver\'s bore on the column wheel\'s own stud — the third body seated on that one arbor, at PIVOT_BORE_CLEAR, and the reason the drive stroke has no relative motion at the teeth' },
-  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmPusherRiser', why: '§163: the pusher\'s PIN (the riser\'s top) in the driver\'s radial slot — the coupling itself, a running fit at PIVOT_BORE_CLEAR on both flanks, and the joint that makes the driver\'s angle the pin\'s azimuth' },
+  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmLinkageDriverPin', why: '§163, re-pointed by §261 2c: the drive PIN in the driver\'s radial slot — the coupling itself, a running fit at PIVOT_BORE_CLEAR on both flanks, and the joint that makes the driver\'s angle the pin\'s azimuth. Since the fold the pin is crank B\'s, dropped through the base plate\'s slot; the riser drives crank A between the plates (its slot is a running fit and intersects nothing)' },
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColPawlPost', why: '§163: the pawl\'s pivot post riveted into the driver\'s outer arm' },
   { unit: 'Alarm switch', a: 'alarmColPawlBoss', b: 'alarmColPawlPost', why: '§163: the pawl running on that post. The BOSS is the mesh that carries the bore and it is CUT rather than declared — the §137 row quotes this joint\'s running clearance, so a solid pawl would have the arithmetic claiming a fit the metal did not have. The row stays because the two still share a z band and a declared joint should say so' },
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColPawlSpringStud', why: '§192: the blade spring\'s anchor stud riveted into the driver\'s THIRD ARM, cut to reach it. The name has history: §163\'s row with these labels described a stud that measured 4.347 clear of the driver in every direction — a declared joint that stated something false and excused the pair from the sweep that would have caught it, which is why §169 replaced the blade with a coil and §182 now audits every row in this table against the metal. The stud returns with its ground actually cut: hull metal under it by construction, asserted at the build, and this row measured every battery run' },
@@ -3596,7 +3595,12 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkHangerBush1', b: 'alarmLinkHanger1', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush2', b: 'alarmLinkHanger2', why: '§121: the second corner, same construction' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail on the rod\'s top — TODO 174 cut that top FROM the tail\'s underside through the tick\'s own lift, so the pair kisses at every tilt (0.0008 at rest, 0 at the seat)' },
+  { unit: 'Alarm link', a: 'alarmLinkHanger3', b: 'alarmLinkHanger3Jog', why: '§261 2c: hanger 3\'s lower column welded into its jog arm, one margin under the beak\'s bar' },
+  { unit: 'Alarm link', a: 'alarmLinkHanger3Jog', b: 'alarmLinkHanger3Upper', why: '§261 2c: the jog arm welded into the upper column, which rises to the plate clear of the bar and its post' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuide', b: 'alarmLinkHanger3', why: '§261 2c: the rod\'s guide sleeve abutting hanger 3\'s lower column, welded beside its web' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3Jog', why: '§261 2c: the guide\'s web runs the sleeve\'s length, so its top laps hanger 3\'s jog arm where the arm leaves the column — one weld' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuide', b: 'alarmLinkHanger3Jog', why: '§261 2c: the sleeve\'s top meets the jog arm\'s underside at the column — one weld' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkRod', why: '§121, re-pointed by §261 2c: the same-side beak\'s BAR on the rod\'s top, between its pivot and its nose — the top is cut from the bar\'s far face through the tick\'s own lift (TODO 174\'s registration solve), so the pair kisses at every tilt' },
   { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rim finger\'s tip under the rod\'s flat foot — a push-only contact, not an eye (TODO 206 corrected the wording: the finger only lifts the rod, and the arming spring is what keeps it pressed there)' },
   { unit: 'Alarm link', a: 'alarmLinkArmingSpring', b: 'alarmLinkArmingArm', why: 'TODO 206: the arming blade\'s face on the arm\'s tip corner, sunk ALARM_SEAT_SINK — the spring\'s working contact, held by alarmHandoffs at every parity' },
   { unit: 'Alarm link', a: 'alarmLinkArmingSpring', b: 'alarmLinkHanger3', why: 'TODO 206: the arming blade let into a slot across hanger 3 to its axis — the blade\'s root, hanger 3 being its stud' },
@@ -4737,7 +4741,16 @@ export const PLATE_SEATS = [
   { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerStud", kind: "planted", why: "§268: the hammer spiral's stud, planted in the rim (GONG_RIM_PLANT) beside the post — a short pin up to the spiral band's top" },
-  { unit: "Alarm striking wheel", mesh: "CylinderGeometry#0", kind: "pivot", why: "the arbor's lower pivot" },
+  // §261 landing 2c — the switch-and-lock cluster FOLDED to the dial side: every
+  // post and stud that was planted in the three-quarter plate's top face is the
+  // fold's image, planted in the base plate's dial face (a reflection of the
+  // stacking, so the plant depth is unchanged).
+  { unit: "Alarm lock", mesh: "alarmLockPivotPost", kind: "planted", why: "§261 2c: the lock lever's pivot post, folded — planted in the plate's dial face" },
+  { unit: "Alarm lock", mesh: "alarmLockSpringStud", kind: "planted", why: "§261 2c: the lock's return-blade stud, folded — planted in the plate's dial face" },
+  { unit: "Alarm lock", mesh: "alarmLockBeakRiser", kind: "planted", why: "§261 2c: the rocker's post, folded — planted in the plate's dial face" },
+  { unit: "Alarm switch", mesh: "alarmColStud", kind: "planted", why: "§261 2c: the column wheel's stud, folded — planted in the plate's dial face" },
+  { unit: "Alarm switch", mesh: "alarmJumperStud", kind: "planted", why: "§261 2c: the sautoir's stud, folded — planted in the plate's dial face" },
+  { unit: "Alarm striking wheel", mesh: "alarmStrikeStaff", kind: "pivot", why: "§261 landing 2a: the staff's foot, a journal running in its plate bore (it was §112's stud, planted in the solid plate)" },
   { unit: "Alarm barrel", mesh: "LatheGeometry#0", kind: "planted", why: "the barrel arbor's bored boss, on the plate (§99)" },
   { unit: "Alarm barrel", mesh: "alarmBarrelArbor", kind: "pivot", why: "the barrel arbor, running in that boss (§99)" },
   { unit: "Alarm governor", mesh: "alarmGovStud", kind: "planted", why: "the governor's stud, planted in the plate" },
@@ -4752,8 +4765,8 @@ export const PLATE_SEATS = [
   { unit: "Alarm winding arrest", mesh: "alarmArrestStud", kind: "planted", why: "the arrest's stud, planted in the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
-  { unit: "Alarm link", mesh: "alarmLinkHanger3", kind: "planted", why: "a hanger, standing on the plate" },
-  { unit: "Alarm link", mesh: "alarmLinkRodBushBack", kind: "pivot", why: "the link rod's back bush, a running fit in the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkHanger3Upper", kind: "planted", why: "§261 2c: hanger 3's upper column — jogged round the beak's bar — standing on the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkBeakPost", kind: "planted", why: "§261 2c: the same-side beak's pivot post, folded under the dial — planted in the plate's dial face (the rod's back bush that stood here retired with its bore)" },
   // TODO 209 — two arrival "debt" rows that are bore fits, not clearances: each
   // shaft passes THROUGH the plate, and the reading is its radial gap to the
   // bore wall, a running fit (0.0497, 0.0998), not a part that should clear it.
@@ -5256,12 +5269,10 @@ export function sawRideDepth(A, B) {
 }
 
 // A working contact's tolerance, shared by the selector-family penetration
-// budgets below and the alarmHandoffs check that owns the gap side: the
-// tessellation-sag scale the finish already accepts as invisible
-// (geometry.js RADIAL_SEGS: silhouette sagitta ≈ 0.03 at the largest radii).
-// A truthfully modelled contact can miss exact touch by tri-tri slack of
-// that order, and no more.
-export const HANDOFF_TRACK_TOL = 0.03;   // exported since §268 for the probes that measure a seat by the rows' own tolerance
+// budgets below and the alarmHandoffs check that owns the gap side. Declared
+// in layout.js since TODO 226 step 3b, because the build reads it too (the
+// fork notch's shake is this tolerance); re-exported here for the probes.
+export { HANDOFF_TRACK_TOL };
 
 const PENETRATION_BUDGETS = [
   {
@@ -6210,8 +6221,12 @@ const ALARM_HANDOFFS = [
     // at the seat, through the tick's own lift (the link's registration
     // solve, MODELING.md rule 9): 0.0008 disarmed — the lever law's own
     // small-angle residue — and 0 armed.
-    label: 'beak tail ⇄ rod top',
-    unitA: 'Alarm link', meshA: 'alarmLinkBeakTail',
+    // §261 2c: the same-side beak has no tail — the BAR presses the rod
+    // between its pivot and its nose, so the rod's top is cut from the bar's
+    // far face (cluster top, the world dial-side face under the fold) by the
+    // same registration solve.
+    label: 'beak bar ⇄ rod top',
+    unitA: 'Alarm link', meshA: 'alarmLinkBeakBar',
     unitB: 'Alarm link', meshB: 'alarmLinkRod',
   },
   {
@@ -6658,6 +6673,51 @@ export const MAINT_DETENT_HANDOFFS = [
     expect: { riding: 'free', seated: 'free', crest: 'free', holding: 'free', runout: 'contact' },
   },
 ];
+
+// TODO 226 step 3b — THE ESCAPEMENT'S WORKING CONTACT: the impulse pin on the
+// notch's walls. The notch is closed to the pin plus a shake (src/escapement.js
+// `pinNotch`), and the fork's law puts the pin ON a wall whenever it carries
+// the fork: the wall ahead of it through the unlock (the pin pushes), the wall
+// behind it through the impulse and the run (the fork pushes). So at every
+// pose of the passage but one the pair TOUCHES, by the law, and this row
+// measures that it does on the cut metal. The one excepted stretch is the
+// CROSSING of the shake, where the wheel carries the fork from one wall to the
+// other: there the pin is free by a shake at most, and the shake IS this
+// tolerance (layout.js says why), so no pose there could read anything but
+// "contact"; it is left out rather than claimed. The poses are the clock's own
+// (`pinNotch.tauAt`): both directions of the swing, hanging, and the impulse
+// and run again dial-flat, where §246's posed swing is 292° and the tick reads
+// the fork through the inverted τ (step 3b's prerequisite) — a seam that would
+// open a gap here before any other gate saw it.
+export const ESCAPEMENT_HANDOFFS = [
+  {
+    label: 'impulse pin ⇄ fork notch wall (the pin on the wall it drives or is driven by)',
+    unitA: 'Balance', meshA: 'balanceImpulsePin',
+    unitB: 'Pallet fork', meshB: 'forkBlank',
+  },
+];
+export function escapementHandoffPoses(clock) {
+  const N = clock.pinNotch;
+  const D = Math.PI / 180;
+  const stations = [
+    ['entry', -N.entryHalf * 0.995],                  // just inside the banking: the returning pin has met the wall
+    ['unlock', (-N.entryHalf + N.unlockHalf) / 2],     // pushing the fork through the run and the lock
+    ['unlocked', N.unlockHalf - 0.05 * D],             // at the corner, the last of the push
+    ['impulse', 0],                                    // the wall behind the pin, the line of centres
+    ['letoff', N.liftHalf],                            // the lift's end
+    ['run', (N.liftHalf + N.entryHalf) / 2],           // on to the banking
+  ];
+  const base = { crownPullT: 0, leverEngage: 0, tension: 1 };
+  const out = [];
+  for (const dir of [1, -1]) {
+    for (const [name, th] of stations) out.push([`${name}${dir > 0 ? '+' : '−'}`, { ...base, tau: N.tauAt(dir * th, dir), position: 'CU' }]);
+  }
+  for (const name of ['impulse', 'run']) {
+    const th = stations.find((r) => r[0] === name)[1];
+    out.push([`${name} DU`, { ...base, tau: N.tauAt(th, 1), position: 'DU' }]);
+  }
+  return out;
+}
 
 export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = ALARM_HANDOFFS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
@@ -11717,7 +11777,13 @@ const TURN_LAP_MAX_FRAC = 0.5;
 // end of an arbor, turned last against its own shoulder. Named, because
 // "a pin-kind member at the end of a bar" also describes a screw's shank and
 // a stud's head, and those are judged as the bar they are.
-const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot']);
+// §261 2c adds the drive pin at the foot of the pusher linkage's crank B: a
+// reduced tip (the riser's old section, so the driver's slot is unchanged)
+// turned last against the post's shoulder, which is a pivot's machining case
+// exactly — judged whole, the post read L/D 32.2 off the tip's ⌀ over the
+// whole length; alone the tip is 9.6, and the shank is cut to the target over
+// the post's whole length, which is what the body is still read over.
+const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot', 'alarmLinkageDriverPin']);
 const TURN_AMBIG_TILT = 0.15;
 const TURN_AMBIG_WIDEN = 1.02;
 
@@ -13015,14 +13081,24 @@ LINE_SPECS.push({
   name: 'alarm link',
   group: 'Alarm link',
   inherits: 'alarm switch drive',   // the wheel the nose reads: colInner, baseR, colH
-  path: 'column wheel → beak lever (nose on the columns, tail on the rod) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
+  // §261 2c — RE-CLASSED, by the owner's call (2026-10-12: "a new beak lever
+  // under the dial", not the old one folded). The reflected first-class lever
+  // would move its tail the wrong way in world z and drive the ring backwards,
+  // and re-siding the rim would change the rim's law, which no fork may do. So
+  // the lever is a SAME-SIDE one: pivot, rod and nose along the run, in that
+  // order, the bar pressing the rod between the pivot and the nose. 2b designed
+  // it in this line first (tools/probe-261-dial-beak.mjs, on this table's own
+  // evaluator, at §229's wr 16 and as built) before 2c cut it. Every other row
+  // — the landing, the rim, the shaft, the sideways drive, the stall envelope —
+  // is the reference TODO 222 left, unchanged.
+  path: 'column wheel → same-side beak lever (pivot, rod, nose along the run: the nose on the columns, the bar on the rod between) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
   rows: [
     { key: 'landR', kind: 'spec', unit: 'u', value: (r) => (r.colInner + r.baseR) / 2, measure: 'noseLandR',
       derivedFrom: '§35/§229: the nose lands mid-castellation (ALARM_LINK_NOSE_LAND_R) — the landing the lock rocker’s chamfer ceiling is measured against' },
     { key: 'wrLen', kind: 'spec', unit: 'u', value: 16, measure: 'rodDist',
       derivedFrom: '§229’s reference fold: the rod 16 from the wheel. A RUN, not a law — where the rod stands is the movement’s to decide, so it is the input a fold forks' },
     { key: 'noseLine', kind: 'spec', unit: 'u', value: 0, measure: 'noseOffLine',
-      derivedFrom: '§229: the lever is collinear — nose, pivot and rod on the wheel→rod ray — which is what makes beakLen + tailLen = wrLen − landR' },
+      derivedFrom: '§229, re-classed by §261 2c: the lever is collinear — pivot, rod and nose on the wheel→rod ray, the rod between — which is what makes beakLen − tailLen = wrLen − landR for the same-side class' },
     { key: 'pivotSquare', kind: 'spec', unit: 'ratio', value: 0, measure: 'pivotAxisCos',
       derivedFrom: 'TODO 204: the lever tilts on a pin square to its own line, so the nose falls and the tail lifts in one plane' },
     { key: 'span', kind: 'spec', unit: 'rad', value: 0.35, measure: 'shaftRoll',
@@ -13035,12 +13111,12 @@ LINE_SPECS.push({
       derivedFrom: 'TODO 20: the rod’s stroke FALLS OUT of the finger’s two rolls — nobody assigns it (ALARM_LINK_ROD_TRAVEL_SPEC quotes it where it is needed first)' },
     { key: 'seat', kind: 'spec', unit: 'u', value: (r) => r.colH, measure: 'noseFall',
       derivedFrom: 'TODO 206 (C1): the nose falls until its lowest corner stands on the gap floor — the whole column tier, read whole' },
-    { key: 'ratio', kind: 'spec', unit: 'ratio', value: (r, L) => { const q = L.seat(r.wrLen - r.landR, r.rodTravel); return q.beakLen / q.tailLen; }, measure: 'armRatio',
-      derivedFrom: '§229 + TODO 206: beakLen / tailLen = seat drop / rod stroke, the seat a contact whose corner dip scales with the arm — so the ratio is SOLVED per run (the build’s own seat law), and a fork of the run moves it' },
-    { key: 'beakLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel).beakLen, measure: 'beakArm',
-      derivedFrom: '§229: the input arm, (wrLen − landR)·ρ/(1 + ρ) at the solved ratio' },
-    { key: 'tailLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel).tailLen, measure: 'tailArm',
-      derivedFrom: '§229: the output arm, (wrLen − landR)/(1 + ρ) — the lever REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
+    { key: 'ratio', kind: 'spec', unit: 'ratio', value: (r, L) => { const q = L.seat(r.wrLen - r.landR, r.rodTravel, +1); return q.beakLen / q.tailLen; }, measure: 'armRatio',
+      derivedFrom: '§229 + TODO 206: beakLen / tailLen = seat drop / rod stroke, the seat a contact whose corner dip scales with the arm — so the ratio is SOLVED per run (the build’s own seat law, the same-side class since §261 2c), and a fork of the run moves it' },
+    { key: 'beakLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel, +1).beakLen, measure: 'beakArm',
+      derivedFrom: '§229, same-side since §261 2c: the input arm, pivot to nose, (wrLen − landR)·ρ/(ρ − 1) at the solved ratio' },
+    { key: 'tailLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel, +1).tailLen, measure: 'tailArm',
+      derivedFrom: '§229, same-side since §261 2c: the output arm, pivot to rod, (wrLen − landR)/(ρ − 1) — the lever still REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
     { key: 'ringTravel', kind: 'spec', unit: 'u', value: 0.19, measure: 'ringTravel',
       derivedFrom: 'ALARM_SEL_TRAVEL: sized by the selector ring’s bias assert — the finger throw it buys' },
     // TODO 222 — THE SIDEWAYS DRIVE (the owner's restatement). The centre pin
@@ -13084,13 +13160,29 @@ LINE_SPECS.push({
 // the measured build ambiguous.
 export const LINE_SPEC_FORKS = [
   {
+    // §261 2c — the drive's one forked row. The pusher stays between the
+    // plates (the owner's call) and the wheel is folded under the dial, so the
+    // pin that reaches the driver's slot is crank B's, swung on an arc about a
+    // pivot on the bisector of the reference line's two ends. It passes through
+    // both ends exactly — the linkage is solved to that, closure 5.6e-17 — so
+    // travel, offset and straddle (the chord's), and the carry (§163's
+    // equality, an envelope and never forkable), all hold to the reference.
+    // What the arc cannot keep is the line itself.
+    name: 'alarm switch drive as folded',
+    ref: 'alarm switch drive',
+    rows: {
+      straight: { value: 0.13470189764102053,
+        forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm (6.762) through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) over the crank’s 0.3996 rad swing (clock.alarmLinkage), read off the metal' },
+    },
+  },
+  {
     name: 'alarm link as built',
     ref: 'alarm link',
     rows: {
-      wrLen: { value: 9,
-        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST): TODO 174 corrected its guide-post guard, which had seated §229’s wr-16 fork ON guide post 1, and the best legal site stands the rod 9 from the wheel (TODO 190 kept the distance on the next parity ray)' },
-      rEff: { value: 4.706971912672448,
-        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (TODO 190’s site, the tab at 324°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
+      wrLen: { value: 9.655,
+        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST), re-run by §261 2c for the folded same-side beak: the nose’s ray three column pitches round (k 3), the beak, rod and pivot scored in the folded world, the lay shaft’s hanger columns scored up to the plate, and the fork guarded against TODO 222’s guide plates; the best legal site is the rod a run of 5.0 past the landing, 9.655 from the wheel' },
+      rEff: { value: 4.291127765230935,
+        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (§261 2c’s site, the tab at 81°, clear of guide plate 1 at 60°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
     },
   },
 ];
@@ -13101,7 +13193,11 @@ export const LINE_SPEC_WAIVERS = {};
 function lineSpecDrive(clock, { pinShift = 0 } = {}) {
   const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
   const skirt = find('alarmColSkirt'), cast = find('alarmColCastellations'), base = find('alarmColBase');
-  const pin = find('alarmPusherRiser'), driver = find('alarmColDriver');
+  // §261 2c — the pin that reaches the driver's slot is crank B's since the
+  // fold (the pusher's riser drives crank A between the plates, and the two
+  // 1:1 cranks hand the stroke under the dial); the riser is the pin only on a
+  // tree without the linkage.
+  const pin = find('alarmLinkageDriverPin') || find('alarmPusherRiser'), driver = find('alarmColDriver');
   const missing = Object.entries({ skirt, cast, base, pin, driver }).filter(([, v]) => !v).map(([k]) => k);
   if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
   const wheel = skirt.parent;
@@ -13353,7 +13449,8 @@ function lineSpecLockControl(clock, m) {
 // THE LINK'S READERS. The same two `alarmToggle` states as the lock's — the
 // axis steps the column wheel, and the beak, the rod, the lay shaft and the
 // ring follow by the build's own laws. Which state is REST is read (the nose's
-// lowest point higher, standing on a column top), not assumed.
+// lowest point higher ALONG THE WHEEL'S AXIS, standing on a column top), not
+// assumed.
 //
 // Centres are world-box centres of centrally symmetric meshes, in 3D now as
 // well as in plan: the nose and the rim finger are boxes, the rod a 12-gon,
@@ -13387,8 +13484,17 @@ function lineSpecLink(clock) {
     beakPin.updateWorldMatrix(true, false);
     const pinAxis = new THREE.Vector3(0, 1, 0).transformDirection(beakPin.matrixWorld);   // CylinderGeometry stands along its local y
     const n = lineSpecCentre3(nose);
+    // §261 2c — the nose's lowest point ALONG THE WHEEL'S OWN AXIS, not world
+    // z: the fold reflects the cluster (z ↦ ALARM_FOLD_Z_SUM − z), so a nose
+    // standing on a column top is the LOWER one in world z there. The axis is
+    // the skirt's own z, which the reflection carries with it.
+    skirt.updateWorldMatrix(true, false);
+    const wz = new THREE.Vector3(0, 0, 1).transformDirection(skirt.matrixWorld);
+    let noseMinH = Infinity;
+    { const pos = nose.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) noseMinH = Math.min(noseMinH, v.fromBufferAttribute(pos, i).applyMatrix4(nose.matrixWorld).dot(wz)); }
     return {
-      W: lineSpecOutlineCentre(skirt), N: n.c, noseMinZ: n.lo.z, Pv: lineSpecCentre3(beakPin).c, pinAxis,
+      W: lineSpecOutlineCentre(skirt), N: n.c, noseMinZ: noseMinH, Pv: lineSpecCentre3(beakPin).c, pinAxis,
       R: lineSpecCentre3(rod).c, rodMinZ: lineSpecCentre3(rod).lo.z,
       A1: lineSpecCentre3(bush1).c, A3: lineSpecCentre3(bush3).c, Rc: lineSpecCentre3(rim).c,
       Pc: lineSpecCentre3(pin).c, ringZ: lineSpecCentre3(ring).c.z,
@@ -13514,6 +13620,29 @@ const LINE_SPEC_READERS = {
   'alarm link': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
 };
 
+// A reference's values at a given set of input overrides: every literal row
+// takes the override if one is given, every function row re-derives from the
+// rows above it and the build's laws (`clock.lineLaws`). Called twice per
+// forked reference by `checkLineSpec` (reference inputs, fork inputs), so what
+// a fork MOVED is a difference of two evaluations of one table, never a second
+// table — and exported so an instrument designing a mechanism IN A LINE (§261
+// step 4's dial-side beak) evaluates the same table the gate holds, rather
+// than restating it. `base` carries an inherited reference's values.
+export function lineSpecEvaluate(ref, base, over, laws) {
+  const out = { ...base }, errs = [];
+  for (const row of ref.rows) {
+    let want;
+    const isLaw = typeof row.value === 'function';
+    // an override reaches only a literal SPEC row: a law re-derives, and an
+    // envelope is inherited whole — both are refused as malformed by the
+    // check, and neither may move the value the metal is held to meanwhile
+    const forkable = !isLaw && row.kind !== 'envelope';
+    try { want = isLaw ? row.value(out, laws) : (forkable && over && row.key in over ? over[row.key].value : row.value); }
+    catch (e) { errs.push({ ref: ref.name, key: row.key, error: `its value threw: ${e.message}` }); want = NaN; }
+    out[row.key] = want;
+  }
+  return { out, errs };
+}
 export async function checkLineSpec(clock) {
   const rows = [], violations = [], staleWaivers = [], malformed = [], controls = {}, forks = [], staleForks = [];
   const specs = {};
@@ -13524,20 +13653,7 @@ export async function checkLineSpec(clock) {
   // the rows above it and the build's laws. Called twice per forked reference
   // (reference inputs, fork inputs), so what a fork MOVED is a difference of
   // two evaluations of one table, never a second table.
-  const evaluate = (ref, base, over) => {
-    const out = { ...base }, errs = [];
-    for (const row of ref.rows) {
-      let want;
-      // an override reaches only a literal SPEC row: a law re-derives, and an
-      // envelope is inherited whole — both are refused as malformed below, and
-      // neither may move the value the metal is held to while that is reported
-      const forkable = !isLaw(row) && row.kind !== 'envelope';
-      try { want = isLaw(row) ? row.value(out, laws) : (forkable && over && row.key in over ? over[row.key].value : row.value); }
-      catch (e) { errs.push({ ref: ref.name, key: row.key, error: `its value threw: ${e.message}` }); want = NaN; }
-      out[row.key] = want;
-    }
-    return { out, errs };
-  };
+  const evaluate = (ref, base, over) => lineSpecEvaluate(ref, base, over, laws);
   // the fork table's own structure, judged before anything is measured
   const forkFor = {};
   for (const f of LINE_SPEC_FORKS) {
@@ -13660,6 +13776,10 @@ const CHECKS = {
   // instrument, own phase table: contact at every phase of a tooth.
   maintDetentHandoff: (clock, opts) => checkAlarmHandoffs(clock,
     { poses: MAINT_DETENT_HANDOFF_POSES, handoffs: MAINT_DETENT_HANDOFFS, ...opts }),
+  // TODO 226 step 3b — the impulse pin on the notch's walls, same instrument,
+  // poses read off the clock's own law (escapementHandoffPoses says which).
+  escapementHandoff: (clock, opts) => checkAlarmHandoffs(clock,
+    { poses: escapementHandoffPoses(clock), handoffs: ESCAPEMENT_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   undeclaredClearance: (clock, opts) => checkUndeclaredClearance(clock, opts), // TODO 164 — every OTHER unit pair, held to CLEAR_MARGIN
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)

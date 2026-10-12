@@ -280,6 +280,7 @@ const COSTS = {
   'stemClutchHandoff': 1,
   'strikeHandoff': 1,      // §198 — three posed phases, two rows
   'maintDetentHandoff': 1, // TODO 210 — three posed phases, one row
+  'escapementHandoff': 2,  // TODO 226 step 3b — fourteen posed phases, one row
   'stockFloor': 6,
   // §233 — one swept registry (shared with stockFloor's cost, but measured
   // separately since it is its own call), then a per-mesh axis descent over

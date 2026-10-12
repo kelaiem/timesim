@@ -3,6 +3,13 @@
 // the tower's segment ladder measured face to face, and the §187 glass
 // arithmetic that turns a tower drop into cased height.
 //
+// ITS SUBJECT IS RETIRED (§261 landing 2c). The fold took the column wheel,
+// the lock and the link's beak under the dial; nothing of the tower stands
+// over the plate, the link's allowance row and the switch's two tower rows
+// are gone, and the governor control below fails BY DESIGN on any tree since
+// — the striking wheel governs the envelope now. Kept as the record of what
+// the tower cost; probe-261-height-ledger.mjs prices the depth today.
+//
 // ACCEPTANCE. Written for §192's scoping half (roadmap): the deliverable
 // there is a per-member PRICE table for re-stationing the tier downward,
 // and a price is only honest if the heights it prices are measured, not

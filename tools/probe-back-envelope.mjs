@@ -33,12 +33,16 @@
 //      the construction pose and the reset pose identical; the going train's
 //      tau drift between them is rotation about z and cannot move a z-max.)
 //
-// Controls (both directions, asserted): the alarm link tower MUST appear
-// above the column stack top it rides — measured off the castellation ring's
-// own metal, §192's form of a floor that was a hardcoded 13.877 until the
-// strike tower descended; the alarm barrel MUST NOT appear above the plate
-// (§112 put it at ≈5.4). A run failing either exits 2 — the scan measured
-// the wrong thing.
+// Controls (both directions, asserted): the envelope's GOVERNOR must be seen
+// — the unit this sweep ranks tallest at the build pose must read, at that
+// pose, the very top the boot declaration's own walk recorded for it (two
+// walks of one metal, in two binnings, agreeing) and stand above the plate
+// top; the alarm barrel MUST NOT appear above the plate (§112 put it at
+// ≈5.4). A run failing either exits 2 — the scan measured the wrong thing.
+// Until §261's fold the first control named its member: the alarm link tower
+// over the column stack top it rode (§192's derived floor, which replaced a
+// typed 13.877). The fold took both under the dial, and naming the successor
+// would be the snapshot §192 retired.
 //
 // §187 GATES — this probe is §187's acceptance. When the tree under test
 // exposes `__clock.backEnvelope` (the boot-measured declaration the glass
@@ -52,10 +56,12 @@
 // the skirt bottom each cleared by CLEAR_MARGIN at every pose, and the
 // aperture against the three-quarter plate's measured reach — judged on
 // what was built, not only on what was declared. Scoped to metal ABOVE
-// the plate top: every glass surface stands at least the ring's own stack
+// the plate top: the pane and the step stand at least the ring's own stack
 // above the three-quarter plate's top face, so metal at or below it can
-// never govern the glass, and gating it would only make the declaration
-// carry parts the glass cannot meet.
+// never govern them, and gating it would only make the declaration
+// carry parts the glass cannot meet. The SKIRT is the exception since §261's
+// fold: it descends outboard of the plate to 8.77, under the plate top, so
+// its annulus is swept whole.
 //
 // Run: node tools/probe-back-envelope.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';
@@ -123,7 +129,20 @@ const res = await page.evaluate(async () => {
         const pos = o.geometry.attributes.position;
         for (let i = 0; i < pos.count; i++) {
           o.localToWorld(v.fromBufferAttribute(pos, i));
-          if (v.z <= plateTop) continue;                // only what stands ABOVE the plate top
+          if (v.z <= plateTop) {
+            // §261 2c — EXCEPT under the skirt. The scope rule below says metal
+            // under the plate top cannot govern the glass, and since the fold
+            // the skirt bottom stands 1.54 u UNDER it (8.77 against 10.31),
+            // outboard of the plate, over the pusher's case liner. So the
+            // skirt annulus is swept whole, into the declaration's bins only
+            // (the products above stay "above the plate top").
+            const r = Math.hypot(v.x, v.y);
+            if (decl && glass && r >= glass.skirtID && r < glass.skirtOD + 0.1 && r < decl.rSpan) {
+              const db = Math.floor(r / decl.rSpan * decl.NBIN);
+              if (v.z > declSwept[db]) { declSwept[db] = v.z; declOwner[db] = e.name; }
+            }
+            continue;
+          }
           const u = units.get(e.name) || { zMax: -Infinity, pose: '', zBuild: -Infinity };
           if (v.z > u.zMax) { u.zMax = v.z; u.pose = p.name; }
           if (p.isBuild && v.z > u.zBuild) u.zBuild = v.z;
@@ -173,20 +192,10 @@ const res = await page.evaluate(async () => {
   return {
     hasDecl: !!decl, declFails, hasGlass: !!(decl && glass), glassFails,
     plateTop, plateR, rSpan, poses: poses.length,
-    // §192 — the tower control's floor, measured off the metal it rides:
-    // the column stack's top (castellations). Replaces a hardcoded 13.0/13.877
-    // that went stale the day the strike tower descended.
-    colStackTop: (() => {
-      let mesh = null;
-      clock.scene.traverse((o) => { if (o.name === 'alarmColCastellations') mesh = o; });
-      if (!mesh) return null;
-      mesh.updateWorldMatrix(true, false);
-      const p = mesh.geometry.attributes.position, m = mesh.matrixWorld.elements;
-      let z = -Infinity;
-      for (let i = 0; i < p.count; i++)
-        z = Math.max(z, m[2] * p.getX(i) + m[6] * p.getY(i) + m[10] * p.getZ(i) + m[14]);
-      return z;
-    })(),
+    // §261 2c — the declaration's own per-unit tops, for the governor control.
+    declAllow: decl ? decl.allowances : [],
+    declUnitTop: decl && decl.unitBins ? Object.fromEntries(Object.entries(decl.unitBins)
+      .map(([u, a]) => [u, Math.max(...a.filter((z) => z !== null))])) : {},
     units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose, zBuild: u.zBuild }))
       .sort((a, b) => b.zMax - a.zMax),
     bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan, zMax: z, owner: binOwner[i], zBuild: binsBuild[i] })),
@@ -232,11 +241,22 @@ if (res.hasGlass) {
 }
 
 // CONTROLS — both directions.
-const tower = res.units.find((u) => u.name === 'Alarm link');
 const barrel = res.units.find((u) => u.name === 'Alarm barrel');
 let ok = true;
-if (!tower || !(res.colStackTop > 0) || tower.zMax < res.colStackTop) { ok = false; console.log(`\nCONTROL FAIL: the alarm link tower was not found above the column stack top ${res.colStackTop ? res.colStackTop.toFixed(3) : '(unmeasured)'} it rides — the scan measured the wrong thing (got ${tower ? tower.zMax.toFixed(3) : 'nothing'})`); }
-else console.log(`\nCONTROL PASS: alarm link tower found at ${tower.zMax.toFixed(3)}`);
+// §261 2c — the governor control, FOUND rather than named (header). The boot
+// declaration's per-unit walk (unitBins, allowance included) is the second
+// reader; the governor's top there, its allowance taken back off, must be
+// this sweep's build-pose top for the same unit.
+const govU = res.units.filter((u) => u.zBuild > -Infinity).sort((a, b) => b.zBuild - a.zBuild)[0];
+if (!govU) { ok = false; console.log('\nCONTROL FAIL: nothing stands above the plate top at the build pose — the scan measured the wrong thing'); }
+else if (res.hasDecl) {
+  const allow = (res.declAllow.find((a) => a.unit === govU.name) || { extra: 0 }).extra;
+  const declTop = res.declUnitTop[govU.name];
+  if (!(declTop !== undefined && Math.abs(declTop - allow - govU.zBuild) <= 1e-6)) {
+    ok = false;
+    console.log(`\nCONTROL FAIL: the governor ${govU.name} reads ${govU.zBuild.toFixed(4)} here and ${declTop === undefined ? 'nothing' : (declTop - allow).toFixed(4)} in the boot declaration's own walk — the two scans measured different metal`);
+  } else console.log(`\nCONTROL PASS: the envelope's governor ${govU.name} found at ${govU.zBuild.toFixed(3)}, the boot declaration's walk agreeing`);
+} else console.log(`\nCONTROL PASS: the envelope's governor ${govU.name} found at ${govU.zBuild.toFixed(3)} (no declaration to cross-read)`);
 if (barrel) { ok = false; console.log(`CONTROL FAIL: the alarm barrel appears ABOVE the plate at ${barrel.zMax.toFixed(3)} — §112 put it below; the scan or the tree is wrong`); }
 else console.log('CONTROL PASS: the alarm barrel is not above the plate (§112 holds)');
 await browser.close(); srv.kill();

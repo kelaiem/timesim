@@ -372,14 +372,16 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 //    largest swing the balance can REACH, rounded UP, since a load priced below
 //    it is not a bound. Since TODO 216 that is the SMALLER of two angles: the
 //    solve's MAXIMUM (favourable, dial-flat: 454.80° since TODO 207) and the
-//    KNOCK (main.js ESCAPEMENT_KNOCK: 304.12° since TODO 226 step 3 banked the
-//    fork a run past the let-off, 301.35° since step 1 seated the pin, 315.22°
+//    KNOCK (main.js ESCAPEMENT_KNOCK: 310.46° since TODO 226 step 3b closed the
+//    notch to the pin plus a shake and ground the pin to a D, 304.12° since
+//    step 3 banked the fork a run past the let-off, 301.35° since step 1
+//    seated the pin, 315.22°
 //    on §221's bank before it, 314.18° before that, where the
 //    impulse pin, carried round from the far side, strikes the banked fork's
 //    horn, solved off the fork blank's METAL outline and the pin's radius). The
 //    balance cannot swing past the knock; it banks on the horn. So the
 //    favourable dial-flat corner, which the energy column would carry to 455°,
-//    knocks, and the peak is the knock's 305° (302° before the run, 316° before the seat's horns,
+//    knocks, and the peak is the knock's 311° (305° before the notch closed, 302° before the run, 316° before the seat's horns,
 //    which run to the depth the pin enters and are read with the chamfer that
 //    stands proud of the authored outline; 315° before §221 derived the bank
 //    from the pin's own bearing, which banks the fork 4.03° instead of 2.57°;
@@ -391,7 +393,7 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 // within one degree). A change that moves the solve or the escapement fails
 // the gate until these move with it.
 export const AMPLITUDE_CLAIM_DEG = 126;
-export const AMPLITUDE_PEAK_DEG = 305;
+export const AMPLITUDE_PEAK_DEG = 311;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
 // less as a fault. It is held at the NOMINAL corner, the serviced state; the
@@ -513,7 +515,15 @@ export const CASE_HEIGHT_STEP_MM = 0.001;
 // blade needs its root on the flange, and the sixth §51 spend that buys it
 // (ALARM_B_BAND_SPEND, 0.4098 u, Z_DIAL −9.13 → −9.54) is 0.155 mm of cased
 // depth, 1:1 — the price of driving the lift, named here.
-export const CASE_HEIGHT_MAX_MM = 12.382;
+// §261 step 4 (landing 2c) LOWERED it, 12.382 → 12.152: the fold took the
+// alarm switch, its lock and the link's beak under the dial, and with them
+// the two declared swept rows that stood the switch over the plate — and the
+// skirt row (r 48.3–49.6) re-authored from §226's open 10.08 to the 8.614 the
+// pusher's case liner measures at its worst pose (8.62). The back now stands
+// on the hammer's plane (the pane floor, 11.591 + CLEAR_MARGIN), the skirt
+// arm meeting it exactly; 0.230 mm bought, the step-1 price table's L2 to the
+// micron. The keys govern the back-most metal, 0.140 mm over the ring face.
+export const CASE_HEIGHT_MAX_MM = 12.152;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
@@ -807,6 +817,16 @@ export const STOCK_MIN_R10 = flatsR(STOCK_MIN_U, 10);  // 0.167 u — ⌀ 0.12 m
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by
                                   // the balance plane derivation itself.
+// A working contact's tolerance: the tessellation-sag scale the finish
+// already accepts as invisible (geometry.js RADIAL_SEGS: silhouette sagitta
+// ≈ 0.03 at the largest radii). A truthfully modelled contact can miss exact
+// touch by tri-tri slack of that order, and no more. It is the inspector's
+// (the selector budgets and alarmHandoffs read it, inspect.js re-exports it),
+// declared here since TODO 226 step 3b because the build reads it too: the
+// fork notch's SHAKE is this tolerance. A slot closed to its pin is a working
+// contact on either wall, and a play smaller than the slack a contact may miss
+// touch by could not be told from none.
+export const HANDOFF_TRACK_TOL = 0.03;
 // The running fit every plate bearing is cut to — a real pivot's side-shake.
 // Declared here since TODO 168 (it was main.js's): geometry.js cuts every
 // makeGear/makePinion bore against it too, spending at most HALF of it on
@@ -3907,4 +3927,196 @@ export function solveStopWork({
     HACK_ROD_ELBOW,
     HACK_LINK_W: 2 * linkHalfW,   // §234: the blank the elbow was priced at — main.js cuts to this, not to a second computation
   };
+}
+
+// ---------------------------------------------------------------------------
+// §219 tier one — THE TECHNIC FORK: the going, motion and reserve trains
+// re-toothed to a public parts catalogue, every row an EXACT rational product.
+// No geometry: this is data and a boot assert, and nothing in the build reads
+// it yet (tier two would). It lands here, beside TRAIN, because a fork row's
+// target is DERIVED from the steel counts above, never copied from them.
+//
+// THE CATALOGUE. Read from BrickLink's `Technic, Gear` category (catString
+// 136) on 2026-09-12. The roadmap repo's docs/LEGO_FEASIBILITY.md F1 carries
+// the part number for every row and is the source this table must not drift
+// from. A count is a ROW, not a number: `part` is what a BOM orders, and
+// `kind` decides whether a centre distance means anything, because only
+// parallel-axis kinds mesh at the half-sum distance.
+//   spur           — plain parallel-axis gear
+//   doubleBevel    — bevelled both sides; DOES mesh on parallel axes, which is
+//                    what double bevel is for. 28 and 36 exist only this way.
+//   turntable      — parallel-axis, but mounts on its own frame, so its centre
+//                    distance is not a lattice quantity
+//   turntableBevel — the 60T top (18938) is a BEVEL: a 90° mesh, never parallel
+// `slips: true` marks a clutch gear. It slips above a torque threshold, so it
+// is barred from a going train: a train that slips does not keep time. That
+// exclusion is DERIVED, which is why it is a flag and not an omission.
+const TECHNIC_CLASSIC_COUNTS = [
+  { teeth: 8,  part: '3647',  kind: 'spur' },
+  { teeth: 12, part: '69778', kind: 'spur' },
+  { teeth: 16, part: '4019',  kind: 'spur' },
+  { teeth: 20, part: '69779', kind: 'spur' },
+  { teeth: 24, part: '3648',  kind: 'spur' },
+  { teeth: 28, part: '46372', kind: 'doubleBevel' },  // no plain 28T spur exists
+  { teeth: 36, part: '32498', kind: 'doubleBevel' },  // no plain 36T spur exists
+  { teeth: 40, part: '3649',  kind: 'spur' },
+  { teeth: 56, part: '2855',  kind: 'turntable' },
+  { teeth: 60, part: '18938', kind: 'turntableBevel' },
+];
+// The 2026 wave (the Icons Road Bike, 11380, and its siblings), each read with
+// its year. Split into its own generation so the 64T dependency is data the
+// solver answers from rather than a parenthesis in prose.
+const TECHNIC_2026_ADDED = [
+  { teeth: 14, part: '7785', kind: 'spur' },
+  { teeth: 18, part: '7786', kind: 'spur', slips: true },   // clutch on both sides
+  { teeth: 64, part: '7861', kind: 'spur' },
+];
+// module_mm 1: pitch diameter in mm = tooth count. lattice_mm 4: half a stud,
+// the finest centre-distance step an offset beam gives (whole studs are 8).
+export const CATALOGUES = Object.freeze({
+  steel: null,   // the built movement: its counts are TRAIN and the motion works above
+  technic_classic: Object.freeze({ module_mm: 1, lattice_mm: 4, counts: TECHNIC_CLASSIC_COUNTS }),
+  technic_2026:    Object.freeze({ module_mm: 1, lattice_mm: 4, counts: [...TECHNIC_CLASSIC_COUNTS, ...TECHNIC_2026_ADDED] }),
+});
+
+// --- exact rationals. Floats are banned on purpose: a 2.1 that is 2.0997 is a
+// different mechanism, and that is the whole entry.
+const _gcd = (a, b) => (b ? _gcd(b, a % b) : a < 0n ? -a : a);
+export function ratQ(n, d = 1n) {
+  n = BigInt(n); d = BigInt(d);
+  const g = _gcd(n, d) || 1n;
+  return { n: n / g, d: d / g };
+}
+export const ratMul = (a, b) => ratQ(a.n * b.n, a.d * b.d);
+export const ratEq = (a, b) => a.n === b.n && a.d === b.d;
+export const ratStr = (r) => (r.d === 1n ? String(r.n) : `${r.n}/${r.d}`);
+
+// Mesh admissibility for `a` driving `b`. PARALLEL pairs sit at half the sum
+// of their counts and that distance must land on the lattice. A turntable
+// rides its own frame, so it is exempt. A RIGHT-ANGLE pair needs exactly one
+// bevel-class member driven by (or driving) a parallel-class one; two
+// bevel-class members meshing is not a thing this catalogue does. Returns null
+// for an inadmissible pair, else { class, cd } (cd in mm, null at 90°).
+const _PARALLEL = new Set(['spur', 'doubleBevel', 'turntable']);
+const _BEVEL = new Set(['bevel', 'turntableBevel']);
+const _EXEMPT = new Set(['turntable', 'turntableBevel']);
+export function catalogueMesh(a, b, cat, { goingTrain = true } = {}) {
+  if (goingTrain && (a.slips || b.slips)) return null;
+  const bevels = (_BEVEL.has(a.kind) ? 1 : 0) + (_BEVEL.has(b.kind) ? 1 : 0);
+  if (bevels === 2) return null;
+  if (bevels === 1) {
+    const other = _BEVEL.has(a.kind) ? b : a;
+    if (!_PARALLEL.has(other.kind)) return null;
+    return { class: 'right-angle', cd: null };
+  }
+  const cd = (a.teeth + b.teeth) / 2;
+  if (_EXEMPT.has(a.kind) || _EXEMPT.has(b.kind)) return { class: 'parallel-exempt', cd };
+  if (!Number.isInteger(cd) || cd % cat.lattice_mm !== 0) return null;
+  return { class: 'parallel', cd };
+}
+
+// The SHORTEST chain whose product is `target` exactly; ties broken by fewest
+// total teeth, because backlash and friction are per mesh. Breadth-first over
+// distinct values, so it is a search and NOT a boot-time call — at depth 6 it
+// is the probe's work (tools/probe-219-catalogue.mjs), which also holds the
+// declared rows below to be what this returns.
+export function solveRatio(target, cat, { maxLen = 6, ...opts } = {}) {
+  const P = [];
+  for (const a of cat.counts) for (const b of cat.counts) {
+    if (a.teeth === b.teeth) continue;
+    const m = catalogueMesh(a, b, cat, opts);
+    if (m) P.push({ a, b, ratio: ratQ(a.teeth, b.teeth), ...m });
+  }
+  let frontier = new Map([['1/1', { val: ratQ(1), teeth: 0, chain: [] }]]);
+  for (let depth = 1; depth <= maxLen; depth++) {
+    const next = new Map();
+    let best = null;
+    for (const { val, teeth, chain } of frontier.values()) {
+      for (const p of P) {
+        const v = ratMul(val, p.ratio);
+        const t = teeth + p.a.teeth + p.b.teeth;
+        const ch = [...chain, p];
+        if (ratEq(v, target)) { if (!best || t < best.teeth) best = { teeth: t, chain: ch }; continue; }
+        const k = `${v.n}/${v.d}`;
+        const prev = next.get(k);
+        if (!prev || t < prev.teeth) next.set(k, { val: v, teeth: t, chain: ch });
+      }
+    }
+    if (best) return best;
+    frontier = next;
+  }
+  return null;
+}
+
+// THE FORK ROWS, in §70's row shape. `chains[gen]` is the solver's answer for
+// that generation, written down as pairs [driver, driven]; the probe re-solves
+// and fails if a declared chain is not the solver's, so these cannot go stale
+// against the catalogue. The TARGET is never written here: `technicForkTargets`
+// derives it from the steel counts (or, for the escape row, from RATE_TABLE's
+// law at the catalogue's own escapement), so a re-geared steel train fails the
+// boot assert below instead of carrying a fork for a ratio it no longer has.
+//
+// Under technic_2026 the solver prefers turntable chains: fewer meshes, at
+// the price of a 90° mesh on the 60T's bevel top or a 56T turntable on its own
+// frame. Both generations are kept so that dependency is data.
+//
+// SOLVED AT THE IDENTITY SPEC. The reserve target is 7h/100 (the hand's sweep
+// over the barrel's usable turns), so it moves with `reserveHours`; at any
+// other reserve the row is a different fork, and main.js checks it only at
+// `solvedAt`. The other three rows are spec-independent: the escape row is the
+// catalogue's own 1 Hz, 8T escapement, never the steel row retuned.
+export const TECHNIC_VPH = 7200, TECHNIC_ESCAPE_TEETH = 8;   // 1 Hz knife-edge balance on an 8T wheel
+export const TECHNIC_FORK = Object.freeze({
+  solvedAt: Object.freeze({ reserveHours: 30 }),
+  rows: Object.freeze([
+    { key: 'centre→fourth', derivedFrom: 'fourth wheel 1 rev/min under a centre wheel at 1 rev/h',
+      chains: { technic_classic: [[16, 8], [16, 8], [24, 8], [40, 8]], technic_2026: [[60, 8], [64, 8]] } },
+    { key: 'fourth→escape', derivedFrom: `RATE_TABLE's law at ${TECHNIC_VPH} vph on an ${TECHNIC_ESCAPE_TEETH}T wheel`,
+      chains: { technic_classic: [[60, 8]], technic_2026: [[60, 8]] } },
+    { key: 'motion works', derivedFrom: '12 hours to the hour hand’s one turn',
+      chains: { technic_classic: [[16, 8], [16, 8], [24, 8]], technic_2026: [[24, 8], [56, 14]] } },
+    { key: 'reserve reduction', derivedFrom: 'the hand’s sweep over the barrel’s usable turns',
+      chains: { technic_classic: [[24, 16], [28, 20]], technic_2026: [[24, 16], [28, 20]] } },
+  ]),
+});
+
+// The targets layout.js can derive. RATE_TABLE's law: the fourth wheel turns
+// 1 rev/min, the escape pinion steps it up, each escape tooth is two beats, so
+// vph = 120 · N · (fourth/escPinion). The reserve target needs main.js's
+// sweep and is derived there (see RESERVE_SWEEP_DEG).
+export function technicForkTargets() {
+  return {
+    'centre→fourth': ratMul(ratQ(TRAIN.center.teeth, TRAIN.center.pinion), ratQ(TRAIN.third.teeth, TRAIN.third.pinion)),
+    'fourth→escape': ratQ(TECHNIC_VPH, 120 * TECHNIC_ESCAPE_TEETH),
+    'motion works': ratMul(ratQ(MW_MINUTE_TEETH, cannonPinionTeeth), ratQ(MW_HOUR_TEETH, MW_PINION_TEETH)),
+  };
+}
+
+// One declared chain against its target: every member a catalogue row (teeth
+// are unique per generation, so a count names one part), every pair
+// admissible, and the product EXACT. Returns the reasons it fails, [] if none.
+export function technicChainErrors(gen, key, chain, target) {
+  const cat = CATALOGUES[gen];
+  const errs = [];
+  let product = ratQ(1);
+  for (const [ta, tb] of chain) {
+    const a = cat.counts.find((c) => c.teeth === ta), b = cat.counts.find((c) => c.teeth === tb);
+    if (!a || !b) { errs.push(`${gen} ${key}: ${ta}:${tb} names a count the catalogue does not have`); continue; }
+    if (!catalogueMesh(a, b, cat)) errs.push(`${gen} ${key}: ${ta}:${tb} is not an admissible going-train mesh`);
+    product = ratMul(product, ratQ(ta, tb));
+  }
+  if (!ratEq(product, target)) errs.push(`${gen} ${key}: chain multiplies to ${ratStr(product)}, the steel invariant is ${ratStr(target)}`);
+  return errs;
+}
+
+// THE BOOT ASSERT (rule 6: silent unless something regressed). Arithmetic on
+// a dozen small integers, so it costs nothing and needs no seam.
+{
+  const targets = technicForkTargets();
+  for (const row of TECHNIC_FORK.rows) {
+    if (!(row.key in targets)) continue;   // the reserve row: main.js, beside the sweep it derives from
+    for (const [gen, chain] of Object.entries(row.chains))
+      for (const e of technicChainErrors(gen, row.key, chain, targets[row.key]))
+        console.warn(`§219 technic fork: ${e}`);
+  }
 }

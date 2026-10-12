@@ -41,6 +41,13 @@
 //      150°-arc pair. The shipped movement sweeps 300° since §152
 //      (2026-08-21), three weeks before the note was filed. A row read off a
 //      scale cannot go stale without this assert firing.
+//   6. the fork rows DECLARED in src/layout.js (TECHNIC_FORK) are exactly the
+//      solver's chains, per generation. layout.js boot-asserts each declared
+//      chain exact and admissible but cannot afford the search that says it is
+//      the BEST chain, so the declaration's optimality lives here.
+//
+// Since §219 tier one the catalogue, the mesh rule and solveRatio are
+// layout.js's exports; this probe imports them and keeps no copy.
 //   cd tools && node probe-219-catalogue.mjs      (exit 1 on any gated claim)
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -49,117 +56,13 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const L = await import(join(ROOT, 'src/layout.js'));
 
-// --- exact rationals. Floats are banned here on purpose: a 4.2 that is
-// --- 4.1997 is a different mechanism, and that is the whole entry.
-const gcd = (a, b) => (b ? gcd(b, a % b) : a < 0n ? -a : a);
-const F = (n, d = 1n) => { n = BigInt(n); d = BigInt(d); const g = gcd(n, d) || 1n; return { n: n / g, d: d / g }; };
-const mul = (a, b) => F(a.n * b.n, a.d * b.d);
-const div = (a, b) => F(a.n * b.d, a.d * b.n);
-const eq = (a, b) => a.n === b.n && a.d === b.d;
-const key = (r) => `${r.n}/${r.d}`;
-const show = (r) => (r.d === 1n ? String(r.n) : `${r.n}/${r.d}`);
-
-// ---------------------------------------------------------------------------
-// THE CATALOGUE. Read from BrickLink's `Technic, Gear` category (catString
-// 136) on 2026-09-12 — see docs/LEGO_FEASIBILITY.md F1, which carries the
-// part number for every row and is the source this table must not drift from.
-//
-// A count is a ROW, not a number. `part` is what a BOM orders, so tier three
-// is a print rather than a lookup. `kind` decides whether a centre distance
-// means anything: only parallel-axis kinds mesh at the half-sum distance, and
-// a catalogue without kinds admits meshes that cannot be built.
-//   spur          — plain parallel-axis gear
-//   doubleBevel   — bevelled both sides; DOES mesh on parallel axes, which is
-//                   what double bevel is for. 28 and 36 exist only this way.
-//   turntable     — parallel-axis, but mounts on its own frame, so its centre
-//                   distance is not a lattice quantity (F1 says so of 8:60)
-//   turntableBevel— the 60T top (18938) is a BEVEL: a 90° mesh, never parallel
-// `slips: true` marks a clutch gear. It slips above a torque threshold, so it
-// is barred from a going train — a train that slips does not keep time. That
-// exclusion is DERIVED, which is why it is a flag and not an omission.
-const CLASSIC = [
-  { teeth: 8,  part: '3647',  kind: 'spur' },
-  { teeth: 12, part: '69778', kind: 'spur' },
-  { teeth: 16, part: '4019',  kind: 'spur' },
-  { teeth: 20, part: '69779', kind: 'spur' },
-  { teeth: 24, part: '3648',  kind: 'spur' },
-  { teeth: 28, part: '46372', kind: 'doubleBevel' },  // no plain 28T spur exists
-  { teeth: 36, part: '32498', kind: 'doubleBevel' },  // no plain 36T spur exists
-  { teeth: 40, part: '3649',  kind: 'spur' },
-  { teeth: 56, part: '2855',  kind: 'turntable' },
-  { teeth: 60, part: '18938', kind: 'turntableBevel' },
-];
-// The 2026 wave, all four read with their year: the Icons Road Bike (11380)
-// and its siblings. 14T and 18T were absent from the note's first draft.
-const TWENTY_SIX = [
-  { teeth: 14, part: '7785', kind: 'spur' },
-  { teeth: 18, part: '7786', kind: 'spur', slips: true },   // clutch on both sides
-  { teeth: 64, part: '7861', kind: 'spur' },
-];
-const CATALOGUES = {
-  technic_classic: { module_mm: 1, lattice_mm: 4, counts: CLASSIC },
-  technic_2026:    { module_mm: 1, lattice_mm: 4, counts: [...CLASSIC, ...TWENTY_SIX] },
-};
-
-// Mesh admissibility. PARALLEL pairs sit at half the sum of their counts and
-// that distance must land on the lattice — whole studs (8 mm), half studs with
-// an offset beam (4 mm). A turntable rides its own frame, so it is exempt.
-// A RIGHT-ANGLE pair needs exactly one bevel-class member driven by a
-// parallel-class one (a spur turning a bevel turntable top, the standard
-// idiom); two bevel-class members meshing is not a thing this catalogue does.
-const PARALLEL = new Set(['spur', 'doubleBevel', 'turntable']);
-const BEVEL = new Set(['bevel', 'turntableBevel']);
-const EXEMPT = new Set(['turntable', 'turntableBevel']);
-
-function mesh(a, b, cat, { goingTrain = true } = {}) {
-  if (goingTrain && (a.slips || b.slips)) return null;      // a clutch cannot hold a going train
-  const bevels = (BEVEL.has(a.kind) ? 1 : 0) + (BEVEL.has(b.kind) ? 1 : 0);
-  if (bevels === 2) return null;
-  if (bevels === 1) {
-    const other = BEVEL.has(a.kind) ? b : a;
-    if (!PARALLEL.has(other.kind)) return null;
-    return { class: 'right-angle', cd: null };              // not a lattice quantity
-  }
-  const cd = (a.teeth + b.teeth) / 2;
-  if (EXEMPT.has(a.kind) || EXEMPT.has(b.kind)) return { class: 'parallel-exempt', cd };
-  if (!Number.isInteger(cd) || cd % cat.lattice_mm !== 0) return null;
-  return { class: 'parallel', cd };
-}
-
-function pairsOf(cat, opts) {
-  const out = [];
-  for (const a of cat.counts) for (const b of cat.counts) {
-    if (a.teeth === b.teeth) continue;
-    const m = mesh(a, b, cat, opts);
-    if (m) out.push({ a, b, ratio: F(a.teeth, b.teeth), ...m });  // a drives b: ratio a/b
-  }
-  return out;
-}
-
-// The SHORTEST chain whose product is `target` exactly; ties broken by fewest
-// total teeth, because backlash and friction are per mesh (the note's F2).
-function solveRatio(target, cat, { maxLen = 6, ...opts } = {}) {
-  const P = pairsOf(cat, opts);
-  let frontier = new Map([[key(F(1n)), { val: F(1n), teeth: 0, chain: [] }]]);
-  for (let depth = 1; depth <= maxLen; depth++) {
-    const next = new Map();
-    let best = null;
-    for (const { val, teeth, chain } of frontier.values()) {
-      for (const p of P) {
-        const v = mul(val, p.ratio);
-        const t = teeth + p.a.teeth + p.b.teeth;
-        const ch = [...chain, p];
-        if (eq(v, target)) { if (!best || t < best.teeth) best = { teeth: t, chain: ch }; continue; }
-        const k = key(v);
-        const prev = next.get(k);
-        if (!prev || t < prev.teeth) next.set(k, { val: v, teeth: t, chain: ch });
-      }
-    }
-    if (best) return best;
-    frontier = next;
-  }
-  return null;
-}
+// --- exact rationals, the catalogue, the mesh rule and the solver: all
+// IMPORTED from src/layout.js since §219 tier one moved them there. This probe
+// used to carry its own copies; a second copy is the one that drifts.
+const F = L.ratQ, mul = L.ratMul, eq = L.ratEq, show = L.ratStr;
+const CATALOGUES = L.CATALOGUES;
+const CLASSIC = CATALOGUES.technic_classic.counts;
+const solveRatio = L.solveRatio;
 
 const chainStr = (c) => c.chain.map((p) => `${p.a.teeth}:${p.b.teeth}`).join(' × ');
 const cdStr = (c) => c.chain.map((p) => (p.cd == null ? '90°' : `${p.cd}mm`)).join(' ');
@@ -200,7 +103,7 @@ const SHIPPED_ESCAPE_TEETH = 15;   // the club-tooth wheel the 18,000 row runs
 const lawRatio = (vph, N) => F(vph, 120 * N);
 const shippedLaw = lawRatio(L.SPEC.vph, SHIPPED_ESCAPE_TEETH);
 const steelFourthToEscape = F(T.fourth.teeth, T.fourth.pinion);
-const TECHNIC_VPH = 7200, TECHNIC_ESCAPE_TEETH = 8;   // 1 Hz knife-edge balance, 8T wheel
+const { TECHNIC_VPH, TECHNIC_ESCAPE_TEETH } = L;   // 1 Hz knife-edge balance, 8T wheel — layout.js's, not a copy
 
 const INVARIANTS = [
   { key: 'centre→fourth',    target: steelCentreToFourth, steel: `${T.center.teeth}:${T.center.pinion} × ${T.third.teeth}:${T.third.pinion}`, derivedFrom: 'fourth wheel 1 rev/min under a centre wheel at 1 rev/h' },
@@ -259,6 +162,30 @@ for (const gen of ['technic_classic', 'technic_2026']) {
   console.log(`  derivedFrom: ${INVARIANTS.map((i) => `${i.key} ← ${i.derivedFrom}`).join('; ')}\n`);
 }
 
+// --- claim 6: the DECLARED fork rows in layout.js are the solver's answers --
+// layout.js boot-asserts that each declared chain is exact and admissible; it
+// cannot assert that a chain is the BEST one, because that needs the search
+// above, which is too slow for a boot. So this holds it: per generation and
+// row, the declared pairs must be exactly the chain solveRatio returns.
+console.log('THE DECLARED ROWS (claim 6) — TECHNIC_FORK in layout.js against the solver');
+{
+  const targets = { ...L.technicForkTargets(), 'reserve reduction': steelReserve };
+  const pairs = (c) => c.map(([a, b]) => `${a}:${b}`).join(' × ');
+  const keys = L.TECHNIC_FORK.rows.map((r) => r.key);
+  for (const inv of INVARIANTS) if (!keys.includes(inv.key)) fail(`invariant "${inv.key}" has no TECHNIC_FORK row in layout.js`);
+  for (const row of L.TECHNIC_FORK.rows) {
+    if (!targets[row.key]) { fail(`TECHNIC_FORK row "${row.key}" has no target this probe derives`); continue; }
+    for (const [gen, chain] of Object.entries(row.chains)) {
+      for (const e of L.technicChainErrors(gen, row.key, chain, targets[row.key])) fail(e);
+      const sol = solveRatio(targets[row.key], CATALOGUES[gen]);
+      const solved = sol ? sol.chain.map((p) => [p.a.teeth, p.b.teeth]) : null;
+      const same = solved && pairs(solved) === pairs(chain);
+      console.log(`  ${row.key.padEnd(19)} ${gen.padEnd(16)} declared ${pairs(chain).padEnd(24)} ${same ? 'OK' : `≠ solver ${solved ? pairs(solved) : 'REFUSED'}`}`);
+      if (!same) fail(`TECHNIC_FORK "${row.key}" under ${gen} declares ${pairs(chain)}; the solver returns ${solved ? pairs(solved) : 'nothing'}`);
+    }
+  }
+  console.log('');
+}
 // --- claim 4: the control -----------------------------------------------------
 console.log('THE CONTROL (claim 4) — a target the catalogue must refuse under BOTH generations');
 let control = null;

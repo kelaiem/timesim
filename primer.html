@@ -754,6 +754,13 @@
       <p>Arming is its own little machine: pressing the pusher ratchets a star-shaped
       column wheel round one tooth per press, alternately enabling and disabling the
       release — the same switch-by-column that chronograph buttons use.</p>
+      <p>Arming also decides whether you see the alarm hand. The switch turns a thin ring
+      that rides three sloping slots, like a screw thread, so it rises as it turns. As it
+      rises, a small see-saw lets a spring press a pin into a slot in the setting wheel,
+      which locks the hand to the time you set. Disarming lowers the ring, the see-saw
+      lifts the pin out, and a heart-shaped cam with its own spring sends the hand home to
+      hide under the hour hand. Those pushes are made by the parts themselves; the hand's
+      swing out to the set time, and the speed of its snap home, are still animations.</p>
       <p class="note">Honesty note, both directions. The arming chain is genuinely
       <em>driven</em>: the press moves the pawl, the pawl indexes the column, and every
       part downstream stands where the surface pushing it puts it — the simulation
@@ -989,8 +996,9 @@
   // 0.5° of lever deep at the banking, each slanted end running from the
   // locking corner to the let-off corner that leaves a drop of 1.5° of wheel
   // before the next tooth lands. The beat law is the one the tick uses: the
-  // lever's angle is the balance's pin as seen from the lever's pivot while
-  // the pin is in the notch and banked outside it, and the wheel's angle is
+  // lever's angle is the balance's pin as seen from the lever's pivot, a
+  // shake to one side or the other, while the pin is in the notch and banked
+  // outside it, and the wheel's angle is
   // READ OFF THE STONE'S FACES at that lever angle — up the locking face
   // (where the wheel backs a hair), down the slanted end, then free until the
   // other stone. The solve is the explainer's port of the simulation's, kept
@@ -1008,10 +1016,19 @@
     // pin on a 1.62 roller; the stone lets go where the pin, at the edge of
     // the 50° lift, lies on the lever's line, and the lever banks a run past
     // that, so the pin meets the banked lever a little outside the lift
-    var amp = 200 * D2R, dPivot = 11.1948, rPin = 1.62, liftHalf = 25 * D2R;
-    var bank0 = Math.atan2(rPin * Math.sin(liftHalf), dPivot - rPin * Math.cos(liftHalf));
+    // and the pin sits in a slot a hair wider than it (0.03), so the lever
+    // trails the pin's line while the pin pushes it off its bank, and leads it
+    // while the wheel drives the pin, crossing the hair in between
+    var amp = 200 * D2R, dPivot = 11.1948, rPin = 1.62, liftHalf = 25 * D2R, shake = 0.03, crossEnd = -10.16 * D2R;
+    var rhoOf = function (th) { return Math.hypot(dPivot - rPin * Math.cos(th), rPin * Math.sin(th)); };
+    var bearing = function (th) { return Math.atan2(rPin * Math.sin(th), dPivot - rPin * Math.cos(th)); };
+    var lead = function (th) { return bearing(th) + Math.asin(shake / rhoOf(th)); };
+    var lag = function (th) { return bearing(th) - Math.asin(shake / rhoOf(th)); };
+    var solve = function (f, lo, hi) { var flo = f(lo); for (var k = 0; k < 80; k++) { var m = (lo + hi) / 2, fm = f(m); if ((fm > 0) === (flo > 0)) { lo = m; flo = fm; } else hi = m; } return (lo + hi) / 2; };
+    var bank0 = lead(liftHalf);
     var bank = bank0 + run, unlock = bank0 - lock;
-    var entryHalf = Math.asin(dPivot * Math.sin(bank) / rPin) - bank;
+    var entryHalf = solve(function (th) { return lead(th) - bank; }, liftHalf, Math.PI / 2);
+    var unlockHalf = solve(function (th) { return lag(th) + unlock; }, -entryHalf, liftHalf);
     var alpha = Math.asin(entryHalf / amp);
     var window_ = 2 * alpha / Math.PI;         // the pin's passage through the notch, as a fraction of the beat
     var sense = -1;                            // the wheel turns clockwise, seen from the dial
@@ -1106,7 +1123,10 @@
     function swingAt(p) {   // the lever, bank to bank, read off the balance through the pin
       var th = amp * Math.sin(Math.PI * p - alpha);
       if (Math.abs(th) >= entryHalf * (1 - 1e-12)) return th < 0 ? -bank : bank;
-      return Math.atan2(rPin * Math.sin(th), dPivot - rPin * Math.cos(th));
+      if (th <= unlockHalf) return lag(th);
+      if (th >= crossEnd) return lead(th);
+      var u = (th - unlockHalf) / (crossEnd - unlockHalf);
+      return lag(th) + (lead(th) - lag(th)) * u * u;
     }
     function leverAt(p) { return -swingAt(p); }
     function wheelAt(p) { return sense * advanceAt(1, leverAt(p)); }

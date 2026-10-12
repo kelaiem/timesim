@@ -34722,6 +34722,216 @@ along the fork's wall normal; [TODO 237] files the reflection both stall paths
 share.
 
 
+## §219 tier one — the technic fork as data: the catalogue, the solver and four exact rows in `layout.js`
+
+**PARTIAL.** Tier one has landed. Tier two (`?catalogue=technic`, the trains
+cut to the rows) and tier three (a printed bill of materials) have not. The
+plan, including the scoping note it came from, lives in the private roadmap.
+
+### What it is
+
+The movement's going, motion and reserve trains re-toothed to a public parts
+catalogue: LEGO Technic, module 1 on a 4 mm half-stud lattice. Nothing in
+`TRAIN` survives verbatim (120:7, 75:10, 80:10 and 80:8 name counts the
+catalogue does not have). What survives is the INVARIANT each ratio serves, and
+every one of the four re-derives as an EXACT rational product of catalogue
+meshes. That is a fork in §70's sense: the constraint that forced each changed
+row is the catalogue, and it is written in the row.
+
+| row | steel | technic_classic | technic_2026 |
+|---|---|---|---|
+| centre→fourth, 60 | 75:10 × 80:10 | 16:8 × 16:8 × 24:8 × 40:8 | 60:8 × 64:8 |
+| fourth→escape, 15/2 | 80:8 on a 15T wheel at 2.5 Hz | 60:8 on an 8T wheel at 1 Hz | 60:8 |
+| motion works, 12 | 30:10 × 32:8 | 16:8 × 16:8 × 24:8 | 24:8 × 56:14 |
+| reserve reduction, 21/10 | 28:8 × 6:10 | 24:16 × 28:20 | 24:16 × 28:20 |
+
+### Where each half lives, and why
+
+- **`CATALOGUES`** (`src/layout.js`). `steel: null` plus two technic
+  generations, because the catalogue moved in 2026 (14T 7785, 18T 7786, 64T
+  7861) and a fork should not silently mean one year. A count is a row,
+  `{ teeth, part, kind }`: `part` is what a BOM orders, and `kind` is what makes
+  a centre distance mean anything. The 18T is a clutch (`slips: true`) and
+  `catalogueMesh` bars it from a going train, by rule rather than by omission.
+  The rows were read from BrickLink on 2026-09-12. The roadmap's
+  feasibility note carries the part table.
+- **`solveRatio`** (`src/layout.js`). The shortest exact chain, ties broken by
+  fewest total teeth. It is a breadth-first search to depth 6, so the build
+  never CALLS it: it is exported for tier two and for the probe.
+- **`TECHNIC_FORK`** (`src/layout.js`). The four rows, each chain written as
+  pairs `[driver, driven]`. No row carries its target. `technicForkTargets()`
+  derives three of them from `TRAIN`, the motion-works counts and RATE_TABLE's
+  law at the catalogue's own 1 Hz, 8T escapement. The fourth, the reserve's, is
+  derived in `main.js` beside `RESERVE_SWEEP_DEG`, because the reduction is a
+  consequence of the sweep and `layout.js` cannot see it.
+- **Boot asserts**, one in each file. Each declared chain must name catalogue
+  counts, every pair must be an admissible mesh, and the product must equal the
+  live steel invariant. Re-gear a steel train and boot warns that the fork
+  describes a ratio the movement no longer has. The `main.js` assert also holds
+  the steel reserve counts to the scale at every reserve, which is TODO 18's
+  assert seen from the fork's side.
+- **Optimality is the probe's job.** A boot cannot afford the search that says
+  a declared chain is the BEST one. `tools/probe-219-catalogue.mjs` now imports
+  everything above rather than keeping a copy, and its new claim 6 fails if any
+  declared chain differs from what `solveRatio` returns.
+
+### One rule that is easy to break
+
+**The fork is solved at the identity spec.** The reserve target is 7h/100, so
+at any other `reserveHours` it is a different fork, and the chains are checked
+only at `TECHNIC_FORK.solvedAt`. The other three rows do not depend on the
+spec. `rsvTeethW2` is fractional at four of the five menu reserves (TODO 134,
+open). `BigInt` refuses a fraction, so the assert reads the count as a decimal
+rational rather than restating `reserveHours / 5`.
+
+### Measured
+
+- `node tools/probe-219-catalogue.mjs` PASSES: claims 1–6, the control 11:1
+  refused under both generations, 120:7 held as the documented non-refusal.
+- Every control fired:
+  - **Boot assert:** silent on the clean tree, and it fired on each of three
+    mutations:
+    - a declared chain whose product is wrong (105/2 against 60);
+    - a pair off the lattice (24:12 at 18 mm);
+    - a re-geared steel hour wheel (target 27/2).
+  - **Claim 6:** an exact, admissible but suboptimal chain (40:8 × 24:8 ×
+    64:16 for centre→fourth) passed the boot and FAILED the probe, as it must.
+- No geometry changed. Nothing in the build reads the fork yet.
+
+## §261 — Height compaction: the ledger, the price list, the ratchet, and the alarm switch folded under the dial
+
+> **SHIPPED whole 2026-10-12**, in six public landings: the ledger (#633),
+> the price table (#636), the dial-band map, the height cap, the line spec the
+> fold measures back to (§70, recorded above), and landing 2's three steps: the
+> striking staff (#660), the dial-side beak designed in a line (#664) with its
+> siting probe (#666), and the swap itself. Filed 2026-10-09 from two owner
+> requests in one sitting: *"create a plan to investigate ways to compact the
+> height of the movement"*, then *"consider putting parts under the dial."*
+> **Cased depth 12.382 → 12.152 mm**, the price the step-1 table put on the
+> fold to the micron, and held there by a ratchet. TODO 241 (no stroke stop on
+> the alarm pusher) is the debt it filed.
+
+**The question, made answerable.** The movement's height had no target and no
+named governor. §39's boot assert held the cased assembly under 14 mm against
+a measured ~12, and the back had grown into that room behind green gates —
+TODO 69's plate carried the strike tier up 1.1 u, §218's overcoil the plate
+floor another 0.52, TODO 204's post the link tower — each priced where it was
+spent and none against a height anyone held. So the first deliverable was not a
+thinner watch but the LEDGER.
+
+**Step 0 — `tools/probe-261-height-ledger.mjs`** (acceptance). It reads the
+front and back chains off the metal, names the member that governs each face
+with its slack to the next, and reproduces the cased depth from them. The back
+chain is the skirt annulus's envelope (or the clamp heads) plus the margin; the
+band's back face is the larger of the skirt bottom plus the thread engagement
+(`CASE_CLAMP_ENG`, read off the build since this landing — the probe had
+IMPLIED it, which is right only while the skirt arm governs) and the pane floor
+outboard of the aperture; then the ring face, its keys and the raised step. A
+mutation tier predicts every face of a mutant tree from the unmutated ledger
+before it boots: one mutant raises the governor and must move the depth 1:1,
+one raises a non-governor and must move it by max(0, Δ − slack). The governor
+mutant follows whichever arm governs — since the fold that is the pane floor,
+so the mutant declares a swept row over the governing bin, raised under the
+envelope's global max (raised past it, the bin becomes the step's too and
+widens it across the aperture, which the ledger does not model).
+
+**Step 1 — `tools/probe-261-lever-prices.mjs`** (report, fatal controls). Each
+lever priced in cased millimetres, built both ways where it is one constant and
+by the ledger's arithmetic over an envelope re-folded from each unit's own
+per-bin maxima (`backEnvelope.unitBins`, recorded by the build's one walk)
+where it is not. The finding that ordered everything after it: **no lever on
+one chain buys more than the gap to the other chain**, so every back-side lever
+alone stopped at 0.039–0.103 mm, and the fold was the one lever that moved both
+— the declared 10.08 skirt row belonged to the switch's pusher and the step to
+the tower. Its price: 0.230 mm (0.370 with flush keys). Two first-pass guesses
+were wrong and are recorded as such: plate thickness buys nothing while the
+ring chain stands over the step, and `L_HAIRSPRING`'s bare 1.2 carries the
+going train's datum.
+
+**Step 2 — `tools/probe-261-dial-band.mjs`.** The free volume under the dial
+over the whole pose net: open over 325–348° of every ring at the fold's depth.
+
+**Step 3 — the owner's calls**, taken in one sitting (2026-10-11): a RATCHET
+for the height rather than a target, the overcoil kept, and the switch folded
+UNDER THE DIAL rather than §226's route B. Later, for landing 2: the pusher
+stays between the plates (a slider was considered and declined), it drives
+through two 1:1 cranks and a rod, the striking arbor becomes a staff in a
+base-plate bore with no bridge, and the link gets a NEW beak lever under the
+dial, designed in a line first, rather than the old one folded.
+
+**Step 5 — `CASE_HEIGHT_MAX_MM`** (`layout.js`, beside the width cap). The cap
+is the depth the tree measured when it was set, rounded up to
+`CASE_HEIGHT_STEP_MM` (a micron), held both ways at boot: deeper fails, and the
+default build standing more than one step under it fails too, so a landing that
+buys depth lowers the cap in the same change. TODO 222 raised it in the open
+(12.227 → 12.382, the B band's spend); this landing lowered it to **12.152**.
+
+**Step 4 — the fold.**
+- **The fold is a reflection**, not a turn: `T(A)·Rz(240°)·S(1,1,−1)·T(−A)`
+  about the striking arbor, z ↦ `ALARM_FOLD_Z_SUM − z`. 240° is eight stop
+  pitches, the only multiple of the stop wheel's 30° in the window the siting
+  found, so the stop wheel is its own image and the strike stays clocked to the
+  cam. It is carried by child groups (`makeAlarmFold`) because the explode view
+  writes each unit's own position every frame; three.js flips face winding for
+  the negative determinant on its own.
+- **The striking staff** (#660) runs through a base-plate bore so the stop
+  wheel can ride down it to the folded lock. Its radius is now sized for the
+  lathe, `L / (2 · TURN_LD_TARGET)` = 0.4116, where §112's 0.35 read L/D 21.2
+  once the foot ran on under the plate.
+- **The pusher linkage** (`ALARM_LINKAGE`) runs all between the plates; crank
+  B's pin drops through a late slot in the base plate into the folded driver.
+  The probe's first answer — a rod under the dial — would have raised the last
+  pin through the wheel's own footprint, and #666's second commit is the honest
+  search that refused it. Crank B's pivot stands on the bisector of the
+  reference line's two ends and its input arm is solved for closure (5.6e-17),
+  so the pin's ARC passes through both ends of §163's straight line and one
+  press still carries exactly one tooth. The line spec forks only `straight`,
+  to the arc's sagitta 0.1347. Crank A 16.73, crank B 6.76 / 6.76, rod 13.85,
+  worst transmission angle 70°.
+- **The new beak lever** is a SAME-SIDE lever — pivot, rod and nose along the
+  run — designed in a line in #664 (`alarmLinkSeatSolve(run, rodT, +1)`) and
+  built in the cluster's own frame, where the nose surface and the seat law
+  were written. It sits at k 3 (three column pitches round), a run of 5.0,
+  5.60:1 on arms of 6.09 and 1.09. The link's line-spec reference is re-classed
+  to it; its fork moves the run (wr 9.655) and the drive radius (4.2911).
+- **The rod** is 2.53 long, under the dial, and slides in a guide sleeve
+  (§202's bush section, as long as its free run) carried on the lay shaft's
+  third hanger, held to the drawer rule 2μa/L < 1.
+- **Hanger 3 is jogged round the bar.** It stands a standoff beside the rod and
+  the bar passes over the rod; scored against its own bar, no chord in the
+  movement clears it. An arm one margin under the bar carries it off the bar's
+  line and the pivot post's reach (`alarmLinkHangerJog`, one law for the solve
+  and the build), and the arming blade's ground is re-sized as a frame,
+  bounded by its developed length with torsion priced at a square section's
+  EI/GJ.
+- **Two stale guards** in the §112 site solve gave way under the new site: the
+  post guard still modelled sleeves where TODO 222 hangs slotted helix plates
+  (`ALARM_SEL_GUIDE_HALF_T_U`, quoted and held at the plates' build), and the
+  fork's bracket stood its riser on the block's azimuth, where the roller now
+  pointed at it — the bracket yields the least angle that clears.
+
+**What the back measured after.** The switch's two tower rows and the link's
+allowance described metal now under the dial and are retired; §226's open
+question, the skirt row, is answered: its unit's highest metal over the skirt
+annulus is the pusher's case liner, 8.614 at r 49.97 — 1.466 under the 10.08
+declared, and OUTBOARD of the row's r1, which had never covered it.
+`probe-back-envelope` now sweeps the skirt annulus below the plate top (the
+skirt descends there), which is what read it. The §187 governor control is
+found rather than named, in the boot and the probe. The pane now stands
+exactly a margin over the hammer's plane and the step a margin over the
+striking wheel, so the glass carries `CASE_GLASS_FLOAT_GUARD` (1e-4 u, three
+orders past the 7e-8 the battery read them under it by).
+
+**Debt.**
+- **TODO 241.** Nothing bottoms the pusher's stroke. In use the cranks work at
+  117 / 47 MPa; at the 5 N survival ceiling crank A's input arm would see 7,018
+  MPa. The fix is a stroke stop at the end of the carry, not a crank as wide as
+  the gap between the plates; the driver's arms carried the same load unpriced
+  before the fold.
+- **The levers not taken**: flush wrench keys (L1b, 0.140 mm now the keys
+  govern) and the striking work's own bands (L3, now that the hammer's plane
+  sets the pane) remain priced in the step-1 table, unfiled.
+
 ## §275 — Sound is always off at load; the boot screen's button is the opt-in
 
 > Reported on Safari: sound sometimes would not play however often the toggle

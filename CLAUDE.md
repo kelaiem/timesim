@@ -375,10 +375,10 @@ it into prose either.
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the
    largest swing the balance can REACH rounded UP — since TODO 216 the smaller
-   of the solve's maximum and the KNOCK (305: `ESCAPEMENT_KNOCK`, 304.12° since
-   TODO 226 step 3 banks the fork a run past the let-off, where
-   the impulse pin meets the banked fork's horn, solved off the blank's METAL
-   outline;
+   of the solve's maximum and the KNOCK (311: `ESCAPEMENT_KNOCK`, 310.46° since
+   TODO 226 step 3b closed the notch to the pin plus a shake and ground the pin
+   to a D, where the impulse pin's section meets the banked fork's horn, solved
+   off the blank's METAL outline;
    §218's peaks and the hack brake are priced there) — held on both sides and
    within a degree, so a solve that moves leaves neither behind. And since TODO 207 the swing the
    movement is DESIGNED to, `AMPLITUDE_TARGET_DEG` 200° held vertical at the
@@ -538,8 +538,11 @@ it into prose either.
    with the constraint that forced it (`forcedBy`), and every derived row
    re-derives from the reference's own laws at those inputs; forking a law or
    an envelope, or forking with no `forcedBy`, is malformed, and a fork equal
-   to its reference is stale. The link's as-built fork (the rod at 9 where
-   §229 put it at 16, the groove off the axis plane) is the first. An
+   to its reference is stale. The link's as-built fork (the rod at 9.655 where
+   §229 put it at 16, and the drive radius the site leaves) was the first;
+   since §261's fold the link's reference is the SAME-SIDE lever, and the
+   drive's fork (`straight`, crank B's arc through the line's two ends) is the
+   second. An
    `envelope` row with a `bound` is one side of a window. Every reference
    carries its own control — the drive shifts the pin's line a known
    distance, the lock MOVES its rocker's post, the link its rod — and
@@ -1014,7 +1017,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 293 measuring scripts and this file names 39. The rest are named for the
+`tools/` holds 296 measuring scripts and this file names 39. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1031,7 +1034,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **181 of
+The index also carries the split that decides how to read a result: **184 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
