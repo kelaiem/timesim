@@ -390,8 +390,11 @@ it into prose either.
    movement is DESIGNED to, `AMPLITUDE_TARGET_DEG` 200° held vertical at the
    NOMINAL corner (a serviced lever watch): the drum is as large as the plate
    carries (`DRUM_R_ACTUAL`) and the balance's rim (`BAL_RIM_F`) is the
-   heaviest that still reaches the target, held both ways — under it fails,
-   and so does more than `AMPLITUDE_TARGET_SLACK_DEG` over it. Row 17 holds
+   heaviest that still reaches the target — and since TODO 242 also starts
+   itself (TODO 238's `selfStart`), per `RATE_TABLE` row, a faster rate
+   carrying a lighter balance — held both ways: under it fails, and so does a
+   balance one `BAL_RIM_STEP` heavier that would still reach it and start,
+   weighed by the builder's own `balanceWheelDims`. Row 17 holds
    the NOMINAL corner clear of the knock in both positions (a watch that knocks
    as serviced is a fault); that the favourable corner's dial-flat energy would
    carry it past (455°) is listed in the record and REPORTED. `FRICTION` is the one place a coefficient the movement

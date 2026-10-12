@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -10404,11 +10404,12 @@ export function checkOscillator(clock) {
 //     real swing, and is not a stale over-pricing). Since TODO 216 the reach is
 //     the smaller of the solve's maximum and the knock (row 17). The record's own `amplitude` block must name the
 //     same extremes.
-// 15. THE SWING THE MOVEMENT IS DESIGNED TO (TODO 207) — the nominal corner,
-//     held vertical, sustains at least AMPLITUDE_TARGET_DEG and less than
-//     AMPLITUDE_TARGET_SLACK_DEG more, so BAL_RIM_F is the heaviest balance the
-//     spring keeps there. A lighter rim than needed fails it as surely as a
-//     heavier one. The size of the swing against what a lever watch
+// 15. THE SWING THE MOVEMENT IS DESIGNED TO (TODO 207), AND THE START (TODO
+//     242) — the nominal corner, held vertical, sustains at least
+//     AMPLITUDE_TARGET_DEG and the escapement starts the balance from rest, and
+//     one BAL_RIM_STEP heavier fails one of the two, so BAL_RIM_F is the
+//     heaviest balance the spring keeps there and still starts. A lighter rim
+//     than needed fails it as surely as a heavier one. The size of the swing against what a lever watch
 //     normally runs at stays a REPORT, in the payload and the note.
 // 16. THE MAINTAINING DETENT HOLDS THE GOING TORQUE (TODO 217) — the face load
 //     is the record's fuseeTorque_Nm over the face normal's moment arm about
@@ -10583,16 +10584,25 @@ export function checkEqualisation(clock) {
         if (K.nominalClears !== nom.every((n) => n.deg < K.deg))
           failures.push({ what: 'knock record\'s nominalClears disagrees with the nominal corner', record: K.nominalClears });
       }
-      // Row 15 (TODO 207) — the design target, at the nominal corner held
-      // vertical: met, and by less than AMPLITUDE_TARGET_SLACK_DEG, so the
-      // balance is the heaviest the spring can keep at the target.
+      // Row 15 (TODO 207, TODO 242) — the design target, at the nominal corner
+      // held vertical, and the START: met and self-starting at BAL_RIM_F, and
+      // one BAL_RIM_STEP heavier failing one of them (the record weighs that
+      // balance by the builder's own dimension law), so the balance is the
+      // heaviest the spring can keep at the target and still start.
       const nv = en.corners.nominal.sustainedDeg.vertical;
+      const T = A && A.target;
       if (!(nv >= AMPLITUDE_TARGET_DEG))
         failures.push({ what: 'nominal vertical swing under the design target', nominalVerticalDeg: nv, targetDeg: AMPLITUDE_TARGET_DEG });
-      else if (!(nv < AMPLITUDE_TARGET_DEG + AMPLITUDE_TARGET_SLACK_DEG))
-        failures.push({ what: 'nominal vertical swing past the target by a rim step or more (BAL_RIM_F lighter than needed)', nominalVerticalDeg: nv, targetDeg: AMPLITUDE_TARGET_DEG, slackDeg: AMPLITUDE_TARGET_SLACK_DEG });
-      if (!A || !A.target || A.target.nominalVertical !== nv)
-        failures.push({ what: 'amplitude target block disagrees with the nominal corner', record: A && A.target, fromCorner: nv });
+      if (!T || T.nominalVertical !== nv)
+        failures.push({ what: 'amplitude target block disagrees with the nominal corner', record: T || null, fromCorner: nv });
+      else {
+        if (T.starts !== true)
+          failures.push({ what: 'the escapement does not start the balance from rest (BALANCE_DRIVE.selfStart)', rimF: T.rimF });
+        if (T.rimF !== BAL_RIM_F || T.step !== BAL_RIM_STEP || !T.heavier || !(Math.abs(T.heavier.rimF - (BAL_RIM_F + BAL_RIM_STEP)) < 1e-12))
+          failures.push({ what: 'amplitude target block weighs a different rim from BAL_RIM_F and one step heavier', record: T, rimF: BAL_RIM_F, step: BAL_RIM_STEP });
+        else if (T.heavier.nominalVertical >= AMPLITUDE_TARGET_DEG && T.heavier.starts)
+          failures.push({ what: 'one rim step heavier still reaches the target and starts (BAL_RIM_F lighter than needed)', heavier: T.heavier, targetDeg: AMPLITUDE_TARGET_DEG });
+      }
     }
     // Row 12 (TODO 192 step 2) — the pivots were cut to §50's floor on the claim
     // that the LOAD does not bind them. Held: every pivot's bending stress
