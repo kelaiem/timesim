@@ -816,7 +816,7 @@ const EXPECTED_PAIRS = [
   // (§261 2c RETIRED ['Alarm lock', 'Three-quarter plate']: the pivot post is
   // planted in the base plate's dial face under the fold.)
   ['Alarm switch', 'Three-quarter plate'], // §261 2c: the two crank studs hung from the plate's underside (the column wheel's guide stud went under the dial)
-  ['Alarm switch', 'Case'],                // §202: the pusher's bore liner in the case's bore — floors row names the one contact
+  ['Alarm switch', 'Case'],                // §202: the pusher's bore liner in the case's bore; TODO 241: the head bottoming on the tube's end and the band's crest at full press, the stroke's stop — floors row names the three contacts
   ['Alarm crown', 'Case'],                 // §202: the stem's tube liner in the case's alarm tube — likewise
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
   ['Alarm gong', 'plate'],                // §198: the gong's block planted in the base plate's rim
@@ -2474,10 +2474,18 @@ export const EXPECTED_CONTACT_FLOORS = [
   },
   // §202 — the two case liners: each pair is EXPECTED for exactly one press
   // fit, and everything else the unit owns keeps the margin from the case.
+  // TODO 241 adds the pusher's stop to the switch's row: the head's face on
+  // the tube's end and the band's crest, the one other place it may touch.
   {
     a: 'Alarm switch', b: 'Case', min: CLEAR_MARGIN,
     contacts: [
       ['alarmPusherCaseLiner', 'casePusherBoreSleeve'], // the liner pressed into the pusher's bore
+      // TODO 241 — the stroke's stop: at full press the head's face bottoms on
+      // the tube's flat end (the sleeve's annulus, the liner's inside it) and
+      // meets the band's crest in the same plane, the line through the centre
+      // being square to the band there
+      ['alarmPusherCap', 'casePusherBoreSleeve'],
+      ['alarmPusherCap', 'caseMiddle'],
     ],
   },
   {
@@ -3562,6 +3570,7 @@ export const INTRA_UNIT_CONTACTS = [
   // running fit and the row says which joint it is.
   { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherGuide', why: 'the pusher stem running in its guide boss — a sliding bearing at PIVOT_BORE_CLEAR, the plate pivots\' own fit' },
   { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherCaseLiner', why: '§202: the stem running in the case bore\'s liner — the third bearing, the one the case owes, at the same PIVOT_BORE_CLEAR' },
+  { unit: 'Alarm switch', a: 'alarmPusherCap', b: 'alarmPusherCaseLiner', why: 'TODO 241: the stroke\'s STOP — at full press the head\'s flat inner face bottoms on the case tube\'s end, the liner\'s annulus with the sleeve\'s around it, sunk ALARM_SEAT_SINK by the seated-contact convention; the head is solved to land there at T = 1, where the carry is one tooth, so the finger\'s surplus goes into the case and not down the chain' },
   // §202 — the alarm crown's stem in its tube liner: the same joint one crown over.
   { unit: 'Alarm crown', a: 'alarmStem', b: 'alarmStemTubeLiner', why: '§202: the alarm stem sliding in the case tube\'s liner at PIVOT_BORE_CLEAR — the outboard bearing the crown end never had; it slides 5 u through it on the pull' },
   { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser seated on the reach bar\'s inner end — the pusher\'s own three-piece assembly, and the joint the whole climb hangs off' },
