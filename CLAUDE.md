@@ -21,6 +21,12 @@ lever escapement. Everything is procedural — there are no model assets.
 `test-geometry.html` is a per-part visual smoke test, separate from the
 inspector.
 
+`technic.html` (§219 tier two (a)) draws the LEGO Technic fork — the rows
+`TECHNIC_FORK` in `layout.js` declares — as module-1 gears turned through their
+own tooth counts. It imports `layout.js` and nothing from the movement, so the
+battery never sees it; its counts and ratios are claims read from the table,
+its part shapes are drawn.
+
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
 front door, so the explainer is one click further — from the primer's

@@ -107,7 +107,7 @@ const touchTree = (dir, when) => {
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;

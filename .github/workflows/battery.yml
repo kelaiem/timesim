@@ -113,6 +113,8 @@
 #                       line above: it reaches INTO the explainer, and
 #                       index.html loads only src/main.js
 #   test-geometry.html a separate page. The battery never opens it
+#   technic.html       §219's fork page — likewise; it imports src/layout.js,
+#                      but the arrow points away from index.html
 #   sw.js              the battery "runs the source tree and so deliberately
 #                      has no worker at all" (CLAUDE.md). offline.yml owns it
 #   .githooks, .gitignore, LICENSE, vendor/LICENSE-*.txt
@@ -223,6 +225,7 @@ on:
       - 'src/page-i18n.js'
       - 'src/glossary-links.js'
       - 'test-geometry.html'
+      - 'technic.html'
       - 'sw.js'
       - '.githooks/**'
       - '.gitignore'
