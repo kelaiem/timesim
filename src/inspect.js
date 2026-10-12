@@ -4733,6 +4733,15 @@ export const PLATE_SEATS = [
   { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerStud", kind: "planted", why: "§268: the hammer spiral's stud, planted in the rim (GONG_RIM_PLANT) beside the post — a short pin up to the spiral band's top" },
+  // §261 landing 2c — the switch-and-lock cluster FOLDED to the dial side: every
+  // post and stud that was planted in the three-quarter plate's top face is the
+  // fold's image, planted in the base plate's dial face (a reflection of the
+  // stacking, so the plant depth is unchanged).
+  { unit: "Alarm lock", mesh: "alarmLockPivotPost", kind: "planted", why: "§261 2c: the lock lever's pivot post, folded — planted in the plate's dial face" },
+  { unit: "Alarm lock", mesh: "alarmLockSpringStud", kind: "planted", why: "§261 2c: the lock's return-blade stud, folded — planted in the plate's dial face" },
+  { unit: "Alarm lock", mesh: "alarmLockBeakRiser", kind: "planted", why: "§261 2c: the rocker's post, folded — planted in the plate's dial face" },
+  { unit: "Alarm switch", mesh: "alarmColStud", kind: "planted", why: "§261 2c: the column wheel's stud, folded — planted in the plate's dial face" },
+  { unit: "Alarm switch", mesh: "alarmJumperStud", kind: "planted", why: "§261 2c: the sautoir's stud, folded — planted in the plate's dial face" },
   { unit: "Alarm striking wheel", mesh: "alarmStrikeStaff", kind: "pivot", why: "§261 landing 2a: the staff's foot, a journal running in its plate bore (it was §112's stud, planted in the solid plate)" },
   { unit: "Alarm barrel", mesh: "LatheGeometry#0", kind: "planted", why: "the barrel arbor's bored boss, on the plate (§99)" },
   { unit: "Alarm barrel", mesh: "alarmBarrelArbor", kind: "pivot", why: "the barrel arbor, running in that boss (§99)" },

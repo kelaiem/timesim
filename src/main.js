@@ -37821,8 +37821,8 @@ const ALARM_LINKAGE_ARM_T = STOCK_MIN_U;
 const ALARM_LINKAGE_ARM_W = ALARM_PUSH_REACH_W;
 const ALARM_LINKAGE_ARM_Z = (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL) + ALARM_PUSH_REACH_T / 2 + CLEAR_MARGIN + ALARM_LINKAGE_ARM_T / 2;
 const ALARM_LINKAGE_ROD_Z = ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T;
-// the studs the cranks turn on (planted in the base plate, the alarm's studs'
-// rule) at §50's floor, the hub one floor of wall round its running bore, and
+// the studs the cranks turn on (hung from the three-quarter plate, the alarm's
+// studs' rule) at §50's floor, the hub one floor of wall round its running bore, and
 // crank B's pin shank the lathe's L/D target over its own length (TURN_LD_TARGET)
 const ALARM_LINKAGE_STUD_R = STOCK_MIN_U;
 const ALARM_LINKAGE_HUB_R = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U;
@@ -38066,7 +38066,7 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
     }
   }
   // §261 2c — THE LINKAGE'S METAL (the solve is ALARM_LINKAGE, at the carry
-  // law). Two cranks on studs planted in the base plate and a rod between them,
+  // law). Two cranks on studs hung from the three-quarter plate and a rod between them,
   // all between the plates in the band just over the reach bar; crank A takes
   // the riser in a radial slot (the driver's own coupling, §163), crank B's
   // output arm carries the pin down through a slot in the base plate into the
@@ -38098,7 +38098,12 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       return m;
     };
     const stud = (name, P) => {
-      const top = ALARM_LINKAGE_ARM_Z + T_ / 2, bot = ALARM_U_FLOOR - 0.5;     // planted 0.5 into the base plate, the alarm studs' rule
+      // HUNG from the three-quarter plate, planted 0.5 into it (the alarm
+      // studs' rule): the arms ride under that plate, so the stud is short, and
+      // it stays out of the low stratum where the governor turns (a stud stood
+      // up from the base plate reached through the governor wheel's band —
+      // measured, undeclaredClearance at 0)
+      const top = TQ_BOT_Z + 0.5, bot = ALARM_LINKAGE_ARM_Z - T_ / 2;
       const m = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINKAGE_STUD_R, ALARM_LINKAGE_STUD_R, top - bot, 16), MATS.nickel);
       m.name = name; m.rotation.x = Math.PI / 2; m.position.set(P.x, P.y, (top + bot) / 2);
       alarmSwitchUnit.add(m);
