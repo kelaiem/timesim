@@ -56183,6 +56183,10 @@ window.__clock = {
   get beakPivot() { return alarmLinkParts.pivot; }, // TODO 204 — the beak lever's pin, eye, web, post and head: stations, sections and the stresses that sized them
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get alarmLinkage() { return ALARM_LINKAGE; }, // §261 2c — the pusher's two cranks and rod: the solved geometry and its forward kinematics
+  // §261 2c — the fold the cluster SHIPS at (TODO 244): φ about the striking
+  // staff, in whole stop pitches, and the z reflection's sum. Read-only, for
+  // probe-261-fold-site's K9 once its own search no longer finds the fold.
+  get alarmFold() { return { phi: ALARM_FOLD_PHI, pitches: ALARM_FOLD_PITCHES, stopTeeth: ALARM_STOP_TEETH, zSum: ALARM_FOLD_Z_SUM, axis: { x: alarmSwPos.x, y: alarmSwPos.y } }; },
   get lineLaws() { return ALARM_LINK_LAWS; }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
