@@ -3376,6 +3376,19 @@ const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
   ? SPEC.alarmModAzDeg * DEG2RAD - 40 * DEG2RAD : 0;
 const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29;
 const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
+// §261 step 4, landing 2a — THE STRIKING WHEEL TURNS ON A STAFF, not on a
+// fixed stud. §112 planted a stud 0.5 into the base plate's solid metal and
+// ran the rotor on it (and in the three-quarter plate's chaton above — held
+// twice). The fold carries the lock's stop wheel to the dial side, which is
+// only possible if the rotor itself reaches through the base plate, so the
+// stud becomes the rotor's staff: the chaton stays its upper pivot and its
+// foot becomes a journal running in a bore through the base plate, the climb
+// arbor's precedent (its lower bearing IS its plate bore). The radius is the
+// stud's as §112 cut it — the journal is the same steel turned on its foot;
+// what it carries is the governor train's reaction, still TODO 90's open sum.
+// Hoisted with the station because the base plate is cut long before the
+// alarm block runs (BACK_PLATE_HOLES, below).
+const ALARM_STRIKE_STAFF_R = 0.35;
 // The base plate's PLANE is declared here, where the layout needs it; the
 // plate itself is CUT further down, once the keyless linkage has solved
 // (search BASE PLATE — CUT). §87 is why: the setting lever carries a second
@@ -3604,6 +3617,7 @@ const BACK_PLATE_HOLES = [
   // (cornerDrop.spec.coneR, A's precedent) and pushed into `holes` beside
   // MW_FOLD_PLATE_HOLE, once the corner exists.
   { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
+  { x: alarmSwPos.x, y: alarmSwPos.y, r: ALARM_STRIKE_STAFF_R + PIVOT_BORE_CLEAR }, // §261 landing 2a: the striking staff's lower bearing IS this bore — the running fit, through the plate so the staff can carry the stop wheel to the dial side
   { x: 18.96, y: -2.83, r: ALARM_LINK_ROD_PLATE_BORE_R, linkRod: true }, // §35/§68 (§112: re-synced to the SOLVED rod site; band swap: the tab-zone score re-ranked the solve; TODO 174: re-synced to the corrected guard's site; TODO 190: re-synced when the retired tail run released the tab zone and the search learned to hold a land to each plate's openings — was (27.88, −4.07)) — the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
 ];
 // A single stud's slot, from the arc it sweeps between the two crown poses:
@@ -26521,18 +26535,6 @@ const alarmStrikeUnit = new THREE.Group();
 movement.add(alarmStrikeUnit);
 registerLabel('Alarm striking wheel', alarmStrikeUnit);
 registerExplode(alarmStrikeUnit, 0, 9); // baseZ 0: children carry world z, like the gong and hammer
-{
-  // §112: the static stud plants 0.5 into the BASE plate now and runs the
-  // whole column — through the plate's bore — to carry the cam on top: one
-  // fixed axle for both zones, the §99/TODO 39 fixed-arbor idiom stretched
-  // through the bore the tier-split cut for it (tqPivots, at the plate).
-  const studTop = ALARM_CAM_Z1 + 0.3;
-  const studBase = ALARM_U_FLOOR - 0.5;
-  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studTop - studBase, 12), MATS.steel);
-  stud.rotation.x = Math.PI / 2;
-  stud.position.set(alarmSwPos.x, alarmSwPos.y, (studTop + studBase) / 2);
-  alarmStrikeUnit.add(stud);
-}
 // TODO 15 handles. Declared HERE, above the striking rotor: the pinion is
 // assigned in that build and the barrel's wall later, so a declaration sited
 // with the barrel is a module-level temporal dead zone. It threw at import,
@@ -26596,6 +26598,22 @@ const ALARM_STOP_BORE_R = ALARM_STRIKE_SLEEVE_R - SAW_FIT;
 const alarmStrikeRotor = new THREE.Group(); // everything that turns with the striking train
 alarmStrikeRotor.position.set(alarmSwPos.x, alarmSwPos.y, 0);
 alarmStrikeUnit.add(alarmStrikeRotor);
+{
+  // THE STAFF (§261 landing 2a, ALARM_STRIKE_STAFF_R's note). §112's static
+  // stud ran the whole column — base plate to above the cam — as one fixed
+  // axle the rotor turned on; it is the same steel now, turning WITH the rotor:
+  // its upper length runs in the three-quarter plate's chaton inside the
+  // sleeve, its foot is the journal in the base plate's bore. The foot keeps
+  // §112's 0.5 into the plate (the bore runs on through, for the stop wheel
+  // the fold will carry down); the rotor's members, which ran on it, ride it.
+  const staffTop = ALARM_CAM_Z1 + 0.3;
+  const staffBase = ALARM_U_FLOOR - 0.5;
+  const staff = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_STRIKE_STAFF_R, ALARM_STRIKE_STAFF_R, staffTop - staffBase, 12), MATS.steel);
+  staff.name = 'alarmStrikeStaff';
+  staff.rotation.x = Math.PI / 2;
+  staff.position.set(0, 0, (staffTop + staffBase) / 2);
+  alarmStrikeRotor.add(staff);
+}
 {
   // The cam. One lobe per strike: base-circle dwell (the nose floats clear
   // above it through the strike and rebound), a short approach up to the
