@@ -87,6 +87,19 @@
 // rod runs in, and reports the shortest linkages whose every member finds room
 // over the stroke — see the block above `linkagesAt` for its bounds.
 //
+// AND HOW THE LAST PIN REACHES THE DRIVER, which the first version got wrong.
+// At the folded driver the pin's track lies INSIDE the column wheel's
+// footprint (r ≈ 5.1 from its axis against a solid base to 5.7 and a saw to
+// 6.4), and the search exempted that column as "the coupling" — so it reported
+// a rod-under-the-dial linkage whose last riser would have to pass through the
+// wheel. The 'dial' configuration now counts the folded wheel's samples in the
+// pin's column below the driver's dial face and refuses on any (it is refused
+// at every φ). In the cluster's own frame the pin always rose to the driver
+// through a three-quarter-plate slot, so folded it comes DOWN through a slot
+// in the base plate, from between the plates: the 'slot' configuration keeps
+// every member between the plates, both cranks on studs, and requires the
+// pin's drop column clear from the plate up to the arm that carries it.
+//
 // THE DIAL-SIDE BEAK AND THE LAY SHAFT (landing 2c's siting): at the one fold
 // on the stop wheel's pitch (240°), the same-side beak landing 2b designed
 // (`clock.lineLaws.seat(run, stroke, +1)`) is stood on every ray that keeps
@@ -624,10 +637,31 @@ function linkagesAt(r) {
     }
   }
   cand.sort((u, v) => u.len - v.len);
-  const found = { dial: [], plates: [] };
+  const found = { dial: [], plates: [], slot: [] };
+  // the pin's own drop: at the folded driver the pin's track lies INSIDE the
+  // column wheel's footprint (r 5.0–5.2 against a solid base to 5.7 and a saw
+  // to 6.4), so no member can reach it from the dial side — the wheel is in
+  // the way. Today the pin rises to the driver through a slot in the
+  // three-quarter plate; folded, it comes DOWN through a slot in the base
+  // plate, from between the plates. Its column over the whole track must be
+  // clear from the plate top up to the arm that carries it.
+  const drop = new Set(); segCells(q0, { x: qx1, y: qy1 }, drop);
+  // and from the DIAL side the same column is the wheel's: any folded cluster
+  // metal in it dialward of the driver's own dial face stands between an arm
+  // under the dial and the pin it would have to raise (the coupling exemption
+  // above spares the cells, not this column — the first version of this search
+  // exempted it, and reported a dial-side linkage the wheel makes impossible)
+  const drvIdx = cl.members.indexOf('alarmColDriver');
+  let drvFace = Infinity;
+  for (const [x, y, z, mi] of cl.points) if (mi === drvIdx) drvFace = Math.min(drvFace, fold(x, y, z, phi)[2]);
+  let dialDropBlocked = 0;
+  for (const [x, y, z] of cl.points) {
+    const [X, Y, Z] = fold(x, y, z, phi);
+    if (Z < drvFace - 1e-6 && drop.has(cellOf(X, Y))) dialDropBlocked++;
+  }
   let checked = 0;
   for (const k of cand) {
-    if ((found.dial.length >= 3 && found.plates.length >= 3) || checked >= SWEEP_CAP) break;
+    if ((found.dial.length >= 3 && found.plates.length >= 3 && found.slot.length >= 3) || checked >= SWEEP_CAP) break;
     checked++;
     const thA = k.sA * stroke / Math.abs(k.a), thB = k.sB * stroke / Math.abs(k.b);
     const aIn = new Set(), aOut = new Set(), rodS = new Set(), bIn = new Set(), bOut = new Set(), pvA = new Set(), pvB = new Set();
@@ -635,8 +669,23 @@ function linkagesAt(r) {
     armCells(k.PB, k.EB, thB, bIn); armCells(k.PB, q0, thB, bOut);
     for (const kk of nearCellsR(k.PA.x, k.PA.y, CM)) pvA.add(kk); for (const kk of nearCellsR(k.PB.x, k.PB.y, CM)) pvB.add(kk);
     const U = (...ss) => { const o = new Set(); for (const x of ss) for (const y of x) o.add(y); return o; };
-    for (const cfg of ['dial', 'plates']) {
+    for (const cfg of ['dial', 'plates', 'slot']) {
       if (found[cfg].length >= 3) continue;
+      if (cfg === 'slot') {
+        // everything between the plates: both cranks on studs planted in the
+        // base plate, the rod beside them, and crank B's pin dropping through
+        // a base-plate slot into the folded driver
+        const g = U(aIn, aOut, rodS, bIn, bOut, pvA, pvB);
+        const ws = groupWindows(IC, g, null).filter((w) => columnClear(IC, U(pvA, pvB, drop), null, w, 'floor'));
+        if (!ws.length) continue;
+        const wS = ws.reduce((m, w) => (w[1] - w[0] > m[1] - m[0] ? w : m));
+        if (!(wS[0] <= cl.stemZ + rad && wS[1] >= cl.stemZ - rad)) {
+          const lo2 = Math.min(wS[1], cl.stemZ), hi2 = Math.max(wS[0], cl.stemZ);
+          if ([...stemCol].some((kk) => !freeOf(IC[kk]).some(([a2, b2]) => a2 <= lo2 + 1e-6 && b2 >= hi2 - 1e-6))) continue;
+        }
+        found.slot.push({ ...k, wP: wS, wD: null, cfg });
+        continue;
+      }
       // dial: crank A crosses the plate (its input arm between the plates), rod and crank B under the dial
       // plates: crank A and the rod between the plates, crank B crosses the plate (its output arm under the dial)
       const gP = cfg === 'dial' ? U(aIn, pvA) : U(aIn, aOut, rodS, bIn, pvA, pvB);
@@ -650,12 +699,13 @@ function linkagesAt(r) {
         const lo2 = Math.min(wP[1], cl.stemZ), hi2 = Math.max(wP[0], cl.stemZ);
         if ([...stemCol].some((kk) => !freeOf(IC[kk]).some(([a2, b2]) => a2 <= lo2 + 1e-6 && b2 >= hi2 - 1e-6))) continue;
       }
+      if (cfg === 'dial' && dialDropBlocked) continue;
       const wD = pickWindow(cells, gD, obs, cross, 'ceiling');
       if (!wD) { if (pickWindow(cells, gD, null, cross, 'ceiling')) obsBites++; continue; }
       found[cfg].push({ ...k, wP, wD, cfg });
     }
   }
-  return { deg: r.deg, n: cand.length, checked, found };
+  return { deg: r.deg, n: cand.length, checked, found, dialDropBlocked };
 }
 const linkage = feasible.map(linkagesAt);
 const allFound = linkage.flatMap((L) => [...L.found.dial, ...L.found.plates].map((x) => ({ ...x, deg: L.deg })));
@@ -966,15 +1016,16 @@ const fw2 = (w) => `${fz(w[0])}..${fz(w[1])} (${(w[1] - w[0]).toFixed(2)})`;
 console.log(`\n  THE LINKAGE: two 1:1 cranks and a rod, today's stem held (arms ${f(A_MIN, 2)} .. ${f(A_MAX, 2)}, member window ≥ ${f(MIN_WIN)}; the shortest three per band the rod runs in):`);
 for (const L of linkage) {
   const parts = [];
-  for (const cfg of ['dial', 'plates']) {
+  const NAME = { dial: 'rod under the dial', plates: 'rod between the plates', slot: 'all between the plates, the pin down a base-plate slot' };
+  for (const cfg of ['dial', 'plates', 'slot']) {
     const b = L.found[cfg][0];
-    parts.push(b ? `${cfg === 'dial' ? 'rod under the dial' : 'rod between the plates'} ${f(b.len, 2)} (arms ${f(Math.abs(b.a), 2)} / ${f(Math.abs(b.b), 2)}, rod ${f(b.rod, 2)} at ${b.td}°, ${dot(b.vA, sub(b.EB, b.EA)) > 0 ? 'the rod pushes' : 'the rod pulls'}; plates ${fw2(b.wP)}, dial ${fw2(b.wD)})` : `${cfg === 'dial' ? 'rod under the dial' : 'rod between the plates'} ${L.checked >= SWEEP_CAP ? 'none before the sweep cap' : 'none'}`);
+    parts.push(b ? `${NAME[cfg]} ${f(b.len, 2)} (arms ${f(Math.abs(b.a), 2)} / ${f(Math.abs(b.b), 2)}, rod ${f(b.rod, 2)} at ${b.td}°, ${dot(b.vA, sub(b.EB, b.EA)) > 0 ? 'the rod pushes' : 'the rod pulls'}; plates ${fw2(b.wP)}${b.wD ? `, dial ${fw2(b.wD)}` : ''})` : `${NAME[cfg]} ${L.checked >= SWEEP_CAP ? 'none before the sweep cap' : 'none'}`);
   }
-  console.log(`    φ ${String(L.deg).padStart(3)}°  ${L.n} geometric candidates, ${L.checked} swept — ${parts.join('; ')}`);
+  console.log(`    φ ${String(L.deg).padStart(3)}°  ${L.n} geometric candidates, ${L.checked} swept — ${parts.join('; ')}${L.dialDropBlocked ? ` [under the dial: ${L.dialDropBlocked} wheel samples stand in the pin's column below the driver]` : ''}`);
 }
 if (shortest) {
   const pr = (P) => `(${f(P.x, 2)}, ${f(P.y, 2)})`;
-  console.log(`    shortest: φ ${shortest.deg}°, rod ${shortest.cfg === 'dial' ? 'under the dial' : 'between the plates'}: crank A pivot ${pr(shortest.PA)} arms ${f(Math.abs(shortest.a), 3)}, rod ${pr(shortest.EA)} → ${pr(shortest.EB)} (${f(shortest.rod, 3)}), crank B pivot ${pr(shortest.PB)} arms ${f(Math.abs(shortest.b), 3)}; total ${f(shortest.len, 2)}`);
+  console.log(`    shortest: φ ${shortest.deg}°, ${shortest.cfg === 'dial' ? 'rod under the dial' : shortest.cfg === 'slot' ? 'all between the plates' : 'rod between the plates'}: crank A pivot ${pr(shortest.PA)} arms ${f(Math.abs(shortest.a), 3)}, rod ${pr(shortest.EA)} → ${pr(shortest.EB)} (${f(shortest.rod, 3)}), crank B pivot ${pr(shortest.PB)} arms ${f(Math.abs(shortest.b), 3)}; total ${f(shortest.len, 2)}`);
 }
 console.log(`    the folded cluster as an obstacle rejected ${obsBites} linkage(s) the band alone would have passed`);
 if (beakSite.error) console.log(`\n  THE DIAL-SIDE BEAK: ${beakSite.error}`);
