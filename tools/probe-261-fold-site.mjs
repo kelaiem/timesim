@@ -87,6 +87,19 @@
 // rod runs in, and reports the shortest linkages whose every member finds room
 // over the stroke — see the block above `linkagesAt` for its bounds.
 //
+// AND HOW THE LAST PIN REACHES THE DRIVER, which the first version got wrong.
+// At the folded driver the pin's track lies INSIDE the column wheel's
+// footprint (r ≈ 5.1 from its axis against a solid base to 5.7 and a saw to
+// 6.4), and the search exempted that column as "the coupling" — so it reported
+// a rod-under-the-dial linkage whose last riser would have to pass through the
+// wheel. The 'dial' configuration now counts the folded wheel's samples in the
+// pin's column below the driver's dial face and refuses on any (it is refused
+// at every φ). In the cluster's own frame the pin always rose to the driver
+// through a three-quarter-plate slot, so folded it comes DOWN through a slot
+// in the base plate, from between the plates: the 'slot' configuration keeps
+// every member between the plates, both cranks on studs, and requires the
+// pin's drop column clear from the plate up to the arm that carries it.
+//
 // THE DIAL-SIDE BEAK AND THE LAY SHAFT (landing 2c's siting): at the one fold
 // on the stop wheel's pitch (240°), the same-side beak landing 2b designed
 // (`clock.lineLaws.seat(run, stroke, +1)`) is stood on every ray that keeps

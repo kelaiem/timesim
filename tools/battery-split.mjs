@@ -66,10 +66,10 @@ export const INSPECTION_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 294 plus the endpoint — n is the beat axis's 193
-  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 305/200 since TODO 226
-  // step 3a moved the knock (it was 291 at 302).
-  { axis: 'position', poses: 295 },
+  // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
+  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
+  // step 3b moved the knock (294 at 305, 291 at 302).
+  { axis: 'position', poses: 301 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
@@ -326,10 +326,10 @@ export const CLEARANCE_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 294 plus the endpoint — n is the beat axis's 193
-  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 305/200 since TODO 226
-  // step 3a moved the knock (it was 291 at 302).
-  { axis: 'position', poses: 295 },
+  // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
+  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
+  // step 3b moved the knock (294 at 305, 291 at 302).
+  { axis: 'position', poses: 301 },
 ];
 
 // TODO 164 — same axis roster as CLEARANCE_SLICES above (this check walks the
@@ -354,10 +354,10 @@ export const UNDECLARED_CLEARANCE_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 294 plus the endpoint — n is the beat axis's 193
-  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 305/200 since TODO 226
-  // step 3a moved the knock (it was 291 at 302).
-  { axis: 'position', poses: 295 },
+  // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
+  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
+  // step 3b moved the knock (294 at 305, 291 at 302).
+  { axis: 'position', poses: 301 },
 ];
 
 // The gate's verdict over a payload's rows and the debt table — a TWIN of the
@@ -506,10 +506,10 @@ export const EXPECTED_CONTACT_SLICES = [
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
-  // ~292° swing). poses = n 294 plus the endpoint — n is the beat axis's 193
-  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 305/200 since TODO 226
-  // step 3a moved the knock (it was 291 at 302).
-  { axis: 'position', poses: 295 },
+  // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
+  // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
+  // step 3b moved the knock (294 at 305, 291 at 302).
+  { axis: 'position', poses: 301 },
 ];
 
 // §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.

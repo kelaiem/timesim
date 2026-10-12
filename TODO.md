@@ -17,17 +17,20 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
+| 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
+| 238 | OPEN | Found closing TODO 226 step 3b. §246's driven balance lays the impulse torque symmetrically over ±LIFT/2, but on the metal the wheel drives the pin only from the end of the shake's crossing (−10.16°) to the let-off (+25°), 35.2° rather than 50°, and the unlock (−28.53° to −15.20°) is work the balance does against the stone's draw. The impulse window, its energy and the unlock's cost should be read off `pinNotch` and the crossing, not the lift |
 | 237 | OPEN | Found closing TODO 222: the alarm link's series stall (the §137 lay-shaft row and `probe-82-alarm-stall.mjs`) reflects each member by n²/k, which inverts the lever. A member moving n per unit of ring travel is seen at the ring as 1/(n²k). The error was invisible while nPin was 1. The rod-side members (n 0.527) are read 3.6× too stiff and the shaft members (n 2.07 since TODO 222) 4.3× too soft. The stall still covers the 5–50 mN window either way, but the figure and the named governor are wrong |
 | 236 | OPEN | Found closing TODO 222: the §45 release sleeve is the selector ring's old construction — three eyes on posts (ℓ 0.4567) driven axially at one tab (r ≈ 4.90) — loaded at the tail pin, which turns with the tube, so it jams wherever d ≥ ℓ/(2μ) = 1.14 u, essentially every hour. Its load is unpriced: follower A's released 22.43 mN·mm over the tail ≈ 130 mN through a 45° cone. Fix path: TODO 222's helical guides with a tangential drive, or a centred collar; price the lift as a `transfers` row |
 | 235 | OPEN | Found deciding §261 step 3 (the owner kept §218's overcoil). `L_HAIRSPRING = L_BALANCE + 1.2` carries no derivation, and it is a datum: `SPRING_TOP_Z`, the three-quarter plate's floor and `TRAIN_CEILING_Z` (the going train's ceiling, §254's fusee groove and §47's arrest stations) all ride it. §261's step 1 built it at +1.0 and bought 0.076 mm of cased depth 1:1, and boot raised 6 asserts. Derive the spring's plane from the balance stack it sits on, then re-solve whatever the derived value moves. Rule 1, P1 |
 | 234 | CLOSED | The fork cock's leg cleared a DISC about the fork's pivot, held at 9.8018 after TODO 226's seat. It now clears the fork's swept SECTOR (`FORK_SWEEP`: every fork vertex under the slab over ±bank, by 0.5° bin) and re-seats from 11.75 to 5.5 from the pivot. The plate's cut gives back the old leg's lobe (300–327°, out to 17.0) and takes a shorter one (295–305°, 14.9); the stop work's bearing, pivot, rod and mast are bit-identical, so nothing down the alarm moved. The lever's flank is one curve again, boss to fork end. Boot silent; `FORK_LEG_DISC_R` and its assert retired |
 | 233 | CLOSED | Found closing §261 step 1 (#636): the Latvian explainer and primer tables were keyed to English §221 (#617) rewrote, because the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check read red on `main`. Closed by #611 (c4eea7c), which re-keyed 15 explainer and 5 primer Latvian rows against the current English, more than the ten counted here because TODO 226's drive rewrote further English. Latvian reads 769/769 and 144/144. The race itself is answered by a CLAUDE.md convention (a locale or page-English PR re-merges `main` and waits for the Explainer check before it merges) and by §271 (merge queue). Arabic plate collisions seen locally are font metrics, not CI |
 | 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
-| 230 | OPEN | Found closing TODO 204. The beak lever turns on `alarmLinkBeakPin` with nothing holding it along the pin toward the arm's line (+y): no shoulder, collar or clip, the eye's inner end plugged by the web. It slides **0.1735** (seated) / **0.1855** (lifted) before the eye or web meets the selector rod, its own group's output, with 0.1432 of the 0.3167 journal still engaged; without the rod it leaves the pin at 0.3167. The column's sweep under the nose drags it along exactly that axis. Fix: a retaining shoulder or collar with its own §50 floor, re-deriving the pin's cantilever (757.1 MPa, margin 1.057). P1 |
+| 230 | CLOSED | The fit is reversed: the beak lever's pin is pressed into its eye, turns in the post's head (now a bush), and carries an integral head outboard of it, so the lever is held both ways by two thrust faces on the one fixed part. The end-shake is DERIVED, 0.0396 = 2·r_face·`CLEAR_MARGIN`/beakLen (the yaw a spool's play allows, held to the nose's flat margin). `probe-230-beak-retention.mjs` slides the lever at 107 poses: the faces bear first at 0.0198 each way, the next metal (pin head ⇄ post) at 0.0279, and the control (no pin head) reaches the rod or the jumper blade. Pin 721.1 MPa at 286.64 mN. The flank's side load is filed as TODO 239 and its root fix as TODO 240 |
 | 229 | OPEN | The gong's receiver is RIGID in §269 and its own first modes sit inside the gong's spectrum — the base plate at 5.9 kHz, the back glass at 9.1 kHz, the band's free-ring ovalling lower still — so the structure-borne level is a floor at the fundamental and neither bound at the overtone until the plate, the band and the glazing are modelled as the flexible receiver they are |
 | 228 | OPEN | The hammer's rebound after the wire is `−AMP·cos(W·r)·e^(−decay·r)`, a POSED decay (`ALARM_HAMMER_DECAY` is solved to reach 5% by the next pickup, no restitution and no banking in it); at §268's W that is a chatter near 200 Hz nothing in the metal produces or stops. A restitution of 0.8 would rebound to ≈0.22 rad and a real hammer is caught by a banking or rests on the lifting piece — neither is drawn |
 | 227 | CLOSED | The alarm release sleeve's SKIRT — the cone the tail pin presses — was a double-sided sheet of no thickness (a collinear offset: profile area 0.0177 u²), and `alarmSleeveWeb` (TODO 225) was a patch over it. It is a real shell now, wall `STOCK_MIN_U` normal to the face, with a relief at the feeler spring's free end (0.084 under the envelope floor): skirt ⇄ spring 0.0807 → 0.1585 against 0.15. The web, its §124 relief and its contact row are gone. Battery 53/53 locally; `tools/probe-225-lathe-profiles.mjs` finds no other lathe like it (72 meshes) |
-| 226 | PART DONE | Steps 1, 2 and 3a DONE, and the escapement is DRIVEN. Step 2 by BUILT §221 (the bank is the pin's own bearing at the lift's edge). Step 1, the seat: the notch is cut as the pin's swept path, the pin set in one roller below the fork, the guard pin behind the notch's floor, `Pallet fork` ⇄ `Balance` held to the margin with no waiver. Step 3a, LOCK AND RUN: the stones lock a 1.5° lock + 0.5° run deep (`LOCK_DEG`, `RUN_DEG`, src/escapement.js), the fork banks the run past the let-off (4.53°, the let-off held at the 50° lift's 4.03°), and the wheel is read off the faces — it RECOILS 0.28°/0.54° through the unlock, rides the impulse face exactly, drops 1.50°/1.71° and lands a lock deep; the teeth are undercut 24° so only the tip touches. Step 3b remains: close the notch to the pin plus a shake and declare the pin on its walls as the pair's working contact |
+| 226 | CLOSED | All three steps DONE, and the escapement is DRIVEN off the pin: step 2 by BUILT §221 (the bank is the pin's own bearing), step 1 the seat (the notch cut from the pin's motion, one roller, the guard pin behind the floor), step 3a lock and run (the wheel read off the stones' faces, recoiling through the unlock), and step 3b the notch CLOSED to the pin plus a shake (`HANDOFF_TRACK_TOL`): the fork lags the pin through the unlock and leads it through the impulse, the roller jewel ground to a D whose flat is solved so the banked pin leaves with its play, the crossing of the shake paced off the fork's and train's inertia (1.61 ms, 5.03° of balance), and the pin on the walls the pair's one working contact (`escapementHandoff`, `probe-226-notch`). Knock 310.46°. The impulse's placement in the driven balance is TODO 238 |
 | 225 | OPEN | Split out of TODO 137's step 2, which counted the class. `stockFloor` and `slenderness` read a mesh's geometry-LOCAL box, so a flat member whose in-plane width is under its kind's floor reads as the extrude DEPTH and passes. `tools/probe-137-hidden-thin.mjs` (a report, with controls) opens every extrude's authored outline by a disc of the floor's width: **182 extrudes, 11 with a quarter or more of their metal under their own kind's floor, 10 of them invisible to the ruler** — the sleeve web is a 0.030 mm arc, the pusher return abutment a 0.075 mm wall, an escape-wheel collet 0.083 mm, two hand blades under 0.10 mm, five toothed or bored members not yet adjudicated. Each needs a verdict (a feature fused to a neighbour, a collar seated on a shaft, or thin stock) before any is called a defect |
 | 224 | CLOSED | The wind is posed from its contacts. A recorded wind-start state (`maintHold`): written on windBack's falling edge (the first banking tick), cleared at pick-up, posed by `setPose({ maintHold })`, never edged by a zero-dt tick. The ring recoils onto the beak (up to 0.8757 of a pitch from the crest, 0 from the face). The great wheel runs on the blade by `barrelMeshAngle` until the pin reaches the stop flank, where τ is capped and the train stops. Pick-up is offset 0, so running is bit-identical. The blade is posed from its pin (115 welded frames, contact solved): 3.2296 → 1.6334 N·mm at the stop, 102.8% of the floor. New `maintHold` axis; `maintDetentHandoff` gains face / pin-blade / pin-stop rows; `restoring` two-way ring and sprung blade; a `pinInSlot` transfers row; guards plus a direction-probe row; Plate 3 redrawn |
 | 223 | CLOSED | Re-laid with TODO 214: the groove collars are cut at stem stock (r 0.75 → 1.1710, from the pin's bearing), the setting lever lies on the plate (`Z_SETTING_LEVER` −5.704 → −3.070) with its beak crossing over the collars as a lug, and the yoke's pivot is mirrored onto the lever's side. All six TODO 223 waivers went stale and are deleted, and both main floors rows hold to the margin apart from one contact each |
@@ -28258,6 +28261,17 @@ Toward the arm's line it slides 0.1735 before the eye meets the selector rod.
 recovers 0.1015 of the 0.3748, not the 0.12 estimated above, because the web's
 corner rises 0.0185 as the lever tilts.
 
+**Since [TODO 230] the fit above is reversed.** The pin is pressed into the eye
+and runs in the post's head, which is now a bush. The pin's integral head and the
+eye's outer face are thrust faces on it, so several stations quoted above are
+history:
+- the eye is r 0.4831, not 0.5332, with eyeIn 0.7200;
+- the bush's inner face (the pin's root) is at 1.1065, not 1.1873;
+- the pin works at 721.1 MPa at TODO 222's 286.64 mN, not 757.1;
+- the post is r 0.1700 at s 1.2898, where its plate land now binds rather than
+  its head.
+TODO 230's record has the measured set.
+
 ## 205. The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld — CLOSED
 
 Found closing [TODO 191] by the same scan, `meshClearance` over every `AXES`
@@ -31288,7 +31302,7 @@ price is the dial plane (`Z_DIAL`) and everything keyed to it.
 
 ---
 
-## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — DRIVEN AND STEPS 1 TO 3A DONE (§221)
+## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — CLOSED (§221)
 
 Found closing [TODO 216], whose knock solve reads this geometry.
 
@@ -31346,39 +31360,6 @@ step 3 (the pin against the driving wall through the window, not only at its
 edges) remain.
 
 
-## 232. The run-down balance counts beats with no torque: the escapement advances the train while the dying balance swings
-
-§246 tier two drives the balance in the live loop, and τ is the escapement's
-count of the beats it unlocks. When the train has no torque to give — the
-fusee run down, or a wind held at Harrison's stop (TODO 224) — the impulse is
-switched off and the balance's own losses stop it, which is right. But until
-they do, every swing that still crosses the lift is COUNTED, and the train,
-the hands and the reserve advance by that beat as if the escape wheel had been
-driven through it. Nothing drives it: the wheel is moved by spring torque only,
-and there is none. **Measured** (`tools/probe-246-driven-rate.mjs`, crown up,
-nominal corner): from the designed 200° swing the balance unlocks **66 beats
-over 13.0 s** with no torque before it stops (6.6 s of movement time on the
-hands). The train turning with no force path is a simulation fiction by the
-README's definition.
-
-Why it was not fixed in §246: the two simple alternatives are each a worse lie.
-Freezing the count leaves the escapement pose (fork and wheel, both functions
-of τ) still while the pin swings through the fork's notch — a contact the pose
-does not close. And a jammed escapement (the balance stopped dead at the lift's
-edge, the pin against the locked fork's horn) is what a real jammed train does,
-but it never restarts on winding, where the sim's run-down → wind round trip
-must.
-
-**Fix path.** Decouple the fork's pose from the wheel's when there is no drive:
-the fork follows the pin through the window (its phase from the balance's own
-angle, as the live loop already computes it) while the escape wheel and the
-train stay at the last locked τ; the pallet stone's impulse face then meets the
-standing tooth's tip, and THAT contact stops the fork and the balance — the
-real physics of a stopped train, measured on the cut metal (the §120 saw ⇄
-pallet cycle's geometry). On winding, the tooth's torque returns through the
-same contact and the balance is released from the fork with the impulse the
-lift gives it. Acceptance: with no torque, τ does not advance at all; the
-balance stops within a swing of the drive going off; winding restarts it.
 ### The drive (landed)
 
 Scoping step 1 found something under it: the fork was not DRIVEN by the pin at
@@ -31625,38 +31606,128 @@ fork dwells and two beats a period; the let-offs at ±LIFT/2) and passes, every
 fork ⇄ balance pair at or over the margin. `probe-216-knock.mjs` AGREES at
 304.118°. `probe-221-amplitude.mjs` PASS.
 
-#### 3b — the notch closes on the pin (open)
+#### 3b — the notch closes on the pin (landed)
 
-The notch is still the funnel step 1 cut: the pin bears on no wall, and the
-fork follows the pin's centre line. With run, the fork now leaves the pin at
-the let-off and the pin re-enters to meet a banked fork, so the notch can close
-to the pin plus a shake, the law can lead the pin by that shake through the
-impulse (the fork's wall drives the pin) and trail it through the unlock (the
-pin's push drives the fork), and `expectedContacts` can declare the pin on the
-notch's walls as the pair's one working contact, held within
-`HANDOFF_TRACK_TOL`. The horns, and with them the knock, move again there.
+The notch was the funnel step 1 cut: the pin bore on no wall and the fork
+followed the pin's centre line. Now the notch is closed to the pin plus a
+**shake**, and the pin bears on one wall or the other wherever it carries the
+fork. `expectedContacts` names the pin on the blank as the pair's one working
+contact, and `escapementHandoff` holds it within `HANDOFF_TRACK_TOL`.
 
-**Prerequisite, found when 3a met §246 tier two: the driven balance's window
-is the LIFT, and the pin's passage is wider.** §246's `balance-drive.js` maps
-τ to the balance's own angle only inside ±`LIFT_DEG`/2 — the window where it
-counts beats, times the rate (`entryT`) and lays the impulse torque — and runs
-the supplementary arc of the position's own swing outside it. The tick reads
-the fork (`forkSwingRad`) and the whole train (`escapeAngle` and the gear
-chain) off τ through the HANGING law. Before 3a nothing moved the fork outside
-±L/2, so the two always agreed. Since 3a the pin also carries the fork through
-the run and the unlock, out to the entry half-angle 28.52°, so for a dial-flat
-pose (the posed 292°) and in the live loop the fork reads a different balance
-angle from the one the balance shows in that slice. Measured, analytically, on
-the flat posed law: at worst 0.17° of fork (θ 28.52° against the hanging law's
-27.34° at the same τ), 0.032 at the pin's radius. That is inside the funnel's
-room, so no gate sees it today, but it is exactly the error a pin-plus-shake
-notch turns into a contact fault. The fix belongs at the source, before the
-notch closes: §246's phase window becomes the pin's passage (±entry half,
-derived beside `PIN_FORK`), and the impulse torque keeps the lift (±L/2). That
-moves where a beat is counted and timed, so `IMPULSE_WIDTH`'s role, the
-rate's `entryT` and the sound events must be re-derived with it, and the
-hanging pose must stay bit for bit.
+**The prerequisite landed first** (05cba37): §246's phase window became the
+pin's passage. τ is the posed law's inverse out to ±θ_E, the impulse keeps the
+lift, and the hanging pose stays bit for bit. `probe-226-drive` holds the line
+dial-flat and in the live loop: 1.24e-14 posed, 1.33e-14 live DU and
+1.83e-14 CL. Its control, the pre-3b map, reads 0.0388 off.
 
+**What closing it found: a round pin of this section cannot leave a parallel
+slot.** Once the fork banks, the pin keeps turning about the staff. Relative to
+the stopped fork it crosses the slot about as fast as it climbs out of it. So a
+slot a shake wider than the pin puts the pin's round outer flank into the far
+wall, a few degrees past the banking. The relief that would have to be cut for
+it reaches nearly to the floor. Measured against the depth the pin works in
+(9.575 to 9.802 from the fork's pivot), only **6%** would be left as parallel
+wall at r 0.55 (54% at r 0.3, 86% at r 0.15). The owner chose the real watch's
+answer over a thinner pin: the roller jewel is ground to a **D**, its flat
+toward the fork (de Carle; Daniels).
+
+**What was built** (`src/escapement.js` `pinNotch`, the seat in
+`G.escapementSeat`, the law in main.js `forkSwingAt`):
+
+- **The shake is `HANDOFF_TRACK_TOL`, 0.03.** It is declared in layout.js now,
+  because the build reads it, and re-exported by inspect.js. The play is the
+  least a working contact can be told apart by, not a clearance.
+- **The law.** The fork LAGS the pin's bearing through the unlock: the pin
+  pushes the wall ahead of it. It LEADS through the impulse and the run: the
+  wall behind pushes the pin. The offset is whatever puts the D's reach on the
+  wall (`contactSwing`), so the law follows the D's flat where it matters. The
+  most a working contact lands off the round is 0.00034, reported.
+  `forkSwingAt(θ, dir)` takes the balance's direction, and a −θ swing is the
+  +θ swing mirrored.
+- **Let-off and bank.** The let-off is the LEAD read at the 50° lift's edge:
+  4.0263° → **4.2026°**. The bank is that plus the run, **4.7026°**. The pin
+  meets the banked fork's wall at **±28.5288°**, and the unlock ends at
+  **−15.195°**.
+- **The D's flat is SOLVED: 0.2821 off a 0.55 pin** (0.513 of the radius). It
+  is the largest flat for which the banked pin, leaving, comes no nearer the
+  far wall than the play it sat in, 2·shake. `probe-226-notch` reads that exit
+  at 0.0600.
+- **The crossing.** At the unlock's end the stone's corner releases the fork.
+  The wheel then drives the fork across the shake, with nothing touching the
+  pin meanwhile. That is paced from the metal: the fork and the train
+  reflected to the escape arbor are weighed off their own meshes at their own
+  stocks' densities (6.83e-11 and 1.35e-11 kg·m²). They are driven by the
+  energy column's escape torque (3.14e-7 N·m, frictionless, so this is the
+  fastest crossing) through the impulse face's own gearing. The crossing takes
+  **1.61 ms, 5.03° of balance**, from −15.20° to −10.16°, well before the
+  let-off. It is integrated once at boot and kept as the fraction across at
+  each balance angle.
+- **The seat.** Walls at `W = pinR + shake` from the floor to `yBand`, the
+  depth of the last contact. The authored horn tip stands one chamfer short of
+  it, since the mitre carries the metal's corner there. The floor is a
+  half-round of the walls' radius, held `CLEAR_MARGIN` off the D's deepest
+  reach. The walls carry a vertex every √(0.8·pinR·shake): the hand-off
+  instrument takes the larger of an exact and a vertex-sampled distance, and
+  one long wall face read a pin at the floor's depth 0.045 off a wall it stood
+  0.0002 from.
+- **`blankMetalOutline` is matched by the mitre.** Each authored point is now
+  matched to where its mitre puts it, not to the nearest chamfered vertex.
+  With walls that dense, the horn tip's corner had matched its neighbour's,
+  and the published outline lost the wall's last 0.25.
+- **The knock moves to 310.46°** (304.12° before). `AMPLITUDE_PEAK_DEG` goes
+  305 → 311, and the `position` axis goes to 301 poses (193·311/200).
+
+**Instruments.**
+
+- `probe-226-notch` (new, acceptance) reads the WALL. The pin is on the driving
+  wall at 0.0005 worst over 444 poses, both ways, hanging and dial-flat, and
+  the full play 0.060 off the other. Across the crossing the fork never comes
+  back through the pin, and the exit play is 0.0600. Both controls fail as
+  they must: the fork at the pin's bearing reads 0.0305, and lead and lag
+  swapped reads 0.0605.
+- `escapementHandoff` (new battery check) reads 0.0081 worst over fourteen
+  poses. It can only say "within a shake of A wall", because the shake is its
+  tolerance, which is why the probe exists.
+- `probe-216-knock` AGREES at 310.460°, reading the D.
+
+**Left, and filed: TODO 238.** The driven balance (§246) still lays its
+impulse symmetrically over the lift. On the metal, the wheel drives the pin
+only from the crossing's end (−10.16°) to the let-off (+25°), and the unlock
+before it is work the balance pays.
+
+## 232. The run-down balance counts beats with no torque: the escapement advances the train while the dying balance swings
+
+§246 tier two drives the balance in the live loop, and τ is the escapement's
+count of the beats it unlocks. When the train has no torque to give — the
+fusee run down, or a wind held at Harrison's stop (TODO 224) — the impulse is
+switched off and the balance's own losses stop it, which is right. But until
+they do, every swing that still crosses the lift is COUNTED, and the train,
+the hands and the reserve advance by that beat as if the escape wheel had been
+driven through it. Nothing drives it: the wheel is moved by spring torque only,
+and there is none. **Measured** (`tools/probe-246-driven-rate.mjs`, crown up,
+nominal corner): from the designed 200° swing the balance unlocks **66 beats
+over 13.0 s** with no torque before it stops (6.6 s of movement time on the
+hands). The train turning with no force path is a simulation fiction by the
+README's definition.
+
+Why it was not fixed in §246: the two simple alternatives are each a worse lie.
+Freezing the count leaves the escapement pose (fork and wheel, both functions
+of τ) still while the pin swings through the fork's notch — a contact the pose
+does not close. And a jammed escapement (the balance stopped dead at the lift's
+edge, the pin against the locked fork's horn) is what a real jammed train does,
+but it never restarts on winding, where the sim's run-down → wind round trip
+must.
+
+**Fix path.** Decouple the fork's pose from the wheel's when there is no drive:
+the fork follows the pin through the window (its phase from the balance's own
+angle, as the live loop already computes it) while the escape wheel and the
+train stay at the last locked τ; the pallet stone's impulse face then meets the
+standing tooth's tip, and THAT contact stops the fork and the balance — the
+real physics of a stopped train, measured on the cut metal (the §120 saw ⇄
+pallet cycle's geometry). On winding, the tooth's torque returns through the
+same contact and the balance is released from the fork with the impulse the
+lift gives it. Acceptance: with no torque, τ does not advance at all; the
+balance stops within a swing of the drive going off; winding restarts it.
 ## 228. The hammer's rebound after the wire is a posed decay, not restitution — with the §268 spring it is a 200 Hz chatter nobody banked
 
 §268 made the hammer's fall a spring law with a spring: `ALARM_HAMMER_W =
@@ -31754,7 +31825,7 @@ Related: item 126 (closed by §269), item 122 (the gasket that holds the pane),
 
 ---
 
-## 230. The beak lever has no axial retention on its pivot pin: it can slide 0.17 toward the selector rod, which is the first thing it meets
+## 230. The beak lever has no axial retention on its pivot pin: it can slide 0.17 toward the selector rod, which is the first thing it meets — CLOSED
 
 **Found closing [TODO 204].** TODO 204 made the beak lever's fulcrum a real pin.
 `alarmLinkBeakPin` (r `STOCK_MIN_R10` 0.1665) is pressed through the post's head
@@ -31829,6 +31900,76 @@ writes. The lever's location along the pin is posed, not held.
    declared end-shake before anything else (today: the rod at 0.1735). The
    build's rule-6 warns hold the pin's and the collar's stress. The
    `INTRA_UNIT_FLOORS` rows rod⇄eye and rod⇄web keep their 0.15.
+
+**Built — arrangement (a), the fit reversed.** (b) was rejected on the metal:
+a collar on the pin's inner end would stand where the bar, the tail, the rod and
+the jumper's blade all are, and a ghost collar there read 0 clearance to all four.
+- **The pin is the lever's.** It is pressed into the eye home against the web's
+  lap and turns with the lever. The eye is r **0.4831** (`ALARM_BEAK_PIN_R` +
+  `STOCK_MIN_U`), its §50 wall counted from the pin's surface.
+- **The post's head is the BUSH** the pin runs in, bored `PIVOT_BORE_CLEAR` over
+  the pin with §50's wall beyond.
+- **The pin carries an integral HEAD** (r 0.4831, the same annulus as the eye's
+  face) outboard of the bush. The lever is held toward the arm's line by the
+  pin's head on the bush's outer face, and away from it by the eye's outer face
+  on the bush's inner face. Both faces are on one fixed part.
+- **The end-shake is derived, not chosen.** A pin with radial play in a short
+  bush does not locate the lever in yaw; the two thrust faces do. A spool with
+  axial play e rocks until opposite rims touch, θ = e/(2·r_face). Holding the
+  nose on its column flat, beakLen·θ ≤ `CLEAR_MARGIN`, gives
+  e ≤ 2·r_face·`CLEAR_MARGIN`/beakLen = **0.0396**, taken at that bound. The
+  lever is built centred, 0.0198 each side. A rule-6 warn re-derives the nose's
+  swing from the built faces.
+- **The pin's cantilever.** The root is still the bush's inner face, the arm
+  that face's distance with the lever at the far end of its shake:
+  `pinArm` **1.1263**. At TODO 222's 286.64 mN service load the pin works at
+  **721.1 MPa** (`beakPivot.sigmaPin_Pa`) against `SPRING_SIGMA_Y_PA` 800, so
+  §50's floor binds and no thicker pin was needed. The post is load-bound at
+  r 0.1700 at s 1.2898, where its plate land now binds rather than its head
+  (TODO 204's record is annotated).
+
+**Acceptance, measured** by `tools/probe-230-beak-retention.mjs` (exit 1 on any
+failure). It slides the lever's arm along its own y, stepping by
+`meshClearance` so it cannot step over a contact, at the lifted pose (reset),
+the seated pose (`alarmToggle` f 0.5) and the press stroke (`alarmPress` at the
+net's 64 samples plus a fine sweep of the mid-press window), 107 poses:
+- toward the arm's line the first bearer is the pin's head on the bush, at
+  **0.0198**;
+- away from it, the eye on the bush, at **0.0198**;
+- the nearest metal beyond the retention is the pin's head on the post's flank,
+  **0.0279** (`alarmPress` f 0.2344). Lifted, the rod stands 0.1969 off the eye;
+  seated, 0.1827;
+- **control**: with the pin's head struck off the lever's member list, the first
+  thing met toward the arm's line is the rod (0.1969 lifted, 0.1827 seated) or,
+  mid-press, the jumper's blade (0.1649 at `alarmPress` f 0.3885). The probe
+  fails without the head, as it must.
+- Boot silent. The `INTRA_UNIT_FLOORS` rows rod⇄eye and rod⇄web keep their 0.15.
+- **The jumper's blade, for the record.** Before this change the eye stood
+  **0.0193** off `alarmJumperBlade` at `alarmPress` f ≈ 0.388, and 0.0512 of
+  slide from touching it. That is under `CLEAR_MARGIN`, and no gate saw it,
+  because Alarm switch ⇄ Alarm link is an EXPECTED pair with no floors row for
+  the eye. The smaller eye stands 0.1649 of slide off it.
+
+**Tables.**
+- `INTRA_UNIT_CONTACTS`:
+  - pin⇄eye is now the press: a NOTE row, because they are same-frame movers;
+  - pin⇄head is now the journal;
+  - two thrust rows are added, eye⇄head and pin head⇄head.
+- The pin moved into the lever's arm, so it is a mover. `JMP_SITE_MOVERS`' 'alarm
+  link' bounded row already covers the unit's whole tree.
+- The §137 crank row's wording follows the new fit.
+- The back envelope's construction maximum is unchanged at 14.032. It is now the
+  bush's crown (r 0.5332), where it was the eye's. The Alarm link's swept
+  maximum falls 14.050 → 14.032, because the web's top came down with the eye.
+- No new waivers.
+
+**What it found and did not fix.** Investigating the axial load showed it is not
+the 9.5 mN of friction estimated above. The castellation FLANKS push the nose
+along the pin, 66–89 mN climbing and 29–39 mN descending, which twists the lever
+and puts the pin and post over yield once counted. That is filed as
+[TODO 239] (price it and resize), with [TODO 240] (re-aim the arm so the push
+lies in the lever's plane) as its root fix. TODO 230's thrust faces did not
+create that load; they give it somewhere real to bear.
 
 ---
 
@@ -32242,6 +32383,210 @@ the record names. Fix path: correct the reflection in both readers together
 (they assert against each other, so they move as one), re-measure
 `ALARM_LINK_STALL_PROBE_MN` and `ALARM_LINK_GOVERNING`, and re-read TODO 79/82's
 records against the corrected figure.
+
+## 238. The driven balance lays its impulse symmetrically over the lift, but the wheel drives the pin only from the end of the shake's crossing to the let-off
+
+Found closing TODO 226 step 3b. §246 tier two's `balance-drive.js` lays the
+impulse torque over the lift, ±`LIFT_DEG`/2 = ±25°, symmetric about the line of
+centres, and prices it as the energy column's delivered energy per beat. That
+was the escapement's own description while the notch was a funnel and the fork
+followed the pin's centre: the impulse was the lift.
+
+With the notch closed (TODO 226 step 3b), the metal says something narrower.
+For a +θ swing:
+
+- **−28.53° to −15.20°: the UNLOCK.** The pin pushes the fork through the run
+  and the lock, against the stone's draw. The wheel RECOILS (step 3a). This is
+  work the balance does, and it is not priced.
+- **−15.20° to −10.16°: the CROSSING.** The wheel drives the fork across the
+  shake, and nothing touches the pin.
+- **−10.16° to +25°: the IMPULSE.** The fork's wall drives the pin, 35.2° of
+  balance, not 50°, and not symmetric about the line of centres.
+
+The driven balance's rate and amplitude are measured
+(`probe-246-driven-rate`), so this is not a fiction about the swing. It is a
+fiction about WHERE in the swing the energy enters and leaves. That moves the
+escapement error (an impulse off the line of centres changes the rate with the
+amplitude, which is why real escapements centre it) and the beat's sound
+events.
+
+**Fix path.** Read the impulse window off `pinNotch` and the crossing
+(`__clock.pinNotch`: `unlockHalf`, `crossing.endHalf`, `liftHalf`). Price the
+unlock as the work against the draw, using the stone's locking-face lean
+(`DRAW_DEG`) and the escape torque. Re-solve the sustained amplitude so
+`AMPLITUDE_TARGET_DEG` still holds at the nominal corner. Hold the hanging
+pose bit for bit, as the §246 prerequisite did. Acceptance: the drive's
+impulse acts only where the fork's wall is on the pin. `probe-246-driven-rate`
+re-measures the rate's amplitude dependence, which is the escapement error,
+reported.
+
+## 239. The column's flank pushes the beak lever's nose along its pivot pin: the side load twists the lever and puts the pin and post over yield
+
+**Found investigating [TODO 230].** The beak lever's arm is aimed at the column
+wheel's centre (`beakAim` → `ALARM_COL_POS`), so its nose sits on the wheel's
+radius and the castellations sweep under it TANGENTIALLY. In plan that is square
+to the arm, which is along the lever's pivot pin. TODO 230's record priced this
+as friction alone, μ·F = 9.5 mN at the lift end. That misses the load's main
+part. The nose does not only slide on the column tops. It climbs and descends
+the cut FLANKS, which are inclined in exactly that tangential direction.
+
+**The flank.** `makeColumnWheel` cuts each flank as a linear rise of `colH`
+0.6167 over `colFlank` 0.12548 rad of wheel angle. At radius r its slope is
+tan α = colH / (r·colFlank). The nose (`ALARM_LINK_NOSE_W_RAD` 1.254 radially,
+centred on `ALARM_LINK_NOSE_LAND_R` 4.655) spans r 4.03–5.28, so:
+
+| r | α | climbing (+y) | descending, flank top (−y) |
+|---|---|---|---|
+| 4.03 (inner corner) | 50.6° | **89.4 mN** | 39.0 mN |
+| 4.655 (land) | 46.6° | **75.8 mN** | 33.6 mN |
+| 5.28 (outer corner) | 42.9° | 66.2 mN | 29.3 mN |
+
+For a vertical nose force F_z (47.62 mN at the flank's top, the lift end of
+TODO 206/222's window), the axial component on the pin is:
+- climbing: F_z·(tan α + μ)/(1 − μ·tan α);
+- descending: F_z·(tan α − μ)/(1 + μ·tan α).
+
+`MU_STEEL` is 0.2. At the seat end the descent's push falls to about 3.7 mN.
+
+**Direction.** The pusher indexes the wheel −z (`ratchetDrive` −1, its measured
+azimuth falling 1.9565 → 1.4329 over `alarmPress` f 0 → 0.5). At the nose the
+column's surface therefore moves toward the lever's local **+y**, which is toward
+the arm's line, away from the post. So the climb pushes the lever toward the
+selector rod (+y), and the descent pushes it onto the post's head (−y). [TODO 230]
+gave the lever thrust faces both ways. Each face now carries its push, and
+neither push is priced anywhere.
+
+**Three consequences, none of them gated.**
+
+1. **The lever twists about the vertical.** A force along the pin at the nose,
+   beakLen 3.6565 from the pin's axis, is a moment F·beakLen about z: 0.277 N·u
+   (land) to 0.327 N·u (inner corner). The pivot must react it.
+   - Through the bush, a couple across its 0.353 length.
+   - Through the thrust faces, a couple across their 0.966 diameter: TODO 230
+     derived the end-shake from exactly that rock.
+   - The nose also stands about 0.6 under the axis, so the same force adds
+     about 0.6·F to the bending moment about the arm's direction.
+
+2. **The pin is over yield.** Its root is the bush's inner face.
+   - Today the R moment (286.64 mN × `pinArm` 1.1263) gives **721.1 MPa**.
+     That is `beakPivot.sigmaPin_Pa`, the only figure the build holds.
+   - Adding the twist across the flats (σ = 32·M/(π·d³) on |M| = √(M_R² + M_z²))
+     gives:
+     - **950 MPa** at the land radius;
+     - **1026 MPa** at the inner corner;
+     - **1030 / 1114 MPa** with the 0.6 offset added.
+   - `SPRING_SIGMA_Y_PA` is 800.
+   - **Section needed: r 0.1763–0.1859**, against `STOCK_MIN_R10` 0.1665.
+     Measured on the pre-TODO 230 pin (arm 1.199) this was 0.1785–0.1879,
+     which is the figure the investigation quoted.
+
+3. **The post is over yield.** The post is load-bound: `rPost` 0.1700, ⌀ 0.3233
+   across the flats, at 800.0 MPa from R as tension plus R·sPost (1.2898) in
+   bending.
+   - The descent's push acts at the axis, H = 3.194 over the plate. It adds
+     H·F to that bending moment (the climb subtracts it) and twists the post by
+     F·beakLen.
+   - Von Mises under the descent: **1050 MPa** (land) to **1093 MPa** (inner
+     corner).
+   - **Diameter needed: ×1.096–1.110** (⌀ 0.354–0.359).
+   - The climb relieves the bending and reads 582–627 MPa.
+   - The investigation's ×1.09–1.10 / 1033–1074 MPa were read on the
+     pre-TODO 230 post (⌀ 0.330 at s 1.3726).
+
+**And the arming spring's solve is short of a friction term.** TODO 206/222's
+`noseFrom` charges `MU_STEEL` at the pin's JOURNAL (μ·R·rPin). The axial push
+loads a thrust face, whose friction is a second torque against the lever's turn:
+μ·F_y·r_mean.
+- r_mean is 0.3668: the mean radius of the face annulus, from the bush's bore
+  0.2165 to the faces' rim 0.4831.
+- **At the lift end** (climb, 75.8 mN) that is 5.56 mN·u against the nose's
+  47.62 × 3.6565, so **+3.19%**: the column must overcome about **49.14 mN**,
+  inside the 50 mN window.
+- **At the seat** (descent, about 3.7 mN), **−1.42%**: the spring delivers
+  about 5.18 mN, over the 5 mN floor.
+- The investigation estimated +3.05% / −1.35% on the face before TODO 230 cut
+  the bush's bore.
+
+TODO 230 did not price this. Its faces did not create the load: TODO 204's eye
+already bore on the head's inner face under the descent. Pricing the friction
+without the flank's side load in the record would be half a model. The equal-
+margin solve (seat × lift = 5 × 50) must be re-run with it, which re-cuts the
+arming blade and moves every record the blade's numbers reach: the §137 rows,
+`probe-82-alarm-stall`, and TODO 222's force table.
+
+**Why it is debt (P1, structural truth within the arming group).** Two members
+of the group's fulcrum cannot carry the load the group puts on them. The record
+shows them at or under yield only because the record leaves that load out. No
+check sees it: the battery poses forces nowhere, and `equalisation`'s energy
+column is the going train's.
+
+**Fix path.**
+1. Carry the flank's side load in the record. Put a function of the nose's
+   contact radius and the wheel's `profileAt` flank beside `noseFrom`, so the
+   pin's, the post's and the faces' figures are derived rather than quoted
+   here.
+2. Re-derive the pin's section (r from |M| at the inner corner, the 0.6 offset
+   counted) and the post's section (von Mises under the descent). Re-iterate the
+   post's station: since TODO 230 its plate land binds, not its head.
+3. The bush grows with the pin (`rHead` = r + `PIVOT_BORE_CLEAR` + `STOCK_MIN_U`),
+   and it is the beak pivot's crown, so the back glass step rises by Δr (about
+   +0.019 at r 0.1859). [TODO 231]'s per-mesh allowance does not change that,
+   because the bush never moves.
+4. Add the thrust term to `noseFrom` and re-solve the arming blade. The window
+   stays 5–50, not widened.
+5. **Or remove the load at its source**: [TODO 240]. With the pin's axis radial,
+   the flank's push lies in the lever's own plane, and none of 1–4 is needed in
+   this form. Decide 240 before building 1–4.
+
+## 240. Re-aim the beak arm: the arm points at the column wheel's centre, so the flank's push runs along the pivot axis
+
+**Filed with [TODO 230], as the root fix for [TODO 239].** The beak lever rides
+the column wheel's castellations as a FACE cam: the nose follows the tops in z,
+and the flanks that lift and drop it are inclined in the wheel's tangential
+direction. `beakAim = atan2(ALARM_COL_POS − beakPiv)` points the arm at the
+wheel's centre, so the nose stands on a radius. The lever's tilt axis, and the
+pivot pin on it ([TODO 204]), lie square to the arm in plan, which makes them
+TANGENTIAL at the nose.
+
+So the flank's normal force has two components:
+- the component the lever is meant to take, in z;
+- a component exactly along its pivot: 66–89 mN climbing and 29–39 mN
+  descending (TODO 239's table).
+
+A pivot can take a load along its axis only at a thrust face. Taken at the nose,
+3.66 from the axis, that load is also a twist the pivot must hold as a couple.
+TODO 239 measures the cost: the pin and the post over yield, and thrust friction
+the arming spring's solve does not carry.
+
+**The fix is geometric, not sectional.** Turn the lever so its tilt axis is
+RADIAL at the nose, that is, the arm along the wheel's tangent. The flank's
+push then acts in the lever's own plane of motion. Most of it becomes the lever
+being driven (the cam's work), and the rest is a radial journal load. A face cam
+with a radial follower axis is how such a ride is normally laid out.
+
+**Why it is not a P3 fold.** Re-aiming moves the beak's arms, so it is a P0
+line-spec change:
+- the nose's contact on the flat (and `ALARM_LINK_NOSE_W_AZ`'s derivation, which
+  assumes a radial nose);
+- the lever's two arms and their ratio (§229's 5.3107, TODO 174's fork);
+- the seat drop and `ALARM_COL_SEAT_DROP_SPEC`;
+- the tail's station over the selector rod (TODO 174's `ALARM_LINK_ROD_DIST`);
+- every `alarmHandoffs` row of the arming run.
+
+So it is a fork of §229's line spec (`LINE_SPEC_FORKS`), with each moved row's
+`forcedBy`, or a new reference. It is not a re-siting.
+
+**Fix path.**
+1. Design the re-aimed lever IN A LINE, nose to rod, at P0–P2 (CLAUDE.md's
+   order of work): arms from the seat drop and the rod's travel as §229 does,
+   the nose's land re-derived for a tangential approach, the pivot pin and its
+   retention (TODO 230's headed pin) carried over.
+2. Fold it to the rod's station in position space only. If the rod cannot be
+   reached without moving a spec row, file the layout change rather than
+   stretch an arm.
+3. Re-run [TODO 239]'s arithmetic. The along-pin load should be friction alone
+   (μ·F, about 9.5 mN at the lift end), and the pin and post sections need
+   re-reading only for the residue. Close 239 against the measurement.
 
 ## 241. The alarm press chain survives the finger only if something bottoms it: a stroke stop for the pusher
 
