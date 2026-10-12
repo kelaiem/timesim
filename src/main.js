@@ -2068,7 +2068,12 @@ const OSC_I = oscInertiaOf(balanceWheel.userData);
 // The terminal's curvature law is solved, not chosen — see hairspringRest.
 const HS_INNER_R = Math.max(rollerR * 0.5, 1.5);
 const HS_OUTER_R = balanceR * 0.88;
-const HS_COILS = 8;
+// TODO 242 — and no more coils than a stud post fits between: one coil pitch
+// must carry the post's whole side inboard of the outer coil (TODO 147,
+// asserted below), which a smaller balance's narrower spiral cannot do at 8.
+// The 9 u balance takes the 8 the band asks for (9 fit); 36,000's 7.5 u takes 7.
+const HAIRSPRING_STUD_POST = 0.65;         // the stud post's side, consumed again by the cock's carrier
+const HS_COILS = Math.min(8, Math.floor((HS_OUTER_R - HS_INNER_R) / HAIRSPRING_STUD_POST));
 const HS_COIL_PITCH = (HS_OUTER_R - HS_INNER_R) / HS_COILS;
 // TODO 147 — WHERE THE STUD LANDS, which used to be whatever the solve emitted.
 // A Breguet terminal is raised so its end can come back IN over the body of the
@@ -2080,7 +2085,6 @@ const HS_COIL_PITCH = (HS_OUTER_R - HS_INNER_R) / HS_COILS;
 // with a footprint, not a point — the smallest whole-coil step that carries the
 // post's entire width inboard of the outer coil is the constraint, and it is
 // asserted below rather than assumed (pitch 0.8025 against the post's 0.65).
-const HAIRSPRING_STUD_POST = 0.65;         // the stud post's side, consumed again by the cock's carrier
 const HAIRSPRING_CARRIER_ROOT = 2.85;      // where the carrier's arm leaves its ring; the ring itself is 2.55–2.95, trimmed inside the shock head's half-width
 if (HS_COIL_PITCH < HAIRSPRING_STUD_POST)
   console.warn(`TODO 147: the spiral's coil pitch ${HS_COIL_PITCH.toFixed(4)} is under the stud post's ${HAIRSPRING_STUD_POST} — one coil step no longer carries the post inboard of the outer coil, so the stud menu's one-pitch row is not the Breguet position it is listed as.`);
