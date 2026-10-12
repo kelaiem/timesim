@@ -65,6 +65,9 @@ export const INSPECTION_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // TODO 64 / TODO 236 — the alarm crown pulled and pushed back in: the whole
+  // §45 release run, out and back. poses = n 96 plus the endpoint.
+  { axis: 'alarmPull', poses: 97 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
@@ -325,6 +328,9 @@ export const CLEARANCE_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // TODO 64 / TODO 236 — the alarm crown pulled and pushed back in: the whole
+  // §45 release run, out and back. poses = n 96 plus the endpoint.
+  { axis: 'alarmPull', poses: 97 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
@@ -353,6 +359,9 @@ export const UNDECLARED_CLEARANCE_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // TODO 64 / TODO 236 — the alarm crown pulled and pushed back in: the whole
+  // §45 release run, out and back. poses = n 96 plus the endpoint.
+  { axis: 'alarmPull', poses: 97 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226
@@ -505,6 +514,9 @@ export const EXPECTED_CONTACT_SLICES = [
   // TODO 224 — the maintaining wind, held: drive off, recoil, the wheel on the
   // blade to Harrison's stop, pick-up. poses = n 48 plus the endpoint.
   { axis: 'maintHold', poses: 49 },
+  // TODO 64 / TODO 236 — the alarm crown pulled and pushed back in: the whole
+  // §45 release run, out and back. poses = n 96 plus the endpoint.
+  { axis: 'alarmPull', poses: 97 },
   // §246 tier two — the position, posed dial-flat (the driven balance's
   // ~292° swing). poses = n 300 plus the endpoint — n is the beat axis's 193
   // scaled by AMPLITUDE_PEAK_DEG / AMPLITUDE_POSED_DEG, 311/200 since TODO 226

@@ -791,7 +791,18 @@ function declareRestoring(name, member, kind, why, mesh, through = null) {
 //                    `crank`, which is a blade biasing a SEPARATE pivoted arm
 //                    and therefore always carries a lever ratio. The column
 //                    wheel's sautoir is the movement's one instance.
-const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach', 'pinInSlot', 'groundedBlade'];
+//   wedge          — TODO 236. Displacement turned through an angle by a
+//                    sliding INCLINE: a face at angle β to the motion it
+//                    drives, the driven member pressed across it. No pivot
+//                    and no lever: the ratio is the face's tan β, and the
+//                    price is friction ON THE FACE, which a plain wedge pays
+//                    as axial = radial·(tan β + μ)/(1 − μ·tan β) — so a row
+//                    carries β, the μ acting along the face's meridian, and
+//                    both loads, and the check re-derives the axial from the
+//                    other three (a wedge with μ·tan β ≥ 1 locks, and that is
+//                    a mismatch too). The §45 release sleeve's 45° cone on
+//                    follower A's tail pin is the movement's one instance.
+const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach', 'pinInSlot', 'groundedBlade', 'wedge'];
 const declaredTransfers = new Map();   // site -> row
 function declareTransfer(site, row) {
   if (declaredTransfers.has(site)) console.warn(`§137: transfer '${site}' declared twice`);
@@ -19537,7 +19548,12 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // alarmIndexWedge, and the BVH answered 0 against them, so PASS 1 refused
 // 232–235° on a contact 3.8135 away. With slivers dropped (ZERO_AREA_MAX) the
 // scan's first clear station is 233.5°, at clearance 0.1572.
-const JMP_AZ_MEASURED_DEG = 233.5;
+// TODO 236 — 233.5° → 234.0°, the solve doing its job again: the release
+// sleeve's second helix plate (az 250°, hung from the sheet where §45's post
+// stood) stands 0.1365 off the jumper's lifter bar at 233.5° and 0.1935 at
+// 234.0°, so the scan's first clear station moved half a degree. Re-verified as
+// the tripwire asks: probe-149-lifter-width.mjs re-measured the span below.
+const JMP_AZ_MEASURED_DEG = 234.0;
 let JMP_AZ = (() => {
   const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
   return Math.atan2(-capLocal.y, -capLocal.x);   // stud-relative, dialFace frame: away from the cap
@@ -21811,7 +21827,7 @@ const ALARM_SLEEVE_HELIX_RS = ALARM_SLEEVE_GUIDE_R0S.map((r) => r + ALARM_SLEEVE
 const ALARM_SLEEVE_GUIDE_PIN_R = flatsR(PIVOT_MIN_U, 10);                  // the guide pins: §50's pivot floor across the flats
 const ALARM_SLEEVE_ROLLER_R = ALARM_SLEEVE_GUIDE_PIN_R + PIVOT_MIN_U;     // bored to its pin, its wall at §50's pivot floor
 const ALARM_SLEEVE_BOSS_END_RS = ALARM_SLEEVE_GUIDE_R0S.map((r) => r - ALARM_FORK_CLEAR); // each boss's end: one working fit off its plate
-const ALARM_SLEEVE_BOSS_W = 0.24;                                         // TODO 222's boss width (ALARM_SEL_BOSS_W)
+const ALARM_SLEEVE_BOSS_W = STOCK_MIN_U;                                  // §50's floor (TODO 222's 0.24 rides the selector's TODO 11 stock waiver; this unit carries none)
 // THE ROLLERS' HEIGHT. The plate under 327° hangs from the sheet up past the
 // slot's far end, and over it, at the feeler's lever, lies the feeler's return
 // blade (its anchored end ALARM_FEELER_SPR_LIFT over the lever's top plane). The
@@ -24888,8 +24904,12 @@ const ALARM_LIFT_PIVOT_Z = ALARM_LIFT_HEAD_TOP - ALARM_COLLAR_RISE / 2;   // the
 // (the pulled crown slides the fat plateau over the whole frame), and the posts
 // stand beside that plateau by a margin.
 const ALARM_LIFTER_POST_R = 0.2;
-const ALARM_LIFT_HUB_L = 0.3;
-const ALARM_LIFT_SIDE_W = 0.4;   // the frame's bars' width: the side bars carry the return blades' bear tabs beside the hubs
+const ALARM_LIFT_SIDE_W = STOCK_MIN_U;   // the frame's bars' width, at §50's floor (their depth is the load's, ALARM_LIFT_FRAME_H)
+// The hub: as long as its side bar is wide, plus what puts the bar one margin
+// inside the post where the hub's own outer face runs a 0.03 thrust gap off it
+// (the bar joins the hub's inner part, so only the hub's face meets the post).
+const ALARM_LIFT_THRUST_GAP = 0.03;
+const ALARM_LIFT_HUB_L = ALARM_LIFT_SIDE_W + (CLEAR_MARGIN + MEASURED_MARGIN_BAND - ALARM_LIFT_THRUST_GAP);
 // the frame's top: one margin under the collar's FAT underside, less what its
 // rear bar's far corner rises over the swing (the pulled crown brings the fat
 // plateau over the pivot's station)
@@ -24920,63 +24940,149 @@ const ALARM_LIFT_FRAME_T = STOCK_MIN_U;
 // arc with the fork's land clear of those lugs. Asserted at the crank, and the
 // battery's sweeps hold the rest.
 const ALARM_SLEEVE_DRIVE_AZ = 328 * DEG2RAD;   // world az
+// --- the silence chain's constants and force, hoisted (TODO 236): the rocker's
+// paddle rides the SLEEVE's arm now, so its push is a load the sleeve's law
+// carries, and the law is solved before the rocker is built.
+// The finger's radius is the ONE free slot on the tail: it was cut mid-window
+// between the bracket lugs' outer reach and the return blade's stud, both
+// margins exact. TODO 190 folded that blade off the lever's line (it lay over
+// the tail, under this finger), so the window's outer wall is the banking stop
+// now and 5.86 is no longer centred in it; the radius is HELD, because
+// ALARM_SIL_PIN_LEVER and every force and throw below rest on it. Its throw
+// is a DESIGNED lever ratio off the lifter's travel: close the rest gap,
+// press a fully-risen tail back to rest, and a 0.01 capture bite.
+const ALARM_SIL_FINGER_R = 5.86;   // (lug outer 5.61 + margin → 5.76) .. (the retired stud station's inner face 6.11 − margin → 5.96), centred; held since TODO 190
+const ALARM_SIL_PADDLE_R = 6.9;    // §45 stage 2's station on the old run, outboard of the sleeve's guide band, inboard of i1's stand-off — the sleeve's arm reaches out to it since TODO 236
+const ALARM_SIL_GAP = 0.05;        // rest gap, finger underside → tail top (the standard rest-gap figure)
+const ALARM_SIL_TAIL_ARM = ALARM_SIL_FINGER_R - ALARM_FEELER_PIVOT_R;  // the finger's arm on the feeler lever
+const ALARM_SIL_PIN_LEVER = ALARM_FEELER_ARM_LEN / ALARM_SIL_TAIL_ARM; // tail travel → pin travel through the pivot
+// The throw is EXACTLY the gap: the finger's full stroke ends at the
+// tail's REST height. A risen tail (pin dropped) is met early in the
+// stroke and pressed back to rest — the pin returns to its riding seat,
+// out of the notch — and an unrisen tail is touched, never loaded. Any
+// throw beyond the gap would bury the finger in a tail that had no rise
+// to give back (measured, the first cut's 0.055).
+const ALARM_SIL_THROW = ALARM_SIL_GAP;
+const ALARM_SIL_RATIO = ALARM_SIL_THROW / ALARM_SLEEVE_TRAVEL; // finger/paddle arm ratio — designed, not inherited
+// P1, TODO 16's format (§137) — TWO BUDGETS, AGREEING, which is the lay
+// shaft's own idiom applied to a chain that had only ever published the
+// first half of it.
+//
+// DISPLACEMENT. The ratio above is 0.05 / 0.236 = 0.2119, and both ends of
+// that fraction are constraints rather than choices: the throw IS the rest
+// gap (a longer one buries the finger in a tail with no rise to give back —
+// measured, the first cut's 0.055) and the paddle's travel IS the sleeve's
+// (ALARM_SLEEVE_DR 0.186 of pin stroke plus the 0.05 rest gap). Downstream
+// the feeler multiplies it back up: ALARM_SIL_PIN_LEVER = 2.45 / 0.36 =
+// 6.81, so 0.05 u of finger throw commands 0.340 u at the pin — the whole
+// point of putting the detection three units from the lifter's run instead
+// of at the strike lock.
+//
+// FORCE. A ratio that divides displacement by 4.72 multiplies force by the
+// same 4.72 at the finger end, so the ratio's price is paid in the budget
+// that is scarce here and not in the one that is not. What the finger end
+// meets: the rocker's own return blade (0.2 × SPRING_FLAT_U over its 1.0 u
+// free length, 3EI/L³ = 8.7 kN/m) holding the paddle on the run, and the
+// feeler's return blade at the far end (SPRING_FLAT_U square over 1.0 u,
+// 5.7 kN/m) holding the pin on its track. Both are flat-spring stock worked
+// through tens of microns, so both sit in tens of mN — against a crown pull
+// that arrives at the collar ramp as a finger's 1–10 N. Two orders of
+// headroom, in the same shape as the pusher's.
+//
+// The residue, named rather than rounded off: neither blade's PRELOAD is a
+// derived constant — the rocker blade's bear station is its own mid-length
+// at 0.35 of the paddle arm rather than a declared contact, and the feeler's
+// is flexed representationally in the tick. So the forces above are bounded,
+// not gated, and pinning those two bear points is what this chain would need
+// before its budget could be held the way §54 holds the lay shaft's.
+// §137 — the silence chain's FORCE, derived (TODO 63: this path had
+// ALARM_SIL_RATIO, a displacement ratio, and nothing else). What the finger
+// must actually deliver is the change in the feeler bias blade's load as the
+// pin is pressed from dropped back to riding — first-order cantilever
+// arithmetic through the two pivots, TODO 16's own caveat attached (the
+// ratios carry the conclusion; the absolutes are good to a factor of two):
+//   blade k    = 3EI/L³ over its anchor→bear chord, L = SPR_FREE + BEAR_R
+//                (laid along the lever's line until TODO 190 swung it 30.8°
+//                about the bear point, length held), section SPRING_FLAT_U square;
+//   bear δ     = the pin's full ALARM_PIN_DROP through the feeler lever,
+//                BEAR_R / ARM_LEN of it arriving at the bear point;
+//   finger F   = that blade-force change re-levered about the feeler pivot
+//                onto the tail under the finger (arm ALARM_SIL_TAIL_ARM);
+//   paddle F   = finger F × aF/aP — what the crown-driven lifter carries,
+//                the rocker's own designed ratio in reverse.
+const ALARM_SIL_FINGER_MN = (() => {
+  const kBlade = cantileverK_N_per_m(SPRING_FLAT_U, SPRING_FLAT_U, ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R);
+  const bearDefl_m = ALARM_PIN_DROP * (ALARM_FEELER_BEAR_R / ALARM_FEELER_ARM_LEN) * (UNIT_MM / 1000);
+  const dBladeF_N = kBlade * bearDefl_m;
+  return dBladeF_N * (ALARM_FEELER_BEAR_R / ALARM_SIL_TAIL_ARM) * 1000; // mN at the finger
+})();
 // THE CRANK ON THE SLEEVE — its stud, its arms, and the link — need the drive
 // force, which is the sleeve's law at the helix the law minimises. Solve that
 // first (the line's free design).
-const ALARM_RELEASE_HELIX = await (async () => {
-  // where the load is applied, sleeve-local: the cone's contact at the pin's
-  // tip plane, the drive at the crank's plane, the rollers at their own height
-  const muAdv = MU_STEEL, muRoll = MU_STEEL * ALARM_SLEEVE_GUIDE_PIN_R / ALARM_SLEEVE_ROLLER_R;
-  let stationsDl0 = ALARM_SLEEVE_GUIDE_AZ.map((a) => Math.PI - a);
-  let azT0 = Math.PI - ALARM_SLEEVE_DRIVE_AZ;
+// The sleeve's law at one helix, read the way every member downstream is sized
+// to it: the peak drive force over the cone's whole orbit (36 azimuths) at
+// three points of the follower's lift, the throw it is pushed through, and
+// their product W, the peak-equivalent work. A helix on which the sleeve LOCKS
+// (no converged drive at some load) answers W = ∞ and is never chosen. Where
+// the loads act, sleeve-local: the cone's contact at the pin's tip plane, the
+// drive at the crank's plane, the rollers at their own height, and the silence
+// rocker's paddle on the sleeve's arm — the finger's force at the full press,
+// re-levered by the rocker (ALARM_SIL_RATIO = aF/aP), pushing the arm back
+// toward the plate, and the arm sliding round under it as the sleeve turns
+// (μ of it tangentially). Exposed on __clock (releaseRun) so the release-run
+// probe prices the same law rather than restating it.
+const alarmReleasePeak = (alpha, h, { mu = MU_STEEL, muR = MU_STEEL * ALARM_SLEEVE_GUIDE_PIN_R / ALARM_SLEEVE_ROLLER_R,
+  azW = ALARM_SLEEVE_DRIVE_AZ, stationsW = ALARM_SLEEVE_GUIDE_AZ } = {}) => {
+  const azT = Math.PI - azW, stations = stationsW.map((a) => Math.PI - a);
   const tipZ = (ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03) - ALARM_SLEEVE_Z_REST;   // sleeve-local, at rest
   const zT = ALARM_RELEASE_CRANK_Z - ALARM_SLEEVE_Z_REST;
   const phis = [0, 0.5, 1].map((u) => ALARM_FOLLOWER_A0 + (ALARM_A_RELEASE_PHI - ALARM_FOLLOWER_A0) * u);
-  window.__t236peak = (azW, alpha, h, stations = stationsDl0) => { const sv = [azT0, stationsDl0]; azT0 = Math.PI - azW; stationsDl0 = stations; try { return peak(alpha, h); } finally { [azT0, stationsDl0] = sv; } };
-  const peak = (alpha, h, mu = muAdv, muR = muRoll) => {
-    const azT = azT0, stationsDl = stationsDl0;
-    const omega = 1 / (ALARM_SLEEVE_HELIX_R * Math.tan(alpha));
-    let Fmax = 0, worst = 0, at = null, conv = true;
-    for (const phi of phis) {
-      const k = alarmConeContact(phi, mu, h * omega);
-      for (let i = 0; i < 36; i++) {
-        const azC = (i / 36) * 2 * Math.PI;
-        const w = alarmSleeveRingWork({ alpha, h, k, azC, zC: tipZ, mu, muG: muR, muT: muR, rT: ALARM_SLEEVE_DRIVE_R, azT, zT,
-          stations: stationsDl, Rh: ALARM_SLEEVE_HELIX_RS, zR: ALARM_SLEEVE_ROLL_Z });
-        if (!w.conv || !(w.F > 0)) { conv = false; Fmax = Infinity; continue; }
-        if (w.F > Fmax) { Fmax = w.F; at = { phi, azC, N: w.N, R: w.R }; }
-        worst = Math.max(worst, w.F * ALARM_SLEEVE_DRIVE_R * omega / k.axial);
-      }
+  const padAz = Math.PI - ALARM_SLEEVE_TAB_AZ, padN = ALARM_SIL_FINGER_MN * ALARM_SIL_RATIO / 1000;
+  const extra = [{ p: [ALARM_SIL_PADDLE_R * Math.cos(padAz), ALARM_SIL_PADDLE_R * Math.sin(padAz), 0],
+    f: [mu * padN * h * Math.sin(padAz), -mu * padN * h * Math.cos(padAz), -padN] }];
+  const omega = 1 / (ALARM_SLEEVE_HELIX_R * Math.tan(alpha));
+  let Fmax = 0, worst = 0, at = null, conv = true;
+  for (const phi of phis) {
+    const k = alarmConeContact(phi, mu, h * omega);
+    for (let i = 0; i < 36; i++) {
+      const azC = (i / 36) * 2 * Math.PI;
+      const w = alarmSleeveRingWork({ alpha, h, k, azC, zC: tipZ, mu, muG: muR, muT: muR, rT: ALARM_SLEEVE_DRIVE_R, azT, zT,
+        stations, Rh: ALARM_SLEEVE_HELIX_RS, zR: ALARM_SLEEVE_ROLL_Z, extra });
+      if (!w.conv || !(w.F > 0)) { conv = false; Fmax = Infinity; continue; }
+      if (w.F > Fmax) { Fmax = w.F; at = { phi, azC, N: w.N, R: w.R }; }
+      worst = Math.max(worst, w.F * ALARM_SLEEVE_DRIVE_R * omega / k.axial);
     }
-    // the throw the drive is pushed through over the whole travel, at r_T
-    const throwT = ALARM_SLEEVE_DRIVE_R * ALARM_SLEEVE_TRAVEL * omega;
-    return { alpha, h, Fmax, workFactor: worst, throwT, W: conv ? Fmax * throwT : Infinity, at, conv, omega };   // a helix the sleeve LOCKS on (no converged drive at some load) is never chosen
-  };
-  // THE HELIX ANGLE, minimised: the peak force the drive meets times the throw
-  // it meets it over — the peak-equivalent work every member downstream is
-  // sized to. Golden section in α for each hand; the hand is chosen too.
-  let best = null;
+  }
+  // the throw the drive is pushed through over the whole travel, at r_T
+  const throwT = ALARM_SLEEVE_DRIVE_R * ALARM_SLEEVE_TRAVEL * omega;
+  return { alpha, h, Fmax, workFactor: worst, throwT, W: conv ? Fmax * throwT : Infinity, at, conv, omega };
+};
+// THE HELIX ANGLE, minimised: W, the peak force the drive meets times the throw
+// it meets it over. Golden section in α for each hand; the hand is chosen too
+// (at this station the other hand LOCKS at every angle in 15–60°).
+const alarmReleaseHelixSolve = async (opts = {}) => {
+  let best = null; const byHand = {};
   for (const h of [1, -1]) {
     let a = 15 * DEG2RAD, b = 60 * DEG2RAD;
     const gr = (Math.sqrt(5) - 1) / 2;
-    let c = b - gr * (b - a), d = a + gr * (b - a), fc = peak(c, h), fd = peak(d, h);
+    let c = b - gr * (b - a), d = a + gr * (b - a), fc = alarmReleasePeak(c, h, opts), fd = alarmReleasePeak(d, h, opts);
     for (let it = 0; it < 22; it++) {
       await breathe();
-      if (fc.W < fd.W) { b = d; d = c; fd = fc; c = b - gr * (b - a); fc = peak(c, h); }
-      else { a = c; c = d; fc = fd; d = a + gr * (b - a); fd = peak(d, h); }
+      if (fc.W < fd.W) { b = d; d = c; fd = fc; c = b - gr * (b - a); fc = alarmReleasePeak(c, h, opts); }
+      else { a = c; c = d; fc = fd; d = a + gr * (b - a); fd = alarmReleasePeak(d, h, opts); }
     }
     const m = fc.W < fd.W ? fc : fd;
-    (window.__t236h ??= {})[h] = m;
+    byHand[h] = m;
     if (!best || m.W < best.W) best = m;
   }
-  return best;
-})();
+  return { ...best, byHand };
+};
+const ALARM_RELEASE_HELIX = await alarmReleaseHelixSolve();
 // The design throw at the fork, and what the crank must turn it through.
 const ALARM_SLEEVE_DESIGN_THROW = ALARM_RELEASE_HELIX.throwT;
 const ALARM_RELEASE_CRANK_HUB_H = STOCK_MIN_U;
 const ALARM_RELEASE_STUD_L = Math.abs(ALARM_RELEASE_CRANK_Z - (-0.05));   // the sheet's back face → the crank's plane, where the reaction acts
 const ALARM_LINK_EYE_L = STOCK_MIN_U;   // the link's eyes, along their pins: §50's floor
-const ALARM_LIFT_ARM_IN_C = ALARM_LIFT_ARM_IN;   // (named for the solve below)
 // THE CRANK AND THE LINK, solved together, because three constraints share
 // one free ratio — the link's throw, which splits the line's whole ratio
 // (throw/rise) between the lifter and the crank:
@@ -25006,6 +25112,7 @@ const ALARM_LIFT_FRAME_H = Math.max(ALARM_LIFT_FRAME_T,
   Math.sqrt(6 * (ALARM_RELEASE_HELIX.Fmax * ALARM_SLEEVE_DESIGN_THROW / ALARM_COLLAR_RISE) * (ALARM_LIFT_ARM_IN * _mm) / (STOCK_MIN_U * _mm * 0.9 * SPRING_SIGMA_Y_PA)) / _mm);
 const _rodR = (F, L) => Math.cbrt(32 * F * (L * _mm) / (Math.PI * SPRING_SIGMA_Y_PA)) / _mm / 2;   // a round cantilever under yield
 const _barB = (F, L) => Math.cbrt(6 * F * (L * _mm) / (0.9 * SPRING_SIGMA_Y_PA)) / _mm;             // a square cantilever at 0.9·σy
+const _barW = (F, L, h) => 6 * F * (L * _mm) / (0.9 * SPRING_SIGMA_Y_PA * (h * _mm) ** 2) / _mm;      // a cantilever h deep at 0.9·σy: its width
 const ALARM_RELEASE = (() => {
   const F = ALARM_RELEASE_HELIX.Fmax, thr = ALARM_SLEEVE_DESIGN_THROW, rise = ALARM_COLLAR_RISE;
   const crankW = Z_DIAL - ALARM_RELEASE_CRANK_Z;                                        // the crank's plane, world
@@ -25029,10 +25136,10 @@ const ALARM_RELEASE = (() => {
     const crankR = Math.max(ALARM_SEL_GUIDE_PIN_OUT + CLEAR_MARGIN + MEASURED_MARGIN_BAND + studR, forkR1 + CLEAR_MARGIN + MEASURED_MARGIN_BAND + hubOut0);
     const aSo = crankR - ALARM_SLEEVE_DRIVE_R;
     const eyeOutC = crankPinR + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U;
-    const hubOut = studR + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U;
     const aSiStud = studR + CLEAR_MARGIN + MEASURED_MARGIN_BAND + eyeOutC;               // (3)
-    const overCollar = aSiPrev - eyeOutC < hubOut + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
-    const stack = overCollar ? stackMin : armInB / 2 + PIVOT_BORE_CLEAR / 2 + ALARM_LINK_EYE_L / 2;   // (2)
+    const capR = studR + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U / 2;                          // the collar: a land over the hub's face
+    const overCollar = aSiPrev - eyeOutC < capR + CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+    const stack = overCollar ? stackMin : ALARM_RELEASE_CRANK_HUB_H / 2 + PIVOT_BORE_CLEAR / 2 + ALARM_LINK_EYE_L / 2;   // (2)
     const k = rise * aSo / (ALARM_LIFT_ARM_IN * thr);                                    // aSi per unit A_out
     const aOutFrame = Math.max(aOutBar, (liftPinR + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U) - zF + CLEAR_MARGIN + MEASURED_MARGIN_BAND);   // (4): the bar, and the eye under the rear bar
     const aSi = Math.max(aSiStud, Math.max(aOutFrame, stack + (ALARM_LIFT_PIVOT_Z - crankW)) * k);   // (1)·(2)·(4), then (3)
@@ -25046,7 +25153,7 @@ const ALARM_RELEASE = (() => {
     const nStud = Math.max(pivotFloor, Math.cbrt(32 * crankN * (ALARM_RELEASE_STUD_L * _mm) / (Math.PI * 0.9 * SPRING_SIGMA_Y_PA)) / _mm / 2);
     const nCrankPin = Math.max(pivotFloor, _rodR(linkN, STOCK_MIN_U / 2 + zOff));       // from the arm's mid-plane to the eye's
     const nLiftPin = Math.max(pivotFloor, _rodR(linkN, ALARM_LINK_EYE_L + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U / 2));
-    const nArmInB = Math.max(STOCK_MIN_U, _barB(linkN, aSi));
+    const nArmInB = Math.max(STOCK_MIN_U, _barW(linkN, aSi, ALARM_RELEASE_CRANK_HUB_H));
     r = { F, thr, rise, crankR, aSo, aSi, aSiStud, aOutFrame, stack, overCollar, riseLink, aOut, linkW, zOff, linkN, padN, crankN,
       studR: nStud, crankPinR: nCrankPin, liftPinR: nLiftPin, swing: 2 * Math.asin(thr / (2 * aSo)) };
     if (Math.abs(nStud - studR) < 1e-12 && Math.abs(nCrankPin - crankPinR) < 1e-12 && Math.abs(nLiftPin - liftPinR) < 1e-12
@@ -25054,8 +25161,10 @@ const ALARM_RELEASE = (() => {
     studR = nStud; crankPinR = nCrankPin; liftPinR = nLiftPin; armInB = nArmInB; aSiPrev = aSi;
   }
   // the arms' sections: each a square cantilever off its hub carrying its load
-  r.armOutB = Math.max(STOCK_MIN_U, _barB(F, r.aSo));             // the crank's output arm: the fork's push
-  r.armInB = Math.max(STOCK_MIN_U, _barB(r.linkN, r.aSi));        // the crank's input arm: the link's pull
+  // the crank's arms are as deep as its hub (so the cap and collar bear on one
+  // flat face), and as wide as their bending asks
+  r.armOutB = Math.max(STOCK_MIN_U, _barW(F, r.aSo, ALARM_RELEASE_CRANK_HUB_H));        // the crank's output arm: the fork's push
+  r.armInB = Math.max(STOCK_MIN_U, _barW(r.linkN, r.aSi, ALARM_RELEASE_CRANK_HUB_H));   // the crank's input arm: the link's pull
   r.liftOutB = Math.max(STOCK_MIN_U, _barB(r.linkN, r.aOut));     // the lifter's output arm: the link's pull
   return r;
 })();
@@ -25129,8 +25238,31 @@ const ALARM_RELEASE_GEOM = (() => {
 // |pivot.y ± POST_Y·cos δ|; each stands one margin beside the fat collar
 // whichever side it is on. The hub sits inside its post by a 0.03 thrust gap;
 // its ring clearing the collar is asserted below.
-const ALARM_LIFT_POST_Y = (ALARM_COLLAR_FAT_R + CLEAR_MARGIN + MEASURED_MARGIN_BAND + ALARM_LIFTER_POST_R + Math.abs(ALARM_RELEASE_GEOM.pivotU.y)) / Math.cos(ALARM_RELEASE_GEOM.delta);
-const ALARM_LIFT_HUB_Y = ALARM_LIFT_POST_Y - ALARM_LIFTER_POST_R - 0.03 - ALARM_LIFT_HUB_L / 2;   // the hub's outer face one 0.03 thrust gap inside the post
+// The hub's ring reaches nearer the collar than its post does wherever the
+// ring's inner face, turned δ, comes round under the stem — so the station is
+// the larger of the post's and the least whose hub ring clears the collar
+// (its nearest point to the stem's axis, over the ring, by bisection).
+const alarmLiftHubGap = (postY) => {
+  const G = ALARM_RELEASE_GEOM, cd = Math.cos(G.delta), sd = Math.sin(G.delta);
+  const ro = ALARM_LIFT_STUD_R + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U;
+  const yIn = postY - ALARM_LIFTER_POST_R - ALARM_LIFT_THRUST_GAP - ALARM_LIFT_HUB_L;
+  let dmin = Infinity;
+  for (const sgn of [-1, 1]) for (let k = 0; k < 72; k++) {
+    const t = (k / 72) * 2 * Math.PI, x = ro * Math.cos(t), z = ro * Math.sin(t);
+    dmin = Math.min(dmin, Math.hypot(G.pivotU.y + x * sd + sgn * yIn * cd, ALARM_LIFT_PIVOT_Z + z - Z_ALARM_CORNER));
+  }
+  return dmin - ALARM_COLLAR_FAT_R;
+};
+const ALARM_LIFT_POST_Y = (() => {
+  const need = CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+  const post = (ALARM_COLLAR_FAT_R + need + ALARM_LIFTER_POST_R + Math.abs(ALARM_RELEASE_GEOM.pivotU.y)) / Math.cos(ALARM_RELEASE_GEOM.delta);
+  if (alarmLiftHubGap(post) >= need) return post;
+  let lo = post, hi = post + 2;
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (alarmLiftHubGap(m) >= need) hi = m; else lo = m; }
+  return hi;
+})();
+const ALARM_LIFT_HUB_Y = ALARM_LIFT_POST_Y - ALARM_LIFTER_POST_R - ALARM_LIFT_THRUST_GAP - ALARM_LIFT_HUB_L / 2;   // the hub's outer face one thrust gap inside the post
+const ALARM_LIFT_SIDE_Y = ALARM_LIFT_HUB_Y - (ALARM_LIFT_HUB_L - ALARM_LIFT_SIDE_W) / 2;   // the side bar: flush with the hub's inner face
 // ---- the lifter (bell crank on two studs) --------------------------------
 const alarmLifter = new THREE.Group();   // the moving crank — tick turns it about its studs' axis
 alarmLifter.position.set(ALARM_RELEASE_GEOM.pivotU.x, ALARM_RELEASE_GEOM.pivotU.y, ALARM_LIFT_PIVOT_Z);
@@ -25139,7 +25271,16 @@ alarmLifter.rotation.z = ALARM_RELEASE_GEOM.delta;   // local +x: from the pad t
 // the return blades, one per side, rooted on the posts and bearing UP under the
 // side bars' outboard edges near the pad (slaved to the bar's real travel, §48)
 const alarmLifterBladeGroups = [new THREE.Group(), new THREE.Group()];
-const ALARM_LIFT_BLADE_X = -ALARM_LIFT_ARM_IN * 0.55;   // the bear point, pivot-local x: on the side bar, toward the pad
+// The return blades bear UP under two tabs dropped off the web's ends, under
+// the pad's own station: the blade's moment arm about the pivot is the pad's,
+// so the spring seats the pad on the collar with no lever of its own. The tabs
+// drop one margin below the frame so the blade, beside the side bar, stands
+// that far under it.
+// The bear station is under the pad, or as far past it as keeps the tab one
+// margin off the post over the swing (the tab's foot swings z·sin θ in x).
+const ALARM_LIFT_TAB_DROP = CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+const ALARM_LIFT_BLADE_X = -Math.max(ALARM_LIFT_ARM_IN, ALARM_LIFT_SIDE_W / 2 + (ALARM_LIFTER_POST_R + CLEAR_MARGIN + MEASURED_MARGIN_BAND
+  + Math.abs(ALARM_LIFT_FRAME_TOP - ALARM_LIFT_FRAME_H - ALARM_LIFT_TAB_DROP) * Math.sin(ALARM_LIFT_SWING / 2)) / Math.cos(ALARM_LIFT_SWING / 2));   // the bear point, pivot-local x
 const ALARM_LIFT_BLADE_LEN = -ALARM_LIFT_BLADE_X;      // root at the post's station (x 0), along −x to the bear point
 const ALARM_LIFT_BLADE_Y = ALARM_LIFT_POST_Y;   // on the post's line, bearing under the side bar's tab
 {
@@ -25153,14 +25294,14 @@ const ALARM_LIFT_BLADE_Y = ALARM_LIFT_POST_Y;   // on the post's line, bearing u
   head.position.set(-L, 0, -padH / 2);
   alarmLifter.add(head);
   // the frame: the web under the pad, two side bars, the rear bar under the pivot
-  const web = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_SIDE_W, 2 * ALARM_LIFT_HUB_Y + ALARM_LIFT_SIDE_W, fh), MATS.steel);
+  const web = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_SIDE_W, 2 * ALARM_LIFT_SIDE_Y + ALARM_LIFT_SIDE_W, fh), MATS.steel);
   web.name = 'alarmYokeWeb';
   web.position.set(-L, 0, ft - fh / 2);
   alarmLifter.add(web);
   for (const sgn of [-1, 1]) {
     const side = new THREE.Mesh(new THREE.BoxGeometry(L, ALARM_LIFT_SIDE_W, fh), MATS.steel);
     side.name = 'alarmLifterSideBar';
-    side.position.set(-L / 2, sgn * ALARM_LIFT_HUB_Y, ft - fh / 2);
+    side.position.set(-L / 2, sgn * ALARM_LIFT_SIDE_Y, ft - fh / 2);
     alarmLifter.add(side);
     // the hub on its stud, and the cheek joining it down to the side bar
     const hub = new THREE.Mesh(ringGeo(ALARM_LIFT_STUD_R + PIVOT_BORE_CLEAR / 2, ALARM_LIFT_STUD_R + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U, ALARM_LIFT_HUB_L), MATS.steel);
@@ -25170,12 +25311,12 @@ const ALARM_LIFT_BLADE_Y = ALARM_LIFT_POST_Y;   // on the post's line, bearing u
     alarmLifter.add(hub);
     // the blades' bear TAB, off the side bar's outboard edge (the hub is
     // joined to the bar by overlap: its ring reaches down past the bar's top)
-    const tab = new THREE.Mesh(new THREE.BoxGeometry(0.3, ALARM_LIFT_POST_Y + 0.15 - ALARM_LIFT_HUB_Y, fh), MATS.steel);
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_SIDE_W, ALARM_LIFT_POST_Y + 0.15 - ALARM_LIFT_SIDE_Y, fh + ALARM_LIFT_TAB_DROP), MATS.steel);
     tab.name = 'alarmLifterBladeTab';
-    tab.position.set(ALARM_LIFT_BLADE_X, sgn * (ALARM_LIFT_HUB_Y + ALARM_LIFT_POST_Y + 0.15) / 2, ft - fh / 2);
+    tab.position.set(ALARM_LIFT_BLADE_X, sgn * (ALARM_LIFT_SIDE_Y + ALARM_LIFT_POST_Y + 0.15) / 2, ft - (fh + ALARM_LIFT_TAB_DROP) / 2);
     alarmLifter.add(tab);
   }
-  const rear = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_SIDE_W, 2 * ALARM_LIFT_HUB_Y + ALARM_LIFT_SIDE_W, fh), MATS.steel);
+  const rear = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_SIDE_W, 2 * ALARM_LIFT_SIDE_Y + ALARM_LIFT_SIDE_W, fh), MATS.steel);
   rear.name = 'alarmLifterRearBar';
   rear.position.set(0, 0, ft - fh / 2);
   alarmLifter.add(rear);
@@ -25201,7 +25342,7 @@ const ALARM_LIFT_BLADE_Y = ALARM_LIFT_POST_Y;   // on the post's line, bearing u
     const cd = Math.cos(ALARM_RELEASE_GEOM.delta), sd = Math.sin(ALARM_RELEASE_GEOM.delta);
     return { x: ALARM_RELEASE_GEOM.pivotU.x + lx * cd - ly * sd, y: ALARM_RELEASE_GEOM.pivotU.y + lx * sd + ly * cd };
   };
-  const postBot = ALARM_LIFT_PIVOT_Z + ft - fh - SPRING_FLAT_U - 0.3;   // below the blades' roots
+  const postBot = ALARM_LIFT_PIVOT_Z + ft - fh - ALARM_LIFT_TAB_DROP - SPRING_FLAT_U - 0.3;   // below the blades' roots
   for (const sgn of [-1, 1]) {
     const pp = toU(0, sgn * ALARM_LIFT_POST_Y);
     const post = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LIFTER_POST_R, ALARM_LIFTER_POST_R, PLATE_DIAL_FACE - postBot, 10), MATS.nickel);
@@ -25222,7 +25363,7 @@ const ALARM_LIFT_BLADE_Y = ALARM_LIFT_POST_Y;   // on the post's line, bearing u
   for (const [i, sgn] of [[0, -1], [1, 1]]) {
     const g = alarmLifterBladeGroups[i];
     const r0 = toU(0, sgn * ALARM_LIFT_BLADE_Y);
-    g.position.set(r0.x, r0.y, ALARM_LIFT_PIVOT_Z + ft - fh - SPRING_FLAT_U / 2);
+    g.position.set(r0.x, r0.y, ALARM_LIFT_PIVOT_Z + ft - fh - ALARM_LIFT_TAB_DROP - SPRING_FLAT_U / 2);
     g.rotation.order = 'ZYX';
     g.rotation.z = ALARM_RELEASE_GEOM.delta + Math.PI;   // rooted at the post, reaching along −x (toward the pad)
     const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_BLADE_LEN, 0.2, SPRING_FLAT_U), MATS.blueSteel);
@@ -25256,13 +25397,15 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
   const outEnd = aO - ALARM_SLEEVE_DRIVE_ROLLER_L / 2 - ALARM_FORK_CLEAR - ALARM_RELEASE_FORK_RUNOUT - CLEAR_MARGIN - MEASURED_MARGIN_BAND
     - (ALARM_RELEASE.armOutB / 2) * Math.sin(ALARM_RELEASE_SWING / 2);   // its end face's corners come in that much over the swing
   const ux = G.uIn.x, uy = G.uIn.y, rot = Math.atan2(uy, ux), bO = ALARM_RELEASE.armOutB, bI = ALARM_RELEASE.armInB;
-  const oa = new THREE.Mesh(new THREE.BoxGeometry(outEnd - hubIn * 0.5, bO, bO), MATS.steel);
+  const hubMid = (hubIn + hubOut) / 2, hH = ALARM_RELEASE_CRANK_HUB_H;   // the arms root in the hub's wall, never its bore
+  const capR = hubIn + T / 2;                                             // the cap and collar: a land over the hub's face, half its wall
+  const oa = new THREE.Mesh(new THREE.BoxGeometry(outEnd - hubMid, bO, hH), MATS.steel);
   oa.name = 'alarmReleaseCrankOutArm';
-  oa.position.set(ux * (outEnd + hubIn * 0.5) / 2, uy * (outEnd + hubIn * 0.5) / 2, 0);
+  oa.position.set(ux * (outEnd + hubMid) / 2, uy * (outEnd + hubMid) / 2, 0);
   oa.rotation.z = rot;
   alarmReleaseCrank.add(oa);
   // the drive pin, radial, from inside the arm's end through the roller
-  const p0 = outEnd - bO / 2, p1 = aO + ALARM_SLEEVE_DRIVE_ROLLER_L / 2;
+  const p0 = Math.max(outEnd - bO / 2, capR + CLEAR_MARGIN + MEASURED_MARGIN_BAND), p1 = aO + ALARM_SLEEVE_DRIVE_ROLLER_L / 2;   // pressed into the arm's end, one margin clear of the cap
   const dpin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_RELEASE_DRIVE_PIN_R, ALARM_RELEASE_DRIVE_PIN_R, p1 - p0, 10), MATS.steel);
   dpin.name = 'alarmReleaseCrankPin';
   dpin.position.set(ux * (p0 + p1) / 2, uy * (p0 + p1) / 2, 0);
@@ -25276,12 +25419,12 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
   // the input arm, square to the link at mid-stroke, and its pin (along the
   // stud) carrying the link's eye DIAL-ward of the collar, in the link's plane
   const vx = G.vIn.x, vy = G.vIn.y, vrot = Math.atan2(vy, vx);
-  const ia = new THREE.Mesh(new THREE.BoxGeometry(aI - hubIn * 0.5 + bI / 2, bI, bI), MATS.steel);
+  const ia = new THREE.Mesh(new THREE.BoxGeometry(aI - hubMid + bI / 2, bI, hH), MATS.steel);
   ia.name = 'alarmReleaseCrankInArm';
-  ia.position.set(vx * (aI + hubIn * 0.5 + bI / 2) / 2, vy * (aI + hubIn * 0.5 + bI / 2) / 2, 0);
+  ia.position.set(vx * (aI + hubMid + bI / 2) / 2, vy * (aI + hubMid + bI / 2) / 2, 0);
   ia.rotation.z = vrot;
   alarmReleaseCrank.add(ia);
-  const ipinZ0 = -bI / 2, ipinZ1 = ALARM_RELEASE_LINK_Z_OFF + ALARM_LINK_EYE_L / 2 + PIVOT_BORE_CLEAR / 2;   // from the arm's plate-side face to past the eye
+  const ipinZ0 = -hH / 2, ipinZ1 = ALARM_RELEASE_LINK_Z_OFF + ALARM_LINK_EYE_L / 2 + PIVOT_BORE_CLEAR / 2;   // from the arm's plate-side face to past the eye
   const ipin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_RELEASE_CRANK_LINK_PIN_R, ALARM_RELEASE_CRANK_LINK_PIN_R, ipinZ1 - ipinZ0, 10), MATS.steel);
   ipin.name = 'alarmReleaseCrankLinkPin';
   ipin.rotation.x = Math.PI / 2;
@@ -25297,13 +25440,13 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
   stud.rotation.x = Math.PI / 2;
   stud.position.set(G.c.x, G.c.y, (zTop + zBot) / 2);
   alarmReleaseCrankUnit.add(stud);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(hubOut, hubOut, T, 16), MATS.steel);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(capR, capR, T, 16), MATS.steel);
   cap.name = 'alarmReleaseCrankCap';
   cap.rotation.x = Math.PI / 2;
   cap.position.set(G.c.x, G.c.y, zBot + T / 2);
   alarmReleaseCrankUnit.add(cap);
   // the collar on the dial side of the hub that the hub's thrust bears on
-  const coll = new THREE.Mesh(new THREE.CylinderGeometry(hubOut, hubOut, T, 16), MATS.steel);
+  const coll = new THREE.Mesh(new THREE.CylinderGeometry(capR, capR, T, 16), MATS.steel);
   coll.name = 'alarmReleaseCrankCollar';
   coll.rotation.x = Math.PI / 2;
   coll.position.set(G.c.x, G.c.y, ALARM_RELEASE_CRANK_Z + ALARM_RELEASE_CRANK_HUB_H / 2 + PIVOT_BORE_CLEAR / 2 + T / 2);
@@ -25534,7 +25677,15 @@ const alarmPhiCapAt = (lift) => {
   if (Math.abs(l1 - ALARM_SLEEVE_TRAVEL) > 1e-9 || Math.abs(l0) > 1e-9)
     console.warn(`TODO 236: the chain lifts the sleeve ${l0.toExponential(3)} → ${l1.toFixed(6)}, the cone's design is 0 → ${ALARM_SLEEVE_TRAVEL.toFixed(6)}`);
 }
-window.__t236 = { K: { Zc: Z_ALARM_CORNER, thin: ALARM_COLLAR_THIN_R, fat: ALARM_COLLAR_FAT_R, pivotZ: ALARM_LIFT_PIVOT_Z, postY: ALARM_LIFT_POST_Y, hubY: ALARM_LIFT_HUB_Y, ft: ALARM_LIFT_FRAME_TOP, fh: ALARM_LIFT_FRAME_H, plateFace: PLATE_DIAL_FACE, headR: ALARM_LIFT_HEAD_R, cd: ALARM_CD, rampIn: ALARM_COLLAR_RAMP.in, rampOut: ALARM_COLLAR_RAMP.out, s0: ALARM_COLLAR_S0, s1: ALARM_COLLAR_S1, pull: CROWN_PULL_DIST, studR: ALARM_LIFT_STUD_R }, REL: ALARM_RELEASE, HELIX: ALARM_RELEASE_HELIX, H: ALARM_SLEEVE_HELIX, GEOM: ALARM_RELEASE_GEOM, crankZ: ALARM_RELEASE_CRANK_Z, crankR: ALARM_RELEASE_CRANK_R, armOut: ALARM_RELEASE_ARM_OUT, armIn: ALARM_RELEASE_ARM_IN, swing: ALARM_RELEASE_SWING, studR: ALARM_RELEASE_STUD_R, pinR: ALARM_RELEASE_DRIVE_PIN_R, rollR: ALARM_RELEASE_DRIVE_ROLLER_R, floorRollR: ALARM_SLEEVE_DRIVE_ROLLER_R, liftLoad: ALARM_LIFT_LOAD_N, liftStudR: ALARM_LIFT_STUD_R, linkPinR: ALARM_LINK_PIN_R, frameH: ALARM_LIFT_FRAME_H, linkL: ALARM_RELEASE_LINK_L, liftArm: ALARM_LIFT_ARM_IN, liftSwing: ALARM_LIFT_SWING, rollZ: ALARM_SLEEVE_ROLL_Z, guideR0: ALARM_SLEEVE_GUIDE_R0, driveR: ALARM_SLEEVE_DRIVE_R, zRest: ALARM_SLEEVE_Z_REST, T: STOCK_MIN_U, sleeveT: ALARM_SLEEVE_T, travel: ALARM_SLEEVE_TRAVEL, chainAt: alarmReleaseChainAt, runout: ALARM_RELEASE_FORK_RUNOUT };
+// TODO 236 — the release run's laws, for its line spec (inspect.js LINE_SPECS
+// 'alarm release run') to evaluate rather than restate: the sleeve's travel
+// (the cone's stroke plus its rest gap), the working fit the pad's arm is
+// solved against, the helix's radius, and the turn the chain delivers at full
+// pull (alarmReleaseChainAt — the helix is cut to it).
+const ALARM_RELEASE_LAWS = Object.freeze({
+  travel: ALARM_SLEEVE_TRAVEL, fit: ALARM_FORK_CLEAR, helixR: ALARM_SLEEVE_HELIX_R,
+  turn: Math.abs(ALARM_SLEEVE_HELIX.turn), hand: Math.sign(ALARM_SLEEVE_HELIX.turn),
+});
 // §45 lifter fit asserts (TODO 236's crank on studs):
 {
   const say = (nm, v, need) => { if (v < need - 1e-9) console.warn(`TODO 236 lifter ${nm}: ${v.toFixed(4)}, need ${need}`); };
@@ -25553,19 +25704,97 @@ window.__t236 = { K: { Zc: Z_ALARM_CORNER, thin: ALARM_COLLAR_THIN_R, fat: ALARM
     const G = ALARM_RELEASE_GEOM, cd = Math.cos(G.delta), sd = Math.sin(G.delta);
     const near = (sgn) => Math.abs(G.pivotU.y + sgn * ALARM_LIFT_POST_Y * cd) - ALARM_LIFTER_POST_R;
     say('the posts stand a margin beside the fat collar', Math.min(near(1), near(-1)) - ALARM_COLLAR_FAT_R, CLEAR_MARGIN - 1e-9);
-    // the hubs' rings (round the stud, so the swing does not move them): their
-    // nearest point to the stem's axis, over the ring's inner face
-    const ro = ALARM_LIFT_STUD_R + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U, yIn = ALARM_LIFT_HUB_Y - ALARM_LIFT_HUB_L / 2;
-    let dmin = Infinity;
-    for (const sgn of [-1, 1]) for (let k = 0; k < 72; k++) {
-      const t = (k / 72) * 2 * Math.PI, x = ro * Math.cos(t), z = ro * Math.sin(t);
-      dmin = Math.min(dmin, Math.hypot(G.pivotU.y + x * sd + sgn * yIn * cd, ALARM_LIFT_PIVOT_Z + z - Z_ALARM_CORNER));
-    }
-    say('the hubs stand a margin off the fat collar', dmin - ALARM_COLLAR_FAT_R, CLEAR_MARGIN - 1e-9);
+    // the hubs' rings (round the stud, so the swing does not move them)
+    say('the hubs stand a margin off the fat collar', alarmLiftHubGap(ALARM_LIFT_POST_Y), CLEAR_MARGIN - 1e-9);
   }
   // the plate overhead, as before: nothing of the lifter reaches it
   say('the hubs stand under the base plate', PLATE_DIAL_FACE - (ALARM_LIFT_PIVOT_Z + ALARM_LIFT_STUD_R + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U), CLEAR_MARGIN);
 }
+// TODO 236 — THE RELEASE RUN, PRICED (§137's rows, TODO 16's format). Three
+// corners carry the crown's pull to the follower: the lifter (a bell crank),
+// the crank on the sleeve (a bell crank, fold-added), and the cone (a wedge).
+// The link between the two cranks is a tie — it changes nothing's direction —
+// and the helices are the sleeve's law, priced in alarmSleeveRingWork and held
+// by the release-run probe. Every figure is the ADVERSE corner (MU_STEEL on
+// every steel face) at the release end, where follower A's spiral is wound
+// hardest.
+{
+  const H = ALARM_RELEASE_HELIX, R = ALARM_RELEASE;
+  const k = alarmConeContact(ALARM_A_RELEASE_PHI, MU_STEEL, H.h * H.omega);
+  const merid = Math.hypot(k.slip[0], k.slip[2]);   // the share of the pin's slip that runs along the face's meridian
+  const muEff = MU_STEEL * merid, radial = Math.abs(k.radial) * 1000, axial = Math.abs(k.axial) * 1000;
+  // The plain wedge must reproduce the contact law's own pair, or the row is
+  // describing a different contact from the one the sleeve's law prices.
+  const wedgeAxial = radial * (1 + muEff) / (1 - muEff);
+  if (Math.abs(wedgeAxial - axial) > 1e-9 * Math.max(1, axial))
+    console.warn(`TODO 236 cone: the plain wedge reads ${wedgeAxial.toFixed(6)} mN axial from ${radial.toFixed(6)} mN radial at μ_eff ${muEff.toFixed(5)}, the contact law ${axial.toFixed(6)} — the row would not be the contact the sleeve is priced on`);
+  declareTransfer('alarm release: sleeve cone (wedge on follower A’s tail pin)', {
+    unit: 'Alarm release sleeve', meshes: ['alarmSleeveSkirt'], idiom: 'wedge',
+    load: { value: axial, unit: 'mN',
+      source: 'follower A’s return spiral at the release end (ALARM_FSPIRAL’s couple at ALARM_A_RELEASE_PHI) read through its tail onto the 45° face, with the arm’s thrust face charged — alarmConeContact, the same law the sleeve’s helix solve prices' },
+    quantities: { coneAngle_deg: 45, mu: muEff, muMaterial: MU_STEEL, slipMeridional: merid, radial_mN: radial, axial_mN: axial,
+      armIn_u: ALARM_SLEEVE_DR, armOut_u: ALARM_SLEEVE_DR, ratio: 1 },
+    why: `the 45° cone presses the tail pin radially as the sleeve rises — a wedge, 1:1 in displacement (tan 45°); the pin also slides ROUND the face as the sleeve turns on its helices, so only ${(merid * 100).toFixed(1)}% of its slip runs along the meridian and the face pays μ_eff ${muEff.toFixed(4)}, not ${MU_STEEL}: ${radial.toFixed(1)} mN radial costs ${axial.toFixed(1)} mN axial, ×${(axial / radial).toFixed(3)}`,
+  });
+  // The lifter: the collar's ramp drops its pad, and its output arm pulls the
+  // link. What the crown must deliver is the pad's push through the ramp — a
+  // second, shallow wedge (rise over the ramp's length) at MU_STEEL.
+  const ramp = ALARM_COLLAR_RISE / (ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in);
+  const crownN = R.padN * (ramp + MU_STEEL) / (1 - MU_STEEL * ramp);
+  declareTransfer('alarm release: lifter (collar → link)', {
+    unit: 'Alarm release lifter', meshes: ['alarmLifterHead', 'alarmLifterHub', 'alarmLifterOutArm', 'alarmLifterLinkPin'], idiom: 'crank',
+    load: { value: R.linkN * 1000, unit: 'mN',
+      source: 'the sleeve’s drive at its peak (ALARM_RELEASE_HELIX.Fmax, the helix law at the adverse corner) through the crank’s arms: the work the line asks for, over the link’s throw' },
+    quantities: { armIn_u: ALARM_LIFT_ARM_IN, armOut_u: ALARM_LIFT_ARM_OUT, ratio: ALARM_LIFT_ARM_OUT / ALARM_LIFT_ARM_IN,
+      padLoad_mN: R.padN * 1000, crownPull_N: crownN, collarRamp: ramp, studR_u: ALARM_LIFT_STUD_R, linkPinR_u: ALARM_LINK_PIN_R },
+    // 'covers': what the lifter DELIVERS to the run must dominate a detent's
+    // band (§232's relation) — the run is the release's only drive
+    envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: R.linkN * 1000, rel: 'covers' },
+    why: `a bell crank on two studs planted beside the collar (§45's input station), its pad arm the least whose dead-centre swing scrubs no more than the working fit (${ALARM_LIFT_ARM_IN.toFixed(4)}) and its output arm the depth that carries the link level and clear under the frame (${ALARM_LIFT_ARM_OUT.toFixed(4)}): ${(R.padN * 1000).toFixed(0)} mN at the pad becomes ${(R.linkN * 1000).toFixed(0)} mN in the link. The crown pays it through the collar's ${(ramp * 100).toFixed(2)}% ramp: ${crownN.toFixed(3)} N of pull at MU_STEEL, against the ~1 N a finger delivers to a crown`,
+  });
+  declareTransfer('alarm release: crank (link → sleeve fork, tangential)', {
+    unit: 'Alarm release crank', meshes: ['alarmReleaseCrankHub', 'alarmReleaseCrankInArm', 'alarmReleaseCrankOutArm', 'alarmReleaseCrankRoller'], idiom: 'crank',
+    load: { value: R.F * 1000, unit: 'mN',
+      source: 'ALARM_RELEASE_HELIX.Fmax — alarmSleeveRingWork’s drive at the helix it minimises, every cone azimuth and three points of the lift, MU_STEEL on every face (the rollers at μ·r_pin/r_roller)' },
+    quantities: { armIn_u: ALARM_RELEASE_ARM_IN, armOut_u: ALARM_RELEASE_ARM_OUT, ratio: ALARM_RELEASE_ARM_OUT / ALARM_RELEASE_ARM_IN,
+      helixAlpha_deg: H.alpha / DEG2RAD, hand: H.h, throw_u: ALARM_SLEEVE_DESIGN_THROW, studR_u: ALARM_RELEASE_STUD_R,
+      drivePinR_u: ALARM_RELEASE_DRIVE_PIN_R, crankReaction_mN: R.crankN * 1000 },
+    why: `fold-added (TODO 222's drive): a bell crank on a stud planted in the dial sheet at ${(ALARM_SLEEVE_DRIVE_AZ / DEG2RAD).toFixed(0)}°, its output arm radial on the sleeve and its roller pushing the rim's fork TANGENTIALLY, so the sleeve turns and its three helices lift it — a torque about the tube's axis, no tilting couple for a guide to jam on. ${(R.linkN * 1000).toFixed(0)} mN at the input pin becomes ${(R.F * 1000).toFixed(0)} mN at the roller (the helix at ${(H.alpha / DEG2RAD).toFixed(2)}°, the work the sleeve's law prices least)`,
+  });
+}
+// TODO 64 / TODO 236 — THE RELEASE RUN'S RESTORING ANSWERS. The 'alarmPull'
+// axis moves the run out and back at last, so the §48 audit can ask what
+// returns each body; these are the answers the metal gives, one per body.
+// The run is a chain of PINNED members (a closed fork at the sleeve, eyes on
+// pins at both ends of the link), so every joint pushes both ways and the
+// chain has ONE spring at its input: the lifter's two return blades, which
+// seat the pad on the collar. The crown's collar drives the run out; the
+// blades drive it back, through the link (in compression then, at the blades'
+// preload — tens of mN against the tie's Euler load of hundreds), the crank
+// and the fork. The cone's push from follower A's spiral helps the sleeve
+// down while the skirt touches the pin, and over the last ALARM_SLEEVE_GAP it
+// does not, which is why the spiral is not named as the sleeve's return.
+declareRestoring('Alarm release lifter', 'alarmLifterHead', 'spring',
+  'the two return blades, rooted on the posts, bear UP under the web’s dropped tabs at the pad’s station and seat the pad on the collar at every parity; the collar’s ramp drops it against them on the pull',
+  'alarmLifterBlade');
+declareRestoring('Alarm release lifter', 'alarmLifterBlade', 'spring',
+  'each blade is its own spring: rooted on its post, deflected by the tab it bears under as the lifter turns, and returned by its own elasticity — it touches the tab at every pose',
+  'alarmLifterBlade');
+declareRestoring('Alarm release link', 'alarmReleaseLinkBar', 'two-way',
+  'a tie pinned at both ends: the lifter’s output pin pulls it out as the collar drops the pad, and pushes it back as the blades lift the pad again',
+  ['input:the alarm crown, pulled (the collar under the lifter’s pad)', 'Alarm release lifter/alarmLifterHead']);
+declareRestoring('Alarm release crank', 'alarmReleaseCrankHub', 'two-way',
+  'the link’s eye on its input pin turns it both ways — pulled out by the crown, pushed back by the lifter’s blades',
+  ['Alarm release link/alarmReleaseLinkBar', 'Alarm release link/alarmReleaseLinkBar']);
+declareRestoring('Alarm release sleeve', 'alarmSleeveFlat', 'two-way',
+  'the crank’s roller in the rim’s closed fork turns it both ways, and its three helices lift it as it turns and lower it as it turns back — it has no bias of its own (the cone’s push from the spiral helps it down only while the skirt touches the pin)',
+  ['Alarm release crank/alarmReleaseCrankHub', 'Alarm release crank/alarmReleaseCrankHub']);
+declareRestoring('Alarm silence rocker', 'alarmSilBar', 'spring',
+  'TODO 64’s sharp case, declared at last: the return blade on the bracket biases the paddle side DOWN onto the sleeve’s arm at every parity, so the paddle follows the arm both ways — the arm lifts it, the blade returns it',
+  'alarmSilBlade');
+declareRestoring('Alarm silence rocker', 'alarmSilBlade', 'spring',
+  'the blade is its own spring: rooted on the bracket, flexed by the bar it bears on as the rocker tilts, and returned by its own elasticity',
+  'alarmSilBlade');
 
 // --- '(§45 stage 2) Alarm silence rocker' — setting an ARMED alarm is silent
 // Visibility is not silence: armed, the sweep still carries the coincidence
@@ -25592,58 +25821,8 @@ window.__t236 = { K: { Zc: Z_ALARM_CORNER, thin: ALARM_COLLAR_THIN_R, fat: ALARM
 // — the lock re-engaging on the pin's lift — gated on TODO 190's re-design of
 // this finger's interface.
 //
-// The finger's radius is the ONE free slot on the tail: it was cut mid-window
-// between the bracket lugs' outer reach and the return blade's stud, both
-// margins exact. TODO 190 folded that blade off the lever's line (it lay over
-// the tail, under this finger), so the window's outer wall is the banking stop
-// now and 5.86 is no longer centred in it; the radius is HELD, because
-// ALARM_SIL_PIN_LEVER and every force and throw below rest on it. Its throw
-// is a DESIGNED lever ratio off the lifter's travel: close the rest gap,
-// press a fully-risen tail back to rest, and a 0.01 capture bite.
-const ALARM_SIL_FINGER_R = 5.86;   // (lug outer 5.61 + margin → 5.76) .. (the retired stud station's inner face 6.11 − margin → 5.96), centred; held since TODO 190
-const ALARM_SIL_PADDLE_R = 6.9;    // on the run, outboard of the sleeve posts' band, inboard of i1's stand-off
-const ALARM_SIL_GAP = 0.05;        // rest gap, finger underside → tail top (the standard rest-gap figure)
-const ALARM_SIL_TAIL_ARM = ALARM_SIL_FINGER_R - ALARM_FEELER_PIVOT_R;  // the finger's arm on the feeler lever
-const ALARM_SIL_PIN_LEVER = ALARM_FEELER_ARM_LEN / ALARM_SIL_TAIL_ARM; // tail travel → pin travel through the pivot
-// The throw is EXACTLY the gap: the finger's full stroke ends at the
-// tail's REST height. A risen tail (pin dropped) is met early in the
-// stroke and pressed back to rest — the pin returns to its riding seat,
-// out of the notch — and an unrisen tail is touched, never loaded. Any
-// throw beyond the gap would bury the finger in a tail that had no rise
-// to give back (measured, the first cut's 0.055).
-const ALARM_SIL_THROW = ALARM_SIL_GAP;
-const ALARM_SIL_RATIO = ALARM_SIL_THROW / ALARM_SLEEVE_TRAVEL; // finger/paddle arm ratio — designed, not inherited
-// P1, TODO 16's format (§137) — TWO BUDGETS, AGREEING, which is the lay
-// shaft's own idiom applied to a chain that had only ever published the
-// first half of it.
-//
-// DISPLACEMENT. The ratio above is 0.05 / 0.236 = 0.2119, and both ends of
-// that fraction are constraints rather than choices: the throw IS the rest
-// gap (a longer one buries the finger in a tail with no rise to give back —
-// measured, the first cut's 0.055) and the paddle's travel IS the sleeve's
-// (ALARM_SLEEVE_DR 0.186 of pin stroke plus the 0.05 rest gap). Downstream
-// the feeler multiplies it back up: ALARM_SIL_PIN_LEVER = 2.45 / 0.36 =
-// 6.81, so 0.05 u of finger throw commands 0.340 u at the pin — the whole
-// point of putting the detection three units from the lifter's run instead
-// of at the strike lock.
-//
-// FORCE. A ratio that divides displacement by 4.72 multiplies force by the
-// same 4.72 at the finger end, so the ratio's price is paid in the budget
-// that is scarce here and not in the one that is not. What the finger end
-// meets: the rocker's own return blade (0.2 × SPRING_FLAT_U over its 1.0 u
-// free length, 3EI/L³ = 8.7 kN/m) holding the paddle on the run, and the
-// feeler's return blade at the far end (SPRING_FLAT_U square over 1.0 u,
-// 5.7 kN/m) holding the pin on its track. Both are flat-spring stock worked
-// through tens of microns, so both sit in tens of mN — against a crown pull
-// that arrives at the collar ramp as a finger's 1–10 N. Two orders of
-// headroom, in the same shape as the pusher's.
-//
-// The residue, named rather than rounded off: neither blade's PRELOAD is a
-// derived constant — the rocker blade's bear station is its own mid-length
-// at 0.35 of the paddle arm rather than a declared contact, and the feeler's
-// is flexed representationally in the tick. So the forces above are bounded,
-// not gated, and pinning those two bear points is what this chain would need
-// before its budget could be held the way §54 holds the lay shaft's.
+// (TODO 236 hoisted the silence chain's constants and its force up to the
+// release run's solve, which charges the paddle's push on the sleeve's arm.)
 // the physical pin: what the tail's remaining headroom under the finger
 // allows, in pin units; MIN'd with the disc's own law wherever the pin's
 // drop acts (pose, pawl, trip, re-arm). Negative = actively lifted.
@@ -25826,7 +26005,7 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   padRise.rotation.x = Math.PI / 2;
   padRise.position.set(_barEnd, 0, _bridgeZ1 / 2);
   alarmSilRocker.add(padRise);
-  const bridge = new THREE.Mesh(new THREE.BoxGeometry(_aP - _barEnd + _riserR, 2 * _riserR, STOCK_MIN_U), MATS.steel);
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(_aP - _barEnd + _riserR, Math.max(2 * _riserR, STOCK_MIN_U + 0.01), STOCK_MIN_U), MATS.steel);
   bridge.name = 'alarmSilBridge';
   bridge.position.set((_barEnd + _aP + _riserR) / 2 - _riserR / 2, 0, (_bridgeZ0 + _bridgeZ1) / 2);
   alarmSilRocker.add(bridge);
@@ -25869,6 +26048,7 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
     console.warn(`TODO 190 silence: the bar's step at x ${ALARM_SIL_BAR_STEP_X.toFixed(4)} (rocked ${(ALARM_SIL_BAR_STEP_X + _rockDx(ALARM_SIL_BAR_STEP_X)).toFixed(4)}) reaches the rocker's own bracket lug at −0.16 — the jog would cross it`);
   for (const side of [-1, 1]) {
     const lug = new THREE.Mesh(new THREE.BoxGeometry(0.32, STOCK_MIN_U + 0.01, -0.05 - (barZ - 0.14)), MATS.nickel);
+    lug.name = 'alarmSilLug';   // TODO 236: named — the paddle's bridge, added above them, slid their indices (TODO 50's lesson again)
     lug.position.set(piv.x + perp.x * 0.25 * side, piv.y + perp.y * 0.25 * side, (-0.05 + barZ - 0.14) / 2);
     lug.rotation.z = alarmSilRocker.rotation.z;
     alarmSilenceUnit.add(lug);
@@ -25914,31 +26094,10 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   say('throw never exceeds the gap', ALARM_SIL_GAP + 1e-9 - ALARM_SIL_THROW, 0);
   say('free riding at rest', alarmPinDropCapAt(alarmSilFingerDropAt(0)) - ALARM_PIN_DROP, 1e-6);
 }
-// §137 — the silence chain's FORCE, derived (TODO 63: this path had
-// ALARM_SIL_RATIO, a displacement ratio, and nothing else). What the finger
-// must actually deliver is the change in the feeler bias blade's load as the
-// pin is pressed from dropped back to riding — first-order cantilever
-// arithmetic through the two pivots, TODO 16's own caveat attached (the
-// ratios carry the conclusion; the absolutes are good to a factor of two):
-//   blade k    = 3EI/L³ over its anchor→bear chord, L = SPR_FREE + BEAR_R
-//                (laid along the lever's line until TODO 190 swung it 30.8°
-//                about the bear point, length held), section SPRING_FLAT_U square;
-//   bear δ     = the pin's full ALARM_PIN_DROP through the feeler lever,
-//                BEAR_R / ARM_LEN of it arriving at the bear point;
-//   finger F   = that blade-force change re-levered about the feeler pivot
-//                onto the tail under the finger (arm ALARM_SIL_TAIL_ARM);
-//   paddle F   = finger F × aF/aP — what the crown-driven lifter carries,
-//                the rocker's own designed ratio in reverse.
-const ALARM_SIL_FINGER_MN = (() => {
-  const kBlade = cantileverK_N_per_m(SPRING_FLAT_U, SPRING_FLAT_U, ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R);
-  const bearDefl_m = ALARM_PIN_DROP * (ALARM_FEELER_BEAR_R / ALARM_FEELER_ARM_LEN) * (UNIT_MM / 1000);
-  const dBladeF_N = kBlade * bearDefl_m;
-  return dBladeF_N * (ALARM_FEELER_BEAR_R / ALARM_SIL_TAIL_ARM) * 1000; // mN at the finger
-})();
-declareTransfer('alarm silence: rocker (lifter run → feeler tail)', {
+declareTransfer('alarm silence: rocker (sleeve arm → feeler tail)', {
   unit: 'Alarm silence rocker', meshes: ['alarmSilRiser', 'alarmSilPivot', 'alarmSilBlade'], idiom: 'crank',
   load: { value: ALARM_SIL_FINGER_MN, unit: 'mN',
-    source: 'feeler bias blade k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot (BEAR_R→TAIL_ARM); the paddle carries aF/aP of it off the crown-driven lifter' },
+    source: 'feeler bias blade k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot (BEAR_R→TAIL_ARM); the paddle carries aF/aP of it off the sleeve\'s arm (TODO 236: it read the lifter\'s run until the run became a link)' },
   quantities: { armIn_u: alarmSilRocker.userData.aP, armOut_u: alarmSilRocker.userData.aF,
     ratio: alarmSilRocker.userData.aF / alarmSilRocker.userData.aP },
   why: 'displacement through a plane change on a PIVOT — a genuine bell crank: designed arms (ALARM_SIL_RATIO is the throw split, "designed, not inherited") about a bracket bearing that takes the side load',
@@ -51326,6 +51485,7 @@ const UNIT_GROUPS = new Map([
     ['Alarm selector', null], ['Alarm lock', null], ['Alarm switch', null],
     ['Alarm link', null],
     ['Alarm release sleeve', null], ['Alarm release lifter', null], // §45 — level-2 offsets are that story's to assign
+    ['Alarm release crank', null], ['Alarm release link', null], // TODO 236 — the release run's fold-added crank and its tie link
     ['Alarm silence rocker', null], // §45 stage 2
   ])],
 ]);
@@ -57120,7 +57280,24 @@ window.__clock = {
   // staff, in whole stop pitches, and the z reflection's sum. Read-only, for
   // probe-261-fold-site's K9 once its own search no longer finds the fold.
   get alarmFold() { return { phi: ALARM_FOLD_PHI, pitches: ALARM_FOLD_PITCHES, stopTeeth: ALARM_STOP_TEETH, zSum: ALARM_FOLD_Z_SUM, axis: { x: alarmSwPos.x, y: alarmSwPos.y } }; },
-  get lineLaws() { return ALARM_LINK_LAWS; }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs
+  // TODO 236 — the release run's laws and solved record, read-only, for
+  // tools/probe-236-release-run.mjs: the sleeve's law (the helix solve's own
+  // peak function, the cone's contact, the ring's work), the chain, and the
+  // numbers the build sized every member to.
+  releaseRun: Object.freeze({
+    peak: alarmReleasePeak, coneContact: alarmConeContact, ringWork: alarmSleeveRingWork, chainAt: alarmReleaseChainAt,
+    helix: ALARM_RELEASE_HELIX, sized: ALARM_RELEASE, cut: ALARM_SLEEVE_HELIX,
+    driveAzDeg: ALARM_SLEEVE_DRIVE_AZ / DEG2RAD, stationsDeg: ALARM_SLEEVE_GUIDE_AZ.map((a) => a / DEG2RAD),
+    helixR: ALARM_SLEEVE_HELIX_R, helixRs: ALARM_SLEEVE_HELIX_RS, driveR: ALARM_SLEEVE_DRIVE_R, rollZ: ALARM_SLEEVE_ROLL_Z,
+    travel: ALARM_SLEEVE_TRAVEL, tailLen: ALARM_A_TAIL_LEN, pivotR: ALARM_PIVOT_R, pinR: ALARM_A_PIN_R,
+    phiRest: ALARM_FOLLOWER_A0, phiRelease: ALARM_A_RELEASE_PHI, muSteel: MU_STEEL,
+    guidePinR: ALARM_SLEEVE_GUIDE_PIN_R, rollerR: ALARM_SLEEVE_ROLLER_R,
+    tipZ: (ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03) - ALARM_SLEEVE_Z_REST,
+    crankZ: ALARM_RELEASE_CRANK_Z - ALARM_SLEEVE_Z_REST,
+    sigmaY_Pa: SPRING_SIGMA_Y_PA, unitMM: UNIT_MM,
+    stud: { lifterR: ALARM_LIFT_STUD_R, crankR: ALARM_RELEASE_STUD_R, crankL: ALARM_RELEASE_STUD_L },
+  }),
+  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`)
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows
