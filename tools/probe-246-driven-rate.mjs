@@ -118,7 +118,7 @@ const out = await p.evaluate(async () => {
   // would only pump the swing out to the knock
   const Qa = 1e6;
   const airyK = { ...KL, Q: Qa, c: KL.I * Math.sqrt(KL.k / KL.I) / Qa };
-  airyK.impulseJ = Math.PI * KL.k * KL.Ap ** 2 / (2 * Qa); airyK.impulseNm = airyK.impulseJ / (2 * KL.halfLift);
+  airyK.impulseJ = Math.PI * KL.k * KL.Ap ** 2 / (2 * Qa); airyK.impulse = BD.symmetricImpulse(KL.halfLift, airyK.impulseJ);
   const airy = run(airyK, 'DU', { over: { friction: 0 }, A0: KL.Ap });
   // 4–6. per position
   const rows = POS.map((pos) => {
