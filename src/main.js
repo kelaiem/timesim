@@ -41458,6 +41458,17 @@ html:lang(ko) { word-break: keep-all; }
    run now, it no longer cancels it), and only its own controls take the
    pointer: the Resume affordance while paused, and the two page links on the
    closing stop. */
+/* §277 — the navigation row. Click-through like the rest of the banner except
+   its own controls; logical properties only, and the glyphs mirror under rtl. */
+#clock-caption .cap-nav { display: none; margin-top: 8px; gap: 6px; justify-content: center; align-items: center; pointer-events: auto; }
+#clock-caption .cap-nav.show { display: flex; }
+#clock-caption .cap-nav button, #clock-caption .cap-nav select {
+  padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.08); color: #eaf0f7; font: inherit; cursor: pointer;
+}
+#clock-caption .cap-nav select { max-width: 60vw; text-overflow: ellipsis; }
+#clock-caption .cap-nav button:disabled { opacity: 0.35; cursor: default; }
+html[dir="rtl"] #clock-caption .cap-nav button { transform: scaleX(-1); }
 #clock-caption .cap-actions { display: none; margin-top: 8px; pointer-events: auto; }
 #clock-caption .cap-actions.show { display: block; }
 #clock-caption .cap-actions button, #clock-caption .cap-actions a {
@@ -42237,6 +42248,30 @@ document.body.appendChild(captionEl);
 const captionTextEl = document.createElement('span');
 captionTextEl.className = 'cap-text';
 captionEl.appendChild(captionTextEl);
+// §277 — NAVIGATION. A route used to be a conveyor: Esc, or wait. The row sits
+// between the text and the actions (neither overwrites it), carries Previous,
+// the position — a <select>, so it doubles as the stop list — and Next, and is
+// shown only while a run has more than one stop. Not `.script-ctrl`: that class
+// means "a Guided button whose idle face scriptStop restores" and these are not
+// (the banner is already exempt from scriptAbort by id).
+const captionNavEl = document.createElement('div');
+captionNavEl.className = 'cap-nav';
+const navPrevEl = document.createElement('button');
+navPrevEl.type = 'button'; navPrevEl.className = 'nav-prev'; navPrevEl.textContent = '\u2039';
+const navSelEl = document.createElement('select');
+navSelEl.className = 'nav-sel';
+const navNextEl = document.createElement('button');
+navNextEl.type = 'button'; navNextEl.className = 'nav-next'; navNextEl.textContent = '\u203a';
+// §73: through t() at the display site (title and aria-label are in tier one's
+// reach); the glyphs carry no words, so these three strings are the whole cost.
+for (const [el, key] of [[navPrevEl, 'Previous stop'], [navNextEl, 'Next stop'], [navSelEl, 'Go to stop']]) {
+  el.title = t(key); el.setAttribute('aria-label', t(key));
+}
+captionNavEl.append(navPrevEl, navSelEl, navNextEl);
+captionEl.appendChild(captionNavEl);
+navPrevEl.addEventListener('click', () => scriptGoto(scriptIdx - 1));
+navNextEl.addEventListener('click', () => scriptGoto(scriptIdx + 1));
+navSelEl.addEventListener('change', () => scriptGoto(Number(navSelEl.value)));
 const captionActionsEl = document.createElement('div');
 captionActionsEl.className = 'cap-actions';
 captionEl.appendChild(captionActionsEl);
@@ -51386,6 +51421,14 @@ let scriptExplodeTarget = null; // 0..1 to ease explodeAmount toward, or null
 // running; only the dwell clock and the step's own scripted actions hold —
 // and the explicit exits (the Tour button, Esc) ask before ending the run.
 let scriptPaused = false;
+// §277 — NAVIGATION state. `scriptDone` is the set of stops whose ONE-SHOT
+// actions (a wind, a sync, a setting turn) have run: they accumulate, so a stop
+// revisited — or skipped over, then walked back to — must not run them twice.
+// `scriptCurStep` is the step object the engine is dwelling on, which after a
+// jump is a FOLDED copy of the stop (see scriptGoto), so scriptUpdate reads it
+// rather than scriptSteps[scriptIdx].
+let scriptDone = new Set();
+let scriptCurStep = null;
 
 // `viewOnly` — re-entering the CURRENT step on resume re-establishes the view
 // the viewer just perturbed (camera, x-ray, explode, labels…) without
@@ -51393,8 +51436,10 @@ let scriptPaused = false;
 // ACCUMULATE on a second pass, which is the one way this re-entry is not
 // idempotent. The dwell restarts, which is cheaper and more predictable than
 // restoring a partial one (the entry's call).
-function scriptEnterStep(i, { viewOnly = false } = {}) {
-  const s = scriptSteps[i];
+function scriptEnterStep(i, { viewOnly = false, step = null } = {}) {
+  const s = step || scriptSteps[i];
+  scriptCurStep = s;
+  if (!viewOnly) scriptDone.add(i);
   scriptDwell = 0;
   if (!viewOnly) scriptTurnRad = 0;
   // View/UI state first, camera next, then crown/turn/sync — so a preset's
@@ -51454,6 +51499,7 @@ function scriptEnterStep(i, { viewOnly = false } = {}) {
     }
   }
   captionActionsEl.classList.toggle('show', !!s.links);
+  scriptNavSync();
   captionEl.style.display = 'block';
   captionEl.classList.add('show');
 }
@@ -51471,7 +51517,7 @@ function scriptPause() {
 function scriptResume() {
   if (!scriptSteps || !scriptPaused) return;
   scriptPaused = false;
-  scriptEnterStep(scriptIdx, { viewOnly: true });
+  scriptEnterStep(scriptIdx, { viewOnly: true, step: scriptCurStep });
 }
 // The explicit exits confirm. The gate is the ?tour deep link's own box with
 // this question's copy; Keep going resumes, End stops — and the run is held
@@ -51491,7 +51537,7 @@ function askScriptExit() {
 function scriptUpdate(realDt) {
   if (!scriptSteps) return;
   if (scriptPaused) return;   // §142 — the dwell clock and the step's actions hold; the sim itself runs on
-  const s = scriptSteps[scriptIdx];
+  const s = scriptCurStep || scriptSteps[scriptIdx];
   // Feed a scripted setting turn — only while the stem is physically in the
   // setting position (crownPullT > 0.5), mirroring tick()'s own gate, so it can
   // never leak onto the winding path.
@@ -51530,7 +51576,89 @@ function scriptUpdate(realDt) {
   if (scriptDwell < (s.dwell ?? 0)) return;
   if (scriptIdx + 1 >= scriptSteps.length) { scriptStop(); return; }
   scriptIdx++;
-  scriptEnterStep(scriptIdx);
+  // A stop already run (the viewer navigated back and let the route run on)
+  // re-enters view-only, so its one-shots do not accumulate (§277).
+  scriptEnterStep(scriptIdx, { viewOnly: scriptDone.has(scriptIdx) });
+}
+
+// ---------------------------------------------------------------------------
+// §277 — NAVIGATION. Previous / Next / a stop list / the arrow keys.
+//
+// WHY A JUMP IS NOT scriptEnterStep(i). A step names only what it CHANGES — stop
+// 3's `alarm: true` is right only because stop 2 set the labels and the camera —
+// so entering a stop cold shows a view nobody authored. A jump FOLDS: the view
+// keys of every earlier stop, last write wins, then the target's own on top.
+// The camera is one key with two spellings (`preset`, `camera`); the last of
+// either wins and cancels the other.
+//
+// ONE-SHOTS DO NOT FOLD. `wind` and `sync` accumulate, so each runs once per
+// run: a stop skipped forward over has its wind/sync applied now (winds summed,
+// as if the route had run through) and a stop visited before runs nothing.
+// Setting turns (`turnMinutes`, `turnAlarmHours`) run only on the stop the
+// viewer actually lands on, the first time: they are a demonstration of the
+// crown, not a precondition, and replaying minutes of setting is not a fold.
+// A stop that DOES need a state only a skipped one-shot produces should say so
+// with a precondition; none does yet (Tour's winds are the only such, and a
+// summed wind covers them).
+const SCRIPT_VIEW_KEYS = ['scale', 'labels', 'powerflow', 'sound', 'unit', 'focus', 'reconf',
+  'explode', 'xray', 'schematic', 'crown', 'alarm', 'alarmCrown'];
+function scriptFoldView(steps, upTo) {
+  const m = {};
+  const put = (st) => {
+    for (const k of SCRIPT_VIEW_KEYS) if (st[k] !== undefined) m[k] = st[k];
+    if (st.camera) { m.camera = st.camera; delete m.preset; }
+    else if (st.preset) { m.preset = st.preset; delete m.camera; }
+  };
+  for (let j = 0; j <= upTo; j++) put(steps[j]);
+  return m;
+}
+function scriptGoto(i) {
+  if (!scriptSteps || scriptExitAsking) return;
+  i = Math.max(0, Math.min(scriptSteps.length - 1, i));
+  if (i === scriptIdx && !scriptPaused) return;
+  const from = scriptIdx;
+  syncCancel();                       // a half-run scripted sync must be released, not inherited
+  scriptTurnRad = 0; scriptAlarmTurnRad = 0;
+  const m = scriptFoldView(scriptSteps, i);
+  const own = scriptSteps[i];
+  let wind = 0, sync = false;
+  for (let j = 0; j <= i; j++) {
+    if (scriptDone.has(j)) continue;
+    const st = scriptSteps[j];
+    wind += st.wind || 0; sync = sync || !!st.sync;
+    if (j === i) { m.turnMinutes = st.turnMinutes; m.turnAlarmHours = st.turnAlarmHours; }
+    scriptDone.add(j);
+  }
+  if (wind) m.wind = wind;
+  if (sync) m.sync = true;
+  m.caption = own.caption; m.dwell = own.dwell; m.links = own.links; m.title = own.title;
+  scriptPaused = false;
+  scriptIdx = i;
+  scriptEnterStep(i, { viewOnly: true, step: m });
+  // viewOnly above suppresses ALL one-shots, so run the ones just collected here
+  // (it is the only way to keep scriptEnterStep's single code path).
+  if (m.turnMinutes) scriptTurnRad = settingTurnRad(m.turnMinutes);
+  if (m.turnAlarmHours) scriptAlarmTurnRad = m.turnAlarmHours * (2 * Math.PI / 4);
+  if (m.wind) autoWindRemaining += m.wind * 2 * Math.PI;
+  if (m.sync) { syncStart(); updateCrownUI(); }
+  return from;
+}
+function scriptNavSync() {
+  const n = scriptSteps ? scriptSteps.length : 0;
+  captionNavEl.classList.toggle('show', n > 1);
+  if (n < 2) return;
+  if (navSelEl.options.length !== n) {
+    navSelEl.textContent = '';
+    scriptSteps.forEach((st, j) => {
+      const o = document.createElement('option');
+      o.value = String(j);
+      o.textContent = `${fmtInt(j + 1)} / ${fmtInt(n)}` + (st.title ? ` · ${t(st.title)}` : '');
+      navSelEl.appendChild(o);
+    });
+  }
+  navSelEl.value = String(scriptIdx);
+  navPrevEl.disabled = scriptIdx <= 0;
+  navNextEl.disabled = scriptIdx >= n - 1;
 }
 
 let scriptAbortArmed = false;
@@ -51542,6 +51670,16 @@ function scriptAbort(e) {
   // §142 — Esc is the explicit exit and asks; everything else is incidental
   // input and PAUSES (the viewer is driving now; the run waits).
   if (e.type === 'keydown' && e.key === 'Escape') { askScriptExit(); return; }
+  // §277 — the arrows STEER the route rather than pause it. Plain keys only, and
+  // not while a form control has the key (a slider's arrow means its own thing).
+  if (e.type === 'keydown' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
+      !(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) &&
+      !(e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]'))) {
+    const fwd = (e.key === 'ArrowRight') !== (document.documentElement.dir === 'rtl');
+    e.preventDefault(); e.stopPropagation();
+    scriptGoto(scriptIdx + (fwd ? 1 : -1));
+    return;
+  }
   scriptPause();
 }
 function armScriptAbort() {
@@ -51576,6 +51714,8 @@ function scriptStop() {
   scriptTurnRad = 0;
   scriptExplodeTarget = null;
   scriptPaused = false;            // §142
+  scriptDone = new Set(); scriptCurStep = null;   // §277
+  navSelEl.textContent = ''; captionNavEl.classList.remove('show');
   captionActionsEl.innerHTML = '';
   captionActionsEl.classList.remove('show');
   syncCancel();
@@ -51623,6 +51763,7 @@ function scriptStart(steps, btn) {
   resumeAudio();
   scriptSteps = steps;
   scriptIdx = 0;
+  scriptDone = new Set();   // §277
   scriptBtn = btn || null;
   // §73: through t(), not a literal. The IDLE face is restored from
   // SCRIPT_BTN_IDLE, which captures the DOM after localizeTree — so this was the
@@ -56780,8 +56921,13 @@ window.__clock = {
   viewLink() { return currentViewLink(); },                                                            // §37 — what the share button copies, without the clipboard
   goToPose(pos, look, opts) { goToPose(new THREE.Vector3(...pos), new THREE.Vector3(...look), opts); }, // §37 — the primitive, for review sessions (this is what §35 lacked)
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
+  startInspect() { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); },  // §277
+  get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0) })) : null; }, // §277
   startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
+  scriptGoto(i) { scriptGoto(i); },
+  scriptStop() { scriptStop(); },   // §277 — the navigation primitive, for the probe
+  get scriptView() { return { timeScale, labelsOn, xrayOn, schematic: !!SCHEMATIC.on, powerFlowOn, soundOn, alarmOn, explodeAmount, selectedUnit, focusName, reconfOn, crownOut, autoWind: autoWindRemaining, done: [...scriptDone] }; }, // §277 — what a fold must reproduce
   scriptJump(i) { if (scriptSteps) { scriptIdx = i; scriptEnterStep(i, { viewOnly: true }); } }, // §142 — enter a stop directly (view only), for the probe
   scriptTick(dt) { scriptUpdate(dt); }, // §142 — advance the engine by dt seconds of real time without waiting on the rAF loop (a software-GL frame is seconds), for the probe
   // Deterministic per-frame advance for verification (rAF is paused when the
