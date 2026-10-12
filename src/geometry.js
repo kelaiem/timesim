@@ -2797,7 +2797,7 @@ export const balancePinR = (thickness) => thickness * 0.22;
 export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 6,
                                    staffTop = null, staffBottom = null,
                                    pinDrop = thickness * 1.8, rimF = 1,
-                                   roller: rollerSeat, pinTop, pinFlat = null }) {
+                                   roller: rollerSeat, pinTop, pinFlat = null, pinCircle = null }) {
   const g = new THREE.Group();
   // TODO 242 — every dimension below is balanceWheelDims' (layout.js), the one
   // law main.js weighs and the stop work clears; this builder only cuts it
@@ -2881,7 +2881,7 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // pin datum, 0.35·t deep), so the staff, its lower pivot and the guard pin's
   // z band are where they were; its radius and crescent are the seat's
   // (`escapementSeat`), solved against the guard pin the notch's floor places.
-  const rollerR = balancePinCircle(radius);
+  const rollerR = pinCircle ?? balancePinCircle(radius);
   const pinR = balancePinR(thickness);
   const pinZ = -pinDrop;
   const srZ = pinZ - thickness * 0.4;

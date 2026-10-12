@@ -20,9 +20,9 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, fmtPct, lowerUi, locali
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, balanceWheelDims, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BAL_R_STEP, balanceWheelDims, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
-  BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
+  BAL_T, BAL_RIM_F, BALANCE_R, BALANCE_R_REF, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
@@ -1726,7 +1726,7 @@ const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
 // TODO 226 step 1 — the balance is BUILT further down, after the escapement's
 // seat is solved (the roller is cut to the guard pin the fork's notch places);
 // its radius is fixed here because the stations below are laid out from it.
-const BALANCE_R = 9;
+// TODO 242 — the radius is the spec's RATE_TABLE row's (layout.js says why).
 const balanceR = BALANCE_R;
 
 // Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the
@@ -1740,10 +1740,22 @@ const palletStoneDist = forkSpan / 2 + Math.sqrt(escapeWheelR ** 2 - (forkSpan /
 // Swiss-lever movements sit the balance close to the escapement — a compact
 // fork bridging a modest gap, not stretched across open space — so this is
 // a much tighter multiple of the two wheels' combined radius than before.
-const escToBalanceDist = (escapeWheelR + balanceR) * 1.3;
+// TODO 242 — laid out from the REFERENCE balance (BALANCE_R_REF), not the one
+// the row carries. A faster row may need a smaller wheel to keep its spring
+// at the target, and the lever escapement has no reason to follow it: the
+// pin's circle and the line of centres set the lift, the lever angle, the
+// notch and the knock, all solved here against the escape wheel, and a
+// smaller rim changes none of them. Scaled with the wheel, they moved the
+// balance's station, re-cut the knock and re-routed the stop work's rod.
+// Held, the escapement is byte-for-byte the reference movement's at every
+// rate and only the oscillator's inertia moves.
+const escToBalanceDist = (escapeWheelR + BALANCE_R_REF) * 1.3;
 // The pin's circle: the builder's own law (G.balancePinCircle), read before
 // the balance exists because the bank below and the seat are solved from it.
-const rollerR = G.balancePinCircle(BALANCE_R);
+// TODO 242: the reference balance's, for the reason above. At 36,000 the
+// 7.7 wheel carries it at 21% of its own radius, against the builder's 18%:
+// still well inside the rim, which is what that proportion is for.
+const rollerR = G.balancePinCircle(BALANCE_R_REF);
 
 // FORK_BANK_DEG — the fork's swing is set by the impulse
 // pin it has to carry: at both ends of the impulse window the pin must stand
@@ -1937,6 +1949,7 @@ const balanceWheel = G.makeBalanceWheel({
   roller: ESCAPEMENT_SEAT.roller,
   pinTop: L_FORK + FORK_HALF_Z - L_BALANCE,   // the fork's top face: the pin works the whole blank
   pinFlat: PIN_NOTCH.flatF,                   // TODO 226 step 3b: the jewel is ground to the D the notch was solved for
+  pinCircle: rollerR,                         // TODO 242: the escapement's, not a fraction of this rim
 });
 if (Math.abs(balanceWheel.userData.r - BALANCE_R) > 1e-12 || Math.abs(balanceWheel.userData.rollerR - rollerR) > 1e-12)
   console.warn(`TODO 226: the balance was cut at r ${balanceWheel.userData.r}, pin circle ${balanceWheel.userData.rollerR}, not the ${BALANCE_R}, ${rollerR} the seat was solved for`);
@@ -4785,6 +4798,20 @@ const BAL_OUTER_R = Math.max(
   xyRadiusAbout(balanceGroup, P.balance),
   xyRadiusAbout(hairspringGroup, P.balance),
 );
+// TODO 242 — THE DISC THE PLATE'S CUT AND THE COCKS ARE LAID OUT FOR, which
+// is the REFERENCE balance's (BALANCE_R_REF) at every rate. A faster row may
+// carry a smaller wheel, and nothing about the cutaway or the bridges over it
+// has to shrink with it: the cut is a hole the balance runs in, and the cocks
+// are bridges that stand clear of it. Shrinking them moved the T-foot of the
+// balance cock out of the cut's wedge and re-cut the plate's windows round it.
+// So they keep the reference wheel's swept disc, the screw tips standing one
+// rim radius further out, and the smaller wheel runs inside that with the
+// difference as air. BAL_OUTER_R stays the TRUE disc, and every clearance
+// claim about the balance itself (the stop work's pad, which has to press the
+// rim it has) still reads that.
+const BAL_LAYOUT_R = BAL_OUTER_R + (BALANCE_R_REF - BALANCE_R);
+if (BAL_LAYOUT_R < BAL_OUTER_R - 1e-12)
+  console.warn(`TODO 242: the layout disc ${BAL_LAYOUT_R.toFixed(4)} is inside the balance's own swept disc ${BAL_OUTER_R.toFixed(4)} — a balance larger than the reference has outgrown the cut laid out for it`);
 // §246 tier two — THE HAIRSPRING'S SWEPT DISC, which BAL_OUTER_R is not:
 // that reads the spring at the frame it was BUILT in (rest, 7.96), and the
 // spring breathes. Every published wind frame is one the driven balance can
@@ -5376,8 +5403,8 @@ const COCK_SPINE = (() => {
   const aim = Math.atan2(P.balance.y, P.balance.x);
   const dir = { x: Math.cos(aim), y: Math.sin(aim) };
   const len = plateR - Math.hypot(P.balance.x, P.balance.y); // the foot cannot leave the plate
-  const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;  // the cock scan's own leg bound
-  const dyLegMin = BAL_OUTER_R + TQ_CUT_MARGIN - 1.3;        // its shortest leg station (base cut edge − 1.2 − 0.1)
+  const legBound = BAL_LAYOUT_R + COCK_LEG_R + CLEAR_MARGIN;  // the cock scan's own leg bound
+  const dyLegMin = BAL_LAYOUT_R + TQ_CUT_MARGIN - 1.3;        // its shortest leg station (base cut edge − 1.2 − 0.1)
   const half = Math.sqrt(Math.max(legBound * legBound - dyLegMin * dyLegMin, 0))
     + COCK_LEG_R * 1.5 + CLEAR_MARGIN;                       // widest flank + pad + the one margin
   return { dir, len, half };
@@ -5475,7 +5502,7 @@ const forkCock = (() => {
   // at the balance axis — and the first version put a leg exactly on it,
   // through the staff. Excluding the wheel's whole footprint also keeps the
   // legs out of the one view this bridge exists to open up.
-  discs.push({ x: P.balance.x, y: P.balance.y, r: BAL_OUTER_R });
+  discs.push({ x: P.balance.x, y: P.balance.y, r: BAL_LAYOUT_R });   // TODO 242: the disc laid out for
   // ...and the hairspring's BREATHING, which the leg's shaft crosses on its
   // way down (§246 tier two: it swings out past BAL_OUTER_R, which reads it
   // at rest, and TODO 234's first seat stood 0.13 off its widest frame).
@@ -5530,7 +5557,7 @@ const forkCock = (() => {
           const L2 = vx * vx + vy * vy || 1e-9;
           const t = clamp(((P.balance.x - host.x) * vx + (P.balance.y - host.y) * vy) / L2, 0, 1);
           const dBar = Math.hypot(P.balance.x - host.x - t * vx, P.balance.y - host.y - t * vy);
-          const mBar = dBar - (BAL_OUTER_R + barHW + CLEAR_MARGIN);   // bar's edge clears the balance
+          const mBar = dBar - (BAL_LAYOUT_R + barHW + CLEAR_MARGIN);   // bar's edge clears the balance (TODO 242: the disc laid out for)
           // §125 Tier B — the spine corridor (COCK_SPINE above): the seat
           // node and the whole bar stay out of the balance cock's reach.
           const latRay = (px, py, rad) => {
@@ -5674,7 +5701,7 @@ function finishCutRadii(raw) {
 const TQ_CUT = (() => {
   const aim = Math.atan2(P.balance.y, P.balance.x);
   const phiOpen = 75 * DEG2RAD;
-  const radii = new Array(360).fill(BAL_OUTER_R + TQ_CUT_MARGIN);
+  const radii = new Array(360).fill(BAL_LAYOUT_R + TQ_CUT_MARGIN);   // TODO 242: the reference wheel's disc
   const bump = (x, y) => {
     const dx = x - P.balance.x, dy = y - P.balance.y;
     const r = Math.hypot(dx, dy) + TQ_CUT_MARGIN;
@@ -5781,7 +5808,7 @@ const inCutClearance = (x, y) => {
 // entry to the least entry radius over both its chords, keeps the escapement
 // view: that sufficient rule took up to 1.2 off the cut at the seats' flanks
 // where this takes what the metal needs.
-const cutFloorR = () => BAL_OUTER_R + TQ_CUT_MARGIN;
+const cutFloorR = () => BAL_LAYOUT_R + TQ_CUT_MARGIN;   // TODO 242: the reference wheel's disc
 function clampCutToKeeps(keeps) {
   let worst = 0;
   const pt = (i, r) => {
@@ -14698,7 +14725,7 @@ const BALANCE_COCK = (() => {
     // ~3 units outboard of the real legs — and happily seated a leg
     // straight through the stop bracket's mast while rejecting honest
     // seats whose phantom foot grazed something that isn't there.
-    const dFoot = Math.max(BAL_OUTER_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
+    const dFoot = Math.max(BAL_LAYOUT_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
     const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1; // built slab-tail reach
     // TODO 30's graded-margin pattern (the fork cock's precedent): every
     // bound below tags the clearance it sets, so a scan that finds nothing
@@ -14713,7 +14740,7 @@ const BALANCE_COCK = (() => {
     // radius at the bar's distance — see the build below): test both pads
     // at this candidate bearing, not just the slab tail.
     const dyLeg = dTail - 1.2;
-    const legBound = BAL_OUTER_R + COCK_LEG_R + CLEAR_MARGIN;
+    const legBound = BAL_LAYOUT_R + COCK_LEG_R + CLEAR_MARGIN;   // TODO 242: the disc laid out for
     const hspan = Math.max(3.5, Math.sqrt(Math.max(legBound * legBound - dyLeg * dyLeg, 0)));
     const padR = COCK_LEG_R * 1.5;
     for (const s of [-1, 1]) {
@@ -14783,7 +14810,7 @@ const BALANCE_COCK = (() => {
     console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing'
       + (near ? ` — best near-miss ${near.clr.toFixed(3)} vs ${CLEAR_MARGIN} at φ ${(near.phi / DEG2RAD).toFixed(1)}°, bound by ${near.tag}` : ''));
     const phi = Math.atan2(P.fork.y - P.balance.y, P.fork.x - P.balance.x) - TQ_CUT.aim;
-    const dFoot = BAL_OUTER_R + COCK_FOOT_R + CLEAR_MARGIN;
+    const dFoot = BAL_LAYOUT_R + COCK_FOOT_R + CLEAR_MARGIN;
     best = { phi, dFoot, clr: 0 };
   }
   // makeCock: jewel at +COCK_JEWEL_AT·L, foot centre at −0.5·L → the
@@ -29750,28 +29777,45 @@ const EQUALISATION = (() => {
     // fixed coil plan) and its pivots' friction scaled with its mass.
     const nominalVertical = energy.corners.nominal.sustainedDeg.vertical;
     const C = GOING_POWER.corner('nominal'), W = 2 * Math.PI * F_BALANCE;
-    const atRim = (rimF) => {
-      const B = oscInertiaOf(balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T, rimF }));
+    // TODO 242 — the law takes the RADIUS too. The escapement is held at the
+    // reference balance whatever the wheel (escToBalanceDist says why), so a
+    // wheel of another radius changes exactly what a heavier rim does — the
+    // inertia, the mass on the pivots and the spring re-solved to them — and
+    // the same law weighs it.
+    const atBalance = (radius, rimF) => {
+      const B = oscInertiaOf(balanceWheelDims({ radius, thickness: BAL_T, rimF }));
       const k = B.total * W * W, tf = C.pivot.vertical_Nm * B.mass / OSC_I.mass;
       const a = Math.PI * k / (2 * C.qOther), bq = 2 * tf;
       const deg = (-bq + Math.sqrt(bq * bq + 4 * a * C.delivered_J)) / (2 * a) / DEG2RAD;
       const K0 = BALANCE_DRIVE.K, ks = k / K0.k;
       const K = { ...K0, I: B.total, k, c: B.total * W / K0.Q, spring: { ...K0.spring, y: K0.spring.y.map((v) => v * ks) } };
       const start = BD.selfStart(K, { drive: true, brake: 0, friction: tf, weight: null });
-      return { rimF, nominalVertical: deg, starts: start.starts };
+      return { radius, rimF, nominalVertical: deg, starts: start.starts };
     };
+    const atRim = (rimF) => atBalance(BALANCE_R, rimF);
     // the law weighs THIS balance as the column does, or the step above it means nothing
     const self = atRim(BAL_RIM_F);
     if (!(Math.abs(self.nominalVertical - nominalVertical) < 1e-6 && self.starts === BALANCE_DRIVE.selfStart.starts))
       console.warn(`TODO 242: balanceWheelDims weighs BAL_RIM_F ${BAL_RIM_F} to ${self.nominalVertical.toFixed(6)}° (${self.starts ? 'starts' : 'no start'}) where the column reads ${nominalVertical.toFixed(6)}° (${BALANCE_DRIVE.selfStart.starts ? 'starts' : 'no start'}) — the step test reads a different balance from the one cut`);
     const heavier = atRim(BAL_RIM_F + BAL_RIM_STEP);
     const starts = BALANCE_DRIVE.selfStart.starts;
+    // TODO 242 — and the radius, which a row shrinks only when even the
+    // metal's lightest rim cannot keep the reference wheel at the target. Held
+    // the rim's way: the reference radius, or one BAL_R_STEP larger at the
+    // floor rim failing the target or the start.
+    const rimFloor = balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T }).rimFloorF;
+    const reduced = BALANCE_R < BALANCE_R_REF - 1e-12;
+    const larger = reduced ? atBalance(BALANCE_R + BAL_R_STEP, rimFloor) : null;
     energy.amplitude.target = { deg: AMPLITUDE_TARGET_DEG, nominalVertical, starts, rimF: BAL_RIM_F, step: BAL_RIM_STEP,
       heavier, met: nominalVertical >= AMPLITUDE_TARGET_DEG && starts,
       tight: !(heavier.nominalVertical >= AMPLITUDE_TARGET_DEG && heavier.starts),
-      binds: heavier.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target' };
+      binds: heavier.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target',
+      radius: BALANCE_R, radiusRef: BALANCE_R_REF, radiusStep: BAL_R_STEP, rimFloor, larger,
+      radiusTight: !larger || !(larger.nominalVertical >= AMPLITUDE_TARGET_DEG && larger.starts) };
     if (!energy.amplitude.target.met || !energy.amplitude.target.tight)
       console.warn(`TODO 207/242: BAL_RIM_F ${BAL_RIM_F} at ${SPEC.vph} A/h sustains ${nominalVertical.toFixed(2)}° nominal vertical against the ${AMPLITUDE_TARGET_DEG}° target and ${starts ? 'starts' : 'does NOT start'} itself; one step heavier (${heavier.rimF.toFixed(3)}) sustains ${heavier.nominalVertical.toFixed(2)}° and ${heavier.starts ? 'starts' : 'does not start'} — ${energy.amplitude.target.met ? 'the rim is lighter than it needs to be' : 'the balance is too heavy for its spring'}; re-solve the RATE_TABLE row's rimF`);
+    if (!energy.amplitude.target.radiusTight)
+      console.warn(`TODO 242: the balance at ${SPEC.vph} A/h is cut at r ${BALANCE_R}, but one BAL_R_STEP larger (${larger.radius.toFixed(2)}) at the floor rim ${rimFloor.toFixed(4)} sustains ${larger.nominalVertical.toFixed(2)}° and ${larger.starts ? 'starts' : 'does not start'} — the wheel is smaller than it needs to be; re-solve the RATE_TABLE row's balanceR`);
   }
   return Object.freeze({
     going: {

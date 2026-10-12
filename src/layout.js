@@ -73,23 +73,35 @@
 // both, and that one step heavier fails one of them. `claimDeg` and `peakDeg`
 // are AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG for that balance (row 14).
 // Measured (the record's own step test, nominal corner, hanging):
-//   18,000  0.645  200.36°  (0.650: 199.09°)   both start
-//   21,600  0.485  200.14°  (0.490: 198.58°)   both start
-//   28,800  0.270  201.75°  (0.275: 199.68°)   both start
+//   18,000  r 9    0.645  200.36°  (0.650: 199.09°)   both start
+//   21,600  r 9    0.485  200.14°  (0.490: 198.58°)   both start
+//   28,800  r 9    0.270  201.75°  (0.275: 199.68°)   both start
+//   36,000  r 7.7  0.235  201.07°  (0.240: 198.80°)   both start
 // — the target binds every row; the start, which a lighter balance makes
-// easier, does not. A row without them is the 18,000 balance's, which is what
-// 36,000 still is: the lightest rim the metal allows (balanceWheelDims' floor,
-// 0.2305) sustains about 162° there, so it needs a smaller balance, and that
-// re-solves the escapement (the impulse pin's circle scales with the
-// balance's radius) — TODO 242's open half.
+// easier, does not. 36,000 is the row that needs a SMALLER balance as well
+// (`balanceR`): the lightest rim the metal allows (balanceWheelDims' floor,
+// 0.2305) sustains 162.37° at the reference radius, and BAL_R_STEP's rule
+// takes it to the largest radius at which that floor rim reaches the target,
+// 7.7 (203.16°; 7.8 sustains 199.43°). Only the WHEEL shrinks. The lever
+// escapement (the pin's circle, the line of centres, the notch, the lift and
+// the knock) stays as solved at the reference balance, and so do the plate's
+// cut and the cocks over it (main.js, BAL_LAYOUT_R); the hairspring's outer
+// coil and the stop work's pad follow the rim they serve. A row without them
+// is the 18,000 balance's.
 const RATE_TABLE = {
   18000: { fourthTeeth: 80, escPinion: 8, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
   21600: { fourthTeeth: 96, escPinion: 8, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.7, rimF: 0.235, claimDeg: 132, peakDeg: 311 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
+// TODO 242 — the balance's RADIUS, the shipped movement's 9 unless a row
+// carries its own (BALANCE_R, beside BAL_RIM_F below). The wheel, the
+// hairspring's outer coil and the stop work's pad follow it. The lever
+// escapement and the cut and cocks round the balance are laid out from this
+// REFERENCE instead, at every rate (main.js says why).
+export const BALANCE_R_REF = 9;
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
 export const SPEC = (() => {
   const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
@@ -429,6 +441,15 @@ export const AMPLITUDE_TARGET_DEG = 200;
 // it — the slack this replaced, 1.5°, was one step's measured 1.3° at 18,000
 // and is a different number at every rate).
 export const BAL_RIM_STEP = 0.005;
+// TODO 242 — and the RADIUS's step, for the one row that has to change it. A
+// row keeps the reference radius (BALANCE_R_REF) while some rim at or above the
+// metal's floor (balanceWheelDims' rimFloorF) still reaches the target and
+// starts there; only when even the floor rim cannot does the radius come down,
+// and then to the LARGEST radius on this grid at which the floor rim can, for
+// the same reason the rim is the heaviest: the larger balance is the steadier.
+// Row 15 holds it the rim's way: one step larger, at the floor rim, fails.
+// 0.1 u is 0.038 mm, finer than a balance's turned diameter is quoted to.
+export const BAL_R_STEP = 0.1;
 // §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
 // `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is
 // retired: the balance is posed at AMPLITUDE_TARGET_DEG, the swing the energy
@@ -1231,6 +1252,7 @@ export function balanceWheelDims({ radius, thickness, rimF = 1 }) {
 // contact plane (HACK_CONTACT_Z) and everything stacked above the balance keep
 // their datum. RIM_H_REF is that full rim, and the datum it fixes.
 export const BAL_RIM_F = rateBalanceRow(SPEC.vph).rimF;
+export const BALANCE_R = rateBalanceRow(SPEC.vph).balanceR ?? BALANCE_R_REF;
 export const RIM_H_REF = BAL_T * 0.55;           // the full rim — the seat's datum
 export const RIM_H = balanceWheelDims({ radius: 0, thickness: BAL_T, rimF: BAL_RIM_F }).rim.h;   // rim height — balanceWheelDims' rim, the builder's own
 // Balance mid-plane: the fork blank's TRUE top (L_FORK + FORK_HALF_Z) +

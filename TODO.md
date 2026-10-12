@@ -17,13 +17,13 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 242 | PART-CLOSED | 21,600 and 28,800 now carry their own balance (RATE_TABLE `rimF` 0.485 and 0.270, the heaviest that reaches 200° hanging at the nominal corner and starts itself, `equalisation` row 15) and both start and reach the target. **36,000 remains**: the lightest rim the metal allows (0.2305, `balanceWheelDims`' floor) sustains about 162°, so it needs a smaller balance, which re-solves the escapement (the impulse pin's circle scales with the balance's radius) |
 | 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
 | 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
 | 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
 | 237 | OPEN | Found closing TODO 222: the alarm link's series stall (the §137 lay-shaft row and `probe-82-alarm-stall.mjs`) reflects each member by n²/k, which inverts the lever. A member moving n per unit of ring travel is seen at the ring as 1/(n²k). The error was invisible while nPin was 1. The rod-side members (n 0.527) are read 3.6× too stiff and the shaft members (n 2.07 since TODO 222) 4.3× too soft. The stall still covers the 5–50 mN window either way, but the figure and the named governor are wrong |
 | 236 | OPEN | Found closing TODO 222: the §45 release sleeve is the selector ring's old construction — three eyes on posts (ℓ 0.4567) driven axially at one tab (r ≈ 4.90) — loaded at the tail pin, which turns with the tube, so it jams wherever d ≥ ℓ/(2μ) = 1.14 u, essentially every hour. Its load is unpriced: follower A's released 22.43 mN·mm over the tail ≈ 130 mN through a 45° cone. Fix path: TODO 222's helical guides with a tangential drive, or a centred collar; price the lift as a `transfers` row |
 | 235 | OPEN | Found deciding §261 step 3 (the owner kept §218's overcoil). `L_HAIRSPRING = L_BALANCE + 1.2` carries no derivation, and it is a datum: `SPRING_TOP_Z`, the three-quarter plate's floor and `TRAIN_CEILING_Z` (the going train's ceiling, §254's fusee groove and §47's arrest stations) all ride it. §261's step 1 built it at +1.0 and bought 0.076 mm of cased depth 1:1, and boot raised 6 asserts. Derive the spring's plane from the balance stack it sits on, then re-solve whatever the derived value moves. Rule 1, P1 |
+| 242 | CLOSED | Every `RATE_TABLE` row now reaches 200° hanging at the nominal corner and starts itself. 21,600 and 28,800 by a lighter rim; 36,000 also by a smaller wheel (`balanceR` 7.7, rim 0.235, 201.07°), the largest radius on `BAL_R_STEP`'s grid at which the metal's lightest rim reaches the target. Only the wheel shrinks: the lever escapement and the plate's cut and cocks stay laid out for the reference balance (`BALANCE_R_REF`, `BAL_LAYOUT_R`), so the knock and the layout round the balance do not move. `equalisation` row 15 holds the radius the rim's way |
 | 241 | CLOSED | The pusher head bottoms on the case tube's flat end (the band's bore sleeve and the §202 liner) at T = 1, where the carry is one tooth, so the 5 N survival press goes into the case as 2.36 MPa on a 2.12 mm² seat, not into crank A at 7,018 MPa. The seat is held to touch at the liner's build, off the sleeve's vertices; the floors row, `INTRA_UNIT_CONTACTS` and `probe-case-relief` name it. Toleranced one way: late by up to one `CLEAR_MARGIN` costs the chain nothing past the peaked detent the §137 rows price |
 | 234 | CLOSED | The fork cock's leg cleared a DISC about the fork's pivot, held at 9.8018 after TODO 226's seat. It now clears the fork's swept SECTOR (`FORK_SWEEP`: every fork vertex under the slab over ±bank, by 0.5° bin) and re-seats from 11.75 to 5.5 from the pivot. The plate's cut gives back the old leg's lobe (300–327°, out to 17.0) and takes a shorter one (295–305°, 14.9); the stop work's bearing, pivot, rod and mast are bit-identical, so nothing down the alarm moved. The lever's flank is one curve again, boss to fork end. Boot silent; `FORK_LEG_DISC_R` and its assert retired |
 | 233 | CLOSED | Found closing §261 step 1 (#636): the Latvian explainer and primer tables were keyed to English §221 (#617) rewrote, because the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check read red on `main`. Closed by #611 (c4eea7c), which re-keyed 15 explainer and 5 primer Latvian rows against the current English, more than the ten counted here because TODO 226's drive rewrote further English. Latvian reads 769/769 and 144/144. The race itself is answered by a CLAUDE.md convention (a locale or page-English PR re-merges `main` and waits for the Explainer check before it merges) and by §271 (merge queue). Arabic plate collisions seen locally are font metrics, not CI |
@@ -32846,7 +32846,7 @@ have taken the 5 N.
   one column, and its width is also the legibility tooth, so it is not
   thinned under a derivation that still holds.
 
-## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 — DONE AT 21600 AND 28800
+## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 — CLOSED
 
 Found fixing the stopped balance (TODO 238). A reader who picked a faster beat
 rate from the panel saw the movement lock up after the boot sync: the hack
@@ -32937,4 +32937,71 @@ about 7.5 u radius against 9. That is not a rim row. `balancePinCircle` and
 the roller scale with the balance's radius, so the impulse pin, the notch, the
 lift and the knock re-solve with it, and so do the hairspring's radii, the
 cock and the stop work.
+
+**36,000: DONE, by a smaller WHEEL and nothing else.** `RATE_TABLE` 36,000
+carries `balanceR: 7.7, rimF: 0.235, claimDeg: 132, peakDeg: 311`. Booted,
+nominal corner, hanging: 201.07°, and it starts itself. One rim step heavier
+(0.240) sustains 198.80°. The adverse minimum is 132.85°, and the knock stays
+310.46°.
+
+- **The radius is a held value, like the rim.** A row keeps `BALANCE_R_REF`
+  (9) while some rim at or above the metal's floor (`rimFloorF`, 0.2303)
+  still reaches the target and starts. Only when even the floor rim cannot
+  does the radius come down, and then to the LARGEST radius on `BAL_R_STEP`'s
+  0.1 u grid at which the floor rim can (the larger wheel is the steadier, the
+  rim's own reason).
+  - At the reference radius the floor rim sustains 162.37°.
+  - At 7.8 the record's law reads 199.52° (a boot at rim 0.2305 read 199.43°);
+    at 7.7, 203.16°.
+  - `equalisation` row 15 holds it the rim's way: the record weighs the wheel
+    one radius step larger at the floor rim by the same law and requires it to
+    fail. A wheel larger than the reference is refused outright. The rows at
+    the reference radius carry no larger-wheel check, since they shrank
+    nothing.
+- **Only the wheel shrinks, and that was the finding that made it work.** The
+  first cut let everything that read the radius follow it, as the item's last
+  paragraph predicted: the pin circle (0.18·r), the line of centres
+  ((escR + balR)·1.3), and so the lift, the notch, the knock, the balance's
+  station and the plate's cut. That moved the knock (to 298–305°) and broke
+  the layout round the balance at every radius tried, 7.4 to 8.4:
+  - the stop work's hack rod could not route;
+  - the balance cock found no seat (its T-foot left the cut's wedge, then hit
+    the stop work's mast);
+  - the three-quarter plate's cut reached a pivot;
+  - §62's governor and arrest windows ran together.
+
+  None of that is the oscillator's business, so none of it moves now:
+  - **The lever escapement** is laid out from `BALANCE_R_REF` at every rate
+    (`escToBalanceDist`, `rollerR`; `makeBalanceWheel` takes the pin circle
+    as `pinCircle`). It is byte-for-byte the reference movement's, so the
+    knock stays 310.46°. The 7.7 wheel carries the pin at 21% of its own
+    radius, still well inside the rim.
+  - **The plate's cut and the cocks** are laid out from `BAL_LAYOUT_R`: the
+    reference wheel's swept disc, which is `BAL_OUTER_R` plus the radius
+    difference. The smaller wheel runs inside them with the difference as
+    air. `BAL_OUTER_R` stays the true disc, and every clearance claim about
+    the balance itself still reads it, the stop work's pad first (it must
+    press the rim the wheel has).
+  - **The hairspring's outer coil** (0.88·r) and the stop work's pad do
+    follow the wheel. At 7.7 the coil pitch is 0.6595, over the stud post's
+    0.65 (TODO 147). At 7.6 it would not be.
+- **Boot at 36,000**: two warnings, both the re-geared train's and already
+  there before this item: TODO 175's 6-leaf pinion bore band, and the reset
+  hammer's 0.1486 graze. The drum-bound, §125 D4 and TODO 219 warnings that
+  row also booted with are gone. `solveLayout` takes the wheel's own radius
+  (`balance: balanceR * 1.35`), so it packs the smaller wheel: plateR goes
+  from 42.960 to 41.516 at that row, which brings the drum's bound back to the
+  drum and D4's two bounds back together. The maintaining spring has its run
+  again because its floor follows the claim, and the claim is now met. 18,000, 21,600 and 28,800 carry the reference wheel and are
+  unchanged: the pin circle, the station and the layout disc are the same
+  numbers there, and 18,000 boots silent with `equalisation` clean.
+
+Measured (boot, nominal corner, hanging), the four rows now:
+
+| rate | radius | rim | swing | one rim step heavier | starts | min (adverse) |
+|---|---|---|---|---|---|---|
+| 18,000 | 9 | 0.645 | 200.36° | 199.09° | yes | 126.00° |
+| 21,600 | 9 | 0.485 | 200.14° | 198.58° | yes | 128.47° |
+| 28,800 | 9 | 0.270 | 201.75° | 199.68° | yes | 132.71° |
+| 36,000 | 7.7 | 0.235 | 201.07° | 198.80° | yes | 132.85° |
 

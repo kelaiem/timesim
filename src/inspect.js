@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -10602,6 +10602,23 @@ export function checkEqualisation(clock) {
           failures.push({ what: 'amplitude target block weighs a different rim from BAL_RIM_F and one step heavier', record: T, rimF: BAL_RIM_F, step: BAL_RIM_STEP });
         else if (T.heavier.nominalVertical >= AMPLITUDE_TARGET_DEG && T.heavier.starts)
           failures.push({ what: 'one rim step heavier still reaches the target and starts (BAL_RIM_F lighter than needed)', heavier: T.heavier, targetDeg: AMPLITUDE_TARGET_DEG });
+        // TODO 242 — the RADIUS, held the rim's way. A row keeps the reference
+        // wheel unless it carries its own, and one that does is the largest on
+        // BAL_R_STEP's grid at which the metal's lightest rim still reaches the
+        // target and starts: one step larger, at that floor rim, must fail. A
+        // wheel larger than the reference would outgrow the cut and the
+        // escapement laid out for it, so that is refused outright.
+        if (T.radius !== BALANCE_R || T.radiusRef !== BALANCE_R_REF || T.radiusStep !== BAL_R_STEP)
+          failures.push({ what: 'amplitude target block weighs a different radius from BALANCE_R', record: { radius: T.radius, ref: T.radiusRef, step: T.radiusStep }, radius: BALANCE_R });
+        else if (BALANCE_R > BALANCE_R_REF + 1e-12)
+          failures.push({ what: 'the balance is larger than the reference the escapement and the cut are laid out for', radius: BALANCE_R, ref: BALANCE_R_REF });
+        else if (BALANCE_R < BALANCE_R_REF - 1e-12) {
+          const L = T.larger;
+          if (!L || !(Math.abs(L.radius - (BALANCE_R + BAL_R_STEP)) < 1e-12) || L.rimF !== T.rimFloor)
+            failures.push({ what: 'amplitude target block weighs no wheel one radius step larger at the floor rim', record: L || null, radius: BALANCE_R, step: BAL_R_STEP });
+          else if (L.nominalVertical >= AMPLITUDE_TARGET_DEG && L.starts)
+            failures.push({ what: 'one radius step larger still reaches the target and starts at the floor rim (BALANCE_R smaller than needed)', larger: L, targetDeg: AMPLITUDE_TARGET_DEG });
+        }
       }
     }
     // Row 12 (TODO 192 step 2) — the pivots were cut to §50's floor on the claim
