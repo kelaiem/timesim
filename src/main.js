@@ -55036,9 +55036,16 @@ const JMP_SITE = await (async () => {
   };
   const liftJobs = coarseToFine(pulls.length).flatMap((k) => [[0, k], [RIDE_MAX, k]]);
   const psiJobs = coarseToFine(psiSamples.length);
-  // test()'s adaptive order (see its stages): the stage that refused last, and
-  // per pose loop the pose that refused last. Cost only — never a verdict.
+  // test()'s adaptive order (see its stages): per stage, the runs, the refusals
+  // and the time spent in it; per pose loop, the pose that refused last. Cost
+  // only — never a verdict.
+  const breatheOuter = breathe;
   const stageOrder = [0, 1, 2, 3, 4, 5, 6];
+  const stageRuns = [0, 0, 0, 0, 0, 0, 0], stageRefusals = [0, 0, 0, 0, 0, 0, 0], stageMs = [0, 0, 0, 0, 0, 0, 0];
+  const byRefusalsPerMs = (x, y) =>
+    (stageRuns[x] === 0) - (stageRuns[y] === 0)
+    || stageRefusals[y] / (stageMs[y] || Number.MIN_VALUE) - stageRefusals[x] / (stageMs[x] || Number.MIN_VALUE)
+    || x - y;
   const lastRefuter = { lever: 0, lift: 0, p2lever: 0, p2lift: 0 };
   const posesFrom = (n, key) => {
     if (!n) return [];
@@ -55076,106 +55083,122 @@ const JMP_SITE = await (async () => {
         jumperLifter.updateWorldMatrix(false, false);
         return { k, M: jumperLifter.matrixWorld.clone(), parts: [...azMeshes, ...leverMeshes].map((m) => m.matrixWorld.clone()) };
       });
-      // THE STAGES, IN SOURCE ORDER — and run in the order that has been
-      // refuting. The verdict is a conjunction of seven independent checks, so
-      // no order can change it (the bisections and the B classification below
-      // see exactly the booleans they saw); the order is purely what a REFUSAL
-      // costs, and a refusal is almost every call: 463 of a tight site's 473.
-      // The textual order was tuned on one geometry and went stale on the next
-      // — at ?d4=16 after §261's fold, 190 of those refusals came from PASS 2's
-      // lever rotors, the SIXTH stage, each paid for after a ~200 ms lifter
-      // sweep (65 s of boot against 13 s before). Neighbouring candidates are
-      // refused by the same stage, and inside a stage at the same pose, so a
-      // stage that just refused goes first and a loop starts at the pose that
-      // just refused. Derived from the run itself, so it follows the next
-      // geometry too. Deterministic: the candidates arrive in a fixed order.
-      const stages = [
-        // PASS 1 — the exact distances, cheapest and most telling first
-        async () => {
-          for (let i = 0; i < azMeshes.length; i++) {
-            const m = azMeshes[i], g = qOf(m);
-            if (bvhShort(OBS.main, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(OBS.plate, g, azM[i], tau))) return false;
-          }
-          return true;
-        },
-        // …and the same parts against the revolutions, before the swept passes
-        // (TODO 181): the dial-centre groups revolve now rather than standing
-        // as built, so a station they refuse is refused HERE, by the stud's own
-        // parts at their one pose, instead of after every lever and lifter pose
-        // has been measured first.
-        async () => {
-          await breathe(337);
-          for (let i = 0; i < azMeshes.length; i++) if (!rotorsClear(qOf(azMeshes[i]), azM[i], tau, false)) return false;
-          return true;
-        },
-        async () => {
-          for (const j of posesFrom(levM.length, 'lever')) {
-            const Ms = levM[j];
+      // THE STAGES, IN SOURCE ORDER — and run in the order that pays. The
+      // verdict is a conjunction of seven independent checks, so no order can
+      // change it (the bisections and the B classification below see exactly
+      // the booleans they saw); the order is purely what a REFUSAL costs, and a
+      // refusal is almost every call: 463 of a tight site's 473. A check's cost
+      // is not a property of the check — at ?d4=16 after §261 the expensive one
+      // to PASS is the static sweep of the lever (~400 ms against 10 ms to
+      // refuse), at ?alarmaz=175 it is PASS 2's lifter rotors (213 ms against
+      // 11) — so a fixed order tuned on one geometry goes stale on the next
+      // (65 s of boot at ?d4=16 against 13 s before), and so does an order by
+      // recency (it promotes whatever refused last, expensive or not: measured
+      // 65 s at ?alarmaz=175 against 38 s fixed). The optimum for independent
+      // checks is the one that puts first what refuses most per unit of time
+      // spent in it: refusals / time, per stage, cumulative over the scan. A
+      // stage not yet run has no evidence and keeps its source place behind the
+      // ones that do. Time is the work: the yields breathe() takes land on
+      // whichever stage is running, so they are not charged to it.
+      // Inside a pose loop the pose that refused last goes first: neighbouring
+      // candidates are refused at the same pose. None of this is a constant.
+      {
+        let idle = 0;
+        const breathe = async (id) => { const t0 = performance.now(); await breatheOuter(id); idle += performance.now() - t0; };
+        const stages = [
+          // PASS 1 — the exact distances, cheapest and most telling first
+          async () => {
+            for (let i = 0; i < azMeshes.length; i++) {
+              const m = azMeshes[i], g = qOf(m);
+              if (bvhShort(OBS.main, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(OBS.plate, g, azM[i], tau))) return false;
+            }
+            return true;
+          },
+          // …and the same parts against the revolutions, before the swept passes
+          // (TODO 181): the dial-centre groups revolve now rather than standing
+          // as built, so a station they refuse is refused HERE, by the stud's own
+          // parts at their one pose, instead of after every lever and lifter pose
+          // has been measured first.
+          async () => {
+            await breathe(337);
+            for (let i = 0; i < azMeshes.length; i++) if (!rotorsClear(qOf(azMeshes[i]), azM[i], tau, false)) return false;
+            return true;
+          },
+          async () => {
+            for (const j of posesFrom(levM.length, 'lever')) {
+              const Ms = levM[j];
+              for (let i = 0; i < leverMeshes.length; i++) {
+                const g = qOf(leverMeshes[i]);
+                if (bvhShort(OBS.main, g, Ms[i], tau) || bvhShort(OBS.plate, g, Ms[i], tau)) return refuted('lever', j);
+              }
+            }
+            return true;
+          },
+          async () => {
+            await breathe(338);
+            const all = [...azMeshes, ...leverMeshes];
+            for (const j of posesFrom(liftM.length, 'lift')) {
+              const { k, M, parts } = liftM[j];
+              await breathe(339);
+              if (bvhShort(OBS.main, lg, M, tau) || bvhShort(OBS.plate, lg, M, tau)) return refuted('lift', j);
+              if (box.copy(lg.boundingBox).applyMatrix4(M).expandByScalar(tau).intersectsBox(slSwept)
+                && bvhShort(OBS.lever, lg, slInv[k].clone().multiply(M), tau)) return refuted('lift', j);
+              // the setting lever moves with the same pull, so the stud's parts and
+              // the jumper's lever meet it at THIS pose, not at every pull at once
+              for (let i = 0; i < all.length; i++) {
+                const g = qOf(all[i]);
+                if (!box.copy(g.boundingBox).applyMatrix4(parts[i]).expandByScalar(tau).intersectsBox(slSwept)) continue;
+                const L = slInv[k].clone().multiply(parts[i]);
+                if (bvhShort(OBS.lever, g, L, tau) || bvhShort(OBS.post, g, L, tau)) return refuted('lift', j);
+              }
+            }
+            return true;
+          },
+          // PASS 2 — the rotors' revolutions (the stud's own parts were judged
+          // against them in PASS 1, above)
+          async () => {
+            await breathe(340);
+            let n = 0;
+            for (const j of posesFrom(levM.length, 'p2lever')) {
+              await breathe(341);
+              for (let i = 0; i < leverMeshes.length; i++) if (!rotorsClear(qOf(leverMeshes[i]), levM[j][i], tau, false)) return refuted('p2lever', j);
+              if (++n % 8 === 0) await breathe(342);
+            }
+            return true;
+          },
+          async () => {
+            let n = 0;
+            for (const j of posesFrom(liftM.length, 'p2lift')) {
+              await breathe(343);
+              if (!rotorsClear(lg, liftM[j].M, tau, true)) return refuted('p2lift', j);
+              if (++n % 16 === 0) await breathe(344);
+            }
+            return true;
+          },
+          // PASS 3 — meshClearance's parity guard, one pose of each part
+          async () => {
+            for (let i = 0; i < azMeshes.length; i++) {
+              const m = azMeshes[i], g = qOf(m);
+              if (inside(OBS.main, g, azM[i]) || (!onPlate.has(m) && inside(OBS.plate, g, azM[i]))) return false;
+            }
             for (let i = 0; i < leverMeshes.length; i++) {
               const g = qOf(leverMeshes[i]);
-              if (bvhShort(OBS.main, g, Ms[i], tau) || bvhShort(OBS.plate, g, Ms[i], tau)) return refuted('lever', j);
+              if (inside(OBS.main, g, levM[0][i]) || inside(OBS.plate, g, levM[0][i])) return false;
             }
-          }
-          return true;
-        },
-        async () => {
-          await breathe(338);
-          const all = [...azMeshes, ...leverMeshes];
-          for (const j of posesFrom(liftM.length, 'lift')) {
-            const { k, M, parts } = liftM[j];
-            await breathe(339);
-            if (bvhShort(OBS.main, lg, M, tau) || bvhShort(OBS.plate, lg, M, tau)) return refuted('lift', j);
-            if (box.copy(lg.boundingBox).applyMatrix4(M).expandByScalar(tau).intersectsBox(slSwept)
-              && bvhShort(OBS.lever, lg, slInv[k].clone().multiply(M), tau)) return refuted('lift', j);
-            // the setting lever moves with the same pull, so the stud's parts and
-            // the jumper's lever meet it at THIS pose, not at every pull at once
-            for (let i = 0; i < all.length; i++) {
-              const g = qOf(all[i]);
-              if (!box.copy(g.boundingBox).applyMatrix4(parts[i]).expandByScalar(tau).intersectsBox(slSwept)) continue;
-              const L = slInv[k].clone().multiply(parts[i]);
-              if (bvhShort(OBS.lever, g, L, tau) || bvhShort(OBS.post, g, L, tau)) return refuted('lift', j);
-            }
-          }
-          return true;
-        },
-        // PASS 2 — the rotors' revolutions (the stud's own parts were judged
-        // against them in PASS 1, above)
-        async () => {
-          await breathe(340);
-          let n = 0;
-          for (const j of posesFrom(levM.length, 'p2lever')) {
-            await breathe(341);
-            for (let i = 0; i < leverMeshes.length; i++) if (!rotorsClear(qOf(leverMeshes[i]), levM[j][i], tau, false)) return refuted('p2lever', j);
-            if (++n % 8 === 0) await breathe(342);
-          }
-          return true;
-        },
-        async () => {
-          let n = 0;
-          for (const j of posesFrom(liftM.length, 'p2lift')) {
-            await breathe(343);
-            if (!rotorsClear(lg, liftM[j].M, tau, true)) return refuted('p2lift', j);
-            if (++n % 16 === 0) await breathe(344);
-          }
-          return true;
-        },
-        // PASS 3 — meshClearance's parity guard, one pose of each part
-        async () => {
-          for (let i = 0; i < azMeshes.length; i++) {
-            const m = azMeshes[i], g = qOf(m);
-            if (inside(OBS.main, g, azM[i]) || (!onPlate.has(m) && inside(OBS.plate, g, azM[i]))) return false;
-          }
-          for (let i = 0; i < leverMeshes.length; i++) {
-            const g = qOf(leverMeshes[i]);
-            if (inside(OBS.main, g, levM[0][i]) || inside(OBS.plate, g, levM[0][i])) return false;
-          }
-          return !(inside(OBS.main, lg, liftM[0].M) || inside(OBS.plate, lg, liftM[0].M));
-        },
-      ];
-      for (const st of stageOrder) {
-        if (await stages[st]()) continue;
-        if (stageOrder[0] !== st) { stageOrder.splice(stageOrder.indexOf(st), 1); stageOrder.unshift(st); }
-        return false;
+            return !(inside(OBS.main, lg, liftM[0].M) || inside(OBS.plate, lg, liftM[0].M));
+          },
+        ];
+        for (const st of stageOrder) {
+          idle = 0;
+          const t0 = performance.now();
+          const ok = await stages[st]();
+          stageRuns[st]++;
+          stageMs[st] += performance.now() - t0 - idle;
+          if (ok) continue;
+          stageRefusals[st]++;
+          stageOrder.sort(byRefusalsPerMs);
+          return false;
+        }
       }
       return true;
     } finally { await breathe(345); lg.dispose(); }
