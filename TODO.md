@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 242 | PART-CLOSED | 21,600 and 28,800 now carry their own balance (RATE_TABLE `rimF` 0.485 and 0.270, the heaviest that reaches 200° hanging at the nominal corner and starts itself, `equalisation` row 15) and both start and reach the target. **36,000 remains**: the lightest rim the metal allows (0.2305, `balanceWheelDims`' floor) sustains about 162°, so it needs a smaller balance, which re-solves the escapement (the impulse pin's circle scales with the balance's radius) |
+| 242 | CLOSED | Every faster rate carries its own balance (RATE_TABLE `rimF`, and at 36,000 `balanceR` 7.5 too): each is the heaviest that reaches 200° hanging at the nominal corner and starts itself, held by `equalisation` row 15. A smaller balance re-solves the escapement it drives. 36,000 also needed the cock's slab lengthened to seat its foot, and the late plate windows held to a land from the early ones |
 | 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
 | 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
 | 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
@@ -32966,15 +32966,27 @@ Three things the smaller balance moved, each fixed where it lives:
   the feet in toward its axis: a position change of a fixture, with the jewel
   on the staff. Zero added wherever the cut edge alone seats, which is every
   other rate.
-- **The arrest window owed the governor's a land.** A LATE window (§201) is
-  solved after the early ones, against holes, slots and keeps, but not against
-  the windows already cut. `checkPlateWindows` caught it after the fact: the
-  arrest window left a 0.017 land to the governor's at 36,000. A late window's
-  rays now also keep `TQ_LAND_MIN` from earlier windows' edges that can reach
-  its disc.
+- **The arrest window owed the governor's a land.** The smaller balance moved
+  the alarm arrest's station beside the governor's plate window. A LATE window
+  (§201) was solved against holes, slots and keeps, but not against the windows
+  already cut, so `checkPlateWindows` read a 0.017 land between them. A late
+  window's rays now keep `TQ_LAND_MIN` from earlier windows' edges, held on the
+  chords the outline emits rather than only its vertices
+  (√(L² + (r·sin 0.5°)²), since the outline samples at most every half degree;
+  without it the land read 1.900 against 1.900, under by less than the third
+  decimal). The arrest solve's window filter asks the same question, so it
+  picks a station whose window can open. Holding the window alone had left it
+  NOT CUT, because a bossless window must open all the way round.
+  `tqWindowEdges` and `tqEdgeLand` serve both.
 
-Still on the 36,000 boot, and not this item's: TODO 175's 6-leaf pinion bore
-band and the reset hammer's 0.1486 against `CLEAR_MARGIN`. Both boot on
-`main` at 36,000 too. 36,000 is not a swept spec point, so the battery does
-not see it; the boot is the evidence.
+At 18,000, 21,600 and 28,800 the cock seats at the cut edge and no earlier
+window reaches the arrest's, so all three build as before. Measured at 18,000:
+the same window centres as `main` to 1e-4, and a silent boot.
+
+36,000 boots with three warnings, down from eight on `main`. TODO 175's
+six-leaf pinion bore band and the reset hammer's 0.1486 against `CLEAR_MARGIN`
+boot on `main` at 36,000 too. TODO 221's detent-beak bracket (ρ 0.2006) fires
+on the solved claim of 133, as it does at 28,800's 132, and is that item's.
+36,000 is not a swept spec point, so the battery does not see it; the boot is
+the evidence.
 
