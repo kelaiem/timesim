@@ -87,6 +87,38 @@
 // rod runs in, and reports the shortest linkages whose every member finds room
 // over the stroke — see the block above `linkagesAt` for its bounds.
 //
+// AND HOW THE LAST PIN REACHES THE DRIVER, which the first version got wrong.
+// At the folded driver the pin's track lies INSIDE the column wheel's
+// footprint (r ≈ 5.1 from its axis against a solid base to 5.7 and a saw to
+// 6.4), and the search exempted that column as "the coupling" — so it reported
+// a rod-under-the-dial linkage whose last riser would have to pass through the
+// wheel. The 'dial' configuration now counts the folded wheel's samples in the
+// pin's column below the driver's dial face and refuses on any (it is refused
+// at every φ). In the cluster's own frame the pin always rose to the driver
+// through a three-quarter-plate slot, so folded it comes DOWN through a slot
+// in the base plate, from between the plates: the 'slot' configuration keeps
+// every member between the plates, both cranks on studs, and requires the
+// pin's drop column clear from the plate up to the arm that carries it.
+//
+// THE DIAL-SIDE BEAK AND THE LAY SHAFT (landing 2c's siting): at the one fold
+// on the stop wheel's pitch (240°), the same-side beak landing 2b designed
+// (`clock.lineLaws.seat(run, stroke, +1)`) is stood on every ray that keeps
+// the castellations' phase (today's + φ + k × 60°) at every run, and each
+// member is tested where it moves: the bar swept through its seat tilt, its
+// underside the seat law's lift off the column tops (the castellations and
+// the column base are the seat law's to clear, not obstacles here), the
+// pivot post up to the plate face, the foot down to the lay shaft's rim. The
+// lay shaft then runs from the foot to the ring's tab at any azimuth, held
+// where a hanger can rise to the plate. Its section is what its governing
+// span asks (§54's λ = L/d target, an overhang counted SLENDER_OVERHANG_K
+// long, the lathe's L/D on the whole bar), and a shaft of THAT section must
+// clear. The shaft is judged by DISTANCE to the band scan's surface samples
+// (a cell is the shaft's whole margin), read down by the sample lattice's
+// STEP/√3. The last 1.8 of the chord is the crank's working zone over the
+// ring, trimmed exactly as the build's §112 `scoreChord` trims it.
+//  K9 that shaft test passes the shipped shaft: today's rod to today's tab,
+//     at today's stratum and section, reads clear (it is green in every gate).
+//
 // `--dump FILE` writes the browser half's measurements; `--from FILE` reads
 // them back and skips the browser (the Node half takes ~4 min). A run from a
 // dump is only as current as the tree that wrote it.
@@ -122,7 +154,19 @@ async function measure() {
   const bootError = await page.evaluate(() => (window.__bootError ? String(window.__bootError) : null));
   if (bootError) { console.log('boot failed: ' + bootError); process.exit(2); }
 
-  const band = await page.evaluate(dialBandScan, { GRID, exclude: MOVED });
+  // the lay shaft's stratum, read off its own mesh at the reference pose: the
+  // band scan returns its surface samples a unit either side of it, which is
+  // what the lay shaft's corridor (landing 2c) is measured against — a cell
+  // there is 0.5 u, the shaft's whole margin
+  const shaftZWin = await page.evaluate(async () => {
+    const THREE = await import('three'); const clock = window.__clock;
+    clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
+    let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === 'alarmLinkShaft' && !o.userData.schematic) m = o; });
+    if (!m) return null;
+    const b = new THREE.Box3().setFromObject(m, true);
+    return [b.min.z - 1, b.max.z + 1];
+  });
+  const band = await page.evaluate(dialBandScan, { GRID, exclude: MOVED, pointsZ: shaftZWin });
   // the stratum the pusher's stem keeps (the owner's call for landing 2: the
   // button stays between the plates and its riser drops through the base plate)
   const inter = await page.evaluate(dialBandScan, { GRID, exclude: MOVED, band: 'interplate' });
@@ -226,6 +270,26 @@ async function measure() {
     let cMin = Infinity, cMax = 0;
     for (const [x, y, , mi] of cloud.values()) if (mi === collarIdx) { const r = Math.hypot(x - A.x, y - A.y); cMin = Math.min(cMin, r); cMax = Math.max(cMax, r); }
     let selector = null; clock.scene.traverse((o) => { if (!selector && o.isMesh && o.name === 'alarmSelRing') selector = o; });
+    // §261 landing 2c — what the dial-side beak and the re-sited lay shaft are
+    // designed from: the link reference's own rows (the gate's evaluator), the
+    // seat law's SAME-SIDE solve over the runs it could take, today's lever ray
+    // (the wheel → rod direction, which sets the castellation phase the nose
+    // reads), the lay shaft's stratum and the ring tab the shaft drives
+    const byName = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
+    const LL = clock.lineLaws, refOf = (n) => I.LINE_SPECS.find((r) => r.name === n);
+    const drvRef = I.lineSpecEvaluate(refOf('alarm switch drive'), {}, null, LL).out;
+    const lk = I.lineSpecEvaluate(refOf('alarm link'), drvRef, null, LL).out;
+    const seatTable = [];
+    for (let run = 1.5; run <= 16 + 1e-9; run += 0.25) { const q = LL.seat(run, lk.rodTravel, 1); seatTable.push({ run, beakLen: q.beakLen, tailLen: q.tailLen, theta: q.theta, lift: q.lift, h: q.h }); }
+    const rodM = byName('alarmLinkRod'), shaftM = byName('alarmLinkShaft'), tabM = byName('alarmSelTab'), castM = byName('alarmColCastellations');
+    const link = {
+      landR: lk.landR, rodTravel: lk.rodTravel, footRest: lk.footRest, colH: lk.colH, noseWRad: null,
+      rod: rodM ? centre(rodM) : null, shaft: shaftM ? centre(shaftM) : null, tab: tabM ? centre(tabM) : null,
+      cast: castM ? centre(castM) : null, seatTable,
+      // the bar's plan width (main.js ALARM_LINK_ARM_W, one ratchet tooth), read
+      // off the cut box's own local extent — the new beak is cut to the same
+      armW: (() => { const m = byName('alarmLinkBeakBar'); if (!m) return null; m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox; return b.max.y - b.min.y; })(),
+    };
     const sel = centre(selector);
     return {
       points: [...cloud.values()], members: members.map((m) => m.name || m.geometry.type), atRest, poses: poses.length + 1,
@@ -235,7 +299,7 @@ async function measure() {
       riserHalf: (() => { const b = boxOf(riser); return Math.min(b.max.x - b.min.x, b.max.y - b.min.y) / 2; })(),
       pushAz: (() => { const b = boxOf(stem); const c = { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2 }; return Math.atan2(c.y, c.x); })(),
       collarAnnulus: [cMin, cMax], collarTipR: (() => { const sh = collar.geometry.parameters.shapes; const s = Array.isArray(sh) ? sh[0] : sh; return Math.max(...s.getPoints().map((q) => Math.hypot(q.x, q.y))); })(),
-      padCell, CLEAR_MARGIN: L.CLEAR_MARGIN,
+      padCell, CLEAR_MARGIN: L.CLEAR_MARGIN, link,
     };
   });
   return { band, inter, cl };
@@ -573,10 +637,31 @@ function linkagesAt(r) {
     }
   }
   cand.sort((u, v) => u.len - v.len);
-  const found = { dial: [], plates: [] };
+  const found = { dial: [], plates: [], slot: [] };
+  // the pin's own drop: at the folded driver the pin's track lies INSIDE the
+  // column wheel's footprint (r 5.0–5.2 against a solid base to 5.7 and a saw
+  // to 6.4), so no member can reach it from the dial side — the wheel is in
+  // the way. Today the pin rises to the driver through a slot in the
+  // three-quarter plate; folded, it comes DOWN through a slot in the base
+  // plate, from between the plates. Its column over the whole track must be
+  // clear from the plate top up to the arm that carries it.
+  const drop = new Set(); segCells(q0, { x: qx1, y: qy1 }, drop);
+  // and from the DIAL side the same column is the wheel's: any folded cluster
+  // metal in it dialward of the driver's own dial face stands between an arm
+  // under the dial and the pin it would have to raise (the coupling exemption
+  // above spares the cells, not this column — the first version of this search
+  // exempted it, and reported a dial-side linkage the wheel makes impossible)
+  const drvIdx = cl.members.indexOf('alarmColDriver');
+  let drvFace = Infinity;
+  for (const [x, y, z, mi] of cl.points) if (mi === drvIdx) drvFace = Math.min(drvFace, fold(x, y, z, phi)[2]);
+  let dialDropBlocked = 0;
+  for (const [x, y, z] of cl.points) {
+    const [X, Y, Z] = fold(x, y, z, phi);
+    if (Z < drvFace - 1e-6 && drop.has(cellOf(X, Y))) dialDropBlocked++;
+  }
   let checked = 0;
   for (const k of cand) {
-    if ((found.dial.length >= 3 && found.plates.length >= 3) || checked >= SWEEP_CAP) break;
+    if ((found.dial.length >= 3 && found.plates.length >= 3 && found.slot.length >= 3) || checked >= SWEEP_CAP) break;
     checked++;
     const thA = k.sA * stroke / Math.abs(k.a), thB = k.sB * stroke / Math.abs(k.b);
     const aIn = new Set(), aOut = new Set(), rodS = new Set(), bIn = new Set(), bOut = new Set(), pvA = new Set(), pvB = new Set();
@@ -584,8 +669,23 @@ function linkagesAt(r) {
     armCells(k.PB, k.EB, thB, bIn); armCells(k.PB, q0, thB, bOut);
     for (const kk of nearCellsR(k.PA.x, k.PA.y, CM)) pvA.add(kk); for (const kk of nearCellsR(k.PB.x, k.PB.y, CM)) pvB.add(kk);
     const U = (...ss) => { const o = new Set(); for (const x of ss) for (const y of x) o.add(y); return o; };
-    for (const cfg of ['dial', 'plates']) {
+    for (const cfg of ['dial', 'plates', 'slot']) {
       if (found[cfg].length >= 3) continue;
+      if (cfg === 'slot') {
+        // everything between the plates: both cranks on studs planted in the
+        // base plate, the rod beside them, and crank B's pin dropping through
+        // a base-plate slot into the folded driver
+        const g = U(aIn, aOut, rodS, bIn, bOut, pvA, pvB);
+        const ws = groupWindows(IC, g, null).filter((w) => columnClear(IC, U(pvA, pvB, drop), null, w, 'floor'));
+        if (!ws.length) continue;
+        const wS = ws.reduce((m, w) => (w[1] - w[0] > m[1] - m[0] ? w : m));
+        if (!(wS[0] <= cl.stemZ + rad && wS[1] >= cl.stemZ - rad)) {
+          const lo2 = Math.min(wS[1], cl.stemZ), hi2 = Math.max(wS[0], cl.stemZ);
+          if ([...stemCol].some((kk) => !freeOf(IC[kk]).some(([a2, b2]) => a2 <= lo2 + 1e-6 && b2 >= hi2 - 1e-6))) continue;
+        }
+        found.slot.push({ ...k, wP: wS, wD: null, cfg });
+        continue;
+      }
       // dial: crank A crosses the plate (its input arm between the plates), rod and crank B under the dial
       // plates: crank A and the rod between the plates, crank B crosses the plate (its output arm under the dial)
       const gP = cfg === 'dial' ? U(aIn, pvA) : U(aIn, aOut, rodS, bIn, pvA, pvB);
@@ -599,16 +699,193 @@ function linkagesAt(r) {
         const lo2 = Math.min(wP[1], cl.stemZ), hi2 = Math.max(wP[0], cl.stemZ);
         if ([...stemCol].some((kk) => !freeOf(IC[kk]).some(([a2, b2]) => a2 <= lo2 + 1e-6 && b2 >= hi2 - 1e-6))) continue;
       }
+      if (cfg === 'dial' && dialDropBlocked) continue;
       const wD = pickWindow(cells, gD, obs, cross, 'ceiling');
       if (!wD) { if (pickWindow(cells, gD, null, cross, 'ceiling')) obsBites++; continue; }
       found[cfg].push({ ...k, wP, wD, cfg });
     }
   }
-  return { deg: r.deg, n: cand.length, checked, found };
+  return { deg: r.deg, n: cand.length, checked, found, dialDropBlocked };
 }
 const linkage = feasible.map(linkagesAt);
 const allFound = linkage.flatMap((L) => [...L.found.dial, ...L.found.plates].map((x) => ({ ...x, deg: L.deg })));
 const shortest = allFound.sort((u, v) => u.len - v.len)[0];
+
+// ---- THE DIAL-SIDE BEAK AND THE LAY SHAFT (§261 landing 2c's siting) --------
+// The swap folds at ONE φ: the lock's finger meets the striking rotor's stop
+// wheel, whose phase against the cam is when the stop catches, so turning the
+// lock about the arbor by anything but a whole tooth pitch re-clocks the stop
+// against the hammer. The fold is the feasible φ that is a whole multiple of
+// the stop wheel's pitch (360°/12 = 30°): 240°, the only one in the range.
+// At that fold the new beak (landing 2b's same-side lever) stands on a ray off
+// the folded wheel: its nose must read the castellations in today's phase, so
+// the ray is today's lever ray turned by the fold, plus any whole column pitch
+// (360°/6 — the castellation pattern repeats per column). Along the ray the nose
+// lands at landR, the tail's FOOT at landR + run (over the lay shaft's rim) and
+// the pivot at landR + beakLen (the seat law, side +1, at that run). The lay
+// shaft keeps its stratum and section and runs from the foot to its inner end
+// at the ring tab's reach. Every member, swept where it moves, must clear the
+// band's tenants, the folded cluster and the 240° linkage's rod-under-the-dial
+// group, each held to CLEAR_MARGIN.
+const STOP_PITCH = 2 * Math.PI / 12, COL_PITCH = 2 * Math.PI / 6;
+const PHI_FOLD_DEG = (() => { const m = feasible.filter((r) => Math.abs(Math.round(r.deg * DEG / STOP_PITCH) * STOP_PITCH - r.deg * DEG) < 1e-9); return m.length === 1 ? m[0].deg : null; })();
+const beakSite = (() => {
+  const lk = cl.link;
+  if (PHI_FOLD_DEG === null || !lk || !lk.rod || !lk.shaft || !lk.cast) return { error: `no single fold on the stop wheel's pitch (${PHI_FOLD_DEG}) or the link's inputs are missing` };
+  const phi = PHI_FOLD_DEG * DEG;
+  const [wx, wy] = fold(cl.W.x, cl.W.y, 0, phi);
+  const Wf = { x: wx, y: wy };
+  const aOld = Math.atan2(lk.rod.y - cl.W.y, lk.rod.x - cl.W.x);
+  const zFace = band.Z_CEIL - (lk.cast.z1 - zBase);          // the castellation tops, folded: the face the nose rides from the dial side
+  const shaftZ = (lk.shaft.z0 + lk.shaft.z1) / 2, shaftR = (lk.shaft.z1 - lk.shaft.z0) / 2;
+  const rimTop = shaftZ + lk.footRest;
+  // obstacles in the dial band: the folded cluster's hull per cell, and the
+  // 240° linkage's dial-side group held over its whole window
+  // The bar's clearance over the castellations and the column base is the seat
+  // law's own (`_barLiftFor` sweeps the cut profile at every radius the columns
+  // occupy, through the tilt): an in-group P2 fact the build asserts, so those
+  // two members are not obstacles here — counting their coarse per-cell hull
+  // would read the designed lift as a collision. Every other folded member is.
+  const SEAT_PRICED = new Set(['alarmColCastellations', 'alarmColBase'].map((n) => cl.members.indexOf(n)));
+  const obs = new Map();
+  for (const [x, y, z, mi] of cl.points) {
+    if (SEAT_PRICED.has(mi)) continue;
+    const [X, Y, Z] = fold(x, y, z, phi), k = cellOf(X, Y);
+    if (k < 0 || Z > cells[k].hi) continue;
+    const o = obs.get(k); if (!o) obs.set(k, [Z, Z]); else { if (Z < o[0]) o[0] = Z; if (Z > o[1]) o[1] = Z; }
+  }
+  const L240 = linkage.find((L) => L.deg === PHI_FOLD_DEG), lnk = L240 && L240.found.dial[0];
+  const lnkCells = new Set();
+  if (lnk) {
+    const [qx0, qy0] = fold(cl.pin[0].x, cl.pin[0].y, 0, phi);
+    const thA = lnk.sA * stroke / Math.abs(lnk.a), thB = lnk.sB * stroke / Math.abs(lnk.b);
+    armCells(lnk.PA, lnk.EA, thA, lnkCells); rodCells(lnk.EA, lnk.EB, lnk.vA, lnkCells);
+    armCells(lnk.PB, lnk.EB, thB, lnkCells); armCells(lnk.PB, { x: qx0, y: qy0 }, thB, lnkCells);
+  }
+  const lnkIv = lnk ? lnk.wD : null;
+  // a body over (x, y) with plan reach r, between zA and zB — clear of every
+  // tenant, the cluster (unless exempt) and the linkage, or the first blocker
+  const clearAt = (x, y, r, zA, zB, exempt = null, skipUnit = null, linkageOnly = false) => {
+    for (const k of nearCellsR(x, y, r + CM)) {
+      const c = cells[k];
+      if (!linkageOnly) for (const [u, ivs] of c.uivs) { if (u === skipUnit) continue; for (const [z0, z1] of ivs) if (zB + CM > z0 && zA - CM < z1) return u; }
+      const o = obs.get(k);
+      if (linkageOnly) { if (lnkIv && lnkCells.has(k) && zB + CM > lnkIv[0] && zA - CM < lnkIv[1]) return 'pusher linkage'; continue; } if (o && !(exempt && exempt.has(k)) && zB + CM > o[0] && zA - CM < o[1]) return 'folded cluster';
+      if (lnkIv && lnkCells.has(k) && zB + CM > lnkIv[0] && zA - CM < lnkIv[1]) return 'pusher linkage';
+    }
+    return null;
+  };
+  // `meet`: the coupling at B's end — within `meet.reach` of B the named unit
+  // is the member this body is designed to engage, not an obstacle
+  const seg = (A, B, r, zA, zB, ex, meet = null, linkageOnly = false) => { const L = Math.hypot(B.x - A.x, B.y - A.y), n = Math.max(1, Math.ceil(L / 0.25)); for (let j = 0; j <= n; j++) { const skip = meet && L * (1 - j / n) <= meet.reach ? meet.unit : null; const u = clearAt(A.x + (B.x - A.x) * j / n, A.y + (B.y - A.y) * j / n, r, zA, zB, ex, skip, linkageOnly); if (u) return u; } return null; };
+  // the lay shaft's inner end carries the fork that takes the ring's tab: over
+  // the fork's span (main.js ALARM_FORK_RETREAT, 1.1) plus the crank's own
+  // section the selector is the member it meets
+  const FORK_MEET = { unit: 'Alarm selector', reach: CM };
+  // The shaft ENDS a fork span short of the tab (main.js ALARM_FORK_RETREAT,
+  // "the pin's span, root at the shaft's end to tip at the tab"), and what
+  // spans the rest — the centre crank, its pin, the fork block on the tab — is
+  // seated by the build's own §112 solve against the real metal (the rim
+  // guard, the post guard, the tab score), which this grid is far too coarse to
+  // second-guess. So the probe judges the shaft's BODY, T → the fork's root,
+  // and leaves the fork span to the solve that already owns it.
+  // The trim is the build's own (main.js scoreChord, §112): "the last 1.8 of
+  // the chord is the crank's WORKING zone over the ring — its clearances are
+  // the fork/crank contacts' own asserts". The fork span (1.1) lies inside it.
+  const FORK_SPAN = 1.8;
+  // Measured by DISTANCE, not occupancy: a band cell is 0.5 u and the shaft's
+  // margin is 0.15, so the grid refused the shipped shaft itself (K9). The band
+  // scan's own surface samples in the shaft's window are the obstacle set; a
+  // sample lattice of pitch STEP on a triangle puts every surface point within
+  // STEP/√3 of a sample (the circumradius of a lattice cell with sides ≤ STEP),
+  // so that is the slack a sample's distance is read down by.
+  if (!band.points) return { error: 'the band scan carried no surface samples (re-dump)' };
+  const PH = 1, ph = new Map();
+  for (const p of band.points) { const key = `${Math.floor(p[0] / PH)},${Math.floor(p[1] / PH)}`; let a = ph.get(key); if (!a) ph.set(key, a = []); a.push(p); }
+  const SLACK = band.pointStep / Math.sqrt(3);
+  const near3 = (ax, ay, bx, by, z, reach) => {
+    const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1e-12;
+    let worst = null;
+    for (let gx = Math.floor((Math.min(ax, bx) - reach) / PH); gx <= Math.floor((Math.max(ax, bx) + reach) / PH); gx++)
+      for (let gy = Math.floor((Math.min(ay, by) - reach) / PH); gy <= Math.floor((Math.max(ay, by) + reach) / PH); gy++)
+        for (const p of ph.get(`${gx},${gy}`) || []) {
+          const t = Math.max(0, Math.min(1, ((p[0] - ax) * vx + (p[1] - ay) * vy) / L2));
+          const d = Math.hypot(p[0] - (ax + vx * t), p[1] - (ay + vy * t), p[2] - z);
+          if (d < reach && (!worst || d < worst.d)) worst = { d, u: band.pointUnits[p[3]] };
+        }
+    return worst;
+  };
+  const layShaft = (T0, I0, rS = shaftR) => {
+    const L = Math.hypot(I0.x - T0.x, I0.y - T0.y); if (L <= FORK_SPAN) return 'chord shorter than the fork span';
+    const R0 = { x: I0.x + (T0.x - I0.x) * FORK_SPAN / L, y: I0.y + (T0.y - I0.y) * FORK_SPAN / L };
+    const w = near3(T0.x, T0.y, R0.x, R0.y, shaftZ, rS + CM + SLACK);
+    if (w) return `${w.u} (${(w.d - rS - SLACK).toFixed(3)} off the shaft's skin, read down by the lattice)`;
+    // the 240° linkage's dial-side group is not in the band scan (it is not
+    // built yet): its cells, held over its window, as before
+    return seg(T0, R0, rS, shaftZ - rS, shaftZ + rS, null, null, true);
+  };
+  const TURN_LD = LAY.TURN_LD_TARGET, STOCK = LAY.STOCK_MIN_U;
+  const ARM_W = lk.armW;
+  if (!(ARM_W > 0)) return { error: `the beak bar's width was not read (armW ${ARM_W}) — re-dump` };
+  const out = [];
+  for (let k = 0; k < 6; k++) {
+    const psi = aOld + phi + k * COL_PITCH, u = { x: Math.cos(psi), y: Math.sin(psi) };
+    const at = (d) => ({ x: Wf.x + u.x * d, y: Wf.y + u.y * d });
+    for (const row of lk.seatTable) {
+      const N = at(lk.landR), T = at(lk.landR + row.run), P = at(lk.landR + row.beakLen);
+      if (Math.hypot(P.x, P.y) > CASE_R_IN - CM) continue;
+      // the build's bar (main.js, §229): its underside the seat law's lift off
+      // the column tops, its depth max(STOCK, beakLen/SLENDER_TARGET) growing
+      // AWAY from the columns, ARM_W wide — and here, folded, "away" is dialward
+      const H = Math.max(STOCK, row.beakLen / LAY.SLENDER_TARGET);
+      const under = zFace - row.lift, axisZ = zFace - row.h;
+      const sweep = row.beakLen * row.theta;                         // the seat drop: the nose end tilts this far toward the plate
+      const bar = seg(P, N, ARM_W / 2, under - H, under + sweep);
+      if (bar) { out.push({ k, run: row.run, why: 'bar: ' + bar }); continue; }
+      const post = clearAt(P.x, P.y, STOCK, under - H, band.Z_CEIL);
+      if (post) { out.push({ k, run: row.run, why: 'pivot post: ' + post }); continue; }
+      const footLen = (under - H) - rimTop, rf = Math.max(STOCK, footLen / (2 * TURN_LD));
+      if (!(footLen > 0)) { out.push({ k, run: row.run, why: 'the foot would stand above the bar' }); continue; }
+      const foot = clearAt(T.x, T.y, rf, rimTop, under - H);
+      if (foot) { out.push({ k, run: row.run, why: 'foot: ' + foot }); continue; }
+      // the lay shaft: foot → inner end at the tab's reach, any azimuth. It is
+      // HELD where a hanger can rise from it to the plate's dial face, and its
+      // section is a CONSEQUENCE of the spans that leaves (main.js §232: the
+      // build cuts r to put the governing span on §54's target, λ = L/d ≤
+      // SLENDER_TARGET, an overhang counted SLENDER_OVERHANG_K long, and the
+      // whole bar on the lathe's L/D target). So for each chord: the stations
+      // a hanger can stand at, the governing span they leave, the r it asks,
+      // and whether a shaft of THAT r still runs clear.
+      let best = null; const shBlk = {};
+      for (let ad = 0; ad < 360; ad += 3) {
+        const I0 = { x: cl.sel.x + Math.cos(ad * DEG) * 5.4, y: cl.sel.y + Math.sin(ad * DEG) * 5.4 };
+        const L = Math.hypot(I0.x - T.x, I0.y - T.y), Lb = L - FORK_SPAN;   // the body, foot tip to the working zone
+        if (!(Lb > 0)) continue;
+        const sup = [];
+        for (let sd = 0; sd <= Lb + 1e-9; sd += 0.25) {
+          const Hh = { x: T.x + (I0.x - T.x) * sd / L, y: T.y + (I0.y - T.y) * sd / L };
+          if (!clearAt(Hh.x, Hh.y, STOCK, shaftZ + shaftR, band.Z_CEIL)) sup.push(sd);
+        }
+        if (sup.length < 2) { shBlk['no two hanger columns'] = (shBlk['no two hanger columns'] || 0) + 1; continue; }
+        let gap = 0; for (let i = 1; i < sup.length; i++) gap = Math.max(gap, sup[i] - sup[i - 1]);
+        const Leff = Math.max(gap, LAY.SLENDER_OVERHANG_K * sup[0], LAY.SLENDER_OVERHANG_K * (Lb - sup[sup.length - 1]));
+        const rReq = Math.max(Leff / (2 * LAY.SLENDER_TARGET), Lb / (2 * TURN_LD));
+        const sh = layShaft(T, I0, Math.max(rReq, shaftR));
+        if (sh) { const u0 = sh.split(' (')[0]; shBlk[u0] = (shBlk[u0] || 0) + 1; continue; }
+        if (!best || rReq < best.rReq - 1e-9 || (Math.abs(rReq - best.rReq) < 1e-9 && L < best.len)) best = { ad, len: L, I0, rReq, Leff, hangers: sup.length, firstHanger: sup[0], lastHanger: sup[sup.length - 1] };
+      }
+      if (!best) { out.push({ k, run: row.run, why: 'no clear lay shaft from the foot to the tab', shBlk }); continue; }
+      out.push({ k, run: row.run, ok: true, beakLen: row.beakLen, tailLen: row.tailLen, theta: row.theta, N, T, P, axisZ, H, footLen, rf, shaft: best, total: row.beakLen + best.len });
+    }
+  }
+  // K9 the lay-shaft test passes the shipped one: today's foot (the rod) to
+  // today's inner end (the tab's azimuth at the tab's reach), at today's stratum
+  const tabAz = Math.atan2(lk.tab.y - cl.sel.y, lk.tab.x - cl.sel.x);
+  const todayInner = { x: cl.sel.x + Math.cos(tabAz) * 5.4, y: cl.sel.y + Math.sin(tabAz) * 5.4 };
+  const k9 = layShaft({ x: lk.rod.x, y: lk.rod.y }, todayInner);
+  const k9Near = (() => { const L = Math.hypot(todayInner.x - lk.rod.x, todayInner.y - lk.rod.y); const R0 = { x: todayInner.x + (lk.rod.x - todayInner.x) * FORK_SPAN / L, y: todayInner.y + (lk.rod.y - todayInner.y) * FORK_SPAN / L }; return near3(lk.rod.x, lk.rod.y, R0.x, R0.y, shaftZ, 5); })();
+  return { k9, k9Near, shaftR, slack: SLACK, phiDeg: PHI_FOLD_DEG, Wf, aOldDeg: aOld / DEG, zFace, shaftZ, rimTop, linkageLen: lnk ? lnk.len : null, rows: out };
+})();
 
 // ---- controls ----------------------------------------------------------------
 const fails = [];
@@ -674,6 +951,11 @@ if (shortest) {
   k8 = sw ? `the shortest linkage swung through the stroke: the stem's pin moves ${sw.inp.toFixed(4)} along its press, the pawl's ${sw.outp.toFixed(4)} along its own (${(sw.outp - sw.inp).toFixed(4)} apart)` : 'the shortest linkage locks';
   if (!sw || !(sw.outp > 0) || Math.abs(sw.outp - sw.inp) > CM) fails.push(`K8 the linkage is not 1:1: ${k8}`);
 }
+// K9 (beakSite's): the lay-shaft corridor test passes the shipped shaft
+const k9 = beakSite.error ? 'not run: ' + beakSite.error : (beakSite.k9 ? `today's lay shaft is BLOCKED by ${beakSite.k9}` : `today's lay shaft, rod to the working zone at its own stratum (r ${beakSite.shaftR.toFixed(3)}), runs clear: nearest ${beakSite.k9Near ? beakSite.k9Near.u + ' ' + (beakSite.k9Near.d - beakSite.shaftR - beakSite.slack).toFixed(3) + ' off its skin' : 'nothing within 5'} (margin ${CM}, lattice slack ${beakSite.slack.toFixed(3)})`);
+if (beakSite.error || beakSite.k9) fails.push(`K9 ${k9}`);
+{
+}
 const padMoved = Math.hypot(cl.padCell[0].x - cl.padCell[0.5].x, cl.padCell[0].y - cl.padCell[0.5].y);
 if (!(cl.points.length > cl.atRest) || !(padMoved > 0.05)) fails.push(`K4 the sweep: ${cl.points.length} swept vs ${cl.atRest} at rest; the finger moved ${padMoved.toFixed(4)}`);
 
@@ -734,17 +1016,33 @@ const fw2 = (w) => `${fz(w[0])}..${fz(w[1])} (${(w[1] - w[0]).toFixed(2)})`;
 console.log(`\n  THE LINKAGE: two 1:1 cranks and a rod, today's stem held (arms ${f(A_MIN, 2)} .. ${f(A_MAX, 2)}, member window ≥ ${f(MIN_WIN)}; the shortest three per band the rod runs in):`);
 for (const L of linkage) {
   const parts = [];
-  for (const cfg of ['dial', 'plates']) {
+  const NAME = { dial: 'rod under the dial', plates: 'rod between the plates', slot: 'all between the plates, the pin down a base-plate slot' };
+  for (const cfg of ['dial', 'plates', 'slot']) {
     const b = L.found[cfg][0];
-    parts.push(b ? `${cfg === 'dial' ? 'rod under the dial' : 'rod between the plates'} ${f(b.len, 2)} (arms ${f(Math.abs(b.a), 2)} / ${f(Math.abs(b.b), 2)}, rod ${f(b.rod, 2)} at ${b.td}°, ${dot(b.vA, sub(b.EB, b.EA)) > 0 ? 'the rod pushes' : 'the rod pulls'}; plates ${fw2(b.wP)}, dial ${fw2(b.wD)})` : `${cfg === 'dial' ? 'rod under the dial' : 'rod between the plates'} ${L.checked >= SWEEP_CAP ? 'none before the sweep cap' : 'none'}`);
+    parts.push(b ? `${NAME[cfg]} ${f(b.len, 2)} (arms ${f(Math.abs(b.a), 2)} / ${f(Math.abs(b.b), 2)}, rod ${f(b.rod, 2)} at ${b.td}°, ${dot(b.vA, sub(b.EB, b.EA)) > 0 ? 'the rod pushes' : 'the rod pulls'}; plates ${fw2(b.wP)}${b.wD ? `, dial ${fw2(b.wD)}` : ''})` : `${NAME[cfg]} ${L.checked >= SWEEP_CAP ? 'none before the sweep cap' : 'none'}`);
   }
-  console.log(`    φ ${String(L.deg).padStart(3)}°  ${L.n} geometric candidates, ${L.checked} swept — ${parts.join('; ')}`);
+  console.log(`    φ ${String(L.deg).padStart(3)}°  ${L.n} geometric candidates, ${L.checked} swept — ${parts.join('; ')}${L.dialDropBlocked ? ` [under the dial: ${L.dialDropBlocked} wheel samples stand in the pin's column below the driver]` : ''}`);
 }
 if (shortest) {
   const pr = (P) => `(${f(P.x, 2)}, ${f(P.y, 2)})`;
-  console.log(`    shortest: φ ${shortest.deg}°, rod ${shortest.cfg === 'dial' ? 'under the dial' : 'between the plates'}: crank A pivot ${pr(shortest.PA)} arms ${f(Math.abs(shortest.a), 3)}, rod ${pr(shortest.EA)} → ${pr(shortest.EB)} (${f(shortest.rod, 3)}), crank B pivot ${pr(shortest.PB)} arms ${f(Math.abs(shortest.b), 3)}; total ${f(shortest.len, 2)}`);
+  console.log(`    shortest: φ ${shortest.deg}°, ${shortest.cfg === 'dial' ? 'rod under the dial' : shortest.cfg === 'slot' ? 'all between the plates' : 'rod between the plates'}: crank A pivot ${pr(shortest.PA)} arms ${f(Math.abs(shortest.a), 3)}, rod ${pr(shortest.EA)} → ${pr(shortest.EB)} (${f(shortest.rod, 3)}), crank B pivot ${pr(shortest.PB)} arms ${f(Math.abs(shortest.b), 3)}; total ${f(shortest.len, 2)}`);
 }
 console.log(`    the folded cluster as an obstacle rejected ${obsBites} linkage(s) the band alone would have passed`);
+if (beakSite.error) console.log(`\n  THE DIAL-SIDE BEAK: ${beakSite.error}`);
+else {
+  const okRows = beakSite.rows.filter((r) => r.ok).sort((a, b) => a.shaft.rReq - b.shaft.rReq || a.total - b.total);
+  console.log(`\n  THE DIAL-SIDE BEAK AND THE LAY SHAFT at the fold φ ${beakSite.phiDeg}° (the stop wheel's pitch): folded wheel (${f(beakSite.Wf.x, 2)}, ${f(beakSite.Wf.y, 2)}), castellation face z ${f(beakSite.zFace)}, lay shaft z ${f(beakSite.shaftZ)}, rim top ${f(beakSite.rimTop)}; today's ray ${f(beakSite.aOldDeg, 1)}°`);
+  console.log(`    ${okRows.length} clear of ${beakSite.rows.length} (direction × run, the nose's ray = today's + φ + k × 60°); by direction:`);
+  for (let k = 0; k < 6; k++) {
+    const rs = beakSite.rows.filter((q) => q.k === k), ok = rs.filter((q) => q.ok), why = {};
+    for (const q of rs) if (!q.ok) { const w = q.why.split(' (')[0]; why[w] = (why[w] || 0) + 1; }
+    const sh = {}; for (const q of rs) if (q.shBlk) for (const [u, n] of Object.entries(q.shBlk)) sh[u] = (sh[u] || 0) + n;
+    const top = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([u, n]) => `${u} ${n}`).join(', ');
+    console.log(`      k${k}: ${ok.length}/${rs.length} clear${ok.length ? ` (runs ${f(ok[0].run, 2)}–${f(ok[ok.length - 1].run, 2)})` : ''}; refused by ${top(why) || '—'}${Object.keys(sh).length ? `; the shaft's chords by ${top(sh)}` : ''}`);
+  }
+  // the three thinnest shafts per clear direction (then the shortest)
+  for (const r of [0, 1, 2, 3, 4, 5].flatMap((k) => okRows.filter((q) => q.k === k).slice(0, 3))) console.log(`    k${r.k} run ${f(r.run, 2)}: beak ${f(r.beakLen, 3)} tail ${f(r.tailLen, 3)} (pivot (${f(r.P.x, 2)}, ${f(r.P.y, 2)}), foot (${f(r.T.x, 2)}, ${f(r.T.y, 2)}) ${f(r.footLen, 2)} long ⌀ ${f(2 * r.rf, 3)}), lay shaft ${f(r.shaft.len, 2)} to the tab at ${r.shaft.ad}°, ${r.shaft.hangers} hanger stations ${f(r.shaft.firstHanger, 2)}–${f(r.shaft.lastHanger, 2)}, governing span ${f(r.shaft.Leff, 2)} → r ${f(r.shaft.rReq, 3)} (today's ${f(beakSite.shaftR, 3)}); total ${f(r.total, 2)}`);
+}
 console.log(`\n  every 30°, for the shape of it:`);
 for (let d = 0; d < 360; d += 30) console.log('    ' + show(results[d]));
 console.log(`\n  controls:`);
@@ -755,6 +1053,7 @@ console.log(`    K5 ${k5}`);
 console.log(`    K6 ${k6}`);
 console.log(`    K7 ${k7}`);
 console.log(`    K8 ${k8}`);
+console.log(`    K9 ${k9}`);
 console.log(`    K4 ${cl.points.length} swept samples against ${cl.atRest} at rest; the finger moves ${f(padMoved, 4)} between parities`);
 if (fails.length) { console.log('\nCONTROL FAILED:\n  ' + fails.join('\n  ')); process.exit(2); }
 console.log(`\nREPORT — controls pass; ${feasible.length ? `${feasible.length} feasible rotation(s)` : 'NO rotation of the rigid cluster fits the band as it stands'}`);

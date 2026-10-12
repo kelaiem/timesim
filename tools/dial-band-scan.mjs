@@ -15,6 +15,12 @@
 //   band     'dial' (default: dial back to the base plate's dial face) or
 //            'interplate' (the base plate's top face to the three-quarter
 //            plate's underside)
+//   pointsZ  optional [z0, z1]: also return the surface pass's own samples
+//            whose z falls in that window, as `points` ([x, y, z, unit index]
+//            into `pointUnits`, deduplicated on a 0.05 lattice) — for a caller
+//            that needs a body's DISTANCE to the tenants rather than a cell's
+//            occupancy (§261 landing 2c: the lay shaft's corridor, where a
+//            whole cell is the shaft's whole margin)
 //
 // Every cell also carries `ivs`, its union of occupied z intervals, and
 // `uivs`, the same per owning unit ([unit, intervals] pairs), for a caller
@@ -30,7 +36,7 @@
 // rays over four runs of one tree, every difference in those units, at most
 // one point of one cell in the occupancy table. A REPORT may carry that; a
 // gate built on this scan would have to settle the eases first.
-export async function dialBandScan({ GRID, exclude = [], band = 'dial' }) {
+export async function dialBandScan({ GRID, exclude = [], band = 'dial', pointsZ = null }) {
   const THREE = await import('three');
   const I = await import('./src/inspect.js');
   const clock = window.__clock;
@@ -189,7 +195,8 @@ export async function dialBandScan({ GRID, exclude = [], band = 'dial' }) {
     return Math.min(NR - 1, Math.floor(r / GRID.DR)) * NA + Math.min(NA - 1, Math.floor(a / GRID.DAZ_DEG));
   };
   const wv = new THREE.Vector3();
-  function surfaceSpans(m) {                          // Map k → [zmin, zmax] over this mesh's triangles
+  const PQ = 0.05, ptKeys = new Set(), points = [], pointUnits = [], unitIdx = new Map();
+  function surfaceSpans(m, unit = null) {             // Map k → [zmin, zmax] over this mesh's triangles
     const g = m.geometry, pos = g.attributes.position, idx = g.index;
     const n = pos.count, W = new Float64Array(n * 3);
     for (let i = 0; i < n; i++) { wv.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); W[3 * i] = wv.x; W[3 * i + 1] = wv.y; W[3 * i + 2] = wv.z; }
@@ -205,6 +212,11 @@ export async function dialBandScan({ GRID, exclude = [], band = 'dial' }) {
         const u = i / s, v = j / s;
         const x = ax + (bx - ax) * u + (qx - ax) * v, y = ay + (by - ay) * u + (qy - ay) * v, z = az + (bz - az) * u + (qz - az) * v;
         const k = cellOf(x, y); if (k < 0) continue;
+        if (unit !== null && z >= pointsZ[0] && z <= pointsZ[1]) {
+          let ui = unitIdx.get(unit); if (ui === undefined) { ui = pointUnits.length; pointUnits.push(unit); unitIdx.set(unit, ui); }
+          const key = `${Math.round(x / PQ)},${Math.round(y / PQ)},${Math.round(z / PQ)},${ui}`;
+          if (!ptKeys.has(key)) { ptKeys.add(key); points.push([x, y, z, ui]); }
+        }
         const e = out.get(k);
         if (!e) out.set(k, [z, z]); else { if (z < e[0]) e[0] = z; if (z > e[1]) e[1] = z; }
       }
@@ -243,7 +255,7 @@ export async function dialBandScan({ GRID, exclude = [], band = 'dial' }) {
           }
         });
       }
-      for (const [k, [z0, z1]] of surfaceSpans(m)) {
+      for (const [k, [z0, z1]] of surfaceSpans(m, pointsZ && target === occ ? unit : null)) {
         const a = Math.max(z0, lo(k)), b = Math.min(z1, hi(k));
         if (b - a > 1e-6) {
           target[k].push({ z0: a, z1: b, unit, pose: poseName });
@@ -346,6 +358,7 @@ export async function dialBandScan({ GRID, exclude = [], band = 'dial' }) {
 
   // ---- reductions for the report ------------------------------------------
   return {
+    ...(pointsZ ? { points, pointUnits, pointsZ, pointLattice: PQ, pointStep: STEP } : {}),
     Z_FLOOR, Z_CEIL, R_MAX, NR, NA, poses: poses.length, exclude: [...excluded], excludedMeshes, raysCast, meshScans, surfOnly, openIncidences, openByUnit: { ...openByUnit },
     wallsFound: { floor: [...floorZ].filter((z) => !Number.isNaN(z)).length, ceil: [...ceilZ].filter((z) => !Number.isNaN(z)).length },
     plateCells: (() => { let n = 0; for (let k = 0; k < N; k++) if (cr[k] < Math.min(R_MAX, dialBox.max.x)) n++; return n; })(),
