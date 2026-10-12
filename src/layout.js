@@ -72,13 +72,20 @@
 // escapement from rest (BALANCE_DRIVE.selfStart). `equalisation` row 15 holds
 // both, and that one step heavier fails one of them. `claimDeg` and `peakDeg`
 // are AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG for that balance (row 14).
-// A row without them is the 18,000 balance's, which is what 36,000 still is:
-// the lightest rim the metal allows (balanceWheelDims' floor) does not reach
-// it, and a smaller balance re-solves the escapement (TODO 242).
+// Measured (the record's own step test, nominal corner, hanging):
+//   18,000  0.645  200.36°  (0.650: 199.09°)   both start
+//   21,600  0.485  200.14°  (0.490: 198.58°)   both start
+//   28,800  0.270  201.75°  (0.275: 199.68°)   both start
+// — the target binds every row; the start, which a lighter balance makes
+// easier, does not. A row without them is the 18,000 balance's, which is what
+// 36,000 still is: the lightest rim the metal allows (balanceWheelDims' floor,
+// 0.2305) sustains about 162° there, so it needs a smaller balance, and that
+// re-solves the escapement (the impulse pin's circle scales with the
+// balance's radius) — TODO 242's open half.
 const RATE_TABLE = {
   18000: { fourthTeeth: 80, escPinion: 8, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, rimF: 0.485, claimDeg: 126, peakDeg: 311 }, // 8/96 = 1/12
-  28800: { fourthTeeth: 96, escPinion: 6, rimF: 0.24, claimDeg: 126, peakDeg: 311 }, // 6/96 = 1/16
+  21600: { fourthTeeth: 96, escPinion: 8, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
   36000: { fourthTeeth: 120, escPinion: 6, module: 0.168 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.

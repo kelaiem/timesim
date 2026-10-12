@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 242 | OPEN | Found fixing the stopped balance (TODO 238). `RATE_TABLE` re-gears only the fourth⇄escape mesh, so a faster rate quarters the hairspring's k while the escape torque falls with the ratio: from rest the train starts the balance at 18,000 only, and the swings it sustains hanging are about 199° / 161° / 112° / 85° at 18,000 / 21,600 / 28,800 / 36,000. Re-size the mainspring and train per rate so each row reaches `AMPLITUDE_TARGET_DEG` and starts itself |
+| 242 | PART-CLOSED | 21,600 and 28,800 now carry their own balance (RATE_TABLE `rimF` 0.485 and 0.270, the heaviest that reaches 200° hanging at the nominal corner and starts itself, `equalisation` row 15) and both start and reach the target. **36,000 remains**: the lightest rim the metal allows (0.2305, `balanceWheelDims`' floor) sustains about 162°, so it needs a smaller balance, which re-solves the escapement (the impulse pin's circle scales with the balance's radius) |
 | 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
 | 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
 | 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
@@ -32701,7 +32701,7 @@ at T = 1, so the stop and the banked tooth coincide by construction. Then:
 
 `sigmaSurvive_MPa` on crank A's row is the number this item retires.
 
-## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000
+## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 — PART-CLOSED (36,000 remains)
 
 Found fixing the stopped balance (TODO 238). A reader who picked a faster beat
 rate from the panel saw the movement lock up after the boot sync: the hack
@@ -32733,4 +32733,57 @@ at each rate) and the train's ratios so the escape torque delivers the energy
 the reserve and the ribbon's stress gate. Acceptance: every `RATE_TABLE` row
 reaches the target swing hanging at the nominal corner, and
 `BALANCE_DRIVE.selfStart.starts` is true at every row.
+
+**21,600 and 28,800: DONE, by the balance rather than the mainspring.** The
+fix path above asked for a bigger mainspring, and the movement has none to
+give: the drum is as large as the plate carries (`DRUM_R_ACTUAL`) and the
+ribbon is proportioned to its stress limit (TODO 192 step 3). A faster rate
+needs k ∝ I·F², so what a real high-beat calibre does instead is carry a
+LIGHTER balance, and that is what each row now does. The arithmetic that
+decides how much lighter: at 18,000 the balance spends 71% of each beat on its
+pivots (μ·m·g·r, which goes with its MASS) and 29% on everything else
+((π/2Q)·k·θ², which goes with its INERTIA), so a lighter rim cuts both, and
+the hairspring a lighter balance needs at a faster rate comes out at about
+the 18,000 balance's stiffness.
+
+- **One dimension law** (`balanceWheelDims` in `layout.js`): the rim keeps its
+  width (the stop work's pad annulus) and loses height with `rimF`, as TODO
+  207 did; the arms and the timing screws' heads scaled with it, and below
+  rimF 0.317 that would cut them under §50's stock floor, so they are held at
+  the floor instead. A screw head at the floor stays inside the rim's band
+  exactly while the rim is at or above the floor, so all three floors meet at
+  rimF 0.2305, the lightest this wheel can be. The builder, `OSC_I` and the
+  stop work's `HACK_SCREW_DROP` all read the one law.
+- **Per rate** (`RATE_TABLE`: `rimF`, `claimDeg`, `peakDeg`): the rim is the
+  heaviest, in `BAL_RIM_STEP` steps, that reaches `AMPLITUDE_TARGET_DEG` at the
+  nominal corner hanging AND is started by the escapement from rest (TODO
+  238's `selfStart`). `equalisation` row 15 now weighs the one-step-heavier
+  balance by the same law (inertia, mass, the spring re-solved to it, the
+  pivots' friction with the mass, the start by the same drive) and requires it
+  to fail one of the two. That replaces `AMPLITUDE_TARGET_SLACK_DEG` (1.5°),
+  which was one step's measured cost at 18,000 only. `probe-power-budget`
+  recomputes the heavier balance's swing itself and agrees.
+
+Measured (boot, nominal corner, hanging):
+
+| rate | rim | swing | one step heavier | starts | min (adverse) | hairspring |
+|---|---|---|---|---|---|---|
+| 18,000 | 0.645 | 200.36° | 199.09° | yes | 126.00° | 0.0239 mm |
+| 21,600 | 0.485 | 200.14° | 198.58° | yes | 128.47° | 0.0244 mm |
+| 28,800 | 0.270 | 201.75° | 199.68° | yes | 132.71° | 0.0243 mm |
+
+The target binds every row. The start, which a lighter balance makes easier,
+binds none: the 28,800 balance still starts at rim 0.295. The power-budget
+warnings these rows booted with (TODO 192's claim, TODO 207's target, TODO
+216's peak, TODO 219's maintaining spring with no run) are gone. The layout
+warnings the fast rows boot with (§186's clamp thread, the reset hammer, the
+drum's bound, §125's D4) are the re-geared train's and not this item's.
+
+**36,000: open.** The lightest rim the metal allows (0.2305) sustains about
+162° there (estimated off the same law; the row still carries the 18,000
+balance, at 82°). It needs a smaller balance: I ∝ r³ at a fixed section, so
+about 7.5 u radius against 9. That is not a rim row. `balancePinCircle` and
+the roller scale with the balance's radius, so the impulse pin, the notch, the
+lift and the knock re-solve with it, and so do the hairspring's radii, the
+cock and the stop work.
 
