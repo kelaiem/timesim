@@ -253,7 +253,7 @@ export const MECH_GRAPH = {
     // top face, through the plate's bore — which is a bearing, so the
     // striking wheel is carried by BOTH plates.
     ['Alarm barrel', 'plate'],        // §112: barrel arbor's floor boss stands in the base plate
-    ['Alarm striking wheel', 'plate'], // §112: the stud plants in the base plate...
+    ['Alarm striking wheel', 'plate'], // §261 landing 2a: the staff's foot runs in the base plate's bore (it was §112's planted stud)...
     ['Alarm striking wheel', 'Three-quarter plate'], // ...and the rotor's sleeve runs in the plate's bore (§112 — the tier-split's cut)
     ['Alarm governor', 'plate'],       // §112: stud in the base plate
   ['Alarm governor anchor', 'plate'],   // §107's own stud, §112's face — planted beside the governor's
@@ -820,7 +820,7 @@ const EXPECTED_PAIRS = [
   ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
   // Alarm striking works (§25 A) — the declared contacts of the power chain:
   ['Alarm barrel', 'plate'],        // §112: arbor boss planted in the base plate
-  ['Alarm striking wheel', 'plate'],// §112: the stud's base, likewise
+  ['Alarm striking wheel', 'plate'],// §261 landing 2a: the staff's journal in its plate bore
   ['Alarm striking wheel', 'Three-quarter plate'],// §112: the rotor's sleeve in the plate's bore
   ['Alarm barrel', 'Alarm striking wheel'],       // the gear mesh (barrel wall ⇄ strike pinion)
   ['Alarm striking wheel', 'Alarm lifting lever'],// §198: the cam under the lever's nose — the lift (floors row + penetration budget own it)
@@ -3312,8 +3312,6 @@ export const INTRA_UNIT_CONTACTS = [
   // whole unit, so no OTHER row renumbers — only the named mesh's own). This
   // check is what caught it. Naming also let the row say what the joint is:
   // it was recorded as the collar, and the collar is the separate row below.
-  { unit: 'Alarm striking wheel', a: 'alarmStrikeSleeve', b: 'CylinderGeometry#0', why: 'the sleeve is a turned step ON the strike arbor — one shaft, two meshes' },
-  { unit: 'Alarm striking wheel', a: 'alarmStrikePinion', b: 'CylinderGeometry#0', why: 'strike pinion RUNNING on the same arbor, a PIVOT_BORE_CLEAR fit (TODO 175 — this row called it pressed; it is bored the running fit, and read as buried only while the extrude bevel shrank every bore) (named by §112\'s placement gate — the row followed the name)' },
   // §89 split the alarm barrel into a fixed arbor and a body wound at its
   // teeth, so its rows changed shape the way the drum's did at TODO 1. The
   // arbor row is kept as the record of a joint that is still there and no
@@ -3491,8 +3489,6 @@ export const INTRA_UNIT_CONTACTS = [
   // side's own idiom: rotating members drawn coincident over their static
   // studs (the strike sleeve's "one shaft, two meshes"), and the strike
   // arbor's stud grown by a second turned length behind its new wheel.
-  { unit: 'Alarm striking wheel', a: 'alarmGovSleeve', b: 'CylinderGeometry#0', why: '§104: the governor-wheel sleeve is the strike arbor\'s next turned step over its stud — one shaft, two meshes; §112: the sleeve over the stud, one full-column post since the tier-split retired the upper length (§121 collapsed the two duplicate rows into this one, both citations kept)' },
-  { unit: 'Alarm striking wheel', a: 'alarmGovWheel', b: 'CylinderGeometry#0', why: '§104/§112: the 64T wheel\'s hub ring around the stud it turns on — running fit drawn coincident at the hub\'s inner band' },
   // §111 — these three rows used to say "coincident solids are the bearing".
   // They no longer have to: both governor arbors are BORED, the way every
   // upper pivot in the going train is, so each stud occupies a real hole and
@@ -4737,7 +4733,7 @@ export const PLATE_SEATS = [
   { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerStud", kind: "planted", why: "§268: the hammer spiral's stud, planted in the rim (GONG_RIM_PLANT) beside the post — a short pin up to the spiral band's top" },
-  { unit: "Alarm striking wheel", mesh: "CylinderGeometry#0", kind: "pivot", why: "the arbor's lower pivot" },
+  { unit: "Alarm striking wheel", mesh: "alarmStrikeStaff", kind: "pivot", why: "§261 landing 2a: the staff's foot, a journal running in its plate bore (it was §112's stud, planted in the solid plate)" },
   { unit: "Alarm barrel", mesh: "LatheGeometry#0", kind: "planted", why: "the barrel arbor's bored boss, on the plate (§99)" },
   { unit: "Alarm barrel", mesh: "alarmBarrelArbor", kind: "pivot", why: "the barrel arbor, running in that boss (§99)" },
   { unit: "Alarm governor", mesh: "alarmGovStud", kind: "planted", why: "the governor's stud, planted in the plate" },
