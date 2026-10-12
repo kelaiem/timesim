@@ -76,17 +76,22 @@
 //   18,000  0.645  200.36°  (0.650: 199.09°)   both start
 //   21,600  0.485  200.14°  (0.490: 198.58°)   both start
 //   28,800  0.270  201.75°  (0.275: 199.68°)   both start
+//   36,000  0.250  201.93°  (0.255: 199.75°)   both start   balanceR 7.5
 // — the target binds every row; the start, which a lighter balance makes
-// easier, does not. A row without them is the 18,000 balance's, which is what
-// 36,000 still is: the lightest rim the metal allows (balanceWheelDims' floor,
-// 0.2305) sustains about 162° there, so it needs a smaller balance, and that
-// re-solves the escapement (the impulse pin's circle scales with the
-// balance's radius) — TODO 242's open half.
+// easier, does not. A row without them is the 18,000 balance's.
+// `balanceR` is the balance's RADIUS (BALANCE_R_SPEC), and only 36,000 moves
+// it: at r 9 the lightest rim the metal allows (balanceWheelDims' floor,
+// 0.2305) sustains about 162° there. The radius is the largest in steps of a
+// quarter that still reaches the target on a rim inside the metal (7.75
+// reaches 199.21° at the lightest grid rim, 0.235), and a smaller balance
+// re-solves the escapement it drives — the roller, the escape-to-balance
+// distance and so the notch, bank and knock (298.27° at r 7.5, so peakDeg
+// 299) all scale off BALANCE_R; the escape wheel and the angles do not.
 const RATE_TABLE = {
   18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
   21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6, balanceR: 9, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, rimF: 0.25, claimDeg: 126, peakDeg: 311 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, rimF: 0.25, claimDeg: 133, peakDeg: 299 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);

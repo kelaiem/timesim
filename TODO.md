@@ -32846,7 +32846,7 @@ have taken the 5 N.
   one column, and its width is also the legibility tooth, so it is not
   thinned under a derivation that still holds.
 
-## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 — DONE AT 21600 AND 28800
+## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 — CLOSED
 
 Found fixing the stopped balance (TODO 238). A reader who picked a faster beat
 rate from the panel saw the movement lock up after the boot sync: the hack
@@ -32930,11 +32930,51 @@ old claim and fires once on the solved 132 (ρ 0.2006, bracket 0.0004..0.1392
 against 0.15). The claim is the solve's minimum rounded down and is not
 chosen to quiet it; the beak's bracket is TODO 221's to widen.
 
-**36,000: open.** The lightest rim the metal allows (0.2305) sustains about
-162° there (estimated off the same law; the row still carries the 18,000
-balance, at 82°). It needs a smaller balance: I ∝ r³ at a fixed section, so
-about 7.5 u radius against 9. That is not a rim row. `balancePinCircle` and
-the roller scale with the balance's radius, so the impulse pin, the notch, the
-lift and the knock re-solve with it, and so do the hairspring's radii, the
-cock and the stop work.
+**36,000: DONE, by a smaller balance.** The lightest rim the metal allows
+(0.2305) sustains about 162° there, so no rim row reaches the target: the
+radius has to come down too (I ∝ r³ at a fixed section). `RATE_TABLE` rows now
+carry `balanceR`, exported as `BALANCE_R_SPEC`, which `main.js`'s `BALANCE_R`
+reads. 36,000 takes 7.5, the largest radius in quarter steps that still
+reaches the target on a rim inside the metal: 7.75 reaches 199.21° at the
+lightest grid rim, 0.235. What scales with the radius is already derived from
+it: the roller (0.18·R), the escape-to-balance distance (1.3·(4.5 + R), which
+holds the lever angle near 8°), and so the fork's reach, notch, bank and knock;
+the hairspring's radii (0.88·R outer). The escape wheel, the lift, the beat
+and the embrace are the 18,000 escapement's.
+
+| rate | radius | rim | swing | one step heavier | starts | min (adverse) | knock | hairspring |
+|---|---|---|---|---|---|---|---|---|
+| 36,000 | 7.5 | 0.250 | 201.93° | 199.75° | yes | 133.11° | 298.27° | 0.0215 mm |
+
+So the row's claim is 133 and its peak 299: at the smaller radius the KNOCK,
+not the solve's 362° favourable maximum, is the largest swing it can reach.
+
+Three things the smaller balance moved, each fixed where it lives:
+
+- **TODO 147's stud pitch.** The spiral packs into a smaller annulus, and at
+  eight coils its pitch (0.6375) fell under the stud post's 0.65. `HS_COILS`
+  is now the most coils, up to eight, whose pitch carries the post:
+  `floor((HS_OUTER_R − HS_INNER_R) / 0.65)`, seven at 36,000 and still eight at
+  r 9.
+- **The balance cock had no seat.** Its slab ends 0.1 inside the cut edge,
+  which on the balance's own bearings is its swept radius plus the cut margin,
+  so the T-bar stands just outside the balance and the legs straddle it. At
+  r 7.5 the bar came in, the legs splayed out of the 75° cut wedge on every
+  bearing the stop work left open (best −0.582 at φ 25°), and the fallback
+  bearing grew the plate's cut until it reached the escape pivot. The seat
+  scan now lengthens the slab in 0.25 steps, the least that seats, which moves
+  the feet in toward its axis: a position change of a fixture, with the jewel
+  on the staff. Zero added wherever the cut edge alone seats, which is every
+  other rate.
+- **The arrest window owed the governor's a land.** A LATE window (§201) is
+  solved after the early ones, against holes, slots and keeps, but not against
+  the windows already cut. `checkPlateWindows` caught it after the fact: the
+  arrest window left a 0.017 land to the governor's at 36,000. A late window's
+  rays now also keep `TQ_LAND_MIN` from earlier windows' edges that can reach
+  its disc.
+
+Still on the 36,000 boot, and not this item's: TODO 175's 6-leaf pinion bore
+band and the reset hammer's 0.1486 against `CLEAR_MARGIN`. Both boot on
+`main` at 36,000 too. 36,000 is not a swept spec point, so the battery does
+not see it; the boot is the evidence.
 
