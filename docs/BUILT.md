@@ -34932,6 +34932,72 @@ orders past the 7e-8 the battery read them under it by).
   govern) and the striking work's own bands (L3, now that the hammer's plane
   sets the pane) remain priced in the step-1 table, unfiled.
 
+## §275 — Sound is always off at load; the boot screen's button is the opt-in
+
+> Reported on Safari: sound sometimes would not play however often the toggle
+> was pressed. Audio needs a trusted gesture and boot has none, so every path
+> that turned sound on at boot was a path to a button that read On over a
+> context that could not run.
+
+**What was wrong, in three parts.**
+
+- **Boot called `setSound(true)` with no gesture behind it** — from the saved
+  `soundOn`, from `?sound=1`, and (through the share link) from every link
+  that carried `sound`. The context came up `suspended`, the panel read On, and
+  the first press of the button then turned sound OFF: "toggling does nothing".
+  Persisting the toggle is what made it recur on every reload.
+- **The recovery listeners could not fire on iOS.** §8's follow-up resumed the
+  context on window `pointerdown` and `keydown`. A touch `pointerdown` is not a
+  user activation in Safari (`touchend`/`click` are), so a restored context was
+  never resumed by touch.
+- **They also tested `state === 'suspended'`.** Safari parks a context in
+  `'interrupted'` (tab switch, a call, the lock screen, the ringer switch), and
+  nothing retried that, while `sndClick`'s `state !== 'running'` guard went on
+  dropping every tick with the button still On.
+
+**What it does now.**
+
+- Sound is **always off at load.** `restoredSound` is gone; `soundOn` is still
+  saved (so exported JSON keeps its shape) and is not restored. The share link
+  no longer writes `sound`, and `?sound=` is no longer read, because a link
+  cannot carry a gesture and a parameter that cannot do what it says is a claim.
+- **`index.html`'s boot screen carries an "Enable sound" button**, on glass for
+  the whole build. Its `click` handler (registered before the paint barrier; not
+  on `BUILD_GUARDED_EVENTS`, which swallows window `pointerdown`/`pointerup`)
+  creates the `AudioContext` *inside the click*, starts a one-sample silent
+  buffer (the reliable Safari unlock) and resumes. It publishes
+  `window.__bootAudio` and `window.__bootSound`; `main.js` adopts the context in
+  `setSound`/`scriptStart` instead of creating a second one with no gesture.
+  A click that lands after `main.js` defines `__bootSoundApply` is applied
+  through that hook; one before it is read as a flag at the same line. State is
+  the attribute (`aria-pressed`), never the label. The button is a toggle, so a
+  second press leaves sound off.
+- **`resumeAudio()`** replaces the three `=== 'suspended'` tests: any state but
+  `running` and `closed` is resumed (the promise's rejection is swallowed — the
+  next real input retries), and a `closed` context is rebuilt. The window
+  listeners now cover `pointerdown`, `pointerup`, `touchend`, `click` and
+  `keydown`.
+- One new localized string, `Enable sound`, in all 22 non-English tables.
+  **These are not native-reviewed**; `l10n-review-packets` will list them.
+
+**Measured** (`tools/probe-sound-boot-optin.mjs`, Chromium with the autoplay
+policy put back — Playwright's default `no-user-gesture-required` makes every
+gesture claim vacuous, which the CONTROL caught on its first run, and
+`page.evaluate` carries `userGesture:true`, so the control builds its context in
+an init script): a save with `soundOn:true` and `?sound=1` each boot with the
+panel OFF and **no context made**; the boot button yields exactly one `running`
+context, adopted, with the panel ON; an `interrupted` context is resumed by the
+next click; the boot button toggles off. Run against the tree before the change,
+the first two FAIL (panel On, a context made at boot).
+
+**Not measured.** This container has no WebKit, so the Safari-specific claims
+(the silent-buffer unlock, `interrupted`) are argued from the platform's
+documented behaviour and exercised only by a simulated `interrupted` state.
+The mid-build click cannot be aimed by Playwright (a building page answers its
+queries only at a seam), so the either-side-of-`__bootSoundApply` hand-off is
+built to survive both orders but only the reachable one is measured. Whoever
+has an iPhone should press the boot button, then the panel button, and listen.
+
 ## §219 tier two (a) — the technic fork drawn: `technic.html`
 
 **PARTIAL**, like the entry it extends. Tier two (b) is still unbuilt: the

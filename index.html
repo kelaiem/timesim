@@ -84,6 +84,18 @@
     margin: 0; min-width: 4.5ch; text-align: end;
     color: #8fa6bf; font-size: 12px; font-variant-numeric: tabular-nums;
   }
+  /* The sound opt-in. Static on purpose (§238: nothing here may animate a
+     layout property, and a pressed state needs no motion at all). Hidden once
+     the build fails — there is nothing left to enable sound for. */
+  #boot .boot-sound {
+    margin: 0; padding: 8px 18px; border-radius: 6px; cursor: pointer;
+    font: inherit; font-size: 13px; color: #eaf0f7; background: transparent;
+    border: 1px solid rgba(255,255,255,0.28);
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  #boot .boot-sound:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
+  #boot .boot-sound[aria-pressed="true"] { background: #7a3ad8; border-color: #7a3ad8; }
+  #boot.failed .boot-sound { display: none; }
   @keyframes bootSpin { to { transform: rotate(360deg); } }
   @keyframes bootNote { from { opacity: 0; } to { opacity: 1; } }
   /* The failure state (the entry script's catch): the ring stops — a spinner
@@ -139,6 +151,11 @@
     <p class="boot-pct" aria-hidden="true"></p>
   </div>
   <p class="boot-note">Every part is cut from code — nothing is loaded from a file.</p>
+  <!-- The ONLY way sound starts at boot. Sound is always off at load — a saved
+       "on" or a link cannot start it — because audio needs a trusted gesture
+       and boot has none; this button is that gesture, on glass for the whole
+       wait. State is the attribute (aria-pressed), never the label. -->
+  <button type="button" class="boot-sound" id="boot-sound" aria-pressed="false">Enable sound</button>
 </div>
 <script>
   // §22 — the watch spec, read from the URL BEFORE any module loads. It must
@@ -240,6 +257,39 @@
   // glass with the rest of the screen; main.js moves it from the first hand-back.
   const pct = boot && boot.querySelector('.boot-pct');
   if (pct) pct.textContent = fmtPct(0);
+  // The sound opt-in. This is the one place at boot that holds a TRUSTED
+  // gesture, so the AudioContext is made and unlocked HERE, synchronously in
+  // the click, and handed to main.js as window.__bootAudio (it adopts rather
+  // than creates). Safari is why it is done this thoroughly: it will not
+  // start a context from anything but a click/touchend, and its unlock is only
+  // reliable once something has actually been started in the gesture — hence
+  // the one-sample silent buffer. A `click`, not pointerdown: touch pointerdown
+  // is not an activation on iOS, and the build swallows window pointer events
+  // anyway while it runs (main.js BUILD_GUARDED_EVENTS) — `click` is not on
+  // that list. Registered BEFORE the paint barrier below so the button works
+  // from its first frame. main.js hooks __bootSoundApply when it is far enough
+  // along to act on the choice; until then the choice is just the flag.
+  const soundBtn = boot && boot.querySelector('#boot-sound');
+  if (soundBtn) soundBtn.addEventListener('click', () => {
+    const on = soundBtn.getAttribute('aria-pressed') !== 'true';
+    if (on) {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC && !window.__bootAudio) window.__bootAudio = new AC();
+        const ctx = window.__bootAudio;
+        if (ctx) {
+          const src = ctx.createBufferSource();
+          src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+          src.connect(ctx.destination);
+          src.start(0);
+          if (ctx.state !== 'running') ctx.resume().catch(() => {});
+        }
+      } catch (e) { /* no Web Audio: the choice below still reads off */ }
+    }
+    window.__bootSound = on && !!window.__bootAudio;
+    soundBtn.setAttribute('aria-pressed', String(window.__bootSound));
+    if (typeof window.__bootSoundApply === 'function') window.__bootSoundApply(window.__bootSound);
+  });
   await new Promise((resolve) => {
     let settled = false;
     const go = () => { if (!settled) { settled = true; resolve(); } };
