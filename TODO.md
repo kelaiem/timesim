@@ -31944,6 +31944,24 @@ net's 64 samples plus a fine sweep of the mid-press window), 107 poses:
   mid-press, the jumper's blade (0.1649 at `alarmPress` f 0.3885). The probe
   fails without the head, as it must.
 - Boot silent. The `INTRA_UNIT_FLOORS` rows rod⇄eye and rod⇄web keep their 0.15.
+- **The jumper's blade, for the record.** Before this change the eye stood
+  **0.0193** off `alarmJumperBlade` at `alarmPress` f ≈ 0.388, and 0.0512 of
+  slide from touching it. That is under `CLEAR_MARGIN`, and no gate saw it,
+  because Alarm switch ⇄ Alarm link is an EXPECTED pair with no floors row for
+  the eye. The smaller eye stands 0.1649 of slide off it.
+
+**Tables.**
+- `INTRA_UNIT_CONTACTS`:
+  - pin⇄eye is now the press: a NOTE row, because they are same-frame movers;
+  - pin⇄head is now the journal;
+  - two thrust rows are added, eye⇄head and pin head⇄head.
+- The pin moved into the lever's arm, so it is a mover. `JMP_SITE_MOVERS`' 'alarm
+  link' bounded row already covers the unit's whole tree.
+- The §137 crank row's wording follows the new fit.
+- The back envelope's construction maximum is unchanged at 14.032. It is now the
+  bush's crown (r 0.5332), where it was the eye's. The Alarm link's swept
+  maximum falls 14.050 → 14.032, because the web's top came down with the eye.
+- No new waivers.
 
 **What it found and did not fix.** Investigating the axial load showed it is not
 the 9.5 mN of friction estimated above. The castellation FLANKS push the nose
