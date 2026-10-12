@@ -5102,7 +5102,7 @@ const HAMMER_ROLLER_R = hammerLever.userData.rollerR;
 const heartRadiusAt = (th) =>
   HEART_R_MIN + (HEART_R - HEART_R_MIN) * (1 - Math.cos(th)) / 2;
 await breathe(36);
-const [HEART_FREE_D0, HEART_FREE_D1, HEART_FREE_TABLE] = (() => {
+const [HEART_FREE_D0, HEART_FREE_D1, HEART_FREE_TABLE, HEART_FREE_MID] = (() => {
   const rollerDist = (rot) => Math.hypot(
     hammerRollerAt(rot).x - P.fourth.x, hammerRollerAt(rot).y - P.fourth.y);
   const d0 = rollerDist(hammerBaseAngle);                          // seated
@@ -5150,11 +5150,21 @@ const [HEART_FREE_D0, HEART_FREE_D1, HEART_FREE_TABLE] = (() => {
   // between samples, and that slack lands as roller-into-flank overlap. At 64
   // it measured 0.0008 past the meshes' own faceting band; the error falls as
   // 1/N², so this is the sample count that puts it under the polygons.
+  //
+  // AND EACH INTERVAL CARRIES ITS MIDPOINT, read back as a quadratic through
+  // the three. The linear chord is the error's whole source: free(d) is convex
+  // where it climbs to π, so the chord stands above the curve and the band it
+  // hands the tick law is wider than the roller allows. At 18,000 the roller
+  // works where the curve is gentle and the chord is 2e-6 long; at 36,000 the
+  // arm is 9.27 against 7.73 and the roller works at 176° of free angle, up
+  // the steep end, where the chord put the roller 0.0021 into the lobe and
+  // the head, which rides in its shadow, 0.0014 under CLEAR_MARGIN. The
+  // quadratic's error is third order in the interval, the chord's second; the
+  // midpoints are solved by the same bisection, so every sample stays a free
+  // angle the roller has been measured to permit.
   const N = 256;
-  const table = new Float64Array(N + 1);
-  for (let k = 0; k <= N; k++) {
-    const d = d0 + ((d1 - d0) * k) / N;
-    if (clearance(d, Math.PI) >= 0) { table[k] = Math.PI; continue; } // nothing touches anywhere
+  const solveFree = (d) => {
+    if (clearance(d, Math.PI) >= 0) return Math.PI; // nothing touches anywhere
     // Clearance falls monotonically as the notch swings off the roller, so
     // the free angle is a plain bisection between "shut" and "clear".
     let lo = 0, hi = Math.PI;
@@ -5162,9 +5172,12 @@ const [HEART_FREE_D0, HEART_FREE_D1, HEART_FREE_TABLE] = (() => {
       const m = (lo + hi) / 2;
       if (clearance(d, m) >= 0) lo = m; else hi = m;
     }
-    table[k] = lo;
-  }
-  return [d0, d1, table];
+    return lo;
+  };
+  const table = new Float64Array(N + 1), mid = new Float64Array(N);
+  for (let k = 0; k <= N; k++) table[k] = solveFree(d0 + ((d1 - d0) * k) / N);
+  for (let k = 0; k < N; k++) mid[k] = solveFree(d0 + ((d1 - d0) * (k + 0.5)) / N);
+  return [d0, d1, table, mid];
 })();
 await breathe(37);
 const heartFreeAngleAt = (d) => {
@@ -5172,7 +5185,12 @@ const heartFreeAngleAt = (d) => {
   if (u <= 0) return 0;                                   // shut, and no closer than the seat
   if (u >= HEART_FREE_TABLE.length - 1) return Math.PI;   // beyond the retracted stand-off
   const i = Math.floor(u), f = u - i;
-  return HEART_FREE_TABLE[i] + (HEART_FREE_TABLE[i + 1] - HEART_FREE_TABLE[i]) * f;
+  // Lagrange through the interval's ends and its solved midpoint, clamped to
+  // [0, π]: where the curve meets π part way along an interval the parabola
+  // through (…, π, π) bows past it, and π is the most any notch can stand off.
+  const a = HEART_FREE_TABLE[i], m = HEART_FREE_MID[i], b = HEART_FREE_TABLE[i + 1];
+  const q = a * (2 * f - 1) * (f - 1) + m * 4 * f * (1 - f) + b * f * (2 * f - 1);
+  return Math.min(Math.PI, Math.max(0, q));
 };
 {
   // The two ends, read off the SOLVE rather than off the lookup (the lookup
