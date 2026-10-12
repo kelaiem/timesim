@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Install the pinned Playwright Chromium for a CI job, with its system
+# libraries bounded in time. Every workflow that needs a browser calls this one
+# script, so the install is written once.
+#
+# WHY IT EXISTS. `npx playwright install --with-deps chromium` does two things:
+# it apt-installs the shared libraries Chromium needs (which actions/cache
+# cannot carry, so it runs every time) and it fetches the browser (which the
+# cache does carry). On 2026-10-12 the apt half hung with nothing to stop it:
+# the runner's Azure Ubuntu mirror stopped answering, apt fell back to
+# archive.ubuntu.com, and `apt-get update` sat there until the job's own cap
+# killed it — 8m35s on one Explainer run, 11m on main's push run 38263817128,
+# both with the browser cache HIT. A healthy install takes 14–15 s.
+#
+# So the apt half is bounded twice: each request by apt's own timeouts (an
+# unanswering mirror gives up and the next one is tried), and each attempt by
+# `timeout`, retried, so one stuck connection costs one attempt rather than the
+# job. Linux only — it is apt work, and on macOS (§200's self-hosted host)
+# --with-deps was measured to download a codec the harness never uses and stall.
+#
+#   tools/ci-install-chromium.sh        (from anywhere; it cd's to tools/)
+set -euo pipefail
+cd "$(dirname "$0")"
+
+# 90 s per attempt: six times the healthy 14–15 s install, and three attempts
+# fit the tightest job that calls this (explain-i18n, 10 min, whose checks
+# take ~4.3 min after the install) with a minute to spare.
+ATTEMPT_S=90
+ATTEMPTS=3
+
+if [ "$(uname -s)" = Linux ]; then
+  # Per-request bounds: 20 s to connect or stall, three retries per file.
+  printf 'Acquire::Retries "3";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' \
+    | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null
+  ok=
+  for attempt in $(seq 1 "$ATTEMPTS"); do
+    if timeout "$ATTEMPT_S" npx playwright install-deps chromium; then ok=1; break; fi
+    echo "::warning::Chromium system libraries: attempt $attempt of $ATTEMPTS failed or passed ${ATTEMPT_S}s"
+  done
+  if [ -z "$ok" ]; then
+    echo "::error::Chromium system libraries did not install in $ATTEMPTS attempts of ${ATTEMPT_S}s — an apt mirror is down, not the change under test"
+    exit 1
+  fi
+fi
+
+# The browser itself: a no-op on a cache hit, a download on a miss.
+npx playwright install chromium

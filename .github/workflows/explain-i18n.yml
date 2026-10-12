@@ -102,6 +102,8 @@ on:
       - 'tools/l10n-review/**'
       - '.claude/skills/**'
       - '.github/workflows/explain-i18n.yml'
+      # the one Chromium install every browser job here calls
+      - 'tools/ci-install-chromium.sh'
       # the quote audit compares the page against these, so a constant moving
       # here must re-run it — that is the whole point of the check
       - 'src/layout.js'
@@ -139,8 +141,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
 
       - name: Install Chromium
-        working-directory: tools
-        run: npx playwright install --with-deps chromium
+        run: tools/ci-install-chromium.sh   # bounded apt, then the cached browser
 
       # Cheapest first, and it needs no browser: if the page has drifted from
       # the source, that is worth knowing before spending a Chromium on prose.
