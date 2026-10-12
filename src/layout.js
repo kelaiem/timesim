@@ -75,18 +75,15 @@ export const SPEC = (() => {
   // turn, one turn per 8 h) grows past what the plate floor can absorb —
   // the three-quarter-plate boot assert is the backstop, this clamp is the
   // courtesy that keeps a typo from tripping it.
-  // Snapped to a multiple of 3 — WHICH GUARDS A RETIRED RULE (TODO 134).
-  // This read "the reserve indicator's second-stage wheel takes 2h/3 teeth",
-  // and that was true of the 150°-arc indicator. Since §152 graduated the arc
-  // to 300°, `rsvTeethW2` is `SPEC.reserveHours / 5` (main.js), so an integer
-  // wheel needs h a multiple of FIVE and this snap does not deliver one: ten
-  // of the thirteen reachable values are fractional, as are four of the five
-  // reserve-menu options. The default 30 is a multiple of both, which is why
-  // the shipped movement is correct and nothing has ever warned. Left as-is
-  // deliberately — moving the snap to 5 re-enters the problem at the ceiling
-  // (round(48/5)·5 = 50, clamped back to 48), so the repair is a §22 decision
-  // about the cap and the menu, not an edit to this line. A tooth count is
-  // still not a place for rounding error.
+  // Snapped to a multiple of 3. It used to guard the reserve indicator's
+  // tooth count (2h/3 teeth on the 150° arc), and since §152's 300° arc it
+  // guarded nothing: w2 was h/5, fractional at ten of the thirteen values
+  // this snap produces (TODO 134). The counts are now SOLVED from the reserve
+  // (`reserveTrainCandidates` below, cut in main.js), so the indicator no
+  // longer needs any snap. The snap stays because the other h-derived
+  // quantities (the fusee's wraps, the set-up ratchet's click) were never
+  // re-checked off the multiples of 3 — relaxing it to whole hours is TODO
+  // 134's open residue, not a free edit.
   const reserveHours = Number.isFinite(Number(raw.reserveHours))
     ? Math.min(48, Math.max(12, Math.round(Number(raw.reserveHours) / 3) * 3)) : 30;
   // §33 step 1 — the crown's azimuth (movement-frame world degrees of the
@@ -1523,10 +1520,62 @@ export const RESERVE_STATION_R = 15.500000000000002;
 // the SETTING TRAVERSE now has to be sited against this train and is built
 // ~7000 lines earlier. They are plan-space facts (counts and a module), which
 // is what this file is for; the train's own build still owns everything
-// derived from them. w2 = reserveHours/5 keeps the 300° sweep an integer.
-export const rsvTeethP0 = 8, rsvTeethW1 = 28, rsvTeethP1 = 10;
+// derived from them.
+//
+// TODO 134 — THE COUNTS ARE SOLVED FROM THE RESERVE, not written for 30 h.
+// What the traverse is sited against is stage one's CENTRE DISTANCE, rsvD0,
+// never its counts (nothing in main.js reads them before the train is cut),
+// so stage one's TOOTH TOTAL is the plan fact and its split is free: holding
+// p0 + w1 at the shipped 36 holds rsvD0, and with it every siting solve.
+// The shipped split is the 30 h movement's, and the solve prefers it.
+export const RSV_STAGE1_SHIPPED = Object.freeze({ p0: 8, w1: 28 });
+export const RSV_STAGE1_TEETH = RSV_STAGE1_SHIPPED.p0 + RSV_STAGE1_SHIPPED.w1;   // 36, the rsvD0 invariant
 export const rsvModule0 = 0.34;
-export const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
+export const rsvD0 = (rsvModule0 * RSV_STAGE1_TEETH) / 2;
+// The fewest leaves any pinion here may be cut with: the movement's own
+// smallest pinion, the 6-leaf escape pinions RATE_TABLE runs at 28,800 and
+// 36,000 (and the usual lower limit in watchwork — under six leaves the
+// engaging action happens almost entirely before the line of centres).
+// It is what makes the 30 h train 10:6 rather than 5:3: h/50 = 3/5 at
+// 30 h, and the smallest multiple with a pinion of at least six leaves is
+// 6/10.
+export const PINION_LEAVES_MIN = Math.min(...Object.values(RATE_TABLE).map((r) => r.escPinion));
+// The reserve reduction is a CONSEQUENCE of the dial, never a count: p0 turns
+// RESERVE_BARREL_TURNS = h · pinion/teeth of the first stage lock to lock and
+// the hand sweeps sweepDeg, so R = turns · 360/sweep (21/10 at 30 h on the
+// 300° arc). Returned as an exact [num, den] so no float reaches a tooth count.
+const _gcdN = (a, b) => (b ? _gcdN(b, a % b) : a);
+export function reserveReduction(hours, sweepDeg) {
+  const num = hours * TRAIN.barrel.pinion * 360, den = TRAIN.barrel.teeth * sweepDeg;
+  const g = _gcdN(num, den);
+  return [num / g, den / g];
+}
+// Every train that turns the hand by EXACTLY R, in the order the build should
+// prefer them: the shipped stage one first (it is the one the 30 h movement
+// was proven with), then the other splits of the same total, nearest the
+// shipped p0 first; within one stage one, stage two at the smallest multiple of
+// its reduced ratio whose smaller member meets PINION_LEAVES_MIN. Each further multiple
+// is a finer stage two at the same centre distance, so the list is ordered by
+// falling module — the build takes the first one its metal admits (the tooth
+// floor, the bores), which is why this function knows no geometry. A count is
+// an integer or it is not offered.
+export function reserveTrainCandidates([rNum, rDen], { maxTeeth = 400 } = {}) {
+  const out = [];
+  const firsts = [];
+  for (let p0 = PINION_LEAVES_MIN; p0 < RSV_STAGE1_TEETH - PINION_LEAVES_MIN; p0++) firsts.push(p0);
+  firsts.sort((a, b) => (a === RSV_STAGE1_SHIPPED.p0 ? -1 : b === RSV_STAGE1_SHIPPED.p0 ? 1 : Math.abs(a - RSV_STAGE1_SHIPPED.p0) - Math.abs(b - RSV_STAGE1_SHIPPED.p0) || a - b));
+  for (const p0 of firsts) {
+    const w1 = RSV_STAGE1_TEETH - p0;
+    // R = (w1/p0)(w2/p1)  ⇒  w2/p1 = R · p0/w1, reduced
+    let a = rNum * p0, b = rDen * w1;
+    const g = _gcdN(a, b); a /= g; b /= g;
+    // Both members of stage two are held to the leaf floor: it is a STEP-UP
+    // (p1 drives the smaller w2), so w2 is the member doing a pinion's work.
+    for (let k = Math.ceil(PINION_LEAVES_MIN / Math.min(a, b)); k * (a + b) <= maxTeeth; k++)
+      out.push({ p0, w1, p1: k * b, w2: k * a });
+  }
+  return out;
+}
 // §125 step 1 — THE ALARM CORNER'S DESIGN RADIUS. Until §125 the corner's
 // default read dialRadius·0.39 — a FACE proportion carrying a dimension whose
 // real constraint is the winding CLUTCH: §74 tier B proved the corner cannot

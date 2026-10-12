@@ -18804,7 +18804,73 @@ fraction of the window (the primer's chip had the same off-by-a-smoothstep,
 fixed alongside). The model lives twice — once per page, both sim-code-free
 by design — so a change to the stone law is owed to both plates.
 
-## 134. The reserve clamp snaps to a multiple of 3, but the second-stage wheel needs a multiple of 5 — four of the five menu options build a fractional tooth count
+## 134. The reserve clamp snaps to a multiple of 3, but the second-stage wheel needs a multiple of 5 — four of the five menu options build a fractional tooth count — CLOSED
+
+**CLOSED 2026-10-12, by the third of the three routes the entry offered:
+the counts are DERIVED, so any reserve the spec produces builds whole
+teeth.** The cap, the menu and the default 30 h are unchanged.
+
+- **The solve** (`layout.js`): `reserveReduction(h, sweep)` is the exact
+  R = turns · 360/sweep (7h/100 on the 300° arc), and
+  `reserveTrainCandidates(R)` lists every train that multiplies to it
+  exactly, in preference order:
+  - the shipped 8:28 first stage first, then the other splits of its 36
+    teeth, nearest p0 = 8 first. Holding the total holds `rsvD0`, which is
+    what the setting traverse is sited against; nothing in `main.js` reads
+    stage one's counts before the train is cut;
+  - stage two at the smallest multiple of its reduced ratio whose smaller
+    member has at least `PINION_LEAVES_MIN` = 6 teeth. That floor is the
+    movement's own smallest pinion (RATE_TABLE's 6-leaf escape pinions).
+    Stage two is a step-up, so w2 does a pinion's work and is held to it too.
+    At 30 h, h/50 = 3/5, and the smallest such multiple is 10:6, the
+    shipped train.
+- **The cut** (`main.js`, `RSV_TRAIN`): it takes the first candidate the
+  metal admits. The stage-two module is checked at the collinear span (the
+  least it can be) against §50's 0.12 mm tooth floor, and each member
+  against its own bore by `minGearTeeth`. `RESERVE_SWEEP_DEG` and
+  `RSV_TOOTH_FLOOR_MM` moved up to it rather than being restated.
+- **One source.** `w2 = h/5` is gone, and so are the `rsvTeethP0/W1/P1`
+  exports. `probe-219-catalogue.mjs` reads the train through the same
+  function, and its claim 7 GATES every reachable reserve:
+  - exact;
+  - stage one at 36 teeth;
+  - no member under six teeth.
+
+**Measured, a boot at every value the clamp produces against `main`:**
+
+| h | main | now | boot warnings, main → now |
+|---|---|---|---|
+| 12 | 10:3 | 25:6 | 186 → 92 |
+| 15 | 10:3 | 20:6 | 188 → 96 |
+| 18 | 10:3.6 | 25:9 | 187 → 84 |
+| 21 | 10:4.2 | 50:21 | 84 → 73 |
+| 24 | 10:4.8 | 25:12 | 21 → 10 |
+| 27 | 10:5.4 | 50:27 | 69 → 68 |
+| 30 | 10:6 | 10:6 | 0 → 0, module 1.06877 unchanged |
+| 33 | 10:6.6 | 50:33 | 20 → 19 |
+| 36 | 10:7.2 | 25:18 | 13 → 12 |
+| 39 | 10:7.8 | **10:26** stage one × 20:21 | 68 → 67 |
+| 42 | 10:8.4 | 25:21 | 71 → 70 |
+| 45 | 10:9 | 10:9 | 70 → 70 |
+| 48 | 10:9.6 | 25:24 | 80 → 79 |
+
+All counts above are stage two (p1:w2) on the shipped 8:28 stage one,
+except 39 h. 39 h is the one reserve whose stage two alone cannot be cut:
+50:39 puts the module (0.192) under the tooth floor, so stage one re-splits.
+Every reserve's boot loses its `TODO 15: w2 gauge is not credible`
+warning, and none gains a warning. The ones that remain at 12–18 h (the
+setting traverse cannot clear its swing) and at 45–48 h (§158's hand width)
+are on `main` too and are not this item's. The finest module chosen is 0.206
+at 33 h, on the floor's right side.
+
+**Residue, filed rather than done.** The SNAP to multiples of 3 is no longer
+needed by this train, and its comment now says so. It stays, because the
+other h-derived quantities (the fusee's wraps, the set-up ratchet's click)
+were never checked off the multiples of 3. Relaxing it to whole hours is a
+separate change that has to re-measure those.
+
+The original entry follows, as the record.
+
 
 `SPEC.reserveHours` is snapped to a multiple of THREE
 (`Math.round(h / 3) * 3`, `layout.js`), and the comment above it says why:

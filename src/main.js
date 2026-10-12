@@ -31,7 +31,7 @@ import {
   TRAIN,
   KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
   minuteWheelTeeth, WIND_SPUR_TEETH, SETTING_CAP_TEETH,
-  rsvTeethP0, rsvTeethW1, rsvTeethP1, rsvModule0, rsvD0,
+  rsvModule0, rsvD0, reserveReduction, reserveTrainCandidates,   // TODO 134: the train's counts are solved from the reserve, below
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
@@ -6862,15 +6862,8 @@ function foldModuleSolve(shaftAngleDeg, bores) {
 // (P.dial.x − x, P.dial.y + y) — derived from RESERVE_LOCAL so moving the
 // sub-dial moves the whole reduction train's target with it.
 const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
-// §22: the second-stage wheel is DERIVED from the reserve, for every spec
-// rather than only the default. The chain of constraint: p0 turns
-// RESERVE_BARREL_TURNS (= h·pinion/teeth) lock-to-lock, the hand sweeps
-// RESERVE_SWEEP_DEG (300°), so R = (7h/120)·360/300 = 0.07·h; stage one
-// is 28/8 = 3.5, so stage two must be R/3.5 = 0.02·h = h/50, and with
-// p1 = 10 that is w2 = h/5 — integer while the spec keeps h a multiple
-// of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
-// does not). At the 30 h default: w2 = 6.
-const rsvTeethW2 = SPEC.reserveHours / 5;
+// §22 / TODO 134: the train's tooth counts are SOLVED from the reserve —
+// see `RSV_TRAIN`, below, beside the bores its floors read.
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // §125 Tier B — W1'S BEARING SWINGS OFF THE LINE when the line is occupied.
@@ -6887,6 +6880,42 @@ const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.b
 // already that; p1 took makePinion's default 0.4, INSIDE the 0.45 post).
 const RSV_POST1_R = 0.45;
 const RSV_W1_BORE_R = RSV_POST1_R + PIVOT_BORE_CLEAR;   // rsvWheel1's and reservePinion1's bore (their builds below read this); the hub's radius follows it through gearFaceReach
+// TODO 134 — THE TRAIN IS SOLVED FROM THE RESERVE. Its job is one exact
+// reduction, R = turns · 360/sweep: p0 turns h·7/120 lock to lock and the hand
+// sweeps RESERVE_SWEEP_DEG, so R = 7h/100 (21/10 at 30 h). `w2 = h/5` with
+// every other count fixed made that integer only when h was a multiple of
+// five, and the spec snaps to multiples of THREE, so ten of the thirteen
+// reachable reserves built a fractional wheel. Now `reserveTrainCandidates`
+// lists every train that is exact, in preference order (the shipped 8:28 first
+// stage, then other splits of its 36 teeth, which hold rsvD0), and the build
+// takes the first one its metal admits:
+//  · the stage-two module, at the collinear centre distance (the LEAST it can
+//    be — w1's swing only lengthens the second mesh), keeps the pitch-line
+//    tooth width π·m/2 on §50's wheel floor;
+//  · every member clears its own bore, by the builders' own floor.
+// At 30 h that is 8:28 × 10:6, the shipped train, byte for byte.
+const RESERVE_SWEEP_DEG = 300;      // the hand's graduated arc; its reasons are written where the dial is drawn
+const RSV_TOOTH_FLOOR_MM = 0.12;    // §50's wheel floor (STOCK_FLOORS.wheel in inspect.js owns it; the census re-measures)
+const RSV_TRAIN = (() => {
+  const d1 = rsvSpanD - rsvD0;
+  const mFloor = (2 * RSV_TOOTH_FLOOR_MM) / (Math.PI * UNIT_MM);
+  const boreW2 = RSV_HAND_ARBOR_R + PIVOT_BORE_CLEAR;
+  const reduction = reserveReduction(SPEC.reserveHours, RESERVE_SWEEP_DEG);
+  for (const c of reserveTrainCandidates(reduction)) {
+    const m1 = (2 * d1) / (c.p1 + c.w2);
+    if (m1 < mFloor) continue;
+    if (c.p0 < G.minGearTeeth(rsvModule0, RSV_ARB_EXT_R, [c.w1])) continue;
+    if (c.w1 < G.minGearTeeth(rsvModule0, RSV_W1_BORE_R, [c.p0])) continue;
+    if (c.p1 < G.minGearTeeth(m1, RSV_W1_BORE_R, [c.w2])) continue;
+    if (c.w2 < G.minGearTeeth(m1, boreW2, [c.p1])) continue;
+    return { ...c, reduction };
+  }
+  console.warn(`reserve train: no exact train for ${SPEC.reserveHours} h `
+    + `(R = ${reduction[0]}/${reduction[1]}) clears the tooth floor and the bores at stage-two span ${d1.toFixed(3)} — `
+    + 'building the shipped 30 h train, whose hand will not read this reserve');
+  return { p0: 8, w1: 28, p1: 10, w2: 6, reduction };
+})();
+const rsvTeethP0 = RSV_TRAIN.p0, rsvTeethW1 = RSV_TRAIN.w1, rsvTeethP1 = RSV_TRAIN.p1, rsvTeethW2 = RSV_TRAIN.w2;
 // TODO 162 — THE NOMINAL TIP UNDER-READS THE CUT METAL. module·(teeth+2)/2 is
 // the pitch-circle offset a smooth involute tip would reach; this repo's
 // generators cut a POLYGON, whose farthest point is a VERTEX past that
@@ -18525,7 +18554,8 @@ const secondsSubR = secondsWellR;
 // The arc is a READABILITY choice (more angular travel per hour = finer
 // reading); the hours are the movement's actual reserve; the gearing is
 // DERIVED from both. Everything downstream reads these two.
-const RESERVE_SWEEP_DEG = 300;      // graduated arc, symmetric about the well's vertical (§153),
+// RESERVE_SWEEP_DEG = 300: declared with the reserve train (TODO 134), whose counts
+                                    // are solved from it — graduated arc, symmetric about the well's vertical (§153),
                                     // hung since §158 from the DOWN end of it: empty at math
                                     // −90° + 150°, full at −90° − 150° — a U opening upward,
                                     // leaving a 60° notch centred on the well's 12 o'clock,
@@ -18552,11 +18582,8 @@ const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated t
 {
   const turns = ratQ(SPEC.reserveHours * TRAIN.barrel.pinion, TRAIN.barrel.teeth);
   const fromScale = ratMul(turns, ratQ(360, RESERVE_SWEEP_DEG));
-  // rsvTeethW2 is read, never restated. It is fractional at four of the five
-  // menu reserves (TODO 134, open), and BigInt refuses a fraction, so it enters
-  // as a decimal rational — exact for any count with six or fewer places.
-  const w2 = ratQ(Math.round(rsvTeethW2 * 1e6), 1e6);
-  const fromTeeth = ratMul(ratQ(rsvTeethW1, rsvTeethP0), ratMul(w2, ratQ(1, rsvTeethP1)));
+  // Every count is an integer at every reserve since TODO 134 solved the train.
+  const fromTeeth = ratMul(ratQ(rsvTeethW1, rsvTeethP0), ratQ(rsvTeethW2, rsvTeethP1));
   if (!ratEq(fromScale, fromTeeth))
     console.warn(`§219 technic fork: the reserve reduction from its scale is ${ratStr(fromScale)}, from the steel counts ${ratStr(fromTeeth)} — the display and the gears drifted apart (TODO 18)`);
   if (SPEC.reserveHours === TECHNIC_FORK.solvedAt.reserveHours) {
@@ -19964,7 +19991,7 @@ const rsvModule1 = rsvSwing === 0
 //    w2's tip circle against the dial centre's tube stack, and against
 //    its own well's ring wall (the reserve well shrinks as the station walks in,
 //    while a longer reserveh GROWS the tip — the joint worst case).
-const RSV_TOOTH_FLOOR_MM = 0.12;
+// RSV_TOOTH_FLOOR_MM (0.12 mm) is declared with the reserve train (TODO 134), whose count solve reads it first.
 const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
   // §125 Tier B — m1Override: the BOOT call passes the built rsvModule1,
   // which can differ from the collinear ideal below when w1's bearing has

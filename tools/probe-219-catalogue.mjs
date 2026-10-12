@@ -41,6 +41,8 @@
 //      150°-arc pair. The shipped movement sweeps 300° since §152
 //      (2026-08-21), three weeks before the note was filed. A row read off a
 //      scale cannot go stale without this assert firing.
+//   7. (TODO 134) every reachable reserve has an exact, whole-tooth train —
+//      see claim 7 below.
 //   6. the fork rows DECLARED in src/layout.js (TECHNIC_FORK) are exactly the
 //      solver's chains, per generation. layout.js boot-asserts each declared
 //      chain exact and admissible but cannot afford the search that says it is
@@ -75,25 +77,29 @@ const steelCentreToFourth = mul(F(T.center.teeth, T.center.pinion), F(T.third.te
 const steelMotion = mul(F(L.MW_MINUTE_TEETH, L.cannonPinionTeeth), F(L.MW_HOUR_TEETH, L.MW_PINION_TEETH));
 const steelGreatWheel = F(T.barrel.teeth, T.barrel.pinion);
 
-// rsvTeethW2 is declared in main.js, which cannot be imported here (it pulls
-// three). Read the EXPRESSION out of the source and evaluate it against SPEC,
-// so this stays a reading and never becomes a second copy of the number.
-const mainSrc = readFileSync(join(ROOT, 'src/main.js'), 'utf8');
-const w2m = mainSrc.match(/const\s+rsvTeethW2\s*=\s*SPEC\.reserveHours\s*\/\s*(\d+)\s*;/);
-if (!w2m) { console.error('FAIL: rsvTeethW2 is no longer `SPEC.reserveHours / <n>` in main.js — this probe must be re-read against it.'); process.exit(1); }
-const rsvTeethW2 = L.SPEC.reserveHours / Number(w2m[1]);
-const steelReserve = mul(F(L.rsvTeethW1, L.rsvTeethP0), F(rsvTeethW2, L.rsvTeethP1));
-
 // The reduction is not a number, it is a consequence of the SCALE. p0 turns
 // RESERVE_BARREL_TURNS = h·pinion/teeth lock-to-lock (the slip coupling makes
 // it the arbor's own turns), the hand sweeps RESERVE_SWEEP_DEG, so
 // R = turns · 360/sweep. Both inputs are read, not copied: the sweep out of
-// main.js, the turns out of TRAIN and SPEC.
+// main.js (which cannot be imported here — it pulls three), the turns out of
+// TRAIN and SPEC.
+const mainSrc = readFileSync(join(ROOT, 'src/main.js'), 'utf8');
 const swm = mainSrc.match(/const\s+RESERVE_SWEEP_DEG\s*=\s*(\d+)\s*;/);
 if (!swm) { console.error('FAIL: RESERVE_SWEEP_DEG is no longer a literal in main.js — this probe must be re-read against it.'); process.exit(1); }
 const sweepDeg = Number(swm[1]);
 const barrelTurns = F(L.SPEC.reserveHours * T.barrel.pinion, T.barrel.teeth);
 const reserveFromScale = mul(barrelTurns, F(360, sweepDeg));
+
+// TODO 134 — the train's counts are SOLVED from the reserve (layout.js's
+// reserveTrainCandidates, cut in main.js), so they are read through the same
+// function rather than parsed out of an expression. main.js takes the FIRST
+// candidate its metal admits; the probe cannot cut metal, so it reads the first
+// candidate, which is the shipped train at 30 h — the boot is what holds that
+// the build agrees (the identity fingerprint, and the reserve assert beside
+// RESERVE_SWEEP_DEG).
+if (!/reserveTrainCandidates\(/.test(mainSrc)) { console.error('FAIL: main.js no longer cuts the reserve train from reserveTrainCandidates — this probe must be re-read against it.'); process.exit(1); }
+const RSV = L.reserveTrainCandidates(L.reserveReduction(L.SPEC.reserveHours, sweepDeg))[0];
+const steelReserve = mul(F(RSV.w1, RSV.p0), F(RSV.w2, RSV.p1));
 
 // RATE_TABLE's law: the fourth wheel turns 1 rev/min, the escape pinion steps
 // it up, and each escape tooth is two beats. vph = 60 · (fourthTeeth/escPinion)
@@ -109,7 +115,7 @@ const INVARIANTS = [
   { key: 'centre→fourth',    target: steelCentreToFourth, steel: `${T.center.teeth}:${T.center.pinion} × ${T.third.teeth}:${T.third.pinion}`, derivedFrom: 'fourth wheel 1 rev/min under a centre wheel at 1 rev/h' },
   { key: 'fourth→escape',    target: lawRatio(TECHNIC_VPH, TECHNIC_ESCAPE_TEETH), steel: `${T.fourth.teeth}:${T.fourth.pinion}`, derivedFrom: `RATE_TABLE's law at ${TECHNIC_VPH} vph on an ${TECHNIC_ESCAPE_TEETH}T wheel` },
   { key: 'motion works',     target: steelMotion, steel: `${L.MW_MINUTE_TEETH}:${L.cannonPinionTeeth} × ${L.MW_HOUR_TEETH}:${L.MW_PINION_TEETH}`, derivedFrom: '12 hours to the hour hand’s one turn' },
-  { key: 'reserve reduction',target: steelReserve, steel: `${L.rsvTeethW1}:${L.rsvTeethP0} × ${rsvTeethW2}:${L.rsvTeethP1}`, derivedFrom: 'the hand’s sweep over the barrel’s usable turns' },
+  { key: 'reserve reduction',target: steelReserve, steel: `${RSV.w1}:${RSV.p0} × ${RSV.w2}:${RSV.p1}`, derivedFrom: 'the hand’s sweep over the barrel’s usable turns' },
 ];
 
 // Candidate controls, in the order the probe will try them. A control's job is
@@ -230,7 +236,7 @@ console.log('THE RESERVE SCALE (claim 5) — the reduction is a consequence, not
 console.log(`  RESERVE_BARREL_TURNS = ${L.SPEC.reserveHours}h · ${T.barrel.pinion}/${T.barrel.teeth} = ${show(barrelTurns)} turns lock-to-lock`);
 console.log(`  RESERVE_SWEEP_DEG    = ${sweepDeg}° (read from src/main.js)`);
 console.log(`  R from the scale     = ${show(barrelTurns)} · 360/${sweepDeg} = ${show(reserveFromScale)}`);
-console.log(`  R from the teeth     = ${L.rsvTeethW1}/${L.rsvTeethP0} × ${rsvTeethW2}/${L.rsvTeethP1} = ${show(steelReserve)}`);
+console.log(`  R from the teeth     = ${RSV.w1}/${RSV.p0} × ${RSV.w2}/${RSV.p1} = ${show(steelReserve)}`);
 if (!eq(reserveFromScale, steelReserve)) fail(`the reserve reduction does not follow its own scale — ${show(reserveFromScale)} from the graduation, ${show(steelReserve)} from the counts. This is TODO 18's failure recurring: the display quantity and the gears drifted apart.`);
 else console.log(`  OK — they agree, so the technic row above was solved against the SHIPPED scale\n`);
 
@@ -250,32 +256,32 @@ for (const [label, turns, sweep] of [
 }
 console.log(`  §152 widened the arc on 2026-08-21; the note was filed 2026-09-11, so it was stale on the day it was written.\n`);
 
-// REPORTED, not gated — TODO 134. Claim 5 holds at the SHIPPED reserve, and
-// the shipped reserve is the only one it can hold at: rsvTeethW2 = h/5 needs
-// h a multiple of 5, while layout.js snaps h to a multiple of 3 (the retired
-// 2h/3 rule, still in its comment). The default 30 is a multiple of both,
-// which is exactly why every gate stays green and why this needed a sweep to
-// see. Not gated here because the fix is a §22 design decision, not a
-// one-character change — see TODO 134.
+// CLAIM 7 — TODO 134, CLOSED: every reserve the spec can produce has an EXACT
+// train in whole teeth. Before TODO 134 the second wheel was h/5 with every
+// other count fixed, fractional at ten of the thirteen reachable reserves.
+// Gated on the arithmetic the probe can see: the first candidate at every
+// reachable h multiplies to the scale exactly, keeps stage one's 36-tooth total
+// (so rsvD0, which the setting traverse is sited against, does not move) and
+// cuts no member under PINION_LEAVES_MIN. Which candidate the METAL admits (the
+// tooth floor, the bores) is the build's call; the boots at each reserve are
+// that instrument, and they are recorded with TODO 134.
 {
-  const menu = [24, 30, 36, 42, 48];                 // main.js's reserve select
   const reach = [];
   for (let h = 12; h <= 48; h += 3) reach.push(h);   // what the clamp can produce
-  const w2Of = async (h) => {
-    globalThis.__WATCH_SPEC = { reserveHours: h };
-    const M = await import(join(ROOT, 'src/layout.js') + '?todo134=' + h);
-    return { snapped: M.SPEC.reserveHours, w2: M.SPEC.reserveHours / Number(w2m[1]) };
-  };
-  const bad = [];
-  for (const h of reach) { const r = await w2Of(h); if (!Number.isInteger(r.w2)) bad.push(`${r.snapped}→${r.w2}`); }
-  const badMenu = [];
-  for (const h of menu) { const r = await w2Of(h); if (!Number.isInteger(r.w2)) badMenu.push(`${r.snapped}h→${r.w2}t`); }
-  globalThis.__WATCH_SPEC = undefined;
-  console.log('TODO 134 (reported, not gated) — the reserve clamp guards the retired rule');
-  console.log(`  layout.js snaps h to a multiple of 3; rsvTeethW2 = h/${w2m[1]} needs a multiple of ${w2m[1]}.`);
-  console.log(`  of ${reach.length} reachable values, ${bad.length} give a fractional tooth count: ${bad.join('  ') || 'none'}`);
-  console.log(`  of the ${menu.length} MENU options [${menu.join(', ')}], ${badMenu.length} do: ${badMenu.join('  ') || 'none'}`);
-  console.log(`  the default ${L.SPEC.reserveHours}h is a multiple of both, which is why every gate stays green\n`);
+  console.log('THE RESERVE TRAIN (claim 7) — solved from the reserve, exact at every reachable h');
+  const rows = [];
+  for (const h of reach) {
+    const [n, d] = L.reserveReduction(h, sweepDeg);
+    const target = F(n, d);
+    const c = L.reserveTrainCandidates([n, d])[0];
+    if (!c) { fail(`${h} h: no exact train at all`); continue; }
+    const prod = mul(F(c.w1, c.p0), F(c.w2, c.p1));
+    if (!eq(prod, target)) fail(`${h} h: ${c.w1}/${c.p0} × ${c.w2}/${c.p1} = ${show(prod)}, the scale needs ${show(target)}`);
+    if (c.p0 + c.w1 !== L.RSV_STAGE1_TEETH) fail(`${h} h: stage one ${c.p0}+${c.w1} is not the ${L.RSV_STAGE1_TEETH} teeth rsvD0 holds`);
+    if (Math.min(c.p0, c.w1, c.p1, c.w2) < L.PINION_LEAVES_MIN) fail(`${h} h: a member under ${L.PINION_LEAVES_MIN} teeth`);
+    rows.push(`${String(h).padStart(2)}h ${c.p0}:${c.w1} × ${c.p1}:${c.w2}`);
+  }
+  console.log(`  first candidates (the build may take a later one where the metal refuses):\n    ${rows.join('\n    ')}\n`);
 }
 
 console.log(fails.length ? `FAILED — ${fails.length} claim(s)` : 'PASS — every gated claim holds');
