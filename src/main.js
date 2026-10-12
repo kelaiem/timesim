@@ -21992,6 +21992,10 @@ const alarmSleeveRingWork = ({ alpha, h, k, azC, zC, mu, muG, muT, rT, azT, zT, 
 // half-width (the run and the tangential chord feeding it share that
 // section). Growing the angle only ever pushes it OUTBOARD from the corner's
 // own gear, toward i1 — asserted clear of i1's own station where i1 exists.
+// (TODO 236 retired the tab and the run: the lifter is a bell crank at the
+// collar and a tie link carries its pull. The azimuth survives as the silence
+// rocker's PADDLE station, which the sleeve's arm now reaches out to, and the
+// derivation above still holds the arm and paddle off the contrate's band.)
 const ALARM_TAB_CLEAR_REQ = ALARM_BEVEL_SPEC.tipR + CLEAR_MARGIN + (STOCK_MIN_U + 0.01) / 2;
 if (ALARM_TAB_CLEAR_REQ >= ALARM_CD)
   console.warn(`§76/TODO 164 alarm tab azimuth: required clearance ${ALARM_TAB_CLEAR_REQ.toFixed(3)} `
@@ -24771,14 +24775,12 @@ alarmSpinner.add(alarmCrownKnob);
 // agrees). The input is a BEVEL COLLAR on the sliding stem — the keyless
 // sliding-pinion idiom, and this stem's own §33 precedent: the pull's 5-unit
 // throw becomes the sleeve's 0.22 travel as a 0.044 taper, a ratio machined
-// into a surface rather than assigned in tick(). The lifter is one rigid L:
-// domed head under the collar, plunger, tangential chord to the run azimuth,
-// radial run at the tab's plane, fork block gripping the sleeve's tab.
-// Siting (probed): plunger at world az 0°, r ALARM_LIFT_HEAD_R — outboard of
-// the arbor cluster (bush cock to r 16.8) and short of the pulled collar's
-// inner end; run at az 8°, between the arbor (az 0) and i1 (az 18, station
-// 8.7, i1b sweep 4.5 — the az-8 line passes 5.64 from it, mid-guide
-// included); fork tip at the tab (az 8, r 4.65..5.15).
+// into a surface rather than assigned in tick(). (TODO 236: the lifter was one
+// rigid L sliding in eyes — head, plunger, chord, a 23 u radial run and a fork
+// on a tab at the sleeve's rim. It is a chain of pivoted members now; the
+// block below says what and why.) The pad's station is unchanged: world az 0°,
+// r ALARM_LIFT_HEAD_R — outboard of the arbor cluster (bush cock to r 16.8)
+// and short of the pulled collar's inner end.
 // The SETTING-CORNER cluster (disc bevel to r 22.25, its bearing-cock post
 // to 22.65) owns the stem's inboard reach: the disc bevel's band rises to
 // z −4.5, so nothing fatter than the stem itself may slide over it — the
