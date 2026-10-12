@@ -13510,6 +13510,29 @@ const LINE_SPEC_READERS = {
   'alarm link': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
 };
 
+// A reference's values at a given set of input overrides: every literal row
+// takes the override if one is given, every function row re-derives from the
+// rows above it and the build's laws (`clock.lineLaws`). Called twice per
+// forked reference by `checkLineSpec` (reference inputs, fork inputs), so what
+// a fork MOVED is a difference of two evaluations of one table, never a second
+// table — and exported so an instrument designing a mechanism IN A LINE (§261
+// step 4's dial-side beak) evaluates the same table the gate holds, rather
+// than restating it. `base` carries an inherited reference's values.
+export function lineSpecEvaluate(ref, base, over, laws) {
+  const out = { ...base }, errs = [];
+  for (const row of ref.rows) {
+    let want;
+    const isLaw = typeof row.value === 'function';
+    // an override reaches only a literal SPEC row: a law re-derives, and an
+    // envelope is inherited whole — both are refused as malformed by the
+    // check, and neither may move the value the metal is held to meanwhile
+    const forkable = !isLaw && row.kind !== 'envelope';
+    try { want = isLaw ? row.value(out, laws) : (forkable && over && row.key in over ? over[row.key].value : row.value); }
+    catch (e) { errs.push({ ref: ref.name, key: row.key, error: `its value threw: ${e.message}` }); want = NaN; }
+    out[row.key] = want;
+  }
+  return { out, errs };
+}
 export async function checkLineSpec(clock) {
   const rows = [], violations = [], staleWaivers = [], malformed = [], controls = {}, forks = [], staleForks = [];
   const specs = {};
@@ -13520,20 +13543,7 @@ export async function checkLineSpec(clock) {
   // the rows above it and the build's laws. Called twice per forked reference
   // (reference inputs, fork inputs), so what a fork MOVED is a difference of
   // two evaluations of one table, never a second table.
-  const evaluate = (ref, base, over) => {
-    const out = { ...base }, errs = [];
-    for (const row of ref.rows) {
-      let want;
-      // an override reaches only a literal SPEC row: a law re-derives, and an
-      // envelope is inherited whole — both are refused as malformed below, and
-      // neither may move the value the metal is held to while that is reported
-      const forkable = !isLaw(row) && row.kind !== 'envelope';
-      try { want = isLaw(row) ? row.value(out, laws) : (forkable && over && row.key in over ? over[row.key].value : row.value); }
-      catch (e) { errs.push({ ref: ref.name, key: row.key, error: `its value threw: ${e.message}` }); want = NaN; }
-      out[row.key] = want;
-    }
-    return { out, errs };
-  };
+  const evaluate = (ref, base, over) => lineSpecEvaluate(ref, base, over, laws);
   // the fork table's own structure, judged before anything is measured
   const forkFor = {};
   for (const f of LINE_SPEC_FORKS) {

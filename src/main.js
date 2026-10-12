@@ -34720,22 +34720,39 @@ const alarmLinkParts = {};
   // stroke, so the link's line spec can evaluate the same law at its own
   // reference run (§229's wr 16) rather than restating it: one law, two
   // callers, and the build's call below is the arithmetic it always was.
-  const alarmLinkSeatSolve = (run, rodT) => {
+  //
+  // §261 step 4, landing 2b — AND OF THE LEVER'S CLASS, `side`. This beak is
+  // FIRST-class (side −1): nose, pivot, tail in that order along the run, so
+  // the arms share it, beakLen = run − tailLen, and the tail moves opposite to
+  // the nose. The fold carries the column wheel under the dial REFLECTED, so
+  // its nose falls into a gap TOWARD the plate while the lay shaft's rim (which
+  // stays as it is) still has to RISE to arm: the dial-side beak must move its
+  // tail WITH its nose, which is the same-side lever (side +1) — pivot, tail,
+  // nose along the run, the pivot beyond the tail, beakLen = run + tailLen.
+  // Everything else is one law for both: the tail makes the rim's stroke at the
+  // seat tilt (tailLen = rodT/θs), the nose's deepest corner lands on the gap
+  // floor, the bar clears the columns, and beakLen/tailLen = seat drop/stroke.
+  // (`run` is the plan distance from the nose's landing to the tail's contact
+  // in both classes; the default keeps every existing caller's arithmetic.)
+  const alarmLinkSeatSolve = (run, rodT, side = -1) => {
+    if (side !== -1 && side !== 1) throw new Error(`alarmLinkSeatSolve: side must be -1 (first-class) or +1 (same-side), not ${side}`);
     const halfRad = ALARM_LINK_NOSE_W_RAD / 2;
     let h = CLEAR_MARGIN + STOCK_MIN_U / 2, th = 0, lift = CLEAR_MARGIN;
     for (let pass = 0; pass < 40; pass++) {
-      const deepest = (t) => (run - rodT / t + halfRad) * Math.sin(t) - h * (1 - Math.cos(t));
-      let lo = rodT / run * 1.0001, hi = Math.PI / 4;   // tailLen ≤ run … a quarter turn
+      const deepest = (t) => (run + side * rodT / t + halfRad) * Math.sin(t) - h * (1 - Math.cos(t));
+      // first-class: tailLen ≤ run; same-side: any tail, from the shallowest
+      // tilt that still moves the rim … a quarter turn either way
+      let lo = side < 0 ? rodT / run * 1.0001 : 1e-9, hi = Math.PI / 4;
       for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (deepest(m) < ALARM_COL_H) lo = m; else hi = m; }
       const thN = (lo + hi) / 2;
-      const tailL = rodT / thN, beakL = run - tailL;
+      const tailL = rodT / thN, beakL = run + side * tailL;
       const liftN = _barLiftFor(beakL, ALARM_LINK_NOSE_LAND_R + beakL, beakL * thN);
       const done = Math.abs(thN - th) < 1e-12 && Math.abs(liftN - lift) < 1e-12;
       th = thN; lift = liftN; h = lift + STOCK_MIN_U / 2;
       if (done) break;
     }
-    const tailLen = rodT / th, beakLen = run - tailLen;
-    return { theta: th, tailLen, beakLen, lift, h, seatDrop: beakLen * th,
+    const tailLen = rodT / th, beakLen = run + side * tailLen;
+    return { theta: th, tailLen, beakLen, lift, h, side, seatDrop: beakLen * th,
       deepest: (beakLen + halfRad) * Math.sin(th) - h * (1 - Math.cos(th)) };
   };
   ALARM_LINK_LAWS.seat = alarmLinkSeatSolve;
