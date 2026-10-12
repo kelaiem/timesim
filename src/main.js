@@ -20,7 +20,7 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, fmtPct, lowerUi, locali
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
@@ -29826,16 +29826,23 @@ const EQUALISATION = (() => {
     // fixed coil plan) and its pivots' friction scaled with its mass.
     const nominalVertical = energy.corners.nominal.sustainedDeg.vertical;
     const C = GOING_POWER.corner('nominal'), W = 2 * Math.PI * F_BALANCE;
-    const atRim = (rimF) => {
-      const B = oscInertiaOf(balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T, rimF }));
+    // The law takes the RADIUS too, for the larger-wheel test below. The swing
+    // is exact at any radius (the column's delivered energy is the train's and
+    // the escapement's, none of it the balance's); the start reuses THIS
+    // balance's impulse table, which a larger wheel's re-solved escapement
+    // would reshape, so a larger wheel that failed only the start would be a
+    // claim about a table it does not have — the record names which one binds.
+    const atBalance = (radius, rimF) => {
+      const B = oscInertiaOf(balanceWheelDims({ radius, thickness: BAL_T, rimF }));
       const k = B.total * W * W, tf = C.pivot.vertical_Nm * B.mass / OSC_I.mass;
       const a = Math.PI * k / (2 * C.qOther), bq = 2 * tf;
       const deg = (-bq + Math.sqrt(bq * bq + 4 * a * C.delivered_J)) / (2 * a) / DEG2RAD;
       const K0 = BALANCE_DRIVE.K, ks = k / K0.k;
       const K = { ...K0, I: B.total, k, c: B.total * W / K0.Q, spring: { ...K0.spring, y: K0.spring.y.map((v) => v * ks) } };
       const start = BD.selfStart(K, { drive: true, brake: 0, friction: tf, weight: null });
-      return { rimF, nominalVertical: deg, starts: start.starts };
+      return { radius, rimF, nominalVertical: deg, starts: start.starts };
     };
+    const atRim = (rimF) => atBalance(BALANCE_R, rimF);
     // the law weighs THIS balance as the column does, or the step above it means nothing
     const self = atRim(BAL_RIM_F);
     if (!(Math.abs(self.nominalVertical - nominalVertical) < 1e-6 && self.starts === BALANCE_DRIVE.selfStart.starts))
@@ -29846,6 +29853,19 @@ const EQUALISATION = (() => {
       heavier, met: nominalVertical >= AMPLITUDE_TARGET_DEG && starts,
       tight: !(heavier.nominalVertical >= AMPLITUDE_TARGET_DEG && heavier.starts),
       binds: heavier.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target' };
+    // TODO 242 — the RADIUS, held the rim's way one level up (layout.js,
+    // BAL_R_STEP): a row below BALANCE_R_REF shrank its wheel because even the
+    // lightest rim on the grid the metal allows could not reach the target at
+    // the reference, so the wheel one step larger at that rim must fail.
+    const rimFloorF = balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T }).rimFloorF;
+    const rimFloor = Math.ceil(rimFloorF / BAL_RIM_STEP - 1e-9) * BAL_RIM_STEP;
+    const reduced = BALANCE_R < BALANCE_R_REF;
+    const larger = reduced ? atBalance(BALANCE_R + BAL_R_STEP, rimFloor) : null;
+    Object.assign(energy.amplitude.target, { radius: BALANCE_R, radiusRef: BALANCE_R_REF, radiusStep: BAL_R_STEP, rimFloorF, rimFloor, larger,
+      radiusTight: !larger || !(larger.nominalVertical >= AMPLITUDE_TARGET_DEG && larger.starts),
+      radiusBinds: larger ? (larger.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target') : null });
+    if (!energy.amplitude.target.radiusTight)
+      console.warn(`TODO 242: the balance at ${SPEC.vph} A/h is r ${BALANCE_R}, but one BAL_R_STEP larger (${larger.radius}) at the lightest grid rim (${rimFloor.toFixed(3)}) sustains ${larger.nominalVertical.toFixed(2)}° and starts — the wheel is smaller than it needs to be; re-solve the RATE_TABLE row's balanceR`);
     if (!energy.amplitude.target.met || !energy.amplitude.target.tight)
       console.warn(`TODO 207/242: BAL_RIM_F ${BAL_RIM_F} at ${SPEC.vph} A/h sustains ${nominalVertical.toFixed(2)}° nominal vertical against the ${AMPLITUDE_TARGET_DEG}° target and ${starts ? 'starts' : 'does NOT start'} itself; one step heavier (${heavier.rimF.toFixed(3)}) sustains ${heavier.nominalVertical.toFixed(2)}° and ${heavier.starts ? 'starts' : 'does not start'} — ${energy.amplitude.target.met ? 'the rim is lighter than it needs to be' : 'the balance is too heavy for its spring'}; re-solve the RATE_TABLE row's rimF`);
   }
