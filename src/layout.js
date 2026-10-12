@@ -511,7 +511,11 @@ export const CASE_LUG_SPAN_MAX = 20 / UNIT_MM;    // 52.77 units across the spri
 //   branch (2026-10-11): back governed by the raised glass step.
 // The step is the resolution every §261 table quotes depth at, a micron.
 export const CASE_HEIGHT_STEP_MM = 0.001;
-export const CASE_HEIGHT_MAX_MM = 12.227;
+// TODO 222 raised it IN THE OPEN, 12.227 → 12.382: follower B's grounded seat
+// blade needs its root on the flange, and the sixth §51 spend that buys it
+// (ALARM_B_BAND_SPEND, 0.4098 u, Z_DIAL −9.13 → −9.54) is 0.155 mm of cased
+// depth, 1:1 — the price of driving the lift, named here.
+export const CASE_HEIGHT_MAX_MM = 12.382;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
@@ -1273,7 +1277,17 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // The cross-frame members that span the dial move paid in their own
 // currencies: the selector rod is 0.73 longer (ALARM_LINK_ROD_LEN_U) and its
 // section with it, which forked the alarm link's fulcrum (the lug, main.js).
-export const Z_DIAL = -9.13;
+// TODO 222: −9.13 → −9.54. Follower-B's pin is locked into the alarm setting
+// wheel now and pressed there by a GROUNDED blade under its arm (main.js,
+// ALARM_PINB_BLADE), whose root sits on a stud on the carrier flange beyond the
+// pin, sloped to pass one margin under the arm's pin end at full lift; and the
+// selector rocker that lifts the pin pivots on that flange under the lock ring.
+// The band→flange gap was one margin: the blade's root asks 0.4098 more (the
+// rocker's hub 0.3399), inserted under follower-B's band (ALARM_B_BAND_SPEND)
+// and funded here the §45 way — the total spend 2.0328 rounded up to the 0.01
+// grid. The selector ring and the alarm link ride the dial frame and move with
+// it (the selector rod is that much longer), as TODO 194's spend moved them.
+export const Z_DIAL = -9.54;
 // The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is
 // mid-stock and the figure §50's own citations use for plate-like sheet. In
 // §39's pin that is 0.4 / 0.379 = 1.06 units. The floor under it: a dial must

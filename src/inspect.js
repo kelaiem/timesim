@@ -219,10 +219,10 @@ export const MECH_GRAPH = {
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: the hub riding the hour tube in the disc band — the BEARING only since TODO 117: the seat was the drive too while the disc carried the hour, and it carries the set alone now (TODO 144 prices what holds it)
-    ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
+    ['Alarm release feeler', 'plate'],       // §29 step 3 / TODO 222: the bracket's lugs stand on the base plate's dial-side face at the release azimuth (they hung from the sheet through the selector fork's band until TODO 222)
     ['Alarm release seat', 'Dial'],          // TODO 144: the seat's two posts hang from the sheet's back face at two free azimuths (130°, 270°) — the feeler bracket's own mounting
     ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
-    ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
+    ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guides hang from the sheet (az 60/220/300, outside the wheel's tips) — TODO 222: slotted HELIX plates its rollers climb, where posts and sleeves stood
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/350 — TODO 170 moved the third off the silence rocker's lug — the selector's pattern one band deeper)
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
     ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
@@ -340,11 +340,15 @@ export const MECH_GRAPH = {
                                              // the tube follows the heart (the cannon-pinion precedent)
     ['Hour wheel', 'Alarm disc'],            // §25 C stage 2: DISARMED, the heart cam on the hour
                                              // tube drives the tube home through the sprung follower
-    ['Alarm setting wheel', 'Alarm disc'],   // §34: ARMED, the FACE CAM on the wheel drives the tube to the set
-                                             // phase through the sprung pin-arm (an axial heart: the pin seeks the
-                                             // cam's minimum and the slopes cam the rotation) — the coupling as geometry
-    ['Alarm selector', 'Alarm disc'],        // §34 pass 2b: the ring's face tips the flange rocker (axial contact,
-                                             // azimuth-independent) — the bias that picks which heart wins
+    ['Alarm setting wheel', 'Alarm disc'],   // §34 / TODO 222: ARMED, follower-B's pin drops into the LOCK RING's
+                                             // vertical-walled slot on the wheel and holds the tube to it positively.
+                                             // It does not cam the tube round (TODO 222 measured the face cam it
+                                             // replaced locking at 0.64° against an 11.3° friction angle), so the
+                                             // armed swing to the set phase is POSED; once seated, the drive is real
+    ['Alarm selector', 'Alarm disc'],        // §34 pass 2b / TODO 222: the ring's PLATE-side face carries the flange
+                                             // rocker's sensing pin (axial contact, azimuth-independent); the rocker's
+                                             // finger lifts follower-B's tail disarmed and drops it armed, against
+                                             // the seat blade — the lift DRIVEN, the bias that picks which heart wins
     ['Alarm crown', 'Alarm release lifter'], // §45: the stem's bevel collar cams the lifter's head down on the pull
                                              // (the keyless sliding-pinion idiom — the ratio is the machined taper)
     ['Alarm release lifter', 'Alarm release sleeve'], // §45: the fork's plates on the sleeve's tab — positive both ways
@@ -754,7 +758,7 @@ const EXPECTED_PAIRS = [
   // lower bound on the true gap) at f 0…1 on alarmStrike, alarmWind and alarm,
   // so nothing else needed the grant and `undeclaredClearance` holds them now.
   // TODO 190 retired the run itself, which only widens that gap.)
-  ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
+  ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact (TODO 222: its plate-side face)
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
   ['Alarm link', 'Three-quarter plate'],    // §35/§202: the beak's post seated on the plate top (TODO 204: it was 0.6183 over it until then) and the rod's
@@ -765,7 +769,7 @@ const EXPECTED_PAIRS = [
                                             // (and its tab) is a dialFace descendant, so the Dial's traverse
                                             // carries it (the Dial ⇄ Hour wheel precedent); the link's real
                                             // corridor past Dial furniture is ray-asserted at the build
-  ['Alarm selector', 'Dial'],               // the nesting artifact + the posts' sheet anchors
+  ['Alarm selector', 'Dial'],               // the nesting artifact + the guide plates' sheet anchors (TODO 222: plates, where posts stood)
   ['Alarm release sleeve', 'Dial'],         // §45: the same nesting artifact + the sleeve posts' sheet anchors
   ['Alarm release sleeve', 'Alarm disc'],   // §45: the cone ⇄ tail-pin working contact (setting parity)
   ['Alarm release lifter', 'Alarm release sleeve'], // §45: the fork's running fit on the tab
@@ -2399,7 +2403,7 @@ export const EXPECTED_CONTACT_FLOORS = [
   // stands exactly one margin off the block's root edge (0.0900 at the old
   // band-midpoint seat), and the guide posts the corrected site guard clears
   // (on main's site the pin stood inside post 1's sleeve: this row reads 0).
-  { a: 'Alarm link', b: 'Alarm selector', min: CLEAR_MARGIN, contacts: [['alarmLinkCentrePin', 'alarmSelTab']] },
+  { a: 'Alarm link', b: 'Alarm selector', min: CLEAR_MARGIN, contacts: [['alarmLinkCentrePin', 'alarmSelTab'], ['alarmLinkCentreRoller', 'alarmSelTab'], ['alarmLinkCentreRoller', 'alarmSelForkBracket']] },   // TODO 222: the pin's roller rides the groove — and the fork's bar lies ON the upper plate (same z, overlapping 5.27–6.07 in r), so where it overlies the plate its underside IS the groove's face: the roller reads it at the same 0.015 working fit
   // §244 — the zero reset's working contact is the ROLLER on the heart, and
   // nothing else. This pair took TODO 6's blanket excuse (TODO 47 named it as
   // residue), and under it the lever's flared head buried 1.03 in the heart's
@@ -3606,9 +3610,15 @@ export const INTRA_UNIT_CONTACTS = [
   // whys named a "follower bar", a "nose bar" and a "follower-spring stud
   // block", none of which those labels have been since §34/§45 rebuilt the
   // follower — they are follower-B's post and pin arm and the rocker's arm.
-  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#5', why: '§121: follower-B\'s pin arm (§34) lapped on its post above the flange — the arm\'s tangential pivot' },
-  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#7', why: '§121: follower-B\'s tail on the same post — the arm\'s two pieces share it' },
-  { unit: 'Alarm disc', a: 'LatheGeometry#1', b: 'BoxGeometry#10', why: '§121: the selector rocker\'s outboard arm (§34) where its lug rides the flange ring' },
+  { unit: 'Alarm disc', a: 'alarmPinBPost', b: 'alarmPinArmBBar', why: '§121: follower-B\'s pin arm (§34) lapped on its post above the flange — the arm\'s tangential pivot' },
+  { unit: 'Alarm disc', a: 'alarmPinBPost', b: 'alarmPinArmBTail', why: '§121: follower-B\'s tail on the same post — the arm\'s two pieces share it' },
+  // TODO 222 retired the rocker-arm ⇄ flange row (its lug rode the flange ring):
+  // the re-hung rocker pivots in a slot cut in the flange's rim and stands one
+  // bore clearance off both of the slot's walls. Its new joints:
+  { unit: 'Alarm disc', a: 'alarmRockerPivot', b: 'alarmRockerHub', why: 'TODO 222: the selector rocker\'s eye on its pivot pin — the hub box is the undrilled eye (the bush is modelled, the pin passes through it)' },
+  { unit: 'Alarm disc', a: 'alarmRockerPivot', b: 'alarmRockerFinger', why: 'TODO 222: the finger bar runs from the eye\'s far face, through the same undrilled eye the pin passes' },
+  { unit: 'Alarm disc', a: 'alarmTubeFlange', b: 'alarmPinBSpring', why: 'TODO 222: follower-B\'s seat blade, its root clamped flat on the flange\'s top face (the band spend set the root there)' },
+  { unit: 'Alarm disc', a: 'alarmPinArmBBar', b: 'alarmPinBSpring', why: 'TODO 222: the seat blade\'s free end on the arm\'s underside — the working contact that seats the pin, preloaded at every parity (alarmHandoffs holds it)' },
   { unit: 'Alarm disc', a: 'alarmPivotPost', b: 'alarmFollowerBar', why: '§121: the follower bar turning ON its post — the §48 follower\'s bearing (0.16 of the post in the bar\'s eye)' },
   // TODO 194 — the return spiral's two working joints (the blade and its
   // stud, which reached nothing, are retired with their row). The collet's
@@ -3618,37 +3628,15 @@ export const INTRA_UNIT_CONTACTS = [
   // reported "never compared" class, not a declaration.
   { unit: 'Alarm disc', a: 'alarmFollowerCollet', b: 'alarmFollowerSpiral', why: 'TODO 194: the spiral\'s INNER end clamped in the collet — sunk ALARM_SEAT_SINK into its face (the seated-contact convention); ALARM_HANDOFFS measures it seated at every parity' },
   { unit: 'Alarm disc', a: 'alarmFollowerRiser', b: 'alarmFollowerSpiral', why: 'TODO 194: the spiral\'s OUTER end clamped against the arm\'s riser, sunk ALARM_SEAT_SINK — the joint the follower\'s return passes through; ALARM_HANDOFFS measures it seated at every parity' },
-  // Alarm selector — §34's fork on its post:
-  // These two rows named `alarmSelPost`, and THREE meshes answered to that
-  // name — so between them they excused 15 mesh pairs (4 tabs × 3 posts, plus
-  // the bracket × 3). Measured over the pose net, exactly FOUR of the 15 ever
-  // touch, all of them on post 1; posts 2 and 3 stand 8.2 to 10.2 u away and
-  // were being excused for nothing. That is the silent blanket this table's
-  // own header warns about, and it took naming the posts to see it.
-  //
-  // The tabs stay a collective name on purpose: the fork IS the four meshes
-  // (two plates flanking the groove, two side webs), and `selectB` for the
-  // centre-pin handoff and the `centre pin ⇄ fork groove` floors row both want
-  // it as a group. Of the four, three lap the post and the fourth clears it by
-  // 0.3211 — covered by the same row, which is the fork lapping its post.
-  // The three guide stations, one row each — the ring's boss reaching its own
-  // post. TODO 95/94's pass-through witness is what made these visible: the
-  // boss is a solid box and the post runs THROUGH it, so no vertex or edge
-  // midpoint of either lands in the other's metal and point sampling saw
-  // nothing. They are joints, not fouls, and were triaged as such rather than
-  // assumed — over the whole pose net each pair's shared volume is CONSTANT
-  // (1296, 1284, 1296 grid points, unchanged across 42 poses) and the shared
-  // centroid sits 0.0016–0.0026 u off the post's own axis, which is a part on
-  // an axis, not a part crossing one.
-  //
-  // What is missing as metal is the bore: the BUSH is modelled (ringGeo 0.15
-  // inner against the post's 0.14, the 0.01 running fit this ring turns on)
-  // but the boss box it sits in was never drilled. That is the same "assembly
-  // modelled as coincident solids" this table exists to name, so it is
-  // declared here rather than cut — cutting it is CSG debt, item 27's family.
-  { unit: 'Alarm selector', a: 'alarmSelBoss1', b: 'alarmSelPost1', why: '§121: the ring\'s first guide boss on its own post — the bush is modelled (0.01 running fit), the boss box is the undrilled bore. Measured both ways with parity (both meshes closed): the post stands 0.0400 inside the boss, the boss 0.1087 inside the post' },
-  { unit: 'Alarm selector', a: 'alarmSelBoss2', b: 'alarmSelPost2', why: '§121: the second guide station, same construction — 0.0400 / 0.1082' },
-  { unit: 'Alarm selector', a: 'alarmSelBoss3', b: 'alarmSelPost3', why: '§121: the third guide station, same construction — 0.0400 / 0.1087' },
+  // Alarm selector. Until TODO 222 the fork lapped post 1 (two rows, once
+  // named for all three posts and excusing 15 pairs of which four touched) and
+  // each guide boss ran on its own post through an undrilled bore (three rows,
+  // §121, triaged by constant shared volume). The posts are gone:
+  // TODO 222 retired the posts and their three boss rows: the ring is guided by
+  // three helix slots now, and each station's roller rides its slot one working
+  // fit off each flank — no member of the selector unit is meant to overlap
+  // another there, so the station carries no row (alarmHandoffs holds the
+  // rollers in their slots).
   // Alarm setting idler — §15's chain:
   { unit: 'Alarm setting idler', a: 'alarmSetIdler', b: 'alarmSetIdler', why: '§121: the i1⇄i2 working mesh (tooth kiss, deep 0) — TODO 15\'s phase solve owns it; both gears carry one name, which is why one row names it twice' },
   // Alarm silence rocker — §94's rocker:
@@ -4749,6 +4737,7 @@ export const PLATE_SEATS = [
   { unit: "Alarm setting idler", mesh: "CylinderGeometry#5", kind: "planted", why: "an idler's stud, planted in the dial side" },
   { unit: "Alarm setting arbor", mesh: "CylinderGeometry#3", kind: "pivot", why: "the arbor's pivot, seated in the dial side" },
   { unit: "Alarm release lifter", mesh: "alarmLifterPost", kind: "planted", why: "the lifter's post, planted in the plate" },
+  { unit: "Alarm release feeler", mesh: "alarmFeelerLug", kind: "planted", why: "TODO 222: the feeler bracket's two lugs, planted on the plate's dial-side face (re-hung from the dial sheet, whose 4.1 u drop crossed the selector fork's band)" },
   { unit: "Alarm release lifter", mesh: "alarmLifterGuidePost", kind: "planted", why: "the guide post, planted in the plate" },
   { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
@@ -5547,13 +5536,14 @@ const PENETRATION_BUDGETS = [
     // groove at the ±0.01 working clearance, swept here across the full
     // co-rotating revolution. UNWAIVED — a burial past the tolerance
     // means the fork engagement broke.
+    // TODO 222: the ROLLER on the pin is the groove's working member now.
     pair: ['Alarm link', 'Alarm selector'],
     maxDepth: HANDOFF_TRACK_TOL,
     axis: 'alarm',
     nSamples: 150,
     selectA(unit) {
       const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLinkCentrePin') out.push(o); });
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLinkCentreRoller') out.push(o); });
       return out;
     },
     selectB(unit) {
@@ -5591,13 +5581,18 @@ const PENETRATION_BUDGETS = [
     // Swept on the alarm axis: setting turns the WHEEL (and heart-B) under
     // the armed-seated nose... and disarmed, the tube turns under a
     // stationary heart-B — both directions live on this axis.
+    // TODO 222: the face cam is a LOCK RING now and the pin either hangs in its
+    // slot one working fit off each wall (armed: the tube is locked to the
+    // wheel and they turn together) or rides one ALARM_SLEEVE_GAP over its
+    // face (disarmed: the tube turns under a stationary wheel). Neither ever
+    // buries, so the budget is the hand-off tolerance, not the cam's old 0.12.
     pair: ['Alarm setting wheel', 'Alarm disc'],
-    maxDepth: 0.12,
+    maxDepth: HANDOFF_TRACK_TOL,
     axis: 'alarm',
     nSamples: 150,
     selectA(unit) {
       const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmFaceCam') out.push(o); });
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLockRing') out.push(o); });
       return out;
     },
     selectB(unit) {
@@ -6238,35 +6233,74 @@ const ALARM_HANDOFFS = [
     // (±0.01, which is what a running fit measures) and drives the ring
     // POSITIVELY BOTH WAYS, which retired both the transfixion (TODO 16's
     // "slot", now literal) and the phantom bias spring. UNWAIVED.
-    label: 'centre pin ⇄ fork groove',
-    unitA: 'Alarm link', meshA: 'alarmLinkCentrePin',
+    // TODO 222: the pin carries a ROLLER in the groove (the ring now TURNS on
+    // its helix, so the pin rides the groove through the ring's whole lift and
+    // a sliding pin charged MU_STEEL on follower-B's lift), so the working
+    // contact is the roller's — the bare pin stands one roller wall inside it.
+    label: 'centre pin\'s roller ⇄ fork groove',
+    unitA: 'Alarm link', meshA: 'alarmLinkCentreRoller',
     unitB: 'Alarm selector', meshB: 'alarmSelTab',
   },
+  // TODO 222 — the ring's HELIX, one row per station: each guide pin's roller
+  // in its plate's slot, a working fit either side, so whichever way the fork
+  // loads the ring a roller bears on a flank and the ring rises as it turns.
+  // This is what replaced the posts and sleeves: an axial push on a ring
+  // guided by three off-centre sleeves jams (the pin's moment over the
+  // sleeves' spread), a tangential push on a ring held by three helices
+  // cannot.
+  ...[1, 2, 3].map((i) => ({
+    label: `guide roller ${i} ⇄ helix slot ${i}`,
+    unitA: 'Alarm selector', meshA: `alarmSelGuideRoller${i}`,
+    unitB: 'Alarm selector', meshB: `alarmSelGuide${i}`,
+  })),
   {
     // TODO 19 closed this row: the rocker's angle is solved from the contact
     // (main.js), the pin re-hung to protrude on the ring side, and the row
     // measures kissing at both parities (−0.0007/−0.0024). UNWAIVED — a
     // regression here fails the gate.
-    label: 'ring face ⇄ sensing pin',
+    // TODO 222 re-hung the rocker: a see-saw pivoted in a slot in the flange's
+    // rim, its sensing pin under the ring's PLATE-side face, so the ring's lift
+    // (the helix raises it dial-ward arming) lets the rocker's sensing end
+    // follow and lowers its finger out from under follower-B's tail. The
+    // seat blade holds the pin up on the face at every parity, through the
+    // finger: measured 0 disarmed, 0.0019 armed.
+    label: 'ring plate-side face ⇄ sensing pin',
     unitA: 'Alarm selector', meshA: 'alarmSelRing',
     unitB: 'Alarm disc', meshB: 'alarmSelPin',
   },
   {
-    // TODO 222 — follower-B's pin on the face cam, the coupling §34 claims:
-    // ARMED it seats on the cam (the tick solves the arm's rock for the cap to
-    // stand at the cam's height), DISARMED it is lifted clear. Until TODO 222
-    // nothing read this pair outside the armed 'alarm' axis, and the "lift"
-    // rocked the arm about the wrong axis with the wrong sign: disarmed, the
-    // pin stood 0.082–0.149 INSIDE the cam and 0.055 inside the wheel, armed
-    // 0.021 inside. The two disarmed parities here sit at different relative
-    // angles (τ 0.13 s and 10.15 h); the build's TODO 222 assert holds the
-    // cam's DEEPEST reach, which the wheel brings round at some angle. The
-    // lift is still POSED from the selector's state (TODO 222, open): this row
-    // holds where it puts the pin, not what moves it.
-    label: 'face cam ⇄ follower-B pin (seated armed, lifted clear disarmed)',
-    unitA: 'Alarm setting wheel', meshA: 'alarmFaceCam',
+    // TODO 222 — THE POSITIVE LOCK. The face cam is gone: follower-B's pin now
+    // drops into a vertical-walled radial slot in a flat ring on the wheel's
+    // plate-side face. ARMED the pin hangs in the slot one working fit off
+    // each wall (the tick solves its rock for the seat depth, and the slot's
+    // phase is the cam's old azimuth); DISARMED, and at the setting and
+    // dropped parities, the finger holds it one ALARM_SLEEVE_GAP above the
+    // ring's dial face, so the wheel turns under it free. The lock HOLDS; it
+    // does not cam the tube round to the set time — nothing centred on the
+    // tube can, so that swing is posed and the record says so.
+    label: 'lock slot ⇄ follower-B pin (in the slot armed, lifted clear disarmed)',
+    unitA: 'Alarm setting wheel', meshA: 'alarmLockRing',
     unitB: 'Alarm disc', meshB: 'alarmPinB',
     expect: { disarmed: 'free', armed: 'contact', setting: 'free', dropped: 'free' },
+  },
+  {
+    // TODO 222 — THE LIFT, through a contact: the rocker's finger pin under
+    // follower-B's tail at every parity. Disarmed it holds the arm up against
+    // the seat blade; armed it has dropped by the rocker's throw and the blade
+    // has followed it down — the arm never leaves the finger, so the pin's
+    // height is the finger's, read off the ring through the rocker.
+    label: 'rocker finger ⇄ follower-B tail (the lift)',
+    unitA: 'Alarm disc', meshA: 'alarmSelFingerB',
+    unitB: 'Alarm disc', meshB: 'alarmPinArmBTail',
+  },
+  {
+    // TODO 222 — THE SEAT SPRING: a blade grounded on the flange under a clamp,
+    // its free end on the arm's underside at every parity — preloaded at the
+    // lifted end, so the arm is pressed onto the finger both ways and the pin
+    // seats armed on the spring's force (ALARM_PINB_SEAT_MN at the pin).
+    label: 'seat blade ⇄ follower-B arm (the spring seats the pin)',
+    unitA: 'Alarm disc', meshA: 'alarmPinBSpring',
+    unitB: 'Alarm disc', meshB: 'alarmPinArmBBar',
   },
   // §45 — the release run, in drive order. The blade preloads the head onto
   // the collar at every parity (plateau or ramp), and the fork's plates run
@@ -8603,7 +8637,16 @@ export const STOCK_KIND_BY_MESH = {
   alarmHammerSpiral: 'spring',     // §268 — the hammer's torsion spiral, a solved 0.100 mm strip (TODO 128 closed)
   alarmHammerCollet: 'pivot',      // §268 — the hammer's boss: a sleeve RUNNING on the post, bored the pivot fit with a PIVOT_MIN_U wall — pivot-class stock by construction, the follower's collet's section
   alarmHammerStud: 'pivot',        // ...and the rim stud its outer end bears on, sized from the spring's couple
-  alarmPinSpringB: 'spring',
+  alarmPinBSpring: 'spring',      // TODO 222: follower-B's seat blade — SPRING_FLAT_U stock (0.05 mm), the feeler blade's section
+  alarmRockerPivot: 'pivot',      // TODO 222: the selector rocker's pivot pin — flatsR(PIVOT_MIN_U), the 0.07 pivot floor across the flats
+  alarmSelFingerB: 'pivot',       // TODO 222: the rocker's finger pin under follower-B's tail — the same pin stock
+  alarmSelGuidePin1: 'pivot',     // TODO 222: the ring's three helix guide pins — the same pin stock
+  alarmSelGuidePin2: 'pivot',
+  alarmSelGuidePin3: 'pivot',
+  alarmSelGuideRoller1: 'pivot',  // TODO 222: their rollers — bored to the pin, the wall at PIVOT_MIN_U: turned pin-class parts
+  alarmSelGuideRoller2: 'pivot',
+  alarmSelGuideRoller3: 'pivot',
+  alarmLinkCentreRoller: 'pivot', // TODO 222: the centre pin's roller in the fork, the same construction
   alarmReaderPin: 'pivot',        // TODO 117: the orbiting reader's pin — ALARM_PIN_R exactly as the feeler's, so it is the same kind of member; ⌀ 0.1061 mm against the 0.07 pivot floor
   alarmSeatBlade: 'spring',       // TODO 144: the seat's pad blade — SPRING_FLAT_U stock, two widths wide, the feeler blade's own section
   alarmSeatBladeStud: 'pivot',    // TODO 144: its grounded stud — pin stock at the 0.07 pivot floor exactly (the tail pin's 10-gon convention)
@@ -8668,9 +8711,6 @@ export const STOCK_KIND_BY_MESH = {
   // The selector's three guide posts — pin stock clearing the pivot floor.
   // One entry each since they carry their own names now (they always were
   // three parts; one name made three of them look like one to every selector).
-  alarmSelPost1: 'pivot',
-  alarmSelPost2: 'pivot',
-  alarmSelPost3: 'pivot',
   // TODO 11 tranche five. Three parts that were being judged as WHEELS for
   // want of a name, each measured and kinded rather than thickened:
   alarmLockBeakRiser: 'pivot',       // the beak's post off the lock tail — ⌀ 0.1061 mm on its flats, over the pivot floor
@@ -13051,10 +13091,27 @@ LINE_SPECS.push({
       derivedFrom: '§229: the output arm, (wrLen − landR)/(1 + ρ) — the lever REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
     { key: 'ringTravel', kind: 'spec', unit: 'u', value: 0.19, measure: 'ringTravel',
       derivedFrom: 'ALARM_SEL_TRAVEL: sized by the selector ring’s bias assert — the finger throw it buys' },
-    { key: 'pinD', kind: 'spec', unit: 'u', value: 0, measure: 'pinOffsetZ',
-      derivedFrom: '§51’s stratification: the fork’s groove mid on the shaft’s axis plane, so the pin rests horizontal. A STRATUM, not a law — the input a fold forks' },
-    { key: 'pinArm', kind: 'spec', unit: 'u', value: (r, L) => L.pinArm(r.pinD, r.ringTravel, r.span), measure: 'pinArmR',
-      derivedFrom: '§234 Landing 5: the arm that spends exactly the span on the ring’s travel at the groove’s offset D — ½·√((T/sin(S/2))² + ((2D+T)/cos(S/2))²), T/sin S at D = 0' },
+    // TODO 222 — THE SIDEWAYS DRIVE (the owner's restatement). The centre pin
+    // crosses the shaft's dead centre at mid-stroke and pushes the fork's
+    // WALLS sideways; the ring, turned by that throw at its drive radius,
+    // climbs three helices through its travel. The axial drive's two rows
+    // (pinD, the groove's offset over the axis; pinArm, the arm that spends the
+    // span on the travel) described a pin that lifted the ring itself, and
+    // went with it.
+    { key: 'phase', kind: 'spec', unit: 'rad', value: 0, measure: 'pinPhase',
+      derivedFrom: 'TODO 222: the stroke straddles the shaft’s DEAD CENTRE — the pin’s mid-stroke arm stands square to the shaft along the vertical, so its motion there is wholly sideways, along the fork’s wall normal' },
+    { key: 'arm', kind: 'spec', unit: 'u', value: (r, L) => L.arm(r.span, r.ringTravel).r, measure: 'pinArmR',
+      derivedFrom: 'TODO 222: the arm is DERIVED FROM THE FORCE BUDGET — the minimiser of what follower B’s lift costs the column, W(α)·(1 + μ·r_J/(r·cos(S/2))): the ring’s work per unit lift at the helix angle r sets (worst over the rocker’s and the drive’s azimuth, at the design drive radius) times the shaft journals carrying the pin’s reaction' },
+    { key: 'throw', kind: 'spec', unit: 'u', value: (r, L) => L.throw(r.arm, r.span), measure: 'pinThrow',
+      derivedFrom: 'TODO 222: the pin’s sideways throw is the chord of its arc over the span, 2r·sin(S/2) — what the fork’s walls are pushed through' },
+    { key: 'rEff', kind: 'spec', unit: 'u', value: 5.4, measure: 'ringDriveR',
+      derivedFrom: 'TODO 222: the drive radius — the distance from the ring’s axis to the line the roller pushes along, at the tab’s design reach (ALARM_SEL_TAB_R, where the §112 site search seats the tab). A RUN, not a law — where the tab stands is the fold’s to decide' },
+    { key: 'helixR', kind: 'spec', unit: 'u', value: (r, L) => L.helixR, measure: 'helixRollerR',
+      derivedFrom: 'TODO 222: the helix is cut at the guide rollers’ centres, the setting wheel’s tip circle + a margin + half a plate (ALARM_SEL_HELIX_R)' },
+    { key: 'turn', kind: 'spec', unit: 'rad', value: (r, L) => L.turn(r.throw, r.rEff), measure: 'ringTurn',
+      derivedFrom: 'TODO 222: the ring turns as far as the pin throws its drive point: throw / r_eff' },
+    { key: 'helixTan', kind: 'spec', unit: 'ratio', value: (r, L) => L.helixTan(r.ringTravel, r.helixR, r.turn), measure: 'helixTanMeas',
+      derivedFrom: 'TODO 222: the helices lift the ring its whole travel over that turn at their own radius: tanα = travel / (R_helix·turn)' },
     { key: 'stall', kind: 'envelope', bound: 'min', unit: 'mN', value: SELECTOR_DETENT_WINDOW_MN[1], measure: 'stallMN',
       derivedFrom: 'SELECTOR_DETENT_WINDOW_MN: what the chain DELIVERS to the ring must COVER the 5–50 mN detent band (§232) — TODO 16’s 1.5 mN is this row failing. Read as TODO 16’s arithmetic (§70 step 2 allows forces so), the §137 row’s series stall, itself asserted against TODO 82’s posed probe' },
   ],
@@ -13080,8 +13137,8 @@ export const LINE_SPEC_FORKS = [
     rows: {
       wrLen: { value: 9,
         forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST): TODO 174 corrected its guide-post guard, which had seated §229’s wr-16 fork ON guide post 1, and the best legal site stands the rod 9 from the wheel (TODO 190 kept the distance on the next parity ray)' },
-      pinD: { value: -0.161475,
-        forcedBy: '§234 Landing 5 raised the lay shaft’s stratum (ALARM_LINK_SHAFT_Z) for the dial’s clearance, so the groove mid no longer sits on the axis plane — D = groove mid − shaft z, read off the metal as the pin’s rest height over the axis' },
+      rEff: { value: 4.706971912672448,
+        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (TODO 190’s site, the tab at 324°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
     },
   },
 ];
@@ -13365,10 +13422,11 @@ function lineSpecLink(clock) {
     nose: find('alarmLinkBeak'), beakPin: find('alarmLinkBeakPin'), rod: find('alarmLinkRod'),
     bush1: find('alarmLinkHangerBush1'), bush3: find('alarmLinkHangerBush3'), rim: find('alarmLinkCrankRim'),
     pin: find('alarmLinkCentrePin'), ring: find('alarmSelRing'), skirt: find('alarmColSkirt'),
+    roller: find('alarmLinkCentreRoller'), guide: find('alarmSelGuideRoller1'),
   };
   const missing = Object.entries(meshes).filter(([, x]) => !x).map(([k]) => k);
   if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
-  const { nose, beakPin, rod, bush1, bush3, rim, pin, ring, skirt } = meshes;
+  const { nose, beakPin, rod, bush1, bush3, rim, pin, ring, skirt, roller, guide } = meshes;
   if (!lineSpecOutline(skirt)) return { error: 'the saw’s cut outline is unreadable — the wheel’s axis cannot be measured' };
   const toggle = AXES.find((a) => a.name === 'alarmToggle');
   const transfer = (clock.transfers?.rows || []).find((r) => r.site === 'alarm arming: lay shaft cranks (rod foot → ring drive tab)');
@@ -13382,6 +13440,10 @@ function lineSpecLink(clock) {
       R: lineSpecCentre3(rod).c, rodMinZ: lineSpecCentre3(rod).lo.z,
       A1: lineSpecCentre3(bush1).c, A3: lineSpecCentre3(bush3).c, Rc: lineSpecCentre3(rim).c,
       Pc: lineSpecCentre3(pin).c, ringZ: lineSpecCentre3(ring).c.z,
+      // TODO 222 — the sideways drive's points: the roller (the drive point),
+      // the ring's centre and its turn (its own x axis in plan), a guide roller
+      ringC: lineSpecCentre3(ring).c, Rl: lineSpecCentre3(roller).c, G: lineSpecCentre3(guide).c,
+      ringAng: (() => { ring.updateWorldMatrix(true, false); const e = ring.matrixWorld.elements; return Math.atan2(e[1], e[0]); })(),
     };
   };
   const a = read(0), b = read(0.5);
@@ -13404,6 +13466,32 @@ function lineSpecLink(clock) {
   const beakArm = plan(C, rest.N), tailArm = plan(C, R);
   const vRest = radial(rest, rest.Rc), vArm = radial(armed, armed.Rc);
   const pinR = radial(rest, rest.Pc);
+  // TODO 222 — the sideways drive, off the metal. The pin's arc about the
+  // shaft: its mid-stroke arm is the bisector of the rest and armed arms, and
+  // the phase is that bisector's angle off the vertical (either way along it)
+  // projected square to the shaft — 0 at the dead centre. The throw is the
+  // chord between the two arms. The drive radius is the distance from the
+  // ring's axis, in plan, to the line through the roller's own dead-centre
+  // point (its arc's midpoint, axis foot + its radius along the bisector)
+  // along that chord. The turn is the ring's own x axis swept in plan; the
+  // helix's radius and tangent are one guide roller's: its radius off the
+  // ring's axis and its rise over the arc it turns through.
+  const pinA = radial(armed, armed.Pc);
+  const vert = new THREE.Vector3(0, 0, 1).sub(axU.clone().multiplyScalar(axU.z)).normalize();
+  const bis = pinR.clone().normalize().add(pinA.clone().normalize()).normalize();
+  const pinPhase = Math.acos(Math.min(1, Math.abs(bis.dot(vert))));
+  const pinThrow = pinA.clone().sub(pinR).length();
+  const rlR = radial(rest, rest.Rl), rlA = radial(armed, armed.Rl);
+  const foot = rest.A1.clone().add(axU.clone().multiplyScalar(rest.Rl.clone().sub(rest.A1).dot(axU)));
+  const rlBis = rlR.clone().normalize().add(rlA.clone().normalize()).normalize();
+  const pMid = foot.add(rlBis.multiplyScalar(rlR.length()));
+  const ch = { x: armed.Rl.x - rest.Rl.x, y: armed.Rl.y - rest.Rl.y }; const chL = Math.hypot(ch.x, ch.y); ch.x /= chL; ch.y /= chL;
+  const O = rest.ringC;
+  const ringDriveR = Math.abs((pMid.x - O.x) * ch.y - (pMid.y - O.y) * ch.x);
+  let dA = armed.ringAng - rest.ringAng; while (dA > Math.PI) dA -= 2 * Math.PI; while (dA <= -Math.PI) dA += 2 * Math.PI;
+  const ringTurn = Math.abs(dA);
+  const helixRollerR = Math.hypot(rest.G.x - O.x, rest.G.y - O.y);
+  const helixTanMeas = Math.abs(armed.G.z - rest.G.z) / (helixRollerR * ringTurn);
   return {
     noseLandR: plan(rest.N, W),
     rodDist: plan(R, W),
@@ -13417,8 +13505,7 @@ function lineSpecLink(clock) {
     armRatio: beakArm / tailArm,
     beakArm, tailArm,
     ringTravel: Math.abs(armed.ringZ - rest.ringZ),
-    pinOffsetZ: rest.Pc.z - footZ(rest, rest.Pc),
-    pinArmR: pinR.length(),
+    pinPhase, pinArmR: pinR.length(), pinThrow, ringDriveR, ringTurn, helixRollerR, helixTanMeas,
     stallMN: transfer ? transfer.load.value : NaN,
     stallRead: !!transfer,
   };
@@ -14661,7 +14748,12 @@ export const RESTORING_WAIVERS = {
 // A unit in scope may not answer with '*': every rigid frame among its
 // reversing meshes must be covered by a declaration naming a member IN that
 // frame, or waived below citing a TODO with a fix path.
-export const RESTORING_MEMBER_SCOPE = ['Alarm switch'];
+// TODO 222 widened it by the two units whose frames it made answer for
+// themselves: follower-B's arm, its seat blade and the selector rocker (one
+// blade biasing the push-only chain, TODO 206's rule) in 'Alarm disc', and the
+// helically guided ring in 'Alarm selector' — both measured fully declared on
+// arrival, so they gate from here rather than being reported.
+export const RESTORING_MEMBER_SCOPE = ['Alarm switch', 'Alarm disc', 'Alarm selector'];
 // Keyed `unit\u0000<a mesh name in the uncovered frame>`. The frame is named
 // by the mesh the report names it by, so a waiver cannot drift off the body it
 // excuses: if that mesh stops reversing, the row disappears and the waiver
