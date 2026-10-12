@@ -109,9 +109,9 @@ async function lineSpecOn(dir) {
 }
 
 const SRC = 'src/main.js', INS = 'src/inspect.js';
-const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link/${k}`;
+const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`;
 const FORKS_HEAD = 'export const LINE_SPEC_FORKS = [';
-const WRLEN_FORK = "      wrLen: { value: 9.655,";
+const RUN_FORK = "      run: { value: 6,";
 const cases = [
   { name: 'identity', patches: [], fail: [] },
   // §261 2c — since the fold the wheel's size moves two more things the drive
@@ -156,20 +156,20 @@ const cases = [
   // only the declaration moves.
   // (§261 2c: the table's two forks go together — the drive's `straight` too)
   { name: 'the link’s fork deleted (the fold, undeclared)',
-    fail: [...['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
+    fail: [...['run', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
     patches: [{ file: INS, find: FORKS_HEAD, to: 'export const LINE_SPEC_FORKS = [];\nconst _PROBE_DELETED_FORKS = [' }] },
-  { name: 'the fork’s run mis-declared (wrLen 9.655 → 9.5)',
-    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK),
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      wrLen: { value: 9.5," }] },
-  { name: 'a stale fork (wrLen forked to the reference’s own 16)',
-    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK), stale: ['wrLen'],
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      wrLen: { value: 16," }] },
+  { name: 'the fork’s run mis-declared (run 6 → 6.5)',
+    fail: ['run', 'ratio', 'beakLen', 'tailLen'].map(LINK),
+    patches: [{ file: INS, find: RUN_FORK, to: "      run: { value: 6.5," }] },
+  { name: 'a stale fork (run forked to the reference’s own 11.345)',
+    fail: ['run', 'ratio', 'beakLen', 'tailLen'].map(LINK), stale: ['run'],
+    patches: [{ file: INS, find: RUN_FORK, to: "      run: { value: 11.345," }] },
   { name: 'a fork of a LAW (ratio overridden)', fail: [], malformed: ['ratio: a fork moves an INPUT, never a law'],
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      ratio: { value: 5.31, forcedBy: 'the probe forks a law to watch the schema refuse it' },\n" + WRLEN_FORK }] },
+    patches: [{ file: INS, find: RUN_FORK, to: "      ratio: { value: 5.31, forcedBy: 'the probe forks a law to watch the schema refuse it' },\n" + RUN_FORK }] },
   { name: 'a fork of an ENVELOPE (the stall floor lowered)', fail: [], malformed: ['stall: an envelope is inherited whole'],
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      stall: { value: 1, forcedBy: 'the probe forks the envelope §35 failed, to watch it refused' },\n" + WRLEN_FORK }] },
-  { name: 'a fork with no forcing constraint', fail: [], malformed: ['wrLen: the override does not say what in the movement forced it'],
-    patches: [{ file: INS, find: "        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST)", to: "        forcedBy: '', _was: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST)" }] },
+    patches: [{ file: INS, find: RUN_FORK, to: "      stall: { value: 1, forcedBy: 'the probe forks the envelope §35 failed, to watch it refused' },\n" + RUN_FORK }] },
+  { name: 'a fork with no forcing constraint', fail: [], malformed: ['run: the override does not say what in the movement forced it'],
+    patches: [{ file: INS, find: "        forcedBy: 'the §112 rod-site solve, generalised by TODO 240", to: "        forcedBy: '', _was: 'the §112 rod-site solve, generalised by TODO 240" }] },
 ];
 let ok = true;
 for (const c of cases) {
