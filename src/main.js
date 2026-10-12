@@ -38287,12 +38287,16 @@ const ALARM_DRIVER_TOP_Z = ALARM_DRIVER_BOT_Z + ALARM_COL_DRIVER_T;
 // TWO LOADS, AND THE BAR IS SIZED ON THE SECOND. What the bar carries IN USE
 // is the arming chain's resistance — TODO 92's block below prices it at ≈ 9.4
 // mN along this very axis — and against that even §50's floor stood 174x
-// clear. What it must SURVIVE is a heavy press, and the survival case is the
-// live one here rather than the theoretical one: the same block asserts that
-// the head stays CLEAR_MARGIN off the case at full press ("the case would
-// limit the throw, or take it"), so nothing bottoms this stroke and a finger
-// that keeps pressing keeps loading the chain. That is why the ceiling and not
-// the working load is the number this section is derived against.
+// clear. What it must SURVIVE is a heavy press. When §231 was written that
+// case was the live one: TODO 92's block held the head CLEAR_MARGIN off the
+// case at full press, so nothing bottomed this stroke and a finger that kept
+// pressing kept loading the chain. TODO 241 has since given the stroke a STOP
+// (the head bottoms on the case tube at the end of the carry), so the ceiling
+// reaches the bar only as the impact of a press arriving at that stop, not as
+// a standing load. The bar keeps its ceiling sizing anyway. It is the one
+// member in the chain loaded along its own length, its width is also the
+// tooth the owner's legibility call reads in, and nothing is thinned below a
+// derivation that still holds.
 //
 // Euler (layout.js's one law): P_cr = π²EI/(K·L)², least I about the THIN
 // axis, I = W·T³/12. So the PLAN width buys the margin linearly and the
@@ -38460,41 +38464,45 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // this station and no longer does, so it goes.
   const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN; // saw tip circle (geometry.js) + the one margin
   const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
-  // THE HEAD MUST CLEAR THE CASE AT FULL PRESS, and until now nothing said so.
-  // Two things were wrong with the hand-set "1 mm proud":
+  // TODO 241 — THE HEAD BOTTOMS ON THE CASE TUBE AT THE END OF THE CARRY, and
+  // that is the stroke's STOP. Before it, nothing bottomed this stroke at all:
+  // TODO 92 had this solve stand the head CLEAR_MARGIN off the case at full
+  // press, so the case never limited the throw — and so it never took the
+  // finger either. A press that kept pressing kept loading the chain, and once
+  // §261 2c put two cranks between the riser and the driver, the 5 N
+  // CASE_PUSHER_INPUT_N ceiling read 7,018 MPa at crank A's input arm's root,
+  // nearly nine times SPRING_SIGMA_Y_PA. A crank that carries that at this
+  // length is 2.7 u wide, which the plates do not have. The answer is to stop
+  // the press where the carry ends, so the finger's surplus goes into the case
+  // and never into the train — every real case pusher has a stop for this
+  // reason.
   //
-  // It measured from the wrong quantity. `_pushBase` is the pawl's base and
-  // the push axis is a CHORD — ALARM_PUSH_CHORD offsets it from the movement's
-  // centre precisely so the pawl has a moment arm — so the head's distance
-  // from the CASE axis is its projection along û, not the magnitude of the
-  // base vector. `hypot(_pushBase)` is the same number only for a pusher
-  // aimed at the centre, which this one deliberately is not: measured, the
-  // two differ by 0.3495 u.
+  // WHERE IT STOPS. The press line runs through the movement's centre (§170),
+  // so the pusher's case tube — the band's flush bore sleeve and the liner
+  // pressed into it (§202) — ends in a flat annulus square to the line, at the
+  // band's own surface: sqrt(R_OUT² − off²) along the line, the expression
+  // makeCase cuts the sleeve's outboard end with (`off`, the line's distance
+  // from the centre, is 0 by §170's construction; it stays in the expression
+  // so the two cannot drift). The head is Ø2 mm against the tube's Ø1.8 mm
+  // flange, so its flat inner face covers that whole annulus and the band's
+  // crest beside it. The head is solved to land its inner face ON that plane
+  // at T = 1 — the press fraction at which ALARM_LINKAGE's carry is exactly one
+  // tooth — so the stop and the banked tooth coincide BY CONSTRUCTION, sunk
+  // ALARM_SEAT_SINK into it by the seated-contact convention.
   //
-  // And 1 mm was not enough to begin with. The throw is ALARM_PUSH_TRAVEL
-  // (2.686 u — one ratchet tooth, mechanism, derived above and untouched
-  // here), so a 2.6385 u standoff is already short of the stroke before the
-  // chord error. Measured over the alarmPress axis, the head reached 0.397 u
-  // INSIDE the band at full press (f = 0.5, the deepest point of the cycle),
-  // and it cannot go there: the case has no recess for it, and the head is
-  // Ø2 mm against its own Ø1.2 mm bore, so it can never enter the bore either.
+  // What it costs: the head rests TRAVEL − SINK = 2.666 u = 1.010 mm proud, where
+  // TODO 92's clearance had it at 1.075 mm. The throw is still the mechanism's
+  // (rule 2's direction): the stop is placed BY the carry, never the carry by
+  // the stop. The seat is asserted where the case tube is built, measured off
+  // its metal.
   //
-  // At full press the group stands TRAVEL in along −û, so the head's nearest
-  // point to the case axis is `_pushBaseS + stemOuterS − ALARM_PUSH_TRAVEL`.
-  // Requiring THAT to clear R_OUT by CLEAR_MARGIN is the constraint, and it
-  // is what this now solves. The case never limits the stroke — the throw
-  // stays the mechanism's, which is standing rule 2's direction of travel.
-  //
-  // What it costs: the head rests CLEAR_MARGIN + TRAVEL = 2.836 u = 1.075 mm
-  // proud, against the 1.0 mm that was asserted before. "Discreet" survives,
-  // and is now a consequence of the throw rather than a number chosen to look
-  // like one.
-  // Solved with the across-axis term dropped, which is the CONSERVATIVE
-  // reading — see the measurement after the head is built, which carries the
-  // exact figure and the boot assert.
+  // (TODO 92's history, kept because it is why this solve is in û: the head's
+  // distance from the case axis is its projection ALONG the line, not
+  // `hypot(_pushBase)`, which read 0.3495 u wrong while the line was a chord.)
   const _pushBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;  // the base, ON the push axis
-  const _pushOffAxis = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;  // ...and ACROSS it (the chord)
-  const stemOuterS = CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL - _pushBaseS;
+  const _pushOffAxis = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;  // ...and ACROSS it (0 since §170)
+  const ALARM_PUSH_SEAT_S = Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - _pushOffAxis * _pushOffAxis)); // the tube's flat end, along the line from its foot
+  const stemOuterS = ALARM_PUSH_SEAT_S - ALARM_SEAT_SINK + ALARM_PUSH_TRAVEL - _pushBaseS;
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
   stem.name = 'alarmPusherStem';  // §162: the pusher body's own name, so the §48 member key and the joint rows stop selecting it as CylinderGeometry#9
@@ -38546,26 +38554,19 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   }
   if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
-  // TODO 92 — WHAT THE HEAD ACTUALLY CLEARS AT FULL PRESS, measured off the
-  // built numbers rather than trusted from the solve above.
-  //
-  // stemOuterS solves the standoff as if the head's nearest point to the case
-  // axis lay straight along û. It does not: the push axis stands off that axis
-  // by the chord, and where that offset exceeds the head's own radius the
-  // nearest point is a RIM point, whose distance is the hypotenuse — strictly
-  // larger. The solve is therefore CONSERVATIVE, never optimistic, which is
-  // the safe direction and why it is left in its simple form.
-  //
-  // But "conservative" is a claim, so this measures the real figure: the head's
-  // in-plane footprint is a rectangle (±LEN/2 along û, ±HEAD_R across), and the
-  // nearest point of a rectangle to a point outside it clamps per axis.
-  const _capAlongU = _pushBaseS + stemOuterS - ALARM_PUSH_TRAVEL;       // inner face, at full press
-  const _capAcross = Math.max(0, Math.abs(_pushOffAxis) - PUSHER_HEAD_R); // 0 while the axis passes under the head
-  const _capNearest = Math.hypot(_capAlongU, _capAcross);
-  if (_capNearest < CASE_R_OUT + CLEAR_MARGIN - 1e-9)
-    console.warn(`TODO 92: the pusher head closes to ${_capNearest.toFixed(4)} u at full press, inside the `
-      + `${(CASE_R_OUT + CLEAR_MARGIN).toFixed(4)} u its stroke needs (R_OUT ${CASE_R_OUT.toFixed(4)} + `
-      + `CLEAR_MARGIN ${CLEAR_MARGIN}) — the case would limit the throw, or take it`);
+  // TODO 241 (re-stating TODO 92's assert as a SEAT) — THE FACE MUST COVER
+  // WHAT IT BOTTOMS ON. TODO 92 held the head CLEAR of the case at full press;
+  // the stop wants the opposite, so what has to be true here is that the head's
+  // flat inner face reaches across the tube's whole end annulus — its flange,
+  // CASE_PUSHER_D/2 + TUBE_WALL off the line — and over the band's crest, where
+  // the case axis's foot falls. A head narrower than the flange would bear on
+  // its rim alone, and one standing off the crest would bear on the band's
+  // falling side. The seat itself (the face ON the tube's end at T = 1) is held
+  // where the tube's liner is built, against the sleeve the case actually cut.
+  const _capCovers = PUSHER_HEAD_R - Math.max(CASE_PUSHER_D / 2 + G.TUBE_WALL, Math.abs(_pushOffAxis));
+  if (_capCovers < 0)
+    console.warn(`TODO 241: the pusher head's face (r ${PUSHER_HEAD_R.toFixed(4)}) does not cover what it stops on — the tube's `
+      + `flange at ${(CASE_PUSHER_D / 2 + G.TUBE_WALL).toFixed(4)} and the band's crest ${Math.abs(_pushOffAxis).toFixed(4)} off the line`);
   // P1, TODO 16's format (§137) — WHAT THE FINGER BRINGS, against what the
   // chain asks of it. The head is 2 mm across precisely so a fingertip can
   // locate and press it, and a fingertip on a cap that size delivers what
@@ -38600,6 +38601,14 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // limited" was true of the chain's WORK and false of this one member's
   // section. Its width is derived at ALARM_PUSH_REACH_W and asserted where the
   // bar is cut. Nothing else here changed: the riders' §50 sections stand.
+  //
+  // TODO 241 amends it again. "Survive" assumed the finger's surplus has
+  // nowhere to go but down the chain, which was true only because nothing
+  // bottomed the stroke, and §261 2c's cranks are the members that could not
+  // carry it (7,018 MPa at crank A). The head now bottoms on the case tube at
+  // the end of the carry, so the surplus goes into the case through a flat
+  // seat, and the chain's design load is what the carry asks of it: the
+  // detent torque that the rows below price, peaked over the ramp.
   // The pin's CARRIER. §163 turns this end of the pusher inside out. The pin
   // has to sit within ±travel/2 of the foot of the perpendicular — that is
   // what makes the sweep a whole tooth — which puts it at radius 5.01–5.19
@@ -38839,13 +38848,32 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
     // cranks and a rod). Each arm is a cantilever off its hub in-plane, its
     // section the floor-stock T by one ratchet tooth W, so its root stress is
     // F·arm / (T·W²/6). In USE that is 117 MPa at crank A and 47 at crank B,
-    // under the 800 MPa spring-steel yield. The survival ceiling is not:
-    // nothing bottoms this stroke (TODO 92's head stands CLEAR_MARGIN off the
-    // case at full press), so a heavy press loads crank A's input arm with the
-    // whole CASE_PUSHER_INPUT_N ceiling — 7,018 MPa, nearly nine times
-    // yield. The fix is a stroke stop that takes the finger at the end of the
-    // carry (TODO 241), not a crank as wide as the gap between the plates; the
-    // driver's arms carried the same load unpriced before the fold.
+    // under the 800 MPa spring-steel yield.
+    //
+    // TODO 241 — AND THAT IS NOW THE WHOLE LOAD. Before the stop, nothing
+    // bottomed this stroke, so a heavy press loaded crank A's input arm with
+    // the whole CASE_PUSHER_INPUT_N ceiling: 7,018 MPa, nearly nine times
+    // yield (and the driver's arms had carried the same load unpriced before
+    // the fold). The head now bottoms on the case tube at T = 1, where the
+    // carry is exactly one tooth, so the finger's surplus goes through the
+    // head into the case and the chain carries what the carry asks of it.
+    // Two ways a real stop misses that instant, and what each costs:
+    //  - EARLY, the press stops short of a full tooth and the click never
+    //    drops: a P0 failure, not a load. So the stop is toleranced one way,
+    //    at the carry's end and never before it.
+    //  - LATE, the chain over-travels past the carry until the head lands. The
+    //    pawl then pushes the wheel up the jumper's next ramp, and the detent
+    //    torque these rows price is already that ramp's PEAK. Every slot in the
+    //    chain is cut one CLEAR_MARGIN or more past its member's end-of-stroke
+    //    station (crank A's slot past the riser's farthest reach, the base
+    //    plate's past crank B's pin, the driver's past the pin's farthest
+    //    radius), so nothing in the chain banks hard inside a CLEAR_MARGIN of
+    //    over-travel, and a stop cut within that window loads it no further.
+    // The stop itself is priced as a bearing: the head's face on the tube's
+    // end annulus (the liner's bore out to the sleeve's flange), at the 5 N
+    // ceiling. That is a REPORT on crank A's row, not a gate. STOCK declares no
+    // yield for the case alloys, and against the one steel this repository
+    // does declare it stands two and a half orders under.
     {
       const L = ALARM_LINKAGE;
       alarmColumnWheel.updateWorldMatrix(true, false);
@@ -38856,7 +38884,10 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       const Z_mm3 = (ALARM_LINKAGE_ARM_T * UNIT_MM) * (ALARM_LINKAGE_ARM_W * UNIT_MM) ** 2 / 6;
       const sigma = (F_mN, arm_u) => (F_mN / 1000) * (arm_u * UNIT_MM) / Z_mm3;   // MPa (N·mm / mm³)
       const sB = sigma(pinNeedMN, L.armBout), sA = sigma(rodNeedMN, L.armA);
-      const sSurvive = sigma(CASE_PUSHER_INPUT_N[1] * 1000, L.armA);
+      // TODO 241 — the stop's bearing at the survival ceiling: the head's face
+      // on the tube's end annulus, the liner's bore out to the sleeve's flange
+      const seatA_mm2 = Math.PI * ((CASE_PUSHER_D / 2 + G.TUBE_WALL) ** 2 - ALARM_PUSH_GUIDE_BORE ** 2) * UNIT_MM ** 2;
+      const stopBearing_MPa = CASE_PUSHER_INPUT_N[1] / seatA_mm2;
       const yieldMPa = SPRING_SIGMA_Y_PA / 1e6;
       if (!(sA < yieldMPa) || !(sB < yieldMPa))
         console.warn(`§261 2c: the linkage's cranks work at ${sA.toFixed(0)} / ${sB.toFixed(0)} MPa in USE against the ${yieldMPa} MPa yield — the arms are under their own working load`);
@@ -38871,8 +38902,8 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
         unit: 'Alarm switch', meshes: ['alarmLinkageCrankAIn', 'alarmLinkageCrankAOut', 'alarmLinkageRod'], idiom: 'crank',
         load: { value: rodNeedMN, unit: 'mN',
           source: 'crank B\'s pin load reflected to the rod by crank B\'s arms (armBout / armBin)' },
-        quantities: { armIn_u: L.armA, armOut_u: L.armA, ratio: 1, sigmaUse_MPa: sA, sigmaSurvive_MPa: sSurvive, survive_N: CASE_PUSHER_INPUT_N[1] },
-        why: `a 1:1 crank on a stud hung from the three-quarter plate, its input arm slotted on the riser — ${rodNeedMN.toFixed(1)} mN through the rod, ${sA.toFixed(0)} MPa at the arm's root in use; at the ${CASE_PUSHER_INPUT_N[1]} N survival ceiling the input arm would see ${sSurvive.toFixed(0)} MPa, which no section between the plates carries — TODO 241, a stroke stop`,
+        quantities: { armIn_u: L.armA, armOut_u: L.armA, ratio: 1, sigmaUse_MPa: sA, stop: 'pusher head on the case tube at T = 1', stopSeat_mm2: seatA_mm2, stopBearing_MPa, survive_N: CASE_PUSHER_INPUT_N[1] },
+        why: `a 1:1 crank on a stud hung from the three-quarter plate, its input arm slotted on the riser — ${rodNeedMN.toFixed(1)} mN through the rod, ${sA.toFixed(0)} MPa at the arm's root in use, which is its whole load: the head bottoms on the case tube where the carry ends (TODO 241), so the ${CASE_PUSHER_INPUT_N[1]} N survival ceiling goes into the case as ${stopBearing_MPa.toFixed(2)} MPa on a ${seatA_mm2.toFixed(2)} mm² seat`,
       });
     }
   }
@@ -39891,7 +39922,10 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   // carries it — which is the constraint the 1.2 inset was standing in for and
   // never stated.
   {
-    const stemOuterS = CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL - _guideBaseS;
+    // the stem's outer end, as published with the span below (TODO 241: this
+    // line carried its own copy of TODO 92's standoff, CLEAR_MARGIN and all,
+    // and would have gone on asserting the old head when the stop moved it)
+    const stemOuterS = alarmPusherGroup.userData.stem.capS;
     const dx = alarmPusherGuideMesh.position.x - _pushBase.x;
     const dy = alarmPusherGuideMesh.position.y - _pushBase.y;
     const off = dx * _pushPerp.x + dy * _pushPerp.y;
@@ -44996,7 +45030,37 @@ registerLabel('Case', caseSolid);
     if (!sleeve || !alarmPusherStemMesh || !alarmPusherGuideMesh || ALARM_PUSH_ABUT_S === null) {
       console.warn('§202: the pusher\'s case sleeve, stem, guide or abutment station is missing — no case bearing declared');
     } else {
-      const { lo, hi } = along(sleeve, _pushBase, _pushU);           // along the press axis from the pawl's base
+      // TODO 241 — the sleeve's span along the press axis, read off its own
+      // VERTICES. This was `along(sleeve, …)`, the bounding box's corners
+      // projected on the line, and a box's corner overstates a ring's reach
+      // along any line that is not a world axis — so the liner, cut to that
+      // span, could stand proud of the tube's face exactly where the stop now
+      // lands the head.
+      let lo = Infinity, hi = -Infinity;
+      {
+        const p = sleeve.geometry.attributes.position, v = new THREE.Vector3();
+        sleeve.updateWorldMatrix(true, false);
+        for (let i = 0; i < p.count; i++) {
+          v.fromBufferAttribute(p, i).applyMatrix4(sleeve.matrixWorld);
+          const s = (v.x - _pushBase.x) * _pushU.x + (v.y - _pushBase.y) * _pushU.y;
+          lo = Math.min(lo, s); hi = Math.max(hi, s);
+        }
+      }
+      // TODO 241 — THE STOP'S SEAT, held to touch against the metal the case
+      // cut. The head's inner face at full press (the stem's published outer
+      // end, less the stroke) must stand ALARM_SEAT_SINK into the sleeve's
+      // outboard end (`hi`, just measured). Off the seat outboard, the press
+      // would carry a tooth with no stop and the finger's surplus would go back
+      // down the chain (crank A, 7,018 MPa). Inboard, the head would bottom
+      // before the carry ended and the click would never drop.
+      {
+        const tubeEnd = hi;
+        const faceAtStop = alarmPusherGroup.userData.stem.capS - ALARM_PUSH_TRAVEL;
+        if (Math.abs(faceAtStop - (tubeEnd - ALARM_SEAT_SINK)) > 1e-6)
+          console.warn(`TODO 241: at full press the pusher head's face stands at s ${faceAtStop.toFixed(6)} against the case tube's end at `
+            + `${tubeEnd.toFixed(6)} less the ${ALARM_SEAT_SINK} seat sink — the stroke's stop ${faceAtStop > tubeEnd - ALARM_SEAT_SINK
+              ? 'is not reached, so the finger loads the chain past the carry' : 'lands before the carry ends, so the click cannot drop'}`);
+      }
       const m = liner(ALARM_PUSH_GUIDE_BORE, CASE_PUSHER_D / 2 - 0.01, hi - lo, 'alarmPusherCaseLiner');
       m.rotation.set(0, Math.PI / 2, ALARM_PUSH_AZ, 'ZYX');           // ringGeo runs along z; aim it down the axis, as the abutment is
       const mid = (lo + hi) / 2;
