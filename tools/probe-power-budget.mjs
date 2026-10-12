@@ -54,10 +54,11 @@ const argJson = (() => { const i = process.argv.indexOf('--json'); return i > 0 
 const SRC = {
   main: readFileSync(join(ROOT, 'src/main.js'), 'utf8'),
   geom: readFileSync(join(ROOT, 'src/geometry.js'), 'utf8'),
+  esc: readFileSync(join(ROOT, 'src/escapement.js'), 'utf8'),   // TODO 226 moved the drop there
 };
 function quote(file, re, what) {
   const m = SRC[file].match(re);
-  if (!m) throw new Error(`quote went stale: ${what} (${re}) no longer matches src/${file === 'main' ? 'main' : 'geometry'}.js`);
+  if (!m) throw new Error(`quote went stale: ${what} (${re}) no longer matches src/${{ main: 'main', geom: 'geometry', esc: 'escapement' }[file]}.js`);
   return Number(m[1]);
 }
 const Q = {
@@ -67,9 +68,11 @@ const Q = {
   pivotSegs: quote('main', /^const PIVOT_SEGMENTS = (\d+);/m, 'PIVOT_SEGMENTS'),
   drumR: quote('main', /const DRUM_R_ACTUAL = ([\d.]+);/, 'DRUM_R_ACTUAL'),
   arborK: quote('geom', /export const barrelArborR = \(radius\) => radius \* ([\d.]+);/, 'barrelArborR factor'),
-  escR: quote('main', /makeEscapeWheel\(\{[^}]*?radius: ([\d.]+)/s, 'escape wheel radius'),
+  // TODO 226 step 3 named the radius (the stations are laid out from it), so the
+  // quote follows the name, and the call is held to it as text below
+  escR: quote('main', /^const ESCAPE_WHEEL_R = ([\d.]+);/m, 'ESCAPE_WHEEL_R'),
   escTeeth: quote('main', /makeEscapeWheel\(\{[^}]*?teeth: (\d+)/s, 'escape wheel teeth'),
-  dropDeg: quote('geom', /const DROP_DEG = ([\d.]+);/, 'DROP_DEG'),
+  dropDeg: quote('esc', /export const DROP_DEG = ([\d.]+);/, 'DROP_DEG'),
 };
 
 // TODO 192 step 2 — the PIVOTS are expressions, not literals: quoted as text
@@ -78,6 +81,7 @@ for (const [re, what] of [
   [/^const TRAIN_PIVOT_R = flatsR\(PIVOT_MIN_U, PIVOT_SEGMENTS\);/m, 'TRAIN_PIVOT_R = flatsR(PIVOT_MIN_U, PIVOT_SEGMENTS)'],
   [/^const BALANCE_PIVOT_R = TRAIN_PIVOT_R;/m, 'BALANCE_PIVOT_R = TRAIN_PIVOT_R'],
 ]) if (!re.test(SRC.main)) throw new Error(`quote went stale: ${what} no longer matches src/main.js`);
+if (!/makeEscapeWheel\(\{[^}]*?radius: ESCAPE_WHEEL_R[,\s]/s.test(SRC.main)) throw new Error('quote went stale: the escape wheel is no longer cut at ESCAPE_WHEEL_R');
 Q.trainPivR = L.flatsR(L.PIVOT_MIN_U, Q.pivotSegs);
 Q.balPivR = Q.trainPivR;
 

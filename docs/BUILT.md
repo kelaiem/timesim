@@ -34685,3 +34685,39 @@ declaration, never the metal:
 - forking a law, forking the stall envelope, or forking with no `forcedBy` each
   come back MALFORMED, on the row named.
 
+### TODO 222 — the selector link restated for the sideways drive
+
+TODO 222 (the owner's "Full D") replaced the selector ring's axial drive. In the
+axial drive the centre pin lifted the ring itself. Now the pin crosses the lay
+shaft's DEAD CENTRE at mid-stroke and pushes the fork's walls sideways, and the
+ring, guided on three helices, rises as it turns. Two of the reference's rows
+described the axial drive, and a fork could not carry them: a fork moves an
+input, never a law. The owner chose to restate the reference instead.
+
+- **`pinD` and `pinArm` are gone.** The groove's offset over the axis no longer
+  means anything: the pin rests half a stroke off dead centre, whatever the
+  groove's height. The arm that spent the span on the ring's travel is no law of
+  this drive, because any arm turns the ring through its whole lift once the
+  helix is cut to its throw.
+- **In their place:** `phase` (0: the mid-stroke arm stands square to the shaft
+  along the vertical) and `arm`. The arm is a law, `L.arm(span, travel)`, the
+  minimiser of what follower B's lift costs the column at the nose,
+  W(α)·(1 + μ·r_J/(r·cos(S/2))), taken in the line at the tab's design reach. It
+  reads 1.1306, where the axial drive's arm had been 0.5498. Then three more
+  laws: `throw` = 2r·sin(S/2), `turn` = throw / r_eff and `helixTan` = travel /
+  (R_helix·turn). One more input, `rEff`, is the distance from the ring's axis
+  to the roller's line of push: 5.4 in the reference, 4.70697 as built, forked
+  by the §112 site solve. `helixR` is `ALARM_SEL_HELIX_R`.
+- **Measured off the posed metal.** The pin's arc gives the phase (its arms'
+  bisector against the vertical, square to the shaft) and the throw (the chord).
+  The roller's arc midpoint and that chord give r_eff. The ring's own x axis
+  gives the turn, and one guide roller's radius and rise give the helix.
+
+Restating the reference found two defects in the first landing's helix, fixed
+with it: r_eff had been read at the pin's root rather than at the roller that
+pushes, and by a one-sided difference 1.75e-4 short. The probe grew two trees
+that corrupt the drive itself, the throw law and the arm hand-tuned past its
+budget, and both fail the rows they should. TODO 82's probe now reads the pin
+along the fork's wall normal; [TODO 237] files the reflection both stall paths
+share.
+
