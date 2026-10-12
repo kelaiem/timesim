@@ -25,7 +25,9 @@ inspector.
 `TECHNIC_FORK` in `layout.js` declares — as module-1 gears turned through their
 own tooth counts. It imports `layout.js` and nothing from the movement, so the
 battery never sees it; its counts and ratios are claims read from the table,
-its part shapes are drawn.
+its part shapes are drawn, and every pair's teeth are PHASED to mesh — the
+turntable's 90° face mesh included — which `tools/probe-technic-phase.mjs`
+measures off the drawn gears at five angles, against a half-pitch control.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -394,7 +396,10 @@ it into prose either.
    itself (TODO 238's `selfStart`), per `RATE_TABLE` row, a faster rate
    carrying a lighter balance — held both ways: under it fails, and so does a
    balance one `BAL_RIM_STEP` heavier that would still reach it and start,
-   weighed by the builder's own `balanceWheelDims`. Row 17 holds
+   weighed by the builder's own `balanceWheelDims`. A row whose lightest rim
+   still cannot (36,000) carries a smaller WHEEL too (`balanceR`), held the
+   same way one level up: on `BAL_R_STEP`'s grid below `BALANCE_R_REF`, and
+   one step larger at the lightest grid rim the metal allows fails. Row 17 holds
    the NOMINAL corner clear of the knock in both positions (a watch that knocks
    as serviced is a fault); that the favourable corner's dial-flat energy would
    carry it past (455°) is listed in the record and REPORTED. `FRICTION` is the one place a coefficient the movement
@@ -1026,7 +1031,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 296 measuring scripts and this file names 39. The rest are named for the
+`tools/` holds 297 measuring scripts and this file names 40. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1043,7 +1048,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **184 of
+The index also carries the split that decides how to read a result: **185 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

@@ -76,17 +76,22 @@
 //   18,000  0.645  200.36°  (0.650: 199.09°)   both start
 //   21,600  0.485  200.14°  (0.490: 198.58°)   both start
 //   28,800  0.270  201.75°  (0.275: 199.68°)   both start
+//   36,000  0.250  201.93°  (0.255: 199.75°)   both start   balanceR 7.5
 // — the target binds every row; the start, which a lighter balance makes
-// easier, does not. A row without them is the 18,000 balance's, which is what
-// 36,000 still is: the lightest rim the metal allows (balanceWheelDims' floor,
-// 0.2305) sustains about 162° there, so it needs a smaller balance, and that
-// re-solves the escapement (the impulse pin's circle scales with the
-// balance's radius) — TODO 242's open half.
+// easier, does not. A row without them is the 18,000 balance's.
+// `balanceR` is the balance's RADIUS (BALANCE_R_SPEC), and only 36,000 moves
+// it: at r 9 the lightest rim the metal allows (balanceWheelDims' floor,
+// 0.2305) sustains about 162° there. The radius is the largest in steps of a
+// quarter that still reaches the target on a rim inside the metal (7.75
+// reaches 199.21° at the lightest grid rim, 0.235), and a smaller balance
+// re-solves the escapement it drives — the roller, the escape-to-balance
+// distance and so the notch, bank and knock (298.27° at r 7.5, so peakDeg
+// 299) all scale off BALANCE_R; the escape wheel and the angles do not.
 const RATE_TABLE = {
-  18000: { fourthTeeth: 80, escPinion: 8, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
-  28800: { fourthTeeth: 96, escPinion: 6, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
+  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6, balanceR: 9, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, rimF: 0.25, claimDeg: 133, peakDeg: 299 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
@@ -415,6 +420,10 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 // the gate until these move with it.
 // TODO 242 — both are the spec's rate row's, since each row has its own balance.
 export const AMPLITUDE_CLAIM_DEG = rateBalanceRow(SPEC.vph).claimDeg;
+// TODO 242 — the balance's RADIUS, the row's too: main.js lays the escapement's
+// stations out from it (the pin circle, the fork's length), so it is the one
+// size the escapement's whole solve follows.
+export const BALANCE_R_SPEC = rateBalanceRow(SPEC.vph).balanceR;
 export const AMPLITUDE_PEAK_DEG = rateBalanceRow(SPEC.vph).peakDeg;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
@@ -429,6 +438,17 @@ export const AMPLITUDE_TARGET_DEG = 200;
 // it — the slack this replaced, 1.5°, was one step's measured 1.3° at 18,000
 // and is a different number at every rate).
 export const BAL_RIM_STEP = 0.005;
+// TODO 242 — and the RADIUS's, one level up. A row keeps the shipped
+// movement's balance (BALANCE_R_REF, the 18,000 row's) while some rim the metal
+// allows still reaches the target and starts; only when even the lightest rim on
+// BAL_RIM_STEP's grid at or above balanceWheelDims' floor cannot does the radius
+// come down, to the LARGEST on this grid at which that rim can, for the rim's
+// own reason (the larger balance is the steadier). Row 15 holds it the rim's
+// way: the record weighs the balance one step larger at that rim, by the same
+// laws, and requires it to fail. A quarter unit (0.095 mm) is the grid 36,000's
+// radius was searched on (7.75 reaches 199.21°, 7.5 carries the row).
+export const BALANCE_R_REF = RATE_TABLE[18000].balanceR;
+export const BAL_R_STEP = 0.25;
 // §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
 // `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is
 // retired: the balance is posed at AMPLITUDE_TARGET_DEG, the swing the energy
