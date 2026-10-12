@@ -24,6 +24,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 237 | OPEN | Found closing TODO 222: the alarm link's series stall (the §137 lay-shaft row and `probe-82-alarm-stall.mjs`) reflects each member by n²/k, which inverts the lever. A member moving n per unit of ring travel is seen at the ring as 1/(n²k). The error was invisible while nPin was 1. The rod-side members (n 0.527) are read 3.6× too stiff and the shaft members (n 2.07 since TODO 222) 4.3× too soft. The stall still covers the 5–50 mN window either way, but the figure and the named governor are wrong |
 | 236 | OPEN | Found closing TODO 222: the §45 release sleeve is the selector ring's old construction — three eyes on posts (ℓ 0.4567) driven axially at one tab (r ≈ 4.90) — loaded at the tail pin, which turns with the tube, so it jams wherever d ≥ ℓ/(2μ) = 1.14 u, essentially every hour. Its load is unpriced: follower A's released 22.43 mN·mm over the tail ≈ 130 mN through a 45° cone. Fix path: TODO 222's helical guides with a tangential drive, or a centred collar; price the lift as a `transfers` row |
 | 235 | OPEN | Found deciding §261 step 3 (the owner kept §218's overcoil). `L_HAIRSPRING = L_BALANCE + 1.2` carries no derivation, and it is a datum: `SPRING_TOP_Z`, the three-quarter plate's floor and `TRAIN_CEILING_Z` (the going train's ceiling, §254's fusee groove and §47's arrest stations) all ride it. §261's step 1 built it at +1.0 and bought 0.076 mm of cased depth 1:1, and boot raised 6 asserts. Derive the spring's plane from the balance stack it sits on, then re-solve whatever the derived value moves. Rule 1, P1 |
+| 241 | CLOSED | The pusher head bottoms on the case tube's flat end (the band's bore sleeve and the §202 liner) at T = 1, where the carry is one tooth, so the 5 N survival press goes into the case as 2.36 MPa on a 2.12 mm² seat, not into crank A at 7,018 MPa. The seat is held to touch at the liner's build, off the sleeve's vertices; the floors row, `INTRA_UNIT_CONTACTS` and `probe-case-relief` name it. Toleranced one way: late by up to one `CLEAR_MARGIN` costs the chain nothing past the peaked detent the §137 rows price |
 | 234 | CLOSED | The fork cock's leg cleared a DISC about the fork's pivot, held at 9.8018 after TODO 226's seat. It now clears the fork's swept SECTOR (`FORK_SWEEP`: every fork vertex under the slab over ±bank, by 0.5° bin) and re-seats from 11.75 to 5.5 from the pivot. The plate's cut gives back the old leg's lobe (300–327°, out to 17.0) and takes a shorter one (295–305°, 14.9); the stop work's bearing, pivot, rod and mast are bit-identical, so nothing down the alarm moved. The lever's flank is one curve again, boss to fork end. Boot silent; `FORK_LEG_DISC_R` and its assert retired |
 | 233 | CLOSED | Found closing §261 step 1 (#636): the Latvian explainer and primer tables were keyed to English §221 (#617) rewrote, because the Latvian landing (#619) merged after §221 without re-syncing, so the Explainer check read red on `main`. Closed by #611 (c4eea7c), which re-keyed 15 explainer and 5 primer Latvian rows against the current English, more than the ten counted here because TODO 226's drive rewrote further English. Latvian reads 769/769 and 144/144. The race itself is answered by a CLAUDE.md convention (a locale or page-English PR re-merges `main` and waits for the Explainer check before it merges) and by §271 (merge queue). Arabic plate collisions seen locally are font metrics, not CI |
 | 231 | OPEN | Found closing TODO 204. `BACK_SWEPT_ALLOWANCE` is keyed by UNIT, so its 0.12 rides every Alarm link mesh, including the beak's eye (a ring about the tilt axis) and the fixed head, pin and post. The eye's crown (14.0315 at the construction pose) sets the declared envelope at 14.1515 and the back glass step at `zStepUnder` 14.3015; the unit's swept maximum is 14.0500 (the web's square corner as the lever tilts), so 14.2000 would follow from the metal. A per-mesh allowance, each mesh's measured rise over its own construction pose, recovers **0.1015 u** (not the 0.12 TODO 204 estimated); crowning the web round would recover the full 0.12. P3, case height |
@@ -14293,6 +14294,14 @@ constraint — `CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL − _pushBaseS` �
 so the head clears the band by 0.181 u at full press instead of standing
 0.397 u inside it, and rests 1.086 mm proud. The throw is untouched: the
 case does not get to limit the stroke.
+
+*Superseded by TODO 241.* "The case does not get to limit the stroke" was the
+right rule for a head that was burying itself, and the wrong one for a stroke
+nothing else stopped. A finger that kept pressing kept loading the chain, which
+§261 2c's cranks could not carry. The case now DOES limit the stroke, but only
+at the end of the carry: the head is solved to land on the case tube's flat end
+at T = 1, so the throw is still the mechanism's and the stop is placed by it.
+This item's assert is re-stated as that seat.
 
 **Position.** `makeCase`'s `tubeAt` built every opening on a radius, so the
 pusher bore was drilled 4.37 u to one side of the pusher. It was visible from
@@ -32662,7 +32671,7 @@ So it is a fork of §229's line spec (`LINE_SPEC_FORKS`), with each moved row's
    (μ·F, about 9.5 mN at the lift end), and the pin and post sections need
    re-reading only for the residue. Close 239 against the measurement.
 
-## 241. The alarm press chain survives the finger only if something bottoms it: a stroke stop for the pusher
+## 241. The alarm press chain survives the finger only if something bottoms it: a stroke stop for the pusher — CLOSED
 
 Found by §261 landing 2c, pricing the pusher linkage's two cranks (P1). Nothing
 bottoms the alarm pusher's stroke. TODO 92's assert holds the head
@@ -32700,6 +32709,61 @@ at T = 1, so the stop and the banked tooth coincide by construction. Then:
   tolerance, not at the finger.
 
 `sigmaSurvive_MPa` on crank A's row is the number this item retires.
+
+**Closed.** The head bottoms on the case tube's face. Of the two seats this
+item offered, that is the one where the finger's surplus goes into the CASE.
+The stem's return collar would have stopped on its abutment, a bracket hung
+from the three-quarter plate at §50's floor, so the movement would still
+have taken the 5 N.
+
+- **The seat.** §170 put the press line through the movement's centre, so the
+  pusher's case tube (the band's flush bore sleeve and the §202 liner pressed
+  into it) ends in a flat annulus square to the line at the band's surface,
+  sqrt(R_OUT² − off²) along it with off = 0. The Ø2 mm head covers the tube's
+  Ø1.8 mm flange and the band's crest beside it. `stemOuterS` now solves the
+  head's inner face onto that plane at T = 1, sunk `ALARM_SEAT_SINK` by the
+  seated-contact convention, where TODO 92's solve stood it `CLEAR_MARGIN`
+  off. At T = 1 `ALARM_LINKAGE`'s carry is exactly one tooth, so the stop and
+  the banked tooth coincide by construction. The head now rests 1.010 mm
+  proud (TRAVEL − SINK), down from 1.075.
+- **TODO 92's assert, re-stated as a seat.** At the pusher's case liner, the
+  head's face at full press is held to the sleeve's outboard end less the
+  sink, within 1e-6, read off the sleeve's own vertices. The warning names
+  which way it missed: outboard means no stop, and the finger loads the chain
+  past the carry; inboard means the stop lands before the carry ends, and the
+  click cannot drop. Beside the head's build, the old clearance assert is now
+  a coverage assert: the face must reach over the flange and the crest.
+  - Measuring the sleeve that way found the liner cut to the sleeve's
+    bounding box. A box's corners overstate a ring's reach along a line off
+    the world axes, so the liner could stand proud of the very face the head
+    now lands on. It is cut to the vertex span now.
+  - The guide boss's §182 assert carried a second copy of TODO 92's standoff.
+    It reads the stem's published span instead.
+- **Declared.** The `Alarm switch ⇄ Case` floors row names the head on the
+  sleeve and on the band's crest. `INTRA_UNIT_CONTACTS` names the head on the
+  liner. `probe-case-relief` (battery-gated) excuses the stop by name and
+  fails if it never reads shut. Measured over `alarmPress`, the head stands
+  2.666 off all three at rest, 0.034 at f 0.49, and touches at f 0.5.
+- **Priced at the working load plus the stop's tolerance.**
+  - EARLY is not a tolerance: a stop short of the carry's end is a press
+    that does not index (P0). So the stop is toleranced one way.
+  - LATE, the chain over-travels until the head lands, and the pawl pushes
+    the wheel up the jumper's next ramp. The detent torque the §137 rows
+    already price is that ramp's PEAK.
+  - Every slot in the chain is cut at least one `CLEAR_MARGIN` past its
+    member's end-of-stroke station (crank A's past the riser's farthest
+    reach, the base plate's past crank B's pin, the driver's past the pin's
+    farthest radius). So a stop within that window loads the chain no
+    further than the rows say.
+  - Crank A's row drops `sigmaSurvive_MPa` (7,018) for the stop's bearing at
+    the 5 N ceiling: 2.36 MPa on a 2.12 mm² seat (the liner's bore out to the
+    flange). That is a REPORT. `STOCK` declares no yield for the case alloys;
+    against the one steel this repository does declare, it stands 339×
+    under.
+- **§231's reach bar keeps its ceiling sizing.** The 5 N now reaches it only
+  as the impact of a press arriving at the stop. The bar is still the chain's
+  one column, and its width is also the legibility tooth, so it is not
+  thinned under a derivation that still holds.
 
 ## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000
 

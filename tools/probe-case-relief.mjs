@@ -82,6 +82,12 @@ const res = await page.evaluate(async () => {
   // own derivation, not this measurement.
   const BEARING = 'caseMiddle ⇄ backPlate';
   const CLAMP = 'caseClampScrew ⇄ backPlate';
+  // TODO 241 — and a third: the alarm pusher's STOP. At full press its head's
+  // flat face bottoms on the tube's end and meets the band's crest in the same
+  // plane (inspect.js's Alarm switch ⇄ Case floors row names both), which is
+  // the stroke ending in the case rather than in the chain. Excused by name,
+  // and it must read shut somewhere in the net or the stop never lands.
+  const STOP = new Set(['casePusherBoreSleeve ⇄ alarmPusherCap', 'caseMiddle ⇄ alarmPusherCap']);
 
   // A box test alone prunes almost nothing: the band's box encloses the whole
   // movement, so every mesh in it "overlaps". Prune on the case's OWN metal
@@ -112,7 +118,7 @@ const res = await page.evaluate(async () => {
   for (const ax of I.AXES) for (const f of [0, 0.5, 1])
     poses.push({ name: `${ax.name} f=${f}`, enter: () => { I.enterAxis(clock); clock.setPose(ax.pose(f, clock)); } });
 
-  let tested = 0, bearingPoses = 0, clampContacts = 0;
+  let tested = 0, bearingPoses = 0, clampContacts = 0, stopContacts = 0;
   for (const p of poses) {
     p.enter();
     scene.updateMatrixWorld(true);
@@ -133,6 +139,7 @@ const res = await page.evaluate(async () => {
         const k = `${label(A)} ⇄ ${label(B)}`;
         if (k === BEARING) { bearingPoses++; continue; }
         if (k === CLAMP) { clampContacts++; continue; }
+        if (STOP.has(k)) { stopContacts++; continue; }
         if (!hits.has(k)) hits.set(k, { pose: p.name, d, n: 0 });
         hits.get(k).n++;
       }
@@ -142,6 +149,7 @@ const res = await page.evaluate(async () => {
     poses: poses.length, caseMeshes: caseMeshes.length, movementMeshes: movementMeshes.length, tested,
     bearing: bearingPoses, bearingName: BEARING,
     clamp: clampContacts, clampName: CLAMP,
+    stop: stopContacts, stopNames: [...STOP],
     rows: [...hits.entries()].map(([k, v]) => ({ pair: k, firstAt: v.pose, poses: v.n, clearance: v.d })),
   };
 });
@@ -156,6 +164,9 @@ if (res.bearing !== res.poses)
 console.log(`the clamp joints (${res.clampName}) read shut in ${res.clamp} pair-pose(s) — the screws doing their job, not counted below`);
 if (!res.clamp)
   console.log('...which is itself a finding: no clamp screw touches the rim it exists to clamp');
+console.log(`the pusher's stop (${res.stopNames.join(', ')}) reads shut in ${res.stop} pair-pose(s) — the stroke ending in the case, not counted below`);
+if (!res.stop)
+  console.log('...which is itself a finding: the pusher head never reaches the stop it is solved to land on');
 if (!res.rows.length) {
   console.log('CLEAR — nothing stands in the band at any pose in the net');
 } else {
@@ -164,4 +175,4 @@ if (!res.rows.length) {
     console.log(`  ${r.pair.padEnd(50)} in ${String(r.poses).padStart(2)} pose(s), first at ${r.firstAt}, clearance ${r.clearance.toFixed(4)}`);
 }
 await browser.close(); srv.kill();
-process.exit(res.rows.length || !res.tested ? 1 : 0);
+process.exit(res.rows.length || !res.tested || !res.stop ? 1 : 0);
