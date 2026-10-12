@@ -32242,3 +32242,42 @@ the record names. Fix path: correct the reflection in both readers together
 (they assert against each other, so they move as one), re-measure
 `ALARM_LINK_STALL_PROBE_MN` and `ALARM_LINK_GOVERNING`, and re-read TODO 79/82's
 records against the corrected figure.
+
+## 241. The alarm press chain survives the finger only if something bottoms it: a stroke stop for the pusher
+
+Found by §261 landing 2c, pricing the pusher linkage's two cranks (P1). Nothing
+bottoms the alarm pusher's stroke. TODO 92's assert holds the head
+`CLEAR_MARGIN` off the case at full press, deliberately, so the case never
+limits the throw. That means a finger that keeps pressing keeps loading the
+chain, and §231 already sized the reach bar for it: the bar is a column, priced
+against the 5 N `CASE_PUSHER_INPUT_N` ceiling by Euler.
+
+Nothing downstream of the reach bar was ever priced against that ceiling.
+Before the fold the riser pressed the column driver's slot, and the driver's
+arms carried the survival load unpriced. Since §261 2c the riser presses crank
+A's slotted input arm instead. The §137 rows (`alarm arming: pusher linkage
+crank A/B`) now carry both figures:
+
+- **In use:** 83.5 mN through the rod. That is 117 MPa at crank A's arm root
+  and 47 MPa at crank B's, against 800 MPa spring-steel yield
+  (`SPRING_SIGMA_Y_PA`).
+- **At the survival ceiling:** 5 N on crank A's input arm is 7,018 MPa,
+  nearly nine times yield. Each arm is floor stock (T 0.12 mm) by one ratchet
+  tooth (W 0.139 mm), 6.34 mm long.
+
+A crank that survives 5 N at that length needs a section modulus of 0.021 mm³.
+At floor-stock thickness that is an arm 1.03 mm (2.7 u) wide, and nothing
+between the plates has room for one.
+
+**Fix path:** stop the stroke at the end of the carry, so the finger's surplus
+goes into the case and never into the train. The head bottoms on the case
+tube's face (or the stem's return collar on its abutment) at exactly the press
+fraction where the driver completes its step. `ALARM_LINKAGE`'s carry is exact
+at T = 1, so the stop and the banked tooth coincide by construction. Then:
+
+- re-state TODO 92's assert as a seat, held to touch;
+- add the stop as a declared contact;
+- price every member of the chain at its working load plus the stop's own
+  tolerance, not at the finger.
+
+`sigmaSurvive_MPa` on crank A's row is the number this item retires.

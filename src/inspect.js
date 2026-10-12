@@ -226,15 +226,18 @@ export const MECH_GRAPH = {
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/350 — TODO 170 moved the third off the silence rocker's lug — the selector's pattern one band deeper)
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
     ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
-    ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top (TODO 204: seated on plate land, carrying the lever's pin)
-    ['Alarm link', 'plate'],                 // §35: the rod's bores (both plates) + the lay shaft's two hanger bushes (TODO 206: hanger 3 is also the arming spring's stud)
+    // §261 2c: the link left the three-quarter plate with the fold — its beak's
+    // post is planted in the base plate's dial face now, and the rod crosses no
+    // plate (its guide sleeve rides hanger 3).
+    ['Alarm link', 'plate'],                 // §35/§261 2c: the lay shaft's three hangers, the beak's post planted in the base plate's dial face, and (via hanger 3) the rod's guide sleeve (TODO 206: hanger 3 is also the arming spring's stud)
 
     ['Alarm winding train', 'plate'],        // §25 C winding: the climb arbor runs in the base plate's bore; §112 — the idler studs plant beside it now, and the jeweled upper pivot RETIRED (the climb never reaches the plate)
     ['Alarm click', 'plate'],  // §99/§112: the click's shoulder screw and the spring's post stand on the BASE plate (the idler-stud convention, one plate down)
     ['Alarm winding arrest', 'plate'],  // §106/§129: FOUR plate-top columns now — the subtractor's arbor, the compound idler's, the Geneva's own arbor and the cross's stud, all the idler-stud convention
     ['Winding arrest', 'Three-quarter plate'], // §47: the bracket hangs the whole group from the plate's UNDERSIDE, top face flush (§29's lug idiom inverted)
-    ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
-    ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
+    ['Alarm lock', 'plate'],                 // §25 B, folded by §261 2c: the brake lever's pivot post, its spring stud and the beak riser planted in the base plate's dial face
+    ['Alarm switch', 'plate'],               // §25 D, folded by §261 2c: the column wheel's stud and the jumper's stud planted in the base plate's dial face
+    ['Alarm switch', 'Three-quarter plate'], // §261 2c: the pusher linkage's two crank studs hung from the plate's underside
     ['Alarm switch', 'Case'],                // §202: the pusher's bore liner, pressed into the case's pusher bore
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
@@ -761,10 +764,11 @@ const EXPECTED_PAIRS = [
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact (TODO 222: its plate-side face)
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
-  ['Alarm link', 'Three-quarter plate'],    // §35/§202: the beak's post seated on the plate top (TODO 204: it was 0.6183 over it until then) and the rod's
-                                            // upper bush pressed into its bore — the two contacts the
-                                            // EXPECTED_CONTACT_FLOORS row names; everything else holds
-                                            // CLEAR_MARGIN there (TODO 171: that row stood without this grant)
+  // (§261 2c RETIRED ['Alarm link', 'Three-quarter plate'] — the beak's post
+  // and the rod's upper bush were its two contacts, and the fold took the post
+  // under the dial and the bush with the rod's plate bores. The pair falls to
+  // undeclaredClearance, which holds it to the margin; the link is now under
+  // the base plate, the whole movement's depth away.)
   ['Alarm link', 'Dial'],                  // the SAME tab contact re-attributed through nesting: the ring
                                             // (and its tab) is a dialFace descendant, so the Dial's traverse
                                             // carries it (the Dial ⇄ Hour wheel precedent); the link's real
@@ -809,8 +813,9 @@ const EXPECTED_PAIRS = [
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
   ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the stop finger IN the lock collar's teeth — the hold itself. TODO 90 finding 4: it was a brake PAD on a smooth collar, measured tangent at every engaged pose (zero normal force, zero friction torque) while a boolean did the holding; the band is cut now and tick() runs the train on the finger's real gap
   ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
-  ['Alarm lock', 'Three-quarter plate'],   // pivot post
-  ['Alarm switch', 'Three-quarter plate'], // guide stud
+  // (§261 2c RETIRED ['Alarm lock', 'Three-quarter plate']: the pivot post is
+  // planted in the base plate's dial face under the fold.)
+  ['Alarm switch', 'Three-quarter plate'], // §261 2c: the two crank studs hung from the plate's underside (the column wheel's guide stud went under the dial)
   ['Alarm switch', 'Case'],                // §202: the pusher's bore liner in the case's bore — floors row names the one contact
   ['Alarm crown', 'Case'],                 // §202: the stem's tube liner in the case's alarm tube — likewise
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
@@ -2477,21 +2482,9 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmStemTubeLiner', 'caseAlarmTubeCollar'], // …and through the tube's flanged collar, bored to the same radius (the battery found this one: 0.01 at every pose)
     ],
   },
-  // §202 — the link's plate pair had the blanket excuse (TODO 6's residue):
-  // it is EXPECTED for the beak's post standing on the plate top and, now,
-  // for the rod's bush pressed into the plate's bore. Everything else —
-  // the rod inside its bush's bore, the beak tail above the plate — holds
-  // the margin. (TODO 204: for its first life the post's row named a joint
-  // that was not there — the post stood 0.6183 over the plate, and a declared
-  // contact is excluded before measurement, so nothing read it. The post is
-  // planted on plate land now, its foot ON the top face: measured 0.0000.)
-  {
-    a: 'Alarm link', b: 'Three-quarter plate', min: CLEAR_MARGIN,
-    contacts: [
-      ['alarmLinkBeakPost', 'threeQuarterPlate'],   // §35/TODO 204: the beak's post planted on the plate top (the pin's post — seated since TODO 204)
-      ['alarmLinkRodBushTop', 'threeQuarterPlate'], // §202: the rod's upper bush in the plate's bore
-    ],
-  },
+  // (§261 2c RETIRED the Alarm link ⇄ Three-quarter plate floors row with its
+  // grant: its two contacts — the beak's post on the plate top, the rod's upper
+  // bush in its bore — left with the fold.)
   {
     a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
     // TODO 101 CLOSED by TODO 120 — the row is UNWAIVED. Its whole-row waiver
@@ -3399,8 +3392,11 @@ export const INTRA_UNIT_CONTACTS = [
   // audited. Read plainly: this is a NOTE, not a measured contact.
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckFork', why: '§234 Landing 5 (NOTE, not an audited contact — same-frame movers, no tier compares them): the fork-end neck PRESSED into the body\'s counterbore (bore r = neck r − SAW_FIT, genuine interference) — the stub embeds 51% of its own length, over turnedBars\' TURN_LAP_MAX_FRAC, so the census reads it as a separate pressed part rather than a turned shoulder' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckRod', why: '§234 Landing 5 (NOTE, not an audited contact — same-frame movers, no tier compares them): the rod-end neck, same press-fit construction; its own bar\'s L/D is measured live by `turning`, no longer inherited from a waiver here' },
-  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushTop', why: '§202: the selector rod sliding in its three-quarter-plate bush at PIVOT_BORE_CLEAR — the rod\'s upper bearing, declared on the rod' },
-  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushBack', why: '§202: the same rod in its back-plate bush — the lower bearing' },
+  // §261 2c: the rod crosses no plate now — its two plate bushes went with the
+  // bores, and it slides in one guide sleeve carried on hanger 3 by a web.
+  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodGuide', why: '§261 2c: the selector rod sliding in its guide sleeve at PIVOT_BORE_CLEAR (§202\'s bush section, as long as the rod\'s free run allows) — its one bearing' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkRodGuide', why: '§261 2c: the web welded to the sleeve, ending at its mid-wall' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3', why: '§261 2c: the web welded to hanger 3 from its axis — the sleeve\'s ground' },
   // TODO 138 Landing 2 — RE-POINTED, and the three rows below said the wrong
   // thing before it. Indices 40–43 of this unit are the motion-works BEVEL
   // GEARS, not wheels on arbors: the conversion from the sheared extrude to
@@ -3566,7 +3562,7 @@ export const INTRA_UNIT_CONTACTS = [
   // would assemble, which is the test this table applies: a bore on a stud, a
   // pin in a slot, a blade on the arm it closes.
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColStud', why: '§163: the driver\'s bore on the column wheel\'s own stud — the third body seated on that one arbor, at PIVOT_BORE_CLEAR, and the reason the drive stroke has no relative motion at the teeth' },
-  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmPusherRiser', why: '§163: the pusher\'s PIN (the riser\'s top) in the driver\'s radial slot — the coupling itself, a running fit at PIVOT_BORE_CLEAR on both flanks, and the joint that makes the driver\'s angle the pin\'s azimuth' },
+  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmLinkageDriverPin', why: '§163, re-pointed by §261 2c: the drive PIN in the driver\'s radial slot — the coupling itself, a running fit at PIVOT_BORE_CLEAR on both flanks, and the joint that makes the driver\'s angle the pin\'s azimuth. Since the fold the pin is crank B\'s, dropped through the base plate\'s slot; the riser drives crank A between the plates (its slot is a running fit and intersects nothing)' },
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColPawlPost', why: '§163: the pawl\'s pivot post riveted into the driver\'s outer arm' },
   { unit: 'Alarm switch', a: 'alarmColPawlBoss', b: 'alarmColPawlPost', why: '§163: the pawl running on that post. The BOSS is the mesh that carries the bore and it is CUT rather than declared — the §137 row quotes this joint\'s running clearance, so a solid pawl would have the arithmetic claiming a fit the metal did not have. The row stays because the two still share a z band and a declared joint should say so' },
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColPawlSpringStud', why: '§192: the blade spring\'s anchor stud riveted into the driver\'s THIRD ARM, cut to reach it. The name has history: §163\'s row with these labels described a stud that measured 4.347 clear of the driver in every direction — a declared joint that stated something false and excused the pair from the sweep that would have caught it, which is why §169 replaced the blade with a coil and §182 now audits every row in this table against the metal. The stud returns with its ground actually cut: hull metal under it by construction, asserted at the build, and this row measured every battery run' },
@@ -3592,7 +3588,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkHangerBush1', b: 'alarmLinkHanger1', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush2', b: 'alarmLinkHanger2', why: '§121: the second corner, same construction' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail on the rod\'s top — TODO 174 cut that top FROM the tail\'s underside through the tick\'s own lift, so the pair kisses at every tilt (0.0008 at rest, 0 at the seat)' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkRod', why: '§121, re-pointed by §261 2c: the same-side beak\'s BAR on the rod\'s top, between its pivot and its nose — the top is cut from the bar\'s far face through the tick\'s own lift (TODO 174\'s registration solve), so the pair kisses at every tilt' },
   { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rim finger\'s tip under the rod\'s flat foot — a push-only contact, not an eye (TODO 206 corrected the wording: the finger only lifts the rod, and the arming spring is what keeps it pressed there)' },
   { unit: 'Alarm link', a: 'alarmLinkArmingSpring', b: 'alarmLinkArmingArm', why: 'TODO 206: the arming blade\'s face on the arm\'s tip corner, sunk ALARM_SEAT_SINK — the spring\'s working contact, held by alarmHandoffs at every parity' },
   { unit: 'Alarm link', a: 'alarmLinkArmingSpring', b: 'alarmLinkHanger3', why: 'TODO 206: the arming blade let into a slot across hanger 3 to its axis — the blade\'s root, hanger 3 being its stud' },
@@ -4758,7 +4754,7 @@ export const PLATE_SEATS = [
   { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger3", kind: "planted", why: "a hanger, standing on the plate" },
-  { unit: "Alarm link", mesh: "alarmLinkRodBushBack", kind: "pivot", why: "the link rod's back bush, a running fit in the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkBeakPost", kind: "planted", why: "§261 2c: the same-side beak's pivot post, folded under the dial — planted in the plate's dial face (the rod's back bush that stood here retired with its bore)" },
   // TODO 209 — two arrival "debt" rows that are bore fits, not clearances: each
   // shaft passes THROUGH the plate, and the reading is its radial gap to the
   // bore wall, a running fit (0.0497, 0.0998), not a part that should clear it.
@@ -6215,8 +6211,12 @@ const ALARM_HANDOFFS = [
     // at the seat, through the tick's own lift (the link's registration
     // solve, MODELING.md rule 9): 0.0008 disarmed — the lever law's own
     // small-angle residue — and 0 armed.
-    label: 'beak tail ⇄ rod top',
-    unitA: 'Alarm link', meshA: 'alarmLinkBeakTail',
+    // §261 2c: the same-side beak has no tail — the BAR presses the rod
+    // between its pivot and its nose, so the rod's top is cut from the bar's
+    // far face (cluster top, the world dial-side face under the fold) by the
+    // same registration solve.
+    label: 'beak bar ⇄ rod top',
+    unitA: 'Alarm link', meshA: 'alarmLinkBeakBar',
     unitB: 'Alarm link', meshB: 'alarmLinkRod',
   },
   {
@@ -11722,7 +11722,12 @@ const TURN_LAP_MAX_FRAC = 0.5;
 // end of an arbor, turned last against its own shoulder. Named, because
 // "a pin-kind member at the end of a bar" also describes a screw's shank and
 // a stud's head, and those are judged as the bar they are.
-const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot']);
+// §261 2c adds the drive pin at the foot of the pusher linkage's crank B: a
+// reduced tip (the riser's old section, so the driver's slot is unchanged)
+// turned last against the post's shoulder, which is a pivot's machining case
+// exactly — judged whole, the post read L/D 32.2 off the tip's ⌀ over the
+// shank's length; alone the tip is 9.6 and the shank 18.0, its own target.
+const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot', 'alarmLinkageDriverPin']);
 const TURN_AMBIG_TILT = 0.15;
 const TURN_AMBIG_WIDEN = 1.02;
 
@@ -13118,10 +13123,10 @@ export const LINE_SPEC_FORKS = [
     name: 'alarm link as built',
     ref: 'alarm link',
     rows: {
-      wrLen: { value: 10.155,
-        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST), re-run by §261 2c for the folded same-side beak: the nose’s ray three column pitches round (k 3), the beak, rod and pivot scored in the folded world and the lay shaft’s hanger columns scored up to the plate; the best legal site is the rod a run of 5.5 past the landing, 10.155 from the wheel' },
-      rEff: { value: 5.107522504834823,
-        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (§261 2c’s site, the tab at 75°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
+      wrLen: { value: 9.655,
+        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST), re-run by §261 2c for the folded same-side beak: the nose’s ray three column pitches round (k 3), the beak, rod and pivot scored in the folded world, the lay shaft’s hanger columns scored up to the plate, and the fork guarded against TODO 222’s guide plates; the best legal site is the rod a run of 5.0 past the landing, 9.655 from the wheel' },
+      rEff: { value: 4.291127765230935,
+        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (§261 2c’s site, the tab at 81°, clear of guide plate 1 at 60°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
     },
   },
 ];

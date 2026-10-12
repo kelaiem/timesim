@@ -3389,7 +3389,17 @@ const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW
 // what it carries is the governor train's reaction, still TODO 90's open sum.
 // Hoisted with the station because the base plate is cut long before the
 // alarm block runs (BACK_PLATE_HOLES, below).
-const ALARM_STRIKE_STAFF_R = 0.35;
+// §261 2c — AND IT IS SIZED FOR THE LATHE NOW. The fold ran the foot on below
+// the base plate to carry the stop wheel under the dial, and the staff grew to
+// 14.8177 u (5.62 mm) at §112's 0.35: L/D 21.2, over `turning`'s 20 (§233 —
+// one bar of stock, judged whole, because the sleeve concentric on it is a
+// separate part). So the radius is the turning target's at the staff's length,
+// floored at §112's 0.35: r = L / (2 · TURN_LD_TARGET). The length is a
+// quotation (the cam's station is cut thousands of lines below — §169's
+// convention), re-derived at the build and warned on drift; rounded UP, so the
+// section is never thinner than the length it turns.
+const ALARM_STRIKE_STAFF_LEN_U = 14.8177;
+const ALARM_STRIKE_STAFF_R = Math.max(0.35, ALARM_STRIKE_STAFF_LEN_U / (2 * TURN_LD_TARGET));   // 0.4116
 // The base plate's PLANE is declared here, where the layout needs it; the
 // plate itself is CUT further down, once the keyless linkage has solved
 // (search BASE PLATE — CUT). §87 is why: the setting lever carries a second
@@ -3605,7 +3615,7 @@ if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 2.5585; // §261 2c: re-measured — the rod runs only from the rim finger up to the folded beak's bar now, under the dial, and crosses no plate — was 21.5534. TODO 222: re-measured after the B band's spend (ALARM_B_BAND_SPEND, 0.41) moved the dial — the rod's foot rides the dial-side selector, so the rod is the spend longer — was 21.1389. TODO 207: re-measured after the lightened balance's shorter hairspring (HAIRSPRING_H 0.6 → 0.3726) lowered the stack the plate floor stands on by 1.5·ΔH = 0.341, and the rod's top end stands on the plate — was 21.4835. TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
+const ALARM_LINK_ROD_LEN_U = 2.5312; // §261 2c: re-measured (2.5585 before the fork was guarded against the guide plates) — the rod runs only from the rim finger up to the folded beak's bar now, under the dial, and crosses no plate — was 21.5534. TODO 222: re-measured after the B band's spend (ALARM_B_BAND_SPEND, 0.41) moved the dial — the rod's foot rides the dial-side selector, so the rod is the spend longer — was 21.1389. TODO 207: re-measured after the lightened balance's shorter hairspring (HAIRSPRING_H 0.6 → 0.3726) lowered the stack the plate floor stands on by 1.5·ΔH = 0.341, and the rod's top end stands on the plate — was 21.4835. TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
 const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5968 (TODO 194; 0.5765 before the dial move)
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.647 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.963 — a wall at the §50 floor
@@ -7265,7 +7275,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 //   slope — the blade passes one CLEAR_MARGIN under the arm's pin end at full
 //     lift (the blade is drawn rigid about its root, TODO 206's convention), so
 //     its root sits that far below the bearing — which is what the spend buys.
-const ALARM_PINB_SEAT_MN = 5.5404;   // mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
+const ALARM_PINB_SEAT_MN = 5.4263;   // mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
 const ALARM_PINB_BLADE = (() => {
   const t = SPRING_FLAT_U, eps = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA, mu = MU_STEEL, U = UNIT_MM / 1000;
   const xb = ALARM_PINB_POST_R + 2 * CLEAR_MARGIN;
@@ -20651,6 +20661,10 @@ const ALARM_FORK_ROLLER_R = ALARM_FORK_PIN_R + PIVOT_MIN_U;
 // TODO 222 — the radius the helix is CUT at: the guide rollers' centres, mid
 // plate (the slots are cut on this circle, and the force on a roller acts here).
 const ALARM_SEL_HELIX_R = ALARM_SEL_GUIDE_R0 + ALARM_SEL_GUIDE_T / 2;
+// §261 2c — the guide plates' reach along the ring's tangent either side of
+// their station, quoted for the link's site solve (which runs before the
+// plates are cut from the helix it sites) and held at their build.
+const ALARM_SEL_GUIDE_HALF_T_U = 1.0931;
 // TODO 222 — THE RING'S PRICE, one law for the two readers (the arm's budget
 // solve at the crank build and follower-B's lift at the nose): the work the
 // drive spends per unit of lift work, with the ring held on three helices of
@@ -26704,6 +26718,9 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // §261 2c: and through it — the foot runs on below the base plate to carry
   // the stop wheel in the folded lock band, ending flush with its dial face.
   const staffBase = alarmFoldZ(ALARM_LOCK_Z) - STOCK_MIN_U / 2;
+  if (staffTop - staffBase > ALARM_STRIKE_STAFF_LEN_U + 1e-9 || ALARM_STRIKE_STAFF_LEN_U - (staffTop - staffBase) > 1e-3)
+    console.warn(`§261 2c: the striking staff is ${(staffTop - staffBase).toFixed(5)} long, but ALARM_STRIKE_STAFF_LEN_U `
+      + `quotes ${ALARM_STRIKE_STAFF_LEN_U} — its radius was sized for the quotation; re-measure (rounded up)`);
   const staff = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_STRIKE_STAFF_R, ALARM_STRIKE_STAFF_R, staffTop - staffBase, 12), MATS.steel);
   staff.name = 'alarmStrikeStaff';
   staff.rotation.x = Math.PI / 2;
@@ -33781,7 +33798,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 11.1138;   // §261 2c: re-measured at the folded beak's rod site (the §112 solve re-sited with the hangers' columns scored), rounded UP so the stratum is derived for a bush no thinner than the one built — was 11.0211. TODO 222: re-measured after the B band's spend lengthened the selector rod (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0121 shorter — was 11.0331; rounded UP from the built 11.0210x. TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+const ALARM_LINK_BODY_LEN_U = 12.0141;   // §261 2c: re-measured at the folded beak's rod site (the §112 solve re-sited with the hangers' columns scored, and the fork guarded against the guide PLATES TODO 222 hung where the posts stood — at 11.1138 the fork was cut through guide 1), rounded UP so the stratum is derived for a bush no thinner than the one built — was 11.0211. TODO 222: re-measured after the B band's spend lengthened the selector rod (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0121 shorter — was 11.0331; rounded UP from the built 11.0210x. TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
 // needs the bush's own OD before that loop runs, at the SAME radius the
@@ -34490,6 +34507,21 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   // CLEAR_MARGIN. (The fixed post itself, r ALARM_FORK_PIN_R, sits inside the
   // sleeve, so the sleeve term covers it.) The fork build asserts the same
   // wall against the BUILT block and pin (rule 6).
+  // §261 2c — AND EACH STATION'S GUIDE PLATE. TODO 222 hung a slotted helix
+  // plate at every post station where the post stood, and this guard went on
+  // modelling the post: the plate is far wider than the sleeve along the ring's
+  // tangent, so the re-sited fork (tab 75°, guide 1 at 60°) was cut straight
+  // through guide 1 and `intraUnit` read the fork's foot, riser and tab in it at
+  // every pose. The plate's plan footprint is its slab at the helix's radius,
+  // ALARM_SEL_GUIDE_T thick, reaching ALARM_SEL_GUIDE_HALF_T_U along the
+  // tangent either side of its station — the larger of its two ends, a
+  // quotation of the built plates (they are cut from the helix, which is cut
+  // from this site), re-derived at their build and warned on drift.
+  const _plateSegs = ALARM_SEL_POST_AZ.map((az) => {
+    const c = { x: P.dial.x + Math.cos(az) * ALARM_SEL_HELIX_R, y: P.dial.y + Math.sin(az) * ALARM_SEL_HELIX_R };
+    const t = { x: -Math.sin(az), y: Math.cos(az) }, H = ALARM_SEL_GUIDE_HALF_T_U;
+    return [{ x: c.x - t.x * H, y: c.y - t.y * H }, { x: c.x + t.x * H, y: c.y + t.y * H }];
+  });
   const _postClear = (tx, ty, s) => {
     const A = { x: tx - _rimGuardArmR * s.vx, y: ty - _rimGuardArmR * s.vy };
     const B = { x: A.x + ALARM_FORK_RETREAT * s.ux, y: A.y + ALARM_FORK_RETREAT * s.uy };
@@ -34500,6 +34532,8 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
         planPtSegDist(p.x, p.y, A.x, A.y, B.x, B.y) - (_FORK_HALF_W + ALARM_SEL_SLEEVE_R + CLEAR_MARGIN),
         planSegSegDist(A, B, b0, b1) - (_FORK_HALF_W + ALARM_SEL_BOSS_W / 2 + CLEAR_MARGIN));
     }
+    for (const [p0, p1] of _plateSegs)
+      c = Math.min(c, planSegSegDist(A, B, p0, p1) - (_FORK_HALF_W + ALARM_SEL_GUIDE_T / 2 + CLEAR_MARGIN));
     return c;
   };
   // THE TAB ZONE IS SCORED TOO: scoreChord deliberately trims its last 1.8
@@ -36199,6 +36233,11 @@ const alarmLinkParts = {};
         alarmSelectorUnit.add(plate);
         registerSub('Alarm selector', 'Selector guide', plate);
         ALARM_SEL_HELIX.plates.push({ plate, a, b, tMin, tMax, zBot });
+        // §261 2c — the site solve's quotation of this footprint, held
+        const H = Math.max(Math.abs(tMin), Math.abs(tMax));
+        if (H > ALARM_SEL_GUIDE_HALF_T_U + 1e-9 || ALARM_SEL_GUIDE_HALF_T_U - H > 1e-3)
+          console.warn(`§261 2c: guide plate ${ix + 1} reaches ${H.toFixed(5)} along the ring's tangent, but the link's site solve `
+            + `guarded the fork against ALARM_SEL_GUIDE_HALF_T_U ${ALARM_SEL_GUIDE_HALF_T_U} — re-quote it (rounded up)`);
       }
       alarmSelectorUnit.updateWorldMatrix(true, true);
     }
@@ -37314,7 +37353,7 @@ const alarmLinkParts = {};
     // ROD-END-LIMITED and an order of magnitude below the band"), and its own
     // precondition honoured — it forbade re-deriving the section "before
     // TODO 79's stations are re-solved", which §202 did.
-    const ALARM_LINK_STALL_PROBE_MN = 455.14;          // §261 2c: re-measured — the folded same-side beak's bar carries the rod (its span pivot→rod replaces the retired tail blade, 0.6% of the compliance) and the §112 site re-solved with the hangers scored (spans 5.56 each); the fork-end overhang still governs — was 429.50. TODO 222: re-measured on the sideways drive — the arm the force budget derives (1.1306) throws the pin 2.07 ring travels along the fork's wall normal, so the probe now reads the pin ALONG THE WALL NORMAL (it read the ring's travel direction, which the sideways drive no longer loads: n 0) and both paths reflect the shaft members by nPin 2.07 (the row reads 431.19) — was 1318.98. (Whether n²/k is the right reflection is TODO 237's question.) TODO 206: re-measured after the C1 seat re-solved the beak's arms (tail 0.768 → 0.6885, so the tail blade stiffened; it carries 0.1% of the compliance, so the stall barely moved) — was 1331.88. TODO 190: re-measured at the re-solved site (18.96, −2.83), d 9 on the next parity ray, tab 324°, body 11.0631 — was 1221.13. The shorter chord halved the spans (5.53 each), which stiffened the rod-end cantilever through its back-span coupling (span + overhang)/overhang, so the stall ROSE and the FORK-end overhang, which no site move touches, now carries the largest share (see ALARM_LINK_GOVERNING). TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 1006.54. §234 Landing 5: tools/probe-82-alarm-stall.mjs on the raised, bored body with its pressed necks, the rod-end bush at its clearance-derived station, the middle station at the equal-span midpoint, and the pin arm at the derived 0.35 rad span (was 81.02 before this landing). Two of the probe's own readings had to be corrected first for the two paths to meet: the pin's reflection ratio is its displacement ALONG THE LOAD (the ring's travel), not its path (the arc now slides 0.2 u along the groove, and sliding does no work), and the tail blade bends about its THIN dimension (the probe had cubed its width). Still `covers` the 5–50 mN band, by 27× (20× at TODO 174's site)
+    const ALARM_LINK_STALL_PROBE_MN = 461.26;          // §261 2c: re-measured — the folded same-side beak's bar carries the rod (its span pivot→rod replaces the retired tail blade, 0.6% of the compliance) and the §112 site re-solved with the hangers scored and the fork guarded against the guide plates (spans 6.01 each); the fork-end overhang still governs — was 429.50. TODO 222: re-measured on the sideways drive — the arm the force budget derives (1.1306) throws the pin 2.07 ring travels along the fork's wall normal, so the probe now reads the pin ALONG THE WALL NORMAL (it read the ring's travel direction, which the sideways drive no longer loads: n 0) and both paths reflect the shaft members by nPin 2.07 (the row reads 431.19) — was 1318.98. (Whether n²/k is the right reflection is TODO 237's question.) TODO 206: re-measured after the C1 seat re-solved the beak's arms (tail 0.768 → 0.6885, so the tail blade stiffened; it carries 0.1% of the compliance, so the stall barely moved) — was 1331.88. TODO 190: re-measured at the re-solved site (18.96, −2.83), d 9 on the next parity ray, tab 324°, body 11.0631 — was 1221.13. The shorter chord halved the spans (5.53 each), which stiffened the rod-end cantilever through its back-span coupling (span + overhang)/overhang, so the stall ROSE and the FORK-end overhang, which no site move touches, now carries the largest share (see ALARM_LINK_GOVERNING). TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 1006.54. §234 Landing 5: tools/probe-82-alarm-stall.mjs on the raised, bored body with its pressed necks, the rod-end bush at its clearance-derived station, the middle station at the equal-span midpoint, and the pin arm at the derived 0.35 rad span (was 81.02 before this landing). Two of the probe's own readings had to be corrected first for the two paths to meet: the pin's reflection ratio is its displacement ALONG THE LOAD (the ring's travel), not its path (the arc now slides 0.2 u along the groove, and sliding does no work), and the tail blade bends about its THIN dimension (the probe had cubed its width). Still `covers` the 5–50 mN band, by 27× (20× at TODO 174's site)
     // The governor moved with the section: the spans were the soft members
     // while the whole rod was 0.1233, and then the NECK's rod-end cantilever
     // was. That is the honest outcome — the compliance is where the metal is
@@ -38241,11 +38280,15 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
     const T_ = ALARM_LINKAGE_ARM_T, W_ = ALARM_LINKAGE_ARM_W;
     const armMesh = (name, from, to, extra = 0, slot = null) => {
       // an arm from `from` to `to` (world plan), cut in its own frame along +x,
-      // square ends overlapping the hub and the joint by half its width;
-      // `slot` = { s0, s1, hw } along the arm, a stadium cut through it
+      // its far end square past the joint by half its width; `slot` = { s0, s1,
+      // hw } along the arm, a stadium cut through it. Its INNER end starts at
+      // the hub's bore, not past the pivot: every arm springs from a crank's
+      // hub, and an arm run through the centre buries itself in the stud the
+      // hub turns on (intraUnit read all four, MF, at every pose)
       const len = Math.hypot(to.x - from.x, to.y - from.y) + extra;
+      const x0 = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR;
       const sh = new THREE.Shape();
-      sh.moveTo(-W_ / 2, -W_ / 2); sh.lineTo(len + W_ / 2, -W_ / 2); sh.lineTo(len + W_ / 2, W_ / 2); sh.lineTo(-W_ / 2, W_ / 2); sh.closePath();
+      sh.moveTo(x0, -W_ / 2); sh.lineTo(len + W_ / 2, -W_ / 2); sh.lineTo(len + W_ / 2, W_ / 2); sh.lineTo(x0, W_ / 2); sh.closePath();
       if (slot) {
         const h = new THREE.Path();
         h.moveTo(slot.s0, -slot.hw); h.lineTo(slot.s1, -slot.hw);
@@ -38323,6 +38366,20 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       crankB.add(tip);
     }
     stud('alarmLinkageStudB', L.PB);
+    // §48/TODO 206 — every member of the linkage is DRIVEN both ways: the
+    // riser runs captive in crank A's radial slot, the rod is pinned through
+    // both cranks' joints, and crank B's pin runs captive in the driver's
+    // slot. Nothing in it is sprung; the press brings it in, the pusher's
+    // return coil brings the stem — and so the whole chain — home.
+    declareRestoring('Alarm switch', 'alarmLinkageCrankAIn', 'two-way',
+      '§261 2c: crank A is pushed AND pulled by the pusher’s riser, captive in its radial slot (metal on both flanks — the driver’s own coupling, §163)',
+      ['input:the alarm pusher', 'Alarm switch/alarmPusherStem']);
+    declareRestoring('Alarm switch', 'alarmLinkageRod', 'two-way',
+      '§261 2c: the rod is bored onto crank A’s joint pin at one end and crank B’s at the other, so crank A carries it both ways',
+      ['Alarm switch/alarmLinkageCrankAIn', 'Alarm switch/alarmLinkageCrankAIn']);
+    declareRestoring('Alarm switch', 'alarmLinkageCrankBIn', 'two-way',
+      '§261 2c: crank B is pinned to the rod at its joint, so the rod turns it both ways',
+      ['Alarm switch/alarmLinkageRod', 'Alarm switch/alarmLinkageRod']);
     // ---- the rod: a bar bored at both ends onto the cranks' joint pins, in
     // the plane on top of the arms; posed from the two joints each frame
     const rodGrp = new THREE.Group();
@@ -38377,6 +38434,52 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       quantities: { armIn_u: 1, armOut_u: 1, ratio: 1, sautoirTq_Nmm: ALARM_JUMPER_DETENT_NMM, beakLiftTq_Nmm: ALARM_LINK_ARMING_SPRING.liftTq_Nmm },
       why: `displacement through a plane change with no direction change: climb and reach, loaded axially, ratio 1 by construction — the anatomy a real case-pusher's under-plate operating lever has; needs ~${pawlNeedMN.toFixed(1)} mN against the ${CASE_PUSHER_INPUT_N[0]}–${CASE_PUSHER_INPUT_N[1]} N a finger delivers`,
     });
+    // §261 2c — THE LINKAGE'S TWO CRANKS, in the same format. What the chain
+    // asks at the driver's pin is the same detent torque, paid back at the
+    // pin's own radius about the wheel (its arc ends where the reference line
+    // did, so the radius is the line's at the rest end). Crank B carries that
+    // force at its output arm; the rod carries it reflected by crank B's arms;
+    // crank A carries the rod's force at its output, and its slotted input arm
+    // takes the riser at the same radius (1:1 — the owner's call, two equal
+    // cranks and a rod). Each arm is a cantilever off its hub in-plane, its
+    // section the floor-stock T by one ratchet tooth W, so its root stress is
+    // F·arm / (T·W²/6). In USE that is 117 MPa at crank A and 47 at crank B,
+    // under the 800 MPa spring-steel yield. The survival ceiling is not:
+    // nothing bottoms this stroke (TODO 92's head stands CLEAR_MARGIN off the
+    // case at full press), so a heavy press loads crank A's input arm with the
+    // whole CASE_PUSHER_INPUT_N ceiling — 7,018 MPa, nearly nine times
+    // yield. The fix is a stroke stop that takes the finger at the end of the
+    // carry (TODO 241), not a crank as wide as the gap between the plates; the
+    // driver's arms carried the same load unpriced before the fold.
+    {
+      const L = ALARM_LINKAGE;
+      alarmColumnWheel.updateWorldMatrix(true, false);
+      const axW = new THREE.Vector3().setFromMatrixPosition(alarmColumnWheel.matrixWorld);
+      const rPin = Math.hypot(L.q0.x - axW.x, L.q0.y - axW.y);
+      const pinNeedMN = detentTq_Nmm / (rPin * UNIT_MM) * 1000;
+      const rodNeedMN = pinNeedMN * L.armBout / L.armBin;
+      const Z_mm3 = (ALARM_LINKAGE_ARM_T * UNIT_MM) * (ALARM_LINKAGE_ARM_W * UNIT_MM) ** 2 / 6;
+      const sigma = (F_mN, arm_u) => (F_mN / 1000) * (arm_u * UNIT_MM) / Z_mm3;   // MPa (N·mm / mm³)
+      const sB = sigma(pinNeedMN, L.armBout), sA = sigma(rodNeedMN, L.armA);
+      const sSurvive = sigma(CASE_PUSHER_INPUT_N[1] * 1000, L.armA);
+      const yieldMPa = SPRING_SIGMA_Y_PA / 1e6;
+      if (!(sA < yieldMPa) || !(sB < yieldMPa))
+        console.warn(`§261 2c: the linkage's cranks work at ${sA.toFixed(0)} / ${sB.toFixed(0)} MPa in USE against the ${yieldMPa} MPa yield — the arms are under their own working load`);
+      declareTransfer('alarm arming: pusher linkage crank B (rod → driver pin)', {
+        unit: 'Alarm switch', meshes: ['alarmLinkageCrankBIn', 'alarmLinkageCrankBOut', 'alarmLinkageDriverPin'], idiom: 'crank',
+        load: { value: pinNeedMN, unit: 'mN',
+          source: 'the same detent torque the riser row prices (the sautoir\'s forward detent plus the link nose\'s lift), paid back at the drive pin\'s radius about the column wheel at the rest end of its arc' },
+        quantities: { armIn_u: L.armBin, armOut_u: L.armBout, ratio: L.armBout / L.armBin, rPin_u: rPin, sigmaUse_MPa: sB },
+        why: `a bell crank on a stud hung from the three-quarter plate, carrying the press down through the base plate's slot into the folded driver — 1:1 to closure (ρ solved, ${(L.armBout / L.armBin).toFixed(4)}); ${pinNeedMN.toFixed(1)} mN at the pin, ${sB.toFixed(0)} MPa at the output arm's root against ${yieldMPa} MPa`,
+      });
+      declareTransfer('alarm arming: pusher linkage crank A (riser → rod)', {
+        unit: 'Alarm switch', meshes: ['alarmLinkageCrankAIn', 'alarmLinkageCrankAOut', 'alarmLinkageRod'], idiom: 'crank',
+        load: { value: rodNeedMN, unit: 'mN',
+          source: 'crank B\'s pin load reflected to the rod by crank B\'s arms (armBout / armBin)' },
+        quantities: { armIn_u: L.armA, armOut_u: L.armA, ratio: 1, sigmaUse_MPa: sA, sigmaSurvive_MPa: sSurvive, survive_N: CASE_PUSHER_INPUT_N[1] },
+        why: `a 1:1 crank on a stud hung from the three-quarter plate, its input arm slotted on the riser — ${rodNeedMN.toFixed(1)} mN through the rod, ${sA.toFixed(0)} MPa at the arm's root in use; at the ${CASE_PUSHER_INPUT_N[1]} N survival ceiling the input arm would see ${sSurvive.toFixed(0)} MPa, which no section between the plates carries — TODO 241, a stroke stop`,
+      });
+    }
   }
   // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
   // A vertical torus spans its RING DIAMETER in z (0.48 here) — the first two
@@ -39250,8 +39353,8 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       '§192: the pawl rocks through its whole stroke on every press and is closed by alarmColPawlSpring, an in-plane cantilever blade of the movement’s one flat-spring stock, coplanar with the pawl in the skirt band — clamped to a stud on the driver’s third arm (cut to reach it; the ground §163’s blade never had), bearing on the tail’s flank at the boss’s edge. Its free angle is derived a full working stroke inside the metal, so it is never slack (asserted at the build)',
       'alarmColPawlSpring');
     declareRestoring('Alarm switch', 'alarmColDriver', 'two-way',
-      '§163: the driver is pushed AND pulled by the pusher’s pin, which runs captive in its radial slot — the slot has metal on both flanks, so the return is driven rather than sprung',
-      ['input:the alarm pusher', 'Alarm switch/alarmPusherStem']);
+      '§163: the driver is pushed AND pulled by the pin that runs captive in its radial slot — the slot has metal on both flanks, so the return is driven rather than sprung. Since §261 2c the pin is crank B’s (the linkage carries the press under the dial), so crank B drives it both ways',
+      ['Alarm switch/alarmLinkageCrankBIn', 'Alarm switch/alarmLinkageCrankBIn']);
   }
 
 }
@@ -52951,23 +53054,7 @@ function tick(t) {
       // the readability check.
       const profile = alarmLinkNoseSurface(alarmColShownA + ALARM_LINK_BEAK_OFF);
       const noseDrop = Math.min(colH * (1 - profile), F.seatNoseDrop);
-      alarmLinkParts.beakArm.rotation.y = F.noseRySign * (noseDrop / alarmLinkParts.beakLen);
-      // The tail's far end — the rod's station — rises by the lever ratio;
-      // the rod rides it, foot-down onto the rim finger.
-      const rodLift = noseDrop * (alarmLinkParts.tailLen / alarmLinkParts.beakLen) * Math.sign(F.rodTravel);
-      alarmLinkParts.rod.position.z = alarmLinkParts.rodZRest + rodLift + subDrillZ(alarmLinkParts.rod); // §10 level 2: the drill composes here
-      // The rim finger follows its contact with the rod's foot: the
-      // envelope solve, seeded deterministically along the derived roll
-      // span so the answer is a pure function of the pose.
-      const rodFoot = F.rodFootRest + rodLift;
-      const tSeed = Math.max(0, Math.min(1, F.rodTravel === 0 ? 0 : (rodFoot - F.rodFootRest) / F.rodTravel));
-      const roll = F.solveEnv(F.rimPair, rodFoot, F.rollRest + (F.rollArmed - F.rollRest) * tSeed, 'rim tick');
-      alarmLinkParts.shaft.rotation.x = roll;
-      // TODO 206 — the arming spring's blade bears on the arm's tip corner at
-      // every roll: its frame is aimed through the corner the roll puts there
-      // (the feeler blade's rigid-drawn convention), so the spring is a
-      // consequence of the shaft's angle, never a pose of its own.
-      alarmLinkParts.armingBlade.rotation.z = alarmLinkParts.armingBlade.userData.aim(roll);
+      const roll = poseAlarmLinkRun(noseDrop);
       // The ring stands where the fork's groove holds its pin — the travel
       // READ from that engagement, not assigned to it. Positive both ways:
       // the pin lifts the ring through the groove's ceiling and lowers it
@@ -53587,6 +53674,86 @@ function tick(t) {
 // margin, a revolve onto something that is not a rotor — is a fact about the
 // declaration and warns at boot; the motion half needs a posed movement and is
 // the census's.
+// §261 2c — THE LINK'S RUN, as one function of the nose's drop: tick() poses
+// it through this, and so does the jumper census's lawed row (JMP_SITE_MOVERS,
+// below), which is why it is a function — the fold sited the lay shaft inside
+// the jumper's region, so the run is judged over its own travel rather than
+// read as built. The body is tick's, moved here unchanged.
+const poseAlarmLinkRun = (noseDrop, drill = true) => {
+  const F = alarmLinkParts.forward;
+  alarmLinkParts.beakArm.rotation.y = F.noseRySign * (noseDrop / alarmLinkParts.beakLen);
+  // The tail's far end — the rod's station — rises by the lever ratio;
+  // the rod rides it, foot-down onto the rim finger.
+  const rodLift = noseDrop * (alarmLinkParts.tailLen / alarmLinkParts.beakLen) * Math.sign(F.rodTravel);
+  alarmLinkParts.rod.position.z = alarmLinkParts.rodZRest + rodLift + (drill ? subDrillZ(alarmLinkParts.rod) : 0); // §10 level 2: the drill composes here
+  // The rim finger follows its contact with the rod's foot: the
+  // envelope solve, seeded deterministically along the derived roll
+  // span so the answer is a pure function of the pose.
+  const rodFoot = F.rodFootRest + rodLift;
+  const tSeed = Math.max(0, Math.min(1, F.rodTravel === 0 ? 0 : (rodFoot - F.rodFootRest) / F.rodTravel));
+  const roll = F.solveEnv(F.rimPair, rodFoot, F.rollRest + (F.rollArmed - F.rollRest) * tSeed, 'rim tick');
+  alarmLinkParts.shaft.rotation.x = roll;
+  // TODO 206 — the arming spring's blade bears on the arm's tip corner at
+  // every roll: its frame is aimed through the corner the roll puts there
+  // (the feeler blade's rigid-drawn convention), so the spring is a
+  // consequence of the shaft's angle, never a pose of its own.
+  alarmLinkParts.armingBlade.rotation.z = alarmLinkParts.armingBlade.userData.aim(roll);
+  return roll;
+};
+// §261 2c — THE DRIVER, PAWL AND BLADE as one function of the press, for the
+// same census: the fold sited the column driver inside the jumper's region.
+// tick() writes the driver's angle from the press fraction and solves the pawl
+// against the saw at the wheel's shown angle; a press is the stroke in (the
+// wheel carried with the driver, the pawl bottomed) and the stroke back (the
+// wheel banked a step on, the pawl riding out over a tip), so the law's one
+// parameter walks the cycle: u ∈ [0, ½] is T 0 → 1 carrying, (½, 1] is T 1 → 0
+// banked. The held angle is taken at 0 — the seat is periodic in the tooth
+// pitch the wheel steps by, so every held step poses the same metal.
+const poseAlarmDriverCycle = (u) => {
+  const banked = u > 0.5, T = banked ? 2 - 2 * u : 2 * u;
+  const shown = banked ? ALARM_COL_STEP : Math.min(ALARM_COL_STEP, alarmDriverCarry(T));
+  const d = alarmColDriverGroup.userData.drive;
+  alarmColDriverGroup.rotation.z = alarmDriverAngleAt(T);
+  const phi = alarmPawlSeatPhi(alarmColDriverGroup.rotation.z + d.postAz - (ALARM_LOCK_ENGAGED - shown));
+  if (phi !== null) alarmColPawlGroup.rotation.z = d.postAz + phi;
+  const a = alarmColPawlSpringBlade.userData.aim;
+  const rot = alarmColPawlGroup.rotation.z, c = Math.cos(rot), sn = Math.sin(rot);
+  const bx = alarmColPawlGroup.position.x + a.bearX * c - a.bearY * sn;
+  const by = alarmColPawlGroup.position.y + a.bearX * sn + a.bearY * c;
+  alarmColPawlSpringBlade.rotation.z = Math.atan2(by - a.ry, bx - a.rx);
+  alarmColPawlSpringBlade.scale.x = Math.hypot(bx - a.rx, by - a.ry);
+};
+// A lawed row's stroke is how far its FASTEST point travels over u ∈ [0, 1],
+// which sets the sampling (no point more than CLEAR_MARGIN/2 between samples).
+// For these two it is MEASURED off the law itself: the path length, summed
+// over a fine walk, of the vertex that moves most per step — an over-count of
+// the true fastest point's arc, which is the safe side for a sample spacing.
+const jmpStrokeOf = (roots, pose, n = 64) => {
+  const saved = roots.map((r) => [r.position.clone(), r.rotation.clone(), r.scale.clone()]);
+  const meshes = [];
+  for (const r of roots) r.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position && !o.userData.schematic) meshes.push(o); });
+  const v = new THREE.Vector3(), w = new THREE.Vector3();
+  let prev = null, len = 0;
+  for (let k = 0; k <= n; k++) {
+    pose(k / n);
+    for (const r of roots) r.updateWorldMatrix(true, true);
+    const now = meshes.map((m) => m.matrixWorld.clone());
+    if (prev) {
+      let step = 0;
+      meshes.forEach((m, i) => {
+        const pos = m.geometry.attributes.position;
+        for (let j = 0; j < pos.count; j += Math.max(1, Math.floor(pos.count / 64))) {
+          v.fromBufferAttribute(pos, j).applyMatrix4(now[i]); w.fromBufferAttribute(pos, j).applyMatrix4(prev[i]);
+          step = Math.max(step, v.distanceTo(w));
+        }
+      });
+      len += step;
+    }
+    prev = now;
+  }
+  roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.scale.copy(saved[i][2]); r.updateWorldMatrix(true, true); });
+  return len;
+};
 const jmpRotorNamed = (root, name) => {
   let hit = null;
   root.traverse((o) => { if (!hit && o.name === name && o.userData && o.userData.r > 0 && o.userData.teeth > 0) hit = o; });
@@ -53652,7 +53819,16 @@ const JMP_SITE_MOVERS = [
   { name: 'hack rod', kind: 'bounded', roots: [hackRod], bound: 2.72 },                 // 2.7278
   { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, alarmHand], bound: 0.81 },   // 0.8124, the small-seconds body
   { name: 'alarm feeler', kind: 'bounded', roots: [alarmFeelerUnit], bound: 0.33 },     // 0.3344, alarmFeelerTip
-  { name: 'alarm link', kind: 'bounded', roots: [alarmLinkUnit], bound: 1.46 },         // 1.4671, alarmLinkCentrePin
+  // §261 2c — the link's run and the column driver are LAWED: the fold sited
+  // the lay shaft and the driver inside the jumper's region (the link's old
+  // bounded row read its fork-end neck at 0, against the 1.46 it was declared
+  // at from the old site). The link's still metal — hangers, post, sleeve —
+  // does not move and needs no row.
+  { name: 'alarm link run', kind: 'lawed',
+    roots: [alarmLinkParts.beakArm, alarmLinkParts.rod, alarmLinkParts.shaft, alarmLinkParts.armingBlade],
+    pose: (u) => poseAlarmLinkRun(u * alarmLinkParts.forward.seatNoseDrop, false) },
+  { name: 'column driver', kind: 'lawed', roots: [alarmColDriverGroup, alarmColPawlGroup, alarmColPawlSpringBlade],
+    pose: poseAlarmDriverCycle },
   // TODO 214 moved the yoke to the lever's side of the stem, into the census's
   // view: the yoke stays this far off the region the whole net over…
   { name: 'yoke', kind: 'bounded', roots: [yokeGroup], bound: 0.81 },                  // 0.8147, yokeBoss at crown 44/48
@@ -53662,6 +53838,8 @@ const JMP_SITE_MOVERS = [
 // the yoke's station, which every pose keeps between the seat and the pull
 // (a cam-over lifts the clutch by at most a tooth height, far inside the
 // fork's stroke). Its tip is the fastest point: the tail pin's stroke.
+for (const r of JMP_SITE_MOVERS) if (r.kind === 'lawed' && r.stroke === undefined && r.pose && (r.name === 'alarm link run' || r.name === 'column driver'))
+  r.stroke = jmpStrokeOf(r.roots, r.pose);
 JMP_SITE_MOVERS.push({ name: 'yoke spring', kind: 'lawed', roots: [yokeSpringBlade], stroke: YK_SPRING.stroke_u,
   pose: (u) => { const aim = _ykBladeAim(YOKE_A_SEAT + u * (YOKE_A_FULL - YOKE_A_SEAT)); yokeSpringBlade.rotation.z = aim.ang; yokeSpringBlade.scale.x = aim.len; } });
 const JMP_SITE_SAT = 2, JMP_SITE_CAPD_W = 0.02;
@@ -53905,7 +54083,7 @@ const JMP_SITE = await (async () => {
   const lawedSamples = [];
   const unitOf = (o) => (labelEntries.find((e) => under(o, e.obj)) || {}).name || null;
   for (const L of LAWED) {
-    const saved = L.roots.map((r) => [r.position.clone(), r.rotation.clone()]);
+    const saved = L.roots.map((r) => [r.position.clone(), r.rotation.clone(), r.scale.clone()]);
     const recs = new Map();
     for (const r of L.roots) r.traverse((o) => {
       if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o) || recs.has(o)) return;
@@ -53926,7 +54104,7 @@ const JMP_SITE = await (async () => {
         });
       }
     }
-    L.roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.updateWorldMatrix(true, true); });
+    L.roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.scale.copy(saved[i][2]); r.updateWorldMatrix(true, true); });
     lawedSamples.push({ name: L.name, samples: n + 1 });
   }
   const swungSamples = [];
