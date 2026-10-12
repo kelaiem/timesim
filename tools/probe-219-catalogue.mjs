@@ -262,7 +262,7 @@ console.log(`  §152 widened the arc on 2026-08-21; the note was filed 2026-09-1
 // Gated on the arithmetic the probe can see: the first candidate at every
 // reachable h multiplies to the scale exactly, keeps stage one's 36-tooth total
 // (so rsvD0, which the setting traverse is sited against, does not move) and
-// cuts no pinion under PINION_LEAVES_MIN. Which candidate the METAL admits (the
+// cuts no member under PINION_LEAVES_MIN. Which candidate the METAL admits (the
 // tooth floor, the bores) is the build's call; the boots at each reserve are
 // that instrument, and they are recorded with TODO 134.
 {
@@ -278,7 +278,7 @@ console.log(`  §152 widened the arc on 2026-08-21; the note was filed 2026-09-1
     const prod = mul(F(c.w1, c.p0), F(c.w2, c.p1));
     if (!eq(prod, target)) fail(`${h} h: ${c.w1}/${c.p0} × ${c.w2}/${c.p1} = ${show(prod)}, the scale needs ${show(target)}`);
     if (c.p0 + c.w1 !== L.RSV_STAGE1_TEETH) fail(`${h} h: stage one ${c.p0}+${c.w1} is not the ${L.RSV_STAGE1_TEETH} teeth rsvD0 holds`);
-    if (Math.min(c.p0, c.p1) < L.PINION_LEAVES_MIN) fail(`${h} h: a pinion under ${L.PINION_LEAVES_MIN} leaves`);
+    if (Math.min(c.p0, c.w1, c.p1, c.w2) < L.PINION_LEAVES_MIN) fail(`${h} h: a member under ${L.PINION_LEAVES_MIN} teeth`);
     rows.push(`${String(h).padStart(2)}h ${c.p0}:${c.w1} × ${c.p1}:${c.w2}`);
   }
   console.log(`  first candidates (the build may take a later one where the metal refuses):\n    ${rows.join('\n    ')}\n`);

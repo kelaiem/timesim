@@ -1554,7 +1554,7 @@ export function reserveReduction(hours, sweepDeg) {
 // prefer them: the shipped stage one first (it is the one the 30 h movement
 // was proven with), then the other splits of the same total, nearest the
 // shipped p0 first; within one stage one, stage two at the smallest multiple of
-// its reduced ratio whose pinion meets PINION_LEAVES_MIN. Each further multiple
+// its reduced ratio whose smaller member meets PINION_LEAVES_MIN. Each further multiple
 // is a finer stage two at the same centre distance, so the list is ordered by
 // falling module — the build takes the first one its metal admits (the tooth
 // floor, the bores), which is why this function knows no geometry. A count is
@@ -1569,7 +1569,9 @@ export function reserveTrainCandidates([rNum, rDen], { maxTeeth = 400 } = {}) {
     // R = (w1/p0)(w2/p1)  ⇒  w2/p1 = R · p0/w1, reduced
     let a = rNum * p0, b = rDen * w1;
     const g = _gcdN(a, b); a /= g; b /= g;
-    for (let k = Math.ceil(PINION_LEAVES_MIN / b); k * (a + b) <= maxTeeth; k++)
+    // Both members of stage two are held to the leaf floor: it is a STEP-UP
+    // (p1 drives the smaller w2), so w2 is the member doing a pinion's work.
+    for (let k = Math.ceil(PINION_LEAVES_MIN / Math.min(a, b)); k * (a + b) <= maxTeeth; k++)
       out.push({ p0, w1, p1: k * b, w2: k * a });
   }
   return out;
