@@ -153,11 +153,12 @@ export function backChain(m, bins, eng, ringRise, keyRise) {
     : { z: clampTop, by: 'the clamp screws\' heads (measured)' };
   const skirtBot = skirtBand.z + CM;
   const outboard = envMaxOver(bins, m.glass.apertureR - 2 * CM, CASE_WIDTH_MAX);
-  const paneFloor = outboard.z + CM;
+  const G = m.glass.floatGuard ?? 0;   // §261 2c: the glass faces' float guard over the margin (main.js CASE_GLASS_FLOAT_GUARD)
+  const paneFloor = outboard.z + CM + G;
   const skirtArm = skirtBot + eng;
   const midBack = Math.max(skirtArm, paneFloor);
   const all = envMaxOver(bins, 0, CASE_WIDTH_MAX);
-  const stepUnder = all.z + CM;
+  const stepUnder = all.z + CM + G;
   const z0 = midBack + ringRise;
   return {
     skirtBand, skirtBot, outboard, paneFloor, skirtArm, midBack,

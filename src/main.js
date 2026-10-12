@@ -44901,7 +44901,7 @@ const CASE_DIMS = (() => {
     // measured floors against it at boot.
     tubeClearR: plateR * (1 + G.PLATE_BEVEL_F),
     // §186 — the clamp screws (derived at the ~1810 block, built by makeCase).
-    clampN: CASE_CLAMP_N, clampR: R_CLAMP, clampAz: CASE_CLAMP_AZ, clampEng: CASE_CLAMP_ENG,
+    clampN: CASE_CLAMP_N, clampR: R_CLAMP, clampAz: CASE_CLAMP_AZ, clampEng: CASE_CLAMP_ENG, glassFloatGuard: CASE_GLASS_FLOAT_GUARD,
     zCrystInner, zCrystOuter,
     zBezelOuter: zCrystOuter - 0.25 / UNIT_MM,  // bezel lip over the crystal edge
     zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
@@ -56360,6 +56360,8 @@ window.__clock = {
     // the skirt arm governs the band's back face; the fold handed it to the
     // pane floor, and the implied figure then read 2.971 for a 1.847 thread.
     clampEng: CASE_DIMS.clampEng,
+    // ...and the float guard the pane and the step stand over their margin by
+    floatGuard: CASE_DIMS.glassFloatGuard,
   },
   // §158 Gate 0 — THE RESERVE TRAIN DECLARES ITS OWN TEETH. `probe-reserve-mesh`
   // is built to refuse any silhouette reading whose gap count disagrees with the
