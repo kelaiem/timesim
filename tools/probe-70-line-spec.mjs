@@ -7,7 +7,7 @@
 // (LINE_SPECS in src/inspect.js). A gate that passes on the shipped tree has
 // proved only that it does not fail; this proves it fails, and fails on the
 // RIGHT rows, which is what makes its silence on the shipped tree mean
-// something. Eleven boots, each a copied tree (height-ledger's mutantTree),
+// something. Thirteen boots, each a copied tree (height-ledger's mutantTree),
 // over the three references — the switch's drive line, the lock that reads it
 // and the link that carries it to the ring — and the link's fork:
 //
@@ -21,7 +21,11 @@
 //      and nothing else (nose, read radius, post stand-off, arm, chamfer — its
 //      lever, finger and stop wheel stay green), and so does the LINK: its nose
 //      lands further out, so the run shortens and the ratio and both arms move,
-//      while the rod's site, the shaft, the pin and the ring stay where they are.
+//      while the rod's site stays. Since TODO 222 the drive radius moves too
+//      (and the turn and helix it sets): r_eff is the roller's line of push
+//      from the ring's axis, so it reads wherever the chord and the fork land,
+//      and with this wheel they land 0.136 nearer the ring's axis. The axial
+//      drive's pin rows could not see a move like that.
 //   3. the offset hand-tuned, ALARM_DRIVE_OFFSET × 1.02 — §163's history, a
 //      moment arm "that looked right" in place of the coupling's derivation.
 //      offset AND step must fail: a pin at the wrong offset sweeps the driver
@@ -34,21 +38,35 @@
 //   4. the lock lever lengthened, ALARM_LOCK_L 5.0 → 5.2 — the lever's own
 //      triangle. lockL, lift and rCham fail, and the finger's seat and release
 //      must NOT: the build re-solves both angles from the stop wheel's radii.
+//      Since TODO 222 it also RE-SITES THE LINK, rod 9 → 8. The feeler's lugs
+//      now stand on the plate, in the rod column's band, and with the longer
+//      lever the site at 9 no longer scores best. So the run, its three seat
+//      rows and the drive radius with its two rows fail through the site, not
+//      through any law.
 //   5. the rocker post thickened past the ceiling, ALARM_ROCKER_POST_R
 //      0.22 → 0.40 — the ENVELOPE firing: the chamfer the longer Thales arm
 //      owes crosses the 0.268 the §35 link beak's landing leaves.
+//   6. TODO 222's throw law corrupted, 2r·sin(S/2) → 2r·sin(S) — the law the
+//      arm's budget solve reads AND the reference states. The arm moves with
+//      it and still agrees with itself; the throw the law states no longer
+//      matches the chord the pin sweeps, so throw, turn and helixTan fail. The
+//      drive radius does NOT: the roller's dead-centre point moves along the
+//      vertical, square to its own line of push, so the arm does not move it.
+//   7. the arm hand-tuned past its budget, × 1.02 — the law right and the metal
+//      not: the arm fails, and the throw, the turn and the helix it sets
+//      follow it.
 //
 // §70 step 3 — the FORK. In each of the six trees below the metal is the
 // shipped link and only the declaration moves:
 //
-//   6. the fork deleted — the fold, undeclared. Exactly the six rows the fork
-//      carries fail: its two inputs (the run, the groove's offset) and the four
-//      rows the laws derive from them (ratio, both arms, the pin's arm).
-//   7. the run mis-declared, 9 → 9.5 — the input and the three rows the seat
-//      law derives from it fail; the pin's side does not.
-//   8. the run forked to the reference's own 16 — the same four fail, and the
+//   8. the fork deleted — the fold, undeclared. Exactly the seven rows the fork
+//      carries fail: its two inputs (the run, the drive radius) and the five
+//      rows the laws derive from them (ratio, both arms; the turn, the helix).
+//   9. the run mis-declared, 9 → 9.5 — the input and the three rows the seat
+//      law derives from it fail; the drive's side does not.
+//   10. the run forked to the reference's own 16 — the same four fail, and the
 //      fork is reported STALE: a fork that no longer forks.
-//   9–11. a fork of a LAW (the ratio), of an ENVELOPE (the stall floor §35
+//   11–13. a fork of a LAW (the ratio), of an ENVELOPE (the stall floor §35
 //      failed), and one with no forcing constraint — each MALFORMED on the row
 //      named, and none of them moves a value the metal is held to.
 //
@@ -99,20 +117,34 @@ const cases = [
   { name: 'the wheel grown (ALARM_COL_BASE_R 5.7 → 5.8)',
     fail: [...['baseR', 'rootR', 'tipR', 'colInner', 'travel', 'offset'].map(DRIVE),
       ...['noseR', 'readR', 'postW', 'arm', 'rCham'].map(LOCK),
-      ...['landR', 'ratio', 'beakLen', 'tailLen'].map(LINK)],
+      ...['landR', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK)],
     patches: [{ file: SRC, find: 'const ALARM_COL_BASE_R = 5.7;', to: 'const ALARM_COL_BASE_R = 5.8;' }] },
   { name: 'the offset hand-tuned (ALARM_DRIVE_OFFSET × 1.02)', fail: ['offset', 'step'].map(DRIVE),
     patches: [{ file: SRC, find: 'const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));',
       to: 'const ALARM_DRIVE_OFFSET = 1.02 * ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));' }] },
-  { name: 'the lock lever lengthened (ALARM_LOCK_L 5.0 → 5.2)', fail: ['lockL', 'lift', 'rCham'].map(LOCK),
+  { name: 'the lock lever lengthened (ALARM_LOCK_L 5.0 → 5.2)', fail: [...['lockL', 'lift', 'rCham'].map(LOCK),
+      ...['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK)],
     patches: [{ file: SRC, find: 'const ALARM_LOCK_L = 5.0;', to: 'const ALARM_LOCK_L = 5.2;' }] },
   { name: 'the rocker post thickened past the ceiling (ALARM_ROCKER_POST_R 0.22 → 0.40)',
     fail: ['postR', 'postW', 'arm', 'rCham', 'chamCeiling'].map(LOCK),
     patches: [{ file: SRC, find: 'const ALARM_ROCKER_POST_R = 0.22;', to: 'const ALARM_ROCKER_POST_R = 0.40;' }] },
+  // TODO 222 — the sideways drive's laws, corrupted. The throw law is the one
+  // the arm's budget solve reads AND the reference states, so a wrong law moves
+  // the metal and the spec together on the arm — and the throw it states then
+  // disagrees with the chord the pin actually sweeps, which carries through
+  // the turn and the helix (and the drive radius, which the moved arm shifts).
+  { name: 'the throw law corrupted (2r·sin(S/2) → 2r·sin(S))',
+    fail: ['throw', 'turn', 'helixTan'].map(LINK),
+    patches: [{ file: SRC, find: 'ALARM_LINK_LAWS.throw = (arm, span) => 2 * arm * Math.sin(span / 2);', to: 'ALARM_LINK_LAWS.throw = (arm, span) => 2 * arm * Math.sin(span);' }] },
+  // …and the arm hand-tuned past its budget: the law is right and the metal
+  // is not, so the arm row fails and everything the arm sets follows it.
+  { name: 'the arm hand-tuned past the budget (× 1.02)',
+    fail: ['arm', 'throw', 'turn', 'helixTan'].map(LINK),
+    patches: [{ file: SRC, find: '    ALARM_FORK_PIN_ARM_R = sol.r;', to: '    ALARM_FORK_PIN_ARM_R = 1.02 * sol.r;' }] },
   // §70 step 3 — the FORK. The metal is the shipped link in every case below;
   // only the declaration moves.
   { name: 'the link’s fork deleted (the fold, undeclared)',
-    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen', 'pinD', 'pinArm'].map(LINK),
+    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK),
     patches: [{ file: INS, find: FORKS_HEAD, to: 'export const LINE_SPEC_FORKS = [];\nconst _PROBE_DELETED_FORKS = [' }] },
   { name: 'the fork’s run mis-declared (wrLen 9 → 9.5)',
     fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK),

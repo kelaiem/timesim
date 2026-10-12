@@ -81,6 +81,7 @@ const V = await page.evaluate(async () => {
       rodZ: rod.position.z,
       shaftRoll: shaft.rotation.x,
       ringW: wpos(ring).toArray(),
+      ringM: ring.matrixWorld.toArray(),
       pinW: wpos(pin).toArray(),
       rimW: wpos(rimCrank).toArray(),
       tailW: wpos(tail).toArray(),   // the mesh CENTRE, so it reads half the tip's travel — informational only; the blade is loaded at its TIP, which moves with the rod
@@ -133,6 +134,24 @@ const V = await page.evaluate(async () => {
   // third. At D = 0 the slide was 0.06 and the shortcut cost 1.5%, which is
   // the 3% tolerance's origin. The path length is kept as a report.
   const along = (on, off, u) => Math.abs((on[0] - off[0]) * u[0] + (on[1] - off[1]) * u[1] + (on[2] - off[2]) * u[2]);
+  // TODO 222 — "the load" is the fork's WALL NORMAL, and since the sideways
+  // drive that is no longer the ring's travel: the pin pushes the ring ROUND
+  // at the shaft's dead centre and the helix lifts it, the slot open axially.
+  // Read it off the metal for either drive: the ring's material point under
+  // the pin moves Δq between the poses, the pin moves Δp, and the pin slides
+  // along the slot by Δp − Δq, which does no work; the load is Δq's component
+  // normal to that slide. The axial drive reads the ring's travel (Δq is the
+  // lift, the slide horizontal), as it did; the sideways drive reads the throw.
+  const pinAlongLoad = (off, on) => {
+    const Moff = new THREE.Matrix4().fromArray(off.ringM), Mon = new THREE.Matrix4().fromArray(on.ringM);
+    const p0 = new THREE.Vector3(...off.pinW), p1 = new THREE.Vector3(...on.pinW);
+    const q1 = p0.clone().applyMatrix4(Moff.clone().invert()).applyMatrix4(Mon);
+    const dq = q1.clone().sub(p0), dp = p1.clone().sub(p0);
+    const slide = dp.clone().sub(dq);
+    if (slide.length() < 1e-12) return dq.length();
+    const u = slide.normalize();
+    return dq.clone().sub(u.multiplyScalar(dq.dot(u))).length();
+  };
   const ringVec = [posedOn.ringW[0] - posedOff.ringW[0], posedOn.ringW[1] - posedOff.ringW[1], posedOn.ringW[2] - posedOff.ringW[2]];
   const ringLen = Math.hypot(...ringVec);
   const ringDir = ringLen > 1e-9 ? ringVec.map((v) => v / ringLen) : [0, 0, 1];
@@ -140,7 +159,8 @@ const V = await page.evaluate(async () => {
     rod: Math.abs(posedOn.rodZ - posedOff.rodZ),
     roll: Math.abs(posedOn.shaftRoll - posedOff.shaftRoll),
     ring: ringLen,
-    pin: along(posedOn.pinW, posedOff.pinW, ringDir),
+    pin: pinAlongLoad(posedOff, posedOn),
+    pinAlongRingTravel: along(posedOn.pinW, posedOff.pinW, ringDir),
     pinPath: dist(posedOn.pinW, posedOff.pinW),
     rim: dist(posedOn.rimW, posedOff.rimW),
     tailMeshCentre: dist(posedOn.tailW, posedOff.tailW),
