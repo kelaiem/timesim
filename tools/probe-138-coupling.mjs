@@ -10,14 +10,33 @@
 // burial no index can clear.
 //
 // THE CONDITION, derived rather than assumed. Two cones sharing an apex, axes
-// û_A and û_B, roll without slip iff their RELATIVE angular velocity lies along
-// the contact ray d — everything else is sliding. With d making γ_A with û_A
-// and γ_B with û_B, d = cos γ_A·û_A + cos γ_B·û_B, so
+// û_A and û_B pointing from the apex into each blank, roll without slip iff
+// their RELATIVE angular velocity lies along the contact ray d — everything
+// else is sliding. d lies between the axes, γ_A from û_A and γ_B from û_B, so
+// the parts of û_A and û_B perpendicular to d are sin γ_A and sin γ_B along
+// one direction n and its opposite. The relative velocity's n-component must
+// vanish:
 //
-//     ω_A û_A − ω_B û_B ∥ d   ⟹   ω_B = −ω_A · cos γ_B / cos γ_A = −ω_A · tan γ_A
+//     ω_A·sin γ_A + ω_B·sin γ_B = 0   ⟹   ω_B = −ω_A · sin γ_A / sin γ_B
 //
-// and at Σ = 90° that is −ω_A·z_A/z_B, the tooth-count ratio with a sign. For a
-// MITRE it is simply ω_B = −ω_A: equal and opposite about their own axes.
+// and since each pitch radius is coneR·sin γ = m·z/2, that is −ω_A·z_A/z_B AT
+// ANY SHAFT ANGLE — the tooth-count ratio with a sign. For equal counts it is
+// simply ω_B = −ω_A: equal and opposite about their own axes, mitre or not.
+//
+// THE FIRST VERSION OF THIS FILE WROTE THE 90° CASE AS THE GENERAL ONE. It
+// had d = cos γ_A·û_A + cos γ_B·û_B (a unit ray only when û_A ⟂ û_B) and
+// reduced the condition to −tan γ_A, which equals −sin γ_A / sin γ_B only when
+// γ_B = 90° − γ_A. Every corner was 90° then. §234's fold added the motion
+// works' RISE (Σ 99.5°) and FOLD (Σ 162.2°) corners, both 10/10, and the
+// probe asked them for −1.18 and −6.40 where two equal cones can only roll at
+// −1 — and TODO 163 recorded the resulting MISMATCH rows as a defect of the
+// corners. The corners were right; the condition was not.
+//
+// THE PITCH ANGLE IS READ OFF THE CUT, not recomputed beside it: each blank
+// carries the γ `bevelToothSpec` derived it from (`userData.solid.gamma`), and
+// the row asserts that γ_A + γ_B is the axes' measured angle and that
+// sin γ_A / sin γ_B is the count ratio. A blank cut for a different shaft
+// angle than its mounting would fail there, before any ratio is compared.
 //
 // WHAT IS MEASURED, and it is measured off the metal rather than read out of
 // the tick law's source. Each gear gets a marker point fixed in its own body;
@@ -54,6 +73,15 @@ const out = await page.evaluate(async () => {
   const THREE = await import('three');
   const C = window.__clock;
 
+  // the pitch angle the blank was CUT at, off the builder's own declaration
+  const gammaOf = (name) => {
+    let g = null;
+    C.scene.traverse((o) => {
+      if (!o.isMesh || !o.userData.solid || o.userData.solid.kind !== 'apexCone') return;
+      if (o.name === name || (o.parent && o.parent.name === name)) g = o.userData.solid.gamma;
+    });
+    return g;
+  };
   const groupOf = (name) => {
     let g = null;
     C.scene.traverse((o) => {
@@ -110,7 +138,13 @@ const out = await page.evaluate(async () => {
     // paths agree with each other about the corner. A pair driven by two
     // relations is not one coupling, and re-solving its index at engagement
     // would stand on that.
+    //
+    // SINCE TODO 144 THE HOUR DOES NOT REACH THIS CORNER AT ALL — the disc
+    // carries the SET alone and `alarmCrownCreep` is written by nothing — so
+    // the right answer is BOTH members still, and the row says so (`still`).
+    // One member moving would be an orphan, TODO 144's own defect, and fails.
     { name: 'alarm SETTING, the HOUR back-drive through the same teeth', a: 'alarmStemBevel', b: 'alarmDiscBevel',
+      still: 'TODO 144 — the hour no longer drives the alarm setting branch',
       // tau far enough to move the HOUR: it reaches this corner as 3*_bd and
       // _bd is the hour wheel's dial angle, so a short sweep gives a swing near
       // float noise — and a sign read off noise is not a finding.
@@ -141,7 +175,7 @@ const out = await page.evaluate(async () => {
 
   const rows = [];
   for (const cor of CORNERS) {
-    const row = { name: cor.name, a: cor.a, b: cor.b };
+    const row = { name: cor.name, a: cor.a, b: cor.b, still: cor.still || null };
     const N = 24;
     let gA = null, gB = null, uA = null, uB = null, mA = null, mB = null;
     let axisDriftA = 0, axisDriftB = 0, apexGap = 0, swA = 0, swB = 0;
@@ -169,28 +203,37 @@ const out = await page.evaluate(async () => {
     row.axisDriftDeg = +(Math.max(axisDriftA, axisDriftB) * 180 / Math.PI).toFixed(4);
     row.swA = +swA.toFixed(5); row.swB = +swB.toFixed(5);
     row.got = Math.abs(swA) > 1e-6 ? +(swB / swA).toFixed(5) : null;
-    // the cones' own demand, from the counts through the pitch angles
+    // the cones' own demand: −sin γ_A / sin γ_B with γ read off each CUT, and
+    // the cut held to the mounting (γ_A + γ_B = Σ) and to the counts
     const SIG = uA.angleTo(uB);
-    const gammaA = Math.atan2(Math.sin(SIG), row.teethB / row.teethA + Math.cos(SIG));
-    row.want = +(-Math.tan(gammaA)).toFixed(5);
-    row.gammaA = +((gammaA * 180) / Math.PI).toFixed(3);
+    const gA_ = gammaOf(cor.a), gB_ = gammaOf(cor.b);
+    row.gammaA = +((gA_ * 180) / Math.PI).toFixed(3);
+    row.gammaB = +((gB_ * 180) / Math.PI).toFixed(3);
+    row.sigmaErrDeg = +(((gA_ + gB_ - SIG) * 180) / Math.PI).toFixed(6);
+    row.countErr = Math.abs(Math.sin(gA_) / Math.sin(gB_) - row.teethA / row.teethB);
+    row.want = +(-Math.sin(gA_) / Math.sin(gB_)).toFixed(5);
     rows.push(row);
   }
   return { rows };
 });
 await browser.close(); srv.kill();
 
-console.log('THE CONDITION: two cones on a shared apex roll only if ω_B = −ω_A·tan γ_A.');
-console.log('For a mitre that is −1 — equal and opposite about their own axes.\n');
-console.log('corner                          teeth   axes°   γ_A°    swing A   swing B   ratio      wanted     verdict');
+console.log('THE CONDITION: two cones on a shared apex roll only if ω_A·sin γ_A + ω_B·sin γ_B = 0,');
+console.log('i.e. ω_B/ω_A = −z_A/z_B at ANY shaft angle — −1 for equal counts, mitre or not.\n');
+console.log('corner                          teeth   axes°   γ_A°    γ_B°    swing A   swing B   ratio      wanted     verdict');
 for (const r of out.rows) {
   if (r.bad) { console.log(`${r.name.padEnd(31)} ${r.bad}`); continue; }
   const ok = r.got !== null && Math.abs(r.got - r.want) <= 0.02 * Math.abs(r.want);
-  const still = Math.abs(r.swA) < 1e-6 || Math.abs(r.swB) < 1e-6;
+  const stillA = Math.abs(r.swA) < 1e-6, stillB = Math.abs(r.swB) < 1e-6;
+  const cutBad = Math.abs(r.sigmaErrDeg) > 1e-4 || r.countErr > 1e-9;
+  const verdict = cutBad ? `✗ CUT ≠ MOUNT (γ_A+γ_B−Σ ${r.sigmaErrDeg}°, count ratio off ${r.countErr.toExponential(2)})`
+    : stillA && stillB ? (r.still ? `OK — both still: ${r.still}` : '✗ BOTH MEMBERS STOOD STILL — no ratio')
+    : stillA || stillB ? '✗ ORPHAN — one member moves without the other'
+    : r.still ? `✗ MOVED — expected still (${r.still})`
+    : ok ? 'OK' : '✗ MISMATCH';
   console.log(`${r.name.padEnd(31)} ${`${r.teethA}/${r.teethB}`.padEnd(7)} ${r.axisAngleDeg.toFixed(1).padEnd(7)} `
-    + `${String(r.gammaA).padEnd(7)} ${String(r.swA).padEnd(9)} ${String(r.swB).padEnd(9)} `
-    + `${String(r.got).padEnd(10)} ${String(r.want).padEnd(10)} `
-    + `${still ? '✗ A MEMBER STOOD STILL — no ratio' : ok ? 'OK' : '✗ MISMATCH'}`);
+    + `${String(r.gammaA).padEnd(7)} ${String(r.gammaB).padEnd(7)} ${String(r.swA).padEnd(9)} ${String(r.swB).padEnd(9)} `
+    + `${String(r.got).padEnd(10)} ${String(r.want).padEnd(10)} ${verdict}`);
 }
 console.log('\nguards');
 for (const r of out.rows) {
