@@ -18863,11 +18863,26 @@ setting traverse cannot clear its swing) and at 45–48 h (§158's hand width)
 are on `main` too and are not this item's. The finest module chosen is 0.206
 at 33 h, on the floor's right side.
 
-**Residue, filed rather than done.** The SNAP to multiples of 3 is no longer
-needed by this train, and its comment now says so. It stays, because the
-other h-derived quantities (the fusee's wraps, the set-up ratchet's click)
-were never checked off the multiples of 3. Relaxing it to whole hours is a
-separate change that has to re-measure those.
+**The snap stays at multiples of 3, and that is now measured rather than
+assumed.** The SNAP is no longer needed by this train, and its comment says
+so. Whether the rest of the movement needs it was the open question.
+Answered 2026-10-12 by snapping to whole hours and booting every hour from
+12 h to 48 h, then diffing each boot's warning classes (numbers stripped)
+against the union over the multiples of 3. Five whole hours raise a warning
+that no multiple of 3 does:
+
+| h | the warning only it raises | likely cause |
+|---|---|---|
+| 32 | `windArrestRiser passes … from the flying span — the corridor rejection` | the fusee wrap (7h/120 turns) |
+| 37, 41 | eight alarm-link siting warnings (guide plate, hangers, shaft stratum, bush OD, selector rod length, follower-B seat) | the reserve train's stage one re-splits to 15:21 there, and a larger w1 moves what the link is sited against |
+| 46 | `the bracket's foot sits … from the drum's coil reach — inside the margin` | the barrel's wind |
+| 47 | `maintaining hold: the recoil passes the face it should stand on` | the fusee/spring set-up |
+
+So the multiples of 3 happen to avoid a set of fragile solves, and relaxing
+the snap means re-deriving those five. The snap is kept. Note that 39 h, a
+multiple of 3, also re-splits stage one (to 10:26) and raises none of these.
+Re-measure with the same sweep after any change to the fusee, the arrest or
+the alarm link's siting.
 
 The original entry follows, as the record.
 
