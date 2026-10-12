@@ -13020,14 +13020,24 @@ LINE_SPECS.push({
   name: 'alarm link',
   group: 'Alarm link',
   inherits: 'alarm switch drive',   // the wheel the nose reads: colInner, baseR, colH
-  path: 'column wheel → beak lever (nose on the columns, tail on the rod) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
+  // §261 2c — RE-CLASSED, by the owner's call (2026-10-12: "a new beak lever
+  // under the dial", not the old one folded). The reflected first-class lever
+  // would move its tail the wrong way in world z and drive the ring backwards,
+  // and re-siding the rim would change the rim's law, which no fork may do. So
+  // the lever is a SAME-SIDE one: pivot, rod and nose along the run, in that
+  // order, the bar pressing the rod between the pivot and the nose. 2b designed
+  // it in this line first (tools/probe-261-dial-beak.mjs, on this table's own
+  // evaluator, at §229's wr 16 and as built) before 2c cut it. Every other row
+  // — the landing, the rim, the shaft, the sideways drive, the stall envelope —
+  // is the reference TODO 222 left, unchanged.
+  path: 'column wheel → same-side beak lever (pivot, rod, nose along the run: the nose on the columns, the bar on the rod between) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
   rows: [
     { key: 'landR', kind: 'spec', unit: 'u', value: (r) => (r.colInner + r.baseR) / 2, measure: 'noseLandR',
       derivedFrom: '§35/§229: the nose lands mid-castellation (ALARM_LINK_NOSE_LAND_R) — the landing the lock rocker’s chamfer ceiling is measured against' },
     { key: 'wrLen', kind: 'spec', unit: 'u', value: 16, measure: 'rodDist',
       derivedFrom: '§229’s reference fold: the rod 16 from the wheel. A RUN, not a law — where the rod stands is the movement’s to decide, so it is the input a fold forks' },
     { key: 'noseLine', kind: 'spec', unit: 'u', value: 0, measure: 'noseOffLine',
-      derivedFrom: '§229: the lever is collinear — nose, pivot and rod on the wheel→rod ray — which is what makes beakLen + tailLen = wrLen − landR' },
+      derivedFrom: '§229, re-classed by §261 2c: the lever is collinear — pivot, rod and nose on the wheel→rod ray, the rod between — which is what makes beakLen − tailLen = wrLen − landR for the same-side class' },
     { key: 'pivotSquare', kind: 'spec', unit: 'ratio', value: 0, measure: 'pivotAxisCos',
       derivedFrom: 'TODO 204: the lever tilts on a pin square to its own line, so the nose falls and the tail lifts in one plane' },
     { key: 'span', kind: 'spec', unit: 'rad', value: 0.35, measure: 'shaftRoll',
@@ -13040,12 +13050,12 @@ LINE_SPECS.push({
       derivedFrom: 'TODO 20: the rod’s stroke FALLS OUT of the finger’s two rolls — nobody assigns it (ALARM_LINK_ROD_TRAVEL_SPEC quotes it where it is needed first)' },
     { key: 'seat', kind: 'spec', unit: 'u', value: (r) => r.colH, measure: 'noseFall',
       derivedFrom: 'TODO 206 (C1): the nose falls until its lowest corner stands on the gap floor — the whole column tier, read whole' },
-    { key: 'ratio', kind: 'spec', unit: 'ratio', value: (r, L) => { const q = L.seat(r.wrLen - r.landR, r.rodTravel); return q.beakLen / q.tailLen; }, measure: 'armRatio',
-      derivedFrom: '§229 + TODO 206: beakLen / tailLen = seat drop / rod stroke, the seat a contact whose corner dip scales with the arm — so the ratio is SOLVED per run (the build’s own seat law), and a fork of the run moves it' },
-    { key: 'beakLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel).beakLen, measure: 'beakArm',
-      derivedFrom: '§229: the input arm, (wrLen − landR)·ρ/(1 + ρ) at the solved ratio' },
-    { key: 'tailLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel).tailLen, measure: 'tailArm',
-      derivedFrom: '§229: the output arm, (wrLen − landR)/(1 + ρ) — the lever REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
+    { key: 'ratio', kind: 'spec', unit: 'ratio', value: (r, L) => { const q = L.seat(r.wrLen - r.landR, r.rodTravel, +1); return q.beakLen / q.tailLen; }, measure: 'armRatio',
+      derivedFrom: '§229 + TODO 206: beakLen / tailLen = seat drop / rod stroke, the seat a contact whose corner dip scales with the arm — so the ratio is SOLVED per run (the build’s own seat law, the same-side class since §261 2c), and a fork of the run moves it' },
+    { key: 'beakLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel, +1).beakLen, measure: 'beakArm',
+      derivedFrom: '§229, same-side since §261 2c: the input arm, pivot to nose, (wrLen − landR)·ρ/(ρ − 1) at the solved ratio' },
+    { key: 'tailLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel, +1).tailLen, measure: 'tailArm',
+      derivedFrom: '§229, same-side since §261 2c: the output arm, pivot to rod, (wrLen − landR)/(ρ − 1) — the lever still REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
     { key: 'ringTravel', kind: 'spec', unit: 'u', value: 0.19, measure: 'ringTravel',
       derivedFrom: 'ALARM_SEL_TRAVEL: sized by the selector ring’s bias assert — the finger throw it buys' },
     // TODO 222 — THE SIDEWAYS DRIVE (the owner's restatement). The centre pin
@@ -13089,13 +13099,29 @@ LINE_SPECS.push({
 // the measured build ambiguous.
 export const LINE_SPEC_FORKS = [
   {
+    // §261 2c — the drive's one forked row. The pusher stays between the
+    // plates (the owner's call) and the wheel is folded under the dial, so the
+    // pin that reaches the driver's slot is crank B's, swung on an arc about a
+    // pivot on the bisector of the reference line's two ends. It passes through
+    // both ends exactly — the linkage is solved to that, closure 5.6e-17 — so
+    // travel, offset and straddle (the chord's), and the carry (§163's
+    // equality, an envelope and never forkable), all hold to the reference.
+    // What the arc cannot keep is the line itself.
+    name: 'alarm switch drive as folded',
+    ref: 'alarm switch drive',
+    rows: {
+      straight: { value: 0.13470189764102053,
+        forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm (6.762) through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) over the crank’s 0.3996 rad swing (clock.alarmLinkage), read off the metal' },
+    },
+  },
+  {
     name: 'alarm link as built',
     ref: 'alarm link',
     rows: {
-      wrLen: { value: 9,
-        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST): TODO 174 corrected its guide-post guard, which had seated §229’s wr-16 fork ON guide post 1, and the best legal site stands the rod 9 from the wheel (TODO 190 kept the distance on the next parity ray)' },
-      rEff: { value: 4.706971912672448,
-        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (TODO 190’s site, the tab at 324°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
+      wrLen: { value: 10.155,
+        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST), re-run by §261 2c for the folded same-side beak: the nose’s ray three column pitches round (k 3), the beak, rod and pivot scored in the folded world and the lay shaft’s hanger columns scored up to the plate; the best legal site is the rod a run of 5.5 past the landing, 10.155 from the wheel' },
+      rEff: { value: 5.107522504834823,
+        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (§261 2c’s site, the tab at 75°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
     },
   },
 ];
@@ -13106,7 +13132,11 @@ export const LINE_SPEC_WAIVERS = {};
 function lineSpecDrive(clock, { pinShift = 0 } = {}) {
   const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
   const skirt = find('alarmColSkirt'), cast = find('alarmColCastellations'), base = find('alarmColBase');
-  const pin = find('alarmPusherRiser'), driver = find('alarmColDriver');
+  // §261 2c — the pin that reaches the driver's slot is crank B's since the
+  // fold (the pusher's riser drives crank A between the plates, and the two
+  // 1:1 cranks hand the stroke under the dial); the riser is the pin only on a
+  // tree without the linkage.
+  const pin = find('alarmLinkageDriverPin') || find('alarmPusherRiser'), driver = find('alarmColDriver');
   const missing = Object.entries({ skirt, cast, base, pin, driver }).filter(([, v]) => !v).map(([k]) => k);
   if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
   const wheel = skirt.parent;
@@ -13358,7 +13388,8 @@ function lineSpecLockControl(clock, m) {
 // THE LINK'S READERS. The same two `alarmToggle` states as the lock's — the
 // axis steps the column wheel, and the beak, the rod, the lay shaft and the
 // ring follow by the build's own laws. Which state is REST is read (the nose's
-// lowest point higher, standing on a column top), not assumed.
+// lowest point higher ALONG THE WHEEL'S AXIS, standing on a column top), not
+// assumed.
 //
 // Centres are world-box centres of centrally symmetric meshes, in 3D now as
 // well as in plan: the nose and the rim finger are boxes, the rod a 12-gon,
@@ -13392,8 +13423,17 @@ function lineSpecLink(clock) {
     beakPin.updateWorldMatrix(true, false);
     const pinAxis = new THREE.Vector3(0, 1, 0).transformDirection(beakPin.matrixWorld);   // CylinderGeometry stands along its local y
     const n = lineSpecCentre3(nose);
+    // §261 2c — the nose's lowest point ALONG THE WHEEL'S OWN AXIS, not world
+    // z: the fold reflects the cluster (z ↦ ALARM_FOLD_Z_SUM − z), so a nose
+    // standing on a column top is the LOWER one in world z there. The axis is
+    // the skirt's own z, which the reflection carries with it.
+    skirt.updateWorldMatrix(true, false);
+    const wz = new THREE.Vector3(0, 0, 1).transformDirection(skirt.matrixWorld);
+    let noseMinH = Infinity;
+    { const pos = nose.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) noseMinH = Math.min(noseMinH, v.fromBufferAttribute(pos, i).applyMatrix4(nose.matrixWorld).dot(wz)); }
     return {
-      W: lineSpecOutlineCentre(skirt), N: n.c, noseMinZ: n.lo.z, Pv: lineSpecCentre3(beakPin).c, pinAxis,
+      W: lineSpecOutlineCentre(skirt), N: n.c, noseMinZ: noseMinH, Pv: lineSpecCentre3(beakPin).c, pinAxis,
       R: lineSpecCentre3(rod).c, rodMinZ: lineSpecCentre3(rod).lo.z,
       A1: lineSpecCentre3(bush1).c, A3: lineSpecCentre3(bush3).c, Rc: lineSpecCentre3(rim).c,
       Pc: lineSpecCentre3(pin).c, ringZ: lineSpecCentre3(ring).c.z,

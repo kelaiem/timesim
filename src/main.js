@@ -36033,8 +36033,46 @@ const alarmLinkParts = {};
     // would need the back bush to grow a skirt downward by the difference.
     // §261 2c — the rod no longer crosses the plates (it runs under the dial,
     // from the rim finger up to the folded beak's bar), so the two plate
-    // bushes §202 cut for it are retired with the bores they lined. Its guide
-    // is owed (2c, in this landing) — see the record.
+    // bushes §202 cut for it are retired with the bores they lined.
+    //
+    // ITS GUIDE IS A SLEEVE ON HANGER 3, the lay shaft's rod-end hanger, which
+    // already stands 0.96 off the rod's axis from the base plate down to the
+    // shaft. A loose pushrod between a crank's tip and a lever's face falls
+    // over, so the rod still needs a bearing; with no plate to bore, the
+    // nearest metal grounded on the frame carries it. The sleeve is §202's
+    // bush section unchanged (ALARM_LINK_ROD_BUSH_BORE: the rod's own section
+    // plus PIVOT_BORE_CLEAR, a §50-floor wall), and it is as LONG as the rod's
+    // free run lets it be: from one CLEAR_MARGIN over the rim's highest reach
+    // under the rod (its tip at the armed foot — the finger is the only rim
+    // metal that comes up under the rod) to one CLEAR_MARGIN under the bar's
+    // face at rest (its lowest; the bar's underside IS the rod's top there,
+    // flat, the cut that makes the rod). The length is what the guide's
+    // drawer rule asks for: the finger's tip slides across the rod's flat
+    // foot with friction μ·N, and a sleeve of length L with that lateral load
+    // a off its middle does not jam while 2μa/L < 1 — held below at
+    // FRICTION's adverse steel corner. The web that carries it is a floor-stock
+    // strip from the hanger's face to the sleeve's mid-wall, the sleeve's
+    // length tall, welded to both (one part with the hanger, as the hanger's
+    // bush already is).
+    {
+      const sleeveBot = rodFootRest + ALARM_LINK_ROD_TRAVEL_SPEC + CLEAR_MARGIN;
+      const sleeveTop = ALARM_ROD_TOP_BUILT - CLEAR_MARGIN;
+      const sleeveLen = sleeveTop - sleeveBot;
+      const sleeve = new THREE.Mesh(ringGeo(ALARM_LINK_ROD_BUSH_BORE, ALARM_LINK_ROD_BUSH_OD, sleeveLen), MATS.nickel);
+      sleeve.name = 'alarmLinkRodGuide';
+      sleeve.userData.len = sleeveLen;
+      sleeve.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, (sleeveBot + sleeveTop) / 2);
+      alarmLinkUnit.add(sleeve);
+      rod.userData.bearings = { axis: 'y', stations: [sleeve.position.z - rod.position.z] };
+      // The drawer rule (2μa/L < 1): the finger's load acts at the rod's foot,
+      // a = the sleeve's middle less the foot at rest (the farthest it gets).
+      const a = sleeve.position.z - rodFootRest;
+      const jam = 2 * MU_STEEL * a / sleeveLen;
+      if (!(sleeveLen >= 2 * STOCK_MIN_U) || !(jam < 1))
+        console.warn(`§261 2c: the rod's guide sleeve is ${sleeveLen.toFixed(4)} long with the finger's load ${a.toFixed(4)} off its middle — `
+          + `2μa/L ${jam.toFixed(3)}, need under 1 (and the sleeve at least two floor sections, ${(2 * STOCK_MIN_U).toFixed(4)}) — the rod jams in its guide`);
+      alarmLinkParts.rodGuide = sleeve;
+    }
     // 3. TODO 222 — THE CENTRE CRANK DRIVES THE RING ROUND, not up. The
     //    pin used to work in the shaft's axis plane, moving AXIALLY, and pushed
     //    the ring's tab up and down through a horizontal groove; a single axial
@@ -37450,6 +37488,34 @@ const alarmLinkParts = {};
     alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);
   });
+  // §261 2c — the rod guide's WEB, hanger 3 to the sleeve (the sleeve is cut
+  // at the rod's build, above; the hangers are cut here, so the web is too).
+  // Hanger 3's station is read off its built mesh.
+  {
+    const sleeve = alarmLinkParts.rodGuide, sleeveLen = sleeve.userData.len;
+    const sleeveBot = sleeve.position.z - sleeveLen / 2;
+    const h3 = alarmLinkUnit.getObjectByName('alarmLinkHanger3');
+    if (!h3) console.warn('§261 2c: the rod guide\'s web found no alarmLinkHanger3 to stand on');
+    else {
+      const dx = ALARM_LINK_ROD_XY.x - h3.position.x, dy = ALARM_LINK_ROD_XY.y - h3.position.y;
+      const d = Math.hypot(dx, dy);
+      const rEnd = (ALARM_LINK_ROD_BUSH_BORE + ALARM_LINK_ROD_BUSH_OD) / 2;   // the sleeve's mid-wall
+      const webLen = d - rEnd;
+      const web = new THREE.Mesh(new THREE.BoxGeometry(webLen, STOCK_MIN_U, sleeveLen), MATS.nickel);
+      web.name = 'alarmLinkRodGuideWeb';
+      web.position.set(h3.position.x + dx / d * webLen / 2, h3.position.y + dy / d * webLen / 2, sleeve.position.z);
+      web.rotation.z = Math.atan2(dy, dx);
+      alarmLinkUnit.add(web);
+      // its corners must stay out of the bore: the web ends at the mid-wall,
+      // so its corner stands hypot(rEnd, STOCK/2) off the rod's axis
+      if (!(Math.hypot(rEnd, STOCK_MIN_U / 2) > ALARM_LINK_ROD_BUSH_BORE + 1e-9))
+        console.warn('§261 2c: the rod guide\'s web reaches into the sleeve\'s bore');
+      // and hanger 3 must stand over the sleeve's whole run
+      const h3Bot = h3.position.z - h3.geometry.parameters.depth / 2;
+      if (!(h3Bot <= sleeveBot + 1e-9))
+        console.warn(`§261 2c: hanger 3 stops at ${h3Bot.toFixed(4)}, above the rod guide's foot ${sleeveBot.toFixed(4)} — the web hangs off nothing`);
+    }
+  }
   // (§261 2c retired the plates' rod-bore tripwire and its two land checks: the
   // rod crosses no plate now.)
   // the shaft's bottom vs the keyless piece under the run. §35 measured that
