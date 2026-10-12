@@ -32701,7 +32701,7 @@ at T = 1, so the stop and the banked tooth coincide by construction. Then:
 
 `sigmaSurvive_MPa` on crank A's row is the number this item retires.
 
-## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 — PART-CLOSED (36,000 remains)
+## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 — DONE AT 21600 AND 28800
 
 Found fixing the stopped balance (TODO 238). A reader who picked a faster beat
 rate from the panel saw the movement lock up after the boot sync: the hack
@@ -32777,7 +32777,13 @@ binds none: the 28,800 balance still starts at rim 0.295. The power-budget
 warnings these rows booted with (TODO 192's claim, TODO 207's target, TODO
 216's peak, TODO 219's maintaining spring with no run) are gone. The layout
 warnings the fast rows boot with (§186's clamp thread, the reset hammer, the
-drum's bound, §125's D4) are the re-geared train's and not this item's.
+drum's bound, §125's D4) are the re-geared train's and not this item's. One
+moves with it: TODO 221's detent-beak relief bracket, which the maintaining
+spring's floor feeds and the floor follows the claim. It fired at 21,600 on
+the 18,000 claim and went quiet at the solved 128; at 28,800 it is quiet on the
+old claim and fires once on the solved 132 (ρ 0.2006, bracket 0.0004..0.1392
+against 0.15). The claim is the solve's minimum rounded down and is not
+chosen to quiet it; the beak's bracket is TODO 221's to widen.
 
 **36,000: open.** The lightest rim the metal allows (0.2305) sustains about
 162° there (estimated off the same law; the row still carries the 18,000
