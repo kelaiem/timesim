@@ -20,8 +20,9 @@
 //      just no longer the one specified. The LOCK fails too, through `inherits`
 //      and nothing else (nose, read radius, post stand-off, arm, chamfer — its
 //      lever, finger and stop wheel stay green), and so does the LINK: its nose
-//      lands further out, so the run shortens and the ratio and both arms move,
-//      while the rod's site stays. Since TODO 222 the drive radius moves too
+//      lands further out, and since TODO 240 the bar's line and the nose's
+//      half-width along the lever derive from the wheel's radii too, while the
+//      site keeps its run, so the ratio and both arms stay on the fork. Since TODO 222 the drive radius moves too
 //      (and the turn and helix it sets): r_eff is the roller's line of push
 //      from the ring's axis, so it reads wherever the chord and the fork land,
 //      and with this wheel they land 0.136 nearer the ring's axis. The axial
@@ -38,11 +39,10 @@
 //   4. the lock lever lengthened, ALARM_LOCK_L 5.0 → 5.2 — the lever's own
 //      triangle. lockL, lift and rCham fail, and the finger's seat and release
 //      must NOT: the build re-solves both angles from the stop wheel's radii.
-//      Since TODO 222 it also RE-SITES THE LINK, rod 9 → 8. The feeler's lugs
-//      now stand on the plate, in the rod column's band, and with the longer
-//      lever the site at 9 no longer scores best. So the run, its three seat
-//      rows and the drive radius with its two rows fail through the site, not
-//      through any law.
+//      Since TODO 222 it re-sited the link (rod 9 → 8). On the TODO 240 lever
+//      the site keeps its run, and only the tab and the chord re-solve: the
+//      drive radius and its two rows fail through the site, not through any
+//      law, and the run and its three seat rows stay on the fork.
 //   5. the rocker post thickened past the ceiling, ALARM_ROCKER_POST_R
 //      0.22 → 0.40 — the ENVELOPE firing: the chamfer the longer Thales arm
 //      owes crosses the 0.268 the §35 link beak's landing leaves.
@@ -62,10 +62,12 @@
 //   8. the fork deleted — the fold, undeclared. Exactly the seven rows the fork
 //      carries fail: its two inputs (the run, the drive radius) and the five
 //      rows the laws derive from them (ratio, both arms; the turn, the helix).
-//   9. the run mis-declared, 9 → 9.5 — the input and the three rows the seat
+//   9. the run mis-declared, 6 → 6.5 — the input and the three rows the seat
 //      law derives from it fail; the drive's side does not.
-//   10. the run forked to the reference's own 16 — the same four fail, and the
-//      fork is reported STALE: a fork that no longer forks.
+//   10. the run forked to the reference's own 11.345 — the same four fail, and
+//      the fork is reported STALE: a fork that no longer forks.
+// (TODO 240: the link's reference is 'alarm link tangential' — the re-aimed
+// lever, its run a TANGENTIAL distance; the radial 'alarm link' is retired.)
 //   11–13. a fork of a LAW (the ratio), of an ENVELOPE (the stall floor §35
 //      failed), and one with no forcing constraint — each MALFORMED on the row
 //      named, and none of them moves a value the metal is held to.
@@ -109,9 +111,9 @@ async function lineSpecOn(dir) {
 }
 
 const SRC = 'src/main.js', INS = 'src/inspect.js';
-const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link/${k}`;
+const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`;
 const FORKS_HEAD = 'export const LINE_SPEC_FORKS = [';
-const WRLEN_FORK = "      wrLen: { value: 9.655,";
+const RUN_FORK = "      run: { value: 6,";
 const cases = [
   { name: 'identity', patches: [], fail: [] },
   // §261 2c — since the fold the wheel's size moves two more things the drive
@@ -120,10 +122,14 @@ const cases = [
   // forked sagitta (`straight`); and the link's site is re-solved in the folded
   // world at the same run past a moved landing, so the rod's distance from the
   // wheel (`wrLen`) moves while the arms the run sets stay on the fork.
+  // TODO 240 — on the tangential lever the site keeps its run (6) on the grown
+  // wheel, so the arms stay on the fork; what moves is what the wheel's radii
+  // derive: the landing, the bar's line (baseR + margin + half a tooth) and
+  // the nose's half-width along the lever (the flat at the landing).
   { name: 'the wheel grown (ALARM_COL_BASE_R 5.7 → 5.8)',
     fail: [...['baseR', 'rootR', 'tipR', 'colInner', 'travel', 'offset', 'straight'].map(DRIVE),
       ...['noseR', 'readR', 'postW', 'arm', 'rCham'].map(LOCK),
-      ...['landR', 'wrLen', 'rEff', 'turn', 'helixTan'].map(LINK)],
+      ...['landR', 'barLineR', 'noseHalf', 'rEff', 'turn', 'helixTan'].map(LINK)],
     patches: [{ file: SRC, find: 'const ALARM_COL_BASE_R = 5.7;', to: 'const ALARM_COL_BASE_R = 5.8;' }] },
   // (§261 2c: and the arc crank B is solved onto moves with the line, so its
   // sagitta leaves the fork's `straight` too)
@@ -134,7 +140,7 @@ const cases = [
   // longer lever re-solves the linkage — crank B's arc, and the fork's
   // `straight` with it)
   { name: 'the lock lever lengthened (ALARM_LOCK_L 5.0 → 5.2)', fail: [...['lockL', 'lift', 'rCham'].map(LOCK),
-      ...['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
+      ...['rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
     patches: [{ file: SRC, find: 'const ALARM_LOCK_L = 5.0;', to: 'const ALARM_LOCK_L = 5.2;' }] },
   { name: 'the rocker post thickened past the ceiling (ALARM_ROCKER_POST_R 0.22 → 0.40)',
     fail: ['postR', 'postW', 'arm', 'rCham', 'chamCeiling'].map(LOCK),
@@ -156,20 +162,20 @@ const cases = [
   // only the declaration moves.
   // (§261 2c: the table's two forks go together — the drive's `straight` too)
   { name: 'the link’s fork deleted (the fold, undeclared)',
-    fail: [...['wrLen', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
+    fail: [...['run', 'ratio', 'beakLen', 'tailLen', 'rEff', 'turn', 'helixTan'].map(LINK), DRIVE('straight')],
     patches: [{ file: INS, find: FORKS_HEAD, to: 'export const LINE_SPEC_FORKS = [];\nconst _PROBE_DELETED_FORKS = [' }] },
-  { name: 'the fork’s run mis-declared (wrLen 9.655 → 9.5)',
-    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK),
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      wrLen: { value: 9.5," }] },
-  { name: 'a stale fork (wrLen forked to the reference’s own 16)',
-    fail: ['wrLen', 'ratio', 'beakLen', 'tailLen'].map(LINK), stale: ['wrLen'],
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      wrLen: { value: 16," }] },
+  { name: 'the fork’s run mis-declared (run 6 → 6.5)',
+    fail: ['run', 'ratio', 'beakLen', 'tailLen'].map(LINK),
+    patches: [{ file: INS, find: RUN_FORK, to: "      run: { value: 6.5," }] },
+  { name: 'a stale fork (run forked to the reference’s own 11.345)',
+    fail: ['run', 'ratio', 'beakLen', 'tailLen'].map(LINK), stale: ['run'],
+    patches: [{ file: INS, find: RUN_FORK, to: "      run: { value: 11.345," }] },
   { name: 'a fork of a LAW (ratio overridden)', fail: [], malformed: ['ratio: a fork moves an INPUT, never a law'],
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      ratio: { value: 5.31, forcedBy: 'the probe forks a law to watch the schema refuse it' },\n" + WRLEN_FORK }] },
+    patches: [{ file: INS, find: RUN_FORK, to: "      ratio: { value: 5.31, forcedBy: 'the probe forks a law to watch the schema refuse it' },\n" + RUN_FORK }] },
   { name: 'a fork of an ENVELOPE (the stall floor lowered)', fail: [], malformed: ['stall: an envelope is inherited whole'],
-    patches: [{ file: INS, find: WRLEN_FORK, to: "      stall: { value: 1, forcedBy: 'the probe forks the envelope §35 failed, to watch it refused' },\n" + WRLEN_FORK }] },
-  { name: 'a fork with no forcing constraint', fail: [], malformed: ['wrLen: the override does not say what in the movement forced it'],
-    patches: [{ file: INS, find: "        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST)", to: "        forcedBy: '', _was: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST)" }] },
+    patches: [{ file: INS, find: RUN_FORK, to: "      stall: { value: 1, forcedBy: 'the probe forks the envelope §35 failed, to watch it refused' },\n" + RUN_FORK }] },
+  { name: 'a fork with no forcing constraint', fail: [], malformed: ['run: the override does not say what in the movement forced it'],
+    patches: [{ file: INS, find: "        forcedBy: 'the §112 rod-site solve, generalised by TODO 240", to: "        forcedBy: '', _was: 'the §112 rod-site solve, generalised by TODO 240" }] },
 ];
 let ok = true;
 for (const c of cases) {

@@ -3411,7 +3411,7 @@ export const INTRA_UNIT_CONTACTS = [
   // bores, and it slides in one guide sleeve carried on hanger 3 by a web.
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodGuide', why: '§261 2c: the selector rod sliding in its guide sleeve at PIVOT_BORE_CLEAR (§202\'s bush section, as long as the rod\'s free run allows) — its one bearing' },
   { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkRodGuide', why: '§261 2c: the web welded to the sleeve, ending at its mid-wall' },
-  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3', why: '§261 2c: the web welded to hanger 3 from its axis — the sleeve\'s ground' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3', why: '§261 2c: the web welded to hanger 3 (since TODO 240 at its face, lapped one SAW_FIT, clear of the arming blade\'s slot) — the sleeve\'s ground' },
   // TODO 138 Landing 2 — RE-POINTED, and the three rows below said the wrong
   // thing before it. Indices 40–43 of this unit are the motion-works BEVEL
   // GEARS, not wheels on arbors: the conversion from the sheared extrude to
@@ -13096,30 +13096,37 @@ export const LINE_SPECS = [
 // finger's top), so the reference evaluates the very law the metal was cut by
 // at ITS inputs. Writing those laws here instead would be the law-twice defect
 // CLAUDE.md's traps list names; passing them in keeps one copy.
+//
+// TODO 240 — A NEW REFERENCE, 'alarm link tangential', by the owner's call
+// (2026-10-12), which RETIRES 'alarm link' (the radial lever, §229 → §261 2c).
+// That lever lay on the wheel's radius, so its pin lay along the tangent at the
+// nose — exactly where the castellations' flank pushes (TODO 239: 64–87 mN
+// along the pin, the pin over yield). This one is the face cam's own layout:
+// the pin along the nose's RADIUS, the lever along the TANGENT there, so the
+// flank's push lies in the lever's plane. Its rows are the old reference's
+// where the mechanism kept them (the landing, the seat, the rim, the shaft, the
+// sideways drive, the stall envelope) and new where the class changed: the RUN
+// is a tangential distance (it was wrLen − landR along the radius), the pin's
+// direction is a row (`pinRadial`), the bar's line is a row (it stands off the
+// columns; the stub reads them), and the seat law is solved on the nose's
+// half-width ALONG the lever (`noseHalf`, its tangential half — it was the
+// radial half while the lever lay on the radius).
 LINE_SPECS.push({
-  name: 'alarm link',
+  name: 'alarm link tangential',
   group: 'Alarm link',
-  inherits: 'alarm switch drive',   // the wheel the nose reads: colInner, baseR, colH
-  // §261 2c — RE-CLASSED, by the owner's call (2026-10-12: "a new beak lever
-  // under the dial", not the old one folded). The reflected first-class lever
-  // would move its tail the wrong way in world z and drive the ring backwards,
-  // and re-siding the rim would change the rim's law, which no fork may do. So
-  // the lever is a SAME-SIDE one: pivot, rod and nose along the run, in that
-  // order, the bar pressing the rod between the pivot and the nose. 2b designed
-  // it in this line first (tools/probe-261-dial-beak.mjs, on this table's own
-  // evaluator, at §229's wr 16 and as built) before 2c cut it. Every other row
-  // — the landing, the rim, the shaft, the sideways drive, the stall envelope —
-  // is the reference TODO 222 left, unchanged.
-  path: 'column wheel → same-side beak lever (pivot, rod, nose along the run: the nose on the columns, the bar on the rod between) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
+  inherits: 'alarm switch drive',   // the wheel the nose reads: colInner, baseR, colH, the tooth (tipR − rootR)
+  path: 'column wheel → tangential same-side beak lever (its pin along the nose’s radius; pivot, rod and stub along the bar’s tangent line, the stub carrying the nose inward onto the columns) → selector rod → rim finger on the lay shaft → centre pin in the fork → selector ring',
   rows: [
     { key: 'landR', kind: 'spec', unit: 'u', value: (r) => (r.colInner + r.baseR) / 2, measure: 'noseLandR',
       derivedFrom: '§35/§229: the nose lands mid-castellation (ALARM_LINK_NOSE_LAND_R) — the landing the lock rocker’s chamfer ceiling is measured against' },
-    { key: 'wrLen', kind: 'spec', unit: 'u', value: 16, measure: 'rodDist',
-      derivedFrom: '§229’s reference fold: the rod 16 from the wheel. A RUN, not a law — where the rod stands is the movement’s to decide, so it is the input a fold forks' },
-    { key: 'noseLine', kind: 'spec', unit: 'u', value: 0, measure: 'noseOffLine',
-      derivedFrom: '§229, re-classed by §261 2c: the lever is collinear — pivot, rod and nose on the wheel→rod ray, the rod between — which is what makes beakLen − tailLen = wrLen − landR for the same-side class' },
-    { key: 'pivotSquare', kind: 'spec', unit: 'ratio', value: 0, measure: 'pivotAxisCos',
-      derivedFrom: 'TODO 204: the lever tilts on a pin square to its own line, so the nose falls and the tail lifts in one plane' },
+    { key: 'pinRadial', kind: 'spec', unit: 'ratio', value: 0, measure: 'pinAxisTangentCos',
+      derivedFrom: 'TODO 240: the lever’s pin lies along the NOSE’S RADIUS (its component along the wheel’s tangent at the nose is 0), because the flanks are cut as a rise over wheel angle and so slope only along the tangent — with the pin square to that, the flank’s push lies in the lever’s own plane' },
+    { key: 'barLineR', kind: 'spec', unit: 'u', value: (r) => r.baseR + CLEAR_MARGIN + (r.tipR - r.rootR) / 2, measure: 'barLineR',
+      derivedFrom: 'TODO 240: the bar runs along the tangent clear of the castellations’ outer face by one margin plus its half-width (one tooth, tipR − rootR), so only the stub and the nose stand over the columns (ALARM_LINK_BAR_LINE_R) — measured as the rod’s station along the pin from the wheel’s axis' },
+    { key: 'noseHalf', kind: 'spec', unit: 'u', value: (r) => ((r.tipR - r.rootR) / 2 + CLEAR_MARGIN) / r.baseR * ((r.colInner + r.baseR) / 2) - CLEAR_MARGIN, measure: 'noseHalfAlong',
+      derivedFrom: '§229 → TODO 240: the nose’s half-width ALONG the lever is the column flat’s at the landing radius less a margin (ALARM_LINK_NOSE_W_AZ / 2: the flat is (rider nose + margin)/baseR of angle, the rider nose half a tooth) — the corner the seat law lands on the gap floor stands this far beyond the arm' },
+    { key: 'run', kind: 'spec', unit: 'u', value: 11.345, measure: 'run',
+      derivedFrom: 'TODO 240: the TANGENTIAL distance from the nose to the rod — §229’s reference fold, the rod 16 from the wheel on the radial lever, a run of 16 − landR, kept as the line’s run. A RUN, not a law — where the rod stands is the movement’s to decide, so it is the input a fold forks' },
     { key: 'span', kind: 'spec', unit: 'rad', value: 0.35, measure: 'shaftRoll',
       derivedFrom: '§234 Landing 5’s SPAN_BUDGET: the shaft’s roll over a whole arming, sized so the rim finger’s lateral sweep stays ≈ 0.10, inside the 0.2685 corridor ray-probed for it' },
     { key: 'restFromZenith', kind: 'spec', unit: 'rad', value: 1.05, measure: 'rimRestFromZenith',
@@ -13130,21 +13137,18 @@ LINE_SPECS.push({
       derivedFrom: 'TODO 20: the rod’s stroke FALLS OUT of the finger’s two rolls — nobody assigns it (ALARM_LINK_ROD_TRAVEL_SPEC quotes it where it is needed first)' },
     { key: 'seat', kind: 'spec', unit: 'u', value: (r) => r.colH, measure: 'noseFall',
       derivedFrom: 'TODO 206 (C1): the nose falls until its lowest corner stands on the gap floor — the whole column tier, read whole' },
-    { key: 'ratio', kind: 'spec', unit: 'ratio', value: (r, L) => { const q = L.seat(r.wrLen - r.landR, r.rodTravel, +1); return q.beakLen / q.tailLen; }, measure: 'armRatio',
-      derivedFrom: '§229 + TODO 206: beakLen / tailLen = seat drop / rod stroke, the seat a contact whose corner dip scales with the arm — so the ratio is SOLVED per run (the build’s own seat law, the same-side class since §261 2c), and a fork of the run moves it' },
-    { key: 'beakLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel, +1).beakLen, measure: 'beakArm',
-      derivedFrom: '§229, same-side since §261 2c: the input arm, pivot to nose, (wrLen − landR)·ρ/(ρ − 1) at the solved ratio' },
-    { key: 'tailLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.wrLen - r.landR, r.rodTravel, +1).tailLen, measure: 'tailArm',
-      derivedFrom: '§229, same-side since §261 2c: the output arm, pivot to rod, (wrLen − landR)/(ρ − 1) — the lever still REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
+    { key: 'ratio', kind: 'spec', unit: 'ratio', value: (r, L) => { const q = L.seat(r.run, r.rodTravel); return q.beakLen / q.tailLen; }, measure: 'armRatio',
+      derivedFrom: '§229 + TODO 206 + TODO 240: beakLen / tailLen = seat drop / rod stroke, the seat a contact whose corner (noseHalf beyond the arm) dips with the arm — so the ratio is SOLVED per run by the build’s own seat law, and a fork of the run moves it' },
+    { key: 'beakLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.run, r.rodTravel).beakLen, measure: 'beakArm',
+      derivedFrom: '§229 → TODO 240: the input arm, the nose’s tangential distance from the pin’s axis, run + tailLen' },
+    { key: 'tailLen', kind: 'spec', unit: 'u', value: (r, L) => L.seat(r.run, r.rodTravel).tailLen, measure: 'tailArm',
+      derivedFrom: '§229 → TODO 240: the output arm, the rod’s tangential distance from the pin’s axis, rodTravel / θs — the lever still REDUCES, so a read of the whole tier arrives as the rod’s stroke' },
     { key: 'ringTravel', kind: 'spec', unit: 'u', value: 0.19, measure: 'ringTravel',
       derivedFrom: 'ALARM_SEL_TRAVEL: sized by the selector ring’s bias assert — the finger throw it buys' },
-    // TODO 222 — THE SIDEWAYS DRIVE (the owner's restatement). The centre pin
+    // TODO 222 — THE SIDEWAYS DRIVE (the owner's restatement): the centre pin
     // crosses the shaft's dead centre at mid-stroke and pushes the fork's
     // WALLS sideways; the ring, turned by that throw at its drive radius,
-    // climbs three helices through its travel. The axial drive's two rows
-    // (pinD, the groove's offset over the axis; pinArm, the arm that spends the
-    // span on the travel) described a pin that lifted the ring itself, and
-    // went with it.
+    // climbs three helices through its travel.
     { key: 'phase', kind: 'spec', unit: 'rad', value: 0, measure: 'pinPhase',
       derivedFrom: 'TODO 222: the stroke straddles the shaft’s DEAD CENTRE — the pin’s mid-stroke arm stands square to the shaft along the vertical, so its motion there is wholly sideways, along the fork’s wall normal' },
     { key: 'arm', kind: 'spec', unit: 'u', value: (r, L) => L.arm(r.span, r.ringTravel).r, measure: 'pinArmR',
@@ -13195,13 +13199,13 @@ export const LINE_SPEC_FORKS = [
     },
   },
   {
-    name: 'alarm link as built',
-    ref: 'alarm link',
+    name: 'alarm link tangential as built',
+    ref: 'alarm link tangential',
     rows: {
-      wrLen: { value: 9.655,
-        forcedBy: 'the §112 rod-site solve (ALARM_LINK_ROD_DIST), re-run by §261 2c for the folded same-side beak: the nose’s ray three column pitches round (k 3), the beak, rod and pivot scored in the folded world, the lay shaft’s hanger columns scored up to the plate, and the fork guarded against TODO 222’s guide plates; the best legal site is the rod a run of 5.0 past the landing, 9.655 from the wheel' },
-      rEff: { value: 4.291127765230935,
-        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (§261 2c’s site, the tab at 81°, clear of guide plate 1 at 60°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
+      run: { value: 6,
+        forcedBy: 'the §112 rod-site solve, generalised by TODO 240 to the tangential lever (nose ray × run, the pivot on the trailing side): the nose, stub, bar, radial pivot stack and post scored in the folded world with the lay shaft’s hangers and the fork guarded against the guide plates; the best legal site is the nose on the k 1 ray and the rod a tangential run of 6 from it (the rod-end hanger’s own bar the bound, 0.42)' },
+      rEff: { value: 4.833392405481735,
+        forcedBy: 'the §112 site solve seats the tab, the chord and the fork where the movement leaves room (TODO 240’s re-solved site, the tab at 87°), so the roller’s line of push stands this far from the ring’s axis, not at the tab’s design reach — read off the metal, the roller’s dead-centre point and its throw' },
     },
   },
 ];
@@ -13512,8 +13516,14 @@ function lineSpecLink(clock) {
     let noseMinH = Infinity;
     { const pos = nose.geometry.attributes.position, v = new THREE.Vector3();
       for (let i = 0; i < pos.count; i++) noseMinH = Math.min(noseMinH, v.fromBufferAttribute(pos, i).applyMatrix4(nose.matrixWorld).dot(wz)); }
+    // TODO 240 — the nose's extent along the lever: its vertices projected on
+    // the plan direction square to the pin (the lever's x)
+    const xh = new THREE.Vector3(-pinAxis.y, pinAxis.x, 0).normalize();
+    let xLo = Infinity, xHi = -Infinity;
+    { const pos = nose.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) { const d = v.fromBufferAttribute(pos, i).applyMatrix4(nose.matrixWorld).dot(xh); xLo = Math.min(xLo, d); xHi = Math.max(xHi, d); } }
     return {
-      W: lineSpecOutlineCentre(skirt), N: n.c, noseMinZ: noseMinH, Pv: lineSpecCentre3(beakPin).c, pinAxis,
+      W: lineSpecOutlineCentre(skirt), N: n.c, noseMinZ: noseMinH, Pv: lineSpecCentre3(beakPin).c, pinAxis, noseHalfAlong: (xHi - xLo) / 2,
       R: lineSpecCentre3(rod).c, rodMinZ: lineSpecCentre3(rod).lo.z,
       A1: lineSpecCentre3(bush1).c, A3: lineSpecCentre3(bush3).c, Rc: lineSpecCentre3(rim).c,
       Pc: lineSpecCentre3(pin).c, ringZ: lineSpecCentre3(ring).c.z,
@@ -13531,16 +13541,17 @@ function lineSpecLink(clock) {
   const axU = rest.A3.clone().sub(rest.A1).normalize();
   const radial = (s, p) => { const d = p.clone().sub(s.A1); return d.sub(axU.clone().multiplyScalar(d.dot(axU))); };
   const footZ = (s, p) => { const d = p.clone().sub(s.A1); return s.A1.z + axU.z * d.dot(axU); };
-  // the lever's line in plan, wheel → rod, and where the beak pin's axis crosses it
+  // TODO 240 — the lever's arms are plan distances from the PIN's axis (the
+  // only distances a tilt about it turns into a drop), the pin's direction is
+  // read against the wheel's tangent at the nose, and the bar's line is the
+  // rod's station along the pin from the wheel's axis
   const W = rest.W, R = rest.R;
-  const lu = { x: R.x - W.x, y: R.y - W.y }; const lL = Math.hypot(lu.x, lu.y); lu.x /= lL; lu.y /= lL;
-  const offLine = (p) => Math.abs((p.x - W.x) * lu.y - (p.y - W.y) * lu.x);
-  const pa = { x: rest.pinAxis.x, y: rest.pinAxis.y }; const paL = Math.hypot(pa.x, pa.y);
-  // crossing: W + t·lu = Pv + s·pa  (2×2, by Cramer)
-  const den = lu.x * (-pa.y) - lu.y * (-pa.x);
-  const t = ((rest.Pv.x - W.x) * (-pa.y) - (rest.Pv.y - W.y) * (-pa.x)) / den;
-  const C = { x: W.x + lu.x * t, y: W.y + lu.y * t };
-  const beakArm = plan(C, rest.N), tailArm = plan(C, R);
+  const pa = { x: rest.pinAxis.x, y: rest.pinAxis.y }; const paL = Math.hypot(pa.x, pa.y); pa.x /= paL; pa.y /= paL;
+  const fromAxis = (p) => Math.abs((p.x - rest.Pv.x) * pa.y - (p.y - rest.Pv.y) * pa.x);
+  const beakArm = fromAxis(rest.N), tailArm = fromAxis(R);
+  const nr = { x: rest.N.x - W.x, y: rest.N.y - W.y }; const nrL = Math.hypot(nr.x, nr.y);
+  const pinAxisTangentCos = Math.abs((-nr.y * pa.x + nr.x * pa.y) / nrL);
+  const barLineR = Math.abs((R.x - W.x) * pa.x + (R.y - W.y) * pa.y);
   const vRest = radial(rest, rest.Rc), vArm = radial(armed, armed.Rc);
   const pinR = radial(rest, rest.Pc);
   // TODO 222 — the sideways drive, off the metal. The pin's arc about the
@@ -13572,8 +13583,8 @@ function lineSpecLink(clock) {
   return {
     noseLandR: plan(rest.N, W),
     rodDist: plan(R, W),
-    noseOffLine: offLine(rest.N),
-    pivotAxisCos: paL > 0 ? Math.abs((pa.x * lu.x + pa.y * lu.y) / paL) : NaN,
+    pinAxisTangentCos, barLineR, noseHalfAlong: rest.noseHalfAlong,
+    run: beakArm - tailArm,
     shaftRoll: vRest.angleTo(vArm),
     rimRestFromZenith: vRest.angleTo(new THREE.Vector3(0, 0, 1)),
     rodFootOverAxis: rest.rodMinZ - footZ(rest, rest.R),
@@ -13592,27 +13603,37 @@ function lineSpecLink(clock) {
 // exactly — then the rod goes back. A reader that quoted ALARM_LINK_ROD_DIST,
 // or the rod's build-time position, would not move.
 function lineSpecLinkControl(clock, m) {
-  let rod = null, skirt = null;
-  clock.scene.traverse((o) => { if (o.isMesh && !o.userData.schematic) { if (!rod && o.name === 'alarmLinkRod') rod = o; if (!skirt && o.name === 'alarmColSkirt') skirt = o; } });
-  if (!rod || !skirt) return 'FAIL — the rod or the wheel is not in the scene';
+  // TODO 240 — the rod carried a known distance along the lever (square to
+  // its pin, away from the pivot): its arm about the pin grows by exactly
+  // that, so the measured run (nose arm − rod arm) must fall by exactly that.
+  let rod = null, pin = null;
+  clock.scene.traverse((o) => { if (o.isMesh && !o.userData.schematic) { if (!rod && o.name === 'alarmLinkRod') rod = o; if (!pin && o.name === 'alarmLinkBeakPin') pin = o; } });
+  if (!rod || !pin) return 'FAIL — the rod or the beak’s pin is not in the scene';
   if (!m.stallRead) return 'FAIL — the §137 lay-shaft row is not in the transfer record, so the stall envelope read nothing';
   const D = 0.05;
   enterAxis(clock); clock.setPose(AXES.find((x) => x.name === 'alarmToggle').pose(0)); clock.scene.updateMatrixWorld(true);
-  const W = lineSpecOutlineCentre(skirt);
+  pin.updateWorldMatrix(true, false);
+  const ax = new THREE.Vector3(0, 1, 0).transformDirection(pin.matrixWorld);
+  const pa = { x: ax.x, y: ax.y }; const paL = Math.hypot(pa.x, pa.y); pa.x /= paL; pa.y /= paL;
+  const Pv = lineSpecCentre3(pin).c;
+  const arm = (p) => (p.x - Pv.x) * pa.y - (p.y - Pv.y) * pa.x;   // signed, square to the pin
   const R0 = lineSpecCentre3(rod).c;
-  const L = Math.hypot(R0.x - W.x, R0.y - W.y);
+  const a0 = arm(R0), sg = Math.sign(a0);
+  const dir = { x: pa.y * sg, y: -pa.x * sg };                       // away from the pivot, square to the pin
+  const runOf = () => m.beakArm - Math.abs(arm(lineSpecCentre3(rod).c));
+  const run0 = runOf();
   const parent = rod.parent; parent.updateWorldMatrix(true, false);
   const from = parent.worldToLocal(R0.clone());
-  const to = parent.worldToLocal(new THREE.Vector3(R0.x + (R0.x - W.x) / L * D, R0.y + (R0.y - W.y) / L * D, R0.z));
+  const to = parent.worldToLocal(new THREE.Vector3(R0.x + dir.x * D, R0.y + dir.y * D, R0.z));
   const delta = to.sub(from);
   let moved;
   rod.position.add(delta);
-  try { clock.scene.updateMatrixWorld(true); const R1 = lineSpecCentre3(rod).c; moved = Math.hypot(R1.x - W.x, R1.y - W.y) - L; }
+  try { clock.scene.updateMatrixWorld(true); moved = runOf() - run0; }
   finally { rod.position.sub(delta); clock.scene.updateMatrixWorld(true); }
   const R2 = lineSpecCentre3(rod).c;
   enterAxis(clock);
-  return Math.abs(moved - D) <= 1e-9 && R2.distanceTo(R0) === 0 && m.ringTravel > 0
-    ? `PASS — the selector rod carried ${D} out along the lever’s line moves the measured run by ${moved.toFixed(9)}, and restored reads the same; the toggle applied (ring ${m.ringTravel.toFixed(6)})`
+  return Math.abs(moved + D) <= 1e-9 && R2.distanceTo(R0) === 0 && m.ringTravel > 0
+    ? `PASS — the selector rod carried ${D} along the lever, square to its pin, moves the measured run by ${moved.toFixed(9)}, and restored reads the same; the toggle applied (ring ${m.ringTravel.toFixed(6)})`
     : `FAIL — carried ${D}, the run moved ${moved}; restored off by ${R2.distanceTo(R0)}; ring ${m.ringTravel}`;
 }
 
@@ -13636,7 +13657,7 @@ const LINE_SPEC_READERS = {
     check: (m) => (m.outlineRead ? null : 'the saw’s cut outline is unreadable (no ExtrudeGeometry shapes) — the root circle cannot be measured'),
   },
   'alarm lock': { read: (clock) => lineSpecLock(clock), control: (clock, m) => lineSpecLockControl(clock, m) },
-  'alarm link': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
+  'alarm link tangential': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
 };
 
 // A reference's values at a given set of input overrides: every literal row

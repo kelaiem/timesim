@@ -17,9 +17,11 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 244 | OPEN | Found re-validating TODO 240, pre-existing on main: `probe-261-fold-site.mjs` exits 2 because its control K9 cannot run once the fold has landed (`PHI_FOLD_DEG` null), so an ACCEPTANCE-filed probe no longer separates a broken fold from a sound one. Read the shipped fold's angle when the search finds none, or retire the study and move K9 to an instrument about the shipped shaft |
+| 243 | OPEN | Found closing TODO 240. `makeColumnWheel` samples each column's top at stations that miss the profile's breakpoints, so the mesh is straight across them: at a flank's foot it stands up to 0.0169 over the `profileAt` law the beak's pose law reads (measured: the nose posed 0.0050 into the metal, inside `HANDOFF_TRACK_TOL`). Cut the columns with stations on the breakpoints, then tighten probe-240's M3 to float. P0 |
 | 242 | PART-CLOSED | 21,600 and 28,800 now carry their own balance (RATE_TABLE `rimF` 0.485 and 0.270, the heaviest that reaches 200° hanging at the nominal corner and starts itself, `equalisation` row 15) and both start and reach the target. **36,000 remains**: the lightest rim the metal allows (0.2305, `balanceWheelDims`' floor) sustains about 162°, so it needs a smaller balance, which re-solves the escapement (the impulse pin's circle scales with the balance's radius) |
-| 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
-| 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
+| 240 | CLOSED | The beak lever is re-aimed: its pin lies along the nose's RADIUS and the lever along the wheel's tangent, so the flank pushes in the lever's own plane (65.9–89.2 mN; 6.0–10.7 mN still along the pin, the leading corner's skew). A bar clear of the columns at r 6.477 and a radial stub 1.822 carry the nose, the pivot trails. The pose law is a flat follower tilting along the flank, solved on the cut. The rod is RE-SITED by the generalised site solve (nose ray k 1, run 6.0, tab 87°, clear 0.422): arms 7.2524 / 1.2524, ratio 5.7909. A new line-spec reference, `alarm link tangential`, retires `alarm link`; its fork moves `run` and `rEff`. `probe-240-tangential-beak.mjs` holds the line, the pin and the pose law on the metal |
+| 239 | CLOSED | Closed by TODO 240, which removed the along-pin load at its source. Re-read on the §261 2c lever it was 64–87 mN climbing, a 390–526 mN·u twist, the pin at 1.1–1.4 GPa. The pin's reaction was priced first-class (`Fn·(1 + ρ)`, 295 mN) on a same-side lever (`Fn·(ρ − 1)`, 222); corrected, with `noseFrom`'s journal. The flank's push is in the record (`beakPivot.flank`); the pin works at 667.0 MPa and the post is load-bound on the new load (⌀ ×1.047) |
 | 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
 | 237 | OPEN | Found closing TODO 222: the alarm link's series stall (the §137 lay-shaft row and `probe-82-alarm-stall.mjs`) reflects each member by n²/k, which inverts the lever. A member moving n per unit of ring travel is seen at the ring as 1/(n²k). The error was invisible while nPin was 1. The rod-side members (n 0.527) are read 3.6× too stiff and the shaft members (n 2.07 since TODO 222) 4.3× too soft. The stall still covers the 5–50 mN window either way, but the figure and the named governor are wrong |
 | 236 | OPEN | Found closing TODO 222: the §45 release sleeve is the selector ring's old construction — three eyes on posts (ℓ 0.4567) driven axially at one tab (r ≈ 4.90) — loaded at the tail pin, which turns with the tube, so it jams wherever d ≥ ℓ/(2μ) = 1.14 u, essentially every hour. Its load is unpriced: follower A's released 22.43 mN·mm over the tail ≈ 130 mN through a 45° cone. Fix path: TODO 222's helical guides with a tangential drive, or a centred collar; price the lift as a `transfers` row |
@@ -30752,9 +30754,14 @@ lever: [TODO 237].
 
 | member | seat | lift | window |
 |---|---|---|---|
-| arming spring at the column nose | 5.25 mN | 47.62 mN (29.51 arming + 18.11 follower B) | 5–50, product 250 = 5 × 50 |
-| follower B's seat blade, at the pin | 5.25 mN | 10.45 mN | 5–50 |
-| pusher (records) | 69.65 mN riser, 88.71 mN at the driver's pin | — | (was 69.42 / 88.42) |
+| arming spring at the column nose | 5.27 mN | 47.48 mN (30.20 arming + 17.28 follower B) | 5–50, product 250 = 5 × 50 |
+| follower B's seat blade, at the pin | 5.27 mN | 10.45 mN | 5–50 |
+| pusher (records) | 69.49 mN riser, 88.51 mN at the driver's pin | — | (was 69.42 / 88.42; 69.65 / 88.71 until TODO 240) |
+
+(Regenerated by TODO 240: the re-aimed beak reflects the blade to the nose by
+its new ratio, 5.7909, on the same-side reaction, and the arming blade re-solves
+inside the same window, its ratio 2.402. This table read 5.25 / 47.62 (29.51 +
+18.11) as TODO 222 left it.)
 
 The arming blade's ratio is the least its hanger room allows, **R 1.863**
 (TODO 206's was 3), at `SPRING_MIN_U` × 1.1 stock. B's lift reaches the nose
@@ -32584,7 +32591,7 @@ transmission is one lumped number, so the escapement's losses are not yet
 split into face friction and drop momentum, which is what would make the
 self-start test exact.
 
-## 239. The column's flank pushes the beak lever's nose along its pivot pin: the side load twists the lever and puts the pin and post over yield
+## 239. The column's flank pushes the beak lever's nose along its pivot pin: the side load twists the lever and puts the pin and post over yield — CLOSED
 
 **Found investigating [TODO 230].** The beak lever's arm is aimed at the column
 wheel's centre (`beakAim` → `ALARM_COL_POS`), so its nose sits on the wheel's
@@ -32702,7 +32709,34 @@ column is the going train's.
    the flank's push lies in the lever's own plane, and none of 1–4 is needed in
    this form. Decide 240 before building 1–4.
 
-## 240. Re-aim the beak arm: the arm points at the column wheel's centre, so the flank's push runs along the pivot axis
+**Closed by [TODO 240], against the measurement.** 240 was decided first, as
+step 5 says, and it removed the load at its source; steps 1–4 were then built
+in the form the re-aimed lever needs.
+- **Re-read on today's lever first.** The figures above were taken on the
+  first-class lever before §261 2c. On the same-side lever 2c built (beakLen
+  6.086, ratio 5.604) the push along the pin was 64.0–86.5 mN climbing and
+  28.4–37.8 mN descending, the twist 390–526 mN·u, and the pin 1119–1370 MPa
+  (1018–1289 on the corrected reaction below). The post read 977 MPa.
+- **The reaction was wrong too, and on the safe side.** Since §261 2c the build
+  priced the pin's reaction as a first-class lever's, `Fn·(1 + ρ)`. A
+  same-side lever's pin carries the difference of its loads, `Fn·(ρ − 1)`:
+  221.7 against 295.2 mN. `noseFrom` and follower B's reflection charged the
+  pin's journal on the same sum. All three are the same-side form now.
+- **Step 1, the record.** `beakPivot.flank` carries the flank's push per
+  contact radius, climbing and descending, beside `noseFrom`. On the re-aimed
+  lever it is 65.9–89.2 mN in the lever's plane, and 6.0–10.7 mN along the pin
+  (the leading corner's own skew).
+- **Step 2, the sections.** The pin bends at 667.0 MPa (§50's floor still
+  binds). The post is load-bound on the new load, the flank's push at the
+  axis's height now included: ⌀ 0.3363 across the flats against 0.3211.
+- **Step 3, the bush.** It did not grow: the pin's section did not move.
+- **Step 4, the thrust friction.** It is recorded per radius
+  (`flank[].thrustTq_Nu`, at most 0.75 mN·u against the nose's 344 mN·u lift
+  moment, 0.2%). It is not charged in `noseFrom`, and the reason is
+  geometric: both ends of the 5–50 mN window stand on FLAT surfaces (the gap
+  floor, a column top), where the flank pushes nothing.
+
+## 240. Re-aim the beak arm: the arm points at the column wheel's centre, so the flank's push runs along the pivot axis — CLOSED
 
 **Filed with [TODO 230], as the root fix for [TODO 239].** The beak lever rides
 the column wheel's castellations as a FACE cam: the nose follows the tops in z,
@@ -32751,6 +32785,130 @@ So it is a fork of §229's line spec (`LINE_SPEC_FORKS`), with each moved row's
 3. Re-run [TODO 239]'s arithmetic. The along-pin load should be friction alone
    (μ·F, about 9.5 mN at the lift end), and the pin and post sections need
    re-reading only for the residue. Close 239 against the measurement.
+
+**Built — the lever re-aimed (the owner's calls, 2026-10-12: a cranked lever on
+the trailing side; the rod RE-SITED by a generalised site solve; a NEW line-spec
+reference; the post grown on its own rule; the reaction corrected).**
+
+*The re-read first.* TODO 239's figures were taken on the first-class lever
+before §261 2c. On the same-side lever that 2c built (beakLen 6.086, tailLen
+1.086, ratio 5.604) the flank pushed 64.0–86.5 mN climbing and 28.4–37.8 mN
+descending ALONG the pin, a twist of 390–526 mN·u, and the pin read 1119–1370
+MPa. The build also priced that lever's pin reaction as first-class,
+`Fn·(1 + ρ)`, while a same-side lever's pin carries the DIFFERENCE of its two
+loads, `Fn·(ρ − 1)`: 295.2 against 221.7 mN, an overstatement of
+(ρ + 1)/(ρ − 1) = 1.33 on which the post had been sized "load-bound".
+`noseFrom` and follower B's reflection charged the journal on the same wrong
+sum. All three are the same-side form now (TODO 239's record).
+
+*P0, in a line.* The flanks are cut as a rise over wheel angle (`profileAt`),
+so their slope lies only along the wheel's tangent. The lever's pin now lies
+along the nose's RADIUS and its arms are tangential distances from that axis,
+so the flank's push lies in the lever's own plane:
+- the **bar** runs along the tangent at `ALARM_LINK_BAR_LINE_R` 6.477 (the
+  castellations' outer face + `CLEAR_MARGIN` + half a tooth), so only the stub
+  and the nose stand over the columns;
+- a **stub** (`alarmLinkBeakStub`, the bar's section) carries the nose
+  `ALARM_LINK_STUB_D` 1.822 inward onto the landing radius;
+- the pivot stands on the **trailing** side (`ALARM_LINK_PIVOT_T`, from the
+  wheel's `ratchetDrive`): the wheel carries the nose with it on the climb, so
+  the arm is in tension then and the push, acting 0.525 under the axis, helps
+  the lift;
+- the **seat law** (`alarmLinkSeatSolve(run, rodT)`) lands the nose's deepest
+  corner on the gap floor with that corner half the nose's TANGENTIAL width
+  beyond the arm (`ALARM_LINK_NOSE_W_AZ / 2`, 0.4846; it was the radial half);
+- the **pose law** is a flat-faced follower tilting ALONG the flank
+  (`alarmLinkNoseTheta`): the tilt is solved so no point of the face stands
+  under the cut, the face's corners and the profile's breakpoints evaluated
+  exactly, with the arc the tilt swings it through. The old law (rest on the
+  highest point under the footprint) was exact only while the tilt lay across
+  the flank. The gap floor is part of the surface, so the seat is the same
+  contact;
+- the **lift** the stub needs over the columns is swept at that law through a
+  pitch (`_stubLiftFor`): 0.3669, where the radial bar's was 0.2711 (the stub
+  is a tooth wide, the nose 0.969, so its corners overhang the flat).
+
+*P3, the fold.* The §112 site solve's stage 1 is generalised to the new class:
+nose ray (whole column pitches) × run, the pivot on the trailing side, the rod
+on the bar's line at the run, scoring the rod's column, the bar, the stub and
+the pivot's reach in the folded world. Its first boots exposed a defect in the
+solve: hanger 3's jog is SIZED to stand exactly `CLEAR_MARGIN` off the beak's
+post, and scored as a clearance it capped every jogged candidate at 0.15, so
+the site fell to whichever tied candidate the loop met first, and two sites a
+hair apart in the hoisted shaft length each sent the solve to the other. That
+term is now a constraint the construction meets, not a figure of merit. The
+solve lands the nose on the **k 1** ray, the rod a tangential **run of 6.0**
+from it (8.829 from the wheel), the tab at **87°**, clearing **0.422** (bound by
+hanger 3 against its own beak bar). The rod, the lay shaft, the hangers, the
+tab, the fork and the guide plates moved with it, position space only. Four
+quotations went to their fixed points at the new site: `ALARM_LINK_BODY_LEN_U`
+12.0141 → 9.9910, `ALARM_LINK_ROD_LEN_U` 2.5312 → 2.4917,
+`ALARM_SEL_GUIDE_HALF_T_U` 1.0931 → 1.0335, `ALARM_PINB_SEAT_MN` 5.4263 →
+5.2650; and `ALARM_LINK_STALL_PROBE_MN` 461.26 → 445.49 (probe-82).
+
+The battery then found two joints of hanger 3 the new site broke, both fixed
+in position space. The jog's arm came out 0.651 against 0.5186 square columns,
+so the upper column stood through the lower at a corner: a jog at all is now at
+least two of the solve's column discs (`2·ALARM_LINK_BUSH_OD_U`). And the rod
+guide's web, run in to the hanger's axis, crossed the arming blade's slot there:
+it is welded to the hanger's face now, lapped one `SAW_FIT`.
+
+*The lever, as built:* beakLen **7.2524**, tailLen **1.2524**, ratio **5.7909**,
+seat tilt 0.08001, seat drop 0.58024, bar 7.879 long at §50's 0.3167 deep (λ
+22.9).
+
+*P1.*
+- The flank's push is carried in the record beside `noseFrom`
+  (`beakPivot.flank`, per contact radius, climbing and descending): 65.9–89.2
+  mN climbing, in the lever's plane. What still bears along the pin is the
+  leading corner's own skew, sin(atan(W_AZ/2 / r)) of the push: **6.0–10.7 mN**
+  (9.1–11.9%), a twist of 43.7–77.3 mN·u where the radial lever's was 390–526.
+- **Pin**: the vertical reaction (221.6 mN at the lift end, same-side) acts at
+  `yR` = −noseY/(ρ − 1) = 0.380 along the pin, the flank's push at the nose's
+  station 1.822 the other way. The eye hangs on yR's side (`ALARM_BEAK_SIDE`
+  now derived, +1), which shortens the pin's arm to the governing load to
+  0.683; |M| = √((R·aV)² + (Ft·aH)²) bends it at **667.0 MPa** against
+  `SPRING_SIGMA_Y_PA` 800. §50's floor still binds the pin.
+- **Post**: von Mises over R's tension, its offset as bending, the flank's push
+  at the axis's height (3.292) as bending square to that, and the push's offset
+  along the pin as torsion. It stays load-bound, re-derived on that load:
+  r **0.1768**, ⌀ 0.3363 across the flats (×1.047 on 0.3211), at s 1.230.
+- The **stub** bends at 42.4 MPa at the bar.
+- **End-shake**: yaw now swings the nose RADIALLY; held to `CLEAR_MARGIN` there
+  as it was along the flat, e = 0.0200, and asserted against the nose's radial
+  room (0.418 in, 0.189 out to the lock rocker's chamfer).
+
+*The arming blade* re-solved inside the 5–50 mN window, never widened: seat
+**5.265 mN**, lift **47.48 mN** (follower B's 17.28 of it), blade ratio 2.402, k
+246.9 N/m.
+
+*Instruments.*
+- A NEW line-spec reference, `alarm link tangential` (inspect.js), retires `alarm
+  link`: its own rows `pinRadial`, `barLineR`, `noseHalf` and `run` (a
+  tangential distance; reference 11.345 = §229's 16 − landR), the seat law on
+  the along-plane half, the rest inherited unchanged. Its reader measures arms
+  as plan distances from the pin's axis; its control carries the rod 0.05 along
+  the lever, square to the pin, and the run must fall by exactly that. The fork
+  `alarm link tangential as built` moves `run` (6) and `rEff` (4.8334), each
+  with its `forcedBy`.
+- `probe-240-tangential-beak.mjs` (acceptance) holds the line at both runs, the
+  pin on the radius (5e-12), the flank's skew under an eighth, and the pose law
+  on the METAL at 66 poses: the posed nose within 1.8e-8 of the cut and never
+  deeper in it than the cut's own chord bound (0.0050 against 0.0169). Its
+  controls: a 0.9-scaled tilt leaves the nose off the cut at 48 of 66 poses, and
+  a 10% wrong stroke breaks the seat.
+- `probe-230-beak-retention.mjs` slides along the radial pin. Its slide had run
+  the wrong way along the pin since §261 2c: it took the direction through a
+  world QUATERNION, which cannot carry the fold's reflection. The faces bear
+  first at 0.0100 each way; the next metal is the eye on the post at 0.0153.
+- `probe-70-line-spec.mjs` fires on the new reference and its fork.
+- `probe-261-dial-beak.mjs` is retired with the class it chose.
+
+**What it found and did not fix.** The castellation mesh misses the profile's
+breakpoints, so at a flank's foot the metal stands up to 0.0169 over the law the
+nose is posed on. The nose is measured 0.0050 into it at worst, inside the
+handoff tolerance, and the radial lever rode the same corners. Filed as
+[TODO 243].
 
 ## 241. The alarm press chain survives the finger only if something bottoms it: a stroke stop for the pusher — CLOSED
 
@@ -32938,3 +33096,65 @@ the roller scale with the balance's radius, so the impulse pin, the notch, the
 lift and the knock re-solve with it, and so do the hairspring's radii, the
 cock and the stop work.
 
+## 243. The column wheel's castellation mesh misses the profile's breakpoints, so at a flank's foot the metal stands up to 0.017 over the law the beak rides
+
+**Found closing [TODO 240].** `makeColumnWheel` cuts each column's top surface
+by sampling `colH·profileAt(θ)` at `M = round(9·edge/flank)` stations across
+the column's half-arc, and the mesh is straight between stations. The profile
+is piecewise linear in angle, with breakpoints at the flat's edges (±`colFlatHalf`)
+and the flanks' feet (±edge). The stations do not land on those breakpoints.
+So:
+- at a flat's edge (a convex corner) the mesh's chord cuts UNDER the law;
+- at a flank's foot (a concave corner) it stands OVER the law, by up to
+  slope·spacing/4 = (colH/colFlank)·(2·edge/2M)/4 = **0.0169** on today's
+  wheel.
+
+The beak's pose law (`alarmLinkNoseTheta`) reads `profileAt` exactly, so where
+the nose's corner rides a flank's foot it is posed into the metal.
+`probe-240-tangential-beak.mjs` measures the deepest stand at **0.0050**
+(`alarmPress` f 0.3438), inside the chord bound and inside `HANDOFF_TRACK_TOL`
+0.03, and every battery gate is green. It is still a mesh and a law that
+disagree about the cut. The radial lever before TODO 240 rode the same
+corners, so this predates TODO 240.
+
+**Why it is debt (P0, the cut against its law).** TODO 20's invariant is that
+the top of every column IS `colH·profileAt(θ)`. That holds at the stations
+only.
+
+**Fix path.**
+1. Cut the columns with stations ON the breakpoints: each flank and each flat
+   as its own run of samples, so the mesh is exact wherever the law is linear.
+2. Then tighten `probe-240-tangential-beak.mjs`'s M3 from the chord bound to a
+   float tolerance, which proves the fix.
+3. Re-measure every reader of the wheel's tops: the lock rocker's face row,
+   `alarmHandoffs`' two nose rows, and the bar's lift sweep.
+
+## 244. probe-261-fold-site's control K9 cannot run once the fold has landed, so the study exits 2 on main
+
+**Found re-validating [TODO 240].** TODO 240 re-pointed the study's link reference to
+`alarm link tangential`, and the re-validation ran it.
+`tools/probe-261-fold-site.mjs` exits 2 with
+`K9 not run: no single fold on the stop wheel's pitch (null) or the link's inputs are missing`.
+
+The failure predates TODO 240. A detached `origin/main` (fb36a51e) gives the same
+exit and the same K9 line. The two runs' outputs differ only by the one mesh TODO
+240 added (82 excluded meshes against 81) and by third-decimal changes in its
+nearest-tenant figures.
+
+The study was written to site the cluster BEFORE the fold (§261 step 4, landing
+one), and it searches for the one fold angle a whole stop pitch inside the
+window it finds. With the cluster already folded under the dial, the window it
+reads contains the cluster's own image. `PHI_FOLD_DEG` comes back null, and
+`beakSite`, which K9 holds, refuses to run. K1–K8 still run and pass.
+
+**Why it is debt.** INDEX files this probe as ACCEPTANCE, because it can exit
+non-zero. On main it exits 2 whatever the tree, so it no longer distinguishes a
+broken fold from a sound one. A control that cannot run is a control nobody has
+seen fire (CLAUDE.md).
+
+**Fix path.** Pick one:
+- Read the shipped fold's angle (`ALARM_FOLD_PHI`, published on `__clock`) when
+  the search finds none, and run `beakSite` against it, so K9 again holds the
+  shipped lay shaft.
+- Or retire the study as the record of a landed siting, and move K9's
+  shaft-corridor test into an instrument about the shipped shaft.
