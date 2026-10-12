@@ -36827,7 +36827,7 @@ const alarmLinkParts = {};
       // level crosses the setting wheel's band on its way out to the fork
       // (the same 0.03 that forbids the lower plate inside the rim). The
       // block hangs from above, carried by the bar and its two side webs.
-      const azF = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
+      const azF0 = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
       // TODO 170 — the bar's inboard end was cut to lap the ring's rim
       // (ALARM_SEL_R_OUT − 0.15) in PLAN only: at this plate level it stands
       // 0.1817 off the ring (filed, TODO 174), and armed with the crown pulled
@@ -36835,6 +36835,36 @@ const alarmLinkParts = {};
       // gap. It starts one margin off that rim radially, independent of the z
       // the link solve lands the groove at; it still laps post 1.
       const brIn = ALARM_SLEEVE_R_OUT + CLEAR_MARGIN;
+      // §261 2c — THE BRACKET'S AZIMUTH YIELDS TO THE ROLLER. The bracket ran on
+      // the block's own azimuth, so its riser (one margin outside the sleeve's
+      // flat) stood on the line the block's mid lies on — and the centre pin's
+      // roller, a capsule along the CHORD in the block's groove, points its
+      // inboard end down that line whenever the chord runs near radial: at
+      // 2c's tab the two stood 0.143 apart (expectedContacts, Alarm link ⇄
+      // Alarm selector). The bracket turns about the ring's axis by the least
+      // δ that stands the riser one margin off the roller, read off the built
+      // roller at rest in the ring's frame, and no further than leaves the bar
+      // lapping the block's plate across its whole width.
+      const azF = (() => {
+        const roller = alarmLinkParts.centreKey.getObjectByName('alarmLinkCentreRoller');
+        if (!roller) return azF0;
+        alarmSelRing.updateWorldMatrix(true, false); roller.updateWorldMatrix(true, false);
+        const c = alarmSelRing.worldToLocal(roller.getWorldPosition(new THREE.Vector3()));
+        const ax = new THREE.Vector3(0, 1, 0).transformDirection(roller.matrixWorld);   // the cylinder's own axis
+        const axL = alarmSelRing.worldToLocal(roller.getWorldPosition(new THREE.Vector3()).add(ax)).sub(c);
+        const aL = Math.hypot(axL.x, axL.y), ux = axL.x / aL, uy = axL.y / aL;
+        const h = roller.geometry.parameters.height / 2, rRoll = roller.geometry.parameters.radiusTop;
+        const rR = brIn + STOCK_MIN_U / 2, need = rRoll + STOCK_MIN_U * Math.SQRT1_2 + CLEAR_MARGIN;
+        const clear = (az) => planPtSegDist(Math.cos(az) * rR, Math.sin(az) * rR, c.x - ux * h, c.y - uy * h, c.x + ux * h, c.y + uy * h) - need;
+        const dMax = Math.asin(Math.max(0, Math.min(1, (blockW / 2 - STOCK_MIN_U / 2) / rF)));
+        if (clear(azF0) >= 0) return azF0;
+        for (let k = 1; k <= 400; k++) {
+          const d = dMax * k / 400;
+          for (const sgn of [1, -1]) if (clear(azF0 + sgn * d) >= 0) return azF0 + sgn * d;
+        }
+        console.warn(`§261 2c: no bracket azimuth within the block's lap (±${dMax.toFixed(4)} rad) stands the fork's riser a margin off the centre pin's roller (${clear(azF0).toFixed(4)} at the block's own)`);
+        return azF0;
+      })();
       const brLen = Math.max(0.2, (rF + 0.15) - brIn);
       // TODO 11 tranche five: the bar's WIDTH was a 0.3 literal (0.1137 mm,
       // under the floor) while its thickness was already ALARM_SEL_T. Floor
@@ -44760,7 +44790,19 @@ const CASE_DIMS = (() => {
   // 0.005 inside the margin of the shipped 12.077, and this term is what pays
   // for it, in case height rather than in the hammer. Inert on any movement
   // whose outboard metal already clears the threaded mouth.
-  const zPaneFloor = envMaxOver(RA - 2 * CLEAR_MARGIN, CASE_R_OUT) + CLEAR_MARGIN;
+  // §261 2c — the glass's two faces are cut ONE margin over measured metal,
+  // and since the fold took the tower and the over-stated skirt row away there
+  // is nothing between them and it: the pane stands exactly a margin over the
+  // hammer's plane, the step exactly a margin over the striking wheel. The
+  // battery reads such a face at 0.15 less float noise — the vertices are
+  // float32 (an ulp of ~1e-6 at this z) and a mover's pose is not bit-identical
+  // to the build's — so undeclaredClearance reported the hammer, its lever and
+  // the striking staff 'under' the margin they were built to (measured, the
+  // shortfall is 7e-8). A guard three orders past that noise keeps a designed
+  // margin from reading as a breach; at 1e-4 u it is 0.04 µm of depth, far
+  // under CASE_HEIGHT_STEP_MM.
+  const CASE_GLASS_FLOAT_GUARD = 1e-4;
+  const zPaneFloor = envMaxOver(RA - 2 * CLEAR_MARGIN, CASE_R_OUT) + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD;
   const zMidBack = Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
   // The bore wall must still contain the pusher's bore window whole
   // (§186's boredProfiles carries the degenerate-piece assert; this is the
@@ -44807,7 +44849,7 @@ const CASE_DIMS = (() => {
   //  · rStep is the outer edge of the outermost bin too tall for the pane,
   //    plus one CLEAR_MARGIN so the step's wall clears the bin's own metal.
   const envMaxAll = envMaxOver(0, CASE_R_OUT);
-  const zStepUnder = envMaxAll + CLEAR_MARGIN;
+  const zStepUnder = envMaxAll + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD;
   const zStepTop = zStepUnder + CASE_CRYSTAL_T;
   let rStep = 0;
   for (const b of envBins) if (b.z !== null && b.z + CLEAR_MARGIN > zMidBack) rStep = Math.max(rStep, b.r1);
