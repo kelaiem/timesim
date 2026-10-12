@@ -38,6 +38,7 @@ import {
   SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
   BARREL_STEP_DEG, D4, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
   ALARM_CORNER_R,                             // §94 tier B — the alarm corner's design radius, the third radial row's default
+  TECHNIC_FORK, technicChainErrors, ratQ, ratMul, ratEq, ratStr, // §219 tier one — the reserve row's target derives from the sweep below
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
@@ -18247,6 +18248,30 @@ const RESERVE_SWEEP_DEG = 300;      // graduated arc, symmetric about the well's
 const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated to the SPEC —
                                     // = RELAX_SECONDS / 3600 by shared derivation, and
                                     // asserted against it with the ratio below
+// §219 tier one — the technic fork's RESERVE row, checked here because its
+// target is a consequence of this scale and layout.js cannot see the sweep:
+// p0 turns h·pinion/teeth lock-to-lock and the hand sweeps RESERVE_SWEEP_DEG,
+// so R = turns · 360/sweep (21/10 at the identity spec). The steel counts must
+// reproduce it (TODO 18's assert on the fork's side), and the declared chains
+// must multiply to it. The fork was solved at TECHNIC_FORK.solvedAt; any other
+// reserve is a different fork, so the chains are only held there — the steel
+// half holds at every reserve. Silent unless something regressed (rule 6).
+{
+  const turns = ratQ(SPEC.reserveHours * TRAIN.barrel.pinion, TRAIN.barrel.teeth);
+  const fromScale = ratMul(turns, ratQ(360, RESERVE_SWEEP_DEG));
+  // rsvTeethW2 is read, never restated. It is fractional at four of the five
+  // menu reserves (TODO 134, open), and BigInt refuses a fraction, so it enters
+  // as a decimal rational — exact for any count with six or fewer places.
+  const w2 = ratQ(Math.round(rsvTeethW2 * 1e6), 1e6);
+  const fromTeeth = ratMul(ratQ(rsvTeethW1, rsvTeethP0), ratMul(w2, ratQ(1, rsvTeethP1)));
+  if (!ratEq(fromScale, fromTeeth))
+    console.warn(`§219 technic fork: the reserve reduction from its scale is ${ratStr(fromScale)}, from the steel counts ${ratStr(fromTeeth)} — the display and the gears drifted apart (TODO 18)`);
+  if (SPEC.reserveHours === TECHNIC_FORK.solvedAt.reserveHours) {
+    const row = TECHNIC_FORK.rows.find((r) => r.key === 'reserve reduction');
+    for (const [gen, chain] of Object.entries(row.chains))
+      for (const e of technicChainErrors(gen, row.key, chain, fromScale)) console.warn(`§219 technic fork: ${e}`);
+  }
+}
 // --- Alarm period + reading resolution (BUILT §24) -------------------------
 // The alarm wraps on the SAME 12-hour period as the dial and formatTime (a
 // 12-hour dial carries no AM/PM, so a 24-hour alarm can't be set unambiguously

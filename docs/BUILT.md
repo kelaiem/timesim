@@ -34721,3 +34721,79 @@ budget, and both fail the rows they should. TODO 82's probe now reads the pin
 along the fork's wall normal; [TODO 237] files the reflection both stall paths
 share.
 
+
+## §219 tier one — the technic fork as data: the catalogue, the solver and four exact rows in `layout.js`
+
+**PARTIAL.** Tier one has landed. Tier two (`?catalogue=technic`, the trains
+cut to the rows) and tier three (a printed bill of materials) have not. The
+plan, including the scoping note it came from, lives in the private roadmap.
+
+### What it is
+
+The movement's going, motion and reserve trains re-toothed to a public parts
+catalogue: LEGO Technic, module 1 on a 4 mm half-stud lattice. Nothing in
+`TRAIN` survives verbatim (120:7, 75:10, 80:10 and 80:8 name counts the
+catalogue does not have). What survives is the INVARIANT each ratio serves, and
+every one of the four re-derives as an EXACT rational product of catalogue
+meshes. That is a fork in §70's sense: the constraint that forced each changed
+row is the catalogue, and it is written in the row.
+
+| row | steel | technic_classic | technic_2026 |
+|---|---|---|---|
+| centre→fourth, 60 | 75:10 × 80:10 | 16:8 × 16:8 × 24:8 × 40:8 | 60:8 × 64:8 |
+| fourth→escape, 15/2 | 80:8 on a 15T wheel at 2.5 Hz | 60:8 on an 8T wheel at 1 Hz | 60:8 |
+| motion works, 12 | 30:10 × 32:8 | 16:8 × 16:8 × 24:8 | 24:8 × 56:14 |
+| reserve reduction, 21/10 | 28:8 × 6:10 | 24:16 × 28:20 | 24:16 × 28:20 |
+
+### Where each half lives, and why
+
+- **`CATALOGUES`** (`src/layout.js`). `steel: null` plus two technic
+  generations, because the catalogue moved in 2026 (14T 7785, 18T 7786, 64T
+  7861) and a fork should not silently mean one year. A count is a row,
+  `{ teeth, part, kind }`: `part` is what a BOM orders, and `kind` is what makes
+  a centre distance mean anything. The 18T is a clutch (`slips: true`) and
+  `catalogueMesh` bars it from a going train, by rule rather than by omission.
+  The rows were read from BrickLink on 2026-09-12. The roadmap's
+  feasibility note carries the part table.
+- **`solveRatio`** (`src/layout.js`). The shortest exact chain, ties broken by
+  fewest total teeth. It is a breadth-first search to depth 6, so the build
+  never CALLS it: it is exported for tier two and for the probe.
+- **`TECHNIC_FORK`** (`src/layout.js`). The four rows, each chain written as
+  pairs `[driver, driven]`. No row carries its target. `technicForkTargets()`
+  derives three of them from `TRAIN`, the motion-works counts and RATE_TABLE's
+  law at the catalogue's own 1 Hz, 8T escapement. The fourth, the reserve's, is
+  derived in `main.js` beside `RESERVE_SWEEP_DEG`, because the reduction is a
+  consequence of the sweep and `layout.js` cannot see it.
+- **Boot asserts**, one in each file. Each declared chain must name catalogue
+  counts, every pair must be an admissible mesh, and the product must equal the
+  live steel invariant. Re-gear a steel train and boot warns that the fork
+  describes a ratio the movement no longer has. The `main.js` assert also holds
+  the steel reserve counts to the scale at every reserve, which is TODO 18's
+  assert seen from the fork's side.
+- **Optimality is the probe's job.** A boot cannot afford the search that says
+  a declared chain is the BEST one. `tools/probe-219-catalogue.mjs` now imports
+  everything above rather than keeping a copy, and its new claim 6 fails if any
+  declared chain differs from what `solveRatio` returns.
+
+### One rule that is easy to break
+
+**The fork is solved at the identity spec.** The reserve target is 7h/100, so
+at any other `reserveHours` it is a different fork, and the chains are checked
+only at `TECHNIC_FORK.solvedAt`. The other three rows do not depend on the
+spec. `rsvTeethW2` is fractional at four of the five menu reserves (TODO 134,
+open). `BigInt` refuses a fraction, so the assert reads the count as a decimal
+rational rather than restating `reserveHours / 5`.
+
+### Measured
+
+- `node tools/probe-219-catalogue.mjs` PASSES: claims 1–6, the control 11:1
+  refused under both generations, 120:7 held as the documented non-refusal.
+- Every control fired:
+  - **Boot assert:** silent on the clean tree, and it fired on each of three
+    mutations:
+    - a declared chain whose product is wrong (105/2 against 60);
+    - a pair off the lattice (24:12 at 18 mm);
+    - a re-geared steel hour wheel (target 27/2).
+  - **Claim 6:** an exact, admissible but suboptimal chain (40:8 × 24:8 ×
+    64:16 for centre→fourth) passed the boot and FAILED the probe, as it must.
+- No geometry changed. Nothing in the build reads the fork yet.
