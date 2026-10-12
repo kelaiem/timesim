@@ -3588,6 +3588,11 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkHangerBush1', b: 'alarmLinkHanger1', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush2', b: 'alarmLinkHanger2', why: '§121: the second corner, same construction' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
+  { unit: 'Alarm link', a: 'alarmLinkHanger3', b: 'alarmLinkHanger3Jog', why: '§261 2c: hanger 3\'s lower column welded into its jog arm, one margin under the beak\'s bar' },
+  { unit: 'Alarm link', a: 'alarmLinkHanger3Jog', b: 'alarmLinkHanger3Upper', why: '§261 2c: the jog arm welded into the upper column, which rises to the plate clear of the bar and its post' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuide', b: 'alarmLinkHanger3', why: '§261 2c: the rod\'s guide sleeve abutting hanger 3\'s lower column, welded beside its web' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3Jog', why: '§261 2c: the guide\'s web runs the sleeve\'s length, so its top laps hanger 3\'s jog arm where the arm leaves the column — one weld' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuide', b: 'alarmLinkHanger3Jog', why: '§261 2c: the sleeve\'s top meets the jog arm\'s underside at the column — one weld' },
   { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkRod', why: '§121, re-pointed by §261 2c: the same-side beak\'s BAR on the rod\'s top, between its pivot and its nose — the top is cut from the bar\'s far face through the tick\'s own lift (TODO 174\'s registration solve), so the pair kisses at every tilt' },
   { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rim finger\'s tip under the rod\'s flat foot — a push-only contact, not an eye (TODO 206 corrected the wording: the finger only lifts the rod, and the arming spring is what keeps it pressed there)' },
   { unit: 'Alarm link', a: 'alarmLinkArmingSpring', b: 'alarmLinkArmingArm', why: 'TODO 206: the arming blade\'s face on the arm\'s tip corner, sunk ALARM_SEAT_SINK — the spring\'s working contact, held by alarmHandoffs at every parity' },
@@ -4753,7 +4758,7 @@ export const PLATE_SEATS = [
   { unit: "Alarm winding arrest", mesh: "alarmArrestStud", kind: "planted", why: "the arrest's stud, planted in the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger1", kind: "planted", why: "a hanger, standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkHanger2", kind: "planted", why: "a hanger, standing on the plate" },
-  { unit: "Alarm link", mesh: "alarmLinkHanger3", kind: "planted", why: "a hanger, standing on the plate" },
+  { unit: "Alarm link", mesh: "alarmLinkHanger3Upper", kind: "planted", why: "§261 2c: hanger 3's upper column — jogged round the beak's bar — standing on the plate" },
   { unit: "Alarm link", mesh: "alarmLinkBeakPost", kind: "planted", why: "§261 2c: the same-side beak's pivot post, folded under the dial — planted in the plate's dial face (the rod's back bush that stood here retired with its bore)" },
   // TODO 209 — two arrival "debt" rows that are bore fits, not clearances: each
   // shaft passes THROUGH the plate, and the reading is its radial gap to the
@@ -11726,7 +11731,8 @@ const TURN_LAP_MAX_FRAC = 0.5;
 // reduced tip (the riser's old section, so the driver's slot is unchanged)
 // turned last against the post's shoulder, which is a pivot's machining case
 // exactly — judged whole, the post read L/D 32.2 off the tip's ⌀ over the
-// shank's length; alone the tip is 9.6 and the shank 18.0, its own target.
+// whole length; alone the tip is 9.6, and the shank is cut to the target over
+// the post's whole length, which is what the body is still read over.
 const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot', 'alarmLinkageDriverPin']);
 const TURN_AMBIG_TILT = 0.15;
 const TURN_AMBIG_WIDEN = 1.02;

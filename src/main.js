@@ -34252,6 +34252,25 @@ const alarmLinkSeatSolve = (run, rodT, side = -1) => {
 };
 ALARM_LINK_LAWS.seat = alarmLinkSeatSolve;
 
+// §261 2c — THE ROD-END HANGER'S JOG, one law for the site solve that scores
+// it and the build that cuts it (the reasoning is at the solve's hanger
+// scoring). From the hanger's station (hx, hy) and the bar's line in world plan
+// (pivot P → nose N), the arm's length J and its unit direction m, off the
+// line on the hanger's own side, and the upper column's station — long enough
+// that the column clears the bar's line AND the pivot post's reach about P
+// (`pivReach`, the post, its head and the eye at floor stock), each by the
+// column's plan radius and the margin.
+const alarmLinkHangerJog = (hx, hy, P, N, pivReach) => {
+  const bx = N.x - P.x, by = N.y - P.y, bl = Math.hypot(bx, by);
+  const side = ((hx - P.x) * by - (hy - P.y) * bx) / bl;   // signed distance off the bar's line
+  const m = { x: (side >= 0 ? 1 : -1) * by / bl, y: (side >= 0 ? 1 : -1) * -bx / bl };
+  let J = Math.max(0, ALARM_LINK_ARM_W / 2 + ALARM_LINK_BUSH_OD_U + CLEAR_MARGIN - Math.abs(side));
+  // |H + m·J − P| ≥ R: the smallest J at or past the bar's that clears the post
+  const R = pivReach + ALARM_LINK_BUSH_OD_U + CLEAR_MARGIN;
+  const wx = hx - P.x, wy = hy - P.y, bq = wx * m.x + wy * m.y, cq = wx * wx + wy * wy - R * R;
+  if (Math.hypot(wx + m.x * J, wy + m.y * J) < R) J = Math.max(J, -bq + Math.sqrt(Math.max(0, bq * bq - cq)));
+  return { J, m, ux: hx + m.x * J, uy: hy + m.y * J };
+};
 const linkShaftTipXY = (rod, inner) => {
   const dx = rod.x - inner.x, dy = rod.y - inner.y;
   const D = Math.hypot(dx, dy);
@@ -34260,7 +34279,7 @@ const linkShaftTipXY = (rod, inner) => {
   const vx = ux * Math.cos(a) - uy * Math.sin(a), vy = ux * Math.sin(a) + uy * Math.cos(a);
   return { x: inner.x + vx * L, y: inner.y + vy * L };
 };
-const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_AZ_DEG, colClear: ALARM_LINK_ROD_COL_CLEAR } = await (async () => {
+const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_AZ_DEG, colClear: ALARM_LINK_ROD_COL_CLEAR, barLine: ALARM_LINK_BAR_LINE_W } = await (async () => {
   // The low rods enter through LOW_LINKAGE_OBSTACLES (rule 5), not their
   // mesh boxes: a diagonal rod segment's box is a rectangle the rod never
   // fills, and scored raw it reads the whole quadrant as occupied — the
@@ -34485,7 +34504,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       ];
       let c = Infinity, who = '';
       for (const [nm, t] of terms) if (t.c < c) { c = t.c; who = `${nm}:${t.who}`; }
-      rodCands.push({ c, x: Tw.x, y: Tw.y, xC: ALARM_COL_POS.x + u.x * d, yC: ALARM_COL_POS.y + u.y * d, d, k, run, who });
+      rodCands.push({ c, x: Tw.x, y: Tw.y, xC: ALARM_COL_POS.x + u.x * d, yC: ALARM_COL_POS.y + u.y * d, d, k, run, who, Pw, Nw, pivReach });
     }
   }
   rodCands.sort((p, q) => q.c - p.c);
@@ -34649,15 +34668,44 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   // crank and a bush in from the tip.
   const hangerBand = [_searchShaftZ, PLATE_BACK];
   const hangerObs = obs.filter((b) => inBand(b, hangerBand));
-  const scoreHangers = (x, y, tx, ty) => {
+  // ...and the candidate's OWN beak. The hanger columns rise through the
+  // bar's dial-side band, so a column standing under the bar is no site
+  // (intraUnit read the bar through hanger 3 at every pose the first time the
+  // solve was blind to it). Hangers 1 and 2 are scored against it whole. The
+  // ROD-END hanger cannot simply avoid it — it stands a standoff beside the
+  // rod, and the bar passes over the rod — and no chord in the movement puts
+  // it clear (measured: with the bar scored, every candidate's hanger 3 fails),
+  // so it is JOGGED: its lower column stands at the bush (it is the arming
+  // blade's stud and the rod guide's ground, both below the bar), and above
+  // them a horizontal arm carries it sideways off the bar's line by what the
+  // bar, the column's plan radius and the margin need, to an upper column that
+  // rises to the plate clear of the bar and its post. The bar's plan radius
+  // is half its tooth width; the column's is the bush's (the hanger is
+  // narrower — asserted at the build). The arm and the upper column are scored
+  // over the whole hanger band, which over-reads, on the safe side.
+  const scoreHangers = (x, y, tx, ty, rc) => {
     const len = Math.hypot(x - tx, y - ty), ux = (x - tx) / len, uy = (y - ty) / len;
     const t1 = 2.45, t3 = len - (ALARM_LINK_CRANK_T + CLEAR_MARGIN + ALARM_LINK_BUSH_LEN);
-    let c = Infinity, who = '';
-    for (const t of [t1, (t1 + t3) / 2, t3]) {
-      const hx = tx + ux * t, hy = ty + uy * t;
-      for (const b of hangerObs) { const d = dToBox(hx, hy, b) - ALARM_LINK_BUSH_OD_U; if (d < c) { c = d; who = 'hanger:' + b._who; } }
+    let c = Infinity, who = '', jog = null;
+    const stations = [t1, (t1 + t3) / 2, t3];
+    for (let i = 0; i < 3; i++) {
+      const t = stations[i];
+      let hx = tx + ux * t, hy = ty + uy * t;
+      const pts = [{ x: hx, y: hy }];
+      if (i === 2 && rc && rc.Pw) {
+        jog = alarmLinkHangerJog(hx, hy, rc.Pw, rc.Nw, rc.pivReach);
+        for (let k = 1; k <= 8; k++) pts.push({ x: hx + jog.m.x * jog.J * k / 8, y: hy + jog.m.y * jog.J * k / 8 });
+        hx = jog.ux; hy = jog.uy;
+      }
+      for (const p of pts) for (const b of hangerObs) { const d = dToBox(p.x, p.y, b) - ALARM_LINK_BUSH_OD_U; if (d < c) { c = d; who = 'hanger:' + b._who; } }
+      if (rc && rc.Pw) {
+        const dBar = planPtSegDist(hx, hy, rc.Pw.x, rc.Pw.y, rc.Nw.x, rc.Nw.y) - (ALARM_LINK_BUSH_OD_U + ALARM_LINK_ARM_W / 2);
+        if (dBar < c) { c = dBar; who = 'hanger:its own beak bar'; }
+        const dPiv = Math.hypot(hx - rc.Pw.x, hy - rc.Pw.y) - (ALARM_LINK_BUSH_OD_U + rc.pivReach);
+        if (dPiv < c) { c = dPiv; who = 'hanger:its own beak post'; }
+      }
     }
-    return { c, who };
+    return { c, who, jog };
   };
   let best = null;
   // Every stage-1 candidate is searched, not a top-N: the rim guard
@@ -34679,10 +34727,10 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       if (_postClear(tx, ty, seat) < 0) continue;   // TODO 174 — the fork clears every guide post station
       const { c: cc, who } = scoreChord(tip.x, tip.y, tx, ty);
       const tb = scoreTab(tx, ty, seat.bx, seat.by);
-      const hg = scoreHangers(tip.x, tip.y, tx, ty);
+      const hg = scoreHangers(tip.x, tip.y, tx, ty, rc);
       const c = Math.min(rc.c, cc, tb.c, hg.c);
       const boundBy = c === rc.c ? rc.who : (c === cc ? who : c === tb.c ? tb.who : hg.who);
-      if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw };
+      if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
     }
   }
   await breathe(281);
@@ -34693,7 +34741,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     const xyC = { x: ALARM_COL_POS.x + Math.cos(a0) * 10, y: ALARM_COL_POS.y + Math.sin(a0) * 10 }, w = alarmFoldPoint(xyC.x, xyC.y, 0);
     return { xy: { x: w.x, y: w.y }, xyC, dist: 10, tabAzDeg: 146, colClear: 10 };
   }
-  return { xy: { x: best.x, y: best.y }, xyC: { x: best.xC, y: best.yC }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC };
+  return { xy: { x: best.x, y: best.y }, xyC: { x: best.xC, y: best.yC }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC, barLine: { P: best.Pw, N: best.Nw, pivReach: best.pivReach } };
 })();
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * ALARM_SEL_TAB_R, y: Math.sin(_linkInnerAz) * ALARM_SEL_TAB_R }; // inner end r = the tab's mid-reach
@@ -35524,6 +35572,17 @@ const alarmLinkParts = {};
   const ALARM_LINK_BUSH_T = (() => {
     const t1 = ALARM_LINK_FORK_STATION, t3 = fullChordLen - ALARM_LINK_ROD_END_OVERHANG;   // §232: one definition of station one
     return [t1, (t1 + t3) / 2, t3];
+  })();
+  // §261 2c — THE ROD-END HANGER'S JOG, at its built station (the law is
+  // alarmLinkHangerJog, the one the site solve scored). Its arm's top is one
+  // margin under the bar's dial-side face at rest — the lowest the bar comes,
+  // since arming lifts it toward the plate — which is the rod's top.
+  const ALARM_LINK_H3 = (() => {
+    const hx = ALARM_LINK_INNER_XY.x + chord.x / fullChordLen * ALARM_LINK_BUSH_T[2];
+    const hy = ALARM_LINK_INNER_XY.y + chord.y / fullChordLen * ALARM_LINK_BUSH_T[2];
+    const B = ALARM_LINK_BAR_LINE_W;
+    const jog = B ? alarmLinkHangerJog(hx, hy, B.P, B.N, B.pivReach) : { J: 0, m: { x: 0, y: 0 }, ux: hx, uy: hy };
+    return { hx, hy, ...jog, armTop: ALARM_ROD_TOP_BUILT - CLEAR_MARGIN };
   })();
   const shaft = new THREE.Group();
   shaft.position.set((innerEnd.x + ALARM_LINK_SHAFT_TIP_XY.x) / 2, (innerEnd.y + ALARM_LINK_SHAFT_TIP_XY.y) / 2, ALARM_LINK_SHAFT_Z);
@@ -36973,9 +37032,19 @@ const alarmLinkParts = {};
       const HANGER_S = 0.2;                              // the hangers' shipped section (their build, below)
       const tArm = ALARM_LINK_BUSH_T[1] + ALARM_LINK_BUSH_LEN / 2 + CLEAR_MARGIN + armX / 2;
       const tC = tArm + armX / 2;
+      // §261 2c — hanger 3 is JOGGED round the beak's bar (ALARM_LINK_H3), so
+      // the blade's ground is a frame, not a straight column: lower column, arm,
+      // upper column to the plate. Its compliance at the clamp is bounded by the
+      // DEVELOPED length's: every member's moment is at most the load times the
+      // path length from the clamp, so its bending energy is at most a straight
+      // cantilever's of that length, and the part of the moment it carries as
+      // TORSION costs EI/GJ more — for a square section β = 0.1406 (Roark),
+      // GJ = 0.1406·G·s⁴ against EI = E·s⁴/12. So k_frame ≥ 3EI / ((1 + EI/GJ)·Ld³),
+      // and with no jog it is the straight column exactly.
+      const JOG_K = ALARM_LINK_H3.J > 0 ? 1 + (STEEL_E_PA / 12) / (0.1406 * STEEL_G_PA) : 1;
       const hangerSFor = (sol) => {
         const zClamp = ALARM_LINK_SHAFT_Z + sol.a;       // ≈ the blade's mid height
-        const Lh = (-BACK_PLATE_T - zClamp) * U;
+        const Lh = (-BACK_PLATE_T - zClamp + ALARM_LINK_H3.J) * U * Math.cbrt(JOG_K);   // the developed length, scaled so the column law below carries the frame's bound
         // TODO 222: and wide enough to HOLD the root it is slotted for — the
         // root's face stands at the free line, cornerN + SINK + d0 off the
         // chord, which the lower ratio's larger preload carried past the 10×
@@ -37521,10 +37590,36 @@ const alarmLinkParts = {};
     // ground (10× the blade's rate, solved at the spring); the other two keep
     // the shipped 0.2.
     const hangerS = hi === 2 ? ALARM_LINK_ARMING_SPRING.hanger3S_u : ALARM_LINK_ARMING_SPRING.hangerS_u;
+    alarmLinkUnit.add(bush);
+    if (hi === 2 && ALARM_LINK_H3.J > 0) {
+      // §261 2c — JOGGED round the beak's bar (ALARM_LINK_H3): the lower column
+      // from the bush to the arm (the blade's stud and the guide's ground), the
+      // arm along m to the upper station, and the upper column on to the plate.
+      // The arm laps both columns, one part welded; same section throughout.
+      const H = ALARM_LINK_H3, aTop = H.armTop, aBot = aTop - hangerS;
+      if (Math.hypot(hx - H.hx, hy - H.hy) > 1e-9)
+        console.warn('§261 2c: hanger 3 is built off the station its jog was solved for');
+      const lower = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, aTop - hangerFootZ), MATS.nickel);
+      lower.name = 'alarmLinkHanger3';
+      lower.position.set(hx, hy, (hangerFootZ + aTop) / 2);
+      const armL = H.J + hangerS;
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(armL, hangerS, hangerS), MATS.nickel);
+      arm.name = 'alarmLinkHanger3Jog';
+      arm.position.set((hx + H.ux) / 2, (hy + H.uy) / 2, (aTop + aBot) / 2);
+      arm.rotation.z = Math.atan2(H.m.y, H.m.x);
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, -2 - aBot), MATS.nickel);
+      upper.name = 'alarmLinkHanger3Upper';
+      upper.position.set(H.ux, H.uy, (aBot - 2) / 2);
+      for (const m of [lower, arm, upper]) alarmLinkUnit.add(m);
+      // the column's plan footprint the solve scored it at (the bush's OD) must
+      // cover the hanger as cut, or the scoring was optimistic
+      if (hangerS * Math.SQRT1_2 > ALARM_LINK_BUSH_OD_U + 1e-9)
+        console.warn(`§261 2c: hanger 3's section ${hangerS.toFixed(4)} reaches ${(hangerS * Math.SQRT1_2).toFixed(4)} off its axis, past the ${ALARM_LINK_BUSH_OD_U.toFixed(4)} the site solve scored its jog at`);
+      return;
+    }
     const hanger = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, hangerH), MATS.nickel); // runs the same congested dial-side column
     hanger.name = `alarmLinkHanger${hi + 1}`;
     hanger.position.set(hx, hy, hangerFootZ + hangerH / 2);
-    alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);
   });
   // §261 2c — the rod guide's WEB, hanger 3 to the sleeve (the sleeve is cut
@@ -38026,11 +38121,15 @@ const ALARM_LINKAGE_ARM_Z = (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL) + ALARM_PUSH_RE
 const ALARM_LINKAGE_ROD_Z = ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T;
 // the studs the cranks turn on (hung from the three-quarter plate, the alarm's
 // studs' rule) at §50's floor, the hub one floor of wall round its running bore, and
-// crank B's pin shank the lathe's L/D target over its own length (TURN_LD_TARGET)
+// crank B's pin shank the lathe's L/D target over the WHOLE post it is turned
+// from — the shank and the reduced tip at its end. The tip is an end pivot
+// (turning judges it alone, TURN_END_PIVOTS), but the body still stands out of
+// the chuck the post's whole length while it is cut (§233), so it is that
+// length the shank's section answers to, not its own
 const ALARM_LINKAGE_STUD_R = STOCK_MIN_U;
 const ALARM_LINKAGE_HUB_R = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U;
 const ALARM_LINKAGE_SHANK_R = Math.max(STOCK_MIN_R10,
-  ((ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - (ALARM_U_FLOOR + CLEAR_MARGIN)) / (2 * TURN_LD_TARGET));
+  ((ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - alarmFoldZ(ALARM_DRIVER_TOP_Z)) / (2 * TURN_LD_TARGET));
 const alarmLinkageParts = { crankA: null, crankB: null, rod: null };
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
