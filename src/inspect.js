@@ -3411,7 +3411,7 @@ export const INTRA_UNIT_CONTACTS = [
   // bores, and it slides in one guide sleeve carried on hanger 3 by a web.
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodGuide', why: '§261 2c: the selector rod sliding in its guide sleeve at PIVOT_BORE_CLEAR (§202\'s bush section, as long as the rod\'s free run allows) — its one bearing' },
   { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkRodGuide', why: '§261 2c: the web welded to the sleeve, ending at its mid-wall' },
-  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3', why: '§261 2c: the web welded to hanger 3 from its axis — the sleeve\'s ground' },
+  { unit: 'Alarm link', a: 'alarmLinkRodGuideWeb', b: 'alarmLinkHanger3', why: '§261 2c: the web welded to hanger 3 (since TODO 240 at its face, lapped one SAW_FIT, clear of the arming blade\'s slot) — the sleeve\'s ground' },
   // TODO 138 Landing 2 — RE-POINTED, and the three rows below said the wrong
   // thing before it. Indices 40–43 of this unit are the motion-works BEVEL
   // GEARS, not wheels on arbors: the conversion from the sheared extrude to

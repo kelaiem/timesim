@@ -7396,7 +7396,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 //   slope — the blade passes one CLEAR_MARGIN under the arm's pin end at full
 //     lift (the blade is drawn rigid about its root, TODO 206's convention), so
 //     its root sits that far below the bearing — which is what the spend buys.
-const ALARM_PINB_SEAT_MN = 5.2723;   // TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
+const ALARM_PINB_SEAT_MN = 5.2650;   // TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
 const ALARM_PINB_BLADE = (() => {
   const t = SPRING_FLAT_U, eps = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA, mu = MU_STEEL, U = UNIT_MM / 1000;
   const xb = ALARM_PINB_POST_R + 2 * CLEAR_MARGIN;
@@ -34653,6 +34653,13 @@ const alarmLinkHangerJog = (hx, hy, P, N, pivReach) => {
   const R = pivReach + ALARM_LINK_BUSH_OD_U + CLEAR_MARGIN;
   const wx = hx - P.x, wy = hy - P.y, bq = wx * m.x + wy * m.y, cq = wx * wx + wy * wy - R * R;
   if (Math.hypot(wx + m.x * J, wy + m.y * J) < R) J = Math.max(J, -bq + Math.sqrt(Math.max(0, bq * bq - cq)));
+  // TODO 240 — and a jog at all must carry the upper column off the lower one:
+  // each stands inside a disc of the bush's OD about its axis (the section the
+  // solve scores it at, asserted at the build), so two such discs apart is
+  // the least arm that leaves two columns rather than one column overlapping
+  // another (the re-sited link's first jog was 0.651 against 0.5186 square
+  // columns, and intraUnit read them through each other at a corner)
+  if (J > 0) J = Math.max(J, 2 * ALARM_LINK_BUSH_OD_U);
   return { J, m, ux: hx + m.x * J, uy: hy + m.y * J };
 };
 const linkShaftTipXY = (rod, inner) => {
@@ -38034,10 +38041,18 @@ const alarmLinkParts = {};
       const dx = ALARM_LINK_ROD_XY.x - h3.position.x, dy = ALARM_LINK_ROD_XY.y - h3.position.y;
       const d = Math.hypot(dx, dy);
       const rEnd = (ALARM_LINK_ROD_BUSH_BORE + ALARM_LINK_ROD_BUSH_OD) / 2;   // the sleeve's mid-wall
-      const webLen = d - rEnd;
+      // TODO 240 — welded to the hanger's FACE, lapped one SAW_FIT into it, not
+      // run in to its axis: the arming blade is let into the same column to its
+      // axis from the inboard side, and at the re-sited link the web's line
+      // crossed the blade's slot there (intraUnit, the blade through the web).
+      // The column is square and axis-aligned, so the web leaves it at
+      // half its side over the larger of its direction's two components.
+      const hS = h3.geometry.parameters.width;
+      const rStart = Math.max(0, (hS / 2) / Math.max(Math.abs(dx / d), Math.abs(dy / d)) - SAW_FIT);
+      const webLen = d - rEnd - rStart;
       const web = new THREE.Mesh(new THREE.BoxGeometry(webLen, STOCK_MIN_U, sleeveLen), MATS.nickel);
       web.name = 'alarmLinkRodGuideWeb';
-      web.position.set(h3.position.x + dx / d * webLen / 2, h3.position.y + dy / d * webLen / 2, sleeve.position.z);
+      web.position.set(h3.position.x + dx / d * (rStart + webLen / 2), h3.position.y + dy / d * (rStart + webLen / 2), sleeve.position.z);
       web.rotation.z = Math.atan2(dy, dx);
       alarmLinkUnit.add(web);
       // its corners must stay out of the bore: the web ends at the mid-wall,
