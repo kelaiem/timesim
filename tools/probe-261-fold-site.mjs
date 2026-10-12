@@ -118,6 +118,20 @@
 // ring, trimmed exactly as the build's §112 `scoreChord` trims it.
 //  K9 that shaft test passes the shipped shaft: today's rod to today's tab,
 //     at today's stratum and section, reads clear (it is green in every gate).
+//     Its detector, both ways: a sliver planted on the shaft's own axis blocks
+//     it, and the same sliver lifted 2 u off the stratum does not.
+//
+// WHICH FOLD K9 RUNS AT (TODO 244). The search above sites the cluster BEFORE
+// the fold. Once the fold has landed the cluster it measures already stands
+// under the dial, so no rotation is feasible and there is no single fold on the
+// stop pitch to find. K9 then runs at the SHIPPED fold, read off the build's own
+// record (`__clock.alarmFold`, main.js ALARM_FOLD_PHI), and the beak rows are
+// skipped there: they would fold already-folded metal and site its image. The
+// shipped fold is refused (K9 fails, not run) unless it is a whole stop pitch,
+// the stop wheel has the 12 teeth STOP_PITCH assumes, and the build's pivot is
+// the stop wheel's own centre within 0.05. The output names the source:
+// `[fold: search]` or `[fold: shipped]`. `--sabotage-k9` plants the detector's
+// sliver in the K9 test itself, so the run must exit 2 on K9.
 //
 // `--dump FILE` writes the browser half's measurements; `--from FILE` reads
 // them back and skips the browser (the Node half takes ~4 min). A run from a
@@ -302,6 +316,9 @@ async function measure() {
       pushAz: (() => { const b = boxOf(stem); const c = { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2 }; return Math.atan2(c.y, c.x); })(),
       collarAnnulus: [cMin, cMax], collarTipR: (() => { const sh = collar.geometry.parameters.shapes; const s = Array.isArray(sh) ? sh[0] : sh; return Math.max(...s.getPoints().map((q) => Math.hypot(q.x, q.y))); })(),
       padCell, CLEAR_MARGIN: L.CLEAR_MARGIN, link,
+      // TODO 244 — the fold the build SHIPS at, off its own record, for K9 once
+      // the search below no longer finds it (the cluster already stands folded)
+      shippedFold: clock.alarmFold ? { phi: clock.alarmFold.phi, pitches: clock.alarmFold.pitches, stopTeeth: clock.alarmFold.stopTeeth, axis: clock.alarmFold.axis } : null,
     };
   });
   return { band, inter, cl };
@@ -730,10 +747,33 @@ const shortest = allFound.sort((u, v) => u.len - v.len)[0];
 // band's tenants, the folded cluster and the 240° linkage's rod-under-the-dial
 // group, each held to CLEAR_MARGIN.
 const STOP_PITCH = 2 * Math.PI / 12, COL_PITCH = 2 * Math.PI / 6;
-const PHI_FOLD_DEG = (() => { const m = feasible.filter((r) => Math.abs(Math.round(r.deg * DEG / STOP_PITCH) * STOP_PITCH - r.deg * DEG) < 1e-9); return m.length === 1 ? m[0].deg : null; })();
+const PHI_SEARCH_DEG = (() => { const m = feasible.filter((r) => Math.abs(Math.round(r.deg * DEG / STOP_PITCH) * STOP_PITCH - r.deg * DEG) < 1e-9); return m.length === 1 ? m[0].deg : null; })();
+// TODO 244 — WHERE THE FOLD COMES FROM. The search above sites the cluster
+// BEFORE the fold; once the fold has landed the cluster it measures already
+// stands under the dial, the window it reads holds the cluster's own image, and
+// it finds no single fold on the pitch. K9 then holds the SHIPPED lay shaft at
+// the SHIPPED fold, read off the build's own record (`__clock.alarmFold`, which
+// is main.js's ALARM_FOLD_PHI), never retyped here. Which source ran is printed.
+// The shipped fold must still be the construction this probe folds by: a whole
+// stop pitch, the stop wheel's tooth count the one STOP_PITCH assumes, and the
+// build's pivot the stop wheel's own outline centre (K1's arbor) — or it fails.
+const SF = cl.shippedFold;
+const shippedFoldDeg = SF ? SF.phi / DEG : null;
+const shippedFoldWhy = !SF ? 'the build publishes no alarmFold (re-dump, or the getter is gone)'
+  : (SF.stopTeeth !== 12 ? `the build's stop wheel has ${SF.stopTeeth} teeth, not the 12 STOP_PITCH assumes`
+  : (Math.abs(Math.round(SF.phi / STOP_PITCH) * STOP_PITCH - SF.phi) > 1e-9 ? `the shipped fold ${shippedFoldDeg}° is not a whole stop pitch`
+  : (Math.hypot(SF.axis.x - A.x, SF.axis.y - A.y) > 0.05 ? `the build folds about (${SF.axis.x.toFixed(4)}, ${SF.axis.y.toFixed(4)}), ${Math.hypot(SF.axis.x - A.x, SF.axis.y - A.y).toFixed(4)} off the stop wheel's centre` : null)));
+const FOLD_SRC = PHI_SEARCH_DEG !== null ? 'search' : (SF && !shippedFoldWhy ? 'shipped' : null);
+const PHI_FOLD_DEG = FOLD_SRC === 'search' ? PHI_SEARCH_DEG : FOLD_SRC === 'shipped' ? Math.round(shippedFoldDeg * 1e9) / 1e9 : null;
+const foldSrcLine = FOLD_SRC === 'search' ? `the search's one fold on the stop wheel's pitch, ${PHI_FOLD_DEG}°`
+  : FOLD_SRC === 'shipped' ? `the SHIPPED fold, ${PHI_FOLD_DEG}° (__clock.alarmFold: ${SF.pitches} of ${SF.stopTeeth} stop pitches; pivot ${Math.hypot(SF.axis.x - A.x, SF.axis.y - A.y).toFixed(5)} off the stop wheel's centre) — the search found no single fold on the pitch (${PHI_SEARCH_DEG}), as it cannot once the fold has landed`
+  : `none: the search found no single fold on the pitch (${PHI_SEARCH_DEG}) and the shipped fold was refused — ${shippedFoldWhy}`;
+// `--sabotage-k9` plants a sliver of metal on the shipped shaft's own axis, in
+// the K9 test itself, so the probe must exit 2 on K9 (the record's control run)
+const SABOTAGE_K9 = argv.includes('--sabotage-k9');
 const beakSite = (() => {
   const lk = cl.link;
-  if (PHI_FOLD_DEG === null || !lk || !lk.rod || !lk.shaft || !lk.cast) return { error: `no single fold on the stop wheel's pitch (${PHI_FOLD_DEG}) or the link's inputs are missing` };
+  if (PHI_FOLD_DEG === null || !lk || !lk.rod || !lk.shaft || !lk.cast) return { error: `no single fold on the stop wheel's pitch (${foldSrcLine}) or the link's inputs are missing` };
   const phi = PHI_FOLD_DEG * DEG;
   const [wx, wy] = fold(cl.W.x, cl.W.y, 0, phi);
   const Wf = { x: wx, y: wy };
@@ -805,7 +845,7 @@ const beakSite = (() => {
   const PH = 1, ph = new Map();
   for (const p of band.points) { const key = `${Math.floor(p[0] / PH)},${Math.floor(p[1] / PH)}`; let a = ph.get(key); if (!a) ph.set(key, a = []); a.push(p); }
   const SLACK = band.pointStep / Math.sqrt(3);
-  const near3 = (ax, ay, bx, by, z, reach) => {
+  const near3 = (ax, ay, bx, by, z, reach, plant = null) => {
     const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy || 1e-12;
     let worst = null;
     for (let gx = Math.floor((Math.min(ax, bx) - reach) / PH); gx <= Math.floor((Math.max(ax, bx) + reach) / PH); gx++)
@@ -815,12 +855,17 @@ const beakSite = (() => {
           const d = Math.hypot(p[0] - (ax + vx * t), p[1] - (ay + vy * t), p[2] - z);
           if (d < reach && (!worst || d < worst.d)) worst = { d, u: band.pointUnits[p[3]] };
         }
+    for (const p of plant || []) {                       // a planted sliver (K9's detector, --sabotage-k9)
+      const t = Math.max(0, Math.min(1, ((p[0] - ax) * vx + (p[1] - ay) * vy) / L2));
+      const d = Math.hypot(p[0] - (ax + vx * t), p[1] - (ay + vy * t), p[2] - z);
+      if (d < reach && (!worst || d < worst.d)) worst = { d, u: 'PLANT' };
+    }
     return worst;
   };
-  const layShaft = (T0, I0, rS = shaftR) => {
+  const layShaft = (T0, I0, rS = shaftR, plant = null) => {
     const L = Math.hypot(I0.x - T0.x, I0.y - T0.y); if (L <= FORK_SPAN) return 'chord shorter than the fork span';
     const R0 = { x: I0.x + (T0.x - I0.x) * FORK_SPAN / L, y: I0.y + (T0.y - I0.y) * FORK_SPAN / L };
-    const w = near3(T0.x, T0.y, R0.x, R0.y, shaftZ, rS + CM + SLACK);
+    const w = near3(T0.x, T0.y, R0.x, R0.y, shaftZ, rS + CM + SLACK, plant);
     if (w) return `${w.u} (${(w.d - rS - SLACK).toFixed(3)} off the shaft's skin, read down by the lattice)`;
     // the 240° linkage's dial-side group is not in the band scan (it is not
     // built yet): its cells, held over its window, as before
@@ -830,7 +875,10 @@ const beakSite = (() => {
   const ARM_W = lk.armW;
   if (!(ARM_W > 0)) return { error: `the beak bar's width was not read (armW ${ARM_W}) — re-dump` };
   const out = [];
-  for (let k = 0; k < 6; k++) {
+  // At the SHIPPED fold the beak rows are not run: they fold the cluster's metal
+  // about the arbor, and that metal already stands folded, so they would site
+  // the image of the shipped beak, not the beak. K9 needs none of them.
+  if (FOLD_SRC === 'search') for (let k = 0; k < 6; k++) {
     const psi = aOld + phi + k * COL_PITCH, u = { x: Math.cos(psi), y: Math.sin(psi) };
     const at = (d) => ({ x: Wf.x + u.x * d, y: Wf.y + u.y * d });
     for (const row of lk.seatTable) {
@@ -884,9 +932,15 @@ const beakSite = (() => {
   // today's inner end (the tab's azimuth at the tab's reach), at today's stratum
   const tabAz = Math.atan2(lk.tab.y - cl.sel.y, lk.tab.x - cl.sel.x);
   const todayInner = { x: cl.sel.x + Math.cos(tabAz) * 5.4, y: cl.sel.y + Math.sin(tabAz) * 5.4 };
-  const k9 = layShaft({ x: lk.rod.x, y: lk.rod.y }, todayInner);
+  // the shaft body's midpoint on its own axis: where K9's detector plants
+  const k9Mid = (() => { const L = Math.hypot(todayInner.x - lk.rod.x, todayInner.y - lk.rod.y), f0 = (L - FORK_SPAN) / (2 * L); return [lk.rod.x + (todayInner.x - lk.rod.x) * f0, lk.rod.y + (todayInner.y - lk.rod.y) * f0, shaftZ]; })();
+  const k9 = layShaft({ x: lk.rod.x, y: lk.rod.y }, todayInner, shaftR, SABOTAGE_K9 ? [k9Mid] : null);
+  // K9's detector, both ways: the same sliver ON the shaft's axis must block it,
+  // and lifted 2 u off its stratum (past reach r + margin + slack) must not
+  const k9Hit = layShaft({ x: lk.rod.x, y: lk.rod.y }, todayInner, shaftR, [k9Mid]);
+  const k9Miss = layShaft({ x: lk.rod.x, y: lk.rod.y }, todayInner, shaftR, [[k9Mid[0], k9Mid[1], k9Mid[2] + 2]]);
   const k9Near = (() => { const L = Math.hypot(todayInner.x - lk.rod.x, todayInner.y - lk.rod.y); const R0 = { x: todayInner.x + (lk.rod.x - todayInner.x) * FORK_SPAN / L, y: todayInner.y + (lk.rod.y - todayInner.y) * FORK_SPAN / L }; return near3(lk.rod.x, lk.rod.y, R0.x, R0.y, shaftZ, 5); })();
-  return { k9, k9Near, shaftR, slack: SLACK, phiDeg: PHI_FOLD_DEG, Wf, aOldDeg: aOld / DEG, zFace, shaftZ, rimTop, linkageLen: lnk ? lnk.len : null, rows: out };
+  return { k9, k9Hit, k9Miss, k9Mid, k9Near, shaftR, slack: SLACK, phiDeg: PHI_FOLD_DEG, Wf, aOldDeg: aOld / DEG, zFace, shaftZ, rimTop, linkageLen: lnk ? lnk.len : null, rows: out };
 })();
 
 // ---- controls ----------------------------------------------------------------
@@ -954,10 +1008,11 @@ if (shortest) {
   if (!sw || !(sw.outp > 0) || Math.abs(sw.outp - sw.inp) > CM) fails.push(`K8 the linkage is not 1:1: ${k8}`);
 }
 // K9 (beakSite's): the lay-shaft corridor test passes the shipped shaft
+const f6 = (x) => x.toFixed(3);
 const k9 = beakSite.error ? 'not run: ' + beakSite.error : (beakSite.k9 ? `today's lay shaft is BLOCKED by ${beakSite.k9}` : `today's lay shaft, rod to the working zone at its own stratum (r ${beakSite.shaftR.toFixed(3)}), runs clear: nearest ${beakSite.k9Near ? beakSite.k9Near.u + ' ' + (beakSite.k9Near.d - beakSite.shaftR - beakSite.slack).toFixed(3) + ' off its skin' : 'nothing within 5'} (margin ${CM}, lattice slack ${beakSite.slack.toFixed(3)})`);
 if (beakSite.error || beakSite.k9) fails.push(`K9 ${k9}`);
-{
-}
+const k9d = beakSite.error ? 'not run' : `a sliver on the shaft's axis at (${f6(beakSite.k9Mid[0])}, ${f6(beakSite.k9Mid[1])}, z ${f6(beakSite.k9Mid[2])}) → ${beakSite.k9Hit ? 'BLOCKED by ' + beakSite.k9Hit : 'clear'}; lifted 2 u off the stratum → ${beakSite.k9Miss ? 'BLOCKED by ' + beakSite.k9Miss : 'clear'}`;
+if (!beakSite.error && (!(beakSite.k9Hit && beakSite.k9Hit.startsWith('PLANT')) || beakSite.k9Miss)) fails.push(`K9 detector: ${k9d}`);
 const padMoved = Math.hypot(cl.padCell[0].x - cl.padCell[0.5].x, cl.padCell[0].y - cl.padCell[0.5].y);
 if (!(cl.points.length > cl.atRest) || !(padMoved > 0.05)) fails.push(`K4 the sweep: ${cl.points.length} swept vs ${cl.atRest} at rest; the finger moved ${padMoved.toFixed(4)}`);
 
@@ -1033,6 +1088,8 @@ console.log(`    the folded cluster as an obstacle rejected ${obsBites} linkage(
 if (beakSite.error) console.log(`\n  THE DIAL-SIDE BEAK: ${beakSite.error}`);
 else {
   const okRows = beakSite.rows.filter((r) => r.ok).sort((a, b) => a.shaft.rReq - b.shaft.rReq || a.total - b.total);
+  if (FOLD_SRC === 'shipped') console.log(`\n  THE DIAL-SIDE BEAK: at the SHIPPED fold ${beakSite.phiDeg}° the beak rows are not run — the cluster already stands folded, so re-folding it would site its image; K9 below holds the shipped lay shaft`);
+  else {
   console.log(`\n  THE DIAL-SIDE BEAK AND THE LAY SHAFT at the fold φ ${beakSite.phiDeg}° (the stop wheel's pitch): folded wheel (${f(beakSite.Wf.x, 2)}, ${f(beakSite.Wf.y, 2)}), castellation face z ${f(beakSite.zFace)}, lay shaft z ${f(beakSite.shaftZ)}, rim top ${f(beakSite.rimTop)}; today's ray ${f(beakSite.aOldDeg, 1)}°`);
   console.log(`    ${okRows.length} clear of ${beakSite.rows.length} (direction × run, the nose's ray = today's + φ + k × 60°); by direction:`);
   for (let k = 0; k < 6; k++) {
@@ -1044,6 +1101,7 @@ else {
   }
   // the three thinnest shafts per clear direction (then the shortest)
   for (const r of [0, 1, 2, 3, 4, 5].flatMap((k) => okRows.filter((q) => q.k === k).slice(0, 3))) console.log(`    k${r.k} run ${f(r.run, 2)}: beak ${f(r.beakLen, 3)} tail ${f(r.tailLen, 3)} (pivot (${f(r.P.x, 2)}, ${f(r.P.y, 2)}), foot (${f(r.T.x, 2)}, ${f(r.T.y, 2)}) ${f(r.footLen, 2)} long ⌀ ${f(2 * r.rf, 3)}), lay shaft ${f(r.shaft.len, 2)} to the tab at ${r.shaft.ad}°, ${r.shaft.hangers} hanger stations ${f(r.shaft.firstHanger, 2)}–${f(r.shaft.lastHanger, 2)}, governing span ${f(r.shaft.Leff, 2)} → r ${f(r.shaft.rReq, 3)} (today's ${f(beakSite.shaftR, 3)}); total ${f(r.total, 2)}`);
+  }
 }
 console.log(`\n  every 30°, for the shape of it:`);
 for (let d = 0; d < 360; d += 30) console.log('    ' + show(results[d]));
@@ -1055,7 +1113,9 @@ console.log(`    K5 ${k5}`);
 console.log(`    K6 ${k6}`);
 console.log(`    K7 ${k7}`);
 console.log(`    K8 ${k8}`);
-console.log(`    K9 ${k9}`);
+console.log(`    K9 [fold: ${FOLD_SRC || 'none'}] ${k9}`);
+console.log(`       fold source: ${foldSrcLine}${SABOTAGE_K9 ? '  [--sabotage-k9: a sliver planted on the shaft in the K9 test itself]' : ''}`);
+console.log(`       detector: ${k9d}`);
 console.log(`    K4 ${cl.points.length} swept samples against ${cl.atRest} at rest; the finger moves ${f(padMoved, 4)} between parities`);
 if (fails.length) { console.log('\nCONTROL FAILED:\n  ' + fails.join('\n  ')); process.exit(2); }
 console.log(`\nREPORT — controls pass; ${feasible.length ? `${feasible.length} feasible rotation(s)` : 'NO rotation of the rigid cluster fits the band as it stands'}`);
