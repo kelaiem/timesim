@@ -76,8 +76,13 @@ const testMarks = marks.includes('<meta name="robots" content="noindex" />')
 // hard-listed, for the stamper's reason: this script runs over trees archived
 // from release tags, and tags cut before §95 have no primer — see the ADOPTED
 // note in stamp-release.mjs for where the missing-by-typo case is caught.
-const docs = ['index.html', 'explain.html', 'primer.html', 'test-geometry.html']
-  .filter((doc) => doc !== 'primer.html' || existsSync(join(root, doc)));
+// §219 — technic.html is filtered the same way, and is noindex everywhere like
+// test-geometry: it draws a fork's declared rows, a developer's view of data,
+// not a page a visitor should land on from a search.
+const ADOPTED_DOCS = new Set(['primer.html', 'technic.html']);
+const NOINDEX_DOCS = new Set(['test-geometry.html', 'technic.html']);
+const docs = ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html']
+  .filter((doc) => !ADOPTED_DOCS.has(doc) || existsSync(join(root, doc)));
 for (const doc of docs) {
   const p = join(root, doc);
   let html = readFileSync(p, 'utf8');
@@ -85,7 +90,7 @@ for (const doc of docs) {
     console.error(`build-pages: ${doc} has no </head> to insert the environment marks before`);
     process.exit(1);
   }
-  const m = doc === 'test-geometry.html' ? testMarks : marks;
+  const m = NOINDEX_DOCS.has(doc) ? testMarks : marks;
   html = html.replace('</head>', `${m.join('\n')}\n</head>`);
   writeFileSync(p, html);
 }

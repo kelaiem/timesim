@@ -15,9 +15,15 @@
 //   T_f       the balance pivot's Coulomb friction for the position — the
 //             column's `pivot.flat_Nm` / `pivot.vertical_Nm`;
 //   T_brake   the hack lever's pad, sized to hold the spring's peak torque;
-//   τ_impulse the escapement: the column's `delivered_J` per beat, spread over
-//             the lift as a constant torque in the beat's direction while the
-//             pin is inside ±L/2 and the train has torque to give.
+//   τ_impulse the escapement, wherever the pin and the fork are in contact
+//             and the train has torque to give: a table over u = dir·θ (the
+//             angle in the beat's own sense) that main.js reads off the metal
+//             by virtual work (TODO 238) — negative through the unlock, where
+//             the balance turns the wheel back against the stone's draw, zero
+//             across the shake's crossing, positive from the crossing's end to
+//             the let-off — its net work the column's `delivered_J` per beat.
+//             Without a table it is that energy laid evenly over ±L/2, the
+//             symmetric impulse Airy's control needs.
 //
 // THE ESCAPEMENT'S CLOCK IS AN OUTPUT. A beat counts when the balance crosses
 // into the lift; τ = (n + p)/2F, where p is the escapement's phase. Inside the
@@ -100,6 +106,37 @@ export function seed(K, tau, A) {
   return { theta, omega, n, inWindow, lockFrac, stuck: false, knocks: 0, peak: 0, ampEst: A, lastTurn: 0 };
 }
 
+// The impulse laid evenly over the lift: the law before TODO 238, kept as the
+// symmetric control (Airy's), and as the default when no table is given.
+export function symmetricImpulse(halfLift, impulseJ) {
+  const c = impulseJ / (2 * halfLift);
+  return { u0: -halfLift, du: halfLift, y: Float64Array.from([c, c, c]), breaks: [] };
+}
+
+// The impulse table at u, linear between nodes and ZERO outside it: the pin is
+// out of the notch, or the fork is banked.
+function impulseAt(T, u) {
+  const f = (u - T.u0) / T.du;
+  if (!(f > 0 && f < T.y.length - 1)) return 0;
+  const i = Math.floor(f), t = f - i;
+  return T.y[i] * (1 - t) + T.y[i + 1] * t;
+}
+
+// Which beat the pin is working, if any: inside the lift it is beat n's; in
+// the passage on the way back in (the lock after beat n, past its turn) it is
+// the NEXT beat's unlock; on the way out after the drop it is nobody's.
+function escBeat(S) {
+  if (S.inWindow) return S.n;
+  return S.lockFrac >= 0.5 ? S.n + 1 : null;
+}
+
+// The escapement's torque on the balance at θ, for the beat `nb` (or none).
+function escTorque(K, env, nb, theta) {
+  if (!env.drive || nb === null) return 0;
+  const d = dirOf(nb);
+  return d * impulseAt(K.impulse, d * theta);
+}
+
 // Table lookup, linear between frames.
 function lerpTable(T, x) {
   const f = (x - T.x0) / T.dx;
@@ -108,18 +145,23 @@ function lerpTable(T, x) {
   return T.y[i] * (1 - t) + T.y[i + 1] * t;
 }
 
-// The smooth part of the torque (spring, weight, viscous) — the Coulomb,
-// brake and impulse terms are piecewise constant and held over a sub-step by
-// the event logic in `step`.
-function smoothAcc(K, env, theta, omega) {
-  let tq = -lerpTable(K.spring, theta) - K.c * omega;
+// The smooth part of the torque (spring, weight, viscous, and the escapement's
+// table for the beat `nb` the sub-step began in) — the Coulomb and brake terms
+// are piecewise constant and held over a sub-step by the event logic in `step`.
+function smoothAcc(K, env, theta, omega, nb) {
+  let tq = -lerpTable(K.spring, theta) - K.c * omega + escTorque(K, env, nb, theta);
   if (env.weight) tq += lerpTable(env.weight, theta);
   return tq / K.I;
 }
 
+// What drives the balance at rest at θ: everything but the friction.
+function restTorque(K, env, nb, theta) {
+  return -lerpTable(K.spring, theta) + (env.weight ? lerpTable(env.weight, theta) : 0) + escTorque(K, env, nb, theta);
+}
+
 // One RK4 sub-step with the piecewise-constant torque `pc` (N·m) held.
-function rk4(K, env, th, om, h, pc) {
-  const a = (x, v) => smoothAcc(K, env, x, v) + pc / K.I;
+function rk4(K, env, th, om, h, pc, nb) {
+  const a = (x, v) => smoothAcc(K, env, x, v, nb) + pc / K.I;
   const k1x = om, k1v = a(th, om);
   const k2x = om + h / 2 * k1v, k2v = a(th + h / 2 * k1x, om + h / 2 * k1v);
   const k3x = om + h / 2 * k2v, k3v = a(th + h / 2 * k2x, om + h / 2 * k2v);
@@ -137,19 +179,28 @@ export function step(K, S, dt, env) {
   let left = dt;
   let guard = 0;
   while (left > 1e-15 && guard++ < 100000) {
-    const h = Math.min(hMax, left);
     const fr = env.friction + (env.brake || 0) * K.brakeNm;
+    const nb = escBeat(S);
+    // Inside the escapement's contact the torque follows the metal's shape,
+    // whose steep stretches (the face's gearing rising to the let-off) a
+    // sub-step sized by the period would cross in one stride; there the stride
+    // is capped by ANGLE instead, so the work the integrator hands over is the
+    // table's to the column's tolerance at every period resolution
+    let hCap = hMax;
+    if (env.drive && nb !== null && K.impulse.capRad > 0 && S.omega !== 0) {
+      const u = dirOf(nb) * S.theta, T = K.impulse;
+      if (u > T.u0 - T.capRad && u < T.u0 + T.du * (T.y.length - 1) + T.capRad)
+        hCap = Math.min(hMax, T.capRad / Math.abs(S.omega));
+    }
+    const h = Math.min(hCap, left);
     // Stuck: static friction holds while it can.
     if (S.stuck) {
-      const hold = -lerpTable(K.spring, S.theta) + (env.weight ? lerpTable(env.weight, S.theta) : 0)
-        + (env.drive && S.inWindow ? dirOf(S.n) * K.impulseNm : 0);
-      if (Math.abs(hold) <= fr) { left -= h; continue; }
+      if (Math.abs(restTorque(K, env, nb, S.theta)) <= fr) { left -= h; continue; }
       S.stuck = false;
     }
-    const sgnW = S.omega !== 0 ? Math.sign(S.omega)
-      : Math.sign(-lerpTable(K.spring, S.theta) + (env.drive && S.inWindow ? dirOf(S.n) * K.impulseNm : 0)) || 1;
-    const pc = -fr * sgnW + (env.drive && S.inWindow ? dirOf(S.n) * K.impulseNm : 0);
-    let [th, om] = rk4(K, env, S.theta, S.omega, h, pc);
+    const sgnW = S.omega !== 0 ? Math.sign(S.omega) : Math.sign(restTorque(K, env, nb, S.theta)) || 1;
+    const pc = -fr * sgnW;
+    let [th, om] = rk4(K, env, S.theta, S.omega, h, pc, nb);
     // Events inside the step: the window's edges and the turning point. Take
     // the earliest by linear interpolation, integrate to it under the old
     // torque, switch, and leave the rest of the step for the next pass.
@@ -158,6 +209,19 @@ export function step(K, S, dt, env) {
     edge(S.theta - K.halfLift, th - K.halfLift, '+edge');
     edge(S.theta + K.halfLift, th + K.halfLift, '-edge');
     edge(S.omega, om, 'turn');
+    // the escapement's own switches (the unlock's start and end, the impulse's
+    // start): the torque jumps there, and RK4 carried across a jump mis-counts
+    // the work by up to a sub-step's share of it every beat — so they are
+    // events too, located and stepped to like the lift's edges
+    let brk = 0;
+    if (env.drive && nb !== null) {
+      const d = dirOf(nb);
+      for (const b of K.impulse.breaks || []) {
+        const tb = d * b, f0 = f;
+        edge(S.theta - tb, th - tb, 'break');
+        if (f < f0) brk = tb;
+      }
+    }
     if (ev) {
       // Refine the event's instant by Newton on the event function (its
       // derivative is ω for an edge, the acceleration for the turn), so the
@@ -165,31 +229,30 @@ export function step(K, S, dt, env) {
       // linear guess leaves θ up to θ''·h² off the edge, and snapping that
       // away is an energy error every beat.
       let hh = Math.max(h * f, 1e-12);
-      const target = ev === '+edge' ? K.halfLift : ev === '-edge' ? -K.halfLift : 0;
+      const target = ev === '+edge' ? K.halfLift : ev === '-edge' ? -K.halfLift : ev === 'break' ? brk : 0;
       for (let it = 0; it < 4; it++) {
-        [th, om] = rk4(K, env, S.theta, S.omega, hh, pc);
+        [th, om] = rk4(K, env, S.theta, S.omega, hh, pc, nb);
         const r = ev === 'turn' ? om : th - target;
-        const d = ev === 'turn' ? smoothAcc(K, env, th, om) + pc / K.I : om;
+        const d = ev === 'turn' ? smoothAcc(K, env, th, om, nb) + pc / K.I : om;
         if (!(Math.abs(d) > 0)) break;
         const next = Math.min(h, Math.max(1e-12, hh - r / d));
         if (Math.abs(next - hh) < 1e-15) break;
         hh = next;
       }
-      [th, om] = rk4(K, env, S.theta, S.omega, hh, pc);
+      [th, om] = rk4(K, env, S.theta, S.omega, hh, pc, nb);
       left -= hh;
     } else {
       left -= h;
     }
     S.theta = th; S.omega = om;
+    if (ev === 'break') S.theta = brk;   // on the switch exactly, so the next pass starts from it
     if (ev === 'turn') {
       const amp = Math.abs(S.theta);
       S.ampEst = amp; S.lastTurn = S.theta;
       if (amp > S.peak) S.peak = amp;
       // Coulomb at the turning point: does what holds it exceed what drives it?
-      const drv = -lerpTable(K.spring, S.theta) + (env.weight ? lerpTable(env.weight, S.theta) : 0)
-        + (env.drive && S.inWindow ? dirOf(S.n) * K.impulseNm : 0);
       S.omega = 0;
-      if (Math.abs(drv) <= fr) S.stuck = true;
+      if (Math.abs(restTorque(K, env, nb, S.theta)) <= fr) S.stuck = true;
     } else if (ev === '+edge' || ev === '-edge') {
       const edgeSign = ev === '+edge' ? 1 : -1;
       S.theta = edgeSign * K.halfLift;
@@ -218,7 +281,7 @@ export function step(K, S, dt, env) {
 }
 
 // Build the constants. Inputs are SI except the frame tables' angles (rad).
-export function makeDrive({ F, liftDeg, passHalfDeg = liftDeg / 2, posedAmpDeg, knockDeg, I, k, Q, impulseJ, brakeNm, springRows, STEPS_PER_PERIOD = 400 }) {
+export function makeDrive({ F, liftDeg, passHalfDeg = liftDeg / 2, posedAmpDeg, knockDeg, I, k, Q, impulseJ, impulse = null, brakeNm, springRows, STEPS_PER_PERIOD = 400 }) {
   const D = Math.PI / 180;
   const IW = (2 / Math.PI) * Math.asin(liftDeg / (2 * posedAmpDeg));
   // the passage's half-width in phase: the posed law reaches ±halfPass at
@@ -228,10 +291,11 @@ export function makeDrive({ F, liftDeg, passHalfDeg = liftDeg / 2, posedAmpDeg, 
   const rows = springRows.slice().sort((a, b) => a.theta - b.theta);
   const dx = rows[1].theta - rows[0].theta;
   const Omega = 2 * Math.PI * F;
+  const imp = impulse || symmetricImpulse(liftDeg * D / 2, impulseJ);
   return {
     F, IW, pw, Ap: posedAmpDeg * D, halfLift: liftDeg * D / 2, halfPass: passHalfDeg * D, Omega, knockRad: knockDeg * D,
     I, k, Q, c: I * Math.sqrt(k / I) / Q,
-    impulseNm: impulseJ / (liftDeg * D), impulseJ, brakeNm,
+    impulse: imp, impulseJ, impulsePeakNm: imp.y.reduce((m, y) => Math.max(m, y), 0), brakeNm,
     spring: { x0: rows[0].theta, dx, y: Float64Array.from(rows.map((r) => r.torque)) },
     STEPS_PER_PERIOD,
   };
@@ -250,4 +314,18 @@ export function weightTable(rows, gx, gy, massKg, g, uM) {
     y[i] = massKg * g * uM * (h[hi] - h[lo]) / ((hi - lo) * dx);
   }
   return { x0: R[0].theta, dx, y };
+}
+
+// Does the escapement START a stopped balance? The watchmaker's test: the
+// balance at rest at its spring's own zero, the train wound, nothing else.
+// A lever escapement starts itself when the wheel's push carries the pin from
+// there through the let-off — the tooth drops, the other stone locks, and the
+// spring the push wound up swings the balance back into the next impulse. Run
+// the drive from that rest and count the beats: `starts` once the balance has
+// worked both stones twice and is still swinging.
+export function selfStart(K, env, periods = 8) {
+  const S = { theta: 0, omega: 0, n: 0, inWindow: true, lockFrac: 0, stuck: false, knocks: 0, peak: 0, ampEst: 0, lastTurn: 0 };
+  const dt = 1 / (K.F * 40);
+  for (let i = 0; i < periods * 40; i++) step(K, S, dt, env);
+  return { starts: S.n >= 4 && !S.stuck, beats: S.n, stuck: S.stuck, peakRad: S.peak, theta: S.theta };
 }

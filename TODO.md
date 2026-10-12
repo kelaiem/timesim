@@ -17,9 +17,10 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 242 | OPEN | Found fixing the stopped balance (TODO 238). `RATE_TABLE` re-gears only the fourth⇄escape mesh, so a faster rate quarters the hairspring's k while the escape torque falls with the ratio: from rest the train starts the balance at 18,000 only, and the swings it sustains hanging are about 199° / 161° / 112° / 85° at 18,000 / 21,600 / 28,800 / 36,000. Re-size the mainspring and train per rate so each row reaches `AMPLITUDE_TARGET_DEG` and starts itself |
 | 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
 | 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
-| 238 | OPEN | Found closing TODO 226 step 3b. §246's driven balance lays the impulse torque symmetrically over ±LIFT/2, but on the metal the wheel drives the pin only from the end of the shake's crossing (−10.16°) to the let-off (+25°), 35.2° rather than 50°, and the unlock (−28.53° to −15.20°) is work the balance does against the stone's draw. The impulse window, its energy and the unlock's cost should be read off `pinNotch` and the crossing, not the lift |
+| 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
 | 237 | OPEN | Found closing TODO 222: the alarm link's series stall (the §137 lay-shaft row and `probe-82-alarm-stall.mjs`) reflects each member by n²/k, which inverts the lever. A member moving n per unit of ring travel is seen at the ring as 1/(n²k). The error was invisible while nPin was 1. The rod-side members (n 0.527) are read 3.6× too stiff and the shaft members (n 2.07 since TODO 222) 4.3× too soft. The stall still covers the 5–50 mN window either way, but the figure and the named governor are wrong |
 | 236 | OPEN | Found closing TODO 222: the §45 release sleeve is the selector ring's old construction — three eyes on posts (ℓ 0.4567) driven axially at one tab (r ≈ 4.90) — loaded at the tail pin, which turns with the tube, so it jams wherever d ≥ ℓ/(2μ) = 1.14 u, essentially every hour. Its load is unpriced: follower A's released 22.43 mN·mm over the tail ≈ 130 mN through a 45° cone. Fix path: TODO 222's helical guides with a tangential drive, or a centred collar; price the lift as a `transfers` row |
 | 235 | OPEN | Found deciding §261 step 3 (the owner kept §218's overcoil). `L_HAIRSPRING = L_BALANCE + 1.2` carries no derivation, and it is a datum: `SPRING_TOP_Z`, the three-quarter plate's floor and `TRAIN_CEILING_Z` (the going train's ceiling, §254's fusee groove and §47's arrest stations) all ride it. §261's step 1 built it at +1.0 and bought 0.076 mm of cased depth 1:1, and boot raised 6 asserts. Derive the spring's plane from the balance stack it sits on, then re-solve whatever the derived value moves. Rule 1, P1 |
@@ -32393,7 +32394,7 @@ the record names. Fix path: correct the reflection in both readers together
 `ALARM_LINK_STALL_PROBE_MN` and `ALARM_LINK_GOVERNING`, and re-read TODO 79/82's
 records against the corrected figure.
 
-## 238. The driven balance lays its impulse symmetrically over the lift, but the wheel drives the pin only from the end of the shake's crossing to the let-off
+## 238. The driven balance lays its impulse symmetrically over the lift, but the wheel drives the pin only from the end of the shake's crossing to the let-off — CLOSED
 
 Found closing TODO 226 step 3b. §246 tier two's `balance-drive.js` lays the
 impulse torque over the lift, ±`LIFT_DEG`/2 = ±25°, symmetric about the line of
@@ -32428,6 +32429,79 @@ pose bit for bit, as the §246 prerequisite did. Acceptance: the drive's
 impulse acts only where the fork's wall is on the pin. `probe-246-driven-rate`
 re-measures the rate's amplitude dependence, which is the escapement error,
 reported.
+
+**CLOSED.** Found again from the other side: a reader changed the beat rate,
+the boot sync's hack stopped the balance, and the balance never started
+again. The averaged impulse was a tenth of the metal's torque spread over the
+whole lift, so at 36,000 a balance at rest 1.2° off centre was held by the
+pivot's friction forever. Fixed by laying the torque where the metal puts it.
+
+- **The law** (`ESC_TORQUE` in `main.js`, beside `BALANCE_DRIVE`). By virtual
+  work the wheel's torque T reaches the balance as T·dδ/dθ, δ the wheel's
+  advance along the path the pin and the fork take (`escapeAngle`'s own law):
+  the `lag` wall through the unlock, where δ FALLS (the recoil), nothing
+  across the crossing, the `lead` wall through the impulse. The table is
+  indexed by u = dir·θ, the angle in the beat's own sense, so one table serves
+  both stones.
+- **The sizes.** The recoil drives the train backward, so every stage's
+  friction opposes it and the balance pays T/η_path (η_path 0.626 at
+  18,000: the column's walk up to the escapement). The impulse face transmits
+  s·T, and s is the one number the metal does not give: solved so the net
+  work per beat is the column's `delivered_J`. Measured at 18,000: 9.15° of
+  escape-wheel advance on the impulse face, 0.27° of recoil costing 2.40e-9 J,
+  s = 0.335, which is a face transmission of 0.535 once the path's losses
+  are taken out (boot-asserted inside (0, 1]). That leaves the column, and
+  so every amplitude row and `AMPLITUDE_TARGET_DEG`, exactly as they were.
+- **The integrator** (`balance-drive.js`). The torque switches on and off at
+  the unlock's start and end and the impulse's start, and those are events
+  now, located by Newton and stepped to like the lift's edges. Inside the
+  contact the stride is capped at three table cells, because the face's
+  gearing climbs steeply into the let-off and a stride sized by the period
+  crossed it in one step: the swing read 0.3% low at 400 sub-steps a period
+  and 1.6% high at fast-forward's 40. With the cap, 400 / 100 / 40 read
+  −13.28 / −13.29 / −13.30 s/day crown-left.
+- **Self-start** (`BD.selfStart`, `BALANCE_DRIVE.selfStart`). The
+  watchmaker's test: the balance at rest at its spring's zero, the train
+  wound, hanging. It starts at 18,000 (15 beats in 8 periods) and not at
+  21,600, 28,800 or 36,000, where the push and the hairspring balance inside
+  the impulse (at 11.4°, 6.1° and 3.6°). The spec verdict row says so at
+  boot, and while the balance stands stopped with the train wound and the
+  hack off, the panel shows "Balance stopped" with **Give it a swing**
+  (`swingBalance`, also on `__clock`): the balance is flicked to its posed
+  swing in the beat's direction, which is what a watchmaker does to a watch
+  that will not start itself. The test is CONSERVATIVE by one share: s lumps
+  the fork's and wheel's momentum lost at the drop, which a balance at rest
+  never pays, so the torque that starts it is somewhat larger than the
+  table's.
+
+**Measured** (`probe-246-driven-rate`, an acceptance test, every row green at
+the nominal corner; s/day, + gains):
+
+```
+pos   swing      driven   escapement   free
+DU    292.18°    -5.69     -8.37        +2.68
+CU    200.42°   -36.18    -27.20        -8.98
+CD    200.48°   -14.50    -27.20       +12.71
+CL    200.47°   -13.28    -27.20       +13.92
+CR    200.43°   -37.39    -27.20       -10.19
+```
+
+The swing lands within 0.06% of the column's solve in every position. The
+escapement's error was 2.01 s/day losing hanging and 0.30 flat with the
+impulse centred; with the impulse where the metal puts it, 27.20 and 8.37.
+That is Airy's loss for an impulse delivered after the line of centres, and
+the unlock taken before it loses too. It is REPORTED, not gated, as this item
+asked: the movement has no regulator to time it out (BUILT §246's open
+residue), and the free balance's own positional spread (−8.98 to +13.92 hanging)
+is untouched. The free balance column moved from tier one's published one
+because the swing it is read at moved by a tenth of a degree. The hanging
+pose is unchanged bit for bit (the posed law is not read from the drive).
+
+**Residue.** The faster rates' train cannot start the balance and sustains
+161° / 112° / 85° at 21,600 / 28,800 / 36,000: TODO 242. The face's
+transmission is one lumped number, so the escapement's losses are not yet
+split into face friction and drop momentum, which is what would make the
+self-start test exact.
 
 ## 239. The column's flank pushes the beak lever's nose along its pivot pin: the side load twists the lever and puts the pin and post over yield
 
@@ -32690,3 +32764,37 @@ have taken the 5 N.
   as the impact of a press arriving at the stop. The bar is still the chain's
   one column, and its width is also the legibility tooth, so it is not
   thinned under a derivation that still holds.
+
+## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000
+
+Found fixing the stopped balance (TODO 238). A reader who picked a faster beat
+rate from the panel saw the movement lock up after the boot sync: the hack
+stopped the balance and nothing restarted it.
+
+`RATE_TABLE` (layout.js) changes one mesh, the fourth⇄escape, so that the
+fourth wheel keeps one turn a minute (§22). Everything upstream is the
+18,000 movement's: the same mainspring, fusee and wheels. The hairspring is
+re-solved to the rate (k ∝ F², TODO 25), so the spring the escapement has to
+push grows fourfold at 36,000 while the escape torque falls by the escape
+mesh's ratio. Measured on the TODO 238 drive (nominal corner, hanging):
+
+| rate | escape torque | starts from rest | sustained swing |
+|---|---|---|---|
+| 18,000 | 3.14e-7 N·m | yes | 199° |
+| 21,600 | 2.62e-7 N·m | no (rests at 11.4°) | 161° |
+| 28,800 | 1.96e-7 N·m | no (rests at 6.1°) | 112° |
+| 36,000 | 1.57e-7 N·m | no (rests at 3.6°) | 85° |
+
+The panel now says so (the spec verdict row, and a "Balance stopped" row
+with a swing), which is honest, but the faster rows are not watches anyone
+would build: a real 36,000 movement has a stronger mainspring and a train
+cut for it.
+
+**Fix path.** Make the rate a design input upstream of the escape mesh:
+re-solve the going mainspring's torque (TODO 192 step 3's proportioning, run
+at each rate) and the train's ratios so the escape torque delivers the energy
+`AMPLITUDE_TARGET_DEG` needs at each rate's k, then re-check the fusee cut,
+the reserve and the ribbon's stress gate. Acceptance: every `RATE_TABLE` row
+reaches the target swing hanging at the nominal corner, and
+`BALANCE_DRIVE.selfStart.starts` is true at every row.
+

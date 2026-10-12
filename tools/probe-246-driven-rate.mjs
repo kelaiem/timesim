@@ -76,6 +76,9 @@ const out = await p.evaluate(async () => {
     const n0 = S.n, t0 = S.entryT;
     let pk = 0;
     for (let i = 0; i < measure / dt; i++) { BD.step(Kx, S, dt, env); }
+    // whole periods, as the live loop's rate is read: the two half-swings
+    // differ (the beat error), so an odd count reads the window's parity
+    while ((S.n - n0) % 2 !== 0) BD.step(Kx, S, dt, env);
     pk = S.ampEst;
     return { sPerDay: (((S.n - n0) / (2 * Kx.F)) / (S.entryT - t0) - 1) * 86400, ampDeg: pk / D, beats: S.n - n0 };
   };
@@ -118,7 +121,7 @@ const out = await p.evaluate(async () => {
   // would only pump the swing out to the knock
   const Qa = 1e6;
   const airyK = { ...KL, Q: Qa, c: KL.I * Math.sqrt(KL.k / KL.I) / Qa };
-  airyK.impulseJ = Math.PI * KL.k * KL.Ap ** 2 / (2 * Qa); airyK.impulseNm = airyK.impulseJ / (2 * KL.halfLift);
+  airyK.impulseJ = Math.PI * KL.k * KL.Ap ** 2 / (2 * Qa); airyK.impulse = BD.symmetricImpulse(KL.halfLift, airyK.impulseJ);
   const airy = run(airyK, 'DU', { over: { friction: 0 }, A0: KL.Ap });
   // 4–6. per position
   const rows = POS.map((pos) => {

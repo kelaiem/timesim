@@ -33109,6 +33109,12 @@ CL    200.32°   +15.26     -2.01       +17.27                     +17.28
 CR    200.32°   -15.57     -2.01       -13.54                     -13.55
 ```
 
+**Since TODO 238** the impulse is no longer this table's: the escapement's
+torque is read off the metal (the unlock paid against the draw, nothing across
+the shake's crossing, the impulse from −10.16° to the let-off), and the
+escapement's error is 27.20 s/day hanging and 8.37 dial-flat. The table above
+is the record of the centred impulse; TODO 238 carries the current one.
+
 The swing emerges where the energy column's solve puts it: 292.086° against
 292.090° dial-flat, and 200.32–200.38° against 200.36° hanging. It is the
 same at tension 0.1 as at 1 (−7e-13°), because the fusee's torque is level.
@@ -34997,3 +35003,78 @@ The mid-build click cannot be aimed by Playwright (a building page answers its
 queries only at a seam), so the either-side-of-`__bootSoundApply` hand-off is
 built to survive both orders but only the reachable one is measured. Whoever
 has an iPhone should press the boot button, then the panel button, and listen.
+
+## §219 tier two (a) — the technic fork drawn: `technic.html`
+
+**PARTIAL**, like the entry it extends. Tier two (b) is still unbuilt: the
+movement booted at module 1 under `?catalogue=technic`. So is tier three's
+LDraw/Studio export.
+
+### Why a page and not a boot
+
+LEGO gears are module 1, three to four times the watch's 0.24–0.30. A movement
+re-solved at that module grows 5–8× (the scoping note's F4), and every part
+with no LEGO row (the escapement, the balance, the fusee) would stay steel
+beside it. A boot like that is tier two (b), and its sweeps are a report until
+a bar is set for it. The four rows tier one declared can be seen and checked
+without any of that, so they get their own page first.
+
+### What the page claims, and what it only draws
+
+**Claimed, read from `layout.js` and never restated:**
+- every tooth count;
+- each pair's kind and mesh class (`catalogueMesh`);
+- every parallel centre distance, half the sum of the counts, drawn over the
+  4 mm lattice;
+- every shaft's speed, the running product of the pairs before it. The angles
+  travel the gears, so the shafts are not posed from the output.
+
+Each row prints its exact rational product against `technicForkTargets()`.
+The reserve row is held by `main.js`'s assert, and the page says so. Each row
+also prints a MEASURED output ÷ input read off the shaft angles.
+
+**Drawn, and said to be drawn:**
+- the involute outline (20°, module 1);
+- the cross bore;
+- a 4 mm face (half a stud, so two layers never touch);
+- an 8 mm step between a shaft's gears (one stud, so each mesh is coplanar);
+- the 60T turntable's face teeth;
+- the colours.
+
+**Not drawn:** beams and frames. Whether a chain can be BRACED is tier three
+(b)'s question.
+
+**Phasing:** a parallel pair is phased exactly. With the driver's tooth `pa`
+off the line of centres, the driven gear's gap faces it when
+`Na·pa + Nb·(pb − π) ≡ π (mod 2π)`, and since the driven gear turns `−Na/Nb`
+as fast, that holds at every angle. The 90° meshes on the bevel top are placed
+but not phased.
+
+### What it measured on its first run
+
+Every row in both generations reads its declared product:
+
+| row | product |
+|---|---|
+| centre→fourth | 60.0000 |
+| fourth→escape | 7.5000 |
+| motion works | 12.0000 |
+| reserve reduction | 2.1000 |
+
+The console was silent and the page logged nothing. The drawing makes two of
+tier one's choices visible:
+- **technic_2026's centre→fourth** is two meshes only because the first is a
+  90° mesh on the turntable's bevel top. Seen in 3D, that is a different build
+  from the parallel-axis chain the backlog first wrote down.
+- **technic_2026's motion works** puts its 56T on a turntable's own frame at
+  35 mm, off the lattice. The page flags it.
+
+### Shipping
+
+The page is stamped and precached as an ADOPTED document (`stamp-release.mjs`),
+on the primer's terms. Release tags cut before it have no such page, so a
+missing page is tolerated and said, and `offline-check.mjs` builds from the
+source tree, where a mis-listed seed fails. `build-pages.mjs` marks it noindex
+in every environment, like `test-geometry.html`. `battery.yml`'s `paths-ignore`
+lists it: it imports `src/layout.js`, but nothing on `index.html`'s graph
+imports it, and the battery's own check holds that.

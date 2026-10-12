@@ -64,8 +64,13 @@ const SEEDS = ['index.html', 'explain.html', 'test-geometry.html',
 // tools/offline-check.mjs, which builds its trees from the SOURCE checkout —
 // where the page does exist — and boots the primer OFFLINE, so a mis-listed
 // seed drops it from the precache and that boot fails.
-const ADOPTED = ['primer.html'].filter((f) => existsSync(f));
-if (ADOPTED.length === 0) console.log('stamp-release: primer.html absent — pre-§95 tree, stamping without it');
+// §219 — technic.html joins on the primer's terms for the primer's reason:
+// release tags cut before it have no such page, so absence is tolerated and
+// SAID, and offline-check (which builds from the source tree, where the page
+// exists) is what catches a mis-listed seed.
+const ADOPTED = ['primer.html', 'technic.html'].filter((f) => existsSync(f));
+for (const f of ['primer.html', 'technic.html'])
+  if (!ADOPTED.includes(f)) console.log(`stamp-release: ${f} absent — a tree older than the page, stamping without it`);
 // A seed is listed by NAME, not discovered by the walk, so a typo or a file the
 // payload does not carry is invisible here and fatal at the far end: addAll is
 // all-or-nothing, so a worker that precaches one URL the release lacks NEVER
