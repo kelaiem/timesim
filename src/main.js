@@ -20,7 +20,7 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, fmtPct, lowerUi, locali
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, balanceWheelDims, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
@@ -1726,7 +1726,7 @@ const BALANCE_PIVOT_TIP_Z = COCK_SLAB_TOP + 0.5;
 // TODO 226 step 1 — the balance is BUILT further down, after the escapement's
 // seat is solved (the roller is cut to the guard pin the fork's notch places);
 // its radius is fixed here because the stations below are laid out from it.
-const BALANCE_R = 9;
+const BALANCE_R = BALANCE_R_SPEC;   // TODO 242 — the spec's RATE_TABLE row (9 at 18,000; a faster row may carry a smaller balance)
 const balanceR = BALANCE_R;
 
 // Pallet span subtends 3.5 tooth pitches (84°) around the escape wheel — the
@@ -2068,7 +2068,12 @@ const OSC_I = oscInertiaOf(balanceWheel.userData);
 // The terminal's curvature law is solved, not chosen — see hairspringRest.
 const HS_INNER_R = Math.max(rollerR * 0.5, 1.5);
 const HS_OUTER_R = balanceR * 0.88;
-const HS_COILS = 8;
+// TODO 242 — and no more coils than a stud post fits between: one coil pitch
+// must carry the post's whole side inboard of the outer coil (TODO 147,
+// asserted below), which a smaller balance's narrower spiral cannot do at 8.
+// The 9 u balance takes the 8 the band asks for (9 fit); 36,000's 7.5 u takes 7.
+const HAIRSPRING_STUD_POST = 0.65;         // the stud post's side, consumed again by the cock's carrier
+const HS_COILS = Math.min(8, Math.floor((HS_OUTER_R - HS_INNER_R) / HAIRSPRING_STUD_POST));
 const HS_COIL_PITCH = (HS_OUTER_R - HS_INNER_R) / HS_COILS;
 // TODO 147 — WHERE THE STUD LANDS, which used to be whatever the solve emitted.
 // A Breguet terminal is raised so its end can come back IN over the body of the
@@ -2080,7 +2085,6 @@ const HS_COIL_PITCH = (HS_OUTER_R - HS_INNER_R) / HS_COILS;
 // with a footprint, not a point — the smallest whole-coil step that carries the
 // post's entire width inboard of the outer coil is the constraint, and it is
 // asserted below rather than assumed (pitch 0.8025 against the post's 0.65).
-const HAIRSPRING_STUD_POST = 0.65;         // the stud post's side, consumed again by the cock's carrier
 const HAIRSPRING_CARRIER_ROOT = 2.85;      // where the carrier's arm leaves its ring; the ring itself is 2.55–2.95, trimmed inside the shock head's half-width
 if (HS_COIL_PITCH < HAIRSPRING_STUD_POST)
   console.warn(`TODO 147: the spiral's coil pitch ${HS_COIL_PITCH.toFixed(4)} is under the stud post's ${HAIRSPRING_STUD_POST} — one coil step no longer carries the post inboard of the outer coil, so the stud menu's one-pitch row is not the Breguet position it is listed as.`);
@@ -14686,8 +14690,25 @@ const BALANCE_COCK = (() => {
     const t = clamp(((x - o.ax) * vx + (y - o.ay) * vy) / L2, 0, 1);
     return Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r;
   };
-  let best = null, near = null;
-  const scanRows = [];
+  // TODO 242 — THE SLAB'S REACH IS THE LAST DEGREE OF FREEDOM, AND IT IS
+  // TAKEN ONLY WHEN THE BEARING ALONE CANNOT SEAT THE FOOT. The slab ends 0.1
+  // inside the cut edge, which on the balance's own bearings is the balance's
+  // swept radius plus a cut margin — so the T-bar stands just outside the
+  // balance and its legs must straddle it, at a half-span of nearly the
+  // balance's own radius. A smaller balance (36,000's, BALANCE_R_SPEC 7.5)
+  // pulls the bar in and the legs splay out of the wedge on every bearing the
+  // stop work leaves open (measured: best −0.582 at φ 25°, the foot pad past
+  // the wedge). Lengthening the slab moves the bar outward and the legs in
+  // toward its axis, which is a POSITION change of the cock's foot, not of
+  // anything the escapement carries: the jewel stays on the staff. The reach
+  // added is the least that seats, in the scan's own steps of
+  // COCK_REACH_STEP, so a movement whose cock seats at the cut edge — every
+  // rate before this one — builds bit for bit as it did.
+  const COCK_REACH_STEP = 0.25, COCK_REACH_MAX = 4;
+  let best = null, near = null, reach = 0;
+  let scanRows = [];
+  for (; reach <= COCK_REACH_MAX + 1e-9; reach += COCK_REACH_STEP) {
+  best = null; near = null; scanRows = [];
   for (let d = -180; d < 180; d += 1) {
     const phi = d * DEG2RAD;
     const cs = Math.cos(TQ_CUT.aim + phi), sn = Math.sin(TQ_CUT.aim + phi);
@@ -14699,7 +14720,7 @@ const BALANCE_COCK = (() => {
     // straight through the stop bracket's mast while rejecting honest
     // seats whose phantom foot grazed something that isn't there.
     const dFoot = Math.max(BAL_OUTER_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
-    const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1; // built slab-tail reach
+    const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1 + reach; // built slab-tail reach
     // TODO 30's graded-margin pattern (the fork cock's precedent): every
     // bound below tags the clearance it sets, so a scan that finds nothing
     // can say WHICH wall stopped it and by how much — §125 Tier B hit the
@@ -14778,6 +14799,9 @@ const BALANCE_COCK = (() => {
     if (clr < CLEAR_MARGIN) continue;
     if (!best || clr > best.clr) best = { phi, dFoot, clr };
   }
+  if (best) break;
+  }
+  if (!best) reach = 0;
   if (typeof window !== 'undefined') window.__cockScan = scanRows;
   if (!best) {
     console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing'
@@ -14788,7 +14812,7 @@ const BALANCE_COCK = (() => {
   }
   // makeCock: jewel at +COCK_JEWEL_AT·L, foot centre at −0.5·L → the
   // staff→tail distance is (0.5 + COCK_JEWEL_AT)·L.
-  return { ...best, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
+  return { ...best, reach, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
 })();
 // COCK IN THE PLATE BAND, standing on the BASE plate. The slab occupies
 // the plate's own z-band over the cutaway; its LENGTH is sized against the
@@ -14801,8 +14825,9 @@ const BALANCE_COCK = (() => {
 await breathe(117);
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
 // Slab tail reach ((0.5 + COCK_JEWEL_AT)·L below the jewel), sized to the
-// pre-reveal cut edge.
-const balanceCockLen = (cockEdgeR - 0.1) / (0.5 + COCK_JEWEL_AT);
+// pre-reveal cut edge, plus the reach the seat scan had to add (TODO 242 —
+// zero wherever the cut edge alone seats the foot).
+const balanceCockLen = (cockEdgeR - 0.1 + BALANCE_COCK.reach) / (0.5 + COCK_JEWEL_AT);
 const balanceCock = G.makeCock({
   length: balanceCockLen, width: COCK_W, thickness: COCK_T, jewelAt: COCK_JEWEL_AT,
   jewelHoleR: BALANCE_PIVOT_R + PIVOT_BORE_CLEAR,   // TODO 192 step 2: the stone turned for the pivot that runs in it
@@ -15490,6 +15515,34 @@ const TQ_WINDOW_INTENTS = [
 // cross's stud; the solver reports the row as deferred while it is null.
 let ARREST_WINDOW = null;
 
+// TODO 242 — the edges of windows already cut, as one flat list, kept only
+// where they can come within `reach` of (cx, cy): the land a later opening owes
+// them is read through tqEdgeLand. Shared by the late window's ray solve and
+// the arrest station's filter, which ask the same question at two scales.
+function tqWindowEdges(polys, exceptName, cx, cy, reach) {
+  const out = [];
+  for (const q of polys) {
+    if (q.name === exceptName) continue;
+    const P = q.pts;
+    for (let k = 0; k < P.length; k++) {
+      const a = P[k], b = P[(k + 1) % P.length];
+      const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      if (Math.hypot(mx - cx, my - cy) - Math.hypot(b[0] - a[0], b[1] - a[1]) / 2 < reach)
+        out.push(a[0], a[1], b[0], b[1]);
+    }
+  }
+  return out;
+}
+function tqEdgeLand(edges, x, y) {
+  let m = Infinity;
+  for (let k = 0; k < edges.length; k += 4) {
+    const ax = edges[k], ay = edges[k + 1], vx = edges[k + 2] - ax, vy = edges[k + 3] - ay;
+    const t = clamp(((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1e-12), 0, 1);
+    m = Math.min(m, Math.hypot(x - ax - t * vx, y - ay - t * vy));
+  }
+  return m;
+}
+
 function solveTqWindows() {
   const polys = [], report = [];
   for (const intent of TQ_WINDOW_INTENTS) {
@@ -15596,6 +15649,28 @@ function solveTqWindows() {
     // TQ_LAND_MIN more), and bisects only inside the first step that fails.
     // An early window keeps the end test and its check-1 guard, as before.
     const reachesIn = (d, r, band) => d - r - band < wanted;
+    // TODO 242 — A LATE WINDOW OWES THE EARLY ONES A LAND TOO. The windows
+    // solved before it are openings in the same plate, and the strip between
+    // two openings is a member (TQ_LAND_MIN), exactly as between a window and
+    // a hole; checkPlateWindows measured it after the fact and nothing here
+    // kept it. 36,000's smaller balance (BALANCE_R_SPEC 7.5) moves the stop
+    // work's cross until the arrest window reads a 0.017 land to the
+    // governor's. Only edges that can reach the disc are kept, so a late
+    // window with no early one near it solves exactly as before. The edges
+    // stand OUTSIDE the window's own disc, so a ray is blocked by them once
+    // and for good, and the bisection's monotone assumption holds unwalked.
+    const priorEdges = intent.late ? tqWindowEdges(polys, intent.name, c.x, c.y, wanted + TQ_LAND_MIN) : [];
+    const priorLand = (x, y) => tqEdgeLand(priorEdges, x, y);
+    // The land is owed by the CHORDS the outline emits, not only by its
+    // vertices. Two vertices each a land L from an edge leave the chord between
+    // them no nearer than √(L² − (c/2)²) to any point of it (the distance is
+    // convex along the chord), so each vertex keeps √(L² + (c/2)²) instead.
+    // The outline samples at most every half degree (step 4, N ≥ 2 per
+    // degree), so c/2 ≤ r·sin(0.5°) at radius r — twice the arc's own half
+    // chord, which covers the radial step between neighbouring vertices.
+    // Measured without it: 36,000's arrest window read 1.900 against 1.900,
+    // under it by less than the third decimal.
+    const priorLandAt = (r) => Math.hypot(TQ_LAND_MIN, r * Math.sin(0.5 * DEG2RAD));
     const interior = TQ_KEEPS.some((k) => reachesIn(Math.hypot(k.cx - c.x, k.cy - c.y), k.cr, CLEAR_MARGIN))
       || tqPivots.some((p) => p !== boss && reachesIn(Math.hypot(p.x - c.x, p.y - c.y), pivotBossR(p), CLEAR_MARGIN))
       || tqHoles.some((h) => reachesIn(Math.hypot(h.x - c.x, h.y - c.y), h.r, TQ_LAND_MIN))
@@ -15622,7 +15697,8 @@ function solveTqWindows() {
       // was clear never asked about r0. Asked, 158 of the fusee's bearings
       // answered "pinched" by rounding alone.
       const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN - 1e-9
-        && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9;
+        && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9
+        && (priorEdges.length === 0 || priorLand(c.x + cs * r, c.y + sn * r) >= priorLandAt(r) - 1e-9);
       if (!walk && ok(want)) return want;      // the end is clear and nothing stands inside: full reach
       if (!ok(r0)) return 0;                   // pinched shut at this bearing
       let lo = r0, hi = want;
@@ -31668,9 +31744,43 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       new THREE.Vector3(ALARM_COL_POS.x + _colStudR, ALARM_COL_POS.y + _colStudR, 0)),
     cx: ALARM_COL_POS.x, cy: ALARM_COL_POS.y, cr: _colStudR,
   }];
+  // TODO 242 — and a land clear of the windows ALREADY CUT. The late window
+  // keeps it from them now (solveTqWindows), so a station whose window stands
+  // nearer than that to the governor's or the fusee's opens to NOT CUT: at
+  // 36,000's smaller balance this solve moved the cross to 0.017 of the
+  // governor's window. Read off the windows as first solved, which are the
+  // only ones that exist at this point, and kept as a FILTER like the rest.
+  // Per window: its edges and box, so a candidate far from every window pays
+  // a box test and nothing more (this filter runs once per candidate cross).
+  // A centre INSIDE a window is the deepest miss there is, so it reads its
+  // edge distance negated, never as the land it is not.
+  const _winPolys = TQ_WINDOWS.polys.filter((q) => q.name !== 'arrest').map((q) => {
+    const xs = q.pts.map((p) => p[0]), ys = q.pts.map((p) => p[1]);
+    return { pts: q.pts, edges: tqWindowEdges([q], null, 0, 0, Infinity),
+      x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+  });
+  const windowLand = (x, y) => {
+    let m = Infinity;
+    for (const w of _winPolys) {
+      const bx = Math.max(w.x0 - x, 0, x - w.x1), by = Math.max(w.y0 - y, 0, y - w.y1);
+      if (Math.hypot(bx, by) >= 2 * TQ_LAND_MIN) continue;
+      const d = tqEdgeLand(w.edges, x, y);
+      let inside = false;
+      for (let i = 0, j = w.pts.length - 1; i < w.pts.length; j = i++) {
+        const [xi, yi] = w.pts[i], [xj, yj] = w.pts[j];
+        if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      m = Math.min(m, inside ? -d : d);
+    }
+    return m;
+  };
   const windowOpen = (x, y) => {
     const k = tqKeepClearanceIn(_winKeeps, x, y) - TQ_LAND_MIN - M;
-    const o = tqOpeningClearance(x, y) - 2 * TQ_LAND_MIN;
+    // (a window's own rays keep √(L² + (r·sin 0.5°)²) of land from those
+    // windows — solveTqWindows says why — so the land disc's rim, at r = L,
+    // owes that, not L)
+    const o = Math.min(tqOpeningClearance(x, y) - 2 * TQ_LAND_MIN,
+      windowLand(x, y) - TQ_LAND_MIN - Math.hypot(TQ_LAND_MIN, TQ_LAND_MIN * Math.sin(0.5 * DEG2RAD)));
     return k <= o ? { c: k, who: 'the cross\'s plate window vs material the plate must carry' }
       : { c: o, who: 'the cross\'s plate window vs another opening' };
   };
