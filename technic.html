@@ -19,7 +19,9 @@
   involute outline, the cross bore, the 4 mm face, the 8 mm layer step, the
   turntable's face teeth and the colours. No beams or frames are drawn —
   whether a chain can be BRACED is the LDraw export's question (§219 tier
-  three), not this page's. Right-angle meshes are placed but not phased.
+  three), not this page's. Every mesh is phased — parallel pairs on their line
+  of centres, the turntable's face mesh at the pinion's lowest point — and
+  tools/probe-technic-phase.mjs measures it off the drawn gears.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -58,8 +60,8 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   <div id="rows"></div>
   <p>Tooth counts, kinds, centre distances and ratios come from the declared rows.
   Part shapes, faces and colours are drawn, not LEGO's CAD; beams and frames are
-  not drawn. The 90° meshes on the 60T turntable's bevel top are placed but their
-  teeth are not phased. The escapement, balance and fusee have no LEGO row and
+  not drawn. Every pair's teeth are phased to mesh, including the 90° meshes on
+  the 60T turntable's bevel top. The escapement, balance and fusee have no LEGO row and
   are not here.</p>
   <div id="log"></div>
 </div>
@@ -147,13 +149,16 @@ function newShaft(parent, pos, u, speed) {
   frame.position.copy(pos);
   frame.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(w, v, u));
   const rotor = new THREE.Group(); frame.add(rotor); parent.add(frame);
-  return { frame, rotor, pos: pos.clone(), u: u.clone(), w, speed, lo: 0, hi: 0 };
+  return { frame, rotor, pos: pos.clone(), u: u.clone(), w, v, speed, lo: 0, hi: 0 };
 }
 function addGear(shaft, row, along, phase) {
   const g = gearMesh(row);
   g.position.z = along; g.rotation.z = phase;
+  // what tools/probe-technic-phase.mjs reads: tooth i sits at local angle 2πi/N
+  g.userData = { teeth: row.teeth, kind: row.kind };
   shaft.rotor.add(g);
   shaft.lo = Math.min(shaft.lo, along); shaft.hi = Math.max(shaft.hi, along);
+  return g;
 }
 function addAxle(shaft) {
   const len = shaft.hi - shaft.lo + LAYER;
@@ -170,10 +175,11 @@ function buildChain(gen, chain, parent) {
   const shafts = [];
   let s = newShaft(parent, new THREE.Vector3(), Z, 1); shafts.push(s);
   let along = 0, phase = 0, offLattice = [];
+  const meshes = [];
   for (const [ta, tb] of chain) {
     const a = find(ta), b = find(tb), m = a && b && catalogueMesh(a, b, cat);
     if (!m) { log(`${gen}: ${ta}:${tb} is not an admissible mesh — layout.js's boot assert should have said so`); return null; }
-    addGear(s, a, along, phase);
+    const gA = addGear(s, a, along, phase);
     const at = s.pos.clone().addScaledVector(s.u, along);
     let next, nextPhase = 0;
     if (m.class === 'right-angle') {
@@ -181,7 +187,22 @@ function buildChain(gen, chain, parent) {
       // The pinion rides the face teeth at the turntable's pitch radius, its
       // axis radial (the turntable's side vector), above the toothed face.
       const pos = at.clone().addScaledVector(s.w, ta / 2).addScaledVector(s.u, FACE / 2 + 1.6 + tb / 2);
-      next = newShaft(parent, pos, s.w, s.speed * ta / tb);
+      // THE CONTACT is the pinion's point nearest the face, −u from its
+      // centre, and there both surfaces move along the turntable's tangent
+      // s.v: the face at R·ω_A, the pinion's rim at r·ω_B along u_B × (−u).
+      // σ is that second direction read against s.v — so the pinion's SENSE
+      // comes from the frames, not from a sign written here.
+      const uB = s.w, side = sideOf(uB), vB = new THREE.Vector3().crossVectors(uB, side);
+      const down = s.u.clone().negate();
+      const sigma = Math.sign(new THREE.Vector3().crossVectors(uB, down).dot(s.v));
+      next = newShaft(parent, pos, uB, sigma * s.speed * ta / tb);
+      // EXACT PHASE, the parallel rule in this frame. Measured along s.v,
+      // the driver's tooth arc is R·pA and the pinion's is σ·r·(pB − βc),
+      // βc the contact's angle in the pinion's own frame; the pair meshes
+      // when they differ by half the module-1 pitch π, and since both move at
+      // R·ω_A that holds at every angle: pB = βc + σ·(Na·pA − π)/Nb.
+      const betaC = Math.atan2(down.dot(vB), down.dot(side));
+      nextPhase = betaC + sigma * (ta * phase - Math.PI) / tb;
     } else {
       // Parallel: half the sum of the counts, the lattice distance catalogueMesh
       // admitted. A turntable rides its own frame, so its distance may be off
@@ -195,11 +216,12 @@ function buildChain(gen, chain, parent) {
       // −Na/Nb as fast, the relation holds at every angle, not just at rest.
       nextPhase = Math.PI + (Math.PI - ta * phase) / tb;
     }
-    addGear(next, b, 0, nextPhase);
+    const gB = addGear(next, b, 0, nextPhase);
+    meshes.push({ a: gA, b: gB, class: m.class });
     shafts.push(next); s = next; along = LAYER; phase = 0;
   }
   for (const sh of shafts) addAxle(sh);
-  return { shafts, offLattice };
+  return { shafts, offLattice, meshes };
 }
 
 // --- the page ---------------------------------------------------------------
