@@ -194,7 +194,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 70 | CLOSED | `makeJewelSetting`'s collar is a CLOSED profile now, wound outward, and it runs `assertLatheOutward`. The open shell, the parity raycast's hazard (TODO 27), is gone with the winding. Closed with TODO 75 |
 | 71 | CLOSED (§151) | The arrest armed on a fiction — up to +0.109 of daylight under the pad through the arming band, found by a user watching the sim. Five measured causes, all closed: link parity (every link read as outer, 0.085), node-sup bridging of real inter-link dips, a six-pitch window that missed the proudest link in the pad's band, a first-order pose 0.060 short of its own law, and a finger solve blind to the free SPAN (the re-sited fold parked the beak arm inside the flying chain). The pad law now samples the BUILT chain buffer, the pose is the lever's exact inverse, and a span corridor law gates the fold; the full-wind row measures 0 unwaived and the new `arrest` axis puts the arm in §48's population |
 | 69 | CLOSED | `TQ_T` is DERIVED: a real cheese head on the 1.0 mm plate screws (k = 0.6 d), sunk flush over a `STOCK_MIN_U` land, gives 1.900 u (0.720 mm). The screws carry that head. The plate grew 1.1000. The stop work's ceiling reads the balance cock it always named, the swept rows are keyed to the plate, two hoisted constants were re-measured, and the case's pane plane clears the outboard metal. Boot is silent |
-| 67 | OPEN | `spiderSpec.halfHeight`'s trailing `margin` reads as `CLEAR_MARGIN` 0.150 and measures **0.027**: the `√½` treats `faceWidth` as normal to the pitch cone while `makeBevelGear` extrudes along z and shears, so 82% of the margin is silently spent. Matters because §129's siting solve spends `halfHeight` as a clearance band. One line of arithmetic, but the acceptance is a re-solve. **Since TODO 138/136 the sign has flipped**: `halfHeight` reads `zBoreOut + margin` 1.4682 against cut metal reaching 1.1577 — slack 0.3105, safe but stale (TODO 220 measured it) |
+| 67 | CLOSED | `spiderSpec.halfHeight` read `zBoreOut + margin` (1.4682) after TODO 136's flat web moved the blank's farthest axial point in to `zWebHi` (1.1577): the band carried 0.31 of air where it claimed `CLEAR_MARGIN`. It now reads `max(sideBevel.zWebHi, planetBevel.tipR) + margin` = **1.3077** off the two specs the builder cuts. Instrumented before and after, no station moves: the barrel lid sets the cage apex and the sleeve floor sets leg B's pinion, both unchanged. The stale envelope branch of that pinion had stood 0.006 under the binding branch, and now stands 0.167 under. All 771 meshes stand where they did, and boot is silent |
 | 73 | PART DONE | Half 2 closed: the vendored raycast guards `getInterpolation`'s null (third `PATCHED (timesim)` diff — a zero-area face is no countable crossing; `check-bvh-patches.mjs` carries a synthetic sliver witness that throws unpatched and counts patched). Half 1 remains: cap the builders' degenerate faces — a shared-builder fix (`ringExtrude` reaches ~9 consumers), which moves the fingerprint and is its own landing; `meshIntegrity` (shipped) reproduces the 8 and the 6 as its column-wheel rows, so the fix and any regression are visible in the report diff |
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | CLOSED | Ten bodies, not four, were inside out: the three waiver keys were `unit/(unnamed)` blankets, and TODO 184's six bored cock legs and pads arrived under them. The escape bridge's boss and foot tube, the bored legs, `makeJewelSetting`'s collar and `alarmFaceCam` are all wound outward at their builders. Each lathe runs `assertLatheOutward`, and `INVERTED_WAIVERS` is empty |
@@ -8355,7 +8355,7 @@ ring was recommended against. A live item describing a removed control and a
 retired premise is worse than a closed one — rewrite it to what remains, or
 close it citing §38.
 
-## 67. `spiderSpec.halfHeight` claims a margin it has almost entirely spent
+## 67. `spiderSpec.halfHeight` claims a margin it has almost entirely spent — CLOSED
 
 Found while closing TODO 60, and filed rather than fixed because the fix
 re-opens §129's siting solve.
@@ -8401,6 +8401,37 @@ branch and §129's `SPIDER` obstacle read. Fix path unchanged in kind: carry
 the cut extent (`max(zWebHi, the planets' axial reach) + margin`, read from
 the specs) and re-solve the stack and §129's plane — a position-space move,
 not done in TODO 220 because it re-lays the cage as well as leg B.
+
+**CLOSED — the band reads the cut metal, and the re-solve moved nothing.**
+`halfHeight` is now `max(sideBevel.zWebHi, planetBevel.tipR) + margin`, both
+read from the specs the builder cuts. The side gears' farthest axial point is
+the web's back plane, which is also the band's own farthest point
+(`coneR·cos θ_root`); the planets lie in the cage's mid-plane with their axes
+across it, so what they put along the cage axis is the radius they sweep, `tipR`.
+Measured off the default build's mesh in the cage frame: side gears ±1.1577
+(exactly `zWebHi`), planets ±1.1073 at rest against a swept 1.1245. The band is
+now **1.3077**, carrying exactly `CLEAR_MARGIN` past the metal, where it read
+1.4682.
+
+**The fix path predicted a re-solve, and measured, nothing re-sits.** Each of
+the band's three readers was instrumented on the built tree, before and after:
+
+| reader | branch | before | after |
+|---|---|---|---|
+| `arrestStack` `cageZ` | wind wheel + margin + `halfHeight` | 4.7070 | 4.5465 |
+| | barrel lid (**binds**) | 5.3648 | 5.3648 |
+| `arrestStack` `pinBZ` | `cageZ + halfHeight` | 6.8330 | 6.6725 |
+| | `cageZ + hubFaceZ + STOCK_MIN_U` (**binds**) | 6.8392 | 6.8392 |
+
+§129's `SPIDER` obstacle narrows by 0.1605 at each end, and the siting answer
+does not change: all 771 meshes stand where they did at rest. **What the item
+was really guarding against is the second row.** The stale envelope branch of
+leg B's pinion stood **0.006** under the binding one, so any change that lowered
+`hubFaceZ` or the stock floor by that much would have lifted the pinion on 0.31
+of metal that is not there. It now stands 0.167 under. The other half of the
+original concern holds as written: the barrel lid sets the apex on this build,
+and any spec point that moves the barrel hands the apex to the band. That is now
+a band that tells the truth.
 
 ## 68. CLOSED — the primer told the reader the seconds hand freezes; it flies to zero
 

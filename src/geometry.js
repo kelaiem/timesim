@@ -4936,7 +4936,22 @@ export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
     // from the apex along the axis is where the bore meets the back cap,
     // z = √(coneR² − boreR²), and a sleeve butts on that same flat annulus.
     // One derivation, consumed twice, from the spec the builder itself cuts.
-    halfHeight: sideBevel.zBoreOut + margin,
+    //
+    // TODO 67 — AND IT READS THE BLANK THAT IS CUT NOW, NOT THE ONE LANDING 2
+    // CUT. `zBoreOut` was the farthest axial point while the back cap was a
+    // chord of the coneR sphere; TODO 136's flat web then cut the blank between
+    // two PLANES, and the band's own farthest point, coneR·cos θ_root, IS the
+    // web's back plane `zWebHi` — so the side gears stop at zWebHi (1.1577 on
+    // the default build, measured off the mesh) while this read zBoreOut
+    // (1.3182) and the band carried 0.3105 of air where it says CLEAR_MARGIN.
+    // And the band is the spider's, not the side gears': the PLANETS lie in
+    // the cage's mid-plane with their axes across it, so what they put along
+    // the cage axis is the radius they sweep about their own, `tipR` (1.1245;
+    // a still mesh reads 1.1073 because no tooth happens to point straight
+    // along the axis at rest). The reach is whichever is larger, read off the
+    // two specs the builder cuts — the same rule as hubFaceZ below, the stale
+    // copy TODO 220 removed one line further down.
+    halfHeight: Math.max(sideBevel.zWebHi, planetBevel.tipR) + margin,
     // WHERE A HUB ACTUALLY SEATS, which is NOT halfHeight (TODO 60): halfHeight
     // carries the clearance margin and stands outboard of every point of metal,
     // so a sleeve ended there stops in mid-air.
