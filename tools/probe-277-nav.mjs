@@ -53,13 +53,22 @@ ok('nav row hidden with no run', await pg.evaluate(() => getComputedStyle(docume
 // mid-press against a jump that needed no press, and called it a fold bug).
 const READ = () => { const { done, autoWind, ...v } = window.__clock.scriptView; return v; };
 const SETTLE_TICKS = () => { for (let k = 0; k < 5; k++) window.__clock.scriptTick(0.5); };
-const settled = async () => { await pg.evaluate(SETTLE_TICKS); await pg.waitForTimeout(1500); return pg.evaluate(READ); };
+// `want` (the alarm state the route authored for this stop) turns the fixed wait
+// into a poll: the press needs as many frames as the pusher's travel, and a
+// software-GL frame is long, so 1.5 s was enough on one run and not the next.
+const settled = async (want) => {
+  await pg.evaluate(SETTLE_TICKS); await pg.waitForTimeout(1500);
+  for (let g = 0; want !== undefined && g < 30 && (await pg.evaluate(() => window.__clock.scriptView.alarmOn)) !== want; g++) await pg.waitForTimeout(500);
+  return pg.evaluate(READ);
+};
 // The straight-through record is walked from OUTSIDE the page: the first stop's
 // settle waits on the crown, which eases in the frame loop, and a synchronous
 // loop inside one evaluate never lets a frame run (measured: it stalls at stop 0).
 await pg.evaluate(() => window.__clock.startInspect());
 const n = await pg.evaluate(() => window.__clock.scriptState.of);
 ok('route has stops', n > 2, n);
+let route0 = await pg.evaluate(() => window.__clock.scriptRoute);
+const want0 = (i) => { let a = false; for (let j = 0; j <= i; j++) if (route0[j].alarm !== undefined) a = route0[j].alarm; return a; };
 const straight = [];
 for (let i = 0; i < n; i++) {
   for (let g = 0; g < 400 && (await pg.evaluate(() => window.__clock.scriptState.idx)) < i; g++) {
@@ -79,9 +88,9 @@ const same = (a, b, i) => (b.alarmOn === authoredAlarm(i)) && Object.keys(a).fil
 const fromStart = [], fromEnd = [];
 for (let i = 0; i < n; i++) {
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(a); }, i);
-  fromStart.push({ v: await settled(), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
+  fromStart.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(c.scriptState.of - 1); c.scriptGoto(a); }, i);
-  fromEnd.push({ v: await settled(), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
+  fromEnd.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
 }
 const bad = (set) => set.map((r, i) => (r.idx === i && same(straight[i], r.v, i)) ? null : i).filter((x) => x !== null);
 for (const [nm, set] of [['start', fromStart], ['end', fromEnd]]) for (const i of bad(set)) {
