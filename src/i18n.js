@@ -407,6 +407,7 @@ export function lowerUi(s) {
 // German. Horological vocabulary is the Glashütte register (Unruh, Anker,
 // Dreiviertelplatine …) — the audience this locale exists for.
 const DE = {
+  'Enable sound': 'Ton aktivieren',
   // -- state words (the data-state refactor's DISPLAY text; state itself is
   //    the attribute, so these are free to be any language)
   'On': 'Ein', 'Off': 'Aus',
@@ -782,6 +783,7 @@ Object.assign(DE, {
 // Chrome-tier translation authored here; §73 budgets a native review pass
 // before tier two (the explainer) ships in this locale.
 const ZH = {
+  'Enable sound': '启用声音',
   'On': '开', 'Off': '关',
   'Time': '时间', 'Camera': '视角', 'View': '显示', 'Alarm': '闹铃',
   'Performance': '性能', 'State': '存档', 'Advanced': '高级',
@@ -1124,6 +1126,7 @@ Object.assign(ZH, {
 // fr-FR points with ',' and groups with U+202F, both of which arrive through
 // fmtNum/fmtInt above and neither of which may reach a stored value.
 const FR = {
+  ['Enable sound']: 'Activer le son',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'Marche',
   ['Off']: 'Arrêt',
@@ -1638,6 +1641,7 @@ const FR = {
 // third and fourth; the mapping is made once in the MECH_GRAPH block below and
 // both static pages inherit it.
 const JA = {
+  ['Enable sound']: '音を有効にする',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'オン',
   ['Off']: 'オフ',
@@ -2151,6 +2155,7 @@ const JA = {
 // zh-HK and zh-MO all resolve here — which is the case that was silently
 // landing in ZH before this section.
 const ZH_HANT = {
+  ['Enable sound']: '啟用聲音',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: '開',
   ['Off']: '關',
@@ -2674,6 +2679,7 @@ const ZH_HANT = {
 // fmtInt under 'ar-u-nu-latn' — Western digits, '.' and ',' — so a value in
 // this table never carries a digit of its own script.
 const AR = {
+  'Enable sound': 'تفعيل الصوت',
   'On': 'مفعّل',
   'Off': 'معطَّل',
   'Time': 'الوقت',
@@ -3180,6 +3186,7 @@ const AR = {
 // infinitives. The same register as src/explain-i18n.es.js and
 // src/primer-i18n.es.js — one movement, one name per part.
 const ES = {
+  'Enable sound': 'Activar el sonido',
   'On': 'Activado',
   'Off': 'Desactivado',
   'Time': 'Tiempo',
@@ -3683,6 +3690,7 @@ const ES = {
 // buttons as Korean software writes them. Number-transparent. The same
 // register as src/explain-i18n.ko.js and src/primer-i18n.ko.js.
 const KO = {
+  'Enable sound': '소리 켜기',
   'On': '켜짐',
   'Off': '꺼짐',
   'Time': '시간',
@@ -4188,6 +4196,7 @@ const KO = {
 // register as src/explain-i18n.ru.js and src/primer-i18n.ru.js — one
 // movement, one name per part.
 const RU = {
+  'Enable sound': 'Включить звук',
   'On': 'Вкл',
   'Off': 'Выкл',
   'Time': 'Время',
@@ -4694,6 +4703,7 @@ const RU = {
 // src/explain-i18n.pt.js and src/primer-i18n.pt.js — one movement, one name
 // per part.
 const PT = {
+  'Enable sound': 'Ativar o som',
   'On': 'Ligado',
   'Off': 'Desligado',
   'Time': 'Tempo',
@@ -5199,6 +5209,7 @@ const PT = {
 // src/explain-i18n.it.js and src/primer-i18n.it.js — one movement, one name
 // per part. Every apostrophe is U+2019.
 const IT = {
+  'Enable sound': 'Attiva il suono',
   'On': 'Acceso',
   'Off': 'Spento',
   'Time': 'Tempo',
@@ -5701,6 +5712,7 @@ const IT = {
 // are the tightest in the project — a chrome bar and 150 px HUD label boxes —
 // so these are the compact forms, measured by tools/probe-116-locale-fit.mjs.
 const HI = {
+  'Enable sound': 'ध्वनि चालू करें',
   'On': 'चालू',
   'Off': 'बंद',
   'Time': 'समय',
@@ -6207,6 +6219,7 @@ const HI = {
 // §53's 240 px column and the 150 px HUD labels are the constraint. Tone marks
 // follow the MODERN placement (hóa, thủy) and every string is NFC.
 const VI = {
+  'Enable sound': 'Bật âm thanh',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Bật',
   'Off': 'Tắt',
@@ -6728,6 +6741,7 @@ const VI = {
 // held to the English length or under, because §53's 240 px column, the 150 px
 // HUD labels and the chrome bar are the constraint, and Dutch compounds run long.
 const NL = {
+  'Enable sound': 'Geluid inschakelen',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Aan',
   'Off': 'Uit',
@@ -7249,6 +7263,7 @@ const NL = {
 // LOCALES' `dir` mirrors the panels, and the strings carry Persian's ی/ک and
 // its zero-width non-joiners. Labels are held to the English length or under.
 const FA = {
+  'Enable sound': 'فعال‌سازی صدا',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'روشن',
   'Off': 'خاموش',
@@ -7771,6 +7786,7 @@ const FA = {
 // arrow points at the end the mirrored slider actually has. Labels are held to
 // the English length or under.
 const HE = {
+  'Enable sound': 'הפעלת צליל',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'פועל',
   'Off': 'כבוי',
@@ -8292,6 +8308,7 @@ const HE = {
 // pinion, mahkota. Buttons take the base imperative ("Putar", "Jeda") as
 // Indonesian software does. Labels are held to the English length or under.
 const ID = {
+  'Enable sound': 'Aktifkan suara',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Nyala',
   'Off': 'Mati',
@@ -8814,6 +8831,7 @@ const ID = {
 // this module lowercases for display goes through lowerUi, never toLowerCase.
 // Labels are held to the English length or under.
 const TR = {
+  'Enable sound': 'Sesi etkinleştir',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Açık',
   'Off': 'Kapalı',
@@ -9336,6 +9354,7 @@ const TR = {
 // dolen), as Welsh software does. Numbers format through the row's BORROWED
 // en-GB tag (see LOCALES). Labels are held to the English length or under.
 const CY = {
+  'Enable sound': 'Galluogi sain',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Ymlaen',
   'Off': 'I ffwrdd',
@@ -9861,6 +9880,7 @@ const CY = {
 // which Chromium carries. Labels are held to the English length or under.
 
 const FIL = {
+  ['Enable sound']: 'Buksan ang tunog',
   ['On']: 'On',
   ['Off']: 'Off',
   ['Time']: 'Oras',
@@ -10361,6 +10381,7 @@ const FIL = {
 // kronis. Commands take the infinitive (Uzvilkt, Saglabāt, Kopēt saiti), as
 // Latvian software does. Numbers format through lv-LV (see LOCALES).
 const LV = {
+  'Enable sound': 'Ieslēgt skaņu',
   'On': 'Ieslēgts',
   'Off': 'Izslēgts',
   'Time': 'Laiks',
@@ -10860,6 +10881,7 @@ const LV = {
 // kiskerék, korona. Commands are nouns (Felhúzás, Mentés, Másolás), as
 // Hungarian software writes them. Numbers format through hu-HU (see LOCALES).
 const HU = {
+  'Enable sound': 'Hang bekapcsolása',
   'On': 'Be',
   'Off': 'Ki',
   'Time': 'Idő',

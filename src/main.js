@@ -38658,7 +38658,6 @@ let handSetOffsetNow = 0;    // last value tick() gave the hands — displayedSe
 // assigning them here would hit the temporal dead zone.
 let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
-let restoredSound = false; // sound toggle, applied once the UI exists
 let restoredSchematic = true; // §69: the schematic tier is the boot DEFAULT — a save can only turn it off
 let restoredCaseLines = true; // case line-drawing within the tier — same default-ON convention
 let restoredFocus = null;  // §69: tap-focus unit name, applied once the scene + drive graph exist
@@ -38822,7 +38821,7 @@ let mmPerPxCal = null;
   restoredSchematic = savedState.schematic ?? true;
   restoredCaseLines = savedState.caseLines ?? true; // ?? true, not !! — same reason as schematic above
   restoredFocus = typeof savedState.focusUnit === 'string' ? savedState.focusUnit : null;
-  restoredSound = !!savedState.soundOn;
+  // soundOn is saved but NOT restored: sound is always off at load (see __bootSoundApply).
   alarmCrownRotation = savedState.alarmCrownRotation ?? 0; // ?? — states saved before §24 have no such field
   // §25 re-derived ALARM_BARREL_TURNS from the striking train, so a state
   // saved under §24's free value (8) would restore an over-wound barrel that
@@ -45532,12 +45531,25 @@ function updateSndFlash(realDt) {
     }
   }
 }
+// A context that is not 'running' needs a resume — and 'suspended' is only one
+// of the ways. Safari parks a context in 'interrupted' (tab switch, a call, the
+// lock screen, the ringer), which the old `=== 'suspended'` tests never retried,
+// so sndClick's own `state !== 'running'` guard dropped every tick for good with
+// the button still reading On. 'closed' cannot resume and is replaced instead.
+function resumeAudio() {
+  if (!audioCtx || audioCtx.state === 'running' || audioCtx.state === 'closed') return;
+  const p = audioCtx.resume();
+  if (p && p.catch) p.catch(() => {});   // no gesture behind it: the next real input retries
+}
 function setSound(on) {
   soundOn = on;
   if (on) {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx && audioCtx.state === 'closed') { audioCtx = null; masterGain = null; masterCompressor = null; _noiseBuf = null; }
+    // index.html's boot button made and unlocked a context inside a real click;
+    // adopt it rather than creating a second one with no gesture behind it.
+    if (!audioCtx) { audioCtx = window.__bootAudio || new (window.AudioContext || window.webkitAudioContext)(); window.__bootAudio = null; }
     ensureAudioGraph();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    resumeAudio();
   }
   const b = document.getElementById('btn-sound');
   setBtnState(b, on);
@@ -45562,19 +45574,29 @@ document.getElementById('btn-sound').addEventListener('click', () => setSound(!s
   sel.value = UI_LANG;
   sel.addEventListener('change', () => setUiLang(sel.value));
 }
-if (restoredSound) setSound(true); // context resume may still await a gesture; the first click supplies it
+// SOUND IS ALWAYS OFF AT LOAD. A saved `soundOn`, a `?sound=1` link and the
+// share link's `sound` param all used to call setSound(true) here with no
+// gesture behind it: the context came up suspended (Safari: never resumable
+// from pointerdown on touch), the button read On, and the first click on it
+// turned sound OFF — the "toggling does nothing" report. The one opt-in at
+// boot is index.html's button, which holds a real click; it hands over its
+// unlocked context and this applies the choice. __bootSoundApply covers a click
+// that lands after this line (the build hands the thread back at seams).
+window.__bootSoundApply = (on) => setSound(on);
+if (window.__bootSound) setSound(true);
 // setSound(true) can run with no real gesture behind it — restored state
 // above, a `?sound=1` deep link, or the tour's own `sound:true` step — and
 // autoplay policy then leaves audioCtx 'suspended' forever, so sndClick's
 // own guard drops every tick with nothing to show for it. Resume on the
 // next REAL pointer/key input, whatever it is, not just a click on this
 // button; harmless to keep listening once already 'running'.
-window.addEventListener('pointerdown', () => {
-  if (soundOn && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-}, true);
-window.addEventListener('keydown', () => {
-  if (soundOn && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-}, true);
+// Every event a browser counts as a user activation, not only pointerdown: iOS
+// Safari does not treat a touch pointerdown as one (touchend / click are), so
+// the old pair never resumed a context there. Any non-running state, not only
+// 'suspended' (see resumeAudio).
+for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) {
+  window.addEventListener(ev, () => { if (soundOn) resumeAudio(); }, true);
+}
 
 // Alarm enable toggle (BUILT §24). The panel only ARMS the alarm — it never
 // writes the set time; that is set by turning the alarm crown in 3D (Rule 2),
@@ -49062,7 +49084,7 @@ function currentViewLink() {
   if (focusName) p.set('focus', focusName);   // §69: the tapped unit rides the link
   if (labelsOn) p.set('labels', '1');
   if (powerFlowOn) p.set('powerflow', '1');
-  if (soundOn) p.set('sound', '1');
+  // no `sound` param: a link cannot carry a gesture, so it cannot start sound (boot's button does)
   if (selectedUnit !== 'All') p.set('unit', selectedUnit);
   if (explodeAmount > 0) p.set('explode', explodeAmount.toFixed(CAM_LINK_DP));
   if (crownOut) p.set('crown', 'out');
@@ -49430,9 +49452,10 @@ function scriptStart(steps, btn) {
   // any trusted event, and a resume() called that late is exactly what
   // gets silently ignored (BUILT §8's sndClick then drops every tick with
   // audioCtx stuck 'suspended' and nothing on screen to say why).
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx && audioCtx.state === 'closed') { audioCtx = null; masterGain = null; masterCompressor = null; _noiseBuf = null; }
+  if (!audioCtx) { audioCtx = window.__bootAudio || new (window.AudioContext || window.webkitAudioContext)(); window.__bootAudio = null; }
   ensureAudioGraph();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  resumeAudio();
   scriptSteps = steps;
   scriptIdx = 0;
   scriptBtn = btn || null;
@@ -49911,7 +49934,7 @@ function applyDeepLink() {
   if (params.has('reconf')) setReconf(flag(params.get('reconf')));
   if (params.has('labels')) setLabels(flag(params.get('labels')));
   if (params.has('powerflow')) setPowerFlow(flag(params.get('powerflow')));
-  if (params.has('sound')) setSound(flag(params.get('sound')));
+  // `?sound=` is no longer read: see the comment at __bootSoundApply.
   if (params.has('unit')) { unitSelect.value = params.get('unit'); selectedUnit = params.get('unit'); }
   if (params.has('explode')) {
     const v = clamp(parseFloat(params.get('explode')) || 0, 0, 1);
