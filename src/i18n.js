@@ -10438,6 +10438,7 @@ const LV = {
   'Setting drop': 'Iestatīšanas nolaidums',
   'Setting rise': 'Iestatīšanas pacēlums',
   'Setting cap': 'Iestatīšanas vāciņš',
+  'Setting bevel': 'Iestatīšanas koniskais ritenis',
   'Setting bevel corners': 'Iestatīšanas koniskie stūri',
   'Setting traverse': 'Iestatīšanas šķērsis',
   'Selector ring': 'Selektora gredzens',
