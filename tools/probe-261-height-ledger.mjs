@@ -62,7 +62,8 @@
 // The harness (the boot, the mutant trees and the ledger itself) lives in
 // height-ledger.mjs, shared with probe-261-lever-prices.mjs so both read the
 // stack with one law.
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ROOT, boot, mutantTree, ledger, backChain, backMost } from './height-ledger.mjs';
 
 const DELTA = 0.5;   // units raised by each prediction mutant — large enough to clear float noise by 1e5, small enough to stay inside the case's own asserts
@@ -97,7 +98,7 @@ console.log('\nBACK CHAIN');
 console.log(`  skirt band max             z ${f4(b.skirtBand.z)}   set by ${b.skirtBand.by}`);
 console.log(`  clamp heads (measured)     z ${f4(base.caseParts.caseClampScrew?.zMax)}`);
 console.log(`  skirt bottom               z ${f4(b.skirtBot)}   (+CLEAR_MARGIN)   built ${f4(g.skirtBot)}`);
-console.log(`  skirt arm                  z ${f4(b.skirtArm)}   (+ engagement ${f4(Lb.eng)} u = ${mm(Lb.eng)}, implied)`);
+console.log(`  skirt arm                  z ${f4(b.skirtArm)}   (+ engagement ${f4(Lb.eng)} u = ${mm(Lb.eng)}, ${base.glass.clampEng === undefined ? 'implied' : 'CASE_CLAMP_ENG'})`);
 console.log(`  pane floor                 z ${f4(b.paneFloor)}   outboard of the aperture: ${b.outboard.owner} ${f4(b.outboard.z)} + CLEAR_MARGIN`);
 console.log(`  band back face             z ${f4(b.midBack)}   set by ${b.midBy}, ${f4(b.midSlack)} u = ${mm(b.midSlack)} over the other arm   built ${f4(g.paneInner)}`);
 console.log(`  ring face                  z ${f4(b.z0)}   (+ lip and glass, ${mm(Lb.ringRise)})`);
@@ -124,10 +125,28 @@ console.log(`  §39's movement box                  ${f4(m39)} u = ${mm(m39)}   
 if (!near(d39, Lb.depth)) console.log(`  NOTE: §39's box and the case metal disagree by ${f4(d39 - Lb.depth)} u — something outside the case stands proud of it`);
 
 // --- MUTANTS -------------------------------------------------------------
-// Each is predicted from the UNMUTATED ledger before it boots.
+// Each is predicted from the UNMUTATED ledger before it boots. One raises the
+// GOVERNOR of the band's back face and must move the depth 1:1; one raises a
+// row under the glass step, which stands far below the ring face, and must
+// move it max(0, DELTA − slack) = 0.
+//
+// §261 2c — which arm governs is read off the ledger, not assumed. Until the
+// fold the skirt arm did (the 'Alarm switch' r 48.3–49.6 row + the thread), and
+// the non-governor was the alarm link's swept allowance, the tower's own term.
+// The fold emptied the allowance table and re-authored the skirt row to the
+// metal, and the PANE FLOOR took over — the outboard metal, the hammer's lever
+// plane, which has no row: its height is a build-pose reading. So when the pane
+// governs, the governor mutant DECLARES a swept row over the governing bin, in
+// the governing unit's own name, DELTA over what that bin reads — the same
+// envelope term a mover's row is, raised where the governor stands.
+const raiseRow = (row, z) => (bins) => { const n = bins.length, rs = base.env.bins[n - 1].r1;
+  const sLo = Math.max(0, Math.floor(row.r0 / rs * n)), sHi = Math.min(n - 1, Math.ceil(row.r1 / rs * n) - 1);
+  for (let s = sLo; s <= sHi; s++) if (bins[s].z === null || z > bins[s].z) { bins[s].z = z; bins[s].owner = `${row.unit} (declared swept region)`; } };
 const region = base.env.regions.find((r) => r.unit === 'Alarm switch' && r.r0 === 48.3);
-const linkAllow = base.env.allowances.find((a) => a.unit === 'Alarm link');
-if (!region || !linkAllow) { console.log('mutation targets missing from __clock.backEnvelope — the declarations moved'); process.exit(2); }
+const wheel = base.env.regions.find((r) => r.unit === 'Alarm striking wheel');
+const wheelSrc = readFileSync(join(ROOT, 'src/main.js'), 'utf8')
+  .match(/\{ unit: 'Alarm striking wheel', r0: ([\d.]+), r1: ([\d.]+), z: TQ_TOP_Z \+ ([\d.]+) \}/);
+if (!region || !wheel || !wheelSrc) { console.log('mutation targets missing from __clock.backEnvelope — the declarations moved'); process.exit(2); }
 const predict = (editBins) => {
   const bins = base.env.bins.map((x) => ({ ...x }));
   editBins(bins);
@@ -135,23 +154,43 @@ const predict = (editBins) => {
   const bm = backMost(base, ch, base);
   return { ch, bm, depth: bm.top.z - Lb.frontCase };
 };
-const MUTANTS = [
-  { name: 'identity — the tree copied and booted unchanged', identity: true, find: null },
-  { name: `the swept row 'Alarm switch' r ${region.r0}–${region.r1} z ${region.z} raised ${DELTA}`,
+const skirtGoverns = Lb.back.skirtArm >= Lb.back.paneFloor;
+let governor;
+if (skirtGoverns) {
+  governor = { name: `the swept row 'Alarm switch' r ${region.r0}–${region.r1} z ${region.z} raised ${DELTA} (the skirt arm governs)`,
     file: 'src/main.js',
     find: `{ unit: 'Alarm switch', r0: ${region.r0}, r1: ${region.r1}, z: ${region.z} }`,
     to: `{ unit: 'Alarm switch', r0: ${region.r0}, r1: ${region.r1}, z: ${+(region.z + DELTA).toFixed(6)} }`,
-    pred: predict((bins) => { const z = region.z + DELTA; const n = bins.length, rs = base.env.bins[n - 1].r1;
-      const sLo = Math.max(0, Math.floor(region.r0 / rs * n)), sHi = Math.min(n - 1, Math.ceil(region.r1 / rs * n) - 1);
-      for (let s = sLo; s <= sHi; s++) if (bins[s].z === null || z > bins[s].z) { bins[s].z = z; bins[s].owner = `${region.unit} (declared swept region)`; } }) },
-  { name: `the alarm link's swept allowance ${linkAllow.extra} raised ${DELTA}`,
+    pred: predict(raiseRow(region, region.z + DELTA)) };
+} else {
+  const { CLEAR_MARGIN: CM, CASE_WIDTH_MAX } = base.L;
+  const lo = base.glass.apertureR - 2 * CM;
+  const bin = base.env.bins.find((x) => x.z !== null && x.r1 > lo && x.r0 < CASE_WIDTH_MAX && x.z === Lb.back.outboard.z);
+  const unit = bin && bin.owner;
+  if (!bin || !unit || /declared/.test(unit)) { console.log(`the pane floor's governing bin is not a unit's own metal (${unit}) — no row to raise`); process.exit(2); }
+  // Inside the bin by a micro-unit each side, so the fold maps it to that one bin.
+  const row = { unit, r0: +(bin.r0 + 1e-4).toFixed(6), r1: +(bin.r1 - 1e-4).toFixed(6) };
+  // Kept UNDER the envelope's global max: raised past it, the governing bin
+  // becomes the glass step's too and widens the step across the aperture,
+  // whose edge the ledger does not model (measured: the step top read 0.026
+  // over its prediction at the full DELTA). The claim is 1:1 at any raise.
+  const dG = Math.min(DELTA, +(Lb.back.stepUnder - CM - bin.z - 0.05).toFixed(3));
+  if (!(dG > 0.1)) { console.log(`the pane floor's governor stands ${f4(Lb.back.stepUnder - CM - bin.z)} under the step — too close to raise it alone`); process.exit(2); }
+  const z = +(bin.z + dG).toFixed(6);
+  governor = { name: `a swept row declared over '${unit}' at r ${row.r0}–${row.r1}, ${dG} over its ${bin.z.toFixed(4)} (the pane floor governs)`,
     file: 'src/main.js',
-    find: `['Alarm link', ${linkAllow.extra}],`,
-    to: `['Alarm link', ${+(linkAllow.extra + DELTA).toFixed(6)}],`,
-    // Raising the allowance raises every bin the link already owns; a bin the
-    // link was runner-up in could be overtaken too, which this undercounts —
-    // so only the GLOBAL max (the link's, asserted) is predicted from it.
-    pred: predict((bins) => { for (const x of bins) if (x.owner === 'Alarm link') x.z += DELTA; }) },
+    find: 'const BACK_SWEPT_REGIONS = [\n',
+    to: `const BACK_SWEPT_REGIONS = [\n  { unit: '${unit}', r0: ${row.r0}, r1: ${row.r1}, z: ${z} },\n`,
+    pred: predict(raiseRow(row, z)) };
+}
+const MUTANTS = [
+  { name: 'identity — the tree copied and booted unchanged', identity: true, find: null },
+  governor,
+  { name: `the swept row 'Alarm striking wheel' r ${wheel.r0}–${wheel.r1} z ${wheel.z.toFixed(4)} raised ${DELTA}`,
+    file: 'src/main.js',
+    find: wheelSrc[0],
+    to: wheelSrc[0].replace(`TQ_TOP_Z + ${wheelSrc[3]}`, `TQ_TOP_Z + ${+(Number(wheelSrc[3]) + DELTA).toFixed(6)}`),
+    pred: predict(raiseRow(wheel, wheel.z + DELTA)) },
 ];
 
 const rows = [];

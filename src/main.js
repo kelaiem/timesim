@@ -7265,7 +7265,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 //   slope — the blade passes one CLEAR_MARGIN under the arm's pin end at full
 //     lift (the blade is drawn rigid about its root, TODO 206's convention), so
 //     its root sits that far below the bearing — which is what the spend buys.
-const ALARM_PINB_SEAT_MN = 5.2502;   // mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN)
+const ALARM_PINB_SEAT_MN = 5.5404;   // mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
 const ALARM_PINB_BLADE = (() => {
   const t = SPRING_FLAT_U, eps = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA, mu = MU_STEEL, U = UNIT_MM / 1000;
   const xb = ALARM_PINB_POST_R + 2 * CLEAR_MARGIN;
@@ -34659,7 +34659,6 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     const xyC = { x: ALARM_COL_POS.x + Math.cos(a0) * 10, y: ALARM_COL_POS.y + Math.sin(a0) * 10 }, w = alarmFoldPoint(xyC.x, xyC.y, 0);
     return { xy: { x: w.x, y: w.y }, xyC, dist: 10, tabAzDeg: 146, colClear: 10 };
   }
-  console.log('DBG2c site', JSON.stringify({ best: { k: best.k, run: best.run, d: best.d, c: best.c, colC: best.colC, who: best.who, tab: best.tabAzDeg, x: best.x, y: best.y }, top: rodCands.slice(0, 12).map((r) => [r.k, r.run, +r.c.toFixed(3), r.who]) }));
   return { xy: { x: best.x, y: best.y }, xyC: { x: best.xC, y: best.yC }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC };
 })();
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
@@ -43787,13 +43786,14 @@ const CASE_SECTORS = (() => {
 // its vertices never visit, probe-ledge-occupancy's own lesson.
 await breathe(303);
 const BACK_SWEPT_ALLOWANCE = new Map([
-  // The one unit whose pose-net z-max exceeds its build pose, measured by
-  // probe-back-envelope's build-pose product: the alarm link's beak rides
-  // to 12.161 at `alarm` f=0 against 12.061 at build (+0.099 — the lift is
-  // the axis's own and rode §192's descent unchanged). Declared 0.12 —
-  // rounded UP past the excess so no clearance row the glass derivation
-  // produces can sit at exactly CLEAR_MARGIN and flicker.
-  ['Alarm link', 0.12],
+  // EMPTY since §261 2c. Its one row was the alarm link (+0.12): the beak rode
+  // the column tops above the three-quarter plate and lifted 0.099 past its
+  // build pose on the `alarm` axis. The fold took the column wheel under the
+  // dial and the beak with it — the link's highest metal now stands at -2.000,
+  // under the base plate, and no part of it reaches this envelope at any pose
+  // (probe-back-envelope's product 1 lists no 'Alarm link' row at all). A row
+  // for a unit with no metal here is a declaration of nothing, so it is gone
+  // rather than left to round the glass up.
 ]);
 // ...and the movers that MIGRATE RADIALLY — metal that stands in bins its
 // build pose leaves empty, which no per-unit z allowance can express
@@ -43814,69 +43814,19 @@ const BACK_SWEPT_REGIONS = [
   // (r 34.6–42.0 at 12.07, r 42.0–44.5 at 11.54) described the over-plate
   // hammer and are retired with it — a row nothing measures is a stale
   // declaration, and this table's rule is that every row is measured.
-  // The switch cluster's press/castellation swing spreads its metal across
-  // r 17.3–31.3 (measured swept 10.629 at r 17.2–18.0 against build 9.872 —
-  // the inner bins are where this row is LIVE, because the tower's own
-  // metal already fills the outer ones at build pose). One row at the
-  // unit's swept ceiling, rounded up past margin flicker — conservative in
-  // the inner bins, which is §192's choice and is kept.
-  //
-  // RE-AUTHORED, and it was wrong in TWO independent ways — one of them
-  // from the day it was written. Measured by booting §192's own tree
-  // (a178fd7) beside HEAD:
-  //
-  //                       §192 (a178fd7)    HEAD        Δ
-  //   three-quarter plate top   8.9945     9.5554    0.5609
-  //   alarmColCastellations    11.4678    12.0287    0.5609
-  //   alarmJumper* (sautoir)   11.5112    12.0722    0.5609
-  //
-  //   · IT WENT STALE by 0.5609. Nothing in this unit changed — every
-  //     constant the tower's height derives from is bit-identical across
-  //     those two trees. TQ_BOT_Z is MEASURED off whatever stands under the
-  //     three-quarter plate, something below it grew, the plate rose, and
-  //     the whole strike tower rode up 1:1 while this authored row stayed
-  //     where §192 typed it.
-  //   · AND IT NAMED THE WRONG MEMBER, before it went anywhere. §192 wrote
-  //     "the unit's swept ceiling (the castellation top)" and 11.47 was
-  //     exactly the castellation top — but §173's sautoir already stood
-  //     11.5112, 0.0434 ABOVE it, in that same tree. The row was never the
-  //     unit's ceiling; it was the second-tallest member of its own band.
-  //     probe-192-tier-price's control could not catch that, because the
-  //     control was derived from the same sentence as the row — it looked
-  //     up `alarmColCastellations` BY NAME. §226 re-derives it from the
-  //     scan's own per-unit maximum, so the member is free to change hands.
-  //
-  // Nothing was ever unsafe — the fold below is a FLOOR, and the build-pose
-  // scan already read 12.029/12.072 in every outer bin — which is exactly
-  // why both errors survived, and why the assert in BACK_ENVELOPE below now
-  // exists. Re-authoring costs no glass: envMaxAll is the alarm link's
-  // 12.742 either way, and every bin this row lifts lies well inside rStep.
-  //
-  // §226 route A moved it again, and the assert below is what said so — on
-  // the first boot of the thickened driver, before any sweep ran: the whole
-  // tower rides the driver's section, so this row rises with it. Re-authored
-  // from the measurement it printed, 12.3559 (alarmJumperBlade — still the
-  // sautoir, not the castellations), rounded up past margin flicker.
-  //
-  // TODO 69 KEYS IT TO THE PLATE, because this is the third time it has gone
-  // stale for the same reason: the whole tower stands on the three-quarter
-  // plate's top face and rides it 1:1 (the 0.5609 above; TODO 69's thicker
-  // plate moved it 1.1000). So the row is the plate top plus the tower's
-  // measured RISE above it, not a height typed in world z: the sautoir's
-  // 12.3559 over §226's plate top 9.5454 is 2.8105, kept as the 2.8146 the
-  // last re-authoring rounded to. A plate that moves now carries the row.
-  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: TQ_TOP_Z + 2.8146 },
-  // TODO 69 — the column driver's pawl-spring stud, which the build pose cannot
-  // see: it rides the driver, and the press swings it outward, so at the build
-  // pose it reads r 39.755–40.088 and at alarmPress it reaches 40.418 (measured
-  // over all 14 axes × 33 poses; only alarmPress carries it past 40.088). Its
-  // top is 12.0125 in TODO 69's tree, 1.3671 over the plate top it rides
-  // (ALARM_DRIVER_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN), rounded up here. Under the
-  // 0.303 mm plate it stood 1.1 lower and the pane never cared. At 0.720 mm the
-  // glass step's wall, sized from the build pose, stopped at 40.24, and the
-  // battery's expectedContacts read the swung stud 0.0696 under the outer pane
-  // (alarmPress f 0.125, floor 0.15). This row widens the step to cover it.
-  { unit: 'Alarm switch', r0: 39.7, r1: 40.5, z: TQ_TOP_Z + 1.368 },
+  // §261 2c RETIRED the two 'Alarm switch' rows that stood here — the
+  // castellation/sautoir ceiling over r 17.3–31.3 (TQ_TOP_Z + 2.8146, the
+  // tower's own rise over the plate) and the column driver's pawl-spring stud
+  // over r 39.7–40.5 (TQ_TOP_Z + 1.368). Both described metal standing ON the
+  // three-quarter plate, and the fold carried every member of it — the column
+  // wheel, its jumper, the driver and its stud — under the dial. What the unit
+  // keeps between the plates (the pusher's two cranks, the rod and the riser)
+  // tops out at 8.904, under the plate's own underside, so neither band holds
+  // any of its metal above the plate top at any pose: probe-back-envelope's
+  // gate holds that swept, not this sentence. Left in, the first row alone
+  // would have held the glass 1.078 over the tallest metal there is (13.119
+  // declared against the striking wheel's 12.041) — the height the fold was
+  // built to give back.
   // The striking wheel's rotation is not axisymmetric at bin scale: measured
   // swept 10.982 at r 33.6–34.5 against build 10.582 (probe-back-envelope,
   // 43 poses, 2026-09-14).
@@ -43917,7 +43867,20 @@ const BACK_SWEPT_REGIONS = [
   // making it two-sided today would red a shipped boot on a question nobody
   // has answered yet. probe-192-tier-price reports this row rather than
   // judging it, and says why.
-  { unit: 'Alarm switch', r0: 48.3, r1: 49.6, z: 10.08 },
+  //
+  // §261 2c ANSWERED IT, because the fold made it the cased depth's governor:
+  // with the tower gone, this row alone set the skirt, the skirt the band's
+  // back face, and the band the ring. Measured over the pose net (every axis
+  // at f ∈ {0, ¼, ½, ¾, 1}), the unit's highest metal over the skirt annulus is
+  // the pusher's case liner, 8.614 at r 49.97 (`position` f=1) — 1.466 under
+  // the 10.08 declared, which is the over-statement §226 suspected. Re-authored
+  // to it, rounded up past margin flicker, and WIDENED to r 50.1: the liner
+  // stands at 49.97, outboard of the old r1 49.6, so the row had never covered
+  // the metal it was answering for. probe-back-envelope now sweeps the skirt
+  // annulus below the plate top too (the skirt descends there now), and that
+  // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
+  // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
+  { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: 8.62 },
 ];
 const BACK_ENVELOPE = await (async () => {
   // §234 — THE BIN IS NO WIDER THAN THE ONE MARGIN. A reader asks this
@@ -44030,9 +43993,8 @@ const BACK_ENVELOPE = await (async () => {
     }
   }
   // The probe's two controls, mirrored as boot warns (rule 6 — silence when
-  // healthy): the alarm link tower is the envelope's governor and must be
-  // seen; the alarm barrel lives under the plate since §112 and must not
-  // stand above it. Either failing means the scan measured the wrong thing
+  // healthy): the envelope's governor must be seen; the alarm barrel lives
+  // under the plate since §112 and must not stand above it. Either failing means the scan measured the wrong thing
   // — and a glass derived from a wrong scan is metal through the movement.
   await breathe(306);
   {
@@ -44056,17 +44018,30 @@ const BACK_ENVELOPE = await (async () => {
       });
       return z;
     };
-    const tower = zOf('Alarm link'), barrel = zOf('Alarm barrel');
-    // §192 — the governor's floor is DERIVED now, where it was a snapshot
-    // (`> 13.0`, from a 13.877 build the strike-tower descent retired): the
-    // link's beak arm rides the column tops, so its tower must stand at
-    // least above the stack it rides — a threshold that tracks every future
-    // re-station instead of naming one build's number.
-    const colStackTop = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H;
-    if (!(tower > colStackTop))
-      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)}, under the column `
-        + `stack top ${colStackTop.toFixed(3)} it rides — the envelope's governor was not seen, and a glass derived `
-        + 'from this scan is unfounded');
+    const barrel = zOf('Alarm barrel');
+    // §261 2c — THE GOVERNOR IS FOUND, NOT NAMED. Until the fold this was the
+    // alarm link's tower held over the column stack it rode (§192's derived
+    // floor, which replaced §187's typed 13.0). The fold took both under the
+    // dial — the link now tops out at -2.000 — so the control naming them
+    // would read a unit that has left the envelope, and naming its successor
+    // (the striking wheel, 12.041) is the snapshot §192 retired. What the
+    // control has to establish is unchanged: the scan SAW the tallest metal.
+    // So the governor is the unit the scan itself ranks tallest (allowance
+    // taken back off), and an independent vertex walk of that unit must read
+    // the same top — a scan that skipped meshes, read the wrong frame or lost
+    // its unit attribution parts from the walk — and it must stand over the
+    // plate's measured top, or the scan found no tenant to derive a glass from.
+    let gov = null, govScan = -Infinity;
+    for (const [u, arr] of unitBins) {
+      if (!labelEntries.some((e) => e.name === u)) continue;
+      const top = Math.max(...arr) - ((BACK_SWEPT_ALLOWANCE.get(u)) || 0);
+      if (top > govScan) { govScan = top; gov = u; }
+    }
+    const govWalk = gov ? zOf(gov) : -Infinity;
+    if (!gov || !(Math.abs(govWalk - govScan) <= 1e-6) || !(govScan > tqTop))
+      console.warn(`§187: the back-envelope scan's governor ${gov ?? '(none)'} reads ${govScan.toFixed(3)} against `
+        + `${govWalk.toFixed(3)} walked off its own metal, over the plate top ${tqTop.toFixed(3)} — the envelope's `
+        + 'governor was not seen, and a glass derived from this scan is unfounded');
     if (barrel > tqTop)
       console.warn(`§187: the alarm barrel reads ${barrel.toFixed(3)}, above the three-quarter plate's measured top `
         + `${tqTop.toFixed(3)} — §112 put it below; the scan or the tree is wrong`);
@@ -44081,7 +44056,7 @@ const BACK_ENVELOPE = await (async () => {
     // watch gets thicker — a real cost, and one nobody would otherwise
     // attribute to the gong.
     await breathe(309);
-    const govern = Math.max(tower, zOf('Alarm switch'), zOf('Alarm striking wheel'));
+    const govern = Math.max(govWalk, zOf('Alarm switch'), zOf('Alarm striking wheel'));
     for (const name of ['Alarm hammer', 'Alarm lifting lever']) {
       const z = zOf(name);
       if (z > govern + 1e-6)
@@ -55710,6 +55685,11 @@ window.__clock = {
     apertureR: CASE_DIMS.apertureR, rStep: CASE_DIMS.rStep,
     zStepUnder: CASE_DIMS.zStepUnder, paneInner: CASE_DIMS.zMidBack,
     skirtBot: CASE_DIMS.zSkirtBot, skirtID: CASE_DIMS.skirtID, skirtOD: CASE_DIMS.skirtOD,
+    // §261 2c — the skirt arm's thread engagement, which probe-261-height-ledger
+    // had IMPLIED as paneInner − skirtBot. That is the engagement only while
+    // the skirt arm governs the band's back face; the fold handed it to the
+    // pane floor, and the implied figure then read 2.971 for a 1.847 thread.
+    clampEng: CASE_DIMS.clampEng,
   },
   // §158 Gate 0 — THE RESERVE TRAIN DECLARES ITS OWN TEETH. `probe-reserve-mesh`
   // is built to refuse any silhouette reading whose gap count disagrees with the

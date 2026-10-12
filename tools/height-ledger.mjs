@@ -182,7 +182,12 @@ export function backMost(m, chain, base) {
 }
 export function ledger(m) {
   const g = m.glass;
-  const eng = g.paneInner - g.skirtBot;                 // implied; held constant across mutants below
+  // The skirt arm's thread engagement, read off the build (CASE_CLAMP_ENG) when
+  // the tree exposes it. The older fallback IMPLIES it as paneInner − skirtBot,
+  // which is the engagement only while the skirt arm governs the band's back
+  // face — §261's fold handed that face to the pane floor, and the implied
+  // figure then read 2.971 for a 1.847 thread. Held constant across mutants.
+  const eng = g.clampEng ?? (g.paneInner - g.skirtBot);
   const ringRise = m.caseParts.caseBack.zMax - g.paneInner;
   const keyRise = (m.caseParts.caseBackKey?.zMax ?? m.caseParts.caseBack.zMax) - m.caseParts.caseBack.zMax;
   const back = backChain(m, m.env.bins, eng, ringRise, keyRise);
