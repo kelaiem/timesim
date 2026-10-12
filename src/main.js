@@ -14690,8 +14690,25 @@ const BALANCE_COCK = (() => {
     const t = clamp(((x - o.ax) * vx + (y - o.ay) * vy) / L2, 0, 1);
     return Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r;
   };
-  let best = null, near = null;
-  const scanRows = [];
+  // TODO 242 — THE SLAB'S REACH IS THE LAST DEGREE OF FREEDOM, AND IT IS
+  // TAKEN ONLY WHEN THE BEARING ALONE CANNOT SEAT THE FOOT. The slab ends 0.1
+  // inside the cut edge, which on the balance's own bearings is the balance's
+  // swept radius plus a cut margin — so the T-bar stands just outside the
+  // balance and its legs must straddle it, at a half-span of nearly the
+  // balance's own radius. A smaller balance (36,000's, BALANCE_R_SPEC 7.5)
+  // pulls the bar in and the legs splay out of the wedge on every bearing the
+  // stop work leaves open (measured: best −0.582 at φ 25°, the foot pad past
+  // the wedge). Lengthening the slab moves the bar outward and the legs in
+  // toward its axis, which is a POSITION change of the cock's foot, not of
+  // anything the escapement carries: the jewel stays on the staff. The reach
+  // added is the least that seats, in the scan's own steps of
+  // COCK_REACH_STEP, so a movement whose cock seats at the cut edge — every
+  // rate before this one — builds bit for bit as it did.
+  const COCK_REACH_STEP = 0.25, COCK_REACH_MAX = 4;
+  let best = null, near = null, reach = 0;
+  let scanRows = [];
+  for (; reach <= COCK_REACH_MAX + 1e-9; reach += COCK_REACH_STEP) {
+  best = null; near = null; scanRows = [];
   for (let d = -180; d < 180; d += 1) {
     const phi = d * DEG2RAD;
     const cs = Math.cos(TQ_CUT.aim + phi), sn = Math.sin(TQ_CUT.aim + phi);
@@ -14703,7 +14720,7 @@ const BALANCE_COCK = (() => {
     // straight through the stop bracket's mast while rejecting honest
     // seats whose phantom foot grazed something that isn't there.
     const dFoot = Math.max(BAL_OUTER_R, G.cutEdgeRadius(TQ_CUT, phi)) + COCK_FOOT_R + CLEAR_MARGIN;
-    const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1; // built slab-tail reach
+    const dTail = G.cutEdgeRadius(TQ_CUT, phi) - 0.1 + reach; // built slab-tail reach
     // TODO 30's graded-margin pattern (the fork cock's precedent): every
     // bound below tags the clearance it sets, so a scan that finds nothing
     // can say WHICH wall stopped it and by how much — §125 Tier B hit the
@@ -14782,6 +14799,9 @@ const BALANCE_COCK = (() => {
     if (clr < CLEAR_MARGIN) continue;
     if (!best || clr > best.clr) best = { phi, dFoot, clr };
   }
+  if (best) break;
+  }
+  if (!best) reach = 0;
   if (typeof window !== 'undefined') window.__cockScan = scanRows;
   if (!best) {
     console.warn('balance cock: no clear seat on the plate; falling back to the old fork bearing'
@@ -14792,7 +14812,7 @@ const BALANCE_COCK = (() => {
   }
   // makeCock: jewel at +COCK_JEWEL_AT·L, foot centre at −0.5·L → the
   // staff→tail distance is (0.5 + COCK_JEWEL_AT)·L.
-  return { ...best, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
+  return { ...best, reach, length: best.dFoot / (0.5 + COCK_JEWEL_AT) };
 })();
 // COCK IN THE PLATE BAND, standing on the BASE plate. The slab occupies
 // the plate's own z-band over the cutaway; its LENGTH is sized against the
@@ -14805,8 +14825,9 @@ const BALANCE_COCK = (() => {
 await breathe(117);
 const cockEdgeR = G.cutEdgeRadius(TQ_CUT, BALANCE_COCK.phi);
 // Slab tail reach ((0.5 + COCK_JEWEL_AT)·L below the jewel), sized to the
-// pre-reveal cut edge.
-const balanceCockLen = (cockEdgeR - 0.1) / (0.5 + COCK_JEWEL_AT);
+// pre-reveal cut edge, plus the reach the seat scan had to add (TODO 242 —
+// zero wherever the cut edge alone seats the foot).
+const balanceCockLen = (cockEdgeR - 0.1 + BALANCE_COCK.reach) / (0.5 + COCK_JEWEL_AT);
 const balanceCock = G.makeCock({
   length: balanceCockLen, width: COCK_W, thickness: COCK_T, jewelAt: COCK_JEWEL_AT,
   jewelHoleR: BALANCE_PIVOT_R + PIVOT_BORE_CLEAR,   // TODO 192 step 2: the stone turned for the pivot that runs in it
