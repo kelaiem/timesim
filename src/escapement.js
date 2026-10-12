@@ -269,3 +269,164 @@ export function leverEscapement({ span, beatRad, bank0Rad, sense, lockDeg = LOCK
     stoneW, bodyX, mirrored, stones, lockReach, faceRake, deltaAt, deltaOnLockFace, deltaOnImpulseFace, tipAt, warns,
   };
 }
+
+// TODO 226 step 3b — THE PIN IN THE NOTCH, the other half of the escapement,
+// solved in the same pure 2-D. The notch closes on the pin to a SHAKE: two
+// parallel walls standing `shake` off the pin's flanks on either side, so the
+// fork's angle is the pin's bearing from the fork pivot, offset by however far
+// the pin can sit across the slot, and on whichever side is DRIVING:
+//
+//   UNLOCK  the pin pushes the wall ahead of it, so the fork LAGS its bearing;
+//   CROSS   at the end of the unlock the stone's corner releases the fork and
+//           the escape wheel drives it across the shake (main.js paces this
+//           from the metal: escapement.js does not know an inertia);
+//   IMPULSE the wall behind the pin pushes it, so the fork LEADS its bearing,
+//   RUN     and goes on leading to the banking, where it stops and the pin
+//           leaves the slot.
+//
+// WHY THE PIN IS D-SHAPED. Once the fork banks, the pin keeps turning about
+// the staff, and relative to the stopped fork it travels ACROSS the slot
+// toward the far wall as it climbs out (here about one unit across for one
+// out). A round pin a quarter of its circle's radius thick swings its outer
+// flank into that wall long before it is clear: a parallel slot with this
+// pin would have to be relieved over 94% of the depth the pin works in, which
+// is not a slot. Real roller jewels are cut to a D for exactly this reason
+// (de Carle, Practical Watch Repairing; Daniels, Watchmaking — the roller
+// jewel's flat faces the fork): the flat takes off the flank that would
+// strike. `flatF` — the flat's distance from the pin's centre, along its
+// radius from the staff — is SOLVED, not chosen: the LARGEST (the least ruby
+// ground away) for which the banked pin, leaving, never comes nearer the
+// slot's far wall than the play it sat in at the banking, 2·shake. The pin
+// then leaves as freely as it sat.
+//
+// FRAMES are geometry.js `escapementSeat`'s: balance staff at the origin, the
+// fork pivot at (d, 0) on the line of centres, the pin at r·(cos θ, sin θ);
+// a swing ψ (main.js forkSwingAt, positive with the bearing) carries a
+// balance-frame point to fork-local (x, y) with y < 0 into the notch. The
+// pin's centre lands at x = ρ·sin(ψ − β): x > 0 means the fork is AHEAD of
+// the pin in +θ, so a fork leading a +θ swing presses the pin onto the +x
+// wall, lagging it onto the −x wall.
+// The solve is a GENERATOR (CLAUDE.md, BOOT BREATHES): the flat's bisection
+// sweeps the banked pin's whole exit at every step, ~80 sweeps, which on the
+// boot's software GL is far over a seam's 40 ms. It yields after each sweep;
+// `pinNotch` drains it for every caller that does not yield.
+export function pinNotch(opts) {
+  const it = pinNotchSteps(opts);
+  for (;;) { const r = it.next(); if (r.done) return r.value; }
+}
+export function* pinNotchSteps({ d, r, pinR, shake, letoffHalfRad, runRad, lockRad }) {
+  const rho = (th) => Math.hypot(d - r * Math.cos(th), r * Math.sin(th));
+  const bearing = (th) => Math.atan2(r * Math.sin(th), d - r * Math.cos(th));
+  const W = pinR + shake;   // the wall's distance off the slot's centre line
+  // a balance-frame point to fork-local, fork at swing ψ
+  const toFork = ([wx, wy], psi) => {
+    const S = -Math.sin(psi), C = Math.cos(psi), dx = wx - d;
+    return [S * dx - C * wy, C * dx + S * wy];
+  };
+  // The D, in the pin's own frame: +x along its radius from the staff, the
+  // flat at x = f, the round everywhere x ≤ f.
+  const outlineOf = (f, n = 96) => {
+    const a0 = Math.acos(Math.max(-1, Math.min(1, f / pinR))), out = [];
+    for (let i = 0; i <= n; i++) {
+      const a = a0 + (2 * Math.PI - 2 * a0) * (i / n);
+      out.push([pinR * Math.cos(a), pinR * Math.sin(a)]);
+    }
+    return out;   // the last point and the first close across the flat
+  };
+  // the pin's outline at balance angle θ, fork-local
+  const placed = (f, th, psi, outline = outlineOf(f)) => {
+    const c = Math.cos(th), s = Math.sin(th);
+    return outline.map(([px, py]) => toFork([r * c + px * c - py * s, r * s + px * s + py * c], psi));
+  };
+  // The D's reach along fork-local ±x (σ = ±1) — its support — and the point
+  // that reaches it. Round where the direction is off the flat's arc, else
+  // the flat's corner.
+  const support = (f, th, psi, sigma) => {
+    const ux = -Math.sin(psi) * Math.cos(th) - Math.cos(psi) * Math.sin(th);   // the radius from the staff, fork-local x
+    const cosA = sigma * ux;
+    if (cosA <= f / pinR) return { h: pinR, round: true };
+    const c = Math.sqrt(Math.max(0, pinR * pinR - f * f));
+    return { h: f * cosA + c * Math.sqrt(Math.max(0, 1 - cosA * cosA)), round: false };
+  };
+  // The swing at which the pin touches the wall at σ·W: σ·x_c + h = W.
+  const contactSwing = (f, th, sigma) => {
+    const b = bearing(th), p = rho(th);
+    let psi = b + Math.asin(sigma * shake / p);
+    for (let k = 0; k < 6; k++) psi = b + Math.asin(sigma * (W - support(f, th, psi, sigma).h) / p);
+    return psi;
+  };
+  const bisect = (fn, lo, hi) => {
+    let flo = fn(lo);
+    for (let k = 0; k < 80; k++) {
+      const mid = (lo + hi) / 2, fm = fn(mid);
+      if ((fm > 0) === (flo > 0)) { lo = mid; flo = fm; } else hi = mid;
+    }
+    return (lo + hi) / 2;
+  };
+  // the angles the law needs, for a flat f: let-off (the 50° lift held: the
+  // fork's angle where the leading wall lets the pin go at θ = L/2), bank,
+  // and the balance angle where a leading fork reaches its bank (θ_E)
+  const anglesFor = (f) => {
+    const bank0 = contactSwing(f, letoffHalfRad, +1);
+    const bank = bank0 + runRad;
+    const entryHalf = bisect((th) => contactSwing(f, th, +1) - bank, letoffHalfRad, Math.PI / 2);
+    // the depth the band must reach: the wall's contact at θ_E
+    const cE = toFork([r * Math.cos(entryHalf), r * Math.sin(entryHalf)], bank);
+    return { bank0, bank, entryHalf, yBand: -cE[1] };
+  };
+  // the banked pin leaving at +θ: its nearest approach to the far (−x) wall,
+  // which runs from the floor up to the band's top and ends there
+  const exitGap = (f, A) => {
+    const outline = outlineOf(f);
+    let g = Infinity;
+    for (let th = A.entryHalf; th <= A.entryHalf + 1.6; th += 0.1 * Math.PI / 180) {
+      let shallowest = Infinity;   // the pin's nearest point to the wall's top, in depth
+      for (const [x, y] of placed(f, th, A.bank, outline)) {
+        const dep = -y;
+        g = Math.min(g, dep <= A.yBand ? x + W : Math.hypot(x + W, dep - A.yBand));
+        shallowest = Math.min(shallowest, dep - A.yBand);
+      }
+      // the pin only climbs from here: once all of it stands further past
+      // the wall's top than the nearest approach so far, nothing later is nearer
+      if (shallowest > g) break;
+    }
+    return g;
+  };
+  // Solve the flat: start round, solve the angles, solve f, repeat (the
+  // angles move with f only where a working contact lands off the round).
+  let f = pinR, A = anglesFor(f);
+  for (let k = 0; k < 4; k++) {
+    const f0 = f;
+    // the bisection, written out so it can yield between sweeps; 2⁻⁴⁰ of the
+    // pin is far under float noise in the cut
+    let lo = 0, hi = pinR, flo = exitGap(lo, A) - 2 * shake;
+    for (let n = 0; n < 40; n++) {
+      yield;
+      const mid = (lo + hi) / 2, fm = exitGap(mid, A) - 2 * shake;
+      if ((fm > 0) === (flo > 0)) { lo = mid; flo = fm; } else hi = mid;
+    }
+    f = (lo + hi) / 2;
+    A = anglesFor(f);
+    if (Math.abs(f - f0) < 1e-12) break;
+  }
+  const lag = (th) => contactSwing(f, th, -1);    // a +θ swing's unlock
+  const lead = (th) => contactSwing(f, th, +1);   // a +θ swing's impulse and run
+  const unlockSwing = -(A.bank0 - lockRad);       // the fork's angle where the stone's corner releases it
+  const unlockHalf = bisect((th) => lag(th) - unlockSwing, -A.entryHalf, letoffHalfRad);
+  // Every working contact on the round, or report how far off it lands.
+  let offRound = 0;
+  for (let i = 0; i <= 400; i++) {
+    const th = -A.entryHalf + 2 * A.entryHalf * (i / 400);
+    for (const s of [-1, +1]) {
+      const psi = contactSwing(f, th, s), sp = support(f, th, psi, s);
+      if (!sp.round) offRound = Math.max(offRound, pinR - sp.h);
+    }
+  }
+  return {
+    d, r, pinR, shake, W, flatF: f, rho, bearing, toFork, outlineOf, placed, support, contactSwing, lag, lead,
+    bank0: A.bank0, bank: A.bank, entryHalf: A.entryHalf, yBand: A.yBand, unlockSwing, unlockHalf,
+    exitGap: exitGap(f, A), offRound,
+    // the pin's farthest reach from the staff: the flat's corners
+    pinOuter: Math.hypot(r + f, Math.sqrt(pinR * pinR - f * f)),
+  };
+}

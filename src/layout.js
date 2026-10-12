@@ -372,14 +372,16 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 //    largest swing the balance can REACH, rounded UP, since a load priced below
 //    it is not a bound. Since TODO 216 that is the SMALLER of two angles: the
 //    solve's MAXIMUM (favourable, dial-flat: 454.80° since TODO 207) and the
-//    KNOCK (main.js ESCAPEMENT_KNOCK: 304.12° since TODO 226 step 3 banked the
-//    fork a run past the let-off, 301.35° since step 1 seated the pin, 315.22°
+//    KNOCK (main.js ESCAPEMENT_KNOCK: 310.46° since TODO 226 step 3b closed the
+//    notch to the pin plus a shake and ground the pin to a D, 304.12° since
+//    step 3 banked the fork a run past the let-off, 301.35° since step 1
+//    seated the pin, 315.22°
 //    on §221's bank before it, 314.18° before that, where the
 //    impulse pin, carried round from the far side, strikes the banked fork's
 //    horn, solved off the fork blank's METAL outline and the pin's radius). The
 //    balance cannot swing past the knock; it banks on the horn. So the
 //    favourable dial-flat corner, which the energy column would carry to 455°,
-//    knocks, and the peak is the knock's 305° (302° before the run, 316° before the seat's horns,
+//    knocks, and the peak is the knock's 311° (305° before the notch closed, 302° before the run, 316° before the seat's horns,
 //    which run to the depth the pin enters and are read with the chamfer that
 //    stands proud of the authored outline; 315° before §221 derived the bank
 //    from the pin's own bearing, which banks the fork 4.03° instead of 2.57°;
@@ -391,7 +393,7 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 // within one degree). A change that moves the solve or the escapement fails
 // the gate until these move with it.
 export const AMPLITUDE_CLAIM_DEG = 126;
-export const AMPLITUDE_PEAK_DEG = 305;
+export const AMPLITUDE_PEAK_DEG = 311;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
 // less as a fault. It is held at the NOMINAL corner, the serviced state; the
@@ -807,6 +809,16 @@ export const STOCK_MIN_R10 = flatsR(STOCK_MIN_U, 10);  // 0.167 u — ⌀ 0.12 m
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by
                                   // the balance plane derivation itself.
+// A working contact's tolerance: the tessellation-sag scale the finish
+// already accepts as invisible (geometry.js RADIAL_SEGS: silhouette sagitta
+// ≈ 0.03 at the largest radii). A truthfully modelled contact can miss exact
+// touch by tri-tri slack of that order, and no more. It is the inspector's
+// (the selector budgets and alarmHandoffs read it, inspect.js re-exports it),
+// declared here since TODO 226 step 3b because the build reads it too: the
+// fork notch's SHAKE is this tolerance. A slot closed to its pin is a working
+// contact on either wall, and a play smaller than the slack a contact may miss
+// touch by could not be told from none.
+export const HANDOFF_TRACK_TOL = 0.03;
 // The running fit every plate bearing is cut to — a real pivot's side-shake.
 // Declared here since TODO 168 (it was main.js's): geometry.js cuts every
 // makeGear/makePinion bore against it too, spending at most HALF of it on

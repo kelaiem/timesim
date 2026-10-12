@@ -243,7 +243,16 @@ let port = 8540;
 // read 3993372851, 2256983692 and 3993372851 across three runs of an unchanged
 // tree — which would make NO-OP fire or not fire at random, and NO-OP is the
 // verdict that decides whether a row tested anything at all.
+// AND IT HASHES ONE POSE, set in the same synchronous evaluate. Read as the
+// boot left it, the hash took whatever pose the live loop had reached when
+// __clock appeared: one boot hashed τ 0 and the next τ 0.056, the balance, the
+// fork and the train moved between them, and the reproducibility control read
+// two different hashes off one tree (TODO 226 step 3b, when the boot's timing
+// moved). Posing first, with no frame able to land between pose and read,
+// makes the hash a function of the tree alone.
 const GEO_HASH = `(() => {
+  window.__clock.resetInputs();
+  window.__clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   let h = 2166136261 >>> 0;
   const acc = (v) => { h ^= (Math.round(v * 4096) | 0) >>> 0; h = Math.imul(h, 16777619) >>> 0; };
   const skip = new Set();

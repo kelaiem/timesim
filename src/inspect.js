@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
+import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
@@ -2380,7 +2380,12 @@ export const EXPECTED_CONTACT_FLOORS = [
   // tip it left by, the impulse table in the fork's plane) are gone with the
   // metal that made them. That the pin bears on NO wall is the other half:
   // the drive is the law's, not a contact's, and making it one is step 3.
-  { a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [] },
+  // TODO 226 step 3b — and step 3 is here: the notch closes on the pin to a
+  // shake, so the pin on the notch's walls is the pair's ONE working contact
+  // (escapementHandoff holds it within HANDOFF_TRACK_TOL through the passage).
+  // Everything else the two units own — the guard pin, the roller, the horns'
+  // outsides — still owes the margin.
+  { a: 'Pallet fork', b: 'Balance', min: CLEAR_MARGIN, contacts: [['balanceImpulsePin', 'forkBlank']] },
   // TODO 215 — the maintaining detent's WORKING contact, and nothing else: the
   // beak on the ring's cut (maintDetentHandoff's beak row owns that bite, at
   // SEAT_RELIEF). Under the EXPECTED blanket the straight click's body sat
@@ -5252,12 +5257,10 @@ export function sawRideDepth(A, B) {
 }
 
 // A working contact's tolerance, shared by the selector-family penetration
-// budgets below and the alarmHandoffs check that owns the gap side: the
-// tessellation-sag scale the finish already accepts as invisible
-// (geometry.js RADIAL_SEGS: silhouette sagitta ≈ 0.03 at the largest radii).
-// A truthfully modelled contact can miss exact touch by tri-tri slack of
-// that order, and no more.
-export const HANDOFF_TRACK_TOL = 0.03;   // exported since §268 for the probes that measure a seat by the rows' own tolerance
+// budgets below and the alarmHandoffs check that owns the gap side. Declared
+// in layout.js since TODO 226 step 3b, because the build reads it too (the
+// fork notch's shake is this tolerance); re-exported here for the probes.
+export { HANDOFF_TRACK_TOL };
 
 const PENETRATION_BUDGETS = [
   {
@@ -6654,6 +6657,51 @@ export const MAINT_DETENT_HANDOFFS = [
     expect: { riding: 'free', seated: 'free', crest: 'free', holding: 'free', runout: 'contact' },
   },
 ];
+
+// TODO 226 step 3b — THE ESCAPEMENT'S WORKING CONTACT: the impulse pin on the
+// notch's walls. The notch is closed to the pin plus a shake (src/escapement.js
+// `pinNotch`), and the fork's law puts the pin ON a wall whenever it carries
+// the fork: the wall ahead of it through the unlock (the pin pushes), the wall
+// behind it through the impulse and the run (the fork pushes). So at every
+// pose of the passage but one the pair TOUCHES, by the law, and this row
+// measures that it does on the cut metal. The one excepted stretch is the
+// CROSSING of the shake, where the wheel carries the fork from one wall to the
+// other: there the pin is free by a shake at most, and the shake IS this
+// tolerance (layout.js says why), so no pose there could read anything but
+// "contact"; it is left out rather than claimed. The poses are the clock's own
+// (`pinNotch.tauAt`): both directions of the swing, hanging, and the impulse
+// and run again dial-flat, where §246's posed swing is 292° and the tick reads
+// the fork through the inverted τ (step 3b's prerequisite) — a seam that would
+// open a gap here before any other gate saw it.
+export const ESCAPEMENT_HANDOFFS = [
+  {
+    label: 'impulse pin ⇄ fork notch wall (the pin on the wall it drives or is driven by)',
+    unitA: 'Balance', meshA: 'balanceImpulsePin',
+    unitB: 'Pallet fork', meshB: 'forkBlank',
+  },
+];
+export function escapementHandoffPoses(clock) {
+  const N = clock.pinNotch;
+  const D = Math.PI / 180;
+  const stations = [
+    ['entry', -N.entryHalf * 0.995],                  // just inside the banking: the returning pin has met the wall
+    ['unlock', (-N.entryHalf + N.unlockHalf) / 2],     // pushing the fork through the run and the lock
+    ['unlocked', N.unlockHalf - 0.05 * D],             // at the corner, the last of the push
+    ['impulse', 0],                                    // the wall behind the pin, the line of centres
+    ['letoff', N.liftHalf],                            // the lift's end
+    ['run', (N.liftHalf + N.entryHalf) / 2],           // on to the banking
+  ];
+  const base = { crownPullT: 0, leverEngage: 0, tension: 1 };
+  const out = [];
+  for (const dir of [1, -1]) {
+    for (const [name, th] of stations) out.push([`${name}${dir > 0 ? '+' : '−'}`, { ...base, tau: N.tauAt(dir * th, dir), position: 'CU' }]);
+  }
+  for (const name of ['impulse', 'run']) {
+    const th = stations.find((r) => r[0] === name)[1];
+    out.push([`${name} DU`, { ...base, tau: N.tauAt(th, 1), position: 'DU' }]);
+  }
+  return out;
+}
 
 export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = ALARM_HANDOFFS } = {}) {
   const units = collectUnits(clock, { includeExcluded: true });
@@ -13666,6 +13714,10 @@ const CHECKS = {
   // instrument, own phase table: contact at every phase of a tooth.
   maintDetentHandoff: (clock, opts) => checkAlarmHandoffs(clock,
     { poses: MAINT_DETENT_HANDOFF_POSES, handoffs: MAINT_DETENT_HANDOFFS, ...opts }),
+  // TODO 226 step 3b — the impulse pin on the notch's walls, same instrument,
+  // poses read off the clock's own law (escapementHandoffPoses says which).
+  escapementHandoff: (clock, opts) => checkAlarmHandoffs(clock,
+    { poses: escapementHandoffPoses(clock), handoffs: ESCAPEMENT_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   undeclaredClearance: (clock, opts) => checkUndeclaredClearance(clock, opts), // TODO 164 — every OTHER unit pair, held to CLEAR_MARGIN
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)

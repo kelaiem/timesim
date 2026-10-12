@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { leverEscapement, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
+import { leverEscapement, pinNotchSteps, LOCK_DEG, RUN_DEG, EMBRACE_DEG, TOOTH_RAKE_DEG } from './escapement.js';   // TODO 226 step 3: the lever escapement's one solve
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, stockKeyOf, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
 import { geometryOverridePaths } from './aesthetics.js';
@@ -21,7 +21,7 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, fmtPct, lowerUi, locali
 import {
   SPEC, SPEC_RATES,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
-  CLEAR_MARGIN, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
+  CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
@@ -1826,12 +1826,36 @@ declareRestoring('Chain', 'chainRun', 'two-way',
 // held as the balance's angle between the two let-offs. The pin meets the
 // banked fork a little outside ±LIFT/2 (PIN_ENTRY_HALF below) and carries it
 // back through the run and the lock before the impulse.
-const FORK_LETOFF_DEG = pinBearingRad(pinImpulseSweepRad / 2) / DEG2RAD;
+// TODO 226 step 3b — and the pin is no longer on the centre line there: the
+// notch closes on it to a SHAKE, so the fork LEADS the pin's bearing through
+// the impulse by however far the pin can sit across the slot, and the let-off
+// is that lead read at ±LIFT/2 (src/escapement.js `pinNotch`, which also
+// solves the D the jewel is ground to). The shake is HANDOFF_TRACK_TOL: the
+// pin bears on one wall or the other, and the play across it is the least a
+// working contact can be told apart by, not a clearance.
+const pinNotchAt = async (d) => {   // the solve yields between its sweeps (escapement.js says why)
+  const steps = pinNotchSteps({
+    d, r: rollerR, pinR: G.balancePinR(BAL_T), shake: HANDOFF_TRACK_TOL,
+    letoffHalfRad: pinImpulseSweepRad / 2, runRad: RUN_DEG * DEG2RAD, lockRad: LOCK_DEG * DEG2RAD,
+  });
+  let st;
+  while (!(st = steps.next()).done) await breathe(360);
+  return st.value;
+};
+const PIN_NOTCH = await pinNotchAt(forkToStaff);
+const FORK_LETOFF_DEG = PIN_NOTCH.bank0 / DEG2RAD;
 const FORK_BANK_DEG = FORK_LETOFF_DEG + RUN_DEG;
-// The balance angle at which the pin, centred in the notch, stands on the
-// banked fork's centre line: d·sin(bank) = r·sin(θ + bank), the bank relation
-// read at the banking rather than at the let-off.
-const PIN_ENTRY_HALF = Math.asin((forkToStaff * Math.sin(FORK_BANK_DEG * DEG2RAD)) / rollerR) - FORK_BANK_DEG * DEG2RAD;
+// The balance angle at which the leading fork reaches its bank — and, mirrored,
+// where the returning pin meets the banked fork's wall.
+const PIN_ENTRY_HALF = PIN_NOTCH.entryHalf;
+// The flat is the largest that lets the banked pin leave with the play it sat
+// in; a working contact landing off the round would mean the flat cut into a
+// face the walls bear on (the law follows the D either way — this is a claim
+// about where the contact is, reported, not silenced).
+if (!(Math.abs(PIN_NOTCH.exitGap - 2 * HANDOFF_TRACK_TOL) < 1e-6) || !(PIN_NOTCH.flatF > 0 && PIN_NOTCH.flatF < PIN_NOTCH.pinR))
+  console.warn(`TODO 226 step 3b: the D's flat ${PIN_NOTCH.flatF.toFixed(4)} leaves the banked pin ${PIN_NOTCH.exitGap.toFixed(5)} off the far wall, not the 2·shake ${2 * HANDOFF_TRACK_TOL} it was solved to`);
+if (Math.abs(PIN_NOTCH.bank - FORK_BANK_DEG * DEG2RAD) > 1e-12)
+  console.warn(`TODO 226 step 3b: the notch banks at ${(PIN_NOTCH.bank / DEG2RAD).toFixed(9)}°, the movement at ${FORK_BANK_DEG}°`);
 // §36A: the fork banks between ±FORK_BANK_DEG and, since TODO 226 drives it
 // off the pin, never goes past them — the posed law's recoil dip (a quarter
 // bank past the bank on draw, a constant no draw angle derived) is retired
@@ -1890,10 +1914,10 @@ declareTravel('Pallet fork', 2 * FORK_BANK_DEG * DEG2RAD,
 // and bank, so neither part is cut until both are known.
 // TODO 226 step 3: the pin rides the notch from the banking's entry
 // (±PIN_ENTRY_HALF) and the fork stands banked past it, at the bank WITH run.
+// TODO 226 step 3b: the walls stand a shake off the pin, from a floor held
+// the margin off its deepest reach to the depth of its last contact.
 const ESCAPEMENT_SEAT = G.escapementSeat({
-  d: forkToStaff, rollerR, pinR: G.balancePinR(BAL_T),
-  liftHalf: PIN_ENTRY_HALF, bank: FORK_BANK_DEG * DEG2RAD,
-  forkT: FORK_T, clear: CLEAR_MARGIN, stockMin: STOCK_MIN_U,
+  notch: PIN_NOTCH, forkT: FORK_T, clear: CLEAR_MARGIN, stockMin: STOCK_MIN_U,
 });
 // The pin must sit IN the roller it is set in, crescent included.
 if (!(ESCAPEMENT_SEAT.pinOuter <= ESCAPEMENT_SEAT.roller.Rc))
@@ -1912,6 +1936,7 @@ const balanceWheel = G.makeBalanceWheel({
   pinDrop: L_BALANCE - PIN_PLANE_Z,
   roller: ESCAPEMENT_SEAT.roller,
   pinTop: L_FORK + FORK_HALF_Z - L_BALANCE,   // the fork's top face: the pin works the whole blank
+  pinFlat: PIN_NOTCH.flatF,                   // TODO 226 step 3b: the jewel is ground to the D the notch was solved for
 });
 if (Math.abs(balanceWheel.userData.r - BALANCE_R) > 1e-12 || Math.abs(balanceWheel.userData.rollerR - rollerR) > 1e-12)
   console.warn(`TODO 226: the balance was cut at r ${balanceWheel.userData.r}, pin circle ${balanceWheel.userData.rollerR}, not the ${BALANCE_R}, ${rollerR} the seat was solved for`);
@@ -2732,21 +2757,26 @@ function meshOffset(driverPos, drivenPos, drivenTeeth, ratio, driverAngleAtRef) 
 // every beat at every state of wind.
 // TODO 226 step 3 — the fork BANKS a run past the let-off, so the law reads
 // two angles off one relation: the let-off bank (where the pin's half-lift is
-// LIFT/2) and the banking (where the pin, coming back, first stands on the
-// banked fork's centre line: `entryHalf`).
-const PIN_FORK = (() => {
+// LIFT/2) and the banking (where the pin, coming back, first meets the banked
+// fork: `entryHalf`). TODO 226 step 3b re-solves both at the STATIONS' own
+// distance (the layout solved them at forkToStaff before the stations were
+// placed), with the shake and the D, and asserts the two agree.
+const PIN_FORK = await (async () => {
   const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
-  const r = rollerR, bank = FORK_BANK_DEG * DEG2RAD, bank0 = FORK_LETOFF_DEG * DEG2RAD;
-  const liftHalf = Math.asin((d * Math.sin(bank0)) / r) - bank0;
-  const entryHalf = Math.asin((d * Math.sin(bank)) / r) - bank;
-  return Object.freeze({ d, r, bank, bank0, liftHalf, entryHalf });
+  const N = await pinNotchAt(d);
+  const bank = FORK_BANK_DEG * DEG2RAD, bank0 = FORK_LETOFF_DEG * DEG2RAD;
+  // the half-lift, read back: where the leading wall lets the pin go at bank0
+  let lo = 0, hi = N.entryHalf;
+  for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (N.lead(m) < bank0) lo = m; else hi = m; }
+  return Object.freeze({ d, r: rollerR, bank, bank0, liftHalf: (lo + hi) / 2, entryHalf: N.entryHalf,
+    unlockHalf: N.unlockHalf, flatF: N.flatF, notch: N });
 })();
-// The bank and the lift are one relation read two ways: §221 solved the bank
-// from LIFT/2 at forkToStaff, and the law inverts it at the stations.
+// The bank and the lift are one relation read two ways: the notch solved the
+// bank from LIFT/2 at forkToStaff, and the law inverts it at the stations.
 if (Math.abs(PIN_FORK.liftHalf - LIFT_DEG * DEG2RAD / 2) > 1e-9)
   console.warn(`TODO 226: the pin's half-lift at the fork's let-off is ${(PIN_FORK.liftHalf / DEG2RAD).toFixed(9)}°, not LIFT_DEG/2 = ${LIFT_DEG / 2}° — the stations and the bank derivation disagree on the fork's distance from the staff`);
-if (Math.abs(PIN_FORK.entryHalf - PIN_ENTRY_HALF) > 1e-9)
-  console.warn(`TODO 226 step 3: the pin meets the banked fork at ${(PIN_FORK.entryHalf / DEG2RAD).toFixed(9)}° by the stations and ${(PIN_ENTRY_HALF / DEG2RAD).toFixed(9)}° by the seat's solve`);
+if (Math.abs(PIN_FORK.entryHalf - PIN_ENTRY_HALF) > 1e-9 || Math.abs(PIN_FORK.flatF - PIN_NOTCH.flatF) > 1e-9)
+  console.warn(`TODO 226 step 3b: the pin meets the banked fork at ${(PIN_FORK.entryHalf / DEG2RAD).toFixed(9)}° on a flat ${PIN_FORK.flatF} by the stations and ${(PIN_ENTRY_HALF / DEG2RAD).toFixed(9)}° on ${PIN_NOTCH.flatF} by the seat's solve`);
 // The posed swing must carry the pin through the notch and out, or the fork
 // would never reach its far bank.
 if (!(AMPLITUDE_POSED_DEG * DEG2RAD > PIN_FORK.entryHalf))
@@ -2789,15 +2819,45 @@ function balanceTheta(tau) {
 // impulse, and — past its let-off at ±θ_L — the run onto the far banking,
 // which a real lever's draw does faster than the pin turns; the escape wheel's
 // drop is paced across the same stretch (escapement.js says why).
-function forkSwingAt(theta) {
-  const { d, r, bank, entryHalf } = PIN_FORK;
-  // the pin's entries land on ±θ_B to the last bit; read them as banked
-  if (Math.abs(theta) >= entryHalf * (1 - 1e-12)) return Math.sign(theta) * bank;
-  return Math.atan2(r * Math.sin(theta), d - r * Math.cos(theta));
+// TODO 226 step 3b — WHICH WALL. The pin sits in a slot a shake wider than
+// it, so the fork's angle depends on which way the balance is turning: through
+// the unlock the pin pushes the wall AHEAD of it (`lag`), from the end of the
+// unlock the escape wheel drives the fork across the shake (FORK_CROSSING,
+// paced from the metal below), and through the impulse and run the wall
+// BEHIND the pin pushes it (`lead`). `dir` is the balance's direction; a −θ
+// swing is the +θ swing mirrored, which the D and the slot both are.
+let FORK_CROSSING = null;   // solved once the train's inertia and torque exist (GOING_POWER, below)
+let forkCrossingWarned = false;
+function forkSwingAt(theta, dir = 1) {
+  if (dir < 0) return -forkSwingAt(-theta, 1);
+  const { bank, entryHalf, unlockHalf, notch } = PIN_FORK;
+  // the pin's entries land on ±θ_E to the last bit; read them as banked
+  if (theta <= -entryHalf * (1 - 1e-12)) return -bank;
+  if (theta >= entryHalf * (1 - 1e-12)) return bank;
+  if (theta <= unlockHalf) return notch.lag(theta);
+  const C = FORK_CROSSING;
+  if (!C) {
+    if (!forkCrossingWarned) { forkCrossingWarned = true; console.warn('TODO 226 step 3b: the fork law was read inside the shake\'s crossing before the crossing was solved — a build step reads the beat before the train exists'); }
+    return notch.lead(theta);
+  }
+  if (theta >= C.endHalf) return notch.lead(theta);
+  // across the shake: the fraction of the way from the lagging wall to the
+  // leading one, read off the solved crossing at this balance angle
+  const i = Math.min(C.th.length - 2, Math.max(0, Math.floor((theta - unlockHalf) / C.step)));
+  const f = (theta - C.th[i]) / (C.th[i + 1] - C.th[i]);
+  const u = C.u[i] + (C.u[i + 1] - C.u[i]) * f;
+  const lag = notch.lag(theta), lead = notch.lead(theta);
+  return lag + (lead - lag) * u;
+}
+
+// the balance's direction at τ, by the posed law (the driven τ is inverted
+// through this law inside the passage, so it is the direction the balance has)
+function balanceDir(t) {
+  return Math.cos(2 * Math.PI * F_BALANCE * (t - BALANCE_PHASE_TAU)) < 0 ? -1 : 1;
 }
 
 function forkSwingRad(t) {
-  return forkSwingAt(balanceTheta(t));
+  return forkSwingAt(balanceTheta(t), balanceDir(t));
 }
 
 // TODO 226 step 3 — the wheel is read off the FACES. Each half-swing of the
@@ -3220,6 +3280,7 @@ const ESCAPEMENT_KNOCK = (() => {
   // on the authored outline found the knock that far late.
   const outline = palletFork.userData.blankMetalOutline;
   const r = rollerR, pinR = balanceWheel.userData.pinR;
+  const pinOutline = balanceWheel.userData.pinOutline;   // TODO 226 step 3b: the D as cut, pin frame
   const d = Math.hypot(P.fork.x - P.balance.x, P.fork.y - P.balance.y);
   const bank = FORK_BANK_DEG * DEG2RAD;
   const forkPoly = (psi) => {
@@ -3239,7 +3300,9 @@ const ESCAPEMENT_KNOCK = (() => {
   };
   const thA = bisect((th) => onAxis(th, +bank), -0.6, 0.6), thB = bisect((th) => onAxis(th, -bank), -0.6, 0.6);
   const exits = thA > 0 ? [{ psi: +bank, th: thA }, { psi: -bank, th: thB }] : [{ psi: -bank, th: thB }, { psi: +bank, th: thA }];
-  const clearance = ([px, py], poly) => {
+  // a point's signed distance to a closed polygon (negative inside) and the
+  // edge it is nearest
+  const toPoly = ([px, py], poly) => {
     let m = Infinity, at = -1, inside = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
       const [ax, ay] = poly[j], [bx, by] = poly[i];
@@ -3249,27 +3312,49 @@ const ESCAPEMENT_KNOCK = (() => {
       if (dd < m) { m = dd; at = i; }
       if ((ay > py) !== (by > py) && px < (bx - ax) * (py - ay) / (by - ay) + ax) inside = !inside;
     }
-    return { c: (inside ? -m : m) - pinR, at };
+    return { d: inside ? -m : m, at };
+  };
+  // TODO 226 step 3b — the pin's SECTION against the blank: the D's outline
+  // at balance angle θ, and the gap between the two polygons (negative once
+  // either reaches into the other). The D is convex, so a blank vertex inside
+  // it is the other half of an overlap a point test on the D alone would miss.
+  const pinPoly = (th) => {
+    const c = Math.cos(th), s = Math.sin(th);
+    return pinOutline.map(([x, y]) => [(r + x) * c - y * s, (r + x) * s + y * c]);
+  };
+  const clearance = (th, poly) => {
+    // the D lies inside its pin's circle, so a circle well clear of the
+    // blank is a D clear of it, and the full test runs only near contact
+    const ctr = toPoly(pin(th), poly);
+    if (ctr.d - pinR > 0.05) return { c: ctr.d - pinR, at: ctr.at };
+    const D = pinPoly(th);
+    let best = { d: Infinity, at: -1 };
+    for (const p of D) { const q = toPoly(p, poly); if (q.d < best.d) best = q; }
+    for (let i = 0; i < poly.length; i++) {
+      const q = toPoly(poly[i], D);
+      if (q.d < best.d) best = { d: q.d, at: i };
+    }
+    return { c: best.d, at: best.at };
   };
   // dir +1: the pin left counter-clockwise; −1: clockwise (a mirror for this blank)
   const knockFrom = ({ psi, th: th0 }, dir) => {
     const poly = forkPoly(psi), step = 0.25 * DEG2RAD;
     let prev = th0 + dir * 0.05, th = prev;
     for (; Math.abs(th) < 2 * Math.PI; th += dir * step) {
-      if (clearance(pin(th), poly).c <= 0) break;
+      if (clearance(th, poly).c <= 0) break;
       prev = th;
     }
     if (!(Math.abs(th) < 2 * Math.PI)) return null;
     let lo = prev, hi = th;
-    for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (clearance(pin(mid), poly).c <= 0) hi = mid; else lo = mid; }
-    return { deg: Math.abs(hi) / DEG2RAD, strikes: outline[clearance(pin(hi), poly).at] };
+    for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (clearance(mid, poly).c <= 0) hi = mid; else lo = mid; }
+    return { deg: Math.abs(hi) / DEG2RAD, strikes: outline[clearance(hi, poly).at] };
   };
   const ccw = knockFrom(exits[0], +1), cw = knockFrom(exits[1], -1);
   const worst = [ccw, cw].filter(Boolean).reduce((a, b) => (b.deg < a.deg ? b : a), { deg: Infinity });
   const K = {
     deg: worst.deg, ccwDeg: ccw && ccw.deg, cwDeg: cw && cw.deg, strikesLocal: worst.strikes,
     liftDeg: (exits[0].th - exits[1].th) / DEG2RAD, bankDeg: FORK_BANK_DEG,
-    d_u: d, rollerR_u: r, pinR_u: pinR, textbookDeg: 360 - (exits[0].th - exits[1].th) / DEG2RAD / 2,
+    d_u: d, rollerR_u: r, pinR_u: pinR, pinFlat_u: balanceWheel.userData.pinFlat, textbookDeg: 360 - (exits[0].th - exits[1].th) / DEG2RAD / 2,
   };
   if (!Number.isFinite(K.deg) || !(K.deg > 180 && K.deg < 360))
     console.warn(`TODO 216: no knock found on the fork blank within a turn of the pin (ccw ${ccw && ccw.deg}, cw ${cw && cw.deg}) — the outline or the frame law moved`);
@@ -10923,6 +11008,106 @@ const GOING_POWER = (() => {
   return { k, released_J, reserve_s, beats, meshes, trainRatio, fuseeTorque_Nm, escapeTorque_Nm, perBeat_J,
     rArbor, rWrap, rFuseeMean, rGreat, kB, mB, g, thetaClaim, UPSTREAM, corner };
 })();
+// TODO 226 step 3b — THE CROSSING OF THE SHAKE, paced from the metal. At the
+// end of the unlock the stone's corner meets the tooth's tip and the wheel
+// takes over: the fork leaves the wall the pin was pushing and crosses the
+// shake until its other wall meets the pin from behind. Nothing touches the
+// pin meanwhile, so how far the balance turns while the fork crosses is
+// whatever the fork's and the train's inertia and the wheel's torque make it,
+// and that is what this solves: the fork and the escape wheel, with the train
+// behind it reflected through its ratios, weighed off their own meshes (each
+// mesh at its own stock's density), driven by the escape torque the energy
+// column delivers (frictionless, so this is the FASTEST crossing — friction
+// only lengthens it) through the impulse face's own gearing dδ/dψ, read off
+// the faces' solve. The balance runs on at the posed swing. The fork is never
+// allowed back through the wall the pin is still pushing: if the wheel
+// accelerates the fork more slowly than the pin, the pin keeps pushing.
+// Integrated once at boot and kept as the fraction of the way across at each
+// balance angle, so forkSwingAt stays a function of the angle and the
+// direction, as every consumer of it must.
+const FORK_CROSSING_SOLVE = (() => {
+  const toM = UNIT_MM * 1e-3;
+  // Iz about a group's own axis (local z through its origin), by the
+  // divergence theorem over each mesh's triangles in the group's frame
+  const inertiaOf = (group) => {
+    let I = 0;
+    const meshes = [];
+    group.traverse((m) => { if (m.isMesh && !m.userData?.schematic) meshes.push(m); });
+    const M = new THREE.Matrix4(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    for (const m of meshes) {
+      M.identity();
+      for (let o = m; o && o !== group; o = o.parent) { o.updateMatrix(); M.premultiply(o.matrix); }
+      const key = stockKeyOf(m.material);
+      if (!key || !STOCK[key]) { console.warn(`TODO 226 step 3b: ${m.name || m.parent?.name || '?'} has no stock, so the crossing cannot weigh it`); continue; }
+      const rho = STOCK[key].rho;
+      const pos = m.geometry.attributes.position, idx = m.geometry.index;
+      const n = idx ? idx.count : pos.count;
+      const q = (p, s, t) => (p * p + s * s + t * t + p * s + p * t + s * t) / 10;
+      let iz = 0;
+      for (let i = 0; i < n; i += 3) {
+        a.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(M);
+        b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(M);
+        c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(M);
+        const vol = (a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x)) / 6;
+        iz += vol * (q(a.x, b.x, c.x) + q(a.y, b.y, c.y));
+      }
+      I += rho * iz * toM ** 5;
+    }
+    return I;
+  };
+  const I_fork = inertiaOf(forkGroup);
+  // the train reflected to the escape arbor: each arbor's inertia times its
+  // speed ratio to the escape wheel, squared
+  const wF = ratioFourth, wT = wF * ratioThird, wC = wT * ratioCenter;
+  const I_wheel = inertiaOf(escapeArbor) + wF * wF * inertiaOf(fourthArbor) + wT * wT * inertiaOf(thirdArbor) + wC * wC * inertiaOf(centerArbor);
+  const T = GOING_POWER.escapeTorque_Nm;
+  const { notch, unlockHalf, liftHalf } = PIN_FORK;
+  const delta = (psi) => ESCAPEMENT.deltaAt(1, -psi);   // a +θ half-swing unlocks the +x stone (escapeAngle's σ = +1)
+  const h = 1e-6;
+  // the face's gearing, as a magnitude: through the impulse the tooth drives
+  // the fork the way it is already turning, whichever way the movement runs
+  const G = (psi) => Math.abs(delta(psi + h) - delta(psi - h)) / (2 * h);
+  const Ieff = (psi) => { const g = G(psi); return I_fork + I_wheel * g * g; };
+  const A = AMPLITUDE_POSED_DEG * DEG2RAD, W = 2 * Math.PI * F_BALANCE;
+  const thetaAt = (t) => A * Math.sin(W * t), thetaDot = (t) => A * W * Math.cos(W * t);
+  const dLag = (th) => (notch.lag(th + h) - notch.lag(th - h)) / (2 * h);
+  let t = Math.asin(unlockHalf / A) / W;
+  let psi = notch.lag(unlockHalf), v = dLag(unlockHalf) * thetaDot(t);
+  const t0 = t, dt = 1e-6, rec = [[unlockHalf, 0]];   // ~1600 RK4 steps across the crossing
+  const acc = (p, vv) => { const I = Ieff(p), dI = (Ieff(p + h) - Ieff(p - h)) / (2 * h); return (T * G(p) - 0.5 * dI * vv * vv) / I; };
+  let pushed = 0;
+  for (let k = 0; k < 1e6; k++) {
+    // RK4 on (ψ, ψ̇)
+    const k1p = v, k1v = acc(psi, v);
+    const k2p = v + 0.5 * dt * k1v, k2v = acc(psi + 0.5 * dt * k1p, k2p);
+    const k3p = v + 0.5 * dt * k2v, k3v = acc(psi + 0.5 * dt * k2p, k3p);
+    const k4p = v + dt * k3v, k4v = acc(psi + dt * k3p, k4p);
+    psi += dt / 6 * (k1p + 2 * k2p + 2 * k3p + k4p);
+    v += dt / 6 * (k1v + 2 * k2v + 2 * k3v + k4v);
+    t += dt;
+    const th = thetaAt(t), lag = notch.lag(th), lead = notch.lead(th);
+    if (psi < lag) { psi = lag; v = dLag(th) * thetaDot(t); pushed++; }   // the pin still pushing
+    if (psi >= lead) { rec.push([th, 1]); break; }
+    if (th >= liftHalf) { rec.push([th, 1]); break; }   // never across by the let-off: the assert below says so
+    rec.push([th, (psi - lag) / (lead - lag)]);
+  }
+  const endHalf = rec[rec.length - 1][0];
+  // resampled on an even grid of balance angle
+  const N = 64, step = (endHalf - unlockHalf) / N, th = [], u = [];
+  for (let i = 0, j = 0; i <= N; i++) {
+    const x = unlockHalf + step * i;
+    while (j < rec.length - 2 && rec[j + 1][0] < x) j++;
+    const [x0, u0] = rec[j], [x1, u1] = rec[j + 1];
+    th.push(x); u.push(i === N ? 1 : Math.min(1, Math.max(0, u0 + (u1 - u0) * (x - x0) / (x1 - x0))));
+  }
+  return Object.freeze({ th, u, step, endHalf, unlockHalf, I_fork, I_wheel, torque: T,
+    ms: (t - t0) * 1000, sweptDeg: (endHalf - unlockHalf) / DEG2RAD, pushedSteps: pushed, liftHalf });
+})();
+FORK_CROSSING = FORK_CROSSING_SOLVE;
+// The fork must be across, its wall behind the pin, before the pin lets it go.
+if (!(FORK_CROSSING.endHalf < PIN_FORK.liftHalf))
+  console.warn(`TODO 226 step 3b: the fork crosses the shake by θ = ${(FORK_CROSSING.endHalf / DEG2RAD).toFixed(3)}°, past the let-off at ${(PIN_FORK.liftHalf / DEG2RAD).toFixed(3)}° — the wheel never drives the pin`);
+
 // §246 tier two — THE DRIVEN BALANCE'S CONSTANTS, read off the metal and the
 // energy column, never restated. The column prices a SERVICED movement at its
 // NOMINAL corner (the corner TODO 207 designed the swing to), so the live loop
@@ -10943,7 +11128,11 @@ const BALANCE_DRIVE = (() => {
   const peakRad = AMPLITUDE_PEAK_DEG * DEG2RAD;
   const brakeNm = rows.filter((r) => Math.abs(r.theta) <= peakRad + 1e-9).reduce((m, r) => Math.max(m, Math.abs(r.torque)), 0);
   const K = BD.makeDrive({
-    F: F_BALANCE, liftDeg: LIFT_DEG, posedAmpDeg: AMPLITUDE_POSED_DEG, knockDeg: ESCAPEMENT_KNOCK.deg,
+    // TODO 226 step 3b — the pin's PASSAGE, not only its lift: τ is the posed
+    // law's inverse wherever the pin carries the fork (the unlock and the run
+    // either side of the lift), so the fork and the train, read off τ, follow
+    // the balance the tick shows in every position
+    F: F_BALANCE, liftDeg: LIFT_DEG, passHalfDeg: PIN_FORK.entryHalf / DEG2RAD, posedAmpDeg: AMPLITUDE_POSED_DEG, knockDeg: ESCAPEMENT_KNOCK.deg,
     I: OSC_I.total, k: OSCILLATOR.k_Nm_per_rad, Q: C.qOther, impulseJ: C.delivered_J, brakeNm, springRows: rows,
   });
   return {
@@ -54686,6 +54875,25 @@ window.__clock = {
   get balanceDriveModel() {
     return { K: BALANCE_DRIVE.K, rows: BALANCE_DRIVE.rows, weight: (pos) => balanceWeightTable(pos), friction: { ...BALANCE_DRIVE.friction },
              posedDeg: { ...BALANCE_DRIVE.posedDeg }, sustainedDeg: { ...BALANCE_DRIVE.sustainedDeg }, massKg: BALANCE_DRIVE.massKg, g: BALANCE_DRIVE.g };
+  },
+  // TODO 226 step 3b — the pin in the notch: the solve the law and the seat
+  // read (the D's flat, the shake, the angles), the seat as cut, the crossing
+  // as paced, and the law itself, so an instrument measures the metal against
+  // the same functions the tick poses it with
+  get pinNotch() {
+    const N = PIN_FORK.notch, C = FORK_CROSSING;
+    return { d: N.d, r: N.r, pinR: N.pinR, shake: N.shake, W: N.W, flatF: N.flatF, pinOuter: N.pinOuter,
+      bank0: PIN_FORK.bank0, bank: PIN_FORK.bank, liftHalf: PIN_FORK.liftHalf, entryHalf: PIN_FORK.entryHalf,
+      unlockHalf: PIN_FORK.unlockHalf, unlockSwing: N.unlockSwing, yBand: N.yBand, exitGap: N.exitGap, offRound: N.offRound,
+      seat: ESCAPEMENT_SEAT.slot, crossing: C && { endHalf: C.endHalf, ms: C.ms, sweptDeg: C.sweptDeg, I_fork: C.I_fork, I_wheel: C.I_wheel,
+        torque: C.torque, pushedSteps: C.pushedSteps, th: [...C.th], u: [...C.u] },
+      swingAt: (theta, dir) => forkSwingAt(theta, dir), lag: (th) => N.lag(th), lead: (th) => N.lead(th),
+      // the τ at which the posed law stands the balance at θ turning `dir`,
+      // in the first beat pair (dir +1 on the rising side of the sine)
+      tauAt: (theta, dir) => {
+        const a = Math.asin(theta / (AMPLITUDE_POSED_DEG * DEG2RAD));
+        return BALANCE_PHASE_TAU + (dir > 0 ? a : Math.PI - a) / (2 * Math.PI * F_BALANCE);
+      } };
   },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate

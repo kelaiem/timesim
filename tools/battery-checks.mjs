@@ -112,6 +112,13 @@ export const BATTERY = [
     gate: 'the detent blade on the click\'s tail at every phase of a tooth',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+  // TODO 226 step 3b — the impulse pin on the notch's walls, in contact
+  // through the passage in both directions and dial-flat (the escapement's
+  // working contact, measured).
+  { name: 'escapementHandoff', opts: {},
+    gate: 'the impulse pin on the notch wall it drives or is driven by, through the passage, both ways and dial-flat',
+    fails: (r) => r.unwaived,
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'stockFloor', opts: {},
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],

@@ -375,10 +375,10 @@ it into prose either.
    not sustain is two, each the solve read the safe way — `AMPLITUDE_CLAIM_DEG`
    its minimum rounded DOWN (126: adverse, vertical), `AMPLITUDE_PEAK_DEG` the
    largest swing the balance can REACH rounded UP — since TODO 216 the smaller
-   of the solve's maximum and the KNOCK (305: `ESCAPEMENT_KNOCK`, 304.12° since
-   TODO 226 step 3 banks the fork a run past the let-off, where
-   the impulse pin meets the banked fork's horn, solved off the blank's METAL
-   outline;
+   of the solve's maximum and the KNOCK (311: `ESCAPEMENT_KNOCK`, 310.46° since
+   TODO 226 step 3b closed the notch to the pin plus a shake and ground the pin
+   to a D, where the impulse pin's section meets the banked fork's horn, solved
+   off the blank's METAL outline;
    §218's peaks and the hack brake are priced there) — held on both sides and
    within a degree, so a solve that moves leaves neither behind. And since TODO 207 the swing the
    movement is DESIGNED to, `AMPLITUDE_TARGET_DEG` 200° held vertical at the

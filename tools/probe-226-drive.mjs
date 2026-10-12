@@ -7,12 +7,18 @@
 // winds (§221's swing does not sag with wind, and neither may anything driven
 // off it; reading three winds is how that is held rather than assumed):
 //
-//   1. ON THE LINE. While the fork is between its banks, the pin's centre lies
-//      on the fork's slot centre line (the fork's local −y through its pivot),
-//      to float noise. That is what "the fork's angle is read off the pin"
-//      means as a measurement.
-//   2. BANKED OUTSIDE. Whenever the pin is outside the lift, the fork lies on
-//      a bank, and the bank it lies on is the side the pin left it.
+//   1. ON A WALL. While the fork is between its banks, the pin's centre lies
+//      a SHAKE off the fork's slot centre line (the fork's local −y through its
+//      pivot): on the wall it pushes through the unlock or is pushed by through
+//      the impulse and run (src/escapement.js `pinNotch`), to the D's own reach
+//      (`offRound`, the most a contact lands off the jewel's round). Across the
+//      CROSSING, where the wheel carries the fork from one wall to the other,
+//      it lies within the shake. That is what "the fork's angle is read off the
+//      pin" means as a measurement since TODO 226 step 3b; until then it was
+//      the centre line itself, the notch a funnel.
+//   2. BANKED OUTSIDE. Whenever the pin is outside its passage (±θ_E, where
+//      the leading fork reaches the bank), the fork lies on a bank, and the
+//      bank it lies on is the side the pin left it.
 //   3. THE WHEEL FOLLOWS THE FORK. The escape wheel is STILL while the fork
 //      dwells on a bank, and over each balance period (two beats) it advances
 //      exactly 2·BEAT_DEG. Since TODO 226 step 3 the wheel's angle inside a
@@ -24,20 +30,29 @@
 //      the let-off since TODO 226 step 3, so the pin meets the banked fork at
 //      ±θ_B, a little outside the lift; check 2 reads the bank at θ_B.)
 //
-// And it measures every mesh pair of the two units with inspect.js's own
-// `meshClearance` over the same samples — the pairs the new
-// EXPECTED_CONTACT_FLOORS row holds — and, separately, the pin against the
-// blank WHILE THE PIN IS IN THE LIFT, beside a CONTROL: the same in-lift sweep
-// with the fork re-posed by the retired law (§221's beat-phase window, recoil
-// dip, smoothstep — the same balance, the same bank, the fork on its own
-// clock), which must find the burial. A clearance sweep that cannot
-// see 0.143 of ruby inside a horn has measured nothing.
+// Since TODO 226 step 3b the line check runs DIAL-FLAT too (the posed 292°,
+// whose arc outside the lift is not the hanging law's) and in the LIVE LOOP
+// (the driven balance stepped through balance-drive.js with the live loop's own
+// constants, at DU and CL), counting samples in the run and
+// the unlock so a run that never reached them cannot pass; its control
+// re-poses the flat balance by the pre-3b map (τ inverted inside the lift
+// only) and must read the seam that map left.
 //
-// ACCEPTANCE: exits non-zero on any of 1–4, on the pin within CLEAR_MARGIN of
-// the blank in the lift, on ANY pair under the margin (the drive landed with
-// three `only:` debts; step 1's seat — the notch cut as the pin's swept path,
-// one roller below the fork, the guard pin behind the floor — retired all
-// three, so nothing is waived), or on a control that comes back clean.
+// And it measures every mesh pair of the two units with inspect.js's own
+// `meshClearance` over the same samples — the pairs the
+// EXPECTED_CONTACT_FLOORS row holds to the margin, every one but the pin on
+// the blank, which since TODO 226 step 3b is the pair's declared working
+// contact. That pair is read while the pin is in its passage: it must TOUCH
+// (within HANDOFF_TRACK_TOL), and its CONTROL is the same sweep with the fork
+// re-posed by the law TODO 226 retired (§221's beat-phase window, recoil dip,
+// smoothstep), which must find the pin in the metal. `meshClearance` reads a
+// touch and a burial alike as 0, so WHICH wall and how deep is
+// probe-226-notch's, with its own controls; this sweep's job is every other
+// pair, and that the pin is on the blank at all.
+//
+// ACCEPTANCE: exits non-zero on any of 1–4, on the pin off the blank in its
+// passage, on ANY other pair under the margin (nothing is waived), or on a
+// control that comes back clean.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 
@@ -83,15 +98,21 @@ const out = await page.evaluate(async () => {
   const turns = 2 * Math.PI * Math.round((balG.rotation.z - pinAim) / (2 * Math.PI));
   const readTheta = () => balG.rotation.z - pinAim - turns;
 
-  const W = [1, 0.5, 0];
+  // TODO 226 step 3b — every configuration names its POSITION: hanging (CU,
+  // the designed 200°) at three winds, and dial-flat (DU, the energy column's
+  // 292°), where the posed balance runs a different arc outside the lift and
+  // the fork, read off τ, must still follow the pin through the run and the
+  // unlock. setPose assigns only the keys a pose names, so each row names its own.
+  const W = [{ tension: 1, position: 'CU' }, { tension: 0.5, position: 'CU' }, { tension: 0, position: 'CU' }, { tension: 1, position: 'DU' }];
   const res = { winds: [] };
-  let worstLine = 0, worstWheel = 0, worstBank = 0, worstCentre = 0;
-  for (const tension of W) {
+  let worstLine = 0, worstWheel = 0, worstBank = 0, worstCentre = 0, worstCross = 0, nCross = 0;
+  const PN = clock.pinNotch, SHAKE = PN.shake;
+  for (const { tension, position } of W) {
     const N = 480, beats = 4;
     const rows = [];
     for (let k = 0; k <= N; k++) {
       const tau = (k / N) * beats / (2 * F_BAL) + 1e-9;
-      clock.setPose({ tau, tension });
+      clock.setPose({ tau, tension, position });
       forkG.updateWorldMatrix(true, true); balG.updateWorldMatrix(true, true);
       const s = readFork(), th = readTheta();
       pin.getWorldPosition(v);
@@ -106,14 +127,20 @@ const out = await page.evaluate(async () => {
     const sense = Math.sign(rows[rows.length - 1].esc - rows[0].esc);
     // θ_B from the triangle, at the measured bank: where the pin meets the
     // banked fork. θ_L is the let-off, the cited lift's half.
-    const r = Math.hypot(pin.position.x, pin.position.y);
-    const thB = Math.asin(d * Math.sin(bank) / r) - bank;
+    const thB = PN.entryHalf;   // TODO 226 step 3b: the contact's, not the centre line's
     const thL = L.LIFT_DEG * Math.PI / 360;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const inLift = Math.abs(row.s) < bank * (1 - 1e-9);
-      if (inLift) worstLine = Math.max(worstLine, Math.abs(row.off));
-      else {
+      if (inLift) {
+        // the balance's direction, off its neighbours; across the shake's
+        // crossing (dir·θ between the unlock's end and the crossing's) the
+        // pin may stand anywhere within the shake, elsewhere a shake off
+        const dir = Math.sign(rows[Math.min(rows.length - 1, i + 1)].th - rows[Math.max(0, i - 1)].th) || 1;
+        const u = dir * row.th;
+        if (u > PN.unlockHalf && u < PN.crossing.endHalf) { worstCross = Math.max(worstCross, Math.abs(row.off) - SHAKE); nCross++; }
+        else worstLine = Math.max(worstLine, Math.abs(Math.abs(row.off) - SHAKE));
+      } else {
         // banked on the side the pin is on
         if (Math.sign(row.s) !== Math.sign(row.th)) worstBank = Math.max(worstBank, 1);
         if (Math.abs(row.th) < thB * (1 - 1e-6)) worstBank = Math.max(worstBank, thB - Math.abs(row.th));
@@ -125,16 +152,16 @@ const out = await page.evaluate(async () => {
     }
     // and each balance period advances it exactly two beats
     for (const row of rows) {
-      clock.setPose({ tau: row.tau + 1 / F_BAL, tension });
+      clock.setPose({ tau: row.tau + 1 / F_BAL, tension, position });
       worstWheel = Math.max(worstWheel, Math.abs(escG.rotation.z - row.esc - sense * 2 * BEAT));
     }
     // centred: at each beat boundary the pin stands at ±θ_L
     for (let n = 0; n < 4; n++) {
-      clock.setPose({ tau: n / (2 * F_BAL), tension });
+      clock.setPose({ tau: n / (2 * F_BAL), tension, position });
       worstCentre = Math.max(worstCentre, Math.abs(Math.abs(readTheta()) - thL));
     }
     const liftFrac = rows.filter((x) => Math.abs(x.s) < bank * (1 - 1e-9)).length / rows.length;
-    res.winds.push({ tension, bankDeg: bank * 180 / Math.PI, liftDeg: 2 * thL * 180 / Math.PI, entryDeg: 2 * thB * 180 / Math.PI, liftFrac });
+    res.winds.push({ tension, position, bankDeg: bank * 180 / Math.PI, liftDeg: 2 * thL * 180 / Math.PI, entryDeg: 2 * thB * 180 / Math.PI, liftFrac });
   }
 
   // CLEARANCE: every mesh pair of the two units, at the driven pose and at
@@ -164,11 +191,16 @@ const out = await page.evaluate(async () => {
     const per = new Map();
     let lift = { min: Infinity, at: null };
     const blank = forkMeshes.find((m) => m.name === 'forkBlank');
-    for (const tension of W) {
+    // full wind only, hanging and dial-flat: the swing does not sag with the
+    // wind (the line check above holds that at three winds), and the sweep is
+    // every mesh pair at every sample, so a third and fourth wind bought time
+    // and no coverage — with the flat position added, four configurations
+    // outran the probe's ceiling
+    for (const { tension, position } of W.filter((c) => c.tension === 1)) {
       const N = 240;
       for (let k = 0; k <= N; k++) {
         const tau = (k / N) * 2 / (2 * F_BAL) + 1e-9;
-        clock.setPose({ tau, tension });
+        clock.setPose({ tau, tension, position });
         let s;
         if (control) {
           s = oldSwing(tau);
@@ -176,7 +208,7 @@ const out = await page.evaluate(async () => {
           balG.rotation.z = pinAim + oldTheta(tau);
         } else s = readFork();
         const raw = tau * 2 * F_BAL, p = raw - Math.floor(raw);
-        const inLift = control ? p < IW : Math.abs(s) < BANK * (1 - 1e-9);
+        const inLift = control ? p < IW : Math.abs(s) < BANK * (1 - 1e-9);   // the pin's passage, by the fork off its banks
         forkG.updateWorldMatrix(true, true); balG.updateWorldMatrix(true, true);
         for (const a of forkMeshes) for (const b of balMeshes) {
           const c = I.meshClearance(a, b, 2);
@@ -193,9 +225,86 @@ const out = await page.evaluate(async () => {
   };
   res.driven = sweep(false);
   res.control = sweep(true);
+
+  // TODO 226 step 3b — THE PASSAGE, held where it was broken. The line check
+  // above runs dial-flat too; this is its CONTROL, and the live loop.
+  // Control: re-pose the flat balance by the pre-3b map (τ inverted only
+  // inside the LIFT, the flat arc outside it) and the line check must see the
+  // fork read a different balance in the run and the unlock — a line check
+  // that cannot see that seam has not measured the passage.
+  const off = () => {
+    forkG.updateWorldMatrix(true, true); balG.updateWorldMatrix(true, true);
+    pin.getWorldPosition(v);
+    const a = forkG.rotation.z, ax = { x: Math.sin(a), y: -Math.cos(a) };
+    return (v.x - F.x) * ax.y - (v.y - F.y) * ax.x;
+  };
+  {
+    const model = clock.balanceDriveModel, K = model.K;
+    const A = model.posedDeg.flat * Math.PI / 180, Ap = L.AMPLITUDE_POSED_DEG * Math.PI / 180;
+    const oldArc = (tau) => {
+      const raw = tau * 2 * F_BAL, n = Math.floor(raw), p = raw - n, dir = n % 2 === 0 ? 1 : -1;
+      if (p < K.IW) return dir * Ap * Math.sin(Math.PI * (p - K.IW / 2));
+      const ae = Math.asin(K.halfLift / A), frac = (p - K.IW) / (1 - K.IW);
+      return dir * A * Math.sin(ae + frac * (Math.PI - 2 * ae));
+    };
+    const bankC = res.winds[0].bankDeg * Math.PI / 180;
+    // since TODO 226 step 3b the pin is a SHAKE off the line, so the seam
+    // reads as a departure from the shake; the crossing (the fork on neither
+    // wall) is skipped, since any offset inside the shake is right there
+    let ctrl = 0;
+    for (let k = 0; k <= 2000; k++) {
+      const tau = (k / 2000) * 2 / (2 * F_BAL) + 1e-9;
+      clock.setPose({ tau, tension: 1, position: 'DU' });
+      const sw = readFork();
+      if (!(Math.abs(sw) < bankC * (1 - 1e-9))) continue;
+      const th0 = readTheta();
+      const onWall = [PN.lag(th0), PN.lead(th0), -PN.lag(-th0), -PN.lead(-th0)].some((w) => Math.abs(sw - w) < 1e-6);
+      if (!onWall) continue;
+      balG.rotation.z = pinAim + turns + oldArc(tau);
+      ctrl = Math.max(ctrl, Math.abs(Math.abs(off()) - PN.shake));
+    }
+    res.passageControl = ctrl;
+  }
+  // Live: the driven balance, stepped by the module the live loop runs
+  // (balance-drive.js, with the constants and the position's weight the loop
+  // itself uses), in a flat and a hanging position. The fork and the train are
+  // read off τ through the hanging law, so the property is that law AT τ: it
+  // must equal the balance's own angle wherever the pin is in its passage —
+  // the run and the unlock included, counted so a run that never reached them
+  // cannot pass. __clock.step() is not used: each step is cheap (~20 ms in
+  // the page) but the page renders its own frames between them, and under
+  // software GL on a loaded dev container a frame measured ~14 s — the run
+  // outran its ceiling three times. The property is the module's τ map, which
+  // this reads exactly and without the renderer. Its CONTROL is the
+  // pre-3b map (the passage narrowed to the lift), which must miss.
+  {
+    const BD = await import('./src/balance-drive.js');
+    const model = clock.balanceDriveModel, K = model.K;
+    const Kold = { ...K, halfPass: K.halfLift, pw: K.IW / 2 };
+    const lawAt = (tau) => K.Ap * Math.sin(2 * Math.PI * K.F * tau - Math.PI * K.IW / 2);
+    res.live = [];
+    for (const position of ['DU', 'CL']) {
+      const flat = position === 'DU';
+      const env = { drive: true, brake: 0, friction: flat ? model.friction.flat : model.friction.vertical, weight: model.weight(position) };
+      const A0 = (flat ? model.posedDeg.flat : model.posedDeg.vertical) * Math.PI / 180;
+      const S = BD.seed(K, 0.13, A0), So = BD.seed(Kold, 0.13, A0);
+      let worst = 0, ctrl = 0, inLift = 0, inRunUnlock = 0;
+      for (let k = 0; k < 600; k++) {
+        BD.step(K, S, 1 / 300, env); BD.step(Kold, So, 1 / 300, env);
+        if (Math.abs(S.theta) < K.halfPass) {
+          worst = Math.max(worst, Math.abs(lawAt(BD.tauOf(K, S)) - S.theta));
+          if (Math.abs(S.theta) <= K.halfLift) inLift++; else inRunUnlock++;
+        }
+        if (Math.abs(So.theta) < K.halfPass) ctrl = Math.max(ctrl, Math.abs(lawAt(BD.tauOf(Kold, So)) - So.theta));
+      }
+      res.live.push({ position, worst, ctrl, inLift, inRunUnlock });
+    }
+  }
   clock.resetInputs();
-  res.worst = { line: worstLine, wheelRad: worstWheel, bank: worstBank, centreRad: worstCentre };
+  res.worst = { line: worstLine, wheelRad: worstWheel, bank: worstBank, centreRad: worstCentre, cross: worstCross, nCross };
   res.margin = I.CLEAR_MARGIN ?? L.CLEAR_MARGIN;
+  res.tol = L.HANDOFF_TRACK_TOL;
+  res.offRound = PN.offRound;
   return res;
 });
 
@@ -205,20 +314,31 @@ const f = [];
 // the EXPECTED_CONTACT_FLOORS `only:` debts, by name: none since TODO 226 step 1
 const WAIVED = new Set();   // TODO 226 step 1 retired all three: the seat leaves nothing under the margin
 for (const w of out.winds) console.log(`tension ${w.tension}: bank ±${w.bankDeg.toFixed(4)}°, lift ${w.liftDeg.toFixed(3)}°, pin in the notch ${(100 * w.liftFrac).toFixed(1)}% of the beat`);
-console.log(`1. on the line   worst ${out.worst.line.toExponential(2)}`);
+console.log(`1. on a wall     worst ${out.worst.line.toExponential(2)} off a shake (the D's reach off its round: ${out.offRound.toExponential(2)}); across the crossing ${out.worst.nCross} samples, at most ${out.worst.cross.toExponential(2)} past the shake`);
 console.log(`2. banked outside ${out.worst.bank ? 'FAILS ' + out.worst.bank : 'every sample'}`);
 console.log(`3. wheel follows worst ${(out.worst.wheelRad * 180 / Math.PI).toExponential(2)}°`);
 console.log(`4. centred        worst ${(out.worst.centreRad * 180 / Math.PI).toExponential(2)}°`);
-console.log(`pin ⇄ blank in the lift: driven ${out.driven.lift.min.toFixed(4)}, control (the retired law) ${out.control.lift.min.toFixed(4)}`);
+console.log(`pin ⇄ blank in the passage: driven ${out.driven.lift.min.toFixed(4)} (the declared contact), control (the retired law) ${out.control.lift.min.toFixed(4)}`);
 console.log('every fork ⇄ balance mesh pair within 2, driven:');
 for (const r of out.driven.pairs) console.log(`  ${r.min.toFixed(4)}  ${r.pair}${WAIVED.has(r.pair) ? '   (waived: TODO 226 step 1)' : ''}`);
-if (out.worst.line > 1e-6) f.push(`pin off the slot centre line by ${out.worst.line}`);
+console.log(`passage control (the pre-3b map, flat): the wall check reads the pin ${out.passageControl.toFixed(4)} off a shake`);
+for (const l of out.live) console.log(`live ${l.position}: the hanging law at τ is the balance's angle to ${l.worst.toExponential(2)} rad over ${l.inLift} samples in the lift and ${l.inRunUnlock} in the run and the unlock (control, the pre-3b map: ${l.ctrl.toExponential(2)})`);
+if (out.worst.line > out.offRound + 1e-6) f.push(`pin not a shake off the slot centre line: off by ${out.worst.line}`);
+if (out.worst.cross > 1e-6) f.push(`pin past the shake while the fork crosses it, by ${out.worst.cross}`);
+if (!(out.worst.nCross > 0)) f.push('no sample fell in the crossing — the line check never saw it');
+if (!(out.passageControl > 1e-3)) f.push(`CONTROL clean: the pre-3b passage reads only ${out.passageControl} off the line — the check cannot see the seam it holds`);
+for (const l of out.live) {
+  if (l.worst > 1e-9) f.push(`live ${l.position}: τ is not the posed law's inverse in the passage (${l.worst} rad)`);
+  if (l.position === 'DU' && !(l.ctrl > 1e-3)) f.push(`live CONTROL clean: the pre-3b map reads only ${l.ctrl} rad off in the passage`);
+  if (!(l.inRunUnlock > 0 && l.inLift > 0)) f.push(`live ${l.position}: the run never sampled the lift and the run/unlock both (${l.inLift}, ${l.inRunUnlock})`);
+}
 if (out.worst.bank) f.push('fork not banked on the pin\'s side outside the lift');
 if (out.worst.wheelRad > 1e-7) f.push(`escape wheel moves while the fork dwells, or misses two beats a period, by ${out.worst.wheelRad} rad`);
 if (out.worst.centreRad > 1e-9) f.push(`lift not centred on the line of centres (${out.worst.centreRad} rad)`);
-if (!(out.driven.lift.min >= out.margin)) f.push(`the pin comes within ${out.driven.lift.min} of the blank in the lift — under CLEAR_MARGIN ${out.margin}`);
-if (!(out.control.lift.min <= 0)) f.push(`CONTROL clean (${out.control.lift.min}) — the sweep cannot see the burial it exists for`);
-for (const r of out.driven.pairs) if (!WAIVED.has(r.pair) && r.min < out.margin) f.push(`${r.pair} at ${r.min}, under CLEAR_MARGIN and not waived`);
+if (!(out.driven.lift.min <= out.tol)) f.push(`the pin stands ${out.driven.lift.min} off the blank in its passage — it bears on no wall (HANDOFF_TRACK_TOL ${out.tol})`);
+if (!(out.control.lift.min <= 0)) f.push(`CONTROL clean (${out.control.lift.min}) — the sweep cannot see the pin in the metal under the retired law`);
+const CONTACT = 'forkBlank ⇄ balanceImpulsePin';   // TODO 226 step 3b: the pair's declared working contact
+for (const r of out.driven.pairs) if (r.pair !== CONTACT && !WAIVED.has(r.pair) && r.min < out.margin) f.push(`${r.pair} at ${r.min}, under CLEAR_MARGIN and not waived`);
 for (const m of f) console.log('FAIL', m);
 await browser.close(); srv.kill();
 process.exit(f.length ? 1 : 0);

@@ -21,12 +21,22 @@
 //
 // THE ESCAPEMENT'S CLOCK IS AN OUTPUT. A beat counts when the balance crosses
 // into the lift; τ = (n + p)/2F, where p is the escapement's phase. Inside the
-// window p is the POSED law inverted at the balance's own angle — so the pin
-// stands where the battery measured it standing for every θ in the window —
-// and outside it (the escape wheel locked, the fork banked) p advances with the
-// balance's phase-plane angle. Both pieces meet at the window's edges, so τ is
+// pin's PASSAGE p is the POSED law inverted at the balance's own angle — so the
+// pin stands where the battery measured it standing for every θ there — and
+// outside it (the escape wheel locked, the fork banked) p advances with the
+// balance's phase-plane angle. Both pieces meet at the passage's edges, so τ is
 // continuous, and at the posed amplitude the whole map reproduces the posed law
 // exactly (seed() and tauOf() are inverses there).
+//
+// TWO THRESHOLDS, since TODO 226 step 3b. The LIFT (±L/2, `halfLift`) is where
+// the impulse acts and where a beat is counted and timed (`entryT`). The
+// PASSAGE (±`halfPass`, the pin's entry half-angle, wider than the lift by the
+// run and the lock) is where the pin is in the notch and carries the fork: the
+// unlock before the lift and the run after it. τ must be the posed law's own
+// inverse over the whole passage, because the fork and the train are read off
+// τ through the posed law — a passage narrower than the pin's let the fork read
+// one balance angle while the balance showed another, in a dial-flat pose and
+// in the live loop. With halfPass = halfLift the map is the old one exactly.
 
 export const POSITIONS = ['DU', 'DD', 'CU', 'CD', 'CL', 'CR'];
 export const FLAT_POSITIONS = new Set(['DU', 'DD']);
@@ -43,9 +53,11 @@ const dirOf = (n) => ((n % 2) + 2) % 2 === 0 ? 1 : -1;
 // default pose is bit-identical to the pre-§246 law.
 export function posedTheta(K, tau, A) {
   const raw = tau * 2 * K.F, n = Math.floor(raw), p = raw - n, dir = dirOf(n);
-  if (p < K.IW) return dir * K.Ap * Math.sin(Math.PI * (p - K.IW / 2));
-  const ae = Math.asin(Math.min(1, K.halfLift / A));
-  const frac = (p - K.IW) / (1 - K.IW);
+  // inside the pin's passage — this beat's, or the next one's entry, which
+  // the same sinusoid carries across the beat boundary — the posed law
+  if (p < K.IW / 2 + K.pw || p > 1 + K.IW / 2 - K.pw) return dir * K.Ap * Math.sin(Math.PI * (p - K.IW / 2));
+  const ae = Math.asin(Math.min(1, K.halfPass / A));
+  const frac = (p - K.IW / 2 - K.pw) / (1 - 2 * K.pw);
   return dir * A * Math.sin(ae + frac * (Math.PI - 2 * ae));
 }
 
@@ -57,13 +69,19 @@ function windowP(K, theta, dir) {
 function lockFracOf(K, theta, omega, dir) {
   const u = dir * theta, v = dir * omega / K.Omega;
   const A = Math.hypot(u, v);
-  const ae = Math.asin(Math.min(1, K.halfLift / Math.max(A, K.halfLift)));
+  const ae = Math.asin(Math.min(1, K.halfPass / Math.max(A, K.halfPass)));
   const a = Math.atan2(u, v);
   const span = Math.PI - 2 * ae;
   return span > 1e-12 ? Math.max(0, Math.min(1, (a - ae) / span)) : 1;
 }
 export function tauOf(K, S) {
-  const p = S.inWindow ? windowP(K, S.theta, dirOf(S.n)) : K.IW + (1 - K.IW) * S.lockFrac;
+  let p;
+  if (S.inWindow) p = windowP(K, S.theta, dirOf(S.n));
+  else if (Math.abs(S.theta) < K.halfPass) {
+    // in the passage but outside the lift: the run after this beat's exit, or
+    // the unlock before the next beat's entry (whose phase is just under 1)
+    p = S.lockFrac < 0.5 ? windowP(K, S.theta, dirOf(S.n)) : 1 + windowP(K, S.theta, dirOf(S.n + 1));
+  } else p = K.IW / 2 + K.pw + (1 - 2 * K.pw) * S.lockFrac;
   return (S.n + p) / (2 * K.F);
 }
 
@@ -76,9 +94,9 @@ export function seed(K, tau, A) {
   const inWindow = p < K.IW;
   let sgn;
   if (inWindow) sgn = dir;
-  else sgn = (p - K.IW) / (1 - K.IW) < 0.5 ? dir : -dir;   // outbound before the turn, back after it
+  else sgn = p < 0.5 + K.IW / 2 ? dir : -dir;   // outbound before the turn (mid-arc), back after it
   const omega = sgn * K.Omega * Math.sqrt(Math.max(0, A * A - theta * theta));
-  const lockFrac = inWindow ? 0 : (p - K.IW) / (1 - K.IW);
+  const lockFrac = inWindow ? 0 : Math.max(0, Math.min(1, (p - K.IW / 2 - K.pw) / (1 - 2 * K.pw)));
   return { theta, omega, n, inWindow, lockFrac, stuck: false, knocks: 0, peak: 0, ampEst: A, lastTurn: 0 };
 }
 
@@ -200,14 +218,18 @@ export function step(K, S, dt, env) {
 }
 
 // Build the constants. Inputs are SI except the frame tables' angles (rad).
-export function makeDrive({ F, liftDeg, posedAmpDeg, knockDeg, I, k, Q, impulseJ, brakeNm, springRows, STEPS_PER_PERIOD = 400 }) {
+export function makeDrive({ F, liftDeg, passHalfDeg = liftDeg / 2, posedAmpDeg, knockDeg, I, k, Q, impulseJ, brakeNm, springRows, STEPS_PER_PERIOD = 400 }) {
   const D = Math.PI / 180;
   const IW = (2 / Math.PI) * Math.asin(liftDeg / (2 * posedAmpDeg));
+  // the passage's half-width in phase: the posed law reaches ±halfPass at
+  // p = IW/2 ± pw (TODO 226 step 3b; pw = IW/2 when the passage is the lift)
+  if (!(passHalfDeg >= liftDeg / 2 - 1e-12)) throw new Error(`balance-drive: the pin's passage (±${passHalfDeg}°) is narrower than the lift (±${liftDeg / 2}°)`);
+  const pw = Math.asin(passHalfDeg / posedAmpDeg) / Math.PI;
   const rows = springRows.slice().sort((a, b) => a.theta - b.theta);
   const dx = rows[1].theta - rows[0].theta;
   const Omega = 2 * Math.PI * F;
   return {
-    F, IW, Ap: posedAmpDeg * D, halfLift: liftDeg * D / 2, Omega, knockRad: knockDeg * D,
+    F, IW, pw, Ap: posedAmpDeg * D, halfLift: liftDeg * D / 2, halfPass: passHalfDeg * D, Omega, knockRad: knockDeg * D,
     I, k, Q, c: I * Math.sqrt(k / I) / Q,
     impulseNm: impulseJ / (liftDeg * D), impulseJ, brakeNm,
     spring: { x0: rows[0].theta, dx, y: Float64Array.from(rows.map((r) => r.torque)) },
