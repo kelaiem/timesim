@@ -3036,7 +3036,12 @@ function recordBeat(S) {
 }
 function liveRate() {
   if (driveState === null || rateSeed !== driveState || rateBeats.length < 3) return null;
-  const a = rateBeats[0], b = rateBeats[rateBeats.length - 1];
+  // over WHOLE PERIODS: a hanging balance's two half-swings differ (the beat
+  // error — the spring's weight, and since TODO 238 an impulse off the line
+  // of centres), so a window holding an odd number of beats weights one of
+  // them twice and reads a rate that is the window's parity, not the watch's
+  const b = rateBeats[rateBeats.length - 1];
+  const a = (b.n - rateBeats[0].n) % 2 === 0 ? rateBeats[0] : rateBeats[1];
   if (!(b.t > a.t)) return null;
   return { sPerDay: (((b.n - a.n) / (2 * F_BALANCE)) / (b.t - a.t) - 1) * 86400, overS: b.t - a.t, beats: b.n - a.n,
            ampDeg: driveState.ampEst / DEG2RAD };
