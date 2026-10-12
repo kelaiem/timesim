@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 245 | OPEN | Found closing TODO 244. probe-261-fold-site's K8 reads `no linkage to swing` and passes, because its linkage search runs only over feasible rotations and none exist once the fold has landed. Point K8 at the shipped linkage's forward kinematics (`__clock.alarmLinkage`) with a control that can fail, on K9's pattern |
 | 244 | CLOSED | K9 runs again, at the SHIPPED fold when the search finds none: φ 240° read off `__clock.alarmFold` (main.js `ALARM_FOLD_PHI`, a read-only getter), refused unless it is a whole stop pitch on the 12-tooth wheel about the stop wheel's own centre (pivot 0.00000 off). The shipped lay shaft reads clear, nearest the Alarm selector 0.939 off its skin. K9 now carries a two-way detector, and `--sabotage-k9` exits 2 on K9. The output names the fold's source |
 | 243 | OPEN | Found closing TODO 240. `makeColumnWheel` samples each column's top at stations that miss the profile's breakpoints, so the mesh is straight across them: at a flank's foot it stands up to 0.0169 over the `profileAt` law the beak's pose law reads (measured: the nose posed 0.0050 into the metal, inside `HANDOFF_TRACK_TOL`). Cut the columns with stations on the breakpoints, then tighten probe-240's M3 to float. P0 |
 | 242 | CLOSED | Every faster rate carries its own balance (RATE_TABLE `rimF`, and at 36,000 `balanceR` 7.5 too): each is the heaviest that reaches 200° hanging at the nominal corner and starts itself, held by `equalisation` row 15. A smaller balance re-solves the escapement it drives. 36,000 also needed the cock's slab lengthened to seat its foot, and the late plate windows held to a land from the early ones |
@@ -33346,5 +33347,27 @@ The getter is the change's only `src/` line. The full battery ran locally
 **Residue, named.** K8 reads `no linkage to swing` and does not fail. Its
 linkage search runs only over feasible rotations, and there are none once the
 fold has landed. So K8, like K9 before this change, tests nothing on main. It
-was outside this item's scope and is left as found. The shipped linkage's own
+was outside this item's scope and is filed as [TODO 245]. The shipped linkage's own
 1:1 is the build's (`__clock.alarmLinkage`), not this probe's.
+
+## 245. probe-261-fold-site's control K8 tests nothing once the fold has landed
+
+**Found closing [TODO 244].** K8 is §261's linkage control: it swings the
+alarm link through its stroke and must find it carrying 1:1. Its linkage
+search runs only over the rotations the siting study finds FEASIBLE, and once
+the fold has landed there are none: the cluster is already folded, so no
+rotation of it fits the band as it stands. K8 then prints `no linkage to
+swing` and does not fail. It has tested nothing on `main` since the fold
+landed, exactly as K9 did before TODO 244.
+
+**Why it is debt.** An acceptance probe whose control cannot run is a comment,
+not a control (CLAUDE.md, the direction-guard rule; `.claude/skills/instruments`).
+
+**Fix path.**
+1. On K9's pattern (TODO 244), fall back to the SHIPPED linkage when the
+   search returns none: read its forward kinematics from `__clock.alarmLinkage`
+   rather than retyping anything, refusing the shipped data unless it is the
+   linkage the probe assumes.
+2. Name the source in the output (`K8 [linkage: search|shipped]`).
+3. Give K8 a sabotage flag that must make it fail, and record that it does.
+
