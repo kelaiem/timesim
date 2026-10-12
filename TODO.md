@@ -18795,7 +18795,7 @@ fraction of the window (the primer's chip had the same off-by-a-smoothstep,
 fixed alongside). The model lives twice — once per page, both sim-code-free
 by design — so a change to the stone law is owed to both plates.
 
-## 134. The reserve clamp snaps to a multiple of 3, but the second-stage wheel needs a multiple of 5 — four of the five menu options build a fractional tooth count — CLOSED (the counts are solved from the reserve)
+## 134. The reserve clamp snaps to a multiple of 3, but the second-stage wheel needs a multiple of 5 — four of the five menu options build a fractional tooth count — CLOSED
 
 **CLOSED 2026-10-12, by the third of the three routes the entry offered:
 the counts are DERIVED, so any reserve the spec produces builds whole
