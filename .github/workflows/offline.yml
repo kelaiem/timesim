@@ -60,6 +60,8 @@ on:
       - 'tools/stamp-release.mjs'
       - 'tools/build-pages.mjs'
       - '.github/workflows/offline.yml'
+      # the one Chromium install every browser job here calls
+      - 'tools/ci-install-chromium.sh'
   workflow_dispatch:
 
 concurrency:
@@ -90,8 +92,7 @@ jobs:
       # --with-deps also apt-installs the shared libraries Chromium needs, which
       # the browser cache above cannot carry — so it runs every time.
       - name: Install Chromium
-        working-directory: tools
-        run: npx playwright install --with-deps chromium
+        run: tools/ci-install-chromium.sh   # bounded apt, then the cached browser
 
       - name: Offline acceptance
         working-directory: tools
