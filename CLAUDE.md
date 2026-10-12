@@ -396,7 +396,10 @@ it into prose either.
    itself (TODO 238's `selfStart`), per `RATE_TABLE` row, a faster rate
    carrying a lighter balance — held both ways: under it fails, and so does a
    balance one `BAL_RIM_STEP` heavier that would still reach it and start,
-   weighed by the builder's own `balanceWheelDims`. Row 17 holds
+   weighed by the builder's own `balanceWheelDims`. A row whose lightest rim
+   still cannot (36,000) carries a smaller WHEEL too (`balanceR`), held the
+   same way one level up: on `BAL_R_STEP`'s grid below `BALANCE_R_REF`, and
+   one step larger at the lightest grid rim the metal allows fails. Row 17 holds
    the NOMINAL corner clear of the knock in both positions (a watch that knocks
    as serviced is a fault); that the favourable corner's dial-flat energy would
    carry it past (455°) is listed in the record and REPORTED. `FRICTION` is the one place a coefficient the movement

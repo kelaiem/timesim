@@ -438,6 +438,17 @@ export const AMPLITUDE_TARGET_DEG = 200;
 // it — the slack this replaced, 1.5°, was one step's measured 1.3° at 18,000
 // and is a different number at every rate).
 export const BAL_RIM_STEP = 0.005;
+// TODO 242 — and the RADIUS's, one level up. A row keeps the shipped
+// movement's balance (BALANCE_R_REF, the 18,000 row's) while some rim the metal
+// allows still reaches the target and starts; only when even the lightest rim on
+// BAL_RIM_STEP's grid at or above balanceWheelDims' floor cannot does the radius
+// come down, to the LARGEST on this grid at which that rim can, for the rim's
+// own reason (the larger balance is the steadier). Row 15 holds it the rim's
+// way: the record weighs the balance one step larger at that rim, by the same
+// laws, and requires it to fail. A quarter unit (0.095 mm) is the grid 36,000's
+// radius was searched on (7.75 reaches 199.21°, 7.5 carries the row).
+export const BALANCE_R_REF = RATE_TABLE[18000].balanceR;
+export const BAL_R_STEP = 0.25;
 // §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
 // `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is
 // retired: the balance is posed at AMPLITUDE_TARGET_DEG, the swing the energy

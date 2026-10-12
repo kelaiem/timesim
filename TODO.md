@@ -19,7 +19,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 |---|---|---|
 | 244 | OPEN | Found re-validating TODO 240, pre-existing on main: `probe-261-fold-site.mjs` exits 2 because its control K9 cannot run once the fold has landed (`PHI_FOLD_DEG` null), so an ACCEPTANCE-filed probe no longer separates a broken fold from a sound one. Read the shipped fold's angle when the search finds none, or retire the study and move K9 to an instrument about the shipped shaft |
 | 243 | OPEN | Found closing TODO 240. `makeColumnWheel` samples each column's top at stations that miss the profile's breakpoints, so the mesh is straight across them: at a flank's foot it stands up to 0.0169 over the `profileAt` law the beak's pose law reads (measured: the nose posed 0.0050 into the metal, inside `HANDOFF_TRACK_TOL`). Cut the columns with stations on the breakpoints, then tighten probe-240's M3 to float. P0 |
-| 242 | CLOSED | Every faster rate carries its own balance (RATE_TABLE `rimF`, and at 36,000 `balanceR` 7.5 too): each is the heaviest that reaches 200° hanging at the nominal corner and starts itself, held by `equalisation` row 15. A smaller balance re-solves the escapement it drives. 36,000 also needed the cock's slab lengthened to seat its foot, and the late plate windows held to a land from the early ones |
+| 242 | CLOSED | Every faster rate carries its own balance (RATE_TABLE `rimF`, and at 36,000 `balanceR` 7.5 too): each is the heaviest that reaches 200° hanging at the nominal corner and starts itself, held by `equalisation` row 15, the radius too (one `BAL_R_STEP` larger at the lightest grid rim fails). A smaller balance re-solves the escapement it drives. 36,000 also needed the cock's slab lengthened to seat its foot, and the late plate windows held to a land from the early ones |
 | 240 | CLOSED | The beak lever is re-aimed: its pin lies along the nose's RADIUS and the lever along the wheel's tangent, so the flank pushes in the lever's own plane (65.9–89.2 mN; 6.0–10.7 mN still along the pin, the leading corner's skew). A bar clear of the columns at r 6.477 and a radial stub 1.822 carry the nose, the pivot trails. The pose law is a flat follower tilting along the flank, solved on the cut. The rod is RE-SITED by the generalised site solve (nose ray k 1, run 6.0, tab 87°, clear 0.422): arms 7.2524 / 1.2524, ratio 5.7909. A new line-spec reference, `alarm link tangential`, retires `alarm link`; its fork moves `run` and `rEff`. `probe-240-tangential-beak.mjs` holds the line, the pin and the pose law on the metal |
 | 239 | CLOSED | Closed by TODO 240, which removed the along-pin load at its source. Re-read on the §261 2c lever it was 64–87 mN climbing, a 390–526 mN·u twist, the pin at 1.1–1.4 GPa. The pin's reaction was priced first-class (`Fn·(1 + ρ)`, 295 mN) on a same-side lever (`Fn·(ρ − 1)`, 222); corrected, with `noseFrom`'s journal. The flank's push is in the record (`beakPivot.flank`); the pin works at 667.0 MPa and the post is load-bound on the new load (⌀ ×1.047) |
 | 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
@@ -33211,6 +33211,32 @@ boot on `main` at 36,000 too. TODO 221's detent-beak bracket (ρ 0.2006) fires
 on the solved claim of 133, as it does at 28,800's 132, and is that item's.
 36,000 is not a swept spec point, so the battery does not see it; the boot is
 the evidence.
+
+**The radius is held, not only recorded.** The rim's rule was gated (one
+`BAL_RIM_STEP` heavier must fail); the radius's was prose. `layout.js` now
+names the grid it was searched on, `BAL_R_STEP` 0.25, and the shipped wheel it
+shrinks from, `BALANCE_R_REF` (the 18,000 row's 9). The energy record weighs
+the wheel one step larger at the lightest grid rim the metal allows
+(`rimFloorF` 0.2303, so 0.235) by the same laws the rim test uses, and
+`equalisation` row 15 holds four things:
+
+- the radius is never larger than the reference;
+- it lies on the grid below it;
+- a row that shrank its wheel fails one step larger;
+- a row at the reference carries no larger-wheel test.
+
+Measured at 36,000: r 7.75 at rim 0.235 sustains 199.21° and fails the target.
+It does not fail the start, which is the exact half of the law. The column's
+delivered energy is the train's and the escapement's, so it does not depend on
+the balance. The start at another radius reuses this wheel's impulse table, so
+the record names which half binds (`radiusBinds`). Controls, booted:
+
+| `balanceR` | what row 15 reports |
+|---|---|
+| 7.25 | 7.5 still reaches 208.81° and starts: smaller than needed |
+| 7.6 | off the grid |
+
+18,000 is unchanged: it boots silent, and `equalisation` is clean.
 
 ## 243. The column wheel's castellation mesh misses the profile's breakpoints, so at a flank's foot the metal stands up to 0.017 over the law the beak rides
 
