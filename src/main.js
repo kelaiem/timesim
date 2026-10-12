@@ -25032,14 +25032,14 @@ const ALARM_SIL_FINGER_MN = (() => {
 // (μ of it tangentially). Exposed on __clock (releaseRun) so the release-run
 // probe prices the same law rather than restating it.
 const alarmReleasePeak = (alpha, h, { mu = MU_STEEL, muR = MU_STEEL * ALARM_SLEEVE_GUIDE_PIN_R / ALARM_SLEEVE_ROLLER_R,
-  azW = ALARM_SLEEVE_DRIVE_AZ, stationsW = ALARM_SLEEVE_GUIDE_AZ } = {}) => {
+  azW = ALARM_SLEEVE_DRIVE_AZ, stationsW = ALARM_SLEEVE_GUIDE_AZ, paddle = true } = {}) => {
   const azT = Math.PI - azW, stations = stationsW.map((a) => Math.PI - a);
   const tipZ = (ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03) - ALARM_SLEEVE_Z_REST;   // sleeve-local, at rest
   const zT = ALARM_RELEASE_CRANK_Z - ALARM_SLEEVE_Z_REST;
   const phis = [0, 0.5, 1].map((u) => ALARM_FOLLOWER_A0 + (ALARM_A_RELEASE_PHI - ALARM_FOLLOWER_A0) * u);
   const padAz = Math.PI - ALARM_SLEEVE_TAB_AZ, padN = ALARM_SIL_FINGER_MN * ALARM_SIL_RATIO / 1000;
-  const extra = [{ p: [ALARM_SIL_PADDLE_R * Math.cos(padAz), ALARM_SIL_PADDLE_R * Math.sin(padAz), 0],
-    f: [mu * padN * h * Math.sin(padAz), -mu * padN * h * Math.cos(padAz), -padN] }];
+  const extra = paddle ? [{ p: [ALARM_SIL_PADDLE_R * Math.cos(padAz), ALARM_SIL_PADDLE_R * Math.sin(padAz), 0],
+    f: [mu * padN * h * Math.sin(padAz), -mu * padN * h * Math.cos(padAz), -padN] }] : [];   // (off only for the probe's frictionless control)
   const omega = 1 / (ALARM_SLEEVE_HELIX_R * Math.tan(alpha));
   let Fmax = 0, worst = 0, at = null, conv = true;
   for (const phi of phis) {
@@ -25067,7 +25067,7 @@ const alarmReleaseHelixSolve = async (opts = {}) => {
     const gr = (Math.sqrt(5) - 1) / 2;
     let c = b - gr * (b - a), d = a + gr * (b - a), fc = alarmReleasePeak(c, h, opts), fd = alarmReleasePeak(d, h, opts);
     for (let it = 0; it < 22; it++) {
-      await breathe();
+      await breathe(361);
       if (fc.W < fd.W) { b = d; d = c; fd = fc; c = b - gr * (b - a); fc = alarmReleasePeak(c, h, opts); }
       else { a = c; c = d; fc = fd; d = a + gr * (b - a); fd = alarmReleasePeak(d, h, opts); }
     }
