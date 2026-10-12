@@ -26610,7 +26610,11 @@ const ALARM_STRIKE_SLEEVE_R = 0.75;
 // exactly that: one radial weld spent as enclosed metal rather than a running
 // gap, so the joint is neither a coincident-cap knife edge nor a burial the
 // proximity instruments cannot arbitrate.
-const ALARM_STOP_BORE_R = ALARM_STRIKE_SLEEVE_R - SAW_FIT;
+// §261 2c: and the shaft it grips is the STAFF now. The fold carries the stop
+// wheel to the dial side with the lock that reads it, below the base plate,
+// where the striking arbor is the staff's foot alone — the sleeve stops at the
+// pinion, between the plates. Same idiom, same quantum, the staff's radius.
+const ALARM_STOP_BORE_R = ALARM_STRIKE_STAFF_R - SAW_FIT;
 // WHAT THE STOP CARRIES, and what is still owed. The barrel's moment through
 // the 44/11 wall-to-pinion mesh arrives at this tip circle as a tangential
 // reaction of ≈72.9 mN (0.08843 N·mm at full wind over MM(3.5167)) — a
@@ -26620,6 +26624,60 @@ const ALARM_STOP_BORE_R = ALARM_STRIKE_SLEEVE_R - SAW_FIT;
 // the three riders' contacts priced against the column's drive torque, which
 // has never been summed — and pricing this one alone would answer a third of
 // it while looking like the whole. The arithmetic lives at the finding.
+// §261 step 4, landing 2c — THE FOLD. The switch-and-lock cluster stood on the
+// three-quarter plate's top face, and that tower is what set the case's depth
+// (the §261 back-envelope walk priced it). It is carried to the DIAL side of
+// the base plate as a rigid body, which keeps every row of the switch's and
+// the lock's line specs: a fold's currencies are position-space (CLAUDE.md,
+// "design in a line, fold to fit"), and a rigid map moves no lever arm.
+//
+// The map is a REFLECTION of the stacking, not a turn-over: z ↦ Z_SUM − z,
+// so the cluster's floor (the three-quarter plate's top face) lands on the
+// base plate's DIAL face, everything that stood above the plate hangs below
+// it, and every stud that was planted in the three-quarter plate is planted
+// in the base plate. A mirror in z leaves PLAN alone — every cut outline,
+// every saw's hand (the switch's ratchet is cut with ratchetDrive −1 in
+// geometry.js) and every turning sense in plan survives — so nothing is
+// re-cut; the renderer flips the winding of a negative-determinant world
+// matrix itself (three.js `frontFaceCW`). Then a turn by φ about the
+// striking staff, the one axis the cluster shares with the rest of the
+// movement.
+//
+// φ IS FORCED. The lock's finger meets the stop wheel on that staff, and the
+// stop wheel's phase against the cam is WHEN the stop catches (TODO 90's
+// derivation of ALARM_STOP_TEETH), so a turn that is not a whole stop pitch
+// re-clocks the stop against the hammer. tools/probe-261-fold-site.mjs swept
+// every φ against the dial band's tenants over the pose net and found the
+// cluster fits at 215–246° only; 240° is the one whole pitch (360°/12 × 8) in
+// that window. A whole pitch is also why the stop wheel itself needs no turn
+// below — it is its own image under it.
+const ALARM_FOLD_PITCHES = 8;
+const ALARM_FOLD_PHI = ALARM_FOLD_PITCHES * (2 * Math.PI / ALARM_STOP_TEETH);
+const ALARM_FOLD_Z_SUM = PLATE_BACK + TQ_TOP_Z;   // z ↦ Z_SUM − z: the TQ plate's top face onto the base plate's dial face
+const alarmFoldMatrix = new THREE.Matrix4()
+  .makeTranslation(alarmSwPos.x, alarmSwPos.y, ALARM_FOLD_Z_SUM)
+  .multiply(new THREE.Matrix4().makeRotationZ(ALARM_FOLD_PHI))
+  .multiply(new THREE.Matrix4().makeScale(1, 1, -1))
+  .multiply(new THREE.Matrix4().makeTranslation(-alarmSwPos.x, -alarmSwPos.y, 0));
+if (Math.abs(alarmFoldMatrix.determinant() + 1) > 1e-12)
+  console.warn(`§261 2c: the fold's determinant is ${alarmFoldMatrix.determinant()}, not −1 — it is not a pure reflection`);
+// The fold is carried by a CHILD of each unit, never by the unit: the explode
+// view writes the unit's position every frame (registerExplode), and a group
+// whose matrix is pinned ignores its position. So the unit keeps its identity
+// transform and its label, and the members that fold hang in this frame.
+function makeAlarmFold(name) {
+  const g = new THREE.Group();
+  g.name = name;
+  g.matrixAutoUpdate = false;
+  g.matrix.copy(alarmFoldMatrix);
+  return g;
+}
+// The cluster's frame → world, for the few build sites that place an UNFOLDED
+// part against a folded one (the stop wheel's band, the pusher's cranks, the
+// beak's ray).
+const alarmFoldPoint = (x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(alarmFoldMatrix);
+const alarmFoldZ = (z) => ALARM_FOLD_Z_SUM - z;
+
 const alarmStrikeRotor = new THREE.Group(); // everything that turns with the striking train
 alarmStrikeRotor.position.set(alarmSwPos.x, alarmSwPos.y, 0);
 alarmStrikeUnit.add(alarmStrikeRotor);
@@ -26632,7 +26690,9 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // §112's 0.5 into the plate (the bore runs on through, for the stop wheel
   // the fold will carry down); the rotor's members, which ran on it, ride it.
   const staffTop = ALARM_CAM_Z1 + 0.3;
-  const staffBase = ALARM_U_FLOOR - 0.5;
+  // §261 2c: and through it — the foot runs on below the base plate to carry
+  // the stop wheel in the folded lock band, ending flush with its dial face.
+  const staffBase = alarmFoldZ(ALARM_LOCK_Z) - STOCK_MIN_U / 2;
   const staff = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_STRIKE_STAFF_R, ALARM_STRIKE_STAFF_R, staffTop - staffBase, 12), MATS.steel);
   staff.name = 'alarmStrikeStaff';
   staff.rotation.x = Math.PI / 2;
@@ -26796,7 +26856,11 @@ alarmStrikeUnit.add(alarmStrikeRotor);
     return m;
   })();
   lockCollar.name = 'alarmLockCollar';
-  lockCollar.position.z = ALARM_LOCK_Z; // world (the rotor sits at z 0): the shared §25 B lock band, derived at the §124 seam block
+  // §261 2c: the shared §25 B lock band, FOLDED with the lock that reads it —
+  // the band's image under the fold (the rotor sits at z 0, so this is world).
+  // The wheel itself needs no turn: φ is a whole number of its pitches, and a
+  // mirror in z leaves a flat cut ring its own image.
+  lockCollar.position.z = alarmFoldZ(ALARM_LOCK_Z);
   alarmStrikeRotor.add(lockCollar);
   sleeve.rotation.x = Math.PI / 2;
   sleeve.position.z = (sleeveZ0 + sleeveZ1) / 2;
@@ -32254,13 +32318,18 @@ if (!(alarmStopClearAt(ALARM_LOCK_THETA) <= -ALARM_STOP_DEPTH + 1e-9))
 if (Math.abs(alarmStopClearAt(ALARM_LOCK_THETA + ALARM_LOCK_LIFT) - CLEAR_MARGIN) > 1e-9)
   console.warn(`TODO 90: the released finger stands ${alarmStopClearAt(ALARM_LOCK_THETA + ALARM_LOCK_LIFT).toFixed(4)} off the stop wheel's tips, not ${CLEAR_MARGIN}`);
 
+
+// (THE FOLD — the matrix both units' fold groups carry — is declared above the
+// striking rotor, whose staff carries the stop wheel down to the folded band.)
 const alarmLockUnit = new THREE.Group();
 movement.add(alarmLockUnit);
 registerLabel('Alarm lock', alarmLockUnit);
 registerExplode(alarmLockUnit, 0, 9);
+const alarmLockFold = makeAlarmFold('alarmLockFold');
+alarmLockUnit.add(alarmLockFold);
 const alarmLockLever = new THREE.Group();
 alarmLockLever.position.set(alarmLockPivot.x, alarmLockPivot.y, ALARM_LOCK_Z);
-alarmLockUnit.add(alarmLockLever);
+alarmLockFold.add(alarmLockLever);
 {
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.62, 10), MATS.nickel);
   // NAMED by §171, and the name is the fix rather than a label. Both of this
@@ -32274,7 +32343,7 @@ alarmLockUnit.add(alarmLockLever);
   post.name = 'alarmLockPivotPost';
   post.rotation.x = Math.PI / 2;
   post.position.set(alarmLockPivot.x, alarmLockPivot.y, TQ_TOP_Z + 0.31 - 0.01);
-  alarmLockUnit.add(post);
+  alarmLockFold.add(post);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LOCK_L, 0.5, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top lever
   // NAMED by TODO 90 finding 5, for §171's reason and the third time in this
   // unit: its INTRA_UNIT_CONTACTS rows selected it as 'BoxGeometry#0', a
@@ -32304,6 +32373,12 @@ const alarmSwitchUnit = new THREE.Group();
 movement.add(alarmSwitchUnit);
 registerLabel('Alarm switch', alarmSwitchUnit);
 registerExplode(alarmSwitchUnit, 0, 9);
+// §261 2c: the column wheel, its stud, the jumper and the driver fold with the
+// lock (see THE FOLD above); the pusher and its guide, return work and case
+// liner stay where the button is — between the plates, at the case wall — and
+// reach the folded driver through the two cranks and the rod.
+const alarmSwitchFold = makeAlarmFold('alarmSwitchFold');
+alarmSwitchUnit.add(alarmSwitchFold);
 // §25 D rev 2 (owner's ask): the switch IS a COLUMN WHEEL — the chronograph
 // architecture. The lock lever's TAIL BEAK rides its castellations: beak on a
 // COLUMN → the tail is blocked and the brake cannot lift (alarm OFF); beak
@@ -32792,12 +32867,12 @@ if (Math.abs(ALARM_ROCKER.dQW - (ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_P
   stud.name = 'alarmLockSpringStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(anchor.x, anchor.y, (ALARM_LOCK_Z + 0.1 + TQ_TOP_Z) / 2);
-  alarmLockUnit.add(stud);
+  alarmLockFold.add(stud);
   const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, SPRING_FLAT_U, 0.2), MATS.blueSteel);
   blade.name = 'alarmLockSpring';
   blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z);
   blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
-  alarmLockUnit.add(blade);
+  alarmLockFold.add(blade);
 }
 declareRestoring('Alarm lock', 'alarmLockPad', 'spring',
   'the return blade biases the lever toward LIFTED (finger out of the stop teeth) and the column presses it ENGAGED against this spring — a real blade on its own stud, bearing on the arm\'s flank. TODO 90 finding 4 cut the collar it holds by into a stop wheel, and finding 5 gave the column a rocker to press through, so the HOLD is form-locking now and the PRESS reaches the lever through metal that moves',
@@ -32909,7 +32984,7 @@ alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + ALARM
 // starts at step 0 = column = alarm OFF (the boot default).
 alarmColSpin.rotation.z = ALARM_LOCK_ENGAGED;
 alarmColSpin.add(alarmColumnWheel);
-alarmSwitchUnit.add(alarmColSpin);
+alarmSwitchFold.add(alarmColSpin);
 {
   // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
   // (under the base's top face) — a pivot, not a pole through the crown.
@@ -32927,7 +33002,7 @@ alarmSwitchUnit.add(alarmColSpin);
   stud.name = 'alarmColStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, (studBot + studTip) / 2);
-  alarmSwitchUnit.add(stud);
+  alarmSwitchFold.add(stud);
 }
 // ————————————————— §173 — THE SAUTOIR: THE WHEEL'S INDEX —————————————————
 //
@@ -33214,7 +33289,7 @@ const ALARM_COL_BAND_MID = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL
 // only the metal.
 const alarmLockRocker = new THREE.Group();
 alarmLockRocker.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
-alarmLockUnit.add(alarmLockRocker);
+alarmLockFold.add(alarmLockRocker);
 registerSub('Alarm lock', 'Lock lever', alarmLockLever); // §10 level 2
 registerSub('Alarm lock', 'Lock rocker', alarmLockRocker);
 {
@@ -33251,7 +33326,7 @@ registerSub('Alarm lock', 'Lock rocker', alarmLockRocker);
   post.name = 'alarmLockBeakRiser';
   post.rotation.x = Math.PI / 2;
   post.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, (postTop + TQ_TOP_Z) / 2);
-  alarmLockUnit.add(post);            // planted in the plate, NOT on the rocker it carries
+  alarmLockFold.add(post);            // planted in the plate, NOT on the rocker it carries
   // THE PIN — on the P-Q line at the radius the ratio solve fixed, spanning
   // DOWN from the rocker's plane to the lever's, where the slot is cut.
   const pinTop = ALARM_LOCK_Z + ALARM_COL_BAND_MID;
@@ -33415,7 +33490,7 @@ const alarmJumperSeatR = (wheelA) => {
 const alarmJumperArm = new THREE.Group();
 alarmJumperArm.position.set(alarmJumperAnchor.x, alarmJumperAnchor.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
 alarmJumperArm.rotation.z = _jRestDir;
-alarmSwitchUnit.add(alarmJumperArm);
+alarmSwitchFold.add(alarmJumperArm);
 {
   // The blade. Local +x runs anchor → tip; local y is the bending direction
   // (radial at the tip, which is what makes the tip force radial); local z is
@@ -33468,7 +33543,7 @@ const ALARM_JUMPER_STUD_R = Math.max(STOCK_MIN_R10, (() => {
   stud.name = 'alarmJumperStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(alarmJumperAnchor.x, alarmJumperAnchor.y, TQ_TOP_Z + _jStudLen / 2);
-  alarmSwitchUnit.add(stud);
+  alarmSwitchFold.add(stud);
 }
 // ————————————————— WHAT THE JUMPER IS WORTH, IN TWO FIGURES ————————————————
 // The click published ONE number and made it do two jobs badly. There are two
@@ -38286,6 +38361,12 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       // identical from the outside.
       const v = new THREE.Vector3();
       movement.updateWorldMatrix(true, true);
+      // §261 2c: read in the CLUSTER's frame. The band and the wheel's axis
+      // below are the pre-fold ones, so each vertex goes to world and back
+      // through the fold — which also puts the unfolded pusher where it truly
+      // stands relative to the folded driver, rather than where it once did.
+      const toCluster = alarmFoldMatrix.clone().invert();
+      const m = new THREE.Matrix4();
       alarmSwitchUnit.traverse((o) => {
         if (!o.isMesh || o.userData.schematic) return;
         // The WHEEL is not an obstacle to its own pawl — the nose is meant to
@@ -38297,7 +38378,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         const pts = [];
         let zLo = Infinity, zHi = -Infinity;
         for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          v.fromBufferAttribute(pos, i).applyMatrix4(m.multiplyMatrices(toCluster, o.matrixWorld));
           zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z);
           const dx = v.x - ALARM_COL_POS.x, dy = v.y - ALARM_COL_POS.y;
           if (Math.hypot(dx, dy) <= ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) pts.push([dx, dy]);
@@ -38444,7 +38525,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   alarmColDriverGroup = new THREE.Group();
   alarmColDriverGroup.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_DRIVER_BOT_Z);
   alarmColDriverGroup.rotation.z = ALARM_DRIVER_REST_A;
-  alarmSwitchUnit.add(alarmColDriverGroup);
+  alarmSwitchFold.add(alarmColDriverGroup);
   const driver = G.makeColumnDriver({
     boreR: ALARM_COL_STUD_R + PIVOT_BORE_CLEAR,          // the stud it turns on, plus the movement's running clearance
     hubR: ALARM_COL_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U,
