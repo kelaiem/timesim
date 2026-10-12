@@ -33109,6 +33109,12 @@ CL    200.32°   +15.26     -2.01       +17.27                     +17.28
 CR    200.32°   -15.57     -2.01       -13.54                     -13.55
 ```
 
+**Since TODO 238** the impulse is no longer this table's: the escapement's
+torque is read off the metal (the unlock paid against the draw, nothing across
+the shake's crossing, the impulse from −10.16° to the let-off), and the
+escapement's error is 27.20 s/day hanging and 8.37 dial-flat. The table above
+is the record of the centred impulse; TODO 238 carries the current one.
+
 The swing emerges where the energy column's solve puts it: 292.086° against
 292.090° dial-flat, and 200.32–200.38° against 200.36° hanging. It is the
 same at tension 0.1 as at 1 (−7e-13°), because the fusee's torque is level.
