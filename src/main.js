@@ -3036,7 +3036,12 @@ function recordBeat(S) {
 }
 function liveRate() {
   if (driveState === null || rateSeed !== driveState || rateBeats.length < 3) return null;
-  const a = rateBeats[0], b = rateBeats[rateBeats.length - 1];
+  // over WHOLE PERIODS: a hanging balance's two half-swings differ (the beat
+  // error — the spring's weight, and since TODO 238 an impulse off the line
+  // of centres), so a window holding an odd number of beats weights one of
+  // them twice and reads a rate that is the window's parity, not the watch's
+  const b = rateBeats[rateBeats.length - 1];
+  const a = (b.n - rateBeats[0].n) % 2 === 0 ? rateBeats[0] : rateBeats[1];
   if (!(b.t > a.t)) return null;
   return { sPerDay: (((b.n - a.n) / (2 * F_BALANCE)) / (b.t - a.t) - 1) * 86400, overS: b.t - a.t, beats: b.n - a.n,
            ampDeg: driveState.ampEst / DEG2RAD };
@@ -11140,16 +11145,86 @@ const BALANCE_DRIVE = (() => {
   const rows = EL.frames.map((r) => ({ theta: r.theta, torque: r.torque * EI / OSC_U, cx: r.cx, cy: r.cy }));
   const peakRad = AMPLITUDE_PEAK_DEG * DEG2RAD;
   const brakeNm = rows.filter((r) => Math.abs(r.theta) <= peakRad + 1e-9).reduce((m, r) => Math.max(m, Math.abs(r.torque)), 0);
+  // TODO 238 — WHERE THE ESCAPEMENT'S TORQUE ACTS, read off the metal by
+  // virtual work. Through the contact the wheel's torque T reaches the balance
+  // as T·dδ/dθ, δ the wheel's advance along the path the pin and the fork
+  // actually take (escapeAngle's own law): through the UNLOCK the pin pushes
+  // the wall ahead of it (`lag`) and the tooth slides down the locking face,
+  // so δ falls — the recoil — and the balance pays for it against the draw;
+  // across the shake's CROSSING nothing touches the pin; from the crossing's
+  // end to the let-off the wall behind drives it (`lead`) and the tooth climbs
+  // the impulse face. Signs and shape are the metal's; the sizes are the
+  // column's. The recoil drives the train BACKWARD, so every stage's friction
+  // opposes it and the balance pays T/η_path (η_path the column's own walk up
+  // to the escapement, the reversible-friction reading of the same stages).
+  // The impulse face transmits s·T, s the one number the metal does not give:
+  // what the column's lumped escapement efficiency leaves once the unlock is
+  // priced and the drop's free wheel angle is not delivered — the face's
+  // friction and the fork's and wheel's momentum lost at the drop. It is
+  // solved so the net work per beat is the column's `delivered_J`, which keeps
+  // every swing the column solves, and the stopped balance is pushed with it
+  // too, which is conservative by the momentum's share (a balance at rest
+  // loses no momentum at a drop it has not reached).
+  const ESC_TORQUE = (() => {
+    const { notch, unlockHalf, entryHalf, liftHalf } = PIN_FORK, endHalf = FORK_CROSSING.endHalf;
+    const T = GOING_POWER.escapeTorque_Nm;
+    const etaPath = C.stages.filter((st) => st.name !== 'lever escapement').reduce((p, st) => p * st.eta, 1);
+    // δ along each branch of the contact (escapeAngle: φ = −ψ, the +x stone unlocking on a +θ swing)
+    const along = (wall) => (u) => ESCAPEMENT.deltaAt(1, -wall(u));
+    const dLock = along(notch.lag), dImp = along(notch.lead);
+    const N = 640, u0 = -entryHalf, du = (liftHalf - u0) / N, hh = du * 1e-3;
+    const slope = (f, u, i) => i === 0 ? (f(u + hh) - f(u)) / hh : i === N ? (f(u) - f(u - hh)) / hh : (f(u + hh) - f(u - hh)) / (2 * hh);
+    const g = new Float64Array(N + 1);
+    for (let i = 0; i <= N; i++) {
+      const u = u0 + du * i;
+      if (u <= unlockHalf) g[i] = slope(dLock, u, i);
+      else if (u >= endHalf) g[i] = slope(dImp, u, i);
+    }
+    // the trapezoid integrals ARE the lerp table's integrals, so the energy
+    // the integrator hands over is exactly what is solved for here
+    const trap = (f) => { let a = 0; for (let i = 0; i < N; i++) a += 0.5 * (f(g[i]) + f(g[i + 1])) * du; return a; };
+    const recoil = -trap((x) => Math.min(0, x)), lift = trap((x) => Math.max(0, x));
+    const unlock_J = T / etaPath * recoil;
+    const s = (C.delivered_J + unlock_J) / (T * lift);
+    const y = Float64Array.from(g, (x) => x > 0 ? s * T * x : T / etaPath * x);
+    // where the torque switches on or off — the table's first node (the pin
+    // reaching the stone) and the two nodes either side of each step between
+    // contact and none — so the integrator can step to them (balance-drive.js)
+    const breaks = [u0];
+    for (let i = 0; i < N; i++) if ((g[i] === 0) !== (g[i + 1] === 0)) breaks.push(u0 + du * i, u0 + du * (i + 1));
+    // the integrator's stride inside the contact (balance-drive.js): three of
+    // the table's own cells, so no stride crosses more of the metal's shape
+    // than three straight pieces of it. Measured (offline on these tables, the
+    // nominal corner): the rate agrees to 0.012 s/day between 400, 100 and 40
+    // sub-steps a period, and the swing lands within 0.03% of the column's
+    // solve hanging and flat — where a stride sized by the period alone read
+    // the swing 0.3% low at 400 and 1.6% high at 40
+    const capRad = 3 * du;
+    return { table: { u0, du, y, breaks, capRad }, T, etaPath, s, etaFace: s / etaPath, recoilRad: recoil, liftRad: lift, unlock_J,
+      peakNm: y.reduce((m, v) => Math.max(m, v), 0), endHalf, unlockHalf, entryHalf, liftHalf };
+  })();
+  // The metal must say what the law above assumes: the wheel recoils through
+  // the unlock and advances through the impulse, and what is left for the
+  // face to transmit is an efficiency.
+  if (!(ESC_TORQUE.recoilRad > 0 && ESC_TORQUE.liftRad > 0 && ESC_TORQUE.etaFace > 0 && ESC_TORQUE.etaFace <= 1))
+    console.warn(`TODO 238: the escapement's torque law does not close — recoil ${ESC_TORQUE.recoilRad.toExponential(3)} rad and impulse ${ESC_TORQUE.liftRad.toExponential(3)} rad of escape wheel, face transmission ${ESC_TORQUE.etaFace.toFixed(4)} (must lie in (0, 1])`);
   const K = BD.makeDrive({
     // TODO 226 step 3b — the pin's PASSAGE, not only its lift: τ is the posed
     // law's inverse wherever the pin carries the fork (the unlock and the run
     // either side of the lift), so the fork and the train, read off τ, follow
     // the balance the tick shows in every position
     F: F_BALANCE, liftDeg: LIFT_DEG, passHalfDeg: PIN_FORK.entryHalf / DEG2RAD, posedAmpDeg: AMPLITUDE_POSED_DEG, knockDeg: ESCAPEMENT_KNOCK.deg,
-    I: OSC_I.total, k: OSCILLATOR.k_Nm_per_rad, Q: C.qOther, impulseJ: C.delivered_J, brakeNm, springRows: rows,
+    I: OSC_I.total, k: OSCILLATOR.k_Nm_per_rad, Q: C.qOther, impulseJ: C.delivered_J, impulse: ESC_TORQUE.table, brakeNm, springRows: rows,
   });
+  // TODO 238 — does the train START the balance it drives? Hanging (the larger
+  // pivot friction, so the harder case), from the watchmaker's rest: the
+  // spring at its zero, the train wound. Not every rate the spec offers can
+  // (the mainspring and the train are sized for one), and a balance stopped
+  // by the hack at such a rate stays stopped until it is given a swing — the
+  // panel says so rather than leaving a watch that does not go.
+  const selfStart = BD.selfStart(K, { drive: true, brake: 0, friction: C.pivot.vertical_Nm, weight: null });
   return {
-    K, rows, corner: BALANCE_DRIVE_CORNER,
+    K, rows, corner: BALANCE_DRIVE_CORNER, escTorque: ESC_TORQUE, selfStart,
     friction: { flat: C.pivot.flat_Nm, vertical: C.pivot.vertical_Nm },
     // the posed swing per position: hanging, the designed target (what the
     // battery has always swept, bit for bit); dial-flat, the column's own
@@ -40470,6 +40545,19 @@ let balanceRate = 1;         // dτ/dt — the balance's own angular rate (1 = f
 let tauIntegrated = 0;       // movement time τ — since §246 the driven balance's escapement count (see tick())
 let balancePosition = BD.DEFAULT_POSITION; // §246 — the watch's position in gravity (canonical English key, never translated)
 let driveState = null;       // §246 — the driven balance; null = re-seed from τ on the next live tick
+let balanceStoppedShown = false; // TODO 238 — the panel's "Balance stopped" row is showing
+// TODO 238 — A SWING BY HAND, what a watchmaker gives a watch that will not
+// start itself: the balance is flicked to the swing its position is posed at,
+// in the direction of the beat it stopped in, and the escapement takes it from
+// there. Nothing else is touched: the train, the hands and τ follow the beats.
+function swingBalance() {
+  if (!driveState) return false;
+  const A = balancePosedDeg() * DEG2RAD, th = Math.max(-A, Math.min(A, driveState.theta));
+  const dir = driveState.inWindow ? (((driveState.n % 2) + 2) % 2 === 0 ? 1 : -1) : (th > 0 ? -1 : 1);
+  driveState.omega = dir * BALANCE_DRIVE.K.Omega * Math.sqrt(A * A - th * th);
+  driveState.stuck = false;
+  return true;
+}
 let driveDesync = false;     // §246 — Harrison's stop held τ while the balance swung on (re-seed on release)
 let lastDTau = 0;            // §246 — the last live tick's advance of τ (the drain reads it, one tick late)
 let lastTickRawT = 0;        // raw simTime as of the previous tick(), for dt
@@ -41242,6 +41330,7 @@ panel.innerHTML = `
       <div class="row label-small"><span id="scale-note">5.0 beats/s</span></div>
       <div class="row label-small"><span>Crown</span><button id="btn-crown">Pull out</button></div>
       <div class="row label-small"><span>Sync</span><button id="btn-sync">Now</button></div>
+      <div class="row label-small" id="balance-stopped" style="display:none; color:#e0a355;"><span>Balance stopped</span><button id="btn-swing">Give it a swing</button></div>
       <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
       <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
       <!-- §246 tier two: the watch's position in gravity, and what the driven
@@ -43455,6 +43544,10 @@ function toggleCrown() {
 }
 crownBtn.addEventListener('click', toggleCrown);
 
+// TODO 238 — the stopped balance's swing (swingBalance); the row shows only
+// while the balance stands with the train wound and the hack off
+document.getElementById('btn-swing').addEventListener('click', swingBalance);
+
 // --- sync button (BUILT §9) ----------------------------------------------
 // Click to start, click again to abandon; the script itself drives the crown,
 // so the button's job is only to hand it over and report where it has got to.
@@ -43601,14 +43694,20 @@ updateCrownUI();
   const edgeBand = 0.1 * (stockHi - stockLo);
   const hMm = OSCILLATOR.spring.h_mm;
   const atEdge = hMm >= stockHi - edgeBand ? 'top' : hMm <= stockLo + edgeBand ? 'bottom' : null;
+  // TODO 238 — and whether the train STARTS the balance (BALANCE_DRIVE.selfStart,
+  // the watchmaker's test from rest). The movement's springs and train are cut
+  // for one rate; at a faster one the hairspring outweighs the push, so a
+  // balance stopped by the hack stays stopped until it is given a swing.
+  const noStart = !BALANCE_DRIVE.selfStart.starts;
   setTimeout(() => {
     const w = __bootWarns.length;
-    if (w === 0 && !atEdge) return;
+    if (w === 0 && !atEdge && !noStart) return;
     const row = document.getElementById('spec-verdict');
     row.style.display = '';
     const lines = [];
     if (w) lines.push(`⚠ this spec does not close: ${w} structural assert${w === 1 ? '' : 's'} (see console)`);
     if (atEdge) lines.push(`⚠ hairspring ${hMm.toFixed(3)} mm — at the ${atEdge} of real stock (${stockLo}–${stockHi})`);
+    if (noStart) lines.push(`⚠ at ${fmtInt(SPEC.vph)} A/h the train cannot start the balance from rest — a stopped balance needs a swing`);
     row.firstElementChild.textContent = lines.join(' · ');
   }, 0);
 }
@@ -52447,6 +52546,15 @@ function tick(t) {
       steps: fastForward ? BALANCE_FF_STEPS : undefined,
     });
     recordBeat(driveState);
+    // TODO 238 — a balance the train cannot start says so (BALANCE_DRIVE.selfStart):
+    // stopped with the train wound and the hack off, it stays stopped until
+    // it is given a swing, and the panel offers one
+    const stopped = driveState.stuck && tension > 0 && !(maintRoom <= 0) && !(leverEngage > 0);
+    if (stopped !== balanceStoppedShown) {
+      balanceStoppedShown = stopped;
+      const row = document.getElementById('balance-stopped');
+      if (row) row.style.display = stopped ? '' : 'none';
+    }
     let tauNew = BD.tauOf(K, driveState);
     if (tauNew - tauIntegrated > maintRoom) { tauNew = tauIntegrated + Math.max(0, maintRoom); driveDesync = true; }
     lastDTau = tauNew - tauIntegrated;
@@ -55802,8 +55910,10 @@ window.__clock = {
       state: S ? { theta: S.theta, omega: S.omega, n: S.n, inWindow: S.inWindow, lockFrac: S.lockFrac, ampEst: S.ampEst, peak: S.peak, knocks: S.knocks, entryT: S.entryT, t: S.t } : null,
       posedDeg: { ...BALANCE_DRIVE.posedDeg }, sustainedDeg: { ...BALANCE_DRIVE.sustainedDeg }, friction: { ...BALANCE_DRIVE.friction },
       K: { F: BALANCE_DRIVE.K.F, IW: BALANCE_DRIVE.K.IW, I: BALANCE_DRIVE.K.I, k: BALANCE_DRIVE.K.k, Q: BALANCE_DRIVE.K.Q, c: BALANCE_DRIVE.K.c,
-           impulseJ: BALANCE_DRIVE.K.impulseJ, impulseNm: BALANCE_DRIVE.K.impulseNm, brakeNm: BALANCE_DRIVE.K.brakeNm, knockDeg: BALANCE_DRIVE.K.knockRad / DEG2RAD,
+           impulseJ: BALANCE_DRIVE.K.impulseJ, impulsePeakNm: BALANCE_DRIVE.K.impulsePeakNm, brakeNm: BALANCE_DRIVE.K.brakeNm, knockDeg: BALANCE_DRIVE.K.knockRad / DEG2RAD,
            steps: BALANCE_DRIVE.K.STEPS_PER_PERIOD, ffSteps: BALANCE_FF_STEPS },
+      escTorque: (({ table, ...e }) => e)(BALANCE_DRIVE.escTorque), selfStart: { ...BALANCE_DRIVE.selfStart },
+      stuck: !!S?.stuck,
       rate: liveRate(),
     };
   },
@@ -55812,6 +55922,7 @@ window.__clock = {
   // loop steps with, the spring frames it was built from, and the per-position
   // weight table — the same objects, not copies, so the probe and the live
   // loop cannot be running two models.
+  swingBalance, // TODO 238 — the panel's "Give it a swing"
   get balanceDriveModel() {
     return { K: BALANCE_DRIVE.K, rows: BALANCE_DRIVE.rows, weight: (pos) => balanceWeightTable(pos), friction: { ...BALANCE_DRIVE.friction },
              posedDeg: { ...BALANCE_DRIVE.posedDeg }, sustainedDeg: { ...BALANCE_DRIVE.sustainedDeg }, massKg: BALANCE_DRIVE.massKg, g: BALANCE_DRIVE.g };
