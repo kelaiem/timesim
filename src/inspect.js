@@ -3390,9 +3390,11 @@ export const INTRA_UNIT_CONTACTS = [
   // it could never have been the fulcrum; the rows bought silence for a joint
   // that was not there. The fulcrum is a PIN on the tilt axis now, and these
   // are its three joints:
-  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakEye', why: 'TODO 204: the beak lever\'s eye turning on its pin — the fulcrum, a running fit at PIVOT_BORE_CLEAR on the tilt axis itself, so no arm of the lever moves' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakHead', why: 'TODO 204: the pin pressed through the post\'s head, flush with its outer face — a cantilever from the head\'s inner face' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakPost', b: 'alarmLinkBeakHead', why: 'TODO 204: the post lapped one SAW_FIT into its head — one part, the head cross-drilled for the pin' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakEye', why: 'TODO 230 (NOTE, not an audited contact — same-frame movers, no tier compares them): the beak lever\'s pin PRESSED into its eye, home against the web\'s lap (bore r = pin r − SAW_FIT, §234\'s construction) — the pin turns with the lever' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPin', b: 'alarmLinkBeakHead', why: 'TODO 230: the lever\'s pin running in the post\'s head — the fulcrum\'s journal, PIVOT_BORE_CLEAR on the tilt axis itself, so no arm of the lever moves (TODO 204 had the fit the other way round, the pin pressed in the head)' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakEye', b: 'alarmLinkBeakHead', why: 'TODO 230: the eye\'s outer face on the bush\'s inner face — the thrust face that holds the lever away from the arm\'s line, half the derived end-shake (ALARM_BEAK_END_SHAKE) off at the build' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPinHead', b: 'alarmLinkBeakHead', why: 'TODO 230: the pin\'s integral head on the bush\'s outer face — the thrust face that holds the lever toward the arm\'s line, which nothing held before (the lever slid 0.17 into the selector rod); half the end-shake off at the build' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakPost', b: 'alarmLinkBeakHead', why: 'TODO 204: the post lapped one SAW_FIT into its head — one part, the head cross-drilled for the pin (since TODO 230 the bush the pin runs in)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush1', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations; §202 named the bushes, since a third station renumbers every positional selector)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush2', why: 'lay shaft in hanger bush 2' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
