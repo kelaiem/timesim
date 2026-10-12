@@ -179,10 +179,21 @@ export function step(K, S, dt, env) {
   let left = dt;
   let guard = 0;
   while (left > 1e-15 && guard++ < 100000) {
-    const h = Math.min(hMax, left);
     const fr = env.friction + (env.brake || 0) * K.brakeNm;
-    // Stuck: static friction holds while it can.
     const nb = escBeat(S);
+    // Inside the escapement's contact the torque follows the metal's shape,
+    // whose steep stretches (the face's gearing rising to the let-off) a
+    // sub-step sized by the period would cross in one stride; there the stride
+    // is capped by ANGLE instead, so the work the integrator hands over is the
+    // table's to the column's tolerance at every period resolution
+    let hCap = hMax;
+    if (env.drive && nb !== null && K.impulse.capRad > 0 && S.omega !== 0) {
+      const u = dirOf(nb) * S.theta, T = K.impulse;
+      if (u > T.u0 - T.capRad && u < T.u0 + T.du * (T.y.length - 1) + T.capRad)
+        hCap = Math.min(hMax, T.capRad / Math.abs(S.omega));
+    }
+    const h = Math.min(hCap, left);
+    // Stuck: static friction holds while it can.
     if (S.stuck) {
       if (Math.abs(restTorque(K, env, nb, S.theta)) <= fr) { left -= h; continue; }
       S.stuck = false;

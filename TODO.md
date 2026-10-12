@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 242 | OPEN | Found fixing the stopped balance (TODO 238). `RATE_TABLE` re-gears only the fourth⇄escape mesh, so a faster rate quarters the hairspring's k while the escape torque falls with the ratio: from rest the train starts the balance at 18,000 only, and the swings it sustains hanging are 199° / 161° / 112° / 85° at 18,000 / 21,600 / 28,800 / 36,000. Re-size the mainspring and train per rate so each row reaches `AMPLITUDE_TARGET_DEG` and starts itself |
 | 240 | OPEN | Filed with TODO 230 as TODO 239's root fix. The beak arm points at the column wheel's centre, so its tilt axis — and the pivot pin on it — is TANGENTIAL at the nose, and the castellation flanks push the lever along its pivot. Re-aim the lever so its axis is radial and the push lies in its own plane: a P0 line-spec fork of §229/TODO 174's arms (nose land, ratio, seat drop, rod station), designed in a line then folded. P0 |
 | 239 | OPEN | Found investigating TODO 230. The column's flanks (42.9–50.6° across the nose) push the beak's nose ALONG its pivot pin: 66–89 mN climbing (+y), 29–39 mN descending. That twists the lever (F·beakLen) and, counted, puts the pin at 950–1114 MPa (needs r 0.1763–0.1859) and the post at 1050–1093 MPa (needs ⌀ ×1.096–1.110), over the 800 MPa yield; the thrust faces' friction (+3.19% lift, −1.42% seat) is missing from the arming spring's solve. Carry the load in the record and resize, or remove it by TODO 240. P1 |
 | 238 | OPEN | Found closing TODO 226 step 3b. §246's driven balance lays the impulse torque symmetrically over ±LIFT/2, but on the metal the wheel drives the pin only from the end of the shake's crossing (−10.16°) to the let-off (+25°), 35.2° rather than 50°, and the unlock (−28.53° to −15.20°) is work the balance does against the stone's draw. The impulse window, its energy and the unlock's cost should be read off `pinNotch` and the crossing, not the lift |
@@ -32626,3 +32627,37 @@ at T = 1, so the stop and the banked tooth coincide by construction. Then:
   tolerance, not at the finger.
 
 `sigmaSurvive_MPa` on crank A's row is the number this item retires.
+
+## 242. The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000
+
+Found fixing the stopped balance (TODO 238). A reader who picked a faster beat
+rate from the panel saw the movement lock up after the boot sync: the hack
+stopped the balance and nothing restarted it.
+
+`RATE_TABLE` (layout.js) changes one mesh, the fourth⇄escape, so that the
+fourth wheel keeps one turn a minute (§22). Everything upstream is the
+18,000 movement's: the same mainspring, fusee and wheels. The hairspring is
+re-solved to the rate (k ∝ F², TODO 25), so the spring the escapement has to
+push grows fourfold at 36,000 while the escape torque falls by the escape
+mesh's ratio. Measured on the TODO 238 drive (nominal corner, hanging):
+
+| rate | escape torque | starts from rest | sustained swing |
+|---|---|---|---|
+| 18,000 | 3.14e-7 N·m | yes | 199° |
+| 21,600 | 2.62e-7 N·m | no (rests at 11.4°) | 161° |
+| 28,800 | 1.96e-7 N·m | no (rests at 6.1°) | 112° |
+| 36,000 | 1.57e-7 N·m | no (rests at 3.6°) | 85° |
+
+The panel now says so (the spec verdict row, and a "Balance stopped" row
+with a swing), which is honest, but the faster rows are not watches anyone
+would build: a real 36,000 movement has a stronger mainspring and a train
+cut for it.
+
+**Fix path.** Make the rate a design input upstream of the escape mesh:
+re-solve the going mainspring's torque (TODO 192 step 3's proportioning, run
+at each rate) and the train's ratios so the escape torque delivers the energy
+`AMPLITUDE_TARGET_DEG` needs at each rate's k, then re-check the fusee cut,
+the reserve and the ribbon's stress gate. Acceptance: every `RATE_TABLE` row
+reaches the target swing hanging at the nominal corner, and
+`BALANCE_DRIVE.selfStart.starts` is true at every row.
+

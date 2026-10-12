@@ -11187,7 +11187,15 @@ const BALANCE_DRIVE = (() => {
     // contact and none — so the integrator can step to them (balance-drive.js)
     const breaks = [u0];
     for (let i = 0; i < N; i++) if ((g[i] === 0) !== (g[i + 1] === 0)) breaks.push(u0 + du * i, u0 + du * (i + 1));
-    return { table: { u0, du, y, breaks }, T, etaPath, s, etaFace: s / etaPath, recoilRad: recoil, liftRad: lift, unlock_J,
+    // the integrator's stride inside the contact (balance-drive.js): three of
+    // the table's own cells, so no stride crosses more of the metal's shape
+    // than three straight pieces of it. Measured (offline on these tables, the
+    // nominal corner): the rate agrees to 0.012 s/day between 400, 100 and 40
+    // sub-steps a period, and the swing lands within 0.03% of the column's
+    // solve hanging and flat — where a stride sized by the period alone read
+    // the swing 0.3% low at 400 and 1.6% high at 40
+    const capRad = 3 * du;
+    return { table: { u0, du, y, breaks, capRad }, T, etaPath, s, etaFace: s / etaPath, recoilRad: recoil, liftRad: lift, unlock_J,
       peakNm: y.reduce((m, v) => Math.max(m, v), 0), endHalf, unlockHalf, entryHalf, liftHalf };
   })();
   // The metal must say what the law above assumes: the wheel recoils through
@@ -43682,14 +43690,20 @@ updateCrownUI();
   const edgeBand = 0.1 * (stockHi - stockLo);
   const hMm = OSCILLATOR.spring.h_mm;
   const atEdge = hMm >= stockHi - edgeBand ? 'top' : hMm <= stockLo + edgeBand ? 'bottom' : null;
+  // TODO 238 — and whether the train STARTS the balance (BALANCE_DRIVE.selfStart,
+  // the watchmaker's test from rest). The movement's springs and train are cut
+  // for one rate; at a faster one the hairspring outweighs the push, so a
+  // balance stopped by the hack stays stopped until it is given a swing.
+  const noStart = !BALANCE_DRIVE.selfStart.starts;
   setTimeout(() => {
     const w = __bootWarns.length;
-    if (w === 0 && !atEdge) return;
+    if (w === 0 && !atEdge && !noStart) return;
     const row = document.getElementById('spec-verdict');
     row.style.display = '';
     const lines = [];
     if (w) lines.push(`⚠ this spec does not close: ${w} structural assert${w === 1 ? '' : 's'} (see console)`);
     if (atEdge) lines.push(`⚠ hairspring ${hMm.toFixed(3)} mm — at the ${atEdge} of real stock (${stockLo}–${stockHi})`);
+    if (noStart) lines.push(`⚠ at ${fmtInt(SPEC.vph)} A/h the train cannot start the balance from rest — a stopped balance needs a swing`);
     row.firstElementChild.textContent = lines.join(' · ');
   }, 0);
 }
