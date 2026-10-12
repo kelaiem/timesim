@@ -60,12 +60,29 @@
 // row's, never the escape wheel's: the wheel's own cut (15 teeth, 24° pitch,
 // BEAT_DEG 12) is untouched at every rate. Absent, a row's module is the
 // mesh's 0.21, so the three rows above are byte-identical to what shipped.
+// TODO 242 — and each row carries its BALANCE. The mesh above is the only
+// part of the train a rate changes, so the escape torque falls as 1/F while
+// the hairspring a balance of fixed inertia needs grows as F² (k = I·ω²): with
+// the 18,000 balance the faster rows sustained 160° / 109° / 82° hanging and
+// could not start themselves. The mainspring cannot grow (the drum is as large
+// as the plate carries, the ribbon proportioned to its stress limit), so the
+// balance gets lighter, as a real high-beat calibre's does: `rimF` is the
+// heaviest rim (in BAL_RIM_STEP steps) whose balance both reaches
+// AMPLITUDE_TARGET_DEG at the nominal corner, hanging, and is started by the
+// escapement from rest (BALANCE_DRIVE.selfStart). `equalisation` row 15 holds
+// both, and that one step heavier fails one of them. `claimDeg` and `peakDeg`
+// are AMPLITUDE_CLAIM_DEG and AMPLITUDE_PEAK_DEG for that balance (row 14).
+// A row without them is the 18,000 balance's, which is what 36,000 still is:
+// the lightest rim the metal allows (balanceWheelDims' floor) does not reach
+// it, and a smaller balance re-solves the escapement (TODO 242).
 const RATE_TABLE = {
-  18000: { fourthTeeth: 80, escPinion: 8 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8 }, // 8/96 = 1/12
-  28800: { fourthTeeth: 96, escPinion: 6 }, // 6/96 = 1/16
+  18000: { fourthTeeth: 80, escPinion: 8, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
+  21600: { fourthTeeth: 96, escPinion: 8, rimF: 0.485, claimDeg: 126, peakDeg: 311 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6, rimF: 0.24, claimDeg: 126, peakDeg: 311 }, // 6/96 = 1/16
   36000: { fourthTeeth: 120, escPinion: 6, module: 0.168 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
+// The row a rate's balance reads: its own, or the shipped movement's.
+const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
 export const SPEC = (() => {
   const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
@@ -392,8 +409,9 @@ export const BEAT_DEG = 12;             // escape-wheel advance per beat (half o
 // (claim ≤ minimum, peak ≥ the reachable maximum) and the TIGHTNESS (each
 // within one degree). A change that moves the solve or the escapement fails
 // the gate until these move with it.
-export const AMPLITUDE_CLAIM_DEG = 126;
-export const AMPLITUDE_PEAK_DEG = 311;
+// TODO 242 — both are the spec's rate row's, since each row has its own balance.
+export const AMPLITUDE_CLAIM_DEG = rateBalanceRow(SPEC.vph).claimDeg;
+export const AMPLITUDE_PEAK_DEG = rateBalanceRow(SPEC.vph).peakDeg;
 // TODO 207 — and the swing the movement is DESIGNED to: a serviced Swiss lever
 // watch holds 200° or more in the vertical positions, and a watchmaker reads
 // less as a fault. It is held at the NOMINAL corner, the serviced state; the
@@ -401,7 +419,12 @@ export const AMPLITUDE_PEAK_DEG = 311;
 // targeted, and it is what AMPLITUDE_CLAIM_DEG claims. BAL_RIM_F is the
 // heaviest rim that reaches it, and `equalisation` row 15 holds both.
 export const AMPLITUDE_TARGET_DEG = 200;
-export const AMPLITUDE_TARGET_SLACK_DEG = 1.5;   // one 0.005 step of BAL_RIM_F is 1.3° of nominal vertical swing (measured)
+// TODO 242 — the rim's search step, and what "heaviest" is held to: one step
+// heavier than BAL_RIM_F must fail the target or the start (row 15 computes
+// that balance from balanceWheelDims, so no slack in degrees stands in for
+// it — the slack this replaced, 1.5°, was one step's measured 1.3° at 18,000
+// and is a different number at every rate).
+export const BAL_RIM_STEP = 0.005;
 // §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
 // `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is
 // retired: the balance is posed at AMPLITUDE_TARGET_DEG, the swing the energy
@@ -1155,30 +1178,57 @@ export const FORK_BEVEL_FRAC = 0.12;
 // item's.
 export const FORK_HALF_Z = FORK_T / 2;
 export const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
+// THE BALANCE WHEEL'S DIMENSIONS, one law (TODO 242): makeBalanceWheel cuts
+// it, main.js's OSC_I weighs it (and weighs the one-step-heavier balance row 15
+// asks about), the stop work's pad clears its screws (HACK_SCREW_DROP). The
+// rim keeps its width (the pad's annulus) and loses HEIGHT with rimF (TODO
+// 207); the arms' thickness and the timing screws' heads went with it, which
+// at 18,000 keeps the screws inside the rim's band. Below rimF = 0.317 that
+// scaling would cut the arms and the screws under §50's stock floor, so each
+// is held AT the floor (STOCK_MIN_U across) instead, and a screw at the floor
+// stays inside the rim's band exactly while the rim itself is at or above the
+// floor (0.55·t·rimF ≥ STOCK_MIN_U): the three floors meet at one rimF, which
+// is the lightest balance this wheel can be (`rimFloorF`).
+export function balanceWheelDims({ radius, thickness, rimF = 1 }) {
+  const t = thickness;
+  const fs = Math.max(rimF, STOCK_MIN_U / (0.4 * t));   // the arms' and screws' own factor, floored
+  const rimO = radius, rimI = radius - t * 0.5;
+  const screwLen = 0.3 + t * 0.16;                        // protrusion 0.3 + embedment (makeBalanceWheel says why)
+  const screwR1 = t * 0.20 * fs, screwR2 = Math.max(t * 0.24 * fs, STOCK_MIN_U / 2);
+  return {
+    rim: { rO: rimO, rI: rimI, h: t * 0.55 * rimF },
+    arm: { x: rimI * 2, y: t * 0.5, z: t * 0.4 * fs },
+    screws: { n: 16, r1: screwR1, r2: screwR2, len: screwLen, rc: rimO - (screwLen / 2 - 0.3) },
+    rimFloorF: STOCK_MIN_U / (0.55 * t),
+  };
+}
 // TODO 207 — the balance is LIGHTENED to the spring the movement can carry.
 // Its sustained swing is the energy each beat delivers against what the
 // balance spends: (πk/2Q)θ² on everything but its pivots, where k = I·ω² goes
 // with its INERTIA, and 2θ·μ·m·g·r on its pivots, which goes with its MASS.
 // The barrel is already as large as the plate allows (DRUM_R_ACTUAL), so the
-// rest of the gap to AMPLITUDE_TARGET_DEG comes out of the balance. The rim's
+// rest of the gap to AMPLITUDE_TARGET_DEG comes out of the balance. Since
+// TODO 242 the rim is the spec's RATE_TABLE row's (rateBalanceRow), each row
+// solved the same way at its own rate, and since a faster row also has to START
+// itself, "reaches the target" is "reaches the target and self-starts". The rim's
 // WIDTH is not free: the stop work's pad is sized to the rim's underside
 // annulus (HACK_PAD_TOP_R below), so the rim loses HEIGHT. The timing screws'
 // heads and the arms' thickness scale with it, which keeps the screws inside
 // the rim's band (HACK_SCREW_DROP stays positive) and the arms inside the
 // rim. BAL_RIM_F is the HEAVIEST rim that still reaches the target, because a
 // heavier balance is the steadier one against the escapement's
-// disturbances. Searched in steps of 0.005: 0.645 sustains 200.4° nominal
-// vertical, 0.650 sustains 199.1°. `equalisation` row 15 holds it on both
-// sides: the target met at the nominal corner, vertical, and not exceeded by
-// AMPLITUDE_TARGET_SLACK_DEG or more, which is what one 0.005 step heavier
-// costs (1.3°) with margin, so a lighter rim than needed fails the gate too.
+// disturbances. Searched in steps of BAL_RIM_STEP: at 18,000 0.645 sustains
+// 200.4° nominal vertical, 0.650 sustains 199.1°. `equalisation` row 15 holds
+// it on both sides: the target met and the balance self-starting at the
+// nominal corner, vertical, and one step heavier failing either, so a lighter
+// rim than needed fails the gate too.
 // The metal comes off the rim's TOP: its underside stays where the full rim's
 // was, so the balance's seat over the fork (L_BALANCE below), the stop work's
 // contact plane (HACK_CONTACT_Z) and everything stacked above the balance keep
 // their datum. RIM_H_REF is that full rim, and the datum it fixes.
-export const BAL_RIM_F = 0.645;
+export const BAL_RIM_F = rateBalanceRow(SPEC.vph).rimF;
 export const RIM_H_REF = BAL_T * 0.55;           // the full rim — the seat's datum
-export const RIM_H = RIM_H_REF * BAL_RIM_F;     // rim height — mirrors makeBalanceWheel's 0.55·t·rimF rim
+export const RIM_H = balanceWheelDims({ radius: 0, thickness: BAL_T, rimF: BAL_RIM_F }).rim.h;   // rim height — balanceWheelDims' rim, the builder's own
 // Balance mid-plane: the fork blank's TRUE top (L_FORK + FORK_HALF_Z) +
 // margin + half the rim's own height. The rim's underside is the balance's
 // deepest full-ring face, so this is the lowest the wheel can sit without
@@ -3622,7 +3672,9 @@ export function solveStopWork({
   // The rim's underside hangs only this far below the screws' deepest sweep
   // (0.275·t rim half-height vs 0.24·t screw base radius) — far less than
   // the margin, so z alone cannot keep the pad clear of the screws:
-  const HACK_SCREW_DROP = (0.55 / 2 - 0.24) * BAL_T * BAL_RIM_F;   // TODO 207 — rim and screw heads scale together
+  // TODO 207 / TODO 242 — the rim's half-height less the screws' head radius,
+  // both off balanceWheelDims (they scale together, and floor together)
+  const HACK_SCREW_DROP = (() => { const W = balanceWheelDims({ radius: balanceR, thickness: BAL_T, rimF: BAL_RIM_F }); return W.rim.h / 2 - W.screws.r2; })();
   // ...the rest of the separation must come radially. Corner-to-corner:
   // √(standoff² + drop²) = margin ⇒
   const HACK_SCREW_STANDOFF = Math.sqrt(Math.max(0, HACK_CLEAR_MARGIN ** 2 - HACK_SCREW_DROP ** 2));

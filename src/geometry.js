@@ -8,7 +8,7 @@ import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
-  CASE_SPRING_BAR_D, CASE_BAR_REACH, CASE_LUG_REACH, caseLugRootR } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190: the lug/bar stock, one declaration
+  CASE_SPRING_BAR_D, CASE_BAR_REACH, CASE_LUG_REACH, caseLugRootR, balanceWheelDims } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190: the lug/bar stock, one declaration
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -2799,8 +2799,11 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
                                    pinDrop = thickness * 1.8, rimF = 1,
                                    roller: rollerSeat, pinTop, pinFlat = null }) {
   const g = new THREE.Group();
-  const rimO = radius;
-  const rimI = radius - thickness * 0.5;
+  // TODO 242 — every dimension below is balanceWheelDims' (layout.js), the one
+  // law main.js weighs and the stop work clears; this builder only cuts it
+  const W = balanceWheelDims({ radius, thickness, rimF });
+  const rimO = W.rim.rO;
+  const rimI = W.rim.rI;
 
   // Slim annular rim — 0.5·t wide × 0.55·t tall (down from 0.8 × 0.75,
   // itself already down from 1.3 × 1.0): a light precision ring. The
@@ -2813,13 +2816,13 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // its centre drops by half the height removed, and the arms and screws sit
   // on that centre too.
   const rimDz = -thickness * 0.55 * (1 - rimF) / 2;
-  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, thickness * 0.55 * rimF, 48), MATS.brass);
+  const rim = new THREE.Mesh(ringExtrude(rimO, rimI, W.rim.h, 48), MATS.brass);
   rim.position.z = rimDz;
   g.add(rim);
 
   // Two arms (a single diameter bar = 2 arms), matched to the finer rim —
   // kept inside the rim's own z-band.
-  const armGeo = new THREE.BoxGeometry(rimI * 2, thickness * 0.5, thickness * 0.4 * rimF);
+  const armGeo = new THREE.BoxGeometry(W.arm.x, W.arm.y, W.arm.z);
   const armMesh = new THREE.Mesh(armGeo, MATS.steel);
   armMesh.position.z = rimDz;
   g.add(armMesh);
@@ -2851,11 +2854,11 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // (screwLen − protrusion = 0.16·t = 0.4) is solved from the stop-work
   // pad's annulus: pad top diameter = rim width − embedment − standoff
   // must stay ≥ 0.7. HACK_SCREW_IN_R in main.js mirrors the inner tips.
-  const SCREW_PROTRUSION = 0.3;
-  const screwLen = SCREW_PROTRUSION + thickness * 0.16;
-  const SCREW_N = 16;
-  const screwR1 = thickness * 0.20 * rimF, screwR2 = thickness * 0.24 * rimF;
-  const screwRC = rimO - (screwLen / 2 - SCREW_PROTRUSION); // tip lands at rimO + PROTRUSION
+  // (TODO 242: balanceWheelDims holds the heads at §50's floor below rimF 0.317)
+  const screwLen = W.screws.len;
+  const SCREW_N = W.screws.n;
+  const screwR1 = W.screws.r1, screwR2 = W.screws.r2;
+  const screwRC = W.screws.rc; // tip lands at rimO + protrusion
   const screwGeo = new THREE.CylinderGeometry(screwR1, screwR2, screwLen, 10);
   for (let i = 0; i < SCREW_N; i++) {
     const a = (i / SCREW_N) * Math.PI * 2;
@@ -2946,8 +2949,8 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   // UNIT_MM. Harvesting these by traversing children would be the wrong
   // answer twice over — the §66 schematic tier appends Line proxies to this
   // very group, and a traversal cannot tell a rim from a roller.
-  g.userData.rim = { rO: rimO, rI: rimI, h: thickness * 0.55 * rimF };            // brass annulus
-  g.userData.arm = { x: rimI * 2, y: thickness * 0.5, z: thickness * 0.4 * rimF }; // steel bar across the middle (= 2 arms)
+  g.userData.rim = { ...W.rim };     // brass annulus
+  g.userData.arm = { ...W.arm };     // steel bar across the middle (= 2 arms)
   g.userData.screws = { n: SCREW_N, rc: screwRC, len: screwLen, r1: screwR1, r2: screwR2 };
   return g;
 }

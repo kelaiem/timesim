@@ -20,7 +20,7 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, fmtPct, lowerUi, locali
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, AMPLITUDE_TARGET_SLACK_DEG, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, balanceWheelDims, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
@@ -2008,8 +2008,9 @@ const OSC_BRASS_RHO = STOCK.brass.rho;   // kg/m³ — CuZn37 (the rim's MATS.br
 const OSC_U = UNIT_MM / 1000;   // m per model unit — §39's pin, the one conversion
 // The BALANCE'S MOMENT OF INERTIA, from the dimensions the builder publishes
 // (rule 1's single source — nothing restated here that makeBalanceWheel knows).
-const OSC_I = (() => {
-  const B = balanceWheel.userData;
+// TODO 242 — a function of the wheel's dimensions (balanceWheelDims' shape), so
+// the energy record can weigh the one-step-heavier balance with this same law.
+function oscInertiaOf(B) {
   const u5 = OSC_U ** 5;        // ρ·(volume)·(radius²) — five lengths
   // Rim: a brass annulus about its own axis, I = m·(rO² + rI²)/2.
   const rimVol = Math.PI * (B.rim.rO ** 2 - B.rim.rI ** 2) * B.rim.h;
@@ -2032,7 +2033,8 @@ const OSC_I = (() => {
   // neglect, same bound: the uncounted staff and rollers are under 1%.
   const mass = (OSC_BRASS_RHO * rimVol + OSC_STEEL_RHO * (B.arm.x * B.arm.y * B.arm.z) + OSC_STEEL_RHO * B.screws.n * screwVol) * OSC_U ** 3;
   return { total: rim + arm + screw, rim, arm, screw, mass };
-})();
+}
+const OSC_I = oscInertiaOf(balanceWheel.userData);
 // THE SOLVE. k = I·ω² is the rate the spec demands of this wheel; the spiral's
 // own length (a function of the coil plan alone, so no circularity) then fixes
 // the section that delivers it: k = E·I_sec / L, and the cut section is a
@@ -29711,14 +29713,38 @@ const EQUALISATION = (() => {
       console.warn(`TODO 216: AMPLITUDE_PEAK_DEG ${AMPLITUDE_PEAK_DEG}° is not the largest reachable swing rounded up — the solve's greatest is ${max.deg.toFixed(2)}° (${max.corner}, ${max.position}) and the pin knocks at ${knock.toFixed(2)}°`);
     if (!energy.knock.nominalClears)
       console.warn(`TODO 216: the serviced (nominal) corner knocks — vertical ${energy.corners.nominal.sustainedDeg.vertical.toFixed(2)}°, dial-flat ${energy.corners.nominal.sustainedDeg.flat.toFixed(2)}° against the knock at ${knock.toFixed(2)}°`);
-    // TODO 207 — the DESIGN target, at the nominal corner held vertical: met,
-    // and by less than one heavier rim step would cost (BAL_RIM_F is the
-    // heaviest rim that reaches it).
+    // TODO 207 — the DESIGN target, at the nominal corner held vertical — and
+    // since TODO 242 the START: the balance is the heaviest rim that both
+    // reaches the target and is started by the escapement from rest. Held both
+    // ways: met and starting at BAL_RIM_F, and ONE STEP HEAVIER failing one of
+    // them — that balance weighed by balanceWheelDims and OSC_I's own law, its
+    // swing by the same solve, its start by the same drive with the spring
+    // re-solved to it (k = I·ω², and the elastica's torque scales with k at a
+    // fixed coil plan) and its pivots' friction scaled with its mass.
     const nominalVertical = energy.corners.nominal.sustainedDeg.vertical;
-    energy.amplitude.target = { deg: AMPLITUDE_TARGET_DEG, slackDeg: AMPLITUDE_TARGET_SLACK_DEG, nominalVertical,
-      met: nominalVertical >= AMPLITUDE_TARGET_DEG, tight: nominalVertical < AMPLITUDE_TARGET_DEG + AMPLITUDE_TARGET_SLACK_DEG };
+    const C = GOING_POWER.corner('nominal'), W = 2 * Math.PI * F_BALANCE;
+    const atRim = (rimF) => {
+      const B = oscInertiaOf(balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T, rimF }));
+      const k = B.total * W * W, tf = C.pivot.vertical_Nm * B.mass / OSC_I.mass;
+      const a = Math.PI * k / (2 * C.qOther), bq = 2 * tf;
+      const deg = (-bq + Math.sqrt(bq * bq + 4 * a * C.delivered_J)) / (2 * a) / DEG2RAD;
+      const K0 = BALANCE_DRIVE.K, ks = k / K0.k;
+      const K = { ...K0, I: B.total, k, c: B.total * W / K0.Q, spring: { ...K0.spring, y: K0.spring.y.map((v) => v * ks) } };
+      const start = BD.selfStart(K, { drive: true, brake: 0, friction: tf, weight: null });
+      return { rimF, nominalVertical: deg, starts: start.starts };
+    };
+    // the law weighs THIS balance as the column does, or the step above it means nothing
+    const self = atRim(BAL_RIM_F);
+    if (!(Math.abs(self.nominalVertical - nominalVertical) < 1e-6 && self.starts === BALANCE_DRIVE.selfStart.starts))
+      console.warn(`TODO 242: balanceWheelDims weighs BAL_RIM_F ${BAL_RIM_F} to ${self.nominalVertical.toFixed(6)}° (${self.starts ? 'starts' : 'no start'}) where the column reads ${nominalVertical.toFixed(6)}° (${BALANCE_DRIVE.selfStart.starts ? 'starts' : 'no start'}) — the step test reads a different balance from the one cut`);
+    const heavier = atRim(BAL_RIM_F + BAL_RIM_STEP);
+    const starts = BALANCE_DRIVE.selfStart.starts;
+    energy.amplitude.target = { deg: AMPLITUDE_TARGET_DEG, nominalVertical, starts, rimF: BAL_RIM_F, step: BAL_RIM_STEP,
+      heavier, met: nominalVertical >= AMPLITUDE_TARGET_DEG && starts,
+      tight: !(heavier.nominalVertical >= AMPLITUDE_TARGET_DEG && heavier.starts),
+      binds: heavier.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target' };
     if (!energy.amplitude.target.met || !energy.amplitude.target.tight)
-      console.warn(`TODO 207: the nominal corner sustains ${nominalVertical.toFixed(2)}° vertical against the ${AMPLITUDE_TARGET_DEG}° target (slack ${AMPLITUDE_TARGET_SLACK_DEG}°) — ${energy.amplitude.target.met ? 'BAL_RIM_F is lighter than the target needs' : 'the balance is too heavy for its spring'}; re-solve BAL_RIM_F`);
+      console.warn(`TODO 207/242: BAL_RIM_F ${BAL_RIM_F} at ${SPEC.vph} A/h sustains ${nominalVertical.toFixed(2)}° nominal vertical against the ${AMPLITUDE_TARGET_DEG}° target and ${starts ? 'starts' : 'does NOT start'} itself; one step heavier (${heavier.rimF.toFixed(3)}) sustains ${heavier.nominalVertical.toFixed(2)}° and ${heavier.starts ? 'starts' : 'does not start'} — ${energy.amplitude.target.met ? 'the rim is lighter than it needs to be' : 'the balance is too heavy for its spring'}; re-solve the RATE_TABLE row's rimF`);
   }
   return Object.freeze({
     going: {

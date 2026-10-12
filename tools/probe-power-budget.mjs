@@ -431,11 +431,37 @@ if (!REC || !REC.corners) {
   if (Number.isFinite(knock)) console.log(`knock at ${knock.toFixed(2)}° (lift ${REC.knock.liftDeg.toFixed(2)}°): ${knocking.length ? `the energy would carry ${knocking.join(', ')} past it — the balance banks there` : 'no corner reaches it'}`);
   if ([results.nominal.balance.ampVertDeg, results.nominal.balance.ampFlatDeg].some((d) => !(d < knock)))
     disagreements.push({ what: 'the nominal corner knocks', probe: [results.nominal.balance.ampVertDeg, results.nominal.balance.ampFlatDeg], record: knock });
-  // TODO 207 — the design target, at the nominal corner held vertical: met, and
-  // by less than the slack one heavier rim step costs.
+  // TODO 207, TODO 242 — the design target, at the nominal corner held vertical:
+  // met, and ONE RIM STEP HEAVIER computed here — that balance cut by
+  // layout.js's balanceWheelDims, weighed by OSC_I's decomposition (densities
+  // from STOCK, the one table), its spring re-solved to it (k = I·ω²) and its
+  // pivots' friction scaled with its mass — must not reach it unless the
+  // record says that balance does not START (the start is the driven
+  // balance's, which only the page integrates, so that half is read from the
+  // record and said so).
   const nv = results.nominal.balance.ampVertDeg;
-  if (!(nv >= L.AMPLITUDE_TARGET_DEG && nv < L.AMPLITUDE_TARGET_DEG + L.AMPLITUDE_TARGET_SLACK_DEG))
-    disagreements.push({ what: 'nominal vertical swing against AMPLITUDE_TARGET_DEG', probe: nv, record: `${L.AMPLITUDE_TARGET_DEG} + <${L.AMPLITUDE_TARGET_SLACK_DEG}` });
+  const T = REC.amplitude?.target;
+  if (!(nv >= L.AMPLITUDE_TARGET_DEG)) disagreements.push({ what: 'nominal vertical swing under AMPLITUDE_TARGET_DEG', probe: nv, record: L.AMPLITUDE_TARGET_DEG });
+  if (!T || T.starts !== true) disagreements.push({ what: 'the record does not say the balance starts itself', probe: 'starts', record: T ? T.starts : 'absent' });
+  {
+    const rhoB = L.STOCK.brass.rho, rhoS = L.STOCK.steel.rho;
+    const inertia = (W) => {
+      const rimV = Math.PI * (W.rim.rO ** 2 - W.rim.rI ** 2) * W.rim.h;
+      const sV = (Math.PI * W.screws.len / 3) * (W.screws.r1 ** 2 + W.screws.r1 * W.screws.r2 + W.screws.r2 ** 2);
+      return { I: rhoB * rimV * (W.rim.rO ** 2 + W.rim.rI ** 2) / 2 + rhoS * W.arm.x * W.arm.y * W.arm.z * (W.arm.x ** 2 + W.arm.y ** 2) / 12 + rhoS * W.screws.n * sV * W.screws.rc ** 2,
+        m: rhoB * rimV + rhoS * W.arm.x * W.arm.y * W.arm.z + rhoS * W.screws.n * sV };
+    };
+    const dims = (rimF) => L.balanceWheelDims({ radius: B.rim.rO, thickness: L.BAL_T, rimF });
+    const here = inertia(dims(L.BAL_RIM_F)), up = inertia(dims(L.BAL_RIM_F + L.BAL_RIM_STEP));
+    const A = CORNERS.nominal, R = results.nominal;
+    const k = osc.k * up.I / here.I, tf = R.balance.tfVert_Nm * up.m / here.m;
+    const a = Math.PI * k / (2 * A.qOther), bq = 2 * tf;
+    const nvUp = (-bq + Math.sqrt(bq * bq + 4 * a * R.supply_nJ * 1e-9)) / (2 * a) * 180 / Math.PI;
+    console.log(`TODO 242: one rim step heavier (${(L.BAL_RIM_F + L.BAL_RIM_STEP).toFixed(3)}) sustains ${nvUp.toFixed(2)}° nominal vertical (record ${T?.heavier ? T.heavier.nominalVertical.toFixed(2) : '—'}°), and the record says it ${T?.heavier?.starts ? 'starts' : 'does not start'}`);
+    if (T?.heavier) same('one rim step heavier: nominal vertical (deg)', nvUp, T.heavier.nominalVertical, 1e-6);
+    if (nvUp >= L.AMPLITUDE_TARGET_DEG && T?.heavier?.starts !== false)
+      disagreements.push({ what: 'one rim step heavier still reaches the target and the record says it starts (BAL_RIM_F lighter than needed)', probe: nvUp, record: T?.heavier });
+  }
   const recRows = REC.pivots?.strength?.rows || [];
   if (recRows.length !== strength.length) disagreements.push({ what: 'pivot strength rows', probe: strength.length, record: recRows.length });
   for (const r of strength) {
