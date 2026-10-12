@@ -11182,7 +11182,12 @@ const BALANCE_DRIVE = (() => {
     const unlock_J = T / etaPath * recoil;
     const s = (C.delivered_J + unlock_J) / (T * lift);
     const y = Float64Array.from(g, (x) => x > 0 ? s * T * x : T / etaPath * x);
-    return { table: { u0, du, y }, T, etaPath, s, etaFace: s / etaPath, recoilRad: recoil, liftRad: lift, unlock_J,
+    // where the torque switches on or off — the table's first node (the pin
+    // reaching the stone) and the two nodes either side of each step between
+    // contact and none — so the integrator can step to them (balance-drive.js)
+    const breaks = [u0];
+    for (let i = 0; i < N; i++) if ((g[i] === 0) !== (g[i + 1] === 0)) breaks.push(u0 + du * i, u0 + du * (i + 1));
+    return { table: { u0, du, y, breaks }, T, etaPath, s, etaFace: s / etaPath, recoilRad: recoil, liftRad: lift, unlock_J,
       peakNm: y.reduce((m, v) => Math.max(m, v), 0), endHalf, unlockHalf, entryHalf, liftHalf };
   })();
   // The metal must say what the law above assumes: the wheel recoils through

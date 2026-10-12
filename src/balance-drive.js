@@ -110,7 +110,7 @@ export function seed(K, tau, A) {
 // symmetric control (Airy's), and as the default when no table is given.
 export function symmetricImpulse(halfLift, impulseJ) {
   const c = impulseJ / (2 * halfLift);
-  return { u0: -halfLift, du: halfLift, y: Float64Array.from([c, c, c]) };
+  return { u0: -halfLift, du: halfLift, y: Float64Array.from([c, c, c]), breaks: [] };
 }
 
 // The impulse table at u, linear between nodes and ZERO outside it: the pin is
@@ -198,6 +198,19 @@ export function step(K, S, dt, env) {
     edge(S.theta - K.halfLift, th - K.halfLift, '+edge');
     edge(S.theta + K.halfLift, th + K.halfLift, '-edge');
     edge(S.omega, om, 'turn');
+    // the escapement's own switches (the unlock's start and end, the impulse's
+    // start): the torque jumps there, and RK4 carried across a jump mis-counts
+    // the work by up to a sub-step's share of it every beat — so they are
+    // events too, located and stepped to like the lift's edges
+    let brk = 0;
+    if (env.drive && nb !== null) {
+      const d = dirOf(nb);
+      for (const b of K.impulse.breaks || []) {
+        const tb = d * b, f0 = f;
+        edge(S.theta - tb, th - tb, 'break');
+        if (f < f0) brk = tb;
+      }
+    }
     if (ev) {
       // Refine the event's instant by Newton on the event function (its
       // derivative is ω for an edge, the acceleration for the turn), so the
@@ -205,7 +218,7 @@ export function step(K, S, dt, env) {
       // linear guess leaves θ up to θ''·h² off the edge, and snapping that
       // away is an energy error every beat.
       let hh = Math.max(h * f, 1e-12);
-      const target = ev === '+edge' ? K.halfLift : ev === '-edge' ? -K.halfLift : 0;
+      const target = ev === '+edge' ? K.halfLift : ev === '-edge' ? -K.halfLift : ev === 'break' ? brk : 0;
       for (let it = 0; it < 4; it++) {
         [th, om] = rk4(K, env, S.theta, S.omega, hh, pc, nb);
         const r = ev === 'turn' ? om : th - target;
@@ -221,6 +234,7 @@ export function step(K, S, dt, env) {
       left -= h;
     }
     S.theta = th; S.omega = om;
+    if (ev === 'break') S.theta = brk;   // on the switch exactly, so the next pass starts from it
     if (ev === 'turn') {
       const amp = Math.abs(S.theta);
       S.ampEst = amp; S.lastTurn = S.theta;
