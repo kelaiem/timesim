@@ -35121,3 +35121,96 @@ Controls:
 **17/17 meshes read ½ at every angle**, worst `2.9e-13` of a pitch, and every
 injection reads tooth on tooth. The bar is `1e-6`: both sides are closed forms
 in float64.
+
+## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
+
+> `main`'s hosted push run went red when #667 (§261 landing 2c) merged and
+> stayed red: the `d4=16` spec point "never produced a `__clock`" inside
+> `BOOT_TIMEOUT_MS` (120 s). #665, #666 and #667 had all been judged on the
+> self-hosted runner, which absorbs a slow boot; pushes to `main` always run
+> hosted, four spec boots at a time on 4 vCPUs, which does not.
+
+**What was wrong.** Not the harness: `?d4=16` really did get slower. Solo on a
+4-vCPU container it booted in 39.8 s before #667 and 93.1 s after (`identity`
+32 s and 34 s), and 49 s against 103 s with three other boots beside it — 17 s
+of the 120 s window left, from 71 (108–114 s on today's `main`, which has since
+grown: 6–12 s). A CPU profile put 68% of the boot in one
+function: `test(az, tau)` inside the minute jumper's siting scan (TODO 151), and
+`JMP_SITE`'s own counters said why. The scan walks 720 candidate stations;
+`test` is a conjunction of seven independent checks run in a fixed order, and at
+`?d4=16` the fold leaves no good station, so the scan refuses 463 of them
+(145 before) at ~138 ms each (13.6 ms at the default). 190 of those refusals
+came from PASS 2's lever rotors — the sixth check, paid for after a lifter sweep
+of ~200 ms. The fixed order had been right for the geometry it was written on.
+
+**What it does now.** `test`'s seven checks are stages, still written in source
+order, run in the order that has been paying: **refusals ÷ time spent in the
+stage**, cumulative over the scan, with the yields `breathe()` takes subtracted
+(they land on whichever stage is running, and one charged to a 6 ms stage
+buries it). A stage not yet run keeps its source place behind the ones with
+evidence. Inside a pose loop, the pose that refused last goes first. The
+verdict is a conjunction, so the order cannot change it, and the bisections and
+TODO 160's B classification see exactly the booleans they saw. No constant: the
+rule is the optimum for independent checks. Stages stay in source order, so the
+boot bar's seam table (§267) is untouched.
+
+**Measured** (same commit of `main`, one 4-vCPU container, every field of
+`__clock.jumperSite` dumped for every declared spec point):
+
+| | `main` | this |
+|---|---|---|
+| `?d4=16` siting | 66.5–68.7 s | **12.4–13.8 s** (13.4 s before #667) |
+| `?d4=16` boot, four at once (CI's condition) | 108–114 s of the 120 s window | **55–57 s** |
+| `?alarmaz=175` (no station clears) | 37–38 s | 25.4–27.4 s |
+| default | 4.3–5.0 s | 3.9–4.4 s |
+| all 39 points, total siting | 303 s | 200 s |
+
+**Identical result at all 39 points: 0 fields differ** — station, clearance,
+`tested`, `witnessed`, `bSlack`, `cause`, every rotor and mover count. The scan
+is the only thing that moved. `probe-239-boot-yield`: build held the thread at
+worst 410 ms (ceiling 550). `probe-267-boot-progress`: the bar stands 2.0 pt
+from the elapsed fraction on average (ceiling 4.5), 4.9 at worst.
+`probe-156-jumper-veto`, `probe-160-cause` and `probe-150-fold-sense` pass —
+160 runs the cause-classification rescans this touches, 156 the all-720-refused
+control. `probe-161-lawed` REFUSES TO RUN on `main` as well as here: the line it
+rewrites (`pose: (u) => { alarmSelRing.position.z = … }`) went when TODO 222
+reshaped the selector ring, and the probe was not re-pointed. Not this change's;
+it is filed as its own task.
+
+**What was tried and is worse.** Each is a policy that looked right and
+measured wrong, in the order it was tried:
+
+- **Move the refuting stage to the front** — `?d4=16` 66 → 26 s, but
+  `?alarmaz=175` 38 → **65 s**: it promotes whatever refused last whether or
+  not it is expensive to pass, and at that point the stage it promoted costs
+  213 ms to pass and 11 to refuse.
+- **Order by total refusals** — `?d4=16` 44.5 s. Refusals cluster between
+  neighbouring candidates; a whole-scan count lags them.
+- **Refusals ÷ time, with decay (0.9)** — `?d4=16` 65 s: it forgets which stage
+  is expensive.
+- **Refusals ÷ time on wall time, yields included** — 12 s on one run and
+  **70.8 s** on the next at `?d4=16`, from the same code. Bimodal, because a
+  single yield charged to a cheap stage fixes a bad order. Subtracting the
+  yields is what made it stable (three runs within 1.4 s).
+
+**A trap, met while verifying.** `probe-150`/`156`/`160`/`161` serve
+`ROOT || '..'` — relative to the WORKING directory, and their headers say "run
+from `tools/`". Run from the repo root they serve `/home/user`, find no
+`index.html`, and report "did not boot" for the shipped tree AND the control,
+which reads exactly like a regression and is not one.
+
+**The cost.** The order now depends on a clock, so it may differ from run to run;
+the verdict cannot, and neither can anything the digests (§152) or the
+fingerprint read, which are geometry. The seams visited inside the scan can
+differ with it, which is why the bar's fidelity was measured above rather than
+assumed.
+
+**Residue.** The pass cost that remains is real: 400 ms for the static lever
+sweep at `?d4=16`, 213 ms for the lifter rotors at `?alarmaz=175`. They are paid
+once per promotion now, not once per refusal, but a cheaper check is the next
+saving, and this order will not find it. `?alarmaz=175` and `=180` are still the
+slowest declared siting after `?d4=16`.
+
+Also corrects the `d4=16` row of `SPEC_POINTS` (`tools/ci-battery.mjs`), which
+said "one warn, measured": it has warned 83 times since before #667 and 93
+since.
