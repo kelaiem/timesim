@@ -35757,6 +35757,22 @@ bound. The keys still govern the back-most metal, 0.140 mm over the ring face.
   outboard bins read 10.467.
 - `probe-268-hammer-spiral` ALL PASS.
 - `probe-269-case-path` 54 rows, ALL PASS.
-- `probe-strike-site` now reads the shipped station as meeting the condition
-  as built.
-- `lineSpec` reads 5 references with no new fork.
+- `probe-strike-site` controls PASS. It reads the shipped station as meeting
+  the condition as built (exceed −1e-8), so the crank pass is not owed.
+  Nearest obstacles: the back glass at 0.150 and the gong wire at 0.160 from
+  the pusher's stem. Other azimuths now meet the re-derived glass under the
+  margin, which is expected: the case is cut for the shipped station.
+- `probe-70-line-spec`: all 21 trees PASS.
+- `lineSpec` reads 5 references, 86 rows, with no new fork.
+- **The battery.** The local non-point battery (`--only` with every check,
+  `--shards 3 --no-incremental`) passes **54/54 gates**. Within it:
+  - `undeclaredClearance`: 0 pairs under the margin and 0 debt rows.
+  - `plateSeats` and `clearances` both PASS.
+  - The fingerprint is deterministic, at a new hash (2657416352), since the
+    metal moved.
+  - Boot is silent.
+- **The spec-boot tier** (`--spec-only`) passes 7/7. The point tier is
+  judged on CI.
+- **The explainer.** The §261 paragraph and a new §278 paragraph were
+  re-translated in all 22 tables: the i18n check, explain-quotes and
+  glossary-links all PASS.
