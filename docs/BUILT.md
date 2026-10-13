@@ -35207,6 +35207,133 @@ figure in the table moves when landing B corrects a dimension, which is why the
 probe holds the topology and not the numbers.
 
 
+## §219 tier three (b), landing B — the LEGO build from real parts: measured dimensions, a placed build, and `technic.html`'s LEGO view
+
+**PARTIAL, like the entries it extends.** What is still unbuilt:
+- the turntable rows (four of the eight, the same four landing A refused);
+- moving the drawn view onto `rowLayout`'s derived step.
+
+### The parts are vendored, and measured
+
+`tools/ldraw-vendor.mjs` reads the part list from `layout.js`' catalogues and
+the frame's tables. It fetches every part and every sub-file it references from
+library.ldraw.org and packs them into `vendor/ldraw/technic-parts.mpd`: 28 parts
+in 246 files, 472 KiB. The library allows 60 requests a minute, so the fetcher
+starts one every 1.05 s.
+
+**The first pack carried the server's HTTP headers, cookies included, at the
+head of all 246 files.** Behind the container's proxy, `curl -D -` prints the
+proxy's CONNECT response before the server's headers, and the fetcher split
+that stream at its first blank line. The parser skips lines it does not know,
+so every measurement read correctly and nothing looked wrong. Re-running the
+vendor tool to check its own determinism found it, because the dates differed.
+The fetcher now reads the one header it needs through curl's write-out and
+dumps none. The vendor tool refuses any file that does not start as LDraw, and
+`probe-technic-ldraw.mjs` fails the committed pack if any section is not LDraw
+or any line is an HTTP header. That check fails 247 times on the leaked pack. The parts are CC BY 4.0, with the attribution and the
+library's README in `vendor/LICENSE-ldraw.txt`. Both deploys now require that
+licence wherever `vendor/ldraw/` ships. The 2026 gears and two primitives come
+from the library's unofficial tracker and say so in their own headers.
+
+`src/ldraw.js` is a small pure parser. It reads the line types the parts use,
+composes placements, walks a part down to its triangles, and finds where a
+sub-file (a hole, a stud) is placed. The probes and the page share it. It
+replaces three.js' `LDrawLoader` for two reasons. The probes needed a parser
+anyway, and this way the only third-party content is the part data itself.
+
+### What the parts corrected
+
+`tools/probe-technic-ldraw.mjs` re-reads every entry of the frame's tables off
+the parts. Landing A's figures were wrong in five places:
+
+| quantity | landing A | the parts |
+|---|---|---|
+| stud height | 1.7 mm | 1.6 mm (4 LDU) |
+| hole centre above a Technic brick's bottom | 5.8 mm | 5.6 mm (the pin hole sits 10 LDU under a 24 LDU top) |
+| gear face width | 7.2 mm (the 16T 3.6) | 8 mm for every gear but the 24T, which is 7.7 |
+| gear tip radius | teeth/2 + 1 | measured per part, `GEAR_TIP_MM` |
+
+The tip is the one that mattered most. The 12T stands 0.084 mm and the 20T
+0.045 mm outside the module-1 tip, so sweeping the formula swept less than the
+metal. The tip is also the surface's farthest point from the axis, not its
+bounding box's extreme. The box reads the 8T's tips at 12.43 LDU because no
+tooth points along a box axis; they stand 12.45 out.
+
+The probe's first run also found the jumper with two "studs". The second was
+the underside's tube at y = +4, so only studs on the top face are counted now.
+The 24T's library file is `3648`, now an alias that points to `3648b`; the
+probe reports that rather than fails.
+
+Every axle came down 0.2 mm, and the frame probe still frames the same four
+rows.
+
+Controls: each table entry is perturbed in turn (each dimension by 0.1 mm, a
+gear width, a tip, two axles swapped, the brick and the Technic brick swapped).
+All 11 must fail, and do.
+
+### The build: `src/technic-ldraw.js`
+
+This module turns a framed row into LDraw placements:
+- the baseplate, its centre snapped to its own stud grid;
+- every column part, at its top face;
+- every axle, turned from its own X onto LDraw Z;
+- every gear.
+
+The frame-to-LDraw map is `(x, −z, y) / 0.4`. That is a proper rotation, never
+a mirror.
+
+**Each shaft turns as one keyed body.** A gear on a cross axle can be re-seated
+only by a quarter turn, which is a whole number of teeth for every count
+divisible by four. So a shaft has one free angle, and it is solved so that its
+driven gear's gap faces the driver's tooth:
+
+    Na·A + Nb·(B − π) ≡ π (mod 2π)
+
+The tooth angle of each part in its own frame is MEASURED off its geometry: the
+argument of the sum of e^{iNθ} over the tip points, divided by N. Every gear's
+tips cohere at its own count (0.74–1.0). The shafts then turn at the running
+product of their pairs, with alternating signs.
+
+`toLdr` writes the same placements as a model file, coloured by role with
+LDraw's codes. Studio or LDView opens it with its own part library.
+
+`tools/probe-technic-build.mjs` measures the placements against the real part
+geometry, never against the tables:
+- **seated:** every column on the baseplate's studs (a jumper on the half stud
+  between two), every part's underside on the top face of the part below it;
+- **through:** both hole faces of every Technic brick on the axle's line, and
+  the axle filling each hole to within the half LDU the library trims off each
+  axle end;
+- **on the axle:** every gear's bore on its axle's line, within the axle;
+- **meshed:** each pair's tooth angles measured off the placed tips, at five
+  input angles;
+- **the file:** the `.ldr` parsed back gives the same placements.
+
+Its two controls are a half pitch injected into each driven shaft in turn, and
+a Technic brick lifted one plate. The first version shifted every driven shaft
+at once. On an 8T driven by a 40T, the shift comes back 6π on the next mesh,
+which reads meshed, so the control missed it. The control now shifts one shaft
+at a time and reads that shaft's own mesh.
+
+| row | parts | meshes, worst |
+|---|---|---|
+| classic centre→fourth | 64 | 1.0e-13 of a turn |
+| classic motion works | 43 | 1.2e-14 |
+| reserve reduction (both) | 26 | 2.4e-14 |
+
+### `technic.html`'s LEGO build view
+
+`?view=lego`, or the **LEGO build** button, draws each framed row from the
+vendored parts on its baseplate. The shafts turn at their speeds, and each row
+offers its `.ldr` for download. Rows the frame refuses stay drawn, laid on the
+table and labelled with the refusal's reason. The drawn view is unchanged:
+`probe-technic-phase.mjs` still reads 17/17.
+
+The page fetches `./vendor/ldraw/technic-parts.mpd`. The release stamper's
+document walk versions that quoted URL like an import. `offline-check`'s
+precache count went from 73 to 77: the three new modules and the pack.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and

@@ -277,6 +277,11 @@ jobs:
             for f in "$d/LICENSE" "$d/vendor/LICENSE-three.txt" "$d/vendor/LICENSE-three-mesh-bvh.txt"; do
               [ -f "$f" ] || fail "$f is missing — a published site carrying vendored three.js must carry its licences"
             done
+            # §219 tier three (b): the LDraw parts, where a tree carries them
+            # (tags cut before them do not, so the rule is conditional)
+            if [ -d "$d/vendor/ldraw" ]; then
+              [ -f "$d/vendor/LICENSE-ldraw.txt" ] || fail "$d/vendor/LICENSE-ldraw.txt is missing — a site carrying LDraw parts must carry their licence"
+            fi
           done
 
           # §242's film: the page and at least one sheet per view it names,
