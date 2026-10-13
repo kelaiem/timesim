@@ -36085,3 +36085,68 @@ omits.
   11.586 for the depth and the cap. That one block was re-translated in all 22
   tables. The i18n check, explain-quotes (0 DISAGREES), glossary-links and the
   review packets all PASS.
+
+## §277, parts C and D — the alarm half of the Inspect route, and the verbs it used
+
+The nine old alarm stops are gone; four replace them, and the opening and closing
+captions are rewritten. The route is now eleven stops: the opening, part B's
+five movement stops, four alarm stops, and a close.
+
+### The stops, and what is left out
+
+| stop | view | what it says | item |
+|---|---|---|---|
+| Arming run | the line-only schematic on `Alarm switch`, alarm armed, contact dots live | the dots are the rows the battery gates, measured at this pose; what no gate samples is the press itself, since every sweep takes the pawl parked | TODO 87 |
+| Release | x-ray, `focus` on `Alarm lock` | the lock answers the column wheel alone; the hold between arming and the trip is a flag in the code, and nothing carries the feeler's drop to the lock | TODO 199 |
+| Arming link | x-ray on `Alarm link`, from outside the hands | the stall figure reflects each member as n²/k where virtual work gives 1/(n²k), so the rod-side members read 3.6× too stiff, the shaft's 4.3× too soft, and the rod-end overhang probably governs | TODO 237 |
+| Hammer and ribbon | `Alarm hammer` from inside the case | after the wire the hammer rebounds on a posed 198 Hz envelope that nothing in the metal produces or banks; the strike ribbon works at 3096 to 5264 MPa, past its alloy, waived by name | TODO 228, 201 |
+
+Cut with the nine: column-wheel indexing, the winding idlers and the setting
+dogleg (`meshPhase`, `transmits` and `alarmHandoffs` gate those questions now),
+the "inverted lever" check on a link §229/§261 rebuilt, and the lay shaft and
+feeler as stops of their own (they live inside the link and release stops).
+
+**A stop the draft listed and the route does not have.** "Alarm stem, backward"
+(TODO 72) was built, framed, and dropped. The route engine feeds a scripted crown
+turn only with the crown pulled out (`alarmCrownPullT > 0.5`), which is the
+SETTING position and turns in both directions; TODO 72's one-way is about the
+winding turn with the crown pushed in, which no verb can feed. The stop would have
+shown the wrong mechanism under the right caption, and a control that moved the
+barrel would have been impossible to run. The item stays in `TODO.md`; a
+winding-turn verb is what the stop needs.
+
+### The verbs
+
+`schematic` (the Arming run: the same `measureHandoffsNow` display §66 added, so
+the dots are live and are not a gate), `focus` on the Release stop, `xray` where a
+plate stands between the camera and the subject. The `focus` is set by
+`ensureExploreDrive` a frame or two late (§161's note), and it is cleared on the
+next stop (`focus: null`), which the fold carries like any view key.
+
+### What the renders showed, and did not
+
+Every framing was rendered. **Arming run** reads: lines, red contact markers at the
+pawl, small but clear. **Release** is crowded (the strike lock's toothed wheel
+among gears, even with `focus` set at the time of the shot), and the claim there
+is an absence, which no frame can show. **Arming link** is busy: the rods, crank
+and shaft are visible through the x-rayed plates, and the first framing from the
+centre side had the minute hand across it, so the camera now looks from outside
+the hands. **Hammer** shows the hammer's jointed arm and its pivot beside the case
+rim; the first two framings looked at the rim itself from outside the case. None
+of these is a close-up of the thing the caption's number is about, and the
+captions say what is open, not what to look at.
+
+### Localisation
+
+The route's captions are English-keyed strings, so the eleven this rewrote and
+the new ones render English in the other 22 locales until re-translated (the visible fallback, by
+design); the stop-list titles are English too. `probe-chrome-coverage.mjs` reads
+the DOM at boot, where none of these exist, so it is unaffected.
+
+### Measured
+
+`tools/probe-277-nav.mjs` over the final 11-stop route: **28/28 pass**, including
+the fold at every stop from both ends, every declared framing resolving, no
+warning or page error walking the route, and two back-to-back alarm toggles both
+landing. Not measured: Tour, Demo and Bench "as before when never navigated"
+(argued from the code); the battery on this tree.
