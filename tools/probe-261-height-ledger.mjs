@@ -159,8 +159,12 @@ let governor;
 if (skirtGoverns) {
   governor = { name: `the swept row 'Alarm switch' r ${region.r0}–${region.r1} z ${region.z} raised ${DELTA} (the skirt arm governs)`,
     file: 'src/main.js',
-    find: `{ unit: 'Alarm switch', r0: ${region.r0}, r1: ${region.r1}, z: ${region.z} }`,
-    to: `{ unit: 'Alarm switch', r0: ${region.r0}, r1: ${region.r1}, z: ${+(region.z + DELTA).toFixed(6)} }`,
+    // §278 landing 2: the row's z is ALARM_SWITCH_SKIRT_ROW_Z, hoisted so the
+    // hammer's crank is cut under the skirt arm it sets — so raising it raises
+    // the crank's ceiling with it, the hammer's outboard metal follows to the
+    // new ceiling, and the skirt arm still governs: the ledger's 1:1 holds.
+    find: `const ALARM_SWITCH_SKIRT_ROW_Z = ${region.z};`,
+    to: `const ALARM_SWITCH_SKIRT_ROW_Z = ${+(region.z + DELTA).toFixed(6)};`,
     pred: predict(raiseRow(region, region.z + DELTA)) };
 } else {
   const { CLEAR_MARGIN: CM, CASE_WIDTH_MAX } = base.L;
