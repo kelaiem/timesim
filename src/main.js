@@ -52990,9 +52990,11 @@ const INSPECT_STEPS = [
     caption: 'The balance and its spring, slowed. The hairspring breathes as one length of steel — each frame is the clamped-clamped elastica, held by a gate. What is not derived: its plane is the balance’s mid-plane plus a bare 1.2, and the going train’s datum rides it (TODO 235).', dwell: 7.0 },
 
   { title: 'Lever safety action', preset: 'Escapement', scale: 0.04,
+    get camera() { return frameOn('Pallet fork', [0.3, -0.45, 0.85], 2.2); },
     caption: 'The lever escapement, slowed. The guard pin rides close to the safety roller and never touches, and the roller’s crescent is cut where the impulse pin is, so the pin can only cross while the fork is engaged. That phasing is modelled, not simulated: no axis ever knocks the fork off its banking, so the failsafe has never been exercised (TODO 105).', dwell: 7.5 },
 
-  { title: 'Setting the time', preset: 'Setting', scale: 0.3, crown: 'out', turnMinutes: 3,
+  { title: 'Setting the time', preset: 'Setting', xray: true, scale: 0.3, crown: 'out', turnMinutes: 3,
+    get camera() { return frameOn('Winding clutch', [0.4, -0.5, 0.8], 2.6); },
     caption: 'Pull the crown and turn it: the hand steps one minute per detent through the keyless works. Look at the clutch rim where it meets the setting bevel — the pair is posed by two laws and does not roll at any index, the mesh buried a flat 0.2187 (29% of a tooth) (TODO 163).', dwell: 6.0 },
 
   // --- the alarm (parts A-D will cut and rewrite these; their `k/9` counters are gone because the banner counts now)
