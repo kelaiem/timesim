@@ -52357,6 +52357,23 @@ let scriptPaused = false;
 // rather than scriptSteps[scriptIdx].
 let scriptDone = new Set();
 let scriptCurStep = null;
+// §277 — the alarm is a PRESS (setAlarm → pressAlarmPusher), and a press is
+// refused while the head is down or returning (~0.24 s). A stop that toggles the
+// alarm, entered inside that window by a quick Next/Previous, would otherwise
+// lose its toggle and leave the alarm opposite to what the stop authored (the
+// nav probe found it jumping back from the last stop). So the engine states the
+// wanted parity and presses until the wheel reads it, at most SCRIPT_ALARM_TRIES
+// times, then stops asking: it never fights an alarm that rings and disarms
+// itself later, because it clears the want the moment the parity matches.
+const SCRIPT_ALARM_TRIES = 6;
+let scriptAlarmWant, scriptAlarmTries = 0;
+function scriptAlarmSettle() {
+  if (scriptAlarmWant === undefined) return;
+  if ((alarmColSteps % 2 === 1) === !!scriptAlarmWant) { scriptAlarmWant = undefined; return; }
+  if (alarmPusherStroke || alarmPusherT > 1e-6) return;          // mid-press: wait for it
+  if (scriptAlarmTries++ >= SCRIPT_ALARM_TRIES) { scriptAlarmWant = undefined; return; }
+  pressAlarmPusher();
+}
 
 // `viewOnly` — re-entering the CURRENT step on resume re-establishes the view
 // the viewer just perturbed (camera, x-ray, explode, labels…) without
@@ -52411,7 +52428,7 @@ function scriptEnterStep(i, { viewOnly = false, step = null } = {}) {
   if (s.crown) { setCrownOut(s.crown === 'out'); updateCrownUI(); }
   if (s.turnMinutes && !viewOnly) scriptTurnRad = settingTurnRad(s.turnMinutes);
   // §34 first slice — the alarm vocabulary, same shape as the crown's:
-  if (s.alarm !== undefined) setAlarm(s.alarm);
+  scriptAlarmWant = s.alarm; scriptAlarmTries = 0; scriptAlarmSettle();   // §277: a press can be refused mid-stroke, so this converges rather than fires once
   if (s.alarmCrown) { alarmCrownOut = (s.alarmCrown === 'out'); alarmCrownSyncLabel(); }
   if (s.turnAlarmHours && !viewOnly) scriptAlarmTurnRad = s.turnAlarmHours * (2 * Math.PI / 4); // one crown rev = 4 h through the 10/30 train
   if (s.wind && !viewOnly) autoWindRemaining += s.wind * 2 * Math.PI;
@@ -52465,6 +52482,7 @@ function askScriptExit() {
 function scriptUpdate(realDt) {
   if (!scriptSteps) return;
   if (scriptPaused) return;   // §142 — the dwell clock and the step's actions hold; the sim itself runs on
+  scriptAlarmSettle();
   const s = scriptCurStep || scriptSteps[scriptIdx];
   // Feed a scripted setting turn — only while the stem is physically in the
   // setting position (crownPullT > 0.5), mirroring tick()'s own gate, so it can
@@ -52642,7 +52660,7 @@ function scriptStop() {
   scriptTurnRad = 0;
   scriptExplodeTarget = null;
   scriptPaused = false;            // §142
-  scriptDone = new Set(); scriptCurStep = null;   // §277
+  scriptDone = new Set(); scriptCurStep = null; scriptAlarmWant = undefined;   // §277
   navSelEl.textContent = ''; captionNavEl.classList.remove('show');
   captionActionsEl.innerHTML = '';
   captionActionsEl.classList.remove('show');
