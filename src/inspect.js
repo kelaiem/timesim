@@ -13921,8 +13921,11 @@ function lineSpecReleaseControl(clock, m) {
 }
 
 // §278 landing 1 — THE STRIKE'S READERS. Four poses of the 'alarmStrike'
-// axis's own keys at a stated full wind (so the governed gap is the fastest,
-// the one the window is priced at): REST (the phase a rise begins at — the
+// axis's own keys at a stated EMPTY wind — the slowest governed gap, so the
+// free swing the fall is posed in is the widest the train ever leaves, and a
+// fall too slow for the window priced at full wind still lands inside it and
+// is measured, rather than posed onto the next lobe's rise (probe-70's tree
+// 19 did exactly that at full wind, and read a fall that fit): REST (the phase a rise begins at — the
 // hammer and the lever at 0 by the lift law), a lobe's RELEASE (a whole
 // strike: the hammer at its draw, the nose on the tip circle), MID-FALL and
 // the STRIKE instant (the fall law's time to the wire). The build poses every
@@ -13951,7 +13954,7 @@ function lineSpecStrike(clock) {
   const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a <= -Math.PI) a += 2 * Math.PI; return a; };
   const plan = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
   const toWorld = (mesh, x, y) => { mesh.updateWorldMatrix(true, false); const v = new THREE.Vector3(x, y, 0).applyMatrix4(mesh.matrixWorld); return { x: v.x, y: v.y }; };
-  const wind = L.barrelTurns;
+  const wind = 0;
   const poseAt = (phase) => { enterAxis(clock); clock.setPose({ ...axis.pose(0, clock), alarmStrikePhase: phase, alarmBarrelWind: wind }); clock.scene.updateMatrixWorld(true); };
   // the nose's point: the outline vertex farthest along the arm
   const noseLocal = noseRing.reduce((b, q) => (q.x > b.x ? q : b), noseRing[0]);
@@ -14010,7 +14013,7 @@ function lineSpecStrike(clock) {
     return { P, Q, W, e, n, T: toWorld(tip, circ.x, circ.y), N: toWorld(nose, noseLocal.x, noseLocal.y),
       ham: angleOf(hamGroup), lev: angleOf(levGroup), eye: eyeOf(), face: faceOf() };
   };
-  const gapFast = L.gapAt(wind);
+  const gapSlow = L.gapAt(wind);
   const rest = (poseAt(1 + L.phaseRest), read());
   // the tail's width: its own vertices across its direction, at rest
   let tLo = Infinity, tHi = -Infinity;
@@ -14038,17 +14041,21 @@ function lineSpecStrike(clock) {
   // mid-fall, half the build's own fall time into the free swing; the time is
   // the phase the build will read (its fractional part) through the same
   // governed gap, so the reading is the law's angle at a known instant
-  const phMid = 1 + (L.fallS / 2) / gapFast, tMid = (phMid - Math.floor(phMid)) * gapFast;
+  const phMid = 1 + (L.fallS / 2) / gapSlow, tMid = (phMid - Math.floor(phMid)) * gapSlow;
   poseAt(phMid); const mid = read();
-  poseAt(1 + L.fallS / gapFast); const strike = read();   // the instant the fall law meets the wire
+  const phStr = 1 + L.fallS / gapSlow;
+  poseAt(phStr); const strike = read();   // the instant the fall law meets the wire
+  // a fall the slowest gap cannot hold is posed on the next rise, which is no
+  // fall at all: it reads as no measurement (the fall rows then fail as NaN)
+  const inSwing = phStr - Math.floor(phStr) < L.freeFrac;
   enterAxis(clock);
   // the law's angles, in the law's own sense (the draw's), off the group's turn
   const sgnDraw = Math.sign(wrap(atDraw.ham - rest.ham));
   const draw = Math.abs(wrap(atDraw.ham - rest.ham));
   const thMid = wrap(mid.ham - rest.ham) * sgnDraw;          // positive: still above the rest
   const amp = -wrap(strike.ham - rest.ham) * sgnDraw;        // past the rest, toward the wire
-  const W = Math.acos(thMid / draw) / tMid;
-  const fall = Math.acos(-amp / draw) / W;
+  const W = inSwing ? Math.acos(thMid / draw) / tMid : NaN;
+  const fall = inSwing ? Math.acos(-amp / draw) / W : NaN;
   // the tip's contact, at rest: its centre off the tail's axis and along it
   const TP = { x: rest.T.x - rest.P.x, y: rest.T.y - rest.P.y };
   const noseV = { x: rest.N.x - rest.Q.x, y: rest.N.y - rest.Q.y }, wV = { x: rest.W.x - rest.Q.x, y: rest.W.y - rest.Q.y };
@@ -14071,7 +14078,7 @@ function lineSpecStrike(clock) {
     tipArm: plan(rest.T, rest.Q),
     leverToWheel: plan(rest.Q, rest.W),
     noseRestOffBearing: Math.abs(wrap(Math.atan2(noseV.y, noseV.x) - Math.atan2(wV.y, wV.x))),
-    swingAtWire: amp,
+    swingAtWire: inSwing ? amp : NaN,
     hammerDraw: draw,
     leverDraw: Math.abs(wrap(atDraw.lev - rest.lev)),
     camMinR: rMin, camMaxR: rMax,
@@ -14081,7 +14088,7 @@ function lineSpecStrike(clock) {
     eyeToFace: plan(rest.eye, rest.face.c),
     faceGap: rest.face.blow * (near - faceR),
     blowRadialCos: Math.abs((pf.x * fr.x + pf.y * fr.y) / pfL),
-    faceOverrun: strike.face.blow * (strikeFaceR - near),
+    faceOverrun: inSwing ? strike.face.blow * (strikeFaceR - near) : NaN,
     springRate: W * W * rotorI * 1e3,
     rotorI: rotorI * 1e12,
     fallRate: W,

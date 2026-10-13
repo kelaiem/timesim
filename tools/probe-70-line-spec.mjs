@@ -102,7 +102,11 @@
 //      which is exactly what the motion does.
 //   19. the fall slowed past its window (ALARM_HAMMER_W × 0.01) — the ENVELOPE
 //      firing: a 153 ms fall against the 138.5 ms the cam leaves free at full
-//      wind. W, the fall and k fail beside it.
+//      wind. W, the fall and k fail beside it. The first run of this tree
+//      read a fall that FIT — the reader posed the fall at full wind, where a
+//      153 ms fall lands on the next lobe's rise, and measured the rise; it
+//      poses at the empty wind's wider swing now, and says NaN for a fall even
+//      that cannot hold.
 //   20. the rest gap opened past the swing (HAMMER_HEAD_GAP 0.4 → 0.7) — the
 //      gong-contact ENVELOPE firing: the swing carries the face 0.655 and the
 //      wire stands 0.7 away, so the hammer falls short. The gap fails beside
