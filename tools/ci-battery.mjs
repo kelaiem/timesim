@@ -345,7 +345,7 @@ const COSTS = {
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
-  'expectedContacts': 389,
+  'expectedContacts': 404,   // TODO 236: 389 × 1.0392 (see the note at 'inspection')
   'oscillator': 1,
   // §104 — the cost moved 1 → 14: the alarm half's endpoint rows STEP the
   // shipped tick law (120 ticks at two winds), which is the row's whole
@@ -374,8 +374,22 @@ const COSTS = {
   // column balances shards and nothing else, so an under-estimate costs wall
   // clock and never a verdict (the header's own rule), and the first sliced
   // run's `--report` replaces every row of it with a measured one.
-  'inspection': 160,
-  'clearances': 273,
+  // TODO 236 — the alarmPull axis (n 96, 97 poses per sweep) is new work in
+  // every split check, and the edits it owes this column follow the column's
+  // own rule: a ratio from one local run transfers, its absolute times do not.
+  // Measured on one 4-vCPU dev container, 3 shards, full battery, 2026-10-13.
+  //  · a NEW slice row = its local ms × (this table ÷ local) over the same
+  //    run's unchanged slices: inspection 0.1049 (14 slices), undeclared
+  //    0.6587 (15); clearances and expectedContacts carry no slice rows, so
+  //    their factor is the whole-check row over the run's whole check less the
+  //    new slice (0.1038, 0.1064);
+  //  · a whole-check row whose work grew = old × total ÷ (total − alarmPull
+  //    slice), the axis's own measured share: inspection ×1.0398, clearances
+  //    ×1.0411, undeclaredClearance ×1.0105, expectedContacts ×1.0392.
+  // Every other row is untouched: the checks that walk AXES unsliced grew too,
+  // but no pre-236 run on this box measured by how much.
+  'inspection': 166,   // TODO 236: 160 × 1.0398
+  'clearances': 284,   // TODO 236: 273 × 1.0411
   // TODO 164 — PROTOTYPE-MEASURED, not yet CI-calibrated: the planning probe
   // (`scratchpad/164/engine.mjs`, the prototype `checkUndeclaredClearance` was
   // ported from) measured 317 s dense over all 14 axes on a dev container,
@@ -384,7 +398,7 @@ const COSTS = {
   // a pose-count guess on its first run; `--report` replaces every row of it
   // with a measured one; the header's own rule (a stale cost costs wall clock,
   // never a verdict).
-  'undeclaredClearance': 317,
+  'undeclaredClearance': 320,   // TODO 236: 317 × 1.0105
   'sweptOverlap': 260,
 
   'undeclaredClearance:beat': 13870,   // §221: ×1.26, the local before/after of the beat axis's derived n (96 → 193)
@@ -405,6 +419,9 @@ const COSTS = {
   // scaled by pose count (292 / 194: the same oscillation, posed dial-flat);
   // `--report` replaces it with a measured one.
   'undeclaredClearance:position': 20877,
+  'undeclaredClearance:alarmPull': 3883,   // TODO 236: 5895 ms local × 0.6587
+  'clearances:alarmPull': 11214,           // TODO 236: 108003 ms local × 0.1038 (siblings still projected)
+  'expectedContacts:alarmPull': 15240,     // TODO 236: 143293 ms local × 0.1064 (siblings still projected)
 
   // §127 — the per-axis walls of the one split check, in MILLISECONDS
   // (`--report`'s `sliceMs`). A slice with no row here is projected from its
@@ -426,6 +443,7 @@ const COSTS = {
   // TODO 50 — measured on a dev container battery run.
   'inspection:stemSlip': 9640,
   'inspection:position': 34061,   // §246 — seeded as undeclaredClearance:position is (beat × 292/194)
+  'inspection:alarmPull': 9818,   // TODO 236: 93550 ms local × 0.1049
 };
 
 // DECLARED HERE, ASSERTED AGAINST THE BATTERY IT DESCRIBES — both ways, and it
@@ -1176,13 +1194,18 @@ const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
 // the bin it thought was heaviest to the worker it meant to spare. Seconds of
 // a self-hosted slot's wall, each worker running its three points in three
 // concurrent lanes.
+// TODO 236 raised every row by the alarmPull axis's measured share of the three
+// checks a point sweeps: each point's own local per-check times, each divided by
+// that check's growth (the note at COSTS 'inspection'), give its time without
+// the axis. The ratio, ×1.0386–1.0401, scales these CI rows; studr=7.1175 died at
+// the 2100 s guard locally and takes its siblings' ×1.0401.
 const POINT_COSTS = {
-  'balstep=60': 151,      // 1 changed [Chain] on 37878429511 — see above
-  'subdialr=8': 249,
-  'studr=7.595': 504,
-  'studr=4.71': 478,
-  'studr=7.1175': 472,
-  'route=2-leg': 128,
+  'balstep=60': 157,      // 1 changed [Chain] on 37878429511 — see above; TODO 236: 151 × 1.0387
+  'subdialr=8': 259,      // TODO 236: 249 × 1.0392
+  'studr=7.595': 524,     // TODO 236: 504 × 1.0401
+  'studr=4.71': 497,      // TODO 236: 478 × 1.0401
+  'studr=7.1175': 491,    // TODO 236: 472 × 1.0401 (its siblings'; it hit the guard locally)
+  'route=2-leg': 133,     // TODO 236: 128 × 1.0386
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
