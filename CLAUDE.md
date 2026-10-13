@@ -29,6 +29,13 @@ its part shapes are drawn, and every pair's teeth are PHASED to mesh — the
 turntable's 90° face mesh included — which `tools/probe-technic-phase.mjs`
 measures off the drawn gears at five angles, against a half-pitch control.
 
+`src/technic-frame.js` (§219 tier three (b), landing A) solves the BRICK FRAME
+that would hold those rows: 1×1 columns, a Technic brick on top, a jumper
+under a half-stud axle, in millimetres from a table it marks UNVERIFIED until
+the LDraw landing reads the part files. Its step between stages is DERIVED (two
+layers where a gear's tip reaches the neighbouring column) and is not yet the
+page's. `tools/probe-technic-frame.mjs` holds it, pure Node.
+
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
 front door, so the explainer is one click further — from the primer's
@@ -1031,7 +1038,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 297 measuring scripts and this file names 40. The rest are named for the
+`tools/` holds 298 measuring scripts and this file names 40. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1048,7 +1055,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **185 of
+The index also carries the split that decides how to read a result: **186 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

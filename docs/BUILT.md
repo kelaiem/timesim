@@ -35122,6 +35122,91 @@ Controls:
 injection reads tooth on tooth. The bar is `1e-6`: both sides are closed forms
 in float64.
 
+## §219 tier three (b), landing A — the frame that would hold the technic fork, as millimetres: `src/technic-frame.js`
+
+**PARTIAL.** This is the frame's topology, solved and checked in millimetres
+from a table of LEGO dimensions that is UNVERIFIED. Landing B reads every one
+of those dimensions from the LDraw part files and fails on a mismatch, then
+renders the build with real parts. It needs `library.ldraw.org`, which this
+landing's container could not reach.
+
+### The construction
+
+One idiom serves every parallel row:
+- each axle is held at both ends by a COLUMN on a baseplate: a bottom plate,
+  1×1 plates and bricks to height, then a 1×1 Technic brick whose hole the axle
+  passes through;
+- an axle on the stud grid stands on a 1×1 plate. One half a stud off it stands
+  on a jumper plate, LEGO's own half-stud offset;
+- the column height is the lowest stack whose hole clears the row's largest tip
+  over the baseplate's studs (`columnFor`).
+
+1×1 columns are 8 mm wide, so even the 12 mm spacing (16:8) leaves a gap
+between neighbouring columns. A 1×2 or a beam could not do that.
+
+### The step between stages is derived, and it is not technic.html's
+
+`technic.html` steps every stage one 8 mm layer along the axle. A frame cannot
+always do that. With a one-layer step:
+- the previous shaft's back column shares a layer with this shaft's driver;
+- the next shaft's front column shares a layer with this shaft's driven gear.
+
+In both cases the column stands one centre distance from the gear. The first
+run framed the rows that way and failed two of them. In classic centre→fourth,
+the 40T's tips reach 21 mm against a column face 12 mm away.
+
+So `rowLayout` steps one layer only when both gears' tips clear the neighbouring
+column's near face (`tip ≤ cd − stud/2`). Otherwise it steps two layers, and the
+columns stand in the empty layer between. On today's rows:
+- classic centre→fourth and motion works step two layers at every stage;
+- the reserve reduction steps one.
+
+`technic.html` still draws one layer everywhere. When landing B renders the
+build, that page should consume `rowLayout`, so the placement law is written
+once.
+
+### Not framed, by name
+
+`rowLayout` refuses two kinds of row and gives the reason:
+- a right-angle mesh on the 60T turntable's face teeth. This is classic
+  fourth→escape and both of technic_2026's going rows;
+- a turntable on its own frame off the 4 mm lattice: technic_2026's motion
+  works, 56:14 at 35 mm.
+
+Both need the turntable's mounting, which is LDraw geometry.
+
+### `tools/probe-technic-frame.mjs`
+
+This is a pure-Node acceptance test. Per framed row it checks that:
+- every hole stands at its axle's height;
+- every axle has a part LEGO makes;
+- no two columns' parts overlap;
+- no gear's swept disc (tip radius over its face width) reaches the baseplate's
+  studs, another shaft's axle, a column it does not stand on, or a gear it does
+  not mesh;
+- every mesh stands at its catalogue centre distance, in one layer.
+
+Its controls:
+- a column slid toward its neighbour must fail, on every row;
+- every column a brick short must fail, on every row;
+- every gear folded into one layer must give a gear-against-gear finding
+  somewhere in the fork.
+
+Forcing the one-layer step back in turns both two-layer rows red. That is how
+the step rule was found, and it stays the first thing to try if the rule is
+ever loosened.
+
+| row | axles | axle height | base | axles (studs) |
+|---|---|---|---|---|
+| classic centre→fourth | 5 | 25.0 mm (3 plates + 1 brick, then the Technic brick) | 9×9 | 3/5/5/5/3 |
+| classic motion works | 4 | 15.4 mm (3 plates, then the Technic brick) | 6×7 | 3/5/5/3 |
+| reserve reduction (both) | 3 | 18.6 mm (1 plate + 1 brick, then the Technic brick) | 7×4 | 3/4/3 |
+
+These are 4 rows framed, 4 refused with their reason, and 0 failing. Every
+figure in the table moves when landing B corrects a dimension, which is why the
+probe holds the topology and not the numbers.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and
