@@ -92,12 +92,12 @@ for (let i = 0; i < n; i++) {
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(a); }, i);
   fromStart.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(c.scriptState.of - 1); c.scriptGoto(a); }, i);
-  fromEnd.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
+  fromEnd.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx), dbg: await pg.evaluate(() => window.__clock.scriptAlarmDebug) });
 }
 const bad = (set) => set.map((r, i) => (r.idx === i && same(straight[i], r.v, i)) ? null : i).filter((x) => x !== null);
 for (const [nm, set] of [['start', fromStart], ['end', fromEnd]]) for (const i of bad(set)) {
   const d = Object.keys(straight[i]).filter((k) => k !== 'alarmOn' && straight[i][k] !== set[i].v[k]);
-  console.log('   ', nm, 'stop', i, 'idx', set[i].idx, `alarmOn ${set[i].v.alarmOn} vs authored ${authoredAlarm(i)}`, d.map((k) => `${k}: straight ${straight[i][k]} vs jump ${set[i].v[k]}`).join('; '));
+  console.log('   ', nm, 'stop', i, 'idx', set[i].idx, `alarmOn ${set[i].v.alarmOn} vs authored ${authoredAlarm(i)}`, JSON.stringify(set[i].dbg || null), d.map((k) => `${k}: straight ${straight[i][k]} vs jump ${set[i].v[k]}`).join('; '));
 }
 ok('jump from the first stop = running straight through (every stop)', bad(fromStart).length === 0, `bad: ${bad(fromStart)}`);
 ok('jump back from the last stop = running straight through (every stop)', bad(fromEnd).length === 0, `bad: ${bad(fromEnd)}`);
