@@ -11089,12 +11089,11 @@ export const MESH_PHASE_WAIVERS = {
   // where the solve ran. Solving in the assembled frame instead reads 0.073%.
   // TODO 116's signature exactly: right at the one pose the build tripwire
   // sees, constant-wrong everywhere else, and boot silent throughout.
-  // TODO 117, not 124, and the SPREAD is what says so: this row reads 0.11% at
-  // the build pose and 36.68% over the net. A residual that MOVES is not a
-  // mis-set phase — frac(uP + uQ) is invariant while a pair genuinely
-  // transmits — it is the disc branch's angles being written independently,
-  // which is the contradiction TODO 117 already owns and has not decided.
-  'alarm setting: disc rim ⇄ idler 1b': 'TODO 117',
+  // `alarm setting: disc rim ⇄ idler 1b` IS GONE — TODO 117 paid it. Its
+  // spread said 36.68% while the disc carried the hour and the idler did not;
+  // once 117 and 144 put both members on the crown alone it read a FLAT 10.0%
+  // (spread 0.049%), an index nobody had solved, and a second-stage solve
+  // beside i1b's build now phases it. The stale gate named this waiver.
   // `setting fold minute wheel ⇄ setting cap` IS GONE — TODO 155 paid it: the
   // fold is now posed from the wheel the cap meshes, going train and hand-set
   // together, rather than from handSetOffset alone. 42.951% → 0.129%, the
