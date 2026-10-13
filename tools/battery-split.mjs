@@ -339,7 +339,7 @@ export const CLEARANCE_SLICES = [
 ];
 
 // TODO 164 — same axis roster as CLEARANCE_SLICES above (this check walks the
-// same 16 axes). Declared separately for CLEARANCE_SLICES' own reason: a
+// same 17 axes). Declared separately for CLEARANCE_SLICES' own reason: a
 // check's roster is a claim about THAT check's loop.
 export const UNDECLARED_CLEARANCE_SLICES = [
   { axis: 'beat', poses: 194 },

@@ -19783,7 +19783,7 @@ const jumperStudMeshes = [];   // the two posts riveted into the base plate (the
 // `tools/probe-149-lifter-width.mjs`: if it ever falls below that, it is not
 // a bound and the frame it was taken in is wrong. Re-run the probe if the
 // jumper's station, the setting lever's stroke or the tail pin's land moves.
-const JMP_LIFTER_SPAN_MEASURED = 40.0045;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 180's sliver-free solve moved the jumper to 233.5° (37.601 at 129.5°, 29.1037 at 326°, 30.0832 at 318°)
+const JMP_LIFTER_SPAN_MEASURED = 39.9684;   // u — probe-149-lifter-width.mjs, 17 axes x 5 samples, re-measured when TODO 236's guide plate 2 moved the jumper to 234.0° (40.0045 at 233.5°, 37.601 at 129.5°, 29.1037 at 326°, 30.0832 at 318°)
 // A FUNCTION OF THE STATION since TODO 151 moved the station's solve to the
 // end of the build: the provisional station's bound cuts the bar here, and
 // the late solve re-cuts it at the station it settles on (and holds the

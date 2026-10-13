@@ -492,10 +492,10 @@
                   section budgets are inherited and are never forkable.</td></tr>
               <tr><td id="v-corner" data-term="corner">corner</td>
                   <td>A place where motion changes direction, treated as a real part with its own
-                  duties rather than as a bend in a drawing. Each one states which of the seven
+                  duties rather than as a bend in a drawing. Each one states which of the eight
                   named idioms it is &mdash; a bevel pair, an idler dogleg, a crank, a rigid bent
-                  link, a riser, a pin in a slot, a grounded blade &mdash; and the force or lever
-                  arithmetic that earns it.
+                  link, a riser, a pin in a slot, a grounded blade, a wedge &mdash; and the force
+                  or lever arithmetic that earns it.
                   Distinct from a pallet stone's <em>locking corner</em> in the escapement below,
                   which is an edge of metal.</td></tr>
               <tr><td id="v-idler" data-term="idler">idler</td>
@@ -2209,6 +2209,22 @@
       swing out to the set time is therefore an ease, posed. So is the snap home on
       disarming: heart A's spring pushes the tube the right way, at 7.86 to 31.79 mN at the
       nose, but the speed of the snap is an ease too, not that force acting on the tube.</p>
+      <p><b>Since TODO 236 the sleeve that frees the hand is guided the way the selector ring
+      is.</b> It slid on three eyes and was pushed along the tube at one tab on its rim, and
+      priced, it locked under its own push before any load arrived: a lock index of 3.76 at
+      the adverse corner, where anything under 1 runs. Now three rollers on the sleeve climb
+      helical slots in plates hung from the dial sheet at 105°, 250° and 300°, and a crank on
+      a stud planted in the sheet at <code>ALARM_SLEEVE_DRIVE_AZ</code> 328° pushes a fork on
+      the sleeve's rim sideways. The sleeve turns and the slots lift it: a torque about the
+      tube, which no guide can jam on. Pulling the crown brings the collar's ramp onto the
+      lifter's pad; the lifter is a bell crank on two studs, and its output arm pulls a tie
+      link to the crank. The helix is the one that costs the drive the least work, 48.55°. At
+      the adverse corner the roller pushes 780.4 mN, the link pulls 359.6 mN, and the crown
+      takes 0.203 N to pull, against about 1 N at a finger; the 45° cone presses follower A's
+      tail pin with 171.4 mN. Two prices are still open. The lifter's return blades carry no
+      derived preload, so the return stroke has no figure (TODO 246). And the sleeve's turn
+      drags the tail pin round the tube with a torque nobody has yet set against the tube's
+      friction coupling (TODO 247).</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The assert's truth table, live</span></div>
         <div class="controls">
@@ -2677,10 +2693,10 @@
 
       <!-- —————— PLATE 4 : SILENCE LINKAGE —————— -->
       <figure>
-        <div class="fig-head"><span class="fig-no">PLATE 4</span><span class="fig-title">The silence linkage — alarm crown to captured tail, five members, all contact</span></div>
+        <div class="fig-head"><span class="fig-no">PLATE 4</span><span class="fig-title">The silence linkage — alarm crown to captured tail, every hand-off a contact</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 780 310" width="780" height="310" role="img"
-               aria-label="Side schematic of the silence chain: pulling the alarm crown slides a stepped collar, the lifter's head rides the step and lifts, the lifter's run tips a seesaw rocker, and the rocker's finger descends onto the feeler's tail">
+               aria-label="Side schematic of the silence chain: pulling the alarm crown slides a stepped collar, the step presses the lifter's pad, the release run turns and lifts the sleeve, an arm on the sleeve tips a seesaw rocker, and the rocker's finger descends onto the feeler's tail">
             <rect x="30" y="18" width="720" height="8" fill="none" stroke="var(--muted)" stroke-width="1"/>
             <text class="lbl" x="34" y="14">dial sheet (static)</text>
 
@@ -2708,16 +2724,16 @@
             <line x1="130" y1="130" x2="130" y2="166" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arr4)"/>
 
             <rect x="300" y="56" width="270" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
-            <text class="lbl lbl-strong" x="300" y="48">lifter run — paddle rides its underside</text>
+            <text class="lbl lbl-strong" x="300" y="48">sleeve arm — the paddle rides it</text>
             <text class="val val-ruby" x="404" y="104">return blade seats the paddle both ways (§48)</text>
             <rect x="562" y="68" width="12" height="120" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
-            <text class="lbl lbl-strong" x="588" y="140">lifter plunger</text>
+            <text class="lbl lbl-strong" x="588" y="140">lifter, link, crank</text>
             <path class="leader" d="M 585 136 L 576 120"/>
             <line x1="548" y1="120" x2="548" y2="84" stroke="var(--ruby)" stroke-width="1.5" marker-end="url(#arr4)"/>
 
             <circle cx="568" cy="196" r="9" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
             <circle cx="568" cy="207" r="3.5" fill="var(--ruby)"/>
-            <text class="lbl lbl-strong" x="470" y="176">domed head</text>
+            <text class="lbl lbl-strong" x="470" y="176">lifter pad</text>
             <path class="leader" d="M 520 180 L 560 192"/>
             <rect x="500" y="210" width="110" height="16" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
             <rect x="610" y="204" width="70" height="22" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
@@ -2740,8 +2756,10 @@
           </svg>
         </div>
         <figcaption>Geometric as far as the tail. Pulling the crown slides the
-        stepped collar under the lifter's domed head; the head climbs onto the raised land,
-        lifting the whole lifter; the run's underside carries the rocker's paddle up, and the
+        stepped collar under the lifter's pad; the raised land presses the pad, turning the
+        lifter on its two studs; its output arm pulls a tie link, the link turns a crank on
+        the dial sheet, and the crank's roller turns the sleeve, which climbs its helices
+        (TODO 236). An arm on the sleeve carries the rocker's paddle with it, and the
         seesaw sends the finger down its designed throw — exactly the 0.05 rest gap, so a
         resting tail is touched, never loaded, and a risen tail is pressed back to rest
         (lifting the pin out of the notch mid-ring). What then stops a running ring is the

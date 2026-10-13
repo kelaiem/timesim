@@ -9001,9 +9001,14 @@ export const SLENDER_WAIVERS = {
   // went with it: `slenderness` reports no over-ceiling row for this unit, so
   // the waiver names a unit that no longer has one. Deleting it is part of the
   // fix — §54's own rule, and what makes a stale waiver a gate failure.
-  // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
-  // stands 0.2507 away and leaves 0.1007.
-  'Alarm release lifter': 'TODO 109',
+  // RETIRED by TODO 236 'Alarm release lifter' (was TODO 109, λ 71.3 on the
+  // lifter's 23 u run). Not thickened — the member was retired: the run became
+  // a pinned tie link between two bell cranks, and the lifter's own members
+  // are a pad arm, a frame and an output arm under 1.4 u each. `slenderness`
+  // reports no over-ceiling row for this unit, so the waiver would name a unit
+  // that no longer has one. (The tie link is its own unit and its row is
+  // REPORTED, §54's covenant; TODO 236's record says why a tie is not judged
+  // by bending.)
   // TODO 149 RETIRED 'Minute jumper' (was λ 52.9, the lifter link). The bar's
   // width is SOLVED from this ceiling now — `JMP_LIFTER_W` in main.js, its
   // span bound over SLENDER_TARGET — so the row is gone rather than excused,
