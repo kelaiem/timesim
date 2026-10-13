@@ -21820,7 +21820,12 @@ const ALARM_SLEEVE_GUIDE_AZ = [105, 250, ALARM_SEL_POST_AZ[2] / DEG2RAD].map((d)
 // and pin it shares the azimuth with) by one margin.
 const ALARM_SLEEVE_GUIDE_R0 = Math.max(5.0, ALARM_SELR_REACH + CLEAR_MARGIN + MEASURED_MARGIN_BAND);
 const ALARM_SEL_GUIDE_PIN_OUT = ALARM_SEL_GUIDE_R0 + ALARM_SEL_GUIDE_T + ALARM_FORK_CLEAR + ALARM_SEL_GUIDE_PIN_R;   // the selector's guide pins' outer ends
-const ALARM_SLEEVE_GUIDE_R0S = [ALARM_SLEEVE_GUIDE_R0, ALARM_SLEEVE_GUIDE_R0, ALARM_SEL_GUIDE_PIN_OUT + CLEAR_MARGIN + MEASURED_MARGIN_BAND];
+// The third plate clears the pins' SWEPT outer end: a radial pin's end face is a
+// disc, and as the ring turns past the plate the disc's rim reaches
+// hypot(PIN_OUT, pin r), not PIN_OUT — 0.0009 further, which the battery read
+// as 0.1493 against the 0.15 margin before this was the radius used.
+const ALARM_SEL_GUIDE_PIN_SWEEP = Math.hypot(ALARM_SEL_GUIDE_PIN_OUT, ALARM_SEL_GUIDE_PIN_R);
+const ALARM_SLEEVE_GUIDE_R0S = [ALARM_SLEEVE_GUIDE_R0, ALARM_SLEEVE_GUIDE_R0, ALARM_SEL_GUIDE_PIN_SWEEP + CLEAR_MARGIN + MEASURED_MARGIN_BAND];
 const ALARM_SLEEVE_GUIDE_T = STOCK_MIN_U;                                  // the plate, radially: §50's floor (TODO 222's)
 const ALARM_SLEEVE_HELIX_R = ALARM_SLEEVE_GUIDE_R0 + ALARM_SLEEVE_GUIDE_T / 2; // the reference helix (stations 1 and 2): where α is quoted
 const ALARM_SLEEVE_HELIX_RS = ALARM_SLEEVE_GUIDE_R0S.map((r) => r + ALARM_SLEEVE_GUIDE_T / 2); // each station's rollers' centres
@@ -25135,7 +25140,7 @@ const ALARM_RELEASE = (() => {
     const hubOut0 = studR + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U;
     const runout0 = r ? r.aSo * (1 - Math.cos(r.swing / 2)) + 0.01 : 0.05;
     const forkR1 = ALARM_SLEEVE_DRIVE_R + ALARM_SLEEVE_DRIVE_ROLLER_L / 2 + ALARM_FORK_CLEAR + runout0;
-    const crankR = Math.max(ALARM_SEL_GUIDE_PIN_OUT + CLEAR_MARGIN + MEASURED_MARGIN_BAND + studR, forkR1 + CLEAR_MARGIN + MEASURED_MARGIN_BAND + hubOut0);
+    const crankR = Math.max(ALARM_SEL_GUIDE_PIN_SWEEP + CLEAR_MARGIN + MEASURED_MARGIN_BAND + studR, forkR1 + CLEAR_MARGIN + MEASURED_MARGIN_BAND + hubOut0);
     const aSo = crankR - ALARM_SLEEVE_DRIVE_R;
     const eyeOutC = crankPinR + PIVOT_BORE_CLEAR / 2 + STOCK_MIN_U;
     const aSiStud = studR + CLEAR_MARGIN + MEASURED_MARGIN_BAND + eyeOutC;               // (3)
@@ -25390,9 +25395,6 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
   const G = ALARM_RELEASE_GEOM, aO = ALARM_RELEASE_ARM_OUT, aI = ALARM_RELEASE_ARM_IN, T = STOCK_MIN_U;
   alarmReleaseCrank.position.set(G.c.x, G.c.y, ALARM_RELEASE_CRANK_Z);
   const hubIn = ALARM_RELEASE_STUD_R + PIVOT_BORE_CLEAR / 2, hubOut = hubIn + T;
-  const hub = new THREE.Mesh(ringGeo(hubIn, hubOut, ALARM_RELEASE_CRANK_HUB_H), MATS.steel);
-  hub.name = 'alarmReleaseCrankHub';
-  alarmReleaseCrank.add(hub);
   // the output arm, radial inward: from the hub to one margin short of the
   // fork's outer edge at the roller's widest swing (the fork is built at the
   // chain's solve, below, and asserted against this end)
@@ -25401,13 +25403,35 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
   const ux = G.uIn.x, uy = G.uIn.y, rot = Math.atan2(uy, ux), bO = ALARM_RELEASE.armOutB, bI = ALARM_RELEASE.armInB;
   const hubMid = (hubIn + hubOut) / 2, hH = ALARM_RELEASE_CRANK_HUB_H;   // the arms root in the hub's wall, never its bore
   const capR = hubIn + T / 2;                                             // the cap and collar: a land over the hub's face, half its wall
-  const oa = new THREE.Mesh(new THREE.BoxGeometry(outEnd - hubMid, bO, hH), MATS.steel);
-  oa.name = 'alarmReleaseCrankOutArm';
-  oa.position.set(ux * (outEnd + hubMid) / 2, uy * (outEnd + hubMid) / 2, 0);
-  oa.rotation.z = rot;
-  alarmReleaseCrank.add(oa);
-  // the drive pin, radial, from inside the arm's end through the roller
-  const p0 = Math.max(outEnd - bO / 2, capR + CLEAR_MARGIN + MEASURED_MARGIN_BAND), p1 = aO + ALARM_SLEEVE_DRIVE_ROLLER_L / 2;   // pressed into the arm's end, one margin clear of the cap
+  // The hub and the output arm are ONE BLANK, cut as one outline. The arm can
+  // reach only one margin short of the fork (outEnd), and the hub's wall
+  // already stands within a few hundredths of that, so as a separate bar it was
+  // a 0.05 mm sliver (§50) — what a crank this short is in metal is a hub with
+  // a lug, the drive pin pressed radially into the lug's end. The outline: the
+  // hub's circle, with the lug's flats running out to outEnd; the bore a hole.
+  if (!(outEnd > hubMid)) console.warn(`TODO 236 crank: the output lug ends at ${outEnd.toFixed(4)}, inside the hub's wall (${hubMid.toFixed(4)})`);
+  const hubBlank = (() => {
+    const hb = bO / 2, xc = Math.sqrt(Math.max(0, hubOut * hubOut - hb * hb)), a0 = Math.asin(Math.min(1, hb / hubOut));
+    const sh = new THREE.Shape();
+    sh.moveTo(xc, hb);
+    if (outEnd > xc) { sh.lineTo(outEnd, hb); sh.lineTo(outEnd, -hb); }
+    sh.lineTo(xc, -hb);
+    sh.absarc(0, 0, hubOut, -a0, -2 * Math.PI + a0, true);   // the long way round, through the far side of the hub
+    const bore = new THREE.Path();
+    bore.absarc(0, 0, hubIn, 0, 2 * Math.PI, true);
+    sh.holes.push(bore);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: hH, bevelEnabled: false, curveSegments: RING_GEO_SEG / 2 });   // the bore read at ringGeo's flats
+    g.translate(0, 0, -hH / 2);
+    return g;
+  })();
+  const hub = new THREE.Mesh(hubBlank, MATS.steel);
+  hub.name = 'alarmReleaseCrankHub';
+  hub.rotation.z = rot;
+  alarmReleaseCrank.add(hub);
+  // the drive pin, radial, pressed into the lug's end and out through the roller
+  // (at the hub's mid-plane it passes under the cap and over the collar, which
+  // sit on the hub's two faces)
+  const p0 = outEnd - bO / 2, p1 = aO + ALARM_SLEEVE_DRIVE_ROLLER_L / 2;
   const dpin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_RELEASE_DRIVE_PIN_R, ALARM_RELEASE_DRIVE_PIN_R, p1 - p0, 10), MATS.steel);
   dpin.name = 'alarmReleaseCrankPin';
   dpin.position.set(ux * (p0 + p1) / 2, uy * (p0 + p1) / 2, 0);
@@ -25755,7 +25779,7 @@ const ALARM_RELEASE_LAWS = Object.freeze({
     why: `a bell crank on two studs planted beside the collar (§45's input station), its pad arm the least whose dead-centre swing scrubs no more than the working fit (${ALARM_LIFT_ARM_IN.toFixed(4)}) and its output arm the depth that carries the link level and clear under the frame (${ALARM_LIFT_ARM_OUT.toFixed(4)}): ${(R.padN * 1000).toFixed(0)} mN at the pad becomes ${(R.linkN * 1000).toFixed(0)} mN in the link. The crown pays it through the collar's ${(ramp * 100).toFixed(2)}% ramp: ${crownN.toFixed(3)} N of pull at MU_STEEL, against the ~1 N a finger delivers to a crown`,
   });
   declareTransfer('alarm release: crank (link → sleeve fork, tangential)', {
-    unit: 'Alarm release crank', meshes: ['alarmReleaseCrankHub', 'alarmReleaseCrankInArm', 'alarmReleaseCrankOutArm', 'alarmReleaseCrankRoller'], idiom: 'crank',
+    unit: 'Alarm release crank', meshes: ['alarmReleaseCrankHub', 'alarmReleaseCrankInArm', 'alarmReleaseCrankRoller'], idiom: 'crank',
     load: { value: R.F * 1000, unit: 'mN',
       source: 'ALARM_RELEASE_HELIX.Fmax — alarmSleeveRingWork’s drive at the helix it minimises, every cone azimuth and three points of the lift, MU_STEEL on every face (the rollers at μ·r_pin/r_roller)' },
     quantities: { armIn_u: ALARM_RELEASE_ARM_IN, armOut_u: ALARM_RELEASE_ARM_OUT, ratio: ALARM_RELEASE_ARM_OUT / ALARM_RELEASE_ARM_IN,
@@ -25776,6 +25800,12 @@ const ALARM_RELEASE_LAWS = Object.freeze({
 // and the fork. The cone's push from follower A's spiral helps the sleeve
 // down while the skirt touches the pin, and over the last ALARM_SLEEVE_GAP it
 // does not, which is why the spiral is not named as the sleeve's return.
+// TODO 64's axis reverses the alarm crown itself: the stem slides out and
+// back, and both strokes are the reader's — the crown is the run's INPUT, and
+// nothing in the run is asked to return it.
+declareRestoring('Alarm crown', 'alarmStem', 'two-way',
+  'the reader pulls the alarm crown out and pushes it home — both strokes are the input, which is what the alarmPull axis performs; nothing in the run returns the stem, and nothing needs to',
+  ['input:the alarm crown, pulled by hand', 'input:the alarm crown, pushed home by hand']);
 declareRestoring('Alarm release lifter', 'alarmLifterHead', 'spring',
   'the two return blades, rooted on the posts, bear UP under the web’s dropped tabs at the pad’s station and seat the pad on the collar at every parity; the collar’s ramp drops it against them on the pull',
   'alarmLifterBlade');
