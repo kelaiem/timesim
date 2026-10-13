@@ -18,7 +18,8 @@
   of the pairs before it (standing rule 2). Drawn, and not LEGO's CAD: the
   involute outline, the cross bore, the 4 mm face, the 8 mm layer step, the
   turntable's face teeth and the colours. Every mesh is phased — parallel pairs on their line
-  of centres, the turntable's face mesh at the pinion's lowest point — and
+  of centres; a 90° face mesh, which no row carries since §219 tier three (b)
+  landing C2 refused the 60T turntable, at the pinion's lowest point — and
   tools/probe-technic-phase.mjs measures it off the drawn gears.
 
   BUILT §219 tier three (b) landing B — THE LEGO BUILD VIEW (?view=lego). Each
@@ -27,8 +28,8 @@
   columns, Technic bricks, axles and gears, each shaft one keyed body turning
   at its running product. tools/probe-technic-build.mjs measures the same
   placements (seated, through, meshed); tools/probe-technic-ldraw.mjs holds the
-  frame's dimensions to the parts. Rows on the turntable are refused by the
-  frame and stay drawn, labelled with the reason.
+  frame's dimensions to the parts. Since landing C2 every row frames; a row
+  the frame refused would stay drawn, labelled with the reason.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -68,12 +69,12 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   <div id="rows"></div>
   <p>Tooth counts, kinds, centre distances and ratios come from the declared rows.
   In the <b>drawn</b> view, part shapes, faces and colours are drawn, not LEGO's CAD,
-  and every pair's teeth are phased to mesh, including the 90° meshes on the 60T
-  turntable's bevel top. The <b>LEGO build</b> view assembles each row that has a
-  brick frame from the real parts (LDraw.org's library, CC BY 4.0): every
-  dimension of the frame is measured off those parts. Rows on the turntable are
-  not framed yet and stay drawn. The escapement, balance and fusee have no LEGO row and
-  are not here.</p>
+  and every pair's teeth are phased to mesh. The <b>LEGO build</b> view assembles
+  every row from the real parts (LDraw.org's library, CC BY 4.0) on a brick
+  frame whose every dimension is measured off those parts. The rows use no
+  turntable: neither could be mounted on the frame, so the solver answers with
+  spur gears on the stud lattice. The escapement, balance and fusee have no LEGO
+  row and are not here.</p>
   <div id="log"></div>
 </div>
 <script type="module">
@@ -226,8 +227,7 @@ function buildChain(gen, chain, parent) {
       nextPhase = betaC + sigma * (ta * phase - Math.PI) / tb;
     } else {
       // Parallel: half the sum of the counts, the lattice distance catalogueMesh
-      // admitted. A turntable rides its own frame, so its distance may be off
-      // the lattice, and the panel says so.
+      // admitted, a turntable's included since §219 tier three (b) landing C1.
       const pos = at.clone().addScaledVector(s.w, m.cd);
       next = newShaft(parent, pos, s.u, -s.speed * ta / tb);
       // Exact mesh phase for external gears in one frame: with the driver's

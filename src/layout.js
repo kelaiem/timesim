@@ -4146,8 +4146,16 @@ export const ratStr = (r) => (r.d === 1n ? String(r.n) : `${r.n}/${r.d}`);
 // for an inadmissible pair, else { class, cd } (cd in mm, null at 90°).
 const _PARALLEL = new Set(['spur', 'doubleBevel', 'turntable']);
 const _BEVEL = new Set(['bevel', 'turntableBevel']);
+// A going train also refuses the 60T turntable (§219 tier three (b) landing C2):
+// measured off its LDraw parts, no brick frame mounts it. Its base pins into
+// Technic bricks whose studs reach 26.4 mm from its axis, against an underside
+// rim that starts at 26.1, and the bricks sit flush under the rotating ring.
+// So a row on it could be declared but never built; the solver answers
+// without it, all-parallel, on the lattice.
+const _UNMOUNTABLE = new Set(['turntableBevel']);
 export function catalogueMesh(a, b, cat, { goingTrain = true } = {}) {
   if (goingTrain && (a.slips || b.slips)) return null;
+  if (goingTrain && (_UNMOUNTABLE.has(a.kind) || _UNMOUNTABLE.has(b.kind))) return null;
   const bevels = (_BEVEL.has(a.kind) ? 1 : 0) + (_BEVEL.has(b.kind) ? 1 : 0);
   if (bevels === 2) return null;
   if (bevels === 1) {
@@ -4201,11 +4209,12 @@ export function solveRatio(target, cat, { maxLen = 6, ...opts } = {}) {
 // law at the catalogue's own escapement), so a re-geared steel train fails the
 // boot assert below instead of carrying a fork for a ratio it no longer has.
 //
-// Under technic_2026 the solver prefers turntable chains where it can: fewer
-// meshes, at the price of a 90° mesh on the 60T's bevel top. Its motion works
-// read 24:8 × 56:14 until landing C held the turntable to the lattice; the 56T
-// at 35 mm was unbuildable, and the solver now answers 24:8 × 64:16. Both
-// generations are kept so that dependency is data.
+// Both generations once leaned on turntables, and the LEGO build refused both
+// (§219 tier three (b)). The motion works read 24:8 × 56:14 until landing C1 held
+// the 56T to the lattice (35 mm is unbuildable); centre→fourth (2026) and
+// fourth→escape (both) rode a 90° mesh on the 60T until landing C2 found it
+// unmountable. The solver now answers every row with parallel meshes on the
+// lattice. Both generations are kept so the 64T dependency stays data.
 //
 // SOLVED AT THE IDENTITY SPEC. The reserve target is 7h/100 (the hand's sweep
 // over the barrel's usable turns), so it moves with `reserveHours`; at any
@@ -4217,9 +4226,9 @@ export const TECHNIC_FORK = Object.freeze({
   solvedAt: Object.freeze({ reserveHours: 30 }),
   rows: Object.freeze([
     { key: 'centre→fourth', derivedFrom: 'fourth wheel 1 rev/min under a centre wheel at 1 rev/h',
-      chains: { technic_classic: [[16, 8], [16, 8], [24, 8], [40, 8]], technic_2026: [[60, 8], [64, 8]] } },
+      chains: { technic_classic: [[16, 8], [16, 8], [24, 8], [40, 8]], technic_2026: [[24, 8], [40, 8], [64, 16]] } },
     { key: 'fourth→escape', derivedFrom: `RATE_TABLE's law at ${TECHNIC_VPH} vph on an ${TECHNIC_ESCAPE_TEETH}T wheel`,
-      chains: { technic_classic: [[60, 8]], technic_2026: [[60, 8]] } },
+      chains: { technic_classic: [[24, 8], [40, 16]], technic_2026: [[24, 8], [40, 16]] } },
     { key: 'motion works', derivedFrom: '12 hours to the hour hand’s one turn',
       chains: { technic_classic: [[16, 8], [16, 8], [24, 8]], technic_2026: [[24, 8], [64, 16]] } },
     { key: 'reserve reduction', derivedFrom: 'the hand’s sweep over the barrel’s usable turns',

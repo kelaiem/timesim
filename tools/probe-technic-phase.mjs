@@ -181,7 +181,16 @@ if (!stepDiffers) fails++;
 const kinds = new Set(out.map((r) => r.class));
 console.log(`\ncontrols: ${out.filter((r) => r.class !== 'right-angle').length} parallel rows are the must-hit, `
   + `every row's injected half pitch the must-fail; classes seen: ${[...kinds].join(', ')}`);
-if (!kinds.has('right-angle')) { console.log('✗ no right-angle mesh was measured — the subject is missing'); fails++; }
+// The 90° subject is owed only while a declared row carries one: since
+// §219 tier three (b) landing C2 refused the 60T turntable, every row is
+// parallel. Which rows carry one is computed from the rows, so a row that brings
+// a 90° mesh back makes this a gate again.
+const { CATALOGUES, catalogueMesh } = await import('../src/layout.js');
+const declaredRA = Object.keys(CATALOGUES).filter((g) => CATALOGUES[g]).some((g) => TECHNIC_FORK.rows.some((row) =>
+  row.chains[g].some(([ta, tb]) => { const c = CATALOGUES[g].counts, a = c.find((r) => r.teeth === ta), b = c.find((r) => r.teeth === tb);
+    return a && b && catalogueMesh(a, b, CATALOGUES[g])?.class === 'right-angle'; })));
+if (declaredRA && !kinds.has('right-angle')) { console.log('✗ a declared row carries a 90° mesh and none was measured — the subject is missing'); fails++; }
+if (!declaredRA) console.log('no declared row carries a 90° mesh (the 60T was refused in landing C2); the page keeps the code, nothing exercises it');
 if (warnings.length) { console.log(`✗ the page was not silent:\n  ${warnings.join('\n  ')}`); fails++; }
 console.log(fails ? `\n${fails} FAILED` : `\n${out.length}/${out.length} meshes mesh at every angle, every control firing`);
 process.exit(fails ? 1 : 0);
