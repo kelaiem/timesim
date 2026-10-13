@@ -23279,14 +23279,30 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 {
   await breathe(194);
   const i1b = G.makeGear({ name: 'i1b', module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, mates: [ALARM_DISC_TEETH], thickness: ALARM_DISC_BODY_T, boreR: 0.5, spokes: 4, hub: false, material: MATS.brass, bevel: false });
-  // §194 — the disc BRANCH. The setting chain's solve covers wheel→i1→i2; this
-  // pair is the second entry into it (the hour's back-drive through the disc
-  // rim), which is exactly the input TODO 117 found the chain answering
-  // differently. Declared here so both entries carry rows.
-  declareMesh('alarm setting: disc rim ⇄ idler 1b', { a: 'alarmDiscBody', b: 'i1b', inputs: ['train', 'alarm'], chain: 'alarm setting' });
-  i1b.rotation.z = Math.PI / ALARM_SET_I1_TEETH;
   i1b.position.z = ALARM_BAND_Z - ALARM_SET_Z;
   alarmSetI1Spin.add(i1b);
+  // TODO 117 — THE BRANCH'S LAST DEBT WAS AN INDEX, AND IT IS SOLVED HERE.
+  // This pair used to be declared by hand beside an unsolved half-pitch seed
+  // (`π / 28`), and its meshPhase row read 36.68% over the net: the disc
+  // carried the hour and the idler did not, so the two members stood in
+  // different frames and no index could have phased them. TODO 117 took the
+  // hour off the disc and TODO 144 took the back-drive term off the idlers,
+  // and the row went FLAT — 10.0% at every pose, spread 0.049% — which is a
+  // pair that transmits with nobody having clocked it. That is TODO 132's
+  // `idler 2 ⇄ arbor pinion` again, and it gets the same second stage.
+  //
+  // The disc is the DATUM: its index is pinned by the trip (the notch is cut
+  // where the alarm hand points), so it may not move. The knob is i1b's index
+  // ON idler 1 — an assembly freedom, since the two wheels are one body only
+  // once keyed — and the tick writes `alarmSetI1Spin`, never `i1b` itself, so
+  // a phase solved here rides every frame. Both members stand at their build
+  // angles at alarmSetRot = 0, a pose the movement occupies, so the solve is
+  // taken in a frame the tick reproduces (TODO 132's cage-wheel lesson). The
+  // solve declares the pair it phases, so the hand-written row goes with it.
+  solveGearChain('alarm setting:', [
+    { obj: alarmDiscGroup.children.find((o) => o.name === 'alarmDiscBody'), teeth: ALARM_DISC_TEETH, name: 'disc rim' },
+    { obj: i1b, teeth: ALARM_SET_I1_TEETH, name: 'idler 1b' },
+  ], ALARM_BRANCH_MODULE, ['train', 'alarm']);
   const sleeve = new THREE.Mesh(ringGeo(0.5, 0.62, Math.abs(ALARM_BAND_Z - ALARM_SET_Z)), MATS.steel);
   sleeve.position.z = (ALARM_BAND_Z - ALARM_SET_Z) / 2;
   alarmSetI1Spin.add(sleeve);
