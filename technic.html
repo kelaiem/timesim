@@ -65,6 +65,7 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   it.</p>
   <div class="gen" id="gens"></div>
   <div class="gen" id="views"></div>
+  <div class="gen" id="kmodes" hidden></div>
   <label>speed <input id="speed" type="range" min="0" max="4" step="0.05" value="1" /></label>
   <div id="rows"></div>
   <p>Tooth counts, kinds, centre distances and ratios come from the declared rows.
@@ -75,15 +76,22 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   turntable: neither could be mounted on the frame, so the solver answers with
   spur gears on the stud lattice. The escapement, balance and fusee have no LEGO
   row and are not here.</p>
+  <p>The LEGO view adds the <b>keyless works</b>: the stem carries two 16T
+  clutch gears and a driving ring that slides between them, LEGO's own
+  changeover standing in for the steel sliding pinion. <b>wind</b>,
+  <b>set</b> and <b>neutral</b> move the ring (the stem stops first, as the
+  ring's lugs need it); each branch's gears are the solver's answer from the
+  clutch gear to the steel ratio. Nothing yet moves the ring but these
+  buttons: the lever is not built.</p>
   <div id="log"></div>
 </div>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseLibrary, walk } from './src/ldraw.js';
-import { frameFork, rowLayout } from './src/technic-frame.js';
+import { frameFork, frameKeyless, rowLayout } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
-import { CATALOGUES, TECHNIC_FORK, catalogueMesh, technicForkTargets,
+import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, technicKeylessTargets, catalogueMesh, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
 const logEl = document.getElementById('log');
@@ -247,8 +255,9 @@ function buildChain(gen, chain, parent) {
 
 // --- the LEGO build (?view=lego) --------------------------------------------
 // Drawn by role, not by LDraw colour code: the .ldr download carries the codes.
-const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, technicBrick: 0x9b3b36, axle: 0x1c1d20, spur: 0xa0a5a9, doubleBevel: 0xd9c08c };
-const LEGO_CELL = 150;   // mm between rows on the table; the largest base is 9 studs (72 mm)
+const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, technicBrick: 0x9b3b36, axle: 0x1c1d20, spur: 0xa0a5a9, doubleBevel: 0xd9c08c,
+  joiner: 0x1c1d20, ring: 0x9b3b36, crown: 0xe8e8e8 };
+const LEGO_CELL = 150;   // mm between rows on the table; the largest base is the keyless works' 14 studs (112 mm)
 let lib = null;
 const partGeo = new Map();
 async function loadLib() {
@@ -276,6 +285,7 @@ function placePart(parent, p) {
   const mesh = new THREE.Mesh(g, legoMaterial(p.role)); mesh.matrixAutoUpdate = false; mesh.matrix.copy(M);
   const lines = new THREE.LineSegments(e, edgeMat); lines.matrixAutoUpdate = false; lines.matrix.copy(M);
   parent.add(mesh, lines);
+  return { objs: [mesh, lines], M };
 }
 // A framed row as parts: LDraw frame (LDU, +Y down) turned onto the page's
 // (mm, +Y up) by a half turn about X — a rotation, so nothing is mirrored.
@@ -284,12 +294,30 @@ function buildLego(b, parent) {
   for (const p of b.statics) placePart(root, p);
   const shafts = b.shafts.map((s) => {
     const rotor = new THREE.Group(); rotor.position.set(...s.origin); root.add(rotor);
-    for (const p of s.parts) placePart(rotor, p);
-    return { rotor, speed: s.speed, phi: s.phi };
+    // a part that SLIDES with the mode (the keyless ring) keeps its matrix to re-pose
+    const sliders = [];
+    for (const p of s.parts) { const placed = placePart(rotor, p); if (p.slide) sliders.push({ ...placed, slide: p.slide }); }
+    return { rotor, speed: s.speed, speeds: s.speeds, phi: s.phi, sliders };
   });
   return shafts;
 }
 let legoShafts = [];
+// THE KEYLESS MODE: which clutch gear the ring is in. Changing it re-poses the
+// ring along the stem and restarts the keyless works from its posed angle (0),
+// the state probe-technic-keyless.mjs measures: the ring's lugs only pass the
+// gear's where they are interleaved, so a shift with the stem turning is not
+// a thing this page claims.
+let keylessMode = 'wind', keylessAngle = 0, keylessBuild = null;
+function setKeylessMode(mode) {
+  keylessMode = mode; keylessAngle = 0;
+  for (const s of legoShafts) for (const sl of s.sliders) {
+    const M = sl.M.clone(); M.elements[14] += sl.slide[mode] ?? 0;
+    for (const o of sl.objs) o.matrix.copy(M);
+  }
+  for (const b of document.querySelectorAll('#kmodes button')) b.dataset.state = b.dataset.mode === mode ? 'on' : 'off';
+  const a = document.getElementById('kldr');
+  if (a && keylessBuild) { URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(keylessBuild, 0, mode)], { type: 'text/plain' })); a.download = `${currentGen}-keyless-${mode}.ldr`; }
+}
 
 // --- the page ---------------------------------------------------------------
 const scene = new THREE.Scene();
@@ -371,6 +399,26 @@ async function build(gen, mode = view) {
       + `<br>measured <code data-meter="${built.length - 1}">—</code>`;
     rowsEl.appendChild(div);
   });
+  // §219 tier three (b) landing D — the keyless works, the LEGO view's fifth cell
+  document.getElementById('kmodes').hidden = mode !== 'lego';
+  keylessBuild = null;
+  if (mode === 'lego') {
+    const kf = frameKeyless(gen), k = TECHNIC_FORK.rows.length;
+    const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
+    const div = document.createElement('div'); div.className = 'row';
+    if (kf.framed) {
+      keylessBuild = ldrawBuild(kf, lib);
+      for (const sh of buildLego(keylessBuild, band)) legoShafts.push({ ...sh, keyless: true });
+      const lbl = labelSprite(`${k + 1}. keyless works`); lbl.position.set(-30, 60, 0); band.add(lbl);
+      const kt = technicKeylessTargets();
+      div.innerHTML = `<b>${k + 1}. keyless works — LEGO build</b>`
+        + TECHNIC_KEYLESS.rows.map((r) => `<br>${r.key}: <code>${r.chains[gen].map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(kt[r.key])}</code>`
+          + ` <span style="color:var(--dim)">${r.derivedFrom}</span>`).join('')
+        + `<br><span style="color:var(--dim)">ring travel ±${kf.ringTravel} mm, ${kf.shafts.length} axles at ${kf.axleZ} mm, base ${kf.base.studsX}×${kf.base.studsY} studs</span>`
+        + `<br><a id="kldr" href="#" style="color:#9fb6d9">download .ldr (this mode)</a>`;
+    } else div.innerHTML = `<b>${k + 1}. keyless works</b><br><span class="bad">not framed in LEGO: ${kf.reason}</span>`;
+    rowsEl.appendChild(div);
+  }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   for (const b of document.querySelectorAll('#views button')) b.dataset.state = b.dataset.view === mode ? 'on' : 'off';
   currentGen = gen;
@@ -380,6 +428,7 @@ async function build(gen, mode = view) {
   else cam.position.set(c.x, c.y - size.y * 0.75, c.z + Math.max(size.x, size.y) * 1.05);
   controls.update();
   inputAngle = 0;
+  if (keylessBuild) setKeylessMode(keylessMode);
 }
 
 let currentGen = null;
@@ -393,6 +442,11 @@ for (const [v, label] of [['drawn', 'drawn'], ['lego', 'LEGO build']]) {
   const b = document.createElement('button'); b.textContent = label; b.dataset.view = v;
   b.addEventListener('click', () => build(currentGen, v)); viewsEl.appendChild(b);
 }
+const kmodesEl = document.getElementById('kmodes');
+for (const m of ['wind', 'set', 'neutral']) {
+  const b = document.createElement('button'); b.textContent = m; b.dataset.mode = m;
+  b.addEventListener('click', () => setKeylessMode(m)); kmodesEl.appendChild(b);
+}
 const speedEl = document.getElementById('speed');
 const params = new URLSearchParams(location.search);
 await build(gens.includes(params.get('gen')) ? params.get('gen') : 'technic_2026');
@@ -404,7 +458,10 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   inputAngle += dt * INPUT_RAD_S * Number(speedEl.value);
-  for (const s of legoShafts) s.rotor.rotation.z = s.phi + s.speed * inputAngle;
+  // a DISPLAY rate, not a claim: the crown turns six times the trains' input so
+  // the setting branch's 1/3 is visible
+  keylessAngle += dt * 6 * INPUT_RAD_S * Number(speedEl.value);
+  for (const s of legoShafts) s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
   built.forEach((res, i) => {
     for (const sh of res.shafts) sh.rotor.rotation.z = sh.speed * inputAngle;
     const out = res.shafts[res.shafts.length - 1].rotor.rotation.z, inp = res.shafts[0].rotor.rotation.z;
@@ -413,7 +470,7 @@ renderer.setAnimationLoop((now) => {
   });
   renderer.render(scene, cam);
 });
-window.__technic = { build, get built() { return built; }, cam, controls };
+window.__technic = { build, setKeylessMode, get built() { return built; }, get keyless() { return keylessBuild; }, cam, controls };
 </script>
 </body>
 </html>

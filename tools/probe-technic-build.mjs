@@ -14,8 +14,9 @@
 //   · THROUGH — each Technic brick's two hole faces lie on its shaft's axle
 //     line, and the axle fills each brick's hole end to end, less the half LDU
 //     the library trims off each axle end;
-//   · ON THE AXLE — every gear's bore on its axle's line and inside its span;
-//   · MESHED — per pair, each gear's tooth angle MEASURED off its placed
+//   · ON THE AXLE — every gear's bore on its axle's line and inside its span
+//     (a keyless clutch gear, its own body, on the stem's);
+//   · MESHED — per pair in the build's mesh list, each gear's tooth angle MEASURED off its placed
 //     geometry (the tips' arg Σ e^{iNθ} / N), at five input angles turned the
 //     way the page turns them: φ + speed·input per shaft. A pair meshes when
 //     Na·A + Nb·(B − π) ≡ π (mod 2π); the residue is reported as a fraction
@@ -34,7 +35,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, compose, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
-import { frameFork, FRAME_PARTS } from '../src/technic-frame.js';
+import { frameFork, frameKeyless, FRAME_PARTS } from '../src/technic-frame.js';
 import { ldrawBuild, placedParts, toLdr } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -65,7 +66,7 @@ function placedPhase(p) {
   return Math.atan2(s, c) / p.teeth;
 }
 
-function judge(build, frame) {
+function judge(build, frame, mode = build.modes?.[0]) {
   const bad = [];
   // SEATED: walk each column's stack upward from the baseplate
   const base = build.statics[0];
@@ -93,12 +94,18 @@ function judge(build, frame) {
     const half = 160;
     if (Math.abs(bottom.m[0] - base.m[0]) > half - 10 || Math.abs(bottom.m[2] - base.m[2]) > half - 10) bad.push(`column ${k} is off the baseplate`);
   }
-  // THROUGH and ON THE AXLE
+  // THROUGH and ON THE AXLE. A body with no axle of its own (a keyless clutch
+  // gear idling on the stem) is held to the axle of the body it shares a line
+  // with.
+  const bodyParts = (k, input = 0) => placedParts({ ...build, statics: [], shafts: [build.shafts[k]] }, input, mode);
+  const spans = [];
   for (const [i, s] of build.shafts.entries()) {
-    const placed = placedParts({ ...build, statics: [], shafts: [s] });
+    const placed = bodyParts(i);
     const axle = placed.find((p) => p.role === 'axle');
+    if (!axle) continue;
     const ab = B(axle.part);                            // along the axle's own X, turned onto Z
     const half = (ab.hi[0] - ab.lo[0]) / 2, z0 = axle.m[2] - half, z1 = axle.m[2] + half;
+    spans.push({ i, x: s.origin[0], y: s.origin[1], z0, z1 });
     const bricks = build.statics.filter((p) => p.part === FRAME_PARTS.technicBrick1x1 && near(p.m[0], s.origin[0]));
     if (bricks.length !== 2) bad.push(`shaft ${i}: ${bricks.length} Technic bricks on its line, not 2`);
     for (const t of bricks) {
@@ -111,67 +118,76 @@ function judge(build, frame) {
       const tb = B(t.part), b0 = t.m[2] + tb.lo[2], b1 = t.m[2] + tb.hi[2];
       if (z0 > b0 + AXLE_TRIM + EPS || z1 < b1 - AXLE_TRIM - EPS) bad.push(`shaft ${i}: the axle (${z0}…${z1}) does not fill the hole of the brick at Z ${b0}…${b1}`);
     }
-    for (const g of placed.filter((p) => p.teeth)) {
-      if (!near(g.m[0], s.origin[0]) || !near(g.m[1], s.origin[1])) bad.push(`shaft ${i}: ${g.teeth}T off the axle line`);
-      if (g.m[2] < z0 || g.m[2] > z1) bad.push(`shaft ${i}: ${g.teeth}T at Z ${g.m[2]} beyond its axle`);
+  }
+  for (const [i, s] of build.shafts.entries()) {
+    const on = spans.find((a) => near(a.x, s.origin[0]) && near(a.y, s.origin[1]));
+    if (!on) { bad.push(`body ${i}: no axle on its line`); continue; }
+    for (const g of bodyParts(i)) {
+      if (g.role === 'axle') continue;
+      if (!near(g.m[0], s.origin[0]) || !near(g.m[1], s.origin[1])) bad.push(`body ${i}: ${g.teeth ? `${g.teeth}T` : g.part} off the axle line`);
+      if (g.m[2] < on.z0 || g.m[2] > on.z1) bad.push(`body ${i}: ${g.teeth ? `${g.teeth}T` : g.part} at Z ${g.m[2]} beyond its axle`);
     }
   }
-  // MESHED
+  // MESHED — every pair in the build's own mesh list
   const worst = [];
-  for (let i = 1; i < build.shafts.length; i++) {
+  for (const m of build.meshes) {
     let w = 0;
     for (const input of ANGLES) {
-      const placed = placedParts(build, input);
-      const gearsOn = (k) => placed.filter((p) => p.teeth && near(p.m[0], build.shafts[k].origin[0]) && near(p.m[1], build.shafts[k].origin[1]));
-      const a = gearsOn(i - 1).find((p) => near(p.m[2], gearsOn(i)[0].m[2]));
-      const b = gearsOn(i).find((p) => near(p.m[2], a?.m[2]));
-      if (!a || !b) { bad.push(`shafts ${i - 1}→${i}: no coplanar pair`); break; }
+      const a = bodyParts(m.a, input)[m.ga], b = bodyParts(m.b, input)[m.gb];
+      if (!a?.teeth || !b?.teeth || !near(a.m[2], b.m[2])) { bad.push(`mesh ${m.a}→${m.b}: no coplanar pair`); break; }
       const A = placedPhase(a), Bp = placedPhase(b);
-      const r = mod(a.teeth * A + b.teeth * (Bp - Math.PI) - Math.PI, 2 * Math.PI) / (2 * Math.PI);
+      // the line of centres, as the build solved it: angles are measured from it
+      const al = Math.atan2(b.m[1] - a.m[1], b.m[0] - a.m[0]);
+      const r = mod(a.teeth * (A - al) + b.teeth * (Bp - al - Math.PI) - Math.PI, 2 * Math.PI) / (2 * Math.PI);
       w = Math.max(w, Math.min(r, 1 - r));
     }
     worst.push(w);
-    if (w > PHASE_TOL) bad.push(`shafts ${i - 1}→${i}: teeth ${w.toFixed(4)} of a turn off mesh`);
+    if (w > PHASE_TOL) bad.push(`mesh ${m.a}→${m.b}: teeth ${w.toFixed(4)} of a turn off mesh`);
   }
   return { bad, worst };
 }
 
 let fails = 0, rows = 0;
 console.log('THE LEGO BUILD — placements measured against the vendored LDraw parts\n');
-for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (const f of frameFork(gen)) {
+for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (const f of [...frameFork(gen), frameKeyless(gen)]) {
   if (!f.framed) continue;
   rows++;
   const build = ldrawBuild(f, lib);
-  const { bad, worst } = judge(build, f);
-  // controls
-  // half a pitch on ONE driven shaft at a time, read on that shaft's own mesh:
-  // shifting them all at once can cancel across a compound shaft (an 8T driven
-  // with a 40T driver comes back 6π, a whole number of turns, on the next mesh)
-  let hp = true;
-  for (let i = 1; i < build.shafts.length; i++) {
-    const c = structuredClone(build);
-    c.shafts[i].phi += Math.PI / f.shafts[i].gears[0].teeth;
-    if (!judge(c, f).bad.some((m) => m.startsWith(`shafts ${i - 1}→${i}: teeth`))) hp = false;
+  // a keyless build is judged in each of its modes (the ring moves, the idle
+  // branch stands still); a row has one
+  for (const mode of build.modes) {
+    const { bad, worst } = judge(build, f, mode);
+    // controls
+    // half a pitch on ONE driven body at a time, read on that body's own mesh:
+    // shifting them all at once can cancel across a compound shaft (an 8T driven
+    // with a 40T driver comes back 6π, a whole number of turns, on the next mesh)
+    let hp = true;
+    for (const m of build.meshes) {
+      const c = structuredClone(build);
+      c.shafts[m.b].phi += Math.PI / c.shafts[m.b].parts[m.gb].teeth;
+      if (!judge(c, f, mode).bad.some((x) => x.startsWith(`mesh ${m.a}→${m.b}: teeth`))) hp = false;
+    }
+    const lifted = structuredClone(build);
+    const col = lifted.statics.find((p) => p.part === FRAME_PARTS.technicBrick1x1); col.m[1] -= 8;
+    const lf = judge(lifted, f, mode).bad.some((x) => /underside/.test(x));
+    // THE FILE: the .ldr the page offers, parsed back, is the same placements
+    // (to its 4-decimal print) in the same order, each a part the pack holds
+    const lines = toLdr(build, 0, mode).split('\n').filter((l) => l.startsWith('1 ')).map((l) => l.split(/\s+/));
+    const want = placedParts(build, 0, mode);
+    if (lines.length !== want.length) bad.push(`.ldr: ${lines.length} parts, build ${want.length}`);
+    else lines.forEach((t, i) => {
+      const m = t.slice(2, 14).map(Number), p = want[i];
+      if (`${p.part}.dat` !== t[14] || m.some((v, k) => Math.abs(v - p.m[k]) > 1e-4) || !lib.has(t[14])) bad.push(`.ldr line ${i + 1} is not placement ${i + 1} (${t[14]})`);
+    });
+    const ok = !bad.length && hp && lf;
+    if (!ok) fails++;
+    const name = build.modes.length > 1 ? `${f.key} (${mode})` : f.key;
+    console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${gen.padEnd(16)} ${name.padEnd(24)} ${want.length} parts, `
+      + `meshes worst ${worst.map((w) => w.toExponential(1)).join(' ')} of a turn`);
+    for (const b of bad) console.log(`         ${b}`);
+    if (!hp) console.log('         CONTROL: half a pitch on a driven body was NOT read off mesh');
+    if (!lf) console.log('         CONTROL: a Technic brick lifted one plate was NOT caught');
   }
-  const lifted = structuredClone(build);
-  const col = lifted.statics.find((p) => p.part === FRAME_PARTS.technicBrick1x1); col.m[1] -= 8;
-  const lf = judge(lifted, f).bad.some((m) => /underside/.test(m));
-  // THE FILE: the .ldr the page offers, parsed back, is the same placements
-  // (to its 4-decimal print) in the same order, each a part the pack holds
-  const lines = toLdr(build).split('\n').filter((l) => l.startsWith('1 ')).map((l) => l.split(/\s+/));
-  const want = placedParts(build, 0);
-  if (lines.length !== want.length) bad.push(`.ldr: ${lines.length} parts, build ${want.length}`);
-  else lines.forEach((t, i) => {
-    const m = t.slice(2, 14).map(Number), p = want[i];
-    if (`${p.part}.dat` !== t[14] || m.some((v, k) => Math.abs(v - p.m[k]) > 1e-4) || !lib.has(t[14])) bad.push(`.ldr line ${i + 1} is not placement ${i + 1} (${t[14]})`);
-  });
-  const ok = !bad.length && hp && lf;
-  if (!ok) fails++;
-  console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${gen.padEnd(16)} ${f.key.padEnd(18)} ${build.statics.length + build.shafts.reduce((n, s) => n + s.parts.length, 0)} parts, `
-    + `meshes worst ${worst.map((w) => w.toExponential(1)).join(' ')} of a turn`);
-  for (const b of bad) console.log(`         ${b}`);
-  if (!hp) console.log('         CONTROL: half a pitch on a driven shaft was NOT read off mesh');
-  if (!lf) console.log('         CONTROL: a Technic brick lifted one plate was NOT caught');
 }
 console.log(`\n${rows} builds, ${fails} failing`);
 process.exit(fails || !rows ? 1 : 0);

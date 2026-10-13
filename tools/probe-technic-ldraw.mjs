@@ -42,7 +42,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
-import { LEGO_DIM_MM, GEAR_WIDTH_MM, GEAR_TIP_MM, FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, frameFork } from '../src/technic-frame.js';
+import { LEGO_DIM_MM, GEAR_WIDTH_MM, GEAR_TIP_MM, FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, frameFork, frameKeyless,
+  KEYLESS_PARTS, KEYLESS_DIM_MM, KEYLESS_DOGS } from '../src/technic-frame.js';
+import { TECHNIC_CLUTCH_GEAR } from '../src/layout.js';
+import { dogPhase } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PACK = readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8');
@@ -79,8 +82,36 @@ const MEASURED = {
   holeZ: holes.length ? mm(tech.hi[1] - holes[0].m[1]) : NaN,
   axleR: mm(axle4.hi[1]),
 };
-const gears = [...new Map(Object.values(CATALOGUES).filter(Boolean).flatMap((c) => c.counts)
+const gears = [...new Map([...Object.values(CATALOGUES).filter(Boolean).flatMap((c) => c.counts), TECHNIC_CLUTCH_GEAR]
   .filter((r) => r.kind === 'spur' || r.kind === 'doubleBevel').map((r) => [r.part, r])).values()];
+
+// §219 tier three (b) landing D — THE KEYLESS PARTS, each figure read off its
+// part's SURFACE (triangles and quads; an edge line is not metal). Each part's
+// own Z is its axis. The bands each reading takes are named beside it.
+const surf = (p) => { const pts = []; walk(lib, dat(p), (k, ps) => { if (k === 'tri' || k === 'quad') pts.push(...ps); }); return pts; };
+const rOf = (q) => Math.hypot(q[0], q[1]);
+const KW = (() => {
+  const J = surf(KEYLESS_PARTS.joiner), R = surf(KEYLESS_PARTS.ring), C = surf(KEYLESS_PARTS.clutch), W = surf(KEYLESS_PARTS.crown);
+  const zMax = (ps) => Math.max(...ps.map((q) => q[2]));
+  const ringR = Math.max(...R.map(rOf));
+  const flangeZ = Math.max(...R.filter((q) => rOf(q) > ringR - 1e-3).map((q) => q[2]));
+  const ringEnd = R.filter((q) => q[2] === zMax(R));                    // the end face
+  const webZ = Math.min(...C.filter((q) => q[2] > 0 && rOf(q) > 9.5 && rOf(q) < 14).map((q) => q[2]));   // the recess's floor
+  const dog = dogPhase(lib);
+  return {
+    joinerHalf: mm(zMax(J)), joinerR: mm(Math.max(...J.map(rOf))),
+    ringHalf: mm(zMax(R)), ringR: mm(ringR), ringFlangeHalf: mm(flangeZ),
+    ringTubeIn: mm(Math.min(...ringEnd.map(rOf))), ringTubeOut: mm(Math.max(...ringEnd.map(rOf))), ringLugR: mm(dog.rLug),
+    recessDepth: mm(zMax(C) - webZ),
+    // the hub: the clutch's largest radius inside the ring's bore, off the web
+    recessIn: mm(Math.max(...C.filter((q) => q[2] >= webZ && rOf(q) < Math.min(...ringEnd.map(rOf))).map(rOf))),
+    // the wall: its cylinder, the largest radius inside the recess short of the teeth
+    recessOut: mm(Math.max(...C.filter((q) => q[2] >= webZ && q[2] < zMax(C) && rOf(q) < dog.rLug + 1.2).map(rOf).filter((v) => v < 14.75))),
+    gearLugR: mm(dog.rIn),
+    crownR: mm(Math.max(...W.map(rOf))), crownWidth: mm(zMax(W) - Math.min(...W.map((q) => q[2]))),
+    dogs: { ring: dog.ringLugs.coherence, gear: dog.gearLugs.coherence },
+  };
+})();
 const gearM = gears.map((r) => {
   const b = B(r.part), ext = [0, 1, 2].map((k) => b.hi[k] - b.lo[k]);
   const axis = ext.indexOf(Math.min(...ext));
@@ -125,9 +156,14 @@ function judge(T) {
     if (Math.abs(g.width - want) > TOL) bad.push(`${g.teeth}T ${g.part}: face ${g.width.toFixed(4)} mm, table ${want}`);
     if (!(Math.abs(g.tip - T.T[g.part]) <= TOL)) bad.push(`${g.teeth}T ${g.part}: tip ${g.tip.toFixed(6)} mm, table ${T.T[g.part]}`);
   }
+  // the keyless parts (landing D)
+  for (const [k, v] of Object.entries(T.K)) if (!(Math.abs(v - KW[k]) <= TOL)) bad.push(`keyless ${k}: table ${v} mm, parts ${KW[k]?.toFixed(6)} mm`);
+  // four lugs a side: each set's tips fold coherently by KEYLESS_DOGS (a lug is
+  // two points ±6.4° apart, so cos(4·6.4°) ≈ 0.90 is a whole set, not a stray)
+  for (const [who, c] of Object.entries(KW.dogs)) if (!(c > 0.85)) bad.push(`keyless: the ${who}'s lugs do not repeat ${T.N} times round (coherence ${c.toFixed(3)})`);
   // the baseplate covers every framed row
   const side = mm(base.hi[0] - base.lo[0]);
-  for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (const f of frameFork(gen)) if (f.framed) {
+  for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (const f of [...frameFork(gen), frameKeyless(gen)]) if (f.framed) {
     const span = Math.max(f.base.x1 - f.base.x0, f.base.y1 - f.base.y0);
     if (span > side + TOL) bad.push(`${gen} ${f.key}: base ${span} mm wider than the ${side} mm baseplate`);
   }
@@ -205,7 +241,7 @@ const tt60 = ttRows.find((t) => t.teeth === 60);
 const profile60 = tt60 && TURNTABLE_BASES[tt60.part] && lib.has(dat(TURNTABLE_BASES[tt60.part])) ? ttProfile(tt60.part, TURNTABLE_BASES[tt60.part]) : null;
 if (tt60 && !profile60) packBad.push(`turntable ${tt60.part}: its base is not in the pack`);
 
-const TABLES = { D: LEGO_DIM_MM, W: GEAR_WIDTH_MM, T: GEAR_TIP_MM, F: FRAME_PARTS, A: AXLE_PARTS };
+const TABLES = { D: LEGO_DIM_MM, W: GEAR_WIDTH_MM, T: GEAR_TIP_MM, F: FRAME_PARTS, A: AXLE_PARTS, K: KEYLESS_DIM_MM, N: KEYLESS_DOGS };
 const bad = [...packBad, ...judge(TABLES)];
 
 // controls: perturb one entry at a time; each must fail
@@ -215,6 +251,7 @@ controls.push(['gear default width − 0.8 mm', { ...TABLES, W: { ...GEAR_WIDTH_
 controls.push(['12T tip = module-1 (7 mm)', { ...TABLES, T: { ...GEAR_TIP_MM, 69778: 7 } }]);
 controls.push(['24T width = default', { ...TABLES, W: { default: GEAR_WIDTH_MM.default } }]);
 controls.push(['axle 4L ⇄ 5L', { ...TABLES, A: { ...AXLE_PARTS, 4: AXLE_PARTS[5], 5: AXLE_PARTS[4] } }]);
+for (const k of ['recessDepth', 'ringLugR', 'joinerR']) controls.push([`keyless ${k} + 0.1 mm`, { ...TABLES, K: { ...KEYLESS_DIM_MM, [k]: KEYLESS_DIM_MM[k] + 0.1 } }]);
 controls.push(['brick ⇄ Technic brick', { ...TABLES, F: { ...FRAME_PARTS, brick1x1: FRAME_PARTS.technicBrick1x1, technicBrick1x1: FRAME_PARTS.brick1x1 } }]);
 const silent = controls.filter(([, T]) => judge(T).length === 0).map(([n]) => n);
 // the turntable count's own control: a catalogue claiming two teeth more
@@ -225,6 +262,9 @@ console.log('THE TECHNIC FRAME\'S TABLES AGAINST THE LDraw PARTS (vendor/ldraw/t
 for (const [k, v] of Object.entries(MEASURED)) console.log(`  ${k.padEnd(7)} parts ${v.toFixed(4).padStart(8)} mm   table ${String(LEGO_DIM_MM[k]).padStart(5)}`);
 console.log('\n  gear  part    face mm  tip mm  module-1 tip  status');
 for (const g of gearM) console.log(`  ${String(g.teeth).padStart(3)}T  ${g.part.padEnd(6)} ${g.width.toFixed(3).padStart(7)} ${g.tip.toFixed(3).padStart(7)} ${String(g.teeth / 2 + 1).padStart(13)}  ${/Unofficial/.test(g.org ?? '') ? 'UNOFFICIAL (in review)' : 'official'}${/^~Moved/.test(g.title ?? '') ? ` — ${g.title}` : ''}`);
+console.log('\n  keyless part figure     parts mm   table mm');
+for (const k of Object.keys(KEYLESS_DIM_MM)) console.log(`  ${k.padEnd(20)} ${KW[k].toFixed(4).padStart(9)} ${String(KEYLESS_DIM_MM[k]).padStart(10)}`);
+console.log(`  lugs fold by ${KEYLESS_DOGS}: ring ${KW.dogs.ring.toFixed(3)}, gear ${KW.dogs.gear.toFixed(3)}`);
 console.log(`\n  axles ${Object.keys(AXLE_PARTS).join('/')}L, frame parts ${Object.values(FRAME_PARTS).join(' ')}`);
 console.log('\n  turntable  teeth (catalogue)  tips repeat  coherence (best rival count)  tip mm');
 for (const t of ttRows) console.log(`  ${t.part.padEnd(9)}  ${String(t.teeth).padStart(15)}  ${String(t.N).padStart(11)}  ${t.best.toFixed(3)} (${t.nextN}: ${t.next.toFixed(3)})  ${t.tipMm.toFixed(3).padStart(7)}`);
