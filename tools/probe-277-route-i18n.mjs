@@ -90,7 +90,7 @@ for (const lang of langs) {
 
 // --- mutation control: the checks must see what they claim to see.
 const ctl = langs.includes('de') ? 'de' : langs[0];
-const victim = EN.find((e) => EN_M.test(e) && /TODO \d+/.test(e) && /\d\.\d/.test(e));
+const victim = EN.find((e) => EN_M.test(e) && /TODO \d+/.test(e));
 const good = TABLES[ctl][victim];
 const mutations = {
   digit: good.replace(/\d/, (d) => String((+d + 1) % 10)),
