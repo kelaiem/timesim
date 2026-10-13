@@ -52978,11 +52978,11 @@ const INSPECT_STEPS = [
   // viewer is being shown the edge of. A stop with no open item a viewer can see
   // does not get an invented hazard (see the fusee stop). `title` is the stop
   // list's label (§277 part E).
-  { title: 'Fusee and chain', preset: 'Free', scale: 1, xray: false, labels: false,
-    get camera() { return frameOn('Fusee & great wheel', [0.4, -0.5, 0.8], 3.0); },
+  { title: 'Fusee and chain', preset: 'Free', scale: 1, xray: true, labels: false,
+    get camera() { return frameOn('Fusee & great wheel', [0.4, -0.5, 0.8], 1.6); },
     caption: 'The fusee. The chain climbs the cone as the spring runs down, so the radius it pulls on rises while the spring’s torque falls; the torque law is derived from the cut ribbon and the cone is cut against it. The chain’s run holds its length across the reserve to within half a link pitch. Nothing open here that the eye can find — the gates above are the evidence, not this picture.', dwell: 6.5 },
 
-  { title: 'Going train, driven', preset: 'Train', powerflow: true, scale: 1,
+  { title: 'Going train, driven', preset: 'Train', xray: true, powerflow: true, scale: 1,
     caption: 'The going train, great wheel to centre, third, fourth and escape wheel. The balance is driven by its own equation of motion and the escapement counts its beats, so the rate you see here is the rate the oscillator keeps — driven, not posed. Open: the reserve train’s two meshes interpenetrate by 0.118 mm (TODO 77) and every gear ships fatter than it was cut (TODO 84).', dwell: 7.0 },
 
   { title: 'Balance and hairspring', preset: 'Free', powerflow: false, scale: 0.1,
