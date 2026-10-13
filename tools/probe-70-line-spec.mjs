@@ -7,11 +7,12 @@
 // (LINE_SPECS in src/inspect.js). A gate that passes on the shipped tree has
 // proved only that it does not fail; this proves it fails, and fails on the
 // RIGHT rows, which is what makes its silence on the shipped tree mean
-// something. Twenty-one boots, each a copied tree (height-ledger's mutantTree),
-// over the five references — the switch's drive line, the lock that reads it,
+// something. Twenty-eight boots, each a copied tree (height-ledger's mutantTree),
+// over the six references — the switch's drive line, the lock that reads it,
 // the link that carries it to the ring, (TODO 236) the release run from the
-// crown's collar to the sleeve's helices, and (§278) the strike from the cam
-// to the gong — and the link's fork:
+// crown's collar to the sleeve's helices, (§278) the strike from the cam to
+// the gong, and (§278 landing 4) the detector from the hour to the feeler's
+// rock — and the link's fork:
 //
 //   1. identity — 0 violations, every control PASS.
 //   2. the wheel grown, ALARM_COL_BASE_R 5.7 → 5.8 — a fold that resized the
@@ -116,6 +117,34 @@
 //      fails and nothing else: the flank, the tip and the lift are generated
 //      from the law and stand where they were.
 //
+// §278 landing 4 — the sixth reference, 'alarm detector' (the hour-carried
+// reader, the set-carried disc's notch, the collar, the feeler's rock), and
+// seven more trees:
+//   22. the notch cut narrow by hand (ALARM_NOTCH_W 0.14 → 0.12) — the notch
+//      fails, and the plateau and the window the pin turns through with it.
+//      The admit envelope does NOT (0.12 still passes the pin's 0.0918 arc),
+//      and neither does the coincidence: the notch is narrower, not moved.
+//   23. the feeler's pivot carried out (ALARM_FEELER_PIVOT_R 5.5 → 5.7) — a
+//      longer read arm: the pivot (found as the lever's rock axis), the arm,
+//      the rock and the stop's gap fail. The read point does NOT: the tip
+//      still ends at the pin's radius, so the take-off stays 1:1.
+//   24. the reader's pin off its take-off radius (+0.05) — the take-off radius
+//      fails and nothing else: the track, the tip and the trip are cut and
+//      posed from the constant, and the pin's azimuth does not move.
+//   25. the notch cut shallow (ALARM_TRACK_H = drop + margin/2) — the track's
+//      height and the dropped pin's clearance over the body's face fail.
+//   26. the bias blade's dropped seat collapsed (its §137 row × 0.1) — the
+//      seat-hold ENVELOPE firing: the lever no longer seats on the collar at
+//      the trip with the detent band's 5 mN.
+//   27. the collar posed off its pin (its lift × 1.5) — the drop, the dropped
+//      pin over the floor and the collar over the track fail; the plateau and
+//      the window do NOT (the reader finds the edges on the collar's own full
+//      travel), and neither does the lever's rock, which the drop law poses.
+//   28. the set transfer geared 1.1:1 (the disc posed at 1.1 × its law) — the
+//      topology row the satellite fold's idler must keep: setCarry fails and
+//      nothing else, because the trip is searched at the setting where both
+//      read zero.
+//
 // What it is NOT: probe-261-height-cap.mjs fires the height ratchet; this
 // fires the mechanism reference. The check's own controls (a known shift of
 // the pin's line moving the measured offset by exactly that much; the rocker's
@@ -155,7 +184,7 @@ async function lineSpecOn(dir) {
 }
 
 const SRC = 'src/main.js', INS = 'src/inspect.js';
-const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`, REL = (k) => `alarm release run/${k}`, STRIKE = (k) => `alarm strike/${k}`;
+const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`, REL = (k) => `alarm release run/${k}`, STRIKE = (k) => `alarm strike/${k}`, DET = (k) => `alarm detector/${k}`;
 const FORKS_HEAD = 'export const LINE_SPEC_FORKS = [';
 const RUN_FORK = "      run: { value: 6,";
 const cases = [
@@ -242,6 +271,22 @@ const cases = [
   { name: 'the cam’s base cut two margins down', fail: [STRIKE('camBaseR')],
     patches: [{ file: SRC, find: 'const ALARM_CAM_BASE_R = alarmCamRadiusAt(-ALARM_STRIKE_AMP) - CLEAR_MARGIN;',
       to: 'const ALARM_CAM_BASE_R = alarmCamRadiusAt(-ALARM_STRIKE_AMP) - 2 * CLEAR_MARGIN;' }] },
+  // §278 landing 4 — the detector.
+  { name: 'the notch cut narrow by hand (ALARM_NOTCH_W 0.14 → 0.12)', fail: ['notchW', 'plateau', 'window'].map(DET),
+    patches: [{ file: SRC, find: 'const ALARM_NOTCH_W = 0.14;', to: 'const ALARM_NOTCH_W = 0.12;' }] },
+  { name: 'the feeler’s pivot carried out (ALARM_FEELER_PIVOT_R 5.5 → 5.7)', fail: ['pivotR', 'arm', 'rock', 'stopGap'].map(DET),
+    patches: [{ file: SRC, find: 'const ALARM_FEELER_PIVOT_R = 5.5;', to: 'const ALARM_FEELER_PIVOT_R = 5.7;' }] },
+  { name: 'the reader’s pin off its take-off radius (+0.05)', fail: [DET('trackR')],
+    patches: [{ file: SRC, find: 'pin.position.set(ALARM_TRACK_RMID, 0, READER_RING_Z - READER_RING_T / 2 - READER_PIN_LEN / 2);',
+      to: 'pin.position.set(ALARM_TRACK_RMID + 0.05, 0, READER_RING_Z - READER_RING_T / 2 - READER_PIN_LEN / 2);' }] },
+  { name: 'the notch cut shallow (ALARM_TRACK_H = drop + margin/2)', fail: ['trackH', 'floorClear'].map(DET),
+    patches: [{ file: SRC, find: 'const ALARM_TRACK_H = ALARM_PIN_DROP + CLEAR_MARGIN;', to: 'const ALARM_TRACK_H = ALARM_PIN_DROP + CLEAR_MARGIN / 2;' }] },
+  { name: 'the bias blade’s dropped seat collapsed (its §137 row × 0.1)', fail: [DET('seatHold')],
+    patches: [{ file: SRC, find: 'pinF_mN_riding: riding * lever, pinF_mN_dropped: dropped * lever,', to: 'pinF_mN_riding: riding * lever, pinF_mN_dropped: dropped * lever * 0.1,' }] },
+  { name: 'the collar posed off its pin (its lift × 1.5)', fail: ['drop', 'floorClear', 'ringOverTrack'].map(DET),
+    patches: [{ file: SRC, find: 'alarmReaderLift.position.z = -readerDrop;', to: 'alarmReaderLift.position.z = -1.5 * readerDrop;' }] },
+  { name: 'the set transfer geared 1.1:1 (the disc posed at 1.1 × its law)', fail: [DET('setCarry')],
+    patches: [{ file: SRC, find: '  alarmDiscGroup.rotation.z = alarmNotchA();', to: '  alarmDiscGroup.rotation.z = 1.1 * alarmNotchA();' }] },
 ];
 let ok = true;
 for (const c of cases) {

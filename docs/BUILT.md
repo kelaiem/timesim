@@ -36272,3 +36272,235 @@ the fold at every stop from both ends, every declared framing resolving, no
 warning or page error walking the route, and two back-to-back alarm toggles both
 landing. Not measured: Tour, Demo and Bench "as before when never navigated"
 (argued from the code); the battery on this tree.
+
+## §278, landing 4 — the detector gets its line spec, and a site report says where the satellite can stand
+
+The study found the dial side bound by the centre column's alarm detector: the
+disc, the reader collar, the seat and the feeler spend 5.312 u of the 7.240 u
+band. The owner decided to carry the detector off the column to a SATELLITE
+arbor fed by two 1:1 idlers, one carrying the hour wheel's angle and one the
+alarm setting wheel's, with the alarm hand staying central and no
+differential. That is TODO 117's closed topology moved whole: the hour carries
+the reader round, the disc carries the set alone, and the trip is their
+coincidence. This landing is the plan's step 3 and a site report for steps 4
+and 5. It moves no metal. The fingerprint (1623414317) and every per-unit §152
+digest are identical to `567ca24f`'s, and boot is silent.
+
+### The reference: 'alarm detector'
+
+`LINE_SPECS` gains a sixth reference. Its path runs from the hour wheel
+through the reader collar and its pin, the notch in the set-carried disc's
+track, the pin's drop, the collar's dial face (which presents the drop at
+every azimuth), and the feeler's tip at the pin's own radius, to the lever's
+rock against its banking stop. It has 29 rows and lands with no fork. Every
+row is measured off posed metal within float noise of its derivation:
+
+| row | value | measured off |
+|---|---|---|
+| orbit, setCarry | 1, 1 | the reader pin's turn per the hour wheel's over an hour of τ; the notch's turn per the alarm setting wheel's over a crown setting |
+| discStill | 0 rad | the notch's turn over that same hour |
+| pinR, trackR, coaxial | 0.14, 3.05, 0 | the pin's own section; its centre from the collar's axis; the collar's axis off the hub's |
+| trackMidR, trackHalfW | 3.05, 0.20 | the track's cut outline |
+| notchW; admit (envelope, ≥) | 0.14 rad; 0.0918 | the outer arc's coverage, the notch as the rest of the turn; the pin's arc at the track radius |
+| drop | 0.10 | the collar's travel from riding to the trip's centre |
+| trackH, floorClear | 0.25, 0.15 | the track's height; the dropped pin's tip over the body's face |
+| pinLen; pinSlender (envelope, ≤) | 0.25; 0.8334 | the pin's own length; §54's ceiling on the overhang |
+| ringT, ringOverTrack | 0.3167, 0.15 | the collar's thickness; its track-side face over the track at the trip |
+| plateau, window, align | 0.04820, 0.23180, 0 rad | the hour arc over which the collar stands at full drop, and off its riding plane at all; the plateau's centre against the notch's cut centre |
+| pivotR, arm, readR | 5.5, 2.45, 3.05 | the lever's rock axis, FOUND as the fixed axis of the tip's rigid motion from riding to the trip; the tip's leading edge along the lever, and its radius |
+| seat | 0.02 | the collar's dial face less the tip's face, riding |
+| rock | 0.040816 rad | the angle of that rigid motion |
+| tail, stopGap | 0.9, 0.03673 | the tail's end from the rock axis; the stop's face over the tail's top |
+| seatHold (≥ 5), seatRide (≤ 50) | 11.29, 18.81 mN | the §137 bias-blade row, dropped and riding |
+
+Four things about how the rows are built:
+
+- **The topology is three rows.** `orbit`, `setCarry` and `discStill` are what
+  the satellite's two idlers must keep. Today they hold by parenting (the
+  collar hangs in the hour wheel's group) and by the disc's law (it IS the
+  setting wheel's angle). After the fold they hold only if the transfers are
+  1:1 with the same sense, and the rows will read whatever wheels carry them.
+- **The laws are the build's own.** The tick's drop ramp is written on the
+  pin's arc at the track radius, and the lever's rock on the drop over its arm.
+  Both became `ALARM_DETECTOR_LAWS` in `main.js` and reach the reference as
+  `clock.lineLaws.detector`. The tick and `feelerRockAt` call them with the same
+  operation, which is why the fingerprint did not move.
+- **No `inherits`.** The obvious parent is TODO 236's 'alarm release run', and
+  it was read for one. The two share no derived quantity. The run is the crown's
+  pull lifting follower A off the heart. The detector's output is the feeler's
+  rock, and what carries that to the lock is TODO 199's still-open stage (the
+  hold is the `alarmReleased` flag, modelled and not simulated). What ties the
+  detector to the run today is spatial: the feeler's arm plane stands one margin
+  under the sleeve's envelope at the centre, and §124 prices its rock at the
+  sleeve's throat. That is exactly the coupling the satellite fold dissolves.
+- **The reader finds its own trip.** No axis turns the hour with the crown in
+  and the set held, so the reader poses its own τ. A secant on the measured
+  angle between the pin and the notch's cut centre lands on the coincidence.
+  Four bisections on the collar's measured travel then find where the drop
+  starts and where it saturates, either side, and the pin's azimuth is read at
+  each. The first draft read the notch as the largest angular gap between the
+  outline's points and got 0.256 rad: the track's arc is sampled 0.256 rad a
+  step, coarser than the 0.14 notch is wide. The notch is now what the outer
+  arc's summed turn does not cover.
+
+The control carries the reader's pin 0.05 out along its radius. The measured
+take-off radius follows by exactly 0.050000000, and the restored pin reads the
+same as before.
+
+`probe-70-line-spec.mjs` gains seven trees, and each one fails exactly the
+rows it moved:
+
+1. The notch cut narrow by hand (`ALARM_NOTCH_W` 0.14 → 0.12) fails notchW,
+   plateau and window. The admit envelope and the coincidence hold.
+2. The feeler's pivot carried out (`ALARM_FEELER_PIVOT_R` 5.5 → 5.7) fails
+   pivotR, arm, rock and stopGap. The read point holds: the tip still ends at
+   the pin's radius.
+3. The reader's pin off its take-off radius (+0.05) fails trackR alone.
+4. The notch cut shallow (`ALARM_TRACK_H` = drop + margin/2) fails trackH and
+   floorClear.
+5. The bias blade's dropped seat × 0.1 fails the seatHold envelope.
+6. The collar posed off its pin (its lift × 1.5) fails drop, floorClear and
+   ringOverTrack. The plateau, the window and the rock hold.
+7. The set transfer geared 1.1:1 (the disc posed at 1.1 × its law) fails
+   setCarry alone: the topology row a satellite idler must keep.
+
+### The site: `tools/probe-detector-site.mjs`
+
+The probe is a REPORT with fatal controls, and it moves no metal. The stack is
+taken as it is today. Its CORE is one solid cylinder, read off the disc, the
+reader, the seat's plate and pad and the feeler's tip and jog: **r ≤ 4.758 over
+z −6.124 … −4.397, 1.727 u (0.654 mm) tall**. The feeler's own arm, tail, stop,
+bracket and blade are judged separately, carried round the stack's axis, since
+the collar presents the drop at every azimuth. The method has three stages:
+
+1. **The map.** `dialBandScan` reads the dial band's tenants over the pose net
+   (§152's 52 poses plus the reset), with the four detector units excluded and
+   idler 1b and its sleeve detached (the fold retires the disc's rim drive).
+   Every station of an (r, az) grid is judged against the cells, good to half a
+   cell.
+2. **Exact.** The best stations are re-measured with `meshClearance` against all
+   752 meshes at every pose: the core as a ghost cylinder, the feeler as ghosts
+   of its own meshes.
+3. **The paths.** For each confirmed station, the band's free column, each
+   source's idler paths and the run to the lock.
+
+**The station: the study is confirmed.**
+
+- Of 8496 stations (r 7–36 by 0.5, az by 2.5°, world `atan2(y, x)`), 3610 read
+  clear by CLEAR_MARGIN.
+- The study's window (r 13–15, az 300–315°) is clear at every station, with
+  2.25–4 u of spare radius.
+- The free region is wider than the window. Az 200–260° and az 280–340° are
+  open from r ≈ 11 outward, and most of the band beyond r ≈ 24 is open.
+- The map's blockers are the keyless works, the power-reserve train, the
+  release sleeve, the alarm link, the switch and the alarm crown.
+- Eleven stations were confirmed exactly, all holding the margin for both the
+  core and the feeler. Ten read ≥ 0.75, so nothing came within the query bound
+  at any pose: r 13.0 az 300°, r 15.0 az 302.5° and 312.5°, r 15.5 az 320°,
+  r 16.5 az 307.5°, r 17.0 az 315°, and four in the 220–235° lobe. The eleventh
+  is below.
+- At every confirmed station the feeler is free at every azimuth (305° of them
+  at the eleventh).
+- At the window's stations the whole dial band over the core's footprint is
+  empty, dial back to plate face (7.240 u). The core needs 2.027 u.
+
+**The hour path is feasible.** At the 300–320° stations, one intermediate idler
+in the hour wheel's own stratum (z −4.227 … −3.677) stands clear on either side
+of the line: 12 T at r 13, 18 T at r 15 az 302.5°, 19–25 T further out (module
+0.3). A twin of the hour wheel (32 T) at the station is clear in the same
+stratum. At the 220–235° lobe no idler of 17–49 T clears the minute jumper and
+the motion works, so the hour rules that lobe out.
+
+**The set path, as posed, is NOT feasible at any confirmed station.** The
+numbers:
+
+- No idler of up to 24 T past the smallest that reaches stands clear in the
+  alarm setting wheel's stratum (z −9.390 … −9.073). The selector, the release
+  sleeve, the release crank, the silence rocker and the setting idler train
+  stand there.
+- Over such an idler's footprint, the free strata are −5.869 … −4.227 and
+  −3.677 … −2.300.
+- At the centre, a coaxial transfer wheel of the setting wheel's size fits only
+  in −5.788 … −4.227. That is the core's band, which the fold vacates, between
+  the sleeve and the hour wheel.
+- A pipe from the setting wheel's plane up to that stratum, at its bore (r 3.050
+  … 3.367), crosses the alarm hand's follower stack and the alarm heart (the
+  Alarm disc unit in 279 cells, the Hour wheel in 144).
+- The equal-pitch direct pair is blocked at the centre for both sources (the
+  dial's tube chain and the motion works for the hour, the alarm disc and the
+  hour wheel for the set).
+
+**The set's existing lift is the path that is feasible.** Idler 1's compound
+pinion i1b (28 T, pitch 4.2, at r 8.700, az 18°) already carries the set up
+from the setting lane into the disc's own plane, and it meshes the disc's 30 T
+rim there. That is TODO 117's set branch, 1:1 with the setting wheel through
+the rim, with today's sense.
+
+- A satellite disc that meshes i1b directly stands on the circle of radius
+  8.700 about its axis.
+- 9 of the 144 stations on that circle read clear, at r 11.13–13.28, az
+  328–338°, just past the study's window.
+- **r 12.5, az 334°** is confirmed exactly. The core holds 0.471, nearest the
+  alarm winding contrate, and the feeler 0.573.
+- Its column is free over z −6.650 … −2.300, which holds the core.
+- Its hour idler is the smallest of all: 10 T at r 6.3, clear on either side.
+- Its run to the lock is the shortest (below).
+- The one path not measured there is i1b against the satellite's seat plate. It
+  is the same mesh at the same centre distance the disc makes today.
+
+**The run to the lock.** The feeler's output is its tail (TODO 199). With the
+feeler turned to bring its tail nearest the lock's pivot:
+
+- Today, at the centre, the run is 27.66 in plan.
+- At the 300–320° stations it is 26.7–30.0. A straight bar at the tail's plane
+  is unobstructed, and the lock stands 2.57 plate-ward.
+- At r 12.5 az 334° it is 22.34.
+- At the 220–235° lobe it is 36–39, through the dial's tube chain and the hour
+  wheel.
+
+**The controls.** All pass:
+
+- K1: the core judged at the disc's own axis meets the centre column (the dial
+  unit's tube chain, the sleeve, the hour wheel).
+- K2: the scan's planted block reads its own interval exactly, and the off-ray
+  pin is missed by the ray and caught by the surface pass.
+- K3: the hub reads its running fit on the hour tube, 0.04405. That is within
+  [0.04214, 0.05], the 0.05 bore less the 40-facet bore's sagitta. The core
+  ghost at the axis reads 0 against the tube.
+- K4: the identity carry reproduces the feeler's metal at deviation 0.
+- K5: no core vertex lies outside the envelope.
+
+The one warning the run raises is the step-over guard (§38/TODO 8), and it
+belongs to the probe's own posing: the pose net jumps the hour 1.80 rad in a
+tick. Boot is silent.
+
+**What it leaves to step 4.** The hour transfer is a one-idler 1:1 pair in the
+hour wheel's own plane, at either site. The set transfer has two answers:
+
+1. Keep i1b and stand the satellite on its circle (r 11.1–13.3, az 328–338°).
+   That fold needs no set idler.
+2. Keep the owner's station in the study's window. That needs the set taken
+   off somewhere other than the setting wheel's own plane, which this layout
+   does not offer.
+
+The owner chooses. The 'alarm detector' rows `orbit`, `setCarry` and
+`discStill` hold either one.
+
+**Held by.**
+
+- `lineSpec` reads 6 references, 115 rows and 2 forks (no new fork), with every
+  control PASS.
+- `probe-70-line-spec`: all 28 trees PASS. The 21 earlier trees fail exactly
+  the rows they did before, and the detector's rows stay green in every one.
+- The local battery (`--only lineSpec,support,graph,alarmHandoffs,strikeHandoff,axisEntry
+  --no-incremental --shards 2`) passes **18/18 gates**. Within it:
+  - `alarmHandoffs`: 32 hand-offs, 0 waived.
+  - The fingerprint is deterministic at 1623414317, the base's hash.
+  - Boot is silent.
+- The per-unit §152 digests over the pose net are identical to `567ca24f`'s.
+  The `main.js` change is a refactor of two expressions into the laws object,
+  with the same operations, so no sweep can move and the long sweeps were not
+  re-run.
+- `explain-quotes` PASS (269 claims), `check-item-numbers` OK, and
+  `index-instruments --check` PASS (306 instruments). The explainer is
+  unchanged.
