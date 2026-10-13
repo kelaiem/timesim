@@ -26371,6 +26371,39 @@ const ALARM_PUSH_GUIDE_RING = ALARM_PUSH_GUIDE_BORE + ALARM_PUSH_GUIDE_TUBE;
 const ALARM_PUSH_GUIDE_HALF = ALARM_PUSH_GUIDE_RING + ALARM_PUSH_GUIDE_TUBE; // a vertical torus spans its OUTER radius in z
 const ALARM_PUSH_AXIS_Z = TQ_BOT_Z - CLEAR_MARGIN - ALARM_PUSH_GUIDE_HALF; // the stem's axis, as its build stands it
 const GONG_BAND_TOP = (ALARM_PUSH_AXIS_Z - ALARM_PUSH_STEM_R) - CLEAR_MARGIN - 0.01;
+// §278 landing 2 — THE STRIKE'S OUTBOARD CEILING, hoisted from the case's own
+// chain so the hammer can be cut under it (GONG_BAND_TOP's precedent: a
+// ceiling read off what the case will stand on, before the case exists).
+// The back's band face is max(skirt arm, pane floor) (CASE_DIMS): the skirt
+// arm is the skirt's bottom plus the clamp's thread engagement, the skirt's
+// bottom one margin over its annulus's tallest tenant (the pusher-side row
+// ALARM_SWITCH_SKIRT_ROW_Z, or the clamp heads, whichever stands higher); the
+// pane floor is one margin and the glass's float guard over the tallest metal
+// OUTBOARD of the aperture. Since §198 that metal was the hammer's own post
+// and tail root, 1.1238 u over what the skirt arm needs — so the hammer's
+// outboard metal is CRANKED down to stand exactly at the ceiling the skirt
+// arm leaves, and the pane floor stops governing. Every number here is the
+// case block's own expression, which now reads these (one copy), and the
+// case block asserts that the skirt it measures is the one assumed here.
+const ALARM_SWITCH_SKIRT_ROW_Z = 8.62;   // BACK_SWEPT_REGIONS' 'Alarm switch' row (its derivation is there)
+const CASE_SKIRT_OD = R_BORE_BACK - G.SEAT_FIT;                 // §187: the skirt runs the bore at the rim's own fit
+const CASE_SKIRT_ID = CASE_SKIRT_OD - 0.8 / UNIT_MM;           // …and its wall carries the declared thread
+const CASE_BCG_T = (0.3 / UNIT_MM) * 0.8;                      // §187: the glass's I-ring wall, compressed as drawn
+const CASE_APERTURE_R = (CASE_SKIRT_ID - CASE_BCG_T) - CASE_CRYSTAL_T;   // RA, the lip's bore
+const CASE_GLASS_FLOAT_GUARD = 1e-4;                           // §261 2c (its derivation stands in CASE_DIMS)
+const BACK_ENV_NBIN = Math.ceil(CASE_R_OUT / CLEAR_MARGIN);    // §234: the back envelope's bins, no wider than the one margin
+const BACK_ENV_BIN_W = CASE_R_OUT / BACK_ENV_NBIN;
+const STRIKE_SKIRT_BAND = Math.max(ALARM_SWITCH_SKIRT_ROW_Z, PLATE_RIM.back + 0.4 / UNIT_MM);
+const STRIKE_SKIRT_ARM = (STRIKE_SKIRT_BAND + CLEAR_MARGIN) + CASE_CLAMP_ENG;
+const STRIKE_OUTBOARD_CEIL = STRIKE_SKIRT_ARM - CLEAR_MARGIN - CASE_GLASS_FLOAT_GUARD;
+// Metal above the ceiling must sit under the glass's raised step, whose wall
+// (rStep: the outer edge of the outermost tall bin, plus a margin) must pass
+// through the aperture one margin inside it — so it lies inside the last bin
+// edge at or under RA − 2·CLEAR_MARGIN.
+const STRIKE_R_ALLOW = Math.floor((CASE_APERTURE_R - 2 * CLEAR_MARGIN) / BACK_ENV_BIN_W) * BACK_ENV_BIN_W;
+// The crank: the hammer's outboard metal (its post's top, its collet's, its
+// arm's root and its tail's root) drops so the tail's top meets the ceiling.
+const ALARM_TAIL_DROP = Math.max(0, (Z_STRIKE + ALARM_TAIL_T / 2) - STRIKE_OUTBOARD_CEIL);
 // THE WIRE. §197's derivation stands — a struck wire radiates as a compact
 // dipole, its power RISES with the section, and only room caps it — but the
 // annulus has more room in z than any gong wire is drawn to, so the cap is
@@ -26965,13 +26998,16 @@ registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
 const HAMMER_POST_R = 0.6;
 const HAMMER_POST_BOT = GONG_RIM_Z - GONG_RIM_PLANT;
-const hammerPost = new THREE.Mesh(new THREE.CylinderGeometry(HAMMER_POST_R, HAMMER_POST_R, Z_STRIKE - HAMMER_POST_BOT, 12), MATS.steel);
+// §278 landing 2 — the staff stops at the CRANKED tail's plane, ALARM_TAIL_DROP
+// under the lever's: the tail's root rides there, outboard of the aperture.
+const HAMMER_POST_TOP = Z_STRIKE - ALARM_TAIL_DROP;
+const hammerPost = new THREE.Mesh(new THREE.CylinderGeometry(HAMMER_POST_R, HAMMER_POST_R, HAMMER_POST_TOP - HAMMER_POST_BOT, 12), MATS.steel);
 // NAMED, with the arm beside it (§148): both were reaching `INTRA_UNIT_CONTACTS`
 // as `CylinderGeometry#n`, an index into a traversal — a name that moves when
 // anything upstream of it in the unit does.
 hammerPost.name = 'alarmHammerPost';
 hammerPost.rotation.x = Math.PI / 2;   // §197: stand it along the movement axis
-hammerPost.position.set(hammerPiv.x, hammerPiv.y, (Z_STRIKE + HAMMER_POST_BOT) / 2);
+hammerPost.position.set(hammerPiv.x, hammerPiv.y, (HAMMER_POST_TOP + HAMMER_POST_BOT) / 2);
 alarmHammerUnit.add(hammerPost);
 if (Math.hypot(hammerPiv.x, hammerPiv.y) + HAMMER_POST_R > R_ANNULUS_OUT + 1e-9
     || Math.hypot(hammerPiv.x, hammerPiv.y) - HAMMER_POST_R < R_ANNULUS_IN - 1e-9)
@@ -27048,7 +27084,8 @@ if (!(ALARM_HEAD_L > ALARM_HEAD_R + CLEAR_MARGIN))
   // stands r·sin(tilt) proud of its root, and rooted at Z_STRIKE that cap
   // reached 10.12 in the envelope bin the §187 skirt reads — 0.04 over the
   // pusher row that governs there, and the skirt would have risen for it.
-  const a = new THREE.Vector3(hammerPiv.x, hammerPiv.y, Z_STRIKE - ALARM_TAIL_T);
+  // §278 landing 2: …under the CRANKED tail's root, ALARM_TAIL_DROP down.
+  const a = new THREE.Vector3(hammerPiv.x, hammerPiv.y, Z_STRIKE - ALARM_TAIL_T - ALARM_TAIL_DROP);
   const b = new THREE.Vector3(headRest.x, headRest.y, Z_GONG);
   const len = a.distanceTo(b);
   // The handle is let through the eye, so its diameter is a proportion of the
@@ -27758,10 +27795,76 @@ const ALARM_LIFT_CONTACT_SPAN = (() => {
 // the tip's circle sits on the face at every pose and never at its edge.
 const ALARM_TAIL_REST_AZ = hammerPiv.psi + Math.PI;   // back toward the lever, along −d̂
 const ALARM_TAIL_BAR_LEN = ALARM_LIFT_CONTACT_SPAN.hi + ALARM_LIFT_TIP_R;
+// §278 landing 2 — THE CRANK. The tail's root (and with it the post's top,
+// the collet's and the arm's root) stands ALARM_TAIL_DROP under the lever's
+// plane, so no strike metal outboard of the aperture rises over the ceiling
+// the skirt arm leaves; a RISER carries the bar back up to the lever's plane,
+// where the tip rides it exactly as before (every plan quantity — the arms,
+// the contact's arm and stand-off — is untouched: the crank is in z). The
+// riser's station along the tail is the middle of the window two walls leave
+// it, over the hammer's whole travel [−AMP, +DRAW]: every corner of the riser
+// and of the bar inboard of it must stand inside STRIKE_R_ALLOW (it rises
+// over the ceiling, so it must go under the glass's step), and every corner
+// of the riser and of the root outboard of it must stand outside
+// R_ANNULUS_IN (they reach under the three-quarter plate's top, so they must
+// be in the annulus, one margin off the plate's rim); and the riser's inner
+// face must stop one margin short of the tip's circle at the near end of its
+// tangent span, so the tip only ever rides the upper bar.
+const ALARM_TAIL_RISER = (() => {
+  const T = ALARM_TAIL_T, h = ALARM_TAIL_W / 2, len = ALARM_TAIL_BAR_LEN;
+  const thetas = [];
+  for (let k = 0; k <= 64; k++) thetas.push(ALARM_HAM_LIFT_SIGN * (-ALARM_STRIKE_AMP + (ALARM_DRAW_RAD + ALARM_STRIKE_AMP) * (k / 64)));
+  const rAt = (x, y, th) => {
+    const az = ALARM_TAIL_REST_AZ + th, c = Math.cos(az), sn = Math.sin(az);
+    return Math.hypot(hammerPiv.x + x * c - y * sn, hammerPiv.y + x * sn + y * c);
+  };
+  const xs = (x0, x1) => { const out = []; for (let i = 0; i <= 16; i++) out.push(x0 + (x1 - x0) * i / 16); return out; };
+  const ok = (ac) => {
+    for (const th of thetas) {
+      for (const x of xs(ac - T / 2, len)) for (const y of [-h, h]) if (!(rAt(x, y, th) < STRIKE_R_ALLOW)) return false;
+      for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
+    }
+    return true;
+  };
+  const hi = ALARM_LIFT_CONTACT_SPAN.lo - ALARM_LIFT_TIP_R - CLEAR_MARGIN - T / 2;
+  let lo0 = null, hi0 = null;
+  for (let ac = T / 2; ac <= hi + 1e-12; ac += 1e-3) {
+    if (ok(ac)) { if (lo0 === null) lo0 = ac; hi0 = ac; } else if (lo0 !== null) break;
+  }
+  if (lo0 === null) {
+    console.warn(`§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);
+    return { at: ALARM_TAIL_BAR_LEN, window: null };
+  }
+  return { at: (lo0 + hi0) / 2, window: [lo0, hi0], innerLimit: hi };
+})();
+// The riser is metal with P1 duties of its own: a block of the bar's section
+// (ALARM_TAIL_T along the tail × ALARM_TAIL_W across), standing the drop plus
+// one section tall. Its thinner side must be stock that stays metal (§50's
+// floor), and as a column it is held to §54's ceiling with the overhang's
+// effective-length factor (a free end is the conservative reading of a block
+// joined at both ends) — achieved vs required, at the build.
+if (ALARM_TAIL_DROP > 0) {
+  const t = Math.min(ALARM_TAIL_T, ALARM_TAIL_W), H = ALARM_TAIL_DROP + ALARM_TAIL_T;
+  const lambda = SLENDER_OVERHANG_K * H / (t / Math.sqrt(12));
+  if (t < STOCK_MIN_U) console.warn(`§278: the tail's riser is ${t.toFixed(4)} thick, under §50's floor ${STOCK_MIN_U.toFixed(4)}`);
+  if (lambda > SLENDER_MAX) console.warn(`§278: the tail's riser stands λ ${lambda.toFixed(2)}, over §54's ceiling ${SLENDER_MAX}`);
+}
 {
-  const len = ALARM_TAIL_BAR_LEN;
-  const geo = new THREE.BoxGeometry(len, ALARM_TAIL_W, ALARM_TAIL_T);
-  geo.translate(len / 2, 0, 0);
+  // The bar's side elevation — x along the tail from the pivot, v the height
+  // over the lever's plane — a Z of one bar's section, walked once round and
+  // extruded across the bar's width: root, riser, upper bar.
+  const len = ALARM_TAIL_BAR_LEN, T = ALARM_TAIL_T, d = ALARM_TAIL_DROP, ac = ALARM_TAIL_RISER.at;
+  const pts = d > 0
+    ? [[0, -T / 2 - d], [ac + T / 2, -T / 2 - d], [ac + T / 2, -T / 2], [len, -T / 2], [len, T / 2],
+      [ac - T / 2, T / 2], [ac - T / 2, T / 2 - d], [0, T / 2 - d]]
+    : [[0, -T / 2], [len, -T / 2], [len, T / 2], [0, T / 2]];
+  const shape = new THREE.Shape();
+  shape.moveTo(pts[0][0], pts[0][1]);
+  for (const [x, y] of pts.slice(1)) shape.lineTo(x, y);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_TAIL_W, bevelEnabled: false, curveSegments: 1 });
+  geo.translate(0, 0, -ALARM_TAIL_W / 2);
+  geo.rotateX(Math.PI / 2);        // the elevation's v onto the movement's z, the width across the bar
   const tail = new THREE.Mesh(geo, MATS.steel);
   tail.name = 'alarmTail'; // selected by name for the tip⇄tail penetration budget and the strike hand-off rows
   tail.rotation.z = ALARM_TAIL_REST_AZ;
@@ -29151,7 +29254,7 @@ registerSub('Alarm hammer', 'Hammer spring', alarmHammerSpiral);
   // head, found the ring 0.05 outside the arm). The arm and the tail still
   // overlap the post as they did ("riveted to the arbor boss"): the boss is
   // metal now.
-  const top = Z_STRIKE - ALARM_TAIL_T / 2 + ALARM_SEAT_SINK, bot = ALARM_HSPIRAL_Z_LO;
+  const top = Z_STRIKE - ALARM_TAIL_DROP - ALARM_TAIL_T / 2 + ALARM_SEAT_SINK, bot = ALARM_HSPIRAL_Z_LO;   // §278: into the cranked root
   const collet = new THREE.Mesh(ringGeo(ALARM_HSPIRAL_COLLET_BORE, ALARM_HSPIRAL_COLLET_R, top - bot), MATS.steel);
   collet.name = 'alarmHammerCollet';
   collet.position.set(0, 0, (top + bot) / 2 - Z_STRIKE);
@@ -29159,9 +29262,10 @@ registerSub('Alarm hammer', 'Hammer spring', alarmHammerSpiral);
   // the joint: the ring's top must stand inside the tail's bar (the bar runs
   // from the pivot axis outward, so it covers the ring wherever it is wider
   // than the ring's radius) by the seat — achieved vs required
-  const sunk = top - (Z_STRIKE - ALARM_TAIL_T / 2);
-  if (!(ALARM_TAIL_BAR_LEN > ALARM_HSPIRAL_COLLET_R && sunk >= ALARM_SEAT_SINK - 1e-9 && sunk < ALARM_TAIL_T))
-    console.warn(`§268 collet: its top stands ${sunk.toFixed(4)} into the tail's bar (bar ${ALARM_TAIL_BAR_LEN.toFixed(3)} long, ring r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}), need ALARM_SEAT_SINK ${ALARM_SEAT_SINK} — the rotor is not one body`);
+  const sunk = top - (Z_STRIKE - ALARM_TAIL_DROP - ALARM_TAIL_T / 2);
+  const rootLen = ALARM_TAIL_RISER.at - ALARM_TAIL_T / 2;   // §278: the collet seats in the cranked ROOT, which runs this far
+  if (!(rootLen > ALARM_HSPIRAL_COLLET_R && sunk >= ALARM_SEAT_SINK - 1e-9 && sunk < ALARM_TAIL_T))
+    console.warn(`§268 collet: its top stands ${sunk.toFixed(4)} into the tail's root (root ${rootLen.toFixed(3)} long, ring r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}), need ALARM_SEAT_SINK ${ALARM_SEAT_SINK} — the rotor is not one body`);
 }
 {
   // The STUD — fixed, planted in the rim beside the post, up to the band's top.
@@ -45730,7 +45834,7 @@ const BACK_SWEPT_REGIONS = [
   // annulus below the plate top too (the skirt descends there now), and that
   // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
   // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
-  { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: 8.62 },
+  { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z },
 ];
 const BACK_ENVELOPE = await (async () => {
   // §234 — THE BIN IS NO WIDER THAN THE ONE MARGIN. A reader asks this
@@ -45745,7 +45849,7 @@ const BACK_ENVELOPE = await (async () => {
   // that is: measured on the shipped tree, the refinement moves one case
   // number, the glass step's radius, by 0.020 u (its wall stands that much
   // nearer the metal it clears by the same margin), and nothing else.
-  const NBIN = Math.ceil(CASE_R_OUT / CLEAR_MARGIN);   // 352 bins of 0.150 u
+  const NBIN = BACK_ENV_NBIN;   // 352 bins of 0.150 u (hoisted, §278 landing 2: the strike's crank is cut on the same grid)
   const rSpan = CASE_R_OUT;   // the annulus the case will occupy is part of the question (the ring's skirt descends inside the bore)
   const bins = new Array(NBIN).fill(-Infinity);
   const owners = new Array(NBIN).fill(null);
@@ -46012,9 +46116,10 @@ const CASE_DIMS = (() => {
   // itself locates on (one drop-into-the-bore fit for everything that
   // enters it); wall carries the declared thread (0.35 mm of thread depth
   // + 0.45 mm of stock behind it — real caseback skirts run 0.8–1 mm).
-  const skirtOD = R_BORE_BACK - G.SEAT_FIT;
-  const SKIRT_WALL = 0.8 / UNIT_MM;
-  const skirtID = skirtOD - SKIRT_WALL;
+  // (§278 landing 2: hoisted as CASE_SKIRT_OD / CASE_SKIRT_ID, where the
+  // strike's outboard ceiling is derived from the same chain.)
+  const skirtOD = CASE_SKIRT_OD;
+  const skirtID = CASE_SKIRT_ID;
   // The skirt's bottom stops one CLEAR_MARGIN above the tallest thing in
   // its own annulus — from the ENVELOPE (the pusher-side linkage tops
   // 10.063 there), with the §186 clamp heads as an ANALYTIC term: they are
@@ -46062,9 +46167,12 @@ const CASE_DIMS = (() => {
   // floor-stock discipline), drawn at the §3 face cord's own stated 20%
   // squeeze. The gasket itself is cut in makeCase, in the channel this
   // derivation shapes.
-  const CASE_BCG_T = (0.3 / UNIT_MM) * 0.8;      // the I-ring's wall, compressed as drawn
+  // (CASE_BCG_T, the I-ring's wall compressed as drawn, is hoisted with the
+  // skirt — §278 landing 2.)
   const RA_EDGE = skirtID - CASE_BCG_T;          // the glass's outer edge — on the gasket, not on air
   const RA = RA_EDGE - CASE_CRYSTAL_T;           // the APERTURE — the lip's bore
+  if (RA !== CASE_APERTURE_R)
+    console.warn(`§278: the aperture ${RA} is not the ${CASE_APERTURE_R} the strike's crank was cut under`);
   // The band's back face = the top of the threaded mouth, and since TODO 69
   // ALSO the plane everything OUTBOARD of the aperture must clear. The raised
   // step can only cover metal inside the aperture (its wall stands one margin
@@ -46087,9 +46195,16 @@ const CASE_DIMS = (() => {
   // shortfall is 7e-8). A guard three orders past that noise keeps a designed
   // margin from reading as a breach; at 1e-4 u it is 0.04 µm of depth, far
   // under CASE_HEIGHT_STEP_MM.
-  const CASE_GLASS_FLOAT_GUARD = 1e-4;
+  // (CASE_GLASS_FLOAT_GUARD is hoisted — §278 landing 2 — and reads 1e-4.)
   const zPaneFloor = envMaxOver(RA - 2 * CLEAR_MARGIN, CASE_R_OUT) + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD;
   const zMidBack = Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
+  // §278 landing 2 — the strike's crank was cut under a ceiling derived from
+  // THIS skirt arm (STRIKE_SKIRT_ARM, hoisted); held both ways: the skirt the
+  // case measures is the one assumed, and the pane floor no longer governs.
+  if (Math.abs((zSkirtBot + CASE_CLAMP_ENG) - STRIKE_SKIRT_ARM) > 1e-9)
+    console.warn(`§278: the skirt arm measures ${(zSkirtBot + CASE_CLAMP_ENG).toFixed(6)}, the strike's crank was cut under ${STRIKE_SKIRT_ARM.toFixed(6)} — re-derive the crank`);
+  if (zPaneFloor > STRIKE_SKIRT_ARM + 1e-9)
+    console.warn(`§278: the pane floor ${zPaneFloor.toFixed(6)} stands over the skirt arm ${STRIKE_SKIRT_ARM.toFixed(6)} — metal outboard of the aperture governs the back again`);
   // The bore wall must still contain the pusher's bore window whole
   // (§186's boredProfiles carries the degenerate-piece assert; this is the
   // same constraint stated where the number is born).

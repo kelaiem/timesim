@@ -570,7 +570,14 @@ export const CASE_HEIGHT_STEP_MM = 0.001;
 // on the hammer's plane (the pane floor, 11.591 + CLEAR_MARGIN), the skirt
 // arm meeting it exactly; 0.230 mm bought, the step-1 price table's L2 to the
 // micron. The keys govern the back-most metal, 0.140 mm over the ring face.
-export const CASE_HEIGHT_MAX_MM = 12.152;
+// §278 landing 2 LOWERED it, 12.152 → 11.726: the strike fold cranked the
+// hammer's outboard metal (post top, collet, arm root, tail root) down by the
+// skirt arm's slack, 1.1238 u, so nothing outboard of the aperture stands over
+// the ceiling the skirt arm leaves; the band's back face is the skirt arm
+// (10.6172) and the cased assembly measures 11.7258 mm, 0.426 mm bought — the
+// height ledger's A1 bound to the micron. The keys still govern the back-most
+// metal.
+export const CASE_HEIGHT_MAX_MM = 11.726;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
