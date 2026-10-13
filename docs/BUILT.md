@@ -35417,6 +35417,65 @@ library resolves it through its `~Moved to 3648b` alias. The probe prints the
 alias beside the part.
 
 
+## §219 tier three (b), landing C2 — the 60T refused on its measured mount; every row a LEGO build
+
+Landing C1 found a mount the lattice could reach for the 60T turntable's 90°
+mesh: the base pinned into Technic bricks, the 8T on a radial axle from above,
+its tips 2.18 mm into the ring. C2 set out to build it and found it cannot be
+built from the frame's parts.
+
+### Why the mount fails, measured
+
+The base's underside has a recess 1.6 mm deep, exactly a stud's height. Its
+ceiling stands 2.4 mm below the face the top and base share, so LEGO evidently
+meant Technic bricks to sit under it, studs up. But a 1×1 Technic brick pinned
+into the base's lug is placed by the parts themselves:
+- the lug's face is 20 mm from the axis;
+- the brick's centre is half a stud beyond that;
+- the stud's edge is a stud's radius further, at 26.40 mm.
+
+The recess rim starts at 26.08 mm, so the stud cuts **0.32 mm** into the rim.
+The brick's top also sits flush under the rotating ring.
+`probe-technic-ldraw.mjs` prints all of this from the parts, each run.
+
+Two other mounts were weighed:
+- **A longer pin, putting the brick at 4 studs.** Its stud then rises into the
+  ring's teeth.
+- **Studless liftarms.** These would need parts outside the frame's
+  vocabulary, and their ends still touch the ring flush.
+
+So the 60T is out of going trains. In `catalogueMesh`, `_UNMOUNTABLE` refuses
+it beside the clutch gear's `slips`, and the comment there carries the
+measurement.
+
+### What the solver answers instead
+
+| row | was | now |
+|---|---|---|
+| classic fourth→escape | 60:8 (90°) | 24:8 × 40:16 |
+| 2026 centre→fourth | 60:8 (90°) × 64:8 | 24:8 × 40:8 × 64:16 |
+| 2026 fourth→escape | 60:8 (90°) | 24:8 × 40:16 |
+
+`probe-219-catalogue.mjs` holds each declared row to the solver's answer.
+
+**Every row now frames and builds:**
+- `probe-technic-frame.mjs`: 8 rows framed, 0 refused;
+- `probe-technic-build.mjs`: 8 builds, 0 failing, worst mesh 1.6e-13 of a
+  turn;
+- `technic.html`'s LEGO view: both generations whole.
+
+### What the drawn view kept
+
+The page still carries its 90° phase solve, but no row exercises it.
+`probe-technic-phase.mjs` now requires a 90° mesh only while a declared row
+carries one, and computes that from the rows rather than assuming it: 20/20
+meshes, all parallel.
+
+The 60T and its base stay in the pack and the catalogue. Their tooth count
+is still gated, and their profile is still reported, so the reason for the
+refusal can be re-measured.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and

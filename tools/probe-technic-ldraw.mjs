@@ -27,7 +27,7 @@
 //   · the baseplate covers every framed row's base.
 //   · every TURNTABLE's tooth count, read off its tips (the count at which the
 //     outermost points cohere), is the catalogue's, and unambiguously so; the
-//     60T's profile on its base is printed as landing C2's inputs.
+//     60T's profile on its base is printed — what landing C2 read to refuse it.
 //
 // And the pack itself: every section an LDraw file, no HTTP header anywhere.
 //
@@ -164,8 +164,12 @@ for (const t of ttRows) {
 }
 // The 60T's profile against its base, about the face the two parts share
 // (LDraw y = 0): the toothed band, whether its gaps run through, and how far
-// the body above and the base below stand from the axis. Landing C2 mounts the
-// 90° mesh on these numbers; here they are a report.
+// the body above and the base below stand from the axis. Landing C2 read these
+// and refused the mount (layout.js' catalogueMesh says why); they remain a
+// report so the reason can be re-read: the base's underside recess (its
+// ceiling one stud height above the bottom, which is where a pinned brick's
+// stud would stand) and where the recess's rim begins, against how far out a
+// 1×1 Technic brick pinned into the base's hole reaches with its stud.
 function ttProfile(top, base) {
   const prof = (p, f) => walk(lib, dat(p), (k, ps) => { if (k === 'tri') for (const q of ps) f(q); });
   const N = 60, pitch = 2 * Math.PI / N;
@@ -187,8 +191,15 @@ function ttProfile(top, base) {
   }
   prof(base, (q) => { if (q[1] > bandLo && q[1] < bandHi + 2) baseR = Math.max(baseR, Math.hypot(q[0], q[2])); });
   const holes = placements(lib, dat(base), /^connhol\w*\.dat$/);
+  // the underside: the base's lowest wide face, and the level one stud height
+  // above it — the recess a pinned brick's stud would rise into
+  let bottomY = -Infinity, ceilR = 0;
+  prof(base, (q) => { if (mm(Math.hypot(q[0], q[2])) > 25 && q[1] > bottomY && mm(q[1]) < 6) bottomY = q[1]; });   // radii in mm: an LDU-for-mm slip first read a deeper face
+  const ceilY = bottomY - LEGO_DIM_MM.studH / LDU_MM;
+  prof(base, (q) => { if (Math.abs(q[1] - ceilY) < 1e-6) ceilR = Math.max(ceilR, Math.hypot(q[0], q[2])); });
+  const holeOut = holes.length ? Math.max(...holes.map((h) => Math.abs(h.m[0]))) : NaN;   // the lug's hole, outward along X
   return { rTip: mm(rTip), band: [mm(-bandHi), mm(-bandLo)], gapMax: mm(gapMax), aboveR: mm(aboveR), baseR: mm(baseR), holes: holes.length,
-    holeDown: holes.length ? mm(holes[0].m[1]) : NaN };
+    holeDown: holes.length ? mm(holes[0].m[1]) : NaN, recessDepth: LEGO_DIM_MM.studH, recessRimR: mm(ceilR) };
 }
 const tt60 = ttRows.find((t) => t.teeth === 60);
 const profile60 = tt60 && TURNTABLE_BASES[tt60.part] && lib.has(dat(TURNTABLE_BASES[tt60.part])) ? ttProfile(tt60.part, TURNTABLE_BASES[tt60.part]) : null;
@@ -219,9 +230,15 @@ console.log('\n  turntable  teeth (catalogue)  tips repeat  coherence (best riva
 for (const t of ttRows) console.log(`  ${t.part.padEnd(9)}  ${String(t.teeth).padStart(15)}  ${String(t.N).padStart(11)}  ${t.best.toFixed(3)} (${t.nextN}: ${t.next.toFixed(3)})  ${t.tipMm.toFixed(3).padStart(7)}`);
 if (profile60) {
   const p = profile60;
-  console.log(`  60T on its base (${TURNTABLE_BASES[tt60.part]}), heights from the face they share, + up — a REPORT, landing C2's inputs:`);
+  console.log(`  60T on its base (${TURNTABLE_BASES[tt60.part]}), heights from the face they share, + up — a REPORT, what landing C2 refused the mount on:`);
   console.log(`    toothed band ${p.band[0].toFixed(2)} … ${p.band[1].toFixed(2)} mm, tips ${p.rTip.toFixed(2)} mm, gaps open to ${p.gapMax.toFixed(2)} mm through the band`);
   console.log(`    body above the band within ${p.aboveR.toFixed(2)} mm of the axis, base beside it within ${p.baseR.toFixed(2)} mm; ${p.holes} pin holes, ${(-p.holeDown).toFixed(2)} mm below the face`);
+  // a 1×1 Technic brick on a 2-stud pin out of the base's lug: the lug's face at
+  // 20 mm (2.5 studs), the brick's centre a half stud beyond, its stud's edge
+  // one stud radius further — against the recess rim the stud would rise into
+  const studReach = 20 + LEGO_DIM_MM.stud / 2 + 2.4;
+  console.log(`    underside recess ${p.recessDepth} mm deep (a stud's height), its rim from ${p.recessRimR.toFixed(2)} mm; a pinned brick's stud reaches ${studReach.toFixed(2)} mm`
+    + ` — ${studReach > p.recessRimR ? `${(studReach - p.recessRimR).toFixed(2)} mm into the rim, why landing C2 refused the 60T` : 'clear'}`);
 }
 for (const b of bad) console.log(`  ✗ ${b}`);
 console.log(`\ncontrols: ${controls.length - silent.length}/${controls.length} perturbations caught${silent.length ? ` — NOT caught: ${silent.join(', ')}` : ''}`);
