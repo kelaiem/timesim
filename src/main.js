@@ -53181,31 +53181,27 @@ const INSPECT_STEPS = [
     get camera() { return frameOn('Winding clutch', [0.4, -0.5, 0.8], 2.6); },
     caption: 'Pull the crown and turn it: the hand steps one minute per detent through the keyless works. Here is the clutch that carries the turn into the setting train. It is posed by one law and the setting bevel it meets by another, and the pair does not roll at any index: the mesh is buried a flat 0.2187 (29% of a tooth) (TODO 163).', dwell: 6.0 },
 
-  // --- the alarm: five stops, each the edge of one open item (§277 parts C and D).
+  // --- the alarm: four stops, each the edge of one open item (§277 parts C and D).
   // The nine this replaces asked tooth-into-gap and hand-off questions that
   // `meshPhase`, `transmits` and `alarmHandoffs` now gate, and one taught an
   // "inverted lever" check on a link §229/§261 rebuilt.
   { title: 'Arming run', crown: 'in', scale: 0.25, alarm: true, labels: false, xray: false, schematic: true,
-    camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 4.2),
+    camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 1.2),
     caption: 'The pusher, the pawl and the column wheel, drawn in lines with the contact dots lit by the same rows the battery gates, measured at this pose. What no gate samples is the press itself: every sweep takes the pawl parked, because the stroke is not a pose any axis varies (TODO 87).', dwell: 7.5 },
 
-  { title: 'Release', scale: 0.3, schematic: false, xray: true,
+  { title: 'Release', scale: 0.3, schematic: false, xray: true, focus: 'Alarm lock',
     camera: frameOn('Alarm lock', [0.4, -0.35, 0.8], 4.0),
     caption: 'The strike train’s lock. It answers the column wheel alone: the hold between arming and the trip is a flag in the code, not metal, and nothing carries the feeler’s drop to the lock (TODO 199).', dwell: 7.0 },
 
-  { title: 'Arming link', xray: false,
-    camera: frameOnEnd('alarmLinkRod', 'max', 'z', [0.6, -0.35, 0.5], 7.0),
+  { title: 'Arming link', xray: true, focus: null,
+    camera: frameOn('Alarm link', [0.35, 0.8, 0.5], 1.8),
     caption: 'Where the beak’s tail meets the top of the vertical rod; the chain runs on through the lay shaft to the selector ring. Its stall figure reflects each member’s compliance as n²/k where virtual work gives 1/(n²k), so the rod-side members read 3.6× too stiff and the shaft’s 4.3× too soft, and the rod-end overhang probably governs, not the fork end. The figure stays far over the detent window either way (TODO 237).', dwell: 8.0 },
 
-  { title: 'Alarm stem, backward', xray: true, alarm: false, alarmCrown: 'out', turnAlarmHours: -1,
-    camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6),
-    caption: 'Pull the alarm crown and turn it backward: nothing happens. The winding routes bank only forward turns, and the free slip the comments describe has no metal behind it, so the one-way is a bookkeeping rule and not a coupling (TODO 72).', dwell: 7.0 },
-
-  { title: 'Hammer and ribbon', alarmCrown: 'in', alarm: true, scale: 0.3, xray: false,
-    camera: frameOn('Alarm hammer', [0.45, -0.35, 0.8], 4.2),
+  { title: 'Hammer and ribbon', alarm: true, scale: 0.3, xray: false,
+    camera: frameOn('Alarm hammer', [-0.8, -0.45, 0.7], 3.6),
     caption: 'The hammer. After the wire it rebounds on a posed envelope, a 198 Hz cosine decaying over 31 cycles that nothing in the metal produces and nothing banks, so the double strike a serviced watch must not have is neither drawn nor prevented (TODO 228). Its strike ribbon works at 3096 to 5264 MPa, past its alloy’s tensile strength, and is waived by name (TODO 201).', dwell: 8.0 },
 
-  { title: 'End', preset: 'Free', scale: 1, alarm: false, alarmCrown: 'in', labels: false, xray: false, schematic: false, explode: 0, links: true,
+  { title: 'End', preset: 'Free', scale: 1, alarm: false, focus: null, labels: false, xray: false, schematic: false, explode: 0, links: true,
     caption: 'That is the route. Every stop named the open item it is the edge of, and the list is TODO.md; where a stop said modelled, the part is described and not driven. Read how it works:', dwell: 6.0 },
 ];
 
