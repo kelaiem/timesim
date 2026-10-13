@@ -35656,3 +35656,82 @@ own eight phases and every other axis at f ∈ {0, ½, 1}.
 **What it leaves to landing 2.** The fold itself: crank the tail at the
 shipped azimuth, re-derive the case, and lower `CASE_HEIGHT_MAX_MM` by what
 that measures.
+
+## §277, part B — the Inspect route covers the movement, and the navigation it rode on lost an alarm toggle
+
+Part E (above) gave the scripted-user engine Previous, Next and a stop list.
+Part B is the first use of it: five stops ahead of the alarm ones, so the Inspect
+route is no longer eight-ninths one subsystem. Parts C and D (the alarm stops'
+rewrite, the remaining verbs) are not in this landing, and the old alarm stops
+stay as they were, minus their `k/9` counters, which the banner now makes wrong
+(their translations fall back to English until D rewrites them).
+
+### The stops, and what each one claims
+
+Each caption says what is DRIVEN, what is only MODELLED, and which open item in
+`TODO.md` the viewer is being shown the edge of. A stop with no open item a
+viewer can see does not get an invented hazard.
+
+| stop | framing | what it says | item |
+|---|---|---|---|
+| Fusee and chain | `Fusee & great wheel`, x-ray, pad 1.6 | the cone's rising radius against the falling spring torque; the chain's run holds its length to within half a link pitch; **nothing open the eye can find** | none |
+| Going train, driven | `Train` preset, x-ray, power flow | the balance is driven by its own equation of motion (§246), so the rate shown is the rate the oscillator keeps; the reserve train's two meshes interpenetrate 0.118 mm; every gear ships fatter than cut | TODO 77, 84 |
+| Balance and hairspring | `Hairspring`, scale 0.1 | each frame is the clamped-clamped elastica (§218); the spring's plane is the balance's mid-plane plus a bare 1.2, and the going train's datum rides it | TODO 235 |
+| Lever safety action | `Pallet fork`, scale 0.04 | the crescent is phased to the impulse pin by construction, modelled and not simulated; no axis ever knocks the fork off its banking | TODO 105 |
+| Setting the time | `Winding clutch`, x-ray, crown out, one detent turn | the clutch and the setting bevel are posed by two laws and the pair does not roll at any index, buried a flat 0.2187 (29% of a tooth) | TODO 163 |
+
+### What was looked at, and what was not
+
+Every framing was rendered and read. The fusee, train and balance stops show
+their subjects. The lever stop shows the pallet fork and the escape wheel; the
+**guard pin and the safety roller are not distinguishable at that size**, and the
+setting stop shows the clutch and the setting bevel gear but **not the contact**,
+so neither caption tells the viewer to look at the thing it cannot show. The first
+framings were wrong in two ways worth keeping: the fusee and the train sit under
+the three-quarter plate (an opaque slab until x-ray is on), and a screenshot taken
+while the camera tween was still running shows a view the stop never settles on.
+
+### The navigation bug the route exposed
+
+`setAlarm` is a PRESS, and `pressAlarmPusher` refuses while the head is down or
+returning (about 0.24 s of simulation). A stop that toggles the alarm, entered by
+a quick Next/Previous inside that window, lost its toggle. **Measured, both
+sides:** entering the alarm-on stop and the alarm-off stop back to back leaves the
+alarm ON 45 s later on `main`'s code (wanted off); on this branch it ends OFF.
+The engine now states the wanted parity (`scriptAlarmWant`) and presses until the
+wheel reads it, at most six times. Two rules it keeps: it waits out an in-flight
+press BEFORE reading the parity (the parity is a readout of the wheel and flips
+during the stroke, so a mid-press read can match the old state and drop a want the
+finishing press then undoes), and it clears the want the moment the parity matches
+with the pusher home, so it never fights an alarm that rings and disarms itself.
+
+### Three wrong readings on the way, kept because the instrument was the cause each time
+
+1. **"A lost press" was first diagnosed from a probe failure that was not one.**
+   The end-path jump to stop 13 failed repeatedly with the pusher at 0.7569 of its
+   return, identical every run. It looked like a frozen pusher and then like a
+   dead frame loop. Neither: the probe's wait exited at once because `alarmOn`
+   still read true from the previous iteration, which already equalled the
+   authored value, and the first OFF press then landed. A reproduction with the
+   probe's whole history showed the sim running, slowly (a press plus its return
+   is 12 to 25 s on this renderer). The wait now ends on the engine's own state,
+   nothing wanted and the pusher home. The lost-press defect is real but was
+   measured separately, by the back-to-back control above, not by that failure.
+2. **A 15 s and then a 60 s window were each "the fix" for a stale-match race.**
+   Lengthening a wait cannot repair a loop that exits early.
+3. **The 30-minute background limit killed one full run at its last checks.**
+   `timeout` inside the command does not lift the harness's own limit.
+
+### Measured
+
+`tools/probe-277-nav.mjs` over the 15-stop route: **28/28 pass**. New this
+landing: every declared framing resolves (`scriptRoute` reports each stop's
+`cam` as ok or unresolved, because `frameOn` returns null and only warns on a
+miss), walking every stop raises no warning and no page error, and two alarm
+toggles entered back to back both land. The fold check (a jump equals running
+straight through, from the first stop and back from the last) holds at all 15
+stops.
+
+Not measured, and said so: Tour, Demo and Bench "run as before when never
+navigated" is still argued from the code; the `studr` spec points were skipped by
+the PR ceiling in part E's battery run and this landing's battery has not run.
