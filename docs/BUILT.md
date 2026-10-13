@@ -35637,7 +35637,7 @@ own eight phases and every other axis at f ∈ {0, ½, 1}.
   metal (the post's top, the collet's, the arm's root and the tail's root)
   drops 1.1238 u (0.426 mm). The tail steps back up to the lever plane on a
   riser 1.980 along the tail, inboard of rAllow at every hammer angle and short
-  of the tip's tangent span (≤ 5.840). Every plan row holds to < 2e-14.
+  of the tip's tangent span (≤ 5.840). Every plan row holds to < 3e-14.
 - **The crank's price.**
   - **Depth.** The ledger prices it at the full A1 bound, 12.152 → 11.726 mm,
     at build pose and swept alike.
