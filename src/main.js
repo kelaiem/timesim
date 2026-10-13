@@ -52519,6 +52519,26 @@ let scriptPaused = false;
 // rather than scriptSteps[scriptIdx].
 let scriptDone = new Set();
 let scriptCurStep = null;
+// §277 — the alarm is a PRESS (setAlarm → pressAlarmPusher), and a press is
+// refused while the head is down or returning (~0.24 s). A stop that toggles the
+// alarm, entered inside that window by a quick Next/Previous, would otherwise
+// lose its toggle and leave the alarm opposite to what the stop authored (the
+// nav probe found it jumping back from the last stop). So the engine states the
+// wanted parity and presses until the wheel reads it, at most SCRIPT_ALARM_TRIES
+// times, then stops asking: it never fights an alarm that rings and disarms
+// itself later, because it clears the want the moment the parity matches.
+const SCRIPT_ALARM_TRIES = 6;
+let scriptAlarmWant, scriptAlarmTries = 0;
+function scriptAlarmSettle() {
+  if (scriptAlarmWant === undefined) return;
+  // Mid-press FIRST: the parity is a readout of the wheel and flips during the
+  // stroke, so reading it while a press is in flight can match the old state and
+  // drop a want the finishing press then undoes (the probe's second finding).
+  if (alarmPusherStroke || alarmPusherT > 1e-6) return;
+  if ((alarmColSteps % 2 === 1) === !!scriptAlarmWant) { scriptAlarmWant = undefined; return; }
+  if (scriptAlarmTries++ >= SCRIPT_ALARM_TRIES) { scriptAlarmWant = undefined; return; }
+  pressAlarmPusher();
+}
 
 // `viewOnly` — re-entering the CURRENT step on resume re-establishes the view
 // the viewer just perturbed (camera, x-ray, explode, labels…) without
@@ -52573,7 +52593,7 @@ function scriptEnterStep(i, { viewOnly = false, step = null } = {}) {
   if (s.crown) { setCrownOut(s.crown === 'out'); updateCrownUI(); }
   if (s.turnMinutes && !viewOnly) scriptTurnRad = settingTurnRad(s.turnMinutes);
   // §34 first slice — the alarm vocabulary, same shape as the crown's:
-  if (s.alarm !== undefined) setAlarm(s.alarm);
+  scriptAlarmWant = s.alarm; scriptAlarmTries = 0; scriptAlarmSettle();   // §277: a press can be refused mid-stroke, so this converges rather than fires once
   if (s.alarmCrown) { alarmCrownOut = (s.alarmCrown === 'out'); alarmCrownSyncLabel(); }
   if (s.turnAlarmHours && !viewOnly) scriptAlarmTurnRad = s.turnAlarmHours * (2 * Math.PI / 4); // one crown rev = 4 h through the 10/30 train
   if (s.wind && !viewOnly) autoWindRemaining += s.wind * 2 * Math.PI;
@@ -52627,6 +52647,7 @@ function askScriptExit() {
 function scriptUpdate(realDt) {
   if (!scriptSteps) return;
   if (scriptPaused) return;   // §142 — the dwell clock and the step's actions hold; the sim itself runs on
+  scriptAlarmSettle();
   const s = scriptCurStep || scriptSteps[scriptIdx];
   // Feed a scripted setting turn — only while the stem is physically in the
   // setting position (crownPullT > 0.5), mirroring tick()'s own gate, so it can
@@ -52804,7 +52825,7 @@ function scriptStop() {
   scriptTurnRad = 0;
   scriptExplodeTarget = null;
   scriptPaused = false;            // §142
-  scriptDone = new Set(); scriptCurStep = null;   // §277
+  scriptDone = new Set(); scriptCurStep = null; scriptAlarmWant = undefined;   // §277
   navSelEl.textContent = ''; captionNavEl.classList.remove('show');
   captionActionsEl.innerHTML = '';
   captionActionsEl.classList.remove('show');
@@ -53131,52 +53152,57 @@ const INSPECT_STEPS = [
     powerflow: false, sound: false, unit: 'All', alarm: false, schematic: false,
     // Do NOT tell the viewer to press Inspect: scriptStart calls
     // hidePanelForScript(), so the control this used to name is not on screen
-    // while the route runs. Any pointerdown, key or wheel aborts (scriptAbort),
-    // so the honest instruction is the one that works from anywhere.
-    caption: 'INSPECTION ROUTE — the places where defects have actually been found. Click anywhere to stop.', dwell: 4.0 },
+    // while the route runs. A pointer, key or wheel PAUSES the run (§142; Esc asks
+    // to end it) and the arrows and the banner's list steer it (§277), so the
+    // honest instruction is the one that works from anywhere.
+    caption: 'INSPECTION ROUTE — the edges of what is modelled. Each stop says what is driven, what is only modelled, and which open item in TODO.md it is the edge of. Use the arrows or the list to move; any other key pauses.', dwell: 5.0 },
 
-  // --- the escapement: §48's control case, and the one thing that must look right
-  { preset: 'Escapement', scale: 0.04,
-    caption: '1/9 Escapement. The fork is impulsed BOTH ways — this is §48’s control case, and it should look driven, not animated.', dwell: 7.0 },
+  // --- §277 part B: THE MOVEMENT, not only the alarm. Each stop below says what
+  // is DRIVEN, what is only MODELLED, and which open item (public TODO.md) the
+  // viewer is being shown the edge of. A stop with no open item a viewer can see
+  // does not get an invented hazard (see the fusee stop). `title` is the stop
+  // list's label (§277 part E).
+  { title: 'Fusee and chain', preset: 'Free', scale: 1, xray: true, labels: false,
+    get camera() { return frameOn('Fusee & great wheel', [0.4, -0.5, 0.8], 1.6); },
+    caption: 'The fusee. The chain climbs the cone as the spring runs down, so the radius it pulls on rises while the spring’s torque falls; the torque law is derived from the cut ribbon and the cone is cut against it. The chain’s run holds its length across the reserve to within half a link pitch. Nothing open here that the eye can find — the gates above are the evidence, not this picture.', dwell: 6.5 },
 
-  // --- the column wheel and its four followers (§43, §48)
-  { camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 4.2), scale: 0.25, alarm: false, labels: true,
-    caption: '2/9 Column wheel at rest. The click’s spring is GROUNDED on its own stud — it must stay still while the arm rocks.', dwell: 6.0 },
-  { alarm: true,
-    caption: '3/9 Alarm ON. The wheel indexes as the pusher goes down. Watch the pawl drive the ratchet the way its teeth are cut.', dwell: 6.5 },
+  { title: 'Going train, driven', preset: 'Train', xray: true, powerflow: true, scale: 1,
+    caption: 'The going train, great wheel to centre, third, fourth and escape wheel. The balance is driven by its own equation of motion and the escapement counts its beats, so the rate you see here is the rate the oscillator keeps — driven, not posed. Open: the reserve train’s two meshes interpenetrate by 0.118 mm (TODO 77) and every gear ships fatter than it was cut (TODO 84).', dwell: 7.0 },
 
-  // --- the alarm link, end to end: §54 / TODO 16 / the inverted lever
-  // The lever test is judged where the tail MEETS THE ROD, on the movement
-  // side at the top of the z-shaft — not at the nose, which only shows the
-  // input. Framed on the contact so it keeps aiming there if either moves.
-  { camera: frameOnEnd('alarmLinkRod', 'max', 'z', [0.6, -0.35, 0.5], 7.0), scale: 0.25,
-    caption: '4/9 Where the beak’s tail meets the top of the vertical rod, movement side. Nose falls into a gap ⇒ tail RISES ⇒ the rod follows it up 1:1. A tail driving DOWN onto a rising rod is an inverted lever.', dwell: 7.5 },
-  // xray on every DIAL-SIDE stop from here: once the camera is correctly on the
-  // dial side, the base plate and the dial itself are between it and the
-  // subject. Fixing the side without this just swaps one opaque view for
-  // another.
-  { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false, xray: true,
-    caption: '5/9 The LAY SHAFT — the long horizontal arbor under the dial. The vertical rod pushes a crank at its far end, the shaft twists, and a second crank at THIS end shifts the alarm selector ring. Watch that near crank stay in the ring’s tab: it is the last step of the pusher’s force path.', dwell: 8.0 },
+  { title: 'Balance and hairspring', preset: 'Free', powerflow: false, scale: 0.1,
+    get camera() { return frameOn('Hairspring', [0.35, -0.45, 0.85], 3.2); },
+    caption: 'The balance and its spring, slowed. The hairspring breathes as one length of steel — each frame is the clamped-clamped elastica, held by a gate. What is not derived: its plane is the balance’s mid-plane plus a bare 1.2, and the going train’s datum rides it (TODO 235).', dwell: 7.0 },
 
-  // --- the mesh-phase family: TODO 15
-  { camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6), scale: 1, labels: false,
-    caption: '6/9 Winding idlers. Tooth into GAP at the line of centres, never tooth on tooth — and the same again where they meet the barrel.', dwell: 7.0 },
-  { camera: frameOn('Alarm setting wheel', [0.4, -0.35, 0.8], 2.6), xray: true,
-    caption: '7/9 The setting train’s dogleg, dial side: setting wheel → idler → idler. Same tooth-into-gap test, and this chain crosses the dial’s Y-flip.', dwell: 6.5 },
+  { title: 'Lever safety action', preset: 'Escapement', scale: 0.04,
+    get camera() { return frameOn('Pallet fork', [0.3, -0.45, 0.85], 2.2); },
+    caption: 'The pallet fork and escape wheel, slowed. The guard pin rides close to the safety roller and never touches, and the roller’s crescent is cut where the impulse pin is, so the pin can only cross while the fork is engaged. That phasing is modelled, not simulated: no axis ever knocks the fork off its banking, so the failsafe has never been exercised (TODO 105).', dwell: 7.5 },
 
-  // --- the strike: TODO 14's spring, and the hammer that has to fall
-  { camera: frameOn('Alarm hammer', [0.45, -0.35, 0.8], 4.2), alarm: true, scale: 0.3,
-    caption: '8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.', dwell: 7.0 },
+  { title: 'Setting the time', preset: 'Setting', xray: true, scale: 0.3, crown: 'out', turnMinutes: 3,
+    get camera() { return frameOn('Winding clutch', [0.4, -0.5, 0.8], 2.6); },
+    caption: 'Pull the crown and turn it: the hand steps one minute per detent through the keyless works. Here is the clutch that carries the turn into the setting train. It is posed by one law and the setting bevel it meets by another, and the pair does not roll at any index: the mesh is buried a flat 0.2187 (29% of a tooth) (TODO 163).', dwell: 6.0 },
 
-  // --- the cam followers: TODO 13
-  // Framed on the BLADE itself: the unit's radius is 6.2, which at any usable
-  // pad puts the camera ~28 u out — a whole-movement shot for a part 0.1 mm
-  // thick. The subject is the spring and the arm it presses.
-  { camera: frameOn('alarmFeelerSpring', [0.5, -0.3, 0.8], 8.0), scale: 0.3, xray: true,
-    caption: '9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.', dwell: 7.5 },
+  // --- the alarm: four stops, each the edge of one open item (§277 parts C and D).
+  // The nine this replaces asked tooth-into-gap and hand-off questions that
+  // `meshPhase`, `transmits` and `alarmHandoffs` now gate, and one taught an
+  // "inverted lever" check on a link §229/§261 rebuilt.
+  { title: 'Arming run', crown: 'in', scale: 0.25, alarm: true, labels: false, xray: false, schematic: true,
+    camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 1.2),
+    caption: 'The pusher, the pawl and the column wheel, drawn in lines with the contact dots lit by the same rows the battery gates, measured at this pose. What no gate samples is the press itself: every sweep takes the pawl parked, because the stroke is not a pose any axis varies (TODO 87).', dwell: 7.5 },
 
-  { preset: 'Free', scale: 1, alarm: false, labels: false, xray: false, explode: 0,
-    caption: 'End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.', dwell: 4.0 },
+  { title: 'Release', scale: 0.3, schematic: false, xray: true, focus: 'Alarm lock',
+    camera: frameOn('Alarm lock', [0.4, -0.35, 0.8], 4.0),
+    caption: 'The strike train’s lock. It answers the column wheel alone: the hold between arming and the trip is a flag in the code, not metal, and nothing carries the feeler’s drop to the lock (TODO 199).', dwell: 7.0 },
+
+  { title: 'Arming link', xray: true, focus: null,
+    camera: frameOn('Alarm link', [0.35, 0.8, 0.5], 1.8),
+    caption: 'Where the beak’s tail meets the top of the vertical rod; the chain runs on through the lay shaft to the selector ring. Its stall figure reflects each member’s compliance as n²/k where virtual work gives 1/(n²k), so the rod-side members read 3.6× too stiff and the shaft’s 4.3× too soft, and the rod-end overhang probably governs, not the fork end. The figure stays far over the detent window either way (TODO 237).', dwell: 8.0 },
+
+  { title: 'Hammer and ribbon', alarm: true, scale: 0.3, xray: false,
+    camera: frameOn('Alarm hammer', [-0.8, -0.45, 0.7], 3.6),
+    caption: 'The hammer. After the wire it rebounds on a posed envelope, a 198 Hz cosine decaying over 31 cycles that nothing in the metal produces and nothing banks, so the double strike a serviced watch must not have is neither drawn nor prevented (TODO 228). Its strike ribbon works at 3096 to 5264 MPa, past its alloy’s tensile strength, and is waived by name (TODO 201).', dwell: 8.0 },
+
+  { title: 'End', preset: 'Free', scale: 1, alarm: false, focus: null, labels: false, xray: false, schematic: false, explode: 0, links: true,
+    caption: 'That is the route. Every stop named the open item it is the edge of, and the list is TODO.md; where a stop said modelled, the part is described and not driven. Read how it works:', dwell: 6.0 },
 ];
 
 document.getElementById('btn-inspect').addEventListener('click', (e) => {
@@ -58032,11 +58058,13 @@ window.__clock = {
   goToPose(pos, look, opts) { goToPose(new THREE.Vector3(...pos), new THREE.Vector3(...look), opts); }, // §37 — the primitive, for review sessions (this is what §35 lacked)
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
   startInspect() { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); },  // §277
-  get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0), alarm: st.alarm })) : null; }, // §277
+  get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0), alarm: st.alarm, cam: ('camera' in st) ? (st.camera ? 'ok' : 'unresolved') : 'none' })) : null; }, // §277
   startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
   scriptGoto(i) { scriptGoto(i); },
-  scriptStop() { scriptStop(); },   // §277 — the navigation primitive, for the probe
+  scriptStop() { scriptStop(); },
+  get scriptAlarmDebug() { return { want: scriptAlarmWant, tries: scriptAlarmTries, stroke: alarmPusherStroke, T: alarmPusherT, parity: alarmColSteps % 2, held: alarmPusherHeld, released: alarmReleased }; }, // §277 — for the probe
+  scriptStepCamera(i) { const c = scriptSteps && scriptSteps[i] && scriptSteps[i].camera; return c ? { pos: [...c.pos], look: [...c.look] } : null; }, // §277 — the resolved framing of a stop, for the probe   // §277 — the navigation primitive, for the probe
   get scriptView() { return { timeScale, labelsOn, xrayOn, schematic: !!SCHEMATIC.on, powerFlowOn, soundOn, alarmOn, explodeAmount, selectedUnit, focusName, reconfOn, crownOut, autoWind: autoWindRemaining, done: [...scriptDone] }; }, // §277 — what a fold must reproduce
   scriptJump(i) { if (scriptSteps) { scriptIdx = i; scriptEnterStep(i, { viewOnly: true }); } }, // §142 — enter a stop directly (view only), for the probe
   scriptTick(dt) { scriptUpdate(dt); }, // §142 — advance the engine by dt seconds of real time without waiting on the rAF loop (a software-GL frame is seconds), for the probe

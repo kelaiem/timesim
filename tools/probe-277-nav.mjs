@@ -36,9 +36,12 @@ const BASE = `http://127.0.0.1:${srv.address().port}/index.html`;
 let fails = 0;
 const ok = (name, cond, detail) => { if (!cond) fails++; console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? `  [${detail}]` : ''}`); };
 
+const appWarns = [];
 const browser = await chromium.launch({ args: ['--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 const pg = await browser.newPage();
 await pg.setViewportSize({ width: 760, height: 480 });   // desktop layout, few pixels (probe-161's measured reason)
+pg.on('pageerror', (e) => appWarns.push('PAGEERROR ' + e.message));
+pg.on('console', (m) => { const x = m.text(); if (m.type() === 'warning' && !/WebGL|GL Driver|GroupMarker/.test(x)) appWarns.push(x); });
 await pg.goto(BASE, { waitUntil: 'load' });
 await pg.waitForFunction(() => !!window.__clock, null, { timeout: 180000 });
 ok('boot is silent', (await pg.evaluate(() => [...window.__clock.bootWarns])).length === 0);
@@ -58,7 +61,17 @@ const SETTLE_TICKS = () => { for (let k = 0; k < 5; k++) window.__clock.scriptTi
 // software-GL frame is long, so 1.5 s was enough on one run and not the next.
 const settled = async (want) => {
   await pg.evaluate(SETTLE_TICKS); await pg.waitForTimeout(1500);
-  for (let g = 0; want !== undefined && g < 30 && (await pg.evaluate(() => window.__clock.scriptView.alarmOn)) !== want; g++) await pg.waitForTimeout(500);
+  // SETTLED, not "alarmOn matches": an end-path jump starts from the previous
+  // iteration's alarmOn, which can already equal the authored value for the first
+  // few frames while an OFF press is still in flight (the first version of this
+  // loop exited on that stale match and read the pusher mid-return: parity just
+  // flipped, T 0.757, the same numbers every run because it exited instantly).
+  // So wait for what the engine itself calls done: nothing wanted, pusher home.
+  for (let g = 0; want !== undefined && g < 240; g++) {
+    const q = await pg.evaluate(() => window.__clock.scriptAlarmDebug);
+    if (q.want === undefined && !q.stroke && q.T < 1e-6) break;
+    await pg.waitForTimeout(500);
+  }
   return pg.evaluate(READ);
 };
 // The straight-through record is walked from OUTSIDE the page: the first stop's
@@ -90,12 +103,12 @@ for (let i = 0; i < n; i++) {
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(a); }, i);
   fromStart.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(c.scriptState.of - 1); c.scriptGoto(a); }, i);
-  fromEnd.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
+  fromEnd.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx), dbg: await pg.evaluate(() => ({ ...window.__clock.scriptAlarmDebug, tau: window.__clock.tau })) });
 }
 const bad = (set) => set.map((r, i) => (r.idx === i && same(straight[i], r.v, i)) ? null : i).filter((x) => x !== null);
 for (const [nm, set] of [['start', fromStart], ['end', fromEnd]]) for (const i of bad(set)) {
   const d = Object.keys(straight[i]).filter((k) => k !== 'alarmOn' && straight[i][k] !== set[i].v[k]);
-  console.log('   ', nm, 'stop', i, 'idx', set[i].idx, d.map((k) => `${k}: straight ${straight[i][k]} vs jump ${set[i].v[k]}`).join('; '));
+  console.log('   ', nm, 'stop', i, 'idx', set[i].idx, `alarmOn ${set[i].v.alarmOn} vs authored ${authoredAlarm(i)}`, JSON.stringify(set[i].dbg || null), d.map((k) => `${k}: straight ${straight[i][k]} vs jump ${set[i].v[k]}`).join('; '));
 }
 ok('jump from the first stop = running straight through (every stop)', bad(fromStart).length === 0, `bad: ${bad(fromStart)}`);
 ok('jump back from the last stop = running straight through (every stop)', bad(fromEnd).length === 0, `bad: ${bad(fromEnd)}`);
@@ -103,6 +116,19 @@ ok('jump back from the last stop = running straight through (every stop)', bad(f
 await pg.evaluate(() => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptJump(c.scriptState.of - 2); });
 const cold = await settled();
 ok('CONTROL: a cold entry (scriptJump) is NOT the straight-through state', !same(straight[n - 2], cold, n - 2), JSON.stringify(cold));
+
+// ---- 1b. every stop's declared framing resolved (frameOn returns null and only WARNS on a miss,
+// so a stop naming a part that moved or was renamed would aim the camera nowhere and say so once)
+const camRow = (await pg.evaluate(() => window.__clock.scriptRoute)).map((r, i) => [i, r.cam]);
+ok('every declared stop framing resolves (§277 part B)', camRow.every(([, c]) => c !== 'unresolved'), JSON.stringify(camRow.filter(([, c]) => c !== 'none')));
+ok('walking every stop raised no app warning', appWarns.length === 0, appWarns.slice(0, 2).join(' | '));
+
+// ---- 1c. a quick Next/Previous across alarm stops does not lose a toggle. The alarm is a PRESS and
+// pressAlarmPusher refuses mid-stroke, so two toggles entered back to back used to land as one.
+await pg.evaluate(() => { const c = window.__clock; c.scriptStop(); c.startInspect(); });
+await pg.evaluate(() => { const c = window.__clock; const R = c.scriptRoute; const on = R.findIndex((r) => r.alarm === true); const off = R.findIndex((r, i) => i > on && r.alarm === false); c.scriptGoto(on); c.scriptGoto(off); });
+let rapid; for (let g = 0; g < 160; g++) { await pg.waitForTimeout(500); const q = await pg.evaluate(() => ({ a: window.__clock.scriptView.alarmOn, d: window.__clock.scriptAlarmDebug })); rapid = q.a; if (q.d.want === undefined && !q.d.stroke && q.d.T < 1e-6) break; }   // settled: nothing wanted, pusher home
+ok('two alarm toggles entered back to back both land (ends OFF)', rapid === false, `alarmOn ${rapid}`);
 
 // ---- 2. ONE-SHOTS (Tour carries winds and a sync)
 await pg.evaluate(() => window.__clock.scriptStop());

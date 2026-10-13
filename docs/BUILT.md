@@ -35799,6 +35799,85 @@ own eight phases and every other axis at f ∈ {0, ½, 1}.
 shipped azimuth, re-derive the case, and lower `CASE_HEIGHT_MAX_MM` by what
 that measures.
 
+## §277, part B — the Inspect route covers the movement, and the navigation it rode on lost an alarm toggle
+
+Part E (above) gave the scripted-user engine Previous, Next and a stop list.
+Part B is the first use of it: five stops ahead of the alarm ones, so the Inspect
+route is no longer eight-ninths one subsystem. Parts C and D (the alarm stops'
+rewrite, the remaining verbs) are not in this landing, and the old alarm stops
+stay as they were, minus their `k/9` counters, which the banner now makes wrong
+(their translations fall back to English until D rewrites them).
+
+### The stops, and what each one claims
+
+Each caption says what is DRIVEN, what is only MODELLED, and which open item in
+`TODO.md` the viewer is being shown the edge of. A stop with no open item a
+viewer can see does not get an invented hazard.
+
+| stop | framing | what it says | item |
+|---|---|---|---|
+| Fusee and chain | `Fusee & great wheel`, x-ray, pad 1.6 | the cone's rising radius against the falling spring torque; the chain's run holds its length to within half a link pitch; **nothing open the eye can find** | none |
+| Going train, driven | `Train` preset, x-ray, power flow | the balance is driven by its own equation of motion (§246), so the rate shown is the rate the oscillator keeps; the reserve train's two meshes interpenetrate 0.118 mm; every gear ships fatter than cut | TODO 77, 84 |
+| Balance and hairspring | `Hairspring`, scale 0.1 | each frame is the clamped-clamped elastica (§218); the spring's plane is the balance's mid-plane plus a bare 1.2, and the going train's datum rides it | TODO 235 |
+| Lever safety action | `Pallet fork`, scale 0.04 | the crescent is phased to the impulse pin by construction, modelled and not simulated; no axis ever knocks the fork off its banking | TODO 105 |
+| Setting the time | `Winding clutch`, x-ray, crown out, one detent turn | the clutch and the setting bevel are posed by two laws and the pair does not roll at any index, buried a flat 0.2187 (29% of a tooth) | TODO 163 |
+
+### What was looked at, and what was not
+
+Every framing was rendered and read. The fusee, train and balance stops show
+their subjects. The lever stop shows the pallet fork and the escape wheel; the
+**guard pin and the safety roller are not distinguishable at that size**, and the
+setting stop shows the clutch and the setting bevel gear but **not the contact**,
+so neither caption tells the viewer to look at the thing it cannot show. The first
+framings were wrong in two ways worth keeping: the fusee and the train sit under
+the three-quarter plate (an opaque slab until x-ray is on), and a screenshot taken
+while the camera tween was still running shows a view the stop never settles on.
+
+### The navigation bug the route exposed
+
+`setAlarm` is a PRESS, and `pressAlarmPusher` refuses while the head is down or
+returning (about 0.24 s of simulation). A stop that toggles the alarm, entered by
+a quick Next/Previous inside that window, lost its toggle. **Measured, both
+sides:** entering the alarm-on stop and the alarm-off stop back to back leaves the
+alarm ON 45 s later on `main`'s code (wanted off); on this branch it ends OFF.
+The engine now states the wanted parity (`scriptAlarmWant`) and presses until the
+wheel reads it, at most six times. Two rules it keeps: it waits out an in-flight
+press BEFORE reading the parity (the parity is a readout of the wheel and flips
+during the stroke, so a mid-press read can match the old state and drop a want the
+finishing press then undoes), and it clears the want the moment the parity matches
+with the pusher home, so it never fights an alarm that rings and disarms itself.
+
+### Three wrong readings on the way, kept because the instrument was the cause each time
+
+1. **"A lost press" was first diagnosed from a probe failure that was not one.**
+   The end-path jump to stop 13 failed repeatedly with the pusher at 0.7569 of its
+   return, identical every run. It looked like a frozen pusher and then like a
+   dead frame loop. Neither: the probe's wait exited at once because `alarmOn`
+   still read true from the previous iteration, which already equalled the
+   authored value, and the first OFF press then landed. A reproduction with the
+   probe's whole history showed the sim running, slowly (a press plus its return
+   is 12 to 25 s on this renderer). The wait now ends on the engine's own state,
+   nothing wanted and the pusher home. The lost-press defect is real but was
+   measured separately, by the back-to-back control above, not by that failure.
+2. **A 15 s and then a 60 s window were each "the fix" for a stale-match race.**
+   Lengthening a wait cannot repair a loop that exits early.
+3. **The 30-minute background limit killed one full run at its last checks.**
+   `timeout` inside the command does not lift the harness's own limit.
+
+### Measured
+
+`tools/probe-277-nav.mjs` over the 15-stop route: **28/28 pass**. New this
+landing: every declared framing resolves (`scriptRoute` reports each stop's
+`cam` as ok or unresolved, because `frameOn` returns null and only warns on a
+miss), walking every stop raises no warning and no page error, and two alarm
+toggles entered back to back both land. The fold check (a jump equals running
+straight through, from the first stop and back from the last) holds at all 15
+stops.
+
+Not measured, and said so: Tour, Demo and Bench "run as before when never
+navigated" is still argued from the code; the `studr` spec points were skipped by
+the PR ceiling in part E's battery run and this landing's battery has not run.
+
 ## §278, landing 2 — the strike fold: the hammer's outboard metal cranked under the skirt arm
 
 The owner chose landing 1's best candidate: crank the tail down at the shipped
@@ -36006,3 +36085,68 @@ omits.
   11.586 for the depth and the cap. That one block was re-translated in all 22
   tables. The i18n check, explain-quotes (0 DISAGREES), glossary-links and the
   review packets all PASS.
+
+## §277, parts C and D — the alarm half of the Inspect route, and the verbs it used
+
+The nine old alarm stops are gone; four replace them, and the opening and closing
+captions are rewritten. The route is now eleven stops: the opening, part B's
+five movement stops, four alarm stops, and a close.
+
+### The stops, and what is left out
+
+| stop | view | what it says | item |
+|---|---|---|---|
+| Arming run | the line-only schematic on `Alarm switch`, alarm armed, contact dots live | the dots are the rows the battery gates, measured at this pose; what no gate samples is the press itself, since every sweep takes the pawl parked | TODO 87 |
+| Release | x-ray, `focus` on `Alarm lock` | the lock answers the column wheel alone; the hold between arming and the trip is a flag in the code, and nothing carries the feeler's drop to the lock | TODO 199 |
+| Arming link | x-ray on `Alarm link`, from outside the hands | the stall figure reflects each member as n²/k where virtual work gives 1/(n²k), so the rod-side members read 3.6× too stiff, the shaft's 4.3× too soft, and the rod-end overhang probably governs | TODO 237 |
+| Hammer and ribbon | `Alarm hammer` from inside the case | after the wire the hammer rebounds on a posed 198 Hz envelope that nothing in the metal produces or banks; the strike ribbon works at 3096 to 5264 MPa, past its alloy, waived by name | TODO 228, 201 |
+
+Cut with the nine: column-wheel indexing, the winding idlers and the setting
+dogleg (`meshPhase`, `transmits` and `alarmHandoffs` gate those questions now),
+the "inverted lever" check on a link §229/§261 rebuilt, and the lay shaft and
+feeler as stops of their own (they live inside the link and release stops).
+
+**A stop the draft listed and the route does not have.** "Alarm stem, backward"
+(TODO 72) was built, framed, and dropped. The route engine feeds a scripted crown
+turn only with the crown pulled out (`alarmCrownPullT > 0.5`), which is the
+SETTING position and turns in both directions; TODO 72's one-way is about the
+winding turn with the crown pushed in, which no verb can feed. The stop would have
+shown the wrong mechanism under the right caption, and a control that moved the
+barrel would have been impossible to run. The item stays in `TODO.md`; a
+winding-turn verb is what the stop needs.
+
+### The verbs
+
+`schematic` (the Arming run: the same `measureHandoffsNow` display §66 added, so
+the dots are live and are not a gate), `focus` on the Release stop, `xray` where a
+plate stands between the camera and the subject. The `focus` is set by
+`ensureExploreDrive` a frame or two late (§161's note), and it is cleared on the
+next stop (`focus: null`), which the fold carries like any view key.
+
+### What the renders showed, and did not
+
+Every framing was rendered. **Arming run** reads: lines, red contact markers at the
+pawl, small but clear. **Release** is crowded (the strike lock's toothed wheel
+among gears, even with `focus` set at the time of the shot), and the claim there
+is an absence, which no frame can show. **Arming link** is busy: the rods, crank
+and shaft are visible through the x-rayed plates, and the first framing from the
+centre side had the minute hand across it, so the camera now looks from outside
+the hands. **Hammer** shows the hammer's jointed arm and its pivot beside the case
+rim; the first two framings looked at the rim itself from outside the case. None
+of these is a close-up of the thing the caption's number is about, and the
+captions say what is open, not what to look at.
+
+### Localisation
+
+The route's captions are English-keyed strings, so the eleven this rewrote and
+the new ones render English in the other 22 locales until re-translated (the visible fallback, by
+design); the stop-list titles are English too. `probe-chrome-coverage.mjs` reads
+the DOM at boot, where none of these exist, so it is unaffected.
+
+### Measured
+
+`tools/probe-277-nav.mjs` over the final 11-stop route: **28/28 pass**, including
+the fold at every stop from both ends, every declared framing resolving, no
+warning or page error walking the route, and two back-to-back alarm toggles both
+landing. Not measured: Tour, Demo and Bench "as before when never navigated"
+(argued from the code); the battery on this tree.
