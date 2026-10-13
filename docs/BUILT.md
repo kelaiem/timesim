@@ -35859,3 +35859,91 @@ bound. The keys still govern the back-most metal, 0.140 mm over the ring face.
 - **The explainer.** The §261 paragraph and a new §278 paragraph were
   re-translated in all 22 tables: the i18n check, explain-quotes and
   glossary-links all PASS.
+
+## §278, landing 3 — the wrench purchase cut into the ring: notches, not keys
+
+Landing 2 left the back governed by the ring's two wrench keys. They were raised
+lugs, 2 × 1 mm and 0.15 mm tall, sunk `SEAT_EMBED` into the face, so they stood
+**0.140 mm** over it. §192 had sunk the glass step under the ring's face, which
+made them the case's back-most metal. A real screw-back does not carry its
+purchase proud. It carries NOTCHES cut into the face at the rim, and the case
+wrench's teeth drop into them. The owner took that call.
+
+**What was built.** The old comment said recessed slots "would be CSG". They do
+not need to be. A notch open at the rim is the ring's own turning with its face
+lowered across the notch's span, so the ring is now a SECTORED lathe, the
+band's bored-sector idiom from §186. It is still one closed mesh named
+`caseBack`. Two notch sectors carry the lowered profile and two whole sectors
+carry the old one, merged, with a signed-volume warn like the band's. There is
+no second mesh, so no new contact row and no coplanar faces. Each dimension
+derives from a constraint:
+
+- **Depth: the keys' own 0.15 mm**, the purchase inverted. The wrench's tooth
+  bears on the notch's radial wall over its whole 1.5 mm radial run, where it
+  bore on the key's 1 mm end, so the bearing face is no smaller. Under the
+  notch the ring keeps the seating flange less the depth, 1.06 mm (the flange
+  is 1.2 mm plus the `SEAT_EMBED` its face sinks into the band). The builder
+  holds that over §50's floor (`STOCK_MIN_U`), and holds the floor above the
+  glazing lip's underside.
+- **Radial run: from the rim (`R_PLATE`) in to the glazing channel's wall
+  (`skirtID`) and no further.** Inboard of it is the lip, the glass's retaining
+  land (TODO 122), which a notch must not thin.
+- **Width: two facets, 7.5°.** That is the fewest whole facets of the
+  `CASE_LATHE_SEG` turning whose chord at the notch's inner wall admits the
+  wrench's tooth, taken as the key's own 2 mm length. Whole facets on the full
+  turning's grid mean every ring vertex stands where the one-piece lathe put
+  it, and only the notch's face moves.
+- **Azimuths: the keys' own, 0 and π**, each centred on a grid vertex.
+
+`sectorLathe` gained an explicit facet count for this. Its `ceil` reads a
+46-facet span, computed in floats as 46.00000000000001, as 47, which would
+have moved a whole sector of vertices off the grid. The band's call sites are
+untouched.
+
+**The back and the cap.**
+
+| | before | after |
+|---|---|---|
+| back-most metal | the keys, 14.1533 | **the ring face, 13.7839** |
+| next | the ring face, 0.140 mm under | the glass step's top 13.7744, **0.004 mm** under |
+| cased depth | 30.9431 u = 11.7258 mm | **30.5736 u = 11.5858 mm** |
+
+The depth bought is **0.140 mm**, exactly the keys' rise, and the design
+study's figure to the micron. `CASE_HEIGHT_MAX_MM` ratchets **11.726 → 11.586**.
+The next governor is the glass step, 0.0095 u under the face, so a further
+millimetre has to come from the striking wheel's plane or the ring's
+lip-and-glass stack, not from the ring's face.
+
+**The instruments followed the part.** `height-ledger.mjs` no longer stands a
+phantom keys candidate at the ring face when the tree has none: `keyRise` is
+null and the probe prints the purchase as notched. `probe-261-lever-prices`
+retires L1b (shorter keys), which this landing took whole. The §269
+radiation's approximation list now names the notches as what the revolve
+omits.
+
+**Held by.**
+
+- `probe-261-height-ledger` PASS at 11.586 mm, governed by the ring face with
+  0.004 mm over the glass step. The identity copy and both prediction mutants
+  reproduced: the skirt row moved the depth 1:1 (0.5000) and the striking wheel
+  through the new slack (0.1984).
+- `probe-261-height-cap` PASS: 11.586 fires on growth and on staleness.
+- `probe-back-envelope`: GATE, GLASS and both CONTROLS PASS.
+- `probe-269-case-path` 54 rows, ALL PASS. The ring-face row reads `caseBack`'s
+  top at 13.7839, and the case path totals 51.92 dBA (55.39 with the wire).
+- **The battery.** The local non-point battery (`--only` with every check,
+  `--shards 3 --no-incremental`) passes **54/54 gates**. Within it:
+  - `outlines` PASS: 0 self-crossing and 0 cross-ring rows.
+  - `meshIntegrity` PASS: 0 inverted bodies.
+  - `stockFloor`, `undeclaredClearance` (0 pairs under the margin),
+    `plateSeats`, `clearances`, `inspection` and `sweptOverlap` all PASS.
+  - `turning` now counts 70 lathes, not 71. The ring is a merged sector body
+    like the band, and as a disc it was only ever refused.
+  - The fingerprint is deterministic at a new hash (1623414317), since the
+    Case moved. Boot is silent.
+- **The spec-boot tier** (`--spec-only`) passes 7/7, with 36/36 points built
+  and none tripping the lowered cap. The point tier is judged on CI.
+- **The explainer is not edited by this landing.** Its §278 paragraph quotes
+  the cased depth and `CASE_HEIGHT_MAX_MM` at 11.726, so `explain-quotes`
+  reports that one row as DISAGREES until the paragraph and its 22
+  translations are refreshed.

@@ -10464,9 +10464,14 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // cap shipped with a hole exactly the shape of that step. Rather than hope,
   // pave the face from pieces that are each simple. The band's own
   // decomposition is natural: WHOLE = RELIEVED ∪ the seat-step rectangle.
-  const sectorLathe = (pts, a0, a1, capPolys = null, segPerTurn = CASE_LATHE_SEG) => {
+  // `facets` names the segment count outright, for a caller that cuts its
+  // sectors ON the full turning's facet grid (§278 landing 3, the back
+  // ring's wrench notches): the ceil below rounds a span of exactly 46
+  // facets, computed in floats as 46.00000000000001, up to 47 and would move
+  // every vertex of that sector off the grid the full lathe put them on.
+  const sectorLathe = (pts, a0, a1, capPolys = null, segPerTurn = CASE_LATHE_SEG, facets = null) => {
     const span = a1 - a0;
-    const seg = Math.max(2, Math.ceil(segPerTurn * span / (Math.PI * 2)));
+    const seg = facets ?? Math.max(2, Math.ceil(segPerTurn * span / (Math.PI * 2)));
     const v2 = pts.map(([r, z]) => new THREE.Vector2(r, z));
     const side = new THREE.LatheGeometry(v2, seg, a0 + Math.PI / 2, span);
     side.rotateX(Math.PI / 2);
@@ -10733,8 +10738,48 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // The first cut ran it the other way and the ring painted nothing: every
   // face culled, the movement visible straight through 2.4 mm of steel,
   // while the geometry measured solid to every instrument. Same points,
-  // opposite travel; the lathe helper's signed-volume warn holds it now.
-  const back = new THREE.Mesh(lathe([
+  // opposite travel; the signed-volume warn below holds it now.
+  //
+  // §278 landing 3 — THE WRENCH PURCHASE IS CUT INTO THE RING, not stood on
+  // it. It was two raised key lugs (0.15 mm proud, 2 × 1 mm), and once §192
+  // sank the glass step under the ring's face they were the case's back-most
+  // metal, spending 0.140 mm of cased depth on a feature a real screw-back
+  // carries as NOTCHES: slots cut into the ring's face at its rim, which the
+  // case wrench's teeth drop into. Open at the rim, so the notch is the ring's
+  // own turning with its face lowered across the notch's span — a SECTOR of
+  // the lathe (the band's bored-sector idiom, §186), one closed body, no CSG
+  // and no second mesh.
+  //   · Depth = the keys' own 0.15 mm: the purchase they gave, inverted. The
+  //     wrench's tooth bears on the notch's radial wall over the notch's whole
+  //     radial run (1.5 mm) where it bore on the key's 1 mm end, so the
+  //     bearing face is no smaller; and the ring left under the notch is the
+  //     seating flange less the depth, held over §50's floor below.
+  //   · Radial run: from the ring's rim in to the glazing channel's wall
+  //     (skirtID) and no further — inboard of it is the LIP, the glass's
+  //     retaining land (TODO 122), which a notch must not thin.
+  //   · Width: the fewest whole facets of the CASE_LATHE_SEG turning whose
+  //     chord at the notch's inner wall admits the wrench's tooth, taken as
+  //     the key's own 2 mm length (the same wrench, inverted). Whole facets,
+  //     on the full turning's grid, so every vertex of the ring stands where
+  //     the one-piece lathe put it and only the notch's face moves.
+  //   · Azimuths: the keys' own, 0 and π, each notch centred on a grid
+  //     vertex (world azimuth k·2π/CASE_LATHE_SEG — LatheGeometry's φ = 0
+  //     sits at world −π/2, a whole quarter of the grid).
+  // The ring face (z0) is now the case's back-most metal: the notch is a
+  // depth bought, not spent.
+  const notchD = 0.15 / UNIT_MM;
+  const zNotch = z0 - notchD;
+  const notchRin = skirtID;
+  const facetA = 2 * Math.PI / CASE_LATHE_SEG;
+  let notchFacets = 1;
+  while (2 * notchRin * Math.sin(notchFacets * facetA / 2) < 2 / UNIT_MM) notchFacets++;
+  const notchLo = Math.floor(notchFacets / 2), notchHi = notchFacets - notchLo;
+  const notchSection = (zNotch - zSeat);   // the seating flange left under the notch (the skirt below it is deeper still)
+  if (!(notchSection >= STOCK_MIN_U))
+    console.warn(`makeCase: the wrench notch leaves ${notchSection.toFixed(4)} u of ring under it, under §50's floor ${STOCK_MIN_U.toFixed(4)}`);
+  if (!(zNotch > zCrystOut))
+    console.warn(`makeCase: the wrench notch's floor ${zNotch.toFixed(4)} reaches the glazing lip's underside ${zCrystOut.toFixed(4)}`);
+  const RING_WHOLE = [
     [apertureR, z0],                 // the lip's bore — the APERTURE, down its wall
     [apertureR, zCrystOut],          // out along the lip's underside
     [skirtID, zCrystOut],            // down the skirt's inner wall — the glazing channel's radial wall
@@ -10743,7 +10788,34 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     [skirtOD, zSeat],                // out along the seating face (over the gasket cord)
     [R_PLATE, zSeat], [R_PLATE, z0], // the ring's edge, up to the face
     [apertureR, z0],                 // in along the top face — close at the bore
-  ]), material);
+  ];
+  const RING_NOTCHED = [
+    ...RING_WHOLE.slice(0, 7),       // the bore, lip, skirt and seating face, unchanged
+    [R_PLATE, zNotch],               // the ring's edge, up only to the notch's floor
+    [notchRin, zNotch],              // in along the floor
+    [notchRin, z0],                  // up the notch's inner wall
+    [apertureR, z0],                 // in along the face that stands — close at the bore
+  ];
+  const ringGeos = [];
+  const SEG = CASE_LATHE_SEG, half = SEG / 2;
+  for (const k0 of [0, half]) {      // the keys' two azimuths, 0 and π, on the grid
+    const n0 = k0 - notchLo, n1 = k0 + notchHi, w1 = k0 + half - notchLo;
+    ringGeos.push(sectorLathe(RING_NOTCHED, n0 * facetA, n1 * facetA, null, SEG, n1 - n0));
+    ringGeos.push(sectorLathe(RING_WHOLE, n1 * facetA, w1 * facetA, null, SEG, w1 - n1));
+  }
+  const ringGeo = mergeGeos(ringGeos);
+  {
+    const p = ringGeo.attributes.position.array;
+    let v = 0;
+    for (let t = 0; t < p.length; t += 9) {
+      v += (p[t] * (p[t + 4] * p[t + 8] - p[t + 5] * p[t + 7])
+          + p[t + 1] * (p[t + 5] * p[t + 6] - p[t + 3] * p[t + 8])
+          + p[t + 2] * (p[t + 3] * p[t + 7] - p[t + 4] * p[t + 6])) / 6;
+    }
+    if (!(v > 0))
+      console.warn(`makeCase: the notched back ring is wound inside-out (signed volume ${v.toFixed(2)} ≤ 0)`);
+  }
+  const back = new THREE.Mesh(ringGeo, material);
   back.name = 'caseBack';
   backAsm.add(back);
   // THE STEPPED GLASS — one closed revolve (the metal ring is the annulus;
@@ -10796,30 +10868,9 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   ]), MATS.dark);
   bcGasket.name = 'caseBackCrystalGasket';
   backAsm.add(bcGasket);
-  // THE WRENCH PURCHASE — two key lugs on the ring's face (a spanner
-  // engages across them; recessed slots would be CSG, and a raised key is
-  // the same honest statement in weldable metal).
-  // §192 inverted this feature's original free ride: it was sized "under
-  // the glass step's proud stand, so the feature spends no cased depth" —
-  // true while the step topped 15.7 — but the strike tower's descent sank
-  // the step under the ring's own face, so the keys are now the case's
-  // back-most metal and DO spend their 0.15 mm. The cased depth's floor is
-  // the ring's face plane (z0, the case band's own architecture) plus
-  // these keys; lowering the tower further buys no depth past that floor,
-  // which is where §192's 1:1 drop-to-back relation honestly ends.
+  // (The wrench purchase is the ring's two NOTCHES, cut in its turning above
+  // — §278 landing 3. The raised keys it replaced were the back-most metal.)
   const headT = 0.4 / UNIT_MM;   // §186 clamp-screw head height (their block below reads it)
-  {
-    const keyT = 0.15 / UNIT_MM;
-    const keyR = (apertureR + R_PLATE) / 2;
-    for (const a of [0, Math.PI]) {
-      const key = new THREE.Mesh(
-        new THREE.BoxGeometry(2 / UNIT_MM, 1 / UNIT_MM, keyT), material);
-      key.position.set(Math.cos(a) * keyR, Math.sin(a) * keyR, z0 + keyT / 2 - SEAT_EMBED);
-      key.rotation.z = a + Math.PI / 2;
-      key.name = 'caseBackKey';
-      backAsm.add(key);
-    }
-  }
   // Gasket: the cord half-seated in the back-face groove, the ring's face
   // squeezing it to the stated 20% (the stack that makes the rating claim
   // honest — compression comes from the thread's preload now).

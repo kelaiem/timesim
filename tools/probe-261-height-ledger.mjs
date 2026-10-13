@@ -28,7 +28,8 @@
 //   BACK   the skirt annulus's envelope max (or the clamp heads, measured off
 //          their own metal) + CLEAR_MARGIN = skirt bottom; the band's back face
 //          = max(skirt bottom + thread engagement, the pane floor outboard of
-//          the aperture); the ring face, its wrench keys, and the raised glass
+//          the aperture); the ring face, its wrench keys (until §278 landing 3
+//          notched the purchase into the face), and the raised glass
 //          step (the envelope's global max + CLEAR_MARGIN, one glass thick).
 //          The back-most metal is whichever of those stands proudest.
 // The skirt bottom, the pane floor and the step are RE-DERIVED here from
@@ -102,7 +103,9 @@ console.log(`  skirt arm                  z ${f4(b.skirtArm)}   (+ engagement ${
 console.log(`  pane floor                 z ${f4(b.paneFloor)}   outboard of the aperture: ${b.outboard.owner} ${f4(b.outboard.z)} + CLEAR_MARGIN`);
 console.log(`  band back face             z ${f4(b.midBack)}   set by ${b.midBy}, ${f4(b.midSlack)} u = ${mm(b.midSlack)} over the other arm   built ${f4(g.paneInner)}`);
 console.log(`  ring face                  z ${f4(b.z0)}   (+ lip and glass, ${mm(Lb.ringRise)})`);
-console.log(`  wrench keys                z ${f4(b.keysTop)}   (+ ${mm(Lb.keyRise)})`);
+console.log(Lb.keyRise === null
+  ? '  wrench purchase            notched into the ring face (§278 landing 3) — nothing proud of it'
+  : `  wrench keys                z ${f4(b.keysTop)}   (+ ${mm(Lb.keyRise)})`);
 console.log(`  glass step underside       z ${f4(b.stepUnder)}   = envelope max (${b.stepBy}) + CLEAR_MARGIN   built ${f4(g.zStepUnder)}`);
 console.log(`  glass step top             z ${f4(b.stepTop)}   measured ${f4(base.caseParts.caseBackCrystal?.zMax)}`);
 console.log(`  BACK-MOST METAL            z ${f4(Lb.bm.top.z)}   ${Lb.bm.top.by}`);
@@ -212,6 +215,8 @@ for (const M of MUTANTS) {
           stepTop: stepTopMeasured, back: measuredBack, depth: Lb.depth, eng: Lb.eng }
       : { skirtBot: M.pred.ch.skirtBot, midBack: M.pred.ch.midBack, stepUnder: M.pred.ch.stepUnder, keys: M.pred.ch.keysTop,
           stepTop: M.pred.ch.stepTop, back: M.pred.bm.top.z, depth: M.pred.depth, eng: Lb.eng };
+    // A tree with no raised keys has no keys face to predict or measure.
+    if (Lb.keyRise === null) { delete want.keys; delete got.keys; }
     const bad = Object.keys(want).filter((k) => !near(got[k], want[k], 1e-5));
     rows.push({ M, got, want, bad, warns: mb.warns });
   } catch (e) {
