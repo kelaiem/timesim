@@ -464,6 +464,10 @@ console.log(`\ncontrols: identity bins vs the build's own (max |Δ| ${binDiff});
 // rAllow at every hammer angle the strike reaches, its inner face one margin
 // short of the tip's circle at the inner end of its tangent span.
 const site = await page.evaluate(() => ({ ...window.__S.site, draw: window.__S.L.draw, amp: window.__S.L.amp, liftSign: window.__S.L.geom.liftSign }));
+// §278 landing 2 built the crank: on that tree the shipped station already
+// meets the condition (its exceed is float noise), so no further crank is
+// owed and the CRANKED pass is skipped rather than cut at a 1e-9 drop.
+const crankOwed = id.exceed > 1e-9;
 const dz = Math.max(0, id.exceed) + 1e-9;
 const crankStation = (P) => {
   const T = site.tailT, Wd = site.tailW;
@@ -492,7 +496,7 @@ await page.evaluate(({ list, dz }) => {
   S.place = (cand) => { const P = place0(cand); if (!P) return P; const c = S.crankFor.get(`${cand.dDeg}/${cand.root}`); if (cand.crank && c && c.fits) P.crankGeo = S.crankGeo(dz, c.ac); return P; };
 }, { list: crankList, dz });
 const t1 = Date.now();
-const rowsC = await SWEEP(crankList.filter((c) => c.fits).map((c) => ({ dDeg: c.dDeg, root: c.root, crank: true })), true);
+const rowsC = crankOwed ? await SWEEP(crankList.filter((c) => c.fits).map((c) => ({ dDeg: c.dDeg, root: c.root, crank: true })), true) : [];
 const tC = (Date.now() - t1) / 1000;
 
 // --- §269: the rigid watch's drive with the foot turned by α -------------------
@@ -550,7 +554,8 @@ const report = (title, rows) => {
 const unreach = rowsA.filter((o) => !o.reach);
 report(`AS BUILT — the lever plane and the hammer's post at their shipped heights (${tA.toFixed(0)} s)`, rowsA);
 console.log(`  (the lever reaches no hammer circle at ${unreach.length} of ${rowsA.length} (Δ, root): Δ ${[...new Set(unreach.map((o) => o.dDeg))].join(', ')}°)`);
-report(`CRANKED — the hammer's outboard metal lowered ${fmt(dz, 4)} u, the tail stepping back up to the lever plane inboard of rAllow (${tC.toFixed(0)} s)`, rowsC);
+if (crankOwed) report(`CRANKED — the hammer's outboard metal lowered ${fmt(dz, 4)} u, the tail stepping back up to the lever plane inboard of rAllow (${tC.toFixed(0)} s)`, rowsC);
+else console.log(`\nCRANKED — not owed: the shipped station meets the condition as built (exceed ${id.exceed.toExponential(2)})`);
 const noFit = crankList.filter((c) => !c.fits);
 if (noFit.length) console.log(`  (no riser station fits for ${noFit.length} reachable candidates: ${noFit.map((c) => `${c.dDeg}/${c.root}`).join(', ')})`);
 
@@ -575,8 +580,8 @@ console.log(`  the hammer's outboard metal is its collet (r ${site.colletR.toFix
   + `${(rP - needR).toFixed(3)} inside rP ${rP.toFixed(3)}`);
 
 // --- the best ---------------------------------------------------------------
-const good = rowsC.filter((o) => o.reach && o.summary?.meets).sort((a, b) => (Math.min(b.nearest.d, b.nearestGong.d) - Math.min(a.nearest.d, a.nearestGong.d)) || (b.nearest.d - a.nearest.d));
-console.log(`\nBEST: ${good.length} cranked station(s) meet the condition`);
+const good = (crankOwed ? rowsC : rowsA).filter((o) => o.reach && o.summary?.meets).sort((a, b) => (Math.min(b.nearest.d, b.nearestGong.d) - Math.min(a.nearest.d, a.nearestGong.d)) || (b.nearest.d - a.nearest.d));
+console.log(`\nBEST: ${good.length} ${crankOwed ? "cranked" : "as-built"} station(s) meet the condition`);
 for (const o of good.slice(0, 8)) console.log(`  Δ ${o.dDeg}° root ${o.root}: hammer at az ${o.summary.az.toFixed(2)}°, buys ${o.summary.boughtMm.toFixed(3)} mm (cased ${mm(o.summary.depthBuild)} mm, swept ${mm(o.summary.depthSwept)}), `
   + `nearest ${o.nearest.d.toFixed(3)} (${o.nearest.a} ⇄ ${o.nearest.b}), gong ${o.nearestGong.d.toFixed(3)} (${o.nearestGong.a} ⇄ ${o.nearestGong.b}), rotor I ${o.summary.dI >= 0 ? '+' : ''}${o.summary.dI.toFixed(3)} %, §269 |Ω| ×${o.summary.om.map((x) => x.toFixed(3)).join('/×')}`);
 const clear = good.filter((o) => o.nearest.d >= CM - 1e-9), clearBoth = clear.filter((o) => o.nearestGong.d >= CM - 1e-9);

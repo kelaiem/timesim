@@ -27835,7 +27835,20 @@ const ALARM_TAIL_RISER = (() => {
     console.warn(`§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);
     return { at: ALARM_TAIL_BAR_LEN, window: null };
   }
-  return { at: (lo0 + hi0) / 2, window: [lo0, hi0], innerLimit: hi };
+  // The tall metal's reach: the riser's and the upper bar's outermost corner
+  // at the BUILD pose (the hammer at rest, where the back envelope scans) and
+  // over the whole swing. The swing carries it OUTWARD at the blow (−AMP), past
+  // the bin the envelope saw it in — so BACK_SWEPT_REGIONS declares that band
+  // (the table's own case: a mover that migrates radially), or the glass's
+  // step wall would stand one margin off the build pose and less off the blow.
+  const ac = (lo0 + hi0) / 2;
+  let build = 0, swept = 0;
+  for (const th of [0, ...thetas]) for (const x of xs(ac - T / 2, len)) for (const y of [-h, h]) {
+    const r = rAt(x, y, th);
+    if (th === 0) build = Math.max(build, r);
+    swept = Math.max(swept, r);
+  }
+  return { at: ac, window: [lo0, hi0], innerLimit: hi, tallR: { build, swept } };
 })();
 // The riser is metal with P1 duties of its own: a block of the bar's section
 // (ALARM_TAIL_T along the tail × ALARM_TAIL_W across), standing the drop plus
@@ -29333,6 +29346,8 @@ function alarmStrikeLineLaws() {
       tipR: ALARM_LIFT_TIP_R, zStrike: Z_STRIKE, zGong: Z_GONG, tqTopZ: TQ_TOP_Z, plateR,
       annulus: [R_ANNULUS_IN, R_ANNULUS_OUT], hammerPostR: HAMMER_POST_R, liftPostR: ALARM_LIFT_POST_R,
       colletR: ALARM_HSPIRAL_COLLET_R,
+      // §278 landing 2 — the crank as cut: the drop, the ceiling it was cut under, the riser's station and its window
+      crank: { drop: ALARM_TAIL_DROP, ceiling: STRIKE_OUTBOARD_CEIL, skirtArm: STRIKE_SKIRT_ARM, rAllow: STRIKE_R_ALLOW, riser: ALARM_TAIL_RISER },
     }),
   });
 }
@@ -45756,7 +45771,7 @@ const BACK_SWEPT_ALLOWANCE = new Map([
 // same probe clause; each z is the unit's swept maximum over the row's
 // band, rounded up past margin flicker.
 const BACK_SWEPT_REGIONS = [
-  // §198 — THE HAMMER HAS NO ROW. It stands in the annulus now, its head
+  // §198 — THE HAMMER HAS NO ROW (§278 landing 2 gave its cranked tail one: see below). It stands in the annulus now, its head
   // between the three-quarter plate's rim and the ring, BELOW the plate's
   // top (the ring runs under the pusher stem, so the head's top is the
   // plate's underside less the margin), and the strike swing carries that
@@ -45835,6 +45850,16 @@ const BACK_SWEPT_REGIONS = [
   // is what read the liner 0.650 over the bin's build-pose 7.964. The skirt
   // drops 10.23 → 8.77, and the pane floor (the hammer's plane) takes the band.
   { unit: 'Alarm switch', r0: 48.3, r1: 50.1, z: ALARM_SWITCH_SKIRT_ROW_Z },
+  // §278 landing 2 — THE HAMMER HAS A ROW AGAIN, and it is DERIVED, not
+  // typed: the cranked tail's riser and upper bar stand at the lever's plane
+  // (its top, Z_STRIKE + ALARM_TAIL_T/2) under the glass's step, and the blow
+  // (−AMP) swings their outermost corner OUTWARD of the bin the build pose
+  // leaves it in — measured, by 0.006 u, which put the step's wall 0.144 off
+  // the tail at the wire. The band runs from that corner at rest (less the §102
+  // centi-unit, so the rest pose's own float32 vertex is inside it) to its
+  // reach over the swing, both read off the riser's own station solve.
+  ...(ALARM_TAIL_DROP > 0 ? [{ unit: 'Alarm hammer', r0: ALARM_TAIL_RISER.tallR.build - 0.01, r1: ALARM_TAIL_RISER.tallR.swept,
+    z: Z_STRIKE + ALARM_TAIL_T / 2 }] : []),
 ];
 const BACK_ENVELOPE = await (async () => {
   // §234 — THE BIN IS NO WIDER THAN THE ONE MARGIN. A reader asks this
@@ -46254,7 +46279,13 @@ const CASE_DIMS = (() => {
   const zStepTop = zStepUnder + CASE_CRYSTAL_T;
   let rStep = 0;
   for (const b of envBins) if (b.z !== null && b.z + CLEAR_MARGIN > zMidBack) rStep = Math.max(rStep, b.r1);
-  rStep += CLEAR_MARGIN;
+  // §278 landing 2 — AND THE WALL IS CUT, not drawn: the glass is a lathe of
+  // G.CASE_LATHE_SEG facets, each lying inside the authored circle by up to
+  // R·(1 − cos(π/SEG)), so the margin is held at the facets' INSCRIBED circle
+  // (§262's rule for the case bore, the same lathe). Drawn at the circle, the
+  // step's wall stood 0.1445 off the cranked tail at the blow — under the
+  // margin by the sag at that azimuth.
+  rStep = (rStep + CLEAR_MARGIN) / Math.cos(Math.PI / G.CASE_LATHE_SEG);
   if (rStep > RA - CLEAR_MARGIN)
     console.warn(`§187: the glass step's radius ${rStep.toFixed(3)} reaches the aperture ${RA.toFixed(3)} — `
       + 'the raised step no longer fits through its own window; the tall band has outgrown the ring');
