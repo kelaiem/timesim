@@ -24,6 +24,10 @@
 // wrong SENSE reads 0.5 at angle 0 and drifts everywhere else, so the spread
 // across angles is gated too: it is what catches a sign.
 //
+// AND THE STEP: on every row the brick frame can hold, each shaft's gears
+// stand the frame's step apart (src/technic-frame.js rowLayout — two layers
+// where a gear would reach its neighbour's column), read off the drawn gears.
+//
 // CONTROLS, both kinds, so a clean result means something:
 //   · must-hit — every PARALLEL pair, which the page phased by its closed form
 //     before this probe existed, must read 0.5. That is the instrument meeting
@@ -56,7 +60,7 @@ page.on('pageerror', (e) => warnings.push('PAGEERROR ' + String(e)));
 await page.goto(`http://127.0.0.1:${PORT}/technic.html`, { waitUntil: 'load', timeout: 60000 });
 await page.waitForFunction(() => !!window.__technic, null, { timeout: 60000 });
 
-const out = await page.evaluate(async () => {
+const { rows: out, steps } = await page.evaluate(async () => {
   const THREE = await import('three');
   const T = window.__technic;
   const ANGLES = [0, 0.37, 1.9, 7.3, 41.1];
@@ -123,7 +127,15 @@ const out = await page.evaluate(async () => {
       });
     });
   }
-  return rows;
+  // THE STEP: each drawn shaft's gears along its own axis, in build order
+  // (driven first), read off the meshes — what the page drew, not what it meant
+  const steps = [];
+  for (const gen of ['technic_classic', 'technic_2026']) {
+    T.build(gen);
+    T.built.forEach((res, k) => steps.push({ gen, row: k,
+      along: res.shafts.map((sh) => sh.rotor.children.filter((c) => c.userData?.teeth).map((g) => g.position.z)) }));
+  }
+  return { rows, steps };
 });
 await browser.close(); srv.kill();
 
@@ -145,6 +157,27 @@ for (const r of out) {
 }
 for (const r of out) if (r.before !== undefined)
   console.log(`  before: ${r.gen} row ${r.chain} ${r.mesh} unphased (pinion at 0) read |off−½| = ${dist(r.before, 0.5).toFixed(4)} of a pitch`);
+// THE DRAWN STEP IS THE FRAME'S: on every row src/technic-frame.js frames,
+// each compound shaft's driver stands rowLayout's step (8 or 16 mm) from its
+// driven gear. Rows the frame refuses keep the page's one-layer step and are
+// counted, not judged. Control: the frame's steps against a uniform 8 must
+// differ somewhere, or this row of the probe compares nothing.
+const { rowLayout } = await import('../src/technic-frame.js');
+const { TECHNIC_FORK } = await import('../src/layout.js');
+let stepRows = 0, stepDiffers = false;
+for (const st of steps) {
+  const lay = rowLayout(st.gen, TECHNIC_FORK.rows[st.row].chains[st.gen]);
+  if (!lay.framed) continue;
+  stepRows++;
+  lay.shafts.forEach((sh, j) => {
+    if (sh.gears.length < 2 || j === 0) return;
+    const want = sh.gears[1].y - sh.gears[0].y, drawn = st.along[j][1] - st.along[j][0];
+    if (want !== 8) stepDiffers = true;
+    if (Math.abs(drawn - want) > 1e-9) { console.log(`✗ ${st.gen} row ${st.row + 1} shaft ${j}: drawn step ${drawn} mm, the frame's ${want}`); fails++; }
+  });
+}
+console.log(`\nsteps: ${stepRows} framed rows drawn on the frame's step${stepDiffers ? '' : ' — but every step is 8, so the comparison could not tell the laws apart'}`);
+if (!stepDiffers) fails++;
 const kinds = new Set(out.map((r) => r.class));
 console.log(`\ncontrols: ${out.filter((r) => r.class !== 'right-angle').length} parallel rows are the must-hit, `
   + `every row's injected half pitch the must-fail; classes seen: ${[...kinds].join(', ')}`);

@@ -32,7 +32,9 @@ measures off the drawn gears at five angles, against a half-pitch control.
 `src/technic-frame.js` (§219 tier three (b)) solves the BRICK FRAME that holds
 those rows: 1×1 columns, a Technic brick on top, a jumper under a half-stud
 axle. Its step between stages is DERIVED (two layers where a gear's tip reaches
-the neighbouring column) and is not yet the drawn view's. **Its dimensions are
+the neighbouring column), and the drawn view reads it (`rowLayout`, held by
+`probe-technic-phase.mjs`). A turntable's parallel mesh is held to the lattice
+like any spur since landing C1. **Its dimensions are
 MEASURED off real LEGO parts**: `vendor/ldraw/technic-parts.mpd` packs the LDraw
 library's files for every part the catalogues and the frame name
 (`tools/ldraw-vendor.mjs` reads that list; never type it), `src/ldraw.js` parses

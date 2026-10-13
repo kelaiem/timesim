@@ -4073,8 +4073,13 @@ export function solveStopWork({
 //   spur           — plain parallel-axis gear
 //   doubleBevel    — bevelled both sides; DOES mesh on parallel axes, which is
 //                    what double bevel is for. 28 and 36 exist only this way.
-//   turntable      — parallel-axis, but mounts on its own frame, so its centre
-//                    distance is not a lattice quantity
+//   turntable      — parallel-axis, held to the lattice like a spur. Tier one
+//                    exempted it ("it mounts on its own frame"); §219 tier
+//                    three (b) landing C found no frame that does that: every
+//                    axle of a brick frame stands on the 4 mm lattice, and an
+//                    off-lattice centre distance such as 56:14's 35 mm is not
+//                    4·√(a²+b²) for any whole a, b, so not even a diagonal
+//                    reaches it
 //   turntableBevel — the 60T top (18938) is a BEVEL: a 90° mesh, never parallel
 // `slips: true` marks a clutch gear. It slips above a torque threshold, so it
 // is barred from a going train: a train that slips does not keep time. That
@@ -4120,14 +4125,13 @@ export const ratEq = (a, b) => a.n === b.n && a.d === b.d;
 export const ratStr = (r) => (r.d === 1n ? String(r.n) : `${r.n}/${r.d}`);
 
 // Mesh admissibility for `a` driving `b`. PARALLEL pairs sit at half the sum
-// of their counts and that distance must land on the lattice. A turntable
-// rides its own frame, so it is exempt. A RIGHT-ANGLE pair needs exactly one
+// of their counts and that distance must land on the lattice, a turntable's
+// included (see the kind's note above). A RIGHT-ANGLE pair needs exactly one
 // bevel-class member driven by (or driving) a parallel-class one; two
 // bevel-class members meshing is not a thing this catalogue does. Returns null
 // for an inadmissible pair, else { class, cd } (cd in mm, null at 90°).
 const _PARALLEL = new Set(['spur', 'doubleBevel', 'turntable']);
 const _BEVEL = new Set(['bevel', 'turntableBevel']);
-const _EXEMPT = new Set(['turntable', 'turntableBevel']);
 export function catalogueMesh(a, b, cat, { goingTrain = true } = {}) {
   if (goingTrain && (a.slips || b.slips)) return null;
   const bevels = (_BEVEL.has(a.kind) ? 1 : 0) + (_BEVEL.has(b.kind) ? 1 : 0);
@@ -4138,7 +4142,6 @@ export function catalogueMesh(a, b, cat, { goingTrain = true } = {}) {
     return { class: 'right-angle', cd: null };
   }
   const cd = (a.teeth + b.teeth) / 2;
-  if (_EXEMPT.has(a.kind) || _EXEMPT.has(b.kind)) return { class: 'parallel-exempt', cd };
   if (!Number.isInteger(cd) || cd % cat.lattice_mm !== 0) return null;
   return { class: 'parallel', cd };
 }
@@ -4184,9 +4187,11 @@ export function solveRatio(target, cat, { maxLen = 6, ...opts } = {}) {
 // law at the catalogue's own escapement), so a re-geared steel train fails the
 // boot assert below instead of carrying a fork for a ratio it no longer has.
 //
-// Under technic_2026 the solver prefers turntable chains: fewer meshes, at
-// the price of a 90° mesh on the 60T's bevel top or a 56T turntable on its own
-// frame. Both generations are kept so that dependency is data.
+// Under technic_2026 the solver prefers turntable chains where it can: fewer
+// meshes, at the price of a 90° mesh on the 60T's bevel top. Its motion works
+// read 24:8 × 56:14 until landing C held the turntable to the lattice; the 56T
+// at 35 mm was unbuildable, and the solver now answers 24:8 × 64:16. Both
+// generations are kept so that dependency is data.
 //
 // SOLVED AT THE IDENTITY SPEC. The reserve target is 7h/100 (the hand's sweep
 // over the barrel's usable turns), so it moves with `reserveHours`; at any
@@ -4202,7 +4207,7 @@ export const TECHNIC_FORK = Object.freeze({
     { key: 'fourth→escape', derivedFrom: `RATE_TABLE's law at ${TECHNIC_VPH} vph on an ${TECHNIC_ESCAPE_TEETH}T wheel`,
       chains: { technic_classic: [[60, 8]], technic_2026: [[60, 8]] } },
     { key: 'motion works', derivedFrom: '12 hours to the hour hand’s one turn',
-      chains: { technic_classic: [[16, 8], [16, 8], [24, 8]], technic_2026: [[24, 8], [56, 14]] } },
+      chains: { technic_classic: [[16, 8], [16, 8], [24, 8]], technic_2026: [[24, 8], [64, 16]] } },
     { key: 'reserve reduction', derivedFrom: 'the hand’s sweep over the barrel’s usable turns',
       chains: { technic_classic: [[24, 16], [28, 20]], technic_2026: [[24, 16], [28, 20]] } },
   ]),
