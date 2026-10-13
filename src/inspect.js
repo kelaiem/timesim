@@ -223,8 +223,11 @@ export const MECH_GRAPH = {
     ['Alarm release seat', 'Dial'],          // TODO 144: the seat's two posts hang from the sheet's back face at two free azimuths (130°, 270°) — the feeler bracket's own mounting
     ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guides hang from the sheet (az 60/220/300, outside the wheel's tips) — TODO 222: slotted HELIX plates its rollers climb, where posts and sleeves stood
-    ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/350 — TODO 170 moved the third off the silence rocker's lug — the selector's pattern one band deeper)
-    ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
+    ['Alarm release sleeve', 'Dial'],        // §45 / TODO 236: the sleeve's three helix plates hang from the sheet (az 105/250/300 — TODO 222's selector pattern one band deeper; the third outboard of the selector's own pins), its rollers riding their slots
+    ['Alarm release lifter', 'plate'],       // §45 / TODO 236: the bell crank's two posts stand on the base plate's dial-side face either side of the collar, carrying the studs its hubs turn on
+    ['Alarm release crank', 'Dial'],         // TODO 236: the fold-added crank turns on a stud planted in the dial sheet (the release seat's mounting) at 328°
+    ['Alarm release link', 'Alarm release lifter'], // TODO 236: the tie link is carried on its two pins — the lifter's output pin…
+    ['Alarm release link', 'Alarm release crank'],  // …and the crank's input pin (a pinned two-force member: its pins ARE its support)
     ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
     // §261 2c: the link left the three-quarter plate with the fold — its beak's
     // post is planted in the base plate's dial face now, and the rod crosses no
@@ -354,11 +357,14 @@ export const MECH_GRAPH = {
                                              // the seat blade — the lift DRIVEN, the bias that picks which heart wins
     ['Alarm crown', 'Alarm release lifter'], // §45: the stem's bevel collar cams the lifter's head down on the pull
                                              // (the keyless sliding-pinion idiom — the ratio is the machined taper)
-    ['Alarm release lifter', 'Alarm release sleeve'], // §45: the fork's plates on the sleeve's tab — positive both ways
+    ['Alarm release lifter', 'Alarm release link'], // TODO 236: the lifter's output pin pulls the tie link (a pivoted bell crank, 1 : A_out/A_in)
+    ['Alarm release link', 'Alarm release crank'],  // TODO 236: the link pulls the crank's input arm round its stud
+    ['Alarm release crank', 'Alarm release sleeve'], // TODO 236: the crank's roller pushes the sleeve's fork TANGENTIALLY (TODO 222's drive) —
+                                             // the sleeve turns, and its three helices lift it; the return is the cone's own push back down
     ['Alarm release sleeve', 'Alarm disc'],  // §45: the 45° cone on the follower's tail pin, at ANY tube azimuth —
                                              // lifting follower A releases the tube to the §25 C friction coupling:
                                              // the hider's second input, and the hand SWEEPS while being set
-    ['Alarm release lifter', 'Alarm silence rocker'], // §45 stage 2: the run's underside presses the rocker's paddle
+    ['Alarm release sleeve', 'Alarm silence rocker'], // §45 stage 2 / TODO 236: the sleeve's arm presses the rocker's paddle (it read the lifter's run until the run became a link)
     ['Alarm silence rocker', 'Alarm release feeler'], // §45 stage 2: the finger captures the tail — no rise, no drop, no ring
     ['Alarm switch', 'Alarm link'],          // §35: the link beak ON the castellations, 120° around — the same
                                              // parity the brake beak reads, now carried away as metal
@@ -774,13 +780,16 @@ const EXPECTED_PAIRS = [
                                             // carries it (the Dial ⇄ Hour wheel precedent); the link's real
                                             // corridor past Dial furniture is ray-asserted at the build
   ['Alarm selector', 'Dial'],               // the nesting artifact + the guide plates' sheet anchors (TODO 222: plates, where posts stood)
-  ['Alarm release sleeve', 'Dial'],         // §45: the same nesting artifact + the sleeve posts' sheet anchors
+  ['Alarm release sleeve', 'Dial'],         // §45: the same nesting artifact + the helix plates' sheet anchors
   ['Alarm release sleeve', 'Alarm disc'],   // §45: the cone ⇄ tail-pin working contact (setting parity)
-  ['Alarm release lifter', 'Alarm release sleeve'], // §45: the fork's running fit on the tab
   ['Alarm release lifter', 'Alarm crown'],  // §45: the head riding the stem collar
-  ['Alarm release lifter', 'Dial'],         // §45: the fork grips a dialFace descendant — the tab re-attributed
+  ['Alarm release lifter', 'Alarm release link'],  // TODO 236: the output pin in the link's eye (a running fit)
+  ['Alarm release link', 'Alarm release crank'],   // TODO 236: the crank's input pin in the link's eye
+  ['Alarm release crank', 'Alarm release sleeve'], // TODO 236: the drive roller in the sleeve's fork (a running fit, every parity)
+  ['Alarm release crank', 'Dial'],          // TODO 236: nesting artifact + the stud's sheet anchor
+  ['Alarm release link', 'Dial'],           // TODO 236: the link's crank-end eye rides a dialFace descendant's pin — re-attributed
                                             // through nesting (the Alarm link ⇄ Dial precedent)
-  ['Alarm release lifter', 'Alarm silence rocker'], // §45 stage 2: the run ⇄ paddle working contact (every parity)
+  ['Alarm release sleeve', 'Alarm silence rocker'], // §45 stage 2 / TODO 236: the sleeve arm ⇄ paddle working contact (every parity)
   ['Alarm silence rocker', 'Alarm release feeler'], // §45 stage 2: the finger ⇄ tail working contact (setting parity)
   ['Alarm silence rocker', 'Dial'],         // §45 stage 2: nesting artifact + the lugs' sheet anchors
   // (TODO 189 RETIRED ['Alarm winding train', 'Dial'] — the SAME beak contact
@@ -1397,6 +1406,29 @@ export const AXES = [
       tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
       maintHold: f < 1 ? Math.min(1, (f * 48) / 47) : 1,
       maintPickUp: f >= 1 ? 1 : 0,
+    }),
+  },
+  {
+    // TODO 64 / TODO 236 — THE ALARM CROWN'S PULL, SWEPT. Every axis above pins
+    // `alarmCrownPullT` (1 on 'alarm', 0 on 'alarmWind', nothing elsewhere), so
+    // before this one the whole §45 release run — the lifter on its studs, the
+    // tie link, the crank, the sleeve turning and lifting on its helices, and
+    // the silence rocker riding the sleeve's arm — never moved during a sweep,
+    // never registered as reversing, and was never asked what restores it.
+    // PULLED → PUSHED IN within the axis (1 − |2f − 1|: out, then back), because
+    // one stroke is not a reversal (alarmToggle's reason), and a pure function
+    // of f (alarmPress's), so the axis is index-sliceable. setPose holds the
+    // pull exactly (`alarmCrownPullPosed`), where a zero-dt tick would snap it
+    // to a plateau. Disarmed and not ringing: the state a hand pulls the crown
+    // in to SET the alarm, the one the cone exists for.
+    // n = 96: the collar slides CROWN_PULL_DIST (5 u) each way, so 48 samples a
+    // stroke step it 0.104 u, under CLEAR_MARGIN; the chain's own members move
+    // far less (the link's throw is under half a unit).
+    name: 'alarmPull',
+    n: 96,
+    pose: (f) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
+      alarmCrownPullT: 1 - Math.abs(2 * f - 1), alarmOn: 0, alarmReleased: 0,
     }),
   },
   {
@@ -3489,7 +3521,7 @@ export const INTRA_UNIT_CONTACTS = [
   // at a different member in silence. Exactly §171's fix on the lock lever's
   // own pivot post, and TODO 50's on the stem journal, for the third time.
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'alarmStrikeSleeve', why: 'lock collar pressed on the strike arbor — the sleeve IS that arbor\'s turned step' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'alarmLifterPost', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'alarmLifterPost', why: 'return blade root anchored at its post — §48\'s slaved-blade convention' },
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColPawlNose', why: '§163: the driver pawl\'s NOSE seated in a root corner of the saw — the seat is solved against ratchetPoly at every pose (the same polygon the teeth were cut from), not parked at a measured-once distance, and alarmHandoffs asserts it every run' },
   // Surfaced the moment the signature above started reading geometry swaps
   // (TODO 1). Both are the hairspring's two ends, and both were always there:
@@ -3522,21 +3554,14 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm setting arbor — the §22/§23 setting-cock furniture:
   { unit: 'Alarm setting arbor', a: 'CylinderGeometry#3', b: 'alarmArborCockArm', why: '§121: the setting cock\'s arm pressed on its pillar (0.13 of the pillar 0.15 deep in the arm — a seated post, TODO 12\'s cock idiom)' },
   { unit: 'Alarm setting arbor', a: 'alarmArborCockArm', b: 'alarmArborCockBush', why: '§121: the bush pressed into the cock arm\'s eye — §23\'s bearing-cock convention, arm ends at its ring' },
-  // Alarm release lifter — §235's YOKE. Every selector here was a geometry
-  // INDEX until §235 (`CylinderGeometry#8`, `BoxGeometry#14`…), and an index is
-  // a position in the unit's mesh list: adding the yoke's members renumbered
-  // them all, which is §182's failure mode exactly — a row that still matches,
-  // now naming a different pair, buying silence for whatever lands between the
-  // two it used to name. Two of the old rows had already drifted that way and
-  // said so in their own text: `CylinderGeometry#2` was called "the plunger
-  // EYE" and was the blade STUB, and `BoxGeometry#15` was called "the lower
-  // cheek block" and is the cheek BRIDGE. The meshes carry names now.
-  { unit: 'Alarm release lifter', a: 'alarmLifterPost', b: 'alarmLifterBracketArm', why: '§121: the bracket post seated in its arm (kiss at d<1e-4 — a designed seat, not a foul)' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterBracketArm', b: 'alarmLifterEye', why: '§235: the guide ring carried on its bracket arm — the arm ends at the ring\'s outer wall (TODO 23\'s rule)' },
-  { unit: 'Alarm release lifter', a: 'alarmYokeProng', b: 'alarmLifterEye', why: '§235: the yoke\'s prong in its guide bore — the guidance station, a working slide beside the cam' },
-  { unit: 'Alarm release lifter', a: 'alarmYokeShoulder', b: 'alarmLifterBlade', why: '§235: the return blade bearing UP under the prong\'s shoulder — the yoke\'s spring, pinned to the eye rather than to the cam' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterGuidePost', b: 'alarmLifterCheek', why: '§121: the mid-guide post in its cheek blocks (§103\'s stack — the cheeks are the second guidance station)' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterGuidePost', b: 'alarmLifterCheekBridge', why: '§121: the same post socketed in the cheek bridge (0.44 of the post in the block — the socket)' },
+  // Alarm release lifter — TODO 236's BELL CRANK on two studs. §235's yoke,
+  // its eyes, prongs, shoulders, cheeks and mid-guide are gone with their rows.
+  { unit: 'Alarm release lifter', a: 'alarmLifterStud', b: 'alarmLifterPost', why: 'TODO 236: each stud planted in its post — the bell crank\'s fixed pivot, cantilevered inboard to the hub' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterHub', b: 'alarmLifterStud', why: 'TODO 236: the hub turns on its stud in a bore PIVOT_BORE_CLEAR wider — the lifter\'s bearing (addUpperPivot\'s fit)' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBladeTab', b: 'alarmLifterBlade', why: 'TODO 236: the return blade bearing UP under its tab at the pad\'s station — §48\'s slaved blade, seating the pad on the collar' },
+  // Alarm release crank — TODO 236's fold-added crank on its stud:
+  { unit: 'Alarm release crank', a: 'alarmReleaseCrankStud', b: 'alarmReleaseCrankCap', why: 'TODO 236: the cap pressed on the stud\'s plate-side end — the hub\'s axial retainer' },
+  { unit: 'Alarm release crank', a: 'alarmReleaseCrankStud', b: 'alarmReleaseCrankCollar', why: 'TODO 236: the collar pressed on the stud on the hub\'s dial side — the other retainer' },
   // Alarm gong — §56:
   { unit: 'Alarm gong', a: 'alarmGongArc', b: 'alarmGongPost', why: '§121: the wire\'s foot brazed to its post — the gong\'s ONLY fixing (§56: the far end rings free, and the clamped-free bar is the voice)' },
   // Alarm click — §99's click on its post:
@@ -3652,8 +3677,9 @@ export const INTRA_UNIT_CONTACTS = [
   // extrude — it was `BoxGeometry#0`, an index the next inserted member would
   // have slid onto its neighbour (TODO 50's lesson). The lugs keep their
   // indices: the mesh count did not change.
-  { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'BoxGeometry#5', why: '§121: a fork prong rooted in the rocker bar' },
-  { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'BoxGeometry#6', why: '§121: the second prong, same root' },
+  // TODO 236 named the lugs too: the paddle's bridge, built above them, slid
+  // them from #5/#6 to #6/#7.
+  { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'alarmSilLug', why: '§121: the bracket\'s two lugs, the bar running between them on its pivot' },
   { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'alarmSilPivot', why: '§121: the rocker bar on its pivot (kiss — the running fit)' },
   { unit: 'Alarm silence rocker', a: 'alarmSilBar', b: 'alarmSilBlade', why: '§121: the blade rooted in the rocker bar' },
   // Alarm hammer — §48's return:
@@ -3798,6 +3824,7 @@ export const INTRA_TIER_SCOPE = [
   'Alarm lifting lever',   // §198 — two bars and a post: its FF/MM rows are gated with the rest of the strike group
   'Alarm switch', 'Alarm selector', 'Alarm disc',
   'Alarm release lifter', 'Alarm release feeler', 'Alarm silence rocker',
+  'Alarm release crank', 'Alarm release link', 'Alarm release sleeve',   // TODO 236 — the release run's new members join the tier with the group they belong to
   'Alarm setting arbor', 'Alarm setting idler',
   // §129 — the subtractor put four rotating bodies on one arbor and three
   // stations in one unit, which is exactly the population this tier exists for
@@ -4744,9 +4771,8 @@ export const PLATE_SEATS = [
   { unit: "Alarm setting idler", mesh: "CylinderGeometry#3", kind: "planted", why: "an idler's stud, planted in the dial side" },
   { unit: "Alarm setting idler", mesh: "CylinderGeometry#5", kind: "planted", why: "an idler's stud, planted in the dial side" },
   { unit: "Alarm setting arbor", mesh: "CylinderGeometry#3", kind: "pivot", why: "the arbor's pivot, seated in the dial side" },
-  { unit: "Alarm release lifter", mesh: "alarmLifterPost", kind: "planted", why: "the lifter's post, planted in the plate" },
+  { unit: "Alarm release lifter", mesh: "alarmLifterPost", kind: "planted", why: "TODO 236: the bell crank's two posts, planted in the plate's dial-side face either side of the collar" },
   { unit: "Alarm release feeler", mesh: "alarmFeelerLug", kind: "planted", why: "TODO 222: the feeler bracket's two lugs, planted on the plate's dial-side face (re-hung from the dial sheet, whose 4.1 u drop crossed the selector fork's band)" },
-  { unit: "Alarm release lifter", mesh: "alarmLifterGuidePost", kind: "planted", why: "the guide post, planted in the plate" },
   { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerStud", kind: "planted", why: "§268: the hammer spiral's stud, planted in the rim (GONG_RIM_PLANT) beside the post — a short pin up to the spiral band's top" },
@@ -6323,22 +6349,42 @@ const ALARM_HANDOFFS = [
     unitA: 'Alarm disc', meshA: 'alarmPinBSpring',
     unitB: 'Alarm disc', meshB: 'alarmPinArmBBar',
   },
-  // §45 — the release run, in drive order. The blade preloads the head onto
-  // the collar at every parity (plateau or ramp), and the fork's plates run
-  // at the TODO 20 working clearance, so both measure as contact everywhere;
-  // the cone touches the tail pin ONLY at the setting parity — at rest the
-  // whole skirt sits one ALARM_SLEEVE_GAP below the pin's tip, and armed the
-  // sleeve does not move (the ring path owns that parity).
+  // §45 — the release run, in drive order. The blades preload the pad onto
+  // the collar at every parity (plateau or ramp); since TODO 236 the run is a
+  // chain of PINNED members — the lifter's output pin in the link's eye, the
+  // link's other eye on the crank's pin, the crank's roller in the sleeve's
+  // fork, and the sleeve's three rollers in their helix slots — every one a
+  // running fit, so each measures as contact everywhere; the cone touches the
+  // tail pin ONLY at the setting parity — at rest the whole skirt sits one
+  // ALARM_SLEEVE_GAP below the pin's tip, and armed the sleeve does not move
+  // (the ring path owns that parity).
   {
     label: 'stem collar ⇄ lifter head',
     unitA: 'Alarm crown', meshA: 'alarmStemCollar',
     unitB: 'Alarm release lifter', meshB: 'alarmLifterHead',
   },
   {
-    label: 'lifter fork ⇄ sleeve tab',
-    unitA: 'Alarm release lifter', meshA: 'alarmLifterFork',
-    unitB: 'Alarm release sleeve', meshB: 'alarmSleeveTab',
+    label: 'lifter output pin ⇄ link eye',
+    unitA: 'Alarm release lifter', meshA: 'alarmLifterLinkPin',
+    unitB: 'Alarm release link', meshB: 'alarmReleaseLinkEye',
   },
+  {
+    label: 'link eye ⇄ crank input pin',
+    unitA: 'Alarm release link', meshA: 'alarmReleaseLinkEye',
+    unitB: 'Alarm release crank', meshB: 'alarmReleaseCrankLinkPin',
+  },
+  {
+    label: 'crank roller ⇄ sleeve fork',
+    unitA: 'Alarm release crank', meshA: 'alarmReleaseCrankRoller',
+    unitB: 'Alarm release sleeve', meshB: 'alarmSleeveFork',
+  },
+  // TODO 236 — the sleeve's HELIX, TODO 222's construction one band deeper:
+  // each station's roller in its plate's slot, a working fit either side.
+  ...[1, 2, 3].map((i) => ({
+    label: `sleeve roller ${i} ⇄ helix slot ${i}`,
+    unitA: 'Alarm release sleeve', meshA: `alarmSleeveGuideRoller${i}`,
+    unitB: 'Alarm release sleeve', meshB: `alarmSleeveGuide${i}`,
+  })),
   {
     label: 'sleeve cone ⇄ follower tail pin',
     unitA: 'Alarm release sleeve', meshA: 'alarmSleeveSkirt',
@@ -6346,12 +6392,13 @@ const ALARM_HANDOFFS = [
     expect: { disarmed: 'free', armed: 'free', setting: 'contact', dropped: 'free' },
   },
   // §45 stage 2 — the silence run: the paddle is blade-biased onto the
-  // run's underside at every parity; the finger touches the tail only at
-  // the setting parity (riding must never feel the rocker — the rest cap
-  // exceeds the full drop, asserted at the build).
+  // sleeve's arm at every parity (TODO 236: it rode the lifter's run until the
+  // run became a link — the arm lifts exactly as the run did); the finger
+  // touches the tail only at the setting parity (riding must never feel the
+  // rocker — the rest cap exceeds the full drop, asserted at the build).
   {
-    label: 'lifter run ⇄ rocker paddle',
-    unitA: 'Alarm release lifter', meshA: 'alarmLifterRun',
+    label: 'sleeve arm ⇄ rocker paddle',
+    unitA: 'Alarm release sleeve', meshA: 'alarmSleeveSilArm',
     unitB: 'Alarm silence rocker', meshB: 'alarmSilPaddle',
   },
   {
@@ -8772,7 +8819,14 @@ export const STOCK_KIND_BY_MESH = {
   // SPRING_FLAT_U. Everything else in both units is sheet at STOCK_MIN_U
   // and answers to the wheel floor with no entry, on purpose.
   alarmTailPin: 'pivot',
-  alarmSleevePost: 'pivot',
+  // TODO 236 — the release run as pinned members: every pin, stud and roller
+  // is pin stock at or over the pivot floor (the selector's guide pins' and
+  // rollers' precedent, TODO 222); hubs, arms, eyes, plates and the bar are
+  // sheet at STOCK_MIN_U and answer to the wheel floor with no entry.
+  alarmSleeveGuidePin1: 'pivot', alarmSleeveGuidePin2: 'pivot', alarmSleeveGuidePin3: 'pivot',
+  alarmSleeveGuideRoller1: 'pivot', alarmSleeveGuideRoller2: 'pivot', alarmSleeveGuideRoller3: 'pivot',
+  alarmReleaseCrankStud: 'pivot', alarmReleaseCrankPin: 'pivot', alarmReleaseCrankRoller: 'pivot', alarmReleaseCrankLinkPin: 'pivot',
+  alarmLifterStud: 'pivot', alarmLifterLinkPin: 'pivot',
   // §104 — the governor's kinds, declared on arrival (no defaults left to
   // the report): shafts and studs are shaft/pin stock; the solved ring is
   // its own kind above; the collar is a turned bush (pin-class wall, the
@@ -8793,9 +8847,7 @@ export const STOCK_KIND_BY_MESH = {
   alarmGovAnchor: 'wheel', alarmGovAnchorArm: 'wheel', alarmGovPallet: 'wheel',
   alarmGovRing: 'ring',
   alarmGovRingCollar: 'pivot',
-  alarmLifterPlunger: 'pivot',
   alarmLifterHead: 'pivot',
-  alarmYokeProng: 'pivot',   // §235: the yoke's prongs are the plunger's own section, guided in bores
   alarmLifterBlade: 'spring',
   // §45 stage 2:
   alarmSilPivot: 'pivot',
@@ -8949,9 +9001,14 @@ export const SLENDER_WAIVERS = {
   // went with it: `slenderness` reports no over-ceiling row for this unit, so
   // the waiver names a unit that no longer has one. Deleting it is part of the
   // fix — §54's own rule, and what makes a stale waiver a gate failure.
-  // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
-  // stands 0.2507 away and leaves 0.1007.
-  'Alarm release lifter': 'TODO 109',
+  // RETIRED by TODO 236 'Alarm release lifter' (was TODO 109, λ 71.3 on the
+  // lifter's 23 u run). Not thickened — the member was retired: the run became
+  // a pinned tie link between two bell cranks, and the lifter's own members
+  // are a pad arm, a frame and an output arm under 1.4 u each. `slenderness`
+  // reports no over-ceiling row for this unit, so the waiver would name a unit
+  // that no longer has one. (The tie link is its own unit and its row is
+  // REPORTED, §54's covenant; TODO 236's record says why a tie is not judged
+  // by bending.)
   // TODO 149 RETIRED 'Minute jumper' (was λ 52.9, the lifter link). The bar's
   // width is SOLVED from this ceiling now — `JMP_LIFTER_W` in main.js, its
   // span bound over SLENDER_TARGET — so the row is gone rather than excused,
@@ -11605,6 +11662,24 @@ export function checkTransfers(clock) {
       if (Math.abs(q.moment_mNmm - want) > REL_TOL * Math.max(1, Math.abs(want)))
         problems.mismatched.push({ what: 'moment ≠ load·e·UNIT_MM', declared: q.moment_mNmm, recomputed: want });
     }
+    // TODO 236 — a WEDGE re-derives its axial load from the face's angle, the
+    // μ along its meridian and its radial load: axial = radial·(tan β + μ)/
+    // (1 − μ·tan β). A wedge whose μ·tan β reaches 1 locks — no axial load
+    // moves it — and is a mismatch, not a row with an infinite figure.
+    if (row.idiom === 'wedge') {
+      const need = ['coneAngle_deg', 'mu', 'radial_mN', 'axial_mN'];
+      const missing = need.filter((k) => typeof q[k] !== 'number' || !isFinite(q[k]));
+      if (missing.length) problems.malformed.push(`a wedge row must carry ${missing.join(', ')}`);
+      else {
+        const t = Math.tan(q.coneAngle_deg * Math.PI / 180);
+        if (q.mu * t >= 1) problems.mismatched.push({ what: 'wedge locks: μ·tan β ≥ 1', declared: q.axial_mN, recomputed: Infinity });
+        else {
+          const want = q.radial_mN * (t + q.mu) / (1 - q.mu * t);
+          if (Math.abs(q.axial_mN - want) > REL_TOL * Math.max(1, Math.abs(want)))
+            problems.mismatched.push({ what: 'axial ≠ radial·(tan β + μ)/(1 − μ·tan β)', declared: q.axial_mN, recomputed: want });
+        }
+      }
+    }
     if (row.envelope && row.envelope.name in TRANSFER_ENVELOPES) {
       const [lo, hi] = TRANSFER_ENVELOPES[row.envelope.name];
       const rel = row.envelope.rel || 'within';
@@ -11636,9 +11711,18 @@ export function checkTransfers(clock) {
   // classifier the real rows go through, or this check has died quietly.
   const ctrl = judge({ site: '__control', idiom: 'wishfulThinking', unit: '__no_such_unit',
     load: { value: 1 }, envelope: { name: 'NO_SUCH_WINDOW', value: 0 } });
-  const control = (ctrl.malformed.length >= 3 && ctrl.stale.length >= 1)
-    ? 'PASS — synthetic malformed row detected on every tier it violates'
-    : 'FAIL — the classifier no longer catches a malformed row';
+  // TODO 236 — and the wedge's relation, both ways: a row whose axial is the
+  // plain wedge's must pass, and the same row 10% off, or with a face that
+  // locks, must be caught (a relation nobody has seen fail is a comment).
+  const wedgeRow = (axial, mu = 0.2) => ({ site: '__wedge', idiom: 'wedge', unit: payload.rows[0]?.unit,
+    load: { value: axial, unit: 'mN', source: 'control' }, why: 'control',
+    quantities: { coneAngle_deg: 45, mu, radial_mN: 100, axial_mN: axial } });
+  const wGood = judge(wedgeRow(150)), wOff = judge(wedgeRow(165)), wLock = judge(wedgeRow(150, 1));
+  const wedgeOk = wGood.mismatched.length === 0 && wGood.malformed.length === 0
+    && wOff.mismatched.length === 1 && wLock.mismatched.length === 1;
+  const control = (ctrl.malformed.length >= 3 && ctrl.stale.length >= 1 && wedgeOk)
+    ? 'PASS — synthetic malformed row detected on every tier it violates; a wedge 10% off its relation, and one that locks, both caught'
+    : `FAIL — the classifier no longer catches ${wedgeOk ? 'a malformed row' : 'a wedge off its relation'}`;
   const byIdiom = {};
   for (const r of payload.rows) byIdiom[r.idiom] = (byIdiom[r.idiom] || 0) + 1;
   return {
@@ -13188,6 +13272,36 @@ LINE_SPECS.push({
   ],
 });
 
+// TODO 236 — THE RELEASE RUN, designed in a line and folded. Its line is the
+// collar's rise (the cone's stroke plus its rest gap), the pad's arm solved
+// against the working fit, and the helix the sleeve climbs, cut at its
+// rollers' radius to the turn the chain delivers; the fold is everything that
+// carries the pull from the crown's corner to the sleeve (the lifter's output
+// arm, the tie link, the crank and its station), and none of its stations
+// appears here. `L.release` is the build's own law object
+// (`ALARM_RELEASE_LAWS`), so no law is written twice.
+LINE_SPECS.push({
+  name: 'alarm release run',
+  group: 'Alarm release sleeve',
+  path: 'crown collar → lifter pad (bell crank on two studs) → tie link → crank on the dial sheet → roller in the sleeve’s fork, tangential → sleeve on three helices → 45° cone on follower A’s tail pin',
+  rows: [
+    { key: 'travel', kind: 'spec', unit: 'u', value: (r, L) => L.release.travel, measure: 'sleeveLift',
+      derivedFrom: '§45: the sleeve rises the cone’s stroke (ALARM_SLEEVE_DR, the tail pin’s radial travel at 45°) plus the rest gap (ALARM_SLEEVE_GAP) — and the collar’s rise is cut to the same figure, so the line carries it 1:1 at its input' },
+    { key: 'padArm', kind: 'spec', unit: 'u', value: (r, L) => ((r.travel / 2) ** 2 + L.release.fit ** 2) / (2 * L.release.fit), measure: 'padArm',
+      derivedFrom: 'TODO 236: the lifter’s pad arm is the LEAST whose dead-centre swing through the rise scrubs the pad along the collar by no more than the working fit, a(1 − cos(asin(c/2a))) = δ ⇒ a = ((c/2)² + δ²)/(2δ)' },
+    { key: 'helixR', kind: 'spec', unit: 'u', value: (r, L) => L.release.helixR, measure: 'helixRollerR',
+      derivedFrom: 'TODO 236: the helix is cut at the rollers’ centres, mid-plate, the plates one margin outside the selector rocker’s orbit or at the owner’s 5.0 floor (ALARM_SLEEVE_HELIX_R)' },
+    { key: 'turn', kind: 'spec', unit: 'rad', value: (r, L) => L.release.turn, measure: 'sleeveTurn',
+      derivedFrom: 'TODO 236: the sleeve turns as far as the chain carries the fork’s roller at full pull (alarmReleaseChainAt): the roller’s azimuth about the tube, rest to pulled' },
+    { key: 'helixTan', kind: 'spec', unit: 'ratio', value: (r) => r.travel / (r.helixR * r.turn), measure: 'helixTanMeas',
+      derivedFrom: 'TODO 236: the slots are cut so the travel is climbed over that turn at their own radius, tan α = travel / (R·turn) — the helix the sleeve’s law prices, within a degree of the angle that minimises the drive’s work (asserted at the build)' },
+    { key: 'hand', kind: 'spec', unit: 'ratio', value: (r, L) => L.release.hand, measure: 'sleeveHand',
+      derivedFrom: 'TODO 236: the hand the helix solve chose (the cheaper of the two at the drive’s station), read as the sign of the sleeve’s dial-local turn on the pull' },
+    { key: 'deliver', kind: 'envelope', bound: 'min', unit: 'mN', value: SELECTOR_DETENT_WINDOW_MN[1], measure: 'deliverMN',
+      derivedFrom: 'SELECTOR_DETENT_WINDOW_MN: what the lifter DELIVERS to the run must COVER the 5–50 mN band (§232’s relation) — read as the §137 lifter row’s figure, the sleeve’s peak drive through the crank' },
+  ],
+});
+
 // §70 step 3 — FORKS. A fold that cannot keep a spec row declares a fork: a
 // named copy of one reference whose changed rows each carry the movement
 // constraint that forced them, written in place. Three rules, all enforced by
@@ -13657,6 +13771,70 @@ function lineSpecLinkControl(clock, m) {
     : `FAIL — carried ${D}, the run moved ${moved}; restored off by ${R2.distanceTo(R0)}; ring ${m.ringTravel}`;
 }
 
+// THE RELEASE RUN'S READERS. The two ends of the 'alarmPull' axis — f 0 (crown
+// in) and f 0.5 (crown pulled) — so the lifter, the link, the crank and the
+// sleeve are posed by the build's own chain from the collar under the pad, and
+// nothing here poses them. Centres are world-box centres of centrally
+// symmetric meshes (a ring, the 16-gon rollers, the 10-gon hubs).
+function lineSpecRelease(clock) {
+  const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
+  const all = (n) => { const r = []; clock.scene.traverse((o) => { if (o.isMesh && o.name === n && !o.userData.schematic) r.push(o); }); return r; };
+  const flat = find('alarmSleeveFlat'), roller = find('alarmSleeveGuideRoller1'), head = find('alarmLifterHead'), hubs = all('alarmLifterHub');
+  const missing = Object.entries({ flat, roller, head }).filter(([, x]) => !x).map(([k]) => k);
+  if (missing.length || hubs.length !== 2) return { error: `meshes not found: ${[...missing, ...(hubs.length !== 2 ? [`alarmLifterHub ×${hubs.length}`] : [])].join(', ')}` };
+  const pull = AXES.find((a) => a.name === 'alarmPull');
+  const transfer = (clock.transfers?.rows || []).find((r) => r.site === 'alarm release: lifter (collar → link)');
+  const padTop = () => {
+    // the pad's contact: its top face's centre, half its height up its own axis
+    head.updateWorldMatrix(true, false);
+    const c = lineSpecCentre3(head).c, up = new THREE.Vector3(0, 1, 0).transformDirection(head.matrixWorld);
+    return c.add(up.multiplyScalar(head.geometry.parameters.height / 2));
+  };
+  const read = (f) => {
+    enterAxis(clock); clock.setPose(pull.pose(f)); clock.scene.updateMatrixWorld(true);
+    flat.updateWorldMatrix(true, false);
+    const e = flat.matrixWorld.elements;
+    const H0 = lineSpecCentre3(hubs[0]).c, H1 = lineSpecCentre3(hubs[1]).c;
+    return { O: lineSpecCentre3(flat).c, G: lineSpecCentre3(roller).c, ang: Math.atan2(e[1], e[0]), H0, H1, pad: padTop() };
+  };
+  const rest = read(0), pulled = read(0.5);
+  enterAxis(clock);
+  let dA = pulled.ang - rest.ang; while (dA > Math.PI) dA -= 2 * Math.PI; while (dA <= -Math.PI) dA += 2 * Math.PI;
+  const turn = Math.abs(dA);
+  const helixRollerR = Math.hypot(rest.G.x - rest.O.x, rest.G.y - rest.O.y);
+  // the pad's arm: its contact's distance from the hubs' common axis
+  const ax = rest.H1.clone().sub(rest.H0).normalize(), d = rest.pad.clone().sub(rest.H0);
+  const padArm = d.sub(ax.multiplyScalar(d.dot(ax))).length();
+  return {
+    sleeveLift: Math.abs(pulled.O.z - rest.O.z),
+    padArm, helixRollerR,
+    sleeveTurn: turn,
+    helixTanMeas: Math.abs(pulled.G.z - rest.G.z) / (helixRollerR * turn),
+    // the dial frame is turned 180° about y, so a dial-local turn of +ψ is a world turn of −ψ
+    sleeveHand: -Math.sign(dA),
+    deliverMN: transfer ? transfer.load.value : NaN,
+    deliverRead: !!transfer,
+  };
+}
+// Its CONTROL moves metal: the lifter's pad is carried a known distance out
+// along its own arm, away from the hubs' axis, and the measured arm must
+// follow it exactly — then the pad goes back. A reader that quoted
+// ALARM_LIFT_ARM_IN, or the pad's build-time station, would not move.
+function lineSpecReleaseControl(clock, m) {
+  let head = null; clock.scene.traverse((o) => { if (!head && o.isMesh && o.name === 'alarmLifterHead' && !o.userData.schematic) head = o; });
+  if (!head) return 'FAIL — the lifter’s pad is not in the scene';
+  if (!m.deliverRead) return 'FAIL — the §137 lifter row is not in the transfer record, so the delivery envelope read nothing';
+  const D = 0.05;
+  head.position.x -= D;   // the lifter's local −x: from the pivot out to the pad
+  let moved;
+  try { moved = lineSpecRelease(clock).padArm - m.padArm; }
+  finally { head.position.x += D; clock.scene.updateMatrixWorld(true); }
+  const back = lineSpecRelease(clock).padArm;
+  return Math.abs(moved - D) <= 1e-9 && back === m.padArm && m.sleeveLift > 0
+    ? `PASS — the pad carried ${D} out along its arm moves the measured arm by ${moved.toFixed(9)}, and restored reads the same; the pull applied (lift ${m.sleeveLift.toFixed(6)})`
+    : `FAIL — carried ${D}, the arm moved ${moved}; restored ${back} vs ${m.padArm}; lift ${m.sleeveLift}`;
+}
+
 // One reader and one control per reference. A reference with no reader is
 // MALFORMED, never skipped: a table row nothing measures is the §66 lever
 // spans' failure, a number checkable by a reader and by nothing else.
@@ -13678,6 +13856,7 @@ const LINE_SPEC_READERS = {
   },
   'alarm lock': { read: (clock) => lineSpecLock(clock), control: (clock, m) => lineSpecLockControl(clock, m) },
   'alarm link tangential': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
+  'alarm release run': { read: (clock) => lineSpecRelease(clock), control: (clock, m) => lineSpecReleaseControl(clock, m) },
 };
 
 // A reference's values at a given set of input overrides: every literal row

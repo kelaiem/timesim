@@ -7,9 +7,10 @@
 // (LINE_SPECS in src/inspect.js). A gate that passes on the shipped tree has
 // proved only that it does not fail; this proves it fails, and fails on the
 // RIGHT rows, which is what makes its silence on the shipped tree mean
-// something. Thirteen boots, each a copied tree (height-ledger's mutantTree),
-// over the three references — the switch's drive line, the lock that reads it
-// and the link that carries it to the ring — and the link's fork:
+// something. Sixteen boots, each a copied tree (height-ledger's mutantTree),
+// over the four references — the switch's drive line, the lock that reads it,
+// the link that carries it to the ring, and (TODO 236) the release run from
+// the crown's collar to the sleeve's helices — and the link's fork:
 //
 //   1. identity — 0 violations, every control PASS.
 //   2. the wheel grown, ALARM_COL_BASE_R 5.7 → 5.8 — a fold that resized the
@@ -72,6 +73,19 @@
 //      failed), and one with no forcing constraint — each MALFORMED on the row
 //      named, and none of them moves a value the metal is held to.
 //
+// TODO 236 — the fourth reference, 'alarm release run', and three more trees:
+//   14. the lifter's pad arm hand-tuned (× 1.02) — the arm the scrub law
+//      solves, cut longer: padArm fails and nothing else, because the lifter's
+//      output arm is derived as a RATIO of it (the link's throw over the
+//      rise), so the link, the crank and the sleeve all move exactly as before.
+//   15. the first helix station's rollers cut off their radius (+0.05) — the
+//      roller rides outboard of the helix the law is cut at: helixR fails and
+//      helixTan with it (its rise over the turn is read at the roller's own
+//      radius), while the travel and the turn, which the chain sets, do not.
+//   16. the lifter's delivered force collapsed (its §137 row × 0.1) — the
+//      ENVELOPE firing: 'deliver' no longer covers the 50 mN top of the
+//      detent band.
+//
 // What it is NOT: probe-261-height-cap.mjs fires the height ratchet; this
 // fires the mechanism reference. The check's own controls (a known shift of
 // the pin's line moving the measured offset by exactly that much; the rocker's
@@ -111,7 +125,7 @@ async function lineSpecOn(dir) {
 }
 
 const SRC = 'src/main.js', INS = 'src/inspect.js';
-const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`;
+const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`, REL = (k) => `alarm release run/${k}`;
 const FORKS_HEAD = 'export const LINE_SPEC_FORKS = [';
 const RUN_FORK = "      run: { value: 6,";
 const cases = [
@@ -176,6 +190,15 @@ const cases = [
     patches: [{ file: INS, find: RUN_FORK, to: "      stall: { value: 1, forcedBy: 'the probe forks the envelope §35 failed, to watch it refused' },\n" + RUN_FORK }] },
   { name: 'a fork with no forcing constraint', fail: [], malformed: ['run: the override does not say what in the movement forced it'],
     patches: [{ file: INS, find: "        forcedBy: 'the §112 rod-site solve, generalised by TODO 240", to: "        forcedBy: '', _was: 'the §112 rod-site solve, generalised by TODO 240" }] },
+  // TODO 236 — the release run.
+  { name: 'the lifter’s pad arm hand-tuned (× 1.02)', fail: [REL('padArm')],
+    patches: [{ file: SRC, find: 'const ALARM_LIFT_ARM_IN = ((ALARM_COLLAR_RISE / 2) ** 2 + ALARM_FORK_CLEAR ** 2) / (2 * ALARM_FORK_CLEAR);',
+      to: 'const ALARM_LIFT_ARM_IN = 1.02 * ((ALARM_COLLAR_RISE / 2) ** 2 + ALARM_FORK_CLEAR ** 2) / (2 * ALARM_FORK_CLEAR);' }] },
+  { name: 'the first helix station’s rollers cut off their radius (+0.05)', fail: ['helixR', 'helixTan'].map(REL),
+    patches: [{ file: SRC, find: 'const ALARM_SLEEVE_GUIDE_R0S = [ALARM_SLEEVE_GUIDE_R0, ',
+      to: 'const ALARM_SLEEVE_GUIDE_R0S = [ALARM_SLEEVE_GUIDE_R0 + 0.05, ' }] },
+  { name: 'the lifter’s delivered force collapsed (its §137 row × 0.1)', fail: [REL('deliver')],
+    patches: [{ file: SRC, find: '    load: { value: R.linkN * 1000, unit: \'mN\',', to: '    load: { value: R.linkN * 100, unit: \'mN\',' }] },
 ];
 let ok = true;
 for (const c of cases) {

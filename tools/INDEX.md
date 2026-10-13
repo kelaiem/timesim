@@ -4,7 +4,7 @@
 
 # The instruments
 
-303 scripts. **191 are ACCEPTANCE tests** — they decide and exit non-zero.
+304 scripts. **192 are ACCEPTANCE tests** — they decide and exit non-zero.
 **112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -181,6 +181,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-234-stem-ceiling.mjs` | §234 | acceptance | §234 step 4 — HOW FAT CAN THE ALARM STEM GET BEFORE THE §45 LIFTER'S CORRIDOR RUNS OUT? A REPORT. (INDEX.md's `kind` column says acceptance because the classifier keys on `process.exit`, and this exits only when a tree will not boot at all — the other four §234 probes carry the same label for the same reason.) |
 | `probe-234-step4.mjs` | §234 | acceptance | §234 Landing 2 step 4 — CAN THE ALARM CROWN'S STEM BE CUT FROM STEM STOCK? A REPORT (INDEX.md's `kind` column says acceptance because the classifier keys on `process.exit`, and this exits only when the tree will not boot — `probe-234-group-c.mjs` carries the same label for the same reason). |
 | `probe-234-traverse-fold.mjs` | §234 | report | §234 step 3a follow-up — WHERE DOES THE SETTING TRAVERSE FOLD, AND DOES EACH LEG CLEAR AT THE SECTION THE PLATE LEAVES IT? A REPORT, with controls. |
+| `probe-236-release-run.mjs` | §236 | acceptance | TODO 236 — THE RELEASE SLEEVE'S GUIDES AND ITS LOAD, PRICED. An ACCEPTANCE test: it exits non-zero when a row fails or a control does not fire. |
 | `probe-238-boot-screen.mjs` | §238 | acceptance | DOES THE BOOT SCREEN ACTUALLY COVER THE WAIT? — §238's four claims, measured. |
 | `probe-239-boot-profile.mjs` | §239 | acceptance | WHERE DOES BOOT SPEND ITS TIME? — §239 step one, and the first instrument in this repo to ask it. |
 | `probe-239-boot-yield.mjs` | §239 | acceptance | DOES THE BUILD ACTUALLY LET GO OF THE THREAD? — §239's remainder, measured. |

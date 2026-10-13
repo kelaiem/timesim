@@ -17,6 +17,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 247 | OPEN | Found closing TODO 236. The release sleeve now TURNS as it rises, so the 45° cone drags follower A's tail pin round the tube. `alarmConeContact` already returns that drag (`tubeDrag_Nu`) and nothing reads it. Set it against the alarm tube's friction coupling at all three corners, or show the tube cannot slip |
+| 246 | OPEN | Found closing TODO 236. The lifter's two return blades seat the pad, but their preload is not derived, so the return stroke (blades → link in compression → crank → sleeve) has no figure. Derive the preload from the stroke's own friction at the adverse corner, hold the tie link under Euler, and add the return as a `transfers` row |
 | 245 | OPEN | Found closing TODO 244. probe-261-fold-site's K8 reads `no linkage to swing` and passes, because its linkage search runs only over feasible rotations and none exist once the fold has landed. Point K8 at the shipped linkage's forward kinematics (`__clock.alarmLinkage`) with a control that can fail, on K9's pattern |
 | 244 | CLOSED | K9 runs again, at the SHIPPED fold when the search finds none: φ 240° read off `__clock.alarmFold` (main.js `ALARM_FOLD_PHI`, a read-only getter), refused unless it is a whole stop pitch on the 12-tooth wheel about the stop wheel's own centre (pivot 0.00000 off). The shipped lay shaft reads clear, nearest the Alarm selector 0.939 off its skin. K9 now carries a two-way detector, and `--sabotage-k9` exits 2 on K9. The output names the fold's source |
 | 243 | OPEN | Found closing TODO 240. `makeColumnWheel` samples each column's top at stations that miss the profile's breakpoints, so the mesh is straight across them: at a flank's foot it stands up to 0.0169 over the `profileAt` law the beak's pose law reads (measured: the nose posed 0.0050 into the metal, inside `HANDOFF_TRACK_TOL`). Cut the columns with stations on the breakpoints, then tighten probe-240's M3 to float. P0 |
@@ -25,7 +27,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 239 | CLOSED | Closed by TODO 240, which removed the along-pin load at its source. Re-read on the §261 2c lever it was 64–87 mN climbing, a 390–526 mN·u twist, the pin at 1.1–1.4 GPa. The pin's reaction was priced first-class (`Fn·(1 + ρ)`, 295 mN) on a same-side lever (`Fn·(ρ − 1)`, 222); corrected, with `noseFrom`'s journal. The flank's push is in the record (`beakPivot.flank`); the pin works at 667.0 MPa and the post is load-bound on the new load (⌀ ×1.047) |
 | 238 | CLOSED | The escapement's torque on the driven balance is read off the metal by virtual work, T·dδ/dθ along the contact: the unlock paid against the draw (−28.53° to −15.20°), nothing across the crossing, the impulse from −10.16° to the let-off; the face's transmission solved so the net per beat is the column's (swings 200.42° hanging, 292.18° flat). The rate's escapement error is now 27.20 s/day losing hanging and 8.37 flat, REPORTED. The fast rates' undersized train is TODO 242 |
 | 237 | OPEN | Found closing TODO 222: the alarm link's series stall (the §137 lay-shaft row and `probe-82-alarm-stall.mjs`) reflects each member by n²/k, which inverts the lever. A member moving n per unit of ring travel is seen at the ring as 1/(n²k). The error was invisible while nPin was 1. The rod-side members (n 0.527) are read 3.6× too stiff and the shaft members (n 2.07 since TODO 222) 4.3× too soft. The stall still covers the 5–50 mN window either way, but the figure and the named governor are wrong |
-| 236 | OPEN | Found closing TODO 222: the §45 release sleeve is the selector ring's old construction — three eyes on posts (ℓ 0.4567) driven axially at one tab (r ≈ 4.90) — loaded at the tail pin, which turns with the tube, so it jams wherever d ≥ ℓ/(2μ) = 1.14 u, essentially every hour. Its load is unpriced: follower A's released 22.43 mN·mm over the tail ≈ 130 mN through a 45° cone. Fix path: TODO 222's helical guides with a tangential drive, or a centred collar; price the lift as a `transfers` row |
+| 236 | CLOSED | The release sleeve rides TODO 222's tripod: three rollers in helical slots in plates hung from the dial sheet at 105°/250°/300° (the third outboard of the selector's swept pin ends), turned by a fold-added crank on a stud at 328° whose roller pushes a fork on the rim TANGENTIALLY. The helix is the least-work hand and angle (solved 48.555°, cut 48.478°; the other hand locks at every angle). The lifter is a bell crank on two studs pulling a level tie link. Priced at three corners: peak drive 479.3 / 583.5 / 778.5 mN, crown pull 0.2033 N; the old eye guide's lock index 3.763 adverse. Rows: the cone (`wedge`, a new idiom), the lifter (`covers` the detent window), the crank. `probe-236-release-run.mjs` holds it. The return stroke is TODO 246, the tube drag TODO 247 |
 | 235 | OPEN | Found deciding §261 step 3 (the owner kept §218's overcoil). `L_HAIRSPRING = L_BALANCE + 1.2` carries no derivation, and it is a datum: `SPRING_TOP_Z`, the three-quarter plate's floor and `TRAIN_CEILING_Z` (the going train's ceiling, §254's fusee groove and §47's arrest stations) all ride it. §261's step 1 built it at +1.0 and bought 0.076 mm of cased depth 1:1, and boot raised 6 asserts. Derive the spring's plane from the balance stack it sits on, then re-solve whatever the derived value moves. Rule 1, P1 |
 | 241 | CLOSED | The pusher head bottoms on the case tube's flat end (the band's bore sleeve and the §202 liner) at T = 1, where the carry is one tooth, so the 5 N survival press goes into the case as 2.36 MPa on a 2.12 mm² seat, not into crank A at 7,018 MPa. The seat is held to touch at the liner's build, off the sleeve's vertices; the floors row, `INTRA_UNIT_CONTACTS` and `probe-case-relief` name it. Toleranced one way: late by up to one `CLEAR_MARGIN` costs the chain nothing past the peaked detent the §137 rows price |
 | 234 | CLOSED | The fork cock's leg cleared a DISC about the fork's pivot, held at 9.8018 after TODO 226's seat. It now clears the fork's swept SECTOR (`FORK_SWEEP`: every fork vertex under the slab over ±bank, by 0.5° bin) and re-seats from 11.75 to 5.5 from the pivot. The plate's cut gives back the old leg's lobe (300–327°, out to 17.0) and takes a shorter one (295–305°, 14.9); the stop work's bearing, pivot, rod and mast are bit-identical, so nothing down the alarm moved. The lever's flank is one curve again, boss to fork end. Boot silent; `FORK_LEG_DISC_R` and its assert retired |
@@ -188,7 +190,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 61 | CLOSED | All three sites say what is cut (a trapezoidal stand-in, no conjugate action modelled, the escape wheel's club teeth the one designed surface); real cycloidal teeth stay roadmap §136. CI's fingerprint proved the comments-only claim (hash identical to main) |
 | 62 | PART DONE | The GOING TRAIN is solved (backward from the escapement, pair groups per arbor, four runs at four modules) and the striking 64T ⇄ governor mesh with it. Remains: the four keyless runtime bases (two tick-driven chains, a TODO-48-sized solve each), the bevel sites (beyond the planar gauge — §135's instrument question), and §129's tower pinion |
 | 63 | PART DONE | Stall re-taken from the built metal and then CORRECTED (§137): lever gain 7.1×, tail blade 305 N/m, and the 1.6 mN "shaft-limited" headline was a stiffness for a span §68 retired — at the measured 0.9286 mm overhang the shaft is 2518 N/m. **RE-TAKEN AGAIN by TODO 82 and this time computed rather than quoted: ROD-END-limited at ≈1.58 mN, BELOW the 5–50 mN band — the 48 mN rested on a deleted stroke constant and a minimum where compliances add.** The elbows' bending is COMPUTED (Gate A: rigid bend defensible at the derived sub-mN loads, δ ≤ 0.6% of stroke even at `ELBOW_E_MAX`) and all five force paths are priced in place. Remains: TODO 16's third bush station, and §137's own idiom record. **§173 closed the over-strained click blade by deleting the click — its sautoir's free length is solved from `SPRING_STRAIN_MAX`** |
-| 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
+| 64 | CLOSED | The `alarmPull` axis (n 96, out and home, alarm disarmed and unreleased) sweeps `alarmCrownPullT`, and the release run's members are declared: lifter and silence rocker by their blades (`spring`), link, crank and sleeve `two-way` back to the crown, and the alarm crown itself `two-way` by the reader's hand. `restoring` passes with them judged |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
 | 70 | CLOSED | `makeJewelSetting`'s collar is a CLOSED profile now, wound outward, and it runs `assertLatheOutward`. The open shell, the parity raycast's hazard (TODO 27), is gone with the winding. Closed with TODO 75 |
@@ -8234,7 +8236,7 @@ line now says the column→ring run is DRIVEN, pawl to ring, and cites TODO 20
 (grep `alarmOn turns the column wheel`). The only remaining `MECH_GRAPH.todo`
 entry is still the keyless-works one.
 
-## 64. Three linkages sit outside §48's population because no axis sweeps `alarmCrownPullT`
+## 64. Three linkages sit outside §48's population because no axis sweeps `alarmCrownPullT` — CLOSED
 
 The same shape as TODO 29's original finding and TODO 56's live one, on a third
 mechanism — and rule 4 warns about exactly this in as many words: *ship the
@@ -8268,6 +8270,22 @@ population from 18 to 23 — a new axis changes what the registry samples, so
 any sweep row whose finding lived on a pose no axis previously visited can
 change with it. Diff the `--report` and derive each moved row rather than
 re-basing it.
+
+**Closed by TODO 236.** `AXES` gains `alarmPull`: n 96, the pose
+`alarmCrownPullT = 1 − |2f − 1|` (out and home in one axis, so the reversal is
+the parts' own motion), with the alarm disarmed and unreleased. `setPose` now
+holds the pull exactly through its zero-dt tick (`alarmCrownPullPosed`), which
+the eased slide could not do before. The members are declared:
+
+- the lifter and the silence rocker by their blades (`spring`; the rocker's
+  `alarmSilBlade` is finally named);
+- the link, the crank and the sleeve as `two-way`, chained back to the crown;
+- the alarm crown itself as `two-way`, both strokes being the reader's hand.
+
+`restoring` passes with them judged, and `axisEntry` holds all 272 ordered
+pairs. The reports moved as TODO 29's did, through the new axis's poses, and
+the battery's first run with it found three of its own: the crank lug, the
+crown's row and plate 3's margin, each fixed above.
 
 ## 65. CLOSED — the schematic tier and the focused unit are saved now, not just emitted
 
@@ -32558,7 +32576,7 @@ re-solved through the train, not typed in.
 (`HAIRSPRING_H + CLEAR_MARGIN`) and the owner kept it on 2026-10-11. This item
 is the plane the overcoil rises FROM.
 
-## 236. The §45 release sleeve is an off-centre-driven axial slider: its jam class and its ~130 mN load are unpriced
+## 236. The §45 release sleeve is an off-centre-driven axial slider: its jam class and its ~130 mN load are unpriced — CLOSED
 
 Found closing [TODO 222], whose finding 1 is this class on the selector ring,
 and which removed it there. The release sleeve has the same construction the
@@ -32595,6 +32613,78 @@ be priced as a `transfers` row against the lifter's budget, and the crown pull
 that pays for it must be stated. Solve it first in free space (CLAUDE.md:
 design in a line): the cone's 45° may itself be a ratio worth re-deriving once
 the load is known.
+
+### Built (TODO 236, closed)
+
+**The construction.** The eyes and the single axial tab are gone. The sleeve
+carries three rollers. They run in helical slots cut in three plates that hang
+from the dial sheet at 105°, 250° and `ALARM_SEL_POST_AZ[2]` (300°). Stations 1
+and 2 stand at r 5.0, the owner's floor, which holds the selector rocker's orbit
+plus `CLEAR_MARGIN`. Station 3 shares the selector's third guide azimuth, so it
+stands one margin outboard of the selector pins' SWEPT outer end,
+hypot(PIN_OUT, pin r). The battery's first full run read 0.1493 against the
+pins' end discs before that radius was used. A fold-added crank on a stud
+planted in the sheet at `ALARM_SLEEVE_DRIVE_AZ` 328° pushes a fork on the rim
+tangentially. The sleeve turns, and the helices lift it: a torque about the
+tube, so no guide carries a tilting couple. 328° is in the arc a whole plate
+clears (318–336°), it puts the crank's input arm outboard, and it costs the
+drive the least work. The jumper re-sites itself from 233.5° to 234.0° because
+plate 2 stood 0.1365 off its lifter.
+
+**The helix is solved, not picked.** `alarmReleaseHelixSolve` searches the
+hand and the angle for the least drive work over the throw. It prices the
+sleeve's ring law (`alarmSleeveRingWork`: per-station radii, the cone contact,
+the rollers at μ·r_pin/r_roller, the paddle's load). The result is h = +1 at
+48.555°, and the chain cuts it at 48.478°. At this station the opposite hand
+LOCKS at every angle from 15° to 60°.
+
+**The lifter and the link.** The lifter is a pivoted bell crank on two studs.
+Its pad arm is the shortest whose dead-centre swing scrubs no more than the
+working fit (0.6365). Its output arm is the depth that carries the tie link
+level and clear under the frame (1.2190). The link is pinned at both ends. The
+crank's arms and every pin and stud are sized from their loads at
+`SPRING_SIGMA_Y_PA` and never below §50's floors. Since the battery's first
+run, the crank's hub and short output arm are one cut blank (a hub with a lug):
+as a separate bar the arm was 0.05 mm long. `ALARM_SIL_RATIO` and the
+run⇄paddle hand-off are re-derived so the finger's throw is still exactly
+`ALARM_SIL_GAP`. The paddle now rides an arm on the sleeve. The "mN-scale"
+comment on the old lifter was false and is gone.
+
+**Priced at FRICTION's three corners** (`tools/probe-236-release-run.mjs`, an
+acceptance probe):
+
+| corner | μ | peak drive | W | work factor |
+|---|---|---|---|---|
+| favourable | 0.12 | 479.3 mN | 95.33 mN·u | 2.314 |
+| nominal | 0.15 | 583.5 mN | 116.04 mN·u | 2.511 |
+| adverse | 0.20 | 778.5 mN | 154.83 mN·u | 2.721 |
+
+Each figure is over a 0.1989 u throw, read at the cut helix. The record's
+`Fmax`, 780.5 mN, is the same law at the solved angle. The link pulls 359.6 mN
+and the pad takes 688.7 mN. The crown pays 0.2033 N through the collar's 8.99%
+ramp, against about 1 N at a finger. The cone presses the tail pin with
+171.4 mN radial, which costs 254.6 mN axial at μ_eff 0.1952. The probe's
+controls:
+
+- **frictionless**: the work factor is 1 to 1e-12.
+- **the other hand**: it does not converge, so the law locks.
+- **§45's eyes and tab re-posed**: the drive-only lock index 2μ|D − G|/ℓ reads
+  3.763 adverse, 2.822 nominal and 2.258 favourable (|D − G| 4.296), so the old
+  guide reads LOCKED with no load.
+
+**What carries it now:**
+
+- **transfers**: three rows. The cone is a new idiom, `wedge`, and
+  `checkTransfers` re-verifies the axial/radial relation, with a control (a
+  wedge 10% off, and one that locks). The lifter's row covers the 5–50 mN
+  detent window. The crank's row is the third.
+- **line spec**: a `LINE_SPECS` reference, `alarm release run` (travel, pad
+  arm, helix radius, turn, helix tangent, hand, deliver), with its own control.
+  `probe-70-line-spec.mjs` cases 14–16 sabotage it.
+- **hand-offs and the graph**: six `ALARM_HANDOFFS` rows (lifter pin ⇄ link
+  eye, link eye ⇄ crank pin, roller ⇄ fork, three rollers ⇄ slots, and the
+  sleeve's arm ⇄ the paddle). `MECH_GRAPH` holds the crank and the link.
+- **the restoring rows**: TODO 64.
 
 ## 237. The alarm link's series stall reflects each member by n²/k, which inverts the lever: a member moving n per unit ring travel is seen at the ring as 1/(n²k)
 
@@ -33486,4 +33576,43 @@ not a control (CLAUDE.md, the direction-guard rule; `.claude/skills/instruments`
    linkage the probe assumes.
 2. Name the source in the output (`K8 [linkage: search|shipped]`).
 3. Give K8 a sabotage flag that must make it fail, and record that it does.
+
+
+## 246. The release run's return is unpriced: the lifter's return blades carry no derived preload, so the tie link's compression on the return stroke has no figure
+
+Found closing [TODO 236]. The run has one spring, at its input. The lifter's
+two return blades (`alarmLifterBlade`) bear up under the web's dropped tabs and
+seat the pad on the collar. When the crown goes home, they drive the whole run
+back through the link IN COMPRESSION, then the crank and the fork, with the
+sleeve's three helices lowering it. Their section is a bare `SPRING_FLAT_U`
+and their preload is not derived. So nothing states:
+
+- that the return beats the run's friction at the adverse corner;
+- that the tie link, slender in compression, holds under its Euler load at
+  that preload.
+
+The cone's push helps the sleeve down only while the skirt touches the pin.
+
+**Fix path.** Price the return stroke with the same law the drive uses
+(`releaseRun.peak` reversed), and solve the blades' preload and section for it
+at the adverse corner. Hold the link's compression under Euler with a margin,
+and declare the return as a `transfers` row (likely `groundedBlade`) with its
+force arithmetic.
+
+## 247. The release sleeve turns under follower A's tail pin: the drag it puts on the alarm tube is unpriced against the tube's friction coupling
+
+Found closing [TODO 236]. The sleeve no longer slides; it turns about 2.2°
+(`releaseRun.cut.turn`, 0.0386 rad) as its helices lift it. So the 45° cone
+slides ROUND under the tail pin as well as along it: only 97.6% of the slip is
+meridional (the wedge row's `slipMeridional`). The tangential part of the
+friction drags the pin, and with it the alarm tube, about the tube's axis.
+`alarmConeContact` computes that moment (`tubeDrag_Nu`), but no row and no gate
+reads it. The tube is carried by a friction coupling, so a drag over its slip
+torque would move the set alarm time on every crown pull.
+
+**Fix path.** Read `tubeDrag_Nu` over the release stroke at all three corners,
+and set it against the tube coupling's slip torque. Either show the margin as a
+row, or reverse the helix hand's tangential sense against the drag if the
+margin is thin. The other hand locks at this station (TODO 236), so a hand
+change means re-siting the drive.
 

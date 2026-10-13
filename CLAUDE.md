@@ -440,7 +440,7 @@ it into prose either.
    two-way rows, which is how the alarm link and the selector ring passed
    naming each other while nothing pushed the run toward armed),
    and `transfers` **0 malformed, 0 stale, 0 mismatched, 0 unwaived
-   envelope misses, control PASS** (§137 — every corner is one of five
+   envelope misses, control PASS** (§137 — every corner is one of eight
    named idioms declared beside its metal with its force arithmetic, in
    TODO 16's format; the check re-verifies each row's own relations from
    the frozen payload and holds envelope membership against layout.js's
@@ -935,7 +935,7 @@ match a whole run if entering an axis reproduces that axis's poses whatever ran
 before it. `setPose` assigns ONLY the keys a pose names, so before TODO 54 each
 axis inherited the tail of the axis declared above it and every sweep's
 coverage was a function of `AXES`' order. Every sweep now calls `enterAxis`
-before each axis; the `axisEntry` check gates that over all 240 ordered pairs
+before each axis; the `axisEntry` check gates that over all 272 ordered pairs
 and REPORTS, beside it, what used to ride through.
 
 **Since §152 a PR run can be INCREMENTAL, and the rule is that a check runs
@@ -944,7 +944,7 @@ only when it can change its answer.** A sweep's verdict is
 unit — SHAPE over the position/index bytes, PLACE over the per-mesh world
 matrices, both at `digestPoses()`: a set DERIVED from `AXES` (every axis at
 f ∈ {0, 0.5, 1}, unioned with the 13 canonical poses for the combined states,
-50 total) rather than borrowed from the fingerprint — measured, the borrowed
+52 total) rather than borrowed from the fingerprint — measured, the borrowed
 set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
 `tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
 units install a different geometry at a different pose, which is why every
@@ -1046,7 +1046,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 303 measuring scripts and this file names 45. The rest are named for the
+`tools/` holds 304 measuring scripts and this file names 45. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1063,7 +1063,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **191 of
+The index also carries the split that decides how to read a result: **192 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
