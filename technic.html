@@ -18,7 +18,8 @@
   of the pairs before it (standing rule 2). Drawn, and not LEGO's CAD: the
   involute outline, the cross bore, the 4 mm face, the 8 mm layer step, the
   turntable's face teeth and the colours. Every mesh is phased — parallel pairs on their line
-  of centres, the turntable's face mesh at the pinion's lowest point — and
+  of centres; a 90° face mesh, which no row carries since §219 tier three (b)
+  landing C2 refused the 60T turntable, at the pinion's lowest point — and
   tools/probe-technic-phase.mjs measures it off the drawn gears.
 
   BUILT §219 tier three (b) landing B — THE LEGO BUILD VIEW (?view=lego). Each
@@ -27,8 +28,8 @@
   columns, Technic bricks, axles and gears, each shaft one keyed body turning
   at its running product. tools/probe-technic-build.mjs measures the same
   placements (seated, through, meshed); tools/probe-technic-ldraw.mjs holds the
-  frame's dimensions to the parts. Rows on the turntable are refused by the
-  frame and stay drawn, labelled with the reason.
+  frame's dimensions to the parts. Since landing C2 every row frames; a row
+  the frame refused would stay drawn, labelled with the reason.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -68,19 +69,19 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   <div id="rows"></div>
   <p>Tooth counts, kinds, centre distances and ratios come from the declared rows.
   In the <b>drawn</b> view, part shapes, faces and colours are drawn, not LEGO's CAD,
-  and every pair's teeth are phased to mesh, including the 90° meshes on the 60T
-  turntable's bevel top. The <b>LEGO build</b> view assembles each row that has a
-  brick frame from the real parts (LDraw.org's library, CC BY 4.0): every
-  dimension of the frame is measured off those parts. Rows on the turntable are
-  not framed yet and stay drawn. The escapement, balance and fusee have no LEGO row and
-  are not here.</p>
+  and every pair's teeth are phased to mesh. The <b>LEGO build</b> view assembles
+  every row from the real parts (LDraw.org's library, CC BY 4.0) on a brick
+  frame whose every dimension is measured off those parts. The rows use no
+  turntable: neither could be mounted on the frame, so the solver answers with
+  spur gears on the stud lattice. The escapement, balance and fusee have no LEGO
+  row and are not here.</p>
   <div id="log"></div>
 </div>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseLibrary, walk } from './src/ldraw.js';
-import { frameFork } from './src/technic-frame.js';
+import { frameFork, rowLayout } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
 import { CATALOGUES, TECHNIC_FORK, catalogueMesh, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
@@ -92,7 +93,7 @@ window.addEventListener('error', (e) => log('ERROR: ' + e.message));
 // --- drawn dimensions (mm). None of these is a catalogue fact; each is the
 // smallest choice that draws the claim legibly, and the comment says which.
 const FACE = 4;          // a gear's drawn face — half a stud, so two layers never touch
-const LAYER = 8;         // one stud: the axial step between a shaft's gears, so a
+const LAYER = 8;         // one stud: the axial step between a shaft's gears (rowLayout's one-layer step), so a
                          // compound pair sits in two planes and each mesh is coplanar
 const AXLE_ARM = 2.4, AXLE_WEB = 0.9;   // the cross: 4.8 across the arms, 1.8 thick (drawn)
 const CELL = [190, 160]; // rows on a 2×2 grid; each cell wider and taller than the largest chain
@@ -188,9 +189,16 @@ function buildChain(gen, chain, parent) {
   const find = (t) => cat.counts.find((c) => c.teeth === t);
   const shafts = [];
   let s = newShaft(parent, new THREE.Vector3(), Z, 1); shafts.push(s);
-  let along = 0, phase = 0, offLattice = [];
+  let along = 0, phase = 0;
   const meshes = [];
-  for (const [ta, tb] of chain) {
+  // THE STEP BETWEEN STAGES is the frame's (src/technic-frame.js rowLayout):
+  // one layer where every gear clears its neighbour's column, two where one
+  // would not. Written once there, read here, so the drawing and the LEGO
+  // build stand their gears where the same law puts them. A row the frame
+  // refuses (a 90° mesh on the 60T) keeps the one-layer step.
+  const lay = rowLayout(gen, chain);
+  const stepAfter = (k) => (lay.framed ? lay.shafts[k].gears[1].y - lay.shafts[k].gears[0].y : LAYER);
+  for (const [i, [ta, tb]] of chain.entries()) {
     const a = find(ta), b = find(tb), m = a && b && catalogueMesh(a, b, cat);
     if (!m) { log(`${gen}: ${ta}:${tb} is not an admissible mesh — layout.js's boot assert should have said so`); return null; }
     const gA = addGear(s, a, along, phase);
@@ -219,9 +227,7 @@ function buildChain(gen, chain, parent) {
       nextPhase = betaC + sigma * (ta * phase - Math.PI) / tb;
     } else {
       // Parallel: half the sum of the counts, the lattice distance catalogueMesh
-      // admitted. A turntable rides its own frame, so its distance may be off
-      // the lattice, and the panel says so.
-      if (m.class === 'parallel-exempt' && m.cd % cat.lattice_mm !== 0) offLattice.push(`${ta}:${tb} at ${m.cd} mm`);
+      // admitted, a turntable's included since §219 tier three (b) landing C1.
       const pos = at.clone().addScaledVector(s.w, m.cd);
       next = newShaft(parent, pos, s.u, -s.speed * ta / tb);
       // Exact mesh phase for external gears in one frame: with the driver's
@@ -232,10 +238,10 @@ function buildChain(gen, chain, parent) {
     }
     const gB = addGear(next, b, 0, nextPhase);
     meshes.push({ a: gA, b: gB, class: m.class });
-    shafts.push(next); s = next; along = LAYER; phase = 0;
+    shafts.push(next); s = next; along = i + 1 < chain.length ? stepAfter(i + 1) : LAYER; phase = 0;
   }
   for (const sh of shafts) addAxle(sh);
-  return { shafts, offLattice, meshes };
+  return { shafts, meshes };
 }
 
 
@@ -361,7 +367,6 @@ async function build(gen, mode = view) {
     const div = document.createElement('div'); div.className = 'row';
     div.innerHTML = `<b>${k + 1}. ${row.key}</b><code>${chain.map(([a, b]) => `${a}:${b}`).join(' × ')}</code> = <code>${ratStr(product)}</code> ${verdict}`
       + `<br><span style="color:var(--dim)">${row.derivedFrom}</span>`
-      + (res.offLattice.length ? `<br><span style="color:var(--dim)">off the lattice, on a turntable's own frame: ${res.offLattice.join(', ')}</span>` : '')
       + (frame && !frame.framed ? `<br><span class="bad">not framed in LEGO: ${frame.reason}</span>` : '')
       + `<br>measured <code data-meter="${built.length - 1}">—</code>`;
     rowsEl.appendChild(div);

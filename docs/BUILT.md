@@ -35334,6 +35334,148 @@ document walk versions that quoted URL like an import. `offline-check`'s
 precache count went from 73 to 77: the three new modules and the pack.
 
 
+## §219 tier three (b), landing C1 — the turntables measured, the 56T held to the lattice, the drawn view on the frame's step
+
+**PARTIAL.** The three rows that drive the 60T turntable at 90° are measured
+here and mounted in landing C2.
+
+### The 56T turntable is held to the lattice; 2026's motion works re-solved
+
+Tier one exempted the 56T turntable from the 4 mm lattice ("it mounts on its
+own frame"), and the 2026 solver took 24:8 × 56:14 for the motion works, with
+the 56T and a 14T 35 mm apart. No brick frame stands an axle there:
+- every axle of the frame sits on the 4 mm lattice;
+- 35 mm is not 4·√(a² + b²) for any whole a and b, so not even a diagonal
+  reaches it;
+- mixing horizontal studs with vertical plates, the nearest is 35.064 mm.
+
+The exemption is gone from `catalogueMesh`, along with its `parallel-exempt`
+class, so a turntable's parallel mesh is held to the lattice like any spur.
+The solver now answers **24:8 × 64:16 = 12**: two parallel meshes at 16 and
+40 mm. That row frames (3 axles at 34.4 mm, base 8×5) and builds from real
+parts (44 parts, meshes at 1e-13 of a turn). `probe-219-catalogue.mjs` holds the
+declared row to the solver, and the five other rows did not move.
+
+### The turntables measured
+
+`probe-technic-ldraw.mjs` now gates each turntable's tooth count against the
+catalogue. The count is read off the tips: the smallest N at which the
+outermost points cohere, with no count that is not a multiple of it cohering
+at all.
+
+| part | catalogue | tips repeat | coherence | best rival |
+|---|---|---|---|---|
+| 2855 (56T) | 56 | 56 | 0.706 | 0.003 |
+| 18938 (60T) | 60 | 60 | 0.786 | 0.000 |
+
+The first version took the strongest N. It read the 60T's own second harmonic
+(0.240) as a rival count, and once its range was widened it let 224 = 4 × 56 win
+outright. A control claims two teeth more than each part has, and must fail.
+
+The 60T's base, 18939, joined the pack (now 29 parts, 257 files) through a new
+`TURNTABLE_BASES` table. The probe reports the assembly's profile as landing
+C2's inputs:
+- the toothed band stands 3.08 mm below to 2.00 mm above the face top and base
+  share;
+- the tips are at 30.70 mm, and the gaps open to 27.72 mm through the whole
+  band;
+- the body above stays within 27.60 mm of the axis, the base beside it within
+  26.80 mm;
+- six pin holes sit 8 mm below the face, 16 mm out from the axis.
+
+**What that means for the 90° mesh.** The 60T's teeth are radial bars. Their
+gaps run through the whole height, with a chamfer about 1 mm deep on the lower
+edge, so a pinion at 90° meets them as it would a rack of bars. That
+engagement is plausible, but the ring fixes no depth for it, so C2 has to take
+the depth from module-1 proportions. Its window runs from one addendum (1 mm)
+to the whole depth (2.25 mm). The mount the lattice reaches is:
+- the turntable pinned through its base holes into Technic bricks, 3 studs
+  from its axis;
+- the 8T on a radial axle, cantilevered from two columns outside the ring,
+  engaging from above;
+- the lattice arithmetic putting the 8T's tips 2.18 mm into the ring, inside
+  the window. From below it gives 0.98 mm, just short.
+
+C2 builds that mount. It needs pins, Technic bricks turned a quarter turn, a
+90° phase solve, and clearances measured between the parts' own surfaces: the
+pin columns' studs come within a few tenths of a millimetre of the base's ring,
+and the frame probe's boxes cannot judge that.
+
+### The drawn view on the frame's step
+
+`technic.html` now stands each shaft's driver at `rowLayout`'s derived step (8
+or 16 mm) wherever the row frames, and keeps its one-layer step where it does
+not. `probe-technic-phase.mjs` reads each drawn shaft's gear spacing off the
+meshes and compares it with the frame's step. Five framed rows match, and a
+control fails if every step is 8, because then the comparison could not tell
+the two laws apart. 17/17 meshes still mesh.
+
+### Not changed
+
+The catalogue's 24T stays `3648`. That is the number a BOM orders, and the
+library resolves it through its `~Moved to 3648b` alias. The probe prints the
+alias beside the part.
+
+
+## §219 tier three (b), landing C2 — the 60T refused on its measured mount; every row a LEGO build
+
+Landing C1 found a mount the lattice could reach for the 60T turntable's 90°
+mesh: the base pinned into Technic bricks, the 8T on a radial axle from above,
+its tips 2.18 mm into the ring. C2 set out to build it and found it cannot be
+built from the frame's parts.
+
+### Why the mount fails, measured
+
+The base's underside has a recess 1.6 mm deep, exactly a stud's height. Its
+ceiling stands 2.4 mm below the face the top and base share, so LEGO evidently
+meant Technic bricks to sit under it, studs up. But a 1×1 Technic brick pinned
+into the base's lug is placed by the parts themselves:
+- the lug's face is 20 mm from the axis;
+- the brick's centre is half a stud beyond that;
+- the stud's edge is a stud's radius further, at 26.40 mm.
+
+The recess rim starts at 26.08 mm, so the stud cuts **0.32 mm** into the rim.
+The brick's top also sits flush under the rotating ring.
+`probe-technic-ldraw.mjs` prints all of this from the parts, each run.
+
+Two other mounts were weighed:
+- **A longer pin, putting the brick at 4 studs.** Its stud then rises into the
+  ring's teeth.
+- **Studless liftarms.** These would need parts outside the frame's
+  vocabulary, and their ends still touch the ring flush.
+
+So the 60T is out of going trains. In `catalogueMesh`, `_UNMOUNTABLE` refuses
+it beside the clutch gear's `slips`, and the comment there carries the
+measurement.
+
+### What the solver answers instead
+
+| row | was | now |
+|---|---|---|
+| classic fourth→escape | 60:8 (90°) | 24:8 × 40:16 |
+| 2026 centre→fourth | 60:8 (90°) × 64:8 | 24:8 × 40:8 × 64:16 |
+| 2026 fourth→escape | 60:8 (90°) | 24:8 × 40:16 |
+
+`probe-219-catalogue.mjs` holds each declared row to the solver's answer.
+
+**Every row now frames and builds:**
+- `probe-technic-frame.mjs`: 8 rows framed, 0 refused;
+- `probe-technic-build.mjs`: 8 builds, 0 failing, worst mesh 1.6e-13 of a
+  turn;
+- `technic.html`'s LEGO view: both generations whole.
+
+### What the drawn view kept
+
+The page still carries its 90° phase solve, but no row exercises it.
+`probe-technic-phase.mjs` now requires a 90° mesh only while a declared row
+carries one, and computes that from the rows rather than assuming it: 20/20
+meshes, all parallel.
+
+The 60T and its base stay in the pack and the catalogue. Their tooth count
+is still gated, and their profile is still reported, so the reason for the
+refusal can be re-measured.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and
@@ -35735,3 +35877,211 @@ stops.
 Not measured, and said so: Tour, Demo and Bench "run as before when never
 navigated" is still argued from the code; the `studr` spec points were skipped by
 the PR ceiling in part E's battery run and this landing's battery has not run.
+
+## §278, landing 2 — the strike fold: the hammer's outboard metal cranked under the skirt arm
+
+The owner chose landing 1's best candidate: crank the tail down at the shipped
+station (Δ 0, root +1), with no re-site.
+
+**What moved, and why.**
+
+- **The ceiling.** The hammer's post top, its collet's top, its arm's root and
+  its tail's root all drop by `ALARM_TAIL_DROP`. That is the tail's top
+  (`Z_STRIKE` + `ALARM_TAIL_T`/2, 11.5910) less the ceiling the case's own
+  chain leaves for metal outboard of the aperture:
+  `STRIKE_OUTBOARD_CEIL` = skirt arm − `CLEAR_MARGIN` − the glass's float guard
+  = 10.6172 − 0.15 − 0.0001 = **10.4671**. The drop is therefore **1.1238 u
+  (0.426 mm)**, the skirt-arm slack landing 1 measured.
+- **One copy of the case's chain.** The skirt arm is
+  `max(ALARM_SWITCH_SKIRT_ROW_Z, the clamp heads) + CLEAR_MARGIN + CASE_CLAMP_ENG`.
+  To give the hammer that number before the case exists, the case's own
+  expressions were hoisted beside `GONG_BAND_TOP`, whose precedent this is:
+  `CASE_SKIRT_OD`, `CASE_SKIRT_ID`, `CASE_BCG_T`, `CASE_APERTURE_R`,
+  `CASE_GLASS_FLOAT_GUARD`, the envelope's bin grid (`BACK_ENV_NBIN`) and the
+  skirt row's z. The case block now reads them, so there is one copy, with
+  identical arithmetic.
+- **The case asserts the assumption both ways.** It checks that the skirt arm it
+  measures is the one the crank was cut under, and that the pane floor no
+  longer stands over it.
+- **The riser.** A riser carries the tail back up to the lever's plane, where
+  the lifting lever's tip rides it exactly as before. The tail is one
+  extruded Z of its own section: root, riser, upper bar. The riser stands in
+  the middle of the window two walls leave it over the hammer's whole travel
+  [−AMP, +DRAW]:
+  - every corner of it, and of the bar inboard of it, must stay inside
+    `STRIKE_R_ALLOW` 45.4309, so it can go under the glass's step;
+  - every corner of it, and of the root, must stay outside `R_ANNULUS_IN`, one
+    margin off the three-quarter plate's rim;
+  - its inner face must stop one margin short of the tip's circle (≤ 5.840).
+
+  The window is 1.978–4.988 along the tail, so the riser stands at **3.483**.
+  Its section is the bar's own (0.5 × 0.5, over §50's floor of 0.317) and it
+  stands 1.624 tall, λ 28.3 with the overhang's factor against §54's 30. Both
+  are asserted at the build.
+- **What moved as consequence.** Every plan quantity is untouched, because the
+  crank is in z. The rotor lost 0.17 % of its inertia:
+  - I: 406.757 → **406.069 mg·mm²**
+  - W: 1246.30 → **1247.35 rad/s**
+  - fall: 1.5330 → **1.5317 ms**
+
+  'alarm strike' measures all 27 rows within float noise with **no fork**:
+  k, I, W and the fall re-derive through their coherence rows, the window
+  envelope holds, and so does the reach.
+
+**The back and the cap.**
+
+| | before | after |
+|---|---|---|
+| band back face | 11.7411 (pane floor) | **10.6172** (skirt arm) |
+| glass step radius | 34.785 | **44.255** (the riser's metal now passes under it) |
+| step underside | 12.191 (the striking wheel) | unchanged |
+| aperture | 45.731 | unchanged |
+| cased depth | 12.152 mm | **11.7258 mm** |
+
+**Two things the first cut's clearance found.** `probe-strike-site` read the
+shipped station **0.1445** from the back glass at the blow, under the margin.
+Both causes were measured:
+
+- **The blow swings the riser outward.** At −AMP the riser's outermost corner
+  swings 0.13 outward of where the build pose leaves it (43.933 → 44.064). That
+  is a mover migrating radially, which is `BACK_SWEPT_REGIONS`' own case. The
+  hammer has a row again, and it is DERIVED: from that corner at rest (less the
+  §102 centi-unit) to its reach over the swing, at the tail's top.
+- **The glass is a 96-facet lathe.** Its facets stand up to R·(1 − cos(π/96)) =
+  0.024 inside the circle `rStep` was derived as. The step's radius is now held
+  one margin outside the tallest bin at the facets' INSCRIBED circle, which is
+  §262's rule for the case bore on the same lathe. That moves `rStep`
+  44.2314 → 44.2551.
+
+The tail now reads 0.1501 from the glass at every phase of the blow.
+
+`CASE_HEIGHT_MAX_MM` ratchets **12.152 → 11.726**, exactly the ledger's A1
+bound. The keys still govern the back-most metal, 0.140 mm over the ring face.
+
+**Sound.**
+
+- The wire's own level is unchanged at 52.79 dBA. μ moves 1.1933 → 1.1913.
+- The watch's tally is 0.62 g lighter, since the case ring is shallower.
+- So §269's case path reads up by under 0.2 dB:
+  - mode 1: 39.89 → 39.98 dBA
+  - mode 2: 51.46 → 51.63 dBA
+- No sound-path decision is owed.
+
+**Held by.**
+
+- `probe-261-height-ledger` PASS at 11.726 mm, both prediction mutants
+  reproduced. Its skirt-row mutation now patches the hoisted
+  `ALARM_SWITCH_SKIRT_ROW_Z`: raising it raises the crank's ceiling with it,
+  and the skirt arm still governs.
+- `probe-261-height-cap` PASS: 11.726 fires on growth and on staleness.
+- `probe-back-envelope`: GATE, GLASS and both CONTROLS PASS. The hammer's
+  outboard bins read 10.467.
+- `probe-268-hammer-spiral` ALL PASS.
+- `probe-269-case-path` 54 rows, ALL PASS.
+- `probe-strike-site` controls PASS. It reads the shipped station as meeting
+  the condition as built (exceed −1e-8), so the crank pass is not owed.
+  Nearest obstacles: the back glass at 0.150 and the gong wire at 0.160 from
+  the pusher's stem. Other azimuths now meet the re-derived glass under the
+  margin, which is expected: the case is cut for the shipped station.
+- `probe-70-line-spec`: all 21 trees PASS.
+- `lineSpec` reads 5 references, 86 rows, with no new fork.
+- **The battery.** The local non-point battery (`--only` with every check,
+  `--shards 3 --no-incremental`) passes **54/54 gates**. Within it:
+  - `undeclaredClearance`: 0 pairs under the margin and 0 debt rows.
+  - `plateSeats` and `clearances` both PASS.
+  - The fingerprint is deterministic, at a new hash (2657416352), since the
+    metal moved.
+  - Boot is silent.
+- **The spec-boot tier** (`--spec-only`) passes 7/7. The point tier is
+  judged on CI.
+- **The explainer.** The §261 paragraph and a new §278 paragraph were
+  re-translated in all 22 tables: the i18n check, explain-quotes and
+  glossary-links all PASS.
+
+## §278, landing 3 — the wrench purchase cut into the ring: notches, not keys
+
+Landing 2 left the back governed by the ring's two wrench keys. They were raised
+lugs, 2 × 1 mm and 0.15 mm tall, sunk `SEAT_EMBED` into the face, so they stood
+**0.140 mm** over it. §192 had sunk the glass step under the ring's face, which
+made them the case's back-most metal. A real screw-back does not carry its
+purchase proud. It carries NOTCHES cut into the face at the rim, and the case
+wrench's teeth drop into them. The owner took that call.
+
+**What was built.** The old comment said recessed slots "would be CSG". They do
+not need to be. A notch open at the rim is the ring's own turning with its face
+lowered across the notch's span, so the ring is now a SECTORED lathe, the
+band's bored-sector idiom from §186. It is still one closed mesh named
+`caseBack`. Two notch sectors carry the lowered profile and two whole sectors
+carry the old one, merged, with a signed-volume warn like the band's. There is
+no second mesh, so no new contact row and no coplanar faces. Each dimension
+derives from a constraint:
+
+- **Depth: the keys' own 0.15 mm**, the purchase inverted. The wrench's tooth
+  bears on the notch's radial wall over its whole 1.5 mm radial run, where it
+  bore on the key's 1 mm end, so the bearing face is no smaller. Under the
+  notch the ring keeps the seating flange less the depth, 1.06 mm (the flange
+  is 1.2 mm plus the `SEAT_EMBED` its face sinks into the band). The builder
+  holds that over §50's floor (`STOCK_MIN_U`), and holds the floor above the
+  glazing lip's underside.
+- **Radial run: from the rim (`R_PLATE`) in to the glazing channel's wall
+  (`skirtID`) and no further.** Inboard of it is the lip, the glass's retaining
+  land (TODO 122), which a notch must not thin.
+- **Width: two facets, 7.5°.** That is the fewest whole facets of the
+  `CASE_LATHE_SEG` turning whose chord at the notch's inner wall admits the
+  wrench's tooth, taken as the key's own 2 mm length. Whole facets on the full
+  turning's grid mean every ring vertex stands where the one-piece lathe put
+  it, and only the notch's face moves.
+- **Azimuths: the keys' own, 0 and π**, each centred on a grid vertex.
+
+`sectorLathe` gained an explicit facet count for this. Its `ceil` reads a
+46-facet span, computed in floats as 46.00000000000001, as 47, which would
+have moved a whole sector of vertices off the grid. The band's call sites are
+untouched.
+
+**The back and the cap.**
+
+| | before | after |
+|---|---|---|
+| back-most metal | the keys, 14.1533 | **the ring face, 13.7839** |
+| next | the ring face, 0.140 mm under | the glass step's top 13.7744, **0.004 mm** under |
+| cased depth | 30.9431 u = 11.7258 mm | **30.5736 u = 11.5858 mm** |
+
+The depth bought is **0.140 mm**, exactly the keys' rise, and the design
+study's figure to the micron. `CASE_HEIGHT_MAX_MM` ratchets **11.726 → 11.586**.
+The next governor is the glass step, 0.0095 u under the face, so a further
+millimetre has to come from the striking wheel's plane or the ring's
+lip-and-glass stack, not from the ring's face.
+
+**The instruments followed the part.** `height-ledger.mjs` no longer stands a
+phantom keys candidate at the ring face when the tree has none: `keyRise` is
+null and the probe prints the purchase as notched. `probe-261-lever-prices`
+retires L1b (shorter keys), which this landing took whole. The §269
+radiation's approximation list now names the notches as what the revolve
+omits.
+
+**Held by.**
+
+- `probe-261-height-ledger` PASS at 11.586 mm, governed by the ring face with
+  0.004 mm over the glass step. The identity copy and both prediction mutants
+  reproduced: the skirt row moved the depth 1:1 (0.5000) and the striking wheel
+  through the new slack (0.1984).
+- `probe-261-height-cap` PASS: 11.586 fires on growth and on staleness.
+- `probe-back-envelope`: GATE, GLASS and both CONTROLS PASS.
+- `probe-269-case-path` 54 rows, ALL PASS. The ring-face row reads `caseBack`'s
+  top at 13.7839, and the case path totals 51.92 dBA (55.39 with the wire).
+- **The battery.** The local non-point battery (`--only` with every check,
+  `--shards 3 --no-incremental`) passes **54/54 gates**. Within it:
+  - `outlines` PASS: 0 self-crossing and 0 cross-ring rows.
+  - `meshIntegrity` PASS: 0 inverted bodies.
+  - `stockFloor`, `undeclaredClearance` (0 pairs under the margin),
+    `plateSeats`, `clearances`, `inspection` and `sweptOverlap` all PASS.
+  - `turning` now counts 70 lathes, not 71. The ring is a merged sector body
+    like the band, and as a disc it was only ever refused.
+  - The fingerprint is deterministic at a new hash (1623414317), since the
+    Case moved. Boot is silent.
+- **The spec-boot tier** (`--spec-only`) passes 7/7, with 36/36 points built
+  and none tripping the lowered cap. The point tier is judged on CI.
+- **The explainer.** The §278 paragraph now credits the notches and quotes
+  11.586 for the depth and the cap. That one block was re-translated in all 22
+  tables. The i18n check, explain-quotes (0 DISAGREES), glossary-links and the
+  review packets all PASS.

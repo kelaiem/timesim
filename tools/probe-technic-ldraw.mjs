@@ -25,8 +25,9 @@
 //     which is why the frame does not sweep the formula;
 //   · the jumper puts ONE stud at its centre, on a 2-stud footprint;
 //   · the baseplate covers every framed row's base.
-// Turntables are not framed (the frame module refuses their rows), so their
-// widths and tips are not judged; their parts are still in the pack.
+//   · every TURNTABLE's tooth count, read off its tips (the count at which the
+//     outermost points cohere), is the catalogue's, and unambiguously so; the
+//     60T's profile on its base is printed — what landing C2 read to refuse it.
 //
 // And the pack itself: every section an LDraw file, no HTTP header anywhere.
 //
@@ -41,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
-import { LEGO_DIM_MM, GEAR_WIDTH_MM, GEAR_TIP_MM, FRAME_PARTS, AXLE_PARTS, frameFork } from '../src/technic-frame.js';
+import { LEGO_DIM_MM, GEAR_WIDTH_MM, GEAR_TIP_MM, FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, frameFork } from '../src/technic-frame.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PACK = readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8');
@@ -133,6 +134,77 @@ function judge(T) {
   return bad;
 }
 
+// ── the turntables: their tooth counts gate, their profile is reported ──────
+// The count is read off the tips the way toothPhase reads a gear: the points
+// at the largest radius, folded by every candidate N; the right N coheres and
+// every other cancels. It must be the catalogue's count and unambiguous.
+const turntables = [...new Map(Object.values(CATALOGUES).filter(Boolean).flatMap((c) => c.counts)
+  .filter((r) => r.kind === 'turntable' || r.kind === 'turntableBevel').map((r) => [r.part, r])).values()];
+const ttRows = turntables.map((r) => {
+  const pts = [];
+  walk(lib, dat(r.part), (k, ps) => { if (k === 'tri') for (const q of ps) pts.push(q); });
+  const rad = (q) => Math.hypot(q[0], q[2]);            // a turntable turns about LDraw Y
+  const rMax = Math.max(...pts.map(rad));
+  const tip = pts.filter((q) => rad(q) > rMax - 0.01);
+  const coh = (N) => { let c = 0, s2 = 0; for (const q of tip) { const a = N * Math.atan2(q[2], q[0]); c += Math.cos(a); s2 += Math.sin(a); } return Math.hypot(c, s2) / tip.length; };
+  // A pattern N-fold coheres at 2N, 3N… too (its harmonics), so the count is
+  // the FUNDAMENTAL: the smallest N that coheres strongly. It is unambiguous
+  // when no count that is not a multiple of it coheres at all. The first
+  // version took the strongest N, read the 60T's second harmonic (0.240) as a
+  // rival, and once its range was widened let 224 = 4 × 56 win outright.
+  const scores = []; for (let N = 8; N <= 240; N++) scores.push([N, coh(N)]);
+  const strong = scores.filter(([, v]) => v >= 0.5);
+  const N = strong.length ? strong[0][0] : NaN, best = strong.length ? strong[0][1] : 0;
+  const rival = scores.filter(([M]) => M % N !== 0).sort((a, b) => b[1] - a[1])[0] ?? [NaN, 0];
+  return { ...r, N, best, next: rival[1], nextN: rival[0], tipMm: mm(rMax) };
+});
+for (const t of ttRows) {
+  if (t.N !== t.teeth) packBad.push(`turntable ${t.part}: its tips repeat ${t.N} times, the catalogue says ${t.teeth}`);
+  if (!(t.best >= 0.5 && t.next < 0.05)) packBad.push(`turntable ${t.part}: the tooth count is ambiguous (${t.best.toFixed(3)} against ${t.next.toFixed(3)})`);
+}
+// The 60T's profile against its base, about the face the two parts share
+// (LDraw y = 0): the toothed band, whether its gaps run through, and how far
+// the body above and the base below stand from the axis. Landing C2 read these
+// and refused the mount (layout.js' catalogueMesh says why); they remain a
+// report so the reason can be re-read: the base's underside recess (its
+// ceiling one stud height above the bottom, which is where a pinned brick's
+// stud would stand) and where the recess's rim begins, against how far out a
+// 1×1 Technic brick pinned into the base's hole reaches with its stud.
+function ttProfile(top, base) {
+  const prof = (p, f) => walk(lib, dat(p), (k, ps) => { if (k === 'tri') for (const q of ps) f(q); });
+  const N = 60, pitch = 2 * Math.PI / N;
+  const tipPts = []; prof(top, (q) => tipPts.push(q));
+  const rTip = Math.max(...tipPts.map((q) => Math.hypot(q[0], q[2])));
+  let c = 0, s2 = 0; for (const q of tipPts) if (Math.hypot(q[0], q[2]) > rTip - 0.01) { const a = N * Math.atan2(q[2], q[0]); c += Math.cos(a); s2 += Math.sin(a); }
+  const t0 = Math.atan2(s2, c) / N;
+  let bandLo = Infinity, bandHi = -Infinity, gapMax = 0, aboveR = 0, baseR = 0;
+  for (const q of tipPts) {
+    const r = Math.hypot(q[0], q[2]);
+    let d = Math.atan2(q[2], q[0]) - t0; d = ((d % pitch) + pitch * 1.5) % pitch - pitch / 2;
+    if (Math.abs(d) < pitch * 0.1 && r > rTip - 0.3 * 2.5) { bandLo = Math.min(bandLo, q[1]); bandHi = Math.max(bandHi, q[1]); }
+  }
+  for (const q of tipPts) {
+    const r = Math.hypot(q[0], q[2]);
+    let d = Math.atan2(q[2], q[0]) - t0; d = ((d % pitch) + pitch * 1.5) % pitch - pitch / 2;
+    if (q[1] >= bandLo && q[1] <= bandHi && Math.abs(d) > pitch * 0.4) gapMax = Math.max(gapMax, r);
+    if (q[1] < bandLo - 1) aboveR = Math.max(aboveR, r);
+  }
+  prof(base, (q) => { if (q[1] > bandLo && q[1] < bandHi + 2) baseR = Math.max(baseR, Math.hypot(q[0], q[2])); });
+  const holes = placements(lib, dat(base), /^connhol\w*\.dat$/);
+  // the underside: the base's lowest wide face, and the level one stud height
+  // above it — the recess a pinned brick's stud would rise into
+  let bottomY = -Infinity, ceilR = 0;
+  prof(base, (q) => { if (mm(Math.hypot(q[0], q[2])) > 25 && q[1] > bottomY && mm(q[1]) < 6) bottomY = q[1]; });   // radii in mm: an LDU-for-mm slip first read a deeper face
+  const ceilY = bottomY - LEGO_DIM_MM.studH / LDU_MM;
+  prof(base, (q) => { if (Math.abs(q[1] - ceilY) < 1e-6) ceilR = Math.max(ceilR, Math.hypot(q[0], q[2])); });
+  const holeOut = holes.length ? Math.max(...holes.map((h) => Math.abs(h.m[0]))) : NaN;   // the lug's hole, outward along X
+  return { rTip: mm(rTip), band: [mm(-bandHi), mm(-bandLo)], gapMax: mm(gapMax), aboveR: mm(aboveR), baseR: mm(baseR), holes: holes.length,
+    holeDown: holes.length ? mm(holes[0].m[1]) : NaN, recessDepth: LEGO_DIM_MM.studH, recessRimR: mm(ceilR) };
+}
+const tt60 = ttRows.find((t) => t.teeth === 60);
+const profile60 = tt60 && TURNTABLE_BASES[tt60.part] && lib.has(dat(TURNTABLE_BASES[tt60.part])) ? ttProfile(tt60.part, TURNTABLE_BASES[tt60.part]) : null;
+if (tt60 && !profile60) packBad.push(`turntable ${tt60.part}: its base is not in the pack`);
+
 const TABLES = { D: LEGO_DIM_MM, W: GEAR_WIDTH_MM, T: GEAR_TIP_MM, F: FRAME_PARTS, A: AXLE_PARTS };
 const bad = [...packBad, ...judge(TABLES)];
 
@@ -145,12 +217,29 @@ controls.push(['24T width = default', { ...TABLES, W: { default: GEAR_WIDTH_MM.d
 controls.push(['axle 4L ⇄ 5L', { ...TABLES, A: { ...AXLE_PARTS, 4: AXLE_PARTS[5], 5: AXLE_PARTS[4] } }]);
 controls.push(['brick ⇄ Technic brick', { ...TABLES, F: { ...FRAME_PARTS, brick1x1: FRAME_PARTS.technicBrick1x1, technicBrick1x1: FRAME_PARTS.brick1x1 } }]);
 const silent = controls.filter(([, T]) => judge(T).length === 0).map(([n]) => n);
+// the turntable count's own control: a catalogue claiming two teeth more
+for (const t of ttRows) if (t.N === t.teeth + 2) silent.push(`turntable ${t.part} at ${t.teeth + 2} teeth`);
+controls.push(...ttRows.map((t) => [`turntable ${t.part} at ${t.teeth + 2} teeth`]));
 
 console.log('THE TECHNIC FRAME\'S TABLES AGAINST THE LDraw PARTS (vendor/ldraw/technic-parts.mpd)\n');
 for (const [k, v] of Object.entries(MEASURED)) console.log(`  ${k.padEnd(7)} parts ${v.toFixed(4).padStart(8)} mm   table ${String(LEGO_DIM_MM[k]).padStart(5)}`);
 console.log('\n  gear  part    face mm  tip mm  module-1 tip  status');
 for (const g of gearM) console.log(`  ${String(g.teeth).padStart(3)}T  ${g.part.padEnd(6)} ${g.width.toFixed(3).padStart(7)} ${g.tip.toFixed(3).padStart(7)} ${String(g.teeth / 2 + 1).padStart(13)}  ${/Unofficial/.test(g.org ?? '') ? 'UNOFFICIAL (in review)' : 'official'}${/^~Moved/.test(g.title ?? '') ? ` — ${g.title}` : ''}`);
 console.log(`\n  axles ${Object.keys(AXLE_PARTS).join('/')}L, frame parts ${Object.values(FRAME_PARTS).join(' ')}`);
+console.log('\n  turntable  teeth (catalogue)  tips repeat  coherence (best rival count)  tip mm');
+for (const t of ttRows) console.log(`  ${t.part.padEnd(9)}  ${String(t.teeth).padStart(15)}  ${String(t.N).padStart(11)}  ${t.best.toFixed(3)} (${t.nextN}: ${t.next.toFixed(3)})  ${t.tipMm.toFixed(3).padStart(7)}`);
+if (profile60) {
+  const p = profile60;
+  console.log(`  60T on its base (${TURNTABLE_BASES[tt60.part]}), heights from the face they share, + up — a REPORT, what landing C2 refused the mount on:`);
+  console.log(`    toothed band ${p.band[0].toFixed(2)} … ${p.band[1].toFixed(2)} mm, tips ${p.rTip.toFixed(2)} mm, gaps open to ${p.gapMax.toFixed(2)} mm through the band`);
+  console.log(`    body above the band within ${p.aboveR.toFixed(2)} mm of the axis, base beside it within ${p.baseR.toFixed(2)} mm; ${p.holes} pin holes, ${(-p.holeDown).toFixed(2)} mm below the face`);
+  // a 1×1 Technic brick on a 2-stud pin out of the base's lug: the lug's face at
+  // 20 mm (2.5 studs), the brick's centre a half stud beyond, its stud's edge
+  // one stud radius further — against the recess rim the stud would rise into
+  const studReach = 20 + LEGO_DIM_MM.stud / 2 + 2.4;
+  console.log(`    underside recess ${p.recessDepth} mm deep (a stud's height), its rim from ${p.recessRimR.toFixed(2)} mm; a pinned brick's stud reaches ${studReach.toFixed(2)} mm`
+    + ` — ${studReach > p.recessRimR ? `${(studReach - p.recessRimR).toFixed(2)} mm into the rim, why landing C2 refused the 60T` : 'clear'}`);
+}
 for (const b of bad) console.log(`  ✗ ${b}`);
 console.log(`\ncontrols: ${controls.length - silent.length}/${controls.length} perturbations caught${silent.length ? ` — NOT caught: ${silent.join(', ')}` : ''}`);
 const fails = bad.length + silent.length;

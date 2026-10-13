@@ -25,14 +25,17 @@ inspector.
 `TECHNIC_FORK` in `layout.js` declares — as module-1 gears turned through their
 own tooth counts. It imports `layout.js` and nothing from the movement, so the
 battery never sees it; its counts and ratios are claims read from the table,
-its part shapes are drawn, and every pair's teeth are PHASED to mesh — the
-turntable's 90° face mesh included — which `tools/probe-technic-phase.mjs`
+its part shapes are drawn, and every pair's teeth are PHASED to mesh (a 90°
+face mesh too, though no row carries one since §219 tier three (b) C2), which `tools/probe-technic-phase.mjs`
 measures off the drawn gears at five angles, against a half-pitch control.
 
 `src/technic-frame.js` (§219 tier three (b)) solves the BRICK FRAME that holds
 those rows: 1×1 columns, a Technic brick on top, a jumper under a half-stud
 axle. Its step between stages is DERIVED (two layers where a gear's tip reaches
-the neighbouring column) and is not yet the drawn view's. **Its dimensions are
+the neighbouring column), and the drawn view reads it (`rowLayout`, held by
+`probe-technic-phase.mjs`). A turntable's parallel mesh is held to the lattice
+like any spur since landing C1, and the 60T turntable is out of going trains
+since C2 (unmountable on the frame's bricks), so all eight rows build. **Its dimensions are
 MEASURED off real LEGO parts**: `vendor/ldraw/technic-parts.mpd` packs the LDraw
 library's files for every part the catalogues and the frame name
 (`tools/ldraw-vendor.mjs` reads that list; never type it), `src/ldraw.js` parses

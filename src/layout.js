@@ -570,7 +570,21 @@ export const CASE_HEIGHT_STEP_MM = 0.001;
 // on the hammer's plane (the pane floor, 11.591 + CLEAR_MARGIN), the skirt
 // arm meeting it exactly; 0.230 mm bought, the step-1 price table's L2 to the
 // micron. The keys govern the back-most metal, 0.140 mm over the ring face.
-export const CASE_HEIGHT_MAX_MM = 12.152;
+// §278 landing 2 LOWERED it, 12.152 → 11.726: the strike fold cranked the
+// hammer's outboard metal (post top, collet, arm root, tail root) down by the
+// skirt arm's slack, 1.1238 u, so nothing outboard of the aperture stands over
+// the ceiling the skirt arm leaves; the band's back face is the skirt arm
+// (10.6172) and the cased assembly measures 11.7258 mm, 0.426 mm bought — the
+// height ledger's A1 bound to the micron. The keys still govern the back-most
+// metal.
+// §278 landing 3 LOWERED it, 11.726 → 11.586: the ring's two wrench keys, the
+// case's back-most metal since §192 (0.15 mm proud, sunk SEAT_EMBED, so 0.140
+// mm over the face), are cut INTO the ring's face as notches, so the face
+// itself (z0, 13.7839) is the back-most metal and the cased assembly measures
+// 11.5858 mm (30.5736 u) — 0.140 mm bought, exactly the keys' rise. The glass
+// step's top (13.7744) stands 0.0095 u (0.004 mm) under the face, so the next
+// governor is the step, not the ring.
+export const CASE_HEIGHT_MAX_MM = 11.586;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
@@ -4073,8 +4087,13 @@ export function solveStopWork({
 //   spur           — plain parallel-axis gear
 //   doubleBevel    — bevelled both sides; DOES mesh on parallel axes, which is
 //                    what double bevel is for. 28 and 36 exist only this way.
-//   turntable      — parallel-axis, but mounts on its own frame, so its centre
-//                    distance is not a lattice quantity
+//   turntable      — parallel-axis, held to the lattice like a spur. Tier one
+//                    exempted it ("it mounts on its own frame"); §219 tier
+//                    three (b) landing C found no frame that does that: every
+//                    axle of a brick frame stands on the 4 mm lattice, and an
+//                    off-lattice centre distance such as 56:14's 35 mm is not
+//                    4·√(a²+b²) for any whole a, b, so not even a diagonal
+//                    reaches it
 //   turntableBevel — the 60T top (18938) is a BEVEL: a 90° mesh, never parallel
 // `slips: true` marks a clutch gear. It slips above a torque threshold, so it
 // is barred from a going train: a train that slips does not keep time. That
@@ -4120,16 +4139,23 @@ export const ratEq = (a, b) => a.n === b.n && a.d === b.d;
 export const ratStr = (r) => (r.d === 1n ? String(r.n) : `${r.n}/${r.d}`);
 
 // Mesh admissibility for `a` driving `b`. PARALLEL pairs sit at half the sum
-// of their counts and that distance must land on the lattice. A turntable
-// rides its own frame, so it is exempt. A RIGHT-ANGLE pair needs exactly one
+// of their counts and that distance must land on the lattice, a turntable's
+// included (see the kind's note above). A RIGHT-ANGLE pair needs exactly one
 // bevel-class member driven by (or driving) a parallel-class one; two
 // bevel-class members meshing is not a thing this catalogue does. Returns null
 // for an inadmissible pair, else { class, cd } (cd in mm, null at 90°).
 const _PARALLEL = new Set(['spur', 'doubleBevel', 'turntable']);
 const _BEVEL = new Set(['bevel', 'turntableBevel']);
-const _EXEMPT = new Set(['turntable', 'turntableBevel']);
+// A going train also refuses the 60T turntable (§219 tier three (b) landing C2):
+// measured off its LDraw parts, no brick frame mounts it. Its base pins into
+// Technic bricks whose studs reach 26.4 mm from its axis, against an underside
+// rim that starts at 26.1, and the bricks sit flush under the rotating ring.
+// So a row on it could be declared but never built; the solver answers
+// without it, all-parallel, on the lattice.
+const _UNMOUNTABLE = new Set(['turntableBevel']);
 export function catalogueMesh(a, b, cat, { goingTrain = true } = {}) {
   if (goingTrain && (a.slips || b.slips)) return null;
+  if (goingTrain && (_UNMOUNTABLE.has(a.kind) || _UNMOUNTABLE.has(b.kind))) return null;
   const bevels = (_BEVEL.has(a.kind) ? 1 : 0) + (_BEVEL.has(b.kind) ? 1 : 0);
   if (bevels === 2) return null;
   if (bevels === 1) {
@@ -4138,7 +4164,6 @@ export function catalogueMesh(a, b, cat, { goingTrain = true } = {}) {
     return { class: 'right-angle', cd: null };
   }
   const cd = (a.teeth + b.teeth) / 2;
-  if (_EXEMPT.has(a.kind) || _EXEMPT.has(b.kind)) return { class: 'parallel-exempt', cd };
   if (!Number.isInteger(cd) || cd % cat.lattice_mm !== 0) return null;
   return { class: 'parallel', cd };
 }
@@ -4184,9 +4209,12 @@ export function solveRatio(target, cat, { maxLen = 6, ...opts } = {}) {
 // law at the catalogue's own escapement), so a re-geared steel train fails the
 // boot assert below instead of carrying a fork for a ratio it no longer has.
 //
-// Under technic_2026 the solver prefers turntable chains: fewer meshes, at
-// the price of a 90° mesh on the 60T's bevel top or a 56T turntable on its own
-// frame. Both generations are kept so that dependency is data.
+// Both generations once leaned on turntables, and the LEGO build refused both
+// (§219 tier three (b)). The motion works read 24:8 × 56:14 until landing C1 held
+// the 56T to the lattice (35 mm is unbuildable); centre→fourth (2026) and
+// fourth→escape (both) rode a 90° mesh on the 60T until landing C2 found it
+// unmountable. The solver now answers every row with parallel meshes on the
+// lattice. Both generations are kept so the 64T dependency stays data.
 //
 // SOLVED AT THE IDENTITY SPEC. The reserve target is 7h/100 (the hand's sweep
 // over the barrel's usable turns), so it moves with `reserveHours`; at any
@@ -4198,11 +4226,11 @@ export const TECHNIC_FORK = Object.freeze({
   solvedAt: Object.freeze({ reserveHours: 30 }),
   rows: Object.freeze([
     { key: 'centre→fourth', derivedFrom: 'fourth wheel 1 rev/min under a centre wheel at 1 rev/h',
-      chains: { technic_classic: [[16, 8], [16, 8], [24, 8], [40, 8]], technic_2026: [[60, 8], [64, 8]] } },
+      chains: { technic_classic: [[16, 8], [16, 8], [24, 8], [40, 8]], technic_2026: [[24, 8], [40, 8], [64, 16]] } },
     { key: 'fourth→escape', derivedFrom: `RATE_TABLE's law at ${TECHNIC_VPH} vph on an ${TECHNIC_ESCAPE_TEETH}T wheel`,
-      chains: { technic_classic: [[60, 8]], technic_2026: [[60, 8]] } },
+      chains: { technic_classic: [[24, 8], [40, 16]], technic_2026: [[24, 8], [40, 16]] } },
     { key: 'motion works', derivedFrom: '12 hours to the hour hand’s one turn',
-      chains: { technic_classic: [[16, 8], [16, 8], [24, 8]], technic_2026: [[24, 8], [56, 14]] } },
+      chains: { technic_classic: [[16, 8], [16, 8], [24, 8]], technic_2026: [[24, 8], [64, 16]] } },
     { key: 'reserve reduction', derivedFrom: 'the hand’s sweep over the barrel’s usable turns',
       chains: { technic_classic: [[24, 16], [28, 20]], technic_2026: [[24, 16], [28, 20]] } },
   ]),

@@ -26,10 +26,11 @@
 // gears, its columns stand just outside them, and `probe-technic-frame.mjs`
 // holds every gear's swept disc against every other axle and column.
 //
-// WHAT IS NOT FRAMED, by name rather than by omission: a right-angle mesh (the
-// 60T turntable's face teeth) and a turntable on its own frame (56:14 at
-// 35 mm, off the 4 mm lattice). Both need the turntable's mounting, which is
-// LDraw geometry still to be mounted.
+// WHAT IS NOT FRAMED, by name rather than by omission: a 90° mesh, or a pair
+// off the lattice. No declared row has either since landing C1 held the 56T
+// turntable to the lattice and landing C2 took the 60T out of going trains
+// (layout.js' catalogueMesh: its base cannot be pinned to the frame's bricks
+// without their studs cutting the base's rim). Both refusals stay as guards.
 //
 // THE DIMENSIONS BELOW ARE MEASURED (landing B). Each is read off the LDraw
 // part files vendored in vendor/ldraw/technic-parts.mpd, and
@@ -69,6 +70,9 @@ export const GEAR_TIP_MM = Object.freeze({
 export const FRAME_PARTS = Object.freeze({
   plate1x1: '3024', jumper1x2: '3794b', brick1x1: '3005', technicBrick1x1: '6541', baseplate16: '3867',
 });
+// The 60T turntable's BASE, vendored beside its top. Landing C2 measured the
+// mount off it and refused the turntable; probe-technic-ldraw.mjs still reads it.
+export const TURNTABLE_BASES = Object.freeze({ 18938: '18939' });
 // Cross axles by length in studs: each is titled "Technic Axle N" and is
 // 20·N − 1 LDU long (the library shortens each end half an LDU).
 export const AXLE_PARTS = Object.freeze({
@@ -112,9 +116,9 @@ export function rowLayout(gen, chain) {
     const a = find(ta), b = find(tb), m = a && b && catalogueMesh(a, b, cat);
     if (!m) return { framed: false, reason: `${ta}:${tb} is not an admissible mesh` };
     if (m.class === 'right-angle')
-      return { framed: false, reason: `${ta}:${tb} is a right-angle mesh on the 60T turntable's face teeth — it needs the turntable's mounting, which is LDraw geometry` };
+      return { framed: false, reason: `${ta}:${tb} is a 90° mesh — the frame builds parallel axles only` };
     if (m.cd % cat.lattice_mm !== 0)
-      return { framed: false, reason: `${ta}:${tb} stands ${m.cd} mm apart, off the ${cat.lattice_mm} mm lattice — a turntable on its own frame` };
+      return { framed: false, reason: `${ta}:${tb} stands ${m.cd} mm apart, off the ${cat.lattice_mm} mm lattice` };
     if (tipOf(a) === undefined || tipOf(b) === undefined)
       return { framed: false, reason: `${ta}:${tb} has a gear with no measured tip in GEAR_TIP_MM` };
     meshes.push({ a, b, ta, tb, cd: m.cd });
