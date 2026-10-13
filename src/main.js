@@ -52991,11 +52991,11 @@ const INSPECT_STEPS = [
 
   { title: 'Lever safety action', preset: 'Escapement', scale: 0.04,
     get camera() { return frameOn('Pallet fork', [0.3, -0.45, 0.85], 2.2); },
-    caption: 'The lever escapement, slowed. The guard pin rides close to the safety roller and never touches, and the roller’s crescent is cut where the impulse pin is, so the pin can only cross while the fork is engaged. That phasing is modelled, not simulated: no axis ever knocks the fork off its banking, so the failsafe has never been exercised (TODO 105).', dwell: 7.5 },
+    caption: 'The pallet fork and escape wheel, slowed. The guard pin rides close to the safety roller and never touches, and the roller’s crescent is cut where the impulse pin is, so the pin can only cross while the fork is engaged. That phasing is modelled, not simulated: no axis ever knocks the fork off its banking, so the failsafe has never been exercised (TODO 105).', dwell: 7.5 },
 
   { title: 'Setting the time', preset: 'Setting', xray: true, scale: 0.3, crown: 'out', turnMinutes: 3,
     get camera() { return frameOn('Winding clutch', [0.4, -0.5, 0.8], 2.6); },
-    caption: 'Pull the crown and turn it: the hand steps one minute per detent through the keyless works. Look at the clutch rim where it meets the setting bevel — the pair is posed by two laws and does not roll at any index, the mesh buried a flat 0.2187 (29% of a tooth) (TODO 163).', dwell: 6.0 },
+    caption: 'Pull the crown and turn it: the hand steps one minute per detent through the keyless works. Here is the clutch that carries the turn into the setting train. It is posed by one law and the setting bevel it meets by another, and the pair does not roll at any index: the mesh is buried a flat 0.2187 (29% of a tooth) (TODO 163).', dwell: 6.0 },
 
   // --- the alarm (parts A-D will cut and rewrite these; their `k/9` counters are gone because the banner counts now)
   { camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 4.2), crown: 'in', scale: 0.25, alarm: false, labels: true,
@@ -57889,7 +57889,7 @@ window.__clock = {
   goToPose(pos, look, opts) { goToPose(new THREE.Vector3(...pos), new THREE.Vector3(...look), opts); }, // §37 — the primitive, for review sessions (this is what §35 lacked)
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
   startInspect() { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); },  // §277
-  get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0), alarm: st.alarm })) : null; }, // §277
+  get scriptRoute() { return scriptSteps ? scriptSteps.map((st) => ({ wind: st.wind || 0, sync: !!st.sync, turn: (st.turnMinutes || 0) + (st.turnAlarmHours || 0), alarm: st.alarm, cam: ('camera' in st) ? (st.camera ? 'ok' : 'unresolved') : 'none' })) : null; }, // §277
   startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
   scriptGoto(i) { scriptGoto(i); },

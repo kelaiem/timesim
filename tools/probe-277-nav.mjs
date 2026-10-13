@@ -36,9 +36,11 @@ const BASE = `http://127.0.0.1:${srv.address().port}/index.html`;
 let fails = 0;
 const ok = (name, cond, detail) => { if (!cond) fails++; console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? `  [${detail}]` : ''}`); };
 
+const appWarns = [];
 const browser = await chromium.launch({ args: ['--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 const pg = await browser.newPage();
 await pg.setViewportSize({ width: 760, height: 480 });   // desktop layout, few pixels (probe-161's measured reason)
+pg.on('console', (m) => { const x = m.text(); if (m.type() === 'warning' && !/WebGL|GL Driver|GroupMarker/.test(x)) appWarns.push(x); });
 await pg.goto(BASE, { waitUntil: 'load' });
 await pg.waitForFunction(() => !!window.__clock, null, { timeout: 180000 });
 ok('boot is silent', (await pg.evaluate(() => [...window.__clock.bootWarns])).length === 0);
@@ -103,6 +105,12 @@ ok('jump back from the last stop = running straight through (every stop)', bad(f
 await pg.evaluate(() => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptJump(c.scriptState.of - 2); });
 const cold = await settled();
 ok('CONTROL: a cold entry (scriptJump) is NOT the straight-through state', !same(straight[n - 2], cold, n - 2), JSON.stringify(cold));
+
+// ---- 1b. every stop's declared framing resolved (frameOn returns null and only WARNS on a miss,
+// so a stop naming a part that moved or was renamed would aim the camera nowhere and say so once)
+const camRow = (await pg.evaluate(() => window.__clock.scriptRoute)).map((r, i) => [i, r.cam]);
+ok('every declared stop framing resolves (§277 part B)', camRow.every(([, c]) => c !== 'unresolved'), JSON.stringify(camRow.filter(([, c]) => c !== 'none')));
+ok('walking every stop raised no app warning', appWarns.length === 0, appWarns.slice(0, 2).join(' | '));
 
 // ---- 2. ONE-SHOTS (Tour carries winds and a sync)
 await pg.evaluate(() => window.__clock.scriptStop());
