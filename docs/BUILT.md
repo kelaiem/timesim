@@ -35214,3 +35214,91 @@ slowest declared siting after `?d4=16`.
 Also corrects the `d4=16` row of `SPEC_POINTS` (`tools/ci-battery.mjs`), which
 said "one warn, measured": it has warned 83 times since before #667 and 93
 since.
+
+## §277, part E — the scripted-user engine can be steered: Previous, Next, a stop list, and the arrow keys
+
+The route behind Camera → Guided (Tour, Demo, Inspect, Bench, and the two alarm
+demos) used to be a conveyor: it advanced on its dwell clock, §142 let a viewer
+pause it, and the only other move was to end it. §277 (filed in the private
+roadmap) scoped a revamp of the Inspect route and made navigation part of it;
+this is the engine half, landed first so the rewritten route is built on it. The
+route's own stops (parts A to D) are not in this landing.
+
+### What it adds
+
+A row in the caption banner, between the text and the actions: a Previous
+button, the position as a `<select>` ("3 / 11", which is also the stop list),
+and a Next button. `←` / `→` do the same while a run is on (mirrored under
+`dir="rtl"`). The row is shown only while a run has more than one stop. A stop
+may carry an optional `title`, which the list appends after the position; no
+route declares one yet.
+
+### Why a jump is not `scriptEnterStep(i)`
+
+Two facts about the engine forced the design, both read off the source.
+
+**Steps are deltas.** A step names only what it changes — Inspect's stop 3 sets
+`alarm: true` and nothing else, and is right only because stop 2 set the labels
+and the camera. Entering a stop cold shows a view nobody authored, and the probe
+proves it (below). So a jump **folds**: for every view key (`scale`, `labels`,
+`powerflow`, `sound`, `unit`, `focus`, `reconf`, `explode`, `xray`, `schematic`,
+`crown`, `alarm`, `alarmCrown`) the last write by any stop up to and including
+the target wins. The camera is one key with two spellings, `preset` and
+`camera`; whichever was written last wins and removes the other.
+
+**One-shots accumulate.** `wind` and `sync` do not set a state, they add to
+one, so running a stop twice winds twice. `scriptDone` records the stops whose
+one-shots have run. A jump runs each unrun one-shot once: the winds of every
+stop skipped over are summed and applied (as if the route had run through), a
+sync runs once, and a stop already visited runs nothing. Setting turns
+(`turnMinutes`, `turnAlarmHours`) run only on the stop the viewer lands on, the
+first time — they demonstrate the crown and are not a precondition, and
+replaying minutes of setting is not a fold. A stop that needs a state only a
+skipped setting turn produces would have to declare a precondition; none does.
+The natural advance after navigating back also enters an already-run stop
+view-only, for the same reason.
+
+### Input
+
+§142 made any incidental key a PAUSE. The arrows are exempted (plain keys only,
+and not while a form control has focus) and steer instead, without pausing; an
+arrow pressed while paused navigates and resumes. Any other key still pauses.
+The banner's controls were already exempt from `scriptAbort` by id. The three
+labels are new chrome strings (`Previous stop`, `Next stop`, `Go to stop`), set
+as `title` and `aria-label` through `t()`, in all twenty-two tables; the glyphs
+carry no words. They are the first translations of those phrases and the native
+review packet is owed them like every other row.
+
+### Measured
+
+`tools/probe-277-nav.mjs` (a report; the battery cannot see UI) boots the page
+and holds four claims:
+
+- **Fold.** The Inspect route is walked straight through and its view state
+  recorded at every stop; then every stop is reached by a jump from the first
+  stop and by a jump back from the last, and compared. The control: entering a
+  stop cold (`scriptJump`, the view-only entry §142 added) is NOT the
+  straight-through state. All 11 stops agree in both directions, 25 checks in
+  all. The comparison needed two corrections, both about the alarm, and both
+  were the instrument's: (1) `alarmOn` trails `setAlarm` by the pusher's travel
+  in the frame loop, and a software-GL frame is long, so the jump side is read
+  by polling for the state the route authored, up to 15 s, not after a fixed
+  wait; (2) a straight run is not a valid reference for `alarmOn` at all — it
+  spends route and sim time at an armed alarm, which can ring and disarm itself
+  (measured: the straight side read opposite to the route's authored value at
+  stops 4, 6, 7, 8 and 10 with no jump involved). So that one key is held to what
+  the route authored (the last `alarm` any stop up to the target wrote) and every
+  other key to the straight run.
+- **One-shots.** On Tour: a wind runs when its stop is landed on; going back over
+  it and landing again adds nothing; skipping from the first stop to the last
+  applies the winds passed, summed (7 turns).
+- **Keys.** `→` and `←` navigate without pausing, `←` at the first stop stays,
+  another key pauses, an arrow while paused navigates and resumes.
+- **Controls.** The row is hidden with no run, shown with one option per stop,
+  the buttons disable at the ends, the list jumps, and the labels localize.
+
+Not measured, and said so: Tour, Demo and Bench "run as before when never
+navigated" rests on the straight-through path being the code those routes have
+always taken (`scriptEnterStep` gained two optional parameters and a `Set`
+insertion); no recorded state per stop was diffed against `main` for them.
+Boot is silent and `boot-progress --check` holds (no seam added).
