@@ -60,7 +60,7 @@ const SETTLE_TICKS = () => { for (let k = 0; k < 5; k++) window.__clock.scriptTi
 // software-GL frame is long, so 1.5 s was enough on one run and not the next.
 const settled = async (want) => {
   await pg.evaluate(SETTLE_TICKS); await pg.waitForTimeout(1500);
-  for (let g = 0; want !== undefined && g < 30 && (await pg.evaluate(() => window.__clock.scriptView.alarmOn)) !== want; g++) await pg.waitForTimeout(500);
+  for (let g = 0; want !== undefined && g < 120 && (await pg.evaluate(() => window.__clock.scriptView.alarmOn)) !== want; g++) await pg.waitForTimeout(500);
   return pg.evaluate(READ);
 };
 // The straight-through record is walked from OUTSIDE the page: the first stop's
@@ -111,6 +111,13 @@ ok('CONTROL: a cold entry (scriptJump) is NOT the straight-through state', !same
 const camRow = (await pg.evaluate(() => window.__clock.scriptRoute)).map((r, i) => [i, r.cam]);
 ok('every declared stop framing resolves (§277 part B)', camRow.every(([, c]) => c !== 'unresolved'), JSON.stringify(camRow.filter(([, c]) => c !== 'none')));
 ok('walking every stop raised no app warning', appWarns.length === 0, appWarns.slice(0, 2).join(' | '));
+
+// ---- 1c. a quick Next/Previous across alarm stops does not lose a toggle. The alarm is a PRESS and
+// pressAlarmPusher refuses mid-stroke, so two toggles entered back to back used to land as one.
+await pg.evaluate(() => { const c = window.__clock; c.scriptStop(); c.startInspect(); });
+await pg.evaluate(() => { const c = window.__clock; const R = c.scriptRoute; const on = R.findIndex((r) => r.alarm === true); const off = R.findIndex((r, i) => i > on && r.alarm === false); c.scriptGoto(on); c.scriptGoto(off); });
+let rapid; for (let g = 0; g < 160; g++) { await pg.waitForTimeout(500); const q = await pg.evaluate(() => ({ a: window.__clock.scriptView.alarmOn, d: window.__clock.scriptAlarmDebug })); rapid = q.a; if (q.d.want === undefined && !q.d.stroke && q.d.T < 1e-6) break; }   // settled: nothing wanted, pusher home
+ok('two alarm toggles entered back to back both land (ends OFF)', rapid === false, `alarmOn ${rapid}`);
 
 // ---- 2. ONE-SHOTS (Tour carries winds and a sync)
 await pg.evaluate(() => window.__clock.scriptStop());
