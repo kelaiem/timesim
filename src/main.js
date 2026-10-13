@@ -53152,9 +53152,10 @@ const INSPECT_STEPS = [
     powerflow: false, sound: false, unit: 'All', alarm: false, schematic: false,
     // Do NOT tell the viewer to press Inspect: scriptStart calls
     // hidePanelForScript(), so the control this used to name is not on screen
-    // while the route runs. Any pointerdown, key or wheel aborts (scriptAbort),
-    // so the honest instruction is the one that works from anywhere.
-    caption: 'INSPECTION ROUTE — the places where defects have actually been found. Click anywhere to stop.', dwell: 4.0 },
+    // while the route runs. A pointer, key or wheel PAUSES the run (§142; Esc asks
+    // to end it) and the arrows and the banner's list steer it (§277), so the
+    // honest instruction is the one that works from anywhere.
+    caption: 'INSPECTION ROUTE — the edges of what is modelled. Each stop says what is driven, what is only modelled, and which open item in TODO.md it is the edge of. Use the arrows or the list to move; any other key pauses.', dwell: 5.0 },
 
   // --- §277 part B: THE MOVEMENT, not only the alarm. Each stop below says what
   // is DRIVEN, what is only MODELLED, and which open item (public TODO.md) the
@@ -53180,44 +53181,32 @@ const INSPECT_STEPS = [
     get camera() { return frameOn('Winding clutch', [0.4, -0.5, 0.8], 2.6); },
     caption: 'Pull the crown and turn it: the hand steps one minute per detent through the keyless works. Here is the clutch that carries the turn into the setting train. It is posed by one law and the setting bevel it meets by another, and the pair does not roll at any index: the mesh is buried a flat 0.2187 (29% of a tooth) (TODO 163).', dwell: 6.0 },
 
-  // --- the alarm (parts A-D will cut and rewrite these; their `k/9` counters are gone because the banner counts now)
-  { camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 4.2), crown: 'in', scale: 0.25, alarm: false, labels: true,
-    caption: 'Column wheel at rest. The click’s spring is GROUNDED on its own stud — it must stay still while the arm rocks.', dwell: 6.0 },
-  { alarm: true,
-    caption: 'Alarm ON. The wheel indexes as the pusher goes down. Watch the pawl drive the ratchet the way its teeth are cut.', dwell: 6.5 },
+  // --- the alarm: five stops, each the edge of one open item (§277 parts C and D).
+  // The nine this replaces asked tooth-into-gap and hand-off questions that
+  // `meshPhase`, `transmits` and `alarmHandoffs` now gate, and one taught an
+  // "inverted lever" check on a link §229/§261 rebuilt.
+  { title: 'Arming run', crown: 'in', scale: 0.25, alarm: true, labels: false, xray: false, schematic: true,
+    camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 4.2),
+    caption: 'The pusher, the pawl and the column wheel, drawn in lines with the contact dots lit by the same rows the battery gates, measured at this pose. What no gate samples is the press itself: every sweep takes the pawl parked, because the stroke is not a pose any axis varies (TODO 87).', dwell: 7.5 },
 
-  // --- the alarm link, end to end: §54 / TODO 16 / the inverted lever
-  // The lever test is judged where the tail MEETS THE ROD, on the movement
-  // side at the top of the z-shaft — not at the nose, which only shows the
-  // input. Framed on the contact so it keeps aiming there if either moves.
-  { camera: frameOnEnd('alarmLinkRod', 'max', 'z', [0.6, -0.35, 0.5], 7.0), scale: 0.25,
-    caption: 'Where the beak’s tail meets the top of the vertical rod, movement side. Nose falls into a gap ⇒ tail RISES ⇒ the rod follows it up 1:1. A tail driving DOWN onto a rising rod is an inverted lever.', dwell: 7.5 },
-  // xray on every DIAL-SIDE stop from here: once the camera is correctly on the
-  // dial side, the base plate and the dial itself are between it and the
-  // subject. Fixing the side without this just swaps one opaque view for
-  // another.
-  { camera: frameOn('alarmLinkCrankCentre', [0.6, -0.4, 0.7], 6.0), alarm: false, xray: true,
-    caption: 'The LAY SHAFT — the long horizontal arbor under the dial. The vertical rod pushes a crank at its far end, the shaft twists, and a second crank at THIS end shifts the alarm selector ring. Watch that near crank stay in the ring’s tab: it is the last step of the pusher’s force path.', dwell: 8.0 },
+  { title: 'Release', scale: 0.3, schematic: false, xray: true,
+    camera: frameOn('Alarm lock', [0.4, -0.35, 0.8], 4.0),
+    caption: 'The strike train’s lock. It answers the column wheel alone: the hold between arming and the trip is a flag in the code, not metal, and nothing carries the feeler’s drop to the lock (TODO 199).', dwell: 7.0 },
 
-  // --- the mesh-phase family: TODO 15
-  { camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6), scale: 1, labels: false,
-    caption: 'Winding idlers. Tooth into GAP at the line of centres, never tooth on tooth — and the same again where they meet the barrel.', dwell: 7.0 },
-  { camera: frameOn('Alarm setting wheel', [0.4, -0.35, 0.8], 2.6), xray: true,
-    caption: 'The setting train’s dogleg, dial side: setting wheel → idler → idler. Same tooth-into-gap test, and this chain crosses the dial’s Y-flip.', dwell: 6.5 },
+  { title: 'Arming link', xray: false,
+    camera: frameOnEnd('alarmLinkRod', 'max', 'z', [0.6, -0.35, 0.5], 7.0),
+    caption: 'Where the beak’s tail meets the top of the vertical rod; the chain runs on through the lay shaft to the selector ring. Its stall figure reflects each member’s compliance as n²/k where virtual work gives 1/(n²k), so the rod-side members read 3.6× too stiff and the shaft’s 4.3× too soft, and the rod-end overhang probably governs, not the fork end. The figure stays far over the detent window either way (TODO 237).', dwell: 8.0 },
 
-  // --- the strike: TODO 14's spring, and the hammer that has to fall
-  { camera: frameOn('Alarm hammer', [0.45, -0.35, 0.8], 4.2), alarm: true, scale: 0.3,
-    caption: 'The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.', dwell: 7.0 },
+  { title: 'Alarm stem, backward', xray: true, alarm: false, alarmCrown: 'out', turnAlarmHours: -1,
+    camera: frameOn('Alarm winding train', [0.4, -0.3, 0.85], 3.6),
+    caption: 'Pull the alarm crown and turn it backward: nothing happens. The winding routes bank only forward turns, and the free slip the comments describe has no metal behind it, so the one-way is a bookkeeping rule and not a coupling (TODO 72).', dwell: 7.0 },
 
-  // --- the cam followers: TODO 13
-  // Framed on the BLADE itself: the unit's radius is 6.2, which at any usable
-  // pad puts the camera ~28 u out — a whole-movement shot for a part 0.1 mm
-  // thick. The subject is the spring and the arm it presses.
-  { camera: frameOn('alarmFeelerSpring', [0.5, -0.3, 0.8], 8.0), scale: 0.3, xray: true,
-    caption: 'The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.', dwell: 7.5 },
+  { title: 'Hammer and ribbon', alarmCrown: 'in', alarm: true, scale: 0.3, xray: false,
+    camera: frameOn('Alarm hammer', [0.45, -0.35, 0.8], 4.2),
+    caption: 'The hammer. After the wire it rebounds on a posed envelope, a 198 Hz cosine decaying over 31 cycles that nothing in the metal produces and nothing banks, so the double strike a serviced watch must not have is neither drawn nor prevented (TODO 228). Its strike ribbon works at 3096 to 5264 MPa, past its alloy’s tensile strength, and is waived by name (TODO 201).', dwell: 8.0 },
 
-  { preset: 'Free', scale: 1, alarm: false, labels: false, xray: false, explode: 0,
-    caption: 'End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.', dwell: 4.0 },
+  { title: 'End', preset: 'Free', scale: 1, alarm: false, alarmCrown: 'in', labels: false, xray: false, schematic: false, explode: 0, links: true,
+    caption: 'That is the route. Every stop named the open item it is the edge of, and the list is TODO.md; where a stop said modelled, the part is described and not driven. Read how it works:', dwell: 6.0 },
 ];
 
 document.getElementById('btn-inspect').addEventListener('click', (e) => {
