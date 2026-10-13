@@ -27827,9 +27827,24 @@ const ALARM_TAIL_RISER = (() => {
     return true;
   };
   const hi = ALARM_LIFT_CONTACT_SPAN.lo - ALARM_LIFT_TIP_R - CLEAR_MARGIN - T / 2;
+  // The window is one interval (the bar runs monotonically inward from the
+  // pivot over the swing): a coarse walk finds a station inside it, and each
+  // edge is then bisected to 1e-9 — a fine walk paid ~13 M radius reads in a
+  // build that must yield every 40 ms (§239), and found the same window.
+  const STEP = T / 25;
+  let seed = null;
+  for (let ac = T / 2; ac <= hi + 1e-12; ac += STEP) if (ok(ac)) { seed = ac; break; }
   let lo0 = null, hi0 = null;
-  for (let ac = T / 2; ac <= hi + 1e-12; ac += 1e-3) {
-    if (ok(ac)) { if (lo0 === null) lo0 = ac; hi0 = ac; } else if (lo0 !== null) break;
+  if (seed !== null) {
+    const edge = (inside, outside) => {   // bisect the ok/not-ok boundary between two stations
+      let a = inside, b = outside;
+      while (Math.abs(b - a) > 1e-9) { const m = (a + b) / 2; if (ok(m)) a = m; else b = m; }
+      return a;
+    };
+    lo0 = ok(T / 2) ? T / 2 : edge(seed, T / 2);
+    hi0 = ok(hi) ? hi : edge(seed, hi);
+    // the interval's claim, checked rather than assumed: its middle is a station too
+    if (!ok((lo0 + hi0) / 2)) { lo0 = null; hi0 = null; }
   }
   if (lo0 === null) {
     console.warn(`§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);

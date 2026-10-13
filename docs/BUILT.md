@@ -35656,3 +35656,107 @@ own eight phases and every other axis at f ∈ {0, ½, 1}.
 **What it leaves to landing 2.** The fold itself: crank the tail at the
 shipped azimuth, re-derive the case, and lower `CASE_HEIGHT_MAX_MM` by what
 that measures.
+
+## §278, landing 2 — the strike fold: the hammer's outboard metal cranked under the skirt arm
+
+The owner chose landing 1's best candidate: crank the tail down at the shipped
+station (Δ 0, root +1), with no re-site.
+
+**What moved, and why.**
+
+- **The ceiling.** The hammer's post top, its collet's top, its arm's root and
+  its tail's root all drop by `ALARM_TAIL_DROP`. That is the tail's top
+  (`Z_STRIKE` + `ALARM_TAIL_T`/2, 11.5910) less the ceiling the case's own
+  chain leaves for metal outboard of the aperture:
+  `STRIKE_OUTBOARD_CEIL` = skirt arm − `CLEAR_MARGIN` − the glass's float guard
+  = 10.6172 − 0.15 − 0.0001 = **10.4671**. The drop is therefore **1.1238 u
+  (0.426 mm)**, the skirt-arm slack landing 1 measured.
+- **One copy of the case's chain.** The skirt arm is
+  `max(ALARM_SWITCH_SKIRT_ROW_Z, the clamp heads) + CLEAR_MARGIN + CASE_CLAMP_ENG`.
+  To give the hammer that number before the case exists, the case's own
+  expressions were hoisted beside `GONG_BAND_TOP`, whose precedent this is:
+  `CASE_SKIRT_OD`, `CASE_SKIRT_ID`, `CASE_BCG_T`, `CASE_APERTURE_R`,
+  `CASE_GLASS_FLOAT_GUARD`, the envelope's bin grid (`BACK_ENV_NBIN`) and the
+  skirt row's z. The case block now reads them, so there is one copy, with
+  identical arithmetic.
+- **The case asserts the assumption both ways.** It checks that the skirt arm it
+  measures is the one the crank was cut under, and that the pane floor no
+  longer stands over it.
+- **The riser.** A riser carries the tail back up to the lever's plane, where
+  the lifting lever's tip rides it exactly as before. The tail is one
+  extruded Z of its own section: root, riser, upper bar. The riser stands in
+  the middle of the window two walls leave it over the hammer's whole travel
+  [−AMP, +DRAW]:
+  - every corner of it, and of the bar inboard of it, must stay inside
+    `STRIKE_R_ALLOW` 45.4309, so it can go under the glass's step;
+  - every corner of it, and of the root, must stay outside `R_ANNULUS_IN`, one
+    margin off the three-quarter plate's rim;
+  - its inner face must stop one margin short of the tip's circle (≤ 5.840).
+
+  The window is 1.978–4.988 along the tail, so the riser stands at **3.483**.
+  Its section is the bar's own (0.5 × 0.5, over §50's floor of 0.317) and it
+  stands 1.624 tall, λ 28.3 with the overhang's factor against §54's 30. Both
+  are asserted at the build.
+- **What moved as consequence.** Every plan quantity is untouched, because the
+  crank is in z. The rotor lost 0.17 % of its inertia:
+  - I: 406.757 → **406.069 mg·mm²**
+  - W: 1246.30 → **1247.35 rad/s**
+  - fall: 1.5330 → **1.5317 ms**
+
+  'alarm strike' measures all 27 rows within float noise with **no fork**:
+  k, I, W and the fall re-derive through their coherence rows, the window
+  envelope holds, and so does the reach.
+
+**The back and the cap.**
+
+| | before | after |
+|---|---|---|
+| band back face | 11.7411 (pane floor) | **10.6172** (skirt arm) |
+| glass step radius | 34.785 | **44.255** (the riser's metal now passes under it) |
+| step underside | 12.191 (the striking wheel) | unchanged |
+| aperture | 45.731 | unchanged |
+| cased depth | 12.152 mm | **11.7258 mm** |
+
+**Two things the first cut's clearance found.** `probe-strike-site` read the
+shipped station **0.1445** from the back glass at the blow, under the margin.
+Both causes were measured:
+
+- **The blow swings the riser outward.** At −AMP the riser's outermost corner
+  swings 0.13 outward of where the build pose leaves it (43.933 → 44.064). That
+  is a mover migrating radially, which is `BACK_SWEPT_REGIONS`' own case. The
+  hammer has a row again, and it is DERIVED: from that corner at rest (less the
+  §102 centi-unit) to its reach over the swing, at the tail's top.
+- **The glass is a 96-facet lathe.** Its facets stand up to R·(1 − cos(π/96)) =
+  0.024 inside the circle `rStep` was derived as. The step's radius is now held
+  one margin outside the tallest bin at the facets' INSCRIBED circle, which is
+  §262's rule for the case bore on the same lathe. That moves `rStep`
+  44.2314 → 44.2551.
+
+The tail now reads 0.1501 from the glass at every phase of the blow.
+
+`CASE_HEIGHT_MAX_MM` ratchets **12.152 → 11.726**, exactly the ledger's A1
+bound. The keys still govern the back-most metal, 0.140 mm over the ring face.
+
+**Sound.**
+
+- The wire's own level is unchanged at 52.79 dBA. μ moves 1.1933 → 1.1913.
+- The watch's tally is 0.62 g lighter, since the case ring is shallower.
+- So §269's case path reads up by under 0.2 dB:
+  - mode 1: 39.89 → 39.98 dBA
+  - mode 2: 51.46 → 51.63 dBA
+- No sound-path decision is owed.
+
+**Held by.**
+
+- `probe-261-height-ledger` PASS at 11.726 mm, both prediction mutants
+  reproduced. Its skirt-row mutation now patches the hoisted
+  `ALARM_SWITCH_SKIRT_ROW_Z`: raising it raises the crank's ceiling with it,
+  and the skirt arm still governs.
+- `probe-261-height-cap` PASS: 11.726 fires on growth and on staleness.
+- `probe-back-envelope`: GATE, GLASS and both CONTROLS PASS. The hammer's
+  outboard bins read 10.467.
+- `probe-268-hammer-spiral` ALL PASS.
+- `probe-269-case-path` 54 rows, ALL PASS.
+- `probe-strike-site` now reads the shipped station as meeting the condition
+  as built.
+- `lineSpec` reads 5 references with no new fork.
