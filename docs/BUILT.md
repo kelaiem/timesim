@@ -35476,6 +35476,128 @@ is still gated, and their profile is still reported, so the reason for the
 refusal can be re-measured.
 
 
+## §219 tier three (b), landing D — the keyless works as a LEGO transmission
+
+The steel stem carries one sliding pinion, which a pull moves between the
+winding and setting wheels. LEGO has its own version of that idiom, and the
+landing builds the keyless works from it:
+- two **16T clutch gears** (18946) idle on the stem;
+- a **ridged joiner** (18948) is keyed to the stem between them;
+- a **driving ring** (18947) slides on the joiner's ridges into one gear's
+  recess or the other's;
+- a **wedge belt wheel** (4185a) is the crown, outside the stem's front column.
+
+The first plan used the older ring (6539) and its extension (32187). Measured,
+those parts do not say what keys the ring to the axle, so the landing uses the
+current system, whose joiner carries an axle hole.
+
+### The rows
+
+Each branch is a chain whose first driver is the clutch gear. `solveRatio`
+gained a `first` option for that: the first mesh's driver is a part outside the
+catalogue, meshing as a parallel member of its own count. The targets are
+derived from the steel counts, so a re-geared steel keyless chain fails the boot
+assert:
+
+| branch | target | classic | 2026 |
+|---|---|---|---|
+| winding | pinion → crown wheel → spur = 10/24 = **5/12** | 16:24 × 8:16 × 8:16 × 40:16 | 16:64 × 20:12 |
+| setting | pinion → setting wheel → minute wheel, cap → cannon = **1/3** | 16:24 × 8:16 | 16:24 × 8:16 |
+
+Each target is a magnitude, as in the fork's rows. Which way each branch turns
+belongs to the build.
+
+### The frame
+
+`frameKeyless` lays out:
+- the stem as shaft 0, carrying the crown, the setting clutch, the joiner and
+  ring, and the winding clutch;
+- each branch with `rowLayout`, moved so that its clutch gear stands against
+  its own end of the joiner. The winding branch leaves along +x and the setting
+  branch along −x. Only positions are mirrored, never a part.
+
+`frameShafts` (factored out of `frameRow`) frames any set of parallel shafts.
+It takes an explicit mesh list and non-gear bodies: the joiner, the ring and
+the crown. The crown is OUTBOARD, so it sets the axle's length and not where
+the columns stand.
+
+The frame probe found one thing on its first run. Swept as one 7.2 mm disc over
+its stroke, the ring reached both 24T gears. That reading was false: the
+flanges stop 6.8 mm from the ring's middle, and only the 5.43 mm end tube runs
+past them. The ring is now framed in its two measured sections, and it clears.
+
+### What the parts measured
+
+Every figure in `KEYLESS_DIM_MM` is read off a part's SURFACE (triangles and
+quads), to the micron, never its bounding box: the box put the joiner's
+radius at 3.51 mm, where its middle collar stands at 3.80 mm.
+
+The ring's TRAVEL is derived: joinerHalf + recessDepth − ringHalf, which is
+12 + 3.2 − 11.2 = **4 mm**. At that travel the ring's end seats on the web at
+the bottom of the gear's recess. Centred, each end stands 0.8 mm short of its
+gear, so neutral is a real third position.
+
+The parts also draw the **dog clutch**, which the first plan had expected to
+be missing:
+- four lugs on each end of the ring reach out to 5.43 mm;
+- four lugs in each recess's mouth reach in to 5.32 mm;
+- the ring's tube (4.75 mm) passes the gear's lugs, and the ring's lugs pass the
+  gear's wall (5.89 mm).
+
+So the only thing that keeps the two sets of lugs apart is their angle.
+`dogPhase` reads both sets the way `toothPhase` reads a gear's teeth. It sets
+each clutch gear's angle on the stem so the ring's lugs sit midway between the
+gear's own. That angle is 0: the parts' own orientations already interleave
+them. Each branch is then phased FROM its clutch gear.
+
+### The build and its modes
+
+A build now has BODIES: one per shaft, plus one per clutch gear, since a clutch
+gear idles on the stem. Speed is per MODE:
+- the stem turns in every mode;
+- a clutch gear turns only in its own mode;
+- the ring SLIDES ±4 mm with the mode.
+
+Phases are solved from the line of centres, because a branch can leave along
+−x. `placedParts` and `toLdr` take the mode as an argument. The four rows'
+`.ldr` files are byte-identical to before this generalisation.
+
+### Instruments
+
+`tools/probe-technic-keyless.mjs` (new) checks:
+- **rows**: each equals the solver's answer from the clutch gear;
+- **stroke**: read off the placed parts' bounds, the ring stands 3.20 mm into
+  the engaged gear and −4.80 into the idle one, and −0.80 / −0.80 in neutral;
+- **dogs**: engaged 3.12 mm deep with ±32.2° play, axially clear when idle;
+- **keyed**: the ring's ribs sit in the joiner's slots;
+- **ratios**: the engaged branch's output turns by exactly ±target × input, and
+  the idle branch stands still.
+
+It has five controls, all caught: a changed mesh, the ring 0.8 mm short, the
+ring turned 45°, a clutch turned 45°, and the idle branch turning or the engaged
+branch at twice its ratio.
+
+The other probes:
+- `probe-technic-build.mjs` judges the keyless build in all three modes,
+  walking the build's own mesh list: 10 builds, 0 failing;
+- `probe-technic-frame.mjs`: 10 rows framed. Its overlap control now finds the
+  nearest pair of columns rather than assuming shaft 1's;
+- `probe-technic-ldraw.mjs` holds every `KEYLESS_DIM_MM` figure, the clutch
+  gear's tip and width, and the lugs' fourfold repeat, with three new
+  perturbation controls (16/16).
+
+The pack grew to 33 parts, 273 files.
+
+### What it does not claim
+
+The mode is POSED. No lever moves the ring yet: a changeover catch or a shift
+fork in the ring's groove is the next landing's. The ring is posed with its
+lugs in the middle of their play, where the parts allow anywhere across it.
+`technic.html`'s LEGO view draws the keyless works as its fifth cell, with
+wind, set and neutral buttons. A shift restarts the works from its posed angle,
+because the lugs only pass each other interleaved.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and
