@@ -1,8 +1,9 @@
 # Vendored third-party code
 
 These files are **not** covered by the project's Apache 2.0 license (see
-`../LICENSE`). They are redistributed under their own MIT terms, whose
-full text is included here as required by those licenses. Two files are
+`../LICENSE`). The code is redistributed under its own MIT terms, whose
+full text is included here as required by those licenses; the LDraw part
+data (`ldraw/`, below) is CC BY 4.0. Two files are
 verbatim; `three-mesh-bvh.module.js` carries **three local patches** (below),
 all marked `PATCHED (timesim)` in place. None is fixed upstream as of
 master 2026-08 (patches 1–2 checked against `src/math/OrientedBox.js` and
@@ -56,6 +57,28 @@ build step and no network access — see the importmap in `../index.html`.
 `three-mesh-bvh` provides the exact triangle-intersection tests behind the
 realism inspector (`../src/inspect.js`); the other two are the renderer and the
 camera controls.
+
+## LDraw parts (`ldraw/technic-parts.mpd`)
+
+`technic.html`'s LEGO build view (§219 tier three (b)) draws the Technic fork
+with real LEGO parts, and the probes that hold the frame's dimensions measure
+the same parts. They are packed into one file by `../tools/ldraw-vendor.mjs`.
+The part list is read from `../src/layout.js`' catalogues and
+`../src/technic-frame.js`' frame tables, never typed; the tool fetches each part
+and every sub-file it references from [library.ldraw.org](https://library.ldraw.org).
+`--check` re-fetches and fails if the pack would change.
+
+- **Licence:** CC BY 4.0 (some files also CC BY 2.0), per each file's own
+  `0 !LICENSE` line — `LICENSE-ldraw.txt` holds the attribution and the
+  library's own README. Each part keeps its `0 Author:` and `0 !HISTORY` lines.
+- **Changes in packing:** sections `0 FILE <name>`, line endings normalised to
+  LF, trailing whitespace trimmed. No geometry line is altered.
+- **Unofficial parts:** the 2026 gears (7785, 7786, 7861) and two primitives
+  come from the library's unofficial tracker (still in review), and say so in
+  their `0 !LDRAW_ORG` lines; `../tools/probe-technic-ldraw.mjs` prints the
+  status beside each gear.
+- **Not loaded by the movement:** `index.html` never reads it, so it is
+  outside the battery's scene.
 
 ## Provenance
 

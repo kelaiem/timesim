@@ -10,7 +10,8 @@
 //   · every hole stands exactly at its axle's height, and every axle has a
 //     part of a length LEGO makes;
 //   · no two frame parts occupy the same space (box against box, every layer);
-//   · every gear's SWEPT disc — tip radius, over its face width — clears the
+//   · every gear's SWEPT disc — its measured tip radius (GEAR_TIP_MM), over
+//     its face width — clears the
 //     baseplate's studs, every OTHER shaft's axle along that axle's span, and
 //     every column it does not stand on;
 //   · no gear's swept disc reaches a gear on another shaft it does not mesh;
@@ -28,9 +29,9 @@
 //   · must-fail GEAR — every gear folded into one layer must give at least one
 //     gear-against-gear finding across the fork.
 //
-// The dimensions it measures with are the module's UNVERIFIED table; the next
-// landing reads them from the LDraw library. This probe holds the topology,
-// which survives a millimetre's correction or names the row it does not.
+// The dimensions it measures with are the module's tables, which
+// `probe-technic-ldraw.mjs` holds to the vendored LDraw parts. This probe holds
+// the topology on top of them.
 //
 //   node tools/probe-technic-frame.mjs
 import { CATALOGUES } from '../src/layout.js';
@@ -57,7 +58,7 @@ function judge(f) {
     if (all[i].who !== all[j].who && boxesOverlap(all[i], all[j])) bad.push(`overlap: ${all[i].who} ${all[i].part} ⇄ ${all[j].who} ${all[j].part}`);
   // gear sweeps
   for (const [si, s] of f.shafts.entries()) for (const g of s.gears) {
-    const tip = g.teeth / 2 + 1, y0 = g.y - g.width / 2, y1 = g.y + g.width / 2;
+    const tip = g.tip, y0 = g.y - g.width / 2, y1 = g.y + g.width / 2;
     if (f.axleZ - tip < D.studH - EPS) bad.push(`shaft ${si} ${g.teeth}T: tips ${(f.axleZ - tip).toFixed(3)} over the plate, studs ${D.studH}`);
     for (const a of f.axles) {
       if (a.shaft === si || !overlap1(y0, y1, a.y0, a.y1)) continue;
@@ -79,7 +80,7 @@ function judge(f) {
     if (a.si === b.si || !overlap1(a.y - a.width / 2, a.y + a.width / 2, b.y - b.width / 2, b.y + b.width / 2)) continue;
     const meshing = Math.abs(a.si - b.si) === 1 && a.y === b.y;
     if (meshing) continue;
-    const d = Math.abs(a.x - b.x), reach = a.teeth / 2 + 1 + b.teeth / 2 + 1;
+    const d = Math.abs(a.x - b.x), reach = a.tip + b.tip;
     if (d < reach - EPS) bad.push(`shaft ${a.si} ${a.teeth}T sweeps shaft ${b.si} ${b.teeth}T (${d.toFixed(3)} < ${reach})`);
   }
   // meshes at their centre distance

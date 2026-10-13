@@ -353,7 +353,12 @@ try {
   // primer. Its one module import, src/layout.js, is already here through
   // main.js, so the page adds one. This count is also what catches a
   // mis-listed technic seed: drop it from ADOPTED and this reads 72.
-  check('release: precache complete', counts === 73, `${counts}/73`);
+  // §219 tier three (b) landing B — 77: the page's LEGO build view adds three
+  // modules (src/ldraw.js, src/technic-frame.js, src/technic-ldraw.js) and the
+  // one data file it fetches, vendor/ldraw/technic-parts.mpd, whose quoted
+  // ./vendor/ URL the document walk stamps like any import. Precached because
+  // the view must open offline like the rest of the page.
+  check('release: precache complete', counts === 77, `${counts}/77`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');

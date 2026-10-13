@@ -17,11 +17,18 @@
   on the 4 mm lattice), and every shaft's speed, which is the running product
   of the pairs before it (standing rule 2). Drawn, and not LEGO's CAD: the
   involute outline, the cross bore, the 4 mm face, the 8 mm layer step, the
-  turntable's face teeth and the colours. No beams or frames are drawn —
-  whether a chain can be BRACED is the LDraw export's question (§219 tier
-  three), not this page's. Every mesh is phased — parallel pairs on their line
+  turntable's face teeth and the colours. Every mesh is phased — parallel pairs on their line
   of centres, the turntable's face mesh at the pinion's lowest point — and
   tools/probe-technic-phase.mjs measures it off the drawn gears.
+
+  BUILT §219 tier three (b) landing B — THE LEGO BUILD VIEW (?view=lego). Each
+  row src/technic-frame.js can frame is assembled from real LDraw parts
+  (vendor/ldraw/technic-parts.mpd) by src/technic-ldraw.js: baseplate, 1×1
+  columns, Technic bricks, axles and gears, each shaft one keyed body turning
+  at its running product. tools/probe-technic-build.mjs measures the same
+  placements (seated, through, meshed); tools/probe-technic-ldraw.mjs holds the
+  frame's dimensions to the parts. Rows on the turntable are refused by the
+  frame and stay drawn, labelled with the reason.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -56,18 +63,25 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   train serves, and each shaft turns by the product of the tooth counts before
   it.</p>
   <div class="gen" id="gens"></div>
+  <div class="gen" id="views"></div>
   <label>speed <input id="speed" type="range" min="0" max="4" step="0.05" value="1" /></label>
   <div id="rows"></div>
   <p>Tooth counts, kinds, centre distances and ratios come from the declared rows.
-  Part shapes, faces and colours are drawn, not LEGO's CAD; beams and frames are
-  not drawn. Every pair's teeth are phased to mesh, including the 90° meshes on
-  the 60T turntable's bevel top. The escapement, balance and fusee have no LEGO row and
+  In the <b>drawn</b> view, part shapes, faces and colours are drawn, not LEGO's CAD,
+  and every pair's teeth are phased to mesh, including the 90° meshes on the 60T
+  turntable's bevel top. The <b>LEGO build</b> view assembles each row that has a
+  brick frame from the real parts (LDraw.org's library, CC BY 4.0): every
+  dimension of the frame is measured off those parts. Rows on the turntable are
+  not framed yet and stay drawn. The escapement, balance and fusee have no LEGO row and
   are not here.</p>
   <div id="log"></div>
 </div>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { parseLibrary, walk } from './src/ldraw.js';
+import { frameFork } from './src/technic-frame.js';
+import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
 import { CATALOGUES, TECHNIC_FORK, catalogueMesh, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -224,6 +238,53 @@ function buildChain(gen, chain, parent) {
   return { shafts, offLattice, meshes };
 }
 
+
+// --- the LEGO build (?view=lego) --------------------------------------------
+// Drawn by role, not by LDraw colour code: the .ldr download carries the codes.
+const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, technicBrick: 0x9b3b36, axle: 0x1c1d20, spur: 0xa0a5a9, doubleBevel: 0xd9c08c };
+const LEGO_CELL = 150;   // mm between rows on the table; the largest base is 9 studs (72 mm)
+let lib = null;
+const partGeo = new Map();
+async function loadLib() {
+  if (!lib) lib = parseLibrary(await (await fetch('./vendor/ldraw/technic-parts.mpd')).text());
+  return lib;
+}
+// One part's triangles and edges, LDU, in its own frame; built once and shared.
+function geoOf(part) {
+  if (partGeo.has(part)) return partGeo.get(part);
+  const tri = [], edge = [];
+  walk(lib, `${part}.dat`, (kind, pts) => { for (const p of pts) (kind === 'tri' ? tri : edge).push(...p); });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3)); g.computeVertexNormals();
+  const e = new THREE.BufferGeometry(); e.setAttribute('position', new THREE.Float32BufferAttribute(edge, 3));
+  const out = { g, e }; partGeo.set(part, out); return out;
+}
+const legoMat = new Map();
+const legoMaterial = (role) => {
+  if (!legoMat.has(role)) legoMat.set(role, new THREE.MeshStandardMaterial({ color: LEGO_COLOR[role] ?? 0x888888, roughness: 0.5, metalness: 0, side: THREE.DoubleSide, flatShading: true }));
+  return legoMat.get(role);
+};
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x0b0c0e });
+function placePart(parent, p) {
+  const { g, e } = geoOf(p.part), m = p.m;
+  const M = new THREE.Matrix4().set(m[3], m[4], m[5], m[0], m[6], m[7], m[8], m[1], m[9], m[10], m[11], m[2], 0, 0, 0, 1);
+  const mesh = new THREE.Mesh(g, legoMaterial(p.role)); mesh.matrixAutoUpdate = false; mesh.matrix.copy(M);
+  const lines = new THREE.LineSegments(e, edgeMat); lines.matrixAutoUpdate = false; lines.matrix.copy(M);
+  parent.add(mesh, lines);
+}
+// A framed row as parts: LDraw frame (LDU, +Y down) turned onto the page's
+// (mm, +Y up) by a half turn about X — a rotation, so nothing is mirrored.
+function buildLego(b, parent) {
+  const root = new THREE.Group(); root.scale.setScalar(0.4); root.rotation.x = Math.PI; parent.add(root);
+  for (const p of b.statics) placePart(root, p);
+  const shafts = b.shafts.map((s) => {
+    const rotor = new THREE.Group(); rotor.position.set(...s.origin); root.add(rotor);
+    for (const p of s.parts) placePart(rotor, p);
+    return { rotor, speed: s.speed, phi: s.phi };
+  });
+  return shafts;
+}
+let legoShafts = [];
+
 // --- the page ---------------------------------------------------------------
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x14161a);
@@ -257,14 +318,36 @@ function labelSprite(text) {
   return s;
 }
 
-function build(gen) {
+let view = new URLSearchParams(location.search).get('view') === 'lego' ? 'lego' : 'drawn';
+async function build(gen, mode = view) {
+  view = mode;
+  if (mode === 'lego') await loadLib();
   if (world) scene.remove(world);
-  world = new THREE.Group(); scene.add(world); built = [];
+  world = new THREE.Group(); scene.add(world); built = []; legoShafts = [];
+  const frames = mode === 'lego' ? frameFork(gen) : [];
   const rowsEl = document.getElementById('rows'); rowsEl.textContent = '';
   TECHNIC_FORK.rows.forEach((row, k) => {
     const chain = row.chains[gen];
     const band = new THREE.Group(); band.position.set((k % 2) * CELL[0], -Math.floor(k / 2) * CELL[1], 0); world.add(band);
-    band.add(labelSprite(`${k + 1}. ${row.key}`));
+    const frame = frames[k];
+    if (frame && frame.framed) {
+      // the build stands on a table: cells along x and into the screen
+      band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL);
+      const b = ldrawBuild(frame, lib);
+      legoShafts.push(...buildLego(b, band));
+      const lbl = labelSprite(`${k + 1}. ${row.key}`); lbl.position.set(-30, 60, 0); band.add(lbl);
+      const product = chain.reduce((acc, [a, c]) => ratMul(acc, ratQ(a, c)), ratQ(1));
+      const div = document.createElement('div'); div.className = 'row';
+      const href = URL.createObjectURL(new Blob([toLdr(b)], { type: 'text/plain' }));
+      div.innerHTML = `<b>${k + 1}. ${row.key} — LEGO build</b><code>${chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(product)}</code>`
+        + `<br><span style="color:var(--dim)">${frame.shafts.length} axles at ${frame.axleZ} mm, base ${frame.base.studsX}×${frame.base.studsY} studs, `
+        + `${b.statics.length + b.shafts.reduce((n, s) => n + s.parts.length, 0)} parts</span>`
+        + `<br><a href="${href}" download="${gen}-${row.key.replace(/\W+/g, '-')}.ldr" style="color:#9fb6d9">download .ldr</a>`;
+      rowsEl.appendChild(div);
+      return;
+    }
+    if (mode === 'lego') { band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); band.rotation.x = -Math.PI / 2; }
+    band.add(labelSprite(`${k + 1}. ${row.key}${mode === 'lego' ? ' (drawn)' : ''}`));
     // The lattice under the chain's plane: 8 mm studs, 4 mm half-studs.
     const g8 = new THREE.GridHelper(160, 20, 0x3a4150, 0x2a3040), g4 = new THREE.GridHelper(160, 40, 0x20252e, 0x20252e);
     for (const g of [g4, g8]) { g.rotation.x = Math.PI / 2; g.position.set(40, 0, -LAYER); band.add(g); }
@@ -279,25 +362,35 @@ function build(gen) {
     div.innerHTML = `<b>${k + 1}. ${row.key}</b><code>${chain.map(([a, b]) => `${a}:${b}`).join(' × ')}</code> = <code>${ratStr(product)}</code> ${verdict}`
       + `<br><span style="color:var(--dim)">${row.derivedFrom}</span>`
       + (res.offLattice.length ? `<br><span style="color:var(--dim)">off the lattice, on a turntable's own frame: ${res.offLattice.join(', ')}</span>` : '')
+      + (frame && !frame.framed ? `<br><span class="bad">not framed in LEGO: ${frame.reason}</span>` : '')
       + `<br>measured <code data-meter="${built.length - 1}">—</code>`;
     rowsEl.appendChild(div);
   });
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
+  for (const b of document.querySelectorAll('#views button')) b.dataset.state = b.dataset.view === mode ? 'on' : 'off';
+  currentGen = gen;
   const box = new THREE.Box3().setFromObject(world), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
   controls.target.copy(c);
-  cam.position.set(c.x, c.y - size.y * 0.75, c.z + Math.max(size.x, size.y) * 1.05);
+  if (mode === 'lego') cam.position.set(c.x - size.x * 0.2, c.y + Math.max(size.x, size.z) * 0.8, c.z + Math.max(size.x, size.z) * 0.9);
+  else cam.position.set(c.x, c.y - size.y * 0.75, c.z + Math.max(size.x, size.y) * 1.05);
   controls.update();
   inputAngle = 0;
 }
 
+let currentGen = null;
 const gensEl = document.getElementById('gens');
 for (const g of gens) {
   const b = document.createElement('button'); b.textContent = g.replace('technic_', ''); b.dataset.gen = g;
   b.addEventListener('click', () => build(g)); gensEl.appendChild(b);
 }
+const viewsEl = document.getElementById('views');
+for (const [v, label] of [['drawn', 'drawn'], ['lego', 'LEGO build']]) {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.view = v;
+  b.addEventListener('click', () => build(currentGen, v)); viewsEl.appendChild(b);
+}
 const speedEl = document.getElementById('speed');
 const params = new URLSearchParams(location.search);
-build(gens.includes(params.get('gen')) ? params.get('gen') : 'technic_2026');
+await build(gens.includes(params.get('gen')) ? params.get('gen') : 'technic_2026');
 
 // The input shaft turns once a minute at speed 1, which turns the centre→fourth
 // row's output once a second — the steel fourth wheel's own rate.
@@ -306,6 +399,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   inputAngle += dt * INPUT_RAD_S * Number(speedEl.value);
+  for (const s of legoShafts) s.rotor.rotation.z = s.phi + s.speed * inputAngle;
   built.forEach((res, i) => {
     for (const sh of res.shafts) sh.rotor.rotation.z = sh.speed * inputAngle;
     const out = res.shafts[res.shafts.length - 1].rotor.rotation.z, inp = res.shafts[0].rotor.rotation.z;
@@ -314,7 +408,7 @@ renderer.setAnimationLoop((now) => {
   });
   renderer.render(scene, cam);
 });
-window.__technic = { build, get built() { return built; } };
+window.__technic = { build, get built() { return built; }, cam, controls };
 </script>
 </body>
 </html>

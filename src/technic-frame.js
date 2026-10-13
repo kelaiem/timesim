@@ -29,40 +29,55 @@
 // WHAT IS NOT FRAMED, by name rather than by omission: a right-angle mesh (the
 // 60T turntable's face teeth) and a turntable on its own frame (56:14 at
 // 35 mm, off the 4 mm lattice). Both need the turntable's mounting, which is
-// LDraw geometry this landing does not have.
+// LDraw geometry still to be mounted.
 //
-// THE DIMENSIONS BELOW ARE UNVERIFIED. They are LEGO's published or commonly
-// quoted figures, and the next landing reads each from the LDraw part files
-// and fails on any that differ — the feasibility note's first parts list was
-// written from memory and was wrong in both directions, which is the reason
-// this table says so rather than presenting itself as fact.
+// THE DIMENSIONS BELOW ARE MEASURED (landing B). Each is read off the LDraw
+// part files vendored in vendor/ldraw/technic-parts.mpd, and
+// `tools/probe-technic-ldraw.mjs` re-reads every one and FAILS on any that
+// differ. Landing A wrote this table from LEGO's commonly quoted figures and
+// two were wrong: a stud stands 1.6 mm, not 1.7, and a Technic brick's hole
+// is 5.6 mm above its bottom, not 5.8. Its gear widths were wrong too (7.2 and
+// 3.6 mm; every gear but one is 8). Each of those moved the solved frame.
 import { CATALOGUES, TECHNIC_FORK, catalogueMesh } from './layout.js';
 
 export const LEGO_DIM_MM = Object.freeze({
-  verified: false,          // landing B sets this by reading the .dat files
-  stud: 8,                  // stud pitch
-  plateH: 3.2,              // a plate's height
-  brickH: 9.6,              // a brick's height (three plates)
-  studH: 1.7,               // a stud's height above the surface it stands on
-  holeZ: 5.8,               // a Technic brick's hole centre above its bottom face
-  axleR: 2.4,               // half the cross axle's arm-to-arm width (4.8 across)
-  layer: 8,                 // the axial step between a shaft's gears (technic.html's LAYER)
+  verified: true,           // held by probe-technic-ldraw.mjs against the vendored parts
+  stud: 8,                  // stud pitch: 3024's footprint, 20 LDU
+  plateH: 3.2,              // a plate's height: 3024's body, 8 LDU
+  brickH: 9.6,              // a brick's height: 3005's body, 24 LDU
+  studH: 1.6,               // a stud's height: 3024 above its top face, 4 LDU
+  holeZ: 5.6,               // 6541's hole centre above its bottom: the pin hole sits 10 LDU under the top of a 24 LDU body
+  axleR: 2.4,               // half the cross axle's width: 3705's section, ±6 LDU
+  layer: 8,                 // the axial step between a shaft's gears (technic.html's LAYER), one gear face
 });
-// Gear face widths along the axle, per catalogue part. UNVERIFIED, as above;
-// the default is a full-width spur.
-export const GEAR_WIDTH_MM = Object.freeze({ default: 7.2, '4019': 3.6 });
-// The parts the frame uses, by role. UNVERIFIED LDraw/BrickLink numbers.
+// Gear face widths along the axle, per catalogue part: each gear's extent
+// along its own axle. Every gear in both catalogues is 20 LDU but the 24T,
+// whose LDraw file is 19.25 LDU.
+export const GEAR_WIDTH_MM = Object.freeze({ default: 8, '3648': 7.7 });
+// Gear TIP radii, per part, as the parts measure — the swept disc the frame
+// clears. Not teeth/2 + 1: centre distance is module 1 (that is how LEGO
+// pitches its gears, and how the catalogue meshes them), but the tip is a fact
+// about each part, and two of them stand OUTSIDE the module-1 tip (the 12T by
+// 0.084 mm, the 20T by 0.045), so a formula would sweep less than the metal.
+// Each is the surface's farthest point from the axis, to the micron.
+export const GEAR_TIP_MM = Object.freeze({
+  3647: 4.979878, 69778: 7.083767, 4019: 8.665331, 69779: 11.044774, 3648: 12.959951, 46372: 14.724781,
+  32498: 18.803417, 3649: 20.942965, 7785: 7.886509, 7786: 9.885220, 7861: 32.641350,
+});
+// The parts the frame uses, by role. Each part's title and footprint are held
+// by the probe.
 export const FRAME_PARTS = Object.freeze({
-  plate1x1: '3024', jumper1x2: '3794b', brick1x1: '3005', technicBrick1x1: '6541',
+  plate1x1: '3024', jumper1x2: '3794b', brick1x1: '3005', technicBrick1x1: '6541', baseplate16: '3867',
 });
-// Cross axles by length in studs. UNVERIFIED.
+// Cross axles by length in studs: each is titled "Technic Axle N" and is
+// 20·N − 1 LDU long (the library shortens each end half an LDU).
 export const AXLE_PARTS = Object.freeze({
   2: '32062', 3: '4519', 4: '3705', 5: '32073', 6: '3706', 7: '44294', 8: '3707',
   9: '60485', 10: '3737', 12: '3708',
 });
 
 const D = LEGO_DIM_MM;
-const tipR = (teeth) => teeth / 2 + 1;             // module 1: addendum one module
+const tipOf = (row) => GEAR_TIP_MM[row.part];
 const widthOf = (row) => GEAR_WIDTH_MM[row.part] ?? GEAR_WIDTH_MM.default;
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
 
@@ -100,6 +115,8 @@ export function rowLayout(gen, chain) {
       return { framed: false, reason: `${ta}:${tb} is a right-angle mesh on the 60T turntable's face teeth — it needs the turntable's mounting, which is LDraw geometry` };
     if (m.cd % cat.lattice_mm !== 0)
       return { framed: false, reason: `${ta}:${tb} stands ${m.cd} mm apart, off the ${cat.lattice_mm} mm lattice — a turntable on its own frame` };
+    if (tipOf(a) === undefined || tipOf(b) === undefined)
+      return { framed: false, reason: `${ta}:${tb} has a gear with no measured tip in GEAR_TIP_MM` };
     meshes.push({ a, b, ta, tb, cd: m.cd });
   }
   // THE STEP BETWEEN STAGES. Shaft i carries its driven gear (stage i−1's) and
@@ -110,18 +127,18 @@ export function rowLayout(gen, chain) {
   // the gear's tip clears the column's near face (a 1×1, half a stud from its
   // axle); otherwise the step is TWO layers and the columns stand in the empty
   // layer between. Both are written as the constraint, not chosen per row.
-  const clearsColumn = (teeth, cd) => tipR(teeth) <= cd - D.stud / 2;
+  const clearsColumn = (row, cd) => tipOf(row) <= cd - D.stud / 2;
   let y = 0;
   for (let i = 0; i < meshes.length; i++) {
     if (i > 0) {
       const prev = meshes[i - 1], cur = meshes[i];
-      const oneLayer = clearsColumn(cur.ta, prev.cd) && clearsColumn(prev.tb, cur.cd);
+      const oneLayer = clearsColumn(cur.a, prev.cd) && clearsColumn(prev.b, cur.cd);
       y += oneLayer ? D.layer : 2 * D.layer;
     }
     const { a, b, ta, tb, cd } = meshes[i];
     const s = shafts[shafts.length - 1];
-    s.gears.push({ teeth: ta, part: a.part, kind: a.kind, y, width: widthOf(a) });
-    shafts.push({ x: s.x + cd, gears: [{ teeth: tb, part: b.part, kind: b.kind, y, width: widthOf(b) }] });
+    s.gears.push({ teeth: ta, part: a.part, kind: a.kind, y, width: widthOf(a), tip: tipOf(a) });
+    shafts.push({ x: s.x + cd, gears: [{ teeth: tb, part: b.part, kind: b.kind, y, width: widthOf(b), tip: tipOf(b) }] });
   }
   return { framed: true, shafts };
 }
@@ -133,7 +150,7 @@ export function rowLayout(gen, chain) {
 export function frameRow(gen, row) {
   const lay = rowLayout(gen, row.chains[gen]);
   if (!lay.framed) return { key: row.key, gen, framed: false, reason: lay.reason };
-  const maxTip = Math.max(...lay.shafts.flatMap((s) => s.gears.map((g) => tipR(g.teeth))));
+  const maxTip = Math.max(...lay.shafts.flatMap((s) => s.gears.map((g) => g.tip)));
   const col = columnFor(maxTip);
   if (!col) return { key: row.key, gen, framed: false, reason: `no column of up to 12 bricks reaches a ${maxTip} mm tip` };
   const half = D.stud / 2;

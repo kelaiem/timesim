@@ -29,12 +29,20 @@ its part shapes are drawn, and every pair's teeth are PHASED to mesh — the
 turntable's 90° face mesh included — which `tools/probe-technic-phase.mjs`
 measures off the drawn gears at five angles, against a half-pitch control.
 
-`src/technic-frame.js` (§219 tier three (b), landing A) solves the BRICK FRAME
-that would hold those rows: 1×1 columns, a Technic brick on top, a jumper
-under a half-stud axle, in millimetres from a table it marks UNVERIFIED until
-the LDraw landing reads the part files. Its step between stages is DERIVED (two
-layers where a gear's tip reaches the neighbouring column) and is not yet the
-page's. `tools/probe-technic-frame.mjs` holds it, pure Node.
+`src/technic-frame.js` (§219 tier three (b)) solves the BRICK FRAME that holds
+those rows: 1×1 columns, a Technic brick on top, a jumper under a half-stud
+axle. Its step between stages is DERIVED (two layers where a gear's tip reaches
+the neighbouring column) and is not yet the drawn view's. **Its dimensions are
+MEASURED off real LEGO parts**: `vendor/ldraw/technic-parts.mpd` packs the LDraw
+library's files for every part the catalogues and the frame name
+(`tools/ldraw-vendor.mjs` reads that list; never type it), `src/ldraw.js` parses
+them, and `tools/probe-technic-ldraw.mjs` holds every table entry to the parts —
+landing A's quoted figures were wrong in five places. `src/technic-ldraw.js`
+places the build as LDraw parts (each shaft one keyed body, its free angle
+solved to mesh off each part's MEASURED tooth phase), which `technic.html`'s
+`?view=lego` draws and offers as `.ldr`; `tools/probe-technic-build.mjs` holds
+the placements to the part geometry (seated, through, meshed, the file). All
+three probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1038,7 +1046,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 298 measuring scripts and this file names 40. The rest are named for the
+`tools/` holds 303 measuring scripts and this file names 45. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1055,7 +1063,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **186 of
+The index also carries the split that decides how to read a result: **191 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

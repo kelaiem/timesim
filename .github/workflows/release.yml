@@ -156,6 +156,9 @@ jobs:
                    "$VERSION/vendor/LICENSE-three-mesh-bvh.txt"; do
             [ -f "$f" ] || { echo "::error::$f is missing from the release payload"; exit 1; }
           done
+          if [ -d "$VERSION/vendor/ldraw" ] && [ ! -f "$VERSION/vendor/LICENSE-ldraw.txt" ]; then
+            echo "::error::vendor/LICENSE-ldraw.txt is missing — a release carrying LDraw parts must carry their licence"; exit 1
+          fi
 
       # §28 layer 1 — version every asset URL so a browser cannot serve a
       # stale one, and emit version.json for the running app to poll. URLs
