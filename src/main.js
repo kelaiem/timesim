@@ -57915,6 +57915,7 @@ window.__clock = {
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
   scriptGoto(i) { scriptGoto(i); },
   scriptStop() { scriptStop(); },
+  get scriptAlarmDebug() { return { want: scriptAlarmWant, tries: scriptAlarmTries, stroke: alarmPusherStroke, T: alarmPusherT, parity: alarmColSteps % 2, held: alarmPusherHeld, released: alarmReleased }; }, // §277 — for the probe
   scriptStepCamera(i) { const c = scriptSteps && scriptSteps[i] && scriptSteps[i].camera; return c ? { pos: [...c.pos], look: [...c.look] } : null; }, // §277 — the resolved framing of a stop, for the probe   // §277 — the navigation primitive, for the probe
   get scriptView() { return { timeScale, labelsOn, xrayOn, schematic: !!SCHEMATIC.on, powerFlowOn, soundOn, alarmOn, explodeAmount, selectedUnit, focusName, reconfOn, crownOut, autoWind: autoWindRemaining, done: [...scriptDone] }; }, // §277 — what a fold must reproduce
   scriptJump(i) { if (scriptSteps) { scriptIdx = i; scriptEnterStep(i, { viewOnly: true }); } }, // §142 — enter a stop directly (view only), for the probe
