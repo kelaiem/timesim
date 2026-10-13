@@ -35334,6 +35334,89 @@ document walk versions that quoted URL like an import. `offline-check`'s
 precache count went from 73 to 77: the three new modules and the pack.
 
 
+## §219 tier three (b), landing C1 — the turntables measured, the 56T held to the lattice, the drawn view on the frame's step
+
+**PARTIAL.** The three rows that drive the 60T turntable at 90° are measured
+here and mounted in landing C2.
+
+### The 56T turntable is held to the lattice; 2026's motion works re-solved
+
+Tier one exempted the 56T turntable from the 4 mm lattice ("it mounts on its
+own frame"), and the 2026 solver took 24:8 × 56:14 for the motion works, with
+the 56T and a 14T 35 mm apart. No brick frame stands an axle there:
+- every axle of the frame sits on the 4 mm lattice;
+- 35 mm is not 4·√(a² + b²) for any whole a and b, so not even a diagonal
+  reaches it;
+- mixing horizontal studs with vertical plates, the nearest is 35.064 mm.
+
+The exemption is gone from `catalogueMesh`, along with its `parallel-exempt`
+class, so a turntable's parallel mesh is held to the lattice like any spur.
+The solver now answers **24:8 × 64:16 = 12**: two parallel meshes at 16 and
+40 mm. That row frames (3 axles at 34.4 mm, base 8×5) and builds from real
+parts (44 parts, meshes at 1e-13 of a turn). `probe-219-catalogue.mjs` holds the
+declared row to the solver, and the five other rows did not move.
+
+### The turntables measured
+
+`probe-technic-ldraw.mjs` now gates each turntable's tooth count against the
+catalogue. The count is read off the tips: the smallest N at which the
+outermost points cohere, with no count that is not a multiple of it cohering
+at all.
+
+| part | catalogue | tips repeat | coherence | best rival |
+|---|---|---|---|---|
+| 2855 (56T) | 56 | 56 | 0.706 | 0.003 |
+| 18938 (60T) | 60 | 60 | 0.786 | 0.000 |
+
+The first version took the strongest N. It read the 60T's own second harmonic
+(0.240) as a rival count, and once its range was widened it let 224 = 4 × 56 win
+outright. A control claims two teeth more than each part has, and must fail.
+
+The 60T's base, 18939, joined the pack (now 29 parts, 257 files) through a new
+`TURNTABLE_BASES` table. The probe reports the assembly's profile as landing
+C2's inputs:
+- the toothed band stands 3.08 mm below to 2.00 mm above the face top and base
+  share;
+- the tips are at 30.70 mm, and the gaps open to 27.72 mm through the whole
+  band;
+- the body above stays within 27.60 mm of the axis, the base beside it within
+  26.80 mm;
+- six pin holes sit 8 mm below the face, 16 mm out from the axis.
+
+**What that means for the 90° mesh.** The 60T's teeth are radial bars. Their
+gaps run through the whole height, with a chamfer about 1 mm deep on the lower
+edge, so a pinion at 90° meets them as it would a rack of bars. That
+engagement is plausible, but the ring fixes no depth for it, so C2 has to take
+the depth from module-1 proportions. Its window runs from one addendum (1 mm)
+to the whole depth (2.25 mm). The mount the lattice reaches is:
+- the turntable pinned through its base holes into Technic bricks, 3 studs
+  from its axis;
+- the 8T on a radial axle, cantilevered from two columns outside the ring,
+  engaging from above;
+- the lattice arithmetic putting the 8T's tips 2.18 mm into the ring, inside
+  the window. From below it gives 0.98 mm, just short.
+
+C2 builds that mount. It needs pins, Technic bricks turned a quarter turn, a
+90° phase solve, and clearances measured between the parts' own surfaces: the
+pin columns' studs come within a few tenths of a millimetre of the base's ring,
+and the frame probe's boxes cannot judge that.
+
+### The drawn view on the frame's step
+
+`technic.html` now stands each shaft's driver at `rowLayout`'s derived step (8
+or 16 mm) wherever the row frames, and keeps its one-layer step where it does
+not. `probe-technic-phase.mjs` reads each drawn shaft's gear spacing off the
+meshes and compares it with the frame's step. Five framed rows match, and a
+control fails if every step is 8, because then the comparison could not tell
+the two laws apart. 17/17 meshes still mesh.
+
+### Not changed
+
+The catalogue's 24T stays `3648`. That is the number a BOM orders, and the
+library resolves it through its `~Moved to 3648b` alias. The probe prints the
+alias beside the part.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and

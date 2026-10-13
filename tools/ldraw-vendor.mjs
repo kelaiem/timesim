@@ -4,8 +4,8 @@
 //   node tools/ldraw-vendor.mjs --check    # fails if the pack would change
 //
 // THE PART LIST IS READ, NEVER TYPED: every `part` in `CATALOGUES` (both
-// generations) and every part in `technic-frame.js`' FRAME_PARTS and
-// AXLE_PARTS. Add a gear to the catalogue and the next run fetches it; a part
+// generations) and every part in `technic-frame.js`' FRAME_PARTS,
+// AXLE_PARTS and TURNTABLE_BASES. Add a gear to the catalogue and the next run fetches it; a part
 // the library does not hold FAILS the run rather than shipping a build with a
 // hole in it.
 //
@@ -26,7 +26,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { CATALOGUES } from '../src/layout.js';
-import { FRAME_PARTS, AXLE_PARTS } from '../src/technic-frame.js';
+import { FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES } from '../src/technic-frame.js';
 import { fetchParts } from './ldraw-fetch.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,7 +35,7 @@ const check = process.argv.includes('--check');
 
 export const PACK_PARTS = [...new Set([
   ...Object.values(CATALOGUES).filter(Boolean).flatMap((c) => c.counts.map((r) => r.part)),
-  ...Object.values(FRAME_PARTS), ...Object.values(AXLE_PARTS),
+  ...Object.values(FRAME_PARTS), ...Object.values(AXLE_PARTS), ...Object.values(TURNTABLE_BASES),
 ])].sort();
 
 const cache = await mkdtemp(join(tmpdir(), 'ldraw-'));
