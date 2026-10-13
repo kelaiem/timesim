@@ -577,7 +577,14 @@ export const CASE_HEIGHT_STEP_MM = 0.001;
 // (10.6172) and the cased assembly measures 11.7258 mm, 0.426 mm bought — the
 // height ledger's A1 bound to the micron. The keys still govern the back-most
 // metal.
-export const CASE_HEIGHT_MAX_MM = 11.726;
+// §278 landing 3 LOWERED it, 11.726 → 11.586: the ring's two wrench keys, the
+// case's back-most metal since §192 (0.15 mm proud, sunk SEAT_EMBED, so 0.140
+// mm over the face), are cut INTO the ring's face as notches, so the face
+// itself (z0, 13.7839) is the back-most metal and the cased assembly measures
+// 11.5858 mm (30.5736 u) — 0.140 mm bought, exactly the keys' rise. The glass
+// step's top (13.7744) stands 0.0095 u (0.004 mm) under the face, so the next
+// governor is the step, not the ring.
+export const CASE_HEIGHT_MAX_MM = 11.586;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE

@@ -46528,8 +46528,9 @@ registerLabel('Case', caseSolid);
 // back UNSCREWS out the back (+z, past the alarm gong's stratum 11 —
 // literally, since §187 made it a threaded ring), the crystal lifts off
 // the front (−z, past the dial's own stage), and the middle stays put as
-// the reference body the movement sits in. The ring's glass, key lugs and
-// the gasket cord it compresses ride with it (backAsm); the tubes, lugs
+// the reference body the movement sits in. The ring's glass and the gasket
+// cord it compresses ride with it (backAsm; the wrench notches are cut in
+// the ring itself since §278 landing 3); the tubes, lugs
 // and §186 clamp screws stay with the band (middleAsm).
 registerExplode(caseSolid.userData.assemblies.back, 0, 13, 1);
 registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
@@ -48362,7 +48363,7 @@ function beatEventCount(t) {
 // THE RADIATION. The rigid velocity field on the case's EXTERIOR — crystal
 // and bezel in front, the two band radii, the back ring's edge and face, the
 // back glass's pane, step wall and step top; lugs, spring bars, crowns and
-// the ring's key lugs omitted — is a surface of revolution, so every
+// the ring's two wrench notches omitted — is a surface of revolution, so every
 // element's normal velocity is a₀ + a_c cosφ + a_s sinφ and the Rayleigh
 // integral's φ-part is exact (J₀ for the piston term, J₁ for the dipole
 // terms); ϑ is quadrature over the whole sphere. Over a CLOSED body that is
@@ -48668,7 +48669,7 @@ const GONG_CASE_PATH = await (async () => {
     modes, splA_dBA: 10 * Math.log10(Math.max(countedCase, 1e-30)), splA_withCase_dBA: 10 * Math.log10(Math.max(countedBoth, 1e-30)),
     approximations: [
       'receiver rigid: a mass-controlled 6-DOF response, a floor on the discs\' motion below the plate\'s and glass\'s first modes and neither bound above them (receiver.*, TODO 229); the band\'s free-ring ovalling is a separate bound with its caveat',
-      'exterior as a revolve: lugs, spring bars, crowns, pusher cap and the ring\'s key lugs omitted',
+      'exterior as a revolve: lugs, spring bars, crowns, pusher cap and the ring\'s wrench notches omitted',
       'Rayleigh integral over a closed body (Kirchhoff): quoted RAW; the same integral over a translating sphere of the case\'s radius reads the exact answer by kirchhoff.sphereRatios at each audible mode\'s ka, a band of kirchhoff.band_dB; at ka ≪ 1 it over-reads a translation by at most 4× (6 dB)',
       'wire-plus-case level is the power sum of two on-axis PEAKS that need not share a direction: an upper bound within 3 dB',
       'radiation priced for audible modes only; ultrasonic rows carry foot and rigid response with null radiation',
@@ -57320,7 +57321,8 @@ refreshConfigMark();
 // and that half reads only the DEFAULT build — the identity row the battery
 // sweeps — since a reconfigured build may honestly stand shallower and owes
 // the cap nothing. Both faces are case metal (the bezel's crystal, the back's
-// glass step or its keys), so the reading is pose-free: BOOT HAS NO POSE, and
+// ring face or its glass step — §278 landing 3 cut the wrench keys into the
+// face as notches), so the reading is pose-free: BOOT HAS NO POSE, and
 // this does not need one. A movement part reaching past the case would read
 // here first, which is the point.
 {

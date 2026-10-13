@@ -68,13 +68,12 @@ const LEVERS = [
   { key: 'front', name: 'L7 front: CASE_CRYSTAL_CLEAR 0.3 → 0.2 mm (the crystal stands closer to the minute pipe)',
     patches: [{ file: 'src/layout.js', find: 'export const CASE_CRYSTAL_CLEAR = 0.3 / UNIT_MM;', to: 'export const CASE_CRYSTAL_CLEAR = 0.2 / UNIT_MM;' }],
     delta: 0.1 / U, predict: () => B.depth - 0.1 / U },
-  { key: 'keys', name: 'L1b keys: the ring\'s wrench keys 0.15 → 0.05 mm tall',
-    patches: [{ file: 'src/geometry.js', find: '    const keyT = 0.15 / UNIT_MM;', to: '    const keyT = 0.05 / UNIT_MM;' }],
-    delta: 0.1 / U, predict: null },
+  // (L1b, the ring's wrench keys made shorter, was taken whole by §278 landing 3:
+  // the purchase is notched into the ring's face and nothing stands proud of it.)
   { key: 'thread', name: 'L1 ring chain: the back ring\'s thread engagement CASE_CLAMP_ENG 0.7 → 0.5 mm',
     patches: [{ file: 'src/main.js', find: 'const CASE_CLAMP_ENG = 0.7 / UNIT_MM;', to: 'const CASE_CLAMP_ENG = 0.5 / UNIT_MM;' }],
     delta: 0.2 / U,
-    // Through the ledger: the skirt arm drops 0.2 mm until the pane floor binds; the ring and keys ride it.
+    // Through the ledger: the skirt arm drops 0.2 mm until the pane floor binds; the ring (and any keys) ride it.
     predict: () => { const L = B.L; const ch = backChain(base, base.env.bins, L.eng - 0.2 / U, L.ringRise, L.keyRise);
       return backMost(base, ch, base).top.z - L.frontCase; } },
   { key: 'tower', name: 'L4 tower: the three-quarter plate TQ_T − 0.3 u (sensitivity — everything above the plate rides it)',
@@ -85,8 +84,7 @@ const LEVERS = [
     delta: 0.2, predict: null },
 ];
 const COMBOS = [
-  { key: 'ring', of: ['keys', 'thread'], name: 'the ring chain whole: keys + thread engagement' },
-  { key: 'ring+tower', of: ['keys', 'thread', 'tower'], name: 'the ring chain + the tower' },
+  { key: 'ring+tower', of: ['thread', 'tower'], name: 'the ring chain + the tower' },
 ];
 
 const runs = {};
@@ -168,10 +166,9 @@ else {
     { name: 'L1 the skirt annulus at its swept ceiling (TODO 111\'s construction pose fixed)', bins: ceil(base.env.bins) },
     { name: 'L2 the dial-side fold: Alarm switch, lock and link out of the tower', bins: foldEnvelope(base.env, FOLD) },
     { name: 'L2 + L1', bins: ceil(foldEnvelope(base.env, FOLD)) },
-    { name: 'L2 + L1 + keys flush with the ring face (L1b)', bins: ceil(foldEnvelope(base.env, FOLD)), keyRise: 0 },
   ];
   for (const r of rows) {
-    const ch = backChain(base, r.bins, L.eng, L.ringRise, r.keyRise ?? L.keyRise);
+    const ch = backChain(base, r.bins, L.eng, L.ringRise, L.keyRise);
     const bm = backMost(base, ch, base);
     const d = bm.top.z - L.frontCase;
     console.log(`  ${r.name}`);

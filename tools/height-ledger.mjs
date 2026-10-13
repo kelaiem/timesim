@@ -165,7 +165,7 @@ export function backChain(m, bins, eng, ringRise, keyRise) {
     midBy: skirtArm >= paneFloor ? 'skirt arm (skirt bottom + thread engagement)' : `pane floor (outboard of the aperture: ${outboard.owner})`,
     midSlack: Math.abs(skirtArm - paneFloor),
     stepUnder, stepBy: all.owner, stepTop: stepUnder + CASE_CRYSTAL_T,
-    z0, keysTop: z0 + keyRise,
+    z0, keysTop: keyRise === null ? null : z0 + keyRise,   // null: the tree has no raised keys (§278 landing 3 cut them as notches)
   };
 }
 // The back-most metal: the faces that ride the chain, and every other case
@@ -173,10 +173,13 @@ export function backChain(m, bins, eng, ringRise, keyRise) {
 export const RIDES = new Set(['caseBack', 'caseBackKey', 'caseBackCrystal', 'caseBackCrystalGasket', 'caseGasket']);
 export function backMost(m, chain, base) {
   const cands = [
-    { by: 'the ring\'s wrench keys (caseBackKey)', z: chain.keysTop },
     { by: 'the raised glass step (caseBackCrystal)', z: chain.stepTop },
     { by: 'the ring face (caseBack)', z: chain.z0 },
   ];
+  // A tree older than §278 landing 3 stands two key lugs on the ring's face;
+  // since then the wrench purchase is notched INTO the face and there is no
+  // such candidate (a null keysTop), rather than a phantom one tying the face.
+  if (chain.keysTop !== null) cands.unshift({ by: 'the ring\'s wrench keys (caseBackKey)', z: chain.keysTop });
   for (const [name, e] of Object.entries(base.caseParts)) if (!RIDES.has(name)) cands.push({ by: name, z: e.zMax });
   cands.sort((a, b) => b.z - a.z);
   return { top: cands[0], next: cands[1], slack: cands[0].z - cands[1].z };
@@ -190,7 +193,7 @@ export function ledger(m) {
   // figure then read 2.971 for a 1.847 thread. Held constant across mutants.
   const eng = g.clampEng ?? (g.paneInner - g.skirtBot);
   const ringRise = m.caseParts.caseBack.zMax - g.paneInner;
-  const keyRise = (m.caseParts.caseBackKey?.zMax ?? m.caseParts.caseBack.zMax) - m.caseParts.caseBack.zMax;
+  const keyRise = m.caseParts.caseBackKey ? m.caseParts.caseBackKey.zMax - m.caseParts.caseBack.zMax : null;
   const back = backChain(m, m.env.bins, eng, ringRise, keyRise);
   const frontCase = Math.min(...Object.values(m.caseParts).map((e) => e.zMin));
   const frontName = Object.entries(m.caseParts).find(([, e]) => e.zMin === frontCase)[0];
