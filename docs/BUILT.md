@@ -35943,7 +35943,7 @@ omits.
     Case moved. Boot is silent.
 - **The spec-boot tier** (`--spec-only`) passes 7/7, with 36/36 points built
   and none tripping the lowered cap. The point tier is judged on CI.
-- **The explainer is not edited by this landing.** Its §278 paragraph quotes
-  the cased depth and `CASE_HEIGHT_MAX_MM` at 11.726, so `explain-quotes`
-  reports that one row as DISAGREES until the paragraph and its 22
-  translations are refreshed.
+- **The explainer.** The §278 paragraph now credits the notches and quotes
+  11.586 for the depth and the cap. That one block was re-translated in all 22
+  tables. The i18n check, explain-quotes (0 DISAGREES), glossary-links and the
+  review packets all PASS.
