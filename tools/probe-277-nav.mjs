@@ -61,7 +61,17 @@ const SETTLE_TICKS = () => { for (let k = 0; k < 5; k++) window.__clock.scriptTi
 // software-GL frame is long, so 1.5 s was enough on one run and not the next.
 const settled = async (want) => {
   await pg.evaluate(SETTLE_TICKS); await pg.waitForTimeout(1500);
-  for (let g = 0; want !== undefined && g < 120 && (await pg.evaluate(() => window.__clock.scriptView.alarmOn)) !== want; g++) await pg.waitForTimeout(500);
+  // SETTLED, not "alarmOn matches": an end-path jump starts from the previous
+  // iteration's alarmOn, which can already equal the authored value for the first
+  // few frames while an OFF press is still in flight (the first version of this
+  // loop exited on that stale match and read the pusher mid-return: parity just
+  // flipped, T 0.757, the same numbers every run because it exited instantly).
+  // So wait for what the engine itself calls done: nothing wanted, pusher home.
+  for (let g = 0; want !== undefined && g < 240; g++) {
+    const q = await pg.evaluate(() => window.__clock.scriptAlarmDebug);
+    if (q.want === undefined && !q.stroke && q.T < 1e-6) break;
+    await pg.waitForTimeout(500);
+  }
   return pg.evaluate(READ);
 };
 // The straight-through record is walked from OUTSIDE the page: the first stop's
