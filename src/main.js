@@ -52369,8 +52369,11 @@ const SCRIPT_ALARM_TRIES = 6;
 let scriptAlarmWant, scriptAlarmTries = 0;
 function scriptAlarmSettle() {
   if (scriptAlarmWant === undefined) return;
+  // Mid-press FIRST: the parity is a readout of the wheel and flips during the
+  // stroke, so reading it while a press is in flight can match the old state and
+  // drop a want the finishing press then undoes (the probe's second finding).
+  if (alarmPusherStroke || alarmPusherT > 1e-6) return;
   if ((alarmColSteps % 2 === 1) === !!scriptAlarmWant) { scriptAlarmWant = undefined; return; }
-  if (alarmPusherStroke || alarmPusherT > 1e-6) return;          // mid-press: wait for it
   if (scriptAlarmTries++ >= SCRIPT_ALARM_TRIES) { scriptAlarmWant = undefined; return; }
   pressAlarmPusher();
 }
