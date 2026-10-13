@@ -26680,22 +26680,54 @@ const ALARM_LIFT_S = ALARM_TAIL_W / 2 + ALARM_LIFT_TIP_R;   // tip centre → ta
 const ALARM_LIFT_SIDE = +1;
 const ALARM_HAM_LIFT_SIGN = -ALARM_LIFT_SIDE;   // the hammer's rotation under a positive lift: opposite to the lever's
 const ALARM_LIFT_REST_AZ = STRIKE_REF.bearing + ALARM_LIFT_SIDE * STRIKE_REF.restGamma;   // the nose arm's rest bearing from LIFT_PIV
+// §278 landing 1 — THE STRIKE CORNER'S LAWS, written once and called by the
+// build exactly as they were inlined (the same operations in the same order,
+// so the cut metal is bit-identical), and handed to the 'alarm strike' line
+// spec (inspect.js LINE_SPECS, via `clock.lineLaws.strike`) so the reference
+// evaluates the very law the metal was cut by at ITS inputs — and to
+// probe-strike-site, which re-sites the corner with them. Each takes its
+// geometry as arguments; none reads a station.
+//   · hammerPivot — the hammer's pivot from the lever's (Q), the arms (a the
+//     far arm, ℓ the tail) and the stand-off s on side σ: the anti-parallel
+//     geometry P = Q + R(ψ)·(a+ℓ, σs) put on the circle |P| = rP (the radial
+//     blow's tangent at the face), a cosine equation in ψ with two roots
+//     (`root` +1, the counter-clockwise one, is the one the build takes).
+//   · liftFromHam — the contact solve, the lever's angle from the hammer's.
+//   · noseAt / camR — where the nose stands, and the cam radius under it.
+const ALARM_STRIKE_LAWS = {
+  hammerPivot: (Q, rP, a, l, s, side, root = 1) => {
+    // |Q + R(ψ)·(a+ℓ, −s)| = rP: the offset vector has a fixed length ρ and
+    // turns with ψ, so it is a cosine equation in ψ.
+    const ox = a + l, oy = side * s;   // the tail lies on the side the tip pushes toward
+    const rho = Math.hypot(ox, oy), eps = Math.atan2(oy, ox);
+    const qR = Math.hypot(Q.x, Q.y), qAz = Math.atan2(Q.y, Q.x);
+    const c = (rP * rP - qR * qR - rho * rho) / (2 * qR * rho);
+    const psi = qAz - eps + root * Math.acos(Math.max(-1, Math.min(1, c)));
+    return {
+      x: Q.x + ox * Math.cos(psi) - oy * Math.sin(psi),
+      y: Q.y + ox * Math.sin(psi) + oy * Math.cos(psi),
+      psi,                                            // the lever's far-arm direction; the tail runs back along −d̂
+      c, qR, rho,
+    };
+  },
+  liftFromHam: (thH, a, l, s, side) => thH + Math.asin(
+    (-side * s * (1 - Math.cos(thH)) - (a + l) * Math.sin(thH)) / a),
+  noseAt: (thL, Q, aIn, restAz) => ({
+    x: Q.x + aIn * Math.cos(restAz + thL),
+    y: Q.y + aIn * Math.sin(restAz + thL),
+  }),
+  // p = { Q, W, aIn, aOut, l, s, side, liftSign, restAz }; thH in the LAW's angle
+  camR: (thH, p) => {
+    const n = ALARM_STRIKE_LAWS.noseAt(ALARM_STRIKE_LAWS.liftFromHam(p.liftSign * thH, p.aOut, p.l, p.s, p.side), p.Q, p.aIn, p.restAz);
+    return Math.hypot(n.x - p.W.x, n.y - p.W.y);
+  },
+};
+const ALARM_HAMMER_PIV_R = Math.hypot(ALARM_HEAD_FACE_R, Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2));   // on the tangent at the face
 const hammerPiv = (() => {
-  const rP = Math.hypot(ALARM_HEAD_FACE_R, Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2));   // on the tangent at the face
-  // |Q + R(ψ)·(a+ℓ, −s)| = rP with Q = LIFT_PIV: the offset vector has a fixed
-  // length ρ and turns with ψ, so it is a cosine equation in ψ.
-  const ox = ALARM_LIFT_ARM + ALARM_TAIL_LEN, oy = ALARM_LIFT_SIDE * ALARM_LIFT_S;   // the tail lies on the side the tip pushes toward
-  const rho = Math.hypot(ox, oy), eps = Math.atan2(oy, ox);
-  const qR = Math.hypot(LIFT_PIV.x, LIFT_PIV.y), qAz = Math.atan2(LIFT_PIV.y, LIFT_PIV.x);
-  const c = (rP * rP - qR * qR - rho * rho) / (2 * qR * rho);
-  if (!(Math.abs(c) <= 1))
-    console.warn(`§198: no lifting-lever station reaches a hammer pivot at r ${rP.toFixed(3)} from ${qR.toFixed(3)} with ${rho.toFixed(3)} of arms`);
-  const psi = qAz - eps + Math.acos(Math.max(-1, Math.min(1, c)));   // the CCW root
-  return {
-    x: LIFT_PIV.x + ox * Math.cos(psi) - oy * Math.sin(psi),
-    y: LIFT_PIV.y + ox * Math.sin(psi) + oy * Math.cos(psi),
-    psi,                                            // the lever's far-arm direction; the tail runs back along −ψ
-  };
+  const h = ALARM_STRIKE_LAWS.hammerPivot(LIFT_PIV, ALARM_HAMMER_PIV_R, ALARM_LIFT_ARM, ALARM_TAIL_LEN, ALARM_LIFT_S, ALARM_LIFT_SIDE);
+  if (!(Math.abs(h.c) <= 1))
+    console.warn(`§198: no lifting-lever station reaches a hammer pivot at r ${ALARM_HAMMER_PIV_R.toFixed(3)} from ${h.qR.toFixed(3)} with ${h.rho.toFixed(3)} of arms`);
+  return { x: h.x, y: h.y, psi: h.psi };   // the CCW root
 })();
 const HAMMER_PIV_AZ = Math.atan2(hammerPiv.y, hammerPiv.x);
 // The free (ringing) end — the hammer strikes here. The pivot stands on the
@@ -27465,21 +27497,22 @@ const ALARM_SW_BEARING = STRIKE_REF.bearing;
 // generated from where the lever's nose then IS — so the higher pair's
 // second-order term lands in the cam's flank, where a cam absorbs whatever
 // the law needs, and nowhere else.
-const alarmLiftFromHam = (thH) => thH + Math.asin(
-  (-ALARM_LIFT_SIDE * ALARM_LIFT_S * (1 - Math.cos(thH)) - (ALARM_LIFT_ARM + ALARM_TAIL_LEN) * Math.sin(thH)) / ALARM_LIFT_ARM);
+// (§278 landing 1: the law is ALARM_STRIKE_LAWS.liftFromHam, called here with
+// the build's own arms.)
+const alarmLiftFromHam = (thH) => ALARM_STRIKE_LAWS.liftFromHam(thH, ALARM_LIFT_ARM, ALARM_TAIL_LEN, ALARM_LIFT_S, ALARM_LIFT_SIDE);
 // The nose's position, and how far it stands from the wheel's centre — which
 // IS the cam radius under it, because the follower is a knife edge (a nose,
 // not a roller: a roller would need the profile offset along its own normal,
 // and the point follower makes profile and kinematics the same curve).
-const alarmLiftNoseAt = (thL) => ({
-  x: LIFT_PIV.x + ALARM_LIFT_ARM * Math.cos(ALARM_LIFT_REST_AZ + thL),
-  y: LIFT_PIV.y + ALARM_LIFT_ARM * Math.sin(ALARM_LIFT_REST_AZ + thL),
+// ALARM_STRIKE_GEOM is the corner as the build cuts it: the arguments the cam
+// law takes (the line spec evaluates the same law at its own).
+const ALARM_STRIKE_GEOM = Object.freeze({
+  Q: LIFT_PIV, W: alarmSwPos, aIn: ALARM_LIFT_ARM, aOut: ALARM_LIFT_ARM, l: ALARM_TAIL_LEN,
+  s: ALARM_LIFT_S, side: ALARM_LIFT_SIDE, liftSign: ALARM_HAM_LIFT_SIGN, restAz: ALARM_LIFT_REST_AZ,
 });
+const alarmLiftNoseAt = (thL) => ALARM_STRIKE_LAWS.noseAt(thL, LIFT_PIV, ALARM_LIFT_ARM, ALARM_LIFT_REST_AZ);
 const alarmNoseAt = (th) => alarmLiftNoseAt(alarmLiftFromHam(ALARM_HAM_LIFT_SIGN * th));   // in the LAW's angle (alarmHammerAngle's), as the cam is generated
-const alarmCamRadiusAt = (thH) => {
-  const n = alarmNoseAt(thH);
-  return Math.hypot(n.x - alarmSwPos.x, n.y - alarmSwPos.y);
-};
+const alarmCamRadiusAt = (thH) => ALARM_STRIKE_LAWS.camR(thH, ALARM_STRIKE_GEOM);
 // The cam is cut away below the STRIKE position, so the nose is clear of it
 // through the whole free swing and the hammer is stopped by the gong — never
 // by the wheel it has just left.
@@ -29169,6 +29202,36 @@ const ALARM_HAMMER_I = rotorInertiaZ(alarmHammerPivot, new THREE.Vector3(hammerP
 const ALARM_HAMMER_W = Math.sqrt(ALARM_HSPIRAL.kFall_Nm_per_rad / ALARM_HAMMER_I);   // rad/s
 const ALARM_FALL_S = Math.acos(-ALARM_STRIKE_AMP / ALARM_DRAW_RAD) / ALARM_HAMMER_W;  // reaches the wire here
 const ALARM_HAMMER_DECAY = Math.log(20) / (ALARM_FREE_S - ALARM_FALL_S);             // rebound down to 5% by the next pickup
+// §278 landing 1 — what the 'alarm strike' line spec (inspect.js LINE_SPECS)
+// and probe-strike-site read from the build, through `clock.lineLaws.strike`:
+// the corner's laws (ALARM_STRIKE_LAWS, the very functions the metal above
+// was cut by), the §24/§25 reference the group was designed from
+// (STRIKE_REF), the solved spring rate and the measured rotor the fall law is
+// written on, the governor's rate law the hammer window is priced at, and —
+// for the site search alone — where the build put the corner. Called at
+// read time, never at build, so every constant it names exists; it builds
+// nothing and moves nothing.
+function alarmStrikeLineLaws() {
+  return Object.freeze({
+    ...ALARM_STRIKE_LAWS,
+    ref: STRIKE_REF,
+    geom: ALARM_STRIKE_GEOM,
+    amp: ALARM_STRIKE_AMP, draw: ALARM_DRAW_RAD, lobes: ALARM_CAM_LOBES,
+    k: ALARM_HSPIRAL.kFall_Nm_per_rad, I: ALARM_HAMMER_I, W: ALARM_HAMMER_W, fallS: ALARM_FALL_S,
+    gapAt: alarmStrikeGapAt, freeFrac: ALARM_FREE_FRAC, barrelTurns: ALARM_BARREL_TURNS,
+    freeAtFastest: ALARM_FREE_FRAC * alarmStrikeGapAt(ALARM_BARREL_TURNS),
+    phaseRest: ALARM_PHASE_REST, steelRho: OSC_STEEL_RHO, metresPerU: OSC_U,
+    site: Object.freeze({
+      Q: LIFT_PIV, W: alarmSwPos, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi, rP: ALARM_HAMMER_PIV_R,
+      restAz: ALARM_LIFT_REST_AZ, gongA1: GONG_A1, gongA0: GONG_A0, gongR: GONG_R, wireR: GONG_WIRE_R,
+      headFaceR: ALARM_HEAD_FACE_R, headR: ALARM_HEAD_R, armLen: ALARM_ARM_LEN, blow: GONG_BLOW,
+      contactSpan: ALARM_LIFT_CONTACT_SPAN, tailBarLen: ALARM_TAIL_BAR_LEN, tailT: ALARM_TAIL_T, tailW: ALARM_TAIL_W,
+      tipR: ALARM_LIFT_TIP_R, zStrike: Z_STRIKE, zGong: Z_GONG, tqTopZ: TQ_TOP_Z, plateR,
+      annulus: [R_ANNULUS_IN, R_ANNULUS_OUT], hammerPostR: HAMMER_POST_R, liftPostR: ALARM_LIFT_POST_R,
+      colletR: ALARM_HSPIRAL_COLLET_R,
+    }),
+  });
+}
 if (!(ALARM_FALL_S < ALARM_FREE_S / 3))
   console.warn(`§268: the fall ${(ALARM_FALL_S * 1000).toFixed(2)} ms is not inside §25's old third of the free window ${(ALARM_FREE_S / 3 * 1000).toFixed(1)} ms — the spring is weaker than the law it replaced`);
 // §48 — the hammer's restoring answer, which the audit's reach tier measures
@@ -57329,7 +57392,7 @@ window.__clock = {
     sigmaY_Pa: SPRING_SIGMA_Y_PA, unitMM: UNIT_MM,
     stud: { lifterR: ALARM_LIFT_STUD_R, crankR: ALARM_RELEASE_STUD_R, crankL: ALARM_RELEASE_STUD_L },
   }),
-  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`)
+  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws() }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`)
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows

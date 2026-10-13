@@ -7,10 +7,11 @@
 // (LINE_SPECS in src/inspect.js). A gate that passes on the shipped tree has
 // proved only that it does not fail; this proves it fails, and fails on the
 // RIGHT rows, which is what makes its silence on the shipped tree mean
-// something. Sixteen boots, each a copied tree (height-ledger's mutantTree),
-// over the four references — the switch's drive line, the lock that reads it,
-// the link that carries it to the ring, and (TODO 236) the release run from
-// the crown's collar to the sleeve's helices — and the link's fork:
+// something. Twenty-one boots, each a copied tree (height-ledger's mutantTree),
+// over the five references — the switch's drive line, the lock that reads it,
+// the link that carries it to the ring, (TODO 236) the release run from the
+// crown's collar to the sleeve's helices, and (§278) the strike from the cam
+// to the gong — and the link's fork:
 //
 //   1. identity — 0 violations, every control PASS.
 //   2. the wheel grown, ALARM_COL_BASE_R 5.7 → 5.8 — a fold that resized the
@@ -86,12 +87,41 @@
 //      ENVELOPE firing: 'deliver' no longer covers the 50 mN top of the
 //      detent band.
 //
+// §278 landing 1 — the fifth reference, 'alarm strike' (cam → lifting lever
+// → hammer tail → hammer → gong), and five more trees:
+//   17. the lever's far arm cut long (its tip's outline at 1.02 × the arm the
+//      contact solve is written on) — the metal and the solve parted: the far
+//      arm fails, the ratio with it, and the tip's tangent point slides along
+//      the anti-parallel tail, so the tail's contact arm fails too. The stand-
+//      off does NOT (the slide is along the tail), and neither does anything
+//      the solve poses: the lever's turn, the cam, the hammer.
+//   18. the rotor's inertia hand-tuned (ALARM_HAMMER_I × 0.98) — a fall law
+//      written on a rotor that is not the metal: I fails against the rotor's
+//      own tally, and k with it (W²·I off the posed fall and the true rotor is
+//      k/0.98). W and the fall do NOT: they follow the law from the stated I,
+//      which is exactly what the motion does.
+//   19. the fall slowed past its window (ALARM_HAMMER_W × 0.01) — the ENVELOPE
+//      firing: a 153 ms fall against the 138.5 ms the cam leaves free at full
+//      wind. W, the fall and k fail beside it. The first run of this tree
+//      read a fall that FIT — the reader posed the fall at full wind, where a
+//      153 ms fall lands on the next lobe's rise, and measured the rise; it
+//      poses at the empty wind's wider swing now, and says NaN for a fall even
+//      that cannot hold.
+//   20. the rest gap opened past the swing (HAMMER_HEAD_GAP 0.4 → 0.7) — the
+//      gong-contact ENVELOPE firing: the swing carries the face 0.655 and the
+//      wire stands 0.7 away, so the hammer falls short. The gap fails beside
+//      it; the arm does not, because §24's arm is laid out from the gap and
+//      moves with it on both sides.
+//   21. the cam's base cut two margins down instead of one — the base radius
+//      fails and nothing else: the flank, the tip and the lift are generated
+//      from the law and stand where they were.
+//
 // What it is NOT: probe-261-height-cap.mjs fires the height ratchet; this
 // fires the mechanism reference. The check's own controls (a known shift of
 // the pin's line moving the measured offset by exactly that much; the rocker's
-// post and the link's selector rod each carried a known distance and the
-// reading following it) hold the
-// READERS; this holds the GATE, and its last six trees hold the FORK SCHEMA.
+// post, the link's selector rod and the strike's lever tip each carried a
+// known distance and the reading following it) hold the READERS; this holds
+// the GATE, and its trees 8–13 hold the FORK SCHEMA.
 //
 // Run from tools/: node probe-70-line-spec.mjs
 import { chromium } from 'playwright';
@@ -125,7 +155,7 @@ async function lineSpecOn(dir) {
 }
 
 const SRC = 'src/main.js', INS = 'src/inspect.js';
-const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`, REL = (k) => `alarm release run/${k}`;
+const DRIVE = (k) => `alarm switch drive/${k}`, LOCK = (k) => `alarm lock/${k}`, LINK = (k) => `alarm link tangential/${k}`, REL = (k) => `alarm release run/${k}`, STRIKE = (k) => `alarm strike/${k}`;
 const FORKS_HEAD = 'export const LINE_SPEC_FORKS = [';
 const RUN_FORK = "      run: { value: 6,";
 const cases = [
@@ -199,6 +229,19 @@ const cases = [
       to: 'const ALARM_SLEEVE_GUIDE_R0S = [ALARM_SLEEVE_GUIDE_R0 + 0.05, ' }] },
   { name: 'the lifter’s delivered force collapsed (its §137 row × 0.1)', fail: [REL('deliver')],
     patches: [{ file: SRC, find: '    load: { value: R.linkN * 1000, unit: \'mN\',', to: '    load: { value: R.linkN * 100, unit: \'mN\',' }] },
+  // §278 landing 1 — the strike.
+  { name: 'the lever’s far arm cut long (its tip’s outline at 1.02 × the solved arm)', fail: ['tailLen', 'ratio', 'leverOut'].map(STRIKE),
+    patches: [{ file: SRC, find: '  const h = ALARM_LIFT_W / 2, a = ALARM_LIFT_ARM, r = ALARM_LIFT_TIP_R, N = 12;',
+      to: '  const h = ALARM_LIFT_W / 2, a = 1.02 * ALARM_LIFT_ARM, r = ALARM_LIFT_TIP_R, N = 12;' }] },
+  { name: 'the rotor’s inertia hand-tuned (ALARM_HAMMER_I × 0.98)', fail: ['k', 'I'].map(STRIKE),
+    patches: [{ file: SRC, find: 'const ALARM_HAMMER_I = rotorInertiaZ(', to: 'const ALARM_HAMMER_I = 0.98 * rotorInertiaZ(' }] },
+  { name: 'the fall slowed past its window (ALARM_HAMMER_W × 0.01)', fail: ['k', 'W', 'fall', 'window'].map(STRIKE),
+    patches: [{ file: SRC, find: 'const ALARM_HAMMER_W = Math.sqrt(', to: 'const ALARM_HAMMER_W = 0.01 * Math.sqrt(' }] },
+  { name: 'the rest gap opened past the swing (HAMMER_HEAD_GAP 0.4 → 0.7)', fail: ['gap', 'reach'].map(STRIKE),
+    patches: [{ file: SRC, find: 'const HAMMER_HEAD_GAP = 0.4;', to: 'const HAMMER_HEAD_GAP = 0.7;' }] },
+  { name: 'the cam’s base cut two margins down', fail: [STRIKE('camBaseR')],
+    patches: [{ file: SRC, find: 'const ALARM_CAM_BASE_R = alarmCamRadiusAt(-ALARM_STRIKE_AMP) - CLEAR_MARGIN;',
+      to: 'const ALARM_CAM_BASE_R = alarmCamRadiusAt(-ALARM_STRIKE_AMP) - 2 * CLEAR_MARGIN;' }] },
 ];
 let ok = true;
 for (const c of cases) {

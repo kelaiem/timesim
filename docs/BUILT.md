@@ -35514,3 +35514,145 @@ navigated" rests on the straight-through path being the code those routes have
 always taken (`scriptEnterStep` gained two optional parameters and a `Set`
 insertion); no recorded state per stop was diffed against `main` for them.
 Boot is silent and `boot-progress --check` holds (no seam added).
+
+## §278, landing 1 — the strike gets its line spec, and a site search says where it can stand off the pane
+
+§278 is the re-layout for depth (filed in the roadmap from a read-only study on
+2026-10-13). Its first finding: on the back, the cased depth is set by the
+alarm, not the going train. The pane floor (11.741) sits one margin over the
+alarm hammer's and lifting lever's plane (11.591), which stands outboard of
+the back glass's aperture. The skirt arm that would otherwise govern the
+band's back face sits 1.124 u (0.426 mm) under it. The owner chose to move the
+hammer (and to keep the pusher with the alarm crown). This landing moves no
+metal. It writes down the mechanism the move must keep, and it measures where
+the move can go. The fingerprint and every per-unit §152 digest are identical
+to `0666e642`'s, and boot is silent.
+
+### The reference: 'alarm strike'
+
+`LINE_SPECS` gains a fifth reference. Its path runs from the striking wheel's
+cam through the lifting lever's nose, the lever's far arm and its rounded tip,
+the hammer's tail and the hammer on its torsion spiral, to the head on the
+gong's wire. It has 27 rows and lands with no fork. Every row is measured off
+posed metal within float noise of its derivation:
+
+| row | value | measured off |
+|---|---|---|
+| lobes | 4 | runs of the cam's cut outline over its mid radius |
+| tailLen, tailW | 6.5, 0.5 | the tip's tangent point along the tail at rest; the tail's own vertices |
+| tipR, standOff | 0.25, 0.5 | the circle through the tip's semicircle; the tip's centre off the tail's axis |
+| leverIn, ratio, leverOut | 6.5, 1, 6.5 | the nose point and the tip's centre from the lever's post |
+| pivSwD, restGamma | 9.8132, 12° | the lever's post to the cam's axis, and the nose's rest bearing |
+| amp, draw | 0.09, 0.27 rad | the hammer's turn at the wire instant and at a release |
+| leverAtDraw | 0.28940 rad | the lever's turn at full draw, by the build's contact solve at the reference's arms |
+| camBaseR, camPickupR, camTipR, lift | 3.2954, 3.7102, 5.1501, 1.4399 | the cut outline's min and max radii; the nose's distance from the wheel's axis at rest and at release |
+| armLen, headR, gap | 7.3039, 0.6, 0.4 | the arm's lower end (the eye), the face's four corners, and the wire's construction radius |
+| blow | 0 | the cosine between the pivot → face line and the face's radius |
+| reach (envelope, ≥ 0) | 0.254 measured | the face's radial travel past the wire's near surface at the strike |
+| k | 0.63180 N·mm/rad | W²·I, from the posed fall and the rotor's metal |
+| I | 406.7566 mg·mm² | signed tetrahedra over the posed rotor |
+| W, fall | 1246.30 rad/s, 1.5330 ms | the hammer's turn mid-fall against the cos law's time |
+| window (envelope, ≤) | 138.52 ms | the free time at full wind, as `equalisation` holds it |
+
+Three things about how the rows are built:
+
+- **The laws are the build's own.** The corner's three laws (the hammer's
+  pivot solve, the contact solve, and the nose with the cam radius under it)
+  became `ALARM_STRIKE_LAWS` in `main.js`. The build calls them with the same
+  operations in the same order, which is why the fingerprint did not move.
+  They reach the reference as `clock.lineLaws.strike`. The cam's radii are
+  evaluated in the reference's own frame (the lever's pivot at the origin, the
+  wheel along +x) at the reference's arms. So a fold that carries the corner
+  round the wheel moves nothing, and a fold that re-proportions it fails.
+- **k and I are coherence rows, not frozen values.** k is the build's spiral
+  solve, and the reading is W²·I taken off the posed fall. I is the build's
+  tally of its own rotor, and it is tallied again off the posed metal. W and
+  the fall derive from them. A fold that changes the rotor therefore re-derives
+  the fall rather than failing. The window envelope is what it may not cross.
+- **The fall is posed at the empty wind.** The first reader posed it at full
+  wind. On probe-70's window tree (a 153 ms fall) that put the fall law's
+  instant on the next lobe's rise, so the reader measured a rise and called
+  it a fall that fit. The empty wind's slower gap leaves the widest free swing
+  the train has. A fall too slow even for that now reads NaN and fails.
+
+The control carries the lever's tip 0.05 out along its arm. The measured far
+arm follows by exactly 0.050000000, and the restored tip reads the same as
+before.
+
+`probe-70-line-spec.mjs` gains five trees, and each one fails exactly the rows
+it moved:
+
+1. The far arm's outline cut 1.02 × the solved arm fails tailLen, ratio and
+   leverOut.
+2. `ALARM_HAMMER_I` × 0.98 fails I and k.
+3. `ALARM_HAMMER_W` × 0.01 fails W, fall, k and the window.
+4. `HAMMER_HEAD_GAP` 0.4 → 0.7 fails gap and the reach envelope.
+5. The cam's base cut two margins down fails camBaseR alone.
+
+### The search: `tools/probe-strike-site.mjs`
+
+The probe is a REPORT with fatal controls.
+
+**The condition.** Both numbers are derived from the height ledger's own terms
+(`tools/height-ledger.mjs`), not typed:
+
+- Fold the back envelope without the hammer and the lever. The band face then
+  stands at the skirt arm, 10.6172.
+- Metal outboard must stand at or under zLimit = 10.6172 − CLEAR_MARGIN − the
+  glass's float guard = **10.4671**.
+- Metal above zLimit must lie inside **rAllow = 45.4309**. That is the last
+  envelope-bin edge (bin 303 of 352) inside RA − 2·CLEAR_MARGIN. The study's
+  "≈ 45.3" was this number, read coarsely.
+
+**The candidates.** Each one is placed by the build's own laws as ghosts of the
+shipped meshes. The lever is carried round the wheel's axis in 5° steps. The
+hammer is re-solved onto its circle on either root, and its body and the gong
+turn with it about the movement's axis, which keeps the blow radial. Its tail
+turns about the pivot to stay anti-parallel to the far arm. Each candidate is
+then measured with `meshClearance` against every other mesh over the strike's
+own eight phases and every other axis at f ∈ {0, ½, 1}.
+
+**The controls.** All pass:
+
+- The identity reproduces the build's per-unit envelope bins bin for bin, and
+  re-folds to the shipped 32.0669 u.
+- The identity fails the condition by 1.1238, which is the measured pane-floor
+  less skirt-arm slack.
+- §269's torque and rigid response are reproduced at Δ 0.
+- The clearance instrument reads a planted post as touching and the wire 16.5
+  from the cam.
+
+**The findings.**
+
+- **As built, no station meets it.** The lever reaches a hammer circle at 54
+  of 144 (Δ, root) pairs, for Δ −5°…125°. At every one of them the radial blow
+  pins the hammer's pivot to r 46.911. The collet is the outboard metal, so the
+  pivot would have to stand at r ≤ 44.596, 2.315 inside that circle.
+- **Moving the pivot inward is not a station either.** With the gong held,
+  0.5 inward reads the `blow` row at cos 0.070, and 2.0 inward at 0.270.
+  Keeping the blow radial instead moves the gong ring inward and shortens the
+  head (4.676 → 2.651 at 2.0 inward). That re-solves the pitch, the match and
+  the rotor, which is §198/§253's design and not the strike's.
+- **A cranked tail meets it at every reachable station.** The hammer's outboard
+  metal (the post's top, the collet's, the arm's root and the tail's root)
+  drops 1.1238 u (0.426 mm). The tail steps back up to the lever plane on a
+  riser 1.980 along the tail, inboard of rAllow at every hammer angle and short
+  of the tip's tangent span (≤ 5.840). Every plan row holds to < 3e-14.
+- **The crank's price.**
+  - **Depth.** The ledger prices it at the full A1 bound, 12.152 → 11.726 mm,
+    at build pose and swept alike.
+  - **Clearance.** 47 of 54 stations hold CLEAR_MARGIN for the strike's
+    metal. Within 10°–20° and at Δ 95°–110° on the other root, the hammer
+    meets a pillar. Of those 47, 33 also hold it for the carried gong; on the
+    other root at small Δ, the gong's foot lands on a case clamp screw.
+  - **The shipped azimuth (Δ 0, root 1) is among the 33.** Its nearest
+    obstacles are today's back glass at 0.150 (which landing 2 re-derives) and
+    the pusher's stem at 0.160 from the wire (unchanged).
+  - **The rotor.** It is 0.204 % lighter, so W rises 0.10 %. Every row stays
+    coherent, and the window is untouched.
+  - **§269.** The rigid watch's drive, recomputed with the foot and its force
+    turned with the gong, moves by under 1 % over the whole range.
+
+**What it leaves to landing 2.** The fold itself: crank the tail at the
+shipped azimuth, re-derive the case, and lower `CASE_HEIGHT_MAX_MM` by what
+that measures.

@@ -13104,7 +13104,11 @@ export function checkAestheticsMerge() {
 // Tolerances are float noise of the constructions, not budgets: a fold that
 // moves a row moves it by orders more. Waivers follow stockFloor's convention
 // (cite a TODO; a waiver whose row passes is STALE and fails).
-export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, ratio: 1e-6, count: 0, mN: 1e-6 };
+// §278 landing 1 adds the strike's dynamic units, each scaled so its 1e-6
+// (or 1e-9) is float noise on the quantity it holds: k ~0.63 N·mm/rad, I ~407
+// mg·mm², W ~1246 rad/s, the fall ~1.5 ms.
+export const LINE_SPEC_TOL = { u: 1e-6, rad: 1e-6, ratio: 1e-6, count: 0, mN: 1e-6,
+  'Nmm/rad': 1e-9, 'mg·mm²': 1e-6, 'rad/s': 1e-6, ms: 1e-9 };
 export const LINE_SPECS = [
   {
     name: 'alarm switch drive',
@@ -13299,6 +13303,87 @@ LINE_SPECS.push({
       derivedFrom: 'TODO 236: the hand the helix solve chose (the cheaper of the two at the drive’s station), read as the sign of the sleeve’s dial-local turn on the pull' },
     { key: 'deliver', kind: 'envelope', bound: 'min', unit: 'mN', value: SELECTOR_DETENT_WINDOW_MN[1], measure: 'deliverMN',
       derivedFrom: 'SELECTOR_DETENT_WINDOW_MN: what the lifter DELIVERS to the run must COVER the 5–50 mN band (§232’s relation) — read as the §137 lifter row’s figure, the sleeve’s peak drive through the crank' },
+  ],
+});
+
+// §278 landing 1 — THE STRIKE, written down as the line it was designed in:
+// §24's hammer and §25's cam, with §198's lifting lever as the corner that
+// carries the cam's lift out to a hammer standing in the annulus, and §268's
+// spiral that drives the fall. Every row is a quantity of the MECHANISM —
+// arms, the stand-off the contact is cut to, the cam's radii, the swing, the
+// rest gap, the blow's direction, the rate and the rotor the fall is written
+// on — and none is a station: where the lever stands about the wheel, where
+// the hammer stands on its circle and what plane its tail rides are the
+// fold's to decide, which is what §278's strike fold (landing 2) re-sites
+// against this table. The cam's radii are evaluated by the build's own law
+// (`L.strike.camR`, the function the cam was cut by) in the reference's own
+// frame — the lever's pivot at the origin, the wheel along +x — at the
+// reference's arms, so a fold that re-proportions the corner moves them and a
+// fold that merely carries it round the wheel does not.
+const strikeRefGeom = (r, L) => ({
+  Q: { x: 0, y: 0 }, W: { x: r.pivSwD, y: 0 }, aIn: r.leverIn, aOut: r.leverOut, l: r.tailLen, s: r.standOff,
+  side: L.strike.geom.side, liftSign: L.strike.geom.liftSign, restAz: L.strike.geom.side * r.restGamma,
+});
+LINE_SPECS.push({
+  name: 'alarm strike',
+  group: 'Alarm hammer',
+  path: 'striking wheel’s cam (a lobe per strike) → lifting lever’s nose → its far arm’s rounded tip on the hammer’s tail → hammer on its torsion spiral → head on the gong’s wire',
+  rows: [
+    { key: 'lobes', kind: 'spec', unit: 'count', value: 4, measure: 'camLobes',
+      derivedFrom: '§25: one lift and one blow per lobe, the cadence and the tooth counts fixing each other (ALARM_CAM_LOBES × the 4:1 step-up = 16 strikes a barrel turn)' },
+    { key: 'tailLen', kind: 'spec', unit: 'u', value: 6.5, measure: 'tailContactArm',
+      derivedFrom: '§25: the hammer’s tail, pivot → the contact the cam’s lift arrives at (ALARM_TAIL_LEN) — measured as the lever tip’s tangent point along the tail at rest' },
+    { key: 'tailW', kind: 'spec', unit: 'u', value: 0.5, measure: 'tailWidth',
+      derivedFrom: '§25: the tail bar’s width (ALARM_TAIL_W); §198’s lever bars share the section (λ 13 on a 6.5 arm against §54’s 27)' },
+    { key: 'tipR', kind: 'spec', unit: 'u', value: (r) => r.tailW / 2, measure: 'tipRadius',
+      derivedFrom: '§198: the lever’s far arm ends in a semicircle of the bar’s own half-width (ALARM_LIFT_TIP_R) — the circle the contact solve is written on' },
+    { key: 'standOff', kind: 'spec', unit: 'u', value: (r) => r.tailW / 2 + r.tipR, measure: 'tipStandOff',
+      derivedFrom: '§198: the tip is tangent to the tail’s face when its centre stands half the tail’s width plus its own radius off the tail’s centreline (ALARM_LIFT_S)' },
+    { key: 'leverIn', kind: 'spec', unit: 'u', value: (r) => r.tailLen, measure: 'noseArm',
+      derivedFrom: '§198: the lever’s nose arm IS §25’s tail — same length, resting where it rested — so the cam’s radii are reproduced by construction' },
+    { key: 'ratio', kind: 'spec', unit: 'ratio', value: 1, measure: 'armRatio',
+      derivedFrom: '§198: equal arms, laid anti-parallel — a CORNER, not a lever in the ratio sense: the cam’s lift arrives at the tail unchanged, so the draw, the fall and the blow written on §25’s tail come through untouched' },
+    { key: 'leverOut', kind: 'spec', unit: 'u', value: (r) => r.leverIn / r.ratio, measure: 'tipArm',
+      derivedFrom: '§198: the far arm, lever pivot → the tip’s centre, the nose arm over the corner’s ratio' },
+    { key: 'pivSwD', kind: 'spec', unit: 'u', value: (r, L) => L.strike.ref.pivSwD, measure: 'leverToWheel',
+      derivedFrom: '§24/§25: the follower’s pivot stands where §24 planted the hammer’s post, its distance from the wheel’s axis the reference the cam was sized against (STRIKE_REF.pivSwD) — a fold may carry the lever ROUND the wheel, never nearer or further' },
+    { key: 'restGamma', kind: 'spec', unit: 'rad', value: (r, L) => L.strike.ref.restGamma, measure: 'noseRestOffBearing',
+      derivedFrom: '§25: the nose rests 12° off the pivot ⇄ wheel bearing, on the side that drifts with the wheel on the rise and away from it on the fall (§198 refuted the mirror by its own cam)' },
+    { key: 'amp', kind: 'spec', unit: 'rad', value: 0.09, measure: 'swingAtWire',
+      derivedFrom: '§24: the swing that carries the face from its rest gap onto the wire with a hair of overrun — a tap, not a bounce (ALARM_STRIKE_AMP) — measured as the hammer’s turn at the instant the fall law meets the wire' },
+    { key: 'draw', kind: 'spec', unit: 'rad', value: (r) => 3 * r.amp, measure: 'hammerDraw',
+      derivedFrom: '§25: the lift is set AGAINST the strike swing, three times it (ALARM_DRAW_RAD) — a hammer released well above the wire strikes, one released just above it taps; measured as the hammer’s turn at a lobe’s release' },
+    { key: 'leverAtDraw', kind: 'spec', unit: 'rad', value: (r, L) => Math.abs(L.strike.liftFromHam(L.strike.geom.liftSign * r.draw, r.leverOut, r.tailLen, r.standOff, L.strike.geom.side)),
+      measure: 'leverDraw',
+      derivedFrom: '§198: the corner’s turn at full draw, by the build’s own contact solve (a·sin(θL − θH) = −σs(1 − cos θH) − (a+ℓ)·sin θH) at the reference’s arms — −θH to first order, the higher pair’s second-order term the rest' },
+    { key: 'camBaseR', kind: 'spec', unit: 'u', value: (r, L) => L.strike.camR(-r.amp, strikeRefGeom(r, L)) - CLEAR_MARGIN, measure: 'camMinR',
+      derivedFrom: '§25: the cam is cut away one margin below where the nose stands at the strike overshoot, so the wire stops the hammer and never the wheel it has just left — by the build’s cam law at the reference’s corner' },
+    { key: 'camPickupR', kind: 'spec', unit: 'u', value: (r, L) => L.strike.camR(0, strikeRefGeom(r, L)), measure: 'nosePickupR',
+      derivedFrom: '§25: the radius that first meets the resting nose — measured as the nose’s distance from the wheel’s axis at rest' },
+    { key: 'camTipR', kind: 'spec', unit: 'u', value: (r, L) => L.strike.camR(r.draw, strikeRefGeom(r, L)), measure: 'camMaxR',
+      derivedFrom: '§25/§198: the lobes’ tip circle, where the nose stands at full draw — the circle the striking wheel’s lifts are cut to (the cut outline’s greatest radius)' },
+    { key: 'lift', kind: 'spec', unit: 'u', value: (r) => r.camTipR - r.camPickupR, measure: 'noseLift',
+      derivedFrom: 'the lift per lobe: the nose’s radial travel from pickup to release, which the corner hands to the tail 1:1 — measured as the nose’s distance from the wheel’s axis at a release less its distance at rest' },
+    { key: 'armLen', kind: 'spec', unit: 'u', value: (r, L) => L.strike.ref.armLen, measure: 'hammerArm',
+      derivedFrom: '§24: the hammer’s arm, pivot → eye, the “7-unit arm” as §24 realised it (STRIKE_REF.armLen) — the arm the fall law, W and the blow are all written on; measured in plan to the arm’s lower end, where it is let into the head' },
+    { key: 'headR', kind: 'spec', unit: 'u', value: 0.6, measure: 'eyeToFace',
+      derivedFrom: '§148: the eye stands this far behind the striking face (ALARM_HEAD_R), where the §24 ball’s centre was' },
+    { key: 'gap', kind: 'spec', unit: 'u', value: 0.4, measure: 'faceGap',
+      derivedFrom: '§24: the radial rest gap, striking face → the wire’s surface (HAMMER_HEAD_GAP)' },
+    { key: 'blow', kind: 'spec', unit: 'ratio', value: 0, measure: 'blowRadialCos',
+      derivedFrom: '§198: the pivot stands on the TANGENT at the face, so the head’s velocity at the blow is exactly radial and the wire is struck along its own normal — measured as the cosine between the pivot → face line and the face’s radius' },
+    { key: 'reach', kind: 'envelope', bound: 'min', unit: 'u', value: 0, measure: 'faceOverrun',
+      derivedFrom: 'the GONG CONTACT: at the strike the face must reach the wire — its radial travel past the wire’s near surface at the swing the fall law ends on, never short of it (a hammer that falls short rings nothing)' },
+    { key: 'k', kind: 'spec', unit: 'Nmm/rad', value: (r, L) => L.strike.k * 1e3, measure: 'springRate',
+      derivedFrom: '§268: the torsion spiral’s ENERGY rate over the fall, the strip solved so the lift’s peak torque at the strike arbor lands on 0.9 of the arbor’s at set-up (ALARM_HSPIRAL.kFall) — measured as W²·I off the posed fall and the rotor’s metal' },
+    { key: 'I', kind: 'spec', unit: 'mg·mm²', value: (r, L) => L.strike.I * 1e12, measure: 'rotorI',
+      derivedFrom: '§268: the rotor’s inertia about its post, collet included, as the build tallies its own cut metal (ALARM_HAMMER_I) — measured again here off the posed rotor by signed tetrahedra, so a part added to the rotor after the tally reads as a moved row' },
+    { key: 'W', kind: 'spec', unit: 'rad/s', value: (r) => Math.sqrt((r.k / 1e3) / (r.I * 1e-12)), measure: 'fallRate',
+      derivedFrom: '§268: the fall IS √(k/I) — measured off the posed fall, the hammer’s turn mid-fall against the cos law’s time' },
+    { key: 'fall', kind: 'spec', unit: 'ms', value: (r) => Math.acos(-r.amp / r.draw) / r.W * 1e3, measure: 'fallTime',
+      derivedFrom: '§268: released at the draw, the cos law meets the wire at acos(−AMP/DRAW)/W (ALARM_FALL_S)' },
+    { key: 'window', kind: 'envelope', bound: 'max', unit: 'ms', value: (r, L) => L.strike.freeAtFastest * 1e3, measure: 'fallTime',
+      derivedFrom: '§104/TODO 14: the fall (a time law) must fit the cam’s free fraction (a phase law) where the exchange rate is least generous — the governed gap at full wind, the window `equalisation` holds' },
   ],
 });
 
@@ -13835,6 +13920,203 @@ function lineSpecReleaseControl(clock, m) {
     : `FAIL — carried ${D}, the arm moved ${moved}; restored ${back} vs ${m.padArm}; lift ${m.sleeveLift}`;
 }
 
+// §278 landing 1 — THE STRIKE'S READERS. Four poses of the 'alarmStrike'
+// axis's own keys at a stated EMPTY wind — the slowest governed gap, so the
+// free swing the fall is posed in is the widest the train ever leaves, and a
+// fall too slow for the window priced at full wind still lands inside it and
+// is measured, rather than posed onto the next lobe's rise (probe-70's tree
+// 19 did exactly that at full wind, and read a fall that fit): REST (the phase a rise begins at — the
+// hammer and the lever at 0 by the lift law), a lobe's RELEASE (a whole
+// strike: the hammer at its draw, the nose on the tip circle), MID-FALL and
+// the STRIKE instant (the fall law's time to the wire). The build poses every
+// member from the phase, so nothing here poses a part. Centres are world-box
+// centres of centrally symmetric meshes (the two posts, 12-gons); the wheel's
+// axis is the cam's cut outline's centroid (four identical lobes); the tip's
+// centre is the circle through its semicircle, off the cut outline; the
+// gong's wire is read off its torus's construction, because its float32
+// vertices at r 48 carry ~3e-6 of rounding, three times the tolerance.
+function lineSpecStrike(clock) {
+  const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
+  const meshes = {
+    hPost: find('alarmHammerPost'), tail: find('alarmTail'), arm: find('alarmHammerArm'), head: find('alarmHammerHead'),
+    lPost: find('alarmLiftPost'), nose: find('alarmLiftNose'), tip: find('alarmLiftTip'), cam: find('alarmCam'), wire: find('alarmGongArc'),
+  };
+  const missing = Object.entries(meshes).filter(([, x]) => !x).map(([k]) => k);
+  if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
+  const { hPost, tail, arm, head, lPost, nose, tip, cam, wire } = meshes;
+  const L = clock.lineLaws?.strike;
+  if (!L) return { error: 'the build publishes no strike laws (clock.lineLaws.strike) — the fall cannot be posed by its own law' };
+  const camRing = lineSpecOutline(cam), tipRing = lineSpecOutline(tip), noseRing = lineSpecOutline(nose);
+  if (!camRing || !tipRing || !noseRing) return { error: 'a cut outline is unreadable (the cam, the lever’s tip or its nose) — its radii cannot be measured' };
+  const axis = AXES.find((a) => a.name === 'alarmStrike');
+  const hamGroup = tail.parent, levGroup = tip.parent;
+  const angleOf = (o) => { o.updateWorldMatrix(true, false); const e = o.matrixWorld.elements; return Math.atan2(e[1], e[0]); };
+  const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a <= -Math.PI) a += 2 * Math.PI; return a; };
+  const plan = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+  const toWorld = (mesh, x, y) => { mesh.updateWorldMatrix(true, false); const v = new THREE.Vector3(x, y, 0).applyMatrix4(mesh.matrixWorld); return { x: v.x, y: v.y }; };
+  const wind = 0;
+  const poseAt = (phase) => { enterAxis(clock); clock.setPose({ ...axis.pose(0, clock), alarmStrikePhase: phase, alarmBarrelWind: wind }); clock.scene.updateMatrixWorld(true); };
+  // the nose's point: the outline vertex farthest along the arm
+  const noseLocal = noseRing.reduce((b, q) => (q.x > b.x ? q : b), noseRing[0]);
+  // the tip's circle, through its two tangent ends and its apex
+  const apex = tipRing.reduce((b, q) => (q.x > b.x ? q : b), tipRing[0]);
+  const B = tipRing[1], C = tipRing[tipRing.length - 2];
+  const circ = (() => {
+    const ax = apex.x, ay = apex.y, bx = B.x, by = B.y, cx = C.x, cy = C.y;
+    const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
+    const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
+    return { x: ux, y: uy, r: Math.hypot(ax - ux, ay - uy) };
+  })();
+  // the eye: the arm's lower end, along its own axis from its box centre
+  const eyeOf = () => {
+    const c = lineSpecCentre3(arm).c, u = new THREE.Vector3(0, 1, 0).transformDirection(arm.matrixWorld);
+    const h = arm.geometry.parameters.height / 2;
+    const e1 = c.clone().addScaledVector(u, h), e2 = c.clone().addScaledVector(u, -h);
+    return e1.z < e2.z ? e1 : e2;
+  };
+  // the wire, off its construction: ring radius and tube, coaxial with the
+  // movement (its group carries no plan offset — checked, not assumed)
+  wire.updateWorldMatrix(true, false);
+  const wO = new THREE.Vector3().setFromMatrixPosition(wire.matrixWorld);
+  const wireR = wire.geometry.parameters.radius, wireTube = wire.geometry.parameters.tube;
+  // the face: the head's vertices nearest the wire at REST (its extreme radius
+  // on the wire's side — the four corners of a flat face, each carried by
+  // every facet that meets it), then the SAME vertices at any pose, averaged:
+  // a turned face's corners stand at different radii, so re-selecting by
+  // radius away from rest would read one corner, not the face
+  let faceIdx = null, faceBlow = 1, faceCorners = 0;
+  const faceOf = () => {
+    head.updateWorldMatrix(true, false);
+    const pos = head.geometry.attributes.position, v = new THREE.Vector3();
+    if (!faceIdx) {
+      const pts = [];
+      let rMean = 0;
+      for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(head.matrixWorld); pts.push(v.clone()); rMean += Math.hypot(v.x, v.y); }
+      rMean /= pts.length;
+      faceBlow = Math.sign(wireR - rMean) || 1;   // the wire outboard of the head: the face is its outermost metal
+      let ext = -Infinity; for (const q of pts) ext = Math.max(ext, faceBlow * Math.hypot(q.x, q.y));
+      faceIdx = pts.map((q, i) => (faceBlow * Math.hypot(q.x, q.y) >= ext - 1e-6 ? i : -1)).filter((i) => i >= 0);
+      const uniq = [];
+      for (const i of faceIdx) if (!uniq.some((q) => q.distanceTo(pts[i]) < 1e-9)) uniq.push(pts[i]);
+      faceCorners = uniq.length;
+    }
+    const c = new THREE.Vector3();
+    for (const i of faceIdx) c.add(v.fromBufferAttribute(pos, i).applyMatrix4(head.matrixWorld));
+    return { c: c.multiplyScalar(1 / faceIdx.length), blow: faceBlow };
+  };
+  const read = () => {
+    const P = lineSpecPlanCentre(hPost), Q = lineSpecPlanCentre(lPost), W = lineSpecOutlineCentre(cam);
+    tail.updateWorldMatrix(true, false);
+    const te = tail.matrixWorld.elements, eL = Math.hypot(te[0], te[1]);
+    const e = { x: te[0] / eL, y: te[1] / eL }, n = { x: -e.y, y: e.x };
+    return { P, Q, W, e, n, T: toWorld(tip, circ.x, circ.y), N: toWorld(nose, noseLocal.x, noseLocal.y),
+      ham: angleOf(hamGroup), lev: angleOf(levGroup), eye: eyeOf(), face: faceOf() };
+  };
+  const gapSlow = L.gapAt(wind);
+  const rest = (poseAt(1 + L.phaseRest), read());
+  // the tail's width: its own vertices across its direction, at rest
+  let tLo = Infinity, tHi = -Infinity;
+  { const pos = tail.geometry.attributes.position, v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(tail.matrixWorld); const d = v.x * rest.n.x + v.y * rest.n.y; tLo = Math.min(tLo, d); tHi = Math.max(tHi, d); } }
+  // the rotor's inertia about the post's axis, at rest: signed tetrahedra
+  // over every mesh the hammer's pivot group carries, at the build's density
+  let Izz = 0;
+  { const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), pv = new THREE.Vector3(rest.P.x, rest.P.y, 0);
+    hamGroup.updateWorldMatrix(true, true);
+    hamGroup.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const pos = o.geometry.attributes.position, idx = o.geometry.index, cnt = idx ? idx.count : pos.count;
+      for (let t = 0; t + 2 < cnt; t += 3) {
+        const P3 = [a, b, c];
+        for (let k = 0; k < 3; k++) o.localToWorld(P3[k].fromBufferAttribute(pos, idx ? idx.getX(t + k) : t + k)).sub(pv);
+        const v6 = a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x);
+        let sxy = 0;
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) sxy += (i === j ? 2 : 1) * (P3[i].x * P3[j].x + P3[i].y * P3[j].y);
+        Izz += (v6 / 6) * sxy / 20;
+      }
+    }); }
+  const rotorI = Izz * L.metresPerU ** 5 * L.steelRho;   // kg·m²
+  poseAt(1); const atDraw = read();            // a whole strike: a lobe's release, the hammer at its draw
+  // mid-fall, half the build's own fall time into the free swing; the time is
+  // the phase the build will read (its fractional part) through the same
+  // governed gap, so the reading is the law's angle at a known instant
+  const phMid = 1 + (L.fallS / 2) / gapSlow, tMid = (phMid - Math.floor(phMid)) * gapSlow;
+  poseAt(phMid); const mid = read();
+  const phStr = 1 + L.fallS / gapSlow;
+  poseAt(phStr); const strike = read();   // the instant the fall law meets the wire
+  // a fall the slowest gap cannot hold is posed on the next rise, which is no
+  // fall at all: it reads as no measurement (the fall rows then fail as NaN)
+  const inSwing = phStr - Math.floor(phStr) < L.freeFrac;
+  enterAxis(clock);
+  // the law's angles, in the law's own sense (the draw's), off the group's turn
+  const sgnDraw = Math.sign(wrap(atDraw.ham - rest.ham));
+  const draw = Math.abs(wrap(atDraw.ham - rest.ham));
+  const thMid = wrap(mid.ham - rest.ham) * sgnDraw;          // positive: still above the rest
+  const amp = -wrap(strike.ham - rest.ham) * sgnDraw;        // past the rest, toward the wire
+  const W = inSwing ? Math.acos(thMid / draw) / tMid : NaN;
+  const fall = inSwing ? Math.acos(-amp / draw) / W : NaN;
+  // the tip's contact, at rest: its centre off the tail's axis and along it
+  const TP = { x: rest.T.x - rest.P.x, y: rest.T.y - rest.P.y };
+  const noseV = { x: rest.N.x - rest.Q.x, y: rest.N.y - rest.Q.y }, wV = { x: rest.W.x - rest.Q.x, y: rest.W.y - rest.Q.y };
+  const radii = camRing.map((q) => Math.hypot(q.x, q.y));
+  const rMin = Math.min(...radii), rMax = Math.max(...radii), rMid = (rMin + rMax) / 2;
+  let lobes = 0; for (let i = 0; i < radii.length; i++) if (radii[i] > rMid && radii[(i + radii.length - 1) % radii.length] <= rMid) lobes++;
+  const faceR = Math.hypot(rest.face.c.x - wO.x, rest.face.c.y - wO.y);
+  const near = wireR - rest.face.blow * wireTube;              // the wire's surface on the head's side
+  const pf = { x: rest.face.c.x - rest.P.x, y: rest.face.c.y - rest.P.y }, pfL = Math.hypot(pf.x, pf.y);
+  const fr = { x: (rest.face.c.x - wO.x) / faceR, y: (rest.face.c.y - wO.y) / faceR };
+  const strikeFaceR = Math.hypot(strike.face.c.x - wO.x, strike.face.c.y - wO.y);
+  return {
+    camLobes: lobes,
+    tailContactArm: TP.x * rest.e.x + TP.y * rest.e.y,
+    tailWidth: tHi - tLo,
+    tipRadius: circ.r,
+    tipStandOff: Math.abs(TP.x * rest.n.x + TP.y * rest.n.y),
+    noseArm: plan(rest.N, rest.Q),
+    armRatio: plan(rest.N, rest.Q) / plan(rest.T, rest.Q),
+    tipArm: plan(rest.T, rest.Q),
+    leverToWheel: plan(rest.Q, rest.W),
+    noseRestOffBearing: Math.abs(wrap(Math.atan2(noseV.y, noseV.x) - Math.atan2(wV.y, wV.x))),
+    swingAtWire: inSwing ? amp : NaN,
+    hammerDraw: draw,
+    leverDraw: Math.abs(wrap(atDraw.lev - rest.lev)),
+    camMinR: rMin, camMaxR: rMax,
+    nosePickupR: plan(rest.N, rest.W),
+    noseLift: plan(atDraw.N, atDraw.W) - plan(rest.N, rest.W),
+    hammerArm: plan(rest.eye, rest.P),
+    eyeToFace: plan(rest.eye, rest.face.c),
+    faceGap: rest.face.blow * (near - faceR),
+    blowRadialCos: Math.abs((pf.x * fr.x + pf.y * fr.y) / pfL),
+    faceOverrun: inSwing ? strike.face.blow * (strikeFaceR - near) : NaN,
+    springRate: W * W * rotorI * 1e3,
+    rotorI: rotorI * 1e12,
+    fallRate: W,
+    fallTime: fall * 1e3,
+    faceCorners, wirePlanOffset: Math.hypot(wO.x, wO.y), drawSense: sgnDraw,
+  };
+}
+// Its CONTROL moves METAL: the lever's far arm (its tip) is carried a known
+// distance out along its own arm, and the measured far arm must follow it
+// exactly — then the tip goes back. A reader that quoted ALARM_LIFT_ARM, or
+// the tip's build-time station, would not move.
+function lineSpecStrikeControl(clock, m) {
+  let tip = null; clock.scene.traverse((o) => { if (!tip && o.isMesh && o.name === 'alarmLiftTip' && !o.userData.schematic) tip = o; });
+  if (!tip) return 'FAIL — the lever’s tip is not in the scene';
+  if (m.faceCorners !== 4) return `FAIL — the face read ${m.faceCorners} vertices, not a flat face’s four corners`;
+  if (m.wirePlanOffset > 1e-9) return `FAIL — the wire’s torus stands ${m.wirePlanOffset} off the movement’s axis, so its construction radius is not its radius here`;
+  const D = 0.05;
+  const dx = Math.cos(tip.rotation.z) * D, dy = Math.sin(tip.rotation.z) * D;   // along the arm, in the lever's frame
+  tip.position.x += dx; tip.position.y += dy;
+  let moved;
+  try { moved = lineSpecStrike(clock).tipArm - m.tipArm; }
+  finally { tip.position.x -= dx; tip.position.y -= dy; clock.scene.updateMatrixWorld(true); }
+  const back = lineSpecStrike(clock).tipArm;
+  return Math.abs(moved - D) <= 1e-9 && back === m.tipArm && m.hammerDraw > 0 && m.noseLift > 0
+    ? `PASS — the tip carried ${D} out along its arm moves the measured far arm by ${moved.toFixed(9)}, and restored reads the same; the strike applied (draw ${m.hammerDraw.toFixed(6)} rad, lift ${m.noseLift.toFixed(6)})`
+    : `FAIL — carried ${D}, the far arm moved ${moved}; restored ${back} vs ${m.tipArm}; draw ${m.hammerDraw}, lift ${m.noseLift}`;
+}
+
 // One reader and one control per reference. A reference with no reader is
 // MALFORMED, never skipped: a table row nothing measures is the §66 lever
 // spans' failure, a number checkable by a reader and by nothing else.
@@ -13857,6 +14139,7 @@ const LINE_SPEC_READERS = {
   'alarm lock': { read: (clock) => lineSpecLock(clock), control: (clock, m) => lineSpecLockControl(clock, m) },
   'alarm link tangential': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
   'alarm release run': { read: (clock) => lineSpecRelease(clock), control: (clock, m) => lineSpecReleaseControl(clock, m) },
+  'alarm strike': { read: (clock) => lineSpecStrike(clock), control: (clock, m) => lineSpecStrikeControl(clock, m) },
 };
 
 // A reference's values at a given set of input overrides: every literal row
