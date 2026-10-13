@@ -23706,7 +23706,21 @@ const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
 // −drop/ARM_LEN under 'XYZ') rocked about the dial's Y axis, cos φ = 0.905 of
 // the intended angle, in the wrong sense: the dropped tip opened 0.1628 off
 // the ring it reads.
-function feelerRockAt(drop) { return drop / ALARM_FEELER_ARM_LEN; }
+// §278 landing 4 — THE DETECTOR'S LAWS, written once and called by the build
+// and the tick exactly as they were inlined (the same operation, so the metal
+// and every pose are bit-identical), and handed to the 'alarm detector' line
+// spec (inspect.js LINE_SPECS, via `clock.lineLaws.detector`) so the reference
+// evaluates the law the movement is posed by at ITS inputs rather than
+// restating it. Each takes its geometry as arguments; neither reads a station.
+//   · pinArcHalf — the angle the pin's radius subtends at the track's radius:
+//     the trip's drop ramps over the notch's half-width ± this (the tick's
+//     drop law), so the pin bottoms over notchW − 2·pinArcHalf of hour angle.
+//   · rockAt — the lever's turn about its pin for a drop at its read arm.
+const ALARM_DETECTOR_LAWS = Object.freeze({
+  pinArcHalf: (pinR, trackR) => pinR / trackR,
+  rockAt: (drop, arm) => drop / arm,
+});
+function feelerRockAt(drop) { return ALARM_DETECTOR_LAWS.rockAt(drop, ALARM_FEELER_ARM_LEN); }
 const alarmFeelerLever = new THREE.Group();
 alarmFeelerLever.position.set(_uF.x * ALARM_FEELER_PIVOT_R, _uF.y * ALARM_FEELER_PIVOT_R, _armMidZ);
 alarmFeelerLever.rotation.order = 'ZYX';   // TODO 173: rock about the lever's own pin
@@ -54611,7 +54625,7 @@ function tick(t) {
     {
       discRotForTrip = alarmNotchA();
       const discRotNow = discRotForTrip;
-      const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
+      const pinArcHalf = ALARM_DETECTOR_LAWS.pinArcHalf(ALARM_PIN_R, ALARM_TRACK_RMID);   // §278 landing 4: the law the 'alarm detector' line spec evaluates
       const gapHalf = ALARM_NOTCH_W / 2;
       // TODO 117 — the pin that reads this notch is the READER's, and the
       // reader is parented into hourWheelGroup at its own azimuth zero, so its
@@ -54685,7 +54699,7 @@ function tick(t) {
           && Math.abs(centred - alarmPrevCentred) < Math.PI      // a real crossing, not a hand-set wrap
           && alarmPinDropNow < ALARM_PIN_DROP - 1e-9 && !alarmStepOverWarned) {
         alarmStepOverWarned = true;
-        console.warn(`§38/TODO 8: the alarm's coincidence was crossed in ONE tick (${Math.abs(centred - alarmPrevCentred).toFixed(4)} rad) without the pin bottoming — the notch floor (${(ALARM_NOTCH_W / 2 - ALARM_PIN_R / ALARM_TRACK_RMID).toFixed(4)} rad) is now narrower than a tick's advance, so alarms will be missed`);
+        console.warn(`§38/TODO 8: the alarm's coincidence was crossed in ONE tick (${Math.abs(centred - alarmPrevCentred).toFixed(4)} rad) without the pin bottoming — the notch floor (${(ALARM_NOTCH_W / 2 - ALARM_DETECTOR_LAWS.pinArcHalf(ALARM_PIN_R, ALARM_TRACK_RMID)).toFixed(4)} rad) is now narrower than a tick's advance, so alarms will be missed`);
       }
       alarmPrevCentred = centred;
     }
@@ -57581,7 +57595,7 @@ window.__clock = {
     sigmaY_Pa: SPRING_SIGMA_Y_PA, unitMM: UNIT_MM,
     stud: { lifterR: ALARM_LIFT_STUD_R, crankR: ALARM_RELEASE_STUD_R, crankL: ALARM_RELEASE_STUD_L },
   }),
-  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws() }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`)
+  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws(), detector: ALARM_DETECTOR_LAWS }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`); §278 landing 4 — and the detector's (`detector`)
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows

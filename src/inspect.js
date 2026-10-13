@@ -13387,6 +13387,101 @@ LINE_SPECS.push({
   ],
 });
 
+// §278 landing 4 — THE DETECTOR, written down as the line TODO 117 designed it
+// in (tools/probe-117-line.mjs) before §278's satellite fold carries it off the
+// centre column. The topology is the row the fold must keep above all: the HOUR
+// carries the reader round, the disc carries the SET alone and holds still
+// under the hour, and the trip is their plain coincidence — so the two 1:1
+// transfers the fold adds are held here as ratios (`orbit`, `setCarry`, and the
+// disc's stillness under the hour), measured on whatever wheels carry them.
+// Every other row is a quantity of the mechanism (the pin, the track and its
+// notch, the drop, the collar that presents it at every azimuth, the lever that
+// reads the collar at the pin's own radius, its rock against its banking stop,
+// the bias that seats it), and none is a station: where the stack stands about
+// the movement's centre, and the azimuth the lever reads the collar from, are
+// the fold's. The lever's pivot radius IS a row, because it is a radius about
+// the DETECTOR's own axis — it travels with the stack.
+//
+// NO `inherits`. The obvious parent is TODO 236's 'alarm release run', and it
+// was read for one: the two share no derived quantity. The run is the crown's
+// pull lifting follower A off the heart (the setting release); the detector's
+// output is the feeler's rock, and TODO 199 has not yet built what carries it
+// to the lock (the hold is the `alarmReleased` flag, modelled and not
+// simulated) — so the reference ends at the lever against its stop. What ties
+// the detector to the run today is SPATIAL (the feeler's arm plane stands one
+// margin under the sleeve's envelope at the centre, §124's rock priced at the
+// sleeve's throat), which is exactly the coupling the satellite fold dissolves.
+// Inheriting would bind the detector to rows it never reads.
+//
+// The laws are the build's (`L.detector`, ALARM_DETECTOR_LAWS in main.js): the
+// pin's arc at the track radius, which the tick's drop ramp is written on, and
+// the lever's rock for a drop at its arm.
+LINE_SPECS.push({
+  name: 'alarm detector',
+  group: 'Alarm release reader',
+  path: 'hour wheel → reader collar (hour-carried, its pin on the disc’s track) → the notch in the track (the set-carried disc, still under the hour) → the pin’s drop → the collar’s dial face, presenting the drop at every azimuth → the feeler lever’s tip at the pin’s own radius → the lever’s rock against its banking stop',
+  rows: [
+    { key: 'orbit', kind: 'spec', unit: 'ratio', value: 1, measure: 'readerOrbit',
+      derivedFrom: 'TODO 117’s decided topology: the HOUR carries the reader round (it is hour-carried, so it needs no drive of its own) — measured as the reader pin’s turn about the disc’s axis over an hour of τ, per the hour wheel’s own turn. §278’s satellite fold carries it through a 1:1 transfer, and this row is what that transfer must still read' },
+    { key: 'setCarry', kind: 'spec', unit: 'ratio', value: 1, measure: 'discSetCarry',
+      derivedFrom: 'TODO 117: the disc carries the SET alone and IS the alarm hand’s angle (alarmNotchA: the notch is cut where the hand points), which the alarm setting wheel carries 1:1 — measured as the notch’s turn per the setting wheel’s over a crown setting, at fixed τ. The fold’s second 1:1 transfer is held to it' },
+    { key: 'discStill', kind: 'spec', unit: 'rad', value: 0, measure: 'discUnderHour',
+      derivedFrom: 'TODO 117/144: nothing injects the hour into the disc — its law has no hour term, so it holds where the crown left it while the reader orbits (the three-law contradiction the item closed) — measured as the notch’s turn over the same hour of τ' },
+    { key: 'pinR', kind: 'spec', unit: 'u', value: 0.14, measure: 'pinRadius',
+      derivedFrom: '§29 step 3: the reader pin (ALARM_PIN_R) — its diameter is the feeler arm’s width, and the notch is cut to it' },
+    { key: 'trackR', kind: 'spec', unit: 'u', value: 3.05, measure: 'pinTrackR',
+      derivedFrom: '§29/TODO 117: the take-off radius is the pin’s OWN radius about the disc (ALARM_TRACK_RMID) — measured as the pin’s centre from the collar’s axis' },
+    { key: 'coaxial', kind: 'spec', unit: 'u', value: 0, measure: 'readerOffAxis',
+      derivedFrom: 'TODO 117: the collar is COAXIAL with the disc — a signal leaving an orbiting member without a length that changes with azimuth has to be taken about the orbit’s own axis (a fixed link ran 2.682 → 31.203 across the orbit) — measured as the collar’s axis off the disc hub’s' },
+    { key: 'trackMidR', kind: 'spec', unit: 'u', value: (r) => r.trackR, measure: 'trackMidR',
+      derivedFrom: 'the raised track is centred on the radius the pin rides (ALARM_TRACK_HALFW about ALARM_TRACK_RMID) — measured off the track’s cut outline' },
+    { key: 'trackHalfW', kind: 'spec', unit: 'u', value: 0.20, measure: 'trackHalfW',
+      derivedFrom: '§29: the track annulus 2.85..3.25 (ALARM_TRACK_HALFW) — its inner edge a joint with the hub, its outer the smooth face out to the rim’s root — measured off the cut outline' },
+    { key: 'notchW', kind: 'spec', unit: 'rad', value: 0.14, measure: 'notchArc',
+      derivedFrom: '§29: the track’s one gap (ALARM_NOTCH_W) — the pin’s diameter over the track radius plus slop — measured as the largest angular gap in the cut outline' },
+    { key: 'admit', kind: 'envelope', bound: 'min', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'notchArc',
+      derivedFrom: 'the notch must ADMIT the pin: narrower than the pin’s own arc at the track radius and the pin never bottoms, so the alarm never trips (the tick’s drop law reaches its full drop only inside notchW − 2·pinArcHalf)' },
+    { key: 'drop', kind: 'spec', unit: 'u', value: 0.10, measure: 'readerDrop',
+      derivedFrom: 'TODO 173: the stop-banked drop (ALARM_PIN_DROP) — measured as the collar’s axial travel from riding to the trip’s centre' },
+    { key: 'trackH', kind: 'spec', unit: 'u', value: (r) => r.drop + CLEAR_MARGIN, measure: 'trackHeight',
+      derivedFrom: 'TODO 179: the notch is a drop plus one margin deep (ALARM_TRACK_H) — the stop banks the drop, so the floor is a surface the pin’s tip passes and owes the margin — measured as the track’s own height' },
+    { key: 'floorClear', kind: 'spec', unit: 'u', value: (r) => r.trackH - r.drop, measure: 'pinOverFloor',
+      derivedFrom: 'TODO 179: the dropped pin’s tip stands the notch’s depth less the drop over the disc body’s face — measured at the trip, the pin’s track-side end against the track’s foot' },
+    { key: 'pinLen', kind: 'spec', unit: 'u', value: (r) => r.drop + CLEAR_MARGIN, measure: 'pinLength',
+      derivedFrom: 'TODO 117 (READER_PIN_LEN): the collar must clear the track by one margin AT FULL DROP, so the pin spans the drop plus the margin and nothing else — measured as the pin’s own length' },
+    { key: 'pinSlender', kind: 'envelope', bound: 'max', unit: 'u', value: (r) => SLENDER_MAX * (r.pinR / 2) / SLENDER_OVERHANG_K, measure: 'pinLength',
+      derivedFrom: '§54’s ceiling on a tip-loaded overhang of the pin’s section (READER_PIN_LEN_MAX) — the clearance governs the pin’s length and the slenderness only permits it, so a pin grown past it fails here' },
+    { key: 'ringT', kind: 'spec', unit: 'u', value: STOCK_MIN_U, measure: 'ringThickness',
+      derivedFrom: 'TODO 117: the collar is a plain annulus at §50’s floor (READER_RING_T) — measured as its axial thickness' },
+    { key: 'ringOverTrack', kind: 'spec', unit: 'u', value: (r) => r.pinLen - r.drop, measure: 'ringOverTrack',
+      derivedFrom: 'TODO 117: what the pin’s length IS — the collar’s track-side face one margin over the track’s top at full drop — measured at the trip' },
+    { key: 'plateau', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW - 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'tripPlateau',
+      derivedFrom: '§29/TODO 8: the pin bottoms over the notch’s width less its own arc (the tick’s drop law, alarmPinDropNow) — measured as the hour arc the reader’s pin turns through while the collar stands at its full drop' },
+    { key: 'window', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW + 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'tripWindow',
+      derivedFrom: '§29: the pin leaves the track over the notch’s width plus its own arc — measured as the hour arc over which the collar stands off its riding plane at all' },
+    { key: 'align', kind: 'spec', unit: 'rad', value: 0, measure: 'tripAlign',
+      derivedFrom: 'TODO 117: the trip is the plain COINCIDENCE of the reader’s pin with the notch — no phase term (alarmNotchA) — measured as the plateau’s centre against the notch’s cut centre, both off the metal' },
+    { key: 'pivotR', kind: 'spec', unit: 'u', value: 5.5, measure: 'pivotR',
+      derivedFrom: '§29 step 3: the feeler’s pivot radius about the detector’s axis (ALARM_FEELER_PIVOT_R) — the bracket’s lugs clear the rim’s tips by one margin — measured as the plan distance from the disc’s axis to the lever’s rock axis, which is FOUND as the fixed axis of the lever’s motion from riding to the trip' },
+    { key: 'arm', kind: 'spec', unit: 'u', value: (r) => r.pivotR - r.trackR, measure: 'leverArm',
+      derivedFrom: '§29/TODO 117: the lever’s read arm, pivot → the pin’s radius (ALARM_FEELER_ARM_LEN) — inherited, not forked, by crossing the orbit — measured from the rock axis to the tip’s leading edge' },
+    { key: 'readR', kind: 'spec', unit: 'u', value: (r) => r.trackR, measure: 'readR',
+      derivedFrom: 'TODO 117 row 1 / TODO 173: the take-off carries no ratio — the tip’s leading edge, the read point, stands at the pin’s own radius, so the collar’s drop arrives at the lever 1:1 — measured as that edge’s plan radius about the disc’s axis' },
+    { key: 'seat', kind: 'spec', unit: 'u', value: 0.02, measure: 'tipSeat',
+      derivedFrom: 'TODO 117 (FEELER_TIP_SEAT): the tip’s contact face is the collar’s dial face, seated as the pin’s own seat was, so the contact reads as the contact it is — measured riding, the collar’s dial face less the tip’s track-side face' },
+    { key: 'rock', kind: 'spec', unit: 'rad', value: (r, L) => L.detector.rockAt(r.drop, r.arm), measure: 'leverRock',
+      derivedFrom: 'TODO 173: the lever turns about its pin by the drop over its read arm (feelerRockAt) — measured as the angle of the lever’s rigid motion from riding to the trip' },
+    { key: 'tail', kind: 'spec', unit: 'u', value: 0.9, measure: 'tailLen',
+      derivedFrom: '§29 step 3: the outboard stub (ALARM_FEELER_TAIL) — the banking stop’s seat and the silence finger’s — measured from the rock axis to the tail’s outer end' },
+    { key: 'stopGap', kind: 'spec', unit: 'u', value: (r) => r.drop * (r.tail / r.arm), measure: 'stopGap',
+      derivedFrom: 'TODO 173: the stop’s face stands the drop’s rise at the tail over the tail’s rest top — the lever ratio tail/arm, the derived travel limit that protects the rim crossing — measured riding' },
+    { key: 'seatHold', kind: 'envelope', bound: 'min', unit: 'mN', value: SELECTOR_DETENT_WINDOW_MN[0], measure: 'seatDroppedMN',
+      derivedFrom: 'SELECTOR_DETENT_WINDOW_MN: the bias blade still SEATS the lever on the collar at the trip, where its deflection is least (TODO 144’s §137 row, the force at the contact, dropped) — read as that row’s arithmetic' },
+    { key: 'seatRide', kind: 'envelope', bound: 'max', unit: 'mN', value: SELECTOR_DETENT_WINDOW_MN[1], measure: 'seatRidingMN',
+      derivedFrom: 'SELECTOR_DETENT_WINDOW_MN: and the riding seat, the load the pin presses on the track under the hour all day, stays under the band’s top — read as the same row, riding' },
+  ],
+});
+
 // §70 step 3 — FORKS. A fold that cannot keep a spec row declares a fork: a
 // named copy of one reference whose changed rows each carry the movement
 // constraint that forced them, written in place. Three rules, all enforced by
@@ -14117,6 +14212,234 @@ function lineSpecStrikeControl(clock, m) {
     : `FAIL — carried ${D}, the far arm moved ${moved}; restored ${back} vs ${m.tipArm}; draw ${m.hammerDraw}, lift ${m.noseLift}`;
 }
 
+// §278 landing 4 — THE DETECTOR'S READERS. Its own poses, not an axis's: no
+// axis turns the hour with the crown in and the setting held (the 'alarm' axis
+// sweeps the SET with the crown pulled), and the trip is a coincidence in τ, so
+// the reader FINDS it — a secant on the measured angle between the reader's pin
+// and the notch's cut centre lands τ on the coincidence, and four bisections on
+// the collar's measured axial travel find where the drop starts and where it
+// saturates, either side. Every pose is the build's own: the tick poses the
+// collar from the drop law and the lever from the rock law, and nothing here
+// poses a part. Disarmed (`alarmOn` 0), so a coincidence posed here sets no
+// release flag; the drop is geometry and reads the same armed (probe-117-trip
+// measures it armed). Centres are world-box centres of centrally symmetric
+// meshes (the pin a 12-gon, the hub and the collar 40-segment lathes); the
+// notch's centre and arc come off the track's cut outline; the lever's pivot is
+// FOUND as the fixed axis of the tip's rigid motion from riding to the trip,
+// so a pivot that is not where the lever turns reads as moved. Axial readings
+// are projections on the collar's own axis toward the dial (`up`), each a max
+// or min over one mesh's vertices — a difference between poses of the same
+// vertex, so float32 storage never enters it.
+const DETECTOR_BIAS_SITE = 'alarm release: bias blade (stud → lever → the reader’s pin on the track)';
+function lineSpecDetectorMeshes(clock) {
+  const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
+  const meshes = {
+    ring: find('alarmReaderRing'), pin: find('alarmReaderPin'), hub: find('alarmDiscHub'), track: find('alarmDiscTrack'),
+    tip: find('alarmFeelerTip'), tail: find('alarmFeelerTail'), stop: find('alarmFeelerStop'), hourWheel: find('mwHourWheel'),
+  };
+  const setE = (clock.labelEntries || []).find((e) => e.name === 'Alarm setting wheel');
+  let setMesh = null, setIdx = -1, setR = 0;
+  if (setE) {
+    setE.obj.updateWorldMatrix(true, true);
+    const v = new THREE.Vector3();
+    setE.obj.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); const r = Math.hypot(v.x, v.y); if (r > setR) { setR = r; setMesh = o; setIdx = i; } }
+    });
+  }
+  meshes.setWheel = setMesh;
+  const missing = Object.entries(meshes).filter(([, x]) => !x).map(([k]) => k);
+  return { meshes, setIdx, missing };
+}
+// The static readings at the CURRENT pose: everything that needs one pose only.
+function lineSpecDetectorStatic(clock, M) {
+  const { ring, pin, hub, tip, tail, stop } = M;
+  const C = lineSpecPlanCentre(hub), R = lineSpecPlanCentre(ring), P = lineSpecPlanCentre(pin);
+  return { C, R, P, pinTrackR: Math.hypot(P.x - R.x, P.y - R.y), readerOffAxis: Math.hypot(R.x - C.x, R.y - C.y),
+    pinAz: Math.atan2(P.y - C.y, P.x - C.x), tip, tail, stop };
+}
+function lineSpecDetector(clock) {
+  const { meshes: M, setIdx, missing } = lineSpecDetectorMeshes(clock);
+  if (missing.length) return { error: `meshes not found: ${missing.join(', ')}` };
+  const ring = lineSpecOutline(M.track);
+  if (!ring) return { error: 'the track’s cut outline is unreadable (no ExtrudeGeometry shapes) — its radii and its notch cannot be measured' };
+  const v = new THREE.Vector3();
+  const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a <= -Math.PI) a += 2 * Math.PI; return a; };
+  // the track's cut, in its own frame: radii, and the notch as what the outer
+  // arc does NOT cover. Not the largest gap between the outline's points: the
+  // arc is sampled coarser (0.256 rad a step) than the notch is wide, which is
+  // what the first draft read. The outer arc is one run of the ring; its turn,
+  // summed point to point in the ring's order, is the track's coverage, and the
+  // notch is the rest of the turn, centred beyond the run's last point.
+  const radii = ring.map((q) => Math.hypot(q.x, q.y));
+  const rMin = Math.min(...radii), rMax = Math.max(...radii);
+  const isOut = radii.map((r) => r > (rMin + rMax) / 2), n = ring.length;
+  let start = isOut.findIndex((o, i) => o && !isOut[(i - 1 + n) % n]);
+  let cover = 0, last = start;
+  for (let i = start; isOut[(i + 1) % n] && (i + 1) % n !== start; i = (i + 1) % n) {
+    const p = ring[i], q = ring[(i + 1) % n];
+    cover += wrap(Math.atan2(q.y, q.x) - Math.atan2(p.y, p.x)); last = (i + 1) % n;
+  }
+  const notchArc = start < 0 ? NaN : 2 * Math.PI - Math.abs(cover);
+  const notchMid = Math.atan2(ring[last].y, ring[last].x) + Math.sign(cover) * notchArc / 2;
+  const rTrackMid = (rMin + rMax) / 2;
+  // the collar's axis toward the dial: its local +z (dialFace-local +z runs
+  // toward the dial), in world
+  M.ring.updateWorldMatrix(true, false);
+  const up = new THREE.Vector3(0, 0, 1).transformDirection(M.ring.matrixWorld);
+  const span = (mesh) => {
+    mesh.updateWorldMatrix(true, false);
+    const pos = mesh.geometry.attributes.position; let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < pos.count; i++) { const s = v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).dot(up); if (s < lo) lo = s; if (s > hi) hi = s; }
+    return { lo, hi };
+  };
+  const notchWorldAz = (C) => {
+    M.track.updateWorldMatrix(true, false);
+    const q = new THREE.Vector3(rTrackMid * Math.cos(notchMid), rTrackMid * Math.sin(notchMid), 0).applyMatrix4(M.track.matrixWorld);
+    return Math.atan2(q.y - C.y, q.x - C.x);
+  };
+  const vertexAz = (mesh, i, C) => { mesh.updateWorldMatrix(true, false); v.fromBufferAttribute(mesh.geometry.attributes.position, i).applyMatrix4(mesh.matrixWorld); return Math.atan2(v.y - C.y, v.x - C.x); };
+  let hourIdx = 0, hr = 0;
+  { const pos = M.hourWheel.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); const r = Math.hypot(v.x, v.y); if (r > hr) { hr = r; hourIdx = i; } } }
+  const base = { crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 0 };
+  const pose = (tau, set = 0) => { clock.setPose({ ...base, tau, alarmCrownRotation: set }); clock.scene.updateMatrixWorld(true); };
+  enterAxis(clock);
+  const H12 = 12 * 3600;
+  // the coincidence, by secant on the measured pin ⇄ notch angle (linear in τ:
+  // the pin is rigid on the hour wheel and the disc is still under it)
+  pose(0); const s0 = lineSpecDetectorStatic(clock, M); const C = s0.C;
+  const relAt = () => wrap(lineSpecDetectorStatic(clock, M).pinAz - notchWorldAz(C));
+  const r0 = relAt(), az0 = s0.pinAz, notch0 = notchWorldAz(C), hour0 = vertexAz(M.hourWheel, hourIdx, C);
+  pose(3600); const r1 = relAt(), az1 = lineSpecDetectorStatic(clock, M).pinAz, notch1 = notchWorldAz(C), hour1 = vertexAz(M.hourWheel, hourIdx, C);
+  const k = wrap(r1 - r0) / 3600;
+  let tStar = ((-r0 / k) % H12 + H12) % H12;
+  for (let it = 0; it < 3; it++) { pose(tStar); tStar -= relAt() / k; }
+  const ringFace = () => span(M.ring).hi;
+  // riding: the pin half a turn of the hour from the notch
+  const tRide = (tStar + H12 / 2) % H12;
+  pose(tRide);
+  const ride = lineSpecDetectorStatic(clock, M), faceRide = ringFace();
+  M.tip.updateWorldMatrix(true, false);
+  const tipRide = M.tip.matrixWorld.clone();
+  const sRing = span(M.ring), sPin = span(M.pin), sTrack = span(M.track), sTip = span(M.tip), sTail = span(M.tail), sStop = span(M.stop);
+  // the trip's centre
+  pose(tStar);
+  const dropFull = faceRide - ringFace();
+  const relStar = relAt();
+  const sRingT = span(M.ring), sPinT = span(M.pin), sTrackT = span(M.track);
+  M.tip.updateWorldMatrix(true, false);
+  const tipTrip = M.tip.matrixWorld.clone();
+  // the plateau's and the window's edges, either side, by bisection on the
+  // collar's MEASURED travel; the pin's azimuth is read at each edge
+  const dropAt = (t) => { pose(t); return faceRide - ringFace(); };
+  const gapHalfT = (notchArc / 2) / Math.abs(k);
+  const edge = (tIn, tOut, inside) => {
+    let a = tIn, b = tOut;
+    for (let it = 0; it < 48; it++) { const mid = (a + b) / 2; if (inside(dropAt(mid))) a = mid; else b = mid; }
+    pose(a); return lineSpecDetectorStatic(clock, M).pinAz;
+  };
+  const full = (d) => d >= dropFull * (1 - 1e-9), any = (d) => d > dropFull * 1e-9;
+  let plateau = NaN, win = NaN, align = NaN;
+  if (dropFull > 0 && Number.isFinite(k) && k !== 0) {
+    const pA = edge(tStar, tStar + gapHalfT, full), pB = edge(tStar, tStar - gapHalfT, full);
+    const wA = edge(tStar + gapHalfT, tStar + 2 * gapHalfT, any), wB = edge(tStar - gapHalfT, tStar - 2 * gapHalfT, any);
+    plateau = Math.abs(wrap(pA - pB)); win = Math.abs(wrap(wA - wB));
+    align = wrap(pB + wrap(pA - pB) / 2 - notchWorldAz(C));
+  }
+  // the lever's rock: the tip's rigid motion riding → trip, T = M_trip·M_ride⁻¹.
+  // Its rotation angle is the rock; its fixed axis is the pivot.
+  const T = new THREE.Matrix4().multiplyMatrices(tipTrip, new THREE.Matrix4().copy(tipRide).invert());
+  const e = T.elements;   // column-major
+  const Rm = [[e[0], e[4], e[8]], [e[1], e[5], e[9]], [e[2], e[6], e[10]]], d = [e[12], e[13], e[14]];
+  const axis = new THREE.Vector3(Rm[2][1] - Rm[1][2], Rm[0][2] - Rm[2][0], Rm[1][0] - Rm[0][1]);
+  const sinT = axis.length() / 2, cosT = (Rm[0][0] + Rm[1][1] + Rm[2][2] - 1) / 2;
+  const leverRock = Math.atan2(sinT, cosT);
+  axis.normalize();
+  // a point on the axis: (I − R)·P = d, solved in the plane square to the axis
+  // (least squares with P·axis = 0 appended — the system is singular along it)
+  const A = [[1 - Rm[0][0], -Rm[0][1], -Rm[0][2]], [-Rm[1][0], 1 - Rm[1][1], -Rm[1][2]], [-Rm[2][0], -Rm[2][1], 1 - Rm[2][2]], [axis.x, axis.y, axis.z]];
+  const b = [d[0], d[1], d[2], 0];
+  const AtA = [0, 1, 2].map((i) => [0, 1, 2].map((j) => A.reduce((s, row) => s + row[i] * row[j], 0)));
+  const Atb = [0, 1, 2].map((i) => A.reduce((s, row, n) => s + row[i] * b[n], 0));
+  const Pv = new THREE.Vector3(...Atb).applyMatrix3(new THREE.Matrix3().set(...AtA.flat()).invert());
+  // the rock axis is horizontal (tangential), so its plan distance from the
+  // disc's vertical axis is the perpendicular from C to its plan line
+  const ah = { x: axis.x, y: axis.y }, ahL = Math.hypot(ah.x, ah.y);
+  const nrm = { x: -ah.y / ahL, y: ah.x / ahL };
+  const pivotR = Math.abs((Pv.x - C.x) * nrm.x + (Pv.y - C.y) * nrm.y);
+  const foot = { x: C.x + nrm.x * ((Pv.x - C.x) * nrm.x + (Pv.y - C.y) * nrm.y), y: C.y + nrm.y * ((Pv.x - C.x) * nrm.x + (Pv.y - C.y) * nrm.y) };
+  // riding: the tip's leading edge (inboard, toward the axis) and the tail's
+  // outer end, along the lever's line from the rock axis
+  const inward = { x: (C.x - foot.x) / pivotR, y: (C.y - foot.y) / pivotR };
+  pose(tRide);
+  const along = (mesh, dir) => {
+    mesh.updateWorldMatrix(true, false);
+    const pos = mesh.geometry.attributes.position; let hi = -Infinity, at = null;
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld); const s = (v.x - foot.x) * dir.x + (v.y - foot.y) * dir.y; if (s > hi) { hi = s; at = { x: v.x, y: v.y }; } }
+    return { s: hi, at };
+  };
+  const lead = along(M.tip, inward), tailEnd = along(M.tail, { x: -inward.x, y: -inward.y });
+  // the read point's radius: the leading edge's line crosses the lever's line
+  // at foot + inward·s
+  const readPt = { x: foot.x + inward.x * lead.s, y: foot.y + inward.y * lead.s };
+  // the two 1:1 carries, and the disc's stillness under the hour
+  const readerOrbit = wrap(az1 - az0) / wrap(hour1 - hour0);
+  const discUnderHour = Math.abs(wrap(notch1 - notch0));
+  pose(tRide, 0.3); const n3 = notchWorldAz(C), w3 = vertexAz(M.setWheel, setIdx, C);
+  pose(tRide, 0.8); const n8 = notchWorldAz(C), w8 = vertexAz(M.setWheel, setIdx, C);
+  const discSetCarry = wrap(n8 - n3) / wrap(w8 - w3);
+  enterAxis(clock);
+  const bias = (clock.transfers?.rows || []).find((r) => r.site === DETECTOR_BIAS_SITE);
+  return {
+    readerOrbit, discSetCarry, discUnderHour,
+    pinRadius: lineSpecCylR(M.pin),
+    pinTrackR: ride.pinTrackR,
+    readerOffAxis: ride.readerOffAxis,
+    trackMidR: rTrackMid, trackHalfW: (rMax - rMin) / 2,
+    notchArc,
+    readerDrop: dropFull,
+    trackHeight: sTrack.hi - sTrack.lo,
+    pinOverFloor: sPinT.lo - sTrackT.lo,
+    pinLength: sPin.hi - sPin.lo,
+    ringThickness: sRing.hi - sRing.lo,
+    ringOverTrack: sRingT.lo - sTrackT.hi,
+    tripPlateau: plateau, tripWindow: win, tripAlign: align,
+    pivotR, leverArm: lead.s,
+    readR: Math.hypot(readPt.x - C.x, readPt.y - C.y),
+    tipSeat: sRing.hi - sTip.lo,
+    leverRock,
+    tailLen: tailEnd.s,
+    stopGap: sStop.lo - sTail.hi,
+    seatDroppedMN: bias ? bias.quantities?.pinF_mN_dropped : NaN,
+    seatRidingMN: bias ? bias.quantities?.pinF_mN_riding : NaN,
+    biasRead: !!bias, tStar, tRide, relStar, rockAxisTilt: Math.abs(axis.z),
+  };
+}
+// Its CONTROL moves metal: the reader's pin is carried a known distance out
+// along its own radius, and the measured take-off radius must follow it
+// exactly — then the pin goes back. A reader that quoted ALARM_TRACK_RMID, or
+// the pin's build-time station, would not move.
+function lineSpecDetectorControl(clock, m) {
+  const { meshes: M, missing } = lineSpecDetectorMeshes(clock);
+  if (missing.length) return `FAIL — meshes not found: ${missing.join(', ')}`;
+  if (!m.biasRead) return 'FAIL — the §137 bias-blade row is not in the transfer record, so the seat envelopes read nothing';
+  if (m.rockAxisTilt > 1e-9) return `FAIL — the lever’s rock axis stands ${m.rockAxisTilt} off the dial’s plane, so its plan distance is not the pivot’s radius`;
+  const D = 0.05;
+  const pose = () => { enterAxis(clock); clock.setPose({ crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 0, tau: m.tRide, alarmCrownRotation: 0 }); clock.scene.updateMatrixWorld(true); };
+  pose();
+  const read0 = lineSpecDetectorStatic(clock, M).pinTrackR;
+  M.pin.position.x += D;   // the lift's local +x: the pin's radius about the collar's axis
+  let moved;
+  try { clock.scene.updateMatrixWorld(true); moved = lineSpecDetectorStatic(clock, M).pinTrackR - read0; }
+  finally { M.pin.position.x -= D; clock.scene.updateMatrixWorld(true); }
+  const back = lineSpecDetectorStatic(clock, M).pinTrackR;
+  enterAxis(clock);
+  return Math.abs(moved - D) <= 1e-9 && back === read0 && read0 === m.pinTrackR && m.readerDrop > 0 && m.leverRock > 0
+    ? `PASS — the reader’s pin carried ${D} out along its radius moves the measured take-off radius by ${moved.toFixed(9)}, and restored reads the same; the trip applied (drop ${m.readerDrop.toFixed(6)}, rock ${m.leverRock.toFixed(6)} rad)`
+    : `FAIL — carried ${D}, the radius moved ${moved}; restored ${back} vs ${read0} (the read ${m.pinTrackR}); drop ${m.readerDrop}, rock ${m.leverRock}`;
+}
+
 // One reader and one control per reference. A reference with no reader is
 // MALFORMED, never skipped: a table row nothing measures is the §66 lever
 // spans' failure, a number checkable by a reader and by nothing else.
@@ -14140,6 +14463,7 @@ const LINE_SPEC_READERS = {
   'alarm link tangential': { read: (clock) => lineSpecLink(clock), control: (clock, m) => lineSpecLinkControl(clock, m) },
   'alarm release run': { read: (clock) => lineSpecRelease(clock), control: (clock, m) => lineSpecReleaseControl(clock, m) },
   'alarm strike': { read: (clock) => lineSpecStrike(clock), control: (clock, m) => lineSpecStrikeControl(clock, m) },
+  'alarm detector': { read: (clock) => lineSpecDetector(clock), control: (clock, m) => lineSpecDetectorControl(clock, m) },
 };
 
 // A reference's values at a given set of input overrides: every literal row
