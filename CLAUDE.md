@@ -559,7 +559,9 @@ it into prose either.
    switch's drive line (tooth count to one-step carry), the lock that reads
    it (§183's rocker to the finger in the stop wheel) and the selector link
    that carries it to the ring (§229's lever to the stall the chain delivers),
-   the latter two `inherits`-ing the wheel's rows rather than restating them.
+   the latter two `inherits`-ing the wheel's rows rather than restating them,
+   then TODO 236's release run and §278's strike (the cam through the lifting
+   lever and the hammer to the gong, its fall and its window included).
    **A reference may call the build's laws** (`clock.lineLaws`: the link's
    seat solve, pin arm and rim top — the functions the build itself calls), so
    no law is written twice. **A fold that moves a spec row fails unless a FORK
@@ -574,7 +576,7 @@ it into prose either.
    second. An
    `envelope` row with a `bound` is one side of a window. Every reference
    carries its own control — the drive shifts the pin's line a known
-   distance, the lock MOVES its rocker's post, the link its rod — and
+   distance, the lock MOVES its rocker's post, the link its rod, the strike its lever's tip — and
    requires the reading to follow exactly; `probe-70-line-spec.mjs` sabotages
    the metal and the fork declarations and watches the gate name the rows
    each sabotage moved. Its first run found the trap again: the mean of a
@@ -1046,7 +1048,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 304 measuring scripts and this file names 45. The rest are named for the
+`tools/` holds 305 measuring scripts and this file names 45. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1063,7 +1065,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **192 of
+The index also carries the split that decides how to read a result: **193 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
