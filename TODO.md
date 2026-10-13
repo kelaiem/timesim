@@ -17,6 +17,11 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 252 | OPEN | Found by the friction analysis (#531, failure 9). The fusee arbor runs a plain bush on top and a jewel at the bottom; `probe-power-budget` prints "top bush plain". TODO 192 step 2 kept the plain bushes on purpose (the chain's pull; the let-down square passes through), so this is a decision nobody recorded. Pick one in service terms, declare it, and let the lubrication map carry it |
+| 251 | OPEN | Found by the friction analysis (#531, failure 8). The 120/7 great wheel to centre pinion is the worst mesh in the train (η 0.929 nominal, 0.905 adverse; next worst 0.935 / 0.914) and a 7-leaf pinion is below the ten-leaf rule. Measure its contact ratio and approach/recess first; any change to 120/7 ripples through the 12:1 and every dependent solve |
+| 250 | OPEN | Found by the friction analysis (#531, failure 7). `sawCouplingSpec` defaults `mu = MU_STEEL` (0.2, tanα = 2μ), but the keyless must run greased (μ ≈ 0.1). The coupling then cams out at about half its design torque. The lubrication regime must be an input to that solve; blocked on §247 tier one giving it a greased-steel μ in `FRICTION` |
+| 249 | OPEN | Found by the friction analysis (#531, failure 6). The reset heart's slip bound (`main.js` ~9648, now τ ≤ 2.80e-6 N·m, F ≈ 7.6 mN) is the fourth arbor's torque with NO losses. `going.energy` now publishes every stage's η, so derive the ceiling from them at the adverse corner (≈ 0.69 to the fourth arbor, by hand) and hold it as a row. Same class as TODO 247 and TODO 141 |
+| 248 | OPEN | Found by the friction analysis (#531, failure 4). At the wrap's top (r 3.2263 u) a 1.9 u link articulates ≈ 33.7° onto the fusee, the classic chain break site. The movement prices the chain only as friction (η 0.987). Measure rivet bearing stress, wear and fatigue at the 0.15–0.25 N tension before deciding whether the geometry or the claim changes |
 | 247 | OPEN | Found closing TODO 236. The release sleeve now TURNS as it rises, so the 45° cone drags follower A's tail pin round the tube. `alarmConeContact` already returns that drag (`tubeDrag_Nu`) and nothing reads it. Set it against the alarm tube's friction coupling at all three corners, or show the tube cannot slip |
 | 246 | OPEN | Found closing TODO 236. The lifter's two return blades seat the pad, but their preload is not derived, so the return stroke (blades → link in compression → crank → sleeve) has no figure. Derive the preload from the stroke's own friction at the adverse corner, hold the tie link under Euler, and add the return as a `transfers` row |
 | 245 | OPEN | Found closing TODO 244. probe-261-fold-site's K8 reads `no linkage to swing` and passes, because its linkage search runs only over feasible rotations and none exist once the fold has landed. Point K8 at the shipped linkage's forward kinematics (`__clock.alarmLinkage`) with a control that can fail, on K9's pattern |
@@ -27121,6 +27126,8 @@ link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
 
 **DONE** — steps 1 (the energy column, §247 tier two), 2 (the pivots cut), 3 (the ribbon proportioned, after TODO 193) and 4 (the amplitude split and gated) have all landed. What the sustained swing IS, against what a lever watch needs, is filed as TODO 207.
 
+*Superseded numbers (2026-10-13):* the 270°/76°/327° tables below are the history of each step. The swing is now designed to 200° (TODO 207), the claim and peak are 126° and the knock-capped peak (TODO 216, 242), and the nominal vertical swing sustains 200.4°. The failure points the analysis found that this item did not own are TODO 248–252, ranked in issue #531.
+
 Found by `tools/probe-power-budget.mjs` (a REPORT); tracked with the other
 failure points in issue #531. Every published figure about
 the going train's power is FRICTIONLESS. `equalisation` holds the fusee's level
@@ -33663,3 +33670,95 @@ re-solves `h`, θs and the arms, the site solve walks, and the build warns that
 the selector rod's built length has drifted from `ALARM_LINK_ROD_LEN_U` — so it
 wants its own landing with the line spec and the rod's section re-derived.
 Then delete the stub from the row's contact list.
+
+## 248. The fusee chain articulates ~34° at the small end, and nothing prices rivet bearing, wear or fatigue
+
+Found by the friction analysis (issue #531, failure 4, §247). §254 re-cut the
+fusee: the small radius is 3.0858 u at the band's top and **3.2263 u at the
+wrap's top, where the chain stops**. A link is `CHAIN_PITCH` 1.9 u, so it turns
+1.9 / 3.2263 = 0.589 rad ≈ **33.7°** onto the cone at the small end. That is
+where fusee chains wear and break. §254 fixed the chain's lean and twist, not
+this articulation. Tension there is only 0.15–0.25 N, so the mode is fatigue and
+rivet wear, not overload; §126's arrest takes overwind, not a whip after a
+break.
+
+Today the chain appears in the record only as friction (`chain articulation`
+η 0.987 nominal, `muChain`). No row holds the rivet's bearing stress, the
+articulation angle, or a life.
+
+**Fix path.** Measure first: a probe (report, with a control that can fail) for
+the articulation angle at the wrap's top, the rivet's bearing pressure and
+shear at the tension range, and a fatigue life against a cited rivet steel.
+Then decide, on what it reads, whether the geometry changes (a larger small
+radius is a fusee re-solve, §254's machinery) or the claim does. Do not widen
+`muChain` to cover it.
+
+## 249. The reset-heart and tube friction couplings are bounded by a lossless train torque
+
+Found by the friction analysis (issue #531, failure 6, §247). The reset heart's
+slip ceiling (`main.js`, the Gate A reset load, ~line 9648) is "τ_slip ≤ the
+train's torque at the fourth arbor", taken from the ribbon's released energy
+with NO losses. After TODO 193 and 192 step 3 that is τ ≤ 2.80e-6 N·m and
+F ≈ 7.6 mN (it was 3.03e-7 when the issue was filed). A coupling built to a
+lossless bound can sit above what the real train delivers and back-drive it.
+
+`going.energy` now publishes every stage's η at three corners. By hand from the
+probe's table the train delivers about 0.76 (nominal) and 0.69 (adverse) of the
+ideal torque to the fourth arbor, so the lossless bound is roughly 30–45% high.
+The issue's earlier ~0.65 is superseded.
+
+**Fix path.** Derive the ceiling from `going.energy`'s stage η at the adverse
+corner (the corner that makes the bound safe), hold it as a `transfers`-style
+row, and re-quote the figure wherever it survives (the reset comment, the
+primer/explainer if they quote it). Related: TODO 247 (the alarm tube's drag
+against its coupling) and TODO 141 (the centre stack's coupling) are the same
+class and should read the same η.
+
+## 250. Saw couplings are cut at dry MU_STEEL, and the keyless runs greased
+
+Found by the friction analysis (issue #531, failure 7, §247).
+`sawCouplingSpec` (`layout.js`) sets the ramp from `tanα = 2μ` with
+`mu = MU_STEEL` (0.2, friction cone ±11.3°). The keyless is lubricated with
+grease, as it must be, which brings μ toward 0.1. The coupling is then cut for a
+friction it does not have and cams out at about half the torque it was designed
+to hold. The lubrication regime is an input to this solve, not an afterthought.
+
+`FRICTION` has no greased-steel row, so the solve has no μ to read.
+
+**Fix path.** Blocked on §247 tier one, which declares each joint's regime. Add
+a greased-steel row to `FRICTION` (a band with its source, three corners, never
+a single number) and take `sawCouplingSpec`'s μ from the regime of the joint it
+cuts, at the corner that makes the coupling safe (the one that cams out earliest
+and the one that locks, held both ways). Re-cut the five saw/ratchet cuts that
+consume it and re-clock them, then update the explainer's "friction cone" plate
+in all locales via the i18n tool.
+
+## 251. The 7-leaf centre pinion is the train's worst mesh and the first to wear
+
+Found by the friction analysis (issue #531, failure 8, §247). §124's 120/7 great
+wheel to centre pinion is the lowest-efficiency mesh in the train: η 0.9288
+nominal and 0.9050 adverse, against 0.935 / 0.914 for the next worst (fourth to
+escape, 80/8). Below ten leaves a cycloidal pinion engages before the line of
+centres, which is the worst case for both friction and wear, and the first
+mesh to show it.
+
+**Fix path.** Report first, change only if the numbers ask: measure the
+contact ratio and the approach and recess lengths of this mesh against the
+ten-leaf rule, and price its share of the train's loss. Changing 120/7 ripples
+through the 12:1 motion works and every ratio and fusee solve downstream, so a
+tooth-count change is its own landing with its own fold, not an edit here.
+
+## 252. The fusee arbor's pivots disagree: a plain bush on top, a jewel at the bottom
+
+Found by the friction analysis (issue #531, failure 9, §247). The fusee arbor
+runs a plain bush at its top and a jewelled pivot at its bottom by default
+(`probe-power-budget` prints "top bush plain"). TODO 192 step 2 kept the
+fusee's staff-size plain bushes deliberately, because the arbor carries the
+chain's pull and the let-down square passes through the top. So this is not an
+oversight but an unrecorded decision, and the two ends are priced under
+different μ in the energy column.
+
+**Fix path.** Decide in service terms (load, wear, oil retention, the square
+through the top) and declare it, once: either both ends plain, or both jewelled
+with the square re-routed. Record the reason in the arbor's builder comment, and
+let §247 tier one's `LUBRICATION` table carry the regime.
