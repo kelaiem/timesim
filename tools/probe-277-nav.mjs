@@ -40,6 +40,7 @@ const appWarns = [];
 const browser = await chromium.launch({ args: ['--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 const pg = await browser.newPage();
 await pg.setViewportSize({ width: 760, height: 480 });   // desktop layout, few pixels (probe-161's measured reason)
+pg.on('pageerror', (e) => appWarns.push('PAGEERROR ' + e.message));
 pg.on('console', (m) => { const x = m.text(); if (m.type() === 'warning' && !/WebGL|GL Driver|GroupMarker/.test(x)) appWarns.push(x); });
 await pg.goto(BASE, { waitUntil: 'load' });
 await pg.waitForFunction(() => !!window.__clock, null, { timeout: 180000 });
@@ -92,7 +93,7 @@ for (let i = 0; i < n; i++) {
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(a); }, i);
   fromStart.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx) });
   await pg.evaluate((a) => { const c = window.__clock; c.scriptStop(); c.startInspect(); c.scriptGoto(c.scriptState.of - 1); c.scriptGoto(a); }, i);
-  fromEnd.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx), dbg: await pg.evaluate(() => window.__clock.scriptAlarmDebug) });
+  fromEnd.push({ v: await settled(want0(i)), idx: await pg.evaluate(() => window.__clock.scriptState.idx), dbg: await pg.evaluate(() => ({ ...window.__clock.scriptAlarmDebug, tau: window.__clock.tau })) });
 }
 const bad = (set) => set.map((r, i) => (r.idx === i && same(straight[i], r.v, i)) ? null : i).filter((x) => x !== null);
 for (const [nm, set] of [['start', fromStart], ['end', fromEnd]]) for (const i of bad(set)) {
