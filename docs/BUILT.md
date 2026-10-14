@@ -36365,7 +36365,7 @@ captions say what is open, not what to look at.
 
 The route's captions are English-keyed strings, so the eleven this rewrote and
 the new ones render English in the other 22 locales until re-translated (the visible fallback, by
-design); the stop-list titles are English too. `probe-chrome-coverage.mjs` reads
+design); the stop-list titles are English too. **Part F re-translated them** (below). `probe-chrome-coverage.mjs` reads
 the DOM at boot, where none of these exist, so it is unaffected.
 
 ### Measured
@@ -36864,3 +36864,42 @@ are untouched, and §112, §276 and §234 are not re-solved. The reclaim (about
 0.5 u, 0.19 mm, before the crank binds) and the release crank's re-site are
 left to a later §278 landing, along with the silence rocker's
 re-stratification that a reclaim past 0.18 u would need.
+
+### Part F — the route in 22 locales
+
+The twenty new strings (eleven captions, nine stop titles; `End` already had
+an entry) are in all 22 tables, keyed by the English `INSPECT_STEPS` carries.
+Nothing gated them: the chrome-coverage probe reads the DOM at boot and the
+route is not on the glass until someone runs it, and rewriting a caption
+invalidates its translation in every table without touching a line of them.
+`tools/probe-277-route-i18n.mjs` holds them now. It reads the English out of the
+step table, so editing a caption fails every locale loudly, and per
+(locale, string) it requires the entry to exist and not echo the English, the
+digit multiset to equal the English's (Western digits only), `TODO <n>` and
+`TODO.md` to survive, and the locale's HONESTY stems (read from
+`explain-i18n.mjs`'s own table) to appear wherever the English says *modelled*
+or *simulated*. A mutation control plants a changed digit, a dropped TODO id, a
+modelled-to-simulated swap and an English echo, and fails if any slips.
+**22 × 21 rows, 0 failing; controls PASS.**
+
+Drafted by machine, not reviewed by a native speaker: that review is still owed,
+and the terms the drafters flagged are the ones it should start from — the
+gate/battery vocabulary, *posed* (no locale had a word; several coined a
+participle), *arming run/link* in the locales whose tables had none, and the
+parts the tables never named (guard pin, safety roller, impulse pin). The
+honesty stems are gated; whether the sentence around them reads naturally is
+not.
+
+### Part H — the alarm feeler gets its own stop
+
+The route had named the feeler only inside the Release stop's claim about the
+lock (TODO 199). A twelfth stop, **Alarm feeler**, sits between Arming run and
+Release and frames `Alarm release feeler` (x-rayed, armed, the feeler's own
+`focus`). It states what is driven (disc, reader and feeler are metal; each
+hand-off is an `ALARM_HANDOFFS` row) and what is open: the drop's work, about
+1.1 to 1.5 mN·u, against about 5.5 for drawing the lock's finger out of a
+loaded stop, so no energy source for the release exists yet (the P1 arithmetic
+TODO 199 files). Both figures are quoted from that item, not re-measured here.
+Its title and caption are translated in the 22 locales and held by
+`probe-277-route-i18n.mjs` (22 × 23 rows, 0 failing). The framing is one render:
+the lever's pivot and pickup are in shot, in a crowded corner.
