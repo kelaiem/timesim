@@ -32007,7 +32007,25 @@ move.
   the as-cut rhombus) is TODO 193's, and its cadence already carries the one
   efficiency the source had (`ALARM_GOV_MESH_EFF`), which `FRICTION` does not
   yet subsume.
-- Tiers one and three of this entry, in the roadmap.
+- Tier three of this entry (tier one landed below), in the roadmap.
+
+### §247 tier one — the per-joint `LUBRICATION` map, audited
+
+`src/lubrication.js` answers, for every joint `MECH_GRAPH` declares (115: 82
+support and 63 drive edges, deduplicated, the inputs excluded), one regime —
+dry, oil-fine, oil-medium, grease, escapement (the pallet stones' own
+lubrication) or friction (a surface whose slip torque the movement prices) — with
+the reason written beside it. `REGIME_INFO[regime].priced` lists the `FRICTION`
+coefficients a regime may carry, which is what makes the map and the §247 tier
+two energy column unable to disagree in silence. 54 joints are answered; the
+other 61 are the CLOSED arrival inventory `LUBRICATION_DEBT` (alarm complex,
+hack/reset/jumper/power-reserve bearings and their contacts), which only
+shrinks. The balance's lower bearing has no oil sink (TODO 254) and is the one
+waiver, stale the moment the sink exists. The `lubrication` battery check
+(cost 1) runs the audit and eight mutation controls (a deleted joint, a bogus
+unit, an unknown regime, an uncited friction row, a regime/coefficient mismatch,
+an unsunk oil bearing, an answered-but-listed joint, a waiver on a sunk
+bearing). Tier three (oil points in the schematic, an explainer plate) remains.
 
 ## §253 — The gong's voice carries the curvature term: in-plane modes of the clamped-free arc, and the modal mass the head is matched to
 

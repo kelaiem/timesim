@@ -442,6 +442,25 @@ export const BATTERY = [
                    ...(r.controlPass ? [] : [{ controls: 'FAIL' }])],
     note: (r) => `${(r.rows || []).length} meshes × declared inputs, `
       + `${(r.waived || []).length} waived (accepted debt), ${(r.reported || []).length} reported (driver still / refused)` },
+  // §247 tier one — the lubrication map. `restoring`'s shape and a cheap one (no
+  // sweep: the population is MECH_GRAPH's, the rows are layout-free data, the
+  // controls re-run the same audit on mutated copies). What is gated is what a
+  // claim about service can be held to: every joint answered or in the CLOSED
+  // arrival inventory, every answer well-formed and naming a part that exists,
+  // every coefficient the energy column prices a joint with agreeing with the
+  // regime it is declared in, and an oiled bearing with no oil sink waived
+  // against a filed item.
+  { name: 'lubrication', opts: {},
+    gate: '0 joints outside the table and the arrival inventory, 0 malformed, 0 stale rows, 0 stale inventory entries, 0 stale waivers, controls PASS',
+    fails: (r) => [
+      ...(r.unanswered || []), ...(r.malformed || []), ...(r.stale || []),
+      ...(r.staleDebt || []), ...(r.debtNotInPopulation || []),
+      ...(r.staleWaivers || []).map((w) => ({ staleWaiver: w })),
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+    ],
+    note: (r) => `${r.population} joints: ${r.answered} answered (`
+      + Object.entries(r.byRegime || {}).map(([k, n]) => `${n} ${k}`).join(', ')
+      + `), ${r.debt} in the arrival inventory` },
   { name: 'transfers', opts: {},
     gate: '0 malformed, 0 stale, 0 mismatched, 0 unwaived envelope misses, 0 stale waivers, control PASS',
     fails: (r) => [
