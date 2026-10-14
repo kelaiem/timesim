@@ -17,9 +17,10 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 255 | OPEN | Found measuring TODO 251. `going.energy` prices every mesh at πμ(1/z₁ + 1/z₂), which takes the contact-ratio factor (1 − ε + ε_a² + ε_r²) as 1. The shipped teeth give 0.52–0.56 of it, so the four meshes lose about HALF what the column charges (product 0.8799 against 0.7786 nominal). Price the mesh from `gearToothSpec`'s own arcs and re-solve what rides on the column: row 14's claim and peak, TODO 207's rim, TODO 242's starts |
 | 254 | OPEN | Found confirming the friction analysis (#531, failure 2). The balance's UPPER pivot has the full shock stack (hole jewel, endstone, lyre spring); the LOWER one runs through its stone to the stone's underside and stops, with nothing under it. Dial-down, the staff's shoulder (CLEAR_MARGIN above the stone) bears on the jewel face with no oil reservoir and no shock protection. Add a lower cap jewel, size the end contact, and let the energy column price the dial-down end |
 | 252 | OPEN | Found by the friction analysis (#531, failure 9). The fusee arbor runs a plain bush on top and a jewel at the bottom; `probe-power-budget` prints "top bush plain". TODO 192 step 2 kept the plain bushes on purpose (the chain's pull; the let-down square passes through), so this is a decision nobody recorded. Pick one in service terms, declare it, and let the lubrication map carry it |
-| 251 | OPEN | Found by the friction analysis (#531, failure 8). The 120/7 great wheel to centre pinion is the worst mesh in the train (η 0.929 nominal, 0.905 adverse; next worst 0.935 / 0.914) and a 7-leaf pinion is below the ten-leaf rule. Measure its contact ratio and approach/recess first; any change to 120/7 ripples through the 12:1 and every dependent solve |
+| 251 | PART DONE | MEASURED (`tools/probe-251-pinion-mesh.mjs`, 7 controls). 120/7 is still the worst mesh, but by half a point, not the margin the closed form implies: path-model η 0.9619 nominal against 0.9669 for the next worst (80/8). A 10-leaf pinion would gain 1.2 points of train η and cost the 12:1 and every dependent solve, so the recommendation is to KEEP 120/7 and close this item on the owner's word. The measurement found the real defect: TODO 255 |
 | 250 | OPEN | Found by the friction analysis (#531, failure 7). `sawCouplingSpec` defaults `mu = MU_STEEL` (0.2, tanα = 2μ), but the keyless must run greased (μ ≈ 0.1). The coupling then cams out at about half its design torque. The lubrication regime must be an input to that solve; blocked on §247 tier one giving it a greased-steel μ in `FRICTION` |
 | 249 | OPEN | Found by the friction analysis (#531, failure 6). The reset heart's slip bound (`main.js` ~9648, now τ ≤ 2.80e-6 N·m, F ≈ 7.6 mN) is the fourth arbor's torque with NO losses. `going.energy` now publishes every stage's η, so derive the ceiling from them at the adverse corner (≈ 0.69 to the fourth arbor, by hand) and hold it as a row. Same class as TODO 247 and TODO 141 |
 | 248 | OPEN | Found by the friction analysis (#531, failure 4). At the wrap's top (r 3.2263 u) a 1.9 u link articulates ≈ 33.7° onto the fusee, the classic chain break site. The movement prices the chain only as friction (η 0.987). Measure rivet bearing stress, wear and fatigue at the 0.15–0.25 N tension before deciding whether the geometry or the claim changes |
@@ -33749,6 +33750,43 @@ ten-leaf rule, and price its share of the train's loss. Changing 120/7 ripples
 through the 12:1 motion works and every ratio and fusee solve downstream, so a
 tooth-count change is its own landing with its own fold, not an edit here.
 
+**Measured (`tools/probe-251-pinion-mesh.mjs`, run from `tools/` with
+`node --import ./three-node-loader.mjs`).** §136's teeth are cycloidal, so a
+pair's contact point rides the two generating circles through the pitch point;
+the probe reads each mesh's approach and recess arcs off `gearToothSpec`'s
+addenda, prices the loss at every point of the path (Coulomb friction, exact
+force and sliding geometry, load shared equally between the pairs in contact)
+and averages over a pitch. Its seven controls pass: μ = 0 gives η = 1; the
+power balance closes to float; sliding is (ω₁ + ω₂)|QP|; there is no normal
+slip and the sweep runs root to tip; the geometric arc equals the generator's
+`cyArc` to 1e-9; the contact ratio reaches the generator's target; and the
+loss equals Merritt's classical contact-ratio factor within 5% (an independent
+derivation).
+
+| mesh | CR | approach / recess | η path model, nominal | η closed form, nominal |
+|---|---|---|---|---|
+| 120/7 | 1.040 | 37% / 63% | **0.9619** | 0.9288 |
+| 80/8 | 1.040 | 42% / 58% | 0.9669 | 0.9352 |
+| 75/10 | 1.040 | 39% / 61% | 0.9721 | 0.9466 |
+| 80/10 | 1.040 | 43% / 57% | 0.9732 | 0.9470 |
+
+- **120/7 is the worst mesh at all three corners**, but only by 0.5 point
+  (nominal) over 80/8. The pinion's addendum sits at the generator's floor
+  (0.058): the wheel's face carries the contact ratio, recess-first, as
+  designed. §136 already did the pinion's work; the leaf count is not an
+  undercut or interference problem here (radial flanks, feasible at CR 1.040).
+- **Leaf count sensitivity** (wheel 120 and module held, nominal μ): 6 leaves
+  0.9542, 7 → 0.9619, 8 → 0.9673, 10 → 0.9742, 14 → 0.9813. A 10-leaf pinion
+  buys +1.2 points on one mesh and +1.0 point on the train, and re-gearing 120/7
+  ripples through the 12:1 motion works, the fusee's set-up and every ratio
+  solve downstream.
+- **Wear** was not measured: sliding speed at the contact is bounded by the
+  path, and no wear law or hardness pair is declared anywhere to price it with.
+
+**Disposition (proposed, not taken).** Keep 120/7 and close this item. The
+reason it looked worse than it is lies in the efficiency law, not the pinion:
+that is TODO 255.
+
 ## 252. The fusee arbor's pivots disagree: a plain bush on top, a jewel at the bottom
 
 Found by the friction analysis (issue #531, failure 9, §247). The fusee arbor
@@ -33799,3 +33837,38 @@ exercise, not just a mesh; mind the dial-side stratum under the balance
 (`Z_DIAL`) and the nothing-else-below note at the call site. Then add the
 shoulder-versus-tip contact to the energy column as a stated assumption, or
 retire it if the stone makes the rounded-end figure true.
+
+## 255. The mesh efficiency law prices every tooth contact at twice its loss: `going.energy` ignores the contact ratio
+
+Found measuring TODO 251 (issue #531, failure 8). The energy column prices a
+mesh at `1 − πμ_tooth(1/z₁ + 1/z₂)` (`GOING_POWER`, `main.js`; restated in
+`probe-power-budget.mjs`). That is the classical small-contact-ratio form: it is
+the full law (1 − ε + ε_a² + ε_r²) with the bracket taken as 1. The movement's
+teeth are §136's, cut to a contact ratio of 1.040 with 37–43% of the path in
+approach, which puts the bracket at **0.52–0.56**
+(`probe-251-pinion-mesh.mjs`, whose path model and Merritt's factor agree
+within 5%). So every mesh stage charges about twice the loss the teeth incur.
+
+| | closed form (shipped) | path model |
+|---|---|---|
+| product of the four mesh η, favourable | 0.8196 | 0.9024 |
+| nominal | 0.7786 | 0.8799 |
+| adverse | 0.7137 | 0.8441 |
+
+The error is conservative (the column reads low), but it is a wrong number on
+the record and it sits under several tuned results: `equalisation` row 14's
+`AMPLITUDE_CLAIM_DEG` and `AMPLITUDE_PEAK_DEG`, TODO 207's heaviest-rim solve
+(`BAL_RIM_F`, which reaches 200° at the nominal corner *because* of this η),
+TODO 242's `RATE_TABLE` rim and balance-radius rows, and TODO 249's
+adverse-corner ceiling. A lossier-than-real train made the shipped balance
+lighter than the spring can drive.
+
+**Fix path.** Add the contact ratio's split to the law: derive ε_a and ε_r per
+mesh from `gearToothSpec`'s arcs (the same `cyArc` the generator solves with,
+so the law and the cut cannot disagree) and price the mesh as
+`πμ(1/z₁ + 1/z₂)(1 − ε + ε_a² + ε_r²)`. Hold it with the path model as the
+probe's independent computation, since that already agrees. Then re-solve what
+rides on the column in order: the record, row 14's claim and peak, TODO 207's
+rim, TODO 242's rows (all three are gated and will fail until re-solved), and
+re-quote TODO 249's figure. This moves the fingerprint (the balance changes)
+and so is a full battery landing, not a one-line edit.

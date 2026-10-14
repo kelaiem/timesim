@@ -4,7 +4,7 @@
 
 # The instruments
 
-308 scripts. **196 are ACCEPTANCE tests** — they decide and exit non-zero.
+309 scripts. **197 are ACCEPTANCE tests** — they decide and exit non-zero.
 **112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -199,6 +199,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-249-arrows.mjs` | §249 | acceptance | §249 — DOES EVERY ARROW POINT THE WAY ITS SENTENCE FLOWS, as rendered? |
 | `probe-249-dotted-i.mjs` | §249 | acceptance | §249 (Turkish) — DOES DISPLAY TEXT CASE-MAP IN ITS OWN LOCALE? |
 | `probe-249-vietnamese-vert.mjs` | §249 | acceptance | §249 (Vietnamese) — what stacked tone marks do to a line box sized for Latin. |
+| `probe-251-pinion-mesh.mjs` | §251 | acceptance | TODO 251 — THE 7-LEAF CENTRE PINION, PRICED FROM ITS OWN CONTACT PATH. |
 | `probe-253-arch-modes.mjs` | §253 | acceptance | §253 — IS THE GONG'S ARCH SOLVE RIGHT, AND DOES IT KNOW WHEN IT IS A STRAIGHT BAR? |
 | `probe-254-chain-twist.mjs` | §254 | acceptance | §254 — DOES THE CHAIN BEND ONLY ABOUT ITS PINS? Acceptance. |
 | `probe-261-dial-band.mjs` | §261 | acceptance | THE DIAL-SIDE BAND'S FREE VOLUME, OVER THE POSE NET — where, between the base plate's dial face and the dial's back, a folded action group could stand. |
