@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 253 | OPEN | Found confirming the friction analysis (#531, failure 2). The balance's UPPER pivot has the full shock stack (hole jewel, endstone, lyre spring); the LOWER one runs through its stone to the stone's underside and stops, with nothing under it. Dial-down, the staff's shoulder (CLEAR_MARGIN above the stone) bears on the jewel face with no oil reservoir and no shock protection. Add a lower cap jewel, size the end contact, and let the energy column price the dial-down end |
 | 252 | OPEN | Found by the friction analysis (#531, failure 9). The fusee arbor runs a plain bush on top and a jewel at the bottom; `probe-power-budget` prints "top bush plain". TODO 192 step 2 kept the plain bushes on purpose (the chain's pull; the let-down square passes through), so this is a decision nobody recorded. Pick one in service terms, declare it, and let the lubrication map carry it |
 | 251 | OPEN | Found by the friction analysis (#531, failure 8). The 120/7 great wheel to centre pinion is the worst mesh in the train (η 0.929 nominal, 0.905 adverse; next worst 0.935 / 0.914) and a 7-leaf pinion is below the ten-leaf rule. Measure its contact ratio and approach/recess first; any change to 120/7 ripples through the 12:1 and every dependent solve |
 | 250 | OPEN | Found by the friction analysis (#531, failure 7). `sawCouplingSpec` defaults `mu = MU_STEEL` (0.2, tanα = 2μ), but the keyless must run greased (μ ≈ 0.1). The coupling then cams out at about half its design torque. The lubrication regime must be an input to that solve; blocked on §247 tier one giving it a greased-steel μ in `FRICTION` |
@@ -33762,3 +33763,39 @@ different μ in the energy column.
 through the top) and declare it, once: either both ends plain, or both jewelled
 with the square re-routed. Record the reason in the arbor's builder comment, and
 let §247 tier one's `LUBRICATION` table carry the regime.
+
+## 253. The balance's lower pivot has no endstone: the pivot ends at the stone's underside
+
+Found confirming the friction analysis (issue #531, failure 2, §247). The
+balance's upper pivot runs in the cock's hole jewel and ends under an endstone
+held by the gold lyre spring (the `shockSetting` build, TODO 12's cap jewel at
+`STOCK_MIN_U`). The lower pivot is cut by `addLowerPivot(balanceGroup, …)` in
+`main.js`: the staff stops `CLEAR_MARGIN` above the stone, and the pivot (radius
+`BALANCE_PIVOT_R`) runs down through the stone's turned hole to
+`PLATE_TOP + stone.bottom` and **ends there**. No cap jewel sits under it, and
+the plate's face is the nearest thing below.
+
+What that means in service:
+- **Dial-down** the balance's weight is carried by the staff's shoulder on the
+  jewel's top face, not by a rounded pivot end on an endstone. That is a
+  larger contact radius than the energy column's `endContactMm` assumes, with
+  no oil reservoir (a cap jewel's job) — the pessimistic reading of failure 2.
+- **Shock**: the upper end has an anti-shock stack and the lower end has none,
+  so a drop loads the lower pivot's tip directly. The movement states no shock
+  specification (TODO 192 step 2), so this is a missing part rather than a
+  failed number.
+- The flat-position friction in `going.energy` prices a rounded end on an
+  endstone (`endContactMm`, 0.01–0.03 mm). Without the stone that row describes
+  a part the movement does not have.
+
+Item 252's stone and this one's are the two bearing ends the lubrication map
+(§247 tier one) will need to name.
+
+**Fix path.** Add a lower cap jewel (endstone) under the pivot end, in the
+plate's dial-side pocket or a setting on the plate's back, at real cap-jewel
+stock (`STOCK_MIN_U`) with the endshake the upper end carries (0.17 u). The plate
+is a held fixture, so this is a `plateSeats` / `intraUnit` / `PLATE_SEATS`
+exercise, not just a mesh; mind the dial-side stratum under the balance
+(`Z_DIAL`) and the nothing-else-below note at the call site. Then add the
+shoulder-versus-tip contact to the energy column as a stated assumption, or
+retire it if the stone makes the rounded-end figure true.
