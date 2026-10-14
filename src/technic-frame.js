@@ -89,7 +89,12 @@ export const AXLE_PARTS = Object.freeze({
 // polygon's vertex reads a few microns off the primitive's nominal radius —
 // and held by probe-technic-ldraw.mjs.
 export const KEYLESS_PARTS = Object.freeze({ clutch: TECHNIC_CLUTCH_GEAR.part, joiner: '18948', ring: '18947', crown: '4185a',
-  catch: '6641', knob: '4185a' });
+  catch: '6641',
+  // landing F — the pull: a 28T pinion on the selector, a 1×14 rack it drives,
+  // the rack's guides (tiles to slide on); the detent's follower (a half bush,
+  // round) on a thin liftarm, pressed on a small gear on the selector axle (the
+  // DETENT WHEEL, KEYLESS_DETENT); the frame outgrows a 16×16 base
+  pinion: '46372', rack: '18942', tile: '3070b', detentArm: '6632', follower: '32123a', baseplate32: '3811' });
 export const KEYLESS_DIM_MM = Object.freeze({
   joinerHalf: 12,          // 18948: Z ±30 LDU, a 3L joiner
   joinerR: 3.800077,       // 18948: its farthest surface, the collar at its middle (9.5 LDU)
@@ -140,6 +145,76 @@ export function selectorRise() {
     if (tip > S.grooveFloorR && tip < KEYLESS_DIM_MM.ringR) ok.push(n);
   }
   return ok.length === 1 ? { plates: ok[0], mm: ok[0] * LEGO_DIM_MM.plateH } : { plates: null, candidates: ok };
+}
+
+// §219 tier three (b) landing F — THE PULL AND ITS DETENT, read off the parts
+// (held by probe-technic-ldraw.mjs). The rack (18942) lies teeth up: its teeth
+// are toothr primitives every 8 LDU along its X, root 22.5 LDU and tip 27.5 LDU
+// above its underside's datum, its underside 9 LDU below that datum. They do
+// NOT run its whole length: 32 of them from X −112 to +136 LDU, and the −X end
+// carries a round boss 1.5 LDU proud of the tips instead — so the pinion must
+// work the toothed span (probe-technic-keyless.mjs' PULL holds that).
+export const KEYLESS_PULL_DIM_MM = Object.freeze({
+  rackPitch: 3.2,          // 18942: one tooth every 8 LDU
+  rackPitchToBottom: 13.6, // 18942: the tooth's mid-height (25 LDU up) over the underside (9 LDU down)
+  rackAddendum: 1.0,       // 18942: tip 2.5 LDU above the mid-height
+  rackDedendum: 1.0,       // 18942: root 2.5 LDU below it
+  rackHalfLength: 55.6,    // 18942: X ±139 LDU
+  rackHalfWidth: 4,        // 18942: Z ±10 LDU
+  rackTeethLo: -44.8,      // 18942: its first tooth at X −112 LDU
+  rackTeethHi: 54.4,       // 18942: its last at X +136 LDU
+  armHoles: 16,            // 6632: its two END axle holes 40 LDU apart (a round hole between)
+  armHalfThick: 2,         // 6632: 10 LDU thick
+  followerR: 3.600091,     // 32123a: its flanges' radius, 9 LDU (a vertex reads it 0.2 µm out) — round, so it rides a wheel the same both ways
+  followerHalfWidth: 2,    // 32123a: Z ±5 LDU
+});
+export const PULL_PINION_TEETH = 28;
+// THE DETENT IS A WHEEL ON THE SELECTOR AXLE, one tooth per mode. Landing F
+// measured the alternative first: a detent on the RACK clicks at every rack
+// tooth, a mode is two of them (28T), and the click between leaves the ring
+// 1.96 of its 4 mm in — 1.16 mm past the clutch gear's face, half engaged — and
+// the 8T keyed on an arm that the plan named is a RATCHET there (it meshes the
+// rack and locks pushed toward its pivot). So each generation's wheel is the
+// catalogue spur whose ONE tooth lands the catch nearest the ring's web, as a
+// fraction of the catch's play at that angle (16T: 0.57 mm short, out of play;
+// 12T: 0.46 mm over of 0.91; 14T: 0.05 short of 0.53 — the 2026 catalogue's
+// alone). `mount` is the turn the wheel goes onto its axle at (a quarter turn
+// is 3.5 teeth of a 14T, so it is a real choice; 3 of a 12T, so it is not),
+// `plates` the follower's pivot height over the selector's axis and `sense`
+// the way the follower's band turns its arm onto the wheel. They are the
+// placement whose THREE RESTS — the notch's minimum and one tooth either side —
+// leave the ring nearest where it belongs, as a fraction of what it may miss
+// by: at neutral short of both gears' faces (travel − recess depth, 0.8 mm), at
+// wind and set within the catch's play of the web; among notches symmetric to
+// 30%, pivot above the axis. Classic's lands −1.11° off neutral (the ring
+// 0.34 and 0.59 mm over the web, of 0.79 and 1.04 mm play), the 2026's +0.34°.
+// tools/probe-technic-keyless.mjs re-runs the survey and the placement search
+// and fails when either answers otherwise.
+export const KEYLESS_DETENT = Object.freeze({
+  technic_classic: { teeth: 12, mount: 0, plates: 2, sense: 1 },
+  technic_2026: { teeth: 14, mount: 90, plates: 3, sense: -1 },
+});
+// The follower's pivot is two studs toward the rack's side (−y) of the
+// selector's axis, so one arm (the 1×3 thin liftarm, 16 mm between its end
+// holes) serves both wheels: on that line the search above finds a symmetric
+// notch near neutral for each, where a one-stud pivot and the 1×2 arm leaves
+// classic's 4.5° off.
+export const DETENT_PIVOT = Object.freeze({ dyStuds: -2 });
+// THE RACK'S HEIGHT: it slides on tiles, so its underside is a lattice height
+// (whole plates). The pinion's pitch circle and the rack's pitch line may
+// stand apart by d: d > 0 is a shallower mesh. It must stay above −(rack
+// dedendum − pinion addendum), or the pinion's tips hit the rack's roots, and
+// below rack addendum + pinion addendum, or the teeth part. The lattice leaves
+// exactly one d in that window; this returns it.
+export function pullRackLift(selectorZ, pinionTip = GEAR_TIP_MM[KEYLESS_PARTS.pinion]) {
+  const P = KEYLESS_PULL_DIM_MM, r = PULL_PINION_TEETH / 2, add = pinionTip - r;
+  const lo = -(P.rackDedendum - add), hi = P.rackAddendum + add;
+  const ok = [];
+  for (let n = 0; n <= 40; n++) {
+    const bottom = n * LEGO_DIM_MM.plateH, d = r6(selectorZ - r - (bottom + P.rackPitchToBottom));
+    if (d > lo && d < hi) ok.push({ bottom: r6(bottom), d, plates: n });
+  }
+  return ok.length === 1 ? ok[0] : null;
 }
 
 // THE RING'S TRAVEL is derived, not chosen: a clutch gear stands against each
@@ -336,7 +411,8 @@ export function frameKeyless(gen) {
   // neutral centre (y = 0), the catch keyed to it at x = 0, its bulb in the
   // groove. Its columns stand on the +x side (the setting branch's 8T sits at
   // y = 0 on −x), the first one gap clear of the ring's flanges, the second
-  // beside it; the knob one gap outside them, as the crown is.
+  // beside it. (Landing E's knob on the axle's end is gone: landing F's pull
+  // turns the selector, through the pinion on its other end.)
   const rise = selectorRise();
   if (!rise.plates) return { key, gen, framed: false, reason: `no whole number of plates seats the catch's bulb in the groove (${rise.candidates.join(', ') || 'none'})` };
   const SD = KEYLESS_SELECTOR_DIM_MM;
@@ -354,14 +430,81 @@ export function frameKeyless(gen) {
     const boxes = stack.map((b) => { const o = { part: b.part, x0: xc - half, x1: xc + half, y0: -half, y1: half, z0: zz, z1: zz + b.h, hole: !!b.hole, turned: !!b.turned }; zz += b.h; return o; });
     return { shaft: 'selector', end: i ? 'outer' : 'inner', x: xc, y: 0, onGrid: true, boxes, holeZ: z };
   });
-  const knobX = x2 + half + D.stud - K.crownWidth / 2;          // the crown's rule: one gap outside the column
-  const ax0 = -SD.catchHalfWidth, ax1 = knobX + K.crownWidth / 2;
-  const lenStuds = Object.keys(AXLE_PARTS).map(Number).sort((a, b) => a - b).find((n) => n >= (ax1 - ax0) / D.stud);
+  // LANDING F — THE PULL. The selector's 28T pinion stands on −x past the
+  // farthest reach of the setting branch (its columns and its gears' tips),
+  // one gap clear; the detent wheel one stud outboard of it; the rack lies
+  // under the pinion along y, sliding on tiles between two walls; the
+  // follower's arm pivots outboard of the wheel on a column pair of turned
+  // bricks. The selector axle runs from the wheel's outer face to the outer
+  // selector column's.
+  const P = KEYLESS_PULL_DIM_MM, gearW = GEAR_WIDTH_MM.default;
+  const DT = KEYLESS_DETENT[gen];
+  if (!DT) return { key, gen, framed: false, reason: `no detent wheel declared for ${gen}` };
+  const wheel = CATALOGUES[gen].counts.find((c) => c.kind === 'spur' && c.teeth === DT.teeth);
+  if (!wheel) return { key, gen, framed: false, reason: `the ${gen} catalogue has no ${DT.teeth}T spur for the detent wheel` };
+  const reach = -Math.min(...f.columns.flatMap((c) => c.boxes.map((b) => b.x0)),
+    ...f.shafts.flatMap((sh) => [...sh.gears, ...(sh.extras ?? [])].map((g) => sh.x - g.tip)));
+  const xp = -Math.ceil((reach + half + gearW / 2) / D.stud) * D.stud, xw = xp - D.stud;
+  const ax0 = xw - gearW / 2, axSpan = x2 + half - ax0;
+  const lenStuds = axSpan / D.stud;
+  if (!AXLE_PARTS[lenStuds]) return { key, gen, framed: false, reason: `no ${lenStuds}L axle spans the wheel to the selector's columns` };
+  const ax1 = ax0 + lenStuds * D.stud;
   const selector = { y: 0, z, rise: rise.mm, risePlates: rise.plates, columns: selCols,
-    axle: { x0: ax0, x1: ax1, part: AXLE_PARTS[lenStuds], lenStuds }, catchX: 0, knobX };
-  const columns = [...f.columns, ...selCols];
+    axle: { x0: ax0, x1: ax1, part: AXLE_PARTS[lenStuds], lenStuds }, catchX: 0, pinionX: xp,
+    wheel: { x: xw, part: wheel.part, teeth: wheel.teeth, tip: GEAR_TIP_MM[wheel.part], mount: DT.mount } };
+  const lift = pullRackLift(z);
+  if (!lift) return { key, gen, framed: false, reason: 'no lattice height meshes the rack with the selector\'s pinion' };
+  const pitchZ = r6(lift.bottom + P.rackPitchToBottom);
+  // the rack's centre at neutral: on the crown's side of the pinion, so its
+  // pulled end is the one a hand reaches (the build trims it by under half a
+  // tooth to mesh). Its stroke is the wheel's one tooth rolled off the
+  // pinion tooth for tooth: N_pinion/N_wheel rack pitches.
+  const stroke = r6(PULL_PINION_TEETH * P.rackPitch / wheel.teeth), rackY = -3 * D.stud;
+  // a column on the stud grid: plates and bricks up to `top`, its last member given
+  const column = (xc, yc, top, last, tag) => {
+    const units = Math.round(top / D.plateH);
+    const lastUnits = Math.round(last.h / D.plateH), below = units - lastUnits;
+    if (Math.abs(units * D.plateH - top) > 1e-6 || below < 1) return null;
+    const k = Math.floor((below - 1) / 3), p = below - 1 - 3 * k;
+    const stack = [{ part: FRAME_PARTS.plate1x1, h: D.plateH }];
+    for (let n = 0; n < p; n++) stack.push({ part: FRAME_PARTS.plate1x1, h: D.plateH });
+    for (let n = 0; n < k; n++) stack.push({ part: FRAME_PARTS.brick1x1, h: D.brickH });
+    stack.push(last);
+    let zz = 0;
+    const boxes = stack.map((b) => { const o = { part: b.part, x0: xc - half, x1: xc + half, y0: yc - half, y1: yc + half, z0: zz, z1: zz + b.h, hole: !!b.hole, turned: !!b.turned }; zz += b.h; return o; });
+    return { shaft: tag, end: `${xc},${yc}`, x: xc, y: yc, onGrid: true, boxes, holeZ: last.hole ? r6(zz - D.brickH + D.holeZ) : undefined };
+  };
+  // the rack's supports: where the rack covers them over its whole stroke,
+  // a tile on top at the rack's underside; walls either side, a brick taller
+  const cover = P.rackHalfLength - stroke - P.rackPitch / 2;    // the build trims the rack by under half a tooth
+  const supportYs = [rackY - 4 * D.stud, rackY + 4 * D.stud].filter((y) => Math.abs(y - rackY) + half <= cover);
+  const pullCols = [];
+  for (const y of supportYs) {
+    pullCols.push(column(xp, y, lift.bottom, { part: KEYLESS_PARTS.tile, h: D.plateH }, 'rack support'));
+    for (const xw2 of [xp - D.stud, xp + D.stud]) pullCols.push(column(xw2, y, lift.bottom + D.brickH, { part: FRAME_PARTS.brick1x1, h: D.brickH }, 'rack wall'));
+  }
+  // THE FOLLOWER: the half bush CENTRED on the wheel's outer face — its inner
+  // flange (the 1.2 mm that bears, 32123a's |Z| 2–5 LDU) wholly on the wheel,
+  // its outer half beyond it, so the arm outboard of it stands half a bush
+  // (2 mm) clear of the turning wheel's face rather than rubbing it. A 2L axle
+  // through the arm's far hole and the bush; the pivot axle through the arm's
+  // near hole and on outboard through two turned bricks, the first on the stud
+  // grid clear of the arm's outer face.
+  const fx = ax0, armX = fx - P.followerHalfWidth - P.armHalfThick, armOut = armX - P.armHalfThick;
+  const pivotY = DETENT_PIVOT.dyStuds * D.stud, pivotZ = r6(z + DT.plates * D.plateH);
+  const fAxle0 = fx + P.followerHalfWidth - 2 * D.stud;                 // the 2L ends at the bush's inner face
+  const c0 = Math.floor((armOut - half) / D.stud) * D.stud, colX = [c0, c0 - D.stud];
+  for (const xc of colX)
+    pullCols.push(column(xc, pivotY, pivotZ - D.holeZ + D.brickH, { part: FRAME_PARTS.technicBrick1x1, h: D.brickH, hole: true, turned: true }, 'detent pivot'));
+  if (pullCols.some((c) => !c)) return { key, gen, framed: false, reason: 'a pull column is off the plate lattice' };
+  const pivotX0 = Math.min(...colX) - half, pivotX1 = armX + P.armHalfThick;   // through both bricks and the arm
+  const detent = { wheel: selector.wheel, sense: DT.sense, pivot: { x0: pivotX0, x1: pivotX1, y: pivotY, z: pivotZ },
+    arm: { x: armX }, follower: { x: fx, axleX0: fAxle0, axleX1: fAxle0 + 2 * D.stud } };
+  const pull = { x: xp, y: rackY, bottom: lift.bottom, d: lift.d, plates: lift.plates, pitchZ, stroke, detent, columns: pullCols };
+  const columns = [...f.columns, ...selCols, ...pullCols];
   const xs = columns.flatMap((c) => c.boxes.flatMap((b) => [b.x0, b.x1]));
-  const base = { ...f.base, x0: Math.min(...xs), x1: Math.max(...xs) };
-  base.studsX = (base.x1 - base.x0) / D.stud;
-  return { ...f, columns, base, selector, ringTravel: KEYLESS_RING_TRAVEL, modes: ['wind', 'set', 'neutral'] };
+  const ys = columns.flatMap((c) => c.boxes.flatMap((b) => [b.y0, b.y1]));
+  const base = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys, f.base.y0), y1: Math.max(...ys, f.base.y1) };
+  base.studsX = (base.x1 - base.x0) / D.stud; base.studsY = (base.y1 - base.y0) / D.stud;
+  return { ...f, columns, base, selector, pull, ringTravel: KEYLESS_RING_TRAVEL, modes: ['wind', 'set', 'neutral'] };
 }

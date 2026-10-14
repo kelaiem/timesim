@@ -57,8 +57,16 @@ stroke, the dogs, the ring's key in the joiner and the ratios per mode. Since
 landing E a SELECTOR moves the ring: a changeover catch (6641) on an axle over
 the stem, its bulb in the ring's groove, the pivot exactly the one plate count
 that seats the bulb (`selectorRise`), and the ring's position READ from the
-catch's angle (`catchCentre`) rather than from a table. The selector's angle
-is the posed input. All four probes are pure Node.
+catch's angle (`catchCentre`) rather than from a table. Since landing F a
+PULL turns the selector and a DETENT holds it: a rack under a 28T pinion on the
+selector axle, and a round half bush on a thin liftarm banded onto a small
+wheel beside it, one wheel tooth per mode — the wheel SURVEYED per catalogue
+(the spur whose one tooth leaves the ring within the catch's play of its web)
+and the follower's pivot SEARCHED over the lattice (`KEYLESS_DETENT`, both
+re-derived by the keyless probe). The modes are the detent's measured rests,
+the rack follows them through the mesh, and the band's force is posed, not
+measured. A keyed gear on an arm against the rack was measured and refused:
+it is a ratchet. All four probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's

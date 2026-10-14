@@ -79,12 +79,15 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   <p>The LEGO view adds the <b>keyless works</b>: the stem carries two 16T
   clutch gears and a driving ring that slides between them, LEGO's own
   changeover standing in for the steel sliding pinion. <b>wind</b>,
-  <b>set</b> and <b>neutral</b> turn the SELECTOR, a knob on an axle over
-  the stem, and its changeover catch carries the ring in its groove: the
-  ring stands where the catch puts it (the stem stops first, as the ring's
-  lugs need it). Each branch's gears are the solver's answer from the clutch
-  gear to the steel ratio. The selector's three angles are posed; nothing
-  holds it there.</p>
+  <b>set</b> and <b>neutral</b> are the PULL: a rack under the selector's 28T
+  pinion, pushed in to wind and drawn out to set, turns the selector on its
+  axle over the stem, and its changeover catch carries the ring in its groove
+  onto the clutch gear's web (the stem stops first, as the ring's lugs need
+  it). A DETENT holds each mode: a half bush on a thin liftarm, banded onto a
+  small gear on the selector axle (a 12T classic, a 14T 2026), rests in one of
+  its gaps, and a mode is one tooth. Each branch's gears are the solver's
+  answer from the clutch gear to the steel ratio. The rests are measured off
+  the parts; the band is drawn posed, its force not measured.</p>
   <div id="log"></div>
 </div>
 <script type="module">
@@ -258,8 +261,11 @@ function buildChain(gen, chain, parent) {
 // --- the LEGO build (?view=lego) --------------------------------------------
 // Drawn by role, not by LDraw colour code: the .ldr download carries the codes.
 const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, technicBrick: 0x9b3b36, axle: 0x1c1d20, spur: 0xa0a5a9, doubleBevel: 0xd9c08c,
-  joiner: 0x1c1d20, ring: 0x9b3b36, crown: 0xe8e8e8, catch: 0xb03a2e, knob: 0xe0b630 };
-const LEGO_CELL = 150;   // mm between rows on the table; the largest base is the keyless works' 14 studs (112 mm)
+  joiner: 0x1c1d20, ring: 0x9b3b36, crown: 0xe8e8e8, catch: 0xb03a2e,
+  pinion: 0xd9c08c, rack: 0xe0b630, tile: 0xe8e8e8, detent: 0xa0a5a9, arm: 0x2f5d9b, follower: 0xb03a2e };
+// mm between rows on the table: the keyless works' 32×32 baseplate (256 mm,
+// landing F's pull outgrew the 16×16) and a stud's gap either side
+const LEGO_CELL = 272;
 let lib = null;
 const partGeo = new Map();
 async function loadLib() {
@@ -299,7 +305,7 @@ function buildLego(b, parent) {
     // a part that SLIDES with the mode (the keyless ring) keeps its matrix to re-pose
     const sliders = [];
     for (const p of s.parts) { const placed = placePart(rotor, p); if (p.slide) sliders.push({ ...placed, slide: p.slide }); }
-    return { rotor, speed: s.speed, speeds: s.speeds, phi: s.phi, sliders, axis: s.axis, pose: s.pose };
+    return { rotor, speed: s.speed, speeds: s.speeds, phi: s.phi, sliders, axis: s.axis, pose: s.pose, slider: !!s.slider };
   });
   return shafts;
 }
@@ -416,7 +422,9 @@ async function build(gen, mode = view) {
       div.innerHTML = `<b>${k + 1}. keyless works — LEGO build</b>`
         + TECHNIC_KEYLESS.rows.map((r) => `<br>${r.key}: <code>${r.chains[gen].map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(kt[r.key])}</code>`
           + ` <span style="color:var(--dim)">${r.derivedFrom}</span>`).join('')
-        + `<br><span style="color:var(--dim)">ring travel ±${kf.ringTravel} mm, selector ±${(keylessBuild.shafts.find((x) => x.shaft === 'selector').pose.wind * 180 / Math.PI).toFixed(1)}° at ${kf.selector.rise} mm over the stem, ${kf.shafts.length + 1} axles, base ${kf.base.studsX}×${kf.base.studsY} studs</span>`
+        + `<br><span style="color:var(--dim)">ring travel ±${kf.ringTravel} mm; selector at ${kf.selector.rise} mm over the stem, its rests (wind/neutral/set) `
+        + `${['wind', 'neutral', 'set'].map((m) => (keylessBuild.shafts.find((x) => x.shaft === 'selector').pose[m] * 180 / Math.PI).toFixed(2)).join('°/')}° on a ${kf.selector.wheel.teeth}T detent wheel; `
+        + `rack ${['wind', 'neutral', 'set'].map((m) => keylessBuild.pull.rackS[m].toFixed(2)).join('/')} mm; ${kf.shafts.length + 1} axles, base ${kf.base.studsX}×${kf.base.studsY} studs</span>`
         + `<br><a id="kldr" href="#" style="color:#9fb6d9">download .ldr (this mode)</a>`;
     } else div.innerHTML = `<b>${k + 1}. keyless works</b><br><span class="bad">not framed in LEGO: ${kf.reason}</span>`;
     rowsEl.appendChild(div);
@@ -464,7 +472,8 @@ renderer.setAnimationLoop((now) => {
   // the setting branch's 1/3 is visible
   keylessAngle += dt * 6 * INPUT_RAD_S * Number(speedEl.value);
   for (const s of legoShafts) {
-    if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector: its posed angle
+    if (s.slider) continue;                                                            // the pull's rack: it slides with the mode, it does not turn
+    if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
   }
   built.forEach((res, i) => {
