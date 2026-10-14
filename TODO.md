@@ -17,6 +17,15 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 257 | DONE | Reported by eye at a reduced time scale: the balance slowed and stopped as the hack pad swung in, before any contact. The brake was `leverEngage · brakeNm`, and leverEngage left 0 on the crown's first frame. It is now the pad's own contact (`HACK_PAD`): zero until the pad's top reaches the rim, built over the hack rod's priced give (0.8 µm of pad rise), the holding load from the spring's peak torque at MU_STEEL. The crown's ease now ARRIVES (a floor under its speed) so the touch happens at 0.19 s, not as an exponential's 0.7 s tail. `probe-257-hack-contact.mjs`, 9 rows, one control that fails the old law |
+| 256 | OPEN | Blocks TODO 255. The maintaining ring is 35 teeth only because the movement is priced too lossy: under the real mesh law the floor rises (a heavier balance must still reach 200°, and the claim rises) and the blade needs 37 teeth. The detent beak's face flank cannot be relieved at 36 or more (clearance 0.1347 at 36, 0.1194 at 37, against CLEAR_MARGIN 0.15). Redesign the beak for a finer pitch, or give the spring more run, before 255 can land |
+| 255 | OPEN | Found measuring TODO 251. `going.energy` prices every mesh at πμ(1/z₁ + 1/z₂), which takes the contact-ratio factor (1 − ε + ε_a² + ε_r²) as 1. The shipped teeth give 0.52–0.56 of it, so the four meshes lose about HALF what the column charges (product 0.8799 against 0.7786 nominal). Price the mesh from `gearToothSpec`'s own arcs and re-solve what rides on the column; BLOCKED on TODO 256, and a prototype has been measured (see the item) |
+| 254 | OPEN | Found confirming the friction analysis (#531, failure 2). The balance's UPPER pivot has the full shock stack (hole jewel, endstone, lyre spring); the LOWER one runs through its stone to the stone's underside and stops, with nothing under it. Dial-down, the staff's shoulder (CLEAR_MARGIN above the stone) bears on the jewel face with no oil reservoir and no shock protection. Add a lower cap jewel, size the end contact, and let the energy column price the dial-down end |
+| 252 | OPEN | Found by the friction analysis (#531, failure 9). The fusee arbor runs a plain bush on top and a jewel at the bottom; `probe-power-budget` prints "top bush plain". TODO 192 step 2 kept the plain bushes on purpose (the chain's pull; the let-down square passes through), so this is a decision nobody recorded. Pick one in service terms, declare it, and let the lubrication map carry it |
+| 251 | PART DONE | MEASURED (`tools/probe-251-pinion-mesh.mjs`, 7 controls). 120/7 is still the worst mesh, but by half a point, not the margin the closed form implies: path-model η 0.9619 nominal against 0.9669 for the next worst (80/8). A 10-leaf pinion would gain 1.2 points of train η and cost the 12:1 and every dependent solve, so the recommendation is to KEEP 120/7 and close this item on the owner's word. The measurement found the real defect: TODO 255 |
+| 250 | OPEN | Found by the friction analysis (#531, failure 7). `sawCouplingSpec` defaults `mu = MU_STEEL` (0.2, tanα = 2μ), but the keyless must run greased (μ ≈ 0.1). The coupling then cams out at about half its design torque. The lubrication regime must be an input to that solve; blocked on §247 tier one giving it a greased-steel μ in `FRICTION` |
+| 249 | OPEN | Found by the friction analysis (#531, failure 6). The reset heart's slip bound (`main.js` ~9648, now τ ≤ 2.80e-6 N·m, F ≈ 7.6 mN) is the fourth arbor's torque with NO losses. `going.energy` now publishes every stage's η, so derive the ceiling from them at the adverse corner (≈ 0.69 to the fourth arbor, by hand) and hold it as a row. Same class as TODO 247 and TODO 141 |
+| 248 | OPEN | Found by the friction analysis (#531, failure 4). At the wrap's top (r 3.2263 u) a 1.9 u link articulates ≈ 33.7° onto the fusee, the classic chain break site. The movement prices the chain only as friction (η 0.987). Measure rivet bearing stress, wear and fatigue at the 0.15–0.25 N tension before deciding whether the geometry or the claim changes |
 | 247 | OPEN | Found closing TODO 236. The release sleeve now TURNS as it rises, so the 45° cone drags follower A's tail pin round the tube. `alarmConeContact` already returns that drag (`tubeDrag_Nu`) and nothing reads it. Set it against the alarm tube's friction coupling at all three corners, or show the tube cannot slip |
 | 246 | OPEN | Found closing TODO 236. The lifter's two return blades seat the pad, but their preload is not derived, so the return stroke (blades → link in compression → crank → sleeve) has no figure. Derive the preload from the stroke's own friction at the adverse corner, hold the tie link under Euler, and add the return as a `transfers` row |
 | 245 | OPEN | Found closing TODO 244. probe-261-fold-site's K8 reads `no linkage to swing` and passes, because its linkage search runs only over feasible rotations and none exist once the fold has landed. Point K8 at the shipped linkage's forward kinematics (`__clock.alarmLinkage`) with a control that can fail, on K9's pattern |
@@ -27121,6 +27130,8 @@ link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
 
 **DONE** — steps 1 (the energy column, §247 tier two), 2 (the pivots cut), 3 (the ribbon proportioned, after TODO 193) and 4 (the amplitude split and gated) have all landed. What the sustained swing IS, against what a lever watch needs, is filed as TODO 207.
 
+*Superseded numbers (2026-10-13):* the 270°/76°/327° tables below are the history of each step. The swing is now designed to 200° (TODO 207), the claim and peak are 126° and the knock-capped peak (TODO 216, 242), and the nominal vertical swing sustains 200.4°. The failure points the analysis found that this item did not own are TODO 248–252, ranked in issue #531.
+
 Found by `tools/probe-power-budget.mjs` (a REPORT); tracked with the other
 failure points in issue #531. Every published figure about
 the going train's power is FRICTIONLESS. `equalisation` holds the fusee's level
@@ -33663,3 +33674,323 @@ re-solves `h`, θs and the arms, the site solve walks, and the build warns that
 the selector rod's built length has drifted from `ALARM_LINK_ROD_LEN_U` — so it
 wants its own landing with the line spec and the rod's section re-derived.
 Then delete the stub from the row's contact list.
+
+## 248. The fusee chain articulates ~34° at the small end, and nothing prices rivet bearing, wear or fatigue
+
+Found by the friction analysis (issue #531, failure 4, §247). §254 re-cut the
+fusee: the small radius is 3.0858 u at the band's top and **3.2263 u at the
+wrap's top, where the chain stops**. A link is `CHAIN_PITCH` 1.9 u, so it turns
+1.9 / 3.2263 = 0.589 rad ≈ **33.7°** onto the cone at the small end. That is
+where fusee chains wear and break. §254 fixed the chain's lean and twist, not
+this articulation. Tension there is only 0.15–0.25 N, so the mode is fatigue and
+rivet wear, not overload; §126's arrest takes overwind, not a whip after a
+break.
+
+Today the chain appears in the record only as friction (`chain articulation`
+η 0.987 nominal, `muChain`). No row holds the rivet's bearing stress, the
+articulation angle, or a life.
+
+**Fix path.** Measure first: a probe (report, with a control that can fail) for
+the articulation angle at the wrap's top, the rivet's bearing pressure and
+shear at the tension range, and a fatigue life against a cited rivet steel.
+Then decide, on what it reads, whether the geometry changes (a larger small
+radius is a fusee re-solve, §254's machinery) or the claim does. Do not widen
+`muChain` to cover it.
+
+## 249. The reset-heart and tube friction couplings are bounded by a lossless train torque
+
+Found by the friction analysis (issue #531, failure 6, §247). The reset heart's
+slip ceiling (`main.js`, the Gate A reset load, ~line 9648) is "τ_slip ≤ the
+train's torque at the fourth arbor", taken from the ribbon's released energy
+with NO losses. After TODO 193 and 192 step 3 that is τ ≤ 2.80e-6 N·m and
+F ≈ 7.6 mN (it was 3.03e-7 when the issue was filed). A coupling built to a
+lossless bound can sit above what the real train delivers and back-drive it.
+
+`going.energy` now publishes every stage's η at three corners. By hand from the
+probe's table the train delivers about 0.76 (nominal) and 0.69 (adverse) of the
+ideal torque to the fourth arbor, so the lossless bound is roughly 30–45% high.
+The issue's earlier ~0.65 is superseded.
+
+**Fix path.** Derive the ceiling from `going.energy`'s stage η at the adverse
+corner (the corner that makes the bound safe), hold it as a `transfers`-style
+row, and re-quote the figure wherever it survives (the reset comment, the
+primer/explainer if they quote it). Related: TODO 247 (the alarm tube's drag
+against its coupling) and TODO 141 (the centre stack's coupling) are the same
+class and should read the same η.
+
+## 250. Saw couplings are cut at dry MU_STEEL, and the keyless runs greased
+
+Found by the friction analysis (issue #531, failure 7, §247).
+`sawCouplingSpec` (`layout.js`) sets the ramp from `tanα = 2μ` with
+`mu = MU_STEEL` (0.2, friction cone ±11.3°). The keyless is lubricated with
+grease, as it must be, which brings μ toward 0.1. The coupling is then cut for a
+friction it does not have and cams out at about half the torque it was designed
+to hold. The lubrication regime is an input to this solve, not an afterthought.
+
+`FRICTION` has no greased-steel row, so the solve has no μ to read.
+
+**Fix path.** Blocked on §247 tier one, which declares each joint's regime. Add
+a greased-steel row to `FRICTION` (a band with its source, three corners, never
+a single number) and take `sawCouplingSpec`'s μ from the regime of the joint it
+cuts, at the corner that makes the coupling safe (the one that cams out earliest
+and the one that locks, held both ways). Re-cut the five saw/ratchet cuts that
+consume it and re-clock them, then update the explainer's "friction cone" plate
+in all locales via the i18n tool.
+
+## 251. The 7-leaf centre pinion is the train's worst mesh and the first to wear
+
+Found by the friction analysis (issue #531, failure 8, §247). §124's 120/7 great
+wheel to centre pinion is the lowest-efficiency mesh in the train: η 0.9288
+nominal and 0.9050 adverse, against 0.935 / 0.914 for the next worst (fourth to
+escape, 80/8). Below ten leaves a cycloidal pinion engages before the line of
+centres, which is the worst case for both friction and wear, and the first
+mesh to show it.
+
+**Fix path.** Report first, change only if the numbers ask: measure the
+contact ratio and the approach and recess lengths of this mesh against the
+ten-leaf rule, and price its share of the train's loss. Changing 120/7 ripples
+through the 12:1 motion works and every ratio and fusee solve downstream, so a
+tooth-count change is its own landing with its own fold, not an edit here.
+
+**Measured (`tools/probe-251-pinion-mesh.mjs`, run from `tools/` with
+`node --import ./three-node-loader.mjs`).** §136's teeth are cycloidal, so a
+pair's contact point rides the two generating circles through the pitch point;
+the probe reads each mesh's approach and recess arcs off `gearToothSpec`'s
+addenda, prices the loss at every point of the path (Coulomb friction, exact
+force and sliding geometry, load shared equally between the pairs in contact)
+and averages over a pitch. Its seven controls pass: μ = 0 gives η = 1; the
+power balance closes to float; sliding is (ω₁ + ω₂)|QP|; there is no normal
+slip and the sweep runs root to tip; the geometric arc equals the generator's
+`cyArc` to 1e-9; the contact ratio reaches the generator's target; and the
+loss equals Merritt's classical contact-ratio factor within 5% (an independent
+derivation).
+
+| mesh | CR | approach / recess | η path model, nominal | η closed form, nominal |
+|---|---|---|---|---|
+| 120/7 | 1.040 | 37% / 63% | **0.9619** | 0.9288 |
+| 80/8 | 1.040 | 42% / 58% | 0.9669 | 0.9352 |
+| 75/10 | 1.040 | 39% / 61% | 0.9721 | 0.9466 |
+| 80/10 | 1.040 | 43% / 57% | 0.9732 | 0.9470 |
+
+- **120/7 is the worst mesh at all three corners**, but only by 0.5 point
+  (nominal) over 80/8. The pinion's addendum sits at the generator's floor
+  (0.058): the wheel's face carries the contact ratio, recess-first, as
+  designed. §136 already did the pinion's work; the leaf count is not an
+  undercut or interference problem here (radial flanks, feasible at CR 1.040).
+- **Leaf count sensitivity** (wheel 120 and module held, nominal μ): 6 leaves
+  0.9542, 7 → 0.9619, 8 → 0.9673, 10 → 0.9742, 14 → 0.9813. A 10-leaf pinion
+  buys +1.2 points on one mesh and +1.0 point on the train, and re-gearing 120/7
+  ripples through the 12:1 motion works, the fusee's set-up and every ratio
+  solve downstream.
+- **Wear** was not measured: sliding speed at the contact is bounded by the
+  path, and no wear law or hardness pair is declared anywhere to price it with.
+
+**Disposition (proposed, not taken).** Keep 120/7 and close this item. The
+reason it looked worse than it is lies in the efficiency law, not the pinion:
+that is TODO 255.
+
+## 252. The fusee arbor's pivots disagree: a plain bush on top, a jewel at the bottom
+
+Found by the friction analysis (issue #531, failure 9, §247). The fusee arbor
+runs a plain bush at its top and a jewelled pivot at its bottom by default
+(`probe-power-budget` prints "top bush plain"). TODO 192 step 2 kept the
+fusee's staff-size plain bushes deliberately, because the arbor carries the
+chain's pull and the let-down square passes through the top. So this is not an
+oversight but an unrecorded decision, and the two ends are priced under
+different μ in the energy column.
+
+**Fix path.** Decide in service terms (load, wear, oil retention, the square
+through the top) and declare it, once: either both ends plain, or both jewelled
+with the square re-routed. Record the reason in the arbor's builder comment, and
+let §247 tier one's `LUBRICATION` table carry the regime.
+
+## 254. The balance's lower pivot has no endstone: the pivot ends at the stone's underside
+
+Found confirming the friction analysis (issue #531, failure 2, §247). The
+balance's upper pivot runs in the cock's hole jewel and ends under an endstone
+held by the gold lyre spring (the `shockSetting` build, TODO 12's cap jewel at
+`STOCK_MIN_U`). The lower pivot is cut by `addLowerPivot(balanceGroup, …)` in
+`main.js`: the staff stops `CLEAR_MARGIN` above the stone, and the pivot (radius
+`BALANCE_PIVOT_R`) runs down through the stone's turned hole to
+`PLATE_TOP + stone.bottom` and **ends there**. No cap jewel sits under it, and
+the plate's face is the nearest thing below.
+
+What that means in service:
+- **Dial-down** the balance's weight is carried by the staff's shoulder on the
+  jewel's top face, not by a rounded pivot end on an endstone. That is a
+  larger contact radius than the energy column's `endContactMm` assumes, with
+  no oil reservoir (a cap jewel's job) — the pessimistic reading of failure 2.
+- **Shock**: the upper end has an anti-shock stack and the lower end has none,
+  so a drop loads the lower pivot's tip directly. The movement states no shock
+  specification (TODO 192 step 2), so this is a missing part rather than a
+  failed number.
+- The flat-position friction in `going.energy` prices a rounded end on an
+  endstone (`endContactMm`, 0.01–0.03 mm). Without the stone that row describes
+  a part the movement does not have.
+
+Item 252's stone and this one's are the two bearing ends the lubrication map
+(§247 tier one) will need to name.
+
+**Fix path.** Add a lower cap jewel (endstone) under the pivot end, in the
+plate's dial-side pocket or a setting on the plate's back, at real cap-jewel
+stock (`STOCK_MIN_U`) with the endshake the upper end carries (0.17 u). The plate
+is a held fixture, so this is a `plateSeats` / `intraUnit` / `PLATE_SEATS`
+exercise, not just a mesh; mind the dial-side stratum under the balance
+(`Z_DIAL`) and the nothing-else-below note at the call site. Then add the
+shoulder-versus-tip contact to the energy column as a stated assumption, or
+retire it if the stone makes the rounded-end figure true.
+
+## 255. The mesh efficiency law prices every tooth contact at twice its loss: `going.energy` ignores the contact ratio
+
+**OPEN — blocked on [TODO 256].** A prototype was built and measured, then taken back out; the numbers are below so the work does not have to be rediscovered.
+
+Found measuring TODO 251 (issue #531, failure 8). The energy column prices a
+mesh at `1 − πμ_tooth(1/z₁ + 1/z₂)` (`GOING_POWER`, `main.js`; restated in
+`probe-power-budget.mjs`). That is the classical small-contact-ratio form: it is
+the full law (1 − ε + ε_a² + ε_r²) with the bracket taken as 1. The movement's
+teeth are §136's, cut to a contact ratio of 1.040 with 37–43% of the path in
+approach, which puts the bracket at **0.52–0.56**
+(`probe-251-pinion-mesh.mjs`, whose path model and Merritt's factor agree
+within 5%). So every mesh stage charges about twice the loss the teeth incur.
+
+| | closed form (shipped) | path model |
+|---|---|---|
+| product of the four mesh η, favourable | 0.8196 | 0.9024 |
+| nominal | 0.7786 | 0.8799 |
+| adverse | 0.7137 | 0.8441 |
+
+The error is conservative (the column reads low), but it is a wrong number on
+the record and it sits under several tuned results: `equalisation` row 14's
+`AMPLITUDE_CLAIM_DEG` and `AMPLITUDE_PEAK_DEG`, TODO 207's heaviest-rim solve
+(`BAL_RIM_F`, which reaches 200° at the nominal corner *because* of this η),
+TODO 242's `RATE_TABLE` rim and balance-radius rows, and TODO 249's
+adverse-corner ceiling. A lossier-than-real train made the shipped balance
+lighter than the spring can drive.
+
+**Fix path.** Add the contact ratio's split to the law: derive ε_a and ε_r per
+mesh from `gearToothSpec`'s arcs (the same `cyArc` the generator solves with,
+so the law and the cut cannot disagree) and price the mesh as
+`πμ(1/z₁ + 1/z₂)(1 − ε + ε_a² + ε_r²)`. Hold it with the path model as the
+probe's independent computation, since that already agrees. Then re-solve what
+rides on the column in order: the record, row 14's claim and peak, TODO 207's
+rim, TODO 242's rows (all three are gated and will fail until re-solved), and
+re-quote TODO 249's figure. This moves the fingerprint (the balance changes)
+and so is a full battery landing, not a one-line edit.
+
+**The prototype, measured (not in the tree).** Pricing each mesh by
+`πμ(1/z₁ + 1/z₂)·(1 − ε + ε_a² + ε_r²)`, with ε_a and ε_r read from the arcs
+`cyPairSolve` sizes the addenda to (`cyArc` over the circular pitch; a
+three-free module would let `main.js`, the generator and the probes share it),
+moves the nominal train η from 0.696 to 0.785. Everything that rides on it moves:
+- **The rims** re-solve to the 200° target by the step rule: 18,000 0.645 → 0.720
+  (201.02°, one step heavier 199.87°), 21,600 0.485 → 0.540, 28,800 0.270 →
+  0.315, 36,000 0.250 → 0.295. The claims follow the adverse minima (130, 133,
+  137, 138). `peakDeg` is unchanged: it is capped at the knock.
+- **36,000 keeps its 7.5 wheel for a reason that is no longer the spring's.**
+  Under the new law 7.75 and 8 both reach the target, but the build refuses
+  them: at 7.75 the stop work reports "no station about the balance can route the
+  hack rod through the low corridor", at 8 the hack rod elbow fouls the reset
+  hammer's hub (−0.05) and at 8.25 the great wheel (−0.04). So row 15's "one
+  step larger fails" needs a second reason, a declared fit limit on the row
+  (`balanceRMax`, measured by booting each radius).
+- **A limit cycle in the ring's tooth-count search** is exposed (it is latent at
+  the shipped law, where the search converges). `MAINT_SPRING`'s N and R iterate
+  through each other; under the new law N = 36 misses its own run by 0.01%
+  (needs 0.2194938 rad, the blade cut for it gives 0.2194686) while N = 37
+  clears, so the map goes 36 → 37 → 36 for all 60 passes and publishes an (N, R)
+  from one pass beside a margin from the other (1.1e-5 apart). The fix is to
+  settle each candidate count on its own R and keep the fewest whose blade
+  fits; `probe-power-budget` can then hold the record's N for feasibility only,
+  since the fixed point is a property of the crossing's geometry.
+- **The blocker** is TODO 256: that floor needs a 37-tooth ring and the beak
+  cannot be cut there.
+- Not touched: `explain.html`'s figures (the energy plate, Plate 2's swing, the
+  power budget plate) and their twelve locale tables, which a landing refreshes.
+
+`tools/probe-251-pinion-mesh.mjs` already holds the factor to an independent
+path model (Merritt's classical factor agrees within 5% on every going-train
+mesh), so the landing has its second computation.
+
+**Order.** Close TODO 256 first (or decide its option (c)), then this: law,
+rims, claims, the fit limit, the search fix, a full battery, and the explainer.
+
+## 256. The maintaining ring cannot be cut past 35 teeth, and the priced mesh law asks for 37
+
+Blocks [TODO 255] (its prototype measured the numbers below). TODO 219 sized the maintaining spring to the floor torque
+that sustains `AMPLITUDE_CLAIM_DEG` at the nominal corner, and made the ring's
+tooth count the FEWEST whose pitch fits inside the run the blade can give at the
+alloy's limit. At the shipped (lossy) mesh law that is 35 teeth; TODO 221 then
+cut the detent beak for that pitch. Re-pricing the meshes (TODO 255) would raise the
+floor: the balance must be heavier to still reach 200° (rim 0.645 → 0.720), the
+claim rises with the better train (126° → 130°), and the floor goes from 1.589
+to 1.643 N·mm (0.492 → 0.509 of the going torque). The blade then gives 3.3%
+less run than it did, and the fewest ring that fits is 37 teeth (36 misses by
+0.01%).
+
+The beak cannot be cut at that pitch. `arcCut`'s face-flank relief (TODO 221)
+brackets only while the face's far end can be turned CLEAR_MARGIN off the
+flank, and measured at the 18,000 ring: 35 teeth brackets, 36 gives a best
+clearance of 0.1347, 37 gives 0.1194, against 0.15. Built at that count, the
+build warns ("the face flank's relief is not bracketed") and the beak is cut at
+its bracket's end, short of the margin.
+
+**Fix path.** In the maintaining group, not in the layout (this is P0–P2):
+either (a) re-derive the beak and ring so a finer pitch keeps the relief, the
+ring depth factor `0.2·MAINT_TEETH/N` being the first thing to read, or (b)
+buy the run back in the blade (the section at the alloy's limit is already
+the binding), or (c) revisit whether the floor should be priced at the claim
+at all rather than at the serviced swing, which is a design decision for the
+owner and not made here. Whichever is chosen, the ring's tooth-count search should settle per candidate
+count (see TODO 255), since a result at the margin limit-cycles.
+
+## 257. The hack brake engages from the first frame of the crown's travel, before the pad touches the rim — DONE
+
+Reported by eye at a reduced time scale: the balance visibly slowed and stopped
+as the hack lever's pad swung towards the rim, before the pad could touch it.
+Measured: the stop crank closes smoothly from ψ 0.471 to 0 across the whole
+crown stroke (`crownPullT` 0 → 1), so the pad reaches the rim underside only at
+the stroke's end. The live loop braked the balance by `leverEngage · brakeNm`,
+and `leverEngage` is an eased scalar (0.12 s) that leaves 0 on the first frame:
+by the time the pad was half way (0.1 s) the brake was at 60% of the spring's
+peak torque. The transfers record said so — "no pad-on-rim braking force is
+modelled" — and the brake was a number ramped in time, not a force at a contact.
+
+**What was built.** `HACK_PAD` (main.js, beside `BALANCE_DRIVE`): the brake is
+`padEngage · brakeNm`, with `padEngage` a function of the pad's own gap to the
+rim (`_padZAt`, the pad's real pose), read from the stop crank's solve at the
+crown's position.
+- Zero while the pad is below the rim. The pad is MODELLED as a contact with a
+  priced give; the stop it makes is simulated from touch on, not before it.
+- The geometry ends the stroke at ψ = 0 with no overtravel, so the force that
+  holds the balance is the rod's elastic give at the holding load. Every line is
+  derived: N_hold = brakeNm / (μ · r_contact) with μ = MU_STEEL (the repo's hold
+  coefficient, the low corner) = 0.674 mN at the pad; the rod carries
+  F = N · (dz/dψ) / (dpin/dψ) = 0.194 mN by virtual work through the crank
+  (1.378 u of pad rise and 4.784 u of pin travel per radian); the rod gives
+  `give_u / 50 mN` (its own §234 price), so the pin travels 3.1e-3 u past touch,
+  which is **0.8 µm of pad rise** — the window over which the force builds.
+- The crown's ease (`crownPullT`) had no arrival: an exponential leaves the last
+  0.1% of the stroke undone for 0.7 s, and the pad's last 0.1% is where it
+  touches. A floor under its speed (`CROWN_PULL_MIN_SPEED`, 4 strokes/s, a feel
+  parameter of the animation like the 10/s beside it) makes the stroke complete
+  in about 0.2 s and stop dead on target.
+- `leverEngage` stays as the lever's eased readout (and the pose key); the
+  brake, the "balance stopped" row and the hammer sound read `padEngage`.
+
+**Held** by `tools/probe-257-hack-contact.mjs` (acceptance, live loop): until
+the pad touches, a pulled-crown run and a crown-in run from one start agree to
+2.9e-11 rad (θ and ω); the **control** runs the old law on the same model and
+deviates by 42 rad/s over the same frames; on touch ω is exactly 0 and θ holds
+for a second; engagement is 0 above the window, 1 at the rim and monotone
+between; release lets go on the first frame and the balance swings again.
+
+**Not done, named.**
+- Touch is a step at this resolution: 0.8 µm is under a frame of the pad's
+  motion. A real pad meeting a rim moving at up to 0.19 m/s also rebounds and
+  chatters over a few microseconds; there is no restitution or stiction here.
+- The pad's μ is `MU_STEEL`, a hold coefficient, for ruby on a brass rim. A
+  `FRICTION` row for the pad (it has a source to cite) would let the brake pick
+  a corner by name; the lubrication map (§247 tier one) lists the contact as dry.
+- Static versus kinetic friction: one coefficient holds and brakes.
+- The explainer's "Hacking seconds" entry was not edited (no sentence in it
+  states the old ramp), so no locale table moved.
