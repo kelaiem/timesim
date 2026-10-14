@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
 import { LEGO_DIM_MM, GEAR_WIDTH_MM, GEAR_TIP_MM, FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, frameFork, frameKeyless,
-  KEYLESS_PARTS, KEYLESS_DIM_MM, KEYLESS_DOGS, KEYLESS_SELECTOR_DIM_MM, selectorRise } from '../src/technic-frame.js';
+  KEYLESS_PARTS, KEYLESS_DIM_MM, KEYLESS_DOGS, KEYLESS_SELECTOR_DIM_MM, selectorRise, KEYLESS_PULL_DIM_MM } from '../src/technic-frame.js';
 import { TECHNIC_CLUTCH_GEAR } from '../src/layout.js';
 import { dogPhase } from '../src/technic-ldraw.js';
 
@@ -141,6 +141,34 @@ const SEL = (() => {
   };
 })();
 
+// §219 tier three (b) landing F — THE PULL AND THE DETENT'S PARTS. The rack's
+// teeth are where 18942 places its tooth primitives (their spacing, the
+// outermost), its tip the surface's highest point and its root the surface's
+// highest point midway between two teeth, its underside the lowest; the arm's
+// hole spacing where 6632 places its axle-hole primitives (its two ends); the
+// follower's radius the half bush's farthest surface from its axis.
+const PULL = (() => {
+  const R = surf(KEYLESS_PARTS.rack), F = surf(KEYLESS_PARTS.follower), A = surf(KEYLESS_PARTS.detentArm);
+  const teeth = placements(lib, dat(KEYLESS_PARTS.rack), /^toothr\.dat$/).map((p) => p.m[0]).sort((a, b) => a - b);
+  const pitch = teeth.length > 1 ? teeth[1] - teeth[0] : NaN;
+  // over the toothed span only: the −X end's boss stands proud of the tips
+  const onTeeth = R.filter((q) => q[0] >= teeth[0] - pitch / 2 && q[0] <= teeth[teeth.length - 1] + pitch / 2);
+  const tipY = Math.min(...onTeeth.map((q) => q[1]));
+  // the root: the highest surface within a tooth's half-gap of the middle between two teeth
+  const mid = teeth.length > 1 ? (teeth[0] + teeth[1]) / 2 : NaN;
+  const rootY = Math.min(...R.filter((q) => Math.abs(q[0] - mid) <= 1 + 1e-6).map((q) => q[1]));
+  const bottomY = Math.max(...R.map((q) => q[1]));
+  const holes = placements(lib, dat(KEYLESS_PARTS.detentArm), /^axlehol\w*\.dat$/).map((p) => p.m[2]);
+  return {
+    rackPitch: mm(pitch), rackPitchToBottom: mm(bottomY - (tipY + rootY) / 2),
+    rackAddendum: mm((rootY - tipY) / 2), rackDedendum: mm((rootY - tipY) / 2),
+    rackHalfLength: mm(Math.max(...R.map((q) => Math.abs(q[0])))), rackHalfWidth: mm(Math.max(...R.map((q) => Math.abs(q[2])))),
+    rackTeethLo: mm(teeth[0]), rackTeethHi: mm(teeth[teeth.length - 1]), teethEven: teeth.every((t, i) => !i || Math.abs(t - teeth[i - 1] - pitch) < 1e-6),
+    armHoles: mm(Math.max(...holes) - Math.min(...holes)), armHalfThick: mm(Math.max(...A.map((q) => Math.abs(q[1])))),
+    followerR: mm(Math.max(...F.map(rOf))), followerHalfWidth: mm(Math.max(...F.map((q) => Math.abs(q[2])))),
+  };
+})();
+
 // ── the judgement, a function of the tables so the controls can perturb them ─
 function judge(T) {
   const bad = [];
@@ -184,10 +212,17 @@ function judge(T) {
   // four lugs a side: each set's tips fold coherently by KEYLESS_DOGS (a lug is
   // two points ±6.4° apart, so cos(4·6.4°) ≈ 0.90 is a whole set, not a stray)
   for (const [who, c] of Object.entries(KW.dogs)) if (!(c > 0.85)) bad.push(`keyless: the ${who}'s lugs do not repeat ${T.N} times round (coherence ${c.toFixed(3)})`);
-  // the baseplate covers every framed row
-  const side = mm(base.hi[0] - base.lo[0]);
+  // the pull's parts (landing F)
+  for (const [k, v] of Object.entries(T.P)) if (!(Math.abs(v - PULL[k]) <= TOL)) bad.push(`pull ${k}: table ${v} mm, parts ${PULL[k]?.toFixed(6)} mm`);
+  if (!PULL.teethEven) bad.push(`${KEYLESS_PARTS.rack}: its teeth are not evenly spaced`);
+  titled(KEYLESS_PARTS.rack, /^Technic Gear Rack 1 x 14/); titled(KEYLESS_PARTS.tile, /^Tile 1 x 1/);
+  titled(KEYLESS_PARTS.detentArm, /^Technic Beam +3 x +0\.5 Liftarm$/); titled(KEYLESS_PARTS.follower, /^Technic Bush +1\/2 Smooth/);
+  titled(KEYLESS_PARTS.baseplate32, /^Baseplate 32 x 32$/);
+  // the baseplate covers every framed row: the 16×16, or the 32×32 the build
+  // takes when a frame outgrows it (landing F's pull)
+  const big = B(KEYLESS_PARTS.baseplate32), sides = [mm(base.hi[0] - base.lo[0]), mm(big.hi[0] - big.lo[0])];
   for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (const f of [...frameFork(gen), frameKeyless(gen)]) if (f.framed) {
-    const span = Math.max(f.base.x1 - f.base.x0, f.base.y1 - f.base.y0);
+    const span = Math.max(f.base.x1 - f.base.x0, f.base.y1 - f.base.y0), side = span + T.D.stud <= sides[0] ? sides[0] : sides[1];
     if (span > side + TOL) bad.push(`${gen} ${f.key}: base ${span} mm wider than the ${side} mm baseplate`);
   }
   return bad;
@@ -264,7 +299,7 @@ const tt60 = ttRows.find((t) => t.teeth === 60);
 const profile60 = tt60 && TURNTABLE_BASES[tt60.part] && lib.has(dat(TURNTABLE_BASES[tt60.part])) ? ttProfile(tt60.part, TURNTABLE_BASES[tt60.part]) : null;
 if (tt60 && !profile60) packBad.push(`turntable ${tt60.part}: its base is not in the pack`);
 
-const TABLES = { D: LEGO_DIM_MM, W: GEAR_WIDTH_MM, T: GEAR_TIP_MM, F: FRAME_PARTS, A: AXLE_PARTS, K: KEYLESS_DIM_MM, N: KEYLESS_DOGS, S: KEYLESS_SELECTOR_DIM_MM };
+const TABLES = { D: LEGO_DIM_MM, W: GEAR_WIDTH_MM, T: GEAR_TIP_MM, F: FRAME_PARTS, A: AXLE_PARTS, K: KEYLESS_DIM_MM, N: KEYLESS_DOGS, S: KEYLESS_SELECTOR_DIM_MM, P: KEYLESS_PULL_DIM_MM };
 const bad = [...packBad, ...judge(TABLES)];
 
 // controls: perturb one entry at a time; each must fail
@@ -276,6 +311,7 @@ controls.push(['24T width = default', { ...TABLES, W: { default: GEAR_WIDTH_MM.d
 controls.push(['axle 4L ⇄ 5L', { ...TABLES, A: { ...AXLE_PARTS, 4: AXLE_PARTS[5], 5: AXLE_PARTS[4] } }]);
 for (const k of ['catchTip', 'grooveFloorR']) controls.push([`selector ${k} + 0.1 mm`, { ...TABLES, S: { ...KEYLESS_SELECTOR_DIM_MM, [k]: KEYLESS_SELECTOR_DIM_MM[k] + 0.1 } }]);
 for (const k of ['recessDepth', 'ringLugR', 'joinerR']) controls.push([`keyless ${k} + 0.1 mm`, { ...TABLES, K: { ...KEYLESS_DIM_MM, [k]: KEYLESS_DIM_MM[k] + 0.1 } }]);
+for (const k of ['rackPitch', 'rackPitchToBottom', 'armHoles', 'followerR']) controls.push([`pull ${k} + 0.1 mm`, { ...TABLES, P: { ...KEYLESS_PULL_DIM_MM, [k]: KEYLESS_PULL_DIM_MM[k] + 0.1 } }]);
 controls.push(['brick ⇄ Technic brick', { ...TABLES, F: { ...FRAME_PARTS, brick1x1: FRAME_PARTS.technicBrick1x1, technicBrick1x1: FRAME_PARTS.brick1x1 } }]);
 const silent = controls.filter(([, T]) => judge(T).length === 0).map(([n]) => n);
 // the turntable count's own control: a catalogue claiming two teeth more
@@ -290,6 +326,7 @@ console.log('\n  keyless part figure     parts mm   table mm');
 for (const k of Object.keys(KEYLESS_DIM_MM)) console.log(`  ${k.padEnd(20)} ${KW[k].toFixed(4).padStart(9)} ${String(KEYLESS_DIM_MM[k]).padStart(10)}`);
 console.log(`  lugs fold by ${KEYLESS_DOGS}: ring ${KW.dogs.ring.toFixed(3)}, gear ${KW.dogs.gear.toFixed(3)}`);
 for (const k of Object.keys(KEYLESS_SELECTOR_DIM_MM)) console.log(`  ${('sel ' + k).padEnd(20)} ${SEL[k].toFixed(4).padStart(9)} ${String(KEYLESS_SELECTOR_DIM_MM[k]).padStart(10)}`);
+for (const k of Object.keys(KEYLESS_PULL_DIM_MM)) console.log(`  ${('pull ' + k).padEnd(20)} ${PULL[k].toFixed(4).padStart(9)} ${String(KEYLESS_PULL_DIM_MM[k]).padStart(10)}`);
 console.log(`  selector rise: ${selectorRise().plates} plates (the one count that seats the bulb between floor and flanges)`);
 console.log(`\n  axles ${Object.keys(AXLE_PARTS).join('/')}L, frame parts ${Object.values(FRAME_PARTS).join(' ')}`);
 console.log('\n  turntable  teeth (catalogue)  tips repeat  coherence (best rival count)  tip mm');

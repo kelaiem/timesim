@@ -15,7 +15,10 @@
 //     line, and the axle fills each brick's hole end to end, less the half LDU
 //     the library trims off each axle end;
 //   · ON THE AXLE — every gear's bore on its axle's line and inside its span
-//     (a keyless clutch gear, its own body, on the stem's);
+//     (a keyless clutch gear, its own body, on the stem's). Landing F's rack
+//     has no axle (it slides on its tiles) and the detent's follower and its
+//     axle ride the arm's far hole, off the pivot's line: probe-technic-keyless
+//     holds both (PULL, DETENT);
 //   · MESHED — per pair in the build's mesh list, each gear's tooth angle MEASURED off its placed
 //     geometry (the tips' arg Σ e^{iNθ} / N), at five input angles turned the
 //     way the page turns them: φ + speed·input per shaft. A pair meshes when
@@ -92,7 +95,7 @@ function judge(build, frame, mode = build.modes?.[0]) {
     // jumper's centre on the half-stud between two along X
     const dx = mod(bottom.m[0] - base.m[0] - 10, 20), dz = mod(bottom.m[2] - base.m[2] - 10, 20);
     if (!near(dz, 0) || !near(dx, jumper ? 10 : 0)) bad.push(`column ${k}: ${bottom.part} is off the baseplate's stud grid (${dx}, ${dz})`);
-    const half = 160;
+    const bb = B(base.part), half = (bb.hi[0] - bb.lo[0]) / 2;   // 16×16 or (landing F) 32×32
     if (Math.abs(bottom.m[0] - base.m[0]) > half - 10 || Math.abs(bottom.m[2] - base.m[2]) > half - 10) bad.push(`column ${k} is off the baseplate`);
   }
   // THROUGH and ON THE AXLE. A body with no axle of its own (a keyless clutch
@@ -125,10 +128,11 @@ function judge(build, frame, mode = build.modes?.[0]) {
     }
   }
   for (const [i, s] of build.shafts.entries()) {
+    if (s.slider) continue;                             // the pull's rack slides in its channel (PULL, probe-technic-keyless)
     const on = spans.find((a) => a.A === axisOf(s).A && a.P.every((k) => near(a.s.origin[k], s.origin[k])));
     if (!on) { bad.push(`body ${i}: no axle on its line`); continue; }
     for (const g of bodyParts(i)) {
-      if (g.role === 'axle') continue;
+      if (g.role === 'axle' || g.offLine) continue;   // the pawl's 8T rides its arm's far hole (SEATED there, probe-technic-keyless)
       // where a part takes its axle: its origin, or the catch's pivot hole
       const at0 = g.role === 'catch' ? ptAt(g.m, L(KEYLESS_SELECTOR_DIM_MM.catchPivot)) : g.m;
       const name = g.teeth ? `${g.teeth}T` : g.part;

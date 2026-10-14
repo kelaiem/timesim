@@ -48,6 +48,7 @@ function judge(f) {
   // holes and axles
   for (const c of f.columns) {
     const hole = c.boxes.find((b) => b.hole);
+    if (!hole) continue;                                   // a rack support or wall (landing F): no axle to hold
     const z = hole.z0 + D.holeZ, want = c.holeZ ?? f.axleZ;   // the keyless selector's columns hold their own axle
     if (Math.abs(z - want) > 1e-6) bad.push(`shaft ${c.shaft} ${c.end}: hole at ${z.toFixed(3)}, axle at ${want}`);
   }

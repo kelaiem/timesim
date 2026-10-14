@@ -35705,6 +35705,161 @@ bulb is centred in the groove, though the parts would allow anywhere across
 either.
 
 
+## §219 tier three (b), landing F — the pull and the detent: a rack turns the selector, a wheel holds it
+
+Landing E left the selector's three angles posed. Nothing held them, and
+nothing tied them to a pull. Landing F adds both:
+- **the pull** — a 1×14 rack (18942) under a 28T (46372) on the selector
+  axle, sliding on tiles between two walls. Pushed in it winds, drawn out it
+  sets;
+- **the detent** — a small gear on the same axle (the DETENT WHEEL) with a
+  round half bush (32123a) on a 1×3 thin liftarm (6632) banded onto it. A mode
+  is one of the wheel's gaps.
+
+### What was measured first, and refused
+
+The plan's detent was an 8T keyed on an arm, clicking into the rack's own
+teeth. Two measurements ruled it out before any of it was built.
+
+- **The keyed 8T is a ratchet, not a detent.** It meshes the rack as a gear
+  does. Traced continuously out of its notch, pushing the rack toward the
+  arm's pivot locks it: the 8T would have to climb a whole 2 mm tooth. The
+  other way it rides up about 1 mm per mm of travel. Every pivot height on
+  the lattice did the same on one side.
+- **Any detent on the rack clicks at every rack tooth, and a mode is two of
+  them.** Through the 28T one tooth is 12.86° of selector, so the click
+  between modes holds the ring 1.96 mm into its 4 mm travel. That is 1.16 mm
+  past the clutch gear's face (it enters at 0.8 mm): half engaged.
+
+So the detent moved to the selector axle, one wheel tooth per mode.
+
+### The wheel is surveyed, not chosen
+
+One tooth of an N-tooth wheel turns the selector 360°/N. `catchHold` reads
+where that leaves the catch's middle against the ring's web, and the catch's
+PLAY at that angle: how far the bulb's middle may stand off the ring before a
+flange meets it. A wheel seats the ring when the web lies within the play.
+
+| wheel | one tooth | catch's middle off the web | play | |
+|---|---|---|---|---|
+| 8T | 45° | (the bulb leaves the groove) | — | ✗ |
+| **12T** | **30°** | **+0.46 mm** | **0.91 mm** | **classic** |
+| **14T** | **25.71°** | **−0.05 mm** | **0.53 mm** | **2026** |
+| 16T | 22.5° | −0.57 mm | 0.51 mm | ✗ |
+| 18T, 20T, 24T, 40T, 64T | | short by 0.95–3.12 mm | | ✗ |
+
+The play opens with the angle, because the tilted bulb spans less of the
+groove, which is why the 12T's 0.46 mm overshoot seats. The 14T is the 2026
+catalogue's alone.
+
+### The follower's placement is a search over the lattice
+
+The half bush hangs from the arm's far hole. Its pivot stands on a column pair
+of turned Technic bricks, so the pivot is on the stud grid across and the
+plate lattice up. For a pivot two studs toward the rack's side, every plate
+height and both band senses were searched, plus both mounts of the 14T on its
+axle (a quarter turn is 3.5 of its teeth). Each candidate was:
+- sampled for its follower's height over a tooth;
+- refused unless its notch's two flanks agree within 30% (a detent, not a
+  ratchet);
+- scored by the worst of three ring errors, each a fraction of what that
+  error may be. At neutral the ring must stay off both gears' faces (0.8 mm);
+  in wind and set it must lie within the catch's play of the web.
+
+| | wheel | pivot | rests (wind/neutral/set) | ring at neutral | lift | flanks |
+|---|---|---|---|---|---|---|
+| classic | 12T at 0° | 2 plates up, sense + | 28.89° / −1.11° / −31.11° | −0.18 mm | 0.53 mm | 0.076 / 0.091 mm/° |
+| 2026 | 14T at 90° | 3 plates up, sense − | 26.06° / 0.34° / −25.37° | +0.05 mm | 0.43 mm | 0.085 / 0.079 mm/° |
+
+A first search ran on 0.8 mm heights and found notches exactly at neutral.
+The bricks step by a plate (3.2 mm), so none of them could be built. On the
+real lattice the 1×2 arm (8 mm) left classic's notch 4.5° off, which moved the
+ring 0.7 mm. The 1×3 arm (16 mm between its end holes) brings it to 1.11°.
+
+The half bush is centred on the wheel's outer face. Its inner flange, the
+part that bears, lies wholly on the wheel, and the arm outboard of it stands
+2 mm clear of the turning wheel's face.
+
+### The rack follows the rests
+
+The pinion rolls the rack tooth for tooth: one rack pitch (3.2 mm) per pinion
+tooth, so a selector angle θ is θ·28·3.2/2π of rack. The rack is phased so
+the pinion stands in the middle of its MEASURED backlash at neutral: the
+angles either side at which its teeth first enter the rack's, about ±1.25°.
+
+| | wind | neutral | set |
+|---|---|---|---|
+| classic rack | +7.19 mm | −0.28 mm | −7.74 mm |
+| 2026 rack | +6.49 mm | +0.09 mm | −6.31 mm |
+
+The rack's height is derived. It slides on tiles, so its underside is a whole
+number of plates, and `pullRackLift` finds the one count that puts its pitch
+line 0.4 mm short of the pinion's (a shallow mesh, inside the window between
+tip-on-root and teeth parted).
+
+The rack is not symmetric. Its 32 teeth run from −44.8 to +54.4 mm along it,
+and its other end carries a round boss 0.6 mm proud of the tips. PULL holds
+the pinion to the toothed span, which it never leaves (+2 to +46 mm).
+
+### The ring is pushed onto the web
+
+Driven into wind or set, the bulb's leading side pushes the ring ahead of the
+bulb's middle by up to the play, and the web stops it. So the ring stands on
+the web whenever the web lies within the play of the middle, either way. In
+2026's set the middle stands 0.11 mm short, and the ring still seats. At
+neutral the ring is posed at the middle.
+
+### Instruments
+
+- `probe-technic-keyless.mjs`:
+  - **PULL** — at each mode the posed angle stands strictly inside the pinion's
+    backlash (both edges measured), its teeth reach 1.29–1.32 mm below the
+    rack's tips, it works only the toothed span, and the rack rests on its
+    tiles.
+  - **DETENT** — re-runs the survey and the placement search and fails if
+    either answers other than the table. In the build, every rest is a notch
+    (higher a quarter degree either side), the rests are one tooth apart, the
+    flanks agree within 30%, the arm is posed at its seat, and the follower is
+    placed at the arm's far hole.
+  - **CLEAR** — the pull's moving parts, sampled every LDU, stay over one LDU
+    from every placed part they do not bear on, in every mode. The nearest
+    approaches are the rack to a support's plate (1.60 mm) and the follower's
+    axle to the 14T (1.69 mm).
+  - **LEVER** now holds the ring on the web within the play at wind and set.
+
+  Four new controls fire: the rack half a tooth along, the selector half a
+  wheel tooth off its rest, the wheel mounted half a tooth round (the notch and
+  the ring move into a gear), and the arm slid onto the wheel's face. Controls
+  10/10.
+- `probe-technic-ldraw.mjs` holds `KEYLESS_PULL_DIM_MM` to the parts:
+  - the rack's pitch, tip, root, underside, length, width and toothed span off
+    18942's tooth primitives and surface;
+  - the arm's hole spacing and thickness off 6632's axle-hole primitives;
+  - the half bush's radius and width;
+  - every new part's title, and the 32×32 baseplate where a frame outgrows the
+    16×16.
+
+  Controls 22/22.
+- `probe-technic-build.mjs`: 10 builds, 0 failing, in every mode. The rack has
+  no axle and the follower rides off the pivot's line, so both are left to
+  the keyless probe.
+- `probe-technic-frame.mjs`: 10 rows, 0 failing.
+
+The keyless frame is 21×17 studs (classic) and 19×13 (2026), on the 32×32
+baseplate (3811). The pack grew to 39 parts, 302 files. `technic.html` draws
+the rack, the wheel and the detent's arm per mode, and spaces its cells for
+the larger plate.
+
+### What it does not claim
+
+- **A force.** The band that presses the follower is drawn posed. Nothing
+  weighs it, the detent's hold, or the pull a hand must give.
+- **A motion.** The rack's position per mode is the detent's rest read
+  through the mesh, not an integrated motion.
+- **The ring's exact place within the play.** Its lugs are posed mid-play,
+  and at neutral the bulb is centred in the groove. Which side it actually
+  lies on depends on the mode it came from.
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and

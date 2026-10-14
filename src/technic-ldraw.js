@@ -26,7 +26,8 @@
 // of their pairs, signs alternating (standing rule 2: the angles travel the
 // gears).
 import { walk, LDU_MM } from './ldraw.js';
-import { FRAME_PARTS, KEYLESS_PARTS, KEYLESS_DOGS, KEYLESS_DIM_MM, KEYLESS_SELECTOR_DIM_MM } from './technic-frame.js';
+import { FRAME_PARTS, KEYLESS_PARTS, KEYLESS_DOGS, KEYLESS_DIM_MM, KEYLESS_SELECTOR_DIM_MM, KEYLESS_PULL_DIM_MM,
+  PULL_PINION_TEETH, AXLE_PARTS } from './technic-frame.js';
 
 const L = (mm) => mm / LDU_MM;
 const ROT_X_TO_Z = [0, 0, -1, 0, 1, 0, 1, 0, 0];   // an axle's X onto LDraw Z
@@ -40,10 +41,15 @@ const Z_TO_X = [0, 0, 1, 0, 1, 0, -1, 0, 0];
 // The catch hangs from its pivot: its X along the pivot (LDraw X), its Y along
 // the stem (LDraw Z), its Z up (LDraw −Y). A proper rotation (det +1).
 const CATCH_M = [1, 0, 0, 0, 0, -1, 0, 1, 0];
+// The rack lies along the stem (LDraw Z), teeth up: its X along LDraw Z, its Y
+// as LDraw Y, its Z across (LDraw −X). The detent's arm: its hole axis (its Y)
+// along LDraw X, its length (its Z) along LDraw Z at rest. Both proper (det +1).
+const RACK_M = [0, 0, -1, 0, 1, 0, 1, 0, 0];
+const ARM_M = [0, 1, 0, -1, 0, 0, 0, 0, 1];
 
 // LDraw colour codes the .ldr carries (the page draws by role instead).
 export const LDRAW_COLOUR = Object.freeze({ baseplate: 2, plate: 71, brick: 71, technicBrick: 72, axle: 0, spur: 71, doubleBevel: 19,
-  joiner: 0, ring: 72, crown: 15, catch: 4, knob: 14 });
+  joiner: 0, ring: 72, crown: 15, catch: 4, pinion: 19, rack: 14, tile: 15, detent: 25, arm: 1, follower: 4 });
 
 // The angle of one tooth of a gear part, in its own frame, about its Z axis:
 // the surface points at the tip radius, folded by the tooth count. arg Σ e^{iNθ}
@@ -163,6 +169,134 @@ export function selectorAngle(lib, s, riseLDU) {
   return sg * (lo + hi) / 2;
 }
 
+// §219 tier three (b) landing F — THE RACK'S TEETH, in the frame's (y, z)
+// plane: the 2D profile every toothr primitive extrudes across the rack — a
+// trapezoid 6 LDU wide at the root and 2 at the tip, 5 LDU tall, every 8 LDU
+// along its toothed span — over a body below the root. (The −X end's boss is
+// not drawn here: PULL holds the pinion to the toothed span, far from it.) Returns whether (y, z) mm is inside the
+// rack whose tooth 0 stands at yc and whose mid-height is pitchZ.
+export function inRack(y, z, yc, pitchZ) {
+  const P = KEYLESS_PULL_DIM_MM;
+  if (Math.abs(y - yc) > P.rackHalfLength) return false;
+  const root = pitchZ - P.rackDedendum, tip = pitchZ + P.rackAddendum;
+  if (z > tip) return false;
+  if (z <= root) return z >= pitchZ - P.rackPitchToBottom;
+  const k = Math.round((y - yc) / P.rackPitch);
+  if (k * P.rackPitch < P.rackTeethLo - 1e-9 || k * P.rackPitch > P.rackTeethHi + 1e-9) return false;
+  const t = (z - root) / (tip - root), half = (1.2 * (1 - t) + 0.4 * t);
+  return Math.abs(y - yc - k * P.rackPitch) <= half;
+}
+// A gear's OUTLINE in its own plane: its sampled surface projected along its
+// bore, kept outside half its tip radius (nothing nearer the bore can meet a
+// rack) and deduplicated to a hundredth of an LDU — the 3D samples repeat each
+// point once per face of the part's width.
+const outlineCache = new Map();
+export function gearOutline(lib, part) {
+  if (outlineCache.has(part)) return outlineCache.get(part);
+  const pts = surfaceSamples(lib, part);
+  let tip = 0; for (const [x, y] of pts) tip = Math.max(tip, Math.hypot(x, y));
+  const seen = new Set(), out = [];
+  for (const [x, y] of pts) {
+    if (Math.hypot(x, y) < tip / 2) continue;
+    const k = `${Math.round(x * 100)},${Math.round(y * 100)}`;
+    if (!seen.has(k)) { seen.add(k); out.push([x, y]); }
+  }
+  outlineCache.set(part, out);
+  return out;
+}
+// That outline in the frame's (y, z) plane, its bore along x at (cy, cz) and
+// turned φ about it the way rotX turns a body (LDraw +Y is down).
+export function gearInYZ(lib, part, cy, cz, phi) {
+  const c = Math.cos(phi), s = Math.sin(phi);
+  return gearOutline(lib, part).map(([qx, qy]) => {
+    const Y = qy, Z = -qx;                                 // Z_TO_X: the part's X to LDraw −Z, its Y to LDraw Y
+    const Yr = c * Y - s * Z, Zr = s * Y + c * Z;          // rotX(φ)
+    return [cy + Zr * LDU_MM, cz - Yr * LDU_MM];           // frame y = LDraw Z, frame z = −LDraw Y
+  });
+}
+// A gear's TEETH in the frame's (y, z) plane, turned φ: its outline outside
+// 2.5 mm under its tip (the band a rack or a follower can reach), cached per φ.
+const bandCache = new Map();
+function teethAt(lib, part, cy, cz, phi) {
+  if (!bandCache.has(part)) {
+    const o = gearOutline(lib, part);
+    let tip = 0; for (const [x, y] of o) tip = Math.max(tip, Math.hypot(x, y));
+    bandCache.set(part, o.filter(([x, y]) => Math.hypot(x, y) > tip - 2.5 / LDU_MM));
+  }
+  const c = Math.cos(phi), s = Math.sin(phi);
+  return bandCache.get(part).map(([qx, qy]) => {
+    const Y = qy, Z = -qx, Yr = c * Y - s * Z, Zr = s * Y + c * Z;   // as gearInYZ
+    return [cy + Zr * LDU_MM, cz - Yr * LDU_MM];
+  });
+}
+
+// §219 tier three (b) landing F — THE DETENT. The follower (a round half bush,
+// radius R) rides the detent wheel on the selector axle, carried at the end of
+// an arm about a pivot parallel to the axle; a band turns the arm in `sense`
+// from where the follower stands farthest from the wheel's axis toward where it
+// stands nearest, until it first touches a tooth. Returns the arm's angle ψ (the
+// follower at pivot + arm·(cos ψ, sin ψ) in the frame's (y, z)) and the
+// follower's distance from the wheel's axis — the height the band works against.
+export function followerSeat(lib, det, wheelZ, theta) {
+  const P = KEYLESS_PULL_DIM_MM, R = P.followerR, A = P.armHoles;
+  // only the teeth the follower's path can reach: within R of the arm's circle
+  const pts = teethAt(lib, det.wheel.part, 0, wheelZ, theta + det.wheel.mount * Math.PI / 180)
+    .filter(([y, z]) => Math.abs(Math.hypot(y - det.pivot.y, z - det.pivot.z) - A) < R);
+  const at = (psi) => [det.pivot.y + A * Math.cos(psi), det.pivot.z + A * Math.sin(psi)];
+  const hits = (psi) => { const [y, z] = at(psi); return pts.some(([a, b]) => (a - y) ** 2 + (b - z) ** 2 < R * R); };
+  const near = Math.atan2(wheelZ - det.pivot.z, -det.pivot.y), far = near + Math.PI;
+  if (hits(far) || !hits(near)) return null;
+  let hi = far, lo = far + det.sense * Math.PI;              // free, touching
+  for (let i = 0; i < 40; i++) { const m = (hi + lo) / 2; if (hits(m)) lo = m; else hi = m; }
+  const [y, z] = at(hi);
+  return { psi: mod(hi + Math.PI, 2 * Math.PI) - Math.PI, d: Math.hypot(y, z - wheelZ) };
+}
+// The REST nearest θ0: where the follower stands nearest the wheel's axis — the
+// bottom of the notch nearest θ0, found by sampling a tooth and a half around
+// it (so a notch half a tooth away is still seen as one) and refining. A notch
+// is a low point at least halfway down from the follower's highest (riding a
+// tooth's tip it stands on a plateau, flat to the solve's noise, whose ripples
+// are local minima too and are not notches).
+export function detentRest(lib, det, wheelZ, theta0) {
+  const step = 2 * Math.PI / det.wheel.teeth, n = 36, f = (t) => followerSeat(lib, det, wheelZ, t)?.d ?? Infinity;
+  const ts = [], ds = [];
+  for (let i = 0; i <= n; i++) { const t = theta0 - 0.75 * step + (1.5 * i * step) / n; ts.push(t); ds.push(f(t)); }
+  const fin = ds.filter(Number.isFinite), lo = Math.min(...fin), hi = Math.max(...fin), deep = (lo + hi) / 2;
+  let k = -1;
+  for (let i = 1; i < n; i++) if (ds[i] <= ds[i - 1] && ds[i] <= ds[i + 1] && ds[i] < deep && (k < 0 || Math.abs(ts[i] - theta0) < Math.abs(ts[k] - theta0))) k = i;
+  if (k < 0) return null;                                   // no notch near θ0
+  let a = ts[k - 1], b = ts[k + 1];
+  for (let i = 0; i < 32; i++) { const m1 = a + (b - a) * 0.382, m2 = a + (b - a) * 0.618; if (f(m1) < f(m2)) b = m2; else a = m1; }
+  return (a + b) / 2;
+}
+// THE PINION'S BACKLASH against the rack at slide s: the selector angles either
+// side of `guess` at which the pinion's teeth first enter the rack's.
+export function pinionWindow(lib, sel, pull, rackYc, s, guess) {
+  const hit = (th) => teethAt(lib, KEYLESS_PARTS.pinion, sel.y, sel.z, th).some(([y, z]) => inRack(y, z, rackYc + s, pull.pitchZ));
+  if (hit(guess)) return null;
+  const edge = (dir) => {
+    let free = guess, far = guess;
+    for (let k = 1; k < 200 && !hit(far); k++) { free = far; far = guess + dir * k * 0.002; }
+    for (let i = 0; i < 40; i++) { const m = (free + far) / 2; if (hit(m)) far = m; else free = m; }
+    return free;
+  };
+  return [edge(-1), edge(1)];
+}
+// The catch's hold on the ring at selector angle θ: the middle of its
+// in-flange surface (where it centres the ring) and its PLAY — how far the ring
+// may stand off that middle before a flange meets the bulb (LDU).
+let grooveHalfLDU = null;
+export function catchHold(lib, theta, riseLDU) {
+  const fl = L(KEYLESS_DIM_MM.ringR);
+  if (grooveHalfLDU === null) {
+    grooveHalfLDU = Infinity;
+    for (const [x, y, z] of surfaceSamples(lib, KEYLESS_PARTS.ring)) if (Math.hypot(x, y) > fl - 1e-3) grooveHalfLDU = Math.min(grooveHalfLDU, Math.abs(z));
+  }
+  let lo = Infinity, hi = -Infinity;
+  for (const [a, r] of catchInRingFrame(lib, theta, riseLDU)) if (r < fl) { lo = Math.min(lo, a); hi = Math.max(hi, a); }
+  return { centre: (lo + hi) / 2, play: grooveHalfLDU - (hi - lo) / 2 };
+}
+
 // The placements for one framed row. `phases` caches toothPhase per part.
 export function ldrawBuild(frame, lib, phases = new Map()) {
   if (!frame.framed) throw new Error(`${frame.key} is not framed: ${frame.reason}`);
@@ -175,8 +309,10 @@ export function ldrawBuild(frame, lib, phases = new Map()) {
   // to the middle of the base
   const midX = L((frame.base.x0 + frame.base.x1) / 2), midZ = L((frame.base.y0 + frame.base.y1) / 2);
   const snap = (v) => Math.round((v - 10) / 20) * 20 + 10;
-  const statics = [{ role: 'baseplate', part: FRAME_PARTS.baseplate16, m: at(snap(midX), 0, snap(midZ)) }];
-  const roleOf = (p) => (p === FRAME_PARTS.technicBrick1x1 ? 'technicBrick' : p === FRAME_PARTS.brick1x1 ? 'brick' : 'plate');
+  // the smallest baseplate that covers the frame (landing F's pull outgrows 16)
+  const plate = Math.max(frame.base.studsX, frame.base.studsY) + 1 <= 16 ? FRAME_PARTS.baseplate16 : KEYLESS_PARTS.baseplate32;
+  const statics = [{ role: 'baseplate', part: plate, m: at(snap(midX), 0, snap(midZ)) }];
+  const roleOf = (p) => (p === FRAME_PARTS.technicBrick1x1 ? 'technicBrick' : p === FRAME_PARTS.brick1x1 ? 'brick' : p === KEYLESS_PARTS.tile ? 'tile' : 'plate');
   for (const c of frame.columns) for (const b of c.boxes)
     statics.push({ role: roleOf(b.part), part: b.part, m: at(L((b.x0 + b.x1) / 2), -L(b.z1), L((b.y0 + b.y1) / 2), b.turned ? Z_TO_X : I3) });
 
@@ -241,25 +377,94 @@ export function ldrawBuild(frame, lib, phases = new Map()) {
   }
   const shafts = bodies.map((b) => ({ origin: b.origin, phi: b.phi ?? 0, speed: b.speeds[modes[0]] ?? 0,
     ...(frame.modes ? { speeds: b.speeds } : {}), parts: b.parts, shaft: b.shaft, ...(b.clutch ? { clutch: b.clutch } : {}) }));
-  // LANDING E — THE SELECTOR, a body turning about LDraw X by a POSED angle per
-  // mode (it does not follow the input): the angle that holds the ring at its
-  // stroke end, solved off the catch's own surface. The ring's slide then READS
-  // that angle back through the same catch (catchCentre), so the ring is where
+  // LANDING E — THE SELECTOR, a body turning about LDraw X by an angle per mode
+  // (it does not follow the input). Landing E posed the angle that holds the
+  // ring at its stroke end, solved off the catch's own surface; landing F's
+  // detent decides it instead (a frame with a `pull`). Either way the ring's
+  // slide READS the angle back through the same catch, so the ring is where
   // the lever puts it rather than where a table says.
   const sel = frame.selector;
+  let pullOut = null;
   if (sel) {
     const rise = L(sel.rise), travel = L(frame.ringTravel);
-    const pose = { wind: selectorAngle(lib, travel, rise), set: selectorAngle(lib, -travel, rise), neutral: 0 };
+    // (landing E's posed angles; a pull replaces them with the detent's rests)
+    let pose = frame.pull ? null : { wind: selectorAngle(lib, travel, rise), set: selectorAngle(lib, -travel, rise), neutral: 0 };
     const parts = [
       { role: 'axle', part: sel.axle.part, m: at(L((sel.axle.x0 + sel.axle.x1) / 2), 0, 0) },
       { role: 'catch', part: KEYLESS_PARTS.catch, m: at(L(sel.catchX), L(KEYLESS_SELECTOR_DIM_MM.catchPivot), 0, CATCH_M) },
-      { role: 'knob', part: KEYLESS_PARTS.knob, m: at(L(sel.knobX), 0, 0, Z_TO_X) },
     ];
+    const pl = frame.pull;
+    const hold = {};
+    if (pl) {
+      // LANDING F — THE DETENT DECIDES THE MODES, THE RACK DRIVES THEM. Each
+      // mode is a rest of the follower on the detent wheel: the notch's bottom
+      // nearest neutral, and one wheel tooth either way (wind is +, the way the
+      // catch carries the ring toward the winding gear). Measured, not assumed:
+      // each rest is found on its own.
+      const det = pl.detent, step = 2 * Math.PI / det.wheel.teeth;
+      const K0 = { neutral: 0, wind: 1, set: -1 };
+      const rest = Object.fromEntries(modes.map((md) => [md, detentRest(lib, det, sel.z, K0[md] * step)]));
+      if (modes.some((md) => rest[md] === null)) throw new Error(`${frame.gen}: the follower finds no notch on the detent wheel`);
+      pose = rest;
+      const mul3 = (A, B) => [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => A[i * 3] * B[j] + A[i * 3 + 1] * B[3 + j] + A[i * 3 + 2] * B[6 + j]));
+      parts.push({ role: 'pinion', part: KEYLESS_PARTS.pinion, teeth: PULL_PINION_TEETH, m: at(L(sel.pinionX), 0, 0, Z_TO_X) });
+      parts.push({ role: 'detent', part: det.wheel.part, teeth: det.wheel.teeth, m: at(L(det.wheel.x), 0, 0, mul3(rotX(det.wheel.mount * Math.PI / 180), Z_TO_X)) });
+      // THE RACK meshes the pinion where it is: a pinion GAP at its lowest
+      // point, read off the part's own tooth phase, a rack tooth under it —
+      // then moved so the pinion stands in the MIDDLE of its measured backlash
+      // at neutral. It rolls tooth for tooth (one rack pitch per pinion tooth),
+      // so a selector angle θ is the rack at θ·N·pitch/2π.
+      const N = PULL_PINION_TEETH, P = KEYLESS_PULL_DIM_MM, r = N / 2;
+      const ph = toothPhase(lib, KEYLESS_PARTS.pinion, N).theta;
+      // Z_TO_X sends the part's point at angle α to frame y = −r·cos α, so its
+      // lowest point is α = π/2 and a point δ past it stands at y = r·sin δ; a
+      // gap is half a pitch past a tooth
+      const gap = ph + Math.PI / N, kq = Math.round((Math.PI / 2 - gap) / (2 * Math.PI / N));
+      const delta = mod(gap + kq * 2 * Math.PI / N - Math.PI / 2 + Math.PI, 2 * Math.PI) - Math.PI;
+      const yGap = r * Math.sin(delta);
+      const rEff = N * P.rackPitch / (2 * Math.PI);
+      let yc = yGap + P.rackPitch * Math.round((pl.y - yGap) / P.rackPitch);
+      const w0 = pinionWindow(lib, sel, pl, yc, 0, 0);
+      if (!w0) throw new Error(`${frame.gen}: the pinion stands in the rack's teeth`);
+      yc -= ((w0[0] + w0[1]) / 2) * rEff;
+      const rackS = Object.fromEntries(modes.map((md) => [md, rest[md] * rEff]));
+      const rackOriginZ = pl.bottom + (P.rackPitchToBottom - 10);   // the rack's datum is 25 LDU under its mid-height
+      shafts.push({ origin: [L(pl.x), -L(rackOriginZ), L(yc)], phi: 0, speed: 0, shaft: 'rack', slider: true,
+        parts: [{ role: 'rack', part: KEYLESS_PARTS.rack, m: at(0, 0, 0, RACK_M), slide: Object.fromEntries(modes.map((md) => [md, L(rackS[md])])) }] });
+      // THE FOLLOWER on its arm, seated at each rest (the band's force is
+      // posed: nothing here measures it)
+      const seat = Object.fromEntries(modes.map((md) => [md, followerSeat(lib, det, sel.z, rest[md])]));
+      const ax = Object.keys(AXLE_PARTS).map(Number).sort((a, b) => a - b);
+      const pivLen = ax.find((n) => n * 8 >= det.pivot.x1 - det.pivot.x0), fLen = ax.find((n) => n * 8 >= det.follower.axleX1 - det.follower.axleX0);
+      shafts.push({ origin: [0, -L(det.pivot.z), L(det.pivot.y)], axis: 'x', phi: 0, speed: 0, shaft: 'detent',
+        pose: Object.fromEntries(modes.map((md) => [md, seat[md].psi])),   // rotX by ψ puts the arm's far hole at the pivot + 16 mm·(cos ψ, sin ψ) in frame (y, z)
+        parts: [
+          { role: 'axle', part: AXLE_PARTS[pivLen], m: at(L(det.pivot.x0 + pivLen * 4), 0, 0) },
+          { role: 'arm', part: KEYLESS_PARTS.detentArm, m: at(L(det.arm.x), 0, 0, ARM_M) },
+          // the follower and its axle ride the arm's far hole, off the pivot's line
+          { role: 'axle', part: AXLE_PARTS[fLen], m: at(L(det.follower.axleX0 + fLen * 4), 0, L(P.armHoles)), offLine: true },
+          { role: 'follower', part: KEYLESS_PARTS.follower, m: at(L(det.follower.x), 0, L(P.armHoles), Z_TO_X), offLine: true },
+        ] });
+      pullOut = { rackYc: yc, pitchZ: pl.pitchZ, rEff, rackS, rest, seat, backlash0: w0 };
+    }
     shafts.push({ origin: [0, -L(sel.z), L(sel.y)], axis: 'x', phi: 0, speed: 0, pose, parts, shaft: 'selector' });
-    for (const sh of shafts) for (const p of sh.parts) if (p.slide)
-      for (const md of modes) p.slide[md] = md === 'neutral' ? 0 : catchCentre(lib, pose[md], rise);
+    // THE RING. Driven into wind or set, it is PUSHED by the bulb's leading
+    // side, so it runs ahead of the bulb's middle by up to the catch's play —
+    // and the web stops it. It stands on the web when the web lies within the
+    // play of the bulb's middle either way (short of it, the push carries it
+    // there; past it, the bulb has room behind); otherwise it is left at the
+    // middle, for STROKE to fail. At neutral it is posed at the middle: which
+    // side of the play it lies on depends on the mode it came from.
+    const SIDE = { wind: 1, set: -1, neutral: 0 };
+    for (const md of modes) {
+      const h = catchHold(lib, pose[md], rise), end = SIDE[md] * travel;
+      hold[md] = { ...h, slide: SIDE[md] && Math.abs(h.centre - end) <= h.play ? end : h.centre };
+    }
+    for (const sh of shafts) for (const p of sh.parts) if (p.slide && sh.shaft === 0)
+      for (const md of modes) p.slide[md] = pl ? hold[md].slide : md === 'neutral' ? 0 : Math.max(-travel, Math.min(travel, hold[md].centre));
+    if (pullOut) pullOut.hold = hold;
   }
-  return { key: frame.key, gen: frame.gen, statics, shafts, meshes, modes };
+  return { key: frame.key, gen: frame.gen, statics, shafts, meshes, modes, ...(pullOut ? { pull: pullOut } : {}) };
 }
 
 const fmt = (v) => String(Math.round(v * 1e4) / 1e4);
