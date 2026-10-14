@@ -36504,3 +36504,220 @@ The owner chooses. The 'alarm detector' rows `orbit`, `setCarry` and
 - `explain-quotes` PASS (269 claims), `check-item-numbers` OK, and
   `index-instruments --check` PASS (306 instruments). The explainer is
   unchanged.
+
+## §278, landing 5 — the satellite fold: the detector leaves the centre column (the depth is not yet reclaimed)
+
+Landing 4 measured where the detector could stand. The owner then chose the
+station: on idler 1's compound pinion's circle, so the satellite's disc meshes
+i1b directly. The detector is a faithful 1:1 copy, with no differential. This
+landing moves the metal. It does NOT move the dial: `Z_DIAL` and
+`CASE_HEIGHT_MAX_MM` are unchanged, because the reclaim turned out to be bound
+by members the fold keeps (below, "What the fold leaves to the depth").
+
+### The station is two circles, and the first root is the build as it stood
+
+Two members fix where the satellite stands. Neither is chosen:
+
+- **The disc still meshes i1b.** i1b already carries the set into the disc's
+  plane, 1:1 with the setting wheel through the rim (TODO 117's set branch).
+  Keeping that mesh at the same centre distance (the branch module's closure,
+  `ALARM_SET_DW1` = 8.700) puts the satellite's axis on a circle of 8.700
+  about i1.
+- **The silence finger stays where it is.** §45's rocker reaches from the
+  sleeve's arm to the feeler's tail. Every arm, ratio and force of that chain
+  was derived from where its finger stands (`ALARM_SIL_FINGER_R` 5.86 out along
+  `ALARM_RELEASE_AZ`). The feeler reads the collar at every azimuth at once, so
+  its azimuth about the satellite is free. It is turned so that its finger seat
+  (5.86 from the detector's axis, on the lever's line) lies exactly under the
+  finger. That is a second circle, of 5.86 about the finger.
+
+The two circles meet twice. One root is the dial's axis itself: the centre
+column satisfied both relations. A boot assert holds that root on the axis
+(< 1e-6), so a change to either circle that stops passing through the old
+build is caught. The other root is the satellite:
+
+| | value |
+|---|---|
+| station, world | (10.1345, −5.8103): r 11.682, az 330.17° — inside landing 4's clear band (r 11.1–13.3, az 328–338°) |
+| carry about i1 (`ALARM_DETECTOR_TURN`) | −84.347° dial-local; the disc, the seat and the satellite arbor are built in a frame turned by it, so i1b stands at the bearing from the stack's axis it always did and the seat plate's relief for its tips is the build's own |
+| feeler | its lever's outward radial points from the satellite at the finger; its tail now points at the dial's axis, its pivot at r 6.216 from it, its tail's end at r 5.328 |
+
+The feeler's return blade (TODO 190's fold off the tail's line) goes to the
+side away from the rocker's chord. TODO 190 wrote that side down as lever −y.
+It is now READ off the chord, which the turn put on −y, so the blade goes to +y.
+The free length, k and both seat forces are unchanged.
+
+### The hour arrives through teeth
+
+The reader is hour-borne (TODO 117), so on the satellite the hour has to arrive
+there 1:1 with the same sense, or the coincidence would walk with the time.
+Rule 2 says it arrives through teeth:
+
+**hour wheel (32) → idler (9) → satellite wheel (32)**, module `MW_MODULE_2`
+(0.3), all in the hour wheel's own plane (world −3.677 … −4.227).
+
+- The idler cancels out of the ratio (32/9 · 9/32), and two external meshes
+  restore the sense. The satellite wheel turns exactly as the hour wheel does.
+  `alarmDetectorIdlerA` and `alarmDetectorHourA` are the chain, one law each.
+  The tick poses both spins from them, and the trip reads the satellite's hour
+  through them rather than `hourDialA`.
+- **The satellite wheel is the hour wheel's twin.** It has the same count,
+  module, face and plane, cut for its one mate, the idler. Its addendum is
+  0.32485 against the hour wheel's 0.36296, because the face's generating
+  circle is the smaller mate's. It is bored on the hour tube's own section
+  (`HOUR_TUBE_INNER` … `HOUR_TUBE_OUTER`), because every bore of the copied
+  stack (the disc's hub, the seat plate) is cut to that tube's outside and the
+  copy keeps them. The tube runs from the wheel's plane to the collar's dial
+  face, on a stud planted in the base plate (r `HOUR_TUBE_INNER −
+  PIVOT_BORE_CLEAR` = 2.1967, the motion works' running fit), the minute
+  wheel's idiom.
+- **The idler's count and side are solved together**, against the one metal
+  that crosses the hour plane between the two axes: the feeler's bracket, whose
+  lugs stand from the plate's face up past the lever's pivot. The least count
+  that spans half the axes' distance (the reach floor) is 7. It stands almost on
+  the line of centres, where the bracket is. Each count up moves the idler off
+  the line on either side. With `gearOuterR`, the bound every station solve
+  here uses, the clearances to the lugs are:
+
+  | count | one root | the other root |
+  |---|---|---|
+  | 7 | −0.9009 | −1.1525 |
+  | 8 | −0.0397 | −0.8968 |
+  | 9 | **0.3583** | −0.5236 |
+
+  9 T it is, on the root at world (4.1099, −4.5751), r 6.147 from the dial's
+  axis. TODO 86's over-read costs a tooth here: read off the cut metal, 8 T
+  would clear by about 0.16.
+- **The hour wheel was not re-cut.** It was cut for its one mate, the minute
+  pinion (8). Cut for both mates, its spec is the same to the last digit, since
+  the face's generating circle is the smaller mate's and the addendum and root
+  clear both. A boot assert compares the two specs field by field.
+- `solveGearChain('detector hour:', …)` phases both meshes off the hour wheel
+  (the datum: the motion works' own solve clocked it). Each knob turns the
+  WHEEL inside its spin, so the collar the satellite's spin carries keeps its
+  index. That is the hour hand's own discipline at the centre. Both meshes
+  are declared rows for `meshPhase` and `transmits` under `train` and
+  `handSet`.
+
+### What moved with it
+
+- **TODO 227's skirt relief is retired.** The lip's relief existed for the
+  feeler spring's free end, which stood under the sleeve. The feeler's line
+  now passes the dial's axis no nearer than 5.328 (its edge 0.538 outside the
+  sleeve's flat, asserted at the feeler). The skirt is the full wall at every
+  azimuth, and `ALARM_SPR_YAW_MAX` went with the relief.
+- **The silence rocker is held.** Its finger's station, chord, arms, ratio and
+  forces are unchanged. Only the bar's plan JOG moved. TODO 190 cranked the
+  finger end off the feeler's bracket lugs on the bar's −y side (+0.0749, step
+  at x −0.2097). The turned bracket stands on +y, so the same rule, read off the
+  lugs, steps the other way: −0.1339, step at x −0.3757. The jog's rule now
+  takes the lugs' side as an input. It is cut straight only if the straight
+  bar clears them, and it warns if they straddle the bar.
+- **§29's feeler-bracket wall left the setting idler's route.** The satellite
+  is sited FROM i1, so the bracket cannot be a wall for i1's own route without
+  a cycle. The route's incumbent cleared it, and the bearing solve keeps the
+  incumbent whenever it clears every wall, so the route did not move. The
+  clearance is still asserted, at the feeler, against the bracket where it now
+  stands. Two new asserts sit beside it: the lever's line outside the sleeve,
+  and the bracket's lugs outside the satellite wheel's swept tips (0.174, read
+  off the cut).
+- `ALARM_SIL_FINGER_R`, `ALARM_SIL_PADDLE_R`, the bracket's lug section and
+  `_phiF` are hoisted to the station, because the satellite and the hour idler
+  are solved from them.
+
+### The inspector
+
+- **MECH_GRAPH.** Two new units: 'Alarm detector arbor' (stud, twin and tube)
+  and 'Alarm detector idler' (stud and idler), each planted in the plate. New
+  drive edges: Hour wheel → idler → arbor → reader. The disc's, the seat's and
+  the reader's bearings moved from the hour wheel to the arbor.
+- **EXPECTED pairs.** The disc, seat, reader and feeler rows that ran to the
+  Hour wheel run to the arbor. The feeler's is the nesting artifact, the
+  collar now hanging under the arbor's spin. New EXPECTED pairs: the two meshes
+  and the new units' Dial nesting.
+- **EXPECTED_CONTACT_FLOORS.** The seat's row names `alarmDetectorTube`. Two
+  new rows hold each idler mesh to its tooth contact alone.
+- **PLATE_SEATS** gains the two studs (planted). **JMP_SITE_MOVERS**: the
+  reader revolves on the satellite's wheel, and the satellite's tube gets a row
+  of its own (the idler and the twin are rotor entries).
+- **The 'alarm detector' line spec's reader read each source's turn about the
+  DETECTOR's axis.** While the stack stood on the hour tube that was the hour
+  wheel's and the alarm setting wheel's axis too. On the satellite it is
+  neither, and a turn read about another wheel's axis is not that wheel's turn.
+  The reader now reads each source about its own origin (every gear here is
+  cut about its local origin, so this works where a box centre would not).
+  Nothing else in the reference moved.
+
+### Held by
+
+- **The local battery, whole but for the point tier** (every check under
+  `--only`, `--no-incremental --shards 3`, on this container's SwiftShader
+  Chromium) passes **54/54 gates**. Boot is silent. The fingerprint is
+  deterministic at 1362851413 (the base, `69feb096`, read 1623414317: the metal
+  moved, as it should). Within it:
+  - `lineSpec` reads 6 references and 115 rows with 2 forks (no new one), every
+    control PASS. The 'alarm detector' reference measures back unforked: the
+    fold moved no row.
+  - `alarmHandoffs`: 32 hand-offs, 0 waived. The finger ⇄ tail and ring ⇄
+    tip rows read at the satellite.
+  - `meshPhase`, `meshCoverage`, `transmits`: 26 declared meshes (the two new
+    ones among them), 0 waived.
+  - `inspection` 0 FORBIDDEN over 64 units; `undeclaredClearance` 0 of 1874
+    open pairs under the margin, its debt table still empty; `expectedContacts`
+    38 pairs, 0 waived; `plateSeats` 72 seated rows and 0 debt; `jumperMovers`
+    24 rows; `intraUnit`, `assembly`, `sweptOverlap` (0 CONFIRMED) and
+    `axisEntry` all clean.
+- `probe-70-line-spec` (run from a detached copy, `ROOT=`): all 28 trees PASS.
+  The detector's seven sabotages fail exactly the rows they failed at landing
+  4, so the reference reads the satellite as it read the centre column.
+- `probe-117-trip`: the three settings trip at 36547.2, 26467.2 and 9187.2 s,
+  and the hour hand meets the alarm hand at offset 0.00102 rad at all three
+  (spread 0). That is identical to the base tree: the alarm rings when it did.
+- `probe-detector-site` reads two centres now: C, the stack's axis, and O, the
+  dial's, which coincide before the fold. Every control passes. K3 reads the
+  hub's fit on the satellite's tube at 0.04405, the hour tube's own figure. It
+  confirms the as-built station exactly: core 0.6782 (nearest the release
+  crank's cap), feeler 0.1702 (its stop under the silence rocker's bar), the
+  declared finger ⇄ tail contact exempted. The plan run from the tail's end to
+  the lock's pivot is 27.552.
+- `probe-239-boot-yield` PASS: held 397 ms at worst (ceiling 550), long task
+  1359 ms, input ack 1346 ms, 0 boot warns. `boot-progress --check` OK. The
+  fold adds no seam: `--write` REFUSES on this container on the base tree too
+  (seam 337, the jumper siting scan's adaptive stage order, visited 157, 162
+  and 161 times across three boots), so the build's added work was measured on
+  the held line instead.
+- `explain-quotes` PASS (269 claims), `index-instruments --check` OK (306),
+  `check-item-numbers` OK.
+- `probe-261-height-ledger` PASS (from a detached copy: the ledger's mutant
+  trees skip `.claude` paths, and booted from the worktree its identity control
+  times out). Cased depth is 11.586 mm. The back is governed by the ring's face,
+  with 0.004 mm over the raised glass step, and the front by the dial. The
+  dial-side band is still 7.240 u (2.744 mm). `probe-261-height-cap` PASS:
+  `CASE_HEIGHT_MAX_MM` 11.586 fires on growth and on staleness. The fold moved
+  no plane, so neither moved.
+
+### What the fold leaves to the depth
+
+The study priced the reclaim at up to 1.778 u (0.674 mm), with the keyless
+setting corner as the next binder. That price assumed the detector's band
+empties at the centre. The fold as decided does not empty it. With the dial and
+every dial-hung member moved plate-ward by Δ, and the satellite stack, i1b in
+the disc's plane, the hour wheel and the motion works held, the fold's own
+members bind first. Measured on this tree (meshClearance over §152's 52 poses,
+the moving unit translated plate-ward in steps):
+
+| pair | first Δ under `CLEAR_MARGIN` | why it is there |
+|---|---|---|
+| the release crank (dial-hung, stud in the sheet at 328°) ⇄ the satellite's core | 0.6 (clear at 0.5) | §45/TODO 236 sited the crank at the sleeve's cheapest work station, and that station stands over the satellite's band (its input arm 4.646 from the satellite's axis, inside the core's 4.758) |
+| the release sleeve ⇄ i1b | 0.65 (clear at 0.6) | i1b stays in the disc's plane to drive the satellite, and its tips reach r 4.13 from the dial's axis, under the sleeve's flat (R_OUT 4.65) |
+| the silence rocker's finger riser | 0.18 before a re-solve | the riser is 0.28 against the 0.1 crank floor; the bar's plane can be re-solved between the paddle (dial-hung) and the finger (on the held tail), but that is a re-stratification of the rocker |
+| the satellite's core ⇄ the release link | none under 1.8 | |
+
+So the fold buys at most about 0.5 u (0.19 mm) of the 1.778 before the release
+crank, a member of the sleeve's drive, has to move. Re-siting the crank is the
+release run's P1 currency, since the sleeve's work law prices its station.
+Moving i1b is not available at all, because the disc's ratio is its count. That
+is a layout decision with numbers attached, filed for the next landing rather
+than absorbed here. `Z_DIAL`'s fund, the height ledger and
+`CASE_HEIGHT_MAX_MM` are therefore untouched, and §112, §276 and §234 are not
+re-solved.

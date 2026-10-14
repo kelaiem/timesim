@@ -28051,6 +28051,19 @@ space; stage 3 tick law + one axis + ~3 hand-off rows; stage 4 a rod through
 both plates and a re-site · Battery: stage 2 probe-only; stages 3 and 4 full
 battery with a `--report` diff
 
+**§278 landing 5 moved the feeler, and with it this line's first member.** The
+detector stands on a satellite arbor at world (10.1345, −5.8103) — r 11.68,
+az 330.2° — and the feeler is turned about it so that its tail lies under the
+silence finger, which did not move: the tail now points at the dial's axis, its
+outer end at r 5.33 from it, where the lever's pivot stood before. The run to the
+lock is therefore measured from a new end: §278 landing 4's site report put it
+at 22.34 in plan from a satellite at r 12.5, az 334°, with the tail turned
+toward the lock; here the tail is not free to turn (the finger holds its
+azimuth). The free columns quoted in stage 4 above, (12–13, −2..1) near the
+feeler, were read for the centre-column feeler and have to be re-measured on the
+folded tree before the line is laid. Nothing in the hold changed: it is still
+the flag.
+
 ## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread — CLOSED
 
 Filed from [TODO 184]'s residue (#545). Step 3 of 184 riveted the four
@@ -31563,6 +31576,18 @@ that as the thinning P3 forbids, the alternative is the stratum purchase, whose
 price is the dial plane (`Z_DIAL`) and everything keyed to it.
 
 ---
+
+**§278 landing 5 — the lip's RELIEF is retired; the wall stands.** The relief
+this item cut (the lip's outer corner, absent in a sector about the feeler's
+line, because the lip reached over the feeler spring's free end) had one
+client, and the satellite fold took it away: the feeler, its blade with it,
+stands on the satellite now, and the lever's line passes the dial axis no
+nearer than 5.33 (its edge 0.54 outside the sleeve's flat, asserted at the
+feeler). So the skirt is cut as the full wall at every azimuth — A → E along the
+envelope's floor, the outer wall to the cap — and `ALARM_SPR_YAW_MAX`, the bound
+the relief was cut for, went with it. The wall this item made metal is
+unchanged: the same profile, one corner fewer pair (the relief's morph), its
+area and volume asserts as before.
 
 ## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — CLOSED (§221)
 

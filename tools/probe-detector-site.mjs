@@ -90,6 +90,16 @@
 // scan this reads (one copy of the method). It sizes no idler's teeth and moves
 // nothing: step 4 designs the transfers in a line, step 5 folds them.
 //
+// AFTER THE FOLD (§278 landing 5). The stack stands on its satellite now, so
+// the probe reads two centres: C, the stack's axis (the disc hub's, wherever it
+// stands), about which the core and the feeler are measured and carried; and O,
+// the dial's axis — the centre column — about which every station is laid out
+// and every source turns. Before the fold the two coincide and every number
+// reads as it did. The fold's own transfer members (the satellite arbor and the
+// hour idler) are excluded with the stack: they are its carriers, not tenants.
+// K1 asks the centre column at O, and K3 asks the hub's fit on whichever tube
+// carries it (the hour tube's, or the satellite's of the same section).
+//
 // Run: cd tools && node probe-detector-site.mjs   (ROOT= for another tree)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -101,6 +111,7 @@ const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '
 const PORT = Number(process.env.PORT || 8653);
 const GRID = { DR: 0.5, DAZ_DEG: 2.5 };               // probe-261-fold-site's pitch: half a cell is the map's resolution
 const STACK = ['Alarm release disc', 'Alarm release reader', 'Alarm release seat', 'Alarm release feeler'];
+const FOLD = ['Alarm detector arbor', 'Alarm detector idler'];   // §278 landing 5's carriers: excluded with the stack where they exist
 const STUDY = { r: [13, 15], az: [300, 315] };
 const N_EXACT = 10;                                   // stations confirmed exactly
 
@@ -138,6 +149,7 @@ const setup = await page.evaluate(async ({ STACK }) => {
   const hub = byName('alarmDiscHub');
   const box = new THREE.Box3().setFromObject(hub, true);
   const C = { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2 };
+  const O = { x: clock.P.dial.x, y: clock.P.dial.y };   // the dial's axis: the centre column
   // the core: the disc, the reader, the seat's plate and pad, the feeler's tip and jog
   const coreSet = meshes.filter((o) => ['Alarm release disc', 'Alarm release reader'].includes(ownerOf(o))
     || ['alarmSeatPlate', 'alarmSeatPad', 'alarmFeelerTip', 'alarmFeelerJog'].includes(o.name));
@@ -183,10 +195,11 @@ const setup = await page.evaluate(async ({ STACK }) => {
   const srcOf = (mesh, unit) => {
     const g = gearOf(mesh); if (!g) return null;
     mesh.updateWorldMatrix(true, false);
+    const ax = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld);   // the source's OWN axis (O before and after the fold)
     const pos = mesh.geometry.attributes.position; let lo = Infinity, hi = -Infinity, tip = 0;
-    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld); lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); tip = Math.max(tip, Math.hypot(v.x - C.x, v.y - C.y)); }
-    let bore = Infinity; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld); bore = Math.min(bore, Math.hypot(v.x - C.x, v.y - C.y)); }
-    return { unit, mesh: mesh.name || '(unnamed)', R: g.userData.r, teeth: g.userData.teeth, m: g.userData.module, z0: lo, z1: hi, tip, bore };
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld); lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); tip = Math.max(tip, Math.hypot(v.x - ax.x, v.y - ax.y)); }
+    let bore = Infinity; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld); bore = Math.min(bore, Math.hypot(v.x - ax.x, v.y - ax.y)); }
+    return { unit, mesh: mesh.name || '(unnamed)', R: g.userData.r, teeth: g.userData.teeth, m: g.userData.module, z0: lo, z1: hi, tip, bore, ax: { x: ax.x, y: ax.y } };
   };
   const hourMesh = byName('mwHourWheel');
   const setUnitMeshes = meshes.filter((o) => ownerOf(o) === 'Alarm setting wheel');
@@ -217,32 +230,33 @@ const setup = await page.evaluate(async ({ STACK }) => {
     for (const o of [i1b, sleeve].filter(Boolean)) { retired.push({ o, parent: o.parent, name: o.name || 'idler 1b sleeve' }); }
     for (const r of retired) r.parent.remove(r.o);
   }
-  window.__D = { THREE, I, clock, C, R, z0, z1, retired, meshes, ownerOf, isSchem, feeler, coreSet, byName };
+  window.__D = { THREE, I, clock, C, O, R, z0, z1, retired, meshes, ownerOf, isSchem, feeler, coreSet, byName };
   // K5: every core vertex inside the envelope (it is their max, so this holds
   // by construction unless the axis is not the disc's — which is what it checks)
   let k5 = 0;
   for (const o of coreSet) { const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (Math.hypot(v.x - C.x, v.y - C.y) > R + 1e-9 || v.z < z0 - 1e-9 || v.z > z1 + 1e-9) k5++; } }
-  return { C, R, z0, z1, core: coreSet.map((o) => o.name || '?'), fPts, tailEnd, sources, lock, lift, retired: retired.map((r) => r.name), k5,
+  return { C, O, R, z0, z1, core: coreSet.map((o) => o.name || '?'), fPts, tailEnd, sources, lock, lift, retired: retired.map((r) => r.name), k5,
     CM: LAY.CLEAR_MARGIN, UNIT_MM: LAY.UNIT_MM, STOCK: LAY.STOCK_MIN_U };
 }, { STACK });
 const CM = setup.CM, UNIT_MM = setup.UNIT_MM;   // layout.js's: the one margin, and the unit
 
 console.log(`boot warnings ${bootWarns.length}${bootWarns.length ? ': ' + bootWarns.slice(0, 3).join(' | ') : ''}`);
-console.log(`the detector's axis (the disc hub's centre) (${setup.C.x.toFixed(4)}, ${setup.C.y.toFixed(4)}); the CORE (${setup.core.length} meshes: disc, reader, seat plate and pad, feeler tip and jog) `
+console.log(`the dial's axis O (${setup.O.x.toFixed(4)}, ${setup.O.y.toFixed(4)}); the detector's axis C (the disc hub's centre) (${setup.C.x.toFixed(4)}, ${setup.C.y.toFixed(4)}), r ${Math.hypot(setup.C.x - setup.O.x, setup.C.y - setup.O.y).toFixed(4)} from O; the CORE (${setup.core.length} meshes: disc, reader, seat plate and pad, feeler tip and jog) `
   + `is r ≤ ${setup.R.toFixed(4)} over z ${setup.z0.toFixed(4)} … ${setup.z1.toFixed(4)} (height ${(setup.z1 - setup.z0).toFixed(4)} u = ${((setup.z1 - setup.z0) * UNIT_MM).toFixed(3)} mm)`);
 console.log(`the feeler outside the core: ${setup.fPts.length} surface samples; its tail's end at (${setup.tailEnd.x.toFixed(3)}, ${setup.tailEnd.y.toFixed(3)}) from the axis, z ${setup.tailEnd.z.toFixed(4)}`);
 for (const [k, s] of Object.entries(setup.sources)) console.log(`source ${k}: ${s ? `${s.unit} '${s.mesh}', ${s.teeth} T, module ${s.m.toFixed(5)}, pitch R ${s.R.toFixed(4)}, tip ${s.tip.toFixed(4)}, stratum z ${s.z0.toFixed(4)} … ${s.z1.toFixed(4)}` : 'NOT FOUND'}`);
-console.log(`retired for the scan (the disc's rim drive, which the satellite's set idler replaces): ${setup.retired.join(', ') || 'none found'}`);
+console.log(`retired for the scan (the disc's rim drive — it meshes the disc by design, so the circle about it is judged without it): ${setup.retired.join(', ') || 'none found'}`);
 
 // ---------------------------------------------------------------------------
 // Stage 1: the band, scanned once with the stack excluded.
 const t0 = Date.now();
-const band = await page.evaluate(dialBandScan, { GRID, exclude: STACK });
+const EXCLUDE = [...STACK, ...FOLD];
+const band = await page.evaluate(dialBandScan, { GRID, exclude: EXCLUDE });
 console.log(`dial band scanned in ${((Date.now() - t0) / 1000).toFixed(0)} s: floor (dial back) ${band.Z_FLOOR.toFixed(4)}, ceiling (plate face) ${band.Z_CEIL.toFixed(4)}, `
   + `${band.NR}×${band.NA} cells, ${band.poses} poses, ${band.tenantsCount} tenants (${band.excludedMeshes} excluded), open incidences ${band.openIncidences}`);
 const { NR, NA, cells } = band;
 const DEG = Math.PI / 180;
-const C = setup.C;
+const C = setup.C, O = setup.O;
 const cellOf = (x, y) => {
   const r = Math.hypot(x, y); if (r >= NR * GRID.DR) return -1;
   let a = Math.atan2(y, x) / DEG; if (a < 0) a += 360;
@@ -300,8 +314,8 @@ const nearCells = (x, y) => {
 };
 const fmtOwn = (m) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([u, n]) => `${u}×${n}`).join(', ');
 
-// K1 — must-hit at the centre
-const k1 = blockers(C.x, C.y, setup.R, setup.z0, setup.z1);
+// K1 — must-hit at the centre column (the dial's axis, where the stack stood)
+const k1 = blockers(O.x, O.y, setup.R, setup.z0, setup.z1);
 const k1ok = k1.size > 0 && [...k1.keys()].some((u) => /Hour wheel|Motion works|Dial|Alarm disc/.test(u));
 // K2 — the scan's own plants
 const pl = band.plant;
@@ -311,7 +325,7 @@ const k2ok = !!pl && pl.got.length === 1 && Math.abs(pl.got[0][0] - pl.want[0]) 
 // The map: every station of an (r, az) grid
 const stations = [];
 for (let r = 7; r <= 36 + 1e-9; r += 0.5) for (let az = 0; az < 360; az += 2.5) {
-  const x = C.x + r * Math.cos(az * DEG), y = C.y + r * Math.sin(az * DEG);
+  const x = O.x + r * Math.cos(az * DEG), y = O.y + r * Math.sin(az * DEG);
   const own = blockers(x, y, setup.R, setup.z0, setup.z1);
   let spare = null;
   if (own.size === 0) { spare = 0; for (let g = 0.25; g <= 4 + 1e-9; g += 0.25) { if (coreClear(x, y, g)) spare = g; else break; } }
@@ -378,7 +392,7 @@ if (setup.lift && setup.lift.discR) {
   const L = setup.lift, Dm = L.rb + L.discR;
   for (let t = 0; t < 360; t += 2.5) {
     const x = C.x + L.A.x + Dm * Math.cos(t * DEG), y = C.y + L.A.y + Dm * Math.sin(t * DEG);
-    const r = Math.hypot(x - C.x, y - C.y); let az = Math.atan2(y - C.y, x - C.x) / DEG; if (az < 0) az += 360;
+    const r = Math.hypot(x - O.x, y - O.y); let az = Math.atan2(y - O.y, x - O.x) / DEG; if (az < 0) az += 360;
     const own = blockers(x, y, setup.R, setup.z0, setup.z1);
     const st = { r, az, x, y, clear: own.size === 0, spare: null, own, t, viaLift: true, fRun: 0 };
     if (st.clear) {
@@ -397,7 +411,7 @@ if (setup.lift && setup.lift.discR) {
   }
   const ok = liftCircle.filter((q) => q.clear && q.fRun > 0);
   console.log(`\nTHE SET'S EXISTING LIFT — idler 1's compound pinion i1b (${L.teeth} T, pitch ${L.rb.toFixed(3)}, stratum ${L.z0.toFixed(3)} … ${L.z1.toFixed(3)}) stands at (${L.A.x.toFixed(3)}, ${L.A.y.toFixed(3)}), `
-    + `r ${Math.hypot(L.A.x, L.A.y).toFixed(3)} from the axis, and meshes the disc's ${L.discTeeth} T rim (pitch ${L.discR.toFixed(3)}) in the disc's own plane. A satellite disc meshing it directly stands on the circle `
+    + `r ${Math.hypot(L.A.x + C.x - O.x, L.A.y + C.y - O.y).toFixed(3)} from the dial's axis, and meshes the disc's ${L.discTeeth} T rim (pitch ${L.discR.toFixed(3)}) in the disc's own plane. A satellite disc meshing it directly stands on the circle `
     + `of radius ${Dm.toFixed(3)} about it: ${ok.length} of ${liftCircle.length} stations on that circle (2.5° steps) read clear in the cells for the core and have a free feeler azimuth`);
   let run0 = null;
   const arcs = [];
@@ -427,8 +441,18 @@ if (studyBest && !picks.includes(studyBest)) picks.push(studyBest);
 // and the roomiest station on i1b's circle, nearest the study's radius among the roomiest
 const liftBest = liftCircle.filter((q) => q.clear && q.fRun > 0).sort((a, b) => (b.spare - a.spare) || (Math.abs(a.r - 14) - Math.abs(b.r - 14)))[0];
 if (liftBest) picks.push(liftBest);
+// and the station AS BUILT, when the stack has left the centre column: the core
+// at its own axis, the feeler at its own azimuth (φ 0) — the fold's verdict
+if (Math.hypot(C.x - O.x, C.y - O.y) > 1e-6) {
+  let az = Math.atan2(C.y - O.y, C.x - O.x) / DEG; if (az < 0) az += 360;
+  const st = { r: Math.hypot(C.x - O.x, C.y - O.y), az, x: C.x, y: C.y, clear: coreClear(C.x, C.y), spare: 0, fPhi: 0, asBuilt: true, viaLift: true };
+  for (let g = 0.25; g <= 4 + 1e-9; g += 0.25) { if (coreClear(C.x, C.y, g)) st.spare = g; else break; }
+  let nFree = 0; for (let d = 0; d < 360; d += 5) if (!feelerJudge(C.x, C.y, d * DEG).size) nFree++;
+  st.fRun = nFree * 5;
+  picks.push(st);
+}
 console.log(' station          spare  feeler azimuths free');
-for (const s of picks) console.log(`  r ${s.r.toFixed(1).padStart(4)} az ${s.az.toFixed(1).padStart(5)}  ${s.spare.toFixed(2).padStart(5)}  ${s.fRun >= 360 ? 'every azimuth' : `${s.fRun}° run`}; φ ${s.fPhi.toFixed(1)}° puts the tail nearest the lock${s === studyBest ? '   ← the study window\'s best' : ''}${s.viaLift ? '   ← on i1b\'s circle (the set by the existing lift)' : ''}`);
+for (const s of picks) console.log(`  r ${s.r.toFixed(1).padStart(4)} az ${s.az.toFixed(1).padStart(5)}  ${s.spare.toFixed(2).padStart(5)}  ${s.fRun >= 360 ? 'every azimuth' : `${s.fRun}° run`}; φ ${s.fPhi.toFixed(1)}° puts the tail nearest the lock${s === studyBest ? '   ← the study window\'s best' : ''}${s.viaLift ? '   ← on i1b\'s circle (the set by the existing lift)' : ''}${s.asBuilt ? '   ← AS BUILT (§278 landing 5)' : ''}`);
 
 // ---------------------------------------------------------------------------
 // Stage 2: EXACT, over the pose net, with meshClearance. The ghosts carry
@@ -441,7 +465,7 @@ const exact = await page.evaluate(async ({ picks, CM }) => {
   const seg = 64, Rc = D.R / Math.cos(Math.PI / seg), H = D.z1 - D.z0;
   const coreGeo = new THREE.CylinderGeometry(Rc, Rc, H, seg, 1, false).rotateX(Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial();
-  const stackSet = new Set(D.meshes.filter((o) => ['Alarm release disc', 'Alarm release reader', 'Alarm release seat', 'Alarm release feeler'].includes(D.ownerOf(o))));
+  const stackSet = new Set(D.meshes.filter((o) => ['Alarm release disc', 'Alarm release reader', 'Alarm release seat', 'Alarm release feeler', 'Alarm detector arbor', 'Alarm detector idler'].includes(D.ownerOf(o))));
   const inScene = (o) => { for (let p = o; p; p = p.parent) if (p === clock.scene) return true; return false; };
   const obstacles = D.meshes.filter((o) => !stackSet.has(o) && inScene(o));
   const plate = obstacles.filter((o) => o.name === 'backPlate');
@@ -450,7 +474,12 @@ const exact = await page.evaluate(async ({ picks, CM }) => {
     .multiply(new THREE.Matrix4().makeTranslation(C.x, C.y, 0)).multiply(new THREE.Matrix4().makeRotationZ(phi)).multiply(new THREE.Matrix4().makeTranslation(-C.x, -C.y, 0));
   // K3 and K4 at the reset pose
   clock.resetInputs(); clock.setPose({}); clock.scene.updateMatrixWorld(true);
-  const tube = D.byName('hourTube'), hub = D.byName('alarmDiscHub');
+  // the tube the hub rides: the one whose axis is the hub's (the hour tube on
+  // the centre column, the satellite's tube of the same section after the fold)
+  const hub = D.byName('alarmDiscHub');
+  const tubes = ['hourTube', 'alarmDetectorTube'].map((n) => D.byName(n)).filter(Boolean);
+  const axisOff = (o) => { const b = new THREE.Box3().setFromObject(o, true); return Math.hypot((b.min.x + b.max.x) / 2 - C.x, (b.min.y + b.max.y) / 2 - C.y); };
+  const tube = tubes.sort((a, b) => axisOff(a) - axisOff(b))[0];
   const fit = I.meshClearance(hub, tube);
   const hubSeg = hub.geometry.parameters?.segments, hubBoreR = hub.geometry.parameters?.points?.[0]?.x;
   const coreAt = (S) => ghost(coreGeo, mat, new THREE.Matrix4().makeTranslation(S.x, S.y, (D.z0 + D.z1) / 2));
@@ -475,6 +504,7 @@ const exact = await page.evaluate(async ({ picks, CM }) => {
         const rec = out[k][G.kind];
         for (const ob of obs) {
           if (G.lug && plate.includes(ob.o)) continue;     // the lugs stand on the base plate: planted
+          if (G.name === 'alarmFeelerTail' && ob.o.name === 'alarmSilFinger') continue;   // the silence finger on the tail: the declared working contact (the floors row's), which the as-built azimuth exists to make
           const B = ob.b, dBox = Math.hypot(Math.max(0, B.min.x - gb.max.x, gb.min.x - B.max.x), Math.max(0, B.min.y - gb.max.y, gb.min.y - B.max.y), Math.max(0, B.min.z - gb.max.z, gb.min.z - B.max.z));
           if (dBox >= Math.min(rec.d, UB)) continue;
           const d = I.meshClearance(G.g, ob.o, Math.min(rec.d, UB));
@@ -539,12 +569,12 @@ const annulusRuns = (x, y, rIn, rOut, skip = null) => {
 // wheel of its own size (the annulus from its bore to its tip, the stack
 // excluded — the fold vacates its band), and what a pipe of §50's floor stock
 // rising from the source's own stratum to each such stratum would cross.
-console.log(`\nAT THE CENTRE — a coaxial transfer wheel on each source (stack excluded: the fold vacates the core's band ${setup.z0.toFixed(3)} … ${setup.z1.toFixed(3)}):`);
+console.log(`\nAT THE CENTRE COLUMN — a coaxial transfer wheel on each source (stack excluded: the fold vacates the core's band ${setup.z0.toFixed(3)} … ${setup.z1.toFixed(3)}):`);
 const centreFree = {};
 for (const [k, src] of Object.entries(setup.sources)) {
   if (!src) continue;
   const wheelT = src.z1 - src.z0;
-  const ann = annulusRuns(C.x, C.y, src.bore, src.tip, src.unit);
+  const ann = annulusRuns(src.ax.x, src.ax.y, src.bore, src.tip, src.unit);
   const fits = ann.gaps.filter(([a, b]) => b - a >= wheelT + 2 * CM);
   centreFree[k] = fits;
   console.log(`  ${k.toUpperCase()}: free over r ${src.bore.toFixed(3)} … ${src.tip.toFixed(3)} for a wheel ${wheelT.toFixed(3)} thick: ${fmtRuns(fits)}`);
@@ -552,7 +582,7 @@ for (const [k, src] of Object.entries(setup.sources)) {
     if (src.z0 >= a - 1e-9 && src.z1 <= b + 1e-9) { console.log(`    the source's own stratum lies in ${a.toFixed(3)} … ${b.toFixed(3)}: no pipe needed`); continue; }
     // the pipe: from the source's stratum to the nearer face of this run, at r bore … bore + stock
     const zA = Math.min(src.z1, b), zB = Math.max(src.z0, a);
-    const pipe = annulusRuns(C.x, C.y, src.bore, src.bore + setup.STOCK, src.unit);
+    const pipe = annulusRuns(src.ax.x, src.ax.y, src.bore, src.bore + setup.STOCK, src.unit);
     const lo = Math.min(zA, zB), hi = Math.max(zA, zB);
     const crossing = {};
     for (const [u, list] of pipe.own) for (const [p, q] of list) if (q > lo + 1e-9 && p < hi - 1e-9) crossing[u] = (crossing[u] || 0) + 1;
@@ -566,9 +596,10 @@ for (const s of (good.length ? good : picks)) {
   const fit = runs.filter(([a, b]) => b - a >= H + 2 * CM);
   console.log(`  COLUMN over r ≤ ${setup.R.toFixed(3)} (dial back → plate face): free ${fmtRuns(runs)}; the core needs ${H.toFixed(3)} + 2·${CM} = ${(H + 2 * CM).toFixed(3)} — ${fit.length ? `fits in ${fmtRuns(fit)}` : 'NO run holds it'}`);
   // the idler paths
-  const SD = Math.hypot(s.x - C.x, s.y - C.y);
   for (const [k, src] of Object.entries(setup.sources)) {
     if (!src) continue;
+    const A0 = src.ax;   // the source's own axis
+    const SD = Math.hypot(s.x - A0.x, s.y - A0.y);
     const tipAdd = src.tip - src.R;                  // the addendum as the source is CUT (its tip off its pitch), for the twin and the idler alike: one module, one profile
     const twin = blockers(s.x, s.y, src.R + tipAdd, src.z0, src.z1);
     const nMin = Math.max(10, Math.ceil((2 * (SD / 2 - src.R)) / src.m - 1e-9));
@@ -579,8 +610,8 @@ for (const s of (good.length ? good : picks)) {
         const ri = src.m * n / 2, d = src.R + ri;
         if (d < SD / 2) continue;
         const h = Math.sqrt(d * d - (SD / 2) ** 2);
-        const ux = (s.x - C.x) / SD, uy = (s.y - C.y) / SD;
-        const ix = C.x + ux * SD / 2 - uy * h * side, iy = C.y + uy * SD / 2 + ux * h * side;
+        const ux = (s.x - A0.x) / SD, uy = (s.y - A0.y) / SD;
+        const ix = A0.x + ux * SD / 2 - uy * h * side, iy = A0.y + uy * SD / 2 + ux * h * side;
         const own = blockers(ix, iy, ri + tipAdd, src.z0, src.z1, src.unit);
         tried.push({ n, ri, ix, iy, own });
         if (own.size === 0) { first = { n, ri, ix, iy }; break; }
@@ -591,12 +622,12 @@ for (const s of (good.length ? good : picks)) {
       sides.push({ side, first, t0, strata: strata.filter(([a, b]) => b - a >= wheelT + 2 * CM), blockedBy: first ? null : (t0 ? fmtOwn(t0.own) : 'no geometry') });
     }
     // the equal-pitch direct pair: both wheels of pitch |S|/2, meshing on the line
-    const eq = blockers(C.x, C.y, SD / 2 + tipAdd, src.z0, src.z1, src.unit), eqS = blockers(s.x, s.y, SD / 2 + tipAdd, src.z0, src.z1);
+    const eq = blockers(A0.x, A0.y, SD / 2 + tipAdd, src.z0, src.z1, src.unit), eqS = blockers(s.x, s.y, SD / 2 + tipAdd, src.z0, src.z1);
     console.log(`  ${k.toUpperCase()} (${src.unit}, ${src.teeth} T, m ${src.m.toFixed(4)}, R ${src.R.toFixed(3)}, stratum ${src.z0.toFixed(3)}…${src.z1.toFixed(3)}): `
       + `twin at the station (tip ${(src.R + tipAdd).toFixed(3)}) ${twin.size ? 'BLOCKED by ' + fmtOwn(twin) : 'clear'} in the source's stratum; `
       + `free strata for the twin over its footprint: ${fmtRuns(freeRuns(s.x, s.y, src.R + tipAdd).filter(([a, b]) => b - a >= (src.z1 - src.z0) + 2 * CM))}`);
     for (const sd of sides) {
-      const where = sd.first ? `the smallest clear idler is ${sd.first.n} T (pitch ${sd.first.ri.toFixed(3)}) at (${sd.first.ix.toFixed(3)}, ${sd.first.iy.toFixed(3)}), r ${Math.hypot(sd.first.ix - C.x, sd.first.iy - C.y).toFixed(3)} from the axis`
+      const where = sd.first ? `the smallest clear idler is ${sd.first.n} T (pitch ${sd.first.ri.toFixed(3)}) at (${sd.first.ix.toFixed(3)}, ${sd.first.iy.toFixed(3)}), r ${Math.hypot(sd.first.ix - A0.x, sd.first.iy - A0.y).toFixed(3)} from the source's axis`
         : `no idler of ${nMin}–${nMin + 24} T stands clear in the source's stratum (the smallest blocked by ${sd.blockedBy})`;
       console.log(`    side ${sd.side > 0 ? '+' : '−'}: ${where}; strata free over the smallest idler's footprint (${sd.t0 ? sd.t0.n + ' T at (' + sd.t0.ix.toFixed(2) + ', ' + sd.t0.iy.toFixed(2) + ')' : '—'}) for a wheel of the source's thickness: ${fmtRuns(sd.strata)}`);
     }
@@ -624,7 +655,7 @@ for (const s of (good.length ? good : picks)) {
 {
   const T = { x: C.x + setup.tailEnd.x, y: C.y + setup.tailEnd.y };
   const P = setup.lock.pivot;
-  console.log(`\ntoday (the detector on the centre column): the feeler's tail end at (${T.x.toFixed(2)}, ${T.y.toFixed(2)}), plan ${Math.hypot(C.x + P.x - T.x, C.y + P.y - T.y).toFixed(3)} to the lock's pivot`);
+  console.log(`\nas built (the detector's axis at r ${Math.hypot(C.x - O.x, C.y - O.y).toFixed(3)} from the dial's): the feeler's tail end at (${T.x.toFixed(2)}, ${T.y.toFixed(2)}), plan ${Math.hypot(C.x + P.x - T.x, C.y + P.y - T.y).toFixed(3)} to the lock's pivot`);
 }
 
 // restore the retired members
@@ -632,7 +663,7 @@ await page.evaluate(() => { const D = window.__D; for (const r of D.retired) r.p
 
 console.log('\nCONTROLS');
 const ctl = [
-  ['K1 the core at the disc\'s own axis meets the centre column', k1ok, fmtOwn(k1)],
+  ['K1 the core at the dial\'s axis meets the centre column', k1ok, fmtOwn(k1)],
   ['K2 the scan\'s plants: the block reads its interval and nothing far; the off-ray pin is missed by the ray and caught by the surface', k2ok, pl ? `got ${JSON.stringify(pl.got.map((x) => x.map((z) => +z.toFixed(4))))} want ${JSON.stringify(pl.want.map((z) => +z.toFixed(4)))}, far ${pl.missCount}, pin ray ${pl.pinRayHits}, pin surface ${pl.pinSurf ? pl.pinSurf.map((z) => z.toFixed(4)).join('…') : 'none'}` : 'no plant cell'],
   ['K3 exact: the hub reads its running fit on the tube, and the core ghost at the axis meets the tube', k3ok, `fit ${exact.fit.toFixed(5)} in [${k3lo.toFixed(5)}, 0.05] (bore + 0.05 less the ${exact.hubSeg}-facet bore's sagitta), core on tube ${exact.coreOnTube.toFixed(4)}`],
   ['K4 the identity carry reproduces the feeler\'s metal exactly', k4ok, `max deviation ${exact.k4}`],
