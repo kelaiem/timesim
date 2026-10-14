@@ -4,7 +4,7 @@
 
 # The instruments
 
-306 scripts. **194 are ACCEPTANCE tests** — they decide and exit non-zero.
+308 scripts. **196 are ACCEPTANCE tests** — they decide and exit non-zero.
 **112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -273,6 +273,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
 | `probe-colwheel-id.mjs` |  | report | probe-colwheel-foul named six meshes touching the column wheel at 0. Two are declared rider contacts. This identifies the rest — what they are, where they were built, what material, whether they are NAMED, whether anything DECLARES the contact, and how the gap behaves across the toggle's two parities (the eye report says "every other toggle", so parity is the tell). |
 | `probe-crossed-axis-mesh.mjs` |  | report | DO THE TEETH OF A CROSSED-AXIS MESH INTERLEAVE, OR DRIVE THROUGH EACH OTHER? |
+| `probe-detector-site.mjs` |  | acceptance | WHERE CAN THE ALARM DETECTOR STAND OFF THE CENTRE COLUMN, AND CAN TWO 1:1 IDLERS REACH IT? — §278 landing 4's site report for the satellite fold. The detector (the set-carried disc with its notched track, the hour-carried reader collar and its pin, TODO 144's seat plate and pad, and the feeler that reads the collar) stands on the hour tube today and spends 5.312 u of the 7.240 u dial-side band. The owner's decision (§278's study): carry it to a SATELLITE arbor fed by two 1:1 idlers, one carrying the hour wheel's angle and one the alarm setting wheel's — TODO 117's topology, unchanged (the 'alarm detector' line spec's `orbit`, `setCarry` and `discStill` rows are what the transfers must keep). The study estimated the station at r ≈ 14, az 300–315°. This measures it. NO METAL MOVES: every candidate is the stack as it is today, carried in plan, and measured. |
 | `probe-dial-colour-link.mjs` |  | acceptance | DOES THE DIAL'S COLOUR SURVIVE A LINK — AND WHOSE COLOUR WINS? Acceptance. `?dialcol=rrggbb` is FINISH travelling in a URL, which puts it between two things that were previously separate: the aesthetics store (browser-local, persisted, the viewer's own taste) and the share link (a claim about a watch someone else will see). Six behaviours fall out of that, and every one of them is a decision rather than an implementation detail — so they are asserted here rather than left to be rediscovered. |
 | `probe-direction-guards.mjs` |  | acceptance | WHICH REVERSALS WOULD THE BUILD CATCH? — the safety net TODO 115 needed, and now the one that keeps its landing honest. |
 | `probe-drum-azimuth.mjs` |  | report | Where else can the MAINSPRING DRUM stand? |
@@ -307,6 +308,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-technic-build.mjs` |  | acceptance | IS THE LEGO BUILD OF THE TECHNIC FORK ASSEMBLED — every part seated, every axle through its holes, every pair of teeth meshed? Acceptance, pure Node, no browser, no network; exits non-zero on any failed row. |
 | `probe-technic-frame.mjs` |  | acceptance | DOES THE TECHNIC FORK'S FRAME HOLD ITS GEARS WITHOUT ANY PART FOULING ANOTHER? Acceptance, pure Node, no browser; exits non-zero on any failed row. |
+| `probe-technic-keyless.mjs` |  | acceptance | DOES THE LEGO KEYLESS WORKS CHANGE OVER, AND DOES EACH BRANCH CARRY THE STEEL RATIO? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landings D and E. |
 | `probe-technic-ldraw.mjs` |  | acceptance | DO THE TECHNIC FRAME'S DIMENSIONS MATCH THE REAL PARTS? Acceptance, pure Node, no browser, no network; exits non-zero on any mismatch. |
 | `probe-technic-phase.mjs` |  | acceptance | DO technic.html's GEARS ACTUALLY MESH — every pair, parallel and right-angle, at every angle the page turns them through? Acceptance, browser; exits non-zero on any failed row. |
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |

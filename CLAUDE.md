@@ -44,8 +44,21 @@ landing A's quoted figures were wrong in five places. `src/technic-ldraw.js`
 places the build as LDraw parts (each shaft one keyed body, its free angle
 solved to mesh off each part's MEASURED tooth phase), which `technic.html`'s
 `?view=lego` draws and offers as `.ldr`; `tools/probe-technic-build.mjs` holds
-the placements to the part geometry (seated, through, meshed, the file). All
-three probes are pure Node.
+the placements to the part geometry (seated, through, meshed, the file). **And
+the KEYLESS WORKS** (landing D): `TECHNIC_KEYLESS` declares each branch from the
+16T clutch gear on the stem, solved to the steel ratio (winding 5/12, setting
+1/3), and `frameKeyless` frames the stem — crown, two clutch gears, a ridged
+joiner, the driving ring between them — with a branch leaving each side. A
+build carries MODES (wind, set, neutral): the ring's travel is derived from the
+parts (it seats on the recess's web), each clutch gear's angle is its DOG LOCK
+on the ring (`dogPhase`, four lugs a side read off the parts), and the idle
+branch stands still. `tools/probe-technic-keyless.mjs` holds the rows, the
+stroke, the dogs, the ring's key in the joiner and the ratios per mode. Since
+landing E a SELECTOR moves the ring: a changeover catch (6641) on an axle over
+the stem, its bulb in the ring's groove, the pivot exactly the one plate count
+that seats the bulb (`selectorRise`), and the ring's position READ from the
+catch's angle (`catchCentre`) rather than from a table. The selector's angle
+is the posed input. All four probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -563,8 +576,11 @@ it into prose either.
    it (§183's rocker to the finger in the stop wheel) and the selector link
    that carries it to the ring (§229's lever to the stall the chain delivers),
    the latter two `inherits`-ing the wheel's rows rather than restating them,
-   then TODO 236's release run and §278's strike (the cam through the lifting
-   lever and the hammer to the gong, its fall and its window included).
+   then TODO 236's release run, §278's strike (the cam through the lifting
+   lever and the hammer to the gong, its fall and its window included) and
+   §278's detector (the hour-carried reader and the set-carried notch, through
+   the collar to the feeler's rock — the 1:1 carries its satellite fold must
+   keep are rows).
    **A reference may call the build's laws** (`clock.lineLaws`: the link's
    seat solve, pin arm and rim top — the functions the build itself calls), so
    no law is written twice. **A fold that moves a spec row fails unless a FORK
@@ -579,7 +595,7 @@ it into prose either.
    second. An
    `envelope` row with a `bound` is one side of a window. Every reference
    carries its own control — the drive shifts the pin's line a known
-   distance, the lock MOVES its rocker's post, the link its rod, the strike its lever's tip — and
+   distance, the lock MOVES its rocker's post, the link its rod, the strike its lever's tip, the detector its reader's pin — and
    requires the reading to follow exactly; `probe-70-line-spec.mjs` sabotages
    the metal and the fork declarations and watches the gate name the rows
    each sabotage moved. Its first run found the trap again: the mean of a
@@ -1051,7 +1067,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 305 measuring scripts and this file names 45. The rest are named for the
+`tools/` holds 307 measuring scripts and this file names 46. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1068,7 +1084,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **193 of
+The index also carries the split that decides how to read a result: **195 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

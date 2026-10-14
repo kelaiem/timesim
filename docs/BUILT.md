@@ -35476,6 +35476,231 @@ is still gated, and their profile is still reported, so the reason for the
 refusal can be re-measured.
 
 
+## §219 tier three (b), landing D — the keyless works as a LEGO transmission
+
+The steel stem carries one sliding pinion, which a pull moves between the
+winding and setting wheels. LEGO has its own version of that idiom, and the
+landing builds the keyless works from it:
+- two **16T clutch gears** (18946) idle on the stem;
+- a **ridged joiner** (18948) is keyed to the stem between them;
+- a **driving ring** (18947) slides on the joiner's ridges into one gear's
+  recess or the other's;
+- a **wedge belt wheel** (4185a) is the crown, outside the stem's front column.
+
+The first plan used the older ring (6539) and its extension (32187). Measured,
+those parts do not say what keys the ring to the axle, so the landing uses the
+current system, whose joiner carries an axle hole.
+
+### The rows
+
+Each branch is a chain whose first driver is the clutch gear. `solveRatio`
+gained a `first` option for that: the first mesh's driver is a part outside the
+catalogue, meshing as a parallel member of its own count. The targets are
+derived from the steel counts, so a re-geared steel keyless chain fails the boot
+assert:
+
+| branch | target | classic | 2026 |
+|---|---|---|---|
+| winding | pinion → crown wheel → spur = 10/24 = **5/12** | 16:24 × 8:16 × 8:16 × 40:16 | 16:64 × 20:12 |
+| setting | pinion → setting wheel → minute wheel, cap → cannon = **1/3** | 16:24 × 8:16 | 16:24 × 8:16 |
+
+Each target is a magnitude, as in the fork's rows. Which way each branch turns
+belongs to the build.
+
+### The frame
+
+`frameKeyless` lays out:
+- the stem as shaft 0, carrying the crown, the setting clutch, the joiner and
+  ring, and the winding clutch;
+- each branch with `rowLayout`, moved so that its clutch gear stands against
+  its own end of the joiner. The winding branch leaves along +x and the setting
+  branch along −x. Only positions are mirrored, never a part.
+
+`frameShafts` (factored out of `frameRow`) frames any set of parallel shafts.
+It takes an explicit mesh list and non-gear bodies: the joiner, the ring and
+the crown. The crown is OUTBOARD, so it sets the axle's length and not where
+the columns stand.
+
+The frame probe found one thing on its first run. Swept as one 7.2 mm disc over
+its stroke, the ring reached both 24T gears. That reading was false: the
+flanges stop 6.8 mm from the ring's middle, and only the 5.43 mm end tube runs
+past them. The ring is now framed in its two measured sections, and it clears.
+
+### What the parts measured
+
+Every figure in `KEYLESS_DIM_MM` is read off a part's SURFACE (triangles and
+quads), to the micron, never its bounding box: the box put the joiner's
+radius at 3.51 mm, where its middle collar stands at 3.80 mm.
+
+The ring's TRAVEL is derived: joinerHalf + recessDepth − ringHalf, which is
+12 + 3.2 − 11.2 = **4 mm**. At that travel the ring's end seats on the web at
+the bottom of the gear's recess. Centred, each end stands 0.8 mm short of its
+gear, so neutral is a real third position.
+
+The parts also draw the **dog clutch**, which the first plan had expected to
+be missing:
+- four lugs on each end of the ring reach out to 5.43 mm;
+- four lugs in each recess's mouth reach in to 5.32 mm;
+- the ring's tube (4.75 mm) passes the gear's lugs, and the ring's lugs pass the
+  gear's wall (5.89 mm).
+
+So the only thing that keeps the two sets of lugs apart is their angle.
+`dogPhase` reads both sets the way `toothPhase` reads a gear's teeth. It sets
+each clutch gear's angle on the stem so the ring's lugs sit midway between the
+gear's own. That angle is 0: the parts' own orientations already interleave
+them. Each branch is then phased FROM its clutch gear.
+
+### The build and its modes
+
+A build now has BODIES: one per shaft, plus one per clutch gear, since a clutch
+gear idles on the stem. Speed is per MODE:
+- the stem turns in every mode;
+- a clutch gear turns only in its own mode;
+- the ring SLIDES ±4 mm with the mode.
+
+Phases are solved from the line of centres, because a branch can leave along
+−x. `placedParts` and `toLdr` take the mode as an argument. The four rows'
+`.ldr` files are byte-identical to before this generalisation.
+
+### Instruments
+
+`tools/probe-technic-keyless.mjs` (new) checks:
+- **rows**: each equals the solver's answer from the clutch gear;
+- **stroke**: read off the placed parts' bounds, the ring stands 3.20 mm into
+  the engaged gear and −4.80 into the idle one, and −0.80 / −0.80 in neutral;
+- **dogs**: engaged 3.12 mm deep with ±32.2° play, axially clear when idle;
+- **keyed**: the ring's ribs sit in the joiner's slots;
+- **ratios**: the engaged branch's output turns by exactly ±target × input, and
+  the idle branch stands still.
+
+It has five controls, all caught: a changed mesh, the ring 0.8 mm short, the
+ring turned 45°, a clutch turned 45°, and the idle branch turning or the engaged
+branch at twice its ratio.
+
+The other probes:
+- `probe-technic-build.mjs` judges the keyless build in all three modes,
+  walking the build's own mesh list: 10 builds, 0 failing;
+- `probe-technic-frame.mjs`: 10 rows framed. Its overlap control now finds the
+  nearest pair of columns rather than assuming shaft 1's;
+- `probe-technic-ldraw.mjs` holds every `KEYLESS_DIM_MM` figure, the clutch
+  gear's tip and width, and the lugs' fourfold repeat, with three new
+  perturbation controls (16/16).
+
+The pack grew to 33 parts, 273 files.
+
+### What it does not claim
+
+The mode is POSED. No lever moves the ring yet: a changeover catch or a shift
+fork in the ring's groove is the next landing's. The ring is posed with its
+lugs in the middle of their play, where the parts allow anywhere across it.
+`technic.html`'s LEGO view draws the keyless works as its fifth cell, with
+wind, set and neutral buttons. A shift restarts the works from its posed angle,
+because the lugs only pass each other interleaved.
+
+
+## §219 tier three (b), landing E — the selector: a changeover catch carries the ring
+
+Landing D left the keyless works' mode POSED: a page button slid the ring.
+Landing E adds the part that moves it. It is LEGO's own changeover catch
+(6641):
+- a rocker with an axle hole along its X through a boss;
+- below the boss, a blade whose rounded bulb rides in the driving ring's
+  groove.
+
+The catch is keyed to a horizontal SELECTOR axle over the stem, and a wedge
+belt wheel on that axle's end is its knob. Turning the knob swings the bulb
+along the stem and carries the ring.
+
+### The catch was drawn for the older ring, so it was measured, not assumed
+
+6641 belongs to the older transmission (6539). Against the 3L ring (18947)
+the parts give:
+- the groove's floor is 4.80 mm from the axis;
+- the flanges stand 7.20 mm from the axis;
+- the bulb's edge is 10.40 mm below the pivot.
+
+The library has a newer catch with a two-tooth axle hole (51149). Its body is
+the same 6641 subfile, so the fit is the same.
+
+### The pivot's height is derived
+
+Both axles stand in Technic bricks on one baseplate, so the pivot rises over
+the stem by a whole number of plates. The bulb must clear the groove's floor,
+because the ring turns under it, and it must stand inside the flanges, or it
+cannot push them. `selectorRise` finds exactly one plate count:
+
+| plates | bulb from the axis | verdict |
+|---|---|---|
+| 4 | 2.40 mm | inside the floor |
+| **5** | **5.60 mm** | **seated** |
+| 6 | 8.80 mm | past the flanges |
+
+So the pivot stands 16 mm over the stem. Its columns stand on the +x side,
+because the setting branch's 8T sits at y = 0 on −x. The first column is one
+gap clear of the ring's flanges, the second beside it, and the knob one gap
+outside them, as the crown is. The selector axle is a 5L, held by Technic
+bricks turned a quarter so their holes run along x.
+
+### The ring's position is read from the catch, not from a table
+
+- `catchInRingFrame` samples the catch's SURFACE, subdividing every face,
+  and hangs it from the pivot at an angle. The subdivision matters: the
+  bulb is a single quad whose corners stand 4 mm off the stem's line, and a
+  vertex-only reading put the bulb 1.28 mm shallower than its middle really
+  is.
+- `catchCentre` is the middle of the catch's surface that stands inside the
+  flanges. That is where the bulb holds the ring.
+- `selectorAngle` solves the angle that holds the ring at each stroke end:
+  **±26.02°**.
+- The build poses the selector at that angle and reads the ring's slide back
+  through `catchCentre`. The mode is now the selector's angle, and the ring
+  follows from it.
+
+### What the lever measures
+
+| mode | angle | bulb into the flanges | floor clearance | axial play a side |
+|---|---|---|---|---|
+| wind / set | ±26.02° | 0.98 mm | 1.42 mm | 0.54 mm |
+| neutral | 0° | 1.60 mm | 0.80 mm | 0.42 mm |
+
+The engagement is shallow at the stroke ends: under a millimetre of plastic
+pushes the ring onto its dogs. This is the measured fit of a catch drawn for
+a larger-flanged ring. It is reported every run and gated only at greater
+than zero. No floor was invented to sit under it.
+
+### Instruments
+
+- `probe-technic-keyless.mjs` adds LEVER checks, per mode:
+  - the catch's sampled surface stands clear of the ring, the joiner and both
+    clutch gears, each taken as its body of revolution;
+  - the bulb reaches inside the flanges and clears the floor;
+  - the placed ring stands at the catch's centre, re-derived from the samples
+    rather than read from the build.
+
+  Two new controls fire: the selector a plate lower (the bulb in the floor),
+  and the selector left at neutral while the ring stands at its wind stroke.
+  Controls 6/6.
+- `probe-technic-build.mjs` holds the selector as a body turning about X: two
+  turned bricks on its line, the axle filling both, and the catch's pivot hole
+  and the knob on the axle. 10 builds, 0 failing, in every mode.
+- `probe-technic-frame.mjs` checks each column's hole against its own axle
+  height, and sweeps the selector's columns against every gear: 10 rows,
+  0 failing.
+- `probe-technic-ldraw.mjs` holds `KEYLESS_SELECTOR_DIM_MM` to the parts:
+  the pivot from the axle-hole primitive, the bulb, the catch's extents, and
+  the groove floor. It also checks that the rise is still a single plate
+  count. Controls 18/18.
+
+The pack grew to 34 parts, 277 files.
+
+### What it does not claim
+
+The selector's three angles are posed. No detent holds it there, and nothing
+yet ties it to a crown pull. The ring is posed with its lugs mid-play, and the
+bulb is centred in the groove, though the parts would allow anywhere across
+either.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and
@@ -36150,6 +36375,495 @@ the fold at every stop from both ends, every declared framing resolving, no
 warning or page error walking the route, and two back-to-back alarm toggles both
 landing. Not measured: Tour, Demo and Bench "as before when never navigated"
 (argued from the code); the battery on this tree.
+
+## §278, landing 4 — the detector gets its line spec, and a site report says where the satellite can stand
+
+The study found the dial side bound by the centre column's alarm detector: the
+disc, the reader collar, the seat and the feeler spend 5.312 u of the 7.240 u
+band. The owner decided to carry the detector off the column to a SATELLITE
+arbor fed by two 1:1 idlers, one carrying the hour wheel's angle and one the
+alarm setting wheel's, with the alarm hand staying central and no
+differential. That is TODO 117's closed topology moved whole: the hour carries
+the reader round, the disc carries the set alone, and the trip is their
+coincidence. This landing is the plan's step 3 and a site report for steps 4
+and 5. It moves no metal. The fingerprint (1623414317) and every per-unit §152
+digest are identical to `567ca24f`'s, and boot is silent.
+
+### The reference: 'alarm detector'
+
+`LINE_SPECS` gains a sixth reference. Its path runs from the hour wheel
+through the reader collar and its pin, the notch in the set-carried disc's
+track, the pin's drop, the collar's dial face (which presents the drop at
+every azimuth), and the feeler's tip at the pin's own radius, to the lever's
+rock against its banking stop. It has 29 rows and lands with no fork. Every
+row is measured off posed metal within float noise of its derivation:
+
+| row | value | measured off |
+|---|---|---|
+| orbit, setCarry | 1, 1 | the reader pin's turn per the hour wheel's over an hour of τ; the notch's turn per the alarm setting wheel's over a crown setting |
+| discStill | 0 rad | the notch's turn over that same hour |
+| pinR, trackR, coaxial | 0.14, 3.05, 0 | the pin's own section; its centre from the collar's axis; the collar's axis off the hub's |
+| trackMidR, trackHalfW | 3.05, 0.20 | the track's cut outline |
+| notchW; admit (envelope, ≥) | 0.14 rad; 0.0918 | the outer arc's coverage, the notch as the rest of the turn; the pin's arc at the track radius |
+| drop | 0.10 | the collar's travel from riding to the trip's centre |
+| trackH, floorClear | 0.25, 0.15 | the track's height; the dropped pin's tip over the body's face |
+| pinLen; pinSlender (envelope, ≤) | 0.25; 0.8334 | the pin's own length; §54's ceiling on the overhang |
+| ringT, ringOverTrack | 0.3167, 0.15 | the collar's thickness; its track-side face over the track at the trip |
+| plateau, window, align | 0.04820, 0.23180, 0 rad | the hour arc over which the collar stands at full drop, and off its riding plane at all; the plateau's centre against the notch's cut centre |
+| pivotR, arm, readR | 5.5, 2.45, 3.05 | the lever's rock axis, FOUND as the fixed axis of the tip's rigid motion from riding to the trip; the tip's leading edge along the lever, and its radius |
+| seat | 0.02 | the collar's dial face less the tip's face, riding |
+| rock | 0.040816 rad | the angle of that rigid motion |
+| tail, stopGap | 0.9, 0.03673 | the tail's end from the rock axis; the stop's face over the tail's top |
+| seatHold (≥ 5), seatRide (≤ 50) | 11.29, 18.81 mN | the §137 bias-blade row, dropped and riding |
+
+Four things about how the rows are built:
+
+- **The topology is three rows.** `orbit`, `setCarry` and `discStill` are what
+  the satellite's two idlers must keep. Today they hold by parenting (the
+  collar hangs in the hour wheel's group) and by the disc's law (it IS the
+  setting wheel's angle). After the fold they hold only if the transfers are
+  1:1 with the same sense, and the rows will read whatever wheels carry them.
+- **The laws are the build's own.** The tick's drop ramp is written on the
+  pin's arc at the track radius, and the lever's rock on the drop over its arm.
+  Both became `ALARM_DETECTOR_LAWS` in `main.js` and reach the reference as
+  `clock.lineLaws.detector`. The tick and `feelerRockAt` call them with the same
+  operation, which is why the fingerprint did not move.
+- **No `inherits`.** The obvious parent is TODO 236's 'alarm release run', and
+  it was read for one. The two share no derived quantity. The run is the crown's
+  pull lifting follower A off the heart. The detector's output is the feeler's
+  rock, and what carries that to the lock is TODO 199's still-open stage (the
+  hold is the `alarmReleased` flag, modelled and not simulated). What ties the
+  detector to the run today is spatial: the feeler's arm plane stands one margin
+  under the sleeve's envelope at the centre, and §124 prices its rock at the
+  sleeve's throat. That is exactly the coupling the satellite fold dissolves.
+- **The reader finds its own trip.** No axis turns the hour with the crown in
+  and the set held, so the reader poses its own τ. A secant on the measured
+  angle between the pin and the notch's cut centre lands on the coincidence.
+  Four bisections on the collar's measured travel then find where the drop
+  starts and where it saturates, either side, and the pin's azimuth is read at
+  each. The first draft read the notch as the largest angular gap between the
+  outline's points and got 0.256 rad: the track's arc is sampled 0.256 rad a
+  step, coarser than the 0.14 notch is wide. The notch is now what the outer
+  arc's summed turn does not cover.
+
+The control carries the reader's pin 0.05 out along its radius. The measured
+take-off radius follows by exactly 0.050000000, and the restored pin reads the
+same as before.
+
+`probe-70-line-spec.mjs` gains seven trees, and each one fails exactly the
+rows it moved:
+
+1. The notch cut narrow by hand (`ALARM_NOTCH_W` 0.14 → 0.12) fails notchW,
+   plateau and window. The admit envelope and the coincidence hold.
+2. The feeler's pivot carried out (`ALARM_FEELER_PIVOT_R` 5.5 → 5.7) fails
+   pivotR, arm, rock and stopGap. The read point holds: the tip still ends at
+   the pin's radius.
+3. The reader's pin off its take-off radius (+0.05) fails trackR alone.
+4. The notch cut shallow (`ALARM_TRACK_H` = drop + margin/2) fails trackH and
+   floorClear.
+5. The bias blade's dropped seat × 0.1 fails the seatHold envelope.
+6. The collar posed off its pin (its lift × 1.5) fails drop, floorClear and
+   ringOverTrack. The plateau, the window and the rock hold.
+7. The set transfer geared 1.1:1 (the disc posed at 1.1 × its law) fails
+   setCarry alone: the topology row a satellite idler must keep.
+
+### The site: `tools/probe-detector-site.mjs`
+
+The probe is a REPORT with fatal controls, and it moves no metal. The stack is
+taken as it is today. Its CORE is one solid cylinder, read off the disc, the
+reader, the seat's plate and pad and the feeler's tip and jog: **r ≤ 4.758 over
+z −6.124 … −4.397, 1.727 u (0.654 mm) tall**. The feeler's own arm, tail, stop,
+bracket and blade are judged separately, carried round the stack's axis, since
+the collar presents the drop at every azimuth. The method has three stages:
+
+1. **The map.** `dialBandScan` reads the dial band's tenants over the pose net
+   (§152's 52 poses plus the reset), with the four detector units excluded and
+   idler 1b and its sleeve detached (the fold retires the disc's rim drive).
+   Every station of an (r, az) grid is judged against the cells, good to half a
+   cell.
+2. **Exact.** The best stations are re-measured with `meshClearance` against all
+   752 meshes at every pose: the core as a ghost cylinder, the feeler as ghosts
+   of its own meshes.
+3. **The paths.** For each confirmed station, the band's free column, each
+   source's idler paths and the run to the lock.
+
+**The station: the study is confirmed.**
+
+- Of 8496 stations (r 7–36 by 0.5, az by 2.5°, world `atan2(y, x)`), 3610 read
+  clear by CLEAR_MARGIN.
+- The study's window (r 13–15, az 300–315°) is clear at every station, with
+  2.25–4 u of spare radius.
+- The free region is wider than the window. Az 200–260° and az 280–340° are
+  open from r ≈ 11 outward, and most of the band beyond r ≈ 24 is open.
+- The map's blockers are the keyless works, the power-reserve train, the
+  release sleeve, the alarm link, the switch and the alarm crown.
+- Eleven stations were confirmed exactly, all holding the margin for both the
+  core and the feeler. Ten read ≥ 0.75, so nothing came within the query bound
+  at any pose: r 13.0 az 300°, r 15.0 az 302.5° and 312.5°, r 15.5 az 320°,
+  r 16.5 az 307.5°, r 17.0 az 315°, and four in the 220–235° lobe. The eleventh
+  is below.
+- At every confirmed station the feeler is free at every azimuth (305° of them
+  at the eleventh).
+- At the window's stations the whole dial band over the core's footprint is
+  empty, dial back to plate face (7.240 u). The core needs 2.027 u.
+
+**The hour path is feasible.** At the 300–320° stations, one intermediate idler
+in the hour wheel's own stratum (z −4.227 … −3.677) stands clear on either side
+of the line: 12 T at r 13, 18 T at r 15 az 302.5°, 19–25 T further out (module
+0.3). A twin of the hour wheel (32 T) at the station is clear in the same
+stratum. At the 220–235° lobe no idler of 17–49 T clears the minute jumper and
+the motion works, so the hour rules that lobe out.
+
+**The set path, as posed, is NOT feasible at any confirmed station.** The
+numbers:
+
+- No idler of up to 24 T past the smallest that reaches stands clear in the
+  alarm setting wheel's stratum (z −9.390 … −9.073). The selector, the release
+  sleeve, the release crank, the silence rocker and the setting idler train
+  stand there.
+- Over such an idler's footprint, the free strata are −5.869 … −4.227 and
+  −3.677 … −2.300.
+- At the centre, a coaxial transfer wheel of the setting wheel's size fits only
+  in −5.788 … −4.227. That is the core's band, which the fold vacates, between
+  the sleeve and the hour wheel.
+- A pipe from the setting wheel's plane up to that stratum, at its bore (r 3.050
+  … 3.367), crosses the alarm hand's follower stack and the alarm heart (the
+  Alarm disc unit in 279 cells, the Hour wheel in 144).
+- The equal-pitch direct pair is blocked at the centre for both sources (the
+  dial's tube chain and the motion works for the hour, the alarm disc and the
+  hour wheel for the set).
+
+**The set's existing lift is the path that is feasible.** Idler 1's compound
+pinion i1b (28 T, pitch 4.2, at r 8.700, az 18°) already carries the set up
+from the setting lane into the disc's own plane, and it meshes the disc's 30 T
+rim there. That is TODO 117's set branch, 1:1 with the setting wheel through
+the rim, with today's sense.
+
+- A satellite disc that meshes i1b directly stands on the circle of radius
+  8.700 about its axis.
+- 9 of the 144 stations on that circle read clear, at r 11.13–13.28, az
+  328–338°, just past the study's window.
+- **r 12.5, az 334°** is confirmed exactly. The core holds 0.471, nearest the
+  alarm winding contrate, and the feeler 0.573.
+- Its column is free over z −6.650 … −2.300, which holds the core.
+- Its hour idler is the smallest of all: 10 T at r 6.3, clear on either side.
+- Its run to the lock is the shortest (below).
+- The one path not measured there is i1b against the satellite's seat plate. It
+  is the same mesh at the same centre distance the disc makes today.
+
+**The run to the lock.** The feeler's output is its tail (TODO 199). With the
+feeler turned to bring its tail nearest the lock's pivot:
+
+- Today, at the centre, the run is 27.66 in plan.
+- At the 300–320° stations it is 26.7–30.0. A straight bar at the tail's plane
+  is unobstructed, and the lock stands 2.57 plate-ward.
+- At r 12.5 az 334° it is 22.34.
+- At the 220–235° lobe it is 36–39, through the dial's tube chain and the hour
+  wheel.
+
+**The controls.** All pass:
+
+- K1: the core judged at the disc's own axis meets the centre column (the dial
+  unit's tube chain, the sleeve, the hour wheel).
+- K2: the scan's planted block reads its own interval exactly, and the off-ray
+  pin is missed by the ray and caught by the surface pass.
+- K3: the hub reads its running fit on the hour tube, 0.04405. That is within
+  [0.04214, 0.05], the 0.05 bore less the 40-facet bore's sagitta. The core
+  ghost at the axis reads 0 against the tube.
+- K4: the identity carry reproduces the feeler's metal at deviation 0.
+- K5: no core vertex lies outside the envelope.
+
+The one warning the run raises is the step-over guard (§38/TODO 8), and it
+belongs to the probe's own posing: the pose net jumps the hour 1.80 rad in a
+tick. Boot is silent.
+
+**What it leaves to step 4.** The hour transfer is a one-idler 1:1 pair in the
+hour wheel's own plane, at either site. The set transfer has two answers:
+
+1. Keep i1b and stand the satellite on its circle (r 11.1–13.3, az 328–338°).
+   That fold needs no set idler.
+2. Keep the owner's station in the study's window. That needs the set taken
+   off somewhere other than the setting wheel's own plane, which this layout
+   does not offer.
+
+The owner chooses. The 'alarm detector' rows `orbit`, `setCarry` and
+`discStill` hold either one.
+
+**Held by.**
+
+- `lineSpec` reads 6 references, 115 rows and 2 forks (no new fork), with every
+  control PASS.
+- `probe-70-line-spec`: all 28 trees PASS. The 21 earlier trees fail exactly
+  the rows they did before, and the detector's rows stay green in every one.
+- The local battery (`--only lineSpec,support,graph,alarmHandoffs,strikeHandoff,axisEntry
+  --no-incremental --shards 2`) passes **18/18 gates**. Within it:
+  - `alarmHandoffs`: 32 hand-offs, 0 waived.
+  - The fingerprint is deterministic at 1623414317, the base's hash.
+  - Boot is silent.
+- The per-unit §152 digests over the pose net are identical to `567ca24f`'s.
+  The `main.js` change is a refactor of two expressions into the laws object,
+  with the same operations, so no sweep can move and the long sweeps were not
+  re-run.
+- `explain-quotes` PASS (269 claims), `check-item-numbers` OK, and
+  `index-instruments --check` PASS (306 instruments). The explainer is
+  unchanged.
+
+## §278, landing 5 — the satellite fold: the detector leaves the centre column (the depth is not yet reclaimed)
+
+Landing 4 measured where the detector could stand. The owner then chose the
+station: on idler 1's compound pinion's circle, so the satellite's disc meshes
+i1b directly. The detector is a faithful 1:1 copy, with no differential. This
+landing moves the metal. **It does not change the depth.** `Z_DIAL` and
+`CASE_HEIGHT_MAX_MM` (11.586 mm) are unchanged, and the cased watch measures
+what it did. The reclaim is bound by members the fold keeps (below, "What the
+fold leaves to the depth"). The owner decided to ship the satellite move as
+built. The about-0.5 u reclaim and the release crank's re-site are a later
+landing.
+
+### The station is two circles, and the first root is the build as it stood
+
+Two members fix where the satellite stands. Neither is chosen:
+
+- **The disc still meshes i1b.** i1b already carries the set into the disc's
+  plane, 1:1 with the setting wheel through the rim (TODO 117's set branch).
+  Keeping that mesh at the same centre distance (the branch module's closure,
+  `ALARM_SET_DW1` = 8.700) puts the satellite's axis on a circle of 8.700
+  about i1.
+- **The silence finger stays where it is.** §45's rocker reaches from the
+  sleeve's arm to the feeler's tail. Every arm, ratio and force of that chain
+  was derived from where its finger stands (`ALARM_SIL_FINGER_R` 5.86 out along
+  `ALARM_RELEASE_AZ`). The feeler reads the collar at every azimuth at once, so
+  its azimuth about the satellite is free. It is turned so that its finger seat
+  (5.86 from the detector's axis, on the lever's line) lies exactly under the
+  finger. That is a second circle, of 5.86 about the finger.
+
+The two circles meet twice. One root is the dial's axis itself: the centre
+column satisfied both relations. A boot assert holds that root on the axis
+(< 1e-6), so a change to either circle that stops passing through the old
+build is caught. The other root is the satellite:
+
+| | value |
+|---|---|
+| station, world | (10.1345, −5.8103): r 11.682, az 330.17° — inside landing 4's clear band (r 11.1–13.3, az 328–338°) |
+| carry about i1 (`ALARM_DETECTOR_TURN`) | −84.347° dial-local; the disc, the seat and the satellite arbor are built in a frame turned by it, so i1b stands at the bearing from the stack's axis it always did and the seat plate's relief for its tips is the build's own |
+| feeler | its lever's outward radial points from the satellite at the finger; its tail now points at the dial's axis, its pivot at r 6.216 from it, its tail's end at r 5.328 |
+
+The feeler's return blade (TODO 190's fold off the tail's line) goes to the
+side away from the rocker's chord. TODO 190 wrote that side down as lever −y.
+It is now READ off the chord, which the turn put on −y, so the blade goes to +y.
+The free length, k and both seat forces are unchanged.
+
+### The hour arrives through teeth
+
+The reader is hour-borne (TODO 117), so on the satellite the hour has to arrive
+there 1:1 with the same sense, or the coincidence would walk with the time.
+Rule 2 says it arrives through teeth:
+
+**hour wheel (32) → idler (9) → satellite wheel (32)**, module `MW_MODULE_2`
+(0.3), all in the hour wheel's own plane (world −3.677 … −4.227).
+
+- The idler cancels out of the ratio (32/9 · 9/32), and two external meshes
+  restore the sense. The satellite wheel turns exactly as the hour wheel does.
+  `alarmDetectorIdlerA` and `alarmDetectorHourA` are the chain, one law each.
+  The tick poses both spins from them, and the trip reads the satellite's hour
+  through them rather than `hourDialA`.
+- **The satellite wheel is the hour wheel's twin.** It has the same count,
+  module, face and plane, cut for its one mate, the idler. Its addendum is
+  0.32485 against the hour wheel's 0.36296, because the face's generating
+  circle is the smaller mate's. It is bored on the hour tube's own section
+  (`HOUR_TUBE_INNER` … `HOUR_TUBE_OUTER`), because every bore of the copied
+  stack (the disc's hub, the seat plate) is cut to that tube's outside and the
+  copy keeps them. The tube runs from the wheel's plane to the collar's dial
+  face, on a stud planted in the base plate (r `HOUR_TUBE_INNER −
+  PIVOT_BORE_CLEAR` = 2.1967, the motion works' running fit), the minute
+  wheel's idiom.
+- **The idler's count and side are solved together**, against the one metal
+  that crosses the hour plane between the two axes: the feeler's bracket, whose
+  lugs stand from the plate's face up past the lever's pivot. The least count
+  that spans half the axes' distance (the reach floor) is 7. It stands almost on
+  the line of centres, where the bracket is. Each count up moves the idler off
+  the line on either side. With `gearOuterR`, the bound every station solve
+  here uses, the clearances to the lugs are:
+
+  | count | one root | the other root |
+  |---|---|---|
+  | 7 | −0.9009 | −1.1525 |
+  | 8 | −0.0397 | −0.8968 |
+  | 9 | **0.3583** | −0.5236 |
+
+  9 T it is, on the root at world (4.1099, −4.5751), r 6.147 from the dial's
+  axis. TODO 86's over-read costs a tooth here: read off the cut metal, 8 T
+  would clear by about 0.16.
+- **The hour wheel was not re-cut.** It was cut for its one mate, the minute
+  pinion (8). Cut for both mates, its spec is the same to the last digit, since
+  the face's generating circle is the smaller mate's and the addendum and root
+  clear both. A boot assert compares the two specs field by field.
+- `solveGearChain('detector hour:', …)` phases both meshes off the hour wheel
+  (the datum: the motion works' own solve clocked it). Each knob turns the
+  WHEEL inside its spin, so the collar the satellite's spin carries keeps its
+  index. That is the hour hand's own discipline at the centre. Both meshes
+  are declared rows for `meshPhase` and `transmits` under `train` and
+  `handSet`.
+
+### What moved with it
+
+- **TODO 227's skirt relief is retired.** The lip's relief existed for the
+  feeler spring's free end, which stood under the sleeve. The feeler's line
+  now passes the dial's axis no nearer than 5.328 (its edge 0.538 outside the
+  sleeve's flat, asserted at the feeler). The skirt is the full wall at every
+  azimuth, and `ALARM_SPR_YAW_MAX` went with the relief.
+- **The silence rocker is held.** Its finger's station, chord, arms, ratio and
+  forces are unchanged. Only the bar's plan JOG moved. TODO 190 cranked the
+  finger end off the feeler's bracket lugs on the bar's −y side (+0.0749, step
+  at x −0.2097). The turned bracket stands on +y, so the same rule, read off the
+  lugs, steps the other way: −0.1339, step at x −0.3757. The jog's rule now
+  takes the lugs' side as an input. It is cut straight only if the straight
+  bar clears them, and it warns if they straddle the bar.
+- **§29's feeler-bracket wall left the setting idler's route.** The satellite
+  is sited FROM i1, so the bracket cannot be a wall for i1's own route without
+  a cycle. The route's incumbent cleared it, and the bearing solve keeps the
+  incumbent whenever it clears every wall, so the route did not move. The
+  clearance is still asserted, at the feeler, against the bracket where it now
+  stands. Two new asserts sit beside it: the lever's line outside the sleeve,
+  and the bracket's lugs outside the satellite wheel's swept tips (0.174, read
+  off the cut).
+- `ALARM_SIL_FINGER_R`, `ALARM_SIL_PADDLE_R`, the bracket's lug section and
+  `_phiF` are hoisted to the station, because the satellite and the hour idler
+  are solved from them.
+
+### The inspector
+
+- **MECH_GRAPH.** Two new units: 'Alarm detector arbor' (stud, twin and tube)
+  and 'Alarm detector idler' (stud and idler), each planted in the plate. New
+  drive edges: Hour wheel → idler → arbor → reader. The disc's, the seat's and
+  the reader's bearings moved from the hour wheel to the arbor.
+- **EXPECTED pairs.** The disc, seat, reader and feeler rows that ran to the
+  Hour wheel run to the arbor. The feeler's is the nesting artifact, the
+  collar now hanging under the arbor's spin. New EXPECTED pairs: the two meshes
+  and the new units' Dial nesting.
+- **EXPECTED_CONTACT_FLOORS.** The seat's row names `alarmDetectorTube`. Two
+  new rows hold each idler mesh to its tooth contact alone.
+- **PLATE_SEATS** gains the two studs (planted). **JMP_SITE_MOVERS**: the
+  reader revolves on the satellite's wheel, and the satellite's tube gets a row
+  of its own (the idler and the twin are rotor entries).
+- **The 'alarm detector' line spec's reader read each source's turn about the
+  DETECTOR's axis.** While the stack stood on the hour tube that was the hour
+  wheel's and the alarm setting wheel's axis too. On the satellite it is
+  neither, and a turn read about another wheel's axis is not that wheel's turn.
+  The reader now reads each source about its own origin (every gear here is
+  cut about its local origin, so this works where a box centre would not).
+  Nothing else in the reference moved.
+
+### The explainer and the chrome
+
+`explain.html`'s detector entry described the centre column, so it was made
+true of the built metal:
+
+- The collar orbits on a satellite arbor, turned with the hour wheel tooth for
+  tooth through an idler (32, 9, 32 teeth, 1:1 and the same sense).
+- The hub's oil film is on the satellite's copy of the hour tube, and the
+  pad's reaction lands on the satellite's hour wheel.
+- Plate 1 is titled "the read station on its satellite arbor". Its centreline
+  is the lever's line, not the release azimuth, and the collar's label reads
+  "turns 1:1 with the hour wheel".
+- The figcaption puts the pin on the satellite's hour and the bracket on the
+  base plate. "Hung from the dial sheet" had been false since TODO 222.
+
+The six changed keys were regenerated with `--extract`. Each was re-translated
+in all 22 locales by editing the clause that changed, carrying the English's
+digits (32, 9, 32, 1:1) and leaving the markup and `<code>` identical. The two
+new units' part labels ('Alarm detector arbor', 'Alarm detector idler') are in
+every chrome table in `src/i18n.js`.
+
+### Held by
+
+- **The local battery, whole but for the point tier** (every check under
+  `--only`, `--no-incremental --shards 3`, on this container's SwiftShader
+  Chromium) passes **54/54 gates**. Boot is silent. The fingerprint is
+  deterministic at 1362851413 (the base, `69feb096`, read 1623414317: the metal
+  moved, as it should). Within it:
+  - `lineSpec` reads 6 references and 115 rows with 2 forks (no new one), every
+    control PASS. The 'alarm detector' reference measures back unforked: the
+    fold moved no row.
+  - `alarmHandoffs`: 32 hand-offs, 0 waived. The finger ⇄ tail and ring ⇄
+    tip rows read at the satellite.
+  - `meshPhase`, `meshCoverage`, `transmits`: 26 declared meshes (the two new
+    ones among them), 0 waived.
+  - `inspection` 0 FORBIDDEN over 64 units; `undeclaredClearance` 0 of 1874
+    open pairs under the margin, its debt table still empty; `expectedContacts`
+    38 pairs, 0 waived; `plateSeats` 72 seated rows and 0 debt; `jumperMovers`
+    24 rows; `intraUnit`, `assembly`, `sweptOverlap` (0 CONFIRMED) and
+    `axisEntry` all clean.
+- `probe-70-line-spec` (run from a detached copy, `ROOT=`): all 28 trees PASS.
+  The detector's seven sabotages fail exactly the rows they failed at landing
+  4, so the reference reads the satellite as it read the centre column.
+- `probe-117-trip`: the three settings trip at 36547.2, 26467.2 and 9187.2 s,
+  and the hour hand meets the alarm hand at offset 0.00102 rad at all three
+  (spread 0). That is identical to the base tree: the alarm rings when it did.
+- `probe-detector-site` reads two centres now: C, the stack's axis, and O, the
+  dial's, which coincide before the fold. Every control passes. K3 reads the
+  hub's fit on the satellite's tube at 0.04405, the hour tube's own figure. It
+  confirms the as-built station exactly: core 0.6782 (nearest the release
+  crank's cap), feeler 0.1702 (its stop under the silence rocker's bar), the
+  declared finger ⇄ tail contact exempted. The plan run from the tail's end to
+  the lock's pivot is 27.552.
+- `probe-239-boot-yield` PASS: held 397 ms at worst (ceiling 550), long task
+  1359 ms, input ack 1346 ms, 0 boot warns. `boot-progress --check` OK. The
+  fold adds no seam: `--write` REFUSES on this container on the base tree too
+  (seam 337, the jumper siting scan's adaptive stage order, visited 157, 162
+  and 161 times across three boots), so the build's added work was measured on
+  the held line instead.
+- `explain-quotes` PASS (269 claims), `index-instruments --check` OK (307
+  after the rebase), `check-item-numbers` OK.
+- After the explainer refresh: `explain-i18n --check` PASS (0 unmatched, 0
+  markup, `<code>` or number drift, 0 crossed honesty terms, no new plate
+  overflow). `glossary-links` PASS (99 links in English).
+  `l10n-review-packets` PASS (22 locales: every label translated, the two new
+  part labels included). `probe-chrome-coverage` reads no new
+  label MISSING or NOT APPLIED. Its only misses are the live frame-time readout
+  ("133.3 ms · 7 fps", then "100.0 ms · 10 fps"), a different locale on each of
+  two runs (hu, then hi and zh). That readout's string is timing on this
+  container, not a table entry. The quick battery after the rebase
+  (`lineSpec,support,graph,alarmHandoffs`) passes 16/16, boot silent,
+  fingerprint 1362851413 unchanged.
+- `probe-261-height-ledger` PASS (from a detached copy: the ledger's mutant
+  trees skip `.claude` paths, and booted from the worktree its identity control
+  times out). Cased depth is 11.586 mm. The back is governed by the ring's face,
+  with 0.004 mm over the raised glass step, and the front by the dial. The
+  dial-side band is still 7.240 u (2.744 mm). `probe-261-height-cap` PASS:
+  `CASE_HEIGHT_MAX_MM` 11.586 fires on growth and on staleness. The fold moved
+  no plane, so neither moved.
+
+### What the fold leaves to the depth
+
+The study priced the reclaim at up to 1.778 u (0.674 mm), with the keyless
+setting corner as the next binder. That price assumed the detector's band
+empties at the centre. The fold as decided does not empty it. With the dial and
+every dial-hung member moved plate-ward by Δ, and the satellite stack, i1b in
+the disc's plane, the hour wheel and the motion works held, the fold's own
+members bind first. Measured on this tree (meshClearance over §152's 52 poses,
+the moving unit translated plate-ward in steps):
+
+| pair | first Δ under `CLEAR_MARGIN` | why it is there |
+|---|---|---|
+| the release crank (dial-hung, stud in the sheet at 328°) ⇄ the satellite's core | 0.6 (clear at 0.5) | §45/TODO 236 sited the crank at the sleeve's cheapest work station, and that station stands over the satellite's band (its input arm 4.646 from the satellite's axis, inside the core's 4.758) |
+| the release sleeve ⇄ i1b | 0.65 (clear at 0.6) | i1b stays in the disc's plane to drive the satellite, and its tips reach r 4.13 from the dial's axis, under the sleeve's flat (R_OUT 4.65) |
+| the silence rocker's finger riser | 0.18 before a re-solve | the riser is 0.28 against the 0.1 crank floor; the bar's plane can be re-solved between the paddle (dial-hung) and the finger (on the held tail), but that is a re-stratification of the rocker |
+| the satellite's core ⇄ the release link | none under 1.8 | |
+
+So the fold buys at most about 0.5 u (0.19 mm) of the 1.778 before the release
+crank, a member of the sleeve's drive, has to move. Re-siting the crank is the
+release run's P1 currency, since the sleeve's work law prices its station.
+Moving i1b is not available at all, because the disc's ratio is its count. That
+is a layout decision with numbers attached, filed for the next landing rather
+than absorbed here.
+
+**Owner's decision: this landing ships the satellite move as built, with the
+depth unchanged.** `Z_DIAL`'s fund, the height ledger and `CASE_HEIGHT_MAX_MM`
+are untouched, and §112, §276 and §234 are not re-solved. The reclaim (about
+0.5 u, 0.19 mm, before the crank binds) and the release crank's re-site are
+left to a later §278 landing, along with the silence rocker's
+re-stratification that a reclaim past 0.18 u would need.
 
 ### Part F — the route in 22 locales
 

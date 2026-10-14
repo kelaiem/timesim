@@ -4173,19 +4173,26 @@ export function catalogueMesh(a, b, cat, { goingTrain = true } = {}) {
 // distinct values, so it is a search and NOT a boot-time call — at depth 6 it
 // is the probe's work (tools/probe-219-catalogue.mjs), which also holds the
 // declared rows below to be what this returns.
-export function solveRatio(target, cat, { maxLen = 6, ...opts } = {}) {
+// `first`, when given, is the first mesh's DRIVER, a part outside the catalogue
+// (§219 tier three (b) landing D: the keyless rows start from the clutch gear
+// on the stem); it meshes as a parallel member of its own count.
+export function solveRatio(target, cat, { maxLen = 6, first = null, ...opts } = {}) {
   const P = [];
   for (const a of cat.counts) for (const b of cat.counts) {
     if (a.teeth === b.teeth) continue;
     const m = catalogueMesh(a, b, cat, opts);
     if (m) P.push({ a, b, ratio: ratQ(a.teeth, b.teeth), ...m });
   }
+  const P0 = !first ? P : cat.counts.flatMap((b) => {
+    const m = b.teeth !== first.teeth && catalogueMesh(first, b, cat, opts);
+    return m ? [{ a: first, b, ratio: ratQ(first.teeth, b.teeth), ...m }] : [];
+  });
   let frontier = new Map([['1/1', { val: ratQ(1), teeth: 0, chain: [] }]]);
   for (let depth = 1; depth <= maxLen; depth++) {
     const next = new Map();
     let best = null;
     for (const { val, teeth, chain } of frontier.values()) {
-      for (const p of P) {
+      for (const p of depth === 1 ? P0 : P) {
         const v = ratMul(val, p.ratio);
         const t = teeth + p.a.teeth + p.b.teeth;
         const ch = [...chain, p];
@@ -4265,6 +4272,54 @@ export function technicChainErrors(gen, key, chain, target) {
   return errs;
 }
 
+// §219 tier three (b), landing D — THE KEYLESS WORKS AS A LEGO TRANSMISSION.
+// The steel stem carries one sliding pinion that a pull moves between the
+// winding and the setting wheels. LEGO's own changeover is the same idiom: two
+// 16T CLUTCH GEARS (18946) idle on the stem, a ridged joiner (18948) is keyed
+// to it between them, and a DRIVING RING (18947) slides on the joiner's ridges
+// into one gear's recess or the other's. So each branch is a chain whose FIRST
+// DRIVER is that clutch gear, and its row is the solver's answer from it
+// (solveRatio's `first`). The targets are DERIVED from the steel counts, magnitudes
+// as the fork's rows are (each branch's sense is the build's, not the steel's):
+//   winding — stem turns to the winding spur's: the stem's pinion drives the
+//     crown wheel, which drives the spur (an idler: its count cancels);
+//   setting — stem turns to the hands': pinion → setting wheel (an idler) →
+//     minute wheel, whose cap drives the cannon pinion (main.js's
+//     HAND_RAD_PER_SET_RAD, the same four counts).
+export const TECHNIC_CLUTCH_GEAR = Object.freeze({ teeth: 16, part: '18946', kind: 'spur' });
+export const TECHNIC_KEYLESS = Object.freeze({
+  rows: Object.freeze([
+    { key: 'winding', derivedFrom: 'the stem’s pinion through the crown wheel to the winding spur',
+      chains: { technic_classic: [[16, 24], [8, 16], [8, 16], [40, 16]], technic_2026: [[16, 64], [20, 12]] } },
+    { key: 'setting', derivedFrom: 'the stem’s pinion through the setting and minute wheels to the cannon pinion',
+      chains: { technic_classic: [[16, 24], [8, 16]], technic_2026: [[16, 24], [8, 16]] } },
+  ]),
+});
+export function technicKeylessTargets() {
+  return {
+    winding: ratMul(ratQ(windPinionTeeth, crownWheelTeeth), ratQ(crownWheelTeeth, WIND_SPUR_TEETH)),
+    setting: ratMul(ratMul(ratQ(windPinionTeeth, settingWheelTeeth), ratQ(settingWheelTeeth, minuteWheelTeeth)),
+      ratQ(SETTING_CAP_TEETH, cannonPinionTeeth)),
+  };
+}
+// One keyless chain: its first driver must be the clutch gear's count (it is
+// the part the ring engages), the rest as technicChainErrors holds a fork row.
+export function technicKeylessErrors(gen, key, chain, target) {
+  const cat = CATALOGUES[gen];
+  const errs = [];
+  if (!chain.length || chain[0][0] !== TECHNIC_CLUTCH_GEAR.teeth)
+    return [`${gen} ${key}: the chain does not start from the ${TECHNIC_CLUTCH_GEAR.teeth}T clutch gear`];
+  let product = ratQ(1);
+  for (const [i, [ta, tb]] of chain.entries()) {
+    const a = i === 0 ? TECHNIC_CLUTCH_GEAR : cat.counts.find((c) => c.teeth === ta), b = cat.counts.find((c) => c.teeth === tb);
+    if (!a || !b) { errs.push(`${gen} ${key}: ${ta}:${tb} names a count the catalogue does not have`); continue; }
+    if (!catalogueMesh(a, b, cat)) errs.push(`${gen} ${key}: ${ta}:${tb} is not an admissible mesh`);
+    product = ratMul(product, ratQ(ta, tb));
+  }
+  if (!ratEq(product, target)) errs.push(`${gen} ${key}: chain multiplies to ${ratStr(product)}, the steel invariant is ${ratStr(target)}`);
+  return errs;
+}
+
 // THE BOOT ASSERT (rule 6: silent unless something regressed). Arithmetic on
 // a dozen small integers, so it costs nothing and needs no seam.
 {
@@ -4275,4 +4330,9 @@ export function technicChainErrors(gen, key, chain, target) {
       for (const e of technicChainErrors(gen, row.key, chain, targets[row.key]))
         console.warn(`§219 technic fork: ${e}`);
   }
+  const kt = technicKeylessTargets();
+  for (const row of TECHNIC_KEYLESS.rows)
+    for (const [gen, chain] of Object.entries(row.chains))
+      for (const e of technicKeylessErrors(gen, row.key, chain, kt[row.key]))
+        console.warn(`§219 technic keyless: ${e}`);
 }

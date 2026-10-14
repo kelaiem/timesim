@@ -21768,17 +21768,23 @@ for (const [end, F, M, w] of [
 // coupling: the hand sweeps while being set. Radii are DERIVED from the pin
 // orbits the chain block computed; the band and travel were priced there.
 // Hoisted above the sleeve build (from the release-complex block below).
+// The release line's azimuth, as §29 sited the feeler on the centre column
+// (0.44 rad off the stem line, so its bracket stood clear of i1b's tips). Since
+// §278 landing 5 no part of the detector stands on it: it is where the SILENCE
+// rocker's FINGER stands (ALARM_SIL_FINGER_R out along it), the rocker is held
+// exactly as built, and the satellite is sited so that the feeler's tail passes
+// under that finger (ALARM_DETECTOR_AT, below the setting idler's route).
 const ALARM_FEELER_AZ_OFF = 0.44;
 const ALARM_RELEASE_AZ = Math.atan2(alarmWorld.y, alarmWorld.x) - ALARM_FEELER_AZ_OFF;
-// TODO 227 — the feeler's reach into the sleeve's footprint, hoisted from the
-// feeler build 1,500 lines down: the skirt's relief is cut where the feeler
-// spring's free end stands, and that station is the lever's bear point.
+// The feeler's own proportions, hoisted from the feeler build 1,500 lines down
+// by TODO 227 (the skirt's relief read the bear point; §278 landing 5 retired
+// that relief when the satellite fold carried the feeler out from under the
+// sleeve). They are the lever's, measured from the detector's own axis.
 const ALARM_FEELER_PIVOT_R = 5.5; // bracket lugs' inboard faces clear the rim's tips by one margin (asserted)
 const ALARM_TRACK_RMID = 3.05;   // the reader's track centre radius (derivation at ALARM_TRACK_HALFW below)
 const ALARM_FEELER_ARM_LEN = ALARM_FEELER_PIVOT_R - ALARM_TRACK_RMID; // pivot → pin
 const ALARM_FEELER_BEAR_R = ALARM_FEELER_ARM_LEN * 0.45;  // bearing inboard of the pin
 const ALARM_FEELER_SPR_FREE = 0.7;                        // the blade's reach past the pivot's station: with BEAR_R, its FREE LENGTH (TODO 190: no longer the stud's station — see the blade)
-const ALARM_SPR_YAW_MAX = Math.PI / 4;   // how far off the lever's line the blade may lie for the skirt's relief to cover it — asserted at the blade (the lug solve lands ≈ 30.8°)
 const ALARM_FEELER_SPR_LIFT = 0.06;   // the blade's anchored end stands this far over the lever's top plane while its bear end sits ON that plane (the built blade's z; hoisted from the blade build, where it was a bare literal)
 const ALARM_SLEEVE_THROAT_R = alarmTailRAt(ALARM_A_RELEASE_PHI) + ALARM_A_PIN_R - 0.03; // full-press flank − face cover
 const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03;       // flat bore: rest flank + working clear
@@ -22009,7 +22015,7 @@ const ALARM_SLEEVE_TAB_REL_AZ = Math.asin(Math.min(1, ALARM_TAB_CLEAR_REQ / ALAR
 const ALARM_SLEEVE_TAB_AZ = ALARM_CORNER_W_AZ + ALARM_SLEEVE_TAB_REL_AZ; // world
 const ALARM_SLEEVE_Z_ENGAGED = ALARM_SLEEVE_TOP;                    // flat top, engaged (margin under the arm band)
 const ALARM_SLEEVE_Z_REST = ALARM_SLEEVE_TOP - ALARM_SLEEVE_TRAVEL; // flat top, at rest
-const ALARM_SKIRT_PLAN = {};   // TODO 227 — the skirt's profile and relief as built, for the asserts below
+const ALARM_SKIRT_PLAN = {};   // TODO 227 — the skirt's profile as built, for the asserts below (its relief retired by §278 landing 5)
 const alarmSleeveUnit = new THREE.Group();
 dialFace.add(alarmSleeveUnit);
 registerLabel('Alarm release sleeve', alarmSleeveUnit);
@@ -22037,17 +22043,16 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   // declared envelope's floor (zBot) and the cap is flush with the flat's
   // underside, clipped at the flat's own rim.
   //
-  // THE LIP'S RELIEF. A lip that wide (t·√2 = 0.448) at the floor reaches over the
-  // feeler spring's free end: the floor stands one CLEAR_MARGIN over the ARM's top,
-  // and the blade's end stands SPRING_FLAT_U/2 above that, so only
-  // CLEAR_MARGIN − SPRING_FLAT_U/2 = 0.0840 is left to the spring — and the
-  // spring is the unit's other piece of metal at that station. The face must run
-  // to A at every azimuth (the pin orbits the tube), so what gives is the lip's
-  // OUTER corner, in a sector about the lever's line: below zCut — one margin over
-  // the blade's end — and outboard of rKeep — where the blade's nearest corner is
-  // a margin away through the diagonal — the metal is absent, the way the disc
-  // track's notch is the absence of track. The wall above zCut is untouched, so
-  // the shell keeps t normal to the face everywhere but the tip's own taper.
+  // THE LIP'S RELIEF IS RETIRED (§278 landing 5). TODO 227 cut the lip's outer
+  // corner away in a sector about the feeler's line, because the lip (t·√2 =
+  // 0.448 wide at the floor) reached over the feeler spring's free end, which
+  // stood under the sleeve one CLEAR_MARGIN − SPRING_FLAT_U/2 below its floor.
+  // The satellite fold carried the feeler, its blade with it, off the centre
+  // column: the blade's end now stands outside the sleeve's footprint
+  // altogether (asserted at the feeler, where the satellite's station is known),
+  // so the relief has nothing to clear and is not cut. The skirt is the full
+  // wall at every azimuth: A → E along the envelope's floor, up the outer wall
+  // to the cap, and back along the flat's underside to the face's top.
   const t = STOCK_MIN_U;
   const zTopS = -ALARM_SLEEVE_T, zBotS = -ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H;
   const rTopS = ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H, rBotS = ALARM_SLEEVE_THROAT_R;
@@ -22055,58 +22060,12 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   const outerZ = (r) => r - faceC - t * Math.SQRT2;    // the wall's outer surface, t behind the face
   const capEnd = Math.min(rTopS + t * Math.SQRT2, ALARM_SLEEVE_R_OUT); // the cap stops at the flat's rim
   const lipEnd = rBotS + t * Math.SQRT2;               // where the full wall meets the floor
-  // --- the relief, from the spring's metal -------------------------------
-  const sprEndTopS = (ALARM_FEELER_TOP + SPRING_FLAT_U / 2) - ALARM_SLEEVE_Z_REST; // the blade end's top, sleeve-local z (at rest, riding)
-  const sprRise = ALARM_FEELER_SPR_LIFT / (ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R); // the blade climbs this much per unit of its length toward its anchor
-  const dz0 = zBotS - sprEndTopS;                      // what the floor leaves the spring's END: CLEAR_MARGIN − SPRING_FLAT_U/2
-  const rBear = ALARM_FEELER_PIVOT_R - ALARM_FEELER_BEAR_R;   // the bear point, on the lever's line
-  const rcMin = rBear - SPRING_FLAT_U / 2;             // the blade's innermost possible corner: its width, square on (the yaw only pulls it out)
-  const rKeep = dz0 >= CLEAR_MARGIN ? Infinity : rcMin - Math.sqrt(CLEAR_MARGIN * CLEAR_MARGIN - dz0 * dz0); // the lip stays to here: a margin from that corner through the diagonal
-  // The relieved underside clears the blade's top over the whole footprint: the
-  // blade climbs toward its anchor, so its top at the rim (the farthest the ring
-  // reaches, along the blade at the steepest yaw) is the binding height.
-  const sprReach = (ALARM_SLEEVE_R_OUT - rcMin) / Math.cos(ALARM_SPR_YAW_MAX);
-  const zCut = Math.max(zBotS, sprEndTopS + sprRise * sprReach + CLEAR_MARGIN + MEASURED_MARGIN_BAND); // one margin over the blade
-  const reliefHalf = Math.asin(Math.min(1, (SPRING_FLAT_U / 2 + (ALARM_SLEEVE_R_OUT - rcMin) * Math.tan(ALARM_SPR_YAW_MAX) + CLEAR_MARGIN) / rKeep)); // the blade's lateral reach over the ring, plus the margin
-  const reliefRamp = reliefHalf;                       // the notch runs out over as much again, so no wall of the ring is a step
-  const reliefAz = Math.PI - ALARM_RELEASE_AZ;         // the lever's line, in this dial-mirrored frame
-  const relieved = dz0 < CLEAR_MARGIN;
-  // A profile is [A, K1, E|K2, K3, G, C, B] — seven corners, so the full ring and
-  // the relieved ring share a topology and the notch is a MORPH of one corner (E
-  // sliding to K2), which keeps the body one closed manifold with no cap faces.
-  const K1 = [rKeep, zBotS], K2 = [rKeep, zCut], K3 = [zCut + faceC + t * Math.SQRT2, zCut];
-  const Epos = [lipEnd, zBotS];
-  const G = [capEnd, outerZ(capEnd)];
-  const profileAt = (s) => {                           // s = 0 full wall … 1 fully relieved
-    const m = [Epos[0] + (K2[0] - Epos[0]) * s, Epos[1] + (K2[1] - Epos[1]) * s];
-    return [[rBotS, zBotS], K1, m, K3, G, [capEnd, zTopS], [rTopS, zTopS]];
-  };
-  // Ring angles: a coarse ring all round and a fine one through the notch. The
-  // ramps are smoothstep so the surface is C1 where it leaves the full wall.
-  const ringAz = new Set();
-  for (let i = 0; i < 96; i++) ringAz.add(+((i / 96) * Math.PI * 2).toFixed(9));
-  const norm2pi = (a) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  if (relieved) {
-    const steps = 8;
-    for (let i = 0; i <= steps; i++) {
-      for (const sgn of [-1, 1]) {
-        ringAz.add(+norm2pi(reliefAz + sgn * (reliefHalf + (i / steps) * reliefRamp)).toFixed(9));
-      }
-    }
-    ringAz.add(+norm2pi(reliefAz).toFixed(9));
-  }
-  const rings = [...ringAz].sort((a, b) => a - b);
-  const reliefAmt = (az) => {                          // 1 inside the notch, 0 beyond its ramps
-    if (!relieved) return 0;
-    let d = Math.abs(norm2pi(az - reliefAz)); if (d > Math.PI) d = Math.PI * 2 - d;
-    if (d <= reliefHalf) return 1;
-    if (d >= reliefHalf + reliefRamp) return 0;
-    const u = 1 - (d - reliefHalf) / reliefRamp;
-    return u * u * (3 - 2 * u);
-  };
+  const profile = [[rBotS, zBotS], [lipEnd, zBotS], [capEnd, outerZ(capEnd)], [capEnd, zTopS], [rTopS, zTopS]];
+  const rings = [];
+  for (let i = 0; i < 96; i++) rings.push((i / 96) * Math.PI * 2);
   const skirtGeo = (() => {
     const pos = [], nor = [];
-    const ringPts = rings.map((az) => profileAt(reliefAmt(az)));
+    const ringPts = rings.map(() => profile);
     const edgeN = (P, k) => {                          // outward normal of profile edge k (profile wound so the metal is on the left)
       const [r0, z0] = P[k], [r1, z1] = P[(k + 1) % P.length];
       const dr = r1 - r0, dzz = z1 - z0, L = Math.hypot(dr, dzz) || 1;
@@ -22145,7 +22104,7 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   // its ENVELOPE (H tall), not its wall. The wall is t normal to the face by
   // construction above; declare it.
   skirt.userData.stockSection = t;
-  Object.assign(ALARM_SKIRT_PLAN, { full: profileAt(0), volume: skirtGeo.userData.skirtVolume, relieved, zCut, rKeep, dz0, reliefHalf, reliefRamp, reliefAz, rcMin, lipEnd, capEnd, faceC });
+  Object.assign(ALARM_SKIRT_PLAN, { full: profile, volume: skirtGeo.userData.skirtVolume, lipEnd, capEnd, faceC });
   alarmSleeve.add(skirt);
   // TODO 236 — the three GUIDE BOSSES, each a land off the flat's rim, a
   // DROPPER down (dial-ward) to the rollers' height, and a radial pin through
@@ -22196,9 +22155,8 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   say('rest gap, skirt top edge to pin tip', tipZ - restSkirtTop, ALARM_SLEEVE_GAP - 1e-6);
   say('envelope floor above the feeler', (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H) - ALARM_FEELER_TOP, CLEAR_MARGIN);
   say('flat bore clears the resting pin', ALARM_SLEEVE_R_IN - (alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R), 0.03 - 1e-6);
-  say('sleeve outer inside the feeler lugs', 5.32 - CLEAR_MARGIN - ALARM_SLEEVE_R_OUT, 0);
 }
-// TODO 227 — the skirt's wall and its relief, held to the constraints they were
+// TODO 227 — the skirt's wall, held to the constraints it was
 // derived from (rule 6: achieved and required numbers). The profile's AREA is the
 // proof the shell is metal: the collinear offset this replaced measured 0.0177 u²,
 // the triangle at its cap; a wall t normal to a face of length L is L·t.
@@ -22214,14 +22172,6 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   say('the body has volume (winding)', P.volume, 1e-3);
   say('cap stays inside the flat rim', ALARM_SLEEVE_R_OUT - P.capEnd, 0);
   say('lip no lower than the envelope floor', Math.min(...pts.map((q) => q[1])) - (-ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H), 0);
-  if (P.relieved) {
-    say('the lip keeps its face tip (rKeep past A)', P.rKeep - ALARM_SLEEVE_THROAT_R, 0.1);   // a lip shorter than 0.1 u would be all taper
-    say('the relieved underside stays under the cap (the wall above it survives)', -ALARM_SLEEVE_T - P.zCut, 1e-3);
-    // the relieved corner clears the blade end's top by one margin, and the lip
-    // that stays clears its nearest corner through the diagonal
-    say('relieved underside over the blade end', P.zCut - ((ALARM_FEELER_TOP + SPRING_FLAT_U / 2) - ALARM_SLEEVE_Z_REST), CLEAR_MARGIN);   // the end is the blade's lowest point; the rise toward the rim is in zCut itself
-    say('kept lip to the blade corner, through the diagonal', Math.hypot(P.rcMin - P.rKeep, P.dz0), CLEAR_MARGIN);
-  }
 }
 
 // --- 'Alarm setting wheel' — the FRICTION-coupled crown of the centre stack.
@@ -22346,12 +22296,11 @@ const ALARM_DISC_TEETH = 30; // rim — with i1b (28) the branch nets −(28/30)
 // The branch MODULE is closure-derived: i1 stands ALARM_SET_DW1 from the
 // centre, and the i1b⇄rim mesh must span exactly that — m = 2·DW1/(28+30).
 const ALARM_BRANCH_MODULE = 2 * ALARM_SET_DW1 / (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH);
-// (ALARM_FEELER_AZ_OFF / ALARM_RELEASE_AZ are declared above the sleeve
-// build — the skirt's relief sector is centred on the release line, TODO 227.)
+// (ALARM_FEELER_AZ_OFF / ALARM_RELEASE_AZ are declared above the sleeve build:
+// since §278 landing 5 they place the silence finger, not the feeler.)
 const ALARM_BAND_Z = Z_DIAL - ALARM_DISC_TOP + ALARM_DISC_BODY_T / 2; // WORLD plane of the band gears (= the disc body's mid-plane mirrored)
-// (ALARM_FEELER_PIVOT_R — hoisted above the sleeve build by TODO 227: the skirt's relief reads where the feeler's bear point stands.)
-const _uF = { x: -Math.cos(ALARM_RELEASE_AZ), y: Math.sin(ALARM_RELEASE_AZ) };
-const _pivotDial = { x: _uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R };
+// (The feeler's direction _uF and its pivot are declared with the satellite's
+// station, ALARM_DETECTOR_AT, once the setting idler's route has placed i1.)
 
 // Route: i1 leaves the az-0 line at the BEARING, i2 lands by two-circle
 // intersection (+y solution) — the same construction the winding chain's
@@ -22495,15 +22444,14 @@ const alarmSetWallsAt = (geom) => {
   { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: secondsWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
   ..._alarmSetWallsMeshed,
-  // §29's feeler-bracket wall, which until now was asserted 500 lines
-  // DOWNSTREAM of the route it constrains — the half of "one list, used twice"
-  // that Layer 1's reverted bearing sweep paid for: it traded away a §29 feeler
-  // clearance that was not in the objective, because it was not in any list.
-  // It keeps §29's own radius and, like the rods, carries no z gate. (Its twin,
-  // the §29 pawl tail corridor, went with the tail run — TODO 190. The route's
-  // incumbent cleared it, and the bearing solve keeps the incumbent whenever it
-  // clears every wall, so retiring it cannot move the route.)
-  { name: '§29 feeler bracket', x: -_uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R, r: 0.31, lo: -Infinity, hi: Infinity },
+  // (§29's feeler-bracket wall is RETIRED by §278 landing 5, and the reason is
+  // the dependency's direction, not the clearance: the satellite detector is
+  // sited FROM i1 — its disc meshes i1b at the branch's centre distance — so the
+  // feeler's bracket cannot be a wall for i1's own route without a cycle. The
+  // clearance it held is still asserted, at the feeler (`§29 feeler: bracket …
+  // from i1`), against the bracket where it now stands. The route's incumbent
+  // cleared it, and the bearing solve keeps the incumbent whenever it clears
+  // every wall, so retiring it cannot move the route.)
   ];
 };
 // The shipped list is that function at the built corner — one list, so the
@@ -22747,6 +22695,89 @@ const ALARM_SET_I2 = _setRoute ? _setRoute.i2 : null;
   // refusal branch keeps §76's honesty: when no bearing clears, the incumbent
   // stands and boot stays loud rather than spending a clearance to go green.)
 }
+// --- §278 landing 5 — THE SATELLITE DETECTOR'S STATION -----------------------
+// The owner's fold: the detector — the set-carried disc, the hour-carried
+// reader collar, TODO 144's seat and the feeler that reads the collar — leaves
+// the centre column for a SATELLITE arbor, a faithful 1:1 copy with no
+// differential, so the centre's dial-side band no longer spends 5.312 u on it.
+// Where it stands is not chosen; two members it must keep fix it:
+//   · THE DISC STILL MESHES i1b. Idler 1's compound pinion already carries the
+//     set up into the disc's plane, and the rim drive is TODO 117's set branch,
+//     1:1 with the setting wheel. Keeping that mesh (the same pair at the same
+//     centre distance, the branch module's own closure) puts the satellite's
+//     axis on a circle of ALARM_SET_DW1 about i1 — no set idler at all.
+//   · THE SILENCE FINGER STAYS WHERE IT IS. §45's rocker reaches from the
+//     sleeve's arm to the feeler's tail, and every arm, ratio and force of that
+//     chain was derived from where its finger stands (ALARM_SIL_FINGER_R out
+//     along ALARM_RELEASE_AZ). The feeler reads the collar at every azimuth at
+//     once, so its azimuth about the satellite is free; it is turned to put
+//     its tail's finger seat — ALARM_SIL_FINGER_R from the detector's axis, on
+//     the lever's line — exactly under that finger, and the rocker is held as
+//     built. That is a second circle, of ALARM_SIL_FINGER_R about the finger.
+// Two circles meet in two points, and one of them is the CENTRE COLUMN ITSELF:
+// the build as it stood satisfies both (the disc meshed i1b from the dial axis,
+// and the finger stood 5.86 out on the feeler's line). The other is the
+// satellite. That is what makes this a fold and not a re-design — the same two
+// relations, at the second root — and the assert below holds the first root on
+// the dial axis, so a change to either circle that stops passing through the
+// old build is caught rather than silently moving the station somewhere else.
+// §278 landing 4's site report read the station band clear at r 11.1–13.3,
+// az 328–338° on this circle; on the shipped layout this root lands inside it
+// (r 11.68, az 330.2°). That is a measurement, not an assert — at another spec
+// point the corner moves i1 and the finger with it — and the battery's sweeps
+// hold the station clear wherever the two circles put it.
+//
+// THE STACK IS CARRIED ROUND i1, rigidly: the disc, its seat and the satellite
+// arbor turn about their own axis by the angle the carry swings the i1 → axis
+// line through, so i1b stands at the same bearing from the detector's axis as
+// it did from the dial's. The seat plate's relief for i1b's tips and the disc's
+// mesh with it are then the build's own, unchanged in the stack's frame.
+const ALARM_DETECTOR_CD = ALARM_BRANCH_MODULE * (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH) / 2;   // the i1b ⇄ rim centre distance (= ALARM_SET_DW1 by the module's closure)
+const ALARM_SIL_FINGER_R = 5.86;   // (lug outer 5.61 + margin → 5.76) .. (the retired stud station's inner face 6.11 − margin → 5.96), centred; held since TODO 190 — and since §278 landing 5 the finger's station is HELD while the feeler moves under it
+const ALARM_SIL_PADDLE_R = 6.9;    // §45 stage 2's station on the old run, outboard of the sleeve's guide band, inboard of i1's stand-off — the sleeve's arm reaches out to it since TODO 236
+const ALARM_SIL_FINGER_AT = { x: -Math.cos(ALARM_RELEASE_AZ) * ALARM_SIL_FINGER_R, y: Math.sin(ALARM_RELEASE_AZ) * ALARM_SIL_FINGER_R };   // dial-local
+const _i1Dl = { x: P.dial.x - ALARM_SET_I1.x, y: ALARM_SET_I1.y - P.dial.y };   // i1, dial-local (world (x, y) ↔ dial-local (P.dial.x − x, y − P.dial.y))
+const ALARM_DETECTOR_ROOTS = (() => {
+  const dx = ALARM_SIL_FINGER_AT.x - _i1Dl.x, dy = ALARM_SIL_FINGER_AT.y - _i1Dl.y, d = Math.hypot(dx, dy);
+  const r1 = ALARM_DETECTOR_CD, r2 = ALARM_SIL_FINGER_R;
+  const a = (d * d + r1 * r1 - r2 * r2) / (2 * d), h2 = r1 * r1 - a * a;
+  if (!(h2 >= 0)) return null;
+  const h = Math.sqrt(h2), ex = dx / d, ey = dy / d;
+  const mx = _i1Dl.x + a * ex, my = _i1Dl.y + a * ey;
+  const roots = [{ x: mx - h * ey, y: my + h * ex }, { x: mx + h * ey, y: my - h * ex }];
+  roots.sort((p, q) => Math.hypot(p.x, p.y) - Math.hypot(q.x, q.y));
+  return roots;   // [the centre column, the satellite]
+})();
+if (!ALARM_DETECTOR_ROOTS)
+  console.warn('§278 satellite: the i1b circle and the silence finger\'s circle do not meet — no station keeps both the rim mesh and the finger');
+const ALARM_DETECTOR_AT = ALARM_DETECTOR_ROOTS ? ALARM_DETECTOR_ROOTS[1] : { x: 0, y: 0 };   // dial-local
+const ALARM_DETECTOR_WORLD = { x: P.dial.x - ALARM_DETECTOR_AT.x, y: P.dial.y + ALARM_DETECTOR_AT.y };
+// the carry: the angle the i1 → axis line swings through, dial-local
+const ALARM_DETECTOR_TURN = Math.atan2(ALARM_DETECTOR_AT.y - _i1Dl.y, ALARM_DETECTOR_AT.x - _i1Dl.x) - Math.atan2(-_i1Dl.y, -_i1Dl.x);
+{
+  const say = (nm, ok, got, need) => { if (!ok) console.warn(`§278 satellite ${nm}: ${got}, need ${need}`); };
+  if (ALARM_DETECTOR_ROOTS) {
+    const c0 = Math.hypot(ALARM_DETECTOR_ROOTS[0].x, ALARM_DETECTOR_ROOTS[0].y);
+    say('the first root is the centre column (the build as it stood satisfies both circles)', c0 < 1e-6, c0.toExponential(3), '≤ 1e-6');
+  }
+  say('rim still meets i1b at the branch\'s centre distance', Math.abs(Math.hypot(ALARM_DETECTOR_AT.x - _i1Dl.x, ALARM_DETECTOR_AT.y - _i1Dl.y) - ALARM_SET_DW1) < 1e-9, 'off', 'ALARM_SET_DW1');
+}
+// The feeler: its lever's outward radial about the detector's axis points at
+// the finger, so the finger seat (ALARM_SIL_FINGER_R on the lever's line) is
+// the finger's own station. dial-local; _phiF (the inboard direction) below.
+const _uF = (() => {
+  const dx = ALARM_SIL_FINGER_AT.x - ALARM_DETECTOR_AT.x, dy = ALARM_SIL_FINGER_AT.y - ALARM_DETECTOR_AT.y, d = Math.hypot(dx, dy);
+  return { x: dx / d, y: dy / d };
+})();
+const _pivotDial = { x: ALARM_DETECTOR_AT.x + _uF.x * ALARM_FEELER_PIVOT_R, y: ALARM_DETECTOR_AT.y + _uF.y * ALARM_FEELER_PIVOT_R };
+const _phiF = Math.atan2(-_uF.y, -_uF.x);   // the lever's inboard direction, dial-local
+// The bracket lugs' plan section and station (TODO 190 hoisted them once for the
+// blade's solve; §278 landing 5 hoists them again, for the hour idler's).
+// Inherited literals — §29 step 3's bracket, unchanged.
+const ALARM_FEELER_LUG_L = 0.22;   // along the lever
+const ALARM_FEELER_LUG_W = 0.18;   // across it
+const ALARM_FEELER_LUG_Y = 0.25;   // lever-local |y| of each lug's centre
+const alarmDetectorDl = (r) => ({ x: ALARM_DETECTOR_AT.x + _uF.x * r, y: ALARM_DETECTOR_AT.y + _uF.y * r });   // a station on the lever's line, r from the detector's axis
 // --- TODO 15 — MESH PHASE IS NOT FREE, AND IS SOLVED AS A CHAIN ------------
 //
 // Reported by eye, twice: the winding idlers interlocked tooth-on-tooth, and
@@ -23391,8 +23422,19 @@ const ALARM_DISC_SIGN = -1;  // set-term sign in the disc's dial-frame law
   if (Math.abs(ALARM_SET_I2_TEETH / ALARM_DISC_TEETH - ALARM_SET_I2_TEETH / ALARM_SET_WHEEL_TEETH) > 1e-12)
     console.warn('§29 disc branch: rim ratio no longer mirrors the lane pair — the differential encodes the wrong rate');
 }
+// §278 landing 5 — THE SATELLITE'S FRAME. The disc, its seat and the satellite
+// arbor that carries the reader are built in this frame exactly as they stood
+// about the dial's axis — every radius and plane of the stack unchanged — and the
+// frame stands at the satellite's station, turned by the carry round i1
+// (ALARM_DETECTOR_TURN), so i1b meets the rim at the bearing it always did. Not a
+// labelled unit: it owns no metal, only a place.
+const alarmDetectorFrame = new THREE.Group();
+alarmDetectorFrame.name = 'alarmDetectorFrame';
+alarmDetectorFrame.position.set(ALARM_DETECTOR_AT.x, ALARM_DETECTOR_AT.y, 0);
+alarmDetectorFrame.rotation.z = ALARM_DETECTOR_TURN;
+dialFace.add(alarmDetectorFrame);
 const alarmDiscGroup = new THREE.Group();
-dialFace.add(alarmDiscGroup);
+alarmDetectorFrame.add(alarmDiscGroup);
 registerLabel('Alarm release disc', alarmDiscGroup);
 registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry local z
 {
@@ -23548,11 +23590,157 @@ const READER_STANDOFF = READER_PIN_LEN + READER_RING_T / 2;
 // world is TOWARD it. The arithmetic was right and the gloss was wrong, which
 // is how the fold spent two landings looking for room on the far side.)
 const READER_RING_Z = ALARM_TRACK_TOP + READER_STANDOFF;
+// --- §278 landing 5 — THE HOUR'S TRANSFER TO THE SATELLITE --------------------
+// The reader is hour-borne (TODO 117's topology: the hour carries the collar
+// round to meet the set-carried notch), so on the satellite the hour has to
+// ARRIVE there, through teeth (rule 2), and arrive 1:1 with the same sense, or
+// the coincidence would walk with the time. Two meshes in the hour wheel's own
+// plane do it:
+//   hour wheel (32) → idler (N) → satellite wheel (32)
+// The idler cancels out of the ratio whatever N is (32/N · N/32), and two
+// external meshes restore the sense, so the satellite wheel turns exactly as
+// the hour wheel does — the 'alarm detector' spec's `orbit` row measures that
+// off the reader's pin. The satellite wheel is the hour wheel's TWIN: the same
+// count, module, face and plane, cut for the idler, and bored on the same tube
+// section — the hour tube's own (HOUR_TUBE_INNER..OUTER), because every bore
+// of the copied stack (the disc's hub, the seat plate) is cut to that tube's
+// outside and the copy keeps them. The tube runs on a fixed STUD planted in the
+// base plate, a running fit inside it (PIVOT_BORE_CLEAR, the motion works'
+// own), and the minute wheel's idiom; the idler runs on the motion works' own
+// stud section (MW_STUD_R, bored MW_BORE_R).
+//
+// THE IDLER'S STATION: on the perpendicular bisector of the two wheels' axes,
+// at the pitch sum from each — two roots, one either side of the line. Its
+// COUNT and SIDE are solved together against the one metal that crosses the
+// hour wheel's plane between the two axes: the feeler's bracket, whose lugs
+// stand from the plate's face up past the lever's pivot, through this plane.
+// The least count that spans half the axes' distance (the reach floor) stands
+// almost on the line of centres, where the bracket is; each count up moves the
+// idler off the line on either side. The pick is the least count, and of its
+// two roots the one whose swept tip circle clears both lugs by the margin
+// (the farther, if both do). Every other tenant of the plane is the battery's
+// to hold: measured on the shipped layout, nothing else comes within 0.3.
+// The tip is gearOuterR's, the bound every station solve here uses, and it
+// over-reads a cycloidal tip (TODO 86's miter term): it refuses 8 T at −0.0397
+// and takes 9 T at 0.3583 on the shipped layout, where the cut metal of an
+// 8 T idler would clear the lugs by about 0.16. The over-read costs a tooth.
+const ALARM_DET_HOUR_TEETH = MW_HOUR_TEETH;   // the twin: 1:1 is the count, not a law
+const alarmDetIdlerMates = (n) => [{ teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH, n] }, { teeth: ALARM_DET_HOUR_TEETH, mates: [n] }];
+const ALARM_DET_IDLER = (() => {
+  const S = ALARM_DETECTOR_AT, d = Math.hypot(S.x, S.y), ux = S.x / d, uy = S.y / d;
+  const lugs = [-1, 1].map((side) => ({
+    c: { x: _pivotDial.x - Math.sin(_phiF) * ALARM_FEELER_LUG_Y * side, y: _pivotDial.y + Math.cos(_phiF) * ALARM_FEELER_LUG_Y * side },
+    u: { x: Math.cos(_phiF), y: Math.sin(_phiF) }, v: { x: -Math.sin(_phiF), y: Math.cos(_phiF) },
+  }));
+  const lugGap = (p) => Math.min(...lugs.map((L) => {
+    const dx = p.x - L.c.x, dy = p.y - L.c.y;
+    const a = Math.abs(dx * L.u.x + dy * L.u.y) - ALARM_FEELER_LUG_L / 2, b = Math.abs(dx * L.v.x + dy * L.v.y) - ALARM_FEELER_LUG_W / 2;
+    return Math.hypot(Math.max(0, a), Math.max(0, b));
+  }));
+  const reachFloor = Math.ceil(d / MW_MODULE_2 - MW_HOUR_TEETH);   // the least count whose pitch sum spans half the axes' distance
+  for (let n = reachFloor; n <= 2 * reachFloor + 16; n++) {
+    const cd = MW_MODULE_2 * (MW_HOUR_TEETH + n) / 2, h = Math.sqrt(Math.max(0, cd * cd - (d / 2) * (d / 2)));
+    const tipR = G.gearOuterR({ module: MW_MODULE_2, teeth: n, mates: alarmDetIdlerMates(n), thickness: MW_WHEEL_T });
+    const roots = [1, -1].map((side) => {
+      const at = { x: S.x / 2 - uy * h * side, y: S.y / 2 + ux * h * side };
+      return { teeth: n, side, cd, at, tipR, clear: lugGap(at) - tipR };
+    }).filter((r) => r.clear >= CLEAR_MARGIN + MEASURED_MARGIN_BAND).sort((p, q) => q.clear - p.clear);
+    if (roots.length) return { ...roots[0], reachFloor };
+  }
+  console.warn('§278 detector idler: no count up to twice the reach floor stands clear of the feeler\'s bracket on either side');
+  return null;
+})();
+const ALARM_DET_IDLER_TEETH = ALARM_DET_IDLER ? ALARM_DET_IDLER.teeth : MW_PINION_TEETH;
+const ALARM_DET_IDLER_AT = ALARM_DET_IDLER ? ALARM_DET_IDLER.at : { x: 0, y: 0 };
+// The hour wheel was cut for its one mate, the minute pinion (MW_PINION_TEETH),
+// long before this idler existed. Cut for both, its spec is the same to the
+// last digit — the face's generating circle is the SMALLER mate's (the pinion's
+// 8 against the idler's count), and its addendum and root clear both — so the
+// wheel is not re-cut. Asserted, because a count under the pinion's would not
+// leave it so.
+{
+  const one = G.gearToothSpec({ module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH] });
+  const both = G.gearToothSpec({ module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH, { teeth: ALARM_DET_IDLER_TEETH, mates: [MW_HOUR_TEETH, ALARM_DET_HOUR_TEETH] }] });
+  for (const k of ['faceGenR', 'addendum', 'dedendum', 'tipR', 'rootR', 'halfThickAng'])
+    if (one[k] !== both[k]) console.warn(`§278 detector idler: the hour wheel cut for the pinion alone differs from one cut for the pinion and the ${ALARM_DET_IDLER_TEETH}-T idler in ${k} (${one[k]} vs ${both[k]}) — re-cut it for both mates`);
+}
+const ALARM_DET_STUD_R = HOUR_TUBE_INNER - PIVOT_BORE_CLEAR;   // the satellite tube's bore less the running fit
+// the rule-2 chain, one law, called by the build's solve, the tick and the trip
+const alarmDetectorIdlerA = (hourA) => -hourA * (MW_HOUR_TEETH / ALARM_DET_IDLER_TEETH);
+const alarmDetectorHourA = (hourA) => -alarmDetectorIdlerA(hourA) * (ALARM_DET_IDLER_TEETH / ALARM_DET_HOUR_TEETH);
+const alarmDetIdlerUnit = new THREE.Group();
+dialFace.add(alarmDetIdlerUnit);
+registerLabel('Alarm detector idler', alarmDetIdlerUnit);
+registerExplode(alarmDetIdlerUnit, 0, 2, 1); // dialFace child: children carry local z
+const alarmDetIdlerSpin = new THREE.Group();
+alarmDetIdlerSpin.position.set(ALARM_DET_IDLER_AT.x, ALARM_DET_IDLER_AT.y, 0);
+alarmDetIdlerUnit.add(alarmDetIdlerSpin);
+const alarmDetIdler = G.makeGear({ name: 'alarmDetectorIdler',
+  module: MW_MODULE_2, teeth: ALARM_DET_IDLER_TEETH, mates: alarmDetIdlerMates(ALARM_DET_IDLER_TEETH),
+  thickness: MW_WHEEL_T, boreR: MW_BORE_R, spokes: 0, material: MATS.brass, hub: false,
+});
+alarmDetIdler.traverse((o) => { if (o.isMesh) o.name = 'alarmDetectorIdler'; });
+alarmDetIdler.position.z = MW_Z2;
+alarmDetIdlerSpin.add(alarmDetIdler);
+{
+  // the idler's stud: the minute wheel's, riveted into the plate's dial-side
+  // face (0.4 buried, MW_STUD's own) and standing through the idler's plane
+  const studTop = MW_PLATE_FACE_LOCAL - 0.4;
+  const studEnd = MW_Z2 + MW_WHEEL_T / 2;
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(MW_STUD_R, MW_STUD_R, studEnd - studTop, 12), MATS.steel);
+  stud.name = 'alarmDetectorIdlerStud';
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(ALARM_DET_IDLER_AT.x, ALARM_DET_IDLER_AT.y, (studEnd + studTop) / 2);
+  alarmDetIdlerUnit.add(stud);
+}
+const alarmDetArborUnit = new THREE.Group();
+alarmDetectorFrame.add(alarmDetArborUnit);
+registerLabel('Alarm detector arbor', alarmDetArborUnit);
+registerExplode(alarmDetArborUnit, 0, 2, 1);
+const alarmDetHourSpin = new THREE.Group();   // the satellite's hour: tick writes it from the chain
+alarmDetArborUnit.add(alarmDetHourSpin);
+const alarmDetWheel = G.makeGear({ name: 'alarmDetectorWheel',
+  module: MW_MODULE_2, teeth: ALARM_DET_HOUR_TEETH, mates: [{ teeth: ALARM_DET_IDLER_TEETH, mates: [MW_HOUR_TEETH, ALARM_DET_HOUR_TEETH] }],
+  thickness: MW_WHEEL_T, boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
+});
+alarmDetWheel.traverse((o) => { if (o.isMesh) o.name = 'alarmDetectorWheel'; });
+alarmDetWheel.position.z = MW_Z2;
+alarmDetHourSpin.add(alarmDetWheel);
+// the tube: from the wheel's plane up to the reader collar's dial face — the
+// hour tube's section, carrying the disc's hub and the seat plate's bore on
+// its outside as the hour tube did
+const ALARM_DET_TUBE_TOP = READER_RING_Z + READER_RING_T / 2;
+{
+  const len = ALARM_DET_TUBE_TOP - MW_Z2;
+  const tube = new THREE.Mesh(ringGeo(HOUR_TUBE_INNER, HOUR_TUBE_OUTER, len), MATS.steel);
+  tube.name = 'alarmDetectorTube';
+  tube.position.z = MW_Z2 + len / 2;
+  alarmDetHourSpin.add(tube);
+  const studTop = MW_PLATE_FACE_LOCAL - 0.4;
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_DET_STUD_R, ALARM_DET_STUD_R, ALARM_DET_TUBE_TOP - studTop, 24), MATS.steel);
+  stud.name = 'alarmDetectorStud';
+  stud.rotation.x = Math.PI / 2;
+  stud.position.z = (ALARM_DET_TUBE_TOP + studTop) / 2;
+  alarmDetArborUnit.add(stud);
+}
+// The two meshes, phase-solved as a chain off the hour wheel (the datum: its
+// teeth were clocked to the minute pinion in the motion works' own solve), each
+// knob turning the WHEEL inside its spin so the reader the satellite's spin
+// carries keeps its index (the hour hand's own discipline at the centre). The
+// spins are first posed from the chain at the hour the build stands at, so the
+// solve is taken in a frame the tick reproduces (TODO 116/132).
+alarmDetIdlerSpin.rotation.z = alarmDetectorIdlerA(hourWheelGroup.rotation.z);
+alarmDetHourSpin.rotation.z = alarmDetectorHourA(hourWheelGroup.rotation.z);
+solveGearChain('detector hour:', [
+  { obj: mwHourWheel, teeth: MW_HOUR_TEETH, name: 'hour wheel' },
+  { obj: alarmDetIdler, teeth: ALARM_DET_IDLER_TEETH, name: 'idler' },
+  { obj: alarmDetWheel, teeth: ALARM_DET_HOUR_TEETH, name: 'satellite wheel' },
+], MW_MODULE_2, ['train', 'handSet']);
 const alarmReaderUnit = new THREE.Group();
 // HOUR-CARRIED: parented into the hour wheel's own group, so the collar orbits
 // with the hour and needs no drive of its own. That IS the topology — the
 // reader moving is what replaces the differential.
-hourWheelGroup.add(alarmReaderUnit);
+alarmDetHourSpin.add(alarmReaderUnit);   // §278 landing 5: the satellite's hour, the hour wheel's twin through the idler
 registerLabel('Alarm release reader', alarmReaderUnit);
 registerExplode(alarmReaderUnit, 0, 2, 1); // dial-side, like the disc it reads
 // THE DRIVEN LIFT IS ITS OWN GROUP, and that is not tidiness. updateExplode
@@ -23623,9 +23811,9 @@ const alarmFeelerUnit = new THREE.Group();
 dialFace.add(alarmFeelerUnit);
 registerLabel('Alarm release feeler', alarmFeelerUnit);
 registerExplode(alarmFeelerUnit, 0, 2, 1); // dialFace child: children carry local z
-// dial-local frame: world (x,y) ↔ dial-local (−x, y); uF = outward radial
-// at the release azimuth, phiF = the inboard direction's dial-local angle.
-const _phiF = Math.atan2(-_uF.y, -_uF.x);
+// (dial-local frame: world (x,y) ↔ dial-local (−x, y); _uF, the lever's
+// outward radial about the detector's axis, and _phiF, the inboard direction's
+// dial-local angle, are declared with the satellite's station.)
 // (ALARM_FEELER_ARM_LEN — hoisted with the pivot radius, TODO 227.)
 // §124 — the trip's rock SPENDS clearance under the arm: the drop rotates
 // the lever, so a station at radius r dips rise(r) = ALARM_PIN_DROP·
@@ -23654,9 +23842,7 @@ const _armMidZ = (ALARM_FEELER_TOP + (ALARM_FEELER_TOP - ALARM_FEELER_T)) / 2; /
 // The bracket lugs' plan section and station, hoisted (TODO 190): the return
 // blade's azimuth is solved against the −y lug, so the lug and that solve read
 // one number. Inherited literals — §29 step 3's bracket, unchanged.
-const ALARM_FEELER_LUG_L = 0.22;   // along the lever
-const ALARM_FEELER_LUG_W = 0.18;   // across it
-const ALARM_FEELER_LUG_Y = 0.25;   // lever-local |y| of each lug's centre
+// (ALARM_FEELER_LUG_L 0.22 / _W 0.18 / _Y 0.25 — hoisted to the satellite's station by §278 landing 5: the hour's idler is solved against the bracket.)
 let alarmFeelerSpringBlade = null, alarmFeelerBearPoint = null, alarmFeelerSprAnchorL = null;
 const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
 {
@@ -23673,8 +23859,8 @@ const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
   const lugH = lugTop - MW_PLATE_FACE_LOCAL;         // plate face → past the pivot
   for (const side of [-1, 1]) {
     const lug = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_LUG_L, ALARM_FEELER_LUG_W, lugH), MATS.nickel);
-    lug.position.set(_uF.x * ALARM_FEELER_PIVOT_R - Math.sin(_phiF) * ALARM_FEELER_LUG_Y * side,
-                     _uF.y * ALARM_FEELER_PIVOT_R + Math.cos(_phiF) * ALARM_FEELER_LUG_Y * side,
+    lug.position.set(_pivotDial.x - Math.sin(_phiF) * ALARM_FEELER_LUG_Y * side,
+                     _pivotDial.y + Math.cos(_phiF) * ALARM_FEELER_LUG_Y * side,
                      MW_PLATE_FACE_LOCAL + lugH / 2);
     lug.rotation.z = _phiF;
     lug.name = 'alarmFeelerLug';   // TODO 222: a PLATE_SEATS row names it (planted)
@@ -23682,15 +23868,15 @@ const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
   }
   const pivotPin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.62, 8), MATS.steel);
   pivotPin.rotation.z = _phiF; // cylinder axis +y → rotate into the tangential direction
-  pivotPin.position.set(_uF.x * ALARM_FEELER_PIVOT_R, _uF.y * ALARM_FEELER_PIVOT_R, _armMidZ);
+  pivotPin.position.set(_pivotDial.x, _pivotDial.y, _armMidZ);
   alarmFeelerUnit.add(pivotPin);
   // Banking stop: a post over the TAIL whose face banks the tail's RISE at
   // exactly the pin's allowed drop (lever ratio tail/arm) — the derived
   // travel limit that protects the rim crossing.
   const stopGap = ALARM_PIN_DROP * (ALARM_FEELER_TAIL / ALARM_FEELER_ARM_LEN);
   const stop = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.12), MATS.nickel);
-  stop.position.set(_uF.x * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL),
-                    _uF.y * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL),
+  stop.position.set(alarmDetectorDl(ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL).x,
+                    alarmDetectorDl(ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL).y,
                     ALARM_FEELER_TOP + stopGap + 0.06); // face sits stopGap above the tail's rest top (TODO 173: the box's half-height was counted twice — the stop never banked)
   stop.rotation.z = _phiF;
   stop.name = 'alarmFeelerStop';   // TODO 173: a hand-off row selects it
@@ -23706,9 +23892,23 @@ const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
 // −drop/ARM_LEN under 'XYZ') rocked about the dial's Y axis, cos φ = 0.905 of
 // the intended angle, in the wrong sense: the dropped tip opened 0.1628 off
 // the ring it reads.
-function feelerRockAt(drop) { return drop / ALARM_FEELER_ARM_LEN; }
+// §278 landing 4 — THE DETECTOR'S LAWS, written once and called by the build
+// and the tick exactly as they were inlined (the same operation, so the metal
+// and every pose are bit-identical), and handed to the 'alarm detector' line
+// spec (inspect.js LINE_SPECS, via `clock.lineLaws.detector`) so the reference
+// evaluates the law the movement is posed by at ITS inputs rather than
+// restating it. Each takes its geometry as arguments; neither reads a station.
+//   · pinArcHalf — the angle the pin's radius subtends at the track's radius:
+//     the trip's drop ramps over the notch's half-width ± this (the tick's
+//     drop law), so the pin bottoms over notchW − 2·pinArcHalf of hour angle.
+//   · rockAt — the lever's turn about its pin for a drop at its read arm.
+const ALARM_DETECTOR_LAWS = Object.freeze({
+  pinArcHalf: (pinR, trackR) => pinR / trackR,
+  rockAt: (drop, arm) => drop / arm,
+});
+function feelerRockAt(drop) { return ALARM_DETECTOR_LAWS.rockAt(drop, ALARM_FEELER_ARM_LEN); }
 const alarmFeelerLever = new THREE.Group();
-alarmFeelerLever.position.set(_uF.x * ALARM_FEELER_PIVOT_R, _uF.y * ALARM_FEELER_PIVOT_R, _armMidZ);
+alarmFeelerLever.position.set(_pivotDial.x, _pivotDial.y, _armMidZ);
 alarmFeelerLever.rotation.order = 'ZYX';   // TODO 173: rock about the lever's own pin
 alarmFeelerLever.rotation.z = _phiF; // local +x = inboard, toward the pin
 alarmFeelerUnit.add(alarmFeelerLever);
@@ -23868,10 +24068,15 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   const _sA = ALARM_FEELER_BEAR_R - ALARM_FEELER_LUG_L / 2, _sB = ALARM_FEELER_LUG_Y + ALARM_FEELER_LUG_W / 2;
   const SPR_AZ = Math.asin((CLEAR_MARGIN + MEASURED_MARGIN_BAND + SPRING_FLAT_U / 2) / Math.hypot(_sA, _sB))
     + Math.atan2(_sB, _sA);                                             // ≈ 30.8°
-  const anchorL = { x: ALARM_FEELER_BEAR_R - SPR_L * Math.cos(SPR_AZ), y: -SPR_L * Math.sin(SPR_AZ) };  // lever-local
+  // §278 landing 5 — WHICH side is read off the chord, not written down: the
+  // satellite turned the lever about the finger (its tail now points at the
+  // dial's axis), so the chord's side in the lever's frame is whatever the
+  // fold made it. The blade goes to the other one.
+  const _padDl = { x: -Math.cos(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R };
+  const _chordY = (_padDl.x - ALARM_SIL_FINGER_AT.x) * -Math.sin(_phiF) + (_padDl.y - ALARM_SIL_FINGER_AT.y) * Math.cos(_phiF);   // the chord on lever-local +y
+  const SPR_SIDE = _chordY > 0 ? -1 : 1;
+  const anchorL = { x: ALARM_FEELER_BEAR_R - SPR_L * Math.cos(SPR_AZ), y: SPR_SIDE * SPR_L * Math.sin(SPR_AZ) };  // lever-local
   alarmFeelerSprAnchorL = anchorL;   // the silence rocker's finger assert reads it
-  if (SPR_AZ > ALARM_SPR_YAW_MAX)
-    console.warn(`TODO 227 skirt relief: the blade lies ${(SPR_AZ * 180 / Math.PI).toFixed(2)}° off the lever's line, past the ${(ALARM_SPR_YAW_MAX * 180 / Math.PI).toFixed(0)}° the sleeve skirt's relief was cut for`);
   const anchor = {   // lever-local → dial-local (the lever's own yaw, about the pivot)
     x: _pivotDial.x + Math.cos(_phiF) * anchorL.x - Math.sin(_phiF) * anchorL.y,
     y: _pivotDial.y + Math.sin(_phiF) * anchorL.x + Math.cos(_phiF) * anchorL.y,
@@ -23889,12 +24094,12 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
       const t = Math.max(0, Math.min(1, ((px - ALARM_FEELER_BEAR_R) * vx + py * vy) / L2));
       return Math.hypot(px - ALARM_FEELER_BEAR_R - t * vx, py - t * vy);
     };
-    const lugClr = segPt(ALARM_FEELER_LUG_L / 2, -_sB) - SPRING_FLAT_U / 2;
+    const lugClr = segPt(ALARM_FEELER_LUG_L / 2, SPR_SIDE * _sB) - SPRING_FLAT_U / 2;
     if (lugClr < CLEAR_MARGIN)
-      console.warn(`TODO 190 feeler blade: clears the bracket's −y lug by ${lugClr.toFixed(4)}, need ${CLEAR_MARGIN}`);
-    const studClr = Math.hypot(Math.max(0, Math.abs(anchorL.x) - ALARM_FEELER_LUG_L / 2), Math.max(0, Math.abs(anchorL.y + ALARM_FEELER_LUG_Y) - ALARM_FEELER_LUG_W / 2)) - 0.09;
+      console.warn(`TODO 190 feeler blade: clears the bracket's lug on its side by ${lugClr.toFixed(4)}, need ${CLEAR_MARGIN}`);
+    const studClr = Math.hypot(Math.max(0, Math.abs(anchorL.x) - ALARM_FEELER_LUG_L / 2), Math.max(0, Math.abs(anchorL.y - SPR_SIDE * ALARM_FEELER_LUG_Y) - ALARM_FEELER_LUG_W / 2)) - 0.09;
     if (studClr < CLEAR_MARGIN)
-      console.warn(`TODO 190 feeler blade: the stud stands ${studClr.toFixed(4)} off the bracket's −y lug, need ${CLEAR_MARGIN}`);
+      console.warn(`TODO 190 feeler blade: the stud stands ${studClr.toFixed(4)} off the bracket's lug on its side, need ${CLEAR_MARGIN}`);
   }
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.34, 8), MATS.nickel);
   stud.rotation.x = Math.PI / 2;
@@ -24042,7 +24247,7 @@ const ALARM_SEAT_BLADE_Z = ALARM_DISC_TOP + CLEAR_MARGIN + ALARM_SEAT_SINK;     
 const ALARM_SEAT_TRACK_CLEAR = ALARM_TRACK_RMID + ALARM_TRACK_HALFW + CLEAR_MARGIN;           // the blade's line keeps this far from the axis: the raised track plus a margin
 const ALARM_SEAT_PAD_RADIUS = (ALARM_SEAT_TRACK_CLEAR + _discRootR) / 2;                      // the foot lands mid-way across the smooth annulus, track edge to root circle
 const alarmSeatUnit = new THREE.Group();
-dialFace.add(alarmSeatUnit);
+alarmDetectorFrame.add(alarmSeatUnit);   // §278 landing 5: carried with the disc
 registerLabel('Alarm release seat', alarmSeatUnit);
 registerExplode(alarmSeatUnit, 0, 2, 1); // dialFace child: children carry local z
 let ALARM_SEAT = null;   // the published hold arithmetic — filled by the build below, read by alarmSetHoldRecord
@@ -24226,11 +24431,34 @@ function alarmSetHoldRecord() {
 // MECH_GRAPH.todo carries the gap meanwhile.
 // §29 step 3 corridor + travel asserts:
 {
-  const bx = -_uF.x * ALARM_FEELER_PIVOT_R, by = _uF.y * ALARM_FEELER_PIVOT_R; // world XY of the bracket
+  const bx = P.dial.x - _pivotDial.x, by = P.dial.y + _pivotDial.y; // world XY of the bracket (§278: on the satellite)
+  // §278 landing 5 — the fold carried the lever out from under the sleeve; the
+  // skirt's relief (TODO 227) is retired on that, so hold it: the lever's line,
+  // tip to tail end, stands outside the sleeve's flat by a margin plus its own
+  // half-width, wherever the satellite puts it.
+  {
+    let rMin = Infinity;
+    for (let i = 0; i <= 64; i++) { const q = alarmDetectorDl(ALARM_TRACK_RMID + (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL - ALARM_TRACK_RMID) * i / 64); rMin = Math.min(rMin, Math.hypot(q.x, q.y)); }
+    if (rMin - ALARM_PIN_R - ALARM_SLEEVE_R_OUT < CLEAR_MARGIN)
+      console.warn(`§278 feeler: the lever's line passes ${rMin.toFixed(4)} from the dial axis — its edge ${(rMin - ALARM_PIN_R - ALARM_SLEEVE_R_OUT).toFixed(4)} outside the sleeve's flat, need ${CLEAR_MARGIN} (the skirt's relief is retired)`);
+  }
   const i1bTip = (ALARM_BRANCH_MODULE * ALARM_SET_I1_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
   const dToI1 = Math.hypot(bx - ALARM_SET_I1.x, by - ALARM_SET_I1.y);
   if (dToI1 - i1bTip - 0.31 < CLEAR_MARGIN)
     console.warn(`§29 feeler: bracket ${dToI1.toFixed(2)} from i1 — i1b tips reach ${i1bTip.toFixed(2)} + lug 0.31, need ${CLEAR_MARGIN} clear`);
+  // §278 landing 5 — the lugs stand from the plate up past the pivot, so on the
+  // satellite they cross the hour wheel's plane too, where the twin turns: its
+  // swept tips keep the margin from the lugs' inboard corners. The tip is read
+  // off the CUT (the farthest vertex of the twin's own metal from its axis), not
+  // gearOuterR, whose miter term over-reads a cycloidal tip (TODO 86: 5.4378
+  // here against the metal's 5.2182).
+  {
+    let twinTip = 0;
+    { const v = new THREE.Vector3(); alarmDetWheel.updateMatrix(); alarmDetWheel.traverse((o) => { if (!o.isMesh) return; o.updateMatrix(); const pos = o.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrix); twinTip = Math.max(twinTip, Math.hypot(v.x, v.y)); } }); }
+    const lugIn = Math.hypot(ALARM_FEELER_PIVOT_R - ALARM_FEELER_LUG_L / 2, ALARM_FEELER_LUG_Y - ALARM_FEELER_LUG_W / 2);
+    if (lugIn - twinTip < CLEAR_MARGIN)
+      console.warn(`§278 feeler: the bracket's lugs stand ${(lugIn - twinTip).toFixed(4)} off the satellite twin's tips (lug ${lugIn.toFixed(4)}, tips ${twinTip.toFixed(4)}), need ${CLEAR_MARGIN}`);
+  }
   const rimTip = (ALARM_BRANCH_MODULE * ALARM_DISC_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
   if ((ALARM_FEELER_PIVOT_R - 0.31) - rimTip < CLEAR_MARGIN)
     console.warn(`§29 feeler: lug inner face ${(ALARM_FEELER_PIVOT_R - 0.31).toFixed(2)} vs rim tips ${rimTip.toFixed(2)}, need ${CLEAR_MARGIN}`);
@@ -24264,8 +24492,8 @@ function alarmSetHoldRecord() {
   // the rim's tips vs the follower annulus above are z-separated by the
   // chain (asserted at the stack); its one same-plane neighbour is i1b —
   // the declared mesh. Assert the mesh IS closed (pitch sum = distance):
-  const closure = Math.abs(Math.hypot(ALARM_SET_I1.x - P.dial.x, ALARM_SET_I1.y - P.dial.y)
-    - ALARM_BRANCH_MODULE * (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH) / 2);
+  const closure = Math.abs(Math.hypot(ALARM_SET_I1.x - ALARM_DETECTOR_WORLD.x, ALARM_SET_I1.y - ALARM_DETECTOR_WORLD.y)
+    - ALARM_BRANCH_MODULE * (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH) / 2);   // §278 landing 5: the rim stands on the satellite
   if (closure > 1e-9) console.warn(`§29 branch: i1b⇄rim mesh fails to close by ${closure.toFixed(4)}`);
   // THE TRIP INVARIANCE, RE-AIMED BY TODO 117. It used to say: for two
   // settings, (hour == set) must put the notch at the same WORLD azimuth, the
@@ -24958,8 +25186,8 @@ const ALARM_SLEEVE_DRIVE_AZ = 328 * DEG2RAD;   // world az
 // ALARM_SIL_PIN_LEVER and every force and throw below rest on it. Its throw
 // is a DESIGNED lever ratio off the lifter's travel: close the rest gap,
 // press a fully-risen tail back to rest, and a 0.01 capture bite.
-const ALARM_SIL_FINGER_R = 5.86;   // (lug outer 5.61 + margin → 5.76) .. (the retired stud station's inner face 6.11 − margin → 5.96), centred; held since TODO 190
-const ALARM_SIL_PADDLE_R = 6.9;    // §45 stage 2's station on the old run, outboard of the sleeve's guide band, inboard of i1's stand-off — the sleeve's arm reaches out to it since TODO 236
+// (ALARM_SIL_FINGER_R = 5.86 — hoisted to the satellite's station by §278 landing 5: the satellite is sited so the feeler's tail passes under the finger there.)
+// (ALARM_SIL_PADDLE_R = 6.9 — hoisted beside the finger's station by §278 landing 5: the feeler's blade reads which side of it the rocker's chord runs.)
 const ALARM_SIL_GAP = 0.05;        // rest gap, finger underside → tail top (the standard rest-gap figure)
 const ALARM_SIL_TAIL_ARM = ALARM_SIL_FINGER_R - ALARM_FEELER_PIVOT_R;  // the finger's arm on the feeler lever
 const ALARM_SIL_PIN_LEVER = ALARM_FEELER_ARM_LEN / ALARM_SIL_TAIL_ARM; // tail travel → pin travel through the pivot
@@ -25896,7 +26124,7 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
 {
   // ends in dial-local xy (world → dial-local mirror, the _uF convention)
   const pd = { x: -Math.cos(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R, y: Math.sin(ALARM_SLEEVE_TAB_AZ) * ALARM_SIL_PADDLE_R }; // §76: absolute — this unit is not rotated onto the corner
-  const fg = { x: _uF.x * ALARM_SIL_FINGER_R, y: _uF.y * ALARM_SIL_FINGER_R };
+  const fg = { x: ALARM_SIL_FINGER_AT.x, y: ALARM_SIL_FINGER_AT.y };   // §278 landing 5: HELD — the satellite's feeler is turned to bring its tail under it
   const chord = Math.hypot(fg.x - pd.x, fg.y - pd.y);
   const aF = chord * ALARM_SIL_RATIO / (1 + ALARM_SIL_RATIO); // finger arm; paddle arm = chord − aF
   alarmSilPivotFrac = aF / chord;
@@ -25985,17 +26213,13 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   const _rz = alarmSilRocker.rotation.z, _cz = Math.cos(_rz), _sz = Math.sin(_rz);
   const _toRocker = (p) => ({ x: (p.x - piv.x) * _cz + (p.y - piv.y) * _sz, y: -(p.x - piv.x) * _sz + (p.y - piv.y) * _cz });
   const _feelerLugs = [-1, 1].map((side) => {
-    const cx = _uF.x * ALARM_FEELER_PIVOT_R - Math.sin(_phiF) * ALARM_FEELER_LUG_Y * side;
-    const cy = _uF.y * ALARM_FEELER_PIVOT_R + Math.cos(_phiF) * ALARM_FEELER_LUG_Y * side;
+    const cx = _pivotDial.x - Math.sin(_phiF) * ALARM_FEELER_LUG_Y * side;
+    const cy = _pivotDial.y + Math.cos(_phiF) * ALARM_FEELER_LUG_Y * side;
     const ux = Math.cos(_phiF), uy = Math.sin(_phiF), vx = -uy, vy = ux;
     return [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([a, b]) => _toRocker({
       x: cx + a * ux * ALARM_FEELER_LUG_L / 2 + b * vx * ALARM_FEELER_LUG_W / 2,
       y: cy + a * uy * ALARM_FEELER_LUG_L / 2 + b * vy * ALARM_FEELER_LUG_W / 2 }));
   });
-  const _lugReachY = Math.max(..._feelerLugs.flat().map((c) => c.y));
-  if (!(_lugReachY < -_barHalfW))
-    console.warn(`TODO 190 silence: the feeler's bracket lugs reach rocker-local y ${_lugReachY.toFixed(4)} — no longer wholly on the bar's −y side, so a +y jog cannot clear them`);
-  const ALARM_SIL_BAR_JOG = _lugReachY + _barHalfW + CLEAR_MARGIN + MEASURED_MARGIN_BAND;   // the jogged part's −y face stands one margin off the lugs' reach
   let _rockMax = 0;
   for (let i = 0; i <= 40; i++) _rockMax = Math.max(_rockMax, Math.asin(clamp(Math.abs(alarmSleeveLiftAt(i / 40)) / (chord - aF), -1, 1)));
   const _rockDx = (x) => _barHalfT * Math.sin(_rockMax) + Math.abs(x) * (1 - Math.cos(_rockMax));
@@ -26006,18 +26230,43 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
       c = Math.min(c, planSegSegDist(R[i], R[(i + 1) % 4], L[j], L[(j + 1) % 4]));
     return c;
   };
+  // §278 landing 5 — THE JOG STEPS AWAY FROM WHICHEVER SIDE THE LUGS ARE ON.
+  // The satellite turned the feeler about this finger, and its bracket now
+  // stands on the bar's +y side (TODO 190 found it on −y): the same step, read
+  // off the lugs, goes the other way. Cut straight only if the straight bar
+  // already clears them by the margin with the largest rock carried.
+  const _straightClear = _rectLugClear(_barX0 - _rockDx(_barX0), -_barHalfW, _barX1, _barHalfW);
+  const ALARM_SIL_BAR_STRAIGHT = _straightClear >= CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+  const _lugYs = _feelerLugs.flat().map((c) => c.y);
+  const _lugMaxY = Math.max(..._lugYs), _lugMinY = Math.min(..._lugYs);
+  if (!ALARM_SIL_BAR_STRAIGHT && !(_lugMaxY < -_barHalfW) && !(_lugMinY > _barHalfW))
+    console.warn(`TODO 190 silence: the feeler's bracket lugs straddle the bar (rocker-local y ${_lugMinY.toFixed(4)}…${_lugMaxY.toFixed(4)}) — no jog to either side can clear them`);
+  const ALARM_SIL_BAR_JOG = ALARM_SIL_BAR_STRAIGHT ? 0
+    : _lugMaxY < -_barHalfW ? _lugMaxY + _barHalfW + CLEAR_MARGIN + MEASURED_MARGIN_BAND    // lugs on −y: the jogged part's −y face one margin off their reach (TODO 190)
+      : _lugMinY - _barHalfW - CLEAR_MARGIN - MEASURED_MARGIN_BAND;                         // lugs on +y: its +y face one margin off theirs (§278 landing 5)
+  const _jogClear = (x0, x1) => _rectLugClear(x0, ALARM_SIL_BAR_JOG - _barHalfW, x1, ALARM_SIL_BAR_JOG + _barHalfW);
   let _stepX = _barX0;
-  while (_stepX < 0 && _rectLugClear(_stepX - _rockDx(_stepX), -_barHalfW, _barX1, _barHalfW) < CLEAR_MARGIN + MEASURED_MARGIN_BAND) _stepX += 0.001;
+  if (!ALARM_SIL_BAR_STRAIGHT)
+    while (_stepX < 0 && _rectLugClear(_stepX - _rockDx(_stepX), -_barHalfW, _barX1, _barHalfW) < CLEAR_MARGIN + MEASURED_MARGIN_BAND) _stepX += 0.001;
   const ALARM_SIL_BAR_STEP_X = _stepX;   // rocker-local x of the crank's step
+  if (!ALARM_SIL_BAR_STRAIGHT && _jogClear(_barX0 - _rockDx(_barX0), ALARM_SIL_BAR_STEP_X + _rockDx(ALARM_SIL_BAR_STEP_X)) < CLEAR_MARGIN)
+    console.warn(`TODO 190 silence: the jogged part of the bar stands ${_jogClear(_barX0 - _rockDx(_barX0), ALARM_SIL_BAR_STEP_X).toFixed(4)} off the feeler's lugs, need ${CLEAR_MARGIN}`);
   const _barShape = new THREE.Shape();
-  _barShape.moveTo(_barX0, ALARM_SIL_BAR_JOG - _barHalfW);
-  _barShape.lineTo(ALARM_SIL_BAR_STEP_X, ALARM_SIL_BAR_JOG - _barHalfW);
-  _barShape.lineTo(ALARM_SIL_BAR_STEP_X, -_barHalfW);
-  _barShape.lineTo(_barX1, -_barHalfW);
-  _barShape.lineTo(_barX1, _barHalfW);
-  _barShape.lineTo(ALARM_SIL_BAR_STEP_X, _barHalfW);
-  _barShape.lineTo(ALARM_SIL_BAR_STEP_X, ALARM_SIL_BAR_JOG + _barHalfW);
-  _barShape.lineTo(_barX0, ALARM_SIL_BAR_JOG + _barHalfW);
+  if (ALARM_SIL_BAR_STRAIGHT) {
+    _barShape.moveTo(_barX0, -_barHalfW);
+    _barShape.lineTo(_barX1, -_barHalfW);
+    _barShape.lineTo(_barX1, _barHalfW);
+    _barShape.lineTo(_barX0, _barHalfW);
+  } else {
+    _barShape.moveTo(_barX0, ALARM_SIL_BAR_JOG - _barHalfW);
+    _barShape.lineTo(ALARM_SIL_BAR_STEP_X, ALARM_SIL_BAR_JOG - _barHalfW);
+    _barShape.lineTo(ALARM_SIL_BAR_STEP_X, -_barHalfW);
+    _barShape.lineTo(_barX1, -_barHalfW);
+    _barShape.lineTo(_barX1, _barHalfW);
+    _barShape.lineTo(ALARM_SIL_BAR_STEP_X, _barHalfW);
+    _barShape.lineTo(ALARM_SIL_BAR_STEP_X, ALARM_SIL_BAR_JOG + _barHalfW);
+    _barShape.lineTo(_barX0, ALARM_SIL_BAR_JOG + _barHalfW);
+  }
   _barShape.closePath();
   const _barGeo = new THREE.ExtrudeGeometry(_barShape, { depth: STOCK_MIN_U, bevelEnabled: false });
   _barGeo.translate(0, 0, -_barHalfT);
@@ -26076,7 +26325,7 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   // TODO 190 — the crank's step stands outboard of these lugs (their
   // half-length 0.16 along the bar), with the largest rock carried: the
   // jogged part never reaches the joint the straight bar declares here.
-  if (ALARM_SIL_BAR_STEP_X + _rockDx(ALARM_SIL_BAR_STEP_X) > -0.32 / 2)
+  if (!ALARM_SIL_BAR_STRAIGHT && ALARM_SIL_BAR_STEP_X + _rockDx(ALARM_SIL_BAR_STEP_X) > -0.32 / 2)
     console.warn(`TODO 190 silence: the bar's step at x ${ALARM_SIL_BAR_STEP_X.toFixed(4)} (rocked ${(ALARM_SIL_BAR_STEP_X + _rockDx(ALARM_SIL_BAR_STEP_X)).toFixed(4)}) reaches the rocker's own bracket lug at −0.16 — the jog would cross it`);
   for (const side of [-1, 1]) {
     const lug = new THREE.Mesh(new THREE.BoxGeometry(0.32, STOCK_MIN_U + 0.01, -0.05 - (barZ - 0.14)), MATS.nickel);
@@ -40641,6 +40890,27 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   const springStrain = 3 * (bladeT * U) * deltaMax_m / (2 * (bladeFree * U) ** 2);
   if (springStrain > SPRING_STRAIN_MAX + 1e-12)
     console.warn(`§192: the pawl blade's root works to ${springStrain.toExponential(3)} surface strain at full deflection, over SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX.toExponential(3)} — the strain floor no longer governs its own length`);
+  // The blade's geometry on a branch, ONE definition for the scan that judges
+  // the branch and the metal cut on it (the post, the clamp, the anchor stud).
+  // The blade is clamped at its free angle behind the pawl's pivot, so the
+  // spring side, the bear station and the clamp point are branch-independent
+  // in the pawl's frame; the branch only turns the whole train about the arbor.
+  const springSide = -phiOpenSense(ALARM_PAWL_PHI_FREE);
+  const bear = { x: -bearArm, y: springSide * ALARM_PAWL_HALF_W };
+  const clampLocal = { x: -(bearArm + bladeFree), y: springSide * ALARM_PAWL_HALF_W };
+  const alarmDriverAnchorFor = (pAz) => {
+    const postAt = { x: ALARM_DRIVER_POST_R * Math.cos(pAz), y: ALARM_DRIVER_POST_R * Math.sin(pAz) };
+    const csF = Math.cos(pAz + ALARM_PAWL_PHI_FREE), snF = Math.sin(pAz + ALARM_PAWL_PHI_FREE);
+    const rootAt = { x: postAt.x + clampLocal.x * csF - clampLocal.y * snF,
+                     y: postAt.y + clampLocal.x * snF + clampLocal.y * csF };
+    const anchorAt = { x: rootAt.x - STOCK_MIN_R10 * csF,     // one stud radius on past the clamp face,
+                       y: rootAt.y - STOCK_MIN_R10 * snF };   // along the same tail line (local −x)
+    return { postAt, rootAt, anchorAt, csF, snF };
+  };
+  // (defined here, ahead of the branch scan that sweeps the arms at this width; the
+  // reasoning is at §226's block below)
+  const ALARM_DRIVER_FEATURE_W = alarmColumnWheel.userData.ratchetTooth.depth;
+  const ALARM_DRIVER_TIP_R = ALARM_DRIVER_FEATURE_W / 2;
   const branchScan = [];
   // ---- WHICH BRANCH, measured against the metal already standing in the
   // pawl's own z-band. The pawl is the only member of the driver inside the
@@ -40657,6 +40927,22 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   {
     const bandLo = ALARM_DRIVER_BOT_Z + ALARM_PAWL_BAND_Z, bandHi = bandLo + STOCK_MIN_U;
     const obst = [];
+    // §ALARM-LINK-HANGERS — THE DRIVER'S ARMS ARE JUDGED TOO, AGAINST THE METAL
+    // OF EVERY OTHER UNIT. The scan read only the pawl's band and only the
+    // switch unit's own metal, so the branch whose third arm sweeps the lay
+    // shaft's hanger columns (they rise from the shaft to the plate straight
+    // through the driver's band) tied with every other branch at "nothing in
+    // reach" and won on compactness. `armObst` is the same collection for the
+    // DRIVER's own band: every mesh whose z range overlaps it, whatever its
+    // unit, minus what turns with the driver (its stud, the pusher pin and
+    // riser — the slot arm's fixed joint) and the wheel it works on.
+    const armObst = [];
+    const armBandLo = ALARM_DRIVER_BOT_Z, armBandHi = ALARM_DRIVER_BOT_Z + ALARM_COL_DRIVER_T;
+    // the farthest any branch's arm tip stands from the arbor, plus its width
+    const armReachMax = Math.max(...branches.map((b) => {
+      const A = alarmDriverAnchorFor(b.postAz).anchorAt;
+      return Math.hypot(A.x, A.y);
+    }), ALARM_DRIVER_POST_R) + ALARM_DRIVER_TIP_R + CLEAR_MARGIN;
     {
       // A mesh COUNTS if its own z RANGE overlaps the band — not if it has a
       // vertex inside it. A post that crosses this band has vertices only at
@@ -40665,7 +40951,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       // trap, in the instrument rather than in a sweep. An empty scan is
       // asserted below, because "no obstacles" and "no measurement" look
       // identical from the outside.
-      const v = new THREE.Vector3();
+      const v = new THREE.Vector3(), v2 = new THREE.Vector3();
       movement.updateWorldMatrix(true, true);
       // §261 2c: read in the CLUSTER's frame. The band and the wheel's axis
       // below are the pre-fold ones, so each vertex goes to world and back
@@ -40673,24 +40959,56 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       // stands relative to the folded driver, rather than where it once did.
       const toCluster = alarmFoldMatrix.clone().invert();
       const m = new THREE.Matrix4();
-      alarmSwitchUnit.traverse((o) => {
+      const wc = new THREE.Vector3(ALARM_COL_POS.x, ALARM_COL_POS.y, 0).applyMatrix4(alarmFoldMatrix);
+      const box = new THREE.Box3();
+      const reachW = Math.max(ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1, armReachMax);
+      const corotates = /^(alarmColStud|alarmLinkageDriverPin|alarmLinkageDriverPinShank|alarmPusherRiser)$/;
+      const ownWheel = /^alarmCol(Base|Castellations|Skirt)$/;
+      movement.traverse((o) => {
         if (!o.isMesh || o.userData.schematic) return;
         // The WHEEL is not an obstacle to its own pawl — the nose is meant to
         // be in the teeth, and that pair is held by the outline sweep below,
         // which knows which part of the pawl is allowed to touch. Left in, the
         // saw saturates every branch at 0 and the scan chooses nothing.
-        if (/^alarmCol(Base|Castellations|Skirt)$/.test(o.name)) return;
+        if (ownWheel.test(o.name)) return;
         const pos = o.geometry.getAttribute('position'); if (!pos) return;
-        const pts = [];
+        // cheap cull: the mesh's world box against the reach disc (the box is
+        // an over-estimate, which can only keep a mesh the exact test drops)
+        box.setFromObject(o);
+        if (box.max.x < wc.x - reachW || box.min.x > wc.x + reachW || box.max.y < wc.y - reachW || box.min.y > wc.y + reachW) return;
+        const pts = [], armPts = [];
         let zLo = Infinity, zHi = -Infinity;
+        const idx = o.geometry.getIndex();
+        const triN = idx ? idx.count / 3 : pos.count / 3;
+        const at = (i, out) => out.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(m.multiplyMatrices(toCluster, o.matrixWorld));
         for (let i = 0; i < pos.count; i++) {
           v.fromBufferAttribute(pos, i).applyMatrix4(m.multiplyMatrices(toCluster, o.matrixWorld));
           zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z);
-          const dx = v.x - ALARM_COL_POS.x, dy = v.y - ALARM_COL_POS.y;
-          if (Math.hypot(dx, dy) <= ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) pts.push([dx, dy]);
         }
-        if (zHi < bandLo - 1e-9 || zLo > bandHi + 1e-9) return;   // the RANGE, not a vertex
+        const hitPawl = !(zHi < bandLo - 1e-9 || zLo > bandHi + 1e-9);   // the RANGE, not a vertex
+        const hitArm = !corotates.test(o.name) && !(zHi < armBandLo - 1e-9 || zLo > armBandHi + 1e-9);
+        if (!hitPawl && !hitArm) return;
+        // Vertices AND edge samples: a long box (a bar, a rim) has vertices only
+        // at its ends, and the arms sweep a long way between them. Edges are
+        // sampled at no more than a margin's width — in plan, which is
+        // conservative for an edge that leaves the band (it can only read nearer).
+        const push = (x, y) => {
+          const dx = x - ALARM_COL_POS.x, dy = y - ALARM_COL_POS.y;
+          const r = Math.hypot(dx, dy);
+          if (hitPawl && r <= ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) pts.push([dx, dy]);
+          if (hitArm && r <= armReachMax + 1) armPts.push([dx, dy]);
+        };
+        for (let t = 0; t < triN; t++) {
+          at(3 * t, v); at(3 * t + 1, v2);
+          const c = new THREE.Vector3(); at(3 * t + 2, c);
+          for (const [p, q] of [[v, v2], [v2, c], [c, v]]) {
+            push(p.x, p.y);
+            const L = Math.hypot(q.x - p.x, q.y - p.y), n = Math.min(64, Math.floor(L / CLEAR_MARGIN));
+            for (let k = 1; k < n; k++) push(p.x + (q.x - p.x) * k / n, p.y + (q.y - p.y) * k / n);
+          }
+        }
         for (const q of pts) obst.push(q);
+        for (const q of armPts) armObst.push(q);
       });
     }
     // the pawl's own reach, as segments in its frame plus its two discs —
@@ -40725,6 +41043,19 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
             d = Math.min(d, segDist(qx, qy, P2[i][0], P2[i][1], P2[i + 1][0], P2[i + 1][1]) - ALARM_PAWL_HALF_W);
           if (d < worst) worst = d;
         }
+        // The DRIVER'S OWN ARMS on this branch — the pawl post's and the blade
+        // anchor's, the two the branch turns (the slot arm is the pusher's, the
+        // same on every branch) — swept as capsules from the arbor to each tip
+        // through the same stroke, against the metal standing in the driver's
+        // own band. A capsule is exactly the outline's arm (hub to tip disc).
+        const Aa = alarmDriverAnchorFor(az).anchorAt;
+        for (const [armAz, armReach] of [[az, ALARM_DRIVER_POST_R], [Math.atan2(Aa.y, Aa.x), Math.hypot(Aa.x, Aa.y)]]) {
+          const tx = armReach * Math.cos(dA + armAz), ty = armReach * Math.sin(dA + armAz);
+          for (const [ox, oy] of armObst) {
+            const d = segDist(ox, oy, 0, 0, tx, ty) - ALARM_DRIVER_TIP_R;
+            if (d < worst) worst = d;
+          }
+        }
       }
       return worst;
     };
@@ -40748,6 +41079,9 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     }
     branchScan.sort((x, y) => Math.abs(x.deg) - Math.abs(y.deg));
     ALARM_DRIVER_BRANCH_CLEAR = best;
+    branchScan.obstacles = { pawlBand: obst.length, armBand: armObst.length };
+    if (!armObst.length)
+      console.warn('§ALARM-LINK-HANGERS: the driver\'s arm scan found no metal at all in the driver\'s band — the hangers stand in it, so an empty scan is a broken one');
     if (!obst.length)
       console.warn('§163: the driver\'s branch scan found no metal at all in the pawl\'s band — "no obstacles" and "no measurement" look identical from outside, and this is the second');
     if (best < CLEAR_MARGIN)
@@ -40763,15 +41097,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // free length. All of it placed at the spring's FREE angle — the same
   // convention the coil's legs used, and the §48 frame law in the tick keeps
   // the built blade's tip on the tail wherever the seat solve puts the pawl.
-  const springSide = -phiOpenSense(ALARM_PAWL_PHI_FREE);
-  const bear = { x: -bearArm, y: springSide * ALARM_PAWL_HALF_W };
-  const clampLocal = { x: -(bearArm + bladeFree), y: springSide * ALARM_PAWL_HALF_W };
-  const postAt = { x: ALARM_DRIVER_POST_R * Math.cos(postAz), y: ALARM_DRIVER_POST_R * Math.sin(postAz) };
-  const csF = Math.cos(postAz + ALARM_PAWL_PHI_FREE), snF = Math.sin(postAz + ALARM_PAWL_PHI_FREE);
-  const rootAt = { x: postAt.x + clampLocal.x * csF - clampLocal.y * snF,
-                   y: postAt.y + clampLocal.x * snF + clampLocal.y * csF };
-  const anchorAt = { x: rootAt.x - STOCK_MIN_R10 * csF,     // one stud radius on past the clamp face,
-                     y: rootAt.y - STOCK_MIN_R10 * snF };   // along the same tail line (local −x)
+  const { postAt, rootAt, anchorAt, csF, snF } = alarmDriverAnchorFor(postAz);
   const anchorR = Math.hypot(anchorAt.x, anchorAt.y);
   const anchorAz = Math.atan2(anchorAt.y, anchorAt.x);
   // §226 — THE FEATURE WIDTH IS AUTHORED; THE WALL IS ITS CONSEQUENCE. This
@@ -40799,8 +41125,6 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // (77% of a tooth) and the slot arm 1.0663 (85%). That is 13–16% of each
   // arm's measured ceiling, so the widening is nowhere near what the
   // surrounding metal allows.
-  const ALARM_DRIVER_FEATURE_W = alarmColumnWheel.userData.ratchetTooth.depth;
-  const ALARM_DRIVER_TIP_R = ALARM_DRIVER_FEATURE_W / 2;
   // The anchor arm's tip. Its reach is the longest thing on the driver, so the
   // §68 plate-edge bound is re-asserted for it below with the achieved
   // numbers (measured slack at the new width: 18.77 u, not a constraint here).
@@ -51727,6 +52051,8 @@ const UNIT_GROUPS = new Map([
     ['Alarm release disc', 2], ['Alarm release feeler', 3],
     ['Alarm release reader', 2], // TODO 117 stage 1: the disc's own stratum — it orbits in the disc band, reading the same track
     ['Alarm release seat', 1], // TODO 144: the fixed plate the disc seats on — one step under the disc toward the hour wheel it stands off
+    ['Alarm detector arbor', 1], // §278 landing 5: the satellite's hour wheel and tube — the seat's stratum, under the disc it carries
+    ['Alarm detector idler', 1], // §278 landing 5: the hour's idler to the satellite, in the hour wheel's plane beside it
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
     ['Alarm governor', 8], // §104: one step past the striking wheel it hangs off, before the hammer it paces
@@ -54279,6 +54605,10 @@ function tick(t) {
   // angle, so the whole branch mirrored the hour it is supposed to follow and
   // the alarm rang at 12 h minus the set time. Read this, never mwHourA.
   const hourDialA = hourWheelGroup.rotation.z;
+  // §278 landing 5 — the hour, carried to the satellite through its teeth (rule
+  // 2): the idler off the hour wheel, the twin off the idler, one law each.
+  alarmDetIdlerSpin.rotation.z = alarmDetectorIdlerA(hourDialA);
+  alarmDetHourSpin.rotation.z = alarmDetectorHourA(hourDialA);
   // Small seconds at 6: same expression the old central hand used (−2π per
   // minute, re-referenced on reset). TODO 115 — dial-side, so negated: the hand
   // and the fourth wheel it rides are one rigid body rather than mirror images
@@ -54615,7 +54945,7 @@ function tick(t) {
     {
       discRotForTrip = alarmNotchA();
       const discRotNow = discRotForTrip;
-      const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
+      const pinArcHalf = ALARM_DETECTOR_LAWS.pinArcHalf(ALARM_PIN_R, ALARM_TRACK_RMID);   // §278 landing 4: the law the 'alarm detector' line spec evaluates
       const gapHalf = ALARM_NOTCH_W / 2;
       // TODO 117 — the pin that reads this notch is the READER's, and the
       // reader is parented into hourWheelGroup at its own azimuth zero, so its
@@ -54627,7 +54957,8 @@ function tick(t) {
       // into a notch that is not under it. The lever no longer needs to be at
       // the coincidence at all — it reads the RING, which presents the drop at
       // every azimuth at once.
-      const align = Math.abs(wrapPi(discRotNow - hourDialA));
+      const readerA = alarmDetectorHourA(hourDialA);   // §278 landing 5: the reader rides the satellite's hour, which arrives through the idler's teeth
+      const align = Math.abs(wrapPi(discRotNow - readerA));
       alarmPinDropNow = align >= gapHalf + pinArcHalf ? 0
         : align <= gapHalf - pinArcHalf ? ALARM_PIN_DROP
         : ALARM_PIN_DROP * ((gapHalf + pinArcHalf - align) / (2 * pinArcHalf));
@@ -54671,7 +55002,7 @@ function tick(t) {
         || Math.abs(setPathRot - alarmPrevSetPathRot) > 1e-9;
       alarmPrevSetRot = alarmSetRot;
       alarmPrevSetPathRot = setPathRot;
-      const centred = wrapPi(discRotForTrip - hourDialA);   // TODO 117: against the READER's azimuth, as the drop above
+      const centred = wrapPi(discRotForTrip - alarmDetectorHourA(hourDialA));   // TODO 117: against the READER's azimuth, as the drop above (§278: the satellite's hour)
       // …the TIME crown counts as a hand too: quick-setting swings the
       // hour phase under the disc, so a set-drag crossing is the user's
       // hand, not a missed alarm — the boot sync's 'pull' phase proved it
@@ -54689,7 +55020,7 @@ function tick(t) {
           && Math.abs(centred - alarmPrevCentred) < Math.PI      // a real crossing, not a hand-set wrap
           && alarmPinDropNow < ALARM_PIN_DROP - 1e-9 && !alarmStepOverWarned) {
         alarmStepOverWarned = true;
-        console.warn(`§38/TODO 8: the alarm's coincidence was crossed in ONE tick (${Math.abs(centred - alarmPrevCentred).toFixed(4)} rad) without the pin bottoming — the notch floor (${(ALARM_NOTCH_W / 2 - ALARM_PIN_R / ALARM_TRACK_RMID).toFixed(4)} rad) is now narrower than a tick's advance, so alarms will be missed`);
+        console.warn(`§38/TODO 8: the alarm's coincidence was crossed in ONE tick (${Math.abs(centred - alarmPrevCentred).toFixed(4)} rad) without the pin bottoming — the notch floor (${(ALARM_NOTCH_W / 2 - ALARM_DETECTOR_LAWS.pinArcHalf(ALARM_PIN_R, ALARM_TRACK_RMID)).toFixed(4)} rad) is now narrower than a tick's advance, so alarms will be missed`);
       }
       alarmPrevCentred = centred;
     }
@@ -54726,7 +55057,7 @@ function tick(t) {
       // about a POSE belongs (rule 6): probe-handedness.mjs measures the pin
       // bottoming against the hour hand's and alarm hand's WORLD azimuths, off
       // the metal, at three settings.
-      const relTarget = wrapPi(alarmNotchA() - hourDialA);
+      const relTarget = wrapPi(alarmNotchA() - alarmDetectorHourA(hourDialA));
       if (Math.abs(relTarget) > ALARM_NOTCH_W)
         console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad outside the notch's arc (window ${ALARM_NOTCH_W})`);
       // TODO 189/199: THIS FLAG IS THE HOLD. Between arming and here nothing in
@@ -55831,8 +56162,12 @@ const JMP_SITE_MOVERS = [
   { name: 'setting lever', kind: 'lawed', roots: [settingLeverGroup], grid: 'pull' },
   // ---- revolve: the dial-centre groups, onto the entries already turning there
   { name: 'hour group', kind: 'revolve', roots: [hourWheelGroup], onto: mwHourWheel, slack: 0 },
-  // the reader drops on its lift by at most ALARM_PIN_DROP (tick's clamp)
-  { name: 'release reader', kind: 'revolve', roots: [alarmReaderUnit], onto: mwHourWheel, slack: ALARM_PIN_DROP },
+  // the reader drops on its lift by at most ALARM_PIN_DROP (tick's clamp) — and
+  // since §278 landing 5 it revolves about the SATELLITE, on the twin's rotor
+  { name: 'release reader', kind: 'revolve', roots: [alarmReaderUnit], onto: alarmDetWheel, slack: ALARM_PIN_DROP },
+  // §278 landing 5 — the satellite's tube turns with its twin (the idler and the
+  // twin are rotors, each its own entry)
+  { name: 'detector arbor', kind: 'revolve', roots: [alarmDetHourSpin], onto: alarmDetWheel, slack: 0 },
   { name: 'cannon nose', kind: 'revolve', roots: [cannonNose], onto: cannonPinion, slack: 0 },
   { name: 'alarm tube', kind: 'revolve', roots: [alarmTubeGroup], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0 },
   // the pin arm rocks on its face cam and the selector rocker see-saws: slack
@@ -57585,7 +57920,7 @@ window.__clock = {
     sigmaY_Pa: SPRING_SIGMA_Y_PA, unitMM: UNIT_MM,
     stud: { lifterR: ALARM_LIFT_STUD_R, crankR: ALARM_RELEASE_STUD_R, crankL: ALARM_RELEASE_STUD_L },
   }),
-  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws() }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`)
+  get lineLaws() { return Object.assign(Object.create(ALARM_LINK_LAWS), { release: ALARM_RELEASE_LAWS, strike: alarmStrikeLineLaws(), detector: ALARM_DETECTOR_LAWS }); }, // §70 step 3 — the alarm link's own laws (seat solve, pin arm, rim top), for its line spec to evaluate at the reference's inputs; TODO 236 — and the release run's (`release`); §278 — and the strike corner's (`strike`); §278 landing 4 — and the detector's (`detector`)
   get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows
