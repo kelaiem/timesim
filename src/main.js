@@ -22,7 +22,7 @@ import {
   SPEC, SPEC_RATES,
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
-  BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
+  BAL_T, BAL_RIM_F, BALANCE_R_MAX, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
@@ -10979,10 +10979,10 @@ const GOING_K = ribbonK(mainspring, MAINSPRING_E_PA);
 const TRAIN_STAGES = (() => {
   const rW = (m) => m.module * m.teeth / 2, rP = (m) => m.module * m.pinion / 2;
   return [
-    { name: 'great wheel → centre pinion', z1: TRAIN.barrel.teeth, z2: TRAIN.barrel.pinion, arbor: 'centre', obj: centerArbor, rIn: rP(TRAIN.barrel), rOut: rW(TRAIN.center) },
-    { name: 'centre → third pinion',       z1: TRAIN.center.teeth, z2: TRAIN.center.pinion, arbor: 'third',  obj: thirdArbor,  rIn: rP(TRAIN.center), rOut: rW(TRAIN.third) },
-    { name: 'third → fourth pinion',       z1: TRAIN.third.teeth,  z2: TRAIN.third.pinion,  arbor: 'fourth', obj: fourthArbor, rIn: rP(TRAIN.third),  rOut: rW(TRAIN.fourth) },
-    { name: 'fourth → escape pinion',      z1: TRAIN.fourth.teeth, z2: TRAIN.fourth.pinion, arbor: 'escape', obj: escapeArbor, rIn: rP(TRAIN.fourth), rOut: escapeWheelR },
+    { name: 'great wheel → centre pinion', z1: TRAIN.barrel.teeth, z2: TRAIN.barrel.pinion, action: G.gearMeshAction({ module: TRAIN.barrel.module, driver: TRAIN.barrel.teeth, driven: TRAIN.barrel.pinion }), arbor: 'centre', obj: centerArbor, rIn: rP(TRAIN.barrel), rOut: rW(TRAIN.center) },
+    { name: 'centre → third pinion',       z1: TRAIN.center.teeth, z2: TRAIN.center.pinion, action: G.gearMeshAction({ module: TRAIN.center.module, driver: TRAIN.center.teeth, driven: TRAIN.center.pinion }), arbor: 'third',  obj: thirdArbor,  rIn: rP(TRAIN.center), rOut: rW(TRAIN.third) },
+    { name: 'third → fourth pinion',       z1: TRAIN.third.teeth,  z2: TRAIN.third.pinion, action: G.gearMeshAction({ module: TRAIN.third.module, driver: TRAIN.third.teeth, driven: TRAIN.third.pinion }),  arbor: 'fourth', obj: fourthArbor, rIn: rP(TRAIN.third),  rOut: rW(TRAIN.fourth) },
+    { name: 'fourth → escape pinion',      z1: TRAIN.fourth.teeth, z2: TRAIN.fourth.pinion, action: G.gearMeshAction({ module: TRAIN.fourth.module, driver: TRAIN.fourth.teeth, driven: TRAIN.fourth.pinion }), arbor: 'escape', obj: escapeArbor, rIn: rP(TRAIN.fourth), rOut: escapeWheelR },
   ];
 })();
 // TODO 193 — AND THE PIVOTS ARE SIZED TO IT. TODO 192 step 2 cut every
@@ -11067,7 +11067,7 @@ const GOING_POWER = (() => {
     push('chain articulation', 1 - A.muChain * CHAIN_PIN_R * (1 / rFuseeMean + 1 / rWrap), 'μ_chain·r_rivet·(1/r_fusee + 1/R_wrap)');
     push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)');
     for (const m of meshes) {
-      push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)');
+      push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2) * m.action.factor, 'πμ_tooth(1/z₁ + 1/z₂)·(1 − ε + ε_a² + ε_r²)');
       push(`${m.arbor} arbor pivots`, 1 - A.muJewel * m.rPiv * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_pivot·(1/r_pinion + 1/r_wheel)');
     }
     push('lever escapement', A.escEff, 'FRICTION.escEff');
@@ -12562,6 +12562,35 @@ const MAINT_SPRING = (() => {
     const Rn = (Math.PI * 2) / Nn + lim.margin;
     if (Nn === N && Math.abs(Rn - R) < 1e-13) break;
     N = Nn; R = Rn;
+  }
+  // TODO 255 — THE SEARCH ABOVE CAN LIMIT-CYCLE, so its answer is settled here.
+  // It chases N through R (the run moves the pin, the pin the blade's reach, the
+  // reach the run), and N−1 can miss by a hair at ITS OWN R while N clears at
+  // its own: at 18,000 under the priced mesh law N = 36 needed 0.2194938 rad
+  // and the blade cut for it gave 0.2194686 (0.01% short), N = 37 needed
+  // 0.2147742 and gave 0.2197237 — so the map went 36 → 37 → 36 → 37 for all
+  // sixty passes, and left (N, R) from one pass beside `lim` (and so a margin)
+  // from the other, 1.1e-5 apart. A fixed point is a count and the R it
+  // implies AGREEING, so: for each candidate count settle R on that count alone
+  // (margin and reach re-taken at every R), and keep the FEWEST count whose own
+  // blade gives the run its own R asks for. Where the search had converged
+  // this returns what it returned.
+  if (N > 0) {
+    const settleAt = (n) => {
+      let r = (Math.PI * 2) / n + 0.045, l = null;
+      for (let j = 0; j < 200; j++) {
+        l = atLimit(r);
+        const rn = (Math.PI * 2) / n + l.margin;
+        if (Math.abs(rn - r) < 1e-13) { r = rn; break; }
+        r = rn;
+      }
+      l = atLimit(r);
+      return { n, r, l, ok: l.runMax >= r - 1e-15 && Math.abs((Math.PI * 2) / n + l.margin - r) < 1e-12 };
+    };
+    for (let n = Math.max(2, N - 4); n <= N + 4; n++) {
+      const c = settleAt(n);
+      if (c.ok) { N = c.n; R = c.r; lim = c.l; break; }
+    }
   }
   // A configuration whose train cannot sustain the claim at the floor corner
   // even on the going torque (a re-geared rate the balance was not re-solved
@@ -30936,7 +30965,10 @@ const EQUALISATION = (() => {
   //    layout.js's FRICTION bands: a pivot costs μ·r_piv·(1/r_in + 1/r_out)
   //    (the loads at the pinion and the wheel ADD — an upper bound, the two
   //    reactions being treated as collinear), a mesh costs πμ(1/z₁ + 1/z₂)
-  //    (the classical sliding loss of involute teeth), the chain costs
+  //    times Merritt's contact-ratio factor (1 − ε + ε_a² + ε_r²), the
+  //    split read off the arcs §136's teeth are cut to (`G.gearMeshAction`;
+  //    TODO 255 — the bracket was taken as 1 and charged each mesh about
+  //    twice its loss), the chain costs
   //    μ·r_rivet·(1/r_fusee + 1/R_wrap) per link articulated on and off, and
   //    the ribbon and the escapement are bands outright.
   //  · The BALANCE spends, per beat, (π/Q_other)·½kθ² on everything but its
@@ -31187,10 +31219,13 @@ const EQUALISATION = (() => {
     const rimFloorF = balanceWheelDims({ radius: BALANCE_R, thickness: BAL_T }).rimFloorF;
     const rimFloor = Math.ceil(rimFloorF / BAL_RIM_STEP - 1e-9) * BAL_RIM_STEP;
     const reduced = BALANCE_R < BALANCE_R_REF;
-    const larger = reduced ? atBalance(BALANCE_R + BAL_R_STEP, rimFloor) : null;
-    Object.assign(energy.amplitude.target, { radius: BALANCE_R, radiusRef: BALANCE_R_REF, radiusStep: BAL_R_STEP, rimFloorF, rimFloor, larger,
+    // TODO 255 — a larger wheel the layout cannot carry is not a test: the row's
+    // fit limit (layout.js BALANCE_R_MAX) ends the search before the spring does.
+    const fitStops = reduced && BALANCE_R + BAL_R_STEP > BALANCE_R_MAX + 1e-9;
+    const larger = reduced && !fitStops ? atBalance(BALANCE_R + BAL_R_STEP, rimFloor) : null;
+    Object.assign(energy.amplitude.target, { radius: BALANCE_R, radiusRef: BALANCE_R_REF, radiusStep: BAL_R_STEP, radiusFit: BALANCE_R_MAX, rimFloorF, rimFloor, larger,
       radiusTight: !larger || !(larger.nominalVertical >= AMPLITUDE_TARGET_DEG && larger.starts),
-      radiusBinds: larger ? (larger.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target') : null });
+      radiusBinds: larger ? (larger.nominalVertical >= AMPLITUDE_TARGET_DEG ? 'start' : 'target') : (fitStops ? 'fit' : null) });
     if (!energy.amplitude.target.radiusTight)
       console.warn(`TODO 242: the balance at ${SPEC.vph} A/h is r ${BALANCE_R}, but one BAL_R_STEP larger (${larger.radius}) at the lightest grid rim (${rimFloor.toFixed(3)}) sustains ${larger.nominalVertical.toFixed(2)}° and starts — the wheel is smaller than it needs to be; re-solve the RATE_TABLE row's balanceR`);
     if (!energy.amplitude.target.met || !energy.amplitude.target.tight)

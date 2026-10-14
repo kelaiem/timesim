@@ -43,12 +43,16 @@
 //       correction, which the closed form drops by taking it as 1 — within 5%.
 //       The two are independent derivations; this is the control that says the
 //       0.5× ratio below is the gearing and not the probe.
+//   C8  the factor going.energy charges (gearMeshAction, from the generator's arcs) equals
+//       this probe's path-model loss ratio within 5% — the record's mesh law, held to an
+//       independent computation (TODO 255).
 //   C6  the contact ratio reaches the generator's own target (1.02 + 2ε/p).
 //
 // Run from tools/:  node --import ./three-node-loader.mjs probe-251-pinion-mesh.mjs
 
 import { TRAIN, FRICTION } from '../src/layout.js';
 import { gearToothSpec } from '../src/geometry.js';
+import { gearMeshAction } from '../src/gear-action.js';   // TODO 255: the factor going.energy now charges every mesh
 
 const CORNERS = ['favourable', 'nominal', 'adverse'];
 let failed = 0;
@@ -185,6 +189,9 @@ function report(label, { m, zD, zV, hD, hV }, doControls) {
       const ea = P.thApp / P.pitch, er = P.thRec / P.pitch, fac = 1 - (ea + er) + ea * ea + er * er;
       const ratio = meshLoss(P, 0.01).loss / (Math.PI * 0.01 * (1 / zD + 1 / zV));
       out.factor = ratio;
+      const act = gearMeshAction({ module: m, driver: zD, driven: zV });
+      control(Math.abs(act.factor / ratio - 1) < 0.05, `C8 gearMeshAction factor ${act.factor.toFixed(4)} vs path-model ${ratio.toFixed(4)}`);
+      control(Math.abs(act.epsA - P.thApp / P.pitch) < 1e-9 && Math.abs(act.epsR - P.thRec / P.pitch) < 1e-9, 'C8 gearMeshAction splits approach/recess as the geometric arcs do');
       control(Math.abs(ratio / fac - 1) < 0.05, `C7 path loss / πμ(1/z₁+1/z₂) = ${ratio.toFixed(4)} vs classical factor ${fac.toFixed(4)} (ε_a ${ea.toFixed(3)}, ε_r ${er.toFixed(3)})`);
     }
     control(cr >= target - 1e-9, `C6 contact ratio ${cr.toFixed(4)} reaches the generator's target ${target.toFixed(4)}`);

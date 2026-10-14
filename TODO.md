@@ -17,7 +17,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 255 | OPEN | Found measuring TODO 251. `going.energy` prices every mesh at πμ(1/z₁ + 1/z₂), which takes the contact-ratio factor (1 − ε + ε_a² + ε_r²) as 1. The shipped teeth give 0.52–0.56 of it, so the four meshes lose about HALF what the column charges (product 0.8799 against 0.7786 nominal). Price the mesh from `gearToothSpec`'s own arcs and re-solve what rides on the column: row 14's claim and peak, TODO 207's rim, TODO 242's starts |
+| 256 | OPEN | Blocks TODO 255. The maintaining ring is cut at the fewest teeth its spring's run allows, and that count is 35 only because the movement was priced too lossy: under the real mesh law the floor rises (heavier balance, higher claim) and the blade needs 37 teeth. The detent beak's face flank cannot be relieved at 36 or more (clearance 0.1347 at 36, 0.1194 at 37, against CLEAR_MARGIN 0.15), so the build warns on every rate. Redesign the beak for a finer pitch, or give the spring more run |
+| 255 | PART DONE | Found measuring TODO 251. The mesh law is re-priced from the teeth's own arcs (`gearMeshAction`) and the RATE_TABLE re-solved to it, but the landing is BLOCKED on TODO 256: the priced floor needs a 37-tooth maintaining ring and the beak cannot be cut there. The branch carries the work as a WIP; the default boot is not silent until 256 is closed |
 | 254 | OPEN | Found confirming the friction analysis (#531, failure 2). The balance's UPPER pivot has the full shock stack (hole jewel, endstone, lyre spring); the LOWER one runs through its stone to the stone's underside and stops, with nothing under it. Dial-down, the staff's shoulder (CLEAR_MARGIN above the stone) bears on the jewel face with no oil reservoir and no shock protection. Add a lower cap jewel, size the end contact, and let the energy column price the dial-down end |
 | 252 | OPEN | Found by the friction analysis (#531, failure 9). The fusee arbor runs a plain bush on top and a jewel at the bottom; `probe-power-budget` prints "top bush plain". TODO 192 step 2 kept the plain bushes on purpose (the chain's pull; the let-down square passes through), so this is a decision nobody recorded. Pick one in service terms, declare it, and let the lubrication map carry it |
 | 251 | PART DONE | MEASURED (`tools/probe-251-pinion-mesh.mjs`, 7 controls). 120/7 is still the worst mesh, but by half a point, not the margin the closed form implies: path-model η 0.9619 nominal against 0.9669 for the next worst (80/8). A 10-leaf pinion would gain 1.2 points of train η and cost the 12:1 and every dependent solve, so the recommendation is to KEEP 120/7 and close this item on the owner's word. The measurement found the real defect: TODO 255 |
@@ -33840,6 +33841,8 @@ retire it if the stone makes the rounded-end figure true.
 
 ## 255. The mesh efficiency law prices every tooth contact at twice its loss: `going.energy` ignores the contact ratio
 
+**PART DONE — blocked on [TODO 256].** The law, the table and the gates are re-solved on the branch (see *What landed* at the foot of this item); the maintaining ring is what stops it.
+
 Found measuring TODO 251 (issue #531, failure 8). The energy column prices a
 mesh at `1 − πμ_tooth(1/z₁ + 1/z₂)` (`GOING_POWER`, `main.js`; restated in
 `probe-power-budget.mjs`). That is the classical small-contact-ratio form: it is
@@ -33872,3 +33875,74 @@ rides on the column in order: the record, row 14's claim and peak, TODO 207's
 rim, TODO 242's rows (all three are gated and will fail until re-solved), and
 re-quote TODO 249's figure. This moves the fingerprint (the balance changes)
 and so is a full battery landing, not a one-line edit.
+
+**What landed on the branch (WIP, not a landing).**
+- `src/gear-action.js` (three-free): §136's pair solve moved out of
+  `geometry.js` verbatim (786 `gearToothSpec` / `cycloidalToothPath`
+  comparisons against HEAD, 0 differ) and `gearMeshAction({ module, driver,
+  driven })` added: ε_a, ε_r, the contact ratio and Merritt's factor from the
+  arcs the addenda were sized to. `going.energy` and `probe-power-budget`
+  both charge a mesh `πμ(1/z₁ + 1/z₂)·factor`; `probe-251-pinion-mesh.mjs`
+  holds the factor to an independent path model (control C8).
+- Nominal train η 0.696 → 0.785; the nominal vertical swing at the old rim
+  219.9° (18,000), so the rims were re-solved to the 200° target, each by the
+  step rule: 18,000 0.645 → 0.720 (201.02°, one step heavier 199.87°),
+  21,600 0.485 → 0.540, 28,800 0.270 → 0.315, 36,000 0.250 → 0.295. The claims
+  follow the new adverse minima (130, 133, 137, 138).
+- **36,000 keeps its 7.5 wheel for a reason that is no longer the spring's.**
+  Under the new law 7.75 and 8 both reach the target (207.1° and about
+  200° at the lightest/heaviest grid rims), but the build refuses them: at 7.75
+  the stop work reports "no station about the balance can route the hack
+  rod through the low corridor", at 8 the hack rod elbow fouls the reset
+  hammer's hub (−0.05) and at 8.25 the great wheel (−0.04). So the row declares
+  `balanceRMax: 7.5` (`BALANCE_R_MAX`), measured by booting each radius, and row
+  15 accepts "one step larger fails" for the fit as it did for the spring,
+  recording which binds (`radiusBinds: 'fit'`). This is a P3 limit and is
+  declared as one, not spent as a lever.
+- **A limit cycle in the ring's tooth-count search was exposed and fixed.**
+  `MAINT_SPRING`'s N and R iterate through each other; at 18,000 under the new
+  law N = 36 misses its own run by 0.01% (needs 0.2194938 rad, the blade cut
+  for it gives 0.2194686) while N = 37 clears, so the map went 36 → 37 → 36
+  for all 60 passes and published an (N, R) from one pass beside a margin from
+  the other (1.1e-5 apart, which the probe caught as a DISAGREE). The search
+  now ends by settling each candidate count on its own R and keeping the
+  fewest whose own blade fits. `probe-power-budget` holds the record's N for
+  feasibility (it cannot re-derive a fixed point of the crossing's geometry
+  from outside).
+
+**What it did not do.** The full battery was not run; the focused checks are the
+boots above (4 rates) and `probe-power-budget` (56 figures, AGREES). The default
+boot is NOT silent: TODO 221's "face flank's relief is not bracketed" fires,
+58 times, at every rate, because of TODO 256. `explain.html`'s numbers that quote
+the old η, claim, rim or ring (the energy plate, Plate 2's swing figures, the
+power budget plate) have not been refreshed, nor have their twelve locale
+tables.
+
+## 256. The maintaining ring cannot be cut past 35 teeth, and the priced mesh law asks for 37
+
+Blocks [TODO 255]. TODO 219 sized the maintaining spring to the floor torque
+that sustains `AMPLITUDE_CLAIM_DEG` at the nominal corner, and made the ring's
+tooth count the FEWEST whose pitch fits inside the run the blade can give at the
+alloy's limit. At the shipped (lossy) mesh law that is 35 teeth; TODO 221 then
+cut the detent beak for that pitch. Re-pricing the meshes (TODO 255) raises the
+floor: the balance must be heavier to still reach 200° (rim 0.645 → 0.720), the
+claim rises with the better train (126° → 130°), and the floor goes from 1.589
+to 1.643 N·mm (0.492 → 0.509 of the going torque). The blade then gives 3.3%
+less run than it did, and the fewest ring that fits is 37 teeth (36 misses by
+0.01%).
+
+The beak cannot be cut at that pitch. `arcCut`'s face-flank relief (TODO 221)
+brackets only while the face's far end can be turned CLEAR_MARGIN off the
+flank, and measured at the 18,000 ring: 35 teeth brackets, 36 gives a best
+clearance of 0.1347, 37 gives 0.1194, against 0.15. The build warns ("the face
+flank's relief is not bracketed") on every rate and the beak is cut at its
+bracket's end, short of the margin.
+
+**Fix path.** In the maintaining group, not in the layout (this is P0–P2):
+either (a) re-derive the beak and ring so a finer pitch keeps the relief, the
+ring depth factor `0.2·MAINT_TEETH/N` being the first thing to read, or (b)
+buy the run back in the blade (the section at the alloy's limit is already
+the binding), or (c) revisit whether the floor should be priced at the claim
+at all rather than at the serviced swing, which is a design decision for the
+owner and not made here. Whichever is chosen, `MAINT_SPRING`'s search now
+settles per candidate count, so a result at the margin is stable.
