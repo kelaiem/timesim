@@ -35598,6 +35598,109 @@ wind, set and neutral buttons. A shift restarts the works from its posed angle,
 because the lugs only pass each other interleaved.
 
 
+## §219 tier three (b), landing E — the selector: a changeover catch carries the ring
+
+Landing D left the keyless works' mode POSED: a page button slid the ring.
+Landing E adds the part that moves it. It is LEGO's own changeover catch
+(6641):
+- a rocker with an axle hole along its X through a boss;
+- below the boss, a blade whose rounded bulb rides in the driving ring's
+  groove.
+
+The catch is keyed to a horizontal SELECTOR axle over the stem, and a wedge
+belt wheel on that axle's end is its knob. Turning the knob swings the bulb
+along the stem and carries the ring.
+
+### The catch was drawn for the older ring, so it was measured, not assumed
+
+6641 belongs to the older transmission (6539). Against the 3L ring (18947)
+the parts give:
+- the groove's floor is 4.80 mm from the axis;
+- the flanges stand 7.20 mm from the axis;
+- the bulb's edge is 10.40 mm below the pivot.
+
+The library has a newer catch with a two-tooth axle hole (51149). Its body is
+the same 6641 subfile, so the fit is the same.
+
+### The pivot's height is derived
+
+Both axles stand in Technic bricks on one baseplate, so the pivot rises over
+the stem by a whole number of plates. The bulb must clear the groove's floor,
+because the ring turns under it, and it must stand inside the flanges, or it
+cannot push them. `selectorRise` finds exactly one plate count:
+
+| plates | bulb from the axis | verdict |
+|---|---|---|
+| 4 | 2.40 mm | inside the floor |
+| **5** | **5.60 mm** | **seated** |
+| 6 | 8.80 mm | past the flanges |
+
+So the pivot stands 16 mm over the stem. Its columns stand on the +x side,
+because the setting branch's 8T sits at y = 0 on −x. The first column is one
+gap clear of the ring's flanges, the second beside it, and the knob one gap
+outside them, as the crown is. The selector axle is a 5L, held by Technic
+bricks turned a quarter so their holes run along x.
+
+### The ring's position is read from the catch, not from a table
+
+- `catchInRingFrame` samples the catch's SURFACE, subdividing every face,
+  and hangs it from the pivot at an angle. The subdivision matters: the
+  bulb is a single quad whose corners stand 4 mm off the stem's line, and a
+  vertex-only reading put the bulb 1.28 mm shallower than its middle really
+  is.
+- `catchCentre` is the middle of the catch's surface that stands inside the
+  flanges. That is where the bulb holds the ring.
+- `selectorAngle` solves the angle that holds the ring at each stroke end:
+  **±26.02°**.
+- The build poses the selector at that angle and reads the ring's slide back
+  through `catchCentre`. The mode is now the selector's angle, and the ring
+  follows from it.
+
+### What the lever measures
+
+| mode | angle | bulb into the flanges | floor clearance | axial play a side |
+|---|---|---|---|---|
+| wind / set | ±26.02° | 0.98 mm | 1.42 mm | 0.54 mm |
+| neutral | 0° | 1.60 mm | 0.80 mm | 0.42 mm |
+
+The engagement is shallow at the stroke ends: under a millimetre of plastic
+pushes the ring onto its dogs. This is the measured fit of a catch drawn for
+a larger-flanged ring. It is reported every run and gated only at greater
+than zero. No floor was invented to sit under it.
+
+### Instruments
+
+- `probe-technic-keyless.mjs` adds LEVER checks, per mode:
+  - the catch's sampled surface stands clear of the ring, the joiner and both
+    clutch gears, each taken as its body of revolution;
+  - the bulb reaches inside the flanges and clears the floor;
+  - the placed ring stands at the catch's centre, re-derived from the samples
+    rather than read from the build.
+
+  Two new controls fire: the selector a plate lower (the bulb in the floor),
+  and the selector left at neutral while the ring stands at its wind stroke.
+  Controls 6/6.
+- `probe-technic-build.mjs` holds the selector as a body turning about X: two
+  turned bricks on its line, the axle filling both, and the catch's pivot hole
+  and the knob on the axle. 10 builds, 0 failing, in every mode.
+- `probe-technic-frame.mjs` checks each column's hole against its own axle
+  height, and sweeps the selector's columns against every gear: 10 rows,
+  0 failing.
+- `probe-technic-ldraw.mjs` holds `KEYLESS_SELECTOR_DIM_MM` to the parts:
+  the pivot from the axle-hole primitive, the bulb, the catch's extents, and
+  the groove floor. It also checks that the rise is still a single plate
+  count. Controls 18/18.
+
+The pack grew to 34 parts, 277 files.
+
+### What it does not claim
+
+The selector's three angles are posed. No detent holds it there, and nothing
+yet ties it to a crown pull. The ring is posed with its lugs mid-play, and the
+bulb is centred in the groove, though the parts would allow anywhere across
+either.
+
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and

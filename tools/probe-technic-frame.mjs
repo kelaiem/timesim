@@ -48,8 +48,8 @@ function judge(f) {
   // holes and axles
   for (const c of f.columns) {
     const hole = c.boxes.find((b) => b.hole);
-    const z = hole.z0 + D.holeZ;
-    if (Math.abs(z - f.axleZ) > 1e-6) bad.push(`shaft ${c.shaft} ${c.end}: hole at ${z.toFixed(3)}, axle at ${f.axleZ}`);
+    const z = hole.z0 + D.holeZ, want = c.holeZ ?? f.axleZ;   // the keyless selector's columns hold their own axle
+    if (Math.abs(z - want) > 1e-6) bad.push(`shaft ${c.shaft} ${c.end}: hole at ${z.toFixed(3)}, axle at ${want}`);
   }
   for (const a of f.axles) if (!a.part) bad.push(`shaft ${a.shaft}: no axle of ${a.studs} studs or more`);
   // part against part

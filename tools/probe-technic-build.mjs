@@ -35,7 +35,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, compose, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
-import { frameFork, frameKeyless, FRAME_PARTS } from '../src/technic-frame.js';
+import { frameFork, frameKeyless, FRAME_PARTS, KEYLESS_SELECTOR_DIM_MM } from '../src/technic-frame.js';
 import { ldrawBuild, placedParts, toLdr } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,6 +46,7 @@ const dat = (p) => `${p}.dat`;
 const bcache = new Map();
 const B = (p) => (bcache.has(p) || bcache.set(p, bounds(lib, dat(p))), bcache.get(p));
 const near = (a, b, t = EPS) => Math.abs(a - b) <= t;
+const L = (mm) => mm / LDU_MM;
 const mod = (a, m) => ((a % m) + m) % m;
 
 // a gear's tooth angle about LDraw Z as placed: tips folded by N
@@ -96,36 +97,43 @@ function judge(build, frame, mode = build.modes?.[0]) {
   }
   // THROUGH and ON THE AXLE. A body with no axle of its own (a keyless clutch
   // gear idling on the stem) is held to the axle of the body it shares a line
-  // with.
+  // with. A body turns about LDraw Z, or (the keyless selector, landing E)
+  // about X through Technic bricks turned a quarter: A is the axis coordinate,
+  // P the two that place the line. A brick belongs to a line when both its hole
+  // faces lie on it.
   const bodyParts = (k, input = 0) => placedParts({ ...build, statics: [], shafts: [build.shafts[k]] }, input, mode);
+  const axisOf = (s) => (s.axis === 'x' ? { A: 0, P: [1, 2] } : { A: 2, P: [0, 1] });
+  const ptAt = (m, z) => compose(m, [0, 0, z, 1, 0, 0, 0, 1, 0, 0, 0, 1]);   // a point on a part's own Z, placed
+  const techs = build.statics.filter((p) => p.part === FRAME_PARTS.technicBrick1x1)
+    .map((t) => ({ t, faces: placements(lib, dat(t.part), /^(peghole|connhol\w*)\.dat$/).map((h) => compose(t.m, h.m)) }));
   const spans = [];
   for (const [i, s] of build.shafts.entries()) {
+    const { A, P } = axisOf(s);
     const placed = bodyParts(i);
     const axle = placed.find((p) => p.role === 'axle');
     if (!axle) continue;
-    const ab = B(axle.part);                            // along the axle's own X, turned onto Z
-    const half = (ab.hi[0] - ab.lo[0]) / 2, z0 = axle.m[2] - half, z1 = axle.m[2] + half;
-    spans.push({ i, x: s.origin[0], y: s.origin[1], z0, z1 });
-    const bricks = build.statics.filter((p) => p.part === FRAME_PARTS.technicBrick1x1 && near(p.m[0], s.origin[0]));
+    const ab = B(axle.part);                            // along the axle's own X, turned onto the body's axis
+    const half = (ab.hi[0] - ab.lo[0]) / 2, z0 = axle.m[A] - half, z1 = axle.m[A] + half;
+    spans.push({ i, s, A, P, z0, z1 });
+    const bricks = techs.filter(({ faces }) => faces.length && faces.every((w) => P.every((k) => near(w[k], s.origin[k]))));
     if (bricks.length !== 2) bad.push(`shaft ${i}: ${bricks.length} Technic bricks on its line, not 2`);
-    for (const t of bricks) {
-      for (const h of placements(lib, dat(t.part), /^(peghole|connhol\w*)\.dat$/)) {
-        const w = compose(t.m, h.m);
-        if (!near(w[0], s.origin[0]) || !near(w[1], s.origin[1])) bad.push(`shaft ${i}: a hole face at (${w[0].toFixed(3)}, ${w[1].toFixed(3)}), axle at (${s.origin[0]}, ${s.origin[1]})`);
-      }
+    for (const { t } of bricks) {
       // the axle must fill the brick's hole end to end, less the half LDU the
       // library trims off each axle end (an N-stud axle is 20·N − 1 LDU)
-      const tb = B(t.part), b0 = t.m[2] + tb.lo[2], b1 = t.m[2] + tb.hi[2];
-      if (z0 > b0 + AXLE_TRIM + EPS || z1 < b1 - AXLE_TRIM - EPS) bad.push(`shaft ${i}: the axle (${z0}…${z1}) does not fill the hole of the brick at Z ${b0}…${b1}`);
+      const tb = B(t.part), e = [ptAt(t.m, tb.lo[2])[A], ptAt(t.m, tb.hi[2])[A]], b0 = Math.min(...e), b1 = Math.max(...e);
+      if (z0 > b0 + AXLE_TRIM + EPS || z1 < b1 - AXLE_TRIM - EPS) bad.push(`shaft ${i}: the axle (${z0}…${z1}) does not fill the hole of the brick at ${'XYZ'[A]} ${b0}…${b1}`);
     }
   }
   for (const [i, s] of build.shafts.entries()) {
-    const on = spans.find((a) => near(a.x, s.origin[0]) && near(a.y, s.origin[1]));
+    const on = spans.find((a) => a.A === axisOf(s).A && a.P.every((k) => near(a.s.origin[k], s.origin[k])));
     if (!on) { bad.push(`body ${i}: no axle on its line`); continue; }
     for (const g of bodyParts(i)) {
       if (g.role === 'axle') continue;
-      if (!near(g.m[0], s.origin[0]) || !near(g.m[1], s.origin[1])) bad.push(`body ${i}: ${g.teeth ? `${g.teeth}T` : g.part} off the axle line`);
-      if (g.m[2] < on.z0 || g.m[2] > on.z1) bad.push(`body ${i}: ${g.teeth ? `${g.teeth}T` : g.part} at Z ${g.m[2]} beyond its axle`);
+      // where a part takes its axle: its origin, or the catch's pivot hole
+      const at0 = g.role === 'catch' ? ptAt(g.m, L(KEYLESS_SELECTOR_DIM_MM.catchPivot)) : g.m;
+      const name = g.teeth ? `${g.teeth}T` : g.part;
+      if (!on.P.every((k) => near(at0[k], s.origin[k]))) bad.push(`body ${i}: ${name} off the axle line`);
+      if (at0[on.A] < on.z0 || at0[on.A] > on.z1) bad.push(`body ${i}: ${name} at ${'XYZ'[on.A]} ${at0[on.A]} beyond its axle`);
     }
   }
   // MESHED — every pair in the build's own mesh list

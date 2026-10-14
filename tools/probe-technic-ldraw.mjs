@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
 import { LEGO_DIM_MM, GEAR_WIDTH_MM, GEAR_TIP_MM, FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, frameFork, frameKeyless,
-  KEYLESS_PARTS, KEYLESS_DIM_MM, KEYLESS_DOGS } from '../src/technic-frame.js';
+  KEYLESS_PARTS, KEYLESS_DIM_MM, KEYLESS_DOGS, KEYLESS_SELECTOR_DIM_MM, selectorRise } from '../src/technic-frame.js';
 import { TECHNIC_CLUTCH_GEAR } from '../src/layout.js';
 import { dogPhase } from '../src/technic-ldraw.js';
 
@@ -124,6 +124,23 @@ const gearM = gears.map((r) => {
   return { ...r, width: mm(ext[axis]), tip: mm(tipL), title: lib.get(dat(r.part)).title, org: lib.get(dat(r.part)).org };
 });
 
+// §219 tier three (b) landing E — THE CATCH AND THE GROOVE. Its pivot is the
+// axle-hole primitive that runs along its X; the bulb is its surface farthest
+// below it; the groove's floor is the ring's largest radius strictly between
+// its flanges.
+const SEL = (() => {
+  const C = surf(KEYLESS_PARTS.catch), R = surf(KEYLESS_PARTS.ring);
+  const piv = placements(lib, dat(KEYLESS_PARTS.catch), /^axlehole\.dat$/).map((p) => p.m[2]);
+  const pz = piv.length ? piv[0] : NaN;
+  const flangeZ = Math.min(...R.filter((q) => rOf(q) > Math.max(...R.map(rOf)) - 1e-3).map((q) => Math.abs(q[2])));
+  return {
+    catchPivot: mm(pz), catchTip: mm(pz - Math.min(...C.map((q) => q[2]))),
+    catchHalfWidth: mm(Math.max(...C.map((q) => Math.abs(q[0])))), catchHalfThick: mm(Math.max(...C.map((q) => Math.abs(q[1])))),
+    grooveFloorR: mm(Math.max(...R.filter((q) => Math.abs(q[2]) < flangeZ - 1e-6).map(rOf))),
+    pivots: piv.length,
+  };
+})();
+
 // ── the judgement, a function of the tables so the controls can perturb them ─
 function judge(T) {
   const bad = [];
@@ -156,6 +173,12 @@ function judge(T) {
     if (Math.abs(g.width - want) > TOL) bad.push(`${g.teeth}T ${g.part}: face ${g.width.toFixed(4)} mm, table ${want}`);
     if (!(Math.abs(g.tip - T.T[g.part]) <= TOL)) bad.push(`${g.teeth}T ${g.part}: tip ${g.tip.toFixed(6)} mm, table ${T.T[g.part]}`);
   }
+  // the selector (landing E): the catch's figures, its title, and the rise the
+  // frame derives from them still the one plate count that seats the bulb
+  for (const [k, v] of Object.entries(T.S)) if (!(Math.abs(v - SEL[k]) <= TOL)) bad.push(`selector ${k}: table ${v} mm, parts ${SEL[k]?.toFixed(6)} mm`);
+  if (SEL.pivots < 1) bad.push(`${KEYLESS_PARTS.catch}: no axle hole along its X to pivot on`);
+  if (!/Changeover Catch/.test(lib.get(dat(KEYLESS_PARTS.catch))?.title ?? '')) bad.push(`${KEYLESS_PARTS.catch} is not a changeover catch`);
+  if (!selectorRise().plates) bad.push('no single plate count seats the catch in the groove');
   // the keyless parts (landing D)
   for (const [k, v] of Object.entries(T.K)) if (!(Math.abs(v - KW[k]) <= TOL)) bad.push(`keyless ${k}: table ${v} mm, parts ${KW[k]?.toFixed(6)} mm`);
   // four lugs a side: each set's tips fold coherently by KEYLESS_DOGS (a lug is
@@ -241,7 +264,7 @@ const tt60 = ttRows.find((t) => t.teeth === 60);
 const profile60 = tt60 && TURNTABLE_BASES[tt60.part] && lib.has(dat(TURNTABLE_BASES[tt60.part])) ? ttProfile(tt60.part, TURNTABLE_BASES[tt60.part]) : null;
 if (tt60 && !profile60) packBad.push(`turntable ${tt60.part}: its base is not in the pack`);
 
-const TABLES = { D: LEGO_DIM_MM, W: GEAR_WIDTH_MM, T: GEAR_TIP_MM, F: FRAME_PARTS, A: AXLE_PARTS, K: KEYLESS_DIM_MM, N: KEYLESS_DOGS };
+const TABLES = { D: LEGO_DIM_MM, W: GEAR_WIDTH_MM, T: GEAR_TIP_MM, F: FRAME_PARTS, A: AXLE_PARTS, K: KEYLESS_DIM_MM, N: KEYLESS_DOGS, S: KEYLESS_SELECTOR_DIM_MM };
 const bad = [...packBad, ...judge(TABLES)];
 
 // controls: perturb one entry at a time; each must fail
@@ -251,6 +274,7 @@ controls.push(['gear default width − 0.8 mm', { ...TABLES, W: { ...GEAR_WIDTH_
 controls.push(['12T tip = module-1 (7 mm)', { ...TABLES, T: { ...GEAR_TIP_MM, 69778: 7 } }]);
 controls.push(['24T width = default', { ...TABLES, W: { default: GEAR_WIDTH_MM.default } }]);
 controls.push(['axle 4L ⇄ 5L', { ...TABLES, A: { ...AXLE_PARTS, 4: AXLE_PARTS[5], 5: AXLE_PARTS[4] } }]);
+for (const k of ['catchTip', 'grooveFloorR']) controls.push([`selector ${k} + 0.1 mm`, { ...TABLES, S: { ...KEYLESS_SELECTOR_DIM_MM, [k]: KEYLESS_SELECTOR_DIM_MM[k] + 0.1 } }]);
 for (const k of ['recessDepth', 'ringLugR', 'joinerR']) controls.push([`keyless ${k} + 0.1 mm`, { ...TABLES, K: { ...KEYLESS_DIM_MM, [k]: KEYLESS_DIM_MM[k] + 0.1 } }]);
 controls.push(['brick ⇄ Technic brick', { ...TABLES, F: { ...FRAME_PARTS, brick1x1: FRAME_PARTS.technicBrick1x1, technicBrick1x1: FRAME_PARTS.brick1x1 } }]);
 const silent = controls.filter(([, T]) => judge(T).length === 0).map(([n]) => n);
@@ -265,6 +289,8 @@ for (const g of gearM) console.log(`  ${String(g.teeth).padStart(3)}T  ${g.part.
 console.log('\n  keyless part figure     parts mm   table mm');
 for (const k of Object.keys(KEYLESS_DIM_MM)) console.log(`  ${k.padEnd(20)} ${KW[k].toFixed(4).padStart(9)} ${String(KEYLESS_DIM_MM[k]).padStart(10)}`);
 console.log(`  lugs fold by ${KEYLESS_DOGS}: ring ${KW.dogs.ring.toFixed(3)}, gear ${KW.dogs.gear.toFixed(3)}`);
+for (const k of Object.keys(KEYLESS_SELECTOR_DIM_MM)) console.log(`  ${('sel ' + k).padEnd(20)} ${SEL[k].toFixed(4).padStart(9)} ${String(KEYLESS_SELECTOR_DIM_MM[k]).padStart(10)}`);
+console.log(`  selector rise: ${selectorRise().plates} plates (the one count that seats the bulb between floor and flanges)`);
 console.log(`\n  axles ${Object.keys(AXLE_PARTS).join('/')}L, frame parts ${Object.values(FRAME_PARTS).join(' ')}`);
 console.log('\n  turntable  teeth (catalogue)  tips repeat  coherence (best rival count)  tip mm');
 for (const t of ttRows) console.log(`  ${t.part.padEnd(9)}  ${String(t.teeth).padStart(15)}  ${String(t.N).padStart(11)}  ${t.best.toFixed(3)} (${t.nextN}: ${t.next.toFixed(3)})  ${t.tipMm.toFixed(3).padStart(7)}`);
