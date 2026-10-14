@@ -17,6 +17,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 260 | OPEN | Found closing TODO 259. The ramp is cut, so the lift out of the notch has a price and nothing prices it: 4.0–6.7 mN sideways frictionless, 6.8–11.3 mN at `MU_STEEL`, against a pin load of 11.3 dropped / 18.8 riding. Its reaction lands on the disc, held by 14.66 mN (TODO 144 pad): 1.3–2.2 times, under the 3 times `ALARM_SPRING_HEADROOM` the pad is sized to. Price both rows in TODO 16's format; the remedy is a longer ramp, not a steeper one. |
+| 259 | DONE | Reported by eye: the alarm pin has no obvious path out of the notch. The tick has always ramped the reader's pin along a linear law over the pin's own angular diameter, but the notch's walls were radial, so a flat pin fell in and could never be lifted out. The track's top is cut to the law now (two ramps, 19.67°, `probe-280-notch-ramp.mjs` and the `alarm detector` line spec's `rampSeat`). The lift's force is TODO 260. |
 | 257 | DONE | Reported by eye at a reduced time scale: the balance slowed and stopped as the hack pad swung in, before any contact. The brake was `leverEngage · brakeNm`, and leverEngage left 0 on the crown's first frame. It is now the pad's own contact (`HACK_PAD`): zero until the pad's top reaches the rim, built over the hack rod's priced give (0.8 µm of pad rise), the holding load from the spring's peak torque at MU_STEEL. The crown's ease now ARRIVES (a floor under its speed) so the touch happens at 0.19 s, not as an exponential's 0.7 s tail. `probe-257-hack-contact.mjs`, 9 rows, one control that fails the old law |
 | 256 | OPEN | Blocks TODO 255. The maintaining ring is 35 teeth only because the movement is priced too lossy: under the real mesh law the floor rises (a heavier balance must still reach 200°, and the claim rises) and the blade needs 37 teeth. The detent beak's face flank cannot be relieved at 36 or more (clearance 0.1347 at 36, 0.1194 at 37, against CLEAR_MARGIN 0.15). Redesign the beak for a finer pitch, or give the spring more run, before 255 can land |
 | 255 | OPEN | Found measuring TODO 251. `going.energy` prices every mesh at πμ(1/z₁ + 1/z₂), which takes the contact-ratio factor (1 − ε + ε_a² + ε_r²) as 1. The shipped teeth give 0.52–0.56 of it, so the four meshes lose about HALF what the column charges (product 0.8799 against 0.7786 nominal). Price the mesh from `gearToothSpec`'s own arcs and re-solve what rides on the column; BLOCKED on TODO 256, and a prototype has been measured (see the item) |
@@ -33994,3 +33996,83 @@ between; release lets go on the first frame and the balance swings again.
 - Static versus kinetic friction: one coefficient holds and brakes.
 - The explainer's "Hacking seconds" entry was not edited (no sentence in it
   states the old ramp), so no locale table moved.
+
+## 259. The alarm notch's drop is a law over radial walls: a flat pin is never lifted out — DONE
+
+Reported by eye, from the live build: the reader's pin is a vertical cylinder and
+the notch it drops into has straight walls, so there is no obvious way out of the
+ringing position. The report was right and wider than it looked.
+
+- **What the tick did.** `alarmPinDropNow` ramps the pin LINEARLY from nothing
+  (the pin's rim touching the notch's edge) to `ALARM_PIN_DROP` (the pin wholly
+  inside), over the pin's own angular diameter, `2·pinArcHalf`. The `alarm
+  detector` line spec measured that law back off the collar's travel (`plateau`,
+  `window`) and read it green, because the collar IS posed by it.
+- **What the metal did.** The track was one extruded ring with a gap, radial
+  walls, a flat-ended pin. A flat cylinder standing on a vertical wall falls in
+  as a step and is never lifted out: the wall pushes it sideways and the pin's
+  lever only rocks vertically. The ramp the law described was a surface nothing
+  had cut, and `probe-280-notch-ramp.mjs`'s control reproduces it (ramps out:
+  24 of 24 samples across the ramp zone read UNSUPPORTED — the pin hanging in
+  air).
+- **The fix is on the track, not the pin.** The sideways force that climbs a flank
+  of angle θ is `F_seat · tan θ`. The law's own slope is `ALARM_PIN_DROP` over
+  `2·pinArcHalf·ALARM_TRACK_RMID` = 0.100 over 0.2798 u, **19.67°**. A conical
+  nose on this pin reaches 35.5° at best (`atan(drop / pinR)`, a point), and 64.6°
+  once its tip keeps §50's pivot floor `PIVOT_MIN_U` (⌀ 0.185 u), so it would be
+  the steeper climb on the same pin; it also moves the law's ramp to half the
+  width and re-derives the plateau, window and trip. The track's ends are
+  ramped instead, to the law as it stands.
+- **Built.** The full-height track now stops `ALARM_NOTCH_RAMP` = `2·pinArcHalf`
+  short of where it stopped, and two sector wedges (`alarmDiscNotchRamp`, one
+  closed manifold shell each, helicoid top on three radii, 96 steps) close the gap:
+  the low end stands the dropped tip's level (`ALARM_TRACK_H − ALARM_PIN_DROP`),
+  the high end is the track's top. The pin's bottom height at centre angle c is
+  the ramp's height at c + `pinArcHalf`, which is the law.
+- **One law corrected.** `pinArcHalf` was `pinR / trackR`; the angle the pin's
+  tangential extreme subtends at the disc's axis is `atan2(pinR, trackR)`, which
+  is 3.3e-5 rad smaller. That was invisible while nothing was cut to the law and
+  was the entire residual (3.6e-5 u) of the pin against the ramps. The explainer's
+  `gapHalf − pinArcHalf = 0.024 rad` is unchanged to the digits it quotes.
+- **Gates.** `alarm detector` gains `ramp` (the wedge's run, 2·pinArcHalf),
+  `rampRise` (the drop) and `rampSeat`: the posed pin's least vertical gap to the
+  cut metal at six taus across both ramps, 3.8e-9 u, within the spec's 1e-6; its
+  control carries the ramps 0.05 up the collar's axis and requires the reading
+  to follow (0.050000003). `notchW` is the outline's gap less the two ramps' runs.
+  `alarmDiscNotchRamp` is `marking` stock like the track it extends; the
+  `track ⇄ pin` penetration row and the disc ⇄ reader floors row name it.
+- **Not closed here.** The lift's FORCE — TODO 260.
+
+## 260. Price the reader pin's lift out of the notch: the sideways force the hour train must deliver
+
+Found closing TODO 259. With the ramps cut, leaving the notch is a climb with a
+price, and no row states it. In TODO 16's format:
+
+| quantity | value | derivation |
+|---|---|---|
+| pin load, dropped / riding | 11.29 / 18.81 mN | the `alarm release: bias blade` §137 row's `pinF_mN_dropped` / `pinF_mN_riding`, as the `alarm detector` line spec reads them (`seatHold`, `seatRide`) |
+| ramp slope tan θ | 0.3574 (19.67°) | `ALARM_PIN_DROP / (2·pinArcHalf·ALARM_TRACK_RMID)` |
+| sideways force, frictionless | 4.0 – 6.7 mN | `F · tan θ` |
+| sideways force at `MU_STEEL` 0.2 | 6.8 – 11.3 mN | `F · (sin θ + μ cos θ) / (cos θ − μ sin θ)`, the pin sliding up a flank |
+
+**Who pays it, and the first check that already does not close.** The pin is
+carried by the satellite's hour and the notch is cut in the disc the set train
+holds still, so the ramp's reaction lands on the DISC, and what holds the disc
+is TODO 144's pad: 14.66 mN, sized as `ALARM_SPRING_HEADROOM` = 3 times the
+all-day drag of the pin riding the track (`MU_STEEL · 18.81` = 3.76 mN, so a
+floor of 11.29). Against that hold the ramp's reaction is 6.8–11.3 mN at
+`MU_STEEL`: 1.3–2.2 times, where the design keeps 3 times over the drag it
+already prices. It does not slip on these numbers (11.3 < 14.66), but it holds
+by less than the margin the same pad is sized to, and only while the pin is on a
+ramp (the 2·pinArcHalf zone is about ten minutes of hour, twice a day) — which
+is the shape of a set time that could walk by a hair at each pass, a thing no
+gate measures. The hour train's side of the same force (the satellite's tooth
+force at the reader radius against the cannon pinion's slip) is not written down
+either.
+
+To do: put both rows in TODO 16's format, hold against reaction at each corner of
+`FRICTION`, and decide between (a) a pad that holds the reaction at the headroom
+(34 mN, which the seat's spring and the bridge must then carry) and (b) a longer
+ramp — a shallower slope at the cost of a wider window — whose reaction falls as
+`tan θ`: halving the slope halves the reaction and leaves the hold unchanged.
+Not a steeper one, and not a cone.
