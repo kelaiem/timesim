@@ -36510,9 +36510,12 @@ The owner chooses. The 'alarm detector' rows `orbit`, `setCarry` and
 Landing 4 measured where the detector could stand. The owner then chose the
 station: on idler 1's compound pinion's circle, so the satellite's disc meshes
 i1b directly. The detector is a faithful 1:1 copy, with no differential. This
-landing moves the metal. It does NOT move the dial: `Z_DIAL` and
-`CASE_HEIGHT_MAX_MM` are unchanged, because the reclaim turned out to be bound
-by members the fold keeps (below, "What the fold leaves to the depth").
+landing moves the metal. **It does not change the depth.** `Z_DIAL` and
+`CASE_HEIGHT_MAX_MM` (11.586 mm) are unchanged, and the cased watch measures
+what it did. The reclaim is bound by members the fold keeps (below, "What the
+fold leaves to the depth"). The owner decided to ship the satellite move as
+built. The about-0.5 u reclaim and the release crank's re-site are a later
+landing.
 
 ### The station is two circles, and the first root is the build as it stood
 
@@ -36648,6 +36651,27 @@ Rule 2 says it arrives through teeth:
   cut about its local origin, so this works where a box centre would not).
   Nothing else in the reference moved.
 
+### The explainer and the chrome
+
+`explain.html`'s detector entry described the centre column, so it was made
+true of the built metal:
+
+- The collar orbits on a satellite arbor, turned with the hour wheel tooth for
+  tooth through an idler (32, 9, 32 teeth, 1:1 and the same sense).
+- The hub's oil film is on the satellite's copy of the hour tube, and the
+  pad's reaction lands on the satellite's hour wheel.
+- Plate 1 is titled "the read station on its satellite arbor". Its centreline
+  is the lever's line, not the release azimuth, and the collar's label reads
+  "turns 1:1 with the hour wheel".
+- The figcaption puts the pin on the satellite's hour and the bracket on the
+  base plate. "Hung from the dial sheet" had been false since TODO 222.
+
+The six changed keys were regenerated with `--extract`. Each was re-translated
+in all 22 locales by editing the clause that changed, carrying the English's
+digits (32, 9, 32, 1:1) and leaving the markup and `<code>` identical. The two
+new units' part labels ('Alarm detector arbor', 'Alarm detector idler') are in
+every chrome table in `src/i18n.js`.
+
 ### Held by
 
 - **The local battery, whole but for the point tier** (every check under
@@ -36686,8 +36710,19 @@ Rule 2 says it arrives through teeth:
   (seam 337, the jumper siting scan's adaptive stage order, visited 157, 162
   and 161 times across three boots), so the build's added work was measured on
   the held line instead.
-- `explain-quotes` PASS (269 claims), `index-instruments --check` OK (306),
-  `check-item-numbers` OK.
+- `explain-quotes` PASS (269 claims), `index-instruments --check` OK (307
+  after the rebase), `check-item-numbers` OK.
+- After the explainer refresh: `explain-i18n --check` PASS (0 unmatched, 0
+  markup, `<code>` or number drift, 0 crossed honesty terms, no new plate
+  overflow). `glossary-links` PASS (99 links in English).
+  `l10n-review-packets` PASS (22 locales: every label translated, the two new
+  part labels included). `probe-chrome-coverage` reads no new
+  label MISSING or NOT APPLIED. Its only misses are the live frame-time readout
+  ("133.3 ms · 7 fps", then "100.0 ms · 10 fps"), a different locale on each of
+  two runs (hu, then hi and zh). That readout's string is timing on this
+  container, not a table entry. The quick battery after the rebase
+  (`lineSpec,support,graph,alarmHandoffs`) passes 16/16, boot silent,
+  fingerprint 1362851413 unchanged.
 - `probe-261-height-ledger` PASS (from a detached copy: the ledger's mutant
   trees skip `.claude` paths, and booted from the worktree its identity control
   times out). Cased depth is 11.586 mm. The back is governed by the ring's face,
@@ -36718,6 +36753,11 @@ crank, a member of the sleeve's drive, has to move. Re-siting the crank is the
 release run's P1 currency, since the sleeve's work law prices its station.
 Moving i1b is not available at all, because the disc's ratio is its count. That
 is a layout decision with numbers attached, filed for the next landing rather
-than absorbed here. `Z_DIAL`'s fund, the height ledger and
-`CASE_HEIGHT_MAX_MM` are therefore untouched, and §112, §276 and §234 are not
-re-solved.
+than absorbed here.
+
+**Owner's decision: this landing ships the satellite move as built, with the
+depth unchanged.** `Z_DIAL`'s fund, the height ledger and `CASE_HEIGHT_MAX_MM`
+are untouched, and §112, §276 and §234 are not re-solved. The reclaim (about
+0.5 u, 0.19 mm, before the crank binds) and the release crank's re-site are
+left to a later §278 landing, along with the silence rocker's
+re-stratification that a reclaim past 0.18 u would need.

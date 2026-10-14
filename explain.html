@@ -2405,8 +2405,9 @@
     <summary>Alarm release — a collar reads the set time, a fixed lever frees the train<span class="where">alarm · src/main.js:6433</span></summary>
     <div class="mech-body">
       <p>The read station of the alarm train, in the Vulcain Cricket / JLC Memovox pattern —
-      and it is <em>two</em> members. An hour-carried collar orbits with the hour wheel, its
-      pin riding a raised track on the alarm disc; the disc holds still, carrying the
+      and it is <em>two</em> members. An hour-carried collar orbits on a satellite arbor beside
+      the centre column, turned with the hour wheel tooth for tooth through an idler (32, 9,
+      32 teeth, so 1:1 and the same sense), its pin riding a raised track on the alarm disc; the disc holds still, carrying the
       <em>set time alone</em>, so the orbiting pin meets the disc's one notch exactly at
       coincidence. The pin falls into it, and the collar's ring carries that drop to a fixed
       spring-biased lever — a ring because it is present at every azimuth at once, which is
@@ -2428,13 +2429,13 @@
       flowed back up the whole setting chain and no member carried the set alone. Moving the
       reading onto the hour removes the differential instead of adding one. What holds the
       disc still is TODO 144's seat. The load is not the hub &mdash; its oil film on the turning
-      hour tube is a viscous term some six orders under it &mdash; but the reader's own pin,
+      tube it rides, the satellite's copy of the hour tube, is a viscous term some six orders under it &mdash; but the reader's own pin,
       which slides on the track under the bias blade's riding seat (18.81 mN at the pin, 0.45 of
       the 41.80 mN the spring delivers, re-levered about the lever's pivot) and drags the disc
       round with the hour at
       <code>MU_STEEL</code>&nbsp;&middot;&nbsp;F&nbsp;&middot;&nbsp;<code>ALARM_TRACK_RMID</code>,
       4.35e-3 N&middot;mm, all day. A pad on the disc's face alone cannot hold it: its reaction
-      lands on the hour wheel, which turns, and a thrust face that turns is a second drag. So a
+      lands on the satellite's hour wheel, which turns, and a thrust face that turns is a second drag. So a
       fixed thrust plate sits under the disc, a bridge hung from the dial sheet on two posts, and
       a pad from the same bracket presses the disc onto it &mdash; both reactions become holds,
       14.66 mN at the pad clearing the drag by <code>ALARM_SPRING_HEADROOM</code>. The stratum it
@@ -2443,7 +2444,7 @@
 
       <!-- —————— PLATE 1 : PLAN VIEW —————— -->
       <figure>
-        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Plan view — the read station at the release azimuth</span></div>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Plan view — the read station on its satellite arbor</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 780 430" width="780" height="430" role="img"
                aria-label="Top-down view of the alarm disc with its raised track and notch, the hour-carried collar whose pin rides the track, and the fixed release lever outboard of the rim">
@@ -2456,7 +2457,7 @@
             <g id="notchEdges" stroke="var(--brass)" stroke-width="1"></g>
 
             <line x1="230" y1="215" x2="700" y2="215" stroke="var(--muted)" stroke-width="0.75" stroke-dasharray="7 5"/>
-            <text class="lbl" x="565" y="205">release azimuth ℄</text>
+            <text class="lbl" x="565" y="205">lever's line ℄</text>
 
             <rect x="388" y="188" width="14" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
             <rect x="388" y="230" width="14" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
@@ -2479,7 +2480,7 @@
             <path class="leader" d="M 477 333 L 330 300"/>
 
             <text class="lbl lbl-strong" x="255" y="395">collar's pin ⌀ 0.28, riding the ridge</text>
-            <text class="val val-ruby" x="255" y="409">orbits with the hour wheel</text>
+            <text class="val val-ruby" x="255" y="409">turns 1:1 with the hour wheel</text>
             <path class="leader" d="M 300 382 L 288 146"/>
 
             <text class="lbl lbl-strong" x="40" y="180">collar ring · r 3.05</text>
@@ -2506,10 +2507,10 @@
           </svg>
         </div>
         <figcaption>The disc holds still at the set time; the collar's pin comes round to it
-        on the hour wheel, so pin and notch coincide exactly when the two hands do. The lever
+        on the satellite's hour, which the idler turns 1:1 with the hour wheel, so pin and notch coincide exactly when the two hands do. The lever
         does not have to be there for that — it reads the collar's ring, which carries the
         drop to every azimuth at once, and its own arm crosses the spinning rim only to reach
-        that ring. Bracket, pivot and stop are static, hung from the dial sheet.
+        that ring. Bracket, pivot and stop are static, the bracket standing on the base plate.
         Scale ≈ true in plan.</figcaption>
       </figure>
 
