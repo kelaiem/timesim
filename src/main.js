@@ -23,7 +23,7 @@ import {
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
+  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -7755,7 +7755,21 @@ const ALARM_SLEEVE_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // 
 // pin riding the disc's raised notch track, the disc body, then one margin to
 // the minute wheel.
 const ALARM_FEELER_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.10 — the feeler's slices were the band's thinnest levers)
-const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + MEASURED_MARGIN_BAND); // −2.69 (§45; was −1.77). TODO 173: + the band — the static plane lands exactly one margin off the sleeve's skirt, which a strict < reads either side of (TODO 172's precedent)
+// §278 landing 6 — the chain's plane one margin (and the band) under the
+// sleeve's swept envelope: where the feeler stood while the detector was on the
+// centre column, and still where the centre column's chain ends. TODO 173: + the
+// band — the static plane lands exactly one margin off the sleeve's skirt, which
+// a strict < reads either side of (TODO 172's precedent).
+const ALARM_SLEEVE_BAND_FLOOR = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + MEASURED_MARGIN_BAND);
+// THE DIAL-SIDE RECLAIM (layout.js, where its price is written). Since §278
+// landing 5 the detector stands on its satellite, so nothing of it stacks under
+// the sleeve at the centre: a reclaim brings the dial and every member hung
+// from it plate-ward while the satellite's stack, i1b in the disc's plane, the
+// hour wheel and the motion works keep their WORLD planes. In the dial frame
+// that is this plane rising by the same amount: the feeler and everything the
+// chain hangs under it (the track, the disc, the seat, the motion-works solve)
+// read it, and keep their world planes by construction.
+const ALARM_FEELER_TOP = ALARM_SLEEVE_BAND_FLOOR + DIAL_RECLAIM; // −2.69 (§45; was −1.77) at no reclaim
 // §45 tripwire — the fund and the spend must agree: Z_DIAL deepened from the
 // §51-era −7.5 by exactly what the chain grew (the sleeve band replaced a
 // bare margin gap, so growth = envelope + one margin). Under-funded, the
@@ -7768,7 +7782,7 @@ const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + M
   const spend = (ALARM_SLEEVE_ENV + CLEAR_MARGIN)     // §45: chain growth vs the pre-§45 stack
     + (ALARM_FSPIRAL_B + CLEAR_MARGIN)                // TODO 194: the return spiral's band
     + ALARM_B_BAND_SPEND;                             // TODO 222: follower-B's seat spring, under the band
-  const fund = -7.5 - Z_DIAL;                     // −7.5: the §51 phase-B dial plane, §45's datum
+  const fund = -7.5 - Z_DIAL + DIAL_RECLAIM;      // −7.5: the §51 phase-B dial plane, §45's datum (§278 landing 6: a reclaim is the dial coming back by what the chain no longer spends at the centre)
   if (fund < spend - 1e-9 || fund > spend + 0.01)
     console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve + spiral + rocker spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
 }
@@ -20822,8 +20836,8 @@ const ALARM_SET_Z = Z_DIAL + ALARM_SHEET_GAP + ALARM_SET_T / 2; // WORLD gear pl
 {
   const heartBot = ALARM_HEART_Z - ALARM_HEART_T / 2;
   const mwTop = MW_TOP;   // TODO 21: the dial-most face is the hour wheel's now — one name, defined at the planes
-  if (heartBot - ALARM_FEELER_TOP < CLEAR_MARGIN - 1e-9)
-    console.warn(`§29 stack: feeler top ${ALARM_FEELER_TOP.toFixed(2)} inside the heart's margin (heart bottom ${heartBot.toFixed(2)}, need ${CLEAR_MARGIN})`);
+  if (heartBot - ALARM_SLEEVE_BAND_FLOOR < CLEAR_MARGIN - 1e-9)   // §278 landing 6: the chain's floor under the sleeve, not the satellite's feeler
+    console.warn(`§29 stack: band floor ${ALARM_SLEEVE_BAND_FLOOR.toFixed(2)} inside the heart's margin (heart bottom ${heartBot.toFixed(2)}, need ${CLEAR_MARGIN})`);
   if (ALARM_SEAT_BOT - mwTop < CLEAR_MARGIN - 1e-9)   // TODO 144: the seat's underside is the disc-side face the hour wheel answers to now
     console.warn(`§29 stack: seat bottom ${ALARM_SEAT_BOT.toFixed(2)} inside the hour wheel's margin (mw top ${mwTop.toFixed(2)}, need ${CLEAR_MARGIN})`);
 }
@@ -21961,8 +21975,16 @@ const ALARM_SLEEVE_BOSS_W = STOCK_MIN_U;                                  // §5
 // (The slot's half-width carries the roller's tilt over the turn too, which the
 // turn sets; ALARM_SLEEVE_SLOT_TILT bounds it, asserted at the plates.)
 const ALARM_SLEEVE_SLOT_TILT = 0.02;
+// §278 landing 6: read at the sleeve's own band floor, not at the feeler. The
+// blade this was solved against left the plates with the satellite fold (it
+// stands at the satellite's azimuth, 325–333°, under no plate), and a reclaim
+// carries the sleeve dial-ward of the feeler's plane; reading the held feeler
+// would re-cut the sleeve's rollers — and with them its helix law, the crank's
+// arms and the release run's rows — for a constraint no longer there. So the
+// rollers ride where TODO 236 solved them in the sleeve's own frame, and
+// re-deriving their height against the metal now under the plates is TODO 257.
 const ALARM_SLEEVE_ROLL_Z = Math.max(-ALARM_SLEEVE_T / 2,
-  (ALARM_FEELER_TOP + SPRING_FLAT_U / 2 + ALARM_FEELER_SPR_LIFT) + CLEAR_MARGIN + MEASURED_MARGIN_BAND
+  (ALARM_SLEEVE_BAND_FLOOR + SPRING_FLAT_U / 2 + ALARM_FEELER_SPR_LIFT) + CLEAR_MARGIN + MEASURED_MARGIN_BAND
   + (ALARM_SLEEVE_ROLLER_R + ALARM_FORK_CLEAR + ALARM_SLEEVE_SLOT_TILT) + ALARM_SLEEVE_GUIDE_T
   - (ALARM_SLEEVE_TOP - ALARM_SLEEVE_TRAVEL));   // sleeve-local (0 = the flat's dial-side face, + toward the dial)
 // The drive roller's line of push: inside a fork on the sleeve's rim. The
@@ -22265,7 +22287,7 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03;
   const restSkirtTop = ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T;
   say('rest gap, skirt top edge to pin tip', tipZ - restSkirtTop, ALARM_SLEEVE_GAP - 1e-6);
-  say('envelope floor above the feeler', (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H) - ALARM_FEELER_TOP, CLEAR_MARGIN);
+  say('envelope floor above the chain\'s band floor', (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H) - ALARM_SLEEVE_BAND_FLOOR, CLEAR_MARGIN);   // §278 landing 6: the feeler is off the column; what stands under the sleeve is the battery's
   say('flat bore clears the resting pin', ALARM_SLEEVE_R_IN - (alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R), 0.03 - 1e-6);
 }
 // TODO 227 — the skirt's wall, held to the constraints it was

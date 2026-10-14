@@ -37104,3 +37104,200 @@ TODO 199 files). Both figures are quoted from that item, not re-measured here.
 Its title and caption are translated in the 22 locales and held by
 `probe-277-route-i18n.mjs` (22 × 23 rows, 0 failing). The framing is one render:
 the lever's pivot and pickup are in shot, in a crowded corner.
+
+## §278, landing 6 — the reclaim measured: a plan to 0.58 u, and the alarm link stops it at 0.14 (the depth is not yet reclaimed)
+
+The owner's decision after landing 5: re-site the release crank and re-stack the
+silence rocker first, then take the dial-side reclaim toward the study's 1.778
+u. This landing built that plan, measured it on built trees, and ran the
+battery on it. **The battery refused it**, on a pair no earlier study could see:
+the alarm link's arming blade against its own hanger 3. That pair is inside one
+unit, so the pair sweeps and the step study pass it by, and it binds at about
+0.14 u. Moving it is a re-solve of the alarm link's fold (§261 2c, TODO 206,
+TODO 240), which is a design decision. So this landing ships the reclaim's
+machinery at zero, its instrument, and the measured plan, and **does not change
+the depth**: the cased watch is 11.586 mm, `CASE_HEIGHT_MAX_MM` 11.586, and the
+fingerprint is the base's. The plan itself is kept, built and measured, on the
+local branch `wrk/s278f-reclaim058`.
+
+### What lands
+
+- **`DIAL_RECLAIM`** (layout.js), `Z_DIAL = −9.54 + DIAL_RECLAIM`, at 0. In
+  main.js the centre column's chain reads it back exactly once: the plane one
+  margin under the sleeve's swept envelope is now named
+  (`ALARM_SLEEVE_BAND_FLOOR`), and `ALARM_FEELER_TOP` is that plus the reclaim,
+  so everything the chain hangs under the feeler (the track, the disc, the
+  seat, the motion-works solve) keeps its world plane when the dial comes
+  plate-ward. The §45 fund tripwire reads `fund + DIAL_RECLAIM`.
+- **The sleeve's rollers read the sleeve's own frame.** `ALARM_SLEEVE_ROLL_Z`
+  read the feeler's plane, because TODO 236 solved it against the feeler's
+  return blade lying over a guide plate. The blade left the plates with
+  landing 5 (it stands at 325–333°; the plates at 105°, 250°, 300°). Under a
+  reclaim, reading the held feeler would leave the rollers in world while the
+  sleeve came down, re-cutting the sleeve's helix law for a constraint that is
+  gone: on the built copies the selector's third plate met the third roller pin
+  at 0.84. It now reads `ALARM_SLEEVE_BAND_FLOOR` — the same number today, the
+  height TODO 236 solved. The stale reason is **TODO 257**. §29's heart-margin
+  assert and §45's envelope-floor assert read the band floor too: the feeler is
+  off the column.
+- **`tools/probe-278-dial-step.mjs`**, the step study (below).
+
+### The instrument
+
+It classifies every mesh off the build (a copy with `DIAL_RECLAIM` + 0.05,
+boxes compared at a declared pose): dial-hung, held, or re-solved (a member
+whose law reads both frames — a post spanning them, an arm solved against both
+ends). It steps the dial-hung metal plate-ward against the held metal over
+§152's 52 poses, and it BUILDS copies at chosen reclaims and reports every pair
+of moving metal newly under the margin. Two traps it met, both in its header:
+`setPose({})` leaves tau where the live loop left it, so two boots disagreed
+about the hour wheel until a declared pose was used; and the Dial label holds
+the whole dial frame, so meshes are owned by their nearest label (§40), or a
+mesh pairs with itself. Controls: the dial sheet classifies hung and the motion
+works held; a ghost at Δ 0 reproduces its mesh and at 0.5 moves exactly 0.5 in
+z; the sheet carried onto the plate reads contact. **Its blind spot is the one
+that mattered**: it pairs metal of DIFFERENT units, as the pair sweeps do, so a
+binder inside one unit is the battery's `intraUnit` to find.
+
+### What binds, on built trees
+
+On landing 5's tree, the built copies put the binders here (landing 5's ghost
+translation had priced the crank at 0.6; a translation cannot see a member
+whose law re-solves):
+
+| reclaim | pair | |
+|---|---|---|
+| ≈ 0 (0.137 apart at no reclaim), contact ≈ 0.15 | the alarm link's arming blade ⇄ hanger 3's jog and upper column | **found by the battery's `intraUnit`**: the blade rides the lay shaft, whose stratum is solved off the dial-side selector and idler (dial-hung), while the jog's arm stands one margin under the beak's bar, which the §261 fold holds; the reclaim closes the shaft on the bar one for one (0.0449 at 0.10, 0.0173 at 0.13, intersecting by 0.20) |
+| 0.025 | the silence rocker's bar ⇄ the feeler's banking stop | the bar (dial-hung) stood 0.1702 over the stop (held); the plan's re-stack raises it clear |
+| 0.048 | the sleeve's fork land ⇄ the feeler's banking stop | landing 5 put the feeler's tail and stop (333–337.5°, r 5.2–6.2) under the land (320.8–337.4° at the 328° station), 0.198 of height between them |
+| 0.18 | the silence rocker's finger riser at §50's 0.1 floor | the paddle rides the dial-hung sleeve, the finger the held tail |
+| 0.583 | the crank's cap ⇄ the feeler blade's stud | (at the re-sited station, below) |
+| 0.6277 | the sleeve's skirt ⇄ i1b | i1b's tips reach r 4.13, inside the skirt (r 4.00–4.65) in plan |
+
+### The plan to 0.58 (built, measured, held on `wrk/s278f-reclaim058`)
+
+**The crank, 328° → 324°.** The drive station's rule is unchanged: the
+cheapest station, by the sleeve's own work law, whose metal clears. The law
+prices every station at its own solved helix (`releaseRun.peak`, the function
+the build's golden-section solve calls), and W falls monotonically with azimuth
+over 296–342°, so cheapest is highest. The satellite's metal now closes the arc
+from above and the selector's third guide plate from below. On built copies at
+0.58, every moving mesh of the drive against every other mesh over the net:
+
+| station | least clearance | pair |
+|---|---|---|
+| 326° | 0 | the fork's land into the feeler's stop |
+| 325° | 0.0857 | the land over the stop |
+| **324°** | **0.153** | the cap over the blade's stud (the reclaim's binder) |
+| 323° | 0.153 | the same |
+| 322° | 0.1493 | the fork beside the selector's third plate (both dial-hung: no reclaim helps) |
+| 321° | 0.0626 | the same |
+
+Past 0.583 the cap meets the stud at every station that clears the selector's
+plate, so the station and the reclaim are one solve: 324° at 0.58. (A first
+try at 320°, chosen by a ghost scan that rotated the drive against the
+satellite's metal only, put the fork into the selector's plate; the battery's
+inspection, undeclaredClearance and sweptOverlap all read it.) The price is
+the law's own, every member re-sized from it:
+
+| | 328° | 324° |
+|---|---|---|
+| helix, solved / cut | 48.555° / 48.478° | 51.679° / 51.569° |
+| W (peak drive × throw) | 154.80 mN·u | 165.70 mN·u (+7%) |
+| peak drive at the fork | 780.5 mN | 933.4 mN |
+| throw at the fork; sleeve turn | 0.1983; 0.03858 rad | 0.1775; 0.03457 rad |
+| crank arms in / out | 2.0923 / 0.9640 | 2.3790 / 0.9788 |
+| link pull, pad push, crown pull | 359.6 mN, 688.7 mN, 0.2033 N | 384.1 mN, 737.2 mN, 0.2176 N |
+| crank stud radius | 0.2889 | 0.3048 |
+
+The arms are the fold's, solved by its four constraints as before; the longer
+input arm is the line's whole ratio re-splitting at the shorter throw. The
+reclaim itself moves no arm (at 324° with no reclaim they read the same); it
+lengthens the crank's link pin (0.569 → 1.152, re-sized to radius 0.1773),
+because the lifter is held and the crank comes down with the dial. The 'alarm
+release run' line spec measured back unforked; delivery 384.1 mN.
+
+**The silence rocker: the bar over the paddle.** The bar stood between its two
+ends (the paddle crank 0.19 over it, the finger riser 0.28 under it), and a
+reclaim closes that band one for one; past 0.47 the paddle's face stands under
+the finger's and no plane between them survives. The plan runs the bar at the
+plane the paddle's bridge already stood on (one margin and the band over the
+sleeve's arm at the bar's nearest crossing, the arm's lift over that station
+included), the pad on its underside and the finger on a dropper (0.3853 at
+0.58); the paddle end's riser and bridge go, and the jog round the feeler
+bracket's lugs is cut only if the lugs reach the bar's plane (they stand 0.49
+under it). The chord, the pivot's station, aF 0.6997, aP 3.1452, the ratio
+0.2225 and the 51.21 mN force row are held. It cannot land at no reclaim: at
+328° the raised bar stands 0.085 off the crank's hub.
+
+**Re-quoted at 0.58 by their own tripwires:** `ALARM_LINK_ROD_LEN_U` 2.4917 →
+1.9117 and `ALARM_PINB_SEAT_MN` 5.2650 → 5.3052; the cap would have gone to
+11.367 mm (cased 11.3660, 0.220 mm bought).
+
+**The local battery on that tree** (every check under `--only`,
+`--no-incremental --shards 3`): **53/54 gates**. The one red is `intraUnit`:
+`alarmLinkArmingSpring` ⇄ `alarmLinkHanger3Jog` and `⇄ alarmLinkHanger3Upper`,
+tier MF, at beat f=0. Everything else — lineSpec (6 references, 115 rows, the
+2 existing forks), alarmHandoffs (32), inspection, undeclaredClearance,
+sweptOverlap, plateSeats, jumperMovers, transfers (44), meshPhase and transmits
+(26 meshes) — passed.
+
+### The decisions this leaves
+
+1. **The alarm link (binds first, at ≈ 0.14).** The arming blade and hanger 3's
+   jog share the gap between the lay shaft (dial-hung) and the beak's bar
+   (held). Resolving it is a re-solve inside the alarm link's own fold: re-site
+   hanger 3 along the chord, or re-stratify the beak's bar or the shaft, with
+   the link's line spec and its forks measuring back. Without it no reclaim
+   past about 0.13 is available, and at 0.13 the blade would stand 0.017 off
+   the hanger.
+2. **Then the crank and the rocker**, as planned above, to 0.58.
+3. **Then i1b under the skirt (0.6277).** i1b drives the satellite's disc in
+   the disc's own plane, and its tips reach r 4.13 because i1 stands 8.7 from
+   the dial's axis (`ALARM_SET_DW1`, the lane's closure) and i1b is cut at
+   that module; the skirt is the cone that presses follower A's tail pin at any
+   hour, so no relief can be cut in it. Two ways past it (arithmetic, not
+   measured): re-derive the branch's module (at m ≤ 0.26 i1b's tips clear the
+   sleeve's flat; the disc shrinks to a root near 3.58, outside the track's
+   3.25 plus a margin; the satellite re-sites onto the new circle about i1; the
+   next binder about 0.83, the sleeve's flat and silence arm over i1b), or step
+   the satellite's stack down with a compound hour idler (i1b can drop only
+   0.317 before it meets the hour wheel at the centre, so about 0.94 in all).
+   Either way the feeler blade's stud, the satellite's, has to move off the
+   crank's cap too.
+
+Past those, the step study's figures on landing 5's tree: the skirt over the
+hour wheel at 1.409, the dial over the keyless setting wheel at 1.578, the dial
+over the yoke's boss at 1.972.
+
+### Held by
+
+- **The local battery, whole but for the point tier** (every check under
+  `--only`, `--no-incremental --shards 3`, on this container's SwiftShader
+  Chromium) passes **54/54 gates**, boot silent. The fingerprint is
+  1362851413, landing 5's: at zero reclaim the build is the same metal (the
+  band floor is the expression `ALARM_FEELER_TOP` was, and the rollers read the
+  same number). lineSpec 6 references, 115 rows, 2 forks; alarmHandoffs 32,
+  0 waived; meshPhase and transmits 26 meshes; transfers 44; inspection,
+  undeclaredClearance (0 of 1874 under the margin), sweptOverlap, intraUnit,
+  plateSeats (72 seated, 0 debt) and jumperMovers clean.
+- `probe-278-dial-step` on this tree: controls PASS (K2 0, K3 0.0000). Its
+  inter-unit table, hung against held: the rocker's bar over the feeler's stop
+  0.025, the fork land over the stop 0.047, the crank's cap over the blade's
+  stud 0.581, the skirt over i1b 0.625, the rocker's bar over i1b 0.800, the
+  crank's hub over the finger 0.900, then the dial over the release link's eye
+  1.159 and the skirt over the hour wheel 1.409.
+- `probe-70-line-spec` (from a detached copy, `ROOT=`): all 29 trees PASS.
+  `probe-117-trip`: trips at 36547.2, 26467.2 and 9187.2 s, offset 0.00105 rad,
+  spread 0 — the alarm rings when it did. `probe-236-release-run` PASS (328°,
+  48.478° cut; adverse 778.5 mN over 0.1989; every control fires).
+  `probe-detector-site`: every control PASS, the station as built reads core
+  0.6782, feeler 0.1702, K3 0.04403; its one search warning is §38/TODO 8's
+  step-over guard, raised by its own pose jumps, as at landing 4.
+- `probe-239-boot-yield` PASS: held 438 ms at worst (ceiling 550), long task
+  1929 ms, input ack 1778 ms, 0 boot warns. `boot-progress --check` OK (no
+  seam added). `probe-261-height-ledger` PASS (from a detached copy): 11.586
+  mm, the dial-side band 7.240 u; `probe-261-height-cap` PASS: 11.586 fires on
+  growth and staleness.
+- `explain-quotes` PASS, `index-instruments --check` OK (308),
+  `check-item-numbers` OK (TODO 257 claimed).

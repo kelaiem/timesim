@@ -34102,3 +34102,30 @@ sink) all take it, and the track's full-height end moves out by the same run.
 **Still unstated:** the hour train's side of the same force — the satellite's
 tooth force at the reader radius against whatever slips first. Price it with the
 rest.
+## 257. The release sleeve's roller height reads a feeler blade that no longer stands under its plates
+
+Found by §278 landing 6. `ALARM_SLEEVE_ROLL_Z` (main.js, TODO 236) sets how
+far dial-ward of the sleeve's flat its three guide rollers ride. The rule it
+states: the guide plate's top edge stands one margin under the feeler's return
+blade, which lay over the plate at the feeler's lever, so the slot (and the
+roller at its far end) is pushed dial-ward by the blade's height. That was a
+fact while the feeler stood on the centre column. §278 landing 5 carried the
+feeler, its blade with it, to the satellite: the blade now stands at 325–333°,
+r 5.66–7.34, and the plates stand at 105°, 250° and 300°, r 5.0–5.9. No plate
+is over it.
+
+A dial-side reclaim (§278 landing 6's `DIAL_RECLAIM`) needs the sleeve to ride
+the dial rigidly — it brings every dial-hung member plate-ward while the feeler
+is held — and reading the held feeler would re-cut the rollers' height, and with it the
+sleeve's helix law, the crank's arms and the release run's rows, for a
+constraint that is no longer there. So the expression now reads the chain's
+band floor in the sleeve's own frame (`ALARM_SLEEVE_BAND_FLOOR`): the height
+TODO 236 solved, held. The number is right for the metal it was solved
+against; the reason written beside it is not the reason it holds now.
+
+**Fix path.** Re-derive the rollers' height from what actually stands under
+each guide plate over the sleeve's lift (the floor is `−ALARM_SLEEVE_T / 2`,
+the rollers at the flat), then re-run the helix solve at the drive station
+(`alarmReleaseHelixSolve` reads `zR`), and re-price the release run with
+`tools/probe-236-release-run.mjs`. The 'alarm release run' line spec's turn and
+helix rows re-derive from the build; the deliver envelope must still hold.

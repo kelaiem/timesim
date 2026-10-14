@@ -1383,7 +1383,24 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // and funded here the §45 way — the total spend 2.0328 rounded up to the 0.01
 // grid. The selector ring and the alarm link ride the dial frame and move with
 // it (the selector rod is that much longer), as TODO 194's spend moved them.
-export const Z_DIAL = -9.54;
+// §278 landing 6 — THE DIAL-SIDE RECLAIM, a term at zero. The four spends above
+// fund the centre column's chain, and since landing 5 that chain no longer ends
+// in the detector: the disc, its seat, the reader and the feeler stand on their
+// satellite, so the band they took under the sleeve at the centre is empty. A
+// reclaim brings the dial and everything hung from it plate-ward by
+// DIAL_RECLAIM while the satellite's stack, idler 1's pinion (i1b), the hour
+// wheel and the motion works keep their world planes (main.js reads it back
+// into the chain under the sleeve, ALARM_FEELER_TOP). It is 0 because the
+// metal does not yet allow one: measured on built copies
+// (tools/probe-278-dial-step.mjs and the battery), the alarm link's arming
+// blade, which rides the dial-hung lay shaft, already stands 0.137 off hanger
+// 3's jog, which hangs from the held beak's bar, and meets it at about 0.15 of
+// reclaim; and at 328° the release sleeve's fork land meets the satellite
+// feeler's banking stop at 0.048. §278 landing 6's record has the plan that
+// clears every other binder to 0.58 (the crank at 324°, the silence rocker's
+// bar over its paddle) and what moving the link would take.
+export const DIAL_RECLAIM = 0;
+export const Z_DIAL = -9.54 + DIAL_RECLAIM;
 // The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is
 // mid-stock and the figure §50's own citations use for plate-like sheet. In
 // §39's pin that is 0.4 / 0.379 = 1.06 units. The floor under it: a dial must
