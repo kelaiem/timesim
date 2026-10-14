@@ -28051,6 +28051,19 @@ space; stage 3 tick law + one axis + ~3 hand-off rows; stage 4 a rod through
 both plates and a re-site · Battery: stage 2 probe-only; stages 3 and 4 full
 battery with a `--report` diff
 
+**§278 landing 5 moved the feeler, and with it this line's first member.** The
+detector stands on a satellite arbor at world (10.1345, −5.8103) — r 11.68,
+az 330.2° — and the feeler is turned about it so that its tail lies under the
+silence finger, which did not move: the tail now points at the dial's axis, its
+outer end at r 5.33 from it, where the lever's pivot stood before. The run to the
+lock is therefore measured from a new end: §278 landing 4's site report put it
+at 22.34 in plan from a satellite at r 12.5, az 334°, with the tail turned
+toward the lock; here the tail is not free to turn (the finger holds its
+azimuth). The free columns quoted in stage 4 above, (12–13, −2..1) near the
+feeler, were read for the centre-column feeler and have to be re-measured on the
+folded tree before the line is laid. Nothing in the hold changed: it is still
+the flag.
+
 ## 200. The pillar tenons' riveted ends are not drawn: the base plate has no dial-side countersink for the spread — CLOSED
 
 Filed from [TODO 184]'s residue (#545). Step 3 of 184 riveted the four
@@ -31564,6 +31577,18 @@ price is the dial plane (`Z_DIAL`) and everything keyed to it.
 
 ---
 
+**§278 landing 5 — the lip's RELIEF is retired; the wall stands.** The relief
+this item cut (the lip's outer corner, absent in a sector about the feeler's
+line, because the lip reached over the feeler spring's free end) had one
+client, and the satellite fold took it away: the feeler, its blade with it,
+stands on the satellite now, and the lever's line passes the dial axis no
+nearer than 5.33 (its edge 0.54 outside the sleeve's flat, asserted at the
+feeler). So the skirt is cut as the full wall at every azimuth — A → E along the
+envelope's floor, the outer wall to the cap — and `ALARM_SPR_YAW_MAX`, the bound
+the relief was cut for, went with it. The wall this item made metal is
+unchanged: the same profile, one corner fewer pair (the relief's morph), its
+area and volume asserts as before.
+
 ## 226. The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) — CLOSED (§221)
 
 Found closing [TODO 216], whose knock solve reads this geometry.
@@ -33616,3 +33641,25 @@ row, or reverse the helix hand's tangential sense against the drag if the
 margin is thin. The other hand locks at this station (TODO 236), so a hand
 change means re-siting the drive.
 
+
+## 253. The beak's stub stands 0.0949 off the cut castellations, under CLEAR_MARGIN
+
+Found closing the hanger/driver collision (the `Alarm switch ⇄ Alarm link` pair
+had no `EXPECTED_CONTACT_FLOORS` row; the row that now exists measures the pair's
+non-working metal). `_stubLiftFor` stands the beak's stub `CLEAR_MARGIN` off the
+LAW, `colH · profileAt(θ)`, over 240 wheel phases. The cut is straight between
+its `M` stations per half-arc, so where a flank's corner falls between two
+stations the metal stands up to `(colH / flank) · (edge / M) / 4` above the law
+(0.055 u at the shipped wheel). Measured: `alarmColCastellations ⇄
+alarmLinkBeakStub` reads 0.0949 at `alarmPress` f 0.3438. It is clear, not a
+collision, but the margin the lift claims is not the margin the metal keeps.
+The pair sits in the floors row's `contacts` until this is closed, so the row
+measures everything else of the two units.
+
+**Fix path.** Publish the chord bound from `makeColumnWheel` (`colChordBound`,
+the formula above) and add it to `need` in `_stubLiftFor`. Tried once while
+closing the collision and not landed: the lift rises, `alarmLinkSeatSolve`
+re-solves `h`, θs and the arms, the site solve walks, and the build warns that
+the selector rod's built length has drifted from `ALARM_LINK_ROD_LEN_U` — so it
+wants its own landing with the line spec and the rod's section re-derived.
+Then delete the stub from the row's contact list.

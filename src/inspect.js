@@ -206,7 +206,10 @@ export const MECH_GRAPH = {
     // the label nesting — every hour-wheel mesh is also a Dial mesh — so the
     // measurement of record is the probe's and the floors rows'.)
     ['Hour wheel', 'Dial'],                  // TODO 120: the tube rides the cannon pinion's nose
-    ['Hour wheel', 'Alarm release seat'],    // TODO 144/120: …and the seat plate's bore rides its outside
+    // (§278 landing 5 retired ['Hour wheel', 'Alarm release seat']: the seat went
+    // to the satellite with the disc, and its bore journals the satellite's own
+    // tube now — the 'Alarm release seat' ⇄ 'Alarm detector arbor' row below.
+    // The hour tube keeps the one journal inside it, the cannon pinion's nose.)
     // Alarm (§24): a second crown (a force source, like the winding 'crown')
     // sets a small disc through a 90° bevel pair. The crown's stem runs in a
     // rim bushing on the plate; the setting arbor pivots in the plate and
@@ -218,10 +221,18 @@ export const MECH_GRAPH = {
                                              // running fit is its bearing (rattrapante centre stack)
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
-    ['Alarm release disc', 'Hour wheel'],    // §29 step 2: the hub riding the hour tube in the disc band — the BEARING only since TODO 117: the seat was the drive too while the disc carried the hour, and it carries the set alone now (TODO 144 prices what holds it)
+    // §278 landing 5 — THE DETECTOR ON ITS SATELLITE. The stack left the hour
+    // tube for a satellite arbor: the hour wheel's twin and a tube of the hour
+    // tube's section, running on a stud planted in the base plate, fed 1:1 by
+    // an idler on its own stud in the hour wheel's plane. Every bearing the
+    // stack had on the hour tube it has on the satellite's tube, the same fit.
+    ['Alarm detector idler', 'plate'],       // §278 landing 5: the idler's stud, riveted into the base plate's dial face (the minute wheel's stud idiom)
+    ['Alarm detector arbor', 'plate'],       // §278 landing 5: the satellite's stud, riveted into the base plate's dial face; the twin's tube runs on it
+    ['Alarm release disc', 'Alarm detector arbor'],    // §29 step 2 → §278 landing 5: the hub riding the satellite's tube in the disc band — the BEARING only (TODO 117: it carries the set alone; TODO 144 prices what holds it)
     ['Alarm release feeler', 'plate'],       // §29 step 3 / TODO 222: the bracket's lugs stand on the base plate's dial-side face at the release azimuth (they hung from the sheet through the selector fork's band until TODO 222)
-    ['Alarm release seat', 'Dial'],          // TODO 144: the seat's two posts hang from the sheet's back face at two free azimuths (130°, 270°) — the feeler bracket's own mounting
-    ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
+    ['Alarm release seat', 'Dial'],          // TODO 144: the seat's two posts hang from the sheet's back face at two free azimuths — carried round with the stack to the satellite by §278 landing 5
+    ['Alarm release seat', 'Alarm detector arbor'],    // TODO 144/120 → §278 landing 5: the seat plate's bore journals the satellite's tube, as it did the hour tube's outside
+    ['Alarm release reader', 'Alarm detector arbor'], // TODO 117 stage 1 → §278 landing 5: the orbiting collar is CARRIED by the satellite's hour — being hour-borne is the topology, not an accommodation
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guides hang from the sheet (az 60/220/300, outside the wheel's tips) — TODO 222: slotted HELIX plates its rollers climb, where posts and sleeves stood
     ['Alarm release sleeve', 'Dial'],        // §45 / TODO 236: the sleeve's three helix plates hang from the sheet (az 105/250/300 — TODO 222's selector pattern one band deeper; the third outboard of the selector's own pins), its rollers riding their slots
     ['Alarm release lifter', 'plate'],       // §45 / TODO 236: the bell crank's two posts stand on the base plate's dial-side face either side of the collar, carrying the studs its hubs turn on
@@ -377,8 +388,13 @@ export const MECH_GRAPH = {
     // from the tick law. The hub is a bearing; its row is in `support`.
     ['Alarm setting idler', 'Alarm release disc'], // §29 step 2: i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio; the disc's ONE drive since TODO 117
-    ['Hour wheel', 'Alarm release reader'],  // TODO 117 stage 1: the hour carries the reader ROUND to meet the notch — the moving half of the decided topology.
-                                              // STAGE 1 IS INERT: nothing downstream reads this collar yet, so no drive edge leaves it. The trip still runs the feeler row below.
+    // §278 landing 5 — the hour reaches the reader THROUGH TEETH now: the hour
+    // wheel turns the idler, the idler the satellite's twin (32 · N · 32, so
+    // 1:1 and the same sense whatever N), and the twin carries the reader ROUND
+    // to meet the notch — the moving half of TODO 117's topology.
+    ['Hour wheel', 'Alarm detector idler'],
+    ['Alarm detector idler', 'Alarm detector arbor'],
+    ['Alarm detector arbor', 'Alarm release reader'],
     ['Alarm release disc', 'Alarm release reader'], // TODO 117: the raised track carries the READER's pin now; the notch's arrival
     ['Alarm release reader', 'Alarm release feeler'], // TODO 117: the collar's dial-side face carries the drop to the lever's jogged tip, at every azimuth at once
                                                     // under it IS the drop — the azimuth-independent detection
@@ -743,9 +759,15 @@ const EXPECTED_PAIRS = [
                                           // Dial-rooted descendant (the Dial ⇄ Hour wheel precedent);
                                           // the true Dial sheet is measured one CLEAR_MARGIN clear of the idler (TODO 172)
   ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
-  ['Alarm release disc', 'Hour wheel'],     // §29: the friction seat (bore +0.05 running fit on the tube)
+  // §278 landing 5 — the stack's bearings moved with it to the satellite's tube
+  // (the hour tube's section): the disc's hub and the seat's bore ride it there.
+  ['Alarm release disc', 'Alarm detector arbor'],     // §29 → §278 landing 5: the hub's running fit (bore +0.05) on the satellite's tube — and the reader's pin on the track, re-attributed through nesting (the collar hangs under the arbor's spin)
   ['Alarm release disc', 'Alarm release seat'], // TODO 144: the disc SEATS on the plate (its whole underside, sunk ALARM_SEAT_SINK) and the pad's foot seats on its face
-  ['Alarm release seat', 'Hour wheel'],      // TODO 144: the plate's bore is the hub's own +0.05 running clearance over the turning tube
+  ['Alarm release seat', 'Alarm detector arbor'],      // TODO 144 → §278 landing 5: the plate's bore is the hub's own +0.05 running clearance over the satellite's turning tube
+  ['Hour wheel', 'Alarm detector idler'],    // §278 landing 5: the hour wheel ⇄ idler mesh, in the hour wheel's plane
+  ['Alarm detector idler', 'Alarm detector arbor'], // §278 landing 5: the idler ⇄ satellite twin mesh
+  ['Alarm detector idler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
+  ['Alarm detector arbor', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
   ['Alarm release seat', 'Dial'],            // TODO 144: the posts stand on the sheet's back face (the feeler bracket's mounting) — and the nesting artifact, like the disc's row
   ['Alarm release disc', 'Dial'],           // the NESTING artifact, not a contact: collectUnits does no
                                             // nested-label exclusion, so the Dial unit contains the disc's
@@ -799,17 +821,17 @@ const EXPECTED_PAIRS = [
   ['Alarm release feeler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
   ['Alarm release reader', 'Alarm release feeler'], // TODO 117: the collar's dial-side face UNDER the lever's jogged tip — the working read contact, moved here from the disc when the lever lost its pin
   // TODO 117: the SAME contact re-attributed through nesting — the reader hangs
-  // under hourWheelGroup and collectUnits does no exclusion, so the Hour wheel's
-  // traverse carries the collar's ring and the lever's tip reads as touching the
-  // hour wheel. The 'Alarm winding train' ⇄ 'Dial' precedent (that row retired
+  // under the satellite's spin (hourWheelGroup until §278 landing 5) and
+  // collectUnits does no exclusion, so the arbor's traverse carries the collar's
+  // ring and the lever's tip reads as touching the arbor. The 'Alarm winding train' ⇄ 'Dial' precedent (that row retired
   // with the §29 beak, TODO 189), and it is measured
   // rather than assumed: over the 42-pose net the feeler's nearest approach to
   // the hour wheel's OWN metal is 0.3917 (alarmFeelerTip ⇄ hourTube, at
   // jumperEngage f=1), 2.6× CLEAR_MARGIN, while its approach to the nested
   // reader is 0.0073 — the seat.
-  ['Alarm release feeler', 'Hour wheel'],
-  ['Alarm release reader', 'Dial'],         // TODO 117: the same nesting artifact — the collar hangs under hourWheelGroup, a dialFace descendant
-  ['Alarm release reader', 'Hour wheel'],   // TODO 117: the collar is MOUNTED on the hour wheel — being carried by it is the topology, so the contact is the support itself
+  ['Alarm release feeler', 'Alarm detector arbor'],   // (§278 landing 5: the nesting moved with the collar; the Hour wheel row it replaces was measured at 0.3917 off the hour wheel's own metal)
+  ['Alarm release reader', 'Dial'],         // TODO 117: the same nesting artifact — the collar hangs under the satellite's spin, a dialFace descendant
+  ['Alarm release reader', 'Alarm detector arbor'],   // TODO 117 → §278 landing 5: the collar is MOUNTED on the satellite's hour — being carried by it is the topology, so the contact is the support itself
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §99: idler ⇄ arbor-wheel mesh (was the rim; the floors row below names the contact)
   ['Alarm click', 'Alarm barrel'],          // §99: the click's beak parked on the arbor ratchet's saw — the hold itself
@@ -2469,8 +2491,10 @@ export const EXPECTED_CONTACT_FLOORS = [
   // pose. The blade was folded off the tail (stage 1), the run retired, the
   // bar cranked off the feeler's bracket and the finger's riser lifted to
   // stand on the finger — the riser no longer touches the tail, so it is not
-  // named here. Bound by the bar ⇄ the bracket's +y lug, which the crank's
-  // jog puts exactly one margin off (plus the band).
+  // named here. Bound by the bar ⇄ the bracket's lug, which the crank's jog
+  // puts exactly one margin off (plus the band) — on the bar's −y side until
+  // §278 landing 5 turned the feeler under the finger and brought the bracket
+  // round to +y, where the jog now steps the other way.
   {
     a: 'Alarm silence rocker', b: 'Alarm release feeler', min: CLEAR_MARGIN,
     contacts: [['alarmSilFinger', 'alarmFeelerTail']],
@@ -2501,8 +2525,20 @@ export const EXPECTED_CONTACT_FLOORS = [
     ],
   },
   {
-    a: 'Alarm release seat', b: 'Hour wheel', min: CLEAR_MARGIN,
-    contacts: [['alarmSeatPlate', 'hourTube']],   // the bore's running clearance on the tube; the reader collar nested under the hour wheel keeps the margin from the blade
+    a: 'Alarm release seat', b: 'Alarm detector arbor', min: CLEAR_MARGIN,
+    contacts: [['alarmSeatPlate', 'alarmDetectorTube']],   // §278 landing 5: the bore's running clearance on the satellite's tube (the hour tube's, until the fold); the reader collar nested under the arbor keeps the margin from the blade, and the twin's teeth the plate's underside
+  },
+  // §278 landing 5 — the hour's two meshes to the satellite, and nothing else:
+  // the idler's and the twin's teeth and studs keep the margin from every other
+  // piece of the units they mesh (the hour tube and hand; the satellite's tube,
+  // stud and the collar nested on it).
+  {
+    a: 'Hour wheel', b: 'Alarm detector idler', min: CLEAR_MARGIN,
+    contacts: [['mwHourWheel', 'alarmDetectorIdler']],
+  },
+  {
+    a: 'Alarm detector idler', b: 'Alarm detector arbor', min: CLEAR_MARGIN,
+    contacts: [['alarmDetectorIdler', 'alarmDetectorWheel']],
   },
   // §202 — the two case liners: each pair is EXPECTED for exactly one press
   // fit, and everything else the unit owns keeps the margin from the case.
@@ -2518,6 +2554,26 @@ export const EXPECTED_CONTACT_FLOORS = [
       // being square to the band there
       ['alarmPusherCap', 'casePusherBoreSleeve'],
       ['alarmPusherCap', 'caseMiddle'],
+    ],
+  },
+  // The switch ⇄ link pair was EXPECTED with no floors row — the blanket excuse
+  // — so the lay shaft's hanger columns (they rise from the shaft to the plate
+  // straight through the column driver's band) stood inside the driver's
+  // stroke at every press and no sweep read it. The pair's ONE working contact
+  // is the beak's nose on the wheel (the castellations' tops, and the gap floor
+  // between them where the column has stepped off); everything else of the two
+  // units keeps the margin.
+  {
+    a: 'Alarm switch', b: 'Alarm link', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmColCastellations', 'alarmLinkBeak'], ['alarmColBase', 'alarmLinkBeak'],
+      // the lever's STUB over the cut: `_stubLiftFor` stands it CLEAR_MARGIN off
+      // the LAW (profileAt), and the metal is straight between its stations, so
+      // it measures 0.0949 off the cut at alarmPress f 0.3438 — a margin
+      // shortfall of the beak's own lift derivation, not a collision, filed as
+      // TODO (see TODO.md) and left in the contact list until that lift is
+      // re-derived against the metal
+      ['alarmColCastellations', 'alarmLinkBeakStub'],
     ],
   },
   {
@@ -4772,7 +4828,9 @@ export const PLATE_SEATS = [
   { unit: "Alarm setting idler", mesh: "CylinderGeometry#5", kind: "planted", why: "an idler's stud, planted in the dial side" },
   { unit: "Alarm setting arbor", mesh: "CylinderGeometry#3", kind: "pivot", why: "the arbor's pivot, seated in the dial side" },
   { unit: "Alarm release lifter", mesh: "alarmLifterPost", kind: "planted", why: "TODO 236: the bell crank's two posts, planted in the plate's dial-side face either side of the collar" },
-  { unit: "Alarm release feeler", mesh: "alarmFeelerLug", kind: "planted", why: "TODO 222: the feeler bracket's two lugs, planted on the plate's dial-side face (re-hung from the dial sheet, whose 4.1 u drop crossed the selector fork's band)" },
+  { unit: "Alarm release feeler", mesh: "alarmFeelerLug", kind: "planted", why: "TODO 222: the feeler bracket's two lugs, planted on the plate's dial-side face (re-hung from the dial sheet, whose 4.1 u drop crossed the selector fork's band) — beside the satellite since §278 landing 5" },
+  { unit: "Alarm detector idler", mesh: "alarmDetectorIdlerStud", kind: "planted", why: "§278 landing 5: the hour idler's stud, planted in the dial side (the minute wheel's stud idiom)" },
+  { unit: "Alarm detector arbor", mesh: "alarmDetectorStud", kind: "planted", why: "§278 landing 5: the satellite's stud, planted in the dial side — the twin's tube runs on it" },
   { unit: "Alarm gong", mesh: "alarmGongPost", kind: "planted", why: "the gong post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerPost", kind: "planted", why: "the hammer post, planted in the rim (GONG_RIM_PLANT)" },
   { unit: "Alarm hammer", mesh: "alarmHammerStud", kind: "planted", why: "§268: the hammer spiral's stud, planted in the rim (GONG_RIM_PLANT) beside the post — a short pin up to the spiral band's top" },
@@ -14309,9 +14367,18 @@ function lineSpecDetector(clock) {
   // the coincidence, by secant on the measured pin ⇄ notch angle (linear in τ:
   // the pin is rigid on the hour wheel and the disc is still under it)
   pose(0); const s0 = lineSpecDetectorStatic(clock, M); const C = s0.C;
+  // §278 landing 5 — each source's turn is read about ITS OWN axis. While the
+  // stack stood on the hour tube the disc's axis WAS the hour wheel's and the
+  // alarm setting wheel's, so one centre served all three; on the satellite it
+  // serves none of the sources, and a turn read about another wheel's axis is
+  // not that wheel's turn.
+  // (The axis is the mesh's own origin — every gear here is cut about its local
+  // origin — rather than a box centre, which a wheel of odd count is not.)
+  const axisOf = (mesh) => { mesh.updateWorldMatrix(true, false); const o = new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld); return { x: o.x, y: o.y }; };
+  const H = axisOf(M.hourWheel), W = axisOf(M.setWheel);
   const relAt = () => wrap(lineSpecDetectorStatic(clock, M).pinAz - notchWorldAz(C));
-  const r0 = relAt(), az0 = s0.pinAz, notch0 = notchWorldAz(C), hour0 = vertexAz(M.hourWheel, hourIdx, C);
-  pose(3600); const r1 = relAt(), az1 = lineSpecDetectorStatic(clock, M).pinAz, notch1 = notchWorldAz(C), hour1 = vertexAz(M.hourWheel, hourIdx, C);
+  const r0 = relAt(), az0 = s0.pinAz, notch0 = notchWorldAz(C), hour0 = vertexAz(M.hourWheel, hourIdx, H);
+  pose(3600); const r1 = relAt(), az1 = lineSpecDetectorStatic(clock, M).pinAz, notch1 = notchWorldAz(C), hour1 = vertexAz(M.hourWheel, hourIdx, H);
   const k = wrap(r1 - r0) / 3600;
   let tStar = ((-r0 / k) % H12 + H12) % H12;
   for (let it = 0; it < 3; it++) { pose(tStar); tStar -= relAt() / k; }
@@ -14386,8 +14453,8 @@ function lineSpecDetector(clock) {
   // the two 1:1 carries, and the disc's stillness under the hour
   const readerOrbit = wrap(az1 - az0) / wrap(hour1 - hour0);
   const discUnderHour = Math.abs(wrap(notch1 - notch0));
-  pose(tRide, 0.3); const n3 = notchWorldAz(C), w3 = vertexAz(M.setWheel, setIdx, C);
-  pose(tRide, 0.8); const n8 = notchWorldAz(C), w8 = vertexAz(M.setWheel, setIdx, C);
+  pose(tRide, 0.3); const n3 = notchWorldAz(C), w3 = vertexAz(M.setWheel, setIdx, W);
+  pose(tRide, 0.8); const n8 = notchWorldAz(C), w8 = vertexAz(M.setWheel, setIdx, W);
   const discSetCarry = wrap(n8 - n3) / wrap(w8 - w3);
   enterAxis(clock);
   const bias = (clock.transfers?.rows || []).find((r) => r.site === DETECTOR_BIAS_SITE);
