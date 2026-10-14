@@ -47,6 +47,37 @@ code{font:12px ui-monospace,monospace;color:#c8d3e6}
 .ok{color:var(--ok)} .bad{color:var(--bad)}
 label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
 #log{white-space:pre-wrap;color:var(--bad);font:12px ui-monospace,monospace}
+#panel[hidden]{display:none}
+/* The panel's own switch, outside it so a hidden panel can come back. It sits
+   in the corner the panel does not, so the two never cover each other. */
+#panel-toggle{position:fixed;top:12px;inset-inline-end:12px;z-index:3;padding:6px 12px;
+  background:var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+/* NARROW SCREENS (a phone, a small window): the panel is a sheet across the
+   bottom, at most 42% of the height, scrolling inside itself, so the build
+   keeps the top of the screen; fit() centres the view in what stays visible.
+   800 px is the width under which fit() already stopped shifting the view
+   sideways: below it a 380 px side panel leaves the drawing under half. */
+@media (max-width:800px){
+  #panel{top:auto;bottom:0;inset-inline-start:0;width:100%;max-height:42vh;border-radius:12px 12px 0 0;
+    border-bottom:none;padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+  #panel-toggle{top:auto;bottom:calc(42vh + 8px)}
+  body.panel-hidden #panel-toggle{bottom:calc(12px + env(safe-area-inset-bottom))}
+  h1{font-size:14px}
+  p{font-size:12.5px}
+}
+/* A short landscape phone: the sheet would leave a sliver, so the panel
+   goes back to the side, narrower, the whole height. */
+@media (max-width:800px) and (max-height:500px) and (orientation:landscape){
+  #panel{top:0;bottom:0;width:min(300px,45vw);max-height:none;border-radius:0}
+  #panel-toggle,body.panel-hidden #panel-toggle{top:8px;bottom:auto}
+}
+/* Fingers, not a mouse: every control at least 36 px tall, the slider too. */
+@media (pointer:coarse){
+  button{min-height:36px;padding:6px 14px}
+  input[type=range]{height:28px;flex:1}
+  .gen{flex-wrap:wrap}
+}
+canvas{display:block;touch-action:none}
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js",
@@ -57,6 +88,7 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
 <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 </head>
 <body>
+<button id="panel-toggle" type="button" data-state="on" aria-controls="panel" aria-expanded="true">Hide panel</button>
 <div id="panel">
   <h1>The technic fork</h1>
   <p>The movement's going, motion and reserve trains re-toothed to LEGO Technic's
@@ -336,15 +368,36 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(cam, renderer.domElement);
-// The panel covers the left of a wide screen, so the view's centre moves right
-// by half its width; on a narrow one the panel is the page and nothing moves.
+// The view's centre moves to the middle of what the panel leaves visible: on a
+// side panel right by half its width, on a bottom sheet (a narrow screen) up by
+// half its height. A hidden panel leaves the whole screen.
+const panelEl = document.getElementById('panel'), panelToggle = document.getElementById('panel-toggle');
 function fit() {
   renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight;
-  const shift = innerWidth > 800 ? document.getElementById('panel').offsetWidth / 2 + 12 : 0;
-  cam.setViewOffset(innerWidth, innerHeight, -shift, 0, innerWidth, innerHeight);
+  let sx = 0, sy = 0;
+  if (!panelEl.hidden) {
+    const r = panelEl.getBoundingClientRect();
+    if (r.width >= innerWidth - 1) sy = r.height / 2;            // the sheet across the bottom
+    else sx = r.width / 2 + 12;                                  // the side panel
+  }
+  cam.setViewOffset(innerWidth, innerHeight, -sx, sy, innerWidth, innerHeight);
   cam.updateProjectionMatrix();
 }
+function setPanelHidden(hidden) {
+  panelEl.hidden = hidden;
+  document.body.classList.toggle('panel-hidden', hidden);
+  panelToggle.textContent = hidden ? 'Show panel' : 'Hide panel';
+  panelToggle.dataset.state = hidden ? 'off' : 'on';
+  panelToggle.setAttribute('aria-expanded', String(!hidden));
+  fit();
+}
+panelToggle.addEventListener('click', () => setPanelHidden(!panelEl.hidden));
+// H toggles it, as in the sim — not while typing into a field
+addEventListener('keydown', (e) => {
+  if ((e.key === 'h' || e.key === 'H') && !e.ctrlKey && !e.metaKey && !e.altKey && !(e.target instanceof HTMLInputElement && e.target.type !== 'range')) setPanelHidden(!panelEl.hidden);
+});
 addEventListener('resize', fit); fit();
+if (new URLSearchParams(location.search).get('panel') === '0') setPanelHidden(true);
 scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x202018, 1.6));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(80, -120, 260); scene.add(sun);
 
@@ -434,8 +487,26 @@ async function build(gen, mode = view) {
   currentGen = gen;
   const box = new THREE.Box3().setFromObject(world), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
   controls.target.copy(c);
-  if (mode === 'lego') cam.position.set(c.x - size.x * 0.2, c.y + Math.max(size.x, size.z) * 0.8, c.z + Math.max(size.x, size.z) * 0.9);
-  else cam.position.set(c.x, c.y - size.y * 0.75, c.z + Math.max(size.x, size.y) * 1.05);
+  // FRAMED TO FIT what the panel leaves visible: the camera keeps the view's
+  // direction (from above and in front for the LEGO table, square on for the
+  // drawn rows) and backs off until the scene's bounding sphere fits the
+  // narrower of the two field-of-view angles — on a desktop beside the panel,
+  // on a phone above the sheet, the whole table stays in view.
+  const pr = panelEl.hidden ? null : panelEl.getBoundingClientRect();
+  const visW = pr && pr.width < innerWidth - 1 ? innerWidth - pr.width - 12 : innerWidth;
+  const visH = pr && pr.width >= innerWidth - 1 ? innerHeight - pr.height : innerHeight;
+  // the camera renders the WHOLE screen at its vertical fov; the panel leaves
+  // a part of it, so each visible half-angle is the screen's scaled by the
+  // visible span over the screen's height (the tangent is linear in pixels)
+  const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
+  const half = Math.atan(tv * Math.min(visW, visH) / innerHeight);
+  const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
+  const dist = radius / Math.sin(half);
+  const dir = mode === 'lego' ? new THREE.Vector3(-0.2, 0.8, 0.9) : new THREE.Vector3(0, -0.75, 1.05);
+  cam.position.copy(c).addScaledVector(dir.normalize(), dist);
+  // the far plane past the sphere's far side wherever the fit put the camera,
+  // with room to zoom out four times as far (the orbit controls' wheel)
+  cam.far = Math.max(5000, 4 * (dist + 2 * radius)); cam.updateProjectionMatrix();
   controls.update();
   inputAngle = 0;
   if (keylessBuild) setKeylessMode(keylessMode);
@@ -484,7 +555,7 @@ renderer.setAnimationLoop((now) => {
   });
   renderer.render(scene, cam);
 });
-window.__technic = { build, setKeylessMode, get built() { return built; }, get keyless() { return keylessBuild; }, cam, controls };
+window.__technic = { build, setKeylessMode, get built() { return built; }, get keyless() { return keylessBuild; }, cam, controls, scene, renderer };
 </script>
 </body>
 </html>
