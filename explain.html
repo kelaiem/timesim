@@ -3681,6 +3681,73 @@
       </figure>
     </div>
   </details>
+
+  <!-- ===================== WHERE THE OIL GOES ===================== -->
+  <details class="mech" id="lubrication">
+    <summary>Where the oil goes, and where it must not<span class="where">going &middot; alarm &middot; src/lubrication.js &sect;247</span></summary>
+    <div class="mech-body">
+      <p>A watch is lubricated joint by joint, and the wrong answer is usually the
+      <em>kind</em> of lubricant rather than the amount. So the model carries one declared
+      answer per joint, beside the metal rather than in a service manual:
+      <code>LUBRICATION</code> in <code>src/lubrication.js</code> gives every bearing and
+      every sliding contact that <code>MECH_GRAPH</code> declares one of six regimes and the
+      sentence that justifies it. The battery's <code>lubrication</code> check holds it the
+      way it holds <code>restoring</code>: a joint with no answer fails, a row naming no
+      joint fails, a lubricant that sets a slip torque must cite the derivation, and an
+      oiled bearing must name the place the oil can stay. Of the movement's joints, a little
+      under half are answered; the rest are an inventory that can only shrink.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The six regimes, and the four joints that are dry by design</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 250" width="780" height="250" role="img" aria-label="Six lubrication regimes drawn as swatches with the joints each covers, and four dry-by-design joints listed beneath">
+            <circle cx="40" cy="30" r="9" fill="none" stroke="#6ec6ff" stroke-width="2"/><circle cx="40" cy="30" r="3" fill="none" stroke="#6ec6ff" stroke-width="2"/>
+            <text class="lbl lbl-strong" x="64" y="34">oil-fine</text>
+            <text class="val" x="220" y="34">light, fast pivots: third, fourth, escape, pallet fork, balance</text>
+            <circle cx="40" cy="66" r="9" fill="none" stroke="#3d7fe0" stroke-width="2"/><circle cx="40" cy="66" r="3" fill="none" stroke="#3d7fe0" stroke-width="2"/>
+            <text class="lbl lbl-strong" x="64" y="70">oil-medium</text>
+            <text class="val" x="220" y="70">slow, loaded pivots: centre, drum, fusee</text>
+            <circle cx="40" cy="102" r="9" fill="none" stroke="#d9c34a" stroke-width="2"/><circle cx="40" cy="102" r="3" fill="none" stroke="#d9c34a" stroke-width="2"/>
+            <text class="lbl lbl-strong" x="64" y="106">grease</text>
+            <text class="val" x="220" y="106">sliding steel under load: the keyless works, the clutch, the yoke</text>
+            <circle cx="40" cy="138" r="9" fill="none" stroke="#9aa5b1" stroke-width="2"/>
+            <text class="lbl lbl-strong" x="64" y="142">escapement</text>
+            <text class="val" x="220" y="142">the one oiled tooth contact: escape teeth on the pallet stones</text>
+            <circle cx="40" cy="174" r="9" fill="none" stroke="var(--ruby)" stroke-width="2" stroke-dasharray="3 3"/>
+            <text class="lbl lbl-strong" x="64" y="178">friction</text>
+            <text class="val" x="220" y="178">a slip coupling whose torque the lubricant SETS</text>
+            <circle cx="40" cy="210" r="9" fill="none" stroke="#6b7480" stroke-width="1" stroke-dasharray="1 3"/>
+            <text class="lbl lbl-strong" x="64" y="214">dry</text>
+            <text class="val" x="220" y="214">train teeth &middot; impulse pin &middot; hairspring &middot; hack brake</text>
+          </svg>
+        </div>
+        <figcaption>The glyphs are the ones the schematic view draws at each oiled bearing:
+        a ring and a dot, coloured by regime, with a second outer ring where the surface is
+        epilamed so that the oil stays where it was put. A dry joint is drawn with no glyph
+        at all, because a glyph is a claim that oil is there. Teeth are dry because oil on
+        them collects abrasive; an impulse pin and a hack brake are dry because a brake
+        that is oiled is not a brake; a hairspring is dry because oil on its coils makes
+        them stick and the rate goes with them.</figcaption>
+      </figure>
+      <p>Each regime may be priced only with the friction coefficients that describe it
+      (<code>REGIME_INFO</code> lists them), and the coefficients are the very rows the power
+      budget already uses, in <code>FRICTION</code>. So the map and the energy column cannot
+      disagree in silence: a row that names a coefficient its regime does not describe is
+      malformed. That is the whole reason the budget came first. What the oil does is a
+      <em>modelled</em> claim: the regime is declared and its coefficient is carried into
+      the budget's three corners, and no film, wear or migration is simulated.</p>
+      <p>What is not finished is stated here rather than hidden. The schematic draws an oil
+      point only where it can read the bearing's axis off a rotor or a lever that is posed at
+      its own pivot, so seven oiled bearings &mdash; the chain's rivets, the winding arrest
+      and five alarm levers &mdash; are listed as unsited rather than drawn at a guess.
+      The balance's lower pivot has no endstone and so no oil reservoir
+      (TODO&nbsp;254), and the audit carries that as its one waiver, which goes stale the
+      day the stone is cut. The fusee arbor's plain top bush against its jewelled bottom is
+      a decision nobody recorded (TODO&nbsp;252). And the alarm complex, the hack and reset
+      works, the jumper and the power-reserve train have no answer yet: they sit on a closed
+      arrival inventory, <code>LUBRICATION_DEBT</code>, that fails the build if a joint is
+      answered and left on it.</p>
+    </div>
+  </details>
 </div>
 
 <footer>

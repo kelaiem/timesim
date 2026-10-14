@@ -110,7 +110,10 @@ exception is the plate OCCLUDERS (§71's hidden-line convention —
 page-colored silhouettes of the base, three-quarter and dial plates):
 `collectUnits` in `inspect.js` prunes anything flagged
 `userData.schematic` wherever it is parented, so flagged display never
-joins the sweeps — the same trust the fingerprint extends. Flag every
+joins the sweeps — the same trust the fingerprint extends. §247 tier three's oil-point glyphs ride the same
+flag: one per oiled or greased bearing `LUBRICATION` answers, sited off a rotor's
+axis, and a bearing with no readable pivot is listed in `SCHEMATIC.oilUnsited` rather
+than drawn at a guess. Flag every
 schematic object directly; an unflagged child of a flagged parent is
 NOT protected.
 
