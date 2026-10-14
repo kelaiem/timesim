@@ -2510,7 +2510,7 @@ export const EXPECTED_CONTACT_FLOORS = [
   // margin at full drop.
   {
     a: 'Alarm release disc', b: 'Alarm release reader', min: CLEAR_MARGIN,
-    contacts: [['alarmDiscTrack', 'alarmReaderPin']],
+    contacts: [['alarmDiscTrack', 'alarmReaderPin'], ['alarmDiscNotchRamp', 'alarmReaderPin']],   // §280: the ramps are where the pin rides out of the notch
   },
   // TODO 144 — the release disc's SEAT. Its underside rides the plate (hub,
   // body and teeth, one plane sunk the seated-contact 0.02) and the pad's foot
@@ -5717,7 +5717,7 @@ const PENETRATION_BUDGETS = [
     nSamples: 150,
     selectA(unit) {
       const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmDiscTrack') out.push(o); });
+      unit.obj.traverse((o) => { if (o.isMesh && (o.name === 'alarmDiscTrack' || o.name === 'alarmDiscNotchRamp')) out.push(o); });   // §280: the ramps are the pin's working surface out of the notch
       return out;
     },
     selectB(unit) {
@@ -8754,6 +8754,7 @@ export const STOCK_KIND_BY_MESH = {
   alarmIndexLine: 'marking',       // §34 registration line, cited above
   alarmFeelerSpring: 'spring',     // §40\'s first honesty nominee — a real blade
   alarmDiscTrack: 'marking',       // printed track on the disc face
+  alarmDiscNotchRamp: 'marking',   // §280: the track's two ramps — the same raised-track class, cut to the drop law
   // Triage additions — honest kinds, not escape hatches. The maintaining
   // spring and the alarm pin spring are real flat springs (0.052 both, above
   // the cited 0.03 spring floor, so declaring clears them legitimately); the
@@ -13548,12 +13549,18 @@ LINE_SPECS.push({
       derivedFrom: 'the raised track is centred on the radius the pin rides (ALARM_TRACK_HALFW about ALARM_TRACK_RMID) — measured off the track’s cut outline' },
     { key: 'trackHalfW', kind: 'spec', unit: 'u', value: 0.20, measure: 'trackHalfW',
       derivedFrom: '§29: the track annulus 2.85..3.25 (ALARM_TRACK_HALFW) — its inner edge a joint with the hub, its outer the smooth face out to the rim’s root — measured off the cut outline' },
-    { key: 'notchW', kind: 'spec', unit: 'rad', value: 0.14, measure: 'notchArc',
-      derivedFrom: '§29: the track’s one gap (ALARM_NOTCH_W) — the pin’s diameter over the track radius plus slop — measured as the largest angular gap in the cut outline' },
-    { key: 'admit', kind: 'envelope', bound: 'min', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'notchArc',
+    { key: 'notchW', kind: 'spec', unit: 'rad', value: 0.14, measure: 'notchFloor',
+      derivedFrom: '§29: the notch’s floor (ALARM_NOTCH_W) — the pin’s diameter over the track radius plus slop — measured as the largest angular gap in the track’s cut outline LESS the two ramps’ runs (§280: the full-height track stops where the ramps begin)' },
+    { key: 'ramp', kind: 'spec', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'rampRun',
+      derivedFrom: '§280: each ramp runs the pin’s own angular diameter at the track radius — the width the tick’s drop law has always ramped over — measured as the wedge’s angular extent off its own vertices' },
+    { key: 'admit', kind: 'envelope', bound: 'min', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'notchFloor',
       derivedFrom: 'the notch must ADMIT the pin: narrower than the pin’s own arc at the track radius and the pin never bottoms, so the alarm never trips (the tick’s drop law reaches its full drop only inside notchW − 2·pinArcHalf)' },
     { key: 'drop', kind: 'spec', unit: 'u', value: 0.10, measure: 'readerDrop',
       derivedFrom: 'TODO 173: the stop-banked drop (ALARM_PIN_DROP) — measured as the collar’s axial travel from riding to the trip’s centre' },
+    { key: 'rampRise', kind: 'spec', unit: 'u', value: (r) => r.drop, measure: 'rampRise',
+      derivedFrom: '§280: a ramp descends the pin’s drop from the track’s top to the dropped tip’s level — the law’s full travel, cut — measured as the wedge’s top at its high end less at its low end' },
+    { key: 'rampSeat', kind: 'spec', unit: 'u', value: 0, measure: 'rampSeat',
+      derivedFrom: '§280: the pin is posed by the drop law and the ramps are cut to it, so the posed pin TOUCHES the cut metal — measured as the worst vertical gap, along the collar’s axis, from the pin’s lowest vertices to the track and the ramps at samples across both ramps (a pin hanging in air over a ramp, or buried in it, reads its distance)' },
     { key: 'trackH', kind: 'spec', unit: 'u', value: (r) => r.drop + CLEAR_MARGIN, measure: 'trackHeight',
       derivedFrom: 'TODO 179: the notch is a drop plus one margin deep (ALARM_TRACK_H) — the stop banks the drop, so the floor is a surface the pin’s tip passes and owes the margin — measured as the track’s own height' },
     { key: 'floorClear', kind: 'spec', unit: 'u', value: (r) => r.trackH - r.drop, measure: 'pinOverFloor',
@@ -14341,6 +14348,62 @@ function lineSpecStrikeControl(clock, m) {
 // are projections on the collar's own axis toward the dial (`up`), each a max
 // or min over one mesh's vertices — a difference between poses of the same
 // vertex, so float32 storage never enters it.
+// §280 — the pin ON the cut ramps. At each tau the pin's lowest vertices (its
+// bottom face) are dropped along the collar's own axis onto the track and the
+// ramps, and the reading is the worst |gap| of any vertex: the pin is posed by
+// the drop law and the ramps are cut to it, so the posed pin must TOUCH them.
+// A tau at which NO vertex has metal under it reads NaN — a pin hanging in air
+// over a ramp, which is what the old notch's radial walls left — and fails the
+// row loudly rather than reading as a small number. Per tau the reading is the
+// LEAST gap over the face's vertices (the touching one; the rest of a flat face
+// hovers over a rising ramp), and the row is the worst |least| over the taus. Double-sided Möller–Trumbore on the
+// meshes' own triangles; `up` is the collar's +z in world, so it measures along
+// the axis the collar travels on, which is where the law lowers the pin.
+function lineSpecRampGap(clock, M, ramps, taus, pose) {
+  const up = new THREE.Vector3(0, 0, 1).transformDirection((M.ring.updateWorldMatrix(true, false), M.ring.matrixWorld));
+  const tri = (meshes) => {
+    const T = [];
+    for (const m of meshes) {
+      m.updateWorldMatrix(true, false);
+      const p = m.geometry.attributes.position, ix = m.geometry.index.array, v = new THREE.Vector3();
+      const W = [];
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(m.matrixWorld); W.push([v.x, v.y, v.z]); }
+      for (let t = 0; t < ix.length; t += 3) T.push([W[ix[t]], W[ix[t + 1]], W[ix[t + 2]]]);
+    }
+    return T;
+  };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const U = [up.x, up.y, up.z], D = [-up.x, -up.y, -up.z];
+  let worst = 0;
+  for (const tau of taus) {
+    pose(tau);
+    const T = tri([M.track, ...ramps]);
+    M.pin.updateWorldMatrix(true, false);
+    const pp = M.pin.geometry.attributes.position, v = new THREE.Vector3(), V = [];
+    for (let i = 0; i < pp.count; i++) { v.fromBufferAttribute(pp, i).applyMatrix4(M.pin.matrixWorld); V.push([v.x, v.y, v.z]); }
+    const lo = Math.min(...V.map((q) => dot(q, U)));
+    let least = Infinity;   // the TOUCHING vertex is the one with the least gap; the rest of the face hovers over a rising ramp
+    for (const q of V) {
+      if (dot(q, U) > lo + 1e-6) continue;
+      const o = [q[0] + U[0], q[1] + U[1], q[2] + U[2]];
+      let best = null;
+      for (const [A, B, C] of T) {
+        const e1 = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], e2 = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
+        const pv = [D[1] * e2[2] - D[2] * e2[1], D[2] * e2[0] - D[0] * e2[2], D[0] * e2[1] - D[1] * e2[0]];
+        const det = dot(e1, pv); if (Math.abs(det) < 1e-14) continue;
+        const sv = [o[0] - A[0], o[1] - A[1], o[2] - A[2]], u = dot(sv, pv) / det;
+        if (u < -1e-9 || u > 1 + 1e-9) continue;
+        const qv = [sv[1] * e1[2] - sv[2] * e1[1], sv[2] * e1[0] - sv[0] * e1[2], sv[0] * e1[1] - sv[1] * e1[0]];
+        const w = dot(D, qv) / det; if (w < -1e-9 || u + w > 1 + 1e-9) continue;
+        const t = dot(e2, qv) / det; if (t >= 0 && (best === null || t < best)) best = t;
+      }
+      if (best !== null) least = Math.min(least, best - 1);   // a vertex with nothing under it does not touch; none touching is NaN below
+    }
+    if (least === Infinity) return NaN;
+    worst = Math.max(worst, Math.abs(least));
+  }
+  return worst;
+}
 const DETECTOR_BIAS_SITE = 'alarm release: bias blade (stud → lever → the reader’s pin on the track)';
 function lineSpecDetectorMeshes(clock) {
   const find = (n) => { let m = null; clock.scene.traverse((o) => { if (!m && o.isMesh && o.name === n && !o.userData.schematic) m = o; }); return m; };
@@ -14360,6 +14423,9 @@ function lineSpecDetectorMeshes(clock) {
     });
   }
   meshes.setWheel = setMesh;
+  const ramps = [];
+  clock.scene.traverse((o) => { if (o.isMesh && o.name === 'alarmDiscNotchRamp' && !o.userData.schematic) ramps.push(o); });
+  meshes.ramps = ramps.length === 2 ? ramps : null;   // §280 — the track's two ramps; one or three is a missing mesh
   const missing = Object.entries(meshes).filter(([, x]) => !x).map(([k]) => k);
   return { meshes, setIdx, missing };
 }
@@ -14395,6 +14461,19 @@ function lineSpecDetector(clock) {
   const notchArc = start < 0 ? NaN : 2 * Math.PI - Math.abs(cover);
   const notchMid = Math.atan2(ring[last].y, ring[last].x) + Math.sign(cover) * notchArc / 2;
   const rTrackMid = (rMin + rMax) / 2;
+  // §280 — the outline's gap is the notch's floor PLUS a ramp's run each side
+  // (the full-height track stops where the ramps begin). Each ramp's run and
+  // rise are read off its own vertices, in its own frame (the disc's).
+  const rampRead = M.ramps.map((m) => {
+    const p = m.geometry.attributes.position; let a0 = Infinity, a1 = -Infinity, zHi = -Infinity, zLoTop = Infinity;
+    for (let i = 0; i < p.count; i++) {
+      const a = Math.abs(Math.atan2(p.getY(i), p.getX(i))), z = p.getZ(i);
+      a0 = Math.min(a0, a); a1 = Math.max(a1, a); zHi = Math.max(zHi, z); if (z > 1e-9) zLoTop = Math.min(zLoTop, z);
+    }
+    return { run: a1 - a0, rise: zHi - zLoTop };
+  });
+  const rampRun = (rampRead[0].run + rampRead[1].run) / 2, rampRise = (rampRead[0].rise + rampRead[1].rise) / 2;
+  const notchFloor = notchArc - 2 * rampRun;
   // the collar's axis toward the dial: its local +z (dialFace-local +z runs
   // toward the dial), in world
   M.ring.updateWorldMatrix(true, false);
@@ -14453,7 +14532,7 @@ function lineSpecDetector(clock) {
   // the plateau's and the window's edges, either side, by bisection on the
   // collar's MEASURED travel; the pin's azimuth is read at each edge
   const dropAt = (t) => { pose(t); return faceRide - ringFace(); };
-  const gapHalfT = (notchArc / 2) / Math.abs(k);
+  const gapHalfT = (notchFloor / 2) / Math.abs(k);
   const edge = (tIn, tOut, inside) => {
     let a = tIn, b = tOut;
     for (let it = 0; it < 48; it++) { const mid = (a + b) / 2; if (inside(dropAt(mid))) a = mid; else b = mid; }
@@ -14467,6 +14546,13 @@ function lineSpecDetector(clock) {
     plateau = Math.abs(wrap(pA - pB)); win = Math.abs(wrap(wA - wB));
     align = wrap(pB + wrap(pA - pB) / 2 - notchWorldAz(C));
   }
+  // §280 — the pin on the ramps: three samples across each ramp's zone (the
+  // pin's rim between the ramp's low end and its high end), read at the taus
+  // the secant found. `rampTaus` rides the payload so the control re-poses them.
+  const pAH = clock.lineLaws.detector.pinArcHalf(lineSpecCylR(M.pin), rTrackMid);
+  const rampTaus = [];
+  for (const sgn of [-1, 1]) for (const f of [0.2, 0.5, 0.8]) rampTaus.push(tStar + sgn * (notchFloor / 2 - pAH + f * 2 * pAH) / Math.abs(k) * Math.sign(k));
+  const rampSeat = Number.isFinite(k) && k !== 0 ? lineSpecRampGap(clock, M, M.ramps, rampTaus, pose) : NaN;
   // the lever's rock: the tip's rigid motion riding → trip, T = M_trip·M_ride⁻¹.
   // Its rotation angle is the rock; its fixed axis is the pivot.
   const T = new THREE.Matrix4().multiplyMatrices(tipTrip, new THREE.Matrix4().copy(tipRide).invert());
@@ -14517,7 +14603,7 @@ function lineSpecDetector(clock) {
     pinTrackR: ride.pinTrackR,
     readerOffAxis: ride.readerOffAxis,
     trackMidR: rTrackMid, trackHalfW: (rMax - rMin) / 2,
-    notchArc,
+    notchArc, notchFloor, rampRun, rampRise, rampSeat, rampTaus,
     readerDrop: dropFull,
     trackHeight: sTrack.hi - sTrack.lo,
     pinOverFloor: sPinT.lo - sTrackT.lo,
@@ -14555,8 +14641,21 @@ function lineSpecDetectorControl(clock, m) {
   finally { M.pin.position.x -= D; clock.scene.updateMatrixWorld(true); }
   const back = lineSpecDetectorStatic(clock, M).pinTrackR;
   enterAxis(clock);
+  // §280 — the ramp reading's control: the ramps carried 0.05 up the collar's axis
+  // must read as a pin 0.05 INTO the metal at the same taus (|least gap| moves
+  // from ~0 to 0.05), then restore.
+  const Dr = 0.05;
+  const poseTau = (tau) => { enterAxis(clock); clock.setPose({ crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 0, tau, alarmCrownRotation: 0 }); clock.scene.updateMatrixWorld(true); };
+  let seatMoved = NaN;
+  for (const r of M.ramps) r.position.z += Dr;
+  try { clock.scene.updateMatrixWorld(true); seatMoved = lineSpecRampGap(clock, M, M.ramps, m.rampTaus, poseTau); }
+  finally { for (const r of M.ramps) r.position.z -= Dr; clock.scene.updateMatrixWorld(true); }
+  const seatBack = lineSpecRampGap(clock, M, M.ramps, m.rampTaus, poseTau);
+  enterAxis(clock);
+  const seatOk = Math.abs(seatMoved - Dr) <= 2e-6 && Math.abs(seatBack - m.rampSeat) <= 1e-12;
+  if (!seatOk) return `FAIL — the ramps carried ${Dr} up the axis read ${seatMoved} (want ${Dr}); restored ${seatBack} vs ${m.rampSeat}`;
   return Math.abs(moved - D) <= 1e-9 && back === read0 && read0 === m.pinTrackR && m.readerDrop > 0 && m.leverRock > 0
-    ? `PASS — the reader’s pin carried ${D} out along its radius moves the measured take-off radius by ${moved.toFixed(9)}, and restored reads the same; the trip applied (drop ${m.readerDrop.toFixed(6)}, rock ${m.leverRock.toFixed(6)} rad)`
+    ? `PASS — the reader’s pin carried ${D} out along its radius moves the measured take-off radius by ${moved.toFixed(9)}, and restored reads the same; the trip applied (drop ${m.readerDrop.toFixed(6)}, rock ${m.leverRock.toFixed(6)} rad); and the ramps carried ${Dr} up the axis read ${seatMoved.toFixed(9)} into the pin`
     : `FAIL — carried ${D}, the radius moved ${moved}; restored ${back} vs ${read0} (the read ${m.pinTrackR}); drop ${m.readerDrop}, rock ${m.leverRock}`;
 }
 

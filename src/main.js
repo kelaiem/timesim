@@ -4060,6 +4060,61 @@ const SEAT_LAND_LAP = 0.15;
 // wherever something turns inside the hour tube its bore is read at the flats.
 const RING_GEO_SEG = 40;
 const RING_GEO_FLATS = Math.cos(Math.PI / RING_GEO_SEG);
+// §280 — a SECTOR WEDGE whose top descends linearly in ANGLE: from height hHigh at
+// th1 down to hLow at th0 (th0 < th1, from the notch's centre, side +1; side −1
+// is its mirror). The top is a helicoid — the same height along every radius at
+// one angle, which is what a law written in the pin's angle asks for — sampled
+// in `n` angular steps and on THREE radii (inner, `rMid`, outer). The middle row
+// is not decoration: a step's quad is split into triangles that interpolate in
+// plan, and the two radial edges of a step diverge, so a point between the
+// rows read 6% of one step's rise off the helicoid (1e-4 u at 48 steps, first
+// order in the step — measured, probe-280-notch-ramp.mjs). The pin's contact
+// vertex stands at one radius, so `rMid` is that radius and the nodes lie ON its
+// path: the error is the chord's sag alone, and 1.1e-6 u with the row at the
+// track's centre instead, 3 mils of radius short of the vertex. Closed, one shell, indexed: the corners are shared, so the
+// instruments that read open edges (§27's trap) see none. Winding is set from
+// the shell's own centroid, and the mirror flips it.
+function notchRampGeo(rIn, rOut, rMid, th0, th1, hLow, hHigh, n, side) {
+  const P = [], idx = new Map();
+  const vid = (key, x, y, z) => { if (!idx.has(key)) { idx.set(key, P.length / 3); P.push(x, y, z); } return idx.get(key); };
+  const at = (i, top, k, r) => {
+    const t = th0 + (th1 - th0) * (i / n), h = top ? hLow + (hHigh - hLow) * (i / n) : 0, a = side * t;
+    return vid(`${i},${top ? 1 : 0},${k}`, r * Math.cos(a), r * Math.sin(a), h);
+  };
+  // C[i]: floor nodes [in, out]; top nodes [in, mid, out]
+  const C = Array.from({ length: n + 1 }, (_, i) => ({
+    f: [at(i, false, 0, rIn), at(i, false, 2, rOut)],
+    t: [at(i, true, 0, rIn), at(i, true, 1, rMid), at(i, true, 2, rOut)],
+  }));
+  const tris = [];
+  const quad = (a, b, c, d) => { tris.push([a, b, c], [a, c, d]); };
+  for (let i = 0; i < n; i++) {
+    const A = C[i], B = C[i + 1];
+    quad(A.f[0], B.f[0], B.f[1], A.f[1]);                              // floor
+    quad(A.t[0], B.t[0], B.t[1], A.t[1]); quad(A.t[1], B.t[1], B.t[2], A.t[2]);   // the ramp, two radial cells
+    quad(A.f[0], B.f[0], B.t[0], A.t[0]);                              // inner wall
+    quad(A.f[1], B.f[1], B.t[2], A.t[2]);                              // outer wall
+  }
+  for (const E of [C[0], C[n]]) {                                      // the two end faces: a pentagon, the mid node on the top edge
+    tris.push([E.f[0], E.f[1], E.t[2]], [E.f[0], E.t[2], E.t[1]], [E.f[0], E.t[1], E.t[0]]);
+  }
+  let cx = 0, cy = 0, cz = 0; const nv = P.length / 3;
+  for (let i = 0; i < nv; i++) { cx += P[3 * i]; cy += P[3 * i + 1]; cz += P[3 * i + 2]; }
+  cx /= nv; cy /= nv; cz /= nv;
+  const index = [];
+  for (const [a, b, c] of tris) {
+    const ax = P[3 * b] - P[3 * a], ay = P[3 * b + 1] - P[3 * a + 1], az = P[3 * b + 2] - P[3 * a + 2];
+    const bx = P[3 * c] - P[3 * a], by = P[3 * c + 1] - P[3 * a + 1], bz = P[3 * c + 2] - P[3 * a + 2];
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const mx = (P[3 * a] + P[3 * b] + P[3 * c]) / 3 - cx, my = (P[3 * a + 1] + P[3 * b + 1] + P[3 * c + 1]) / 3 - cy, mz = (P[3 * a + 2] + P[3 * b + 2] + P[3 * c + 2]) / 3 - cz;
+    if (nx * mx + ny * my + nz * mz >= 0) index.push(a, b, c); else index.push(a, c, b);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return g;
+}
 function ringGeo(innerR, outerR, h) {
   const g = new THREE.LatheGeometry([
     new THREE.Vector2(innerR, -h / 2), new THREE.Vector2(outerR, -h / 2),
@@ -23449,6 +23504,48 @@ await (async () => {
 // (ALARM_RELEASE_AZ itself stays — the LEVER is still at that azimuth, and its
 // bracket is sited from it.)
 const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
+// §278 landing 4 — THE DETECTOR'S LAWS, written once and called by the build
+// and the tick exactly as they were inlined (the same operation, so the metal
+// and every pose are bit-identical), and handed to the 'alarm detector' line
+// spec (inspect.js LINE_SPECS, via `clock.lineLaws.detector`) so the reference
+// evaluates the law the movement is posed by at ITS inputs rather than
+// restating it. Each takes its geometry as arguments; neither reads a station.
+//   · pinArcHalf — the angle the pin's radius subtends at the track's radius:
+//     the trip's drop ramps over the notch's half-width ± this (the tick's
+//     drop law), so the pin bottoms over notchW − 2·pinArcHalf of hour angle.
+//     §280: it is atan2(pinR, trackR), the polar angle of the pin's tangential
+//     extreme as the disc's axis sees it, and no longer pinR / trackR — the
+//     ratio overstates it by (pinR / trackR)³ / 3 (3.3e-5 rad), which was
+//     invisible while nothing was cut to the law and is the whole residual of
+//     the pin against the ramps now that something is.
+//   · rockAt — the lever's turn about its pin for a drop at its read arm.
+const ALARM_DETECTOR_LAWS = Object.freeze({
+  pinArcHalf: (pinR, trackR) => Math.atan2(pinR, trackR),
+  rockAt: (drop, arm) => drop / arm,
+});
+// §280 — THE NOTCH'S RAMPS. The tick has always dropped the pin along a LINEAR
+// ramp, from nothing at the pin's rim touching the notch's edge to the full
+// ALARM_PIN_DROP when the pin is wholly inside, over the pin's own diameter's
+// arc (`pinArcHalf` either side of the edge, below). Nothing in the metal made
+// that ramp: the notch's walls were radial and a flat-ended pin standing on a
+// vertical wall can fall in but is never LIFTED out — the wall pushes it
+// sideways and the pin's lever only rocks vertically. The ramp is cut now, to
+// the law: from the notch's edge outward, the track's top descends ALARM_PIN_DROP
+// over the same 2·pinArcHalf of angle, so a flat pin's rim rides it exactly (the
+// pin's bottom height at centre angle c is the ramp's height at c + pinArcHalf,
+// which is the law). Its slope is DERIVED, not chosen: drop / (2·pinR) at the
+// pin's radius, 19.65° — shallower than any nose the pin could carry, which is
+// why the ramp is on the track and the pin stays a cylinder: a conical nose
+// reaches at best atan(drop / pinR) = 35.5° on a pin this wide, and 64.6° once
+// its tip keeps the pivot floor's diameter (PIVOT_MIN_U), and the sideways force
+// that climbs a flank of angle θ is F_seat · tan θ (the lifting train's to pay).
+// The ramp's top is a helicoid sampled in this many angular steps. Each step's
+// quad is split into two triangles, so the metal sits under the true surface by
+// at most the sag of a chord on the pin's own radius (the mid-radius node row,
+// notchRampGeo), which falls with the square of the step: 96 keeps it far under
+// the lineSpec's 1e-6 u tolerance for two meshes of under a thousand triangles.
+const ALARM_NOTCH_RAMP_STEPS = 96;
+const ALARM_NOTCH_RAMP = 2 * ALARM_DETECTOR_LAWS.pinArcHalf(ALARM_PIN_R, ALARM_TRACK_RMID);   // rad — the ramp's run each side of the floor, the law's own width
 const ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25, its inner edge 0.0167 INSIDE the hub's wall (2.8667 — one piece of the disc, so that is a joint, not a fit; this comment used to say "outside", and nothing checked it); the rim's root circle is 4.3812 (30 T at module 0.3, gearToothSpec's rootR against its 28 T mate — not 1.25·m below pitch, which read 4.125 here until TODO 195), so the body's face runs smooth from 3.25 out to it — TODO 144's candidate pad annulus
 // (ALARM_TRACK_RMID = 3.05 — hoisted above the sleeve build by TODO 227, with the feeler's pivot radius; the comment above is its derivation.)
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
@@ -23548,7 +23645,9 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
   // the ABSENCE of track). The pin rides the track's top; at coincidence
   // the gap arrives under it and it drops ALARM_PIN_DROP — banked by the
   // feeler's stop, one CLEAR_MARGIN short of the body (TODO 179).
-  const a0 = ALARM_NOTCH_W / 2, a1 = Math.PI * 2 - ALARM_NOTCH_W / 2;
+  // §280 — the full-height track stops where the RAMPS begin: the notch's floor
+  // (ALARM_NOTCH_W) plus a ramp's run each side. The two ramps below close the gap.
+  const a0 = ALARM_NOTCH_W / 2 + ALARM_NOTCH_RAMP, a1 = Math.PI * 2 - a0;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, ALARM_TRACK_RMID + ALARM_TRACK_HALFW, a0, a1, false);
   shape.absarc(0, 0, ALARM_TRACK_RMID - ALARM_TRACK_HALFW, a1, a0, true);
@@ -23557,6 +23656,21 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
   track.name = 'alarmDiscTrack';
   track.position.z = ALARM_DISC_TOP;
   alarmDiscGroup.add(track);
+  // §280 — the notch's two ramps (see ALARM_NOTCH_RAMP). Each is a sector wedge
+  // on the body's face: its low end stands the notch's depth less the drop
+  // (the dropped pin's tip level — CLEAR_MARGIN over the floor), its high end
+  // the track's own top, flush with the track's end face. One mesh name for
+  // both, as the stem collar's three; the rows that name it are by label pair.
+  const rampLow = ALARM_TRACK_H - ALARM_PIN_DROP;
+  for (const side of [1, -1]) {
+    const ramp = new THREE.Mesh(
+      notchRampGeo(ALARM_TRACK_RMID - ALARM_TRACK_HALFW, ALARM_TRACK_RMID + ALARM_TRACK_HALFW,
+        Math.hypot(ALARM_TRACK_RMID, ALARM_PIN_R),   // the pin's tangential extreme (its rim vertex at the track's tangent) — where it touches
+        ALARM_NOTCH_W / 2, ALARM_NOTCH_W / 2 + ALARM_NOTCH_RAMP, rampLow, ALARM_TRACK_H, ALARM_NOTCH_RAMP_STEPS, side), MATS.steel);
+    ramp.name = 'alarmDiscNotchRamp';
+    ramp.position.z = ALARM_DISC_TOP;
+    alarmDiscGroup.add(ramp);
+  }
 }
 // --- '(§29 step 2, FIXED) the re-phasing branch taps I1 DIRECTLY -----------
 // The first build tapped i2 through a new idler j — placed by a two-circle
@@ -23949,20 +24063,6 @@ const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
 // −drop/ARM_LEN under 'XYZ') rocked about the dial's Y axis, cos φ = 0.905 of
 // the intended angle, in the wrong sense: the dropped tip opened 0.1628 off
 // the ring it reads.
-// §278 landing 4 — THE DETECTOR'S LAWS, written once and called by the build
-// and the tick exactly as they were inlined (the same operation, so the metal
-// and every pose are bit-identical), and handed to the 'alarm detector' line
-// spec (inspect.js LINE_SPECS, via `clock.lineLaws.detector`) so the reference
-// evaluates the law the movement is posed by at ITS inputs rather than
-// restating it. Each takes its geometry as arguments; neither reads a station.
-//   · pinArcHalf — the angle the pin's radius subtends at the track's radius:
-//     the trip's drop ramps over the notch's half-width ± this (the tick's
-//     drop law), so the pin bottoms over notchW − 2·pinArcHalf of hour angle.
-//   · rockAt — the lever's turn about its pin for a drop at its read arm.
-const ALARM_DETECTOR_LAWS = Object.freeze({
-  pinArcHalf: (pinR, trackR) => pinR / trackR,
-  rockAt: (drop, arm) => drop / arm,
-});
 function feelerRockAt(drop) { return ALARM_DETECTOR_LAWS.rockAt(drop, ALARM_FEELER_ARM_LEN); }
 const alarmFeelerLever = new THREE.Group();
 alarmFeelerLever.position.set(_pivotDial.x, _pivotDial.y, _armMidZ);
