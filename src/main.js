@@ -21982,7 +21982,7 @@ const ALARM_SLEEVE_SLOT_TILT = 0.02;
 // feeler would re-cut the sleeve's rollers — and with them its helix law, the
 // crank's arms and the release run's rows — for a constraint no longer there.
 // So the rollers ride where TODO 236 solved them in the sleeve's own frame, and
-// re-deriving their height against the metal now under the plates is TODO 257.
+// re-deriving their height against the metal now under the plates is TODO 258.
 const ALARM_SLEEVE_ROLL_Z = Math.max(-ALARM_SLEEVE_T / 2,
   (ALARM_SLEEVE_BAND_FLOOR + SPRING_FLAT_U / 2 + ALARM_FEELER_SPR_LIFT) + CLEAR_MARGIN + MEASURED_MARGIN_BAND
   + (ALARM_SLEEVE_ROLLER_R + ALARM_FORK_CLEAR + ALARM_SLEEVE_SLOT_TILT) + ALARM_SLEEVE_GUIDE_T

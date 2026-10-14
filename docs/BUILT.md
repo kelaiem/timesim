@@ -37304,7 +37304,7 @@ column alone, as its own row already said. The lower column and the run stand
   sleeve came down, re-cutting the sleeve's helix law for a constraint that is
   gone (the selector's third plate met the third roller pin at 0.84). It now
   reads `ALARM_SLEEVE_BAND_FLOOR`, the height TODO 236 solved, in the sleeve's
-  own frame. The stale reason is filed as **TODO 257**. The two coaxial-stack
+  own frame. The stale reason is filed as **TODO 258**. The two coaxial-stack
   asserts that read the feeler (§29's heart margin, §45's envelope floor) read
   the band floor too: the feeler is off the column.
 - **Re-quoted by their own tripwires:** `ALARM_LINK_ROD_LEN_U` 2.4917 →
@@ -37328,8 +37328,8 @@ column alone, as its own row already said. The lower column and the run stand
   Chromium): **54/54 gates**, boot silent, fingerprint deterministic
   (3246437144); `intraUnit` 0 unwaived, `undeclaredClearance` 0 under the
   margin, `lineSpec` 0 unwaived and no stale fork, `sweptOverlap` 0 CONFIRMED.
-  Run on the tree before #704 merged; #704 adds an inspect-route stop and chrome
-  strings, no metal, and the rebased tree boots silent.
+  Run twice: before #704 and #705 merged, and again on this branch rebased
+  onto them, with the same 54/54 and the same fingerprint.
 - `probe-70-line-spec` PASS (silent on the shipped mechanism, every sabotage
   names its rows); `probe-236-release-run` PASS (drive 324°, helix cut 51.569°,
   solved 51.679°; link 384.1 mN, pad 737.2 mN, crown 0.2176 N, all equal to the

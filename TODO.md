@@ -34106,7 +34106,8 @@ sink) all take it, and the track's full-height end moves out by the same run.
 **Still unstated:** the hour train's side of the same force — the satellite's
 tooth force at the reader radius against whatever slips first. Price it with the
 rest.
-## 257. The release sleeve's roller height reads a feeler blade that no longer stands under its plates
+
+## 258. The release sleeve's roller height reads a feeler blade that no longer stands under its plates
 
 Found by §278 landing 6. `ALARM_SLEEVE_ROLL_Z` (main.js, TODO 236) sets how
 far dial-ward of the sleeve's flat its three guide rollers ride. The rule it
