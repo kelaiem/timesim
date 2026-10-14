@@ -36175,3 +36175,17 @@ participle), *arming run/link* in the locales whose tables had none, and the
 parts the tables never named (guard pin, safety roller, impulse pin). The
 honesty stems are gated; whether the sentence around them reads naturally is
 not.
+
+### Part H — the alarm feeler gets its own stop
+
+The route had named the feeler only inside the Release stop's claim about the
+lock (TODO 199). A twelfth stop, **Alarm feeler**, sits between Arming run and
+Release and frames `Alarm release feeler` (x-rayed, armed, the feeler's own
+`focus`). It states what is driven (disc, reader and feeler are metal; each
+hand-off is an `ALARM_HANDOFFS` row) and what is open: the drop's work, about
+1.1 to 1.5 mN·u, against about 5.5 for drawing the lock's finger out of a
+loaded stop, so no energy source for the release exists yet (the P1 arithmetic
+TODO 199 files). Both figures are quoted from that item, not re-measured here.
+Its title and caption are translated in the 22 locales and held by
+`probe-277-route-i18n.mjs` (22 × 23 rows, 0 failing). The framing is one render:
+the lever's pivot and pickup are in shot, in a crowded corner.

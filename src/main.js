@@ -53189,6 +53189,10 @@ const INSPECT_STEPS = [
     camera: frameOn('Alarm switch', [0.35, -0.3, 0.9], 1.2),
     caption: 'The pusher, the pawl and the column wheel, drawn in lines with the contact dots lit by the same rows the battery gates, measured at this pose. What no gate samples is the press itself: every sweep takes the pawl parked, because the stroke is not a pose any axis varies (TODO 87).', dwell: 7.5 },
 
+  { title: 'Alarm feeler', scale: 0.3, alarm: true, schematic: false, xray: true, focus: 'Alarm release feeler',
+    camera: frameOn('Alarm release feeler', [0.35, -0.4, 0.85], 2.4),
+    caption: 'The feeler lever, which reads the set time off the release disc through the collar. Disc, reader and feeler are metal and each hand-off is a row the battery gates, so the drop is driven. What it does next is not: the drop delivers about 1.1 to 1.5 mN·u of work and drawing the lock’s finger out of a loaded stop costs about 5.5, so it cannot release the strike alone, and no energy source for the release has been chosen (TODO 199).', dwell: 8.0 },
+
   { title: 'Release', scale: 0.3, schematic: false, xray: true, focus: 'Alarm lock',
     camera: frameOn('Alarm lock', [0.4, -0.35, 0.8], 4.0),
     caption: 'The strike train’s lock. It answers the column wheel alone: the hold between arming and the trip is a flag in the code, not metal, and nothing carries the feeler’s drop to the lock (TODO 199).', dwell: 7.0 },
