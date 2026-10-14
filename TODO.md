@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 253 | OPEN | Found confirming the friction analysis (#531, failure 2). The balance's UPPER pivot has the full shock stack (hole jewel, endstone, lyre spring); the LOWER one runs through its stone to the stone's underside and stops, with nothing under it. Dial-down, the staff's shoulder (CLEAR_MARGIN above the stone) bears on the jewel face with no oil reservoir and no shock protection. Add a lower cap jewel, size the end contact, and let the energy column price the dial-down end |
+| 254 | OPEN | Found confirming the friction analysis (#531, failure 2). The balance's UPPER pivot has the full shock stack (hole jewel, endstone, lyre spring); the LOWER one runs through its stone to the stone's underside and stops, with nothing under it. Dial-down, the staff's shoulder (CLEAR_MARGIN above the stone) bears on the jewel face with no oil reservoir and no shock protection. Add a lower cap jewel, size the end contact, and let the energy column price the dial-down end |
 | 252 | OPEN | Found by the friction analysis (#531, failure 9). The fusee arbor runs a plain bush on top and a jewel at the bottom; `probe-power-budget` prints "top bush plain". TODO 192 step 2 kept the plain bushes on purpose (the chain's pull; the let-down square passes through), so this is a decision nobody recorded. Pick one in service terms, declare it, and let the lubrication map carry it |
 | 251 | OPEN | Found by the friction analysis (#531, failure 8). The 120/7 great wheel to centre pinion is the worst mesh in the train (η 0.929 nominal, 0.905 adverse; next worst 0.935 / 0.914) and a 7-leaf pinion is below the ten-leaf rule. Measure its contact ratio and approach/recess first; any change to 120/7 ripples through the 12:1 and every dependent solve |
 | 250 | OPEN | Found by the friction analysis (#531, failure 7). `sawCouplingSpec` defaults `mu = MU_STEEL` (0.2, tanα = 2μ), but the keyless must run greased (μ ≈ 0.1). The coupling then cams out at about half its design torque. The lubrication regime must be an input to that solve; blocked on §247 tier one giving it a greased-steel μ in `FRICTION` |
@@ -33764,7 +33764,7 @@ through the top) and declare it, once: either both ends plain, or both jewelled
 with the square re-routed. Record the reason in the arbor's builder comment, and
 let §247 tier one's `LUBRICATION` table carry the regime.
 
-## 253. The balance's lower pivot has no endstone: the pivot ends at the stone's underside
+## 254. The balance's lower pivot has no endstone: the pivot ends at the stone's underside
 
 Found confirming the friction analysis (issue #531, failure 2, §247). The
 balance's upper pivot runs in the cock's hole jewel and ends under an endstone
