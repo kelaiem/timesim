@@ -33654,6 +33654,10 @@ row, or reverse the helix hand's tangential sense against the drag if the
 margin is thin. The other hand locks at this station (TODO 236), so a hand
 change means re-siting the drive.
 
+**§278 landing 6 re-sited the drive, 328° → 324°.** The helix the law solves
+there is 51.68° (cut 51.57°) and the sleeve now turns 0.0346 rad, so the
+figures above are landing 5's; the drag is still unpriced.
+
 
 ## 253. The beak's stub stands 0.0949 off the cut castellations, under CLEAR_MARGIN
 
@@ -34114,9 +34118,9 @@ feeler, its blade with it, to the satellite: the blade now stands at 325–333°
 r 5.66–7.34, and the plates stand at 105°, 250° and 300°, r 5.0–5.9. No plate
 is over it.
 
-A dial-side reclaim (§278 landing 6's `DIAL_RECLAIM`) needs the sleeve to ride
-the dial rigidly — it brings every dial-hung member plate-ward while the feeler
-is held — and reading the held feeler would re-cut the rollers' height, and with it the
+Landing 6 needed the sleeve to ride the dial rigidly (the dial-side reclaim
+brings every dial-hung member plate-ward while the feeler is held), and reading
+the moving feeler would have re-cut the rollers' height, and with it the
 sleeve's helix law, the crank's arms and the release run's rows, for a
 constraint that is no longer there. So the expression now reads the chain's
 band floor in the sleeve's own frame (`ALARM_SLEEVE_BAND_FLOOR`): the height
