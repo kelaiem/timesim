@@ -110,7 +110,10 @@ exception is the plate OCCLUDERS (§71's hidden-line convention —
 page-colored silhouettes of the base, three-quarter and dial plates):
 `collectUnits` in `inspect.js` prunes anything flagged
 `userData.schematic` wherever it is parented, so flagged display never
-joins the sweeps — the same trust the fingerprint extends. Flag every
+joins the sweeps — the same trust the fingerprint extends. §247 tier three's oil-point glyphs ride the same
+flag: one per oiled or greased bearing `LUBRICATION` answers, sited off a rotor's
+axis, and a bearing with no readable pivot is listed in `SCHEMATIC.oilUnsited` rather
+than drawn at a guess. Flag every
 schematic object directly; an unflagged child of a flagged parent is
 NOT protected.
 
@@ -483,6 +486,16 @@ it into prose either.
    that one number were each honest on the inventory they had; the fifth
    had the whole inventory and combined it wrongly, which is the failure
    an assert catches and a careful reader does not),
+   and `lubrication` **0 joints outside the table and its arrival inventory, 0
+   malformed, 0 stale rows, 0 stale inventory entries, 0 stale waivers, controls
+   PASS** (§247 tier one — every `MECH_GRAPH` bearing and mesh answers with a
+   regime in `src/lubrication.js`, and the regime says which `FRICTION` rows it
+   may be priced with, so the map and the energy column cannot disagree. A
+   `friction` row cites its slip-torque derivation; an oiled bearing names an
+   oil sink or carries a waiver against a filed TODO (`Balance :: bearing`,
+   TODO 254) that goes STALE the day the sink is cut. `LUBRICATION_DEBT` is the
+   CLOSED arrival inventory: it only shrinks, and a joint answered while still
+   listed fails),
    and `transmits` **0 unwaived ratio mismatches, 0 unwaived ORPHANS, 0
    malformed, 0 stale waivers, controls PASS** (§194 — does every declared mesh
    actually turn its neighbour by the amount the metal says, asked once PER

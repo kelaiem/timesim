@@ -32007,7 +32007,49 @@ move.
   the as-cut rhombus) is TODO 193's, and its cadence already carries the one
   efficiency the source had (`ALARM_GOV_MESH_EFF`), which `FRICTION` does not
   yet subsume.
-- Tiers one and three of this entry, in the roadmap.
+- Tier three of this entry — landed below, after tier one.
+
+### §247 tier one — the per-joint `LUBRICATION` map, audited
+
+`src/lubrication.js` answers, for every joint `MECH_GRAPH` declares (115: 82
+support and 63 drive edges, deduplicated, the inputs excluded), one regime —
+dry, oil-fine, oil-medium, grease, escapement (the pallet stones' own
+lubrication) or friction (a surface whose slip torque the movement prices) — with
+the reason written beside it. `REGIME_INFO[regime].priced` lists the `FRICTION`
+coefficients a regime may carry, which is what makes the map and the §247 tier
+two energy column unable to disagree in silence. 54 joints are answered; the
+other 61 are the CLOSED arrival inventory `LUBRICATION_DEBT` (alarm complex,
+hack/reset/jumper/power-reserve bearings and their contacts), which only
+shrinks. The balance's lower bearing has no oil sink (TODO 254) and is the one
+waiver, stale the moment the sink exists. The `lubrication` battery check
+(cost 1) runs the audit and eight mutation controls (a deleted joint, a bogus
+unit, an unknown regime, an uncited friction row, a regime/coefficient mismatch,
+an unsunk oil bearing, an answered-but-listed joint, a waiver on a sunk
+bearing).
+
+### §247 tier three — oil points in the schematic, and the explainer entry
+
+The schematic tier (§66/§78) draws an oil point at each oiled or greased bearing the
+`LUBRICATION` map answers: a ring and a dot, coloured by regime (oil-fine, oil-medium,
+grease), with an outer ring where `epilame` is set. A dry joint gets no glyph, because a
+glyph is a claim that oil is there. The glyphs are `LineLoop`s on camera layer 1, flagged
+`userData.schematic` so the sweeps never read them, and parented to the rotor they mark so
+they ride its arbor. **The site is read, not declared**: the world axis of the unit's rotor
+(`userData.r` on or under the labelled group), or, for the four levers whose label group is
+posed at its own pivot, that group's origin (`OIL_PIVOT_GROUPS`: pallet fork, setting
+lever, yoke, maintaining detent). A unit whose label group is a wrapper at the origin has
+no site this pass can read, so it is NOT drawn at a guess and is listed in
+`SCHEMATIC.oilUnsited` (`__clock.oilPoints()`): the chain, the winding arrest, the
+governor anchor and four alarm levers — seven of 24 oiled bearings, 17 drawn. Siting the
+seven means recording a pivot on each builder, which is the follow-up. `explain.html`
+gains one entry, "Where the oil goes, and where it must not": the six regimes, the dry-by-design
+joints, the modelled-not-simulated statement (a regime is declared and priced into the
+budget's corners; no film, wear or migration is simulated), and the open items (TODO 252,
+TODO 254, the arrival inventory). The roadmap asked the plate to state TODO 192 as open;
+TODO 192 closed in the meantime, so the entry does not. Its translations follow through
+`tools/explain-i18n.mjs --extract` and render English until then, by design. No battery
+row is added: nothing here is a claim the metal can contradict, and the pass is boot-asserted
+(no Mesh proxies, at least ten oil points sited).
 
 ## §253 — The gong's voice carries the curvature term: in-plane modes of the clamped-free arc, and the modal mass the head is matched to
 

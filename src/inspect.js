@@ -39,6 +39,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
   TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+import { auditLubrication, LUBRICATION, LUBRICATION_DEBT, LUBRICATION_WAIVERS } from './lubrication.js';   // §247 tier one
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -11679,6 +11680,58 @@ export function checkTransmits(clock) {
   };
 }
 
+// §247 TIER ONE — THE LUBRICATION MAP. Every joint the movement's own graph
+// declares (src/lubrication.js reads MECH_GRAPH for the population) answers with a
+// regime, or sits in the CLOSED arrival inventory LUBRICATION_DEBT; every answer is
+// well-formed, names a part that still exists, prices itself with a FRICTION row
+// its regime describes, and an oiled bearing with no oil sink is waived against a
+// filed item. `restoring`'s shape: a lubricant is a CLAIM about service, so `ok` is
+// always true and the rows are the product; the battery gates what CAN be gated.
+// The controls are gated with it — a classifier that quietly stops catching bad rows
+// is a dead instrument — and each runs the very same audit on a mutated copy.
+export function checkLubrication(clock) {
+  const labels = clock.labelEntries.map((e) => e.name);
+  const run = (over = {}) => auditLubrication({ graph: MECH_GRAPH, labels, ...over });
+  const real = run();
+  const keys = Object.keys(LUBRICATION);
+  const victim = keys.find((k) => LUBRICATION[k].regime === 'dry' && !k.includes('::')) || keys[0];
+  const controls = [];
+  const expect = (name, hit) => controls.push({ name, ok: !!hit });
+  { const rows = { ...LUBRICATION }; delete rows[victim];
+    expect('a joint deleted from the table fails (unanswered)', run({ rows }).unanswered.some((u) => u.key === victim)); }
+  { const rows = { ...LUBRICATION, 'No such unit :: bearing': LUBRICATION[keys.find((k) => k.endsWith(':: bearing'))] };
+    expect('a row naming no joint is stale', run({ rows }).stale.some((x) => x.key === 'No such unit :: bearing')); }
+  { const rows = { ...LUBRICATION, [victim]: { ...LUBRICATION[victim], regime: 'sticky' } };
+    expect('an unknown regime is malformed', run({ rows }).malformed.some((x) => x.key === victim)); }
+  { const rows = { ...LUBRICATION, [victim]: { ...LUBRICATION[victim], regime: 'friction' } };
+    expect('a friction row with no slip-torque citation is malformed', run({ rows }).malformed.some((x) => x.key === victim)); }
+  { const mu = keys.find((k) => LUBRICATION[k].mu === 'muJewel');
+    const rows = { ...LUBRICATION, [mu]: { ...LUBRICATION[mu], regime: 'dry' } };
+    expect('a coefficient the regime does not describe is malformed', run({ rows }).malformed.some((x) => x.key === mu)); }
+  { const oil = keys.find((k) => k.endsWith(':: bearing') && LUBRICATION[k].regime.startsWith('oil') && LUBRICATION[k].sink && LUBRICATION[k].sink !== 'none');
+    const rows = { ...LUBRICATION, [oil]: { ...LUBRICATION[oil], sink: 'none' } };
+    expect('an oiled bearing with no sink and no waiver is malformed', run({ rows }).malformed.some((x) => x.key === oil)); }
+  expect('an answered joint still listed as debt is stale', run({ debt: [...LUBRICATION_DEBT, victim] }).staleDebt.some((x) => x.key === victim));
+  expect('a waiver whose bearing has a sink is stale', run({ waivers: { ...LUBRICATION_WAIVERS, [keys.find((k) => LUBRICATION[k].sink === 'chaton')]: 'TODO 0' } }).staleWaivers.length > 0);
+  const failed = controls.filter((c) => !c.ok);
+  const control = failed.length ? `FAIL: ${failed.map((c) => c.name).join('; ')}` : `PASS (${controls.length} mutations each caught)`;
+  return {
+    ok: true,
+    population: real.population,
+    answered: real.answered.length,
+    unanswered: real.unanswered,        // outside both tables: GATED
+    malformed: real.malformed,
+    stale: real.stale,
+    staleDebt: real.staleDebt,
+    debtNotInPopulation: real.debtNotInPopulation,
+    staleWaivers: real.staleWaivers,
+    debt: real.debtCount,               // the arrival inventory still owed (REPORTED; it only shrinks)
+    byRegime: real.byRegime,
+    control, controls,
+    note: 'a lubricant is a CLAIM about service (§48\'s covenant): the rows are the product, the gate holds coverage, form and the budget agreement',
+  };
+}
+
 export function checkTransfers(clock) {
   const payload = clock.transfers;
   if (!payload) return { ok: true, error: 'no transfers payload on __clock (main.js §137 block missing)' };
@@ -14829,6 +14882,7 @@ const CHECKS = {
   // `start(clock, …)` answered "unknown check" and the only way to run §48's
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
+  lubrication: (clock) => checkLubrication(clock),                       // §247 tier one — every joint answers with a regime or sits in the closed arrival inventory; the energy column's coefficients agree with the regime they price
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
   meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's; §135 gates the centre distance beside it
   meshCoverage: (clock, opts) => checkMeshCoverage(clock, opts),         // §135 item 4 — every mesh in the metal is a declared row
