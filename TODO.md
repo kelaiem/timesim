@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 260 | OPEN | Found closing TODO 259. The ramp is cut, so the lift out of the notch has a price and nothing prices it: 4.0–6.7 mN sideways frictionless, 6.8–11.3 mN at `MU_STEEL`, against a pin load of 11.3 dropped / 18.8 riding. Its reaction lands on the disc, held by 14.66 mN (TODO 144 pad): 1.3–2.2 times, under the 3 times `ALARM_SPRING_HEADROOM` the pad is sized to. Price both rows in TODO 16's format; the remedy is a longer ramp, not a steeper one. |
+| 260 | OPEN | Found closing TODO 259, and first stated wrongly there (a pad's normal force compared with a tangential one): the ramp's climb loads the disc with `F·(tanθ+μ)/(1−μ·tanθ)` = 11.29 mN at the riding pin load (6.78 dropped) at `MU_STEEL`, and the seat's hold (TODO 144, solved at 3× the flat drag) is 11.29 mN at the track radius, so the hold clears the climb by **1.00×** where it is sized to `ALARM_SPRING_HEADROOM` = 3× — and under 1 at a kinder pad friction. Margin 3 needs the pad at 62 mN on the shipped slope, over the 50 mN window; the design space is a longer ramp (≤ 15°, ≥ 0.37 u) with the pad re-solved against the climb, which moves the window. |
 | 259 | DONE | Reported by eye: the alarm pin has no obvious path out of the notch. The tick has always ramped the reader's pin along a linear law over the pin's own angular diameter, but the notch's walls were radial, so a flat pin fell in and could never be lifted out. The track's top is cut to the law now (two ramps, 19.67°, `probe-280-notch-ramp.mjs` and the `alarm detector` line spec's `rampSeat`). The lift's force is TODO 260. |
 | 257 | DONE | Reported by eye at a reduced time scale: the balance slowed and stopped as the hack pad swung in, before any contact. The brake was `leverEngage · brakeNm`, and leverEngage left 0 on the crown's first frame. It is now the pad's own contact (`HACK_PAD`): zero until the pad's top reaches the rim, built over the hack rod's priced give (0.8 µm of pad rise), the holding load from the spring's peak torque at MU_STEEL. The crown's ease now ARRIVES (a floor under its speed) so the touch happens at 0.19 s, not as an exponential's 0.7 s tail. `probe-257-hack-contact.mjs`, 9 rows, one control that fails the old law |
 | 256 | OPEN | Blocks TODO 255. The maintaining ring is 35 teeth only because the movement is priced too lossy: under the real mesh law the floor rises (a heavier balance must still reach 200°, and the claim rises) and the blade needs 37 teeth. The detent beak's face flank cannot be relieved at 36 or more (clearance 0.1347 at 36, 0.1194 at 37, against CLEAR_MARGIN 0.15). Redesign the beak for a finer pitch, or give the spring more run, before 255 can land |
@@ -34041,38 +34041,64 @@ ringing position. The report was right and wider than it looked.
   to follow (0.050000003). `notchW` is the outline's gap less the two ramps' runs.
   `alarmDiscNotchRamp` is `marking` stock like the track it extends; the
   `track ⇄ pin` penetration row and the disc ⇄ reader floors row name it.
-- **Not closed here.** The lift's FORCE — TODO 260.
+- **Not closed here.** The lift's FORCE — TODO 260, which also corrects the first statement of it made here (a normal force compared with a tangential one). The explainer's alarm-release entry carries the ramp as its own paragraph, translated in every locale.
 
 ## 260. Price the reader pin's lift out of the notch: the sideways force the hour train must deliver
 
-Found closing TODO 259. With the ramps cut, leaving the notch is a climb with a
-price, and no row states it. In TODO 16's format:
+Found closing TODO 259. **Correction first:** the first version of this item (and
+the PR that shipped TODO 259) compared the seat pad's NORMAL force, 14.66 mN, with
+the ramp's TANGENTIAL reaction and read 1.3–2.2×. Those are different forces. The
+hold is a friction torque, and the comparison belongs in torques at the track's
+radius, which is what `alarmSetHold` publishes. In TODO 16's format:
 
 | quantity | value | derivation |
 |---|---|---|
-| pin load, dropped / riding | 11.29 / 18.81 mN | the `alarm release: bias blade` §137 row's `pinF_mN_dropped` / `pinF_mN_riding`, as the `alarm detector` line spec reads them (`seatHold`, `seatRide`) |
+| pin load, dropped / riding | 11.29 / 18.81 mN | the `alarm release: bias blade` §137 row's `pinF_mN_dropped` / `pinF_mN_riding` (the `alarm detector` spec's `seatHold`, `seatRide`) |
 | ramp slope tan θ | 0.3574 (19.67°) | `ALARM_PIN_DROP / (2·pinArcHalf·ALARM_TRACK_RMID)` |
-| sideways force, frictionless | 4.0 – 6.7 mN | `F · tan θ` |
-| sideways force at `MU_STEEL` 0.2 | 6.8 – 11.3 mN | `F · (sin θ + μ cos θ) / (cos θ − μ sin θ)`, the pin sliding up a flank |
+| flat-track drag, riding | 3.76 mN (0.004349 N·mm) | `MU_STEEL · F_riding`, the load the seat is sized against |
+| the pin's tangential force on the disc, climbing, at `MU_STEEL` | **11.29 mN** riding, 6.78 dropped | `F · (tan θ + μ) / (1 − μ · tan θ)`; 3.00× the flat drag, because (tan θ + μ)/(1 − μ·tan θ) = 0.600 ≈ 3μ |
+| the seat's hold (TODO 144) | 0.013046 N·mm = **11.29 mN** at the track radius | `μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad]` solved to `ALARM_SPRING_HEADROOM` (3) × the flat drag, F_pad 14.66 mN, r_seat 3.494, r_pad 3.763 |
+| hold ÷ climb | **1.00×** riding, 1.67× dropped | against the 3× every drag-against-hold budget in this chain answers to |
 
-**Who pays it, and the first check that already does not close.** The pin is
-carried by the satellite's hour and the notch is cut in the disc the set train
-holds still, so the ramp's reaction lands on the DISC, and what holds the disc
-is TODO 144's pad: 14.66 mN, sized as `ALARM_SPRING_HEADROOM` = 3 times the
-all-day drag of the pin riding the track (`MU_STEEL · 18.81` = 3.76 mN, so a
-floor of 11.29). Against that hold the ramp's reaction is 6.8–11.3 mN at
-`MU_STEEL`: 1.3–2.2 times, where the design keeps 3 times over the drag it
-already prices. It does not slip on these numbers (11.3 < 14.66), but it holds
-by less than the margin the same pad is sized to, and only while the pin is on a
-ramp (the 2·pinArcHalf zone is about ten minutes of hour, twice a day) — which
-is the shape of a set time that could walk by a hair at each pass, a thing no
-gate measures. The hour train's side of the same force (the satellite's tooth
-force at the reader radius against the cannon pinion's slip) is not written down
-either.
+So the seat holds the disc against the climb with no margin at the top of the exit
+ramp, at the adverse friction, by a near-coincidence of two numbers. The hold is
+itself a friction (the pad and the plate at `MU_STEEL`) while the climb's
+reaction is mostly slope, so a kinder friction on both leaves it short: ÷ climb
+is 0.84 at μ 0.15 and 0.63 at μ 0.10. A disc that slips while the pin climbs
+turns by the slip, which is a set time that walks a little at each ring — a
+failure no gate measures, because every sweep takes the pin on the flat or in the
+notch and none holds the climb.
 
-To do: put both rows in TODO 16's format, hold against reaction at each corner of
-`FRICTION`, and decide between (a) a pad that holds the reaction at the headroom
-(34 mN, which the seat's spring and the bridge must then carry) and (b) a longer
-ramp — a shallower slope at the cost of a wider window — whose reaction falls as
-`tan θ`: halving the slope halves the reaction and leaves the hold unchanged.
-Not a steeper one, and not a cone.
+**The design space.** The ramp's slope is the free number: a longer ramp lowers
+the climb toward the flat drag it cannot go under. With the pad re-solved to
+hold 3× the climb at the riding load (`F_pad = (3·F_lat·R/μ − F_pin·r_seat) /
+(r_seat + r_pad)`) against `SELECTOR_DETENT_WINDOW_MN` (5–50 mN):
+
+| tan θ | angle | ramp run | of hour | climb, riding | pad for 3× |
+|---|---|---|---|---|---|
+| 0.357 (shipped) | 19.7° | 0.280 u | 10.5 min | 11.29 mN | 62.1 mN — over the window |
+| 0.300 | 16.7° | 0.333 u | 12.5 min | 10.01 | 54.0 — over |
+| 0.250 | 14.0° | 0.400 u | 15.0 min | 8.91 | 47.1 |
+| 0.200 | 11.3° | 0.500 u | 18.8 min | 7.84 | 40.4 |
+| 0.150 | 8.5° | 0.667 u | 25.0 min | 6.79 | 33.7 |
+| 0.100 | 5.7° | 1.000 u | 37.6 min | 5.76 | 27.2 |
+
+Margin 3 is reachable only with a ramp under about 15° and the pad near the top of
+its window; the shipped 19.7° cannot, whatever the pad, inside the window. A cone
+on the pin is the opposite direction (35.5° at best). The cheaper levers are
+friction ones, which this item does not take: a lubricated or jewelled pin
+lowers μ in the climb (the ramp then tends to `F·tan θ`) and the seat's
+hold needs the `FRICTION` band's low end, not `MU_STEEL`, to be honest about
+which way each friction cuts.
+
+**What it moves, so it is its own landing.** The law generalises cleanly: with a
+ramp of run L (today 2·pinArcHalf), `drop(c) = ALARM_PIN_DROP · clamp((g + L −
+|c| − pinArcHalf) / L)`, the plateau unchanged and the window `g + L − pinArcHalf`
+each side. The wedges, `ALARM_NOTCH_RAMP`, the tick's drop law, the `alarm
+detector` rows `ramp` and `window`, `probe-117-trip`'s window, the explainer's
+plate and the seat's pad (k, preload, strain against the stock's limit, the
+sink) all take it, and the track's full-height end moves out by the same run.
+
+**Still unstated:** the hour train's side of the same force — the satellite's
+tooth force at the reader radius against whatever slips first. Price it with the
+rest.
