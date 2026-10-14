@@ -34041,7 +34041,7 @@ ringing position. The report was right and wider than it looked.
   to follow (0.050000003). `notchW` is the outline's gap less the two ramps' runs.
   `alarmDiscNotchRamp` is `marking` stock like the track it extends; the
   `track ⇄ pin` penetration row and the disc ⇄ reader floors row name it.
-- **Not closed here.** The lift's FORCE — TODO 260.
+- **Not closed here.** The lift's FORCE — TODO 260, which also corrects the first statement of it made here (a normal force compared with a tangential one). The explainer's alarm-release entry carries the ramp as its own paragraph, translated in every locale.
 
 ## 260. Price the reader pin's lift out of the notch: the sideways force the hour train must deliver
 
