@@ -354,6 +354,7 @@ const COSTS = {
   'chainLength': 1,
   'restoring': 3,
   'transfers': 1,
+  'lubrication': 1,
   // §122 — the verdict tier's two fixes moved this column's three largest
   // rows, and every moved entry here is the OLD CI-calibrated value scaled
   // by its measured local before/after ratio (one container, same-day runs,

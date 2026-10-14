@@ -358,7 +358,10 @@ try {
   // one data file it fetches, vendor/ldraw/technic-parts.mpd, whose quoted
   // ./vendor/ URL the document walk stamps like any import. Precached because
   // the view must open offline like the rest of the page.
-  check('release: precache complete', counts === 77, `${counts}/77`);
+  // §247 tier one — 78: src/lubrication.js, the per-joint lubrication map, which
+  // main.js (the schematic's oil points) and inspect.js import statically. One
+  // module for the app, like balance-drive.js, so it adds one.
+  check('release: precache complete', counts === 78, `${counts}/78`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
