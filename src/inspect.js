@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, HANDOFF_TRACK_TOL, UNIT_MM, Z_DIAL, SLENDE
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, rigidSplit,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BALANCE_R_MAX, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, CLICK_STEEL_SIGMA_Y_PA, LINE_CONTACT_FIRST_YIELD_P0_PER_Y, STEEL_NU, PIVOT_MIN_U, STOCK_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_F, BAL_RIM_STEP, BALANCE_R_SPEC, BALANCE_R_REF, BAL_R_STEP, IMPULSE_WIDTH, AMPLITUDE_POSED_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -10728,14 +10728,7 @@ export function checkEqualisation(clock) {
           failures.push({ what: 'balance larger than the shipped movement\'s (BALANCE_R_REF)', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF });
         else if (Math.abs(steps - Math.round(steps)) > 1e-9)
           failures.push({ what: 'balance radius off the BAL_R_STEP grid below BALANCE_R_REF', radius: BALANCE_R_SPEC, ref: BALANCE_R_REF, step: BAL_R_STEP });
-        else if (steps > 0 && BALANCE_R_SPEC + BAL_R_STEP > BALANCE_R_MAX + 1e-9) {
-          // TODO 255 — the row's layout carries no larger wheel (layout.js,
-          // BALANCE_R_MAX), so "one step larger fails" is a fact about the plate,
-          // not the spring: the wheel must BE the fit limit, and the record must
-          // say that is what binds and carry no larger-wheel test it did not run.
-          if (BALANCE_R_SPEC !== BALANCE_R_MAX || T.radiusFit !== BALANCE_R_MAX || T.radiusBinds !== 'fit' || T.larger !== null)
-            failures.push({ what: 'a fit-limited wheel must sit at the fit limit and record that the fit binds', radius: BALANCE_R_SPEC, fit: BALANCE_R_MAX, recordFit: T.radiusFit, binds: T.radiusBinds, larger: T.larger });
-        } else if (steps > 0) {
+        else if (steps > 0) {
           const L = T.larger;
           if (!L || !(Math.abs(L.radius - (BALANCE_R_SPEC + BAL_R_STEP)) < 1e-12) || L.rimF !== T.rimFloor
               || !(T.rimFloor >= T.rimFloorF - 1e-12 && T.rimFloor - T.rimFloorF < BAL_RIM_STEP - 1e-12)

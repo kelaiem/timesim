@@ -88,10 +88,10 @@
 // distance and so the notch, bank and knock (298.27° at r 7.5, so peakDeg
 // 299) all scale off BALANCE_R; the escape wheel and the angles do not.
 const RATE_TABLE = {
-  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.72, claimDeg: 130, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
-  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.54, claimDeg: 133, peakDeg: 311 }, // 8/96 = 1/12
-  28800: { fourthTeeth: 96, escPinion: 6, balanceR: 9, rimF: 0.315, claimDeg: 137, peakDeg: 311 }, // 6/96 = 1/16
-  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, balanceRMax: 7.5, rimF: 0.295, claimDeg: 138, peakDeg: 299 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
+  18000: { fourthTeeth: 80, escPinion: 8, balanceR: 9, rimF: 0.645, claimDeg: 126, peakDeg: 311 }, // 8/80 = 1/10 — the shipped movement
+  21600: { fourthTeeth: 96, escPinion: 8, balanceR: 9, rimF: 0.485, claimDeg: 128, peakDeg: 311 }, // 8/96 = 1/12
+  28800: { fourthTeeth: 96, escPinion: 6, balanceR: 9, rimF: 0.27, claimDeg: 132, peakDeg: 311 }, // 6/96 = 1/16
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168, balanceR: 7.5, rimF: 0.25, claimDeg: 133, peakDeg: 299 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
@@ -448,19 +448,6 @@ export const BAL_RIM_STEP = 0.005;
 // laws, and requires it to fail. A quarter unit (0.095 mm) is the grid 36,000's
 // radius was searched on (7.75 reaches 199.21°, 7.5 carries the row).
 export const BALANCE_R_REF = RATE_TABLE[18000].balanceR;
-// TODO 255 — the LARGEST wheel the row's layout carries, which is a fact about
-// the plate and not about the spring. The radius rule above ("the largest in
-// steps of a quarter that still reaches the target") assumed energy was the only
-// thing that could stop a larger wheel; once the mesh law priced the teeth at
-// their real loss, a 7.75 wheel at 36,000 reaches the target (207.1° at the
-// lightest grid rim) and the build refuses it anyway: booted at that radius the
-// stop work reports "no station about the balance can route the hack rod
-// through the low corridor", and at 8 the hack rod elbow also fouls (the reset
-// hammer's hub, -0.05; at 8.25 the great wheel, -0.04). So the row declares
-// its fit limit, `balanceRMax`, from that measurement, and row 15 accepts "one
-// step larger fails" for either reason, naming which one binds. A row without
-// it fits the reference wheel.
-export const BALANCE_R_MAX = rateBalanceRow(SPEC.vph).balanceRMax ?? BALANCE_R_REF;
 export const BAL_R_STEP = 0.25;
 // §221 — THE SWING THE MESH PERFORMS IS THE SWING THE MOVEMENT IS DESIGNED TO.
 // `AMPLITUDE_VISUAL_DEG = 45`, a readability number a sixth of a real swing, is

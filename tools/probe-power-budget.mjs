@@ -45,7 +45,6 @@ import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as L from '../src/layout.js';
-import { gearMeshAction } from '../src/gear-action.js';   // TODO 255: three-free, so the probe reads the arcs the teeth are cut to
 
 const f = (x, d = 3) => Number(x).toFixed(d), e = (x) => Number(x).toExponential(3);
 const ROOT = new URL('..', import.meta.url).pathname;
@@ -134,10 +133,10 @@ const beats = reserveS * beatsPerS;
 const T = L.TRAIN;
 const r = (m) => m.module * m.teeth / 2, rp = (m) => m.module * m.pinion / 2;
 const meshes = [
-  { name: 'great wheel → centre pinion', z1: T.barrel.teeth, z2: T.barrel.pinion, action: gearMeshAction({ module: T.barrel.module, driver: T.barrel.teeth, driven: T.barrel.pinion }) },
-  { name: 'centre → third pinion', z1: T.center.teeth, z2: T.center.pinion, action: gearMeshAction({ module: T.center.module, driver: T.center.teeth, driven: T.center.pinion }) },
-  { name: 'third → fourth pinion', z1: T.third.teeth, z2: T.third.pinion, action: gearMeshAction({ module: T.third.module, driver: T.third.teeth, driven: T.third.pinion }) },
-  { name: 'fourth → escape pinion', z1: T.fourth.teeth, z2: T.fourth.pinion, action: gearMeshAction({ module: T.fourth.module, driver: T.fourth.teeth, driven: T.fourth.pinion }) },
+  { name: 'great wheel → centre pinion', z1: T.barrel.teeth, z2: T.barrel.pinion },
+  { name: 'centre → third pinion', z1: T.center.teeth, z2: T.center.pinion },
+  { name: 'third → fourth pinion', z1: T.third.teeth, z2: T.third.pinion },
+  { name: 'fourth → escape pinion', z1: T.fourth.teeth, z2: T.fourth.pinion },
 ];
 const ratio = meshes.reduce((a, m) => a * m.z1 / m.z2, 1);
 // Each arbor: pinion in (radius), wheel out (radius), pivot radius.
@@ -234,7 +233,7 @@ function run(A, piv = { train: null, bal: Q.balPivR }) {
   push('chain articulation', 1 - A.muChain * L.CHAIN_PIN_R * (1 / rFuseeMean + 1 / rWrap), `μ·r_pin·(1/r_fusee + 1/R_wrap), rivet r ${L.CHAIN_PIN_R} u`);
   push('fusee arbor pivots', 1 - A.muPlain * Q.upperStaffR * (1 / rFuseeMean + 1 / rGreat), `μ·r_piv·(1/r_fusee + 1/r_great), staff r ${Q.upperStaffR} u, top bush plain`);
   meshes.forEach((m, i) => {
-    push(`mesh ${m.name} (${m.z1}/${m.z2})`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2) * m.action.factor, `πμ(1/z₁ + 1/z₂)·(1 − ε + ε_a² + ε_r²) = ×${f(m.action.factor, 4)}`);
+    push(`mesh ${m.name} (${m.z1}/${m.z2})`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ(1/z₁ + 1/z₂)');
     const a = arbors[i];
     const rP = piv.train ?? a.rPiv;
     push(`${a.name} arbor pivots`, 1 - A.muJewel * rP * (1 / a.rIn + 1 / a.rOut), `μ·r_piv·(1/r_pinion + 1/r_out) = loads additive (upper bound), pivot r ${f(rP, 4)} u`);
@@ -295,15 +294,7 @@ const spring = spRec && spRec.k_Nm_per_rad ? (() => {
   const etaGreat = C.stages.slice(3).reduce((p, s) => p * s.eta, 1);
   const floor = C.atClaim.needPerBeat_J * beats / (etaGreat * 2 * Math.PI * fuseeTurns);
   const margin = L.CLEAR_MARGIN / spRec.pinRadius_u;
-  // TODO 255 — the count is the RECORD's, held for feasibility rather than re-derived.
-  // The fewest N whose own blade gives its own run is a fixed point of the
-  // crossing's geometry (the run moves the pin, the pin the reach), which only
-  // main.js can evaluate; a one-step ceil() from the published reach read 36 where
-  // the record's 37 is right (36 misses its own run by 0.01%). What this probe CAN
-  // hold is that the record's N fits inside the run it publishes, and that the
-  // run, k and preload follow from it.
-  const N = spRec.ringTeeth;
-  if (!(2 * Math.PI / N + margin <= spRec.runMax_rad + 1e-12)) throw new Error(`the record's ${N}-tooth ring does not fit the run its blade gives (${spRec.runMax_rad})`);
+  const N = Math.ceil(2 * Math.PI / (spRec.runMax_rad - margin));
   const runR = 2 * Math.PI / N + margin;
   const k = (tauFusee - floor) / runR;
   let c = 0;
