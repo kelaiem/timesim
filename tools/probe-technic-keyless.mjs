@@ -1,6 +1,6 @@
 // DOES THE LEGO KEYLESS WORKS CHANGE OVER, AND DOES EACH BRANCH CARRY THE
 // STEEL RATIO? Acceptance, pure Node, no browser, no network; exits non-zero
-// on any failure. §219 tier three (b), landing D.
+// on any failure. §219 tier three (b), landings D and E.
 //
 // The steel stem's sliding pinion is LEGO's own transmission: two 16T clutch
 // gears (18946) idle on the stem, a ridged joiner (18948) is keyed between
@@ -29,21 +29,33 @@
 //     ring turns with the stem;
 //   · RATIOS — turning the input, each branch's last body turns by exactly its
 //     target × the input in its own mode, read off the placed matrices, while
-//     the other branch stands still; in `neutral` both stand still.
+//     the other branch stands still; in `neutral` both stand still;
+//   · LEVER (landing E) — the selector's catch (6641), its SURFACE sampled
+//     (every face subdivided, so an edge's interior counts) and hung at the
+//     selector's posed angle: in every mode it stands clear of the ring, the
+//     clutch gears and the joiner, each taken as its own body of revolution
+//     read off its sampled surface; its bulb reaches inside the flanges (the
+//     ENGAGEMENT, printed) and clears the groove's floor (the ring turns under
+//     it); and the ring stands exactly where the catch's in-flange surface is
+//     centred, re-derived here from the samples rather than read from the
+//     build — so the ring's position is an output of the lever's angle.
 //
 // The build probe (probe-technic-build.mjs) holds the rest of the assembly in
 // every mode: seated, through, on the axle, meshed, the file.
 //
-// WHAT THIS DOES NOT CLAIM: a lever that moves the ring. The mode is the
-// INPUT here — posed, as the page poses it — not something a part drives yet,
-// and the ring is posed engaged with its lugs in the MIDDLE of their play,
-// where the parts allow anywhere across it.
+// WHAT THIS DOES NOT CLAIM: that anything turns the selector. Its angle per
+// mode is the INPUT — posed, as the page poses it — and the ring follows from
+// it. The ring is posed with its lugs in the MIDDLE of their play, and the
+// catch's bulb centred in the groove, where the parts allow anywhere across
+// either. No detent holds the selector at its three angles.
 //
 // CONTROLS: the ring placed 0.8 mm short of its stroke must fail STROKE; the
 // ring turned 45° on the joiner must fail KEYED; a clutch gear turned 45° on
 // the ring must fail DOGGED; a winding chain with one mesh
 // changed must fail ROWS; the idle branch's output turning, or the engaged
-// branch's at twice its ratio, must fail RATIOS.
+// branch's at twice its ratio, must fail RATIOS; the selector one plate lower
+// must fail LEVER (the bulb into the groove's floor), and so must the
+// selector left at neutral while the ring stands at its wind stroke.
 //
 //   node tools/probe-technic-keyless.mjs
 import { readFileSync } from 'node:fs';
@@ -52,8 +64,8 @@ import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, walk, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES, TECHNIC_KEYLESS, TECHNIC_CLUTCH_GEAR, technicKeylessTargets, technicKeylessErrors,
   solveRatio, ratStr } from '../src/layout.js';
-import { frameKeyless, KEYLESS_PARTS, KEYLESS_DIM_MM as K, KEYLESS_DOGS } from '../src/technic-frame.js';
-import { ldrawBuild, placedParts, dogPhase } from '../src/technic-ldraw.js';
+import { frameKeyless, KEYLESS_PARTS, KEYLESS_DIM_MM as K, KEYLESS_DOGS, LEGO_DIM_MM } from '../src/technic-frame.js';
+import { ldrawBuild, placedParts, dogPhase, catchInRingFrame, surfaceSamples } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
@@ -226,20 +238,62 @@ function ratioErrors(build) {
   return errs;
 }
 
+// LEVER: the catch against the stem's bodies of revolution, per mode
+const BIN = 0.25;
+function profile(part) {   // max radius of a part's sampled surface per axial bin (its own Z)
+  const m = new Map();
+  for (const [x, y, z] of surfaceSamples(lib, part)) { const k = Math.round(z / BIN); m.set(k, Math.max(m.get(k) ?? 0, Math.hypot(x, y))); }
+  // a bin's radius is the most of it and its two neighbours: conservative by a quarter LDU along the axis
+  return (a) => { const k = Math.round(a / BIN); return Math.max(m.get(k - 1) ?? 0, m.get(k) ?? 0, m.get(k + 1) ?? 0); };
+}
+const ringProf = profile(KEYLESS_PARTS.ring), clutchProf = profile(KEYLESS_PARTS.clutch), joinerProf = profile(KEYLESS_PARTS.joiner);
+const flangeR = L(K.ringR), floorR = ringProf(0);
+// the groove's half-width: the nearest the flange's full radius comes to the ring's middle
+let grooveHalf = Infinity;
+for (const [x, y, z] of surfaceSamples(lib, KEYLESS_PARTS.ring)) if (Math.hypot(x, y) > flangeR - 1e-3) grooveHalf = Math.min(grooveHalf, Math.abs(z));
+function leverErrors(build, riseOverride) {
+  const errs = [], report = [];
+  const sel = build.shafts.find((x) => x.shaft === 'selector');
+  if (!sel) return { errs: ['no selector in the build'], report };
+  const stem = build.shafts.indexOf(stemOf(build));
+  const rise = riseOverride ?? (build.shafts[stem].origin[1] - sel.origin[1]);
+  for (const mode of build.modes) {
+    const theta = sel.pose[mode];
+    const ring = partOn(build, stem, 'ring', 0, mode);
+    const s0 = ring.m[2] - sel.origin[2];                       // the ring's centre along the stem, from the pivot's plane
+    const bodies = [['ring', ringProf, s0], ['joiner', joinerProf, partOn(build, stem, 'joiner', 0, mode).m[2] - sel.origin[2]]];
+    for (const w of ['winding', 'setting']) bodies.push([`${w} clutch gear`, clutchProf, partOn(build, build.shafts.indexOf(clutchOf(build, w)), 'gear', 0, mode).m[2] - sel.origin[2]]);
+    let rmin = Infinity, lo = Infinity, hi = -Infinity;
+    const hits = new Map();
+    for (const [a, r] of catchInRingFrame(lib, theta, rise)) {
+      for (const [name, prof, c] of bodies) if (r < prof(a - c) - EPS) hits.set(name, (hits.get(name) ?? 0) + 1);
+      if (r < flangeR) { rmin = Math.min(rmin, r); lo = Math.min(lo, a - s0); hi = Math.max(hi, a - s0); }
+    }
+    for (const [name, n] of hits) errs.push(`${mode}: the catch stands in the ${name} (${n} surface samples)`);
+    if (!(rmin < flangeR)) { errs.push(`${mode}: the catch does not reach inside the flanges`); continue; }
+    if (!(rmin > floorR)) errs.push(`${mode}: the catch touches the groove's floor`);
+    // the ring where the catch holds it: the middle of its in-flange surface
+    if (Math.abs((lo + hi) / 2) > 1e-6) errs.push(`${mode}: the ring stands ${(((lo + hi) / 2) * LDU_MM).toFixed(3)} mm off the catch's centre`);
+    report.push(`${mode} ${(theta * 180 / Math.PI).toFixed(2)}°: engaged ${((flangeR - rmin) * LDU_MM).toFixed(2)} mm, floor clear ${((rmin - floorR) * LDU_MM).toFixed(2)} mm, play ${((grooveHalf - Math.max(-lo, hi)) * LDU_MM).toFixed(2)} mm a side`);
+  }
+  return { errs, report };
+}
+
 // ── per generation ──────────────────────────────────────────────────────────
 console.log('\nbuilds:');
-const ctl = { stroke: true, keyed: true, dogged: true, ratio: true };
+const ctl = { stroke: true, keyed: true, dogged: true, ratio: true, lever: true };
 for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   const f = frameKeyless(gen);
   if (!f.framed) { fail(`${gen}: not framed — ${f.reason}`); continue; }
   const build = ldrawBuild(f, lib);
-  const dg = dogErrors(build);
-  const errs = [...strokeErrors(build), ...keyedErrors(build), ...dg.errs, ...ratioErrors(build)];
+  const dg = dogErrors(build), lv = leverErrors(build);
+  const errs = [...strokeErrors(build), ...keyedErrors(build), ...dg.errs, ...ratioErrors(build), ...lv.errs];
   const s = Object.fromEntries(build.modes.map((m) => [m, stroke(build, m)]));
   const mm = (v) => `${(v * LDU_MM).toFixed(2)}`;
   console.log(`  ${errs.length ? 'FAIL' : 'ok  '} ${gen.padEnd(16)} ring travel ±${f.ringTravel} mm; into winding/setting gear (mm): `
     + build.modes.map((m) => `${m} ${mm(s[m].winding)}/${mm(s[m].setting)}`).join(', '));
   console.log(`       dogs: ${dg.play.join('; ')}`);
+  console.log(`       lever (selector ${f.selector.risePlates} plates over the stem): ${lv.report.join('; ')}`);
   for (const e of errs) fail(`${gen}: ${e}`);
   // controls
   const short = structuredClone(build);
@@ -249,6 +303,11 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   const turned = structuredClone(build);
   clutchOf(turned, 'winding').phi += Math.PI / KEYLESS_DOGS;
   if (!dogErrors(turned).errs.length) ctl.dogged = false;
+  const sel = build.shafts.find((x) => x.shaft === 'selector');
+  if (!leverErrors(build, build.shafts[build.shafts.indexOf(stemOf(build))].origin[1] - sel.origin[1] - L(LEGO_DIM_MM.plateH)).errs.length) ctl.lever = false;
+  const idle = structuredClone(build);
+  idle.shafts.find((x) => x.shaft === 'selector').pose.wind = 0;
+  if (!leverErrors(idle).errs.length) ctl.lever = false;
   const slip = structuredClone(build);
   slip.shafts[branchOutput(slip, 'setting')].speeds.wind = 1 / 3;   // the idle branch's output turning
   const wrong = structuredClone(build);
@@ -258,7 +317,8 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
 }
 const ctls = [['a winding chain with one mesh changed', ctlRows], ['the ring 0.8 mm short of its stroke', ctl.stroke],
   ['the ring turned 45° on the joiner', ctl.keyed], ['a clutch gear turned 45° on the ring', ctl.dogged],
-  ['the idle setting branch turning, or the winding branch at twice its ratio', ctl.ratio]];
+  ['the idle setting branch turning, or the winding branch at twice its ratio', ctl.ratio],
+  ['the selector a plate lower, or left at neutral with the ring at its wind stroke', ctl.lever]];
 console.log('\ncontrols:');
 for (const [n, ok] of ctls) { console.log(`  ${ok ? 'caught' : 'NOT CAUGHT'}  ${n}`); if (!ok) fails++; }
 console.log(fails ? `\n${fails} FAILED` : '\nthe ring engages one gear at a time and each branch carries its steel ratio');

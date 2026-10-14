@@ -53,8 +53,12 @@ build carries MODES (wind, set, neutral): the ring's travel is derived from the
 parts (it seats on the recess's web), each clutch gear's angle is its DOG LOCK
 on the ring (`dogPhase`, four lugs a side read off the parts), and the idle
 branch stands still. `tools/probe-technic-keyless.mjs` holds the rows, the
-stroke, the dogs, the ring's key in the joiner and the ratios per mode. The
-mode is POSED: no lever moves the ring yet. All four probes are pure Node.
+stroke, the dogs, the ring's key in the joiner and the ratios per mode. Since
+landing E a SELECTOR moves the ring: a changeover catch (6641) on an axle over
+the stem, its bulb in the ring's groove, the pivot exactly the one plate count
+that seats the bulb (`selectorRise`), and the ring's position READ from the
+catch's angle (`catchCentre`) rather than from a table. The selector's angle
+is the posed input. All four probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
