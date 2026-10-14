@@ -2520,6 +2520,26 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmPusherCap', 'caseMiddle'],
     ],
   },
+  // The switch ⇄ link pair was EXPECTED with no floors row — the blanket excuse
+  // — so the lay shaft's hanger columns (they rise from the shaft to the plate
+  // straight through the column driver's band) stood inside the driver's
+  // stroke at every press and no sweep read it. The pair's ONE working contact
+  // is the beak's nose on the wheel (the castellations' tops, and the gap floor
+  // between them where the column has stepped off); everything else of the two
+  // units keeps the margin.
+  {
+    a: 'Alarm switch', b: 'Alarm link', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmColCastellations', 'alarmLinkBeak'], ['alarmColBase', 'alarmLinkBeak'],
+      // the lever's STUB over the cut: `_stubLiftFor` stands it CLEAR_MARGIN off
+      // the LAW (profileAt), and the metal is straight between its stations, so
+      // it measures 0.0949 off the cut at alarmPress f 0.3438 — a margin
+      // shortfall of the beak's own lift derivation, not a collision, filed as
+      // TODO (see TODO.md) and left in the contact list until that lift is
+      // re-derived against the metal
+      ['alarmColCastellations', 'alarmLinkBeakStub'],
+    ],
+  },
   {
     a: 'Alarm crown', b: 'Case', min: CLEAR_MARGIN,
     contacts: [

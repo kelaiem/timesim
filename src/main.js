@@ -40655,6 +40655,27 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   const springStrain = 3 * (bladeT * U) * deltaMax_m / (2 * (bladeFree * U) ** 2);
   if (springStrain > SPRING_STRAIN_MAX + 1e-12)
     console.warn(`§192: the pawl blade's root works to ${springStrain.toExponential(3)} surface strain at full deflection, over SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX.toExponential(3)} — the strain floor no longer governs its own length`);
+  // The blade's geometry on a branch, ONE definition for the scan that judges
+  // the branch and the metal cut on it (the post, the clamp, the anchor stud).
+  // The blade is clamped at its free angle behind the pawl's pivot, so the
+  // spring side, the bear station and the clamp point are branch-independent
+  // in the pawl's frame; the branch only turns the whole train about the arbor.
+  const springSide = -phiOpenSense(ALARM_PAWL_PHI_FREE);
+  const bear = { x: -bearArm, y: springSide * ALARM_PAWL_HALF_W };
+  const clampLocal = { x: -(bearArm + bladeFree), y: springSide * ALARM_PAWL_HALF_W };
+  const alarmDriverAnchorFor = (pAz) => {
+    const postAt = { x: ALARM_DRIVER_POST_R * Math.cos(pAz), y: ALARM_DRIVER_POST_R * Math.sin(pAz) };
+    const csF = Math.cos(pAz + ALARM_PAWL_PHI_FREE), snF = Math.sin(pAz + ALARM_PAWL_PHI_FREE);
+    const rootAt = { x: postAt.x + clampLocal.x * csF - clampLocal.y * snF,
+                     y: postAt.y + clampLocal.x * snF + clampLocal.y * csF };
+    const anchorAt = { x: rootAt.x - STOCK_MIN_R10 * csF,     // one stud radius on past the clamp face,
+                       y: rootAt.y - STOCK_MIN_R10 * snF };   // along the same tail line (local −x)
+    return { postAt, rootAt, anchorAt, csF, snF };
+  };
+  // (defined here, ahead of the branch scan that sweeps the arms at this width; the
+  // reasoning is at §226's block below)
+  const ALARM_DRIVER_FEATURE_W = alarmColumnWheel.userData.ratchetTooth.depth;
+  const ALARM_DRIVER_TIP_R = ALARM_DRIVER_FEATURE_W / 2;
   const branchScan = [];
   // ---- WHICH BRANCH, measured against the metal already standing in the
   // pawl's own z-band. The pawl is the only member of the driver inside the
@@ -40671,6 +40692,22 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   {
     const bandLo = ALARM_DRIVER_BOT_Z + ALARM_PAWL_BAND_Z, bandHi = bandLo + STOCK_MIN_U;
     const obst = [];
+    // §ALARM-LINK-HANGERS — THE DRIVER'S ARMS ARE JUDGED TOO, AGAINST THE METAL
+    // OF EVERY OTHER UNIT. The scan read only the pawl's band and only the
+    // switch unit's own metal, so the branch whose third arm sweeps the lay
+    // shaft's hanger columns (they rise from the shaft to the plate straight
+    // through the driver's band) tied with every other branch at "nothing in
+    // reach" and won on compactness. `armObst` is the same collection for the
+    // DRIVER's own band: every mesh whose z range overlaps it, whatever its
+    // unit, minus what turns with the driver (its stud, the pusher pin and
+    // riser — the slot arm's fixed joint) and the wheel it works on.
+    const armObst = [];
+    const armBandLo = ALARM_DRIVER_BOT_Z, armBandHi = ALARM_DRIVER_BOT_Z + ALARM_COL_DRIVER_T;
+    // the farthest any branch's arm tip stands from the arbor, plus its width
+    const armReachMax = Math.max(...branches.map((b) => {
+      const A = alarmDriverAnchorFor(b.postAz).anchorAt;
+      return Math.hypot(A.x, A.y);
+    }), ALARM_DRIVER_POST_R) + ALARM_DRIVER_TIP_R + CLEAR_MARGIN;
     {
       // A mesh COUNTS if its own z RANGE overlaps the band — not if it has a
       // vertex inside it. A post that crosses this band has vertices only at
@@ -40679,7 +40716,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       // trap, in the instrument rather than in a sweep. An empty scan is
       // asserted below, because "no obstacles" and "no measurement" look
       // identical from the outside.
-      const v = new THREE.Vector3();
+      const v = new THREE.Vector3(), v2 = new THREE.Vector3();
       movement.updateWorldMatrix(true, true);
       // §261 2c: read in the CLUSTER's frame. The band and the wheel's axis
       // below are the pre-fold ones, so each vertex goes to world and back
@@ -40687,24 +40724,56 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       // stands relative to the folded driver, rather than where it once did.
       const toCluster = alarmFoldMatrix.clone().invert();
       const m = new THREE.Matrix4();
-      alarmSwitchUnit.traverse((o) => {
+      const wc = new THREE.Vector3(ALARM_COL_POS.x, ALARM_COL_POS.y, 0).applyMatrix4(alarmFoldMatrix);
+      const box = new THREE.Box3();
+      const reachW = Math.max(ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1, armReachMax);
+      const corotates = /^(alarmColStud|alarmLinkageDriverPin|alarmLinkageDriverPinShank|alarmPusherRiser)$/;
+      const ownWheel = /^alarmCol(Base|Castellations|Skirt)$/;
+      movement.traverse((o) => {
         if (!o.isMesh || o.userData.schematic) return;
         // The WHEEL is not an obstacle to its own pawl — the nose is meant to
         // be in the teeth, and that pair is held by the outline sweep below,
         // which knows which part of the pawl is allowed to touch. Left in, the
         // saw saturates every branch at 0 and the scan chooses nothing.
-        if (/^alarmCol(Base|Castellations|Skirt)$/.test(o.name)) return;
+        if (ownWheel.test(o.name)) return;
         const pos = o.geometry.getAttribute('position'); if (!pos) return;
-        const pts = [];
+        // cheap cull: the mesh's world box against the reach disc (the box is
+        // an over-estimate, which can only keep a mesh the exact test drops)
+        box.setFromObject(o);
+        if (box.max.x < wc.x - reachW || box.min.x > wc.x + reachW || box.max.y < wc.y - reachW || box.min.y > wc.y + reachW) return;
+        const pts = [], armPts = [];
         let zLo = Infinity, zHi = -Infinity;
+        const idx = o.geometry.getIndex();
+        const triN = idx ? idx.count / 3 : pos.count / 3;
+        const at = (i, out) => out.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(m.multiplyMatrices(toCluster, o.matrixWorld));
         for (let i = 0; i < pos.count; i++) {
           v.fromBufferAttribute(pos, i).applyMatrix4(m.multiplyMatrices(toCluster, o.matrixWorld));
           zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z);
-          const dx = v.x - ALARM_COL_POS.x, dy = v.y - ALARM_COL_POS.y;
-          if (Math.hypot(dx, dy) <= ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) pts.push([dx, dy]);
         }
-        if (zHi < bandLo - 1e-9 || zLo > bandHi + 1e-9) return;   // the RANGE, not a vertex
+        const hitPawl = !(zHi < bandLo - 1e-9 || zLo > bandHi + 1e-9);   // the RANGE, not a vertex
+        const hitArm = !corotates.test(o.name) && !(zHi < armBandLo - 1e-9 || zLo > armBandHi + 1e-9);
+        if (!hitPawl && !hitArm) return;
+        // Vertices AND edge samples: a long box (a bar, a rim) has vertices only
+        // at its ends, and the arms sweep a long way between them. Edges are
+        // sampled at no more than a margin's width — in plan, which is
+        // conservative for an edge that leaves the band (it can only read nearer).
+        const push = (x, y) => {
+          const dx = x - ALARM_COL_POS.x, dy = y - ALARM_COL_POS.y;
+          const r = Math.hypot(dx, dy);
+          if (hitPawl && r <= ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) pts.push([dx, dy]);
+          if (hitArm && r <= armReachMax + 1) armPts.push([dx, dy]);
+        };
+        for (let t = 0; t < triN; t++) {
+          at(3 * t, v); at(3 * t + 1, v2);
+          const c = new THREE.Vector3(); at(3 * t + 2, c);
+          for (const [p, q] of [[v, v2], [v2, c], [c, v]]) {
+            push(p.x, p.y);
+            const L = Math.hypot(q.x - p.x, q.y - p.y), n = Math.min(64, Math.floor(L / CLEAR_MARGIN));
+            for (let k = 1; k < n; k++) push(p.x + (q.x - p.x) * k / n, p.y + (q.y - p.y) * k / n);
+          }
+        }
         for (const q of pts) obst.push(q);
+        for (const q of armPts) armObst.push(q);
       });
     }
     // the pawl's own reach, as segments in its frame plus its two discs —
@@ -40739,6 +40808,19 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
             d = Math.min(d, segDist(qx, qy, P2[i][0], P2[i][1], P2[i + 1][0], P2[i + 1][1]) - ALARM_PAWL_HALF_W);
           if (d < worst) worst = d;
         }
+        // The DRIVER'S OWN ARMS on this branch — the pawl post's and the blade
+        // anchor's, the two the branch turns (the slot arm is the pusher's, the
+        // same on every branch) — swept as capsules from the arbor to each tip
+        // through the same stroke, against the metal standing in the driver's
+        // own band. A capsule is exactly the outline's arm (hub to tip disc).
+        const Aa = alarmDriverAnchorFor(az).anchorAt;
+        for (const [armAz, armReach] of [[az, ALARM_DRIVER_POST_R], [Math.atan2(Aa.y, Aa.x), Math.hypot(Aa.x, Aa.y)]]) {
+          const tx = armReach * Math.cos(dA + armAz), ty = armReach * Math.sin(dA + armAz);
+          for (const [ox, oy] of armObst) {
+            const d = segDist(ox, oy, 0, 0, tx, ty) - ALARM_DRIVER_TIP_R;
+            if (d < worst) worst = d;
+          }
+        }
       }
       return worst;
     };
@@ -40762,6 +40844,9 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     }
     branchScan.sort((x, y) => Math.abs(x.deg) - Math.abs(y.deg));
     ALARM_DRIVER_BRANCH_CLEAR = best;
+    branchScan.obstacles = { pawlBand: obst.length, armBand: armObst.length };
+    if (!armObst.length)
+      console.warn('§ALARM-LINK-HANGERS: the driver\'s arm scan found no metal at all in the driver\'s band — the hangers stand in it, so an empty scan is a broken one');
     if (!obst.length)
       console.warn('§163: the driver\'s branch scan found no metal at all in the pawl\'s band — "no obstacles" and "no measurement" look identical from outside, and this is the second');
     if (best < CLEAR_MARGIN)
@@ -40777,15 +40862,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // free length. All of it placed at the spring's FREE angle — the same
   // convention the coil's legs used, and the §48 frame law in the tick keeps
   // the built blade's tip on the tail wherever the seat solve puts the pawl.
-  const springSide = -phiOpenSense(ALARM_PAWL_PHI_FREE);
-  const bear = { x: -bearArm, y: springSide * ALARM_PAWL_HALF_W };
-  const clampLocal = { x: -(bearArm + bladeFree), y: springSide * ALARM_PAWL_HALF_W };
-  const postAt = { x: ALARM_DRIVER_POST_R * Math.cos(postAz), y: ALARM_DRIVER_POST_R * Math.sin(postAz) };
-  const csF = Math.cos(postAz + ALARM_PAWL_PHI_FREE), snF = Math.sin(postAz + ALARM_PAWL_PHI_FREE);
-  const rootAt = { x: postAt.x + clampLocal.x * csF - clampLocal.y * snF,
-                   y: postAt.y + clampLocal.x * snF + clampLocal.y * csF };
-  const anchorAt = { x: rootAt.x - STOCK_MIN_R10 * csF,     // one stud radius on past the clamp face,
-                     y: rootAt.y - STOCK_MIN_R10 * snF };   // along the same tail line (local −x)
+  const { postAt, rootAt, anchorAt, csF, snF } = alarmDriverAnchorFor(postAz);
   const anchorR = Math.hypot(anchorAt.x, anchorAt.y);
   const anchorAz = Math.atan2(anchorAt.y, anchorAt.x);
   // §226 — THE FEATURE WIDTH IS AUTHORED; THE WALL IS ITS CONSEQUENCE. This
@@ -40813,8 +40890,6 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // (77% of a tooth) and the slot arm 1.0663 (85%). That is 13–16% of each
   // arm's measured ceiling, so the widening is nowhere near what the
   // surrounding metal allows.
-  const ALARM_DRIVER_FEATURE_W = alarmColumnWheel.userData.ratchetTooth.depth;
-  const ALARM_DRIVER_TIP_R = ALARM_DRIVER_FEATURE_W / 2;
   // The anchor arm's tip. Its reach is the longest thing on the driver, so the
   // §68 plate-edge bound is re-asserted for it below with the achieved
   // numbers (measured slack at the new width: 18.77 u, not a constraint here).

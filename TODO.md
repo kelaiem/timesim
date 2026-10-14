@@ -33616,3 +33616,25 @@ row, or reverse the helix hand's tangential sense against the drag if the
 margin is thin. The other hand locks at this station (TODO 236), so a hand
 change means re-siting the drive.
 
+
+## 253. The beak's stub stands 0.0949 off the cut castellations, under CLEAR_MARGIN
+
+Found closing the hanger/driver collision (the `Alarm switch ⇄ Alarm link` pair
+had no `EXPECTED_CONTACT_FLOORS` row; the row that now exists measures the pair's
+non-working metal). `_stubLiftFor` stands the beak's stub `CLEAR_MARGIN` off the
+LAW, `colH · profileAt(θ)`, over 240 wheel phases. The cut is straight between
+its `M` stations per half-arc, so where a flank's corner falls between two
+stations the metal stands up to `(colH / flank) · (edge / M) / 4` above the law
+(0.055 u at the shipped wheel). Measured: `alarmColCastellations ⇄
+alarmLinkBeakStub` reads 0.0949 at `alarmPress` f 0.3438. It is clear, not a
+collision, but the margin the lift claims is not the margin the metal keeps.
+The pair sits in the floors row's `contacts` until this is closed, so the row
+measures everything else of the two units.
+
+**Fix path.** Publish the chord bound from `makeColumnWheel` (`colChordBound`,
+the formula above) and add it to `need` in `_stubLiftFor`. Tried once while
+closing the collision and not landed: the lift rises, `alarmLinkSeatSolve`
+re-solves `h`, θs and the arms, the site solve walks, and the build warns that
+the selector rod's built length has drifted from `ALARM_LINK_ROD_LEN_U` — so it
+wants its own landing with the line spec and the rod's section re-derived.
+Then delete the stub from the row's contact list.
