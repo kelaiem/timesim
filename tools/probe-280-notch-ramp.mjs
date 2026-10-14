@@ -52,6 +52,7 @@ const R = await pg.evaluate(() => {
   const ring = find('alarmReaderRing')[0], pin = find('alarmReaderPin')[0], hub = find('alarmDiscHub')[0], track = find('alarmDiscTrack')[0];
   const ramps = find('alarmDiscNotchRamp');
   out.rampCount = ramps.length;
+  out.hold = clock.alarmSetHold;   // the seat's published arithmetic (TODO 260): the ramp's run, its slope, the climb and the hold
   if (!ring || !pin || !hub || !track || ramps.length !== 2) { out.error = 'meshes missing'; return out; }
   const world = (m) => { m.updateWorldMatrix(true, false); const e = m.matrixWorld.elements, p = m.geometry.attributes.position, v = new Float64Array(p.count * 3);
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
@@ -111,7 +112,7 @@ const R = await pg.evaluate(() => {
     return g;
   };
   // sample the pin's angle from beyond the ramp's far end on one side to beyond it on the other
-  const gHalf = 0.07, run = out.wedges[0].run, pAH = Math.atan2(0.14, 3.05), span = gHalf + run + pAH + 0.02, N = 61;
+  const gHalf = 0.07, run = out.wedges[0].run, pAH = Math.atan2(0.14, 3.05), span = gHalf + run + pAH + 0.02, N = 81;
   out.samples = [];
   for (let i = 0; i < N; i++) {
     const d = -span + (2 * span * i) / (N - 1);           // pin angle off the notch's centre
@@ -137,17 +138,20 @@ const fails = [];
 const ok = (name, pass, detail) => { console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? '  [' + detail + ']' : ''}`); if (!pass) fails.push(name); };
 if (R.error) { console.log('FAIL  ' + R.error); process.exit(1); }
 const DROP = 0.10, CLEAR_MARGIN = 0.15, PIN_R = 0.14, RMID = 3.05, TOL = 2e-6;   // float32 vertex storage, ~5e-7 at these coordinates
-const pAH = Math.atan2(PIN_R, RMID), rampRun = 2 * pAH, gHalf = 0.07;   // the law's own angle (§280: atan2, not the ratio)
+const pAH = Math.atan2(PIN_R, RMID), gHalf = 0.07;   // the law's own angle (§280: atan2, not the ratio)
 ok('boot is silent', warns.length === 0, warns.slice(0, 2).join(' | '));
 ok('two ramps', R.rampCount === 2);
 ok('each ramp is one closed manifold shell (every edge once each way)', R.shells.every((s) => s.open === 0 && s.nonman === 0), JSON.stringify(R.shells));
 ok('each ramp has positive volume (outward winding)', R.shells.every((s) => s.vol > 0), R.shells.map((s) => s.vol.toFixed(6)).join(' '));
-ok('the ramp runs 2·pinArcHalf of angle', R.wedges.every((w) => Math.abs(w.run - rampRun) < 1e-6), R.wedges.map((w) => w.run.toFixed(6)).join(' ') + ' vs ' + rampRun.toFixed(6));
+ok('the ramp runs the angle the seat solved (TODO 260)', R.wedges.every((w) => Math.abs(w.run - R.hold.rampRun_rad) < 1e-6), R.wedges.map((w) => w.run.toFixed(6)).join(' ') + ' vs ' + R.hold.rampRun_rad.toFixed(6));
+ok('its slope is the published one: drop over run at the track radius', Math.abs(DROP / (R.hold.rampRun_rad * RMID) - R.hold.rampTan) < 1e-9, `${(DROP / (R.hold.rampRun_rad * RMID)).toFixed(6)} vs ${R.hold.rampTan.toFixed(6)}`);
+ok('the seat holds the CLIMB at the headroom (hold ÷ climb ≥ 3)', R.hold.holdTq_Nmm / R.hold.climbTq_Nmm >= 3 - 1e-9, `${(R.hold.holdTq_Nmm / R.hold.climbTq_Nmm).toFixed(6)}`);
 ok('its high end is the track’s top', R.wedges.every((w) => Math.abs(w.zHi - R.trackTop) < 1e-6), `top ${R.wedges.map((w) => w.zHi.toFixed(4))} vs track ${R.trackTop.toFixed(4)}`);
 ok('its low end stands one drop under it (the dropped tip’s level)', R.wedges.every((w) => Math.abs((w.zHi - w.zTopLo) - DROP) < 1e-6), R.wedges.map((w) => (w.zHi - w.zTopLo).toFixed(6)).join(' '));
 ok('the wedge spans the track’s annulus', R.wedges.every((w) => Math.abs(w.rLo - 2.85) < 1e-6 && Math.abs(w.rHi - 3.25) < 1e-6), R.wedges.map((w) => `${w.rLo.toFixed(3)}..${w.rHi.toFixed(3)}`).join(' '));
-const zone = (s) => Math.abs(s.d) > gHalf - pAH && Math.abs(s.d) < gHalf + pAH + 1e-9;      // the law's ramp zone: the pin's rim on the ramp
-const onTrack = (s) => Math.abs(s.d) >= gHalf + pAH + rampRun - 1e-9 + 0.0;                  // clear of the ramps: on the track's top
+const rampRun = R.hold.rampRun_rad;
+const zone = (s) => Math.abs(s.d) > gHalf - pAH && Math.abs(s.d) < gHalf + rampRun - pAH + 1e-9;      // the law's ramp zone: the pin's rim on the ramp
+const onTrack = (s) => Math.abs(s.d) >= gHalf + rampRun - pAH + 1e-3;                  // clear of the ramps: on the track's top
 const floor = (s) => Math.abs(s.d) <= gHalf - pAH - 1e-3;                                      // wholly inside the floor
 const rz = R.samples.filter(zone), tr = R.samples.filter(onTrack), fl = R.samples.filter(floor);
 ok('samples in each region', rz.length > 8 && tr.length > 2 && fl.length > 2, `ramp ${rz.length}, track ${tr.length}, floor ${fl.length}`);

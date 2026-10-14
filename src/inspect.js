@@ -13551,8 +13551,8 @@ LINE_SPECS.push({
       derivedFrom: '§29: the track annulus 2.85..3.25 (ALARM_TRACK_HALFW) — its inner edge a joint with the hub, its outer the smooth face out to the rim’s root — measured off the cut outline' },
     { key: 'notchW', kind: 'spec', unit: 'rad', value: 0.14, measure: 'notchFloor',
       derivedFrom: '§29: the notch’s floor (ALARM_NOTCH_W) — the pin’s diameter over the track radius plus slop — measured as the largest angular gap in the track’s cut outline LESS the two ramps’ runs (§280: the full-height track stops where the ramps begin)' },
-    { key: 'ramp', kind: 'spec', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'rampRun',
-      derivedFrom: '§280: each ramp runs the pin’s own angular diameter at the track radius — the width the tick’s drop law has always ramped over — measured as the wedge’s angular extent off its own vertices' },
+    { key: 'ramp', kind: 'spec', unit: 'rad', value: (r, L) => L.detector.rampRun(), measure: 'rampRun',
+      derivedFrom: '§280/TODO 260: each ramp’s angular run, which the seat’s build SOLVES (ALARM_NOTCH_RAMP: the steepest ramp whose climb the seat’s pad — at its blade’s strain cap — holds at ALARM_SPRING_HEADROOM), handed over through the build’s laws so the number is written once — measured as the wedge’s angular extent off its own vertices' },
     { key: 'admit', kind: 'envelope', bound: 'min', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'notchFloor',
       derivedFrom: 'the notch must ADMIT the pin: narrower than the pin’s own arc at the track radius and the pin never bottoms, so the alarm never trips (the tick’s drop law reaches its full drop only inside notchW − 2·pinArcHalf)' },
     { key: 'drop', kind: 'spec', unit: 'u', value: 0.10, measure: 'readerDrop',
@@ -13575,8 +13575,8 @@ LINE_SPECS.push({
       derivedFrom: 'TODO 117: what the pin’s length IS — the collar’s track-side face one margin over the track’s top at full drop — measured at the trip' },
     { key: 'plateau', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW - 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'tripPlateau',
       derivedFrom: '§29/TODO 8: the pin bottoms over the notch’s width less its own arc (the tick’s drop law, alarmPinDropNow) — measured as the hour arc the reader’s pin turns through while the collar stands at its full drop' },
-    { key: 'window', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW + 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'tripWindow',
-      derivedFrom: '§29: the pin leaves the track over the notch’s width plus its own arc — measured as the hour arc over which the collar stands off its riding plane at all' },
+    { key: 'window', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW + 2 * (r.ramp - L.detector.pinArcHalf(r.pinR, r.trackR)), measure: 'tripWindow',
+      derivedFrom: '§29/§280: the pin leaves the track over the notch’s floor plus a ramp’s run less its own arc, each side (the rim reaches the ramp’s top end when the pin’s centre is a pin-arc short of it) — measured as the hour arc over which the collar stands off its riding plane at all' },
     { key: 'align', kind: 'spec', unit: 'rad', value: 0, measure: 'tripAlign',
       derivedFrom: 'TODO 117: the trip is the plain COINCIDENCE of the reader’s pin with the notch — no phase term (alarmNotchA) — measured as the plateau’s centre against the notch’s cut centre, both off the metal' },
     { key: 'pivotR', kind: 'spec', unit: 'u', value: 5.5, measure: 'pivotR',
@@ -14542,7 +14542,8 @@ function lineSpecDetector(clock) {
   let plateau = NaN, win = NaN, align = NaN;
   if (dropFull > 0 && Number.isFinite(k) && k !== 0) {
     const pA = edge(tStar, tStar + gapHalfT, full), pB = edge(tStar, tStar - gapHalfT, full);
-    const wA = edge(tStar + gapHalfT, tStar + 2 * gapHalfT, any), wB = edge(tStar - gapHalfT, tStar - 2 * gapHalfT, any);
+    const outerT = (notchFloor / 2 + rampRun) / Math.abs(k);   // §280: the ramp's far end, past which the rim is on the track's top
+    const wA = edge(tStar + gapHalfT, tStar + outerT, any), wB = edge(tStar - gapHalfT, tStar - outerT, any);
     plateau = Math.abs(wrap(pA - pB)); win = Math.abs(wrap(wA - wB));
     align = wrap(pB + wrap(pA - pB) / 2 - notchWorldAz(C));
   }
@@ -14551,7 +14552,7 @@ function lineSpecDetector(clock) {
   // the secant found. `rampTaus` rides the payload so the control re-poses them.
   const pAH = clock.lineLaws.detector.pinArcHalf(lineSpecCylR(M.pin), rTrackMid);
   const rampTaus = [];
-  for (const sgn of [-1, 1]) for (const f of [0.2, 0.5, 0.8]) rampTaus.push(tStar + sgn * (notchFloor / 2 - pAH + f * 2 * pAH) / Math.abs(k) * Math.sign(k));
+  for (const sgn of [-1, 1]) for (const f of [0.2, 0.5, 0.8]) rampTaus.push(tStar + sgn * (notchFloor / 2 - pAH + f * rampRun) / Math.abs(k) * Math.sign(k));   // the pin's centre where its rim is a fraction f up the ramp
   const rampSeat = Number.isFinite(k) && k !== 0 ? lineSpecRampGap(clock, M, M.ramps, rampTaus, pose) : NaN;
   // the lever's rock: the tip's rigid motion riding → trip, T = M_trip·M_ride⁻¹.
   // Its rotation angle is the rock; its fixed axis is the pivot.

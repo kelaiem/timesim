@@ -206,6 +206,10 @@ push(`and it clears the drag by ALARM_SPRING_HEADROOM ${H.headroomRequired}×`,
   !!H.holder && typeof H.holdTq_Nmm === 'number' && H.holdTq_Nmm >= H.headroomRequired * H.dragTq_Nmm,
   H.holdTq_Nmm == null ? 'no hold torque published' : `${H.holdTq_Nmm.toExponential(3)} N·mm, ${(H.holdTq_Nmm / H.dragTq_Nmm).toFixed(2)}×`, `≥ ${(H.headroomRequired * H.dragTq_Nmm).toExponential(3)} N·mm`);
 
+push(`and clears the CLIMB out of the notch by the same ${H.headroomRequired}× (TODO 260: the pin's ramp loads the disc more than the flat drag does)`,
+  typeof H.climbTq_Nmm === 'number' && H.climbTq_Nmm >= H.dragTq_Nmm * (1 - 1e-12) && H.holdTq_Nmm >= H.headroomRequired * H.climbTq_Nmm * (1 - 1e-9),
+  typeof H.climbTq_Nmm !== 'number' ? 'no climb torque published' : `climb ${H.climbTq_Nmm.toExponential(3)} N·mm, hold ${(H.holdTq_Nmm / H.climbTq_Nmm).toFixed(3)}× it; ramp tan θ ${H.rampTan.toFixed(4)}`, `climb ≥ drag, hold ≥ ${H.headroomRequired}× climb`);
+
 let bad = 0;
 for (const r of rows) {
   if (!r.ok) bad++;
