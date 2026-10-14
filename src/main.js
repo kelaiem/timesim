@@ -10378,7 +10378,7 @@ stopLeverGroup.add(stopCrank);
     const padArm = Math.hypot(STOP_PAD_Y, Math.abs(PAD_ARM_LOCAL_Z));
     declareTransfer('stop work: hack crank', {
       unit: 'Stop lever', meshes: ['stopCrankRodPin'], idiom: 'crank',
-      load: { value: 0, unit: 'mN', source: 'posed — crown-driven two-way through the hack rod; no pad-on-rim braking force is modelled' },
+      load: { value: 0, unit: 'mN', source: 'posed — crown-driven two-way through the hack rod (the kinematics). The pad's BRAKING force is not a transfer: it is the contact model HACK_PAD (TODO 257), a force on the driven balance in the live loop, priced from this rod's give' },
       // raw floats, never rounded: the audit recomputes ratio from these two
       quantities: { armIn_u: tailArm, armOut_u: padArm, ratio: padArm / tailArm },
       why: 'displacement through a plane change on a PIVOT: two designed arms about a radial hinge whose bearing takes the side load — the pivoted idiom the rigid bent links do without',
@@ -10681,8 +10681,10 @@ registerLabel('Hack rod', hackRod);
 // solved e and its POST_STROKE. If the give fraction reads large here, that
 // is the bend's real price stated, not a defect invented — the BUILT record
 // carries the comparison.
+let HACK_ROD_PRICE = null;   // TODO 257 — the rod's priced give, read by the pad's contact model
 {
   const price = priceRigidBentLink(HACK_ROD_ELBOW, HACK_ROD_LEN, POST_STROKE, HACK_LINK_W, LINK_T);
+  HACK_ROD_PRICE = price;
   assertLinkStrut('hack link', price);
   declareTransfer('stop work: elbow rod (setting-lever pin → stop-crank tail)', {
     unit: 'Hack rod', meshes: ['hackLink'], idiom: 'rigidBentLink',
@@ -11299,6 +11301,60 @@ const BALANCE_DRIVE = (() => {
     massKg: OSCILLATOR.spring.mass_kg, g: GOING_POWER.g,
   };
 })();
+
+// TODO 257 — THE PAD BRAKES WHEN IT TOUCHES, NOT WHEN THE CROWN MOVES.
+// The brake used to be `leverEngage · brakeNm`, with leverEngage an eased
+// scalar that left 0 on the first frame of the crown's travel: the balance was
+// braked, in proportion to a number, while the pad was still most of the stroke
+// below the rim. The pad is a real part with a real pose — it RISES to the rim
+// underside as the stop crank closes (ψ from STOP_PSI0 to 0, `_padZAt`), and
+// the crown's stroke ends with the pad on the rim — so the brake is a function
+// of that gap and nothing else.
+//
+// Zero before touch. After touch the force is the rod's: the stroke ends at
+// ψ = 0 with no overtravel in the geometry, so the force that holds the
+// balance is the rod's elastic give at the holding load. Everything below is
+// that arithmetic, each line with its constraint:
+//   · the pad must hold the hairspring's PEAK torque (brakeNm, the figure the
+//     stop lever's rod is priced on), by friction at the contact radius:
+//         N_hold = brakeNm / (μ · r_contact),  μ = MU_STEEL — this repo's one
+//     hold coefficient, the low corner, because a hold is judged at the least
+//     friction it can have (the alarm disc's hold is priced the same way);
+//   · the rod carries it by virtual work between the pad (rises dz per ψ) and
+//     the pin (travels dpin per ψ): F_rod = N_hold · (dz/dψ) / (dpin/dψ);
+//   · the rod gives c = give_u / 50 mN (its own price, the detent ceiling), so
+//     the pin travels δ_pin = c · F_rod past first touch, and the pad's gap
+//     window over which the force builds is g_win = (dz/dψ)·δ_pin / (dpin/dψ).
+// Engagement is then 1 − gap/g_win, clamped; at ψ = 0 it is 1 (the holding load
+// by construction). The pad is MODELLED as a contact with a priced give; the
+// brake is a force on the driven balance (§246), so the stop is simulated from
+// touch on, and not before it.
+const HACK_PAD = (() => {
+  const rContact_m = HACK_CONTACT_R * OSC_U;
+  const nHold_N = BALANCE_DRIVE.K.brakeNm / (MU_STEEL * rContact_m);
+  // the pad's rise per radian at the rim, and the pin's travel per radian there
+  const dz = Math.abs(_padEdgeY);                       // d/dψ of _padZAt at ψ = 0
+  const h = 0.01;
+  const pinEnd = hackPinWorldAt(1), pinNear = hackPinWorldAt(1 - h);
+  const psiNear = stopSolvePsi(pinNear, STOP_PSI0);
+  const dpin = Math.hypot(pinEnd.x - pinNear.x, pinEnd.y - pinNear.y, (pinEnd.z ?? 0) - (pinNear.z ?? 0)) / Math.abs(psiNear);
+  const fRod_N = nHold_N * dz / dpin;
+  const give_u_per_N = HACK_ROD_PRICE.give_u / (SELECTOR_DETENT_WINDOW_MN[1] * 1e-3);
+  const dPin_u = give_u_per_N * fRod_N;
+  const gapWindow_u = dz * dPin_u / dpin;
+  const gapAt = (psi) => _padZAt(0) - _padZAt(psi);
+  const engagementAt = (psi) => Math.min(1, Math.max(0, 1 - gapAt(psi) / gapWindow_u));
+  return Object.freeze({ nHold_N, fRod_N, dz, dpin, dPin_u, gapWindow_u, gapAt, engagementAt, psi0: STOP_PSI0, rContact_u: HACK_CONTACT_R });
+})();
+if (!(HACK_PAD.gapWindow_u > 0 && HACK_PAD.gapWindow_u < STOP_RELEASE_DROP * 0.05))
+  console.warn(`TODO 257: the hack pad's contact window ${HACK_PAD.gapWindow_u} u is not a small fraction of the ${STOP_RELEASE_DROP.toFixed(3)} u the pad rises — the rod's give is no longer the last of the stroke`);
+// The pad's pose at a crown position WITHOUT moving it (updateStopWork moves it
+// once per tick, after the balance has stepped): the same solve, the same hard
+// stop at the rim.
+const hackPsiAt = (t) => {
+  const psi = stopSolvePsi(hackPinWorldAt(t), stopPsiState);
+  return STOP_PSI0 <= 0 ? Math.min(0, psi) : Math.max(0, psi);
+};
 // The frames must cover the largest swing the live loop can reach, or the
 // spring's torque law would be extrapolated off its last frame (rule 6: a
 // warning says the frame plan and the knock have parted).
@@ -42169,9 +42225,11 @@ let reserveShown = 1; // = tension each frame; kept as its own var for the UI re
 // ---------------------------------------------------------------------------
 // Hacking seconds — pulling the crown swings the hacking lever's ruby pad
 // onto the balance rim (see the stop lever above). Since §246 tier two this
-// is a FORCE on the driven balance: the pad's friction ramps in with the
-// lever's swing (leverEngage) up to the torque that holds the spring's peak,
-// and the balance stops because it is braked — it then holds wherever it
+// is a FORCE on the driven balance, and since TODO 257 a force of CONTACT: the
+// pad's friction is zero until its top reaches the rim underside and builds over
+// the rod's give to the torque that holds the spring's peak (HACK_PAD,
+// padEngage — leverEngage is only the lever's eased readout now), and the
+// balance stops because it is braked — it then holds wherever it
 // stopped, as a braked rim does. A run-down spring stops it the same way, by
 // the escapement having nothing left to impulse it with: the balance's own
 // losses do the rest. Because the whole train (escapeAngle, fourthAngle, … down
@@ -42185,7 +42243,9 @@ let reserveShown = 1; // = tension each frame; kept as its own var for the UI re
 let fastForward = false;     // fun mode: rip through hours so the fusee chain visibly pays off
 let crownOut = false;        // target: is the crown pulled to the setting position?
 let crownPullT = 0;          // 0..1 eased stem-slide animation toward crownOut
-let leverEngage = 0;         // 0..1 eased lever swing-in (0=clear, 1=pad on rim)
+let leverEngage = 0;         // 0..1 eased lever swing-in — a readout since TODO 257; the BRAKE is padEngage
+const CROWN_PULL_MIN_SPEED = 4;   // TODO 257 — strokes/s, the floor under the crown's ease (a feel parameter of the animation, like the 10/s and 0.12 s beside it; not a mechanism's)
+let padEngage = 0;           // TODO 257 — 0..1 the pad's contact engagement, from its own gap to the rim (HACK_PAD)
 let balanceRate = 1;         // dτ/dt — the balance's own angular rate (1 = free-running)
 let tauIntegrated = 0;       // movement time τ — since §246 the driven balance's escapement count (see tick())
 let balancePosition = BD.DEFAULT_POSITION; // §246 — the watch's position in gravity (canonical English key, never translated)
@@ -54262,7 +54322,15 @@ function tick(t) {
   // physically has to travel before the pad even touches the rim).
   const engageTarget = crownOut ? 1 : 0;
   leverEngage += (engageTarget - leverEngage) * (1 - Math.exp(-rawDt / 0.12));
-  crownPullT = lerp(crownPullT, engageTarget, 1 - Math.exp(-rawDt * 10));
+  // TODO 257 — the stem ARRIVES. An exponential never does (it left 0.1% of the
+  // stroke undone for 0.7 s, and the pad's last 0.1% is where it touches the rim),
+  // and a hand pulling a crown meets the stem's hard stop. So the ease is the
+  // same exponential with a floor under its speed, CROWN_PULL_MIN_SPEED strokes
+  // per second: the stroke completes in about 0.2 s and stops dead on target.
+  {
+    const gap = engageTarget - crownPullT, ease = gap * (1 - Math.exp(-rawDt * 10)), floor = CROWN_PULL_MIN_SPEED * rawDt;
+    crownPullT = Math.abs(ease) >= floor ? crownPullT + ease : (Math.abs(gap) <= floor ? engageTarget : crownPullT + Math.sign(gap) * floor);
+  }
 
   // Crown clutch: which real gear path the sliding pinion is meshing is
   // decided by where it PHYSICALLY is (crownPullT), not the raw crownOut
@@ -54416,9 +54484,10 @@ function tick(t) {
       driveDesync = false;
     }
     const flat = BD.FLAT_POSITIONS.has(balancePosition);
+    padEngage = HACK_PAD.engagementAt(hackPsiAt(crownPullT));   // TODO 257: the pad's own gap, not the lever's ease
     BD.step(K, driveState, rawDt, {
       drive: tension > 0 && !(maintRoom <= 0),
-      brake: leverEngage,
+      brake: padEngage,
       friction: flat ? BALANCE_DRIVE.friction.flat : BALANCE_DRIVE.friction.vertical,
       weight: balanceWeightTable(balancePosition),
       steps: fastForward ? BALANCE_FF_STEPS : undefined,
@@ -54427,7 +54496,7 @@ function tick(t) {
     // TODO 238 — a balance the train cannot start says so (BALANCE_DRIVE.selfStart):
     // stopped with the train wound and the hack off, it stays stopped until
     // it is given a swing, and the panel offers one
-    const stopped = driveState.stuck && tension > 0 && !(maintRoom <= 0) && !(leverEngage > 0);
+    const stopped = driveState.stuck && tension > 0 && !(maintRoom <= 0) && !(padEngage > 0);
     if (stopped !== balanceStoppedShown) {
       balanceStoppedShown = stopped;
       const row = document.getElementById('balance-stopped');
@@ -54916,8 +54985,8 @@ function tick(t) {
       // (once per pull, as the lever seats).
       if (sndCrownOut !== null && crownOut !== sndCrownOut) SND.stem();
       sndCrownOut = crownOut;
-      if (leverEngage > 0.85 && !sndHammerHit) { SND.hammer(); sndHammerHit = true; }
-      if (leverEngage < 0.15) sndHammerHit = false;
+      if (padEngage > 0.5 && !sndHammerHit) { SND.hammer(); sndHammerHit = true; }
+      if (padEngage < 0.1) sndHammerHit = false;
       // (The alarm's ding is fired per hammer strike by the alarm power loop
       // below — it rings mechanically whether or not sound is on, so it is not
       // in this soundOn-gated block; SND.alarmStrike self-gates the audio.)
@@ -57962,6 +58031,9 @@ window.__clock = {
   rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin (and its frame's handedness), for the transmission sweep
   measureMeshNow(site, inject) { return measureMeshNow(site, inject); },  // §194 — one declared mesh at the current pose; `inject` turns B by a fraction of its pitch for the checks' controls
   get leverEngage() { return leverEngage; },
+  get padEngage() { return padEngage; },   // TODO 257 — the hack pad's contact engagement (HACK_PAD), the brake the balance feels
+  get hackPad() { return HACK_PAD; },
+  setCrownOut(out) { setCrownOut(!!out); },   // the crown's TARGET, eased by tick() — setPose({ crownPullT }) jumps it
   get secondsZeroRef() { return secondsZeroRef; },
   // The seconds-reset contact, as the tick law last solved it: the roller's
   // stand-off from the cam axis, the free angle the cut profile allows there,

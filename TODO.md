@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 257 | DONE | Reported by eye at a reduced time scale: the balance slowed and stopped as the hack pad swung in, before any contact. The brake was `leverEngage · brakeNm`, and leverEngage left 0 on the crown's first frame. It is now the pad's own contact (`HACK_PAD`): zero until the pad's top reaches the rim, built over the hack rod's priced give (0.9 µm of pad rise), the holding load from the spring's peak torque at MU_STEEL. The crown's ease now ARRIVES (a floor under its speed) so the touch happens at 0.19 s, not as an exponential's 0.7 s tail. `probe-257-hack-contact.mjs`, 9 rows, one control that fails the old law |
 | 256 | OPEN | Blocks TODO 255. The maintaining ring is cut at the fewest teeth its spring's run allows, and that count is 35 only because the movement was priced too lossy: under the real mesh law the floor rises (heavier balance, higher claim) and the blade needs 37 teeth. The detent beak's face flank cannot be relieved at 36 or more (clearance 0.1347 at 36, 0.1194 at 37, against CLEAR_MARGIN 0.15), so the build warns on every rate. Redesign the beak for a finer pitch, or give the spring more run |
 | 255 | PART DONE | Found measuring TODO 251. The mesh law is re-priced from the teeth's own arcs (`gearMeshAction`) and the RATE_TABLE re-solved to it, but the landing is BLOCKED on TODO 256: the priced floor needs a 37-tooth maintaining ring and the beak cannot be cut there. The branch carries the work as a WIP; the default boot is not silent until 256 is closed |
 | 254 | OPEN | Found confirming the friction analysis (#531, failure 2). The balance's UPPER pivot has the full shock stack (hole jewel, endstone, lyre spring); the LOWER one runs through its stone to the stone's underside and stops, with nothing under it. Dial-down, the staff's shoulder (CLEAR_MARGIN above the stone) bears on the jewel face with no oil reservoir and no shock protection. Add a lower cap jewel, size the end contact, and let the energy column price the dial-down end |
@@ -33946,3 +33947,55 @@ the binding), or (c) revisit whether the floor should be priced at the claim
 at all rather than at the serviced swing, which is a design decision for the
 owner and not made here. Whichever is chosen, `MAINT_SPRING`'s search now
 settles per candidate count, so a result at the margin is stable.
+
+## 257. The hack brake engages from the first frame of the crown's travel, before the pad touches the rim — DONE
+
+Reported by eye at a reduced time scale: the balance visibly slowed and stopped
+as the hack lever's pad swung towards the rim, before the pad could touch it.
+Measured: the stop crank closes smoothly from ψ 0.471 to 0 across the whole
+crown stroke (`crownPullT` 0 → 1), so the pad reaches the rim underside only at
+the stroke's end. The live loop braked the balance by `leverEngage · brakeNm`,
+and `leverEngage` is an eased scalar (0.12 s) that leaves 0 on the first frame:
+by the time the pad was half way (0.1 s) the brake was at 60% of the spring's
+peak torque. The transfers record said so — "no pad-on-rim braking force is
+modelled" — and the brake was a number ramped in time, not a force at a contact.
+
+**What was built.** `HACK_PAD` (main.js, beside `BALANCE_DRIVE`): the brake is
+`padEngage · brakeNm`, with `padEngage` a function of the pad's own gap to the
+rim (`_padZAt`, the pad's real pose), read from the stop crank's solve at the
+crown's position.
+- Zero while the pad is below the rim. The pad is MODELLED as a contact with a
+  priced give; the stop it makes is simulated from touch on, not before it.
+- The geometry ends the stroke at ψ = 0 with no overtravel, so the force that
+  holds the balance is the rod's elastic give at the holding load. Every line is
+  derived: N_hold = brakeNm / (μ · r_contact) with μ = MU_STEEL (the repo's hold
+  coefficient, the low corner) = 0.758 mN at the pad; the rod carries
+  F = N · (dz/dψ) / (dpin/dψ) = 0.218 mN by virtual work through the crank
+  (1.378 u of pad rise and 4.784 u of pin travel per radian); the rod gives
+  `give_u / 50 mN` (its own §234 price), so the pin travels 3.1e-3 u past touch,
+  which is **0.9 µm of pad rise** — the window over which the force builds.
+- The crown's ease (`crownPullT`) had no arrival: an exponential leaves the last
+  0.1% of the stroke undone for 0.7 s, and the pad's last 0.1% is where it
+  touches. A floor under its speed (`CROWN_PULL_MIN_SPEED`, 4 strokes/s, a feel
+  parameter of the animation like the 10/s beside it) makes the stroke complete
+  in about 0.2 s and stop dead on target.
+- `leverEngage` stays as the lever's eased readout (and the pose key); the
+  brake, the "balance stopped" row and the hammer sound read `padEngage`.
+
+**Held** by `tools/probe-257-hack-contact.mjs` (acceptance, live loop): until
+the pad touches, a pulled-crown run and a crown-in run from one start agree to
+2.9e-11 rad (θ and ω); the **control** runs the old law on the same model and
+deviates by 42 rad/s over the same frames; on touch ω is exactly 0 and θ holds
+for a second; engagement is 0 above the window, 1 at the rim and monotone
+between; release lets go on the first frame and the balance swings again.
+
+**Not done, named.**
+- Touch is a step at this resolution: 0.9 µm is under a frame of the pad's
+  motion. A real pad meeting a rim moving at up to 0.19 m/s also rebounds and
+  chatters over a few microseconds; there is no restitution or stiction here.
+- The pad's μ is `MU_STEEL`, a hold coefficient, for ruby on a brass rim. A
+  `FRICTION` row for the pad (it has a source to cite) would let the brake pick
+  a corner by name; the lubrication map (§247 tier one) lists the contact as dry.
+- Static versus kinetic friction: one coefficient holds and brakes.
+- The explainer's "Hacking seconds" entry was not edited (no sentence in it
+  states the old ramp), so no locale table moved.

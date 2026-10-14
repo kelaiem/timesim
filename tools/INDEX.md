@@ -4,7 +4,7 @@
 
 # The instruments
 
-309 scripts. **197 are ACCEPTANCE tests** — they decide and exit non-zero.
+310 scripts. **198 are ACCEPTANCE tests** — they decide and exit non-zero.
 **112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -202,6 +202,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-251-pinion-mesh.mjs` | §251 | acceptance | TODO 251 — THE 7-LEAF CENTRE PINION, PRICED FROM ITS OWN CONTACT PATH. |
 | `probe-253-arch-modes.mjs` | §253 | acceptance | §253 — IS THE GONG'S ARCH SOLVE RIGHT, AND DOES IT KNOW WHEN IT IS A STRAIGHT BAR? |
 | `probe-254-chain-twist.mjs` | §254 | acceptance | §254 — DOES THE CHAIN BEND ONLY ABOUT ITS PINS? Acceptance. |
+| `probe-257-hack-contact.mjs` | §257 | acceptance | TODO 257 — THE HACK PAD BRAKES WHEN IT TOUCHES THE RIM, NOT WHEN THE CROWN MOVES. |
 | `probe-261-dial-band.mjs` | §261 | acceptance | THE DIAL-SIDE BAND'S FREE VOLUME, OVER THE POSE NET — where, between the base plate's dial face and the dial's back, a folded action group could stand. |
 | `probe-261-dial-visibility.mjs` | §261 | acceptance | WOULD THE SWITCH BE SEEN UNDER THE DIAL? — the free annulus seen from the FRONT through the smoked sapphire, against the switch as it is seen today from the BACK through the exhibition crystal, both over the pose net. |
 | `probe-261-fold-site.mjs` | §261 | acceptance | WHERE CAN THE ALARM SWITCH STAND UNDER THE DIAL? — §261 step 4's siting study, landing one of the fold: the whole switch-and-lock cluster carried to the dial side of the base plate, tried at every rotation about the striking wheel's arbor, and tested against the band's tenants over the pose net. |

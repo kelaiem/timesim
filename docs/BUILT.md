@@ -33029,6 +33029,10 @@ Every term is read off something the movement already derives, nothing chosen:
 - **T_brake**: the hack pad, `leverEngage` × the spring's peak torque — the
   figure the stop lever's rod was already priced on ("holding a 315° swing
   means absorbing the hairspring's own peak torque").
+  *Amended by TODO 257:* the multiplier is `padEngage`, the pad's own contact
+  (zero until the pad touches the rim, full over the rod's give), not the
+  lever's ease — which left 0 on the first frame of the crown's travel and
+  braked the balance while the pad was still a stroke below the rim.
 
 **The escapement's clock is an output.** A beat counts when the balance crosses
 into the lift; τ = (n + p)/2F. Inside the window p is the POSED law inverted at
