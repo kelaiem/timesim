@@ -588,7 +588,8 @@ it into prose either.
    lever and the hammer to the gong, its fall and its window included) and
    §278's detector (the hour-carried reader and the set-carried notch, through
    the collar to the feeler's rock — the 1:1 carries its satellite fold must
-   keep are rows).
+   keep are rows; and the notch's RAMPS, TODO 259: cut to the drop law so the pin
+   rides metal out of the notch, the posed pin's touching them a row).
    **A reference may call the build's laws** (`clock.lineLaws`: the link's
    seat solve, pin arm and rim top — the functions the build itself calls), so
    no law is written twice. **A fold that moves a spec row fails unless a FORK
@@ -1075,7 +1076,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 310 measuring scripts and this file names 46. The rest are named for the
+`tools/` holds 311 measuring scripts and this file names 46. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1092,7 +1093,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **198 of
+The index also carries the split that decides how to read a result: **199 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
