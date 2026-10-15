@@ -13550,12 +13550,14 @@ LINE_SPECS.push({
       derivedFrom: '§29: the track annulus 2.85..3.25 (ALARM_TRACK_HALFW) — its inner edge a joint with the hub, its outer the smooth face out to the rim’s root — measured off the cut outline' },
     { key: 'notchW', kind: 'spec', unit: 'rad', value: 0.14, measure: 'notchFloor',
       derivedFrom: '§29: the notch’s floor (ALARM_NOTCH_W) — the pin’s diameter over the track radius plus slop — measured as the largest angular gap in the track’s cut outline LESS the two ramps’ runs (§280: the full-height track stops where the ramps begin)' },
-    { key: 'ramp', kind: 'spec', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'rampRun',
-      derivedFrom: '§280: each ramp runs the pin’s own angular diameter at the track radius — the width the tick’s drop law has always ramped over — measured as the wedge’s angular extent off its own vertices' },
+    { key: 'rampOut', kind: 'spec', unit: 'rad', value: (r, L) => L.detector.rampRun(), measure: 'rampOutRun',
+      derivedFrom: '§280/TODO 260: the EXIT ramp’s angular run, which the seat’s build SOLVES (ALARM_NOTCH_RAMP: the steepest ramp whose climb the seat’s pad — at its blade’s strain cap — holds at ALARM_SPRING_HEADROOM), handed over through the build’s laws so the number is written once — measured as that wedge’s angular extent off its own vertices' },
     { key: 'admit', kind: 'envelope', bound: 'min', unit: 'rad', value: (r, L) => 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'notchFloor',
       derivedFrom: 'the notch must ADMIT the pin: narrower than the pin’s own arc at the track radius and the pin never bottoms, so the alarm never trips (the tick’s drop law reaches its full drop only inside notchW − 2·pinArcHalf)' },
     { key: 'drop', kind: 'spec', unit: 'u', value: 0.10, measure: 'readerDrop',
       derivedFrom: 'TODO 173: the stop-banked drop (ALARM_PIN_DROP) — measured as the collar’s axial travel from riding to the trip’s centre' },
+    { key: 'rampIn', kind: 'spec', unit: 'rad', value: (r, L) => L.detector.entryRunOf(r.rampOut, r.drop, r.trackR), measure: 'rampInRun',
+      derivedFrom: 'TODO 261: the ENTRY ramp is the slope whose DRIVE at MU_STEEL — the pin falling down it under the blade — equals the exit’s CLIMB there, so the one hold clears both by the same headroom; its run follows from its slope (the build’s own law, entryRunOf, evaluated here at the exit’s measured run) — measured as that wedge’s angular extent off its own vertices, the entry ramp being the one the pin arrives at first' },
     { key: 'rampRise', kind: 'spec', unit: 'u', value: (r) => r.drop, measure: 'rampRise',
       derivedFrom: '§280: a ramp descends the pin’s drop from the track’s top to the dropped tip’s level — the law’s full travel, cut — measured as the wedge’s top at its high end less at its low end' },
     { key: 'rampSeat', kind: 'spec', unit: 'u', value: 0, measure: 'rampSeat',
@@ -13574,10 +13576,12 @@ LINE_SPECS.push({
       derivedFrom: 'TODO 117: what the pin’s length IS — the collar’s track-side face one margin over the track’s top at full drop — measured at the trip' },
     { key: 'plateau', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW - 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'tripPlateau',
       derivedFrom: '§29/TODO 8: the pin bottoms over the notch’s width less its own arc (the tick’s drop law, alarmPinDropNow) — measured as the hour arc the reader’s pin turns through while the collar stands at its full drop' },
-    { key: 'window', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW + 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'tripWindow',
-      derivedFrom: '§29: the pin leaves the track over the notch’s width plus its own arc — measured as the hour arc over which the collar stands off its riding plane at all' },
-    { key: 'align', kind: 'spec', unit: 'rad', value: 0, measure: 'tripAlign',
-      derivedFrom: 'TODO 117: the trip is the plain COINCIDENCE of the reader’s pin with the notch — no phase term (alarmNotchA) — measured as the plateau’s centre against the notch’s cut centre, both off the metal' },
+    { key: 'window', kind: 'spec', unit: 'rad', value: (r, L) => r.notchW + r.rampIn + r.rampOut - 2 * L.detector.pinArcHalf(r.pinR, r.trackR), measure: 'tripWindow',
+      derivedFrom: '§29/§280/TODO 261: the pin leaves the track over the notch’s floor plus the two ramps’ runs less its own arc, each side (the rim reaches a ramp’s top end when the pin’s centre is a pin-arc short of it) — measured as the hour arc over which the collar stands off its riding plane at all' },
+    { key: 'ahead', kind: 'spec', unit: 'rad', value: (r) => r.plateau / 2, measure: 'floorAhead',
+      derivedFrom: 'TODO 261: the notch’s FLOOR stands half the plateau ahead of the alarm hand, along the pin’s travel — the pin trips the alarm when it bottoms, which is the plateau’s leading edge, half a plateau short of the floor’s centre — measured as the floor’s cut centre against the hand (the disc’s own zero, its frame’s axis), signed by the way the pin travels over it' },
+    { key: 'ringAt', kind: 'spec', unit: 'rad', value: 0, measure: 'tripOnHand',
+      derivedFrom: 'TODO 261: the alarm rings when the hour hand meets the alarm hand — the plateau’s leading edge, where the collar first stands at its full drop, is on the hand — measured as that edge’s pin azimuth against the hand’s, both off the metal' },
     { key: 'pivotR', kind: 'spec', unit: 'u', value: 5.5, measure: 'pivotR',
       derivedFrom: '§29 step 3: the feeler’s pivot radius about the detector’s axis (ALARM_FEELER_PIVOT_R) — the bracket’s lugs clear the rim’s tips by one margin — measured as the plan distance from the disc’s axis to the lever’s rock axis, which is FOUND as the fixed axis of the lever’s motion from riding to the trip' },
     { key: 'arm', kind: 'spec', unit: 'u', value: (r) => r.pivotR - r.trackR, measure: 'leverArm',
@@ -14463,16 +14467,25 @@ function lineSpecDetector(clock) {
   // §280 — the outline's gap is the notch's floor PLUS a ramp's run each side
   // (the full-height track stops where the ramps begin). Each ramp's run and
   // rise are read off its own vertices, in its own frame (the disc's).
+  // TODO 261 — the ramps are no longer mirror images and the floor no longer
+  // stands at the frame's zero: each ramp is read as the SIGNED angular extent of
+  // its own vertices, and which stands on the negative side of the gap is read
+  // from where it is. The floor's centre is the gap's centre shifted by half the
+  // difference of the runs (the longer ramp is the one that pushes the floor
+  // away from its own side); which of the two the PIN arrives at first is
+  // settled below, once the pin's direction of travel is measured.
   const rampRead = M.ramps.map((m) => {
     const p = m.geometry.attributes.position; let a0 = Infinity, a1 = -Infinity, zHi = -Infinity, zLoTop = Infinity;
     for (let i = 0; i < p.count; i++) {
-      const a = Math.abs(Math.atan2(p.getY(i), p.getX(i))), z = p.getZ(i);
+      const a = Math.atan2(p.getY(i), p.getX(i)), z = p.getZ(i);
       a0 = Math.min(a0, a); a1 = Math.max(a1, a); zHi = Math.max(zHi, z); if (z > 1e-9) zLoTop = Math.min(zLoTop, z);
     }
-    return { run: a1 - a0, rise: zHi - zLoTop };
+    return { run: a1 - a0, rise: zHi - zLoTop, mid: (a0 + a1) / 2, mesh: m };
   });
-  const rampRun = (rampRead[0].run + rampRead[1].run) / 2, rampRise = (rampRead[0].rise + rampRead[1].rise) / 2;
-  const notchFloor = notchArc - 2 * rampRun;
+  const rampNeg = rampRead[0].mid < rampRead[1].mid ? rampRead[0] : rampRead[1], rampPos = rampNeg === rampRead[0] ? rampRead[1] : rampRead[0];
+  const rampRise = (rampRead[0].rise + rampRead[1].rise) / 2;
+  const notchFloor = notchArc - rampNeg.run - rampPos.run;
+  const floorMid = notchMid + (rampNeg.run - rampPos.run) / 2;
   // the collar's axis toward the dial: its local +z (dialFace-local +z runs
   // toward the dial), in world
   M.ring.updateWorldMatrix(true, false);
@@ -14485,7 +14498,7 @@ function lineSpecDetector(clock) {
   };
   const notchWorldAz = (C) => {
     M.track.updateWorldMatrix(true, false);
-    const q = new THREE.Vector3(rTrackMid * Math.cos(notchMid), rTrackMid * Math.sin(notchMid), 0).applyMatrix4(M.track.matrixWorld);
+    const q = new THREE.Vector3(rTrackMid * Math.cos(floorMid), rTrackMid * Math.sin(floorMid), 0).applyMatrix4(M.track.matrixWorld);
     return Math.atan2(q.y - C.y, q.x - C.x);
   };
   const vertexAz = (mesh, i, C) => { mesh.updateWorldMatrix(true, false); v.fromBufferAttribute(mesh.geometry.attributes.position, i).applyMatrix4(mesh.matrixWorld); return Math.atan2(v.y - C.y, v.x - C.x); };
@@ -14513,6 +14526,13 @@ function lineSpecDetector(clock) {
   const k = wrap(r1 - r0) / 3600;
   let tStar = ((-r0 / k) % H12 + H12) % H12;
   for (let it = 0; it < 3; it++) { pose(tStar); tStar -= relAt() / k; }
+  // TODO 261 — the ENTRY ramp is the one the pin arrives at first: its world
+  // azimuth stands behind the floor's centre along the pin's travel (k is the
+  // pin's azimuth rate over the still disc). The hand is the disc's own zero.
+  const rampAz = (r) => { r.mesh.updateWorldMatrix(true, false); const q = new THREE.Vector3(rTrackMid * Math.cos(r.mid), rTrackMid * Math.sin(r.mid), 0).applyMatrix4(r.mesh.matrixWorld); return Math.atan2(q.y - C.y, q.x - C.x); };
+  const entryIsNeg = Math.sign(k) * wrap(rampAz(rampNeg) - notchWorldAz(C)) < 0;
+  const rampIn = (entryIsNeg ? rampNeg : rampPos).run, rampOut = (entryIsNeg ? rampPos : rampNeg).run;
+  const handWorldAz = () => { M.track.updateWorldMatrix(true, false); const q = new THREE.Vector3(rTrackMid, 0, 0).applyMatrix4(M.track.matrixWorld); return Math.atan2(q.y - C.y, q.x - C.x); };
   const ringFace = () => span(M.ring).hi;
   // riding: the pin half a turn of the hour from the notch
   const tRide = (tStar + H12 / 2) % H12;
@@ -14538,19 +14558,22 @@ function lineSpecDetector(clock) {
     pose(a); return lineSpecDetectorStatic(clock, M).pinAz;
   };
   const full = (d) => d >= dropFull * (1 - 1e-9), any = (d) => d > dropFull * 1e-9;
-  let plateau = NaN, win = NaN, align = NaN;
+  let plateau = NaN, win = NaN, ringOnHand = NaN, floorAhead = NaN;
   if (dropFull > 0 && Number.isFinite(k) && k !== 0) {
     const pA = edge(tStar, tStar + gapHalfT, full), pB = edge(tStar, tStar - gapHalfT, full);
-    const wA = edge(tStar + gapHalfT, tStar + 2 * gapHalfT, any), wB = edge(tStar - gapHalfT, tStar - 2 * gapHalfT, any);
+    const outerT = (notchFloor / 2 + Math.max(rampIn, rampOut)) / Math.abs(k);   // §280: the longer ramp's far end, past which the rim is on the track's top on either side
+    const wA = edge(tStar + gapHalfT, tStar + outerT, any), wB = edge(tStar - gapHalfT, tStar - outerT, any);
     plateau = Math.abs(wrap(pA - pB)); win = Math.abs(wrap(wA - wB));
-    align = wrap(pB + wrap(pA - pB) / 2 - notchWorldAz(C));
+    // pB is the plateau's edge at the SMALLER τ — the one the pin reaches first in running
+    ringOnHand = wrap(pB - handWorldAz());
+    floorAhead = Math.sign(k) * wrap(notchWorldAz(C) - handWorldAz());
   }
   // §280 — the pin on the ramps: three samples across each ramp's zone (the
   // pin's rim between the ramp's low end and its high end), read at the taus
   // the secant found. `rampTaus` rides the payload so the control re-poses them.
   const pAH = clock.lineLaws.detector.pinArcHalf(lineSpecCylR(M.pin), rTrackMid);
   const rampTaus = [];
-  for (const sgn of [-1, 1]) for (const f of [0.2, 0.5, 0.8]) rampTaus.push(tStar + sgn * (notchFloor / 2 - pAH + f * 2 * pAH) / Math.abs(k) * Math.sign(k));
+  for (const sgn of [-1, 1]) for (const f of [0.2, 0.5, 0.8]) rampTaus.push(tStar + sgn * (notchFloor / 2 - pAH + f * (sgn * Math.sign(k) < 0 ? rampIn : rampOut)) / Math.abs(k) * Math.sign(k));   // the pin's centre where its rim is a fraction f up the ramp
   const rampSeat = Number.isFinite(k) && k !== 0 ? lineSpecRampGap(clock, M, M.ramps, rampTaus, pose) : NaN;
   // the lever's rock: the tip's rigid motion riding → trip, T = M_trip·M_ride⁻¹.
   // Its rotation angle is the rock; its fixed axis is the pivot.
@@ -14602,14 +14625,14 @@ function lineSpecDetector(clock) {
     pinTrackR: ride.pinTrackR,
     readerOffAxis: ride.readerOffAxis,
     trackMidR: rTrackMid, trackHalfW: (rMax - rMin) / 2,
-    notchArc, notchFloor, rampRun, rampRise, rampSeat, rampTaus,
+    notchArc, notchFloor, rampInRun: rampIn, rampOutRun: rampOut, rampRise, rampSeat, rampTaus,
     readerDrop: dropFull,
     trackHeight: sTrack.hi - sTrack.lo,
     pinOverFloor: sPinT.lo - sTrackT.lo,
     pinLength: sPin.hi - sPin.lo,
     ringThickness: sRing.hi - sRing.lo,
     ringOverTrack: sRingT.lo - sTrackT.hi,
-    tripPlateau: plateau, tripWindow: win, tripAlign: align,
+    tripPlateau: plateau, tripWindow: win, tripOnHand: ringOnHand, floorAhead,
     pivotR, leverArm: lead.s,
     readR: Math.hypot(readPt.x - C.x, readPt.y - C.y),
     tipSeat: sRing.hi - sTip.lo,

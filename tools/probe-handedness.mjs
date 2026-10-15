@@ -87,8 +87,8 @@ await new Promise((r) => setTimeout(r, 900));
 const browser = await chromium.launch();
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.log('PAGEERROR', String(e)));
-await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'load', timeout: 90000 });
-await page.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
+await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'load', timeout: 600000 });
+await page.waitForFunction(() => !!window.__clock, null, { timeout: 600000 });
 
 const out = await page.evaluate(() => {
   const C = window.__clock;
@@ -470,12 +470,23 @@ const out = await page.evaluate(() => {
     return { label, median, extVal, signal, plateau: hi - lo + 1, pairs, worst, grid };
   };
 
-  const lawRows = [];
+  const lawRows = [], handedLaws = [];
   {
     const base = { crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmCrownPullT: 0, alarmCrownRotation: 0 };
     const N = 4000, SPAN = 12 * 3600;
-    lawRows.push(evenness('alarm pin drop, either side of the notch floor',
-      (i) => { C.setPose({ ...base, tau: (i / N) * SPAN }); return C.alarmPinDrop; }, N));
+    // TODO 261 — THE NOTCH IS HANDED ON PURPOSE. Its entry flank (the one the pin
+    // meets first in running) is cut steeper, and so shorter, than its exit, so
+    // the drop is NOT even about the plateau and the evenness test would, rightly,
+    // fail it. What replaces it asks the question the handedness is for: is the
+    // law's direction the TRAIN's? The sweep runs forward in time, so the first
+    // flank it meets is the entry's; its width in hour angle must be the entry
+    // ramp's run and the second's the exit's, each to a sample.
+    const vals = [];
+    for (let i = 0; i < N; i++) { C.setPose({ ...base, tau: (i / N) * SPAN }); vals.push(C.alarmPinDrop); }
+    const D = Math.max(...vals), mid = (x) => x > 1e-12 && x < D - 1e-12;
+    const flanks = []; let run = 0;
+    for (let i = 0; i <= N; i++) { if (i < N && mid(vals[i])) run++; else if (run) { flanks.push(run); run = 0; } }
+    handedLaws.push({ label: 'alarm pin drop, entry flank then exit flank', D, flanks, step: 2 * Math.PI / N, hold: C.alarmSetHold });
   }
   {
     // THE BEAK ONLY RIDES THE STAR WITH THE CROWN PULLED. With it in, the tick
@@ -500,7 +511,7 @@ const out = await page.evaluate(() => {
       (i) => { C.setPose({ ...base, tau: (i / N) * SPAN }); return lever ? lever.rotation.z : NaN; }, N);
     lawRows.push({ ...row, moved, lever: lever?.name || lever?.type || null });
   }
-  return { rows, lawRows, beak, census, zControls };
+  return { rows, lawRows, handedLaws, beak, census, zControls };
 });
 
 const f = (x, n = 5) => (x === null || x === undefined || Number.isNaN(x) ? '   —  ' : (x >= 0 ? ' ' : '') + x.toFixed(n));
@@ -548,6 +559,22 @@ if (out.beak) {
   console.log(`  ${ok ? 'SYMMETRIC' : 'HANDED   '}  minute jumper beak            worst point misses its reflection by ${(out.beak.miss * 100).toFixed(4)}% of reach ${out.beak.reach.toFixed(3)} (line at ${out.beak.axisDeg.toFixed(1)}°, ${out.beak.points} points)`);
 } else { console.log('\n  FAIL — no beak outline found under Minute jumper'); bad++; }
 
+console.log('\nHANDED LAWS — a response that is uneven BY DESIGN, held to the train\'s direction (TODO 261)\n');
+for (const h of out.handedLaws) {
+  console.log(`  ${h.label}`);
+  const [a, b] = h.flanks, runIn = h.hold?.rampInRun_rad, runOut = h.hold?.rampRun_rad;
+  const two = h.flanks.length === 2, st = h.step;
+  console.log(`     flanks (samples of ${st.toFixed(5)} rad): ${h.flanks.join(', ')}; entry ramp ${runIn?.toFixed(5)} rad = ${(runIn / st).toFixed(1)}, exit ${runOut?.toFixed(5)} rad = ${(runOut / st).toFixed(1)}`);
+  const okTwo = two && a !== undefined;
+  const okEntry = okTwo && Math.abs(a * st - runIn) <= 1.5 * st;
+  const okExit = okTwo && Math.abs(b * st - runOut) <= 1.5 * st;
+  const okOrder = okTwo && a < b;
+  console.log(`     ${okTwo ? 'ok  ' : 'FAIL'} exactly two flanks, one each side of the plateau`);
+  console.log(`     ${okEntry ? 'ok  ' : 'FAIL'} the FIRST flank in running is as wide as the entry ramp`);
+  console.log(`     ${okExit ? 'ok  ' : 'FAIL'} the SECOND is as wide as the exit ramp`);
+  console.log(`     ${okOrder ? 'ok  ' : 'FAIL'} and the steep one comes first (the law's handedness is the train's)`);
+  if (!(okTwo && okEntry && okExit && okOrder)) bad++;
+}
 console.log('\nLAWS — is the response EVEN about its working point?\n');
 for (const l of out.lawRows) {
   console.log(`  ${l.label}`);

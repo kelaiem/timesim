@@ -116,7 +116,7 @@ export const LUBRICATION = Object.freeze({
   'Alarm hammer :: bearing':            L('oil-fine', 'hammer, feeler and lifter pivots are oil-fine', { sink: 'plain-bush', src: 'roadmap §247 seed table' }),
   'Alarm release feeler :: bearing':    L('oil-fine', 'hammer, feeler and lifter pivots are oil-fine', { sink: 'plain-bush', src: 'roadmap §247 seed table' }),
   'Alarm release lifter :: bearing':    L('oil-fine', 'hammer, feeler and lifter pivots are oil-fine', { sink: 'plain-bush', src: 'roadmap §247 seed table' }),
-  'Alarm setting wheel > Alarm disc':   L('friction', 'the alarm disc is carried on a friction hub: its drag and hold are priced at MU_STEEL (TODO 144)', { cites: 'TODO 144 (the disc\'s priced drag and hold)', src: 'roadmap §247 seed table' }),
+  'Alarm setting wheel > Alarm disc':   L('friction', 'the alarm disc is carried on a friction hub: its drag and hold are priced at MU_STEEL (TODO 144), and at every corner of muTooth’s dry-steel band against the ramp’s climb (TODO 260)', { cites: 'TODO 144 (the disc\'s priced drag and hold)', src: 'roadmap §247 seed table' }),
   'Hour wheel > Alarm disc':            L('friction', 'the disc rides the hour wheel on the same friction hub (TODO 141/144)', { cites: 'TODO 144 (the disc\'s priced drag and hold)', src: 'roadmap §247 seed table' }),
 });
 

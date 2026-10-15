@@ -121,9 +121,11 @@
 // reader, the set-carried disc's notch, the collar, the feeler's rock), and
 // seven more trees:
 //   22. the notch cut narrow by hand (ALARM_NOTCH_W 0.14 → 0.12) — the notch
-//      fails, and the plateau and the window the pin turns through with it.
-//      The admit envelope does NOT (0.12 still passes the pin's 0.0918 arc),
-//      and neither does the coincidence: the notch is narrower, not moved.
+//      fails, and the plateau and the window the pin turns through with it,
+//      and (TODO 261) the floor's lead with them: the lead is half the plateau,
+//      and the reference's plateau is the 0.14's. The admit envelope does NOT
+//      (0.12 still passes the pin's 0.0918 arc), and neither does the ring
+//      on the hand: the notch is narrower and still led by its own half-plateau.
 //   23. the feeler's pivot carried out (ALARM_FEELER_PIVOT_R 5.5 → 5.7) — a
 //      longer read arm: the pivot (found as the lever's rock axis), the arm,
 //      the rock and the stop's gap fail. The read point does NOT: the tip
@@ -144,6 +146,13 @@
 //      topology row the satellite fold's idler must keep: setCarry fails and
 //      nothing else, because the trip is searched at the setting where both
 //      read zero.
+//   29. the notch's lead taken off (ALARM_NOTCH_AHEAD → 0, TODO 261) — the
+//      floor is centred on the hand again, so the lead fails and so does the
+//      ring on the hand: the alarm rings half a plateau early, as it did.
+//   30. the entry ramp cut as long as the exit (TODO 261) — the entry's run
+//      fails (the reference derives it from the exit's slope) and the window
+//      the pin turns through with it; the ramps are cut to the same law the
+//      tick poses, so the pin still touches them.
 //
 // What it is NOT: probe-261-height-cap.mjs fires the height ratchet; this
 // fires the mechanism reference. The check's own controls (a known shift of
@@ -272,7 +281,7 @@ const cases = [
     patches: [{ file: SRC, find: 'const ALARM_CAM_BASE_R = alarmCamRadiusAt(-ALARM_STRIKE_AMP) - CLEAR_MARGIN;',
       to: 'const ALARM_CAM_BASE_R = alarmCamRadiusAt(-ALARM_STRIKE_AMP) - 2 * CLEAR_MARGIN;' }] },
   // §278 landing 4 — the detector.
-  { name: 'the notch cut narrow by hand (ALARM_NOTCH_W 0.14 → 0.12)', fail: ['notchW', 'plateau', 'window'].map(DET),
+  { name: 'the notch cut narrow by hand (ALARM_NOTCH_W 0.14 → 0.12)', fail: ['notchW', 'plateau', 'window', 'ahead'].map(DET),
     patches: [{ file: SRC, find: 'const ALARM_NOTCH_W = 0.14;', to: 'const ALARM_NOTCH_W = 0.12;' }] },
   { name: 'the feeler’s pivot carried out (ALARM_FEELER_PIVOT_R 5.5 → 5.7)', fail: ['pivotR', 'arm', 'rock', 'stopGap'].map(DET),
     patches: [{ file: SRC, find: 'const ALARM_FEELER_PIVOT_R = 5.5;', to: 'const ALARM_FEELER_PIVOT_R = 5.7;' }] },
@@ -286,7 +295,11 @@ const cases = [
   { name: 'the collar posed off its pin (its lift × 1.5)', fail: ['drop', 'floorClear', 'ringOverTrack'].map(DET),
     patches: [{ file: SRC, find: 'alarmReaderLift.position.z = -readerDrop;', to: 'alarmReaderLift.position.z = -1.5 * readerDrop;' }] },
   { name: 'the set transfer geared 1.1:1 (the disc posed at 1.1 × its law)', fail: [DET('setCarry')],
-    patches: [{ file: SRC, find: '  alarmDiscGroup.rotation.z = alarmNotchA();', to: '  alarmDiscGroup.rotation.z = 1.1 * alarmNotchA();' }] },
+    patches: [{ file: SRC, find: '  alarmDiscGroup.rotation.z = alarmHandA();', to: '  alarmDiscGroup.rotation.z = 1.1 * alarmHandA();' }] },
+  { name: 'the notch’s lead taken off (ALARM_NOTCH_AHEAD → 0)', fail: ['ahead', 'ringAt'].map(DET),
+    patches: [{ file: SRC, find: 'const ALARM_NOTCH_AHEAD = ALARM_READER_SENSE\n  * ', to: 'const ALARM_NOTCH_AHEAD = 0 * ' }] },
+  { name: 'the entry ramp cut as long as the exit', fail: ['rampIn', 'window'].map(DET),
+    patches: [{ file: SRC, find: 'ALARM_NOTCH_RAMP_IN = ALARM_DETECTOR_LAWS.entryRunOf(ALARM_NOTCH_RAMP, ALARM_PIN_DROP, ALARM_TRACK_RMID);', to: 'ALARM_NOTCH_RAMP_IN = ALARM_NOTCH_RAMP;' }] },
 ];
 let ok = true;
 for (const c of cases) {
