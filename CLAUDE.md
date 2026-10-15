@@ -21,19 +21,19 @@ lever escapement. Everything is procedural — there are no model assets.
 `test-geometry.html` is a per-part visual smoke test, separate from the
 inspector.
 
-`technic.html` (§219 tier two (a)) draws the LEGO Technic fork — the rows
-`TECHNIC_FORK` in `layout.js` declares — as module-1 gears turned through their
-own tooth counts. It imports `layout.js` and nothing from the movement, so the
-battery never sees it; its counts and ratios are claims read from the table,
-its part shapes are drawn, and every pair's teeth are PHASED to mesh (a 90°
-face mesh too, though no row carries one since §219 tier three (b) C2), which `tools/probe-technic-phase.mjs`
-measures off the drawn gears at five angles, against a half-pitch control.
+`technic.html` (§219) shows the LEGO Technic fork — the rows `TECHNIC_FORK`
+in `layout.js` declares, the keyless and motion works and the fusee — built
+from real LDraw parts and turned through their own tooth counts. It imports
+`layout.js` and nothing from the movement, so the battery never sees it; its
+counts and ratios are claims read from the table. Tier two (a)'s DRAWN view
+(procedural involute gears, and `probe-technic-phase.mjs` that measured them)
+was retired once every row framed in LEGO: the build is the one view, and its
+meshes are held by `probe-technic-build.mjs`.
 
 `src/technic-frame.js` (§219 tier three (b)) solves the BRICK FRAME that holds
 those rows: 1×1 columns, a Technic brick on top, a jumper under a half-stud
 axle. Its step between stages is DERIVED (two layers where a gear's tip reaches
-the neighbouring column), and the drawn view reads it (`rowLayout`, held by
-`probe-technic-phase.mjs`). A turntable's parallel mesh is held to the lattice
+the neighbouring column, `rowLayout`). A turntable's parallel mesh is held to the lattice
 like any spur since landing C1, and the 60T turntable is out of going trains
 since C2 (unmountable on the frame's bricks), so all eight rows build. **Its dimensions are
 MEASURED off real LEGO parts**: `vendor/ldraw/technic-parts.mpd` packs the LDraw
@@ -42,8 +42,8 @@ library's files for every part the catalogues and the frame name
 them, and `tools/probe-technic-ldraw.mjs` holds every table entry to the parts —
 landing A's quoted figures were wrong in five places. `src/technic-ldraw.js`
 places the build as LDraw parts (each shaft one keyed body, its free angle
-solved to mesh off each part's MEASURED tooth phase), which `technic.html`'s
-`?view=lego` draws and offers as `.ldr`; `tools/probe-technic-build.mjs` holds
+solved to mesh off each part's MEASURED tooth phase), which `technic.html`
+draws and offers as `.ldr`; `tools/probe-technic-build.mjs` holds
 the placements to the part geometry (seated, through, meshed, the file). **And
 the KEYLESS WORKS** (landing D): `TECHNIC_KEYLESS` declares each branch from the
 16T clutch gear on the stem, solved to the steel ratio (winding 5/12, setting
@@ -93,9 +93,8 @@ fusee, and a frame detent on the ratchet, each a keyed 8T on a thin liftarm
 whose LOCK direction `pawlLock` reads off the teeth. A posed band carries it
 to the great wheel. Three collinear axles are joined end to end in round pin
 joiners. `tools/probe-technic-fusee.mjs` holds the table, the seats, the solve,
-the cord, the locks and the build. `probe-technic-phase.mjs` drives the page in a
-browser. The frame, ldraw, build, keyless, motion and fusee probes are pure
-Node.
+the cord, the locks and the build. The frame, ldraw, build, keyless, motion and
+fusee probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1122,7 +1121,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 314 measuring scripts and this file names 48. The rest are named for the
+`tools/` holds 317 measuring scripts and this file names 47. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1139,8 +1138,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **202 of
-them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
+The index also carries the split that decides how to read a result: **204 of
+them are ACCEPTANCE tests** that exit non-zero, and **113 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
 acceptance — those say so in their own headers. A report saying `0 violations` has not
