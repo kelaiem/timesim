@@ -121,12 +121,64 @@ translation runs.
 Run the gates on the wired build before translating anything. They should
 report the locale as empty, not crash.
 
-Staging is allowed today but not yet declared anywhere: the chrome probe fails
-on a missing chrome string, while `explain-i18n.mjs --check` reports a
-missing page block as `untranslated` without failing. A chrome-first landing
-therefore passes the gates with the pages silently in English. Roadmap §274
-files making that a declared, gated state; until it lands, say in the PR
-which surfaces are translated.
+**Staged landings are declared (§274).** A locale need not arrive with all
+three surfaces. A `LOCALES` row may carry `surfaces: ['chrome']` or
+`['chrome', 'primer']`; omitting the field means all three, which is what every
+shipped row says. The chrome is always carried. The gates judge the declaration
+both ways, with the judging in `tools/locale-surfaces.mjs`:
+
+- a declared **primer** (the HUD's front door and the project's honesty
+  framing) must be complete, and an empty table fails. The chrome is held
+  complete by `probe-chrome-coverage`. These are the essential surfaces;
+- a declared **explainer** may be partial. Its untranslated blocks are an
+  allowed, stated gap: the check counts them in its report (`declared, partial
+  — N of M block(s) untranslated`) and does not fail on them. An empty table
+  still fails, because that is not a translation;
+- an **undeclared** page's table must be **empty**. A half-finished page table
+  under a page the row does not claim is stale and fails;
+- an undeclared page renders English under a one-line notice in the locale's
+  own chrome language, so its chrome table must carry the key
+  `UNTRANSLATED_NOTICE` from `src/page-i18n.js` (the page check fails without
+  it);
+- a page with **no `LOADERS` entry** is how a locale does not carry it: do not
+  create an empty table file, and do not list the locale in that page's
+  `LOADERS` or in the offline precache count;
+- declaring `primer` or `explainer` makes its `HONESTY` row mandatory (a
+  declared locale with no row is UNGATED and fails);
+- the review packet drops the sections for pages the locale does not carry.
+
+Stage order for a new locale: wiring with the surfaces declared as
+`['chrome']`, then the chrome, then declare `primer` and add its table, then
+`explainer` last. Each stage can land alone. Say in the PR which surfaces the
+row declares.
+
+**The pickers hide incomplete locales behind a toggle (owner's ruling).** A
+locale that does not carry all three surfaces is *incomplete*. The chrome alone
+is enough for it to exist in the pickers, but they list it only when the reader
+asks: all three (the panel's, `explain.html`'s, `primer.html`'s) fill themselves
+through `fillLanguagePicker` in `src/i18n.js`, which hides incomplete locales
+and ends the list with a **Show incomplete translations** option. Choosing it
+flips the choice, persisted in `localStorage` (`uiShowIncomplete`) and so shared
+by all three pickers, and rebuilds the list in place. The reader's current
+locale is always listed, whatever the toggle says. The option exists only while
+some `LOCALES` row is incomplete, so with every row whole the pickers are
+unchanged, and it carries `data-state="on|off"` (the check mark is decoration).
+The label is a chrome key: every locale's table must translate
+`INCOMPLETE_TOGGLE`, which `probe-274-surfaces.mjs` holds, because the option
+appears in every picker the day one row is incomplete. A new picker fills itself
+through the same function; do not write a fourth loop over `LOCALES`.
+`tools/probe-274-picker.mjs` plants an incomplete row in flight and holds each
+clause against the live `<select>`. There is no picker mark.
+
+**This is a guideline for documenting gaps, not a ratchet.** The point of
+`surfaces` is that a gap is declared rather than owed silently. Today every
+shipped explainer is 19 to 45 blocks short of the English (a later English
+landing outran the tables; the CJK and Korean tables also leave 15 hidden
+`.gloss-variants` rows English by design), and that is allowed and visible in
+the check's report. Pinning those counts so they can only fall (an arrival
+inventory, the `UNDECLARED_CLEARANCE_DEBT` pattern) is a sound later step, and
+if it is built it should apply to the essential surfaces first. It is not
+built.
 
 ### B. Translation (fills the three tables)
 
@@ -148,6 +200,7 @@ which surfaces are translated.
 ```bash
 node tools/probe-chrome-coverage.mjs        # every locale: MISSING / NOT APPLIED strings
 node tools/explain-i18n.mjs --check         # all pages: keys, markup, <code>, numbers, honesty vocabulary
+node tools/probe-chrome-honesty.mjs       # the panel's modelled/simulated strings keep the two words apart (pure Node)
 node tools/glossary-links.mjs               # Vocabulary links don't change the page's text
 node tools/explain-quotes.mjs               # explainer constants still match src/*.js
 node tools/l10n-review-packets.mjs --out DIR   # review sheet builds (needs the questions row)

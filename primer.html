@@ -891,7 +891,7 @@
   // load-bearing. Every dynamic string below goes through tr() rather than
   // being written in English (`tr`, not `t`, matching the explainer so the
   // i18n checker's one literal scan covers both pages).
-  import { UI_LANG, setUiLang, LOCALES, fmtNum, fmtInt } from './src/i18n.js';
+  import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, fmtNum, fmtInt } from './src/i18n.js';
   import { localizePrimer, t as tr } from './src/primer-i18n.js';
   localizePrimer();
   {
@@ -899,12 +899,7 @@
     // Values are canonical codes, never display text — tier one's rule.
     // §116: the roster is i18n.js's LOCALES, so this page cannot drift out of
     // step with the app's picker or the other page's.
-    for (const { code, face } of LOCALES) {
-      const o = document.createElement('option');
-      o.value = code; o.textContent = face; o.selected = code === UI_LANG;
-      sel.appendChild(o);
-    }
-    sel.addEventListener('change', () => setUiLang(sel.value));
+    fillLanguagePicker(sel);   // §274: incomplete locales sit behind a toggle
   }
 
   // §195 — the fusee bargain, plate 2. The page's contract shapes the code:
