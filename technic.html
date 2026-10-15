@@ -30,6 +30,12 @@
   placements (seated, through, meshed); tools/probe-technic-ldraw.mjs holds the
   frame's dimensions to the parts. Since landing C2 every row frames; a row
   the frame refused would stay drawn, labelled with the reason.
+
+  BUILT §219 tier three (b) landing H — THE FUSEE MODULE (src/technic-fusee.js),
+  the LEGO view's sixth cell, drawn at full wind: a cord on a stepped cone of
+  grooved pulleys, its barrel and hooks, and the maintaining power. Its spring
+  law is POSED (a stand-in until a LEGO spring is measured), and the panel says
+  so. tools/probe-technic-fusee.mjs holds it.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -106,8 +112,8 @@ canvas{display:block;touch-action:none}
   every row from the real parts (LDraw.org's library, CC BY 4.0) on a brick
   frame whose every dimension is measured off those parts. The rows use no
   turntable: neither could be mounted on the frame, so the solver answers with
-  spur gears on the stud lattice. The escapement, balance and fusee have no LEGO
-  row and are not here.</p>
+  spur gears on the stud lattice. The escapement and balance have no LEGO row
+  and are not here.</p>
   <p>The LEGO view adds the <b>keyless works</b>: the stem carries two 16T
   clutch gears and a driving ring that slides between them, LEGO's own
   changeover standing in for the steel sliding pinion. <b>wind</b>,
@@ -129,6 +135,15 @@ canvas{display:block;touch-action:none}
   crown turns per minute-hand turn, and 36 per hour-hand turn. In wind and
   neutral the hands stand still, because no going train drives them here. No
   hand part is placed. The two angles are the reading.</p>
+  <p>The <b>fusee</b> is a cord on a stepped cone of grooved pulleys, climbing
+  one step a wrap, from a barrel the spring turns. The steps are SOLVED so that
+  torque × radius is as level as a staircase allows. The spring's law is POSED:
+  a LEGO spring (a rubber band, a pull-back motor) can only be measured, and
+  until it is the table holds the steel ribbon's law as a stand-in. Its
+  <b>maintaining power</b> is Harrison's: a click pawl rides the ratchet, a
+  detent holds the ratchet, and a band from it drives the great wheel while
+  the fusee is wound back. Which way each pawl locks is read off the teeth. The
+  bands' forces are posed, and the build is drawn at full wind.</p>
   <div id="log"></div>
 </div>
 <script type="module">
@@ -137,6 +152,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseLibrary, walk } from './src/ldraw.js';
 import { frameFork, frameKeyless, rowLayout } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
+import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './src/technic-fusee.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, catalogueMesh, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -303,7 +319,10 @@ function buildChain(gen, chain, parent) {
 // Drawn by role, not by LDraw colour code: the .ldr download carries the codes.
 const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, technicBrick: 0x9b3b36, axle: 0x1c1d20, spur: 0xa0a5a9, doubleBevel: 0xd9c08c,
   joiner: 0x1c1d20, ring: 0x9b3b36, crown: 0xe8e8e8, catch: 0xb03a2e,
-  pinion: 0xd9c08c, rack: 0xe0b630, tile: 0xe8e8e8, detent: 0xa0a5a9, arm: 0x2f5d9b, follower: 0xb03a2e };
+  pinion: 0xd9c08c, rack: 0xe0b630, tile: 0xe8e8e8, detent: 0xa0a5a9, arm: 0x2f5d9b, follower: 0xb03a2e,
+  // landing H: the fusee module
+  pulley: 0xa0a5a9, barrel: 0x6c6e68, hook: 0xe8e8e8, cord: 0x1c1d20, cordEnd: 0x1c1d20, click: 0xd9c08c, ratchet: 0x2f7d6e,
+  pawl: 0xb03a2e, great: 0xe0b630, knob: 0xe8e8e8 };
 // mm between rows on the table: the keyless works' 32×32 baseplate (256 mm,
 // landing F's pull outgrew the 16×16) and a stud's gap either side
 const LEGO_CELL = 272;
@@ -356,7 +375,7 @@ let legoShafts = [];
 // the state probe-technic-keyless.mjs measures: the ring's lugs only pass the
 // gear's where they are interleaved, so a shift with the stem turning is not
 // a thing this page claims.
-let keylessMode = 'wind', keylessAngle = 0, keylessBuild = null;
+let keylessMode = 'wind', keylessAngle = 0, keylessBuild = null, fuseeBuildNow = null;
 function setKeylessMode(mode) {
   keylessMode = mode; keylessAngle = 0;
   for (const s of legoShafts) for (const sl of s.sliders) {
@@ -496,6 +515,32 @@ async function build(gen, mode = view) {
     } else div.innerHTML = `<b>${k + 1}. keyless works</b><br><span class="bad">not framed in LEGO: ${kf.reason}</span>`;
     rowsEl.appendChild(div);
   }
+  // §219 tier three (b) landing H — the fusee module, the LEGO view's sixth
+  // cell: a cord on a stepped cone of grooved pulleys, its barrel, its two
+  // hooks and the maintaining power, at full wind. The same build in both
+  // generations (every part is classic). The steps are solveFusee's answer
+  // from the spring table, which is POSED (a stand-in for a measurement), so
+  // the panel says so beside the numbers.
+  fuseeBuildNow = null;
+  if (mode === 'lego') {
+    const k = TECHNIC_FORK.rows.length + 1;
+    const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
+    const div = document.createElement('div'); div.className = 'row';
+    const run = solveFusee(TECHNIC_FUSEE_SPRING).best, ff = run && frameFusee();
+    if (run && ff.framed) {
+      fuseeBuildNow = fuseeBuild(ff, lib, { run });
+      for (const sh of buildLego(fuseeBuildNow, band)) legoShafts.push(sh);
+      const lbl = labelSprite(`${k + 1}. fusee and maintaining power`); lbl.position.set(-30, 60, 0); band.add(lbl);
+      const c = fuseeBuildNow.cord, href = URL.createObjectURL(new Blob([toLdr(fuseeBuildNow)], { type: 'text/plain' }));
+      div.innerHTML = `<b>${k + 1}. fusee and maintaining power — LEGO build</b>`
+        + `cone <code>${run.steps.join(' &gt; ')}</code> (base wrap ${run.f.toFixed(2)} turn, then one wrap a step), barrel <code>${run.barrel}</code>, cord <code>${c.string.part}</code>`
+        + `<br>torque × radius spreads <code>${(run.spread * 100).toFixed(1)}%</code> over the run, the bare spring <code>${(run.bare * 100).toFixed(1)}%</code>`
+        + ` <span class="bad">on a POSED spring law</span> <span style="color:var(--dim)">(${TECHNIC_FUSEE_SPRING.source}; the stand-in is the steel ribbon's law)</span>`
+        + `<br><span style="color:var(--dim)">maintaining power: the click pawl rides the 40T ratchet, the detent holds it, a band (posed) from it to the great wheel; while the fusee is wound back the band drives the great wheel the going way. Drawn at full wind; the bands are not placed.</span>`
+        + `<br><a href="${href}" download="fusee.ldr" style="color:#9fb6d9">download .ldr</a>`;
+    } else div.innerHTML = `<b>${k + 1}. fusee</b><br><span class="bad">not framed in LEGO: ${ff?.reason ?? 'no step set fits the table'}</span>`;
+    rowsEl.appendChild(div);
+  }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   for (const b of document.querySelectorAll('#views button')) b.dataset.state = b.dataset.view === mode ? 'on' : 'off';
   currentGen = gen;
@@ -569,7 +614,7 @@ renderer.setAnimationLoop((now) => {
   });
   renderer.render(scene, cam);
 });
-window.__technic = { build, setKeylessMode, get built() { return built; }, get keyless() { return keylessBuild; }, cam, controls, scene, renderer };
+window.__technic = { build, setKeylessMode, get built() { return built; }, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, cam, controls, scene, renderer };
 </script>
 </body>
 </html>

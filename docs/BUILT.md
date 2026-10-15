@@ -36112,6 +36112,268 @@ turn, read off the build's own body speeds.
   crown angle: a kinematic model. Nothing weighs the drag of the idling hour
   wheel or of the setting train.
 
+## §219 tier three (b), landing H — the fusee module: a cord on a stepped cone, its barrel and hooks, and Harrison's maintaining power
+
+The feasibility note's module 2 (its §3.2 and §4) is a fusee with a cord, a
+rubber-band barrel and maintaining power. Landing H builds it from LDraw parts
+in `src/technic-fusee.js` and draws it as the LEGO view's sixth cell. The build
+is MODELLED: every part is placed and measured, and each law that turns one part
+from another is geometry read off the parts. Nothing is integrated, and the one
+law the build runs on, the spring's torque against its wind, is POSED.
+
+### The spring is a posed table
+
+LEGO has no spring steel. The barrel is a rubber band or a pull-back motor, and
+its torque law can only be measured, with a spring scale on the cord at a known
+radius. So `TECHNIC_FUSEE_SPRING` is a table of rows `[barrel turns from
+run-down, torque]`, labelled `status: 'POSED'`, its source "to be measured".
+Until someone measures it, the rows are a STAND-IN: the steel going spring's own
+law, M = k·u (§104), at the steel's set-up and band.
+
+- set up 23 clicks of the 24-tooth set-up ratchet (`SETUP_CLICKS`,
+  `SETUP_RATCHET_TEETH`);
+- run-down torque 0.58986 of full (`SPRING_TQ_EMPTY`, a solve output in
+  `main.js`, quoted at the five figures its own comment records);
+- so the band is (23/24)·(1/0.58986 − 1) = 0.6663 barrel turns, and the torque
+  is scaled to 1 at full wind. The scale cancels: torque × radius is levelled as
+  a shape.
+
+The probe reads all three numbers back off `main.js`' TEXT and fails if they
+part. The solve reads the spring through this table and nothing else, so a
+measured table replaces `rows` and re-solves with no code change. The probe shows
+that: a made-up rubber-band-like table (0.30 → 1 over 3 turns) re-solves to a
+different barrel and different steps.
+
+### The cone is a staircase of grooved pulleys
+
+No LEGO part is a helically grooved cone, so the cord climbs a stack of
+pulleys, one wrap a step. The step catalogue is every keyed round part with a
+cord GROOVE, read from the library's titles. A flat rim lets a wrap walk off.
+The cord is LEGO's braided string (section ±1.5 LDU, 0.6 mm radius).
+
+`grooveSeat` measures where that cord comes to rest in each groove: the part's
+outermost radius R(z) along its axis, the groove between its two outermost rims,
+and the cord's circle lowered until it touches. The capacity is how many cords
+lie side by side at that seat.
+
+| part | | cord seat | rim | cords side by side |
+|---|---|---|---|---|
+| 32123a | half bush | 3.3117 mm | 3.6001 | 1 |
+| 3713 | bush with two flanges | 3.3971 | 3.6001 | 4 |
+| 3482 | wheel rim 8 × 17.5 | 8.1989 | 8.8002 | 3 |
+| 4185a | wedge belt wheel | 11.5993 | 12.0007 | 1 |
+| 3736 | pulley wheel 5D | 18.1795 | 18.6800 | 1 |
+
+### The solve
+
+`solveFusee` tries every barrel and every descending set of steps.
+
+- Winding takes the cord off the barrel onto the cone, base first. The barrel's
+  wind rises by (cord laid)/(2π ρ_b), and the cord's arm is the step's seat.
+- The base wrap is PARTIAL, f of a turn, because the hook stands where the run
+  begins. Every step above it carries one whole wrap.
+- Between two steps the cord crosses on the tangent from the larger circle to
+  the smaller: √(ρ_j² − ρ_{j+1}² + Δy²) long, its arm the smaller seat.
+- The run spans the whole table, which fixes f. A set whose f falls outside
+  (0, 1] is refused, never stretched.
+- A step must stand a cord diameter below the one before it, or the wrap beneath
+  could not guide the next. A barrel must hold the run in ONE layer, or its
+  radius would change mid-run.
+- Ranked by the SPREAD of torque × radius over the run, (max − min)/mean, then
+  by the fewest steps.
+
+The answer: barrel **3736**, base **4185a** (a 0.209-turn wrap), top **3482**
+(one wrap). 35 runs fit the table.
+
+| step | seat | over the wind | ideal r = P̄/M(θ) there |
+|---|---|---|---|
+| 4185a | 11.599 mm | θ 0–0.1336 turns | 11.357 → 9.967 mm |
+| 3482 | 8.199 mm | θ 0.2153–0.6663 | 9.273 → 6.699 mm |
+
+**The level product spreads 40.13%** over the run (5.510–8.199 of full-wind
+torque × mm, mean 6.699). The bare spring spreads 51.59%. The steel fusee's level
+product is gated at a deviation of 1e-9 (inspect.js' equalisation check). So the
+staircase is about 4×10⁸ times coarser than the cut cone. Most of it is inside
+the steps: one wrap of the 3482 spends two thirds of the band at one radius. A
+finer staircase needs radii the catalogue does not have.
+
+### The cord, the barrel and the hooks
+
+The barrel is the pulley wheel 5D on its own axle, 32 mm from the fusee. That
+is the least lattice distance at which its rim passes the base step's: the
+barrel's groove stands midway between the cone's two wrap planes, so the fleet
+angle is the same 4.19° either way.
+
+Each HOOK is the string's own end stud, pressed onto a stud of a round 2×2
+plate keyed beside the base step (and beside the barrel's pulley). `TODO.md` 49
+records that the sim's chain is hooked to nothing; these hooks are parts. The
+cord runs from the cone's hook to the barrel's:
+
+| piece | length |
+|---|---|
+| the cone's leg, out over the base step's rim and into its groove | 12.15 mm |
+| the base wrap (0.209 turn on the 4185a) | 15.26 mm |
+| the crossing to the 3482 | 9.34 mm |
+| the top wrap (one turn on the 3482) | 51.52 mm |
+| the span to the barrel | 30.49 mm |
+| the barrel's leg to its hook | 20.92 mm |
+
+That is 139.65 mm before any dead wrap. The strings are 11L, 21L, 31L and 41L
+(80, 160, 240 and 320 mm between their end studs). The shortest that reaches is
+the **21L (75924)**. Its spare 20.35 mm lies as a DEAD wrap on the barrel,
+inside the 38.11 mm the barrel's one groove has left beside the run. The path,
+dead wrap included, is the string's 160 mm exactly. The cord's working length,
+76.11 mm on the cone, is 0.6663 barrel turns: the table's band.
+
+Each wrap rests in its own groove (its centreline 0.604–0.613 mm from that
+part's sampled surface, against a 0.6 mm cord) and has no other part within
+0.8 mm. The crossings and the legs BEAR on rims and groove walls. The model
+places them and does not measure them.
+
+### Maintaining power needs two one-way parts
+
+The note calls this DIRECT in shape: a ratchet, a pawl or the 20T one-way gear,
+and a band to the great wheel.
+
+- **The 20T one-way gear (7161c01) is not in the LDraw library**, official or
+  unofficial (read 2026-10-15). So each one-way part is a keyed gear with a pawl
+  on a thin liftarm. That is landing F's measured trap (a keyed 8T on an arm
+  locks one way), wanted here.
+- **Harrison's maintaining power needs TWO.** While winding, the fusee turns back
+  for many turns while the great wheel must not. So the fusee must turn back
+  against the part the band pushes off, which takes a CLICK. And that part must
+  not turn back with it, which takes a DETENT on the frame. One ratchet and one
+  pawl cannot do both. The landing builds both.
+
+The parts:
+
+- **The coaxial members are three axles end to end**, joined by round pin
+  joiners (62462), which hold two axle ends on one line and let them turn apart.
+  F, the fusee, carries the knob, the hook plate, the steps and a keyed 16T (the
+  click wheel). M, a 4L axle carried by the joiners alone, carries the RATCHET.
+  G carries the GREAT WHEEL.
+- **The ratchet and the great wheel are 40Ts (3649).** Each needs axle holes off
+  its axis for the click's pivot and the band's pegs. The 40T draws its four
+  holes as primitives, 8 mm out. The 24T "with 3 axleholes" (3648a) was tried
+  first. Its extra holes are not primitives and, sliced, could not be located
+  with confidence.
+- **The click's wheel is a 16T, not a 24T.** The pawl pivots on its liftarm's
+  round middle hole, on an axle in the ratchet's 8 mm hole, and carries its 8T at
+  an end hole 8 mm on. That reaches 12 mm out, the 8:16 mesh, with the arm 97°
+  to the radius. A 24T's 16 mm mesh would put the arm along the radius
+  (8 + 8 = 16), where a pawl neither locks nor frees.
+- **The detent's pivot is searched over the lattice.** The rules: x on the 4 mm
+  grid, z a Technic brick's hole height, within the arm's reach of the 8:40
+  mesh; the pivot axle clear of both 40Ts' tips; its two columns clear of the
+  click's 18.28 mm sweep; the arm clear of the band's pegs. Candidates are
+  ranked by the shortest column, then by the arm nearest square to the radius.
+  The first whose pawl LOCKS the ratchet against running back is the answer:
+  **(−28, −16) mm off the main axis, band −**.
+
+**Which way a pawl locks is read off the teeth** (`pawlLock`). Each gear is its
+outer radius per angle, read off its sampled surface in 0.1° bins. The wheel is
+turned a step at a time from the seat, and the pawl follows continuously: lifted
+against its band by the least turn that clears the wheel, then dropped back to
+touch. Riding a flank, the steepest lift rate dψ/dθ is a few. Against a lock it
+is a wall. LOCKED is the direction whose rate is over ten times the other's. It
+is traced at two step sizes, a quarter apart, so the reading is not the step's.
+
+| pawl | + way (coarse/fine) | − way | reading |
+|---|---|---|---|
+| click, band − (declared) | 2.7 / 4.8 | 33.8 / 63.9 | locks − |
+| click, band + | 28.9 / 87.6 | 2.6 / 2.9 | locks + |
+| detent (−28, −16), band − (declared) | 49.8 / 188.7 | 1.6 / 2.3 | locks + |
+| detent (−24, −16), band − (ranked first) | 11.0 / 14.0 | 2.3 / 2.6 | a slope, not a lock |
+
+The search's four higher-ranked pivots each read a steep slope (rates 11–15)
+and no wall. They would ratchet under load rather than hold.
+
+**The senses:**
+
+- **Going.** The cord leaves the top step toward the barrel, so its pull turns
+  the fusee − (LDraw's rotZ sense about the axles).
+- **The band.** Its stretch is posed: the great wheel stands 60° behind the
+  ratchet in the going sense. So the band turns the great wheel − and pulls the
+  ratchet +.
+- **Winding** (the fusee turned +): the click is free that way. The band pulls
+  the ratchet +, the way the detent locks, so the ratchet is held. The great
+  wheel is driven −, FORWARD.
+- **Going** (the fusee turned −): the click locks, so the ratchet turns with the
+  fusee. The detent frees −, and the band drives the great wheel.
+
+### The frame
+
+- Eight columns, on a 32×32 baseplate (the build spans 5×16 studs). The F, M,
+  G, barrel and detent axles are 9L, 4L, 6L, 6L and 4L.
+- Parts that turn apart stand one LDU (0.4 mm) off each other. The click wheel
+  stands off the fusee's back column, because the click's 8T rides round flush
+  with its faces. The great wheel's back column stands off for the same reason
+  (its peg).
+- **The click's arm lies behind joiner A, not over it.** The arm's edge reaches
+  3.8 mm from the axis and the joiner is 4 mm round. The first build laid the
+  arm over the joiner, and CLEAR measured them 0.011 mm apart. So M is a 4L,
+  and its 7.8 mm beyond the joiners is that space.
+
+### Instruments
+
+`tools/probe-technic-fusee.mjs` (new, acceptance, pure Node):
+
+- **SPRING**: POSED and to be measured; the stand-in's three numbers against
+  `main.js`' text; each row against the law.
+- **PARTS**: every `FUSEE_DIM_MM` figure re-read off the parts. That covers the
+  seats, rims, capacities, floors and widths; the strings' lengths; the cord
+  and the end stud; the hook plate's studs; the 40T's holes; the joiner; and the
+  arm.
+- **STEPS**: the declared barrel and steps against the solve; the ideal r(θ);
+  the spread against the bare spring and the steel gate.
+- **CORD**: each piece's length; the string choice and the dead wrap; the path
+  equal to the string; the fleet angle; each wrap on its seat and clear.
+- **MAINTAINING**: the going sense, both pawls' locks, the band's moment, and
+  the winding and going conclusions. The declared click sense and detent pivot
+  are re-solved.
+- **BUILD**: the columns contiguous and at their axles' heights; every bore on
+  its axle; each pawl's 8T touching its wheel and not in it; each hook on a
+  stud. CLEAR: every placed part over an LDU from every part it does not bear
+  on, at three turns of the ratchet (nearest 0.40 mm). The `.ldr` round trip:
+  128 parts.
+
+Its controls, 11/11, each seen to fail:
+
+- a seat perturbed by 0.01 mm;
+- a declared step set other than the solver's;
+- a band three times as long;
+- a different table moving the answer;
+- a wrap sunk an LDU into its groove;
+- a wrap slid onto its neighbour's plane;
+- the click on its other side;
+- the detent's band reversed;
+- the great wheel ahead of the ratchet;
+- the click's 8T slid onto the column it clears;
+- the detent's 8T turned into the ratchet.
+
+`tools/ldraw-vendor.mjs` now also reads `FUSEE_PULLEYS`, `FUSEE_STRINGS` and
+`FUSEE_PARTS`. The pack grew to 50 parts, 338 files. The other technic probes
+are unchanged and pass: ldraw 22/22, frame 10 rows, build 10 builds, keyless,
+motion, phase 20/20, and `probe-219-catalogue`. `technic.html`'s LEGO view
+draws the module as its sixth cell, at full wind, in both generations (every
+part is classic), and its panel says the spring law is posed.
+
+### What it does not claim
+
+- **A force, a torque in N·mm, a run time.** The spring's law is posed. The
+  bands (the barrel's, the maintaining band's stretch, the two pawls') are
+  posed. A lock is a direction, not a holding force.
+- **The crossings and the legs.** They bear on rims and groove walls, and the
+  model places them without measuring the contact.
+- **A motion.** The build is drawn at full wind. The run-down pose, and the cord
+  paying across, are the solve's arithmetic, not a placed sequence.
+- **The chain fusee.** A 3711 chain on a stack of sprockets is UNPROVEN: whether
+  a link steps one gear-width sideways onto the next sprocket under load is a
+  physical experiment, and the note asks for it to be run first. The cord is
+  the fallback and loses nothing the demonstrator needs.
+- **A going train.** The great wheel turns nothing here. Its sense is the
+  reading.
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and
