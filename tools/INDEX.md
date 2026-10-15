@@ -4,7 +4,7 @@
 
 # The instruments
 
-311 scripts. **199 are ACCEPTANCE tests** — they decide and exit non-zero.
+312 scripts. **200 are ACCEPTANCE tests** — they decide and exit non-zero.
 **112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -313,6 +313,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-technic-frame.mjs` |  | acceptance | DOES THE TECHNIC FORK'S FRAME HOLD ITS GEARS WITHOUT ANY PART FOULING ANOTHER? Acceptance, pure Node, no browser; exits non-zero on any failed row. |
 | `probe-technic-keyless.mjs` |  | acceptance | DOES THE LEGO KEYLESS WORKS CHANGE OVER, AND DOES EACH BRANCH CARRY THE STEEL RATIO? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landings D, E and F. |
 | `probe-technic-ldraw.mjs` |  | acceptance | DO THE TECHNIC FRAME'S DIMENSIONS MATCH THE REAL PARTS? Acceptance, pure Node, no browser, no network; exits non-zero on any mismatch. |
+| `probe-technic-motion.mjs` |  | acceptance | DOES THE LEGO MOTION WORKS TURN THE HOUR WHEEL A TWELFTH OF THE MINUTE HAND, THE SAME WAY, ON THE MINUTE HAND'S OWN AXLE, FROM THE CROWN? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing G. |
 | `probe-technic-phase.mjs` |  | acceptance | DO technic.html's GEARS ACTUALLY MESH — every pair, parallel and right-angle, at every angle the page turns them through? Acceptance, browser; exits non-zero on any failed row. |
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |

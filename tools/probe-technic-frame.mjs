@@ -35,70 +35,11 @@
 //
 //   node tools/probe-technic-frame.mjs
 import { CATALOGUES } from '../src/layout.js';
-import { frameFork, frameKeyless, LEGO_DIM_MM as D } from '../src/technic-frame.js';
+import { frameFork, frameKeyless, frameFindings, LEGO_DIM_MM as D } from '../src/technic-frame.js';
 
-const EPS = 1e-9;
-const overlap1 = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0) > EPS;
-const boxesOverlap = (a, b) => overlap1(a.x0, a.x1, b.x0, b.x1) && overlap1(a.y0, a.y1, b.y0, b.y1) && overlap1(a.z0, a.z1, b.z0, b.z1);
-// distance in the xz plane from a point to a box's rectangle
-const distToRect = (px, pz, b) => Math.hypot(Math.max(b.x0 - px, 0, px - b.x1), Math.max(b.z0 - pz, 0, pz - b.z1));
-
-function judge(f) {
-  const bad = [];
-  // holes and axles
-  for (const c of f.columns) {
-    const hole = c.boxes.find((b) => b.hole);
-    if (!hole) continue;                                   // a rack support or wall (landing F): no axle to hold
-    const z = hole.z0 + D.holeZ, want = c.holeZ ?? f.axleZ;   // the keyless selector's columns hold their own axle
-    if (Math.abs(z - want) > 1e-6) bad.push(`shaft ${c.shaft} ${c.end}: hole at ${z.toFixed(3)}, axle at ${want}`);
-  }
-  for (const a of f.axles) if (!a.part) bad.push(`shaft ${a.shaft}: no axle of ${a.studs} studs or more`);
-  // part against part
-  const all = f.columns.flatMap((c) => c.boxes.map((b) => ({ ...b, who: `shaft ${c.shaft} ${c.end}` })));
-  for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++)
-    if (all[i].who !== all[j].who && boxesOverlap(all[i], all[j])) bad.push(`overlap: ${all[i].who} ${all[i].part} ⇄ ${all[j].who} ${all[j].part}`);
-  // gear sweeps — and every non-gear body a shaft carries (the keyless stem's
-  // joiner, ring over its whole stroke, and crown), swept the same way
-  const bodies = (s) => [...s.gears, ...(s.extras ?? [])];
-  const label = (g) => (g.teeth ? `${g.teeth}T` : g.role);
-  for (const [si, s] of f.shafts.entries()) for (const g of bodies(s)) {
-    const tip = g.tip, y0 = g.y - g.width / 2, y1 = g.y + g.width / 2;
-    if (f.axleZ - tip < D.studH - EPS) bad.push(`shaft ${si} ${label(g)}: tips ${(f.axleZ - tip).toFixed(3)} over the plate, studs ${D.studH}`);
-    for (const a of f.axles) {
-      if (a.shaft === si || !overlap1(y0, y1, a.y0, a.y1)) continue;
-      const d = Math.abs(a.x - s.x) - D.axleR;
-      if (d < tip - EPS) bad.push(`shaft ${si} ${label(g)} sweeps shaft ${a.shaft}'s axle (${d.toFixed(3)} < tip ${tip})`);
-    }
-    for (const b of all) {
-      if (!overlap1(y0, y1, b.y0, b.y1)) continue;
-      const d = distToRect(s.x, f.axleZ, b);
-      if (d < tip - EPS) bad.push(`shaft ${si} ${label(g)} sweeps ${b.who} ${b.part} (${d.toFixed(3)} < tip ${tip})`);
-    }
-  }
-  // gear against gear: two gears on different shafts whose slabs share a layer
-  // may only overlap in plan if they are the meshing pair (tip circles
-  // interpenetrate by design there, a module each side)
-  // The meshing pairs are the frame's own list (`f.meshes`, [shaft, gear]
-  // per member), so a keyless stem meshing two branches is judged like a row.
-  const meshKey = (sa, ga, sb, gb) => `${sa}.${ga}|${sb}.${gb}`;
-  const meshing = new Set(f.meshes.flatMap((m) => [meshKey(...m.a, ...m.b), meshKey(...m.b, ...m.a)]));
-  const gears = f.shafts.flatMap((s, si) => bodies(s).map((g, gi) => ({ ...g, si, gi, x: s.x })));
-  for (let i = 0; i < gears.length; i++) for (let j = i + 1; j < gears.length; j++) {
-    const a = gears[i], b = gears[j];
-    if (a.si === b.si || !overlap1(a.y - a.width / 2, a.y + a.width / 2, b.y - b.width / 2, b.y + b.width / 2)) continue;
-    if (a.teeth && b.teeth && meshing.has(meshKey(a.si, a.gi, b.si, b.gi)) && a.y === b.y) continue;
-    const d = Math.abs(a.x - b.x), reach = a.tip + b.tip;
-    if (d < reach - EPS) bad.push(`shaft ${a.si} ${label(a)} sweeps shaft ${b.si} ${label(b)} (${d.toFixed(3)} < ${reach})`);
-  }
-  // meshes at their centre distance
-  for (const m of f.meshes) {
-    const a = f.shafts[m.a[0]], b = f.shafts[m.b[0]];
-    const ga = a.gears[m.a[1]], gb = b.gears[m.b[1]];
-    const want = (ga.teeth + gb.teeth) / 2 * CATALOGUES[f.gen].module_mm;
-    if (Math.abs(Math.abs(b.x - a.x) - want) > 1e-9 || ga.y !== gb.y) bad.push(`mesh ${ga.teeth}:${gb.teeth} not at ${want} mm in one layer`);
-  }
-  return bad;
-}
+// The judge is the module's own (frameFindings, moved there in landing G so
+// the motion works' solver reads the same law this probe holds).
+const judge = frameFindings;
 
 // controls: copies of a framed row with one deliberate defect
 const clone = (f) => JSON.parse(JSON.stringify(f));
