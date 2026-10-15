@@ -170,15 +170,20 @@ through the same function; do not write a fourth loop over `LOCALES`.
 `tools/probe-274-picker.mjs` plants an incomplete row in flight and holds each
 clause against the live `<select>`. There is no picker mark.
 
-**This is a guideline for documenting gaps, not a ratchet.** The point of
-`surfaces` is that a gap is declared rather than owed silently. Today every
-shipped explainer is 19 to 45 blocks short of the English (a later English
-landing outran the tables; the CJK and Korean tables also leave 15 hidden
-`.gloss-variants` rows English by design), and that is allowed and visible in
-the check's report. Pinning those counts so they can only fall (an arrival
-inventory, the `UNDECLARED_CLEARANCE_DEBT` pattern) is a sound later step, and
-if it is built it should apply to the essential surfaces first. It is not
-built.
+**This is a guideline for documenting gaps, with a ratchet on the essential
+surfaces only.** The point of `surfaces` is that a gap is declared rather than
+owed silently. Today every shipped explainer is 19 to 45 blocks short of the
+English (a later English landing outran the tables; the CJK and Korean tables
+also leave 15 hidden `.gloss-variants` rows English by design), and that is
+allowed and visible in the check's report. It is not pinned: the owner's ruling
+is that a ratchet belongs on the chrome and the primer, which were measured
+complete everywhere (all primers 146/146, all chrome tables the same 535 keys),
+so there is no debt to inventory. What holds them at zero: a declared primer must
+be complete (`explain-i18n --check`), and `tools/probe-chrome-parity.mjs` fails
+any locale whose chrome table lacks a key another table has, or holds a blank
+value. Because the chrome is always carried, **a locale's chrome table must be
+complete the moment its row exists**: there is no empty-table wiring stage for
+the chrome, so a new locale lands its wiring and its chrome together.
 
 ### B. Translation (fills the three tables)
 
@@ -200,6 +205,7 @@ built.
 ```bash
 node tools/probe-chrome-coverage.mjs        # every locale: MISSING / NOT APPLIED strings
 node tools/explain-i18n.mjs --check         # all pages: keys, markup, <code>, numbers, honesty vocabulary
+node tools/probe-chrome-parity.mjs       # every locale's chrome table carries every key any table carries (pure Node, in CI)
 node tools/probe-chrome-honesty.mjs       # the panel's modelled/simulated strings keep the two words apart (pure Node)
 node tools/glossary-links.mjs               # Vocabulary links don't change the page's text
 node tools/explain-quotes.mjs               # explainer constants still match src/*.js
