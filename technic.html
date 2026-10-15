@@ -28,6 +28,13 @@
   grooved pulleys, its barrel and hooks, and the maintaining power. Its spring
   law is POSED (a stand-in until a LEGO spring is measured), and the panel says
   so. tools/probe-technic-fusee.mjs holds it.
+
+  BUILT §219 tier three (b) landing I — THE ALARM MODULE (src/technic-alarm.js),
+  the LEGO view's seventh cell, drawn armed, ringing or off: a column wheel a
+  pusher indexes, a release disc geared 12:1 off an hour axle, a striking train
+  ending in a FLY (air drag, not the steel anchor's oscillator), a hammer on a
+  cam striking a brick. Its band, cadence and strikes per wind are POSED, and
+  the panel says so. tools/probe-technic-alarm.mjs holds it.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -133,6 +140,24 @@ canvas{display:block;touch-action:none}
   detent holds the ratchet, and a band from it drives the great wheel while
   the fusee is wound back. Which way each pawl locks is read off the teeth. The
   bands' forces are posed, and the build is drawn at full wind.</p>
+  <p>The <b>alarm</b> is the movement's alarm as LEGO. Its <b>column wheel</b>
+  is two three-blade rotors, one turned over, so six columns stand 60° apart; a
+  finger presses the end of a driver idling on its axle, whose pawl pushes a
+  12-tooth wheel one tooth, and a banded detent holds each of twelve rests. A
+  press short of the detent's crest falls back; a full press steps the wheel
+  half a column pitch, so <b>on</b> and <b>off</b> alternate. The
+  <b>release</b> is a ring of three pins geared 12:1 off an hour axle, the
+  fourth place empty: no stock disc has a notch, so the notch is built. The
+  release lever rides the pins; where the empty place comes under it, it drops,
+  and its far end lets go of the fly. A pin under the lever reads the column
+  wheel: on a column the lever is held, and the alarm stays silent. The
+  striking train steps the barrel up 4:1 to the fly's arbor, where four pins
+  lift the hammer, which falls onto a brick: no LEGO part rings. The governor is
+  a <b>fly</b>, two beams that the air brakes. It is a different mechanism from
+  the movement's anchor, and it has no period. So the cadence and the strikes
+  per wind are posed until a band is measured; the bands are drawn posed, and
+  the build is shown armed, ringing or off.</p>
+  <div class="gen" id="amodes"></div>
   <div id="log"></div>
 </div>
 <script type="module">
@@ -142,6 +167,7 @@ import { parseLibrary, walk } from './src/ldraw.js';
 import { frameFork, frameKeyless } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './src/technic-fusee.js';
+import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn } from './src/technic-alarm.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -156,7 +182,9 @@ const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, tech
   pinion: 0xd9c08c, rack: 0xe0b630, tile: 0xe8e8e8, detent: 0xa0a5a9, arm: 0x2f5d9b, follower: 0xb03a2e,
   // landing H: the fusee module
   pulley: 0xa0a5a9, barrel: 0x6c6e68, hook: 0xe8e8e8, cord: 0x1c1d20, cordEnd: 0x1c1d20, click: 0xd9c08c, ratchet: 0x2f7d6e,
-  pawl: 0xb03a2e, great: 0xe0b630, knob: 0xe8e8e8 };
+  pawl: 0xb03a2e, great: 0xe0b630, knob: 0xe8e8e8,
+  // landing I: the alarm module
+  rotor: 0xb03a2e, wheel: 0xa0a5a9, lever: 0xe0b630, pin: 0x1c1d20, beam: 0x2f7d6e, gear: 0xa0a5a9, driver: 0x2f5d9b };
 // mm between rows on the table: the keyless works' 32×32 baseplate (256 mm,
 // landing F's pull outgrew the 16×16) and a stud's gap either side
 const LEGO_CELL = 272;
@@ -210,6 +238,20 @@ let legoShafts = [];
 // gear's where they are interleaved, so a shift with the stem turning is not
 // a thing this page claims.
 let keylessMode = 'wind', keylessAngle = 0, keylessBuild = null, fuseeBuildNow = null;
+// THE ALARM'S STATE: armed, ringing or off. Each is a pose the module's laws
+// solve (alarmStates); switching rebuilds the cell at that pose.
+let alarmMode = 'armed', alarmFrame = null, alarmStatesNow = null, alarmBuildNow = null, alarmBand = null;
+function setAlarmMode(mode) {
+  alarmMode = mode;
+  for (const b of document.querySelectorAll('#amodes button')) b.dataset.state = b.dataset.mode === mode ? 'on' : 'off';
+  if (!alarmBand || !alarmStatesNow) return;
+  legoShafts = legoShafts.filter((s) => !s.alarm);
+  for (const o of [...alarmBand.children]) if (!o.isSprite) alarmBand.remove(o);
+  alarmBuildNow = alarmBuild(alarmFrame, lib, alarmStatesNow[mode]);
+  for (const sh of buildLego(alarmBuildNow, alarmBand)) legoShafts.push({ ...sh, alarm: true });
+  const a = document.getElementById('aldr');
+  if (a) { URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(alarmBuildNow)], { type: 'text/plain' })); a.download = `alarm-${mode}.ldr`; }
+}
 function setKeylessMode(mode) {
   keylessMode = mode; keylessAngle = 0;
   for (const s of legoShafts) for (const sl of s.sliders) {
@@ -362,6 +404,32 @@ async function build(gen) {
     } else div.innerHTML = `<b>${k + 1}. fusee</b><br><span class="bad">not framed in LEGO: ${ff?.reason ?? 'no step set fits the table'}</span>`;
     rowsEl.appendChild(div);
   }
+  // §219 tier three (b) landing I — the alarm module, the LEGO view's seventh
+  // cell: the same build in both generations (every part is classic). Its
+  // poses are the module's laws at each state; its cadence and strikes per
+  // wind are POSED (a fly's drag and a band's torque can only be measured), so
+  // the panel says so beside the counted strikes.
+  {
+    const k = TECHNIC_FORK.rows.length + 2;
+    alarmBand = new THREE.Group(); alarmBand.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(alarmBand);
+    const div = document.createElement('div'); div.className = 'row';
+    alarmFrame = frameAlarm();
+    if (alarmFrame.framed) {
+      alarmStatesNow = alarmStates(lib, alarmFrame);
+      const lbl = labelSprite(`${k + 1}. alarm`); lbl.position.set(-30, 60, 0); alarmBand.add(lbl);
+      const T = TECHNIC_ALARM_STRIKE, n = strikesPerBarrelTurn(lib, alarmFrame);
+      const S = alarmStatesNow;
+      div.innerHTML = `<b>${k + 1}. alarm — LEGO build</b>`
+        + `column wheel: six columns, twelve rests; a press of <code>${(S.stroke * 180 / Math.PI).toFixed(1)}°</code> steps it one rest (the detent's crest at <code>${(S.crest * 180 / Math.PI).toFixed(1)}°</code>), on and off in turn`
+        + `<br>release: the lever drops <code>${((S.st.psiNotch - S.st.rimDown) * 180 / Math.PI).toFixed(1)}°</code> below the rim where the ring's empty place comes round, 12:1 off the hour axle`
+        + `<br>strike: <code>${n}</code> strikes per barrel turn (four pins × 4:1); ${T.standIn.barrelTurns} turns of wind give <code>${n * T.standIn.barrelTurns}</code>, `
+        + `<span class="bad">a POSED wind and cadence</span> <span style="color:var(--dim)">(${T.source}; the stand-in is the steel's ${T.standIn.barrelTurns} turns and ${T.standIn.strikeGap} s gap)</span>`
+        + `<br><span style="color:var(--dim)">a fly, not an anchor: air drag, no period. The hammer strikes a brick; no LEGO part rings. Base ${alarmFrame.base.studsX}×${alarmFrame.base.studsY} studs.</span>`
+        + `<br><a id="aldr" href="#" style="color:#9fb6d9">download .ldr (this state)</a>`;
+      setAlarmMode(alarmMode);
+    } else div.innerHTML = `<b>${k + 1}. alarm</b><br><span class="bad">not framed in LEGO: ${alarmFrame.reason}</span>`;
+    rowsEl.appendChild(div);
+  }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   currentGen = gen;
   const box = new THREE.Box3().setFromObject(world), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
@@ -401,6 +469,11 @@ for (const m of ['wind', 'set', 'neutral']) {
   const b = document.createElement('button'); b.textContent = m; b.dataset.mode = m;
   b.addEventListener('click', () => setKeylessMode(m)); kmodesEl.appendChild(b);
 }
+const amodesEl = document.getElementById('amodes');
+for (const m of ['armed', 'ringing', 'off']) {
+  const b = document.createElement('button'); b.textContent = m; b.dataset.mode = m;
+  b.addEventListener('click', () => setAlarmMode(m)); amodesEl.appendChild(b);
+}
 const speedEl = document.getElementById('speed');
 const params = new URLSearchParams(location.search);
 await build(gens.includes(params.get('gen')) ? params.get('gen') : 'technic_2026');
@@ -422,7 +495,7 @@ renderer.setAnimationLoop((now) => {
   }
   renderer.render(scene, cam);
 });
-window.__technic = { build, setKeylessMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, cam, controls, scene, renderer };
+window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get alarm() { return alarmBuildNow; }, cam, controls, scene, renderer };
 </script>
 </body>
 </html>

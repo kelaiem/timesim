@@ -459,8 +459,10 @@ export function penetration(A, ca, aa, B, cb, ab) {
 // `arm` mm along it at angle ψ and keyed to it (its own X along the arm: an
 // 8T's quarter turn is two teeth, so the four ways a cross axle keys it are
 // one); the band turns ψ in `sense` until the 8T first touches.
-export function pawlModel(lib, { wheel, pivot, arm, sense }) {
-  const W = starProfile(lib, wheel), P = starProfile(lib, FUSEE_PARTS.pawl);
+// (`part` is the follower on the arm: the 8T here; landing I's detent rides a
+// round half bush on the same law.)
+export function pawlModel(lib, { wheel, pivot, arm, sense, part = FUSEE_PARTS.pawl }) {
+  const W = starProfile(lib, wheel), P = starProfile(lib, part);
   const at = (psi) => [pivot[0] + arm * Math.cos(psi), pivot[1] + arm * Math.sin(psi)];
   const depth = (psi, theta) => penetration(W, [0, 0], theta, P, at(psi), psi);
   const seat = (theta) => {
