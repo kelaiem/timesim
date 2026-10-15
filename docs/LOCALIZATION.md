@@ -127,8 +127,13 @@ three surfaces. A `LOCALES` row may carry `surfaces: ['chrome']` or
 shipped row says. The chrome is always carried. The gates judge the declaration
 both ways, with the judging in `tools/locale-surfaces.mjs`:
 
-- a **declared** page must be complete: a new untranslated block fails, and so
-  does an empty table;
+- a declared **primer** (the HUD's front door and the project's honesty
+  framing) must be complete, and an empty table fails. The chrome is held
+  complete by `probe-chrome-coverage`. These are the essential surfaces;
+- a declared **explainer** may be partial. Its untranslated blocks are an
+  allowed, stated gap: the check counts them in its report (`declared, partial
+  — N of M block(s) untranslated`) and does not fail on them. An empty table
+  still fails, because that is not a translation;
 - an **undeclared** page's table must be **empty**. A half-finished page table
   under a page the row does not claim is stale and fails;
 - an undeclared page renders English under a one-line notice in the locale's
@@ -149,14 +154,15 @@ row declares. Whether a thin locale should reach the picker at all before its
 primer is the owner's call per locale (the primer carries the project's honesty
 framing); the mechanism does not decide it.
 
-**The shipped explainers carry arrival debt.** Every shipped locale's explainer
-was found already short of the English (30 blocks in most, 19 in `fil`/`lv`/
-`hu`, 45 in `ko`/`ja`/`zh`/`zh-Hant`, whose 15 hidden `.gloss-variants` rows
-stay English by design), so "declared means complete" would have failed all of
-them on arrival. `ARRIVAL_UNTRANSLATED` pins the count per locale. It is a
-ratchet: a locale over its number has a new untranslated block and fails, and a
-locale under it has paid debt down and fails until the number is lowered. A new
-locale has no row and owes zero.
+**This is a guideline for documenting gaps, not a ratchet.** The point of
+`surfaces` is that a gap is declared rather than owed silently. Today every
+shipped explainer is 19 to 45 blocks short of the English (a later English
+landing outran the tables; the CJK and Korean tables also leave 15 hidden
+`.gloss-variants` rows English by design), and that is allowed and visible in
+the check's report. Pinning those counts so they can only fall (an arrival
+inventory, the `UNDECLARED_CLEARANCE_DEBT` pattern) is a sound later step, and
+if it is built it should apply to the essential surfaces first. It is not
+built.
 
 ### B. Translation (fills the three tables)
 

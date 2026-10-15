@@ -35021,32 +35021,32 @@ explainers were already short of the English.
   drops the empty sections, and the sheet states which surfaces the locale
   carries.
 
-**The decision the entry did not foresee: an arrival inventory.** The entry's
-acceptance asked for "a declared surface must be 100%" and "every gate reads
-identically to before". Those cannot both hold: the explainers carry 30
-untranslated blocks (19 in `fil`/`lv`/`hu`, 45 in `ko`/`ja`/`zh`/`zh-Hant`,
-whose 15 hidden `.gloss-variants` rows stay English by design, §223). Failing
-twenty-two locales on arrival, or waiving each, was the tolerance this gate
-refuses to widen. `ARRIVAL_UNTRANSLATED` pins the count per (page, locale) as a
-closed ratchet: over it fails (a new block), under it fails as stale until the
-number is lowered, and a zeroed row is malformed (delete it). It counts blocks,
-not keys, so a block swapped for another keeps the count; the run's untranslated
-list still prints. The debt is the 22 locales' outstanding re-translation of the
-lubrication entry, the fusee spring plate and two honesty ledgers, and is not
-paid here.
+**The decision the entry did not foresee, and the owner's call on it.** The
+entry's acceptance asked for "a declared surface must be 100%" and "every gate
+reads identically to before". Those cannot both hold: all 22 shipped
+explainers are 19 to 45 blocks short of the English (30 in most, 19 in
+`fil`/`lv`/`hu`, 45 in `ko`/`ja`/`zh`/`zh-Hant`, whose 15 hidden
+`.gloss-variants` rows stay English by design, §223). A first build pinned
+those counts per locale as a closed ratchet. The owner's ruling replaced it:
+this is a loose guideline for documenting allowed gaps, "no wrong answer", and
+a ratchet makes sense eventually but only for the essential surfaces, the
+chrome and the primer. So the explainer is partial-OK: its untranslated blocks
+are counted in the report (`declared, partial — 30 of 850 block(s)
+untranslated (allowed, reported)`) and never fail, while a declared primer must
+be complete and an empty table of either page fails. The shipped primers are
+all 146/146, so the essential rule costs nothing on arrival. The ratchet is
+unbuilt, not refused.
 
 **Controls.** `tools/probe-274-surfaces.mjs` (pure Node; wired into
 `explain-i18n.yml`): a planted `['chrome']` locale with one explainer block
-FAILS as stale and passes with the block removed; a declared primer at 99% and
-an empty declared table fail; declaring the primer does not declare the
-explainer; the ratchet fails over, under, and passes on; the inventory rejects
-a locale `LOCALES` lacks and a zeroed row; every shipped row declares all
-three; the boot assert fires on a bad row and is silent on the shipped file and
-on `['chrome']`. **18/18.** Page check: the full `--check` output equals the
-base's line for line except for the new `coverage` line per (page, locale)
-(`explainer declared, 30/19/45 on the arrival inventory`; `primer declared,
-complete`), the two `zh`/`zh-Hant` blocks swapping order because the loop now
-follows `LOCALES`.
+FAILS as stale and passes with the block removed, for the primer too; a
+declared primer at 99% and an empty declared table fail; a declared explainer
+at 90% passes and names the 10 untranslated blocks; declaring the primer does
+not declare the explainer; every shipped row declares all three; the boot
+assert fires on a bad row and is silent on the shipped file and on
+`['chrome']`. **13/13.** Page check on the base for comparison: identical line
+for line except for the new `coverage` line per (page, locale), and the
+`zh`/`zh-Hant` blocks swapping order because the loop now follows `LOCALES`.
 
 **Not done, and not hidden.**
 - The picker suffix (entry item 3) is not built: the notice is visible on the

@@ -52,7 +52,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { judgeSurface, judgeInventory, SURFACE_OF_PAGE } from './locale-surfaces.mjs';
+import { judgeSurface, SURFACE_OF_PAGE } from './locale-surfaces.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MODE = process.argv.includes('--check') ? 'check' : 'extract';
@@ -519,8 +519,6 @@ if (MODE === 'extract') {
     // needs no edit and cannot fall behind it.
     // §274 — and every LOCALES row, so a locale with NO loader on this page (a
     // thin locale that never declared it) is judged too rather than invisible.
-    const inv = judgeInventory(roster.map((r) => r.code));
-    for (const x of inv) { console.log(`  ${x}  <-- FAIL`); failed++; }
     const langs = [...new Set([...roster.map((r) => r.code), ...Object.keys(tables || {})])];
     for (const lang of langs) {
       const table = tables?.[lang] || {};

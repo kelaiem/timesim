@@ -47,13 +47,12 @@
 # in under a second, so it goes first.
 #
 # Coverage is gated only as far as a locale CLAIMS (§274): a LOCALES row's
-# `surfaces` declares which pages it carries, a declared page may not grow a new
-# untranslated block, and an undeclared page's table must be empty. Everything
-# below a claim is still reported — a hard 100% on every locale would push a
-# future contributor toward machine filler to make the light green, which is
-# the opposite of the point, and the shipped locales' arrival debt is pinned in
-# tools/locale-surfaces.mjs rather than waived.
-#
+# `surfaces` declares which pages it carries. A declared primer must be
+# complete, an undeclared page's table must be empty, and a declared explainer
+# may be partial — its untranslated blocks are an allowed gap, counted in the
+# report rather than failed, because a hard 100% on the costly surface would
+# push a future contributor toward machine filler to make the light green.
+
 # THE INDEX ARM IS SPLIT BY EVENT, and only the index is:
 #
 #   pull_request -> CHECK. Fail the PR; the author regenerates and pushes.
