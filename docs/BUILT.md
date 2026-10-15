@@ -35060,6 +35060,34 @@ listed, **12/12**, with the unmodified file as the control (no toggle, 23 option
 The panel's picker calls the same function; its full boot was checked once by
 hand (the toggle present, no boot error), not gated.
 
+**The chrome's honesty audit (the entry's open clause).** Nothing read the
+panel's own *modelled*/*simulated* strings: the page gate (§241) holds the two
+static pages, and `probe-chrome-coverage` asks only whether a string is
+translated, which a crossed translation is. Measured over the 533 chrome keys:
+**3 strings assert the distinction** (the inspection route's header, its
+pallet-fork caption, which says "modelled, not simulated", and its closing
+line), and 9 route strings carry either that pair or the sister pair *driven* /
+*posed* (the going train, the keyless clutch, the hammer's posed envelope, the
+feeler, the escapement). Across 22 locales that is **66 rows with 0
+crossed, 0 dropped, 0 missing**, and the 9 route strings carrying either pair
+agree with their English on every digit in all 22 tables. Two things the audit
+found about the audit: (1) the page gate's English matcher, `modell?(?:ed|s)`,
+also reads the tagline "every part built from geometry, **no models**", where
+the word is 3D asset files, and reports it ABSENT in all 22 locales, none of
+which is wrong (each renders asset models with its asset-model word): §241's
+narrow-matcher rule met from the other side. The new probe uses `modelled`
+alone. (2) Every chrome string that says *simulated* also says *modelled* (the
+contrast sentence), so there is no simulated-only row to plant a swap on; the
+control swaps the contrasting word and the probe reads it ABSENT.
+`tools/probe-chrome-honesty.mjs` (pure Node, wired into `explain-i18n.yml`)
+keeps it: the stems are READ from `explain-i18n.mjs`'s `HONESTY` table so the two
+readers cannot drift, a locale with no row there fails, and four planted defects
+(stem swapped, contrasting word swapped, word dropped, entry deleted) must be
+caught before any locale is judged. What no gate can read is whether the sentence
+around the stem is natural, or whether *driven, not posed* keeps the
+force-path meaning: those strings join the review sheet's "Modelled vs
+simulated" section as **Panel** rows (22 locales, +10 rows each: the 9 route strings and the tagline).
+
 **Controls.** `tools/probe-274-surfaces.mjs` (pure Node; wired into
 `explain-i18n.yml`): a planted `['chrome']` locale with one explainer block
 FAILS as stale and passes with the block removed, for the primer too; a
@@ -35081,9 +35109,7 @@ for line except for the new `coverage` line per (page, locale), and the
 - The battery was not run locally. `src/i18n.js` is on `main.js`'s module graph
   so CI will run it; the change builds no geometry, so the fingerprint must be
   identical to `origin/main`.
-- The chrome's own *modelled*/*simulated* strings were not audited (the entry
-  asks for it); `probe-chrome-coverage` is unchanged and still holds the chrome
-  to 100% for every locale, thin or not.
+- The chrome's own *modelled*/*simulated* strings: AUDITED, see below.
 
 ## §275 — Sound is always off at load; the boot screen's button is the opt-in
 

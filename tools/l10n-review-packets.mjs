@@ -138,7 +138,12 @@ for (const L of roster) {
     return { ...row('gloss', g.term + '\u0001' + g.def, (t || '') + '\u0001' + (d || '')), kind: 'gloss', en: clean(g.term), t: clean(t || ''), enDef: clean(g.def), tDef: clean(d || '') };
   });
   const isHon = (k) => EN_M.test(plain(k)) || EN_S.test(plain(k));
-  const honesty = [...ex.filter(([k]) => isHon(k)).map(([k, v]) => row('block', k, v, { kind: 'block', page: 'explainer' })),
+  // §274's audit — the chrome's own honesty strings (the inspection route's captions:
+  // *modelled*/*simulated*, and the *driven*/*posed* pair the stems cannot gate) are read
+  // by a reviewer too; probe-chrome-honesty.mjs holds only that the two words stay apart.
+  const chromeHon = Object.keys(ch).filter((k) => isHon(k) || /\b(?:driven|posed)\b/.test(k));
+  const honesty = [...chromeHon.map((k) => row('block', k, ch[k], { kind: 'block', page: 'panel' })),
+    ...ex.filter(([k]) => isHon(k)).map(([k, v]) => row('block', k, v, { kind: 'block', page: 'explainer' })),
     ...pr.filter(([k]) => isHon(k)).map(([k, v]) => row('block', k, v, { kind: 'block', page: 'primer' }))];
   const honIds = new Set(honesty.map((r) => r.id));
   const sections = [

@@ -318,7 +318,7 @@ a.primary:not([hidden]) { display: inline-block; }
         ex.appendChild(d);
       }
     } else {
-      const tag = r.kind === 'gloss' ? 'Glossary entry' : r.kind === 'term' ? 'Label' : r.page === 'explainer' ? 'Explainer' : 'Primer';
+      const tag = r.kind === 'gloss' ? 'Glossary entry' : r.kind === 'term' ? 'Label' : r.page === 'explainer' ? 'Explainer' : r.page === 'panel' ? 'Panel' : 'Primer';
       el.innerHTML = `<div class="pair"><div class="cell en"><div class="tag"><span>English</span><span>${tag}</span></div><div class="body"></div></div>
         <div class="cell tr" lang="${lang}" dir="${dir}"><div class="tag" lang="en"><span></span></div><div class="body"></div></div></div>`;
       $('.cell.tr .tag span', el).textContent = S.data.english;

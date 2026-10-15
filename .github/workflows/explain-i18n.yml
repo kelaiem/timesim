@@ -159,6 +159,12 @@ jobs:
       - name: Check the surface declarations' controls
         run: node tools/probe-274-surfaces.mjs
 
+      # §274's audit — the chrome's own modelled/simulated strings keep the two
+      # words apart in every locale (explain-i18n holds the pages; nothing held
+      # the panel). Browser-free.
+      - name: Check the chrome's honesty vocabulary
+        run: node tools/probe-chrome-honesty.mjs
+
       # §274 — the language pickers' incomplete-translations toggle, against the
       # live <select> with an incomplete locale planted in flight.
       - name: Check the pickers' incomplete-translations toggle

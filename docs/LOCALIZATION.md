@@ -200,6 +200,7 @@ built.
 ```bash
 node tools/probe-chrome-coverage.mjs        # every locale: MISSING / NOT APPLIED strings
 node tools/explain-i18n.mjs --check         # all pages: keys, markup, <code>, numbers, honesty vocabulary
+node tools/probe-chrome-honesty.mjs       # the panel's modelled/simulated strings keep the two words apart (pure Node)
 node tools/glossary-links.mjs               # Vocabulary links don't change the page's text
 node tools/explain-quotes.mjs               # explainer constants still match src/*.js
 node tools/l10n-review-packets.mjs --out DIR   # review sheet builds (needs the questions row)
