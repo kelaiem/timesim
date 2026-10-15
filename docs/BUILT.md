@@ -32046,8 +32046,11 @@ gains one entry, "Where the oil goes, and where it must not": the six regimes, t
 joints, the modelled-not-simulated statement (a regime is declared and priced into the
 budget's corners; no film, wear or migration is simulated), and the open items (TODO 252,
 TODO 254, the arrival inventory). The roadmap asked the plate to state TODO 192 as open;
-TODO 192 closed in the meantime, so the entry does not. Its translations follow through
-`tools/explain-i18n.mjs --extract` and render English until then, by design. No battery
+TODO 192 closed in the meantime, so the entry does not. Its 18 new strings are translated in all 22
+locales (keys from `tools/explain-i18n.mjs --extract`; `--check` reports 0 unmatched keys, 0 markup,
+`<code>` and number drift, and the honesty vocabulary 22/22 with 0 crossed). The terms the
+existing tables had no word for (epilame, endstone, hack brake, keyless works, the arrival
+inventory) are the translators' own choices and belong on the native-review sheet. No battery
 row is added: nothing here is a claim the metal can contradict, and the pass is boot-asserted
 (no Mesh proxies, at least ten oil points sited).
 
