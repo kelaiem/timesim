@@ -34984,6 +34984,88 @@ orders past the 7e-8 the battery read them under it by).
   govern) and the striking work's own bands (L3, now that the hammer's plane
   sets the pane) remain priced in the step-1 table, unfiled.
 
+## §274 — Declared locale coverage: a row says which pages it carries, and the gates hold it both ways
+
+*Filed 2026-10-11 from an owner answer to a question about two-tier localization
+("this would be desirable, to allow more coverage of the basic UI"); built to
+make a thin locale cheap to ship: the explainer (about 850 blocks) is the
+costly, lowest-reach surface, and a locale can now leave it out openly.*
+
+**The gap.** `probe-chrome-coverage` held the chrome to 100% the moment a locale
+existed, but `explain-i18n --check` only REPORTED untranslated page blocks. A
+page table could sit at any coverage with every gate green, and nothing said
+which. Measured on arrival, that was not hypothetical: all 22 shipped
+explainers were already short of the English.
+
+**What shipped.**
+- `LOCALES` rows take `surfaces` (`'chrome'`, `'primer'`, `'explainer'`),
+  omitted for all three as `dir` is omitted for ltr. `SURFACES` and
+  `surfacesOf(code)` in `src/i18n.js` are the one reading of it; a boot assert
+  warns on an unknown surface, a duplicate, a row that drops the chrome, or an
+  English row short of all three. No shipped row carries the field.
+- `tools/locale-surfaces.mjs` judges the declaration (pure, no browser).
+  **Declared** pages must be complete: an empty table fails and a new
+  untranslated block fails. **Undeclared** pages must be EMPTY, or the row is
+  stale. `explain-i18n --check` now walks every `LOCALES` row, not only the
+  locales a page has a loader for, so a thin locale with no loader is judged
+  rather than invisible, and it fails an undeclared locale whose chrome table
+  cannot say the notice below. The existing `HONESTY` rule already makes that
+  row mandatory the day a page is declared (no row: UNGATED, fails).
+- `localizeDoc(TABLE, surface)` in `src/page-i18n.js`: a locale that does not
+  declare the page gets it in English under a one-line `.locale-notice` in the
+  locale's own chrome language (`UNTRANSLATED_NOTICE`, a chrome key). It does
+  not apply a table even if one loads. Measured in a browser with `de`'s row
+  rewritten to `['chrome']`: the notice shows on `explain.html` and
+  `primer.html`, and is absent under unmodified `de` and under English.
+- `l10n-review-packets.mjs` reads no table for a page the locale does not carry,
+  drops the empty sections, and the sheet states which surfaces the locale
+  carries.
+
+**The decision the entry did not foresee: an arrival inventory.** The entry's
+acceptance asked for "a declared surface must be 100%" and "every gate reads
+identically to before". Those cannot both hold: the explainers carry 30
+untranslated blocks (19 in `fil`/`lv`/`hu`, 45 in `ko`/`ja`/`zh`/`zh-Hant`,
+whose 15 hidden `.gloss-variants` rows stay English by design, §223). Failing
+twenty-two locales on arrival, or waiving each, was the tolerance this gate
+refuses to widen. `ARRIVAL_UNTRANSLATED` pins the count per (page, locale) as a
+closed ratchet: over it fails (a new block), under it fails as stale until the
+number is lowered, and a zeroed row is malformed (delete it). It counts blocks,
+not keys, so a block swapped for another keeps the count; the run's untranslated
+list still prints. The debt is the 22 locales' outstanding re-translation of the
+lubrication entry, the fusee spring plate and two honesty ledgers, and is not
+paid here.
+
+**Controls.** `tools/probe-274-surfaces.mjs` (pure Node; wired into
+`explain-i18n.yml`): a planted `['chrome']` locale with one explainer block
+FAILS as stale and passes with the block removed; a declared primer at 99% and
+an empty declared table fail; declaring the primer does not declare the
+explainer; the ratchet fails over, under, and passes on; the inventory rejects
+a locale `LOCALES` lacks and a zeroed row; every shipped row declares all
+three; the boot assert fires on a bad row and is silent on the shipped file and
+on `['chrome']`. **18/18.** Page check: the full `--check` output equals the
+base's line for line except for the new `coverage` line per (page, locale)
+(`explainer declared, 30/19/45 on the arrival inventory`; `primer declared,
+complete`), the two `zh`/`zh-Hant` blocks swapping order because the loop now
+follows `LOCALES`.
+
+**Not done, and not hidden.**
+- The picker suffix (entry item 3) is not built: the notice is visible on the
+  page; whether it needs a second mark in the picker is decided by looking at
+  it, and nothing here looked.
+- Whether a thin locale reaches the picker before its primer stays the owner's
+  call per locale (the primer carries the honesty framing); this builds the
+  mechanism either way. §273 (Czech) is the first landing that may use it.
+- The `plate fit` rows for `es`, `ru`, `pt`, `it`, `ar` fail in this
+  container on the BASE as well (7 new overflow/collision rows, identical
+  before and after), a font-metrics difference of the container and not of this
+  change; CI's host is the reference.
+- The battery was not run locally. `src/i18n.js` is on `main.js`'s module graph
+  so CI will run it; the change builds no geometry, so the fingerprint must be
+  identical to `origin/main`.
+- The chrome's own *modelled*/*simulated* strings were not audited (the entry
+  asks for it); `probe-chrome-coverage` is unchanged and still holds the chrome
+  to 100% for every locale, thin or not.
+
 ## §275 — Sound is always off at load; the boot screen's button is the opt-in
 
 > Reported on Safari: sound sometimes would not play however often the toggle

@@ -270,7 +270,8 @@ a.primary:not([hidden]) { display: inline-block; }
       <div class="filters" aria-label="Show"></div></div>
       <p class="blurb" style="margin-top:14px"></p><div class="rows"></div>`;
     $('h2', sh).textContent = `${D.name} · ${D.english}`; $('h2', sh).lang = D.code; $('h2', sh).dir = 'auto';
-    $('.sheet-title .muted', sh).textContent = `Translation data from commit ${S.index.commit}, built ${S.index.built}`;
+    $('.sheet-title .muted', sh).textContent = `Translation data from commit ${S.index.commit}, built ${S.index.built}`
+      + (D.surfaces ? ` · Carries only: ${D.surfaces.join(', ')} (the other pages are not translated, so there is nothing to review there)` : '');
     const tabs = $('.tabs', sh);
     for (const s of D.sections) {
       const t = document.createElement('button'); t.type = 'button'; t.className = 'tab'; t.setAttribute('role', 'tab');

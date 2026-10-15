@@ -46,9 +46,13 @@
 # reconciliation; until now nothing checked it. It needs no browser and runs
 # in under a second, so it goes first.
 #
-# Coverage is reported, not gated: an untranslated block renders English and
-# says so. A hard 100% gate would push a future contributor toward machine
-# filler to make the light green, which is the opposite of the point.
+# Coverage is gated only as far as a locale CLAIMS (§274): a LOCALES row's
+# `surfaces` declares which pages it carries, a declared page may not grow a new
+# untranslated block, and an undeclared page's table must be empty. Everything
+# below a claim is still reported — a hard 100% on every locale would push a
+# future contributor toward machine filler to make the light green, which is
+# the opposite of the point, and the shipped locales' arrival debt is pinned in
+# tools/locale-surfaces.mjs rather than waived.
 #
 # THE INDEX ARM IS SPLIT BY EVENT, and only the index is:
 #
@@ -150,6 +154,11 @@ jobs:
 
       - name: Check the explainer's translations
         run: node tools/explain-i18n.mjs --check
+
+      # §274 — the declared-surface gate's own controls (a planted thin locale
+      # must fail as stale, the same locale clean must pass). Browser-free.
+      - name: Check the surface declarations' controls
+        run: node tools/probe-274-surfaces.mjs
 
       # §236 tier one. AFTER the translation gate on purpose: if a key stopped
       # matching, the block it names fell back to English and this check's

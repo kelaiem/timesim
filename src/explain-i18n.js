@@ -99,4 +99,4 @@ export async function allTables() {
 }
 
 export const t = translator(TABLE);
-export function localizeExplainer() { localizeDoc(TABLE); }
+export function localizeExplainer() { localizeDoc(TABLE, 'explainer'); }

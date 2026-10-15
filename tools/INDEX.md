@@ -4,8 +4,8 @@
 
 # The instruments
 
-313 scripts. **201 are ACCEPTANCE tests** — they decide and exit non-zero.
-**112 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+315 scripts. **202 are ACCEPTANCE tests** — they decide and exit non-zero.
+**113 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -34,6 +34,7 @@ when a question was asked; the summaries are what it answered.
 | `l10n-review-packets.mjs` |  | acceptance | §249's review follow-up — BUILDS THE NATIVE-REVIEW PACKETS: one page a fluent reader opens to judge a locale's translation row by row, English beside the translation, and to say "reads well", "needs a change" (with their wording) or "not sure". Every locale carries the same IOU in docs/BUILT.md ("No native review pass"), and no gate here can pay it: the page gate holds keys, markup, numbers and the honesty vocabulary, never whether a sentence reads naturally or a part has the name a workshop uses. This makes paying it cheap for whoever can. |
 | `ldraw-fetch.mjs` |  | acceptance | FETCH LDraw PARTS AND EVERYTHING THEY REFERENCE, from the official library. A helper, not a measurement: it writes nothing but a cache directory. |
 | `ldraw-vendor.mjs` |  | acceptance | VENDOR THE LDraw PARTS THE TECHNIC FORK USES, as one packed file. |
+| `locale-surfaces.mjs` |  | report | §274 — JUDGES A LOCALE'S DECLARED SURFACES, both ways. Pure: no browser, no file reads, so the planted-locale controls (probe-274-surfaces.mjs) can run it on data it makes up, and explain-i18n.mjs calls the same function on the real tables. LOCALES' `surfaces` (src/i18n.js) says which of chrome / primer / explainer a locale carries; this holds the claim like a waiver is held: |
 | `make-favicon.mjs` |  | report | §88 — favicon.svg, generated from the REAL house mark. |
 | `offline-check.mjs` |  | acceptance | §79's instrument — the offline acceptance, scripted. Not part of the PR battery (it exercises the RELEASE machinery, which the battery's source tree deliberately never runs): use it when touching sw.js, stamp-release.mjs, the registration, or the update toast. |
 | `probe-10-drill.mjs` | §10 | acceptance | §10 level 2 — DOES THE DRILL-IN SEPARATE PIECES FROM THE LIFTED CLUSTER, AND DOES THE CHAIN NOW LIFT WITH ITS GROUP? Acceptance, read off a real boot through window.__clock (setExplode / setDrill / subEntries): 1. boot silent — the extended partition assert (parents real, no double claim, dense sub-layers) passed; 2. THE LEVEL-1 GAP IS CLOSED: exploding 'Fusee & chain' carries the chain by exactly the arbor's lift, at both tension extremes (the chain is re-baked at each, so a record that a rebuild could lose would show); 3. THE DRILL IS ANCHORED AT THE GROUP: with the group lifted, drilling moves no unit's level-1 z (the cluster never re-homes) and fans the fusee arbor's pieces out by rank·UNIT along the arbor's own order; with the group at rest the same fan-out happens anchored at home; 4. BACKING OUT RE-GATHERS BIT-EXACTLY: drill 0 puts every piece at its constructed z (===, not ≈); resetInputs likewise; 5. the sub-layers are the arbor's stack order (winding spur lowest, the let-down square highest) and dense; the member units of the group rank by drive order (drum < chain < fusee); 6. labels: with Labels on and a drill open, one sub-label per piece is displayed; with the drill closed, none. cd tools && node probe-10-drill.mjs (exit 1 on any claim) |
@@ -213,6 +214,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-267-boot-progress.mjs` | §267 | acceptance | DOES THE BOOT BAR TELL THE TRUTH ABOUT WHERE THE BUILD IS? — §267, measured. |
 | `probe-268-hammer-spiral.mjs` | §268 | acceptance | §268 — THE HAMMER SPRING IS A SPRING NOW: does the fall law read √(k/I) off the metal, and is the metal there? ACCEPTANCE. |
 | `probe-269-case-path.mjs` | §269 | acceptance | §269 — THE CASE AS THE RADIATOR: does the structure-borne path on the record follow from the metal, and does every integral behind it reproduce by a second method? ACCEPTANCE. |
+| `probe-274-surfaces.mjs` | §274 | acceptance | §274 — DO THE DECLARED-SURFACE GATES MEASURE ANYTHING? Pure Node, no browser. |
 | `probe-277-nav.mjs` | §277 | acceptance | §277 part E — navigation on the scripted-user engine, measured in a browser. |
 | `probe-277-route-i18n.mjs` | §277 | acceptance | §277 part F — does every locale carry the Inspect route's captions and stop titles, and does each keep what the English CLAIMS? |
 | `probe-278-dial-step.mjs` | §278 | acceptance | HOW FAR CAN THE DIAL SIDE COME DOWN, AND WHAT STOPS IT? — §278 landing 6's step study for the dial-side reclaim. Since landing 5 the detector stands on its satellite, so the centre column's dial-side band no longer has to carry it; `DIAL_RECLAIM` (layout.js) brings the dial plane plate-ward by that much and the chain below the sleeve rises in the dial frame by the same amount (main.js's ALARM_FEELER_TOP), so the satellite stack, i1b, the hour wheel and the motion works keep their world planes. This measures, on the tree under test, how much further it could go and which pair stops it. |

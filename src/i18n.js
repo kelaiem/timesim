@@ -225,6 +225,19 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // which Intl itself canonicalizes to 'he' — and is anchored: 'her' (Herero) and
 // 'iwm' are other languages. Plural one/two/other; the chrome carries no
 // count string, so the dual costs nothing here.
+//
+// §274 — A ROW'S `surfaces` is which of the app's three translatable surfaces
+// the locale CARRIES: 'chrome' (this file's table, the panel and HUD), 'primer'
+// and 'explainer' (the two static pages' tables). It is omitted for the full
+// set, as `dir` is omitted for ltr, so every shipped row says nothing and means
+// all three. A thin locale writes `surfaces: ['chrome']` (or chrome + primer)
+// and the gates judge the DECLARATION both ways (tools/locale-surfaces.mjs): a
+// declared page must be complete, an undeclared one must be EMPTY — a half-
+// finished page table under an undeclared page is the confident partial this
+// field exists to stop. An undeclared page renders English under a one-line
+// notice in the locale's own chrome language (page-i18n.js). The chrome is
+// always carried: it is the smallest surface and every reader touches it.
+export const SURFACES = ['chrome', 'primer', 'explainer'];
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
@@ -250,6 +263,14 @@ export const LOCALES = [
   { code: 'fa', face: 'فارسی', tag: 'fa-IR-u-nu-latn', dir: 'rtl', match: (v) => /^fa(-|$)/.test(v) },
   { code: 'ar', face: 'العربية', tag: 'ar-u-nu-latn', dir: 'rtl', match: (v) => v.startsWith('ar') },
 ];
+// A locale's declared surfaces. Read through this, never off the row, so the
+// default (all three) is stated once.
+export const surfacesOf = (code) => LOCALES.find((L) => L.code === code)?.surfaces || SURFACES;
+for (const L of LOCALES) {
+  const sf = surfacesOf(L.code);
+  if (!sf.every((x) => SURFACES.includes(x)) || new Set(sf).size !== sf.length || !sf.includes('chrome') || (L.code === 'en' && sf.length !== SURFACES.length))
+    console.warn(`i18n: locale ${L.code}'s surfaces ${JSON.stringify(sf)} must be a duplicate-free subset of ${JSON.stringify(SURFACES)} that includes 'chrome' (English carries all three)`);
+}
 const _norm = (v) => {
   if (!v) return null;
   // Underscores because a stored or hand-typed tag may arrive POSIX-style

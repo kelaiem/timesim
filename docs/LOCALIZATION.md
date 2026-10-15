@@ -121,12 +121,42 @@ translation runs.
 Run the gates on the wired build before translating anything. They should
 report the locale as empty, not crash.
 
-Staging is allowed today but not yet declared anywhere: the chrome probe fails
-on a missing chrome string, while `explain-i18n.mjs --check` reports a
-missing page block as `untranslated` without failing. A chrome-first landing
-therefore passes the gates with the pages silently in English. Roadmap §274
-files making that a declared, gated state; until it lands, say in the PR
-which surfaces are translated.
+**Staged landings are declared (§274).** A locale need not arrive with all
+three surfaces. A `LOCALES` row may carry `surfaces: ['chrome']` or
+`['chrome', 'primer']`; omitting the field means all three, which is what every
+shipped row says. The chrome is always carried. The gates judge the declaration
+both ways, with the judging in `tools/locale-surfaces.mjs`:
+
+- a **declared** page must be complete: a new untranslated block fails, and so
+  does an empty table;
+- an **undeclared** page's table must be **empty**. A half-finished page table
+  under a page the row does not claim is stale and fails;
+- an undeclared page renders English under a one-line notice in the locale's
+  own chrome language, so its chrome table must carry the key
+  `UNTRANSLATED_NOTICE` from `src/page-i18n.js` (the page check fails without
+  it);
+- a page with **no `LOADERS` entry** is how a locale does not carry it: do not
+  create an empty table file, and do not list the locale in that page's
+  `LOADERS` or in the offline precache count;
+- declaring `primer` or `explainer` makes its `HONESTY` row mandatory (a
+  declared locale with no row is UNGATED and fails);
+- the review packet drops the sections for pages the locale does not carry.
+
+Stage order for a new locale: wiring with the surfaces declared as
+`['chrome']`, then the chrome, then declare `primer` and add its table, then
+`explainer` last. Each stage can land alone. Say in the PR which surfaces the
+row declares. Whether a thin locale should reach the picker at all before its
+primer is the owner's call per locale (the primer carries the project's honesty
+framing); the mechanism does not decide it.
+
+**The shipped explainers carry arrival debt.** Every shipped locale's explainer
+was found already short of the English (30 blocks in most, 19 in `fil`/`lv`/
+`hu`, 45 in `ko`/`ja`/`zh`/`zh-Hant`, whose 15 hidden `.gloss-variants` rows
+stay English by design), so "declared means complete" would have failed all of
+them on arrival. `ARRIVAL_UNTRANSLATED` pins the count per locale. It is a
+ratchet: a locale over its number has a new untranslated block and fails, and a
+locale under it has paid debt down and fails until the number is lowered. A new
+locale has no row and owes zero.
 
 ### B. Translation (fills the three tables)
 

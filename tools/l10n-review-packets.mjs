@@ -70,7 +70,7 @@ globalThis.document = { documentElement: el, querySelector() { return null; }, q
 globalThis.window = globalThis;
 globalThis.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
 globalThis.addEventListener = () => {};
-const { TABLES, LOCALES } = await import(join(ROOT, 'src/i18n.js'));
+const { TABLES, LOCALES, surfacesOf } = await import(join(ROOT, 'src/i18n.js'));
 
 const entries = async (p) => {
   const m = await import(join(ROOT, p));
@@ -110,7 +110,12 @@ const packets = {};
 for (const L of roster) {
   const { code } = L;
   if (!QUESTIONS[code]) { fail(code, 'no QUESTIONS entry — add one to tools/l10n-review/questions.mjs ([] declares that nothing was recorded)'); continue; }
-  const ex = await entries(`src/explain-i18n.${code}.js`), pr = await entries(`src/primer-i18n.${code}.js`);
+  // §274 — a page the locale does not DECLARE has no table to read, and a reviewer
+  // is not asked to judge pages that do not exist. A declared page's missing file
+  // still throws: that is a broken locale, not a thin one.
+  const carries = surfacesOf(code);
+  const ex = carries.includes('explainer') ? await entries(`src/explain-i18n.${code}.js`) : [];
+  const pr = carries.includes('primer') ? await entries(`src/primer-i18n.${code}.js`) : [];
   const exM = new Map(ex), ch = TABLES[code];
   const row = (sec, en, t, extra = {}) => ({ id: h(sec + '\u0001' + en), th: h(t || '', 8), en: clean(en), t: clean(t || ''), ...extra });
   const corpus = [...Object.entries(ch), ...ex, ...pr].filter(([, v]) => typeof v === 'string');
@@ -127,7 +132,7 @@ for (const L of roster) {
     return { id: h('flag\u0001' + f.term), kind: 'flag', term: f.term, en: f.en, q: f.q, th: h(f.term, 8), examples: ex3 };
   });
   const label = (k) => { if (ch[k] == null) fail(code, `part label "${k}" has no translation`); return row('part', k, ch[k], { kind: 'term' }); };
-  const vocab = gloss.map((g) => {
+  const vocab = !carries.includes('explainer') ? [] : gloss.map((g) => {
     const t = exM.get(g.term), d = exM.get(g.def);
     if (t == null || d == null) fail(code, `glossary row "${g.term}" has no ${t == null ? 'term' : 'definition'} translation`);
     return { ...row('gloss', g.term + '\u0001' + g.def, (t || '') + '\u0001' + (d || '')), kind: 'gloss', en: clean(g.term), t: clean(t || ''), enDef: clean(g.def), tDef: clean(d || '') };
@@ -146,7 +151,11 @@ for (const L of roster) {
     { id: 'honesty', title: 'Modelled vs simulated', blurb: 'Modelled means described: the geometry and numbers exist. Simulated means driven: the part moves because something pushes it. The project polices this distinction hardest, so please check that each paragraph keeps the two words apart.', rows: honesty },
     { id: 'primer', title: 'The primer', blurb: 'The plain-language introduction most readers start with, in reading order.', rows: pr.map(([k, v]) => row('block', k, v, { kind: 'block', page: 'primer' })).filter((r) => !honIds.has(r.id)) },
   ];
-  const meta = { code, name: L.face, english: englishName.of(code), ...(L.dir ? { dir: L.dir } : {}) };
+  // Sections with nothing to judge are dropped, so a chrome-only packet is the part names alone.
+  const live = sections.filter((s) => s.rows.length || s.id === 'start');
+  sections.length = 0; sections.push(...live);
+  const meta = { code, name: L.face, english: englishName.of(code), ...(L.dir ? { dir: L.dir } : {}),
+    ...(carries.length < 3 ? { surfaces: carries } : {}) };
   packets[code] = { ...meta, sections };
   const counts = Object.fromEntries(sections.map((s) => [s.id, s.rows.length]));
   index.push({ ...meta, rows: Object.values(counts).reduce((a, b) => a + b, 0), counts });
