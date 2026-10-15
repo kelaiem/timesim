@@ -36504,6 +36504,275 @@ part is classic), and its panel says the spring law is posed.
 - **A going train.** The great wheel turns nothing here. Its sense is the
   reading.
 
+## §219 tier three (b), landing I — the alarm module: a column wheel a pusher indexes, a release on a ring of pins, and a strike train that ends in a fly
+
+The feasibility note's module 3 (its §3.7 and §4) is the alarm: a column wheel,
+a release geared 12:1 off the hour, and a striking train with a governor. Landing
+I builds it from LDraw parts in `src/technic-alarm.js` and draws it as the LEGO
+view's seventh cell. The build is MODELLED: every part is placed and measured,
+and each law that moves one part from another is geometry read off the parts.
+Nothing is integrated, and every force is posed: the bands on the lever, the
+pawl, the detent, the driver and the hammer, the barrel's band, and the air on
+the fly. The model reads DIRECTIONS and CONTACTS (which way a pawl locks, where a
+beak rides, when a nose drops, where a fly is caught), never a force.
+
+**The governor is a different mechanism, and every record says so.** The steel
+alarm's governor is an OSCILLATOR: an anchor on a 20T saw whose poising ring is
+solved to a 0.42 s gap. LEGO's is a FLY, vanes on the last arbor braked by air
+drag. It does the same job and it has no period, so the cadence it gives can only
+be measured. The module's header, `TECHNIC_ALARM_STRIKE.governor`, the probe and
+the page's panel each say it.
+
+### The parts
+
+All classic, so the build stands in both generations.
+
+| member | parts |
+|---|---|
+| column wheel | two 3-blade rotors (2712) on one axle, the second turned over |
+| ratchet and detent | a 12T (69778); a round half bush (32123a) on a thin liftarm (6632), banded on |
+| pawl and driver | a keyed 8T (3647) at an end hole of a 6632; the driver a 5L thin liftarm (11478) idling on the column wheel's axle |
+| release disc | two thick 1×3 beams (7229) keyed at 90°, three pins (3673, one 6558) in three of their four end holes |
+| release lever | a 5L thin liftarm (11478) keyed by an end hole; a pin (3673) in its middle hole is the BEAK |
+| fly and cam | two 7229s crossed on the last arbor; a 3673 in each of their four end holes |
+| hammer | two 6632s keyed on one axle, the tail on the cam's pins, the head on a tile (3070b) atop a plate stack |
+| trains | 8T, 16T, 24T (3647, 4019, 3648) |
+
+`ALARM_DIM_MM` holds every figure the laws use, each re-read off the vendored
+parts to 1e-4 mm (6558's collar to 1e-3: it is drawn by a primitive scaled to
+8.00053 LDU). `tools/ldraw-vendor.mjs` now reads `ALARM_PARTS`; the pack is 55
+parts, 351 files, 829 KiB.
+
+### The column wheel: six columns from two rotors
+
+A 3-blade rotor's blades stand at 90°, 210° and 330° of its own frame. Turned
+over they stand at 270°, 150° and 30°. So two rotors on one axle, the second
+turned over, are SIX columns 60° apart, read off their outline at 29.95°,
+89.95°, … 330.05°. No keyed quarter turn of two unflipped rotors does it (90°
+steps put the second set at 0°, 120° and 240°: gaps of 30° and 90°), and the
+probe's control turns one rotor a quarter round alone and watches the spacing
+fail.
+
+### The release: the notch is built
+
+**A stock notched disc is refused, on a survey.** `tools/ldraw-notch-survey.mjs`
+reads every axle-keyed round part in an unpacked LDraw library for an outline
+with one or two notches. Read 2026-10-15 on the library of 2026-09-30: 408
+axle-keyed parts, and the only hits were tyre treads one degree wide. No part
+has a notch a lever's nose could drop into. Its controls are a 40T (forty
+notches, its tooth gaps) and a 3×3 disc (none). The survey needs the whole
+library, which is not vendored, so it is a report and gates nothing.
+
+So the notch is BUILT: a ring of three pins at 90° in two crossed beams, the
+fourth place empty. The lever's flat side rides the pins; where the fourth would
+be, it drops. The drop is a V (the lever falls as the empty place turns under
+it), not a cut step, and the record gives its slope.
+
+`solveRelease` places the disc, the column wheel and the fly about the lever's
+pivot, on the frame's lattice, and ranks them: the disc by its drop beyond its
+ripple, the column wheel by the least drop before a column holds, the fly by how
+firmly it is caught and passed. The answer is the disc at (28, 16) mm, the column
+wheel at (12, 25.6), the fly at (36, −6.4), run +.
+
+| reading | value |
+|---|---|
+| the lever on the rim | 3.82° to 9.43° (a ripple of 5.61° as the pins pass) |
+| at the notch | 29.78°: a DROP of 20.35° below the rim's lowest, at disc angle 341° |
+| the fly on the rim | caught 5.75 to 2.74 mm |
+| the fly where a column holds the lever | caught 0.99 mm |
+| the fly at the notch | passed by 8.23 mm |
+| the unlock | 60° of the disc's turn, 2.00 h of 12 |
+| its slope | 0.248 mm of engagement per degree of disc, so an LDU of play moves the alarm 3.2 minutes |
+| the lock's push (run +) | moments 15.00, 21.19 and 27.99 mm about the lever's pivot, all INTO its supports |
+
+The last row is the one that makes the lock a lock. A moment against the drop
+would lift the lever off the fly against nothing but its band: a lock the train
+opens itself. The probe's control moves the fly below the lever (12.8 mm down,
+still engaged 6.44 mm) and watches the push turn against the supports.
+
+**The release train** is 8:16 × 8:16 × 8:24 = 1/12, the fork's classic
+motion-works pairs (16:8, 16:8, 24:8) each run the other way, off an hour axle
+that is turned by hand here. Every mesh is admissible in the classic catalogue
+and stands at its centre distance on the lattice.
+
+### The index: a pawl, a driver and a banded detent
+
+The steel's sautoir is a banded detent on the 12T: landing F's round half bush
+on a thin liftarm, its pivot SEARCHED over the lattice. The answer stands at
+W + (−16, 16) mm, band +. Its twelve rests are 30° apart, its lift 0.532 mm and
+its flanks 0.047 and 0.037 mm/°, within landing F's 30%, so it is a detent and
+not a ratchet.
+
+**The 12T's tip has two crests.** Measured, the bush rides over TWO peaks of one
+height, at +14.2° and +18.7° from a rest, with a saddle 0.006 mm deep between.
+The first draft took "the crest" as the highest point in the pitch, which is a
+coin toss between the two, and it fell differently rest by rest: a press of
+16.4° stepped from two rests and fell back from ten. So a rest's basin is bounded
+by its NEAR crests (−11.3°, +14.2°), and a press must pass the FAR crest (+18.7°)
+to reach the next rest. Between them the wheel stands on the tooth's tip, at no
+rest; `detentSettle` answers null there, and a control presses into the saddle
+and watches it.
+
+**The pawl.** Landing H's click: a 6632 pivoting on its round middle hole, its
+8T keyed at an end hole, carried at the end of the driver. The 8T must stand the
+8:12 mesh, 10 mm, from the axis, so the driver's arm, the pawl's arm and 10 mm
+make a triangle, and `pawlLock` reads which arms LOCK (landing H's rule: one way
+over ten times as steep as the other).
+
+| driver arm, pawl arm | steepest rates | reading |
+|---|---|---|
+| 8, 8 (two 6632s) | 9.6 and 5.2 | rides both ways |
+| 16, 16 | — | rides both ways |
+| 8, 16 | 99.4 and 0.7 | locks, but the 16 mm pawl folds back over the column wheel's own axle (0.04 mm off it) |
+| **16, 8** (a 5L driver, a 6632 pawl) | **122.7 and 1.0** | **locks −** |
+
+The solve tries the pawl on both bands and keeps the one whose stroke stands
+nearest its window's middle: band +, locking −, so the press turns the driver +.
+
+**The driver** idles on the column wheel's axle by its round middle hole. It
+rests on a 5-plate stack at u 20 mm (219.19°), and a press stops it on a 2-plate
+stack at u 0 (250.38°): a STROKE of 31.19°. The window is 20.99° to 41.90°: past
+the far crest and short of the next rest's near crest, each by an LDU of arc at
+the mesh (`PRESS_MARGIN`).
+
+Pressed from each of the twelve rests:
+
+- a FULL press (31.19°) steps exactly one rest, and turns the beak from column
+  to gap or gap to column: 0 ON, 1 off, 2 ON, … 11 off;
+- a HALF press (11.90°, an LDU of arc short of the near crest) falls back;
+- twelve presses turn the wheel 360.00°.
+
+On a gap rest the lever drops at the notch to 29.78° (held by the pins). On a
+column rest the beak holds it at 11.94°, where the fly is still caught 1.36 mm.
+The beak clears every column by 0.887 mm with the lever at the rim's lowest, so
+the wheel turns under a held lever.
+
+### The strike
+
+The fly arbor's two crossed beams carry the cam: a pin in each end hole, two
+pointing back from the front beam and two forward from the back one, their
+collars meeting in the tail's band (radius 3.2001 mm there). Four lobes, the
+steel's `ALARM_CAM_LOBES`.
+
+`solveHammer` searches the hammer's pivot, its band and the angle between its
+tail and head, and the stack the head falls on. The answer pivots at
+C + (12, −25.6) mm, band +, the head 270° round from the tail, falling on a
+23-plate stack. Run − has no valid hammer (its pins meet the tail face-on), so
+the strike runs +, and the solve chooses the release's run with it.
+
+`strikeTrace` follows the hammer continuously over a turn of the fly arbor, at
+1° and at ¼°:
+
+- the steepest lift rate is 0.58 and 0.60, which holds between the steps, so the
+  pins lift the tail on a slope (a jam is a rate that grows as the step shrinks);
+- the hammer falls four times a turn, each fall 9.20° at 1° and 8.26° at ¼°.
+  Extrapolated to a zero step, (4·d¼ − d1)/3, each is a 7.95° jump: a fall, not
+  a slope;
+- the head lifts up to 4.53 mm;
+- with the train locked (the fly on the lever, φ 69.35°) the tail stands 0.88 mm
+  clear of every pin.
+
+**Counted through the meshes**, the barrel's 16T drives the middle arbor's 8T and
+its 16T the fly arbor's 8T: 16:8 × 16:8 = 4 turns of the fly per barrel turn,
+the steel's 44/11 by another route. Traced over those four turns, **16 strikes
+per barrel turn**, the steel's 4 × 44/11.
+
+**What is posed** is `TECHNIC_ALARM_STRIKE`, status POSED, source "to be
+measured" (wind the band a counted number of barrel turns, count the strikes to
+run-down, time them). Until then it stands in the steel's own numbers, read back
+off `main.js`' text: `ALARM_BARREL_TURNS` 1.75 and `ALARM_STRIKE_GAP` 0.42. So
+**28 strikes per wind** (the steel's 28), 11.76 s of ringing, both POSED. A
+measured table replaces `standIn` and the counts follow with no code change; the
+probe shows it.
+
+**There is no LEGO gong.** The hammer strikes a tile on a stack of plates, and
+the record says so.
+
+### The frame
+
+`frameAlarm` stands the module on an 11×18-stud base: 22 columns and 3 stacks
+(the driver's rest and bank, the hammer's struck stack), the lever's axle at
+50.4 mm. The axles are lever 4L, disc 6L, fly 9L, middle 7L, barrel 4L, S2 8L,
+S1 5L, hour 4L, column wheel 8L, detent 7L and hammer 5L. A greedy allocator
+puts each column on a free stud slot along its axle; the column wheel, detent and
+hammer columns stand in front, the rest behind. Parts that turn apart stand an
+LDU (`AX_CLEAR`, 0.4 mm) off each other.
+
+### Refused, with the reason
+
+- **A stock notched disc**: no part in the library has one (the survey above).
+  The notch is three pins.
+- **Wheel rims with six holes as a six-column wheel**: their holes sit inside a
+  44 mm drum, where no beak reaches them. The rotors are six columns instead.
+- **"Two flat plates" for the fly**: a plate has no axle hole at its middle, and
+  a beam's end holes carry the cam. The fly is two crossed beams, so it has FOUR
+  vanes.
+- **A pawl of two 6632s, or two 5Ls**: each rides both ways (above). An 8 mm
+  driver with a 16 mm pawl locks, but folds over the column wheel's axle.
+- **Knobs on the barrel and the hour axle**: the first build placed a wedge belt
+  wheel on each, and CLEAR measured both against neighbouring axles and columns.
+  They are removed; nothing here turns either axle but the record.
+
+### Instruments
+
+`tools/probe-technic-alarm.mjs` (new, acceptance, pure Node, about 5 minutes,
+most of it the solve):
+
+- **PARTS**: every `ALARM_DIM_MM` figure, the driver's and the pawl's arms read as
+  hole spacings of their parts.
+- **COLUMN WHEEL**: six columns 60° apart.
+- **SOLVE**: `solveAlarm` re-run and held against every row of `TECHNIC_ALARM`.
+- **RELEASE**: the rim, the drop, the fly caught and passed, the push into the
+  supports, the unlock's window and slope.
+- **INDEX**: the detent's rests, near and far crests and flanks; the pawl's lock
+  both ways; the driver's stroke inside its window; a full and a half press from
+  every rest; the beak's reading; the wheel turning under a held lever.
+- **STRIKE**: the trace at two steps, the falls extrapolated, the lock's
+  clearance, the count through the meshes against `main.js`, and the posed table.
+- **TRAINS**: both ratios, every mesh at its centre distance.
+- **BUILD**: the columns at their axles' heights and through their bricks; every
+  gear pair interleaved (worst −0.172 mm); CLEAR in the armed, ringing and off
+  states (nearest 0.40 mm, an LDU); the `.ldr` round trip, 202 parts.
+
+Its controls, 14/14, each seen to fail:
+
+- a dimension perturbed (the rotor's tip by 0.01 mm);
+- one rotor a quarter turn round alone;
+- a declared disc other than the solve's;
+- the notch filled (a pin in the fourth place);
+- a fly below the lever;
+- the pawl on its other band;
+- a press past the next far crest;
+- a "half" press past the far crest;
+- a press ending on the tooth's tip;
+- the column wheel half a pitch off its rest under the beak;
+- the strike train run the other way;
+- a different posed table;
+- a gear turned half a tooth out of mesh;
+- a column turned into the dropped beak.
+
+`tools/ldraw-notch-survey.mjs` (new) is the survey. The index files it as
+acceptance because it exits 2 without a library; it is a report, and says so.
+
+`src/technic-fusee.js`' `pawlModel` takes a `part`, so the index's pawl reads
+the same law as landing H's. The other technic probes pass on the new pack:
+ldraw 22/22, frame 10 rows, build 10 builds, keyless (10 controls), motion (6),
+fusee (11), and `probe-219-catalogue`. `technic.html` boots with no page errors
+and draws the alarm armed, ringing or off.
+
+### What it does not claim
+
+- **A force, a torque, a rate in strikes per second, how long it rings.** Every
+  band is posed, and a lock is a direction, not a holding force.
+- **The cadence.** A fly has no period; the 0.42 s is the steel's number, posed.
+- **How a brick sounds.** No part rings.
+- **The barrel's winding.** No click is built: winding the barrel back would turn
+  the train back with it.
+- **A going train.** The hour axle is turned by hand, and nothing drives the
+  pusher but a finger.
+- **A motion.** The three states are posed; the press, the drop and the strike
+  are the laws' arithmetic, not a placed sequence.
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and

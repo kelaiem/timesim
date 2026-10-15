@@ -93,8 +93,22 @@ fusee, and a frame detent on the ratchet, each a keyed 8T on a thin liftarm
 whose LOCK direction `pawlLock` reads off the teeth. A posed band carries it
 to the great wheel. Three collinear axles are joined end to end in round pin
 joiners. `tools/probe-technic-fusee.mjs` holds the table, the seats, the solve,
-the cord, the locks and the build. The frame, ldraw, build, keyless, motion and
-fusee probes are pure Node.
+the cord, the locks and the build. **And the ALARM** (landing I,
+`src/technic-alarm.js`): a column wheel of two 3-blade rotors, the second turned
+over (six columns 60° apart), indexed through a 12T by a pawl on a pushed driver
+and held by a banded half-bush detent, its parity read by a pin BEAK on the
+release lever; a release disc geared 12:1 off an hour axle whose notch is BUILT
+(a ring of three pins, the fourth place empty — no LDraw part has one notch,
+`tools/ldraw-notch-survey.mjs`); and a strike train (8:16)(8:16) ending in a FLY
+whose two crossed beams also carry the four cam pins under the hammer's tail.
+The fly is a different mechanism from the steel anchor and every record says so;
+the band, the cadence and strikes per wind are `TECHNIC_ALARM_STRIKE`, POSED
+like the fusee's spring, and the hammer strikes a tile because no LEGO part
+rings. `solveAlarm` re-derives the declared `TECHNIC_ALARM`, and
+`tools/probe-technic-alarm.mjs` holds every full press stepping one rest and a
+half press falling back, the drop at the notch, the strikes per barrel turn
+counted through the meshes, and the build. The frame, ldraw, build, keyless,
+motion, fusee and alarm probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1121,7 +1135,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 317 measuring scripts and this file names 47. The rest are named for the
+`tools/` holds 319 measuring scripts and this file names 49. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1138,7 +1152,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **204 of
+The index also carries the split that decides how to read a result: **206 of
 them are ACCEPTANCE tests** that exit non-zero, and **113 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
