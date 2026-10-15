@@ -150,9 +150,11 @@ both ways, with the judging in `tools/locale-surfaces.mjs`:
 Stage order for a new locale: wiring with the surfaces declared as
 `['chrome']`, then the chrome, then declare `primer` and add its table, then
 `explainer` last. Each stage can land alone. Say in the PR which surfaces the
-row declares. Whether a thin locale should reach the picker at all before its
-primer is the owner's call per locale (the primer carries the project's honesty
-framing); the mechanism does not decide it.
+row declares. **A locale with the chrome alone appears in the pickers** (the
+owner's ruling): the pickers render every `LOCALES` row, so there is nothing to
+wire, and the untranslated-page notice is what tells a reader the pages are
+still English. No picker mark is built; add one only if looking at the notice
+shows it is not enough.
 
 **This is a guideline for documenting gaps, not a ratchet.** The point of
 `surfaces` is that a gap is declared rather than owed silently. Today every

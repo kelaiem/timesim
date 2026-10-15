@@ -35049,12 +35049,11 @@ for line except for the new `coverage` line per (page, locale), and the
 `zh`/`zh-Hant` blocks swapping order because the loop now follows `LOCALES`.
 
 **Not done, and not hidden.**
-- The picker suffix (entry item 3) is not built: the notice is visible on the
-  page; whether it needs a second mark in the picker is decided by looking at
-  it, and nothing here looked.
-- Whether a thin locale reaches the picker before its primer stays the owner's
-  call per locale (the primer carries the honesty framing); this builds the
-  mechanism either way. §273 (Czech) is the first landing that may use it.
+- The picker mark (entry item 3) is not built, and the owner has settled the
+  question it hung on: the chrome alone is enough for a locale to appear in the
+  pickers, which render every `LOCALES` row already. The notice is the signal
+  that a page is English; a mark is added only if looking at the notice shows it
+  is not enough. §273 (Czech) is the first landing that may use the field.
 - The `plate fit` rows for `es`, `ru`, `pt`, `it`, `ar` fail in this
   container on the BASE as well (7 new overflow/collision rows, identical
   before and after), a font-metrics difference of the container and not of this
