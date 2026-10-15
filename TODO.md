@@ -34163,9 +34163,9 @@ The remedy named above, with its free number SOLVED rather than chosen:
   wheel, and the motion works reflect it 1:12 (hour wheel → minute pinion 8/32 →
   minute wheel → cannon 10/30) to **5.098e-4 N·mm** on the centre arbor. The great
   wheel's torque leaves 0.1884 N·mm on that arbor (the fusee's 3.23 N·mm × 7/120,
-  ideal), so the climb is **0.271%** of it — orders under the 20% spread the
-  going train's own corners already carry (η_train 0.749 at the favourable corner),
-  and it is a disturbance that averages out: the pin climbs out of the notch with
+  ideal), so the climb is **0.271%** of it — about fifty times under the 13-point
+  spread the going train's own corners already carry (η_train 0.749 favourable to
+  0.617 adverse), and it is a disturbance that averages out: the pin climbs out of the notch with
   the load and rolls down into it assisted, twice per 12 h. `probe-144-set-hold`
   holds it under 1%. **Not priced:** the cannon pinion's friction fit (the model
   declares no slip torque for it — the hands are rigid on the centre arbor) and the
