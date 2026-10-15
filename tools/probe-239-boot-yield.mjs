@@ -113,21 +113,7 @@ const MAX_HELD_MS = 550;
 // work, and no seam reaches it; every other task in those runs is ~250 ms or
 // under. So this gate is the backstop, not the sharp one: 2320 × 1.66 = 3851.
 // Nothing near Chrome's unresponsive-page threshold may survive.
-//
-// THE SOLID VIEW IS THE BOOT DEFAULT NOW (schematic is opt-in), and the ceiling
-// moved with it. Under software GL the solid scene costs 7–10 s a FRAME whatever
-// the quality tier (measured headless on SwiftShader: High ~9.0–9.8 s, Low
-// ~7.1–8.0 s, against ~0.22 s for the schematic), so the first solid frame after
-// the build and the next two are multi-second tasks that schematic-first booting
-// never paid. They are the BROWSER's paint, not the build's: the un-yielded
-// control shows the same tasks, and the sharp gate above (held, 477 ms) is
-// unmoved. CI's worst on the arrival run was 6473 ms, the next two 4.4 s:
-// 6473 × 1.66 = 10745, rounded up to 10750. ONE CI run is the whole sample — the
-// rule above wants the slowest of several, so re-read this on the next runs and
-// raise it from the slowest, never past what a run reaches times 1.66. Honest
-// cost: this backstop no longer sits under a few-second hang on a software-GL
-// host; a real GPU is not measured here at all.
-const MAX_TASK_MS = 10750;
+const MAX_TASK_MS = 3900;
 // MAX_INPUT_MS: what a viewer's key waits for is the task in progress, and the
 // worst wait in every CI run is that same first frame. 2290 × 1.66 = 3801.
 const MAX_INPUT_MS = 3850;
