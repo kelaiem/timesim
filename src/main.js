@@ -42666,7 +42666,7 @@ let handSetOffsetNow = 0;    // last value tick() gave the hands — displayedSe
 // assigning them here would hit the temporal dead zone.
 let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
-let restoredSchematic = true; // §69: the schematic tier is the boot DEFAULT — a save can only turn it off
+let restoredSchematic = false; // the schematic tier is OFF by default — a save (or ?schematic=1) can turn it on
 let restoredCaseLines = true; // case line-drawing within the tier — same default-ON convention
 let restoredFocus = null;  // §69: tap-focus unit name, applied once the scene + drive graph exist
 
@@ -42824,10 +42824,10 @@ let mmPerPxCal = null;
   if (BD.POSITIONS.includes(savedState.position)) balancePosition = savedState.position; // §246 — absent or unknown keeps the default
   restoredCamera = savedState.camera;
   restoredXray = !!savedState.plateXray;
-  // §69: ?? true, not !! — schematic is the DEFAULT view, so a state saved
-  // before the field existed (and a fresh visitor's absent state) both mean
-  // ON; only an explicit saved false turns it off.
-  restoredSchematic = savedState.schematic ?? true;
+  // ?? false — schematic is OFF by default, so a state saved before the field
+  // existed (and a fresh visitor's absent state) both mean OFF; only an
+  // explicit saved true turns it on.
+  restoredSchematic = savedState.schematic ?? false;
   restoredCaseLines = savedState.caseLines ?? true; // ?? true, not !! — same reason as schematic above
   restoredFocus = typeof savedState.focusUnit === 'string' ? savedState.focusUnit : null;
   // soundOn is saved but NOT restored: sound is always off at load (see __bootSoundApply).
@@ -54253,10 +54253,10 @@ function applyDeepLink() {
   // shareable and cannot be drifted out of without the caption saying so.
   if (params.has('lifesize')) setLifeSize(params.get('lifesize') !== '0');
 }
-// §69 — the schematic tier is the boot DEFAULT (restoredSchematic is true
-// unless a save explicitly turned it off), and a saved tap focus comes back
+// §69 — the schematic tier is OFF by default (restoredSchematic is false
+// unless a save explicitly turned it on), and a saved tap focus comes back
 // with it. Applied here, after every mode they compose with exists; the deep
-// link runs after and wins where it disagrees (?schematic=0 overrides the
+// link runs after and wins where it disagrees (?schematic=1 overrides the
 // default synchronously, ?focus=<unit> lands after the restored focus because
 // both sequence FIFO on the same ensureExploreDrive promise).
 if (restoredSchematic) setSchematic(true);

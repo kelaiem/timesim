@@ -6397,6 +6397,14 @@ narrate the finished watch. The one cost recorded: default-on means
 were re-verified with it (the fingerprint hashes posed bounding
 boxes, so the BVH indexing side effect cannot touch it).
 
+**Superseded: schematic is now OFF by default.** The boot default was
+reversed so the solid view is the front door: `defaultState.schematic` is
+`false`, an absent saved field restores as OFF (`?? false`), and a save or
+`?schematic=1` turns it on. Everything above about the mechanism (layer swap,
+ghosting, the battery's blindness to the tier) is unchanged; only the default
+moved. Saves written before the reversal carry an explicit `schematic: true`
+and keep booting into the model view until the toggle is switched off.
+
 **Verified.** Headless: boot silent, both camera layers on, ghost-all
 at 0.28 on boot including the lazily-built chain (the one mesh born
 after the restore applies — its build re-runs the walk); alarm-crown
