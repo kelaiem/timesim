@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 260 | DONE | The ramp's climb out of the notch loaded the disc as hard as its seat could hold it (1.00× where the hold is sized to 3×, and under 1 at a kinder friction). The ramp is longer now and its length is SOLVED, not chosen: the seat's pad at its blade's strain cap (0.9 of the stock's) holds a climb of 5.29 mN at the headroom, which is a slope of 4.40° and a run of 0.4257 rad (48.8 min of hour each side); the tick's drop law is `ALARM_DETECTOR_LAWS.dropAt`. Hold ÷ climb 3.000 by construction, asserted at boot and in `probe-144-set-hold`. What remains is the hour train's side of the same force (unpriced) and the hold's own friction corner (`MU_STEEL` where the hold wants the low end of the band). |
+| 260 | DONE | The ramp's climb out of the notch loaded the disc as hard as its seat could hold it (1.00× where the hold is sized to 3×, and under 1 at a kinder friction). The ramp is longer now and its length is SOLVED, not chosen: the seat's pad at its blade's strain cap (0.9 of the stock's) holds a climb of 5.29 mN at the headroom, which is a slope of 4.40° and a run of 0.4257 rad (48.8 min of hour each side); the tick's drop law is `ALARM_DETECTOR_LAWS.dropAt`. Hold ÷ climb 3.000 by construction, asserted at boot and in `probe-144-set-hold`. The hold is priced at every friction corner (2.55× / 2.76× / 3.00×, decoupled worst 1.80×, never under 1) and the hour train carries the climb at 0.27% of the centre arbor's torque. Not priced: the cannon pinion's friction fit (the model declares no slip torque) and the tooth load on the minute pinion ⇄ hour wheel mesh. |
 | 259 | DONE | Reported by eye: the alarm pin has no obvious path out of the notch. The tick has always ramped the reader's pin along a linear law over the pin's own angular diameter, but the notch's walls were radial, so a flat pin fell in and could never be lifted out. The track's top is cut to the law now (two ramps, 19.67°, `probe-280-notch-ramp.mjs` and the `alarm detector` line spec's `rampSeat`). The lift's force is TODO 260. |
 | 257 | DONE | Reported by eye at a reduced time scale: the balance slowed and stopped as the hack pad swung in, before any contact. The brake was `leverEngage · brakeNm`, and leverEngage left 0 on the crown's first frame. It is now the pad's own contact (`HACK_PAD`): zero until the pad's top reaches the rim, built over the hack rod's priced give (0.8 µm of pad rise), the holding load from the spring's peak torque at MU_STEEL. The crown's ease now ARRIVES (a floor under its speed) so the touch happens at 0.19 s, not as an exponential's 0.7 s tail. `probe-257-hack-contact.mjs`, 9 rows, one control that fails the old law |
 | 256 | OPEN | Blocks TODO 255. The maintaining ring is 35 teeth only because the movement is priced too lossy: under the real mesh law the floor rises (a heavier balance must still reach 200°, and the claim rises) and the blade needs 37 teeth. The detent beak's face flank cannot be relieved at 36 or more (clearance 0.1347 at 36, 0.1194 at 37, against CLEAR_MARGIN 0.15). Redesign the beak for a finer pitch, or give the spring more run, before 255 can land |
@@ -34144,10 +34144,31 @@ The remedy named above, with its free number SOLVED rather than chosen:
   landing mid-window) and the ramp costs nothing but length. A lubricated pin is
   the friction lever and is not modelled.
 
-### Still open (kept here rather than filed again)
+### The two items that were left open, done
 
-- **The hour train's side** of the same force: the satellite's tooth force at the
-  reader radius, 5.29 mN at the track radius now, against whatever slips first.
-- **The hold's friction.** The hold is solved at `MU_STEEL`, the ADVERSE corner,
-  which is conservative for the drag and not for the hold (a kinder friction on the
-  pad lowers it). `FRICTION`'s low end is the corner the hold should be priced at.
+- **The hold's friction corners.** The pad was solved at `MU_STEEL`, the adverse
+  corner: conservative for the load (the climb and the drag both rise with μ) and
+  not for the hold (it IS a friction). The seat's contacts are dry steel, which the
+  lubrication map prices as `muTooth` (nothing here is oiled — oil would run to the
+  teeth), so each of its corners (0.12 / 0.15 / 0.20) is now run through both sides
+  with the pad's force as built, the pin and the pad in one lubrication state:
+  hold ÷ climb **2.547× / 2.756× / 3.000×** (favourable / nominal / adverse), and
+  **1.800×** for the decoupled worst — the pad at its kindest against the pin at
+  its harshest. The headroom is the design margin AT the adverse corner and is what
+  shrinks at the kinder ones; its SIGN never changes. `alarmSetHold` publishes the
+  corners and the decoupled worst, the seat's build warns if any is under 1 or if
+  the adverse corner is not the headroom, and `probe-144-set-hold` holds both.
+- **The hour train's side.** The satellite carries the reader 1:1 from the hour
+  wheel through the 32-9-32 idler, so the climb's 6.118e-3 N·mm lands on the hour
+  wheel, and the motion works reflect it 1:12 (hour wheel → minute pinion 8/32 →
+  minute wheel → cannon 10/30) to **5.098e-4 N·mm** on the centre arbor. The great
+  wheel's torque leaves 0.1884 N·mm on that arbor (the fusee's 3.23 N·mm × 7/120,
+  ideal), so the climb is **0.271%** of it — orders under the 20% spread the
+  going train's own corners already carry (η_train 0.749 at the favourable corner),
+  and it is a disturbance that averages out: the pin climbs out of the notch with
+  the load and rolls down into it assisted, twice per 12 h. `probe-144-set-hold`
+  holds it under 1%. **Not priced:** the cannon pinion's friction fit (the model
+  declares no slip torque for it — the hands are rigid on the centre arbor) and the
+  tooth load on the minute pinion ⇄ hour wheel mesh (a 32-tooth wheel's tangential
+  force at 6.118e-3 N·mm); both are far under any figure a mesh or a fit is held to
+  and neither is a gate here.

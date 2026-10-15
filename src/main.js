@@ -23570,7 +23570,8 @@ const ALARM_DETECTOR_LAWS = Object.freeze({
   rockAt: (drop, arm) => drop / arm,
   dropAt: (align, gapHalf, pinArcHalf, run, drop) => drop * Math.min(1, Math.max(0, (gapHalf + run - align - pinArcHalf) / run)),
   rampRun: () => ALARM_NOTCH_RAMP,
-  rampOfSlope: (tanTheta, drop, trackR) => drop / (tanTheta * trackR),   // the angular run of a ramp of that slope at the track's radius
+  rampOfSlope: (tanTheta, drop, trackR) => drop / (tanTheta * trackR),
+  climbRatio: (tanTheta, mu) => (tanTheta + mu) / (1 - mu * tanTheta),   // the pin's tangential force on the disc climbing a flank, per unit of its load   // the angular run of a ramp of that slope at the track's radius
 });
 // §280 — THE NOTCH'S RAMPS. The tick has always dropped the pin along a LINEAR
 // ramp, from nothing at the pin's rim touching the notch's edge to the full
@@ -24536,7 +24537,7 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   const padCap_N = Math.min(strainCap * 2 * L ** 2 / (3 * SPRING_FLAT_U) * k * U, SELECTOR_DETENT_WINDOW_MN[1] / 1000);   // strain = 3·t·preload/(2·L²), preload = F/(k·U)
   const climb_N = MU_STEEL * ((pinF_N + padCap_N) * seatR_u + padCap_N * padR_u) / (ALARM_SPRING_HEADROOM * ALARM_TRACK_RMID);
   const climbRatio = climb_N / pinF_N;                                        // (tan θ + μ)/(1 − μ·tan θ)
-  const tanTheta = (climbRatio - MU_STEEL) / (1 + MU_STEEL * climbRatio);
+  const tanTheta = (climbRatio - MU_STEEL) / (1 + MU_STEEL * climbRatio);   // the inverse of ALARM_DETECTOR_LAWS.climbRatio at MU_STEEL
   if (!(tanTheta > 0)) console.warn(`TODO 260 seat: the pad's cap ${(padCap_N * 1000).toFixed(2)} mN cannot hold even the flat drag ×${ALARM_SPRING_HEADROOM} against any ramp (climb ratio ${climbRatio.toFixed(4)} ≤ μ ${MU_STEEL})`);
   ALARM_NOTCH_RAMP = ALARM_DETECTOR_LAWS.rampOfSlope(tanTheta, ALARM_PIN_DROP, ALARM_TRACK_RMID);
   buildAlarmDiscTrack();   // the track and its two ramps, cut to the run just solved
@@ -24545,11 +24546,30 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   const padF_N = (ALARM_SPRING_HEADROOM * climb_N * ALARM_TRACK_RMID / MU_STEEL - pinF_N * seatR_u) / (seatR_u + padR_u);
   const hold_Nmm = MU_STEEL * ((pinF_N + padF_N) * seatR_u + padF_N * padR_u) * UNIT_MM;
   const climb_Nmm = climb_N * (ALARM_TRACK_RMID * UNIT_MM);
+  // TODO 260 — THE FRICTION CORNERS. The pad is solved at MU_STEEL, the ADVERSE
+  // corner, which is the conservative one for the load (the climb and the drag
+  // both rise with μ) and the unconservative one for the hold (it IS a friction,
+  // and falls with it). Both are dry steel, which the lubrication map prices as
+  // `muTooth` (the one dry row: nothing here is oiled, oil would run to the
+  // teeth), so each of its corners is run through BOTH sides with the pad's force
+  // as built (it is a blade, it does not change): hold(μ) against climb(μ), with
+  // the pin and the pad in one lubrication state — and the DECOUPLED worst, the
+  // pad at its kindest against the pin at its harshest. Held: the hold never
+  // falls under the climb at any of them (the headroom is the design margin AT
+  // the adverse corner and is what shrinks, not the sign of the margin).
+  const holdAt = (mu) => mu * ((pinF_N + padF_N) * seatR_u + padF_N * padR_u) * UNIT_MM;
+  const climbAt = (mu) => pinF_N * ALARM_DETECTOR_LAWS.climbRatio(tanTheta, mu) * (ALARM_TRACK_RMID * UNIT_MM);
+  const corners = Object.freeze(Object.fromEntries(FRICTION_CORNERS.map((c) => {
+    const mu = FRICTION.muTooth[c];
+    return [c, Object.freeze({ mu, hold_Nmm: holdAt(mu), climb_Nmm: climbAt(mu), ratio: holdAt(mu) / climbAt(mu) })];
+  })));
+  const decoupled = Object.freeze({ hold_Nmm: holdAt(FRICTION.muTooth.favourable), climb_Nmm: climbAt(FRICTION.muTooth.adverse),
+    ratio: holdAt(FRICTION.muTooth.favourable) / climbAt(FRICTION.muTooth.adverse) });
   const preload_u = padF_N / k / U;
   const strain = 3 * (SPRING_FLAT_U * U) * (preload_u * U) / (2 * (L * U) ** 2);
   ALARM_SEAT = Object.freeze({
     padF_mN: padF_N * 1000, seatR_u, padR_u, holdTq_Nmm: hold_Nmm, dragTq_Nmm: drag_Nmm,
-    climbTq_Nmm: climb_Nmm, climbF_mN: climb_N * 1000, rampTan: tanTheta, rampRun_rad: ALARM_NOTCH_RAMP, strainCap,
+    climbTq_Nmm: climb_Nmm, climbF_mN: climb_N * 1000, rampTan: tanTheta, rampRun_rad: ALARM_NOTCH_RAMP, strainCap, corners, decoupled,
     bladeL_u: L, bladeW_u: ALARM_SEAT_BLADE_W, bladeT_u: SPRING_FLAT_U, k_N_per_m: k, preload_u, strain,
     postR_u: ALARM_SEAT_POST_R, postRad_u: ALARM_SEAT_POST_RAD, postL_u: ALARM_SEAT_POST_L,
     plateBore_u: ALARM_SEAT_BORE, plateOut_u: ALARM_SEAT_R_OUT, plateRelief_u: ALARM_SEAT_R_RELIEF, reliefHalf_rad: ALARM_SEAT_RELIEF_HALF,
@@ -24558,6 +24578,8 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   const say = (nm, ok, got, need) => { if (!ok) console.warn(`TODO 144 seat ${nm}: ${got}, need ${need}`); };
   say('hold clears the drag', hold_Nmm >= ALARM_SPRING_HEADROOM * drag_Nmm - 1e-12, `${hold_Nmm.toExponential(3)} N·mm`, `≥ ${(ALARM_SPRING_HEADROOM * drag_Nmm).toExponential(3)}`);
   say('hold clears the CLIMB out of the notch (TODO 260)', hold_Nmm >= ALARM_SPRING_HEADROOM * climb_Nmm - 1e-12, `${hold_Nmm.toExponential(3)} N·mm`, `≥ ${(ALARM_SPRING_HEADROOM * climb_Nmm).toExponential(3)}`);
+  say('the adverse corner is the design corner: hold ÷ climb = the headroom', Math.abs(corners.adverse.ratio - ALARM_SPRING_HEADROOM) <= 1e-9, corners.adverse.ratio.toFixed(9), `${ALARM_SPRING_HEADROOM}`);
+  say('the hold never falls under the climb at any friction corner', Math.min(...Object.values(corners).map((c) => c.ratio), decoupled.ratio) >= 1, `${Math.min(...Object.values(corners).map((c) => c.ratio), decoupled.ratio).toFixed(3)}×`, '≥ 1');
   say('the pad is the cap the ramp was solved against', Math.abs(padF_N - padCap_N) <= 1e-9 * padCap_N, `${(padF_N * 1000).toFixed(6)} mN`, `${(padCap_N * 1000).toFixed(6)} mN`);
   say('pad force inside the detent envelope', padF_N * 1000 >= SELECTOR_DETENT_WINDOW_MN[0] && padF_N * 1000 <= SELECTOR_DETENT_WINDOW_MN[1], `${(padF_N * 1000).toFixed(2)} mN`, `${SELECTOR_DETENT_WINDOW_MN[0]}–${SELECTOR_DETENT_WINDOW_MN[1]}`);
   say('preload exceeds the seat\'s sink', preload_u >= ALARM_SEAT_SINK, `${preload_u.toFixed(4)} u`, `≥ ${ALARM_SEAT_SINK}`);
@@ -24606,6 +24628,7 @@ function alarmSetHoldRecord() {
       holdTq_Nmm: ALARM_SEAT.holdTq_Nmm,      // its holding torque about the disc's axis
       climbTq_Nmm: ALARM_SEAT.climbTq_Nmm,    // TODO 260: what the pin puts on the disc climbing out of the notch — the load the hold is solved against now
       rampTan: ALARM_SEAT.rampTan, rampRun_rad: ALARM_SEAT.rampRun_rad,
+      corners: ALARM_SEAT.corners, decoupled: ALARM_SEAT.decoupled,   // TODO 260: hold ÷ climb at each of muTooth's corners, and the decoupled worst
       padF_mN: ALARM_SEAT.padF_mN, seatR_u: ALARM_SEAT.seatR_u, padR_u: ALARM_SEAT.padR_u,
       preload_u: ALARM_SEAT.preload_u, strain: ALARM_SEAT.strain,
     });
