@@ -13,7 +13,8 @@
 //     baseplate's top for the bottom plate);
 //   · THROUGH — each Technic brick's two hole faces lie on its shaft's axle
 //     line, and the axle fills each brick's hole end to end, less the half LDU
-//     the library trims off each axle end;
+//     the library trims off each axle end. Where two axles stand end to end on
+//     one line (landing G's motion works), each brick belongs to the nearer;
 //   · ON THE AXLE — every gear's bore on its axle's line and inside its span
 //     (a keyless clutch gear, its own body, on the stem's). Landing F's rack
 //     has no axle (it slides on its tiles) and the detent's follower and its
@@ -118,7 +119,20 @@ function judge(build, frame, mode = build.modes?.[0]) {
     const ab = B(axle.part);                            // along the axle's own X, turned onto the body's axis
     const half = (ab.hi[0] - ab.lo[0]) / 2, z0 = axle.m[A] - half, z1 = axle.m[A] + half;
     spans.push({ i, s, A, P, z0, z1 });
-    const bricks = techs.filter(({ faces }) => faces.length && faces.every((w) => P.every((k) => near(w[k], s.origin[k]))));
+  }
+  // a brick on a line belongs to the axle on that line NEAREST it along the
+  // line (landing G: two axles may stand end to end on one line, each in its
+  // own pair of bricks); one axle alone on its line takes every brick there
+  const lineOf = (sp) => spans.filter((o) => o.A === sp.A && o.P.every((k) => near(o.s.origin[k], sp.s.origin[k])));
+  const gapTo = (sp, lo, hi) => Math.max(sp.z0 - hi, lo - sp.z1, 0);
+  for (const sp of spans) {
+    const { i, s, A, P, z0, z1 } = sp, mates = lineOf(sp);
+    const bricks = techs.filter(({ faces }) => faces.length && faces.every((w) => P.every((k) => near(w[k], s.origin[k]))))
+      .filter(({ faces }) => {
+        const zs = faces.map((w) => w[A]), lo = Math.min(...zs), hi = Math.max(...zs);
+        const d = gapTo(sp, lo, hi);
+        return mates.every((o) => o === sp || gapTo(o, lo, hi) > d);
+      });
     if (bricks.length !== 2) bad.push(`shaft ${i}: ${bricks.length} Technic bricks on its line, not 2`);
     for (const { t } of bricks) {
       // the axle must fill the brick's hole end to end, less the half LDU the
@@ -129,7 +143,11 @@ function judge(build, frame, mode = build.modes?.[0]) {
   }
   for (const [i, s] of build.shafts.entries()) {
     if (s.slider) continue;                             // the pull's rack slides in its channel (PULL, probe-technic-keyless)
-    const on = spans.find((a) => a.A === axisOf(s).A && a.P.every((k) => near(a.s.origin[k], s.origin[k])));
+    // the axle on its line that carries it (an idling body, on the minute
+    // axle's line beside another axle end to end: the one whose span holds it)
+    const cands = spans.filter((a) => a.A === axisOf(s).A && a.P.every((k) => near(a.s.origin[k], s.origin[k])));
+    const own = bodyParts(i).filter((g) => g.role !== 'axle' && !g.offLine);
+    const on = cands.find((a) => a.i === i) ?? cands.find((a) => own.every((g) => g.m[a.A] >= a.z0 && g.m[a.A] <= a.z1)) ?? cands[0];
     if (!on) { bad.push(`body ${i}: no axle on its line`); continue; }
     for (const g of bodyParts(i)) {
       if (g.role === 'axle' || g.offLine) continue;   // the pawl's 8T rides its arm's far hole (SEATED there, probe-technic-keyless)

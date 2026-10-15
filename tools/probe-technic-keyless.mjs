@@ -130,10 +130,12 @@ const ringB = B(KEYLESS_PARTS.ring), clutchB = B(KEYLESS_PARTS.clutch), joinerB 
 const stemOf = (build) => build.shafts.find((s) => s.shaft === 0 && !s.clutch);
 const clutchOf = (build, which) => build.shafts.find((s) => s.clutch === which);
 // a body's last-placed gear part index chain: the branch's OUTPUT is the body
-// no mesh drives anything from, reached from that branch's clutch
+// no mesh OF THE BRANCH drives anything from, reached from that branch's
+// clutch (landing G's motion works rides on from the setting branch's output,
+// the minute axle; probe-technic-motion.mjs holds it)
 function branchOutput(build, which) {
   let k = build.shafts.indexOf(clutchOf(build, which));
-  for (;;) { const m = build.meshes.find((x) => x.a === k); if (!m) return k; k = m.b; }
+  for (;;) { const m = build.meshes.find((x) => x.a === k && x.branch !== 'motion'); if (!m) return k; k = m.b; }
 }
 function partOn(build, body, role, input, mode) {
   return placedParts({ ...build, statics: [], shafts: [build.shafts[body]] }, input, mode).find((p) => p.role === role || (role === 'gear' && p.teeth));

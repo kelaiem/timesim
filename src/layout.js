@@ -4348,6 +4348,54 @@ export function technicKeylessErrors(gen, key, chain, target) {
   return errs;
 }
 
+// §219 tier three (b), landing G — THE MOTION WORKS AS A LEGO CLOCK: the
+// minute hand on the setting branch's output axle (the cannon pinion's, the
+// end of TECHNIC_KEYLESS' setting row), the HOUR WHEEL a round-bored gear
+// idling on that same axle. TECHNIC_FORK's 'motion works' row is the RATIO
+// (12) as a straight chain whose first and last shafts are different axles;
+// a clock needs the train to come BACK to the axle it left, turning the same
+// way, so this is a different row of the same target:
+//   · COAXIAL — in the frame's one plane the signed centre distances sum to
+//     zero. With TWO meshes that is the steel's own idiom (cannon 10:30 and
+//     minute pinion 8:32, both 20 mm), and no pair of catalogue pairs does it:
+//     two meshes on one centre distance have equal tooth sums, and no two
+//     sums in either catalogue carry ratios multiplying to 12 (the probe
+//     re-runs that search and prints it empty);
+//   · SAME SENSE — an even number of external meshes, so three is refused and
+//     four is the fewest;
+//   · ROUND-BORED HOUR WHEEL — the 16T clutch gear (18946), whose bore is a
+//     pin hole, every near-axis surface point at 6 LDU, where the cross axle's
+//     farthest is 6 (probe-technic-motion's IDLES). It is the keyless works'
+//     own clutch gear, so it adds no part to the catalogue.
+// Written in DRIVE order from the minute axle, [driver, driven], so the
+// product is the hour wheel's turns per minute-axle turn: 1/12, the reciprocal
+// of the fork row's target. A shaft between two meshes carries the first's
+// driven gear and the second's driver; where those are ONE gear (an idler) the
+// pair repeats its count. The chain and its placement are solved together
+// (technic-frame.js' solveMotionWorks: the fewest meshes, then the fewest new
+// parts, then the fewest teeth, that frames clear), and both are re-solved by
+// tools/probe-technic-motion.mjs.
+export const TECHNIC_MOTION_WORKS = Object.freeze({
+  hourWheel: TECHNIC_CLUTCH_GEAR,
+  chains: Object.freeze({ technic_classic: [[8, 16], [8, 24], [8, 16], [16, 16]], technic_2026: [[8, 16], [8, 24], [8, 16], [16, 16]] }),
+});
+export function technicMotionErrors(gen, chain, target = technicForkTargets()['motion works']) {
+  const cat = CATALOGUES[gen], hw = TECHNIC_MOTION_WORKS.hourWheel;
+  const errs = [];
+  if (chain.length % 2) errs.push(`${gen} motion works: ${chain.length} meshes turn the hour wheel against the minute hand`);
+  if (!chain.length || chain[chain.length - 1][1] !== hw.teeth) return [...errs, `${gen} motion works: the chain does not end at the ${hw.teeth}T round-bored hour wheel`];
+  let product = ratQ(1);
+  for (const [i, [ta, tb]] of chain.entries()) {
+    const a = cat.counts.find((c) => c.teeth === ta), b = i === chain.length - 1 ? hw : cat.counts.find((c) => c.teeth === tb);
+    if (!a || !b) { errs.push(`${gen} motion works: ${ta}:${tb} names a count the catalogue does not have`); continue; }
+    if (!catalogueMesh(a, b, cat)) errs.push(`${gen} motion works: ${ta}:${tb} is not an admissible going-train mesh`);
+    product = ratMul(product, ratQ(ta, tb));
+  }
+  const want = ratQ(target.d, target.n);
+  if (!ratEq(product, want)) errs.push(`${gen} motion works: chain multiplies to ${ratStr(product)}, the hour wheel must turn ${ratStr(want)}`);
+  return errs;
+}
+
 // THE BOOT ASSERT (rule 6: silent unless something regressed). Arithmetic on
 // a dozen small integers, so it costs nothing and needs no seam.
 {
@@ -4363,4 +4411,7 @@ export function technicKeylessErrors(gen, key, chain, target) {
     for (const [gen, chain] of Object.entries(row.chains))
       for (const e of technicKeylessErrors(gen, row.key, chain, kt[row.key]))
         console.warn(`§219 technic keyless: ${e}`);
+  for (const [gen, chain] of Object.entries(TECHNIC_MOTION_WORKS.chains))
+    for (const e of technicMotionErrors(gen, chain, targets['motion works']))
+      console.warn(`§219 technic motion works: ${e}`);
 }

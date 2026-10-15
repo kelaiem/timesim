@@ -335,8 +335,10 @@ export function ldrawBuild(frame, lib, phases = new Map()) {
     }
     for (const [gi, g] of s.gears.entries()) {
       const part = { role: g.kind, part: g.part, teeth: g.teeth, m: at(0, 0, L(g.y)) };
-      if (g.clutch) {
-        bodies.push({ origin, parts: [part], shaft: i, clutch: g.clutch });
+      // landing G: the HOUR WHEEL idles on the minute axle the same way (a
+      // round bore), its own body, turned only by the mesh that drives it
+      if (g.clutch || g.idles) {
+        bodies.push({ origin: g.idles ? [...origin] : origin, parts: [part], shaft: i, ...(g.clutch ? { clutch: g.clutch } : { idles: g.role ?? true }) });
         gearAt.set(`${i}.${gi}`, { body: bodies.length - 1, part, g });
       } else {
         own.parts.push(part);
@@ -373,10 +375,11 @@ export function ldrawBuild(frame, lib, phases = new Map()) {
     const Bang = alpha + Math.PI + (Math.PI - A.g.teeth * (Aang - alpha)) / Bg.g.teeth;
     db.phi = mod(Bang - phase(Bg.g), 2 * Math.PI / Bg.g.teeth);
     for (const md of modes) db.speeds[md] = -da.speeds[md] * A.g.teeth / Bg.g.teeth;
-    meshes.push({ a: A.body, b: Bg.body, ga: da.parts.indexOf(A.part), gb: db.parts.indexOf(Bg.part) });
+    meshes.push({ a: A.body, b: Bg.body, ga: da.parts.indexOf(A.part), gb: db.parts.indexOf(Bg.part), ...(m.branch ? { branch: m.branch } : {}) });
   }
   const shafts = bodies.map((b) => ({ origin: b.origin, phi: b.phi ?? 0, speed: b.speeds[modes[0]] ?? 0,
-    ...(frame.modes ? { speeds: b.speeds } : {}), parts: b.parts, shaft: b.shaft, ...(b.clutch ? { clutch: b.clutch } : {}) }));
+    ...(frame.modes ? { speeds: b.speeds } : {}), parts: b.parts, shaft: b.shaft, ...(b.clutch ? { clutch: b.clutch } : {}),
+    ...(b.idles ? { idles: b.idles } : {}) }));
   // LANDING E — THE SELECTOR, a body turning about LDraw X by an angle per mode
   // (it does not follow the input). Landing E posed the angle that holds the
   // ring at its stroke end, solved off the catch's own surface; landing F's

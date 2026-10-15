@@ -35902,6 +35902,216 @@ the larger plate.
   and at neutral the bulb is centred in the groove. Which side it actually
   lies on depends on the mode it came from.
 
+## §219 tier three (b), landing G — the motion works: the hour wheel idles on the minute axle, and the crown sets the hands through the gears
+
+The keyless setting branch ends on the minute hand's axle. Its row's target is
+the steel's stem-to-cannon-pinion ratio, 1/3, so its last shaft is the cannon
+pinion's. Landing G builds the motion works on that axle:
+- the **hour wheel** is a round-bored gear idling on the minute axle, LEGO's
+  own clock idiom;
+- four meshes carry the train from the minute axle back to it;
+- in `set` the crown turns the hands through those gears (rule 2).
+
+### What the fork row already did, and what it did not
+
+`TECHNIC_FORK`'s 'motion works' row frames the 12:1 as a straight chain:
+- classic 16:8 × 16:8 × 24:8, on four axles;
+- 2026 24:8 × 64:16, on three.
+
+Its hour wheel and its minute pinion stand on different axles, and nothing
+drives it. A clock needs the hour hand on the minute hand's axle, which a
+straight chain cannot give. The row stays as the RATIO fork, and its build is
+unchanged. Landing G is the coaxial build beside it, joined to the keyless
+works.
+
+### Two meshes cannot do it, and three turn the hour hand backwards
+
+- **Two meshes.** The steel motion works is two meshes on equal centre
+  distances: cannon 10:30 and minute pinion 8:32, both 20 mm. Two meshes
+  between the same two axles must have equal tooth sums. No two catalogue
+  pairs with equal sums multiply to 12, in either generation. The solver's
+  two-mesh search closes no chain at all.
+- **Three meshes.** An odd number of external meshes turns the hour wheel
+  against the minute axle.
+- So **four** is the fewest.
+
+The feasibility note's "(8:24)(16:64) = 3·4 — two meshes, the sim's own count,
+on 2- and 5-stud centres" is the fork row. Its two centres differ, so it
+cannot come back to its own axle. That note lives in the roadmap repo and is
+not corrected here.
+
+### The hour wheel is the keyless works' clutch gear
+
+It is the 16T clutch gear (18946), so the landing adds no part to the
+catalogue or the pack. Its bore is a pin hole, read off the part:
+- every surface point near its axis stands 2.4000–2.4001 mm out;
+- the cross axle's farthest surface stands 2.4000 mm out.
+
+LDraw draws a pin hole and an axle's arm tips at the same nominal 6 LDU, a
+running fit at zero drawn clearance. A keyed 16T (4019) reads its cross from
+1.44 mm. That is the IDLES control.
+
+### The solve: chain and placement together
+
+Whether a coaxial chain is a BUILD depends on where its shafts stand, so
+`solveMotionWorks` (technic-frame.js) searches both at once.
+
+The chain:
+- an even number of meshes;
+- each mesh an admissible going-train mesh of the catalogue's spurs and
+  double bevels. A turntable's top runs on its own base, not on an axle, and
+  the 18T clutch-on-both-sides slips;
+- the last mesh drives the hour wheel;
+- the product is exactly 1/12, pruned by the set of products the remaining
+  meshes can still make.
+
+The placement:
+- every shaft is on the frame's 4 mm lattice in its one plane, and the signed
+  centre distances close on the minute axle;
+- the layers rise along the axles, one to four layers per stage;
+- an intermediate shaft may carry ONE gear as an IDLER, meshing both its
+  neighbours in one layer;
+- the first mesh is either a new gear keyed to the minute axle, or the setting
+  branch's own (the minute axle's 16T into the minute wheel's 8T), which is how
+  the steel shares its minute wheel.
+
+Each candidate is framed with the keyless works and kept only when
+`frameFindings` is empty. The ranking is:
+1. fewest meshes (backlash and friction are per mesh, solveRatio's first rule);
+2. fewest new gears;
+3. fewest new axles;
+4. fewest teeth (solveRatio's second rule);
+5. the smallest baseplate footprint;
+6. the lowest top layer.
+
+| | 4-mesh chains that close | sharing the minute wheel | placements tried | frame clear |
+|---|---|---|---|---|
+| classic | 64 | 0 | 18,176 | 5 |
+| 2026 | 138 | 2 (both on the 64T) | 38,528 | 15 |
+
+Sharing the minute wheel closes nothing in classic. Its 16:8 speeds the train
+up ×2 and leaves 1/24 for three meshes, which classic's counts cannot make.
+2026's two chains that share it (on the 64T) do not frame.
+
+Both generations answer **8:16 × 8:24 × 8:16 × 16:16**, from the minute axle:
+
+| shaft | off the minute axle | gears (layer along the axles) |
+|---|---|---|
+| minute axle | — | a new 8T (32 mm); the hour wheel, idling (64 mm) |
+| 1 | 12 mm | 16T (32), 8T (40) |
+| 2 | 28 mm | 24T (40), 8T (64) |
+| 3 | 16 mm | one 16T (64): an IDLER meshing shaft 2's 8T and the hour wheel |
+
+The product is 8/16 · 8/24 · 8/16 = 1/12, since the idler's count cancels. The
+landing adds 7 gears (96 teeth) and 3 axles.
+
+Shaft 1 stands on the setting minute wheel's line, so the two are separate
+axles end to end, 0.79 mm apart. Every gear sits a pitch circle from its mate.
+The closest part-to-part approach is shaft 2's 24T, 0.67 mm from shaft 1's axle,
+which is any 8:24 mesh's own geometry.
+
+The probe prints the leading framed candidates beside the answer.
+Second-placed are the same chain at a higher top layer, and the 12:36
+variants at 120 teeth.
+
+### Joining it to the keyless works
+
+`frameKeyless(gen, motion)` frames the motion works with the keyless works by
+default; `null` frames the keyless works alone.
+
+The pull's reach is computed without the motion works. So landing F's derived
+rack, wheel and pivot do not move, and the motion works must clear them. It
+does: the frame is held to the rack's SWEPT box (its whole stroke, every gear
+and column against it). The keyless frame grows from 19×13 to 19×17 studs in
+2026. Classic stays 21×17, on the same 32×32 baseplate.
+
+Three instruments changed to read the new construction:
+- **The frame probe's judge moved into the module as `frameFindings`**, so the
+  solver and the probe read one law. It gained two rules: the rack's swept box,
+  and two axles on one line allowed only end to end.
+- **`probe-technic-build.mjs` gives each Technic brick on a line to the NEARER
+  axle.** Before, it counted four bricks on shaft 1's line and failed it.
+- **`probe-technic-keyless.mjs`'s branch walk stays on its branch's own
+  meshes.** Its first run walked on through the motion works and read the
+  setting output turning 0.37/36. That was the crown-to-hour ratio, showing
+  through a check that was not asking for it.
+
+`ldrawBuild` makes a round-bored gear its own body, as it does a clutch gear,
+turned only by the mesh that drives it. It also gets its own copy of the
+axle's origin: a shared array, kept shared by `structuredClone`, let the
+COAXIAL control move both bodies at once and read clean. Found because the
+control did not fire.
+
+### What it measures (the feasibility note's §4 MEASURE)
+
+Read off the placed matrices, turning the crown (the stem):
+
+| | crown turns per minute-hand turn | per hour-hand turn | hour wheel's sense |
+|---|---|---|---|
+| classic | 3.000000000 | **36.000000000** | with the minute axle |
+| 2026 | 3.000000000 | **36.000000000** | with the minute axle |
+
+And the second half of that measure: whether the ring's neutral and both
+meshes are reached from the pull's positions. The ring's depth into each
+clutch gear is read off the placed bounds:
+
+| | rack | selector | ring into winding / setting gear | the hands |
+|---|---|---|---|---|
+| classic wind | +7.19 mm | 28.89° | 3.20 / −4.80 mm | still |
+| classic neutral | −0.28 mm | −1.11° | −0.97 / −0.63 mm | still |
+| classic set | −7.74 mm | −31.11° | −4.80 / 3.20 mm | turn |
+| 2026 wind | +6.49 mm | 26.06° | 3.20 / −4.80 mm | still |
+| 2026 neutral | +0.09 mm | 0.34° | −0.75 / −0.85 mm | still |
+| 2026 set | −6.31 mm | −25.37° | −4.80 / 3.20 mm | turn |
+
+The note asked for "the crown's two positions". In this build the crown does
+not slide: the PULL is landing F's rack, and it has three positions.
+
+### Instruments
+
+- `tools/probe-technic-motion.mjs` (new):
+  - **ROWS**: the declared chain and placement are the solver's answer, and the
+    chain multiplies exactly to 1/12. The whole table is printed: per mesh
+    count, the chains that close, the placements tried, the ones that frame,
+    and the leading candidates.
+  - **COAXIAL**: the hour wheel's bore stands on the minute axle's line, inside
+    its span.
+  - **IDLES**: the hour wheel is its own body, and its bore is round and at the
+    axle's reach.
+  - **RATIOS AND SENSE**: in `set`, 1/3 at the minute axle and 1/12 of that at
+    the hour wheel, the same way; still in `wind` and `neutral`.
+  - **REACHED**: the table above, the ring in the right gear at each rest.
+  - **CLEAR**: every motion-works part's sampled surface over one LDU from
+    everything it does not bear on, in every mode and at two crown angles.
+
+  Six controls fire: a mesh changed, the hour wheel a lattice step off the
+  axle, a keyed 16T as the hour wheel, the hour wheel turning against the
+  minute axle or at a sixth of it, the minute axle turning in wind, and shaft
+  2's 24T slid one layer onto shaft 1's 16T.
+- `probe-technic-frame.mjs`: 10 rows, 0 failing.
+- `probe-technic-build.mjs`: 10 builds, 0 failing, in every mode.
+- `probe-technic-keyless.mjs`: controls 10/10, every reading as landing F
+  printed it.
+- `probe-technic-ldraw.mjs`: 22/22.
+- `probe-technic-phase.mjs`: 20/20.
+
+`technic.html`'s LEGO view now labels the fifth cell "keyless and motion
+works". It prints the motion works' chain and the crown turns per hour-hand
+turn, read off the build's own body speeds.
+
+### What it does not claim
+
+- **A going train.** The module is driven only from the crown in `set`.
+  Nothing turns the minute axle in `wind` or `neutral`, so the hands stand
+  still there by construction. The fork's going rows are separate builds.
+- **The hands.** The minute axle's angle and the hour wheel's angle ARE the
+  reading, and no hand part is placed. Nothing in the vendored catalogue keys
+  to 18946's recess except the driving ring, and the ring needs the joiner
+  keyed to the very axle the hour wheel must idle on.
+- **A force or a motion.** The angles are derived through the meshes, posed per
+  crown angle: a kinematic model. Nothing weighs the drag of the idling hour
+  wheel or of the setting train.
+
 ## §276 — The jumper's siting scan puts first the check that refuses most per millisecond; `?d4=16` boots inside the spec-boot window again
 
 > `main`'s hosted push run went red when #667 (§261 landing 2c) merged and
