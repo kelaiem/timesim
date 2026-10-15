@@ -53,8 +53,9 @@ const { LOCALES, SURFACES, surfacesOf } = await import(join(ROOT, 'src/i18n.js')
 
 // 5. The roster: every shipped row carries all three surfaces, by omission.
 const thinRows = LOCALES.filter((L) => L.surfaces);
-check('every shipped LOCALES row declares all three surfaces', LOCALES.every((L) => SURFACES.every((s) => surfacesOf(L.code).includes(s))) && thinRows.length === 0,
-  `${LOCALES.length} rows, ${thinRows.length} with an explicit declaration`);
+check('a row with no `surfaces` carries all three; one that declares fewer is valid and includes the chrome',
+  LOCALES.every((L) => L.surfaces ? (L.surfaces.includes('chrome') && L.surfaces.every((s) => SURFACES.includes(s))) : SURFACES.every((s) => surfacesOf(L.code).includes(s))),
+  `${LOCALES.length} rows; declared: ${thinRows.map((L) => `${L.code}[${L.surfaces.join('+')}]`).join(', ') || 'none'}`);
 
 // 5b. Every table can say the pickers' toggle: it shows in every picker the day any row is incomplete.
 const { TABLES, INCOMPLETE_TOGGLE } = await import(join(ROOT, 'src/i18n.js'));

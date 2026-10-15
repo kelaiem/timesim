@@ -92,6 +92,15 @@ export const QUESTIONS = {
     { term: 'ütés', en: 'beat / blow', q: 'A beat of the escapement is «ütés», which is also the alarm hammer\'s blow; «félrezgés/óra» is used for A/h. Would a workshop prefer «félrezgés» for the escapement beat?' },
     { term: 'átadás', en: 'project vocabulary', q: 'The project\'s own abstract terms are rendered «állomás» (station), «löket» (throw), «átadás» (hand-off), «felmentés» (waiver), «hajtogatás» (fold) and «bemeneti tengely» (a pose axis, kept apart from «tengely», the arbor). Do they read as those senses rather than their everyday ones?' },
   ],
+  cs: [
+    { term: 'fusée', en: 'fusee', q: 'The fusee is kept as the loan «fusée» (kužel fusée, řetízek fusée), with no settled single Czech word. Is there an established trade term, or is the loan right?' },
+    { term: 'kotva', en: 'pallet fork / anchor', q: '«kotva» stands for the pallet fork AND the alarm governor\'s anchor, the overload Dutch and Turkish record. Does a workshop keep one word for both, and is «krok» right for the escapement (kotvový krok for the Swiss lever)?' },
+    { term: 'nepokoj', en: 'balance', q: 'The balance is «nepokoj», the trade term, and the hairspring «vlásek». Are those what a watchmaker says, rather than «balanc» and «spirála»?' },
+    { term: 'ústrojí', en: 'keyless works', q: 'The keyless works are «natahovací a přestavovací ústrojí» (winding and setting works), because «bezklíčový» is not an established noun. Is there a shorter trade word?' },
+    { term: 'budík', en: 'alarm', q: 'The alarm is «budík», and the alarm\'s «regulátor» (governor) must not read as a timekeeping regulator. Does «regulátor budíku» read as the strike-speed governor?' },
+    { term: 'půlkmit', en: 'beat', q: 'A beat is «půlkmit» (half-oscillation), with «frekvence» for the beat rate. Is «půlkmity za hodinu» how a Czech watch spec states 18,000 A/h?' },
+    { term: 'modelováno', en: 'modelled / simulated', q: 'The honesty pair is «modelováno» (described) and «simulováno» (driven). Please check each paragraph keeps the two words apart.' },
+  ],
   hi: [
     { term: 'पैलेट फोर्क', en: 'part names', q: 'Part names are transliterated loanwords («पैलेट फोर्क», «हेयरस्प्रिंग», «बैलेंस व्हील»), as Hindi engineering prose usually writes them. Is that the right side of the register split for these terms?' },
     { term: 'बलाघूर्ण', en: 'torque', q: 'Physical quantities use the standard scientific words («बलाघूर्ण» for torque, «जड़त्व» for inertia, «आयाम» for amplitude). Do they read naturally beside the loanword part names?' },

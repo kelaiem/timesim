@@ -365,7 +365,10 @@ try {
   // technic.html imports statically. One module for the page, like landing B's three.
   // Landing H shipped without this bump, so main read 79/78 until this line (found on the
   // §274 PR, whose own change adds no module: the diff touches no precached file).
-  check('release: precache complete', counts === 79, `${counts}/79`);
+  // §273 — 80: src/primer-i18n.cs.js. Czech is the first locale to declare fewer
+  // than three surfaces (§274): its explainer is not translated, so there is no
+  // explain-i18n.cs.js and the locale adds ONE module where every other adds two.
+  check('release: precache complete', counts === 80, `${counts}/80`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -403,7 +406,7 @@ try {
   // missing table from another, and a per-locale dynamic import is exactly the
   // kind of thing that gets added to a LOADERS map and forgotten in a file
   // name; this loop is what makes each one prove itself from cache.
-  for (const code of ['de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'id', 'tr', 'cy', 'fil', 'lv', 'hu', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'he', 'fa', 'ar']) {
+  for (const code of ['de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'id', 'tr', 'cy', 'fil', 'lv', 'hu', 'cs', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'he', 'fa', 'ar']) {
     await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, NAV);
     // WAIT for the swap rather than sampling once: the table arrives by dynamic
     // import(), which can still be in flight at `load`, so a single read raced
