@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 // §280 — does the pin ride CUT METAL out of the notch, or a law over nothing?
 //
+// TODO 261 made the notch two-sided: the ENTRY ramp (the side the pin arrives
+// from along its travel) is steeper and shorter than the EXIT's, and the floor
+// stands ahead of the disc's zero. So the samples are laid along the pin's
+// TRAVEL (u, negative on the entry side, from the floor's measured centre), and
+// each side's zone is its own ramp's run.
+//
 // The tick lowers the reader's pin along a linear ramp over the pin's own arc at
 // the track's radius (ALARM_DETECTOR_LAWS.pinArcHalf). Until §280 the notch's
 // walls were radial, so a flat-ended pin standing on a vertical wall fell in and
@@ -16,7 +22,7 @@
 // Also held, on the wedges themselves: each ramp is one closed, manifold shell
 // with positive volume; its top meets the track's top at its high end and the
 // notch's dropped-tip level at its low end; and the slope the cut has is the law's
-// (drop over twice the pin's arc, at the track's radius).
+// (drop over its run, at the track's radius), the entry's and the exit's each.
 //
 // CONTROLS, because a reading that cannot fail is not one: (1) the ramps are
 // carried 0.05 up the collar's axis and the touching reading must move by EXACTLY
@@ -79,18 +85,25 @@ const R = await pg.evaluate(() => {
   // heights and angular run of each wedge, in its own (disc) frame
   out.wedges = ramps.map((m) => { const p = m.geometry.attributes.position; let lo = Infinity, hi = -Infinity, zTopLo = Infinity, a0 = Infinity, a1 = -Infinity, rLo = Infinity, rHi = -Infinity;
     const angs = []; for (let i = 0; i < p.count; i++) { const z = p.getZ(i); lo = Math.min(lo, z); hi = Math.max(hi, z); if (z > 1e-9) zTopLo = Math.min(zTopLo, z); angs.push(Math.atan2(p.getY(i), p.getX(i))); const r = Math.hypot(p.getX(i), p.getY(i)); rLo = Math.min(rLo, r); rHi = Math.max(rHi, r); }
-    const s = angs[0] >= 0 ? 1 : -1; const m2 = angs.map((a) => Math.abs(a)); return { zLo: lo, zHi: hi, zTopLo, run: Math.max(...m2) - Math.min(...m2), rLo, rHi, side: s }; });
+    return { zLo: lo, zHi: hi, zTopLo, run: Math.max(...angs) - Math.min(...angs), a0: Math.min(...angs), a1: Math.max(...angs), rLo, rHi }; });
+  const negW = out.wedges[0].a0 < out.wedges[1].a0 ? out.wedges[0] : out.wedges[1], posW = negW === out.wedges[0] ? out.wedges[1] : out.wedges[0];
+  const floorMid = (negW.a1 + posW.a0) / 2;   // the floor's measured centre, in the disc's own angle: between the two ramps' inner edges
+  out.floorHalf = (posW.a0 - negW.a1) / 2;
   { const p = track.geometry.attributes.position; let hi = -Infinity; for (let i = 0; i < p.count; i++) hi = Math.max(hi, p.getZ(i)); out.trackTop = hi; }
 
   // ---- the pin on the metal
   pose(0);
-  const notchAz = () => { track.updateWorldMatrix(true, false); const e = track.matrixWorld.elements, r = 3.05; const wx = e[0] * r + e[12], wy = e[1] * r + e[13]; const c = mean(world(hub)); return Math.atan2(wy - c[1], wx - c[0]); };
+  const azOfLocal = (a) => { track.updateWorldMatrix(true, false); const e = track.matrixWorld.elements, r = 3.05, x = r * Math.cos(a), y = r * Math.sin(a); const wx = e[0] * x + e[4] * y + e[12], wy = e[1] * x + e[5] * y + e[13]; const c = mean(world(hub)); return Math.atan2(wy - c[1], wx - c[0]); };
+  const notchAz = () => azOfLocal(floorMid);
   const pinAz = () => { const c = mean(world(hub)), q = mean(world(pin)); return Math.atan2(q[1] - c[1], q[0] - c[0]); };
   const rel = () => wrap(pinAz() - notchAz());
   const r0 = rel(); pose(3600); const r1 = rel(); const k = wrap(r1 - r0) / 3600;
   const H12 = 12 * 3600; let tStar = (((-r0 / k) % H12) + H12) % H12;
   for (let it = 0; it < 4; it++) { pose(tStar); tStar -= rel() / k; }
   out.k = k; out.tStar = tStar;
+  // which wedge the pin arrives at first: the one standing behind the floor's centre along its travel
+  out.entryIsNeg = Math.sign(k) * wrap(azOfLocal((negW.a0 + negW.a1) / 2) - notchAz()) < 0;
+  out.runIn = (out.entryIsNeg ? negW : posW).run; out.runOut = (out.entryIsNeg ? posW : negW).run;
   const e = ring.matrixWorld.elements; const upV = (() => { ring.updateWorldMatrix(true, false); const m = ring.matrixWorld.elements; const x = m[8], y = m[9], z = m[10], l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; })();
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   // triangles of the surfaces under the pin, world
@@ -112,7 +125,8 @@ const R = await pg.evaluate(() => {
     return g;
   };
   // sample the pin's angle from beyond the ramp's far end on one side to beyond it on the other
-  const gHalf = 0.07, run = out.wedges[0].run, pAH = Math.atan2(0.14, 3.05), span = gHalf + run + pAH + 0.02, N = 81;
+  const gHalf = 0.07, pAH = Math.atan2(0.14, 3.05), span = gHalf + Math.max(out.runIn, out.runOut) + pAH + 0.02, N = 161;
+  out.span = span;
   out.samples = [];
   for (let i = 0; i < N; i++) {
     const d = -span + (2 * span * i) / (N - 1);           // pin angle off the notch's centre
@@ -143,27 +157,32 @@ ok('boot is silent', warns.length === 0, warns.slice(0, 2).join(' | '));
 ok('two ramps', R.rampCount === 2);
 ok('each ramp is one closed manifold shell (every edge once each way)', R.shells.every((s) => s.open === 0 && s.nonman === 0), JSON.stringify(R.shells));
 ok('each ramp has positive volume (outward winding)', R.shells.every((s) => s.vol > 0), R.shells.map((s) => s.vol.toFixed(6)).join(' '));
-ok('the ramp runs the angle the seat solved (TODO 260)', R.wedges.every((w) => Math.abs(w.run - R.hold.rampRun_rad) < 1e-6), R.wedges.map((w) => w.run.toFixed(6)).join(' ') + ' vs ' + R.hold.rampRun_rad.toFixed(6));
-ok('its slope is the published one: drop over run at the track radius', Math.abs(DROP / (R.hold.rampRun_rad * RMID) - R.hold.rampTan) < 1e-9, `${(DROP / (R.hold.rampRun_rad * RMID)).toFixed(6)} vs ${R.hold.rampTan.toFixed(6)}`);
+ok('the floor is the declared width, between the two ramps', Math.abs(R.floorHalf - gHalf) < 1e-6, `${R.floorHalf.toFixed(6)} vs ${gHalf}`);
+ok('the EXIT ramp runs the angle the seat solved (TODO 260)', Math.abs(R.runOut - R.hold.rampRun_rad) < 1e-6, `${R.runOut.toFixed(6)} vs ${R.hold.rampRun_rad.toFixed(6)}`);
+ok('the ENTRY ramp runs the angle the seat solved from it (TODO 261)', Math.abs(R.runIn - R.hold.rampInRun_rad) < 1e-6, `${R.runIn.toFixed(6)} vs ${R.hold.rampInRun_rad.toFixed(6)}`);
+ok('the entry ramp is the steeper: shorter by the slope ratio', R.runIn < R.runOut && Math.abs(R.runIn * R.hold.rampInTan - R.runOut * R.hold.rampTan) < 1e-6, `${R.runIn.toFixed(5)} × ${R.hold.rampInTan.toFixed(4)} vs ${R.runOut.toFixed(5)} × ${R.hold.rampTan.toFixed(4)}`);
+ok('each slope is the published one: drop over run at the track radius', Math.abs(DROP / (R.hold.rampRun_rad * RMID) - R.hold.rampTan) < 1e-9 && Math.abs(DROP / (R.hold.rampInRun_rad * RMID) - R.hold.rampInTan) < 1e-9, `${R.hold.rampTan.toFixed(6)}, ${R.hold.rampInTan.toFixed(6)}`);
 ok('the seat holds the CLIMB at the headroom (hold ÷ climb ≥ 3)', R.hold.holdTq_Nmm / R.hold.climbTq_Nmm >= 3 - 1e-9, `${(R.hold.holdTq_Nmm / R.hold.climbTq_Nmm).toFixed(6)}`);
+ok('and the entry’s DRIVE at the same headroom (hold ÷ drive ≥ 3, drive = climb at the design corner)', R.hold.holdTq_Nmm / R.hold.driveInTq_Nmm >= 3 - 1e-9 && Math.abs(R.hold.driveInTq_Nmm - R.hold.climbTq_Nmm) < 1e-9 * R.hold.climbTq_Nmm, `${(R.hold.holdTq_Nmm / R.hold.driveInTq_Nmm).toFixed(6)}`);
 ok('its high end is the track’s top', R.wedges.every((w) => Math.abs(w.zHi - R.trackTop) < 1e-6), `top ${R.wedges.map((w) => w.zHi.toFixed(4))} vs track ${R.trackTop.toFixed(4)}`);
 ok('its low end stands one drop under it (the dropped tip’s level)', R.wedges.every((w) => Math.abs((w.zHi - w.zTopLo) - DROP) < 1e-6), R.wedges.map((w) => (w.zHi - w.zTopLo).toFixed(6)).join(' '));
 ok('the wedge spans the track’s annulus', R.wedges.every((w) => Math.abs(w.rLo - 2.85) < 1e-6 && Math.abs(w.rHi - 3.25) < 1e-6), R.wedges.map((w) => `${w.rLo.toFixed(3)}..${w.rHi.toFixed(3)}`).join(' '));
-const rampRun = R.hold.rampRun_rad;
-const zone = (s) => Math.abs(s.d) > gHalf - pAH && Math.abs(s.d) < gHalf + rampRun - pAH + 1e-9;      // the law's ramp zone: the pin's rim on the ramp
-const onTrack = (s) => Math.abs(s.d) >= gHalf + rampRun - pAH + 1e-3;                  // clear of the ramps: on the track's top
+// samples run along the pin's travel: u = sign(k)·d, negative on the entry side
+const uOf = (s) => Math.sign(R.k) * s.d, runOf = (s) => (uOf(s) < 0 ? R.runIn : R.runOut);
+const zone = (s) => Math.abs(s.d) > gHalf - pAH && Math.abs(s.d) < gHalf + runOf(s) - pAH + 1e-9;      // the law's ramp zone: the pin's rim on THIS side's ramp
+const onTrack = (s) => Math.abs(s.d) >= gHalf + runOf(s) - pAH + 1e-3;                  // clear of the ramps: on the track's top
 const floor = (s) => Math.abs(s.d) <= gHalf - pAH - 1e-3;                                      // wholly inside the floor
 const rz = R.samples.filter(zone), tr = R.samples.filter(onTrack), fl = R.samples.filter(floor);
-ok('samples in each region', rz.length > 8 && tr.length > 2 && fl.length > 2, `ramp ${rz.length}, track ${tr.length}, floor ${fl.length}`);
+ok('samples in each region, on both ramps', rz.filter((s) => uOf(s) < 0).length > 6 && rz.filter((s) => uOf(s) > 0).length > 8 && tr.length > 2 && fl.length > 2, `entry ${rz.filter((s) => uOf(s) < 0).length}, exit ${rz.filter((s) => uOf(s) > 0).length}, track ${tr.length}, floor ${fl.length}`);
 const worst = Math.max(...rz.map((s) => Math.abs(s.gap)));
-ok('on the ramp zone the pin TOUCHES the cut metal (least vertical gap 0)', rz.every((s) => Number.isFinite(s.gap)) && worst < TOL, `worst |gap| ${worst}`);
+ok('on the ramp zones the pin TOUCHES the cut metal (least vertical gap 0)', rz.every((s) => Number.isFinite(s.gap)) && worst < TOL, `worst |gap| ${worst}`);
 const wTrack = Math.max(...tr.map((s) => Math.abs(s.gap)));
 ok('over the track’s top the pin touches it', tr.every((s) => Number.isFinite(s.gap)) && wTrack < TOL, `worst |gap| ${wTrack}`);
 ok('wholly inside the floor there is no metal under the pin', fl.every((s) => !Number.isFinite(s.gap)), `finite gaps: ${fl.filter((s) => Number.isFinite(s.gap)).length}`);
 const moved = R.control.moved.filter(zone);
-const dev = Math.max(...moved.map((s, i) => Math.abs((-s.gap) - R.control.D * 1) * 0 + Math.abs(Math.abs(s.gap) - R.control.D)));
+const dev = Math.max(...moved.map((s) => Math.abs(Math.abs(s.gap) - R.control.D)));
 ok('CONTROL: ramps carried 0.05 up the axis read 0.05 into the pin, exactly', moved.every((s) => Number.isFinite(s.gap)) && dev < TOL, `worst deviation from ${R.control.D}: ${dev}`);
 const bare = R.control.bare.filter(zone);
-ok('CONTROL: with the ramps out, the ramp zone reads UNSUPPORTED (the old notch)', bare.length > 8 && bare.every((s) => !Number.isFinite(s.gap) || s.gap > 0.01), `${bare.filter((s) => !Number.isFinite(s.gap)).length}/${bare.length} unsupported`);
+ok('CONTROL: with the ramps out, the ramp zones read UNSUPPORTED (the old notch)', bare.length > 8 && bare.every((s) => !Number.isFinite(s.gap) || s.gap > 0.01), `${bare.filter((s) => !Number.isFinite(s.gap)).length}/${bare.length} unsupported`);
 console.log(fails.length ? `\nFAIL — ${fails.length}: ${fails.join('; ')}` : '\nall passed');
 process.exit(fails.length ? 1 : 0);

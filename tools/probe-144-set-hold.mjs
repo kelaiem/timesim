@@ -211,6 +211,23 @@ push(`and clears the CLIMB out of the notch by the same ${H.headroomRequired}× 
   typeof H.climbTq_Nmm === 'number' && H.climbTq_Nmm >= H.dragTq_Nmm * (1 - 1e-12) && H.holdTq_Nmm >= H.headroomRequired * H.climbTq_Nmm * (1 - 1e-9),
   typeof H.climbTq_Nmm !== 'number' ? 'no climb torque published' : `climb ${H.climbTq_Nmm.toExponential(3)} N·mm, hold ${(H.holdTq_Nmm / H.climbTq_Nmm).toFixed(3)}× it; ramp tan θ ${H.rampTan.toFixed(4)}`, `climb ≥ drag, hold ≥ ${H.headroomRequired}× climb`);
 
+// --- TODO 261: the notch's ENTRY flank, steeper than the exit, falling not climbing ---
+{
+  push('the entry flank is published, and steeper than the exit’s (the pin falls down it, so it may be)',
+    typeof H.rampInTan === 'number' && H.rampInTan > H.rampTan && H.rampInRun_rad < H.rampRun_rad,
+    typeof H.rampInTan !== 'number' ? 'no entry flank published' : `tan θ_in ${H.rampInTan.toFixed(4)} vs ${H.rampTan.toFixed(4)}; run ${H.rampInRun_rad.toFixed(5)} vs ${H.rampRun_rad.toFixed(5)}`, 'steeper, shorter');
+  push('and a pin on it falls rather than sticks (tan θ_in > μ at the design corner)', H.rampInTan > H.mu, `${H.rampInTan.toFixed(4)} vs μ ${H.mu}`, '> μ');
+  push('its DRIVE at the design corner is the exit’s CLIMB there — one hold clears both by the same headroom',
+    typeof H.driveInTq_Nmm === 'number' && near(H.driveInTq_Nmm, H.climbTq_Nmm, 1e-9) && H.holdTq_Nmm >= H.headroomRequired * H.driveInTq_Nmm * (1 - 1e-9),
+    typeof H.driveInTq_Nmm !== 'number' ? 'no drive torque published' : `drive ${H.driveInTq_Nmm.toExponential(3)} N·mm, hold ${(H.holdTq_Nmm / H.driveInTq_Nmm).toFixed(3)}× it`, `drive = climb, hold ≥ ${H.headroomRequired}× drive`);
+  const ce = H.corners ? Object.entries(H.corners) : [];
+  push('the hold never falls under the entry’s drive at any friction corner (the drive RISES as μ falls, the hold falls with it)',
+    ce.length === 3 && Math.min(...ce.map(([, v]) => v.ratioIn)) >= 1, ce.map(([c, v]) => `${c} → ${v.ratioIn.toFixed(3)}×`).join(', '), '≥ 1');
+  push('and the cost to the HAND is published: setting the disc BACK through the notch pushes the pin up the steep flank',
+    typeof H.climbInTq_Nmm === 'number' && H.climbInTq_Nmm > H.climbTq_Nmm,
+    typeof H.climbInTq_Nmm !== 'number' ? 'not published' : `${H.climbInTq_Nmm.toExponential(3)} N·mm on top of the hold's ${H.holdTq_Nmm.toExponential(3)} (${(H.climbInTq_Nmm / H.holdTq_Nmm).toFixed(3)}×)`, 'published, above the exit climb');
+}
+
 // --- TODO 260: the friction corners, and the hour train's side of the climb ---
 {
   const cs = H.corners ? Object.entries(H.corners) : [];

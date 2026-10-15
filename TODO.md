@@ -34172,3 +34172,98 @@ The remedy named above, with its free number SOLVED rather than chosen:
   tooth load on the minute pinion ⇄ hour wheel mesh (a 32-tooth wheel's tangential
   force at 6.118e-3 N·mm); both are far under any figure a mesh or a fit is held to
   and neither is a gate here.
+
+## 261. The alarm rings on its set time, and the notch's entry ramp is cut steeper than its exit — DONE
+
+Found asking whether TODO 260's longer ramp made the alarm less precise. It did
+not move the ring, and the question showed two things that were already true.
+
+**The alarm rang early, by half its plateau.** The pin trips the alarm when it
+BOTTOMS — the leading edge of the plateau, where the collar first stands at its
+full drop — and the notch's floor was centred ON the alarm hand ("the notch is cut
+where the hand points", §29/TODO 117). So the trip came when the pin was
+`gapHalf − pinArcHalf` = **0.02413 rad** (2.76 min of the 12-hour disc) short of
+the hand, every time, at every setting. The readout's `≈` and its sentence that
+the ring "lands within about ±1.4 min of the hand" were covering for it.
+`probe-117-trip.mjs` could not see it, and did not: it measured the plateau's
+CENTRE, which was on the hand, because a first draft chose the centre over the
+first sample "to make the offset independent of the sweep's direction" — and a
+trip is an edge, not a centre.
+
+**The entry flank had no reason to be as long as the exit.** A ramp's length is
+the pad's: leaving the notch the pin CLIMBS, loading the disc with
+`F·(tan θ + μ)/(1 − μ·tan θ)`, and TODO 260 solved the steepest slope the seat
+holds. Entering, the pin FALLS down the flank under the bias blade and loads the
+disc with `F·(tan θ − μ)/(1 + μ·tan θ)` — less, at the same slope. So the entry
+may be steeper, until its drive equals the exit's climb. In TODO 16's format:
+
+| quantity | value | derivation |
+|---|---|---|
+| exit flank (TODO 260) | tan θ 0.07703 (4.40°), run 0.42565 rad (48.8 min of hour) | the steepest slope whose climb the seat holds at 3× |
+| the exit's climb, at `MU_STEEL` | 6.118e-3 N·mm (hold ÷ climb 3.000×) | `ALARM_SEAT.climbTq_Nmm` |
+| entry flank | **tan θ 0.51007 (27.0°), run 0.06428 rad (7.4 min of hour)** | drive(tan θ_in) = climb(tan θ_out) at `MU_STEEL` ⇒ tan θ_in = (c + μ)/(1 − μ·c), c = the exit's climb ratio (`ALARM_DETECTOR_LAWS.entryRunOf`) |
+| the entry's drive, at `MU_STEEL` | 6.118e-3 N·mm — the same | so the ONE hold (0.018353 N·mm) clears both at 3.000× |
+| the entry's drive at the other corners | hold ÷ drive 1.378× favourable, 1.893× nominal, 3.000× adverse | the drive RISES as μ falls and the hold falls with it, so the kind corner is the tight one: never under 1 |
+| self-start | tan θ_in 0.510 > μ 0.20 | a pin on a flank shallower than the friction angle sticks; this one falls |
+
+The entry run is **6.6× shorter**. What that is worth is the alarm's precision,
+and it should be stated as exactly what it is: the trip is a flag at the pin's full
+drop (modelled, not simulated — the drop is posed from the law, so the simulated
+ring is exact to the tick either way). The entry flank's run is the angle between
+the pin starting down and the pin bottoming, which is the spread a real part's
+lash and friction would smear a release over if the lever needed less than the
+full drop to let go. That smear was 48.8 min with symmetric ramps; it is now 7.4.
+
+### What was built
+
+- **The notch is led.** The floor stands `ALARM_NOTCH_AHEAD` = `plateauHalf` (0.02413
+  rad) ahead of the alarm hand along the pin's travel, so the plateau's leading
+  edge is the hand and the alarm rings when the hour hand meets the alarm hand.
+  The disc turns with the hand (`alarmHandA()`, `alarmDiscGroup.rotation.z`); the
+  floor's centre is `alarmNotchA()` = the hand plus the lead, and the tick, the
+  step-over guard and the pose all read it from there. The way the pin travels is
+  `ALARM_READER_SENSE`, DERIVED from the train — the sign of the reader's angle over
+  an hour off the same laws the tick poses it by — not typed, so a reversed
+  movement leads the notch the other way with it.
+- **The drop law is two-sided.** `ALARM_DETECTOR_LAWS.dropAt(u, floorHalf,
+  pinArcHalf, runIn, runOut, drop)`, `u` the pin's centre along its travel from the
+  floor's centre: the entry run on the negative side, the exit's on the other. The
+  window is `notchW + rampIn + rampOut − 2·pinArcHalf` (0.5382 rad), the plateau
+  unchanged (0.04826 rad).
+- **The metal is cut to it.** `buildAlarmDiscTrack` cuts the floor at the lead with
+  an entry wedge and an exit wedge of their own runs; the seat's build solves
+  `ALARM_NOTCH_RAMP_IN` from the exit's with `entryRunOf` — the one law the build
+  and the reference both call — and holds, at boot, the drive identity, the 3×
+  headroom on the drive and the corners (`say(…)` rows beside TODO 260's).
+- **Held.** The `alarm detector` line spec replaces `ramp` with `rampOut` and
+  `rampIn` (the second DERIVED from the first by the build's law, so the metal is
+  held to the constraint, not to a number) and `align` with `ahead` (the floor's
+  cut centre against the hand, off the disc's own zero) and `ringAt` (the
+  plateau's leading edge's pin azimuth against the hand's: **6e-11 rad** measured).
+  `probe-70-line-spec` gains two sabotage trees (the lead taken off; the entry cut
+  as long as the exit) and the notch-narrowing tree now fails `ahead` too.
+  `probe-117-trip` reads the trip (the first bottoming sample) and asserts the
+  offset is zero, with the old plateau-centre reading kept as the control that the
+  instrument can see the lead. `probe-handedness`'s evenness row for the pin's drop
+  is replaced by a HANDED-law row (the notch is uneven on purpose): the first flank
+  in running is as wide as the entry ramp and the second as wide as the exit's.
+  `probe-280-notch-ramp` samples along the pin's travel and holds each side's
+  ramp to its run and slope (touch 9.6e-9 u), and `probe-144-set-hold` holds the
+  entry's drive, its corners and the hand's cost below.
+
+### The cost, and what it does not fix
+
+- **The hand pays for the steep flank going backward.** Setting the disc BACK through
+  the notch pushes the pin UP the entry flank, which climbs at
+  `F·(tan θ_in + μ)/(1 − μ·tan θ_in)`: **1.719e-2 N·mm** at the disc, on top of the
+  hold's 0.018353 it already beat (0.94× the hold). Setting forward climbs the gentle
+  exit, as before. The setting train is a hand's, nothing in the model prices a limit
+  on it, and the figure is published (`alarmSetHold.climbInTq_Nmm`) rather than
+  gated.
+- **The tick's own step.** The ring lands on the first tick on which the pin has
+  bottomed, so it is late by up to one tick (sample 14.4 s in the probe); the
+  readout drops seconds and keeps its `≈` for that, not for a bias.
+- **Not done:** nothing is priced for a lever that releases on LESS than the full
+  drop; the model's trip is the full drop, so the entry flank's run bounds a spread
+  the simulation cannot show. The explainer's plate was redrawn here; its
+  translations are machine-drafted and owe the native review.

@@ -602,7 +602,11 @@ it into prose either.
    §278's detector (the hour-carried reader and the set-carried notch, through
    the collar to the feeler's rock — the 1:1 carries its satellite fold must
    keep are rows; and the notch's RAMPS, TODO 259: cut to the drop law so the pin
-   rides metal out of the notch, the posed pin's touching them a row).
+   rides metal out of the notch, the posed pin's touching them a row; TODO 261
+   made them two, the entry's run DERIVED from the exit's by the build's own
+   `entryRunOf`, and led the floor by half its plateau so the trip — the full
+   drop's leading edge — is ON the alarm hand, `ringAt` a row measured off the
+   metal).
    **A reference may call the build's laws** (`clock.lineLaws`: the link's
    seat solve, pin arm and rim top — the functions the build itself calls), so
    no law is written twice. **A fold that moves a spec row fails unless a FORK

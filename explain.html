@@ -2424,14 +2424,19 @@
       <code>alarmHandoffs</code> battery.</p>
 
       <p>The notch is not a wall the pin falls down and cannot leave. Its two ends are cut as
-      ramps, each <code>ALARM_NOTCH_RAMP</code> of angle long and <code>ALARM_PIN_DROP</code>
-      deep, so the pin's rim rides a cut surface at 4.40° and is lifted out of the notch the way it
-      went in (TODO 259). The ramp is that long because the climb is a load: leaving the notch the pin
-      pushes the disc along, and the seat's pad has to hold that push at three times its own, as it does
-      every other drag in the arming chain. The pad is a blade and its strain is the ceiling, so the
-      ramp is the steepest one the pad can hold, and the drop law is the one a flat rim riding that ramp
-      follows (TODO 260). Before that the walls were radial and the ramp was a law over metal nothing
-      had cut.</p>
+      ramps, <code>ALARM_NOTCH_RAMP_IN</code> and <code>ALARM_NOTCH_RAMP</code> of angle long and
+      <code>ALARM_PIN_DROP</code> deep, so the pin's rim rides a cut surface and is lifted out of the
+      notch the way it went in (TODO 259). They are not the same length. Leaving the notch the pin
+      climbs, and the climb is a load: it pushes the disc along, and the seat's pad has to hold that
+      push at three times its own, as it does every other drag in the arming chain. The pad is a
+      blade and its strain is the ceiling, so the exit ramp is the steepest one the pad can hold,
+      4.40° (TODO 260). Entering, the pin falls down the flank under the bias blade, which pushes the
+      disc less at the same slope, so the entry ramp is the steeper one whose push equals the exit's
+      climb, 27.0° and 6.6 times shorter (TODO 261). The notch also stands ahead of the alarm hand by
+      half the width of the plateau where the pin is fully down. The alarm trips when the pin
+      bottoms, which is the near edge of that plateau, so with the notch centred on the hand it rang
+      2.76 minutes early; led by half the plateau, the pin bottoms on the hand and the alarm rings
+      when the hour hand meets it.</p>
 
       <p>It was one member until TODO 117. A <em>fixed</em> reader forces the disc to encode
       hour − set, which needs two inputs summing into one output with no back-flow — and the
@@ -2517,7 +2522,7 @@
           </svg>
         </div>
         <figcaption>The disc holds still at the set time; the collar's pin comes round to it
-        on the satellite's hour, which the idler turns 1:1 with the hour wheel, so pin and notch coincide exactly when the two hands do. The lever
+        on the satellite's hour, which the idler turns 1:1 with the hour wheel, so the pin bottoms exactly when the two hands coincide — the notch stands half its plateau ahead of the alarm hand to make it so. The lever
         does not have to be there for that — it reads the collar's ring, which carries the
         drop to every azimuth at once, and its own arm crosses the spinning rim only to reach
         that ring. Bracket, pivot and stop are static, the bracket standing on the base plate.
@@ -2529,10 +2534,10 @@
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Section through the station — drive the disc under the pin</span></div>
         <div class="controls">
           <label>disc alignment
-            <input type="range" id="alignSlider" min="-150" max="150" value="-150" step="1"
+            <input type="range" id="alignSlider" min="-130" max="560" value="-130" step="1"
                    aria-label="Disc alignment relative to the notch, in milliradians">
           </label>
-          <span class="readout" id="alignReadout">align −0.150 rad</span>
+          <span class="readout" id="alignReadout">align −0.130 rad</span>
           <label><input type="checkbox" id="silenceBox"> crown pulled — §45 silence holds the tail</label>
           <span class="chip ride" id="stateChip">RIDING · armed</span>
         </div>
@@ -2542,13 +2547,13 @@
             <g id="trackGroup" class="anim">
               <rect x="-400" y="272" width="1100" height="30" fill="var(--brass-fill)" opacity="0.4"/>
               <line x1="-400" y1="272" x2="700" y2="272" stroke="var(--brass)" stroke-width="1"/>
-              <rect x="-400" y="220" width="608" height="52" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
-              <rect x="292" y="220" width="408" height="52" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
-              <path d="M 208 220 L 224 236 L 224 272 L 208 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
-              <path d="M 292 220 L 276 236 L 276 272 L 292 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
+              <rect x="-400" y="214" width="569.4" height="58" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+              <rect x="547.4" y="214" width="152.6" height="58" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
+              <path d="M 169.4 214 L 208 250 L 208 272 L 169.4 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
+              <path d="M 292 250 L 547.4 214 L 547.4 272 L 292 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
               <text class="lbl" x="60" y="250">track ridge · h 0.25</text>
               <text class="lbl" x="330" y="296">disc body — turning →</text>
-              <text class="lbl" x="216" y="212" text-anchor="middle">notch 0.14 rad</text>
+              <text class="lbl" x="250" y="266" text-anchor="middle">notch 0.14 rad</text>
             </g>
 
             <rect x="60" y="28" width="660" height="10" fill="none" stroke="var(--muted)" stroke-width="1"/>
@@ -2581,8 +2586,7 @@
             <g id="leverGroup" class="anim">
               <rect x="250" y="143" width="310" height="14" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
               <rect x="214" y="157" width="72" height="12" fill="var(--ruby)" opacity="0.55"/>
-              <rect x="243" y="169" width="14" height="30" fill="var(--ruby)" opacity="0.9"/>
-              <circle cx="250" cy="203" r="9" fill="var(--ruby)"/>
+              <rect x="222.5" y="169" width="55" height="45" fill="var(--ruby)" opacity="0.9"/>
               <rect x="560" y="145" width="88" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
             </g>
             <circle cx="560" cy="150" r="6" fill="var(--bg)" stroke="var(--text)" stroke-width="1.6"/>
@@ -2614,18 +2618,17 @@
             <text class="val" x="30" y="49">0.10</text>
             <line x1="66" y1="45" x2="74" y2="45" stroke="var(--text)" stroke-width="1"/>
             <text class="val" x="46" y="134">0</text>
-            <text class="val" x="401" y="146">0</text>
-            <path d="M 70 130 L 146 130 L 351 45 L 459 45 L 664 130 L 740 130"
+            <text class="val" x="184" y="146">0</text>
+            <path d="M 70 130 L 100.9 130 L 164.3 45 L 211.7 45 L 631.2 130 L 740 130"
                   fill="none" stroke="var(--ruby)" stroke-width="2"/>
-            <line x1="351" y1="45" x2="351" y2="130" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
-            <line x1="459" y1="45" x2="459" y2="130" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
-            <text class="val" x="322" y="144">−0.024</text>
-            <text class="val" x="440" y="144">+0.024</text>
-            <text class="lbl" x="180" y="112">ride · 0</text>
-            <text class="lbl" x="252" y="84">ramp</text>
-            <text class="lbl lbl-strong" x="376" y="36">floor — banked</text>
-            <text class="lbl" x="520" y="84">ramp</text>
-            <text class="lbl" x="560" y="112">ride · 0</text>
+            <line x1="164.3" y1="45" x2="164.3" y2="130" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <line x1="211.7" y1="45" x2="211.7" y2="130" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <text class="val" x="118" y="144">−0.024</text>
+            <text class="val" x="214" y="144">+0.024</text>
+            <text class="lbl" x="660" y="112">ride · 0</text>
+            <text class="lbl" x="64" y="84">ramp</text>
+            <text class="lbl lbl-strong" x="150" y="36">floor — banked</text>
+            <text class="lbl" x="420" y="84">ramp</text>
             <line id="capLine" x1="70" y1="128" x2="740" y2="128" stroke="var(--steel)" stroke-width="1.5"
                   stroke-dasharray="6 4" visibility="hidden"/>
             <text id="capText" class="val val-steel" x="530" y="118" visibility="hidden">§45 cap = 0: pin held at its riding seat, min(law, cap)</text>
@@ -2633,9 +2636,13 @@
           </svg>
         </div>
         <figcaption>The drop is a pure function of alignment, recomputed every tick — nothing
-        accumulates (<code>alarmPinDropNow</code>, <code>main.js:14697</code>). The floor spans
-        <code>gapHalf − pinArcHalf = 0.024 rad</code> either side of coincidence — about
-        2.76 min of the 12-hour disc, the source of the ring window. With the crown pulled,
+        accumulates (<code>alarmPinDropNow</code>, <code>main.js:14697</code>). Alignment is the
+        pin's centre from the notch floor's centre along its travel. The drop is full over
+        <code>gapHalf − pinArcHalf = 0.024 rad</code> either side of it and tails off over the
+        short entry ramp on the near side and the long exit ramp on the far side. The floor
+        stands that same 0.024 rad ahead of the alarm hand — 2.76 min of the 12-hour disc — so the
+        near edge of the full drop, where the pin bottoms and the alarm trips, is the hand
+        itself (TODO 261). With the crown pulled,
         the §45 silence rocker's finger captures the tail at its rest height:
         <code>alarmPinDropPhys = min(law, cap)</code> with the cap at exactly 0 — the notch
         passes underneath and the pin stays on its riding seat. Releasing the hold onto a
@@ -2807,8 +2814,8 @@
                   <td>Cut centred in the one free slot on the tail, lug outer + margin (5.76) .. the return blade's stud − margin (5.96); held since TODO 190 moved that blade off the tail's line, because the silence lever ratio rests on it. TODO 190 also retired the feeler's idle tail run and cranked the rocker's bar off the feeler's bracket, so the finger is now the only part of the rocker that meets the feeler.</td></tr>
               <tr><td><code>ALARM_SIL_THROW</code></td><td>0.05</td>
                   <td>Exactly the rest gap: a resting tail is touched, never loaded; a risen tail is pressed back to rest.</td></tr>
-              <tr><td>ring window</td><td>≈ 2.76 min</td>
-                  <td><code>gapHalf − pinArcHalf</code> = 0.024 rad of the 12-h disc. Hand lengths and display math never touch it.</td></tr>
+              <tr><td>notch lead</td><td>≈ 2.76 min</td>
+                  <td><code>gapHalf − pinArcHalf</code> = 0.024 rad of the 12-h disc: the floor stands this far ahead of the alarm hand, so the pin bottoms, and the alarm rings, on it. Hand lengths and display math never touch it.</td></tr>
             </tbody>
           </table>
         </div>
@@ -3821,7 +3828,14 @@
     sel.addEventListener('change', () => setUiLang(sel.value));
   }
   (function () {
-    var PIN_DROP = 0.10, GAP_HALF = 0.07, PIN_ARC_HALF = 0.14 / 3.05;
+    var PIN_DROP = 0.10, GAP_HALF = 0.07, PIN_ARC_HALF = Math.atan2(0.14, 3.05);
+    // TODO 260/261: the exit ramp's run is what the seat's pad holds; the entry ramp's
+    // is derived from it, the slope whose DRIVE at μ = 0.2 equals the exit's CLIMB
+    // there (climb ratio (tan θ + μ)/(1 − μ·tan θ), drive ratio (tan θ − μ)/(1 + μ·tan θ)).
+    var MU = 0.2, TRACK_R = 3.05, RUN_OUT = 0.42565;
+    var CLIMB = (PIN_DROP / (RUN_OUT * TRACK_R) + MU) / (1 - MU * PIN_DROP / (RUN_OUT * TRACK_R));
+    var TAN_IN = (CLIMB + MU) / (1 - MU * CLIMB);
+    var RUN_IN = PIN_DROP / (TAN_IN * TRACK_R);
     var slider = document.getElementById('alignSlider');
     var silence = document.getElementById('silenceBox');
     var chip = document.getElementById('stateChip');
@@ -3837,7 +3851,7 @@
     var fingerG = document.getElementById('fingerGroup');
 
     var PX_PER_RAD_TRACK = 600;
-    var GRAPH_X0 = 405, GRAPH_PX_PER_RAD = 2233;
+    var GRAPH_X0 = 188.2, GRAPH_PX_PER_RAD = 985;
     var GRAPH_Y0 = 130, GRAPH_YFULL = 45;
     var DRAW_DROP_PX = 36;
     // §45: cap = (GAP − fingerDrop) × pinLever. The finger's throw IS the rest
@@ -3845,11 +3859,12 @@
     // pin is held at its RIDING SEAT (cap = 0), never lifted below it.
     var CAP_HELD = 0;
 
+    // align: the pin's centre along its travel from the floor's centre, negative
+    // before it — the entry ramp's side. The rim, a pin-arc ahead of the centre, rides
+    // the ramp of its own side.
     function law(align) {
-      var a = Math.abs(align);
-      if (a >= GAP_HALF + PIN_ARC_HALF) return 0;
-      if (a <= GAP_HALF - PIN_ARC_HALF) return PIN_DROP;
-      return PIN_DROP * ((GAP_HALF + PIN_ARC_HALF - a) / (2 * PIN_ARC_HALF));
+      var run = align < 0 ? RUN_IN : RUN_OUT;
+      return PIN_DROP * Math.min(1, Math.max(0, (GAP_HALF + run - Math.abs(align) - PIN_ARC_HALF) / run));
     }
 
     function update() {
@@ -3891,12 +3906,12 @@
     // Plate 1: the track arc with its notch, and rim teeth, drawn procedurally.
     var cx = 230, cy = 215, rTrack = 91.5;
     var notchHalf = 0.07;
-    var a0 = notchHalf, a1 = 2 * Math.PI - notchHalf;
+    var a0 = notchHalf + RUN_OUT, a1 = 2 * Math.PI - (notchHalf + RUN_IN);   // the track stops where the ramps begin
     function pt(r, a) { return (cx + r * Math.cos(a)) + ' ' + (cy + r * Math.sin(a)); }
     document.getElementById('trackArc').setAttribute('d',
       'M ' + pt(rTrack, a0) + ' A ' + rTrack + ' ' + rTrack + ' 0 1 1 ' + pt(rTrack, a1));
     var edges = document.getElementById('notchEdges');
-    [a0, a1].forEach(function (a) {
+    [notchHalf, -notchHalf].forEach(function (a) {
       var l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       l.setAttribute('x1', cx + 85.5 * Math.cos(a)); l.setAttribute('y1', cy + 85.5 * Math.sin(a));
       l.setAttribute('x2', cx + 97.5 * Math.cos(a)); l.setAttribute('y2', cy + 97.5 * Math.sin(a));
