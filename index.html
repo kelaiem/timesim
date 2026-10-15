@@ -96,6 +96,18 @@
   #boot .boot-sound:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
   #boot .boot-sound[aria-pressed="true"] { background: #7a3ad8; border-color: #7a3ad8; }
   #boot.failed .boot-sound { display: none; }
+  /* The other pages, reachable while the movement builds: each is its own
+     document, so following one leaves this build behind rather than waiting
+     on it. Plain links, static (§238's rule), and they stay on a failed build
+     too — a reader with no watch still has the pages. They wrap rather than
+     overflow a phone's width. */
+  #boot .boot-links {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px;
+    margin: 0; padding: 0; list-style: none; font-size: 13px;
+  }
+  #boot .boot-links a { color: #9fb6d9; text-decoration: none; border-bottom: 1px solid rgba(159,182,217,0.35); }
+  #boot .boot-links a:hover { color: #eaf0f7; border-bottom-color: #eaf0f7; }
+  #boot .boot-links a:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
   @keyframes bootSpin { to { transform: rotate(360deg); } }
   @keyframes bootNote { from { opacity: 0; } to { opacity: 1; } }
   /* The failure state (the entry script's catch): the ring stops — a spinner
@@ -156,6 +168,14 @@
        and boot has none; this button is that gesture, on glass for the whole
        wait. State is the attribute (aria-pressed), never the label. -->
   <button type="button" class="boot-sound" id="boot-sound" aria-pressed="false">Enable sound</button>
+  <ul class="boot-links">
+    <li><a href="./primer.html">How they work</a></li>
+    <li><a href="./explain.html">The explainer</a></li>
+    <li><a href="./technic.html?view=lego">See the LEGO Technic build</a></li>
+    <!-- §249's sheet is published once, at the site's root, not per environment:
+         an absolute link is the one that resolves from every tier and from QA -->
+    <li><a href="https://kelaiem.github.io/timesim/review/">Review the translations</a></li>
+  </ul>
 </div>
 <script>
   // §22 — the watch spec, read from the URL BEFORE any module loads. It must

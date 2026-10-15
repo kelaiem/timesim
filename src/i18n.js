@@ -430,6 +430,8 @@ export function lowerUi(s) {
 const DE = {
   'Show incomplete translations': 'Unvollständige Übersetzungen anzeigen',
   'Enable sound': 'Ton aktivieren',
+  'See the LEGO Technic build': 'Den LEGO-Technic-Nachbau ansehen',
+  'Review the translations': 'Die Übersetzungen prüfen',
   // -- state words (the data-state refactor's DISPLAY text; state itself is
   //    the attribute, so these are free to be any language)
   'On': 'Ein', 'Off': 'Aus',
@@ -841,6 +843,8 @@ Object.assign(DE, {
 const ZH = {
   'Show incomplete translations': '显示不完整的翻译',
   'Enable sound': '启用声音',
+  'See the LEGO Technic build': '查看乐高机械组搭建',
+  'Review the translations': '审阅译文',
   'On': '开', 'Off': '关',
   'Time': '时间', 'Camera': '视角', 'View': '显示', 'Alarm': '闹铃',
   'Performance': '性能', 'State': '存档', 'Advanced': '高级',
@@ -1219,6 +1223,8 @@ Object.assign(ZH, {
 const FR = {
   'Show incomplete translations': 'Afficher les traductions incomplètes',
   ['Enable sound']: 'Activer le son',
+  ['See the LEGO Technic build']: 'Voir la construction LEGO Technic',
+  ['Review the translations']: 'Relire les traductions',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'Marche',
   ['Off']: 'Arrêt',
@@ -1769,6 +1775,8 @@ const FR = {
 const JA = {
   'Show incomplete translations': '未完成の翻訳を表示',
   ['Enable sound']: '音を有効にする',
+  ['See the LEGO Technic build']: 'LEGO テクニックの組み立てを見る',
+  ['Review the translations']: '翻訳をレビューする',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'オン',
   ['Off']: 'オフ',
@@ -2318,6 +2326,8 @@ const JA = {
 const ZH_HANT = {
   'Show incomplete translations': '顯示不完整的翻譯',
   ['Enable sound']: '啟用聲音',
+  ['See the LEGO Technic build']: '查看樂高機械組搭建',
+  ['Review the translations']: '審閱譯文',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: '開',
   ['Off']: '關',
@@ -2877,6 +2887,8 @@ const ZH_HANT = {
 const AR = {
   'Show incomplete translations': 'إظهار الترجمات غير المكتملة',
   'Enable sound': 'تفعيل الصوت',
+  'See the LEGO Technic build': 'شاهد نموذج LEGO Technic',
+  'Review the translations': 'راجع الترجمات',
   'On': 'مفعّل',
   'Off': 'معطَّل',
   'Time': 'الوقت',
@@ -3419,6 +3431,8 @@ const AR = {
 const ES = {
   'Show incomplete translations': 'Mostrar traducciones incompletas',
   'Enable sound': 'Activar el sonido',
+  'See the LEGO Technic build': 'Ver la construcción LEGO Technic',
+  'Review the translations': 'Revisar las traducciones',
   'On': 'Activado',
   'Off': 'Desactivado',
   'Time': 'Tiempo',
@@ -3958,6 +3972,8 @@ const ES = {
 const KO = {
   'Show incomplete translations': '불완전한 번역 표시',
   'Enable sound': '소리 켜기',
+  'See the LEGO Technic build': 'LEGO 테크닉 조립 보기',
+  'Review the translations': '번역 검토하기',
   'On': '켜짐',
   'Off': '꺼짐',
   'Time': '시간',
@@ -4499,6 +4515,8 @@ const KO = {
 const RU = {
   'Show incomplete translations': 'Показывать неполные переводы',
   'Enable sound': 'Включить звук',
+  'See the LEGO Technic build': 'Посмотреть сборку LEGO Technic',
+  'Review the translations': 'Проверить переводы',
   'On': 'Вкл',
   'Off': 'Выкл',
   'Time': 'Время',
@@ -5041,6 +5059,8 @@ const RU = {
 const PT = {
   'Show incomplete translations': 'Mostrar traduções incompletas',
   'Enable sound': 'Ativar o som',
+  'See the LEGO Technic build': 'Ver a montagem LEGO Technic',
+  'Review the translations': 'Revisar as traduções',
   'On': 'Ligado',
   'Off': 'Desligado',
   'Time': 'Tempo',
@@ -5582,6 +5602,8 @@ const PT = {
 const IT = {
   'Show incomplete translations': 'Mostra traduzioni incomplete',
   'Enable sound': 'Attiva il suono',
+  'See the LEGO Technic build': 'Guarda la costruzione LEGO Technic',
+  'Review the translations': 'Rivedi le traduzioni',
   'On': 'Acceso',
   'Off': 'Spento',
   'Time': 'Tempo',
@@ -6120,6 +6142,8 @@ const IT = {
 const HI = {
   'Show incomplete translations': 'अधूरे अनुवाद दिखाएँ',
   'Enable sound': 'ध्वनि चालू करें',
+  'See the LEGO Technic build': 'LEGO टेक्निक निर्माण देखें',
+  'Review the translations': 'अनुवादों की समीक्षा करें',
   'On': 'चालू',
   'Off': 'बंद',
   'Time': 'समय',
@@ -6662,6 +6686,8 @@ const HI = {
 const VI = {
   'Show incomplete translations': 'Hiện bản dịch chưa hoàn chỉnh',
   'Enable sound': 'Bật âm thanh',
+  'See the LEGO Technic build': 'Xem bản lắp LEGO Technic',
+  'Review the translations': 'Duyệt các bản dịch',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Bật',
   'Off': 'Tắt',
@@ -7219,6 +7245,8 @@ const VI = {
 const NL = {
   'Show incomplete translations': 'Onvolledige vertalingen tonen',
   'Enable sound': 'Geluid inschakelen',
+  'See the LEGO Technic build': 'Bekijk de LEGO Technic-bouw',
+  'Review the translations': 'De vertalingen beoordelen',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Aan',
   'Off': 'Uit',
@@ -7776,6 +7804,8 @@ const NL = {
 const FA = {
   'Show incomplete translations': 'نمایش ترجمه‌های ناقص',
   'Enable sound': 'فعال‌سازی صدا',
+  'See the LEGO Technic build': 'دیدن ساخت LEGO Technic',
+  'Review the translations': 'بازبینی ترجمه‌ها',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'روشن',
   'Off': 'خاموش',
@@ -8334,6 +8364,8 @@ const FA = {
 const HE = {
   'Show incomplete translations': 'הצג תרגומים חלקיים',
   'Enable sound': 'הפעלת צליל',
+  'See the LEGO Technic build': 'לצפייה בבניית LEGO Technic',
+  'Review the translations': 'בדיקת התרגומים',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'פועל',
   'Off': 'כבוי',
@@ -8891,6 +8923,8 @@ const HE = {
 const ID = {
   'Show incomplete translations': 'Tampilkan terjemahan yang belum lengkap',
   'Enable sound': 'Aktifkan suara',
+  'See the LEGO Technic build': 'Lihat rakitan LEGO Technic',
+  'Review the translations': 'Tinjau terjemahan',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Nyala',
   'Off': 'Mati',
@@ -9449,6 +9483,8 @@ const ID = {
 const TR = {
   'Show incomplete translations': 'Eksik çevirileri göster',
   'Enable sound': 'Sesi etkinleştir',
+  'See the LEGO Technic build': 'LEGO Technic yapımını gör',
+  'Review the translations': 'Çevirileri gözden geçir',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Açık',
   'Off': 'Kapalı',
@@ -10007,6 +10043,8 @@ const TR = {
 const CY = {
   'Show incomplete translations': 'Dangos cyfieithiadau anghyflawn',
   'Enable sound': 'Galluogi sain',
+  'See the LEGO Technic build': 'Gweld y gwaith adeiladu LEGO Technic',
+  'Review the translations': 'Adolygu’r cyfieithiadau',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Ymlaen',
   'Off': 'I ffwrdd',
@@ -10568,6 +10606,8 @@ const CY = {
 const FIL = {
   'Show incomplete translations': 'Ipakita ang mga hindi kumpletong salin',
   ['Enable sound']: 'Buksan ang tunog',
+  ['See the LEGO Technic build']: 'Tingnan ang LEGO Technic na build',
+  ['Review the translations']: 'Suriin ang mga salin',
   ['On']: 'On',
   ['Off']: 'Off',
   ['Time']: 'Oras',
@@ -11104,6 +11144,8 @@ const FIL = {
 const LV = {
   'Show incomplete translations': 'Rādīt nepilnīgus tulkojumus',
   'Enable sound': 'Ieslēgt skaņu',
+  'See the LEGO Technic build': 'Skatīt LEGO Technic būvi',
+  'Review the translations': 'Pārskatīt tulkojumus',
   'On': 'Ieslēgts',
   'Off': 'Izslēgts',
   'Time': 'Laiks',
@@ -11640,6 +11682,8 @@ const LV = {
 const HU = {
   'Show incomplete translations': 'Hiányos fordítások megjelenítése',
   'Enable sound': 'Hang bekapcsolása',
+  'See the LEGO Technic build': 'A LEGO Technic építés megtekintése',
+  'Review the translations': 'A fordítások áttekintése',
   'On': 'Be',
   'Off': 'Ki',
   'Time': 'Idő',

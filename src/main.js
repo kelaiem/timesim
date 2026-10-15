@@ -4060,9 +4060,50 @@ const SEAT_LAND_LAP = 0.15;
 // wherever something turns inside the hour tube its bore is read at the flats.
 const RING_GEO_SEG = 40;
 const RING_GEO_FLATS = Math.cos(Math.PI / RING_GEO_SEG);
+// The disc's RAISED TRACK with the notch as its one gap (no CSG: the notch is
+// the ABSENCE of track), and the notch's two ramps (TODO 259/260). The pin rides
+// the track's top; at coincidence the gap arrives under it and it drops
+// ALARM_PIN_DROP — banked by the feeler's stop, one CLEAR_MARGIN short of the
+// body (TODO 179). Called once, by the seat's build, after it has solved
+// ALARM_NOTCH_RAMP.
+function buildAlarmDiscTrack() {
+  if (!(ALARM_NOTCH_RAMP > 0 && ALARM_NOTCH_RAMP_IN > 0)) throw new Error('buildAlarmDiscTrack before the seat solved the ramps');
+  // §280 — the full-height track stops where the RAMPS begin: the notch's floor
+  // (ALARM_NOTCH_W) plus a ramp's run each side. The two ramps below close the gap.
+  // TODO 261 — the floor stands ALARM_NOTCH_AHEAD of the disc's zero (the alarm
+  // hand), along the pin's travel, and its two ramps are different lengths: the
+  // ENTRY ramp is on the side the pin arrives from, which is the negative side of
+  // the floor along the travel. In the disc's own angle that is −SENSE.
+  const c = ALARM_NOTCH_AHEAD, S = ALARM_READER_SENSE;
+  const runNeg = S > 0 ? ALARM_NOTCH_RAMP_IN : ALARM_NOTCH_RAMP, runPos = S > 0 ? ALARM_NOTCH_RAMP : ALARM_NOTCH_RAMP_IN;
+  const a0 = c + ALARM_NOTCH_W / 2 + runPos, a1 = Math.PI * 2 + c - ALARM_NOTCH_W / 2 - runNeg;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, ALARM_TRACK_RMID + ALARM_TRACK_HALFW, a0, a1, false);
+  shape.absarc(0, 0, ALARM_TRACK_RMID - ALARM_TRACK_HALFW, a1, a0, true);
+  const trackGeo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_TRACK_H, bevelEnabled: false });
+  const track = new THREE.Mesh(trackGeo, MATS.steel);
+  track.name = 'alarmDiscTrack';
+  track.position.z = ALARM_DISC_TOP;
+  alarmDiscGroup.add(track);
+  // §280 — the notch's two ramps (see ALARM_NOTCH_RAMP). Each is a sector wedge
+  // on the body's face: its low end stands the notch's depth less the drop
+  // (the dropped pin's tip level — CLEAR_MARGIN over the floor), its high end
+  // the track's own top, flush with the track's end face. One mesh name for
+  // both, as the stem collar's three; the rows that name it are by label pair.
+  const rampLow = ALARM_TRACK_H - ALARM_PIN_DROP;
+  for (const [side, run] of [[1, runPos], [-1, runNeg]]) {
+    const ramp = new THREE.Mesh(
+      notchRampGeo(ALARM_TRACK_RMID - ALARM_TRACK_HALFW, ALARM_TRACK_RMID + ALARM_TRACK_HALFW,
+        Math.hypot(ALARM_TRACK_RMID, ALARM_PIN_R),   // the pin's tangential extreme (its rim vertex at the track's tangent) — where it touches
+        c, ALARM_NOTCH_W / 2, ALARM_NOTCH_W / 2 + run, rampLow, ALARM_TRACK_H, Math.ceil(run / ALARM_NOTCH_RAMP_STEP), side), MATS.steel);
+    ramp.name = 'alarmDiscNotchRamp';
+    ramp.position.z = ALARM_DISC_TOP;
+    alarmDiscGroup.add(ramp);
+  }
+}
 // §280 — a SECTOR WEDGE whose top descends linearly in ANGLE: from height hHigh at
-// th1 down to hLow at th0 (th0 < th1, from the notch's centre, side +1; side −1
-// is its mirror). The top is a helicoid — the same height along every radius at
+// th1 down to hLow at th0 (th0 < th1, from the notch's centre `centre`, side +1; side −1
+// is its mirror about it). The top is a helicoid — the same height along every radius at
 // one angle, which is what a law written in the pin's angle asks for — sampled
 // in `n` angular steps and on THREE radii (inner, `rMid`, outer). The middle row
 // is not decoration: a step's quad is split into triangles that interpolate in
@@ -4074,11 +4115,11 @@ const RING_GEO_FLATS = Math.cos(Math.PI / RING_GEO_SEG);
 // track's centre instead, 3 mils of radius short of the vertex. Closed, one shell, indexed: the corners are shared, so the
 // instruments that read open edges (§27's trap) see none. Winding is set from
 // the shell's own centroid, and the mirror flips it.
-function notchRampGeo(rIn, rOut, rMid, th0, th1, hLow, hHigh, n, side) {
+function notchRampGeo(rIn, rOut, rMid, centre, th0, th1, hLow, hHigh, n, side) {
   const P = [], idx = new Map();
   const vid = (key, x, y, z) => { if (!idx.has(key)) { idx.set(key, P.length / 3); P.push(x, y, z); } return idx.get(key); };
   const at = (i, top, k, r) => {
-    const t = th0 + (th1 - th0) * (i / n), h = top ? hLow + (hHigh - hLow) * (i / n) : 0, a = side * t;
+    const t = th0 + (th1 - th0) * (i / n), h = top ? hLow + (hHigh - hLow) * (i / n) : 0, a = centre + side * t;
     return vid(`${i},${top ? 1 : 0},${k}`, r * Math.cos(a), r * Math.sin(a), h);
   };
   // C[i]: floor nodes [in, out]; top nodes [in, mid, out]
@@ -23541,33 +23582,91 @@ const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop o
 //     invisible while nothing was cut to the law and is the whole residual of
 //     the pin against the ramps now that something is.
 //   · rockAt — the lever's turn about its pin for a drop at its read arm.
+//   · dropAt — §280 (TODO 260, made two-sided by TODO 261): the pin's drop at `u`,
+//     the pin's centre along its travel measured from the notch FLOOR's centre
+//     (negative before it, on the ENTRY side). It is the law of a flat pin's rim
+//     riding a ramp of angular run `run` that starts at the floor's edge
+//     (`floorHalf`) and rises `drop` to the track's top: the pin's bottom is the
+//     ramp's height at |u| + pinArcHalf (the rim), so it is nothing until the rim
+//     reaches the ramp's top end, the full drop once the rim is at the floor's
+//     edge, linear between. The run is the ENTRY ramp's on the entry side and the
+//     EXIT ramp's on the other (`runIn`, `runOut`): the two are not the same
+//     length (see ALARM_NOTCH_RAMP_IN). run = 2·pinArcHalf is the pin's own width
+//     and was the whole law until the ramp had to be longer than that.
+//   · plateauHalf — the half-width of the angle over which the pin stands at its
+//     full drop, `floorHalf − pinArcHalf`: the pin bottoms, and so the alarm trips,
+//     when its centre is this far short of the floor's centre along its travel.
+//   · rampRun / rampIn — the exit and the entry ramps' runs the build derived
+//     (ALARM_NOTCH_RAMP, ALARM_NOTCH_RAMP_IN), handed to the line spec so the
+//     reference reads the numbers the metal was cut to; entryRunOf is the law
+//     that derives the second from the first, called by the build and by the
+//     reference's own `rampIn` row, so the metal is held to it.
 const ALARM_DETECTOR_LAWS = Object.freeze({
   pinArcHalf: (pinR, trackR) => Math.atan2(pinR, trackR),
   rockAt: (drop, arm) => drop / arm,
+  dropAt: (u, floorHalf, pinArcHalf, runIn, runOut, drop) => {
+    const run = u < 0 ? runIn : runOut;
+    return drop * Math.min(1, Math.max(0, (floorHalf + run - Math.abs(u) - pinArcHalf) / run));
+  },
+  plateauHalf: (floorHalf, pinArcHalf) => floorHalf - pinArcHalf,
+  rampRun: () => ALARM_NOTCH_RAMP,
+  rampIn: () => ALARM_NOTCH_RAMP_IN,
+  rampOfSlope: (tanTheta, drop, trackR) => drop / (tanTheta * trackR),   // the angular run of a ramp of that slope at the track's radius
+  climbRatio: (tanTheta, mu) => (tanTheta + mu) / (1 - mu * tanTheta),   // the pin's tangential force on the disc climbing a flank, per unit of its load
+  driveRatio: (tanTheta, mu) => (tanTheta - mu) / (1 + mu * tanTheta),   // …and descending one: the load's own push on the disc, per unit of it
+  // the ENTRY ramp's run, from the exit's: the slope whose DRIVE at MU_STEEL equals
+  // the exit's CLIMB there, drive(tan θ_in) = climb(tan θ_out) = c, so
+  // tan θ_in = (c + μ)/(1 − μ·c) — one hold clears both by the same headroom
+  entryRunOf: (exitRun, drop, trackR) => {
+    const c = ALARM_DETECTOR_LAWS.climbRatio(drop / (exitRun * trackR), MU_STEEL);
+    return ALARM_DETECTOR_LAWS.rampOfSlope((c + MU_STEEL) / (1 - MU_STEEL * c), drop, trackR);
+  },
 });
 // §280 — THE NOTCH'S RAMPS. The tick has always dropped the pin along a LINEAR
 // ramp, from nothing at the pin's rim touching the notch's edge to the full
-// ALARM_PIN_DROP when the pin is wholly inside, over the pin's own diameter's
-// arc (`pinArcHalf` either side of the edge, below). Nothing in the metal made
-// that ramp: the notch's walls were radial and a flat-ended pin standing on a
+// ALARM_PIN_DROP when the pin is wholly inside. Nothing in the metal made that
+// ramp: the notch's walls were radial and a flat-ended pin standing on a
 // vertical wall can fall in but is never LIFTED out — the wall pushes it
 // sideways and the pin's lever only rocks vertically. The ramp is cut now, to
-// the law: from the notch's edge outward, the track's top descends ALARM_PIN_DROP
-// over the same 2·pinArcHalf of angle, so a flat pin's rim rides it exactly (the
-// pin's bottom height at centre angle c is the ramp's height at c + pinArcHalf,
-// which is the law). Its slope is DERIVED, not chosen: drop / (2·pinR) at the
-// pin's radius, 19.65° — shallower than any nose the pin could carry, which is
-// why the ramp is on the track and the pin stays a cylinder: a conical nose
-// reaches at best atan(drop / pinR) = 35.5° on a pin this wide, and 64.6° once
-// its tip keeps the pivot floor's diameter (PIVOT_MIN_U), and the sideways force
-// that climbs a flank of angle θ is F_seat · tan θ (the lifting train's to pay).
+// the law: from the notch's floor outward the track's top descends
+// ALARM_PIN_DROP over `ALARM_NOTCH_RAMP` of angle, so a flat pin's rim rides it
+// exactly (the pin's bottom height at centre angle c is the ramp's height at
+// c + pinArcHalf, which is ALARM_DETECTOR_LAWS.dropAt).
+//
+// TODO 260 — AND ITS LENGTH IS DERIVED, because the climb is a load. Leaving the
+// notch the pin pushes the disc along with F·(tan θ + μ)/(1 − μ·tan θ) (θ the
+// ramp's slope, F the riding load), a force the seat's hold must clear by
+// ALARM_SPRING_HEADROOM like every drag-against-hold budget in the arming chain.
+// The hold is the seat pad's, the pad is a blade, and the blade's strain is the
+// ceiling (0.9 of the stock's, the repo's one design strain): so the pad is
+// the force the blade can carry, the climb is the largest that pad holds at the
+// headroom, and tan θ — hence the ramp's run, ALARM_PIN_DROP / (tan θ · track
+// radius) — is the steepest that climb allows. The shortest ramp the seat can
+// hold, not a chosen angle. It is solved where the seat is (below), the only
+// place its inputs exist, and the track and its ramps are cut there with it.
+// The tick's law and the line spec read it through ALARM_DETECTOR_LAWS.
+let ALARM_NOTCH_RAMP = NaN;   // rad — the EXIT ramp's angular run, from the floor's edge; solved by the seat's build
+// TODO 261 — AND THE ENTRY RAMP IS NOT THE EXIT'S. The pin leaves the notch
+// CLIMBING (the hour train pushes it up against the bias blade: the load above)
+// but enters it FALLING, and a falling pin is pushed down the flank by the blade
+// instead of up it: it puts F·(tan θ − μ)/(1 + μ·tan θ) on the disc, which the
+// hold must clear by the same headroom. Setting the drive's load equal to the
+// climb's at MU_STEEL (the corner every hold is solved at) is what makes ONE hold
+// clear both by ALARM_SPRING_HEADROOM, and it fixes tan θ_in as the climb ratio
+// of the exit's climb ratio — a flank several times steeper, a run several times
+// shorter. What that buys is the alarm's PRECISION: a pin that has started down
+// the entry flank has not tripped the alarm yet (it trips on the full drop), and
+// the angle between the two is the entry's run, which is the spread a real
+// part's friction and lash would smear the trip over. Solved with the exit, in
+// the seat's build, from the same inputs.
+let ALARM_NOTCH_RAMP_IN = NaN;   // rad — the ENTRY ramp's angular run, from the floor's edge
 // The ramp's top is a helicoid sampled in this many angular steps. Each step's
 // quad is split into two triangles, so the metal sits under the true surface by
 // at most the sag of a chord on the pin's own radius (the mid-radius node row,
-// notchRampGeo), which falls with the square of the step: 96 keeps it far under
-// the lineSpec's 1e-6 u tolerance for two meshes of under a thousand triangles.
-const ALARM_NOTCH_RAMP_STEPS = 96;
-const ALARM_NOTCH_RAMP = 2 * ALARM_DETECTOR_LAWS.pinArcHalf(ALARM_PIN_R, ALARM_TRACK_RMID);   // rad — the ramp's run each side of the floor, the law's own width
+// notchRampGeo), which falls with the square of the step. The run is several
+// times what it was, so the step count follows it: 96 steps at the old run
+// (0.0917 rad) is a step of 9.6e-4 rad, held.
+const ALARM_NOTCH_RAMP_STEP = 9.6e-4;   // rad — an angular step of the helicoid
 const ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25, its inner edge 0.0167 INSIDE the hub's wall (2.8667 — one piece of the disc, so that is a joint, not a fit; this comment used to say "outside", and nothing checked it); the rim's root circle is 4.3812 (30 T at module 0.3, gearToothSpec's rootR against its 28 T mate — not 1.25·m below pitch, which read 4.125 here until TODO 195), so the body's face runs smooth from 3.25 out to it — TODO 144's candidate pad annulus
 // (ALARM_TRACK_RMID = 3.05 — hoisted above the sleeve build by TODO 227, with the feeler's pivot radius; the comment above is its derivation.)
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
@@ -23663,36 +23762,9 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
   body.traverse((o) => { if (o.isMesh) o.name = 'alarmDiscBody'; });
   body.position.z = ALARM_DISC_BOT + ALARM_DISC_BODY_T / 2;
   alarmDiscGroup.add(body);
-  // The RAISED TRACK with the notch as its one gap (no CSG: the notch is
-  // the ABSENCE of track). The pin rides the track's top; at coincidence
-  // the gap arrives under it and it drops ALARM_PIN_DROP — banked by the
-  // feeler's stop, one CLEAR_MARGIN short of the body (TODO 179).
-  // §280 — the full-height track stops where the RAMPS begin: the notch's floor
-  // (ALARM_NOTCH_W) plus a ramp's run each side. The two ramps below close the gap.
-  const a0 = ALARM_NOTCH_W / 2 + ALARM_NOTCH_RAMP, a1 = Math.PI * 2 - a0;
-  const shape = new THREE.Shape();
-  shape.absarc(0, 0, ALARM_TRACK_RMID + ALARM_TRACK_HALFW, a0, a1, false);
-  shape.absarc(0, 0, ALARM_TRACK_RMID - ALARM_TRACK_HALFW, a1, a0, true);
-  const trackGeo = new THREE.ExtrudeGeometry(shape, { depth: ALARM_TRACK_H, bevelEnabled: false });
-  const track = new THREE.Mesh(trackGeo, MATS.steel);
-  track.name = 'alarmDiscTrack';
-  track.position.z = ALARM_DISC_TOP;
-  alarmDiscGroup.add(track);
-  // §280 — the notch's two ramps (see ALARM_NOTCH_RAMP). Each is a sector wedge
-  // on the body's face: its low end stands the notch's depth less the drop
-  // (the dropped pin's tip level — CLEAR_MARGIN over the floor), its high end
-  // the track's own top, flush with the track's end face. One mesh name for
-  // both, as the stem collar's three; the rows that name it are by label pair.
-  const rampLow = ALARM_TRACK_H - ALARM_PIN_DROP;
-  for (const side of [1, -1]) {
-    const ramp = new THREE.Mesh(
-      notchRampGeo(ALARM_TRACK_RMID - ALARM_TRACK_HALFW, ALARM_TRACK_RMID + ALARM_TRACK_HALFW,
-        Math.hypot(ALARM_TRACK_RMID, ALARM_PIN_R),   // the pin's tangential extreme (its rim vertex at the track's tangent) — where it touches
-        ALARM_NOTCH_W / 2, ALARM_NOTCH_W / 2 + ALARM_NOTCH_RAMP, rampLow, ALARM_TRACK_H, ALARM_NOTCH_RAMP_STEPS, side), MATS.steel);
-    ramp.name = 'alarmDiscNotchRamp';
-    ramp.position.z = ALARM_DISC_TOP;
-    alarmDiscGroup.add(ramp);
-  }
+  // The RAISED TRACK and its notch's ramps are cut by buildAlarmDiscTrack(),
+  // called from the seat's build: the ramps' run is derived from the seat's
+  // strain budget (TODO 260), whose inputs exist only there.
 }
 // --- '(§29 step 2, FIXED) the re-phasing branch taps I1 DIRECTLY -----------
 // The first build tapped i2 through a new idler j — placed by a two-circle
@@ -23861,6 +23933,25 @@ const ALARM_DET_STUD_R = HOUR_TUBE_INNER - PIVOT_BORE_CLEAR;   // the satellite 
 // the rule-2 chain, one law, called by the build's solve, the tick and the trip
 const alarmDetectorIdlerA = (hourA) => -hourA * (MW_HOUR_TEETH / ALARM_DET_IDLER_TEETH);
 const alarmDetectorHourA = (hourA) => -alarmDetectorIdlerA(hourA) * (ALARM_DET_IDLER_TEETH / ALARM_DET_HOUR_TEETH);
+// TODO 261 — THE WAY THE READER TURNS, DERIVED FROM THE TRAIN. The reader rides
+// the hour wheel's dial-local angle through the satellite's teeth, so its sense
+// is the sign of that angle's change over an hour, read off the same laws the
+// tick poses it by (the cannon's turn per hour, the two motion-works ratios, the
+// satellite's 1:1). It is the direction the pin travels over the disc, which is
+// what tells the notch's entry flank from its exit.
+const ALARM_READER_SENSE = Math.sign(alarmDetectorHourA(-((centerAngle(3600) - centerAngle(0)) * MW_RATIO_1 * MW_RATIO_2)));
+// TODO 261 — THE NOTCH STANDS AHEAD OF THE ALARM HAND, by half its plateau. The
+// pin trips the alarm when it BOTTOMS, which is the leading edge of the plateau
+// (a centre `plateauHalf` short of the floor's centre), not the floor's centre.
+// With the floor centred on the hand — as it was, "the notch is cut where the
+// hand points" — the alarm rang `plateauHalf` of hour angle (2.76 min) BEFORE the
+// hour hand reached the alarm hand, and the readout said so with a ≈. Moving the
+// floor's centre `plateauHalf` ahead along the pin's travel puts the leading
+// edge on the hand: the alarm rings when the hour hand meets the alarm hand, to
+// the tick. It is cut into the disc (the floor's centre, local angle) and read by
+// the tick (alarmNotchA is the floor's centre, the hand plus this).
+const ALARM_NOTCH_AHEAD = ALARM_READER_SENSE
+  * ALARM_DETECTOR_LAWS.plateauHalf(ALARM_NOTCH_W / 2, ALARM_DETECTOR_LAWS.pinArcHalf(ALARM_PIN_R, ALARM_TRACK_RMID));
 const alarmDetIdlerUnit = new THREE.Group();
 dialFace.add(alarmDetIdlerUnit);
 registerLabel('Alarm detector idler', alarmDetIdlerUnit);
@@ -24528,14 +24619,69 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   const padR_u = Math.hypot(Pt.x, Pt.y);
   const pinF_N = ALARM_FEELER_SPRING.pinF_mN_riding / 1000;
   const drag_Nmm = MU_STEEL * pinF_N * (ALARM_TRACK_RMID * UNIT_MM);
-  // μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] ≥ HEADROOM·μ·F_pin·r_track, solved for F_pad:
-  const padF_N = pinF_N * (ALARM_SPRING_HEADROOM * ALARM_TRACK_RMID - seatR_u) / (seatR_u + padR_u);
-  const hold_Nmm = MU_STEEL * ((pinF_N + padF_N) * seatR_u + padF_N * padR_u) * UNIT_MM;
   const k = cantileverK_N_per_m(ALARM_SEAT_BLADE_W, SPRING_FLAT_U, L);
+  // TODO 260 — THE RAMP'S LENGTH IS SOLVED HERE, from the pad's own ceiling.
+  // The hold is μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad], and what it must clear
+  // is the largest force the pin puts on the disc: no longer the flat track's
+  // drag μ·F_pin but the CLIMB out of the notch, F_pin·(tan θ + μ)/(1 − μ·tan θ)
+  // at the riding load, by ALARM_SPRING_HEADROOM. The pad is a blade and its
+  // force is capped by the blade's strain at the repo's one design strain (0.9
+  // of the stock's, as the spirals and the stud) and by the detent window;
+  // the climb that pad holds at the headroom is
+  //   climb = μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] / (HEADROOM · r_track),
+  // and tan θ follows from it, and the ramp's run from tan θ. The steepest
+  // ramp — the shortest — the seat can hold; nothing here is a chosen angle.
+  const strainCap = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA;
+  const padCap_N = Math.min(strainCap * 2 * L ** 2 / (3 * SPRING_FLAT_U) * k * U, SELECTOR_DETENT_WINDOW_MN[1] / 1000);   // strain = 3·t·preload/(2·L²), preload = F/(k·U)
+  const climb_N = MU_STEEL * ((pinF_N + padCap_N) * seatR_u + padCap_N * padR_u) / (ALARM_SPRING_HEADROOM * ALARM_TRACK_RMID);
+  const climbRatio = climb_N / pinF_N;                                        // (tan θ + μ)/(1 − μ·tan θ)
+  const tanTheta = (climbRatio - MU_STEEL) / (1 + MU_STEEL * climbRatio);   // the inverse of ALARM_DETECTOR_LAWS.climbRatio at MU_STEEL
+  if (!(tanTheta > 0)) console.warn(`TODO 260 seat: the pad's cap ${(padCap_N * 1000).toFixed(2)} mN cannot hold even the flat drag ×${ALARM_SPRING_HEADROOM} against any ramp (climb ratio ${climbRatio.toFixed(4)} ≤ μ ${MU_STEEL})`);
+  ALARM_NOTCH_RAMP = ALARM_DETECTOR_LAWS.rampOfSlope(tanTheta, ALARM_PIN_DROP, ALARM_TRACK_RMID);
+  // TODO 261 — THE ENTRY FLANK. Falling, the pin loads the disc with the drive
+  // ratio of ITS slope; the entry's slope is the one whose drive at MU_STEEL equals
+  // the exit's climb, so the one hold (solved for the climb) clears both by the
+  // same headroom: drive(tan θ_in) = c ⇒ tan θ_in = (c + μ)/(1 − μ·c).
+  ALARM_NOTCH_RAMP_IN = ALARM_DETECTOR_LAWS.entryRunOf(ALARM_NOTCH_RAMP, ALARM_PIN_DROP, ALARM_TRACK_RMID);
+  const tanIn = ALARM_PIN_DROP / (ALARM_NOTCH_RAMP_IN * ALARM_TRACK_RMID);   // the slope that run is
+  if (!(tanIn > MU_STEEL)) console.warn(`TODO 261 seat: the entry flank's slope ${tanIn.toFixed(4)} does not exceed μ ${MU_STEEL} — a pin on it would stick rather than fall`);
+  buildAlarmDiscTrack();   // the track and its two ramps, cut to the runs just solved
+  // μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] = HEADROOM·climb·r_track, solved for F_pad
+  // (the cap, by construction — the assert below holds the identity):
+  const padF_N = (ALARM_SPRING_HEADROOM * climb_N * ALARM_TRACK_RMID / MU_STEEL - pinF_N * seatR_u) / (seatR_u + padR_u);
+  const hold_Nmm = MU_STEEL * ((pinF_N + padF_N) * seatR_u + padF_N * padR_u) * UNIT_MM;
+  const climb_Nmm = climb_N * (ALARM_TRACK_RMID * UNIT_MM);
+  // TODO 260 — THE FRICTION CORNERS. The pad is solved at MU_STEEL, the ADVERSE
+  // corner, which is the conservative one for the load (the climb and the drag
+  // both rise with μ) and the unconservative one for the hold (it IS a friction,
+  // and falls with it). Both are dry steel, which the lubrication map prices as
+  // `muTooth` (the one dry row: nothing here is oiled, oil would run to the
+  // teeth), so each of its corners is run through BOTH sides with the pad's force
+  // as built (it is a blade, it does not change): hold(μ) against climb(μ), with
+  // the pin and the pad in one lubrication state — and the DECOUPLED worst, the
+  // pad at its kindest against the pin at its harshest. Held: the hold never
+  // falls under the climb at any of them (the headroom is the design margin AT
+  // the adverse corner and is what shrinks, not the sign of the margin).
+  const holdAt = (mu) => mu * ((pinF_N + padF_N) * seatR_u + padF_N * padR_u) * UNIT_MM;
+  const climbAt = (mu) => pinF_N * ALARM_DETECTOR_LAWS.climbRatio(tanTheta, mu) * (ALARM_TRACK_RMID * UNIT_MM);
+  // TODO 261 — the entry flank's two loads: the drive when the pin FALLS down it
+  // (what the hold must clear in running), and the climb when the hand sets the
+  // disc BACK through the notch and the pin is pushed up it (what the hand adds).
+  const driveInAt = (mu) => pinF_N * ALARM_DETECTOR_LAWS.driveRatio(tanIn, mu) * (ALARM_TRACK_RMID * UNIT_MM);
+  const climbInAt = (mu) => pinF_N * ALARM_DETECTOR_LAWS.climbRatio(tanIn, mu) * (ALARM_TRACK_RMID * UNIT_MM);
+  const corners = Object.freeze(Object.fromEntries(FRICTION_CORNERS.map((c) => {
+    const mu = FRICTION.muTooth[c];
+    return [c, Object.freeze({ mu, hold_Nmm: holdAt(mu), climb_Nmm: climbAt(mu), ratio: holdAt(mu) / climbAt(mu),
+      driveIn_Nmm: driveInAt(mu), ratioIn: holdAt(mu) / driveInAt(mu), climbIn_Nmm: climbInAt(mu) })];
+  })));
+  const decoupled = Object.freeze({ hold_Nmm: holdAt(FRICTION.muTooth.favourable), climb_Nmm: climbAt(FRICTION.muTooth.adverse),
+    ratio: holdAt(FRICTION.muTooth.favourable) / climbAt(FRICTION.muTooth.adverse) });
   const preload_u = padF_N / k / U;
   const strain = 3 * (SPRING_FLAT_U * U) * (preload_u * U) / (2 * (L * U) ** 2);
   ALARM_SEAT = Object.freeze({
     padF_mN: padF_N * 1000, seatR_u, padR_u, holdTq_Nmm: hold_Nmm, dragTq_Nmm: drag_Nmm,
+    climbTq_Nmm: climb_Nmm, climbF_mN: climb_N * 1000, rampTan: tanTheta, rampRun_rad: ALARM_NOTCH_RAMP, strainCap, corners, decoupled,
+    rampInTan: tanIn, rampInRun_rad: ALARM_NOTCH_RAMP_IN, driveInTq_Nmm: driveInAt(MU_STEEL), climbInTq_Nmm: climbInAt(MU_STEEL),
     bladeL_u: L, bladeW_u: ALARM_SEAT_BLADE_W, bladeT_u: SPRING_FLAT_U, k_N_per_m: k, preload_u, strain,
     postR_u: ALARM_SEAT_POST_R, postRad_u: ALARM_SEAT_POST_RAD, postL_u: ALARM_SEAT_POST_L,
     plateBore_u: ALARM_SEAT_BORE, plateOut_u: ALARM_SEAT_R_OUT, plateRelief_u: ALARM_SEAT_R_RELIEF, reliefHalf_rad: ALARM_SEAT_RELIEF_HALF,
@@ -24543,6 +24689,13 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   // --- the asserts (rule 6): the derivation's achieved and required numbers ---
   const say = (nm, ok, got, need) => { if (!ok) console.warn(`TODO 144 seat ${nm}: ${got}, need ${need}`); };
   say('hold clears the drag', hold_Nmm >= ALARM_SPRING_HEADROOM * drag_Nmm - 1e-12, `${hold_Nmm.toExponential(3)} N·mm`, `≥ ${(ALARM_SPRING_HEADROOM * drag_Nmm).toExponential(3)}`);
+  say('hold clears the CLIMB out of the notch (TODO 260)', hold_Nmm >= ALARM_SPRING_HEADROOM * climb_Nmm - 1e-12, `${hold_Nmm.toExponential(3)} N·mm`, `≥ ${(ALARM_SPRING_HEADROOM * climb_Nmm).toExponential(3)}`);
+  say('the adverse corner is the design corner: hold ÷ climb = the headroom', Math.abs(corners.adverse.ratio - ALARM_SPRING_HEADROOM) <= 1e-9, corners.adverse.ratio.toFixed(9), `${ALARM_SPRING_HEADROOM}`);
+  say('the hold never falls under the climb at any friction corner', Math.min(...Object.values(corners).map((c) => c.ratio), decoupled.ratio) >= 1, `${Math.min(...Object.values(corners).map((c) => c.ratio), decoupled.ratio).toFixed(3)}×`, '≥ 1');
+  say('the entry flank\'s drive at the design corner equals the exit\'s climb (TODO 261)', Math.abs(driveInAt(MU_STEEL) - climb_Nmm) <= 1e-9 * climb_Nmm, `${driveInAt(MU_STEEL).toExponential(6)} N·mm`, `${climb_Nmm.toExponential(6)}`);
+  say('hold clears the entry\'s DRIVE by the headroom at the design corner (TODO 261)', hold_Nmm >= ALARM_SPRING_HEADROOM * driveInAt(MU_STEEL) - 1e-12, `${hold_Nmm.toExponential(3)} N·mm`, `≥ ${(ALARM_SPRING_HEADROOM * driveInAt(MU_STEEL)).toExponential(3)}`);
+  say('the hold never falls under the entry\'s drive at any friction corner (TODO 261)', Math.min(...Object.values(corners).map((c) => c.ratioIn)) >= 1, `${Math.min(...Object.values(corners).map((c) => c.ratioIn)).toFixed(3)}×`, '≥ 1');
+  say('the pad is the cap the ramp was solved against', Math.abs(padF_N - padCap_N) <= 1e-9 * padCap_N, `${(padF_N * 1000).toFixed(6)} mN`, `${(padCap_N * 1000).toFixed(6)} mN`);
   say('pad force inside the detent envelope', padF_N * 1000 >= SELECTOR_DETENT_WINDOW_MN[0] && padF_N * 1000 <= SELECTOR_DETENT_WINDOW_MN[1], `${(padF_N * 1000).toFixed(2)} mN`, `${SELECTOR_DETENT_WINDOW_MN[0]}–${SELECTOR_DETENT_WINDOW_MN[1]}`);
   say('preload exceeds the seat\'s sink', preload_u >= ALARM_SEAT_SINK, `${preload_u.toFixed(4)} u`, `≥ ${ALARM_SEAT_SINK}`);
   say('blade strain under the stock\'s limit', strain <= SPRING_SIGMA_Y_PA / STEEL_E_PA, `${strain.toExponential(3)}`, `≤ ${(SPRING_SIGMA_Y_PA / STEEL_E_PA).toExponential(3)}`);
@@ -24553,10 +24706,10 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   declareTransfer('alarm release: the seat pad (bracket blade → the disc’s face)', {
     unit: 'Alarm release seat', meshes: ['alarmSeatBlade', 'alarmSeatBladeStud', 'alarmSeatPad'], idiom: 'groundedBlade',
     load: { value: padF_N * 1000, unit: 'mN',
-      source: 'SOLVED from the hold: μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] must clear the reader pin’s drag μ·F_pin·ALARM_TRACK_RMID by ALARM_SPRING_HEADROOM, with r_seat the friction-effective radius of the plate annulus the relief leaves whole and r_pad the foot’s own radius; the blade’s preload is that force over its 3EI/L³' },
-    quantities: { armIn_u: L, armOut_u: L, ratio: 1, k_N_per_m: k, preload_u, strain, seatR_u, padR_u, holdTq_Nmm: hold_Nmm, dragTq_Nmm: drag_Nmm, headroom: hold_Nmm / drag_Nmm },
+      source: 'SOLVED from the hold: μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] must clear the largest force the reader pin puts on the disc — the CLIMB out of the notch, F_pin·(tan θ + μ)/(1 − μ·tan θ), which is ≥ the flat track’s drag μ·F_pin — by ALARM_SPRING_HEADROOM (TODO 260: the pad is the blade’s strain cap and the ramp’s slope is what that cap holds), with r_seat the friction-effective radius of the plate annulus the relief leaves whole and r_pad the foot’s own radius; the blade’s preload is that force over its 3EI/L³' },
+    quantities: { armIn_u: L, armOut_u: L, ratio: 1, k_N_per_m: k, preload_u, strain, seatR_u, padR_u, holdTq_Nmm: hold_Nmm, dragTq_Nmm: drag_Nmm, headroom: hold_Nmm / drag_Nmm, climbTq_Nmm: climb_Nmm, climbHeadroom: hold_Nmm / climb_Nmm, rampTan: tanTheta, rampInTan: tanIn, driveInTq_Nmm: driveInAt(MU_STEEL), driveHeadroom: hold_Nmm / driveInAt(MU_STEEL) },
     envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: padF_N * 1000 },
-    why: `a grounded blade pressing its own foot is the groundedBlade idiom at ratio 1. It seats ${(padF_N * 1000).toFixed(2)} mN on the disc’s face at r ${padR_u.toFixed(3)}, which with the pin’s ${ALARM_FEELER_SPRING.pinF_mN_riding.toFixed(2)} mN on a GROUNDED plate (r_eff ${seatR_u.toFixed(3)}) holds ${hold_Nmm.toExponential(3)} N·mm against ${drag_Nmm.toExponential(3)} of drag — ${(hold_Nmm / drag_Nmm).toFixed(2)}× — with a preload of ${preload_u.toFixed(4)} u on a ${L.toFixed(3)} blade at ${(100 * strain / (SPRING_SIGMA_Y_PA / STEEL_E_PA)).toFixed(0)}% of the stock’s strain limit`,
+    why: `a grounded blade pressing its own foot is the groundedBlade idiom at ratio 1. It seats ${(padF_N * 1000).toFixed(2)} mN on the disc’s face at r ${padR_u.toFixed(3)}, which with the pin’s ${ALARM_FEELER_SPRING.pinF_mN_riding.toFixed(2)} mN on a GROUNDED plate (r_eff ${seatR_u.toFixed(3)}) holds ${hold_Nmm.toExponential(3)} N·mm against ${drag_Nmm.toExponential(3)} of drag — ${(hold_Nmm / drag_Nmm).toFixed(2)}× — and ${climb_Nmm.toExponential(3)} of climb out of the notch (the ramp at tan θ ${tanTheta.toFixed(4)}), ${(hold_Nmm / climb_Nmm).toFixed(2)}×, and the same ${driveInAt(MU_STEEL).toExponential(3)} of drive from the pin falling down the steeper entry flank (tan θ ${tanIn.toFixed(4)}, TODO 261), with a preload of ${preload_u.toFixed(4)} u on a ${L.toFixed(3)} blade at ${(100 * strain / (SPRING_SIGMA_Y_PA / STEEL_E_PA)).toFixed(0)}% of the stock’s strain limit`,
   });
 }
 // TODO 144 — WHAT HOLDS THE DISC, accounted. The disc's law is alarmNotchA():
@@ -24588,6 +24741,11 @@ function alarmSetHoldRecord() {
       headroomRequired: ALARM_SPRING_HEADROOM,
       holder: 'Alarm release seat',           // the member that grounds the disc: the thrust plate, and the pad that presses the disc onto it
       holdTq_Nmm: ALARM_SEAT.holdTq_Nmm,      // its holding torque about the disc's axis
+      climbTq_Nmm: ALARM_SEAT.climbTq_Nmm,    // TODO 260: what the pin puts on the disc climbing out of the notch — the load the hold is solved against now
+      rampTan: ALARM_SEAT.rampTan, rampRun_rad: ALARM_SEAT.rampRun_rad,
+      rampInTan: ALARM_SEAT.rampInTan, rampInRun_rad: ALARM_SEAT.rampInRun_rad,   // TODO 261: the entry flank, steeper, and the loads it puts on the disc
+      driveInTq_Nmm: ALARM_SEAT.driveInTq_Nmm, climbInTq_Nmm: ALARM_SEAT.climbInTq_Nmm,
+      corners: ALARM_SEAT.corners, decoupled: ALARM_SEAT.decoupled,   // TODO 260: hold ÷ climb at each of muTooth's corners, and the decoupled worst
       padF_mN: ALARM_SEAT.padF_mN, seatR_u: ALARM_SEAT.seatR_u, padR_u: ALARM_SEAT.padR_u,
       preload_u: ALARM_SEAT.preload_u, strain: ALARM_SEAT.strain,
     });
@@ -24697,11 +24855,13 @@ function alarmSetHoldRecord() {
   // release azimuth only once every twelve hours and that statement is simply
   // false of this movement.
   //
-  // What replaces it is the relation the fold actually rests on: THE NOTCH IS
-  // CUT WHERE THE ALARM HAND POINTS. The hand's dial-local angle is the tube's
-  // armed target and the notch's is alarmNotchA(); the reader's pin rides the
-  // hour wheel at the hour hand's own build azimuth, so pin-meets-notch and
-  // hand-meets-hand are one event exactly when those two expressions agree.
+  // What replaces it is the relation the fold actually rests on: THE DISC TURNS
+  // WITH THE ALARM HAND (and, since TODO 261, the notch's floor stands the
+  // plateau's half-width AHEAD of it, so the pin BOTTOMS where the hand points).
+  // The hand's dial-local angle is the tube's armed target and the disc's is
+  // alarmHandA(); the reader's pin rides the hour wheel at the hour hand's own
+  // build azimuth, so pin-bottoms and hand-meets-hand are one event exactly
+  // when those two expressions agree.
   // They are written in different places by different laws — that is what makes
   // this an assert and not a restatement; change the tube's target and this
   // fires. (It cannot check the build AZIMUTHS, which are geometry at a pose:
@@ -27817,6 +27977,22 @@ const ALARM_CAM_APPROACH_FRAC = 0.06;  // base circle → the radius that first 
 // claim the gate refuses. The blade is real and still returns the lever; what
 // is missing is an axis that drops the pin and lifts it again. TODO 199 stage
 // 3 ships that axis and re-declares this row against the lever body.)
+// TODO 260 — THE AXIS THAT RETIRED ROW WAITED FOR NOW EXISTS. With the notch's
+// ends cut as ramps the pin's drop is a continuous law of the disc's angle, so
+// the net finally drops the pin AND lifts it again: the lever (tail, jog, tip)
+// reverses on the alarm axis. (The reader's collar reversed on it too on the
+// tree this was first written on, and carried a row of its own; on the tree after
+// §278 landing 6 it is not in the registry's population, and the gate calls a
+// declaration for a part that does not reverse STALE, so the row went.) The bias
+// blade that answers for the lever is the one TODO 189 said was real — grounded on its stud,
+// bearing on the lever short of the tip (ALARM_FEELER_SPRING) — and the cut
+// ramp is what drives the opposite stroke, the pin riding UP its slope.
+declareRestoring('Alarm release feeler', 'alarmFeelerTip', 'spring',
+  `the bias blade (ALARM_FEELER_SPRING): clamped on its stud, bearing on the lever short of the tip with ${ALARM_FEELER_SPRING.pinF_mN_riding.toFixed(2)} mN at the pin when riding and ${ALARM_FEELER_SPRING.pinF_mN_dropped.toFixed(2)} mN dropped, so the pin follows the track down into the notch and the cut ramp lifts it back against the blade`,
+  'alarmFeelerSpring');
+declareRestoring('Alarm release feeler', 'alarmFeelerSpring', 'spring',
+  'the blade is its own spring: clamped at its stud, deflected by the lever as the pin drops and lifts, returned by its own elasticity — it bears on the lever at every pose',
+  'alarmFeelerSpring');
 declareRestoring('Minute jumper', 'jumperBeak', 'spring',
   'the click spring seats the beak past the valley floor and the star obstructs — the ride is a limit, not a placement',
   'jumperClickSpring');
@@ -54306,17 +54482,29 @@ function alarmDiscAngle() {
 // hour-borne, the coincidence is `alarmNotchA() − hourDialA`, and the hour
 // arrives by the reader ORBITING rather than by the disc being driven. That is
 // the whole decided topology in one function.
-function alarmNotchA() {
-  // No phase term, and its absence is the derivation. The notch is cut WHERE
-  // THE ALARM HAND POINTS — the hand's dial-local angle is the tube's armed
-  // target, −alarmDiscAngle(), and the reader's pin sits on the hour wheel at
-  // the same build azimuth as the hour hand. So pin-meets-notch and
-  // hand-meets-hand are the same event with nothing between them.
-  // ALARM_RELEASE_PHASE was what put the notch at the LEVER's azimuth, and the
-  // lever no longer reads the notch: it reads the ring, which carries the drop
-  // to every azimuth at once. A phase here would be an alarm that rings a fixed
-  // amount away from its own hand.
+function alarmHandA() {
+  // The disc's own rotation, which IS the alarm hand's angle. (Before TODO 261 this
+  // was also the notch's centre; the notch stands ahead of the hand now, see
+  // ALARM_NOTCH_AHEAD, and the two are different questions.)
   return ALARM_DISC_SIGN * alarmDiscAngle();
+}
+function alarmNotchA() {
+  // The notch FLOOR's centre, in the dial frame: the hand's angle plus the lead
+  // (ALARM_NOTCH_AHEAD, TODO 261). The hand's own angle is alarmHandA().
+  //
+  // TODO 117 argued that no PHASE belongs here, and it is right about the one it
+  // meant: ALARM_RELEASE_PHASE put the notch at the LEVER's azimuth, and the lever
+  // no longer reads the notch — it reads the ring, which carries the drop to every
+  // azimuth at once — so a phase of that kind is an alarm that rings a fixed amount
+  // away from its own hand. The lead is not that. It is the plateau's half-width,
+  // DERIVED from the notch and the pin, and it does the opposite job: the alarm
+  // trips when the pin BOTTOMS, the plateau's leading edge, so a floor centred on
+  // the hand rang half a plateau (2.76 min) before the hands met, and the lead is
+  // what puts the ring ON the hand. The hand's dial-local angle is the tube's armed
+  // target, −alarmDiscAngle(), and the reader's pin sits on the hour wheel at the
+  // same build azimuth as the hour hand, so pin-bottoms and hand-meets-hand are
+  // the same event with nothing between them.
+  return alarmHandA() + ALARM_NOTCH_AHEAD;
 }
 function alarmMarkIndex() {
   // Which quarter-hour mark the HAND is nearest — for the readout and the
@@ -54347,9 +54535,10 @@ function alarmRingsAtSeconds() {
   return (alarmDiscAngle() / (Math.PI * 2)) * DIAL_PERIOD_S;
 }
 // hh:mm, seconds dropped — the form both alarm readouts show, and the reason
-// they prefix ≈. The pin bottoms across ~2.76 min of disc travel, so the ring
-// lands within about ±1.4 min of the hand; a seconds field would be claiming
-// a precision the notch floor does not have. (A function, not a const: the
+// they prefix ≈. Since TODO 261 the ring lands ON the hand (the notch stands
+// ahead of it by the plateau's half-width), so the ≈ marks the seconds dropped
+// and the tick's own step, not a bias: before it the pin bottomed 2.76 min
+// ahead of the hand, and the prefix was covering for that. (A function, not a const: the
 // HUD's per-frame update is reachable from a deep link that runs before this
 // line is evaluated, and only a declaration is hoisted past that.)
 function fmtHM(displaySeconds) { return formatTime(displaySeconds).slice(0, -3); }
@@ -55309,10 +55498,8 @@ function tick(t) {
       // the coincidence at all — it reads the RING, which presents the drop at
       // every azimuth at once.
       const readerA = alarmDetectorHourA(hourDialA);   // §278 landing 5: the reader rides the satellite's hour, which arrives through the idler's teeth
-      const align = Math.abs(wrapPi(discRotNow - readerA));
-      alarmPinDropNow = align >= gapHalf + pinArcHalf ? 0
-        : align <= gapHalf - pinArcHalf ? ALARM_PIN_DROP
-        : ALARM_PIN_DROP * ((gapHalf + pinArcHalf - align) / (2 * pinArcHalf));
+      const u = ALARM_READER_SENSE * wrapPi(readerA - discRotNow);   // TODO 261: the pin's centre along its travel from the floor's centre, negative on the entry side
+      alarmPinDropNow = ALARM_DETECTOR_LAWS.dropAt(u, gapHalf, pinArcHalf, ALARM_NOTCH_RAMP_IN, ALARM_NOTCH_RAMP, ALARM_PIN_DROP);   // §280/TODO 260: the law of a flat rim riding the cut ramps, whose run the seat solved
       // §45 stage 2 — the PHYSICAL pin: the disc's law says what the notch
       // ALLOWS; the silence rocker's finger caps what the tail may rise, in
       // pin units (negative = actively lifted out mid-ring). Computed HERE
@@ -55931,7 +56118,7 @@ function tick(t) {
   // ONLY now and holds where the crown left it; the hour reaches the trip by
   // carrying the READER round instead. Same expression as the trip's, by call
   // rather than by restatement.
-  alarmDiscGroup.rotation.z = alarmNotchA();
+  alarmDiscGroup.rotation.z = alarmHandA();   // TODO 261: the disc turns with the HAND; the notch is cut ahead of it in the disc's own angle
   // §29 step 3: the pin RIDES the track — its lift IS the surface under it,
   // a pure function of the disc's angle (no ease, no state: setPose poses
   // it exactly). alarmPinDropNow was computed up at the strike section this
