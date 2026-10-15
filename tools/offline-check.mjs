@@ -361,7 +361,11 @@ try {
   // §247 tier one — 78: src/lubrication.js, the per-joint lubrication map, which
   // main.js (the schematic's oil points) and inspect.js import statically. One
   // module for the app, like balance-drive.js, so it adds one.
-  check('release: precache complete', counts === 78, `${counts}/78`);
+  // §219 tier three (b) landing H — 79: the fusee module (src/technic-fusee.js), which
+  // technic.html imports statically. One module for the page, like landing B's three.
+  // Landing H shipped without this bump, so main read 79/78 until this line (found on the
+  // §274 PR, whose own change adds no module: the diff touches no precached file).
+  check('release: precache complete', counts === 79, `${counts}/79`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
