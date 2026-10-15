@@ -120,6 +120,15 @@ canvas{display:block;touch-action:none}
   its gaps, and a mode is one tooth. Each branch's gears are the solver's
   answer from the clutch gear to the steel ratio. The rests are measured off
   the parts; the band is drawn posed, its force not measured.</p>
+  <p>The <b>motion works</b> rides the setting branch's output, the minute
+  hand's axle. The hour wheel is a round-bored 16T clutch gear that idles on
+  that same axle, LEGO's own clock idiom. Four meshes bring the train back to
+  the axle it left: two cannot, because no two catalogue pairs with equal
+  centre distances multiply to 12, and three would turn the hour hand
+  backwards. So in <b>set</b> the crown turns the hands through the gears: 3
+  crown turns per minute-hand turn, and 36 per hour-hand turn. In wind and
+  neutral the hands stand still, because no going train drives them here. No
+  hand part is placed. The two angles are the reading.</p>
   <div id="log"></div>
 </div>
 <script type="module">
@@ -128,7 +137,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseLibrary, walk } from './src/ldraw.js';
 import { frameFork, frameKeyless, rowLayout } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
-import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, technicKeylessTargets, catalogueMesh, technicForkTargets,
+import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, catalogueMesh, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
 const logEl = document.getElementById('log');
@@ -470,11 +479,16 @@ async function build(gen, mode = view) {
     if (kf.framed) {
       keylessBuild = ldrawBuild(kf, lib);
       for (const sh of buildLego(keylessBuild, band)) legoShafts.push({ ...sh, keyless: true });
-      const lbl = labelSprite(`${k + 1}. keyless works`); lbl.position.set(-30, 60, 0); band.add(lbl);
+      const lbl = labelSprite(`${k + 1}. keyless and motion works`); lbl.position.set(-30, 60, 0); band.add(lbl);
       const kt = technicKeylessTargets();
-      div.innerHTML = `<b>${k + 1}. keyless works — LEGO build</b>`
+      // landing G: the hour wheel's turns per crown turn in set, read off the
+      // build's own body speeds (the angles that travel the meshes)
+      const hour = keylessBuild.shafts.find((x) => x.idles), mw = TECHNIC_MOTION_WORKS.chains[gen];
+      div.innerHTML = `<b>${k + 1}. keyless and motion works — LEGO build</b>`
         + TECHNIC_KEYLESS.rows.map((r) => `<br>${r.key}: <code>${r.chains[gen].map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(kt[r.key])}</code>`
           + ` <span style="color:var(--dim)">${r.derivedFrom}</span>`).join('')
+        + (hour ? `<br>motion works: <code>${mw.map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>1/12</code>`
+          + ` <span style="color:var(--dim)">from the minute axle back to the hour wheel idling on it; in set ${(1 / Math.abs(hour.speeds.set)).toFixed(2)} crown turns per hour-hand turn</span>` : '')
         + `<br><span style="color:var(--dim)">ring travel ±${kf.ringTravel} mm; selector at ${kf.selector.rise} mm over the stem, its rests (wind/neutral/set) `
         + `${['wind', 'neutral', 'set'].map((m) => (keylessBuild.shafts.find((x) => x.shaft === 'selector').pose[m] * 180 / Math.PI).toFixed(2)).join('°/')}° on a ${kf.selector.wheel.teeth}T detent wheel; `
         + `rack ${['wind', 'neutral', 'set'].map((m) => keylessBuild.pull.rackS[m].toFixed(2)).join('/')} mm; ${kf.shafts.length + 1} axles, base ${kf.base.studsX}×${kf.base.studsY} studs</span>`

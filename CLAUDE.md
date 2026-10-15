@@ -66,7 +66,19 @@ and the follower's pivot SEARCHED over the lattice (`KEYLESS_DETENT`, both
 re-derived by the keyless probe). The modes are the detent's measured rests,
 the rack follows them through the mesh, and the band's force is posed, not
 measured. A keyed gear on an arm against the rack was measured and refused:
-it is a ratchet. All four probes are pure Node.
+it is a ratchet. Since landing G the MOTION WORKS rides the setting branch's
+output, the minute axle (`TECHNIC_MOTION_WORKS`): the HOUR WHEEL is the 16T
+clutch gear idling on that axle (its bore a pin hole, measured round), and
+four meshes bring the train back to it. Two cannot, because no two catalogue
+pairs on equal centres multiply to 12, and three turn it backwards.
+`solveMotionWorks` picks the chain and its placement together, keeping only
+what frames clear with the keyless works. Its judge is `frameFindings`, the
+frame probe's judge moved into the module so both read one law. In set the
+crown turns the hands through the gears, 36 turns per hour-hand turn, and
+`tools/probe-technic-motion.mjs` holds the rows, the coaxial idle, the ratio
+and sense, and the ring per pull position. No hand part is placed, and no
+going train drives it. `probe-technic-phase.mjs` drives the page in a
+browser. The frame, ldraw, build, keyless and motion probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1089,7 +1101,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 311 measuring scripts and this file names 46. The rest are named for the
+`tools/` holds 313 measuring scripts and this file names 47. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1106,7 +1118,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **199 of
+The index also carries the split that decides how to read a result: **201 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
