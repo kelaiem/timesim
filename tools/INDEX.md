@@ -4,7 +4,7 @@
 
 # The instruments
 
-318 scripts. **205 are ACCEPTANCE tests** — they decide and exit non-zero.
+320 scripts. **207 are ACCEPTANCE tests** — they decide and exit non-zero.
 **113 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -33,6 +33,7 @@ when a question was asked; the summaries are what it answered.
 | `height-ledger.mjs` |  | report | THE HEIGHT LEDGER'S HARNESS — one boot measured for the cased-depth chains, copied-tree mutants, and the ledger itself (front and back chains, the back-most metal and its slack), as a module. Not a probe: it measures nothing on its own. |
 | `l10n-review-packets.mjs` |  | acceptance | §249's review follow-up — BUILDS THE NATIVE-REVIEW PACKETS: one page a fluent reader opens to judge a locale's translation row by row, English beside the translation, and to say "reads well", "needs a change" (with their wording) or "not sure". Every locale carries the same IOU in docs/BUILT.md ("No native review pass"), and no gate here can pay it: the page gate holds keys, markup, numbers and the honesty vocabulary, never whether a sentence reads naturally or a part has the name a workshop uses. This makes paying it cheap for whoever can. |
 | `ldraw-fetch.mjs` |  | acceptance | FETCH LDraw PARTS AND EVERYTHING THEY REFERENCE, from the official library. A helper, not a measurement: it writes nothing but a cache directory. |
+| `ldraw-notch-survey.mjs` |  | acceptance | IS THERE A LEGO DISC WITH ONE NOTCH? A report, not a gate: it reads a whole LDraw library from disk (unzip LDraw's complete.zip; the run needs no network but does need the library, which is not vendored) and prints every axle-keyed round part whose outline carries ONE or TWO notches. §219 tier three (b), landing I (src/technic-alarm.js) refused a stock notched disc on this survey's answer, and built the notch instead: a ring of three pins. Its one fatal path (no --lib, exit 2) files it as ACCEPTANCE in tools/INDEX.md; what it prints is a report, and it fails nothing. |
 | `ldraw-vendor.mjs` |  | acceptance | VENDOR THE LDraw PARTS THE TECHNIC FORK USES, as one packed file. |
 | `locale-surfaces.mjs` |  | report | §274 — JUDGES A LOCALE'S DECLARED SURFACES, both ways. Pure: no browser, no file reads, so the planted-locale controls (probe-274-surfaces.mjs) can run it on data it makes up, and explain-i18n.mjs calls the same function on the real tables. LOCALES' `surfaces` (src/i18n.js) says which of chrome / primer / explainer a locale carries; this holds the claim like a waiver is held: |
 | `make-favicon.mjs` |  | report | §88 — favicon.svg, generated from the REAL house mark. |
@@ -315,6 +316,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-sound-boot-optin.mjs` |  | acceptance | IS SOUND ALWAYS OFF AT LOAD, AND DOES THE BOOT SCREEN'S BUTTON WORK? — ACCEPTANCE. |
 | `probe-strike-site.mjs` |  | acceptance | WHERE CAN THE STRIKE STAND SO ITS METAL LEAVES THE BACK GLASS'S OUTBOARD RING? — §278 landing 1's site search for the strike fold. The alarm hammer and its lifting lever stand on the lever plane at r 34.6–47.8, and the part of them outboard of the back glass's aperture sets the pane floor (11.741 on the tree §278 was filed from), 1.124 u over the skirt arm that would otherwise govern the band's back face. This searches the stations the strike can be carried to WITH ITS MECHANISM HELD FIXED — every row of the 'alarm strike' line spec (LINE_SPECS in src/inspect.js) — and asks of each whether its metal meets §278 Layout A's condition, what depth that would buy, what it would stand nearest, whether the cam still reaches it, and what it does to §269's structure-borne path. |
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
+| `probe-technic-alarm.mjs` |  | acceptance | DOES THE LEGO ALARM SWITCH ON AND OFF ON EVERY FULL PRESS AND NEVER ON A HALF ONE, DROP ITS RELEASE AT THE NOTCH, AND STRIKE FOUR TIMES A TURN OF ITS FLY? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing I (src/technic-alarm.js). |
 | `probe-technic-build.mjs` |  | acceptance | IS THE LEGO BUILD OF THE TECHNIC FORK ASSEMBLED — every part seated, every axle through its holes, every pair of teeth meshed? Acceptance, pure Node, no browser, no network; exits non-zero on any failed row. |
 | `probe-technic-frame.mjs` |  | acceptance | DOES THE TECHNIC FORK'S FRAME HOLD ITS GEARS WITHOUT ANY PART FOULING ANOTHER? Acceptance, pure Node, no browser; exits non-zero on any failed row. |
 | `probe-technic-fusee.mjs` |  | acceptance | DOES THE LEGO FUSEE LEVEL ITS SPRING AS WELL AS A STAIRCASE CAN, AND DOES ITS MAINTAINING POWER DRIVE THE GREAT WHEEL THE RIGHT WAY WHILE IT IS WOUND? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing H (src/technic-fusee.js). |
