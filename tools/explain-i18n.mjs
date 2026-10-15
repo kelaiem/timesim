@@ -52,6 +52,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { judgeSurface, SURFACE_OF_PAGE } from './locale-surfaces.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MODE = process.argv.includes('--check') ? 'check' : 'extract';
@@ -141,9 +142,17 @@ const readPage = async (name) => {
     const m = await import('./src/${mod}');
     return { tables: await m.allTables(), numbers: m.NUMBERS };
   })()`);
+  // §274 — the roster and each row's DECLARED surfaces, from the app's own
+  // LOCALES (never a copy here), and whether each locale's chrome table can say
+  // the untranslated-page notice an undeclared page shows.
+  const roster = await pg.evaluate(`(async () => {
+    const i = await import('./src/i18n.js'), p = await import('./src/page-i18n.js');
+    return i.LOCALES.filter((L) => L.code !== 'en').map((L) => ({ code: L.code, surfaces: i.surfacesOf(L.code),
+      notice: !!(i.TABLES[L.code] && i.TABLES[L.code][p.UNTRANSLATED_NOTICE]) }));
+  })()`);
   await pg.close();
   const items = [...domItems, ...dynamicKeys.map((key) => ({ key, sect: 'script', kind: 'dynamic' }))];
-  return { name, doc, items, tables, numbers, errors };
+  return { name, doc, items, tables, numbers, errors, roster };
 };
 
 // ---- number rules -----------------------------------------------------------
@@ -498,7 +507,7 @@ if (MODE === 'extract') {
     k.replace(/<code>.*?<\/code>/g, ' ').replace(/<[^>]+>/g, ' '));
 
   for (const target of TARGETS) {
-    const { doc, items, tables, numbers, errors } = await readPage(target);
+    const { doc, items, tables, numbers, errors, roster } = await readPage(target);
     console.log(`\n══ ${doc} — numbers: ${numbers === 'source' ? 'SOURCE form (identifiers quoted)' : 'QUANTITIES (localized, checked by value)'}`);
     if (numbers === 'source') sourceChecked = true;
     numbersChecked.push(numbers === 'source'
@@ -508,8 +517,27 @@ if (MODE === 'extract') {
     // §116 — the roster is the PAGE's, read from its own allTables() keys.
     // Adding a locale is one entry in that module's LOADERS map; this tool
     // needs no edit and cannot fall behind it.
-    for (const lang of Object.keys(tables || {})) {
+    // §274 — and every LOCALES row, so a locale with NO loader on this page (a
+    // thin locale that never declared it) is judged too rather than invisible.
+    const langs = [...new Set([...roster.map((r) => r.code), ...Object.keys(tables || {})])];
+    for (const lang of langs) {
       const table = tables?.[lang] || {};
+      const rrow = roster.find((r) => r.code === lang);
+      if (!rrow) { console.log(`\n[${lang}] has a ${doc} table and no LOCALES row  <-- FAIL`); failed++; continue; }
+      const sj = judgeSurface({ page: target, lang, surfaces: rrow.surfaces,
+        live: items.filter((i) => !isInvariant(i.key)).length,
+        translated: items.filter((i) => !isInvariant(i.key) && table[i.key]).length,
+        tableSize: Object.keys(table).length });
+      if (!rrow.surfaces.includes(SURFACE_OF_PAGE[target])) {
+        // Undeclared: nothing else about this table is judged — it must be empty,
+        // and the locale's chrome must be able to say the page is not translated.
+        const noNotice = !rrow.notice;
+        console.log(`\n[${lang}] ${SURFACE_OF_PAGE[target]}: ${sj.verdict}${sj.problems.length || noNotice ? '  <-- FAIL' : ''}`);
+        for (const x of sj.problems) console.log(`      ${x}`);
+        if (noNotice) console.log(`      the chrome table has no translation of the untranslated-page notice, which this locale's ${doc} shows`);
+        if (sj.problems.length || noNotice) failed++;
+        continue;
+      }
       if (numbers === 'quantity' && !MARKS[lang]) {
         // Not a skip. A locale whose grouping and decimal marks this tool does
         // not know is a locale whose numbers it cannot parse — and an unparsed
@@ -587,9 +615,11 @@ if (MODE === 'extract') {
         }
       }
       const pct = live.length ? ((translated.length / live.length) * 100).toFixed(1) : '100.0';
-      const bad = unmatched.length + markupBad.length + codeBad.length + numBad.length + proseBad.length;
+      const bad = unmatched.length + markupBad.length + codeBad.length + numBad.length + proseBad.length + sj.problems.length;
       if (bad) failed++;
       console.log(`\n[${lang}] ${translated.length}/${live.length} translated (${pct}%) · ${invariant} invariant (numbers/symbols, nothing to translate)`);
+      console.log(`  coverage       : ${SURFACE_OF_PAGE[target]} ${sj.verdict}${sj.problems.length ? '  <-- FAIL' : ''}`);
+      for (const x of sj.problems) console.log(`      ${x}`);
       console.log(`  unmatched keys : ${unmatched.length}${unmatched.length ? '  <-- FAIL' : ''}`);
       for (const u of unmatched.slice(0, 10)) console.log(`      ${u.slice(0, 100)}`);
       console.log(`  markup drift   : ${markupBad.length}${markupBad.length ? '  <-- FAIL' : ''}`);

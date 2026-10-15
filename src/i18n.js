@@ -225,6 +225,19 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // which Intl itself canonicalizes to 'he' — and is anchored: 'her' (Herero) and
 // 'iwm' are other languages. Plural one/two/other; the chrome carries no
 // count string, so the dual costs nothing here.
+//
+// §274 — A ROW'S `surfaces` is which of the app's three translatable surfaces
+// the locale CARRIES: 'chrome' (this file's table, the panel and HUD), 'primer'
+// and 'explainer' (the two static pages' tables). It is omitted for the full
+// set, as `dir` is omitted for ltr, so every shipped row says nothing and means
+// all three. A thin locale writes `surfaces: ['chrome']` (or chrome + primer)
+// and the gates judge the DECLARATION both ways (tools/locale-surfaces.mjs): a
+// declared page must be complete, an undeclared one must be EMPTY — a half-
+// finished page table under an undeclared page is the confident partial this
+// field exists to stop. An undeclared page renders English under a one-line
+// notice in the locale's own chrome language (page-i18n.js). The chrome is
+// always carried: it is the smallest surface and every reader touches it.
+export const SURFACES = ['chrome', 'primer', 'explainer'];
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
@@ -250,6 +263,14 @@ export const LOCALES = [
   { code: 'fa', face: 'فارسی', tag: 'fa-IR-u-nu-latn', dir: 'rtl', match: (v) => /^fa(-|$)/.test(v) },
   { code: 'ar', face: 'العربية', tag: 'ar-u-nu-latn', dir: 'rtl', match: (v) => v.startsWith('ar') },
 ];
+// A locale's declared surfaces. Read through this, never off the row, so the
+// default (all three) is stated once.
+export const surfacesOf = (code) => LOCALES.find((L) => L.code === code)?.surfaces || SURFACES;
+for (const L of LOCALES) {
+  const sf = surfacesOf(L.code);
+  if (!sf.every((x) => SURFACES.includes(x)) || new Set(sf).size !== sf.length || !sf.includes('chrome') || (L.code === 'en' && sf.length !== SURFACES.length))
+    console.warn(`i18n: locale ${L.code}'s surfaces ${JSON.stringify(sf)} must be a duplicate-free subset of ${JSON.stringify(SURFACES)} that includes 'chrome' (English carries all three)`);
+}
 const _norm = (v) => {
   if (!v) return null;
   // Underscores because a stored or hand-typed tag may arrive POSIX-style
@@ -407,6 +428,7 @@ export function lowerUi(s) {
 // German. Horological vocabulary is the Glashütte register (Unruh, Anker,
 // Dreiviertelplatine …) — the audience this locale exists for.
 const DE = {
+  'Show incomplete translations': 'Unvollständige Übersetzungen anzeigen',
   'Enable sound': 'Ton aktivieren',
   'See the LEGO Technic build': 'Den LEGO-Technic-Nachbau ansehen',
   'Review the translations': 'Die Übersetzungen prüfen',
@@ -819,6 +841,7 @@ Object.assign(DE, {
 // Chrome-tier translation authored here; §73 budgets a native review pass
 // before tier two (the explainer) ships in this locale.
 const ZH = {
+  'Show incomplete translations': '显示不完整的翻译',
   'Enable sound': '启用声音',
   'See the LEGO Technic build': '查看乐高机械组搭建',
   'Review the translations': '审阅译文',
@@ -1198,6 +1221,7 @@ Object.assign(ZH, {
 // fr-FR points with ',' and groups with U+202F, both of which arrive through
 // fmtNum/fmtInt above and neither of which may reach a stored value.
 const FR = {
+  'Show incomplete translations': 'Afficher les traductions incomplètes',
   ['Enable sound']: 'Activer le son',
   ['See the LEGO Technic build']: 'Voir la construction LEGO Technic',
   ['Review the translations']: 'Relire les traductions',
@@ -1749,6 +1773,7 @@ const FR = {
 // third and fourth; the mapping is made once in the MECH_GRAPH block below and
 // both static pages inherit it.
 const JA = {
+  'Show incomplete translations': '未完成の翻訳を表示',
   ['Enable sound']: '音を有効にする',
   ['See the LEGO Technic build']: 'LEGO テクニックの組み立てを見る',
   ['Review the translations']: '翻訳をレビューする',
@@ -2299,6 +2324,7 @@ const JA = {
 // zh-HK and zh-MO all resolve here — which is the case that was silently
 // landing in ZH before this section.
 const ZH_HANT = {
+  'Show incomplete translations': '顯示不完整的翻譯',
   ['Enable sound']: '啟用聲音',
   ['See the LEGO Technic build']: '查看樂高機械組搭建',
   ['Review the translations']: '審閱譯文',
@@ -2859,6 +2885,7 @@ const ZH_HANT = {
 // fmtInt under 'ar-u-nu-latn' — Western digits, '.' and ',' — so a value in
 // this table never carries a digit of its own script.
 const AR = {
+  'Show incomplete translations': 'إظهار الترجمات غير المكتملة',
   'Enable sound': 'تفعيل الصوت',
   'See the LEGO Technic build': 'شاهد نموذج LEGO Technic',
   'Review the translations': 'راجع الترجمات',
@@ -3402,6 +3429,7 @@ const AR = {
 // infinitives. The same register as src/explain-i18n.es.js and
 // src/primer-i18n.es.js — one movement, one name per part.
 const ES = {
+  'Show incomplete translations': 'Mostrar traducciones incompletas',
   'Enable sound': 'Activar el sonido',
   'See the LEGO Technic build': 'Ver la construcción LEGO Technic',
   'Review the translations': 'Revisar las traducciones',
@@ -3942,6 +3970,7 @@ const ES = {
 // buttons as Korean software writes them. Number-transparent. The same
 // register as src/explain-i18n.ko.js and src/primer-i18n.ko.js.
 const KO = {
+  'Show incomplete translations': '불완전한 번역 표시',
   'Enable sound': '소리 켜기',
   'See the LEGO Technic build': 'LEGO 테크닉 조립 보기',
   'Review the translations': '번역 검토하기',
@@ -4484,6 +4513,7 @@ const KO = {
 // register as src/explain-i18n.ru.js and src/primer-i18n.ru.js — one
 // movement, one name per part.
 const RU = {
+  'Show incomplete translations': 'Показывать неполные переводы',
   'Enable sound': 'Включить звук',
   'See the LEGO Technic build': 'Посмотреть сборку LEGO Technic',
   'Review the translations': 'Проверить переводы',
@@ -5027,6 +5057,7 @@ const RU = {
 // src/explain-i18n.pt.js and src/primer-i18n.pt.js — one movement, one name
 // per part.
 const PT = {
+  'Show incomplete translations': 'Mostrar traduções incompletas',
   'Enable sound': 'Ativar o som',
   'See the LEGO Technic build': 'Ver a montagem LEGO Technic',
   'Review the translations': 'Revisar as traduções',
@@ -5569,6 +5600,7 @@ const PT = {
 // src/explain-i18n.it.js and src/primer-i18n.it.js — one movement, one name
 // per part. Every apostrophe is U+2019.
 const IT = {
+  'Show incomplete translations': 'Mostra traduzioni incomplete',
   'Enable sound': 'Attiva il suono',
   'See the LEGO Technic build': 'Guarda la costruzione LEGO Technic',
   'Review the translations': 'Rivedi le traduzioni',
@@ -6108,6 +6140,7 @@ const IT = {
 // are the tightest in the project — a chrome bar and 150 px HUD label boxes —
 // so these are the compact forms, measured by tools/probe-116-locale-fit.mjs.
 const HI = {
+  'Show incomplete translations': 'अधूरे अनुवाद दिखाएँ',
   'Enable sound': 'ध्वनि चालू करें',
   'See the LEGO Technic build': 'LEGO टेक्निक निर्माण देखें',
   'Review the translations': 'अनुवादों की समीक्षा करें',
@@ -6651,6 +6684,7 @@ const HI = {
 // §53's 240 px column and the 150 px HUD labels are the constraint. Tone marks
 // follow the MODERN placement (hóa, thủy) and every string is NFC.
 const VI = {
+  'Show incomplete translations': 'Hiện bản dịch chưa hoàn chỉnh',
   'Enable sound': 'Bật âm thanh',
   'See the LEGO Technic build': 'Xem bản lắp LEGO Technic',
   'Review the translations': 'Duyệt các bản dịch',
@@ -7209,6 +7243,7 @@ const VI = {
 // held to the English length or under, because §53's 240 px column, the 150 px
 // HUD labels and the chrome bar are the constraint, and Dutch compounds run long.
 const NL = {
+  'Show incomplete translations': 'Onvolledige vertalingen tonen',
   'Enable sound': 'Geluid inschakelen',
   'See the LEGO Technic build': 'Bekijk de LEGO Technic-bouw',
   'Review the translations': 'De vertalingen beoordelen',
@@ -7767,6 +7802,7 @@ const NL = {
 // LOCALES' `dir` mirrors the panels, and the strings carry Persian's ی/ک and
 // its zero-width non-joiners. Labels are held to the English length or under.
 const FA = {
+  'Show incomplete translations': 'نمایش ترجمه‌های ناقص',
   'Enable sound': 'فعال‌سازی صدا',
   'See the LEGO Technic build': 'دیدن ساخت LEGO Technic',
   'Review the translations': 'بازبینی ترجمه‌ها',
@@ -8326,6 +8362,7 @@ const FA = {
 // arrow points at the end the mirrored slider actually has. Labels are held to
 // the English length or under.
 const HE = {
+  'Show incomplete translations': 'הצג תרגומים חלקיים',
   'Enable sound': 'הפעלת צליל',
   'See the LEGO Technic build': 'לצפייה בבניית LEGO Technic',
   'Review the translations': 'בדיקת התרגומים',
@@ -8884,6 +8921,7 @@ const HE = {
 // pinion, mahkota. Buttons take the base imperative ("Putar", "Jeda") as
 // Indonesian software does. Labels are held to the English length or under.
 const ID = {
+  'Show incomplete translations': 'Tampilkan terjemahan yang belum lengkap',
   'Enable sound': 'Aktifkan suara',
   'See the LEGO Technic build': 'Lihat rakitan LEGO Technic',
   'Review the translations': 'Tinjau terjemahan',
@@ -9443,6 +9481,7 @@ const ID = {
 // this module lowercases for display goes through lowerUi, never toLowerCase.
 // Labels are held to the English length or under.
 const TR = {
+  'Show incomplete translations': 'Eksik çevirileri göster',
   'Enable sound': 'Sesi etkinleştir',
   'See the LEGO Technic build': 'LEGO Technic yapımını gör',
   'Review the translations': 'Çevirileri gözden geçir',
@@ -10002,6 +10041,7 @@ const TR = {
 // dolen), as Welsh software does. Numbers format through the row's BORROWED
 // en-GB tag (see LOCALES). Labels are held to the English length or under.
 const CY = {
+  'Show incomplete translations': 'Dangos cyfieithiadau anghyflawn',
   'Enable sound': 'Galluogi sain',
   'See the LEGO Technic build': 'Gweld y gwaith adeiladu LEGO Technic',
   'Review the translations': 'Adolygu’r cyfieithiadau',
@@ -10564,6 +10604,7 @@ const CY = {
 // which Chromium carries. Labels are held to the English length or under.
 
 const FIL = {
+  'Show incomplete translations': 'Ipakita ang mga hindi kumpletong salin',
   ['Enable sound']: 'Buksan ang tunog',
   ['See the LEGO Technic build']: 'Tingnan ang LEGO Technic na build',
   ['Review the translations']: 'Suriin ang mga salin',
@@ -11101,6 +11142,7 @@ const FIL = {
 // kronis. Commands take the infinitive (Uzvilkt, Saglabāt, Kopēt saiti), as
 // Latvian software does. Numbers format through lv-LV (see LOCALES).
 const LV = {
+  'Show incomplete translations': 'Rādīt nepilnīgus tulkojumus',
   'Enable sound': 'Ieslēgt skaņu',
   'See the LEGO Technic build': 'Skatīt LEGO Technic būvi',
   'Review the translations': 'Pārskatīt tulkojumus',
@@ -11638,6 +11680,7 @@ const LV = {
 // kiskerék, korona. Commands are nouns (Felhúzás, Mentés, Másolás), as
 // Hungarian software writes them. Numbers format through hu-HU (see LOCALES).
 const HU = {
+  'Show incomplete translations': 'Hiányos fordítások megjelenítése',
   'Enable sound': 'Hang bekapcsolása',
   'See the LEGO Technic build': 'A LEGO Technic építés megtekintése',
   'Review the translations': 'A fordítások áttekintése',
@@ -12165,6 +12208,49 @@ const HU = {
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': 'A Próbaindítás a háttérben felépíti a jelöltet, és nagyjából tizenöt másodperc alatt jelenti, mit mondanak valódi szerkezeti ellenőrzései. A Nézet másolása most már a tervet is viszi, nem csak a nézetet. A gyűrűk az Önéi.',
 };
 // §216 HU TABLE END
+
+// §274 — THE PICKERS' TOGGLE. A locale that does not carry all three surfaces
+// is INCOMPLETE, and the language pickers (the panel's and the two static
+// pages', which all fill themselves here so there is one copy) hide it until
+// the reader asks: a last option, 'Show incomplete translations', flips the
+// choice and rebuilds the list in place. The reader's CURRENT locale always
+// stays listed, so a picker never loses the value it is showing. The choice
+// persists in localStorage and is read by all three pickers, which share an
+// origin. The option carries data-state, and its check mark is decoration:
+// state is an attribute, never the text. It exists only while some LOCALES row
+// is incomplete, so while every row is whole the pickers are unchanged.
+export const INCOMPLETE_TOGGLE = 'Show incomplete translations';
+const INCOMPLETE_VALUE = '__incomplete__';   // not a locale code; never reaches setUiLang
+export const isComplete = (code) => SURFACES.every((s) => surfacesOf(code).includes(s));
+let _showIncomplete = false;
+try { _showIncomplete = localStorage.getItem('uiShowIncomplete') === '1'; } catch { /* storage may be blocked */ }
+export function fillLanguagePicker(sel) {
+  const hasIncomplete = LOCALES.some((L) => !isComplete(L.code));
+  const build = () => {
+    sel.textContent = '';
+    for (const { code, face } of LOCALES) {   // face is DISPLAY; value is canonical (§73)
+      if (!_showIncomplete && !isComplete(code) && code !== UI_LANG) continue;
+      const o = document.createElement('option');
+      o.value = code; o.textContent = face;
+      sel.appendChild(o);
+    }
+    if (hasIncomplete) {
+      const o = document.createElement('option');
+      o.value = INCOMPLETE_VALUE;
+      o.dataset.state = _showIncomplete ? 'on' : 'off';
+      o.textContent = (_showIncomplete ? '\u2713 ' : '') + t(INCOMPLETE_TOGGLE);
+      sel.appendChild(o);
+    }
+    sel.value = UI_LANG;
+  };
+  build();
+  sel.addEventListener('change', () => {
+    if (sel.value !== INCOMPLETE_VALUE) { setUiLang(sel.value); return; }
+    _showIncomplete = !_showIncomplete;
+    try { localStorage.setItem('uiShowIncomplete', _showIncomplete ? '1' : '0'); } catch { /* then it lasts this load */ }
+    build();
+  });
+}
 
 export const TABLES = { de: DE, fr: FR, es: ES, ko: KO, ru: RU, pt: PT, it: IT, vi: VI, nl: NL, id: ID, tr: TR, cy: CY, fil: FIL, lv: LV, hu: HU, hi: HI, ja: JA, zh: ZH, 'zh-Hant': ZH_HANT, he: HE, fa: FA, ar: AR };
 const TABLE = TABLES[UI_LANG] || null;

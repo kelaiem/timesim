@@ -25,7 +25,7 @@
 // property of the PAGE's contract, not of the mechanism — see NUMBERS in each
 // per-page module and the `numbers` field they declare, which
 // tools/explain-i18n.mjs reads to pick which rule to enforce.
-import { UI_LANG, t as tChrome } from './i18n.js';
+import { UI_LANG, surfacesOf, t as tChrome } from './i18n.js';
 
 // The ONE definition of what is translatable. tools/explain-i18n.mjs imports
 // this rather than keeping its own copy, so extraction, verification and
@@ -102,7 +102,26 @@ export const translator = (TABLE) => (s) => {
 // Rewrite the page in place. Runs once, before any interactive plate wires
 // itself up: the swap replaces rich blocks' innerHTML, so a plate that had
 // already cached a node inside one would be holding a detached copy.
-export function localizeDoc(TABLE) {
+//
+// §274 — `surface` names the page ('primer' | 'explainer'). A locale that does
+// not DECLARE it (LOCALES' `surfaces`) gets the page in English under a one-
+// line notice in its own chrome language: without it the declaration only
+// moved the fallback from invisible to invisible. Its table is not applied
+// even if one is loaded — the gates hold an undeclared page's table empty, and
+// the swap does not trust that to be so.
+export const UNTRANSLATED_NOTICE = 'This page is not translated yet — it is shown in English.';
+function noteUntranslated() {
+  const p = document.createElement('p');
+  p.className = 'locale-notice';
+  p.setAttribute('role', 'note');
+  p.textContent = tChrome(UNTRANSLATED_NOTICE);
+  // Logical properties: the notice sits in the locale's own direction.
+  p.style.cssText = 'margin:0 auto;padding:.6em 1em;max-width:62rem;text-align:start;font:inherit;font-size:.9em;opacity:.8;border-bottom:1px solid currentColor';
+  (document.querySelector('header') || document.body.firstChild)?.after(p);
+  document.documentElement.lang = UI_LANG;
+}
+export function localizeDoc(TABLE, surface) {
+  if (surface && !surfacesOf(UI_LANG).includes(surface)) { noteUntranslated(); return; }
   if (!TABLE) return;                         // English: the page as authored
   for (const item of collectTranslatable()) {
     const v = TABLE[item.key];

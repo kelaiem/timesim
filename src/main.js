@@ -13,7 +13,7 @@ import * as BD from './balance-drive.js';   // §246 tier two — the driven bal
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
 // English input when an entry is missing, so a gap is visible, never blank.
-import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, fmtPct, lowerUi, localizeTree } from './i18n.js';
+import { UI_LANG, setUiLang, LOCALES, fillLanguagePicker, t, fmtNum, fmtInt, fmtPct, lowerUi, localizeTree } from './i18n.js';
 // Pure layout data — the constants §13 pulled out of this file's evaluation
 // order (kinematic constants + the whole Z-stack). See src/layout.js. They are
 // consumed unchanged below; the geometry fingerprint proves the move changed
@@ -49703,13 +49703,7 @@ document.getElementById('btn-sound').addEventListener('click', () => setSound(!s
 // key cannot be translated out of its own language.
 {
   const sel = document.getElementById('lang-select');
-  for (const { code, face } of LOCALES) {   // face is DISPLAY; value is canonical (§73)
-    const o = document.createElement('option');
-    o.value = code; o.textContent = face;
-    sel.appendChild(o);
-  }
-  sel.value = UI_LANG;
-  sel.addEventListener('change', () => setUiLang(sel.value));
+  fillLanguagePicker(sel);   // §274: hides incomplete locales behind a toggle; one copy for all three pickers
 }
 // SOUND IS ALWAYS OFF AT LOAD. A saved `soundOn`, a `?sound=1` link and the
 // share link's `sound` param all used to call setSound(true) here with no

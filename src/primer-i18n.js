@@ -66,4 +66,4 @@ export async function allTables() {
 }
 
 export const t = translator(TABLE);
-export function localizePrimer() { localizeDoc(TABLE); }
+export function localizePrimer() { localizeDoc(TABLE, 'primer'); }
