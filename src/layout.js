@@ -584,7 +584,14 @@ export const CASE_HEIGHT_STEP_MM = 0.001;
 // 11.5858 mm (30.5736 u) — 0.140 mm bought, exactly the keys' rise. The glass
 // step's top (13.7744) stands 0.0095 u (0.004 mm) under the face, so the next
 // governor is the step, not the ring.
-export const CASE_HEIGHT_MAX_MM = 11.586;
+// §278 landing 6 LOWERED it, 11.586 → 11.367: the dial side came plate-ward by
+// DIAL_RECLAIM, 0.58 u (0.220 mm), the band the detector left at the centre when
+// it moved to its satellite, up to the release crank's cap over the feeler
+// blade's stud (once the crank was re-sited to 324° and the silence rocker's
+// bar re-stacked over its paddle). The front is the dial-hung works, so the
+// cased assembly measures 11.3660 mm — the reclaim one for one; the back is
+// untouched.
+export const CASE_HEIGHT_MAX_MM = 11.367;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
@@ -1383,7 +1390,28 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // and funded here the §45 way — the total spend 2.0328 rounded up to the 0.01
 // grid. The selector ring and the alarm link ride the dial frame and move with
 // it (the selector rod is that much longer), as TODO 194's spend moved them.
-export const Z_DIAL = -9.54;
+// §278 landing 6: −9.54 → −8.96, the dial-side RECLAIM. The four spends above
+// fund the centre column's chain, and since landing 5 that chain no longer ends
+// in the detector: the disc, its seat, the reader and the feeler stand on their
+// satellite, so the band they took under the sleeve at the centre is empty and
+// the dial may come plate-ward by what the metal round that band allows. The
+// satellite's stack, idler 1's pinion in the disc's plane (i1b), the hour wheel
+// and the motion works keep their world planes (main.js reads DIAL_RECLAIM
+// back into the chain under the sleeve, ALARM_FEELER_TOP), and everything hung
+// from the dial comes down with it. What stops it, measured on built copies
+// (tools/probe-278-dial-step.mjs and the station grid in §278 landing 6's
+// record): once the release crank is re-sited (324°), the silence rocker's
+// bar re-stacked, and the alarm link's hanger 3 jogged beside its arming blade
+// rather than over it (the blade rides the dial-hung lay shaft, the jog's arm
+// stands under the held beak's bar, and the gap between them, 0.1368 at no
+// reclaim, closed one for one — main.js's alarmLinkHangerJog), the crank's cap stands over the satellite feeler's blade stud
+// in plan and 0.7330 over it, so it meets the margin at 0.5830; the reclaim is
+// that rounded DOWN to the fund's 0.01 grid (a boot tripwire at the crank holds
+// the gap in [0.15, 0.16)). Next, 0.045 behind it, the sleeve's skirt meets
+// i1b's tips at 0.6277 (asserted at i1b); no station of the drive's arc clears
+// both the selector's third plate and the blade stud past 0.583.
+export const DIAL_RECLAIM = 0.58;
+export const Z_DIAL = -9.54 + DIAL_RECLAIM;
 // The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is
 // mid-stock and the figure §50's own citations use for plate-like sheet. In
 // §39's pin that is 0.4 / 0.379 = 1.06 units. The floor under it: a dial must
