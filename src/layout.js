@@ -584,7 +584,14 @@ export const CASE_HEIGHT_STEP_MM = 0.001;
 // 11.5858 mm (30.5736 u) — 0.140 mm bought, exactly the keys' rise. The glass
 // step's top (13.7744) stands 0.0095 u (0.004 mm) under the face, so the next
 // governor is the step, not the ring.
-export const CASE_HEIGHT_MAX_MM = 11.586;
+// §278 landing 6 LOWERED it, 11.586 → 11.367: the dial side came plate-ward by
+// DIAL_RECLAIM, 0.58 u (0.220 mm), the band the detector left at the centre when
+// it moved to its satellite, up to the release crank's cap over the feeler
+// blade's stud (once the crank was re-sited to 324° and the silence rocker's
+// bar re-stacked over its paddle). The front is the dial-hung works, so the
+// cased assembly measures 11.3660 mm — the reclaim one for one; the back is
+// untouched.
+export const CASE_HEIGHT_MAX_MM = 11.367;
 // TODO 159/197 — WHEN IS A WORLD MATRIX RIGID ENOUGH TO MEASURE A DISTANCE IN?
 // One law for the two places that measure through a possibly stretched matrix:
 // inspect.js's `rigidFrame` (every battery distance) and main.js's JMP_SITE
@@ -1383,7 +1390,28 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // and funded here the §45 way — the total spend 2.0328 rounded up to the 0.01
 // grid. The selector ring and the alarm link ride the dial frame and move with
 // it (the selector rod is that much longer), as TODO 194's spend moved them.
-export const Z_DIAL = -9.54;
+// §278 landing 6: −9.54 → −8.96, the dial-side RECLAIM. The four spends above
+// fund the centre column's chain, and since landing 5 that chain no longer ends
+// in the detector: the disc, its seat, the reader and the feeler stand on their
+// satellite, so the band they took under the sleeve at the centre is empty and
+// the dial may come plate-ward by what the metal round that band allows. The
+// satellite's stack, idler 1's pinion in the disc's plane (i1b), the hour wheel
+// and the motion works keep their world planes (main.js reads DIAL_RECLAIM
+// back into the chain under the sleeve, ALARM_FEELER_TOP), and everything hung
+// from the dial comes down with it. What stops it, measured on built copies
+// (tools/probe-278-dial-step.mjs and the station grid in §278 landing 6's
+// record): once the release crank is re-sited (324°), the silence rocker's
+// bar re-stacked, and the alarm link's hanger 3 jogged beside its arming blade
+// rather than over it (the blade rides the dial-hung lay shaft, the jog's arm
+// stands under the held beak's bar, and the gap between them, 0.1368 at no
+// reclaim, closed one for one — main.js's alarmLinkHangerJog), the crank's cap stands over the satellite feeler's blade stud
+// in plan and 0.7330 over it, so it meets the margin at 0.5830; the reclaim is
+// that rounded DOWN to the fund's 0.01 grid (a boot tripwire at the crank holds
+// the gap in [0.15, 0.16)). Next, 0.045 behind it, the sleeve's skirt meets
+// i1b's tips at 0.6277 (asserted at i1b); no station of the drive's arc clears
+// both the selector's third plate and the blade stud past 0.583.
+export const DIAL_RECLAIM = 0.58;
+export const Z_DIAL = -9.54 + DIAL_RECLAIM;
 // The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is
 // mid-stock and the figure §50's own citations use for plate-like sheet. In
 // §39's pin that is 0.4 / 0.379 = 1.06 units. The floor under it: a dial must
@@ -4320,6 +4348,54 @@ export function technicKeylessErrors(gen, key, chain, target) {
   return errs;
 }
 
+// §219 tier three (b), landing G — THE MOTION WORKS AS A LEGO CLOCK: the
+// minute hand on the setting branch's output axle (the cannon pinion's, the
+// end of TECHNIC_KEYLESS' setting row), the HOUR WHEEL a round-bored gear
+// idling on that same axle. TECHNIC_FORK's 'motion works' row is the RATIO
+// (12) as a straight chain whose first and last shafts are different axles;
+// a clock needs the train to come BACK to the axle it left, turning the same
+// way, so this is a different row of the same target:
+//   · COAXIAL — in the frame's one plane the signed centre distances sum to
+//     zero. With TWO meshes that is the steel's own idiom (cannon 10:30 and
+//     minute pinion 8:32, both 20 mm), and no pair of catalogue pairs does it:
+//     two meshes on one centre distance have equal tooth sums, and no two
+//     sums in either catalogue carry ratios multiplying to 12 (the probe
+//     re-runs that search and prints it empty);
+//   · SAME SENSE — an even number of external meshes, so three is refused and
+//     four is the fewest;
+//   · ROUND-BORED HOUR WHEEL — the 16T clutch gear (18946), whose bore is a
+//     pin hole, every near-axis surface point at 6 LDU, where the cross axle's
+//     farthest is 6 (probe-technic-motion's IDLES). It is the keyless works'
+//     own clutch gear, so it adds no part to the catalogue.
+// Written in DRIVE order from the minute axle, [driver, driven], so the
+// product is the hour wheel's turns per minute-axle turn: 1/12, the reciprocal
+// of the fork row's target. A shaft between two meshes carries the first's
+// driven gear and the second's driver; where those are ONE gear (an idler) the
+// pair repeats its count. The chain and its placement are solved together
+// (technic-frame.js' solveMotionWorks: the fewest meshes, then the fewest new
+// parts, then the fewest teeth, that frames clear), and both are re-solved by
+// tools/probe-technic-motion.mjs.
+export const TECHNIC_MOTION_WORKS = Object.freeze({
+  hourWheel: TECHNIC_CLUTCH_GEAR,
+  chains: Object.freeze({ technic_classic: [[8, 16], [8, 24], [8, 16], [16, 16]], technic_2026: [[8, 16], [8, 24], [8, 16], [16, 16]] }),
+});
+export function technicMotionErrors(gen, chain, target = technicForkTargets()['motion works']) {
+  const cat = CATALOGUES[gen], hw = TECHNIC_MOTION_WORKS.hourWheel;
+  const errs = [];
+  if (chain.length % 2) errs.push(`${gen} motion works: ${chain.length} meshes turn the hour wheel against the minute hand`);
+  if (!chain.length || chain[chain.length - 1][1] !== hw.teeth) return [...errs, `${gen} motion works: the chain does not end at the ${hw.teeth}T round-bored hour wheel`];
+  let product = ratQ(1);
+  for (const [i, [ta, tb]] of chain.entries()) {
+    const a = cat.counts.find((c) => c.teeth === ta), b = i === chain.length - 1 ? hw : cat.counts.find((c) => c.teeth === tb);
+    if (!a || !b) { errs.push(`${gen} motion works: ${ta}:${tb} names a count the catalogue does not have`); continue; }
+    if (!catalogueMesh(a, b, cat)) errs.push(`${gen} motion works: ${ta}:${tb} is not an admissible going-train mesh`);
+    product = ratMul(product, ratQ(ta, tb));
+  }
+  const want = ratQ(target.d, target.n);
+  if (!ratEq(product, want)) errs.push(`${gen} motion works: chain multiplies to ${ratStr(product)}, the hour wheel must turn ${ratStr(want)}`);
+  return errs;
+}
+
 // THE BOOT ASSERT (rule 6: silent unless something regressed). Arithmetic on
 // a dozen small integers, so it costs nothing and needs no seam.
 {
@@ -4335,4 +4411,7 @@ export function technicKeylessErrors(gen, key, chain, target) {
     for (const [gen, chain] of Object.entries(row.chains))
       for (const e of technicKeylessErrors(gen, row.key, chain, kt[row.key]))
         console.warn(`§219 technic keyless: ${e}`);
+  for (const [gen, chain] of Object.entries(TECHNIC_MOTION_WORKS.chains))
+    for (const e of technicMotionErrors(gen, chain, targets['motion works']))
+      console.warn(`§219 technic motion works: ${e}`);
 }

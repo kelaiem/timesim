@@ -23,7 +23,7 @@ import {
   F_BALANCE, BEAT_DEG, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG, AMPLITUDE_TARGET_DEG, BAL_RIM_STEP, BALANCE_R_REF, BAL_R_STEP, balanceWheelDims, BALANCE_R_SPEC, AMPLITUDE_POSED_DEG, LIFT_DEG, IMPULSE_WIDTH,
   CLEAR_MARGIN, HANDOFF_TRACK_TOL, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, BAL_RIM_F, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
+  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_RECLAIM, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -3723,7 +3723,7 @@ if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 2.4917; // TODO 240: re-measured at the tangential beak's re-solved site (k 1, run 6, tab 87) — was 2.5312. §261 2c: re-measured (2.5585 before the fork was guarded against the guide plates) — the rod runs only from the rim finger up to the folded beak's bar now, under the dial, and crosses no plate — was 21.5534. TODO 222: re-measured after the B band's spend (ALARM_B_BAND_SPEND, 0.41) moved the dial — the rod's foot rides the dial-side selector, so the rod is the spend longer — was 21.1389. TODO 207: re-measured after the lightened balance's shorter hairspring (HAIRSPRING_H 0.6 → 0.3726) lowered the stack the plate floor stands on by 1.5·ΔH = 0.341, and the rod's top end stands on the plate — was 21.4835. TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
+const ALARM_LINK_ROD_LEN_U = 1.9117; // §278 landing 6: re-measured after DIAL_RECLAIM (0.58) brought the dial plate-ward — the rod's foot rides the dial-side selector and its head the beak's bar, so it is the reclaim shorter — was 2.4917. TODO 240: re-measured at the tangential beak's re-solved site (k 1, run 6, tab 87) — was 2.5312. §261 2c: re-measured (2.5585 before the fork was guarded against the guide plates) — the rod runs only from the rim finger up to the folded beak's bar now, under the dial, and crosses no plate — was 21.5534. TODO 222: re-measured after the B band's spend (ALARM_B_BAND_SPEND, 0.41) moved the dial — the rod's foot rides the dial-side selector, so the rod is the spend longer — was 21.1389. TODO 207: re-measured after the lightened balance's shorter hairspring (HAIRSPRING_H 0.6 → 0.3726) lowered the stack the plate floor stands on by 1.5·ΔH = 0.341, and the rod's top end stands on the plate — was 21.4835. TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
 const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5968 (TODO 194; 0.5765 before the dial move)
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.647 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.963 — a wall at the §50 floor
@@ -7526,7 +7526,7 @@ const ALARM_FLANGE_OUT = 4.05;                  // the carrier flange's rim (hoi
 //   slope — the blade passes one CLEAR_MARGIN under the arm's pin end at full
 //     lift (the blade is drawn rigid about its root, TODO 206's convention), so
 //     its root sits that far below the bearing — which is what the spend buys.
-const ALARM_PINB_SEAT_MN = 5.2650;   // TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
+const ALARM_PINB_SEAT_MN = 5.2780;   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
 const ALARM_PINB_BLADE = (() => {
   const t = SPRING_FLAT_U, eps = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA, mu = MU_STEEL, U = UNIT_MM / 1000;
   const xb = ALARM_PINB_POST_R + 2 * CLEAR_MARGIN;
@@ -7796,7 +7796,21 @@ const ALARM_SLEEVE_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // 
 // pin riding the disc's raised notch track, the disc body, then one margin to
 // the minute wheel.
 const ALARM_FEELER_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.10 — the feeler's slices were the band's thinnest levers)
-const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + MEASURED_MARGIN_BAND); // −2.69 (§45; was −1.77). TODO 173: + the band — the static plane lands exactly one margin off the sleeve's skirt, which a strict < reads either side of (TODO 172's precedent)
+// §278 landing 6 — the chain's plane one margin (and the band) under the
+// sleeve's swept envelope: where the feeler stood while the detector was on the
+// centre column, and still where the centre column's chain ends. TODO 173: + the
+// band — the static plane lands exactly one margin off the sleeve's skirt, which
+// a strict < reads either side of (TODO 172's precedent).
+const ALARM_SLEEVE_BAND_FLOOR = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + MEASURED_MARGIN_BAND);
+// THE DIAL-SIDE RECLAIM. Since §278 landing 5 the detector stands on its
+// satellite, so nothing of it stacks under the sleeve at the centre: the
+// satellite's stack, i1b in the disc's plane, the hour wheel and the motion
+// works keep their WORLD planes while the dial and every member hung from it
+// come DIAL_RECLAIM plate-ward (layout.js, where its price is written). In the
+// dial frame that is this plane rising by the same amount: the feeler and
+// everything the chain hangs under it (the track, the disc, the seat, the
+// motion-works solve) read it, and keep their world planes by construction.
+const ALARM_FEELER_TOP = ALARM_SLEEVE_BAND_FLOOR + DIAL_RECLAIM; // −2.69 (§45; was −1.77) before the reclaim
 // §45 tripwire — the fund and the spend must agree: Z_DIAL deepened from the
 // §51-era −7.5 by exactly what the chain grew (the sleeve band replaced a
 // bare margin gap, so growth = envelope + one margin). Under-funded, the
@@ -7809,7 +7823,7 @@ const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + M
   const spend = (ALARM_SLEEVE_ENV + CLEAR_MARGIN)     // §45: chain growth vs the pre-§45 stack
     + (ALARM_FSPIRAL_B + CLEAR_MARGIN)                // TODO 194: the return spiral's band
     + ALARM_B_BAND_SPEND;                             // TODO 222: follower-B's seat spring, under the band
-  const fund = -7.5 - Z_DIAL;                     // −7.5: the §51 phase-B dial plane, §45's datum
+  const fund = -7.5 - Z_DIAL + DIAL_RECLAIM;                     // −7.5: the §51 phase-B dial plane, §45's datum
   if (fund < spend - 1e-9 || fund > spend + 0.01)
     console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve + spiral + rocker spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
 }
@@ -20863,8 +20877,8 @@ const ALARM_SET_Z = Z_DIAL + ALARM_SHEET_GAP + ALARM_SET_T / 2; // WORLD gear pl
 {
   const heartBot = ALARM_HEART_Z - ALARM_HEART_T / 2;
   const mwTop = MW_TOP;   // TODO 21: the dial-most face is the hour wheel's now — one name, defined at the planes
-  if (heartBot - ALARM_FEELER_TOP < CLEAR_MARGIN - 1e-9)
-    console.warn(`§29 stack: feeler top ${ALARM_FEELER_TOP.toFixed(2)} inside the heart's margin (heart bottom ${heartBot.toFixed(2)}, need ${CLEAR_MARGIN})`);
+  if (heartBot - ALARM_SLEEVE_BAND_FLOOR < CLEAR_MARGIN - 1e-9)   // §278 landing 6: the chain's floor under the sleeve, not the satellite's feeler
+    console.warn(`§29 stack: band floor ${ALARM_SLEEVE_BAND_FLOOR.toFixed(2)} inside the heart's margin (heart bottom ${heartBot.toFixed(2)}, need ${CLEAR_MARGIN})`);
   if (ALARM_SEAT_BOT - mwTop < CLEAR_MARGIN - 1e-9)   // TODO 144: the seat's underside is the disc-side face the hour wheel answers to now
     console.warn(`§29 stack: seat bottom ${ALARM_SEAT_BOT.toFixed(2)} inside the hour wheel's margin (mw top ${mwTop.toFixed(2)}, need ${CLEAR_MARGIN})`);
 }
@@ -22002,8 +22016,16 @@ const ALARM_SLEEVE_BOSS_W = STOCK_MIN_U;                                  // §5
 // (The slot's half-width carries the roller's tilt over the turn too, which the
 // turn sets; ALARM_SLEEVE_SLOT_TILT bounds it, asserted at the plates.)
 const ALARM_SLEEVE_SLOT_TILT = 0.02;
+// §278 landing 6: read at the sleeve's own band floor, not at the feeler. The
+// blade this was solved against left the plates with the satellite fold (it
+// stands at the satellite's azimuth, 325–333°, under no plate), and the reclaim
+// carries the sleeve dial-ward of the feeler's plane; reading the moving
+// feeler would re-cut the sleeve's rollers — and with them its helix law, the
+// crank's arms and the release run's rows — for a constraint no longer there.
+// So the rollers ride where TODO 236 solved them in the sleeve's own frame, and
+// re-deriving their height against the metal now under the plates is TODO 258.
 const ALARM_SLEEVE_ROLL_Z = Math.max(-ALARM_SLEEVE_T / 2,
-  (ALARM_FEELER_TOP + SPRING_FLAT_U / 2 + ALARM_FEELER_SPR_LIFT) + CLEAR_MARGIN + MEASURED_MARGIN_BAND
+  (ALARM_SLEEVE_BAND_FLOOR + SPRING_FLAT_U / 2 + ALARM_FEELER_SPR_LIFT) + CLEAR_MARGIN + MEASURED_MARGIN_BAND
   + (ALARM_SLEEVE_ROLLER_R + ALARM_FORK_CLEAR + ALARM_SLEEVE_SLOT_TILT) + ALARM_SLEEVE_GUIDE_T
   - (ALARM_SLEEVE_TOP - ALARM_SLEEVE_TRAVEL));   // sleeve-local (0 = the flat's dial-side face, + toward the dial)
 // The drive roller's line of push: inside a fork on the sleeve's rim. The
@@ -22306,7 +22328,7 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
   const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03;
   const restSkirtTop = ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T;
   say('rest gap, skirt top edge to pin tip', tipZ - restSkirtTop, ALARM_SLEEVE_GAP - 1e-6);
-  say('envelope floor above the feeler', (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H) - ALARM_FEELER_TOP, CLEAR_MARGIN);
+  say('envelope floor above the chain\'s band floor', (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H) - ALARM_SLEEVE_BAND_FLOOR, CLEAR_MARGIN);   // §278 landing 6: the feeler is off the column; what stands under the sleeve is held by the drive station's plan solve and the battery
   say('flat bore clears the resting pin', ALARM_SLEEVE_R_IN - (alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R), 0.03 - 1e-6);
 }
 // TODO 227 — the skirt's wall, held to the constraints it was
@@ -24456,6 +24478,22 @@ const _discRootR = (ALARM_BRANCH_MODULE * ALARM_DISC_TEETH) / 2 - 1.25 * ALARM_B
 const ALARM_SEAT_R_OUT = _discTipR + CLEAR_MARGIN;
 const _i1bTipR = G.gearOuterR({ module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, mates: [ALARM_DISC_TEETH], thickness: ALARM_DISC_BODY_T, bevel: false });
 const _i1Dist = Math.hypot(ALARM_SET_I1.x - P.dial.x, ALARM_SET_I1.y - P.dial.y);           // = ALARM_SET_DW1; the branch's closure assert holds it
+// §278 landing 6 — THE RECLAIM'S SECOND BINDER (DIAL_RECLAIM, layout.js): the
+// sleeve's skirt over i1b. i1b's tips reach inside the skirt's outer radius in
+// plan, so the two are parted only by height — the skirt's lowest face (at
+// rest, its plate-most pose) over i1b's dial-side face — and that gap must read
+// at least the margin. (The first binder, the crank's cap over the feeler
+// blade's stud, is held to the grid at the crank.)
+{
+  const nearR = _i1Dist - _i1bTipR, skirtOutR = ALARM_SLEEVE_R_OUT;
+  const skirtLowW = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H);   // world: the skirt's plate-most face at rest
+  const i1bFaceW = ALARM_BAND_Z - ALARM_DISC_BODY_T / 2;                                       // world: i1b's dial-side face
+  const gap = i1bFaceW - skirtLowW;
+  if (!(nearR < skirtOutR + CLEAR_MARGIN))
+    console.warn(`§278 reclaim: i1b's tips (r ${nearR.toFixed(4)}) clear the skirt (r ${skirtOutR}) in plan by the margin — the skirt no longer binds DIAL_RECLAIM; re-measure the binder`);
+  else if (gap < CLEAR_MARGIN - 1e-9)
+    console.warn(`§278 reclaim: the skirt stands ${gap.toFixed(4)} over i1b at DIAL_RECLAIM ${DIAL_RECLAIM}, need ≥ ${CLEAR_MARGIN}`);
+}
 const _i1PhiL = Math.atan2(ALARM_SET_I1.y - P.dial.y, -(ALARM_SET_I1.x - P.dial.x));        // i1's dial-local azimuth (world (x, y) ↔ dial-local (−x, y))
 const ALARM_SEAT_R_RELIEF = _i1Dist - _i1bTipR - CLEAR_MARGIN;
 const ALARM_SEAT_RELIEF_HALF = Math.acos((ALARM_SEAT_R_OUT ** 2 + _i1Dist ** 2 - (_i1bTipR + CLEAR_MARGIN) ** 2) / (2 * ALARM_SEAT_R_OUT * _i1Dist));
@@ -25491,7 +25529,21 @@ const ALARM_LIFT_FRAME_T = STOCK_MIN_U;
 // bracket lugs closing it at 339°; the station is the work's low end of that
 // arc with the fork's land clear of those lugs. Asserted at the crank, and the
 // battery's sweeps hold the rest.
-const ALARM_SLEEVE_DRIVE_AZ = 328 * DEG2RAD;   // world az
+// §278 landing 6 — RE-SITED, 328° → 324°. The satellite fold (landing 5) put
+// the feeler's tail and banking stop at 333–337.5°, r 5.2–6.2, UNDER the fork's
+// land (320.8–337.4° at 328°, r 4.55–5.38): 0.198 of vertical gap, so the land
+// met the stop at the first 0.05 of dial-side reclaim. The law prices every
+// station (alarmReleasePeak at its own solved helix): W falls monotonically
+// with azimuth over 296–342°, so the rule is unchanged — the work's cheapest
+// station whose metal clears — and the metal now closing the arc from above is
+// the satellite's. Measured on built copies at the landed reclaim (0.58):
+// 326° puts the land into the stop and 325° leaves it 0.0857 off; 324° clears
+// everything by 0.153 (the cap over the blade's stud, the reclaim's own binder,
+// asserted at the crank); below, 322° stands the fork 0.1493 off the selector's
+// third guide plate and 321° 0.0626. The price, from the law: W 154.8 → 165.7
+// mN·u (+7%), the peak drive 780.5 → 933.4 mN at the steeper helix the solve
+// takes there (51.68°); every member downstream is sized from it, as before.
+const ALARM_SLEEVE_DRIVE_AZ = 324 * DEG2RAD;   // world az
 // --- the silence chain's constants and force, hoisted (TODO 236): the rocker's
 // paddle rides the SLEEVE's arm now, so its push is a load the sleeve's law
 // carries, and the law is solved before the rocker is built.
@@ -26023,6 +26075,25 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
   coll.position.set(G.c.x, G.c.y, ALARM_RELEASE_CRANK_Z + ALARM_RELEASE_CRANK_HUB_H / 2 + PIVOT_BORE_CLEAR / 2 + T / 2);
   alarmReleaseCrankUnit.add(coll);
   registerSub('Alarm release crank', 'Crank stud', stud);
+  // §278 landing 6 — THE RECLAIM'S TRIPWIRE (DIAL_RECLAIM, layout.js). At this
+  // station the cap that keeps the hub on its stud stands over the satellite
+  // feeler's blade stud in plan, so only height parts them: the cap's plate-side
+  // face over the blade stud's dial-side end, both dial-local. The reclaim is
+  // that gap's slack over CLEAR_MARGIN rounded down to the fund's 0.01 grid, so
+  // it must read at least the margin and less than the margin plus one step
+  // (under is a collision, over is depth left on the table).
+  {
+    const bs = dialFace.getObjectByName('alarmFeelerSpringStud');
+    if (bs) {
+      const v = dialFace.worldToLocal(bs.getWorldPosition(new THREE.Vector3()));
+      const plan = Math.hypot(v.x - G.c.x, v.y - G.c.y) - capR - bs.geometry.parameters.radiusTop;
+      const gap = zBot - (v.z + bs.geometry.parameters.height / 2);
+      if (plan < CLEAR_MARGIN && (gap < CLEAR_MARGIN - 1e-9 || gap >= CLEAR_MARGIN + 0.01))
+        console.warn(`§278 reclaim: the crank's cap stands ${gap.toFixed(4)} over the feeler blade's stud at DIAL_RECLAIM ${DIAL_RECLAIM}, need [${CLEAR_MARGIN}, ${(CLEAR_MARGIN + 0.01).toFixed(2)}) — the reclaim is that slack rounded down to the 0.01 grid`);
+      else if (plan >= CLEAR_MARGIN)
+        console.warn(`§278 reclaim: the crank's cap clears the feeler blade's stud in plan (${plan.toFixed(4)}) — it no longer binds DIAL_RECLAIM; re-measure the binder`);
+    }
+  }
 }
 // ---- the link (a tie: pinned both ends, loaded along its length) ----------
 const alarmReleaseLinkUnit = new THREE.Group();
@@ -26455,17 +26526,24 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   const paddleBotL = ALARM_SLEEVE_Z_REST + 0.01 + 0.24 * (ALARM_SLEEVE_TRAVEL / (chord - aF));
   const tailTopL = ALARM_FEELER_TOP;
   const fingerBotL = tailTopL + ALARM_SIL_GAP;
-  // bar plane between the two cranked ends (asserted against both below).
-  // TODO 194: both ends hang in the §29 chain below the follower's return
-  // spiral, so when the spiral's band (ALARM_FSPIRAL_B + CLEAR_MARGIN) was
-  // inserted above them they moved plate-ward by exactly that spend while the
-  // −2.28 literal stayed put (−0.515 under the paddle against the 0.1 the
-  // crank needs). The bar rides the same spend, so the rocker keeps the
-  // geometry §45 stage 2 solved — the paddle crank 0.19 and the finger riser
-  // 0.28, over §50's pivot floor. (Measured and REFUSED first: the midpoint of
-  // the two ends cut the finger riser to 0.157, 0.0596 mm.)
-  const barZ = -2.28 - (ALARM_FSPIRAL_B + CLEAR_MARGIN) - ALARM_B_BAND_SPEND;   // TODO 222: and the B band's spend, inserted above both ends the same way
-  alarmSilRocker.position.set(piv.x, piv.y, barZ);
+  // §278 landing 6 — THE BAR'S PLANE IS RE-STACKED OVER THE PADDLE. It stood
+  // BETWEEN the two ends (a literal, −2.28 less TODO 194's and TODO 222's
+  // spends: the paddle crank 0.19 over it and the finger riser 0.28 under it),
+  // and that order cannot survive the dial-side reclaim: the paddle rides the
+  // sleeve's arm (dial-hung) while the finger rides the satellite's feeler
+  // tail (held), so DIAL_RECLAIM closes the band between them one for one —
+  // the riser reached §50's 0.1 floor at 0.18, and past 0.47 the paddle's face
+  // stands under the finger's. So the bar now runs at the plane the paddle's
+  // BRIDGE already stood on (one margin over the sleeve's arm at the bar's
+  // nearest crossing, the arm's lift over that station included), carrying the
+  // pad on its underside and the finger on a dropper. That plane is the
+  // paddle's, so it rides the dial, and the finger's dropper is what the
+  // reclaim spends. The plan is untouched: the chord, the pivot's station on
+  // it, the arms aF and aP and so ALARM_SIL_RATIO, and the finger's and the
+  // pad's contact faces, which are where they were. Only the bar's z moved,
+  // and with it the riser and bridge the paddle end needed to climb out of the
+  // arm's plane (gone: the bar is over the arm already).
+  alarmSilRocker.position.set(piv.x, piv.y, 0);   // its z, the bar's plane, is solved below (barZ)
   alarmSilRocker.rotation.order = 'ZYX';
   alarmSilRocker.rotation.z = Math.atan2(pd.y - fg.y, pd.x - fg.x); // local +x = finger → paddle direction
   alarmSilRocker.userData = { aP: chord - aF, aF };
@@ -26503,6 +26581,9 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   // STOPS one margin short of the arm's swept strip, a riser stands on its end
   // beside the strip, and a bridge carries the pad from the riser over the
   // arm: the pad's contact point — the paddle arm aP — does not move.
+  // (§278 landing 6 raised the whole bar to that bridge's plane, so the riser
+  // and the bridge are gone; the station below, where the riser stood, is
+  // kept as the strip's near edge, the crossing the pad's height is priced at.)
   const _armTurn = Math.abs(ALARM_SLEEVE_HELIX.turn);
   const _padR = 0.24, _riserR = 0.14;
   const _armHW = _padR + ALARM_SIL_PADDLE_R * _armTurn / 2 + 0.05;                 // the arm's half-width: the pad and its scrub over the turn, and a land
@@ -26523,10 +26604,19 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   const _armU = (() => { const u = { x: pd.x / Math.hypot(pd.x, pd.y), y: pd.y / Math.hypot(pd.x, pd.y) }, c = Math.cos(_rz0), sn = Math.sin(_rz0); return { x: u.x * c + u.y * sn, y: -u.x * sn + u.y * c }; })();
   const _stripDist = (x, y) => Math.abs((x - (chord - aF)) * _armU.y - y * _armU.x);   // from the strip's centreline, rocker frame (the pad at (aP, 0))
   const _barHalfW0 = (STOCK_MIN_U + 0.01) / 2;
-  let _barEnd = chord - aF;   // the riser's station on the bar, walked back from the pad until riser and bar end clear the strip
+  let _barEnd = chord - aF;   // the strip's near edge less a margin: walked back from the pad until a riser-sized footprint there clears the strip (landing 6: where the bar first crosses over the arm)
   while (Math.min(_stripDist(_barEnd, 0) - _riserR, ...[[_riserR, _barHalfW0], [_riserR, -_barHalfW0]].map(([dx, dy]) => _stripDist(_barEnd + dx, dy)))
     < _armSweepHW + CLEAR_MARGIN + MEASURED_MARGIN_BAND) _barEnd -= 0.001;
-  const _barX0 = -aF - 0.1, _barX1 = _barEnd + _riserR;   // the bar's ends: the finger's side unchanged, the paddle's at the riser
+  // The pad's height under the bar: one margin (and the band) over the arm
+  // where the bar first crosses its swept strip, plus what the arm gains on the
+  // bar there over the lift (the arm rises the whole lift while the bar, nearer
+  // the pivot than the pad, rises (x/aP) of it). _barEnd is the strip's near
+  // edge less a margin, so this is conservative at the crossing.
+  const _aP = chord - aF;
+  const _padH = Math.max(STOCK_MIN_U, -0.01 + CLEAR_MARGIN + MEASURED_MARGIN_BAND + ALARM_SLEEVE_TRAVEL * (_aP - _barEnd) / _aP);
+  const barZ = paddleBotL + _padH + STOCK_MIN_U / 2;   // the bar's mid-plane: its underside on the pad's top (the old bridge's plane)
+  alarmSilRocker.position.z = barZ;
+  const _barX0 = -aF - 0.1, _barX1 = _aP + _riserR / 2;   // the bar's ends: the finger's side unchanged, the paddle's over the pad (where the bridge ended)
   const _rz = alarmSilRocker.rotation.z, _cz = Math.cos(_rz), _sz = Math.sin(_rz);
   const _toRocker = (p) => ({ x: (p.x - piv.x) * _cz + (p.y - piv.y) * _sz, y: -(p.x - piv.x) * _sz + (p.y - piv.y) * _cz });
   const _feelerLugs = [-1, 1].map((side) => {
@@ -26552,8 +26642,14 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   // stands on the bar's +y side (TODO 190 found it on −y): the same step, read
   // off the lugs, goes the other way. Cut straight only if the straight bar
   // already clears them by the margin with the largest rock carried.
+  // §278 landing 6: and only if the lugs reach the bar's plane at all. They
+  // stand from the plate face to just past the feeler's pivot; the bar now runs
+  // over the paddle, and its finger end dips (aF + 0.1)/aP of the lift at most.
+  const _lugTopL = _armMidZ + 0.10;   // the feeler build's own lug top
+  const _lugsUnder = _lugTopL + CLEAR_MARGIN + MEASURED_MARGIN_BAND
+    <= (barZ - _barHalfT) - (-_barX0) * Math.sin(_rockMax);
   const _straightClear = _rectLugClear(_barX0 - _rockDx(_barX0), -_barHalfW, _barX1, _barHalfW);
-  const ALARM_SIL_BAR_STRAIGHT = _straightClear >= CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+  const ALARM_SIL_BAR_STRAIGHT = _lugsUnder || _straightClear >= CLEAR_MARGIN + MEASURED_MARGIN_BAND;
   const _lugYs = _feelerLugs.flat().map((c) => c.y);
   const _lugMaxY = Math.max(..._lugYs), _lugMinY = Math.min(..._lugYs);
   if (!ALARM_SIL_BAR_STRAIGHT && !(_lugMaxY < -_barHalfW) && !(_lugMinY > _barHalfW))
@@ -26590,27 +26686,12 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   const bar = new THREE.Mesh(_barGeo, MATS.steel);
   bar.name = 'alarmSilBar';   // TODO 190: named, so the intra-unit rows stop addressing it by index (TODO 50's fix)
   alarmSilRocker.add(bar);
-  // paddle: riser on the bar's end, bridge over the arm, pad (contact face UP,
-  // on the arm's dial-side face). The bridge stands one margin over the arm
-  // where it crosses it, plus what the arm gains on it over the lift (the arm
-  // rises the whole lift while the bridge, nearer the pivot than the pad,
-  // rises (x/aP) of it).
-  const _aP = chord - aF;
-  const _padH = Math.max(STOCK_MIN_U, -0.01 + CLEAR_MARGIN + MEASURED_MARGIN_BAND + ALARM_SLEEVE_TRAVEL * (_aP - _barEnd) / _aP);
-  const _bridgeZ0 = (paddleBotL - barZ) + _padH, _bridgeZ1 = _bridgeZ0 + STOCK_MIN_U;   // rocker-frame
-  const padRise = new THREE.Mesh(new THREE.CylinderGeometry(_riserR, _riserR, _bridgeZ1, 10), MATS.steel);
-  padRise.name = 'alarmSilRiser';
-  padRise.rotation.x = Math.PI / 2;
-  padRise.position.set(_barEnd, 0, _bridgeZ1 / 2);
-  alarmSilRocker.add(padRise);
-  const bridge = new THREE.Mesh(new THREE.BoxGeometry(_aP - _barEnd + _riserR, Math.max(2 * _riserR, STOCK_MIN_U + 0.01), STOCK_MIN_U), MATS.steel);
-  bridge.name = 'alarmSilBridge';
-  bridge.position.set((_barEnd + _aP + _riserR) / 2 - _riserR / 2, 0, (_bridgeZ0 + _bridgeZ1) / 2);
-  alarmSilRocker.add(bridge);
+  // paddle: the pad (contact face UP, on the arm's dial-side face) hangs from
+  // the bar's underside (§278 landing 6: the bar is the old bridge's plane).
   const pad = new THREE.Mesh(new THREE.CylinderGeometry(_padR, _padR, _padH + 0.02, 12), MATS.steel);
   pad.name = 'alarmSilPaddle';
   pad.rotation.x = Math.PI / 2;
-  pad.position.set(_aP, 0, (paddleBotL - barZ) + (_padH + 0.02) / 2); // rocker-frame: the group already sits at barZ; into the bridge by 0.02
+  pad.position.set(_aP, 0, (paddleBotL - barZ) + (_padH + 0.02) / 2); // rocker-frame: the group already sits at barZ; into the bar by 0.02
   alarmSilRocker.add(pad);
   // finger dropper + pad (contact face DOWN, over the tail)
   // TODO 190 — the riser STANDS ON THE FINGER, not past it. It ran the whole
@@ -26681,7 +26762,7 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
     say('finger seat clear of the feeler blade', Math.hypot(px - bx - t * vx, -t * vy) - 0.1 - SPRING_FLAT_U / 2, CLEAR_MARGIN - 1e-6);
   }
   say('finger clear of the banking stop', (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL - 0.1) - (ALARM_SIL_FINGER_R + 0.1), CLEAR_MARGIN - 1e-6);
-  say('paddle plane meets the bar crank', paddleBotL - barZ, 0.1);
+  say('the pad hangs from the bar at §50\'s floor', (barZ - STOCK_MIN_U / 2) - paddleBotL, STOCK_MIN_U - 1e-9);   // §278 landing 6: the paddle crank is a drop now
   say('finger plane meets the bar crank', barZ - fingerBotL, 0.1);
   // the law's two ends, asserted where the constants are minted: at full
   // pull the cap reaches ZERO (the pin is pinned at its riding seat — no
@@ -36429,11 +36510,34 @@ ALARM_LINK_LAWS.barLineR = ALARM_LINK_BAR_LINE_R;
 // §261 2c — THE ROD-END HANGER'S JOG, one law for the site solve that scores
 // it and the build that cuts it (the reasoning is at the solve's hanger
 // scoring). From the hanger's station (hx, hy) and the bar's line in world plan
-// (pivot P → nose N), the arm's length J and its unit direction m, off the
-// line on the hanger's own side, and the upper column's station — long enough
+// (pivot P → nose N), the run's length J and its unit direction m, off the
+// line on the hanger's own side, and the upper column's station — far enough
 // that the column clears the bar's line AND the pivot post's reach about P
 // (`pivReach`, the post, its head and the eye at floor stock), each by the
-// column's plan radius and the margin.
+// column's plan radius and the margin — and the path the scorer samples.
+//
+// §278 landing 6 — BESIDE THE BLADE, NOT OVER IT. The arm ran along m from
+// the lower column's axis, and here m lies 3.4° off the shaft's own chord, so
+// the arm and the upper column stood directly over the arming blade (rooted in
+// the lower column, its free length along the chord) and cleared it only in z:
+// the blade rides the dial-hung shaft while the arm stands one margin under
+// the held beak's bar, so a dial-side reclaim spends that gap one for one
+// (0.1368 at none, already under the margin; intraUnit read them through each
+// other from about 0.2). No plane survives there — at 0.58 the bar's face
+// stands 0.244 over the blade, and the arm needs its section and a margin. So
+// the arm moves in PLAN: the upper column stands where it did, slid along the
+// bar's own line (w, perpendicular to m) away from the pivot post by D, and
+// the arm reaches it in two legs, the lateral leg leaving the lower column's
+// side face and the run along m beside the blade. Sliding along the bar's line
+// leaves the column's distance to that line as it was, and moves it away from
+// the post — the two things its station was sized against. D is the largest
+// section the build admits (its assert, hangerS·√½ ≤ ALARM_LINK_BUSH_OD_U)
+// plus the margin, so the run's near face clears anything rooted inside the
+// lower column's section by the margin whatever section the spring solve lands
+// on; the lateral leg's inboard corner, beside the blade's exit from the
+// column, is the blade's own root offset off the column's face, asserted at
+// the build.
+const ALARM_LINK_H3_D = ALARM_LINK_BUSH_OD_U * Math.SQRT2 + CLEAR_MARGIN;
 const alarmLinkHangerJog = (hx, hy, P, N, pivReach) => {
   const bx = N.x - P.x, by = N.y - P.y, bl = Math.hypot(bx, by);
   const side = ((hx - P.x) * by - (hy - P.y) * bx) / bl;   // signed distance off the bar's line
@@ -36450,7 +36554,14 @@ const alarmLinkHangerJog = (hx, hy, P, N, pivReach) => {
   // another (the re-sited link's first jog was 0.651 against 0.5186 square
   // columns, and intraUnit read them through each other at a corner)
   if (J > 0) J = Math.max(J, 2 * ALARM_LINK_BUSH_OD_U);
-  return { J, m, ux: hx + m.x * J, uy: hy + m.y * J };
+  if (J === 0) return { J, D: 0, m, w: { x: 0, y: 0 }, ux: hx, uy: hy, path: [{ x: hx, y: hy }] };
+  // §278 landing 6: slid along the bar's line, away from the post
+  let w = { x: bx / bl, y: by / bl };
+  if ((P.x - hx) * w.x + (P.y - hy) * w.y > 0) w = { x: -w.x, y: -w.y };
+  const D = ALARM_LINK_H3_D;
+  const ox = hx + w.x * D, oy = hy + w.y * D;
+  return { J, D, m, w, ux: ox + m.x * J, uy: oy + m.y * J,
+    path: [{ x: hx, y: hy }, { x: ox, y: oy }, { x: ox + m.x * J, y: oy + m.y * J }] };
 };
 const linkShaftTipXY = (rod, inner) => {
   const dx = rod.x - inner.x, dy = rod.y - inner.y;
@@ -36887,7 +36998,10 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       const pts = [{ x: hx, y: hy }];
       if (i === 2 && rc && rc.Pw) {
         jog = alarmLinkHangerJog(hx, hy, rc.Pw, rc.Nw, rc.pivReach);
-        for (let k = 1; k <= 8; k++) pts.push({ x: hx + jog.m.x * jog.J * k / 8, y: hy + jog.m.y * jog.J * k / 8 });
+        for (let j = 1; j < jog.path.length; j++) {
+          const a = jog.path[j - 1], b = jog.path[j];
+          for (let k = 1; k <= 8; k++) pts.push({ x: a.x + (b.x - a.x) * k / 8, y: a.y + (b.y - a.y) * k / 8 });
+        }
         hx = jog.ux; hy = jog.uy;
       }
       for (const p of pts) for (const b of hangerObs) { const d = dToBox(p.x, p.y, b) - ALARM_LINK_BUSH_OD_U; if (d < c) { c = d; who = 'hanger:' + b._who; } }
@@ -36902,7 +37016,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
         // whichever tied candidate the loop met first — two sites a hair apart
         // in the hoisted shaft length, each sending the solve to the other. It
         // still fails a candidate whose jog cannot reach the margin.
-        const jogMeets = i === 2 && jog && jog.J > 0 && dPiv >= CLEAR_MARGIN - 1e-9;
+        const jogMeets = i === 2 && jog && jog.D > 0 && dPiv >= CLEAR_MARGIN - 1e-9;
         if (!jogMeets && dPiv < c) { c = dPiv; who = 'hanger:its own beak post'; }
       }
     }
@@ -37664,7 +37778,8 @@ const alarmLinkParts = {};
     const hx = ALARM_LINK_INNER_XY.x + chord.x / fullChordLen * ALARM_LINK_BUSH_T[2];
     const hy = ALARM_LINK_INNER_XY.y + chord.y / fullChordLen * ALARM_LINK_BUSH_T[2];
     const B = ALARM_LINK_BAR_LINE_W;
-    const jog = B ? alarmLinkHangerJog(hx, hy, B.P, B.N, B.pivReach) : { J: 0, m: { x: 0, y: 0 }, ux: hx, uy: hy };
+    const jog = B ? alarmLinkHangerJog(hx, hy, B.P, B.N, B.pivReach)
+      : { J: 0, D: 0, m: { x: 0, y: 0 }, w: { x: 0, y: 0 }, ux: hx, uy: hy, path: [{ x: hx, y: hy }] };
     return { hx, hy, ...jog, armTop: ALARM_ROD_TOP_BUILT - CLEAR_MARGIN };
   })();
   const shaft = new THREE.Group();
@@ -39158,11 +39273,15 @@ const alarmLinkParts = {};
       // cantilever's of that length, and the part of the moment it carries as
       // TORSION costs EI/GJ more — for a square section β = 0.1406 (Roark),
       // GJ = 0.1406·G·s⁴ against EI = E·s⁴/12. So k_frame ≥ 3EI / ((1 + EI/GJ)·Ld³),
-      // and with no jog it is the straight column exactly.
-      const JOG_K = ALARM_LINK_H3.J > 0 ? 1 + (STEEL_E_PA / 12) / (0.1406 * STEEL_G_PA) : 1;
+      // and with no jog it is the straight column exactly. (§278 landing 6: the
+      // arm leaves from the column's side and runs beside the blade, so the
+      // developed path is the lateral offset D plus the run J; the arm is cut
+      // D wide, wider than the square section the bound assumes, which only
+      // stiffens it.)
+      const JOG_K = ALARM_LINK_H3.D > 0 ? 1 + (STEEL_E_PA / 12) / (0.1406 * STEEL_G_PA) : 1;
       const hangerSFor = (sol) => {
         const zClamp = ALARM_LINK_SHAFT_Z + sol.a;       // ≈ the blade's mid height
-        const Lh = (-BACK_PLATE_T - zClamp + ALARM_LINK_H3.J) * U * Math.cbrt(JOG_K);   // the developed length, scaled so the column law below carries the frame's bound
+        const Lh = (-BACK_PLATE_T - zClamp + ALARM_LINK_H3.D + ALARM_LINK_H3.J) * U * Math.cbrt(JOG_K);   // the developed length, scaled so the column law below carries the frame's bound
         // TODO 222: and wide enough to HOLD the root it is slotted for — the
         // root's face stands at the free line, cornerN + SINK + d0 off the
         // chord, which the lower ratio's larger preload carried past the 10×
@@ -39788,26 +39907,58 @@ const alarmLinkParts = {};
     // the shipped 0.2.
     const hangerS = hi === 2 ? ALARM_LINK_ARMING_SPRING.hanger3S_u : ALARM_LINK_ARMING_SPRING.hangerS_u;
     alarmLinkUnit.add(bush);
-    if (hi === 2 && ALARM_LINK_H3.J > 0) {
+    if (hi === 2 && ALARM_LINK_H3.D > 0) {
       // §261 2c — JOGGED round the beak's bar (ALARM_LINK_H3): the lower column
       // from the bush to the arm (the blade's stud and the guide's ground), the
-      // arm along m to the upper station, and the upper column on to the plate.
-      // The arm laps both columns, one part welded; same section throughout.
+      // arm, and the upper column on to the plate. Same section throughout, one
+      // part welded. §278 landing 6: the arm is two legs along the law's path —
+      // the lateral leg off the lower column's side face along w to the run's far
+      // face, and the run along m beside the arming blade to the upper column.
       const H = ALARM_LINK_H3, aTop = H.armTop, aBot = aTop - hangerS;
-      if (Math.hypot(hx - H.hx, hy - H.hy) > 1e-9)
+      if (Math.hypot(hx - H.path[0].x, hy - H.path[0].y) > 1e-9)
         console.warn('§261 2c: hanger 3 is built off the station its jog was solved for');
+      if (H.D - hangerS / 2 < hangerS / 2 + CLEAR_MARGIN - 1e-9)
+        console.warn(`§278 landing 6: hanger 3's run stands ${(H.D - hangerS).toFixed(4)} off the lower column's face — the section ${hangerS.toFixed(4)} outgrew the jog's offset ${H.D.toFixed(4)}`);
       const lower = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, aTop - hangerFootZ), MATS.nickel);
       lower.name = 'alarmLinkHanger3';
       lower.position.set(hx, hy, (hangerFootZ + aTop) / 2);
-      const armL = H.J + hangerS;
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(armL, hangerS, hangerS), MATS.nickel);
-      arm.name = 'alarmLinkHanger3Jog';
-      arm.position.set((hx + H.ux) / 2, (hy + H.uy) / 2, (aTop + aBot) / 2);
-      arm.rotation.z = Math.atan2(H.m.y, H.m.x);
+      const zMid = (aTop + aBot) / 2;
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(H.D, hangerS, hangerS), MATS.nickel);
+      leg.name = 'alarmLinkHanger3Jog';
+      leg.position.set(hx + H.w.x * (H.D + hangerS) / 2, hy + H.w.y * (H.D + hangerS) / 2, zMid);
+      leg.rotation.z = Math.atan2(H.w.y, H.w.x);
+      const run = new THREE.Mesh(new THREE.BoxGeometry(H.J + hangerS, hangerS, hangerS), MATS.nickel);
+      run.name = 'alarmLinkHanger3Run';
+      run.position.set(hx + H.w.x * H.D + H.m.x * H.J / 2, hy + H.w.y * H.D + H.m.y * H.J / 2, zMid);
+      run.rotation.z = Math.atan2(H.m.y, H.m.x);
       const upper = new THREE.Mesh(new THREE.BoxGeometry(hangerS, hangerS, -2 - aBot), MATS.nickel);
       upper.name = 'alarmLinkHanger3Upper';
       upper.position.set(H.ux, H.uy, (aBot - 2) / 2);
-      for (const m of [lower, arm, upper]) alarmLinkUnit.add(m);
+      upper.rotation.z = Math.atan2(H.m.y, H.m.x);   // square on the run it stands on
+      // the arm's two legs must clear the arming blade beside them by the
+      // margin (the blade is rooted inside the lower column, its free length
+      // along the chord, drifting to whichever side the spring solve puts it):
+      // read off the blade as cut, in plan — the legs span the blade's height
+      {
+        const bl = alarmLinkUnit.getObjectByName('alarmLinkArmingSpring');
+        if (bl) {
+          bl.updateWorldMatrix(true, false);
+          const pa = bl.geometry.attributes.position, v = new THREE.Vector3(), vs = [];
+          for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(bl.matrixWorld); vs.push({ x: v.x - hx, y: v.y - hy }); }
+          const boxD = (p, cm, cw, hm, hw) => {            // plan distance to a box in the (m, w) frame
+            const pm = p.x * H.m.x + p.y * H.m.y, pw = p.x * H.w.x + p.y * H.w.y;
+            return Math.hypot(Math.max(0, Math.abs(pm - cm) - hm), Math.max(0, Math.abs(pw - cw) - hw));
+          };
+          let dMin = Infinity;
+          for (let i = 0; i < vs.length; i++) for (let j = i; j < vs.length; j++) for (let k = 0; k <= 32; k++) {
+            const p = { x: vs[i].x + (vs[j].x - vs[i].x) * k / 32, y: vs[i].y + (vs[j].y - vs[i].y) * k / 32 };
+            dMin = Math.min(dMin, boxD(p, 0, (H.D + hangerS) / 2, hangerS / 2, H.D / 2), boxD(p, H.J / 2, H.D, (H.J + hangerS) / 2, hangerS / 2));
+          }
+          if (dMin < CLEAR_MARGIN - 1e-9)
+            console.warn(`§278 landing 6: hanger 3's jog stands ${dMin.toFixed(4)} off the arming blade beside it, under the ${CLEAR_MARGIN} margin`);
+        }
+      }
+      for (const m of [lower, leg, run, upper]) alarmLinkUnit.add(m);
       // the column's plan footprint the solve scored it at (the bush's OD) must
       // cover the hanger as cut, or the scoring was optimistic
       if (hangerS * Math.SQRT1_2 > ALARM_LINK_BUSH_OD_U + 1e-9)

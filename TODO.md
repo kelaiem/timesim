@@ -33654,6 +33654,10 @@ row, or reverse the helix hand's tangential sense against the drag if the
 margin is thin. The other hand locks at this station (TODO 236), so a hand
 change means re-siting the drive.
 
+**§278 landing 6 re-sited the drive, 328° → 324°.** The helix the law solves
+there is 51.68° (cut 51.57°) and the sleeve now turns 0.0346 rad, so the
+figures above are landing 5's; the drag is still unpriced.
+
 
 ## 253. The beak's stub stands 0.0949 off the cut castellations, under CLEAR_MARGIN
 
@@ -34267,3 +34271,31 @@ full drop to let go. That smear was 48.8 min with symmetric ramps; it is now 7.4
   drop; the model's trip is the full drop, so the entry flank's run bounds a spread
   the simulation cannot show. The explainer's plate was redrawn here; its
   translations are machine-drafted and owe the native review.
+
+## 258. The release sleeve's roller height reads a feeler blade that no longer stands under its plates
+
+Found by §278 landing 6. `ALARM_SLEEVE_ROLL_Z` (main.js, TODO 236) sets how
+far dial-ward of the sleeve's flat its three guide rollers ride. The rule it
+states: the guide plate's top edge stands one margin under the feeler's return
+blade, which lay over the plate at the feeler's lever, so the slot (and the
+roller at its far end) is pushed dial-ward by the blade's height. That was a
+fact while the feeler stood on the centre column. §278 landing 5 carried the
+feeler, its blade with it, to the satellite: the blade now stands at 325–333°,
+r 5.66–7.34, and the plates stand at 105°, 250° and 300°, r 5.0–5.9. No plate
+is over it.
+
+Landing 6 needed the sleeve to ride the dial rigidly (the dial-side reclaim
+brings every dial-hung member plate-ward while the feeler is held), and reading
+the moving feeler would have re-cut the rollers' height, and with it the
+sleeve's helix law, the crank's arms and the release run's rows, for a
+constraint that is no longer there. So the expression now reads the chain's
+band floor in the sleeve's own frame (`ALARM_SLEEVE_BAND_FLOOR`): the height
+TODO 236 solved, held. The number is right for the metal it was solved
+against; the reason written beside it is not the reason it holds now.
+
+**Fix path.** Re-derive the rollers' height from what actually stands under
+each guide plate over the sleeve's lift (the floor is `−ALARM_SLEEVE_T / 2`,
+the rollers at the flat), then re-run the helix solve at the drive station
+(`alarmReleaseHelixSolve` reads `zR`), and re-price the release run with
+`tools/probe-236-release-run.mjs`. The 'alarm release run' line spec's turn and
+helix rows re-derive from the build; the deliver envelope must still hold.
