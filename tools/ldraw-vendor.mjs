@@ -5,7 +5,9 @@
 //
 // THE PART LIST IS READ, NEVER TYPED: every `part` in `CATALOGUES` (both
 // generations) and every part in `technic-frame.js`' FRAME_PARTS,
-// AXLE_PARTS, TURNTABLE_BASES and KEYLESS_PARTS. Add a gear to the catalogue and the next run fetches it; a part
+// AXLE_PARTS, TURNTABLE_BASES and KEYLESS_PARTS, and `technic-fusee.js`'
+// FUSEE_PULLEYS, FUSEE_STRINGS and FUSEE_PARTS (landing H). Add a gear to the
+// catalogue and the next run fetches it; a part
 // the library does not hold FAILS the run rather than shipping a build with a
 // hole in it.
 //
@@ -27,6 +29,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { CATALOGUES } from '../src/layout.js';
 import { FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, KEYLESS_PARTS } from '../src/technic-frame.js';
+import { FUSEE_PULLEYS, FUSEE_STRINGS, FUSEE_PARTS } from '../src/technic-fusee.js';
 import { fetchParts } from './ldraw-fetch.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,6 +40,7 @@ export const PACK_PARTS = [...new Set([
   ...Object.values(CATALOGUES).filter(Boolean).flatMap((c) => c.counts.map((r) => r.part)),
   ...Object.values(FRAME_PARTS), ...Object.values(AXLE_PARTS), ...Object.values(TURNTABLE_BASES),
   ...Object.values(KEYLESS_PARTS),
+  ...FUSEE_PULLEYS, ...Object.values(FUSEE_STRINGS), ...Object.values(FUSEE_PARTS),
 ])].sort();
 
 const cache = await mkdtemp(join(tmpdir(), 'ldraw-'));
