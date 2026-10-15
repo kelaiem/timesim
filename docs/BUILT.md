@@ -6397,13 +6397,20 @@ narrate the finished watch. The one cost recorded: default-on means
 were re-verified with it (the fingerprint hashes posed bounding
 boxes, so the BVH indexing side effect cannot touch it).
 
-**Superseded: schematic is now OFF by default.** The boot default was
-reversed so the solid view is the front door: `defaultState.schematic` is
-`false`, an absent saved field restores as OFF (`?? false`), and a save or
-`?schematic=1` turns it on. Everything above about the mechanism (layer swap,
-ghosting, the battery's blindness to the tier) is unchanged; only the default
-moved. Saves written before the reversal carry an explicit `schematic: true`
-and keep booting into the model view until the toggle is switched off.
+**Superseded: the schematic default now follows the renderer.** The solid view
+is the front door where a GPU draws it, and the line view stays the front door
+under software GL. `defaultState.schematic` is `null` (unset); `main.js` reads the
+WebGL renderer string (`SOFTWARE_GL`: SwiftShader, llvmpipe, softpipe) and boots
+the schematic ON there and OFF elsewhere. A saved boolean, `?schematic=0/1` and the
+toggle all override it. Why not simply OFF: measured headless on SwiftShader, a
+solid frame costs 7-10 s whatever the quality tier (High ~9.0-9.8 s, Low
+~7.1-8.0 s) against ~0.22 s for the line view, and Auto quality cannot step
+down because `frame()` drops intervals over `FRAME_STALL_MS` from its average.
+A plain OFF default failed `boot-yield` twice (CI worst long task 6.5 s, then 11.1 s
+on a slower runner); raising its ceiling would have left a gate that could not
+tell a hang from the paint. Mechanism, layer swap and ghosting are unchanged.
+Accepted: the default now differs by machine, and a real GPU's solid frame time
+is not measured here. Saves that already hold a boolean keep it.
 
 **Verified.** Headless: boot silent, both camera layers on, ghost-all
 at 0.28 on boot including the lazily-built chain (the one mesh born
