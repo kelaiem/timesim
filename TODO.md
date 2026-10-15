@@ -34299,3 +34299,29 @@ the rollers at the flat), then re-run the helix solve at the drive station
 (`alarmReleaseHelixSolve` reads `zR`), and re-price the release run with
 `tools/probe-236-release-run.mjs`. The 'alarm release run' line spec's turn and
 helix rows re-derive from the build; the deliver envelope must still hold.
+
+## 262. Case lugs are sized for steel; the gold and platinum cases reuse the steel section
+
+Found by §280. `caseLugPlan` (layout.js) solves the lug's side height W so
+the root carries `CASE_LUG_LOAD_N` (ISO 6425's 200 N, half per lug) at
+`CASE_LUG_SIGMA_Y_PA`, 316L's typical annealed yield, 290 MPa. That is
+the right metal for the default case. But §203's alloy picker also cuts
+the case in 18K yellow gold, 18K white gold and Pt950 (`ALLOY_STOCK`), and
+the lugs keep the steel section in all four. So the picture claims a lug
+the load arithmetic was never run for.
+
+The direction of the error is not known without the figures: annealed 18K
+golds and Pt950Ru sit in roughly the same yield range as annealed 316L, but
+each by its own amount. The weld anneals the root in every alloy, so the
+annealed figure is the right one in each case.
+
+**Fix path.**
+1. Add a yield band per `STOCK` row a case can be cut from, with its source,
+   on `CASE_STEEL_SIGMA_Y_BAND`'s pattern.
+2. Pass the picked alloy's yield into `caseLugPlan`, so W re-solves per alloy.
+   The alloy pick is reload-tier, so there is one build per alloy, and the
+   fingerprint already varies with it.
+3. Extend `tools/probe-lug-geom.mjs`'s load rows to read the alloy the case
+   was built in.
+
+Until then, the record says "sized for steel".

@@ -650,15 +650,19 @@ export const CASE_CRYSTAL_CLEAR = 0.3 / UNIT_MM;
 // owner's word for it.
 export const CASE_TUBE_D = 2.0 / UNIT_MM;
 export const CASE_PUSHER_D = 1.2 / UNIT_MM;
-// Lug and spring-bar stock (§190). ONE declaration — the solid builder
-// (geometry.js makeCase), the schematic line tier (main.js) and
-// probe-lug-geom.mjs all consume these; before §190 the same numbers were
-// hand-copied at all three sites, the recurring one-direction-written-twice
-// defect with a longer fuse.
-export const CASE_LUG_T = 1.2 / UNIT_MM;      // lug thickness across the strap — stamped-lug plate stock
-export const CASE_LUG_W = 3.0 / UNIT_MM;      // lug height along z: carries the spring-bar bore with a wall each side ((3.0 − 1.5)/2 = 0.75 mm)
-export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the brazed stamped-lug truth (a 0.3 mm first cut read as floating at screen scale)
-// TODO 209 — the foot's depth is bounded by the wall it is brazed INTO. The
+// Lug and spring-bar stock (§190, re-cut by §280). ONE declaration — the
+// solid builder (geometry.js makeCase), the schematic line tier (main.js) and
+// probe-lug-geom.mjs all consume these and `caseLugPlan` below; before §190
+// the same numbers were hand-copied at all three sites, the recurring
+// one-direction-written-twice defect with a longer fuse.
+// §280 — the lug's WIDTH seen from the dial, the owner's pick (2026-10-15)
+// off the priced ladder T × W: narrower than §190's 1.2 mm stamped plate,
+// with the side height W then SOLVED from the strap load (caseLugPlan). It
+// is a styling input in the strap width's own standing — the look is chosen,
+// the section that carries it is derived.
+export const CASE_LUG_T = 1.0 / UNIT_MM;
+export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the welded foot sinks into the wall it is fused to (a 0.3 mm first cut read as floating at screen scale)
+// TODO 209 — the foot's depth is bounded by the wall it is welded INTO. The
 // lugs stand ±(span + T)/2 off the pair axis, where the back band's bore has
 // risen to the chord depth sqrt(R_BORE_BACK² − x²) — and it rises fastest at
 // the lug's INBOARD face (the smaller |x|), so that corner is where a fixed
@@ -666,7 +670,7 @@ export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the bra
 // 0.02 u inside the band and 0.09 u off the plate rim seated in that bore —
 // a solder foot with no wall behind it, under CLEAR_MARGIN to the movement.
 // The root therefore stands one sheet floor (STOCK_MIN_U, §50) of band metal
-// outboard of the bore at that corner whenever the brazed-embed intent would
+// outboard of the bore at that corner whenever the embed intent would
 // sink it deeper. ONE law for the solid (geometry.js) and the line tier.
 export const caseLugRootR = (off, rOut, rBore) => {
   const surfR = Math.sqrt(Math.max(rOut * rOut - off * off, 0));
@@ -674,7 +678,6 @@ export const caseLugRootR = (off, rOut, rBore) => {
   const boreR = Math.sqrt(Math.max(rBore * rBore - xIn * xIn, 0));
   return Math.max(surfR - CASE_LUG_ROOT, boreR + STOCK_MIN_U);
 };
-export const CASE_LUG_Z_OFF = 0.5 / UNIT_MM;  // the lug band's z offset above the ledge plane (the value the pre-§186 seat face had)
 export const CASE_SPRING_BAR_D = 1.5 / UNIT_MM; // Ø1.5 mm — the standard double-flanged spring bar for a 20 mm strap
 // The wrap gap — owner spec 2026-09-01: at least 2.0 mm between case metal
 // and the bar's surface everywhere on the wrap path, the thickness of strap
@@ -687,11 +690,10 @@ export const CASE_STRAP_CLEAR = 2 / UNIT_MM;
 // 0.65 mm gap no strap passes.
 export const CASE_BAR_REACH = CASE_STRAP_CLEAR + CASE_SPRING_BAR_D / 2;  // bar CENTRE past the band wall (2.75 mm)
 // The lug tip derives from the BAR (pre-§190 the bar derived from the tip
-// and stood 0.45 mm proud of it — metal no drilled lug presents): the tip
-// keeps a third of the bore Ø of metal beyond the bore, stamped-lug
-// practice.
-export const CASE_LUG_TIP_WALL = CASE_SPRING_BAR_D / 3;                  // 0.5 mm beyond the bore
-export const CASE_LUG_REACH = CASE_BAR_REACH + CASE_SPRING_BAR_D / 2 + CASE_LUG_TIP_WALL; // lug TIP past the band wall (4.0 mm; tips-across = body Ø + 2×this)
+// and stood 0.45 mm proud of it — metal no drilled lug presents). §280 drills
+// the lug for the bar's TIP PIN, not its body, and the tip's wall is the
+// tear-out the pin's load needs (CASE_LUG_TIP_WALL, below the clearance
+// margin it depends on); the tip stands that wall beyond the hole.
 
 // --- READING SIZE IS DERIVED FROM ACUITY (§158) -----------------------------
 // A printed feature's size is not a taste question once you name the distance
@@ -885,6 +887,216 @@ export const STOCK_MIN_R10 = flatsR(STOCK_MIN_U, 10);  // 0.167 u — ⌀ 0.12 m
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by
                                   // the balance plane derivation itself.
+
+// --- §280 — THE LUG, SIZED BY ITS LOAD AND CUT AS ONE OUTLINE ---------------
+// Every number below is either the owner's (the strap's 20 mm, the lug's
+// T, the load and yield picked off the priced ladder) or derived from them.
+//
+// THE LOAD. ISO 6425's strap-attachment force, 200 N on the bar — a DIVER'S
+// standard and the only published strap load found; a dress alarm watch is
+// bound by none, so it is the conservative figure, chosen by the owner
+// (2026-10-15) over a dress-watch 100 N. The bar is a beam between the pair:
+// each lug reacts half.
+export const CASE_STRAP_PULL_N = 200;
+export const CASE_LUG_LOAD_N = CASE_STRAP_PULL_N / 2;
+// THE YIELD. 316L, and ANNEALED whatever the bar stock was: the weld anneals
+// the root, which is where the moment peaks. A band, the repo's rule for a
+// figure the movement cannot measure: ASTM A240's guaranteed minimum and the
+// handbook typical. The owner sized to the TYPICAL (2026-10-15), so the
+// strap load holds elastically on a representative lug, not on the worst
+// heat the standard permits; the record names the minimum's margin.
+export const CASE_STEEL_SIGMA_Y_BAND = Object.freeze({
+  low: 170e6, typical: 290e6,
+  why: '316L annealed: ASTM A240 Rp0.2 min 170 MPa; typical 290 MPa (handbook, annealed plate/bar)',
+});
+export const CASE_LUG_SIGMA_Y_PA = CASE_STEEL_SIGMA_Y_BAND.typical;
+export const CASE_LUG_TAU_Y_PA = CASE_LUG_SIGMA_Y_PA / Math.sqrt(3);   // von Mises, SPRING_TAU_Y_PA's rule
+// THE BAR'S TIP. A Ø1.5 mm double-flange spring bar (CASE_SPRING_BAR_D)
+// carries Ø0.8 mm tip pins — the catalogue figure for that body. The lug is
+// DRILLED THROUGH for the pin (the drilled-lug idiom: the bar is removed from
+// outside), the hole one CLEAR_MARGIN each side of the pin, the repo's one
+// clearance. §190 sized the lug's walls round the bar's 1.5 mm BODY, which no
+// drilled lug carries.
+export const CASE_SPRING_BAR_TIP_D = 0.8 / UNIT_MM;
+export const CASE_LUG_HOLE_D = CASE_SPRING_BAR_TIP_D + 2 * CLEAR_MARGIN;
+// THE EDGE BREAK. Every edge of the lug is rounded to this radius — the
+// owner's "no sharp angles", and the one finish number here (P4). It is
+// PRICED where it costs: the section modulus is the rounded section's own,
+// and the tear-out takes the shear planes as the thickness less both breaks.
+export const CASE_LUG_EDGE_R = 0.15 / UNIT_MM;
+const U_M = UNIT_MM * 1e-3;                                         // metres per unit, for the stress rows
+// THE TIP WALL is the tear-out: the pin drags a plug of wall out through two
+// shear planes, each e long and (T − 2·edge) thick, so
+//   e = F / (2 · τ_y · (T − 2·edge)),
+// floored at §50's sheet floor. The tip stands e beyond the hole.
+export const CASE_LUG_TIP_WALL = Math.max(STOCK_MIN_U,
+  CASE_LUG_LOAD_N / (2 * CASE_LUG_TAU_Y_PA * (CASE_LUG_T - 2 * CASE_LUG_EDGE_R) * U_M) / U_M);
+export const CASE_LUG_REACH = CASE_BAR_REACH + CASE_LUG_HOLE_D / 2 + CASE_LUG_TIP_WALL; // lug TIP past the band wall (tips-across = body Ø + 2×this)
+
+// The section modulus of a T-wide, W-deep section with every corner rounded
+// to rc, bending about the axis across T — integrated, because a closed form
+// for the rounded corners is one more place to drop a term.
+export const caseLugSectionZ = (T, W, rc) => {
+  const N = 2000, h = W / N, yc = W / 2 - rc;
+  let I = 0;
+  for (let i = 0; i < N; i++) {
+    const y = -W / 2 + (i + 0.5) * h, dy = Math.abs(y) - yc;
+    const b = dy > 0 ? T - 2 * (rc - Math.sqrt(Math.max(rc * rc - dy * dy, 0))) : T;
+    I += b * y * y * h;
+  }
+  return I / (W / 2);
+};
+
+// caseLugPlan — the lug's SIDE PROFILE in its own (u, z) plane: u along the
+// pair axis outward from the case centre, z the world's (the dial is −z, the
+// wrist +z). The solid extrudes it CASE_LUG_T across the strap with the edge
+// break as its bevel; the line tier draws the same outline; the probe reads
+// the metal against it. Every quantity is solved here, once:
+//   · THE BAR stands where §190 put it radially (CASE_BAR_REACH past the
+//     band wall) and DROPS toward the wrist until the lug's lowest metal is
+//     flush with the back plane (zBack) — the §261 ratchet measures the case
+//     WITH its lugs, so a lug below the back would make the watch deeper. The
+//     band wall stays the governing metal for the wrap gap while the bar's
+//     centre is at or above the band's back edge (zWallHi); asserted.
+//   · THE SECTION's height W is the lightest that carries CASE_LUG_LOAD_N at
+//     CASE_LUG_SIGMA_Y_PA. The critical section is where the lug leaves the
+//     band at its OUTBOARD face (surfOut — the band is a cylinder, so across
+//     the lug's width it meets the wall at two depths; the outboard one is
+//     the first, which makes the arm the longest). The strap pulls anywhere
+//     from radially out to straight down at the wrist (it wraps the wrist
+//     under the case and cannot pull through it), so the worst arm is the
+//     larger of the bar's u and z offsets from that section.
+//   · THE PATH: the centreline leaves the band sloped toward the wrist,
+//     straight, then one arc of radius W returns it horizontal at the end's
+//     centre. The curve is CUT, not bent (a forged and machined lug carries
+//     no forming strain), so the one limit is geometric: R = W leaves the
+//     inside edge a radius of W/2 — the same radius as the end — so every
+//     curve on the outline is one radius.
+//   · THE END is a full round of radius W/2, centred so it stands
+//     CASE_LUG_TIP_WALL beyond the hole: lug-to-lug is the tip, and the tip
+//     is the hole plus the tear-out.
+//   · THE WELD: concave fillets where both edges meet the band, radius
+//     surfIn − surfOut — the band's own sag across the lug's width — so the
+//     fillet's foot lands on the wall at the outboard face and is buried at
+//     the inboard one, and the first section wholly clear of the band is the
+//     fillet's toe. The root is centred on the wall's span: the two feet
+//     stand equal metal from the wall's two edges (zWallLo, zWallHi).
+//   · THE EMBED: inboard of the wall the outline is closed at caseLugRootR,
+//     the welded foot sunk into the band (TODO 209's rule kept).
+// Returns the outline (closed, no repeated end point), the hole, the bar,
+// and every row the instruments hold; `warn` lists any law that failed.
+export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs = 16 }) {
+  const warn = [];
+  const T = CASE_LUG_T, rc = CASE_LUG_EDGE_R, F = CASE_LUG_LOAD_N;
+  const a = Math.abs(off);
+  const surfOut = Math.sqrt(rOut * rOut - (a + T / 2) ** 2);
+  const surfIn = Math.sqrt(rOut * rOut - (a - T / 2) ** 2);
+  const uBar = rOut + CASE_BAR_REACH, uTip = rOut + CASE_LUG_REACH;
+  const armU = uBar - surfOut;
+  const sigmaAt = (W, arm) => F * arm * U_M / (caseLugSectionZ(T, W, rc) * U_M ** 3);
+  // The lightest W whose root stress is the yield — bisection, monotone in W.
+  let lo = 2 * rc + CASE_LUG_HOLE_D, hi = 40 / UNIT_MM;
+  if (sigmaAt(lo, armU) <= CASE_LUG_SIGMA_Y_PA) hi = lo;
+  for (let i = 0; i < 200 && hi - lo > 1e-12; i++) {
+    const m = (lo + hi) / 2;
+    if (sigmaAt(m, armU) > CASE_LUG_SIGMA_Y_PA) lo = m; else hi = m;
+  }
+  const W = hi, R = W;
+  const zB = zBack - W / 2;
+  if (!(zB <= zWallHi))
+    warn.push(`bar centre ${zB.toFixed(4)} below the band's back edge ${zWallHi.toFixed(4)} — the wrap gap would be governed by the corner, which the bar's station does not solve`);
+  const uC = uTip - W / 2;
+  if (!(uBar + CASE_LUG_HOLE_D / 2 <= uC + W / 2 - CASE_LUG_TIP_WALL + 1e-9))
+    warn.push('the hole does not keep its tip wall inside the end round');
+  const L = uC - surfOut;
+  // Drop as a function of the slope α: straight then one arc to horizontal.
+  const dropAt = (al) => (L - R * Math.sin(al)) * Math.tan(al) + R * (1 - Math.cos(al));
+  const alphaFor = (dz) => {
+    let l = 0, h = Math.asin(Math.min(1, L / R));
+    if (dz >= dropAt(h)) { warn.push(`a drop of ${dz.toFixed(3)} exceeds the ${dropAt(h).toFixed(3)} one arc of radius W can make in ${L.toFixed(3)}`); return h; }
+    for (let i = 0; i < 200; i++) { const m = (l + h) / 2; if (dropAt(m) < dz) l = m; else h = m; }
+    return (l + h) / 2;
+  };
+  // The fillet corners for a root height zR, and the feet they put on the wall.
+  const rf = surfIn - surfOut;
+  const feet = (zR) => {
+    const al = alphaFor(zB - zR), c = Math.cos(al), s = Math.sin(al);
+    const kTop = zR - (W / 2) / c, kBot = zR + (W / 2) / c;
+    const gTop = Math.PI / 2 + al, gBot = Math.PI / 2 - al;          // the air-side angles at each corner
+    const dTop = rf / Math.tan(gTop / 2), dBot = rf / Math.tan(gBot / 2);
+    return { al, kTop, kBot, dTop, dBot, footTop: kTop - dTop, footBot: kBot + dBot };
+  };
+  // Centre the root on the wall: equal metal beyond each foot.
+  let zl = zWallLo, zh = zB;
+  for (let i = 0; i < 200; i++) {
+    const m = (zl + zh) / 2, f = feet(m);
+    if ((f.footTop - zWallLo) < (zWallHi - f.footBot)) zl = m; else zh = m;
+  }
+  const zR = (zl + zh) / 2;
+  const fe = feet(zR);
+  const al = fe.al, ca = Math.cos(al), sa = Math.sin(al);
+  const footMargin = Math.min(fe.footTop - zWallLo, zWallHi - fe.footBot);
+  if (!(footMargin >= 0)) warn.push(`the weld's feet overrun the band's wall by ${(-footMargin).toFixed(4)}`);
+  // The centreline: straight from (surfOut, zR) along t = (cos α, sin α) to
+  // the arc's start Pa, then the arc (centre on the dial side) to (uC, zB).
+  const sLen = (L - R * sa) / ca;
+  const Pa = [surfOut + sLen * ca, zR + sLen * sa];
+  const t = [ca, sa], n = [-sa, ca];                                  // n points to the wrist side
+  const Ac = [Pa[0] - n[0] * R, Pa[1] - n[1] * R];                    // the arc's centre
+  // the toes must land on the straight, before the arc
+  const toeTopU = surfOut + fe.dTop * ca, toeBotU = surfOut + fe.dBot * ca;
+  const edgeTopArcU = Pa[0] - n[0] * W / 2, edgeBotArcU = Pa[0] + n[0] * W / 2;
+  if (!(toeTopU <= edgeTopArcU && toeBotU <= edgeBotArcU)) warn.push('a weld fillet reaches past the straight onto the bend');
+  // Build the outline.
+  const out = [];
+  const push = (p) => { const q = out[out.length - 1]; if (!q || Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-9) out.push(p); };
+  const arc = (c, r, a0, a1, segs) => { for (let i = 0; i <= segs; i++) { const th = a0 + (a1 - a0) * i / segs; push([c[0] + r * Math.cos(th), c[1] + r * Math.sin(th)]); } };
+  const rootU = caseLugRootR(a, rOut, rBore);
+  // top side, root to tip: embed → top foot → fillet → top edge → inner arc → end
+  const kTop = [surfOut, fe.kTop], kBot = [surfOut, fe.kBot];
+  const footTop = [surfOut, fe.footTop], footBot = [surfOut, fe.footBot];
+  push([rootU, fe.footBot]); push([rootU, fe.footTop]); push(footTop);
+  // A fillet is the SHORT arc between its two tangent points (concave into
+  // the corner); every other arc is given with its sweep explicitly.
+  const arcShort = (c, r, p0, p1, segs) => {
+    const a0 = Math.atan2(p0[1] - c[1], p0[0] - c[0]);
+    let d = Math.atan2(p1[1] - c[1], p1[0] - c[0]) - a0;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d <= -Math.PI) d += 2 * Math.PI;
+    arc(c, r, a0, a0 + d, segs);
+  };
+  // Each fillet is tangent to the wall at its foot, so its centre stands rf
+  // into the air from the foot, level with it.
+  arcShort([footTop[0] + rf, footTop[1]], rf, footTop, [kTop[0] + t[0] * fe.dTop, kTop[1] + t[1] * fe.dTop], arcSegs);
+  // top edge: straight to the arc, then the inside of the bend (radius W/2)
+  // round to horizontal — the arc's centre is on the dial side, so the
+  // centreline's end is straight below it (+π/2) and Pa sits at π/2 + α.
+  const thA = Math.PI / 2 + al;
+  arc(Ac, R - W / 2, thA, Math.PI / 2, arcSegs);
+  // the end: half round about (uC, zB), radius W/2, top → tip → bottom
+  arc([uC, zB], W / 2, -Math.PI / 2, Math.PI / 2, 2 * arcSegs);
+  // bottom edge: the outside of the bend back to the straight, then the fillet
+  arc(Ac, R + W / 2, Math.PI / 2, thA, arcSegs);
+  arcShort([footBot[0] + rf, footBot[1]], rf, [kBot[0] + t[0] * fe.dBot, kBot[1] + t[1] * fe.dBot], footBot, arcSegs);
+  push(footBot);
+  if (Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) < 1e-9) out.pop();
+  // The rows the instruments hold.
+  const sigma = sigmaAt(W, Math.max(armU, zB - zR));
+  const tearTau = F / (2 * CASE_LUG_TIP_WALL * (T - 2 * rc) * U_M * U_M);
+  const bearing = F / (CASE_SPRING_BAR_TIP_D * T * U_M * U_M);
+  let zMax = -Infinity; for (const p of out) zMax = Math.max(zMax, p[1]);
+  if (!(zB - zR <= armU)) warn.push(`the drop ${(zB - zR).toFixed(3)} outgrew the radial arm ${armU.toFixed(3)} — the section was solved on the wrong arm`);
+  if (!(bearing <= CASE_LUG_SIGMA_Y_PA)) warn.push(`the tip pin bears ${(bearing / 1e6).toFixed(1)} MPa on its hole, over the yield`);
+  return {
+    W, T, R, rf, alpha: al, zR, zB, uBar, uTip, uC, surfOut, surfIn, rootU,
+    outline: out, hole: { u: uBar, z: zB, r: CASE_LUG_HOLE_D / 2 },
+    rows: {
+      armU, drop: zB - zR, sigma, sigmaY: CASE_LUG_SIGMA_Y_PA, sigmaYLow: CASE_STEEL_SIGMA_Y_BAND.low,
+      tearTau, tauY: CASE_LUG_TAU_Y_PA, bearing, lowest: zMax, zBack, footMargin,
+    },
+    warn,
+  };
+}
 // A working contact's tolerance: the tessellation-sag scale the finish
 // already accepts as invisible (geometry.js RADIAL_SEGS: silhouette sagitta
 // ≈ 0.03 at the largest radii). A truthfully modelled contact can miss exact

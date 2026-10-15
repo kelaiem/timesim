@@ -2,8 +2,8 @@
 // declaration, and the §190 wrap gap measured off the analytic bar surface.
 //
 // ACCEPTANCE (exit 2 on failure). §190 moved the whole lug/bar stock into
-// layout.js (CASE_LUG_T/W/ROOT/Z_OFF, CASE_SPRING_BAR_D, CASE_STRAP_CLEAR →
-// CASE_BAR_REACH → CASE_LUG_REACH), so this probe imports that one
+// layout.js (CASE_LUG_T/ROOT, CASE_SPRING_BAR_D, CASE_STRAP_CLEAR →
+// CASE_BAR_REACH → CASE_LUG_REACH, and since §280 caseLugPlan), so this probe imports that one
 // declaration instead of hand-copying it — the pre-§190 copy (`1.7 mm`) is
 // exactly the drift this file existed to tripwire, and now cannot drift
 // because it does not exist. What is still held: the METAL must present the
@@ -25,9 +25,22 @@
 //    skill's "vertices mistaken for the surface" trap, measured live in
 //    this probe's own old per-bar rMin). The case side is triangles, exact
 //    for the flat faces and conservative-by-sagitta for the faceted band.
-//    CONTROL: the same machinery pointed at the EXCLUDED lugs must read
-//    ≈ −bar radius (the bar's ends abut the lug facing walls — a read that
-//    cannot see that contact is not measuring distance).
+//    CONTROL (§280): the same machinery pointed at the LUGS along the tip
+//    pin's own axis, inside its drilled hole, must read the hole wall one
+//    CLEAR_MARGIN off the pin — the clearance it is drilled to. (§190's
+//    control read the bar body's abutment at ≈ −bar radius; a drilled lug
+//    puts air on the axis there, and the old 0.5 ring filter let the tips'
+//    rings into the axis fit, which read a 2.185 u bar.)
+// 4. §280 THE BACK PLANE: the lug's lowest metal at or above the case back's
+//    face — §261's ratchet measures the case WITH its lugs — and the bar's
+//    height above that plane, the number the downturn exists to lower.
+// 5. §280 THE SECTION off the metal: T across the strap and W across the
+//    end's centre, against layout.js's caseLugPlan (read off the case's own
+//    userData, so the probe holds the metal to the plan the build used).
+// 6. §280 THE LOAD ROWS: root bending, tear-out behind the pin and bearing
+//    in the hole, each held under its yield (CASE_LUG_SIGMA_Y_PA, the owner's
+//    pick of 316L's typical annealed figure) and the root printed against
+//    the band's guaranteed minimum too.
 //
 // What this is NOT: no other instrument touches the lugs at all.
 //
@@ -40,7 +53,8 @@ import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { UNIT_MM, CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_LUG_REACH,
-         CASE_STRAP_CLEAR, CASE_SPRING_BAR_D } from '../src/layout.js';
+         CASE_STRAP_CLEAR, CASE_SPRING_BAR_D, CASE_LUG_T, CASE_LUG_EDGE_R,
+         CASE_LUG_HOLE_D, CASE_SPRING_BAR_TIP_D, CLEAR_MARGIN, caseLugPlan } from '../src/layout.js';
 const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
 const srv = spawn('python3', ['-m', 'http.server', '8516', '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 1200));
@@ -50,7 +64,7 @@ page.on('pageerror', (e) => console.log('PAGEERROR', String(e)));
 await page.goto('http://127.0.0.1:8516/index.html', { waitUntil: 'load', timeout: 120000 });
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 120000 });
 
-const res = await page.evaluate(async () => {
+const res = await page.evaluate(async ({ T, rc }) => {
   const THREE = await import('three');
   const clock = window.__clock;
   const v = new THREE.Vector3();
@@ -156,7 +170,11 @@ const res = await page.evaluate(async () => {
       return { t: d.dot(axis), a: d.dot(u1), b: d.dot(u2) };
     });
     const rRough = Math.max(...proj.map((p) => Math.hypot(p.a, p.b)));
-    const ring = proj.filter((p) => Math.hypot(p.a, p.b) > 0.5 * rRough);
+    // §280: the bar is turned — a Ø1.5 body and a Ø0.8 tip pin each end —
+    // so the fit takes the BODY's rings only (the tips' sit at 0.53 of its
+    // radius, which the old 0.5 cut let through and the fit read as a
+    // 2.185 u bar).
+    const ring = proj.filter((p) => Math.hypot(p.a, p.b) > 0.75 * rRough);
     let Saa = 0, Sab = 0, Sa = 0, Sbb = 0, Sb = 0, N = 0, Sar = 0, Sbr = 0, Sr = 0;
     for (const { a, b: bb } of ring) {
       const r2 = a * a + bb * bb;
@@ -177,14 +195,17 @@ const res = await page.evaluate(async () => {
     }
     const cx = -sol[0] / 2, cy = -sol[1] / 2;
     const centre = c.clone().addScaledVector(u1, cx).addScaledVector(u2, cy);
-    let h = 0, r = 0;
+    let h = 0, r = 0, hTip = 0, rTip = Infinity;
     for (const p of b.pts) {
       const d = V(p).sub(centre);
       const t = d.dot(axis);
-      h = Math.max(h, Math.abs(t));
-      r = Math.max(r, Math.sqrt(Math.max(d.lengthSq() - t * t, 0)));
+      const rr = Math.sqrt(Math.max(d.lengthSq() - t * t, 0));
+      r = Math.max(r, rr);
+      hTip = Math.max(hTip, Math.abs(t));
+      if (rr > 0.75 * rRough) h = Math.max(h, Math.abs(t));   // the BODY's half-length
+      else if (rr > 1e-6) rTip = Math.min(rTip, rr);
     }
-    return { c: centre, axis, h, r };
+    return { c: centre, axis, h, r, hTip, rTip };
   };
   // Closest point on triangle (Ericson, Real-Time Collision Detection).
   const closestOnTri = (p, a, b, c, out) => {
@@ -250,21 +271,47 @@ const res = await page.evaluate(async () => {
   const wrap = bars.map((_, i) => {
     const bar = barAnalytic(B[i]);
     const toCase = segToMeshes(bar, caseMeshes);
-    const toLugs = segToMeshes(bar, lugs);       // CONTROL — must read the abutment
+    // CONTROL (§280) — the same machinery pointed at the LUGS, along the tip
+    // pin's own axis where it runs in its drilled hole (clear of the edge
+    // breaks at both faces): it must read the hole wall one CLEAR_MARGIN off
+    // the pin, which is the clearance the hole is drilled to. A read that
+    // cannot see that wall is not measuring distance. (Pre-§280 the control
+    // read the body's abutment, ≈ −barR; a drilled lug puts air on the axis
+    // there.)
+    const tipSeg = { c: bar.c.clone().addScaledVector(bar.axis, bar.h + T / 2), axis: bar.axis, h: T / 2 - rc - 0.05 };
+    const toHole = segToMeshes(tipSeg, lugs, 64);
     return {
-      barR: bar.r,
+      barR: bar.r, tipR: bar.rTip, barZ: bar.c.z, body: 2 * bar.h, tipLen: bar.hTip - bar.h,
       gap: toCase.dist - bar.r, governs: toCase.mesh,
-      lugGap: toLugs.dist - bar.r,
+      holeGap: toHole.dist - bar.rTip,
     };
   });
+  // The SECTION read off the metal (§280): the lug's height W across its
+  // end's centre (the plan's uC), and its thickness T along the strap axis.
+  // A section read at the end and the declared T across the whole body are
+  // what the outline law promises are constant along the path.
+  let backMax = -Infinity;
+  for (const m of caseMeshes) if (m.name === 'caseBack') {
+    const bb = new THREE.Box3().setFromObject(m); backMax = Math.max(backMax, bb.max.z);
+  }
+  const sections = L.map((l) => {
+    const along = l.pts.map(([px, py, pz]) => [Math.abs(px * ax + py * ay), pz, px * -ay + py * ax]);
+    const uMax = Math.max(...along.map((q) => q[0]));
+    const thick = Math.max(...along.map((q) => q[2])) - Math.min(...along.map((q) => q[2]));
+    return { uMax, thick, zMax: l.zMax, along };
+  });
+  let caseG = null; clock.scene.traverse((o) => { if (o.name === 'case') caseG = o; });
+  const plans = (caseG?.userData.lugPlans ?? []).map((pl) => ({ W: pl.W, uC: pl.uC, zB: pl.zB, zR: pl.zR, alpha: pl.alpha, rows: pl.rows, warn: pl.warn }));
   return {
+    plans, backMax,
+    sectionPts: sections.map((sx) => ({ thick: sx.thick, zMax: sx.zMax, pts: sx.along.map((q) => [q[0], q[1]]) })),
     nLugs: lugs.length, nBars: bars.length, nCase: caseMeshes.length,
     caseNames: [...new Set(caseMeshes.map((m) => m.name))],
     lugR: L.map((l) => ({ rMin: +l.rMin.toFixed(4), rMax: +l.rMax.toFixed(4), zMin: +l.zMin.toFixed(3), zMax: +l.zMax.toFixed(3) })),
     barR: B.map((b) => ({ rMin: +b.rMin.toFixed(4), rMax: +b.rMax.toFixed(4), zMin: +b.zMin.toFixed(3), zMax: +b.zMax.toFixed(3) })),
     tipsAcross, interiors, wrap,
   };
-});
+}, { T: CASE_LUG_T, rc: CASE_LUG_EDGE_R });
 
 const MM = UNIT_MM;
 let ok = true;
@@ -294,13 +341,57 @@ for (const w of res.wrap) {
   console.log(`\nwrap gap MEASURED: ${w.gap.toFixed(4)} u = ${(w.gap * MM).toFixed(3)} mm  (spec ≥ ${(CASE_STRAP_CLEAR * MM).toFixed(1)} mm, governed by ${w.governs})`);
   if (Math.abs(w.barR - barRDecl) > 0.02) { ok = false; console.log(`WRAP FAIL: recovered bar radius ${w.barR.toFixed(4)} u does not match CASE_SPRING_BAR_D/2 = ${barRDecl.toFixed(4)} u — the axis fit read something that is not the bar`); }
   if (w.gap < CASE_STRAP_CLEAR - 0.02) { ok = false; console.log(`WRAP FAIL: a strap thicker than ${(w.gap * MM).toFixed(2)} mm cannot wrap this bar — the case metal is inside the ${(CASE_STRAP_CLEAR * MM).toFixed(1)} mm envelope`); }
-  // CONTROL: the excluded lugs ABUT the bar's ends, so the same machinery
-  // pointed at them must read ≈ −barR (contact at the axis endpoints). A
-  // clean wrap number with a dead control is a probe reading nothing.
-  if (Math.abs(w.lugGap + w.barR) > 0.1) { ok = false; console.log(`WRAP CONTROL FAIL: lug abutment read ${w.lugGap.toFixed(4)} u, expected ≈ ${(-w.barR).toFixed(4)} — the distance machinery is not seeing contact that exists`); }
-  else console.log(`wrap CONTROL PASS: lug abutment reads ${w.lugGap.toFixed(4)} u (≈ −barR = ${(-w.barR).toFixed(4)})`);
+  // CONTROL (§280): the tip pin in its drilled hole must read the hole wall
+  // one CLEAR_MARGIN off (the hole's drilled clearance), to the hole's facet
+  // sagitta. A clean wrap number with a dead control is a probe reading nothing.
+  const tipRDecl = CASE_SPRING_BAR_TIP_D / 2, holeGapDecl = CASE_LUG_HOLE_D / 2 - tipRDecl;
+  if (Math.abs(w.tipR - tipRDecl) > 0.02) { ok = false; console.log(`WRAP FAIL: recovered tip radius ${w.tipR.toFixed(4)} u, declared ${tipRDecl.toFixed(4)} u`); }
+  if (Math.abs(w.holeGap - holeGapDecl) > 0.02) { ok = false; console.log(`WRAP CONTROL FAIL: the tip pin reads ${w.holeGap.toFixed(4)} u off its hole wall, drilled at ${holeGapDecl.toFixed(4)} — the distance machinery is not seeing the hole that exists`); }
+  else console.log(`wrap CONTROL PASS: the tip pin reads ${w.holeGap.toFixed(4)} u off its hole wall (drilled at CLEAR_MARGIN = ${holeGapDecl.toFixed(4)})`);
 }
 if (res.nCase < 3) { ok = false; console.log(`WRAP CONTROL FAIL: only ${res.nCase} case meshes enrolled (${res.caseNames.join(', ')}) — the gap was measured against too little metal`); }
+
+
+// 4. §280 — WHERE THE STRAP LEAVES, and the back plane the lug may not pass.
+// The §261 height ratchet measures the case WITH its lugs, so the lug's
+// lowest metal at or above the back plane is what keeps the cased depth
+// where it is; the bar's height above that plane is the wearability number.
+console.log('');
+if (!(res.plans.length === 2)) { ok = false; console.log(`PLAN FAIL: ${res.plans.length} lug plans on the case (expected one per pair)`); }
+for (const pl of res.plans) for (const w of pl.warn) { ok = false; console.log(`PLAN FAIL: ${w}`); }
+const back = res.backMax;
+for (const sx of res.sectionPts) {
+  if (sx.zMax > back + 1e-6) { ok = false; console.log(`BACK FAIL: a lug reaches ${((sx.zMax - back) * MM).toFixed(4)} mm past the back plane — the cased depth grows`); }
+}
+console.log(`lowest lug metal ${((back - Math.max(...res.sectionPts.map((s) => s.zMax))) * MM).toFixed(4)} mm above the back plane (≥ 0 holds the §261 ratchet)`);
+for (const w of res.wrap)
+  console.log(`spring bar centre ${((back - w.barZ) * MM).toFixed(3)} mm above the back plane (§190's flat lug: 4.093) — where the strap leaves the case`);
+
+// 5. §280 — THE SECTION off the metal: T across the strap, W across the
+// end's centre, both against the plan. The outline is one band of constant
+// width round its centreline, so the end's height and the declared T are
+// the section everywhere.
+const pl0 = res.plans[0];
+for (const sx of res.sectionPts) {
+  const dT = Math.abs(sx.thick - CASE_LUG_T);
+  const atC = sx.pts.filter(([u]) => Math.abs(u - pl0.uC) < 0.05).map(([, z]) => z);
+  const Wm = atC.length ? Math.max(...atC) - Math.min(...atC) : NaN;
+  console.log(`section MEASURED: T ${(sx.thick * MM).toFixed(4)} mm (declared ${(CASE_LUG_T * MM).toFixed(4)}), W at the end ${(Wm * MM).toFixed(4)} mm (solved ${(pl0.W * MM).toFixed(4)})`);
+  if (dT > 0.01) { ok = false; console.log(`SECTION FAIL: the lug is not CASE_LUG_T thick`); }
+  if (!(Math.abs(Wm - pl0.W) < 0.05)) { ok = false; console.log(`SECTION FAIL: the lug's end is not the solved W`); }
+}
+
+// 6. §280 — THE LOAD ROWS, re-derived here from the plan's own numbers and
+// held: bending at the root, tear-out behind the pin, bearing in the hole.
+if (pl0) {
+  const r = pl0.rows;
+  const mpa = (x) => (x / 1e6).toFixed(1);
+  console.log(`root bending ${mpa(r.sigma)} MPa at a ${(r.armU * MM).toFixed(3)} mm arm (yield ${mpa(r.sigmaY)} typical; ${mpa(r.sigmaYLow)} minimum — ${(r.sigma / r.sigmaYLow).toFixed(2)}× the minimum)`);
+  console.log(`tear-out ${mpa(r.tearTau)} MPa (shear yield ${mpa(r.tauY)}); bearing ${mpa(r.bearing)} MPa; slope ${(pl0.alpha * 180 / Math.PI).toFixed(1)}°, drop ${(r.drop * MM).toFixed(3)} mm`);
+  if (!(r.sigma <= r.sigmaY * (1 + 1e-9))) { ok = false; console.log('LOAD FAIL: the root bends past the yield'); }
+  if (!(r.tearTau <= r.tauY * (1 + 1e-9))) { ok = false; console.log('LOAD FAIL: the tip tears out'); }
+  if (!(r.bearing <= r.sigmaY)) { ok = false; console.log('LOAD FAIL: the pin crushes its hole'); }
+}
 
 await browser.close(); srv.kill();
 process.exit(ok ? 0 : 2);
