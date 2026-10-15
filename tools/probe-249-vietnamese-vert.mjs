@@ -36,7 +36,7 @@
 // one run — Vietnamese's two directions from a single mark each. The controls
 // are the same three, asked of Latvian's own letters.
 //
-// Usage: node tools/probe-249-vietnamese-vert.mjs [--script vi|lv|hu]   (needs a Playwright Chromium)
+// Usage: node tools/probe-249-vietnamese-vert.mjs [--script vi|lv|hu|cs]   (needs a Playwright Chromium)
 import { chromium } from 'playwright';
 
 const SCRIPT = process.argv.includes('--script') ? process.argv[process.argv.indexOf('--script') + 1] : 'vi';
@@ -108,6 +108,22 @@ const SCRIPTS = {
     lowerKeys: ['markLower', 'below', 'real'],
     faceRun: 'Ő Ű Á É főrugó gátkerék',
     pairs: [['á', 'a'], ['é', 'e'], ['ő', 'o'], ['ű', 'u'], ['ö', 'o'], ['Ő', 'O'], ['Ű', 'U'], ['Á', 'A'], ['É', 'E']],
+  },
+  // §273 — Czech: ONE mark above, never stacked, never below, but the caron over
+  // a CAPITAL (Č Ř Š Ž Ě Ň Ť Ď) plus the ring on Ů is Latvian's case, so the
+  // question is whether Czech joins Latvian and Hungarian on the shared 1.3 line.
+  cs: {
+    name: 'Czech carons, acutes and the ring',
+    samples: {
+      markLower: 'č ď ě ň ř š ť ž á é í ó ú ý ů',   // one mark above the x-height
+      markUpper: 'Č Ď Ě Ň Ř Š Ť Ž Á É Í Ó Ú Ý Ů',   // the same marks above the CAP height
+      below:     'gy ty ny ly gp',                  // nothing below but the descenders
+      real:      'nepokoj · vlásek · krokové kolo · řetízek',
+      realUpper: 'ŠVÝCARSKÝ KOTVOVÝ KROK · ŘETÍZEK · ČTVRTÉ KOLO · ŮŽEK',
+    },
+    lowerKeys: ['markLower', 'below', 'real'],
+    faceRun: 'Č Ř Š Ž Ě Ů nepokoj vlásek',
+    pairs: [['č', 'c'], ['ř', 'r'], ['š', 's'], ['ž', 'z'], ['ě', 'e'], ['ů', 'u'], ['ň', 'n'], ['ď', 'd'], ['ť', 't'], ['Č', 'C'], ['Ř', 'R'], ['Š', 'S'], ['Ž', 'Z'], ['Ě', 'E'], ['Ů', 'U']],
   },
 };
 if (!SCRIPTS[SCRIPT]) { console.error(`unknown --script ${SCRIPT}: ${Object.keys(SCRIPTS).join(', ')}`); process.exit(2); }

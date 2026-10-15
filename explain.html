@@ -62,12 +62,19 @@
      carries, and nothing sits below the baseline. The same probe
      (`--script hu`), same face, same failing controls: Hungarian inks no more
      than Latvian anywhere (13 against 13 at the 10 px sites, 14 against 15 at
-     .readout), so it joins the shared rule on Latvian's grounds. */
-  html:lang(vi) header .stamp, html:lang(lv) header .stamp, html:lang(hu) header .stamp,
-  html:lang(vi) details.mech > summary .where, html:lang(lv) details.mech > summary .where, html:lang(hu) details.mech > summary .where,
-  html:lang(vi) .fig-no, html:lang(lv) .fig-no, html:lang(hu) .fig-no,
-  html:lang(vi) .readout, html:lang(lv) .readout, html:lang(hu) .readout,
-  html:lang(vi) .chip, html:lang(lv) .chip, html:lang(hu) .chip { line-height: 1.3; }
+     .readout), so it joins the shared rule on Latvian's grounds.
+     §273 — Czech is Latvian's mark class (a caron over a capital, Č Š Ž Ř Ě Ň
+     Ť Ď, plus Ů's ring and the acutes) with nothing below the baseline. The
+     same probe (`--script cs`), same face, same failing controls (the sans
+     stack identifies no face here; `--script lv` fails the same six): Czech
+     inks no more than Latvian anywhere (13 against 13 at the 10 px sites, 14
+     against 15 at .readout), so it joins the shared rule on Latvian's grounds,
+     and the numbers are no more evidence than Latvian's were. */
+  html:lang(vi) header .stamp, html:lang(lv) header .stamp, html:lang(hu) header .stamp, html:lang(cs) header .stamp,
+  html:lang(vi) details.mech > summary .where, html:lang(lv) details.mech > summary .where, html:lang(hu) details.mech > summary .where, html:lang(cs) details.mech > summary .where,
+  html:lang(vi) .fig-no, html:lang(lv) .fig-no, html:lang(hu) .fig-no, html:lang(cs) .fig-no,
+  html:lang(vi) .readout, html:lang(lv) .readout, html:lang(hu) .readout, html:lang(cs) .readout,
+  html:lang(vi) .chip, html:lang(lv) .chip, html:lang(hu) .chip, html:lang(cs) .chip { line-height: 1.3; }
   :root {
     --bg: #0b0d10;
     --panel: rgba(15,17,20,0.72);

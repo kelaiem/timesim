@@ -288,6 +288,9 @@ const MARKS = {
   // ending hyphenated onto a number (18 000-ből) stops the parse at the
   // hyphen, so the value reads correctly.
   hu: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
+  // §273 — cs-CZ: Russian's row, measured in Chromium 141 and Node's ICU alike
+  // (30,0 · 0,024 · 1 000 · 18 000, a U+00A0 group on four digits).
+  cs: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -398,6 +401,12 @@ const HONESTY = {
   // noun: the credit line's "AI model" is «MI-modellje», which carries no
   // -ez-. Simulated is the loan szimulál / szimuláció.
   hu:        { m: /modellez/i, s: /szimul/i },
+  // §273 — the participle stem modelov- (modelovaný, modelováno, modelování),
+  // NEVER the bare noun: Czech says «model» for the credit line's "Anthropic's AI
+  // model" (and «modely» for the tagline's 3D asset files), which carry no -ov-.
+  // Simulated is simulov- (simulovaný, simulováno, simulace is a noun and not
+  // counted: the pair is the participles the glossary entry declares).
+  cs:        { m: /modelov/i, s: /simul/i },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };
@@ -506,8 +515,12 @@ if (MODE === 'extract') {
   const isInvariant = (k) => !/[a-zA-ZÀ-ɏ一-鿿]/.test(
     k.replace(/<code>.*?<\/code>/g, ' ').replace(/<[^>]+>/g, ' '));
 
+  // §273 — locales whose row does not declare the explainer: the glossary entry that
+  // HOLDS their honesty stems is on that page, so the stems cannot be verified against it.
+  const noGlossary = new Set();
   for (const target of TARGETS) {
     const { doc, items, tables, numbers, errors, roster } = await readPage(target);
+    for (const r of roster) if (!r.surfaces.includes('explainer')) noGlossary.add(r.code);
     console.log(`\n══ ${doc} — numbers: ${numbers === 'source' ? 'SOURCE form (identifiers quoted)' : 'QUANTITIES (localized, checked by value)'}`);
     if (numbers === 'source') sourceChecked = true;
     numbersChecked.push(numbers === 'source'
@@ -785,9 +798,14 @@ if (MODE === 'extract') {
   // The table is only as good as its control, so the run says how much of it
   // was verified rather than leaving that to be assumed.
   const rows = Object.keys(HONESTY).filter((l) => l !== 'en');
-  const unver = rows.filter((l) => !vocabVerified.has(l));
+  const unverifiable = rows.filter((l) => !vocabVerified.has(l) && noGlossary.has(l));
+  const unver = rows.filter((l) => !vocabVerified.has(l) && !noGlossary.has(l));
   const whole = !PAGE_ARG;
-  console.log(`\n══ honesty vocabulary: ${rows.length - unver.length}/${rows.length} HONESTY rows verified against a page's own "${GLOSS_KEY}" glossary`);
+  console.log(`\n══ honesty vocabulary: ${rows.length - unver.length - unverifiable.length}/${rows.length} HONESTY rows verified against a page's own "${GLOSS_KEY}" glossary`);
+  // A locale that does not declare the explainer has no glossary page to hold its stems to.
+  // That is REPORTED, not failed: the row still gates every translated block it can read
+  // (the primer, the chrome probe), and it becomes verifiable the day the explainer is declared.
+  if (unverifiable.length) console.log(`   unverifiable (explainer undeclared, so its glossary page is not translated): ${unverifiable.join(', ')} — stems gate the blocks they can read`);
   if (unver.length) {
     console.log(`   unverified: ${unver.join(', ')}${whole ? '  <-- FAIL' : '  (single-page run — not a failure)'}`);
     if (whole) failed++;

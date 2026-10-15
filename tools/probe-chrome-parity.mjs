@@ -16,6 +16,8 @@
 //              has and another lacks is exactly the "added since that table was built" case the
 //              coverage probe's header calls the blind spot of building from an older locale.
 //   · FILLED   a value is a non-empty string.
+//   · EXEMPT   the one conditional key, UNTRANSLATED_NOTICE, which only a locale with an undeclared
+//              page shows (and explain-i18n --check requires of exactly those locales).
 //
 // It does NOT say a key is on the page or that its display site runs t() — that is the browser
 // probe's measurement, still run by hand at a locale landing. It says only that the tables
@@ -37,11 +39,16 @@ Object.defineProperty(globalThis, 'navigator', { value: { languages: ['en'], lan
 globalThis.document = { documentElement: el, querySelector() { return null; }, querySelectorAll() { return []; }, addEventListener() {}, createElement() { return el; }, body: el };
 globalThis.window = globalThis; globalThis.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} }; globalThis.addEventListener = () => {};
 const { TABLES, LOCALES } = await import(join(ROOT, 'src/i18n.js'));
+// ONE key is conditional, not essential: the untranslated-page notice (src/page-i18n.js) is
+// shown only by a locale that leaves a page undeclared (§274), so only such a locale carries
+// it, and explain-i18n --check fails any undeclared locale whose table lacks it. Parity must
+// not demand it of the locales that never show it. It is exempted by name, not by count.
+const { UNTRANSLATED_NOTICE } = await import(join(ROOT, 'src/page-i18n.js'));
 
 // → { missing: {lang: [key]}, blank: {lang: [key]}, union } over a TABLES-shaped object.
 const judge = (tables) => {
   const union = new Set();
-  for (const T of Object.values(tables)) for (const k of Object.keys(T)) union.add(k);
+  for (const T of Object.values(tables)) for (const k of Object.keys(T)) if (k !== UNTRANSLATED_NOTICE) union.add(k);
   const missing = {}, blank = {};
   for (const [lang, T] of Object.entries(tables)) {
     const m = [...union].filter((k) => !(k in T));
@@ -62,6 +69,7 @@ delete copy.de[k0]; copy.fr[k1] = '  ';
 const ctl = judge(copy);
 check('control: a key deleted from one table is reported MISSING in that table', ctl.missing.de?.includes(k0) && Object.keys(ctl.missing).length === 1);
 check('control: a blank value is reported', ctl.blank.fr?.includes(k1));
+check('control: the conditional notice key is exempt, not silently ignored (a table lacking another key still fails)', (() => { const c2 = Object.fromEntries(Object.entries(TABLES).map(([c, T]) => [c, { ...T }])); c2.de[UNTRANSLATED_NOTICE] = 'x'; return !Object.keys(judge(c2).missing).length; })());
 check('control: the unmutated tables read clean', (() => { const r = judge(TABLES); return !Object.keys(r.missing).length && !Object.keys(r.blank).length; })());
 
 // Every LOCALES row but English must have a table (the chrome is always carried, §274).

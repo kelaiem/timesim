@@ -96,15 +96,23 @@ translation runs.
    what makes a reorder or a loose matcher loud.
 3. **Placeholder tier-one table** — `const XX = {}` between
    `// §n XX TABLE START` / `END` markers, and a `TABLES` entry.
-4. **Two page tables and two loaders** — `src/explain-i18n.<code>.js` and
-   `src/primer-i18n.<code>.js` (copy an existing file's header), plus a
-   `LOADERS` entry in each of `src/explain-i18n.js` and `src/primer-i18n.js`.
+4. **A page table and a loader per page the row DECLARES** —
+   `src/explain-i18n.<code>.js` and `src/primer-i18n.<code>.js` (copy an
+   existing file's header), plus a `LOADERS` entry in each of
+   `src/explain-i18n.js` and `src/primer-i18n.js`. A page the row leaves
+   undeclared gets neither (§274): no file, no loader, and it adds nothing to the
+   precache count, so a chrome+primer locale (Czech) raises it by one, not two.
    Use a **literal** `import()` specifier. The stamper's module walk and the
    service-worker precache only see quoted strings.
 5. **`tools/explain-i18n.mjs`** — a `MARKS` row (which characters the locale
    groups and points with; a missing row is a hard failure) and a `HONESTY`
    row (stems for *modelled* and *simulated*, held to the page's own glossary
-   entry).
+   entry). The glossary entry lives on the explainer, so a locale that does not
+   declare it cannot have its stems verified against it: the run reports the row
+   as UNVERIFIABLE (not failed) and the stems still gate every block they can
+   read (the primer, `probe-chrome-honesty`), until the day the explainer is
+   declared. Czech's `m` is `modelov` and never a bare `model` (the credit line's
+   "AI model" and the tagline's 3D "models" are the nouns it must not swallow).
 6. **Roster mirrors in tools**:
    - `tools/offline-check.mjs`: the locale list, and the expected precache
      count rises by two (one explainer table, one primer table).
@@ -147,10 +155,13 @@ both ways, with the judging in `tools/locale-surfaces.mjs`:
   declared locale with no row is UNGATED and fails);
 - the review packet drops the sections for pages the locale does not carry.
 
-Stage order for a new locale: wiring with the surfaces declared as
-`['chrome']`, then the chrome, then declare `primer` and add its table, then
-`explainer` last. Each stage can land alone. Say in the PR which surfaces the
-row declares.
+Stage order for a new locale: wiring and the chrome together (the chrome table
+must be complete the moment the row exists, below), with the surfaces declared as
+`['chrome']`; then declare `primer` and add its table; then `explainer` last. Each
+stage can land alone. Say in the PR which surfaces the row declares. Czech
+(§273) is the worked example: `surfaces: ['chrome', 'primer']`, a primer loader,
+no explainer file and no explainer loader, and the English explainer under the
+notice.
 
 **The pickers hide incomplete locales behind a toggle (owner's ruling).** A
 locale that does not carry all three surfaces is *incomplete*. The chrome alone
