@@ -27980,8 +27980,11 @@ const ALARM_CAM_APPROACH_FRAC = 0.06;  // base circle → the radius that first 
 // TODO 260 — THE AXIS THAT RETIRED ROW WAITED FOR NOW EXISTS. With the notch's
 // ends cut as ramps the pin's drop is a continuous law of the disc's angle, so
 // the net finally drops the pin AND lifts it again: the lever (tail, jog, tip)
-// and the collar it presses reverse on the alarm axis. The bias blade that
-// answers for both is the one TODO 189 said was real — grounded on its stud,
+// reverses on the alarm axis. (The reader's collar reversed on it too on the
+// tree this was first written on, and carried a row of its own; on the tree after
+// §278 landing 6 it is not in the registry's population, and the gate calls a
+// declaration for a part that does not reverse STALE, so the row went.) The bias
+// blade that answers for the lever is the one TODO 189 said was real — grounded on its stud,
 // bearing on the lever short of the tip (ALARM_FEELER_SPRING) — and the cut
 // ramp is what drives the opposite stroke, the pin riding UP its slope.
 declareRestoring('Alarm release feeler', 'alarmFeelerTip', 'spring',
@@ -27990,9 +27993,6 @@ declareRestoring('Alarm release feeler', 'alarmFeelerTip', 'spring',
 declareRestoring('Alarm release feeler', 'alarmFeelerSpring', 'spring',
   'the blade is its own spring: clamped at its stud, deflected by the lever as the pin drops and lifts, returned by its own elasticity — it bears on the lever at every pose',
   'alarmFeelerSpring');
-declareRestoring('Alarm release reader', 'alarmReaderRing', 'spring',
-  'the collar is pressed down by the feeler\'s jogged tip, which the bias blade loads (ALARM_FEELER_SPRING), and lifted by the track\'s cut ramp through its pin — the same blade, one joint further',
-  'alarmFeelerSpring', 'alarmFeelerTip');
 declareRestoring('Minute jumper', 'jumperBeak', 'spring',
   'the click spring seats the beak past the valley floor and the star obstructs — the ride is a limit, not a placement',
   'jumperClickSpring');
