@@ -5,10 +5,11 @@
 // themselves through one function, fillLanguagePicker in src/i18n.js. A locale
 // that does not carry all three surfaces is hidden until the reader flips the
 // last option; the current locale always stays listed; the choice persists
-// across pages; and while every row is whole the pickers are unchanged. No
-// shipped row is incomplete, so the probe PLANTS one in flight (the served
-// i18n.js is rewritten, as probe-chrome-coverage's control does) and asserts
-// each clause against the live <select>, with the unmodified file as the control.
+// across pages; and while every row is whole the pickers are unchanged. The
+// probe PLANTS an incomplete `de` in flight (the served i18n.js is rewritten, as
+// probe-chrome-coverage's control does) and asserts each clause against the live
+// <select>, with the unmodified file as the control: whatever the SHIPPED roster
+// declares incomplete (Czech, since §273) is hidden and the toggle offered.
 //
 //   node tools/probe-274-picker.mjs
 //
@@ -41,11 +42,25 @@ const read = (p) => p.evaluate(() => [...document.querySelectorAll('#lang-select
 const has = (o, v) => o.some((x) => x.v === v);
 const open = async (ctx, page, lang, planted) => { const p = await ctx.newPage(); if (planted) await plant(p); await p.goto(`${base}/${page}?lang=${lang}`); await p.waitForSelector('#lang-select option', { state: 'attached' }); return p; };
 
-// The control: the shipped roster has no incomplete row, so no toggle and no change.
+// The control: the SHIPPED roster, unmodified. Whatever it declares incomplete (Czech, since §273,
+// which carries no explainer) must be hidden by default with the toggle offered; if every row were
+// whole the toggle would be absent and every locale listed, and the picker unchanged. Either way the
+// listed codes are computed from the live roster, not pinned here.
 {
   const ctx = await browser.newContext();
-  const o = await read(await open(ctx, 'primer.html', 'en', false));
-  check('control: with every row whole the picker lists every locale and carries no toggle', has(o, 'de') && !has(o, '__incomplete__') && o.length === 23, `${o.length} options`);
+  const p = await open(ctx, 'primer.html', 'en', false);
+  const roster = await p.evaluate(async () => { const m = await import('./src/i18n.js'); return { all: m.LOCALES.map((L) => L.code), incomplete: m.LOCALES.filter((L) => !m.isComplete(L.code)).map((L) => L.code) }; });
+  const o = await read(p);
+  const listed = o.filter((x) => x.v !== '__incomplete__').map((x) => x.v);
+  const wantListed = roster.all.filter((c) => !roster.incomplete.includes(c));
+  check('control: the shipped picker lists exactly the complete locales' + (roster.incomplete.length ? ` (${roster.incomplete.join(', ')} hidden)` : ''),
+    JSON.stringify(listed) === JSON.stringify(wantListed), `${listed.length} listed of ${roster.all.length}`);
+  check('control: the toggle is offered iff some shipped row is incomplete', has(o, '__incomplete__') === (roster.incomplete.length > 0));
+  if (roster.incomplete.length) {
+    await p.selectOption('#lang-select', '__incomplete__');
+    const after = await read(p);
+    check('control: flipping it lists the shipped incomplete locale', roster.incomplete.every((c) => has(after, c)));
+  }
   await ctx.close();
 }
 for (const page of ['primer.html', 'explain.html']) {

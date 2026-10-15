@@ -4,7 +4,7 @@
 
 # The instruments
 
-317 scripts. **204 are ACCEPTANCE tests** — they decide and exit non-zero.
+318 scripts. **205 are ACCEPTANCE tests** — they decide and exit non-zero.
 **113 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -276,6 +276,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
 | `probe-chrome-coverage.mjs` |  | acceptance | §249 (the wave's review) — DOES ANY CHROME STRING STILL READ IN ENGLISH, as rendered? |
 | `probe-chrome-honesty.mjs` |  | acceptance | §274 (the audit it left open) — DOES THE CHROME KEEP THE MODELLED / SIMULATED DISTINCTION? |
+| `probe-chrome-parity.mjs` |  | acceptance | §274 follow-up — THE RATCHET ON THE ESSENTIAL SURFACES: every locale carries every chrome key. |
 | `probe-coaxial-sense.mjs` |  | acceptance | TODO 115 — DO THE PARTS THAT SHARE A SHAFT TURN THE SAME WAY? |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |

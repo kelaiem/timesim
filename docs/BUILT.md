@@ -34987,6 +34987,82 @@ orders past the 7e-8 the battery read them under it by).
   govern) and the striking work's own bands (L3, now that the hammer's plane
   sets the pane) remain priced in the step-1 table, unfiled.
 
+## §273 — Czech: the chrome and the primer, the first locale to declare fewer than three surfaces
+
+*Filed 2026-10-11 as the recipe in `docs/LOCALIZATION.md` applied with the cheapest
+possible differences; built 2026-10-15 as the first user of §274's `surfaces`
+declaration, with the explainer left out on purpose (the costly, low-reach
+surface). Machine-drafted, not natively reviewed.*
+
+**What shipped.**
+- Row `cs` (`face: 'Čeština'`, `tag: 'cs-CZ'`, matcher `/^(cs|ces|cze)(-|$)/`,
+  `surfaces: ['chrome', 'primer']`). Ladder rows `cs`, `cs-CZ`, `cs_CZ`, `ces`, `cze`
+  resolve to `cs` and `csb` (Kashubian) and `cu` (Church Slavonic) to nothing; shown
+  directly: those two resolve to English and the five Czech tags and a mixed-case
+  `CS-cz` resolve to `cs`, with 0 warnings importing `i18n.js`.
+- **Measured numbers** (Node's ICU 77 and Chromium 141 alike, as §208 asks for the
+  browser): `cs` and `cs-CZ` are both carried and format **30,0 · 0,024 · 1 000 ·
+  18 000**, the group mark U+00A0 and four digits grouped (Russian's convention,
+  unlike Hungarian's bare four). `MARKS.cs` is Russian's row.
+- The **chrome**: all 535 keys (plus the one conditional notice key an undeclared
+  page needs), parity with every other table. `probe-chrome-coverage --locales cs`:
+  **0 missing, 0 not applied**, 3 declared cognates (*Auto*, *Zoom*, *Studio*), 67 never
+  translated.
+- The **primer**: 146 of 146 blocks, **0 markup, `<code>` or number drift**, 0 new plate
+  overflow once one label (*level*, first drafted as *vyrovnané*) was shortened to
+  *stálý*. The page check's number gate also caught a plain space typed as the
+  group mark in "18 000" (twice; the chrome table too), now U+00A0.
+- The **explainer is not translated** and says so: no `explain-i18n.cs.js`, no
+  loader, and Czech sees the English page under the notice in Czech. It adds one
+  module to the offline precache, not two: `offline-check` **80/80** (48 of 48 checks pass), and all 23
+  primer tables load from the cache (`primer.html localizes (cs table came from the cache)`).
+- The **honesty pair** is *modelováno / simulováno* (`HONESTY.cs`: `modelov` and
+  `simul`, never a bare `model`, which Czech also says for the credit line's "AI
+  model" and the tagline's 3D "models"). The chrome probe reads 3 strings x 23
+  locales = **69 rows, 0 findings**, Czech included.
+- The review sheet gets seven Czech questions (the terms below).
+
+**What the landing changed in the tooling.** Three things the recipe did not have:
+1. **The HONESTY row can only be verified against the explainer's glossary entry**, so
+   for a locale that does not declare the explainer `explain-i18n --check` reports the
+   row as UNVERIFIABLE (named in the run) instead of failing it; the stems still gate
+   every block they can read, and the row becomes verifiable the day the explainer
+   is declared. `22/23 HONESTY rows verified`, `cs` the one unverifiable.
+2. **The chrome parity ratchet** (`probe-chrome-parity.mjs`, the §274 follow-up) exempts
+   exactly one key, the untranslated-page notice, because only a locale with an
+   undeclared page shows it; `explain-i18n --check` requires it of exactly those.
+3. **The pickers' controls had assumed every shipped row was whole.** Czech is the
+   first incomplete row, so it is hidden by default behind *Show incomplete
+   translations*, and `probe-274-picker` now computes its control from the live roster
+   rather than assuming every row is whole (its one control became three, so 14
+   checks, all passing; the other eleven unchanged).
+
+**Line height.** `html:lang(cs)` joins the shared 1.3 rule on both pages, on Latvian's
+grounds (the same mark class, a caron over a capital, with nothing below the
+baseline). `probe-249-vietnamese-vert.mjs --script cs` was added; it reads Czech at
+**13 px at the 10 px sites and 14 at `.readout`**, against Latvian's 13 and 15 in the same
+face, and its controls FAIL here exactly as Latvian's do (the sans stack identifies no
+face in this container), so the numbers are no more evidence than Latvian's were.
+**The chrome bar** is 202.3 px (English 176.6, Hungarian 182.6); the two HUD labels
+(*Čas* 18.2, *Zvoní v* 34.5 px) are one line in 150 px; every header is one line
+(`probe-116-locale-fit`: PASS).
+
+**No native review pass.** The terms a workshop may dispute, all in the review sheet's
+questions: *fusée* kept as the loan; *kotva* for both the pallet fork and the alarm
+governor's anchor (the overload Dutch and Turkish record), with *krok* for the
+escapement; *nepokoj* and *vlásek* for the balance and hairspring against the
+colloquial *balanc* and *spirála*; *natahovací a přestavovací ústrojí* for the keyless
+works, because *bezklíčový* is not an established noun; *budík* and *regulátor budíku*
+(so the governor does not read as a timekeeping regulator); *půlkmit* for a beat and
+*frekvence* for the beat rate; and the *modelováno / simulováno* pair. Hungarian's
+convention was followed throughout: the reader is addressed formally and case endings
+on a quoted identifier ride outside `<code>`.
+
+**Not done.** The explainer (849 blocks) is not translated; declaring it later means a
+table, a loader, the precache count (80 to 81), and the HONESTY row becoming
+verifiable. A native review is owed. The line-height decision is a Latvian-grounds
+call that a CI-like host should confirm.
+
 ## §274 — Declared locale coverage: a row says which pages it carries, and the gates hold it both ways
 
 *Filed 2026-10-11 from an owner answer to a question about two-tier localization
