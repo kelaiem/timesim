@@ -408,6 +408,8 @@ export function lowerUi(s) {
 // Dreiviertelplatine …) — the audience this locale exists for.
 const DE = {
   'Enable sound': 'Ton aktivieren',
+  'See the LEGO Technic build': 'Den LEGO-Technic-Nachbau ansehen',
+  'Review the translations': 'Die Übersetzungen prüfen',
   // -- state words (the data-state refactor's DISPLAY text; state itself is
   //    the attribute, so these are free to be any language)
   'On': 'Ein', 'Off': 'Aus',
@@ -818,6 +820,8 @@ Object.assign(DE, {
 // before tier two (the explainer) ships in this locale.
 const ZH = {
   'Enable sound': '启用声音',
+  'See the LEGO Technic build': '查看乐高机械组搭建',
+  'Review the translations': '审阅译文',
   'On': '开', 'Off': '关',
   'Time': '时间', 'Camera': '视角', 'View': '显示', 'Alarm': '闹铃',
   'Performance': '性能', 'State': '存档', 'Advanced': '高级',
@@ -1195,6 +1199,8 @@ Object.assign(ZH, {
 // fmtNum/fmtInt above and neither of which may reach a stored value.
 const FR = {
   ['Enable sound']: 'Activer le son',
+  ['See the LEGO Technic build']: 'Voir la construction LEGO Technic',
+  ['Review the translations']: 'Relire les traductions',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'Marche',
   ['Off']: 'Arrêt',
@@ -1744,6 +1750,8 @@ const FR = {
 // both static pages inherit it.
 const JA = {
   ['Enable sound']: '音を有効にする',
+  ['See the LEGO Technic build']: 'LEGO テクニックの組み立てを見る',
+  ['Review the translations']: '翻訳をレビューする',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'オン',
   ['Off']: 'オフ',
@@ -2292,6 +2300,8 @@ const JA = {
 // landing in ZH before this section.
 const ZH_HANT = {
   ['Enable sound']: '啟用聲音',
+  ['See the LEGO Technic build']: '查看樂高機械組搭建',
+  ['Review the translations']: '審閱譯文',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: '開',
   ['Off']: '關',
@@ -2850,6 +2860,8 @@ const ZH_HANT = {
 // this table never carries a digit of its own script.
 const AR = {
   'Enable sound': 'تفعيل الصوت',
+  'See the LEGO Technic build': 'شاهد نموذج LEGO Technic',
+  'Review the translations': 'راجع الترجمات',
   'On': 'مفعّل',
   'Off': 'معطَّل',
   'Time': 'الوقت',
@@ -3391,6 +3403,8 @@ const AR = {
 // src/primer-i18n.es.js — one movement, one name per part.
 const ES = {
   'Enable sound': 'Activar el sonido',
+  'See the LEGO Technic build': 'Ver la construcción LEGO Technic',
+  'Review the translations': 'Revisar las traducciones',
   'On': 'Activado',
   'Off': 'Desactivado',
   'Time': 'Tiempo',
@@ -3929,6 +3943,8 @@ const ES = {
 // register as src/explain-i18n.ko.js and src/primer-i18n.ko.js.
 const KO = {
   'Enable sound': '소리 켜기',
+  'See the LEGO Technic build': 'LEGO 테크닉 조립 보기',
+  'Review the translations': '번역 검토하기',
   'On': '켜짐',
   'Off': '꺼짐',
   'Time': '시간',
@@ -4469,6 +4485,8 @@ const KO = {
 // movement, one name per part.
 const RU = {
   'Enable sound': 'Включить звук',
+  'See the LEGO Technic build': 'Посмотреть сборку LEGO Technic',
+  'Review the translations': 'Проверить переводы',
   'On': 'Вкл',
   'Off': 'Выкл',
   'Time': 'Время',
@@ -5010,6 +5028,8 @@ const RU = {
 // per part.
 const PT = {
   'Enable sound': 'Ativar o som',
+  'See the LEGO Technic build': 'Ver a montagem LEGO Technic',
+  'Review the translations': 'Revisar as traduções',
   'On': 'Ligado',
   'Off': 'Desligado',
   'Time': 'Tempo',
@@ -5550,6 +5570,8 @@ const PT = {
 // per part. Every apostrophe is U+2019.
 const IT = {
   'Enable sound': 'Attiva il suono',
+  'See the LEGO Technic build': 'Guarda la costruzione LEGO Technic',
+  'Review the translations': 'Rivedi le traduzioni',
   'On': 'Acceso',
   'Off': 'Spento',
   'Time': 'Tempo',
@@ -6087,6 +6109,8 @@ const IT = {
 // so these are the compact forms, measured by tools/probe-116-locale-fit.mjs.
 const HI = {
   'Enable sound': 'ध्वनि चालू करें',
+  'See the LEGO Technic build': 'LEGO टेक्निक निर्माण देखें',
+  'Review the translations': 'अनुवादों की समीक्षा करें',
   'On': 'चालू',
   'Off': 'बंद',
   'Time': 'समय',
@@ -6628,6 +6652,8 @@ const HI = {
 // follow the MODERN placement (hóa, thủy) and every string is NFC.
 const VI = {
   'Enable sound': 'Bật âm thanh',
+  'See the LEGO Technic build': 'Xem bản lắp LEGO Technic',
+  'Review the translations': 'Duyệt các bản dịch',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Bật',
   'Off': 'Tắt',
@@ -7184,6 +7210,8 @@ const VI = {
 // HUD labels and the chrome bar are the constraint, and Dutch compounds run long.
 const NL = {
   'Enable sound': 'Geluid inschakelen',
+  'See the LEGO Technic build': 'Bekijk de LEGO Technic-bouw',
+  'Review the translations': 'De vertalingen beoordelen',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Aan',
   'Off': 'Uit',
@@ -7740,6 +7768,8 @@ const NL = {
 // its zero-width non-joiners. Labels are held to the English length or under.
 const FA = {
   'Enable sound': 'فعال‌سازی صدا',
+  'See the LEGO Technic build': 'دیدن ساخت LEGO Technic',
+  'Review the translations': 'بازبینی ترجمه‌ها',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'روشن',
   'Off': 'خاموش',
@@ -8297,6 +8327,8 @@ const FA = {
 // the English length or under.
 const HE = {
   'Enable sound': 'הפעלת צליל',
+  'See the LEGO Technic build': 'לצפייה בבניית LEGO Technic',
+  'Review the translations': 'בדיקת התרגומים',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'פועל',
   'Off': 'כבוי',
@@ -8853,6 +8885,8 @@ const HE = {
 // Indonesian software does. Labels are held to the English length or under.
 const ID = {
   'Enable sound': 'Aktifkan suara',
+  'See the LEGO Technic build': 'Lihat rakitan LEGO Technic',
+  'Review the translations': 'Tinjau terjemahan',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Nyala',
   'Off': 'Mati',
@@ -9410,6 +9444,8 @@ const ID = {
 // Labels are held to the English length or under.
 const TR = {
   'Enable sound': 'Sesi etkinleştir',
+  'See the LEGO Technic build': 'LEGO Technic yapımını gör',
+  'Review the translations': 'Çevirileri gözden geçir',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Açık',
   'Off': 'Kapalı',
@@ -9967,6 +10003,8 @@ const TR = {
 // en-GB tag (see LOCALES). Labels are held to the English length or under.
 const CY = {
   'Enable sound': 'Galluogi sain',
+  'See the LEGO Technic build': 'Gweld y gwaith adeiladu LEGO Technic',
+  'Review the translations': 'Adolygu’r cyfieithiadau',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Ymlaen',
   'Off': 'I ffwrdd',
@@ -10527,6 +10565,8 @@ const CY = {
 
 const FIL = {
   ['Enable sound']: 'Buksan ang tunog',
+  ['See the LEGO Technic build']: 'Tingnan ang LEGO Technic na build',
+  ['Review the translations']: 'Suriin ang mga salin',
   ['On']: 'On',
   ['Off']: 'Off',
   ['Time']: 'Oras',
@@ -11062,6 +11102,8 @@ const FIL = {
 // Latvian software does. Numbers format through lv-LV (see LOCALES).
 const LV = {
   'Enable sound': 'Ieslēgt skaņu',
+  'See the LEGO Technic build': 'Skatīt LEGO Technic būvi',
+  'Review the translations': 'Pārskatīt tulkojumus',
   'On': 'Ieslēgts',
   'Off': 'Izslēgts',
   'Time': 'Laiks',
@@ -11597,6 +11639,8 @@ const LV = {
 // Hungarian software writes them. Numbers format through hu-HU (see LOCALES).
 const HU = {
   'Enable sound': 'Hang bekapcsolása',
+  'See the LEGO Technic build': 'A LEGO Technic építés megtekintése',
+  'Review the translations': 'A fordítások áttekintése',
   'On': 'Be',
   'Off': 'Ki',
   'Time': 'Idő',
