@@ -77,8 +77,25 @@ frame probe's judge moved into the module so both read one law. In set the
 crown turns the hands through the gears, 36 turns per hour-hand turn, and
 `tools/probe-technic-motion.mjs` holds the rows, the coaxial idle, the ratio
 and sense, and the ring per pull position. No hand part is placed, and no
-going train drives it. `probe-technic-phase.mjs` drives the page in a
-browser. The frame, ldraw, build, keyless and motion probes are pure Node.
+going train drives it. **And the FUSEE** (landing H, `src/technic-fusee.js`):
+a cord — LEGO's braided string, its end studs the two real hooks — on a stepped
+cone of grooved pulleys, one wrap a step, from a barrel pulley. Each pulley's
+cord SEAT is measured off its groove (`grooveSeat`), and `solveFusee` picks the
+barrel and steps whose torque × radius is most level, reading the spring ONLY
+through `TECHNIC_FUSEE_SPRING`. That table is POSED (a LEGO spring can only be
+measured; its stand-in is the steel ribbon's law, its three numbers read back
+off `main.js`' text), so a measured table re-solves with no code change, and
+records say modelled, never simulated. The staircase levels the stand-in from
+51.6% to 40.1%; the steel's level product is gated at 1e-9. The maintaining
+power is Harrison's and needs TWO one-way parts (the 20T one-way gear is not in
+the LDraw library): a click pawl riding the 40T ratchet, on a 16T keyed to the
+fusee, and a frame detent on the ratchet, each a keyed 8T on a thin liftarm
+whose LOCK direction `pawlLock` reads off the teeth. A posed band carries it
+to the great wheel. Three collinear axles are joined end to end in round pin
+joiners. `tools/probe-technic-fusee.mjs` holds the table, the seats, the solve,
+the cord, the locks and the build. `probe-technic-phase.mjs` drives the page in a
+browser. The frame, ldraw, build, keyless, motion and fusee probes are pure
+Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1105,7 +1122,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 313 measuring scripts and this file names 47. The rest are named for the
+`tools/` holds 314 measuring scripts and this file names 48. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1122,7 +1139,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **201 of
+The index also carries the split that decides how to read a result: **202 of
 them are ACCEPTANCE tests** that exit non-zero, and **112 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
