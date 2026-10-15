@@ -42666,7 +42666,22 @@ let handSetOffsetNow = 0;    // last value tick() gave the hands — displayedSe
 // assigning them here would hit the temporal dead zone.
 let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
-let restoredSchematic = true; // §69: the schematic tier is the boot DEFAULT — a save can only turn it off
+// The schematic tier's boot default is the RENDERER's call. A solid frame costs
+// 7–10 s under software GL whatever the quality tier (SwiftShader, headless,
+// 1280×800: High ~9.0–9.8 s, Low ~7.1–8.0 s) against ~0.22 s for the line view,
+// and Auto quality cannot step down because frame() drops intervals over
+// FRAME_STALL_MS from its average. So the solid view is the default only where
+// a GPU draws it; under SwiftShader / llvmpipe the line view stays the front
+// door. A saved boolean, ?schematic=, and the toggle all override.
+const SOFTWARE_GL = (() => {
+  try {
+    const gl = renderer.getContext();
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+    return /swiftshader|llvmpipe|softpipe|software/i.test(name);
+  } catch (e) { return false; }   // unreadable renderer: assume a GPU, the user-facing default
+})();
+let restoredSchematic = SOFTWARE_GL; // overwritten by a saved boolean in the restore block below
 let restoredCaseLines = true; // case line-drawing within the tier — same default-ON convention
 let restoredFocus = null;  // §69: tap-focus unit name, applied once the scene + drive graph exist
 
@@ -42824,10 +42839,9 @@ let mmPerPxCal = null;
   if (BD.POSITIONS.includes(savedState.position)) balancePosition = savedState.position; // §246 — absent or unknown keeps the default
   restoredCamera = savedState.camera;
   restoredXray = !!savedState.plateXray;
-  // §69: ?? true, not !! — schematic is the DEFAULT view, so a state saved
-  // before the field existed (and a fresh visitor's absent state) both mean
-  // ON; only an explicit saved false turns it off.
-  restoredSchematic = savedState.schematic ?? true;
+  // Only a saved BOOLEAN is a choice. null (a fresh visitor, or a state saved
+  // before the field existed) keeps the renderer's default declared above.
+  if (typeof savedState.schematic === 'boolean') restoredSchematic = savedState.schematic;
   restoredCaseLines = savedState.caseLines ?? true; // ?? true, not !! — same reason as schematic above
   restoredFocus = typeof savedState.focusUnit === 'string' ? savedState.focusUnit : null;
   // soundOn is saved but NOT restored: sound is always off at load (see __bootSoundApply).
@@ -54247,10 +54261,10 @@ function applyDeepLink() {
   // shareable and cannot be drifted out of without the caption saying so.
   if (params.has('lifesize')) setLifeSize(params.get('lifesize') !== '0');
 }
-// §69 — the schematic tier is the boot DEFAULT (restoredSchematic is true
-// unless a save explicitly turned it off), and a saved tap focus comes back
+// §69 — the schematic tier's default is the renderer's (restoredSchematic is
+// SOFTWARE_GL unless a save holds a boolean), and a saved tap focus comes back
 // with it. Applied here, after every mode they compose with exists; the deep
-// link runs after and wins where it disagrees (?schematic=0 overrides the
+// link runs after and wins where it disagrees (?schematic=0/1 overrides the
 // default synchronously, ?focus=<unit> lands after the restored focus because
 // both sequence FIFO on the same ensureExploreDrive promise).
 if (restoredSchematic) setSchematic(true);

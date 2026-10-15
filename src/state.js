@@ -73,11 +73,13 @@ const defaultState = {
   quality: 'Auto',    // §14 quality select — the panel's choice (Auto or a pinned tier), so an
                       // override survives reload; Auto's own tier verdict is re-earned each boot
   showBeat: 0,
-  // §69: the schematic tier is the boot DEFAULT, so a save can only turn it
-  // OFF. captureState() emits it, so — like soundOn above — it must round-trip
-  // through sanitize() or main.js's `savedState.schematic ?? true` can never
-  // see a false and the default is unturnoffable (TODO 65).
-  schematic: true,
+  // The schematic tier's DEFAULT depends on the renderer, so the default state
+  // does not pick: null means "unset — main.js decides at boot" (the solid view
+  // on a hardware GPU, the line view under software GL, where a solid frame costs
+  // 7–10 s). Any boolean here is a saved choice and wins. captureState() emits it,
+  // so — like soundOn above — it must round-trip through sanitize() (TODO 65);
+  // null survives that and JSON, a boolean replaces it.
+  schematic: null,
   // Case line-drawing visibility WITHIN the schematic tier (backlog: watch
   // case). Default-ON, same absent-means-true convention as schematic above.
   caseLines: true,
