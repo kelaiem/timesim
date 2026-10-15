@@ -27815,6 +27815,22 @@ const ALARM_CAM_APPROACH_FRAC = 0.06;  // base circle → the radius that first 
 // claim the gate refuses. The blade is real and still returns the lever; what
 // is missing is an axis that drops the pin and lifts it again. TODO 199 stage
 // 3 ships that axis and re-declares this row against the lever body.)
+// TODO 260 — THE AXIS THAT RETIRED ROW WAITED FOR NOW EXISTS. With the notch's
+// ends cut as ramps the pin's drop is a continuous law of the disc's angle, so
+// the net finally drops the pin AND lifts it again: the lever (tail, jog, tip)
+// and the collar it presses reverse on the alarm axis. The bias blade that
+// answers for both is the one TODO 189 said was real — grounded on its stud,
+// bearing on the lever short of the tip (ALARM_FEELER_SPRING) — and the cut
+// ramp is what drives the opposite stroke, the pin riding UP its slope.
+declareRestoring('Alarm release feeler', 'alarmFeelerTip', 'spring',
+  `the bias blade (ALARM_FEELER_SPRING): clamped on its stud, bearing on the lever short of the tip with ${ALARM_FEELER_SPRING.pinF_mN_riding.toFixed(2)} mN at the pin when riding and ${ALARM_FEELER_SPRING.pinF_mN_dropped.toFixed(2)} mN dropped, so the pin follows the track down into the notch and the cut ramp lifts it back against the blade`,
+  'alarmFeelerSpring');
+declareRestoring('Alarm release feeler', 'alarmFeelerSpring', 'spring',
+  'the blade is its own spring: clamped at its stud, deflected by the lever as the pin drops and lifts, returned by its own elasticity — it bears on the lever at every pose',
+  'alarmFeelerSpring');
+declareRestoring('Alarm release reader', 'alarmReaderRing', 'spring',
+  'the collar is pressed down by the feeler\'s jogged tip, which the bias blade loads (ALARM_FEELER_SPRING), and lifted by the track\'s cut ramp through its pin — the same blade, one joint further',
+  'alarmFeelerSpring', 'alarmFeelerTip');
 declareRestoring('Minute jumper', 'jumperBeak', 'spring',
   'the click spring seats the beak past the valley floor and the star obstructs — the ride is a limit, not a placement',
   'jumperClickSpring');
