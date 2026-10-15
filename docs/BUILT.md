@@ -37863,3 +37863,24 @@ Every changed block was re-keyed with `explain-i18n --extract` and re-translated
 in all 22 locales: the number-only blocks by carrying the new figures into the
 existing translations, the two blocks with new sentences by translating them.
 Plate 4's labels kept their text, so their keys did not move.
+
+## §219 tier two (a), retired — `technic.html` shows only the LEGO build
+
+Tier two (a) drew the fork's rows as procedural module-1 involute gears, before
+any row could be built from real parts. Since landing C2 every row frames in
+LEGO, and landings D–H added the keyless works, the motion works and the fusee
+only to the LEGO build. The drawn view had stopped being updated, so it now
+showed less than the build beside it. It is retired, and the build is the one
+view:
+
+- **Removed from `technic.html`:** the drawn/LEGO toggle, the procedural gear
+  outline, the drawn chain placement and its live ratio meter. The `?view=`
+  parameter is ignored, so old links still open the build.
+- **Kept:** every count, kind and ratio is still read from `layout.js`. Each
+  train row now shows its product against the steel invariant beside the LEGO
+  build, the verdict the drawn view used to carry. A row the frame refused
+  would be listed in the panel with its reason and not drawn; none is today.
+- **`tools/probe-technic-phase.mjs` is deleted with its subject.** It measured
+  the drawn gears' tooth phase. The LEGO build's meshing is held by
+  `probe-technic-build.mjs` (every mesh within 1.6e-13 of a turn), and the
+  frame's stage step (`rowLayout`) by `probe-technic-frame.mjs`.

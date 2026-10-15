@@ -5,31 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>timesim — the technic fork</title>
 <!--
-  BUILT §219 tier two (a) — THE TECHNIC FORK DRAWN. The four rows src/layout.js
-  declares in TECHNIC_FORK, built as module-1 gears on axles and turned through
-  their own tooth counts. A separate page on purpose: LEGO gears are 3–4× the
-  watch's, so the fork cannot sit inside the movement (the scoping note's F4),
-  and nothing here touches the sim or its battery.
+  BUILT §219 — THE TECHNIC FORK, BUILT FROM LEGO PARTS. The rows src/layout.js
+  declares in TECHNIC_FORK, plus the keyless and motion works and the fusee,
+  assembled from real LDraw parts and turned through their own tooth counts. A
+  separate page on purpose: LEGO gears are 3–4× the watch's, so the fork cannot
+  sit inside the movement (the scoping note's F4), and nothing here touches the
+  sim or its battery. Tier two (a)'s DRAWN view (procedural involute gears) was
+  retired once every row framed in LEGO; the counts, kinds and ratios are still
+  read from layout.js and never restated.
 
-  WHAT IS A CLAIM AND WHAT IS DRAWN. Claims, read from layout.js and never
-  restated: every tooth count, every pair's kind and mesh class
-  (catalogueMesh), every parallel centre distance (half the sum of the counts,
-  on the 4 mm lattice), and every shaft's speed, which is the running product
-  of the pairs before it (standing rule 2). Drawn, and not LEGO's CAD: the
-  involute outline, the cross bore, the 4 mm face, the 8 mm layer step, the
-  turntable's face teeth and the colours. Every mesh is phased — parallel pairs on their line
-  of centres; a 90° face mesh, which no row carries since §219 tier three (b)
-  landing C2 refused the 60T turntable, at the pinion's lowest point — and
-  tools/probe-technic-phase.mjs measures it off the drawn gears.
-
-  BUILT §219 tier three (b) landing B — THE LEGO BUILD VIEW (?view=lego). Each
+  BUILT §219 tier three (b) landing B — THE LEGO BUILD. Each
   row src/technic-frame.js can frame is assembled from real LDraw parts
   (vendor/ldraw/technic-parts.mpd) by src/technic-ldraw.js: baseplate, 1×1
   columns, Technic bricks, axles and gears, each shaft one keyed body turning
   at its running product. tools/probe-technic-build.mjs measures the same
   placements (seated, through, meshed); tools/probe-technic-ldraw.mjs holds the
   frame's dimensions to the parts. Since landing C2 every row frames; a row
-  the frame refused would stay drawn, labelled with the reason.
+  the frame refused is listed in the panel with the reason, and not drawn.
 
   BUILT §219 tier three (b) landing H — THE FUSEE MODULE (src/technic-fusee.js),
   the LEGO view's sixth cell, drawn at full wind: a cord on a stepped cone of
@@ -102,19 +94,16 @@ canvas{display:block;touch-action:none}
   train serves, and each shaft turns by the product of the tooth counts before
   it.</p>
   <div class="gen" id="gens"></div>
-  <div class="gen" id="views"></div>
-  <div class="gen" id="kmodes" hidden></div>
+  <div class="gen" id="kmodes"></div>
   <label>speed <input id="speed" type="range" min="0" max="4" step="0.05" value="1" /></label>
   <div id="rows"></div>
   <p>Tooth counts, kinds, centre distances and ratios come from the declared rows.
-  In the <b>drawn</b> view, part shapes, faces and colours are drawn, not LEGO's CAD,
-  and every pair's teeth are phased to mesh. The <b>LEGO build</b> view assembles
-  every row from the real parts (LDraw.org's library, CC BY 4.0) on a brick
+  The build assembles every row from the real parts (LDraw.org's library, CC BY 4.0) on a brick
   frame whose every dimension is measured off those parts. The rows use no
   turntable: neither could be mounted on the frame, so the solver answers with
   spur gears on the stud lattice. The escapement and balance have no LEGO row
   and are not here.</p>
-  <p>The LEGO view adds the <b>keyless works</b>: the stem carries two 16T
+  <p>Beside the trains is the <b>keyless works</b>: the stem carries two 16T
   clutch gears and a driving ring that slides between them, LEGO's own
   changeover standing in for the steel sliding pinion. <b>wind</b>,
   <b>set</b> and <b>neutral</b> are the PULL: a rack under the selector's 28T
@@ -150,172 +139,17 @@ canvas{display:block;touch-action:none}
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseLibrary, walk } from './src/ldraw.js';
-import { frameFork, frameKeyless, rowLayout } from './src/technic-frame.js';
+import { frameFork, frameKeyless } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './src/technic-fusee.js';
-import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, catalogueMesh, technicForkTargets,
+import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
 const logEl = document.getElementById('log');
 const log = (m) => { logEl.textContent += m + '\n'; console.warn(m); };
 window.addEventListener('error', (e) => log('ERROR: ' + e.message));
 
-// --- drawn dimensions (mm). None of these is a catalogue fact; each is the
-// smallest choice that draws the claim legibly, and the comment says which.
-const FACE = 4;          // a gear's drawn face — half a stud, so two layers never touch
-const LAYER = 8;         // one stud: the axial step between a shaft's gears (rowLayout's one-layer step), so a
-                         // compound pair sits in two planes and each mesh is coplanar
-const AXLE_ARM = 2.4, AXLE_WEB = 0.9;   // the cross: 4.8 across the arms, 1.8 thick (drawn)
-const CELL = [190, 160]; // rows on a 2×2 grid; each cell wider and taller than the largest chain
-const PRESSURE = 20 * Math.PI / 180;    // involute pressure angle, drawn
-
-const COLOR = { spur: 0xa0a5a9, doubleBevel: 0xd9c08c, turntable: 0x6c6e68, turntableBevel: 0x3b3d40, axle: 0x1c1d20 };
-
-// --- the outline: a module-1 involute spur with a cross bore -----------------
-const inv = (a) => Math.tan(a) - a;
-function spurShape(N) {
-  const rp = N / 2, ra = rp + 1, rr = rp - 1.25, rb = rp * Math.cos(PRESSURE);
-  const r0 = Math.max(rb, rr);
-  const half = (r) => Math.max(0.02, Math.PI / (2 * N) + inv(PRESSURE) - inv(Math.acos(Math.min(1, rb / r))));
-  const pts = [];
-  const S = 6;
-  for (let i = 0; i < N; i++) {
-    const c = (2 * Math.PI * i) / N;
-    pts.push([rr, c - half(r0)]);
-    for (let k = 0; k <= S; k++) { const r = r0 + (ra - r0) * k / S; pts.push([r, c - half(r)]); }
-    for (let k = S; k >= 0; k--) { const r = r0 + (ra - r0) * k / S; pts.push([r, c + half(r)]); }
-    pts.push([rr, c + half(r0)]);
-  }
-  const shape = new THREE.Shape(pts.map(([r, a]) => new THREE.Vector2(r * Math.cos(a), r * Math.sin(a))));
-  shape.holes.push(crossPath());
-  return shape;
-}
-function crossPath() {
-  const a = AXLE_ARM, b = AXLE_WEB;
-  return new THREE.Path([[a, b], [b, b], [b, a], [-b, a], [-b, b], [-a, b], [-a, -b], [-b, -b], [-b, -a], [b, -a], [b, -b], [a, -b]]
-    .map(([x, y]) => new THREE.Vector2(x, y)));
-}
-const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0 });
-const extrude = (shape, depth) => {
-  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 8 });
-  g.translate(0, 0, -depth / 2);
-  return g;
-};
-
-// One gear, local z its axis. A turntable's bevel top is a disc with face
-// teeth on its +z side, the side the pinion rides.
-function gearMesh(row) {
-  const g = new THREE.Group();
-  if (row.kind === 'turntableBevel') {
-    const R = row.teeth / 2;
-    const disc = new THREE.Shape(); disc.absarc(0, 0, R - 1, 0, Math.PI * 2, false); disc.holes.push(crossPath());
-    g.add(new THREE.Mesh(extrude(disc, FACE), mat(COLOR.turntableBevel)));
-    const tooth = new THREE.BoxGeometry(3, Math.PI * 2 * R / row.teeth * 0.5, 1.6);
-    for (let i = 0; i < row.teeth; i++) {
-      const a = (2 * Math.PI * i) / row.teeth, t = new THREE.Mesh(tooth, mat(COLOR.turntableBevel));
-      t.position.set((R - 1.5) * Math.cos(a), (R - 1.5) * Math.sin(a), FACE / 2 + 0.8); t.rotation.z = a;
-      g.add(t);
-    }
-  } else {
-    g.add(new THREE.Mesh(extrude(spurShape(row.teeth), FACE), mat(COLOR[row.kind] ?? COLOR.spur)));
-  }
-  return g;
-}
-
-// --- the chain: shafts placed by the mesh rule, turned by the tooth counts ----
-const Z = new THREE.Vector3(0, 0, 1), X = new THREE.Vector3(1, 0, 0);
-// The side a parallel successor sits on is a function of the axis alone, so a
-// parallel pair's two shafts share one frame and their line of centres is
-// local +x from the driver — which is what lets the phase below be exact.
-const sideOf = (u) => (Math.abs(u.z) > 0.9 ? X.clone() : Z.clone());
-function newShaft(parent, pos, u, speed) {
-  const w = sideOf(u), v = new THREE.Vector3().crossVectors(u, w);
-  const frame = new THREE.Group();
-  frame.position.copy(pos);
-  frame.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(w, v, u));
-  const rotor = new THREE.Group(); frame.add(rotor); parent.add(frame);
-  return { frame, rotor, pos: pos.clone(), u: u.clone(), w, v, speed, lo: 0, hi: 0 };
-}
-function addGear(shaft, row, along, phase) {
-  const g = gearMesh(row);
-  g.position.z = along; g.rotation.z = phase;
-  // what tools/probe-technic-phase.mjs reads: tooth i sits at local angle 2πi/N
-  g.userData = { teeth: row.teeth, kind: row.kind };
-  shaft.rotor.add(g);
-  shaft.lo = Math.min(shaft.lo, along); shaft.hi = Math.max(shaft.hi, along);
-  return g;
-}
-function addAxle(shaft) {
-  const len = shaft.hi - shaft.lo + LAYER;
-  for (const [sx, sy] of [[2 * AXLE_ARM, 2 * AXLE_WEB], [2 * AXLE_WEB, 2 * AXLE_ARM]]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, len), mat(COLOR.axle));
-    m.position.z = (shaft.lo + shaft.hi) / 2; shaft.rotor.add(m);
-  }
-}
-
-const BEVEL = new Set(['bevel', 'turntableBevel']);
-function buildChain(gen, chain, parent) {
-  const cat = CATALOGUES[gen];
-  const find = (t) => cat.counts.find((c) => c.teeth === t);
-  const shafts = [];
-  let s = newShaft(parent, new THREE.Vector3(), Z, 1); shafts.push(s);
-  let along = 0, phase = 0;
-  const meshes = [];
-  // THE STEP BETWEEN STAGES is the frame's (src/technic-frame.js rowLayout):
-  // one layer where every gear clears its neighbour's column, two where one
-  // would not. Written once there, read here, so the drawing and the LEGO
-  // build stand their gears where the same law puts them. A row the frame
-  // refuses (a 90° mesh on the 60T) keeps the one-layer step.
-  const lay = rowLayout(gen, chain);
-  const stepAfter = (k) => (lay.framed ? lay.shafts[k].gears[1].y - lay.shafts[k].gears[0].y : LAYER);
-  for (const [i, [ta, tb]] of chain.entries()) {
-    const a = find(ta), b = find(tb), m = a && b && catalogueMesh(a, b, cat);
-    if (!m) { log(`${gen}: ${ta}:${tb} is not an admissible mesh — layout.js's boot assert should have said so`); return null; }
-    const gA = addGear(s, a, along, phase);
-    const at = s.pos.clone().addScaledVector(s.u, along);
-    let next, nextPhase = 0;
-    if (m.class === 'right-angle') {
-      if (!BEVEL.has(a.kind)) { log(`${gen}: ${ta}:${tb} — a bevel DRIVEN member is not drawn (no declared row needs one)`); return null; }
-      // The pinion rides the face teeth at the turntable's pitch radius, its
-      // axis radial (the turntable's side vector), above the toothed face.
-      const pos = at.clone().addScaledVector(s.w, ta / 2).addScaledVector(s.u, FACE / 2 + 1.6 + tb / 2);
-      // THE CONTACT is the pinion's point nearest the face, −u from its
-      // centre, and there both surfaces move along the turntable's tangent
-      // s.v: the face at R·ω_A, the pinion's rim at r·ω_B along u_B × (−u).
-      // σ is that second direction read against s.v — so the pinion's SENSE
-      // comes from the frames, not from a sign written here.
-      const uB = s.w, side = sideOf(uB), vB = new THREE.Vector3().crossVectors(uB, side);
-      const down = s.u.clone().negate();
-      const sigma = Math.sign(new THREE.Vector3().crossVectors(uB, down).dot(s.v));
-      next = newShaft(parent, pos, uB, sigma * s.speed * ta / tb);
-      // EXACT PHASE, the parallel rule in this frame. Measured along s.v,
-      // the driver's tooth arc is R·pA and the pinion's is σ·r·(pB − βc),
-      // βc the contact's angle in the pinion's own frame; the pair meshes
-      // when they differ by half the module-1 pitch π, and since both move at
-      // R·ω_A that holds at every angle: pB = βc + σ·(Na·pA − π)/Nb.
-      const betaC = Math.atan2(down.dot(vB), down.dot(side));
-      nextPhase = betaC + sigma * (ta * phase - Math.PI) / tb;
-    } else {
-      // Parallel: half the sum of the counts, the lattice distance catalogueMesh
-      // admitted, a turntable's included since §219 tier three (b) landing C1.
-      const pos = at.clone().addScaledVector(s.w, m.cd);
-      next = newShaft(parent, pos, s.u, -s.speed * ta / tb);
-      // Exact mesh phase for external gears in one frame: with the driver's
-      // tooth offset pa from the line of centres, the driven gear's gap faces
-      // it when Na·pa + Nb·(pb − π) ≡ π (mod 2π); and since the driven turns
-      // −Na/Nb as fast, the relation holds at every angle, not just at rest.
-      nextPhase = Math.PI + (Math.PI - ta * phase) / tb;
-    }
-    const gB = addGear(next, b, 0, nextPhase);
-    meshes.push({ a: gA, b: gB, class: m.class });
-    shafts.push(next); s = next; along = i + 1 < chain.length ? stepAfter(i + 1) : LAYER; phase = 0;
-  }
-  for (const sh of shafts) addAxle(sh);
-  return { shafts, meshes };
-}
-
-
-// --- the LEGO build (?view=lego) --------------------------------------------
+// --- the LEGO build ---------------------------------------------------------
 // Drawn by role, not by LDraw colour code: the .ldr download carries the codes.
 const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, technicBrick: 0x9b3b36, axle: 0x1c1d20, spur: 0xa0a5a9, doubleBevel: 0xd9c08c,
   joiner: 0x1c1d20, ring: 0x9b3b36, crown: 0xe8e8e8, catch: 0xb03a2e,
@@ -431,7 +265,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(80, -120
 
 const targets = technicForkTargets();   // three rows; the reserve's is derived in main.js from its sweep
 const gens = Object.keys(CATALOGUES).filter((k) => CATALOGUES[k]);
-let world = null, built = [], inputAngle = 0;
+let world = null, inputAngle = 0;
 
 function labelSprite(text) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 64;
@@ -441,57 +275,44 @@ function labelSprite(text) {
   return s;
 }
 
-let view = new URLSearchParams(location.search).get('view') === 'lego' ? 'lego' : 'drawn';
-async function build(gen, mode = view) {
-  view = mode;
-  if (mode === 'lego') await loadLib();
+async function build(gen) {
+  await loadLib();
   if (world) scene.remove(world);
-  world = new THREE.Group(); scene.add(world); built = []; legoShafts = [];
-  const frames = mode === 'lego' ? frameFork(gen) : [];
+  world = new THREE.Group(); scene.add(world); legoShafts = [];
+  const frames = frameFork(gen);
   const rowsEl = document.getElementById('rows'); rowsEl.textContent = '';
   TECHNIC_FORK.rows.forEach((row, k) => {
     const chain = row.chains[gen];
-    const band = new THREE.Group(); band.position.set((k % 2) * CELL[0], -Math.floor(k / 2) * CELL[1], 0); world.add(band);
     const frame = frames[k];
+    const product = chain.reduce((acc, [a, c]) => ratMul(acc, ratQ(a, c)), ratQ(1));
+    const t = targets[row.key];
+    const verdict = t ? (ratEq(product, t) ? `<span class="ok">= the steel invariant</span>` : `<span class="bad">≠ the steel invariant ${ratStr(t)}</span>`)
+                      : `<span>held against the reserve's scale by main.js</span>`;
     if (frame && frame.framed) {
+      const band = new THREE.Group(); world.add(band);
       // the build stands on a table: cells along x and into the screen
       band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL);
       const b = ldrawBuild(frame, lib);
       legoShafts.push(...buildLego(b, band));
       const lbl = labelSprite(`${k + 1}. ${row.key}`); lbl.position.set(-30, 60, 0); band.add(lbl);
-      const product = chain.reduce((acc, [a, c]) => ratMul(acc, ratQ(a, c)), ratQ(1));
       const div = document.createElement('div'); div.className = 'row';
       const href = URL.createObjectURL(new Blob([toLdr(b)], { type: 'text/plain' }));
-      div.innerHTML = `<b>${k + 1}. ${row.key} — LEGO build</b><code>${chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(product)}</code>`
+      div.innerHTML = `<b>${k + 1}. ${row.key} — LEGO build</b><code>${chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(product)}</code> ${verdict}`
         + `<br><span style="color:var(--dim)">${frame.shafts.length} axles at ${frame.axleZ} mm, base ${frame.base.studsX}×${frame.base.studsY} studs, `
         + `${b.statics.length + b.shafts.reduce((n, s) => n + s.parts.length, 0)} parts</span>`
         + `<br><a href="${href}" download="${gen}-${row.key.replace(/\W+/g, '-')}.ldr" style="color:#9fb6d9">download .ldr</a>`;
       rowsEl.appendChild(div);
       return;
     }
-    if (mode === 'lego') { band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); band.rotation.x = -Math.PI / 2; }
-    band.add(labelSprite(`${k + 1}. ${row.key}${mode === 'lego' ? ' (drawn)' : ''}`));
-    // The lattice under the chain's plane: 8 mm studs, 4 mm half-studs.
-    const g8 = new THREE.GridHelper(160, 20, 0x3a4150, 0x2a3040), g4 = new THREE.GridHelper(160, 40, 0x20252e, 0x20252e);
-    for (const g of [g4, g8]) { g.rotation.x = Math.PI / 2; g.position.set(40, 0, -LAYER); band.add(g); }
-    const res = buildChain(gen, chain, band);
-    if (!res) return;
-    built.push(res);
-    const product = chain.reduce((acc, [a, b]) => ratMul(acc, ratQ(a, b)), ratQ(1));
-    const t = targets[row.key];
-    const verdict = t ? (ratEq(product, t) ? `<span class="ok">= the steel invariant</span>` : `<span class="bad">≠ the steel invariant ${ratStr(t)}</span>`)
-                      : `<span>held against the reserve's scale by main.js</span>`;
+    // a row the frame refuses is listed with the reason, and not drawn
     const div = document.createElement('div'); div.className = 'row';
-    div.innerHTML = `<b>${k + 1}. ${row.key}</b><code>${chain.map(([a, b]) => `${a}:${b}`).join(' × ')}</code> = <code>${ratStr(product)}</code> ${verdict}`
-      + `<br><span style="color:var(--dim)">${row.derivedFrom}</span>`
-      + (frame && !frame.framed ? `<br><span class="bad">not framed in LEGO: ${frame.reason}</span>` : '')
-      + `<br>measured <code data-meter="${built.length - 1}">—</code>`;
+    div.innerHTML = `<b>${k + 1}. ${row.key}</b><code>${chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(product)}</code> ${verdict}`
+      + `<br><span class="bad">not framed in LEGO: ${frame ? frame.reason : 'no frame'}</span>`;
     rowsEl.appendChild(div);
   });
   // §219 tier three (b) landing D — the keyless works, the LEGO view's fifth cell
-  document.getElementById('kmodes').hidden = mode !== 'lego';
   keylessBuild = null;
-  if (mode === 'lego') {
+  {
     const kf = frameKeyless(gen), k = TECHNIC_FORK.rows.length;
     const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
     const div = document.createElement('div'); div.className = 'row';
@@ -522,7 +343,7 @@ async function build(gen, mode = view) {
   // from the spring table, which is POSED (a stand-in for a measurement), so
   // the panel says so beside the numbers.
   fuseeBuildNow = null;
-  if (mode === 'lego') {
+  {
     const k = TECHNIC_FORK.rows.length + 1;
     const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
     const div = document.createElement('div'); div.className = 'row';
@@ -542,13 +363,11 @@ async function build(gen, mode = view) {
     rowsEl.appendChild(div);
   }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
-  for (const b of document.querySelectorAll('#views button')) b.dataset.state = b.dataset.view === mode ? 'on' : 'off';
   currentGen = gen;
   const box = new THREE.Box3().setFromObject(world), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
   controls.target.copy(c);
   // FRAMED TO FIT what the panel leaves visible: the camera keeps the view's
-  // direction (from above and in front for the LEGO table, square on for the
-  // drawn rows) and backs off until the scene's bounding sphere fits the
+  // direction (from above and in front of the table) and backs off until the scene's bounding sphere fits the
   // narrower of the two field-of-view angles — on a desktop beside the panel,
   // on a phone above the sheet, the whole table stays in view.
   const pr = panelEl.hidden ? null : panelEl.getBoundingClientRect();
@@ -561,7 +380,7 @@ async function build(gen, mode = view) {
   const half = Math.atan(tv * Math.min(visW, visH) / innerHeight);
   const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
   const dist = radius / Math.sin(half);
-  const dir = mode === 'lego' ? new THREE.Vector3(-0.2, 0.8, 0.9) : new THREE.Vector3(0, -0.75, 1.05);
+  const dir = new THREE.Vector3(-0.2, 0.8, 0.9);
   cam.position.copy(c).addScaledVector(dir.normalize(), dist);
   // the far plane past the sphere's far side wherever the fit put the camera,
   // with room to zoom out four times as far (the orbit controls' wheel)
@@ -576,11 +395,6 @@ const gensEl = document.getElementById('gens');
 for (const g of gens) {
   const b = document.createElement('button'); b.textContent = g.replace('technic_', ''); b.dataset.gen = g;
   b.addEventListener('click', () => build(g)); gensEl.appendChild(b);
-}
-const viewsEl = document.getElementById('views');
-for (const [v, label] of [['drawn', 'drawn'], ['lego', 'LEGO build']]) {
-  const b = document.createElement('button'); b.textContent = label; b.dataset.view = v;
-  b.addEventListener('click', () => build(currentGen, v)); viewsEl.appendChild(b);
 }
 const kmodesEl = document.getElementById('kmodes');
 for (const m of ['wind', 'set', 'neutral']) {
@@ -606,15 +420,9 @@ renderer.setAnimationLoop((now) => {
     if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
   }
-  built.forEach((res, i) => {
-    for (const sh of res.shafts) sh.rotor.rotation.z = sh.speed * inputAngle;
-    const out = res.shafts[res.shafts.length - 1].rotor.rotation.z, inp = res.shafts[0].rotor.rotation.z;
-    const el = document.querySelector(`[data-meter="${i}"]`);
-    if (el && inp) el.textContent = `output ÷ input = ${Math.abs(out / inp).toFixed(4)}`;
-  });
   renderer.render(scene, cam);
 });
-window.__technic = { build, setKeylessMode, get built() { return built; }, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, cam, controls, scene, renderer };
+window.__technic = { build, setKeylessMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, cam, controls, scene, renderer };
 </script>
 </body>
 </html>
