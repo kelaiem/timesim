@@ -4,7 +4,7 @@
 
 # The instruments
 
-315 scripts. **202 are ACCEPTANCE tests** — they decide and exit non-zero.
+316 scripts. **203 are ACCEPTANCE tests** — they decide and exit non-zero.
 **113 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -214,6 +214,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-267-boot-progress.mjs` | §267 | acceptance | DOES THE BOOT BAR TELL THE TRUTH ABOUT WHERE THE BUILD IS? — §267, measured. |
 | `probe-268-hammer-spiral.mjs` | §268 | acceptance | §268 — THE HAMMER SPRING IS A SPRING NOW: does the fall law read √(k/I) off the metal, and is the metal there? ACCEPTANCE. |
 | `probe-269-case-path.mjs` | §269 | acceptance | §269 — THE CASE AS THE RADIATOR: does the structure-borne path on the record follow from the metal, and does every integral behind it reproduce by a second method? ACCEPTANCE. |
+| `probe-274-picker.mjs` | §274 | acceptance | §274 — DOES THE PICKERS' "SHOW INCOMPLETE TRANSLATIONS" TOGGLE DO WHAT IT SAYS? |
 | `probe-274-surfaces.mjs` | §274 | acceptance | §274 — DO THE DECLARED-SURFACE GATES MEASURE ANYTHING? Pure Node, no browser. |
 | `probe-277-nav.mjs` | §277 | acceptance | §277 part E — navigation on the scripted-user engine, measured in a browser. |
 | `probe-277-route-i18n.mjs` | §277 | acceptance | §277 part F — does every locale carry the Inspect route's captions and stop titles, and does each keep what the English CLAIMS? |

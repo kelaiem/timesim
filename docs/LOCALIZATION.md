@@ -150,11 +150,25 @@ both ways, with the judging in `tools/locale-surfaces.mjs`:
 Stage order for a new locale: wiring with the surfaces declared as
 `['chrome']`, then the chrome, then declare `primer` and add its table, then
 `explainer` last. Each stage can land alone. Say in the PR which surfaces the
-row declares. **A locale with the chrome alone appears in the pickers** (the
-owner's ruling): the pickers render every `LOCALES` row, so there is nothing to
-wire, and the untranslated-page notice is what tells a reader the pages are
-still English. No picker mark is built; add one only if looking at the notice
-shows it is not enough.
+row declares.
+
+**The pickers hide incomplete locales behind a toggle (owner's ruling).** A
+locale that does not carry all three surfaces is *incomplete*. The chrome alone
+is enough for it to exist in the pickers, but they list it only when the reader
+asks: all three (the panel's, `explain.html`'s, `primer.html`'s) fill themselves
+through `fillLanguagePicker` in `src/i18n.js`, which hides incomplete locales
+and ends the list with a **Show incomplete translations** option. Choosing it
+flips the choice, persisted in `localStorage` (`uiShowIncomplete`) and so shared
+by all three pickers, and rebuilds the list in place. The reader's current
+locale is always listed, whatever the toggle says. The option exists only while
+some `LOCALES` row is incomplete, so with every row whole the pickers are
+unchanged, and it carries `data-state="on|off"` (the check mark is decoration).
+The label is a chrome key: every locale's table must translate
+`INCOMPLETE_TOGGLE`, which `probe-274-surfaces.mjs` holds, because the option
+appears in every picker the day one row is incomplete. A new picker fills itself
+through the same function; do not write a fourth loop over `LOCALES`.
+`tools/probe-274-picker.mjs` plants an incomplete row in flight and holds each
+clause against the live `<select>`. There is no picker mark.
 
 **This is a guideline for documenting gaps, not a ratchet.** The point of
 `surfaces` is that a gap is declared rather than owed silently. Today every

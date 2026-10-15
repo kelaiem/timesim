@@ -56,6 +56,11 @@ const thinRows = LOCALES.filter((L) => L.surfaces);
 check('every shipped LOCALES row declares all three surfaces', LOCALES.every((L) => SURFACES.every((s) => surfacesOf(L.code).includes(s))) && thinRows.length === 0,
   `${LOCALES.length} rows, ${thinRows.length} with an explicit declaration`);
 
+// 5b. Every table can say the pickers' toggle: it shows in every picker the day any row is incomplete.
+const { TABLES, INCOMPLETE_TOGGLE } = await import(join(ROOT, 'src/i18n.js'));
+const codes = LOCALES.filter((L) => L.code !== 'en').map((L) => L.code);
+check('every locale\'s chrome table translates the picker toggle', codes.every((c) => TABLES[c][INCOMPLETE_TOGGLE] && TABLES[c][INCOMPLETE_TOGGLE] !== INCOMPLETE_TOGGLE), `${codes.length} tables`);
+
 // 6. The boot assert fires on a bad declaration (a copy of i18n.js with one row edited).
 const src = readFileSync(join(ROOT, 'src/i18n.js'), 'utf8');
 const warns = async (edit, tag) => {

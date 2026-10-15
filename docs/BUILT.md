@@ -35037,6 +35037,29 @@ be complete and an empty table of either page fails. The shipped primers are
 all 146/146, so the essential rule costs nothing on arrival. The ratchet is
 unbuilt, not refused.
 
+**The pickers' toggle (owner's ruling).** The chrome alone is enough for a
+locale to exist, and the pickers hide an incomplete locale until the reader
+flips a last option, **Show incomplete translations** (hidden by default;
+inside each of the three pickers; persisted in `localStorage`, so one choice
+serves all three). The three near-identical loops over `LOCALES` (the panel's
+in `main.js`, one in each static page) became one function,
+`fillLanguagePicker` in `src/i18n.js`, so a fourth cannot drift. It lists the
+reader's current locale whatever the toggle says (a picker must not lose the
+value it is showing), and the option appears only while some row is incomplete:
+with the shipped roster, every row is whole, so the pickers read exactly as
+before. The label is a chrome key translated into all 22 tables (machine-
+drafted, not natively reviewed: a term for the review sheet is *incomplete*,
+which several languages render as "partial" or "unfinished"). Two limits: a
+native `<select>` closes when an option is chosen, so the list is rebuilt for
+the next opening rather than staying open; and the state is the option's
+`data-state`, the leading check mark being decoration. `tools/probe-274-picker.mjs`
+(wired into `explain-i18n.yml`) plants an incomplete `de` in flight and holds
+default-hidden, the toggle offered in the page's own language, flipping lists
+it, persistence to the other page, flipping back, and the current locale staying
+listed, **12/12**, with the unmodified file as the control (no toggle, 23 options).
+The panel's picker calls the same function; its full boot was checked once by
+hand (the toggle present, no boot error), not gated.
+
 **Controls.** `tools/probe-274-surfaces.mjs` (pure Node; wired into
 `explain-i18n.yml`): a planted `['chrome']` locale with one explainer block
 FAILS as stale and passes with the block removed, for the primer too; a
@@ -35044,16 +35067,13 @@ declared primer at 99% and an empty declared table fail; a declared explainer
 at 90% passes and names the 10 untranslated blocks; declaring the primer does
 not declare the explainer; every shipped row declares all three; the boot
 assert fires on a bad row and is silent on the shipped file and on
-`['chrome']`. **13/13.** Page check on the base for comparison: identical line
+`['chrome']`. **14/14.** Page check on the base for comparison: identical line
 for line except for the new `coverage` line per (page, locale), and the
 `zh`/`zh-Hant` blocks swapping order because the loop now follows `LOCALES`.
 
 **Not done, and not hidden.**
-- The picker mark (entry item 3) is not built, and the owner has settled the
-  question it hung on: the chrome alone is enough for a locale to appear in the
-  pickers, which render every `LOCALES` row already. The notice is the signal
-  that a page is English; a mark is added only if looking at the notice shows it
-  is not enough. §273 (Czech) is the first landing that may use the field.
+- The picker mark (entry item 3) is replaced by a toggle, on the owner's
+  ruling (see below); no mark is built.
 - The `plate fit` rows for `es`, `ru`, `pt`, `it`, `ar` fail in this
   container on the BASE as well (7 new overflow/collision rows, identical
   before and after), a font-metrics difference of the container and not of this

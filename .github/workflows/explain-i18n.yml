@@ -159,6 +159,11 @@ jobs:
       - name: Check the surface declarations' controls
         run: node tools/probe-274-surfaces.mjs
 
+      # §274 — the language pickers' incomplete-translations toggle, against the
+      # live <select> with an incomplete locale planted in flight.
+      - name: Check the pickers' incomplete-translations toggle
+        run: node tools/probe-274-picker.mjs
+
       # §236 tier one. AFTER the translation gate on purpose: if a key stopped
       # matching, the block it names fell back to English and this check's
       # per-locale link counts move with it — reading the cause first saves

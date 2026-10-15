@@ -428,6 +428,7 @@ export function lowerUi(s) {
 // German. Horological vocabulary is the Glashütte register (Unruh, Anker,
 // Dreiviertelplatine …) — the audience this locale exists for.
 const DE = {
+  'Show incomplete translations': 'Unvollständige Übersetzungen anzeigen',
   'Enable sound': 'Ton aktivieren',
   // -- state words (the data-state refactor's DISPLAY text; state itself is
   //    the attribute, so these are free to be any language)
@@ -838,6 +839,7 @@ Object.assign(DE, {
 // Chrome-tier translation authored here; §73 budgets a native review pass
 // before tier two (the explainer) ships in this locale.
 const ZH = {
+  'Show incomplete translations': '显示不完整的翻译',
   'Enable sound': '启用声音',
   'On': '开', 'Off': '关',
   'Time': '时间', 'Camera': '视角', 'View': '显示', 'Alarm': '闹铃',
@@ -1215,6 +1217,7 @@ Object.assign(ZH, {
 // fr-FR points with ',' and groups with U+202F, both of which arrive through
 // fmtNum/fmtInt above and neither of which may reach a stored value.
 const FR = {
+  'Show incomplete translations': 'Afficher les traductions incomplètes',
   ['Enable sound']: 'Activer le son',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'Marche',
@@ -1764,6 +1767,7 @@ const FR = {
 // third and fourth; the mapping is made once in the MECH_GRAPH block below and
 // both static pages inherit it.
 const JA = {
+  'Show incomplete translations': '未完成の翻訳を表示',
   ['Enable sound']: '音を有効にする',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: 'オン',
@@ -2312,6 +2316,7 @@ const JA = {
 // zh-HK and zh-MO all resolve here — which is the case that was silently
 // landing in ZH before this section.
 const ZH_HANT = {
+  'Show incomplete translations': '顯示不完整的翻譯',
   ['Enable sound']: '啟用聲音',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   ['On']: '開',
@@ -2870,6 +2875,7 @@ const ZH_HANT = {
 // fmtInt under 'ar-u-nu-latn' — Western digits, '.' and ',' — so a value in
 // this table never carries a digit of its own script.
 const AR = {
+  'Show incomplete translations': 'إظهار الترجمات غير المكتملة',
   'Enable sound': 'تفعيل الصوت',
   'On': 'مفعّل',
   'Off': 'معطَّل',
@@ -3411,6 +3417,7 @@ const AR = {
 // infinitives. The same register as src/explain-i18n.es.js and
 // src/primer-i18n.es.js — one movement, one name per part.
 const ES = {
+  'Show incomplete translations': 'Mostrar traducciones incompletas',
   'Enable sound': 'Activar el sonido',
   'On': 'Activado',
   'Off': 'Desactivado',
@@ -3949,6 +3956,7 @@ const ES = {
 // buttons as Korean software writes them. Number-transparent. The same
 // register as src/explain-i18n.ko.js and src/primer-i18n.ko.js.
 const KO = {
+  'Show incomplete translations': '불완전한 번역 표시',
   'Enable sound': '소리 켜기',
   'On': '켜짐',
   'Off': '꺼짐',
@@ -4489,6 +4497,7 @@ const KO = {
 // register as src/explain-i18n.ru.js and src/primer-i18n.ru.js — one
 // movement, one name per part.
 const RU = {
+  'Show incomplete translations': 'Показывать неполные переводы',
   'Enable sound': 'Включить звук',
   'On': 'Вкл',
   'Off': 'Выкл',
@@ -5030,6 +5039,7 @@ const RU = {
 // src/explain-i18n.pt.js and src/primer-i18n.pt.js — one movement, one name
 // per part.
 const PT = {
+  'Show incomplete translations': 'Mostrar traduções incompletas',
   'Enable sound': 'Ativar o som',
   'On': 'Ligado',
   'Off': 'Desligado',
@@ -5570,6 +5580,7 @@ const PT = {
 // src/explain-i18n.it.js and src/primer-i18n.it.js — one movement, one name
 // per part. Every apostrophe is U+2019.
 const IT = {
+  'Show incomplete translations': 'Mostra traduzioni incomplete',
   'Enable sound': 'Attiva il suono',
   'On': 'Acceso',
   'Off': 'Spento',
@@ -6107,6 +6118,7 @@ const IT = {
 // are the tightest in the project — a chrome bar and 150 px HUD label boxes —
 // so these are the compact forms, measured by tools/probe-116-locale-fit.mjs.
 const HI = {
+  'Show incomplete translations': 'अधूरे अनुवाद दिखाएँ',
   'Enable sound': 'ध्वनि चालू करें',
   'On': 'चालू',
   'Off': 'बंद',
@@ -6648,6 +6660,7 @@ const HI = {
 // §53's 240 px column and the 150 px HUD labels are the constraint. Tone marks
 // follow the MODERN placement (hóa, thủy) and every string is NFC.
 const VI = {
+  'Show incomplete translations': 'Hiện bản dịch chưa hoàn chỉnh',
   'Enable sound': 'Bật âm thanh',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Bật',
@@ -7204,6 +7217,7 @@ const VI = {
 // held to the English length or under, because §53's 240 px column, the 150 px
 // HUD labels and the chrome bar are the constraint, and Dutch compounds run long.
 const NL = {
+  'Show incomplete translations': 'Onvolledige vertalingen tonen',
   'Enable sound': 'Geluid inschakelen',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Aan',
@@ -7760,6 +7774,7 @@ const NL = {
 // LOCALES' `dir` mirrors the panels, and the strings carry Persian's ی/ک and
 // its zero-width non-joiners. Labels are held to the English length or under.
 const FA = {
+  'Show incomplete translations': 'نمایش ترجمه‌های ناقص',
   'Enable sound': 'فعال‌سازی صدا',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'روشن',
@@ -8317,6 +8332,7 @@ const FA = {
 // arrow points at the end the mirrored slider actually has. Labels are held to
 // the English length or under.
 const HE = {
+  'Show incomplete translations': 'הצג תרגומים חלקיים',
   'Enable sound': 'הפעלת צליל',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'פועל',
@@ -8873,6 +8889,7 @@ const HE = {
 // pinion, mahkota. Buttons take the base imperative ("Putar", "Jeda") as
 // Indonesian software does. Labels are held to the English length or under.
 const ID = {
+  'Show incomplete translations': 'Tampilkan terjemahan yang belum lengkap',
   'Enable sound': 'Aktifkan suara',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Nyala',
@@ -9430,6 +9447,7 @@ const ID = {
 // this module lowercases for display goes through lowerUi, never toLowerCase.
 // Labels are held to the English length or under.
 const TR = {
+  'Show incomplete translations': 'Eksik çevirileri göster',
   'Enable sound': 'Sesi etkinleştir',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Açık',
@@ -9987,6 +10005,7 @@ const TR = {
 // dolen), as Welsh software does. Numbers format through the row's BORROWED
 // en-GB tag (see LOCALES). Labels are held to the English length or under.
 const CY = {
+  'Show incomplete translations': 'Dangos cyfieithiadau anghyflawn',
   'Enable sound': 'Galluogi sain',
   // -- panel chrome, HUD readouts, tooltips and the life-size copy
   'On': 'Ymlaen',
@@ -10547,6 +10566,7 @@ const CY = {
 // which Chromium carries. Labels are held to the English length or under.
 
 const FIL = {
+  'Show incomplete translations': 'Ipakita ang mga hindi kumpletong salin',
   ['Enable sound']: 'Buksan ang tunog',
   ['On']: 'On',
   ['Off']: 'Off',
@@ -11082,6 +11102,7 @@ const FIL = {
 // kronis. Commands take the infinitive (Uzvilkt, Saglabāt, Kopēt saiti), as
 // Latvian software does. Numbers format through lv-LV (see LOCALES).
 const LV = {
+  'Show incomplete translations': 'Rādīt nepilnīgus tulkojumus',
   'Enable sound': 'Ieslēgt skaņu',
   'On': 'Ieslēgts',
   'Off': 'Izslēgts',
@@ -11617,6 +11638,7 @@ const LV = {
 // kiskerék, korona. Commands are nouns (Felhúzás, Mentés, Másolás), as
 // Hungarian software writes them. Numbers format through hu-HU (see LOCALES).
 const HU = {
+  'Show incomplete translations': 'Hiányos fordítások megjelenítése',
   'Enable sound': 'Hang bekapcsolása',
   'On': 'Be',
   'Off': 'Ki',
@@ -12142,6 +12164,49 @@ const HU = {
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': 'A Próbaindítás a háttérben felépíti a jelöltet, és nagyjából tizenöt másodperc alatt jelenti, mit mondanak valódi szerkezeti ellenőrzései. A Nézet másolása most már a tervet is viszi, nem csak a nézetet. A gyűrűk az Önéi.',
 };
 // §216 HU TABLE END
+
+// §274 — THE PICKERS' TOGGLE. A locale that does not carry all three surfaces
+// is INCOMPLETE, and the language pickers (the panel's and the two static
+// pages', which all fill themselves here so there is one copy) hide it until
+// the reader asks: a last option, 'Show incomplete translations', flips the
+// choice and rebuilds the list in place. The reader's CURRENT locale always
+// stays listed, so a picker never loses the value it is showing. The choice
+// persists in localStorage and is read by all three pickers, which share an
+// origin. The option carries data-state, and its check mark is decoration:
+// state is an attribute, never the text. It exists only while some LOCALES row
+// is incomplete, so while every row is whole the pickers are unchanged.
+export const INCOMPLETE_TOGGLE = 'Show incomplete translations';
+const INCOMPLETE_VALUE = '__incomplete__';   // not a locale code; never reaches setUiLang
+export const isComplete = (code) => SURFACES.every((s) => surfacesOf(code).includes(s));
+let _showIncomplete = false;
+try { _showIncomplete = localStorage.getItem('uiShowIncomplete') === '1'; } catch { /* storage may be blocked */ }
+export function fillLanguagePicker(sel) {
+  const hasIncomplete = LOCALES.some((L) => !isComplete(L.code));
+  const build = () => {
+    sel.textContent = '';
+    for (const { code, face } of LOCALES) {   // face is DISPLAY; value is canonical (§73)
+      if (!_showIncomplete && !isComplete(code) && code !== UI_LANG) continue;
+      const o = document.createElement('option');
+      o.value = code; o.textContent = face;
+      sel.appendChild(o);
+    }
+    if (hasIncomplete) {
+      const o = document.createElement('option');
+      o.value = INCOMPLETE_VALUE;
+      o.dataset.state = _showIncomplete ? 'on' : 'off';
+      o.textContent = (_showIncomplete ? '\u2713 ' : '') + t(INCOMPLETE_TOGGLE);
+      sel.appendChild(o);
+    }
+    sel.value = UI_LANG;
+  };
+  build();
+  sel.addEventListener('change', () => {
+    if (sel.value !== INCOMPLETE_VALUE) { setUiLang(sel.value); return; }
+    _showIncomplete = !_showIncomplete;
+    try { localStorage.setItem('uiShowIncomplete', _showIncomplete ? '1' : '0'); } catch { /* then it lasts this load */ }
+    build();
+  });
+}
 
 export const TABLES = { de: DE, fr: FR, es: ES, ko: KO, ru: RU, pt: PT, it: IT, vi: VI, nl: NL, id: ID, tr: TR, cy: CY, fil: FIL, lv: LV, hu: HU, hi: HI, ja: JA, zh: ZH, 'zh-Hant': ZH_HANT, he: HE, fa: FA, ar: AR };
 const TABLE = TABLES[UI_LANG] || null;
