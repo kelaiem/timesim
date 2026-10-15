@@ -21,12 +21,17 @@
 // alarmNotchA), so it cannot ask it either. This is where the question lives
 // now: rule 6, a claim about a POSE belongs in an instrument.
 //
-// THE BAR IS A CONSTANT, NOT A ZERO. A fixed offset between the two tips is a
-// build phase — where the notch is cut relative to the hand, where the hand is
-// pressed on its tube — and it is absorbed by ALARM_RELEASE_PHASE. What would
-// be a defect is an offset that MOVES with the setting: that means the trip is
-// reading a different difference than the hands display. So the test is the
-// SPREAD across settings, against the sampling resolution of the sweep.
+// THE BAR IS A CONSTANT, AND SINCE TODO 261 THAT CONSTANT IS ZERO. The pin trips
+// the alarm when it BOTTOMS — the plateau's leading edge, the first sample of
+// the sweep at which it is fully down — and the notch's floor stands half a
+// plateau ahead of the hand so that edge is the hand. (Before TODO 261 the floor
+// was centred on the hand, the probe measured the plateau's CENTRE, and the
+// alarm rang half a plateau, 2.76 min, early without any row saying so: this
+// probe read the centre and the centre was on the hand. A trip is an EDGE, and
+// the instrument has to read the edge.) What would be a defect is an offset
+// that MOVES with the setting, or one that is not zero. So the tests are the
+// SPREAD across settings and the OFFSET itself, against the sampling resolution
+// of the sweep.
 //
 // CONTROLS, and the third is the one that makes the first two mean anything:
 //   · must-hit  — the three settings must trip at DIFFERENT taus, or the sweep
@@ -87,9 +92,10 @@ const out = await page.evaluate(async () => {
 
   const rows = [];
   for (const rot of settings) {
-    // Find the plateau: every sample where the pin is fully down, then its
-    // centre. Taking the first sample instead would read the notch's leading
-    // edge and make the offset depend on the sweep's direction.
+    // Find the plateau: every sample where the pin is fully down. The TRIP is its
+    // first sample, the leading edge in running (the sweep runs forward in
+    // time); its centre is read too, as the control that this instrument can see
+    // the lead (TODO 261).
     const hits = [];
     let peak = 0;
     for (let i = 0; i < N; i++) {
@@ -99,8 +105,10 @@ const out = await page.evaluate(async () => {
       if (d >= peak - 1e-12) hits.push(i);
     }
     if (!hits.length || peak <= 0) { rows.push({ rot, tripped: false }); continue; }
-    const mid = hits[Math.floor(hits.length / 2)];
-    const tau = (mid / N) * SPAN;
+    const tau = (hits[0] / N) * SPAN;
+    C.setPose({ ...base, alarmCrownRotation: rot, tau: ((hits[Math.floor(hits.length / 2)]) / N) * SPAN });
+    const hourC = tipAz('Hour wheel'), alarmC = tipAz('Alarm disc');
+    const centreOffset = (hourC && alarmC) ? wrapPi(hourC.az - alarmC.az) : null;
     C.setPose({ ...base, alarmCrownRotation: rot, tau });
     const hour = tipAz('Hour wheel');
     const alarm = tipAz('Alarm disc');
@@ -108,7 +116,7 @@ const out = await page.evaluate(async () => {
       rot, tripped: true, peak, tau, plateau: hits.length,
       hourAz: hour?.az ?? null, hourR: hour?.r ?? null,
       alarmAz: alarm?.az ?? null, alarmR: alarm?.r ?? null,
-      offset: (hour && alarm) ? wrapPi(hour.az - alarm.az) : null,
+      offset: (hour && alarm) ? wrapPi(hour.az - alarm.az) : null, centreOffset,
       // the must-fail control's quantity: the hour tip against a FIXED azimuth
       offsetFixed: hour ? wrapPi(hour.az - 0) : null,
     });
@@ -150,6 +158,13 @@ push('the hour hand meets the alarm hand at a CONSTANT offset across settings',
   sp !== null && sp <= 3 * angRes,
   `spread ${sp === null ? 'n/a' : sp.toFixed(5)} rad`, `≤ ${(3 * angRes).toFixed(5)} (3 samples of hand angle)`);
 const spF = spread(rows.filter((r) => r.tripped).map((r) => r.offsetFixed));
+const offs = rows.filter((r) => r.tripped).map((r) => r.offset);
+push('the alarm rings ON the alarm hand: at the trip the hour tip is within a few samples of it (TODO 261)',
+  offs.length > 0 && offs.every((o) => o !== null && Math.abs(o) <= 3 * angRes),
+  offs.map((o) => (o === null ? 'n/a' : o.toFixed(5))).join(' ') + ' rad', `|offset| ≤ ${(3 * angRes).toFixed(5)}`);
+const cen = rows.filter((r) => r.tripped).map((r) => r.centreOffset);
+push('CONTROL the plateau’s CENTRE stands half a plateau past the hand, so the test can say no (it is the lead the notch carries)',
+  cen.length > 0 && cen.every((o) => o !== null && Math.abs(o) > 10 * angRes), cen.map((o) => (o === null ? 'n/a' : o.toFixed(5))).join(' ') + ' rad', `|offset| > ${(10 * angRes).toFixed(5)}`);
 push('CONTROL against a FIXED azimuth the same spread is large, so the test can say no',
   spF !== null && spF > 20 * angRes, `spread ${spF === null ? 'n/a' : spF.toFixed(5)} rad`, `> ${(20 * angRes).toFixed(5)}`);
 

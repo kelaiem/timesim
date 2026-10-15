@@ -112,7 +112,8 @@ const out = await page.evaluate(async () => {
   const relAz = Math.atan2(p1.y, p1.x) - Math.atan2(p0.y, p0.x);
   C.setPose(base);
 
-  return { hold, row: row && { load: row.load, q: row.quantities, envelope: row.envelope }, hubDims, candidates,
+  const fuseeTq_Nm = C.equalisation && C.equalisation.going && C.equalisation.going.energy ? C.equalisation.going.energy.fuseeTorque_Nm : null;
+  return { hold, fuseeTq_Nm, row: row && { load: row.load, q: row.quantities, envelope: row.envelope }, hubDims, candidates,
            discRec: rec, relMove, relAz, hasPin: !!pin, hasDisc: !!disc };
 });
 await browser.close(); srv.kill();
@@ -205,6 +206,44 @@ push('a holding element is DECLARED (the record names its holder)', !!H.holder, 
 push(`and it clears the drag by ALARM_SPRING_HEADROOM ${H.headroomRequired}×`,
   !!H.holder && typeof H.holdTq_Nmm === 'number' && H.holdTq_Nmm >= H.headroomRequired * H.dragTq_Nmm,
   H.holdTq_Nmm == null ? 'no hold torque published' : `${H.holdTq_Nmm.toExponential(3)} N·mm, ${(H.holdTq_Nmm / H.dragTq_Nmm).toFixed(2)}×`, `≥ ${(H.headroomRequired * H.dragTq_Nmm).toExponential(3)} N·mm`);
+
+push(`and clears the CLIMB out of the notch by the same ${H.headroomRequired}× (TODO 260: the pin's ramp loads the disc more than the flat drag does)`,
+  typeof H.climbTq_Nmm === 'number' && H.climbTq_Nmm >= H.dragTq_Nmm * (1 - 1e-12) && H.holdTq_Nmm >= H.headroomRequired * H.climbTq_Nmm * (1 - 1e-9),
+  typeof H.climbTq_Nmm !== 'number' ? 'no climb torque published' : `climb ${H.climbTq_Nmm.toExponential(3)} N·mm, hold ${(H.holdTq_Nmm / H.climbTq_Nmm).toFixed(3)}× it; ramp tan θ ${H.rampTan.toFixed(4)}`, `climb ≥ drag, hold ≥ ${H.headroomRequired}× climb`);
+
+// --- TODO 261: the notch's ENTRY flank, steeper than the exit, falling not climbing ---
+{
+  push('the entry flank is published, and steeper than the exit’s (the pin falls down it, so it may be)',
+    typeof H.rampInTan === 'number' && H.rampInTan > H.rampTan && H.rampInRun_rad < H.rampRun_rad,
+    typeof H.rampInTan !== 'number' ? 'no entry flank published' : `tan θ_in ${H.rampInTan.toFixed(4)} vs ${H.rampTan.toFixed(4)}; run ${H.rampInRun_rad.toFixed(5)} vs ${H.rampRun_rad.toFixed(5)}`, 'steeper, shorter');
+  push('and a pin on it falls rather than sticks (tan θ_in > μ at the design corner)', H.rampInTan > H.mu, `${H.rampInTan.toFixed(4)} vs μ ${H.mu}`, '> μ');
+  push('its DRIVE at the design corner is the exit’s CLIMB there — one hold clears both by the same headroom',
+    typeof H.driveInTq_Nmm === 'number' && near(H.driveInTq_Nmm, H.climbTq_Nmm, 1e-9) && H.holdTq_Nmm >= H.headroomRequired * H.driveInTq_Nmm * (1 - 1e-9),
+    typeof H.driveInTq_Nmm !== 'number' ? 'no drive torque published' : `drive ${H.driveInTq_Nmm.toExponential(3)} N·mm, hold ${(H.holdTq_Nmm / H.driveInTq_Nmm).toFixed(3)}× it`, `drive = climb, hold ≥ ${H.headroomRequired}× drive`);
+  const ce = H.corners ? Object.entries(H.corners) : [];
+  push('the hold never falls under the entry’s drive at any friction corner (the drive RISES as μ falls, the hold falls with it)',
+    ce.length === 3 && Math.min(...ce.map(([, v]) => v.ratioIn)) >= 1, ce.map(([c, v]) => `${c} → ${v.ratioIn.toFixed(3)}×`).join(', '), '≥ 1');
+  push('and the cost to the HAND is published: setting the disc BACK through the notch pushes the pin up the steep flank',
+    typeof H.climbInTq_Nmm === 'number' && H.climbInTq_Nmm > H.climbTq_Nmm,
+    typeof H.climbInTq_Nmm !== 'number' ? 'not published' : `${H.climbInTq_Nmm.toExponential(3)} N·mm on top of the hold's ${H.holdTq_Nmm.toExponential(3)} (${(H.climbInTq_Nmm / H.holdTq_Nmm).toFixed(3)}×)`, 'published, above the exit climb');
+}
+
+// --- TODO 260: the friction corners, and the hour train's side of the climb ---
+{
+  const cs = H.corners ? Object.entries(H.corners) : [];
+  push('the hold ÷ climb is published at every FRICTION corner (dry steel, muTooth) and for the decoupled worst', cs.length === 3 && !!H.decoupled,
+    cs.map(([c, v]) => `${c} μ ${v.mu} → ${v.ratio.toFixed(3)}×`).join(', ') + (H.decoupled ? `; decoupled ${H.decoupled.ratio.toFixed(3)}×` : ''), 'three corners + decoupled');
+  push('the hold never falls under the climb at any corner', cs.length === 3 && Math.min(...cs.map(([, v]) => v.ratio), H.decoupled ? H.decoupled.ratio : 0) >= 1,
+    `least ${Math.min(...cs.map(([, v]) => v.ratio), H.decoupled ? H.decoupled.ratio : 0).toFixed(3)}×`, '≥ 1 (the headroom is the margin AT the adverse corner)');
+  // the hour train: climb torque at the hour wheel (1:1 through the satellite's idler), reflected to the cannon /12
+  const L = await import('../src/layout.js');
+  const toCannon = (L.MW_PINION_TEETH / L.MW_HOUR_TEETH) * (L.cannonPinionTeeth / L.MW_MINUTE_TEETH);   // hour wheel → minute pinion → minute wheel → cannon (ideal)
+  const climbAtCannon = H.climbTq_Nmm * toCannon;
+  const centreAvail = out.fuseeTq_Nm == null ? null : out.fuseeTq_Nm * 1000 * (L.TRAIN.barrel.pinion / L.TRAIN.barrel.teeth);   // N·mm the great wheel's torque leaves on the centre arbor (ideal, no losses)
+  push('the hour train: the motion works reflect the climb 1:12 to the centre arbor', Math.abs(toCannon - 1 / 12) < 1e-12, `×${toCannon.toFixed(9)}`, '1/12 (the headline ratio)');
+  push('and the going train carries it with orders to spare (reflected climb < 1% of the centre arbor’s drive torque)', centreAvail != null && climbAtCannon / centreAvail < 0.01,
+    centreAvail == null ? 'no fusee torque in the energy record' : `${climbAtCannon.toExponential(3)} N·mm of ${centreAvail.toFixed(4)} N·mm = ${(100 * climbAtCannon / centreAvail).toFixed(3)}%`, '< 1%');
+}
 
 let bad = 0;
 for (const r of rows) {
