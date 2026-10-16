@@ -86,7 +86,8 @@ through `TECHNIC_FUSEE_SPRING`. That table is POSED (a LEGO spring can only be
 measured; its stand-in is the steel ribbon's law, its three numbers read back
 off `main.js`' text), so a measured table re-solves with no code change, and
 records say modelled, never simulated. The staircase levels the stand-in from
-51.6% to 40.1%; the steel's level product is gated at 1e-9. The maintaining
+51.6% to 31.6% (landing H's two steps reached 40.1%; §285's catalogue found a
+better pair); the steel's level product is gated at 1e-9. The maintaining
 power is Harrison's and needs TWO one-way parts (the 20T one-way gear is not in
 the LDraw library): a click pawl riding the 40T ratchet, on a 16T keyed to the
 fusee, and a frame detent on the ratchet, each a keyed 8T on a thin liftarm
@@ -102,9 +103,28 @@ up on the larger step. In the wind the crank turns the fusee back `windSpeedup`
 times (derived: half the band's posed stretch per wind), the detent holds and
 the band carries the train. The pawls ride tabled seats.
 `tools/probe-technic-fusee-loop.mjs` holds the ratio per step, the readout
-against the solve's 40.1%/51.6%, the locks and the exact return to full wind. It
+against the solve's 31.6%/51.6%, the locks and the exact return to full wind. It
 also REPORTS the solve's simplification the loop exposed: the cord leaves the
-base step 13.9° off the tangent. **And the ALARM** (landing I,
+base step off the open belt's tangent (13.9° on landing H's cone, 51.7° on
+§285's). **Since §285 a third step is REFUSED, by measurement**:
+`tools/ldraw-groove-survey.mjs` reads every axle-keyed part in an unpacked
+LDraw library through `grooveSeat` itself (a report; its controls are the
+catalogued seats and a flat disc), every usable groove — round, both walls
+above the cord's centre all the way round, its floor within half a cord radius
+of its part's origin, the offset carried as `grooveOff` — joins
+`FUSEE_PULLEYS`, and the solve answers TWO steps (the thin tread sprocket's hub
+groove over the 8 × 18 rim's deep groove, on landing H's barrel) — because the
+cord that barrel takes over the band is 76 mm and every step above the base
+takes a whole wrap, so even with every seat FREE a third step loses there (the
+fusee probe gates that bound; its control is a 29.25 mm barrel, where three
+win). A third step would need a motorcycle wheel's off-centre gutter as the
+barrel, which the survey reports and nothing builds. `grooveSeat`'s floor is
+the run CONTIGUOUS with its lowest point: a crowned tyre's two gutters are not
+one channel. The owner's "another gear" is instead the going train's next wheel:
+the CENTRE PINION, an 8T meshing the great wheel at 24 mm
+(`solveCentrePinion`: the lattice mesh off the 40T nearest the steel's 120:7),
+phased by the parts' tooth phases and turned −5× the great wheel in the loop
+(`loopPose`'s `phiC`); it drives nothing yet. **And the ALARM** (landing I,
 `src/technic-alarm.js`): a column wheel of two 3-blade rotors, the second turned
 over (six columns 60° apart), indexed through a 12T by a pawl on a pushed driver
 and held by a banded half-bush detent, its parity read by a pin BEAK on the
@@ -1154,7 +1174,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 323 measuring scripts and this file names 51. The rest are named for the
+`tools/` holds 324 measuring scripts and this file names 52. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1171,7 +1191,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **209 of
+The index also carries the split that decides how to read a result: **210 of
 them are ACCEPTANCE tests** that exit non-zero, and **114 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

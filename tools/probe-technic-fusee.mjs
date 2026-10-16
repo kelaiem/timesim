@@ -24,6 +24,18 @@
 //     least spread of torque × radius); the step radii against the ideal r(θ),
 //     the LEVEL PRODUCT's spread over the run against the bare spring's and
 //     against the steel fusee's gate (its level product held at 1e-9);
+//   · A THIRD STEP (§285) — the catalogue is now landing H's five and every
+//     usable groove the library survey measured (each re-read here over its
+//     own window, its offset from its origin too); the best three-step cone
+//     spreads more than the answer, and with every seat FREE (a 0.2 mm grid)
+//     three steps still lose to two on the answer's barrel — every step above
+//     the base takes a whole wrap of the 76 mm it takes over the band. The
+//     control: on a 29.25 mm barrel (122 mm of cord) three win;
+//   · CENTRE PINION (§285) — the going train's next wheel: the declared count
+//     is solveCentrePinion's (the lattice mesh off the 40T nearest the steel's
+//     120:7), it stands the mesh's centre distance off the great wheel, and its
+//     teeth are MESHED with the great wheel's, read off both placed parts
+//     (probe-technic-build's tooth-phase law) at three poses;
 //   · CORD — the cord's length per step and per piece, the string the solve
 //     picks and the dead wrap it leaves on the barrel (inside the barrel's one
 //     groove with the run), the path's length EQUAL to the string's, the span's
@@ -55,20 +67,25 @@
 // of the ratchet; and a re-solve from a different (measured-looking) table that
 // moves the answer with no code change — the spring-agnostic claim, shown;
 // the click's 8T slid onto the column it clears; the detent's 8T turned into
-// the ratchet.
+// the ratchet; a surveyed seat perturbed, and its groove offset dropped; a
+// declared centre pinion other than the solver's, and a steel step-up of 2 that
+// moves the solver's; the centre pinion turned half a tooth, and one lattice
+// step out.
 //
 //   node tools/probe-technic-fusee.mjs
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseLibrary, bounds, placements, LDU_MM } from '../src/ldraw.js';
+import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js';
+import { CATALOGUES } from '../src/layout.js';
 import { LEGO_DIM_MM as D, GEAR_TIP_MM } from '../src/technic-frame.js';
 import { placedParts, toLdr, surfaceSamples } from '../src/technic-ldraw.js';
 import {
   TECHNIC_FUSEE_SPRING, STEEL_STAND_IN, springTorque, springBand, FUSEE_PULLEYS, FUSEE_STRINGS, FUSEE_PARTS, FUSEE_DIM_MM,
   grooveSeat, fuseeRun, solveFusee, idealAgainst, TECHNIC_FUSEE, cordChoice, frameFusee, cordPath, pathLength,
   goingSense, spanTangent, bandMoment, BAND_LAG_DEG, MAINTAINING, clickSpec, detentSpec, pawlLock, pawlModel, solveMaintaining,
-  axleHoleOffsets, fuseeBuild, AX_CLEAR,
+  axleHoleOffsets, fuseeBuild, AX_CLEAR, starProfile, penetration,
+  solveCentrePinion, FUSEE_CENTRE, centrePhase, centreRatio,
 } from '../src/technic-fusee.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -77,6 +94,7 @@ const lib = parseLibrary(PACK);
 const L = (mm) => mm / LDU_MM;
 const B = (p) => bounds(lib, `${p}.dat`);
 const deg = (r) => (r * 180 / Math.PI).toFixed(2);
+const mod = (a, m) => ((a % m) + m) % m;
 let fails = 0;
 const fail = (msg) => { fails++; console.log(`  ✗ ${msg}`); };
 const ctl = [];
@@ -110,9 +128,14 @@ const near = (a, b, t = 1e-4) => Math.abs(a - b) <= t;
 function partErrors(dims) {
   const errs = [];
   for (const p of FUSEE_PULLEYS) {
-    const g = grooveSeat(lib, p), b = B(p);
+    // §285: a surveyed part is read over its own window at its own step
+    // (dims.read); its rim is its outermost surface, as landing H's five read
+    const g = grooveSeat(lib, p, dims.cordR, dims.read[p] ?? {}), b = B(p);
+    if (!lib.get(`${p}.dat`)) { errs.push(`${p}: not in the pack`); continue; }
     if (!near(g.seat, dims.seat[p])) errs.push(`${p}: seat ${g.seat.toFixed(5)} mm, table ${dims.seat[p]}`);
-    if (!near(g.rim, dims.rim[p])) errs.push(`${p}: rim ${g.rim.toFixed(5)} mm, table ${dims.rim[p]}`);
+    if (!near(g.outer, dims.rim[p])) errs.push(`${p}: rim ${g.outer.toFixed(5)} mm, table ${dims.rim[p]}`);
+    if (!near((g.floor[0] + g.floor[1]) / 2, dims.grooveOff[p], 0.006)) errs.push(`${p}: groove ${((g.floor[0] + g.floor[1]) / 2).toFixed(3)} mm off its origin, table ${dims.grooveOff[p]}`);
+    if (!(g.walls[0] > g.seat && g.walls[1] > g.seat)) errs.push(`${p}: a wall stands under the cord's centre`);
     if (g.capacity !== dims.capacity[p]) errs.push(`${p}: holds ${g.capacity} cords side by side, table ${dims.capacity[p]}`);
     if (!near((g.floor[1] - g.floor[0]) / 2, dims.floorHalf[p], 0.02)) errs.push(`${p}: floor ±${((g.floor[1] - g.floor[0]) / 2).toFixed(3)} mm, table ${dims.floorHalf[p]}`);
     if (!near((b.hi[2] - b.lo[2]) * LDU_MM / 2, dims.halfWidth[p])) errs.push(`${p}: half width ${((b.hi[2] - b.lo[2]) * LDU_MM / 2).toFixed(4)}, table ${dims.halfWidth[p]}`);
@@ -144,10 +167,12 @@ function partErrors(dims) {
   return errs;
 }
 const pe = partErrors(F);
-for (const p of FUSEE_PULLEYS) { const g = grooveSeat(lib, p); console.log(`  ${p.padEnd(7)} seat ${g.seat.toFixed(4)} mm, rim ${g.rim.toFixed(4)}, floor ±${((g.floor[1] - g.floor[0]) / 2).toFixed(3)}, ${g.capacity} cord${g.capacity > 1 ? 's' : ''} side by side`); }
+for (const p of FUSEE_PULLEYS) { const g = grooveSeat(lib, p, F.cordR, F.read[p] ?? {}); console.log(`  ${p.padEnd(7)} seat ${g.seat.toFixed(4)} mm, rim ${g.rim.toFixed(4)}, floor ±${((g.floor[1] - g.floor[0]) / 2).toFixed(3)}, ${g.capacity} cord${g.capacity > 1 ? 's' : ''} side by side`); }
 console.log(`  strings ${Object.entries(FUSEE_STRINGS).map(([n, s]) => `${n}L ${s} ${F.string[s]} mm`).join(', ')}; cord radius ${F.cordR} mm; the 40T's axle holes ${F.wheelHole} mm out`);
 for (const e of pe) fail(e);
 control('a cord seat perturbed by 0.01 mm', partErrors({ ...F, seat: { ...F.seat, '4185a': F.seat['4185a'] + 0.01 } }).length > pe.length);
+control('a surveyed seat perturbed by 0.01 mm (the sprocket\'s)', partErrors({ ...F, seat: { ...F.seat, '32089': F.seat['32089'] + 0.01 } }).length > pe.length);
+control('a surveyed groove\'s offset dropped (the sprocket\'s)', partErrors({ ...F, grooveOff: { ...F.grooveOff, '32089': 0 } }).length > pe.length);
 
 // ── STEPS ───────────────────────────────────────────────────────────────────
 console.log('\nsteps (solveFusee over every barrel and every descending set of grooved steps):');
@@ -158,6 +183,31 @@ console.log(`    … ${solved.ranked.length} runs fit their tables; the bare spr
 const stepsErr = (spec) => (run && spec.barrel === run.barrel && JSON.stringify(spec.steps) === JSON.stringify(run.steps) ? [] : [`declared barrel ${spec.barrel}, steps ${spec.steps.join('>')}; the solve says ${run?.barrel}, ${run?.steps.join('>')}`]);
 for (const e of stepsErr(TECHNIC_FUSEE)) fail(e);
 control('a declared step set other than the solver\'s', stepsErr({ barrel: TECHNIC_FUSEE.barrel, steps: ['3736', '3482'] }).length > 0);
+// §285 — A THIRD STEP. The answer per number of steps over the surveyed
+// catalogue: the best three-step cone must spread more than the answer (else
+// the record's refusal is stale). And the bound that says WHY no catalogue
+// could change that on this barrel: with every seat FREE (a 0.2 mm grid from 3
+// to 14 mm, each step a half bush's width and floor), the best three-step cone
+// on the answer's barrel spreads more than the best two-step — the cord the
+// barrel takes over the band is 2π·ρ_b·band, and every step above the base
+// takes a whole wrap of it. Its control is the same search on a barrel of the
+// motorcycle wheel's gutter (ρ 29.25 mm, the survey's off-centre ceiling),
+// where three steps win. Gated, because docs/BUILT.md §285 states both.
+const byN = [1, 2, 3, 4].map((n) => solved.ranked.find((r) => r.steps.length === n));
+function freeBound(rb, n, grid = 0.2) {
+  const seat = { ...F.seat, B: rb }, names = ['s1', 's2', 's3'], halfWidth = { ...F.halfWidth, s1: 2, s2: 2, s3: 2 }, floorHalf = { ...F.floorHalf, s1: 0, s2: 0, s3: 0 }, grooveOff = { ...F.grooveOff, s1: 0, s2: 0, s3: 0 };
+  let best = { spread: Infinity };
+  const at = (rs) => { rs.forEach((r, i) => { seat[names[i]] = r; }); const r = fuseeRun(T, 'B', names.slice(0, rs.length), { seat, halfWidth, floorHalf, grooveOff }); if (r.ok && r.spread < best.spread) best = { spread: r.spread, rs: [...rs] }; };
+  const R = (lo, hi) => Array.from({ length: Math.max(0, Math.floor((hi - lo) / grid + 1e-9) + 1) }, (_, i) => lo + i * grid);
+  for (const a of R(3, 14)) for (const b of R(3, a - 2 * F.cordR)) { if (n === 2) at([a, b]); else for (const c of R(3, b - 2 * F.cordR)) at([a, b, c]); }
+  return best;
+}
+console.log(`  PER STEP COUNT: ${byN.map((r, i) => `${i + 1} step${i ? 's' : ''} ${r ? `${(r.spread * 100).toFixed(2)}% (barrel ${r.barrel}, ${r.steps.join(' > ')})` : 'none runs'}`).join('; ')}`);
+if (byN[2] && !(byN[2].spread > run.spread)) fail(`a three-step cone (${(byN[2].spread * 100).toFixed(2)}%) levels better than the answer: BUILT §285's refusal is stale`);
+const free = Object.fromEntries([['the answer', F.seat[run.barrel]], ['the gutter', 29.249]].map(([k, rb]) => [k, { rb, two: freeBound(rb, 2), three: freeBound(rb, 3) }]));
+for (const [k, v] of Object.entries(free)) console.log(`  FREE SEATS on ${k}'s barrel (ρ_b ${v.rb} mm, ${(2 * Math.PI * v.rb * run.band).toFixed(1)} mm of cord over the band): two steps reach ${(v.two.spread * 100).toFixed(2)}% (${v.two.rs.map((x) => x.toFixed(1)).join(' > ')} mm), three ${(v.three.spread * 100).toFixed(2)}% (${v.three.rs.map((x) => x.toFixed(1)).join(' > ')} mm)`);
+if (!(free['the answer'].three.spread > free['the answer'].two.spread)) fail('on the answer\'s barrel a three-step cone of free seats beats the best two-step: BUILT §285\'s reason is stale');
+control('on the gutter\'s barrel the same free search finds a three-step cone that wins', free['the gutter'].three.spread < free['the gutter'].two.spread);
 // THE IDEAL r(θ) and the level product
 for (const s of idealAgainst(run)) console.log(`  step ${s.part.padEnd(6)} seat ${s.seat.toFixed(3)} mm over θ ${s.from.toFixed(4)}–${s.to.toFixed(4)} turns; ideal r there ${s.idealFrom.toFixed(3)} → ${s.idealTo.toFixed(3)} mm`);
 const INSPECT = readFileSync(join(ROOT, 'src/inspect.js'), 'utf8');
@@ -277,6 +327,58 @@ const revD = pawlLock(lib, detentSpec(MAINTAINING.detent.pivot, -MAINTAINING.det
 control('the detent with its band reversed', maintErrors({ ...MAINTAINING, detent: { ...MAINTAINING.detent, sense: -MAINTAINING.detent.sense } }, sm, { detentLocks: revD.locks }).errs.length > 0);
 control('the band with the great wheel ahead of the ratchet', maintErrors(MAINTAINING, sm, { lagDeg: -BAND_LAG_DEG }).errs.length > 0);
 
+// ── CENTRE PINION (§285) ────────────────────────────────────────────────────
+// The going train's next wheel: the catalogue gear that meshes the 40T on the
+// lattice nearest the steel's great-wheel step-up, re-solved; the declared one
+// must be it, at the mesh's centre distance, its teeth meshed with the great
+// wheel's.
+console.log('\ncentre pinion (the going train\'s next wheel, §285):');
+const cps = solveCentrePinion();
+for (const r of cps.ranked) console.log(`  ${r.teeth === cps.best.teeth ? '→' : ' '} 40:${r.teeth} (${r.part}) at ${r.cd} mm, step-up ${r.ratio.toFixed(3)} against the steel's ${cps.steel.teeth}:${cps.steel.pinion} = ${cps.steel.ratio.toFixed(3)}`);
+const centreErr = (c, sol = cps) => (sol.best && c.teeth === sol.best.teeth && c.part === sol.best.part && c.cd === sol.best.cd ? [] : [`the centre pinion is declared ${c.teeth}T ${c.part} at ${c.cd} mm; the solve says ${sol.best?.teeth}T ${sol.best?.part} at ${sol.best?.cd}`]);
+for (const e of centreErr(FUSEE_CENTRE)) fail(e);
+control('a declared centre pinion other than the solver\'s (the 16T)', centreErr({ teeth: 16, part: '4019', cd: 28 }).length > 0);
+control('a steel step-up of 2 re-solves to a different pinion', centreErr(FUSEE_CENTRE, solveCentrePinion(CATALOGUES.technic_classic, { steel: { teeth: 2, pinion: 1 } })).length > 0);
+// MESHED is probe-technic-build's law: each gear's tooth angle MEASURED off
+// its PLACED geometry (its tip vertices through the placement's rotation, arg
+// Σ e^{iNθ} / N), and a pair meshes when Na·(A − α) + Nb·(B − α − π) ≡ π
+// (mod 2π), α the line of centres. The residue is a fraction of a turn of that
+// folded angle (0 meshed, ½ tooth on tooth), held at that probe's 1e-3 — here
+// at the build's three ratchet angles, and in probe-technic-fusee-loop over the
+// whole loop. The two star profiles in the plane (pawlModel's measure, 0.1°
+// bins) are REPORTED beside it: a sampled profile reads a steep flank up to a
+// bin's slope too far out, so it is not the gate.
+const PHASE_TOL = 1e-3;
+const tipCache = new Map();
+function tips(part) {
+  if (tipCache.has(part)) return tipCache.get(part);
+  const pts = []; walk(lib, `${part}.dat`, (k, ps) => { if (k === 'tri' || k === 'quad') pts.push(...ps); });
+  let r = 0; for (const [x, y] of pts) r = Math.max(r, Math.hypot(x, y));
+  const out = pts.filter(([x, y]) => Math.hypot(x, y) > r - 1e-6); tipCache.set(part, out); return out;
+}
+function placedPhase(p) {
+  let c = 0, sn = 0;
+  for (const q of tips(p.part)) {
+    const x = p.m[3] * q[0] + p.m[4] * q[1] + p.m[5] * q[2], y = p.m[6] * q[0] + p.m[7] * q[1] + p.m[8] * q[2];
+    const a = p.teeth * Math.atan2(y, x); c += Math.cos(a); sn += Math.sin(a);
+  }
+  return Math.atan2(sn, c) / p.teeth;
+}
+const G40 = starProfile(lib, FUSEE_PARTS.greatWheel), P8 = starProfile(lib, FUSEE_CENTRE.part);
+function meshErrors(b) {
+  const P = placedParts(b), a = P.find((x) => x.role === 'great'), c = P.find((x) => x.role === 'centre'), errs = [];
+  if (!a || !c || !near(a.m[2], c.m[2])) return { errs: ['the centre pinion is not coplanar with the great wheel'], w: NaN };
+  const al = Math.atan2(c.m[1] - a.m[1], c.m[0] - a.m[0]), A = placedPhase(a), Bc = placedPhase(c);
+  const r = mod(a.teeth * (A - al) + c.teeth * (Bc - al - Math.PI) - Math.PI, 2 * Math.PI) / (2 * Math.PI), w = Math.min(r, 1 - r);
+  if (w > PHASE_TOL) errs.push(`the centre pinion's teeth are ${w.toFixed(4)} of a turn off mesh with the great wheel's`);
+  const d = penetration(G40, [0, 0], b.pose.phiG, P8, [(c.m[0] - a.m[0]) * LDU_MM, -(c.m[1] - a.m[1]) * LDU_MM], b.pose.phiC);
+  return { errs, w, gap: -d };
+}
+const centreDistErr = (cb, gb, cd = FUSEE_CENTRE.cd) => {
+  const dx = (cb.origin[0] - gb.origin[0]) * LDU_MM, dz = (cb.origin[1] - gb.origin[1]) * LDU_MM;
+  return near(dx, cd, 1e-9) && near(dz, 0, 1e-9) ? [] : [`the centre pinion stands (${dx}, ${dz}) mm from the great wheel's axis, the mesh's centre distance is ${cd}`];
+};
+
 // ── BUILD ───────────────────────────────────────────────────────────────────
 console.log('\nbuild:');
 function buildErrors(f, b) {
@@ -292,7 +394,7 @@ function buildErrors(f, b) {
   // every wheel and pulley's bore on its body's axis, inside its axle's span
   const P = placedParts(b);
   for (const sh of b.shafts) for (const p of sh.parts) {
-    if (!['pulley', 'barrel', 'hook', 'click', 'ratchet', 'great', 'knob'].includes(p.role)) continue;
+    if (!['pulley', 'barrel', 'hook', 'click', 'ratchet', 'great', 'centre', 'knob'].includes(p.role)) continue;
     const q = P.find((x) => x.part === p.part && Math.abs(x.m[0] - sh.origin[0]) < 1e-6 && Math.abs(x.m[1] - sh.origin[1]) < 1e-6 && Math.abs(x.m[2] - p.m[2]) < 1e-6);
     if (!q) { errs.push(`${p.role} ${p.part}: not on its body's axis`); continue; }
     const ax = sh.parts.find((x) => x.role === 'axle' && Math.abs(x.m[0]) < 1e-9 && Math.abs(x.m[1]) < 1e-9);
@@ -316,6 +418,18 @@ function buildErrors(f, b) {
   return errs;
 }
 const be = buildErrors(frame, build);
+{ // §285: the centre pinion, its centre distance and its mesh
+  const cb = build.shafts.find((s) => s.shaft === 'centre'), gb = build.shafts.find((s) => s.shaft === 'great');
+  const dx = (cb.origin[0] - gb.origin[0]) * LDU_MM;
+  for (const e of centreDistErr(cb, gb)) fail(e);
+  control('the centre pinion one lattice step (4 mm) farther out', centreDistErr({ ...cb, origin: [cb.origin[0] + L(4), ...cb.origin.slice(1)] }, gb).length > 0);
+  if (!near(build.pose.phiC, centrePhase(lib, build.pose.phiG), 1e-12)) fail('the centre pinion is not at the angle the mesh law gives');
+  const rows = [0, 2 * Math.PI / 3, 4 * Math.PI / 3].map((phiM) => { const b = phiM ? fuseeBuild(frame, lib, { run, phiM }) : build; return { phiM, ...meshErrors(b) }; });
+  console.log(`  centre pinion: ${FUSEE_CENTRE.teeth}T ${FUSEE_CENTRE.part} ${dx} mm off the great wheel, at ${deg(build.pose.phiC)}°, turning ${centreRatio().toFixed(0)}× as fast the other way; MESHED, read off the placed teeth at the ratchet's ${rows.map((r) => `${deg(r.phiM)}° to ${r.w.toExponential(1)}`).join(', ')} of a turn (tol ${PHASE_TOL}); REPORT: the star profiles stand ${rows.map((r) => r.gap.toFixed(3)).join(', ')} mm apart there`);
+  for (const r of rows) for (const e of r.errs) fail(`ratchet at ${deg(r.phiM)}°: ${e}`);
+  const half = fuseeBuild(frame, lib, { run }); const hc = half.shafts.find((x) => x.shaft === 'centre'); hc.phi += Math.PI / FUSEE_CENTRE.teeth; half.pose = { ...half.pose, phiC: hc.phi };
+  control('the centre pinion turned half a tooth', meshErrors(half).errs.length > 0);
+}
 console.log(`  ${frame.columns.length} columns, ${frame.axles.length} axles (${frame.axles.map((a) => `${a.shaft} ${a.lenStuds}L`).join(', ')}), base ${frame.base.studsX}×${frame.base.studsY} studs; ${build.statics.length + build.shafts.reduce((n, s) => n + s.parts.length, 0)} placements, ${build.statics.filter((p) => p.role === 'cord').length} of them cord segments`);
 console.log(`  pose at full wind: fusee ${deg(build.pose.phiF)}°, barrel ${deg(build.pose.phiB)}°, ratchet ${deg(build.pose.phiM)}°, great wheel ${deg(build.pose.phiG)}°, click arm ${deg(build.pose.psiC)}°, detent arm ${deg(build.pose.psiD)}°`);
 for (const e of be) fail(e);
@@ -362,6 +476,7 @@ function clearErrors(b) {
     const has = (a, c) => (r[0] === a && r[1] === c) || (r[0] === c && r[1] === a);
     if (r.includes('axle') && (r.includes('technicBrick') || r.includes('joiner') || r.includes('arm') || r.includes('ratchet') || r.includes('great') || r.includes('pawl'))) continue;
     if (has('click', 'pawl') || has('ratchet', 'pawl')) continue;
+    if (has('great', 'centre')) continue;                              // the mesh: held above by its own measure
     if (has('axle', 'axle') && onLine(A, Bx)) continue;                 // two axles end to end in a joiner (each trimmed half an LDU)
     if (has('cordEnd', 'hook') || has('cordEnd', 'pulley') || has('cordEnd', 'barrel')) continue;
     if (LINE.has(r[0]) && LINE.has(r[1]) && onLine(A, Bx)) continue;    // face to face on one line (each one LDU or flush by the frame)
@@ -406,5 +521,5 @@ console.log(`  the .ldr: ${lines.length} parts, each a placement of the build, e
 
 console.log('\ncontrols:');
 for (const [n, ok] of ctl) { console.log(`  ${ok ? 'caught' : 'NOT CAUGHT'}  ${n}`); if (!ok) fails++; }
-console.log(fails ? `\n${fails} FAILED` : `\nthe staircase levels torque × radius from ${(run.bare * 100).toFixed(2)}% to ${(run.spread * 100).toFixed(2)}% on a POSED law, and while it is wound the band drives the great wheel the going way, held off the detent`);
+console.log(fails ? `\n${fails} FAILED` : `\nthe staircase levels torque × radius from ${(run.bare * 100).toFixed(2)}% to ${(run.spread * 100).toFixed(2)}% on a POSED law, and while it is wound the band drives the great wheel the going way, held off the detent; a third step levels no better, and the great wheel turns its centre pinion through the 40:${FUSEE_CENTRE.teeth}`);
 process.exit(fails ? 1 : 0);

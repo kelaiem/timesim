@@ -36,7 +36,8 @@
 // fallback the note names and it loses nothing the demonstrator needs.
 import { walk, placements, LDU_MM } from './ldraw.js';
 import { LEGO_DIM_MM, FRAME_PARTS, AXLE_PARTS, columnFor, GEAR_TIP_MM, KEYLESS_PULL_DIM_MM, KEYLESS_PARTS } from './technic-frame.js';
-import { surfaceSamples } from './technic-ldraw.js';
+import { surfaceSamples, forEachSurfaceSample, toothPhase } from './technic-ldraw.js';
+import { CATALOGUES, TRAIN, catalogueMesh } from './layout.js';
 
 const D = LEGO_DIM_MM;
 const L = (mm) => mm / LDU_MM;
@@ -91,11 +92,22 @@ export const springBand = (table) => table.rows[table.rows.length - 1][0] - tabl
 
 // ── THE PARTS ───────────────────────────────────────────────────────────────
 // THE STEP CATALOGUE: every keyed (axle-hole) round part whose rim carries a
-// CORD GROOVE, read from the LDraw library's titles: the half bush, the bush
-// with two flanges, the wheel rim 8 × 17.5, the wedge belt wheel and the
-// pulley wheel 5D. A flat rim (the 3×3 disc, a round plate) lets a wrap walk
-// off; a groove guides it. The barrel is chosen from the same list.
-export const FUSEE_PULLEYS = Object.freeze(['32123a', '3713', '3482', '4185a', '3736']);
+// CORD GROOVE. Landing H read five from the LDraw library's titles: the half
+// bush, the bush with two flanges, the wheel rim 8 × 17.5, the wedge belt wheel
+// and the pulley wheel 5D. A flat rim (the 3×3 disc, a round plate) lets a wrap
+// walk off; a groove guides it. The barrel is chosen from the same list.
+// §285 MEASURED the rest: tools/ldraw-groove-survey.mjs read every axle-keyed
+// part in the LDraw library (468 of them, 2026-10-16) through grooveSeat, and
+// every part whose groove a wrap can lie in joins — keyed on its own Z, its
+// floor's middle within half a cord radius of its origin (the build places a
+// pulley by its origin and carries that offset, `grooveOff`), round to a
+// quarter of the cord's diameter, and both walls above the cord's centre at
+// every angle. Tyre channels count: a wheel rim's tyre seat is a groove like
+// any other. The second line is theirs, by seat. (The bush with two flanges
+// fails that survey's wall rule — its flange dips to 3.27 mm, under the cord's
+// centre at 3.40 — and stays, landing H's, never in an answer.)
+export const FUSEE_PULLEYS = Object.freeze(['32123a', '3713', '3482', '4185a', '3736',
+  '32123b', '4265a', '6577', '55982', '56903', '32089', '2994', '4185b', '54087', '56904', '22253', '6595', '44292', '6582']);
 // THE CORD: LEGO's braided string, whose end STUDS are its hooks (each end a
 // round 1×1 with a stud on top and an anti-stud under it), by length in studs.
 // The shortest that reaches is the one built (cordChoice).
@@ -115,6 +127,7 @@ export const FUSEE_STRINGS = Object.freeze({ 11: '76384', 21: '75924', 31: '1422
 export const FUSEE_PARTS = Object.freeze({
   hookPlate: '4032a',   // round plate 2×2 with axle hole: four studs, one takes each hook
   clickWheel: '4019', ratchet: '3649', pawl: '3647', arm: '6632', connector: '62462', greatWheel: '3649', knob: '4185a',
+  centrePinion: '3647',   // §285: FUSEE_CENTRE's count, the part solveCentrePinion names
   cordEnd: '71149k01', cordSegment: '71149k02',
 });
 
@@ -126,11 +139,23 @@ export const FUSEE_PARTS = Object.freeze({
 // seat (the 8 × 17.5 rim's floor holds three; every other groove one).
 export const FUSEE_DIM_MM = Object.freeze({
   cordR: 0.6,               // 71149k02: the braided segment's section, ±1.5 LDU
-  seat: Object.freeze({ '32123a': 3.3117, '3713': 3.3971, '3482': 8.1989, '4185a': 11.5993, '3736': 18.1795 }),
-  capacity: Object.freeze({ '32123a': 1, '3713': 4, '3482': 3, '4185a': 1, '3736': 1 }),
-  rim: Object.freeze({ '32123a': 3.6001, '3713': 3.6001, '3482': 8.8002, '4185a': 12.0007, '3736': 18.68 }),
-  halfWidth: Object.freeze({ '32123a': 2, '3713': 4, '3482': 4, '4185a': 2, '3736': 4 }),   // along the axle
-  floorHalf: Object.freeze({ '32123a': 0.04, '3713': 2, '3482': 1.54, '4185a': 0.3, '3736': 0 }),   // the cord's centre may stand this far either side of the groove's middle at the seat
+  seat: Object.freeze({ '32123a': 3.3117, '3713': 3.3971, '3482': 8.1989, '4185a': 11.5993, '3736': 18.1795,
+    '32123b': 3.3117, '4265a': 3.3117, '6577': 3.3117, '55982': 5.3988, '56903': 5.3988, '32089': 6.697, '2994': 9.7989, '4185b': 11.6296, '54087': 12.9987, '56904': 12.9994, '22253': 13.3978, '6595': 13.3978, '44292': 14.1987, '6582': 15.3979 }),
+  capacity: Object.freeze({ '32123a': 1, '3713': 4, '3482': 3, '4185a': 1, '3736': 1,
+    '32123b': 1, '4265a': 1, '6577': 1, '55982': 1, '56903': 1, '32089': 1, '2994': 2, '4185b': 1, '54087': 5, '56904': 1, '22253': 12, '6595': 12, '44292': 7, '6582': 8 }),
+  rim: Object.freeze({ '32123a': 3.6001, '3713': 3.6001, '3482': 8.8002, '4185a': 12.0007, '3736': 18.68,
+    '32123b': 3.6001, '4265a': 3.6001, '6577': 3.6001, '55982': 8.4002, '56903': 8.4002, '32089': 13.1005, '2994': 12.0003, '4185b': 12.0007, '54087': 15.2001, '56904': 15.2009, '22253': 18.0011, '6595': 18.0011, '44292': 15.2024, '6582': 18.4011 }),
+  halfWidth: Object.freeze({ '32123a': 2, '3713': 4, '3482': 4, '4185a': 2, '3736': 4,   // along the axle
+    '32123b': 2, '4265a': 2, '6577': 2, '55982': 7.4, '56903': 4, '32089': 3.9004, '2994': 7, '4185b': 2, '54087': 10, '56904': 7.6, '22253': 12.4, '6595': 12.4, '44292': 10, '6582': 10 }),
+  floorHalf: Object.freeze({ '32123a': 0.04, '3713': 2, '3482': 1.54, '4185a': 0.3, '3736': 0,   // the cord's centre may stand this far either side of the groove's middle at the seat
+    '32123b': 0.04, '4265a': 0.04, '6577': 0.04, '55982': 0.28, '56903': 0.28, '32089': 0.18, '2994': 1, '4185b': 0.02, '54087': 2.94, '56904': 0.2, '22253': 6.73, '6595': 6.73, '44292': 3.8, '6582': 4.6 }),
+  // §285: the floor's middle along the part's own Z from its origin (landing
+  // H's five read 0), and the window grooveSeat reads each surveyed part over
+  // (landing H's five: none, the outermost rims about the origin), at 0.25 LDU
+  grooveOff: Object.freeze({ '32123a': 0, '3713': 0, '3482': 0, '4185a': 0, '3736': 0,
+    '32123b': 0, '4265a': 0, '6577': 0, '55982': 0, '56903': 0, '32089': 0.1, '2994': 0, '4185b': 0, '54087': 0, '56904': 0, '22253': -0.27, '6595': -0.27, '44292': 0, '6582': 0 }),
+  read: Object.freeze({
+    '32123b': Object.freeze({ window: Object.freeze([-0.96, 0.96]), step: 0.25 }), '4265a': Object.freeze({ window: Object.freeze([-0.96, 0.96]), step: 0.25 }), '6577': Object.freeze({ window: Object.freeze([-0.96, 0.96]), step: 0.25 }), '55982': Object.freeze({ window: Object.freeze([-0.92, 0.92]), step: 0.25 }), '56903': Object.freeze({ window: Object.freeze([-0.92, 0.92]), step: 0.25 }), '32089': Object.freeze({ window: Object.freeze([-0.68, 0.88]), step: 0.25 }), '2994': Object.freeze({ window: Object.freeze([-1.6, 1.6]), step: 0.25 }), '4185b': Object.freeze({ window: Object.freeze([-0.88, 0.88]), step: 0.25 }), '54087': Object.freeze({ window: Object.freeze([-3.8, 3.8]), step: 0.25 }), '56904': Object.freeze({ window: Object.freeze([-0.8, 0.8]), step: 0.25 }), '22253': Object.freeze({ window: Object.freeze([-7.6, 7.2]), step: 0.25 }), '6595': Object.freeze({ window: Object.freeze([-7.6, 7.2]), step: 0.25 }), '44292': Object.freeze({ window: Object.freeze([-4.4, 4.4]), step: 0.25 }), '6582': Object.freeze({ window: Object.freeze([-5.2, 5.2]), step: 0.25 }) }),
   string: Object.freeze({ '76384': 80, '75924': 160, '14225': 240, '71149': 320 }),   // between the two end studs' centres
   endR: 3.2, endH: 3.2, endStudH: 1.6, endCord: 0.6,   // 71149k01: radius 8, body 8, stud 4 LDU; the cord 1.5 LDU under its top
   plateH: 3.2, plateStud: Math.hypot(4, 4), plateR: 8,  // 4032a: body 8 LDU, studs at (±10, ±10) LDU, radius 20
@@ -142,26 +167,63 @@ export const FUSEE_DIM_MM = Object.freeze({
   armHalfWidth: 3.6,        // 6632: ±9 LDU across
 });
 
+
 // THE SEAT OF A CORD IN A GROOVE, measured. The part's outermost surface
 // radius R(z) along its axis (its own Z), from its sampled surface; the groove
 // is between its two outermost rims; a cord of radius c centred at (ρ, z_c)
 // rests where ρ(z_c) = max over |z − z_c| < c of R(z) + √(c² − (z − z_c)²) is
-// least. Returns LDU and mm.
-export function grooveSeat(lib, part, cordR = FUSEE_DIM_MM.cordR) {
-  const c = L(cordR), bin = 0.1, R = new Map();
-  for (const [x, y, z] of surfaceSamples(lib, part, 0.25)) {
-    const k = Math.round(z / bin); R.set(k, Math.max(R.get(k) ?? 0, Math.hypot(x, y)));
-  }
-  const ks = [...R.keys()].sort((a, b) => a - b);
+// least. Returns LDU and mm. `step` is the surface sampling (LDU; the catalogue
+// is held at 0.25, ldraw-groove-survey.mjs screens the library coarser) and
+// `axis` the part's own axis ('z', as every catalogued pulley is drawn, or 'y').
+// `window` (mm along the axis) names the groove where a part has more than one,
+// or where its two outermost rims do not stand either side of its origin; by
+// default the groove is the one between the outermost rims about the origin.
+// THE PROFILE it reads: the part's outermost surface radius per 0.1 LDU bin
+// along its axis (LDU), memoised per library, so a part with several grooves
+// is sampled once.
+const GROOVE_BIN = 0.1, profileMemo = new WeakMap();
+export function grooveProfile(lib, part, { step = 0.25, axis = 'z' } = {}) {
+  if (!profileMemo.has(lib)) profileMemo.set(lib, new Map());
+  const memo = profileMemo.get(lib), key = `${part}@${step}/${axis}`;
+  if (memo.has(key)) return memo.get(key);
+  const R = new Map();
+  forEachSurfaceSample(lib, part, step, (x, y, z) => {
+    const a = axis === 'y' ? y : z, r = axis === 'y' ? Math.hypot(x, z) : Math.hypot(x, y);
+    const k = Math.round(a / GROOVE_BIN); R.set(k, Math.max(R.get(k) ?? 0, r));
+  });
+  const out = { R, ks: [...R.keys()].sort((p, q) => p - q), bin: GROOVE_BIN };
+  memo.set(key, out);
+  return out;
+}
+export function grooveSeat(lib, part, cordR = FUSEE_DIM_MM.cordR, { step = 0.25, axis = 'z', window = null } = {}) {
+  const c = L(cordR), { R, ks, bin } = grooveProfile(lib, part, { step, axis });
   let rim = 0; for (const v of R.values()) rim = Math.max(rim, v);
-  const atRim = ks.filter((k) => R.get(k) > rim - 0.01).map((k) => k * bin);
-  const lo = Math.max(...atRim.filter((z) => z < 0)), hi = Math.min(...atRim.filter((z) => z > 0));
+  let lo, hi;
+  if (window) {
+    [lo, hi] = window.map(L);
+    rim = 0; for (const k of ks) if (k * bin >= lo - 1e-9 && k * bin <= hi + 1e-9) rim = Math.max(rim, R.get(k));
+  } else {
+    const atRim = ks.filter((k) => R.get(k) > rim - 0.01).map((k) => k * bin);
+    lo = Math.max(...atRim.filter((z) => z < 0)); hi = Math.min(...atRim.filter((z) => z > 0));
+  }
   const rho = (zc) => { let m = 0; for (const k of ks) { const d = k * bin - zc; if (Math.abs(d) < c) m = Math.max(m, R.get(k) + Math.sqrt(c * c - d * d)); } return m; };
   let seat = Infinity; const scan = [];
   for (let i = Math.ceil(lo / 0.05); i * 0.05 <= hi + 1e-9; i++) { const zc = i * 0.05, r = rho(zc); scan.push([zc, r]); seat = Math.min(seat, r); }
-  const floor = scan.filter(([, r]) => r < seat + 0.02).map(([z]) => z);
-  const f0 = floor[0], f1 = floor[floor.length - 1];
-  return { seatLDU: seat, seat: seat * LDU_MM, rim: rim * LDU_MM, groove: [lo * LDU_MM, hi * LDU_MM], floor: [f0 * LDU_MM, f1 * LDU_MM],
+  // the FLOOR: the run of cord positions at the seat (within 0.02 LDU of it)
+  // CONTIGUOUS with the lowest one — §285: a crowned tyre's two gutters are two
+  // floors, not one wide one, and a first reading that took the outermost of
+  // all such positions called a 62 mm motorcycle wheel's crown a 15 mm channel
+  const at = (j) => scan[j][1] < seat + 0.02;
+  let i0 = scan.findIndex(([, r]) => r === seat), i1 = i0;
+  while (i0 > 0 && at(i0 - 1)) i0--;
+  while (i1 < scan.length - 1 && at(i1 + 1)) i1++;
+  const f0 = scan[i0][0], f1 = scan[i1][0];
+  // the WALLS: each side's highest surface within a cord diameter outside the
+  // floor — a groove guides a wrap only where both stand above the cord's centre
+  const wall = (a, b) => { let m = 0; for (const k of ks) if (k * bin >= a - 1e-9 && k * bin <= b + 1e-9) m = Math.max(m, R.get(k)); return m * LDU_MM; };
+  const walls = [wall(f0 - 2 * c, f0), wall(f1, f1 + 2 * c)];
+  let outer = 0; for (const v of R.values()) outer = Math.max(outer, v);
+  return { seatLDU: seat, seat: seat * LDU_MM, rim: rim * LDU_MM, outer: outer * LDU_MM, walls, groove: [lo * LDU_MM, hi * LDU_MM], floor: [f0 * LDU_MM, f1 * LDU_MM],
     capacity: Math.floor((f1 - f0) / (2 * c) + 1e-9) + 1, rho: (zcMm) => rho(L(zcMm)) * LDU_MM };
 }
 
@@ -179,13 +241,17 @@ export function grooveSeat(lib, part, cordR = FUSEE_DIM_MM.cordR) {
 // which fixes f, and f must lie in (0, 1].
 // The LEVEL PRODUCT is M(θ)·ρ(θ) — the torque at the fusee, the barrel's radius
 // cancelling — and its SPREAD is (max − min)/mean over the run.
-export function fuseeRun(table, barrel, steps, { seat = FUSEE_DIM_MM.seat } = {}) {
+export function fuseeRun(table, barrel, steps, { seat = FUSEE_DIM_MM.seat, halfWidth = FUSEE_DIM_MM.halfWidth, floorHalf = FUSEE_DIM_MM.floorHalf,
+  grooveOff = FUSEE_DIM_MM.grooveOff } = {}) {
   const band = springBand(table), rb = seat[barrel];
   const rho = steps.map((p) => seat[p]);
-  const planes = stepPlanes(steps);
+  const planes = stepPlanes(steps, { halfWidth, floorHalf, grooveOff });
   const trans = steps.slice(1).map((p, j) => Math.sqrt(rho[j] ** 2 - rho[j + 1] ** 2 + (planes[j + 1].wrapY - planes[j].wrapY) ** 2));
   const upper = rho.slice(1).reduce((s, r) => s + TAU * r, 0) + trans.reduce((s, t) => s + t, 0);
   const f = (TAU * rb * band - upper) / (TAU * rho[0]);
+  // a run the table cannot carry is refused before it is sampled (§285: the
+  // solve now reads a library-sized catalogue)
+  if (!(f > 0 && f <= 1 + 1e-12)) return { barrel, steps, f, band, rb, rho, trans, upper, ok: false };
   // the cord's segments in the order winding lays them, each with its arm
   const segs = [{ step: 0, arm: rho[0], len: f * TAU * rho[0], kind: 'wrap' }];
   for (let j = 1; j < steps.length; j++) {
@@ -209,14 +275,17 @@ export function fuseeRun(table, barrel, steps, { seat = FUSEE_DIM_MM.seat } = {}
     bare: (bareHi - bareLo) / ((bareHi + bareLo) / 2), ok: f > 0 && f <= 1 + 1e-12 && Number.isFinite(lo) };
 }
 // THE STEPS' PLANES along the axle, from the base step's front face: steps
-// stand face to face, and each wrap lies in its groove's middle — or, where the
+// stand face to face, each its origin at its slab's middle, and each wrap lies
+// in its groove's middle — or, where the
 // floor is wider than one cord (the 8 × 17.5's channel holds three), on the side
 // nearest the step before it. frameFusee places the steps by this; a crossing's
 // axial leg is the difference of two wrap planes.
-export function stepPlanes(steps, { halfWidth = FUSEE_DIM_MM.halfWidth, floorHalf = FUSEE_DIM_MM.floorHalf } = {}) {
+export function stepPlanes(steps, { halfWidth = FUSEE_DIM_MM.halfWidth, floorHalf = FUSEE_DIM_MM.floorHalf, grooveOff = FUSEE_DIM_MM.grooveOff } = {}) {
   let y = 0;
   return steps.map((p, j) => {
-    const w = halfWidth[p], mid = y + w, wrapY = j === 0 ? mid : mid - floorHalf[p];
+    // §285: a groove whose floor stands `grooveOff` along the part's Z from its
+    // origin (each part mounted Z along +y, as fuseeBuild places it)
+    const w = halfWidth[p], mid = y + w, g = mid + (grooveOff?.[p] ?? 0), wrapY = j === 0 ? g : g - floorHalf[p];
     const out = { part: p, y0: y, y1: y + 2 * w, mid, wrapY };
     y += 2 * w;
     return out;
@@ -229,23 +298,42 @@ export function stepPlanes(steps, { halfWidth = FUSEE_DIM_MM.halfWidth, floorHal
 // (the half bush and the bush with two flanges sit 0.085 mm apart, so they
 // are never both steps); a barrel must hold the run in ONE layer (run ≤ its
 // capacity, in wraps), or its radius would change mid-run.
-export function solveFusee(table, { pulleys = FUSEE_PULLEYS, seat = FUSEE_DIM_MM.seat, capacity = FUSEE_DIM_MM.capacity } = {}) {
+export function solveFusee(table, { pulleys = FUSEE_PULLEYS, seat = FUSEE_DIM_MM.seat, capacity = FUSEE_DIM_MM.capacity,
+  halfWidth = FUSEE_DIM_MM.halfWidth, floorHalf = FUSEE_DIM_MM.floorHalf, grooveOff = FUSEE_DIM_MM.grooveOff, maxSteps = Infinity } = {}) {
   const twoC = 2 * FUSEE_DIM_MM.cordR, band = springBand(table);
   const ranked = [];
+  const barrels = pulleys.filter((b) => band <= capacity[b] + 1e-12);
+  // the longest run any barrel can lay: a cone whose UPPER wraps alone pass it
+  // cannot run, and nor can any cone that adds a step below them, so the
+  // descending sets are grown a step at a time and cut there (§285: the
+  // catalogue is library-sized; 2^n masks are not)
+  const most = Math.max(0, ...barrels.map((b) => TAU * seat[b] * band));
   const subsets = [];
-  const n = pulleys.length;
-  for (let mask = 1; mask < 1 << n; mask++) {
-    const s = pulleys.filter((_, i) => mask & (1 << i)).sort((a, b) => seat[b] - seat[a]);
-    if (s.every((p, j) => j === 0 || seat[s[j - 1]] - seat[p] >= twoC)) subsets.push(s);
-  }
-  for (const barrel of pulleys) {
-    if (band > capacity[barrel] + 1e-12) continue;
-    for (const steps of subsets) {
-      const r = fuseeRun(table, barrel, steps, { seat });
-      if (r.ok) ranked.push(r);
+  const bySeat = pulleys.map((p, i) => [p, i]).sort((a, b) => seat[b[0]] - seat[a[0]] || a[1] - b[1]).map(([p]) => p);
+  const grow = (s, upper, from) => {
+    if (s.length) subsets.push(s);
+    if (s.length >= maxSteps) return;
+    for (let i = from; i < bySeat.length; i++) {
+      const q = bySeat[i];
+      if (s.length && seat[s[s.length - 1]] - seat[q] < twoC) continue;
+      const up = s.length ? upper + TAU * seat[q] : 0;
+      if (up > most) continue;
+      grow([...s, q], up, i + 1);
     }
+  };
+  grow([], 0, 0);
+  for (const barrel of barrels) for (const steps of subsets) {
+    const r = fuseeRun(table, barrel, steps, { seat, halfWidth, floorHalf, grooveOff });
+    if (r.ok) { const { samples, ...light } = r; ranked.push(light); }   // the samples are re-read for the answer alone
   }
-  ranked.sort((a, b) => a.spread - b.spread || a.steps.length - b.steps.length || seat[a.barrel] - seat[b.barrel]);
+  // the least spread, then the fewest steps (parts), then the smaller barrel,
+  // then catalogue order (parts that read the same seat — the four half bushes
+  // — tie exactly, and the first listed stands)
+  const at = new Map(pulleys.map((p, i) => [p, i]));
+  const order = (r) => [at.get(r.barrel), ...r.steps.map((p) => at.get(p))];
+  const lex = (a, b) => { const x = order(a), y = order(b); for (let k = 0; k < Math.min(x.length, y.length); k++) if (x[k] !== y[k]) return x[k] - y[k]; return x.length - y.length; };
+  ranked.sort((a, b) => a.spread - b.spread || a.steps.length - b.steps.length || seat[a.barrel] - seat[b.barrel] || lex(a, b));
+  if (ranked.length) ranked[0] = fuseeRun(table, ranked[0].barrel, ranked[0].steps, { seat, halfWidth, floorHalf, grooveOff });
   return { best: ranked[0] ?? null, ranked };
 }
 // THE IDEAL r(θ): the radius that would hold the staircase's own mean product
@@ -261,9 +349,12 @@ export function idealAgainst(run) {
 }
 
 // THE DECLARED ANSWER (probe-technic-fusee re-solves and fails when the solve
-// answers otherwise): base the wedge belt wheel, a third of a wrap; top the
-// 8 × 17.5 rim, one wrap; barrel the pulley wheel 5D.
-export const TECHNIC_FUSEE = Object.freeze({ barrel: '3736', steps: Object.freeze(['4185a', '3482']) });
+// answers otherwise). Landing H's: two steps on the pulley wheel 5D, the wedge
+// belt wheel then the 8 × 17.5 rim (40.1%). §285's, over the surveyed
+// catalogue: still two steps on the pulley wheel 5D, but the thin tread
+// sprocket's hub groove (a little over three quarters of a wrap) then the
+// 8 × 18 rim's deep centre groove (one wrap). A third step wins nowhere in it.
+export const TECHNIC_FUSEE = Object.freeze({ barrel: '3736', steps: Object.freeze(['32089', '56903']) });
 
 // THE CORD: the shortest string whose length between its studs reaches the
 // whole path at full wind — hook leg, cone, span, the barrel's dead wrap and
@@ -276,6 +367,41 @@ export function cordChoice(pathNoDead, run, { strings = FUSEE_STRINGS, len = FUS
   return { choice: fit[0] ?? null, opts, room };
 }
 
+
+// ── §285 — THE CENTRE PINION: the going train's next wheel ─────────────────
+// Landing H stopped at the great wheel: the last thing that turned. A third
+// step on the cone was the owner's first reading of "another gear", and §285's
+// survey refused it (solveFusee answers two steps over the whole library's
+// usable grooves), so the other gear is the steel train's next member: the
+// CENTRE PINION the great wheel drives (TRAIN.barrel, 120 : 7 — a step-up of
+// 17.1). One LEGO mesh off the 40T cannot reach that, so the pinion is the
+// catalogue gear that meshes the 40T in parallel ON THE LATTICE (catalogueMesh,
+// the going-train rule every fork row is held to) and whose step-up 40/n
+// stands nearest the steel's, by ratio (|log|): the 8T, 5×, at 24 mm. The rest
+// of the steel's step-up is the next mesh's, which this module does not build
+// — the pinion turns, and drives nothing.
+export function solveCentrePinion(cat = CATALOGUES.technic_classic, { driverTeeth = 40, steel = TRAIN.barrel } = {}) {
+  const a = cat.counts.find((c) => c.teeth === driverTeeth), want = steel.teeth / steel.pinion;
+  const ranked = cat.counts.map((b) => ({ b, m: catalogueMesh(a, b, cat) })).filter(({ m }) => m && m.class === 'parallel')
+    .map(({ b, m }) => ({ teeth: b.teeth, part: b.part, cd: m.cd, ratio: driverTeeth / b.teeth, off: Math.abs(Math.log(driverTeeth / b.teeth / want)) }))
+    .sort((p, q) => p.off - q.off || p.teeth - q.teeth);
+  return { best: ranked[0] ?? null, ranked, steel: { teeth: steel.teeth, pinion: steel.pinion, ratio: want } };
+}
+// THE DECLARED ANSWER (probe-technic-fusee re-solves and fails when the solve
+// answers otherwise).
+export const FUSEE_CENTRE = Object.freeze({ teeth: 8, part: '3647', cd: 24 });
+// ITS ANGLE travels the mesh (standing rule 2): the pinion is phased so a
+// tooth of each part meets on the line of centres, read off each part's own
+// tooth phase (technic-ldraw's toothPhase, the law ldrawBuild meshes every row
+// by), and from there turns −40/8 of the great wheel's every turn.
+const phaseCache = new Map();
+const partPhase = (lib, part, n) => { const k = `${part}/${n}`; if (!phaseCache.has(k)) phaseCache.set(k, toothPhase(lib, part, n).theta); return phaseCache.get(k); };
+export function centrePhase(lib, phiG, { great = { part: FUSEE_PARTS.greatWheel, teeth: 40 }, centre = FUSEE_CENTRE, alpha = 0 } = {}) {
+  const Aang = phiG + partPhase(lib, great.part, great.teeth);
+  const Bang = alpha + Math.PI + (Math.PI - great.teeth * (Aang - alpha)) / centre.teeth;
+  return Bang - partPhase(lib, centre.part, centre.teeth);
+}
+export const centreRatio = (centre = FUSEE_CENTRE) => 40 / centre.teeth;
 
 // ── THE FRAME (mm: x across, y along the axles, z up from the baseplate) ────
 // Two lines on one baseplate: the BARREL's axle at x = 0 and the MAIN line at
@@ -292,9 +418,12 @@ export function cordChoice(pathNoDead, run, { strings = FUSEE_STRINGS, len = FUS
 // two Technic bricks beside joiner A.
 //
 // THE CENTRE DISTANCE: the barrel's pulley stands in the cone's slab (its
-// groove midway between the two wraps' planes), so the rims must pass:
-// cd ≥ rim(barrel) + rim(base) on the 4 mm lattice — 18.68 + 12.00 → 32.
-// THE AXLE HEIGHT: columnFor the largest tip on either line (the 40T's 20.94).
+// groove midway between the outermost wraps' planes), so its rim must pass
+// every step's by the clearance floor: cd ≥ rim(barrel) + the largest step rim
+// + AX_CLEAR (one LDU, CLEAR's), on the 4 mm lattice — landing H's 18.68 +
+// 12.00 + 0.4 → 32; §285's 18.68 + 13.10 + 0.4 → 36 (the sprocket's teeth stand
+// out past its groove's walls; at 32 they passed the barrel's rim by 0.32 mm).
+// THE AXLE HEIGHT: columnFor the largest tip or rim on either line.
 // THE CLICK'S WHEEL IS A 16T: the click's pawl pivots at its liftarm's round
 // MIDDLE hole on the ratchet's 8 mm hole and carries its 8T at an END hole,
 // 8 mm on — so the 8T can reach 12 mm from the axis, the 8:16 mesh, with the
@@ -304,10 +433,9 @@ export function cordChoice(pathNoDead, run, { strings = FUSEE_STRINGS, len = FUS
 // test's own floor — the click's arm off the ratchet's front face, the
 // detent's arm off its back face.
 export const AX_CLEAR = 0.4;
-export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING) {
+export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING, centre = FUSEE_CENTRE) {
   const F = FUSEE_DIM_MM, half = D.stud / 2;
-  const [base] = spec.steps;
-  const cd = Math.ceil((F.rim[spec.barrel] + F.rim[base]) / 4) * 4;
+  const cd = Math.ceil((F.rim[spec.barrel] + Math.max(...spec.steps.map((p) => F.rim[p])) + AX_CLEAR) / 4) * 4;
   const tipG = GEAR_TIP_MM[FUSEE_PARTS.greatWheel];
   const col = columnFor(Math.max(tipG, F.rim[spec.barrel]));
   const zA = r6(col.z);
@@ -337,6 +465,10 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING) {
   const jB0 = r1, jB1 = jB0 + 2 * F.connectorHalf, jBmid = (jB0 + jB1) / 2;
   const g0 = jB1, g1 = g0 + 2 * F.wheelHalf, gMid = (g0 + g1) / 2;
   const gCol1 = Math.ceil((g1 + half + AX_CLEAR) / D.stud) * D.stud, gCol2 = gCol1 + D.stud;   // the great wheel's peg rides round flush with its back face
+  // §285: the centre pinion in the great wheel's slab, on the far side of the
+  // main line from the barrel, its centre distance the mesh's; its two columns
+  // on the great wheel's two stud slots
+  const xC = cd + centre.cd;
   // the knob one stud gap outside the front column, as the keyless crown is
   const knobY = fFront - half - D.stud + 2;                            // 4185a is 4 mm wide
   // ── the barrel line: its groove midway between the cone's two wrap planes
@@ -344,10 +476,10 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING) {
   // it by the hook's height, as the cone's is
   const wrapYs = steps.map((s) => s.wrapY);
   const yb = r6((Math.min(...wrapYs) + Math.max(...wrapYs)) / 2);
-  const bw = F.halfWidth[spec.barrel];
-  const bHookTop = r6(yb - bw - F.endH - F.endStudH);
+  const bw = F.halfWidth[spec.barrel], yo = r6(yb - (F.grooveOff[spec.barrel] ?? 0));   // §285: the part's origin, its groove's floor at yb
+  const bHookTop = r6(yo - bw - F.endH - F.endStudH);
   const bFront = Math.floor((bHookTop - F.plateH - half) / D.stud) * D.stud;
-  const bBack = Math.ceil((yb + bw + half) / D.stud) * D.stud;
+  const bBack = Math.ceil((yo + bw + half) / D.stud) * D.stud;
   // AXLES: the library trims each axle end by half an LDU (0.2 mm). F ends in
   // joiner A's middle and G starts in joiner B's; M is the longest axle that
   // fits between them (the 3L, 23.6 of the joiners' 24), centred.
@@ -364,6 +496,7 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING) {
     axleSpan('fusee', cd, zA, knobY - 2, jAmid, 'back'),
     axleSpan('maintaining', cd, zA, jAmid, jBmid, 'fit'),
     axleSpan('great', cd, zA, jBmid, gCol2 + half, 'front'),
+    axleSpan('centre', xC, zA, g0, gCol2 + half, 'back'),
   ];
   const column = (shaft, end, x, yc, holeZ) => {
     const onGrid = mod(x, D.stud) === 0;
@@ -382,6 +515,7 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING) {
     column('barrel', 'front', 0, bFront, zA), column('barrel', 'back', 0, bBack, zA),
     column('fusee', 'front', cd, fFront, zA), column('fusee', 'back', cd, fBack, zA),
     column('great', 'front', cd, gCol1, zA), column('great', 'back', cd, gCol2, zA),
+    column('centre', 'front', xC, gCol1, zA), column('centre', 'back', xC, gCol2, zA),
   ];
   // THE MAINTAINING PARTS' SLABS (the pivots' places in the plane come from
   // MAINTAINING, solved by solveMaintaining)
@@ -395,12 +529,13 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING) {
   const detentAxle = axleSpan('detent', px, pz, slot0 - half, detentArm.y1, 'front');
   const frame = {
     key: 'fusee', gen: 'technic_classic', cd, axleZ: zA, column: col, spec,
-    barrel: { x: 0, part: spec.barrel, y: yb, y0: r6(yb - bw), y1: r6(yb + bw), seat: F.seat[spec.barrel], rim: F.rim[spec.barrel],
+    barrel: { x: 0, part: spec.barrel, y: yb, origin: yo, y0: r6(yo - bw), y1: r6(yo + bw), seat: F.seat[spec.barrel], rim: F.rim[spec.barrel],
       hook: { part: FUSEE_PARTS.hookPlate, top: bHookTop, y0: r6(bHookTop - F.plateH), y1: bHookTop, cordY: r6(bHookTop + F.endH - F.endCord) } },
     fusee: { x: cd, hookPlate, steps, knob: { part: FUSEE_PARTS.knob, y: knobY }, click: { part: FUSEE_PARTS.clickWheel, teeth: 16, ...click } },
     joiners: [{ y: jAmid, y0: jA0, y1: jA1 }, { y: jBmid, y0: jB0, y1: jB1 }],
     ratchet: { part: FUSEE_PARTS.ratchet, teeth: 40, y: rMid, y0: r0, y1: r1 },
     great: { part: FUSEE_PARTS.greatWheel, teeth: 40, y: gMid, y0: g0, y1: g1 },
+    centre: { part: centre.part, teeth: centre.teeth, x: xC, y: gMid, y0: g0, y1: g1, cd: centre.cd },
     clickArm, detentArm, detent: { pivot: { x: px, z: pz }, axle: detentAxle, columns: detentCols },
     axles: [...axles, detentAxle], columns: [...columns, ...detentCols],
   };
@@ -824,7 +959,7 @@ export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lag
   const phiF = cord.aHook - Math.PI / 4, phiB = cord.aEnd - Math.PI / 4;
   // ── the barrel
   body('barrel', 0, zA, phiB, [axlePart(ax.barrel),
-    { role: 'barrel', part: frame.barrel.part, m: at(0, 0, L(frame.barrel.y)) },
+    { role: 'barrel', part: frame.barrel.part, m: at(0, 0, L(frame.barrel.origin)) },
     { role: 'hook', part: FUSEE_PARTS.hookPlate, m: at(0, 0, L(frame.barrel.hook.top), STUDS_TO_Y) }]);
   // ── F: knob, hook plate, steps, click wheel
   const fs = frame.fusee;
@@ -847,6 +982,9 @@ export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lag
   body('great', frame.cd, zA, phiG, [axlePart(ax.great),
     { role: 'great', part: G.part, teeth: 40, m: at(0, 0, L(G.y)) },
     peg(G.y1 - 15.6, G.y1, -h)]);
+  // ── §285: the centre pinion, meshed with the great wheel at its pose
+  const C = frame.centre, phiC = centrePhase(lib, phiG, { centre: C });
+  body('centre', C.x, zA, phiC, [axlePart(ax.centre), { role: 'centre', part: C.part, teeth: C.teeth, m: at(0, 0, L(C.y)) }]);
   // ── the click's pawl, seated against the click wheel at their relative turn
   const cs = clickSpec(maint.click.sense), cm = pawlModel(lib, cs);
   const rel = phiF - phiM;                                              // the click wheel in M's frame
@@ -876,7 +1014,7 @@ export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lag
   ] });
   statics.push(...cordPlacements(frame, cord));
   return { key: 'fusee', gen: frame.gen, statics, shafts: bodies, meshes: [], modes: ['full wind'], cord,
-    pose: { phiF, phiB, phiM, phiG, psiC, psiD, going: g } };
+    pose: { phiF, phiB, phiM, phiG, phiC, psiC, psiD, going: g } };
 }
 // ── the cord as parts: its end studs and its braided segments along a path
 // (cordPath's, at whatever state of the run it was taken) — one function, so
@@ -1045,7 +1183,8 @@ export function loopPose(model, st) {
   const paid = paidAtTurn(run, st.turnF), rs = runState(run, paid, model.table);
   const phiF = p.phiF + g * st.turnF, phiB = p.phiB + g * paid / run.rb;
   const phiM = p.phiM + g * st.dM, phiG = p.phiG + g * st.dG;
-  return { phase: st.phase, paid, state: rs, phiF, phiB, phiM, phiG,
+  const phiC = p.phiC - centreRatio(model.frame.centre) * g * st.dG;   // §285: through the 40:8, the mesh reversing
+  return { phase: st.phase, paid, state: rs, phiF, phiB, phiM, phiG, phiC,
     psiC: model.rides.click.at(phiF - phiM), psiD: model.rides.detent.at(phiM), clickPivot: [h * Math.cos(phiM), h * Math.sin(phiM)],
     lag: model.lag0 + st.dM - st.dG, spring: rs.M / model.full.M, level: rs.P / model.full.P };
 }

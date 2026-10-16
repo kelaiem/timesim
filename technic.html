@@ -60,6 +60,16 @@
   until one of them is used (?auto=0 starts it off). armed, ringing and off set
   the state. ?focus=alarm opens down the column wheel's axis. Every rate is a
   display rate; tools/probe-technic-column-wheel.mjs holds it.
+
+  BUILT §285 — A THIRD STEP SURVEYED, THE CENTRE PINION BUILT. The cone's step
+  catalogue is now every usable cord groove in the LDraw library
+  (tools/ldraw-groove-survey.mjs, read through grooveSeat), and the solve still
+  answers two steps — a new pair on the same barrel, the thin tread sprocket's
+  hub groove and the 8 × 18 rim's deep centre groove (31.6%, from landing H's
+  40.1%). A third step wins nowhere in it. So the owner's "another gear" is the
+  going train's next wheel: an 8T in the great wheel's slab, 24 mm off, phased
+  by the parts' own tooth phases and turned −40/8 of the great wheel
+  (solveCentrePinion, centrePhase; loopPose's phiC). It drives nothing.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -176,7 +186,9 @@ canvas{display:block;touch-action:none}
   <b>maintaining power</b> is Harrison's: a click pawl rides the ratchet, a
   detent holds the ratchet, and a band from it drives the great wheel while
   the fusee is wound back. Which way each pawl locks is read off the teeth. The
-  bands' forces are posed.</p>
+  bands' forces are posed. The great wheel drives the train's next wheel, the
+  <b>centre pinion</b>: an 8T, five times as fast the other way, turned through
+  the tooth counts. It drives nothing yet.</p>
   <p>The fusee runs a <b>loop</b>. Running down, the cord leaves the cone one
   step at a time and the barrel takes it: the fusee turns at the train's steady
   rate, so the barrel speeds up when the cord comes down onto the larger step.
@@ -474,6 +486,7 @@ function applyFusee(now) {
     else if (s.fusee === 'fusee') s.rotor.rotation.z = p.phiF;
     else if (s.fusee === 'maintaining') s.rotor.rotation.z = p.phiM;
     else if (s.fusee === 'great') s.rotor.rotation.z = p.phiG;
+    else if (s.fusee === 'centre') s.rotor.rotation.z = p.phiC;   // §285: through the 40:8
     else if (s.fusee === 'click pawl') { s.rotor.position.set(LDU(fr.cd + p.clickPivot[0]), -LDU(fr.axleZ - p.clickPivot[1]), 0); s.rotor.rotation.z = p.phiM + p.psiC; }
     else if (s.fusee === 'detent pawl') s.rotor.rotation.z = p.psiD;
     else s.rotor.rotation.z = s.phi;
@@ -812,6 +825,7 @@ async function build(gen) {
         + `<span style="color:var(--dim)">torque, each a fraction of its own value at full wind. Over the run the spring alone spreads <code>${(run.bare * 100).toFixed(1)}%</code>; after the cone, torque × radius spreads <code>${(run.spread * 100).toFixed(1)}%</code>: a staircase matches the law only step by step.</span>`
         + ` <span class="bad">A POSED spring law, modelled:</span> <span style="color:var(--dim)">${TECHNIC_FUSEE_SPRING.source}; the stand-in is the steel ribbon's law. The train's rate is a display rate (a run-down in ${LOOP_RUN_S} s at speed 1).</span>`
         + `<br><span style="color:var(--dim)">maintaining power: the click pawl, on the 40T ratchet, rides the fusee's 16T while it is wound; the detent rides the ratchet while it goes and holds it while it is wound; a band (posed, not placed) from the ratchet to the great wheel drives the great wheel the going way while the fusee is wound back.</span>`
+        + `<br><span style="color:var(--dim)">the going train's next wheel: the great wheel (40T) drives the centre pinion (<code>${ff.centre.teeth}T</code>, ${ff.centre.cd} mm off), which turns ${40 / ff.centre.teeth}× as fast the other way — the catalogue mesh nearest the steel's 120:7 off a 40T. It drives nothing yet.</span>`
         + `<br><a href="${href}" download="fusee.ldr" style="color:#9fb6d9">download .ldr (full wind)</a>`;
       fuseeView = { frame: ff, run, cordGroup, stepMats, phaseLbl, labels: [lbl, phaseLbl], drawnPaid: null, lastText: 0, lastPhase: null };
       drawFuseeCord(0);
