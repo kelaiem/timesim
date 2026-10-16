@@ -2825,7 +2825,19 @@ export const GROOVE_FACE_IN = GROOVE_LOCAL - SL_PIN_SUPPORT - SEAT_RELIEF;
 // vertex stands SEAT_RELIEF off collar In's face at this pull. The support
 // station rises monotonically with the tilt over the whole stroke, so a
 // bisection over a bracket wider than the stroke is exact to float.
+// §284 — remembered on its exact argument (one entry, `Object.is`, §257's
+// rule): tick() asks it three times a tick at one pull (the lever, its tail
+// post, the hack pin), and through a fast-forward tick the pull never moves —
+// 64 bisection steps each over `slPinSupport`'s polygon were the largest piece
+// of a tick after the balance. One entry, so it cannot grow (§266's objection
+// to a leaf memo was a memo keyed on every pull ever asked).
+let _slTiltPull = {}, _slTiltAt = NaN;   // an object: no argument is `Object.is` it, NaN included
 export function slLeverTiltAt(pull) {
+  if (Object.is(pull, _slTiltPull)) return _slTiltAt;
+  _slTiltAt = slLeverTiltSolve(pull); _slTiltPull = pull;
+  return _slTiltAt;
+}
+function slLeverTiltSolve(pull) {
   const want = -CROWN_PULL_DIST / 2 + pull * CROWN_PULL_DIST - SL_PIN_SUPPORT;
   let lo = -SL_TILT - 0.3, hi = SL_TILT + 0.3;
   for (let k = 0; k < 64; k++) {

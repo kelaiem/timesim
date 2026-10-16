@@ -172,12 +172,43 @@ function rk4(K, env, th, om, h, pc, nb) {
 // Advance the state by dt. env = { drive: bool (the train has torque), brake:
 // 0..1 (the hack pad's engagement), friction: N·m (the position's pivot),
 // weight: table|null (the position's spring-weight torque), steps: sub-steps
-// per period (defaults to K.STEPS_PER_PERIOD; fast-forward passes fewer) }.
+// per period (defaults to K.STEPS_PER_PERIOD; fast-forward passes fewer),
+// repeat: bool (fast-forward: a whole period just integrated may be counted
+// again rather than integrated again — below) }.
+//
+// THE REPEAT (§284). A fast-forward tick is 2 s, five whole periods, and the
+// integrator spent nine-tenths of the tick's cost in them (the lift's angle-
+// capped strides). With `repeat`, once the integrator has carried the balance
+// through ONE WHOLE PERIOD — a turning point to the next turning point on the
+// same side, the escapement having counted exactly its two beats between them,
+// with no knock, under one env (the same drive, pivot, weight table and
+// sub-step, no brake) — the state at that turn is the state the period started
+// from bar n, so the next whole periods the call has room for are COUNTED: n
+// advances two beats a period, the last unlocking's instant by the period, and
+// the period's measured length is taken from what is left. The rest of the call
+// is integrated from the turn as before. It is the cycle just integrated,
+// repeated — what a further integration of it would return to the swing's own
+// period-to-period change, which is the one thing a repeat freezes for its
+// length (a settling swing settles over the integrated part of each tick).
+//
+// The period may straddle two calls (the turns are kept on the state, `S.rep`,
+// in the state's own time), because what makes it repeatable is that every
+// instant of it was INTEGRATED, not where the tick boundary fell: a repeat
+// clears the record, so a counted period is never the source of another, and a
+// call that does not ask to repeat clears it too. So in a run of fast-forward
+// strides about one period in five is integrated, and each repeat is of a
+// period integrated under the env it is counted under.
 export function step(K, S, dt, env) {
   if (S.t === undefined) S.t = 0;
   const hMax = 1 / (K.F * (env.steps || K.STEPS_PER_PERIOD));
   let left = dt;
   let guard = 0;
+  // the last two integrated turning points (the repeat's whole period), kept
+  // across calls; a call that cannot repeat forgets them
+  const canRepeat = !!env.repeat && env.drive && !(env.brake > 0);
+  if (!canRepeat) S.rep = null;
+  else if (!S.rep) S.rep = { a: null, b: null };
+  let repeated = false;
   while (left > 1e-15 && guard++ < 100000) {
     const fr = env.friction + (env.brake || 0) * K.brakeNm;
     const nb = escBeat(S);
@@ -253,6 +284,28 @@ export function step(K, S, dt, env) {
       // Coulomb at the turning point: does what holds it exceed what drives it?
       S.omega = 0;
       if (Math.abs(restTorque(K, env, nb, S.theta)) <= fr) S.stuck = true;
+      if (canRepeat && S.stuck) S.rep = { a: null, b: null };
+      else if (canRepeat) {
+        const R = S.rep;
+        const now = { at: S.t + (dt - left), n: S.n, side: Math.sign(S.theta), knocks: S.knocks,
+          friction: env.friction, weight: env.weight, steps: env.steps };
+        const A = R.a;
+        const T = A ? now.at - A.at : 0;
+        if (!repeated && A && A.side === now.side && now.n - A.n === 2 && now.knocks === A.knocks && !S.inWindow && T > 0
+            && A.friction === now.friction && A.weight === now.weight && A.steps === now.steps
+            && R.b.friction === now.friction && R.b.weight === now.weight && R.b.steps === now.steps) {
+          const k = Math.floor(left / T);
+          if (k > 0) {
+            S.n += 2 * k; left -= k * T;
+            if (S.entryT !== undefined) S.entryT += k * T;
+            repeated = true;
+            // the record restarts here: the next period repeated must be
+            // integrated after this turn, never this counted one
+            now.at += k * T; now.n = S.n;
+            R.a = null; R.b = now;
+          } else { R.a = R.b; R.b = now; }
+        } else { R.a = R.b; R.b = now; }
+      }
     } else if (ev === '+edge' || ev === '-edge') {
       const edgeSign = ev === '+edge' ? 1 : -1;
       S.theta = edgeSign * K.halfLift;
