@@ -4,7 +4,7 @@
 
 # The instruments
 
-321 scripts. **207 are ACCEPTANCE tests** — they decide and exit non-zero.
+322 scripts. **208 are ACCEPTANCE tests** — they decide and exit non-zero.
 **114 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -320,6 +320,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-technic-alarm.mjs` |  | acceptance | DOES THE LEGO ALARM SWITCH ON AND OFF ON EVERY FULL PRESS AND NEVER ON A HALF ONE, DROP ITS RELEASE AT THE NOTCH, AND STRIKE FOUR TIMES A TURN OF ITS FLY? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing I (src/technic-alarm.js). |
 | `probe-technic-build.mjs` |  | acceptance | IS THE LEGO BUILD OF THE TECHNIC FORK ASSEMBLED — every part seated, every axle through its holes, every pair of teeth meshed? Acceptance, pure Node, no browser, no network; exits non-zero on any failed row. |
 | `probe-technic-frame.mjs` |  | acceptance | DOES THE TECHNIC FORK'S FRAME HOLD ITS GEARS WITHOUT ANY PART FOULING ANOTHER? Acceptance, pure Node, no browser; exits non-zero on any failed row. |
+| `probe-technic-fusee-loop.mjs` |  | acceptance | DOES THE LEGO FUSEE'S LOOP RUN DOWN AND WIND BACK BY THE MODULE'S OWN LAWS — the cord off the cone a step at a time and onto the barrel, the two turning at the step's ratio, the maintaining power carrying the great wheel while it is wound, and the torque readout the solve's own level product? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §282 (src/technic-fusee.js, the loop technic.html runs). |
 | `probe-technic-fusee.mjs` |  | acceptance | DOES THE LEGO FUSEE LEVEL ITS SPRING AS WELL AS A STAIRCASE CAN, AND DOES ITS MAINTAINING POWER DRIVE THE GREAT WHEEL THE RIGHT WAY WHILE IT IS WOUND? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing H (src/technic-fusee.js). |
 | `probe-technic-keyless.mjs` |  | acceptance | DOES THE LEGO KEYLESS WORKS CHANGE OVER, AND DOES EACH BRANCH CARRY THE STEEL RATIO? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landings D, E and F. |
 | `probe-technic-ldraw.mjs` |  | acceptance | DO THE TECHNIC FRAME'S DIMENSIONS MATCH THE REAL PARTS? Acceptance, pure Node, no browser, no network; exits non-zero on any mismatch. |

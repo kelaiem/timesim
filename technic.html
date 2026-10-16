@@ -35,6 +35,18 @@
   ending in a FLY (air drag, not the steel anchor's oscillator), a hammer on a
   cam striking a brick. Its band, cadence and strikes per wind are POSED, and
   the panel says so. tools/probe-technic-alarm.mjs holds it.
+
+  BUILT §282 — THE FUSEE'S LOOP. The fusee cell no longer stands at full wind:
+  it runs down (the cord leaves the cone a step at a time and the barrel takes
+  it), is wound back (the crank turns the fusee backwards, the click's pawl
+  rides the click wheel, the detent holds the ratchet and the maintaining band
+  keeps the great wheel turning), and goes again. Every angle is read off one
+  state through src/technic-fusee.js' laws (loopAdvance, loopPose); the great
+  wheel's rate is a display rate, the spring's law and the bands are POSED, and
+  the panel shows the spring's torque beside the torque after the cone. On by
+  default, because the loop is the cell's whole demonstration; off draws the
+  landing H build at full wind. ?focus=fusee opens on the fusee, ?loop=0 with
+  the loop off. tools/probe-technic-fusee-loop.mjs holds it.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -52,6 +64,14 @@ code{font:12px ui-monospace,monospace;color:#c8d3e6}
 .ok{color:var(--ok)} .bad{color:var(--bad)}
 label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
 #log{white-space:pre-wrap;color:var(--bad);font:12px ui-monospace,monospace}
+/* §282: the fusee loop's readout — a phase line and two torque bars */
+.fphase{margin:6px 0 4px;padding:5px 8px;border-radius:5px;background:#272b33;color:var(--ink);font-weight:600}
+.fphase[data-phase="winding"]{background:#3b3324} .fphase[data-phase="full"]{background:#243b2c}
+.fbar{display:grid;grid-template-columns:7.5em 1fr 4em;gap:6px;align-items:center;margin:3px 0;color:var(--dim)}
+.fbar .track{display:block;height:9px;background:#272b33;border-radius:4px;overflow:hidden}
+.fbar .fill{display:block;height:100%;width:0;background:#9fb6d9}
+.fbar.cone .fill{background:var(--ok)}
+.fbar span:last-child{text-align:end;font:12px ui-monospace,monospace;color:var(--ink)}
 #panel[hidden]{display:none}
 /* The panel's own switch, outside it so a hidden panel can come back. It sits
    in the corner the panel does not, so the two never cover each other. */
@@ -139,7 +159,20 @@ canvas{display:block;touch-action:none}
   <b>maintaining power</b> is Harrison's: a click pawl rides the ratchet, a
   detent holds the ratchet, and a band from it drives the great wheel while
   the fusee is wound back. Which way each pawl locks is read off the teeth. The
-  bands' forces are posed, and the build is drawn at full wind.</p>
+  bands' forces are posed.</p>
+  <p>The fusee runs a <b>loop</b>. Running down, the cord leaves the cone one
+  step at a time and the barrel takes it: the fusee turns at the train's steady
+  rate, so the barrel speeds up when the cord comes down onto the larger step.
+  At run-down a crank winds the fusee back. The click's pawl rides its wheel,
+  the detent holds the ratchet, and the maintaining band keeps the great wheel
+  turning forward, because the train must not stop while the watch is wound.
+  At full wind the going spring first re-tensions the band, and the run starts
+  again. The two bars are the measurement this module exists for: the spring's
+  torque, which falls the whole way down, and the torque after the cone, which
+  the steps hold in a band, each against its value at full wind. Both read a
+  POSED spring law, and the train's rate is a display rate. The loop is
+  modelled, not simulated: every angle comes from the cord paid through the
+  parts' own geometry, and no force is integrated.</p>
   <p>The <b>alarm</b> is the movement's alarm as LEGO. Its <b>column wheel</b>
   is two three-blade rotors, one turned over, so six columns stand 60° apart; a
   finger presses the end of a driver idling on its axle, whose pawl pushes a
@@ -166,7 +199,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseLibrary, walk } from './src/ldraw.js';
 import { frameFork, frameKeyless } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
-import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './src/technic-fusee.js';
+import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild, cordPath, cordPlacements, fuseeLoopModel, loopStart, loopAdvance, loopPose,
+         loopPhaseLine, loopRideSpecs, pawlRideSteps, LOOP_RUN_S } from './src/technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn } from './src/technic-alarm.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
@@ -310,11 +344,161 @@ const gens = Object.keys(CATALOGUES).filter((k) => CATALOGUES[k]);
 let world = null, inputAngle = 0;
 
 function labelSprite(text) {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 64;
-  const x = c.getContext('2d'); x.font = '600 34px system-ui, sans-serif'; x.fillStyle = '#d9dde3'; x.fillText(text, 4, 44);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
-  s.scale.set(80, 10, 1); s.center.set(0, 0.5); s.position.set(-30, 52, 0);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+  s.center.set(0, 0.5); s.position.set(-30, 52, 0);
+  setSpriteText(s, text);
   return s;
+}
+// The canvas is sized to the text it carries (measured), and the sprite to the
+// canvas at 10 mm a line, so no label is cut at its edge. A new texture each
+// time: a GPU texture keeps the size it was first given.
+const LABEL_FONT = '600 34px system-ui, sans-serif';
+function setSpriteText(s, text, color = '#d9dde3') {
+  const c = document.createElement('canvas'), m = c.getContext('2d');
+  m.font = LABEL_FONT;
+  c.width = Math.max(8, Math.ceil(m.measureText(text).width) + 12); c.height = 64;
+  const x = c.getContext('2d'); x.font = LABEL_FONT; x.fillStyle = color; x.fillText(text, 4, 44);
+  s.material.map?.dispose();
+  s.material.map = new THREE.CanvasTexture(c); s.material.needsUpdate = true;
+  const h = s.userData.lineMm ?? 10;
+  s.scale.set(h * c.width / 64, h, 1);
+}
+
+// --- §282: the fusee's loop -------------------------------------------------
+// The loop's state lives in src/technic-fusee.js (loopAdvance, loopPose); the
+// page only draws it. Every angle is read off that one state; the great
+// wheel's rate is a DISPLAY rate (LOOP_RUN_S), not a claim.
+let fuseeLoop = null, fuseeView = null, fuseeBand = null, fuseeRidesP = null;
+let fuseeLoopOn = new URLSearchParams(location.search).get('loop') !== '0';
+// Each pawl's ride is measured off the teeth (pawlRideSteps, a seat search per
+// sample): about a second and a half of arithmetic, done between frames in
+// slices: each half the last frame's interval, and at least RIDE_SLICE_MS, so
+// the work takes a fixed SHARE of the frame whatever the frame costs. A fixed
+// 12 ms slice gave the work 12 ms per frame, and under software GL (a frame of
+// ~250 ms) the rides took 46 s to arrive.
+// The loop does not wait for it: until the rides arrive each pawl stands at
+// the seat fuseeBuild gave it (PROVISIONAL, said so on the panel), and the
+// cord, cone, barrel, ratchet and great wheel run from the first frame.
+const RIDE_SLICE_MS = 12;
+let frameMs = 16;                                                   // the last frame's interval, kept by the animation loop
+async function measureRides(build) {
+  const out = {};
+  let t = performance.now();
+  for (const [k, v] of Object.entries(loopRideSpecs(build))) {
+    const it = pawlRideSteps(lib, v.spec, v.teeth, { theta0: v.theta0 });
+    let r;
+    while (!(r = it.next()).done) if (performance.now() - t > Math.max(RIDE_SLICE_MS, Math.min(frameMs, 400) / 2)) { await new Promise((res) => setTimeout(res, 0)); t = performance.now(); }
+    out[k] = r.value;
+  }
+  return out;
+}
+const provisionalRides = (build) => ({ click: { at: () => build.pose.psiC, provisional: true }, detent: { at: () => build.pose.psiD, provisional: true } });
+const CORD_SHOW_R = 1.1;   // mm: a DISPLAY radius, about twice the string's own (0.6)
+const CORD_SHOW_MAT = new THREE.MeshStandardMaterial({ color: 0xff7a1a, emissive: 0x6a2a00, roughness: 0.6, metalness: 0 });
+// The cord at `paid` mm off the cone, placed by the build's own law; redrawn
+// only when the cord has moved.
+function drawFuseeCord(paid) {
+  const v = fuseeView;
+  if (!v) return;
+  const moved = v.drawnPaid === null || Math.abs(paid - v.drawnPaid) >= 0.02 || (paid === 0 && v.drawnPaid !== 0);
+  if (!moved) return;
+  v.cordGroup.clear();
+  const cord = cordPath(v.frame, v.run, { paid });
+  for (const p of cordPlacements(v.frame, cord)) placePart(v.cordGroup, p);
+  // DISPLAY ONLY: LEGO's string is a 1.2 mm black braid, invisible at any
+  // framing that shows the whole module. An orange tube is drawn along the
+  // same path (cordPath at this state, frame mm to LDraw LDU as fuseeBuild's
+  // `fr` maps it), CORD_SHOW_R thick: a highlighter over the model's own cord,
+  // not a part. The .ldr and every probe read the LDraw placements.
+  const pts = cord.path.map(([x, y, z]) => new THREE.Vector3(x / 0.4, -z / 0.4, y / 0.4));
+  const curve = new THREE.CurvePath();
+  for (let i = 1; i < pts.length; i++) if (pts[i].distanceTo(pts[i - 1]) > 1e-6) curve.add(new THREE.LineCurve3(pts[i - 1], pts[i]));
+  v.cordTube?.geometry.dispose();
+  v.cordTube = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(8, curve.curves.length * 2), CORD_SHOW_R / 0.4, 8, false), CORD_SHOW_MAT);
+  v.cordGroup.add(v.cordTube);
+  v.drawnPaid = paid;
+}
+function setFuseeLoopOn(on, btn) {
+  fuseeLoopOn = on;
+  if (btn) { btn.dataset.state = on ? 'on' : 'off'; btn.textContent = on ? 'loop: on' : 'loop: off'; }
+  if (!on && fuseeLoop) fuseeLoop.st = loopStart();               // off: the landing H build, at full wind
+}
+// Pose the fusee cell from the loop's state: the bodies, the cord, the lit
+// step, the phase line on the panel and on the label, and the two bars.
+function applyFusee(now) {
+  const v = fuseeView, L = fuseeLoop;
+  if (!v || !L) return;
+  const m = L.model, p = loopPose(m, L.st), fr = m.frame, LDU = (mm) => mm / 0.4;
+  for (const s of legoShafts) {
+    if (!s.fusee) continue;
+    if (s.fusee === 'barrel') s.rotor.rotation.z = p.phiB;
+    else if (s.fusee === 'fusee') s.rotor.rotation.z = p.phiF;
+    else if (s.fusee === 'maintaining') s.rotor.rotation.z = p.phiM;
+    else if (s.fusee === 'great') s.rotor.rotation.z = p.phiG;
+    else if (s.fusee === 'click pawl') { s.rotor.position.set(LDU(fr.cd + p.clickPivot[0]), -LDU(fr.axleZ - p.clickPivot[1]), 0); s.rotor.rotation.z = p.phiM + p.psiC; }
+    else if (s.fusee === 'detent pawl') s.rotor.rotation.z = p.psiD;
+    else s.rotor.rotation.z = s.phi;
+  }
+  drawFuseeCord(p.paid);
+  const st = p.state, n = m.run.steps.length;
+  // the step the cord is on, lit in the cord's colour (both, while it crosses)
+  v.stepMats.forEach((mat, j) => mat?.emissive.setHex(j === st.step || (st.kind === 'transition' && j === st.step - 1) ? 0xd06a10 : 0x000000));
+  const line = fuseeLoopOn ? loopPhaseLine(m, p) : 'loop off — the build at full wind';
+  if (line !== v.lastPhase) {
+    v.lastPhase = line;
+    const el = document.getElementById('fphase');
+    if (el) { el.textContent = line; el.dataset.phase = fuseeLoopOn ? p.phase : 'full'; }
+    setSpriteText(v.phaseLbl, line.replace(/ \(.*\)$/, '').replace(/;.*$/, ''), p.phase === 'winding' ? '#e0b630' : p.phase === 'full' ? '#7fc98b' : '#9fb6d9');
+  }
+  if (now - v.lastText > 100) {
+    v.lastText = now;
+    const set = (id, f) => { const el = document.getElementById(id); if (el) f(el); };
+    set('fstep', (el) => { el.textContent = `cord ${st.kind === 'transition' ? `crossing onto step ${st.step} from step ${st.step + 1}` : `on step ${st.step + 1} of ${n} (${m.run.steps[st.step]}, seat ${st.arm.toFixed(2)} mm)`}; ${p.paid.toFixed(1)} of ${m.run.cordOnCone.toFixed(1)} mm paid off the cone; the band's stretch ${(p.lag * 180 / Math.PI).toFixed(1)}° (posed)${L.provisional ? '; the pawls stand at their seats while their rides are measured off the teeth' : ''}`; });
+    set('fbarS', (el) => { el.style.width = `${(p.spring * 100).toFixed(1)}%`; });
+    set('fbarC', (el) => { el.style.width = `${(p.level * 100).toFixed(1)}%`; });
+    set('fvalS', (el) => { el.textContent = p.spring.toFixed(3); });
+    set('fvalC', (el) => { el.textContent = p.level.toFixed(3); });
+  }
+}
+// The close-up's fill: frameOn fits the box's bounding SPHERE in the narrower
+// visible angle, which for a flat, wide module leaves most of the view empty.
+// FOCUS_FILL of that distance was read off 1280x800 and 900x600 screenshots as
+// the closest that keeps the cone, barrel, maintaining work and labels in view.
+const FOCUS_FILL = 0.85;
+// The fusee close up: the camera on its moving bodies (not the cell's
+// baseplate), and the panel scrolled to its row, where the phase and the bars are.
+function focusFusee() {
+  scene.updateMatrixWorld(true);                                  // build-time: the groups have no world matrices yet
+  const box = new THREE.Box3();
+  for (const s of legoShafts) if (s.fusee) box.expandByObject(s.rotor);
+  if (!box.isEmpty()) frameOn(box, FOCUS_FILL);
+  document.getElementById('fphase')?.closest('.row')?.scrollIntoView({ block: 'start' });
+}
+// The camera framed on an object: keeps the view's direction and backs off
+// until its bounding sphere fits what the panel leaves visible.
+function frameOn(obj, fill = 1) {
+  const box = obj.isBox3 ? obj : new THREE.Box3().setFromObject(obj), c = box.getCenter(new THREE.Vector3());
+  controls.target.copy(c);
+  // FRAMED TO FIT what the panel leaves visible: the camera keeps the view's
+  // direction (from above and in front of the table) and backs off until the scene's bounding sphere fits the
+  // narrower of the two field-of-view angles — on a desktop beside the panel,
+  // on a phone above the sheet, the whole table stays in view.
+  const pr = panelEl.hidden ? null : panelEl.getBoundingClientRect();
+  const visW = pr && pr.width < innerWidth - 1 ? innerWidth - pr.width - 12 : innerWidth;
+  const visH = pr && pr.width >= innerWidth - 1 ? innerHeight - pr.height : innerHeight;
+  // the camera renders the WHOLE screen at its vertical fov; the panel leaves
+  // a part of it, so each visible half-angle is the screen's scaled by the
+  // visible span over the screen's height (the tangent is linear in pixels)
+  const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
+  const half = Math.atan(tv * Math.min(visW, visH) / innerHeight);
+  const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
+  const dist = fill * radius / Math.sin(half);
+  const dir = new THREE.Vector3(-0.2, 0.8, 0.9);
+  cam.position.copy(c).addScaledVector(dir.normalize(), dist);
+  // the far plane past the sphere's far side wherever the fit put the camera,
+  // with room to zoom out four times as far (the orbit controls' wheel)
+  cam.far = Math.max(5000, 4 * (dist + 2 * radius)); cam.updateProjectionMatrix();
+  controls.update();
 }
 
 async function build(gen) {
@@ -390,17 +574,65 @@ async function build(gen) {
     const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
     const div = document.createElement('div'); div.className = 'row';
     const run = solveFusee(TECHNIC_FUSEE_SPRING).best, ff = run && frameFusee();
+    fuseeLoop = null; fuseeBand = band;
     if (run && ff.framed) {
       fuseeBuildNow = fuseeBuild(ff, lib, { run });
-      for (const sh of buildLego(fuseeBuildNow, band)) legoShafts.push(sh);
-      const lbl = labelSprite(`${k + 1}. fusee and maintaining power`); lbl.position.set(-30, 60, 0); band.add(lbl);
+      // §282: the cord is drawn apart from the statics, because the loop
+      // re-places it at every state (cordPlacements, the build's own law)
+      const isCord = (p) => p.role === 'cord' || p.role === 'cordEnd';
+      buildLego({ ...fuseeBuildNow, statics: fuseeBuildNow.statics.filter((p) => !isCord(p)) }, band)
+        .forEach((sh, i) => legoShafts.push({ ...sh, fusee: fuseeBuildNow.shafts[i].shaft }));
+      const croot = new THREE.Group(); croot.scale.setScalar(0.4); croot.rotation.x = Math.PI; band.add(croot);
+      const cordGroup = new THREE.Group(); croot.add(cordGroup);
+      // each step's pulley its own material, so the step the cord is on can be lit
+      const fRotor = legoShafts.find((s) => s.fusee === 'fusee').rotor, stepMats = run.steps.map(() => null);
+      // (matched by part AND station along the axle: the knob is the same
+      // wedge belt wheel as the base step, and it carries no cord)
+      fRotor.traverse((o) => {
+        if (!o.isMesh) return;
+        const j = ff.fusee.steps.findIndex((st) => geoOf(st.part).g === o.geometry && Math.abs(o.matrix.elements[14] - st.y / 0.4) < 1e-6);
+        if (j >= 0) { stepMats[j] ??= o.material.clone(); o.material = stepMats[j]; }
+      });
+      // the cell's two labels BEHIND and above the module (the camera looks
+      // from above and in front), so at the close-up they stand clear of the parts
+      // 6 mm a line: the close-up stands near enough that 10 would cover the build
+      const lbl = labelSprite(' '), phaseLbl = labelSprite(' ');
+      for (const l of [lbl, phaseLbl]) l.userData.lineMm = 6;
+      setSpriteText(lbl, `${k + 1}. fusee and maintaining power`);
+      band.add(lbl, phaseLbl);
+      band.updateMatrixWorld(true);
+      const fb = new THREE.Box3();
+      for (const s of legoShafts) if (s.fusee) fb.expandByObject(s.rotor);
+      const lo = band.worldToLocal(fb.min.clone()), hi = band.worldToLocal(fb.max.clone());
+      const x0 = Math.min(lo.x, hi.x), y1 = Math.max(lo.y, hi.y), z0 = Math.min(lo.z, hi.z);
+      lbl.position.set(x0, y1 + 16, z0 - 6); phaseLbl.position.set(x0, y1 + 8, z0 - 6);
       const c = fuseeBuildNow.cord, href = URL.createObjectURL(new Blob([toLdr(fuseeBuildNow)], { type: 'text/plain' }));
       div.innerHTML = `<b>${k + 1}. fusee and maintaining power — LEGO build</b>`
         + `cone <code>${run.steps.join(' &gt; ')}</code> (base wrap ${run.f.toFixed(2)} turn, then one wrap a step), barrel <code>${run.barrel}</code>, cord <code>${c.string.part}</code>`
-        + `<br>torque × radius spreads <code>${(run.spread * 100).toFixed(1)}%</code> over the run, the bare spring <code>${(run.bare * 100).toFixed(1)}%</code>`
-        + ` <span class="bad">on a POSED spring law</span> <span style="color:var(--dim)">(${TECHNIC_FUSEE_SPRING.source}; the stand-in is the steel ribbon's law)</span>`
-        + `<br><span style="color:var(--dim)">maintaining power: the click pawl rides the 40T ratchet, the detent holds it, a band (posed) from it to the great wheel; while the fusee is wound back the band drives the great wheel the going way. Drawn at full wind; the bands are not placed.</span>`
-        + `<br><a href="${href}" download="fusee.ldr" style="color:#9fb6d9">download .ldr</a>`;
+        + `<div class="gen"><button id="floop" type="button" data-state="on">loop</button><button id="ffocus" type="button">look at the fusee</button></div>`
+        + `<div class="fphase" id="fphase" data-phase="going">running down</div>`
+        + `<div id="fstep" style="color:var(--dim)"></div>`
+        + `<div class="fbar spring"><span>spring</span><span class="track"><span class="fill" id="fbarS"></span></span><span id="fvalS"></span></div>`
+        + `<div class="fbar cone"><span>after the cone</span><span class="track"><span class="fill" id="fbarC"></span></span><span id="fvalC"></span></div>`
+        + `<span style="color:var(--dim)">torque, each a fraction of its own value at full wind. Over the run the spring alone spreads <code>${(run.bare * 100).toFixed(1)}%</code>; after the cone, torque × radius spreads <code>${(run.spread * 100).toFixed(1)}%</code>: a staircase matches the law only step by step.</span>`
+        + ` <span class="bad">A POSED spring law, modelled:</span> <span style="color:var(--dim)">${TECHNIC_FUSEE_SPRING.source}; the stand-in is the steel ribbon's law. The train's rate is a display rate (a run-down in ${LOOP_RUN_S} s at speed 1).</span>`
+        + `<br><span style="color:var(--dim)">maintaining power: the click pawl, on the 40T ratchet, rides the fusee's 16T while it is wound; the detent rides the ratchet while it goes and holds it while it is wound; a band (posed, not placed) from the ratchet to the great wheel drives the great wheel the going way while the fusee is wound back.</span>`
+        + `<br><a href="${href}" download="fusee.ldr" style="color:#9fb6d9">download .ldr (full wind)</a>`;
+      fuseeView = { frame: ff, run, cordGroup, stepMats, phaseLbl, labels: [lbl, phaseLbl], drawnPaid: null, lastText: 0, lastPhase: null };
+      drawFuseeCord(0);
+      const loopBtn = div.querySelector('#floop');
+      setFuseeLoopOn(fuseeLoopOn, loopBtn);
+      loopBtn.addEventListener('click', () => setFuseeLoopOn(!fuseeLoopOn, loopBtn));
+      div.querySelector('#ffocus').addEventListener('click', focusFusee);
+      // the rides are measured once (the same in both generations) and between frames
+      // the loop starts at once on provisional rides; the measured ones replace
+      // them when they arrive, the state kept
+      const b0 = fuseeBuildNow;
+      fuseeLoop = { model: fuseeLoopModel(ff, lib, run, b0, { rides: provisionalRides(b0) }), st: loopStart(), provisional: true };
+      (fuseeRidesP ??= measureRides(b0)).then((rides) => {
+        if (fuseeView?.run !== run || !fuseeLoop) return;
+        fuseeLoop = { model: fuseeLoopModel(ff, lib, run, b0, { rides }), st: fuseeLoop.st, provisional: false };
+      });
     } else div.innerHTML = `<b>${k + 1}. fusee</b><br><span class="bad">not framed in LEGO: ${ff?.reason ?? 'no step set fits the table'}</span>`;
     rowsEl.appendChild(div);
   }
@@ -432,28 +664,8 @@ async function build(gen) {
   }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   currentGen = gen;
-  const box = new THREE.Box3().setFromObject(world), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
-  controls.target.copy(c);
-  // FRAMED TO FIT what the panel leaves visible: the camera keeps the view's
-  // direction (from above and in front of the table) and backs off until the scene's bounding sphere fits the
-  // narrower of the two field-of-view angles — on a desktop beside the panel,
-  // on a phone above the sheet, the whole table stays in view.
-  const pr = panelEl.hidden ? null : panelEl.getBoundingClientRect();
-  const visW = pr && pr.width < innerWidth - 1 ? innerWidth - pr.width - 12 : innerWidth;
-  const visH = pr && pr.width >= innerWidth - 1 ? innerHeight - pr.height : innerHeight;
-  // the camera renders the WHOLE screen at its vertical fov; the panel leaves
-  // a part of it, so each visible half-angle is the screen's scaled by the
-  // visible span over the screen's height (the tangent is linear in pixels)
-  const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
-  const half = Math.atan(tv * Math.min(visW, visH) / innerHeight);
-  const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
-  const dist = radius / Math.sin(half);
-  const dir = new THREE.Vector3(-0.2, 0.8, 0.9);
-  cam.position.copy(c).addScaledVector(dir.normalize(), dist);
-  // the far plane past the sphere's far side wherever the fit put the camera,
-  // with room to zoom out four times as far (the orbit controls' wheel)
-  cam.far = Math.max(5000, 4 * (dist + 2 * radius)); cam.updateProjectionMatrix();
-  controls.update();
+  if (new URLSearchParams(location.search).get('focus') === 'fusee' && fuseeView) focusFusee();
+  else frameOn(world);
   inputAngle = 0;
   if (keylessBuild) setKeylessMode(keylessMode);
 }
@@ -483,19 +695,25 @@ await build(gens.includes(params.get('gen')) ? params.get('gen') : 'technic_2026
 const INPUT_RAD_S = (2 * Math.PI) / 60;
 let last = performance.now();
 renderer.setAnimationLoop((now) => {
+  frameMs = now - last;
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   inputAngle += dt * INPUT_RAD_S * Number(speedEl.value);
   // a DISPLAY rate, not a claim: the crown turns six times the trains' input so
   // the setting branch's 1/3 is visible
   keylessAngle += dt * 6 * INPUT_RAD_S * Number(speedEl.value);
+  // §282: the fusee loop advances by the great wheel's DISPLAY rate (a
+  // run-down in LOOP_RUN_S seconds at speed 1), not a claim about a rate
+  if (fuseeLoop && fuseeLoopOn) fuseeLoop.st = loopAdvance(fuseeLoop.model, fuseeLoop.st, dt * Number(speedEl.value) * fuseeLoop.model.rate);
+  applyFusee(now);
   for (const s of legoShafts) {
-    if (s.slider) continue;                                                            // the pull's rack: it slides with the mode, it does not turn
+    if (s.fusee) { if (!fuseeLoop) s.rotor.rotation.z = s.phi; continue; }        // the fusee cell: posed by applyFusee from the loop's state
+    if (s.slider) continue;                                                          // the pull's rack: it slides with the mode, it does not turn
     if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
   }
   renderer.render(scene, cam);
 });
-window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get alarm() { return alarmBuildNow; }, cam, controls, scene, renderer };
+window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get fuseeLoop() { return fuseeLoop && { st: fuseeLoop.st, pose: loopPose(fuseeLoop.model, fuseeLoop.st), on: fuseeLoopOn }; }, setFuseeLoopOn: (on) => setFuseeLoopOn(on, document.getElementById('floop')), frameOn, get alarm() { return alarmBuildNow; }, cam, controls, scene, renderer };
 </script>
 </body>
 </html>
