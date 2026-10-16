@@ -38508,8 +38508,19 @@ The bar took two cuts to find:
 - **A solid tube with the pins abutting its ends.** It failed the same way:
   `turning` joins members that touch end to end into one piece of stock
   (§234), which is right for a stepped arbor.
-- **The real shape.** A pin INSIDE a bore is read as the separate part it is
-  (the concentric rule), which is what a spring bar actually is.
+- **A hollow tube with the pins inside its bore.** Each pin was no longer
+  joined to the tube, but the two pins were joined to EACH OTHER. A gap
+  bridged by a hollow member is how §234 reads a pivot either side of a wheel
+  as one arbor through its bore, and across the tube the pair looks exactly
+  like that. What actually fills that gap is the spring.
+
+The outline cannot tell a spring from an arbor, so the gate now names the
+parts that are FITTED into a bore rather than turned from the bar:
+`TURN_FITTED_PARTS` in `inspect.js`, by member, on `TURN_END_PIVOTS`' pattern.
+A member there is never joined to another and is judged on its own length.
+`caseSpringBarTip` is its only member. `turning` then passes: 260 bars, 0
+over L/D 20. The tube's L/D 13.3 is a follower-rest report, the same reading
+§190's solid bar had.
 
 ### Instruments
 
