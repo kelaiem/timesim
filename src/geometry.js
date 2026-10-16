@@ -7,8 +7,8 @@ import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR } from './mat
 import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
-  CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
-  CASE_SPRING_BAR_D, CASE_BAR_REACH, CASE_LUG_REACH, caseLugRootR, balanceWheelDims } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190: the lug/bar stock, one declaration
+  CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, caseLugPlan,
+  balanceWheelDims } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190/§280: the lug/bar stock and the lug's one outline law
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -10407,6 +10407,108 @@ if (TUBE_WALL >= COLLAR_PROUD)
 // (main.js, R_ANNULUS_OUT) and holds itself to the inscribed circle instead;
 // a sector lathe rounds its segments UP, so its facets are never coarser.
 export const CASE_LATHE_SEG = 96;
+
+// §280 — A SLAB WITH EVERY EDGE ROUNDED, built rather than bevelled.
+// ExtrudeGeometry's bevel moves the cap's vertices AFTER earcut has
+// triangulated the unbevelled shape, so wherever the bevel pulls an outline
+// toward a hole the cap's triangles fold across the web — measured on the
+// first cut of the §280 lug, whose tear-out web behind the pin is 0.43 mm:
+// cap triangles stood 0.07 u inside the drilled hole, a self-overlapping mesh
+// that the parity raycasts (CLAUDE.md's open-mesh trap) read as solid air.
+// Here every layer of the rounded edge is the RING inset by the quarter
+// round's own depth (holes grow by it), and each cap is triangulated from its
+// OWN inset rings, so no triangle can fold. The authored rings stand at the
+// slab's mid-thickness, so every extreme of the part is the shape's own.
+// The geometry carries `parameters.shapes` (the authored shape and the
+// sampling it was cut at) so the `outlines` gate reads it as it reads an
+// extrude.
+export function makeRoundedSlab(shape, { thickness, edgeR, curveSegments = 24, edgeSegs = 3 }) {
+  const ringOf = (path) => {
+    const q = path.getPoints(curveSegments).map((v) => [v.x, v.y]);
+    if (q.length > 1 && Math.hypot(q[0][0] - q[q.length - 1][0], q[0][1] - q[q.length - 1][1]) < 1e-9) q.pop();
+    return q;
+  };
+  const area = (r) => { let a = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; };
+  let outer = ringOf(shape);
+  if (area(outer) < 0) outer.reverse();                     // outline CCW
+  const holes = (shape.holes || []).map((h) => { const r = ringOf(h); if (area(r) > 0) r.reverse(); return r; }); // holes CW
+  // Inset a ring by d toward the material: for a CCW outline that is the left
+  // normal of each edge, for a CW hole the same rule grows the hole. Mitred at
+  // each vertex so straight edges move by exactly d.
+  const inset = (r, d) => r.map((p, i) => {
+    const a = r[(i - 1 + r.length) % r.length], b = r[(i + 1) % r.length];
+    const e1 = [p[0] - a[0], p[1] - a[1]], e2 = [b[0] - p[0], b[1] - p[1]];
+    const l1 = Math.hypot(...e1), l2 = Math.hypot(...e2);
+    const n1 = [-e1[1] / l1, e1[0] / l1], n2 = [-e2[1] / l2, e2[0] / l2];
+    const m = [n1[0] + n2[0], n1[1] + n2[1]], ml = Math.hypot(...m);
+    const cosH = ml / 2;                                      // cos of half the turn
+    return [p[0] + (m[0] / ml) * d / cosH, p[1] + (m[1] / ml) * d / cosH];
+  });
+  // The layers: a quarter round each side, from the face (inset edgeR) to
+  // where the side wall goes straight (inset 0).
+  const T = thickness, rc = edgeR, layers = [];
+  for (let j = 0; j <= edgeSegs; j++) {
+    const th = (j / edgeSegs) * Math.PI / 2;
+    layers.push({ w: -T / 2 + rc - rc * Math.cos(th), d: rc - rc * Math.sin(th) });
+  }
+  for (let j = edgeSegs; j >= 0; j--) {
+    const th = (j / edgeSegs) * Math.PI / 2;
+    layers.push({ w: T / 2 - rc + rc * Math.cos(th), d: rc - rc * Math.sin(th) });
+  }
+  const rings = [outer, ...holes];
+  const pos = [], idx = [];
+  const ringBase = [];                                      // [layer][ring] → first vertex index
+  for (const L of layers) {
+    const bases = [];
+    for (const r of rings) {
+      bases.push(pos.length / 3);
+      for (const [x, y] of inset(r, L.d)) pos.push(x, y, L.w);
+    }
+    ringBase.push(bases);
+  }
+  // Side walls between consecutive layers. For the CCW outline the outward
+  // face winds (i, i+1) on the lower layer up to the upper; the CW holes take
+  // the same rule and face into the hole, which is outward from the metal.
+  for (let k = 0; k + 1 < layers.length; k++) {
+    rings.forEach((r, ri) => {
+      const a0 = ringBase[k][ri], b0 = ringBase[k + 1][ri], n = r.length;
+      for (let i = 0; i < n; i++) {
+        const i1 = (i + 1) % n;
+        idx.push(a0 + i, a0 + i1, b0 + i1, a0 + i, b0 + i1, b0 + i);
+      }
+    });
+  }
+  // The caps, each triangulated from its own inset rings.
+  for (const [k, front] of [[0, true], [layers.length - 1, false]]) {
+    const L = layers[k];
+    const contour = inset(outer, L.d).map(([x, y]) => new THREE.Vector2(x, y));
+    const hs = holes.map((h) => inset(h, L.d).map(([x, y]) => new THREE.Vector2(x, y)));
+    const faces = THREE.ShapeUtils.triangulateShape(contour, hs);
+    const map = [];
+    rings.forEach((r, ri) => { for (let i = 0; i < r.length; i++) map.push(ringBase[k][ri] + i); });
+    for (const f of faces) {
+      // triangulateShape winds a CCW contour CCW, i.e. facing +w
+      if (front) idx.push(map[f[0]], map[f[2]], map[f[1]]);
+      else idx.push(map[f[0]], map[f[1]], map[f[2]]);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  geo.parameters = { shapes: shape, options: { curveSegments, depth: T, edgeR: rc } };
+  {
+    const p = geo.attributes.position, ix = geo.index;
+    let v = 0;
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    for (let t = 0; t < ix.count; t += 3) {
+      a.fromBufferAttribute(p, ix.getX(t)); b.fromBufferAttribute(p, ix.getX(t + 1)); c.fromBufferAttribute(p, ix.getX(t + 2));
+      v += a.dot(b.clone().cross(c)) / 6;
+    }
+    if (!(v > 0)) console.warn(`makeRoundedSlab: wound inside-out (signed volume ${v.toFixed(3)} ≤ 0)`);
+  }
+  return geo;
+}
 export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const {
     UNIT_MM, R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_CRYST, R_BEZEL_IN, R_G, R_PLATE,
@@ -11046,16 +11148,16 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     console.warn(`makeCase: ${clampAz.length} clamp stations arrived for a declared tripod of ${clampN}`);
 
   // Lugs at 12 and 6, INTERIOR span per dims (the strap gap between the
-  // pair's facing walls — the spec dimension); each lug a prism
-  // chord-tangent to the band and ROOTED CASE_LUG_ROOT into it (the brazed
-  // stamped-lug truth — a watchmaker solders the lug foot to the band,
-  // so the prism must visibly sink into the wall, not kiss it; the
-  // first-cut 0.3 mm embed read as a floating gap at screen scale).
-  // §190 — the RADIAL chain derives from the wrap gap, in layout.js: the
-  // spring bar's centre stands CASE_BAR_REACH past the band wall so the
-  // strap has CASE_STRAP_CLEAR to wrap it, and the lug TIP derives from
-  // the bar (CASE_LUG_REACH), not the bar from the tip — the pre-§190
-  // direction left the bar 0.45 mm proud of its own lug.
+  // pair's facing walls — the spec dimension). §280: each lug is ONE OUTLINE
+  // from layout.js's caseLugPlan — sized by the strap load, sloped toward the
+  // wrist until its lowest metal is flush with the back plane, welded to the
+  // band through two fillets, ended in a full round, drilled for the bar's
+  // tip pin — a slab CASE_LUG_T across the strap with every edge rounded
+  // (makeRoundedSlab: the authored outline at mid-thickness, so nothing grows
+  // past the law, and caps that cannot fold across the pin's web). §190's radial
+  // chain is kept: the bar stands CASE_BAR_REACH past the band wall, and the
+  // tip derives from the bar.
+  const lugPlans = [];
   for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
     const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
     const perp = { x: -u.y, y: u.x };
@@ -11064,37 +11166,67 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     // the centre-to-centre seat span derives here, beside the thickness it
     // adds.
     const lugCtrSpan = lugSpanInner + CASE_LUG_T;
+    // Both lugs of a pair stand |off| from the pair axis, so one plan serves
+    // both: the band falls away to the same chord depth on either side.
+    const plan = caseLugPlan({ rOut: R_OUT, rBore: R_BORE_BACK, off: lugCtrSpan / 2,
+      zWallLo: zStep, zWallHi: zMidBack, zBack: z0 });
+    for (const w of plan.warn) console.warn(`makeCase §280 lug: ${w}`);
+    lugPlans.push(plan);
+    const shape = new THREE.Shape(plan.outline.map(([pu, pz]) => new THREE.Vector2(pu, pz)));
+    const hole = new THREE.Path();
+    hole.absarc(plan.hole.u, plan.hole.z, plan.hole.r, 0, 2 * Math.PI, true);
+    shape.holes.push(hole);
+    const rc = CASE_LUG_EDGE_R;
+    // The lug's frame: the outline's u along the pair axis, its z the
+    // world's, the extrusion across the strap — u × ẑ = −perp keeps the basis
+    // right-handed, so the extrusion's outward faces stay outward.
+    const basis = new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(u.x, u.y, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(-perp.x, -perp.y, 0));
     for (const s of [-1, 1]) {
       const off = s * lugCtrSpan / 2;
-      // The pair's lugs stay PARALLEL (the strap's sides are parallel), but
-      // each one stands ±lugCtrSpan/2 off the pair axis, where the band has
-      // fallen away from R_OUT to the chord depth sqrt(R_OUT² − off²) —
-      // ~9 units at the 20 mm interior spec. Root the foot CASE_LUG_ROOT
-      // past THAT surface — unless the back bore, risen to its own chord
-      // depth at the lug's inboard face, leaves less wall than that
-      // (caseLugRootR) — put the tip at R_OUT + CASE_LUG_REACH, and let the
-      // length derive.
-      // TODO 209: capped where the back bore's wall would run out behind it.
-      const root = caseLugRootR(off, R_OUT, R_BORE_BACK), tip = R_OUT + CASE_LUG_REACH;
-      const lug = new THREE.Mesh(new THREE.BoxGeometry(CASE_LUG_T, tip - root, CASE_LUG_W), material);
-      lug.position.set(u.x * (root + tip) / 2 + perp.x * off,
-                       u.y * (root + tip) / 2 + perp.y * off,
-                       zLedge + CASE_LUG_W / 2 + CASE_LUG_Z_OFF); // z station keyed to the ledge plane
-      lug.rotation.z = lugAz - Math.PI / 2;
+      const geo = makeRoundedSlab(shape, { thickness: CASE_LUG_T, edgeR: rc });   // centred across its own thickness
+      geo.applyMatrix4(basis);
+      geo.translate(perp.x * off, perp.y * off, 0);
+      const lug = new THREE.Mesh(geo, material);
       lug.name = 'caseLug';
       middleAsm.add(lug);
     }
-    const bar = new THREE.Mesh(
-      new THREE.CylinderGeometry(CASE_SPRING_BAR_D / 2, CASE_SPRING_BAR_D / 2, lugSpanInner, 12), material);
-    bar.geometry.rotateX(Math.PI / 2);   // axis → Z
-    bar.geometry.rotateY(Math.PI / 2);   // axis → X
+    // The spring bar as it is made: a Ø1.5 TUBE between the facing walls and
+    // a Ø0.8 tip PIN at each end, sprung inside it. The pin stands out into
+    // the drilled lug as deep as the lug less its edge round (it stops short
+    // of the outer face's round), and is guided in the tube's bore over the
+    // same length, which is the travel it must retract by to clear the lug
+    // when the bar is fitted. The bore is the pin plus CLEAR_MARGIN, the
+    // repo's one clearance; the spring between the pins is not modelled.
+    // Three parts, not one turned rod — read as one rod, `turning` judged a
+    // Ø0.8 bar 21.7 mm long (L/D 27), a part nobody turns because nobody
+    // makes it; a pin INSIDE a bore is read as the separate part it is.
+    const bodyR = CASE_SPRING_BAR_D / 2, tipR = CASE_SPRING_BAR_TIP_D / 2;
+    const boreR = tipR + CLEAR_MARGIN;
+    const hl = lugSpanInner / 2, tl = CASE_LUG_T - rc;
+    if (!(bodyR - boreR >= STOCK_MIN_U))
+      console.warn(`makeCase §280: the spring bar's tube wall ${(bodyR - boreR).toFixed(4)} is under §50's ${STOCK_MIN_U.toFixed(4)}`);
+    const dir = { x: perp.x, y: perp.y };           // the strap direction, the bar's axis
+    const tubeGeo = new THREE.LatheGeometry([
+      new THREE.Vector2(boreR, -hl), new THREE.Vector2(bodyR, -hl),
+      new THREE.Vector2(bodyR, hl), new THREE.Vector2(boreR, hl), new THREE.Vector2(boreR, -hl)], 12);  // wound so the faces look out (signed volume > 0)
+    const bar = new THREE.Mesh(tubeGeo, material);
+    bar.geometry.rotateZ(-Math.PI / 2);   // axis → X
     bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction
-    bar.position.set(u.x * (R_OUT + CASE_BAR_REACH),
-                     u.y * (R_OUT + CASE_BAR_REACH),
-                     zLedge + CASE_LUG_W / 2 + CASE_LUG_Z_OFF);
+    bar.position.set(u.x * plan.uBar, u.y * plan.uBar, plan.zB);
     bar.name = 'caseSpringBar';
     middleAsm.add(bar);
+    for (const s of [-1, 1]) {
+      const tip = new THREE.Mesh(new THREE.CylinderGeometry(tipR, tipR, 2 * tl, 12), material);
+      tip.geometry.rotateZ(-Math.PI / 2);
+      tip.rotation.z = lugAz + Math.PI / 2;
+      const c = hl;                                 // half in the lug, half guided in the tube
+      tip.position.set(u.x * plan.uBar + dir.x * s * c, u.y * plan.uBar + dir.y * s * c, plan.zB);
+      tip.name = 'caseSpringBarTip';
+      middleAsm.add(tip);
+    }
   }
+  g.userData.lugPlans = lugPlans;
 
   // The §62 keep sweep enrolls any mesh whose box crosses the three-quarter
   // plate's z-band as "material the plate must carry". The case band

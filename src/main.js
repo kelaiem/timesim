@@ -48,8 +48,7 @@ import {
   CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_HEIGHT_MAX_MM, CASE_HEIGHT_STEP_MM, CASE_CLEAR, CASE_BAND_T, rigidSplit,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
-  CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
-  CASE_BAR_REACH, CASE_LUG_REACH, caseLugRootR,             // §190: the lug/bar stock, one declaration — the schematic tier draws the same metal makeCase cuts
+  CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -3682,9 +3681,10 @@ if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
 // re-based the 40 mm cap to the case BODY, lugs excluded, and the lugs'
 // radial chain now DERIVES in layout.js from the wrap gap (CASE_STRAP_CLEAR
 // → CASE_BAR_REACH → CASE_LUG_REACH — tips-across is body Ø + 2×reach by
-// construction, no copy to assert against). probe-lug-geom.mjs holds the
-// metal to that declaration, including the ≥2 mm wrap gap off the analytic
-// bar surface.
+// construction, no copy to assert against; since §280 the reach ends at the
+// drilled tip-pin hole plus its tear-out wall, and the lug's whole outline is
+// caseLugPlan's). probe-lug-geom.mjs holds the metal to that declaration,
+// including the ≥2 mm wrap gap off the analytic bar surface.
 if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
   console.warn(`case: interior lug span ${(CASE_LUG_INNER * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap (the cap IS the bar's free length, so the spec may meet it, never pass it)`);
 // The running fit every plate bearing is cut to — a real pivot's side-shake.
@@ -47644,26 +47644,31 @@ const SCHEMATIC = { proxies: [], on: false };
     tube(ALARM_PUSH_AZ, CASE_PUSHER_D, CASE_DIMS.pusherZ);
 
     // Lugs at 12 and 6 — the interior span is the shared derivation (20 mm,
-    // asserted against the cap where it is derived, beside BACK_PLATE_Z);
-    // the flank lines ride the lug CENTRES, so centre-to-centre adds the
-    // lug thickness. §190: every lug quantity here is layout.js's own
-    // declaration — this block used to hand-copy the solid's stock
-    // (0.8, 1.7, 1.5, 1.4) and would have gone on drawing the pre-§190
-    // metal after the wrap-gap re-derivation moved it.
+    // asserted against the cap where it is derived, beside BACK_PLATE_Z).
+    // §280: each lug is drawn as the SAME outline makeCase extrudes —
+    // caseLugPlan, at the lug's centre plane — with its drilled hole, and
+    // the spring bar at the plan's station. §190's lesson stands: this block
+    // once hand-copied the solid's stock and would have gone on drawing the
+    // old metal after a re-derivation moved it.
     const LUG_SPAN = CASE_DIMS.lugSpanInner + CASE_LUG_T;
+    const lugPlan = caseLugPlan({ rOut: R_OUT, rBore: R_BORE_BACK, off: LUG_SPAN / 2,
+      zWallLo: CASE_DIMS.zStep, zWallHi: CASE_DIMS.zMidBack, zBack: CASE_DIMS.z0 });
     for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
       const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
-      const zLug = zLedge + CASE_LUG_W / 2 + CASE_LUG_Z_OFF; // the solid lugs' own station
-      for (const s of [-1, 1]) {                   // the two lug flanks: each rooted
-        const off = s * LUG_SPAN / 2;              // caseLugRootR past the chord-depth
-        const root = caseLugRootR(off, R_OUT, R_BORE_BACK);                           // surface at its
-        put(new THREE.Line(seg(                    // own station, tip at the
-          u.clone().multiplyScalar(root).addScaledVector(p, off).setZ(zLug),   // solid's own
-          u.clone().multiplyScalar(R_OUT + CASE_LUG_REACH).addScaledVector(p, off).setZ(zLug)), rim)); // station
+      const at = (pu, pz, off) => u.clone().multiplyScalar(pu).addScaledVector(p, off).setZ(pz);
+      for (const s of [-1, 1]) {                   // the two lug flanks, each at its centre plane
+        const off = s * LUG_SPAN / 2;
+        const ring = lugPlan.outline.map(([pu, pz]) => at(pu, pz, off));
+        ring.push(ring[0].clone());
+        put(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), rim));
+        const hole = [];
+        for (let k = 0; k <= 24; k++) {
+          const th = 2 * Math.PI * k / 24;
+          hole.push(at(lugPlan.hole.u + lugPlan.hole.r * Math.cos(th), lugPlan.hole.z + lugPlan.hole.r * Math.sin(th), off));
+        }
+        put(new THREE.Line(new THREE.BufferGeometry().setFromPoints(hole), rim));
       }
-      put(new THREE.Line(seg(                       // the spring bar itself, at the
-        u.clone().multiplyScalar(R_OUT + CASE_BAR_REACH).addScaledVector(p, -LUG_SPAN / 2).setZ(zLug),   // solid bar's own
-        u.clone().multiplyScalar(R_OUT + CASE_BAR_REACH).addScaledVector(p, LUG_SPAN / 2).setZ(zLug)), rim)); // radius
+      put(new THREE.Line(seg(at(lugPlan.uBar, lugPlan.zB, -LUG_SPAN / 2), at(lugPlan.uBar, lugPlan.zB, LUG_SPAN / 2)), rim));
     }
 
     caseGroup.visible = restoredCaseLines;

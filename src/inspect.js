@@ -12018,6 +12018,17 @@ const TURN_LAP_MAX_FRAC = 0.5;
 // whole length; alone the tip is 9.6, and the shank is cut to the target over
 // the post's whole length, which is what the body is still read over.
 const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot', 'alarmLinkageDriverPin']);
+// §280 — PARTS FITTED INTO A BORE, never turned from the bar they sit in. A
+// spring bar is a TUBE with a tip pin sprung in each end and a coil spring
+// between them: three parts, none of them stock the others are cut from. The
+// stock rules above cannot see that, and correctly so for everything else —
+// a gap bridged by a hollow member is how a pivot either side of a wheel
+// reads as one arbor through its bore (§234), and that is exactly what the
+// two pins look like across the tube. Read that way, the pair is a Ø0.8 rod
+// 21.7 mm long (L/D 27). Named by member, as TURN_END_PIVOTS is, because the
+// outline cannot tell a spring from an arbor: a member here is never joined
+// to another into one bar and is judged on its own length.
+const TURN_FITTED_PARTS = new Set(['caseSpringBarTip']);
 const TURN_AMBIG_TILT = 0.15;
 const TURN_AMBIG_WIDEN = 1.02;
 
@@ -12341,6 +12352,7 @@ export async function turnedBars(clock, opts = {}) {
       for (let j = i + 1; j < members.length; j++) {
         if (used.has(j)) continue;
         const b = members[j];
+        if (TURN_FITTED_PARTS.has(a.mesh) || TURN_FITTED_PARTS.has(b.mesh)) continue;   // §280: a fitted part is its own bar
         if (Math.abs(turnDot(a.axis, b.axis)) < 1 - 1e-4) continue;
         const d = turnSub(b.origin, a.origin), t = turnDot(d, a.axis);
         const off = Math.hypot(d[0] - t * a.axis[0], d[1] - t * a.axis[1], d[2] - t * a.axis[2]);
