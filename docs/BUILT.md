@@ -38592,3 +38592,108 @@ throughout, which is BACKLOG §279's gap and is untouched by both the
 landing and the revert. `tools/probe-281-loop.mjs` held it and is removed
 with it. The number stays claimed (`docs/item-numbers/BUILT-0281.md`) and
 is not reused.
+
+## §284 — Fast-forward: a budgeted frame and a repeated balance period
+
+§258 made fast-forward a rate: a frame runs the ticks its wall time is owed. It
+measured that on a tick costing about 0.22 ms. §246 tier two then drove the
+balance, and a 2 s fast-forward tick now integrates five periods of it. Profiled
+on the live loop (headless Chromium over SwiftShader), a tick was **1.4 ms**,
+three-quarters of it `balance-drive.js` `step`. That is past the 0.74 ms at
+which §258's rule stops converging. Each frame's ticks lengthen the frame, the
+next frame is owed more, and every frame sat on the 675-tick clamp. The result
+was a 1.1 s block per frame, a page that took a second to answer anything, and
+a rate set by the clamp rather than by `FF_SIM_RATE`. Three changes.
+
+**A live frame stops at a budget.** `frame()` passes `FF_FRAME_BUDGET_MS` to
+`advanceFrame`, and a fast-forward frame stops ticking once its ticks have held
+the thread that long. The budget is `BREATHE_MS` (40 ms): the boot's own budget
+against the platform's 50 ms long-task line, the margin being the frame's render
+and readouts (about 10 ms of script, measured). A tick is marked LAST when the
+one after it would not fit, judged on the frame's own mean tick cost (an EMA
+across frames for the first tick), so the deferred poses of §255 and §256 are
+still posed by the tick that is drawn. Ticks a budget-cut frame does not run are
+DROPPED, not carried, because carrying them is the spiral. The rate is the
+lesser of `FF_SIM_RATE` and what the machine can tick, and the page stays
+answerable either way. A harness frame (`advanceFrame(1/60)`, or
+`__clock.advanceFrame` with two arguments) passes no budget and runs exactly the
+ticks it ran before, so every deterministic replay is unmoved.
+
+**The balance repeats a whole period it has integrated.** `step` takes `repeat`
+(the tick passes `fastForward`). Once the integrator has carried the balance
+through ONE WHOLE PERIOD, the state at its end is the state the period started
+from, bar n. A whole period here means a turning point to the next turning point
+on the same side, with the escapement counting exactly its two beats between
+them, no knock, no brake, the train driving, and one env (pivot friction, weight
+table, sub-step). So the next whole periods the stride has room for are COUNTED:
+n advances two beats a period, the last unlocking's instant `entryT` advances by
+the period (so the live rate readout reads the measured cycle), and the period's
+measured length comes off what is left. The rest of the stride is integrated
+from the turn as before.
+
+The two turns are kept on the state (`S.rep`), so the period may straddle a tick
+boundary. What makes it repeatable is that every instant of it was integrated,
+not where the boundary fell. A repeat restarts the record, so a counted period
+is never the source of another, and a call that cannot repeat (1×, the brake on,
+the train run down, the balance stuck) clears it. In a run of fast-forward
+strides one period in five is integrated. Counted: 522 RK4 sub-steps a stride
+against 2,618. What a repeat freezes is the swing's own period-to-period change
+over its length, so a settling swing settles over the integrated part of each
+stride. That is a slower settle in simulated time, and fast-forward has
+simulated time to spare. No tolerance was introduced: nothing is compared
+against a threshold to decide that a cycle "has settled".
+
+**The setting lever's tilt is remembered on its exact argument** (one entry,
+`Object.is`, §257's rule): `slLeverTiltAt` is a 64-step bisection that a tick
+asks three times at one pull, and the pull never moves through a fast-forward
+stride. It was the largest piece of a tick after the balance. One entry cannot
+grow, which was §266's objection to a leaf memo keyed on every pull. The
+sentinel is an object, so no argument (NaN included) is ever mistaken for a hit.
+
+| live loop, full reserve to flat (same container, one process, HEAD then tree) | HEAD | this change |
+|---|---|---|
+| wall to drain | 78.7 s | 80.2 s |
+| frames drawn | 85 | 391 |
+| ticks a frame (median) | 675 (the clamp) | 147 |
+| longest main-thread block | 1,472 ms | 275 ms |
+| a posted task's wait, median / p95 / max | 939 / 1,049 / 1,473 ms | 205 / 232 / 277 ms |
+
+`tools/probe-ff-live.mjs --ref DIR` produced the table. The wall did not get
+shorter *here*, and the reason is the container. Every frame on its software
+rasteriser is a ~160 ms draw, which no tick change touches. HEAD amortised that
+draw over 675 ticks by freezing the page for a second at a time. The tree pays
+for it on every one of 391 frames and keeps the page answerable. A tick is now
+about 0.27 ms (40 ms of budget over 147 ticks) against 1.4 ms. On a machine whose
+draw fits a 60 Hz frame, 45 ticks fit with room to spare, so the frame floor
+holds and the rate is §258's ≈5400× again. That figure is derived from the tick
+cost, not measured: this container has no GPU.
+
+The probe's first instrument for "answerable" was a CDP key pump (§239's). It
+**wedged the harness**, HEAD included: `Input.dispatchKeyEvent` waits on the
+renderer's ack, and mid-fast-forward the page stopped answering CDP at all. The
+first HEAD reading (285 s to drain) was taken under it and is not comparable.
+The probe now posts a `MessageChannel` task every 100 ms and records how long
+each waited for the thread.
+
+**Held.**
+- `tools/probe-246-driven-rate.mjs` gained two rows per position (CL, DU). The
+  repeated 2 s stride reads the integrated stride's rate to 0.02 s/day and its
+  swing to 0.05° (CL −13.70 against −13.68 s/day, DU −6.08 against −6.08), and
+  the repeated stride is measurably cheaper. That second row is the control that
+  the repeat engaged, which a pass by never repeating would otherwise buy. All
+  26 rows PASS.
+- The 1× path is untouched by construction: `repeat` is false there and the
+  record is cleared on every call. `slLeverTiltAt` returns the solve's own
+  double for its own argument. §257's focused battery (`node
+  tools/ci-battery.mjs --shards 3 --no-incremental --only
+  alarmHandoffs,restoring,transmits,transfers,equalisation,meshPhase,maintDetentHandoff`)
+  is 19/19 on this tree and on main, with the same fingerprint (2781207164),
+  and every one of the 35 check payloads in the two `--report` files has an
+  identical `result` (only the `ms` timings differ). The full battery is CI's.
+
+**Left, named.** That fast-forward's 40 sub-steps at a 2 s stride read the rate
+0.4 s/day off the 400-sub-step reference (CL −13.68 against −13.28) is §246's,
+not this change's: the repeat matches the integrated stride it replaces, and the
+convergence row is measured at 1/240 s strides. The formatted note "≈5400× — the
+whole reserve in ~20 s" is the rate on a machine whose frames fit, and it does
+not say so.

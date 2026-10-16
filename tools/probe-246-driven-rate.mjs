@@ -11,7 +11,10 @@
 //     identity that keeps every hanging pose in the battery bit for bit;
 //   · the integrator is CONVERGED: the rate does not move by more than
 //     0.02 s/day between 400 and 100 sub-steps per period, or at fast-forward's
-//     40 (BALANCE_FF_STEPS);
+//     40 (BALANCE_FF_STEPS); and fast-forward's REPEAT (§284) — whole
+//     periods counted rather than re-integrated in a 2 s stride — reads the
+//     same rate (0.02 s/day) and swing (0.05°) as that stride integrated
+//     whole, and is measurably cheaper (the control that it engaged);
 //   · AIRY'S KNOWN ANSWER: on a LINEAR spring with no losses the escapement's
 //     impulse, symmetric about the balance's equilibrium, changes the rate by
 //     nothing (under 0.01 s/day) — the control that the instrument can read a
@@ -116,6 +119,22 @@ const out = await p.evaluate(async () => {
     const r400 = run(K, pos, { over: { steps: 400 } }), r100 = run(K, pos, { over: { steps: 100 } }), r40 = run(K, pos, { over: { steps: 40 } });
     return { pos, r400: r400.sPerDay, r100: r100.sPerDay, r40: r40.sPerDay };
   });
+  // 2b. §284 — fast-forward's REPEAT: a whole period integrated inside a 2 s
+  // stride is counted again rather than integrated again. Held against the
+  // same stride integrated whole (fast-forward's 40 sub-steps, as the live
+  // loop runs it), on the integrator's own time-stamped unlockings; and the
+  // control that the repeat ENGAGED, which a pass by never repeating would
+  // otherwise buy — the repeated stride must be the cheaper one by a margin.
+  const ffRun = (pos, repeat) => {
+    const S = BD.seed(K, 0.1, (BD.FLAT_POSITIONS.has(pos) ? M.posedDeg.flat : M.posedDeg.vertical) * D);
+    const env = envFor(pos, { steps: 40, repeat });
+    for (let i = 0; i < 30; i++) BD.step(K, S, 2, env);
+    const n0 = S.n, t0 = S.entryT, w0 = performance.now();
+    for (let i = 0; i < 90; i++) BD.step(K, S, 2, env);
+    const ms = performance.now() - w0;
+    return { sPerDay: (((S.n - n0) / (2 * K.F)) / (S.entryT - t0) - 1) * 86400, ampDeg: S.ampEst / D, ms };
+  };
+  const ffRep = ['CL', 'DU'].map((pos) => ({ pos, whole: ffRun(pos, false), rep: ffRun(pos, true) }));
   // 3. Airy: a linear spring with a vanishing loss (Q 1e6, no pivot friction)
   // and the impulse that loss needs at the designed swing — a lossless one
   // would only pump the swing out to the knock
@@ -168,7 +187,7 @@ const out = await p.evaluate(async () => {
     return { n1, n2: S.n, beatsUnpowered: n1 - n0, lastBeatS, peakDeg: Math.abs(S.theta) / D, omega: S.omega };
   })();
   return { K: { F: K.F, IW: K.IW, Q: K.Q, impulseJ: K.impulseJ, brakeNm: K.brakeNm, knockDeg: K.knockRad / D }, friction: M.friction,
-    sustainedDeg: M.sustainedDeg, posedDeg: M.posedDeg, seedErr, closedErr, conv, airy, rows, sag, live, mod, hack, rundown };
+    sustainedDeg: M.sustainedDeg, posedDeg: M.posedDeg, seedErr, closedErr, conv, ffRep, airy, rows, sag, live, mod, hack, rundown };
 });
 await b.close();
 
@@ -180,6 +199,13 @@ row('the seed and τ are inverses at the posed swing', out.seedErr < 1e-12, `max
 row('the posed law at the designed swing is the pre-§246 closed form', out.closedErr < 1e-12, `max |Δθ| ${out.closedErr.toExponential(2)} rad`);
 for (const c of out.conv)
   row(`converged in the sub-step (${c.pos})`, Math.abs(c.r400 - c.r100) < 0.02 && Math.abs(c.r400 - c.r40) < 0.02, `400: ${f2(c.r400)}, 100: ${f2(c.r100)}, 40: ${f2(c.r40)} s/day`);
+for (const c of out.ffRep) {
+  row(`fast-forward's repeat counts what integration returns (${c.pos}, 2 s strides)`,
+    Math.abs(c.rep.sPerDay - c.whole.sPerDay) < 0.02 && Math.abs(c.rep.ampDeg - c.whole.ampDeg) < 0.05,
+    `repeated ${f2(c.rep.sPerDay)} s/day at ${c.rep.ampDeg.toFixed(3)}°, integrated ${f2(c.whole.sPerDay)} at ${c.whole.ampDeg.toFixed(3)}°`);
+  row(`fast-forward's repeat engaged (${c.pos}): the repeated stride is the cheaper`, c.rep.ms < 0.8 * c.whole.ms,
+    `${c.rep.ms.toFixed(0)} ms against ${c.whole.ms.toFixed(0)} ms for 180 s of balance`);
+}
 row("Airy's known answer: a symmetric impulse on a lossless linear spring keeps time", Math.abs(out.airy.sPerDay) < 0.01, `${out.airy.sPerDay.toExponential(2)} s/day at ${out.airy.ampDeg.toFixed(2)}°`);
 for (const r of out.rows) {
   const flat = r.pos === 'DU' || r.pos === 'DD';
