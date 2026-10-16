@@ -42,9 +42,10 @@
 //    end's centre, against layout.js's caseLugPlan (read off the case's own
 //    userData, so the probe holds the metal to the plan the build used).
 // 6. §280 THE LOAD ROWS: root bending, tear-out behind the pin and bearing
-//    in the hole, each held under its yield (CASE_LUG_SIGMA_Y_PA, the owner's
-//    pick of 316L's typical annealed figure) and the root printed against
-//    the band's guaranteed minimum too.
+//    in the hole, each held under its yield. Since TODO 262 the root is held
+//    under EVERY alloy the case may be cut from (CASE_ALLOY_SIGMA_Y — the lug
+//    is sized to the weakest, since the alloy is a finish and cannot move
+//    geometry), and printed against steel's guaranteed minimum too.
 //
 // What this is NOT: no other instrument touches the lugs at all.
 //
@@ -431,9 +432,13 @@ for (const sx of res.sectionPts) {
 if (pl0) {
   const r = pl0.rows;
   const mpa = (x) => (x / 1e6).toFixed(1);
-  console.log(`root bending ${mpa(r.sigma)} MPa at a ${(r.armU * MM).toFixed(3)} mm arm (yield ${mpa(r.sigmaY)} typical; ${mpa(r.sigmaYLow)} minimum — ${(r.sigma / r.sigmaYLow).toFixed(2)}× the minimum)`);
-  console.log(`tear-out ${mpa(r.tearTau)} MPa (shear yield ${mpa(r.tauY)}); bearing ${mpa(r.bearing)} MPa; slope ${(pl0.alpha * 180 / Math.PI).toFixed(1)}°, drop ${(r.drop * MM).toFixed(3)} mm`);
-  if (!(r.sigma <= r.sigmaY * (1 + 1e-9))) { ok = false; console.log('LOAD FAIL: the root bends past the yield'); }
+  console.log(`root bending ${mpa(r.sigma)} MPa at a ${(r.armU * MM).toFixed(3)} mm arm — sized to ${r.governs} (${mpa(r.sigmaY)} MPa), the weakest alloy the case is cut from (TODO 262)`);
+  for (const [k, v] of Object.entries(r.alloys))
+    console.log(`  ${k.padEnd(13)} yield ${mpa(v.design)} MPa${v.provisional ? ' (provisional)' : ''}  root at ${v.ratio.toFixed(3)}× its yield`);
+  console.log(`  steel's guaranteed minimum ${mpa(r.sigmaYLow)} MPa: root at ${(r.sigma / r.sigmaYLow).toFixed(2)}×`);
+  console.log(`tear-out ${mpa(r.tearTau)} MPa (shear yield ${mpa(r.tauY)}); bearing ${mpa(r.bearing)} MPa; S slope ${(pl0.alpha * 180 / Math.PI).toFixed(1)}°, drop ${(r.drop * MM).toFixed(3)} mm; weld feet ${(r.footMargin * MM).toFixed(3)} mm inside the band's wall`);
+  for (const [k, v] of Object.entries(r.alloys))
+    if (!(v.ratio <= 1 + 1e-9)) { ok = false; console.log(`LOAD FAIL: the root bends past ${k}'s yield`); }
   if (!(r.tearTau <= r.tauY * (1 + 1e-9))) { ok = false; console.log('LOAD FAIL: the tip tears out'); }
   if (!(r.bearing <= r.sigmaY)) { ok = false; console.log('LOAD FAIL: the pin crushes its hole'); }
 }
