@@ -618,7 +618,56 @@ export function solveMaintaining(lib, frame, { going = goingSense(frame), limit 
   return { going, click, clickPick, sweep, candidates: cands.length, seated: scored.length, tried, pick };
 }
 
-// ── THE CORD AT FULL WIND, as a path (frame mm) ─────────────────────────────
+// ── THE RUN'S STATE: how much cord is off the cone (§282) ───────────────────
+// `paid` is the cord that has left the cone for the barrel since full wind, in
+// mm: 0 at full wind, run.cordOnCone at run-down. It is the run's one state
+// variable, and every angle of the cone and the barrel is read from it through
+// fuseeRun's own segments (the law the solve levelled), never given a rate of
+// its own. Paying off reverses winding's order: the top step's wrap first, then
+// the crossing down to the step below, then that step's wrap, down to the
+// base. Over a segment of arm a, a length ds of cord turns the cone ds/a and the
+// barrel ds/ρ_b (fuseeRun's barrel wind is the cord laid over 2πρ_b), so on
+// every segment the cone's turn × a equals the barrel's × ρ_b: that equality,
+// step by step, is what the staircase is.
+export const coneTurnTotal = (run) => run.segs.reduce((s, g) => s + g.len / g.arm, 0);
+// The segment the cord is leaving with `laid` mm still on the cone, counted
+// from the base the way fuseeRun lays it: the first whose far end reaches
+// `laid`, so a boundary belongs to the segment below it (where the cord lies
+// once the one above has gone).
+function segAt(run, laid) {
+  let cum = 0;
+  for (let i = 0; i < run.segs.length; i++) {
+    const g = run.segs[i];
+    if (laid <= cum + g.len + 1e-12 || i === run.segs.length - 1) return { i, g, cum, inSeg: Math.min(g.len, Math.max(0, laid - cum)) };
+    cum += g.len;
+  }
+  return null;
+}
+// THE STATE AT `paid`: the segment and step the cord is leaving, the cone's
+// turn (turnF) and the barrel's (turnB) from full wind, in radians, unsigned
+// (both turn the going sense, goingSense: an open belt), the barrel's wind
+// θ in turns from run-down, and the torque the TABLE gives there (M, the
+// spring's; P = M × arm, what the cone delivers — fuseeRun's level product,
+// read at one point). `table` is the one the run was solved on.
+export function runState(run, paid, table = TECHNIC_FUSEE_SPRING) {
+  const laid = run.cordOnCone - paid, at = segAt(run, laid);
+  let turnF = (at.g.len - at.inSeg) / at.g.arm;
+  for (let k = at.i + 1; k < run.segs.length; k++) turnF += run.segs[k].len / run.segs[k].arm;
+  const theta = table.rows[0][0] + laid / (TAU * run.rb), M = springTorque(table, theta);
+  return { paid, laid, seg: at.i, step: at.g.step, kind: at.g.kind, arm: at.g.arm, inSeg: at.inSeg, turnF, turnB: paid / run.rb, theta, M, P: M * at.g.arm };
+}
+// The inverse: the cord paid when the cone has turned `turnF` from full wind.
+export function paidAtTurn(run, turnF) {
+  let left = Math.max(0, turnF), paid = 0;
+  for (let k = run.segs.length - 1; k >= 0; k--) {
+    const g = run.segs[k], whole = g.len / g.arm;
+    if (left <= whole) return paid + left * g.arm;
+    paid += g.len; left -= whole;
+  }
+  return run.cordOnCone;
+}
+
+// ── THE CORD, as a path (frame mm), at full wind or at any state of the run ─
 // From the cone's hook to the barrel's: the end stud on a hook plate stud,
 // the leg out over the base step's rim and down into its groove, the base
 // wrap (f of a turn), the crossing to the next step on the tangent, a wrap a
@@ -629,7 +678,22 @@ export function solveMaintaining(lib, frame, { going = goingSense(frame), limit 
 // wrap's start, and so the hook stud's angle and F's own, are worked back
 // from there. The legs and the crossings BEAR on rims and groove walls — a
 // contact the model places and does not measure.
-export function cordPath(frame, run, { stringPart = null } = {}) {
+//
+// §282 — AT `paid` mm OFF THE CONE (0, the default, is full wind, and draws
+// the path above point for point). The STRING is the one chosen at full wind:
+// it does not change as the watch runs. What is left on the cone is the
+// full-wind cone's own cord from its hook, cut short along fuseeRun's segments
+// (a wrap at its seat, a crossing along its straight line) and turned with the
+// cone by runState's turnF: the cord's last contact is a point OF the cone,
+// carried round, so it moves continuously through every step boundary. The
+// barrel takes the paid cord at the span's full-wind arrival and turns by
+// paid/ρ_b the same way, carrying the dead wrap and its hook round with it.
+// The FREE SPAN joins the two, a straight line, and its length is NOT held:
+// fuseeRun turns the barrel by the cord laid on the cone alone, as if the span
+// stood still, and probe-technic-fusee-loop.mjs reports how far the span's
+// length, and the departure's angle off the open belt's tangent, move from
+// that over the run — the solve's simplification made visible, not corrected.
+export function cordPath(frame, run, { stringPart = null, paid = 0 } = {}) {
   const F = FUSEE_DIM_MM, g = goingSense(frame), c = F.cordR, zA = frame.axleZ;
   const st = frame.fusee.steps;
   const top = st[st.length - 1], sp = spanTangent(frame, top.seat);
@@ -647,49 +711,81 @@ export function cordPath(frame, run, { stringPart = null } = {}) {
   const aHook = spans[0].a0;
   // (u, v) about an axis at (x, zA) → frame (x, y, z)
   const P = (x0, r, ang, y) => [x0 + r * Math.cos(ang), y, zA - r * Math.sin(ang)];
-  const path = [], mark = [];
-  const push = (p, tag) => { path.push(p); if (tag) mark.push({ tag, i: path.length - 1 }); };
-  const arc = (x0, r, a0, a1, y0, y1, tag) => {
-    const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) * r / 0.6));
-    for (let k = 0; k <= n; k++) push(P(x0, r, a0 + (a1 - a0) * k / n, y0 + (y1 - y0) * k / n), k === 0 ? tag : null);
-  };
-  const xF = frame.cd, hp = frame.fusee.hookPlate, b0 = st[0];
-  // the cone's hook and leg
-  push(P(xF, F.plateStud, aHook, hp.cordY), 'cone hook');
-  push(P(xF, b0.rim + c, aHook, hp.cordY));
-  push(P(xF, b0.rim + c, aHook, b0.wrapY));
-  // the wraps and crossings
-  for (const s of spans) {
-    const step = st[s.j];
-    // the crossing: from where the last wrap ended, on the tangent onto this step
-    if (s.j > 0) push(P(xF, step.seat, s.a0, step.wrapY), `cross ${s.j}`);
-    arc(xF, step.seat, s.a0, s.a1, step.wrapY, step.wrapY, `wrap ${s.j}`);
-  }
-  // the span: the departure is the last wrap's end; the arrival on the barrel
-  const bar = frame.barrel;
+  const xF = frame.cd, hp = frame.fusee.hookPlate, b0 = st[0], bar = frame.barrel;
   const aArr = Math.atan2(sp.n[1], sp.n[0]);
-  push(P(bar.x, bar.seat, aArr, bar.y), 'span end');
-  const coneLen = pathLength(path);
+  // THE CONE'S CORD with `laid` mm still on it, turned dF with the cone, then
+  // the span's arrival on the barrel
+  const cone = (laid, dF) => {
+    const path = [], mark = [];
+    const push = (p, tag) => { path.push(p); if (tag) mark.push({ tag, i: path.length - 1 }); };
+    const arc = (x0, r, a0, a1, y0, y1, tag) => {
+      const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) * r / 0.6));
+      for (let k = 0; k <= n; k++) push(P(x0, r, a0 + (a1 - a0) * k / n, y0 + (y1 - y0) * k / n), k === 0 ? tag : null);
+    };
+    // the cone's hook and leg
+    push(P(xF, F.plateStud, aHook + dF, hp.cordY), 'cone hook');
+    push(P(xF, b0.rim + c, aHook + dF, hp.cordY));
+    push(P(xF, b0.rim + c, aHook + dF, b0.wrapY));
+    // the wraps and crossings: fuseeRun's segments in laying order, as much of
+    // each as is still on the cone
+    let left = laid, k = 0;
+    for (const s of spans) {
+      const step = st[s.j];
+      // the crossing: from where the last wrap ended, on the tangent onto this step
+      if (s.j > 0) {
+        const seg = run.segs[k++], on = Math.min(seg.len, left);
+        if (!(on > 0)) break;
+        const q = P(xF, step.seat, s.a0 + dF, step.wrapY);
+        if (on < seg.len - 1e-12) { const p0 = path[path.length - 1], u = on / seg.len; push([0, 1, 2].map((d) => p0[d] + (q[d] - p0[d]) * u), `cross ${s.j}`); break; }
+        push(q, `cross ${s.j}`);
+        left -= on;
+      }
+      const seg = run.segs[k++], on = Math.min(seg.len, left);
+      if (!(on > 0)) break;
+      if (on < seg.len - 1e-12) { arc(xF, step.seat, s.a0 + dF, s.a0 + g * on / step.seat + dF, step.wrapY, step.wrapY, `wrap ${s.j}`); break; }
+      arc(xF, step.seat, s.a0 + dF, s.a1 + dF, step.wrapY, step.wrapY, `wrap ${s.j}`);
+      left -= on;
+    }
+    // the span: from the last contact on the cone to the arrival on the barrel
+    push(P(bar.x, bar.seat, aArr, bar.y), 'span end');
+    return { path, mark };
+  };
+  // the string is chosen at full wind
+  const full = cone(Infinity, 0);
+  const coneLen = pathLength(full.path);
   // the barrel's legs: up over its rim and in to its hook's stud, which
   // decides the dead wrap's end; the dead length is what the string leaves
   const legB = (bar.rim + c - bar.seat) + Math.abs(bar.y - bar.hook.cordY) + (bar.rim + c - F.plateStud);
   const noDead = coneLen + legB;
   const choice = cordChoice(noDead, run);
   const str = stringPart ? { part: stringPart, length: F.string[stringPart], dead: F.string[stringPart] - noDead } : choice.choice;
+  // the state: the cone's turn and the barrel's, both read off `paid`
+  const state = paid > 0 ? runState(run, paid) : null;
+  const dF = state ? g * state.turnF : 0, dB = state ? g * paid / bar.seat : 0;
+  const { path, mark } = state ? cone(run.cordOnCone - paid, dF) : full;
+  const push = (p, tag) => { path.push(p); if (tag) mark.push({ tag, i: path.length - 1 }); };
+  const departure = path[path.length - 2];
+  // the cord the barrel has TAKEN since full wind, laid at the arrival and
+  // turned on with the barrel
+  if (state) {
+    const n = Math.max(1, Math.ceil(paid / 0.6));
+    for (let k = 1; k <= n; k++) push(P(bar.x, bar.seat, aArr + dB * k / n, bar.y), k === 1 ? 'taken' : null);
+  }
   // the dead wrap, drawn as n equal chords whose lengths sum to the dead
   // length exactly, so the path is the string's length and not a chord short
   const nDead = Math.max(1, Math.ceil((str?.dead ?? 0) / 0.6));
   const dAng = str && str.dead > 0 ? 2 * Math.asin(str.dead / (2 * nDead * bar.seat)) : 0;
-  const aEnd = aArr + g * nDead * dAng;
-  for (let k = 1; k <= nDead && dAng; k++) push(P(bar.x, bar.seat, aArr + g * k * dAng, bar.y), k === 1 ? 'dead wrap' : null);
+  const aEnd = aArr + dB + g * nDead * dAng;
+  for (let k = 1; k <= nDead && dAng; k++) push(P(bar.x, bar.seat, aArr + dB + g * k * dAng, bar.y), k === 1 ? 'dead wrap' : null);
   push(P(bar.x, bar.rim + c, aEnd, bar.y));
   push(P(bar.x, bar.rim + c, aEnd, bar.hook.cordY));
   push(P(bar.x, F.plateStud, aEnd, bar.hook.cordY), 'barrel hook');
-  return { path, mark, g, aDep, aHook, aEnd, spans, crossAng, span: sp, coneLen, legB, noDead, string: str, choice, length: pathLength(path) };
+  return { path, mark, g, aDep, aHook: aHook + dF, aEnd, spans, crossAng, span: sp, coneLen, legB, noDead, string: str, choice, length: pathLength(path),
+    paid, state, dF, dB, departure };
 }
 export const pathLength = (p) => p.slice(1).reduce((s, q, i) => s + Math.hypot(q[0] - p[i][0], q[1] - p[i][1], q[2] - p[i][2]), 0);
 
-// ── THE BUILD: LDraw placements (LDU), at full wind ─────────────────────────
+// ── THE BUILD: LDraw placements (LDU), at full wind (or §282 at `paid`) ─────
 // frame (x, y, z) → LDraw (x, −z, y)/0.4, a proper rotation. Each body (the
 // barrel, F, M, G, the two pawls) is placed at its pose: F's and the barrel's
 // angles set by the cord's hooks, M's posed (`phiM`), G lagging it by the
@@ -708,9 +804,9 @@ const STUDS_TO_Y = [1, 0, 0, 0, 0, 1, 0, -1, 0];
 const ARM_TO_PLANE = [0, 0, 1, 1, 0, 0, 0, 1, 0];
 const fr = (x, y, z) => [L(x), -L(z), L(y)];
 export const FUSEE_COLOUR = Object.freeze({ pulley: 71, barrel: 72, hook: 15, cord: 0, cordEnd: 0, click: 19, ratchet: 25, pawl: 4, arm: 1, joiner: 72, great: 14, knob: 15 });
-export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lagDeg = BAND_LAG_DEG, stringPart = null } = {}) {
+export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lagDeg = BAND_LAG_DEG, stringPart = null, paid = 0 } = {}) {
   const F = FUSEE_DIM_MM, g = goingSense(frame), zA = frame.axleZ;
-  const cord = cordPath(frame, run, { stringPart });
+  const cord = cordPath(frame, run, { stringPart, paid });
   const statics = [];
   // the baseplate: its studs at odd multiples of 10 LDU from its centre
   const midX = L((frame.base.x0 + frame.base.x1) / 2), midZ = L((frame.base.y0 + frame.base.y1) / 2);
@@ -778,8 +874,15 @@ export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lag
     { role: 'pawl', part: FUSEE_PARTS.pawl, teeth: 8, m: at(L(armD), 0, L(R.y)) },
     { role: 'axle', part: AXLE_PARTS[2], m: at(L(armD), 0, L((R.y0 + frame.detentArm.y1) / 2), ROT_X_TO_Z) },
   ] });
-  // ── the cord: its end studs and its segments
-  const cordParts = [];
+  statics.push(...cordPlacements(frame, cord));
+  return { key: 'fusee', gen: frame.gen, statics, shafts: bodies, meshes: [], modes: ['full wind'], cord,
+    pose: { phiF, phiB, phiM, phiG, psiC, psiD, going: g } };
+}
+// ── the cord as parts: its end studs and its braided segments along a path
+// (cordPath's, at whatever state of the run it was taken) — one function, so
+// the loop's moving cord and the static build's are placed by the same law
+export function cordPlacements(frame, cord) {
+  const F = FUSEE_DIM_MM, cordParts = [];
   const p = cord.path, ends = [p[0], p[p.length - 1]];
   for (const [k, e] of ends.entries()) {
     const nxt = k ? p[p.length - 2] : p[1];
@@ -808,7 +911,150 @@ export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lag
     const mid = fr((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
     cordParts.push({ role: 'cord', part: FUSEE_PARTS.cordSegment, m: at(...mid, [ex[0], ey[0], ez[0], ex[1], ey[1], ez[1], ex[2], ey[2], ez[2]]) });
   }
-  statics.push(...cordParts);
-  return { key: 'fusee', gen: frame.gen, statics, shafts: bodies, meshes: [], modes: ['full wind'], cord,
-    pose: { phiF, phiB, phiM, phiG, psiC, psiD, going: g } };
+  return cordParts;
+}
+
+// ── §282 — THE LOOP: run down, wind back through the maintaining power ──────
+// The LEGO feasibility note's module 2 measurement made visible: the cord
+// leaves the cone a step at a time, the barrel takes it, and the torque the
+// spring gives is set beside the torque the cone delivers. MODELLED, not
+// simulated: nothing here is integrated and no force is weighed. Every angle
+// is read from the state through the parts' own laws (the cone's segments,
+// the click's lock, the band's posed stretch), and the one quantity given a
+// RATE is the great wheel's: in a watch the escapement governs it, and this
+// module builds no escapement, so its rate is a DISPLAY rate (LOOP_RUN_S), not
+// a claim — the analogue of technic.html's `keylessAngle`.
+//
+// THE CHAIN, one input per phase:
+//   GOING — the great wheel G advances (the display rate); the band, at its
+//     posed stretch (BAND_LAG_DEG), holds the ratchet M that far ahead of it;
+//     the click, locked (pawlLock), turns the fusee F with M; the cord paid off
+//     the cone is read from F's turn through the cone's segments (paidAtTurn),
+//     and the barrel's turn from the cord paid (paid/ρ_b). So F turns at the
+//     train's steady rate and the BARREL speeds up as the cord comes down onto
+//     a larger step — the sense the geometry gives, since F is in the train;
+//     the detent rides the ratchet's teeth (it frees the going way).
+//   WINDING — a crank turns F back windSpeedup times as fast as the train
+//     runs; the click frees and its pawl rides the click wheel's teeth; the
+//     detent holds M against the band; the band, relaxing, keeps G turning the
+//     going way at the same rate: Harrison's maintaining power carrying the
+//     train. The cord goes back onto the cone by the same law, exactly back to
+//     full wind (paid = 0), where the wind stops.
+//   FULL — the going spring takes the train again and first re-tensions the
+//     band: F and M (the click locked) run RECHARGE_SPEEDUP times as fast as G
+//     until M stands BAND_LAG_DEG ahead again, then GOING resumes.
+// WHAT IS POSED, BY NAME: the spring's law (TECHNIC_FUSEE_SPRING, a stand-in);
+// the band's stretch and its relaxing while it carries the train (its force
+// is not measured, only its direction, bandMoment); each pawl's band, which
+// holds its 8T on the teeth it rides (the ride is the seat the band drops it
+// to, pawlModel.seat, at each angle — a posed ride over the measured profile).
+
+// THE DISPLAY RATE: one run-down, full wind to run-down, in this many seconds
+// at speed 1 — long enough to read a step crossing, short enough that the
+// loop comes round while someone watches. A display rate, not a claim.
+export const LOOP_RUN_S = 40;
+// THE WIND'S SPEED, derived: while the fusee is wound the band carries the
+// train alone, spending its stretch at the train's rate, so a wind that took
+// longer than the stretch lasts would let the band go slack — a maintaining
+// power that ran out. The crank turns the fusee back the fewest whole times
+// faster than the train that spends no more than HALF the band's posed stretch
+// over a whole wind: k = ⌈2·T / λ⌉, T the cone's whole turn over the run.
+export const windSpeedup = (run, lagDeg = BAND_LAG_DEG) => Math.ceil(2 * coneTurnTotal(run) / (lagDeg * Math.PI / 180));
+// THE RECHARGE'S SPEED: any rate above the train's re-tensions the band (the
+// fusee then runs ahead of the great wheel); a real going spring does it
+// almost at once. 2 is a DISPLAY rate, the slowest whole one that keeps the
+// FULL phase long enough to read.
+export const RECHARGE_SPEEDUP = 2;
+
+// A PAWL'S RIDE over one pitch of the teeth it rides: the seat its band drops
+// it to (pawlModel.seat), at n + 1 wheel angles from theta0, read by linear
+// interpolation between them. The first is seat(theta0) itself, so the ride
+// starts where the static build seats it; each next search starts RIDE_BACK
+// back toward the free side of the one before, a continuation of seat()'s own
+// search (probe-technic-fusee-loop holds every sample to seat() from scratch).
+// A generator, so a page can build it between frames.
+const RIDE_BACK = 15 * Math.PI / 180;
+export function* pawlRideSteps(lib, spec, teeth, { theta0 = 0, n = 48 } = {}) {
+  const m = pawlModel(lib, spec), s = spec.sense, pitch = TAU / teeth, rad = Math.PI / 180;
+  const table = new Float64Array(n + 1);
+  table[0] = m.seat(theta0);
+  for (let i = 1; i <= n; i++) {
+    yield i;
+    const theta = theta0 + i * pitch / n;
+    let start = table[i - 1] - s * RIDE_BACK;
+    while (m.depth(start, theta) > 0) start -= s * RIDE_BACK;
+    let prev = start, hit = null;
+    for (let k = 1; k <= 360; k++) { const q = start + s * k * rad; if (m.depth(q, theta) > 0) { hit = q; break; } prev = q; }
+    let a = prev, b = hit;
+    for (let j = 0; j < 40; j++) { const c = (a + b) / 2; if (m.depth(c, theta) > 0) b = c; else a = c; }
+    table[i] = a;
+  }
+  const at = (theta) => { const u = mod(theta - theta0, pitch) / pitch * n, i = Math.min(n - 1, Math.floor(u)), f = u - i; return table[i] * (1 - f) + table[i + 1] * f; };
+  return { table, theta0, pitch, n, at, model: m };
+}
+export function pawlRide(lib, spec, teeth, opts) {
+  const it = pawlRideSteps(lib, spec, teeth, opts);
+  for (;;) { const r = it.next(); if (r.done) return r.value; }
+}
+// THE LOOP'S MODEL: the run, the build it starts from (fuseeBuild's pose at
+// full wind: every angle below is that pose plus a turn), and the two rides —
+// the click's over the click wheel (in M's frame, the relative angle F − M, as
+// fuseeBuild seats it) and the detent's over the ratchet.
+export const loopRideSpecs = (build, maint = MAINTAINING) => ({
+  click: { spec: clickSpec(maint.click.sense), teeth: 16, theta0: build.pose.phiF - build.pose.phiM },
+  detent: { spec: detentSpec(maint.detent.pivot, maint.detent.sense), teeth: 40, theta0: build.pose.phiM },
+});
+export function fuseeLoopModel(frame, lib, run, build, { table = TECHNIC_FUSEE_SPRING, maint = MAINTAINING, lagDeg = BAND_LAG_DEG, rides = null } = {}) {
+  const p = build.pose;
+  const r = rides ?? Object.fromEntries(Object.entries(loopRideSpecs(build, maint)).map(([k, v]) => [k, pawlRide(lib, v.spec, v.teeth, { theta0: v.theta0 })]));
+  const full = runState(run, 0, table), T = coneTurnTotal(run);
+  return { frame, run, table, build, pose0: p, g: p.going, T, k: windSpeedup(run, lagDeg), kr: RECHARGE_SPEEDUP, lag0: lagDeg * Math.PI / 180,
+    rides: r, full, rate: T / LOOP_RUN_S };
+}
+export const loopStart = () => ({ phase: 'going', turnF: 0, dM: 0, dG: 0, cycle: 0 });
+// Advance the loop by `a` radians of the great wheel (≥ 0, always the going
+// way). Phases end EXACTLY where their law says (run-down at T, full wind at
+// 0, the band at its stretch), and the rest of the advance carries into the
+// next phase, so no step overshoots a boundary.
+export function loopAdvance(model, st, a) {
+  const s = { ...st }, { T, k, kr } = model;
+  let left = a;
+  for (let guard = 0; left > 0 && guard < 8; guard++) {
+    if (s.phase === 'going') {
+      const u = Math.min(left, T - s.turnF);
+      s.turnF += u; s.dM += u; s.dG += u; left -= u;
+      if (s.turnF >= T) { s.turnF = T; s.phase = 'winding'; }
+    } else if (s.phase === 'winding') {
+      const room = s.turnF / k, u = Math.min(left, room);
+      s.dG += u; left -= u;
+      if (u >= room) { s.turnF = 0; s.phase = 'full'; } else s.turnF -= k * u;
+    } else {
+      const room = (s.dG - s.dM) / (kr - 1), u = Math.min(left, room);
+      s.turnF += kr * u; s.dM += kr * u; s.dG += u; left -= u;
+      if (u >= room) { s.dM = s.dG; s.phase = 'going'; s.cycle++; }
+    }
+  }
+  return s;
+}
+// THE POSE AT A STATE: every body's angle (LDraw rotZ, as fuseeBuild places
+// them), the click pawl's pivot (it rides round in M's hole), the cord's
+// state, the band's stretch, and the readout: the spring's torque and the
+// torque after the cone, each as a fraction of its own value at full wind.
+export function loopPose(model, st) {
+  const { run, g, pose0: p } = model, h = FUSEE_DIM_MM.wheelHole;
+  const paid = paidAtTurn(run, st.turnF), rs = runState(run, paid, model.table);
+  const phiF = p.phiF + g * st.turnF, phiB = p.phiB + g * paid / run.rb;
+  const phiM = p.phiM + g * st.dM, phiG = p.phiG + g * st.dG;
+  return { phase: st.phase, paid, state: rs, phiF, phiB, phiM, phiG,
+    psiC: model.rides.click.at(phiF - phiM), psiD: model.rides.detent.at(phiM), clickPivot: [h * Math.cos(phiM), h * Math.sin(phiM)],
+    lag: model.lag0 + st.dM - st.dG, spring: rs.M / model.full.M, level: rs.P / model.full.P };
+}
+// THE PHASE LINE: what the page says, from the state alone. Steps are counted
+// base first, as the solve lists them (step 1 is the largest).
+export function loopPhaseLine(model, pose) {
+  const n = model.run.steps.length, s = pose.state, k = s.step + 1, part = model.run.steps[s.step];
+  if (pose.phase === 'winding') return 'winding — the crank turns the fusee back; the maintaining power carries the train';
+  if (pose.phase === 'full') return 'full — the going spring re-tensions the maintaining band';
+  return s.kind === 'transition' ? `running down — crossing from step ${k} to step ${k - 1} of ${n}`
+    : `running down — step ${k} of ${n} (${part}, seat ${s.arm.toFixed(2)} mm)`;
 }
