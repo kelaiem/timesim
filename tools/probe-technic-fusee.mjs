@@ -24,14 +24,14 @@
 //     least spread of torque × radius); the step radii against the ideal r(θ),
 //     the LEVEL PRODUCT's spread over the run against the bare spring's and
 //     against the steel fusee's gate (its level product held at 1e-9);
-//   · A THIRD STEP (§284) — the catalogue is now landing H's five and every
+//   · A THIRD STEP (§285) — the catalogue is now landing H's five and every
 //     usable groove the library survey measured (each re-read here over its
 //     own window, its offset from its origin too); the best three-step cone
 //     spreads more than the answer, and with every seat FREE (a 0.2 mm grid)
 //     three steps still lose to two on the answer's barrel — every step above
 //     the base takes a whole wrap of the 76 mm it takes over the band. The
 //     control: on a 29.25 mm barrel (122 mm of cord) three win;
-//   · CENTRE PINION (§284) — the going train's next wheel: the declared count
+//   · CENTRE PINION (§285) — the going train's next wheel: the declared count
 //     is solveCentrePinion's (the lattice mesh off the 40T nearest the steel's
 //     120:7), it stands the mesh's centre distance off the great wheel, and its
 //     teeth are MESHED with the great wheel's, read off both placed parts
@@ -128,7 +128,7 @@ const near = (a, b, t = 1e-4) => Math.abs(a - b) <= t;
 function partErrors(dims) {
   const errs = [];
   for (const p of FUSEE_PULLEYS) {
-    // §284: a surveyed part is read over its own window at its own step
+    // §285: a surveyed part is read over its own window at its own step
     // (dims.read); its rim is its outermost surface, as landing H's five read
     const g = grooveSeat(lib, p, dims.cordR, dims.read[p] ?? {}), b = B(p);
     if (!lib.get(`${p}.dat`)) { errs.push(`${p}: not in the pack`); continue; }
@@ -183,7 +183,7 @@ console.log(`    … ${solved.ranked.length} runs fit their tables; the bare spr
 const stepsErr = (spec) => (run && spec.barrel === run.barrel && JSON.stringify(spec.steps) === JSON.stringify(run.steps) ? [] : [`declared barrel ${spec.barrel}, steps ${spec.steps.join('>')}; the solve says ${run?.barrel}, ${run?.steps.join('>')}`]);
 for (const e of stepsErr(TECHNIC_FUSEE)) fail(e);
 control('a declared step set other than the solver\'s', stepsErr({ barrel: TECHNIC_FUSEE.barrel, steps: ['3736', '3482'] }).length > 0);
-// §284 — A THIRD STEP. The answer per number of steps over the surveyed
+// §285 — A THIRD STEP. The answer per number of steps over the surveyed
 // catalogue: the best three-step cone must spread more than the answer (else
 // the record's refusal is stale). And the bound that says WHY no catalogue
 // could change that on this barrel: with every seat FREE (a 0.2 mm grid from 3
@@ -192,7 +192,7 @@ control('a declared step set other than the solver\'s', stepsErr({ barrel: TECHN
 // barrel takes over the band is 2π·ρ_b·band, and every step above the base
 // takes a whole wrap of it. Its control is the same search on a barrel of the
 // motorcycle wheel's gutter (ρ 29.25 mm, the survey's off-centre ceiling),
-// where three steps win. Gated, because docs/BUILT.md §284 states both.
+// where three steps win. Gated, because docs/BUILT.md §285 states both.
 const byN = [1, 2, 3, 4].map((n) => solved.ranked.find((r) => r.steps.length === n));
 function freeBound(rb, n, grid = 0.2) {
   const seat = { ...F.seat, B: rb }, names = ['s1', 's2', 's3'], halfWidth = { ...F.halfWidth, s1: 2, s2: 2, s3: 2 }, floorHalf = { ...F.floorHalf, s1: 0, s2: 0, s3: 0 }, grooveOff = { ...F.grooveOff, s1: 0, s2: 0, s3: 0 };
@@ -203,10 +203,10 @@ function freeBound(rb, n, grid = 0.2) {
   return best;
 }
 console.log(`  PER STEP COUNT: ${byN.map((r, i) => `${i + 1} step${i ? 's' : ''} ${r ? `${(r.spread * 100).toFixed(2)}% (barrel ${r.barrel}, ${r.steps.join(' > ')})` : 'none runs'}`).join('; ')}`);
-if (byN[2] && !(byN[2].spread > run.spread)) fail(`a three-step cone (${(byN[2].spread * 100).toFixed(2)}%) levels better than the answer: BUILT §284's refusal is stale`);
+if (byN[2] && !(byN[2].spread > run.spread)) fail(`a three-step cone (${(byN[2].spread * 100).toFixed(2)}%) levels better than the answer: BUILT §285's refusal is stale`);
 const free = Object.fromEntries([['the answer', F.seat[run.barrel]], ['the gutter', 29.249]].map(([k, rb]) => [k, { rb, two: freeBound(rb, 2), three: freeBound(rb, 3) }]));
 for (const [k, v] of Object.entries(free)) console.log(`  FREE SEATS on ${k}'s barrel (ρ_b ${v.rb} mm, ${(2 * Math.PI * v.rb * run.band).toFixed(1)} mm of cord over the band): two steps reach ${(v.two.spread * 100).toFixed(2)}% (${v.two.rs.map((x) => x.toFixed(1)).join(' > ')} mm), three ${(v.three.spread * 100).toFixed(2)}% (${v.three.rs.map((x) => x.toFixed(1)).join(' > ')} mm)`);
-if (!(free['the answer'].three.spread > free['the answer'].two.spread)) fail('on the answer\'s barrel a three-step cone of free seats beats the best two-step: BUILT §284\'s reason is stale');
+if (!(free['the answer'].three.spread > free['the answer'].two.spread)) fail('on the answer\'s barrel a three-step cone of free seats beats the best two-step: BUILT §285\'s reason is stale');
 control('on the gutter\'s barrel the same free search finds a three-step cone that wins', free['the gutter'].three.spread < free['the gutter'].two.spread);
 // THE IDEAL r(θ) and the level product
 for (const s of idealAgainst(run)) console.log(`  step ${s.part.padEnd(6)} seat ${s.seat.toFixed(3)} mm over θ ${s.from.toFixed(4)}–${s.to.toFixed(4)} turns; ideal r there ${s.idealFrom.toFixed(3)} → ${s.idealTo.toFixed(3)} mm`);
@@ -327,12 +327,12 @@ const revD = pawlLock(lib, detentSpec(MAINTAINING.detent.pivot, -MAINTAINING.det
 control('the detent with its band reversed', maintErrors({ ...MAINTAINING, detent: { ...MAINTAINING.detent, sense: -MAINTAINING.detent.sense } }, sm, { detentLocks: revD.locks }).errs.length > 0);
 control('the band with the great wheel ahead of the ratchet', maintErrors(MAINTAINING, sm, { lagDeg: -BAND_LAG_DEG }).errs.length > 0);
 
-// ── CENTRE PINION (§284) ────────────────────────────────────────────────────
+// ── CENTRE PINION (§285) ────────────────────────────────────────────────────
 // The going train's next wheel: the catalogue gear that meshes the 40T on the
 // lattice nearest the steel's great-wheel step-up, re-solved; the declared one
 // must be it, at the mesh's centre distance, its teeth meshed with the great
 // wheel's.
-console.log('\ncentre pinion (the going train\'s next wheel, §284):');
+console.log('\ncentre pinion (the going train\'s next wheel, §285):');
 const cps = solveCentrePinion();
 for (const r of cps.ranked) console.log(`  ${r.teeth === cps.best.teeth ? '→' : ' '} 40:${r.teeth} (${r.part}) at ${r.cd} mm, step-up ${r.ratio.toFixed(3)} against the steel's ${cps.steel.teeth}:${cps.steel.pinion} = ${cps.steel.ratio.toFixed(3)}`);
 const centreErr = (c, sol = cps) => (sol.best && c.teeth === sol.best.teeth && c.part === sol.best.part && c.cd === sol.best.cd ? [] : [`the centre pinion is declared ${c.teeth}T ${c.part} at ${c.cd} mm; the solve says ${sol.best?.teeth}T ${sol.best?.part} at ${sol.best?.cd}`]);
@@ -418,7 +418,7 @@ function buildErrors(f, b) {
   return errs;
 }
 const be = buildErrors(frame, build);
-{ // §284: the centre pinion, its centre distance and its mesh
+{ // §285: the centre pinion, its centre distance and its mesh
   const cb = build.shafts.find((s) => s.shaft === 'centre'), gb = build.shafts.find((s) => s.shaft === 'great');
   const dx = (cb.origin[0] - gb.origin[0]) * LDU_MM;
   for (const e of centreDistErr(cb, gb)) fail(e);

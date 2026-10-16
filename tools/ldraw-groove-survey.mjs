@@ -5,7 +5,7 @@
 // technic-fusee.js' own `grooveSeat`, the rows of every USABLE groove not yet
 // in FUSEE_PULLEYS (ready to paste into FUSEE_DIM_MM), and the fusee re-solved
 // over the catalogue plus those, at most four steps. §219 tier three (b),
-// BUILT §284 (src/technic-fusee.js): the survey that asked whether a THIRD STEP
+// BUILT §285 (src/technic-fusee.js): the survey that asked whether a THIRD STEP
 // on the cone could level the spring better than landing H's two.
 // Its one fatal path (no --lib, exit 2) files it as ACCEPTANCE in tools/INDEX.md;
 // what it prints is a report, and it fails nothing.

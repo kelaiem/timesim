@@ -30,7 +30,7 @@
 //     the whole run, cordOnCone/ρ_b of a turn;
 //   · READOUT — the spring's torque and the torque after the cone, at every
 //     fuseeRun sample the solve levelled, ARE the samples; the readout's
-//     extremes re-derive the solve's spread (31.6% since §284) and the bare spring's
+//     extremes re-derive the solve's spread (31.6% since §285) and the bare spring's
 //     (51.6%), neither retyped;
 //   · LOOP — several cycles of loopAdvance at a page frame: the phases run
 //     going → winding → full → going in that order and no other; the great
@@ -43,7 +43,7 @@
 //     and the detent holds the ratchet the way the band pulls it; while going
 //     the ratchet runs the going way, which the detent frees, and the click
 //     does not slip;
-//   · CENTRE PINION (§284) — on every frame, winding included, it turns −40/8
+//   · CENTRE PINION (§285) — on every frame, winding included, it turns −40/8
 //     of the great wheel's turn, and its teeth stay meshed (the tooth-phase law
 //     off both parts) over a whole run-down and wind;
 //   · RIDES — each pawl's ride table is seat() from scratch at every sample,
@@ -269,7 +269,7 @@ function runLoop(m, { frames = Math.ceil(3.2 * (LOOP_RUN_S + LOOP_RUN_S / m.k + 
   if (winds < 3) errs.push(`only ${winds} winds in ${frames} frames`);
   return { errs, seq, lagLo, winds, gMin, fullAt };
 }
-// §284 — THE CENTRE PINION rides the great wheel: on every frame, winding
+// §285 — THE CENTRE PINION rides the great wheel: on every frame, winding
 // included (the maintaining power carries it too), it turns −40/n of the great
 // wheel's turn, and its teeth stay in mesh — the residue of
 // 40·(φG + tG) + n·(φC + tC − π) ≡ π, each tooth phase t read off its part
@@ -292,7 +292,7 @@ function centreErrs(m, frames = Math.ceil((LOOP_RUN_S + LOOP_RUN_S / m.k + 2) * 
 }
 { const c = centreErrs(model);
   for (const e of c.errs) fail(e);
-  console.log(`  centre pinion (§284): over a whole run-down and wind it turns −${40 / FUSEE_CENTRE.teeth}× the great wheel on every frame to ${c.worstR.toExponential(1)} rad, its teeth in mesh to ${c.worstM.toExponential(1)} of a turn (tol 1e-3)`);
+  console.log(`  centre pinion (§285): over a whole run-down and wind it turns −${40 / FUSEE_CENTRE.teeth}× the great wheel on every frame to ${c.worstR.toExponential(1)} rad, its teeth in mesh to ${c.worstM.toExponential(1)} of a turn (tol 1e-3)`);
   control('the centre pinion turned at the 40:16\'s rate', centreErrs({ ...model, frame: { ...model.frame, centre: { ...model.frame.centre, teeth: 16 } } }).errs.length > 0); }
 const L = runLoop(model);
 for (const e of L.errs.slice(0, 8)) fail(e);

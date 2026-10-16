@@ -86,7 +86,7 @@ through `TECHNIC_FUSEE_SPRING`. That table is POSED (a LEGO spring can only be
 measured; its stand-in is the steel ribbon's law, its three numbers read back
 off `main.js`' text), so a measured table re-solves with no code change, and
 records say modelled, never simulated. The staircase levels the stand-in from
-51.6% to 31.6% (landing H's two steps reached 40.1%; §284's catalogue found a
+51.6% to 31.6% (landing H's two steps reached 40.1%; §285's catalogue found a
 better pair); the steel's level product is gated at 1e-9. The maintaining
 power is Harrison's and needs TWO one-way parts (the 20T one-way gear is not in
 the LDraw library): a click pawl riding the 40T ratchet, on a 16T keyed to the
@@ -106,7 +106,7 @@ the band carries the train. The pawls ride tabled seats.
 against the solve's 31.6%/51.6%, the locks and the exact return to full wind. It
 also REPORTS the solve's simplification the loop exposed: the cord leaves the
 base step off the open belt's tangent (13.9° on landing H's cone, 51.7° on
-§284's). **Since §284 a third step is REFUSED, by measurement**:
+§285's). **Since §285 a third step is REFUSED, by measurement**:
 `tools/ldraw-groove-survey.mjs` reads every axle-keyed part in an unpacked
 LDraw library through `grooveSeat` itself (a report; its controls are the
 catalogued seats and a flat disc), every usable groove — round, both walls

@@ -38777,7 +38777,7 @@ Between ride samples the interpolated 8T grazes the teeth by at most 0.0165 mm
 (click) and 0.0312 mm (detent). This is reported, not gated, because it is the
 interpolation's chord across a tooth tip, not a seat.
 
-## §284 — LEGO fusee: a third step surveyed and refused, the centre pinion built
+## §285 — LEGO fusee: a third step surveyed and refused, the centre pinion built
 
 §219 tier three (b), after §282. The owner asked to "add another gear to the
 fusee if possible". The first reading was another STEP on the cone, so the

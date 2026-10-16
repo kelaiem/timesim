@@ -48,7 +48,7 @@
   landing H build at full wind. ?focus=fusee opens on the fusee, ?loop=0 with
   the loop off. tools/probe-technic-fusee-loop.mjs holds it.
 
-  BUILT §284 — A THIRD STEP SURVEYED, THE CENTRE PINION BUILT. The cone's step
+  BUILT §285 — A THIRD STEP SURVEYED, THE CENTRE PINION BUILT. The cone's step
   catalogue is now every usable cord groove in the LDraw library
   (tools/ldraw-groove-survey.mjs, read through grooveSeat), and the solve still
   answers two steps — a new pair on the same barrel, the thin tread sprocket's
@@ -447,7 +447,7 @@ function applyFusee(now) {
     else if (s.fusee === 'fusee') s.rotor.rotation.z = p.phiF;
     else if (s.fusee === 'maintaining') s.rotor.rotation.z = p.phiM;
     else if (s.fusee === 'great') s.rotor.rotation.z = p.phiG;
-    else if (s.fusee === 'centre') s.rotor.rotation.z = p.phiC;   // §284: through the 40:8
+    else if (s.fusee === 'centre') s.rotor.rotation.z = p.phiC;   // §285: through the 40:8
     else if (s.fusee === 'click pawl') { s.rotor.position.set(LDU(fr.cd + p.clickPivot[0]), -LDU(fr.axleZ - p.clickPivot[1]), 0); s.rotor.rotation.z = p.phiM + p.psiC; }
     else if (s.fusee === 'detent pawl') s.rotor.rotation.z = p.psiD;
     else s.rotor.rotation.z = s.phi;

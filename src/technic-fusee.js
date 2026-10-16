@@ -96,7 +96,7 @@ export const springBand = (table) => table.rows[table.rows.length - 1][0] - tabl
 // bush, the bush with two flanges, the wheel rim 8 × 17.5, the wedge belt wheel
 // and the pulley wheel 5D. A flat rim (the 3×3 disc, a round plate) lets a wrap
 // walk off; a groove guides it. The barrel is chosen from the same list.
-// §284 MEASURED the rest: tools/ldraw-groove-survey.mjs read every axle-keyed
+// §285 MEASURED the rest: tools/ldraw-groove-survey.mjs read every axle-keyed
 // part in the LDraw library (468 of them, 2026-10-16) through grooveSeat, and
 // every part whose groove a wrap can lie in joins — keyed on its own Z, its
 // floor's middle within half a cord radius of its origin (the build places a
@@ -127,7 +127,7 @@ export const FUSEE_STRINGS = Object.freeze({ 11: '76384', 21: '75924', 31: '1422
 export const FUSEE_PARTS = Object.freeze({
   hookPlate: '4032a',   // round plate 2×2 with axle hole: four studs, one takes each hook
   clickWheel: '4019', ratchet: '3649', pawl: '3647', arm: '6632', connector: '62462', greatWheel: '3649', knob: '4185a',
-  centrePinion: '3647',   // §284: FUSEE_CENTRE's count, the part solveCentrePinion names
+  centrePinion: '3647',   // §285: FUSEE_CENTRE's count, the part solveCentrePinion names
   cordEnd: '71149k01', cordSegment: '71149k02',
 });
 
@@ -149,7 +149,7 @@ export const FUSEE_DIM_MM = Object.freeze({
     '32123b': 2, '4265a': 2, '6577': 2, '55982': 7.4, '56903': 4, '32089': 3.9004, '2994': 7, '4185b': 2, '54087': 10, '56904': 7.6, '22253': 12.4, '6595': 12.4, '44292': 10, '6582': 10 }),
   floorHalf: Object.freeze({ '32123a': 0.04, '3713': 2, '3482': 1.54, '4185a': 0.3, '3736': 0,   // the cord's centre may stand this far either side of the groove's middle at the seat
     '32123b': 0.04, '4265a': 0.04, '6577': 0.04, '55982': 0.28, '56903': 0.28, '32089': 0.18, '2994': 1, '4185b': 0.02, '54087': 2.94, '56904': 0.2, '22253': 6.73, '6595': 6.73, '44292': 3.8, '6582': 4.6 }),
-  // §284: the floor's middle along the part's own Z from its origin (landing
+  // §285: the floor's middle along the part's own Z from its origin (landing
   // H's five read 0), and the window grooveSeat reads each surveyed part over
   // (landing H's five: none, the outermost rims about the origin), at 0.25 LDU
   grooveOff: Object.freeze({ '32123a': 0, '3713': 0, '3482': 0, '4185a': 0, '3736': 0,
@@ -210,7 +210,7 @@ export function grooveSeat(lib, part, cordR = FUSEE_DIM_MM.cordR, { step = 0.25,
   let seat = Infinity; const scan = [];
   for (let i = Math.ceil(lo / 0.05); i * 0.05 <= hi + 1e-9; i++) { const zc = i * 0.05, r = rho(zc); scan.push([zc, r]); seat = Math.min(seat, r); }
   // the FLOOR: the run of cord positions at the seat (within 0.02 LDU of it)
-  // CONTIGUOUS with the lowest one — §284: a crowned tyre's two gutters are two
+  // CONTIGUOUS with the lowest one — §285: a crowned tyre's two gutters are two
   // floors, not one wide one, and a first reading that took the outermost of
   // all such positions called a 62 mm motorcycle wheel's crown a 15 mm channel
   const at = (j) => scan[j][1] < seat + 0.02;
@@ -249,7 +249,7 @@ export function fuseeRun(table, barrel, steps, { seat = FUSEE_DIM_MM.seat, halfW
   const trans = steps.slice(1).map((p, j) => Math.sqrt(rho[j] ** 2 - rho[j + 1] ** 2 + (planes[j + 1].wrapY - planes[j].wrapY) ** 2));
   const upper = rho.slice(1).reduce((s, r) => s + TAU * r, 0) + trans.reduce((s, t) => s + t, 0);
   const f = (TAU * rb * band - upper) / (TAU * rho[0]);
-  // a run the table cannot carry is refused before it is sampled (§284: the
+  // a run the table cannot carry is refused before it is sampled (§285: the
   // solve now reads a library-sized catalogue)
   if (!(f > 0 && f <= 1 + 1e-12)) return { barrel, steps, f, band, rb, rho, trans, upper, ok: false };
   // the cord's segments in the order winding lays them, each with its arm
@@ -283,7 +283,7 @@ export function fuseeRun(table, barrel, steps, { seat = FUSEE_DIM_MM.seat, halfW
 export function stepPlanes(steps, { halfWidth = FUSEE_DIM_MM.halfWidth, floorHalf = FUSEE_DIM_MM.floorHalf, grooveOff = FUSEE_DIM_MM.grooveOff } = {}) {
   let y = 0;
   return steps.map((p, j) => {
-    // §284: a groove whose floor stands `grooveOff` along the part's Z from its
+    // §285: a groove whose floor stands `grooveOff` along the part's Z from its
     // origin (each part mounted Z along +y, as fuseeBuild places it)
     const w = halfWidth[p], mid = y + w, g = mid + (grooveOff?.[p] ?? 0), wrapY = j === 0 ? g : g - floorHalf[p];
     const out = { part: p, y0: y, y1: y + 2 * w, mid, wrapY };
@@ -305,7 +305,7 @@ export function solveFusee(table, { pulleys = FUSEE_PULLEYS, seat = FUSEE_DIM_MM
   const barrels = pulleys.filter((b) => band <= capacity[b] + 1e-12);
   // the longest run any barrel can lay: a cone whose UPPER wraps alone pass it
   // cannot run, and nor can any cone that adds a step below them, so the
-  // descending sets are grown a step at a time and cut there (§284: the
+  // descending sets are grown a step at a time and cut there (§285: the
   // catalogue is library-sized; 2^n masks are not)
   const most = Math.max(0, ...barrels.map((b) => TAU * seat[b] * band));
   const subsets = [];
@@ -350,7 +350,7 @@ export function idealAgainst(run) {
 
 // THE DECLARED ANSWER (probe-technic-fusee re-solves and fails when the solve
 // answers otherwise). Landing H's: two steps on the pulley wheel 5D, the wedge
-// belt wheel then the 8 × 17.5 rim (40.1%). §284's, over the surveyed
+// belt wheel then the 8 × 17.5 rim (40.1%). §285's, over the surveyed
 // catalogue: still two steps on the pulley wheel 5D, but the thin tread
 // sprocket's hub groove (a little over three quarters of a wrap) then the
 // 8 × 18 rim's deep centre groove (one wrap). A third step wins nowhere in it.
@@ -368,9 +368,9 @@ export function cordChoice(pathNoDead, run, { strings = FUSEE_STRINGS, len = FUS
 }
 
 
-// ── §284 — THE CENTRE PINION: the going train's next wheel ─────────────────
+// ── §285 — THE CENTRE PINION: the going train's next wheel ─────────────────
 // Landing H stopped at the great wheel: the last thing that turned. A third
-// step on the cone was the owner's first reading of "another gear", and §284's
+// step on the cone was the owner's first reading of "another gear", and §285's
 // survey refused it (solveFusee answers two steps over the whole library's
 // usable grooves), so the other gear is the steel train's next member: the
 // CENTRE PINION the great wheel drives (TRAIN.barrel, 120 : 7 — a step-up of
@@ -421,7 +421,7 @@ export const centreRatio = (centre = FUSEE_CENTRE) => 40 / centre.teeth;
 // groove midway between the outermost wraps' planes), so its rim must pass
 // every step's by the clearance floor: cd ≥ rim(barrel) + the largest step rim
 // + AX_CLEAR (one LDU, CLEAR's), on the 4 mm lattice — landing H's 18.68 +
-// 12.00 + 0.4 → 32; §284's 18.68 + 13.10 + 0.4 → 36 (the sprocket's teeth stand
+// 12.00 + 0.4 → 32; §285's 18.68 + 13.10 + 0.4 → 36 (the sprocket's teeth stand
 // out past its groove's walls; at 32 they passed the barrel's rim by 0.32 mm).
 // THE AXLE HEIGHT: columnFor the largest tip or rim on either line.
 // THE CLICK'S WHEEL IS A 16T: the click's pawl pivots at its liftarm's round
@@ -465,7 +465,7 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING, centre = F
   const jB0 = r1, jB1 = jB0 + 2 * F.connectorHalf, jBmid = (jB0 + jB1) / 2;
   const g0 = jB1, g1 = g0 + 2 * F.wheelHalf, gMid = (g0 + g1) / 2;
   const gCol1 = Math.ceil((g1 + half + AX_CLEAR) / D.stud) * D.stud, gCol2 = gCol1 + D.stud;   // the great wheel's peg rides round flush with its back face
-  // §284: the centre pinion in the great wheel's slab, on the far side of the
+  // §285: the centre pinion in the great wheel's slab, on the far side of the
   // main line from the barrel, its centre distance the mesh's; its two columns
   // on the great wheel's two stud slots
   const xC = cd + centre.cd;
@@ -476,7 +476,7 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING, centre = F
   // it by the hook's height, as the cone's is
   const wrapYs = steps.map((s) => s.wrapY);
   const yb = r6((Math.min(...wrapYs) + Math.max(...wrapYs)) / 2);
-  const bw = F.halfWidth[spec.barrel], yo = r6(yb - (F.grooveOff[spec.barrel] ?? 0));   // §284: the part's origin, its groove's floor at yb
+  const bw = F.halfWidth[spec.barrel], yo = r6(yb - (F.grooveOff[spec.barrel] ?? 0));   // §285: the part's origin, its groove's floor at yb
   const bHookTop = r6(yo - bw - F.endH - F.endStudH);
   const bFront = Math.floor((bHookTop - F.plateH - half) / D.stud) * D.stud;
   const bBack = Math.ceil((yo + bw + half) / D.stud) * D.stud;
@@ -982,7 +982,7 @@ export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lag
   body('great', frame.cd, zA, phiG, [axlePart(ax.great),
     { role: 'great', part: G.part, teeth: 40, m: at(0, 0, L(G.y)) },
     peg(G.y1 - 15.6, G.y1, -h)]);
-  // ── §284: the centre pinion, meshed with the great wheel at its pose
+  // ── §285: the centre pinion, meshed with the great wheel at its pose
   const C = frame.centre, phiC = centrePhase(lib, phiG, { centre: C });
   body('centre', C.x, zA, phiC, [axlePart(ax.centre), { role: 'centre', part: C.part, teeth: C.teeth, m: at(0, 0, L(C.y)) }]);
   // ── the click's pawl, seated against the click wheel at their relative turn
@@ -1183,7 +1183,7 @@ export function loopPose(model, st) {
   const paid = paidAtTurn(run, st.turnF), rs = runState(run, paid, model.table);
   const phiF = p.phiF + g * st.turnF, phiB = p.phiB + g * paid / run.rb;
   const phiM = p.phiM + g * st.dM, phiG = p.phiG + g * st.dG;
-  const phiC = p.phiC - centreRatio(model.frame.centre) * g * st.dG;   // §284: through the 40:8, the mesh reversing
+  const phiC = p.phiC - centreRatio(model.frame.centre) * g * st.dG;   // §285: through the 40:8, the mesh reversing
   return { phase: st.phase, paid, state: rs, phiF, phiB, phiM, phiG, phiC,
     psiC: model.rides.click.at(phiF - phiM), psiD: model.rides.detent.at(phiM), clickPivot: [h * Math.cos(phiM), h * Math.sin(phiM)],
     lag: model.lag0 + st.dM - st.dG, spring: rs.M / model.full.M, level: rs.P / model.full.P };
