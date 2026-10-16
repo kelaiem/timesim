@@ -30,7 +30,7 @@
 //     the whole run, cordOnCone/ρ_b of a turn;
 //   · READOUT — the spring's torque and the torque after the cone, at every
 //     fuseeRun sample the solve levelled, ARE the samples; the readout's
-//     extremes re-derive the solve's spread (40.1%) and the bare spring's
+//     extremes re-derive the solve's spread (31.6% since §284) and the bare spring's
 //     (51.6%), neither retyped;
 //   · LOOP — several cycles of loopAdvance at a page frame: the phases run
 //     going → winding → full → going in that order and no other; the great
@@ -43,6 +43,9 @@
 //     and the detent holds the ratchet the way the band pulls it; while going
 //     the ratchet runs the going way, which the detent frees, and the click
 //     does not slip;
+//   · CENTRE PINION (§284) — on every frame, winding included, it turns −40/8
+//     of the great wheel's turn, and its teeth stay meshed (the tooth-phase law
+//     off both parts) over a whole run-down and wind;
 //   · RIDES — each pawl's ride table is seat() from scratch at every sample,
 //     touching the teeth and not in them; between samples the interpolated
 //     ride is REPORTED (it may graze the teeth by the interpolation's chord).
@@ -58,7 +61,8 @@
 // cone's own cord (it jumps at the crossing); a wind that stops a hair short;
 // the detent's ride shifted half a tooth; the click with its band reversed;
 // the readout taken from the spring alone (the bare spread, not the solve's);
-// and a span drawn through the pulley it leaves.
+// a span drawn through the pulley it leaves; and the centre pinion turned at a
+// 40:16's rate.
 //
 //   node tools/probe-technic-fusee-loop.mjs
 import { readFileSync } from 'node:fs';
@@ -69,7 +73,9 @@ import {
   TECHNIC_FUSEE_SPRING, FUSEE_DIM_MM, solveFusee, frameFusee, fuseeBuild, cordPath, cordPlacements, pathLength, spanTangent,
   bandMoment, MAINTAINING, clickSpec, detentSpec, pawlLock, pawlModel, coneTurnTotal, runState, paidAtTurn,
   fuseeLoopModel, loopStart, loopAdvance, loopPose, loopPhaseLine, loopRideSpecs, windSpeedup, LOOP_RUN_S, RECHARGE_SPEEDUP, BAND_LAG_DEG,
+  FUSEE_PARTS, FUSEE_CENTRE,
 } from '../src/technic-fusee.js';
+import { toothPhase } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
@@ -92,7 +98,7 @@ if (model.k !== windSpeedup(run) || !(model.T / model.k <= model.lag0 / 2) || !(
 // ── FULL WIND ───────────────────────────────────────────────────────────────
 console.log('\nfull wind:');
 const p0 = loopPose(model, loopStart());
-for (const k of ['phiF', 'phiB', 'phiM', 'phiG', 'psiC', 'psiD']) if (p0[k] !== build.pose[k]) fail(`the loop starts with ${k} ${p0[k]}, the static build has ${build.pose[k]}`);
+for (const k of ['phiF', 'phiB', 'phiM', 'phiG', 'phiC', 'psiC', 'psiD']) if (p0[k] !== build.pose[k]) fail(`the loop starts with ${k} ${p0[k]}, the static build has ${build.pose[k]}`);
 const sameCord = (c) => JSON.stringify(c.path) === JSON.stringify(build.cord.path) && JSON.stringify(cordPlacements(frame, c)) === JSON.stringify(build.statics.filter((p) => p.role === 'cord' || p.role === 'cordEnd'));
 if (p0.paid !== 0 || !sameCord(cordPath(frame, run, { paid: p0.paid }))) fail('the loop\'s cord at its first state is not the static build\'s');
 console.log(`  the loop's first state: every body at fuseeBuild's angle exactly, the cord the static build's ${build.cord.path.length} points and ${build.statics.filter((p) => p.role === 'cord').length} segments`);
@@ -263,6 +269,31 @@ function runLoop(m, { frames = Math.ceil(3.2 * (LOOP_RUN_S + LOOP_RUN_S / m.k + 
   if (winds < 3) errs.push(`only ${winds} winds in ${frames} frames`);
   return { errs, seq, lagLo, winds, gMin, fullAt };
 }
+// §284 — THE CENTRE PINION rides the great wheel: on every frame, winding
+// included (the maintaining power carries it too), it turns −40/n of the great
+// wheel's turn, and its teeth stay in mesh — the residue of
+// 40·(φG + tG) + n·(φC + tC − π) ≡ π, each tooth phase t read off its part
+// (toothPhase), the build probe's law, held at its 1e-3 of a turn
+const tG = toothPhase(lib, FUSEE_PARTS.greatWheel, 40).theta;
+function centreErrs(m, frames = Math.ceil((LOOP_RUN_S + LOOP_RUN_S / m.k + 2) * 60)) {
+  const errs = [], tC = toothPhase(lib, m.frame.centre.part, FUSEE_CENTRE.teeth).theta;
+  let st = loopStart(), prev = loopPose(m, st), worstR = 0, worstM = 0;
+  for (let f = 0; f < frames; f++) {
+    st = loopAdvance(m, st, m.rate / 60);
+    const p = loopPose(m, st), dG = p.phiG - prev.phiG, dC = p.phiC - prev.phiC;
+    worstR = Math.max(worstR, Math.abs(dC + 40 / FUSEE_CENTRE.teeth * dG));
+    const r = (((40 * (p.phiG + tG) + FUSEE_CENTRE.teeth * (p.phiC + tC - Math.PI) - Math.PI) % TAU) + TAU) % TAU / TAU;
+    worstM = Math.max(worstM, Math.min(r, 1 - r));
+    prev = p;
+  }
+  if (worstR > 1e-12) errs.push(`the centre pinion parts from −${40 / FUSEE_CENTRE.teeth}× the great wheel's turn by ${worstR.toExponential(2)} rad a frame`);
+  if (worstM > 1e-3) errs.push(`the centre pinion's teeth stand ${worstM.toFixed(4)} of a turn off mesh`);
+  return { errs, worstR, worstM };
+}
+{ const c = centreErrs(model);
+  for (const e of c.errs) fail(e);
+  console.log(`  centre pinion (§284): over a whole run-down and wind it turns −${40 / FUSEE_CENTRE.teeth}× the great wheel on every frame to ${c.worstR.toExponential(1)} rad, its teeth in mesh to ${c.worstM.toExponential(1)} of a turn (tol 1e-3)`);
+  control('the centre pinion turned at the 40:16\'s rate', centreErrs({ ...model, frame: { ...model.frame, centre: { ...model.frame.centre, teeth: 16 } } }).errs.length > 0); }
 const L = runLoop(model);
 for (const e of L.errs.slice(0, 8)) fail(e);
 if (L.errs.length > 8) fail(`… and ${L.errs.length - 8} more`);

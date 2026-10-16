@@ -6,7 +6,8 @@
 // THE PART LIST IS READ, NEVER TYPED: every `part` in `CATALOGUES` (both
 // generations) and every part in `technic-frame.js`' FRAME_PARTS,
 // AXLE_PARTS, TURNTABLE_BASES and KEYLESS_PARTS, and `technic-fusee.js`'
-// FUSEE_PULLEYS, FUSEE_STRINGS and FUSEE_PARTS (landing H), and
+// FUSEE_PULLEYS (landing H's five and §284's surveyed grooves), FUSEE_STRINGS
+// and FUSEE_PARTS (landing H), and
 // `technic-alarm.js`' ALARM_PARTS (landing I). Add a gear to the
 // catalogue and the next run fetches it; a part
 // the library does not hold FAILS the run rather than shipping a build with a

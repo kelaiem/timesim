@@ -110,18 +110,25 @@ export function dogPhase(lib, ringPart = KEYLESS_PARTS.ring, gearPart = KEYLESS_
 // Returns, per sample, [a, r, x, h]: along the stem from the pivot's plane,
 // distance from the ring's axis, across, and height above the axis.
 const sampleCache = new Map();
-export function surfaceSamples(lib, part, step = 0.5) {
-  const key = `${part}@${step}`;
-  if (sampleCache.has(key)) return sampleCache.get(key);
-  const out = [];
+// The same samples, STREAMED to `fn(x, y, z)` and kept nowhere: a reader of a
+// whole library (tools/ldraw-groove-survey.mjs, through technic-fusee's
+// grooveSeat) would otherwise hold a large wheel's millions of samples at once.
+// The points and their order are surfaceSamples' exactly.
+export function forEachSurfaceSample(lib, part, step, fn) {
   const tri = (A, B, C) => {
     const n = Math.max(1, Math.ceil(Math.max(Math.hypot(...B.map((v, i) => v - A[i])), Math.hypot(...C.map((v, i) => v - A[i]))) / step));
     for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
       const u = i / n, v = j / n, w = 1 - u - v;
-      out.push([0, 1, 2].map((k) => w * A[k] + u * B[k] + v * C[k]));
+      fn(w * A[0] + u * B[0] + v * C[0], w * A[1] + u * B[1] + v * C[1], w * A[2] + u * B[2] + v * C[2]);
     }
   };
   walk(lib, `${part}.dat`, (k, ps) => { if (k === 'tri') tri(...ps); else if (k === 'quad') { tri(ps[0], ps[1], ps[2]); tri(ps[0], ps[2], ps[3]); } });
+}
+export function surfaceSamples(lib, part, step = 0.5) {
+  const key = `${part}@${step}`;
+  if (sampleCache.has(key)) return sampleCache.get(key);
+  const out = [];
+  forEachSurfaceSample(lib, part, step, (x, y, z) => out.push([x, y, z]));
   sampleCache.set(key, out);
   return out;
 }
