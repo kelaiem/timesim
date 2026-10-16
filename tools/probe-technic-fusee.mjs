@@ -21,8 +21,10 @@
 //     middle hole;
 //   · STEPS — the declared barrel and steps are what solveFusee answers from
 //     the table (every barrel and every descending set of grooved steps, the
-//     least spread of torque × radius); the step radii against the ideal r(θ),
-//     the LEVEL PRODUCT's spread over the run against the bare spring's and
+//     least spread of torque × radius, read at every state with the cord
+//     leaving on the open belt's tangent and its length conserved — §286);
+//     the step radii against the ideal r(θ), the LEVEL PRODUCT's spread over
+//     the run against the bare spring's and
 //     against the steel fusee's gate (its level product held at 1e-9);
 //   · A THIRD STEP (§285) — the catalogue is now landing H's five and every
 //     usable groove the library survey measured (each re-read here over its
@@ -187,7 +189,9 @@ control('a declared step set other than the solver\'s', stepsErr({ barrel: TECHN
 // catalogue: the best three-step cone must spread more than the answer (else
 // the record's refusal is stale). And the bound that says WHY no catalogue
 // could change that on this barrel: with every seat FREE (a 0.2 mm grid from 3
-// to 14 mm, each step a half bush's width and floor), the best three-step cone
+// to 14 mm, each step a half bush's width and floor, its rim a cord's diameter
+// over its seat, and the barrel's rim the pulley wheel 5D's over its seat — §286:
+// the solve now reads the belt's centre distance off the rims), the best three-step cone
 // on the answer's barrel spreads more than the best two-step — the cord the
 // barrel takes over the band is 2π·ρ_b·band, and every step above the base
 // takes a whole wrap of it. Its control is the same search on a barrel of the
@@ -195,9 +199,9 @@ control('a declared step set other than the solver\'s', stepsErr({ barrel: TECHN
 // where three steps win. Gated, because docs/BUILT.md §285 states both.
 const byN = [1, 2, 3, 4].map((n) => solved.ranked.find((r) => r.steps.length === n));
 function freeBound(rb, n, grid = 0.2) {
-  const seat = { ...F.seat, B: rb }, names = ['s1', 's2', 's3'], halfWidth = { ...F.halfWidth, s1: 2, s2: 2, s3: 2 }, floorHalf = { ...F.floorHalf, s1: 0, s2: 0, s3: 0 }, grooveOff = { ...F.grooveOff, s1: 0, s2: 0, s3: 0 };
+  const seat = { ...F.seat, B: rb }, rim = { ...F.rim, B: rb + F.rim['3736'] - F.seat['3736'] }, names = ['s1', 's2', 's3'], halfWidth = { ...F.halfWidth, s1: 2, s2: 2, s3: 2 }, floorHalf = { ...F.floorHalf, s1: 0, s2: 0, s3: 0 }, grooveOff = { ...F.grooveOff, s1: 0, s2: 0, s3: 0 };
   let best = { spread: Infinity };
-  const at = (rs) => { rs.forEach((r, i) => { seat[names[i]] = r; }); const r = fuseeRun(T, 'B', names.slice(0, rs.length), { seat, halfWidth, floorHalf, grooveOff }); if (r.ok && r.spread < best.spread) best = { spread: r.spread, rs: [...rs] }; };
+  const at = (rs) => { rs.forEach((r, i) => { seat[names[i]] = r; rim[names[i]] = r + 2 * F.cordR; }); const r = fuseeRun(T, 'B', names.slice(0, rs.length), { seat, halfWidth, floorHalf, grooveOff, rim }); if (r.ok && r.spread < best.spread) best = { spread: r.spread, rs: [...rs] }; };
   const R = (lo, hi) => Array.from({ length: Math.max(0, Math.floor((hi - lo) / grid + 1e-9) + 1) }, (_, i) => lo + i * grid);
   for (const a of R(3, 14)) for (const b of R(3, a - 2 * F.cordR)) { if (n === 2) at([a, b]); else for (const c of R(3, b - 2 * F.cordR)) at([a, b, c]); }
   return best;
@@ -230,7 +234,7 @@ if (!frame.framed) { fail(`not framed: ${frame.reason}`); }
 const cord = cordPath(frame, run);
 console.log(`\ncord (at full wind; the barrel ${run.barrel} at x 0, the fusee ${frame.cd} mm off, axles ${frame.axleZ} mm up):`);
 const wrapLens = run.segs.map((s) => `${s.kind} on ${run.steps[s.step]} ${s.len.toFixed(2)} mm`);
-console.log(`  on the cone: ${wrapLens.join(', ')} — ${run.cordOnCone.toFixed(2)} mm, ${(run.cordOnCone / (2 * Math.PI * run.rb)).toFixed(4)} barrel turns (the band is ${run.band.toFixed(4)})`);
+console.log(`  on the cone: ${wrapLens.join(', ')} — ${run.cordOnCone.toFixed(2)} mm; the barrel takes that and the span's ${(run.sBase - run.sTop).toFixed(3)} mm growth over the run, its arrival moving with the belt: the band's ${run.band.toFixed(4)} turns (§286)`);
 console.log(`  legs: cone ${(pathLength(cord.path.slice(0, 4))).toFixed(2)} mm, barrel ${cord.legB.toFixed(2)} mm; span ${Math.hypot(cord.span.len2d, frame.barrel.y - frame.fusee.steps.at(-1).wrapY).toFixed(2)} mm, its fleet angle ${deg(Math.atan2(Math.abs(frame.barrel.y - frame.fusee.steps.at(-1).wrapY), cord.span.len2d))}° at full wind, ${deg(Math.atan2(Math.abs(frame.barrel.y - frame.fusee.steps[0].wrapY), cord.span.len2d))}° at run-down`);
 console.log(`  strings: ${cord.choice.opts.map((o) => `${o.studs}L ${o.length} mm (dead ${o.dead.toFixed(2)})`).join(', ')}; the barrel's groove has room for ${cord.choice.room.toFixed(2)} mm dead → ${cord.string ? `${cord.string.studs ?? ''}L ${cord.string.part}, ${cord.string.dead.toFixed(2)} mm dead on the barrel` : 'NONE FITS'}`);
 if (!cord.string) fail('no string reaches the path with its spare length inside the barrel\'s groove');

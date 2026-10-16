@@ -86,8 +86,9 @@ through `TECHNIC_FUSEE_SPRING`. That table is POSED (a LEGO spring can only be
 measured; its stand-in is the steel ribbon's law, its three numbers read back
 off `main.js`' text), so a measured table re-solves with no code change, and
 records say modelled, never simulated. The staircase levels the stand-in from
-51.6% to 31.6% (landing H's two steps reached 40.1%; §285's catalogue found a
-better pair); the steel's level product is gated at 1e-9. The maintaining
+51.6% to 27.6% (landing H's two steps reached 40.1%, §285's catalogue 31.6%;
+§286 re-ranked it with the cord on the tangent and found a new barrel and
+pair); the steel's level product is gated at 1e-9. The maintaining
 power is Harrison's and needs TWO one-way parts (the 20T one-way gear is not in
 the LDraw library): a click pawl riding the 40T ratchet, on a 16T keyed to the
 fusee, and a frame detent on the ratchet, each a keyed 8T on a thin liftarm
@@ -102,19 +103,27 @@ ratchet ahead of it and the click turns the fusee with it, so the barrel speeds
 up on the larger step. In the wind the crank turns the fusee back `windSpeedup`
 times (derived: half the band's posed stretch per wind), the detent holds and
 the band carries the train. The pawls ride tabled seats.
-`tools/probe-technic-fusee-loop.mjs` holds the ratio per step, the readout
-against the solve's 31.6%/51.6%, the locks and the exact return to full wind. It
-also REPORTS the solve's simplification the loop exposed: the cord leaves the
-base step off the open belt's tangent (13.9° on landing H's cone, 51.7° on
-§285's). **Since §285 a third step is REFUSED, by measurement**:
+**Since §286 the cord leaves on the TANGENT**: on a wrap at the open belt's
+tangent point for its seat (`openBelt`, the one law the solve and the frame
+read), on a crossing straight from the lower wrap's foot, its arm d running
+from the upper seat to the lower (the crossing's rise along the axle is POSED);
+the barrel turns by the cord's LENGTH, the span's change included, and the
+solve ranks on that law. `tools/probe-technic-fusee-loop.mjs` GATES the
+departure off the drawn path (on a wrap at float noise, through a crossing
+inside the belt's own turn between the seats), the length at every state, the
+arm in the plane, the order the wind fills the steps (the reverse of the
+run-down's, base first), the readout against the solve's spread, the locks and
+the exact return to full wind; its controls restore §282's carried-round law
+(80° off) and its paid/ρ_b barrel and watch both fail. **Since §285 a third step is REFUSED, by measurement**:
 `tools/ldraw-groove-survey.mjs` reads every axle-keyed part in an unpacked
 LDraw library through `grooveSeat` itself (a report; its controls are the
 catalogued seats and a flat disc), every usable groove — round, both walls
 above the cord's centre all the way round, its floor within half a cord radius
 of its part's origin, the offset carried as `grooveOff` — joins
 `FUSEE_PULLEYS`, and the solve answers TWO steps (the thin tread sprocket's hub
-groove over the 8 × 18 rim's deep groove, on landing H's barrel) — because the
-cord that barrel takes over the band is 76 mm and every step above the base
+groove over the 8 × 18 rim's deep groove, on landing H's barrel; since §286 the
+8 × 17.5 rim over the 14 × 18 on the 25 × 28 VR rear rim) — because the cord
+the barrel takes over the band is 56 mm and every step above the base
 takes a whole wrap, so even with every seat FREE a third step loses there (the
 fusee probe gates that bound; its control is a 29.25 mm barrel, where three
 win). A third step would need a motorcycle wheel's off-centre gutter as the

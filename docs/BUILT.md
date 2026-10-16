@@ -39284,3 +39284,219 @@ stand-in, and a measured LEGO spring re-solves all of this with no code
 change. It does not claim that a cord runs well in a tread sprocket's hub
 groove or a tyre seat: those are grooves by the survey's geometry, and whether
 the braid rides them under load is a bench question.
+
+## §286 — LEGO fusee: the cord leaves each step on the tangent, re-solved; the wind fills the base first
+
+§219 tier three (b), after §285. §282 and §285 both REPORTED a defect and left
+it: the loop carried the cone's own cord round, so the cord left the base step
+off the open belt's tangent, 13.93° on landing H's cone and 51.74° on §285's,
+and the drawn cord jogged where it left the pulley. The owner asked for it
+fixed. A cord under tension lies on the tangent. This landing makes the solve,
+the static build and the loop read the run that way, re-solves the cone on the
+corrected law, and turns the report into gates. Everything here is MODELLED.
+The spring is still the POSED stand-in, and nothing is integrated.
+
+### The law
+
+The open belt is now one pure function, `openBelt(cd, ρ_b, ρ)`: the tangent
+points on both circles, the span's length in the plane, and `alpha`, the
+departure's angle about the fusee, which is also the arrival's about the barrel.
+`spanTangent` and `goingSense` read it off the frame, and `fuseeRun` reads it
+off the barrel and steps alone. Its centre distance is `beltCentre`, the rule
+`frameFusee` already used, moved out so both read one copy. The barrel's groove
+plane is midway between the wrap planes, as the frame places it.
+
+- **On a wrap** of seat ρ the departure is the belt's tangent point for ρ,
+  fixed in space. The span stands still, the cone's turn × ρ is the cord paid,
+  and the arm is ρ.
+- **On a crossing** from the upper seat ρ_k down to the lower ρ_j: once the
+  upper wrap is gone nothing on the cone bends the cord, so in the plane it
+  runs STRAIGHT from Q, the lower wrap's end (the chord's foot), to the barrel.
+  That line is the open belt for the radius d at which it passes the fusee's
+  axis, and its foot X is the belt's tangent point for d. d runs from ρ_k (the
+  line through Q touching the upper seat, which is where landing H's chord
+  already lay) to ρ_j (Q at the lower seat's tangent point). Q stands at
+  α(d) − g·acos(d/ρ_j), so the cone turns g·(α(ρ_j) − α(ρ_k)) + acos(ρ_k/ρ_j)
+  over the crossing: 38.47° on §285's cone, where the old law turned it
+  8.5005/5.3988 rad = 90.21°. The arm is d, the span's distance from the axis:
+  take the cone and the cord on it as one body, and the span is its only pull.
+- **Along the axle the crossing is POSED.** The leg Q→X still on the cone keeps
+  the chord's axial pitch, so it is the chord's length × √(ρ_j² − d²)/√(ρ_j² −
+  ρ_k²), and X stands that far along the chord's rise. The leg bears on the
+  walls between the grooves, a contact the model places and does not measure,
+  as landing H's chord did.
+- **The barrel turns by the cord's LENGTH.** Cord off the cone = cord onto the
+  barrel + the change in the span: ρ_b·ψ_B = paid + (S_full − S) +
+  ρ_b·g·(α(d) − α(d_full)). The last term is there because the arrival on the
+  barrel moves with the belt. The run must use the whole table, so ψ_B at
+  run-down is 2π·band, and that fixes f, the base wrap.
+
+`runState(run, paid)` is the one reader. It returns the departure's radius,
+point and plane, the span, the cone's turn and the barrel's, θ, M and
+P = M·arm. `fuseeRun` samples the level product through it, so the solve, the
+loop and the page read one law. `paidAtTurn` inverts a crossing's turn by
+bisection; the turn is monotone in d. `cordPath(…, { paid })` cuts the
+full-wind cone's cord at that state: on a wrap at the tangent point, on a
+crossing at the leg to X. The span runs to the belt's arrival, and the barrel
+takes the cord from there round to where the full-wind arrival's metal now
+stands. At `paid` = 0 it is the static build, and the loop returns to it
+exactly at every wind. `cordPath` now also returns `length`, with every arc
+counted as an arc. The string is chosen against it. `drawn` is the polyline,
+which is short of it by each chord's sag. The dead wrap is an arc of the dead
+length exactly. `loopPose` turns the barrel by `turnB`, not paid/ρ_b.
+
+Two numbers are read stably: acos(d/ρ_j) as atan2(√(ρ_j² − d²), d), because
+near d = ρ_j acos lost 1e-8 rad. That error was enough to fail the length gate.
+
+### The re-solve
+
+| | landing H / §285 law | §286 law |
+|---|---|---|
+| §285's answer, 3736; 32089 > 56903 | **31.60%**, f 0.8007 | 30.11%, f 0.7951 (12th) |
+| §286's answer, 22253; 3482 > 55982 | 40.53%, f 0.1835 (15th) | **27.55%**, f 0.1697 |
+| landing H's, 3736; 4185a > 3482 | 40.13% | 31.57% |
+| 3736; 2994 > 32089 | 38.01% | 27.65% (3rd) |
+
+Per step count, over the same catalogue: 1 step 51.59% (the bare spring, as
+it must be); **2 steps 27.55%**, barrel 22253, 3482 > 55982; 3 steps 39.60%,
+barrel 3736, 32089 > 56903 > 3713; 4 steps none runs. The solve chooses, and
+nothing was hand-picked. The answer, `TECHNIC_FUSEE`, is now:
+
+- the barrel is the 25 × 28 VR rear rim's wide tyre seat (22253, 13.3978 mm).
+  Its twin 6595 reads the same seat, and catalogue order stands it second;
+- the base is the 8 × 17.5 rim (3482, 8.1989 mm), a sixth of a wrap (f 0.1697);
+- the top is the 14 × 18 rim (55982, 5.3988 mm), one wrap.
+
+The cone is 8.3043 rad over the run (1.3217 turns), so the wind is 16× the
+train, where it was 25×. The centre distance is 28 mm, and the cord is still
+the 21L string (75924), 33.59 mm dead on the barrel. §285's refusal of a third
+step still holds, and its bound moved with the barrel. With every seat FREE on
+the answer's barrel (56.1 mm of cord over the band), two steps reach 23.76% and
+three 28.51%. On the 29.25 mm gutter barrel three still win, 17.96% against
+23.77%. The free search now gives its hypothetical parts a rim (a cord's
+diameter over the seat, and the 5D's over its seat for the barrel), because
+the solve reads the belt's centre distance off the rims.
+
+### The gates
+
+`tools/probe-technic-fusee-loop.mjs` turns §282's report into gates. Each is
+read off the DRAWN path at 805 states, boundaries included:
+
+```
+ON THE TANGENT: over 805 states, read off the drawn path, the span stands square to the radius at its departure and at its arrival to 1.5e-15; on a wrap the departure is the belt's tangent point for the step's measured seat to 1.3e-15 rad (tol 1e-9), on its seat to 3.6e-15 mm; through a crossing it stays within the belt's own turn between the two seats (5.90°, derived), inside it
+LENGTH CONSERVED: the cord, arcs counted as arcs, is the 75924's 160 mm at every state to 4.3e-13 mm (the polyline drawn short of it by at most 0.0219 mm, its chords' sag)
+CONTROL — §282's law (the cone's own cord carried round, a crossing turned at the upper step's arm): the departure stands 80.25° off the tangent on a wrap
+LEVER: through a crossing the arm is the span's distance from F's axis, d, running 5.399 → 8.199 mm; in the plane the barrel's turn × ρ_b per cone turn IS d to 6.6e-11 (relative, finite differences)
+REPORTED — the crossing's POSED rise: off the plane its leg pays 6.561 mm of cord onto the barrel that no lever turns, over 54.71° of cone turn (11.70% of the barrel's 56.09 mm over the band) — work the walls the leg bears on would have to take
+FLAT: at run-down no wrap is on the cone; the barrel has taken 56.0936 mm (the cone's 55.3804, the span 0.6662 mm longer, the arrival moved), turned 0.666346 turns = the spring's band 0.666346
+THE FREE SPAN: 27.343–28.069 mm over the run (the string 160)
+FILL ORDER (read off the drawn wraps, 2402 run-down and 151 wind frames): the run-down empties steps 2 (55982, seat 5.3988) then 1 (3482, seat 8.1989); the wind fills 1 (3482) then 2 (55982) — the base, the largest seat, first, one step at a time, none shrinking, the step named on the page the one growing
+at every interior sample of fuseeRun the readout IS the sample, to 0.0e+0; its extremes 4.0598–5.4312 over the mean 4.9773 give 27.55% (the solve: 27.55%); the spring alone 51.59% (bare: 51.59%)
+```
+
+- **The tangent.** On a wrap the departure must sit within 1e-9 of the belt's
+  tangent point for the step's measured seat. Through a crossing it must stay
+  between the two seats, and within the belt's own turn between them,
+  |α(ρ_j) − α(ρ_k)|, which is derived and 5.90° here. At both ends the span
+  must stand square to the radius.
+- **The length.** It is conserved at every state to 1e-9 mm, read off the path
+  rather than off the law's bookkeeping.
+- **The lever.** In the plane the barrel's turn × ρ_b per cone turn must be d
+  (five-point differences, 1e-6). This is what licenses the arm. The 3D figure
+  differs: the leg's posed rise pays cord that no lever turns. That excess is
+  REPORTED, at 11.70% of the barrel's cord over the band. That is the size of
+  the crossing's posed part, the work the walls the leg bears on would have to
+  take. Whether a real cord climbs that way is a bench question.
+- **The fill order** answers the owner's second report (below).
+
+Controls, each seen to fail:
+
+- §282's law restored, the departure carried round on the cone: 80.25° off on
+  this cone;
+- §282's barrel turned by paid/ρ_b, with the span held still: the length
+  breaks;
+- the 3D bookkeeping read as the lever;
+- a departure that jumps from step to step with no crossing;
+- a wind that lays the top step first.
+
+§282's controls stay. The phase line's distinct readings are now 2 × segments
++ 1.
+
+### "It winds the small wheel before the larger one"
+
+The owner reported this during the landing, and the brief was to reproduce it
+on `main` as shipped. Stepping `loopAdvance`, `loopPose` and `cordPath`
+through a whole cycle on §285's build:
+
+- run-down: frame 0, step 2 (56903, seat 5.40), wraps [0, cross 1, 1] on the
+  cone; frame 1170, the crossing; frame 1463, step 1 (32089, seat 6.70);
+- wind from frame 2399: step 1 (32089) first; frame 2437, the crossing;
+  frame 2449, step 2 (56903), until full wind at frame 2495.
+
+The MODEL'S ORDER WAS ALREADY RIGHT: the base fills first. The lit step agreed,
+and so did the panel's "cord on step 1 of 2 (32089, seat 6.70 mm)" early in the
+wind. On screen, the larger SEAT was also the larger wheel: the sprocket's
+teeth stand 13.10 mm out, the rim's flanges 8.40. What the page got wrong, read
+off screenshots held at chosen states (speed 0, `seekFusee`):
+
+- **The words were run-down's.** During the wind the panel said "crossing onto
+  step 1 from step 2" while the cord was crossing from step 1 onto step 2, and
+  the phase line named no step at all. It now names the step in the wind's own
+  order ("winding — onto step 1 of 2 (…)", "winding — crossing from step 1
+  onto step 2 of 2"). The panel says "crossing from step 1 onto step 2" while
+  winding.
+- **The base's wrap could not be seen.** On §285's cone the sprocket's hub
+  groove (6.70 mm) lies under 13.10 mm teeth, so its 0.80 of a wrap was hidden
+  from the default camera. The one cord visible on the cone was the jogged
+  span and the hook leg. On §286's cone the two rims are 8.80 and 8.40 mm, and
+  the base's wrap shows.
+- **The jog.** The departure 51.74° off the tangent made the span meet the cone
+  where no wrap was. That is the defect this landing fixes.
+
+The FILL ORDER gate holds the order from now on. Read off the drawn wraps per
+frame, the wind fills the steps in exactly the reverse of the order the
+run-down emptied them, the base (the largest seat) first, one at a time, none
+shrinking. The step the page names and lights is the one growing. Its control
+lays the same wind's cord top step first and is caught.
+
+### The pawls' first contact
+
+The new pose moved the click's ride and exposed a search fault. One sample sat
+2.5e-3 rad from `seat()`: the ride's whole-degree step had stepped past a
+contact 0.14° wide, and the bisection landed beyond it. A fine scan agreed
+with `seat()`. `firstContact` now serves both. It steps whole degrees, then
+re-steps the last degree in fiftieths, then bisects. Every pawl probe passes on
+it.
+
+### The page and the instruments
+
+`technic.html` draws the new cone with no code change, since it reads the
+solve. It gains a `seekFusee(st)` hook on `window.__technic` for screenshot
+probes; the page never calls it. The sprite label strips the "; …" clause
+before the parenthesis. Headless at 1280×800, the span runs straight from the
+barrel to the step it is on, on every step and through a crossing, running
+down and winding. The console was clean.
+
+Every `probe-technic-*` passes: frame, ldraw, build, keyless, motion, fusee,
+fusee-loop, column-wheel and alarm. `tools/probe-technic-fusee.mjs` reads the
+new answer:
+
+```
+PER STEP COUNT: 1 step 51.59% (barrel 32123a, 4185a); 2 steps 27.55% (barrel 22253, 3482 > 55982); 3 steps 39.60% (barrel 3736, 32089 > 56903 > 3713); 4 steps none runs
+FREE SEATS on the answer's barrel (ρ_b 13.3978 mm, 56.1 mm of cord over the band): two steps reach 23.76% (6.2 > 4.6 mm), three 28.51% (5.4 > 4.2 > 3.0 mm)
+FREE SEATS on the gutter's barrel (ρ_b 29.249 mm, 122.5 mm of cord over the band): two steps reach 23.77% (13.6 > 10.2 mm), three 17.96% (8.4 > 6.8 > 5.6 mm)
+10 columns, 6 axles (barrel 8L, fusee 10L, maintaining 4L, great 6L, centre 5L, detent 4L), base 8×18 studs; 140 placements, 66 of them cord segments
+```
+
+The maintaining solve answered as before: the detent at (−28, −16), click band
+−1. `node tools/index-instruments.mjs --check` and
+`node tools/check-item-numbers.mjs` pass.
+
+### What it does not claim
+
+It claims no torque in N·mm and no rate. The spring is still the POSED
+stand-in. The crossing's rise along the axle is posed: 11.7% of the barrel's
+cord passes through the leg with no lever, and a real cord's climb between
+grooves is a bench question. The barrel's tyre seat holds twelve cords side
+by side. The run and the dead length together come to 1.07 turns there, and
+they are drawn in one plane rather than laid beside each other.
