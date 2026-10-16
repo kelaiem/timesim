@@ -70,6 +70,16 @@
   going train's next wheel: an 8T in the great wheel's slab, 24 mm off, phased
   by the parts' own tooth phases and turned −40/8 of the great wheel
   (solveCentrePinion, centrePhase; loopPose's phiC). It drives nothing.
+
+  BUILT §286 — THE CORD LEAVES ON THE TANGENT. §282 carried the cone's own
+  cord round, so on the base step it left the pulley far off the open belt's
+  tangent and the drawn cord jogged. The cord now leaves each pulley on the
+  tangent at every state, a crossing's departure moving from the upper seat's
+  circle to the lower's; the barrel is turned by the cord's length, the span
+  included; and the solve, re-ranked on that law, answers a different cone on a
+  different barrel. The wind names its step too, base first.
+  tools/probe-technic-fusee-loop.mjs gates the tangent, the length and the
+  order the steps fill in.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -192,7 +202,10 @@ canvas{display:block;touch-action:none}
   <p>The fusee runs a <b>loop</b>. Running down, the cord leaves the cone one
   step at a time and the barrel takes it: the fusee turns at the train's steady
   rate, so the barrel speeds up when the cord comes down onto the larger step.
-  At run-down a crank winds the fusee back. The click's pawl rides its wheel,
+  At run-down a crank winds the fusee back, and the cord goes back on the
+  base, the largest step, first: the wrap that came off last goes on first.
+  At every state the cord leaves each pulley on the tangent, so it runs
+  straight from the cone to the barrel. The click's pawl rides its wheel,
   the detent holds the ratchet, and the maintaining band keeps the great wheel
   turning forward, because the train must not stop while the watch is wound.
   At full wind the going spring first re-tensions the band, and the run starts
@@ -500,12 +513,12 @@ function applyFusee(now) {
     v.lastPhase = line;
     const el = document.getElementById('fphase');
     if (el) { el.textContent = line; el.dataset.phase = fuseeLoopOn ? p.phase : 'full'; }
-    setSpriteText(v.phaseLbl, line.replace(/ \(.*\)$/, '').replace(/;.*$/, ''), p.phase === 'winding' ? '#e0b630' : p.phase === 'full' ? '#7fc98b' : '#9fb6d9');
+    setSpriteText(v.phaseLbl, line.replace(/;.*$/, '').replace(/ \(.*\)$/, ''), p.phase === 'winding' ? '#e0b630' : p.phase === 'full' ? '#7fc98b' : '#9fb6d9');
   }
   if (now - v.lastText > 100) {
     v.lastText = now;
     const set = (id, f) => { const el = document.getElementById(id); if (el) f(el); };
-    set('fstep', (el) => { el.textContent = `cord ${st.kind === 'transition' ? `crossing onto step ${st.step} from step ${st.step + 1}` : `on step ${st.step + 1} of ${n} (${m.run.steps[st.step]}, seat ${st.arm.toFixed(2)} mm)`}; ${p.paid.toFixed(1)} of ${m.run.cordOnCone.toFixed(1)} mm paid off the cone; the band's stretch ${(p.lag * 180 / Math.PI).toFixed(1)}° (posed)${L.provisional ? '; the pawls stand at their seats while their rides are measured off the teeth' : ''}`; });
+    set('fstep', (el) => { el.textContent = `cord ${st.kind === 'transition' ? (p.phase === 'winding' ? `crossing from step ${st.step} onto step ${st.step + 1}` : `crossing onto step ${st.step} from step ${st.step + 1}`) : `on step ${st.step + 1} of ${n} (${m.run.steps[st.step]}, seat ${st.arm.toFixed(2)} mm)`}; ${p.paid.toFixed(1)} of ${m.run.cordOnCone.toFixed(1)} mm paid off the cone; the band's stretch ${(p.lag * 180 / Math.PI).toFixed(1)}° (posed)${L.provisional ? '; the pawls stand at their seats while their rides are measured off the teeth' : ''}`; });
     set('fbarS', (el) => { el.style.width = `${(p.spring * 100).toFixed(1)}%`; });
     set('fbarC', (el) => { el.style.width = `${(p.level * 100).toFixed(1)}%`; });
     set('fvalS', (el) => { el.textContent = p.spring.toFixed(3); });
@@ -956,7 +969,10 @@ renderer.setAnimationLoop((now) => {
   }
   renderer.render(scene, cam);
 });
-window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get fuseeLoop() { return fuseeLoop && { st: fuseeLoop.st, pose: loopPose(fuseeLoop.model, fuseeLoop.st), on: fuseeLoopOn }; }, setFuseeLoopOn: (on) => setFuseeLoopOn(on, document.getElementById('floop')), frameOn, get alarm() { return alarmModel && alarmBuild(alarmFrame, lib, columnPose(alarmModel, alarmSt)); },
+window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get fuseeLoop() { return fuseeLoop && { st: fuseeLoop.st, pose: loopPose(fuseeLoop.model, fuseeLoop.st), on: fuseeLoopOn }; }, setFuseeLoopOn: (on) => setFuseeLoopOn(on, document.getElementById('floop')),
+  // an instrument's hook: put the loop at a state (loopStart's shape), as a
+  // screenshot probe does with the speed at 0; the page's own loop never calls it
+  seekFusee: (st) => { if (fuseeLoop) fuseeLoop.st = { ...loopStart(), ...st }; }, frameOn, get alarm() { return alarmModel && alarmBuild(alarmFrame, lib, columnPose(alarmModel, alarmSt)); },
   get alarmState() { return alarmModel && { st: alarmSt, pose: columnPose(alarmModel, alarmSt), phase: columnPhase(alarmModel, alarmSt), auto: alarmAuto }; },
   get alarmCell() { return alarmBand; }, alarmDo, setAlarmAuto, focusAlarm, cam, controls, scene, renderer };
 </script>
