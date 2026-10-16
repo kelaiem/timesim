@@ -38573,105 +38573,22 @@ still governed by the case-back ring face with 0.000 mm over `caseLug`.
   1.71× over. That is the owner's chosen trade, not a waiver, and the probe
   prints it on every run.
 
-## §281 — Loop mode: cycle the fast-forward run-down and a crown-driven wind
+## §281 — Loop mode: cycle the fast-forward run-down and a crown-driven wind (reverted)
 
-A **Loop** toggle in the panel, under Fast-forward. With it on, the movement
-runs down at fast-forward, is wound through the crown, and runs down again,
-until it is switched off. The loop CYCLES two things the panel already did: a
-posed run-down (fast-forward, §258) and a crown-driven wind (the Wind button).
-It owns no mechanism, writes no wind, tension or τ, and the run-down is no more
-driven than it was before: a driven power path is a separate roadmap item.
+Shipped 2026-10-16 as PR #723 and reverted the same day on the owner's call,
+before the LEGO fusee's own loop landed on `technic.html`. The owner had
+expected the loop to be on the LEGO build, not the steel watch, and judged the
+steel version not obvious to a viewer: a **Loop** button under Fast-forward,
+off by default, whose only explanation was a tooltip, cycling a run-down whose
+visible effect was the hands racing.
 
-### What it does, frame by frame
-
-`loopUpdate()` runs in `advanceFrame`'s pre-tick slot, beside §55's alarm
-cycler. It decides what the frame's ticks are fed, never what they compute.
-
-- **run.** Fast-forward on, until it drops out at its own flat. The threshold is
-  now one constant, `FF_FLAT` (0.0005 of the reserve), which fast-forward's
-  auto-stop and the loop both read.
-- **wind.** `queueWind()`, the Wind button's own handler factored out so there
-  is one definition of "one wind": the full wind in crown radians plus one turn,
-  queued into `crownRotation` at `AUTO_WIND_RATE`. It banks through the keyless
-  train until §47's arrest stalls the crown (`windArrestStalled`), exactly as a
-  press does. Standing rule 2 holds because the loop presses the button and
-  does nothing else.
-- **restart.** The balance has to be going again before fast-forward comes
-  back: `SELF_START_BEATS` (4) beats unlocked since the wind ended. That is the
-  count TODO 238's `selfStart` test uses for "starts", now exported from
-  `balance-drive.js` so the two read one number. If the panel's "Balance
-  stopped" row would show (stopped, wound, hack off), the loop presses that
-  row's button, `swingBalance`, the swing TODO 238 gives a balance the train
-  cannot start. It does not add its own kick. A balance that three swings do
-  not start ends the loop and leaves the row showing. Three is a feel parameter,
-  not a mechanism's.
-
-### What the restart actually is, measured
-
-At a fast-forwarded flat the balance has **not** stopped. `FF_FLAT` leaves
-about 4.4e-4 of the reserve (≈ 50 s of running), so the wind arrives while the
-balance still swings under drive. Those restarts are counted as `ranOn` and
-never as starts. A restart nothing had to do is not claimed as one. The loop
-meets a genuinely stopped balance when it is switched on at a true flat, which
-the probe sets up. There the escapement started it (`selfStarts` 1, no swing),
-the balance standing at θ −0.98°, inside the impulse window.
-
-One run while the probe was being written stopped the balance a different way.
-The reserve was run down at real time to 2e-8 of a wind: still wound, so the
-"Balance stopped" row's case. After a full wind the escapement did not pick it
-up, and the loop's swing did. That was one observation and is not
-characterised. It belongs to TODO 238/232's ground (how and where a balance
-comes to rest at run-down), and is recorded here rather than filed.
-
-### What steps it aside
-
-- The crown pulled out ends the loop (`stoppedBy: 'crown'`), and `queueWind`
-  refuses then, as the button does.
-- A script (`scriptStart`: Tour, Demo, Inspect, Bench…) ends the loop, and the
-  button will not start the loop under one.
-- A sync ends the loop. The boot's wall-clock sync (§55) is skipped when the
-  loop is on (saved, or `?loop=1`), because its pulled crown would end the loop
-  on the first frame.
-- Pressing Fast-forward by hand takes fast-forward back and ends the loop.
-  `resetInputs` ends it too: the loop queues winds, and canonical is no one at
-  the crown.
-
-### Chrome and state
-
-The button is a `data-state` toggle (`setBtnState`), and its text is the
-existing On/Off. Two new chrome strings were added to every locale table:
-`Loop` and the button's title. `loop` persists in `state.js` beside
-`fastForward` (default, `sanitize`, `captureState`, restore). `?loop=1` turns
-it on at arrival, and `?loop=0` turns off a saved one. No listener was added on
-`window` or `document`, so `BUILD_GUARDED_EVENTS` is unchanged. There is no new
-build-time work and no new seam. No geometry or pose law changed. The only edit
-to `balance-drive.js` names the literal 4 that `selfStart` already used.
-
-### The instrument
-
-`tools/probe-281-loop.mjs` (acceptance) drives the frames itself through
-`__clock.advanceFrame` under the sweep hold, reading the new `__clock.loop`
-surface. Over two loop cycles it checks four things:
-
-- Each run-down reaches `FF_FLAT`.
-- Each wind advanced `crownRotation` by exactly one press (32.672564 rad). The
-  bank rose by what the crown delivered, and at least one turn went into a
-  stopped crown.
-- `windArrestStalled` was seen, and the bank ended on the arrest's
-  `engageTurns` (1.75).
-- The run-down resumed: τ advancing and the reserve falling.
-
-It then checks that toggling off stops cleanly (fast-forward drops, no wind
-queued, the crown untouched over 120 frames), that the crown, script and button
-guards work, and that the toggle persists across a reload with no boot sync.
-Claim 6 is the restart from a stopped balance. The controls are both seen to
-fail:
-
-- **A.** The loop is off and the movement runs down to a stopped balance. The
-  cycle verdict fails because nothing winds.
-- **B.** A full bank set by `setPose`. The crown verdict refuses it because
-  Δcrown is 0.
-
-The probe found its own first error. It waited for `tension === 0`, and a
-balance stops with the reserve not quite 0: the drain is τ's, and τ stops with
-the balance. "Stopped" is `driveState.stuck`.
+What it did, for the record: the fast-forward ran the reserve down to
+0.0005 of full, then `queueWind()` (the Wind button's own path) turned the
+crown through the keyless works until the §47 arrest stalled it, then the
+balance restarted (self-started, or swung by the panel after
+`SELF_START_BEATS`), and the cycle repeated. It owned no mechanism of its
+own, and the fusee, chain and drum stayed POSED from `barrelWindTurns`
+throughout, which is BACKLOG §279's gap and is untouched by both the
+landing and the revert. `tools/probe-281-loop.mjs` held it and is removed
+with it. The number stays claimed (`docs/item-numbers/BUILT-0281.md`) and
+is not reused.

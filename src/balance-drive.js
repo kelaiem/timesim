@@ -323,12 +323,9 @@ export function weightTable(rows, gx, gy, massKg, g, uM) {
 // spring the push wound up swings the balance back into the next impulse. Run
 // the drive from that rest and count the beats: `starts` once the balance has
 // worked both stones twice and is still swinging.
-// `starts` once the balance has worked both stones twice: four beats unlocked.
-// §281's loop reads the same count to call a restart at flat a start.
-export const SELF_START_BEATS = 4;
 export function selfStart(K, env, periods = 8) {
   const S = { theta: 0, omega: 0, n: 0, inWindow: true, lockFrac: 0, stuck: false, knocks: 0, peak: 0, ampEst: 0, lastTurn: 0 };
   const dt = 1 / (K.F * 40);
   for (let i = 0; i < periods * 40; i++) step(K, S, dt, env);
-  return { starts: S.n >= SELF_START_BEATS && !S.stuck, beats: S.n, stuck: S.stuck, peakRad: S.peak, theta: S.theta };
+  return { starts: S.n >= 4 && !S.stuck, beats: S.n, stuck: S.stuck, peakRad: S.peak, theta: S.theta };
 }
