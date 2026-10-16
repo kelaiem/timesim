@@ -42634,6 +42634,7 @@ let reserveShown = 1; // = tension each frame; kept as its own var for the UI re
 // in the fork.
 // ---------------------------------------------------------------------------
 let fastForward = false;     // fun mode: rip through hours so the fusee chain visibly pays off
+const FF_FLAT = 0.0005;      // the reserve fast-forward calls flat and drops back to real time at (§281: the loop reads the same one)
 let crownOut = false;        // target: is the crown pulled to the setting position?
 let crownPullT = 0;          // 0..1 eased stem-slide animation toward crownOut
 let leverEngage = 0;         // 0..1 eased lever swing-in — a readout since TODO 257; the BRAKE is padEngage
@@ -42666,6 +42667,7 @@ let handSetOffsetNow = 0;    // last value tick() gave the hands — displayedSe
 // assigning them here would hit the temporal dead zone.
 let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
+let restoredLoop = false;  // §281 — the Loop toggle, likewise
 // The schematic tier's boot default is the RENDERER's call. A solid frame costs
 // 7–10 s under software GL whatever the quality tier (SwiftShader, headless,
 // 1280×800: High ~9.0–9.8 s, Low ~7.1–8.0 s) against ~0.22 s for the line view,
@@ -42836,6 +42838,7 @@ let mmPerPxCal = null;
   jumpCorr = savedState.jumpCorr ?? 0; // ?? — states saved before §9 have no such field
   crownOut = savedState.crownOut;
   fastForward = savedState.fastForward;
+  restoredLoop = !!savedState.loop;   // §281 — applied once the loop's button exists
   if (BD.POSITIONS.includes(savedState.position)) balancePosition = savedState.position; // §246 — absent or unknown keeps the default
   restoredCamera = savedState.camera;
   restoredXray = !!savedState.plateXray;
@@ -43457,6 +43460,8 @@ panel.innerHTML = `
       <div class="row label-small" id="balance-stopped" style="display:none; color:#e0a355;"><span>Balance stopped</span><button id="btn-swing">Give it a swing</button></div>
       <div class="row label-small"><span>Power reserve</span><span class="readout" id="reserve-value" style="font-size:13px;">30.0 h</span></div>
       <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
+      <!-- §281: the loop CYCLES the fast-forward run-down and a Wind through the crown; it owns no mechanism of its own -->
+      <div class="row label-small"><span>Loop</span><button id="btn-loop" title="Run down at fast-forward, wind through the crown, repeat">Off</button></div>
       <!-- §246 tier two: the watch's position in gravity, and what the driven
            balance does in it — its swing and the rate it keeps, both MEASURED
            off the integrator's own beats (option values are canonical keys). -->
@@ -45669,10 +45674,14 @@ function syncUpdate(realDt) {
 // reserve reaches the stop and the viewer hears the bank (§47). The old
 // literal 16 was ~3× a full wind — before the arrest existed, all of it
 // past full drove the transfer⇄spur mesh teeth-through-teeth.
-document.getElementById('btn-wind').addEventListener('click', () => {
-  if (crownOut) return; // crown must be pushed in (winding position) to wind
+// §281 — one function, because the Loop presses the same button: a second
+// copy of this queue would be a second definition of "one wind".
+function queueWind() {
+  if (crownOut) return false; // crown must be pushed in (winding position) to wind
   autoWindRemaining += (RESERVE_BARREL_TURNS * (WIND_SPUR_TEETH / windPinionTeeth) + 1) * 2 * Math.PI;
-});
+  return true;
+}
+document.getElementById('btn-wind').addEventListener('click', queueWind);
 
 // --- crown: click to pull/push, drag to turn -------------------------------
 const crownBtn = document.getElementById('btn-crown');
@@ -45714,8 +45723,89 @@ function updateSyncUI() {
 
 // --- fast-forward toggle ---------------------------------------------------
 document.getElementById('btn-ff').addEventListener('click', () => {
-  fastForward = !fastForward;
+  const ff = !fastForward;
+  if (loopOn) setLoop(false, 'ff'); // §281 — the loop owns fast-forward while it runs; a hand on the button takes it back
+  fastForward = ff;
 });
+
+// --- §281: THE LOOP ----------------------------------------------------------
+// Cycles what two existing controls already do, and nothing else: the
+// fast-forward run-down (a POSED drain at ~5400×, §258) to flat, then a Wind —
+// queueWind, the SAME rotation the button queues into crownRotation, banked
+// through the keyless train until §47's arrest stalls the crown — then the
+// run-down again. It sets no wind, no tension and no τ; a cycle is the two
+// inputs taking turns. The restart at flat is the movement's own: with the
+// train wound the escapement starts a stopped balance (TODO 238's selfStart,
+// held per rate row since TODO 242), and only where the panel's "Balance
+// stopped" row would offer a swing does the loop press that — swingBalance, the
+// one the button calls. A balance the swing cannot start either ends the loop
+// and leaves that row showing.
+// It steps aside for anything else driving the crown: a script (Tour, Bench…),
+// the crown pulled out (queueWind refuses it, as the button does), a sync.
+let loopOn = false;
+let loopPhase = 'run';        // 'run' (fast-forward to flat) → 'wind' (the crown turning) → 'restart' (balance picked up)
+let loopStallSeen = false;    // this wind reached the arrest (windArrestStalled)
+let loopBeatMark = 0;         // driveState.n when the wind ended — the restart is counted in beats from here
+let loopSwingsThis = 0;       // swings given at this flat
+let loopStoodAtFlat = false;  // the balance had STOPPED when the wind began (else it was still swinging on the last of the reserve)
+const LOOP_MAX_SWINGS = 3;    // a feel parameter, not a mechanism's: a swing to the posed amplitude starts a wound balance or it will not, and three rule out an unlucky beat
+// selfStarts counts only a balance that had STOPPED and was started by the
+// escapement; ranOn a balance still swinging when the wind arrived (FF_FLAT
+// leaves ~50 s of reserve, so a fast-forwarded flat is usually that) — a
+// restart nothing had to do is not counted as one
+const loopStats = { flats: 0, winds: 0, stalls: 0, selfStarts: 0, ranOn: 0, swings: 0, cycles: 0, stoppedBy: null };
+const loopBtn = document.getElementById('btn-loop');
+function setLoop(on, why = 'toggle') {
+  const was = loopOn;
+  loopOn = !!on;
+  loopPhase = 'run'; loopStallSeen = false; loopSwingsThis = 0;
+  loopStats.stoppedBy = loopOn ? null : why;
+  // the loop's fast-forward ends with it (a run-down it started is not left running)
+  if (was && !loopOn && fastForward) fastForward = false;
+  setBtnState(loopBtn, loopOn);
+  loopBtn.classList.toggle('active', loopOn);
+}
+loopBtn.addEventListener('click', () => {
+  if (!loopOn && scriptSteps) return; // a script owns the crown — the loop does not start under one
+  setLoop(!loopOn);
+});
+if (restoredLoop) setLoop(true);
+// One frame's worth of the loop, in advanceFrame's pre-tick slot (beside the
+// alarm cycler, §55): it decides what this frame's ticks are fed, never what
+// they compute.
+function loopUpdate() {
+  if (!loopOn) return;
+  if (scriptSteps) { setLoop(false, 'script'); return; }
+  if (crownOut) { setLoop(false, 'crown'); return; }
+  if (syncPhase) { setLoop(false, 'sync'); return; }
+  if (loopPhase === 'run') {
+    if (fastForward) return;
+    if (reserveShown > FF_FLAT) { fastForward = true; return; }
+    loopStats.flats++;
+    loopStoodAtFlat = !!(driveState && driveState.stuck);
+    if (!queueWind()) { setLoop(false, 'crown'); return; }
+    loopStats.winds++; loopStallSeen = false; loopPhase = 'wind';
+    return;
+  }
+  if (loopPhase === 'wind') {
+    if (windArrestStalled) loopStallSeen = true;
+    if (autoWindRemaining > 0) return;
+    if (loopStallSeen) loopStats.stalls++;
+    loopPhase = 'restart'; loopSwingsThis = 0; loopBeatMark = driveState ? driveState.n : 0;
+    return;
+  }
+  // 'restart': the escapement picks the balance up on its own, or the row asks for a swing
+  if (balanceStoppedShown) {
+    if (loopSwingsThis >= LOOP_MAX_SWINGS) { setLoop(false, 'balance'); return; }
+    if (swingBalance()) { loopSwingsThis++; loopStats.swings++; loopBeatMark = driveState.n; }
+    return;
+  }
+  // started = the selfStart test's own verdict: both stones worked twice
+  if (driveState && !driveState.stuck && driveState.n - loopBeatMark >= BD.SELF_START_BEATS) {
+    if (loopSwingsThis === 0) { if (loopStoodAtFlat) loopStats.selfStarts++; else loopStats.ranOn++; }
+    loopStats.cycles++; loopPhase = 'run'; fastForward = true;
+  }
+}
 updateCrownUI();
 
 // --- §22: the spec knobs — beat rate, reserve, and the stud's radius ---------
@@ -52407,6 +52497,7 @@ function captureState() {
     jumpCorr,
     crownOut,
     fastForward,
+    loop: loopOn,          // §281 — persisted like fastForward; the phase re-enters at 'run'
     position: balancePosition,   // §246 — the watch's position in gravity (canonical key)
     timeScale: Math.pow(10, (Number(document.getElementById('scale-slider').value) / 1000) * 3 - 3),
     showLabels: labelsOn,
@@ -53735,6 +53826,7 @@ function scriptStart(steps, btn) {
   if (!audioCtx) { audioCtx = window.__bootAudio || new (window.AudioContext || window.webkitAudioContext)(); window.__bootAudio = null; }
   ensureAudioGraph();
   resumeAudio();
+  if (loopOn) setLoop(false, 'script'); // §281 — a script owns the crown and the clock
   scriptSteps = steps;
   scriptIdx = 0;
   scriptDone = new Set();   // §277
@@ -54262,6 +54354,8 @@ function applyDeepLink() {
   // `?cycle=1` — the alarm cycler on arrival, for pairing with ?cam/?look:
   // aim at a linkage and watch it work without touching the page.
   if (params.has('cycle')) document.getElementById('btn-alarm-cycle').click();
+  // §281 — `?loop=1`: the run-down/wind loop on arrival (`?loop=0` turns a saved one off)
+  if (params.has('loop')) setLoop(params.get('loop') !== '0');
   // §60 — `?lifesize=1`. A pose, not a free-orbit state (§37's rule), so it is
   // shareable and cannot be drifted out of without the caption saying so.
   if (params.has('lifesize')) setLifeSize(params.get('lifesize') !== '0');
@@ -54315,10 +54409,12 @@ applyDeepLink();
 //
 // Skipped when a script owns the view (a deep-linked tour/demo/inspection is
 // mid-flight and syncStart pulls the crown and forces scale 1 under it), and
-// when ?tau or ?sync says the caller already chose an epoch.
+// when ?tau or ?sync says the caller already chose an epoch. §281: and when
+// the Loop is on (saved, or ?loop=1) — it is about to fast-forward through the
+// reserve, and a sync's pulled crown would end it on its first frame.
 {
   const q = new URLSearchParams(location.search);
-  if (!scriptSteps && !q.has('tau') && !q.has('sync')) syncStart();
+  if (!scriptSteps && !loopOn && !q.has('tau') && !q.has('sync')) syncStart();
 }
 
 // ---------------------------------------------------------------------------
@@ -57994,6 +58090,7 @@ refreshUnitOptions(); // …and rebuild the selector now that it is (the boot ca
 function advanceFrame(realDt, wallDt = realDt) {
   ticksThisFrame = 0; // §14 readout: how many tick() calls this frame costs
   if (!paused) {
+    loopUpdate(); // §281 — before the branch: it may hand this frame to fast-forward, or take it back
     if (fastForward) {
       // ~5400×: coarse 2 s ticks, FF_SIM_RATE of them per second of WALL time —
       // 45 a frame at 60 Hz — so the whole 30 h reserve pays off in about 20 s,
@@ -58011,7 +58108,7 @@ function advanceFrame(realDt, wallDt = realDt) {
         ffPoseDeferred = false;
       }
       accumulator = 0;
-      if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
+      if (reserveShown <= FF_FLAT) fastForward = false; // ran flat — drop back to real time
     } else {
       scriptUpdate(realDt); // scripted user (BUILT §5/§17): drives crown/scale before this frame's ticks
       alarmCycleUpdate(realDt); // §55: the alarm cycler, same pre-tick slot — its toggle must land before this frame integrates
@@ -58069,6 +58166,8 @@ function advanceFrame(realDt, wallDt = realDt) {
   const ffBtn = document.getElementById('btn-ff');
   setBtnState(ffBtn, fastForward);
   ffBtn.classList.toggle('active', fastForward);
+  setBtnState(loopBtn, loopOn);   // §281
+  loopBtn.classList.toggle('active', loopOn);
   const springTq = springTorqueAt(reserveShown);
   // TODO 40 row 2 — read the radius the chain is ACTUALLY on, from the same
   // function the chain path is cut from. The wrap occupies FUSEE_F_ACTIVE
@@ -58416,6 +58515,16 @@ window.__clock = {
   // weight table — the same objects, not copies, so the probe and the live
   // loop cannot be running two models.
   swingBalance, // TODO 238 — the panel's "Give it a swing"
+  // §281 — the loop, for its probe: its phase and counters, and the state it
+  // reads and feeds (the controls' own variables, never a copy of their law)
+  get loop() {
+    return { on: loopOn, phase: loopPhase, ...loopStats, fastForward, reserve: reserveShown, flat: FF_FLAT,
+             autoWind: autoWindRemaining, stalled: windArrestStalled, balanceStopped: balanceStoppedShown,
+             reserveTurns: RESERVE_BARREL_TURNS, engageTurns: WIND_ARREST.engageTurns };
+  },
+  setLoop(on) { setLoop(on); },
+  get crownOut() { return crownOut; },
+  toggleCrown() { toggleCrown(); },
   get balanceDriveModel() {
     return { K: BALANCE_DRIVE.K, rows: BALANCE_DRIVE.rows, weight: (pos) => balanceWeightTable(pos), friction: { ...BALANCE_DRIVE.friction },
              posedDeg: { ...BALANCE_DRIVE.posedDeg }, sustainedDeg: { ...BALANCE_DRIVE.sustainedDeg }, massKg: BALANCE_DRIVE.massKg, g: BALANCE_DRIVE.g };
@@ -58736,6 +58845,7 @@ window.__clock = {
   get focusUnit() { return focusName; },
   setFocusUnit(name) { if (name) setFocus(name); else clearFocus(); },
   resetInputs() {
+    if (loopOn) setLoop(false, 'reset');   // §281 — the loop queues winds; canonical is no one at the crown
     crownRotation = 0; lastCrownRotation = 0;
     windStemSlip = 0; setPathRot = 0;
     autoWindRemaining = 0;
