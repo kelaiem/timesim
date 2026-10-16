@@ -11149,10 +11149,11 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
 
   // Lugs at 12 and 6, INTERIOR span per dims (the strap gap between the
   // pair's facing walls — the spec dimension). §280: each lug is ONE OUTLINE
-  // from layout.js's caseLugPlan — sized by the strap load, sloped toward the
-  // wrist until its lowest metal is flush with the back plane, welded to the
-  // band through two fillets, ended in a full round, drilled for the bar's
-  // tip pin — a slab CASE_LUG_T across the strap with every edge rounded
+  // from layout.js's caseLugPlan — sized by the strap load for the weakest
+  // alloy the case is cut from (TODO 262), leaving the band level and turning
+  // down toward the wrist in an S until its lowest metal is flush with the
+  // back plane, welded to the band through two fillets, ended in a full
+  // round, drilled for the bar's tip pin — a slab CASE_LUG_T across the strap with every edge rounded
   // (makeRoundedSlab: the authored outline at mid-thickness, so nothing grows
   // past the law, and caps that cannot fold across the pin's web). §190's radial
   // chain is kept: the bar stands CASE_BAR_REACH past the band wall, and the
