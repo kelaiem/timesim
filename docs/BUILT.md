@@ -38675,3 +38675,160 @@ fail:
 The probe found its own first error. It waited for `tension === 0`, and a
 balance stops with the reserve not quite 0: the drain is τ's, and τ stops with
 the balance. "Stopped" is `driveState.stuck`.
+
+## §282 — LEGO fusee loop: the cord pays off the cone and rewinds through the maintaining power
+
+§219 tier three (b), after landing H. Landing H drew the LEGO fusee at full
+wind: the cord placed once, the bands not placed. This section is the LEGO
+feasibility note's module 2 measurement made visible. On `technic.html` the
+fusee cell now runs a loop. It runs down, it is wound back through Harrison's
+maintaining power, and it goes again. Beside it the panel shows the two torques
+the module exists to compare: the spring's, and the torque after the cone.
+It is the LEGO analogue of §281's loop on the steel page.
+
+Everything here is MODELLED. Nothing is integrated and no force is weighed.
+The loop has one state, and every angle is read from it through the parts' own
+laws. The one rate in it is the great wheel's, and that is a DISPLAY rate: in a
+watch the escapement governs it, and the LEGO module builds no escapement.
+
+### One state, read through the solve's own law
+
+The run's state is `paid`, the cord that has left the cone since full wind (0
+at full wind, `run.cordOnCone` = 76.1135 mm at run-down). `runState` reads it
+through `fuseeRun`'s own segments, the law the solve levelled. Paying off
+reverses winding's order: the top step's wrap first, then the crossing down,
+then the base step's wrap. Over a segment of arm a, a length ds of cord turns
+the cone ds/a and the barrel ds/ρ_b. So on every segment the cone's turn × a is
+the barrel's turn × ρ_b, and that identity is the staircase. `paidAtTurn` is
+the inverse.
+
+`cordPath` takes the state now (`paid`, default 0). It was not given a second
+law. The cord left on the cone is the full-wind cone's own cord, cut short
+along the same segments and turned with the cone by `runState`'s turn. Its last
+contact is a point of the cone carried round, so it moves continuously through
+every step boundary. The barrel takes the paid cord at the span's full-wind
+arrival and turns by paid/ρ_b, carrying the dead wrap and its hook round. At
+`paid` = 0 the function draws landing H's path point for point: the static
+build's placements were snapshotted before the change and compared byte for
+byte after it, and `probe-technic-fusee.mjs` passes unchanged.
+`cordPlacements` is the build's cord-as-parts block factored out, so the moving
+cord and the static one are placed by one function.
+
+### The chain, one input per phase
+
+- **Going.** The great wheel advances at the display rate. The band, at its
+  posed stretch (`BAND_LAG_DEG`, 60°), holds the ratchet that far ahead. The
+  click, locked, turns the fusee with the ratchet. The cord paid is read off
+  the fusee's turn, and the barrel's turn off the cord. So the fusee turns at
+  the train's steady rate, and the BARREL speeds up when the cord comes down
+  onto the larger step, by 11.5993/8.1989. That is the sense the geometry
+  gives: the fusee is in the train. The detent rides the ratchet's teeth, its
+  free way.
+- **Winding.** A crank turns the fusee back `windSpeedup` times as fast as the
+  train. The click frees and its pawl rides the click wheel's 16T. The detent
+  holds the ratchet against the band's pull. The band relaxes and keeps the
+  great wheel turning the going way at the same rate: the maintaining power
+  carries the train, as the note says it must for the demonstrator to show it.
+  The wind stops exactly at full wind.
+- **Full.** The going spring takes the train again. First it re-tensions the
+  band: the fusee and the ratchet run `RECHARGE_SPEEDUP` times as fast as the
+  great wheel until the band stands at its stretch, and then going resumes.
+
+`windSpeedup` is DERIVED. While the fusee is wound, the band carries the train
+alone and spends its stretch at the train's rate. A wind longer than the
+stretch lasts would let the band go slack, and the maintaining power would run
+out. So the crank turns the fewest whole times faster than the train that
+spends at most HALF the stretch over a whole wind: k = ⌈2·T/λ⌉ = ⌈2 · 8.7378 /
+1.0472⌉ = 17. `RECHARGE_SPEEDUP` = 2 and `LOOP_RUN_S` = 40 (a run-down at speed
+1) are display rates and say so: any rate above the train's re-tensions the
+band, and 2 is the slowest whole one that keeps that phase long enough to read.
+
+Each pawl's ride is the seat its band drops it to at each wheel angle
+(`pawlModel.seat`), tabled over one pitch at 48 samples (`pawlRideSteps`, a
+generator so the page builds it between frames, about 1.5 s of arithmetic).
+That is a posed ride over the measured profile: the band's force is not
+weighed, only where it leaves the 8T.
+
+### What is posed, by name
+
+- The spring's law: `TECHNIC_FUSEE_SPRING`, still the steel ribbon's stand-in.
+- The band's stretch, and its relaxing while it carries the train. No band is
+  placed; only its direction is read (`bandMoment`).
+- Each pawl's band, which holds its 8T on the teeth it rides.
+- The great wheel's rate, a display rate.
+
+### The page
+
+The loop is ON by default. It is the cell's whole demonstration, and the
+owner's complaint about the steel loop was that it is not obvious. Off, the
+cell draws the landing H build at full wind exactly. `?loop=0` opens with it
+off and `?focus=fusee` opens framed on the fusee; a "look at the fusee" button
+does the same. The panel carries:
+
+- a phase line: "running down — step 2 of 2 (3482, seat 8.20 mm)", "running
+  down — crossing from step 2 to step 1 of 2", "running down — step 1 of 2",
+  "winding — the crank turns the fusee back; the maintaining power carries the
+  train", "full — the going spring re-tensions the maintaining band". The
+  cell's own label in the scene shows it too.
+- the step the cord is on, lit on its pulley, with the cord paid and the band's
+  stretch;
+- two bars, the spring's torque and the torque after the cone, each a fraction
+  of its own value at full wind. The spring falls to 0.5899; after the cone the
+  torque stays within 0.6721–1.0000. Beside them are the spreads over the run,
+  read off the solve: the bare spring 51.6%, after the cone 40.1%. All of it is
+  labelled as a POSED law.
+
+The speed slider drives it. `technic.html` is on `battery.yml`'s
+`paths-ignore`, but `src/technic-fusee.js` and `tools/` are not, so a PR
+carrying this landing runs the battery. The battery cannot see the change:
+nothing on `index.html`'s module graph imports `src/technic-*.js` (`layout.js`
+names them only in comments). The battery was not run locally.
+
+### The instrument
+
+`tools/probe-technic-fusee-loop.mjs` (acceptance, pure Node, about 20 s):
+
+```
+the loop's first state: every body at fuseeBuild's angle exactly, the cord the static build's 156 points and 66 segments
+THE SPAN LEAVES OUTWARD: at every state its nearest approach to the cone's axis is its last contact (inside it by 0.0e+0 mm at worst)
+ANGLES TRAVEL THE PARTS: over 405 states the cone's and the barrel's body angles stand on their hooks to 8.9e-16 rad
+BOOKKEEPING: on the cone + paid = the run to 0.0e+0 mm; the drawn cone and barrel wraps keep their sum to 0.0097 mm (the chords' sag)
+RATIO: on every segment the cone's turn × the step's measured seat = the barrel's turn × 18.1795 mm, to 2.3e-16 (relative)
+CONTINUOUS: through the 4 segment boundaries inside the run the last contact on the cone and both hooks move 1.4e-7 mm across ±1e-7 mm of cord
+FLAT: at run-down no wrap is on the cone; the barrel has taken 76.1100 mm (the run 76.1135), turned 0.6663 turns = the spring's band 0.6663
+at every interior sample of fuseeRun the readout IS the sample, to 2.6e-16; its extremes 5.5104–8.1989 over the mean 6.6988 give 40.13% (the solve: 40.13%); the spring alone 51.59% (bare: 51.59%)
+phases: going → winding → full → going → winding → full → going…; 3 winds, each ending exactly at full wind (the static build's cord); the great wheel the going way on every frame, the band never under 30.59° of its 60°
+click: 48 samples over a 16T pitch, each seat() to 3.2e-14 rad; detent: 48 samples over a 40T pitch, each seat() to 8.9e-16 rad
+```
+
+It also holds the locks. The loop moves each member only its free way: while
+winding, the fusee runs back against the ratchet the click's free way, and the
+detent locks the way the band pulls the ratchet. While going, the ratchet runs
+the way the detent frees, and the click does not slip. Both locks are read off
+the teeth with `pawlLock`. Eight controls are each seen to fail:
+
+- a step's seat 1% off the part's;
+- the barrel turned the other way;
+- a departure taken from the tangent law (it jumps where the arm changes);
+- the readout taken from the spring alone;
+- a wind that stops 1e-9 rad short;
+- the click with its band reversed;
+- the detent's ride shifted half a tooth;
+- a span drawn through the pulley it leaves.
+
+### What it found, reported and not gated
+
+`fuseeRun` turns the barrel by the cord laid on the cone alone, as if the free
+span stood still. Over a crossing it turns the cone at the upper step's arm for
+the crossing's full 3D length. Carried round on the cone by that law, the
+cord's last contact leaves the base step 13.93° off the open belt's tangent,
+and the free span shortens from 30.485 to 26.390 mm: 4.1 mm of a 160 mm string.
+The span still leaves the pulley outward, which the probe gates. But a cord
+under tension would lie on the tangent. So the solve's crossing law is a
+simplification the loop now shows, and the probe prints it. The levelled spread
+(40.1%) rests on that law, and correcting it would re-solve landing H. That is
+not done here.
+
+Between ride samples the interpolated 8T grazes the teeth by at most 0.0165 mm
+(click) and 0.0312 mm (detent). This is reported, not gated, because it is the
+interpolation's chord across a tooth tip, not a seat.

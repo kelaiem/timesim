@@ -93,7 +93,18 @@ fusee, and a frame detent on the ratchet, each a keyed 8T on a thin liftarm
 whose LOCK direction `pawlLock` reads off the teeth. A posed band carries it
 to the great wheel. Three collinear axles are joined end to end in round pin
 joiners. `tools/probe-technic-fusee.mjs` holds the table, the seats, the solve,
-the cord, the locks and the build. **And the ALARM** (landing I,
+the cord, the locks and the build. **Since §282 the fusee LOOPS** on the page:
+one state, the cord `paid` off the cone, read through `fuseeRun`'s own segments
+(`runState`, and `cordPath(…, { paid })`, which at 0 draws landing H's path point
+for point). The great wheel's rate is the one DISPLAY rate. The band holds the
+ratchet ahead of it and the click turns the fusee with it, so the barrel speeds
+up on the larger step. In the wind the crank turns the fusee back `windSpeedup`
+times (derived: half the band's posed stretch per wind), the detent holds and
+the band carries the train. The pawls ride tabled seats.
+`tools/probe-technic-fusee-loop.mjs` holds the ratio per step, the readout
+against the solve's 40.1%/51.6%, the locks and the exact return to full wind. It
+also REPORTS the solve's simplification the loop exposed: the cord leaves the
+base step 13.9° off the tangent. **And the ALARM** (landing I,
 `src/technic-alarm.js`): a column wheel of two 3-blade rotors, the second turned
 over (six columns 60° apart), indexed through a 12T by a pawl on a pushed driver
 and held by a banded half-bush detent, its parity read by a pin BEAK on the
@@ -108,7 +119,7 @@ rings. `solveAlarm` re-derives the declared `TECHNIC_ALARM`, and
 `tools/probe-technic-alarm.mjs` holds every full press stepping one rest and a
 half press falling back, the drop at the notch, the strikes per barrel turn
 counted through the meshes, and the build. The frame, ldraw, build, keyless,
-motion, fusee and alarm probes are pure Node.
+motion, fusee, fusee-loop and alarm probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1135,7 +1146,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 321 measuring scripts and this file names 49. The rest are named for the
+`tools/` holds 322 measuring scripts and this file names 50. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1152,7 +1163,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **208 of
+The index also carries the split that decides how to read a result: **209 of
 them are ACCEPTANCE tests** that exit non-zero, and **113 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
