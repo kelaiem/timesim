@@ -29,8 +29,12 @@
 //    pin's own axis, inside its drilled hole, must read the hole wall one
 //    CLEAR_MARGIN off the pin — the clearance it is drilled to. (§190's
 //    control read the bar body's abutment at ≈ −bar radius; a drilled lug
-//    puts air on the axis there.) The tip pins are their own meshes
-//    (caseSpringBarTip), read about the tube's fitted axis: two per bar.
+//    puts air on the axis there.) The bar is a hollow TUBE and the tip pins
+//    are their own meshes (caseSpringBarTip) in its bore, read about the
+//    tube's fitted axis: two per bar. The axis and circle fit take the tube's
+//    OUTER ring only (a closed lathe profile repeats a point, so its two
+//    ends do not share a seam bias), and the segment is centred on the axial
+//    extent, not the centroid.
 // 4. §280 THE BACK PLANE: the lug's lowest metal at or above the case back's
 //    face — §261's ratchet measures the case WITH its lugs — and the bar's
 //    height above that plane, the number the downturn exists to lower.
@@ -156,7 +160,23 @@ const res = await page.evaluate(async ({ T, rc }) => {
       if (d.dot(seed) >= 0) { cA.add(V(p)); nA++; } else { cB.add(V(p)); nB++; }
     }
     cA.multiplyScalar(1 / nA); cB.multiplyScalar(1 / nB);
-    const axis = cA.clone().sub(cB).normalize();
+    let axis = cA.clone().sub(cB).normalize();
+    // §280: the bar is a TUBE now, a lathe whose closed profile repeats a
+    // point at one end, so the two ends carry different vertex mixes and the
+    // seam bias no longer cancels in cA − cB: the axis read tilted, every
+    // radius about it 0.005 u long. Re-take the direction from the OUTER
+    // ring's vertices alone, which are the same ring at both ends.
+    {
+      const radial = (p) => { const d = V(p).sub(c); const t = d.dot(axis); return Math.sqrt(Math.max(d.lengthSq() - t * t, 0)); };
+      const rOut = Math.max(...b.pts.map(radial));
+      const outer = b.pts.filter((p) => radial(p) > 0.8 * rOut);
+      const oA = new THREE.Vector3(), oB = new THREE.Vector3();
+      let mA = 0, mB = 0;
+      for (const p of outer) {
+        if (V(p).sub(c).dot(axis) >= 0) { oA.add(V(p)); mA++; } else { oB.add(V(p)); mB++; }
+      }
+      if (mA && mB) axis = oA.multiplyScalar(1 / mA).sub(oB.multiplyScalar(1 / mB)).normalize();
+    }
     // Axis POINT: the vertex centroid carries the same seam bias (measured
     // 0.104 u off-axis — the first cut of this read used it and recovered
     // r = 2.083 for a 1.979 bar), so the centre comes from a Kåsa circle
@@ -171,8 +191,12 @@ const res = await page.evaluate(async ({ T, rc }) => {
       return { t: d.dot(axis), a: d.dot(u1), b: d.dot(u2) };
     });
     const rRough = Math.max(...proj.map((p) => Math.hypot(p.a, p.b)));
-    // The cap-centre vertices are on the axis; the rings are at the radius.
-    const ring = proj.filter((p) => Math.hypot(p.a, p.b) > 0.5 * rRough);
+    // The OUTER ring only: since §280 the bar is a TUBE, and a Kåsa fit over
+    // two concentric rings is biased by the lathe's duplicated seam column
+    // (exact for one circle, not for two) — it read the wrap gap 0.007 mm
+    // short and the hole control 0.04 u off. The bore sits at 0.61 of the
+    // outer radius.
+    const ring = proj.filter((p) => Math.hypot(p.a, p.b) > 0.8 * rRough);
     let Saa = 0, Sab = 0, Sa = 0, Sbb = 0, Sb = 0, N = 0, Sar = 0, Sbr = 0, Sr = 0;
     for (const { a, b: bb } of ring) {
       const r2 = a * a + bb * bb;
@@ -193,13 +217,20 @@ const res = await page.evaluate(async ({ T, rc }) => {
     }
     const cx = -sol[0] / 2, cy = -sol[1] / 2;
     const centre = c.clone().addScaledVector(u1, cx).addScaledVector(u2, cy);
-    let h = 0, r = 0;
+    // The segment is centred on the vertices' AXIAL EXTENT, not their
+    // centroid: since §280 the bar is a lathe whose closed profile repeats a
+    // point, so its vertices crowd one end and the centroid sat 5.28 u along
+    // the axis — measured from there, the read segment ran 10.6 u past the
+    // tube's far end, into the lug.
+    let tLo = Infinity, tHi = -Infinity, r = 0;
     for (const p of b.pts) {
       const d = V(p).sub(centre);
       const t = d.dot(axis);
-      h = Math.max(h, Math.abs(t));
+      tLo = Math.min(tLo, t); tHi = Math.max(tHi, t);
       r = Math.max(r, Math.sqrt(Math.max(d.lengthSq() - t * t, 0)));
     }
+    centre.addScaledVector(axis, (tLo + tHi) / 2);
+    const h = (tHi - tLo) / 2;
     // §280: the tip pins are their own meshes, on the bar's axis past each
     // end — their radius read about the BAR's fitted axis, which is what
     // makes "the pin is coaxial with the tube" part of the read.

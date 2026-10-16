@@ -11192,26 +11192,35 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
       middleAsm.add(lug);
     }
     // The spring bar as it is made: a Ø1.5 TUBE between the facing walls and
-    // a Ø0.8 tip PIN at each end, sprung inside it, reaching into the drilled
-    // lug as deep as the lug less its edge round (the pin stops short of the
-    // outer face's round). Three parts, not one turned rod — read as one rod,
-    // `turning` judged a Ø0.8 bar 21.7 mm long (L/D 27), a part nobody turns
-    // because nobody makes it. Each pin abuts the tube's end face the way the
-    // tube abuts the lug, each body closed.
+    // a Ø0.8 tip PIN at each end, sprung inside it. The pin stands out into
+    // the drilled lug as deep as the lug less its edge round (it stops short
+    // of the outer face's round), and is guided in the tube's bore over the
+    // same length, which is the travel it must retract by to clear the lug
+    // when the bar is fitted. The bore is the pin plus CLEAR_MARGIN, the
+    // repo's one clearance; the spring between the pins is not modelled.
+    // Three parts, not one turned rod — read as one rod, `turning` judged a
+    // Ø0.8 bar 21.7 mm long (L/D 27), a part nobody turns because nobody
+    // makes it; a pin INSIDE a bore is read as the separate part it is.
     const bodyR = CASE_SPRING_BAR_D / 2, tipR = CASE_SPRING_BAR_TIP_D / 2;
+    const boreR = tipR + CLEAR_MARGIN;
     const hl = lugSpanInner / 2, tl = CASE_LUG_T - rc;
+    if (!(bodyR - boreR >= STOCK_MIN_U))
+      console.warn(`makeCase §280: the spring bar's tube wall ${(bodyR - boreR).toFixed(4)} is under §50's ${STOCK_MIN_U.toFixed(4)}`);
     const dir = { x: perp.x, y: perp.y };           // the strap direction, the bar's axis
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(bodyR, bodyR, lugSpanInner, 12), material);
+    const tubeGeo = new THREE.LatheGeometry([
+      new THREE.Vector2(boreR, -hl), new THREE.Vector2(bodyR, -hl),
+      new THREE.Vector2(bodyR, hl), new THREE.Vector2(boreR, hl), new THREE.Vector2(boreR, -hl)], 12);  // wound so the faces look out (signed volume > 0)
+    const bar = new THREE.Mesh(tubeGeo, material);
     bar.geometry.rotateZ(-Math.PI / 2);   // axis → X
     bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction
     bar.position.set(u.x * plan.uBar, u.y * plan.uBar, plan.zB);
     bar.name = 'caseSpringBar';
     middleAsm.add(bar);
     for (const s of [-1, 1]) {
-      const tip = new THREE.Mesh(new THREE.CylinderGeometry(tipR, tipR, tl, 12), material);
+      const tip = new THREE.Mesh(new THREE.CylinderGeometry(tipR, tipR, 2 * tl, 12), material);
       tip.geometry.rotateZ(-Math.PI / 2);
       tip.rotation.z = lugAz + Math.PI / 2;
-      const c = hl + tl / 2;
+      const c = hl;                                 // half in the lug, half guided in the tube
       tip.position.set(u.x * plan.uBar + dir.x * s * c, u.y * plan.uBar + dir.y * s * c, plan.zB);
       tip.name = 'caseSpringBarTip';
       middleAsm.add(tip);

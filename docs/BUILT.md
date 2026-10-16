@@ -38496,10 +38496,20 @@ extrude. `CASE_LUG_EDGE_R` (0.15 mm) is the one finish number (P4). It is
 priced in the section modulus and in the tear-out's shear planes.
 
 The spring bar is modelled as it is made: a Ø1.5 TUBE between the facing
-walls, and a separate Ø0.8 tip PIN at each end reaching into the drilled lug,
-as deep as the lug less its edge round. A first cut turned it as one rod, and
-`turning` failed it at L/D 27: a Ø0.8 bar 21.7 mm long, which nobody turns
-because nobody makes one.
+walls, bored to the pin plus `CLEAR_MARGIN`, and a separate Ø0.8 tip PIN at
+each end. Each pin stands out into the drilled lug as deep as the lug less its
+edge round, and is guided in the bore over the same length, which is the
+travel it must retract by to clear the lug when the bar is fitted. The spring
+between the pins is not modelled.
+
+The bar took two cuts to find:
+- **One turned rod.** `turning` failed it at L/D 27: a Ø0.8 bar 21.7 mm long,
+  which nobody turns because nobody makes one.
+- **A solid tube with the pins abutting its ends.** It failed the same way:
+  `turning` joins members that touch end to end into one piece of stock
+  (§234), which is right for a stepped arbor.
+- **The real shape.** A pin INSIDE a bore is read as the separate part it is
+  (the concentric rule), which is what a spring bar actually is.
 
 ### Instruments
 
@@ -38521,6 +38531,14 @@ Two measurement lessons are recorded in the probe:
 - **The tip pins are their own meshes.** Their radius is read about the
   tube's fitted axis, so "the pin is coaxial with the tube" is part of the read,
   and exactly two pins must be found on each bar.
+- **A hollow lathe biases the old axis fit two ways.** Its closed profile
+  repeats a point, so the vertices crowd one end, and the two ends no longer
+  share a seam bias. The axis came out tilted by enough to read every radius
+  0.005 u long, the wrap gap 0.004 mm short and the hole control 0.011 u off.
+  The direction and the circle fit now take the OUTER ring alone, which is the
+  same ring at both ends. The read segment is centred on the vertices' axial
+  extent, not their centroid. The reads returned to the plain cylinder's
+  values exactly.
 - **A drilled lug puts air on the bar's axis.** The control that used to read
   the body's abutment (≈ −bar radius) now reads the tip pin inside its hole
   and must find the drilled clearance.
