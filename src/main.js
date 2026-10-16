@@ -13154,6 +13154,26 @@ const FF_TICK_S = 2;                      // one fast-forward tick's span of sim
 const FF_SIM_RATE = FF_TICKS_PER_FRAME * FF_TICK_S * 60;
 // …and a frame is owed at most FRAME_STALL_MS of it (= tick()'s own 0.25 s clamp,
 // 675 ticks): a tab that was away resumes as one slow frame, not an unbounded burst.
+//
+// §284 — AND A LIVE FRAME RUNS ONLY THE TICKS THAT FIT ITS BUDGET. §258's rule
+// has no brake: a frame's ticks lengthen the frame, and the next frame is owed
+// its wall time — so once a tick costs more than 1/FF_SIM_RATE·FF_TICK_S
+// (0.74 ms), each frame owes more than the last until the 675-tick clamp holds
+// it. §246's driven balance took a tick to 1.4 ms (measured on the live loop
+// over SwiftShader), and from then on every fast-forward frame was the clamp:
+// 675 ticks, a block of a second and more, a posted task waiting 0.94 s
+// (median), and a rate set by the clamp rather than by FF_SIM_RATE. So the
+// live loop (frame()) also hands advanceFrame a budget, and a frame stops
+// ticking once its ticks have held
+// the thread FF_FRAME_BUDGET_MS — BREATHE_MS, the boot's own budget against
+// the platform's 50 ms long-task line, the margin being the frame's own render
+// and readouts (about 10 ms of script, measured). What a budget-cut frame does
+// not run is DROPPED, not carried: carrying it is the spiral. The rate is then
+// the lesser of FF_SIM_RATE and what the machine can tick, and the page stays
+// answerable either way. A harness frame passes no budget and runs the owed
+// ticks exactly as before, so every deterministic replay is unmoved.
+const FF_FRAME_BUDGET_MS = BREATHE_MS;
+let ffTickMsEma = 0;   // one tick's cost, smoothed over frames: lets a frame's FIRST tick know whether a second fits
 let _forkPull = NaN, _forkLift = NaN, _forkAt = null;   // §257 — tick()'s remembered yokeClutchAt
 let ffPoseDeferred = false;
 let MAINT_DET_RIDE = null, MAINT_DET_SEAT_TIP = null, MAINT_DET_PIV_R = 0;   // + the seated tip and the stud's radius, cock frame (the guard reads them)
@@ -54946,6 +54966,7 @@ function tick(t) {
       friction: flat ? BALANCE_DRIVE.friction.flat : BALANCE_DRIVE.friction.vertical,
       weight: balanceWeightTable(balancePosition),
       steps: fastForward ? BALANCE_FF_STEPS : undefined,
+      repeat: fastForward,   // §284: a whole period just integrated is counted again through the 2 s stride, not integrated again
     });
     recordBeat(driveState);
     // TODO 238 — a balance the train cannot start says so (BALANCE_DRIVE.selfStart):
@@ -57991,7 +58012,7 @@ refreshUnitOptions(); // …and rebuild the selector now that it is (the boot ca
 // frame() so the verification hook (__clock.advanceFrame) can run the guided
 // demo/tour deterministically: rAF is fully paused in a backgrounded
 // automation pane, so scripted behaviour cannot be observed through frame().
-function advanceFrame(realDt, wallDt = realDt) {
+function advanceFrame(realDt, wallDt = realDt, budgetMs = Infinity) {
   ticksThisFrame = 0; // §14 readout: how many tick() calls this frame costs
   if (!paused) {
     if (fastForward) {
@@ -57999,16 +58020,32 @@ function advanceFrame(realDt, wallDt = realDt) {
       // 45 a frame at 60 Hz — so the whole 30 h reserve pays off in about 20 s,
       // chain and reserve hand visibly moving, however long the frames take (§258).
       // Only the frame's last tick poses what is drawn (see ffPoseDeferred).
+      // A live frame also stops at its budget (§284): a tick is the LAST when the
+      // one after it would not fit, so the deferred poses are still posed by the
+      // tick that is drawn.
       const ffTicks = Math.max(FF_TICKS_PER_FRAME, Math.round((Math.min(wallDt, FRAME_STALL_MS / 1000) * FF_SIM_RATE) / FF_TICK_S));
+      const budgeted = budgetMs < Infinity;
+      const t0 = budgeted ? performance.now() : 0;
       try {
         for (let i = 0; i < ffTicks; i++) {
+          let last = i === ffTicks - 1;
+          if (!last && budgeted) {
+            const spent = performance.now() - t0;
+            const per = i > 0 ? spent / i : ffTickMsEma;
+            if (spent + 2 * per > budgetMs) last = true;
+          }
           simTime += FF_TICK_S;
-          ffPoseDeferred = i < ffTicks - 1;
+          ffPoseDeferred = !last;
           tick(simTime);
           ticksThisFrame++;
+          if (last) break;
         }
       } finally {
         ffPoseDeferred = false;
+      }
+      if (budgeted) {
+        const per = (performance.now() - t0) / ticksThisFrame;
+        ffTickMsEma = ffTickMsEma === 0 ? per : ffTickMsEma + (per - ffTickMsEma) * FRAME_EMA_ALPHA;
       }
       accumulator = 0;
       if (reserveShown <= 0.0005) fastForward = false; // ran flat — drop back to real time
@@ -58146,7 +58183,7 @@ function frame(now) {
   autoTierUpdate(now); // §14: Auto quality steps down while frames sustained miss vsync
 
   if (sweepHold === 0) {
-    advanceFrame(realDt, frameMs / 1000);   // sweep hold: geometry frozen, page alive; fast-forward is owed the frame's real wall time (§258)
+    advanceFrame(realDt, frameMs / 1000, FF_FRAME_BUDGET_MS);   // sweep hold: geometry frozen, page alive; fast-forward is owed the frame's real wall time (§258)
     // §238 — INSIDE the render, not beside it: the screen is allowed to go
     // only once a frame has actually been drawn under it.
     if (bootScreen) retireBootScreen();

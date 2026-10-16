@@ -38777,6 +38777,289 @@ Between ride samples the interpolated 8T grazes the teeth by at most 0.0165 mm
 (click) and 0.0312 mm (detent). This is reported, not gated, because it is the
 interpolation's chord across a tooth tip, not a seat.
 
+## §283 — LEGO column wheel demonstrated: a press animated through pawl, wheel, detent and lever, half-press included
+
+§219 tier three (b), after landing I. Landing I drew the LEGO alarm in three
+still poses (armed, ringing, off), each a rebuild. Nothing showed a press
+happening, and a press is what a column wheel is for. The LEGO feasibility note
+names the measurement: the wheel alternates on every full press and NEVER on a
+half one. On `technic.html` the alarm cell now presses itself, and press,
+half-press and a stroke slider take over.
+
+Everything here is MODELLED. Nothing is integrated and no force is weighed.
+Every rate is a DISPLAY rate: the pusher's (`PRESS_S` 0.9 s a stroke), the
+bands' (`RETURN_S` 0.7 s, `DROP_S` 0.25 s) and the hand on the hour axle
+(`HOUR_RIM_DEG_S` 90°/s on the rim, `HOUR_V_DEG_S` 15°/s off it). No going
+train drives the hour axle. The strikes ring at `TECHNIC_ALARM_STRIKE`'s POSED
+gap (0.42 s), the steel's stand-in.
+
+### One state, read through landing I's laws
+
+The state is the pusher's stroke `s` ∈ [0, 1] (the driver from its rest stop to
+its bank stop, `alarmStates`' 31.19°), where the wheel stands, the tooth the
+pawl drives, the disc, and the fly arbor. `columnPose` reads every body off it,
+and none by a second law:
+
+- **The driver** turns σ·s·stroke from its rest stop.
+- **The pawl** sits where landing H's ride (`pawlRideSteps`) puts it, at the
+  relative angle `pawlAt` seats it at. The ride's DROP is where its 8T falls
+  behind a tooth's face, and the face is what it locks against. It is
+  bisected on `seat()` to 22.83° along the free way from the seat at rest.
+  So the pawl seated at rest stands **7.17° of driver travel short of its
+  tooth** (`pickup`). A press first turns the driver that far with the wheel
+  standing (the pawl picking up a tooth), then drives the wheel. Across the
+  drop, the drawn seat carries each side on from its own two samples. Read
+  between samples, it would stand 5.76° down the tooth's face.
+- **The detent** rides the wheel (`followerModel.seat`). Let go, the wheel goes
+  where `detentSettle` says. `detentSettle` now takes its rests from a
+  provider, defaulting to `detentRests` read fresh. The press passes the same
+  rests read once and kept, so one law answers both.
+- **The lever** on the pins is `releaseStates`' own table, a degree at a time.
+  On a column rest the beak holds it where `leverRest` at the notch finds the
+  beak first. The lever's rest is the first of the two supports, as
+  `leverRest`'s own sweep takes it.
+- **The fly** stands where `lockPush` puts its vane against the lever (its beam
+  and four pins are the same turned by π). It runs at the POSED cadence where
+  `lockPush` finds the lever clear, until the lever reaches into its path
+  again and a vane comes round onto it. **The hammer** follows `strikeTrace`'s
+  table, and a strike is one of its falls.
+- **The trains** turn by their tooth counts (`trainAngles`): off the disc
+  through `RELEASE_CHAIN`, off the fly arbor through `STRIKE_CHAIN`.
+
+Let go, the wheel goes where the detent takes it:
+
+- **Back**, short of the near crest (14.20°). The pawl locks that way, so the
+  wheel returns with the driver.
+- **Forward into the next rest**, past the far crest (18.70°). The detent's
+  band carries it on, and the pawl rides back over a tooth.
+- **Neither**, between the two crests. It stands on the tooth's tip, and the
+  model does not say which way it falls. The hour is not read there.
+
+The brief asked for "released past the crest → steps". The module's own
+measurement (landing I) is that the 12T's tip carries two crests with a
+0.006 mm saddle between them. So a press COMMITS at the far crest, and the page
+says so.
+
+A full press turns the wheel 31.19 − 7.17 = 24.02°, past the far crest by
+5.33°, and the detent drops it 5.98° on into the next rest. A half press is
+aimed so the wheel stops `PRESS_MARGIN` (one LDU of arc at the mesh) short of
+the near crest, at 11.90°.
+
+After each press that settles at a rest, the hour comes round. The disc turns a
+whole turn from a quarter turn short of its notch, slowly through the V where
+the lever is off the rim. On a column the beak holds the lever at 11.94° (rotor
+A) or 12.66° (rotor B), the fly stays caught, and the alarm is silent. In a gap
+the lever follows the pins down: the fly is let go 8° of disc before the notch,
+and it rings until the rising lever catches a vane, 10 strikes at the display's
+rates. The POSED wind holds 28, so the display never needs a run-down it does
+not draw. The probe holds that.
+
+### What the ride found
+
+Landing I's `press` turns the wheel by the WHOLE stroke, taking the pawl as
+driving from the first degree. Read off the teeth, it drives only after the
+7.17° pick-up. Every full press still steps one rest and every half press none:
+both laws settle at the same rest from every rest, to 3.1e-11 rad. But the
+driver's window in `solveDriver` was reasoned without the pick-up. `press` is
+left as landing I wrote it, because its probe's controls are written against
+it, and the animated law is the one that includes the pick-up.
+
+### The page
+
+- **Buttons**: press, half-press, an auto toggle (the demonstration: press,
+  half press, press, half press, each followed by the hour; `?auto=0` starts
+  it off), and look at the column wheel. A **stroke slider** scrubs by hand:
+  moving it back is the finger easing off, so it lets the wheel go, and
+  releasing the slider lets the band return it. A press asked for while the
+  disc is off the rim waits for it.
+- **armed, ringing and off** are now states (`columnCommand`), not rebuilds.
+  The button lit is the state's mode. The cell is built once and posed every
+  frame.
+- **A phase line**: the pawl picking up a tooth / climbing to the crest / over
+  the near crest / committed / dropped into the next rest / let go short of the
+  crest / the hour comes round / lever on a column — silent / lever in a gap —
+  free: ringing / the hour passes. It shows on the panel, and in short in the
+  scene. A detail line gives the stroke, the wheel's travel against both
+  crests, the rest, the disc from its notch and the strikes.
+- **DISPLAY ONLY, said on the panel**: the members the phase is about glow; an
+  orange cap stands on the column under the lever's pin; and a marker on the
+  pin is green over a gap. In the close-up the frame is drawn as glass and the
+  other cells are hidden. The LDraw placements stay the model, and the `.ldr`
+  (now written for the state on the screen) and the probe read only them.
+- **`?focus=alarm`** and the button frame the camera DOWN the column wheel's
+  axis, from the driver's side, through a 16° lens (less perspective), on a
+  circle out to the driver's ends and the pin. The six columns read as a ring.
+
+Lessons from §282 applied: the label's canvas is sized to its text and stands
+outside the columns; the close-up is framed on what the reading needs; and the
+cell starts pressing on the first frame. The model is read during the build:
+the pawl's ride and the pick-up bisection take about 1.4 s, and the rests and
+holds no press has needed yet are read between frames. A headless run at
+1280×800 under SwiftShader pressed, half-pressed and scrubbed. Its phase line
+passed through pickup, climb, crest, committed, dropped, back, tip, hour,
+silent, ringing and passing, with no console errors (the GL ReadPixels
+performance notes the screenshots cause aside).
+
+`technic.html` is on `battery.yml`'s `paths-ignore`, but `src/technic-alarm.js`
+and `tools/` are not, so a PR carrying this landing runs the battery. The
+battery cannot see the change: nothing on `index.html`'s module graph imports
+`src/technic-*.js`. The battery was not run locally.
+
+### The instrument
+
+`tools/probe-technic-column-wheel.mjs` (acceptance, pure Node, about 40 s):
+
+```
+RIDE: 48 samples over a 12T pitch; 47 are seat() to 1e-9 rad, 2 on the tooth's tip rest on another contact of its plateau (sample 29 by 0.05°, sample 34 by 0.11°), reported
+DROP: the pawl drops 11.99° behind a tooth's face 22.83° along its free way from its seat at rest (bisected on seat())
+ACROSS THE DROP: the drawn seat, each side carried on from its own samples, stands within 0.14° of seat() (read between the samples it would stand 5.76° off the face)
+PICK-UP: from the driver's rest the pawl stands 7.17° of driver travel short of its tooth's face, so a full press (31.19°) turns the wheel 24.02°
+WHILE IT DRIVES: over 309 of 400 stroke samples the wheel turns, and at each the pawl stands at its tooth's face to 9.4e-16 rad
+s = 0: every body at landing I's armed angle to 2.7e-15 rad; the .ldr byte for byte the armed build's
+the off and ringing poses at alarmStates' to 2.7e-15 and 1.1e-14 rad (the fly to its half turn); the pawl to 2.9e-7 and 0.0e+0
+FULL: from every rest one step (0→1 … 11→12); HALF (the wheel 11.90°, an LDU of arc at the mesh short of the near crest): every one falls back
+landing I's press law settles at the same rest every time (to 3.1e-11 rad); it turns the wheel 31.19°, the ride 24.02°: the pick-up it leaves out is 7.17°, and the far crest is still passed by 5.33°
+CRESTS (±0.06°): let go 14.20° − ε → back to rest 0; + ε → on the tooth's tip, at no rest; far crest 18.70° − ε → on the tip; + ε → the next rest
+THE TABLE: at 153 disc angles through the V (a gap rest, a column of each rotor) the lever stands where leverRest puts it, to 1.1e-14 rad
+AT THE NOTCH: 0:free 1:held 2:free … 11:held; holds 11.94°/12.66° (rotor A/B), the pins' drop 29.78°
+1:silent 2:rang 10 3:silent 4:rang 10 (half 4:rang 10) 5:silent … 11:silent 12:rang 10
+twelve presses come round: the wheel 0.0e+0 rad from a whole turn on; every ring at most 10 strikes, short of the POSED wind's 28; 10.6 s a cycle at speed 1
+press: largest steps wheel 0.17→0.09°, driver 0.22→0.11°, detent 0.06→0.03°, lever 0.00→0.00°, pawl 0.43→0.22°; the pawl falls 1
+half: largest steps wheel 0.22→0.11°, driver 0.22→0.11°, detent 0.06→0.03°, lever 0.00→0.00°, pawl 0.36→0.18°; the pawl falls 0
+16 strikes per barrel turn counted through the state (the module: 16); per wind the POSED table's 28, at the POSED 0.42 s a strike
+TRAINS: at 53 poses through a ringing cycle every mesh interleaved, deepest -0.069 mm (≤ 0.05)
+```
+
+Seven controls are each seen to fail:
+
+- the pawl taken as driving from the first degree (it drives with no tooth's
+  face under it);
+- a detent with no crest (a half press steps);
+- a bank stop short of the far crest (a full press stands on the tip);
+- the wheel half a column pitch off its rests (the readings swap);
+- the lever read off the pins alone (a column rings);
+- a drop made instantaneous (the wheel jumps);
+- a train turned at the wrong ratio (out of mesh).
+
+`probe-technic-alarm.mjs` prints the same output as before the change, line for
+line. The armed, ringing and off builds' `.ldr` are unchanged.
+
+### What it does not claim, and what was not done
+
+- It does not claim which way a wheel let go on the tooth's tip falls.
+- The lever, rising as the hour passes, pushes a caught vane back against the
+  train. The geometry keeps the vane in contact, and the hour axle is turned by
+  hand. No force is weighed.
+- Landing I's CLEAR sweep was not re-run at the in-between poses. It holds the
+  three states.
+- `solveDriver`'s window was not re-derived with the pick-up. The stroke still
+  passes the far crest by 5.33° against a margin of 2.29°.
+
+## §284 — Fast-forward: a budgeted frame and a repeated balance period
+
+§258 made fast-forward a rate: a frame runs the ticks its wall time is owed. It
+measured that on a tick costing about 0.22 ms. §246 tier two then drove the
+balance, and a 2 s fast-forward tick now integrates five periods of it. Profiled
+on the live loop (headless Chromium over SwiftShader), a tick was **1.4 ms**,
+three-quarters of it `balance-drive.js` `step`. That is past the 0.74 ms at
+which §258's rule stops converging. Each frame's ticks lengthen the frame, the
+next frame is owed more, and every frame sat on the 675-tick clamp. The result
+was a 1.1 s block per frame, a page that took a second to answer anything, and
+a rate set by the clamp rather than by `FF_SIM_RATE`. Three changes.
+
+**A live frame stops at a budget.** `frame()` passes `FF_FRAME_BUDGET_MS` to
+`advanceFrame`, and a fast-forward frame stops ticking once its ticks have held
+the thread that long. The budget is `BREATHE_MS` (40 ms): the boot's own budget
+against the platform's 50 ms long-task line, the margin being the frame's render
+and readouts (about 10 ms of script, measured). A tick is marked LAST when the
+one after it would not fit, judged on the frame's own mean tick cost (an EMA
+across frames for the first tick), so the deferred poses of §255 and §256 are
+still posed by the tick that is drawn. Ticks a budget-cut frame does not run are
+DROPPED, not carried, because carrying them is the spiral. The rate is the
+lesser of `FF_SIM_RATE` and what the machine can tick, and the page stays
+answerable either way. A harness frame (`advanceFrame(1/60)`, or
+`__clock.advanceFrame` with two arguments) passes no budget and runs exactly the
+ticks it ran before, so every deterministic replay is unmoved.
+
+**The balance repeats a whole period it has integrated.** `step` takes `repeat`
+(the tick passes `fastForward`). Once the integrator has carried the balance
+through ONE WHOLE PERIOD, the state at its end is the state the period started
+from, bar n. A whole period here means a turning point to the next turning point
+on the same side, with the escapement counting exactly its two beats between
+them, no knock, no brake, the train driving, and one env (pivot friction, weight
+table, sub-step). So the next whole periods the stride has room for are COUNTED:
+n advances two beats a period, the last unlocking's instant `entryT` advances by
+the period (so the live rate readout reads the measured cycle), and the period's
+measured length comes off what is left. The rest of the stride is integrated
+from the turn as before.
+
+The two turns are kept on the state (`S.rep`), so the period may straddle a tick
+boundary. What makes it repeatable is that every instant of it was integrated,
+not where the boundary fell. A repeat restarts the record, so a counted period
+is never the source of another, and a call that cannot repeat (1×, the brake on,
+the train run down, the balance stuck) clears it. In a run of fast-forward
+strides one period in five is integrated. Counted: 522 RK4 sub-steps a stride
+against 2,618. What a repeat freezes is the swing's own period-to-period change
+over its length, so a settling swing settles over the integrated part of each
+stride. That is a slower settle in simulated time, and fast-forward has
+simulated time to spare. No tolerance was introduced: nothing is compared
+against a threshold to decide that a cycle "has settled".
+
+**The setting lever's tilt is remembered on its exact argument** (one entry,
+`Object.is`, §257's rule): `slLeverTiltAt` is a 64-step bisection that a tick
+asks three times at one pull, and the pull never moves through a fast-forward
+stride. It was the largest piece of a tick after the balance. One entry cannot
+grow, which was §266's objection to a leaf memo keyed on every pull. The
+sentinel is an object, so no argument (NaN included) is ever mistaken for a hit.
+
+| live loop, full reserve to flat (same container, one process, HEAD then tree) | HEAD | this change |
+|---|---|---|
+| wall to drain | 78.7 s | 80.2 s |
+| frames drawn | 85 | 391 |
+| ticks a frame (median) | 675 (the clamp) | 147 |
+| longest main-thread block | 1,472 ms | 275 ms |
+| a posted task's wait, median / p95 / max | 939 / 1,049 / 1,473 ms | 205 / 232 / 277 ms |
+
+`tools/probe-ff-live.mjs --ref DIR` produced the table. The wall did not get
+shorter *here*, and the reason is the container. Every frame on its software
+rasteriser is a ~160 ms draw, which no tick change touches. HEAD amortised that
+draw over 675 ticks by freezing the page for a second at a time. The tree pays
+for it on every one of 391 frames and keeps the page answerable. A tick is now
+about 0.27 ms (40 ms of budget over 147 ticks) against 1.4 ms. On a machine whose
+draw fits a 60 Hz frame, 45 ticks fit with room to spare, so the frame floor
+holds and the rate is §258's ≈5400× again. That figure is derived from the tick
+cost, not measured: this container has no GPU.
+
+The probe's first instrument for "answerable" was a CDP key pump (§239's). It
+**wedged the harness**, HEAD included: `Input.dispatchKeyEvent` waits on the
+renderer's ack, and mid-fast-forward the page stopped answering CDP at all. The
+first HEAD reading (285 s to drain) was taken under it and is not comparable.
+The probe now posts a `MessageChannel` task every 100 ms and records how long
+each waited for the thread.
+
+**Held.**
+- `tools/probe-246-driven-rate.mjs` gained two rows per position (CL, DU). The
+  repeated 2 s stride reads the integrated stride's rate to 0.02 s/day and its
+  swing to 0.05° (CL −13.70 against −13.68 s/day, DU −6.08 against −6.08), and
+  the repeated stride is measurably cheaper. That second row is the control that
+  the repeat engaged, which a pass by never repeating would otherwise buy. All
+  26 rows PASS.
+- The 1× path is untouched by construction: `repeat` is false there and the
+  record is cleared on every call. `slLeverTiltAt` returns the solve's own
+  double for its own argument. §257's focused battery (`node
+  tools/ci-battery.mjs --shards 3 --no-incremental --only
+  alarmHandoffs,restoring,transmits,transfers,equalisation,meshPhase,maintDetentHandoff`)
+  is 19/19 on this tree and on main, with the same fingerprint (2781207164),
+  and every one of the 35 check payloads in the two `--report` files has an
+  identical `result` (only the `ms` timings differ). The full battery is CI's.
+
+**Left, named.** That fast-forward's 40 sub-steps at a 2 s stride read the rate
+0.4 s/day off the 400-sub-step reference (CL −13.68 against −13.28) is §246's,
+not this change's: the repeat matches the integrated stride it replaces, and the
+convergence row is measured at 1/240 s strides. The formatted note "≈5400× — the
+whole reserve in ~20 s" is the rate on a machine whose frames fit, and it does
+not say so.
+
 ## §285 — LEGO fusee: a third step surveyed and refused, the centre pinion built
 
 §219 tier three (b), after §282. The owner asked to "add another gear to the

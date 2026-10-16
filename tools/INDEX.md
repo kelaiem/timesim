@@ -4,8 +4,8 @@
 
 # The instruments
 
-322 scripts. **209 are ACCEPTANCE tests** — they decide and exit non-zero.
-**113 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+324 scripts. **210 are ACCEPTANCE tests** — they decide and exit non-zero.
+**114 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -289,6 +289,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-direction-guards.mjs` |  | acceptance | WHICH REVERSALS WOULD THE BUILD CATCH? — the safety net TODO 115 needed, and now the one that keeps its landing honest. |
 | `probe-drum-azimuth.mjs` |  | report | Where else can the MAINSPRING DRUM stand? |
 | `probe-feeler-travel.mjs` |  | acceptance | IF THE FEELER RIDES THE HOUR, HAS IT ANYWHERE TO GO? |
+| `probe-ff-live.mjs` |  | report | What fast-forward costs the VIEWER, measured on the live requestAnimationFrame loop (§258's footing, not advanceFrame in a loop): fast-forward on from a full reserve, wall clock until the reserve reads flat, and beside it what the page felt like while it ran — the longest main-thread block (long tasks), the gaps between drawn frames, and how long a posted task waited for the thread. A REPORT: it prints and exits 0. `--ref DIR` serves every DIR/<name>.js in place of src/<name>.js (e.g. `git show <base>:src/main.js > DIR/main.js` for each file a change touches), so two trees are compared in one run on one machine, alternating when `--runs` is more than one. |
 | `probe-fork-blank.mjs` |  | acceptance | TODO 98 — is the pallet fork ONE piece of metal, and is it one thickness? A Swiss lever is a single blank: boss, both pallet arms, the lever and the fork end are cut in one outline and lapped to one thickness, with only the ruby stones and the guard dart separate. This REPORTS what the movement actually builds — the unit's steel members, the z-height of each, the joint steps between them, the two arms' symmetry, and the one thing the eye cannot see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork body top") matches the fork's real reach. |
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
@@ -319,6 +320,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-technic-alarm.mjs` |  | acceptance | DOES THE LEGO ALARM SWITCH ON AND OFF ON EVERY FULL PRESS AND NEVER ON A HALF ONE, DROP ITS RELEASE AT THE NOTCH, AND STRIKE FOUR TIMES A TURN OF ITS FLY? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing I (src/technic-alarm.js). |
 | `probe-technic-build.mjs` |  | acceptance | IS THE LEGO BUILD OF THE TECHNIC FORK ASSEMBLED — every part seated, every axle through its holes, every pair of teeth meshed? Acceptance, pure Node, no browser, no network; exits non-zero on any failed row. |
+| `probe-technic-column-wheel.mjs` |  | acceptance | DOES THE LEGO COLUMN WHEEL, PRESSED, STEP EXACTLY ONE REST ON A FULL PRESS AND NONE ON A HALF ONE, AND DOES THE LEVER READ IT — HELD ON A COLUMN, FREE IN A GAP? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §283 (src/technic-alarm.js, the press technic.html animates). |
 | `probe-technic-frame.mjs` |  | acceptance | DOES THE TECHNIC FORK'S FRAME HOLD ITS GEARS WITHOUT ANY PART FOULING ANOTHER? Acceptance, pure Node, no browser; exits non-zero on any failed row. |
 | `probe-technic-fusee-loop.mjs` |  | acceptance | DOES THE LEGO FUSEE'S LOOP RUN DOWN AND WIND BACK BY THE MODULE'S OWN LAWS — the cord off the cone a step at a time and onto the barrel, the two turning at the step's ratio, the maintaining power carrying the great wheel while it is wound, and the torque readout the solve's own level product? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §282 (src/technic-fusee.js, the loop technic.html runs). |
 | `probe-technic-fusee.mjs` |  | acceptance | DOES THE LEGO FUSEE LEVEL ITS SPRING AS WELL AS A STAIRCASE CAN, AND DOES ITS MAINTAINING POWER DRIVE THE GREAT WHEEL THE RIGHT WAY WHILE IT IS WOUND? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing H (src/technic-fusee.js). |
