@@ -38778,6 +38778,33 @@ does the same. The panel carries:
   read off the solve: the bare spring 51.6%, after the cone 40.1%. All of it is
   labelled as a POSED law.
 
+A review of the first push at 1280×800 under SwiftShader found the loop was not
+yet obvious, for four reasons, and each was fixed:
+
+- **The string was invisible.** LEGO's braid is 1.2 mm and black, and at a
+  framing that shows the module it cannot be seen. An orange tube now runs
+  along the same `cordPath` at a DISPLAY radius of 1.1 mm. It is a highlighter
+  over the model's own cord, not a part: the LDraw placements stay the model,
+  and the `.ldr` and the probes read only them. The step the cord is on is lit
+  in the same colour (both steps while it crosses). The step is matched by part
+  AND station along the axle, because the knob is the same 4185a wheel as the
+  base step and carries no cord.
+- **The label was cut and covered the gears.** A sprite's canvas is now sized
+  to its measured text, at 6 mm a line for this cell. Both labels stand behind
+  and above the module, where the close-up leaves them clear of the parts.
+- **The close-up was too wide.** It fitted the module's bounding sphere in the
+  narrower visible angle, which leaves a flat, wide module about a quarter of
+  the view. It now frames the moving bodies alone at `FOCUS_FILL` = 0.85 of
+  that distance, read off the screenshots as the closest that keeps the cone,
+  barrel and maintaining work in view.
+- **Start-up sat on "measuring" for 24 s.** The loop now starts on the first
+  frame, with each pawl provisionally at fuseeBuild's seat (the panel says
+  so). The measured rides replace those seats when they arrive, and the state
+  is kept. The ride arithmetic had been given a fixed 12 ms slice per frame,
+  which under software GL (a frame of about 250 ms) took 46 s. It now takes
+  half the last frame's interval, so it costs a fixed share of each frame, and
+  the rides arrive 2.2–3.6 s after the loop starts on the same host.
+
 The speed slider drives it. `technic.html` is on `battery.yml`'s
 `paths-ignore`, but `src/technic-fusee.js` and `tools/` are not, so a PR
 carrying this landing runs the battery. The battery cannot see the change:
