@@ -38471,6 +38471,14 @@ radius. What the slope buys is the bar's height.
 deleted. `CASE_LUG_REACH` is now `CASE_BAR_REACH + CASE_LUG_HOLE_D/2 +
 CASE_LUG_TIP_WALL`.
 
+> **Superseded in part by TODO 262 (2026-10-16).** The lug is now sized to the
+> WEAKEST alloy the case may be cut from (Pt950, provisional 224.8 MPa), because
+> the alloy is a finish and cannot move geometry. At that yield the sloped root
+> above could not fit the band's wall at any width. The root now leaves the band
+> LEVEL and reaches the bar through an S. W is 4.046 mm, lug-to-lug 47.515 mm,
+> and the bar sits 2.023 mm above the case back. The record is TODO 262 in
+> `TODO.md`; the paragraphs above describe the lug as §280 shipped it.
+
 ### The solid: `makeRoundedSlab` (`geometry.js`), not an ExtrudeGeometry bevel
 
 The first cut extruded the outline with three.js's bevel (offset −size, so the

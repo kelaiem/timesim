@@ -34300,28 +34300,71 @@ the rollers at the flat), then re-run the helix solve at the drive station
 `tools/probe-236-release-run.mjs`. The 'alarm release run' line spec's turn and
 helix rows re-derive from the build; the deliver envelope must still hold.
 
-## 262. Case lugs are sized for steel; the gold and platinum cases reuse the steel section
+## 262. Case lugs are sized for steel; the gold and platinum cases reuse the steel section — DONE
 
-Found by §280. `caseLugPlan` (layout.js) solves the lug's side height W so
-the root carries `CASE_LUG_LOAD_N` (ISO 6425's 200 N, half per lug) at
-`CASE_LUG_SIGMA_Y_PA`, 316L's typical annealed yield, 290 MPa. That is
-the right metal for the default case. But §203's alloy picker also cuts
-the case in 18K yellow gold, 18K white gold and Pt950 (`ALLOY_STOCK`), and
-the lugs keep the steel section in all four. So the picture claims a lug
-the load arithmetic was never run for.
+Found by §280. `caseLugPlan` sized the lug's side height W for 316L only (its
+typical annealed 290 MPa), while §203's alloy pick also cuts the case in 18K
+yellow gold, 18K palladium-white gold and Pt950, all with the steel section.
 
-The direction of the error is not known without the figures: annealed 18K
-golds and Pt950Ru sit in roughly the same yield range as annealed 316L, but
-each by its own amount. The weld anneals the root in every alloy, so the
-annealed figure is the right one in each case.
+**The fix path this item proposed could not be taken.** It said to pass the
+picked alloy's yield into the plan and re-solve W per alloy. But the alloy is a
+FINISH (`aesthetics.materials.caseMetal.alloy`), live and share-safe, and the
+`aestheticsShareSafe` gate holds that no finish moves geometry. So the lug is
+sized ONCE, to the weakest annealed yield among `ALLOY_STOCK`'s stocks, and is
+then true for whichever alloy the owner picks.
 
-**Fix path.**
-1. Add a yield band per `STOCK` row a case can be cut from, with its source,
-   on `CASE_STEEL_SIGMA_Y_BAND`'s pattern.
-2. Pass the picked alloy's yield into `caseLugPlan`, so W re-solves per alloy.
-   The alloy pick is reload-tier, so there is one build per alloy, and the
-   fingerprint already varies with it.
-3. Extend `tools/probe-lug-geom.mjs`'s load rows to read the alloy the case
-   was built in.
+**The yields, in `CASE_ALLOY_SIGMA_Y`** (keyed by STOCK, held against
+`ALLOY_STOCK` at boot). The precious rows are marked PROVISIONAL: the build
+environment's network policy refused every supplier's technical sheet, so each
+row says exactly what it is, and a measured sheet replaces it with no code
+change.
 
-Until then, the record says "sized for steel".
+| stock | design yield | what it is |
+|---|---|---|
+| steel | 290 MPa | 316L annealed, typical (A240 minimum 170 MPa) — §280's owner pick |
+| gold18k | 269 MPa | low end of 269–330 MPa quoted on 750 yellow master-alloy sheets; not confirmed annealed |
+| whiteGold18k | 241.5 MPa | an ESTIMATE: no Rp0.2 found; 140 HV annealed scaled from the yellow sheet's 276 MPa at 160 HV (yield ∝ hardness within a family) |
+| platinum950 | 224.8 MPa | 32.6 ksi AS-CAST (Techform, alloy attribution unclear); annealed 120–130 HV; no annealed figure found |
+
+Platinum governs.
+
+**At 224.8 MPa §280's lug did not fit the band, at any width.** W grows to
+4.05 mm, and a SLOPED root's footprint on the wall is W/cos α plus a long
+fillet in its acute lower corner: the weld feet overran the band's 7.2 mm
+outer wall by 0.47 mm. Widening the lug (T) made it worse past 1.3 mm,
+because a wider lug stands farther off the pair axis, where the round band
+falls away faster and the fillets (surfIn − surfOut) grow. Measured at
+T 1.0: 270 MPa fits (0.130 mm spare) and 250 MPa is the edge.
+
+**So the root was redesigned (owner's call, 2026-10-16).** `caseLugPlan`
+now leaves the band LEVEL, so its footprint is W plus two fillets. It sits as
+far toward the wrist as the wall carries it, one §50 sheet floor of band metal
+beyond the lower weld foot, which gives the shallowest drop. It then reaches
+the bar through an S: an arc down, a straight, an arc back level at the end's
+centre. Each arc's inside edge is the weld fillet's radius, so every concave
+corner of the lug is one radius (R = W/2 + rf). The bar's station, the
+flush-with-the-back rule, the drilled tip and the end round are unchanged.
+
+| quantity | §280 (steel only) | TODO 262 (all four alloys) |
+|---|---|---|
+| design yield | 290 MPa (steel) | 224.8 MPa (platinum950) |
+| W (side height) | 3.565 mm | 4.046 mm |
+| tip wall (tear-out) | 0.427 mm | 0.550 mm |
+| lug-to-lug | 47.267 mm | 47.515 mm |
+| bar above the case back | 1.783 mm | 2.023 mm |
+| root | sloped 44.5°, 0.238 mm spare on the wall | level, S at 35.3°, 0.120 mm (one sheet floor) |
+| root stress / yield | steel 1.000 | steel 0.775, yellow 0.836, white 0.931, platinum 1.000 |
+
+The cost of honesty across alloys is a lug 0.48 mm taller from the side, a
+bar 0.24 mm higher off the wrist and lug-to-lug 0.25 mm longer. Steel's
+guaranteed minimum (170 MPa) now reads 1.32× rather than 1.71×.
+
+`tools/probe-lug-geom.mjs` holds every alloy's row under its yield (a LOAD FAIL
+names the alloy), prints each margin and which alloy governs, and reports the
+weld feet's spare on the wall. `probe-261-height-ledger` passes unchanged:
+cased depth 11.366 mm, the lug flush with the back.
+
+**What remains provisional is the data, not the method.** When annealed Rp0.2
+figures for the three precious alloys can be read from their suppliers'
+sheets, replace the three rows. The lug re-solves with no code change, and
+the probe says which alloy governs.
