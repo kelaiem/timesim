@@ -47,6 +47,19 @@
   default, because the loop is the cell's whole demonstration; off draws the
   landing H build at full wind. ?focus=fusee opens on the fusee, ?loop=0 with
   the loop off. tools/probe-technic-fusee-loop.mjs holds it.
+
+  BUILT §283 — THE COLUMN WHEEL, PRESSED. The alarm cell no longer stands in
+  three still poses: it is built once and posed from one state (the pusher's
+  stroke, the wheel, the disc, the fly) through src/technic-alarm.js' laws
+  (columnAdvance, columnPose). A press drives the driver; the pawl picks up a
+  tooth and turns the wheel; the detent climbs to its crest and, past the far
+  one, drops the wheel into the next rest; a half press falls back. Then the
+  hour comes round: the lever on a column is held (silent), in a gap it drops
+  and frees the fly, and the hammer strikes at the POSED cadence. press,
+  half-press and a stroke slider drive it; it runs a demonstration by itself
+  until one of them is used (?auto=0 starts it off). armed, ringing and off set
+  the state. ?focus=alarm opens down the column wheel's axis. Every rate is a
+  display rate; tools/probe-technic-column-wheel.mjs holds it.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -67,6 +80,10 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
 /* §282: the fusee loop's readout — a phase line and two torque bars */
 .fphase{margin:6px 0 4px;padding:5px 8px;border-radius:5px;background:#272b33;color:var(--ink);font-weight:600}
 .fphase[data-phase="winding"]{background:#3b3324} .fphase[data-phase="full"]{background:#243b2c}
+/* §283: the column wheel's phase line */
+.fphase[data-phase="crest"],.fphase[data-phase="committed"]{background:#3b3324}
+.fphase[data-phase="dropped"],.fphase[data-phase="ringing"],.fphase[data-phase="armed"]{background:#243b2c}
+.fphase[data-phase="silent"],.fphase[data-phase="off"],.fphase[data-phase="tip"],.fphase[data-phase="back"]{background:#3b2426}
 .fbar{display:grid;grid-template-columns:7.5em 1fr 4em;gap:6px;align-items:center;margin:3px 0;color:var(--dim)}
 .fbar .track{display:block;height:9px;background:#272b33;border-radius:4px;overflow:hidden}
 .fbar .fill{display:block;height:100%;width:0;background:#9fb6d9}
@@ -188,8 +205,18 @@ canvas{display:block;touch-action:none}
   lift the hammer, which falls onto a brick: no LEGO part rings. The governor is
   a <b>fly</b>, two beams that the air brakes. It is a different mechanism from
   the movement's anchor, and it has no period. So the cadence and the strikes
-  per wind are posed until a band is measured; the bands are drawn posed, and
-  the build is shown armed, ringing or off.</p>
+  per wind are posed until a band is measured, and the bands are drawn posed.</p>
+  <p>The alarm cell <b>presses itself</b>: a full press, a half press, a full
+  press, a half press, each followed by the hour coming round, so the lever
+  reads the wheel. <b>press</b>, <b>half-press</b> and the stroke slider take
+  over. The pawl first turns with the driver until it meets a tooth's face, then
+  drives the wheel; the detent climbs the tooth to its crest. Let go short of
+  the crest, the wheel falls back with the pawl; past the far crest, the detent
+  drops it into the next rest; between the two it stands on the tooth's tip,
+  where the model does not say which way it falls. At the hour a column under
+  the lever's pin holds the lever, and the alarm stays silent; a gap lets it
+  drop, the fly runs and the hammer strikes. It is modelled, not simulated:
+  every angle is read off the parts, and every speed is a display rate.</p>
   <div class="gen" id="amodes"></div>
   <div id="log"></div>
 </div>
@@ -201,7 +228,8 @@ import { frameFork, frameKeyless } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild, cordPath, cordPlacements, fuseeLoopModel, loopStart, loopAdvance, loopPose,
          loopPhaseLine, loopRideSpecs, pawlRideSteps, LOOP_RUN_S } from './src/technic-fusee.js';
-import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn } from './src/technic-alarm.js';
+import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn, ALARM_Y, ALARM_DIM_MM, TECHNIC_ALARM, alarmShafts,
+         columnModel, columnWarmSteps, columnStart, columnAdvance, columnCommand, columnPose, columnPhase, trainAngles } from './src/technic-alarm.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -272,20 +300,31 @@ let legoShafts = [];
 // gear's where they are interleaved, so a shift with the stem turning is not
 // a thing this page claims.
 let keylessMode = 'wind', keylessAngle = 0, keylessBuild = null, fuseeBuildNow = null;
-// THE ALARM'S STATE: armed, ringing or off. Each is a pose the module's laws
-// solve (alarmStates); switching rebuilds the cell at that pose.
-let alarmMode = 'armed', alarmFrame = null, alarmStatesNow = null, alarmBuildNow = null, alarmBand = null;
-function setAlarmMode(mode) {
-  alarmMode = mode;
-  for (const b of document.querySelectorAll('#amodes button')) b.dataset.state = b.dataset.mode === mode ? 'on' : 'off';
-  if (!alarmBand || !alarmStatesNow) return;
-  legoShafts = legoShafts.filter((s) => !s.alarm);
-  for (const o of [...alarmBand.children]) if (!o.isSprite) alarmBand.remove(o);
-  alarmBuildNow = alarmBuild(alarmFrame, lib, alarmStatesNow[mode]);
-  for (const sh of buildLego(alarmBuildNow, alarmBand)) legoShafts.push({ ...sh, alarm: true });
-  const a = document.getElementById('aldr');
-  if (a) { URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(alarmBuildNow)], { type: 'text/plain' })); a.download = `alarm-${mode}.ldr`; }
+// THE ALARM'S STATE (§283): one state — the pusher's stroke, the wheel, the
+// disc, the fly — advanced by src/technic-alarm.js (columnAdvance) and read
+// through its laws (columnPose). armed, ringing and off are three of its states
+// (columnCommand), not three rebuilds: the cell is built once and posed.
+let alarmFrame = null, alarmStatesNow = null, alarmModel = null, alarmSt = null, alarmView = null, alarmBand = null;
+let alarmAuto = new URLSearchParams(location.search).get('auto') !== '0', alarmQueued = null, alarmIdleS = 0, alarmAutoI = 0;
+// the demonstration the page runs by itself: a press (on → off), a half press
+// (nothing changes), a press (off → on), a half press — each followed by the hour
+const ALARM_AUTO = ['press', 'half', 'press', 'half'];
+// display: the pause at rest between two of them, seconds at speed 1
+const ALARM_AUTO_GAP_S = 0.8;
+function alarmDo(cmd, arg) {
+  if (!alarmModel) return false;
+  const next = columnCommand(alarmModel, alarmSt, cmd, arg);
+  if (next) { alarmSt = next; alarmIdleS = 0; return true; }
+  if (cmd === 'press' || cmd === 'half') alarmQueued = cmd;     // the disc is off the rim: pressed when it is back
+  return false;
 }
+function setAlarmAuto(on) {
+  alarmAuto = on;
+  const b = document.getElementById('aauto');
+  if (b) { b.dataset.state = on ? 'on' : 'off'; b.textContent = on ? 'auto: on' : 'auto: off'; }
+}
+// the three still poses are states now; a click stops the demonstration
+function setAlarmMode(mode) { setAlarmAuto(false); alarmDo(mode); }
 function setKeylessMode(mode) {
   keylessMode = mode; keylessAngle = 0;
   for (const s of legoShafts) for (const sl of s.sliders) {
@@ -468,6 +507,7 @@ const FOCUS_FILL = 0.85;
 // The fusee close up: the camera on its moving bodies (not the cell's
 // baseplate), and the panel scrolled to its row, where the phase and the bars are.
 function focusFusee() {
+  alarmGlass(false);
   scene.updateMatrixWorld(true);                                  // build-time: the groups have no world matrices yet
   const box = new THREE.Box3();
   for (const s of legoShafts) if (s.fusee) box.expandByObject(s.rotor);
@@ -476,7 +516,7 @@ function focusFusee() {
 }
 // The camera framed on an object: keeps the view's direction and backs off
 // until its bounding sphere fits what the panel leaves visible.
-function frameOn(obj, fill = 1) {
+function frameOn(obj, fill = 1, dirIn = null) {
   const box = obj.isBox3 ? obj : new THREE.Box3().setFromObject(obj), c = box.getCenter(new THREE.Vector3());
   controls.target.copy(c);
   // FRAMED TO FIT what the panel leaves visible: the camera keeps the view's
@@ -493,7 +533,7 @@ function frameOn(obj, fill = 1) {
   const half = Math.atan(tv * Math.min(visW, visH) / innerHeight);
   const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
   const dist = fill * radius / Math.sin(half);
-  const dir = new THREE.Vector3(-0.2, 0.8, 0.9);
+  const dir = dirIn ? dirIn.clone() : new THREE.Vector3(-0.2, 0.8, 0.9);
   cam.position.copy(c).addScaledVector(dir.normalize(), dist);
   // the far plane past the sphere's far side wherever the fit put the camera,
   // with room to zoom out four times as far (the orbit controls' wheel)
@@ -501,8 +541,163 @@ function frameOn(obj, fill = 1) {
   controls.update();
 }
 
+// --- §283: the column wheel, pressed --------------------------------------
+// DISPLAY ONLY, all of it below: a glow on the members the phase is about, a
+// cap over the column under the lever's pin, a marker on the pin itself, the
+// frame drawn as glass in the close-up. The LDraw placements are the model; the
+// .ldr and the probe read only them.
+const ALARM_GLOW = { pickup: ['driver', 'pawl'], climb: ['driver', 'pawl', 'column wheel'], crest: ['driver', 'pawl', 'column wheel', 'detent'],
+  committed: ['driver', 'pawl', 'column wheel', 'detent'], dropped: ['detent', 'column wheel', 'pawl'], back: ['detent', 'column wheel', 'pawl', 'driver'],
+  tip: ['column wheel', 'detent'], hour: ['disc', 'lever'], silent: ['lever'], ringing: ['fly', 'hammer', 'middle', 'barrel'], rundown: ['fly'],
+  passing: ['disc', 'lever', 'fly'], armed: [], off: [] };
+const ALARM_PHASE_COLOUR = { pickup: '#9fb6d9', climb: '#9fb6d9', crest: '#e0b630', committed: '#e0b630', dropped: '#7fc98b', back: '#e2a077', tip: '#e2777a',
+  hour: '#9fb6d9', silent: '#e2777a', ringing: '#7fc98b', rundown: '#e2777a', passing: '#9fb6d9', armed: '#7fc98b', off: '#e2777a' };
+const LDU = (mm) => mm / 0.4;
+const CAP_ON = new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.9, depthTest: false });
+const BEAK_GAP = new THREE.MeshBasicMaterial({ color: 0x5fe08a, transparent: true, opacity: 0.85, depthTest: false });
+const BEAK_COL = new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.85, depthTest: false });
+// The cell is built once, at the state's pose, and posed from then on: each
+// body's group turns by the angle columnPose reads; the pawl's group also
+// moves with its pivot on the driver; the trains turn by their tooth counts.
+function buildAlarmView(band) {
+  const m = alarmModel, pose = columnPose(m, alarmSt), b0 = alarmBuild(alarmFrame, lib, pose);
+  const shafts = buildLego(b0, band).map((sh, i) => ({ ...sh, alarm: b0.shafts[i].shaft }));
+  legoShafts.push(...shafts);
+  const by = Object.fromEntries(shafts.map((s) => [s.alarm, s]));
+  // each body its own materials, so a body can glow by itself
+  const mats = {};
+  for (const s of shafts) {
+    mats[s.alarm] = [];
+    s.rotor.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); mats[s.alarm].push(o.material); } });
+  }
+  // the frame (baseplate, columns, stacks): the root's own meshes
+  const root = shafts[0].rotor.parent, statics = root.children.filter((o) => o.isMesh || o.isLineSegments);
+  const glass = new THREE.MeshStandardMaterial({ color: 0x8a919c, transparent: true, opacity: 0.12, depthWrite: false, roughness: 0.6, metalness: 0 });
+  // a cap over each column, in the column wheel's own frame, at its tip and in its rotor's layer
+  const A = ALARM_DIM_MM, Y = ALARM_Y, caps = m.cols.map((col) => {
+    const yMid = col.rotor === 'A' ? (Y.rotorA[0] + Y.rotorA[1]) / 2 : (Y.rotorB[0] + Y.rotorB[1]) / 2, r = A.rotorTip + 0.6;
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(LDU(3.2), LDU(7), LDU(A.rotorBody + 0.8)), CAP_ON);
+    cap.position.set(LDU(r * Math.cos(col.c)), LDU(r * Math.sin(col.c)), LDU(yMid)); cap.rotation.z = col.c; cap.visible = false; cap.renderOrder = 5;
+    by['column wheel'].rotor.add(cap);
+    return cap;
+  });
+  // the pin under the lever: a marker on the lever, at its middle hole, in the rotors' layers
+  const beak = new THREE.Mesh(new THREE.SphereGeometry(LDU(3.1), 18, 12), BEAK_GAP);
+  beak.position.set(LDU(A.leverHoles), 0, LDU((Y.rotorB[0] + Y.rotorA[1]) / 2)); beak.renderOrder = 6;
+  by.lever.rotor.add(beak);
+  // THE CLOSE-UP'S CIRCLE: centred on the column wheel's axis at the rotors'
+  // layers, out to the driver's ends (DRIVER_ARM and the arm's half width) and
+  // the lever's pin beyond the columns, plus a stud: what the reading needs
+  band.updateMatrixWorld(true);
+  const wheel = by['column wheel'].rotor;
+  const centre = wheel.localToWorld(new THREE.Vector3(0, 0, LDU((Y.rotorB[0] + Y.rotorA[1]) / 2)));
+  const R = Math.max(16 + A.leverHalfWidth, A.rotorTip + 2 * 3.2) + 8 * 0.5;
+  // the phase written above that circle, clear of the parts
+  const phaseLbl = labelSprite(' '); phaseLbl.userData.lineMm = 3.2;
+  phaseLbl.position.copy(band.worldToLocal(centre.clone().add(new THREE.Vector3(-R, R - 1.5, 4))));   // the circle's top-left corner, outside the columns
+  band.add(phaseLbl);
+  alarmView = { b0, by, mats, statics, glass, caps, beak, phaseLbl, lastKey: null, lastLine: null, lastText: 0, glassOn: false, centre, R, cellLbl: null };
+}
+// The close-up shows the alarm alone, its frame as glass, through a narrow lens
+// (less perspective, so the columns read as a ring and not a funnel); leaving
+// it restores the table. All display.
+const ALARM_FOCUS_FOV = 16, TABLE_FOV = 40;
+function alarmGlass(on) {
+  const v = alarmView;
+  if (!v || v.glassOn === on) return;
+  v.glassOn = on;
+  for (const c of world.children) if (c !== alarmBand) c.visible = !on;
+  if (v.cellLbl) v.cellLbl.visible = !on;
+  cam.fov = on ? ALARM_FOCUS_FOV : TABLE_FOV; cam.updateProjectionMatrix();
+  for (const o of v.statics) {
+    if (o.isLineSegments) { o.visible = !on; continue; }
+    o.userData.solid ??= o.material;
+    o.material = on ? v.glass : o.userData.solid;
+  }
+}
+// Pose the alarm cell from the state; write the phase.
+function applyAlarm(now, dt) {
+  const m = alarmModel, v = alarmView;
+  if (!m || !v) return;
+  // the demonstration, and a press asked for while the disc was off the rim
+  if (alarmSt.act === 'idle') {
+    alarmIdleS += dt;
+    if (alarmQueued) { const q = alarmQueued; alarmQueued = null; alarmDo(q); }
+    else if (alarmAuto && alarmIdleS >= ALARM_AUTO_GAP_S) { alarmDo(ALARM_AUTO[alarmAutoI % ALARM_AUTO.length]); alarmAutoI++; }
+  }
+  alarmSt = columnAdvance(m, alarmSt, dt);
+  const p = columnPose(m, alarmSt), ph = columnPhase(m, alarmSt, p), sh = alarmShafts(alarmFrame.spec), zL = alarmFrame.zL;
+  const ta = trainAngles(v.b0, p), by = v.by;
+  by.lever.rotor.rotation.z = p.psiLever;
+  by['column wheel'].rotor.rotation.z = p.thetaW;
+  by.detent.rotor.rotation.z = p.psiFollower;
+  by.driver.rotor.rotation.z = p.psiDriver;
+  by.pawl.rotor.position.set(LDU(sh.W[0] + p.pawl.pivot[0]), -LDU(zL - (sh.W[1] + p.pawl.pivot[1])), 0);
+  by.pawl.rotor.rotation.z = p.pawl.psi;
+  by.disc.rotor.rotation.z = p.theta;
+  by.fly.rotor.rotation.z = p.phiC;
+  by.hammer.rotor.rotation.z = p.psiHammer;
+  for (const k of ['middle', 'barrel', 'S2', 'S1', 'hour']) by[k].rotor.rotation.z = ta[k];
+  // the reading: the cap over a column under the pin; the pin green in a gap
+  v.caps.forEach((c, i) => { c.visible = p.column.under && i === p.column.index; });
+  v.beak.material = p.column.under ? BEAK_COL : BEAK_GAP;
+  if (ph.key !== v.lastKey) {
+    const glow = new Set(ALARM_GLOW[ph.key] ?? []);
+    for (const [k, ms] of Object.entries(v.mats)) for (const mt of ms) mt.emissive.setHex(glow.has(k) ? 0x7a5400 : 0x000000);
+    v.lastKey = ph.key;
+  }
+  if (ph.line !== v.lastLine) {
+    v.lastLine = ph.line;
+    const el = document.getElementById('aphase');
+    if (el) { el.textContent = ph.line; el.dataset.phase = ph.key; }
+  }
+  if (ph.short !== v.lastShort) { v.lastShort = ph.short; setSpriteText(v.phaseLbl, ph.short, ALARM_PHASE_COLOUR[ph.key] ?? '#d9dde3'); }
+  for (const b of document.querySelectorAll('#amodes button')) b.dataset.state = b.dataset.mode === p.mode ? 'on' : 'off';
+  const slider = document.getElementById('astroke');
+  if (slider && !slider.matches(':active')) slider.value = String(alarmSt.s);
+  if (slider) slider.disabled = !(alarmSt.act === 'idle' || alarmSt.act === 'scrubbing');
+  if (now - v.lastText > 100) {
+    v.lastText = now;
+    const el = document.getElementById('adetail'), d = (x) => (x * 180 / Math.PI).toFixed(1);
+    const r = m.restsOf(alarmSt.home), travel = p.thetaW - r.rest;
+    if (el) el.textContent = `stroke ${(alarmSt.s * 100).toFixed(0)}% (driver ${d(alarmSt.s * alarmStatesNow.stroke)}° of ${d(alarmStatesNow.stroke)}°); the wheel ${d(travel)}° from the rest it left (crests ${d(alarmStatesNow.crest)}° and ${d(alarmStatesNow.farCrest)}°)`
+      + `; ${p.rest === null ? 'at no rest' : `rest ${((p.rest % 12) + 12) % 12}, ${p.reading === 'gap' ? 'a gap' : 'a column'} under the pin`}; the disc ${d(((p.theta - m.thetaNotch) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI)}° from its notch`
+      + `; ${alarmSt.strikes} strikes so far${alarmQueued ? `; a ${alarmQueued} waits for the disc to come back onto the rim` : ''}`;
+  }
+}
+// The column wheel close up: down its axis from the front, so the six columns
+// read as a ring, the lever's pin among them; the frame drawn as glass.
+const ALARM_FOCUS_FILL = 1;   // the circle above already carries its margin (a stud)
+// which = 'wheel' (the column wheel and its pin) or 'strike' (the lever's far
+// end, the fly and the hammer): every axle is parallel, so both are seen down it
+function focusAlarm(which = 'wheel') {
+  const v = alarmView;
+  if (!v) return;
+  alarmGlass(true);
+  scene.updateMatrixWorld(true);
+  let centre = v.centre, R = v.R;
+  if (which === 'strike') {
+    // the circle through the fly's sweep and the hammer's two arms: centred
+    // between their axles, out by half their distance and a 6632 arm with its
+    // half width, plus a stud
+    const fly = v.by.fly.rotor.localToWorld(new THREE.Vector3(0, 0, LDU((ALARM_Y.fly[0] + ALARM_Y.fly[1]) / 2)));
+    const ham = v.by.hammer.rotor.localToWorld(new THREE.Vector3(0, 0, LDU((ALARM_Y.fly[0] + ALARM_Y.fly[1]) / 2)));
+    centre = fly.clone().add(ham).multiplyScalar(0.5);
+    R = fly.distanceTo(ham) / 2 + 16 + ALARM_DIM_MM.leverHalfWidth + 8 * 0.5;
+  }
+  const box = new THREE.Box3(centre.clone().subScalar(R), centre.clone().addScalar(R));
+  // the axle's direction in the world: the column wheel group's own −Z (LDraw
+  // Z is the frame's y) carried out through the cell's half turn about X, so
+  // the camera stands in FRONT (the frame's −y), on the driver's side
+  const axis = new THREE.Vector3(0, 0, -1).transformDirection(v.by['column wheel'].rotor.matrixWorld);
+  // frameOn fits the box's bounding sphere, √3 the circle for a cube: fit the circle
+  frameOn(box, ALARM_FOCUS_FILL / Math.sqrt(3), axis);
+  document.getElementById('aphase')?.closest('.row')?.scrollIntoView({ block: 'start' });
+}
+
 async function build(gen) {
   await loadLib();
+  cam.fov = TABLE_FOV; cam.updateProjectionMatrix();
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world); legoShafts = [];
   const frames = frameFork(gen);
@@ -645,27 +840,57 @@ async function build(gen) {
     const k = TECHNIC_FORK.rows.length + 2;
     alarmBand = new THREE.Group(); alarmBand.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(alarmBand);
     const div = document.createElement('div'); div.className = 'row';
-    alarmFrame = frameAlarm();
+    alarmFrame ??= frameAlarm();
+    alarmView = null;
     if (alarmFrame.framed) {
-      alarmStatesNow = alarmStates(lib, alarmFrame);
+      // the same build in both generations, so its laws are read once
+      alarmStatesNow ??= alarmStates(lib, alarmFrame);
+      if (!alarmModel) {
+        alarmModel = columnModel(lib, alarmFrame, alarmStatesNow);
+        alarmSt = columnStart(alarmModel);
+        // the rests and holds a press has not needed yet, read between frames
+        (async () => { let t = performance.now(); for (const _ of columnWarmSteps(alarmModel)) if (performance.now() - t > Math.max(RIDE_SLICE_MS, Math.min(frameMs, 400) / 2)) { await new Promise((r) => setTimeout(r, 0)); t = performance.now(); } })();
+      }
       const lbl = labelSprite(`${k + 1}. alarm`); lbl.position.set(-30, 60, 0); alarmBand.add(lbl);
+      buildAlarmView(alarmBand); alarmView.cellLbl = lbl;
       const T = TECHNIC_ALARM_STRIKE, n = strikesPerBarrelTurn(lib, alarmFrame);
-      const S = alarmStatesNow;
+      const S = alarmStatesNow, M = alarmModel, d = (x) => (x * 180 / Math.PI).toFixed(1);
       div.innerHTML = `<b>${k + 1}. alarm — LEGO build</b>`
-        + `column wheel: six columns, twelve rests; a press of <code>${(S.stroke * 180 / Math.PI).toFixed(1)}°</code> steps it one rest (the detent's crest at <code>${(S.crest * 180 / Math.PI).toFixed(1)}°</code>), on and off in turn`
-        + `<br>release: the lever drops <code>${((S.st.psiNotch - S.st.rimDown) * 180 / Math.PI).toFixed(1)}°</code> below the rim where the ring's empty place comes round, 12:1 off the hour axle`
+        + `column wheel: six columns, twelve rests; a press of <code>${d(S.stroke)}°</code> steps it one rest, on and off in turn. The pawl first travels <code>${d(M.pickup)}°</code> to pick up a tooth, so the wheel turns <code>${d(S.stroke - M.pickup)}°</code>: past the detent's near crest (<code>${d(S.crest)}°</code>) and its far one (<code>${d(S.farCrest)}°</code>), where the press commits.`
+        + `<div class="gen"><button id="apress" type="button">press</button><button id="ahalf" type="button">half-press</button><button id="aauto" type="button">auto</button><button id="afocus" type="button">look at the column wheel</button><button id="astrike" type="button">look at the strike</button></div>`
+        + `<label>stroke <input id="astroke" type="range" min="0" max="1" step="0.002" value="0" /></label>`
+        + `<div class="fphase" id="aphase" data-phase="armed">at rest</div>`
+        + `<div id="adetail" style="color:var(--dim)"></div>`
+        + `<span style="color:var(--dim)">The orange cap marks a column under the lever's pin; the pin's marker is green over a gap. The parts the phase is about glow. All three are drawn for reading, not parts.</span>`
+        + `<br>release: the lever drops <code>${d(S.st.psiNotch - S.st.rimDown)}°</code> below the rim where the ring's empty place comes round, 12:1 off the hour axle`
         + `<br>strike: <code>${n}</code> strikes per barrel turn (four pins × 4:1); ${T.standIn.barrelTurns} turns of wind give <code>${n * T.standIn.barrelTurns}</code>, `
         + `<span class="bad">a POSED wind and cadence</span> <span style="color:var(--dim)">(${T.source}; the stand-in is the steel's ${T.standIn.barrelTurns} turns and ${T.standIn.strikeGap} s gap)</span>`
-        + `<br><span style="color:var(--dim)">a fly, not an anchor: air drag, no period. The hammer strikes a brick; no LEGO part rings. Base ${alarmFrame.base.studsX}×${alarmFrame.base.studsY} studs.</span>`
+        + `<br><span style="color:var(--dim)">Modelled, not simulated: every angle is read off one state through the parts' geometry, and no force is weighed. The pusher's speed, the bands' and the hand on the hour axle are display rates; the strikes ring at the POSED gap. The display's hour passes the notch before the POSED wind would run down. A fly, not an anchor: air drag, no period. The hammer strikes a brick; no LEGO part rings. Base ${alarmFrame.base.studsX}×${alarmFrame.base.studsY} studs.</span>`
         + `<br><a id="aldr" href="#" style="color:#9fb6d9">download .ldr (this state)</a>`;
-      setAlarmMode(alarmMode);
+      const slider = div.querySelector('#astroke');
+      div.querySelector('#apress').addEventListener('click', () => { setAlarmAuto(false); alarmDo('press'); });
+      div.querySelector('#ahalf').addEventListener('click', () => { setAlarmAuto(false); alarmDo('half'); });
+      div.querySelector('#aauto').addEventListener('click', () => setAlarmAuto(!alarmAuto));
+      div.querySelector('#afocus').addEventListener('click', () => focusAlarm('wheel'));
+      div.querySelector('#astrike').addEventListener('click', () => focusAlarm('strike'));
+      slider.addEventListener('input', () => { setAlarmAuto(false); alarmDo('scrub', Number(slider.value)); });
+      slider.addEventListener('change', () => alarmDo('release'));
+      // the .ldr of the state on the screen, written when asked for
+      div.querySelector('#aldr').addEventListener('click', (e) => {
+        const a = e.currentTarget, b = alarmBuild(alarmFrame, lib, columnPose(alarmModel, alarmSt));
+        URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(b)], { type: 'text/plain' })); a.download = `alarm-${b.pose.mode}.ldr`;
+      });
+      setAlarmAuto(alarmAuto);
     } else div.innerHTML = `<b>${k + 1}. alarm</b><br><span class="bad">not framed in LEGO: ${alarmFrame.reason}</span>`;
     rowsEl.appendChild(div);
   }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   currentGen = gen;
-  if (new URLSearchParams(location.search).get('focus') === 'fusee' && fuseeView) focusFusee();
-  else frameOn(world);
+  const focus = new URLSearchParams(location.search).get('focus');
+  if (focus === 'fusee' && fuseeView) focusFusee();
+  else if (focus === 'alarm' && alarmView) focusAlarm('wheel');
+  else if (focus === 'strike' && alarmView) focusAlarm('strike');
+  else { alarmGlass(false); frameOn(world); }
   inputAngle = 0;
   if (keylessBuild) setKeylessMode(keylessMode);
 }
@@ -705,15 +930,21 @@ renderer.setAnimationLoop((now) => {
   // run-down in LOOP_RUN_S seconds at speed 1), not a claim about a rate
   if (fuseeLoop && fuseeLoopOn) fuseeLoop.st = loopAdvance(fuseeLoop.model, fuseeLoop.st, dt * Number(speedEl.value) * fuseeLoop.model.rate);
   applyFusee(now);
+  // §283: the alarm cell advances by display rates too (the pusher's, the
+  // bands', the hand on the hour axle; the strikes at the POSED gap)
+  applyAlarm(now, dt * Number(speedEl.value));
   for (const s of legoShafts) {
     if (s.fusee) { if (!fuseeLoop) s.rotor.rotation.z = s.phi; continue; }        // the fusee cell: posed by applyFusee from the loop's state
+    if (s.alarm) continue;                                                           // the alarm cell: posed by applyAlarm from the press's state
     if (s.slider) continue;                                                          // the pull's rack: it slides with the mode, it does not turn
     if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
   }
   renderer.render(scene, cam);
 });
-window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get fuseeLoop() { return fuseeLoop && { st: fuseeLoop.st, pose: loopPose(fuseeLoop.model, fuseeLoop.st), on: fuseeLoopOn }; }, setFuseeLoopOn: (on) => setFuseeLoopOn(on, document.getElementById('floop')), frameOn, get alarm() { return alarmBuildNow; }, cam, controls, scene, renderer };
+window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get fuseeLoop() { return fuseeLoop && { st: fuseeLoop.st, pose: loopPose(fuseeLoop.model, fuseeLoop.st), on: fuseeLoopOn }; }, setFuseeLoopOn: (on) => setFuseeLoopOn(on, document.getElementById('floop')), frameOn, get alarm() { return alarmModel && alarmBuild(alarmFrame, lib, columnPose(alarmModel, alarmSt)); },
+  get alarmState() { return alarmModel && { st: alarmSt, pose: columnPose(alarmModel, alarmSt), phase: columnPhase(alarmModel, alarmSt), auto: alarmAuto }; },
+  get alarmCell() { return alarmBand; }, alarmDo, setAlarmAuto, focusAlarm, cam, controls, scene, renderer };
 </script>
 </body>
 </html>

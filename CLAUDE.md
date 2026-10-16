@@ -118,8 +118,16 @@ like the fusee's spring, and the hammer strikes a tile because no LEGO part
 rings. `solveAlarm` re-derives the declared `TECHNIC_ALARM`, and
 `tools/probe-technic-alarm.mjs` holds every full press stepping one rest and a
 half press falling back, the drop at the notch, the strikes per barrel turn
-counted through the meshes, and the build. The frame, ldraw, build, keyless,
-motion, fusee, fusee-loop and alarm probes are pure Node.
+counted through the meshes, and the build. **Since §283 the alarm PRESSES** on
+the page: one state (the stroke, the wheel's stand and the tooth the pawl
+drives, the disc, the fly), every body read through the module's own laws
+(`columnModel`, `columnAdvance`, `columnPose`). The pawl's ride shows it first
+travels `pickup` (7.17°) to meet a tooth's face, which landing I's `press`
+leaves out (same rests, reported). A release between the near and far crests
+stands on the tooth's tip, unread. `tools/probe-technic-column-wheel.mjs`
+holds the steps, the crests, the lever's reading and twelve presses round. The
+frame, ldraw, build, keyless, motion, fusee, fusee-loop, alarm and column-wheel
+probes are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1146,7 +1154,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 321 measuring scripts and this file names 50. The rest are named for the
+`tools/` holds 322 measuring scripts and this file names 51. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1163,7 +1171,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **208 of
+The index also carries the split that decides how to read a result: **209 of
 them are ACCEPTANCE tests** that exit non-zero, and **113 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

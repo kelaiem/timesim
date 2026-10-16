@@ -38,7 +38,9 @@
 import { LDU_MM } from './ldraw.js';
 import { LEGO_DIM_MM, FRAME_PARTS, AXLE_PARTS, GEAR_TIP_MM, KEYLESS_PULL_DIM_MM, KEYLESS_PARTS } from './technic-frame.js';
 import { surfaceSamples, toothPhase } from './technic-ldraw.js';
-import { pawlModel, pawlLock, starProfile, penetration, FUSEE_DIM_MM } from './technic-fusee.js';
+import { pawlModel, pawlLock, starProfile, penetration, FUSEE_DIM_MM, pawlRideSteps } from './technic-fusee.js';
+// (pawlRideSteps: landing H's ride of a pawl over its wheel, which §283's press
+// reads for the alarm's pawl rather than tracing a second one)
 
 const D = LEGO_DIM_MM;
 const L = (mm) => mm / LDU_MM;
@@ -330,11 +332,14 @@ export function detentRests(lib, spec, theta0 = 0, teeth = 12) {
 // in — the rest whose two near crests bracket it. Short of the near crest it is
 // the rest the press left; past the far crest, the next; between them the wheel
 // stands on the tooth's tip, at no rest, and this answers null.
-export function detentSettle(lib, spec, theta, teeth = 12) {
-  const r = detentRests(lib, spec, theta, teeth);
+// `restsNear` is where the rests come from: by default detentRests read fresh
+// at θ (the rest nearest it), and §283's animated press passes the same rests
+// read once and kept (columnModel), so the one law answers both.
+export function detentSettle(lib, spec, theta, teeth = 12, restsNear = (t) => detentRests(lib, spec, t, teeth)) {
+  const r = restsNear(theta);
   if (!r) return null;
   if (theta >= r.crestMinus && theta <= r.crestPlus) return r.rest;
-  const n = detentRests(lib, spec, r.rest + (theta > r.crestPlus ? 1 : -1) * TAU / teeth, teeth);
+  const n = restsNear(r.rest + (theta > r.crestPlus ? 1 : -1) * TAU / teeth);
   return n && theta >= n.crestMinus && theta <= n.crestPlus ? n.rest : null;
 }
 
@@ -1321,3 +1326,354 @@ export const TECHNIC_ALARM_STRIKE = Object.freeze({
   standIn: Object.freeze({ barrelTurns: 1.75, strikeGap: 0.42, from: 'main.js ALARM_BARREL_TURNS and ALARM_STRIKE_GAP' }),
 });
 export const strikesPerWind = (perTurn, table = TECHNIC_ALARM_STRIKE) => perTurn * table.standIn.barrelTurns;
+
+// ── §283: THE PRESS, ANIMATED ────────────────────────────────────────────────
+// Landing I drew the alarm in three still poses. This is a press HAPPENING, every
+// body read off one state through the laws above, so none is written twice:
+//   · the DRIVER turns with the pusher's stroke s ∈ [0, 1], from its rest stop
+//     (s = 0) to its bank stop (s = 1), alarmStates' psiRest and stroke;
+//   · the PAWL rides the 12T on its band: its seat is landing H's ride
+//     (pawlRideSteps) at the relative angle pawlAt seats it at. The ride says
+//     where the pawl DROPS off a tooth — its 8T falling behind a tooth's face,
+//     the wall it LOCKS against (pawlLock's direction). Seated at rest, the
+//     pawl stands PICKUP short of that wall, so a press first turns the driver
+//     that far with the wheel standing (the pawl PICKING UP a tooth), and only
+//     then drives the wheel;
+//   · the DETENT rides the wheel (followerModel.seat); let go, the wheel goes
+//     where detentSettle says, from the rests detentRests reads (kept);
+//   · the LEVER reads the wheel: on the pins it stands where releaseStates
+//     measured it a degree at a time; on a COLUMN rest the beak holds it where
+//     leverRest at the notch finds the beak first, so the lever's rest is the
+//     first of the two supports, as leverRest's own sweep takes it;
+//   · the FLY stands where lockPush puts its vane against the lever, and runs
+//     where lockPush finds the lever clear; the hammer rides its cam by
+//     strikeTrace's table, and strikes are its falls;
+//   · the two trains turn by their tooth counts off the disc and the fly arbor.
+// Every RATE here is a DISPLAY rate: the pusher's speed, the bands' (all
+// posed), the hand on the hour axle (no going train drives it). The strike
+// cadence is TECHNIC_ALARM_STRIKE's POSED gap. MODELLED, NOT SIMULATED: no
+// force is weighed and nothing is integrated but a display clock.
+//
+// WHAT THE RIDE FOUND (reported by probe-technic-column-wheel.mjs): landing I's
+// `press` turns the wheel by the WHOLE stroke, the pawl taken as driving from
+// the first degree. Read off the teeth, the pawl at rest stands PICKUP short of
+// its tooth's face, so the wheel turns stroke − PICKUP. Every full press still
+// passes the far crest and every half press still falls back; the animated law
+// is the one that includes the pick-up, and `press` is left as landing I wrote
+// it (its probe's controls are written against it).
+export const PRESS_S = 0.9;          // display: the pusher's whole stroke, in seconds at speed 1
+export const RETURN_S = 0.7;         // display: the driver's band returns it from the bank
+export const DROP_S = 0.25;          // display: the detent's band carries the wheel on into a rest
+export const HOUR_RIM_DEG_S = 90;    // display: the hand on the hour axle, where the lever rides the rim
+export const HOUR_V_DEG_S = 15;      // display: …and where it is off the rim (the V), slow enough to watch the reading
+// The strikes ring at the POSED cadence: one cam pin a strike, so the fly
+// arbor turns a quarter turn per TECHNIC_ALARM_STRIKE gap.
+export const flyRate = (table = TECHNIC_ALARM_STRIKE) => (TAU / CAM_LOBES) / table.standIn.strikeGap;
+
+// THE MODEL: everything the state is read through. A generator, so a page can
+// build it between frames (the pawl's ride is 48 seat searches, the pick-up a
+// bisection on seat()); columnModel drains it. Options are the probe's
+// controls: `shift` turns the wheel's reading by a constant (the wheel set a
+// half column pitch off its rests), `restHook` rewrites each rest the detent
+// reads (a detent with no crest).
+export function* columnModelSteps(lib, frame, states = alarmStates(lib, frame), { shift = 0, restHook = null, ride = null } = {}) {
+  const spec = frame.spec, S = states, sigma = S.sigma, run = spec.run, pitch = TAU / 12, step30 = Math.PI / 6;
+  // the ride is read over increasing relative angle, which is the pawl's FREE
+  // way when it locks −; solveDriver's press then turns the driver + (σ = 1)
+  if (spec.pawlLocks >= 0 || sigma !== 1) throw new Error('technic-alarm: the press is built for a pawl locking − and a press turning the driver +');
+  const det = detentSpec(spec.detent.pivot, spec.detent.sense), fm = followerModel(lib, det);
+  // THE RESTS, read once each: rest k at S.beak.gap + k·30°, exactly where
+  // alarmStates reads rest 0 (a gap) and rest 1 (a column), so those two are its own
+  const seed = S.beak.gap, cache = new Map(restHook ? [] : [[0, S.gapRest], [1, S.colRest]]);
+  const turned = (r, d) => (d ? { ...r, rest: r.rest + d, crestPlus: r.crestPlus + d, crestMinus: r.crestMinus + d, farPlus: r.farPlus + d, farMinus: r.farMinus + d } : r);
+  const restsOf = (k) => {
+    const kk = mod(k, 12);
+    if (!cache.has(kk)) { const r = detentRests(lib, det, seed + kk * step30); cache.set(kk, restHook ? restHook(r) : r); }
+    return turned(cache.get(kk), Math.floor(k / 12) * TAU);
+  };
+  const restAngle = (k) => restsOf(k).rest;
+  const restsNear = (t) => restsOf(Math.round((t - seed) / step30));
+  // the rest at or σ-behind a wheel angle, and the rest a wheel stands at (or null)
+  const kBehind = (w) => {
+    let k = Math.round((w - seed) / step30);
+    while (sigma * (restAngle(k) - w) > 1e-9) k -= sigma;
+    while (sigma * (restAngle(k + sigma) - w) <= 1e-9) k += sigma;
+    return k;
+  };
+  const atRest = (w) => { const k = Math.round((w - seed) / step30); return Math.abs(w - restAngle(k)) < 1e-7 ? k : null; };
+  // THE PAWL'S RIDE, from its seat at rest 0 (x0, pawlAt's relative angle)
+  const x0 = S.gapRest.rest - S.psiRest, pawlSpec = pawlSpecOn(spec.pawlSense);
+  let r = ride;
+  if (!r) { const it = pawlRideSteps(lib, pawlSpec, 12, { theta0: x0 }); let q; while (!(q = it.next()).done) yield 'ride'; r = q.value; }
+  // THE PICK-UP: the ride's DROP is the sample step where the band turns the pawl
+  // deepest in its sense at once; bisected on seat() itself to where the seat
+  // leaves the riding branch for the dropped one.
+  const ps = pawlSpec.sense, n = r.n;
+  let iDrop = 0, big = -Infinity;
+  for (let i = 0; i < n; i++) { const jump = ps * (r.table[i + 1] - r.table[i]); if (jump > big) { big = jump; iDrop = i; } }
+  let lo = x0 + iDrop * pitch / n, hi = x0 + (iDrop + 1) * pitch / n;
+  const upper = r.table[iDrop], lower = r.table[iDrop + 1];
+  for (let i = 0; i < 16; i++) { yield 'pickup'; const mid = (lo + hi) / 2, v = r.model.seat(mid); if (Math.abs(v - upper) < Math.abs(v - lower)) lo = mid; else hi = mid; }
+  const xDrop = (lo + hi) / 2 - x0;                 // the drop, along the free way from the seat at rest
+  const pickup = pitch - xDrop;                      // the driver's travel from rest to the tooth's face
+  // THE PAWL'S SEAT at relative angle x: the ride read between its samples,
+  // except across the drop, where reading between would draw the pawl half way
+  // down the tooth's face. There each side is carried on from its own two
+  // samples to the drop, so the pawl stands on the tooth up to it and against
+  // the face from it (where it stands while it drives).
+  const T = r.table, hS = pitch / n;
+  const pawlRel = (x) => {
+    const u = mod(x - x0, pitch), i = Math.min(n - 1, Math.floor(u / hS));
+    if (i !== iDrop) return r.at(x);
+    if (u < xDrop - 1e-9) return T[i] + (T[i] - T[(i - 1 + n) % n]) / hS * (u - i * hS);   // (at the face itself, to float noise, it is against the face)
+    return T[i + 1] - (T[(i + 2) % n] - T[i + 1]) / hS * ((i + 1) * hS - u);
+  };
+  // THE LEVER: on the pins (releaseStates, a whole degree at a time, read
+  // between), or held by the beak on a column (leverRest at the notch, per rest)
+  const pts = S.st.pts, dRad = deg(1);
+  const leverPins = (theta) => { const u = mod(theta, TAU) / dRad, i = Math.floor(u) % 360, f = u - Math.floor(u); return pts[i].psi * (1 - f) + pts[(i + 1) % 360].psi * f; };
+  const holds = new Map(shift || restHook ? [] : [[0, S.ringing], [1, S.off]].map(([k, p]) => [k, p.leverBy.includes('beak') ? p.psiLever : null]));
+  const hold = (k) => {
+    const kk = mod(k, 12);
+    if (!holds.has(kk)) { const q = leverRest(S.geo, { theta: S.st.thetaNotch, thetaW: restAngle(kk) + shift }); holds.set(kk, q && q.by.includes('beak') ? q.psi : null); }
+    return holds.get(kk);
+  };
+  const leverAt = (theta, w) => {
+    const pins = leverPins(theta), k = atRest(w), h = k === null ? null : hold(k);
+    return h !== null && LEVER_SENSE * (h - pins) < 0 ? { psi: h, by: 'beak' } : { psi: pins, by: 'pins' };
+  };
+  // THE FLY: the vane is a beam, the same at φ and φ + π
+  const lockAt = (psi) => lockPush(S.geo, psi, run);
+  const branch = (phi, near) => phi + Math.PI * Math.round((near - phi) / Math.PI);
+  // THE HAMMER: strikeTrace over a turn of the fly arbor from the armed lock,
+  // half a degree a step; a strike is one of its falls
+  const h = alarmHammer(lib, frame), from = S.armed.phiC, tStep = 0.5;
+  const trace = strikeTrace(h, run, { step: tStep, from });
+  const falls = trace.falls.map((f) => mod(run * (f.phi - from), TAU) || TAU).sort((a, b) => a - b);
+  const uOf = (phi) => run * (phi - from);
+  const hammerAt = (phi) => trace.pts[Math.min(trace.pts.length - 1, Math.floor(mod(uOf(phi), TAU) / deg(tStep) + 1e-9))].psi;
+  const strikesUpTo = (u) => Math.floor(u / TAU) * falls.length + falls.filter((f) => f <= mod(u, TAU) + 1e-12).length;
+  const strikesBetween = (a, b) => strikesUpTo(uOf(b)) - strikesUpTo(uOf(a));
+  // THE COLUMNS, for the reading's display: their angles in the wheel's frame,
+  // which rotor carries each, and the direction from W to the beak
+  const prof = unionProfile(S.geo.colA, S.geo.colB), cols = columnAngles(prof).map((c) => ({ c, rotor: rAt(S.geo.colA, c) >= rAt(S.geo.colB, c) ? 'A' : 'B' }));
+  return {
+    lib, frame, S, spec, sigma, run, pitch, det, fm, ride: r, pawlRel, x0, pickup, xDrop, restsOf, restAngle, restsNear, kBehind, atRest,
+    leverPins, hold, leverAt, lockAt, branch, h, trace, falls, hammerAt, strikesBetween, cols, toBeak: S.beak.toBeak, shift,
+    thetaPress: S.armed.theta, thetaNotch: S.st.thetaNotch, rimDown: S.st.rimDown,
+    // the half press: the wheel stopped PRESS_MARGIN (an LDU of arc at the mesh)
+    // short of the detent's near crest, the margin the probe's half press keeps
+    halfAim: (S.crest - PRESS_MARGIN + pickup) / S.stroke,
+    rate: flyRate(), perWind: strikesPerWind(strikesPerBarrelTurnOf(falls.length)),
+  };
+}
+const strikesPerBarrelTurnOf = (fallsPerFlyTurn) => fallsPerFlyTurn * strikeRatio();
+export function columnModel(lib, frame, states, opts) {
+  const it = columnModelSteps(lib, frame, states, opts);
+  for (;;) { const q = it.next(); if (q.done) return q.value; }
+}
+// The rests and holds not yet read, read between frames (each is otherwise read
+// the first time a press needs it).
+export function* columnWarmSteps(m) { for (let k = 0; k < 12; k++) { m.restsOf(k); yield k; m.hold(k); yield k; } }
+
+// ── THE STATE ────────────────────────────────────────────────────────────────
+// s: the stroke. stand: where the wheel stands when the pawl is not driving it.
+// j: the tooth the pawl drives (or will pick up, pressing on). drop: the detent
+// carrying the wheel on into a rest, u ∈ [0, 1] of DROP_S. theta: the disc. phi:
+// the fly arbor; free: the fly running. act: what the display is doing.
+// home: the rest the press began from (for the phase line); last: how the last
+// release came out.
+export function columnStart(m, { k = 0, theta = null, act = 'idle' } = {}) {
+  const w = m.restAngle(k), th = theta ?? m.thetaPress;
+  const st = { act, s: 0, aim: 0, stand: w, j: k, drop: null, theta: th, hourTo: null, phi: m.S.armed.phiC, free: false, strikes: 0, ring: 0, runDown: false, home: k, last: null };
+  return flyFollow(m, st, 0);
+}
+// The wheel: the pawl drives tooth j, or the wheel stands; the detent's drop
+// carries it on. Tooth j's FACE is the 12T's own, a whole pitch from the next
+// (the teeth are cut alike; the detent's rests wander from 30° steps by the
+// profile's sampling, so the face is placed off rest 0, not off rest j): the
+// pawl meets it where the driver has turned PICKUP past its rest stop with the
+// wheel at rest_0 + j·30°.
+const drivenAt = (m, st) => m.restAngle(0) + st.j * m.pitch + m.sigma * (st.s * m.S.stroke - m.pickup);
+export function columnWheel(m, st) {
+  if (st.drop) return st.drop.from + (st.drop.to - st.drop.from) * st.drop.u;
+  const driven = drivenAt(m, st);
+  return m.sigma * (driven - st.stand) > 0 ? driven : st.stand;
+}
+const isDriven = (m, st) => !st.drop && m.sigma * (drivenAt(m, st) - st.stand) > 1e-12;
+// The tooth the pawl stands behind: once the driver has gone back far enough
+// that the pawl drops behind the NEXT tooth's face, that is the one it drives.
+function pawlTooth(m, st, w) {
+  const behind = Math.floor((w - m.sigma * (st.s * m.S.stroke - m.pickup) - m.restAngle(0)) / m.pitch + 1e-9);
+  return behind > st.j ? behind : st.j;
+}
+// WHERE A LET-GO WHEEL GOES: detentSettle's answer, from the rests kept.
+export function columnRelease(m, w) {
+  const T = detentSettle(m.lib, m.det, w, 12, m.restsNear);
+  if (T === null) return { kind: 'tip', target: w };
+  return { kind: m.sigma * (T - w) > 1e-12 ? 'forward' : 'back', target: T };
+}
+// THE STROKE MOVES. Forward, the pawl picks up and drives (columnWheel). Back,
+// the pawl stops holding the wheel forward: it goes where the detent takes it —
+// on into a rest ahead (the pawl rides free over the teeth), or back with the
+// pawl to the rest behind (the pawl locks that way, so the two return together),
+// or it stands on the tooth's tip.
+export function columnStroke(m, st0, s) {
+  const st = { ...st0 }, sNew = Math.max(0, Math.min(1, s));
+  if (sNew < st.s && isDriven(m, st)) {
+    const w = columnWheel(m, st), rel = columnRelease(m, w);
+    st.last = { ...rel, from: st.home, w };
+    if (rel.kind === 'forward') { st.drop = { from: w, to: rel.target, u: 0 }; st.stand = rel.target; }
+    else st.stand = rel.target;
+  }
+  st.s = sNew;
+  st.j = pawlTooth(m, st, columnWheel(m, st));
+  return st;
+}
+// COMMANDS: a press and a half press run from rest (the disc on the rim, where
+// the beak clears every column); scrubbing moves the stroke by hand and a
+// release lets the band take it; the three poses are states, not rebuilds.
+export function columnCommand(m, st, cmd, arg) {
+  const w = columnWheel(m, st);
+  if (cmd === 'press' || cmd === 'half') {
+    if (st.act !== 'idle') return null;
+    return { ...st, act: 'pressing', aim: cmd === 'press' ? 1 : m.halfAim, home: m.kBehind(w), last: null };
+  }
+  if (cmd === 'scrub') {
+    if (st.act !== 'idle' && st.act !== 'scrubbing') return null;
+    return { ...columnStroke(m, { ...st, home: st.act === 'idle' ? m.kBehind(w) : st.home, last: st.act === 'idle' ? null : st.last }, arg), act: 'scrubbing' };
+  }
+  if (cmd === 'release') return st.act === 'scrubbing' ? { ...st, act: 'returning' } : null;
+  if (cmd === 'armed' || cmd === 'ringing' || cmd === 'off') {
+    // the nearest rest at or σ-ahead of the wheel whose reading is the one asked
+    let k = m.kBehind(w);
+    while ((m.hold(k) === null) !== (cmd !== 'off')) k += m.sigma;
+    const theta = cmd === 'armed' ? m.thetaPress + TAU * Math.ceil((st.theta - m.thetaPress) / TAU - 1e-9) : m.thetaNotch + TAU * Math.ceil((st.theta - m.thetaNotch) / TAU - 1e-9);
+    const out = { ...st, act: cmd === 'armed' ? 'idle' : 'hour', s: 0, stand: m.restAngle(k), j: k, drop: null, theta, home: k, last: null, ring: 0, runDown: false };
+    out.hourTo = cmd === 'armed' ? null : nextPress(m, theta);
+    if (cmd === 'armed') { out.free = false; }
+    return flyFollow(m, out, 0);
+  }
+  return null;
+}
+const nextPress = (m, theta) => m.thetaPress + TAU * Math.ceil((theta - m.thetaPress) / TAU + 1e-9);
+// THE DISPLAY CLOCK: dt seconds at speed 1.
+export function columnAdvance(m, st0, dt) {
+  let st = { ...st0 };
+  if (st.drop) {
+    const u = Math.min(1, st.drop.u + dt / DROP_S);
+    st.drop = u >= 1 ? null : { ...st.drop, u };
+  }
+  if (st.act === 'pressing') {
+    st = columnStroke(m, st, Math.min(st.aim, st.s + dt / PRESS_S));
+    if (st.s >= st.aim - 1e-12) st.act = 'returning';
+  } else if (st.act === 'returning') {
+    st = columnStroke(m, st, Math.max(0, st.s - dt / RETURN_S));
+    if (st.s === 0 && !st.drop) {
+      // a wheel at rest is read at the hour; one on the tooth's tip is at no
+      // rest, and the model does not say what the beak reads there
+      if (m.atRest(st.stand) !== null) { st.act = 'hour'; st.hourTo = nextPress(m, st.theta); st.ring = 0; st.runDown = false; }
+      else st.act = 'idle';
+    }
+  } else if (st.act === 'hour') {
+    const rate = m.leverPins(st.theta) > m.rimDown + 1e-9 ? HOUR_V_DEG_S : HOUR_RIM_DEG_S;
+    st.theta = Math.min(st.hourTo, st.theta + deg(rate) * dt);
+    if (st.theta >= st.hourTo) { st.theta = st.hourTo; st.act = 'idle'; }
+  }
+  return flyFollow(m, st, dt);
+}
+// THE FLY: caught, it stands where its vane meets the lever (the branch nearest
+// where it stood, so it follows the lever as the lever moves); clear of the
+// lever it runs at the POSED cadence, until the lever reaches into its path
+// again and the vane comes round onto it. A run of more than the POSED wind
+// would run the band down — the display rates are chosen so it never does, and
+// the probe holds that; were it reached, the train stops (runDown).
+function flyFollow(m, st, dt) {
+  const L = m.leverAt(st.theta, columnWheel(m, st)), lp = m.lockAt(L.psi);
+  if (!st.free) {
+    if (lp.free) { st.free = true; st.ring = 0; }
+    else st.phi = m.branch(lp.phi, st.phi);
+    return st;
+  }
+  if (st.runDown) return st;
+  const a = st.phi;
+  let b = a + m.run * m.rate * dt;
+  if (!lp.free) {
+    const c = lp.phi + Math.PI * Math.ceil((m.run * (a - lp.phi)) / Math.PI - 1e-12) * m.run;   // the first catch at or ahead of a
+    if (m.run * (b - c) >= 0) { b = c; st.free = false; }
+  }
+  let n = m.strikesBetween(a, b);
+  if (st.ring + n >= m.perWind) { n = m.perWind - st.ring; st.runDown = true; }
+  st.ring += n; st.strikes += n; st.phi = b;
+  return st;
+}
+// THE POSE: every body's angle, in alarmPose's shape (so alarmBuild draws it
+// and toLdr writes it), plus the readings the page shows.
+export function columnPose(m, st) {
+  const S = m.S, psiDriver = S.psiRest + m.sigma * st.s * S.stroke, w = columnWheel(m, st);
+  const rel = m.pawlRel(w - psiDriver), c = Math.cos(psiDriver), sn = Math.sin(psiDriver);
+  const pawl = { rel, psi: rel + psiDriver, pivot: [DRIVER_ARM * c, DRIVER_ARM * sn] };
+  const L = m.leverAt(st.theta, w), k = m.atRest(w);
+  // the column nearest the beak's line from W, and whether it is centred
+  // under the pin (within half the 30° between a column rest and a gap rest)
+  let best = null;
+  for (const [i, col] of m.cols.entries()) { const off = Math.abs(mod(w + col.c + m.shift - m.toBeak + Math.PI, TAU) - Math.PI); if (!best || off < best.off) best = { i, off, rotor: col.rotor }; }
+  const reading = k === null ? null : m.hold(k) === null ? 'gap' : 'column';
+  return {
+    theta: st.theta, thetaW: w, psiDriver, psiLever: L.psi, leverBy: [L.by], phiC: st.phi, psiFollower: m.fm.seat(w), pawl,
+    psiHammer: m.hammerAt(st.phi), hammerBy: null,
+    mode: reading === null ? 'press' : reading === 'column' ? 'off' : st.free ? 'ringing' : 'armed',
+    rest: k, reading, column: { index: best.i, rotor: best.rotor, under: best.off < Math.PI / 12 },
+    driven: isDriven(m, st), free: st.free, strikes: st.strikes, ring: st.ring,
+  };
+}
+// THE TRAINS' ANGLES, travelling the gears from a reference build: each mesh
+// external, so each driven arbor turns −(driver's teeth / its teeth) of the one
+// before it (STRIKE_CHAIN off the fly arbor, RELEASE_CHAIN off the disc).
+export function trainAngles(build0, pose) {
+  const ref = Object.fromEntries(build0.shafts.map((b) => [b.shaft, b.phi])), p0 = build0.pose;
+  const dF = pose.phiC - p0.phiC, dD = pose.theta - p0.theta;
+  const [[b1, d1], [b2, d2]] = STRIKE_CHAIN;                       // barrel 16T → middle 8T; middle 16T → fly 8T
+  const [[a1, c1], [a2, c2], [a3, c3]] = RELEASE_CHAIN;            // hour 8T → S1 16T; S1 8T → S2 16T; S2 8T → disc 24T
+  const mid = -dF * d2 / b2, S2 = -dD * c3 / a3, S1 = -S2 * c2 / a2;
+  return { middle: ref.middle + mid, barrel: ref.barrel - mid * d1 / b1, S2: ref.S2 + S2, S1: ref.S1 + S1, hour: ref.hour - S1 * c1 / a1 };
+}
+// THE PHASE LINE: what the press is doing, in words, read off the state; and
+// a short form of it for a label in the scene.
+const PHASE_SHORT = {
+  pickup: 'the pawl picking up a tooth', climb: 'climbing to the crest', crest: 'over the near crest — on the tooth\'s tip',
+  committed: 'committed — past the far crest', dropped: 'dropped into the next rest', back: 'let go short of the crest — falling back',
+  tip: 'on the tooth\'s tip — at no rest', hour: 'the hour comes round', silent: 'lever on a column — silent',
+  ringing: 'lever in a gap — free: ringing', rundown: 'run down', passing: 'the hour passes',
+  armed: 'at rest — a gap under the pin: armed', off: 'at rest — a column under the pin: off',
+};
+export function columnPhase(m, st, pose = columnPose(m, st)) {
+  const out = columnPhaseOf(m, st, pose);
+  return { ...out, short: out.key === 'ringing' ? `${PHASE_SHORT.ringing}, strike ${st.ring}` : PHASE_SHORT[out.key] };
+}
+function columnPhaseOf(m, st, pose) {
+  const r = m.restsOf(st.home), sg = m.sigma, d = (x) => (x * 180 / Math.PI).toFixed(1);
+  const crest = sg > 0 ? r.crestPlus - r.rest : r.rest - r.crestMinus, far = sg > 0 ? r.farPlus - r.rest : r.rest - r.farMinus;
+  const travel = sg * (pose.thetaW - r.rest);
+  if (st.act === 'pressing' || st.act === 'scrubbing' || st.act === 'returning') {
+    if (st.drop || (st.last && st.last.kind === 'forward')) return { key: 'dropped', line: `dropped into the next rest: past the far crest, the detent's band carries the wheel on (the pawl rides back over a tooth)` };
+    if (st.last && st.last.kind === 'tip') return { key: 'tip', line: `let go on the tooth's tip, between the crests (${d(crest)}°–${d(far)}°): at no rest, and the model does not say which way it falls` };
+    if (st.last && st.last.kind === 'back') {
+      const home = sg * (st.last.target - r.rest) < 1e-9;
+      return home ? { key: 'back', line: `let go short of the crest: falling back to the rest it left (the pawl and the wheel return together)` }
+                  : { key: 'dropped', line: `committed: the press carried it past the next rest, and it settles back into it` };
+    }
+    if (!pose.driven) return { key: 'pickup', line: `the pawl picking up a tooth: the driver turns ${d(m.pickup)}° before the pawl meets a tooth's face` };
+    if (travel < crest) return { key: 'climb', line: `climbing to the crest: the wheel ${d(Math.max(0, travel))}° of the detent's ${d(crest)}°` };
+    if (travel < far) return { key: 'crest', line: `over the near crest, on the tooth's tip (${d(crest)}°–${d(far)}°): let go here, it stands at no rest` };
+    return { key: 'committed', line: `committed: past the far crest (${d(far)}°), in the next rest's basin` };
+  }
+  if (st.act === 'hour') {
+    if (pose.leverBy[0] === 'beak') return { key: 'silent', line: `lever on a column: silent (the beak holds it above the notch, the fly stays caught)` };
+    if (st.free) return st.runDown ? { key: 'rundown', line: `run down: the POSED wind spent` } : { key: 'ringing', line: `lever in a gap, free: ringing, strike ${st.ring} (the cadence POSED)` };
+    if (st.theta >= st.hourTo - 1.5 * Math.PI) return { key: 'passing', line: st.ring > 0 ? `the hour passes: the pins lift the lever and it catches the fly` : `the hour passes: the pins lift the lever off the column` };
+    return { key: 'hour', line: pose.reading === 'gap' ? `the hour comes round: the lever rides the pins toward the empty place, a gap under its pin` : `the hour comes round: the lever rides the pins, a column under its pin` };
+  }
+  if (pose.reading === null) return { key: 'tip', line: `on the tooth's tip, at no rest: a press must pass the far crest` };
+  return pose.reading === 'gap' ? { key: 'armed', line: `at rest: a gap under the lever's pin, armed` } : { key: 'off', line: `at rest: a column under the lever's pin, off` };
+}
