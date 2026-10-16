@@ -57,7 +57,6 @@ const defaultState = {
   jumpCorr: 0,
   crownOut: false,
   fastForward: false,
-  loop: false,        // §281 — the run-down/wind loop toggle, persisted like fastForward
   position: 'CU',     // §246 — the watch's position in gravity; balance-drive.js DEFAULT_POSITION (a pocket watch hangs pendant up)
   timeScale: 1, // real time — matches main.js's own default
   showLabels: false,
@@ -102,7 +101,6 @@ function sanitize(state) {
     jumpCorr: state.jumpCorr,
     crownOut: state.crownOut,
     fastForward: state.fastForward,
-    loop: state.loop,   // §281 — emitted by captureState, so it must round-trip
     position: state.position,   // §246 — emitted by captureState, so it must round-trip
     timeScale: state.timeScale,
     showLabels: state.showLabels,
