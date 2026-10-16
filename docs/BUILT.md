@@ -38495,10 +38495,11 @@ It carries `parameters.shapes`, so the `outlines` gate reads it as it reads an
 extrude. `CASE_LUG_EDGE_R` (0.15 mm) is the one finish number (P4). It is
 priced in the section modulus and in the tear-out's shear planes.
 
-The spring bar is one turned body (`LatheGeometry`): the Ø1.5 body between
-the facing walls, and a Ø0.8 tip pin into each hole, as deep as the lug less
-its edge round. It is one body rather than three touching cylinders, so it
-stays a closed solid.
+The spring bar is modelled as it is made: a Ø1.5 TUBE between the facing
+walls, and a separate Ø0.8 tip PIN at each end reaching into the drilled lug,
+as deep as the lug less its edge round. A first cut turned it as one rod, and
+`turning` failed it at L/D 27: a Ø0.8 bar 21.7 mm long, which nobody turns
+because nobody makes one.
 
 ### Instruments
 
@@ -38517,8 +38518,9 @@ stays a closed solid.
 | tear-out / bearing | 167.4 MPa (shear yield 167.4) / 125.0 MPa |
 
 Two measurement lessons are recorded in the probe:
-- **The bar is turned now**, so the axis fit takes only the body's rings. The
-  old 0.5 radius cut let the tips' rings in and read a 2.185 u bar.
+- **The tip pins are their own meshes.** Their radius is read about the
+  tube's fitted axis, so "the pin is coaxial with the tube" is part of the read,
+  and exactly two pins must be found on each bar.
 - **A drilled lug puts air on the bar's axis.** The control that used to read
   the body's abutment (≈ −bar radius) now reads the tip pin inside its hole
   and must find the drilled clearance.

@@ -29,8 +29,8 @@
 //    pin's own axis, inside its drilled hole, must read the hole wall one
 //    CLEAR_MARGIN off the pin — the clearance it is drilled to. (§190's
 //    control read the bar body's abutment at ≈ −bar radius; a drilled lug
-//    puts air on the axis there, and the old 0.5 ring filter let the tips'
-//    rings into the axis fit, which read a 2.185 u bar.)
+//    puts air on the axis there.) The tip pins are their own meshes
+//    (caseSpringBarTip), read about the tube's fitted axis: two per bar.
 // 4. §280 THE BACK PLANE: the lug's lowest metal at or above the case back's
 //    face — §261's ratchet measures the case WITH its lugs — and the bar's
 //    height above that plane, the number the downturn exists to lower.
@@ -68,10 +68,11 @@ const res = await page.evaluate(async ({ T, rc }) => {
   const THREE = await import('three');
   const clock = window.__clock;
   const v = new THREE.Vector3();
-  const lugs = [], bars = [], caseMeshes = [];
+  const lugs = [], bars = [], tips = [], caseMeshes = [];
   clock.scene.traverse((o) => {
     if (o.name === 'caseLug') lugs.push(o);
     else if (o.name === 'caseSpringBar') bars.push(o);
+    else if (o.name === 'caseSpringBarTip') tips.push(o);
     else if (o.isMesh && o.userData.casePart) caseMeshes.push(o);
   });
   const ext = (o) => {
@@ -170,11 +171,8 @@ const res = await page.evaluate(async ({ T, rc }) => {
       return { t: d.dot(axis), a: d.dot(u1), b: d.dot(u2) };
     });
     const rRough = Math.max(...proj.map((p) => Math.hypot(p.a, p.b)));
-    // §280: the bar is turned — a Ø1.5 body and a Ø0.8 tip pin each end —
-    // so the fit takes the BODY's rings only (the tips' sit at 0.53 of its
-    // radius, which the old 0.5 cut let through and the fit read as a
-    // 2.185 u bar).
-    const ring = proj.filter((p) => Math.hypot(p.a, p.b) > 0.75 * rRough);
+    // The cap-centre vertices are on the axis; the rings are at the radius.
+    const ring = proj.filter((p) => Math.hypot(p.a, p.b) > 0.5 * rRough);
     let Saa = 0, Sab = 0, Sa = 0, Sbb = 0, Sb = 0, N = 0, Sar = 0, Sbr = 0, Sr = 0;
     for (const { a, b: bb } of ring) {
       const r2 = a * a + bb * bb;
@@ -195,17 +193,32 @@ const res = await page.evaluate(async ({ T, rc }) => {
     }
     const cx = -sol[0] / 2, cy = -sol[1] / 2;
     const centre = c.clone().addScaledVector(u1, cx).addScaledVector(u2, cy);
-    let h = 0, r = 0, hTip = 0, rTip = Infinity;
+    let h = 0, r = 0;
     for (const p of b.pts) {
       const d = V(p).sub(centre);
       const t = d.dot(axis);
-      const rr = Math.sqrt(Math.max(d.lengthSq() - t * t, 0));
-      r = Math.max(r, rr);
-      hTip = Math.max(hTip, Math.abs(t));
-      if (rr > 0.75 * rRough) h = Math.max(h, Math.abs(t));   // the BODY's half-length
-      else if (rr > 1e-6) rTip = Math.min(rTip, rr);
+      h = Math.max(h, Math.abs(t));
+      r = Math.max(r, Math.sqrt(Math.max(d.lengthSq() - t * t, 0)));
     }
-    return { c: centre, axis, h, r, hTip, rTip };
+    // §280: the tip pins are their own meshes, on the bar's axis past each
+    // end — their radius read about the BAR's fitted axis, which is what
+    // makes "the pin is coaxial with the tube" part of the read.
+    let rTip = 0, nTip = 0;
+    for (const tm of tips) {
+      tm.updateWorldMatrix(true, true);
+      const tp = tm.geometry.attributes.position;
+      let near = false; const loc = [];
+      for (let i = 0; i < tp.count; i++) {
+        const d = tm.localToWorld(new THREE.Vector3().fromBufferAttribute(tp, i)).sub(centre);
+        const t = d.dot(axis);
+        const rr = Math.sqrt(Math.max(d.lengthSq() - t * t, 0));
+        if (rr < 2 * r) near = true;
+        loc.push(rr);
+      }
+      if (!near) continue;
+      nTip++; rTip = Math.max(rTip, ...loc);
+    }
+    return { c: centre, axis, h, r, rTip, nTip };
   };
   // Closest point on triangle (Ericson, Real-Time Collision Detection).
   const closestOnTri = (p, a, b, c, out) => {
@@ -281,7 +294,7 @@ const res = await page.evaluate(async ({ T, rc }) => {
     const tipSeg = { c: bar.c.clone().addScaledVector(bar.axis, bar.h + T / 2), axis: bar.axis, h: T / 2 - rc - 0.05 };
     const toHole = segToMeshes(tipSeg, lugs, 64);
     return {
-      barR: bar.r, tipR: bar.rTip, barZ: bar.c.z, body: 2 * bar.h, tipLen: bar.hTip - bar.h,
+      barR: bar.r, tipR: bar.rTip, nTip: bar.nTip, barZ: bar.c.z,
       gap: toCase.dist - bar.r, governs: toCase.mesh,
       holeGap: toHole.dist - bar.rTip,
     };
@@ -345,6 +358,7 @@ for (const w of res.wrap) {
   // one CLEAR_MARGIN off (the hole's drilled clearance), to the hole's facet
   // sagitta. A clean wrap number with a dead control is a probe reading nothing.
   const tipRDecl = CASE_SPRING_BAR_TIP_D / 2, holeGapDecl = CASE_LUG_HOLE_D / 2 - tipRDecl;
+  if (w.nTip !== 2) { ok = false; console.log(`WRAP FAIL: ${w.nTip} tip pins on this bar's axis (expected 2)`); }
   if (Math.abs(w.tipR - tipRDecl) > 0.02) { ok = false; console.log(`WRAP FAIL: recovered tip radius ${w.tipR.toFixed(4)} u, declared ${tipRDecl.toFixed(4)} u`); }
   if (Math.abs(w.holeGap - holeGapDecl) > 0.02) { ok = false; console.log(`WRAP CONTROL FAIL: the tip pin reads ${w.holeGap.toFixed(4)} u off its hole wall, drilled at ${holeGapDecl.toFixed(4)} — the distance machinery is not seeing the hole that exists`); }
   else console.log(`wrap CONTROL PASS: the tip pin reads ${w.holeGap.toFixed(4)} u off its hole wall (drilled at CLEAR_MARGIN = ${holeGapDecl.toFixed(4)})`);
