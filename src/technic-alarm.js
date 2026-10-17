@@ -80,11 +80,16 @@ const deg = (d) => d * Math.PI / 180;
 //     ALARM_CAM_LOBES;
 //   · the HAMMER is two thin liftarms (6632) keyed on one pivot axle, its tail
 //     riding the cam's pins, its head striking a tile (3070b) on a stack of
-//     plates: no LEGO part rings.
+//     plates: no LEGO part rings;
+//   · §288, the PUSHER: a cross axle sliding in the round holes of two Technic
+//     bricks (6541) turned a quarter round, so their holes run across the
+//     frame; a round half bush (32123a) on its tip presses a second half bush
+//     on a 2L axle in the driver's free end hole, a third is its collar, and a
+//     bush (3713) on its outer end is the button a finger presses.
 export const ALARM_PARTS = Object.freeze({
   rotor: '2712', wheel: '69778', pawl: '3647', arm: '6632', lever: '11478', follower: '32123a',
   pin: '3673', longPin: '6558', beam: '7229',
-  spur8: '3647', spur16: '4019', spur24: '3648', tile: '3070b',
+  spur8: '3647', spur16: '4019', spur24: '3648', tile: '3070b', button: '3713',
 });
 
 // MEASURED (held by probe-technic-alarm.mjs against the vendored parts, to
@@ -346,7 +351,8 @@ export function detentSettle(lib, spec, theta, teeth = 12, restsNear = (t) => de
 // THE PAWL rides on the DRIVER: a thin liftarm idling on the column wheel's
 // axle by its round middle hole, its end holes DRIVER_ARM either side. One end
 // carries the pawl's pivot (an axle keyed in its axle hole); the other end is
-// the PUSHER, the end a finger presses. The pawl is landing H's click: a thin
+// the PUSHER's (since §288 a half bush on a 2L there, which a rod presses: THE
+// PUSHER, below). The pawl is landing H's click: a thin
 // liftarm pivoting on its round middle hole, its 8T keyed at an end hole
 // PAWL_ARM on, in the 12T's slab. The 8T must stand the 8:12 mesh, 10 mm, from
 // the axis, so the driver's arm, the pawl's arm and 10 make a triangle, and
@@ -686,7 +692,7 @@ export function solveDetent(lib, { W, zW, toBeakColumn, Lrel, range = [[-24, 24]
 }
 
 // THE DRIVER'S STOPS. The driver idles on W; its band turns it back (−σ) onto
-// the REST stack, a finger presses its other end down (σ) onto the BANK stack.
+// the REST stack, and a press (§288: the pusher's rod) turns it σ onto the BANK stack.
 // Each stack is 1×1 plates topped with a tile (a flat top), so its top is a
 // whole number of plates over the baseplate and its middle on the 4 mm grid.
 // A press must carry the wheel past the detent's FAR crest (the next rest's
@@ -972,6 +978,9 @@ export const TECHNIC_ALARM = Object.freeze({
   detent: Object.freeze({ pivot: Object.freeze([-16, 16]), sense: 1 }),
   driver: Object.freeze({ rest: Object.freeze({ u: 20, plates: 5 }), bank: Object.freeze({ u: 0, plates: 2 }) }),
   hammer: Object.freeze({ at: Object.freeze([12, -25.6]), sense: 1, kHead: 3, struck: Object.freeze({ u: 12, plates: 23 }) }),
+  // §288: the guides' middles about W, the plates under each guide's brick (its
+  // foot among them), and the rod's length in studs (solvePusher)
+  pusher: Object.freeze({ slot: -40, plates: 2, guides: Object.freeze([36, 44]), rod: 6 }),
 });
 // THE TRAINS, laid on the lattice from the shafts the solve fixed: the strike
 // train runs from the fly arbor toward −u (away from the hammer), one 16:8
@@ -1003,6 +1012,126 @@ export function alarmShafts(spec = TECHNIC_ALARM) {
 // (allocated in a fixed order); its second column the next such slot out.
 const AXLE_LENS = Object.keys(AXLE_PARTS).map(Number).sort((a, b) => a - b);
 const TRIM = 0.2;   // the library shortens each axle end by half an LDU
+
+// ── §288: THE PUSHER ────────────────────────────────────────────────────────
+// Landing I left the driver's free end bare: "the PUSHER, the end a finger
+// presses", a liftarm's end pressed down in the plane. That end does not move
+// down. Between the driver's two stops it swings 31.19° about W, so it moves
+// 7.0 mm across and 5.0 mm down, along a chord 35° off the level, and no
+// straight push from above meets it on one face. What a straight push CAN
+// follow is one coordinate of a ROUND part. So the driver carries a round half
+// bush (32123a) on a 2L axle keyed in its free end hole, standing in front of
+// its slot (the rest and bank stacks fill that slot), and a ROD pushes it
+// level, across the frame:
+//   · the ROD is a cross axle sliding in the round pin holes of two Technic
+//     bricks (6541), each turned a quarter round about the vertical so its hole
+//     runs along x. A 1×1 brick stands on the same stud turned, so the guides
+//     are ordinary columns. An axle turns and slides free in a pin hole, and
+//     the rod's parts are all round, so its spin is no part of the law;
+//   · its TIP is a second half bush, flush with the rod's end. Its face is flat
+//     out to the flanges (3.6 mm, read off the part by the probe), and it
+//     presses the driver's half bush where that bush stands farthest along the
+//     push. The two are round, so the tip's face stands at
+//         u = −DRIVER_ARM·cos ψ − pd·R        (pushFace; R the bush's flanges)
+//     about W, and the driver stands where that holds (pushDriver). The ROD is
+//     the input and the driver follows it: rule 2 at a LEGO pusher;
+//   · a third half bush is the COLLAR, an LDU short of the inner guide at rest:
+//     the rod's out-stop (a bush slides on an axle, so it is set anywhere). The
+//     bank stack ends the stroke, through the driver;
+//   · a BUSH (3713) on the outer end is the BUTTON.
+// The driver's band, which turned it back onto its rest stack, now also pushes
+// the rod back out through the same contact. A force along pd·u at the bush's
+// height v turns the driver by −v·pd. So the push runs the way that gives the
+// press's σ over the whole stroke, and the end must not cross W's height. The
+// rod stands at a lattice height, and the contact must stay on the tip's face.
+// Its slot is the first stud-grid slot in front of the driver that the tip's
+// flanges clear by an LDU. MODELLED: nothing is weighed, and the finger's
+// force is not a number here.
+const PUSH_R = KEYLESS_PULL_DIM_MM.followerR, PUSH_W = 2 * KEYLESS_PULL_DIM_MM.followerHalfWidth;
+const BUTTON_W = 2 * FUSEE_DIM_MM.halfWidth[ALARM_PARTS.button];
+// the 2L in the driver's free end hole, from the driver's back face forward,
+// and the half bush flush with its front end
+export const PUSH_Y = Object.freeze((() => {
+  const stub = [r6(Yp.driver[1] - (2 * D.stud - 2 * TRIM)), Yp.driver[1]];
+  return { stub, follower: [stub[0], r6(stub[0] + PUSH_W)] };
+})());
+export const pushEnd = (psi) => [-DRIVER_ARM * Math.cos(psi), -DRIVER_ARM * Math.sin(psi)];
+export const pushFace = (psi, pd) => pushEnd(psi)[0] - pd * PUSH_R;
+// the driver's angle where the tip's face stands at u (the branch the stroke is on)
+export function pushDriver(u, pd, psiRest) {
+  const c = Math.max(-1, Math.min(1, -(u + pd * PUSH_R) / DRIVER_ARM));
+  const psi = Math.sign(Math.sin(psiRest)) * Math.acos(c);
+  return psiRest + mod(psi - psiRest + Math.PI, TAU) - Math.PI;
+}
+// the driver's two stops, as alarmStates reads them
+export function driverStops(spec, zW) {
+  const rect = (s) => stackRect(s.u, s.plates * D.plateH, zW), sigma = -spec.pawlLocks;
+  const psiRest = driverStop(rect(spec.driver.rest), (sigma < 0 ? 0 : Math.PI) + sigma * deg(60), -sigma);
+  return { psiRest, psiBank: driverStop(rect(spec.driver.bank), psiRest, sigma), sigma };
+}
+// THE SOLVE. Everything the rod needs from the driver's stroke: the push's
+// direction, its slot, its height (the lattice height that keeps the contact
+// nearest the tip's middle), the guides, the collar and the rod's length.
+export function solvePusher(spec, zL) {
+  const g = AX_CLEAR, half = D.stud / 2, zW = r6(zL - spec.W[1]);
+  const { psiRest, psiBank, sigma } = driverStops(spec, zW);
+  const out = { psiRest, psiBank, sigma };
+  if (psiRest === null || psiBank === null) return { ...out, pick: null, why: 'the driver has no stops' };
+  const n = 128, at = Array.from({ length: n + 1 }, (_, i) => psiRest + (psiBank - psiRest) * i / n);
+  const pd = -Math.sign(sigma * pushEnd(psiRest)[1]);
+  if (at.some((p) => -pushEnd(p)[1] * pd * sigma <= 0)) return { ...out, pick: null, why: 'the end crosses the axle\'s height: no one push turns the driver all the way' };
+  const faces = at.map((p) => pushFace(p, pd));
+  for (let i = 0; i < n; i++) if (pd * (faces[i + 1] - faces[i]) <= 0) return { ...out, pick: null, why: 'the face turns back along the stroke' };
+  const stroke = r6(pd * (faces[n] - faces[0]));
+  // the slot: the tip's flanges an LDU in front of the driver, on the stud grid;
+  // they must cover the driver's half bush and clear the stops' slot
+  const slot = Math.floor((Yp.driver[0] - g - PUSH_R) / D.stud) * D.stud;
+  const band = [slot - PUSH_R, slot + PUSH_R], fol = PUSH_Y.follower;
+  const dSlot = Math.round(((Yp.driver[0] + Yp.driver[1]) / 2 - half / 2 - 0.5) / D.stud) * D.stud;
+  // (1e-4: the flanges are 9 LDU, and the part's vertices read them 0.09 µm out)
+  if (band[0] > fol[0] + 1e-4 || band[1] < fol[1] - 1e-4) return { ...out, pick: null, why: 'the tip does not cover the driver\'s half bush' };
+  if (band[1] > dSlot - half - g + 1e-4) return { ...out, pick: null, why: 'the tip reaches into the stops\' slot' };
+  // the height: a guide's hole, plates over its foot, the contact on the tip's face
+  // (an LDU inside its flanges) and the tip over the baseplate's studs
+  const cz = at.map((p) => zW - pushEnd(p)[1]);
+  let h = null;
+  for (let k = 1; k <= 12; k++) {
+    const z = r6(D.plateH * k + D.holeZ), dev = Math.max(...cz.map((c) => Math.abs(c - z)));
+    if (z - PUSH_R < D.studH + g || dev > PUSH_R - g) continue;
+    if (!h || dev < h.dev) h = { plates: k, z, dev };
+  }
+  if (!h) return { ...out, pick: null, why: 'no lattice height keeps the contact on the tip\'s face' };
+  // the guides, on the stud grid side by side (a jumper's foot would reach
+  // under its neighbour): the inner's near face far enough out that the tip
+  // and the collar fit before it, the collar an LDU short of it
+  const o = -pd, xTip0 = r6(spec.W[0] + faces[0]);
+  const need = o * xTip0 + 2 * PUSH_W + g + half;              // the inner guide's middle, outward
+  const xIn = o * Math.ceil(need / D.stud - 1e-9) * D.stud, xOut = xIn + o * D.stud;
+  const collar = r6(o * (xIn - o * half) - g - PUSH_W - o * xTip0);   // the collar's inner face, outward from the tip
+  // the rod: through both guides at every stroke, and the button an LDU off the
+  // outer guide at the bank
+  const reach = o * (xOut + o * half) + g + stroke + BUTTON_W - o * xTip0;
+  const rod = AXLE_LENS.find((k) => k * D.stud - 2 * TRIM >= reach - 1e-9);
+  if (!rod) return { ...out, pick: null, why: 'no axle reaches the button' };
+  const len = r6(rod * D.stud - 2 * TRIM);
+  return { ...out, pick: { pd, slot, plates: h.plates, z: h.z, dev: h.dev, xTip0, stroke, guides: [r6(xIn - spec.W[0]), r6(xOut - spec.W[0])], collar, rod, len,
+    play: g, buttonGap: r6(o * xTip0 + len - BUTTON_W - stroke - o * (xOut + o * half)) } };
+}
+// The rod as the frame carries it, from the DECLARED spec (the probe re-solves
+// it): the push's direction, its height, the tip at rest, the stroke.
+export function pusherOf(spec, zL) {
+  const P = spec.pusher, zW = r6(zL - spec.W[1]);
+  const { psiRest, psiBank, sigma } = driverStops(spec, zW);
+  const pd = -Math.sign(sigma * pushEnd(psiRest)[1]);
+  const xTip0 = spec.W[0] + pushFace(psiRest, pd), stroke = pd * (pushFace(psiBank, pd) - pushFace(psiRest, pd));   // unrounded: the laws read them
+  const o = -pd, xIn = spec.W[0] + P.guides[0], len = r6(P.rod * D.stud - 2 * TRIM);
+  return { pd, slot: P.slot, z: r6(D.plateH * P.plates + D.holeZ), xTip0, stroke, psiRest, psiBank, len,
+    collar: r6(o * (xIn - o * D.stud / 2) - AX_CLEAR - PUSH_W - o * xTip0), guides: P.guides.map((u) => spec.W[0] + u), R: PUSH_R, W: PUSH_W, buttonW: BUTTON_W };
+}
+// travel along the press (mm from rest) ⇄ the driver's angle
+export const pusherX = (pu, travel) => pu.xTip0 + pu.pd * travel;
+export const pusherDriver = (pu, spec, travel) => pushDriver(pusherX(pu, travel) - spec.W[0], pu.pd, pu.psiRest);
+export const pusherTravel = (pu, spec, psi) => pu.pd * (spec.W[0] + pushFace(psi, pu.pd) - pu.xTip0);
 export function sweptMembers(spec = TECHNIC_ALARM, sh = alarmShafts(spec)) {
   const Y = Yp, r = (k) => GEAR_TIP_MM[ALARM_PARTS[k]];
   const tip24 = GEAR_TIP_MM[ALARM_PARTS.spur24];
@@ -1015,6 +1144,7 @@ export function sweptMembers(spec = TECHNIC_ALARM, sh = alarmShafts(spec)) {
     { who: 'pawl', c: sh.W, r: pawlReach, y: [Y.pawlArm[0], Y.followerArm[1]] },
     { who: 'driver', c: sh.W, r: DRIVER_ARM + A.leverHalfWidth, y: Y.driver },
     { who: 'pawl pivot', c: sh.W, r: DRIVER_ARM + D.axleR, y: [Y.pawlArm[1] - 2 * D.stud + 2 * TRIM, Y.pawlArm[1]] },
+    { who: 'push follower', c: sh.W, r: DRIVER_ARM + PUSH_R, y: [PUSH_Y.stub[0], Y.driver[0]] },   // §288: the driver's half bush and its 2L
     { who: 'disc', c: sh.D, r: FLY_SWEEP, y: [Y.discPinMid - A.pinHalf, Y.discBack[1]] },
     { who: 'disc 24T', c: sh.D, r: tip24, y: Y.disc24 },
     { who: 'fly', c: sh.C, r: FLY_SWEEP, y: [Y.fly[0], Y.cam2[1]] },
@@ -1062,6 +1192,8 @@ export function frameAlarm(lib = null, spec = TECHNIC_ALARM) {
     { who: 'rest stop', x: r6(sh.W[0] + spec.driver.rest.u), top: r6(spec.driver.rest.plates * D.plateH), slot: dSlot, tile: true },
     { who: 'bank stop', x: r6(sh.W[0] + spec.driver.bank.u), top: r6(spec.driver.bank.plates * D.plateH), slot: dSlot, tile: true },
     { who: 'struck', x: r6(sh.Hm[0] + spec.hammer.struck.u), top: r6(spec.hammer.struck.plates * D.plateH), slot: hSlot, tile: true },
+    // §288: the pusher's two guides, each a Technic brick turned a quarter round
+    ...spec.pusher.guides.map((u, i) => ({ who: i ? 'outer guide' : 'inner guide', x: r6(sh.W[0] + u), top: r6(spec.pusher.plates * D.plateH + D.brickH), slot: spec.pusher.slot, technic: true, turned: true })),
   ];
   const placed = stacks.map((s) => ({ ...s, boxes: columnBoxes(s.x, s.top, mod(s.x, D.stud) !== 0) }));
   const clearOf = (boxes, slot, self) => {
@@ -1102,7 +1234,7 @@ export function frameAlarm(lib = null, spec = TECHNIC_ALARM) {
   const xs = all.flatMap((c) => c.boxes.flatMap((b) => [b[0], b[1]])), ys = all.flatMap((c) => [c.slot - half, c.slot + half]);
   const base = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
   base.studsX = (base.x1 - base.x0) / D.stud; base.studsY = (base.y1 - base.y0) / D.stud;
-  return { framed: true, key: 'alarm', gen: 'technic_classic', spec, zL, shafts: sh, axles, columns, stacks: placed.filter((q) => !q.shaft), swept, base };
+  return { framed: true, key: 'alarm', gen: 'technic_classic', spec, zL, shafts: sh, axles, columns, stacks: placed.filter((q) => !q.shaft), swept, base, pusher: pusherOf(spec, zL) };
 }
 
 // ── THE BUILD: LDraw placements (LDU) ───────────────────────────────────────
@@ -1134,7 +1266,10 @@ export function alarmPose(lib, frame, { theta, thetaW, psiDriver, phiC = null, m
   const h = { C: spec.C, Hm: sh.Hm, sense: Hs.sense, headOff, pinR: pinRad, psiFree: -Math.PI / 2 - headOff,
     struck: [struckSt.x - D.stud / 2, struckSt.x + D.stud / 2, frame.zL - struckSt.top, 1e9] };
   const hr = hammerRest(h, phi);
-  return { theta, thetaW, psiDriver, psiLever: lever.psi, leverBy: lever.by, phiC: phi, lock, psiFollower, pawl, psiHammer: hr ? hr.psi : null, hammerBy: hr?.by ?? null, mode };
+  // §288: the rod against the driver's half bush (at a rest state, the band
+  // holds the driver on its stop and the rod rests on it)
+  const pushX = pusherX(frame.pusher, pusherTravel(frame.pusher, spec, psiDriver));
+  return { theta, thetaW, psiDriver, pushX, psiLever: lever.psi, leverBy: lever.by, phiC: phi, lock, psiFollower, pawl, psiHammer: hr ? hr.psi : null, hammerBy: hr?.by ?? null, mode };
 }
 export function alarmBuild(frame, lib, pose) {
   const spec = frame.spec, sh = frame.shafts, Y = Yp, zL = frame.zL;
@@ -1145,21 +1280,21 @@ export function alarmBuild(frame, lib, pose) {
   statics.push({ role: 'baseplate', part: Math.max(frame.base.studsX, frame.base.studsY) + 1 <= 16 ? FRAME_PARTS.baseplate16 : KEYLESS_PARTS.baseplate32, m: at3(snap(midX), 0, snap(midZ)) });
   // columns and stacks: a foot (plate or jumper), plates and bricks, a Technic
   // brick on an axle column; plates and a tile on a stack
-  const stack = (x, slot, top, technic) => {
+  const stack = (x, slot, top, technic, turned = false) => {
     const jumper = mod(x, D.stud) !== 0;
     const parts = [{ part: jumper ? FRAME_PARTS.jumper1x2 : FRAME_PARTS.plate1x1, h: D.plateH, role: 'plate' }];
-    const cap = technic ? { part: FRAME_PARTS.technicBrick1x1, h: D.brickH, role: 'technicBrick' } : { part: ALARM_PARTS.tile, h: A.tileH, role: 'tile' };
+    const cap = technic ? { part: FRAME_PARTS.technicBrick1x1, h: D.brickH, role: 'technicBrick', r: turned ? X_TO_Z_REV : I3 } : { part: ALARM_PARTS.tile, h: A.tileH, role: 'tile' };
     let n = Math.round((top - cap.h - D.plateH) / D.plateH);
     const k = Math.floor(n / 3); n -= 3 * k;
     for (let i = 0; i < n; i++) parts.push({ part: FRAME_PARTS.plate1x1, h: D.plateH, role: 'plate' });
     for (let i = 0; i < k; i++) parts.push({ part: FRAME_PARTS.brick1x1, h: D.brickH, role: 'brick' });
     parts.push(cap);
     let zz = 0;
-    for (const p of parts) { zz += p.h; statics.push({ role: p.role, part: p.part, m: at3(L(x), -L(zz), L(slot)) }); }
+    for (const p of parts) { zz += p.h; statics.push({ role: p.role, part: p.part, m: at3(L(x), -L(zz), L(slot), p.r) }); }
     return r6(zz);
   };
   for (const c of frame.columns) stack(c.x, c.slot, c.top, true);
-  for (const s of frame.stacks) stack(s.x, s.slot, s.top, false);
+  for (const s of frame.stacks) stack(s.x, s.slot, s.top, !!s.technic, !!s.turned);
   const body = (shaft, p, phi, parts) => { bodies.push({ shaft, origin: fr(p[0], 0, zL - p[1]), phi, speed: 0, parts }); };
   const ax = Object.fromEntries(frame.axles.map((a) => [a.shaft, a]));
   const axlePart = (a) => ({ role: 'axle', part: a.part, m: at3(0, 0, L((a.y0 + a.y1) / 2), ROT_AXLE) });
@@ -1186,7 +1321,18 @@ export function alarmBuild(frame, lib, pose) {
   const pAx = twoL(Y.pawlArm[1], -1);
   body('driver', sh.W, pose.psiDriver, [
     { role: 'driver', part: ALARM_PARTS.lever, m: at3(0, 0, mid(Y.driver), ARM_TO_PLANE) },
-    { role: 'axle', part: AXLE_PARTS[2], m: at3(L(DRIVER_ARM), 0, L((pAx.y0 + pAx.y1) / 2), ROT_AXLE) }]);
+    { role: 'axle', part: AXLE_PARTS[2], m: at3(L(DRIVER_ARM), 0, L((pAx.y0 + pAx.y1) / 2), ROT_AXLE) },
+    // §288: the 2L in the free end hole, and the half bush the pusher presses
+    { role: 'stub', part: AXLE_PARTS[2], m: at3(-L(DRIVER_ARM), 0, mid(PUSH_Y.stub), ROT_AXLE) },
+    { role: 'follower', part: ALARM_PARTS.follower, m: at3(-L(DRIVER_ARM), 0, mid(PUSH_Y.follower)) }]);
+  // §288 THE PUSHER: one body sliding along x, its origin the tip's face; the
+  // tip, the rod, the collar and the button outward from it
+  const pu = frame.pusher, o = -pu.pd, yP = L(pu.slot);
+  bodies.push({ shaft: 'pusher', origin: fr(pose.pushX, 0, pu.z), phi: 0, speed: 0, slides: 'x', parts: [
+    { role: 'pushTip', part: ALARM_PARTS.follower, m: at3(L(o * pu.W / 2), 0, yP, X_TO_Z_REV) },
+    { role: 'axle', part: AXLE_PARTS[frame.spec.pusher.rod], m: at3(L(o * pu.len / 2), 0, yP) },
+    { role: 'collar', part: ALARM_PARTS.follower, m: at3(L(o * (pu.collar + pu.W / 2)), 0, yP, X_TO_Z_REV) },
+    { role: 'button', part: ALARM_PARTS.button, m: at3(L(o * (pu.len - pu.buttonW / 2)), 0, yP, X_TO_Z_REV) }] });
   // THE PAWL: a 6632 on the pivot by its round middle hole (its origin, an end
   // hole, set back armMid), the 8T at its far end hole on a 2L axle reaching
   // back through the 12T's band
@@ -1268,10 +1414,7 @@ export function alarmStates(lib, frame) {
   const zW = frame.zL - spec.W[1];
   const restAt = (k) => detentRests(lib, det, br.gap + k * Math.PI / 6);
   const gapRest = restAt(0), colRest = restAt(1);
-  const rect = (s) => stackRect(s.u, s.plates * D.plateH, zW);
-  const sigma = -spec.pawlLocks;
-  const psiRest = driverStop(rect(spec.driver.rest), (sigma < 0 ? 0 : Math.PI) + sigma * deg(60), -sigma);
-  const psiBank = driverStop(rect(spec.driver.bank), psiRest, sigma);
+  const { psiRest, psiBank, sigma } = driverStops(spec, zW);
   const armed = alarmPose(lib, frame, { theta: st.thetaNotch - Math.PI / 2, thetaW: gapRest.rest, psiDriver: psiRest, mode: 'armed' });
   const ringing = alarmPose(lib, frame, { theta: st.thetaNotch, thetaW: gapRest.rest, psiDriver: psiRest, mode: 'ringing' });
   ringing.phiC = armed.phiC;   // the fly passed; drawn where it last stood
@@ -1457,13 +1600,20 @@ export function* columnModelSteps(lib, frame, states = alarmStates(lib, frame), 
   // THE COLUMNS, for the reading's display: their angles in the wheel's frame,
   // which rotor carries each, and the direction from W to the beak
   const prof = unionProfile(S.geo.colA, S.geo.colB), cols = columnAngles(prof).map((c) => ({ c, rotor: rAt(S.geo.colA, c) >= rAt(S.geo.colB, c) ? 'A' : 'B' }));
+  // §288 THE PUSHER: the stroke s is the ROD's travel, a fraction of its whole
+  // stroke, and the driver stands where the rod's tip meets its half bush; so
+  // turn(s) is the driver's turn from its rest stop, and sOf its inverse
+  const pu = frame.pusher;
+  const turn = (s) => sigma * (pusherDriver(pu, spec, s * pu.stroke) - S.psiRest);
+  const sOf = (t) => pusherTravel(pu, spec, S.psiRest + sigma * t) / pu.stroke;
   return {
+    pu, turn, sOf,
     lib, frame, S, spec, sigma, run, pitch, det, fm, ride: r, pawlRel, x0, pickup, xDrop, restsOf, restAngle, restsNear, kBehind, atRest,
     leverPins, hold, leverAt, lockAt, branch, h, trace, falls, hammerAt, strikesBetween, cols, toBeak: S.beak.toBeak, shift,
     thetaPress: S.armed.theta, thetaNotch: S.st.thetaNotch, rimDown: S.st.rimDown,
     // the half press: the wheel stopped PRESS_MARGIN (an LDU of arc at the mesh)
     // short of the detent's near crest, the margin the probe's half press keeps
-    halfAim: (S.crest - PRESS_MARGIN + pickup) / S.stroke,
+    halfAim: sOf(S.crest - PRESS_MARGIN + pickup),
     rate: flyRate(), perWind: strikesPerWind(strikesPerBarrelTurnOf(falls.length)),
   };
 }
@@ -1494,7 +1644,7 @@ export function columnStart(m, { k = 0, theta = null, act = 'idle' } = {}) {
 // profile's sampling, so the face is placed off rest 0, not off rest j): the
 // pawl meets it where the driver has turned PICKUP past its rest stop with the
 // wheel at rest_0 + j·30°.
-const drivenAt = (m, st) => m.restAngle(0) + st.j * m.pitch + m.sigma * (st.s * m.S.stroke - m.pickup);
+const drivenAt = (m, st) => m.restAngle(0) + st.j * m.pitch + m.sigma * (m.turn(st.s) - m.pickup);
 export function columnWheel(m, st) {
   if (st.drop) return st.drop.from + (st.drop.to - st.drop.from) * st.drop.u;
   const driven = drivenAt(m, st);
@@ -1504,7 +1654,7 @@ const isDriven = (m, st) => !st.drop && m.sigma * (drivenAt(m, st) - st.stand) >
 // The tooth the pawl stands behind: once the driver has gone back far enough
 // that the pawl drops behind the NEXT tooth's face, that is the one it drives.
 function pawlTooth(m, st, w) {
-  const behind = Math.floor((w - m.sigma * (st.s * m.S.stroke - m.pickup) - m.restAngle(0)) / m.pitch + 1e-9);
+  const behind = Math.floor((w - m.sigma * (m.turn(st.s) - m.pickup) - m.restAngle(0)) / m.pitch + 1e-9);
   return behind > st.j ? behind : st.j;
 }
 // WHERE A LET-GO WHEEL GOES: detentSettle's answer, from the rests kept.
@@ -1610,7 +1760,7 @@ function flyFollow(m, st, dt) {
 // THE POSE: every body's angle, in alarmPose's shape (so alarmBuild draws it
 // and toLdr writes it), plus the readings the page shows.
 export function columnPose(m, st) {
-  const S = m.S, psiDriver = S.psiRest + m.sigma * st.s * S.stroke, w = columnWheel(m, st);
+  const S = m.S, travel = st.s * m.pu.stroke, psiDriver = pusherDriver(m.pu, m.spec, travel), w = columnWheel(m, st);
   const rel = m.pawlRel(w - psiDriver), c = Math.cos(psiDriver), sn = Math.sin(psiDriver);
   const pawl = { rel, psi: rel + psiDriver, pivot: [DRIVER_ARM * c, DRIVER_ARM * sn] };
   const L = m.leverAt(st.theta, w), k = m.atRest(w);
@@ -1620,7 +1770,7 @@ export function columnPose(m, st) {
   for (const [i, col] of m.cols.entries()) { const off = Math.abs(mod(w + col.c + m.shift - m.toBeak + Math.PI, TAU) - Math.PI); if (!best || off < best.off) best = { i, off, rotor: col.rotor }; }
   const reading = k === null ? null : m.hold(k) === null ? 'gap' : 'column';
   return {
-    theta: st.theta, thetaW: w, psiDriver, psiLever: L.psi, leverBy: [L.by], phiC: st.phi, psiFollower: m.fm.seat(w), pawl,
+    theta: st.theta, thetaW: w, psiDriver, pushX: pusherX(m.pu, travel), psiLever: L.psi, leverBy: [L.by], phiC: st.phi, psiFollower: m.fm.seat(w), pawl,
     psiHammer: m.hammerAt(st.phi), hammerBy: null,
     mode: reading === null ? 'press' : reading === 'column' ? 'off' : st.free ? 'ringing' : 'armed',
     rest: k, reading, column: { index: best.i, rotor: best.rotor, under: best.off < Math.PI / 12 },
