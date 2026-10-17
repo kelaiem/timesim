@@ -39500,3 +39500,277 @@ cord passes through the leg with no lever, and a real cord's climb between
 grooves is a bench question. The barrel's tyre seat holds twelve cords side
 by side. The run and the dead length together come to 1.07 turns there, and
 they are drawn in one plane rather than laid beside each other.
+
+## §287 — LEGO module 4: knife-edge balance, anchor escapement on an 8T, fourth-to-escape held
+
+§219 tier three (b), landing J. The owner's feasibility note (module 4 of its
+§4, in the roadmap repo) asks for the oscillator and the escapement in LEGO,
+and answers both with ANALOGUES. The Swiss lever with draw is a no: a LEGO
+tooth is a symmetric involute with no locking corner, and a 1.5° drop on a 24°
+pitch is 0.3 mm, inside one plastic bearing's ~0.1 mm play (F2). There is no
+hairspring either, because LEGO has no spring steel (F3). What can be built,
+and what the community builds, is an ANCHOR (a recoil escapement) on an 8T or
+16T escape wheel, beating against a BALANCE ARM ON A KNIFE EDGE restored by
+gravity. That is physically a compound pendulum, drawn as a balance. This
+landing builds both from LDraw parts in `src/technic-escapement.js`. They are
+MODELLED: the lock, drop, recoil and impulse are read off the parts' outlines
+as the anchor turns, the period is solved from the balance's inertia and the
+depth of its centre of mass, and nothing is integrated. Every record says
+"anchor", not "lever", and "a pendulum drawn as a balance", not "balance".
+
+### The parts, measured
+
+The knife is the apex of a 45° double slope brick (3044b), on a 1×2 stack at
+each end of the balance. The balance's CROSSBAR is a cross axle lying across
+both apices on one of its arms. The pivot is the apex line, and the crossbar's
+axis stands the axle's reach (2.4 mm) above it. A cross axle's arm ends are
+rounded on that radius, so the contact is a round end on an edge. It does not
+slip: that is POSED, because friction holds it and is not measured.
+
+Everything else on the balance is keyed to the crossbar through an AXLE hole,
+and a cross in a cross goes on at quarter turns only, so every arm is level or
+plumb. The mass arms are two 11478s, level. The bob arm is a 6632, plumb. The
+anchor drop is a 41677, plumb, and its lower axle hole carries the ANCHOR
+AXLE, on which two 6632 pallet arms are keyed level.
+
+The pallets are the one thing that had to be found. A module-1 tooth space is
+about 1.6 mm wide, and every LEGO pin, axle end and liftarm end is 4.8 mm or
+more, so the only part fine enough to be a pallet is a gear tooth. Each pallet
+is an 8T on a FRICTION AXLE PIN (43093) in the pallet arm's round middle hole.
+The friction pin holds the 8T at whatever angle it is set to, and that angle is
+the pallet's ONE SETTING, as the note puts it. The − pallet is the + pallet's
+mirror (an 8T turned π − 2τ − φ, with τ its own tooth phase), so the anchor is
+symmetric and has one setting, cut twice.
+
+`ESC_DIM_MM` and `ARM_PARTS` are read off the parts, and the probe re-reads
+them: the reach 6 LDU, the knife 24 LDU with its flank at 45.0°, the arms'
+axle holes and round holes, and the pin's two halves. Five parts joined the pack
+through `ESCAPEMENT_PARTS` (`tools/ldraw-vendor.mjs` reads the list): the
+knife, the 1×2 brick and plate, the 2L thin liftarm and the friction axle pin.
+The rest were already there. The pack is now 74 parts in 444 files, up from 69
+in 428.
+
+### The escapement, solved
+
+`escapementModel` places the anchor in the balance's plane, about the pivot:
+the anchor axle at (0, vA), the pallets s either side of it, the wheel's centre
+at (0, vW), u across and v down. Each pallet's overlap with the wheel is
+landing H's star-profile law, read only over the arc each part turns toward the
+other (`overlap`). The probe holds it to `penetration` over 24 states and finds
+0.0000 mm between them. The escape wheel is DRIVEN: at any anchor angle it
+turns forward until a tooth meets a pallet, and if a pallet moves into it, it
+is pushed back (`settle`). `traceCycle` turns the anchor through two full
+swings and settles the wheel at every step. A step that runs more than a
+fortieth of a pitch is a DROP; one against the drive is RECOIL; one with it is
+IMPULSE.
+
+`solveEscapement` surveys the lattice. The anchor axle may be the crossbar or
+the far axle hole of a plumb drop (41677, 6632 or 11478). The pallets ride
+round holes, 8 mm out on a 6632 or 8, 16 or 24 on an 11478. The wheel stands on
+the knife's line at a height a column can give: both the knife and the arbor
+are plate stacks on one baseplate, so vW = 3.2 j + (knifeH − holeZ) = 3.2 j +
+4.0 mm. The survey takes every geometry whose engagement is under 1.4 mm and
+turns the setting through the 8T's 45° in 3° steps. For speed it reads a
+configuration-space MAP (`cspaceMap`): which pallet overlaps the wheel at each
+anchor angle and wheel angle across a pitch. It walks the wheel along that map
+by `traceCycle`'s own rule (`gridEscapes`). A geometry ESCAPES when two full
+swings of some amplitude advance the wheel exactly one tooth each. The probe
+surveys both wheels the note names:
+
+- **The 8T escapes on one geometry and nothing else.** The anchor axle is 8 mm
+  under the crossbar on a 41677, the pallets ±8 mm on 6632s, and the wheel
+  10.4 mm under the knife, an engagement of 0.63 mm. Its setting escapes over
+  37°–40.5° (0.5° steps on the map), and the answer is the middle, **38.75°**.
+  A builder may miss it by 1.75°.
+- **The 16T never escapes**: six lattice geometries, each at 15 settings. The
+  measured choice is the 8T, which is also what `TECHNIC_ESCAPE_TEETH` already
+  declared. The fork's row needed no change.
+- The 8T's other seven geometries are each 1.34 mm deep or too close to the
+  axis, and none escapes. The geometry that does is a 2.6-pitch pallet span with
+  the wheel 4.8 mm under the pallets.
+
+Before the shipped survey, a scratch survey (not shipped) ran the whole classic
+catalogue, eight wheels, with pallets at 8, 16 and 24 mm and the same settings.
+Eighteen geometries escaped. The 8T's engagement of 0.63 mm was the deepest.
+Next came a 28T double bevel at 0.37 mm, and the rest, on 24T, 28T and 40T
+wheels, were at 0.17 mm or less, at or under F2's play. No 12T, 16T, 20T or 36T
+geometry escaped. The first gear-pallet geometry tried, a 16T at 12.5 mm, could
+never escape. Each pallet BLOCKS most of a pitch once it is a millimetre in,
+so the free space is one continuous lane. The wheel then rides back and forth
+with the anchor, as a rack does, and never drops.
+
+### The beat, measured
+
+At the posed swing of ±3°, a period advances the wheel **0.99997 teeth**. That
+is two beats, of 0.511 and 0.489 of a pitch, unequal because the drive's sense
+breaks the anchor's mirror symmetry. The continuous trace escapes from a 1.2°
+swing up to the 8° tried, contiguously, so ±3° (`ESC_SWING_DEG`, POSED, "a few
+degrees") is well inside the window. In one beat:
+
+| | out (−A → +A) | back (+A → −A) |
+|---|---|---|
+| drops | 3.70°, 13.29° (0.32, 1.15 mm at the tip) | 18.42° (1.60 mm) |
+| recoil | 3.30° | 4.45° |
+| impulse | 9.31° | 8.04° |
+| lock at each catch | 0.159, 0.332 mm inside the tip circle | 0.323 mm |
+
+The first of the two out-beat drops lands on the same pallet's next tooth,
+because a pallet is a gear and has more than one tooth facing the wheel. Against
+F2's 0.1 mm play (the note's figure, POSED), **the shallowest lock stands
+0.059 mm over the play**, and every drop clears it several times over. The drop
+survives the play, where the steel lever's would not. The lock survives it by
+about half its own depth: a thin margin, reported and gated (lock > play). The
+deepest a pallet goes is 0.714 mm. The recoil runs the right way: after a catch
+the wheel turns −5.19° while the balance swings on, against the drive, and
++0.28° on the return.
+
+**A hand on the train.** With the balance at rest and the wheel on a pallet, a
+torque τ on the escape arbor can only turn the wheel forward by pushing the
+holding pallet the way it recedes, which lifts the balance. The work balances:
+τ dθ = m g d sin α dα. So the largest m g d sin α / (dθ/dα) before the pallet
+lets go is the torque that TRIPS the escapement (`tripTorque`). It is 0.019–
+0.020 N·mm at the escape arbor (the balance deflected 0.62°, the pallet letting
+go at 0.84°). Through the 2250:1 from the fusee's great wheel (§285's 5, the
+row's 60 and 7.5), that is about 44 N·mm at the great wheel. It is the
+FRICTIONLESS bound, at ABS's posed density. The lock is a light one: a
+finger's push on the great wheel trips it, and so would a drive that strong.
+
+### The rate law, forked
+
+RATE_TABLE's law is vph = 120 · escape teeth · (fourth → escape). The fork's
+row, `[[24, 8], [40, 16]]` in both generations, multiplies to 15/2, and
+15/2 × 8 × 120 = 7200 = `TECHNIC_VPH`. The period the balance must keep is
+2 · 3600 / 7200 = 1 s (`BEAT_PERIOD_S`), one escape tooth a period, 7.5 turns
+a minute. The note's 60:8 on the turntable has been out of going trains since
+landing C2, so the row is `solveRatio`'s, and the probe re-solves it. The note's
+other two candidates multiply right and are refused: (40:8)(12:8) has 12:8 at
+10 mm, and (24:8)(20:8) has 20:8 at 14 mm, both off the 4 mm lattice. The
+escapement cell stands alone: its arbor runs at the row's rate by that law,
+but the row's gears are in their own cell, not on this arbor. That is said
+wherever the cell is described.
+
+### The balance, solved
+
+LEGO publishes no part masses and LDraw carries none, so the balance's mass is
+not looked up. It is read off the parts. `partSolid` casts rays along a part's
+own Y through a 0.1 mm grid in X–Z and pairs each ray's crossings, inside
+between the first and second and so on. That gives the volume and the first and
+second moments in the part's frame, and `placeSolid` carries them through a
+placement. Every Technic part on the balance is closed: no ray crosses one an
+odd number of times. A ray that did would be counted, never guessed through,
+and an open box is the control that shows it. The 40T reads 3448.2 mm³ at the
+grid and 3443.6 at half of it. A 20-LDU box reads 512.000 mm³ and its exact
+inertia.
+
+The DENSITY is POSED as a band, ABS 1.04–1.06 g/cm³ (`ESC_DENSITY`, the polymer
+data-sheet range). With every part one material it CANCELS from
+T = 2π √(I/(m g d)), so the period is pure geometry. Only the mass reads it,
+about 15.9 g, and only the trip torque reads that.
+
+`solveBalance` frames every keyed arrangement: mass arms of either length with
+up to three gears a side, and a bob on a plumb arm of each length, or on the
+anchor's own drop, with up to two. Each gear is a 40T, 24T or 16T. An
+arrangement that does not fit the crossbar (12L at most) is not an answer: the
+mass gears ride far out, behind the anchor beside the escape columns, and the
+bob's in front. The answer must land inside RATE_BAND, the oscillator gate's
+0.5%. Among those, the deepest centre of mass wins, since dT/T = −½ δd/d. Of
+141 framed arrangements one is inside the band:
+
+- `TECHNIC_BALANCE`: 11478 mass arms with **24T + 24T + 16T** a side, 32 mm
+  out, and a **40T** bob 16 mm down on a 6632. T = **1.001911 s**, +0.191%,
+  165 s a day slow untrimmed. d = 2.5351 mm below the knife, 4.7e-4 mm across.
+  I/(m d) = 249.36 mm, against the note's ≈ 0.25 m.
+- T² · m g d / (4π² I) = 1 at 0.0e+0.
+- The next nearest are −4.8% and +5.1%.
+
+The probe REPORTS three sensitivities. A 0.1 mm error in d moves T by 2.0%, an
+error a LEGO knife's play reaches. Were the axles and pins POM (1.41 g/cm³),
+T would move +2.95%. The swing's own lengthening, by the exact pendulum law
+T₀/agm(1, cos(A/2)) held against its series, is +19 ppm at ±1°, +171 ppm at
+±3° and +1220 ppm at ±8°. The community's rating nut (a bob on a worm and
+rack) is NOT built: the residual and the sensitivities are reported instead.
+The note's 1–5 min/day is a builder's after trimming.
+
+### The frame
+
+`frameEscapement` puts one knife line at x = 4. A 1×2 stack's studs straddle
+it, so it stands on a half stud, and the escape arbor's columns under it are
+jumpers. The knives stand at y 0 and 80 with the apex 38.4 mm up. The 12L
+crossbar lies across both. The arbor is at 28 mm on two Technic-brick columns
+at y 56 and 64, its 4L axle running forward into the wheel's slab. The back
+knife stands past the arbor's end, because the knife's stack fills its slab
+below the apex. Along y: the bob's 40T, the bob arm, the two mass arms, the
+drop, the two pallet arms, then the pallets' and wheel's slab. The anchor axle
+is flush with the pallet arms' back face and may not reach the wheel's slab,
+where the wheel's teeth pass under it. When the bob's axle would reach the front
+knife, the layout starts that much further back. The probe holds the columns
+contiguous, the holes at the arbor, the apices at the pivot, the crossbar over
+both knives, the pins in the pallet arms' round holes, every gear on its axle's
+line, the wheel in the pallets' slab, and three in-plane clearances: the wheel
+under the crossbar 5.42 mm, a mass gear past the stacks 11.04 mm, and the bob
+over the studs 2.26 mm. The .ldr carries all 45 parts.
+
+### The page
+
+`technic.html`'s eighth cell is the module, swinging. One state, display time,
+drives it. The balance swings α(t) = −A cos(2π t/T) at the posed amplitude and
+the SOLVED period, at the speed slider's rate. The wheel's angle at every α is
+the traced cycle's (`cycleModelSteps`, `cyclePose`), measured between frames as
+the fusee's rides are, and the balance's moments are read the same way. The
+phase line names lock, recoil, impulse, unlock and drop. Its kind is read over
+a quarter degree of the anchor either side, because a single settle jitters by
+a bisection's width. Lock is the quarter degree after a catch, and unlock the
+quarter degree of impulse before a drop. "Impulse" is the balance returning,
+"recoil" the balance swinging on, which matches the direction on the screen.
+The pallet holding a tooth glows, and the wheel glows while it drops. Both
+glows are display only, commented and said on the panel.
+
+`?focus=escapement` and "look at the escapement" view the module from BEHIND,
+down the arbors' axis, through a narrow lens, on a circle through the pallets
+and the wheel. The frame is drawn as glass, and so are the balance's masses,
+its long arms and its bob (display only), so the anchor and the wheel read in
+front of them. The phase label sits above the anchor, clear of the parts. The
+panel gives the period, the rate error, the swing's lengthening, the mass, the
+drops, the lock against the play, and the rate. `window.__technic` gains
+`escapement`, `seekEscapement` and `focusEscapement` for screenshot probes; the
+page never calls the seek. Headless at 1280×800 with `?focus=escapement`, the
+lock, unlock, recoil and impulse shots read cleanly, and the console was clean.
+
+### Instruments
+
+`tools/probe-technic-escapement.mjs` (pure Node, about two minutes, most of it
+the survey) holds the parts, the solids, the survey and the setting, the
+window, the beat, the rate, the balance and the build. Its eight controls each
+fail as they should: an open box; the overlap read 0.05 mm off; a setting 3°
+past the run; a 16T on the declared anchor; the − pallet not mirrored; the
+recoil read with the drive reversed; a chain one tooth off, (24:8)(40:17); and
+the centre of mass lifted to the knife.
+
+```
+ESCAPEMENT: 14 lattice geometries surveyed (8T and 16T wheels, every anchor axle, pallet radius and wheel height whose engagement is under 1.4 mm), each at 15 settings
+  answer: the 8T, the anchor axle 8 mm under the crossbar on a 41677, pallets ±8 mm on 6632s, the wheel 10.4 mm under the knife; its setting escapes over 37°–40.5° (0.5° steps), the middle 38.75° — a builder may miss it by 1.75°
+  the continuous trace escapes from a 1.2° swing to the 8° tried (35 amplitudes, contiguous); the posed swing is ±3°
+BEAT at ±3°: a period advances the wheel 0.99997 teeth (two beats: 0.511 + 0.489)
+  the drops 0.32–1.60 mm and the shallowest lock 0.159 mm (the deepest a pallet goes 0.714 mm), against F2's 0.1 mm play (POSED, the note's figure): the lock 0.059 mm over it
+BALANCE: 141 framed arrangements, 1 inside 0.5% of 1 s
+  declared: T 1.001911 s, 0.191% (165 s/day untrimmed); d 2.5351 mm below the knife, 4.72e-4 mm across; I/(V d) 249.36 mm
+the anchor escapes one tooth a period on the 8T at ±3°, its lock 0.159 mm against 0.1 mm of play; the balance's period 1.0019 s against 1 s — controls 8/8
+```
+
+Every `probe-technic-*` passes: frame, ldraw, build, keyless, motion, fusee,
+fusee-loop, column-wheel, alarm and escapement.
+
+### What it does not claim
+
+- No amplitude that a drive would sustain. The swing is posed, and the drive
+  is not modelled at all.
+- No force at the knife or the pallets. The trip torque is the frictionless
+  bound at a posed density.
+- No claim that a builder's setting lands in the 3.5° that escape. The window
+  is reported.
+- No rate under LEGO's tolerances. The period's sensitivity to d is reported,
+  not gated.
+- No trim. Nothing in the cell drives the escape arbor; the fourth→escape row
+  stands in its own cell.
+- The quasi-static trace has the wheel settle instantly. A real wheel's drop
+  takes time and may bounce, and the model says nothing about either.
