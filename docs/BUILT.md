@@ -39774,3 +39774,155 @@ fusee-loop, column-wheel, alarm and escapement.
   stands in its own cell.
 - The quasi-static trace has the wheel settle instantly. A real wheel's drop
   takes time and may bounce, and the model says nothing about either.
+
+## §288 — LEGO alarm pusher: a push rod in two Technic bricks turns the column wheel's driver
+
+§219 tier three (b), after §283. Landing I's column wheel was indexed by a
+DRIVER, a 5L thin liftarm idling on the wheel's axle, whose far end "is the
+PUSHER, the end a finger presses". No part was there: the press was a finger
+on a liftarm's end. §288 builds the pusher.
+
+Everything here is MODELLED. The rod's travel is the input and the driver
+follows it through a contact read off the parts. No force is weighed: the
+finger's, the driver's band (which now also pushes the rod back out) and the
+friction of an axle sliding in a pin hole are not numbers here.
+
+### Why a level rod, and why a round follower
+
+Between its rest and bank stacks the driver turns 31.19° about W, so its free
+end moves 7.0 mm across and 5.0 mm down, along a chord 35° off the level. The
+rest and bank stacks fill the driver's own slot. A rod pushing DOWN onto the
+liftarm's end cannot stay on one face: the end slides 7 mm under it, and as the
+arm steepens the arm's flank comes under the face first. A straight push can
+follow one coordinate of a ROUND part. So:
+
+- the driver carries a round half bush (32123a) on a 2L axle keyed in its free
+  end hole, standing in front of its slot — the detent's follower, built the
+  same way;
+- a ROD pushes that bush LEVEL, along −x. The force acts at the bush's height
+  under W, 10.11–15.07 mm over the stroke, the same sign all the way, so the
+  push turns the driver the press's way at every point. A millimetre of push
+  turns it 3.80°–5.67°. Because both faces are round, the tip's face stands at
+
+      u = −DRIVER_ARM·cos ψ − pd·R        (pushFace, R = 3.600091 mm, the flanges)
+
+  about W, and the driver stands where that holds (`pushDriver`, an arccos on
+  the stroke's branch). The rod is the input and the driver follows it, which
+  is rule 2 for a LEGO pusher.
+
+### The parts, and where the solve put them
+
+`solvePusher` derives each of the following and the probe holds the declared
+`TECHNIC_ALARM.pusher` to it (slot −40, 2 plates, guides 36 and 44 mm from W, a
+6L rod):
+
+- **The guides**: two Technic bricks 1×1 (6541), each turned a quarter round
+  about the vertical so that its pin hole runs along x. A 1×1 brick sits on the
+  same stud turned, so the guides are ordinary columns. An axle turns and
+  slides free in a pin hole, and every rod part is round, so the rod's spin is
+  no part of the law. They stand side by side on the stud grid at x 48 and 56;
+  a jumper's foot would reach under its neighbour.
+- **The slot**: the first stud-grid slot in front of the driver that the tip's
+  flanges clear by an LDU, y −40. Its flanges cover the driver's half bush
+  (y −43.6 to −39.6) and stand an LDU off the stops' slot. The vertex radius,
+  0.09 µm over the flanges' 9 LDU, is taken as the part's rounding.
+- **The height**: the lattice height that keeps the contact nearest the tip's
+  middle, 12 mm (two plates under each guide's brick). The contact stands at
+  most 2.689 mm off the rod's axis, inside the tip's face (R − an LDU,
+  3.200 mm). The probe reads that face off 32123a: flat from the bore at
+  1.414 mm out to 3.6001.
+- **The tip**: a half bush flush with the rod's end. The rod's end is flush
+  with it and bears with it.
+- **The collar**: a third half bush, an LDU short of the inner guide at rest.
+  It is the rod's out-stop, and a bush slides on an axle, so it is set
+  anywhere. The bank stack ends the stroke through the driver, so the rod has
+  one LDU of play outward and none inward.
+- **The button**: a bush (3713) on the rod's outer end. The shortest rod that
+  leaves it an LDU off the outer guide at the bank is a 6L. At the bank it
+  stands 0.571 mm off.
+
+The stroke is **7.029 mm** for the driver's 31.19°.
+
+### The press
+
+The state's `s` was the driver's fraction of its turn. It is now the ROD's
+fraction of its travel. `columnModel` carries `turn(s)` (the driver's turn
+from rest, through `pusherDriver`) and its inverse `sOf`. `columnPose` reads
+the driver off the rod and returns `pushX`, and the build slides the pusher's
+body to it. The half press is now the rod's travel that leaves the wheel
+`PRESS_MARGIN` short of the near crest: 3.985 mm, s = 0.5669. It is no longer
+the driver's fraction, which the probe's control shows is not the same point.
+Every full press still steps one rest and every half press still none. The
+column-wheel probe's output is unchanged except where it samples the stroke,
+which it now samples along the rod: the wheel turns over 323 of 400 stroke
+samples (309 before), and a display step's largest move grows (the driver's
+0.22° to 0.28°, the wheel's 0.17° to 0.19° on a full press) and still halves
+with the step. The driver turns fastest per millimetre near the rest stop, where the
+bush stands nearest W's height.
+
+On `technic.html` the pusher slides and glows with the driver while a press
+picks up, climbs and commits. The detail line gives the rod's travel beside
+the driver's angle, and the panel names the pusher and its stroke.
+
+### The instrument
+
+`tools/probe-technic-pusher.mjs` (acceptance, pure Node, about 75 s):
+
+```
+the tip (32123a): its end face flat from 1.414 to 3.6001 mm; the law's R 3.600091 mm
+the button (3713): 8.000 mm along its axle; the build's 8
+the push along −x in slot y -40, the rod at 12 mm (2 plates under each guide), the contact at most 2.689 mm off the rod's axis (the face: 3.200)
+stroke 7.02862 mm for the driver's 31.19°; guides at 36 and 44 mm from W; the collar 11.599909 mm out from the tip, an LDU short of the inner guide; a 6L rod, the button 0.571471 mm off the outer guide at the bank
+travel 0 → the driver at 219.19° (its rest stop 219.19°, off by 0.0e+0 rad); the whole stroke → 250.38° (the bank 250.38°, off by 0.0e+0)
+the law and its inverse agree to 1.2e-14 mm; the driver turns the press's way at every one of 200 steps (0 back)
+the push's lever arm about W 10.11–15.07 mm (the bush's height under W), the same sign all the way; the contact at most 2.689 mm off the rod's axis, inside the tip's face (3.200)
+so a millimetre of push turns the driver 3.80°–5.67°
+at 9 travels, in the tip's disc: the tip's face stands 0.0186, 0.0007, 0.0061, 0.0300, 0.0690, 0.0310, 0.0086, 0.0001, 0.0046 mm off the driver's drawn half bush along the push — in [0, 0.0692], the 16-gon's sagitta (the tip's face at the law's x to 3.6e-15 mm)
+backed off along the push, mid-stroke: 0.2 → 0.2690 mm, 0.5 → 0.5690 mm; at every travel the gap moves by the offset to 7.1e-15 mm
+(posed by a straight line in the rod's travel instead, the gap would run -0.309 to -0.133 mm)
+both guides' holes at the rod's 12 mm; the rod through both from rest to the bank: true
+the collar 0.400 mm short of the inner guide at rest (the rod's play), 7.429 at the bank; the button 7.600 mm off the outer guide at rest, 0.571 at the bank
+at 9 travels, rest to bank: clear; nearest driver follower 32123a ⇄ frame plate 3024 0.40 mm; driver follower 32123a ⇄ frame brick 3005 0.40 mm; pusher collar 32123a ⇄ frame brick 3005 0.40 mm; pusher pushTip 32123a ⇄ frame brick 3005 0.40 mm; pusher pushTip 32123a ⇄ frame tile 3070b 0.63 mm
+a full press (the rod's 7.029 mm) steps one rest from 12 of 12; a half press (3.985 mm, s = 0.5669) none from 12 of 12
+the half press turns the wheel 11.90°, short of the near crest 14.20° by 2.29° (PRESS_MARGIN 2.29°)
+```
+
+Seven controls are each seen to fail:
+
+- a declared rod a stud longer than the solve's;
+- the rod a plate higher (the contact leaves the tip's face);
+- the push run the other way (it turns the driver against the press);
+- the driver posed by a straight line in the rod's travel (the tip stands
+  0.133–0.309 mm INSIDE the half bush);
+- the driver's half bush left off (nothing of the driver stands in the tip's
+  disc);
+- the collar set on the inner guide (no play: it meets the brick);
+- a half press taken as a fraction of the driver's turn.
+
+**What the drawn part taught**: the first reading of the contact compared
+sampled clouds and could only say "within the spacing", which cannot tell
+touching from sitting inside. The probe now reads each part's farthest point
+along the push inside the tip's disc. The gap it found ran 0.0001 to
+0.0690 mm and back as the driver turned. That is the LDraw flange: a 16-gon
+(4-4cyli) whose vertices stand on R, so its flats stand up to R(1 − cos π/16)
+= 0.0692 mm inside the round part. So the probe holds the gap inside
+[0, 0.0692] and never below 0. It also holds that backing the rod off moves
+the gap by exactly the offset (to 7e-15 mm). The law takes the part round, as
+the real part is.
+
+`probe-technic-alarm.mjs` gains one bearing (the pusher's tip and the rod's
+end on the driver's half bush), and its CLEAR now includes the pusher at the
+three states: all clear, the nearest new pair the tip an LDU off a brick of
+the rest stack. The build has 214 parts where it had 202: two on the driver,
+four on the rod, and six in the two guide columns. `probe-technic-column-wheel.mjs` aims its crest presses through
+`sOf`.
+
+### What it does not claim, and what was not done
+
+- No force: how hard a finger presses, the band's return through the rod, or
+  whether an axle in a pin hole slides without sticking.
+- Where in its LDU of play a rod the finger let go of stands. It is posed on
+  the contact.
+- The column-wheel close-up's circle is unchanged. It frames the wheel and the
+  driver's ends, and it shows the driver's half bush and the pusher's tip but
+  not the guides or the button.

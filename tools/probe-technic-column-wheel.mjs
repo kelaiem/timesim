@@ -3,7 +3,8 @@
 // Acceptance, pure Node, no browser, no network; exits non-zero on any failure.
 // BUILT §283 (src/technic-alarm.js, the press technic.html animates).
 //
-// MODELLED, NOT SIMULATED: the press is one state — the pusher's stroke s, the
+// MODELLED, NOT SIMULATED: the press is one state — the pusher's stroke s (since
+// §288 the travel of a real rod, the driver following it: probe-technic-pusher.mjs), the
 // wheel's stand, the tooth the pawl drives, the disc, the fly — and every body
 // is read off it through landing I's laws (pawlRideSteps, followerModel,
 // detentSettle, releaseStates, leverRest, lockPush, strikeTrace). Every rate is
@@ -151,7 +152,7 @@ function pressTo(mm, st0, aim, steps = 400) {
   while (st.drop) st = M.columnAdvance(mm, st, M.DROP_S / 20);
   return { st, w: M.columnWheel(mm, st), k: mm.atRest(M.columnWheel(mm, st)) };
 }
-const aimFor = (mm, travel) => (travel + mm.pickup) / S.stroke;   // the stroke that turns the wheel `travel` past its rest
+const aimFor = (mm, travel) => mm.sOf(travel + mm.pickup);   // the stroke (the pusher's travel, §288) that turns the wheel `travel` past its rest
 const rows = [], pressErrs = [];
 let worstLaw = 0;
 const sigmaPress = S.sigma;

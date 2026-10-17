@@ -432,7 +432,9 @@ function gap(A1, B1) {
 // in the lever's beak hole; the lever on the disc's pins (it rests on them),
 // the lever and the fly's beam (the lock), the beak's pin on a column (off);
 // the follower and the pawl's 8T in the 12T (seated); the driver on its rest
-// stack; the hammer's head on its stack; a gear pair in mesh (held above).
+// stack; the hammer's head on its stack; a gear pair in mesh (held above);
+// §288's pusher on the driver's half bush (its tip and the rod's end flush with
+// it; probe-technic-pusher.mjs holds that contact on the parts).
 const MESHED = new Set(['fly|middle', 'middle|barrel', 'disc|S2', 'S2|S1', 'S1|hour']);
 function bears(a, b, mode) {
   const r = [a.p.role, b.p.role], sh2 = [a.sh?.shaft, b.sh?.shaft];
@@ -448,6 +450,7 @@ function bears(a, b, mode) {
   if (pair('pawl', 'column wheel') && has('pawl', 'wheel')) return true;
   if (sh2.includes('driver') && r.includes('tile') && r.includes('driver')) return true;
   if (sh2.includes('hammer') && r.includes('tile') && r.includes('arm')) return true;
+  if (pair('pusher', 'driver') && r.includes('follower') && (r.includes('pushTip') || r.includes('axle'))) return true;
   if (MESHED.has(`${sh2[0]}|${sh2[1]}`) || MESHED.has(`${sh2[1]}|${sh2[0]}`)) if (r[0] === 'gear' && r[1] === 'gear' || has('gear', 'pawl')) return true;
   return false;
 }

@@ -61,6 +61,14 @@
   the state. ?focus=alarm opens down the column wheel's axis. Every rate is a
   display rate; tools/probe-technic-column-wheel.mjs holds it.
 
+  BUILT §288 — THE PUSHER. The press is a real pusher now, not a finger on the
+  driver's end: a cross axle slides in the round holes of two Technic bricks
+  turned a quarter round, its tip a round half bush pressing a second half bush
+  on a 2L axle in the driver's free end hole, a collar its out-stop and a bush
+  its button. The stroke is the ROD's travel and the driver stands where the
+  tip meets its half bush (pusherDriver), so the cell's pusher slides and the
+  driver follows it. tools/probe-technic-pusher.mjs holds it.
+
   BUILT §285 — A THIRD STEP SURVEYED, THE CENTRE PINION BUILT. The cone's step
   catalogue is now every usable cord groove in the LDraw library
   (tools/ldraw-groove-survey.mjs, read through grooveSeat), and the solve still
@@ -232,8 +240,9 @@ canvas{display:block;touch-action:none}
   parts' own geometry, and no force is integrated.</p>
   <p>The <b>alarm</b> is the movement's alarm as LEGO. Its <b>column wheel</b>
   is two three-blade rotors, one turned over, so six columns stand 60° apart; a
-  finger presses the end of a driver idling on its axle, whose pawl pushes a
-  12-tooth wheel one tooth, and a banded detent holds each of twelve rests. A
+  finger presses a <b>pusher</b>, an axle sliding in two Technic bricks, whose
+  tip pushes a half bush on the end of a driver idling on the wheel's axle; the
+  driver's pawl pushes a 12-tooth wheel one tooth, and a banded detent holds each of twelve rests. A
   press short of the detent's crest falls back; a full press steps the wheel
   half a column pitch, so <b>on</b> and <b>off</b> alternate. The
   <b>release</b> is a ring of three pins geared 12:1 off an hour axle, the
@@ -307,6 +316,8 @@ const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, tech
   pawl: 0xb03a2e, great: 0xe0b630, knob: 0xe8e8e8,
   // landing I: the alarm module
   rotor: 0xb03a2e, wheel: 0xa0a5a9, lever: 0xe0b630, pin: 0x1c1d20, beam: 0x2f7d6e, gear: 0xa0a5a9, driver: 0x2f5d9b,
+  // §288: the alarm's pusher (the stub is an axle)
+  pushTip: 0xb03a2e, collar: 0xb03a2e, button: 0xe8e8e8, stub: 0x1c1d20,
   // §287: the escapement module (wheel is the alarm's grey; the knife reads as a brick)
   knife: 0x6c6e68, crossbar: 0x1c1d20, arm: 0x2f5d9b, mass: 0xe0b630, pallet: 0xb03a2e };
 // mm between rows on the table: the keyless works' 32×32 baseplate (256 mm,
@@ -609,8 +620,8 @@ function frameOn(obj, fill = 1, dirIn = null) {
 // cap over the column under the lever's pin, a marker on the pin itself, the
 // frame drawn as glass in the close-up. The LDraw placements are the model; the
 // .ldr and the probe read only them.
-const ALARM_GLOW = { pickup: ['driver', 'pawl'], climb: ['driver', 'pawl', 'column wheel'], crest: ['driver', 'pawl', 'column wheel', 'detent'],
-  committed: ['driver', 'pawl', 'column wheel', 'detent'], dropped: ['detent', 'column wheel', 'pawl'], back: ['detent', 'column wheel', 'pawl', 'driver'],
+const ALARM_GLOW = { pickup: ['pusher', 'driver', 'pawl'], climb: ['pusher', 'driver', 'pawl', 'column wheel'], crest: ['pusher', 'driver', 'pawl', 'column wheel', 'detent'],
+  committed: ['pusher', 'driver', 'pawl', 'column wheel', 'detent'], dropped: ['detent', 'column wheel', 'pawl'], back: ['detent', 'column wheel', 'pawl', 'driver', 'pusher'],
   tip: ['column wheel', 'detent'], hour: ['disc', 'lever'], silent: ['lever'], ringing: ['fly', 'hammer', 'middle', 'barrel'], rundown: ['fly'],
   passing: ['disc', 'lever', 'fly'], armed: [], off: [] };
 const ALARM_PHASE_COLOUR = { pickup: '#9fb6d9', climb: '#9fb6d9', crest: '#e0b630', committed: '#e0b630', dropped: '#7fc98b', back: '#e2a077', tip: '#e2777a',
@@ -695,6 +706,7 @@ function applyAlarm(now, dt) {
   by['column wheel'].rotor.rotation.z = p.thetaW;
   by.detent.rotor.rotation.z = p.psiFollower;
   by.driver.rotor.rotation.z = p.psiDriver;
+  by.pusher.rotor.position.x = LDU(p.pushX);           // §288: the rod slides; the driver above followed it
   by.pawl.rotor.position.set(LDU(sh.W[0] + p.pawl.pivot[0]), -LDU(zL - (sh.W[1] + p.pawl.pivot[1])), 0);
   by.pawl.rotor.rotation.z = p.pawl.psi;
   by.disc.rotor.rotation.z = p.theta;
@@ -723,7 +735,7 @@ function applyAlarm(now, dt) {
     v.lastText = now;
     const el = document.getElementById('adetail'), d = (x) => (x * 180 / Math.PI).toFixed(1);
     const r = m.restsOf(alarmSt.home), travel = p.thetaW - r.rest;
-    if (el) el.textContent = `stroke ${(alarmSt.s * 100).toFixed(0)}% (driver ${d(alarmSt.s * alarmStatesNow.stroke)}° of ${d(alarmStatesNow.stroke)}°); the wheel ${d(travel)}° from the rest it left (crests ${d(alarmStatesNow.crest)}° and ${d(alarmStatesNow.farCrest)}°)`
+    if (el) el.textContent = `stroke ${(alarmSt.s * 100).toFixed(0)}% (the pusher ${(alarmSt.s * m.pu.stroke).toFixed(2)} of ${m.pu.stroke.toFixed(2)} mm, the driver ${d(m.turn(alarmSt.s))}° of ${d(alarmStatesNow.stroke)}°); the wheel ${d(travel)}° from the rest it left (crests ${d(alarmStatesNow.crest)}° and ${d(alarmStatesNow.farCrest)}°)`
       + `; ${p.rest === null ? 'at no rest' : `rest ${((p.rest % 12) + 12) % 12}, ${p.reading === 'gap' ? 'a gap' : 'a column'} under the pin`}; the disc ${d(((p.theta - m.thetaNotch) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI)}° from its notch`
       + `; ${alarmSt.strikes} strikes so far${alarmQueued ? `; a ${alarmQueued} waits for the disc to come back onto the rim` : ''}`;
   }
@@ -1076,6 +1088,7 @@ async function build(gen) {
       const T = TECHNIC_ALARM_STRIKE, n = strikesPerBarrelTurn(lib, alarmFrame);
       const S = alarmStatesNow, M = alarmModel, d = (x) => (x * 180 / Math.PI).toFixed(1);
       div.innerHTML = `<b>${k + 1}. alarm — LEGO build</b>`
+        + `pusher: an axle sliding in two Technic bricks, its half bush tip on a half bush at the driver's end; its <code>${M.pu.stroke.toFixed(2)} mm</code> stroke turns the driver from its rest stop to its bank stop.<br>`
         + `column wheel: six columns, twelve rests; a press of <code>${d(S.stroke)}°</code> steps it one rest, on and off in turn. The pawl first travels <code>${d(M.pickup)}°</code> to pick up a tooth, so the wheel turns <code>${d(S.stroke - M.pickup)}°</code>: past the detent's near crest (<code>${d(S.crest)}°</code>) and its far one (<code>${d(S.farCrest)}°</code>), where the press commits.`
         + `<div class="gen"><button id="apress" type="button">press</button><button id="ahalf" type="button">half-press</button><button id="aauto" type="button">auto</button><button id="afocus" type="button">look at the column wheel</button><button id="astrike" type="button">look at the strike</button></div>`
         + `<label>stroke <input id="astroke" type="range" min="0" max="1" step="0.002" value="0" /></label>`

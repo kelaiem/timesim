@@ -155,6 +155,14 @@ travels `pickup` (7.17°) to meet a tooth's face, which landing I's `press`
 leaves out (same rests, reported). A release between the near and far crests
 stands on the tooth's tip, unread. `tools/probe-technic-column-wheel.mjs`
 holds the steps, the crests, the lever's reading and twelve presses round.
+**Since §288 a PUSHER presses it**: a cross axle sliding in two Technic bricks
+turned a quarter round (holes along x), its round half-bush tip on a half bush
+on a 2L in the driver's free end hole, a collar an LDU off the inner guide its
+out-stop. The stroke `s` is the ROD's travel and the driver follows it through
+the contact (`pusherDriver`, `m.turn`/`m.sOf`); `solvePusher` derives its
+slot, height, guides and length, and `tools/probe-technic-pusher.mjs` holds the
+law, the contact on the drawn parts (to the 16-gon flange's sagitta) and CLEAR
+over the stroke.
 **And the ESCAPEMENT** (landing J, §287, `src/technic-escapement.js`): ANALOGUES
 both — a recoil ANCHOR whose pallets are 8Ts on friction pins (one solved
 setting, mirrored) over an 8T wheel, and a pendulum drawn as a balance on a
@@ -162,7 +170,7 @@ KNIFE EDGE (a cross axle on two 3044b apices) whose arms and gears are solved,
 its I and d read off the parts' SOLIDS (`partSolid`), to land the row's 1 s;
 `tools/probe-technic-escapement.mjs` holds the lattice survey (no 16T escapes),
 the beat, the lock against F2's play and the rate law. The frame, ldraw, build,
-keyless, motion, fusee, fusee-loop, alarm, column-wheel and escapement probes
+keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher and escapement probes
 are pure Node.
 
 `explain.html` is the mechanism explainer (§65, plates for every
@@ -1190,7 +1198,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 325 measuring scripts and this file names 53. The rest are named for the
+`tools/` holds 326 measuring scripts and this file names 54. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1207,7 +1215,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **211 of
+The index also carries the split that decides how to read a result: **212 of
 them are ACCEPTANCE tests** that exit non-zero, and **114 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

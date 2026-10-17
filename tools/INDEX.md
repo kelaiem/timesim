@@ -4,7 +4,7 @@
 
 # The instruments
 
-325 scripts. **211 are ACCEPTANCE tests** — they decide and exit non-zero.
+326 scripts. **212 are ACCEPTANCE tests** — they decide and exit non-zero.
 **114 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -328,6 +328,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-technic-keyless.mjs` |  | acceptance | DOES THE LEGO KEYLESS WORKS CHANGE OVER, AND DOES EACH BRANCH CARRY THE STEEL RATIO? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landings D, E and F. |
 | `probe-technic-ldraw.mjs` |  | acceptance | DO THE TECHNIC FRAME'S DIMENSIONS MATCH THE REAL PARTS? Acceptance, pure Node, no browser, no network; exits non-zero on any mismatch. |
 | `probe-technic-motion.mjs` |  | acceptance | DOES THE LEGO MOTION WORKS TURN THE HOUR WHEEL A TWELFTH OF THE MINUTE HAND, THE SAME WAY, ON THE MINUTE HAND'S OWN AXLE, FROM THE CROWN? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing G. |
+| `probe-technic-pusher.mjs` |  | acceptance | DOES THE LEGO ALARM'S PUSHER TURN THE COLUMN WHEEL'S DRIVER FROM ITS REST STOP TO ITS BANK STOP, ON ONE FACE, WITH EVERY PART CLEAR OF EVERY OTHER? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §288 (src/technic-alarm.js: solvePusher, pusherOf, pushFace, pushDriver). |
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `probe-wound-sense.mjs` |  | acceptance | WHICH WAY DOES EACH WOUND PART WIND? — TODO 115's unmeasured half. |
