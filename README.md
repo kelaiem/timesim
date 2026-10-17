@@ -503,6 +503,44 @@ state is the resting state.
 - SJX, [*Hands On: Parmigiani Fleurier Tonda PF Chronographe Mystérieux*](https://watchesbysjx.com/2026/07/parmigiani-fleurier-tonda-pf-chronographe-mysterieux-review.html)
 - Parmigiani Fleurier, [*Novelties 2026*](https://www.parmigiani.com/en/novelties-2026/)
 
+### LEGO builds the Technic fork takes an idea from
+
+`technic.html`'s escapement cell (§287) is built from LDraw parts and solved
+here, but its ARCHITECTURE was not invented here. A recoil anchor beating
+against a balance arm on a knife edge is how LEGO clock builders already keep
+time, and two of them are the reason this module is that shape and not
+another. Their builds were not traced, measured or copied. No geometry or
+dimension is taken from either, and every part, placement, pallet setting and
+period here is solved from the parts. Their reported figures were never
+re-measured either: where the record quotes one, it is as the builder reported
+it.
+
+**The knife-edge balance and its anchor — Nico71, *Balance Clock With
+Remontoire*.** The idea taken is the oscillator and the escapement together:
+a balance arm on a knife-edge suspension, restored by gravity, driving an
+anchor escapement. Nico71 moved to it from a pendulum, and his *Galileo Clock*
+uses the same suspension and says it greatly improves the pendulum. Both are
+why the module's pivot is a knife and not an axle in a hole. The "1–5 min/day"
+the record quotes is his, after fine tuning and with a remontoire rewinding
+every five minutes, so it is not a figure for a free-running build. The
+worm-and-rack rating nut that §287 does NOT build is the Galileo Clock's.
+
+- Nico71, [*Balance Clock With Remontoire*](https://www.nico71.fr/balance-clock-with-remontoire/) ([Rebrickable MOC-31640](https://rebrickable.com/mocs/MOC-31640/Nico71/balance-clock-with-remontoire/))
+- Nico71, [*Galileo Clock*](https://www.nico71.fr/galileo-clock/) ([Rebrickable MOC-5307](https://rebrickable.com/mocs/MOC-5307/Nico71/galileo-clock/))
+
+**The 8-tooth escape wheel — Eric Harshbarger's pendulum clock.** BrickNerd
+reports that moving his clock from a custom 12-tooth escape wheel to an
+8-tooth one simplified the gearing and let it run 30 hours where it had run
+13, on half the weight. That finding is why the feasibility note put the 8T
+first. §287 then decided the wheel for itself: it surveys every catalogue
+wheel on the lattice and finds no 16T geometry that escapes, so the 8T is the
+survey's answer, not taken on report.
+
+- BrickNerd, [*Tick Tock Clock: Working LEGO Clocks*](https://bricknerd.com/home/tick-tock-clock-working-lego-clocks-4-19-23)
+
+The parts themselves are the LDraw library's (CC BY 4.0), credited in
+`vendor/ldraw/LICENSE-ldraw.txt`.
+
 A note on what these citations do and do not license. They describe
 mechanisms; they are not evidence that this movement reproduces them. What
 holds the movement to its own claims is the instrument battery and `TODO.md`,
