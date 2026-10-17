@@ -14,7 +14,11 @@
 // symmetric involutes with no locking corner, and a lever's drop is a fraction
 // of a degree, inside one plastic bearing's play (the note's F2: about 0.1 mm);
 // LEGO has no spring steel (F3), so there is no hairspring. What a LEGO builder
-// can make, and what the community does make, is an ANALOGUE of each:
+// can make, and what the community does make, is an ANALOGUE of each (the
+// architecture is Nico71's Balance Clock With Remontoire — a knife-edge balance
+// arm and an anchor; the 8T escape wheel was first suggested by Eric
+// Harshbarger's clock as BrickNerd reports it; both credited in README's
+// Sources and BUILT §287, neither traced or measured):
 //   · the ESCAPEMENT is an ANCHOR — a recoil escapement, two pallets on one
 //     rocking body, each in turn catching a tooth of the escape wheel and
 //     letting it go. It is a DIFFERENT escapement from the steel's Swiss lever:
@@ -30,8 +34,9 @@
 // across the two apices on one of its arms. The pivot is the apex line; the
 // crossbar's axis stands an axle's reach (its arm's end, 2.4 mm) above it. A
 // cross axle is LEGO's sharpest round-ended bar, and the apex its sharpest
-// edge: the community calls this kind of support the largest friction saving a
-// plastic clock can make. POSED, said wherever it is used: the contact does not
+// edge: builders call this kind of support the largest friction saving a
+// plastic clock can make (Nico71's Galileo Clock says it greatly improves the
+// pendulum). POSED, said wherever it is used: the contact does not
 // slip (friction holds it; it is not measured).
 //
 // THE ANCHOR'S PALLETS ARE GEAR TEETH, because nothing else in LEGO is fine
@@ -53,7 +58,7 @@
 // WHAT IS NOT BUILT: the drive (the escape arbor here is the fourth→escape
 // row's output by its RATE — RATE_TABLE's law, held by the probe — but the
 // row's gears stand in their own cell, not on this arbor); a rating nut (the
-// community trims a bob with a worm and rack; the residual the lattice leaves
+// community trims a bob with a worm and rack, as Nico71's Galileo Clock does; the residual the lattice leaves
 // is reported, not trimmed); the balance's amplitude as a consequence of any
 // energy (the swing is posed inside the window the geometry admits).
 import { walk, LDU_MM } from './ldraw.js';

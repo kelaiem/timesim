@@ -39760,6 +39760,30 @@ the anchor escapes one tooth a period on the 8T at ±3°, its lock 0.159 mm agai
 Every `probe-technic-*` passes: frame, ldraw, build, keyless, motion, fusee,
 fusee-loop, column-wheel, alarm and escapement.
 
+### Sources and credit
+
+The architecture is not this repository's. A recoil anchor on a balance arm on
+a knife edge is how LEGO clock builders keep time, and this landing models it:
+
+- **Nico71, *Balance Clock With Remontoire*** — a balance arm on a knife-edge
+  suspension with an anchor escapement, the shape of this module. The
+  "1–5 min/day" quoted above is his, after fine tuning, with a remontoire
+  rewinding every five minutes. His *Galileo Clock* is where the knife edge's
+  benefit is stated, and where the worm-and-rack rating nut this landing does
+  not build comes from.
+  https://www.nico71.fr/balance-clock-with-remontoire/ ,
+  https://www.nico71.fr/galileo-clock/
+- **Eric Harshbarger's pendulum clock, as BrickNerd reports it** — a 12-tooth
+  escape wheel replaced by an 8-tooth one, 13 h to 30 h on half the weight.
+  That is why the feasibility note put the 8T first. The survey above
+  re-decides it from the parts.
+  https://bricknerd.com/home/tick-tock-clock-working-lego-clocks-4-19-23
+
+Nothing of either build was traced or measured, and their figures are as their
+builders reported them. Every part, placement, setting and period here is
+solved from the LDraw parts (CC BY 4.0, `vendor/ldraw/LICENSE-ldraw.txt`).
+README's Sources section carries the same credit.
+
 ### What it does not claim
 
 - No amplitude that a drive would sustain. The swing is posed, and the drive
