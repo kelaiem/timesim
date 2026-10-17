@@ -1,5 +1,5 @@
 0 LEGO Technic fork parts — packed from the LDraw library by tools/ldraw-vendor.mjs
-0 Roots: 11478 14225 18938 18939 18942 18946 18947 18948 22253 2712 2855 2994 3005 3024 3070b 32062 32073 32089 32123a 32123b 32498 3482 3647 3648 3649 3673 3705 3706 3707 3708 3713 3736 3737 3794b 3811 3867 4019 4032a 4185a 4185b 4265a 44292 44294 4519 46372 54087 55982 56903 56904 60485 62462 6541 6558 6577 6582 6595 6632 6641 69778 69779 71149 71149k01 71149k02 7229 75924 76384 7785 7786 7861
+0 Roots: 11478 14225 18938 18939 18942 18946 18947 18948 22253 2712 2855 2994 3004 3005 3023b 3024 3044b 3070b 32062 32073 32089 32123a 32123b 32498 3482 3647 3648 3649 3673 3705 3706 3707 3708 3713 3736 3737 3794b 3811 3867 4019 4032a 41677 4185a 4185b 4265a 43093 44292 44294 4519 46372 54087 55982 56903 56904 60485 62462 6541 6558 6577 6582 6595 6632 6641 69778 69779 71149 71149k01 71149k02 7229 75924 76384 7785 7786 7861
 0 Licence: CC BY 4.0 (per file below); see vendor/ldraw/LICENSE-ldraw.txt
 
 0 FILE 1-16chrd.dat
@@ -237,6 +237,35 @@
 1 16 0 0 0 1 0 0 0 1 0 0 0 1 1-4edge.dat
 1 16 0 1 0 1 0 0 0 1 0 0 0 1 1-4edge.dat
 1 16 0 0 0 1 0 0 0 1 0 0 0 1 1-4cyli.dat
+0 NOFILE
+
+0 FILE 1-4cyls.dat
+0 Cylinder Sloped 0.25
+0 Name: 1-4cyls.dat
+0 Author: James Jessiman
+0 !LDRAW_ORG Primitive UPDATE 2012-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 1998-12-15 [PTadmin] Official Update 1998-10
+0 !HISTORY 2002-07-03 [sbliss] Added BFC statement
+0 !HISTORY 2002-08-18 [PTadmin] Official Update 2002-04
+0 !HISTORY 2007-06-22 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2012-02-16 [Philo] Changed to CCW
+0 !HISTORY 2012-03-30 [PTadmin] Official Update 2012-01
+
+
+3 16 0.9239 0.0761 0.3827 0.9239 0 0.3827 1 0 0
+4 16 0.9239 0.0761 0.3827 0.7071 0.2929 0.7071 0.7071 0 0.7071 0.9239 0 0.3827
+4 16 0.7071 0.2929 0.7071 0.3827 0.6173 0.9239 0.3827 0 0.9239 0.7071 0 0.7071
+4 16 0.3827 0.6173 0.9239 0 1 1 0 0 1 0.3827 0 0.9239
+
+5 24 0.9239 0 0.3827 0.9239 0.0761 0.3827 0.7071 0 0.7071 1 0 0
+5 24 0.7071 0 0.7071 0.7071 0.2929 0.7071 0.3827 0 0.9239 0.9239 0 0.3827
+5 24 0.3827 0 0.9239 0.3827 0.6173 0.9239 0 0 1 0.7071 0 0.7071
+5 24 0 0 1 0 1 1 0.3827 0 0.9239 -1 0 1
 0 NOFILE
 
 0 FILE 1-4cyls2.dat
@@ -4569,6 +4598,28 @@
 0 // Build by LDPartEditor (PrimGen 2.X)
 0 NOFILE
 
+0 FILE 3004.dat
+0 Brick  1 x  2
+0 Name: 3004.dat
+0 Author: James Jessiman
+0 !LDRAW_ORG Part UPDATE 2022-05
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2001-10-26 [PTadmin] Official Update 2001-01
+0 !HISTORY 2002-05-07 {unknown} BFC Certification
+0 !HISTORY 2002-06-11 [PTadmin] Official Update 2002-03
+0 !HISTORY 2007-05-07 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2022-08-04 [MagFors] Using subfile
+0 !HISTORY 2022-09-15 [PTadmin] Official Update 2022-05
+
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 s\3004s01.dat
+4 16 -20 24 -10 20 24 -10 20 0 -10 -20 0 -10
+0 NOFILE
+
 0 FILE 3005.dat
 0 Brick  1 x  1
 0 Name: 3005.dat
@@ -4591,6 +4642,32 @@
 4 16 -10 24 -10 10 24 -10 10 0 -10 -10 0 -10
 0 NOFILE
 
+0 FILE 3023b.dat
+0 Plate  1 x  2
+0 Name: 3023b.dat
+0 Author: James Jessiman
+0 !LDRAW_ORG Part UPDATE 2023-03
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !KEYWORDS BrickLink 3023, Rebrickable 3023
+
+0 !HISTORY 2001-10-26 [PTadmin] Official Update 2001-01
+0 !HISTORY 2002-05-07 {unknown} BFC Certification
+0 !HISTORY 2002-06-11 [PTadmin] Official Update 2002-03
+0 !HISTORY 2007-06-07 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2020-03-07 [Sirio] Subparted
+0 !HISTORY 2022-01-14 [PTadmin] Official Update 2022-01
+0 !HISTORY 2023-05-26 [OrionP] Moved from 3023.dat
+0 !HISTORY 2023-06-24 [OrionP] Official Update 2023-03
+
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 s\3023bs01.dat
+4 16 -20 0 -10 -20 8 -10 20 8 -10 20 0 -10
+0 NOFILE
+
 0 FILE 3024.dat
 0 Plate  1 x  1
 0 Name: 3024.dat
@@ -4611,6 +4688,30 @@
 
 1 16 0 0 0 1 0 0 0 1 0 0 0 1 s\3024s01.dat
 4 16 -10 8 -10 10 8 -10 10 0 -10 -10 0 -10
+0 NOFILE
+
+0 FILE 3044b.dat
+0 Slope Brick 45  2 x  1 Double
+0 Name: 3044b.dat
+0 Author: Orion Pobursky [OrionP]
+0 !LDRAW_ORG Part UPDATE 2009-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2002-09-13 [izanette] Modified with WINDZ for BFC compliance
+0 !HISTORY 2003-07-02 [OrionP] Moved guts to subpart
+0 !HISTORY 2004-09-15 [PTadmin] Official Update 2004-03
+0 !HISTORY 2007-06-09 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2008-07-07 [PTadmin] Renamed from 3044
+0 !HISTORY 2009-05-02 [PTadmin] Official Update 2009-01
+
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 s\3044bs01.dat
+4 16 10 20 20 -10 20 20 -10 0 0 10 0 0
+4 16 10 20 -20 10 0 0 -10 0 0 -10 20 -20
+0
 0 NOFILE
 
 0 FILE 3070b.dat
@@ -7358,6 +7459,114 @@
 1 16 0 0 0 1 0 0 0 1 0 0 0 1 stug10-2x2.dat
 0 NOFILE
 
+0 FILE 41677.dat
+0 Technic Beam  2 x  0.5 Liftarm
+0 Name: 41677.dat
+0 Author: Orion Pobursky [OrionP]
+0 !LDRAW_ORG Part UPDATE 2009-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2004-09-15 [PTadmin] Official Update 2004-03
+0 !HISTORY 2007-05-04 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2008-07-07 [PTadmin] Renamed from 169
+0 !HISTORY 2009-05-02 [PTadmin] Official Update 2009-01
+
+
+1 16 0 -5 20 9 0 0 0 10 0 0 0 9 2-4cyli.dat
+1 16 0 -5 0 -9 0 0 0 10 0 0 0 -9 2-4cyli.dat
+1 16 0 -5 20 -1 0 0 0 10 0 0 0 -1 axlehol4.dat
+1 16 0 -5 0 1 0 0 0 10 0 0 0 1 axlehol4.dat
+1 16 0 -5 20 3 0 0 0 1 0 0 0 3 2-4ring2.dat
+1 16 0 5 20 3 0 0 0 -1 0 0 0 3 2-4ring2.dat
+1 16 0 -5 0 -3 0 0 0 1 0 0 0 -3 2-4ring2.dat
+1 16 0 5 0 -3 0 0 0 -1 0 0 0 -3 2-4ring2.dat
+4 16 6 -5 20 6 -5 0 9 -5 0 9 -5 20
+4 16 6 5 20 9 5 20 9 5 0 6 5 0
+4 16 -9 -5 20 -9 -5 0 -6 -5 0 -6 -5 20
+4 16 -9 5 20 -6 5 20 -6 5 0 -9 5 0
+4 16 -9 5 20 -9 5 0 -9 -5 0 -9 -5 20
+4 16 9 5 20 9 -5 20 9 -5 0 9 5 0
+4 16 -6 -5 6 -2 -5 6 -2 -5 14 -6 -5 14
+4 16 -2 -5 11 -2 5 11 -2 5 14.398 -2 -5 14.398
+4 16 2 -5 11 2 -5 14.398 2 5 14.398 2 5 11
+4 16 2 -5 9 2 5 9 2 5 5.398 2 -5 5.602
+4 16 -2 -5 9 -2 -5 5.602 -2 5 5.602 -2 5 9
+4 16 2 -5 6 6 -5 6 6 -5 14 2 -5 14
+4 16 -6 5 6 -6 5 14 -2 5 14 -2 5 6
+4 16 2 5 6 2 5 14 6 5 14 6 5 6
+4 16 2 5 11 2 5 9 -2 5 9 -2 5 11
+4 16 2 -5 11 -2 -5 11 -2 -5 9 2 -5 9
+4 16 2 -5 11 2 5 11 -2 5 11 -2 -5 11
+4 16 2 -5 9 -2 -5 9 -2 5 9 2 5 9
+2 24 -2 5 6 -2 5 9
+2 24 2 5 6 2 5 9
+2 24 -2 -5 6 -2 -5 9
+2 24 2 -5 6 2 -5 9
+2 24 -2 -5 14 -2 -5 11
+2 24 2 -5 14 2 -5 11
+2 24 -2 5 14 -2 5 11
+2 24 2 5 14 2 5 11
+2 24 2 5 11 -2 5 11
+2 24 2 5 9 -2 5 9
+2 24 2 -5 11 -2 -5 11
+2 24 2 -5 9 -2 -5 9
+2 24 -2 -5 9 -2 5 9
+2 24 -2 -5 11 -2 5 11
+2 24 2 -5 9 2 5 9
+2 24 2 -5 11 2 5 11
+2 24 9 5 20 9 5 0
+2 24 9 -5 20 9 -5 0
+2 24 -9 5 20 -9 5 0
+2 24 -9 -5 20 -9 -5 0
+1 16 0 5 0 -9 0 0 0 1 0 0 0 -9 2-4edge.dat
+1 16 0 -5 0 -9 0 0 0 1 0 0 0 -9 2-4edge.dat
+1 16 0 5 20 9 0 0 0 1 0 0 0 9 2-4edge.dat
+1 16 0 -5 20 9 0 0 0 1 0 0 0 9 2-4edge.dat
+3 16 5.543 -5 2.296 6 -5 0 6 -5 6
+3 16 4.243 -5 4.243 5.543 -5 2.296 6 -5 6
+3 16 2.296 -5 5.543 4.243 -5 4.243 6 -5 6
+4 16 2 -5 6 2 -5 5.602 2.296 -5 5.543 6 -5 6
+4 16 -2.296 -5 5.543 -2 -5 5.602 -2 -5 6 -6 -5 6
+3 16 -4.243 -5 4.243 -2.296 -5 5.543 -6 -5 6
+3 16 -5.543 -5 2.296 -4.243 -5 4.243 -6 -5 6
+3 16 -6 -5 0 -5.543 -5 2.296 -6 -5 6
+2 24 2 -5 6 2 -5 5.602
+2 24 -2 -5 6 -2 -5 5.602
+3 16 -5.543 -5 17.704 -6 -5 20 -6 -5 14
+3 16 -4.243 -5 15.757 -5.543 -5 17.704 -6 -5 14
+3 16 -2.296 -5 14.457 -4.243 -5 15.757 -6 -5 14
+4 16 -2 -5 14 -2 -5 14.398 -2.296 -5 14.457 -6 -5 14
+4 16 2.296 -5 14.457 2 -5 14.398 2 -5 14 6 -5 14
+3 16 4.243 -5 15.757 2.296 -5 14.457 6 -5 14
+3 16 5.543 -5 17.704 4.243 -5 15.757 6 -5 14
+3 16 6 -5 20 5.543 -5 17.704 6 -5 14
+2 24 -2 -5 14 -2 -5 14.398
+2 24 2 -5 14 2 -5 14.398
+3 16 6 5 6 6 5 0 5.543 5 2.296
+3 16 6 5 6 5.543 5 2.296 4.243 5 4.243
+3 16 6 5 6 4.243 5 4.243 2.296 5 5.543
+4 16 6 5 6 2.296 5 5.543 2 5 5.602 2 5 6
+4 16 -6 5 6 -2 5 6 -2 5 5.602 -2.296 5 5.543
+3 16 -6 5 6 -2.296 5 5.543 -4.243 5 4.243
+3 16 -6 5 6 -4.243 5 4.243 -5.543 5 2.296
+3 16 -6 5 6 -5.543 5 2.296 -6 5 0
+2 24 2 5 6 2 5 5.602
+2 24 -2 5 6 -2 5 5.602
+3 16 -6 5 14 -6 5 20 -5.543 5 17.704
+3 16 -6 5 14 -5.543 5 17.704 -4.243 5 15.757
+3 16 -6 5 14 -4.243 5 15.757 -2.296 5 14.457
+4 16 -6 5 14 -2.296 5 14.457 -2 5 14.398 -2 5 14
+4 16 6 5 14 2 5 14 2 5 14.398 2.296 5 14.457
+3 16 6 5 14 2.296 5 14.457 4.243 5 15.757
+3 16 6 5 14 4.243 5 15.757 5.543 5 17.704
+3 16 6 5 14 5.543 5 17.704 6 5 20
+2 24 -2 5 14 -2 5 14.398
+2 24 2 5 14 2 5 14.398
+0 NOFILE
+
 0 FILE 4185a.dat
 0 Technic Wedge Belt Wheel - Not Reinforced
 0 Name: 4185a.dat
@@ -7545,6 +7754,27 @@
 1 16 0 0 0 9 0 0 0 0 9 0 -10 0 t04i2500.dat
 0 BFC INVERTNEXT
 1 16 0 0 0 0 0 -9 9 0 0 0 -10 0 t04i2500.dat
+0 NOFILE
+
+0 FILE 43093.dat
+0 Technic Axle Pin with Friction
+0 Name: 43093.dat
+0 Author: Donald Sutter [technog]
+0 !LDRAW_ORG Part UPDATE 2025-10
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2009-05-02 [PTadmin] Official Update 2009-01
+0 !HISTORY 2015-01-08 [C3POwen] Updated with confric4 primitive
+0 !HISTORY 2015-10-11 [PTadmin] Official Update 2015-01
+0 !HISTORY 2025-10-04 [MagFors] Shaped axleend
+0 !HISTORY 2025-10-27 [OrionP] Official Update 2025-10
+
+1 16 0 0 0 0 1 0 0 0 1 1 0 0 confric4.dat
+1 16 0 0 0 0 1 0 8 0 0 0 0 8 4-4edge.dat
+1 16 0 0 0 0 -1 0 8 0 0 0 0 8 4-4disc.dat
+1 16 0 0 0 0 -1 0 1 0 0 0 0 -1 axleend20.dat
 0 NOFILE
 
 0 FILE 44292.dat
@@ -15370,6 +15600,25 @@
 5 24 0 2.5 -6 2 2.5 -5.6023 0 3.5 -6 0 1.0858 -5.2765
 0 NOFILE
 
+0 FILE axleend20.dat
+0 Technic Axle End 20 LDU
+0 Name: axleend20.dat
+0 Author: Magnus Forsberg [MagFors]
+0 !LDRAW_ORG Primitive UPDATE 2025-11
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2025-10-27 [OrionP] Official Update 2025-10
+0 !HISTORY 2025-10-29 [Holly-Wood] Sanded description
+0 !HISTORY 2025-11-30 [OrionP] Official Update 2025-11
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 axlehol2.dat
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 axlehol9.dat
+1 16 0 0 0 1 0 0 0 -17.5 0 0 0 1 axlehol8.dat
+1 16 0 -20 0 1 0 0 0 1 0 0 0 1 axleend2.dat
+0 NOFILE
+
 0 FILE axlehol2.dat
 0 Technic Axle Hole Side Edges
 0 Name: axlehol2.dat
@@ -15682,6 +15931,35 @@
 5 24 6 0 0 6 1 0 5.6023 0 2 5.6023 0 -2
 0 NOFILE
 
+0 FILE axlehol9.dat
+0 Technic Axle Inner Edges
+0 Name: axlehol9.dat
+0 Author: Steve Bliss [sbliss]
+0 !LDRAW_ORG Primitive UPDATE 2025-10
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2000-05-07 [PTadmin] Official Update 2000-01
+0 !HISTORY 2002-11-08 [OrionP] Adjusted fit and precision
+0 !HISTORY 2003-03-12 [PTadmin] Official Update 2003-01
+0 !HISTORY 2007-06-24 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2024-01-24 [MagFors] Update description, to be only used on axles, not holes
+0 !HISTORY 2024-01-29 [OrionP] Official Update 2024-01
+0 !HISTORY 2025-10-11 [MagFors] Increased precision
+0 !HISTORY 2025-10-27 [OrionP] Official Update 2025-10
+
+2 24 5.6023 0 2 2 0 2
+2 24 2 0 2 2 0 5.6023
+2 24 -5.6023 0 2 -2 0 2
+2 24 -2 0 2 -2 0 5.6023
+2 24 5.6023 0 -2 2 0 -2
+2 24 2 0 -2 2 0 -5.6023
+2 24 -5.6023 0 -2 -2 0 -2
+2 24 -2 0 -2 -2 0 -5.6023
+0 NOFILE
+
 0 FILE axlehole.dat
 0 Technic Axle Hole Closed
 0 Name: axlehole.dat
@@ -15834,6 +16112,37 @@
 
 2 24 -1 -1 1 1 -1 1
 4 16 1 -1 1 1 1 1 -1 1 1 -1 -1 1
+0 NOFILE
+
+0 FILE box3u2p.dat
+0 Box with 3 Faces without 2 Parallel Edges
+0 Name: box3u2p.dat
+0 Author: Niels Karsdorp [nielsk]
+0 !LDRAW_ORG Primitive UPDATE 2012-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2003-03-12 [PTadmin] Official Update 2003-01
+0 !HISTORY 2007-06-24 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2012-02-16 [Philo] Changed to CCW
+0 !HISTORY 2012-03-30 [PTadmin] Official Update 2012-01
+
+
+2 24 1 1 1 -1 1 1
+2 24 -1 1 -1 1 1 -1
+2 24 1 0 1 -1 0 1
+2 24 -1 0 -1 1 0 -1
+2 24 1 1 1 1 1 -1
+2 24 -1 1 1 -1 1 -1
+2 24 1 1 1 1 0 1
+2 24 1 1 -1 1 0 -1
+2 24 -1 1 1 -1 0 1
+2 24 -1 1 -1 -1 0 -1
+4 16 -1 1 -1 -1 1 1 1 1 1 1 1 -1
+4 16 -1 1 1 -1 0 1 1 0 1 1 1 1
+4 16 1 1 -1 1 0 -1 -1 0 -1 -1 1 -1
 0 NOFILE
 
 0 FILE box3u8p.dat
@@ -16539,6 +16848,29 @@
 2 24 5.772 0 -1.148 5.998 0 0.005
 2 24 9.62 0 -1.913 9.239 0 -3.827
 0 //
+0 NOFILE
+
+0 FILE confric4.dat
+0 Technic Friction Pin 1.0 with Base Collar and Blind Hole
+0 Name: confric4.dat
+0 Author: Owen Burgoyne [C3POwen]
+0 !LDRAW_ORG Primitive UPDATE 2015-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2015-10-11 [PTadmin] Official Update 2015-01
+
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 connect8.dat
+1 16 0 -2 0 0.707107 0 -0.707107 0 1 0 0.707107 0 0.707107 fric.dat
+1 16 0 -2 0 0.707107 0 0.707107 0 1 0 -0.707107 0 0.707107 fric.dat
+1 16 0 -2 0 -0.707107 0 0.707107 0 1 0 -0.707107 0 -0.707107 fric.dat
+1 16 0 -2 0 -0.707107 0 -0.707107 0 1 0 0.707107 0 -0.707107 fric.dat
+1 16 0 -18 0 0.707107 0 -0.707107 0 -1 0 0.707107 0 0.707107 fric.dat
+1 16 0 -18 0 0.707107 0 0.707107 0 -1 0 -0.707107 0 0.707107 fric.dat
+1 16 0 -18 0 -0.707107 0 0.707107 0 -1 0 -0.707107 0 -0.707107 fric.dat
+1 16 0 -18 0 -0.707107 0 -0.707107 0 -1 0 0.707107 0 -0.707107 fric.dat
 0 NOFILE
 
 0 FILE confric5.dat
@@ -17626,6 +17958,125 @@
 0 //
 0 NOFILE
 
+0 FILE connect8.dat
+0 Technic Pin 1.0 with Base Collar and Blind Hole
+0 Name: connect8.dat
+0 Author: Owen Burgoyne [C3POwen]
+0 !LDRAW_ORG Primitive UPDATE 2015-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2015-10-11 [PTadmin] Official Update 2015-01
+
+
+1 16 0 -2 0 4 0 0 0 1 0 0 0 4 4-4disc.dat
+1 16 0 -2 0 4 0 0 0 1 0 0 0 4 4-4edge.dat
+0 BFC INVERTNEXT
+1 16 0 -11.5 0 4 0 0 0 9.5 0 0 0 4 4-4cyli.dat
+1 16 0 -2 0 8 0 0 0 2 0 0 0 8 4-4cyli.dat
+1 16 0 -2 0 8 0 0 0 1 0 0 0 8 4-4edge.dat
+1 16 0 -2 0 2 0 0 0 1 0 0 0 2 4-4ring3.dat
+1 16 0 -2 0 6 0 0 0 1 0 0 0 6 4-4edge.dat
+1 16 0 -2 0 6 0 0 0 -9.5 0 0 0 6 4-4cyli.dat
+1 16 6 -12.5 0 0 1 -0.199 1 0 0 0 0 1 1-4edge.dat
+1 16 6 -12.5 0 0 -1 -0.199 1 0 0 0 0 1 1-4ndis.dat
+1 16 5.672 -14.75 1.648 0 -1 -0.129 -3.25 0 0 0 0 0.648 rect1.dat
+1 16 0 -18 0 5.543 0 -2.296 0 6.5 0 2.296 0 5.543 3-8cyli.dat
+1 16 0 -18 0 5.543 0 -2.296 0 1 0 2.296 0 5.543 3-8edge.dat
+1 16 -5.672 -14.75 1.648 0 1 0.129 -3.25 0 0 0 0 0.648 rect1.dat
+1 16 -6 -12.5 0 0 1 0.199 1 0 0 0 0 1 1-4ndis.dat
+1 16 -6 -12.5 0 0 1 0.199 1 0 0 0 0 1 1-4edge.dat
+1 16 -6 -12.5 0 0 -1 0.199 1 0 0 0 0 -1 1-4edge.dat
+1 16 -6 -12.5 0 0 1 0.199 1 0 0 0 0 -1 1-4ndis.dat
+1 16 -5.672 -14.75 -1.648 0 1 0.129 -3.25 0 0 0 0 -0.648 rect1.dat
+1 16 0 -18 0 -5.543 0 2.296 0 6.5 0 -2.296 0 -5.543 3-8cyli.dat
+1 16 0 -18 0 -5.543 0 2.296 0 1 0 -2.296 0 -5.543 3-8edge.dat
+1 16 5.672 -14.75 -1.648 0 -1 -0.129 -3.25 0 0 0 0 -0.648 rect1.dat
+1 16 6 -12.5 0 0 -1 -0.199 1 0 0 0 0 -1 1-4ndis.dat
+1 16 6 -12.5 0 0 -1 -0.199 1 0 0 0 0 -1 1-4edge.dat
+2 24 6.301 -18 -1 5.801 -18 -1
+4 16 6.301 -18 -1 6.005 -18 -2.488 5.543 -18 -2.296 5.801 -18 -1
+4 16 6.005 -18 -2.488 4.596 -18 -4.596 4.243 -18 -4.243 5.543 -18 -2.296
+4 16 4.596 -18 -4.596 2.488 -18 -6.005 2.296 -18 -5.543 4.243 -18 -4.243
+4 16 2.488 -18 -6.005 0 -18 -6.5 0 -18 -6 2.296 -18 -5.543
+4 16 0 -18 -6.5 -2.488 -18 -6.005 -2.296 -18 -5.543 0 -18 -6
+4 16 -2.488 -18 -6.005 -4.596 -18 -4.596 -4.243 -18 -4.243 -2.296 -18 -5.543
+4 16 -4.596 -18 -4.596 -6.005 -18 -2.488 -5.543 -18 -2.296 -4.243 -18 -4.243
+4 16 -6.005 -18 -2.488 -6.301 -18 -1 -5.801 -18 -1 -5.543 -18 -2.296
+2 24 -6.301 -18 -1 -5.801 -18 -1
+2 24 -6.301 -18 1 -5.801 -18 1
+4 16 -6.301 -18 1 -6.005 -18 2.488 -5.543 -18 2.296 -5.801 -18 1
+4 16 -6.005 -18 2.488 -4.596 -18 4.596 -4.243 -18 4.243 -5.543 -18 2.296
+4 16 -4.596 -18 4.596 -2.488 -18 6.005 -2.296 -18 5.543 -4.243 -18 4.243
+4 16 -2.488 -18 6.005 0 -18 6.5 0 -18 6 -2.296 -18 5.543
+4 16 0 -18 6.5 2.488 -18 6.005 2.296 -18 5.543 0 -18 6
+4 16 2.488 -18 6.005 4.596 -18 4.596 4.243 -18 4.243 2.296 -18 5.543
+4 16 4.596 -18 4.596 6.005 -18 2.488 5.543 -18 2.296 4.243 -18 4.243
+4 16 6.005 -18 2.488 6.301 -18 1 5.801 -18 1 5.543 -18 2.296
+2 24 6.301 -18 1 5.801 -18 1
+1 16 6.153 -19 1.744 -0.148 -1 0 0 0 1 0.744 0 0 rect2p.dat
+1 16 0 -18 0 6.005 0 -2.488 0 1 0 2.488 0 6.005 3-8edge.dat
+1 16 0 -20 0 6.005 0 -2.488 0 2 0 2.488 0 6.005 3-8cyli.dat
+1 16 0 -20 0 6.005 0 -2.488 0 2 0 2.488 0 6.005 3-8edge.dat
+1 16 -6.153 -19 1.744 0.148 1 0 0 0 1 0.744 0 0 rect2p.dat
+1 16 -6.153 -19 -1.744 0.148 1 0 0 0 1 -0.744 0 0 rect2p.dat
+1 16 0 -18 0 -6.005 0 2.488 0 1 0 -2.488 0 -6.005 3-8edge.dat
+1 16 0 -20 0 -6.005 0 2.488 0 2 0 -2.488 0 -6.005 3-8cyli.dat
+1 16 0 -20 0 -6.005 0 2.488 0 2 0 -2.488 0 -6.005 3-8edge.dat
+1 16 6.153 -19 -1.744 -0.148 -1 0 0 0 1 -0.744 0 0 rect2p.dat
+0 BFC INVERTNEXT
+1 16 4 -12.5 0 0 2 -0.199 1 0 0 0 0 1 1-4cyli.dat
+1 16 4.801 -15.25 1 0 0 1 2.75 0 0 0 1 0 rect2p.dat
+1 16 5.051 -19 1 1.25 0 0 0 0 -1 0 1 0 rect3.dat
+4 16 3.696 -20 1.531 3.801 -20 1 6.301 -20 1 6.005 -20 2.488
+4 16 2.828 -20 2.828 3.696 -20 1.531 6.005 -20 2.488 4.596 -20 4.596
+4 16 1.531 -20 3.696 2.828 -20 2.828 4.596 -20 4.596 2.488 -20 6.005
+4 16 0 -20 4 1.531 -20 3.696 2.488 -20 6.005 0 -20 6.5
+4 16 -1.531 -20 3.696 0 -20 4 0 -20 6.5 -2.488 -20 6.005
+4 16 -2.828 -20 2.828 -1.531 -20 3.696 -2.488 -20 6.005 -4.596 -20 4.596
+4 16 -3.696 -20 1.531 -2.828 -20 2.828 -4.596 -20 4.596 -6.005 -20 2.488
+4 16 -3.801 -20 1 -3.696 -20 1.531 -6.005 -20 2.488 -6.301 -20 1
+1 16 -5.051 -19 1 1.25 0 0 0 0 -1 0 1 0 rect3.dat
+1 16 -4.801 -15.25 1 0 0 1 2.75 0 0 0 1 0 rect2p.dat
+0 BFC INVERTNEXT
+1 16 -6 -12.5 0 0 2 0.199 1 0 0 0 0 1 1-4cyli.dat
+0 BFC INVERTNEXT
+1 16 -6 -12.5 0 0 2 0.199 1 0 0 0 0 -1 1-4cyli.dat
+1 16 -4.801 -15.25 -1 0 0 1 2.75 0 0 0 -1 0 rect2p.dat
+1 16 -5.051 -19 -1 1.25 0 0 0 0 -1 0 -1 0 rect3.dat
+4 16 -3.696 -20 -1.531 -3.801 -20 -1 -6.301 -20 -1 -6.005 -20 -2.488
+4 16 -2.828 -20 -2.828 -3.696 -20 -1.531 -6.005 -20 -2.488 -4.596 -20 -4.596
+4 16 -1.531 -20 -3.696 -2.828 -20 -2.828 -4.596 -20 -4.596 -2.488 -20 -6.005
+4 16 0 -20 -4 -1.531 -20 -3.696 -2.488 -20 -6.005 0 -20 -6.5
+4 16 1.531 -20 -3.696 0 -20 -4 0 -20 -6.5 2.488 -20 -6.005
+4 16 2.828 -20 -2.828 1.531 -20 -3.696 2.488 -20 -6.005 4.596 -20 -4.596
+4 16 3.696 -20 -1.531 2.828 -20 -2.828 4.596 -20 -4.596 6.005 -20 -2.488
+4 16 3.801 -20 -1 3.696 -20 -1.531 6.005 -20 -2.488 6.301 -20 -1
+1 16 5.051 -19 -1 1.25 0 0 0 0 -1 0 -1 0 rect3.dat
+1 16 4.801 -15.25 -1 0 0 1 2.75 0 0 0 -1 0 rect2p.dat
+0 BFC INVERTNEXT
+1 16 4 -12.5 0 0 2 -0.199 1 0 0 0 0 -1 1-4cyli.dat
+1 16 4 -12.5 0 0 1 -0.199 1 0 0 0 0 1 1-4edge.dat
+1 16 4 -12.5 0 0 1 -0.199 1 0 0 0 0 1 1-4ndis.dat
+1 16 3.748 -15.75 1.265 0 1 -0.053 -4.25 0 0 0 0 0.265 rect1.dat
+0 BFC INVERTNEXT
+1 16 0 -20 0 3.695 0 -1.531 0 8.5 0 1.531 0 3.695 3-8cyli.dat
+1 16 0 -20 0 3.695 0 -1.531 0 1 0 1.531 0 3.695 3-8edge.dat
+1 16 -3.748 -15.75 1.265 0 -1 0.053 -4.25 0 0 0 0 0.265 rect1.dat
+1 16 -4 -12.5 0 0 -1 0.199 1 0 0 0 0 1 1-4ndis.dat
+1 16 -4 -12.5 0 0 1 0.199 1 0 0 0 0 1 1-4edge.dat
+1 16 -4 -12.5 0 0 -1 0.199 1 0 0 0 0 -1 1-4edge.dat
+1 16 -4 -12.5 0 0 -1 0.199 1 0 0 0 0 -1 1-4ndis.dat
+1 16 -3.748 -15.75 -1.265 0 -1 0.053 -4.25 0 0 0 0 -0.265 rect1.dat
+0 BFC INVERTNEXT
+1 16 0 -20 0 -3.695 0 1.531 0 8.5 0 -1.531 0 -3.695 3-8cyli.dat
+1 16 0 -20 0 -3.695 0 1.531 0 1 0 -1.531 0 -3.695 3-8edge.dat
+1 16 3.748 -15.75 -1.265 0 1 -0.053 -4.25 0 0 0 0 -0.265 rect1.dat
+1 16 4 -12.5 0 0 1 -0.199 1 0 0 0 0 -1 1-4ndis.dat
+1 16 4 -12.5 0 0 -1 -0.199 1 0 0 0 0 -1 1-4edge.dat
+0 NOFILE
+
 0 FILE connhol3.dat
 0 Technic Connector Hole One-Sided
 0 Name: connhol3.dat
@@ -17688,6 +18139,31 @@
 0 // additionally hidden by a syntax explicitly hiding it from displaying.
 
 0 MLCAD HIDE 5 24 0 0 0 0.0001 0 0 0.0001 -0.0001 0 0 0 0
+0 NOFILE
+
+0 FILE fric.dat
+0 Technic Pin Friction Rib Short with Rounded End
+0 Name: fric.dat
+0 Author: Owen Burgoyne [C3POwen]
+0 !LDRAW_ORG Primitive UPDATE 2015-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2015-10-11 [PTadmin] Official Update 2015-01
+
+
+1 16 -1 -2 -5.925 0 1 0 0 0 2 -0.125 0 0 rect3.dat
+1 16 1 -2 -5.925 0 -1 0 0 0 2 0.125 0 0 rect3.dat
+1 16 0 -4 -6.25 0 0 -1 -1 0 0 0 0.25 0.2 1-4cylo.dat
+1 16 0 -4 -6.25 1 0 0 0 0 -1 0.2 0.25 0 1-4cylo.dat
+2 24 -1 0 -6.05 0 0 -6.25
+2 24 0 0 -6.25 1 0 -6.05
+4 16 0 0 -6.25 0 -5 -6.25 -1 -4 -6.05 -1 0 -6.05
+4 16 1 0 -6.05 1 -4 -6.05 0 -5 -6.25 0 0 -6.25
+1 16 0 -4 -6.25 0 0 -1 -1 0 0 0 1 0.2 1-4chrd.dat
+1 16 0 -4 -6.25 1 0 0 0 0 -1 0.2 1 0 1-4chrd.dat
+5 24 0 -5 -6.25 0 0 -6.25 -1 -2 -6.05 1 -2 -6.05
 0 NOFILE
 
 0 FILE npeghol2.dat
@@ -19239,6 +19715,34 @@
 3 16 4.25 -19.24 5 3.88 -19.49 5 9.78 -16.95 5
 0 NOFILE
 
+0 FILE s/3004s01.dat
+0 ~Brick  1 x  2 without Front Face
+0 Name: s\3004s01.dat
+0 Author: James Jessiman
+0 !LDRAW_ORG Subpart UPDATE 2003-03
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2003-09-07 [jriley] Subfiling, BFC
+0 !HISTORY 2003-12-19 [PTadmin] Official Update 2003-03
+0 !HISTORY 2007-08-29 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+
+
+1 16 0 4 0 1 0 0 0 -5 0 0 0 1 stud3.dat
+0 BFC INVERTNEXT
+1 16 0 24 0 16 0 0 0 -20 0 0 0 6 box5.dat
+4 16 20 24 10 16 24 6 -16 24 6 -20 24 10
+4 16 -20 24 10 -16 24 6 -16 24 -6 -20 24 -10
+4 16 -20 24 -10 -16 24 -6 16 24 -6 20 24 -10
+4 16 20 24 -10 16 24 -6 16 24 6 20 24 10
+1 16 0 24 0 20 0 0 0 -24 0 0 0 10 box4t.dat
+1 16 10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+0
+0 NOFILE
+
 0 FILE s/3005s01.dat
 0 ~Brick  1 x  1 without Front Face
 0 Name: s\3005s01.dat
@@ -19266,6 +19770,33 @@
 4 16 -10 24 10 -6 24 6 -6 24 -6 -10 24 -10
 0 NOFILE
 
+0 FILE s/3023bs01.dat
+0 ~Plate  1 x  2 without Front Face
+0 Name: s\3023bs01.dat
+0 Author: Massimo Maso [Sirio]
+0 !LDRAW_ORG Subpart UPDATE 2023-03
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2022-01-14 [PTadmin] Official Update 2022-01
+0 !HISTORY 2023-05-27 [OrionP] Moved from s\3023s01.dat
+0 !HISTORY 2023-06-24 [OrionP] Official Update 2023-03
+
+
+0 // Primitves
+1 16 0 4 0 1 0 0 0 -1 0 0 0 1 stud3.dat
+0 BFC INVERTNEXT
+1 16 0 8 0 16 0 0 0 -4 0 0 0 6 box5.dat
+1 16 0 8 0 20 0 0 0 -8 0 0 0 10 box4t.dat
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 stug-1x2.dat
+0 // Faces
+4 16 20 8 10 16 8 6 -16 8 6 -20 8 10
+4 16 -20 8 10 -16 8 6 -16 8 -6 -20 8 -10
+4 16 -20 8 -10 -16 8 -6 16 8 -6 20 8 -10
+4 16 20 8 -10 16 8 -6 16 8 6 20 8 10
+0 NOFILE
+
 0 FILE s/3024s01.dat
 0 ~Plate  1 x  1 without Front Face
 0 Name: s\3024s01.dat
@@ -19286,6 +19817,74 @@
 4 16 -10 8 -10 -6 8 -6 6 8 -6 10 8 -10
 1 16 0 8 0 10 0 0 0 -8 0 0 0 10 box4t.dat
 1 16 0 0 0 0 0 1 0 1 0 -1 0 0 stud.dat
+0 NOFILE
+
+0 FILE s/3044bs01.dat
+0 ~Slope Brick 45  2 x  1 Double Without Front Faces
+0 Name: s\3044bs01.dat
+0 Author: Orion Pobursky [OrionP]
+0 !LDRAW_ORG Subpart UPDATE 2022-04
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2005-12-28 [PTadmin] Official Update 2005-01
+0 !HISTORY 2007-08-30 [PTadmin] Header formatted for Contributor Agreement
+0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
+0 !HISTORY 2019-06-28 [Philo] Corrected shape of bottom stud tube
+0 !HISTORY 2022-07-18 [PTadmin] Official Update 2022-04
+
+
+0 // Uncomment for front faces
+0 // 4 16 10 20 20 -10 20 20 -10 0 0 10 0 0
+0 // 4 16 10 20 -20 10 0 0 -10 0 0 -10 20 -
+
+2 24 10 0 0 -10 0 0
+2 24 10 20 20 10 0 0
+2 24 -10 20 20 -10 0 0
+2 24 10 20 -20 10 0 0
+2 24 -10 20 -20 -10 0 0
+4 16 10 24 20 6 24 16 -6 24 16 -10 24 20
+4 16 -10 24 20 -6 24 16 -6 24 -16 -10 24 -20
+4 16 -10 24 -20 -6 24 -16 6 24 -16 10 24 -20
+4 16 10 24 -20 6 24 -16 6 24 16 10 24 20
+1 16 0 22 20 -10 0 0 0 0 -2 0 -1 0 rect.dat
+1 16 0 22 16 0 0 -6 -2 0 0 0 1 0 rect.dat
+1 16 0 22 -16 -6 0 0 0 0 -2 0 -1 0 rect.dat
+1 16 0 22 -20 0 0 -10 -2 0 0 0 1 0 rect.dat
+1 16 10 22 0 0 -1 0 2 0 0 0 0 20 rect1.dat
+3 16 10 20 20 10 0 0 10 20 -20
+1 16 6 22 0 0 1 0 2 0 0 0 0 -16 rect1.dat
+3 16 6 20 16 6 20 -16 6 4 0
+1 16 -6 22 0 0 -1 0 2 0 0 0 0 16 rect1.dat
+3 16 -6 20 16 -6 4 0 -6 20 -16
+1 16 -10 22 0 0 1 0 2 0 0 0 0 -20 rect1.dat
+3 16 -10 20 20 -10 20 -20 -10 0 0
+1 16 0 12 8 6 0 0 0 -1 -8 0 0 -8 rect3.dat
+1 16 0 12 -8 0 0 6 -8 -1 0 8 0 0 rect2p.dat
+1 16 0 24 2.5 -1.5 0 0 0 -1 0 0 0 1.5 2-4edge.dat
+1 16 0 24 2.5 -1.5 0 0 0 -1 0 0 0 1.5 2-4chrd.dat
+1 16 0 24 -2.5 1.5 0 0 0 -1 0 0 0 -1.5 2-4edge.dat
+1 16 0 24 -2.5 1.5 0 0 0 -1 0 0 0 -1.5 2-4chrd.dat
+1 16 0 24 0 1.5 0 0 0 -1 0 0 0 -2.5 rect1.dat
+1 16 -1.5 15.25 0 0 1 0 8.75 0 0 0 0 -2.5 rect1.dat
+1 16 0 24 2.5 -1.5 0 0 0 -16 0 0 0 1.5 2-4cyli.dat
+1 16 0 8 2.5 0 0 1.5 0 -1.5 0 1.5 0 0 1-4cyls.dat
+1 16 0 8 2.5 0 0 -1.5 0 -1.5 0 1.5 0 0 1-4cyls.dat
+1 16 0 6.5 2.5 -1.5 0 0 0 -1 1.5 0 0 1.5 2-4edge.dat
+1 16 0 24 -2.5 -1.5 0 0 0 -16 0 0 0 -1.5 2-4cyli.dat
+1 16 0 8 -2.5 0 0 1.5 0 -1.5 0 -1.5 0 0 1-4cyls.dat
+1 16 0 8 -2.5 0 0 -1.5 0 -1.5 0 -1.5 0 0 1-4cyls.dat
+1 16 0 6.5 -2.5 -1.5 0 0 0 -1 1.5 0 0 -1.5 2-4edge.dat
+2 24 -1.5 6.5 2.5 -1.5 4 0
+2 24 -1.5 4 0 -1.5 6.5 -2.5
+3 16 -1.5 4 0 -1.5 6.5 2.5 -1.5 6.5 -2.5
+1 16 -3.75 5 0 2.25 0 0 0 14 0 0 0 -1 box3u2p.dat
+4 16 1.5 24 2.5 1.5 6.5 2.5 1.5 6.5 -2.5 1.5 24 -2.5
+2 24 1.5 4 0 1.5 6.5 -2.5
+3 16 1.5 6.5 2.5 1.5 4 0 1.5 6.5 -2.5
+1 16 3.75 5 0 -2.25 0 0 0 14 0 0 0 -1 box3u2p.dat
+2 24 1.5 6.5 2.5 1.5 4 0
 0 NOFILE
 
 0 FILE s/3070bs01.dat
@@ -25803,6 +26402,22 @@
 1 16 0 -4 0 2 0 0 0 1 0 0 0 2 4-4ring3.dat
 0 BFC INVERTNEXT
 1 16 0 0 0 -6 0 0 0 -4 0 0 0 6 4-4cylc.dat
+0 NOFILE
+
+0 FILE stug-1x2.dat
+0 Stud Group  1 x  2
+0 Name: stug-1x2.dat
+0 Author: Steffen [Steffen]
+0 !LDRAW_ORG Primitive UPDATE 2011-01
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !HISTORY 2011-07-25 [PTadmin] Official Update 2011-01
+
+
+1 16 -10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
 0 NOFILE
 
 0 FILE stug-2x2.dat

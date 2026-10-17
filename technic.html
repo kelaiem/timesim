@@ -80,6 +80,18 @@
   different barrel. The wind names its step too, base first.
   tools/probe-technic-fusee-loop.mjs gates the tangent, the length and the
   order the steps fill in.
+
+  BUILT §287 — THE ESCAPEMENT AND ITS BALANCE (src/technic-escapement.js), the
+  LEGO view's eighth cell: a balance arm on a KNIFE EDGE (a cross axle lying on
+  the apices of two 45° double slope bricks), restored by gravity, and an
+  ANCHOR whose two pallets are 8T gears on friction pins, each set to its one
+  solved angle, rocking over an 8T escape wheel. Both are ANALOGUES: the anchor
+  is a recoil escapement, not the movement's Swiss lever, and the balance is a
+  compound pendulum, not a sprung balance. The swing is POSED inside the window
+  the parts admit; the wheel's angle at every point of it is read off the
+  traced cycle, so every lock, drop, recoil and impulse drawn is one the parts
+  make. ?focus=escapement opens on it from behind, the frame as glass.
+  tools/probe-technic-escapement.mjs holds it.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -104,6 +116,9 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
 .fphase[data-phase="crest"],.fphase[data-phase="committed"]{background:#3b3324}
 .fphase[data-phase="dropped"],.fphase[data-phase="ringing"],.fphase[data-phase="armed"]{background:#243b2c}
 .fphase[data-phase="silent"],.fphase[data-phase="off"],.fphase[data-phase="tip"],.fphase[data-phase="back"]{background:#3b2426}
+/* §287: the escapement's phase line */
+.fphase[data-phase="lock"]{background:#243b2c} .fphase[data-phase="drop"],.fphase[data-phase="unlock"]{background:#3b3324}
+.fphase[data-phase="recoil"]{background:#3b2426} .fphase[data-phase="impulse"]{background:#24303b}
 .fbar{display:grid;grid-template-columns:7.5em 1fr 4em;gap:6px;align-items:center;margin:3px 0;color:var(--dim)}
 .fbar .track{display:block;height:9px;background:#272b33;border-radius:4px;overflow:hidden}
 .fbar .fill{display:block;height:100%;width:0;background:#9fb6d9}
@@ -165,8 +180,8 @@ canvas{display:block;touch-action:none}
   The build assembles every row from the real parts (LDraw.org's library, CC BY 4.0) on a brick
   frame whose every dimension is measured off those parts. The rows use no
   turntable: neither could be mounted on the frame, so the solver answers with
-  spur gears on the stud lattice. The escapement and balance have no LEGO row
-  and are not here.</p>
+  spur gears on the stud lattice. The escapement and its balance are the
+  eighth cell, below.</p>
   <p>Beside the trains is the <b>keyless works</b>: the stem carries two 16T
   clutch gears and a driving ring that slides between them, LEGO's own
   changeover standing in for the steel sliding pinion. <b>wind</b>,
@@ -243,6 +258,24 @@ canvas{display:block;touch-action:none}
   drop, the fly runs and the hammer strikes. It is modelled, not simulated:
   every angle is read off the parts, and every speed is a display rate.</p>
   <div class="gen" id="amodes"></div>
+  <p>The <b>escapement</b> is the movement's oscillator as LEGO, and both of
+  its halves are ANALOGUES. The steel's Swiss lever cannot be built: a LEGO
+  tooth has no locking corner, and a lever's drop is a fraction of a degree,
+  inside the play of a plastic axle in a plastic hole. So this is an
+  <b>anchor</b>, a recoil escapement: two pallets on one rocking body, each in
+  turn catching a tooth of the escape wheel and letting it go. Nothing in LEGO
+  is fine enough to be a pallet but a gear tooth, so each pallet is an 8T on a
+  friction pin, turned to the one angle that works and held there. The
+  oscillator is a <b>balance arm on a knife edge</b>: no LEGO part is spring
+  steel, so there is no hairspring, and gravity restores it. It is a pendulum
+  drawn as a balance: its period comes from its inertia and how far its centre
+  of mass hangs below the knife, and the gears on its arms are chosen so that
+  period is one second. While a pallet holds a tooth and the balance swings on,
+  the wheel is pushed BACK (recoil); as the balance returns, the tooth pushes the
+  pallet (impulse) until it slips off the pallet's tip (unlock) and the wheel
+  runs free to the other pallet (drop, lock). The swing's size is POSED, inside
+  the range the parts allow. It is modelled, not simulated: the wheel's place at
+  every angle of the swing is read off the parts, and no force is weighed.</p>
   <div id="log"></div>
 </div>
 <script type="module">
@@ -255,6 +288,8 @@ import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild, cordPath, cor
          loopPhaseLine, loopRideSpecs, pawlRideSteps, LOOP_RUN_S } from './src/technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn, ALARM_Y, ALARM_DIM_MM, TECHNIC_ALARM, alarmShafts,
          columnModel, columnWarmSteps, columnStart, columnAdvance, columnCommand, columnPose, columnPhase, trainAngles } from './src/technic-alarm.js';
+import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
+         ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -271,7 +306,9 @@ const LEGO_COLOR = { baseplate: 0x3a7d44, plate: 0x6c6e68, brick: 0x6c6e68, tech
   pulley: 0xa0a5a9, barrel: 0x6c6e68, hook: 0xe8e8e8, cord: 0x1c1d20, cordEnd: 0x1c1d20, click: 0xd9c08c, ratchet: 0x2f7d6e,
   pawl: 0xb03a2e, great: 0xe0b630, knob: 0xe8e8e8,
   // landing I: the alarm module
-  rotor: 0xb03a2e, wheel: 0xa0a5a9, lever: 0xe0b630, pin: 0x1c1d20, beam: 0x2f7d6e, gear: 0xa0a5a9, driver: 0x2f5d9b };
+  rotor: 0xb03a2e, wheel: 0xa0a5a9, lever: 0xe0b630, pin: 0x1c1d20, beam: 0x2f7d6e, gear: 0xa0a5a9, driver: 0x2f5d9b,
+  // §287: the escapement module (wheel is the alarm's grey; the knife reads as a brick)
+  knife: 0x6c6e68, crossbar: 0x1c1d20, arm: 0x2f5d9b, mass: 0xe0b630, pallet: 0xb03a2e };
 // mm between rows on the table: the keyless works' 32×32 baseplate (256 mm,
 // landing F's pull outgrew the 16×16) and a stud's gap either side
 const LEGO_CELL = 272;
@@ -533,7 +570,7 @@ const FOCUS_FILL = 0.85;
 // The fusee close up: the camera on its moving bodies (not the cell's
 // baseplate), and the panel scrolled to its row, where the phase and the bars are.
 function focusFusee() {
-  alarmGlass(false);
+  alarmGlass(false); escGlass(false);
   scene.updateMatrixWorld(true);                                  // build-time: the groups have no world matrices yet
   const box = new THREE.Box3();
   for (const s of legoShafts) if (s.fusee) box.expandByObject(s.rotor);
@@ -699,6 +736,7 @@ const ALARM_FOCUS_FILL = 1;   // the circle above already carries its margin (a 
 function focusAlarm(which = 'wheel') {
   const v = alarmView;
   if (!v) return;
+  escGlass(false);
   alarmGlass(true);
   scene.updateMatrixWorld(true);
   let centre = v.centre, R = v.R;
@@ -720,6 +758,161 @@ function focusAlarm(which = 'wheel') {
   frameOn(box, ALARM_FOCUS_FILL / Math.sqrt(3), axis);
   document.getElementById('aphase')?.closest('.row')?.scrollIntoView({ block: 'start' });
 }
+
+// --- §287: the escapement and its balance ----------------------------------
+// One state: display time. The balance swings α(t) = −A cos(2π t / T) at the
+// POSED amplitude and the SOLVED period, and the wheel's angle at each α is the
+// traced cycle's (cycleModelSteps, src/technic-escapement.js), measured between
+// frames like the fusee's rides; until it arrives the balance swings and the
+// wheel stands at its rest, and the panel says so.
+let escFrame = null, escView = null, escCycle = null, escCycleP = null, escT = 0, escBand = null, escMoments = null, escMomentsP = null;
+const ESC_PHASE_TEXT = {
+  lock: () => 'lock — the lit pallet has caught a tooth',
+  recoil: () => 'recoil — the balance swings on, and the lit pallet pushes the wheel back',
+  impulse: () => 'impulse — the balance returns, and the tooth pushes the lit pallet as it goes',
+  unlock: () => "unlock — the tooth slides off the lit pallet's tip",
+  drop: () => 'drop — the wheel runs free to the other pallet',
+  still: () => 'the wheel stands', measuring: () => 'swinging; the wheel waits while its cycle is read off the teeth',
+};
+const ESC_PHASE_COLOUR = { lock: '#7fc98b', recoil: '#e2777a', impulse: '#9fb6d9', unlock: '#e0b630', drop: '#e0b630', still: '#d9dde3', measuring: '#8a919c' };
+async function measureEscCycle(frame) {
+  const it = cycleModelSteps(lib, frame);
+  let t = performance.now(), r;
+  while (!(r = it.next()).done) if (performance.now() - t > Math.max(RIDE_SLICE_MS, Math.min(frameMs, 400) / 2)) { await new Promise((res) => setTimeout(res, 0)); t = performance.now(); }
+  return r.value;
+}
+// the balance's moments: each part's solid read off its surface (partSolid),
+// one part between frames
+async function measureEscMoments(frame) {
+  const parts = framedBalance(frame, lib);
+  for (const p of new Set(parts.map((q) => q.part))) { partSolid(lib, p); await new Promise((res) => setTimeout(res, 0)); }
+  return balanceMoments(lib, parts);
+}
+function buildEscView(band) {
+  const b0 = escapementBuild(escFrame, lib);
+  const shafts = buildLego(b0, band).map((sh, i) => ({ ...sh, escape: b0.shafts[i].shaft }));
+  legoShafts.push(...shafts);
+  const by = Object.fromEntries(shafts.map((s) => [s.escape, s]));
+  // DISPLAY ONLY: each pallet its own material, so the one holding a tooth can
+  // glow, and the wheel's, so a drop can; the parts and the .ldr are unchanged
+  const palletMats = { 1: null, '-1': null }, wheelMats = [];
+  const palletParts = b0.shafts[0].parts.map((p, i) => ({ p, i })).filter(({ p }) => p.role === 'pallet');
+  // and the balance's masses, its arms and its bob, which the close-up draws as
+  // glass so the anchor and the wheel read in front of them (display only)
+  let meshI = 0;
+  const ghosts = [];
+  by.balance.rotor.children.forEach((o) => {
+    if (!o.isMesh) { ghosts.push({ o, line: true, part: b0.shafts[0].parts[meshI - 1] }); return; }
+    const part = b0.shafts[0].parts[meshI++];
+    if (part?.role === 'pallet') { const k = part.m[0] > 0 ? 1 : -1; o.material = o.material.clone(); palletMats[k] = o.material; }
+    ghosts.push({ o, part });
+  });
+  const ghostOf = (g) => g.part && (g.part.role === 'mass' || (g.part.role === 'arm' && ['11478'].includes(g.part.part)) || (g.part.role === 'arm' && g.part.m[1] > 20 && g.part.part === '6632') || (g.part.role === 'axle' && Math.abs(g.part.m[0]) > 1));
+  by.escape.rotor.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); wheelMats.push(o.material); } });
+  void palletParts;
+  const root = shafts[0].rotor.parent, statics = root.children.filter((o) => o.isMesh || o.isLineSegments);
+  const glass = new THREE.MeshStandardMaterial({ color: 0x8a919c, transparent: true, opacity: 0.12, depthWrite: false, roughness: 0.6, metalness: 0 });
+  // the phase written beside the escape wheel, at the module's back, clear of the parts
+  band.updateMatrixWorld(true);
+  const wheelC = by.escape.rotor.localToWorld(new THREE.Vector3(0, 0, LDU((escFrame.slabs.wheel.y0 + escFrame.slabs.wheel.y1) / 2)));
+  const phaseLbl = labelSprite(' '); phaseLbl.userData.lineMm = 2.2;
+  band.add(phaseLbl);
+  escView = { b0, by, palletMats, wheelMats, statics, glass, phaseLbl, wheelC, glassOn: false, lastKey: null, lastText: 0, cellLbl: null,
+    ghosts: ghosts.filter(ghostOf) };
+  placeEscLabel(false);
+}
+// the label's place: in the table view above the module's back; in the close-up
+// above the escape wheel, outside the pallets' reach (the wheel's centre, up
+// past the knife's crossbar by two studs, to the left of the knife's line)
+function placeEscLabel(close) {
+  const v = escView, band = escBand;
+  if (!v) return;
+  const c = band.worldToLocal(v.wheelC.clone());
+  // (the close-up looks from behind, so the screen's left is the band's +x)
+  if (close) { v.phaseLbl.userData.lineMm = 2.4; v.phaseLbl.position.set(c.x + 17, c.y + 19, c.z - 12); }
+  else { v.phaseLbl.userData.lineMm = 6; v.phaseLbl.position.set(c.x - 60, c.y + 44, c.z + 20); }
+  v.lastKey = null;
+}
+function escGlass(on) {
+  const v = escView;
+  if (!v || v.glassOn === on) return;
+  v.glassOn = on;
+  for (const c of world.children) if (c !== escBand) c.visible = !on;
+  if (v.cellLbl) v.cellLbl.visible = !on;
+  for (const o of [...v.statics, ...v.ghosts.map((g) => g.o)]) {
+    if (o.isLineSegments) { o.visible = !on; continue; }
+    o.userData.solid ??= o.material;
+    o.material = on ? v.glass : o.userData.solid;
+  }
+  placeEscLabel(on);
+}
+// the close-up: from BEHIND (the frame's +y), down the arbors' axis, on the
+// wheel and its two pallets — a circle through the pallets' far tips and the
+// wheel's, plus a stud; the frame as glass, so the escape columns and the back
+// knife do not hide the wheel; a narrow lens, as the alarm's close-up
+function focusEscapement() {
+  const v = escView;
+  if (!v) return;
+  alarmGlass(false);
+  escGlass(true);
+  cam.fov = ALARM_FOCUS_FOV; cam.updateProjectionMatrix();
+  scene.updateMatrixWorld(true);
+  const s = escFrame.spec, R = (s.s + 5 + Math.abs(s.vW - s.vA)) / 2 + 12;
+  const mid = v.by.balance.rotor.localToWorld(new THREE.Vector3(0, LDU((s.vA + s.vW) / 2), LDU((escFrame.slabs.wheel.y0 + escFrame.slabs.wheel.y1) / 2)));
+  const box = new THREE.Box3(mid.clone().subScalar(R), mid.clone().addScalar(R));
+  const axis = new THREE.Vector3(0, 0, 1).transformDirection(v.by.escape.rotor.matrixWorld);
+  frameOn(box, 1 / Math.sqrt(3), axis);
+  document.getElementById('ephase')?.closest('.row')?.scrollIntoView({ block: 'start' });
+}
+function applyEscapement(now, dt) {
+  const v = escView;
+  if (!v) return;
+  escT += dt;
+  const T = escMoments?.T ?? BEAT_PERIOD_S;
+  let p;
+  if (escCycle?.ok) { escCycle.T = T; p = cyclePose(escCycle, escT); }
+  else p = { alpha: -ESC_SWING_DEG * Math.PI / 180 * Math.cos(2 * Math.PI * escT / T), theta: 0, kind: 'measuring', holder: 0 };
+  v.by.balance.rotor.rotation.z = p.alpha;
+  if (escCycle?.ok) v.by.escape.rotor.rotation.z = p.theta;
+  const key = `${p.kind}/${p.holder}`;
+  if (key !== v.lastKey) {
+    v.lastKey = key;
+    // DISPLAY ONLY: the holding pallet glows; the wheel glows while it drops
+    for (const k of [1, -1]) v.palletMats[k]?.emissive.setHex(p.holder === k && p.kind !== 'drop' ? 0xc85000 : 0x000000);
+    for (const m of v.wheelMats) m.emissive.setHex(p.kind === 'drop' ? 0x6a5400 : 0x000000);
+    const line = ESC_PHASE_TEXT[p.kind](p.holder);
+    const el = document.getElementById('ephase');
+    if (el) { el.textContent = line; el.dataset.phase = p.kind; }
+    setSpriteText(v.phaseLbl, p.kind === 'measuring' ? 'measuring the cycle' : p.kind, ESC_PHASE_COLOUR[p.kind]);
+  }
+  if (now - v.lastText > 150) {
+    v.lastText = now;
+    const el = document.getElementById('edetail'), d = (x) => (x * 180 / Math.PI).toFixed(2);
+    if (el) el.textContent = `balance ${d(p.alpha)}° of ±${ESC_SWING_DEG}°; `
+      + (escCycle?.ok ? `escape wheel ${d(((p.theta - escCycle.theta0) * escCycle.sigma))}° on, ${p.cycle} teeth gone by` : 'the wheel stands while its cycle is read off the teeth')
+      + `; display time ${escT.toFixed(1)} s`;
+  }
+}
+
+// the panel's measurements, once the cycle and the moments have arrived
+function writeEscMeasures() {
+  const el = document.getElementById('emeasure');
+  if (!el) return;
+  const out = [];
+  if (escMoments) {
+    const m = escMoments, err = m.T / BEAT_PERIOD_S - 1, mass = m.V * 1e-3 * 1.05;
+    out.push(`period <code>${m.T.toFixed(4)} s</code> solved from the balance's inertia and its centre of mass <code>${m.d.toFixed(2)} mm</code> below the knife (T = 2π√(I/mgd)), against the row's <code>${BEAT_PERIOD_S} s</code>: `
+      + `<code>${(err * 100).toFixed(2)}%</code>, ${Math.abs(err * 86400).toFixed(0)} s a day ${err > 0 ? 'slow' : 'fast'} untrimmed (no rating nut is built); at ±${ESC_SWING_DEG}° the swing's own lengthening is <code>${((periodAt(m.T, ESC_SWING_DEG) / m.T - 1) * 1e6).toFixed(0)} ppm</code>. `
+      + `About ${mass.toFixed(1)} g at ABS's posed density.`);
+  }
+  if (escCycle?.ok) {
+    const st = escCycle.steps, drops = st.filter((s) => s.kind === 'drop'), W = escCycle.model.W;
+    const lock = Math.min(...drops.map((s) => escCycle.model.insideTip(s.holder, s.alpha)));
+    out.push(`drops <code>${drops.map((s) => (s.dth * W.tip).toFixed(2)).join(', ')} mm</code> at the wheel's tip; at the shallowest catch the pallet stands <code>${lock.toFixed(2)} mm</code> inside the tip circle, against a plastic bearing's ~${F2_PLAY_MM} mm play; one tooth a period (${BEAT_PERIOD_S} s, two beats), ${(60 / (BEAT_PERIOD_S * S8())).toFixed(1)} turns a minute, the fourth→escape row's rate.`);
+  } else if (escCycle) out.push(`<span class="bad">the cycle did not escape: ${escCycle.why}</span>`);
+  el.innerHTML = out.join('<br>');
+}
+const S8 = () => escFrame.spec.teeth;
 
 async function build(gen) {
   await loadLib();
@@ -911,13 +1104,47 @@ async function build(gen) {
     } else div.innerHTML = `<b>${k + 1}. alarm</b><br><span class="bad">not framed in LEGO: ${alarmFrame.reason}</span>`;
     rowsEl.appendChild(div);
   }
+  // §287 — the escapement and its balance, the LEGO view's eighth cell: the
+  // same build in both generations (every part is classic)
+  {
+    const k = TECHNIC_FORK.rows.length + 3;
+    escBand = new THREE.Group(); escBand.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(escBand);
+    const div = document.createElement('div'); div.className = 'row';
+    escFrame ??= frameEscapement();
+    escView = null;
+    if (escFrame.framed) {
+      const lbl = labelSprite(`${k + 1}. escapement and balance`); lbl.position.set(-30, 60, 0); escBand.add(lbl);
+      buildEscView(escBand); escView.cellLbl = lbl;
+      const S = escFrame.spec, B = escFrame.bal, nm = (p) => ({ 3649: '40T', 3648: '24T', 4019: '16T' }[p] ?? p);
+      div.innerHTML = `<b>${k + 1}. escapement and balance — LEGO build</b>`
+        + `an anchor on an <code>${S.teeth}T</code> escape wheel, its pallets two 8Ts on friction pins set at <code>${S.phaseDeg}°</code>, `
+        + `on a balance arm on a knife edge: <code>${B.masses.map(nm).join(' + ')}</code> each side ${{ 11478: 32, 6632: 16 }[B.massArm]} mm out, `
+        + `<code>${B.bob.map(nm).join(' + ')}</code> on the bob ${{ 11478: 32, 6632: 16, 41677: 8 }[B.bobArm]} mm down.`
+        + `<div class="gen"><button id="efocus" type="button">look at the escapement</button></div>`
+        + `<div class="fphase" id="ephase" data-phase="measuring">swinging</div>`
+        + `<div id="edetail" style="color:var(--dim)"></div>`
+        + `<div id="emeasure" style="color:var(--dim)">reading the balance's inertia off its parts…</div>`
+        + `<span style="color:var(--dim)">The glow on the pallet holding a tooth, and on the wheel while it drops, is drawn for reading, not a part.</span>`
+        + ` <span class="bad">An ANALOGUE, modelled:</span> <span style="color:var(--dim)">a recoil anchor, not the movement's Swiss lever (LEGO teeth have no locking corner, and a lever's drop is smaller than a plastic bearing's play); a pendulum drawn as a balance, not a sprung one (no LEGO spring steel). The swing of ±${ESC_SWING_DEG}° is POSED; the drive is not modelled; the time on the page runs at the speed slider's rate. Base ${escFrame.base.studsX}×${escFrame.base.studsY} studs.</span>`
+        + `<br><a id="eldr" href="#" style="color:#9fb6d9">download .ldr (at rest)</a>`;
+      div.querySelector('#efocus').addEventListener('click', focusEscapement);
+      div.querySelector('#eldr').addEventListener('click', (e) => {
+        const a = e.currentTarget; URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(escView.b0)], { type: 'text/plain' })); a.download = 'escapement.ldr';
+      });
+      // the cycle and the moments are measured once, between frames
+      (escCycleP ??= measureEscCycle(escFrame)).then((c) => { escCycle = c; writeEscMeasures(); });
+      (escMomentsP ??= measureEscMoments(escFrame)).then((m) => { escMoments = m; writeEscMeasures(); });
+    } else div.innerHTML = `<b>${k + 1}. escapement</b><br><span class="bad">not framed in LEGO: ${escFrame.reason}</span>`;
+    rowsEl.appendChild(div);
+  }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   currentGen = gen;
   const focus = new URLSearchParams(location.search).get('focus');
-  if (focus === 'fusee' && fuseeView) focusFusee();
+  if (focus === 'escapement' && escView) focusEscapement();
+  else if (focus === 'fusee' && fuseeView) focusFusee();
   else if (focus === 'alarm' && alarmView) focusAlarm('wheel');
   else if (focus === 'strike' && alarmView) focusAlarm('strike');
-  else { alarmGlass(false); frameOn(world); }
+  else { alarmGlass(false); escGlass(false); frameOn(world); }
   inputAngle = 0;
   if (keylessBuild) setKeylessMode(keylessMode);
 }
@@ -960,9 +1187,13 @@ renderer.setAnimationLoop((now) => {
   // §283: the alarm cell advances by display rates too (the pusher's, the
   // bands', the hand on the hour axle; the strikes at the POSED gap)
   applyAlarm(now, dt * Number(speedEl.value));
+  // §287: the balance swings at its SOLVED period in display seconds (the
+  // speed slider's rate), the wheel read off the traced cycle
+  applyEscapement(now, dt * Number(speedEl.value));
   for (const s of legoShafts) {
     if (s.fusee) { if (!fuseeLoop) s.rotor.rotation.z = s.phi; continue; }        // the fusee cell: posed by applyFusee from the loop's state
     if (s.alarm) continue;                                                           // the alarm cell: posed by applyAlarm from the press's state
+    if (s.escape) continue;                                                          // the escapement cell: posed by applyEscapement
     if (s.slider) continue;                                                          // the pull's rack: it slides with the mode, it does not turn
     if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
@@ -974,7 +1205,10 @@ window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return
   // screenshot probe does with the speed at 0; the page's own loop never calls it
   seekFusee: (st) => { if (fuseeLoop) fuseeLoop.st = { ...loopStart(), ...st }; }, frameOn, get alarm() { return alarmModel && alarmBuild(alarmFrame, lib, columnPose(alarmModel, alarmSt)); },
   get alarmState() { return alarmModel && { st: alarmSt, pose: columnPose(alarmModel, alarmSt), phase: columnPhase(alarmModel, alarmSt), auto: alarmAuto }; },
-  get alarmCell() { return alarmBand; }, alarmDo, setAlarmAuto, focusAlarm, cam, controls, scene, renderer };
+  get alarmCell() { return alarmBand; }, alarmDo, setAlarmAuto, focusAlarm, cam, controls, scene, renderer,
+  // §287: an instrument's hook — the escapement's state, and a seek to a display time
+  get escapement() { return escCycle && { ok: escCycle.ok, T: escMoments?.T ?? null, pose: escCycle.ok ? cyclePose(escCycle, escT) : null, t: escT }; },
+  seekEscapement: (t) => { escT = t; }, focusEscapement };
 </script>
 </body>
 </html>
