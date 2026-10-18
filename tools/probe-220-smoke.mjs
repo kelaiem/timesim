@@ -306,7 +306,9 @@ if (!SCAN) {
     else if (other.length) F(`T=${T_UNDER}: warned from something other than the zone gate: ${other.join(' | ').slice(0, 300)}`);
     else OK(`T=${T_UNDER} (one step under the floor, clamp lifted): ${zone.length} warning(s), all from the reserve zone gate — ${zone[0].match(/holds only ([\d.]+):1/)?.[1]}:1 against the face; the floor is where the schema says`);
   }
-  for (const [n, b] of boots) if (!b.before.sapphire) F(`${n}: the sapphire knob did not reach makeDial`);
+  // Every SEEDED boot asked for sapphire; the shipped boot asks for nothing and is
+  // held to the schema's own value below (§289 ships the dial silvered).
+  for (const [n, b] of boots) if (b !== SH && !b.before.sapphire) F(`${n}: the sapphire knob did not reach makeDial`);
   if (T1.consts.smokeT !== 1 || Math.abs(TS.consts.smokeT - T_SMOKE) > 1e-12) F(`the smoke knob did not reach materials.js (read ${T1.consts.smokeT}, ${TS.consts.smokeT})`);
   // 2 — identity
   {

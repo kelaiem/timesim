@@ -151,7 +151,7 @@ console.log(`dial colour through the link — sent ${SENT}, recipient's own ${TH
 { // and the refusals — a URL is untrusted input
   for (const bad of ['zzz', '1b3a5', '1b3a5cc', '<script>', '', 'rgb(1,2,3)']) {
     const { ctx, page } = await open(`?dialcol=${encodeURIComponent(bad)}`);
-    check(`refused, file's colour stands: ${JSON.stringify(bad)}`, await effective(page), '#e7e5dd');
+    check(`refused, file's colour stands: ${JSON.stringify(bad)}`, await effective(page), '#002e7a');
     await ctx.close();
   }
 }

@@ -1990,7 +1990,7 @@ if (Math.abs(palletFork.userData.blankHalfZ - FORK_HALF_Z) > 1e-9) {
   let steel = 0, ruby = 0;
   palletFork.traverse((o) => {
     if (!o.isMesh) return;
-    if (o.material && o.material.color && o.material.color.getHex() === 0xb01326) ruby++;
+    if (o.material === MATS.ruby) ruby++;
     else steel++;
   });
   // blank + guard dart = 2 steel bodies; two stones. The pivots are added by
@@ -47160,6 +47160,27 @@ const CASE_DIMS = (() => {
   // the viewer.
   const zCrystInner = handFront - CASE_CRYSTAL_CLEAR;
   const zCrystOuter = zCrystInner - CASE_CRYSTAL_T;
+  const zBezelOuter = zCrystOuter - 0.25 / UNIT_MM;  // bezel lip over the crystal edge
+  const zBandFront = zCrystInner + 0.3 / UNIT_MM;    // bezel seats on the band; 0.3 mm step
+  // §289 — THE ROUNDED BEZEL (owner ask: soften the edge, read narrower and lower).
+  // The outer edge is a quarter round of radius zBandFront − zBezelOuter: the
+  // largest round that stays ON THE BEZEL — it ends tangent to the band's
+  // flank exactly at the seat plane, where the bore at R_IN begins — and its
+  // thinnest section, the tangency, is then the band's own wall (R_OUT_FRONT −
+  // R_IN), so the round cannot thin the bezel below the metal the band already
+  // trusts. The lip's edge takes the lip's height less §50's floor, leaving
+  // STOCK_MIN_U of straight bore above the crystal's face, so the bore that
+  // traps the crystal stays a bore. Both rounds take metal away and add none.
+  const bezelR = zBandFront - zBezelOuter;
+  const bezelLipR = (zCrystOuter - zBezelOuter) - STOCK_MIN_U;
+  {
+    const R_BEZEL_IN = dialRadius - 1 / UNIT_MM;     // the same expression the literal below carries
+    const flat = (CASE_R_OUT_FRONT - bezelR) - (R_BEZEL_IN + bezelLipR);
+    if (!(flat > 0) || !(bezelLipR > 0) || !(zBandFront < CASE_Z_STEP))
+      console.warn(`rounded bezel: outer round ${bezelR.toFixed(3)} and lip round ${bezelLipR.toFixed(3)} leave `
+        + `${flat.toFixed(3)} of flat top (need > 0); the round must end before the midcase step `
+        + `(${zBandFront.toFixed(3)} vs ${CASE_Z_STEP.toFixed(3)})`);
+  }
   return {
     UNIT_MM,
     R_IN: CASE_R_IN, R_OUT: CASE_R_OUT,
@@ -47196,8 +47217,8 @@ const CASE_DIMS = (() => {
     // §186 — the clamp screws (derived at the ~1810 block, built by makeCase).
     clampN: CASE_CLAMP_N, clampR: R_CLAMP, clampAz: CASE_CLAMP_AZ, clampEng: CASE_CLAMP_ENG, glassFloatGuard: CASE_GLASS_FLOAT_GUARD,
     zCrystInner, zCrystOuter,
-    zBezelOuter: zCrystOuter - 0.25 / UNIT_MM,  // bezel lip over the crystal edge
-    zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
+    zBezelOuter, zBandFront,
+    bezelR, bezelLipR,             // the rounded bezel's two edge radii (derived above)
     gasketD: CASE_GASKET_D, gasketSeat: CASE_GASKET_SEAT, crystT: CASE_CRYSTAL_T,
     // §187 — screwShaftD/HeadD stay for the §186 CLAMP screws; the six
     // caseback screws died with the flange.
@@ -47601,7 +47622,7 @@ const SCHEMATIC = { proxies: [], on: false };
     // object the solid case is built from — the drawing cannot drift from
     // the metal because there is nothing to drift FROM.
     const { R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_BEZEL_IN, R_CRYST, R_PLATE,
-            z0, zMidBack, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+            z0, zMidBack, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelLipR,
             zLedge, zStep, rimBack, clampR, clampAz,
             skirtOD, zSkirtBot, apertureR, rStep, zStepUnder, zStepTop } = CASE_DIMS;
     const rim = SCHEMATIC.rimMat;
@@ -47619,7 +47640,10 @@ const SCHEMATIC = { proxies: [], on: false };
     for (const [r, z] of [[R_OUT, zMidBack], [R_OUT, zStep], [R_OUT_FRONT, zStep], [R_OUT_FRONT, zBandFront],
                           [R_BORE_BACK, zMidBack], [R_BORE_BACK, zLedge], [R_IN, zLedge], [R_IN, zBandFront],
                           [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter],
-                          [R_BEZEL_IN, zBezelOuter], [R_OUT_FRONT, zBezelOuter]]) {
+                          // the rounded bezel: each round's two tangent lines, where the face
+                          // meets the round and the round meets the bore or the flank
+                          [R_BEZEL_IN, zBezelOuter + bezelLipR], [R_BEZEL_IN + bezelLipR, zBezelOuter],
+                          [R_OUT_FRONT - bezelR, zBezelOuter]]) {
       const c = new THREE.Line(circGeo(r, 96), rim); c.position.z = z; put(c);
     }
     // Band walls: four generators at the cardinal azimuths, one run per
@@ -49406,11 +49430,20 @@ const GONG_CASE_PATH = await (async () => {
   const Iinv = inv3(watch.I_kgm2);
   // 3 — THE EXTERIOR, as revolve profiles in u with their outward normals.
   const crystT = D.crystT, zCrystOut = D.zMidBack + crystT, rStepOut = D.rStep + crystT;   // the outer pane's INNER face is flush with the band's back face (makeCase)
+  // The bezel's two edge rounds as chords, each with its outward normal at
+  // the chord's middle — the same quarter circles makeCase lathes.
+  const roundChords = (name, cr, cz, rad, a0, a1, n) => Array.from({ length: n }, (_, i) => {
+    const t0 = a0 + (a1 - a0) * (i / n), t1 = a0 + (a1 - a0) * ((i + 1) / n), tm = (t0 + t1) / 2;
+    return { name: `${name} ${i}`, r0: cr + rad * Math.cos(t0), z0: cz + rad * Math.sin(t0),
+      r1: cr + rad * Math.cos(t1), z1: cz + rad * Math.sin(t1), nr: Math.cos(tm), nz: Math.sin(tm) };
+  });
   const EXTERIOR = [
     { name: 'front crystal', r0: 0, z0: D.zCrystOuter, r1: D.R_BEZEL_IN, z1: D.zCrystOuter, nr: 0, nz: -1 },
-    { name: 'bezel lip', r0: D.R_BEZEL_IN, z0: D.zBezelOuter, r1: D.R_BEZEL_IN, z1: D.zCrystOuter, nr: -1, nz: 0 },
-    { name: 'bezel face', r0: D.R_BEZEL_IN, z0: D.zBezelOuter, r1: D.R_OUT_FRONT, z1: D.zBezelOuter, nr: 0, nz: -1 },
-    { name: 'front band', r0: D.R_OUT_FRONT, z0: D.zBezelOuter, r1: D.R_OUT_FRONT, z1: D.zStep, nr: 1, nz: 0 },
+    { name: 'bezel lip', r0: D.R_BEZEL_IN, z0: D.zBezelOuter + D.bezelLipR, r1: D.R_BEZEL_IN, z1: D.zCrystOuter, nr: -1, nz: 0 },
+    ...roundChords('bezel lip round', D.R_BEZEL_IN + D.bezelLipR, D.zBezelOuter + D.bezelLipR, D.bezelLipR, Math.PI, 1.5 * Math.PI, 3),
+    { name: 'bezel face', r0: D.R_BEZEL_IN + D.bezelLipR, z0: D.zBezelOuter, r1: D.R_OUT_FRONT - D.bezelR, z1: D.zBezelOuter, nr: 0, nz: -1 },
+    ...roundChords('bezel round', D.R_OUT_FRONT - D.bezelR, D.zBezelOuter + D.bezelR, D.bezelR, 1.5 * Math.PI, 2 * Math.PI, 8),
+    { name: 'front band', r0: D.R_OUT_FRONT, z0: D.zBezelOuter + D.bezelR, r1: D.R_OUT_FRONT, z1: D.zStep, nr: 1, nz: 0 },
     { name: 'midcase step', r0: D.R_OUT_FRONT, z0: D.zStep, r1: D.R_OUT, z1: D.zStep, nr: 0, nz: -1 },
     { name: 'back band', r0: D.R_OUT, z0: D.zStep, r1: D.R_OUT, z1: D.zMidBack, nr: 1, nz: 0 },
     { name: 'band back face', r0: D.R_PLATE, z0: D.zMidBack, r1: D.R_OUT, z1: D.zMidBack, nr: 0, nz: 1 },
@@ -53336,10 +53369,21 @@ function currentViewLink() {
     }
   });
 }
-// Restore a saved camera pose if one was persisted; otherwise frame the
-// default Free preset — the whole movement, before the viewer has said what
-// they came to look at. A restore snaps directly (no tween) and cancels any
-// in-flight preset tween so it isn't overwritten next frame.
+// §289 — THE OPENING VIEW: the owner's chosen framing for a first visit: the dial
+// side, three-quarter from below, at a standoff that shows the whole case.
+// A literal pose quoted from the owner's view link (?cam=…&look=…), and taste
+// (P4), not a derivation: nothing in the movement constrains where a visitor
+// first stands. It is not a preset — the Free preset stays the working
+// movement-side framing every script step, the 5 key and life size's exit
+// fly to.
+const OPENING_POSE = {
+  pos: new THREE.Vector3(-9.077, -12.889, -202.52),
+  target: new THREE.Vector3(5.988, -0.769, -8.992),
+};
+// Restore a saved camera pose if one was persisted; otherwise snap to the
+// opening view, before the viewer has said what they came to look at. A
+// restore snaps directly (no tween) and cancels any in-flight preset tween so
+// it isn't overwritten next frame.
 if (restoredCamera) {
   camera.position.set(restoredCamera.px, restoredCamera.py, restoredCamera.pz);
   controls.target.set(restoredCamera.tx, restoredCamera.ty, restoredCamera.tz);
@@ -53347,7 +53391,7 @@ if (restoredCamera) {
   camTween = null;
   document.querySelectorAll('.hud-panel .presets button').forEach((b) => b.classList.remove('active'));
 } else {
-  goToPreset('Free');
+  goToPose(OPENING_POSE.pos, OPENING_POSE.target, { snap: true });
 }
 
 // ---------------------------------------------------------------------------

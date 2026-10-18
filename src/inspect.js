@@ -5390,16 +5390,16 @@ const PENETRATION_BUDGETS = [
       return best ? [best] : [];
     },
     // B = the ruby pallet stones specifically, not the fork's steel body.
-    // Selected by material colour (ruby, 0xb01326) rather than geometry
-    // type — the stones moved from BoxGeometry to a custom two-facet
+    // Selected by material (MATS.ruby, by its name — not its colour, which
+    // is a live aesthetics setting) rather than geometry type — the stones moved from BoxGeometry to a custom two-facet
     // ExtrudeGeometry (see makePalletFork's palletStoneGeometry), and
     // ExtrudeGeometry alone isn't specific enough (the fork body and the
-    // escape wheel's own teeth use it too). Colour is what's actually
+    // escape wheel's own teeth use it too). The material is what's actually
     // invariant about "these are the rubies."
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => {
-        if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0xb01326) out.push(o);
+        if (o.isMesh && o.material && o.material.name === 'ruby') out.push(o);
       });
       return out;
     },
@@ -5427,7 +5427,7 @@ const PENETRATION_BUDGETS = [
     selectB(unit) {
       const out = [];
       unit.obj.traverse((o) => {
-        if (o.isMesh && o.material && o.material.color && o.material.color.getHex() !== 0xb01326) out.push(o);
+        if (o.isMesh && !(o.material && o.material.name === 'ruby')) out.push(o);
       });
       return out;
     },

@@ -3,8 +3,8 @@
 // centered at the origin, rotating about local +Z. userData.r = pitch/functional
 // radius where meaningful. Real tooth profiles via Shape/ExtrudeGeometry.
 import * as THREE from 'three';
-import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR } from './materials.js';
-import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
+import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR } from './materials.js';
+import { aesthetics } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, caseLugPlan,
@@ -8993,6 +8993,13 @@ export const DIAL_RAIL_IN_F = 0.87;       // railroad inner rail / printed disc
 // surface a caller outside this module needs.
 const DIAL_TINT_RATIO_IN = [244 / 231, 242 / 229, 236 / 221];
 const DIAL_TINT_RATIO_OUT = [211 / 231, 209 / 229, 200 / 221];
+// The face the maker's mark's discretion was DESIGNED on (§196: 2.82:1 on
+// the silvered #e7e5dd). It was read off AESTHETICS_DEFAULTS while that was
+// the default; the default is now the owner's blue, and a relation anchored
+// to "whatever ships" would have re-tuned the mark's loudness as a side effect
+// of a taste change. The design ground is a fact about the design, so it is
+// named here and the default is free to move.
+export const DIAL_MARK_DESIGN_GROUND = '#e7e5dd';
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -9111,7 +9118,7 @@ export function solveInk(grounds) {
 // which maximises. Instead it solves for the SAME contrast the shipped pair
 // holds, from whichever side of the ground has room: the target T is the
 // mark's ratio on the site's SHIPPED ground (passed by the caller from
-// AESTHETICS_DEFAULTS through the site's own ground expression), so on the
+// DIAL_MARK_DESIGN_GROUND through the site's own ground expression), so on the
 // shipped face r0 === T by construction and the mark returns DIAL_MARK_INK
 // verbatim. Elsewhere: too loud (a black ground reads ≈ 5.9:1) → mix toward
 // the ground, monotone down; too quiet (a ground near the mark's own
@@ -9402,7 +9409,7 @@ export function makeDial({
           // pair's contrast on whatever ground it lands on (see solveMarkInk).
           ctx.fillStyle = solveMarkInk(
             groundAt(MARK_RADIAL_F),
-            dialTintAt(AESTHETICS_DEFAULTS.dial.face.color, MARK_RADIAL_F));
+            dialTintAt(DIAL_MARK_DESIGN_GROUND, MARK_RADIAL_F));
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           const msg = MARK_TEXT;   // §158 — one copy of the signature, shared with the well's
@@ -9438,6 +9445,11 @@ export function makeDial({
         roughness: 0.35,
         clearcoat: 1.0,
         clearcoatRoughness: 0.07,
+        // §269's tally: the lacquered face is finish on the BRASS blank (the
+        // body below is MATS.brass off sapphire), so it is cut from the blank's
+        // stock. §269 landed while sapphire was the default and never booted
+        // this path; §289 turned sapphire off and the tally warned.
+        userData: { stock: 'brass' },
       });
       repaintFace = () => { paintFace(); tex.needsUpdate = true; };
     }
@@ -9592,6 +9604,7 @@ export function makeDial({
       ? Object.assign(MATS.sapphire.clone(), { side: THREE.DoubleSide, userData: { glass: true } })
       : new THREE.MeshStandardMaterial({
         color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
+        userData: { stock: 'brass' },   // §269: the silvering up the brass blank's own bore
       });
     // §220 — a SMOKED wall needs its own two-sided clear twin for x-ray, the
     // way the body has one (materials.js XRAY_CLEAR); at T = 1 the plate's
@@ -9634,13 +9647,13 @@ export function makeDial({
           // what §159's zone tones and §196's ink are solved against, and the
           // §157 gate re-reads it through wellInkSites — so none of them can
           // be given different answers by a second transcription. The SHIPPED
-          // ground is the same expression over the file's frozen defaults: it
+          // ground is the same expression over DIAL_MARK_DESIGN_GROUND: it
           // anchors the maker's mark's designed relation (§196), and for a
           // well that opted out with an explicit `face` it IS that face —
           // such a well never recolours, so its shipped ground is itself.
           const wellGroundNow = () => sd.face || groundAt(wellR);
           const wellGroundShipped = sd.face
-            || dialTintAt(AESTHETICS_DEFAULTS.dial.face.color, wellR);
+            || dialTintAt(DIAL_MARK_DESIGN_GROUND, wellR);
           wellInkSites.push({ kind: sd.kind, ground: wellGroundNow });
           const paintWell = () => {
             fctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -9657,7 +9670,8 @@ export function makeDial({
           ftex.anisotropy = 8;
           // Same lacquered finish as the main dial face.
           floorMat = sapphire ? printOnSapphire(ftex)
-            : new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07 });
+            : new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07,
+              userData: { stock: 'brass' } });   // §269: the well's floor is the brass blank's, lacquered like the face
           // Only a well that DERIVES its tone follows a live recolour; one
           // that passed an explicit `face` asked for a fixed colour and keeps
           // it, which is the same opt-out the paint above honours.
@@ -10513,7 +10527,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const {
     UNIT_MM, R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_CRYST, R_BEZEL_IN, R_G, R_PLATE,
     z0, zMidBack,
-    zLedge, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+    zLedge, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelLipR,
     rimBack, clampN, clampR, clampAz, clampEng, tubeClearR,
     skirtOD, skirtID, zSkirtBot, apertureR, glassEdgeR, rStep, zStepUnder, zStepTop,
     gasketD, gasketSeat, crystT, screwShaftD, screwHeadD, tubeD, pusherD,
@@ -10716,12 +10730,32 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     }
     return out;
   };
+  // §289 — THE ROUNDED BEZEL: both top edges are quarter rounds (radii derived in
+  // CASE_DIMS), sampled as arcs from the face's tangent point round to the
+  // wall's. The outer round ends on the band's flank at zBezelRound — the seat
+  // plane, by its derivation — which is where the outer wall's run resumes.
+  // The rounds are LATHED with the band, so the sectors and their caps carry
+  // them for free; a cap stays a simple polygon because an arc only replaces
+  // a convex corner.
+  const BEZEL_ARC_SEGS = 8, LIP_ARC_SEGS = 3;
+  const quarter = (cr, cz, rad, a0, a1, n) => {
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      const a = a0 + (a1 - a0) * (i / n);
+      pts.push([cr + rad * Math.cos(a), cz + rad * Math.sin(a)]);
+    }
+    return pts;
+  };
+  const zBezelRound = zBezelOuter + bezelR;
   const frontRun = [
     [R_IN, zBandFront],
     [R_CRYST, zCrystInner], [R_CRYST + 1 / UNIT_MM, zCrystInner],
     [R_BEZEL_IN + 0.3 / UNIT_MM, zCrystOuter],
-    [R_BEZEL_IN, zCrystOuter], [R_BEZEL_IN, zBezelOuter],
-    [R_OUT_FRONT, zBezelOuter],
+    [R_BEZEL_IN, zCrystOuter],
+    // the lip's edge: up the bore to the round, over it onto the face
+    ...quarter(R_BEZEL_IN + bezelLipR, zBezelOuter + bezelLipR, bezelLipR, Math.PI, 1.5 * Math.PI, LIP_ARC_SEGS),
+    // the outer edge: off the face, over the round, down onto the flank
+    ...quarter(R_OUT_FRONT - bezelR, zBezelRound, bezelR, 1.5 * Math.PI, 2 * Math.PI, BEZEL_ARC_SEGS),
   ];
   // §187 — the back face keeps its gasket groove and loses everything else:
   // the flange is deleted WHOLE (measured, probe-187-casing-path: §186's
@@ -10752,7 +10786,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   //    the seat it relieved: the ledge's only interruptions are bores.)
   const PROFILE_WHOLE = joinRuns(
     boreDown(zMidBack, zBandFront), frontRun,
-    outerUp(zBezelOuter, zMidBack), backRun);
+    outerUp(zBezelRound, zMidBack), backRun);
   // Every piece keeps the WHOLE profile's traversal direction — down the
   // bore, out through the front, up the outer wall, back along the top —
   // because the orientation is what decides which way the faces look, and a
@@ -10771,7 +10805,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     const ps = [
       // below the lowest hole: inner wall down to the front, the bezel run,
       // up the outer wall to the cut, across it
-      joinRuns(boreDown(lo, zBandFront), frontRun, outerUp(zBezelOuter, lo), [[rBoreAt(lo), lo]]),
+      joinRuns(boreDown(lo, zBandFront), frontRun, outerUp(zBezelRound, lo), [[rBoreAt(lo), lo]]),
     ];
     // between two holes: inner wall down to the lower cut, across, up the
     // outer wall to the upper cut, across
@@ -10804,6 +10838,19 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     if (!(v > 0))
       console.warn(`makeCase: the sectored band is wound inside-out (signed volume ${v.toFixed(2)} ≤ 0) — `
         + 'FrontSide culling will hide it, and the caps are the likely side that flipped');
+  }
+  // §289 — THE MIRROR-POLISHED BEZEL: the bezel's metal is the part of this turning
+  // in front of the seat plane zBandFront, and the brush shader (materials.js,
+  // CASE_POLISH_ATTR) polishes exactly that. Each vertex carries (1, the
+  // signed distance in front of the plane): the distance is LINEAR in
+  // position, so a triangle that straddles the plane interpolates it exactly
+  // and the polished/brushed line falls on the plane, not on whichever
+  // vertex is nearest. A mesh without the attribute reads (0, 0) and is
+  // never polished.
+  {
+    const p = middleGeo.attributes.position, n = p.count, a = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) { a[2 * i] = 1; a[2 * i + 1] = zBandFront - p.getZ(i); }
+    middleGeo.setAttribute(CASE_POLISH_ATTR, new THREE.BufferAttribute(a, 2));
   }
   const middle = new THREE.Mesh(middleGeo, material);
   middle.name = 'caseMiddle';

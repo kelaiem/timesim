@@ -11,7 +11,7 @@
 //      light-on-black; and the zone warn still FIRES where the chained-ratio
 //      bound makes a zone impossible (#a0a0a0 — ground and ink under 9:1
 //      apart), so silence elsewhere is a measurement, not a dead warn.
-//   2. SHIPPED VERBATIM. On the shipped face every solved ink is the §157
+//   2. SHIPPED VERBATIM. On the designed (silvered) face every solved ink is the §157
 //      constant bit-for-bit (track and wells #1a1a1a-family, mark #8a887e,
 //      2.82:1 relation unchanged) — the solve degenerates to the old design
 //      exactly where the old design was right.
@@ -132,8 +132,13 @@ console.log('§196 — the printed ink solves against the face\n');
 }
 
 // ---- 2. shipped verbatim ---------------------------------------------------
+// "Shipped" is the DESIGNED face — the silvered #e7e5dd the poles and the mark's
+// discretion were set on (geometry.js DIAL_MARK_DESIGN_GROUND) — not whatever
+// aesthetics.json defaults to: §289 moved the default to the owner's blue, where
+// the print rightly flips to the light pole, and these rows would then be
+// holding the default instead of the design.
 {
-  const { ctx, page, appWarns } = await boot('');
+  const { ctx, page, appWarns } = await boot('?dialcol=e7e5dd');
   const ic = await inkContrast(page);
   const bw = await bootWarns(page);
   check('shipped: solved track ink is DIAL_TRACK_INK verbatim', ic.gated.trackInk === '#1a1a1a', ic.gated.trackInk);
