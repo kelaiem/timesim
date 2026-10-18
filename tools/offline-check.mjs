@@ -368,7 +368,12 @@ try {
   // §273 — 80: src/primer-i18n.cs.js. Czech is the first locale to declare fewer
   // than three surfaces (§274): its explainer is not translated, so there is no
   // explain-i18n.cs.js and the locale adds ONE module where every other adds two.
-  check('release: precache complete', counts === 80, `${counts}/80`);
+  // §290 — 83: src/selfie-reflection.js, which main.js imports statically. One
+  // module for the app, so it adds one. It found two earlier landings that had
+  // shipped without their bumps, so main had read 82/80 since them: landing I's
+  // src/technic-alarm.js and §287's src/technic-escapement.js, both imported by
+  // technic.html, one module each, like landing H's fusee.
+  check('release: precache complete', counts === 83, `${counts}/83`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
