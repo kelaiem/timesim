@@ -39950,3 +39950,94 @@ four on the rod, and six in the two guide columns. `probe-technic-column-wheel.m
 - The column-wheel close-up's circle is unchanged. It frames the wheel and the
   driver's ends, and it shows the driver's half bush and the pusher's tip but
   not the guides or the button.
+
+## §289 — Rounded mirror-polished bezel; the owner's default look (blue dial, blue jewels, dial-side opening view)
+
+Two owner asks in one landing. The first is that the bezel be rounded and
+mirror-polished, so its edge softens and the case reads narrower and lower.
+The second is that the look of one shared view link become the default.
+
+### The rounded bezel
+
+The case middle's front run ended in two square corners: the lip over the
+crystal at `R_BEZEL_IN`, and the outer edge where the 3.0 mm bezel face met
+the band's flank at `R_OUT_FRONT`. Both are now quarter rounds, lathed with
+the band. The sectors and their caps carry them unchanged, because an arc
+only replaces a convex corner. Both radii are derived in `CASE_DIMS`:
+
+- **Outer edge, `bezelR = zBandFront − zBezelOuter`** (3.035 u, 1.15 mm). It is
+  the largest round that stays on the bezel: it ends tangent to the flank
+  exactly at the seat plane, where the bore at `R_IN` begins. Its thinnest
+  section is that tangency, so the thinnest metal the round leaves is the
+  band's own wall (`R_OUT_FRONT − R_IN`, 1 mm). Measured by hand against the
+  crystal seat's two slopes, the nearest is the seat corner at the tangency
+  itself. The others stand 2.96 u and further off the arc.
+- **Lip edge, `bezelLipR`**: the lip's height less §50's floor (0.343 u,
+  0.13 mm). This leaves `STOCK_MIN_U` of straight bore above the crystal's
+  face, so the bore that traps the crystal is still a bore.
+
+The flat top goes from 7.917 u to 4.539 u (3.0 to 1.72 mm), and the flank's
+straight run loses 1.15 mm. Those two numbers are what makes it look narrower
+and lower. Both rounds take metal away and add none. A build assert warns if
+the two rounds would meet, or if the outer round would reach the midcase step.
+
+The other two readers of the profile follow it. The schematic case lines
+draw each round's tangent circles instead of the old corners. The acoustic
+exterior (`EXTERIOR`, §269) carries the rounds as chords, each with its
+outward normal at the chord's middle (3 for the lip and 8 for the outer
+edge, the same counts the lathe uses).
+
+### The mirror polish
+
+The bezel and the band are one turning, finished two ways, which is how a
+one-piece case is finished. So the polish is a ZONE of the case middle, not
+a material of its own, and the alloy and the brush slider still reach both
+through `caseMetal`. The case middle carries a vec2 vertex attribute
+(`CASE_POLISH_ATTR`): a flag, and the signed distance in front of the seat
+plane `zBandFront`. The distance is linear in position, so a triangle that
+straddles the plane interpolates it exactly. The polished/brushed line
+therefore falls on the plane itself, not on whichever vertex is nearest.
+
+The brush shader (`installBrush`) sets the zone to the slider's own polished
+end, whatever the slider says: the renderer's roughness floor
+(`BRUSH_POLISH_FLOOR` plus the geometry term), and isotropic. Every other mesh
+on these materials has no attribute and reads (0, 0), never polished. That
+default is written into `defaultAttributeValues` explicitly, because a
+generic attribute's constant is GL context state per location, and another
+program can leave it non-zero. `steel` and `caseMetal` share one program
+cache key through `installBrush`, so the zone code is identical in both.
+
+### The default look
+
+From the owner's link `?cam=-9.077,-12.889,-202.52&look=5.988,-0.769,-8.992&schematic=0&aes=dial.face.color~002e7a,materials.ruby.color~0056d6`:
+
+- `dial.face.color` defaults to `#002e7a` and `materials.ruby.color` to `#0056d6`.
+- A first visit (no saved camera, no link pose) snaps to `OPENING_POSE`, the
+  link's dial-side framing. This is quoted as taste, not dressed as a
+  derivation. The Free preset is unchanged: script steps, the `5` key and life
+  size's exit still fly to it.
+- `schematic=0` needed nothing. The solid view is already the default
+  wherever a GPU draws it.
+
+Two things a default colour had been holding up, both fixed here:
+
+- **The jewels were found by their COLOUR.** The inspector's two pallet-stone
+  rows (`selectB`, `0xb01326`), the fork's boot count and three probes
+  matched the ruby hex. Any retint, from the panel or a link, emptied the
+  stone budget's selection. A new default would have done the same to every
+  run. `MATS.ruby` is now named `'ruby'` (`Material.copy` carries the name to
+  ghosts and focus clones), and every site matches the material.
+- **The maker's mark's discretion was anchored to the DEFAULT.** §196 solves
+  the mark to the contrast it holds on the shipped face, and read "shipped"
+  as `AESTHETICS_DEFAULTS.dial.face.color`. Moving the default to blue would
+  have re-tuned the mark as a side effect. The face it was designed on is now
+  named, `DIAL_MARK_DESIGN_GROUND = '#e7e5dd'`, and the default is free to move.
+
+### Not done, and said so
+
+- With the sapphire dial on (the default since §222) the face colour is not
+  painted, because the ground there is the glass. So the blue default shows
+  only where `dial.plate.sapphire` is off. Whether to turn it off by default
+  is the owner's call. This landing does not make it.
+- The bezel's polish is a shading zone. No finishing process is modelled, and
+  there is no separate bezel part: the case middle is still one turning.

@@ -46,7 +46,7 @@ const out = await page.evaluate(async () => {
   const blank = forkG.children.find((c) => c.userData?.blankOutline);
   const outline = blank.userData.blankMetalOutline;
   let pin = null;
-  balG.traverse((m) => { if (m.isMesh && m.material?.color?.getHexString?.() === 'b01326' && !pin) pin = m; });
+  balG.traverse((m) => { if (m.isMesh && m.material?.name === 'ruby' && !pin) pin = m; });
   // TODO 226 step 3b — the jewel is a D: its section is published on the
   // balance (`pinOutline`, pin frame), and the knock is where THAT meets the
   // horn. The radius is the D's round (`pinR`), reported beside it.

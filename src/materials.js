@@ -67,7 +67,7 @@ const caseMetal = phys({ ...STEEL_FINISH });
 // `uv` attribute gives a zero derivative and a NaN frame. The override below
 // reads the WORLD normal instead, the ribbing's construction: a face whose
 // normal is within the ribbing's cos 45° gate of ±z is a FLAT (a lever, a
-// spring, a cock, the bezel top) and is straight-grained along
+// spring, a cock) and is straight-grained along
 // `brushAngleDeg` in the plate plane; everything else — an arbor, a pinion
 // body, the band's flank, a crown — is grained circumferentially about the
 // movement axis, `cross(ẑ, n)`, the direction a lathe or a turning brush
@@ -84,7 +84,22 @@ export const BRUSH_POLISH_FLOOR = 0.0525;  // three r165, lights_physical_fragme
 export const BRUSH_EPS = 1e-3;             // below the slider's step (1/100 of its range); the shader's zero without the define flip
 const BRUSH_FLAT_GATE = 0.7;               // the ribbing's own gate (vRibNormal.z > 0.7): cos 45°, the diagonal between a flat and a flank
 const BRUSH_MATERIALS = [steel, caseMetal];
+// §289 — THE MIRROR-POLISHED BEZEL. A zone of one mesh, not a material of its own:
+// the bezel and the band are one turning (makeCase), finished two ways the
+// way a real case is — the band brushed, the bezel mirror-polished — so the
+// brush slider and the alloy still reach both through `caseMetal`. The zone
+// rides a vec2 vertex attribute (flag, signed distance in front of the bezel's
+// seat plane) that only the case middle carries; the polish is the slider's
+// own polished end (the renderer's roughness floor, isotropic) and holds
+// whatever the slider says. Every other mesh on these materials has no such
+// attribute and reads the default below, (0, 0): never polished. The default
+// is set explicitly because a generic vertex attribute's constant is GL
+// CONTEXT state per location, which another program can leave non-zero.
+// One shader for both materials: their onBeforeCompile share a program cache
+// key, so the zone code must be identical in each.
+export const CASE_POLISH_ATTR = 'casePolish';
 function installBrush(mat) {
+  mat.defaultAttributeValues = { [CASE_POLISH_ATTR]: [0, 0] };
   mat.onBeforeCompile = (shader) => {
     // §142 found, §203/§119's class: the shader handle must not be an ENUMERABLE member of userData —
     // Material.copy deep-copies userData through JSON, and a shader carries its uniforms' textures
@@ -95,11 +110,11 @@ function installBrush(mat) {
     const a = ((aesthetics.materials?.steel?.brushAngleDeg ?? 0) * Math.PI) / 180;
     shader.uniforms.brushDir = { value: new THREE.Vector2(Math.cos(a), Math.sin(a)) };
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vBrushNormal;')
+      .replace('#include <common>', `#include <common>\nvarying vec3 vBrushNormal;\nattribute vec2 ${CASE_POLISH_ATTR};\nvarying vec2 vCasePolish;`)
       .replace('#include <begin_vertex>',
-        '#include <begin_vertex>\nvBrushNormal = normalize(mat3(modelMatrix) * objectNormal);');
+        `#include <begin_vertex>\nvBrushNormal = normalize(mat3(modelMatrix) * objectNormal);\nvCasePolish = ${CASE_POLISH_ATTR};`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vBrushNormal;\nuniform vec2 brushDir;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBrushNormal;\nvarying vec2 vCasePolish;\nuniform vec2 brushDir;')
       .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
       #ifdef USE_ANISOTROPY
       {
@@ -113,7 +128,15 @@ function installBrush(mat) {
         material.anisotropyT = tV;
         material.anisotropyB = normalize(cross(normal, tV));
       }
-      #endif`);
+      #endif
+      if (vCasePolish.x > 0.5 && vCasePolish.y >= 0.0) {
+        // the bezel: the polished end of the slider, whatever the slider says
+        material.roughness = min(${BRUSH_POLISH_FLOOR} + geometryRoughness, 1.0);
+        #ifdef USE_ANISOTROPY
+        material.anisotropy = 0.0;
+        material.alphaT = pow2(material.roughness);
+        #endif
+      }`);
   };
 }
 for (const m of BRUSH_MATERIALS) installBrush(m);
@@ -206,6 +229,11 @@ const ruby = phys({
   clearcoat: 1.0,
   clearcoatRoughness: 0.05,
 });
+// The jewels are FOUND by this name (the inspector's pallet-stone budget, the
+// fork's boot count, the probes) — never by colour, which the advanced panel
+// and the defaults both move. `Material.copy` carries the name, so a power-flow
+// ghost or a focus clone of a stone is still found as one.
+ruby.name = 'ruby';
 
 // §3 — SAPPHIRE, for the box sapphire dial: when `dial.plate.sapphire` is
 // set, the dial's MATTER — the plate, its pocket walls and the sheets its

@@ -23,8 +23,8 @@
       }
     },
     "face": {
-      "color": "#e7e5dd",
-      "_comment": "§154 — the base tone of the dial's radial-gradient face. geometry.js's DIAL_TINT_RATIO_IN/OUT hold the shipped inner/outer gradient stops as ratios to this default, so any new tone keeps the same soft vignette rather than going flat, and this default reproduces the exact literals it replaces. LIVE since §157: makeDial exposes userData.recolourFace, which repaints this canvas and every well deriving its tone from it, so APPLIERS.dial names 'face' beside 'hands' and no reload is needed. NO _bounds, and that is a decision rather than an omission (§157, roadmap item 140's second ask): _bounds is a numeric [min,max] consumed only by the panel's slider path, and a colour renders as input[type=color], which has no min or max to give it — the interval simply has no meaning here. The real constraint on this value is LEGIBILITY, which is not an interval in any case: it is a contrast floor against the fixed printed ink, and it is asserted as one (DIAL_INK_CONTRAST_MIN, WCAG 2.1 SC 1.4.11) at build and on every live recolour.",
+      "color": "#002e7a",
+      "_comment": "§154 — the base tone of the dial's radial-gradient face. geometry.js's DIAL_TINT_RATIO_IN/OUT hold the shipped inner/outer gradient stops as ratios to this default, so any new tone keeps the same soft vignette rather than going flat; the silvered #e7e5dd reproduces the exact literals it replaced. The DEFAULT is the owner's blue (#002e7a) since the bezel landing; the maker's mark's discretion stays anchored to the silvered face it was designed on (geometry.js DIAL_MARK_DESIGN_GROUND), not to whatever ships. LIVE since §157: makeDial exposes userData.recolourFace, which repaints this canvas and every well deriving its tone from it, so APPLIERS.dial names 'face' beside 'hands' and no reload is needed. NO _bounds, and that is a decision rather than an omission (§157, roadmap item 140's second ask): _bounds is a numeric [min,max] consumed only by the panel's slider path, and a colour renders as input[type=color], which has no min or max to give it — the interval simply has no meaning here. The real constraint on this value is LEGIBILITY, which is not an interval in any case: it is a contrast floor against the fixed printed ink, and it is asserted as one (DIAL_INK_CONTRAST_MIN, WCAG 2.1 SC 1.4.11) at build and on every live recolour.",
       "_labels": {
         "color": "Dial colour"
       }
@@ -283,7 +283,7 @@
       }
     },
     "ruby": {
-      "color": "#b01326",
+      "color": "#0056d6",
       "_comment": "Bearing jewels, pallet stones, impulse pin. Read at material creation and updatable live; the advanced panel writes here.",
       "_labels": {
         "color": "Ruby colour"

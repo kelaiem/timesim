@@ -67,7 +67,7 @@ const out = await page.evaluate(async (N) => {
   let prof = null; wheelG.traverse((o) => { if (o.userData?.profile) prof = o; });
   let wheel = null, br = 0;
   prof.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingSphere(); if (o.geometry.boundingSphere.radius > br) { br = o.geometry.boundingSphere.radius; wheel = o; } } });
-  const stones = []; forkG.traverse((o) => { if (o.isMesh && o.material.color.getHex() === 0xb01326) stones.push(o); });
+  const stones = []; forkG.traverse((o) => { if (o.isMesh && o.material?.name === 'ruby') stones.push(o); });
   let esc = null; forkG.traverse((o) => { if (o.userData?.escapement) esc = o.userData.escapement; });
   const radius = prof.userData.r;
   let reach = 0;

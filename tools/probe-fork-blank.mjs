@@ -44,12 +44,12 @@ const out = await page.evaluate(async () => {
     const wb = new THREE.Box3().setFromObject(m);
     m.geometry.computeBoundingBox();
     const lb = m.geometry.boundingBox;
-    // The RUBY stones are found by material colour, exactly as the inspector's
-    // penetration budget finds them (geometry.js says so in place).
-    const hex = m.material?.color?.getHexString?.() ?? '';
+    // The RUBY stones are found by material (its name, not its colour, which
+    // the aesthetics move), exactly as the inspector's penetration budget
+    // finds them.
     return {
       i, type: m.geometry.type, verts: m.geometry.attributes.position.count,
-      ruby: hex === 'b01326',
+      ruby: m.material?.name === 'ruby',
       // NOT rounded: the z figures below are compared against layout.js's own
       // arithmetic, so rounding them here would manufacture a disagreement at
       // the fifth decimal and fail a part that is exactly right.
@@ -80,7 +80,7 @@ const out = await page.evaluate(async () => {
   const forkObj = clock.labelEntries.find((e) => e.name === 'Pallet fork').obj;
   forkObj.updateWorldMatrix(true, true);
   const inv = new THREE.Matrix4().copy(forkObj.matrixWorld).invert();
-  const rubies = fork.filter((m) => m.material?.color?.getHexString?.() === 'b01326');
+  const rubies = fork.filter((m) => m.material?.name === 'ruby');
   const stones = rubies.map((m) => {
     const p = new THREE.Vector3().setFromMatrixPosition(m.matrixWorld).applyMatrix4(inv);
     // The stone's lean in the fork's own frame: its local +Y is the lean axis,
@@ -98,7 +98,7 @@ const out = await page.evaluate(async () => {
   // largest mesh by vertex count. Before TODO 98 this picked the body extrude
   // out of six steel solids; now there is only one to pick.
   const boss = fork.filter((m) => m.geometry.type === 'ExtrudeGeometry'
-    && !(m.material?.color?.getHexString?.() === 'b01326'))
+    && !(m.material?.name === 'ruby'))
     .sort((a, b) => b.geometry.attributes.position.count - a.geometry.attributes.position.count)[0];
   let bossToBalance = Infinity;
   const N = 48;
