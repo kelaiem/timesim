@@ -87,15 +87,18 @@
   /* The sound opt-in. Static on purpose (§238: nothing here may animate a
      layout property, and a pressed state needs no motion at all). Hidden once
      the build fails — there is nothing left to enable sound for. */
-  #boot .boot-sound {
+  /* §290 — the two opt-ins share one row and one look; the camera's is the
+     same kind of choice (off at every load, only ever turned on by a click). */
+  #boot .boot-opts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  #boot .boot-sound, #boot .boot-selfie {
     margin: 0; padding: 8px 18px; border-radius: 6px; cursor: pointer;
     font: inherit; font-size: 13px; color: #eaf0f7; background: transparent;
     border: 1px solid rgba(255,255,255,0.28);
     -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   }
-  #boot .boot-sound:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
-  #boot .boot-sound[aria-pressed="true"] { background: #7a3ad8; border-color: #7a3ad8; }
-  #boot.failed .boot-sound { display: none; }
+  #boot .boot-sound:focus-visible, #boot .boot-selfie:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
+  #boot .boot-sound[aria-pressed="true"], #boot .boot-selfie[aria-pressed="true"] { background: #7a3ad8; border-color: #7a3ad8; }
+  #boot.failed .boot-sound, #boot.failed .boot-selfie { display: none; }
   /* The other pages, reachable while the movement builds: each is its own
      document, so following one leaves this build behind rather than waiting
      on it. Plain links, static (§238's rule), and they stay on a failed build
@@ -167,7 +170,13 @@
        "on" or a link cannot start it — because audio needs a trusted gesture
        and boot has none; this button is that gesture, on glass for the whole
        wait. State is the attribute (aria-pressed), never the label. -->
-  <button type="button" class="boot-sound" id="boot-sound" aria-pressed="false">Enable sound</button>
+  <div class="boot-opts">
+    <button type="button" class="boot-sound" id="boot-sound" aria-pressed="false">Enable sound</button>
+    <!-- §290: offered at EVERY load and off by default, like sound: nothing
+         saves it and no link can turn it on. A click asks for the camera here,
+         during the wait, and hands the stream to main.js. -->
+    <button type="button" class="boot-selfie" id="boot-selfie" aria-pressed="false">Camera reflection</button>
+  </div>
   <ul class="boot-links">
     <li><a href="./primer.html">How they work</a></li>
     <li><a href="./explain.html">The explainer</a></li>
@@ -309,6 +318,32 @@
     window.__bootSound = on && !!window.__bootAudio;
     soundBtn.setAttribute('aria-pressed', String(window.__bootSound));
     if (typeof window.__bootSoundApply === 'function') window.__bootSoundApply(window.__bootSound);
+  });
+  // §290 — the camera opt-in, on the sound opt-in's pattern. The click asks for
+  // the camera NOW (so the permission prompt arrives during the wait, not after
+  // it) and leaves the pending stream as window.__bootSelfieStream; main.js
+  // adopts it through __bootSelfieApply once the reflection exists, and until
+  // then the choice is just the flag. A refusal clears the flag and the button.
+  const selfieBtn = boot && boot.querySelector('#boot-selfie');
+  if (selfieBtn) selfieBtn.addEventListener('click', () => {
+    const on = selfieBtn.getAttribute('aria-pressed') !== 'true';
+    const md = navigator.mediaDevices;
+    if (on && md && md.getUserMedia) {
+      const p = md.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+      window.__bootSelfieStream = p;
+      p.catch(() => {
+        if (window.__bootSelfieStream !== p) return;
+        window.__bootSelfieStream = null; window.__bootSelfie = false;
+        selfieBtn.setAttribute('aria-pressed', 'false');
+        if (typeof window.__bootSelfieApply === 'function') window.__bootSelfieApply(false);
+      });
+    } else if (!on && window.__bootSelfieStream) {
+      window.__bootSelfieStream.then((s) => s.getTracks().forEach((tr) => tr.stop())).catch(() => {});
+      window.__bootSelfieStream = null;
+    }
+    window.__bootSelfie = on && !!(md && md.getUserMedia);
+    selfieBtn.setAttribute('aria-pressed', String(window.__bootSelfie));
+    if (typeof window.__bootSelfieApply === 'function') window.__bootSelfieApply(window.__bootSelfie);
   });
   await new Promise((resolve) => {
     let settled = false;
