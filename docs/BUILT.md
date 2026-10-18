@@ -40180,8 +40180,8 @@ swings the roughness, so every line runs caseback to bezel:
 comment that calls T the grain has it backwards: T is ACROSS the grain. So the
 flats' straight grain renders perpendicular to `brushAngleDeg`, and the
 arbors' "circumferential" lathe grain renders as axial grooves. That is the
-works' whole finish, so it is reported to the owner rather than rewritten
-under this ask.
+works' whole finish, so it is filed as TODO 263 rather than rewritten under
+this ask.
 
 ### The contrast remedy (`dial.contrast.style`)
 

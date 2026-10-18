@@ -34368,3 +34368,46 @@ cased depth 11.366 mm, the lug flush with the back.
 figures for the three precious alloys can be read from their suppliers'
 sheets, replace the three rows. The lug re-solves with no code change, and
 the probe says which alloy governs.
+
+## 263. Brush grain renders 90 degrees off: the anisotropy tangent is across the grain, not along it
+
+Found by §291, while giving the midcase vertical brushing. `installBrush`
+(materials.js) builds the anisotropy frame from a direction it calls the
+GRAIN: `brushDir` on a flat (along `materials.steel.brushAngleDeg`),
+`cross(ẑ, n)` on a flank ("circumferential, the direction a lathe leaves").
+It hands that direction to three as `material.anisotropyT`. But three's
+anisotropic GGX is rougher ALONG T: `alphaT = mix(r², 1, a²)` against
+`alphaB = r²` (lights_physical_fragment, BRDF_GGX's
+D_GGX_Anisotropic/V_GGX_SmithCorrelated_Anisotropic). A rougher direction is
+the one the surface undulates along, so the highlight stretches along T and
+the grooves run ACROSS it. So every brushed part renders with its grain a
+quarter turn from what the comment and AESTHETICS.md say:
+
+- the flats (levers, springs, cocks) show grooves perpendicular to
+  `brushAngleDeg`;
+- the turned parts (arbors, pinion bodies, the crowns) show AXIAL grooves,
+  where a lathe or a turning brush leaves circumferential ones, and a turned
+  arbor's long axial highlight is missing;
+- the midcase band is the one place it happens to be right: §291 wanted
+  vertical (axial) grooves, which is T around the band, which is what the flank
+  rule already gives. §291's streak texture is drawn in the azimuth for that
+  reason and does not depend on this item.
+
+Nothing measures a finish, so this passed every gate, and §203's
+`probe-203-brush.mjs` is a report that diffs screenshots of both ends of the
+slider, not a check of which way a highlight stretches.
+
+**Fix path.** Hand three the direction across the grain: `T = cross(n, grain)`
+(equivalently, swap the roles of `anisotropyT` and `anisotropyB` in the
+override), for flats and flanks alike. Then keep the midcase as it renders
+now. Its grain is axial, so give the case middle's flank (the
+`CASE_POLISH_ATTR` flag, outside the polished zone) an axial grain, whose
+across-grain T stays around the band, and re-read §291's streak comment
+against it.
+Correct `installBrush`'s comment and AESTHETICS.md's steel-finish entry to
+the convention. Hold it with an instrument rather than a screenshot: on a
+flat at a known `brushAngleDeg`, render a point light's highlight and measure
+its elongation axis (its second moments), which must lie perpendicular to
+the grain; the control is the same render with the frame deliberately left
+unswapped, which must read parallel. Expect the works' look to change
+everywhere the steel is brushed, which is the owner's to approve.
