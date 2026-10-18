@@ -399,6 +399,47 @@ controls.dampingFactor = aesthetics.camera.dampingFactor;
 controls.minDistance = 25;
 controls.maxDistance = 420;
 
+// A GHOST FINGER MAKES ONE TOUCH A PINCH. OrbitControls (r165) keeps its own
+// list of the pointers that are down, adds to it on the canvas's pointerdown
+// and takes away only on the canvas's pointerup or pointercancel. A release it
+// never hears — delivered to another element once the canvas lost its capture,
+// or never sent at all because the page was left mid-touch — leaves that
+// pointer listed for the life of the page, and from then on every single
+// finger reads as the SECOND of two and dollies and pans instead of orbiting.
+//
+// The browser says when the list is stale. A touch pointerdown that is
+// `isPrimary` is, by the Pointer Events definition, the first contact while no
+// other touch is active — so any touch the controls still hold is a ghost
+// (and a primary mouse or pen likewise for its own type). Each ghost gets the
+// pointercancel it missed, before the controls see the new press. The cancel
+// does not bubble, so no window-level drag handler reads it as its own
+// release. The controls release capture on the id as their list empties,
+// which THROWS for a pointer the browser no longer has, so for that one
+// dispatch the canvas's release is held to the ids it actually captures.
+// `orbitPointers` mirrors the controls' list from the same canvas events they
+// read: added just after their pointerdown, while `enabled` is still the value
+// they saw, and removed on the same up and cancel.
+const orbitPointers = new Map();   // pointerId → pointerType
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (controls.enabled) orbitPointers.set(e.pointerId, e.pointerType);
+});
+for (const ev of ['pointerup', 'pointercancel']) {
+  renderer.domElement.addEventListener(ev, (e) => { orbitPointers.delete(e.pointerId); });
+}
+window.addEventListener('pointerdown', (e) => {
+  if (e.target !== renderer.domElement || !e.isPrimary) return;
+  const el = renderer.domElement;
+  for (const [id, type] of [...orbitPointers]) {
+    if (id === e.pointerId || type !== e.pointerType) continue;
+    el.releasePointerCapture = (pid) => { if (el.hasPointerCapture(pid)) Element.prototype.releasePointerCapture.call(el, pid); };
+    try {
+      el.dispatchEvent(new PointerEvent('pointercancel', { pointerId: id, pointerType: type, bubbles: false }));
+    } finally {
+      delete el.releasePointerCapture;
+    }
+  }
+}, true);
+
 // THE ORBIT FOLLOWS THE CAMERA'S OWN UP. The HUD face's arcball (§57) rolls
 // the camera, and it does that by turning `camera.up` with it — the one writer
 // of that vector. OrbitControls, though, reads `up` exactly ONCE: its update()
