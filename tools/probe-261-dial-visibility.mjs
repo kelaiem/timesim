@@ -64,7 +64,13 @@ const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.
 process.on('exit', () => { try { srv.kill(); } catch {} });
 await new Promise((r) => setTimeout(r, 1200));
 const browser = await chromium.launch();
-const page = await browser.newPage();
+// The subject is the SMOKED sapphire dial, so the boot asks for it: since §289 the
+// shipped dial is silvered, and a boot that inherits the default would be
+// measuring an opaque plate (probe-220's rule: seed the subject, never inherit it).
+// The smoke stays the schema's own default.
+const ctx = await browser.newContext();
+await ctx.addInitScript(() => localStorage.setItem('aestheticsOverrides', JSON.stringify({ dial: { plate: { sapphire: true } } })));
+const page = await ctx.newPage();
 const warns = [];
 page.on('console', (m) => { if (m.type() === 'warning' && !/WebGL|GPU stall|GroupMarker/.test(m.text())) warns.push(m.text()); });
 page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
