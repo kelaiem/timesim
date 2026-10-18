@@ -95,6 +95,7 @@ import { LUBRICATION, REGIME_INFO } from './lubrication.js';
 // from — this module's first statement, so the bar's 0% is the build's start
 // and not the module fetch before it (which is the network's, not the build's).
 import { SEAM_ORDER, SEAM_KNOTS } from './boot-progress.js';
+import { makeSelfieReflection } from './selfie-reflection.js';   // §290
 const BUILD_T0 = performance.now();
 
 const DEG2RAD = Math.PI / 180;
@@ -493,6 +494,7 @@ scene.add(backdrop);
 // materials.js read almost black under direct lights alone — they need an
 // environment to reflect. Build a small box room with a few emissive softbox
 // panels and bake it to a PMREM texture (fully offline, no external HDRs).
+const FRONT_CARD_ELEV_DEG = 35, FRONT_CARD_AZ_DEG = -20, FRONT_CARD_INTENSITY = 0.6;   // taste, judged by eye (BUILT §289, §290)
 function buildStudioEnvironment(renderer) {
   const pmrem = new THREE.PMREMGenerator(renderer);
 
@@ -523,22 +525,41 @@ function buildStudioEnvironment(renderer) {
   // only what it reflects, and the polished bezel's flat top faces −z and is seen
   // from there (the opening view), so it read black. A brushed lobe had smeared
   // the overhead and side panels across it. This is the photographer's front
-  // card. It glazes the lacquered dial too, which reflects the same direction:
-  // at lacquer's ~4% F0 (plus its clearcoat's) against polished steel's ~90%,
-  // that sheen is an order fainter than the bezel's. The intensity is taste,
-  // judged by eye (BUILT §289): at 1.0 the navy dial washed to sky blue and
-  // the bezel read flat white; at 0.35 the bezel reads silver and the dial stays navy.
-  softbox(110, 80, 0xffffff, 0.35, new THREE.Vector3(0, 0, -70), 0, 0);
+  // card. It also lights the lacquered dial, both by reflection off the lacquer
+  // and on its diffuse face.
+  // Its DIRECTION is a key softbox's (§290): raised FRONT_CARD_ELEV_DEG over the
+  // dial and swung FRONT_CARD_AZ_DEG to the left, not square in front. From the
+  // opening view the flat bezel top samples within ~6° ± 13° of −z, so a card
+  // whose lower edge sits near that cone lights the upper bezel fully and lets
+  // the lower bezel fall off: the top-bright gradient that reads as a mirror.
+  // Square on (§289's first cut) the bezel read as flat grey at 0.35 and the
+  // navy dial washed to sky blue at 1.0. The angle, and the 0.6 it allows, are
+  // taste, judged by eye on the renders the BUILT entry records.
+  // The selfie reflection (§290, src/selfie-reflection.js) hides this card and
+  // stands the camera's picture in its place.
+  {
+    const el = FRONT_CARD_ELEV_DEG * Math.PI / 180, az = FRONT_CARD_AZ_DEG * Math.PI / 180, R = 70;
+    const card = new THREE.Mesh(new THREE.PlaneGeometry(110, 80),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+    card.material.color.multiplyScalar(FRONT_CARD_INTENSITY);
+    card.position.set(R * Math.cos(el) * Math.sin(az), R * Math.sin(el), -R * Math.cos(el) * Math.cos(az));
+    card.lookAt(0, 0, 0);   // an Object3D's +z, the plane's face, turns to the watch
+    card.name = 'frontCard';
+    envScene.add(card);
+  }
 
 
   // near/far generous enough to cover the 90-unit room half-extent.
   const rt = pmrem.fromScene(envScene, 0.04, 0.1, 250);
   pmrem.dispose();
-  return rt.texture;
+  // §290 — the scene and its front card are kept: the selfie reflection
+  // re-bakes this same room with the camera's picture standing in for the card.
+  return { texture: rt.texture, envScene, frontCard: envScene.getObjectByName('frontCard') };
 }
 
 await breathe(3);
-scene.environment = buildStudioEnvironment(renderer);
+const studioEnv = buildStudioEnvironment(renderer);
+scene.environment = studioEnv.texture;
 
 await breathe(4);
 window.addEventListener('resize', () => {
@@ -43641,6 +43662,12 @@ viewHud.innerHTML = `
     <span class="label-small">Sound</span>
     <button id="btn-sound">Off</button>
   </div>
+  <!-- §290: the front camera's picture in the polished metal. Session-only,
+       never persisted: the camera turns on only from a click on this row. -->
+  <div class="row">
+    <span class="label-small">Camera reflection</span>
+    <button id="btn-selfie" title="Reflect your front camera in the watch's polished metal. The video stays on this device.">Off</button>
+  </div>
   <!-- §73: the locale row. Changing it RELOADS (the §22 reload-tier
        precedent) — the panel is built from UI_LANG, and a second live
        re-render path would be a copy to rot. Option faces are written in
@@ -49776,6 +49803,35 @@ function setSound(on) {
   b.classList.toggle('active', on);
 }
 document.getElementById('btn-sound').addEventListener('click', () => setSound(!soundOn));
+
+// §290 — the selfie reflection (src/selfie-reflection.js has why and how).
+// The button's state follows what actually happened: a refused permission or a
+// device with no camera leaves it Off and says so in its tooltip.
+const selfie = makeSelfieReflection({
+  renderer, envScene: studioEnv.envScene, frontCard: studioEnv.frontCard,
+  studioTexture: studioEnv.texture, setEnvironment: (tex) => { scene.environment = tex; },
+});
+async function setSelfie(on, pending = null) {
+  const b = document.getElementById('btn-selfie');
+  if (on) {
+    try { await selfie.start(pending); b.title = t("Reflect your front camera in the watch's polished metal. The video stays on this device."); }
+    catch (e) { b.title = t('Camera unavailable'); }
+  } else selfie.stop();
+  setBtnState(b, selfie.on);
+  b.classList.toggle('active', selfie.on);
+}
+document.getElementById('btn-selfie').addEventListener('click', () => setSelfie(!selfie.on));
+// The loading screen's camera opt-in (index.html), on the sound opt-in's
+// pattern: OFF at every load, never saved, never set by a link. A click there
+// asked for the camera during the wait. This adopts that stream once the
+// reflection exists, and __bootSelfieApply covers a click that lands later.
+const adoptBootSelfie = (on) => {
+  const pending = on ? window.__bootSelfieStream : null;
+  window.__bootSelfieStream = null;
+  return setSelfie(on, pending);
+};
+window.__bootSelfieApply = adoptBootSelfie;
+if (window.__bootSelfie) adoptBootSelfie(true);
 
 // §73 — the Language row. UI_LANG is resolved at import; this only records the
 // CHOICE and reloads, so there is exactly one path that builds a localized
@@ -58197,6 +58253,7 @@ function advanceFrame(realDt, wallDt = realDt, budgetMs = Infinity) {
   // it says ≈; the L-square is real geometry the projection handles.)
   updateMeasureLeaders();  // §49 tie-in: a selected part's extent moves with the mechanism
   updateSndFlash(realDt); // real wall-clock decay, like CAM_SNAP_TAU -- not scaled by timeScale
+  selfie.update(performance.now(), camera, controls.target);   // §290: re-aims and re-bakes only while on, at its own wall-clock rate
   renderer.render(scene, camera);
 }
 

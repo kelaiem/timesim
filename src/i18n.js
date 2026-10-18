@@ -443,6 +443,10 @@ export function lowerUi(s) {
 // German. Horological vocabulary is the Glashütte register (Unruh, Anker,
 // Dreiviertelplatine …) — the audience this locale exists for.
 const DE = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Kameraspiegelung',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Spiegelt Ihre Frontkamera im polierten Metall der Uhr. Das Video bleibt auf diesem Gerät.',
+  'Camera unavailable': 'Kamera nicht verfügbar',
   'Show incomplete translations': 'Unvollständige Übersetzungen anzeigen',
   'Enable sound': 'Ton aktivieren',
   'See the LEGO Technic build': 'Den LEGO-Technic-Nachbau ansehen',
@@ -856,6 +860,10 @@ Object.assign(DE, {
 // Chrome-tier translation authored here; §73 budgets a native review pass
 // before tier two (the explainer) ships in this locale.
 const ZH = {
+  // §290 — the selfie reflection row
+  'Camera reflection': '摄像头倒影',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': '在手表的抛光金属上映出前置摄像头的画面。视频只保留在本设备上。',
+  'Camera unavailable': '摄像头不可用',
   'Show incomplete translations': '显示不完整的翻译',
   'Enable sound': '启用声音',
   'See the LEGO Technic build': '查看乐高机械组搭建',
@@ -1236,6 +1244,10 @@ Object.assign(ZH, {
 // fr-FR points with ',' and groups with U+202F, both of which arrive through
 // fmtNum/fmtInt above and neither of which may reach a stored value.
 const FR = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Reflet de la caméra',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Reflète votre caméra frontale dans le métal poli de la montre. La vidéo reste sur cet appareil.',
+  'Camera unavailable': 'Caméra indisponible',
   'Show incomplete translations': 'Afficher les traductions incomplètes',
   ['Enable sound']: 'Activer le son',
   ['See the LEGO Technic build']: 'Voir la construction LEGO Technic',
@@ -1788,6 +1800,10 @@ const FR = {
 // third and fourth; the mapping is made once in the MECH_GRAPH block below and
 // both static pages inherit it.
 const JA = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'カメラの映り込み',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'フロントカメラの映像を時計の磨かれた金属に映します。映像はこの端末から出ません。',
+  'Camera unavailable': 'カメラを使用できません',
   'Show incomplete translations': '未完成の翻訳を表示',
   ['Enable sound']: '音を有効にする',
   ['See the LEGO Technic build']: 'LEGO テクニックの組み立てを見る',
@@ -2339,6 +2355,10 @@ const JA = {
 // zh-HK and zh-MO all resolve here — which is the case that was silently
 // landing in ZH before this section.
 const ZH_HANT = {
+  // §290 — the selfie reflection row
+  'Camera reflection': '相機倒影',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': '在手錶的拋光金屬上映出前置相機的畫面。影像只保留在本裝置上。',
+  'Camera unavailable': '相機無法使用',
   'Show incomplete translations': '顯示不完整的翻譯',
   ['Enable sound']: '啟用聲音',
   ['See the LEGO Technic build']: '查看樂高機械組搭建',
@@ -2900,6 +2920,10 @@ const ZH_HANT = {
 // fmtInt under 'ar-u-nu-latn' — Western digits, '.' and ',' — so a value in
 // this table never carries a digit of its own script.
 const AR = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'انعكاس الكاميرا',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'يعكس صورة الكاميرا الأمامية على معدن الساعة المصقول. يبقى الفيديو على هذا الجهاز.',
+  'Camera unavailable': 'الكاميرا غير متاحة',
   'Show incomplete translations': 'إظهار الترجمات غير المكتملة',
   'Enable sound': 'تفعيل الصوت',
   'See the LEGO Technic build': 'شاهد نموذج LEGO Technic',
@@ -3444,6 +3468,10 @@ const AR = {
 // infinitives. The same register as src/explain-i18n.es.js and
 // src/primer-i18n.es.js — one movement, one name per part.
 const ES = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Reflejo de la cámara',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Refleja tu cámara frontal en el metal pulido del reloj. El vídeo no sale de este dispositivo.',
+  'Camera unavailable': 'Cámara no disponible',
   'Show incomplete translations': 'Mostrar traducciones incompletas',
   'Enable sound': 'Activar el sonido',
   'See the LEGO Technic build': 'Ver la construcción LEGO Technic',
@@ -3985,6 +4013,10 @@ const ES = {
 // buttons as Korean software writes them. Number-transparent. The same
 // register as src/explain-i18n.ko.js and src/primer-i18n.ko.js.
 const KO = {
+  // §290 — the selfie reflection row
+  'Camera reflection': '카메라 반사',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': '전면 카메라 영상을 시계의 연마된 금속에 비춥니다. 영상은 이 기기에만 머뭅니다.',
+  'Camera unavailable': '카메라를 사용할 수 없음',
   'Show incomplete translations': '불완전한 번역 표시',
   'Enable sound': '소리 켜기',
   'See the LEGO Technic build': 'LEGO 테크닉 조립 보기',
@@ -4528,6 +4560,10 @@ const KO = {
 // register as src/explain-i18n.ru.js and src/primer-i18n.ru.js — one
 // movement, one name per part.
 const RU = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Отражение камеры',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Отражает изображение фронтальной камеры в полированном металле часов. Видео остаётся на этом устройстве.',
+  'Camera unavailable': 'Камера недоступна',
   'Show incomplete translations': 'Показывать неполные переводы',
   'Enable sound': 'Включить звук',
   'See the LEGO Technic build': 'Посмотреть сборку LEGO Technic',
@@ -5072,6 +5108,10 @@ const RU = {
 // src/explain-i18n.pt.js and src/primer-i18n.pt.js — one movement, one name
 // per part.
 const PT = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Reflexo da câmera',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Reflete a câmera frontal no metal polido do relógio. O vídeo fica neste dispositivo.',
+  'Camera unavailable': 'Câmera indisponível',
   'Show incomplete translations': 'Mostrar traduções incompletas',
   'Enable sound': 'Ativar o som',
   'See the LEGO Technic build': 'Ver a montagem LEGO Technic',
@@ -5615,6 +5655,10 @@ const PT = {
 // src/explain-i18n.it.js and src/primer-i18n.it.js — one movement, one name
 // per part. Every apostrophe is U+2019.
 const IT = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Riflesso della fotocamera',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Riflette la fotocamera frontale nel metallo lucidato dell\'orologio. Il video resta su questo dispositivo.',
+  'Camera unavailable': 'Fotocamera non disponibile',
   'Show incomplete translations': 'Mostra traduzioni incomplete',
   'Enable sound': 'Attiva il suono',
   'See the LEGO Technic build': 'Guarda la costruzione LEGO Technic',
@@ -6155,6 +6199,10 @@ const IT = {
 // are the tightest in the project — a chrome bar and 150 px HUD label boxes —
 // so these are the compact forms, measured by tools/probe-116-locale-fit.mjs.
 const HI = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'कैमरा प्रतिबिंब',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'घड़ी की पॉलिश की हुई धातु में आपके सामने वाले कैमरे का प्रतिबिंब दिखाता है। वीडियो इसी डिवाइस पर रहता है।',
+  'Camera unavailable': 'कैमरा उपलब्ध नहीं है',
   'Show incomplete translations': 'अधूरे अनुवाद दिखाएँ',
   'Enable sound': 'ध्वनि चालू करें',
   'See the LEGO Technic build': 'LEGO टेक्निक निर्माण देखें',
@@ -6699,6 +6747,10 @@ const HI = {
 // §53's 240 px column and the 150 px HUD labels are the constraint. Tone marks
 // follow the MODERN placement (hóa, thủy) and every string is NFC.
 const VI = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Phản chiếu camera',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Phản chiếu camera trước của bạn trên kim loại đánh bóng của đồng hồ. Video chỉ ở trên thiết bị này.',
+  'Camera unavailable': 'Không dùng được camera',
   'Show incomplete translations': 'Hiện bản dịch chưa hoàn chỉnh',
   'Enable sound': 'Bật âm thanh',
   'See the LEGO Technic build': 'Xem bản lắp LEGO Technic',
@@ -7258,6 +7310,10 @@ const VI = {
 // held to the English length or under, because §53's 240 px column, the 150 px
 // HUD labels and the chrome bar are the constraint, and Dutch compounds run long.
 const NL = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Camerareflectie',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Weerspiegelt je frontcamera in het gepolijste metaal van het horloge. De video blijft op dit apparaat.',
+  'Camera unavailable': 'Camera niet beschikbaar',
   'Show incomplete translations': 'Onvolledige vertalingen tonen',
   'Enable sound': 'Geluid inschakelen',
   'See the LEGO Technic build': 'Bekijk de LEGO Technic-bouw',
@@ -7817,6 +7873,10 @@ const NL = {
 // LOCALES' `dir` mirrors the panels, and the strings carry Persian's ی/ک and
 // its zero-width non-joiners. Labels are held to the English length or under.
 const FA = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'بازتاب دوربین',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'تصویر دوربین جلو را در فلز صیقلی ساعت بازتاب می‌دهد. ویدیو روی همین دستگاه می‌ماند.',
+  'Camera unavailable': 'دوربین در دسترس نیست',
   'Show incomplete translations': 'نمایش ترجمه‌های ناقص',
   'Enable sound': 'فعال‌سازی صدا',
   'See the LEGO Technic build': 'دیدن ساخت LEGO Technic',
@@ -8377,6 +8437,10 @@ const FA = {
 // arrow points at the end the mirrored slider actually has. Labels are held to
 // the English length or under.
 const HE = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'השתקפות מצלמה',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'משקף את המצלמה הקדמית במתכת המלוטשת של השעון. הווידאו נשאר במכשיר הזה.',
+  'Camera unavailable': 'המצלמה אינה זמינה',
   'Show incomplete translations': 'הצג תרגומים חלקיים',
   'Enable sound': 'הפעלת צליל',
   'See the LEGO Technic build': 'לצפייה בבניית LEGO Technic',
@@ -8936,6 +9000,10 @@ const HE = {
 // pinion, mahkota. Buttons take the base imperative ("Putar", "Jeda") as
 // Indonesian software does. Labels are held to the English length or under.
 const ID = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Pantulan kamera',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Memantulkan kamera depan Anda pada logam jam yang dipoles. Videonya tetap di perangkat ini.',
+  'Camera unavailable': 'Kamera tidak tersedia',
   'Show incomplete translations': 'Tampilkan terjemahan yang belum lengkap',
   'Enable sound': 'Aktifkan suara',
   'See the LEGO Technic build': 'Lihat rakitan LEGO Technic',
@@ -9496,6 +9564,10 @@ const ID = {
 // this module lowercases for display goes through lowerUi, never toLowerCase.
 // Labels are held to the English length or under.
 const TR = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Kamera yansıması',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Ön kameranızı saatin parlatılmış metalinde yansıtır. Video bu cihazda kalır.',
+  'Camera unavailable': 'Kamera kullanılamıyor',
   'Show incomplete translations': 'Eksik çevirileri göster',
   'Enable sound': 'Sesi etkinleştir',
   'See the LEGO Technic build': 'LEGO Technic yapımını gör',
@@ -10056,6 +10128,10 @@ const TR = {
 // dolen), as Welsh software does. Numbers format through the row's BORROWED
 // en-GB tag (see LOCALES). Labels are held to the English length or under.
 const CY = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Adlewyrchiad camera',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Yn adlewyrchu eich camera blaen ym metel caboledig yr oriawr. Mae\'r fideo\'n aros ar y ddyfais hon.',
+  'Camera unavailable': 'Dydy\'r camera ddim ar gael',
   'Show incomplete translations': 'Dangos cyfieithiadau anghyflawn',
   'Enable sound': 'Galluogi sain',
   'See the LEGO Technic build': 'Gweld y gwaith adeiladu LEGO Technic',
@@ -10619,6 +10695,10 @@ const CY = {
 // which Chromium carries. Labels are held to the English length or under.
 
 const FIL = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Repleksiyon ng camera',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Ipinapakita ang iyong front camera sa pinakintab na metal ng relo. Nananatili ang video sa device na ito.',
+  'Camera unavailable': 'Hindi magamit ang camera',
   'Show incomplete translations': 'Ipakita ang mga hindi kumpletong salin',
   ['Enable sound']: 'Buksan ang tunog',
   ['See the LEGO Technic build']: 'Tingnan ang LEGO Technic na build',
@@ -11157,6 +11237,10 @@ const FIL = {
 // kronis. Commands take the infinitive (Uzvilkt, Saglabāt, Kopēt saiti), as
 // Latvian software does. Numbers format through lv-LV (see LOCALES).
 const LV = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Kameras atspulgs',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Atspoguļo priekšējās kameras attēlu pulksteņa pulētajā metālā. Video paliek šajā ierīcē.',
+  'Camera unavailable': 'Kamera nav pieejama',
   'Show incomplete translations': 'Rādīt nepilnīgus tulkojumus',
   'Enable sound': 'Ieslēgt skaņu',
   'See the LEGO Technic build': 'Skatīt LEGO Technic būvi',
@@ -11695,6 +11779,10 @@ const LV = {
 // kiskerék, korona. Commands are nouns (Felhúzás, Mentés, Másolás), as
 // Hungarian software writes them. Numbers format through hu-HU (see LOCALES).
 const HU = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Kamera tükröződése',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Az előlapi kamera képét tükrözi az óra polírozott fémén. A videó ezen az eszközön marad.',
+  'Camera unavailable': 'A kamera nem érhető el',
   'Show incomplete translations': 'Hiányos fordítások megjelenítése',
   'Enable sound': 'Hang bekapcsolása',
   'See the LEGO Technic build': 'A LEGO Technic építés megtekintése',
@@ -12226,6 +12314,10 @@ const HU = {
 
 // §273 CS TABLE START
 const CS = {
+  // §290 — the selfie reflection row
+  'Camera reflection': 'Odraz kamery',
+  'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Odráží přední kameru v leštěném kovu hodinek. Video zůstává v tomto zařízení.',
+  'Camera unavailable': 'Kamera není k dispozici',
   'Show incomplete translations': 'Zobrazit neúplné překlady',
   'Enable sound': 'Zapnout zvuk',
   'See the LEGO Technic build': 'Zobrazit sestavu z LEGO Technic',

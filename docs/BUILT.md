@@ -40023,6 +40023,9 @@ diffuse face is lit by the same panel. At 1.0 the navy dial washed out to sky
 blue and the bezel read as flat white. At 0.35 the bezel reads as polished
 silver and the dial stays navy, a little lighter at the centre.
 
+§290 then raised and turned that card, and replaced it with the camera's
+picture when the selfie reflection is on.
+
 ### The default look
 
 From the owner's link `?cam=-9.077,-12.889,-202.52&look=5.988,-0.769,-8.992&schematic=0&aes=dial.face.color~002e7a,materials.ruby.color~0056d6`:
@@ -40061,3 +40064,80 @@ Two things a default colour had been holding up, both fixed here:
 
 - The bezel's polish is a shading zone. No finishing process is modelled, and
   there is no separate bezel part: the case middle is still one turning.
+
+## §290 — Selfie reflection: the front camera's picture in the studio environment; the front card raised to a key softbox
+
+Two owner asks: tweak the direction of §289's front card, and let the
+viewer's front camera be reflected in the watch, offered on the loading
+screen at every load and off by default.
+
+### The card's direction
+
+§289's card stood square in front of the dial (z = −70). From the opening
+view the flat bezel top samples within about 6° ± 13° of −z, so a card
+covering that whole cone lit the bezel evenly. At 0.35 it read as flat grey,
+not a mirror. The card is now a key softbox: raised 35° over the dial and
+swung 20° to the left (`FRONT_CARD_ELEV_DEG`, `FRONT_CARD_AZ_DEG`), aimed at
+the watch with `lookAt`. Its lower edge sits near the bezel's cone, so the
+upper bezel takes the full card and the lower bezel falls off. That top-bright
+gradient is what reads as polish. The dial picks up a soft gradient too and
+stays navy, which leaves room for 0.6 (`FRONT_CARD_INTENSITY`). All three
+numbers are taste, judged by eye. At 20° the card still covered the whole cone
+and the bezel stayed uniform.
+
+### The selfie reflection
+
+A mirror shows what is in front of it, and for a watch being looked at, that
+is the viewer and the room behind them: what a phone's front camera sees,
+from nearly the same place. `src/selfie-reflection.js` stands the camera's
+picture as a screen in the studio's environment scene. It sits on the ray from
+the watch toward the orbit camera and faces the watch, so it follows the
+orbit, because the viewer is always where the camera is. It replaces the
+front card, which stood in for the same light.
+
+- **Which way round.** getUserMedia hands over the frame as the camera sees
+  it, not the mirrored preview. Seen from the watch looking toward the viewer
+  along d, the camera's right is right = d × up, and the reflection then
+  mirrors it the way a real mirror does. The basis (right, up, −d) is
+  right-handed, so the plane's face points at the watch.
+- **Why a bake.** three converts an equirect or cube environment once and
+  caches it, so a video texture would freeze on its first frame. The room is
+  re-baked through `PMREMGenerator.fromScene` at `SELFIE_BAKE_HZ` (15), and
+  each bake's render target is disposed when the next replaces it. 15 Hz is
+  taste: well under a display's rate, and enough for a moving head to read as
+  moving. Software GL pays far more per bake. The feature is opt-in.
+- **Its size.** The screen subtends `SELFIE_FOV_DEG` (65°) from the watch, the
+  low end of a phone front camera's horizontal field, so the picture is never
+  stretched past what the lens saw.
+- **Privacy.** The picture is a texture on this page's GPU and nothing
+  records or sends it. Turning it off stops the stream's tracks, which turns
+  the camera's light off, and puts the studio's own bake back.
+
+**Offered at every load, off by default.** The loading screen carries a
+`Camera reflection` button beside `Enable sound`, on the same pattern. Nothing
+saves the choice and no link can make it. A click there asks for the camera
+during the wait, so the permission prompt does not arrive after it, and leaves
+the pending stream as `window.__bootSelfieStream`. `main.js` adopts it once
+the reflection exists. A refusal clears the button. The View panel's
+`Camera reflection` row turns it on or off for the session. A refused or
+missing camera leaves the row Off and says so in its tooltip.
+
+Measured with Chromium's fake camera (`--use-fake-device-for-media-stream`,
+whose test pattern is a green field):
+- a plain boot leaves the reflection off;
+- the loading-screen click during the build turns it on once the watch is
+  ready, and the green pattern stands in the bezel and the crown;
+- the panel turns it off again;
+- no warnings at boot or in use.
+
+Localized: the row's label, its tooltip and `Camera unavailable` in every
+`LOCALES` table, so the loading-screen button reads in the viewer's language
+too.
+
+### Not done, and said so
+
+- The picture is a flat screen at one distance, not a measured environment.
+  It is the right light from the right direction, not a reconstruction of the
+  room.
+- No stabilisation or exposure matching: a dark room gives a dark
+  reflection, as a real mirror would.
