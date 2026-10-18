@@ -9445,6 +9445,11 @@ export function makeDial({
         roughness: 0.35,
         clearcoat: 1.0,
         clearcoatRoughness: 0.07,
+        // §269's tally: the lacquered face is finish on the BRASS blank (the
+        // body below is MATS.brass off sapphire), so it is cut from the blank's
+        // stock. §269 landed while sapphire was the default and never booted
+        // this path; §289 turned sapphire off and the tally warned.
+        userData: { stock: 'brass' },
       });
       repaintFace = () => { paintFace(); tex.needsUpdate = true; };
     }
@@ -9599,6 +9604,7 @@ export function makeDial({
       ? Object.assign(MATS.sapphire.clone(), { side: THREE.DoubleSide, userData: { glass: true } })
       : new THREE.MeshStandardMaterial({
         color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
+        userData: { stock: 'brass' },   // §269: the silvering up the brass blank's own bore
       });
     // §220 — a SMOKED wall needs its own two-sided clear twin for x-ray, the
     // way the body has one (materials.js XRAY_CLEAR); at T = 1 the plate's
@@ -9664,7 +9670,8 @@ export function makeDial({
           ftex.anisotropy = 8;
           // Same lacquered finish as the main dial face.
           floorMat = sapphire ? printOnSapphire(ftex)
-            : new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07 });
+            : new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07,
+              userData: { stock: 'brass' } });   // §269: the well's floor is the brass blank's, lacquered like the face
           // Only a well that DERIVES its tone follows a live recolour; one
           // that passed an explicit `face` asked for a fixed colour and keeps
           // it, which is the same opt-out the paint above honours.

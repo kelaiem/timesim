@@ -40033,11 +40033,15 @@ Two things a default colour had been holding up, both fixed here:
   have re-tuned the mark as a side effect. The face it was designed on is now
   named, `DIAL_MARK_DESIGN_GROUND = '#e7e5dd'`, and the default is free to move.
 
+### The sapphire dial
+
+- **The sapphire dial is OFF by default again** (owner's call, reversing
+  §222). On sapphire the face colour is not painted, because the ground
+  there is the glass, so the blue default would have shown nowhere a fresh
+  visit could see it. The smoked dial is one tick away in the panel, and its
+  coat (`smoke` 0.91) and every law §220–§225 derived for it are untouched.
+
 ### Not done, and said so
 
-- With the sapphire dial on (the default since §222) the face colour is not
-  painted, because the ground there is the glass. So the blue default shows
-  only where `dial.plate.sapphire` is off. Whether to turn it off by default
-  is the owner's call. This landing does not make it.
 - The bezel's polish is a shading zone. No finishing process is modelled, and
   there is no separate bezel part: the case middle is still one turning.
