@@ -40007,6 +40007,22 @@ generic attribute's constant is GL context state per location, and another
 program can leave it non-zero. `steel` and `caseMetal` share one program
 cache key through `installBrush`, so the zone code is identical in both.
 
+### A front card for the mirror (follow-up)
+
+The polished bezel first rendered BLACK from the opening view. The studio
+environment (`buildStudioEnvironment`) had panels overhead, at both sides and
+behind the movement, and none on the dial side. A mirror shows only what it
+reflects, and the bezel's flat top, facing −z and seen from −z, reflected the
+room's bare dial-side wall. The brushed lobe had hidden this by smearing the
+other panels across it. The fix is the photographer's front card: a 110 × 80
+panel at z = −70, facing the watch.
+
+Its intensity, 0.35, is taste, measured by eye against one constraint. The
+lacquered dial reflects the same direction as the bezel's flat top, and its
+diffuse face is lit by the same panel. At 1.0 the navy dial washed out to sky
+blue and the bezel read as flat white. At 0.35 the bezel reads as polished
+silver and the dial stays navy, a little lighter at the centre.
+
 ### The default look
 
 From the owner's link `?cam=-9.077,-12.889,-202.52&look=5.988,-0.769,-8.992&schematic=0&aes=dial.face.color~002e7a,materials.ruby.color~0056d6`:

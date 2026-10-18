@@ -518,6 +518,17 @@ function buildStudioEnvironment(renderer) {
   softbox(70, 90, 0xdfe8ff, 1.6, new THREE.Vector3(-70, 10, 20), Math.PI / 2, 0);
   softbox(70, 90, 0xfff2df, 1.2, new THREE.Vector3(70, 5, -10), -Math.PI / 2, 0);
   softbox(100, 60, 0xffffff, 0.8, new THREE.Vector3(0, -20, 70), Math.PI, 0);
+  // The DIAL-SIDE panel (§289's mirror bezel). Every panel above lit the back
+  // and the sides, so the −z hemisphere was the room's bare wall. A mirror shows
+  // only what it reflects, and the polished bezel's flat top faces −z and is seen
+  // from there (the opening view), so it read black. A brushed lobe had smeared
+  // the overhead and side panels across it. This is the photographer's front
+  // card. It glazes the lacquered dial too, which reflects the same direction:
+  // at lacquer's ~4% F0 (plus its clearcoat's) against polished steel's ~90%,
+  // that sheen is an order fainter than the bezel's. The intensity is taste,
+  // judged by eye (BUILT §289): at 1.0 the navy dial washed to sky blue and
+  // the bezel read flat white; at 0.35 the bezel reads silver and the dial stays navy.
+  softbox(110, 80, 0xffffff, 0.35, new THREE.Vector3(0, 0, -70), 0, 0);
 
 
   // near/far generous enough to cover the 90-unit room half-extent.
