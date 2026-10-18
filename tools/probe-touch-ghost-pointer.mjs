@@ -135,3 +135,4 @@ if (ctrlOne.distFrac < PINCH_MIN_FRAC) fails.push(`CONTROL: with the eviction by
 for (const w of live.warns) fails.push('console: ' + w);
 if (fails.length) { console.error('FAIL\n  ' + fails.join('\n  ')); process.exit(1); }
 console.log(`PASS — after a ghost pointer: one finger Δdist ${fmt(one.distFrac)}, pan ${fmt(one.pan)}, turn ${fmt(one.turnDeg, 2)}°; pinch Δdist ${fmt(pinch.distFrac)}; control (no eviction) Δdist ${fmt(ctrlOne.distFrac)}, pan ${fmt(ctrlOne.pan)}, turn ${fmt(ctrlOne.turnDeg, 2)}°`);
+process.exit(0);   // the static server child would otherwise hold the event loop open
