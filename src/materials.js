@@ -226,11 +226,15 @@ export const ALLOY_COLORS = {
 // table does not know falls back to steel and WARNS: the loader refuses such
 // a key before it gets here, so reaching this branch means the schema's
 // `_options` and this table have parted, which is a bug, not a taste.
+// §291: the steel hands are cut from the case's alloy too. They are defined
+// below this call, so they register here rather than being named.
+const CASE_ALLOY_FOLLOWERS = [];
 export function applyCaseMetalFromAesthetics() {
   const key = aesthetics.materials?.caseMetal?.alloy ?? 'steel';
   const hex = ALLOY_COLORS[key];
   if (!hex) console.warn(`§203: alloy '${key}' is in aesthetics.json's _options but not in ALLOY_COLORS — falling back to steel`);
   caseMetal.color.set(hex || ALLOY_COLORS.steel);
+  for (const m of CASE_ALLOY_FOLLOWERS) m.color.set(hex || ALLOY_COLORS.steel);
 }
 applyCaseMetalFromAesthetics();
 
@@ -431,6 +435,19 @@ const bluedHand = phys({
   reflectivity: 0.8,
   envMapIntensity: 1.6,
 });
+// §291 — the hands in the CASE'S METAL, for dial.contrast's default remedy:
+// a blued hand that cannot be read on its ground turns to this. The blued
+// hand's own polish (roughness 0.17, the same step short of mirror) at full
+// metalness, its colour the case alloy's F0, so a steel case gets steel hands
+// and a gold case gold ones.
+const steelHand = phys({
+  color: ALLOY_COLORS[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] || ALLOY_COLORS.steel,
+  metalness: 1.0,
+  roughness: 0.17,
+  clearcoat: 0.6,
+  clearcoatRoughness: 0.15,
+});
+CASE_ALLOY_FOLLOWERS.push(steelHand);
 
 // Cool nickel/rhodium plate finish.
 const nickel = phys({
@@ -636,7 +653,7 @@ const MATERIAL_STOCK = new Map([
 ]);
 export function stockKeyOf(material) {
   if (!material || Array.isArray(material)) return null;
-  if (material === caseMetal) return ALLOY_STOCK[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] ?? 'steel';
+  if (material === caseMetal || material === steelHand) return ALLOY_STOCK[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] ?? 'steel';
   const k = MATERIAL_STOCK.get(material);
   if (k) return k;
   if (material.userData?.stock) return material.userData.stock;
@@ -647,6 +664,7 @@ export function stockKeyOf(material) {
 export const MATS = {
   brass,
   bluedHand,
+  steelHand,     // §291 — the contrast remedy's hands, in the case alloy
   gold,
   steel,
   caseMetal,

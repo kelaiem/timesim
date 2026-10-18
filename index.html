@@ -99,6 +99,21 @@
   #boot .boot-sound:focus-visible, #boot .boot-selfie:focus-visible { outline: 2px solid #7a3ad8; outline-offset: 2px; }
   #boot .boot-sound[aria-pressed="true"], #boot .boot-selfie[aria-pressed="true"] { background: #7a3ad8; border-color: #7a3ad8; }
   #boot.failed .boot-sound, #boot.failed .boot-selfie { display: none; }
+  /* §291 — the appearance preselect: static (§238 — nothing here animates a
+     layout property), two columns of label and control, hidden on a failed
+     build. Its controls only ever WRITE a choice; the build reads it when it
+     reaches the part, so nothing here waits on the build. */
+  #boot .boot-prefs {
+    display: grid; grid-template-columns: auto auto; gap: 6px 14px; align-items: center;
+    margin: 0; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.16); border-radius: 8px;
+    font-size: 13px; color: #c9d4e3;
+  }
+  #boot .boot-prefs-head { grid-column: 1 / -1; margin: 0 0 2px; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: #9fb6d9; }
+  #boot .boot-prefs label { display: contents; }
+  #boot .boot-prefs input[type="color"] { width: 44px; height: 24px; padding: 0; border: 1px solid rgba(255,255,255,0.28); border-radius: 4px; background: transparent; justify-self: start; }
+  #boot .boot-prefs select { font: inherit; color: #eaf0f7; background: #15181d; border: 1px solid rgba(255,255,255,0.28); border-radius: 4px; padding: 2px 6px; justify-self: start; }
+  #boot .boot-prefs input[type="checkbox"] { justify-self: start; }
+  #boot.failed .boot-prefs { display: none; }
   /* The other pages, reachable while the movement builds: each is its own
      document, so following one leaves this build behind rather than waiting
      on it. Plain links, static (§238's rule), and they stay on a failed build
@@ -176,6 +191,19 @@
          saves it and no link can turn it on. A click asks for the camera here,
          during the wait, and hands the stream to main.js. -->
     <button type="button" class="boot-selfie" id="boot-selfie" aria-pressed="false">Camera reflection</button>
+  </div>
+  <!-- §291: preselect the look while the movement builds. Each control is
+       applied when the build reaches what it changes; the sapphire dial is cut
+       at build, so changing it here saves the choice and offers a reload.
+       Only fields the viewer touches are applied. -->
+  <div class="boot-prefs" id="boot-prefs">
+    <p class="boot-prefs-head">Appearance</p>
+    <label><span>Dial colour</span><input type="color" data-pref="dial.face.color"></label>
+    <label><span>Case metal</span><select data-pref="materials.caseMetal.alloy"></select></label>
+    <label><span>Ruby colour</span><input type="color" data-pref="materials.ruby.color"></label>
+    <label><span>Sapphire dial</span><input type="checkbox" data-pref="dial.plate.sapphire"></label>
+    <label><span>Case</span><input type="checkbox" data-view="case" checked></label>
+    <label><span>Wireframe view</span><input type="checkbox" data-view="wireframe"></label>
   </div>
   <ul class="boot-links">
     <li><a href="./primer.html">How they work</a></li>
@@ -345,6 +373,40 @@
     selfieBtn.setAttribute('aria-pressed', String(window.__bootSelfie));
     if (typeof window.__bootSelfieApply === 'function') window.__bootSelfieApply(window.__bootSelfie);
   });
+  // §291 — the appearance preselect. The controls are prefilled from the very
+  // settings object main.js will build from (aesthetics.js merges the file,
+  // this browser's tuning and the link), fetched without holding up the
+  // import below. A choice is recorded in window.__bootPrefs (finish
+  // settings, by key path) or window.__bootView (case, wireframe) and handed
+  // to main.js's __bootPrefsApply / __bootViewApply once those exist. Until
+  // then the record is the choice, as with sound.
+  window.__bootPrefs = {};
+  window.__bootView = {};
+  const prefsEl = boot && boot.querySelector('#boot-prefs');
+  if (prefsEl) {
+    import('./src/aesthetics.js').then(({ aesthetics }) => {
+      const at = (parts) => parts.reduce((o, k) => (o == null ? o : o[k]), aesthetics);
+      for (const el of prefsEl.querySelectorAll('[data-pref]')) {
+        const parts = el.dataset.pref.split('.');
+        const v = at(parts);
+        if (el.tagName === 'SELECT') {
+          const opts = (at(parts.slice(0, -1)) || {})._options?.[parts[parts.length - 1]] || [];
+          for (const o of opts) { const op = document.createElement('option'); op.value = o.value; op.textContent = t(o.label); el.appendChild(op); }
+          el.value = v;
+        } else if (el.type === 'checkbox') el.checked = !!v;
+        else el.value = v;
+      }
+    }).catch(() => {});
+    for (const el of prefsEl.querySelectorAll('[data-pref]')) el.addEventListener('change', () => {
+      const v = el.type === 'checkbox' ? el.checked : el.value;
+      window.__bootPrefs[el.dataset.pref] = v;
+      if (typeof window.__bootPrefsApply === 'function') window.__bootPrefsApply(el.dataset.pref, v);
+    });
+    for (const el of prefsEl.querySelectorAll('[data-view]')) el.addEventListener('change', () => {
+      window.__bootView[el.dataset.view] = el.checked;
+      if (typeof window.__bootViewApply === 'function') window.__bootViewApply(el.dataset.view, el.checked);
+    });
+  }
   await new Promise((resolve) => {
     let settled = false;
     const go = () => { if (!settled) { settled = true; resolve(); } };

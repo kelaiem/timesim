@@ -40142,18 +40142,23 @@ too.
 - No stabilisation or exposure matching: a dark room gives a dark
   reflection, as a real mirror would.
 
-## §291 — Vertical brushing on the midcase; sub-dials the hands cannot be read on turn to the case's metal
+## §291 — Vertical brushing on the midcase; a contrast remedy for blued hands; appearance up front and on the loading screen
 
-Two owner asks: brush the midcase vertically, and when the sub-dials come out
-blue like the hands and the hands are hard to read on them, finish them to
-match the case instead.
+Five owner asks, landed together because they share the panel and the dial:
+- brush the midcase vertically;
+- when the sub-dials come out blue like the hands, fix the contrast, offering
+  panda or reverse panda but changing the hands by default;
+- bring the main appearance settings out from under Advanced;
+- offer a reload when focus leaves the menu;
+- ask for appearance choices on the loading screen, with Schematic renamed
+  Wireframe.
 
 ### The midcase's vertical brushing
 
 Which way a brushed surface reads is set by its lines, not its lobe. three's
 anisotropic GGX is rougher along the tangent T (alphaT = mix(r², 1, a²)
 against alphaB = r²), so the highlight stretches along T, and real grooves run
-across it. So grooves along the case axis want T around the band, and
+across it. Grooves along the case axis want T around the band, and
 `installBrush`'s flank rule already gave the midcase exactly that. The lobe
 was vertical brushing all along. It read as nothing because nothing drew the
 streaks.
@@ -40162,42 +40167,104 @@ The streaks are now drawn on the case middle's flanks only (the flag
 `CASE_POLISH_ATTR` carries, outside the bezel's polished zone). A value noise
 in the azimuth, constant along the axis, tilts the normal around the band and
 swings the roughness, so every line runs caseback to bezel:
-- three octaves, `CASE_BRUSH_LINES` = 180, 560 and 1700 lines per radian; at
-  the band's 47 u (17.8 mm) radius those are pitches of about 0.1, 0.03 and
-  0.01 mm;
+- three octaves, `CASE_BRUSH_LINES` = 180, 560 and 1700 lines per radian;
+  at the band's 47 u (17.8 mm) radius those are pitches of about 0.1, 0.03
+  and 0.01 mm;
 - each octave fades as its lines fall under a pixel (`fwidth`), so a distant
-  band reads as satin and never shows a moiré, and a closeup shows the lines;
-- the tilt (`CASE_BRUSH_TILT`, 0.06 rad) and the roughness swing
+  band reads as satin and a closeup shows the lines;
+- the tilt (`CASE_BRUSH_TILT`, 0.06 rad) and the swing
   (`CASE_BRUSH_ROUGH_SWING`, ±25%) are taste. Both scale with the slider's own
-  anisotropy, so at the polished end there are no lines.
+  anisotropy, so the polished end has no lines.
 
-**A finding, not changed here.** By the same convention, the comment in
-`installBrush` that calls T the grain has it backwards: T is the direction
-ACROSS the grain. So the flats' straight grain renders perpendicular to
-`brushAngleDeg`, and the arbors' "circumferential" lathe grain renders as
-axial grooves. That is the works' whole finish, so it is reported to the owner
-rather than rewritten under this ask.
+**A finding, not changed here.** By the same convention, `installBrush`'s
+comment that calls T the grain has it backwards: T is ACROSS the grain. So the
+flats' straight grain renders perpendicular to `brushAngleDeg`, and the
+arbors' "circumferential" lathe grain renders as axial grooves. That is the
+works' whole finish, so it is reported to the owner rather than rewritten
+under this ask.
 
-### Sub-dials the hands cannot be read on
+### The contrast remedy (`dial.contrast.style`)
 
-The sub-dial hands are blued steel (`MATS.bluedHand`, `#2450b5`). A well
-tinted from the owner's navy face sits within a few percent of that luminance,
-about 1.7:1, and the small-seconds hand all but vanished into it. The test is
-the dial's one legibility floor, `DIAL_INK_CONTRAST_MIN` (WCAG 2.1 SC 1.4.11,
-3:1), applied to the hand tone against each well's derived ground. Under it:
-- the well's ground becomes the case alloy's own F0 (`ALLOY_COLORS`, the
-  table `caseMetal` reads);
-- the floor takes a metal finish: metalness 1, the steel's satin roughness
-  (`STEEL_FINISH.roughness`, now exported), and no lacquer coat.
+The sub-dial hands are blued steel (`MATS.bluedHand`, `#2450b5`). On the
+owner's navy the wells tint to within a few percent of that luminance, about
+1.7:1, and the hands vanish. The test is the dial's one legibility floor,
+`DIAL_INK_CONTRAST_MIN` (WCAG 2.1 SC 1.4.11, 3:1), applied to the hand tone
+against each well's face-derived ground before any remedy. There is one
+answer per dial, so both sub-dials always match. It is the hand's base hex,
+and `inkContrast`'s own note is right that a metal's hex only indicates what
+the eye gets, so it is the remedy's trigger, not a legibility gate.
 
-The print then solves against that ground like any other (§196), and §157's
-gate reads it through `wellInkSites`, so the ink and the gate cannot disagree
-with the switch. A live recolour asks again, so a lighter face brings the
-lacquered tint back. On sapphire the ground is the glass and the rule does
-not apply.
+Three remedies, reload-tier, all inert while the hands read and on sapphire:
+- **`hands` (the default):** the dial is untouched, and every blued hand turns
+  to `MATS.steelHand`. That is the blued hand's own polish at full metalness,
+  coloured by the case alloy (it follows `applyCaseMetalFromAesthetics` and
+  takes the alloy's stock), so a gold case gets gold hands.
+- **`reversePanda`:** light sub-dials on the dark face. Each well's ground is
+  the case alloy's F0 (`ALLOY_COLORS`), and the floor takes a satin metal
+  finish (metalness 1, `STEEL_FINISH.roughness`, no lacquer coat).
+- **`panda`:** a light face with dark sub-dials (the owner's pick of the two
+  readings). The face's base tone is the case alloy's, the wells are black
+  lacquer (`PANDA_WELL`, near-black so the floor still shades), and the
+  sub-dial hands turn to case metal, because blue on black is 2.8:1, still
+  under the floor. The main hands stay blue on silver.
+
+Every print solves against the ground it is painted on (§196), and §157's gate
+reads the same grounds, so ink and gate follow the remedy. `main.js`'s
+`applyHandContrast` swaps the hands at build, after a recut, and after a live
+face recolour. `dial.contrast` joins `SHARE_SUBTREES`: it moves no vertex,
+which `aestheticsShareSafe` holds. Before it joined, choosing a remedy
+raised the "Unverified configuration" badge, as if the geometry had moved.
+
+### Appearance up front, and the reload offer
+
+The Appearance section now opens with dial colour, sapphire dial, sub-dial
+contrast, case metal and ruby colour (`APPEARANCE_FEATURED`). They are
+generated by the Advanced panel's own row builder, which sends a featured
+path to `#appearance-featured` instead, so each setting is still one control
+in one place. A featured row leaves the Advanced list and its search, and the
+sapphire/smoke link now finds rows through a by-path map.
+
+A ⟳ row's edit shows nothing until the page reloads. So an edit to one marks a
+reload pending, and when focus leaves the menu with one pending,
+`#clock-reload-offer` offers Reload. It has the update toast's look (shared
+rules, one row above it), is session-only, and dismissing it keeps the edit
+pending.
+
+### Preselecting on the loading screen
+
+The loading screen carries an Appearance block: dial colour, case metal, ruby
+colour, sapphire dial, the case, and the wireframe view.
+- **Prefilled from the build's own settings:** `aesthetics.js`, fetched without
+  holding up the build's import. Its alloy options come from the schema's
+  `_options`, and only fields the viewer touches are applied.
+- **Recorded, then replayed:** a choice is recorded in `window.__bootPrefs` /
+  `__bootView` and replayed when the build can act on it. The case and the
+  wireframe view apply over the saved defaults and before the deep link, which
+  still wins. The finish choices replay on the module's last line, because
+  `refreshConfigMark` reads state declared at its end. The first cut applied
+  them mid-build and hit `CONFIG_VALIDATED` in its temporal dead zone.
+- **Sapphire:** it is cut at build, so a change there is saved and brings up
+  the reload offer as soon as it differs from what was built.
+
+The View panel's Schematic is shown as Wireframe (and "Schematic view" in the
+shortcuts as "Wireframe view"), in all 23 locales. The mode's id, its saved
+state and `?schematic=` keep the old name, because values do not translate.
+
+### Measured
+
+Locally on SwiftShader:
+- the default boot is silent and its hands are steel (17 meshes), with
+  `contrast() = { style: 'hands', active: true }`;
+- panda turns 7 sub-dial hand meshes steel and leaves the 10 main-hand meshes
+  blue;
+- reverse panda leaves all hands blue and the wells metal;
+- the loading-screen picks made mid-build land: dial colour, case metal, the
+  case hidden, and the sapphire choice saved with the reload offer on show;
+- no warnings.
 
 ### Not done, and said so
 
-- An alloy change does not repaint a metal well's ground. It follows the case
-  at build, and after a live alloy pick on the next recolour or reload.
-- The main dial's hands against the main face are not part of this rule.
+- An alloy change does not repaint a metal well's ground until the next
+  recolour or reload.
+- The wireframe checkbox on the loading screen starts unticked whatever this
+  renderer's default is, and is applied only if touched.
