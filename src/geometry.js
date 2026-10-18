@@ -3,7 +3,7 @@
 // centered at the origin, rotating about local +Z. userData.r = pitch/functional
 // radius where meaningful. Real tooth profiles via Shape/ExtrudeGeometry.
 import * as THREE from 'three';
-import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR } from './materials.js';
+import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR, ALLOY_COLORS, STEEL_FINISH } from './materials.js';
 import { aesthetics } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
@@ -9651,7 +9651,25 @@ export function makeDial({
           // anchors the maker's mark's designed relation (§196), and for a
           // well that opted out with an explicit `face` it IS that face —
           // such a well never recolours, so its shipped ground is itself.
-          const wellGroundNow = () => sd.face || groundAt(wellR);
+          // §291 — A WELL THE HANDS CANNOT BE READ ON TURNS TO THE CASE'S METAL.
+          // The sub-dial hands are blued steel (MATS.bluedHand); a well tinted
+          // from a deep blue face sits within a few percent of their luminance
+          // and the hand vanishes into it (the owner's navy: about 1.7:1). The
+          // test is the dial's one legibility floor, DIAL_INK_CONTRAST_MIN
+          // (WCAG 2.1 SC 1.4.11, 3:1), applied to the hand tone against the
+          // derived ground: under it, the ground is the case alloy's own F0
+          // (ALLOY_COLORS, the same table caseMetal reads) and the floor takes
+          // a metal finish (metalness 1, the steel's satin roughness, no
+          // lacquer coat), a sub-dial finished like the case. The print then
+          // solves against that ground like any other (§196), and the §157 gate
+          // reads it through wellInkSites, so the ink and the gate cannot
+          // disagree with the switch. A live recolour re-asks, so a lighter
+          // face brings the lacquered tint back. On sapphire the ground is the
+          // glass and the rule does not apply.
+          const handTone = `#${MATS.bluedHand.color.getHexString()}`;
+          const caseTone = () => ALLOY_COLORS[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] || ALLOY_COLORS.steel;
+          const wellIsMetal = () => !sapphire && contrastRatio(sd.face || groundAt(wellR), handTone) < DIAL_INK_CONTRAST_MIN;
+          const wellGroundNow = () => (wellIsMetal() ? caseTone() : (sd.face || groundAt(wellR)));
           const wellGroundShipped = sd.face
             || dialTintAt(DIAL_MARK_DESIGN_GROUND, wellR);
           wellInkSites.push({ kind: sd.kind, ground: wellGroundNow });
@@ -9672,10 +9690,20 @@ export function makeDial({
           floorMat = sapphire ? printOnSapphire(ftex)
             : new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07,
               userData: { stock: 'brass' } });   // §269: the well's floor is the brass blank's, lacquered like the face
+          // §291: lacquer or the case's metal, per wellIsMetal above.
+          const finishWell = () => {
+            if (sapphire) return;
+            const metal = wellIsMetal();
+            floorMat.metalness = metal ? 1.0 : 0.05;
+            floorMat.roughness = metal ? STEEL_FINISH.roughness : 0.35;
+            floorMat.clearcoat = metal ? 0.0 : 1.0;
+            floorMat.userData.metalWell = metal;
+          };
+          finishWell();
           // Only a well that DERIVES its tone follows a live recolour; one
           // that passed an explicit `face` asked for a fixed colour and keeps
           // it, which is the same opt-out the paint above honours.
-          if (!sd.face) repaintWells.push(() => { paintWell(); ftex.needsUpdate = true; });
+          if (!sd.face) repaintWells.push(() => { paintWell(); finishWell(); ftex.needsUpdate = true; });
         }
       }
       if (!floorMat) floorMat = sapphire ? MATS.sapphire : MATS.silver;

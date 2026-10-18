@@ -40141,3 +40141,63 @@ too.
   room.
 - No stabilisation or exposure matching: a dark room gives a dark
   reflection, as a real mirror would.
+
+## §291 — Vertical brushing on the midcase; sub-dials the hands cannot be read on turn to the case's metal
+
+Two owner asks: brush the midcase vertically, and when the sub-dials come out
+blue like the hands and the hands are hard to read on them, finish them to
+match the case instead.
+
+### The midcase's vertical brushing
+
+Which way a brushed surface reads is set by its lines, not its lobe. three's
+anisotropic GGX is rougher along the tangent T (alphaT = mix(r², 1, a²)
+against alphaB = r²), so the highlight stretches along T, and real grooves run
+across it. So grooves along the case axis want T around the band, and
+`installBrush`'s flank rule already gave the midcase exactly that. The lobe
+was vertical brushing all along. It read as nothing because nothing drew the
+streaks.
+
+The streaks are now drawn on the case middle's flanks only (the flag
+`CASE_POLISH_ATTR` carries, outside the bezel's polished zone). A value noise
+in the azimuth, constant along the axis, tilts the normal around the band and
+swings the roughness, so every line runs caseback to bezel:
+- three octaves, `CASE_BRUSH_LINES` = 180, 560 and 1700 lines per radian; at
+  the band's 47 u (17.8 mm) radius those are pitches of about 0.1, 0.03 and
+  0.01 mm;
+- each octave fades as its lines fall under a pixel (`fwidth`), so a distant
+  band reads as satin and never shows a moiré, and a closeup shows the lines;
+- the tilt (`CASE_BRUSH_TILT`, 0.06 rad) and the roughness swing
+  (`CASE_BRUSH_ROUGH_SWING`, ±25%) are taste. Both scale with the slider's own
+  anisotropy, so at the polished end there are no lines.
+
+**A finding, not changed here.** By the same convention, the comment in
+`installBrush` that calls T the grain has it backwards: T is the direction
+ACROSS the grain. So the flats' straight grain renders perpendicular to
+`brushAngleDeg`, and the arbors' "circumferential" lathe grain renders as
+axial grooves. That is the works' whole finish, so it is reported to the owner
+rather than rewritten under this ask.
+
+### Sub-dials the hands cannot be read on
+
+The sub-dial hands are blued steel (`MATS.bluedHand`, `#2450b5`). A well
+tinted from the owner's navy face sits within a few percent of that luminance,
+about 1.7:1, and the small-seconds hand all but vanished into it. The test is
+the dial's one legibility floor, `DIAL_INK_CONTRAST_MIN` (WCAG 2.1 SC 1.4.11,
+3:1), applied to the hand tone against each well's derived ground. Under it:
+- the well's ground becomes the case alloy's own F0 (`ALLOY_COLORS`, the
+  table `caseMetal` reads);
+- the floor takes a metal finish: metalness 1, the steel's satin roughness
+  (`STEEL_FINISH.roughness`, now exported), and no lacquer coat.
+
+The print then solves against that ground like any other (§196), and §157's
+gate reads it through `wellInkSites`, so the ink and the gate cannot disagree
+with the switch. A live recolour asks again, so a lighter face brings the
+lacquered tint back. On sapphire the ground is the glass and the rule does
+not apply.
+
+### Not done, and said so
+
+- An alloy change does not repaint a metal well's ground. It follows the case
+  at build, and after a live alloy pick on the next recolour or reload.
+- The main dial's hands against the main face are not part of this rule.
