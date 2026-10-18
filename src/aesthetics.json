@@ -45,6 +45,20 @@
         "smoke": "Sapphire dial transmittance"
       }
     },
+    "contrast": {
+      "style": "hands",
+      "_comment": "§291 — what happens when the blued hands cannot be read on their sub-dials: the hand tone against the face-derived well ground under DIAL_INK_CONTRAST_MIN (3:1, WCAG 2.1 SC 1.4.11), one answer per dial. hands (the default) turns every blued hand to polished case metal (MATS.steelHand); reversePanda paints the wells the case alloy and finishes them as metal; panda turns the face to the case alloy's silver, the wells to black lacquer and the sub-dial hands to case metal. Nothing happens while the hands read. RELOAD-TIER: the dial is cut and its grounds solved at build, and the hands follow that answer. Inert on sapphire, where the ground is the glass.",
+      "_options": {
+        "style": [
+          { "value": "hands", "label": "Change the hands" },
+          { "value": "panda", "label": "Panda" },
+          { "value": "reversePanda", "label": "Reverse panda" }
+        ]
+      },
+      "_labels": {
+        "style": "Sub-dial contrast"
+      }
+    },
     "hands": {
       "_comment": "hour/minute carry no depth keys, deliberately (§188): the central sections are cut from HAND_STOCK_MM in geometry.js, so a depth knob here would be a lying parameter — the keys existed, were read, and had no effect on the built mesh (bossH overwrote their only consumer). The `second` kind keeps its depth keys because they are live there: counterweight thickness and that kind's boss law. widthFactor is now exactly what its label says — the plan width (halfW = length·widthFactor·0.35·√3/2) — and no longer drags thickness or boss with it. A persisted override of the removed keys is refused by the loader's type anchoring (aesthetics.js), the same rule the subdials layer's note cites.",
       "hour": {

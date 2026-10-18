@@ -443,6 +443,15 @@ export function lowerUi(s) {
 // German. Horological vocabulary is the Glashütte register (Unruh, Anker,
 // Dreiviertelplatine …) — the audience this locale exists for.
 const DE = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Drahtgitter',
+  'Wireframe view': 'Drahtgitteransicht',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Hilfszifferblatt-Kontrast',
+  'Change the hands': 'Zeiger ändern',
+  'Panda': 'Panda',
+  'Reverse panda': 'Reverse Panda',
+  'Some changes apply after a reload': 'Einige Änderungen gelten erst nach dem Neuladen',
   // §290 — the selfie reflection row
   'Camera reflection': 'Kameraspiegelung',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Spiegelt Ihre Frontkamera im polierten Metall der Uhr. Das Video bleibt auf diesem Gerät.',
@@ -860,6 +869,15 @@ Object.assign(DE, {
 // Chrome-tier translation authored here; §73 budgets a native review pass
 // before tier two (the explainer) ships in this locale.
 const ZH = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': '线框',
+  'Wireframe view': '线框视图',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': '副表盘对比',
+  'Change the hands': '更换指针',
+  'Panda': '熊猫盘',
+  'Reverse panda': '反熊猫盘',
+  'Some changes apply after a reload': '部分更改需重新加载后生效',
   // §290 — the selfie reflection row
   'Camera reflection': '摄像头倒影',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': '在手表的抛光金属上映出前置摄像头的画面。视频只保留在本设备上。',
@@ -1244,6 +1262,15 @@ Object.assign(ZH, {
 // fr-FR points with ',' and groups with U+202F, both of which arrive through
 // fmtNum/fmtInt above and neither of which may reach a stored value.
 const FR = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Filaire',
+  'Wireframe view': 'Vue filaire',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Contraste des compteurs',
+  'Change the hands': 'Changer les aiguilles',
+  'Panda': 'Panda',
+  'Reverse panda': 'Panda inversé',
+  'Some changes apply after a reload': 'Certaines modifications s’appliquent après un rechargement',
   // §290 — the selfie reflection row
   'Camera reflection': 'Reflet de la caméra',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Reflète votre caméra frontale dans le métal poli de la montre. La vidéo reste sur cet appareil.',
@@ -1800,6 +1827,15 @@ const FR = {
 // third and fourth; the mapping is made once in the MECH_GRAPH block below and
 // both static pages inherit it.
 const JA = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'ワイヤーフレーム',
+  'Wireframe view': 'ワイヤーフレーム表示',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'インダイアルのコントラスト',
+  'Change the hands': '針を変える',
+  'Panda': 'パンダ',
+  'Reverse panda': '逆パンダ',
+  'Some changes apply after a reload': '一部の変更は再読み込み後に反映されます',
   // §290 — the selfie reflection row
   'Camera reflection': 'カメラの映り込み',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'フロントカメラの映像を時計の磨かれた金属に映します。映像はこの端末から出ません。',
@@ -2355,6 +2391,15 @@ const JA = {
 // zh-HK and zh-MO all resolve here — which is the case that was silently
 // landing in ZH before this section.
 const ZH_HANT = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': '線框',
+  'Wireframe view': '線框檢視',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': '副錶盤對比',
+  'Change the hands': '更換指針',
+  'Panda': '熊貓盤',
+  'Reverse panda': '反熊貓盤',
+  'Some changes apply after a reload': '部分變更需重新載入後生效',
   // §290 — the selfie reflection row
   'Camera reflection': '相機倒影',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': '在手錶的拋光金屬上映出前置相機的畫面。影像只保留在本裝置上。',
@@ -2920,6 +2965,15 @@ const ZH_HANT = {
 // fmtInt under 'ar-u-nu-latn' — Western digits, '.' and ',' — so a value in
 // this table never carries a digit of its own script.
 const AR = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'إطار سلكي',
+  'Wireframe view': 'عرض الإطار السلكي',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'تباين الموانئ الفرعية',
+  'Change the hands': 'تغيير العقارب',
+  'Panda': 'باندا',
+  'Reverse panda': 'باندا معكوسة',
+  'Some changes apply after a reload': 'بعض التغييرات تُطبَّق بعد إعادة التحميل',
   // §290 — the selfie reflection row
   'Camera reflection': 'انعكاس الكاميرا',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'يعكس صورة الكاميرا الأمامية على معدن الساعة المصقول. يبقى الفيديو على هذا الجهاز.',
@@ -3468,6 +3522,15 @@ const AR = {
 // infinitives. The same register as src/explain-i18n.es.js and
 // src/primer-i18n.es.js — one movement, one name per part.
 const ES = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Alámbrico',
+  'Wireframe view': 'Vista alámbrica',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Contraste de los subesferas',
+  'Change the hands': 'Cambiar las agujas',
+  'Panda': 'Panda',
+  'Reverse panda': 'Panda inverso',
+  'Some changes apply after a reload': 'Algunos cambios se aplican tras recargar',
   // §290 — the selfie reflection row
   'Camera reflection': 'Reflejo de la cámara',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Refleja tu cámara frontal en el metal pulido del reloj. El vídeo no sale de este dispositivo.',
@@ -4013,6 +4076,15 @@ const ES = {
 // buttons as Korean software writes them. Number-transparent. The same
 // register as src/explain-i18n.ko.js and src/primer-i18n.ko.js.
 const KO = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': '와이어프레임',
+  'Wireframe view': '와이어프레임 보기',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': '서브다이얼 대비',
+  'Change the hands': '바늘 바꾸기',
+  'Panda': '판다',
+  'Reverse panda': '리버스 판다',
+  'Some changes apply after a reload': '일부 변경 사항은 다시 불러온 뒤 적용됩니다',
   // §290 — the selfie reflection row
   'Camera reflection': '카메라 반사',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': '전면 카메라 영상을 시계의 연마된 금속에 비춥니다. 영상은 이 기기에만 머뭅니다.',
@@ -4560,6 +4632,15 @@ const KO = {
 // register as src/explain-i18n.ru.js and src/primer-i18n.ru.js — one
 // movement, one name per part.
 const RU = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Каркас',
+  'Wireframe view': 'Каркасный вид',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Контраст субциферблатов',
+  'Change the hands': 'Сменить стрелки',
+  'Panda': 'Панда',
+  'Reverse panda': 'Обратная панда',
+  'Some changes apply after a reload': 'Некоторые изменения вступят в силу после перезагрузки',
   // §290 — the selfie reflection row
   'Camera reflection': 'Отражение камеры',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Отражает изображение фронтальной камеры в полированном металле часов. Видео остаётся на этом устройстве.',
@@ -5108,6 +5189,15 @@ const RU = {
 // src/explain-i18n.pt.js and src/primer-i18n.pt.js — one movement, one name
 // per part.
 const PT = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Aramado',
+  'Wireframe view': 'Vista aramada',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Contraste dos submostradores',
+  'Change the hands': 'Trocar os ponteiros',
+  'Panda': 'Panda',
+  'Reverse panda': 'Panda invertido',
+  'Some changes apply after a reload': 'Algumas alterações se aplicam após recarregar',
   // §290 — the selfie reflection row
   'Camera reflection': 'Reflexo da câmera',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Reflete a câmera frontal no metal polido do relógio. O vídeo fica neste dispositivo.',
@@ -5655,6 +5745,15 @@ const PT = {
 // src/explain-i18n.it.js and src/primer-i18n.it.js — one movement, one name
 // per part. Every apostrophe is U+2019.
 const IT = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Wireframe',
+  'Wireframe view': 'Vista wireframe',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Contrasto dei contatori',
+  'Change the hands': 'Cambia le lancette',
+  'Panda': 'Panda',
+  'Reverse panda': 'Panda inverso',
+  'Some changes apply after a reload': 'Alcune modifiche si applicano dopo il ricaricamento',
   // §290 — the selfie reflection row
   'Camera reflection': 'Riflesso della fotocamera',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Riflette la fotocamera frontale nel metallo lucidato dell\'orologio. Il video resta su questo dispositivo.',
@@ -6199,6 +6298,15 @@ const IT = {
 // are the tightest in the project — a chrome bar and 150 px HUD label boxes —
 // so these are the compact forms, measured by tools/probe-116-locale-fit.mjs.
 const HI = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'वायरफ़्रेम',
+  'Wireframe view': 'वायरफ़्रेम दृश्य',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'उप-डायल कंट्रास्ट',
+  'Change the hands': 'सुइयाँ बदलें',
+  'Panda': 'पांडा',
+  'Reverse panda': 'रिवर्स पांडा',
+  'Some changes apply after a reload': 'कुछ बदलाव फिर से लोड करने के बाद लागू होंगे',
   // §290 — the selfie reflection row
   'Camera reflection': 'कैमरा प्रतिबिंब',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'घड़ी की पॉलिश की हुई धातु में आपके सामने वाले कैमरे का प्रतिबिंब दिखाता है। वीडियो इसी डिवाइस पर रहता है।',
@@ -6747,6 +6855,15 @@ const HI = {
 // §53's 240 px column and the 150 px HUD labels are the constraint. Tone marks
 // follow the MODERN placement (hóa, thủy) and every string is NFC.
 const VI = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Khung dây',
+  'Wireframe view': 'Chế độ khung dây',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Độ tương phản mặt phụ',
+  'Change the hands': 'Đổi kim',
+  'Panda': 'Panda',
+  'Reverse panda': 'Panda đảo',
+  'Some changes apply after a reload': 'Một số thay đổi có hiệu lực sau khi tải lại',
   // §290 — the selfie reflection row
   'Camera reflection': 'Phản chiếu camera',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Phản chiếu camera trước của bạn trên kim loại đánh bóng của đồng hồ. Video chỉ ở trên thiết bị này.',
@@ -7310,6 +7427,15 @@ const VI = {
 // held to the English length or under, because §53's 240 px column, the 150 px
 // HUD labels and the chrome bar are the constraint, and Dutch compounds run long.
 const NL = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Draadmodel',
+  'Wireframe view': 'Draadmodelweergave',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Contrast van de subwijzerplaten',
+  'Change the hands': 'Wijzers wijzigen',
+  'Panda': 'Panda',
+  'Reverse panda': 'Omgekeerde panda',
+  'Some changes apply after a reload': 'Sommige wijzigingen gelden pas na herladen',
   // §290 — the selfie reflection row
   'Camera reflection': 'Camerareflectie',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Weerspiegelt je frontcamera in het gepolijste metaal van het horloge. De video blijft op dit apparaat.',
@@ -7873,6 +7999,15 @@ const NL = {
 // LOCALES' `dir` mirrors the panels, and the strings carry Persian's ی/ک and
 // its zero-width non-joiners. Labels are held to the English length or under.
 const FA = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'قاب سیمی',
+  'Wireframe view': 'نمای قاب سیمی',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'کنتراست صفحه‌های فرعی',
+  'Change the hands': 'تغییر عقربه‌ها',
+  'Panda': 'پاندا',
+  'Reverse panda': 'پاندای معکوس',
+  'Some changes apply after a reload': 'برخی تغییرها پس از بارگذاری دوباره اعمال می‌شوند',
   // §290 — the selfie reflection row
   'Camera reflection': 'بازتاب دوربین',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'تصویر دوربین جلو را در فلز صیقلی ساعت بازتاب می‌دهد. ویدیو روی همین دستگاه می‌ماند.',
@@ -8437,6 +8572,15 @@ const FA = {
 // arrow points at the end the mirrored slider actually has. Labels are held to
 // the English length or under.
 const HE = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'שלד',
+  'Wireframe view': 'תצוגת שלד',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'ניגודיות לוחות המשנה',
+  'Change the hands': 'החלפת המחוגים',
+  'Panda': 'פנדה',
+  'Reverse panda': 'פנדה הפוכה',
+  'Some changes apply after a reload': 'חלק מהשינויים יחולו אחרי טעינה מחדש',
   // §290 — the selfie reflection row
   'Camera reflection': 'השתקפות מצלמה',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'משקף את המצלמה הקדמית במתכת המלוטשת של השעון. הווידאו נשאר במכשיר הזה.',
@@ -9000,6 +9144,15 @@ const HE = {
 // pinion, mahkota. Buttons take the base imperative ("Putar", "Jeda") as
 // Indonesian software does. Labels are held to the English length or under.
 const ID = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Kerangka kawat',
+  'Wireframe view': 'Tampilan kerangka kawat',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Kontras subdial',
+  'Change the hands': 'Ganti jarum',
+  'Panda': 'Panda',
+  'Reverse panda': 'Panda terbalik',
+  'Some changes apply after a reload': 'Beberapa perubahan berlaku setelah dimuat ulang',
   // §290 — the selfie reflection row
   'Camera reflection': 'Pantulan kamera',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Memantulkan kamera depan Anda pada logam jam yang dipoles. Videonya tetap di perangkat ini.',
@@ -9564,6 +9717,15 @@ const ID = {
 // this module lowercases for display goes through lowerUi, never toLowerCase.
 // Labels are held to the English length or under.
 const TR = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Tel kafes',
+  'Wireframe view': 'Tel kafes görünümü',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Alt kadran kontrastı',
+  'Change the hands': 'Akrep ve yelkovanı değiştir',
+  'Panda': 'Panda',
+  'Reverse panda': 'Ters panda',
+  'Some changes apply after a reload': 'Bazı değişiklikler yeniden yüklemeden sonra uygulanır',
   // §290 — the selfie reflection row
   'Camera reflection': 'Kamera yansıması',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Ön kameranızı saatin parlatılmış metalinde yansıtır. Video bu cihazda kalır.',
@@ -10128,6 +10290,15 @@ const TR = {
 // dolen), as Welsh software does. Numbers format through the row's BORROWED
 // en-GB tag (see LOCALES). Labels are held to the English length or under.
 const CY = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Ffrâm wifren',
+  'Wireframe view': 'Golwg ffrâm wifren',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Cyferbyniad yr is-ddeialau',
+  'Change the hands': 'Newid y bysedd',
+  'Panda': 'Panda',
+  'Reverse panda': 'Panda gwrthdro',
+  'Some changes apply after a reload': 'Daw rhai newidiadau i rym ar ôl ail-lwytho',
   // §290 — the selfie reflection row
   'Camera reflection': 'Adlewyrchiad camera',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Yn adlewyrchu eich camera blaen ym metel caboledig yr oriawr. Mae\'r fideo\'n aros ar y ddyfais hon.',
@@ -10695,6 +10866,15 @@ const CY = {
 // which Chromium carries. Labels are held to the English length or under.
 
 const FIL = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Wireframe',
+  'Wireframe view': 'Wireframe na view',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Contrast ng sub-dial',
+  'Change the hands': 'Palitan ang mga kamay',
+  'Panda': 'Panda',
+  'Reverse panda': 'Reverse panda',
+  'Some changes apply after a reload': 'May mga pagbabagong ilalapat pagkatapos mag-reload',
   // §290 — the selfie reflection row
   'Camera reflection': 'Repleksiyon ng camera',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Ipinapakita ang iyong front camera sa pinakintab na metal ng relo. Nananatili ang video sa device na ito.',
@@ -11237,6 +11417,15 @@ const FIL = {
 // kronis. Commands take the infinitive (Uzvilkt, Saglabāt, Kopēt saiti), as
 // Latvian software does. Numbers format through lv-LV (see LOCALES).
 const LV = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Karkass',
+  'Wireframe view': 'Karkasa skats',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Papildciparnīcu kontrasts',
+  'Change the hands': 'Mainīt rādītājus',
+  'Panda': 'Panda',
+  'Reverse panda': 'Apgrieztā panda',
+  'Some changes apply after a reload': 'Dažas izmaiņas stāsies spēkā pēc pārlādes',
   // §290 — the selfie reflection row
   'Camera reflection': 'Kameras atspulgs',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Atspoguļo priekšējās kameras attēlu pulksteņa pulētajā metālā. Video paliek šajā ierīcē.',
@@ -11779,6 +11968,15 @@ const LV = {
 // kiskerék, korona. Commands are nouns (Felhúzás, Mentés, Másolás), as
 // Hungarian software writes them. Numbers format through hu-HU (see LOCALES).
 const HU = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Drótváz',
+  'Wireframe view': 'Drótváz nézet',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Segédszámlapok kontrasztja',
+  'Change the hands': 'Mutatók cseréje',
+  'Panda': 'Panda',
+  'Reverse panda': 'Fordított panda',
+  'Some changes apply after a reload': 'Egyes módosítások újratöltés után lépnek életbe',
   // §290 — the selfie reflection row
   'Camera reflection': 'Kamera tükröződése',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Az előlapi kamera képét tükrözi az óra polírozott fémén. A videó ezen az eszközön marad.',
@@ -12314,6 +12512,15 @@ const HU = {
 
 // §273 CS TABLE START
 const CS = {
+  // §291 — Schematic is shown as Wireframe
+  'Wireframe': 'Drátový model',
+  'Wireframe view': 'Drátový pohled',
+  // §291 — the contrast remedy and the reload offer
+  'Sub-dial contrast': 'Kontrast vedlejších ciferníků',
+  'Change the hands': 'Změnit ručky',
+  'Panda': 'Panda',
+  'Reverse panda': 'Obrácená panda',
+  'Some changes apply after a reload': 'Některé změny se projeví po opětovném načtení',
   // §290 — the selfie reflection row
   'Camera reflection': 'Odraz kamery',
   'Reflect your front camera in the watch\'s polished metal. The video stays on this device.': 'Odráží přední kameru v leštěném kovu hodinek. Video zůstává v tomto zařízení.',

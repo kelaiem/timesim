@@ -3,7 +3,7 @@
 // centered at the origin, rotating about local +Z. userData.r = pitch/functional
 // radius where meaningful. Real tooth profiles via Shape/ExtrudeGeometry.
 import * as THREE from 'three';
-import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR } from './materials.js';
+import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR, ALLOY_COLORS, STEEL_FINISH } from './materials.js';
 import { aesthetics } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
@@ -8980,6 +8980,9 @@ export const DIAL_MARKER_INNER_F = DIAL_MARKER_OUTER_F - DIAL_MARKER_H_F; // = 0
 // sampled, the arrangement that goes stale the first time the dial is
 // re-proportioned (and §125 re-proportioned it).
 export const DIAL_CANVAS_FILL_F = 0.46;   // printed disc radius / canvas size
+// §291 — the panda's sub-dial lacquer: near-black, not #000, so the well's
+// floor still shades. Taste. The print solves to the light pole on it.
+export const PANDA_WELL = '#16181b';
 export const DIAL_RAIL_OUT_F = 0.94;      // railroad outer rail / printed disc
 export const DIAL_RAIL_IN_F = 0.87;       // railroad inner rail / printed disc
 
@@ -9325,7 +9328,42 @@ export function makeDial({
   };
   const plateGround = alphaOver(hex6(DIAL_GLASS.color), DIAL_GLASS.opacity, '#' + MATS.perledNickel.color.getHexString()); // the body's recipe over the nickel — the smoke's T²·N term lives here
   const glassGround = alphaOver(sheetTint, CRYSTAL_GLASS.opacity, plateGround);
-  const groundAt = (f) => (sapphire ? glassGround : dialTintAt(aesthetics.dial.face.color, f));
+  // §291 — THE CONTRAST REMEDY. The sub-dial hands are blued steel
+  // (MATS.bluedHand). On a deep blue face the wells tint to within a few
+  // percent of their luminance (the owner's navy: about 1.7:1) and the hands
+  // vanish. The test is the dial's one legibility floor,
+  // DIAL_INK_CONTRAST_MIN (WCAG 2.1 SC 1.4.11, 3:1), on the hand tone
+  // against each well's FACE-DERIVED ground, before any remedy. One answer
+  // for the dial, so both sub-dials always match. It is the hand's base hex,
+  // and inkContrast's note below is right that a metal's hex is only
+  // indicative of what the eye gets. It is the trigger here, not a
+  // legibility gate. `dial.contrast.style` picks the remedy (reload-tier):
+  //   hands        — the default: the dial is untouched and main.js turns
+  //                  every blued hand to polished case metal (MATS.steelHand);
+  //   reversePanda — light sub-dials on the dark face: each well's ground is
+  //                  the case alloy's own F0 (ALLOY_COLORS, caseMetal's table)
+  //                  and its floor a satin metal finish;
+  //   panda        — light face, dark sub-dials: the face's base tone is the
+  //                  case alloy's, the wells black lacquer (PANDA_WELL), and
+  //                  main.js turns the SUB-DIAL hands to case metal (blue on
+  //                  black is 2.8:1, still under the floor). The main hands
+  //                  stay blue on silver.
+  // Every print then solves against the ground it is painted on (§196), and
+  // §157's gate reads the same grounds through wellInkSites, so ink and gate
+  // follow the remedy. On sapphire the ground is the glass and nothing here
+  // applies.
+  const contrastStyle = aesthetics.dial.contrast?.style ?? 'hands';
+  const handTone = `#${MATS.bluedHand.color.getHexString()}`;
+  const caseTone = () => ALLOY_COLORS[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] || ALLOY_COLORS.steel;
+  const wellRawGround = (sd) => sd.face
+    || dialTintAt(aesthetics.dial.face.color, Math.hypot(sd.x, sd.y) / (2 * DIAL_CANVAS_FILL_F * radius));
+  const contrastActive = () => !sapphire
+    && subdials.some((sd) => contrastRatio(wellRawGround(sd), handTone) < DIAL_INK_CONTRAST_MIN);
+  const pandaOn = () => contrastStyle === 'panda' && contrastActive();
+  const reversePandaOn = () => contrastStyle === 'reversePanda' && contrastActive();
+  const faceTone = () => (pandaOn() ? caseTone() : aesthetics.dial.face.color);
+  g.userData.contrast = () => ({ style: contrastStyle, active: contrastActive() });
+  const groundAt = (f) => (sapphire ? glassGround : dialTintAt(faceTone(), f));
   // A print sheet on sapphire: the glass recipe with the sheet's canvas as
   // its map. Colour white and opacity 1 because the texels already carry the
   // tint and the alpha — the material must not apply either twice.
@@ -9353,7 +9391,7 @@ export function makeDial({
         ctx.clearRect(0, 0, S, S);
         // Silvered base with a soft radial vignette, around the editable base
         // tone (§154 — see DIAL_TINT_RATIO_{IN,OUT} above for the derivation).
-        const faceColor = aesthetics.dial.face.color;
+        const faceColor = faceTone();   // §291: the panda's silver when that remedy is on
         const grad = ctx.createRadialGradient(C, C, R * 0.1, C, C, R);
         grad.addColorStop(0, dialTintStop(faceColor, 0));
         grad.addColorStop(0.75, faceColor);
@@ -9651,7 +9689,12 @@ export function makeDial({
           // anchors the maker's mark's designed relation (§196), and for a
           // well that opted out with an explicit `face` it IS that face —
           // such a well never recolours, so its shipped ground is itself.
-          const wellGroundNow = () => sd.face || groundAt(wellR);
+          // §291: the remedy's ground (the contrast block at groundAt has why).
+          // Reverse panda paints the case alloy and finishes the floor as metal;
+          // panda paints black lacquer on a well that derives its tone.
+          const wellIsMetal = reversePandaOn;
+          const wellGroundNow = () => (wellIsMetal() ? caseTone()
+            : (pandaOn() && !sd.face) ? PANDA_WELL : (sd.face || groundAt(wellR)));
           const wellGroundShipped = sd.face
             || dialTintAt(DIAL_MARK_DESIGN_GROUND, wellR);
           wellInkSites.push({ kind: sd.kind, ground: wellGroundNow });
@@ -9672,10 +9715,20 @@ export function makeDial({
           floorMat = sapphire ? printOnSapphire(ftex)
             : new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07,
               userData: { stock: 'brass' } });   // §269: the well's floor is the brass blank's, lacquered like the face
+          // §291: lacquer or the case's metal, per wellIsMetal above.
+          const finishWell = () => {
+            if (sapphire) return;
+            const metal = wellIsMetal();
+            floorMat.metalness = metal ? 1.0 : 0.05;
+            floorMat.roughness = metal ? STEEL_FINISH.roughness : 0.35;
+            floorMat.clearcoat = metal ? 0.0 : 1.0;
+            floorMat.userData.metalWell = metal;
+          };
+          finishWell();
           // Only a well that DERIVES its tone follows a live recolour; one
           // that passed an explicit `face` asked for a fixed colour and keeps
           // it, which is the same opt-out the paint above honours.
-          if (!sd.face) repaintWells.push(() => { paintWell(); ftex.needsUpdate = true; });
+          if (!sd.face) repaintWells.push(() => { paintWell(); finishWell(); ftex.needsUpdate = true; });
         }
       }
       if (!floorMat) floorMat = sapphire ? MATS.sapphire : MATS.silver;
@@ -9984,7 +10037,7 @@ export function makeDial({
   // old navy "read as black" under the original rig, fixed in the material),
   // and that failure is exactly the kind a flat-colour assert would miss.
   g.userData.inkContrast = () => {
-    const face = aesthetics.dial.face.color;
+    const face = faceTone();
     const at = (f) => groundAt(f); // §3: on sapphire every ground is the glass-over-nickel composite
     // §196 — the gated block measures the SOLVED inks, the ones the paint
     // actually printed, and names which pole won; the wells joined the gate

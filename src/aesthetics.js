@@ -274,7 +274,9 @@ export const IMPORT_OUTCOME = (() => {
 // to a non-default in-range value and holds the geometry fingerprint equal to
 // the virgin boot's — §157's evidence for `recolourFace`, as a standing gate.
 export const SHARE_PARAM = 'aes';
-export const SHARE_SUBTREES = Object.freeze(['dial.face', 'lighting', 'rendering', 'camera', 'decoration', 'materials']);
+// §291 — `dial.contrast` joins: its remedy swaps hand MATERIALS and repaints
+// the face and wells, and moves no vertex, which aestheticsShareSafe holds.
+export const SHARE_SUBTREES = Object.freeze(['dial.face', 'dial.contrast', 'lighting', 'rendering', 'camera', 'decoration', 'materials']);
 const LEGACY_PARAMS = Object.freeze({ dialcol: 'dial.face.color', metal: 'materials.caseMetal.alloy' });
 export const isShareable = (path) => SHARE_SUBTREES.some((s) => path === s || path.startsWith(`${s}.`));
 

@@ -24,7 +24,7 @@ const brass = phys({
 // class), named as such here rather than laundered. §203 step 2 adds the
 // grain and the polished end; both materials below must move together
 // when it does, which is what sharing the literal buys.
-const STEEL_FINISH = {
+export const STEEL_FINISH = {
   color: 0xd6d9dd,
   metalness: 1.0,
   roughness: 0.30,
@@ -98,6 +98,27 @@ const BRUSH_MATERIALS = [steel, caseMetal];
 // One shader for both materials: their onBeforeCompile share a program cache
 // key, so the zone code must be identical in each.
 export const CASE_POLISH_ATTR = 'casePolish';
+
+// §291 — THE MIDCASE'S VERTICAL BRUSHING. Which way a brushed surface reads is
+// set by its LINES, not its lobe. three's anisotropic GGX is rougher along the
+// tangent T (alphaT = mix(r², 1, a²) against alphaB = r²), so the highlight
+// stretches along T, and real grooves run across that. Grooves along the case
+// axis therefore want T around the band, and the flank rule below already
+// gives the midcase exactly that: the lobe was vertical brushing all along,
+// and it read as nothing because nothing drew the streaks. These are those
+// streaks. On the case middle's flanks only (CASE_POLISH_ATTR's flag, outside
+// the bezel's polished zone), a value noise in the azimuth and constant along
+// the axis tilts the normal around the band and nudges the roughness, so
+// every line runs caseback to bezel. Three octaves, CASE_BRUSH_LINES lines per
+// radian (at the band's 47 u radius, 17.8 mm, those are pitches of about 0.1,
+// 0.03 and 0.01 mm, the band a brushing belt leaves). Each octave fades as its
+// lines fall under a pixel (fwidth), so a distant band shows the coarse grain
+// and never a moiré. The tilt and the roughness swing are taste, and both
+// scale with the slider's own anisotropy, so at the polished end there are no
+// lines at all.
+export const CASE_BRUSH_LINES = [180, 560, 1700];
+export const CASE_BRUSH_TILT = 0.06;       // rad of normal tilt at full brush (taste)
+export const CASE_BRUSH_ROUGH_SWING = 0.25; // ± fraction of the roughness at full brush (taste)
 function installBrush(mat) {
   mat.defaultAttributeValues = { [CASE_POLISH_ATTR]: [0, 0] };
   mat.onBeforeCompile = (shader) => {
@@ -110,15 +131,41 @@ function installBrush(mat) {
     const a = ((aesthetics.materials?.steel?.brushAngleDeg ?? 0) * Math.PI) / 180;
     shader.uniforms.brushDir = { value: new THREE.Vector2(Math.cos(a), Math.sin(a)) };
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vBrushNormal;\nattribute vec2 ${CASE_POLISH_ATTR};\nvarying vec2 vCasePolish;`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vBrushNormal;\nattribute vec2 ${CASE_POLISH_ATTR};\nvarying vec2 vCasePolish;\nvarying vec2 vCaseXY;`)
       .replace('#include <begin_vertex>',
-        `#include <begin_vertex>\nvBrushNormal = normalize(mat3(modelMatrix) * objectNormal);\nvCasePolish = ${CASE_POLISH_ATTR};`);
+        `#include <begin_vertex>\nvBrushNormal = normalize(mat3(modelMatrix) * objectNormal);\nvCasePolish = ${CASE_POLISH_ATTR};\nvCaseXY = transformed.xy;`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vBrushNormal;\nvarying vec2 vCasePolish;\nuniform vec2 brushDir;')
+      .replace('#include <common>', `#include <common>
+varying vec3 vBrushNormal;
+varying vec2 vCasePolish;
+varying vec2 vCaseXY;
+uniform vec2 brushDir;
+float caseBrushHash(float x) { return fract(sin(x * 127.1) * 43758.5453); }
+float caseBrushNoise(float x) {
+  float i = floor(x), f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(caseBrushHash(i), caseBrushHash(i + 1.0), f);
+}`)
       .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
       #ifdef USE_ANISOTROPY
       {
         vec3 nW = normalize(vBrushNormal);
+        // §291: the midcase's vertical lines (CASE_BRUSH_LINES' comment)
+        if (vCasePolish.x > 0.5 && vCasePolish.y < 0.0 && abs(nW.z) <= ${BRUSH_FLAT_GATE}) {
+          float phi = atan(vCaseXY.y, vCaseXY.x);
+          float s = 0.0, wsum = 0.0;
+          ${CASE_BRUSH_LINES.map((f, i) => `{
+            float u = phi * ${f.toFixed(1)};
+            float w = clamp(1.0 - 2.0 * fwidth(u), 0.0, 1.0) / ${(i + 1).toFixed(1)};
+            s += w * (caseBrushNoise(u) - 0.5); wsum += 1.0 / ${(i + 1).toFixed(1)};
+          }`).join('\n          ')}
+          s /= wsum;
+          float k = clamp(length(anisotropyVector), 0.0, 1.0);   // the slider's own brush, 0 at polished
+          vec3 tCirc = normalize((viewMatrix * vec4(cross(vec3(0.0, 0.0, 1.0), nW), 0.0)).xyz);
+          normal = normalize(normal + tCirc * (${CASE_BRUSH_TILT} * 2.0 * k * s));
+          material.roughness = clamp(material.roughness * (1.0 + ${CASE_BRUSH_ROUGH_SWING} * 2.0 * k * s), 0.0525, 1.0);
+          material.alphaT = mix(pow2(material.roughness), 1.0, pow2(material.anisotropy));
+        }
         vec3 tW = (abs(nW.z) > ${BRUSH_FLAT_GATE})
           ? vec3(brushDir, 0.0)                 // a flat: straight grain along the declared angle
           : cross(vec3(0.0, 0.0, 1.0), nW);     // a flank: circumferential about the movement axis
@@ -179,11 +226,15 @@ export const ALLOY_COLORS = {
 // table does not know falls back to steel and WARNS: the loader refuses such
 // a key before it gets here, so reaching this branch means the schema's
 // `_options` and this table have parted, which is a bug, not a taste.
+// §291: the steel hands are cut from the case's alloy too. They are defined
+// below this call, so they register here rather than being named.
+const CASE_ALLOY_FOLLOWERS = [];
 export function applyCaseMetalFromAesthetics() {
   const key = aesthetics.materials?.caseMetal?.alloy ?? 'steel';
   const hex = ALLOY_COLORS[key];
   if (!hex) console.warn(`§203: alloy '${key}' is in aesthetics.json's _options but not in ALLOY_COLORS — falling back to steel`);
   caseMetal.color.set(hex || ALLOY_COLORS.steel);
+  for (const m of CASE_ALLOY_FOLLOWERS) m.color.set(hex || ALLOY_COLORS.steel);
 }
 applyCaseMetalFromAesthetics();
 
@@ -384,6 +435,19 @@ const bluedHand = phys({
   reflectivity: 0.8,
   envMapIntensity: 1.6,
 });
+// §291 — the hands in the CASE'S METAL, for dial.contrast's default remedy:
+// a blued hand that cannot be read on its ground turns to this. The blued
+// hand's own polish (roughness 0.17, the same step short of mirror) at full
+// metalness, its colour the case alloy's F0, so a steel case gets steel hands
+// and a gold case gold ones.
+const steelHand = phys({
+  color: ALLOY_COLORS[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] || ALLOY_COLORS.steel,
+  metalness: 1.0,
+  roughness: 0.17,
+  clearcoat: 0.6,
+  clearcoatRoughness: 0.15,
+});
+CASE_ALLOY_FOLLOWERS.push(steelHand);
 
 // Cool nickel/rhodium plate finish.
 const nickel = phys({
@@ -589,7 +653,7 @@ const MATERIAL_STOCK = new Map([
 ]);
 export function stockKeyOf(material) {
   if (!material || Array.isArray(material)) return null;
-  if (material === caseMetal) return ALLOY_STOCK[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] ?? 'steel';
+  if (material === caseMetal || material === steelHand) return ALLOY_STOCK[aesthetics.materials?.caseMetal?.alloy ?? 'steel'] ?? 'steel';
   const k = MATERIAL_STOCK.get(material);
   if (k) return k;
   if (material.userData?.stock) return material.userData.stock;
@@ -600,6 +664,7 @@ export function stockKeyOf(material) {
 export const MATS = {
   brass,
   bluedHand,
+  steelHand,     // §291 — the contrast remedy's hands, in the case alloy
   gold,
   steel,
   caseMetal,

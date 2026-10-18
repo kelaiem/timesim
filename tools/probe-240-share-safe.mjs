@@ -31,7 +31,7 @@ await new Promise((r) => setTimeout(r, 1200));
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const BASE = `http://127.0.0.1:${PORT}/index.html`;
 
-const SHIPPED = "export const SHARE_SUBTREES = Object.freeze(['dial.face', 'lighting', 'rendering', 'camera', 'decoration', 'materials']);";
+const SHIPPED = "export const SHARE_SUBTREES = Object.freeze(['dial.face', 'dial.contrast', 'lighting', 'rendering', 'camera', 'decoration', 'materials']);";   // §291 added dial.contrast
 const src = readFileSync(join(ROOT, 'src/aesthetics.js'), 'utf8');
 if (!src.includes(SHIPPED)) throw new Error('SHARE_SUBTREES no longer reads as this probe expects — re-read the declaration before trusting a mutation of it');
 const MUTATED = src.replace(SHIPPED, SHIPPED.replace("'materials'])", "'materials', 'dial.hands'])"));
