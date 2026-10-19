@@ -10553,6 +10553,12 @@ export function checkOscillator(clock) {
 //     knocking are exactly those at or past it; and the nominal corner clears it
 //     in both positions. That the favourable corner knocks dial-flat is the
 //     record's to REPORT.
+// 18. THE RESET HEART SLIPS BEFORE IT STALLS THE TRAIN (TODO 249) — the
+//     display arbor's coupling is bounded by the torque the running train
+//     DELIVERS at the fourth arbor: the ideal reflection (re-derived from the
+//     ribbon's release over the arbor's turning) times each corner's stages up
+//     to the fourth arbor's pivots, the ceiling the adverse corner's, and the
+//     reset rod's mean load at it inside the 50 mN its transfer row prices.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 export const RIBBON_STRESS_WAIVERS = {
@@ -10896,6 +10902,56 @@ export function checkEqualisation(clock) {
       }
     }
   }
+  // Row 18 (TODO 249) — THE RESET HEART SLIPS BEFORE IT STALLS THE TRAIN.
+  // The display arbor's friction coupling is bounded by the torque the RUNNING
+  // train delivers at the fourth arbor (the hammer meets the heart before the
+  // hack pad stops the balance), never by the lossless reflection. Held: the
+  // ideal torque re-derived from the ribbon's release over the fourth arbor's
+  // turning (one turn a minute, over the reserve); the stages it is priced
+  // through are each corner's prefix up to the fourth arbor's own pivots; each
+  // corner's ceiling is ideal × that product; the corners ordered; the slip
+  // ceiling the ADVERSE corner's and under the lossless figure; and the reset
+  // rod's mean load, τ·π over the tail's stroke, inside the 50 mN its transfer
+  // row is priced at.
+  if (en && en.corners) {
+    const rc = en.resetCoupling;
+    if (!rc || !rc.byCorner || !Array.isArray(rc.through)) {
+      failures.push({ what: 'reset coupling ceiling', note: 'going.energy.resetCoupling is missing — the heart\'s slip bound is the lossless train again (TODO 249 regressed)' });
+    } else {
+      const ideal = en.released_J / (2 * Math.PI * en.reserve_s / 60);
+      if (!(rel(rc.ideal_Nm, ideal) <= 1e-12))
+        failures.push({ what: 'reset coupling identity: the ideal torque at the fourth arbor', record: rc.ideal_Nm, fromRelease: ideal });
+      const LAST = 'fourth arbor pivots';
+      if (rc.through[rc.through.length - 1] !== LAST)
+        failures.push({ what: 'reset coupling stages do not end at the fourth arbor\'s pivots', through: rc.through });
+      for (const c of Object.keys(en.corners)) {
+        const S = en.corners[c].stages, n = S.findIndex((st) => st.name === LAST);
+        const prefix = S.slice(0, n + 1);
+        if (n < 0 || prefix.length !== rc.through.length || prefix.some((st, i) => st.name !== rc.through[i])) {
+          failures.push({ what: 'reset coupling stages are not the corner\'s prefix to the fourth arbor', corner: c, through: rc.through, stages: S.map((st) => st.name) });
+          continue;
+        }
+        const eta = prefix.reduce((p, st) => p * st.eta, 1), row = rc.byCorner[c];
+        if (!row || !(rel(row.eta, eta) <= 1e-12) || !(rel(row.ceiling_Nm, rc.ideal_Nm * eta) <= 1e-12))
+          failures.push({ what: 'reset coupling identity: ceiling = ideal × Π η', corner: c, record: row || null, eta, ceiling_Nm: rc.ideal_Nm * eta });
+        if (!(eta > 0 && eta < 1))
+          failures.push({ what: 'reset coupling η outside (0, 1)', corner: c, eta });
+      }
+      const B = rc.byCorner;
+      if (!(B.favourable && B.nominal && B.adverse && B.favourable.eta >= B.nominal.eta && B.nominal.eta >= B.adverse.eta))
+        failures.push({ what: 'reset coupling corners out of order', etas: Object.fromEntries(Object.entries(B).map(([c, r]) => [c, r.eta])) });
+      const least = Math.min(...Object.values(B).map((r) => r.ceiling_Nm));
+      if (!(rc.corner === 'adverse' && B.adverse && rc.slipMax_Nm === B.adverse.ceiling_Nm && rel(rc.slipMax_Nm, least) <= 1e-12))
+        failures.push({ what: 'reset coupling ceiling is not the adverse corner\'s, the least delivery', slipMax_Nm: rc.slipMax_Nm, least });
+      if (!(rc.slipMax_Nm < rc.ideal_Nm))
+        failures.push({ what: 'reset coupling ceiling at or over the lossless torque', slipMax_Nm: rc.slipMax_Nm, ideal_Nm: rc.ideal_Nm });
+      const F = rc.slipMax_Nm * rc.sweep_rad / (rc.tailStroke_u * UNIT_MM / 1000) * 1000;
+      if (!(rc.sweep_rad === Math.PI && rel(rc.rodLoad_mN, F) <= 1e-12))
+        failures.push({ what: 'reset rod load identity: τ·π / tail stroke', record: rc.rodLoad_mN, fromCeiling: F, sweep: rc.sweep_rad });
+      if (!(rc.rodCeiling_mN === SELECTOR_DETENT_WINDOW_MN[1] && F <= SELECTOR_DETENT_WINDOW_MN[1]))
+        failures.push({ what: 'reset rod load over the ceiling its transfer row is priced at', load_mN: F, ceiling_mN: SELECTOR_DETENT_WINDOW_MN[1], record: rc.rodCeiling_mN });
+    }
+  }
   // Row 13 (TODO 193) — THE RIBBONS AGAINST THEIR MATERIAL. σ = M·a/I at
   // both ends of each ribbon's working wind, re-derived from the record's own
   // k, angles and section (and against E·a·θ/L, which is the same number when
@@ -11027,6 +11083,11 @@ export function checkEqualisation(clock) {
             k_Nmm_per_rad: +(en.maintainingHold.spring.k_Nm_per_rad * 1000).toFixed(4), preload_rad: +en.maintainingHold.spring.preload_rad.toFixed(5),
             sigma_MPa: [+(en.maintainingHold.spring.sigmaWork_Pa / 1e6).toFixed(1), +(en.maintainingHold.spring.sigmaStop_Pa / 1e6).toFixed(1)],
           } : null,
+        } : null,
+        resetCoupling: en.resetCoupling ? {
+          slipMax_uNm: +(en.resetCoupling.slipMax_Nm * 1e6).toFixed(4), lossless_uNm: +(en.resetCoupling.ideal_Nm * 1e6).toFixed(4),
+          eta: Object.fromEntries(Object.entries(en.resetCoupling.byCorner).map(([c, r]) => [c, +r.eta.toFixed(4)])),
+          rodLoad_mN: +en.resetCoupling.rodLoad_mN.toFixed(3), rodCeiling_mN: en.resetCoupling.rodCeiling_mN,
         } : null,
         pivots: en.pivots && en.pivots.strength ? {
           trainPivotR_u: +en.pivots.trainPivotR_u.toFixed(5), balancePivotR_u: +en.pivots.balancePivotR_u.toFixed(5),

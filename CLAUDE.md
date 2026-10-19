@@ -549,7 +549,10 @@ it into prose either.
    one step larger at the lightest grid rim the metal allows fails. Row 17 holds
    the NOMINAL corner clear of the knock in both positions (a watch that knocks
    as serviced is a fault); that the favourable corner's dial-flat energy would
-   carry it past (455°) is listed in the record and REPORTED. `FRICTION` is the one place a coefficient the movement
+   carry it past (455°) is listed in the record and REPORTED. Since
+   TODO 249 row 18 holds the reset heart's slip ceiling to what the RUNNING train
+   delivers at the fourth arbor (`going.energy.resetCoupling`, the adverse corner's
+   stages to that arbor's pivots), never its lossless torque. `FRICTION` is the one place a coefficient the movement
    cannot measure may live, always as a band with its source, never a single
    number, and `MU_STEEL` is the adverse corner of every steel row by
    reference; `tools/probe-power-budget.mjs` computes the same column from the

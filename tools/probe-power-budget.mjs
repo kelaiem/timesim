@@ -1,4 +1,4 @@
-// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak, and since TODO 221 by the beak's ARC as a Hertz line contact against the click steel's first yield — against the same record, and since TODO 219 the maintaining SPRING: its floor from the nominal corner's need at the claim, the ring's tooth count, k, the preload, k again from the blade's own profile, and its root stress. The verdict itself is a REPORT; the agreement is the acceptance.
+// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors (shouldered onto pivots at §50's floor or their load since TODO 192 step 2 and TODO 193), escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. Since TODO 217 it also prices the maintaining detent's HOLD — the going torque on the ring's face, carried by the cranked click's arm and beak, and since TODO 221 by the beak's ARC as a Hertz line contact against the click steel's first yield — against the same record, and since TODO 219 the maintaining SPRING: its floor from the nominal corner's need at the claim, the ring's tooth count, k, the preload, k again from the blade's own profile, and its root stress. Since TODO 249 it also derives the reset heart's slip ceiling — the torque the running train delivers at the fourth arbor, its own walk to that arbor's pivots at the adverse corner — and the reset rod's mean load at it. The verdict itself is a REPORT; the agreement is the acceptance.
 //
 // Why it exists. Until TODO 192 every number the movement published about its
 // power was FRICTIONLESS. EQUALISATION holds the fusee's level product to float
@@ -275,6 +275,27 @@ function run(A, piv = { train: null, bal: Q.balPivR }) {
 }
 const results = Object.fromEntries(Object.entries(CORNERS).map(([n, A]) => [n, run(A)]));
 
+// THE RESET HEART'S SLIP CEILING (TODO 249). The display arbor rides the fourth
+// arbor on a friction coupling, and the hammer turns the heart while the train
+// RUNS, so the coupling must slip under the torque the train delivers there:
+// the ideal reflection (this probe's level fusee torque through the first three
+// meshes) times every stage of this probe's own walk up to the fourth arbor's
+// pivots, the ceiling the adverse corner's. The rod's mean load is τ·π over the
+// hammer tail's stroke, read off the record (cut geometry, the pivot lengths'
+// convention), and must sit inside the detent ceiling the rod is priced at.
+const reset = (() => {
+  const ideal = tauFusee * meshes.slice(0, 3).reduce((p, m) => p * m.z2 / m.z1, 1);
+  const byCorner = Object.fromEntries(Object.entries(results).map(([n, R]) => {
+    const k = R.stages.findIndex((st) => st.name === 'fourth arbor pivots');
+    const eta = R.stages.slice(0, k + 1).reduce((p, st) => p * st.eta, 1);
+    return [n, { eta, ceiling: ideal * eta }];
+  }));
+  const slipMax = Math.min(...Object.values(byCorner).map((c) => c.ceiling));
+  const rc = eq.energy?.resetCoupling;
+  const rodLoad_mN = rc ? slipMax * Math.PI / (rc.tailStroke_u * U) * 1000 : NaN;
+  return { ideal, byCorner, slipMax, rodLoad_mN, rodCeiling_mN: L.SELECTOR_DETENT_WINDOW_MN[1] };
+})();
+
 // THE MAINTAINING SPRING (TODO 219). During a wind it drives the great wheel
 // directly, so the floor is the torque AT THE GREAT WHEEL that sustains the
 // claim at the record's floor corner: this probe's own need at the claim, over
@@ -494,6 +515,15 @@ if (!REC || !REC.corners) {
       same('maintaining hold: arc worst σ', hold.arc.worst_Pa, holdRec.beak.arc.worst.sigma_Pa);
     }
   }
+  const rc = REC.resetCoupling;
+  if (!rc) disagreements.push({ what: 'reset coupling', probe: 'computed', record: 'EQUALISATION.going.energy.resetCoupling is missing (TODO 249)' });
+  else {
+    same('reset coupling: lossless torque at the fourth arbor', reset.ideal, rc.ideal_Nm);
+    for (const [n, cc] of Object.entries(reset.byCorner)) same(`reset coupling: ${n} ceiling`, cc.ceiling, rc.byCorner[n]?.ceiling_Nm ?? NaN);
+    same('reset coupling: slip ceiling', reset.slipMax, rc.slipMax_Nm);
+    same('reset rod: mean load', reset.rodLoad_mN, rc.rodLoad_mN);
+    if (!(reset.rodLoad_mN <= reset.rodCeiling_mN)) disagreements.push({ what: 'reset rod load over its priced ceiling', probe: reset.rodLoad_mN, record: reset.rodCeiling_mN });
+  }
   if (!spring) disagreements.push({ what: 'maintaining spring', probe: 'computed', record: 'EQUALISATION.going.energy.maintainingHold.spring has no k (TODO 219)' });
   else {
     same('maintaining spring: floor', spring.floor_Nm, spRec.floor_Nm);
@@ -506,13 +536,16 @@ if (!REC || !REC.corners) {
     same('maintaining spring: σ at the stop', spring.sigmaStop, spRec.sigmaStop_Pa);
   }
 }
+console.log(`\n--- the reset heart's slip ceiling (TODO 249) ---`);
+console.log(`  lossless ${f(reset.ideal * 1e6, 4)} µN·m at the fourth arbor; delivered ${Object.entries(reset.byCorner).map(([n, c]) => `${n} η ${f(c.eta, 4)} → ${f(c.ceiling * 1e6, 4)}`).join(', ')} µN·m`);
+console.log(`  ceiling ${f(reset.slipMax * 1e6, 4)} µN·m (the lossless bound ${f((reset.ideal / reset.slipMax - 1) * 100, 1)}% over it); reset rod mean load ${f(reset.rodLoad_mN, 3)} mN against the ${reset.rodCeiling_mN} mN it is priced at`);
 console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
 if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
-else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 3 + 5 + 8} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way (the peak capped at the knock), and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length + 2 * strength.length + 2 + arbors.length + 3 + 2 + 3 + 5 + 8 + 6} figures within 1e-9 relative, and both declared amplitudes the solve's extremes rounded the safe way (the peak capped at the knock), and the nominal vertical swing on its ${L.AMPLITUDE_TARGET_DEG}° target`);
 
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);
 console.log('\nThe verdict above is a REPORT. The only acceptance here is the record agreeing with this computation.\n');
 
-if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, strength, hold, spring, ribbon, alarmRibbon, disagreements }, null, 1));
+if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, reset, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, strength, hold, spring, ribbon, alarmRibbon, disagreements }, null, 1));
 if (disagreements.length) { console.log(`FAIL — ${disagreements.length} disagreement(s) between the record and this computation`); process.exit(1); }

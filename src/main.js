@@ -9839,10 +9839,15 @@ hammerGroup.add(hammerTailBar);
 //    revolution"), and the rod's measured driven-end stroke is 1.152 mm,
 //    so F = τ·π / 1.152 mm = 0.83 mN. (TODO 193 and 192 step 3 then gave the
 //    ribbon its real section and its drum's worth of coils: 31.6 mJ, so
-//    τ ≤ 2.80e-6 N·m and F ≈ 7.6 mN — no longer sub-milliNewton, inside the
-//    5–50 mN detent window the LIVE rows price at its 50 mN ceiling, and
-//    under the 14.3 mN deflection ceiling below. The figures that follow are
-//    the record the rod was first priced against.)
+//    τ ≤ 2.80e-6 N·m and F ≈ 7.6 mN. Both were LOSSLESS, and TODO 249 found
+//    the hammer meets the heart while the train still RUNS, so the bound is
+//    what the train DELIVERS at the fourth arbor: `going.energy.resetCoupling`,
+//    the ideal 3.14e-6 N·m (the ribbon now releases 35.5 mJ) times the stages to that
+//    arbor at the adverse corner (η 0.586) — τ ≤ 1.84e-6 N·m, F 4.90 mN
+//    mean over the tail's stroke. The lossless figure sat 71% over it.
+//    `equalisation` row 18 holds it, and the rod's LIVE row is priced at
+//    the 50 mN detent ceiling above it. The figures that follow are the
+//    record the rod was first priced against.)
 //  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
 //    3.067 mm (measured off the built pad). Holding a 315°
 //    (AMPLITUDE_PEAK_DEG — the largest swing the balance can reach: the
@@ -31630,6 +31635,46 @@ const EQUALISATION = (() => {
           contact: H.contact },
       };
     })();
+    // TODO 249 — THE RESET HEART'S SLIP CEILING, through the train's losses.
+    // The display arbor rides the fourth arbor on a friction coupling, and the
+    // reset hammer turns the heart against it (§137 Gate A's reset load). The
+    // coupling must slip before the hammer stalls the train, and the train is
+    // RUNNING while it does: the roller meets the heart before the hack pad
+    // has stopped the balance (measured off the live loop — the heart seats on
+    // the very frame the pad engages), so what holds the fourth arbor against
+    // the hammer is the torque the train DELIVERS there, the ideal reflected
+    // torque times every stage's η from the ribbon to that arbor, its own
+    // pivots included (they oppose the arbor's forward running too). The
+    // lossless figure stood here until TODO 249 and sat above that at every
+    // corner. The ceiling is the ADVERSE corner's — the least delivery the band
+    // allows, so a coupling under it slips everywhere. The rod's load follows by
+    // virtual work as Gate A always took it: the heart swept at most half a
+    // turn over the hammer tail's whole stroke, so a MEAN force (the heart's
+    // profile sets the peak, which nothing here prices), held under the 50 mN
+    // detent ceiling the reset rod's transfer row is priced at.
+    const corners = Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)]));
+    const resetCoupling = (() => {
+      const toFourth = meshes.slice(0, meshes.findIndex((m) => m.arbor === 'fourth') + 1);
+      const ideal_Nm = fuseeTorque_Nm * toFourth.reduce((p, m) => p * m.z2 / m.z1, 1);
+      const last = 'fourth arbor pivots';
+      const byCorner = Object.fromEntries(FRICTION_CORNERS.map((c) => {
+        const S = corners[c].stages, n = S.findIndex((st) => st.name === last);
+        const eta = S.slice(0, n + 1).reduce((p, st) => p * st.eta, 1);
+        return [c, { eta, ceiling_Nm: ideal_Nm * eta }];
+      }));
+      const through = corners.adverse.stages.slice(0, corners.adverse.stages.findIndex((st) => st.name === last) + 1).map((st) => st.name);
+      const slipMax_Nm = byCorner.adverse.ceiling_Nm;
+      const tailStroke_u = 2 * HAMMER_TAIL * Math.sin(HAMMER_SWING_RAD / 2);   // the hammer tail tip's chord, retracted → seated
+      const sweep_rad = Math.PI;                                                // a heart is never driven more than half a turn
+      const rodLoad_mN = slipMax_Nm * sweep_rad / (tailStroke_u * UNIT_MM / 1000) * 1000;
+      const rodCeiling_mN = SELECTOR_DETENT_WINDOW_MN[1];
+      if (!(rodLoad_mN <= rodCeiling_mN))
+        console.warn(`TODO 249: the reset rod carries ${rodLoad_mN.toFixed(2)} mN at the heart's slip ceiling — over the ${rodCeiling_mN} mN its transfer row is priced at`);
+      return { ideal_Nm, byCorner, through, slipMax_Nm, corner: 'adverse', lossless_Nm: ideal_Nm,
+        overstatement: ideal_Nm / slipMax_Nm - 1,
+        tailStroke_u, sweep_rad, rodLoad_mN, rodCeiling_mN,
+        law: 'τ_slip ≤ τ_ideal(fourth) · Π η(ribbon → fourth arbor pivots) at the adverse corner; the rod\'s mean load τ·π / tail stroke' };
+    })();
     return {
       released_J, meanPower_W: released_J / reserve_s, reserve_s, beats,
       fuseeTurns: FUSEE_WRAP_TURNS, fuseeTorque_Nm, trainRatio, escapeTorque_Nm, perBeat_J,
@@ -31638,7 +31683,8 @@ const EQUALISATION = (() => {
                 fuseePivotR_u: TRAIN_STAFF_R, strength: pivotStrength },
       maintainingHold,
       balance: { mass_kg: mB, k_Nm_per_rad: kB, g_mps2: g, claimedDeg: AMPLITUDE_CLAIM_DEG, peakDeg: AMPLITUDE_PEAK_DEG },
-      corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
+      resetCoupling,
+      corners,
     };
   })();
   // TODO 192 step 4 — the solve's extremes over every corner and both

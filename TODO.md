@@ -26,7 +26,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 252 | OPEN | Found by the friction analysis (#531, failure 9). The fusee arbor runs a plain bush on top and a jewel at the bottom; `probe-power-budget` prints "top bush plain". TODO 192 step 2 kept the plain bushes on purpose (the chain's pull; the let-down square passes through), so this is a decision nobody recorded. Pick one in service terms, declare it, and let the lubrication map carry it |
 | 251 | PART DONE | MEASURED (`tools/probe-251-pinion-mesh.mjs`, 7 controls). 120/7 is still the worst mesh, but by half a point, not the margin the closed form implies: path-model η 0.9619 nominal against 0.9669 for the next worst (80/8). A 10-leaf pinion would gain 1.2 points of train η and cost the 12:1 and every dependent solve, so the recommendation is to KEEP 120/7 and close this item on the owner's word. The measurement found the real defect: TODO 255 |
 | 250 | OPEN | Found by the friction analysis (#531, failure 7). `sawCouplingSpec` defaults `mu = MU_STEEL` (0.2, tanα = 2μ), but the keyless must run greased (μ ≈ 0.1). The coupling then cams out at about half its design torque. The lubrication regime must be an input to that solve; blocked on §247 tier one giving it a greased-steel μ in `FRICTION` |
-| 249 | OPEN | Found by the friction analysis (#531, failure 6). The reset heart's slip bound (`main.js` ~9648, now τ ≤ 2.80e-6 N·m, F ≈ 7.6 mN) is the fourth arbor's torque with NO losses. `going.energy` now publishes every stage's η, so derive the ceiling from them at the adverse corner (≈ 0.69 to the fourth arbor, by hand) and hold it as a row. Same class as TODO 247 and TODO 141 |
+| 249 | DONE | The reset heart's slip ceiling is what the RUNNING train delivers at the fourth arbor, not its lossless torque: the hammer meets the heart before the hack pad stops the balance (measured: the heart seats on the frame the pad engages). `going.energy.resetCoupling` takes the ideal 3.14e-6 N·m through every stage to the fourth arbor's pivots, η 0.761 / 0.681 / 0.586, so the ceiling is **1.84e-6 N·m** at the adverse corner (the lossless bound was 71% over) and the reset rod's mean load 4.90 mN, under the 50 mN it is priced at. `equalisation` row 18 gates it; `probe-power-budget` asserts it. The tube has no slip torque to correct (TODO 247 owns it) |
 | 248 | OPEN | Found by the friction analysis (#531, failure 4). At the wrap's top (r 3.2263 u) a 1.9 u link articulates ≈ 33.7° onto the fusee, the classic chain break site. The movement prices the chain only as friction (η 0.987). Measure rivet bearing stress, wear and fatigue at the 0.15–0.25 N tension before deciding whether the geometry or the claim changes |
 | 247 | OPEN | Found closing TODO 236. The release sleeve now TURNS as it rises, so the 45° cone drags follower A's tail pin round the tube. `alarmConeContact` already returns that drag (`tubeDrag_Nu`) and nothing reads it. Set it against the alarm tube's friction coupling at all three corners, or show the tube cannot slip |
 | 246 | OPEN | Found closing TODO 236. The lifter's two return blades seat the pad, but their preload is not derived, so the return stroke (blades → link in compression → crank → sleeve) has no figure. Derive the preload from the stroke's own friction at the adverse corner, hold the tie link under Euler, and add the return as a `transfers` row |
@@ -33705,6 +33705,8 @@ radius is a fusee re-solve, §254's machinery) or the claim does. Do not widen
 
 ## 249. The reset-heart and tube friction couplings are bounded by a lossless train torque
 
+**DONE** — see the resolution at the end of this item.
+
 Found by the friction analysis (issue #531, failure 6, §247). The reset heart's
 slip ceiling (`main.js`, the Gate A reset load, ~line 9648) is "τ_slip ≤ the
 train's torque at the fourth arbor", taken from the ribbon's released energy
@@ -33723,6 +33725,50 @@ row, and re-quote the figure wherever it survives (the reset comment, the
 primer/explainer if they quote it). Related: TODO 247 (the alarm tube's drag
 against its coupling) and TODO 141 (the centre stack's coupling) are the same
 class and should read the same η.
+
+**DONE — what the landing found and built.**
+
+- **The premise was checked before the fix, because the direction of the
+  correction depends on it.** If the reset ran against a STOPPED train, the
+  hammer would have to back-drive it against the ribbon and its friction, T/η,
+  and the lossless bound would be the safe one. Stepping the live loop through a
+  crown pull settles it: the roller first pushes the heart 27 frames (at 1/240 s)
+  into the pull with the pad still off and τ advancing, and the heart seats on
+  frame 45, the very frame the pad engages. So the reset happens against a
+  RUNNING train, and what holds the fourth arbor against the hammer is the torque
+  the train delivers there, η·T. The issue's direction was right.
+- **`going.energy.resetCoupling`** (`main.js`, beside the energy column). The
+  ideal torque at the fourth arbor is the level fusee torque through the first
+  three meshes, **3.140e-6 N·m**. It equals the ribbon's 35.5 mJ over the
+  arbor's turning (one turn a minute over the 30 h reserve), which is the
+  identity the gate re-derives. The η is every stage of each corner from the
+  ribbon to the **fourth arbor's own pivots**: the mainspring, drum, chain,
+  fusee, three meshes and four pivoted arbors. The fourth arbor's pivots count
+  because they oppose its forward running too. η is **0.7607 / 0.6807 /
+  0.5863** (favourable / nominal / adverse), and the ceiling is the adverse
+  corner's, the least delivery the band allows: **τ_slip ≤ 1.841e-6 N·m**. The
+  lossless figure sat **71%** over it (47% at nominal). This item's 0.76 / 0.69
+  by hand left out the mainspring's coil friction and the fourth arbor's pivots.
+- **The rod's load follows**, by Gate A's own virtual work: the heart swept at
+  most half a turn over the hammer tail's chord (3.114 u, 1.18 mm), F = τ·π /
+  stroke = **4.90 mN**. This is a MEAN force; the heart's profile sets the peak,
+  and nothing here prices it. It is held under the 50 mN detent ceiling the
+  reset rod's transfer row is priced at, with a boot warning if it ever crosses.
+- **Gated and asserted.** `equalisation` row 18 re-derives the ideal from the
+  release, holds the stage list to each corner's prefix ending at the fourth
+  arbor's pivots, ceiling = ideal × Π η at float noise, the corners ordered, the
+  ceiling the adverse corner's and under the lossless torque, the rod's load
+  identity and its ceiling. `tools/probe-power-budget.mjs` computes the same
+  ceiling from its own walk and asserts it (AGREES — 62 figures, up from 56).
+  The CONTROL was run by hand: planting the lossless bound back in the record
+  fails two rows of the gate and two figures of the probe.
+- **Re-quoted**: Gate A's comment (`main.js`, §137) now carries the delivered
+  figures beside the record it was first priced against. Neither `primer.html`
+  nor `explain.html` quoted the figure.
+- **The tube coupling has nothing to correct**: no slip torque is published for
+  it, so there was no lossless bound to replace. TODO 247 owns pricing it, and
+  TODO 141 the centre stack. A slip torque either one grows should read the same
+  delivered torque, through the stages to its own arbor.
 
 ## 250. Saw couplings are cut at dry MU_STEEL, and the keyless runs greased
 
