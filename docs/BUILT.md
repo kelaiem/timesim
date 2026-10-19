@@ -39972,6 +39972,10 @@ only replaces a convex corner. Both radii are derived in `CASE_DIMS`:
   band's own wall (`R_OUT_FRONT − R_IN`, 1 mm). Measured by hand against the
   crystal seat's two slopes, the nearest is the seat corner at the tangency
   itself. The others stand 2.96 u and further off the arc.
+  **Corrected by §292:** that hand measurement missed a segment. The crystal
+  seat's slope from the bore down to the crystal comes closer than the
+  tangency. Measured densely, the thinnest section under this circle was
+  2.419 u (0.92 mm), not the band's 2.639 u. Still well above §50's floor.
 - **Lip edge, `bezelLipR`**: the lip's height less §50's floor (0.343 u,
   0.13 mm). This leaves `STOCK_MIN_U` of straight bore above the crystal's
   face, so the bore that traps the crystal is still a bore.
@@ -40268,3 +40272,44 @@ Locally on SwiftShader:
   recolour or reload.
 - The wireframe checkbox on the loading screen starts unticked whatever this
   renderer's default is, and is applied only if touched.
+
+## §292 — A rounder bezel: the outer round becomes a quarter ellipse with a 0.8 mm flat
+
+Owner ask: make the bezel more rounded with a smaller flat surface.
+
+§289's outer round was a circle whose radius was the bezel's height over its
+seat, so the flat top kept 1.72 mm. A bigger circle would run past the seat
+plane down the band. So the round becomes a quarter ELLIPSE:
+- **Height:** still `bezelR = zBandFront − zBezelOuter` (3.035 u). It ends
+  tangent to the band's flank exactly at the seat plane, as before.
+- **Reach:** `bezelRoundW`, what the face has left once the lip's round and
+  `BEZEL_FLAT_MM` of flat are taken out: 5.463 u, 2.07 mm, against the
+  height's 1.15. The flat's width, 0.8 mm (from 1.72), is the owner's taste.
+  It is named in `CASE_DIMS` and not dressed as a derivation.
+- **The metal it leaves is measured, not claimed.** `makeCase` samples the
+  true ellipse densely against the crystal seat's inner run and the bore up
+  to the midcase step. It publishes the thinnest section as
+  `case.userData.bezelMinWall` and warns under §50's floor (`STOCK_MIN_U`,
+  0.317 u). Measured: 1.334 u (0.51 mm), four times the floor. Sweeping the
+  reach, the section falls roughly linearly, from 2.42 u for §289's circle to
+  0.66 u, which leaves no flat at all.
+
+The measurement also corrected §289's record. That entry's claim that the
+thinnest section was the band's own wall at the tangency was wrong: the
+seat's slope comes closer (2.419 u, 0.92 mm). The correction is marked in
+place.
+
+The readers of the profile follow it:
+- the lathe (12 segments for the ellipse, 8 for the circle before);
+- the acoustic exterior, as 12 chords with the ellipse's own outward normal,
+  (cos t / rx, sin t / rz) normalised;
+- the schematic's tangent circle at `R_OUT_FRONT − bezelRoundW`.
+
+The polished zone is unchanged (everything in front of the seat plane), and
+so is the lip. Boot is silent.
+
+**A §291 defect found on the way.** `probe-269-case-path` read 53/54: a
+platinum case weighed 71.616 g where the steel watch plus the alloy's share
+predicts 71.583 g. §291's steel hands take the case alloy's stock, but the
+§269 tally, and the probe's own copy of it, counted only `caseMetal` in the
+alloy's share. Both now count `steelHand` too, and the probe reads 54/54.

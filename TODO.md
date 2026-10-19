@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 263 | DONE | Brushed steel rendered its grain a quarter turn off: `installBrush` handed three the GRAIN as `anisotropyT`, and three's GGX is rougher along T, so highlights stretched along the grain. The shader now names the grain per surface (a flat's `brushAngleDeg`, the midcase flank's vertical, every other flank's circumferential) and hands three T = n × grain. `probe-263-brush-axis.mjs`: axis 90.0° at grain 0°, 0.0° at grain 90°, elongation 3.24, polished control 1.00; the old shader reads the axis along the grain and fails |
 | 260 | DONE | The ramp's climb out of the notch loaded the disc as hard as its seat could hold it (1.00× where the hold is sized to 3×, and under 1 at a kinder friction). The ramp is longer now and its length is SOLVED, not chosen: the seat's pad at its blade's strain cap (0.9 of the stock's) holds a climb of 5.29 mN at the headroom, which is a slope of 4.40° and a run of 0.4257 rad (48.8 min of hour each side); the tick's drop law is `ALARM_DETECTOR_LAWS.dropAt`. Hold ÷ climb 3.000 by construction, asserted at boot and in `probe-144-set-hold`. The hold is priced at every friction corner (2.55× / 2.76× / 3.00×, decoupled worst 1.80×, never under 1) and the hour train carries the climb at 0.27% of the centre arbor's torque. Not priced: the cannon pinion's friction fit (the model declares no slip torque) and the tooth load on the minute pinion ⇄ hour wheel mesh. |
 | 259 | DONE | Reported by eye: the alarm pin has no obvious path out of the notch. The tick has always ramped the reader's pin along a linear law over the pin's own angular diameter, but the notch's walls were radial, so a flat pin fell in and could never be lifted out. The track's top is cut to the law now (two ramps, 19.67°, `probe-280-notch-ramp.mjs` and the `alarm detector` line spec's `rampSeat`). The lift's force is TODO 260. |
 | 257 | DONE | Reported by eye at a reduced time scale: the balance slowed and stopped as the hack pad swung in, before any contact. The brake was `leverEngage · brakeNm`, and leverEngage left 0 on the crown's first frame. It is now the pad's own contact (`HACK_PAD`): zero until the pad's top reaches the rim, built over the hack rod's priced give (0.8 µm of pad rise), the holding load from the spring's peak torque at MU_STEEL. The crown's ease now ARRIVES (a floor under its speed) so the touch happens at 0.19 s, not as an exponential's 0.7 s tail. `probe-257-hack-contact.mjs`, 9 rows, one control that fails the old law |
@@ -34415,7 +34416,7 @@ figures for the three precious alloys can be read from their suppliers'
 sheets, replace the three rows. The lug re-solves with no code change, and
 the probe says which alloy governs.
 
-## 263. Brush grain renders 90 degrees off: the anisotropy tangent is across the grain, not along it
+## 263. Brush grain renders 90 degrees off: the anisotropy tangent is across the grain, not along it — DONE
 
 Found by §291, while giving the midcase vertical brushing. `installBrush`
 (materials.js) builds the anisotropy frame from a direction it calls the
@@ -34457,3 +34458,22 @@ its elongation axis (its second moments), which must lie perpendicular to
 the grain; the control is the same render with the frame deliberately left
 unswapped, which must read parallel. Expect the works' look to change
 everywhere the steel is brushed, which is the owner's to approve.
+
+**Built.** `installBrush` now names the GRAIN per surface and hands three the
+direction across it, `T = cross(n, grain)`: a flat (|n.z| over
+`BRUSH_FLAT_GATE`) takes `brushDir`; the case middle's flank outside the
+polished zone (`CASE_POLISH_ATTR`, y < 0) takes the movement axis, so §291's
+vertical grain is named outright and its T still runs around the band, which
+renders exactly as before; every other flank takes `cross(ẑ, n)`, the lathe's
+circumferential grain, so a turned arbor now shows circumferential grooves
+and its long axial highlight. The instrument is
+`tools/probe-263-brush-axis.mjs`, an acceptance test on the real
+`materials.js`: a flat plate under a point light on the camera's axis, the
+highlight's second moments over half its peak. Axis 90.0° at grain 0° and
+0.0° at grain 90° (perpendicular to the grain, tolerance 10°), elongation
+3.24; the must-hit control (turning the grain turns the axis 90°) and the
+must-miss control (polished end, elongation 1.00 under 1.15) pass. On the
+old shader the same probe reads the axis at 0.0° for grain 0°, along the
+grain, and fails, which is the deliberately unswapped control the fix path
+asked for. The works' brushed steel looks different everywhere; the band
+does not.

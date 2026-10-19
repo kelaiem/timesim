@@ -69,9 +69,14 @@ const caseMetal = phys({ ...STEEL_FINISH });
 // normal is within the ribbing's cos 45° gate of ±z is a FLAT (a lever, a
 // spring, a cock) and is straight-grained along
 // `brushAngleDeg` in the plate plane; everything else — an arbor, a pinion
-// body, the band's flank, a crown — is grained circumferentially about the
-// movement axis, `cross(ẑ, n)`, the direction a lathe or a turning brush
-// leaves. Written after lights_physical_fragment so `tbn` is never read.
+// body, a crown — is grained circumferentially about the movement axis,
+// `cross(ẑ, n)`, the direction a lathe or a turning brush leaves, and the
+// midcase's flank is grained vertically (§291). That is the GRAIN. three is
+// handed the direction ACROSS it, T = n × grain, because its GGX is rougher
+// along T and grooves scatter light across themselves (TODO 263: until it
+// was fixed, the grain itself went to three and every flat and turned part
+// rendered a quarter turn off; probe-263-brush-axis holds it).
+// Written after lights_physical_fragment so `tbn` is never read.
 //
 // THE DEFINE IS HELD ON. `MeshPhysicalMaterial`'s anisotropy setter bumps the
 // material version whenever the value crosses zero, which is a shader
@@ -103,9 +108,10 @@ export const CASE_POLISH_ATTR = 'casePolish';
 // set by its LINES, not its lobe. three's anisotropic GGX is rougher along the
 // tangent T (alphaT = mix(r², 1, a²) against alphaB = r²), so the highlight
 // stretches along T, and real grooves run across that. Grooves along the case
-// axis therefore want T around the band, and the flank rule below already
-// gives the midcase exactly that: the lobe was vertical brushing all along,
-// and it read as nothing because nothing drew the streaks. These are those
+// axis therefore want T around the band. Under TODO 263's inverted rule the
+// generic flank gave the midcase exactly that by accident; since the fix the
+// midcase names its vertical grain outright and T is derived across it. The
+// lobe read as nothing because nothing drew the streaks. These are those
 // streaks. On the case middle's flanks only (CASE_POLISH_ATTR's flag, outside
 // the bezel's polished zone), a value noise in the azimuth and constant along
 // the axis tilts the normal around the band and nudges the roughness, so
@@ -166,9 +172,18 @@ float caseBrushNoise(float x) {
           material.roughness = clamp(material.roughness * (1.0 + ${CASE_BRUSH_ROUGH_SWING} * 2.0 * k * s), 0.0525, 1.0);
           material.alphaT = mix(pow2(material.roughness), 1.0, pow2(material.anisotropy));
         }
-        vec3 tW = (abs(nW.z) > ${BRUSH_FLAT_GATE})
+        // TODO 263: name the GRAIN, then hand three the direction ACROSS it.
+        // three's GGX is rougher along anisotropyT, so the highlight stretches
+        // along T, and grooves scatter light across themselves: T is across the
+        // grain, never the grain. probe-263-brush-axis holds it.
+        bool caseFlank = vCasePolish.x > 0.5 && vCasePolish.y < 0.0 && abs(nW.z) <= ${BRUSH_FLAT_GATE};
+        vec3 gW = (abs(nW.z) > ${BRUSH_FLAT_GATE})
           ? vec3(brushDir, 0.0)                 // a flat: straight grain along the declared angle
-          : cross(vec3(0.0, 0.0, 1.0), nW);     // a flank: circumferential about the movement axis
+          : caseFlank
+            ? vec3(0.0, 0.0, 1.0)               // the midcase's flank: vertical, caseback to bezel (§291)
+            : cross(vec3(0.0, 0.0, 1.0), nW);   // any other flank: circumferential, as a lathe leaves it
+        vec3 tW = cross(nW, gW);                // across the grain, in the surface
+        if (dot(tW, tW) < 1e-8) tW = cross(nW, vec3(1.0, 0.0, 0.0));   // a grain along the normal has no across; any tangent will do
         tW = normalize(tW - nW * dot(tW, nW));
         vec3 tV = normalize((viewMatrix * vec4(tW, 0.0)).xyz);
         tV = normalize(tV - normal * dot(tV, normal));

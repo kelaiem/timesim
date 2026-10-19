@@ -47390,22 +47390,33 @@ const CASE_DIMS = (() => {
   const zCrystOuter = zCrystInner - CASE_CRYSTAL_T;
   const zBezelOuter = zCrystOuter - 0.25 / UNIT_MM;  // bezel lip over the crystal edge
   const zBandFront = zCrystInner + 0.3 / UNIT_MM;    // bezel seats on the band; 0.3 mm step
-  // §289 — THE ROUNDED BEZEL (owner ask: soften the edge, read narrower and lower).
-  // The outer edge is a quarter round of radius zBandFront − zBezelOuter: the
-  // largest round that stays ON THE BEZEL — it ends tangent to the band's
-  // flank exactly at the seat plane, where the bore at R_IN begins — and its
-  // thinnest section, the tangency, is then the band's own wall (R_OUT_FRONT −
-  // R_IN), so the round cannot thin the bezel below the metal the band already
-  // trusts. The lip's edge takes the lip's height less §50's floor, leaving
+  // §289/§292 — THE ROUNDED BEZEL (owner asks: soften the edge so the case reads
+  // narrower and lower, then more rounded with a smaller flat). The outer edge
+  // is a quarter ELLIPSE:
+  //  · its HEIGHT is bezelR = zBandFront − zBezelOuter, the bezel's own height
+  //    over its seat, so the round ends tangent to the band's flank exactly at
+  //    the seat plane, where the bore at R_IN begins, and never runs down the
+  //    band;
+  //  · its REACH across the top, bezelRoundW, is what is left of the face once
+  //    the lip's round and BEZEL_FLAT_MM of flat are taken out. The flat's
+  //    width is the owner's taste (§292 halved §289's 1.72 mm). The metal the
+  //    round leaves is checked, not assumed: makeCase measures the thinnest
+  //    section between the round and the crystal seat and warns under §50's
+  //    floor. §289's comment here claimed that section was the band's wall at
+  //    the tangency. Measured, the seat's slope comes closer: 0.92 mm under
+  //    §289's circle, 0.50 mm under this ellipse.
+  // The lip's edge takes the lip's height less §50's floor, leaving
   // STOCK_MIN_U of straight bore above the crystal's face, so the bore that
   // traps the crystal stays a bore. Both rounds take metal away and add none.
+  const BEZEL_FLAT_MM = 0.8;
   const bezelR = zBandFront - zBezelOuter;
   const bezelLipR = (zCrystOuter - zBezelOuter) - STOCK_MIN_U;
+  const bezelRoundW = (CASE_R_OUT_FRONT - ((dialRadius - 1 / UNIT_MM) + bezelLipR)) - BEZEL_FLAT_MM / UNIT_MM;
   {
     const R_BEZEL_IN = dialRadius - 1 / UNIT_MM;     // the same expression the literal below carries
-    const flat = (CASE_R_OUT_FRONT - bezelR) - (R_BEZEL_IN + bezelLipR);
+    const flat = (CASE_R_OUT_FRONT - bezelRoundW) - (R_BEZEL_IN + bezelLipR);
     if (!(flat > 0) || !(bezelLipR > 0) || !(zBandFront < CASE_Z_STEP))
-      console.warn(`rounded bezel: outer round ${bezelR.toFixed(3)} and lip round ${bezelLipR.toFixed(3)} leave `
+      console.warn(`rounded bezel: outer round ${bezelRoundW.toFixed(3)}×${bezelR.toFixed(3)} and lip round ${bezelLipR.toFixed(3)} leave `
         + `${flat.toFixed(3)} of flat top (need > 0); the round must end before the midcase step `
         + `(${zBandFront.toFixed(3)} vs ${CASE_Z_STEP.toFixed(3)})`);
   }
@@ -47446,7 +47457,7 @@ const CASE_DIMS = (() => {
     clampN: CASE_CLAMP_N, clampR: R_CLAMP, clampAz: CASE_CLAMP_AZ, clampEng: CASE_CLAMP_ENG, glassFloatGuard: CASE_GLASS_FLOAT_GUARD,
     zCrystInner, zCrystOuter,
     zBezelOuter, zBandFront,
-    bezelR, bezelLipR,             // the rounded bezel's two edge radii (derived above)
+    bezelR, bezelRoundW, bezelLipR, // the rounded bezel: the outer ellipse's height and reach, the lip's radius (derived above)
     gasketD: CASE_GASKET_D, gasketSeat: CASE_GASKET_SEAT, crystT: CASE_CRYSTAL_T,
     // §187 — screwShaftD/HeadD stay for the §186 CLAMP screws; the six
     // caseback screws died with the flange.
@@ -47850,7 +47861,7 @@ const SCHEMATIC = { proxies: [], on: false };
     // object the solid case is built from — the drawing cannot drift from
     // the metal because there is nothing to drift FROM.
     const { R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_BEZEL_IN, R_CRYST, R_PLATE,
-            z0, zMidBack, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelLipR,
+            z0, zMidBack, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelRoundW, bezelLipR,
             zLedge, zStep, rimBack, clampR, clampAz,
             skirtOD, zSkirtBot, apertureR, rStep, zStepUnder, zStepTop } = CASE_DIMS;
     const rim = SCHEMATIC.rimMat;
@@ -47871,7 +47882,7 @@ const SCHEMATIC = { proxies: [], on: false };
                           // the rounded bezel: each round's two tangent lines, where the face
                           // meets the round and the round meets the bore or the flank
                           [R_BEZEL_IN, zBezelOuter + bezelLipR], [R_BEZEL_IN + bezelLipR, zBezelOuter],
-                          [R_OUT_FRONT - bezelR, zBezelOuter]]) {
+                          [R_OUT_FRONT - bezelRoundW, zBezelOuter]]) {
       const c = new THREE.Line(circGeo(r, 96), rim); c.position.z = z; put(c);
     }
     // Band walls: four generators at the cardinal azimuths, one run per
@@ -49628,7 +49639,7 @@ const GONG_CASE_PATH = await (async () => {
       perMesh.push({ name: o.name || o.parent?.name || '?', key, V_u3: Math.abs(V), defect });
       M += sg * V; mx += sg * vx; my += sg * vy; mz += sg * vz; for (let i = 0; i < 6; i++) S[i] += sg * s[i];
       byStock[key] = (byStock[key] || 0) + sg * V;
-      if (o.material === MATS.caseMetal) caseExt += sg * V;                     // the alloy pick's share — what a platinum case adds
+      if (o.material === MATS.caseMetal || o.material === MATS.steelHand) caseExt += sg * V;   // the alloy pick's share — what a platinum case adds; §291's steel hands are cut from the alloy too
     }
     if (unmapped.size)
       console.warn(`§269: ${unmapped.size} material(s) the stock map does not know carried ${[...unmapped.values()].slice(0, 6).join(', ')} — `
@@ -49659,18 +49670,21 @@ const GONG_CASE_PATH = await (async () => {
   // 3 — THE EXTERIOR, as revolve profiles in u with their outward normals.
   const crystT = D.crystT, zCrystOut = D.zMidBack + crystT, rStepOut = D.rStep + crystT;   // the outer pane's INNER face is flush with the band's back face (makeCase)
   // The bezel's two edge rounds as chords, each with its outward normal at
-  // the chord's middle — the same quarter circles makeCase lathes.
-  const roundChords = (name, cr, cz, rad, a0, a1, n) => Array.from({ length: n }, (_, i) => {
+  // the chord's middle — the same quarter ellipses makeCase lathes (the lip's
+  // is a circle, rx = rz). An ellipse's outward normal at angle t is
+  // (cos t / rx, sin t / rz), normalised.
+  const roundChords = (name, cr, cz, rx, rz, a0, a1, n) => Array.from({ length: n }, (_, i) => {
     const t0 = a0 + (a1 - a0) * (i / n), t1 = a0 + (a1 - a0) * ((i + 1) / n), tm = (t0 + t1) / 2;
-    return { name: `${name} ${i}`, r0: cr + rad * Math.cos(t0), z0: cz + rad * Math.sin(t0),
-      r1: cr + rad * Math.cos(t1), z1: cz + rad * Math.sin(t1), nr: Math.cos(tm), nz: Math.sin(tm) };
+    const nr = Math.cos(tm) / rx, nz = Math.sin(tm) / rz, nl = Math.hypot(nr, nz);
+    return { name: `${name} ${i}`, r0: cr + rx * Math.cos(t0), z0: cz + rz * Math.sin(t0),
+      r1: cr + rx * Math.cos(t1), z1: cz + rz * Math.sin(t1), nr: nr / nl, nz: nz / nl };
   });
   const EXTERIOR = [
     { name: 'front crystal', r0: 0, z0: D.zCrystOuter, r1: D.R_BEZEL_IN, z1: D.zCrystOuter, nr: 0, nz: -1 },
     { name: 'bezel lip', r0: D.R_BEZEL_IN, z0: D.zBezelOuter + D.bezelLipR, r1: D.R_BEZEL_IN, z1: D.zCrystOuter, nr: -1, nz: 0 },
-    ...roundChords('bezel lip round', D.R_BEZEL_IN + D.bezelLipR, D.zBezelOuter + D.bezelLipR, D.bezelLipR, Math.PI, 1.5 * Math.PI, 3),
-    { name: 'bezel face', r0: D.R_BEZEL_IN + D.bezelLipR, z0: D.zBezelOuter, r1: D.R_OUT_FRONT - D.bezelR, z1: D.zBezelOuter, nr: 0, nz: -1 },
-    ...roundChords('bezel round', D.R_OUT_FRONT - D.bezelR, D.zBezelOuter + D.bezelR, D.bezelR, 1.5 * Math.PI, 2 * Math.PI, 8),
+    ...roundChords('bezel lip round', D.R_BEZEL_IN + D.bezelLipR, D.zBezelOuter + D.bezelLipR, D.bezelLipR, D.bezelLipR, Math.PI, 1.5 * Math.PI, 3),
+    { name: 'bezel face', r0: D.R_BEZEL_IN + D.bezelLipR, z0: D.zBezelOuter, r1: D.R_OUT_FRONT - D.bezelRoundW, z1: D.zBezelOuter, nr: 0, nz: -1 },
+    ...roundChords('bezel round', D.R_OUT_FRONT - D.bezelRoundW, D.zBezelOuter + D.bezelR, D.bezelRoundW, D.bezelR, 1.5 * Math.PI, 2 * Math.PI, 12),
     { name: 'front band', r0: D.R_OUT_FRONT, z0: D.zBezelOuter + D.bezelR, r1: D.R_OUT_FRONT, z1: D.zStep, nr: 1, nz: 0 },
     { name: 'midcase step', r0: D.R_OUT_FRONT, z0: D.zStep, r1: D.R_OUT, z1: D.zStep, nr: 0, nz: -1 },
     { name: 'back band', r0: D.R_OUT, z0: D.zStep, r1: D.R_OUT, z1: D.zMidBack, nr: 1, nz: 0 },
