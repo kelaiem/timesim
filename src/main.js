@@ -49593,7 +49593,7 @@ const GONG_CASE_PATH = await (async () => {
       perMesh.push({ name: o.name || o.parent?.name || '?', key, V_u3: Math.abs(V), defect });
       M += sg * V; mx += sg * vx; my += sg * vy; mz += sg * vz; for (let i = 0; i < 6; i++) S[i] += sg * s[i];
       byStock[key] = (byStock[key] || 0) + sg * V;
-      if (o.material === MATS.caseMetal) caseExt += sg * V;                     // the alloy pick's share — what a platinum case adds
+      if (o.material === MATS.caseMetal || o.material === MATS.steelHand) caseExt += sg * V;   // the alloy pick's share — what a platinum case adds; §291's steel hands are cut from the alloy too
     }
     if (unmapped.size)
       console.warn(`§269: ${unmapped.size} material(s) the stock map does not know carried ${[...unmapped.values()].slice(0, 6).join(', ')} — `

@@ -40307,3 +40307,9 @@ The readers of the profile follow it:
 
 The polished zone is unchanged (everything in front of the seat plane), and
 so is the lip. Boot is silent.
+
+**A §291 defect found on the way.** `probe-269-case-path` read 53/54: a
+platinum case weighed 71.616 g where the steel watch plus the alloy's share
+predicts 71.583 g. §291's steel hands take the case alloy's stock, but the
+§269 tally, and the probe's own copy of it, counted only `caseMetal` in the
+alloy's share. Both now count `steelHand` too, and the probe reads 54/54.

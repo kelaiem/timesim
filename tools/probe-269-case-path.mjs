@@ -112,7 +112,7 @@ const R = await page.evaluate(async () => {
     if (r.defect > P.watch.openDefectMax) return;
     const rho = L.STOCK[key].rho, sg = r.V < 0 ? -rho : rho;
     M += sg * r.V; mx += sg * r.vx; my += sg * r.vy; mz += sg * r.vz; for (let i = 0; i < 6; i++) S[i] += sg * r.s[i];
-    if (o.material === Mt.MATS.caseMetal) caseExt += sg * r.V;
+    if (o.material === Mt.MATS.caseMetal || o.material === Mt.MATS.steelHand) caseExt += sg * r.V;   // §291: the steel hands take the alloy too
   });
   const cx = mx / M - SH.x, cy = my / M - SH.y, cz = mz / M - SH.z;
   const Sc = [S[0] - M * (mx / M) ** 2, S[1] - M * (my / M) ** 2, S[2] - M * (mz / M) ** 2, S[3] - M * (mx / M) * (my / M), S[4] - M * (mx / M) * (mz / M), S[5] - M * (my / M) * (mz / M)];
