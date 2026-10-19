@@ -10580,7 +10580,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const {
     UNIT_MM, R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_CRYST, R_BEZEL_IN, R_G, R_PLATE,
     z0, zMidBack,
-    zLedge, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelLipR,
+    zLedge, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelRoundW, bezelLipR,
     rimBack, clampN, clampR, clampAz, clampEng, tubeClearR,
     skirtOD, skirtID, zSkirtBot, apertureR, glassEdgeR, rStep, zStepUnder, zStepTop,
     gasketD, gasketSeat, crystT, screwShaftD, screwHeadD, tubeD, pusherD,
@@ -10790,12 +10790,15 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // The rounds are LATHED with the band, so the sectors and their caps carry
   // them for free; a cap stays a simple polygon because an arc only replaces
   // a convex corner.
-  const BEZEL_ARC_SEGS = 8, LIP_ARC_SEGS = 3;
-  const quarter = (cr, cz, rad, a0, a1, n) => {
+  // §292: the outer round is a quarter ELLIPSE (reach bezelRoundW across the
+  // top, height bezelR down to the seat plane; CASE_DIMS has why), so it
+  // takes more segments than §289's circle did.
+  const BEZEL_ARC_SEGS = 12, LIP_ARC_SEGS = 3;
+  const quarter = (cr, cz, rx, rz, a0, a1, n) => {
     const pts = [];
     for (let i = 0; i <= n; i++) {
       const a = a0 + (a1 - a0) * (i / n);
-      pts.push([cr + rad * Math.cos(a), cz + rad * Math.sin(a)]);
+      pts.push([cr + rx * Math.cos(a), cz + rz * Math.sin(a)]);
     }
     return pts;
   };
@@ -10806,10 +10809,28 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     [R_BEZEL_IN + 0.3 / UNIT_MM, zCrystOuter],
     [R_BEZEL_IN, zCrystOuter],
     // the lip's edge: up the bore to the round, over it onto the face
-    ...quarter(R_BEZEL_IN + bezelLipR, zBezelOuter + bezelLipR, bezelLipR, Math.PI, 1.5 * Math.PI, LIP_ARC_SEGS),
+    ...quarter(R_BEZEL_IN + bezelLipR, zBezelOuter + bezelLipR, bezelLipR, bezelLipR, Math.PI, 1.5 * Math.PI, LIP_ARC_SEGS),
     // the outer edge: off the face, over the round, down onto the flank
-    ...quarter(R_OUT_FRONT - bezelR, zBezelRound, bezelR, 1.5 * Math.PI, 2 * Math.PI, BEZEL_ARC_SEGS),
+    ...quarter(R_OUT_FRONT - bezelRoundW, zBezelRound, bezelRoundW, bezelR, 1.5 * Math.PI, 2 * Math.PI, BEZEL_ARC_SEGS),
   ];
+  // §292 — THE METAL THE ROUND LEAVES, measured rather than claimed: the
+  // nearest the outer round comes to the crystal seat and the bore behind it
+  // (frontRun's inner run, then the bore up to the midcase step), sampled
+  // densely along the true ellipse. Under §50's floor it warns. It is
+  // published on the group for the record.
+  {
+    const inner = [[R_IN, zStep], ...frontRun.slice(0, 5)];
+    const segD = ([px, pz], [ax, az], [cx, cz]) => {
+      const dx = cx - ax, dz = cz - az, t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(px - ax - t * dx, pz - az - t * dz);
+    };
+    let minWall = Infinity;
+    for (const p of quarter(R_OUT_FRONT - bezelRoundW, zBezelRound, bezelRoundW, bezelR, 1.5 * Math.PI, 2 * Math.PI, 400))
+      for (let i = 0; i + 1 < inner.length; i++) minWall = Math.min(minWall, segD(p, inner[i], inner[i + 1]));
+    g.userData.bezelMinWall = minWall;
+    if (!(minWall >= STOCK_MIN_U))
+      console.warn(`makeCase §292: the bezel's round leaves ${minWall.toFixed(3)} u of metal over the crystal seat, under §50's floor ${STOCK_MIN_U.toFixed(3)}`);
+  }
   // §187 — the back face keeps its gasket groove and loses everything else:
   // the flange is deleted WHOLE (measured, probe-187-casing-path: §186's
   // rim cannot pass its 44.86 bore on the way to the ledge — the case
