@@ -701,10 +701,14 @@ export const CASE_BAR_REACH = CASE_STRAP_CLEAR + CASE_SPRING_BAR_D / 2;  // bar 
 // UNIT_MM above turns "how big is a unit" into arithmetic.
 //
 // The reference distance is the WRIST: a watch is read at arm's-bend, not at
-// desk range. 350 mm is the middle of the 300–400 mm band a raised wrist
-// spans, and every figure below is quoted at it — move this and the whole
+// desk range. A raised wrist spans 300–400 mm, and every figure below is
+// quoted at the band's FAR end (§293): a print sized at the middle (350 mm,
+// §158's choice) is under its floor for every reader who holds the watch
+// further than average, which is half of them, so "readable at a normal wrist
+// distance" is a claim only the far end can make. Move this and the whole
 // print re-solves, which is the point of it being one constant.
-export const WRIST_MM = 350;
+export const WRIST_BAND_MM = [300, 400];
+export const WRIST_MM = WRIST_BAND_MM[1];
 const ARCMIN_PER_RAD = 60 * 180 / Math.PI;             // 3437.75
 export const arcminAt = (mm) => (mm / WRIST_MM) * ARCMIN_PER_RAD;
 export const mmForArcmin = (a) => (a * WRIST_MM) / ARCMIN_PER_RAD;

@@ -40313,3 +40313,54 @@ platinum case weighed 71.616 g where the steel watch plus the alloy's share
 predicts 71.583 g. §291's steel hands take the case alloy's stock, but the
 §269 tally, and the probe's own copy of it, counted only `caseMetal` in the
 alloy's share. Both now count `steelHand` too, and the probe reads 54/54.
+
+## §293 — The sub-dials read at the wrist: sized for the far end of the wrist band, the seconds well and its hand by acuity
+
+Owner ask: make the sub-dial indicators larger and easier to read from a
+normal wrist distance.
+
+§158 made the reserve well's figures and pointer a function of acuity at the
+wrist, and left the seconds well on literals. Measured at the wrist, the
+seconds well was the one under its floors: figures 7.4′ (the glance floor is
+8′), its caption 2.7′ (the identify threshold is 5′), and its hand 0.118 mm
+across, 1.0′, a hairline finer than the 2′ majors it points at. The reserve's
+minor ticks were 0.07 mm, 0.6′, a mark the eye cannot resolve as a mark.
+
+**The reference distance is the band's far end.** `WRIST_MM` was 350 mm, the
+middle of the 300–400 mm a raised wrist spans. A print sized at the middle is
+under its floor for every reader who holds the watch further than average,
+half of them, so "readable at a normal wrist distance" is a claim only the far
+end can make. `WRIST_BAND_MM = [300, 400]` and `WRIST_MM` is its far end, 400.
+Every acuity-derived size grows by 400/350.
+
+**The seconds well takes the reserve's laws** (`paintSubdialFace`, now given
+the well's `mmPerSr`):
+- figures: cap = `mmForArcmin(GLANCE_ARCMIN)`, 0.93 mm (from 0.76, ×1.23), on
+  the band `tick circle − major length − gap − cap/2` (0.655·sr);
+- caption: cap = `mmForArcmin(IDENTIFY_ARCMIN)`, since a name is identified
+  rather than read (em 0.146·sr from 0.08, ×1.83). The 30's inner edge is
+  asserted one resolvable gap clear of the caption's ink (0.572·sr against
+  0.452·sr);
+- the hand: `POINTER_ARCMIN` wide, the reserve's law, through one
+  `SUBDIAL_HAND_HALF_W` both pointers read (0.349 mm, ×2.95). It is asserted
+  between §158's two bounds: at least the majors it indexes (0.25 mm) and under
+  one second of scale at its tip (0.466 mm, 4.0′).
+
+**Every printed stroke is floored at what the eye resolves**
+(`subdialStrokeF`): a minor at `RESOLVE_ARCMIN` (1′), a major one resolvable
+stroke heavier (2′), the least that still reads as the heavier of two
+neighbours. A stroke is the larger of its drawn fraction and its floor. The
+seconds comb already cleared both (2.15′ and 1.05′) and is unchanged. The
+reserve's minors go from 0.022·sr to 0.036·sr and its majors from 0.055·sr to
+0.073·sr. The reserve hand's width floor reads the width drawn, not the
+fraction.
+
+**The reserve grows by the distance alone**: figures 0.81 → 0.93 mm, the
+pointer 0.305 → 0.349 mm (0.78 of an hour's division at its tip). Its caption
+and maker's mark stay where §158 left them. "POWER RESERVE" at the identify
+threshold would need 140° of a 60° notch, and the mark is discreet by design.
+Making either legible needs a bigger well, which is layout, not print.
+
+Instruments: boot silent with every new assert in place. `probe-112-recut`
+now reads the wrist distance from `layout.js` instead of its own copy of 350.
+The hand's width is geometry, so the battery owns its clearances.

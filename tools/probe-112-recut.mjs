@@ -127,7 +127,9 @@ check(bootWarns.length === 0, `boot is not silent: ${bootWarns.length} warning(s
 
 const S0 = await snapshot();
 if (S0.error) { console.log('ABORT: ' + S0.error); await browser.close(); srv.kill(); process.exit(2); }
-const MMu = 0.378947, arcmin = (u) => (u * MMu / 350) * (60 * 180 / Math.PI);
+// §293: read the wrist distance and the unit from layout.js rather than a copy of them
+const { UNIT_MM: MMu, arcminAt } = await import('../src/layout.js');
+const arcmin = (u) => arcminAt(u * MMu);
 console.log('boot snapshot: 5 hands,',
   Object.values(S0).reduce((n, h) => n + h.meshes.length, 0), 'meshes;',
   `reserve width ${(2 * S0.reserveHand.userData.halfW).toFixed(4)} u = ${arcmin(2 * S0.reserveHand.userData.halfW).toFixed(2)}′,`,

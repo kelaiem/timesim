@@ -19147,7 +19147,8 @@ const dial = G.makeDial({
       // the face size its figures by acuity (§158) instead of by fraction.
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS,
         mmPerSr: reserveR * UNIT_MM } },
-    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds' },
+    { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds',
+      scale: { mmPerSr: secondsSubR * UNIT_MM } },   // §293: the seconds well read by acuity too
   ],
 });
 // TODO 26 — THE DIAL'S OWN FURNITURE RIDES ONE PLATE-THICKNESS FORWARD.
@@ -19319,7 +19320,13 @@ const smallSecondsGroup = new THREE.Group();
 smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
 dialPlateFace.add(smallSecondsGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Small seconds', smallSecondsGroup);
-const SMALL_SECONDS_HAND_SPEC = { length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds' };
+// §293 — BOTH SUB-DIAL POINTERS ARE POINTER_ARCMIN WIDE (§158's law, which
+// only the reserve hand had). The small seconds rode §50's floor section,
+// 0.118 mm across: 1.0′ at the wrist, finer than the 2′ majors it indexes, a
+// hairline against its own marks. Bounded both ways at the build below.
+const SUBDIAL_HAND_HALF_W = mmForArcmin(POINTER_ARCMIN) / UNIT_MM / 2;
+const SMALL_SECONDS_HAND_SPEC = { length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds',
+  halfWidth: SUBDIAL_HAND_HALF_W };
 const smallSecondsHand = G.makeHand(SMALL_SECONDS_HAND_SPEC);
 smallSecondsHand.name = 'smallSecondsHand';
 // TODO 41 CLOSED — a well hand's plane is DERIVED from the section it
@@ -19365,6 +19372,17 @@ const wellHandZ = (hand) => {
   return -(SUBDIAL_RECESS - (lo + hi) / 2);
 };
 smallSecondsHand.position.z = wellHandZ(smallSecondsHand);
+{
+  // §293 — §158's two bounds on a pointer, here for the small seconds: never
+  // finer than the major ticks it indexes (their DRAWN width), and narrower
+  // than one second of scale at its tip, or it stops saying which second.
+  const handW = 2 * smallSecondsHand.userData.halfW;
+  const majorTickW = G.subdialStrokeF(G.SECONDS_MAJOR_W_F, G.SUBDIAL_MAJOR_ARCMIN, secondsSubR * UNIT_MM) * secondsSubR;
+  const secondDivision = SMALL_SECONDS_HAND_SPEC.length * 6 * DEG2RAD;
+  if (handW < majorTickW || handW >= secondDivision)
+    console.warn(`§293 small seconds hand: ${handW.toFixed(3)} wide (${arcminAt(handW * UNIT_MM).toFixed(2)}′) `
+      + `— need at least the ${majorTickW.toFixed(3)} majors and under the ${secondDivision.toFixed(3)} second at its tip`);
+}
 smallSecondsGroup.add(smallSecondsHand);
 
 // The display arbor itself: extend the slip-coupled seconds arbor (heart
@@ -20224,7 +20242,7 @@ registerLabel('Power reserve', reserveGroup);
 // from it (floorDrop + topRise against SUBDIAL_RECESS), so widening the
 // section that way would spend the band on depth nobody asked for. Wide
 // and flat is also what a hand actually is.
-const RSV_HAND_HALF_W = mmForArcmin(POINTER_ARCMIN) / UNIT_MM / 2;
+const RSV_HAND_HALF_W = SUBDIAL_HAND_HALF_W;   // §293: one pointer law for both wells
 // TODO 112 CLOSED here — `halfWidth` is section law by §158's own argument
 // above, and it rides the shared spec object into HAND_SPECS, so a panel
 // re-cut rebuilds this pointer at 3.00′ rather than the √3/2 default the
@@ -20253,7 +20271,7 @@ reserveHand.position.z = wellHandZ(reserveHand);   // §188 — back on the clas
     console.warn(`§153 reserve hand: boss r ${bossR.toFixed(3)} + margin ${CLEAR_MARGIN} exceeds the pocket bore ${SUBDIAL_BORE_R.toFixed(2)} — its below-keel column no longer rides over the bore`);
   // §158's two bounds, minted rather than trusted to the comment above.
   const handW = 2 * reserveHand.userData.halfW;
-  const majorTickW = G.SUBDIAL_MAJOR_W_F * reserveR;
+  const majorTickW = G.subdialStrokeF(G.SUBDIAL_MAJOR_W_F, G.SUBDIAL_MAJOR_ARCMIN, reserveR * UNIT_MM) * reserveR;   // §293: the width drawn
   const hourDivision = (reserveHand.userData.length * RESERVE_SWEEP_DEG * DEG2RAD) / RESERVE_SCALE_HOURS;
   if (handW < majorTickW)
     console.warn(`§158 reserve hand: ${handW.toFixed(3)} wide (${arcminAt(handW * UNIT_MM).toFixed(2)}′ at the wrist) `
