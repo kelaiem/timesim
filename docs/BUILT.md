@@ -40313,3 +40313,109 @@ platinum case weighed 71.616 g where the steel watch plus the alloy's share
 predicts 71.583 g. §291's steel hands take the case alloy's stock, but the
 §269 tally, and the probe's own copy of it, counted only `caseMetal` in the
 alloy's share. Both now count `steelHand` too, and the probe reads 54/54.
+
+## §294 — technic.html carousel: scroll through the LEGO cells
+
+Owner ask: "Add a carousel concept to scroll through the LEGO models." The page
+showed every cell at once on one table, with a "look at" button for only the
+fusee, the alarm (wheel, strike) and the escapement. A UI landing: the battery
+cannot see `technic.html`, and nothing here touches the movement.
+
+**The stops are derived, not typed.** `src/technic-carousel.js` (pure)
+`describeCells` takes what `build()` already holds, the four rows with their
+frames, the keyless, fusee, alarm and escapement frames, and answers the cells
+in build order; `stopsOf` makes a stop of every view of every cell that framed.
+Ten today, in both generations: `row-1`..`row-4` (the id carries the panel's
+number for the cell), `keyless`, `motion`, `fusee`, `alarm`, `strike`,
+`escapement`. The keyless cell is two stops (its own, and the motion works that
+rides it, framed on the hour wheel's discs only), and so is the alarm's. A cell
+that did not frame is skipped, keeps its panel number, and the bar says so
+(`skipNote`, listing number, title and the frame's reason); today none is
+skipped, so the line is empty, and the probe unframes a row, the keyless works
+and the fusee in turn to see it.
+
+**The camera law.** The cells with a focus function reuse it (`focusFusee`,
+`focusAlarm('wheel'|'strike')`, `focusEscapement`). The rest are framed by
+`frameOn` on a box read off the build, nothing hand-tuned: the fixed parts
+(columns and bricks, which do not turn, so the box does not breathe; not the
+baseplate, whose 32x32 studs would shrink the keyless works to a corner), the
+exact box of every gear and ring disc the frame declares (tip radius across the
+axle, half width along it), and the label's reach. `frameOn` fits that to what
+the panel and the carousel's bar leave visible (`fit()` and `frameOn` subtract
+the bar's height), and the smoke test projects the box's eight corners and
+requires them inside that region at every one of the six stops that use it.
+The move between stops runs the stop's view (which writes the camera), reads
+the end pose, puts the camera back and tweens: the target slides, the offset
+turns along the great arc and changes length by a constant ratio (a steady
+dolly), the lens eases with them. `TWEEN_S` 0.75 s, a cubic ease; time-based, so
+a slow frame skips ahead; a drag or the wheel (OrbitControls' `start`) cancels
+it where the camera stands; `prefers-reduced-motion` jumps. A catch the tween
+found: the close-ups narrow the lens (16 degrees) and only the alarm's glass
+gave it back, so a view of the table's own lens now says so (`tableLens`), or
+the overview after the escapement stood 2.5x too far.
+
+**Dimming.** The other cells are hidden, as the glass helpers already hid them
+(`alarmGlass(on)` and `escGlass(on)` gained a switch the carousel turns off, so
+it decides visibility itself and the cell it leaves stays in view while the
+camera travels; with the switch left on, every old path is unchanged). Hidden
+rather than ghosted: a ghost is a cloned material per mesh across eight cells,
+and the glass helpers have no ghost to reuse. The stop's row in the panel is
+lit (`.row.current`) and scrolled into view.
+
+**Per-stop state** uses the existing toggles only: the fusee stop turns the
+loop on, the alarm and strike stops turn the auto demonstration on, the keyless
+stop puts the stem in `wind` and the motion stop in `set` (where the hands
+turn), the escapement always swings. Nothing is set back on leaving.
+
+**Controls.** "tour the cells" in the panel (toggles to "end the tour"), or the
+first Next or an arrow key, enters; then a slim bar with Previous, Next,
+"3 / 10 — fusee and maintaining power", the stop's one-line caption, an
+`overview` button, and ten dots (a compact strip of titles, each a button
+labelled with its stop). Keys: the arrows (they enter the tour too), Home and
+End, Escape for the overview; never while a range input has focus. **Ends
+wrap** (`CAROUSEL_WRAPS`): it is a carousel, and the overview button and Escape
+are the way out; from the overview the first Next enters at the first stop and
+the first Previous at the last. **Swipe is on the bar only**, not on the
+canvas: OrbitControls' one-finger drag is itself a horizontal swipe, so a flick
+there would fight it. The bar has `touch-action: pan-y` and a flick is
+`swipeDir`'s: at least 48 px (a finger's width beyond the 36 px target, so a
+wobbling tap is not one), dx at least twice dy (a vertical panel scroll is not
+one), under 600 ms. On a phone the bar stands on the sheet's top edge, and the
+panel toggle moves to the top while touring; on a desktop it sits at the
+bottom of what the panel leaves. The caption hides under 800 px and the title
+wraps to two lines, so it fits at 390.
+
+**Deep links.** `?cell=<id>` opens the tour at that stop (no tween on load); an
+unknown id is the overview, silently. `?focus=` is untouched (compared with
+the pre-change page, camera and visible cells are identical on all four values,
+a bogus one and `?panel=0&loop=0`); `FOCUS_IDS` maps its four values onto the
+same stops. **The page now writes the URL, and only in carousel mode**:
+`history.replaceState` in one function, `writeUrl`, called by the tour's two
+entry points (`tourGo`, `tourExit`), setting `cell` and dropping `focus`
+(a stale pair would disagree on reload) while every other parameter is kept;
+leaving removes `cell`. Outside the tour nothing writes it. The write is in a
+try, for a sandboxed frame.
+
+**Display only.** The LDraw placements, the `.ldr` downloads and every other
+probe are untouched; the stop captions say *modelled* for the fusee, the
+alarm's wheel and the escapement, and *posed* for the strike's cadence, as
+the panel does. The page is English only (it never imported `i18n`; the probe
+holds that), and the new CSS is in logical properties.
+
+**Instruments.** `tools/probe-technic-carousel.mjs` (pure Node): the stops over
+the real frames of both generations, ids unique and round-tripping, unknown ids
+the overview, skips, both ends, every `focus ===` literal in the page resolving,
+the flick, the URL, the ease, the page's wiring (a handler per view, one URL
+writer); controls for a hand-typed id table, a `stopsOf` that skips nothing,
+wrap and clamp swapped, a flick that ignores dy, and a URL writer that keeps
+`?focus=`. `tools/smoke-technic-carousel.mjs` (Chromium, a throwaway node http
+server): at 1280x800 and 390x844 it enters the tour, steps Next through every
+stop and Previous back, checks the indicator text, that the camera moved,
+that one cell shows, that the URL, the lit row, the bar and the framed box are
+where they should be, the flick on the bar and not on the canvas, `?cell=` and
+`?focus=` landing, a rebuild keeping the stop, reduced motion, and no console
+error.
+
+**Not built:** a ghosted (translucent) view of the cells left behind; a
+highlight of the motion works' gears inside the keyless cell (the stop only
+frames them); a swipe on the canvas.

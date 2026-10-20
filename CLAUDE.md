@@ -171,7 +171,11 @@ its I and d read off the parts' SOLIDS (`partSolid`), to land the row's 1 s;
 `tools/probe-technic-escapement.mjs` holds the lattice survey (no 16T escapes),
 the beat, the lock against F2's play and the rate law. The frame, ldraw, build,
 keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher and escapement probes
-are pure Node.
+are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
+are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
+`probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
+opens one, and the page writes the URL only inside the tour; the browser half is
+`tools/smoke-technic-carousel.mjs` (Chromium, 1280 and 390 wide).
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1201,7 +1205,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 326 measuring scripts and this file names 54. The rest are named for the
+`tools/` holds 330 measuring scripts and this file names 56. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1218,7 +1222,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **212 of
+The index also carries the split that decides how to read a result: **216 of
 them are ACCEPTANCE tests** that exit non-zero, and **114 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
