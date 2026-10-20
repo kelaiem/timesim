@@ -110,6 +110,11 @@
   drag), the other cells are hidden, and the panel row of the stop is lit. ?cell=
   opens a stop. DISPLAY ONLY: the LDraw placements, the probes and the .ldr
   downloads are untouched. tools/probe-technic-carousel.mjs holds the pure half.
+
+  BUILT §298 — THE PAGE OPENS IN THE TOUR, at the first stop (initialTour in
+  src/technic-carousel.js holds the table). ?tour=0 opens the whole table as the
+  page did before; an explicit ?focus= (valid or not) opens as it always did;
+  ?cell= names its stop. Leaving the tour writes tour=0, so a reload stays out.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -358,7 +363,7 @@ import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBa
          columnModel, columnWarmSteps, columnStart, columnAdvance, columnCommand, columnPose, columnPhase, trainAngles } from './src/technic-alarm.js';
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
-import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
+import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -1000,6 +1005,7 @@ const S8 = () => escFrame.spec.teeth;
 // any of it. The stops, their ids, the ends and the flick are
 // src/technic-carousel.js (pure, held by tools/probe-technic-carousel.mjs).
 let cellReg = {}, keylessFrame = null, fuseeFramed = null;
+let firstBuild = true;
 const tour = { active: false, i: -1, id: null, stops: [], skipped: [] };
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let tween = null;
@@ -1098,12 +1104,12 @@ function writeBar() {
   tourStartEl.textContent = tour.active ? 'end the tour' : 'tour the cells';
   tourStartEl.dataset.state = tour.active ? 'on' : 'off';
 }
-function lightRow(stop) {
+function lightRow(stop, scroll = true) {
   for (const d of document.querySelectorAll('#rows .row.current')) d.classList.remove('current');
   const row = stop && cellReg[stop.cell]?.row;
-  if (row) { row.classList.add('current'); row.scrollIntoView({ block: 'start' }); }
+  if (row) { row.classList.add('current'); if (scroll) row.scrollIntoView({ block: 'nearest' }); }
 }
-function tourGo(i, { instant = false } = {}) {
+function tourGo(i, { instant = false, opening = false } = {}) {
   const stop = tour.stops[i];
   if (!stop) return;
   cancelTween();
@@ -1116,7 +1122,7 @@ function tourGo(i, { instant = false } = {}) {
   // the cell's label is drawn through the parts (depthTest off), and at the motion works' close range it would cover them
   if (cellReg.keyless) cellReg.keyless.label.visible = stop.view !== 'motion';
   const end = camPose(), band = cellReg[stop.cell].band;
-  lightRow(stop); writeUrl(stop.id);
+  lightRow(stop, !(opening && i === 0)); writeUrl(stop.id);   // the default opening (stop 1) leaves the panel on its title
   if (instant || reduceMotion.matches) { showCells([band]); return; }
   setCamPose(start);
   showCells(prevBand && prevBand !== band ? [band, prevBand] : [band]);   // the cell left stays in view while the camera travels
@@ -1427,9 +1433,12 @@ async function build(gen) {
   // other generation re-derives them, and a tour in progress stays on its stop)
   tourRebuild(frames, keylessFrame, fuseeFramed);
   const focus = new URLSearchParams(location.search).get('focus');
-  const wantCell = tour.active ? tour.id : new URLSearchParams(location.search).get('cell');
+  // §298: the page OPENS in the tour (initialTour says where); only the first
+  // build asks, so a rebuild keeps the tour as it stands and an overview stays one
+  const wantCell = tour.active ? tour.id : firstBuild ? initialTour(location.search, tour.stops).id : null;
+  const opening = firstBuild; firstBuild = false;
   const cellAt = resolveId(tour.stops, wantCell);
-  if (cellAt >= 0) tourGo(cellAt, { instant: true });
+  if (cellAt >= 0) tourGo(cellAt, { instant: true, opening });
   else if (focus === 'escapement' && escView) focusEscapement();
   else if (focus === 'fusee' && fuseeView) focusFusee();
   else if (focus === 'alarm' && alarmView) focusAlarm('wheel');
