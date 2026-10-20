@@ -100,6 +100,16 @@
   traced cycle, so every lock, drop, recoil and impulse drawn is one the parts
   make. ?focus=escapement opens on it from behind, the frame as glass.
   tools/probe-technic-escapement.mjs holds it.
+
+  BUILT §294 — THE CAROUSEL. "tour the cells" (or the first Next, or an arrow
+  key) walks the cells one at a time: the going-train rows, the keyless works,
+  the motion works, the fusee, the alarm's column wheel and strike, the
+  escapement. The stops are DERIVED from the cells this page built
+  (src/technic-carousel.js: describeCells, stopsOf); a cell that did not frame
+  is skipped and the bar says so. The camera eases to each stop (cancelled by a
+  drag), the other cells are hidden, and the panel row of the stop is lit. ?cell=
+  opens a stop. DISPLAY ONLY: the LDraw placements, the probes and the .ldr
+  downloads are untouched. tools/probe-technic-carousel.mjs holds the pure half.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -163,6 +173,39 @@ label{display:flex;gap:8px;align-items:center;margin-top:8px;color:var(--dim)}
   .gen{flex-wrap:wrap}
 }
 canvas{display:block;touch-action:none}
+/* §294: the carousel. The bar sits at the bottom of what the panel leaves
+   visible; fit() and frameOn() subtract its height, so it never covers the
+   model. On a narrow screen it stands on the sheet's top edge. Logical
+   properties only. */
+#tour{position:fixed;bottom:12px;inset-inline-start:calc(min(380px,100vw - 24px) + 24px);inset-inline-end:12px;margin-inline:auto;
+  width:max-content;max-width:min(640px,100%);z-index:3;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;padding:6px 8px;box-shadow:0 1px 4px rgba(0,0,0,.4);touch-action:pan-y;user-select:none}
+body.panel-hidden #tour{inset-inline-start:12px}
+#tour[hidden]{display:none}
+.tour-main{display:flex;align-items:center;gap:6px}
+.tour-main button{flex:none}
+#tour-text{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;padding-inline:4px}
+#tour-ind{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tour-cap,#tour-skip{color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tour-skip{color:var(--bad)} #tour-skip:empty,#tour-cap:empty{display:none}
+#tour-dots{display:flex;justify-content:center;gap:2px;margin-top:2px}
+#tour-dots button{width:22px;height:22px;padding:0;border-radius:50%;background:none;border:none;display:grid;place-items:center}
+#tour-dots button::before{content:"";width:9px;height:9px;border-radius:50%;background:#3a4150;border:1px solid #5b6b85;box-sizing:border-box}
+#tour-dots button[aria-current="true"]::before{background:#9fb6d9;border-color:#9fb6d9}
+.row.current{border-inline-start:3px solid #9fb6d9;padding-inline-start:8px;background:#222731}
+@media (max-width:800px){
+  #tour{inset-inline-start:0;inset-inline-end:0;bottom:42vh;max-width:none;width:auto;margin-inline:0;border-radius:12px 12px 0 0;border-bottom:none}
+  body.panel-hidden #tour{inset-inline-start:0;bottom:env(safe-area-inset-bottom)}
+  body.touring #panel-toggle,body.touring.panel-hidden #panel-toggle{top:12px;bottom:auto}
+  #tour-cap{display:none}
+  #tour-ind{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  #tour-dots{margin-top:0}
+}
+@media (max-width:800px) and (max-height:500px) and (orientation:landscape){
+  #tour{inset-inline-start:min(300px,45vw);bottom:0;border-radius:8px 8px 0 0;border:1px solid var(--line)}
+  body.panel-hidden #tour{inset-inline-start:0}
+}
+@media (pointer:coarse){ #tour-dots button{width:28px;height:28px} }
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js",
@@ -174,6 +217,15 @@ canvas{display:block;touch-action:none}
 </head>
 <body>
 <button id="panel-toggle" type="button" data-state="on" aria-controls="panel" aria-expanded="true">Hide panel</button>
+<nav id="tour" hidden aria-label="Tour of the LEGO cells">
+  <div class="tour-main">
+    <button id="tour-prev" type="button" aria-label="Previous cell" title="Previous (left arrow)">&#8249;</button>
+    <div id="tour-text" aria-live="polite"><span id="tour-ind"></span><span id="tour-cap"></span><span id="tour-skip"></span></div>
+    <button id="tour-next" type="button" aria-label="Next cell" title="Next (right arrow)">&#8250;</button>
+    <button id="tour-over" type="button" title="the whole table (Escape)">overview</button>
+  </div>
+  <div id="tour-dots"></div>
+</nav>
 <div id="panel">
   <h1>The technic fork</h1>
   <p>The movement's going, motion and reserve trains re-toothed to LEGO Technic's
@@ -181,6 +233,7 @@ canvas{display:block;touch-action:none}
   train serves, and each shaft turns by the product of the tooth counts before
   it.</p>
   <div class="gen" id="gens"></div>
+  <div class="gen"><button id="tour-start" type="button" aria-controls="tour" title="walk the cells one at a time (arrow keys also)">tour the cells</button></div>
   <div class="gen" id="kmodes"></div>
   <label>speed <input id="speed" type="range" min="0" max="4" step="0.05" value="1" /></label>
   <div id="rows"></div>
@@ -305,6 +358,7 @@ import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBa
          columnModel, columnWarmSteps, columnStart, columnAdvance, columnCommand, columnPose, columnPhase, trainAngles } from './src/technic-alarm.js';
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
+import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -436,9 +490,14 @@ function fit() {
     if (r.width >= innerWidth - 1) sy = r.height / 2;            // the sheet across the bottom
     else sx = r.width / 2 + 12;                                  // the side panel
   }
+  sy += tourBarH() / 2;                                          // §294: the carousel's bar takes the bottom of what is left
   cam.setViewOffset(innerWidth, innerHeight, -sx, sy, innerWidth, innerHeight);
   cam.updateProjectionMatrix();
 }
+// §294: the height the carousel's bar takes off the bottom of the view (0 when
+// it is off), with the 12 px it stands off the edge
+const tourEl = document.getElementById('tour');
+const tourBarH = () => (tourEl.hidden ? 0 : tourEl.offsetHeight + 12);
 function setPanelHidden(hidden) {
   panelEl.hidden = hidden;
   document.body.classList.toggle('panel-hidden', hidden);
@@ -605,7 +664,7 @@ function frameOn(obj, fill = 1, dirIn = null) {
   // on a phone above the sheet, the whole table stays in view.
   const pr = panelEl.hidden ? null : panelEl.getBoundingClientRect();
   const visW = pr && pr.width < innerWidth - 1 ? innerWidth - pr.width - 12 : innerWidth;
-  const visH = pr && pr.width >= innerWidth - 1 ? innerHeight - pr.height : innerHeight;
+  const visH = (pr && pr.width >= innerWidth - 1 ? innerHeight - pr.height : innerHeight) - tourBarH();
   // the camera renders the WHOLE screen at its vertical fov; the panel leaves
   // a part of it, so each visible half-angle is the screen's scaled by the
   // visible span over the screen's height (the tangent is linear in pixels)
@@ -682,11 +741,14 @@ function buildAlarmView(band) {
 // (less perspective, so the columns read as a ring and not a funnel); leaving
 // it restores the table. All display.
 const ALARM_FOCUS_FOV = 16, TABLE_FOV = 40;
+// §294: the carousel decides which cells show itself (so the cell it leaves
+// stays in view while the camera travels); it turns this off around its calls
+let glassHides = true;
 function alarmGlass(on) {
   const v = alarmView;
   if (!v || v.glassOn === on) return;
   v.glassOn = on;
-  for (const c of world.children) if (c !== alarmBand) c.visible = !on;
+  if (glassHides) for (const c of world.children) if (c !== alarmBand) c.visible = !on;
   if (v.cellLbl) v.cellLbl.visible = !on;
   cam.fov = on ? ALARM_FOCUS_FOV : TABLE_FOV; cam.updateProjectionMatrix();
   for (const o of v.statics) {
@@ -855,7 +917,7 @@ function escGlass(on) {
   const v = escView;
   if (!v || v.glassOn === on) return;
   v.glassOn = on;
-  for (const c of world.children) if (c !== escBand) c.visible = !on;
+  if (glassHides) for (const c of world.children) if (c !== escBand) c.visible = !on;
   if (v.cellLbl) v.cellLbl.visible = !on;
   for (const o of [...v.statics, ...v.ghosts.map((g) => g.o)]) {
     if (o.isLineSegments) { o.visible = !on; continue; }
@@ -932,11 +994,206 @@ function writeEscMeasures() {
 }
 const S8 = () => escFrame.spec.teeth;
 
+// --- §294: the carousel -------------------------------------------------------
+// One cell at a time. DISPLAY ONLY, all of it below: the camera, which cells
+// show, a lit row in the panel and the bar. No placement, probe or .ldr reads
+// any of it. The stops, their ids, the ends and the flick are
+// src/technic-carousel.js (pure, held by tools/probe-technic-carousel.mjs).
+let cellReg = {}, keylessFrame = null, fuseeFramed = null;
+const tour = { active: false, i: -1, id: null, stops: [], skipped: [] };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let tween = null;
+const dotsEl = document.getElementById('tour-dots');
+const tourStartEl = document.getElementById('tour-start');
+
+// A cell's framing is DERIVED, never tuned. CONSTRAINT: the whole build and
+// its label stay in view, at any size (a 7x5 row, the keyless works' 19x17), so
+// the box is the build's own extent: its fixed parts (the columns and bricks,
+// which do not turn, so the box does not breathe with the gears; not the
+// baseplate, whose 32x32 studs would shrink the build to a corner), the discs of
+// every gear and ring the frame declares (each the exact box of a disc: its tip
+// radius in the two directions across the axle, its half width along it), and
+// the label's reach. frameOn then fits it to what the panel and the bar leave
+// visible, from the table's own viewing direction.
+function discBox(entry, box, keep = () => true) {
+  scene.updateMatrixWorld(true);
+  for (const [i, sh] of entry.shafts.entries()) {
+    const bs = entry.build.shafts[i], fs = entry.frame.shafts[bs.shaft];
+    if (!fs || !keep(fs, bs)) continue;
+    const axis = new THREE.Vector3(0, 0, 1).transformDirection(sh.rotor.matrixWorld);
+    for (const g of [...fs.gears, ...(fs.extras ?? [])]) {
+      if (!g.tip) continue;
+      const c = sh.rotor.localToWorld(new THREE.Vector3(0, 0, LDU(g.y))), half = (g.width ?? 0) / 2;
+      const e = new THREE.Vector3(...['x', 'y', 'z'].map((k) => g.tip * Math.sqrt(Math.max(0, 1 - axis[k] ** 2)) + half * Math.abs(axis[k])));
+      box.expandByPoint(c.clone().add(e)); box.expandByPoint(c.clone().sub(e));
+    }
+  }
+  return box;
+}
+function cellBox(entry) {
+  const root = entry.band.children.find((o) => o.isGroup), box = new THREE.Box3();
+  scene.updateMatrixWorld(true);
+  // (the first static placed is the baseplate: its mesh and its edges, children 0 and 1)
+  for (const o of root.children.slice(2)) if (o.isMesh || o.isLineSegments) box.expandByObject(o);
+  discBox(entry, box);
+  const p = entry.label.getWorldPosition(new THREE.Vector3());
+  box.expandByPoint(p); box.expandByPoint(p.clone().add(new THREE.Vector3(entry.label.scale.x, 0, 0)));
+  return box;
+}
+// The motion works alone: the setting branch's motion shafts and the minute
+// axle the hour wheel idles on (the discs only).
+function motionBox(entry) {
+  return discBox(entry, new THREE.Box3(), (fs, bs) => fs.branch === 'motion' || bs.idles);
+}
+// The view of each kind of stop: it puts the cell in the state that shows its
+// point (the existing toggles, nothing new), then frames it. The alarm, fusee
+// and escapement reuse their own focus functions.
+// (The close-ups narrow the lens and only the alarm's glass gives it back, so a
+// view of the table's own lens says so: tableLens.)
+function tableLens() { alarmGlass(false); escGlass(false); cam.fov = TABLE_FOV; cam.updateProjectionMatrix(); scene.updateMatrixWorld(true); }
+const STOP_VIEW = {
+  row: (s) => { tableLens(); frameOn(cellBox(cellReg[s.cell])); },
+  keyless: (s) => { if (keylessMode !== 'wind') setKeylessMode('wind'); tableLens(); frameOn(cellBox(cellReg[s.cell])); },
+  motion: (s) => { if (keylessMode !== 'set') setKeylessMode('set'); tableLens(); frameOn(motionBox(cellReg[s.cell])); },
+  fusee: () => { if (!fuseeLoopOn) setFuseeLoopOn(true, document.getElementById('floop')); tableLens(); focusFusee(); },
+  wheel: () => { if (!alarmAuto) setAlarmAuto(true); focusAlarm('wheel'); },
+  strike: () => { if (!alarmAuto) setAlarmAuto(true); focusAlarm('strike'); },
+  escapement: () => focusEscapement(),
+};
+const camPose = () => ({ pos: cam.position.clone(), target: controls.target.clone(), fov: cam.fov, far: cam.far });
+const setCamPose = (p) => { cam.position.copy(p.pos); controls.target.copy(p.target); cam.fov = p.fov; cam.far = p.far; cam.updateProjectionMatrix(); controls.update(); };
+function showCells(bands) { for (const c of world.children) c.visible = bands === null || bands.includes(c); }
+function cancelTween() { if (tween) { const t = tween; tween = null; t.finish(false); } }
+controls.addEventListener('start', cancelTween);   // a drag or the wheel takes the camera back
+// Move the camera from `a` to `b`: the target slides, the offset turns along the
+// great arc between the two directions and its length changes by the same ratio
+// throughout (so a close-up to the whole table is a steady dolly), the lens
+// eases with them. Time-based, so a slow frame skips ahead and does not stretch.
+// finish(jump) ends it: at `b` when it ran out, where the camera is when a drag cancelled it.
+function startTween(a, b, done) {
+  const dA = a.pos.clone().sub(a.target), dB = b.pos.clone().sub(b.target), lA = dA.length(), lB = dB.length();
+  dA.normalize(); dB.normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(dA, dB), qi = new THREE.Quaternion();
+  tween = { t0: null, finish: (jump = true) => { if (jump) setCamPose(b); done(); },
+    step(now) {
+      if (this.t0 === null) this.t0 = now;
+      const u = Math.min(1, (now - this.t0) / 1000 / TWEEN_S), e = ease(u);
+      if (u >= 1) { tween = null; this.finish(); return; }
+      const dir = dA.clone().applyQuaternion(qi.identity().slerp(q, e)), len = lA * Math.pow(lB / lA, e);
+      const target = a.target.clone().lerp(b.target, e);
+      cam.position.copy(target).addScaledVector(dir, len); controls.target.copy(target);
+      cam.fov = a.fov + (b.fov - a.fov) * e; cam.far = Math.max(a.far, b.far); cam.updateProjectionMatrix(); controls.update();
+    } };
+}
+function tourTick(now) { if (tween) tween.step(now); }
+function writeUrl(id) {
+  try { history.replaceState(null, '', location.pathname + withCell(location.search, id) + location.hash); } catch (_) { /* a sandboxed frame: the tour works without a URL */ }
+}
+function writeBar() {
+  const stops = tour.stops, stop = stops[tour.i];
+  document.getElementById('tour-ind').textContent = indicator(tour.active ? tour.i : null, stops);
+  document.getElementById('tour-cap').textContent = tour.active && stop ? stop.caption : '';
+  document.getElementById('tour-skip').textContent = skipNote(tour.skipped);
+  dotsEl.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-current', String(tour.active && i === tour.i)));
+  tourStartEl.textContent = tour.active ? 'end the tour' : 'tour the cells';
+  tourStartEl.dataset.state = tour.active ? 'on' : 'off';
+}
+function lightRow(stop) {
+  for (const d of document.querySelectorAll('#rows .row.current')) d.classList.remove('current');
+  const row = stop && cellReg[stop.cell]?.row;
+  if (row) { row.classList.add('current'); row.scrollIntoView({ block: 'start' }); }
+}
+function tourGo(i, { instant = false } = {}) {
+  const stop = tour.stops[i];
+  if (!stop) return;
+  cancelTween();
+  const prevBand = tour.active ? cellReg[tour.stops[tour.i]?.cell]?.band : null, start = camPose();
+  tour.active = true; tour.i = i; tour.id = stop.id;
+  document.body.classList.add('touring'); tourEl.hidden = false;
+  writeBar(); fit();                                  // the bar takes its height before the view is framed
+  glassHides = false;                                 // the carousel says which cells show (below)
+  try { STOP_VIEW[stop.view](stop); } finally { glassHides = true; }
+  // the cell's label is drawn through the parts (depthTest off), and at the motion works' close range it would cover them
+  if (cellReg.keyless) cellReg.keyless.label.visible = stop.view !== 'motion';
+  const end = camPose(), band = cellReg[stop.cell].band;
+  lightRow(stop); writeUrl(stop.id);
+  if (instant || reduceMotion.matches) { showCells([band]); return; }
+  setCamPose(start);
+  showCells(prevBand && prevBand !== band ? [band, prevBand] : [band]);   // the cell left stays in view while the camera travels
+  startTween(start, end, () => showCells([band]));
+}
+function tourExit({ instant = false } = {}) {
+  cancelTween();
+  const start = camPose();
+  tour.active = false; tour.i = -1; tour.id = null;
+  document.body.classList.remove('touring'); tourEl.hidden = true;
+  writeBar(); fit();
+  glassHides = false;
+  try { tableLens(); frameOn(world); } finally { glassHides = true; }
+  if (cellReg.keyless) cellReg.keyless.label.visible = true;
+  const end = camPose();
+  lightRow(null); writeUrl(null);
+  showCells(null);
+  if (instant || reduceMotion.matches) return;
+  setCamPose(start);
+  startTween(start, end, () => {});
+}
+const tourNext = (dir) => tourGo(step(tour.active ? tour.i : null, dir, tour.stops.length, CAROUSEL_WRAPS));
+// Derive the stops from the cells this build made; build() keeps a tour in
+// progress on its stop by id (a rebuild for the other generation).
+function tourRebuild(frames, kf, ff) {
+  const gen = currentGen;
+  const cells = describeCells({
+    rows: TECHNIC_FORK.rows.map((row, k) => ({ key: row.key, chain: row.chains[gen], frame: frames[k] })),
+    keyless: kf, fusee: ff ?? { framed: false, reason: 'no fusee' }, alarm: alarmFrame ?? { framed: false, reason: 'no frame' }, escapement: escFrame ?? { framed: false, reason: 'no frame' } });
+  const { stops, skipped } = stopsOf(cells);
+  // a stop needs its cell's band and row; a cell missing from the build is a bug to see, not hide
+  for (const s of stops) if (!cellReg[s.cell]) log(`carousel: stop ${s.id} has no built cell`);
+  tour.stops = stops.filter((s) => cellReg[s.cell]); tour.skipped = skipped;
+  dotsEl.textContent = '';
+  tour.stops.forEach((s, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `${i + 1}. ${s.title}`); b.title = `${i + 1}. ${s.title}`;
+    b.addEventListener('click', () => tourGo(i)); dotsEl.appendChild(b);
+  });
+  tourStartEl.disabled = !tour.stops.length;
+  writeBar();
+}
+tourStartEl.addEventListener('click', () => (tour.active ? tourExit() : tourNext(1)));
+document.getElementById('tour-prev').addEventListener('click', () => tourNext(-1));
+document.getElementById('tour-next').addEventListener('click', () => tourNext(1));
+document.getElementById('tour-over').addEventListener('click', () => tourExit());
+// keys: the arrows are the first Next/Previous too; the sliders keep theirs
+addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !tour.stops.length) return;
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+  let used = true;
+  if (e.key === 'ArrowRight') tourNext(1);
+  else if (e.key === 'ArrowLeft') tourNext(-1);
+  else if (tour.active && e.key === 'Home') tourGo(0);
+  else if (tour.active && e.key === 'End') tourGo(tour.stops.length - 1);
+  else if (tour.active && e.key === 'Escape') tourExit();
+  else used = false;
+  if (used) e.preventDefault();
+});
+// SWIPE: on the bar only. The canvas is OrbitControls' (its one-finger drag is
+// a horizontal swipe too), so a flick there would fight it; the bar is a strip
+// of its own, with touch-action: pan-y. The thresholds are swipeDir's.
+let swipe0 = null;
+tourEl.addEventListener('pointerdown', (e) => { swipe0 = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+tourEl.addEventListener('pointercancel', () => { swipe0 = null; });
+tourEl.addEventListener('pointerup', (e) => {
+  if (!swipe0) return;
+  const d = swipeDir(e.clientX - swipe0.x, e.clientY - swipe0.y, performance.now() - swipe0.t);
+  swipe0 = null;
+  if (d) tourNext(d);
+});
+
 async function build(gen) {
   await loadLib();
   cam.fov = TABLE_FOV; cam.updateProjectionMatrix();
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world); legoShafts = [];
+  cellReg = {};   // §294: each cell's band and panel row, by cell id, for the carousel
   const frames = frameFork(gen);
   const rowsEl = document.getElementById('rows'); rowsEl.textContent = '';
   TECHNIC_FORK.rows.forEach((row, k) => {
@@ -950,8 +1207,8 @@ async function build(gen) {
       const band = new THREE.Group(); world.add(band);
       // the build stands on a table: cells along x and into the screen
       band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL);
-      const b = ldrawBuild(frame, lib);
-      legoShafts.push(...buildLego(b, band));
+      const b = ldrawBuild(frame, lib), made = buildLego(b, band);
+      legoShafts.push(...made);
       const lbl = labelSprite(`${k + 1}. ${row.key}`); lbl.position.set(-30, 60, 0); band.add(lbl);
       const div = document.createElement('div'); div.className = 'row';
       const href = URL.createObjectURL(new Blob([toLdr(b)], { type: 'text/plain' }));
@@ -960,6 +1217,7 @@ async function build(gen) {
         + `${b.statics.length + b.shafts.reduce((n, s) => n + s.parts.length, 0)} parts</span>`
         + `<br><a href="${href}" download="${gen}-${row.key.replace(/\W+/g, '-')}.ldr" style="color:#9fb6d9">download .ldr</a>`;
       rowsEl.appendChild(div);
+      cellReg[`row-${k + 1}`] = { band, row: div, label: lbl, frame, build: b, shafts: made };
       return;
     }
     // a row the frame refuses is listed with the reason, and not drawn
@@ -976,7 +1234,8 @@ async function build(gen) {
     const div = document.createElement('div'); div.className = 'row';
     if (kf.framed) {
       keylessBuild = ldrawBuild(kf, lib);
-      for (const sh of buildLego(keylessBuild, band)) legoShafts.push({ ...sh, keyless: true });
+      const madeK = buildLego(keylessBuild, band);
+      for (const sh of madeK) legoShafts.push({ ...sh, keyless: true });
       const lbl = labelSprite(`${k + 1}. keyless and motion works`); lbl.position.set(-30, 60, 0); band.add(lbl);
       const kt = technicKeylessTargets();
       // landing G: the hour wheel's turns per crown turn in set, read off the
@@ -991,7 +1250,9 @@ async function build(gen) {
         + `${['wind', 'neutral', 'set'].map((m) => (keylessBuild.shafts.find((x) => x.shaft === 'selector').pose[m] * 180 / Math.PI).toFixed(2)).join('°/')}° on a ${kf.selector.wheel.teeth}T detent wheel; `
         + `rack ${['wind', 'neutral', 'set'].map((m) => keylessBuild.pull.rackS[m].toFixed(2)).join('/')} mm; ${kf.shafts.length + 1} axles, base ${kf.base.studsX}×${kf.base.studsY} studs</span>`
         + `<br><a id="kldr" href="#" style="color:#9fb6d9">download .ldr (this mode)</a>`;
+      cellReg.keyless = { band, row: div, label: lbl, frame: kf, build: keylessBuild, shafts: madeK };
     } else div.innerHTML = `<b>${k + 1}. keyless works</b><br><span class="bad">not framed in LEGO: ${kf.reason}</span>`;
+    keylessFrame = kf;
     rowsEl.appendChild(div);
   }
   // §219 tier three (b) landing H — the fusee module, the LEGO view's sixth
@@ -1051,6 +1312,7 @@ async function build(gen) {
         + `<br><span style="color:var(--dim)">maintaining power: the click pawl, on the 40T ratchet, rides the fusee's 16T while it is wound; the detent rides the ratchet while it goes and holds it while it is wound; a band (posed, not placed) from the ratchet to the great wheel drives the great wheel the going way while the fusee is wound back.</span>`
         + `<br><span style="color:var(--dim)">the going train's next wheel: the great wheel (40T) drives the centre pinion (<code>${ff.centre.teeth}T</code>, ${ff.centre.cd} mm off), which turns ${40 / ff.centre.teeth}× as fast the other way — the catalogue mesh nearest the steel's 120:7 off a 40T. It drives nothing yet.</span>`
         + `<br><a href="${href}" download="fusee.ldr" style="color:#9fb6d9">download .ldr (full wind)</a>`;
+      cellReg.fusee = { band, row: div };
       fuseeView = { frame: ff, run, cordGroup, stepMats, phaseLbl, labels: [lbl, phaseLbl], drawnPaid: null, lastText: 0, lastPhase: null };
       drawFuseeCord(0);
       const loopBtn = div.querySelector('#floop');
@@ -1067,6 +1329,7 @@ async function build(gen) {
         fuseeLoop = { model: fuseeLoopModel(ff, lib, run, b0, { rides }), st: fuseeLoop.st, provisional: false };
       });
     } else div.innerHTML = `<b>${k + 1}. fusee</b><br><span class="bad">not framed in LEGO: ${ff?.reason ?? 'no step set fits the table'}</span>`;
+    fuseeFramed = { framed: !!(run && ff.framed), reason: ff?.reason ?? 'no step set fits the table' };
     rowsEl.appendChild(div);
   }
   // §219 tier three (b) landing I — the alarm module, the LEGO view's seventh
@@ -1120,6 +1383,7 @@ async function build(gen) {
         URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(b)], { type: 'text/plain' })); a.download = `alarm-${b.pose.mode}.ldr`;
       });
       setAlarmAuto(alarmAuto);
+      cellReg.alarm = { band: alarmBand, row: div };
     } else div.innerHTML = `<b>${k + 1}. alarm</b><br><span class="bad">not framed in LEGO: ${alarmFrame.reason}</span>`;
     rowsEl.appendChild(div);
   }
@@ -1153,17 +1417,25 @@ async function build(gen) {
       // the cycle and the moments are measured once, between frames
       (escCycleP ??= measureEscCycle(escFrame)).then((c) => { escCycle = c; writeEscMeasures(); });
       (escMomentsP ??= measureEscMoments(escFrame)).then((m) => { escMoments = m; writeEscMeasures(); });
+      cellReg.escapement = { band: escBand, row: div };
     } else div.innerHTML = `<b>${k + 1}. escapement</b><br><span class="bad">not framed in LEGO: ${escFrame.reason}</span>`;
     rowsEl.appendChild(div);
   }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   currentGen = gen;
+  // §294: the stops are derived from the cells just built (a rebuild for the
+  // other generation re-derives them, and a tour in progress stays on its stop)
+  tourRebuild(frames, keylessFrame, fuseeFramed);
   const focus = new URLSearchParams(location.search).get('focus');
-  if (focus === 'escapement' && escView) focusEscapement();
+  const wantCell = tour.active ? tour.id : new URLSearchParams(location.search).get('cell');
+  const cellAt = resolveId(tour.stops, wantCell);
+  if (cellAt >= 0) tourGo(cellAt, { instant: true });
+  else if (focus === 'escapement' && escView) focusEscapement();
   else if (focus === 'fusee' && fuseeView) focusFusee();
   else if (focus === 'alarm' && alarmView) focusAlarm('wheel');
   else if (focus === 'strike' && alarmView) focusAlarm('strike');
   else { alarmGlass(false); escGlass(false); frameOn(world); }
+  if (cellAt < 0 && tour.active) tourExit({ instant: true });
   inputAngle = 0;
   if (keylessBuild) setKeylessMode(keylessMode);
 }
@@ -1217,6 +1489,7 @@ renderer.setAnimationLoop((now) => {
     if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
   }
+  tourTick(now);
   renderer.render(scene, cam);
 });
 window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return keylessBuild; }, get fusee() { return fuseeBuildNow; }, get fuseeLoop() { return fuseeLoop && { st: fuseeLoop.st, pose: loopPose(fuseeLoop.model, fuseeLoop.st), on: fuseeLoopOn }; }, setFuseeLoopOn: (on) => setFuseeLoopOn(on, document.getElementById('floop')),
@@ -1227,7 +1500,10 @@ window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return
   get alarmCell() { return alarmBand; }, alarmDo, setAlarmAuto, focusAlarm, cam, controls, scene, renderer,
   // §287: an instrument's hook — the escapement's state, and a seek to a display time
   get escapement() { return escCycle && { ok: escCycle.ok, T: escMoments?.T ?? null, pose: escCycle.ok ? cyclePose(escCycle, escT) : null, t: escT }; },
-  seekEscapement: (t) => { escT = t; }, focusEscapement };
+  seekEscapement: (t) => { escT = t; }, focusEscapement,
+  // §294: the carousel's state, for an instrument (the page's own code never reads it)
+  tour: { get active() { return tour.active; }, get i() { return tour.i; }, get id() { return tour.id; }, get stops() { return tour.stops; }, get skipped() { return tour.skipped; },
+    get tweening() { return !!tween; }, stopBox: (id) => { const st = tour.stops.find((x) => x.id === id); return st && ({ row: cellBox, keyless: cellBox, motion: motionBox })[st.view]?.(cellReg[st.cell]); }, get shown() { return world.children.filter((c) => c.visible).length; }, go: tourGo, next: () => tourNext(1), prev: () => tourNext(-1), exit: tourExit, get indicator() { return document.getElementById('tour-ind').textContent; } } };
 </script>
 </body>
 </html>
