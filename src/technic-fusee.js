@@ -1037,7 +1037,8 @@ const STUDS_TO_Y = [1, 0, 0, 0, 0, 1, 0, -1, 0];
 // LDraw Z, its width (own X) along LDraw Y; the body then turns it ψ about Z
 const ARM_TO_PLANE = [0, 0, 1, 1, 0, 0, 0, 1, 0];
 const fr = (x, y, z) => [L(x), -L(z), L(y)];
-export const FUSEE_COLOUR = Object.freeze({ pulley: 71, barrel: 72, hook: 15, cord: 0, cordEnd: 0, click: 19, ratchet: 25, pawl: 4, arm: 1, joiner: 72, great: 14, knob: 15 });
+// (This module's own role-colour table was retired by BUILT §300: it was read by nothing and disagreed with the .ldr's. LDRAW_COLOUR in
+// technic-ldraw.js is the one colour-by-role declaration.)
 export function fuseeBuild(frame, lib, { run, maint = MAINTAINING, phiM = 0, lagDeg = BAND_LAG_DEG, stringPart = null, paid = 0 } = {}) {
   const F = FUSEE_DIM_MM, g = goingSense(frame), zA = frame.axleZ;
   const cord = cordPath(frame, run, { stringPart, paid });

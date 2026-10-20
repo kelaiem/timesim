@@ -176,6 +176,18 @@ are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
 opens one, and the page writes the URL only inside the tour. **Since §298 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is
 `tools/smoke-technic-carousel.mjs` (Chromium, 1280 and 390 wide).
+**Since §300 each cell carries a PARTS LIST** (`src/technic-bom.js`, pictures in
+`src/technic-bom-view.js`; display only): `placedParts` folded to a quantity per
+(LDraw id, colour), the fusee's 68 cord pieces ONE string (140 placements, 73
+parts), both generations, a CSV, a "not in the model" block (rubber bands
+"unspecified", the gong, a hand) and the modelled-not-built text. **A purchase
+id is never read from memory**: `PART_TABLE` rows carry a BASIS (`catalogue`,
+`ldraw-keyword`, `unverified`) that `auditTable` re-derives from CATALOGUES and
+the pack's own headers, and org status is read from the header, never typed.
+`LDRAW_COLOUR` is the one colour-by-role table and is COMPLETE (no role falls to
+16); it is a design choice, not a measurement. Held by
+`probe-technic-bom.mjs` (pure Node) and `tools/smoke-technic-bom.mjs` (Chromium:
+each picture is its part).
 
 `explain.html` is the mechanism explainer (§65, plates for every
 mechanism as of §67), styled as the HUD. §95 made the PRIMER the HUD's
@@ -1205,7 +1217,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 331 measuring scripts and this file names 56. The rest are named for the
+`tools/` holds 333 measuring scripts and this file names 56. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1222,7 +1234,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **217 of
+The index also carries the split that decides how to read a result: **219 of
 them are ACCEPTANCE tests** that exit non-zero, and **114 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

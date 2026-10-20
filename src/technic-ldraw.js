@@ -47,9 +47,31 @@ const CATCH_M = [1, 0, 0, 0, 0, -1, 0, 1, 0];
 const RACK_M = [0, 0, -1, 0, 1, 0, 1, 0, 0];
 const ARM_M = [0, 1, 0, -1, 0, 0, 0, 0, 1];
 
-// LDraw colour codes the .ldr carries (the page draws by role instead).
-export const LDRAW_COLOUR = Object.freeze({ baseplate: 2, plate: 71, brick: 71, technicBrick: 72, axle: 0, spur: 71, doubleBevel: 19,
-  joiner: 0, ring: 72, crown: 15, catch: 4, pinion: 19, rack: 14, tile: 15, detent: 25, arm: 1, follower: 4 });
+// LDraw colour codes the .ldr carries (the page draws by role instead). BUILT §300:
+// this is the ONE colour-by-role declaration, and it is COMPLETE — every role any
+// build places has a row, so none falls to 16 ("the placer's colour", which a
+// picture-led parts list would show as one grey). It is a DESIGN CHOICE the owner
+// can flip (docs/BUILT.md §300 records the default), not a measurement. Its rule:
+// the frame is grey (plates and bricks 71, Technic bricks 72, baseplate green 2),
+// axles and cord black (0), and a part that does a JOB another part in the same
+// build does not gets its own colour, so a picture and a BOM line tell them apart —
+// a pawl, a catch, a follower and a hammer's pallet are red (4), a lever and a
+// mass yellow (14), a detent, a ratchet and a beam orange (25), an arm blue (1), a
+// pinion and a click tan (19), a crown and a hook white (15). Gears that are only
+// gears stay grey: spur 71, a wheel or a gear in the alarm 71. The probe holds the
+// table complete over the builds, and every code a real LDraw colour (COLOUR_NAME,
+// src/technic-bom.js).
+export const LDRAW_COLOUR = Object.freeze({
+  // the frame (landing B)
+  baseplate: 2, plate: 71, brick: 71, technicBrick: 72, axle: 0, spur: 71, doubleBevel: 19,
+  // the keyless and motion works (landings D-G)
+  joiner: 0, ring: 72, crown: 15, catch: 4, pinion: 19, rack: 14, tile: 15, detent: 25, arm: 1, follower: 4,
+  // the fusee (landing H, §285)
+  cord: 0, cordEnd: 0, barrel: 72, hook: 15, knob: 15, pulley: 71, click: 19, ratchet: 25, pawl: 4, great: 14, centre: 19,
+  // the alarm (landing I, §288)
+  lever: 14, pin: 72, rotor: 4, wheel: 71, driver: 1, stub: 0, pushTip: 4, collar: 4, button: 15, beam: 25, gear: 71,
+  // the escapement (§287)
+  knife: 72, mass: 14, pallet: 4 });
 
 // The angle of one tooth of a gear part, in its own frame, about its Z axis:
 // the surface points at the tip radius, folded by the tooth count. arg Σ e^{iNθ}

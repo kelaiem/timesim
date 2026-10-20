@@ -115,6 +115,18 @@
   src/technic-carousel.js holds the table). ?tour=0 opens the whole table as the
   page did before; an explicit ?focus= (valid or not) opens as it always did;
   ?cell= names its stop. Leaving the tour writes tour=0, so a reload stays out.
+
+  BUILT §300 — THE VISUAL PARTS LIST. Each cell's panel row carries a "parts list":
+  the build's placements folded to a quantity per (LDraw id, colour), a picture of
+  each part drawn live from the vendored LDraw file (src/technic-bom-view.js, no
+  image from anyone else), its purchase id with where that came from, and what is
+  NOT in the model (rubber bands, a gong, a hand). The fusee's 66 braided segments
+  and two end studs are ONE string. technic_2026 and technic_classic are both
+  offered; the two unofficial 2026 gears are flagged. A CSV of the list downloads
+  with the honesty text in it. MODELLED, not built: no one has assembled these.
+  src/technic-bom.js is the pure half; tools/probe-technic-bom.mjs holds it and
+  tools/smoke-technic-bom.mjs holds the pictures. DISPLAY ONLY: the placements
+  and the .ldr downloads are untouched.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -211,6 +223,23 @@ body.panel-hidden #tour{inset-inline-start:12px}
   body.panel-hidden #tour{inset-inline-start:0}
 }
 @media (pointer:coarse){ #tour-dots button{width:28px;height:28px} }
+
+/* §300: the parts list inside a cell's panel row. A line is a picture and a block
+   of text, so it reads at the panel's 380 px and at a phone's width alike. */
+details.bom{margin-top:6px;border-top:1px dashed var(--line);padding-top:4px}
+details.bom>summary{cursor:pointer;color:#9fb6d9;padding:4px 0;min-height:24px}
+.bom-note{color:var(--dim);font-size:12px;margin:4px 0}
+.bom-line{display:grid;grid-template-columns:56px minmax(0,1fr);gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.bom-line img{width:56px;height:56px;display:block;background:#23272e;border-radius:4px}
+.bom-line .what{overflow-wrap:anywhere}
+.bom-line .qty{font:600 14px ui-monospace,monospace;color:var(--ink)}
+.bom-line .meta{color:var(--dim);font-size:12px;overflow-wrap:anywhere}
+.bom-line .flag{color:#e0b630;font-size:12px}
+.bom-line .flag.warn{color:var(--bad)}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #5b6b85;vertical-align:-1px;margin-inline-end:3px}
+.bom-sum{font-weight:600;margin:6px 0 2px}
+ul.bom-out{margin:4px 0;padding-inline-start:18px;color:var(--dim);font-size:12px}
+#tour-parts[hidden]{display:none}
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js",
@@ -227,6 +256,7 @@ body.panel-hidden #tour{inset-inline-start:12px}
     <button id="tour-prev" type="button" aria-label="Previous cell" title="Previous (left arrow)">&#8249;</button>
     <div id="tour-text" aria-live="polite"><span id="tour-ind"></span><span id="tour-cap"></span><span id="tour-skip"></span></div>
     <button id="tour-next" type="button" aria-label="Next cell" title="Next (right arrow)">&#8250;</button>
+    <button id="tour-parts" type="button" title="the parts list of this cell">parts</button>
     <button id="tour-over" type="button" title="the whole table (Escape)">overview</button>
   </div>
   <div id="tour-dots"></div>
@@ -364,6 +394,8 @@ import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBa
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
 import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
+import { GENERATIONS, seedBuild, bomForCell, bomCsv, NOT_IN_MODEL, honestyFor } from './src/technic-bom.js';
+import { makePartPictures } from './src/technic-bom-view.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
 
@@ -1194,6 +1226,90 @@ tourEl.addEventListener('pointerup', (e) => {
   if (d) tourNext(d);
 });
 
+// --- §300: the parts list ----------------------------------------------------
+// Each framed cell's panel row gets a "parts list" (src/technic-bom.js folds the
+// build; src/technic-bom-view.js draws a picture per part). The page SEEDS the
+// module's memo with the builds it already made, so the list for the page's own
+// generation is instant; the other generation's keyless build is ~8 s of work
+// and is done only when a reader asks for it. DISPLAY ONLY.
+let partPictures = null;
+const nextTask = () => new Promise((r) => setTimeout(r, 0));
+function seedBoms(gen) {
+  TECHNIC_FORK.rows.forEach((_, k) => { const c = cellReg[`row-${k + 1}`]; if (c?.build) seedBuild(lib, gen, `row-${k + 1}`, c.build); });
+  if (keylessBuild) seedBuild(lib, gen, 'keyless', keylessBuild);
+  if (fuseeBuildNow) seedBuild(lib, gen, 'fusee', fuseeBuildNow);
+  if (alarmFrame?.framed && alarmStatesNow) seedBuild(lib, gen, 'alarm', alarmBuild(alarmFrame, lib, alarmStatesNow.armed));
+  if (escFrame?.framed) seedBuild(lib, gen, 'escapement', escapementBuild(escFrame, lib));
+}
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+async function fillBom(body, cell, gen) {
+  const token = (body._token = (body._token ?? 0) + 1);
+  body.dataset.ready = '';
+  body.textContent = ''; body.appendChild(el('p', 'bom-note', 'reading the build…'));
+  await nextTask(); await nextTask();
+  let c;
+  try { c = bomForCell(lib, gen, cell); } catch (err) { body.textContent = ''; log(`ERROR: parts list ${cell} ${gen}: ${err.message}`); return; }
+  if (body._token !== token) return;
+  body.textContent = '';
+  const gb = el('div', 'gen');
+  for (const g of GENERATIONS) {
+    const b = el('button', null, g.replace('technic_', '')); b.type = 'button'; b.dataset.gen = g; b.dataset.state = g === gen ? 'on' : 'off';
+    b.title = g === 'technic_2026' ? 'the 2026 catalogue: two gears are unofficial parts' : 'the classic catalogue: every part is in the official library';
+    b.addEventListener('click', () => { if (g !== gen) fillBom(body, cell, g); });
+    gb.appendChild(b);
+  }
+  body.appendChild(gb);
+  if (!c.bom) { body.appendChild(el('p', 'bom-note', `no parts list: not framed in LEGO (${c.reason})`)); return; }
+  const b = c.bom;
+  body.appendChild(el('div', 'bom-sum', `${b.total} parts in ${b.lines.length} lines`));
+  body.appendChild(el('p', 'bom-note', `${gen} · ${b.colours.length} colours · ${b.placements} placements${b.cordPlacements ? `; the cord's ${b.cordPlacements} pieces are one string` : ''}`
+    + (b.modes.length > 1 ? `; the same at ${b.modes.join(', ')}` : '') + ' · modelled, not built'));
+  const imgs = [];
+  for (const l of b.lines) {
+    const li = el('div', 'bom-line'); li.dataset.part = l.part; li.dataset.colour = l.colour; li.dataset.qty = l.qty;
+    const img = el('img'); img.width = img.height = 56; img.alt = `${l.title}, ${l.colourName}`; img.dataset.part = l.part; img.dataset.colour = l.colour; imgs.push(img);
+    const what = el('div', 'what');
+    const top = el('div'); top.append(el('span', 'qty', `${l.qty}× `), document.createTextNode(l.title));
+    const sw = el('span', 'swatch'); sw.style.background = l.hex;
+    const meta = el('div', 'meta'); meta.append(document.createTextNode(`${l.part} · `), sw, document.createTextNode(`${l.colourName} (${l.colour}) · buy ${l.purchase.id} (${l.purchase.basis})`));
+    what.append(top, meta);
+    for (const f of l.flags) what.appendChild(el('div', /^unofficial/.test(f) ? 'flag warn' : 'flag', f));
+    li.append(img, what); body.appendChild(li);
+  }
+  body.appendChild(el('div', 'bom-sum', 'not in the model'));
+  const ul = el('ul', 'bom-out');
+  for (const n of NOT_IN_MODEL[c.kind]) ul.appendChild(el('li', null, `${n.item}: ${n.quantity}. ${n.why}`));
+  body.appendChild(ul);
+  for (const h of honestyFor(c.kind, b.lines)) body.appendChild(el('p', 'bom-note', h));
+  const a = el('a', null, `download the list (.csv, ${gen})`); a.style.color = '#9fb6d9';
+  a.href = URL.createObjectURL(new Blob([bomCsv(c, gen)], { type: 'text/csv' })); a.download = `${gen}-${cell}.csv`;
+  body.appendChild(a);
+  // the pictures last, a few a task, so a long list does not hold the frame
+  partPictures ??= makePartPictures(lib, geoOf);
+  let n = 0;
+  for (const img of imgs) {
+    if (body._token !== token) return;
+    img.src = partPictures.render(img.dataset.part, Number(img.dataset.colour));
+    if (++n % 4 === 0) await nextTask();
+  }
+  body.dataset.ready = gen;
+}
+function addBomDetails(cell, gen) {
+  const row = cellReg[cell]?.row;
+  if (!row) return;
+  const d = el('details', 'bom'); d.dataset.cell = cell;
+  d.appendChild(el('summary', null, 'parts list'));
+  const body = el('div', 'bom-body'); d.appendChild(body);
+  d.addEventListener('toggle', () => { if (d.open && !body._token) fillBom(body, cell, gen); });
+  row.appendChild(d);
+}
+document.getElementById('tour-parts').addEventListener('click', () => {
+  const cell = tour.stops[tour.i]?.cell, d = cell && document.querySelector(`details.bom[data-cell="${cell}"]`);
+  if (!d) return;
+  if (panelEl.hidden) setPanelHidden(false);
+  d.open = true; d.scrollIntoView({ block: 'nearest' });
+});
+
 async function build(gen) {
   await loadLib();
   cam.fov = TABLE_FOV; cam.updateProjectionMatrix();
@@ -1429,6 +1545,9 @@ async function build(gen) {
   }
   for (const b of document.querySelectorAll('#gens button')) b.dataset.state = b.dataset.gen === gen ? 'on' : 'off';
   currentGen = gen;
+  // §300: the parts list of each framed cell (the builds just made seed the module's memo)
+  seedBoms(gen);
+  for (const c of Object.keys(cellReg)) addBomDetails(c, gen);
   // §294: the stops are derived from the cells just built (a rebuild for the
   // other generation re-derives them, and a tour in progress stays on its stop)
   tourRebuild(frames, keylessFrame, fuseeFramed);

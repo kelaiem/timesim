@@ -1247,8 +1247,8 @@ const fr = (x, y, z) => [L(x), -L(z), L(y)];
 // LDraw Z, its width (own X) along LDraw Y (landing H's ARM_TO_PLANE)
 const ARM_TO_PLANE = [0, 0, 1, 1, 0, 0, 0, 1, 0];
 const X_TO_Z_REV = [0, 0, 1, 0, 1, 0, -1, 0, 0];   // a pin's own X onto LDraw −Z (proper)
-export const ALARM_COLOUR = Object.freeze({ rotor: 4, wheel: 71, pawl: 19, arm: 1, lever: 14, follower: 4, pin: 72, beam: 25, gear: 71,
-  tile: 15, knob: 15, axle: 0 });
+// (This module's own role-colour table was retired by BUILT §300: read by nothing, and 'pawl' and 'pin' disagreed with the .ldr's.
+// LDRAW_COLOUR in technic-ldraw.js is the one colour-by-role declaration.)
 // The bodies' poses: the lever's angle ψ, the disc's θ, the column wheel's θW,
 // the driver's angle, the fly arbor's φ; the rest follow (each pawl and the
 // hammer seated, each train phased to mesh).
