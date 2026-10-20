@@ -373,7 +373,9 @@ try {
   // shipped without their bumps, so main had read 82/80 since them: landing I's
   // src/technic-alarm.js and §287's src/technic-escapement.js, both imported by
   // technic.html, one module each, like landing H's fusee.
-  check('release: precache complete', counts === 83, `${counts}/83`);
+  // §294 — 84: src/technic-carousel.js, imported statically by technic.html. One
+  // module for the page, so it adds one.
+  check('release: precache complete', counts === 84, `${counts}/84`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
