@@ -13,6 +13,9 @@
 //
 //   node tools/smoke-technic-carousel.mjs [--shots DIR] [--chromium PATH]
 import { createServer } from 'node:http';
+import { execSync } from 'node:child_process';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, join, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,31 +26,45 @@ const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.a
 const SHOTS = arg('--shots'), EXE = arg('--chromium') ?? (process.env.CHROMIUM_PATH || undefined);
 if (SHOTS) await mkdir(SHOTS, { recursive: true });
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.mpd': 'text/plain', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/json' };
-const server = createServer(async (req, res) => {
-  try {
-    const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
-    const body = await readFile(join(ROOT, path === '/' ? 'technic.html' : path));
-    res.writeHead(200, { 'content-type': MIME[extname(path)] ?? 'application/octet-stream' }).end(body);
-  } catch { res.writeHead(404).end('not found'); }
-});
-await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const base = `http://127.0.0.1:${server.address().port}/technic.html`;
+const serve = async (root) => {
+  const srv = createServer(async (req, res) => {
+    try {
+      const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
+      const body = await readFile(join(root, path === '/' ? 'technic.html' : path));
+      res.writeHead(200, { 'content-type': MIME[extname(path)] ?? 'application/octet-stream' }).end(body);
+    } catch { res.writeHead(404).end('not found'); }
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  return [srv, `http://127.0.0.1:${srv.address().port}/technic.html`];
+};
+const [server, base] = await serve(ROOT);
+// §298: the page before the default changed, read from git (--baseline REF, default origin/main), so the
+// links that must land where they did are compared with the page that landed them. Skipped, aloud, when
+// that ref already opens in the tour (the comparison would be the page against itself).
+const REF = arg('--baseline') ?? 'origin/main';
+let server0 = null, base0 = null;
+try {
+  const dir = mkdtempSync(join(tmpdir(), 'technic-base-'));
+  execSync(`git -C "${ROOT}" archive ${REF} technic.html src vendor | tar -x -C "${dir}"`, { stdio: 'pipe' });
+  if (/initialTour/.test(readFileSync(join(dir, 'technic.html'), 'utf8'))) console.log(`baseline ${REF} already opens in the tour: comparisons with the old page SKIPPED`);
+  else [server0, base0] = await serve(dir);
+} catch (e) { console.log(`baseline ${REF} unavailable (${String(e.message).split('\n')[0]}): comparisons with the old page SKIPPED`); }
 
 let fails = 0, checks = 0;
 const ok = (c, m) => { checks++; if (!c) { fails++; console.log(`  ✗ ${m}`); } return !!c; };
 const IGNORE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
 const browser = await chromium.launch({ executablePath: EXE, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 
-async function open(ctx, query = '', errors) {
+async function open(ctx, query = '', errors, root = base) {
   const page = await ctx.newPage();
   page.on('console', (m) => { const t = m.text(); if (IGNORE.test(t)) return; if (m.type() === 'error' || /^ERROR:|^carousel:/.test(t)) errors.push(`${m.type()}: ${t}`); });
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-  await page.goto(`${base}${query}`);
+  await page.goto(`${root}${query}`, { timeout: 180000 });
   await page.waitForFunction(() => window.__technic?.tour?.stops?.length > 0, null, { timeout: 180000 });
   await settle(page);
   return page;
 }
-const settle = (page) => page.waitForFunction(() => !window.__technic.tour.tweening, null, { timeout: 30000 }).then(() => page.waitForTimeout(150));
+const settle = (page) => page.waitForFunction(() => !window.__technic.tour.tweening, null, { timeout: 180000 }).then(() => page.waitForTimeout(150));
 const pose = (page) => page.evaluate(() => { const T = window.__technic; return { p: T.cam.position.toArray(), t: T.controls.target.toArray(), fov: T.cam.fov }; });
 const dist = (a, b) => Math.hypot(...a.p.map((v, i) => v - b.p[i]), ...a.t.map((v, i) => v - b.t[i])) + Math.abs(a.fov - b.fov);
 const shot = (page, name) => SHOTS && page.screenshot({ path: join(SHOTS, `carousel-${name}.png`) });
@@ -56,27 +73,33 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
   console.log(`\n== ${vp.name} ${vp.width}x${vp.height}`);
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.mobile, hasTouch: !!vp.mobile, deviceScaleFactor: 1 });
+  // §298: ?tour=0 is the overview the page used to open on; the plain page is the tour at stop 1
+  const ovp = await open(ctx, '?tour=0', errors), over = await pose(ovp);
+  ok(await ovp.evaluate(() => !window.__technic.tour.active && location.search === '?tour=0') && (await ovp.locator('#tour').isHidden()), '?tour=0 did not open the overview, or wrote the URL');
+  ok(await ovp.evaluate(() => window.__technic.tour.shown) >= 8, 'the overview does not show every cell');
+  await shot(ovp, `${vp.name}-overview-tour0`); await ovp.close();
   const page = await open(ctx, '', errors);
   const stops = await page.evaluate(() => window.__technic.tour.stops.map((s) => ({ id: s.id, title: s.title })));
   const N = stops.length;
   console.log(`  ${N} stops: ${stops.map((s) => s.id).join(' ')}`);
   ok(N >= 6, `only ${N} stops`);
-  const over = await pose(page);
-  ok(await page.evaluate(() => !window.__technic.tour.active) && (await page.locator('#tour').isHidden()), 'the tour is on before the reader asks');
-  ok(await page.evaluate(() => location.search === ''), 'the page wrote the URL before the tour');
-  ok(await page.evaluate(() => window.__technic.tour.shown) >= 8, 'the overview does not show every cell');
-  await shot(page, vp.name === 'desktop' ? 'overview' : 'mobile-overview');
+  ok(await page.evaluate(() => window.__technic.tour.active && window.__technic.tour.id === 'row-1' && window.__technic.tour.i === 0) && (await page.locator('#tour').isVisible()), 'the plain page did not open in the tour at stop 1');
+  ok(await page.evaluate(() => window.__technic.tour.indicator) === `1 / ${N} — ${stops[0].title}`, `the bar reads "${await page.evaluate(() => window.__technic.tour.indicator)}" at the opening`);
+  ok(await page.evaluate(() => window.__technic.tour.shown) === 1 && await page.evaluate(() => document.querySelectorAll('#rows .row.current').length) === 1, 'the opening shows other cells or lights no panel row');
+  ok(await page.evaluate(() => location.search === '?cell=row-1'), 'the opening did not write ?cell=row-1 as entering the tour does');
+  ok(await page.locator('#tour-over').isVisible() && (await page.locator('#tour-over').innerText()) === 'overview', 'the overview button is not on the opening bar');
+  ok(dist(over, await pose(page)) > 1, 'the opening camera is the overview camera');
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, `tourdefault-${vp.name}-plain.png`) });
 
-  // enter by the button, then Next through every stop
-  await page.click('#tour-start'); await settle(page);
-  let prev = over, boxed = 0;
+  // the tour is already on; Next through every stop
+  let prev = await pose(page), boxed = 0;
   for (let i = 0; i < N; i++) {
     if (i) { vp.mobile ? await page.click('#tour-next') : await page.keyboard.press('ArrowRight'); await settle(page); }
     const want = `${i + 1} / ${N} — ${stops[i].title}`;
     const got = await page.evaluate(() => window.__technic.tour.indicator);
     ok(got === want, `stop ${i + 1}: indicator "${got}" is not "${want}"`);
     const now = await pose(page), moved = dist(prev, now);
-    ok(moved > 1e-3, `stop ${stops[i].id}: the camera did not move (${moved.toExponential(2)})`);
+    ok(i === 0 || moved > 1e-3, `stop ${stops[i].id}: the camera did not move (${moved.toExponential(2)})`);
     prev = now;
     ok(await page.evaluate(() => window.__technic.tour.shown) === 1, `stop ${stops[i].id}: ${await page.evaluate(() => window.__technic.tour.shown)} cells show, not 1`);
     ok(await page.evaluate((id) => new URLSearchParams(location.search).get('cell') === id && !new URLSearchParams(location.search).has('focus'), stops[i].id), `stop ${stops[i].id}: ?cell= not written`);
@@ -156,30 +179,79 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
     await flick('canvas', -150); await settle(page);
     ok((await page.evaluate(() => window.__technic.tour.i)) === i0, 'a flick on the canvas moved the tour');
   }
-  // the overview button returns to the whole table and takes the URL back
+  // the overview button returns to the whole table; the URL says so (tour=0), so a reload stays out
   await page.click('#tour-over'); await settle(page);
-  ok(await page.evaluate(() => !window.__technic.tour.active && window.__technic.tour.shown >= 8 && location.search === ''), 'overview did not restore the table and the URL');
-  ok(dist(over, await pose(page)) < 1e-2 * (1 + Math.hypot(...over.p)), `overview camera ${dist(over, await pose(page)).toFixed(3)} from the first view`);
+  ok(await page.evaluate(() => !window.__technic.tour.active && window.__technic.tour.shown >= 8 && location.search === '?tour=0'), 'overview did not restore the table and write ?tour=0');
+  ok(dist(over, await pose(page)) < 1e-2 * (1 + Math.hypot(...over.p)), `overview camera ${dist(over, await pose(page)).toFixed(3)} from the ?tour=0 view`);
   ok(await page.locator('#tour').isHidden(), 'the bar stays after the overview');
+  ok(await page.locator('#tour-start').innerText() === 'tour the cells', 'the panel button does not offer the tour again');
+  // a generation switch in the overview STAYS in the overview (the first build alone chose the default)
+  await page.evaluate(() => window.__technic.build('technic_classic')); await settle(page);
+  ok(await page.evaluate(() => !window.__technic.tour.active && window.__technic.tour.shown >= 8 && location.search === '?tour=0') && await page.locator('#tour').isHidden(), 'a rebuild in the overview re-entered the tour');
   ok(errors.length === 0, `console: ${errors.slice(0, 3).join(' | ')}`);
   await ctx.close();
 }
 
-// deep links, at the desktop size
+// the new default against the page as it was, at the desktop size
 {
-  console.log('\n== deep links 1280x800');
+  console.log('\n== default and deep links 1280x800');
   const errors = [], ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  const plain = await open(ctx, '', errors), overview = await pose(plain); await plain.close();
+  const shown = (pg) => pg.evaluate(() => window.__technic.tour.shown);
+  // the old plain page is the reference for ?tour=0 and for every ?focus= link
+  const same = async (what, pg, ref) => { const a = await pose(pg), b = await pose(ref); ok(dist(a, b) < 1e-6 && (await shown(pg)) === (await shown(ref)), `${what}: camera ${dist(a, b).toExponential(2)} from the old page's, cells ${await shown(pg)} vs ${await shown(ref)}`); };
+  let overview;
+  if (base0) {
+    const old = await open(ctx, '', errors, base0); overview = await pose(old);
+    const t0 = await open(ctx, '?tour=0', errors);
+    await same('?tour=0 against the old plain page', t0, old);
+    ok(await t0.evaluate(() => !window.__technic.tour.active && location.search === '?tour=0'), '?tour=0 entered the tour or was rewritten');
+    await t0.close();
+    // [new query, the old page's query for the same view]
+    for (const [q, q0] of [['?focus=escapement'], ['?focus=fusee'], ['?focus=alarm'], ['?focus=strike'], ['?focus=bogus'], ['?focus=fusee&loop=0&panel=0'], ['?panel=0&loop=0&tour=0', '?panel=0&loop=0'],
+      ['?cell=bogus']]) {
+      const a = await open(ctx, q, errors), b = await open(ctx, q0 ?? q, errors, base0);
+      const ra = await a.evaluate(() => ({ act: window.__technic.tour.active, s: location.search })), rb = await b.evaluate(() => ({ act: window.__technic.tour.active }));
+      ok(!ra.act && !rb.act, `${q}: entered the tour (new ${ra.act}, old ${rb.act})`);
+      await same(`${q} against the old page`, a, b);
+      if (q.startsWith('?focus=')) ok(ra.s === q, `${q} was rewritten to ${ra.s}`);
+      await a.close(); await b.close();
+    }
+    await old.close();
+  } else console.log('  (no old page to compare: the identity checks are skipped)');
+  if (!overview) { const t = await open(ctx, '?tour=0', errors); overview = await pose(t); await t.close(); }
+  // ?tour=0 beside the other switches
+  const sw = await open(ctx, '?tour=0&panel=0&loop=0&auto=0&gen=technic_classic', errors);
+  ok(await sw.evaluate(() => !window.__technic.tour.active && document.getElementById('panel').hidden && window.__technic.fuseeLoop?.on === false), '?tour=0 with panel/loop/auto/gen did not hold');
+  await sw.close();
+  // the default beside the other switches: the tour, in their state
+  const dp = await open(ctx, '?panel=0&loop=0&auto=0&gen=technic_classic', errors);
+  ok(await dp.evaluate(() => window.__technic.tour.active && window.__technic.tour.id === 'row-1' && document.getElementById('panel').hidden && window.__technic.fuseeLoop?.on === false), 'the default tour did not combine with panel/loop/auto/gen');
+  ok(await dp.evaluate(() => { const p = new URLSearchParams(location.search); return p.get('cell') === 'row-1' && p.get('panel') === '0' && p.get('loop') === '0' && p.get('auto') === '0' && p.get('gen') === 'technic_classic'; }), 'the opening dropped a URL parameter');
+  await dp.close();
+  // plain: a generation switch IN the tour keeps the stop; Escape reaches the overview and a switch there stays
+  const pl = await open(ctx, '', errors);
+  await pl.evaluate(() => window.__technic.tour.next()); await settle(pl);
+  await pl.evaluate(() => window.__technic.build('technic_classic')); await settle(pl);
+  ok(await pl.evaluate(() => window.__technic.tour.active && window.__technic.tour.id === 'row-2' && window.__technic.tour.shown === 1), 'a generation switch in the opening tour lost the stop');
+  await pl.keyboard.press('Escape'); await settle(pl);
+  ok(await pl.evaluate(() => !window.__technic.tour.active && window.__technic.tour.shown >= 8 && location.search === '?tour=0'), 'Escape from the opening tour did not reach the overview');
+  await pl.evaluate(() => window.__technic.build('technic_2026')); await settle(pl);
+  ok(await pl.evaluate(() => !window.__technic.tour.active && window.__technic.tour.shown >= 8) && await pl.locator('#tour').isHidden(), 'a rebuild after Escape re-entered the tour');
+  await pl.reload(); await pl.waitForFunction(() => window.__technic?.tour?.stops?.length > 0, null, { timeout: 180000 });
+  ok(await pl.evaluate(() => !window.__technic.tour.active), 'a reload after leaving the tour went back in');
+  await pl.close();
+  // ?cell= and ?focus= unchanged
   const cell = await open(ctx, '?cell=escapement', errors);
   ok(await cell.evaluate(() => window.__technic.tour.active && window.__technic.tour.id === 'escapement'), '?cell=escapement did not open the tour at the escapement');
   ok(await cell.evaluate(() => window.__technic.tour.shown) === 1, '?cell=escapement shows more than one cell');
   const cp = await pose(cell);
   const focus = await open(ctx, '?focus=escapement', errors), fp = await pose(focus);
-  ok(await focus.evaluate(() => !window.__technic.tour.active && location.search === '?focus=escapement'), '?focus=escapement entered the tour or was rewritten');
   const cdir = cp.p.map((v, i) => v - cp.t[i]), fdir = fp.p.map((v, i) => v - fp.t[i]), dot = cdir.reduce((s, v, i) => s + v * fdir[i], 0) / (Math.hypot(...cdir) * Math.hypot(...fdir));
   ok(dot > 0.9999 && Math.hypot(...cp.t.map((v, i) => v - fp.t[i])) < 1e-3 && Math.abs(cp.fov - fp.fov) < 1e-9, `?cell= and ?focus= escapement look from different places (cos ${dot.toFixed(5)})`);
   console.log(`  escapement: ?cell= and ?focus= look the same way (cos ${dot.toFixed(6)}); distance ${Math.hypot(...cdir).toFixed(1)} vs ${Math.hypot(...fdir).toFixed(1)} (the bar takes room)`);
   await focus.close();
+  const cf = await open(ctx, '?cell=fusee&focus=alarm', errors);
+  ok(await cf.evaluate(() => window.__technic.tour.id === 'fusee'), '?cell= did not win over ?focus=');
   for (const f of ['fusee', 'alarm', 'strike']) {
     const pg = await open(ctx, `?focus=${f}`, errors);
     ok(await pg.evaluate(() => !window.__technic.tour.active) && dist(overview, await pose(pg)) > 1, `?focus=${f} did not leave the overview`);
@@ -187,7 +259,7 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
     ok(await c2.evaluate((f) => window.__technic.tour.id === f, f), `?cell=${f} opened elsewhere`);
     await pg.close(); await c2.close();
   }
-  for (const bad of ['?cell=bogus', '?cell=', '?cell=row-99', '?cell=__proto__']) {
+  for (const bad of ['?cell=', '?cell=row-99']) {
     const pg = await open(ctx, bad, errors);
     ok(await pg.evaluate(() => !window.__technic.tour.active && window.__technic.tour.shown >= 8) && dist(overview, await pose(pg)) < 1e-6, `${bad} is not the overview`);
     await pg.close();
@@ -203,14 +275,14 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
   await ctx.close();
   // reduced motion: a jump
   const rctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
-  const rp = await open(rctx, '', errors);
+  const rp = await open(rctx, '?tour=0', errors);
   await rp.click('#tour-start');
   ok(await rp.evaluate(() => !window.__technic.tour.tweening && window.__technic.tour.active), 'reduced motion still tweened');
   await rctx.close();
   ok(errors.length === 0, `console: ${errors.slice(0, 3).join(' | ')}`);
 }
 
-await browser.close(); server.close();
+await browser.close(); server.close(); server0?.close();
 console.log(`\n${checks} checks, ${fails} failed`);
 if (fails) { console.log('FAIL'); process.exit(1); }
 console.log('PASS');
