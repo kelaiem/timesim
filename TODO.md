@@ -34477,3 +34477,35 @@ old shader the same probe reads the axis at 0.0° for grain 0°, along the
 grain, and fails, which is the deliberately unswapped control the fix path
 asked for. The works' brushed steel looks different everywhere; the band
 does not.
+
+## 264. Technic builds: six solids overlap at the placed pose and 27 insertion steps cannot be cleared
+
+Found by §302's validator (`tools/probe-technic-steps.mjs`), which measures the
+LDraw part triangles of every build, not the frame tables. Two findings, both
+modelled and neither built:
+
+**Six pairs of solids stand inside each other at the placed pose, deeper than
+the 1.0 LDU a friction pin's ridges are moulded to.** The frame probes check
+lines and faces, never solids. Escapement: the balance's crossbar axle (3708)
+runs through a spoke of a 40T gear used as a mass (3649), 4.31 LDU (checked
+independently by point-in-solid votes along the spoke: material at the axle's
+line). Keyless: the 12L axle (3708) of one shaft against the 24T gear (3648) of
+its neighbour, 1.60, and the ridged joiner (18948) on the stem axle, 1.17.
+Fusee: the click pawl's arm (6632) 1.60, a peg axle (32062) 1.38 and the
+detent pawl's 8T (3647) 2.02, each into the baseplate. Fix path: for each, move
+the station or the part (P3: position space, never a thinner part), then
+remove its row from `OVERLAPS` in the probe; the gate fails a row that has
+cleared.
+
+**27 (build, part, blocker) steps are not insertable by a straight, a
+turned-to-mesh or a two-leg path** at the derived order (the probe's `FLAGGED`
+inventory, closed). They fall in four kinds: hub bosses proud of a gear or
+pulley face that scrape the Technic brick beside it because the gap is exactly
+the part's width (fusee pulley 55982, keyless 14T and 64T gears, 0.5-1.2 LDU);
+friction pins pushed through a hole whose ridges are over the allowance on a
+sideways path (alarm 3673); interleaved layers on two shafts, the release
+disc's beams and the fly's (alarm 7229 against 2712 and 3673), where no order
+of the two clears; and meshes whose tooth flanks meet over the tolerance by
+0.02-0.2 LDU (keyless 4019 against 3647, fusee 4019). Fix path: the first kind
+is a gap 1 LDU wider than the part (a layout change), the third a z-stagger of
+one beam; the rest may clear on a better search. No row may be added.

@@ -4,8 +4,8 @@
 
 # The instruments
 
-334 scripts. **220 are ACCEPTANCE tests** — they decide and exit non-zero.
-**114 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+337 scripts. **222 are ACCEPTANCE tests** — they decide and exit non-zero.
+**115 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -334,6 +334,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-technic-ldraw.mjs` |  | acceptance | DO THE TECHNIC FRAME'S DIMENSIONS MATCH THE REAL PARTS? Acceptance, pure Node, no browser, no network; exits non-zero on any mismatch. |
 | `probe-technic-motion.mjs` |  | acceptance | DOES THE LEGO MOTION WORKS TURN THE HOUR WHEEL A TWELFTH OF THE MINUTE HAND, THE SAME WAY, ON THE MINUTE HAND'S OWN AXLE, FROM THE CROWN? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing G. |
 | `probe-technic-pusher.mjs` |  | acceptance | DOES THE LEGO ALARM'S PUSHER TURN THE COLUMN WHEEL'S DRIVER FROM ITS REST STOP TO ITS BANK STOP, ON ONE FACE, WITH EVERY PART CLEAR OF EVERY OTHER? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §288 (src/technic-alarm.js: solvePusher, pusherOf, pushFace, pushDriver). |
+| `probe-technic-steps.mjs` |  | acceptance | IS THE ORDER THE LEGO BUILDS GO TOGETHER IN A VALID ONE: EVERY PLACEMENT IN EXACTLY ONE STEP, EVERY PART AFTER THE PARTS IT RESTS ON AND PASSES THROUGH, EVERY STEP'S PARTS INSERTABLE INTO WHAT IS ALREADY THERE, AND THE .MPD THE PAGE OFFERS THE SAME BUILD? Acceptance, pure Node (the vendored three.js and three-mesh-bvh load through tools/three-node-loader.mjs, no browser, no network); exits non-zero on any failed row. BUILT §302 (src/technic-steps.js, the swept validator in tools/technic-steps-sweep.mjs, technic.html's .mpd link). Not probe-technic-build.mjs (that holds the PLACEMENTS: seated, through, meshed) and not probe-technic-bom.mjs (that holds the parts LIST); this holds the ORDER. |
 | `probe-touch-ghost-pointer.mjs` |  | acceptance | DOES ONE FINGER STILL ORBIT AFTER A RELEASE THE CANVAS NEVER HEARD? — the ghost-pointer pinch, measured. |
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
@@ -342,7 +343,9 @@ when a question was asked; the summaries are what it answered.
 | `servers.mjs` |  | report | TODO 131 — WHO OWNS THAT SERVER? Every instrument in this directory spawns its own static server (`python3 -m http.server`, or `dev_server.py` for the battery and the i18n checker) and reaps it on its last line — so a probe that THROWS leaves the server behind, and the next run on that port reads the orphan (SKILL.md, "a crashed probe leaves its server running"). The advice used to be `pgrep -af "[h]ttp[.]server"` and a kill by hand, and that is how the full battery was killed mid-run at its final anchor: its dev server on a random port looked exactly like an orphan, because a port number says nothing about ownership. |
 | `smoke-technic-bom.mjs` |  | acceptance | IS EACH PICTURE IN THE TECHNIC PAGE'S PARTS LIST THE PART IT IS LABELLED, IN A REAL BROWSER, AT A DESKTOP AND AT A PHONE'S WIDTH: NON-BLANK, ITS SILHOUETTE THE SIZE THE PART'S PROJECTED BOUNDS SAY, THE TOTALS THE PURE MODULE'S, THE CSV THE LIST, AND NOTHING OVERFLOWING? Acceptance, needs Chromium (Playwright from tools/node_modules); exits non-zero on any failure. BUILT §300 (technic.html, src/technic-bom.js, src/technic-bom-view.js). The pure half is tools/probe-technic-bom.mjs. |
 | `smoke-technic-carousel.mjs` |  | acceptance | DOES THE TECHNIC PAGE'S CAROUSEL WALK, IN A REAL BROWSER, AT A DESKTOP AND AT A PHONE'S WIDTH: ENTER, NEXT THROUGH EVERY STOP AND PREVIOUS BACK, THE CAMERA MOVING EACH TIME, ONE CELL SHOWN, THE BAR INSIDE THE SCREEN, ?cell= AND ?focus= LANDING, AND NO CONSOLE ERROR? Acceptance, needs Chromium (Playwright from tools/node_modules); exits non-zero on any failure. BUILT §294 (technic.html, src/technic-carousel.js). |
+| `smoke-technic-steps.mjs` |  | acceptance | DOES THE TECHNIC PAGE'S "download .mpd (build steps)" LINK GIVE THE FILE THE PURE MODULE WRITES, IN A REAL BROWSER, FOR EVERY CELL? Acceptance, needs Chromium (Playwright from tools/node_modules); exits non-zero on any failure. BUILT §302 (technic.html, src/technic-steps.js). The pure half, and everything about the ORDER, is tools/probe-technic-steps.mjs; this holds only the page's link. |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
+| `technic-steps-sweep.mjs` |  | report | THE SWEPT-INSERTION VALIDATOR (BUILT §302) — a library for tools/probe-technic-steps.mjs and nothing else: it needs three.js and the vendored three-mesh-bvh, so it lives under tools/ and src/technic-steps.js (pure, browser-free) never imports it. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |
 | `timelapse-build.mjs` |  | report | Timelapse build — turns tools/timelapse-capture.mjs's frames into the scrubbable site: sprite sheets per view, a data block, and the viewer page. |
 | `timelapse-capture.mjs` |  | report | Timelapse capture — one frame per hosted release per camera preset, so the movement's evolution can be scrubbed as a film. |

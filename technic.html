@@ -387,6 +387,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseLibrary, walk } from './src/ldraw.js';
 import { frameFork, frameKeyless } from './src/technic-frame.js';
 import { ldrawBuild, toLdr } from './src/technic-ldraw.js';
+import { deriveSteps, toMpd } from './src/technic-steps.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild, cordPath, cordPlacements, fuseeLoopModel, loopStart, loopAdvance, loopPose,
          loopPhaseLine, loopRideSpecs, pawlRideSteps, LOOP_RUN_S } from './src/technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn, ALARM_Y, ALARM_DIM_MM, TECHNIC_ALARM, alarmShafts,
@@ -1241,6 +1242,20 @@ function seedBoms(gen) {
   if (alarmFrame?.framed && alarmStatesNow) seedBuild(lib, gen, 'alarm', alarmBuild(alarmFrame, lib, alarmStatesNow.armed));
   if (escFrame?.framed) seedBuild(lib, gen, 'escapement', escapementBuild(escFrame, lib));
 }
+// BUILT §302: the build as an .mpd — `0 STEP` after every step, a `0 FILE` per sub-assembly. The order is
+// derived from the model (src/technic-steps.js) and swept for insertion by tools/probe-technic-steps.mjs;
+// it is MODELLED, not built, and derived when asked for (it reads the whole build).
+const mpdLink = (id) => `<a id="${id}" href="#" style="color:#9fb6d9" title="build steps: derived from the model, checked by a swept insertion; modelled, not built">download .mpd (build steps)</a>`;
+function wireMpd(root, id, get, name) {
+  const a = root.querySelector('#' + id);
+  if (!a) return;
+  a.addEventListener('click', () => {
+    const { build, mode } = get();
+    URL.revokeObjectURL(a.href);
+    a.href = URL.createObjectURL(new Blob([toMpd(deriveSteps(build, { lib, mode }))], { type: 'text/plain' }));
+    a.download = name(mode ?? build.modes?.[0]);
+  });
+}
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 async function fillBom(body, cell, gen) {
   const token = (body._token = (body._token ?? 0) + 1);
@@ -1337,7 +1352,8 @@ async function build(gen) {
       div.innerHTML = `<b>${k + 1}. ${row.key} — LEGO build</b><code>${chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code> = <code>${ratStr(product)}</code> ${verdict}`
         + `<br><span style="color:var(--dim)">${frame.shafts.length} axles at ${frame.axleZ} mm, base ${frame.base.studsX}×${frame.base.studsY} studs, `
         + `${b.statics.length + b.shafts.reduce((n, s) => n + s.parts.length, 0)} parts</span>`
-        + `<br><a href="${href}" download="${gen}-${row.key.replace(/\W+/g, '-')}.ldr" style="color:#9fb6d9">download .ldr</a>`;
+        + `<br><a href="${href}" download="${gen}-${row.key.replace(/\W+/g, '-')}.ldr" style="color:#9fb6d9">download .ldr</a> · ${mpdLink(`mpd-row-${k + 1}`)}`;
+      wireMpd(div, `mpd-row-${k + 1}`, () => ({ build: b }), () => `${gen}-${row.key.replace(/\W+/g, '-')}.mpd`);
       rowsEl.appendChild(div);
       cellReg[`row-${k + 1}`] = { band, row: div, label: lbl, frame, build: b, shafts: made };
       return;
@@ -1371,7 +1387,8 @@ async function build(gen) {
         + `<br><span style="color:var(--dim)">ring travel ±${kf.ringTravel} mm; selector at ${kf.selector.rise} mm over the stem, its rests (wind/neutral/set) `
         + `${['wind', 'neutral', 'set'].map((m) => (keylessBuild.shafts.find((x) => x.shaft === 'selector').pose[m] * 180 / Math.PI).toFixed(2)).join('°/')}° on a ${kf.selector.wheel.teeth}T detent wheel; `
         + `rack ${['wind', 'neutral', 'set'].map((m) => keylessBuild.pull.rackS[m].toFixed(2)).join('/')} mm; ${kf.shafts.length + 1} axles, base ${kf.base.studsX}×${kf.base.studsY} studs</span>`
-        + `<br><a id="kldr" href="#" style="color:#9fb6d9">download .ldr (this mode)</a>`;
+        + `<br><a id="kldr" href="#" style="color:#9fb6d9">download .ldr (this mode)</a> · ${mpdLink('kmpd')}`;
+      wireMpd(div, 'kmpd', () => ({ build: keylessBuild, mode: keylessMode }), (md) => `${currentGen}-keyless-${md}.mpd`);
       cellReg.keyless = { band, row: div, label: lbl, frame: kf, build: keylessBuild, shafts: madeK };
     } else div.innerHTML = `<b>${k + 1}. keyless works</b><br><span class="bad">not framed in LEGO: ${kf.reason}</span>`;
     keylessFrame = kf;
@@ -1433,7 +1450,8 @@ async function build(gen) {
         + ` <span class="bad">A POSED spring law, modelled:</span> <span style="color:var(--dim)">${TECHNIC_FUSEE_SPRING.source}; the stand-in is the steel ribbon's law. The train's rate is a display rate (a run-down in ${LOOP_RUN_S} s at speed 1).</span>`
         + `<br><span style="color:var(--dim)">maintaining power: the click pawl, on the 40T ratchet, rides the fusee's 16T while it is wound; the detent rides the ratchet while it goes and holds it while it is wound; a band (posed, not placed) from the ratchet to the great wheel drives the great wheel the going way while the fusee is wound back.</span>`
         + `<br><span style="color:var(--dim)">the going train's next wheel: the great wheel (40T) drives the centre pinion (<code>${ff.centre.teeth}T</code>, ${ff.centre.cd} mm off), which turns ${40 / ff.centre.teeth}× as fast the other way — the catalogue mesh nearest the steel's 120:7 off a 40T. It drives nothing yet.</span>`
-        + `<br><a href="${href}" download="fusee.ldr" style="color:#9fb6d9">download .ldr (full wind)</a>`;
+        + `<br><a href="${href}" download="fusee.ldr" style="color:#9fb6d9">download .ldr (full wind)</a> · ${mpdLink('fmpd')}`;
+      wireMpd(div, 'fmpd', () => ({ build: fuseeBuildNow }), () => 'fusee.mpd');
       cellReg.fusee = { band, row: div };
       fuseeView = { frame: ff, run, cordGroup, stepMats, phaseLbl, labels: [lbl, phaseLbl], drawnPaid: null, lastText: 0, lastPhase: null };
       drawFuseeCord(0);
@@ -1490,7 +1508,7 @@ async function build(gen) {
         + `<br>strike: <code>${n}</code> strikes per barrel turn (four pins × 4:1); ${T.standIn.barrelTurns} turns of wind give <code>${n * T.standIn.barrelTurns}</code>, `
         + `<span class="bad">a POSED wind and cadence</span> <span style="color:var(--dim)">(${T.source}; the stand-in is the steel's ${T.standIn.barrelTurns} turns and ${T.standIn.strikeGap} s gap)</span>`
         + `<br><span style="color:var(--dim)">Modelled, not simulated: every angle is read off one state through the parts' geometry, and no force is weighed. The pusher's speed, the bands' and the hand on the hour axle are display rates; the strikes ring at the POSED gap. The display's hour passes the notch before the POSED wind would run down. A fly, not an anchor: air drag, no period. The hammer strikes a brick; no LEGO part rings. Base ${alarmFrame.base.studsX}×${alarmFrame.base.studsY} studs.</span>`
-        + `<br><a id="aldr" href="#" style="color:#9fb6d9">download .ldr (this state)</a>`;
+        + `<br><a id="aldr" href="#" style="color:#9fb6d9">download .ldr (this state)</a> · ${mpdLink('ampd')}`;
       const slider = div.querySelector('#astroke');
       div.querySelector('#apress').addEventListener('click', () => { setAlarmAuto(false); alarmDo('press'); });
       div.querySelector('#ahalf').addEventListener('click', () => { setAlarmAuto(false); alarmDo('half'); });
@@ -1504,6 +1522,7 @@ async function build(gen) {
         const a = e.currentTarget, b = alarmBuild(alarmFrame, lib, columnPose(alarmModel, alarmSt));
         URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(b)], { type: 'text/plain' })); a.download = `alarm-${b.pose.mode}.ldr`;
       });
+      wireMpd(div, 'ampd', () => { const b = alarmBuild(alarmFrame, lib, columnPose(alarmModel, alarmSt)); return { build: b, mode: b.pose.mode }; }, (md) => `alarm-${md}.mpd`);
       setAlarmAuto(alarmAuto);
       cellReg.alarm = { band: alarmBand, row: div };
     } else div.innerHTML = `<b>${k + 1}. alarm</b><br><span class="bad">not framed in LEGO: ${alarmFrame.reason}</span>`;
@@ -1531,7 +1550,8 @@ async function build(gen) {
         + `<div id="emeasure" style="color:var(--dim)">reading the balance's inertia off its parts…</div>`
         + `<span style="color:var(--dim)">The glow on the pallet holding a tooth, and on the wheel while it drops, is drawn for reading, not a part.</span>`
         + ` <span class="bad">An ANALOGUE, modelled:</span> <span style="color:var(--dim)">a recoil anchor, not the movement's Swiss lever (LEGO teeth have no locking corner, and a lever's drop is smaller than a plastic bearing's play); a pendulum drawn as a balance, not a sprung one (no LEGO spring steel). The swing of ±${ESC_SWING_DEG}° is POSED; the drive is not modelled; the time on the page runs at the speed slider's rate. Base ${escFrame.base.studsX}×${escFrame.base.studsY} studs.</span>`
-        + `<br><a id="eldr" href="#" style="color:#9fb6d9">download .ldr (at rest)</a>`;
+        + `<br><a id="eldr" href="#" style="color:#9fb6d9">download .ldr (at rest)</a> · ${mpdLink('empd')}`;
+      wireMpd(div, 'empd', () => ({ build: escView.b0 }), () => 'escapement.mpd');
       div.querySelector('#efocus').addEventListener('click', focusEscapement);
       div.querySelector('#eldr').addEventListener('click', (e) => {
         const a = e.currentTarget; URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(new Blob([toLdr(escView.b0)], { type: 'text/plain' })); a.download = 'escapement.ldr';

@@ -176,6 +176,21 @@ are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
 opens one, and the page writes the URL only inside the tour. **Since §298 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is
 `tools/smoke-technic-carousel.mjs` (Chromium, 1280 and 390 wide).
+**Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
+§302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
+into steps by rules read off the placements (columns bottom-up, a part held in
+the gap before the axle through its bricks, a floating axle assembled with its
+joiners, nested parts and bodies with no brick as sub-assemblies, shafts in the
+mesh list's order), and `toMpd` writes it as a `.mpd` with `0 STEP` and a
+`0 FILE` per sub-assembly, offered beside each `.ldr`. Its judge is a SWEPT
+INSERTION (`tools/technic-steps-sweep.mjs`, three-mesh-bvh): each part moved
+along its declared directions into what is placed, the depth measured per
+crossing triangle pair against a derived tolerance and the fit the pair ends in,
+a meshed gear also tried with the chain turned and a part also tried in two legs.
+`tools/probe-technic-steps.mjs` holds coverage, topology, insertion and the file,
+each with a control, and two CLOSED inventories (`FLAGGED` steps nothing clears,
+`OVERLAPS` solids in each other at rest) citing TODO 264. The order is MODELLED,
+not built; the bands' and springs' forces stay posed and a step says so.
 **Since §300 each cell carries a PARTS LIST** (`src/technic-bom.js`, pictures in
 `src/technic-bom-view.js`; display only): `placedParts` folded to a quantity per
 (LDraw id, colour), the fusee's 68 cord pieces ONE string (140 placements, 73
@@ -1222,7 +1237,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 334 measuring scripts and this file names 56. The rest are named for the
+`tools/` holds 337 measuring scripts and this file names 56. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1239,8 +1254,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **220 of
-them are ACCEPTANCE tests** that exit non-zero, and **114 are REPORTS** that
+The index also carries the split that decides how to read a result: **222 of
+them are ACCEPTANCE tests** that exit non-zero, and **115 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
 acceptance — those say so in their own headers. A report saying `0 violations` has not
