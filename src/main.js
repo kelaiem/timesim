@@ -49632,8 +49632,13 @@ const GONG_CASE_PATH = await (async () => {
     for (let li = 0; li < list.length; li++) {
       if (li % 32 === 31) await breathe(320);                                      // §239: a seam between meshes, never inside one
       const o = list[li], tm = performance.now();
-      const key = stockKeyOf(o.material);
-      if (!key || !STOCK[key]) { unmapped.set(o.material?.uuid ?? '?', o.name || o.parent?.name || '?'); continue; }
+      // §295: a view swap (x-ray glasses the plate and the dial, on by default
+      // now) changes what a mesh is DRAWN with, not what it is cut from; the
+      // swap keeps the metal's own material on userData.solidMat, and that is
+      // the one weighed.
+      const solid = o.userData.solidMat ?? o.material;
+      const key = stockKeyOf(solid);
+      if (!key || !STOCK[key]) { unmapped.set(solid?.uuid ?? '?', o.name || o.parent?.name || '?'); continue; }
       const rho = STOCK[key].rho;
       const pos = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pos.count;
       let V = 0, vx = 0, vy = 0, vz = 0, A = 0, Rb = 0; const s = [0, 0, 0, 0, 0, 0], Q = [0, 0, 0, 0, 0, 0, 0, 0, 0]; nrm.set(0, 0, 0);
@@ -49666,7 +49671,7 @@ const GONG_CASE_PATH = await (async () => {
       perMesh.push({ name: o.name || o.parent?.name || '?', key, V_u3: Math.abs(V), defect });
       M += sg * V; mx += sg * vx; my += sg * vy; mz += sg * vz; for (let i = 0; i < 6; i++) S[i] += sg * s[i];
       byStock[key] = (byStock[key] || 0) + sg * V;
-      if (o.material === MATS.caseMetal || o.material === MATS.steelHand) caseExt += sg * V;   // the alloy pick's share — what a platinum case adds; §291's steel hands are cut from the alloy too
+      if (solid === MATS.caseMetal || solid === MATS.steelHand) caseExt += sg * V;   // the alloy pick's share — what a platinum case adds; §291's steel hands are cut from the alloy too
     }
     if (unmapped.size)
       console.warn(`§269: ${unmapped.size} material(s) the stock map does not know carried ${[...unmapped.values()].slice(0, 6).join(', ')} — `
@@ -54637,11 +54642,15 @@ function applyDeepLink() {
 if (restoredSchematic) setSchematic(true);
 setCaseLines(restoredCaseLines); // applies the persisted preference; the group was built with it
 if (restoredFocus) setFocus(restoredFocus);
-// §291 — the loading screen's view preselect (index.html): the case and the
-// wireframe view, applied over the saved defaults and before the deep link,
-// which runs after and still wins where it disagrees.
+// §291 — the loading screen's view preselect (index.html): the case, the
+// wireframe view and the plate x-ray, applied over the saved defaults and
+// before the deep link, which runs after and still wins where it disagrees.
 {
-  const applyBootView = (k, on) => { if (k === 'case') setCaseLines(on); else if (k === 'wireframe') setSchematic(on); };
+  const applyBootView = (k, on) => {
+    if (k === 'case') setCaseLines(on);
+    else if (k === 'wireframe') setSchematic(on);
+    else if (k === 'xray') setXray(on);
+  };
   window.__bootViewApply = applyBootView;
   for (const [k, v] of Object.entries(window.__bootView || {})) applyBootView(k, v);
 }

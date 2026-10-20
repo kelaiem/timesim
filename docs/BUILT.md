@@ -40398,3 +40398,26 @@ Instruments: boot silent with every new assert in place, at the default and
 at `?subdialr=8`. `probe-293-weights`: ALL PASS. `probe-112-recut`
 now reads the wrist distance from `layout.js` instead of its own copy of 350.
 The hand's width is geometry, so the battery owns its clearances.
+
+## §295 — X-ray on the loading screen, and on by default
+
+Owner ask: add x-ray mode to the loading screen's appearance selector, on by
+default.
+
+- **The loading screen** offers "Plate X-ray" beside the case and the wireframe
+  view. It uses the panel's own label, which every locale already translates.
+  It goes through the same `__bootView` hand-off as those two:
+  `applyBootView` calls `setXray`. A choice made during the build applies when
+  the build reaches it. The deep link (`?xray=0/1`) still runs after and wins.
+- **On by default.** `plateXray` in `state.js` defaults to true, so a fresh
+  visitor sees through the three-quarter plate and the dial (§78's one x-ray
+  state, the same in both views). A saved choice still restores as saved, and
+  the box is ticked on the loading screen.
+- **A §269 defect it exposed.** The case's mass tally weighed each mesh by the
+  material it is DRAWN with. With x-ray on at boot, the plate, its chatons and
+  screws and the dial were drawn in their glass clones, which name no stock, so
+  the tally dropped them and warned. It now weighs `userData.solidMat` (the
+  metal the x-ray swap keeps) when a mesh has one: a view changes what a part
+  looks like, not what it is cut from.
+
+Boot is silent with x-ray on by default and with `?xray=0`.
