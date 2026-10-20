@@ -50894,6 +50894,13 @@ function explorePickFrom(hits, throughGlass, skip = null) {
     // §69's ghost materials demote exactly as §6's x-ray glass does: a tap
     // resolves through the ghosted surroundings to the solid mechanism, and
     // a ghosted part is still nameable where it is the only thing there.
+    // §299: the case's own crystals answer NO pick, in either pass. They are
+    // glass by nature and the viewer looks THROUGH them at the works; measured
+    // from the shipped dial view 205 of 383 taps (837 of 841 from the caseback)
+    // landed on a crystal and named the case instead of the part behind it.
+    // Unlike the x-ray glass they are never the only thing worth naming: a ray
+    // that meets nothing else has met nothing.
+    if (h.object.material === caseCrystalMat) continue;
     if (!throughGlass && (xrayGlassMats.has(h.object.material) || focusGlassMats.has(h.object.material))) continue;
     if (h.object === chainMesh) return { name: 'Chain', point: h.point };
     // §10 level 2 — a piece under a drilled unit resolves to its own name as
@@ -52907,8 +52914,8 @@ let selectedUnit = 'All';
 // names, registerLabel names and explode-entry names are the same strings.
 // A group name must NOT collide with a unit name (the selector resolves a
 // group first, so a shadowed unit becomes unreachable): that is why the
-// structural group is 'Frame & plates' and not 'Structure', which is already
-// backPlate's name and the catch-all for unlabelled explode entries.
+// structural group is 'Frame & plates' and not 'Structure', which is the
+// catch-all for unlabelled explode entries (backPlate is 'Base plate' since §299).
 const UNIT_GROUPS = new Map([
   ['Escapement', new Map([
     ['Escape wheel', null], ['Pallet fork', null], ['Balance', null],
@@ -52936,7 +52943,7 @@ const UNIT_GROUPS = new Map([
     ['Power-reserve train', null], ['Hands', null],
   ])],
   ['Frame & plates', new Map([
-    ['Structure', null], ['pillars', null], ['Three-quarter plate', null],
+    ['Base plate', null], ['pillars', null], ['Three-quarter plate', null],
     ['Case', null], // backlog: the housing — band, screw back, crystal, lugs, tubes
   ])],
   ['Alarm complication', new Map([
@@ -52967,7 +52974,13 @@ const UNIT_GROUPS = new Map([
     ['Alarm silence rocker', null], // §45 stage 2
   ])],
 ]);
-const EXPLODE_NAME_FALLBACK = new Map([[backPlate, 'Structure'], [handsGroup, 'Hands']]);
+// §299: the case's back and crystal assemblies are explode entries with no label
+// of their own (the label is on the whole case), so they fell through to
+// 'Structure' and a tap on the screw back or the bezel named the movement's
+// frame. They are the case. And the base plate is called what it is (owner
+// ask): 'Structure' named the one part every tap between two wheels lands on.
+const EXPLODE_NAME_FALLBACK = new Map([[backPlate, 'Base plate'], [handsGroup, 'Hands'],
+  [caseSolid.userData.assemblies.back, 'Case'], [caseSolid.userData.assemblies.front, 'Case']]);
 function explodeEntryName(e) {
   if (e.name === undefined) {
     const hit = labelEntries.find((l) => l.obj === e.obj);
