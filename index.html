@@ -204,6 +204,7 @@
     <label><span>Sapphire dial</span><input type="checkbox" data-pref="dial.plate.sapphire"></label>
     <label><span>Case</span><input type="checkbox" data-view="case" checked></label>
     <label><span>Wireframe view</span><input type="checkbox" data-view="wireframe"></label>
+    <label><span>Plate X-ray</span><input type="checkbox" data-view="xray" checked></label>
   </div>
   <ul class="boot-links">
     <li><a href="./primer.html">How they work</a></li>
@@ -377,7 +378,7 @@
   // settings object main.js will build from (aesthetics.js merges the file,
   // this browser's tuning and the link), fetched without holding up the
   // import below. A choice is recorded in window.__bootPrefs (finish
-  // settings, by key path) or window.__bootView (case, wireframe) and handed
+  // settings, by key path) or window.__bootView (case, wireframe, x-ray) and handed
   // to main.js's __bootPrefsApply / __bootViewApply once those exist. Until
   // then the record is the choice, as with sound.
   window.__bootPrefs = {};

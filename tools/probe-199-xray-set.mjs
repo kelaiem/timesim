@@ -73,7 +73,9 @@ async function boot(query) {
   page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));
   // §69 boots the SCHEMATIC tier by default, which disables the solid layer —
   // there would be no material to read and no solid for a pick to land on.
-  await page.goto(`http://127.0.0.1:${port}/index.html?schematic=0${query}`, { waitUntil: 'load', timeout: 90000 });
+  // §295 made x-ray the default; this probe toggles it ON from off, so it pins
+  // its starting state rather than inheriting the default.
+  await page.goto(`http://127.0.0.1:${port}/index.html?schematic=0&xray=0${query}`, { waitUntil: 'load', timeout: 90000 });
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
   await page.waitForTimeout(1500); // the boot's own deferred passes (weld, occluders)
   return { page, warns };

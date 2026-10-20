@@ -60,7 +60,7 @@ const defaultState = {
   position: 'CU',     // §246 — the watch's position in gravity; balance-drive.js DEFAULT_POSITION (a pocket watch hangs pendant up)
   timeScale: 1, // real time — matches main.js's own default
   showLabels: false,
-  plateXray: false,   // three-quarter plate see-through (UI toggle)
+  plateXray: true,    // three-quarter plate and dial see-through (UI toggle); on by default since §295, the owner's ask
   soundOn: false,     // sound toggle — captureState() emits it, so it must round-trip; main.js does NOT restore it (sound is always off at load: boot has no gesture, index.html's button is the opt-in)
   alarmOn: false,     // alarm armed toggle (§24)
   // Raw alarm-crown drag angle (§24). Persisting the RAW input, not the target,

@@ -40505,6 +40505,52 @@ error.
 highlight of the motion works' gears inside the keyless cell (the stop only
 frames them); a swipe on the canvas.
 
+## §295 — X-ray on the loading screen, and on by default
+
+Owner ask: add x-ray mode to the loading screen's appearance selector, on by
+default.
+
+- **The loading screen** offers "Plate X-ray" beside the case and the wireframe
+  view. It uses the panel's own label, which every locale already translates.
+  It goes through the same `__bootView` hand-off as those two:
+  `applyBootView` calls `setXray`. A choice made during the build applies when
+  the build reaches it. The deep link (`?xray=0/1`) still runs after and wins.
+- **On by default.** `plateXray` in `state.js` defaults to true, so a fresh
+  visitor sees through the three-quarter plate and the dial (§78's one x-ray
+  state, the same in both views). A saved choice still restores as saved, and
+  the box is ticked on the loading screen.
+- **A §269 defect it exposed.** The case's mass tally weighed each mesh by the
+  material it is DRAWN with. With x-ray on at boot, the plate, its chatons and
+  screws and the dial were drawn in their glass clones, which name no stock, so
+  the tally dropped them and warned. It now weighs `userData.solidMat` (the
+  metal the x-ray swap keeps) when a mesh has one: a view changes what a part
+  looks like, not what it is cut from.
+
+Boot is silent with x-ray on by default and with `?xray=0`.
+
+## §296 — Tap focus ignores the three-quarter plate
+
+Owner ask: tap to focus should exclude the three-quarter plate. It should never
+be what a tap focuses, and never stay highlighted as part of a structure's
+focus.
+
+`FOCUS_IGNORED` names the units tap focus ignores. Today that is only the
+three-quarter plate.
+- **The tap** picks with them skipped (`explorePick(e, FOCUS_IGNORED)`). A ray
+  that resolves to an ignored unit carries on to what lies behind it, after
+  §59's glass demotion, so a tap on the plate focuses the wheel under it. Where
+  the plate is the only thing under the finger, the tap counts as empty space
+  and clears.
+- **The focus set** always drops them (`computeFocusSet`). §69 already ghosted
+  the frame unless a frame unit was tapped; tapping the base plate kept the
+  whole "Frame & plates" group solid, the three-quarter plate included. The
+  plate now ghosts there too.
+- **A restore** (`focusValidName`) refuses an ignored unit, so a saved focus or
+  `?focus=` naming the plate restores nothing.
+
+Explore's hover readout and drag still name and move the plate, because those
+are not focus.
+
 ## §298 — technic.html opens in the tour
 
 Owner: "For the Lego builds, start in the tour mode." The page now OPENS in
