@@ -1,6 +1,6 @@
 // IS THE ORDER THE LEGO BUILDS GO TOGETHER IN A VALID ONE: EVERY PLACEMENT IN EXACTLY ONE STEP, EVERY PART AFTER THE PARTS IT RESTS ON AND PASSES THROUGH, EVERY STEP'S PARTS INSERTABLE INTO WHAT IS ALREADY THERE, AND THE .MPD THE PAGE OFFERS THE SAME BUILD?
 // Acceptance, pure Node (the vendored three.js and three-mesh-bvh load through tools/three-node-loader.mjs, no browser,
-// no network); exits non-zero on any failed row. BUILT §301 (src/technic-steps.js, the swept validator in
+// no network); exits non-zero on any failed row. BUILT §302 (src/technic-steps.js, the swept validator in
 // tools/technic-steps-sweep.mjs, technic.html's .mpd link). Not probe-technic-build.mjs (that holds the PLACEMENTS: seated,
 // through, meshed) and not probe-technic-bom.mjs (that holds the parts LIST); this holds the ORDER.
 //

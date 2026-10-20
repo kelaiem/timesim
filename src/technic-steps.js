@@ -1,4 +1,4 @@
-// BUILT §301 — THE STEP ORDER: in what sequence each LEGO Technic build goes together, derived from the
+// BUILT §302 — THE STEP ORDER: in what sequence each LEGO Technic build goes together, derived from the
 // model's own structure and nothing typed per placement. Pure: no three.js, no DOM, so the probe that
 // holds it (tools/probe-technic-steps.mjs) and the page that offers its file read one module. (The
 // swept-insertion VALIDATOR that judges an order needs triangles and a bounds tree; it lives in

@@ -34480,7 +34480,7 @@ does not.
 
 ## 264. Technic builds: six solids overlap at the placed pose and 27 insertion steps cannot be cleared
 
-Found by §301's validator (`tools/probe-technic-steps.mjs`), which measures the
+Found by §302's validator (`tools/probe-technic-steps.mjs`), which measures the
 LDraw part triangles of every build, not the frame tables. Two findings, both
 modelled and neither built:
 

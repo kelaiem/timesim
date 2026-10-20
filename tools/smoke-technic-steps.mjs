@@ -1,5 +1,5 @@
 // DOES THE TECHNIC PAGE'S "download .mpd (build steps)" LINK GIVE THE FILE THE PURE MODULE WRITES, IN A REAL BROWSER, FOR EVERY CELL?
-// Acceptance, needs Chromium (Playwright from tools/node_modules); exits non-zero on any failure. BUILT §301
+// Acceptance, needs Chromium (Playwright from tools/node_modules); exits non-zero on any failure. BUILT §302
 // (technic.html, src/technic-steps.js). The pure half, and everything about the ORDER, is tools/probe-technic-steps.mjs;
 // this holds only the page's link.
 //

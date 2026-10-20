@@ -1,4 +1,4 @@
-// THE SWEPT-INSERTION VALIDATOR (BUILT §301) — a library for tools/probe-technic-steps.mjs
+// THE SWEPT-INSERTION VALIDATOR (BUILT §302) — a library for tools/probe-technic-steps.mjs
 // and nothing else: it needs three.js and the vendored three-mesh-bvh, so it lives under
 // tools/ and src/technic-steps.js (pure, browser-free) never imports it.
 //
@@ -40,7 +40,7 @@ export const STEP_LDU = 0.5;
 // share in these builds is a 10 LDU boss or axle hole (a pin hole is 8, a stud 6): 2 * 10 * 0.0192 =
 // 0.38, which is 0.4 LDU = 0.16 mm to the tenth above. A crossing no deeper than that, over the
 // depth the same pair ends in, is a fit. (The first run of this probe used 0.25, a figure read off the
-// axle-in-brick floor; the rows that moved when this derivation replaced it are in docs/BUILT.md §301.)
+// axle-in-brick floor; the rows that moved when this derivation replaced it are in docs/BUILT.md §302.)
 export const FIT_CIRCLE_R_LDU = 10, FIT_CIRCLE_SEGMENTS = 16;
 export const TOL_LDU = Math.ceil(10 * 2 * FIT_CIRCLE_R_LDU * (1 - Math.cos(Math.PI / FIT_CIRCLE_SEGMENTS))) / 10;
 // The tolerance: a crossing of this depth or less is a FIT, deeper is a collision. It is

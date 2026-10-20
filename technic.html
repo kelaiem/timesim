@@ -1242,7 +1242,7 @@ function seedBoms(gen) {
   if (alarmFrame?.framed && alarmStatesNow) seedBuild(lib, gen, 'alarm', alarmBuild(alarmFrame, lib, alarmStatesNow.armed));
   if (escFrame?.framed) seedBuild(lib, gen, 'escapement', escapementBuild(escFrame, lib));
 }
-// BUILT §301: the build as an .mpd — `0 STEP` after every step, a `0 FILE` per sub-assembly. The order is
+// BUILT §302: the build as an .mpd — `0 STEP` after every step, a `0 FILE` per sub-assembly. The order is
 // derived from the model (src/technic-steps.js) and swept for insertion by tools/probe-technic-steps.mjs;
 // it is MODELLED, not built, and derived when asked for (it reads the whole build).
 const mpdLink = (id) => `<a id="${id}" href="#" style="color:#9fb6d9" title="build steps: derived from the model, checked by a swept insertion; modelled, not built">download .mpd (build steps)</a>`;
@@ -1286,9 +1286,9 @@ async function fillBom(body, cell, gen) {
     const what = el('div', 'what');
     const top = el('div'); top.append(el('span', 'qty', `${l.qty}× `), document.createTextNode(l.title));
     const sw = el('span', 'swatch'); sw.style.background = l.hex;
-    const meta = el('div', 'meta'); meta.append(document.createTextNode(`${l.part} · `), sw, document.createTextNode(`${l.colourName} (${l.colour}) · buy ${l.purchase.id} (${l.purchase.basis})`));
+    const meta = el('div', 'meta'); meta.append(document.createTextNode(`${l.part} · `), sw, document.createTextNode(`${l.colourName} (${l.colour})${l.bricklink ? ` · BrickLink colour ${l.bricklink.colourId}` : ''} · buy ${l.purchase.id} (${l.purchase.basis})`));
     what.append(top, meta);
-    for (const f of l.flags) what.appendChild(el('div', /^unofficial/.test(f) ? 'flag warn' : 'flag', f));
+    for (const f of l.flags) what.appendChild(el('div', /^unofficial|^BrickLink lists no element/.test(f) ? 'flag warn' : 'flag', f));
     li.append(img, what); body.appendChild(li);
   }
   body.appendChild(el('div', 'bom-sum', 'not in the model'));
