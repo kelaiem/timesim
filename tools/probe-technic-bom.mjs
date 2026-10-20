@@ -43,6 +43,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, walk } from '../src/ldraw.js';
 import { CATALOGUES, TECHNIC_FORK } from '../src/layout.js';
+import { BRICKLINK } from '../src/technic-bricklink.js';
+import { PART_IDS } from '../src/technic-bom-ids.js';
 import { placedParts, toLdr, LDRAW_COLOUR } from '../src/technic-ldraw.js';
 import { solveFusee, TECHNIC_FUSEE_SPRING, frameFusee, cordChoice } from '../src/technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from '../src/technic-alarm.js';
@@ -148,7 +150,7 @@ for (const gen of B.GENERATIONS) for (const c of all[gen]) for (const l of c.bom
   titled++;
   ok(l.purchase.source && SOURCE_OK(l), `${l.part}: purchase id has no source`);
   const basis = l.purchase.basis;
-  ok(basis === 'unverified' ? l.purchase.date === null && l.flags.includes('purchase id not yet verified') : basis === 'catalogue' ? l.purchase.date === '2026-09-12' : !!l.purchase.date, `${l.part}: a ${basis} line's date/flag is wrong (${l.purchase.date})`);
+  ok(basis === 'unverified' ? l.purchase.date === null && l.flags.includes('purchase id not yet verified') : basis === 'bricklink' ? l.purchase.date === BRICKLINK.source.date : basis === 'catalogue' ? l.purchase.date === '2026-09-12' : !!l.purchase.date, `${l.part}: a ${basis} line's date/flag is wrong (${l.purchase.date})`);
 }
 function SOURCE_OK(l) { return typeof l.purchase.source === 'string' && l.purchase.source.length > 10 && B.SOURCES[l.purchase.basis]; }
 const byBasis = {};
@@ -156,8 +158,12 @@ for (const id of ids) byBasis[B.PART_TABLE[id].basis] = (byBasis[B.PART_TABLE[id
 console.log(`  ${ids.length} distinct ids across both generations (the string included); ${titled} BOM lines read against the pack's headers`);
 console.log(`  purchase-id basis: ${Object.entries(byBasis).map(([k, v]) => `${k} ${v}`).join(', ')}`);
 // every placed id the catalogue lists must come out as a catalogue row
+// and BrickLink's download must AGREE with the person's reading of it (2026-09-12): the same item number
 for (const cat of Object.values(CATALOGUES).filter(Boolean)) for (const c of cat.counts) if (ids.includes(c.part))
-  ok(B.PART_TABLE[c.part].basis === 'catalogue' && B.PART_TABLE[c.part].purchase === c.part, `${c.part}: a CATALOGUES part not held as a catalogue row`);
+  ok(B.PART_TABLE[c.part].basis === 'bricklink' && B.PART_TABLE[c.part].purchase === c.part, `${c.part}: a CATALOGUES part is not the BrickLink item of the same number (${B.PART_TABLE[c.part].purchase})`);
+// the id list the generator reads is what the builds place, and every row has BrickLink's data
+ok(JSON.stringify([...PART_IDS].sort()) === JSON.stringify([...ids].sort()), `PART_IDS differs from the placed ids: ${PART_IDS.filter((i) => !ids.includes(i))} / ${ids.filter((i) => !PART_IDS.includes(i))}`);
+ok(Object.keys(BRICKLINK.parts).length === ids.length && ids.every((i) => BRICKLINK.parts[i]), 'a placed id has no BrickLink row');
 // CONTROLS
 {
   const drop = { ...B.PART_TABLE }; delete drop['3004'];
@@ -169,7 +175,7 @@ for (const cat of Object.values(CATALOGUES).filter(Boolean)) for (const c of cat
   const wrongKw = { ...B.PART_TABLE, '3023b': { purchase: '3024', basis: 'ldraw-keyword' } };
   control('a keyword row with the wrong id fails', B.auditTable(wrongKw, ids, lib).some((m) => /3023b/.test(m)));
   const downgrade = { ...B.PART_TABLE, '3647': { purchase: '3647', basis: 'unverified' } };
-  control('a catalogue row downgraded to unverified fails (the source improved on it)', B.auditTable(downgrade, ids, lib).some((m) => /3647/.test(m)));
+  control('a BrickLink row downgraded to unverified fails (the source improved on it)', B.auditTable(downgrade, ids, lib).some((m) => /3647/.test(m)));
   const nobasis = { ...B.PART_TABLE, '3004': { purchase: '3004', basis: 'memory' } };
   control('a basis with no source fails', B.auditTable(nobasis, ids, lib).some((m) => /3004.*no source/.test(m)));
   control('an id the pack does not hold fails', B.auditTable(B.PART_TABLE, [...ids, '12345'], lib).some((m) => /12345.*not in the vendored pack/.test(m)));
@@ -177,6 +183,34 @@ for (const cat of Object.values(CATALOGUES).filter(Boolean)) for (const c of cat
   const cut = { ...CATALOGUES.technic_2026, counts: CATALOGUES.technic_2026.counts.filter((c) => c.part !== '3647') };
   const saved = CATALOGUES.technic_2026;
   control('(self-check) the catalogue still lists 3647 for the controls above', saved.counts.some((c) => c.part === '3647') && cut.counts.length === saved.counts.length - 1);
+}
+
+// ── BRICKLINK ──────────────────────────────────────────────────────────────
+console.log('\nBRICKLINK');
+{
+  const lines = (gen) => all[gen].flatMap((c) => (c.bom ? c.bom.lines.map((l) => ({ ...l, cell: c.cell })) : []));
+  const l26 = lines('technic_2026');
+  ok(l26.every((l) => l.bricklink && l.bricklink.colourId && l.bricklink.item), 'a 2026 line has no BrickLink item or colour');
+  ok(l26.every((l) => l.purchase.basis === 'bricklink'), 'a 2026 line is not a bricklink-basis row');
+  // an element the download lists reads as listed, one it does not reads as flagged
+  const gear = l26.find((l) => l.bricklink.listed), det = l26.find((l) => l.part === '7785' && l.colour === 25);
+  ok(gear && gear.bricklink.elements.every((e) => (BRICKLINK.elements[gear.bricklink.item][gear.colour] ?? []).includes(e)), `${gear?.part}: a listed line's elements are the download's`);
+  ok(det && !det.bricklink.listed && det.flags.some((f) => /^BrickLink lists no element for 7785 in Orange; it lists White/.test(f)), '7785 in Orange should be flagged: BrickLink lists it only in White');
+  const unl = l26.filter((l) => !l.bricklink.listed);
+  console.log(`  ${l26.length} 2026 lines over 8 builds: ${unl.length} are in a colour BrickLink lists no element for (${unl.map((l) => `${l.part} ${l.colourName}`).filter((v, i, a) => a.indexOf(v) === i).length} distinct); the rest carry an element code`);
+  const sample = all.technic_2026.find((c) => c.cell === 'alarm');
+  const rows = B.parseCsv(B.bomCsv(sample, 'technic_2026')), head = rows[0], ci = head.indexOf('bricklink_listed');
+  ok(ci > 0 && rows.slice(1, 1 + sample.bom.lines.length).every((r, i) => r[ci] === (sample.bom.lines[i].bricklink.listed ? 'yes' : 'no')), 'the CSV listed column differs from the BOM');
+  // the mould variants BrickLink does not list resolve to their base item, and say so
+  for (const [ld, bl] of [['3023b', '3023'], ['32123a', '4265c'], ['4032a', '4032'], ['4185a', '4185']]) {
+    ok(BRICKLINK.parts[ld].number === bl && /^base/.test(BRICKLINK.parts[ld].via), `${ld} should be BrickLink's base item ${bl}`);
+    const ln = lines('technic_2026').find((l) => l.part === ld);
+    ok(!ln || ln.flags.some((f) => new RegExp(`sells the base item ${bl}`).test(f)), `${ld}: the base-item flag is missing`);
+  }
+  ok(BRICKLINK.parts['75924'].number === 'x127c20pb01', 'the string is BrickLink item x127c20pb01 (75924 an alternate number)');
+  // CONTROL: a BOM line built against a subset with that element removed reads unlisted
+  const cut = JSON.parse(JSON.stringify(BRICKLINK.elements)); delete cut['3647']['0'];
+  control('(self-check) removing 3647 black from a copy of the elements leaves no listed element', !(cut['3647']['0']) && !!BRICKLINK.elements['3647']['0']);
 }
 
 // ── UNOFFICIAL ─────────────────────────────────────────────────────────────

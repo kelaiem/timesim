@@ -1271,9 +1271,9 @@ async function fillBom(body, cell, gen) {
     const what = el('div', 'what');
     const top = el('div'); top.append(el('span', 'qty', `${l.qty}× `), document.createTextNode(l.title));
     const sw = el('span', 'swatch'); sw.style.background = l.hex;
-    const meta = el('div', 'meta'); meta.append(document.createTextNode(`${l.part} · `), sw, document.createTextNode(`${l.colourName} (${l.colour}) · buy ${l.purchase.id} (${l.purchase.basis})`));
+    const meta = el('div', 'meta'); meta.append(document.createTextNode(`${l.part} · `), sw, document.createTextNode(`${l.colourName} (${l.colour})${l.bricklink ? ` · BrickLink colour ${l.bricklink.colourId}` : ''} · buy ${l.purchase.id} (${l.purchase.basis})`));
     what.append(top, meta);
-    for (const f of l.flags) what.appendChild(el('div', /^unofficial/.test(f) ? 'flag warn' : 'flag', f));
+    for (const f of l.flags) what.appendChild(el('div', /^unofficial|^BrickLink lists no element/.test(f) ? 'flag warn' : 'flag', f));
     li.append(img, what); body.appendChild(li);
   }
   body.appendChild(el('div', 'bom-sum', 'not in the model'));
