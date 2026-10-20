@@ -8585,6 +8585,85 @@ export const SUBDIAL_MAJOR_ARCMIN = 2 * RESOLVE_ARCMIN;
 export const subdialStrokeF = (f, floorArcmin, mmPerSr) =>
   (mmPerSr ? Math.max(f, mmForArcmin(floorArcmin) / mmPerSr) : f);
 
+// §293 — THE WEIGHT IS MEASURED, NOT CHOSEN. A figure reads at the wrist only
+// if every stroke in it is a line the eye can resolve (RESOLVE_ARCMIN, the
+// floor the ticks take), and a stroke's width is a fact about the font the
+// browser actually has, not about the weight asked for: the stack falls from
+// Helvetica Neue to Arial, which has no Medium, so the same CSS weight draws
+// different metal per machine. So each weight's thinnest stroke is MEASURED on
+// a canvas in this browser, as a fraction of the em: the stem of a '1' (a row
+// through it) and the sides and the top and bottom of an '0' (a row and a
+// column through its centre, the coverage halved for the two strokes each
+// crosses). Coverage is the antialiased alpha summed along the line, so a
+// fractional pixel counts as the fraction it is. Cached per family and weight:
+// it is a property of the installed font, read once.
+export const SUBDIAL_WEIGHTS = [300, 400, 500, 600, 700];
+const _strokeEmCache = new Map();
+export function strokeEmOf(family, weight) {
+  const key = `${weight} ${family}`;
+  if (_strokeEmCache.has(key)) return _strokeEmCache.get(key);
+  let em = null;
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    const PX = 200, N = 400;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = N;
+    const c = cv.getContext && cv.getContext('2d', { willReadFrequently: true });
+    if (c) {
+      c.font = `${weight} ${PX}px ${family}`;
+      c.textAlign = 'center';
+      c.textBaseline = 'alphabetic';
+      const base = N * 0.75;
+      const coverage = (glyph, axis, at) => {
+        c.clearRect(0, 0, N, N);
+        c.fillStyle = '#000';
+        c.fillText(glyph, N / 2, base);
+        const data = axis === 'row' ? c.getImageData(0, Math.round(at), N, 1).data
+          : c.getImageData(Math.round(at), 0, 1, N).data;
+        let sum = 0;
+        for (let i = 3; i < data.length; i += 4) sum += data[i] / 255;
+        return sum;
+      };
+      const capPx = PX * CAP_PER_EM;
+      const midY = base - capPx / 2;
+      const w = [
+        coverage('1', 'row', base - capPx * 0.4),        // the stem, below the flag
+        coverage('0', 'row', midY) / 2,                  // the two sides
+        coverage('0', 'col', N / 2) / 2,                 // the top and bottom
+      ];
+      if (w.every((x) => x > 0)) em = Math.min(...w) / PX;
+    }
+  }
+  _strokeEmCache.set(key, em);
+  return em;
+}
+// The lightest weight whose thinnest stroke, at emF·sr, stands at least
+// floorF·sr. With no physical scale or no canvas to measure on, the caller's
+// shipped weight. When no weight reaches the floor it returns the heaviest,
+// silently: a line is sized so its heaviest weight resolves (resolvableEm), so
+// that only happens when a small well has scaled the print down, and the
+// well's own under-half rule is what reports that.
+function lightestReadableWeight(family, emF, floorF, fallback) {
+  if (!(floorF > 0)) return fallback;
+  let last = fallback;
+  for (const wt of SUBDIAL_WEIGHTS) {
+    const e = strokeEmOf(family, wt);
+    if (e === null) continue;
+    last = wt;
+    if (e * emF >= floorF) return wt;
+  }
+  return last;
+}
+// The smallest em at which ANY weight of the family resolves: the floor over
+// the heaviest weight's measured stroke. A line whose acuity target is smaller
+// than this cannot be read whatever weight it takes, so the target is raised to
+// it. With nothing measured, no constraint.
+function resolvableEm(family, floorF) {
+  const e = strokeEmOf(family, SUBDIAL_WEIGHTS[SUBDIAL_WEIGHTS.length - 1]);
+  return e ? floorF / e : 0;
+}
+const SUBDIAL_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+const SUBDIAL_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+
 function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, shippedGround = null) {
   // §196 — ONE ink for everything this function prints, SOLVED against the
   // well's own ground. Before §196 this was a literal '#1c1c22' at four
@@ -8648,9 +8727,9 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
   // against the caption's ink at the seconds branch). The SECONDS well is the only caller since §158 — the
   // reserve's arc now sweeps through this spot, so its caption arcs into the
   // 12 o'clock notch instead and is set at its own site.
-  const caption = (txt, emF = 0.08) => {
+  const caption = (txt, emF = 0.08, weight = 400) => {
     ctx.save();
-    ctx.font = `400 ${sr * emF}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
+    ctx.font = `${weight} ${sr * emF}px ${SUBDIAL_MONO}`;
     ctx.fillStyle = ink; // §196 — the well's one solved ink
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -8815,7 +8894,10 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // centre falls below the horizontal flips tops toward the pivot so it
     // never renders upside-down — with the arc hanging from the DOWN vertical
     // that is now the middle figure rather than the two end ones.
-    ctx.font = `500 ${sr * (capF / CAP_PER_EM)}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    // §293: the lightest weight whose strokes the eye resolves at this size.
+    const figWeight = lightestReadableWeight(SUBDIAL_SANS, capF / CAP_PER_EM,
+      mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0, 500);
+    ctx.font = `${figWeight} ${sr * (capF / CAP_PER_EM)}px ${SUBDIAL_SANS}`;
     for (let h = 0; h <= hours; h += 12) {
       const aDeg = angAt(h);
       arcLabel(String(h), aDeg, sr * figBandF, Math.sin((aDeg * Math.PI) / 180) < 0);
@@ -8942,7 +9024,11 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // factor, the largest that fits, so neither is spent on the other; under
     // half the floor the print is a smudge and says so, the maker's mark's rule.
     const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
-    const captionT = mmForArcmin(IDENTIFY_ARCMIN) / (mmPerSr || 1) / CAP_PER_EM;
+    // The caption is identified at IDENTIFY_ARCMIN, but at that size no weight
+    // of the monospace strokes a resolvable line (measured: bold 0.98′), so its
+    // em is also at least the one where its heaviest weight resolves.
+    const captionT = Math.max(mmForArcmin(IDENTIFY_ARCMIN) / (mmPerSr || 1) / CAP_PER_EM,
+      mmPerSr ? resolvableEm(SUBDIAL_MONO, mmForArcmin(RESOLVE_ARCMIN) / mmPerSr) : 0);
     const run = TICK_OUTER_F - MAJOR_LEN_F - 2 * gapF - CAPTION_DY_F;
     const fit = mmPerSr ? Math.min(1, run / (capT + (captionT * CAP_PER_EM) / 2)) : 1;
     if (mmPerSr && fit < 0.5)
@@ -8963,11 +9049,16 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // reads upright rather than inverted.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `500 ${sr * (capF / CAP_PER_EM)}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    // §293: the figures and the caption each take the lightest weight whose
+    // strokes the eye resolves at their size.
+    const resolveF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0;
+    const figWeight = lightestReadableWeight(SUBDIAL_SANS, capF / CAP_PER_EM, resolveF, 500);
+    const captionWeight = lightestReadableWeight(SUBDIAL_MONO, captionEmF, resolveF, 400);
+    ctx.font = `${figWeight} ${sr * (capF / CAP_PER_EM)}px ${SUBDIAL_SANS}`;
     for (const [sec, mathDeg, inward] of [['60', 90, false], ['15', 0, false], ['30', -90, true], ['45', 180, false]]) {
       arcLabel(sec, mathDeg, sr * figBandF, inward);
     }
-    caption('SECONDS', captionEmF);
+    caption('SECONDS', captionEmF, captionWeight);
   } else if (kind === 'alarm') {
     // Alarm hour ring (§24): a light 12-hour scale the alarm pointer sets
     // against — majors at each hour, a longer/heavier mark at XII, minors at

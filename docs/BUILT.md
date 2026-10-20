@@ -40373,7 +40373,28 @@ window between the drawn major and the division (`subdialPointerHalfW`, both
 wells). Neither default moves: the seconds well's run holds both lines at
 their floors with room, and both targets are under their divisions.
 
+**The weight is measured, not chosen** (owner question: would a lighter
+weight of the same face read better?). A figure reads only if every stroke
+in it is a line the eye resolves, and a stroke's width is a fact about the
+font the browser actually has. The stack falls from Helvetica Neue to Arial,
+which has no Medium. So `strokeEmOf` measures each weight's thinnest stroke on
+a canvas, as a fraction of the em: the stem of a '1' and the sides and the
+top and bottom of an '0', as summed antialiased coverage. Each line takes the
+lightest weight whose stroke clears `RESOLVE_ARCMIN`. On the CI container's
+fonts:
+- **Figures:** weight 500 (1.06′) is the lightest that clears; 400 draws
+  0.91′. A lighter face would read worse, and Medium stays.
+- **Caption:** the measurement found it unreadable in any weight at its
+  identify size. Even bold drew 0.98′. So a line's em is also at least the
+  size where its heaviest weight resolves (`resolvableEm`), and the caption
+  now sets at weight 600, 1.00′, 2.5% larger.
+
+A Mac with Helvetica Neue measures its own fonts and may answer differently;
+that is the point of measuring. `tools/probe-293-weights.mjs` (acceptance)
+prints the table and holds each choice both ways: the chosen weight resolves,
+and the next lighter weight that draws thinner does not.
+
 Instruments: boot silent with every new assert in place, at the default and
-at `?subdialr=8`. `probe-112-recut`
+at `?subdialr=8`. `probe-293-weights`: ALL PASS. `probe-112-recut`
 now reads the wrist distance from `layout.js` instead of its own copy of 350.
 The hand's width is geometry, so the battery owns its clearances.
