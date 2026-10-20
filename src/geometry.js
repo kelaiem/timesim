@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR, CASE_POLISH_ATTR, ALLOY_COLORS, STEEL_FINISH } from './materials.js';
 import { aesthetics } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
-  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
+  mmForArcmin, RESOLVE_ARCMIN, IDENTIFY_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D, caseLugPlan,
   balanceWheelDims } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190/§280: the lug/bar stock and the lug's one outline law
 
@@ -8567,6 +8567,102 @@ export const MARK_TEXT = 'WATCH SIMULATOR';
 export const SUBDIAL_TICK_OUTER_F = 0.92;   // tick circle, as a fraction of the well radius
 export const SUBDIAL_MAJOR_LEN_F = 0.20, SUBDIAL_MINOR_LEN_F = 0.09;
 export const SUBDIAL_MAJOR_W_F = 0.055, SUBDIAL_MINOR_W_F = 0.022;
+// §293 — A PRINTED STROKE IS NEVER FINER THAN THE EYE RESOLVES AT THE WRIST.
+// The fractions above are the comb's DRAWING; on the 3.2 mm reserve well the
+// minor tick came out 0.07 mm, 0.6 arcmin at the wrist, a mark the eye cannot
+// see as a mark. So a stroke is the larger of its fraction and its floor: a
+// minor at RESOLVE_ARCMIN (the 1′ stroke 20/20 acuity separates), a major one
+// resolvable stroke heavier (2′), which is the least that still reads as the
+// HEAVIER of two neighbouring marks. Exported because the reserve hand's width
+// floor (main.js) is "never finer than the major it indexes" and must read the
+// width actually drawn, not the fraction. A caller with no physical scale
+// (the bare makeDial smoke test) gets the fraction.
+// The seconds comb's own drawn fractions, exported for the small seconds
+// hand's width floor (main.js), the reserve comb's rule above.
+export const SECONDS_MAJOR_W_F = 0.045, SECONDS_MINOR_W_F = 0.022;
+export const SUBDIAL_MINOR_ARCMIN = RESOLVE_ARCMIN;
+export const SUBDIAL_MAJOR_ARCMIN = 2 * RESOLVE_ARCMIN;
+export const subdialStrokeF = (f, floorArcmin, mmPerSr) =>
+  (mmPerSr ? Math.max(f, mmForArcmin(floorArcmin) / mmPerSr) : f);
+
+// §293 — THE WEIGHT IS MEASURED, NOT CHOSEN. A figure reads at the wrist only
+// if every stroke in it is a line the eye can resolve (RESOLVE_ARCMIN, the
+// floor the ticks take), and a stroke's width is a fact about the font the
+// browser actually has, not about the weight asked for: the stack falls from
+// Helvetica Neue to Arial, which has no Medium, so the same CSS weight draws
+// different metal per machine. So each weight's thinnest stroke is MEASURED on
+// a canvas in this browser, as a fraction of the em: the stem of a '1' (a row
+// through it) and the sides and the top and bottom of an '0' (a row and a
+// column through its centre, the coverage halved for the two strokes each
+// crosses). Coverage is the antialiased alpha summed along the line, so a
+// fractional pixel counts as the fraction it is. Cached per family and weight:
+// it is a property of the installed font, read once.
+export const SUBDIAL_WEIGHTS = [300, 400, 500, 600, 700];
+const _strokeEmCache = new Map();
+export function strokeEmOf(family, weight) {
+  const key = `${weight} ${family}`;
+  if (_strokeEmCache.has(key)) return _strokeEmCache.get(key);
+  let em = null;
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    const PX = 200, N = 400;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = N;
+    const c = cv.getContext && cv.getContext('2d', { willReadFrequently: true });
+    if (c) {
+      c.font = `${weight} ${PX}px ${family}`;
+      c.textAlign = 'center';
+      c.textBaseline = 'alphabetic';
+      const base = N * 0.75;
+      const coverage = (glyph, axis, at) => {
+        c.clearRect(0, 0, N, N);
+        c.fillStyle = '#000';
+        c.fillText(glyph, N / 2, base);
+        const data = axis === 'row' ? c.getImageData(0, Math.round(at), N, 1).data
+          : c.getImageData(Math.round(at), 0, 1, N).data;
+        let sum = 0;
+        for (let i = 3; i < data.length; i += 4) sum += data[i] / 255;
+        return sum;
+      };
+      const capPx = PX * CAP_PER_EM;
+      const midY = base - capPx / 2;
+      const w = [
+        coverage('1', 'row', base - capPx * 0.4),        // the stem, below the flag
+        coverage('0', 'row', midY) / 2,                  // the two sides
+        coverage('0', 'col', N / 2) / 2,                 // the top and bottom
+      ];
+      if (w.every((x) => x > 0)) em = Math.min(...w) / PX;
+    }
+  }
+  _strokeEmCache.set(key, em);
+  return em;
+}
+// The lightest weight whose thinnest stroke, at emF·sr, stands at least
+// floorF·sr. With no physical scale or no canvas to measure on, the caller's
+// shipped weight. When no weight reaches the floor it returns the heaviest,
+// silently: a line is sized so its heaviest weight resolves (resolvableEm), so
+// that only happens when a small well has scaled the print down, and the
+// well's own under-half rule is what reports that.
+function lightestReadableWeight(family, emF, floorF, fallback) {
+  if (!(floorF > 0)) return fallback;
+  let last = fallback;
+  for (const wt of SUBDIAL_WEIGHTS) {
+    const e = strokeEmOf(family, wt);
+    if (e === null) continue;
+    last = wt;
+    if (e * emF >= floorF) return wt;
+  }
+  return last;
+}
+// The smallest em at which ANY weight of the family resolves: the floor over
+// the heaviest weight's measured stroke. A line whose acuity target is smaller
+// than this cannot be read whatever weight it takes, so the target is raised to
+// it. With nothing measured, no constraint.
+function resolvableEm(family, floorF) {
+  const e = strokeEmOf(family, SUBDIAL_WEIGHTS[SUBDIAL_WEIGHTS.length - 1]);
+  return e ? floorF / e : 0;
+}
+const SUBDIAL_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+const SUBDIAL_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
 
 function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, shippedGround = null) {
   // §196 — ONE ink for everything this function prints, SOLVED against the
@@ -8627,13 +8723,13 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
   // Captions sit at dy = 0.40·sr below the pivot: clear of the busiest hand
   // tail there (the small-seconds hand's counterweight reaches 0.26·0.8·sr +
   // its own radius ≈ 0.24·sr) and clear of the deepest figure below it (the
-  // seconds track's 30, centred at 0.62·sr, half its 0.19·sr height = top
-  // edge at 0.525·sr). The SECONDS well is the only caller since §158 — the
+  // seconds track's 30, whose inner edge since §293 is derived and asserted
+  // against the caption's ink at the seconds branch). The SECONDS well is the only caller since §158 — the
   // reserve's arc now sweeps through this spot, so its caption arcs into the
   // 12 o'clock notch instead and is set at its own site.
-  const caption = (txt) => {
+  const caption = (txt, emF = 0.08, weight = 400) => {
     ctx.save();
-    ctx.font = `400 ${sr * 0.08}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
+    ctx.font = `${weight} ${sr * emF}px ${SUBDIAL_MONO}`;
     ctx.fillStyle = ink; // §196 — the well's one solved ink
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -8666,7 +8762,9 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     const { sweepDeg = 300, hours = 30, mmPerSr = null } = scale;
     const TICK_OUTER_F = SUBDIAL_TICK_OUTER_F, MAJOR_LEN_F = SUBDIAL_MAJOR_LEN_F;
     const MINOR_LEN_F = SUBDIAL_MINOR_LEN_F;
-    const MAJOR_W_F = SUBDIAL_MAJOR_W_F, MINOR_W_F = SUBDIAL_MINOR_W_F;
+    // §293: the drawn widths, each floored at what the eye resolves.
+    const MAJOR_W_F = subdialStrokeF(SUBDIAL_MAJOR_W_F, SUBDIAL_MAJOR_ARCMIN, mmPerSr);
+    const MINOR_W_F = subdialStrokeF(SUBDIAL_MINOR_W_F, SUBDIAL_MINOR_ARCMIN, mmPerSr);
     const angAt = (h) => -90 + sweepDeg / 2 - (h / hours) * sweepDeg;
     // §159 — THE SCALE'S TWO ZONES, painted UNDER the comb so the ticks read
     // over them and the graduation stays the thing being read. A zone says at
@@ -8768,8 +8866,10 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // told apart at all. The figures now meet the GLANCE floor, and the band
     // radius falls out of it rather than being chosen beside it:
     //
-    //   cap  = mmForArcmin(GLANCE_ARCMIN) / mmPerSr        (≈ 0.232·sr here)
-    //   band = tick circle − major length − gap − cap/2    (≈ 0.575·sr)
+    //   cap  = mmForArcmin(GLANCE_ARCMIN) / mmPerSr        (≈ 0.291·sr here)
+    //   band = tick circle − major length − gap − cap/2    (≈ 0.538·sr)
+    // (§293 moved WRIST_MM to the band's far end, 350 → 400 mm, which took
+    // the cap from 0.255·sr to these and the gap with it.)
     //
     // reading the SAME fractions the comb above is drawn from, so a longer
     // major tick pushes the figures in instead of colliding with them. The
@@ -8794,7 +8894,10 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // centre falls below the horizontal flips tops toward the pivot so it
     // never renders upside-down — with the arc hanging from the DOWN vertical
     // that is now the middle figure rather than the two end ones.
-    ctx.font = `500 ${sr * (capF / CAP_PER_EM)}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    // §293: the lightest weight whose strokes the eye resolves at this size.
+    const figWeight = lightestReadableWeight(SUBDIAL_SANS, capF / CAP_PER_EM,
+      mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0, 500);
+    ctx.font = `${figWeight} ${sr * (capF / CAP_PER_EM)}px ${SUBDIAL_SANS}`;
     for (let h = 0; h <= hours; h += 12) {
       const aDeg = angAt(h);
       arcLabel(String(h), aDeg, sr * figBandF, Math.sin((aDeg * Math.PI) / 180) < 0);
@@ -8891,21 +8994,71 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // count is read at a glance, and two digits do that where XLV asks to be
     // parsed. Two glyphs also lift the size cap the Roman set imposed —
     // 0.19·sr sets '45' narrower than 'XLV' was at 0.17·sr.
+    // §293 — SIZED BY ACUITY, THE RESERVE'S §158 RULE APPLIED HERE TOO. The
+    // figures were a literal 0.19·sr em (7.4′ at the wrist's middle, 6.5′ at
+    // its far end, against the 8′ glance floor), the caption 0.08·sr (2.7′,
+    // under the 5′ a character needs to be told apart at all), so the well
+    // nobody had sized was the one read most. Now:
+    //   cap     = mmForArcmin(GLANCE_ARCMIN) / mmPerSr
+    //   band    = tick circle − major length − gap − cap/2   (the reserve's law)
+    //   caption = mmForArcmin(IDENTIFY_ARCMIN): a NAME is identified, not read
+    // and the strokes take §293's floors. A caller with no physical scale gets
+    // the pre-§293 fractions.
+    const { mmPerSr = null } = scale;
+    const TICK_OUTER_F = 0.92, MAJOR_LEN_F = 0.16, MINOR_LEN_F = 0.09;
+    const MAJOR_W_F = subdialStrokeF(SECONDS_MAJOR_W_F, SUBDIAL_MAJOR_ARCMIN, mmPerSr);
+    const MINOR_W_F = subdialStrokeF(SECONDS_MINOR_W_F, SUBDIAL_MINOR_ARCMIN, mmPerSr);
     for (let s = 0; s < 60; s++) {
       const major = s % 5 === 0;
-      tickAt(90 - s * 6, sr * 0.92, sr * (major ? 0.16 : 0.09), sr * (major ? 0.045 : 0.022));
+      tickAt(90 - s * 6, sr * TICK_OUTER_F, sr * (major ? MAJOR_LEN_F : MINOR_LEN_F), sr * (major ? MAJOR_W_F : MINOR_W_F));
     }
+    const gapF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0.02;
+    const CAPTION_DY_F = 0.40;   // the caption's centre below the pivot (see caption())
+    // The caption sets in the monospace, whose cap height is within a few
+    // percent of Helvetica's 0.717 (SF Mono 0.70, Menlo 0.73), so one ratio
+    // turns both caps into ems.
+    // The floors are TARGETS a well holds when it can. Both lines share one
+    // radial run, from the major ticks' inner end to the caption's centre, less
+    // a resolvable gap at each end: cap + captionCap/2 ≤ that run. A well too
+    // small for both at their floors (?subdialr=8 is 3 mm) scales them by ONE
+    // factor, the largest that fits, so neither is spent on the other; under
+    // half the floor the print is a smudge and says so, the maker's mark's rule.
+    const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
+    // The caption is identified at IDENTIFY_ARCMIN, but at that size no weight
+    // of the monospace strokes a resolvable line (measured: bold 0.98′), so its
+    // em is also at least the one where its heaviest weight resolves.
+    const captionT = Math.max(mmForArcmin(IDENTIFY_ARCMIN) / (mmPerSr || 1) / CAP_PER_EM,
+      mmPerSr ? resolvableEm(SUBDIAL_MONO, mmForArcmin(RESOLVE_ARCMIN) / mmPerSr) : 0);
+    const run = TICK_OUTER_F - MAJOR_LEN_F - 2 * gapF - CAPTION_DY_F;
+    const fit = mmPerSr ? Math.min(1, run / (capT + (captionT * CAP_PER_EM) / 2)) : 1;
+    if (mmPerSr && fit < 0.5)
+      console.warn(`seconds face: a ${(2 * mmPerSr).toFixed(2)} mm well holds its figures and caption at `
+        + `${(fit * 100).toFixed(0)}% of the acuity floor — under half, the print no longer reads; give the well room`);
+    const capF = mmPerSr ? capT * fit : 0.19 * CAP_PER_EM;
+    const figBandF = mmPerSr ? TICK_OUTER_F - MAJOR_LEN_F - gapF - capF / 2 : 0.62;
+    const captionEmF = mmPerSr ? captionT * fit : 0.08;
+    // The 30 sits straight above the caption: its inner edge must clear the
+    // caption's ink by the same resolvable gap, or the two print as one blot.
+    const figInner = figBandF - capF / 2, captionOuter = CAPTION_DY_F + (captionEmF * CAP_PER_EM) / 2;
+    if (figInner - captionOuter < gapF - 1e-9)
+      console.warn(`seconds face: the 30's inner edge (${figInner.toFixed(3)}·sr) leaves `
+        + `${(figInner - captionOuter).toFixed(3)}·sr above the caption — need ${gapF.toFixed(3)}·sr`);
     // Quarters fanned along an invisible circle inside the tick band,
     // bezel-convention oriented: 60/15/45 on the upper reaches keep tops
     // outward; 30 on the lower arc flips tops toward the pivot so it
     // reads upright rather than inverted.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `500 ${sr * 0.19}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    // §293: the figures and the caption each take the lightest weight whose
+    // strokes the eye resolves at their size.
+    const resolveF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0;
+    const figWeight = lightestReadableWeight(SUBDIAL_SANS, capF / CAP_PER_EM, resolveF, 500);
+    const captionWeight = lightestReadableWeight(SUBDIAL_MONO, captionEmF, resolveF, 400);
+    ctx.font = `${figWeight} ${sr * (capF / CAP_PER_EM)}px ${SUBDIAL_SANS}`;
     for (const [sec, mathDeg, inward] of [['60', 90, false], ['15', 0, false], ['30', -90, true], ['45', 180, false]]) {
-      arcLabel(sec, mathDeg, sr * 0.62, inward);
+      arcLabel(sec, mathDeg, sr * figBandF, inward);
     }
-    caption('SECONDS');
+    caption('SECONDS', captionEmF, captionWeight);
   } else if (kind === 'alarm') {
     // Alarm hour ring (§24): a light 12-hour scale the alarm pointer sets
     // against — majors at each hour, a longer/heavier mark at XII, minors at
