@@ -23,15 +23,15 @@ export const LDU_MM = 0.4;
 export const normName = (f) => f.trim().replace(/\\/g, '/').toLowerCase();
 
 // A packed library: one text, `0 FILE <name>` sections. Returns Map(name ->
-// { lines, header }) where header keeps the `0 !LDRAW_ORG` status (so an
-// unofficial part says so wherever it is read).
+// { lines, org, title, keywords }) where org keeps the `0 !LDRAW_ORG` status (so an
+// unofficial part says so wherever it is read) and keywords the `0 !KEYWORDS` list.
 export function parseLibrary(text) {
   const lib = new Map();
   let cur = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (line.startsWith('0 FILE ')) {
-      cur = { name: normName(line.slice(7)), lines: [], org: null, title: null };
+      cur = { name: normName(line.slice(7)), lines: [], org: null, title: null, keywords: [] };
       lib.set(cur.name, cur);
       continue;
     }
@@ -39,6 +39,8 @@ export function parseLibrary(text) {
     const t = line.split(/\s+/);
     if (t[0] === '0') {
       if (t[1] === '!LDRAW_ORG') cur.org = t.slice(2).join(' ');
+      // §300: the header's own cross-references ("BrickLink 3023") are comma-separated and may span lines
+      else if (t[1] === '!KEYWORDS') cur.keywords.push(...t.slice(2).join(' ').split(',').map((k) => k.trim()).filter(Boolean));
       else if (cur.title === null && t.length > 1 && !t[1].startsWith('!') && t[1] !== 'Name:' && t[1] !== 'Author:' && t[1] !== 'BFC') cur.title = t.slice(1).join(' ');
       continue;
     }
