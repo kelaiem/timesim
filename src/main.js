@@ -50889,7 +50889,7 @@ const _exA = new THREE.Vector3(), _exB = new THREE.Vector3();
 // are the only thing there. The test is per-MESH, never per-unit — some
 // dialGroup meshes stay solid under x-ray, so 'is this unit glassy' would be
 // wrong for the ones that are not.
-function explorePickFrom(hits, throughGlass) {
+function explorePickFrom(hits, throughGlass, skip = null) {
   for (const h of hits) {
     // §69's ghost materials demote exactly as §6's x-ray glass does: a tap
     // resolves through the ghosted surroundings to the solid mechanism, and
@@ -50903,20 +50903,22 @@ function explorePickFrom(hits, throughGlass) {
     for (let o = h.object; o && o !== movement; o = o.parent) {
       if (!sub && drillAmount > 0) { const s = subEntries.find((x) => x.objs.includes(o) && subActive(x.parentUnit)); if (s) sub = s.displayName; }
       const lbl = labelEntries.find((l) => l.obj === o);
-      if (lbl) return { name: lbl.name, point: h.point, sub };
-      const ent = explodeEntries.find((en) => en.obj === o);
-      if (ent) return { name: explodeEntryName(ent), point: h.point, sub };
+      const ent = lbl ? null : explodeEntries.find((en) => en.obj === o);
+      const name = lbl ? lbl.name : ent ? explodeEntryName(ent) : null;
+      if (name === null) continue;
+      if (skip && skip.has(name)) break;   // §296: resolve THROUGH a skipped unit to what lies behind it
+      return { name, point: h.point, sub };
     }
   }
   return null;
 }
-function explorePick(e) {
+function explorePick(e, skip = null) {
   const rect = renderer.domElement.getBoundingClientRect();
   _exNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   _exNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   exploreRay.setFromCamera(_exNDC, camera);
   const hits = exploreRay.intersectObject(movement, true);
-  return explorePickFrom(hits, false) || explorePickFrom(hits, true);
+  return explorePickFrom(hits, false, skip) || explorePickFrom(hits, true, skip);
 }
 
 // The §10 group a unit belongs to — ONE walk, read by both the grab (which
@@ -53140,6 +53142,14 @@ function focusGlassFor(base) {
   return g;
 }
 
+// §296 — units tap focus IGNORES (owner ask): never the target of a tap, and
+// never kept solid as part of a focused structure, even when the tap lands on
+// another member of its group. The three-quarter plate covers the train; a tap
+// on it meant the wheel behind it, and keeping it solid around a frame tap
+// hid exactly what focus exists to show. Explore's hover and drag still name
+// and move it.
+const FOCUS_IGNORED = new Set(['Three-quarter plate']);
+
 // The occluder set, derived from the declared partition rather than a second
 // hand list: the structural group plus the dial sheet.
 function focusOccluders() {
@@ -53158,6 +53168,7 @@ function computeFocusSet(name) {
   }
   const occ = focusOccluders();
   if (!occ.has(name)) for (const n of occ) set.delete(n);
+  for (const n of FOCUS_IGNORED) set.delete(n);
   return set;
 }
 
@@ -53204,6 +53215,7 @@ function focusSyncUI() {
 // the live universe because the Chain's label registers lazily (§7) and a
 // restore can arrive before the first chain build.
 function focusValidName(name) {
+  if (FOCUS_IGNORED.has(name)) return false;   // §296: a saved or linked focus on an ignored unit restores nothing
   return unitUniverse().includes(name) || [...UNIT_GROUPS.values()].some((m) => m.has(name));
 }
 
@@ -53246,7 +53258,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   focusTapDown = null;
   if (!d || !e.isPrimary) return;
   if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > CROWN_DRAG_THRESHOLD_PX) return;
-  const pick = explorePick(e);
+  const pick = explorePick(e, FOCUS_IGNORED);
   if (!pick || pick.name === focusName) { if (focusName) clearFocus(); return; }
   setFocus(pick.name);
 });
