@@ -21,6 +21,13 @@
 //   · COLOUR — every role any build places (every generation, mode and alarm
 //     state) has a row in LDRAW_COLOUR, a real LDraw code (COLOUR_INFO), never 16;
 //     no row names a role nothing places; the .ldr carries no 16.
+//   · BRICKLINK (BUILT §301, §303) — every line of every build, both generations, every
+//     keyless mode and alarm state, is in a colour BrickLink lists an element for (0 lines
+//     unlisted; 143 of 143 in the 2026 builds), the .ldr colour column too; LDRAW_COLOUR
+//     EQUALS what repickColours derives from the placements and the BrickLink subset
+//     starting from the §300 table; an extension colour is used only for a part no base
+//     colour lists; 7785 is White and 7861 Light Bluish Gray. The flag path stays: a table
+//     with 7785 forced to Orange is flagged "lists White", and the gate fails on it.
 //   · CSV and WORDS — the CSV parses back to the BOM's lines, carries the
 //     not-in-the-model items and the honesty text, and no prose the list prints
 //     (nor the page's §300 block) says a build works, was tested or was simulated.
@@ -46,6 +53,7 @@ import { CATALOGUES, TECHNIC_FORK } from '../src/layout.js';
 import { BRICKLINK } from '../src/technic-bricklink.js';
 import { PART_IDS } from '../src/technic-bom-ids.js';
 import { placedParts, toLdr, LDRAW_COLOUR } from '../src/technic-ldraw.js';
+import { repickColours, colourOf, unlistedUnits, COLOUR_BASELINE_300 } from '../src/technic-colour.js';
 import { solveFusee, TECHNIC_FUSEE_SPRING, frameFusee, cordChoice } from '../src/technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from '../src/technic-alarm.js';
 import { frameFork, frameKeyless } from '../src/technic-frame.js';
@@ -193,11 +201,57 @@ console.log('\nBRICKLINK');
   ok(l26.every((l) => l.bricklink && l.bricklink.colourId && l.bricklink.item), 'a 2026 line has no BrickLink item or colour');
   ok(l26.every((l) => l.purchase.basis === 'bricklink'), 'a 2026 line is not a bricklink-basis row');
   // an element the download lists reads as listed, one it does not reads as flagged
-  const gear = l26.find((l) => l.bricklink.listed), det = l26.find((l) => l.part === '7785' && l.colour === 25);
+  const gear = l26.find((l) => l.bricklink.listed);
   ok(gear && gear.bricklink.elements.every((e) => (BRICKLINK.elements[gear.bricklink.item][gear.colour] ?? []).includes(e)), `${gear?.part}: a listed line's elements are the download's`);
-  ok(det && !det.bricklink.listed && det.flags.some((f) => /^BrickLink lists no element for 7785 in Orange; it lists White/.test(f)), '7785 in Orange should be flagged: BrickLink lists it only in White');
+  // §303: no line of any build, in either generation, is unlisted
   const unl = l26.filter((l) => !l.bricklink.listed);
-  console.log(`  ${l26.length} 2026 lines over 8 builds: ${unl.length} are in a colour BrickLink lists no element for (${unl.map((l) => `${l.part} ${l.colourName}`).filter((v, i, a) => a.indexOf(v) === i).length} distinct); the rest carry an element code`);
+  const unlAll = B.GENERATIONS.flatMap((g) => lines(g).filter((l) => !l.bricklink?.listed).map((l) => `${g} ${l.cell} ${l.part} ${l.colourName}`));
+  ok(unlAll.length === 0, `${unlAll.length} lines are in a colour BrickLink lists no element for: ${unlAll.slice(0, 6).join('; ')}`);
+  ok(B.GENERATIONS.every((g) => lines(g).every((l) => !l.flags.some((f) => /^BrickLink lists no element/.test(f)))), 'a line carries the unlisted flag');
+  console.log(`  ${l26.length} 2026 lines over 8 builds (${lines('technic_classic').length} classic): ${unl.length} are in a colour BrickLink lists no element for (was 19 before BUILT §303); the rest carry an element code`);
+  // the table, the .ldr colour column and every (role, part) the builds place
+  const units = B.colourUnits(lib);
+  const stillUnlisted = unlistedUnits(units, LDRAW_COLOUR, B.isListed);
+  ok(stillUnlisted.length === 0, `(role, part) units in an unlisted colour: ${stillUnlisted.map((u) => `${u.role}/${u.part} ${u.colour}`).join(', ')}`);
+  for (const gen of B.GENERATIONS) for (const cell of B.cellIds()) {
+    const build = B.buildOf(lib, gen, cell).build; if (!build) continue;
+    const bad = placedParts(build, 0, build.modes?.[0]).filter((p) => !B.CORD_ROLES.includes(p.role) && !B.isListed(p.part, colourOf(LDRAW_COLOUR, p.role, p.part)));
+    ok(bad.length === 0, `${gen} ${cell}: ${bad.length} placements are drawn in a colour BrickLink does not list (${bad[0]?.part})`);
+  }
+  console.log(`  ${units.length} (role, part) units over both generations, every keyless mode and alarm state; ${Object.keys(LDRAW_COLOUR).filter((k) => k.includes('/')).length} exception rows`);
+  // the table is DERIVED: repickColours from the §300 table gives LDRAW_COLOUR exactly
+  const BASE = [0, 1, 2, 4, 14, 15, 19, 25, 71, 72], EXTRA = [321];
+  const derived = repickColours({ units, listed: B.isListed, base: BASE, extra: EXTRA, current: COLOUR_BASELINE_300 });
+  const sortJ = (o) => JSON.stringify(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)));
+  ok(sortJ(derived.table) === sortJ(LDRAW_COLOUR), `LDRAW_COLOUR differs from repickColours' derivation: ${Object.keys(derived.table).filter((k) => derived.table[k] !== LDRAW_COLOUR[k]).join(', ')}`);
+  ok(sortJ(repickColours({ units, listed: B.isListed, base: BASE, extra: EXTRA, current: LDRAW_COLOUR }).table) === sortJ(LDRAW_COLOUR), 're-picking from the shipped table moves a row (not a fixed point)');
+  // an exception row exists only where the role's default is not listed for that part; an extension only where no base colour is
+  for (const k of Object.keys(LDRAW_COLOUR).filter((x) => x.includes('/'))) {
+    const [role, part] = k.split('/');
+    ok(units.some((u) => u.role === role && u.part === part), `exception ${k} names a (role, part) nothing places (stale)`);
+    ok(!B.isListed(part, LDRAW_COLOUR[role]), `exception ${k}: the role's colour ${LDRAW_COLOUR[role]} is already listed for ${part} (stale)`);
+  }
+  for (const u of units) if (EXTRA.includes(colourOf(LDRAW_COLOUR, u.role, u.part))) ok(BASE.every((c) => !B.isListed(u.part, c)), `${u.role}/${u.part} is in an extension colour though a base colour is listed`);
+  ok(EXTRA.every((c) => units.some((u) => colourOf(LDRAW_COLOUR, u.role, u.part) === c)), 'an extension colour is declared and used by nothing');
+  // the unofficial gears land in the only colours BrickLink lists them in
+  ok(Object.keys(BRICKLINK.elements['7785']).join() === '15' && colourOf(LDRAW_COLOUR, 'detent', '7785') === 15, '7785 should be White (BrickLink lists White only)');
+  ok(Object.keys(BRICKLINK.elements['7861']).join() === '71' && colourOf(LDRAW_COLOUR, 'spur', '7861') === 71, '7861 should be Light Bluish Gray (BrickLink lists that only)');
+  for (const l of l26.filter((x) => x.part === '7785' || x.part === '7861')) ok(l.bricklink.listed && l.status === 'unofficial', `${l.part}: should print listed and flagged unofficial`);
+  // CONTROLS. (1) 7785 forced to Orange is flagged by the unchanged flag path, and the gates see it
+  const orange = { ...LDRAW_COLOUR, 'detent/7785': 25 };
+  const bad = B.bomOf(B.buildOf(lib, 'technic_2026', 'keyless').build, lib, { colours: orange }).lines.find((l) => l.part === '7785');
+  control('7785 forced to Orange is flagged "lists White" by the flag path', bad && !bad.bricklink.listed && bad.flags.some((f) => /^BrickLink lists no element for 7785 in Orange; it lists White/.test(f)));
+  control('the unit gate fails on 7785 forced to Orange', unlistedUnits(units, orange, B.isListed).length === 1);
+  control('the derivation gate fails on 7785 forced to Orange', sortJ(orange) !== sortJ(derived.table));
+  const blue = { ...LDRAW_COLOUR, 'spur/69779': 71 };
+  control('the unit gate fails on 69779 moved to Light Bluish Gray', unlistedUnits(units, blue, B.isListed).some((u) => u.part === '69779'));
+  const oldTable = B.GENERATIONS.flatMap((g) => B.cellIds().map((c) => { const b = B.buildOf(lib, g, c).build; return b ? B.bomOf(b, lib, { colours: COLOUR_BASELINE_300 }).lines.filter((l) => !l.bricklink.listed).length : 0; })).reduce((a, b) => a + b, 0);
+  control('the §300 table (baseline) has unlisted lines the gate would count', oldTable > 0);
+  // (2) the solver refuses a part nothing lists, and picks no extension while a base colour lists it
+  let threw = false; try { repickColours({ units, listed: (p, c) => B.isListed(p, c) && !(p === '7785'), base: BASE, extra: EXTRA, current: COLOUR_BASELINE_300 }); } catch (_) { threw = true; }
+  control('the solver throws when no palette colour lists a part (7785 removed)', threw);
+  const noExt = (() => { try { repickColours({ units, listed: B.isListed, base: BASE, extra: [], current: COLOUR_BASELINE_300 }); return false; } catch (_) { return true; } })();
+  control('without the Dark Azure extension the solver finds no colour for 69779', noExt);
   const sample = all.technic_2026.find((c) => c.cell === 'alarm');
   const rows = B.parseCsv(B.bomCsv(sample, 'technic_2026')), head = rows[0], ci = head.indexOf('bricklink_listed');
   ok(ci > 0 && rows.slice(1, 1 + sample.bom.lines.length).every((r, i) => r[ci] === (sample.bom.lines[i].bricklink.listed ? 'yes' : 'no')), 'the CSV listed column differs from the BOM');
@@ -256,12 +310,12 @@ for (const gen of B.GENERATIONS) for (const cell of B.cellIds()) {
   for (const m of build.modes?.length ? build.modes : [undefined]) see(placedParts(build, 0, m), `${gen}:${cell}`);
 }
 { const af = frameAlarm(), st = alarmStates(lib, af); for (const mode of ['armed', 'ringing', 'off']) see(placedParts(alarmBuild(af, lib, st[mode])), `alarm:${mode}`); }
-console.log(`  ${roles.size} roles placed across both generations, every mode and every alarm state; LDRAW_COLOUR has ${Object.keys(LDRAW_COLOUR).length} rows`);
+console.log(`  ${roles.size} roles placed across both generations, every mode and every alarm state; LDRAW_COLOUR has ${Object.keys(LDRAW_COLOUR).length} rows (${Object.keys(LDRAW_COLOUR).filter((k) => k.includes('/')).length} of them per-part exceptions)`);
 for (const r of roles.keys()) {
-  const code = LDRAW_COLOUR[r];
+  const code = LDRAW_COLOUR[r]; // the role's default; an exception row `role/part` overrides it for one part
   ok(Number.isInteger(code) && code !== 16 && B.COLOUR_INFO[code], `role ${r} has colour ${code}: not a real LDraw code (16 is "the placer's colour")`);
 }
-for (const r of Object.keys(LDRAW_COLOUR)) ok(roles.has(r), `LDRAW_COLOUR names role ${r}, which no build places (stale)`);
+for (const r of Object.keys(LDRAW_COLOUR)) ok(roles.has(r.split('/')[0]), `LDRAW_COLOUR names role ${r}, which no build places (stale)`);
 for (const [code, info] of Object.entries(B.COLOUR_INFO)) ok(/^#[0-9A-F]{6}$/i.test(info.hex) && info.name, `COLOUR_INFO ${code} malformed`);
 for (const code of Object.values(LDRAW_COLOUR)) ok(B.COLOUR_INFO[code], `LDRAW_COLOUR uses code ${code}, absent from COLOUR_INFO`);
 for (const cell of B.cellIds()) {

@@ -4,7 +4,7 @@
 // delimited) that the parts list needs, so the purchase ids and colour ids are
 // READ from BrickLink and never typed (BUILT §300's rule). The three whole files
 // are 14 MB and are not committed; this keeps one row per LDraw id the builds
-// place, one row per LDraw colour the role table uses, and the element codes
+// place, one row per LDraw colour the role table may use, and the element codes
 // those pairs have. `--check` re-derives the file from the same three downloads
 // and fails if it differs; with no downloads it only reads the committed file
 // back and checks its shape.
@@ -25,11 +25,13 @@ const flag = (n) => { const i = args.indexOf(n); return i < 0 ? null : args[i + 
 const OUT = new URL('../src/technic-bricklink.js', import.meta.url).pathname;
 const table = (path) => readFileSync(path, 'utf8').split(/\r?\n/).map((l) => l.split('\t'));
 
-// BrickLink's name for each LDraw colour code the role table uses. LDraw and BrickLink
-// name these ten alike; the mapping is by NAME against Colors.txt, and a name that
-// is not there fails (never a guess).
+// BrickLink's name for each LDraw colour code the role table may use. LDraw and BrickLink
+// name these alike; the mapping is by NAME against Colors.txt, and a name that
+// is not there fails (never a guess). The first ten are the base palette (BUILT §300);
+// 321 is the one EXTENSION (BUILT §303): BrickLink lists the 20-tooth gear 69779 in
+// Dark Azure only, and no base colour is listed for it.
 const LDRAW_NAME = { 0: 'Black', 1: 'Blue', 2: 'Green', 4: 'Red', 14: 'Yellow', 15: 'White', 19: 'Tan', 25: 'Orange',
-  71: 'Light Bluish Gray', 72: 'Dark Bluish Gray' };
+  71: 'Light Bluish Gray', 72: 'Dark Bluish Gray', 321: 'Dark Azure' };
 
 export function derive({ parts, colors, codes, date }) {
   const P = table(parts).slice(1).filter((r) => r.length >= 4 && r[2]);
