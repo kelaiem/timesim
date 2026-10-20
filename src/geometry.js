@@ -8930,14 +8930,27 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
       const major = s % 5 === 0;
       tickAt(90 - s * 6, sr * TICK_OUTER_F, sr * (major ? MAJOR_LEN_F : MINOR_LEN_F), sr * (major ? MAJOR_W_F : MINOR_W_F));
     }
-    const capF = mmPerSr ? mmForArcmin(GLANCE_ARCMIN) / mmPerSr : 0.19 * CAP_PER_EM;
     const gapF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0.02;
-    const figBandF = mmPerSr ? TICK_OUTER_F - MAJOR_LEN_F - gapF - capF / 2 : 0.62;
+    const CAPTION_DY_F = 0.40;   // the caption's centre below the pivot (see caption())
     // The caption sets in the monospace, whose cap height is within a few
     // percent of Helvetica's 0.717 (SF Mono 0.70, Menlo 0.73), so one ratio
     // turns both caps into ems.
-    const captionEmF = mmPerSr ? mmForArcmin(IDENTIFY_ARCMIN) / mmPerSr / CAP_PER_EM : 0.08;
-    const CAPTION_DY_F = 0.40;   // the caption's centre below the pivot (see caption())
+    // The floors are TARGETS a well holds when it can. Both lines share one
+    // radial run, from the major ticks' inner end to the caption's centre, less
+    // a resolvable gap at each end: cap + captionCap/2 ≤ that run. A well too
+    // small for both at their floors (?subdialr=8 is 3 mm) scales them by ONE
+    // factor, the largest that fits, so neither is spent on the other; under
+    // half the floor the print is a smudge and says so, the maker's mark's rule.
+    const capT = mmForArcmin(GLANCE_ARCMIN) / (mmPerSr || 1);
+    const captionT = mmForArcmin(IDENTIFY_ARCMIN) / (mmPerSr || 1) / CAP_PER_EM;
+    const run = TICK_OUTER_F - MAJOR_LEN_F - 2 * gapF - CAPTION_DY_F;
+    const fit = mmPerSr ? Math.min(1, run / (capT + (captionT * CAP_PER_EM) / 2)) : 1;
+    if (mmPerSr && fit < 0.5)
+      console.warn(`seconds face: a ${(2 * mmPerSr).toFixed(2)} mm well holds its figures and caption at `
+        + `${(fit * 100).toFixed(0)}% of the acuity floor — under half, the print no longer reads; give the well room`);
+    const capF = mmPerSr ? capT * fit : 0.19 * CAP_PER_EM;
+    const figBandF = mmPerSr ? TICK_OUTER_F - MAJOR_LEN_F - gapF - capF / 2 : 0.62;
+    const captionEmF = mmPerSr ? captionT * fit : 0.08;
     // The 30 sits straight above the caption: its inner edge must clear the
     // caption's ink by the same resolvable gap, or the two print as one blot.
     const figInner = figBandF - capF / 2, captionOuter = CAPTION_DY_F + (captionEmF * CAP_PER_EM) / 2;

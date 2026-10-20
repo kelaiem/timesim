@@ -40361,6 +40361,19 @@ and maker's mark stay where §158 left them. "POWER RESERVE" at the identify
 threshold would need 140° of a 60° notch, and the mark is discreet by design.
 Making either legible needs a bigger well, which is layout, not print.
 
-Instruments: boot silent with every new assert in place. `probe-112-recut`
+**The floors are targets a well holds when it can.** The first battery run
+found the spec point `?subdialr=8`, a 3 mm seconds well, warning on both new
+asserts: its figures and caption at their floors overprint each other, and a
+3′ pointer is wider than one second at its tip. So the figures and the caption
+share one radial run (the major ticks' inner end to the caption's centre, less
+a resolvable gap at each end) and scale by ONE factor, the largest that fits.
+Below half the floor they warn, on the maker's mark's rule. The pointer keeps
+its target unless that reaches a division, and then takes the middle of the
+window between the drawn major and the division (`subdialPointerHalfW`, both
+wells). Neither default moves: the seconds well's run holds both lines at
+their floors with room, and both targets are under their divisions.
+
+Instruments: boot silent with every new assert in place, at the default and
+at `?subdialr=8`. `probe-112-recut`
 now reads the wrist distance from `layout.js` instead of its own copy of 350.
 The hand's width is geometry, so the battery owns its clearances.

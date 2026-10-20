@@ -19323,10 +19323,18 @@ registerLabel('Small seconds', smallSecondsGroup);
 // §293 — BOTH SUB-DIAL POINTERS ARE POINTER_ARCMIN WIDE (§158's law, which
 // only the reserve hand had). The small seconds rode §50's floor section,
 // 0.118 mm across: 1.0′ at the wrist, finer than the 2′ majors it indexes, a
-// hairline against its own marks. Bounded both ways at the build below.
-const SUBDIAL_HAND_HALF_W = mmForArcmin(POINTER_ARCMIN) / UNIT_MM / 2;
+// hairline against its own marks. The target holds unless it would be as wide
+// as one division at the tip (a small well: ?subdialr=8), where it takes the
+// middle of the window §158's two bounds leave, the drawn major below and the
+// division above, equal margin to each. Bounded both ways at each build.
+const subdialPointerHalfW = (length, divisionRad, majorW) => {
+  const target = mmForArcmin(POINTER_ARCMIN) / UNIT_MM;
+  const division = length * divisionRad;
+  return (target < division ? target : (majorW + division) / 2) / 2;
+};
 const SMALL_SECONDS_HAND_SPEC = { length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds',
-  halfWidth: SUBDIAL_HAND_HALF_W };
+  halfWidth: subdialPointerHalfW(secondsSubR * 0.8, 6 * DEG2RAD,
+    G.subdialStrokeF(G.SECONDS_MAJOR_W_F, G.SUBDIAL_MAJOR_ARCMIN, secondsSubR * UNIT_MM) * secondsSubR) };
 const smallSecondsHand = G.makeHand(SMALL_SECONDS_HAND_SPEC);
 smallSecondsHand.name = 'smallSecondsHand';
 // TODO 41 CLOSED — a well hand's plane is DERIVED from the section it
@@ -20242,7 +20250,8 @@ registerLabel('Power reserve', reserveGroup);
 // from it (floorDrop + topRise against SUBDIAL_RECESS), so widening the
 // section that way would spend the band on depth nobody asked for. Wide
 // and flat is also what a hand actually is.
-const RSV_HAND_HALF_W = SUBDIAL_HAND_HALF_W;   // §293: one pointer law for both wells
+const RSV_HAND_HALF_W = subdialPointerHalfW(reserveR * 0.8, (RESERVE_SWEEP_DEG * DEG2RAD) / RESERVE_SCALE_HOURS,   // §293: one pointer law for both wells
+  G.subdialStrokeF(G.SUBDIAL_MAJOR_W_F, G.SUBDIAL_MAJOR_ARCMIN, reserveR * UNIT_MM) * reserveR);
 // TODO 112 CLOSED here — `halfWidth` is section law by §158's own argument
 // above, and it rides the shared spec object into HAND_SPECS, so a panel
 // re-cut rebuilds this pointer at 3.00′ rather than the √3/2 default the
