@@ -4,7 +4,7 @@
 
 # The instruments
 
-333 scripts. **219 are ACCEPTANCE tests** — they decide and exit non-zero.
+334 scripts. **220 are ACCEPTANCE tests** — they decide and exit non-zero.
 **114 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -19,6 +19,7 @@ when a question was asked; the summaries are what it answered.
 | `battery-split.mjs` |  | report | §127 — the battery's partition atom, and the reassembly that makes it legal. |
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
 | `boot-progress.mjs` |  | acceptance | THE BOOT BAR'S TABLE — §267. Where the build IS, as a share of how long it takes, read off a measured boot rather than a clock or a count. |
+| `bricklink-subset.mjs` |  | acceptance | Writes src/technic-bricklink.js: the SUBSET of BrickLink's catalogue downloads (Parts, Colors, Codes — https://www.bricklink.com/catalogDownload.asp, tab- delimited) that the parts list needs, so the purchase ids and colour ids are READ from BrickLink and never typed (BUILT §300's rule). The three whole files are 14 MB and are not committed; this keeps one row per LDraw id the builds place, one row per LDraw colour the role table uses, and the element codes those pairs have. `--check` re-derives the file from the same three downloads and fails if it differs; with no downloads it only reads the committed file back and checks its shape. |
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
 | `check-bvh-patches.mjs` |  | acceptance | Verifies the three local patches in vendor/three-mesh-bvh.module.js (see vendor/README.md) still hold — run after any vendor bump, before trusting a single clearance number. |
 | `check-item-numbers.mjs` |  | acceptance | The item-number gate. See docs/item-numbers/README.md for why it exists. |

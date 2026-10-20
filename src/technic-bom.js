@@ -20,19 +20,25 @@
 // where the model has no number — never an invented count.
 //
 // THE PURCHASE ID IS NEVER READ FROM MEMORY. Each row of PART_TABLE carries a
-// BASIS that says where its id came from, and `auditTable` re-derives the
-// derivable ones from their sources so the table cannot drift from them:
+// BASIS that says where its id came from, and `auditTable` re-derives every row
+// from its sources so the table cannot drift from them:
+//   bricklink      BrickLink's own catalogue download (Parts), subset-committed in
+//                  src/technic-bricklink.js by tools/bricklink-subset.mjs: the item
+//                  number the LDraw id is, or is an alternate number of (a mould-
+//                  variant letter BrickLink does not list resolves to its base item,
+//                  and the line says so). The official catalogue, as of its date;
 //   catalogue      layout.js CATALOGUES, whose `part` column a person read off
 //                  BrickLink's `Technic, Gear` category on 2026-09-12;
 //   ldraw-keyword  the vendored LDraw file's own `0 !KEYWORDS BrickLink N`
 //                  cross-reference (not checked against a catalogue here);
 //   unverified     the LDraw id itself, used as the lookup key. A guess at a
-//                  purchase id would be a number that looked right (rule 1);
-//   person         (none yet) a row a person read from Rebrickable or BrickLink
-//                  and dated — the upgrade path for every unverified row.
-// Rebrickable and BrickLink were unreachable from the sandbox that wrote this,
-// so the mapping is unverified wherever it is not derived above, and says so.
+//                  purchase id would be a number that looked right (rule 1).
+// Precedence is that order. Since the owner's BrickLink download every placed id
+// is a `bricklink` row; the other three stay so a part a later build places that
+// BrickLink does not list is still shown as exactly what it is.
 import { CATALOGUES, TECHNIC_FORK } from './layout.js';
+import { BRICKLINK } from './technic-bricklink.js';
+import { PART_IDS } from './technic-bom-ids.js';
 import { walk } from './ldraw.js';
 import { frameFork, frameKeyless } from './technic-frame.js';
 import { ldrawBuild, placedParts, LDRAW_COLOUR } from './technic-ldraw.js';
@@ -49,8 +55,8 @@ export const CORD_ROLES = Object.freeze(['cord', 'cordEnd']);
 // COLOURS. LDraw.org's colour definitions (LDConfig.ldr): the name and the
 // display RGB of each code LDRAW_COLOUR uses. NOT vendored with the pack and
 // typed here from LDraw's published definitions, so it is a DISPLAY table (the
-// picture's fill and the line's name) and never a purchase colour: BrickLink's
-// and Rebrickable's colour ids are not mapped, and the CSV says so.
+// picture's fill and the line's name). The PURCHASE colour is BrickLink's, read
+// from the download by name (BRICKLINK.colours) and carried beside it on each line.
 export const COLOUR_INFO = Object.freeze({
   0: { name: 'Black', hex: '#05131D' }, 1: { name: 'Blue', hex: '#0055BF' }, 2: { name: 'Green', hex: '#237841' },
   4: { name: 'Red', hex: '#C91A09' }, 14: { name: 'Yellow', hex: '#F2CD37' }, 15: { name: 'White', hex: '#FFFFFF' },
@@ -92,38 +98,31 @@ export function keywordRefs(info) {
 // WHERE IT CAME FROM. `auditTable` fails a row whose basis its source no longer
 // supports and a row whose id a source has since improved.
 export const SOURCES = Object.freeze({
+  bricklink: { text: `BrickLink catalogue download (Parts, Colors, Codes), downloaded by the owner ${BRICKLINK.source.date}`, date: BRICKLINK.source.date },
   catalogue: { text: "layout.js CATALOGUES (BrickLink 'Technic, Gear', read by a person)", date: '2026-09-12' },
   'ldraw-keyword': { text: "the LDraw file's own !KEYWORDS cross-reference (not checked against a catalogue)", date: null },
   unverified: { text: 'the LDraw id used as the lookup key; purchase id not yet verified', date: null },
 });
 const row = (purchase, basis) => Object.freeze({ purchase, basis });
-const U = (id) => row(id, 'unverified');
-export const PART_TABLE = Object.freeze({
-  // gears: the catalogue's `part`, read from BrickLink on 2026-09-12
-  '3647': row('3647', 'catalogue'), '69778': row('69778', 'catalogue'), '4019': row('4019', 'catalogue'), '69779': row('69779', 'catalogue'),
-  '3648': row('3648', 'catalogue'), '46372': row('46372', 'catalogue'), '3649': row('3649', 'catalogue'),
-  '7785': row('7785', 'catalogue'), '7861': row('7861', 'catalogue'),
-  // mould variants and a wheel whose LDraw header names the catalogue part
-  '3023b': row('3023', 'ldraw-keyword'), '3070b': row('3070', 'ldraw-keyword'), '32123a': row('4265c', 'ldraw-keyword'),
-  '4032a': row('4032', 'ldraw-keyword'), '4185a': row('4185', 'ldraw-keyword'), '22253': row('6595', 'ldraw-keyword'),
-  // everything else: no source in the repo, the LDraw id is the lookup key
-  '11478': U('11478'), '18942': U('18942'), '18946': U('18946'), '18947': U('18947'), '18948': U('18948'), '2712': U('2712'),
-  '3004': U('3004'), '3005': U('3005'), '3024': U('3024'), '3044b': U('3044b'), '32062': U('32062'), '32073': U('32073'),
-  '3482': U('3482'), '3673': U('3673'), '3705': U('3705'), '3706': U('3706'), '3707': U('3707'), '3708': U('3708'),
-  '3713': U('3713'), '3737': U('3737'), '3794b': U('3794b'), '3811': U('3811'), '3867': U('3867'), '41677': U('41677'),
-  '43093': U('43093'), '44294': U('44294'), '4519': U('4519'), '55982': U('55982'), '60485': U('60485'), '62462': U('62462'),
-  '6541': U('6541'), '6558': U('6558'), '6632': U('6632'), '6641': U('6641'), '7229': U('7229'),
-  // the fusee's string: its header's only cross-reference is a PRINTED variant (skipped), so no source
-  '75924': U('75924'),
-});
+// One row per placed LDraw id, written from the BrickLink subset where it has the id (all
+// of them today) and from the older bases otherwise. The ids are PART_IDS, which the
+// probe holds equal to what the builds place.
+export const PART_TABLE = Object.freeze(Object.fromEntries(PART_IDS.map((id) => [id, bricklinkRow(id) ?? olderRow(id)])));
+function bricklinkRow(id) { const b = BRICKLINK.parts[id]; return b ? row(b.number, 'bricklink') : null; }
+function olderRow(id) {
+  const cat = Object.values(CATALOGUES).filter(Boolean).flatMap((c) => c.counts).find((c) => c.part === id);
+  return cat ? row(cat.part, 'catalogue') : row(id, 'unverified');   // a keyword row needs the pack: deriveRow
+}
 
 // What the sources say a row's basis and purchase id should be, derived afresh.
 export function deriveRow(lib, id) {
+  const bl = BRICKLINK.parts[id];
+  if (bl) return { purchase: bl.number, basis: 'bricklink' };
   const info = packInfo(lib, id);
   const cat = Object.values(CATALOGUES).filter(Boolean).flatMap((c) => c.counts).find((c) => c.part === id);
   if (cat) return { purchase: cat.part, basis: 'catalogue' };
-  const bl = keywordRefs(info).bricklink;
-  if (bl) return { purchase: bl, basis: 'ldraw-keyword' };
+  const kw = keywordRefs(info).bricklink;
+  if (kw) return { purchase: kw, basis: 'ldraw-keyword' };
   return { purchase: id, basis: 'unverified' };
 }
 
@@ -170,16 +169,16 @@ export const HONESTY = Object.freeze({
   modelled: 'Modelled, not built. These placements are checked against the part geometry (seated, through, meshed). No one has assembled this model and it has not been run.',
   posed: 'The forces are posed: the spring law, every rubber band, the cadence, the strikes per wind and the masses are stand-ins that only a built model could measure.',
   analogue: 'The escapement is an analogue (a recoil anchor and a knife-edge balance), a different escapement from the Swiss lever; the alarm\'s fly is not the steel anchor.',
-  unverified: 'A purchase id marked unverified is the LDraw id used as a lookup key and has not been checked against a catalogue; a mould-variant id may be sold under another number.',
+  unverified: 'A purchase id marked unverified is the LDraw id used as a lookup key and has not been checked against a catalogue.',
   unofficial: 'A part marked unofficial is not yet in the official LDraw library; technic_classic lists none.',
-  colour: 'Colours are this page\'s choice by role (an LDraw colour code), not a purchase colour; a supplier\'s colour ids are not mapped.',
+  colour: 'Colours are this page\'s choice by role (an LDraw colour code). BrickLink\'s colour id is matched by name, and a line says when BrickLink lists no element for that part in that colour.',
   attribution: 'Part geometry: LDraw.org library, CC BY 4.0 (some files CC BY 2.0 and 4.0). LEGO is a trademark of the LEGO Group, which does not sponsor or endorse this page.',
 });
 // which honesty lines a list carries (the analogue line only where it is about that build)
 export const honestyFor = (kind, lines) => [HONESTY.modelled, ...(['fusee', 'alarm', 'escapement'].includes(kind) ? [HONESTY.posed] : []),
   ...(['alarm', 'escapement'].includes(kind) ? [HONESTY.analogue] : []),
   ...(lines.some((l) => l.status === 'unofficial') ? [HONESTY.unofficial] : []),
-  ...(lines.some((l) => l.purchase.basis === 'unverified' || l.status === 'mould-variant') ? [HONESTY.unverified] : []),
+  ...(lines.some((l) => l.purchase.basis === 'unverified') ? [HONESTY.unverified] : []),
   HONESTY.colour, HONESTY.attribution];
 
 // ---------------------------------------------------------------------------
@@ -226,17 +225,25 @@ export function bomOf(build, lib, { table = PART_TABLE, colours = LDRAW_COLOUR }
 function describeLine(l, lib, table) {
   const info = packInfo(lib, l.part), r = table[l.part], src = r && SOURCES[r.basis];
   const purchase = { id: r?.purchase ?? l.part, basis: r?.basis ?? 'unverified', source: src?.text ?? SOURCES.unverified.text,
-    date: r?.basis === 'catalogue' ? SOURCES.catalogue.date : r?.basis === 'ldraw-keyword' ? (info?.updated ?? null) : null,
+    date: r?.basis === 'bricklink' ? SOURCES.bricklink.date : r?.basis === 'catalogue' ? SOURCES.catalogue.date : r?.basis === 'ldraw-keyword' ? (info?.updated ?? null) : null,
     differs: !!r && r.purchase !== l.part };
   const only2026 = CATALOGUES.technic_2026.counts.some((c) => c.part === l.part) && !CATALOGUES.technic_classic.counts.some((c) => c.part === l.part);
+  const bl = BRICKLINK.parts[l.part], blc = BRICKLINK.colours[l.colour];
+  const els = bl ? (BRICKLINK.elements[bl.number] ?? {}) : {};
+  const elements = els[l.colour] ?? [];
+  const listedIn = Object.keys(els).map((c) => BRICKLINK.colours[c]?.name).filter(Boolean);
+  const bricklink = bl && { item: bl.number, name: bl.name, category: bl.category, via: bl.via, colourId: blc?.id ?? null, colour: blc?.name ?? null,
+    elements, listed: elements.length > 0, listedIn };
   const flags = [];
+  if (bricklink && bricklink.via.startsWith('base')) flags.push(`BrickLink does not list ${l.part}; it sells the base item ${bl.number}`);
+  if (bricklink && !bricklink.listed) flags.push(`BrickLink lists no element for ${bl.number} in ${blc?.name ?? 'this colour'}${listedIn.length ? `; it lists ${listedIn.join(', ')} (of the colours used here)` : ' in any of the colours used here'}`);
   if (info?.status === 'unofficial') flags.push(`unofficial: not yet in the official LDraw library${only2026 ? '; a gear of the 2026 catalogue only (technic_2026)' : ''}`);
   if (info?.status === 'mould-variant') flags.push(info.aliasOf ? `mould variant: ${l.part} is an alias of ${info.aliasOf}` : 'mould variant: the purchase id may differ from the LDraw id');
   if (purchase.basis === 'unverified') flags.push('purchase id not yet verified');
   if (purchase.basis === 'ldraw-keyword') flags.push(`purchase id from the LDraw header${purchase.differs ? ` (${purchase.id}, not ${l.part})` : ''}, not checked against a catalogue`);
   if (l.string) flags.push(`one string of ${l.string.studs} studs, ${l.string.length} mm between the end studs, of which ${l.string.dead.toFixed(1)} mm lies dead on the barrel`);
   return { ...l, title: info?.title ?? null, org: info?.org ?? null, status: info?.status ?? null, aliasOf: info?.aliasOf ?? null,
-    colourName: COLOUR_INFO[l.colour]?.name ?? null, hex: COLOUR_INFO[l.colour]?.hex ?? null, purchase, only2026, flags };
+    colourName: COLOUR_INFO[l.colour]?.name ?? null, hex: COLOUR_INFO[l.colour]?.hex ?? null, purchase, bricklink, only2026, flags };
 }
 
 // ---------------------------------------------------------------------------
@@ -288,12 +295,12 @@ export const idsOf = (all) => [...new Set(Object.values(all).flatMap((cells) => 
 // CSV. RFC 4180: a field with a comma, quote or newline is quoted and its
 // quotes doubled. The parts table first, then a blank line and the notes, so
 // the honesty text travels with the file.
-export const CSV_COLUMNS = ['build', 'generation', 'ldraw_id', 'title', 'colour_code', 'colour', 'quantity', 'purchase_id', 'purchase_id_basis', 'part_status', 'flags'];
+export const CSV_COLUMNS = ['build', 'generation', 'ldraw_id', 'title', 'colour_code', 'colour', 'quantity', 'purchase_id', 'purchase_id_basis', 'bricklink_colour_id', 'bricklink_colour', 'bricklink_listed', 'bricklink_elements', 'part_status', 'flags'];
 const csvField = (v) => { const s = v === null || v === undefined ? '' : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 export function bomCsv(cell, gen) {
   const b = cell.bom, out = [CSV_COLUMNS.join(',')];
   for (const l of b.lines)
-    out.push([cell.title, gen, l.part, l.title, l.colour, l.colourName, l.qty, l.purchase.id, l.purchase.basis, l.status ?? 'string', l.flags.join('; ')].map(csvField).join(','));
+    out.push([cell.title, gen, l.part, l.title, l.colour, l.colourName, l.qty, l.purchase.id, l.purchase.basis, l.bricklink?.colourId, l.bricklink?.colour, l.bricklink ? (l.bricklink.listed ? 'yes' : 'no') : '', l.bricklink?.elements.join(' '), l.status ?? 'string', l.flags.join('; ')].map(csvField).join(','));
   out.push('', ['kind', 'text'].join(','));
   out.push(['total', `${b.total} physical parts in ${b.lines.length} lines (${b.placements} placements${b.cordPlacements ? `, of which ${b.cordPlacements} are the cord's pieces, bought as one string` : ''})`].map(csvField).join(','));
   for (const n of NOT_IN_MODEL[cell.kind]) out.push(['not in the model', `${n.item}: ${n.quantity}. ${n.why}`].map(csvField).join(','));
