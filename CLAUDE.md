@@ -174,7 +174,7 @@ keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher and escapement p
 are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
 are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
-opens one, and the page writes the URL only inside the tour; the browser half is
+opens one, and the page writes the URL only inside the tour. **Since §296 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is
 `tools/smoke-technic-carousel.mjs` (Chromium, 1280 and 390 wide).
 
 `explain.html` is the mechanism explainer (§65, plates for every

@@ -23,6 +23,9 @@
 //     at the last; one stop is its own neighbour;
 //   · FOCUS — every `focus === '…'` literal in technic.html resolves to a stop
 //     through resolveFocus;
+//   · INITIAL — §296: where the page opens, by query string, over the real stops
+//     (no params: tour at stop 1; ?tour=0, ?focus=*, a bad ?cell=: overview;
+//     ?cell=id: that stop), and the page asks once, at the first build;
 //   · FLICK / URL / EASE — thresholds, ?cell= written and removed with every
 //     other parameter kept, ?focus= dropped beside it, the ease monotone and
 //     the tween inside 0.6–0.9 s;
@@ -34,7 +37,9 @@
 //
 // CONTROLS, each seen to fail: a stop-id table typed by hand with a row too few;
 // a stopsOf that skips nothing; Next and Previous with wrap and clamp swapped;
-// a flick that ignores its vertical travel; a URL writer that keeps ?focus=.
+// a flick that ignores its vertical travel; a URL writer that keeps ?focus=;
+// (§296) an opening default that ignores ?focus=, one that ignores ?tour=0, and
+// one that tours a bad ?cell=; a page that asks on every build.
 //
 //   node tools/probe-technic-carousel.mjs
 import { readFileSync } from 'node:fs';
@@ -166,16 +171,54 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
 // URL
 {
   const w = C.withCell;
-  ok(w('', 'fusee') === '?cell=fusee' && w('?cell=fusee', null) === '' && w('', null) === '', 'withCell does not set/remove ?cell=');
+  ok(w('', 'fusee') === '?cell=fusee' && w('?cell=fusee', null) === '?tour=0' && w('', null) === '?tour=0', 'withCell does not set/remove ?cell= (leaving writes tour=0, §296)');
+  ok(w('?tour=0', 'fusee') === '?cell=fusee' && w('?tour=0&loop=0', 'fusee') === '?loop=0&cell=fusee', 'entering the tour left ?tour=0 beside ?cell=');
+  ok(w('?cell=fusee&tour=0', null) === '?tour=0', 'leaving twice duplicated ?tour=0');
   ok(w('?loop=0&gen=technic_2026&cell=row-2&panel=0', 'strike') === '?loop=0&gen=technic_2026&cell=strike&panel=0', 'withCell lost or moved another parameter');
   ok(w('?focus=fusee&loop=0', 'escapement') === '?loop=0&cell=escapement', 'withCell kept ?focus= beside ?cell=');
-  ok(w('?focus=fusee&loop=0', null) === '?loop=0', 'leaving the tour kept ?focus=');
+  ok(w('?focus=fusee&loop=0', null) === '?loop=0&tour=0', 'leaving the tour kept ?focus= (or lost loop)');
   const keep = (search, id) => { const p = new URLSearchParams(search); id ? p.set('cell', id) : p.delete('cell'); const s = p.toString(); return s ? `?${s}` : ''; };
   control('a URL writer that keeps ?focus=', keep('?focus=fusee', 'escapement') !== w('?focus=fusee', 'escapement'));
   const writers = [...page.matchAll(/history\.replaceState/g)].length, calls = [...page.matchAll(/writeUrl\(/g)].length;
   ok(writers === 1 && calls === 3, `the URL has ${writers} writers and writeUrl is mentioned ${calls} times (definition + the tour's two entries = 3)`);
   const tg = page.slice(page.indexOf('function tourGo('), page.indexOf('const tourNext')), outside = page.replace(tg, '');
   ok(/writeUrl\(stop\.id\)/.test(tg) && /writeUrl\(null\)/.test(tg) && (outside.match(/writeUrl\(/g) ?? []).length === 1, 'writeUrl is called outside tourGo/tourExit');
+}
+
+// INITIAL — where the page opens (§296): the table, over the real stops
+{
+  const stops = C.stopsOf(C.describeCells(inputs('technic_2026'))).stops, first = stops[0].id, I = (q) => C.initialTour(q, stops);
+  const row = (q, on, id, why) => ok(I(q).on === on && I(q).id === id, `initialTour(${JSON.stringify(q)}) = ${JSON.stringify(I(q))}, expected on=${on} id=${id} (${why})`);
+  console.log(`\nthe opening stop: ${first}`);
+  ok(first === 'row-1', `the first stop is ${first}, not row-1 (the note in BUILT §296 assumes it)`);
+  row('', true, first, 'no params');
+  row('?panel=0', true, first, 'panel only'); row('?loop=0&auto=0&panel=0', true, first, 'the display switches');
+  row('?gen=technic_classic', true, first, 'gen'); row('?view=lego', true, first, 'index.html\'s own link');
+  row('?tour=1', true, first, 'tour=1'); row('?tour=', true, first, 'tour empty'); row('?tour=yes', true, first, 'tour not 0');
+  row('?tour=0', false, null, 'the old default');
+  row('?tour=0&panel=0&gen=technic_2026', false, null, 'tour=0 with others');
+  for (const f of ['escapement', 'fusee', 'alarm', 'strike', 'bogus', '', '__proto__']) row(`?focus=${f}`, false, null, 'explicit focus: no auto tour');
+  row('?focus=fusee&loop=0&panel=0', false, null, 'focus with others'); row('?focus=fusee&tour=0', false, null, 'focus and tour=0');
+  for (const s of stops) row(`?cell=${s.id}`, true, s.id, 'a named stop');
+  row('?cell=ESCAPEMENT', true, 'escapement', 'case forgiven'); row('?cell=fusee&tour=0', true, 'fusee', 'a named place beats tour=0');
+  row('?cell=fusee&focus=alarm', true, 'fusee', 'the cell won in §294 too');
+  for (const bad of ['bogus', '', 'row-99', '__proto__', 'constructor']) row(`?cell=${bad}`, false, null, 'unknown cell is the overview, as before');
+  row('?cell=bogus&focus=fusee', false, null, 'bad cell with focus: focus lands, no tour');
+  ok(!C.initialTour('', []).on && !C.initialTour('', undefined).on && C.initialTour('?cell=x', []).on === false, 'no stops still opened a tour');
+  ok(C.initialTour('?tour=0', stops).why === 'tour=0' && C.initialTour('', stops).why === 'default', 'initialTour does not say why');
+  // the state the URL writer leaves is read back as the same state
+  ok(I(C.withCell('', null)).on === false && I(C.withCell('?loop=0', 'fusee')).id === 'fusee' && I(C.withCell('?focus=fusee', null)).on === false, 'the writer\'s URL does not read back as what is on screen');
+  // CONTROLS: a default that ignores ?focus= (breaks every old link), one that ignores ?tour=0
+  const noFocus = (q) => { const p = new URLSearchParams(q); if (p.has('cell')) return C.initialTour(q, stops); return p.get('tour') === '0' ? { on: false } : { on: true, id: first }; };
+  const noTour0 = (q) => { const p = new URLSearchParams(q); if (p.has('cell') || p.has('focus')) return C.initialTour(q, stops); return { on: true, id: first }; };
+  control('a default that ignores ?focus=', ['escapement', 'fusee', 'alarm', 'strike'].some((f) => noFocus(`?focus=${f}`).on !== I(`?focus=${f}`).on));
+  control('a default that ignores ?tour=0', noTour0('?tour=0').on !== I('?tour=0').on);
+  control('a default that tours a bad ?cell=', (() => { const p = new URLSearchParams('?cell=bogus'); return (p.has('cell') ? { on: true, id: first } : null).on !== I('?cell=bogus').on; })());
+  // PAGE: the first build alone asks; the rest keep the tour as it stands
+  ok(/initialTour\(location\.search, tour\.stops\)/.test(page) && (page.match(/initialTour\(/g) ?? []).length === 1, 'the page does not read initialTour exactly once');
+  ok(/let firstBuild = true/.test(page) && /firstBuild \? initialTour/.test(page) && /firstBuild = false;/.test(page), 'the page asks initialTour on every build, not the first');
+  ok(!/new URLSearchParams\(location\.search\)\.get\('cell'\)/.test(page), 'the page still reads ?cell= itself instead of through initialTour');
+  control('a page that asks on every build', !/firstBuild \? initialTour/.test(page.replace('firstBuild ? initialTour', 'initialTour')));
 }
 
 // EASE and the tween's duration

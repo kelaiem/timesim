@@ -130,12 +130,36 @@ export function swipeDir(dx, dy, ms) {
   return dx < 0 ? 1 : -1;
 }
 
+// WHERE THE PAGE OPENS (BUILT §296) — the one law the page and the probe read.
+// technic.html opens in the tour. The table, by the query string alone:
+//   (no params, or only panel/loop/auto/gen/…)  on, at the first stop
+//   ?cell=<a stop>                              on, at that stop (§294, unchanged)
+//   ?cell=<anything else, even empty>           OFF — the overview, as before §296
+//   ?focus=<anything, valid or not>             OFF — every ?focus= link lands where it did
+//   ?cell=<a stop>&focus=<x>                    on, at the cell (the cell won in §294 too)
+//   ?tour=0                                     OFF — the old default, the whole table
+//   ?tour=0&cell=<a stop>                       on, at the cell (a named place beats "no tour")
+// Only a literal `0` is "off"; `?tour=1`, `?tour=` and `?tour=yes` are the default.
+// `stops` are the build's stops (the first is the opening one; none, no tour).
+// Read once, at the page's FIRST build: a rebuild keeps the tour as it stands, so
+// leaving the tour is not undone by the next generation switch.
+export function initialTour(search, stops) {
+  const p = new URLSearchParams(search);
+  const first = stops && stops.length ? stops[0].id : null;
+  if (p.has('cell')) { const i = resolveId(stops ?? [], p.get('cell')); return i >= 0 ? { on: true, id: stops[i].id, why: 'cell' } : { on: false, id: null, why: 'bad cell' }; }
+  if (p.has('focus')) return { on: false, id: null, why: 'focus' };
+  if (p.get('tour') === '0') return { on: false, id: null, why: 'tour=0' };
+  return first ? { on: true, id: first, why: 'default' } : { on: false, id: null, why: 'no stops' };
+}
+
 // The query string with `cell` set (or removed when id is null); `focus` goes
 // with it because the cell supersedes it and a stale pair would disagree on reload.
+// Leaving the tour (id null) writes `tour=0` and entering removes it, so the
+// address always says what is on screen: a reload of the overview is the overview.
 export function withCell(search, id) {
   const p = new URLSearchParams(search);
   p.delete('focus');
-  if (id) p.set('cell', id); else p.delete('cell');
+  if (id) { p.set('cell', id); p.delete('tour'); } else { p.delete('cell'); p.set('tour', '0'); }
   const s = p.toString();
   return s ? `?${s}` : '';
 }
