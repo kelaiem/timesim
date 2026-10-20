@@ -40621,6 +40621,35 @@ rebuild and a reload stay there.
 and nothing from the movement; the battery never loads it, and the first
 frame's look is the screenshot's, not a gate's.
 
+## §299 — Tap focus looks through the case crystals; the base plate is called the base plate
+
+Owner question: why does nearly every tap focus "Structure"? Measured, on a
+grid of taps over the shipped dial view (383 that hit anything) and from the
+caseback (841):
+
+- **The case's crystals took the taps.** The front and back crystals are glass
+  by nature, but §59's pick only demoted x-ray and focus glass. So the first hit
+  was usually a crystal. The case's crystal and back assemblies are explode
+  entries with no label of their own, so `explodeEntryName` fell through to its
+  catch-all, 'Structure'. From the caseback, 840 of 841 taps named it.
+- **The crystals now answer no pick, in either pass.** Unlike x-ray glass, they
+  are never the only thing worth naming: a ray that meets nothing else has met
+  nothing. The two case assemblies are named 'Case' in `EXPLODE_NAME_FALLBACK`.
+  From the caseback, "Structure" (now the base plate) falls from 840 taps to
+  445. The rest reach the movement: mainspring drum 58, fusee 40, balance cock
+  33, centre wheel 31, and on down the train.
+- **What is left is the base plate, named as such** (owner ask). With the dial
+  x-rayed and the three-quarter plate ignored (§296), it is the solid surface
+  behind every gap between two wheels: 160 dial-side taps and 445 caseback taps.
+  The owner chose to keep it focusable. `backPlate`'s explode name is now
+  'Base plate', in `UNIT_GROUPS` and in every locale's table beside the old
+  'Structure', which stays as the catch-all's word. The battery reads label
+  and held-fixture names, never explode names. Its held fixture was already
+  'Base plate', so the two now say the same thing about one part.
+
+Boot is silent. `?focus=Base plate` restores, and the focus button reads
+"Grundplatine" in German.
+
 
 ---
 
