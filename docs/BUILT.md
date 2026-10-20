@@ -40505,7 +40505,7 @@ error.
 highlight of the motion works' gears inside the keyless cell (the stop only
 frames them); a swipe on the canvas.
 
-## §296 — technic.html opens in the tour
+## §298 — technic.html opens in the tour
 
 Owner: "For the Lego builds, start in the tour mode." The page now OPENS in
 §294's carousel, at the first stop, instead of on the whole table. Display

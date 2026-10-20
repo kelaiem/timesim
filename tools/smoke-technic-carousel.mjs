@@ -38,7 +38,7 @@ const serve = async (root) => {
   return [srv, `http://127.0.0.1:${srv.address().port}/technic.html`];
 };
 const [server, base] = await serve(ROOT);
-// §296: the page before the default changed, read from git (--baseline REF, default origin/main), so the
+// §298: the page before the default changed, read from git (--baseline REF, default origin/main), so the
 // links that must land where they did are compared with the page that landed them. Skipped, aloud, when
 // that ref already opens in the tour (the comparison would be the page against itself).
 const REF = arg('--baseline') ?? 'origin/main';
@@ -73,7 +73,7 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
   console.log(`\n== ${vp.name} ${vp.width}x${vp.height}`);
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.mobile, hasTouch: !!vp.mobile, deviceScaleFactor: 1 });
-  // §296: ?tour=0 is the overview the page used to open on; the plain page is the tour at stop 1
+  // §298: ?tour=0 is the overview the page used to open on; the plain page is the tour at stop 1
   const ovp = await open(ctx, '?tour=0', errors), over = await pose(ovp);
   ok(await ovp.evaluate(() => !window.__technic.tour.active && location.search === '?tour=0') && (await ovp.locator('#tour').isHidden()), '?tour=0 did not open the overview, or wrote the URL');
   ok(await ovp.evaluate(() => window.__technic.tour.shown) >= 8, 'the overview does not show every cell');

@@ -23,7 +23,7 @@
 //     at the last; one stop is its own neighbour;
 //   · FOCUS — every `focus === '…'` literal in technic.html resolves to a stop
 //     through resolveFocus;
-//   · INITIAL — §296: where the page opens, by query string, over the real stops
+//   · INITIAL — §298: where the page opens, by query string, over the real stops
 //     (no params: tour at stop 1; ?tour=0, ?focus=*, a bad ?cell=: overview;
 //     ?cell=id: that stop), and the page asks once, at the first build;
 //   · FLICK / URL / EASE — thresholds, ?cell= written and removed with every
@@ -38,7 +38,7 @@
 // CONTROLS, each seen to fail: a stop-id table typed by hand with a row too few;
 // a stopsOf that skips nothing; Next and Previous with wrap and clamp swapped;
 // a flick that ignores its vertical travel; a URL writer that keeps ?focus=;
-// (§296) an opening default that ignores ?focus=, one that ignores ?tour=0, and
+// (§298) an opening default that ignores ?focus=, one that ignores ?tour=0, and
 // one that tours a bad ?cell=; a page that asks on every build.
 //
 //   node tools/probe-technic-carousel.mjs
@@ -171,7 +171,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
 // URL
 {
   const w = C.withCell;
-  ok(w('', 'fusee') === '?cell=fusee' && w('?cell=fusee', null) === '?tour=0' && w('', null) === '?tour=0', 'withCell does not set/remove ?cell= (leaving writes tour=0, §296)');
+  ok(w('', 'fusee') === '?cell=fusee' && w('?cell=fusee', null) === '?tour=0' && w('', null) === '?tour=0', 'withCell does not set/remove ?cell= (leaving writes tour=0, §298)');
   ok(w('?tour=0', 'fusee') === '?cell=fusee' && w('?tour=0&loop=0', 'fusee') === '?loop=0&cell=fusee', 'entering the tour left ?tour=0 beside ?cell=');
   ok(w('?cell=fusee&tour=0', null) === '?tour=0', 'leaving twice duplicated ?tour=0');
   ok(w('?loop=0&gen=technic_2026&cell=row-2&panel=0', 'strike') === '?loop=0&gen=technic_2026&cell=strike&panel=0', 'withCell lost or moved another parameter');
@@ -185,12 +185,12 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   ok(/writeUrl\(stop\.id\)/.test(tg) && /writeUrl\(null\)/.test(tg) && (outside.match(/writeUrl\(/g) ?? []).length === 1, 'writeUrl is called outside tourGo/tourExit');
 }
 
-// INITIAL — where the page opens (§296): the table, over the real stops
+// INITIAL — where the page opens (§298): the table, over the real stops
 {
   const stops = C.stopsOf(C.describeCells(inputs('technic_2026'))).stops, first = stops[0].id, I = (q) => C.initialTour(q, stops);
   const row = (q, on, id, why) => ok(I(q).on === on && I(q).id === id, `initialTour(${JSON.stringify(q)}) = ${JSON.stringify(I(q))}, expected on=${on} id=${id} (${why})`);
   console.log(`\nthe opening stop: ${first}`);
-  ok(first === 'row-1', `the first stop is ${first}, not row-1 (the note in BUILT §296 assumes it)`);
+  ok(first === 'row-1', `the first stop is ${first}, not row-1 (the note in BUILT §298 assumes it)`);
   row('', true, first, 'no params');
   row('?panel=0', true, first, 'panel only'); row('?loop=0&auto=0&panel=0', true, first, 'the display switches');
   row('?gen=technic_classic', true, first, 'gen'); row('?view=lego', true, first, 'index.html\'s own link');

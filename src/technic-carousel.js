@@ -130,11 +130,11 @@ export function swipeDir(dx, dy, ms) {
   return dx < 0 ? 1 : -1;
 }
 
-// WHERE THE PAGE OPENS (BUILT §296) — the one law the page and the probe read.
+// WHERE THE PAGE OPENS (BUILT §298) — the one law the page and the probe read.
 // technic.html opens in the tour. The table, by the query string alone:
 //   (no params, or only panel/loop/auto/gen/…)  on, at the first stop
 //   ?cell=<a stop>                              on, at that stop (§294, unchanged)
-//   ?cell=<anything else, even empty>           OFF — the overview, as before §296
+//   ?cell=<anything else, even empty>           OFF — the overview, as before §298
 //   ?focus=<anything, valid or not>             OFF — every ?focus= link lands where it did
 //   ?cell=<a stop>&focus=<x>                    on, at the cell (the cell won in §294 too)
 //   ?tour=0                                     OFF — the old default, the whole table

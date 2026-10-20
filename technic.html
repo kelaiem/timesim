@@ -111,7 +111,7 @@
   opens a stop. DISPLAY ONLY: the LDraw placements, the probes and the .ldr
   downloads are untouched. tools/probe-technic-carousel.mjs holds the pure half.
 
-  BUILT §296 — THE PAGE OPENS IN THE TOUR, at the first stop (initialTour in
+  BUILT §298 — THE PAGE OPENS IN THE TOUR, at the first stop (initialTour in
   src/technic-carousel.js holds the table). ?tour=0 opens the whole table as the
   page did before; an explicit ?focus= (valid or not) opens as it always did;
   ?cell= names its stop. Leaving the tour writes tour=0, so a reload stays out.
@@ -1433,7 +1433,7 @@ async function build(gen) {
   // other generation re-derives them, and a tour in progress stays on its stop)
   tourRebuild(frames, keylessFrame, fuseeFramed);
   const focus = new URLSearchParams(location.search).get('focus');
-  // §296: the page OPENS in the tour (initialTour says where); only the first
+  // §298: the page OPENS in the tour (initialTour says where); only the first
   // build asks, so a rebuild keeps the tour as it stands and an overview stays one
   const wantCell = tour.active ? tour.id : firstBuild ? initialTour(location.search, tour.stops).id : null;
   const opening = firstBuild; firstBuild = false;
