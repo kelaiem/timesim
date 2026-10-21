@@ -122,6 +122,26 @@ async function bootOnce(query, shot = null) {
       });
       return { xMin: x0, xMax: x1, yMin: y0, yMax: y1, hw: (x1 - x0) / 2, hh: (y1 - y0) / 2, area: (x1 - x0) * (y1 - y0), meshes: n };
     })(),
+    // §307 landing 2 — WHICH UNITS STAND OUTSIDE THE SOLVERS' RECTANGLE, and by
+    // how much: each registered unit's worst excursion past formPlate, so the
+    // members the rectangle's law is missing are named rather than guessed.
+    outside: (() => {
+      const f = window.__clock.formPlate; let mv = null;
+      window.__clock.scene.traverse((o) => { if (!mv && o.name === 'case' && o.parent) mv = o.parent; });
+      if (!f || !mv) return null;
+      const unit = new Map();
+      for (const e of window.__clock.labelEntries || []) if (e.obj && e.obj.traverse) e.obj.traverse((o) => { if (!unit.has(o)) unit.set(o, e.name); });
+      const skip = (o) => { for (let a = o; a && a !== mv; a = a.parent) if (/^case/.test(a.name) || (a.userData && a.userData.schematic)) return true; return false; };
+      const agg = {}; const v = mv.position.clone();
+      mv.traverse((o) => {
+        if (!o.isMesh || !o.geometry || !o.geometry.attributes.position || skip(o)) return;
+        const pa = o.geometry.attributes.position; let by = -Infinity;
+        for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); by = Math.max(by, f.xMin - v.x, v.x - f.xMax, f.yMin - v.y, v.y - f.yMax); }
+        const n = unit.get(o) || '(unlabelled)';
+        if (by > 0) agg[n] = Math.max(agg[n] || 0, by);
+      });
+      return Object.entries(agg).sort((a, b) => b[1] - a[1]);
+    })(),
   }));
   if (shot && !out.bootError) {
     // The dial-side preset, a few frames to settle the camera tween (~0.9 s), then the picture.
@@ -138,6 +158,10 @@ if (DUMP) {
   if (out.bootError) { console.error(`boot failed: ${out.bootError}`); process.exit(1); }
   // KEYLESS_INPUTS carries functions? No — positions, radii and the print frame; P too.
   writeFileSync(DUMP, JSON.stringify(out, null, 1));
+  if (out.outside) {
+    console.log(`units standing outside the solvers' rectangle (u past its edge, worst mesh; ${out.outside.length} units):`);
+    for (const [n, by] of out.outside) console.log(`  ${by.toFixed(2).padStart(7)}  ${n}`);
+  }
   console.log(`wrote ${DUMP}: plateR ${out.plateR.toFixed(3)}, formPlate ${(2 * out.formPlate.hw).toFixed(2)} × ${(2 * out.formPlate.hh).toFixed(2)} u, ${out.warnings.length} console warning(s) at boot`);
   process.exit(0);
 }
