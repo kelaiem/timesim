@@ -255,7 +255,21 @@ export const SPEC = (() => {
   // typed — it is a function of the arrangement, which is what
   // tools/form-layout.mjs searches over the §33 knobs to minimise.
   const caseShape = raw.caseShape === 'rect' ? 'rect' : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr, studr, caseShape });
+  // §307 landing 2 — THE MEASURED FORM RECTANGLE, `xMin,xMax,yMin,yMax` in
+  // movement units: the footprint of the whole built movement (every part the
+  // build placed inside the round case's bore, the case-path gong excepted)
+  // grown by the plate's rim margin. It cannot be computed before the plates
+  // are cut — the parts that set it are built after them — so it is MEASURED
+  // by a first boot (main.js publishes it as `__clock.formFootprint.rect`,
+  // tools/form-layout.mjs prints the URL) and carried here; the build then
+  // re-measures and warns if the movement no longer fits what it was cut to.
+  // Absent: ?case=rect falls back to the solvers' `formPlate`. Malformed: null.
+  const formRectSpec = (() => {
+    if (raw.formRectSpec === undefined) return null;
+    const v = String(raw.formRectSpec).split(',').map(Number);
+    return (v.length === 4 && v.every(Number.isFinite) && v[0] < v[1] && v[2] < v[3]) ? Object.freeze(v) : null;
+  })();
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr, studr, caseShape, formRectSpec });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:

@@ -97,6 +97,7 @@ async function bootOnce(query, shot = null) {
   const out = await page.evaluate(() => window.__bootError ? { bootError: String(window.__bootError.message) } : ({
     layoutInputs: window.__clock.layoutInputs, keylessInputs: window.__clock.keylessInputs,
     formPlate: window.__clock.formPlate, plateR: window.__clock.plateR, P: window.__clock.P,
+    formFootprint: window.__clock.formFootprint, form: window.__clock.form,
     // §307 landing 2 — THE MOVEMENT'S TRUE FOOTPRINT, measured off the built
     // metal: the world-XY box of every mesh under the movement group, the case
     // and every schematic object excluded. The solvers' rectangle sees only the
@@ -158,6 +159,14 @@ if (DUMP) {
   if (out.bootError) { console.error(`boot failed: ${out.bootError}`); process.exit(1); }
   // KEYLESS_INPUTS carries functions? No — positions, radii and the print frame; P too.
   writeFileSync(DUMP, JSON.stringify(out, null, 1));
+  if (out.formFootprint) {
+    const { UNIT_MM } = await import(join(ROOT, 'src/layout.js'));
+    const mm = (u) => (u * UNIT_MM).toFixed(2);
+    const r = out.formFootprint.rect;
+    console.log(`measured form rectangle (whole movement inside the round bore, gong excepted, + rim margin): `
+      + `${mm(r[1] - r[0])} × ${mm(r[3] - r[2])} mm; the cut ${out.formFootprint.holds ? 'HOLDS it' : 'does NOT hold it'}`);
+    console.log(`  URL: index.html?${QUERY ? QUERY.replace(/&?formrect=[^&]*/, '') + '&' : ''}formrect=${r.map((q) => q.toFixed(2)).join(',')}`);
+  }
   if (out.outside) {
     console.log(`units standing outside the solvers' rectangle (u past its edge, worst mesh; ${out.outside.length} units):`);
     for (const [n, by] of out.outside) console.log(`  ${by.toFixed(2).padStart(7)}  ${n}`);

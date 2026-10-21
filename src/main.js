@@ -49,7 +49,7 @@ import {
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
-  formLoop,                                                 // §307: the form rectangle as a loop — plates, dial and case read ONE law under ?case=rect
+  formLoop, formRect, PLATE_RIM_MARGIN,                     // §307: the form rectangle as a loop — plates, dial and case read ONE law under ?case=rect
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -2747,7 +2747,15 @@ const {
 // wells): the prototype re-cuts OUTLINES and moves no station — the stations
 // are moved by the §33 knobs, which tools/form-layout.mjs searches for the
 // arrangement that makes this rectangle smallest.
-const FORM = SPEC.caseShape === 'rect' ? formPlate : null;
+// §307 landing 2 — under ?formrect= the rectangle is the MEASURED one (the
+// whole movement's footprint, see layout.js SPEC.formRectSpec), its corner
+// radius the same rim margin formPlate's law gives it; otherwise the solvers'.
+const FORM = SPEC.caseShape !== 'rect' ? null
+  : SPEC.formRectSpec ? formRect([
+    { x: SPEC.formRectSpec[0], y: SPEC.formRectSpec[2], r: 0, rim: PLATE_RIM_MARGIN },
+    { x: SPEC.formRectSpec[1], y: SPEC.formRectSpec[3], r: 0, rim: PLATE_RIM_MARGIN },
+  ].map((c, i) => ({ ...c, x: c.x + (i ? -1 : 1) * PLATE_RIM_MARGIN, y: c.y + (i ? -1 : 1) * PLATE_RIM_MARGIN })))
+  : formPlate;
 // §307 — AN OPENING MUST LIE INSIDE THE PLATE IT IS CUT IN. The round plates
 // carry openings sited off the ROUND outline — the §186 rim's clamp bores at
 // R_CLAMP, slots and windows that run to the circle's edge — and under the
@@ -47611,6 +47619,52 @@ await breathe(311);
 const caseCrystalMat = new THREE.MeshPhysicalMaterial({ ...CRYSTAL_GLASS });
 caseCrystalMat.userData.stock = 'corundum';   // §269 — the two crystals are sapphire for the mass tally; not `userData.glass`, which is the x-ray set's word
 await breathe(312);
+// §307 landing 2 — THE WHOLE MOVEMENT'S FOOTPRINT, measured now that every
+// part is built (the case builds last). The movement is what the round case
+// held: every mesh standing wholly inside its bore (CASE_R_IN). A mesh that
+// reaches past the bore — a stem, a crown, the pusher — is a THROUGH-CASE part:
+// its inboard end meets the plate at a notch, not at the plate's edge, so it
+// cannot set the outline (clipping it at the bore instead pinned the box to the
+// bore itself, measured: 33.9 × 33.5 mm, the round case's square). The
+// case-path gong is excepted too: its wire follows whatever outline the case
+// has and so cannot also set it, and so are the §202 bore LINERS, which are
+// pressed into the case's own bores and follow them. The
+// rectangle a form build should be cut to is that box grown by the plate's rim
+// margin, the same margin formPlate's law gives a station's outline. Under
+// ?case=rect a FORM that does not contain it is a finding (rule 6); the tool
+// reads `rect` off __clock and hands it back as ?formrect=.
+const FORM_FOOTPRINT = (() => {
+  if (!FORM) return null;
+  movement.updateWorldMatrix(true, true);
+  const gong = labelEntries.find((e) => e.name === 'Alarm gong')?.obj ?? null;
+  const under = (o, root) => { for (let a = o; a; a = a.parent) if (a === root) return true; return false; };
+  const skip = (o) => { for (let a = o; a && a !== movement; a = a.parent) if (/^case|CaseLiner$|TubeLiner$/.test(a.name) || a.userData?.schematic) return true; return false; };
+  const v = new THREE.Vector3();
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  movement.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong))) return;
+    const pa = o.geometry.attributes.position;
+    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity, through = false;
+    for (let i = 0; i < pa.count && !through; i++) {
+      v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld);
+      if (Math.hypot(v.x, v.y) > CASE_R_IN) through = true;
+      if (v.x < a0) a0 = v.x; if (v.x > a1) a1 = v.x; if (v.y < b0) b0 = v.y; if (v.y > b1) b1 = v.y;
+    }
+    if (through) return;
+    x0 = Math.min(x0, a0); x1 = Math.max(x1, a1); y0 = Math.min(y0, b0); y1 = Math.max(y1, b1);
+  });
+  const M = PLATE_RIM_MARGIN;
+  // Rounded OUTWARD to the URL's resolution (0.01 u), so the rectangle the
+  // spec carries back always contains the metal it was measured from.
+  const rect = [Math.floor((x0 - M) * 100) / 100, Math.ceil((x1 + M) * 100) / 100,
+    Math.floor((y0 - M) * 100) / 100, Math.ceil((y1 + M) * 100) / 100];
+  const holds = FORM.xMin <= rect[0] + 1e-6 && FORM.xMax >= rect[1] - 1e-6 && FORM.yMin <= rect[2] + 1e-6 && FORM.yMax >= rect[3] - 1e-6;
+  if (!holds)
+    console.warn(`§307: the movement's measured footprint needs the form rectangle [${rect.map((q) => q.toFixed(2)).join(', ')}] `
+      + `and the plates were cut to [${[FORM.xMin, FORM.xMax, FORM.yMin, FORM.yMax].map((q) => q.toFixed(2)).join(', ')}] — `
+      + `boot with ?formrect=${rect.map((q) => q.toFixed(2)).join(',')}`);
+  return { metal: [x0, x1, y0, y1], rect, holds };
+})();
 const caseSolid = FORM
   ? makeFormCase({ dims: CASE_DIMS, form: FORM, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }) // §307 — the form case round the rectangle
   : G.makeCase({ dims: CASE_DIMS, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }); // §203 step 1: the case exterior's own material — an alloy reaches this and never the works
@@ -59576,6 +59630,7 @@ window.__clock = {
   // form rectangle, so tools/form-layout.mjs can run layout.js's own solvers
   // off the real numbers in Node and search the arrangement.
   layoutInputs: LAYOUT_INPUTS, keylessInputs: KEYLESS_INPUTS, formPlate, caseShape: SPEC.caseShape,
+  formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint and the rectangle actually cut
   // §81 tranche A: what the weld pass found and removed, so the reduction is
   // a number the battery can read rather than a claim in a comment.
   get weldCensus() { return WELD_CENSUS; },
