@@ -43,6 +43,7 @@
 // recipe names, is reported by the probe.
 import { bounds } from './ldraw.js';
 import { LDRAW_COLOUR, placedParts } from './technic-ldraw.js';
+import { colourOf } from './technic-colour.js';
 import { HONESTY, CORD_ROLES } from './technic-bom.js';
 
 export const DOWN = Object.freeze([0, 1, 0]);                // LDraw +Y is down: a stud-seated part is lowered along +Y
@@ -559,7 +560,7 @@ export function planCounts(plan) {
 // A sub-assembly's placements keep their WORLD matrices (the sub-model is placed at the identity), so
 // flattening it back is exact: every line of a flattened .mpd is a line the .ldr carries.
 const fmt = (v) => String(Math.round(v * 1e4) / 1e4);
-export const partLine = (p) => `1 ${LDRAW_COLOUR[p.role] ?? 16} ${p.m.map(fmt).join(' ')} ${p.part}.dat`;
+export const partLine = (p) => `1 ${colourOf(LDRAW_COLOUR, p.role, p.part) ?? 16} ${p.m.map(fmt).join(' ')} ${p.part}.dat`;
 const IDENT = '0 0 0 1 0 0 0 1 0 0 0 1';
 const subFile = (plan, s) => `${s.id}.ldr`;
 const comment = (s) => `0 // ${s}`;

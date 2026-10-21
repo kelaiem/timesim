@@ -202,10 +202,12 @@ id is never read from memory**: `PART_TABLE` rows carry a BASIS (`bricklink`,
 `tools/bricklink-subset.mjs` from the owner's BrickLink downloads (Parts, Colors,
 Codes — never edit it, re-run the tool; `--check` re-derives it), and every line
 carries BrickLink's item, colour id and element codes, or a flag when BrickLink
-lists none in that colour (19 of 143 lines today). Org status is read from the
-pack header, never typed.
+lists none in that colour (0 of 143 lines since §303 re-picked the colours; the
+flag path stays). Org status is read from the pack header, never typed.
 `LDRAW_COLOUR` is the one colour-by-role table and is COMPLETE (no role falls to
-16); it is a design choice, not a measurement. Held by
+16); since §303 it is DERIVED (`repickColours`, `src/technic-colour.js`: a colour per
+(role, part) that BrickLink lists, `role/part` rows for the exceptions) and the
+probe holds it equal to the derivation. Held by
 `probe-technic-bom.mjs` (pure Node) and `tools/smoke-technic-bom.mjs` (Chromium:
 each picture is its part).
 

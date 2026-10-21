@@ -42,6 +42,7 @@ import { PART_IDS } from './technic-bom-ids.js';
 import { walk } from './ldraw.js';
 import { frameFork, frameKeyless } from './technic-frame.js';
 import { ldrawBuild, placedParts, LDRAW_COLOUR } from './technic-ldraw.js';
+import { colourOf } from './technic-colour.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from './technic-alarm.js';
 import { frameEscapement, escapementBuild } from './technic-escapement.js';
@@ -53,7 +54,8 @@ export const CORD_ROLES = Object.freeze(['cord', 'cordEnd']);
 
 // ---------------------------------------------------------------------------
 // COLOURS. LDraw.org's colour definitions (LDConfig.ldr): the name and the
-// display RGB of each code LDRAW_COLOUR uses. NOT vendored with the pack and
+// display RGB of each code LDRAW_COLOUR may use (the base ten, and Dark Azure 321, the one
+// extension, BUILT §303). NOT vendored with the pack and
 // typed here from LDraw's published definitions, so it is a DISPLAY table (the
 // picture's fill and the line's name). The PURCHASE colour is BrickLink's, read
 // from the download by name (BRICKLINK.colours) and carried beside it on each line.
@@ -61,7 +63,8 @@ export const COLOUR_INFO = Object.freeze({
   0: { name: 'Black', hex: '#05131D' }, 1: { name: 'Blue', hex: '#0055BF' }, 2: { name: 'Green', hex: '#237841' },
   4: { name: 'Red', hex: '#C91A09' }, 14: { name: 'Yellow', hex: '#F2CD37' }, 15: { name: 'White', hex: '#FFFFFF' },
   19: { name: 'Tan', hex: '#E4CD9E' }, 25: { name: 'Orange', hex: '#FE8A18' },
-  71: { name: 'Light Bluish Gray', hex: '#A0A5A9' }, 72: { name: 'Dark Bluish Gray', hex: '#6C6E68' } });
+  71: { name: 'Light Bluish Gray', hex: '#A0A5A9' }, 72: { name: 'Dark Bluish Gray', hex: '#6C6E68' },
+  321: { name: 'Dark Azure', hex: '#469BC3' } });
 
 // ---------------------------------------------------------------------------
 // WHAT THE PACK SAYS ABOUT A PART: title, org status, aliasing and keywords,
@@ -171,7 +174,7 @@ export const HONESTY = Object.freeze({
   analogue: 'The escapement is an analogue (a recoil anchor and a knife-edge balance), a different escapement from the Swiss lever; the alarm\'s fly is not the steel anchor.',
   unverified: 'A purchase id marked unverified is the LDraw id used as a lookup key and has not been checked against a catalogue.',
   unofficial: 'A part marked unofficial is not yet in the official LDraw library; technic_classic lists none.',
-  colour: 'Colours are this page\'s choice by role (an LDraw colour code). BrickLink\'s colour id is matched by name, and a line says when BrickLink lists no element for that part in that colour.',
+  colour: 'Colours are this page\'s choice by role (an LDraw colour code), re-picked so that BrickLink lists an element for every line. BrickLink\'s colour id is matched by name, and a line would say if BrickLink listed no element for that part in that colour.',
   attribution: 'Part geometry: LDraw.org library, CC BY 4.0 (some files CC BY 2.0 and 4.0). LEGO is a trademark of the LEGO Group, which does not sponsor or endorse this page.',
 });
 // which honesty lines a list carries (the analogue line only where it is about that build)
@@ -191,7 +194,7 @@ export function foldParts(parts, { string = null, colours = LDRAW_COLOUR } = {})
   let cordPlacements = 0;
   for (const p of parts) {
     if (CORD_ROLES.includes(p.role)) { cordPlacements++; continue; }
-    const colour = colours[p.role];
+    const colour = colourOf(colours, p.role, p.part);
     if (colour === undefined) throw new Error(`technic-bom: role ${p.role} (part ${p.part}) has no colour in LDRAW_COLOUR`);
     const k = `${p.part}|${colour}`;
     const l = lines.get(k) ?? { part: p.part, colour, qty: 0, roles: new Set() };
@@ -286,6 +289,30 @@ export function allBoms(lib, { table = PART_TABLE } = {}) {
   const out = {};
   for (const gen of GENERATIONS) out[gen] = cellIds().map((cell) => bomForCell(lib, gen, cell, { table }));
   return out;
+}
+
+// Does BrickLink list an element for this LDraw part in this LDraw colour code? A part
+// BrickLink has no row for (the cord's pieces, bought as one string) constrains nothing.
+export const isListed = (part, code) => { const bl = BRICKLINK.parts[part]; return !bl || (BRICKLINK.elements[bl.number]?.[code] ?? []).length > 0; };
+
+// Every (role, part) any build places, with the builds it is placed in: both
+// generations, every cell, every keyless mode, every alarm state. The cord's
+// pieces are bought as ONE string (CORD_ROLES), so the cord role's unit is the
+// string (cordChoice's pick, `build.cord.string.part`) and the cord end's is the end stud,
+// which no BOM line carries.
+export function colourUnits(lib) {
+  const units = new Map();
+  const see = (parts, tag, string = null) => { for (const p of parts) {
+    const part = p.role === 'cord' && string ? string.part : p.part, k = `${p.role}/${part}`;
+    const u = units.get(k) ?? { role: p.role, part, builds: new Set() };
+    u.builds.add(tag); units.set(k, u); } };
+  for (const gen of GENERATIONS) for (const cell of cellIds()) {
+    const build = buildOf(lib, gen, cell).build;
+    if (!build) continue;
+    for (const m of build.modes?.length ? build.modes : [undefined]) see(placedParts(build, 0, m), `${gen}:${cell}`, build.cord?.string ?? null);
+    if (cell === 'alarm') { const af = frameAlarm(), st = alarmStates(lib, af); for (const mode of ['armed', 'ringing', 'off']) see(placedParts(alarmBuild(af, lib, st[mode])), `${gen}:alarm`); }
+  }
+  return [...units.values()].map((u) => ({ ...u, builds: [...u.builds].sort() })).sort((a, b) => (a.role < b.role ? -1 : a.role > b.role ? 1 : a.part < b.part ? -1 : a.part > b.part ? 1 : 0));
 }
 
 // the union of LDraw ids a set of BOMs places (the string's included)

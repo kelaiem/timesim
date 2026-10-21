@@ -26,6 +26,7 @@
 // of their pairs, signs alternating (standing rule 2: the angles travel the
 // gears).
 import { walk, LDU_MM } from './ldraw.js';
+import { colourOf } from './technic-colour.js';
 import { FRAME_PARTS, KEYLESS_PARTS, KEYLESS_DOGS, KEYLESS_DIM_MM, KEYLESS_SELECTOR_DIM_MM, KEYLESS_PULL_DIM_MM,
   PULL_PINION_TEETH, AXLE_PARTS } from './technic-frame.js';
 
@@ -50,28 +51,34 @@ const ARM_M = [0, 1, 0, -1, 0, 0, 0, 0, 1];
 // LDraw colour codes the .ldr carries (the page draws by role instead). BUILT §300:
 // this is the ONE colour-by-role declaration, and it is COMPLETE — every role any
 // build places has a row, so none falls to 16 ("the placer's colour", which a
-// picture-led parts list would show as one grey). It is a DESIGN CHOICE the owner
-// can flip (docs/BUILT.md §300 records the default), not a measurement. Its rule:
+// picture-led parts list would show as one grey). BUILT §303 RE-PICKED it so that
+// BrickLink lists an element for EVERY line (the constraint is per (part, colour): a
+// colour is feasible for a role only if BrickLink sells every part the role places in
+// it). It is no longer typed: `repickColours` (src/technic-colour.js) derives it from
+// the placements and the BrickLink subset, starting from `COLOUR_BASELINE_300`, and
+// `tools/probe-technic-bom.mjs` fails if this table differs from what it returns.
+// A role's row is its default colour; a `role/part` row is an EXCEPTION for a part
+// the default is not listed in (7785 is listed in White only, 7861 in Light Bluish
+// Gray only, 69778 in Blue only). The design intent survives where BrickLink allows:
 // the frame is grey (plates and bricks 71, Technic bricks 72, baseplate green 2),
-// axles and cord black (0), and a part that does a JOB another part in the same
-// build does not gets its own colour, so a picture and a BOM line tell them apart —
-// a pawl, a catch, a follower and a hammer's pallet are red (4), a lever and a
-// mass yellow (14), a detent, a ratchet and a beam orange (25), an arm blue (1), a
-// pinion and a click tan (19), a crown and a hook white (15). Gears that are only
-// gears stay grey: spur 71, a wheel or a gear in the alarm 71. The probe holds the
-// table complete over the builds, and every code a real LDraw colour (COLOUR_NAME,
-// src/technic-bom.js).
+// axles and cord black (0), pawls, catch, followers and pallets red (4), levers,
+// masses and the great wheel yellow (14), a ratchet and a detent wheel apart, a crown
+// and a hook white (15). Gears that are only gears stay grey (spur 71). Every code is a
+// real LDraw colour (COLOUR_INFO, src/technic-bom.js); 321 (Dark Azure) is the one
+// extension of the base ten, for the 20-tooth gear 69779 BrickLink lists in no other.
 export const LDRAW_COLOUR = Object.freeze({
   // the frame (landing B)
-  baseplate: 2, plate: 71, brick: 71, technicBrick: 72, axle: 0, spur: 71, doubleBevel: 19,
+  baseplate: 2, plate: 71, brick: 71, technicBrick: 72, axle: 0, spur: 71, doubleBevel: 14,
   // the keyless and motion works (landings D-G)
-  joiner: 0, ring: 72, crown: 15, catch: 4, pinion: 19, rack: 14, tile: 15, detent: 25, arm: 1, follower: 4,
+  joiner: 15, ring: 72, crown: 15, catch: 4, pinion: 14, rack: 72, tile: 15, detent: 1, arm: 25, follower: 4,
   // the fusee (landing H, §285)
-  cord: 0, cordEnd: 0, barrel: 72, hook: 15, knob: 15, pulley: 71, click: 19, ratchet: 25, pawl: 4, great: 14, centre: 19,
+  cord: 0, cordEnd: 0, barrel: 14, hook: 15, knob: 15, pulley: 71, click: 19, ratchet: 25, pawl: 4, great: 14, centre: 19,
   // the alarm (landing I, §288)
-  lever: 14, pin: 72, rotor: 4, wheel: 71, driver: 1, stub: 0, pushTip: 4, collar: 4, button: 15, beam: 25, gear: 71,
+  lever: 14, pin: 1, rotor: 0, wheel: 1, driver: 25, stub: 0, pushTip: 4, collar: 4, button: 15, beam: 2, gear: 71,
   // the escapement (§287)
-  knife: 72, mass: 14, pallet: 4 });
+  knife: 72, mass: 14, pallet: 4,
+  // exceptions: a part its role's colour is not listed for (BUILT §303)
+  'axle/60485': 14, 'detent/7785': 15, 'spur/18946': 4, 'spur/69778': 1, 'spur/69779': 321 });
 
 // The angle of one tooth of a gear part, in its own frame, about its Z axis:
 // the surface points at the tip radius, folded by the tooth count. arg Σ e^{iNθ}
@@ -527,6 +534,6 @@ export function toLdr(build, input = 0, mode = build.modes?.[0]) {
   const lines = [`0 timesim technic fork — ${build.gen} ${build.key}${build.modes?.length > 1 ? ` (${mode})` : ''}`, `0 Name: ${build.gen}-${build.key.replace(/\W+/g, '-')}.ldr`,
     '0 Author: tools/technic-ldraw.mjs (generated from src/technic-frame.js)', '0 !LICENSE parts: LDraw.org, CC BY 4.0', ''];
   for (const p of placedParts(build, input, mode))
-    lines.push(`1 ${LDRAW_COLOUR[p.role] ?? 16} ${p.m.map(fmt).join(' ')} ${p.part}.dat`);
+    lines.push(`1 ${colourOf(LDRAW_COLOUR, p.role, p.part) ?? 16} ${p.m.map(fmt).join(' ')} ${p.part}.dat`);
   return lines.join('\n') + '\n';
 }
