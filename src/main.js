@@ -49,7 +49,7 @@ import {
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
-  formLoop, formRect, PLATE_RIM_MARGIN,                     // §307: the form rectangle as a loop — plates, dial and case read ONE law under ?case=rect
+  formLoop, formRect, plateShape, PLATE_RIM_MARGIN,                     // §307: the form rectangle as a loop — plates, dial and case read ONE law under ?case=rect
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -2770,13 +2770,10 @@ const FORM = SPEC.caseShape !== 'rect' ? null
 // which is the prototype's named gap (the alarm module, the reserve train and
 // the keyless cluster are not in the rectangle's members yet). The inset is
 // the rounded rectangle's own signed distance (the corner round included).
-const formInset = (x, y) => {
-  if (!FORM) return Infinity;
-  const rc = FORM.cornerR, bx = FORM.hw - rc, by = FORM.hh - rc;
-  const qx = Math.abs(x - FORM.cx) - bx, qy = Math.abs(y - FORM.cy) - by;
-  const outside = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rc;
-  return -outside;
-};
+// (landing 2: that signed distance is layout.js's plateShape now — the one
+// law every circle-consumer below asks under FORM.)
+const FORM_SHAPE = FORM ? plateShape(FORM, plateR) : null;
+const formInset = (x, y) => (FORM ? FORM_SHAPE.inset(x, y) : Infinity);
 const FORM_DROPPED = [];
 const formHolds = (what, x, y, r, land) => {
   if (!FORM) return true;
@@ -2800,7 +2797,8 @@ const formFilter = (plateRadius, { holes = [], slots = [], sectors = [], pockets
 // The form case's builder is fetched only when it is built: the round build's
 // module graph stays exactly today's, and a tree whose form module is absent
 // still boots round.
-const makeFormCase = FORM ? (await import('./form-case.js')).makeFormCase : null;
+const FORM_CASE_MOD = FORM ? await import('./form-case.js') : null;
+const makeFormCase = FORM ? FORM_CASE_MOD.makeFormCase : null;
 if (FORM) {
   const wOut = 2 * (FORM.hw + CASE_CLEAR + CASE_BAND_T);
   if (wOut > 2 * CASE_WIDTH_MAX + 1e-9)
@@ -10503,9 +10501,14 @@ const BACK_PLATE_CUT = {
     MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
     MW_DROP_PLATE_HOLE,   // TODO 150 item 1 — the drop corner's own recess at A, same precedent
     // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through)
-    ...CASE_CLAMP_AZ.map((a) => ({
+    // §307 landing 2 — NOT under FORM: these bores pass the §186 clamp
+    // screws through the round RIM, and the form plate has no rim (the outline
+    // replaces it) and the form case builds no clamps (form-case.js) — a
+    // clearance bore for a screw that does not exist is not a seat the
+    // rectangle failed to hold, so it is not cut rather than cut and dropped.
+    ...(FORM ? [] : CASE_CLAMP_AZ.map((a) => ({
       x: Math.cos(a) * R_CLAMP, y: Math.sin(a) * R_CLAMP, r: CASE_CLAMP_BORE_R,
-    })),
+    }))),
   ],
   // One stud on the arm: the stadium it has always had, unchanged.
   slots: HACK_PIN_OWN ? [] : [studSlot(postRel, postEng, kwPostBow)],
@@ -27173,6 +27176,16 @@ const PLATE_RIM = (() => {
   // wall stands at halfW − bevelSize; anything inboard of that by a hair is
   // floor), so the number is the floor's swell and not the rim's.
   const floors = CASE_NOTCHES.map(() => 0);
+  // §307 landing 2 — UNDER FORM THERE IS NO RIM: the outline is the plate's
+  // edge (the builder skips the rim and its notches under an outline), so the
+  // same walk reads the FORM plate's own edge through the plate's shape law —
+  // the seat band is the metal within 1 mm of the outline (inset ≤ 1 mm, the
+  // round rSeat's plateR − 1 mm), `formOut` is how far the metal swells PAST
+  // the outline (max −inset: the extrude bevel's own swell, TODO 84's rule),
+  // and each stem's floor is the widest metal ALONG its own line inside the
+  // tube's sleeve section (no notch is cut, so the sleeve, not a notch wall,
+  // bounds the strip). The round walk is untouched.
+  let formOut = -Infinity;
   backPlate.updateMatrixWorld(true);
   backPlate.traverse((o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
@@ -27181,6 +27194,19 @@ const PLATE_RIM = (() => {
       o.localToWorld(v.fromBufferAttribute(p, i));
       const r = Math.hypot(v.x, v.y);
       if (r > reach) reach = r;
+      if (FORM) {
+        const ins = FORM_SHAPE.inset(v.x, v.y);
+        if (-ins > formOut) formOut = -ins;
+        if (ins <= 1 / UNIT_MM && v.z < front) front = v.z;
+        if (ins <= 1 / UNIT_MM && v.z > back) back = v.z;
+        for (let n = 0; n < CASE_NOTCHES.length; n++) {
+          const { az } = CASE_NOTCHES[n];
+          const along = v.x * Math.cos(az) + v.y * Math.sin(az);
+          const perp = Math.abs(-v.x * Math.sin(az) + v.y * Math.cos(az));
+          if (along > 0 && perp <= CASE_TUBE_AP && along > floors[n]) floors[n] = along;
+        }
+        continue;
+      }
       if (r >= rSeat && v.z < front) front = v.z;
       if (r >= rSeat && v.z > back) back = v.z;   // §186 — the rim's BACK face: what a clamp head seats on
       for (let n = 0; n < CASE_NOTCHES.length; n++) {
@@ -27198,20 +27224,29 @@ const PLATE_RIM = (() => {
   // widest reach against the back band's bore wall must land on SEAT_FIT
   // (BASE_RIM_R subtracts the bevel swell out, so the two should agree to
   // float noise; a tenth of the fit is the drift alarm).
-  const fit = R_BORE_BACK - reach;
+  // §307 landing 2 — under FORM the fit is the FORM case's: its bore is the
+  // plate's shape grown CASE_CLEAR (form-case.js formCaseLoops), so the fit is
+  // that grow less the metal's measured swell past the outline, held to the
+  // same SEAT_FIT and the same tenth.
+  const fit = FORM ? CASE_CLEAR - formOut : R_BORE_BACK - reach;
   if (Math.abs(fit - G.SEAT_FIT) > G.SEAT_FIT * 0.1)
     console.warn(`§186: the rim-to-bore fit measures ${fit.toFixed(4)} u against the SEAT_FIT `
-      + `${G.SEAT_FIT.toFixed(4)} it was derived to — the rim no longer locates the movement`);
+      + `${G.SEAT_FIT.toFixed(4)} it was derived to — ${FORM ? 'the form case\'s bore (plate + CASE_CLEAR) does not locate the form plate' : 'the rim no longer locates the movement'}`);
   // ...and the notch floors against the standoff the tubes are cut to
   // (tubeClearR = plateR · (1 + PLATE_BEVEL_F), the floor's own swell rule):
   // a floor past that number is metal a crown tube runs into.
+  // §307 landing 2 — under FORM no notch is cut and the tubes are cut to the
+  // FORM case's own standoff (form-case.js tubeAt: the plate loop's exit,
+  // swelled, plus CLEAR_MARGIN), which exists only once the case is built —
+  // so the floors are carried out and held to each tube's built inboard end
+  // there (search `§307 landing 2 — THE FLOORS`), not to the round tubeClearR.
   const tubeClearR = plateR * (1 + G.PLATE_BEVEL_F);
-  for (let n = 0; n < CASE_NOTCHES.length; n++) {
+  for (let n = 0; n < CASE_NOTCHES.length && !FORM; n++) {
     if (floors[n] > tubeClearR + 1e-3)
       console.warn(`§186: notch ${n} (az ${(CASE_NOTCHES[n].az * 180 / Math.PI).toFixed(1)}°) measures its floor `
         + `at r ${floors[n].toFixed(4)} — past the ${tubeClearR.toFixed(4)} the crown tubes are cut to clear`);
   }
-  return { front, back, reach, floors };
+  return FORM ? { front, back, reach, floors, formOut } : { front, back, reach, floors };
 })();
 await breathe(200);
 const GONG_RIM_PLANT = 0.5;                        // a stud's plant depth into the rim — the plate-top idiom, kept
@@ -40832,7 +40867,14 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // `hypot(_pushBase)`, which read 0.3495 u wrong while the line was a chord.)
   const _pushBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;  // the base, ON the push axis
   const _pushOffAxis = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;  // ...and ACROSS it (0 since §170)
-  const ALARM_PUSH_SEAT_S = Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - _pushOffAxis * _pushOffAxis)); // the tube's flat end, along the line from its foot
+  // §307 landing 2 — under FORM the pusher's bore ends where the FORM case
+  // cuts it: form-case.js's flush bore runs to the axis's exit from the OUTER
+  // loop (tubeAt's `outerExit`, its own rayExit on its own formCaseLoops), so
+  // the seat is read through that same law on that same loop — the circle's
+  // √(R_OUT² − off²) is the round band's exit and no other case's.
+  const ALARM_PUSH_SEAT_S = FORM
+    ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM).outer, [_pushU.x, _pushU.y], [_pushPerp.x * _pushOffAxis, _pushPerp.y * _pushOffAxis])
+    : Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - _pushOffAxis * _pushOffAxis)); // the tube's flat end, along the line from its foot
   const stemOuterS = ALARM_PUSH_SEAT_S - ALARM_SEAT_SINK + ALARM_PUSH_TRAVEL - _pushBaseS;
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
@@ -47106,6 +47148,7 @@ const BACK_ENVELOPE = await (async () => {
   // tools/probe-261-lever-prices.mjs folds them back and requires the shipped
   // bins to the last digit before it prices anything with them.
   const unitBins = new Map();
+  let formBeyond = -Infinity;   // §307 landing 2 — see `take`
   // Per-mesh unit attribution, so each sample carries its unit's declared
   // allowance: score = z + allowance(unit). The bin keeps the max SCORE —
   // exact for the model "each unit's metal may stand its allowance above
@@ -47134,7 +47177,11 @@ const BACK_ENVELOPE = await (async () => {
     const n = idx ? idx.count : p.count;
     const take = (pt) => {
       const r = Math.hypot(pt.x, pt.y);
-      if (r >= rSpan) return;
+      // §307 landing 2 — a form plate's corners stand past the round case's
+      // R_OUT (the rectangle's half-diagonal), where no bin reaches; the form
+      // case's flat back covers them all the same, so their tallest score is
+      // kept beside the bins (FORM only — the round walk returns as before).
+      if (r >= rSpan) { if (FORM && pt.z + allow > formBeyond) formBeyond = pt.z + allow; return; }
       const s = Math.floor(r / rSpan * NBIN);
       const score = pt.z + allow;
       if (score > bins[s]) { bins[s] = score; owners[s] = ownerKey; }
@@ -47313,6 +47360,7 @@ const BACK_ENVELOPE = await (async () => {
     allowances: [...BACK_SWEPT_ALLOWANCE.entries()].map(([unit, extra]) => ({ unit, extra })),
     unitBins: Object.fromEntries([...unitBins].map(([u, a]) => [u, a.map((z) => (z === -Infinity ? null : z))])),
     regions: BACK_SWEPT_REGIONS,
+    ...(FORM ? { formBeyond } : {}),
   };
 })();
 
@@ -47440,13 +47488,27 @@ const CASE_DIMS = (() => {
   // under CASE_HEIGHT_STEP_MM.
   // (CASE_GLASS_FLOAT_GUARD is hoisted — §278 landing 2 — and reads 1e-4.)
   const zPaneFloor = envMaxOver(RA - 2 * CLEAR_MARGIN, CASE_R_OUT) + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD;
-  const zMidBack = Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
+  // §307 landing 2 — THE FORM CASE'S BACK IS FLAT (form-case.js: a plain
+  // plate over the whole outline, its glass's inner face on this plane; no
+  // skirt, no clamps, no raised step), so under FORM the plane is that flat
+  // back's own floor: one margin and the float guard over the TALLEST metal
+  // anywhere inside the outline — every bin, and the corners past R_OUT the
+  // bins cannot reach (BACK_ENVELOPE.formBeyond). The round chain — the
+  // skirt arm, the pane floor outboard of the round aperture — describes
+  // metal the form case does not build.
+  const zFormBack = FORM
+    ? Math.max(envMaxOver(0, CASE_R_OUT), BACK_ENVELOPE.formBeyond) + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD
+    : null;
+  const zMidBack = FORM ? zFormBack : Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
   // §278 landing 2 — the strike's crank was cut under a ceiling derived from
   // THIS skirt arm (STRIKE_SKIRT_ARM, hoisted); held both ways: the skirt the
   // case measures is the one assumed, and the pane floor no longer governs.
-  if (Math.abs((zSkirtBot + CASE_CLAMP_ENG) - STRIKE_SKIRT_ARM) > 1e-9)
+  // §307 landing 2 — not under FORM: these hold the strike's crank to the
+  // round case's SKIRT, which the form case does not build; its flat back is
+  // derived above to clear every metal, the crank's included, by the margin.
+  if (!FORM && Math.abs((zSkirtBot + CASE_CLAMP_ENG) - STRIKE_SKIRT_ARM) > 1e-9)
     console.warn(`§278: the skirt arm measures ${(zSkirtBot + CASE_CLAMP_ENG).toFixed(6)}, the strike's crank was cut under ${STRIKE_SKIRT_ARM.toFixed(6)} — re-derive the crank`);
-  if (zPaneFloor > STRIKE_SKIRT_ARM + 1e-9)
+  if (!FORM && zPaneFloor > STRIKE_SKIRT_ARM + 1e-9)
     console.warn(`§278: the pane floor ${zPaneFloor.toFixed(6)} stands over the skirt arm ${STRIKE_SKIRT_ARM.toFixed(6)} — metal outboard of the aperture governs the back again`);
   // The bore wall must still contain the pusher's bore window whole
   // (§186's boredProfiles carries the degenerate-piece assert; this is the
@@ -47462,6 +47524,7 @@ const CASE_DIMS = (() => {
   // identity: the glass's outer pane's INNER face is flush with the band's
   // back face).
   const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
+  let formApertureGrow = null, formGlassGrow = null;   // §307 landing 2 — set under FORM below
   // (The glazing channel and the APERTURE it leaves are derived above the
   // band's back face now — TODO 69: the back face reads the aperture.) The
   // aperture must show the whole three-quarter plate: measured reach
@@ -47476,9 +47539,30 @@ const CASE_DIMS = (() => {
       const p = o.geometry.attributes.position;
       for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); tqReach = Math.max(tqReach, Math.hypot(v.x, v.y)); }
     });
-    if (RA < tqReach + CLEAR_MARGIN)
+    if (!FORM && RA < tqReach + CLEAR_MARGIN)
       console.warn(`§187: the aperture ${RA.toFixed(3)} does not clear the three-quarter plate's measured `
         + `reach ${tqReach.toFixed(3)} + CLEAR_MARGIN — the window §187 exists for is blocked by its own ring`);
+    // §307 landing 2 — UNDER FORM THE APERTURE IS THE SHAPE: the three-quarter
+    // plate is cut to the outline, so a round window (RA, the round ring's
+    // chain) cannot show it. The window is the plate's shape grown by the
+    // plate's MEASURED swell past its outline (max −inset over its metal, the
+    // bevel's) plus the one margin of sight; the glass's edge one glass
+    // thickness past that (the round lip's own width rule, RA_EDGE − RA). What
+    // is judged instead of the round reach: the lip and its glass stand inside
+    // the case's outer wall by §50's stock floor.
+    if (FORM && tqe) {
+      let out = -Infinity;
+      tqe.obj.traverse((o) => {
+        if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+        const p = o.geometry.attributes.position;
+        for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); out = Math.max(out, -FORM_SHAPE.inset(v.x, v.y)); }
+      });
+      formApertureGrow = out + CLEAR_MARGIN;
+      formGlassGrow = formApertureGrow + CASE_CRYSTAL_T;
+      if (formGlassGrow + STOCK_MIN_U > CASE_CLEAR + CASE_BAND_T)
+        console.warn(`§307: the form back's glass edge stands ${formGlassGrow.toFixed(3)} u past the plate's outline — within §50's `
+          + `${STOCK_MIN_U.toFixed(3)} of the case's outer wall at ${(CASE_CLEAR + CASE_BAND_T).toFixed(3)}`);
+    }
   }
   // THE STEPPED GLASS, both planes and the step radius derived from the
   // envelope (scan-don't-freeze extends to the SHAPE: when §191/§192 lower
@@ -47563,6 +47647,7 @@ const CASE_DIMS = (() => {
     // §187 — the threaded ring and its stepped glass (derivations above).
     skirtOD, skirtID, zSkirtBot,
     apertureR: RA, glassEdgeR: RA_EDGE,
+    ...(FORM ? { formApertureGrow, formGlassGrow } : {}),   // §307 landing 2 — the form back's window, a grow of the plate's shape
     rStep, zStepUnder, zStepTop,
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
     // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
@@ -47621,8 +47706,8 @@ caseCrystalMat.userData.stock = 'corundum';   // §269 — the two crystals are 
 await breathe(312);
 // §307 landing 2 — THE WHOLE MOVEMENT'S FOOTPRINT, measured now that every
 // part is built (the case builds last). The movement is what the round case
-// held: every mesh standing wholly inside its bore (CASE_R_IN). A mesh that
-// reaches past the bore — a stem, a crown, the pusher — is a THROUGH-CASE part:
+// held, every mesh but the DECLARED through-case parts (below). A stem, a
+// crown, the pusher — each is a THROUGH-CASE part:
 // its inboard end meets the plate at a notch, not at the plate's edge, so it
 // cannot set the outline (clipping it at the bore instead pinned the box to the
 // bore itself, measured: 33.9 × 33.5 mm, the round case's square). The
@@ -47639,19 +47724,27 @@ const FORM_FOOTPRINT = (() => {
   const gong = labelEntries.find((e) => e.name === 'Alarm gong')?.obj ?? null;
   const under = (o, root) => { for (let a = o; a; a = a.parent) if (a === root) return true; return false; };
   const skip = (o) => { for (let a = o; a && a !== movement; a = a.parent) if (/^case|CaseLiner$|TubeLiner$/.test(a.name) || a.userData?.schematic) return true; return false; };
+  // THE THROUGH-CASE PARTS are DECLARED, not inferred from the round bore: a
+  // part counts as through only because it passes through one of the case's
+  // OPENINGS — the winding stem and its crown, the alarm stem and its crown,
+  // the pusher's stem and its head (the §202 liners are skipped above, by
+  // name). The first cut asked `r > CASE_R_IN` instead, and that is the
+  // circle's judgement on a shape that is not one: a part a candidate layout
+  // pushed past the round bore was DROPPED from the footprint rather than
+  // counted, so the optimiser could shrink the rectangle by moving metal out
+  // of it. Every other mesh counts wherever it stands.
+  const THROUGH_OBJS = [stem, crown, alarmStem, alarmCrownKnob];
+  const THROUGH_NAMES = new Set(['alarmPusherStem', 'alarmPusherCap']);
+  const through = (o) => THROUGH_NAMES.has(o.name) || THROUGH_OBJS.some((r) => under(o, r));
   const v = new THREE.Vector3();
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   movement.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong))) return;
+    if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o)) return;
     const pa = o.geometry.attributes.position;
-    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity, through = false;
-    for (let i = 0; i < pa.count && !through; i++) {
+    for (let i = 0; i < pa.count; i++) {
       v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld);
-      if (Math.hypot(v.x, v.y) > CASE_R_IN) through = true;
-      if (v.x < a0) a0 = v.x; if (v.x > a1) a1 = v.x; if (v.y < b0) b0 = v.y; if (v.y > b1) b1 = v.y;
+      if (v.x < x0) x0 = v.x; if (v.x > x1) x1 = v.x; if (v.y < y0) y0 = v.y; if (v.y > y1) y1 = v.y;
     }
-    if (through) return;
-    x0 = Math.min(x0, a0); x1 = Math.max(x1, a1); y0 = Math.min(y0, b0); y1 = Math.max(y1, b1);
   });
   const M = PLATE_RIM_MARGIN;
   // Rounded OUTWARD to the URL's resolution (0.01 u), so the rectangle the
@@ -47837,7 +47930,14 @@ registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
     if (!o.isMesh || o.userData.schematic || SKIP.includes(o.name) || !o.geometry?.attributes?.position) return;
     const p = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : p.count;
-    const take = (x, y, z) => { if (z > zPath) { const r = Math.hypot(x, y); if (r < minR) { minR = r; minName = o.name; } } };
+    // §307 landing 2 — under FORM the question is the same one asked of the
+    // plate's SHAPE: how far outside the outline the middle's metal stands
+    // (−inset), against how far the plate's own metal swells past it
+    // (PLATE_RIM.formOut). A radius cannot answer it — the band's flat side
+    // stands nearer the centre than the plate's own corners.
+    const take = FORM
+      ? (x, y, z) => { if (z > zPath) { const d = -FORM_SHAPE.inset(x, y); if (d < minR) { minR = d; minName = o.name; } } }
+      : (x, y, z) => { if (z > zPath) { const r = Math.hypot(x, y); if (r < minR) { minR = r; minName = o.name; } } };
     for (let t = 0; t < n; t += 3) {
       for (let e = 0; e < 3; e++) {
         const i0 = idx ? idx.getX(t + e) : t + e;
@@ -47861,9 +47961,29 @@ registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
     }
   });
   await breathe(315);
-  if (minR < PLATE_RIM.reach - 1e-3)
+  if (!FORM && minR < PLATE_RIM.reach - 1e-3)
     console.warn(`§187: middle metal (${minName}) stands at r ${minR.toFixed(3)} above the rim's back face — `
       + `inboard of the rim's measured reach ${PLATE_RIM.reach.toFixed(4)}, so the movement cannot be cased`);
+  if (FORM && minR < PLATE_RIM.formOut - 1e-3)
+    console.warn(`§187: middle metal (${minName}) stands ${minR.toFixed(3)} outside the form outline above the plate's back face — `
+      + `inside the plate's measured swell past it ${PLATE_RIM.formOut.toFixed(4)}, so the movement cannot be cased`);
+}
+// §307 landing 2 — THE FLOORS, held under FORM to the tubes the form case
+// actually cut: each stem's widest plate metal along its own line (PLATE_RIM,
+// within the sleeve's section) must stand short of its tube's built inboard
+// end by the one margin the tube was cut to clear it by (form-case.js tubeAt's
+// `+ CLEAR_MARGIN`), the round rule (floor ≤ tubeClearR) read on the form case.
+if (FORM) {
+  const tubes = ['caseCrownTube', 'caseAlarmTube'];
+  for (let n = 0; n < CASE_NOTCHES.length; n++) {
+    let grp = null;
+    caseSolid.traverse((o) => { if (!grp && o.name === tubes[n]) grp = o; });
+    const t = grp?.userData.tube;
+    if (!t) { console.warn(`§307: the form case built no ${tubes[n]} — the notch-${n} floor is not held`); continue; }
+    if (PLATE_RIM.floors[n] > t.inboard - CLEAR_MARGIN + 1e-3)
+      console.warn(`§186: stem ${n} (az ${(CASE_NOTCHES[n].az * 180 / Math.PI).toFixed(1)}°) meets plate metal at ${PLATE_RIM.floors[n].toFixed(4)} — `
+        + `within CLEAR_MARGIN of the form case tube's inboard end ${t.inboard.toFixed(4)}`);
+  }
 }
 
 const SCHEMATIC = { proxies: [], on: false };

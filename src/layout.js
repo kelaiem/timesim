@@ -3372,6 +3372,68 @@ export function formLoop(rect, { grow = 0, cornerSegs = 12 } = {}) {
   return pts;
 }
 
+// §307 landing 2 — THE PLATE AS A SHAPE. Every consumer that used to ask a
+// circle of radius plateR "how far inside am I?" or "where does this line
+// leave the plate?" asks this instead, so the round build and the form build
+// answer through ONE law with two shapes:
+//   · rect null — the circle of radius plateR about the origin (the centre
+//     arbor): inset = plateR − |p|, exit(az, off) = √(plateR² − off²);
+//   · rect given — formLoop's rounded rectangle (corner radius rect.cornerR),
+//     its EXACT signed distance (the rounded box's: a box of half-sides
+//     (hw − rc, hh − rc) grown by rc), and exit the ray's exact crossing.
+// `grow` offsets the outline outward (negative: inward) exactly, which for a
+// rounded rectangle is the same law at (hw + g, hh + g, rc + g) — so a case's
+// bore, its outer wall and an aperture are this shape grown, not new laws.
+// inset(x, y): signed distance to the outline, + inside. exit(az, off): the
+// distance along the ray at azimuth `az` whose base stands `off` to its left
+// (on (−sin az, cos az)) from the origin to where it leaves the outline —
+// NaN when the ray's line misses the shape. bounds: the axis box.
+export function plateShape(rect, plateR, { grow = 0 } = {}) {
+  if (!rect) {
+    const R = plateR + grow;
+    return Object.freeze({
+      kind: 'circle', R,
+      inset: (x, y) => R - Math.hypot(x, y),
+      exit: (az, off = 0) => (Math.abs(off) <= R ? Math.sqrt(R * R - off * off) : NaN),
+      bounds: Object.freeze({ xMin: -R, xMax: R, yMin: -R, yMax: R }),
+    });
+  }
+  const rc = Math.max(0, rect.cornerR + grow);
+  const hw = rect.hw + grow, hh = rect.hh + grow, cx = rect.cx, cy = rect.cy;
+  const bx = hw - rc, by = hh - rc;
+  const inset = (x, y) => {
+    const qx = Math.abs(x - cx) - bx, qy = Math.abs(y - cy) - by;
+    return -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rc);
+  };
+  // The exit along a ray: the rounded box is convex, so the ray leaves it
+  // exactly once past an interior base; the crossing is the farthest root of
+  // the four flat sides (each clipped to its flat run) and the four corner
+  // circles (each clipped to its quadrant).
+  const exit = (az, off = 0) => {
+    const ux = Math.cos(az), uy = Math.sin(az);
+    const px = -uy * off - cx, py = ux * off - cy;   // the base, in the shape's centred frame
+    let t = -Infinity;
+    const on = (x, y) => Math.abs(x) <= bx + 1e-12 && Math.abs(y) <= by + 1e-12;
+    for (const s of [-1, 1]) {
+      if (Math.abs(ux) > 1e-15) { const k = (s * hw - px) / ux; if (on(0, py + k * uy)) t = Math.max(t, k); }
+      if (Math.abs(uy) > 1e-15) { const k = (s * hh - py) / uy; if (on(px + k * ux, 0)) t = Math.max(t, k); }
+      for (const r of [-1, 1]) {
+        const ox = s * bx, oy = r * by;               // the corner circle's centre
+        const wx = px - ox, wy = py - oy;
+        const b = wx * ux + wy * uy, c = wx * wx + wy * wy - rc * rc, d = b * b - c;
+        if (d < 0) continue;
+        const k = -b + Math.sqrt(d), hx = px + k * ux, hy = py + k * uy;
+        if ((hx - ox) * s >= -1e-12 && (hy - oy) * r >= -1e-12) t = Math.max(t, k);
+      }
+    }
+    return t > -Infinity ? t : NaN;
+  };
+  return Object.freeze({
+    kind: 'rect', rc, inset, exit,
+    bounds: Object.freeze({ xMin: cx - hw, xMax: cx + hw, yMin: cy - hh, yMax: cy + hh }),
+  });
+}
+
 export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound

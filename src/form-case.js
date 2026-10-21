@@ -182,8 +182,15 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const {
     UNIT_MM: U, z0, zMidBack, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     crystT, tubeD, pusherD, stemAz, alarmAz, pusherAz, pusherOff, stemZ, alarmZ, pusherZ,
-    lugSpanInner, apertureR, glassEdgeR,
+    lugSpanInner, apertureR, glassEdgeR, formApertureGrow = null, formGlassGrow = null,
   } = dims;
+  // §307 landing 2 — THE BACK'S WINDOW IS THE PLATE'S SHAPE: main.js derives
+  // it as grows of the plate's outline (the three-quarter plate's measured
+  // swell plus the margin of sight; the glass one glass thickness past it), so
+  // the lip's bore and the glazing channel are formLoop offsets like every
+  // other wall here. The round apertureR/glassEdgeR stand only if not given.
+  const apHole = formApertureGrow === null ? { r: apertureR } : formLoop(form, { grow: formApertureGrow });
+  const glassLoop = formGlassGrow === null ? null : formLoop(form, { grow: formGlassGrow });
   if (U !== undefined && Math.abs(U - UNIT_MM) > 1e-12)
     console.warn(`makeFormCase: dims.UNIT_MM ${U} is not layout.js's ${UNIT_MM}`);
   const loops = formCaseLoops(form);
@@ -259,11 +266,11 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   if (!(zCrystIn >= zMidBack - 1e-9))
     console.warn(`makeFormCase: the back glass's inner face ${zCrystIn.toFixed(3)} stands ${(zMidBack - zCrystIn).toFixed(3)} u `
       + `below the plate's inner face ${zMidBack.toFixed(3)} — into the back envelope's margin`);
-  if (!(glassEdgeR > apertureR + STOCK_MIN_U))
+  if (formGlassGrow === null && !(glassEdgeR > apertureR + STOCK_MIN_U))
     console.warn(`makeFormCase: the lip over the back glass is ${(glassEdgeR - apertureR).toFixed(3)} u wide, under §50's ${STOCK_MIN_U.toFixed(3)}`);
   const backGeo = mergeGeos([
-    prism(loops.outer, [{ r: apertureR }], zCrystOut, z0),
-    prism(loops.outer, [{ r: glassEdgeR }], zMidBack, zCrystOut),
+    prism(loops.outer, [apHole], zCrystOut, z0),
+    prism(loops.outer, [glassLoop ?? { r: glassEdgeR }], zMidBack, zCrystOut),
   ]);
   holdWound(backGeo, 'the case back');
   const back = new THREE.Mesh(backGeo, material);
@@ -274,7 +281,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // (makeCase's back pane; the inspect.js row `caseBackCrystal ⇄ caseBack`
   // declares exactly this). Flat: the round case's raised step over the alarm
   // tower is not built (prototype — the plate stands at zMidBack everywhere).
-  const backCrystal = new THREE.Mesh(holdWound(disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED), 'the back glass'), crystalMaterial);
+  const backCrystal = new THREE.Mesh(holdWound(glassLoop ? prism(glassLoop, [], zCrystIn, zCrystOut + SEAT_EMBED) : disc(glassEdgeR, zCrystIn, zCrystOut + SEAT_EMBED), 'the back glass'), crystalMaterial);
   backCrystal.name = 'caseBackCrystal';
   backAsm.add(backCrystal);
 
