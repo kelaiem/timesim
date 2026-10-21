@@ -1,8 +1,9 @@
-// §307 — THE FORM CASE: a RECTANGULAR case for the form movement, built the
+// §307 — THE FORM CASE: a FORM case for the form movement, built the
 // way `makeCase` (geometry.js) builds the round one, with the lathe's one
 // profile replaced by ONE outline law. Every wall here is an OFFSET of the
-// plate's own rectangle — `formLoop(form, { grow })` (layout.js), the loop the
-// plate, the dial and the opening are all cut from — so the band, the bezel,
+// plate's own SHAPE — `form.loop({ grow })`, §308's caseShapeOf (layout.js:
+// rect, cushion or tonneau), the loop the plate, the dial and the opening are
+// all cut from — so the band, the bezel,
 // the crystal and the opening are concentric by construction, and each grow is
 // the round case's radial rule restated on the loop:
 //
@@ -32,7 +33,7 @@ import * as THREE from 'three';
 import {
   UNIT_MM, CLEAR_MARGIN, STOCK_MIN_U, CASE_CLEAR, CASE_BAND_T, CASE_WIDTH_MAX,
   CASE_LUG_T, CASE_LUG_EDGE_R, CASE_SPRING_BAR_D, CASE_SPRING_BAR_TIP_D,
-  caseLugPlan, formLoop,
+  caseLugPlan,
 } from './layout.js';
 import { makeRoundedSlab, PLATE_BEVEL_F, COLLAR_PROUD, TUBE_WALL } from './geometry.js';
 import { CASE_POLISH_ATTR } from './materials.js';
@@ -76,15 +77,16 @@ export function rayExit(loop, dir, base = [0, 0]) {
 }
 
 // The four loops every part of the case is cut from, each one grow of the
-// plate's rectangle (the rules in the header). Pure, so an instrument reads
-// the same loops the build does.
+// plate's shape (the rules in the header; `form` is a caseShapeOf shape, and
+// `loop({ grow })` its true offset). Pure, so an instrument reads the same
+// loops the build does.
 export function formCaseLoops(form) {
   return {
-    plate: formLoop(form, { grow: 0 }),
-    bore: formLoop(form, { grow: CASE_CLEAR }),
-    outer: formLoop(form, { grow: CASE_CLEAR + CASE_BAND_T }),
-    opening: formLoop(form, { grow: -1 / UNIT_MM }),
-    crystal: formLoop(form, { grow: -0.5 / UNIT_MM }),
+    plate: form.loop({ grow: 0 }),
+    bore: form.loop({ grow: CASE_CLEAR }),
+    outer: form.loop({ grow: CASE_CLEAR + CASE_BAND_T }),
+    opening: form.loop({ grow: -1 / UNIT_MM }),
+    crystal: form.loop({ grow: -0.5 / UNIT_MM }),
   };
 }
 
@@ -177,7 +179,7 @@ const holdWound = (geo, what) => {
 // consumes makeCase's: `name` 'case', three assemblies (middle, back, front)
 // under `userData.assemblies`, the same mesh names, `userData.lugPlans`, and
 // `userData.casePart` on every mesh (the §62 keep-sweep opt-out). `dims` is
-// main.js's CASE_DIMS; `form` is layout.js's `formRect` in the movement frame.
+// main.js's CASE_DIMS; `form` is layout.js's `caseShapeOf` shape in the movement frame.
 export function makeFormCase({ dims, form, material, crystalMaterial }) {
   const {
     UNIT_MM: U, z0, zMidBack, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
@@ -189,8 +191,8 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   // swell plus the margin of sight; the glass one glass thickness past it), so
   // the lip's bore and the glazing channel are formLoop offsets like every
   // other wall here. The round apertureR/glassEdgeR stand only if not given.
-  const apHole = formApertureGrow === null ? { r: apertureR } : formLoop(form, { grow: formApertureGrow });
-  const glassLoop = formGlassGrow === null ? null : formLoop(form, { grow: formGlassGrow });
+  const apHole = formApertureGrow === null ? { r: apertureR } : form.loop({ grow: formApertureGrow });
+  const glassLoop = formGlassGrow === null ? null : form.loop({ grow: formGlassGrow });
   if (U !== undefined && Math.abs(U - UNIT_MM) > 1e-12)
     console.warn(`makeFormCase: dims.UNIT_MM ${U} is not layout.js's ${UNIT_MM}`);
   const loops = formCaseLoops(form);
@@ -355,28 +357,37 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
   tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff);
 
-  // THE LUGS, at the SHORT ends (the long side is y, 12–6 o'clock): the
+  // THE LUGS, at the shape's ±y extremes (12–6 o'clock): the
   // round case's §280 lug block, each lug ONE OUTLINE from caseLugPlan on
   // its `flat` path — welded to the end wall's plane, which stands
-  // rOut = (yMax or −yMin) + G from the pair axis's origin along ±y. The pair
-  // axis runs through the RECTANGLE's centreline x = form.cx (the strap is
+  // rOut (the outer shape's exit along ±y at the centreline) from the pair
+  // axis's origin. The pair
+  // axis runs through the SHAPE's centreline x = form.cx (the strap is
   // centred on the case, not on the hands), so every x below carries it.
   const lugPlans = [];
   const lugCtrSpan = lugSpanInner + CASE_LUG_T;   // the dims quantity is the INTERIOR gap
-  // The end wall is flat only between its corner rounds (formLoop's grown
-  // corner, cornerR + G); a lug past that run would be welded to a curve the
-  // flat plan does not describe.
-  {
-    const flatHalf = form.hw - form.cornerR;      // (hw + G) − (cornerR + G)
-    const need = lugCtrSpan / 2 + CASE_LUG_T / 2;
-    if (!(need <= flatHalf + 1e-9))
-      console.warn(`makeFormCase: the lugs' outboard faces reach ${need.toFixed(3)} u off the centreline, past the end wall's `
-        + `flat run ${flatHalf.toFixed(3)} u — the outer lugs stand on the corner rounds`);
+  // §308 — THE END WALL, read off the OUTER shape (the form grown G) for any
+  // kind: along ±y from the pair axis's base (x, 0) the ray's exit is where the
+  // band's outer wall stands at that x. The lug is welded to the plane through
+  // the wall at the centreline (rOut); a curved end (the cushion's, a rect's
+  // corner round) FALLS away from that plane toward the lugs' outboard faces,
+  // and a fall past CLEAR_MARGIN — the one margin, under which two surfaces
+  // read as touching — is a flat lug standing proud of the curve it is said
+  // to be welded to: warned with the numbers, never absorbed.
+  const outerShape = form.grown(G);
+  const endAt = (lugAz, x) => outerShape.exit(lugAz, lugAz > 0 ? -x : x);   // the wall's distance from y = 0 at x
+  const need = lugCtrSpan / 2 + CASE_LUG_T / 2;
+  for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
+    const rC = endAt(lugAz, form.cx);
+    const fall = rC - Math.min(endAt(lugAz, form.cx - need), endAt(lugAz, form.cx + need));
+    if (!(fall <= CLEAR_MARGIN))
+      console.warn(`makeFormCase: the ${form.kind}'s ${lugAz > 0 ? '+y' : '−y'} end wall falls ${fall.toFixed(3)} u from the lug plane `
+        + `at the lugs' outboard faces (${need.toFixed(3)} u off the centreline) — over CLEAR_MARGIN ${CLEAR_MARGIN}: the flat lugs stand proud of a curved end`);
   }
   for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
     const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
     const perp = { x: -u.y, y: u.x };
-    const rOut = (lugAz > 0 ? form.yMax : -form.yMin) + G;   // the end wall's plane, from the origin along u
+    const rOut = endAt(lugAz, form.cx);   // the end wall at the centreline, from the origin along u
     const rBore = rOut - CASE_BAND_T;                         // the bore wall behind it
     const plan = caseLugPlan({ rOut, rBore, off: lugCtrSpan / 2,
       zWallLo: zStep, zWallHi: zMidBack, zBack: z0, flat: true });
