@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 264 | DONE | §305 cleared both of §302's inventories at their roots: six placed-pose overlaps (the escapement's bob hung in front of the front knife and the balance re-solved, T 1.00175 s; the keyless stem as two axles in the joiner's stop; a long axle's overhang placed where it meets nothing; the fusee detent re-solved over the baseplate) and 27 flagged insertion steps (the fusee cone ends at its metal; parts shut by their own group held in the gap; a pin's lip measured as its press; pins in a held part and the alarm disc's beams as units; no gear lowered between two meshes; the escape arbor lowered beside its bricks). Both inventories empty and closed. |
 | 263 | DONE | Brushed steel rendered its grain a quarter turn off: `installBrush` handed three the GRAIN as `anisotropyT`, and three's GGX is rougher along T, so highlights stretched along the grain. The shader now names the grain per surface (a flat's `brushAngleDeg`, the midcase flank's vertical, every other flank's circumferential) and hands three T = n × grain. `probe-263-brush-axis.mjs`: axis 90.0° at grain 0°, 0.0° at grain 90°, elongation 3.24, polished control 1.00; the old shader reads the axis along the grain and fails |
 | 260 | DONE | The ramp's climb out of the notch loaded the disc as hard as its seat could hold it (1.00× where the hold is sized to 3×, and under 1 at a kinder friction). The ramp is longer now and its length is SOLVED, not chosen: the seat's pad at its blade's strain cap (0.9 of the stock's) holds a climb of 5.29 mN at the headroom, which is a slope of 4.40° and a run of 0.4257 rad (48.8 min of hour each side); the tick's drop law is `ALARM_DETECTOR_LAWS.dropAt`. Hold ÷ climb 3.000 by construction, asserted at boot and in `probe-144-set-hold`. The hold is priced at every friction corner (2.55× / 2.76× / 3.00×, decoupled worst 1.80×, never under 1) and the hour train carries the climb at 0.27% of the centre arbor's torque. Not priced: the cannon pinion's friction fit (the model declares no slip torque) and the tooth load on the minute pinion ⇄ hour wheel mesh. |
 | 259 | DONE | Reported by eye: the alarm pin has no obvious path out of the notch. The tick has always ramped the reader's pin along a linear law over the pin's own angular diameter, but the notch's walls were radial, so a flat pin fell in and could never be lifted out. The track's top is cut to the law now (two ramps, 19.67°, `probe-280-notch-ramp.mjs` and the `alarm detector` line spec's `rampSeat`). The lift's force is TODO 260. |
@@ -34478,7 +34479,7 @@ grain, and fails, which is the deliberately unswapped control the fix path
 asked for. The works' brushed steel looks different everywhere; the band
 does not.
 
-## 264. Technic builds: six solids overlap at the placed pose and 27 insertion steps cannot be cleared
+## 264. Technic builds: six solids overlap at the placed pose and 27 insertion steps cannot be cleared — DONE
 
 Found by §302's validator (`tools/probe-technic-steps.mjs`), which measures the
 LDraw part triangles of every build, not the frame tables. Two findings, both
@@ -34509,3 +34510,35 @@ of the two clears; and meshes whose tooth flanks meet over the tolerance by
 0.02-0.2 LDU (keyless 4019 against 3647, fusee 4019). Fix path: the first kind
 is a gap 1 LDU wider than the part (a layout change), the third a z-stagger of
 one beam; the rest may clear on a better search. No row may be added.
+
+**Closed by §305 (BUILT §305 has each fix, its constraint and its numbers).** Both
+inventories in `tools/probe-technic-steps.mjs` are EMPTY and stay closed: a new
+overlap or flagged step fails as a regression. Every row cleared at its root, in
+the solver that produced it, in position space or in the order derivation; no
+part was thinned, the 0.4 LDU tolerance and the 1.0 LDU overlap ceiling are
+unchanged, and no row was deleted without its geometry clearing.
+
+- **Overlaps (6).** The escapement's bob gears hang IN FRONT of the front knife,
+  outside the crossbar's span (a gear whose centre stands nearer the crossbar
+  than its tip plus an axle's reach may not share the span); the balance
+  re-solved to 3649+3648+3648 a side and two 3649s on the bob, T 1.00175 s
+  (+0.175%, inside the 0.5% band). The keyless stem is TWO axles (4L + 3L)
+  meeting in the joiner, whose axle holes stop 0.8 mm either side of its middle
+  (`KEYLESS_DIM_MM.joinerStop`, measured). An axle longer than its span
+  overhangs at the end that meets nothing (the 12L minute axle flush front;
+  `frameFindings` now holds every axle's whole part against other shafts'
+  columns). The fusee's detent pivot is re-solved with its ride held AX_CLEAR
+  over the stud tops: (28, −16) mm, lowest metal 5.20 mm up (landing H's
+  (−28, −16) stood −0.42 mm).
+- **Flagged steps (27).** Hub bosses: the fusee cone ends at its metal
+  (`FUSEE_DIM_MM.zMid`, the sprocket's boss 0.6 mm proud), so its back column
+  stands a stud further back; the keyless 14T/12T detent wheels and the follower
+  are held in the gap where their free end is shut by their own group. Friction
+  pins: a pin's press allowance includes its LIP, measured drawn into a 6541's
+  hole (1.000 LDU), along its own axes only; pins in a held part go in with it.
+  Interleaved layers: the release disc's beams go in as units, the one under
+  the other first. Mesh flanks: a gear is not lowered between two meshes (the
+  motion works' 16T goes before the 8T beside it), the ring is nested at
+  neutral, the click pawl rides in the maintaining unit on its peg, the
+  escape arbor is lowered beside its bricks with its wheel and slid 20.4 mm
+  through them, and arms in a sub-assembly go on in order along their axle.

@@ -228,7 +228,7 @@ const holeAt = (at, dir, r) => [at[0] + r * Math.cos(dir), at[1] + r * Math.sin(
 
 // THE DECLARED BALANCE (re-solved by the probe; solveBalance below): the mass
 // arms, the masses per side, the bob arm and the bob's gears.
-export const TECHNIC_BALANCE = Object.freeze({ massArm: '11478', masses: Object.freeze(['3648', '3648', '4019']), bobArm: '6632', bob: Object.freeze(['3649']) });
+export const TECHNIC_BALANCE = Object.freeze({ massArm: '11478', masses: Object.freeze(['3649', '3648', '3648']), bobArm: '6632', bob: Object.freeze(['3649', '3649']) });
 // THE BEAT the escapement row is cut for: RATE_TABLE's law at TECHNIC_VPH,
 // two beats a period, so the period is 2 × 3600 / vph seconds.
 export const BEAT_PERIOD_S = 2 * 3600 / TECHNIC_VPH;
@@ -673,12 +673,27 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   // anchor's) is flush with its back face (it may not reach W) and runs
   // forward its whole length, so when it would reach R1's slab the layout
   // starts that much further back.
+  // §305 (TODO 264) — A GEAR THAT REACHES THE CROSSBAR CANNOT SHARE ITS SPAN. The crossbar runs from the front
+  // knife to the back one, so every slab between them holds it; a gear keyed to the balance whose centre stands
+  // nearer the crossbar's axis than its own tip plus the axle's reach would stand IN it there (the 40T bob, 16 mm
+  // under it with a 20.94 mm tip, did: the crossbar through its web, 4.31 LDU deep). Such a gear slab, with the arms
+  // whose axles carry it, hangs IN FRONT of the front knife, its face AX_CLEAR off the knife's stack, and the
+  // crossbar reaches forward to carry the frontmost arm. (A bob on the anchor's own axle cannot: that axle is on the
+  // knife's line and would pass the front knife's stack, so such a balance is refused.)
+  const reachesBar = (bal.bob.length > 0 && bobR < tipB + ra) || (!behind && bal.masses.length > 0 && massU < tipM + ra);
+  if (reachesBar && onAnchor) return { framed: false, reason: 'a gear on the anchor\'s axle reaches the crossbar, and that axle cannot pass the front knife' };
   const lay = (start) => {
     let y = start;
     const slab = (name, h) => { const s = { name, y0: r6(y), y1: r6(y + h) }; y += h; return s; };
+    // the slabs in front of the front knife (when a gear reaches the crossbar): the gears, the bob's arm and —
+    // when the masses share the gears' slab — the mass arms, laid back to AX_CLEAR off the knife's front face
+    const ahead = reachesBar ? [bal.bob.length && !onAnchor ? 'B' : null, ...(behind ? [] : ['M1', 'M2'])].filter(Boolean) : [];
+    if (reachesBar) y = -HALF - AX_CLEAR - 2 * E.gearHalf * front - 2 * E.armHalfThick * ahead.length;
     const G = slab('gears', 2 * E.gearHalf * front);
     const B = bal.bob.length && !onAnchor ? slab('bob arm', 2 * E.armHalfThick) : null;
+    if (reachesBar && !ahead.includes('M1')) y = start;
     const M1 = slab('mass arm −u', 2 * E.armHalfThick), M2 = slab('mass arm +u', 2 * E.armHalfThick);
+    if (reachesBar && ahead.includes('M1')) y = start;
     const Dp = spec.drop ? slab('anchor drop', 2 * E.armHalfThick) : null;
     const P1 = slab('pallet arm −u', 2 * E.armHalfThick), P2 = slab('pallet arm +u', 2 * E.armHalfThick);
     const W = slab('pallets', 2 * E.gearHalf);                        // the pins' axle halves: the pallets' slab
@@ -691,7 +706,7 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
     return { G, B, M1, M2, D: Dp, P1, P2, W, wheel, Gb, bobAxle, anchorAxle };
   };
   let S = lay(HALF + AX_CLEAR);
-  const reach = Math.min(...[S.bobAxle, S.anchorAxle].filter(Boolean).map((a) => a.y0));
+  const reach = Math.min(...[reachesBar ? null : S.bobAxle, S.anchorAxle].filter(Boolean).map((a) => a.y0));
   if (reach < HALF + AX_CLEAR) S = lay(r6(HALF + AX_CLEAR + (HALF + AX_CLEAR - reach)));
   const { G, B, M1, M2, D: Dp, P1, P2, W: Wp, wheel: Ww, Gb, bobAxle, anchorAxle } = S;
   if (!anchorAxle || (B && !bobAxle)) return { framed: false, reason: 'an axle on the knife\'s line is past the longest axle' };
@@ -702,9 +717,11 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   const escAxle = { shaft: 'escape', x: ESC_X0, z: zE, y0: Ww.y0, y1: r6(Ww.y0 + axleLen(eN)), part: AXLE_PARTS[eN], lenStuds: eN };
   const r2 = Math.ceil((escAxle.y1 + AX_CLEAR + HALF) / D.stud) * D.stud;
   // the crossbar: from R1's front face to R2's back face, the shortest that spans
-  const cNeed = r2 + HALF - (-HALF), cN = axleCovering(cNeed);
+  // (from the frontmost arm's front face when the gears hang ahead of the front knife, §305)
+  const c0 = reachesBar ? Math.min(...[B, M1].filter((s) => s && s.y1 <= -HALF).map((s) => s.y0)) : -HALF;
+  const cNeed = r2 + HALF - c0, cN = axleCovering(cNeed);
   if (cN === null) return { framed: false, reason: `the crossbar needs ${cNeed.toFixed(1)} mm, past the longest axle` };
-  const crossbar = { y0: -HALF, y1: r6(-HALF + axleLen(cN)), part: AXLE_PARTS[cN], lenStuds: cN };
+  const crossbar = { y0: c0, y1: r6(c0 + axleLen(cN)), part: AXLE_PARTS[cN], lenStuds: cN };
   // a mass axle from its arm to its gears, forward or back
   const massAxles = [M1, M2].map((M) => (behind ? span(M.y0, Gb.y1, 'front') : span(G.y0, M.y1, 'back')));
   if (massAxles.some((a) => !a)) return { framed: false, reason: 'a mass axle is past the longest axle' };

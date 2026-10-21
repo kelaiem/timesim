@@ -86,7 +86,7 @@ import {
   TECHNIC_FUSEE_SPRING, STEEL_STAND_IN, springTorque, springBand, FUSEE_PULLEYS, FUSEE_STRINGS, FUSEE_PARTS, FUSEE_DIM_MM,
   grooveSeat, fuseeRun, solveFusee, idealAgainst, TECHNIC_FUSEE, cordChoice, frameFusee, cordPath, pathLength,
   goingSense, spanTangent, bandMoment, BAND_LAG_DEG, MAINTAINING, clickSpec, detentSpec, pawlLock, pawlModel, solveMaintaining,
-  axleHoleOffsets, fuseeBuild, AX_CLEAR, starProfile, penetration,
+  axleHoleOffsets, fuseeBuild, AX_CLEAR, starProfile, penetration, detentLowest,
   solveCentrePinion, FUSEE_CENTRE, centrePhase, centreRatio,
 } from '../src/technic-fusee.js';
 
@@ -141,6 +141,8 @@ function partErrors(dims) {
     if (g.capacity !== dims.capacity[p]) errs.push(`${p}: holds ${g.capacity} cords side by side, table ${dims.capacity[p]}`);
     if (!near((g.floor[1] - g.floor[0]) / 2, dims.floorHalf[p], 0.02)) errs.push(`${p}: floor ±${((g.floor[1] - g.floor[0]) / 2).toFixed(3)} mm, table ${dims.floorHalf[p]}`);
     if (!near((b.hi[2] - b.lo[2]) * LDU_MM / 2, dims.halfWidth[p])) errs.push(`${p}: half width ${((b.hi[2] - b.lo[2]) * LDU_MM / 2).toFixed(4)}, table ${dims.halfWidth[p]}`);
+    // §305: its middle along its Z off its origin (a hub boss proud of one face), 0 when unlisted
+    if (!near((b.hi[2] + b.lo[2]) * LDU_MM / 2, dims.zMid?.[p] ?? 0)) errs.push(`${p}: middle ${((b.hi[2] + b.lo[2]) * LDU_MM / 2).toFixed(4)} off its origin, table ${dims.zMid?.[p] ?? 0}`);
   }
   for (const s of Object.values(FUSEE_STRINGS)) {
     const e = placements(lib, `${s}.dat`, /71149k01/).map((q) => q.m);
@@ -175,6 +177,7 @@ for (const e of pe) fail(e);
 control('a cord seat perturbed by 0.01 mm', partErrors({ ...F, seat: { ...F.seat, '4185a': F.seat['4185a'] + 0.01 } }).length > pe.length);
 control('a surveyed seat perturbed by 0.01 mm (the sprocket\'s)', partErrors({ ...F, seat: { ...F.seat, '32089': F.seat['32089'] + 0.01 } }).length > pe.length);
 control('a surveyed groove\'s offset dropped (the sprocket\'s)', partErrors({ ...F, grooveOff: { ...F.grooveOff, '32089': 0 } }).length > pe.length);
+control('the sprocket\'s hub boss read as symmetric (§305: its middle dropped)', partErrors({ ...F, zMid: { ...F.zMid, '55982': 0 } }).length > pe.length);
 
 // ── STEPS ───────────────────────────────────────────────────────────────────
 console.log('\nsteps (solveFusee over every barrel and every descending set of grooved steps):');
@@ -231,6 +234,17 @@ control('a different table re-solves to a different answer, no code change', !!a
 // ── FRAME, CORD ─────────────────────────────────────────────────────────────
 const frame = frameFusee();
 if (!frame.framed) { fail(`not framed: ${frame.reason}`); }
+// §305 (TODO 264): THE CONE'S METAL INSIDE ITS COLUMNS — every step's measured extent along the axle (its origin ±
+// its bounds, read off the part) between the fusee's two columns' inner faces, so no hub boss stands in a brick.
+{
+  const half = 4, cols = frame.columns.filter((c) => c.shaft === 'fusee'), inF = Math.min(...cols.map((c) => c.y)) + half, inB = Math.max(...cols.map((c) => c.y)) - half;
+  const metal = (steps) => steps.map((s) => { const b = B(s.part); return [s.y + b.lo[2] * LDU_MM, s.y + b.hi[2] * LDU_MM]; });
+  const over = (steps) => Math.max(...metal(steps).map(([a, z]) => Math.max(inF - a, z - inB)));
+  const o = over(frame.fusee.steps);
+  console.log(`  the cone's metal stands ${(-o).toFixed(2)} mm inside its columns' inner faces at the nearer`);
+  if (o > 1e-9) fail(`a step's metal stands ${o.toFixed(3)} mm into a fusee column`);
+  control('landing H\'s back column (on the last slab\'s end, 32 mm) stands in the sprocket\'s hub boss', (() => { const was = inB; const sh = 40 - 32; return Math.max(...metal(frame.fusee.steps).map(([, z]) => z - (was - sh))) > 1e-9; })());
+}
 const cord = cordPath(frame, run);
 console.log(`\ncord (at full wind; the barrel ${run.barrel} at x 0, the fusee ${frame.cd} mm off, axles ${frame.axleZ} mm up):`);
 const wrapLens = run.segs.map((s) => `${s.kind} on ${run.steps[s.step]} ${s.len.toFixed(2)} mm`);
@@ -322,6 +336,16 @@ function maintErrors(declared, solve, { lagDeg = BAND_LAG_DEG, clickLocks = solv
   return { errs, band, winding };
 }
 const me = maintErrors(MAINTAINING, sm);
+// §305 (TODO 264): THE DETENT CLEARS THE BASEPLATE over its whole ride (seat to tooth tip): its 8T, its axle and its
+// arm stand AX_CLEAR over the stud tops. Landing H's pivot (−28, −16) put the 8T 3.2 mm up and the three parts into
+// the plate (2.02, 1.38, 1.60 LDU); the solve now refuses it.
+{
+  const low = (piv, sense) => { const spec = detentSpec(piv, sense), m = pawlModel(lib, spec); return detentLowest(spec, m, m.seat(0), frame.axleZ); };
+  const lo = low(MAINTAINING.detent.pivot, MAINTAINING.detent.sense);
+  console.log(`  DETENT over the baseplate: its lowest metal ${lo.toFixed(2)} mm up over its ride, the stud tops ${D.studH} mm, AX_CLEAR ${AX_CLEAR}`);
+  if (!(lo >= D.studH + AX_CLEAR - 1e-9)) fail(`the detent's lowest metal stands ${lo.toFixed(3)} mm up, under the studs and a clearance`);
+  control('landing H\'s detent pivot (−28, −16) stands in the baseplate', low([-28, -16], -1) < D.studH + AX_CLEAR);
+}
 console.log(`  BAND: the great wheel lags the ratchet ${BAND_LAG_DEG}° (posed), so the band turns it ${me.band.great > 0 ? '+' : '−'} and pulls the ratchet ${me.band.ratchet > 0 ? '+' : '−'}`);
 console.log(`  WINDING (the fusee turned ${going > 0 ? '−' : '+'}): click ${me.winding.clickFree ? 'free' : 'LOCKED'}, ratchet ${me.winding.detentHolds ? 'held by the detent' : 'NOT HELD'}, great wheel driven ${me.winding.great === going ? 'FORWARD (the going sense)' : 'BACKWARD'}`);
 console.log(`  GOING (the fusee turned ${going > 0 ? '+' : '−'}): click locked, ratchet turns with the fusee, detent free, great wheel driven forward through the band`);

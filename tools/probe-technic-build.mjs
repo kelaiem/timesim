@@ -31,7 +31,8 @@
 //
 // CONTROLS: half a pitch injected into each driven shaft in turn must read
 // that shaft's mesh tooth on tooth, and a Technic brick lifted one plate must
-// fail SEATED. A probe that cannot see either has measured nothing.
+// fail SEATED; §305: where an axle is in pieces (the keyless stem, two axles
+// keyed in its joiner), the pieces drawn back out of the joiner must fail. A probe that cannot see either has measured nothing.
 //
 //   node tools/probe-technic-build.mjs
 import { readFileSync } from 'node:fs';
@@ -114,26 +115,52 @@ function judge(build, frame, mode = build.modes?.[0]) {
   for (const [i, s] of build.shafts.entries()) {
     const { A, P } = axisOf(s);
     const placed = bodyParts(i);
-    const axle = placed.find((p) => p.role === 'axle');
-    if (!axle) continue;
-    const ab = B(axle.part);                            // along the axle's own X, turned onto the body's axis
-    const half = (ab.hi[0] - ab.lo[0]) / 2, z0 = axle.m[A] - half, z1 = axle.m[A] + half;
-    spans.push({ i, s, A, P, z0, z1 });
+    // every axle ON the body's line (§305: the keyless stem is two, meeting in its joiner; an off-line axle —
+    // the follower's, in the arm's far hole — is not the body's)
+    for (const axle of placed.filter((p) => p.role === 'axle' && !p.offLine && P.every((k) => near(p.m[k], s.origin[k])))) {
+      const ab = B(axle.part);                            // along the axle's own X, turned onto the body's axis
+      const half = (ab.hi[0] - ab.lo[0]) / 2, z0 = axle.m[A] - half, z1 = axle.m[A] + half;
+      spans.push({ i, s, A, P, z0, z1 });
+    }
   }
   // a brick on a line belongs to the axle on that line NEAREST it along the
   // line (landing G: two axles may stand end to end on one line, each in its
   // own pair of bricks); one axle alone on its line takes every brick there
   const lineOf = (sp) => spans.filter((o) => o.A === sp.A && o.P.every((k) => near(o.s.origin[k], sp.s.origin[k])));
   const gapTo = (sp, lo, hi) => Math.max(sp.z0 - hi, lo - sp.z1, 0);
-  for (const sp of spans) {
-    const { i, s, A, P, z0, z1 } = sp, mates = lineOf(sp);
-    const bricks = techs.filter(({ faces }) => faces.length && faces.every((w) => P.every((k) => near(w[k], s.origin[k]))))
+  const bricksOf = (sp) => {
+    const { s, A, P } = sp, mates = lineOf(sp);
+    return techs.filter(({ faces }) => faces.length && faces.every((w) => P.every((k) => near(w[k], s.origin[k]))))
       .filter(({ faces }) => {
         const zs = faces.map((w) => w[A]), lo = Math.min(...zs), hi = Math.max(...zs);
         const d = gapTo(sp, lo, hi);
         return mates.every((o) => o === sp || gapTo(o, lo, hi) > d);
       });
-    if (bricks.length !== 2) bad.push(`shaft ${i}: ${bricks.length} Technic bricks on its line, not 2`);
+  };
+  // a body's bricks: those nearest any of its axles (two, whether one axle holds both or each piece one)
+  for (const i of new Set(spans.map((sp) => sp.i))) {
+    const n = spans.filter((sp) => sp.i === i).reduce((k, sp) => k + bricksOf(sp).length, 0);
+    if (n !== 2) bad.push(`shaft ${i}: ${n} Technic bricks on its line, not 2`);
+  }
+  // AXLES IN PIECES (§305): every gap between two of one body's axles on its line lies inside a part of the body
+  // that each of the two ENTERS (the joiner keys both; the web between its holes is the gap)
+  for (const i of new Set(spans.map((sp) => sp.i))) {
+    const ps = spans.filter((sp) => sp.i === i).sort((a, b) => a.z0 - b.z0);
+    for (let k = 1; k < ps.length; k++) {
+      const a = ps[k - 1], b = ps[k], { A, P } = a;
+      const bridged = bodyParts(i).some((g) => {
+        if (g.role === 'axle') return false;
+        const gb = B(g.part), pts = [];
+        for (const x of [gb.lo[0], gb.hi[0]]) for (const y of [gb.lo[1], gb.hi[1]]) for (const z of [gb.lo[2], gb.hi[2]]) pts.push(g.m[A] + g.m[3 + A * 3] * x + g.m[4 + A * 3] * y + g.m[5 + A * 3] * z);
+        const lo = Math.min(...pts), hi = Math.max(...pts);
+        return lo < a.z1 - EPS && hi > b.z0 + EPS && P.every((q) => near(g.m[q], a.s.origin[q]));
+      });
+      if (!bridged) bad.push(`shaft ${i}: its axles meet at ${'XYZ'[a.A]} ${a.z1.toFixed(2)}…${b.z0.toFixed(2)} in no part they both enter`);
+    }
+  }
+  for (const sp of spans) {
+    const { i, s, A, P, z0, z1 } = sp;
+    const bricks = bricksOf(sp);
     for (const { t } of bricks) {
       // the axle must fill the brick's hole end to end, less the half LDU the
       // library trims off each axle end (an N-stud axle is 20·N − 1 LDU)
@@ -145,7 +172,9 @@ function judge(build, frame, mode = build.modes?.[0]) {
     if (s.slider) continue;                             // the pull's rack slides in its channel (PULL, probe-technic-keyless)
     // the axle on its line that carries it (an idling body, on the minute
     // axle's line beside another axle end to end: the one whose span holds it)
-    const cands = spans.filter((a) => a.A === axisOf(s).A && a.P.every((k) => near(a.s.origin[k], s.origin[k])));
+    // (a body's axles in pieces are one span from the first's end to the last's: §305's stem)
+    const hull = (list) => [...new Set(list.map((a) => a.i))].map((j) => { const ps = list.filter((a) => a.i === j); return { ...ps[0], z0: Math.min(...ps.map((a) => a.z0)), z1: Math.max(...ps.map((a) => a.z1)) }; });
+    const cands = hull(spans.filter((a) => a.A === axisOf(s).A && a.P.every((k) => near(a.s.origin[k], s.origin[k]))));
     const own = bodyParts(i).filter((g) => g.role !== 'axle' && !g.offLine);
     const on = cands.find((a) => a.i === i) ?? cands.find((a) => own.every((g) => g.m[a.A] >= a.z0 && g.m[a.A] <= a.z1)) ?? cands[0];
     if (!on) { bad.push(`body ${i}: no axle on its line`); continue; }
@@ -200,6 +229,16 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (con
     const lifted = structuredClone(build);
     const col = lifted.statics.find((p) => p.part === FRAME_PARTS.technicBrick1x1); col.m[1] -= 8;
     const lf = judge(lifted, f, mode).bad.some((x) => /underside/.test(x));
+    // §305: an axle in pieces whose two pieces are drawn back off the part that joins them (each 25 LDU toward its
+    // own end) must be caught meeting in nothing they both enter
+    let pc = true;
+    for (const [k, s] of build.shafts.entries()) {
+      const ax = s.parts.filter((p) => p.role === 'axle' && !p.offLine);
+      if (ax.length < 2) continue;
+      const c = structuredClone(build), cax = c.shafts[k].parts.filter((p) => p.role === 'axle' && !p.offLine).sort((a, b) => a.m[2] - b.m[2]);
+      cax[0].m[2] -= 25; cax[cax.length - 1].m[2] += 25;
+      pc = judge(c, f, mode).bad.some((x) => new RegExp(`shaft ${k}: its axles meet`).test(x));
+    }
     // THE FILE: the .ldr the page offers, parsed back, is the same placements
     // (to its 4-decimal print) in the same order, each a part the pack holds
     const lines = toLdr(build, 0, mode).split('\n').filter((l) => l.startsWith('1 ')).map((l) => l.split(/\s+/));
@@ -209,7 +248,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (con
       const m = t.slice(2, 14).map(Number), p = want[i];
       if (`${p.part}.dat` !== t[14] || m.some((v, k) => Math.abs(v - p.m[k]) > 1e-4) || !lib.has(t[14])) bad.push(`.ldr line ${i + 1} is not placement ${i + 1} (${t[14]})`);
     });
-    const ok = !bad.length && hp && lf;
+    const ok = !bad.length && hp && lf && pc;
     if (!ok) fails++;
     const name = build.modes.length > 1 ? `${f.key} (${mode})` : f.key;
     console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${gen.padEnd(16)} ${name.padEnd(24)} ${want.length} parts, `
@@ -217,6 +256,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) for (con
     for (const b of bad) console.log(`         ${b}`);
     if (!hp) console.log('         CONTROL: half a pitch on a driven body was NOT read off mesh');
     if (!lf) console.log('         CONTROL: a Technic brick lifted one plate was NOT caught');
+    if (!pc) console.log('         CONTROL: an axle\'s two pieces drawn out of their joiner were NOT caught');
   }
 }
 console.log(`\n${rows} builds, ${fails} failing`);

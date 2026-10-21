@@ -77,6 +77,10 @@ function oneLayer(f) {
   return g;
 }
 let gearGearSeen = 0;
+// §305: an axle whose PART overhangs its span, stood back CENTRED as landing D placed the 11-stud minute axle's 12L
+// (its front half-stud then ran into the setting branch's 24T), must be found fouling something: the frame's own
+// choice of end is what keeps it clear
+let overhangSeen = 0, overhangTried = 0;
 
 let fails = 0, framed = 0, refused = 0;
 console.log('THE TECHNIC FORK\'S FRAME — columns of 1×1 bricks, a Technic brick on top, a jumper under half-stud axles');
@@ -89,6 +93,12 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
     const ctlOverlap = f.shafts.length > 1 ? judge(slideColumn(f)).length > 0 : true;
     const ctlSweep = judge(shortenColumns(f)).length > 0;
     gearGearSeen += judge(oneLayer(f)).filter((m) => /T sweeps shaft \d+ \d+T/.test(m)).length;
+    for (const a of f.axles.filter((x) => x.span && x.lenStuds * D.stud > x.span[1] - x.span[0] + 1e-9)) {
+      const g = clone(f), b = g.axles.find((x) => x.shaft === a.shaft), mid = (a.span[0] + a.span[1]) / 2, len = a.lenStuds * D.stud;
+      [b.y0, b.y1] = [mid - len / 2, mid + len / 2];
+      overhangTried++;
+      if (judge(g).length > bad.length) overhangSeen++;
+    }
     const ok = !bad.length && ctlOverlap && ctlSweep;
     if (!ok) fails++;
     const shape = `${f.shafts.length} axles, axle height ${f.axleZ.toFixed(1)} mm (${f.column.k} brick${f.column.k === 1 ? '' : 's'} + ${f.column.p + 1} plate${f.column.p ? 's' : ''}), base ${f.base.studsX}×${f.base.studsY} studs, `
@@ -101,5 +111,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
 }
 if (!gearGearSeen) { console.log('CONTROL: gears folded into one layer gave no gear-against-gear finding'); fails++; }
 else console.log(`\ncontrol: gears folded into one layer — ${gearGearSeen} gear-against-gear findings`);
+if (!overhangTried || overhangSeen < 1) { console.log(`CONTROL: an overhanging axle stood back centred (landing D) gave no finding (${overhangSeen} of ${overhangTried})`); fails++; }
+else console.log(`control: an overhanging axle stood back centred on its span (§305) — ${overhangSeen} of ${overhangTried} found fouling`);
 console.log(`\n${framed} rows framed, ${refused} refused with their reason, ${fails} failing`);
 process.exit(fails || !framed ? 1 : 0);

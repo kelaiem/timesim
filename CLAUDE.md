@@ -175,7 +175,14 @@ are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its st
 are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
 opens one, and the page writes the URL only inside the tour. **Since §298 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is
-`tools/smoke-technic-carousel.mjs` (Chromium, 1280 and 390 wide).
+`tools/smoke-technic-carousel.mjs` (Chromium, 1280 and 390 wide). **Since §305 no
+two solids stand in each other and every step goes in** (`probe-technic-steps.mjs`'
+OVERLAPS and FLAGGED are empty and closed): the keyless stem is two axles meeting
+in its joiner's web, a long axle overhangs where it meets nothing, the escapement's
+bob hangs in front of its front knife, the fusee detent clears the baseplate and
+its cone ends at its metal, and the step order holds a part its own group shuts in,
+presses pins into a held part off the model, never lowers a gear between two
+meshes and reads a pin's LIP as its press.
 **Since §300 each build has a PARTS LIST** (`src/technic-bom.js`) **and since
 §302 a STEP ORDER** (`src/technic-steps.js`, pure): the placements partitioned
 into steps by rules read off the placements (columns bottom-up, a part held in

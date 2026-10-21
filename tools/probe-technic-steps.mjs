@@ -66,33 +66,8 @@ const Bd = (p) => (bcache.has(p) || bcache.set(p, bounds(lib, dat(p))), bcache.g
 // flagged step is not here and when a row here has cleared. NO ROW MAY BE ADDED: a newly flagged step is a
 // regression of the derivation or of the model. Every row cites the TODO that owns it.
 const FLAGGED = Object.freeze({   // value: the TODO that owns the row
-  'alarm|11478|3673': 264,
-  'alarm|3647|7229': 264,
-  'alarm|3673|11478': 264,
-  'alarm|3673|2712': 264,
-  'alarm|3673|3005': 264,
-  'alarm|3673|3673': 264,
-  'alarm|3673|7229': 264,
-  'alarm|4019|3673': 264,
-  'alarm|4019|7229': 264,
-  'alarm|6558|3005': 264,
-  'alarm|7229|2712': 264,
-  'escapement|3705|3004': 264,
-  'escapement|6632|3647': 264,
-  'fusee|32062|3811': 264,
-  'fusee|4019|3647': 264,
-  'fusee|55982|6541': 264,
-  'keyless|18942|46372': 264,
-  'keyless|32123a|32062': 264,
-  'keyless|32123a|46372': 264,
-  'keyless|4019|18946': 264,
-  'keyless|4019|3647': 264,
-  'keyless|6641|3648': 264,
-  'keyless|6641|3708': 264,
-  'keyless|69778|6541': 264,
-  'keyless|7785|6541': 264,
-  'keyless|unit|3005': 264,
-  'keyless|unit|6541': 264,
+  // EMPTY since §305: TODO 264's 27 rows each cleared at its root (BUILT §305 names how), and the inventory stays
+  // closed — a flagged step now fails as a regression.
 });
 
 // ── THE BUILDS
@@ -201,12 +176,7 @@ function replayFailures(plan, build, steps = plan.steps) {
 // two solids of the build in each other. The closed inventory OVERLAPS names each, citing the TODO that owns it.
 const OVERLAP_CEILING_LDU = 1.0;
 const OVERLAPS = Object.freeze({   // value: the TODO that owns the row
-  'escapement|axle3708|mass3649': 264,
-  'fusee|arm6632|baseplate3811': 264,
-  'fusee|axle32062|baseplate3811': 264,
-  'fusee|baseplate3811|pawl3647': 264,
-  'keyless|axle3707|joiner18948': 264,
-  'keyless|axle3708|spur3648': 264,
+  // EMPTY since §305: TODO 264's six pairs each cleared in the solver that placed them (BUILT §305).
 });
 const overlapsSeen = new Map();
 function placedOverlaps(label, cell, parts) {
@@ -341,6 +311,20 @@ console.log('\nCONTROLS');
     console.log(`  a 1×1 Technic brick pushed 10 LDU into its neighbour reads ${hit.depth.toFixed(3)} LDU; set beside it (touching) ${touch.depth.toFixed(3)}`);
     control('a brick pushed half its width into its neighbour reads over the tolerance', hit.depth > S.TOL_LDU * 4);
     control('a brick set against its neighbour reads as touching', touch.depth <= S.TOL_LDU);
+    // §305: THE PIN'S LIP, measured: a pin drawn along its own axis into a 6541's hole reads its lip (the press it
+    // may carry, along its own axes only); a plain axle drawn the same way reads none — the reading is the pin's
+    const lip = S.pinLip(lib, '3673'), axleLip = S.pinLip(lib, '3705');
+    console.log(`  a 3673 pin drawn into a 6541's hole reads its lip at ${lip.toFixed(3)} LDU (a 4L axle the same way: ${axleLip.toFixed(3)}); no fit in the pack is deeper than ${OVERLAP_CEILING_LDU}`);
+    control('a plain axle drawn into a pin hole reads no lip', axleLip <= S.TOL_LDU && lip > S.TOL_LDU && lip <= OVERLAP_CEILING_LDU);
+    // §305: THE OVERLAP MEASURE sees a pair: a gear of this build pushed 12 LDU across onto its neighbour
+    {
+      const gi = plan.parts.findIndex((p) => p.teeth), q = { ...plan.parts[gi], m: [...plan.parts[gi].m] };
+      const nb = plan.parts.findIndex((p, k) => k !== gi && p.teeth && Math.abs(p.m[2] - q.m[2]) < 2 && Math.hypot(p.m[0] - q.m[0], p.m[1] - q.m[1]) > 1);
+      const dx = plan.parts[nb].m[0] - q.m[0], dy = plan.parts[nb].m[1] - q.m[1], dl = Math.hypot(dx, dy);
+      q.m[0] += 12 * dx / dl; q.m[1] += 12 * dy / dl;
+      const a = S.placedBody(lib, q), b = S.placedBody(lib, plan.parts[nb]);
+      control('a gear pushed 12 LDU onto its neighbour reads as an overlap', S.depthOf(a, a.M, b).depth > OVERLAP_CEILING_LDU);
+    }
     // THE TOLERANCE: above the exact-fit floor, below the collision
     console.log(`  the exact-fit floor (an axle in a brick or a bore, at the placed pose) reads ${tolFloor.toFixed(3)} LDU; the tolerance is ${S.TOL_LDU}`);
     control('the tolerance exceeds the exact-fit floor', S.TOL_LDU > tolFloor);

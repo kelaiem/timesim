@@ -100,6 +100,8 @@ const KW = (() => {
   const dog = dogPhase(lib);
   return {
     joinerHalf: mm(zMax(J)), joinerR: mm(Math.max(...J.map(rOf))),
+    // §305: the web between its two axle holes — its nearest surface to its middle inside the axle's radius
+    joinerStop: mm(Math.min(...J.filter((q) => rOf(q) < 6).map((q) => Math.abs(q[2])))),
     ringHalf: mm(zMax(R)), ringR: mm(ringR), ringFlangeHalf: mm(flangeZ),
     ringTubeIn: mm(Math.min(...ringEnd.map(rOf))), ringTubeOut: mm(Math.max(...ringEnd.map(rOf))), ringLugR: mm(dog.rLug),
     recessDepth: mm(zMax(C) - webZ),
@@ -310,7 +312,7 @@ controls.push(['12T tip = module-1 (7 mm)', { ...TABLES, T: { ...GEAR_TIP_MM, 69
 controls.push(['24T width = default', { ...TABLES, W: { default: GEAR_WIDTH_MM.default } }]);
 controls.push(['axle 4L ⇄ 5L', { ...TABLES, A: { ...AXLE_PARTS, 4: AXLE_PARTS[5], 5: AXLE_PARTS[4] } }]);
 for (const k of ['catchTip', 'grooveFloorR']) controls.push([`selector ${k} + 0.1 mm`, { ...TABLES, S: { ...KEYLESS_SELECTOR_DIM_MM, [k]: KEYLESS_SELECTOR_DIM_MM[k] + 0.1 } }]);
-for (const k of ['recessDepth', 'ringLugR', 'joinerR']) controls.push([`keyless ${k} + 0.1 mm`, { ...TABLES, K: { ...KEYLESS_DIM_MM, [k]: KEYLESS_DIM_MM[k] + 0.1 } }]);
+for (const k of ['recessDepth', 'ringLugR', 'joinerR', 'joinerStop']) controls.push([`keyless ${k} + 0.1 mm`, { ...TABLES, K: { ...KEYLESS_DIM_MM, [k]: KEYLESS_DIM_MM[k] + 0.1 } }]);
 for (const k of ['rackPitch', 'rackPitchToBottom', 'armHoles', 'followerR']) controls.push([`pull ${k} + 0.1 mm`, { ...TABLES, P: { ...KEYLESS_PULL_DIM_MM, [k]: KEYLESS_PULL_DIM_MM[k] + 0.1 } }]);
 controls.push(['brick ⇄ Technic brick', { ...TABLES, F: { ...FRAME_PARTS, brick1x1: FRAME_PARTS.technicBrick1x1, technicBrick1x1: FRAME_PARTS.brick1x1 } }]);
 const silent = controls.filter(([, T]) => judge(T).length === 0).map(([n]) => n);

@@ -361,7 +361,8 @@ export function ldrawBuild(frame, lib, phases = new Map()) {
   for (const [i, s] of frame.shafts.entries()) {
     const origin = [L(s.x), -L(frame.axleZ), 0];
     const ax = frame.axles[i];
-    const own = { origin, parts: [{ role: 'axle', part: ax.part, m: at(0, 0, L((ax.y0 + ax.y1) / 2), ROT_X_TO_Z) }], shaft: i };
+    // (an axle in PIECES — the keyless stem, two axles meeting in the joiner, §305 — places each)
+    const own = { origin, parts: (ax.pieces ?? [ax]).map((pc) => ({ role: 'axle', part: pc.part, m: at(0, 0, L((pc.y0 + pc.y1) / 2), ROT_X_TO_Z) })), shaft: i };
     bodies.push(own);
     for (const e of s.extras ?? []) {
       if (!e.part) continue;   // a sweep-only section (the ring's tube), not a part
