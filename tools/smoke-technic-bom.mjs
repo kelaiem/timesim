@@ -132,6 +132,9 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
     const lines = await page.evaluate((c) => [...document.querySelectorAll(`details.bom[data-cell="${c}"] .bom-line`)].map((l) => ({ part: l.dataset.part, colour: Number(l.dataset.colour), qty: Number(l.dataset.qty) })), s.cell);
     ok(lines.length === w.bom.lines.length && lines.every((l, k) => l.part === w.bom.lines[k].part && l.colour === w.bom.lines[k].colour && l.qty === w.bom.lines[k].qty), `${s.cell}: the listed lines are not the pure module's`);
     ok(lines.reduce((n, l) => n + l.qty, 0) === w.bom.total, `${s.cell}: listed quantities do not sum to the total`);
+    // §304: each list links its build's booklet, in the generation the list is for
+    const bk = await page.evaluate((c) => document.querySelector(`details.bom[data-cell="${c}"] a[data-booklet]`)?.getAttribute('href') ?? null, s.cell);
+    ok(bk === `./booklet.html?cell=${encodeURIComponent(s.cell)}&gen=technic_2026`, `${s.cell}: the list's booklet link is ${bk}`);
     ok(/Modelled, not built/.test(text) && /LDraw\.org library, CC BY 4\.0/.test(text), `${s.cell}: the honesty or attribution text is missing`);
     ok(w.bom.lines.length && B.NOT_IN_MODEL[w.kind].every((n) => text.includes(n.item)), `${s.cell}: a not-in-the-model item is missing`);
     ok(!/\b(works?|tested|simulated)\b/i.test(text.replace(/keyless works|motion works/gi, '')), `${s.cell}: the list says a forbidden word`);

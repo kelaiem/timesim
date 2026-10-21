@@ -68,8 +68,9 @@ const SEEDS = ['index.html', 'explain.html', 'test-geometry.html',
 // release tags cut before it have no such page, so absence is tolerated and
 // SAID, and offline-check (which builds from the source tree, where the page
 // exists) is what catches a mis-listed seed.
-const ADOPTED = ['primer.html', 'technic.html'].filter((f) => existsSync(f));
-for (const f of ['primer.html', 'technic.html'])
+// §304 — booklet.html joins on the same terms (a tag cut before it has no such page).
+const ADOPTED = ['primer.html', 'technic.html', 'booklet.html'].filter((f) => existsSync(f));
+for (const f of ['primer.html', 'technic.html', 'booklet.html'])
   if (!ADOPTED.includes(f)) console.log(`stamp-release: ${f} absent — a tree older than the page, stamping without it`);
 // A seed is listed by NAME, not discovered by the walk, so a typo or a file the
 // payload does not carry is invisible here and fatal at the far end: addAll is

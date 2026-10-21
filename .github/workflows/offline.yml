@@ -44,6 +44,14 @@ on:
       - 'index.html'
       - 'explain.html'
       - 'primer.html'
+      # §304 — the two LEGO pages are adopted documents and their modules are PRECACHED, so each moves the count this job
+      # asserts (landings §300-§302 added modules without a bump and this filter did not see them); the booklet is also booted
+      # offline here
+      - 'technic.html'
+      - 'booklet.html'
+      - 'src/technic-*.js'
+      - 'src/ldraw.js'
+      - 'vendor/ldraw/**'
       # §95 tier two — the primer's localization is PRECACHED: its tables
       # arrive by dynamic import, which is the one class of URL that reaches
       # the manifest through the stamper's module walk rather than a

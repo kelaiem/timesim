@@ -1299,6 +1299,10 @@ async function fillBom(body, cell, gen) {
   const a = el('a', null, `download the list (.csv, ${gen})`); a.style.color = '#9fb6d9';
   a.href = URL.createObjectURL(new Blob([bomCsv(c, gen)], { type: 'text/csv' })); a.download = `${gen}-${cell}.csv`;
   body.appendChild(a);
+  // BUILT §304: the printable booklet of this build (steps, callouts, this list), US Letter or A4
+  const bk = el('a', null, 'open the booklet (prints on Letter or A4)'); bk.style.cssText = 'color:#9fb6d9;margin-inline-start:12px';
+  bk.href = `./booklet.html?cell=${encodeURIComponent(cell)}&gen=${encodeURIComponent(gen)}`; bk.target = '_blank'; bk.rel = 'noopener'; bk.dataset.booklet = cell;
+  body.appendChild(bk);
   // the pictures last, a few a task, so a long list does not hold the frame
   partPictures ??= makePartPictures(lib, geoOf);
   let n = 0;
