@@ -36,12 +36,19 @@
 //   TURN TO MESH  a toothed part put in next to a meshed neighbour already placed is judged with the
 //           meshed chain turned (the validator's rule); the step carries the shaft angle φ the build
 //           placed it at, so the builder turns the pair to it.
+//   §305 (TODO 264), each with the case that forced it beside its code: a part is on a line by a HOLE as well
+//           as its origin; a part whose free end is shut by its own group is held; the works of a group go in
+//           an order read off their corridors over every mode; a hosted body after its host, an axle after the
+//           parts on its own line; pins in a held part go in with it, a unit under another first; an axle shut
+//           at both ends is lowered beside its bricks with what it carries and slid; an axle in pieces is one
+//           module; a body pivoting on a unit's peg rides in the unit; no gear goes in between two meshes;
+//           a travelling part is nested at neutral; in a sub-assembly the arms go on in order along their axle.
 //
 // THE ONE HAND-WRITTEN TABLE, RECIPES, orders and names CHAPTERS for the cells whose bodies are not joined
 // by a mesh list (the fusee, the alarm, the escapement) and for the keyless cell's selector, by SHAFT KEY
 // (the name the builder gave the body) and never by placement index. A key no body answers, or a body no
 // recipe names, is reported by the probe.
-import { bounds } from './ldraw.js';
+import { bounds, placements, compose, LDU_MM as LDU_MM_STEPS } from './ldraw.js';
 import { LDRAW_COLOUR, placedParts } from './technic-ldraw.js';
 import { colourOf } from './technic-colour.js';
 import { HONESTY, CORD_ROLES } from './technic-bom.js';
@@ -57,6 +64,8 @@ export const ON_LINE_LDU = 0.5, THROUGH_OVERLAP_LDU = 1;
 // A toothed pair meshes at (Na + Nb)/2 millimetres between centres (the pack's 1 mm module): 1.25 LDU
 // a tooth. This much slack either way, and coplanar to within TWO LDU, finds the pairs.
 export const MESH_SLACK_LDU = 4, MESH_COPLANAR_LDU = 2, LDU_PER_TOOTH = 1.25;
+// The pack's hole primitives (a hole runs along the primitive's own Y): axle holes, pin holes, beam holes.
+const HOLE_RE = /^(axl\w*hol\w*|axl\w*ho\d+|axlehol\w*|peghole\w*|npeghol\w*|connhol\w*|beamhol\w*)\.dat$/;
 
 // ---------------------------------------------------------------------------
 // THE RECIPES. Chapters, in order, naming bodies by their shaft key. `nth` picks one of several
@@ -182,8 +191,8 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
   const bricksOn = (ln) => bricks.filter((br) => parallel(br.axis, ln.u) && perpDist(br.centre, ln.o, ln.u) < ON_LINE_LDU)
     .map((br) => ({ ...br, t: dot(sub(br.centre, ln.o), ln.u) })).sort((a, b) => a.t - b.t);
   const throughOf = (ln, on) => on.filter((br) => Math.min(ln.t1, br.t + br.half) - Math.max(ln.t0, br.t - br.half) > THROUGH_OVERLAP_LDU);
-  const boxOf = (i) => {
-    const p = parts[i], b = bnd(p.part), lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  const boxOf = (i, pp = parts) => {
+    const p = pp[i], b = bnd(p.part), lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
     for (const x of [b.lo[0], b.hi[0]]) for (const y of [b.lo[1], b.hi[1]]) for (const z of [b.lo[2], b.hi[2]]) {
       const w = at3(p.m, [x, y, z]); for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], w[k]); hi[k] = Math.max(hi[k], w[k]); }
     }
@@ -198,6 +207,28 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
     for (let k = 0; k < 3; k++) { if (dir[k] > 1e-9) hi[k] += L; else if (dir[k] < -1e-9) lo[k] -= L; }
     return { lo, hi };
   };
+  // the space a part passes through on its way in from `from` (a unit direction), BEYOND its own placed box —
+  // its own place holds its fits and meshes, not its corridor (§305)
+  // (§305: the works' order is read over EVERY mode's placements at once — a box in any mode — so the modes,
+  // which move the selector, the follower and the ring, order alike)
+  const modeParts = (build.modes?.length > 1 ? build.modes : [mode]).map((md) => (md === mode ? parts : placedParts(build, 0, md)));
+  const modeBoxes = modeParts.map((pp) => new Map());
+  const boxIn = (k, i) => (modeBoxes[k].has(i) || modeBoxes[k].set(i, boxOf(i, modeParts[k])), modeBoxes[k].get(i));
+  const hitsAnyMode = (i, from, j) => modeParts.some((_, k) => hitsBox(beyondBox(boxIn(k, i), from), boxIn(k, j)));
+  const beyondBox = (b, from) => {
+    const L = 1e4, lo = [...b.lo], hi = [...b.hi];
+    for (let k = 0; k < 3; k++) { if (from[k] > 1e-9) { lo[k] = b.hi[k]; hi[k] = b.hi[k] + L; } else if (from[k] < -1e-9) { hi[k] = b.lo[k]; lo[k] = b.lo[k] - L; } }
+    return { lo, hi };
+  };
+  const beyond = (i, from) => {
+    const b = boxCached(i), L = 1e4, lo = [...b.lo], hi = [...b.hi];
+    for (let k = 0; k < 3; k++) { if (from[k] > 1e-9) { lo[k] = b.hi[k]; hi[k] = b.hi[k] + L; } else if (from[k] < -1e-9) { hi[k] = b.lo[k]; lo[k] = b.lo[k] - L; } }
+    return { lo, hi };
+  };
+  // §305: a side of part i along line ln is shut too where a part of its own GROUP (`idxs`) off the line stands in
+  // the corridor beyond it (the keyless follower's arm on the detent wheel's free end, the wheel on the arm's):
+  // whichever went in first would shut the other's only way, so such a part is held in the gap and threaded
+  const groupShut = (idxs, i, ln, from) => idxs.some((j) => j !== i && !CORD_ROLES.includes(parts[j].role) && perpDist(origin(parts[j].m), ln.o, ln.u) >= ON_LINE_LDU && hitsBox(beyond(i, from), boxCached(j)));
   // the sides of a part along a line it can be slid in from: blocked by a FRAME part in the way, or
   // met by n parts ALREADY PLACED (off the line) it would have to pass — a part not yet placed is
   // not in the way, it will have to find its own way past this one
@@ -241,9 +272,34 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
     return { tc, e0: tc, e1: tc };
   };
 
-  const onLine = (i, ln) => perpDist(origin(parts[i].m), ln.o, ln.u) < ON_LINE_LDU;
+  // A part is ON a line when its origin is, or when one of its HOLES is, coaxial (§305: the changeover catch
+  // hangs from a pivot hole 20 LDU off its origin, so landing 2 read it as off the selector axle and attached it
+  // after the axle was threaded, where nothing can reach it). The holes are the pack's own hole primitives.
+  const holeCache = new Map();
+  const holesOf = (i) => {
+    if (!holeCache.has(i)) holeCache.set(i, placements(lib, `${parts[i].part}.dat`, HOLE_RE).map((h) => compose(parts[i].m, h.m)));
+    return holeCache.get(i);
+  };
+  const onLine = (i, ln) => perpDist(origin(parts[i].m), ln.o, ln.u) < ON_LINE_LDU
+    || holesOf(i).some((h) => perpDist(origin(h), ln.o, ln.u) < ON_LINE_LDU && parallel(norm(axisY(h)), ln.u));
   const overlap = (x, ln) => Math.min(ln.t1, x.e1) - Math.max(ln.t0, x.e0) > THROUGH_OVERLAP_LDU || (x.e0 === x.e1 && x.tc >= ln.t0 && x.tc <= ln.t1);
-  const mountedOf = (idxs) => idxs.filter((i) => parts[i].role === 'axle').map(lineOf).map((ln) => { const on = bricksOn(ln); return { ...ln, on, blk: blockersOn(ln), br: throughOf(ln, on) }; }).filter((ln) => ln.br.length);
+  const mountedOf0 = (idxs) => idxs.filter((i) => parts[i].role === 'axle').map(lineOf).map((ln) => { const on = bricksOn(ln); return { ...ln, on, blk: blockersOn(ln), br: throughOf(ln, on) }; }).filter((ln) => ln.br.length);
+  // AN AXLE IN PIECES (§305: the keyless stem, two axles meeting in the joiner's web) is ONE module: the pieces of
+  // one body on one line share its held parts (the ring's nest travels into the far piece's clutch gear, so it
+  // must be held after it), each piece threaded through its own brick. Merged here, in the first piece's frame.
+  const mountedOf = (idxs) => {
+    const out = [];
+    for (const ln of mountedOf0(idxs)) {
+      const host = out.find((m) => bodyOf[m.i] === bodyOf[ln.i] && parallel(m.u, ln.u) && perpDist(ln.o, m.o, m.u) < ON_LINE_LDU);
+      if (!host) { out.push({ ...ln, pieces: [ln] }); continue; }
+      const sh = dot(sub(ln.o, host.o), host.u), sg = dot(ln.u, host.u) > 0 ? 1 : -1;
+      const [a, b] = [sh + sg * ln.t0, sh + sg * ln.t1].sort((p, q) => p - q);
+      host.t0 = Math.min(host.t0, a); host.t1 = Math.max(host.t1, b);
+      host.br = [...host.br, ...ln.br.filter((x) => !host.br.some((y) => y.i === x.i))].map((x) => ({ ...x, t: dot(sub(x.centre, host.o), host.u) }));
+      host.pieces.push(ln);
+    }
+    return out;
+  };
 
   // ── MESH PARTNERS. A toothed part and every toothed part already placed it meshes with.
   const toothed = (i) => !!parts[i].teeth;
@@ -352,7 +408,9 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
           for (const dir of [ln.u.map((v) => -v), ln.u]) if (!sideReport(i, ln, dir, new Set(), new Set()).frame) sides.push(dir);
           return sides;
         };
-        const items = idxs.filter((i) => parts[i].role !== 'axle' && !CORD_ROLES.includes(parts[i].role) && onLine(i, ax))
+        // (the chapters' order reads a part on a line by its ORIGIN, as landing 2 did: a part hung on a line by an
+        // off-origin hole — §305's catch — is held, not slid, so it opens no corridor between chapters)
+        const items = idxs.filter((i) => parts[i].role !== 'axle' && !CORD_ROLES.includes(parts[i].role) && perpDist(origin(parts[i].m), ax.o, ax.u) < ON_LINE_LDU)
           .map((i) => ({ i, ...extentOn(i, ax) })).filter((x) => overlap(x, ax)).map((x) => x.i);
         for (const q of items) {
           const sides = lanes(q, ax);
@@ -420,10 +478,41 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
     return sub;
   };
 
+  // §305 (TODO 264) — A GEAR IS NOT LOWERED BETWEEN TWO MESHES. A gear whose mesh partners already in stand on
+  // OPPOSITE sides of it (the motion works' 16T between the 8T it meshes and the hour wheel, all three on one line)
+  // can only come in tangentially to both at once, which no turn of the chain clears; with one partner in, it comes
+  // in across that one mesh. So within a chapter such a gear's group goes in before the group of a partner that the
+  // mesh walk had put ahead of it. "Opposite": the two lines of centres more than 120° apart.
+  const partnersIn = (i, inSet) => [...inSet].filter((j) => toothed(j) && meshes(i, j));
+  const opposed = (i, js) => {
+    const c = origin(parts[i].m), d = js.map((j) => norm(sub(origin(parts[j].m), c)));
+    return d.some((u, a) => d.some((v, b) => b > a && dot(u, v) < -0.5));
+  };
+  const absorbed = new Set();                                  // parts a sub-assembly of another chapter carries (§305's riders)
+  const prior = new Set(done);                                 // the parts of every earlier chapter
+  for (const ch of chaptersPlan) {
+    const gs = ch.groups, partsOfG = (g) => g.bodies.flatMap((b) => partOfBody[b]);
+    for (let pass = 0; pass < gs.length * gs.length; pass++) {
+      let moved = false;
+      const before = new Set(prior);
+      for (let k = 0; k < gs.length && !moved; k++) {
+        for (const i of partsOfG(gs[k]).filter(toothed)) {
+          const ps = partnersIn(i, before);
+          if (ps.length < 2 || !opposed(i, ps)) continue;
+          const h = gs.findIndex((g, n) => n < k && partsOfG(g).some((j) => ps.includes(j)));
+          if (h < 0) continue;
+          gs.splice(h, 0, gs.splice(k, 1)[0]); moved = true; break;
+        }
+        for (const j of partsOfG(gs[k])) before.add(j);
+      }
+      if (!moved) break;
+    }
+    for (const g of gs) for (const j of partsOfG(g)) prior.add(j);
+  }
   for (const ch of chaptersPlan) {
     openChapter(ch.id, ch.title);
     for (const g of ch.groups) {
-      const idxs = g.bodies.flatMap((b) => partOfBody[b]);
+      const idxs = g.bodies.flatMap((b) => partOfBody[b]).filter((i) => !absorbed.has(i));
       const used = new Set();
       // the mounted axles of this group: each with the bricks it passes through
       const mounted = mountedOf(idxs);
@@ -431,7 +520,7 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
       // maintaining axle between the cone's and the great wheel's). The joiners at its ends carry it,
       // so it is assembled WITH them, off the model, and lowered between the bricks as one unit
       // before the axles that join it are threaded.
-      const floating = idxs.filter((i) => parts[i].role === 'axle' && !mounted.some((m) => m.i === i) && mounted.some((m) => onLine(i, m) && parallel(norm(axisX(parts[i].m)), m.u)));
+      const floating = idxs.filter((i) => parts[i].role === 'axle' && !mounted.some((m) => m.pieces.some((pc) => pc.i === i)) && mounted.some((m) => onLine(i, m) && parallel(norm(axisX(parts[i].m)), m.u)));
       for (const f of floating) {
         if (used.has(f)) continue;
         const ln = lineOf(f);
@@ -441,19 +530,43 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
         const lineItems = [...new Set([...near, ...own.filter((i) => parts[i].role !== 'axle' && onLine(i, ln))])];
         const offLine = own.filter((i) => !lineItems.includes(i));
         const t = (i) => Math.abs(extentOn(i, ln).tc - (ln.t0 + ln.t1) / 2);
-        const order = [f, ...lineItems.sort((a, b) => t(a) - t(b)), ...offLine];
+        // §305 (TODO 264): A BODY THAT PIVOTS ON THE UNIT rides in it — the fusee's click pawl, its arm's middle
+        // hole on the ratchet's peg. Placed after the unit, its arm had to come onto the peg past the joiner that
+        // stands 3.4 mm in front of it (the arm's edge passes 3.8 mm from the axis, the joiner is 4 mm round), so
+        // nothing could reach it. In the unit it goes on after its peg and before the JOINERS, which close the
+        // unit's ends (whatever rides in their gaps goes on first).
+        const pegs = offLine.filter((i) => parts[i].role === 'axle').map(lineOf);
+        const riders = [];
+        for (let b2 = 0; b2 < partOfBody.length; b2++) {
+          if (b2 === body || takenBody.has(`rider${b2}`)) continue;
+          const ps = partOfBody[b2];
+          if (!ps.length || mountedOf0(ps).length || !ps.some((i) => parts[i].role === 'arm' && pegs.some((pg) => onLine(i, pg)))) continue;
+          takenBody.add(`rider${b2}`);
+          riders.push(...ps.filter((i) => parts[i].role !== 'axle'), ...ps.filter((i) => parts[i].role === 'axle'));
+        }
+        for (const i of riders) absorbed.add(i);
+        const joiners = lineItems.filter((i) => parts[i].role === 'joiner'), rest0 = lineItems.filter((i) => parts[i].role !== 'joiner');
+        const order = riders.length ? [f, ...rest0.sort((a, b) => t(a) - t(b)), ...offLine, ...riders, ...joiners.sort((a, b) => t(a) - t(b))]
+          : [f, ...lineItems.sort((a, b) => t(a) - t(b)), ...offLine];
         for (const i of order) used.add(i);
-        emitUnit(`${build.key}-${ch.id}-line${f}`, `${ch.title}: the ${nameOf(parts[f])} on its joiners`, order, ch, body);
+        emitUnit(`${build.key}-${ch.id}-line${f}`, `${ch.title}: the ${nameOf(parts[f])} on its joiners${riders.length ? `, with ${countNames(riders.filter((i) => parts[i].role !== 'axle').map((i) => parts[i]))} on its peg` : ''}`, order, ch, body);
       }
+      // PLAN each mounted axle's work — which parts are held in the gap, threaded and slid on — before any is
+      // emitted, so the works can be put in an order (§305, below).
+      const works = [];
+      const thrBlocked = (ax, dir) => { const sw = sweptBox(ax.i, dir); return frameIdx.some((j) => parts[j].role !== 'baseplate' && !ax.br.some((b) => b.i === j) && hitsBox(sw, boxCached(j))); };
       for (const ax of mounted) {
         // the parts threaded on this axle: on its line, overlapping its span
         const items = idxs.filter((i) => !used.has(i) && parts[i].role !== 'axle' && !CORD_ROLES.includes(parts[i].role) && onLine(i, ax))
           .map((i) => ({ i, ...extentOn(i, ax) })).filter((x) => overlap(x, ax));
         // enclosed between bricks on the line -> held in the gap; else it slides on from the free end
         // (each side judged on the part's whole footprint dragged along the line, not on the line alone)
+        // (§305: a side shut by the part's own group is shut too: groupShut)
         const entry = new Map();
         for (const x of items) {
           const lo = sideReport(x.i, ax, ax.u.map((v) => -v), new Set()), hi = sideReport(x.i, ax, ax.u, new Set());
+          if (groupShut(idxs, x.i, ax, ax.u.map((v) => -v))) lo.frame = true;
+          if (groupShut(idxs, x.i, ax, ax.u)) hi.frame = true;
           const open = [[-1, lo], [1, hi]].filter(([, r]) => !r.frame).sort((a, b) => a[1].others - b[1].others);
           entry.set(x.i, open.length ? open[0][0] : 0);          // -1: enters from the low end, +1 from the high end, 0: neither
         }
@@ -462,57 +575,167 @@ export function deriveSteps(build, { lib, mode = build.modes?.[0], recipes = REC
         const fromLow = items.filter((x) => entry.get(x.i) === -1).sort((a, b) => b.tc - a.tc).map((x) => x.i);   // nearest the bricks first
         const fromHigh = items.filter((x) => entry.get(x.i) === 1).sort((a, b) => a.tc - b.tc).map((x) => x.i);
         for (const x of [...gap, ...fromLow, ...fromHigh]) used.add(x);
-        used.add(ax.i);
+        for (const pc of ax.pieces ?? [ax]) used.add(pc.i);
+        // §305 (TODO 264): an axle SHUT AT BOTH ENDS by frame parts on its line (the escape arbor, between the two
+        // knife stacks) cannot be threaded from either. It is lowered into the free length of its line beside its
+        // bricks, then slid along the line through them — carrying the held parts that stand OUTSIDE its bricks on
+        // the side it comes from (the escape wheel in front of its columns: they are put on it off the model, a
+        // sub-assembly), while those between the bricks are held as ever. The slide is the least that puts the
+        // lowered axle's leading end clear of its first brick, and the lowered unit must fit between the frame
+        // parts that shut its line; both read off the placements, never chosen.
+        let carry = null;
+        if (ax.pieces.length === 1 && thrBlocked(ax, ax.u) && thrBlocked(ax, ax.u.map((v) => -v))) {
+          const bl = Math.min(...ax.br.map((b) => b.t - b.half)), bh = Math.max(...ax.br.map((b) => b.t + b.half));
+          const walls = ax.blk.filter((bk) => !ax.br.some((b) => b.i === bk.i));
+          const opts = [];
+          for (const sg of [1, -1]) {
+            const out = gap.filter((i) => { const e = extentOn(i, ax); return sg > 0 ? e.e1 <= bl + 1e-6 : e.e0 >= bh - 1e-6; });
+            const inner = gap.filter((i) => !out.includes(i)).map((i) => extentOn(i, ax));
+            const s2 = sg > 0 ? ax.t1 - Math.min(bl, ...inner.map((e) => e.e0)) : Math.max(bh, ...inner.map((e) => e.e1)) - ax.t0;
+            const ext = [[ax.t0, ax.t1], ...out.map((i) => { const e = extentOn(i, ax); return [e.e0, e.e1]; })];
+            const lo = Math.min(...ext.map((e) => e[0])) - (sg > 0 ? s2 : -s2), hi = Math.max(...ext.map((e) => e[1])) - (sg > 0 ? s2 : -s2);
+            const fits = walls.every((w2) => w2.hi <= lo + 1e-6 || w2.lo >= hi - 1e-6) && !walls.some((w2) => w2.lo < hi - 1e-6 && w2.hi > lo + 1e-6);
+            if (fits) opts.push({ sg, s: s2, out });
+          }
+          opts.sort((a, b) => a.s - b.s);
+          if (opts.length) { const o = opts[0]; carry = { parts: o.out, d2: ax.u.map((v) => v * o.sg), s: o.s }; gap.splice(0, gap.length, ...gap.filter((i) => !o.out.includes(i))); }
+        }
+        // §305 (TODO 264): PINS IN A HELD PART go in with it. A pin pressed into a part held in the gap (the alarm's
+        // release disc: a pin in each end hole of its front beam, a long pin in its back beam) sticks out of it
+        // along the axle; once the part is held and the axle through, every way along the pin's own axis meets the
+        // frame or the work's own parts (the rotors in front, the disc's 24T and the column behind). So the pins
+        // are pressed in OFF the model and the part lowered with them, as a nest is. Each pin's host is the held
+        // part its box overlaps most.
+        const hosted = new Map();
+        const vol = (a, b) => [0, 1, 2].reduce((v, k) => v * Math.max(0, Math.min(a.hi[k], b.hi[k]) - Math.max(a.lo[k], b.lo[k])), 1);
+        for (const i of idxs) {
+          if (used.has(i) || parts[i].role !== 'pin' || onLine(i, ax)) continue;
+          let best = null, bv = 0;
+          for (const j of gap) { const v = vol(boxCached(i), boxCached(j)); if (v > bv) { bv = v; best = j; } }
+          if (best === null) continue;
+          if (!hosted.has(best)) hosted.set(best, []);
+          hosted.get(best).push(i); used.add(i);
+        }
+        works.push({ kind: 'axle', ax, items, gap, fromLow, fromHigh, carry, hosted });
+      }
+      // what is left, body by body
+      for (const b of g.bodies) {
+        const rest = partOfBody[b].filter((i) => !used.has(i) && !absorbed.has(i));
+        if (rest.length) works.push({ kind: 'body', b, rest, hosted: partOfBody[b].some((i) => used.has(i)) });
+      }
+      // ── THE ORDER OF WORKS IN A GROUP (§305, TODO 264). The chapters' corridor rule, one level down: a work
+      // whose part comes in along a corridor (a held part or a lowered body from above, a slid part from its free
+      // end, an axle from the end it threads from) goes in BEFORE a work with a part standing in that corridor.
+      // Landing 2 took them in placement order, which slid the keyless detent wheel on behind the follower's arm
+      // and lowered the rack under a pinion already meshed above it. A cycle keeps the old order.
+      const UP = DOWN.map((v) => -v);
+      const lanesOf = (w) => w.kind === 'body' ? w.rest.map((i) => [i, UP])
+        : [...w.gap.map((i) => [i, UP]), ...w.fromLow.map((i) => [i, w.ax.u.map((v) => -v)]), ...w.fromHigh.map((i) => [i, w.ax.u]),
+          ...(w.ax.pieces ?? [w.ax]).map((pc) => [pc.i, [pc.u.map((v) => -v), pc.u].find((d) => !thrBlocked(pc, d.map((v) => -v))) ?? UP])];
+      const partsOf = (w) => w.kind === 'body' ? w.rest : [...(w.ax.pieces ?? [w.ax]).map((pc) => pc.i), ...w.gap, ...w.fromLow, ...w.fromHigh];
+      const wEdges = works.map((w) => new Set(works.flatMap((v, k) => (v !== w && lanesOf(w).some(([i, from]) => partsOf(v).some((j) => hitsAnyMode(i, from, j))) ? [k] : []))));
+      // a HOSTED body's rest (the follower's axle and bush in its arm's far hole) goes in after the work that puts
+      // its host in (the arm, held and threaded on the pivot)
+      works.forEach((w, k) => { if (w.kind === 'body' && w.hosted) works.forEach((v, j) => { if (v !== w && partsOf(v).some((i) => bodyOf[i] === w.b)) wEdges[j].add(k); }); });
+      const wOrder = [], wLeft = new Set(works.map((_, k) => k));
+      while (wLeft.size) {
+        const inc = (k) => [...wLeft].filter((j) => j !== k && wEdges[j].has(k)).length;
+        const ready = [...wLeft].filter((k) => inc(k) === 0);
+        const pick = ready.length ? Math.min(...ready) : Math.min(...wLeft);
+        wOrder.push(pick); wLeft.delete(pick);
+      }
+      for (const w of wOrder.map((k) => works[k])) {
+        if (w.kind === 'body') {
+          const { b, rest, hosted } = w;
+          if (hosted || rest.length === 1) {
+            // §305: an axle among the rest goes in AFTER the parts on its own line (it is pushed through its host's
+            // hole and them, as through a brick and a held part — the follower's bush sits between the arm and
+            // the detent wheel, where nothing slides onto its axle's end)
+            const axl = rest.filter((i) => parts[i].role === 'axle').map(lineOf);
+            const onAx = (i) => parts[i].role !== 'axle' && axl.some((ln) => onLine(i, ln));
+            const ordered = [...rest.filter(onAx), ...rest.filter((i) => !onAx(i))];
+            for (const r of runs(ordered)) mainStep(hosted ? 'attach' : 'part', r, (hosted ? stepTitleFor.attach : stepTitleFor.place)(r.map((i) => parts[i])),
+              Object.fromEntries(r.map((i) => [i, uniq([...ownAxes(i), DOWN, ...AXES6])])));
+            continue;
+          }
+          // a UNIT: assembled off the model, axles first, then placed whole. §305: then every ARM, then the rest
+          // in placement order — a pin joins the arms it passes through, so both arms are on before any pin (the
+          // balance's −u pallet arm went on after the +u arm's pin, which closed its way in from every side).
+          // And the arms go on IN ORDER ALONG THE AXLES (the first axle's direction), so none is shut between two
+          // already on (the balance's −u pallet arm sits between the anchor's drop and the +u pallet arm).
+          const axl = rest.filter((i) => parts[i].role === 'axle'), d = axl.length ? norm(axisX(parts[axl[0]].m)) : DOWN;
+          const arms = rest.filter((i) => parts[i].role === 'arm').sort((a, b) => dot(origin(parts[b].m), d) - dot(origin(parts[a].m), d));
+          const order = [...axl, ...arms, ...rest.filter((i) => parts[i].role !== 'axle' && parts[i].role !== 'arm')];
+          emitUnit(`${build.key}-${String(keyOf(b)).replace(/\W+/g, '-')}-b${b}`, `${ch.title}: ${String(keyOf(b))}`, order, ch, b);
+          continue;
+        }
+        const { ax, items, gap, fromLow, fromHigh } = w;
         // a part that travels along its shaft between modes sits at the mode's end of its travel: it can be
         // lowered at the neutral place and slid there (the ring into a clutch gear's recess)
         const twoLegFor = (i) => { const sl = parts[i].slide?.[mode] ?? 0; return Math.abs(sl) > 1e-9 ? [{ d1: DOWN, d2: [0, 0, Math.sign(sl)], s: Math.abs(sl) }] : []; };   // placedParts adds the slide to the world Z
         // NESTED parts — extents overlapping along the line, a ring over a joiner — cannot go in one
         // after the other: the outer is slid over the inner OFF the model, and the pair is lowered whole.
-        const ext = new Map(items.map((x) => [x.i, x]));
+        // (§305: a part that travels between modes is nested where it stands at NEUTRAL — its slide taken off — so
+        // every mode nests and orders alike; in set the ring had stood in the setting gear's recess and was nested
+        // with the gear instead of its joiner, and that unit could not go in)
+        const ext = new Map(items.map((x) => { const d = (parts[x.i].slide?.[mode] ?? 0) * ax.u[2]; return [x.i, { ...x, e0: x.e0 - d, e1: x.e1 - d }]; }));
         const nests = [];
         for (const i of gap) {
-          const x = ext.get(i), hit = nests.find((g) => g.some((j) => { const y = ext.get(j); return Math.min(x.e1, y.e1) - Math.max(x.e0, y.e0) > THROUGH_OVERLAP_LDU; }));
+          const x = ext.get(i), hit = nests.find((g2) => g2.some((j) => { const y = ext.get(j); return Math.min(x.e1, y.e1) - Math.max(x.e0, y.e0) > THROUGH_OVERLAP_LDU; }));
           if (hit) hit.push(i); else nests.push([i]);
         }
         const radius = (i) => { const b = bnd(parts[i].part), p = parts[i]; let r = 0; for (const [k, a] of [axisX(p.m), axisY(p.m), axisZ(p.m)].entries()) if (!parallel(a, ax.u)) r = Math.max(r, Math.abs(b.lo[k]), Math.abs(b.hi[k])); return r; };
         // the unit whose ring travels into a gear's recess goes in AFTER the gear it engages, so that the ring can be slid in
-        const travelling = (g) => g.some((i) => Math.abs(parts[i].slide?.[mode] ?? 0) > 1e-9);
+        const travelling = (g2) => g2.some((i) => Math.abs(parts[i].slide?.[mode] ?? 0) > 1e-9);
         nests.sort((x, y) => travelling(x) - travelling(y));
+        // (§305: and a held unit is lowered BEFORE one standing in the space above it — the alarm disc's back beam
+        // carries a long pin forward past the front beam's side, which in some states hangs under the front beam)
+        {
+          const UPd = DOWN.map((v) => -v), withPins = (g2) => [...g2, ...g2.flatMap((i) => w.hosted.get(i) ?? [])];
+          const under = (x, y) => !travelling(x) && !travelling(y) && withPins(x).some((i) => withPins(y).some((j) => hitsAnyMode(i, UPd, j)));   // (a travelling unit keeps its own rule, above)
+          const left = [...nests], out = [];
+          while (left.length) { const k = left.findIndex((x) => !left.some((y) => y !== x && under(y, x))); out.push(...left.splice(k < 0 ? 0 : k, 1)); }
+          nests.splice(0, nests.length, ...out);
+        }
         let pend = [];
         const flush = () => { for (const r of chunks(pend)) mainStep('gap', r, stepTitleFor.gap(r.map((i) => parts[i])),
           Object.fromEntries(r.map((i) => [i, uniq([DOWN, ...radialAway(i, done), ...AXES6])])), { carrier: ax.i, twoLeg: Object.fromEntries(r.map((i) => [i, twoLegFor(i)])) }); pend = []; };
-        for (const g of nests) {
-          if (g.length === 1) { pend.push(g[0]); continue; }
+        for (const g2 of nests) {
+          if (g2.length === 1 && w.hosted.has(g2[0])) {
+            flush();
+            const order = [g2[0], ...w.hosted.get(g2[0])];
+            emitUnit(`${build.key}-${ch.id}-pins${g2[0]}`, `${ch.title}: ${countNames(order.map((i) => parts[i]))}, the pins pressed in`, order, ch, bodyOf[g2[0]]);
+            continue;
+          }
+          if (g2.length === 1) { pend.push(g2[0]); continue; }
           flush();
-          const order = g.sort((a, b) => radius(a) - radius(b));
+          const order = g2.sort((a, b) => radius(a) - radius(b));
           const tl = order.filter((i) => Math.abs(parts[i].slide?.[mode] ?? 0) > 1e-9).flatMap((i) => twoLegFor(i).map((t) => ({ ...t, members: [i] })));
           emitUnit(`${build.key}-${ch.id}-nest${order[0]}`, `${ch.title}: ${countNames(order.map((i) => parts[i]))}, one slid over the other`, order, ch, bodyOf[order[0]], tl.length ? tl : null);
         }
         flush();
-        // the axle goes in from the end its footprint finds clear (its own bricks are the holes it passes)
-        const thrBlocked = (dir) => { const sw = sweptBox(ax.i, dir); return frameIdx.some((j) => parts[j].role !== 'baseplate' && !ax.br.some((b) => b.i === j) && hitsBox(sw, boxCached(j))); };
-        const thrOthers = (dir) => { const sw = sweptBox(ax.i, dir); let n = 0; for (const j of done) if (j >= nStatic && j !== ax.i && perpDist(origin(parts[j].m), ax.o, ax.u) >= ON_LINE_LDU && hitsBox(sw, boxCached(j))) n++; return n; };
-        const ends = [ax.u, ax.u.map((v) => -v)].map((d) => ({ d, b: thrBlocked(d), n: thrOthers(d) })).sort((a, b) => (a.b - b.b) || (a.n - b.n));
-        mainStep('thread', [ax.i], stepTitleFor.thread(parts[ax.i], gap.length),
-          { [ax.i]: ends.map((e) => e.d) }, { carrier: ax.i, bricks: ax.br.map((b) => b.i) });
+        // the axle goes in from the end its footprint finds clear (its own bricks are the holes it passes); an axle in
+        // pieces, each piece from its own end, until it meets the web of the part they join
+        if (w.carry) {
+          const { carry } = w, order = [ax.i, ...carry.parts];
+          const sub = emitUnit(`${build.key}-${ch.id}-arbor${ax.i}`, `${ch.title}: ${countNames(order.map((i) => parts[i]))}, lowered beside its bricks`, order, ch, bodyOf[ax.i],
+            [{ d1: DOWN, d2: carry.d2, s: carry.s, members: order }]);
+          const pl = steps[sub.place - 1];
+          pl.text = `Both ends of the axle's line are shut by the frame, so lower the finished sub-assembly (${countNames(order.map((i) => parts[i]))}) beside its bricks and slide it ${(carry.s * LDU_MM_STEPS).toFixed(1)} mm along its line through them.`;
+        }
+        for (const pc of w.carry ? [] : ax.pieces ?? [ax]) {
+          const thrOthers = (dir) => { const sw = sweptBox(pc.i, dir); let n = 0; for (const j of done) if (j >= nStatic && j !== pc.i && perpDist(origin(parts[j].m), pc.o, pc.u) >= ON_LINE_LDU && hitsBox(sw, boxCached(j))) n++; return n; };
+          const ends = [pc.u, pc.u.map((v) => -v)].map((d) => ({ d, b: thrBlocked(pc, d), n: thrOthers(d) })).sort((a, b) => (a.b - b.b) || (a.n - b.n));
+          const many = (ax.pieces?.length ?? 1) > 1;
+          const joinedBy = many ? gap.find((i) => { const e = extentOn(i, ax), m = extentOn(pc.i, ax); return e.e0 < m.e1 && e.e1 > m.e0 && parts[i].role === 'joiner'; }) : undefined;
+          const title = many ? `Slide the ${nameOf(parts[pc.i])} through its brick${gap.length ? ' and the held parts' : ''} into the ${joinedBy !== undefined ? nameOf(parts[joinedBy]) : 'part that joins the pieces'}, up to the web in its middle`
+            : stepTitleFor.thread(parts[pc.i], gap.length);
+          mainStep('thread', [pc.i], title, { [pc.i]: ends.map((e) => e.d) }, { carrier: pc.i, bricks: pc.br.map((b) => b.i) });
+        }
         for (const [dir, list] of [[1, fromLow], [-1, fromHigh]]) if (list.length) for (const r of chunks(list)) {
           const inward = ax.u.map((v) => v * dir);               // slid on from the free end, toward the bricks
           mainStep('slide', r, stepTitleFor.slide(r.map((i) => parts[i])), Object.fromEntries(r.map((i) => [i, uniq([inward, inward.map((v) => -v)])])), { carrier: ax.i });
         }
-      }
-      // what is left, body by body
-      for (const b of g.bodies) {
-        const rest = partOfBody[b].filter((i) => !used.has(i));
-        if (!rest.length) continue;
-        const hosted = partOfBody[b].some((i) => used.has(i));
-        if (hosted || rest.length === 1) {
-          for (const r of runs(rest)) mainStep(hosted ? 'attach' : 'part', r, (hosted ? stepTitleFor.attach : stepTitleFor.place)(r.map((i) => parts[i])),
-            Object.fromEntries(r.map((i) => [i, uniq([...ownAxes(i), DOWN, ...AXES6])])));
-          continue;
-        }
-        // a UNIT: assembled off the model, axles first, then placed whole
-        const order = [...rest.filter((i) => parts[i].role === 'axle'), ...rest.filter((i) => parts[i].role !== 'axle')];
-        emitUnit(`${build.key}-${String(keyOf(b)).replace(/\W+/g, '-')}-b${b}`, `${ch.title}: ${String(keyOf(b))}`, order, ch, b);
       }
     }
     // notes: steps that add no part

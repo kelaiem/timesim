@@ -51,10 +51,12 @@ const controls = [];
 const control = (name, caught) => { controls.push([name, !!caught]); };
 const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement'];
 const SHARED = ['fusee', 'alarm', 'escapement'];
-// §302's closed inventory, as the booklet shows it: the flagged STEP counts per build (plan steps whose part no path cleared)
-const FLAGGED_STEPS = Object.freeze({ 'keyless|wind': 5, 'keyless|neutral': 5, 'keyless|set': 6, 'fusee': 2, 'alarm|armed': 6, 'alarm|ringing': 8, 'alarm|off': 5, 'escapement': 2 });
-// §302's OVERLAPS inventory (two solids in each other at rest, TODO 264), as the booklet shows it: one marker each, on the step that completes the pair
-const OVERLAP_MARKS = Object.freeze({ keyless: 2, fusee: 3, escapement: 1 });
+// §302's closed inventory, as the booklet shows it: the flagged STEP counts per build (plan steps whose part no path cleared).
+// EMPTY since §305 cleared TODO 264's 27 rows: every build prints no flagged step, and one would fail here.
+const FLAGGED_STEPS = Object.freeze({});
+// §302's OVERLAPS inventory (two solids in each other at rest, TODO 264), as the booklet shows it: one marker each, on the
+// step that completes the pair. EMPTY since §305 cleared the six.
+const OVERLAP_MARKS = Object.freeze({});
 const FORBIDDEN = /\b(works|working|worked|tested|simulated|simulation|guarantee[ds]?|proven|verified)\b/i;
 // "keyless works" and "motion works" are the watch's own nouns (a works is a mechanism), not a claim; every other "works" is
 const NOUN = /\b(keyless|motion) works\b/gi;
@@ -145,11 +147,9 @@ function flowProblems(items, flow, capacity) {
   if (flow.overflow.length) bad.push(`items taller than a page: ${flow.overflow.join(',')}`);
   return bad;
 }
-function marksProblems(model, status = 'ok') {
+function marksProblems(model, table = BOOKLET_FLAGS) {
   const bad = [], plan = model.plan;
-  const table = status === 'ok' ? BOOKLET_FLAGS : null;
-  void table;
-  const key = model.meta.flagsKey, row = BOOKLET_FLAGS[key];
+  const key = model.meta.flagsKey, row = table[key];
   if (model.meta.flags !== 'ok') bad.push(`the verdicts for ${key} are ${model.meta.flags}`);
   const flaggedSteps = new Set(Object.entries(row?.steps ?? {}).filter(([, s]) => (s.items ?? []).some((i) => i.s === 'flagged')).map(([n]) => Number(n)));
   const overlapSteps = new Set(Object.entries(row?.steps ?? {}).filter(([, s]) => (s.items ?? []).some((i) => i.s === 'overlap')).map(([n]) => Number(n)));
@@ -271,10 +271,18 @@ console.log('\nCONTROLS');
     const { model } = alarm;
     // a band's note without its modelled-not-built
     { const i = model.steps.findIndex((s) => s.kind === 'note'); control('a note step without modelled-not-built beside it is caught', i >= 0 && marksProblems({ ...model, steps: model.steps.map((s, k) => (k === i ? { ...s, statement: null } : s)) }).length > 0); }
-    // the flagged marker removed
-    { const i = model.steps.findIndex((s) => s.marks.some((m) => m.kind === 'flagged')); const m2 = { ...model, steps: model.steps.map((s, k) => (k === i ? { ...s, marks: s.marks.filter((m) => m.kind !== 'flagged') } : s)) }; control('the flagged marker removed from a step is caught', marksProblems(m2).length > 0); }
-    // a marker with no reason
-    { const i = model.steps.findIndex((s) => s.marks.some((m) => m.kind === 'flagged')); const m2 = { ...model, steps: model.steps.map((s, k) => (k === i ? { ...s, marks: s.marks.map((m) => (m.kind === 'flagged' ? { ...m, text: 'no.' } : m)) } : s)) }; control('a flagged marker that gives no reason is caught', marksProblems(m2).length > 0); }
+    // §305: no build has a flagged step any more, so the marker controls PLANT one — a verdict table whose row for
+    // this plan flags a part step (as landing 2's did) — and the booklet built from it must carry the marker
+    { const paper = model.paper, n = model.steps.find((s) => s.adds && !s.flexible).n, row0 = BOOKLET_FLAGS[model.meta.flagsKey];
+      const tbl = { ...BOOKLET_FLAGS, [model.meta.flagsKey]: { ...row0, steps: { ...row0.steps, [n]: { ...(row0.steps[n] ?? {}), items: [{ s: 'flagged', part: '3673', by: '2712', depth: 1.5, allow: 1.4 }] } } } };
+      const mf = K.bookletOf({ lib, gen: alarm.gen, cell: alarm.cell, mode: alarm.mode, built: alarm.built, plan: alarm.plan, bom: alarm.bom, flagsTable: tbl, paper });
+      ok(mf.steps.find((s) => s.n === n).marks.some((m) => m.kind === 'flagged'), 'a planted flagged verdict is not printed as a marker');
+      // the flagged marker removed
+      { const m2 = { ...mf, steps: mf.steps.map((s) => (s.n === n ? { ...s, marks: s.marks.filter((m) => m.kind !== 'flagged') } : s)) }; control('the flagged marker removed from a step is caught', marksProblems(m2, tbl).some((b) => /carries no marker/.test(b))); }
+      // a marker with no reason
+      { const m2 = { ...mf, steps: mf.steps.map((s) => (s.n === n ? { ...s, marks: s.marks.map((m) => (m.kind === 'flagged' ? { ...m, text: 'no.' } : m)) } : s)) }; control('a flagged marker that gives no reason is caught', marksProblems(m2, tbl).some((b) => /gives no reason/.test(b))); }
+      // and a flagged step is now a regression: the planted one is counted against the empty inventory
+      control('a flagged step, against §305\'s empty inventory, is caught', marksProblems(mf, tbl).some((b) => /flagged steps on paper/.test(b))); }
     // verdicts of another plan: every part step unchecked, and the marks check refuses them
     { const paper = model.paper, tbl = { ...BOOKLET_FLAGS, [model.meta.flagsKey]: { ...BOOKLET_FLAGS[model.meta.flagsKey], sig: '00000000' } };
       const m2 = K.bookletOf({ lib, gen: alarm.gen, cell: alarm.cell, mode: alarm.mode, built: alarm.built, plan: alarm.plan, bom: alarm.bom, flagsTable: tbl, paper });

@@ -41266,3 +41266,83 @@ modules, so landings that add precached modules never ran the job that counts th
 - Nobody has read the PDFs against a built model (nobody has built one); a person should print one and follow it.
 - No page numbers in a contents list; no localization of the page's chrome.
 - Print dialogs vary: "Save as PDF" is exact, a paper printer's scaling ("fit to page") would shrink the sheets.
+
+## §305 — TODO 264 cleared: six placed-pose overlaps and 27 insertion steps, each at its root
+
+§302's validator found two closed inventories in the LEGO builds (TODO 264): six pairs of solids standing in each
+other at rest, deeper than the 1.0 LDU a friction pin's ridges are moulded to, and 27 (build, part, blocker) steps no
+straight, turned or two-leg path could insert. Both inventories in `tools/probe-technic-steps.mjs` are now EMPTY and
+stay closed: a new overlap or flagged step fails the probe as a regression. **MODELLED, not built** — the builds are
+judged against the LDraw part geometry; nobody has assembled them.
+
+Every fix is in the solver that produced the fault, in POSITION space or in the order derivation (`src/technic-steps.js`).
+No part was thinned, no ratio, arm or section moved, the 0.4 LDU tolerance and the 1.0 LDU overlap ceiling are as §302
+derived them, and no row was deleted until its geometry cleared. Where a fix moved a gated number, the number was
+re-derived by its own solve (the balance, the detent's pivot), never re-targeted.
+
+### The six overlaps (each a constraint the solver did not hold)
+
+| build | pair | was | the constraint now held | in |
+|---|---|---|---|---|
+| escapement | crossbar 3708 through the bob's 40T 3649 | 4.31 LDU | a gear keyed to the balance whose centre stands nearer the crossbar's axis than its own tip plus an axle's reach (2.4 mm) may not share the crossbar's span; the bob's 40T (16 mm under it, tip 20.94 mm) and its arm hang IN FRONT of the front knife, AX_CLEAR off its stack, and the crossbar reaches forward to carry the arm | `frameEscapement` |
+| keyless | the stem's 8L 3707 through the joiner 18948's web | 1.17 | the joiner is not a tube: its axle holes stop 2 LDU (0.8 mm, `KEYLESS_DIM_MM.joinerStop`, measured by `probe-technic-ldraw`) either side of its middle. The stem is TWO axles, each flush with its end of the span (so each fills its column's hole, as the one did) and the shortest that enters the joiner's bore short of the web: a 4L to the crown's end, a 3L to the winding end, each 7.6 mm in | `frameKeyless`, `ldrawBuild` |
+| keyless | the 12L minute axle 3708 against the setting branch's 24T 3648 | 1.60 | an axle longer than its span (11 studs, a 12L) OVERHANGS it, and the overhang is metal: the part stands centred if its overhang meets nothing, else flush with the end whose overhang does not (another shaft's body or column within the axle's reach). The minute axle is now flush front, its half-stud overhang at the back. `frameFindings` holds every axle's whole part against other shafts' columns | `frameShafts` |
+| fusee | the detent pawl's arm 6632, its 2L 32062 and its 8T 3647 into the baseplate | 1.60, 1.38, 2.02 | the pawl hangs over the baseplate, so its lowest metal (the 8T's tip circle, the arm's rounded ends) stands AX_CLEAR over the stud tops at every pose of its ride, seat to a tooth's tip (`detentLowest`). `solveMaintaining` refuses landing H's (−28, −16) mm (lowest −0.42 mm) and answers **(28, −16) mm**, band −1, lowest **5.20 mm** up; `MAINTAINING` re-declared | `solveMaintaining` |
+
+### The 27 flagged steps
+
+| row(s) | was (depth over allowed, LDU) | cleared by |
+|---|---|---|
+| fusee 55982 vs 6541 | 1.20 over 0.90 (0.5 at rest) | THE CONE ENDS AT ITS METAL. The sprocket's bounds run −17…+20 LDU, so its middle stands 0.6 mm off its origin (`FUSEE_DIM_MM.zMid`, measured, held by the fusee probe with a control) and its hub boss stood 0.2 mm past its slab, into the back column. The column now stands a gap outside the cone's metal (one stud further back, the lattice); the fusee axle is a 12L where it was a 10L. The fusee probe holds every step's metal inside its columns (control: landing H's column, caught) |
+| keyless 7785 vs 6541 (2026), 69778 vs 6541 (classic) | 0.60, 0.50 over 0.40 | a part whose free end along its axle is shut by a part of its OWN group off the line (the detent wheel by the follower's arm, the arm by the wheel) is HELD in the gap and the axle threaded, where landing 2 slid it from that end (`groupShut`); and the works of a group go in an order read off their corridors |
+| keyless 32123a vs 32062, vs 46372 | 0.64–0.83 over 0.40 | a hosted body's rest (the follower's bush and 2L in the arm's far hole) goes in after the work that puts its host in, and an axle among the rest after the parts on its own line (pushed through the arm's hole and the bush) |
+| keyless 18942 vs 46372 | 0.42–0.57 over 0.40 | the works' corridor order: the rack is lowered into its channel before the pinion above it |
+| keyless 6641 vs 3648, vs 3708 | 0.42–2.00 over 0.40 | a part is ON a line when one of its HOLES is (the pack's hole primitives), not only its origin: the changeover catch hangs from a pivot hole 20 LDU off its origin and is now held on the selector axle before it is threaded |
+| keyless 4019 vs 3647, vs 18946 | 0.63, 0.44 over 0.40 | A GEAR IS NOT LOWERED BETWEEN TWO MESHES: the motion works' 16T between the 8T it meshes and the hour wheel (all three on one line) goes in before the 8T's shaft, so it crosses one mesh |
+| keyless unit vs 3005, vs 6541 (set) | 1.67, 0.50 over 0.43 | a part that travels between modes is nested where it stands at NEUTRAL (in set the ring had been nested with the setting gear, not its joiner); the works are ordered over every mode's placements at once, so the three modes give one order |
+| escapement 3705 vs 3004 | 0.50 over 0.40 | an axle SHUT AT BOTH ENDS by frame parts (the escape arbor between the knife stacks) is lowered beside its bricks with the parts outside them on the side it comes from (its wheel) and slid through: the slide is the least that clears its first brick, **20.4 mm**, and the lowered unit must fit between the frame parts that shut the line |
+| escapement 6632 vs 3647 | 0.86 over 0.40 | in a sub-assembly the arms go on before the rest (a pin joins the arms it passes) and in order along their axle (the −u pallet arm was shut between the drop and the +u arm) |
+| fusee 4019 vs 3647 | 0.58 over 0.42 | A BODY THAT PIVOTS ON A UNIT RIDES IN IT: the click pawl, its arm's middle hole on the ratchet's peg, is assembled into the maintaining unit after its peg and before the joiners that close the unit's ends (placed after, its arm could not pass the joiner 3.4 mm in front of it) |
+| fusee 32062 vs 3811 | 2.04 over 1.78 | the detent re-solved over the baseplate (above) |
+| alarm 3673 vs 11478, 3673, 7229; 11478 vs 3673; 3647 vs 7229; 4019 vs 3673, 7229; 7229 vs 2712 | 0.42–2.18 over 0.40–1.40 | THE PIN'S LIP: a pin's press allowance (§302: carried only along its own axes) now also includes its lip, read the way a pin meets a hole: drawn along its own axis into a 6541's hole, either end leading, until its middle reaches the face — **1.000 LDU** for 3673, 6558 and 43093's pin end, a 4L axle 0.000 (`pinLip`, a probe control). Landing 2 held a pin to its RESTING fit (0.49) and flagged the lip at every hole; with it and the works' order these cleared |
+| alarm 3673 vs 2712, vs 3005; 6558 vs 3005 | 0.90–1.50 over 0.89–1.40 | PINS IN A HELD PART go in with it: the release disc's beams take their pins off the model and are lowered as units (every way along a pin's axis met the rotors in front or the disc's 24T behind once the beam was held), the unit standing under another lowered first |
+
+The order rules are in `deriveSteps`' header comments with the case that forced each; the chapters' own corridor order
+is landing 2's (a part held by an off-origin hole opens no corridor between chapters).
+
+### Re-derived numbers
+
+- **The balance** (`solveBalance`, the probe's gate): the crossbar is now a 10L (−8.4…71.2 mm), not a 12L, so the
+  answer moved: 11478 arms with **3649+3648+3648 a side and two 3649s on the 6632 bob**, T **1.00175 s** (+0.175%,
+  inside `RATE_BAND`'s 0.5%), d 3.01 mm (landing J's: 3648+3648+4019, one 3649 bob, T 0.99572 s). `TECHNIC_BALANCE`
+  re-declared; the escapement's rate, lock and beat gates are unchanged and pass.
+- **The detent** (`solveMaintaining`): (28, −16) mm, band −1, locking the ratchet against running back as before.
+  The fusee loop's pawl rides read a table a whole pitch on by its traced END (`pawlRideSteps`' `at`), not its start:
+  the re-solved detent is posed just before a tooth lifts it, where the seat runs 1.25° a degree, and two teeth's
+  measured profiles differ by hundredths of a degree (the start read back there stood the 8T 0.012 mm off the next
+  tooth). The spread (51.6% → 27.6%) and the cord are untouched.
+- **Part counts.** Keyless: the 8L stem becomes a 4L + a 3L. Fusee: the 10L fusee axle becomes a 12L. Escapement:
+  4 × 3649 (was 1), 2 × 4019 gone, the 12L crossbar a 10L, one 2L bob axle a 3L. `PART_IDS` and the colour table are
+  unchanged (the BOM probe re-derives both).
+
+### Booklet
+
+`src/technic-booklet-flags.js` regenerated by `tools/booklet-flags.mjs --write`: **70 red cards before (55 flagged-step
+cards, 16 overlap cards, one card carrying both) across every booklet, 0 after.** The booklet probe's inventories are
+empty and its marker controls now PLANT a flagged verdict (a flagged step is a regression).
+
+### Instruments
+
+`probe-technic-steps` (37 checks, 16 controls: adds the pin's lip against a plain axle and a gear pushed onto its
+neighbour reading as an overlap), `probe-technic-build` (an axle in pieces: every gap between two of a body's axles
+inside a part both enter; control: the pieces drawn out of the joiner), `probe-technic-frame` (control: an overhanging
+axle stood back centred is found fouling, 2 of 2), `probe-technic-escapement` (no gear in the crossbar's span within
+its tip plus the reach; control: landing J's bob back in the span), `probe-technic-fusee` (`zMid` held, the cone's metal
+inside its columns, the detent over the baseplate; controls for each), `probe-technic-ldraw` (`joinerStop`, its
+control). Every technic probe passes: frame, build, ldraw, keyless, motion, fusee, fusee-loop, alarm, column-wheel,
+pusher, escapement, carousel, bom, steps, booklet.
+
+### Not done
+
+- The fusee's back column stands a whole stud (7.8 mm) behind the cone's metal: the lattice, not a choice.
+- The alarm's chapter order still depends on its state (reported, as §302 left it).

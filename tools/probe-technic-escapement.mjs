@@ -296,6 +296,18 @@ let mo;
   for (const [k, v] of cl) if (!(v >= X.AX_CLEAR - 1e-9)) fail(`${k}: ${v.toFixed(3)} mm, under the one-LDU clearance`);
   const ldr = toLdr(b), n = ldr.split('\n').filter((l) => l.startsWith('1 ')).length, want = b.statics.length + b.shafts.reduce((s, sh) => s + sh.parts.length, 0);
   if (n !== want) fail(`the .ldr carries ${n} parts, the build ${want}`);
+  // §305 (TODO 264): THE CROSSBAR THROUGH NO GEAR. Every gear the balance carries in a slab the crossbar spans
+  // stands its own tip plus the axle's reach off the crossbar's axis (landing J's 40T bob, 16 mm under it with a
+  // 20.94 mm tip, stood in the span and the crossbar ran through its web, 4.31 LDU deep)
+  const crossbarErrs = (f) => X.framedBalance(f, lib).filter((p) => p.role === 'mass').flatMap((p) => {
+    const ra = X.ESC_DIM_MM.axleReach, w0 = p.m[2] - X.ESC_DIM_MM.gearHalf, w1 = p.m[2] + X.ESC_DIM_MM.gearHalf;
+    if (Math.min(w1, f.crossbar.y1) - Math.max(w0, f.crossbar.y0) <= 1e-9) return [];
+    const d = Math.hypot(p.m[0], p.m[1] + ra), need = GEAR_TIP_MM[p.part] + ra;
+    return d >= need - 1e-9 ? [] : [`a ${p.part} ${d.toFixed(2)} mm off the crossbar's axis, inside its span; it needs ${need.toFixed(2)}`];
+  });
+  for (const e of crossbarErrs(fr)) fail(`the crossbar runs through a gear: ${e}`);
+  console.log(`  the crossbar spans y ${fr.crossbar.y0}…${fr.crossbar.y1}; the bob's gears hang in front of it (y ${fr.slabs.G.y0}…${fr.slabs.G.y1}), clear of it`);
+  control('landing J\'s bob gears back inside the crossbar\'s span are found in it', crossbarErrs({ ...fr, crossbar: { ...fr.crossbar, y0: fr.slabs.G.y0 - 1 } }).length > 0);
   console.log(`\nBUILD: knives at y ${knives.map((k) => k.y).join(' and ')} (apex ${fr.zK} mm), the crossbar a ${fr.crossbar.lenStuds}L across both; the arbor at ${fr.zE} mm on jumper columns at y ${fr.columns.filter((c) => c.shaft === 'escape').map((c) => c.y).join(', ')}; ${cl.map(([k, v]) => `${k} ${v.toFixed(2)} mm`).join('; ')}; ${n} parts in the .ldr, base ${fr.base.studsX}×${fr.base.studsY} studs`);
 }
 

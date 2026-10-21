@@ -99,6 +99,7 @@ export const KEYLESS_PARTS = Object.freeze({ clutch: TECHNIC_CLUTCH_GEAR.part, j
 export const KEYLESS_DIM_MM = Object.freeze({
   joinerHalf: 12,          // 18948: Z ±30 LDU, a 3L joiner
   joinerR: 3.800077,       // 18948: its farthest surface, the collar at its middle (9.5 LDU)
+  joinerStop: 0.8,         // 18948: its two axle holes end 2 LDU either side of its middle — a web between them that no axle passes (§305)
   ringHalf: 11.2,          // 18947: Z ±28 LDU
   ringR: 7.200182,              // 18947: the flanges either side of the groove, 18 LDU
   ringFlangeHalf: 6.8,     // 18947: the flanges end 17 LDU off the ring's middle; past them only the tube
@@ -350,6 +351,24 @@ function frameShafts(gen, key, lay) {
     const len = Object.keys(AXLE_PARTS).map(Number).sort((a, b) => a - b).find((n) => n >= studs);
     axles.push({ shaft: i, x: s.x, z: r6(col.z), y0: a0, y1: a1, studs, part: len ? AXLE_PARTS[len] : null, lenStuds: len ?? null });
   }
+  // §305 (TODO 264) — AN AXLE LONGER THAN ITS SPAN overhangs it, and the overhang is metal: the part is
+  // lenStuds whole studs, so y0…y1 are moved to the PART's extent. Where it overhangs is not free — landing D's
+  // 11-stud minute axle is a 12L, centred, and its front half-stud ran 1.60 LDU into the setting branch's 24T.
+  // So the part stands centred if its overhang meets nothing, else flush with the end whose overhang does not
+  // (another shaft's body — its tip disc — or another shaft's column within the axle's reach).
+  const reachesAxle = (a, y0, y1) => lay.shafts.some((o, j) => j !== a.shaft && bodies(o).some((g) =>
+    Math.min(y1, g.y + g.width / 2) - Math.max(y0, g.y - g.width / 2) > 1e-9 && Math.abs(o.x - a.x) - D.axleR < g.tip - 1e-9))
+    || columns.some((c) => c.shaft !== a.shaft && c.boxes.some((b) => Math.min(y1, b.y1) - Math.max(y0, b.y0) > 1e-9
+      && Math.hypot(Math.max(b.x0 - a.x, 0, a.x - b.x1), Math.max(b.z0 - a.z, 0, a.z - b.z1)) < D.axleR - 1e-9));
+  for (const a of axles) {
+    if (!a.lenStuds || a.lenStuds * D.stud <= a.y1 - a.y0 + 1e-9) continue;
+    const over = a.lenStuds * D.stud - (a.y1 - a.y0);
+    const place = [[a.y0 - over / 2, a.y1 + over / 2], [a.y0, a.y1 + over], [a.y0 - over, a.y1]]
+      .find(([y0, y1]) => !reachesAxle(a, y0, a.y0) && !reachesAxle(a, a.y1, y1));
+    if (!place) return { key: row.key, gen, framed: false, reason: `shaft ${a.shaft}'s ${a.lenStuds}L axle overhangs its ${a.studs}-stud span into a part at either end` };
+    a.span = [a.y0, a.y1];                                     // the span the part covers (its columns' outer faces)
+    [a.y0, a.y1] = place.map(r6);
+  }
   const xs = columns.flatMap((c) => c.boxes.map((b) => [b.x0, b.x1])).flat();
   const ys = columns.flatMap((c) => [c.y - half, c.y + half]);
   const base = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
@@ -426,6 +445,21 @@ export function frameKeyless(gen, motionArg) {
   }
   const f = frameShafts(gen, key, { shafts, meshes });
   if (!f.framed) return f;
+  // §305 (TODO 264) — THE STEM IS TWO AXLES. The joiner is not a tube: its axle holes end joinerStop either side
+  // of its middle, with a web between them (landing D's one 8L stem ran through it, 1.17 LDU into the web). So the
+  // stem is an axle from each END of its span (flush, as the one axle was, so each fills its column's hole) into
+  // the joiner's bore: the shortest that enters the bore past the joiner's face and stops short of the web. Each is
+  // keyed to the joiner, which turns them together.
+  {
+    const st = f.axles[0], lens = Object.keys(AXLE_PARTS).map(Number).sort((a, b) => a - b), trim = 0.2;
+    const piece = (end, sg) => {                               // sg −1: the crown's end, +1: the winding end
+      const n = lens.find((v) => { const far = end - sg * (v * D.stud - trim); return sg * far < K.joinerHalf && sg * far >= K.joinerStop; });
+      return n === undefined ? null : sg < 0 ? { y0: end, y1: end + n * D.stud, part: AXLE_PARTS[n], lenStuds: n } : { y0: end - n * D.stud, y1: end, part: AXLE_PARTS[n], lenStuds: n };
+    };
+    const pieces = [piece(st.y0, -1), piece(st.y1, 1)];
+    if (pieces.some((p) => !p)) return { key, gen, framed: false, reason: 'no axle reaches from an end of the stem into the joiner\'s bore short of its web' };
+    f.axles[0] = { ...st, part: pieces.map((p) => p.part).join('+'), lenStuds: pieces.map((p) => p.lenStuds).join('+'), pieces };
+  }
   // LANDING E — THE SELECTOR: a horizontal axle along x over the ring's
   // neutral centre (y = 0), the catch keyed to it at x = 0, its bulb in the
   // groove. Its columns stand on the +x side (the setting branch's 8T sits at
@@ -683,6 +717,11 @@ export function frameFindings(f) {
     const ga = a.gears[m.a[1]], gb = b.gears[m.b[1]];
     const want = (ga.teeth + gb.teeth) / 2 * CATALOGUES[f.gen].module_mm;
     if (Math.abs(Math.abs(b.x - a.x) - want) > 1e-9 || ga.y !== gb.y) bad.push(`mesh ${ga.teeth}:${gb.teeth} not at ${want} mm in one layer`);
+  }
+  // §305: an axle's whole PART (its overhang past its span included) against every column of another shaft
+  for (const a of f.axles) for (const c of f.columns) {
+    if (c.shaft === a.shaft) continue;
+    for (const b of c.boxes) if (overlap1(a.y0, a.y1, b.y0, b.y1) && distToRect(a.x, a.z ?? f.axleZ, b) < D.axleR - EPS) bad.push(`shaft ${a.shaft}'s axle runs into shaft ${c.shaft} ${c.end} ${b.part}`);
   }
   // two axles on ONE line (same x, same height) are two parts only end to end:
   // their spans must not meet (their columns are held apart by the box test)

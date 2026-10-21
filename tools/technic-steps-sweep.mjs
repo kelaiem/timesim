@@ -258,6 +258,31 @@ function sweepLeg(movers, d, s, statics, { tol, step = STEP_LDU, press = null })
   return { ok: true, first: null };
 }
 
+// THE PIN'S LIP (§305, TODO 264). A pin is moulded to SNAP through a pin hole: the lip at each end (a friction
+// pin's ridges) is wider than the hole and passes it on the way in, and at rest it stands beyond the hole, so no
+// final pose shows it — landing 2's press map therefore held every pin pushed home to its collar to its RESTING fit
+// (0.49 LDU) and flagged the lip (1.0) at every hole. So a pin's press depth is also read the way it is made to
+// meet a hole: drawn along its own axis into a 1×1 Technic brick's hole (6541, the frame's own part), either end
+// leading, from outside until its middle reaches the hole's face; the deepest reading. Measured off the parts,
+// never typed (it reads 1.000 for 3673, 6558 and 43093's pin end), and allowed, like any press, only along the
+// pin's own axes.
+export const LIP_HOLE_PART = '6541', LIP_HOLE_Y = 10;           // 6541: its hole runs along its Z, 10 LDU under its top
+export function pinLip(lib, id) {
+  const cache = (pinLip.cache ??= new WeakMap());
+  if (!cache.has(lib)) cache.set(lib, new Map());
+  const c = cache.get(lib);
+  if (c.has(id)) return c.get(id);
+  const brick = placedBody(lib, { part: LIP_HOLE_PART, role: 'technicBrick', m: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1] });
+  const face = brick.g.box.min.z;                              // the hole's near face
+  let worst = 0;
+  for (const sg of [1, -1]) for (let z = face - 100; z <= face + 1e-9; z += STEP_LDU) {
+    const b = placedBody(lib, { part: id, role: 'pin', m: [0, LIP_HOLE_Y, z, 0, 0, -sg, 0, 1, 0, sg, 0, 0] });   // its own X onto the hole's Z
+    if (b.box.intersectsBox(brick.box)) worst = Math.max(worst, depthOf(b, b.M, brick).depth);
+  }
+  c.set(id, worst);
+  return worst;
+}
+
 export function validatePlan(plan, lib, { tol = TOL_LDU, turnSteps = TURN_STEPS, pressOn = true } = {}) {
   const base = plan.parts.map((p) => placedBody(lib, p));
   const press = new Map();                                     // part id -> deepest final-pose interference it shows anywhere
@@ -267,6 +292,7 @@ export function validatePlan(plan, lib, { tol = TOL_LDU, turnSteps = TURN_STEPS,
     if (dpt <= 0) continue;
     for (const id of [base[a].part.part, base[b].part.part]) press.set(id, Math.max(press.get(id) ?? 0, dpt));
   }
+  for (const p of plan.parts) if (p.role === 'pin') press.set(p.part, Math.max(press.get(p.part) ?? 0, pinLip(lib, p.part)));
   const placedMain = [], placedSub = new Map();
   const out = [];
   const rotated = (placedIdx, moverIdx, delta) => {

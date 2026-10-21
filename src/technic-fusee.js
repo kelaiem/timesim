@@ -147,6 +147,11 @@ export const FUSEE_DIM_MM = Object.freeze({
     '32123b': 3.6001, '4265a': 3.6001, '6577': 3.6001, '55982': 8.4002, '56903': 8.4002, '32089': 13.1005, '2994': 12.0003, '4185b': 12.0007, '54087': 15.2001, '56904': 15.2009, '22253': 18.0011, '6595': 18.0011, '44292': 15.2024, '6582': 18.4011 }),
   halfWidth: Object.freeze({ '32123a': 2, '3713': 4, '3482': 4, '4185a': 2, '3736': 4,   // along the axle
     '32123b': 2, '4265a': 2, '6577': 2, '55982': 7.4, '56903': 4, '32089': 3.9004, '2994': 7, '4185b': 2, '54087': 10, '56904': 7.6, '22253': 12.4, '6595': 12.4, '44292': 10, '6582': 10 }),
+  // §305 (TODO 264): the part's MIDDLE along its own Z, off its origin — a hub boss standing proud of one face
+  // (55982's −17..20 LDU). The frame lays each step's EXTENT in its slab, so its origin stands this far short of
+  // the slab's middle; landing H set the origin at the middle and the sprocket's boss stood 0.6 mm into the
+  // cone's back column (0.5 LDU read, 1.2 lowering it in). Unlisted parts are symmetric.
+  zMid: Object.freeze({ '2994': 1, '32089': 0.0996, '55982': 0.6, '56904': -0.4 }),
   floorHalf: Object.freeze({ '32123a': 0.04, '3713': 2, '3482': 1.54, '4185a': 0.3, '3736': 0,   // the cord's centre may stand this far either side of the groove's middle at the seat
     '32123b': 0.04, '4265a': 0.04, '6577': 0.04, '55982': 0.28, '56903': 0.28, '32089': 0.18, '2994': 1, '4185b': 0.02, '54087': 2.94, '56904': 0.2, '22253': 6.73, '6595': 6.73, '44292': 3.8, '6582': 4.6 }),
   // §285: the floor's middle along the part's own Z from its origin (landing
@@ -487,7 +492,11 @@ export function frameFusee(spec = TECHNIC_FUSEE, maint = MAINTAINING, centre = F
   const steps = stepPlanes(spec.steps).map((s) => ({ part: s.part, y: r6(y0 + s.mid), wrapY: r6(y0 + s.wrapY), y0: r6(y0 + s.y0), y1: r6(y0 + s.y1),
     seat: F.seat[s.part], rim: F.rim[s.part] }));
   const y = steps[steps.length - 1].y1;
-  const coneEnd = y;
+  // §305 (TODO 264): the cone ENDS AT ITS METAL, not its last slab: a step is laid by its width with its origin
+  // mid-slab, and a part whose middle stands off its origin (zMid — the sprocket 55982's hub boss, 0.6 mm proud
+  // of its back face) reaches past its slab. Landing H stood the back column on the slab's end, 0.2 mm inside
+  // the boss (0.5 LDU at rest, 1.2 lowering it in), so the column now stands a gap outside the metal.
+  const coneEnd = Math.max(y, ...steps.map((s) => r6(s.y + (F.zMid[s.part] ?? 0) + F.halfWidth[s.part])));
   const hookPlate = { part: FUSEE_PARTS.hookPlate, top: yTop, y0: yTop - F.plateH, y1: yTop, cordY: r6(yTop + F.endH - F.endCord) };
   // columns on the stud grid, flush or more outside the parts they hold
   const fFront = Math.floor((hookPlate.y0 - half) / D.stud) * D.stud;
@@ -743,7 +752,7 @@ export function bandMoment(going, { lagDeg = BAND_LAG_DEG, phiM = 0, holeR = FUS
 // z) and band sense the first that locks the ratchet against running back.
 export const MAINTAINING = Object.freeze({
   click: Object.freeze({ sense: -1 }),
-  detent: Object.freeze({ pivot: Object.freeze([-28, -16]), sense: -1 }),
+  detent: Object.freeze({ pivot: Object.freeze([28, -16]), sense: -1 }),
 });
 // The click in M's frame: the 16T at the origin, the pivot in the ratchet's
 // hole on +u, the 8T 8 mm out on the liftarm.
@@ -756,6 +765,21 @@ export function clickSweep(lib, seatPsi) {
   const c = clickSpec(0), P = starProfile(lib, FUSEE_PARTS.pawl);
   const q = [c.pivot[0] + c.arm * Math.cos(seatPsi), c.pivot[1] + c.arm * Math.sin(seatPsi)];
   return Math.max(Math.hypot(...q) + P.tip, Math.hypot(...q) + FUSEE_DIM_MM.armHalfWidth, Math.hypot(...c.pivot) + FUSEE_DIM_MM.armHalfWidth);
+}
+// THE DETENT'S LOWEST METAL over its ride (§305, TODO 264), mm over the baseplate's top: the 8T (its tip
+// circle; its axle is inside it), the arm from its pivot hole to its far hole (its rounded ends, armHalfWidth
+// round each hole), sampled every tenth of a degree from the seat ψ lifting against the band until the 8T's
+// tip circle stands on the ratchet's (the highest a tooth can lift it). (u, v) is (x, −z) about the main axis.
+export function detentLowest(spec, mdl, psiSeat, zA) {
+  const tipW = mdl.W.tip, tipP = mdl.P.tip, hw = FUSEE_DIM_MM.armHalfWidth, p = spec.pivot;
+  const height = (psi) => { const q = mdl.at(psi); return Math.min(zA - q[1] - tipP, zA - Math.max(p[1], q[1]) - hw); };
+  let low = height(psiSeat);
+  for (let k = 1; k <= 1800; k++) {
+    const psi = psiSeat - spec.sense * k * Math.PI / 1800;
+    low = Math.min(low, height(psi));
+    if (Math.hypot(...mdl.at(psi)) >= tipW + tipP) break;
+  }
+  return low;
 }
 // THE DETENT'S PIVOT, searched over the frame's lattice: x on the 4 mm grid
 // (a jumper takes the half stud), z a Technic brick's hole height; within the
@@ -797,7 +821,12 @@ export function solveMaintaining(lib, frame, { going = goingSense(frame), limit 
     const near = Math.hypot(p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])) - F.armHalfWidth;
     if (!(near > pegSweep)) continue;
     const square = Math.abs(((q[0] - p[0]) * q[0] + (q[1] - p[1]) * q[1]) / (arm * dq));
-    scored.push({ ...c, psi, eightT: q, armNear: near, square });
+    // §305 (TODO 264): the pawl HANGS OVER THE BASEPLATE, so its lowest metal must stand over the stud tops by
+    // AX_CLEAR at every pose it takes — its seat and the whole ride up a tooth to standing on its tip (the 8T's
+    // tip circle on the ratchet's). Landing H's pick put the 8T 3.2 mm up, 1.8 mm into the plate.
+    const low = detentLowest(spec, mdl, psi, zA);
+    if (!(low >= D.studH + AX_CLEAR - 1e-9)) continue;
+    scored.push({ ...c, psi, eightT: q, armNear: near, square, low });
   }
   scored.sort((a, b) => a.m - b.m || a.square - b.square || Math.abs(a.dx) - Math.abs(b.dx) || b.sense - a.sense);
   const tried = [];
@@ -1224,7 +1253,15 @@ export function* pawlRideSteps(lib, spec, teeth, { theta0 = 0, n = 48 } = {}) {
     while (m.depth(start, theta) > 0) start -= s * RIDE_BACK;
     table[i] = firstContact(m.depth, start, theta, s);
   }
-  const at = (theta) => { const u = mod(theta - theta0, pitch) / pitch * n, i = Math.min(n - 1, Math.floor(u)), f = u - i; return table[i] * (1 - f) + table[i + 1] * f; };
+  // §305: read forward the way the table was traced — a whole pitch past its start reads the trace's own END
+  // (the next tooth's start as the 8T reaches it), not its start: two teeth's measured profiles differ by
+  // hundredths of a degree, and where the seat is steep (§305's re-solved detent, posed just before a tooth lifts
+  // it) the start read back there stood the 8T 0.012 mm off the next tooth
+  const at = (theta) => {
+    const r = theta - theta0; let u = mod(r, pitch) / pitch * n;
+    if (u < 1e-9 && r > pitch / 2) u = n;
+    const i = Math.min(n - 1, Math.floor(u)), f = u - i; return table[i] * (1 - f) + table[i + 1] * f;
+  };
   return { table, theta0, pitch, n, at, model: m };
 }
 export function pawlRide(lib, spec, teeth, opts) {
