@@ -254,7 +254,9 @@ export const SPEC = (() => {
   // reads the rectangle, so identity stays bit-exact. The rectangle is never
   // typed — it is a function of the arrangement, which is what
   // tools/form-layout.mjs searches over the §33 knobs to minimise.
-  const caseShape = raw.caseShape === 'rect' ? 'rect' : null;
+  // §308 — the kinds of layout.js's shape library (caseShapeOf) a case may
+  // take: 'rect', 'cushion', 'tonneau'. Anything else is round.
+  const caseShape = ['rect', 'cushion', 'tonneau'].includes(raw.caseShape) ? raw.caseShape : null;
   // §307 landing 2 — THE MEASURED FORM RECTANGLE, `xMin,xMax,yMin,yMax` in
   // movement units: the footprint of the whole built movement (every part the
   // build placed inside the round case's bore, the case-path gong excepted)
@@ -3353,85 +3355,359 @@ export function formRect(circles) {
     cornerR: Math.min(rim, hw, hh), area: 4 * hw * hh,
   });
 }
-// §307 — the rectangle as a closed CCW loop of [x, y] points, grown (or inset,
-// negative) by `grow` on every side with the corner round growing with it, so
-// a plate, its dial and the case's opening are concentric offsets of ONE
-// outline. The last point is not repeated.
-export function formLoop(rect, { grow = 0, cornerSegs = 12 } = {}) {
-  const r = Math.max(0, rect.cornerR + grow);
-  const x0 = rect.xMin - grow + r, x1 = rect.xMax + grow - r;
-  const y0 = rect.yMin - grow + r, y1 = rect.yMax + grow - r;
+// §308 landing 1 — THE CASE SHAPE LIBRARY: ONE law for every outline a case,
+// a plate and a dial are cut to. `caseShapeOf(kind, box, opts)` returns
+//
+//   { kind, bounds, hw, hh, cx, cy, xMin, xMax, yMin, yMax, accuracy,
+//     inset(x, y)        signed distance to the outline, + inside
+//     exit(az, off = 0)  distance along the ray at azimuth `az` whose base
+//                        stands `off` to its left (on (−sin az, cos az)) from
+//                        the ORIGIN, to where it leaves the outline (NaN: the
+//                        ray's line misses the shape)
+//     grown(g)           the shape offset outward by g (negative: inward) — a
+//                        TRUE offset, the same kind where the family is closed
+//                        under offsetting
+//     loop({ grow = 0, segs })  the grown outline as a closed CCW [x, y] array,
+//                        the last point not repeated; held convex (so simple)
+//   }
+//
+// Every shape is a closed CONVEX curve held as a list of PRIMITIVES — straight
+// segments and circular arcs, wound CCW — so inset, exit and loop are one
+// generic reading of the list: inset is the exact distance to the nearest
+// primitive, signed by that primitive's outward normal at the foot (exact on a
+// G1 boundary, which every kind below is); exit is the farthest ray crossing.
+// The kinds, `box` = { xMin, xMax, yMin, yMax } (the shape's BOUNDS) except the
+// circle's { cx, cy, r }:
+//   · 'circle' — one full arc. Exact; grow g is radius r + g.
+//   · 'rect'   — the rounded rectangle (corner radius opts.cornerR, default
+//     PLATE_RIM_MARGIN — formRect's own law, min(rim, hw, hh)): four segments
+//     and four quarter arcs. Exact; grow g is bounds ±g, corner rc + g (an
+//     inward grow past the corner radius leaves a sharp corner, rc 0 — still
+//     the exact offset of a rectangle).
+//   · 'cushion' — the SUPERELLIPSE |x'/a|^n + |y'/b|^n = 1 about the box's
+//     centre (Lamé's curve), n = opts.n, default CUSHION_N. Its offset is not
+//     a superellipse and its distance has no closed form, so it is held as a
+//     DENSE POLYLINE: CUSHION_SAMPLES points at equal ARC LENGTH (resampled off
+//     a 16× finer parametric walk, x' = a·sgn(cos t)|cos t|^(2/n) and the same
+//     in y), and every inset, exit and grow is the polyline's — exact for the
+//     polyline, within its `accuracy` of the curve: the largest deviation of a
+//     chord from the curve between its ends, measured at build (the sagitta;
+//     ~5e-4 u at CUSHION_SAMPLES on a 45 u box, reported on the shape). A grow
+//     moves every sample along the curve's ANALYTIC normal (the gradient of the
+//     implicit form), which is the exact offset curve sampled.
+//   · 'tonneau' — the BARREL: the two short ENDS straight (y' = ±b), the two
+//     long SIDES circular arcs bowed outward, each through its apex (±a, 0) on
+//     the box's side and through the ends' corners (±(a − e), ±b), e =
+//     opts.bow·a (TONNEAU_BOW); radius R = (e² + b²)/(2e), centre (±(a − R),
+//     0). The corners where a side meets an end are rounded tangent to both
+//     at opts.cornerR (default PLATE_RIM_MARGIN, the rect's corner): the corner
+//     circle's centre stands rc inside the end and R − rc from the side's
+//     centre. Exact (arcs and segments); grow g adds g to R, to rc and to b and
+//     keeps every centre — the offset of a G1 arc-and-line curve is the same
+//     construction at those radii, so the family is closed under it.
+// The shape library is the owner's styling vocabulary; its SIZE is never
+// typed — main.js FITS it (see `fitCaseShape`).
+//
+// §308 — THE CUSHION'S EXPONENT, the owner's styling input in the strap
+// width's standing (CASE_LUG_T): n = 4, the "squircle". n = 2 is the ellipse
+// and n → ∞ the rectangle; 4 is the classic cushion case's softened square —
+// the shoulder along the diagonal stands at 2^(−1/4) = 0.84 of the box's
+// corner, against the ellipse's 0.71 — and its curvature vanishes at the four
+// axis points, so the ends the lugs weld to are flat to fourth order.
+export const CUSHION_N = 4;
+// The cushion's polyline resolution: the sagitta it leaves (`accuracy`) must
+// be well under CLEAR_MARGIN, the finest distance any consumer judges; 1024
+// equal-arc samples on a 45 u box measure ~5e-4 u, 300× under it.
+export const CUSHION_SAMPLES = 1024;
+// §308 — THE TONNEAU'S BOW, the owner's styling input: the long sides stand
+// in by e = 0.12·a at the ends — a barrel the eye reads as bowed (the
+// classic tonneau's sides converge by roughly a tenth of the width at the
+// ends) while the ends stay long enough to carry the lugs flat.
+export const TONNEAU_BOW = 0.12;
+
+const TAU = 2 * Math.PI;
+const angIn = (a, a0, a1) => {           // is angle a on the CCW sweep a0 → a1 (a1 > a0, sweep ≤ 2π)?
+  const d = ((a - a0) % TAU + TAU) % TAU;
+  return d <= (a1 - a0) + 1e-12;
+};
+// One primitive's three readings. seg: { a: [x, y], b: [x, y] } — on a CCW
+// loop its outward normal is the edge direction turned −90°. arc: { c, r, a0,
+// a1 } CCW (a1 > a0) — convex, its outward normal radial.
+function primFoot(p, x, y) {
+  if (p.seg) {
+    const [ax, ay] = p.a, [bx, by] = p.b, ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
+    const t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2));
+    const fx = ax + t * ex, fy = ay + t * ey, L = Math.sqrt(L2);
+    // at an end the foot is a vertex: the normal is the vertex's (p.na / p.nb, the
+    // bisector of its two edges), so a point in the corner's normal cone signs right
+    let nx = ey / L, ny = -ex / L;
+    if (t === 0 && p.na) [nx, ny] = p.na; else if (t === 1 && p.nb) [nx, ny] = p.nb;
+    return { d: Math.hypot(x - fx, y - fy), s: (x - fx) * nx + (y - fy) * ny };
+  }
+  const [cx, cy] = p.c, th = Math.atan2(y - cy, x - cx), rr = Math.hypot(x - cx, y - cy);
+  if (angIn(th, p.a0, p.a1)) return { d: Math.abs(rr - p.r), s: rr - p.r };
+  let best = null;
+  for (const a of [p.a0, p.a1]) {
+    const fx = cx + p.r * Math.cos(a), fy = cy + p.r * Math.sin(a), d = Math.hypot(x - fx, y - fy);
+    if (!best || d < best.d) best = { d, s: (x - fx) * Math.cos(a) + (y - fy) * Math.sin(a) };
+  }
+  return best;
+}
+function primRay(p, bx, by, ux, uy) {     // every t ≥ −∞ at which the line base + t·u crosses p
+  const out = [];
+  if (p.seg) {
+    const [ax, ay] = p.a, ex = p.b[0] - ax, ey = p.b[1] - ay;
+    const den = ux * ey - uy * ex;
+    if (Math.abs(den) < 1e-15) return out;
+    const wx = ax - bx, wy = ay - by;
+    const t = (wx * ey - wy * ex) / den, s = (wx * uy - wy * ux) / den;
+    if (s >= -1e-12 && s <= 1 + 1e-12) out.push(t);
+    return out;
+  }
+  const wx = bx - p.c[0], wy = by - p.c[1];
+  const b = wx * ux + wy * uy, c = wx * wx + wy * wy - p.r * p.r, d = b * b - c;
+  if (d < 0) return out;
+  for (const t of [-b - Math.sqrt(d), -b + Math.sqrt(d)]) {
+    if (angIn(Math.atan2(wy + t * uy, wx + t * ux), p.a0, p.a1)) out.push(t);
+  }
+  return out;
+}
+// The loop: each primitive emits its start and its interior samples, never its
+// end (the next primitive's start), so the loop's last point is not repeated.
+// An arc takes ceil(sweep / 2π · segs) chords, or more when `maxChord` (the
+// tonneau's: 1 u, its side arcs being long and shallow) asks; a segment is its two ends.
+function primLoop(prims, segs, maxChord = Infinity) {
   const pts = [];
-  const arc = (cx, cy, a0) => {
-    for (let i = 0; i <= cornerSegs; i++) {
-      const a = a0 + (Math.PI / 2) * (i / cornerSegs);
-      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  for (const p of prims) {
+    if (p.seg) { pts.push([p.a[0], p.a[1]]); continue; }
+    if (p.r <= 0) { pts.push([p.c[0], p.c[1]]); continue; }
+    const n = Math.max(1, Math.ceil(((p.a1 - p.a0) / TAU) * segs - 1e-9), Math.ceil(((p.a1 - p.a0) * p.r) / maxChord - 1e-9));
+    for (let i = 0; i < n; i++) {
+      const a = p.a0 + (p.a1 - p.a0) * (i / n);
+      pts.push([p.c[0] + p.r * Math.cos(a), p.c[1] + p.r * Math.sin(a)]);
     }
-  };
-  arc(x1, y0, -Math.PI / 2); arc(x1, y1, 0); arc(x0, y1, Math.PI / 2); arc(x0, y0, Math.PI);
+  }
   return pts;
 }
-
-// §307 landing 2 — THE PLATE AS A SHAPE. Every consumer that used to ask a
-// circle of radius plateR "how far inside am I?" or "where does this line
-// leave the plate?" asks this instead, so the round build and the form build
-// answer through ONE law with two shapes:
-//   · rect null — the circle of radius plateR about the origin (the centre
-//     arbor): inset = plateR − |p|, exit(az, off) = √(plateR² − off²);
-//   · rect given — formLoop's rounded rectangle (corner radius rect.cornerR),
-//     its EXACT signed distance (the rounded box's: a box of half-sides
-//     (hw − rc, hh − rc) grown by rc), and exit the ray's exact crossing.
-// `grow` offsets the outline outward (negative: inward) exactly, which for a
-// rounded rectangle is the same law at (hw + g, hh + g, rc + g) — so a case's
-// bore, its outer wall and an aperture are this shape grown, not new laws.
-// inset(x, y): signed distance to the outline, + inside. exit(az, off): the
-// distance along the ray at azimuth `az` whose base stands `off` to its left
-// (on (−sin az, cos az)) from the origin to where it leaves the outline —
-// NaN when the ray's line misses the shape. bounds: the axis box.
-export function plateShape(rect, plateR, { grow = 0 } = {}) {
-  if (!rect) {
-    const R = plateR + grow;
-    return Object.freeze({
-      kind: 'circle', R,
-      inset: (x, y) => R - Math.hypot(x, y),
-      exit: (az, off = 0) => (Math.abs(off) <= R ? Math.sqrt(R * R - off * off) : NaN),
-      bounds: Object.freeze({ xMin: -R, xMax: R, yMin: -R, yMax: R }),
-    });
+// A closed polyline as segment primitives, each carrying its two vertex normals.
+function polyPrims(pts) {
+  const n = pts.length, en = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % n], L = Math.hypot(bx - ax, by - ay);
+    en.push([(by - ay) / L, -(bx - ax) / L]);
   }
-  const rc = Math.max(0, rect.cornerR + grow);
-  const hw = rect.hw + grow, hh = rect.hh + grow, cx = rect.cx, cy = rect.cy;
-  const bx = hw - rc, by = hh - rc;
+  const vn = en.map((e, i) => { const f = en[(i + n - 1) % n], x = e[0] + f[0], y = e[1] + f[1], L = Math.hypot(x, y); return [x / L, y / L]; });
+  return pts.map((a, i) => ({ seg: true, a, b: pts[(i + 1) % n], na: vn[i], nb: vn[(i + 1) % n] }));
+}
+// CONVEX, and so SIMPLE: every turn left (cross ≥ 0 to float noise) and the
+// loop's turning totals one revolution. Returns the worst turn, for the warn.
+export function loopConvexity(pts) {
+  const n = pts.length; let worst = Infinity, turn = 0;
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = pts[(i + n - 1) % n], [bx, by] = pts[i], [cx, cy] = pts[(i + 1) % n];
+    const ux = bx - ax, uy = by - ay, vx = cx - bx, vy = cy - by;
+    const cr = (ux * vy - uy * vx) / (Math.hypot(ux, uy) * Math.hypot(vx, vy) || 1);
+    worst = Math.min(worst, cr);
+    turn += Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+  }
+  return { worst, turns: turn / TAU, ok: worst >= -1e-9 && Math.abs(turn / TAU - 1) < 1e-6 };
+}
+
+// The cushion's base polyline (unit-free: computed per box) and its normals.
+function cushionSamples(a, b, n, cx, cy) {
+  const F = 16 * CUSHION_SAMPLES;
+  const pe = (t) => { const c = Math.cos(t), s = Math.sin(t); return [a * Math.sign(c) * Math.abs(c) ** (2 / n), b * Math.sign(s) * Math.abs(s) ** (2 / n)]; };
+  const fine = [], cum = [0];
+  for (let i = 0; i <= F; i++) fine.push(pe((TAU * i) / F));
+  for (let i = 1; i <= F; i++) cum.push(cum[i - 1] + Math.hypot(fine[i][0] - fine[i - 1][0], fine[i][1] - fine[i - 1][1]));
+  const L = cum[F], ts = [];
+  for (let k = 0, j = 0; k < CUSHION_SAMPLES; k++) {
+    const s = (L * k) / CUSHION_SAMPLES;
+    while (cum[j + 1] < s) j++;
+    const f = (s - cum[j]) / ((cum[j + 1] - cum[j]) || 1);
+    ts.push((TAU * (j + f)) / F);
+  }
+  const pts = ts.map(pe);
+  const nrm = pts.map(([x, y]) => {
+    const gx = n * Math.sign(x) * Math.abs(x / a) ** (n - 1) / a, gy = n * Math.sign(y) * Math.abs(y / b) ** (n - 1) / b, L2 = Math.hypot(gx, gy);
+    return [gx / L2, gy / L2];
+  });
+  // THE SAGITTA, measured: each chord against the curve at its parametric middle
+  let sag = 0;
+  for (let k = 0; k < ts.length; k++) {
+    const t0 = ts[k], t1 = k + 1 < ts.length ? ts[k + 1] : TAU;
+    const [mx, my] = pe((t0 + t1) / 2), [px, py] = pts[k], [qx, qy] = pts[(k + 1) % pts.length];
+    const ex = qx - px, ey = qy - py, Lc = Math.hypot(ex, ey);
+    sag = Math.max(sag, Math.abs((mx - px) * ey - (my - py) * ex) / Lc);
+  }
+  return { pts: pts.map(([x, y]) => [x + cx, y + cy]), nrm, sag };
+}
+
+function shapeFrom(kind, prims, extra) {
+  // the bounds, read off the primitives themselves (an arc's extreme lies at an
+  // axis angle inside its sweep, else at an end)
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  const take = (x, y) => { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); };
+  for (const p of prims) {
+    if (p.seg) { take(...p.a); take(...p.b); continue; }
+    for (const a of [p.a0, p.a1]) take(p.c[0] + p.r * Math.cos(a), p.c[1] + p.r * Math.sin(a));
+    for (let k = -4; k <= 8; k++) { const a = (k * Math.PI) / 2; if (a >= p.a0 - 1e-12 && a <= p.a1 + 1e-12) take(p.c[0] + p.r * Math.cos(a), p.c[1] + p.r * Math.sin(a)); }
+  }
+  const bounds = Object.freeze({ xMin, xMax, yMin, yMax });
   const inset = (x, y) => {
-    const qx = Math.abs(x - cx) - bx, qy = Math.abs(y - cy) - by;
-    return -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rc);
+    let best = null;
+    for (const p of prims) { const f = primFoot(p, x, y); if (!best || f.d < best.d) best = f; }
+    return best.s > 0 ? -best.d : best.d;
   };
-  // The exit along a ray: the rounded box is convex, so the ray leaves it
-  // exactly once past an interior base; the crossing is the farthest root of
-  // the four flat sides (each clipped to its flat run) and the four corner
-  // circles (each clipped to its quadrant).
   const exit = (az, off = 0) => {
-    const ux = Math.cos(az), uy = Math.sin(az);
-    const px = -uy * off - cx, py = ux * off - cy;   // the base, in the shape's centred frame
+    const ux = Math.cos(az), uy = Math.sin(az), bx = -uy * off, by = ux * off;
     let t = -Infinity;
-    const on = (x, y) => Math.abs(x) <= bx + 1e-12 && Math.abs(y) <= by + 1e-12;
-    for (const s of [-1, 1]) {
-      if (Math.abs(ux) > 1e-15) { const k = (s * hw - px) / ux; if (on(0, py + k * uy)) t = Math.max(t, k); }
-      if (Math.abs(uy) > 1e-15) { const k = (s * hh - py) / uy; if (on(px + k * ux, 0)) t = Math.max(t, k); }
-      for (const r of [-1, 1]) {
-        const ox = s * bx, oy = r * by;               // the corner circle's centre
-        const wx = px - ox, wy = py - oy;
-        const b = wx * ux + wy * uy, c = wx * wx + wy * wy - rc * rc, d = b * b - c;
-        if (d < 0) continue;
-        const k = -b + Math.sqrt(d), hx = px + k * ux, hy = py + k * uy;
-        if ((hx - ox) * s >= -1e-12 && (hy - oy) * r >= -1e-12) t = Math.max(t, k);
-      }
-    }
+    for (const p of prims) for (const k of primRay(p, bx, by, ux, uy)) t = Math.max(t, k);
     return t > -Infinity ? t : NaN;
   };
-  return Object.freeze({
-    kind: 'rect', rc, inset, exit,
-    bounds: Object.freeze({ xMin: cx - hw, xMax: cx + hw, yMin: cy - hh, yMax: cy + hh }),
-  });
+  const shape = {
+    kind, bounds, ...bounds, hw: (xMax - xMin) / 2, hh: (yMax - yMin) / 2,
+    cx: (xMin + xMax) / 2, cy: (yMin + yMax) / 2, accuracy: extra.accuracy ?? 0,
+    cornerR: extra.cornerR ?? null, prims, inset, exit, grown: extra.grown,
+    loop: ({ grow = 0, segs = extra.segs } = {}) => {
+      const s = grow === 0 ? shape : extra.grown(grow);
+      const pts = primLoop(s.prims, segs, extra.maxChord);
+      const cv = loopConvexity(pts);
+      if (!cv.ok)
+        console.warn(`§308: the ${kind} outline grown ${grow.toFixed(3)} is not a simple convex loop — `
+          + `worst turn ${cv.worst.toExponential(2)} (required ≥ 0), ${cv.turns.toFixed(6)} revolutions (required 1)`);
+      return pts;
+    },
+  };
+  return Object.freeze(shape);
+}
+
+export function caseShapeOf(kind, box, opts = {}) {
+  const segs = opts.segs ?? 48;   // chords per full turn of an arc — formLoop's 12 per quarter
+  if (kind === 'circle') {
+    const { cx = 0, cy = 0, r } = box;
+    const prims = [{ c: [cx, cy], r, a0: 0, a1: TAU }];
+    return shapeFrom(kind, prims, { segs, grown: (g) => caseShapeOf('circle', { cx, cy, r: r + g }, opts) });
+  }
+  const { xMin, xMax, yMin, yMax } = box;
+  const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2, a = (xMax - xMin) / 2, b = (yMax - yMin) / 2;
+  if (kind === 'rect') {
+    const rc = Math.max(0, Math.min(opts.cornerR ?? PLATE_RIM_MARGIN, a, b));
+    const x0 = xMin + rc, x1 = xMax - rc, y0 = yMin + rc, y1 = yMax - rc, H = Math.PI / 2;
+    const prims = [
+      { c: [x1, y0], r: rc, a0: -H, a1: 0 }, { seg: true, a: [xMax, y0], b: [xMax, y1] },
+      { c: [x1, y1], r: rc, a0: 0, a1: H }, { seg: true, a: [x1, yMax], b: [x0, yMax] },
+      { c: [x0, y1], r: rc, a0: H, a1: 2 * H }, { seg: true, a: [xMin, y1], b: [xMin, y0] },
+      { c: [x0, y0], r: rc, a0: 2 * H, a1: 3 * H }, { seg: true, a: [x0, yMin], b: [x1, yMin] },
+    ].filter((p) => !p.seg || Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1]) > 1e-12);
+    return shapeFrom(kind, prims, { segs, cornerR: rc,
+      grown: (g) => caseShapeOf('rect', { xMin: xMin - g, xMax: xMax + g, yMin: yMin - g, yMax: yMax + g }, { ...opts, cornerR: rc + g }) });
+  }
+  if (kind === 'tonneau') {
+    // the construction's free parts: the side's centre offset sx and radius R,
+    // the corner centre (kx, ky) and radius rc — grow adds g to R, rc and b
+    const T = opts.tonneau ?? (() => {
+      const e = (opts.bow ?? TONNEAU_BOW) * a, R = (e * e + b * b) / (2 * e);
+      const rc = Math.max(0, Math.min(opts.cornerR ?? PLATE_RIM_MARGIN, b));
+      const ky = b - rc, kx = (a - R) + Math.sqrt((R - rc) ** 2 - ky * ky);
+      return { sx: a - R, R, kx, ky, rc, b };
+    })();
+    const { sx, R, kx, ky, rc } = T, bb = T.b;
+    if (!(rc >= 0) || !(kx > 0))
+      console.warn(`§308: the tonneau's corner round ${rc.toFixed(3)} u leaves no straight end (half-run ${kx.toFixed(3)} u, required > 0)`);
+    const phi = Math.atan2(ky, kx - sx), H = Math.PI / 2;
+    const C = (x, y) => [cx + x, cy + y];
+    const prims = [
+      { c: C(sx, 0), r: R, a0: -phi, a1: phi },
+      { c: C(kx, ky), r: rc, a0: phi, a1: H },
+      { seg: true, a: C(kx, bb), b: C(-kx, bb) },
+      { c: C(-kx, ky), r: rc, a0: H, a1: Math.PI - phi },
+      { c: C(-sx, 0), r: R, a0: Math.PI - phi, a1: Math.PI + phi },
+      { c: C(-kx, -ky), r: rc, a0: Math.PI + phi, a1: 3 * H },
+      { seg: true, a: C(-kx, -bb), b: C(kx, -bb) },
+      { c: C(kx, -ky), r: rc, a0: 3 * H, a1: TAU - phi },
+    ];
+    const s = shapeFrom(kind, prims, { segs, maxChord: opts.maxChord ?? 1, cornerR: rc,
+      grown: (g) => caseShapeOf('tonneau', box, { ...opts, tonneau: { ...T, R: R + g, rc: rc + g, b: bb + g } }) });
+    return Object.freeze({ ...s, flatHalf: kx });   // the straight end's half-run, where a flat lug may weld
+  }
+  if (kind === 'cushion') {
+    const n = opts.n ?? CUSHION_N;
+    const base = opts.cushion ?? cushionSamples(a, b, n, cx, cy);
+    const g0 = opts.cushionGrow ?? 0;
+    const pts = g0 === 0 ? base.pts : base.pts.map(([x, y], i) => [x + g0 * base.nrm[i][0], y + g0 * base.nrm[i][1]]);
+    if (g0 !== 0) {
+      const cv = loopConvexity(pts);
+      if (!cv.ok)
+        console.warn(`§308: the cushion offset by ${g0.toFixed(3)} u folds — worst turn ${cv.worst.toExponential(2)} (required ≥ 0); `
+          + 'an inward grow past the curve\'s least radius of curvature has no simple offset');
+    }
+    return shapeFrom(kind, polyPrims(pts), { segs, accuracy: base.sag,
+      grown: (g) => caseShapeOf('cushion', box, { ...opts, cushion: base, cushionGrow: g0 + g }) });
+  }
+  throw new Error(`caseShapeOf: unknown kind '${kind}' (circle | rect | cushion | tonneau)`);
+}
+
+// §308 — THE FIT. A shape's size is never typed: given the counted metal (the
+// convex hull of its vertices, `hull` [[x, y]…] — the inner parallel body of a
+// convex shape is convex, so a hull vertex is the worst case of every vertex
+// it encloses, exactly) and the metal's axis box, the fitted shape is the
+// SMALLEST scale s of the box grown by the rim margin, about the box's centre
+// at that box's aspect, at which every hull vertex has inset ≥ margin. For the
+// rect that is s = 1 exactly (the rounded box of corner `margin` is the box's
+// own offset by it); the cushion and the tonneau leave their corners empty and
+// so need s > 1. Bisection to 1e-9 of s from a bracket found by doubling.
+export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, ...opts } = {}) {
+  const [x0, x1, y0, y1] = metal;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, A = (x1 - x0) / 2 + margin, B = (y1 - y0) / 2 + margin;
+  const at = (s) => caseShapeOf(kind, { xMin: cx - s * A, xMax: cx + s * A, yMin: cy - s * B, yMax: cy + s * B }, opts);
+  const worst = (sh) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, sh.inset(x, y)); return w; };
+  const ok = (s) => worst(at(s)) >= margin - 1e-9;
+  let lo = 0.5, hi = 1;
+  while (!ok(hi)) { lo = hi; hi *= 1.25; if (hi > 8) throw new Error(`fitCaseShape: no ${kind} up to 8× the box holds the metal`); }
+  while (ok(lo) && lo > 0.1) { hi = lo; lo *= 0.8; }
+  while (hi - lo > 1e-9) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; }
+  const shape = at(hi);
+  return { s: hi, shape, worst: worst(shape) };
+}
+// The convex hull of a point cloud (Andrew's monotone chain), CCW, after an
+// Akl–Toussaint cull of every point strictly inside the octagon of the eight
+// extreme points — which is what keeps a few million vertices cheap.
+export function convexHull2(xs, ys, n) {
+  const dirs = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  const ext = dirs.map(() => -1), best = dirs.map(() => -Infinity);
+  for (let i = 0; i < n; i++) for (let k = 0; k < 8; k++) { const v = dirs[k][0] * xs[i] + dirs[k][1] * ys[i]; if (v > best[k]) { best[k] = v; ext[k] = i; } }
+  const oct = ext.map((i) => [xs[i], ys[i]]);
+  const inside = (x, y) => {
+    for (let k = 0; k < 8; k++) {
+      const [ax, ay] = oct[k], [bx, by] = oct[(k + 1) % 8];
+      if ((bx - ax) * (y - ay) - (by - ay) * (x - ax) <= 1e-9) return false;
+    }
+    return true;
+  };
+  const pts = [];
+  for (let i = 0; i < n; i++) if (!inside(xs[i], ys[i])) pts.push([xs[i], ys[i]]);
+  pts.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower = [], upper = [];
+  for (const p of pts) { while (lower.length >= 2 && cr(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cr(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+  return lower.slice(0, -1).concat(upper.slice(0, -1));
+}
+
+// §307 — the rectangle as a closed CCW loop: now the 'rect' kind of the one
+// law, kept under its name for the callers that hold a formRect.
+export function formLoop(rect, { grow = 0, cornerSegs = 12 } = {}) {
+  return caseShapeOf('rect', rect, { cornerR: rect.cornerR }).loop({ grow, segs: 4 * cornerSegs });
+}
+
+// §307 landing 2 — THE PLATE AS A SHAPE, now a thin call into caseShapeOf:
+// rect null is the circle of radius plateR about the origin (the centre
+// arbor), rect given is its rounded rectangle; `grow` is the shape's true
+// offset. Same readings (inset, exit, bounds) as before.
+export function plateShape(rect, plateR, { grow = 0 } = {}) {
+  const s = rect ? caseShapeOf('rect', rect, { cornerR: rect.cornerR }) : caseShapeOf('circle', { cx: 0, cy: 0, r: plateR });
+  return grow === 0 ? s : s.grown(grow);
 }
 
 export function solveKeyless({
