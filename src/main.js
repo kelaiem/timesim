@@ -47708,6 +47708,37 @@ await breathe(311);
 const caseCrystalMat = new THREE.MeshPhysicalMaterial({ ...CRYSTAL_GLASS });
 caseCrystalMat.userData.stock = 'corundum';   // §269 — the two crystals are sapphire for the mass tally; not `userData.glass`, which is the x-ray set's word
 await breathe(312);
+// §308 landing 1 — THE DIAL SPEC: what a dial designer needs to know about
+// this movement, gathered from what the build already decided — the outline
+// the dial is cut to (the case shape, or null = round at dialRadius), the
+// hand centre (P.dial), the two subdial stations (the reserve and the small
+// seconds, dial-local as the dial prints them and world through the dial
+// seam's flip, (P.dial.x − x, P.dial.y + y)), and the case PORTS (the winding
+// stem, the alarm crown and the pusher: azimuth from CASE_DIMS, the line's
+// offset — the pusher's is ALARM_PUSH_CHORD's, the crowns radial — and z).
+// IT IS A READOUT in landing 1: nothing reads it back, every field is a copy
+// of a quantity derived elsewhere. Landing 3 turns it around — the dial spec
+// becomes the INPUT the movement is laid out to.
+const DIAL_SPEC = (() => {
+  const st = (local, wellR) => Object.freeze({
+    dial: Object.freeze({ x: local.x, y: local.y }),
+    world: Object.freeze({ x: P.dial.x - local.x, y: P.dial.y + local.y }),
+    r: wellR,
+  });
+  const port = (az, z, off = 0) => Object.freeze({ az, azDeg: (az * 180) / Math.PI, off, z });
+  return Object.freeze({
+    outline: FORM ? Object.freeze({ kind: FORM.kind, bounds: FORM.bounds,
+      dialLoop: Object.freeze(FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse()) }) : null,
+    dialRadius,
+    handCentre: Object.freeze({ x: P.dial.x, y: P.dial.y }),
+    subdials: Object.freeze({ reserve: st(RESERVE_LOCAL, reserveWellR), seconds: st(SECONDS_LOCAL, secondsWellR) }),
+    ports: Object.freeze({
+      stem: port(CASE_DIMS.stemAz, CASE_DIMS.stemZ),
+      alarmCrown: port(CASE_DIMS.alarmAz, CASE_DIMS.alarmZ),
+      pusher: port(CASE_DIMS.pusherAz, CASE_DIMS.pusherZ, CASE_DIMS.pusherOff),
+    }),
+  });
+})();
 // §307 landing 2 — THE WHOLE MOVEMENT'S FOOTPRINT, measured now that every
 // part is built (the case builds last). The movement is what the round case
 // held, every mesh but the DECLARED through-case parts (below). A stem, a
@@ -59786,6 +59817,7 @@ window.__clock = {
   // off the real numbers in Node and search the arrangement.
   layoutInputs: LAYOUT_INPUTS, keylessInputs: KEYLESS_INPUTS, formPlate, caseShape: SPEC.caseShape,
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
+  dialSpec: DIAL_SPEC,   // §308 — the dial spec, a readout in landing 1
   // §81 tranche A: what the weld pass found and removed, so the reduction is
   // a number the battery can read rather than a claim in a comment.
   get weldCensus() { return WELD_CENSUS; },
