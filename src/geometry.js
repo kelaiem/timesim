@@ -6890,7 +6890,17 @@ function discLessDisc(A, B, n = 144) {   // CCW points of disc A less disc B (B 
   arc(B, B.r, phi + Math.PI + t2, phi + Math.PI - t2);
   return pts;
 }
-export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null, pockets = [] }) {
+// outline (§307): a closed CCW loop of [x, y] points in the plate's own frame,
+// the last point not repeated — layout.js's formLoop, a rounded rectangle,
+// simple by construction — that REPLACES the outer circle. `radius` is still
+// passed as the WORKING radius every opening rule is keyed to (bevelSize
+// derives from it exactly as before); holes, slots, sectors and pockets are
+// interior features cut against the stations, not the rim, and are untouched.
+// The §186 mounting rim and its stem notches are SKIPPED with an outline: the
+// form case seats the plate on its own frame, which this prototype does not
+// model yet, so a `rim` passed beside an outline is ignored. Null = the
+// round plate, byte for byte.
+export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null, pockets = [], outline = null }) {
   const bevelSize = radius * PLATE_BEVEL_F;
   const shape = new THREE.Shape();
   // §186 — the MOUNTING RIM. `rim: { r, notches: [{ az, halfW }] }` runs the
@@ -6904,7 +6914,15 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   // polygon — the `outlines` gate holds it. `radius` remains the working
   // outline every hole/bevel rule is keyed to; with no `rim` the path below
   // is byte-identical to the pre-§186 single arc.
-  if (!rim) {
+  if (outline) {
+    // §307 — THE FORM PLATE: the loop is the boundary, one simple polygon
+    // (its points in order, closed on its first), and nothing is stepped
+    // out of or into it — the rim and its notches are the round case's
+    // seating and do not apply (see the parameter's note above).
+    shape.moveTo(outline[0][0], outline[0][1]);
+    for (let i = 1; i < outline.length; i++) shape.lineTo(outline[i][0], outline[i][1]);
+    shape.closePath();
+  } else if (!rim) {
     shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
   } else if (!(rim.notches || []).length) {
     shape.absarc(0, 0, rim.r, 0, Math.PI * 2, false);
@@ -7024,6 +7042,7 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   // to upward-facing surfaces; the dial-side face and edge stay plain).
   const m = new THREE.Mesh(geo, MATS.perledNickel);
   m.userData.r = radius;
+  if (outline) m.userData.outline = outline;   // §307 — the loop the plate was cut to, for the caller and the probes
   m.userData.lands = lands;   // every opening pair's finished land, for the probes
   const faceZ = thickness / 2;   // the presented faces, local ± (TODO 202: the finished plate)
   for (const pk of pockets) {
@@ -7129,6 +7148,97 @@ export function offsetPolygon(pts, d) {
   });
 }
 
+// §307 — THE FORM OUTLINE's three readings, pure, on a closed loop of [x, y]
+// points (CCW, the last point not repeated — layout.js's formLoop). They are
+// what lets a plate builder take a loop where it took `radius`: the circle's
+// closed forms |C + t·d| = R and R − |p| become a walk of the loop's segments.
+//
+// rayLoopExit — where a ray from (ox, oy) along `ang` LAST leaves the loop.
+// Each segment is intersected with the ray (t along the ray, u along the
+// segment, by 2-D cross products) and the FARTHEST hit with t > 0 is kept, so
+// a loop the ray crosses more than once still answers with its outer
+// boundary, exactly as the circle's `−b + √(b² − c)` takes the far root.
+// Returns { x, y, t, seg, u } — `seg` and `u` locate the exit on the loop so
+// a walk can splice the loop between two exits — or null when the ray leaves
+// the loop nowhere, which is an apex outside a loop that does not hold it:
+// a caller bug, and the caller hears about it. A segment parallel to the ray
+// is skipped; its end points are hit through their neighbours.
+function rayLoopExit(loop, ox, oy, ang) {
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  const n = loop.length;
+  let best = null;
+  for (let i = 0; i < n; i++) {
+    const a = loop[i], b = loop[(i + 1) % n];
+    const ex = b[0] - a[0], ey = b[1] - a[1];
+    const den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-12) continue;
+    const wx = a[0] - ox, wy = a[1] - oy;
+    const t = (wx * ey - wy * ex) / den;
+    const u = (wx * dy - wy * dx) / den;
+    if (t <= 0 || u < 0 || u > 1) continue;
+    if (!best || t > best.t) best = { x: ox + dx * t, y: oy + dy * t, t, seg: i, u };
+  }
+  return best;
+}
+// loopInset — the signed distance from (x, y) to the loop: the nearest
+// segment's distance, positive INSIDE (even–odd crossing count). The circle's
+// `radius − |p|` for a loop, so a rule written against the rim ("a slot whose
+// end disc reaches past it") reads the same way against either boundary.
+function loopInset(loop, x, y) {
+  const n = loop.length;
+  let d = Infinity, inside = false;
+  for (let i = 0; i < n; i++) {
+    const a = loop[i], b = loop[(i + 1) % n];
+    const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey;
+    const t = L2 ? Math.max(0, Math.min(1, ((x - a[0]) * ex + (y - a[1]) * ey) / L2)) : 0;
+    d = Math.min(d, Math.hypot(x - a[0] - t * ex, y - a[1] - t * ey));
+    if ((a[1] > y) !== (b[1] > y) && x < a[0] + ((y - a[1]) * ex) / ey) inside = !inside;
+  }
+  return inside ? d : -d;
+}
+// loopWall — the straight wall on a closed CCW loop of Vector2 between zA (in
+// front) and zB (behind), outward-facing: plateWall's rim land for a loop that
+// is not a circle. plateWall reads its normals radially off the loop's centre,
+// which is a wall's normal only on a circle; here each quad's normal is its
+// own segment's outward perpendicular — (dy, −dx) for a CCW loop — flat across
+// the quad, since a rounded rectangle's sides are planes and its corners are
+// faceted exactly as the loop is. The quads' edges are the loop's own
+// vertices, so the caps built from the same loop weld onto it closed; the
+// winding is plateWall's outward one.
+function loopWall(loop, zA, zB) {
+  const n = loop.length;
+  const pos = new Float32Array(n * 18), nrm = new Float32Array(n * 18);
+  let o = 0;
+  for (let i = 0; i < n; i++) {
+    const a = loop[i], b = loop[(i + 1) % n];
+    const ex = b.x - a.x, ey = b.y - a.y, L = Math.hypot(ex, ey) || 1;
+    const nx = ey / L, ny = -ex / L;
+    const ai = [a.x, a.y, zA], aj = [b.x, b.y, zA], bi = [a.x, a.y, zB], bj = [b.x, b.y, zB];
+    for (const v of [ai, bi, aj, aj, bi, bj]) {
+      pos[o] = v[0]; pos[o + 1] = v[1]; pos[o + 2] = v[2];
+      nrm[o] = nx; nrm[o + 1] = ny; nrm[o + 2] = 0;
+      o += 3;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  return geo;
+}
+// loopRingExtrude — ringExtrude for a loop: the band between the loop and the
+// loop inset by `width` (offsetPolygon's miter inset, which is a concentric
+// offset on a rounded rectangle for any width under its corner round — a
+// loop whose corners are tighter than the band is wide would fold it),
+// extruded `thickness` along +Z about z = 0. Straight segments only, so
+// curveSegments has nothing to divide.
+function loopRingExtrude(outline, width, thickness) {
+  const s = new THREE.Shape(outline.map(([x, y]) => new THREE.Vector2(x, y)));
+  s.holes.push(new THREE.Path(offsetPolygon(outline, -width).map(([x, y]) => new THREE.Vector2(x, y)).reverse())); // CW: a hole
+  const g = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false });
+  g.translate(0, 0, -thickness / 2);
+  return g;
+}
+
 // The plate's edge bevel — the anglage chamfer. Exported because §62's web
 // sections are quoted against it: the caller's asked-for outline lands at the
 // plate's MID-thickness, and each face edge is this much inside it, so a web
@@ -7137,7 +7247,16 @@ export function offsetPolygon(pts, d) {
 // detail of this builder.
 export const PLATE_BEVEL = 0.06;
 
-export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [], slots = [], windows = [], polyHoles = [] }) {
+// outline (§307): a closed CCW loop of [x, y] in the plate's own frame (the
+// last point not repeated — layout.js's formLoop) that REPLACES the outer
+// circle: the rim is the loop, the balance wedge's two edge rays leave through
+// the LOOP (rayLoopExit, the farthest exit, as `|C + t·d| = radius` took the
+// far root) and the loop's vertices outside the wedge are kept between the two
+// exits; a slot reaches the rim when its end disc reaches past the loop
+// (loopInset), and such a notch is walked by bearing off the loop's own
+// radius. `radius` is still the working radius the caller keyed the cut's
+// table and the holes to. Null = the round plate, byte for byte.
+export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [], slots = [], windows = [], polyHoles = [], outline = null }) {
   // A bevelled extrusion grows its material OUTWARD from the drawn profile by
   // bevelSize — into every hole and into the balance cut. The caller solved
   // its clearances against the finished EDGES, so shrink the drawn outline
@@ -7145,6 +7264,10 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   // it was asked to.
   const bevelSize = PLATE_BEVEL;
   radius -= bevelSize;
+  // §307 — the form outline shrinks by the same bevel, along its own normals
+  // (a miter inset — concentric on a rounded rectangle), so its finished edge
+  // lands on the loop the caller asked for exactly as the circle's does.
+  const loop = outline ? offsetPolygon(outline, -bevelSize) : null;
   const cut = { ...cutIn, radii: cutIn.radii.map((r) => r + bevelSize) };
   holes = holes.map((h) => ({ ...h, r: h.r + bevelSize }));
   slots = slots.map((s) => ({ ...s, r: s.r + bevelSize }));
@@ -7161,6 +7284,12 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   polyHoles = polyHoles.map((w) => ({ ...w, pts: offsetPolygon(w.pts, bevelSize) }));
   // Where the wedge's two edges leave the rim: |C + t·d| = radius, t > 0.
   const rimHit = (ang) => {
+    if (loop) {   // §307 — the same ray, leaving the loop at its farthest exit
+      const h = rayLoopExit(loop, cut.x, cut.y, ang);
+      if (!h) console.warn(`§307: the balance cut's apex (${cut.x.toFixed(3)}, ${cut.y.toFixed(3)}) lies outside the form outline — `
+        + `its edge on bearing ${(ang * 180 / Math.PI).toFixed(2)}° leaves the loop nowhere`);
+      return h || { x: cut.x, y: cut.y, t: 0, seg: 0, u: 0 };
+    }
     const dx = Math.cos(ang), dy = Math.sin(ang);
     const b = cut.x * dx + cut.y * dy;
     const c = cut.x * cut.x + cut.y * cut.y - radius * radius;
@@ -7186,17 +7315,31 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
     return Math.hypot(px - sl.ax - t * vx, py - sl.ay - t * vy) - sl.r;
   };
   const reachesRim = (sl) => {
+    if (loop) {   // §307 — the same rule against the loop: an end disc reaching past it
+      for (const [x, y] of [[sl.ax, sl.ay], [sl.bx, sl.by]]) if (loopInset(loop, x, y) < sl.r) return true;
+      return false;
+    }
     for (const [x, y] of [[sl.ax, sl.ay], [sl.bx, sl.by]]) if (Math.hypot(x, y) + sl.r > radius) return true;
     return false;
   };
   const notches = slots.filter(reachesRim);
   slots = slots.filter((sl) => !reachesRim(sl));
+  // §307 — the loop's own radius on a bearing from the origin, which is the
+  // rim the notched walk below pulls in from. It reads the loop as a polar
+  // function, which it is while the loop is convex and holds the origin —
+  // formLoop's rectangle holds the centre station, and a loop that did not
+  // would be warned about here rather than walked wrongly in silence.
+  const loopR = loop ? (th) => { const h = rayLoopExit(loop, 0, 0, th); return h ? h.t : 0; } : null;
+  if (loop && loopInset(loop, 0, 0) <= 0)
+    console.warn('§307: the form outline does not hold the plate\'s origin — its notched rim cannot be walked by bearing');
+  const notchedAt = (th, R) => R < loopR(th) - 1e-9;   // §307 — is a notch, not the loop, the rim on this bearing?
   const rimRadiusAt = (th) => {
     const dx = Math.cos(th), dy = Math.sin(th);
-    let R = radius;
+    const R0 = loop ? loopR(th) : radius;   // §307: the loop's own radius on this bearing
+    let R = R0;
     for (const sl of notches) {
       let lo = null;
-      for (let t = 0; t <= radius; t += 0.4) {
+      for (let t = 0; t <= (loop ? R0 : radius); t += 0.4) {
         if (segDist(dx * t, dy * t, sl) <= 0) { lo = Math.max(0, t - 0.4); break; }
       }
       if (lo === null) continue;
@@ -7226,7 +7369,7 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   // and closes on the arc's OWN first point — one source — and E+ is no longer
   // a vertex the arc must agree with. (The notched walk never had the join: it
   // emits only lineTo points, opening at EP and closing on that same EP.)
-  const rimArc = notches.length ? null : new THREE.EllipseCurve(0, 0, radius, radius, thP, thM, false, 0);
+  const rimArc = notches.length || loop ? null : new THREE.EllipseCurve(0, 0, radius, radius, thP, thM, false, 0);   // §307: a loop's rim is its vertices, walked below
   const start = rimArc ? rimArc.getPoint(0) : EP;
   const s = new THREE.Shape();
   s.moveTo(start.x, start.y);
@@ -7235,10 +7378,17 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
     // fraction of a degree), and a straight chord across one of those cuts
     // the corner off the opening — measurably (0.02 into the ramp collar's
     // clearance) at a uniform 0.5°.
+    // §307 — on a form plate the walk samples the LOOP by bearing (loopR,
+    // pulled in where a notch eats into it exactly as the circle is), and the
+    // refinement is keyed to the NOTCH alone: a rectangle's polar radius moves
+    // more than the 0.05 trigger at every 0.5° step along a straight side,
+    // and refining on it would spend 2^7 vertices a step on a line two points
+    // describe. The loop's corners are resampled at the walk's pitch (5e-5
+    // of chord error on a 5 u round); its sides are sampled on the line.
     const emit = (th0, R0, th1, R1, depth) => {
       const thm = (th0 + th1) / 2;
       const Rm = rimRadiusAt(thm);
-      if (depth < 7 && Math.abs(R1 - R0) > 0.05) {
+      if (depth < 7 && Math.abs(R1 - R0) > 0.05 && (!loop || notchedAt(th0, R0) || notchedAt(th1, R1))) {
         emit(th0, R0, thm, Rm, depth + 1);
         emit(thm, Rm, th1, R1, depth + 1);
         return;
@@ -7253,6 +7403,25 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
       emit(thPrev, Rprev, th, R, 0);
       thPrev = th; Rprev = R;
     }
+  } else if (loop) {
+    // §307 — THE FORM RIM: the loop's own vertices from E+ round to E− the
+    // long way (CCW, the material side — the circle above travels the same
+    // way), which leaves out exactly the wedge's vertices: the loop is convex
+    // and holds the apex, so each edge ray leaves it once and the vertices
+    // between the two exits in the OTHER order are the ones inside the wedge.
+    // A walk of lineTo points, opening at E+ and closing on that same E+
+    // below (TODO 196's rule), and a vertex an exit already stands on is
+    // skipped rather than emitted twice.
+    const n = loop.length;
+    const near = (p, q) => Math.hypot(p[0] - q.x, p[1] - q.y) < 1e-9;
+    if (!(EM.seg === EP.seg && EM.u >= EP.u)) {
+      for (let k = 1; k <= n; k++) {
+        const i = (EP.seg + k) % n;
+        if (!near(loop[i], EP) && !near(loop[i], EM)) s.lineTo(loop[i][0], loop[i][1]);
+        if (i === EM.seg) break;
+      }
+    }
+    s.lineTo(EM.x, EM.y);
   } else {
     s.curves.push(rimArc); // rim, CCW, material on the left — the very curve `start` was read off
     s.currentPoint.copy(rimArc.getPoint(1));
@@ -7342,6 +7511,7 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
   // bridge, which shares it — see MATS.ribbedNickel in materials.js.
   const m = new THREE.Mesh(geo, MATS.ribbedNickel);
   m.userData.r = radius;
+  if (outline) m.userData.outline = outline;   // §307 — the loop the plate was cut to, for the caller and the probes
   m.userData.thickness = thickness;
   return m;
 }
@@ -9414,9 +9584,21 @@ function plateWall(cx, cy, A, zA, B, zB, outward) {
   return geo;
 }
 
+// outline (§307): a closed CCW loop of [x, y] in the DIAL's own frame (the
+// last point not repeated — layout.js's formLoop, concentric with the plates';
+// the caller owns the dialFace Y-flip) that REPLACES the outer circle: the
+// printed sheet, the plate body and the applied chapter ring are cut to the
+// loop, the print is laid on a sheet sized to the loop's box at the round
+// face's own scale (see the print frame below — the railroad keeps its world
+// radius, a round track on a rectangular ground), and the edge break is
+// DROPPED (prototype: a chamfer along a rounded rectangle is an offset wall
+// this builder does not cut yet), so the flat is the loop. The wells, bores,
+// numerals and everything printed stay where the round face puts them.
+// `radius` is still the working radius the print's scale, the numerals and
+// the wells' grounds are keyed to. Null = the round dial, byte for byte.
 export function makeDial({
   radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0,
-  edgeBreak = 0, subdialBoreR = 1.0,
+  edgeBreak = 0, subdialBoreR = 1.0, outline = null,
 }) {
   const g = new THREE.Group();
   let mat = null;
@@ -9526,37 +9708,68 @@ export function makeDial({
     return m;
   };
 
+  // §307 — THE FORM FACE's PRINT FRAME, read off the outline alone so the
+  // sheet's UVs below are the same map whether or not this environment has a
+  // canvas. The round face paints a 1024 px square mapped to the disc's
+  // diameter, so one pixel is 2·radius/1024 world units; a form face keeps
+  // that SAME scale — the minute hand's length is derived from where the
+  // railroad lands, so the track's world radius may not move — and sizes the
+  // canvas to the loop's bounding box instead, the world origin at pixel
+  // (Cx, Cy): canvas y runs down, the dial's y up. Every stroke of the paint
+  // is then unchanged in pixels; only the sheet it lands on is larger. (A
+  // non-square, non-power-of-two canvas is an ordinary texture on the WebGL2
+  // renderer this three.js is.)
+  const loopV2 = outline ? outline.map(([x, y]) => new THREE.Vector2(x, y)) : null;
+  const print = outline ? (() => {
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (const [x, y] of outline) { xMin = Math.min(xMin, x); xMax = Math.max(xMax, x); yMin = Math.min(yMin, y); yMax = Math.max(yMax, y); }
+    const k = 1024 / (2 * radius);   // px per world unit: the round face's own scale
+    return { k, W: Math.ceil(k * (xMax - xMin)), H: Math.ceil(k * (yMax - yMin)), Cx: -xMin * k, Cy: yMax * k };
+  })() : null;
+
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = print ? print.W : 1024;    // §307: the loop's box on a form face
+    canvas.height = print ? print.H : 1024;
     const ctx = canvas.getContext && canvas.getContext('2d');
     if (ctx) {
       const S = 1024;
       const C = S / 2;
       const R = S * DIAL_CANVAS_FILL_F; // = S·0.46 — see the export above; main.js derives the minute hand from this frame
+      // §307 — the sheet's size and the world origin's pixel: the (S, C)
+      // square of the round face, or the form face's print frame.
+      const W = print ? print.W : S, H = print ? print.H : S;
+      const Cx = print ? print.Cx : C, Cy = print ? print.Cy : C;
       // §157 — the whole paint is a FUNCTION now, so the live tier can re-run
       // it against a new base tone without rebuilding one triangle. Geometry
       // is untouched by a recolour by construction, which is what keeps the
       // fingerprint still while the dial changes colour.
       const paintFace = () => {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, S, S);
+        ctx.clearRect(0, 0, W, H);
         // Silvered base with a soft radial vignette, around the editable base
         // tone (§154 — see DIAL_TINT_RATIO_{IN,OUT} above for the derivation).
         const faceColor = faceTone();   // §291: the panda's silver when that remedy is on
-        const grad = ctx.createRadialGradient(C, C, R * 0.1, C, C, R);
+        const grad = ctx.createRadialGradient(Cx, Cy, R * 0.1, Cx, Cy, R);
         grad.addColorStop(0, dialTintStop(faceColor, 0));
         grad.addColorStop(0.75, faceColor);
         grad.addColorStop(1, dialTintStop(faceColor, 1));
         // §3 — on sapphire the sheet's ground IS the glass: no vignette, the
         // crystal's tint at its own alpha, so what shows through is the works.
         ctx.fillStyle = sapphire ? glassFill : grad;
-        ctx.beginPath();
-        ctx.arc(C, C, R, 0, Math.PI * 2);
-        ctx.fill();
+        if (print) {
+          // §307 — a form face's ground is the WHOLE sheet, the round track
+          // printed on a rectangular ground (the 1930s form dial); past the
+          // vignette's end circle the gradient pads with its last stop, the
+          // rim tone, so the corners carry the tone the rim does.
+          ctx.fillRect(0, 0, W, H);
+        } else {
+          ctx.beginPath();
+          ctx.arc(C, C, R, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
-        ctx.translate(C, C);
+        ctx.translate(Cx, Cy);
         // Railroad ("chemin de fer") minute track: two concentric rails with a
         // crossing tick every minute, heavier sleepers on the five-minute marks.
         const rOut = R * DIAL_RAIL_OUT_F;
@@ -9682,8 +9895,10 @@ export function makeDial({
   // flat, with a circular hole at each sub-dial (the pocket is machined and
   // printed on its own floor) and one at the centre for the hand arbors.
   let discGeo;
-  if (subdials.length || centerBoreR > 0) {
-    const discShape = new THREE.Shape(circleLoop(0, 0, faceR, SEG));
+  if (loopV2 || subdials.length || centerBoreR > 0) {
+    // §307 — on a form face the sheet is the loop itself (the flat IS the
+    // loop: the edge break is dropped below), a Shape so the wells pierce it.
+    const discShape = new THREE.Shape(loopV2 || circleLoop(0, 0, faceR, SEG));
     for (const w of wells) discShape.holes.push(new THREE.Path(w.pocket.slice().reverse()));
     if (centerBoreR > 0) discShape.holes.push(new THREE.Path(circleLoop(0, 0, centerBoreR, SEG, 'out').reverse()));
     discGeo = new THREE.ShapeGeometry(discShape);
@@ -9695,6 +9910,14 @@ export function makeDial({
     // it may not rescale what is on it.
     const uv = discGeo.attributes.uv, pos = discGeo.attributes.position;
     for (let i = 0; i < uv.count; i++) {
+      if (print) {
+        // §307 — the inverse of the print frame above: the point's pixel
+        // (Cx + x·k, Cy − y·k) over the sheet's size, v flipped because the
+        // texture's v = 1 is the sheet's top row (flipY), where +y lands —
+        // the same orientation the round face's +0.5 map has.
+        uv.setXY(i, (print.Cx + pos.getX(i) * print.k) / print.W, 1 - (print.Cy - pos.getY(i) * print.k) / print.H);
+        continue;
+      }
       uv.setXY(i, pos.getX(i) / (2 * radius) + 0.5, pos.getY(i) / (2 * radius) + 0.5);
     }
   } else {
@@ -9743,8 +9966,12 @@ export function makeDial({
     if (thickness - 2 * edgeBreak <= 0)
       console.warn(`dial: the edge break eats the stock — rim land ${(thickness - 2 * edgeBreak).toFixed(3)}, need > 0 (thickness ${thickness.toFixed(3)}, break ${edgeBreak})`);
 
-    const face = circleLoop(0, 0, faceR, SEG);           // front/back flats' edge
-    const rim = circleLoop(0, 0, radius, SEG);           // the nominal silhouette
+    // §307 — on a form plate the flat and the silhouette are ONE loop and the
+    // edge break is dropped (prototype — see the parameter's note), so the
+    // two break walls below would be zero-area and are not built: the rim
+    // land runs the whole thickness on the loop's own normals (loopWall).
+    const face = loopV2 || circleLoop(0, 0, faceR, SEG);           // front/back flats' edge
+    const rim = loopV2 || circleLoop(0, 0, radius, SEG);           // the nominal silhouette
     const bore = centerBoreR > 0 ? circleLoop(0, 0, centerBoreR, SEG, 'out') : null;
     const zF = 0, zB = -thickness, b = edgeBreak;
     // A sub-dial with no recess is a plain aperture, not a well — the pocket
@@ -9759,9 +9986,13 @@ export function makeDial({
     const part = (name, g) => { parts.push(g); partNames.push(name); };
     part('front-cap', plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => w.pocket)], zF, +1));
     part('back-cap', plateCap(face, [...(bore ? [bore] : []), ...wells.map((w) => (w.recess > 0 ? w.bore : w.pocket))], zB, -1));
-    part('front-break', plateWall(0, 0, face, zF, rim, zF - b, true));
-    part('rim-land', plateWall(0, 0, rim, zF - b, rim, zB + b, true));
-    part('back-break', plateWall(0, 0, rim, zB + b, face, zB, true));
+    if (loopV2) {
+      part('rim-land', loopWall(loopV2, zF, zB));   // §307: face to back on the loop, no break
+    } else {
+      part('front-break', plateWall(0, 0, face, zF, rim, zF - b, true));
+      part('rim-land', plateWall(0, 0, rim, zF - b, rim, zB + b, true));
+      part('back-break', plateWall(0, 0, rim, zB + b, face, zB, true));
+    }
     if (bore) part('centre-bore', plateWall(0, 0, bore, zF, bore, zB, false));
     subdials.forEach((sd, i) => {
       const { pocket, bore: hole, recess } = wells[i];
@@ -9776,9 +10007,15 @@ export function makeDial({
   }
   // Slight raised chapter ring for depth — applied on the front flat, so it
   // ends where the flat does rather than overhanging the broken edge.
-  const ring = new THREE.Mesh(ringExtrude(faceR, radius * 0.97, radius * 0.02, SEG), MATS.silver);
+  // §307 — on a form face the same GAUGE of ring (faceR − 0.97·radius wide,
+  // radius·0.02 proud) runs round the loop: its outer edge the flat's own
+  // edge, its inner edge the loop inset by that width (loopRingExtrude).
+  const ring = new THREE.Mesh(
+    loopV2 ? loopRingExtrude(outline, faceR - radius * 0.97, radius * 0.02)
+      : ringExtrude(faceR, radius * 0.97, radius * 0.02, SEG), MATS.silver);
   ring.position.z = radius * 0.01;
   g.add(ring);
+  if (outline) g.userData.outline = outline;   // §307 — the loop the dial was cut to, for the caller and the probes
 
   // The wells' FINISH. The well itself is matter — a pocket machined into the
   // plate above, floor and wall both brass — and these two meshes are what is

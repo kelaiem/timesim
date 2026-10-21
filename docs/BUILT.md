@@ -41413,3 +41413,121 @@ downloads are byte for byte `wantedListXml` at condition any and after choosing 
 **Not done.** The upload itself was not tried (no BrickLink account or network from
 here); the first owner upload is the format's real test, and a tag BrickLink rejects
 is a one-line change in `wantedListXml`.
+
+## §307 — A form movement, landing 1: the rectangle law, the layout optimiser and `?case=rect` (a prototype)
+
+Out of an owner request — "reshape the movement inside a different case shape
+like a rectangle", then sharpened mid-session to "mold the movement to minimize
+the case shape — optimize the movement layout for the case shape". The entry is
+§307 in the private roadmap; this is its first landing, a PROTOTYPE behind a
+spec key, and the remainder (landings 2 and 3) stays filed there under the same
+number. Nothing here moves the default build: the fingerprint read 955951544 on
+pristine `main` and on this tree, both virgin boots, and boot stays silent.
+
+### The rectangle is an output of the arrangement
+
+`solveKeyless` (`src/layout.js`) returns `formPlate` beside `plateR`: the
+tightest axis-aligned rectangle (long side 12–6, the movement's y) round the
+SAME members by the SAME rule — every station's outline under the plate's rim
+margin, and the three keyless floors `plateR` takes (the setting wheel and the
+folded minute wheel one unit past their rims, the stem bushing's far foot) as
+circles at the positions those terms measure from. `PLATE_RIM_MARGIN` names the
+`+= 5` plateR has carried since §13, so the circle and the rectangle read one
+number. The corner radius is that margin: a station circle keeps the margin from
+both walls, so the metal a corner round of that radius removes lies outside every
+circle by construction — derived, not typed. `formRect` and `formLoop` are the
+law and the loop; the loop is grown or inset per consumer so the plate, the dial,
+the opening and the band are concentric offsets of one outline. An aspect ratio
+was considered as a styling input and refused: with the round movement forcing
+the width, a typed length is exactly the number that "looked right".
+
+`?case=rect` (`SPEC.caseShape`, index.html's roster) reads it; absent means
+round, and nothing downstream touches the rectangle, so identity is bit-exact.
+
+### The optimiser (`tools/form-layout.mjs`, a report)
+
+`--dump` boots the page headless and writes the solver inputs `main.js`
+MEASURED (`LAYOUT_INPUTS`, `KEYLESS_INPUTS`, now on `window.__clock` — the swept
+radii are read off built meshes, which is why they are dumped rather than
+typed). The search then runs `solveLayout` → `solveKeyless` on them over the
+§33 knobs (barrel step, escape step, balance step target, d4 inside its two-bar
+window, stem azimuth) — a random sample, then coordinate descent with halving
+steps — and keeps the arrangement whose rectangle has the least area (or,
+`--objective width`, the least short side) with the band under the 40 mm cap.
+Feasibility is the solvers' own warning list: any warning but the balance step's
+edge walk refuses a candidate. `--near N` is a MOULDING (each angle within ±N° of
+the design, d4 within ±N/10 u); `--boot N` trial-boots the best candidates and
+counts what rule 6 prints, because the build knows what the solvers do not.
+
+Measured on the default's inputs:
+
+| arrangement | rectangle (plate) | the build's verdict |
+|---|---|---|
+| as designed | 25.90 × 25.47 mm | silent (round) |
+| narrowest, any knobs (`barrelstep −74.89, escstep −180, balstep −52.67, d4 11.84, stemaz 161.97`) | 15.50 × 31.12 mm | refused: NaN geometry, the alarm hammer and reserve wheel in the case annulus, the motion-works fold's lands negative |
+| least-area portrait, any knobs | 20.56 × 21.39 mm | 62 warnings (the bevel corner solve dies) |
+| narrowest within ±25° (`barrelstep −60, escstep −46.93, balstep 62.08, d4 20.71, stemaz 153.32`) | 23.50 × 27.01 mm | boots, 16 warnings (§62 lands, the stop work's crank, chaton seats) |
+
+**The finding:** the going train's feasibility is not the movement's. The alarm
+module, the reserve train and the keyless cluster's own parts stand at stations
+`main.js` seeds, not in the position table `P`, so a re-solved train fouls them
+and only a trial boot or the battery says so. Putting them into the rectangle's
+members is landing 2.
+
+### The cut
+
+`makeBackPlate`, `makeThreeQuarterPlate` and `makeDial` take an `outline` (a
+CCW loop in the builder's frame): the base plate's outer ring is the loop (the
+§186 rim and its notches are the round case's seating and are skipped), the
+three-quarter plate's wedge is cut against the loop's own ray exits, and the
+dial's sheet, plate and chapter ring follow it — the ground painted over the
+whole sheet with the railway track at its round radius, the 1930s form-dial
+convention (a rectangular track is landing 3). Every default path is proved
+byte-identical in Node against the pristine file (positions, normals, uvs,
+index; the dial's canvas call log too). `src/form-case.js` is the case: bore
++CASE_CLEAR, band +CASE_CLEAR+CASE_BAND_T, bezel opening −1 mm, crystal −0.5 mm
+(each the round case's own rule on the loop), a flat crystal, a display back,
+lugs on the flat short-end walls through `caseLugPlan`'s new `flat` (surfOut =
+surfIn = rOut; the default path unchanged), and capped tube sleeves on the three
+stems whose ends are the loop's ray exits. It is fetched only under
+`?case=rect`, so the round build's module graph is today's.
+
+**An opening must lie inside the plate it is cut in.** The first form boot
+measured 17,114 base-plate vertices outside the rectangle, the worst 14.5 u out
+— every one a clamp bore on a rim that no longer exists, earcut bridging the
+outline out to it. Under the form build every hole, slot, sector, pocket and
+window is held to the rounded rectangle's signed distance by the plate's own
+land rule (the extrude bevel plus one §62 land, `STOCK_MIN_U`), and a miss is
+DROPPED and counted aloud: 15 on the designed arrangement (the three §186 clamp
+bores, the hack sector, …). A dropped opening is a part whose seat the rectangle
+does not hold — the same gap as the finding above, read from the metal's side.
+After the filter the three plates measure 0 vertices outside the rectangle.
+
+The form build of the designed arrangement boots with 8 warnings, every one
+predicted by the entry: the dropped openings; the round-case asserts that read
+`plateR` (§186's rim-to-bore fit and notch floor, §187's aperture and "cannot be
+cased", TODO 241's pusher stroke against a nearer tube end); and the minute
+quick-set's siting, which re-sites its jumper. The page marks the configuration
+UNVERIFIED (TODO 158) until a point sweep runs.
+
+### Not done, named
+
+- The alarm module, the reserve train and the keyless cluster are not in the
+  objective (landing 2), and `plateR`'s other consumers — the case's radial
+  chain, `tubeClearR`, `BASE_RIM_R`, `dialRadius`'s wells — stay round-derived.
+- The caseback's display ring is the round one and stands wider than the form
+  band; the band is not bored for the stems (sleeves stand in solid metal); no
+  gasket, thread, midcase step or bezel rounds on the form case.
+- The schematic line tier and the §290 reflection still draw the round case; no
+  explainer entry (landing 3).
+- No `SPEC_POINTS` row and no `validated-configs.js` row: the battery has not
+  swept the form build, so the page's UNVERIFIED mark is the truth.
+
+### Instruments
+
+`tools/form-layout.mjs` (report; `--dump`, `--inputs`, `--objective`, `--crown`,
+`--near`, `--boot`, `--root`, `--query`, `--shot`). The default build's identity
+was held by `window.__I.fingerprint` on two virgin boots of pristine `main` and
+of this tree (955951544, 64 units, 13 poses), by the builders' Node comparisons
+against the pristine file, and by boot silence; the form build by a vertex
+census against the rectangle and the two headless screenshots in the PR.

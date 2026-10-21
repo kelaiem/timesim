@@ -382,7 +382,12 @@ try {
   // §304 — 96: booklet.html (an adopted document, +1) and its five modules, src/technic-booklet.js, -sig.js, -flags.js,
   // -page.js and -view.js (+5). The count also catches a mis-listed booklet seed (drop it from ADOPTED and this reads 95); the
   // booklet is booted offline below.
-  check('release: precache complete', counts === 96, `${counts}/96`);
+  // §307 — 97: src/form-case.js, the form case, which main.js imports DYNAMICALLY
+  // and only under ?case=rect. The stamper walks import() specifiers like static
+  // ones (inspect.js's precedent, above), so the module is versioned and
+  // precached with the rest of the app and the form build opens offline too.
+  // One module for the app, so it adds one.
+  check('release: precache complete', counts === 97, `${counts}/97`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
