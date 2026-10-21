@@ -247,6 +247,14 @@ export async function startBooklet({ params, libUrl }) {
   await new Promise((r) => setTimeout(r, 0));
   const plan = deriveSteps(built.build, { lib, mode });
   const bom = B.bomOf(built.build, lib);
+  // BUILT §306: the build's BrickLink wanted list (condition any), the same function technic.html's list offers
+  const wanted = document.getElementById('wanted');
+  if (wanted) {
+    try {
+      wanted.href = URL.createObjectURL(new Blob([B.wantedListXml({ cell, kind: built.kind, title: built.title, bom }, gen)], { type: 'application/xml' }));
+      wanted.download = `${gen}-${cell}-bricklink-wanted.xml`; wanted.title = `Upload on BrickLink: Wanted > Upload > BrickLink XML. Condition: any. ${B.WANTED_NOTE}`; wanted.hidden = false;
+    } catch (e) { state.errors.push(`wanted list: ${e.message}`); }
+  }
   const model = K.bookletOf({ lib, gen, cell, mode: plan.mode, built, plan, bom, flagsTable: BOOKLET_FLAGS, paper });
   const box = K.imageBox(paper);
   const geoOf = makeGeoOf(lib);

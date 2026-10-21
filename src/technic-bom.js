@@ -350,6 +350,95 @@ export function parseCsv(text) {
 }
 
 // ---------------------------------------------------------------------------
+// BUILT §306 — THE BRICKLINK WANTED LIST: one XML file per build that BrickLink's
+// "Wanted > Upload > BrickLink XML" takes, so a builder can put a whole build on a
+// wanted list in one step.
+//
+// THE FORMAT, AND WHERE IT IS FROM. BrickLink's wanted-list upload format as it is
+// published on BrickLink's help pages and as known to the author; bricklink.com
+// could NOT be reached from the sandbox that wrote this (it answers a bot check), so
+// the element set was not re-read on the day and is kept to the minimum that format
+// documents. Root `<INVENTORY>`, one `<ITEM>` per wanted lot, and inside it, in this
+// order and no other tag:
+//   ITEMTYPE   P (a part; the string, x127c20pb01, is a Parts item too)
+//   ITEMID     BrickLink's item number, read from the subset (`line.bricklink.item`,
+//              src/technic-bricklink.js, generated from the catalogue download) —
+//              never the LDraw id unless the two are the same (22253 is bought as 6595)
+//   COLOR      BrickLink's colour id from the subset (`line.bricklink.colourId`)
+//   MINQTY     the line's quantity
+//   CONDITION  N (new), U (used) or X (any; BrickLink's own default) — the page's choice
+//   REMARKS    short: the LDraw id(s) and the roles, so a lot can be traced back (the
+//              string's lot adds the model's stud count: BrickLink sells two lengths
+//              under its one item, BUILT §301)
+//   NOTIFY     N (no e-mail when a lot is listed)
+// No `<?xml?>` declaration, no comment, no wanted-list name tag: the upload names the
+// list on BrickLink's form, and a tag the format does not have is a guess.
+//
+// TWO LINES, ONE LOT. A BOM line is an (LDraw id, colour); BrickLink's lot is an
+// (item, colour). Two LDraw ids that BrickLink sells as one item (a mould-variant
+// letter BrickLink does not list resolves to its base item, BUILT §301) in the same
+// colour are ONE lot, their quantities summed; `wantedListOf` reports every merge.
+//
+// IT REFUSES rather than guesses: a line with no BrickLink item, no BrickLink colour
+// id, or no element BrickLink lists in that colour (none since BUILT §303) throws,
+// naming the line. MODELLED, not built: the list is generated from the model and the
+// catalogue download; it says nothing about stock or prices.
+export const WANTED_CONDITIONS = Object.freeze({ X: 'any', N: 'new', U: 'used' });
+export const WANTED_TAGS = Object.freeze(['ITEMTYPE', 'ITEMID', 'COLOR', 'MINQTY', 'CONDITION', 'REMARKS', 'NOTIFY']);
+export const WANTED_NOTE = `This wanted list is generated from the model and BrickLink's catalogue download of ${BRICKLINK.source.date}; it is not checked against stock or prices. Modelled, not built.`;
+export const xmlEscape = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+export const xmlUnescape = (s) => s.replace(/&(lt|gt|quot|apos|amp);/g, (_, e) => ({ lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' })[e]);
+
+// The lots of one cell's BOM, in BOM order (a merged lot stands where its first line
+// stood), and the merges. Throws on any line BrickLink cannot be asked for.
+export function wantedListOf(cell) {
+  const b = cell?.bom;
+  if (!b) throw new Error(`technic-bom: wanted list for ${cell?.cell}: no parts list (${cell?.reason ?? 'not framed'})`);
+  const lots = new Map();
+  for (const l of b.lines) {
+    const bl = l.bricklink, at = `${cell.cell}: line ${l.part} in ${l.colourName ?? l.colour}`;
+    if (!bl || !bl.item) throw new Error(`technic-bom: wanted list refused — ${at} has no BrickLink item`);
+    if (bl.colourId === null || bl.colourId === undefined) throw new Error(`technic-bom: wanted list refused — ${at} has no BrickLink colour id`);
+    if (!bl.listed) throw new Error(`technic-bom: wanted list refused — ${at}: BrickLink lists no element for ${bl.item} in ${bl.colour ?? 'that colour'}`);
+    if (!(Number.isInteger(l.qty) && l.qty > 0)) throw new Error(`technic-bom: wanted list refused — ${at} has quantity ${l.qty}`);
+    const k = `${bl.item}|${bl.colourId}`;
+    const lot = lots.get(k) ?? { itemId: bl.item, colorId: bl.colourId, colour: bl.colour, qty: 0, ldraw: [], roles: new Set(), string: null };
+    lot.qty += l.qty; lot.ldraw.push(l.part); for (const r of l.roles) lot.roles.add(r);
+    if (l.string) lot.string = l.string;
+    lots.set(k, lot);
+  }
+  const out = [...lots.values()].map((t) => ({ ...t, roles: [...t.roles].sort(),
+    // the string: BrickLink lists the 20L and 21L under one item (BUILT §301), so the lot says the model's length
+    remarks: `LDraw ${t.ldraw.join(' + ')} (${[...t.roles].sort().join(', ')})${t.string ? `; the model's string is ${t.string.studs} studs, check the variant` : ''}` }));
+  return { lots: out, merges: out.filter((t) => t.ldraw.length > 1).map((t) => ({ itemId: t.itemId, colorId: t.colorId, ldraw: t.ldraw, qty: t.qty })),
+    total: out.reduce((n, t) => n + t.qty, 0) };
+}
+export function wantedListXml(cell, gen, { condition = 'X' } = {}) {
+  if (!WANTED_CONDITIONS[condition]) throw new Error(`technic-bom: wanted list condition ${condition} is not N, U or X`);
+  const { lots } = wantedListOf(cell);
+  const tag = (t, v) => `<${t}>${xmlEscape(v)}</${t}>`;
+  const items = lots.map((t) => ['<ITEM>', tag('ITEMTYPE', 'P'), tag('ITEMID', t.itemId), tag('COLOR', t.colorId), tag('MINQTY', t.qty),
+    tag('CONDITION', condition), tag('REMARKS', t.remarks), tag('NOTIFY', 'N'), '</ITEM>'].join(''));
+  return ['<INVENTORY>', ...items, '</INVENTORY>'].join('\n') + '\n';
+}
+// the inverse, for the probe and the smoke: the root and every ITEM's tags, unescaped.
+// Strict: anything outside a known tag, an unknown tag, or a tag twice in one ITEM throws.
+export function parseWantedXml(text) {
+  const m = /^\s*<INVENTORY>([\s\S]*)<\/INVENTORY>\s*$/.exec(text);
+  if (!m) throw new Error('wanted XML: no <INVENTORY> root');
+  const items = [], rest = m[1].replace(/<ITEM>([\s\S]*?)<\/ITEM>/g, (_, body) => {
+    const it = {}, left = body.replace(/<([A-Z]+)>([^<]*)<\/\1>/g, (__, t, v) => {
+      if (!WANTED_TAGS.includes(t)) throw new Error(`wanted XML: unknown tag <${t}>`);
+      if (t in it) throw new Error(`wanted XML: <${t}> twice in one ITEM`);
+      it[t] = xmlUnescape(v); return ''; });
+    if (left.trim()) throw new Error(`wanted XML: stray text in an ITEM: ${left.trim().slice(0, 40)}`);
+    items.push(it); return '';
+  });
+  if (rest.trim()) throw new Error(`wanted XML: stray text under INVENTORY: ${rest.trim().slice(0, 40)}`);
+  return items;
+}
+
+// ---------------------------------------------------------------------------
 // THE PICTURE'S CAMERA, pure so the renderer and the probe read one law. An
 // isometric view from the front, right and above in LDraw's frame (+Y DOWN, so
 // "above" is −Y): azimuth 45° about the vertical, elevation 30° — the corner

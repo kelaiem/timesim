@@ -127,6 +127,13 @@
   src/technic-bom.js is the pure half; tools/probe-technic-bom.mjs holds it and
   tools/smoke-technic-bom.mjs holds the pictures. DISPLAY ONLY: the placements
   and the .ldr downloads are untouched.
+
+  BUILT §306 — THE BRICKLINK WANTED LIST. Beside the CSV, the list as BrickLink's
+  wanted-list upload XML (wantedListXml in src/technic-bom.js): one lot per BrickLink
+  item and colour, from the catalogue subset, the condition chosen here (any, new,
+  used). A line BrickLink does not list refuses the export rather than guess.
+  Generated from the model and the catalogue download; not checked against stock
+  or prices; modelled, not built.
 -->
 <style>
 :root { --bg:#14161a; --panel:#1d2026; --ink:#d9dde3; --dim:#8a919c; --ok:#7fc98b; --bad:#e2777a; --line:#2b3038; }
@@ -395,7 +402,7 @@ import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBa
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
 import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
-import { GENERATIONS, seedBuild, bomForCell, bomCsv, NOT_IN_MODEL, honestyFor } from './src/technic-bom.js';
+import { GENERATIONS, seedBuild, bomForCell, bomCsv, NOT_IN_MODEL, honestyFor, wantedListXml, wantedListOf, WANTED_CONDITIONS, WANTED_NOTE } from './src/technic-bom.js';
 import { makePartPictures } from './src/technic-bom-view.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
          ratQ, ratMul, ratEq, ratStr } from './src/layout.js';
@@ -1297,8 +1304,22 @@ async function fillBom(body, cell, gen) {
   body.appendChild(ul);
   for (const h of honestyFor(c.kind, b.lines)) body.appendChild(el('p', 'bom-note', h));
   const a = el('a', null, `download the list (.csv, ${gen})`); a.style.color = '#9fb6d9';
-  a.href = URL.createObjectURL(new Blob([bomCsv(c, gen)], { type: 'text/csv' })); a.download = `${gen}-${cell}.csv`;
+  a.href = URL.createObjectURL(new Blob([bomCsv(c, gen)], { type: 'text/csv' })); a.download = `${gen}-${cell}.csv`; a.dataset.csv = cell;
   body.appendChild(a);
+  // BUILT §306: the same list as a BrickLink wanted list (Wanted > Upload > BrickLink XML), one lot per
+  // BrickLink (item, colour). It refuses a line BrickLink does not list rather than guess, and says so here.
+  const wl = el('div', 'bom-note'); wl.dataset.wanted = cell;
+  try {
+    const w = wantedListOf(c);
+    const x = el('a', null, 'BrickLink wanted list (.xml)'); x.style.color = '#9fb6d9'; x.dataset.wantedXml = cell;
+    x.title = 'upload on BrickLink: Wanted > Upload > BrickLink XML';
+    const sel = el('select'); sel.setAttribute('aria-label', 'condition'); sel.style.marginInlineStart = '8px';
+    for (const [k, v] of Object.entries(WANTED_CONDITIONS)) sel.appendChild(new Option(`${v} (${k})`, k));
+    const set = () => { URL.revokeObjectURL(x.href); x.href = URL.createObjectURL(new Blob([wantedListXml(c, gen, { condition: sel.value })], { type: 'application/xml' })); x.download = `${gen}-${cell}-bricklink-wanted.xml`; };
+    sel.addEventListener('change', set); set();
+    wl.append(x, sel, el('br'), document.createTextNode(`${w.lots.length} BrickLink lots, ${w.total} parts${w.merges.length ? `; ${w.merges.map((m) => `${m.ldraw.join(' and ')} are one lot (${m.itemId})`).join('; ')}` : ''}. ${WANTED_NOTE}`));
+  } catch (err) { wl.textContent = `no BrickLink wanted list: ${err.message}`; }
+  body.appendChild(wl);
   // BUILT §304: the printable booklet of this build (steps, callouts, this list), US Letter or A4
   const bk = el('a', null, 'open the booklet (prints on Letter or A4)'); bk.style.cssText = 'color:#9fb6d9;margin-inline-start:12px';
   bk.href = `./booklet.html?cell=${encodeURIComponent(cell)}&gen=${encodeURIComponent(gen)}`; bk.target = '_blank'; bk.rel = 'noopener'; bk.dataset.booklet = cell;
