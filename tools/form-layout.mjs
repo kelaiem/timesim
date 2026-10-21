@@ -56,7 +56,17 @@ const CROWN = opt('--crown', 'side');
 const SAMPLES = Number(opt('--samples', 6000));
 const SEED = Number(opt('--seed', 307));
 const NEAR = opt('--near', null) === null ? null : Number(opt('--near', null)); // search within ±NEAR° of the designed angles (and ±NEAR/10 u of D4)
-const BOOT = Number(opt('--boot', 0));      // trial-boot the best N candidates and count their boot warnings — the build's own asserts are the judge the solvers are not
+const BOOT = Number(opt('--boot', 0));
+// --verify N: landing 2's judge. The best N solver candidates are each booted
+// under ?case=rect at every alarm-module azimuth in --alarmmods (absolute world
+// degrees, ?alarmmod=; empty = as designed, 40°) — the module is seeded at a
+// world station the train never sees, so turning it is the one knob that moves
+// it out of a re-solved train's way. Each boot is ranked by the movement's
+// TRUE footprint (every built part, not the solvers' members) and kept only if
+// it prints no warning the designed arrangement's form build does not (digits
+// stripped: the same assert at a different number is the same finding).
+const VERIFY = Number(opt('--verify', 0));
+const ALARMMODS = String(opt('--alarmmods', ',100,160,220,280,340')).split(',').map((x) => x.trim());      // trial-boot the best N candidates and count their boot warnings — the build's own asserts are the judge the solvers are not
 if (!['area', 'width'].includes(OBJECTIVE)) { console.error('--objective is area or width'); process.exit(2); }
 if (!['side', 'any'].includes(CROWN)) { console.error('--crown is side or any'); process.exit(2); }
 
@@ -87,6 +97,31 @@ async function bootOnce(query, shot = null) {
   const out = await page.evaluate(() => window.__bootError ? { bootError: String(window.__bootError.message) } : ({
     layoutInputs: window.__clock.layoutInputs, keylessInputs: window.__clock.keylessInputs,
     formPlate: window.__clock.formPlate, plateR: window.__clock.plateR, P: window.__clock.P,
+    // §307 landing 2 — THE MOVEMENT'S TRUE FOOTPRINT, measured off the built
+    // metal: the world-XY box of every mesh under the movement group, the case
+    // and every schematic object excluded. The solvers' rectangle sees only the
+    // train and the keyless floors; this sees the alarm module, the reserve
+    // train, the keyless cluster and everything else the build placed, which is
+    // what landing 1 measured the solvers cannot.
+    footprint: (() => {
+      let mv = null;
+      window.__clock.scene.traverse((o) => { if (!mv && o.name === 'case' && o.parent) mv = o.parent; });
+      if (!mv) return null;
+      mv.updateWorldMatrix(true, true);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, n = 0;
+      const v = mv.position.clone();
+      const skip = (o) => { for (let a = o; a && a !== mv; a = a.parent) if (/^case/.test(a.name) || (a.userData && a.userData.schematic)) return true; return false; };
+      mv.traverse((o) => {
+        if (!o.isMesh || !o.geometry || !o.geometry.attributes.position || skip(o)) return;
+        const pa = o.geometry.attributes.position;
+        for (let i = 0; i < pa.count; i++) {
+          v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld);
+          if (v.x < x0) x0 = v.x; if (v.x > x1) x1 = v.x; if (v.y < y0) y0 = v.y; if (v.y > y1) y1 = v.y;
+        }
+        n++;
+      });
+      return { xMin: x0, xMax: x1, yMin: y0, yMax: y1, hw: (x1 - x0) / 2, hh: (y1 - y0) / 2, area: (x1 - x0) * (y1 - y0), meshes: n };
+    })(),
   }));
   if (shot && !out.bootError) {
     // The dial-side preset, a few frames to settle the camera tween (~0.9 s), then the picture.
@@ -231,6 +266,34 @@ for (const r of best.slice(1, 5)) console.log(`  ${rect(r.f)} — barrelstep ${r
 // BUILD knows the rest (the alarm module, the reserve train, the motion-works
 // fold, every §62 land and §186 annulus assert). Boot the best N and count what
 // rule 6 prints — a candidate the build warns on is not an arrangement yet.
+if (VERIFY > 0) {
+  const norm = (w) => w.replace(/-?\d+(\.\d+)?(e-?\d+)?/g, '#');
+  const base = await bootOnce('case=rect');
+  if (base.bootError) { console.log(`VERIFY: the designed form build did not boot: ${base.bootError}`); process.exit(0); }
+  const allowed = new Set(base.warnings.map(norm));
+  const fp = (f) => `${mm(2 * f.hw)} × ${mm(2 * f.hh)} mm (${(f.area * L.UNIT_MM * L.UNIT_MM).toFixed(0)} mm²)`;
+  console.log(`VERIFY (${VERIFY} candidates × ${ALARMMODS.length} alarm azimuths, ?case=rect):`);
+  console.log(`  designed: true footprint ${fp(base.footprint)} over ${base.footprint.meshes} meshes; ${base.warnings.length} warning(s), the allowed set`);
+  const rows = [];
+  for (const r of best.slice(0, VERIFY)) {
+    for (const am of ALARMMODS) {
+      const q = url(r.k).replace(/^index\.html\?/, '') + (am === '' ? '' : `&alarmmod=${am}`);
+      const out = await bootOnce(q);
+      if (out.bootError) { console.log(`  ${q} → BOOT FAILED: ${out.bootError}`); continue; }
+      const extra = out.warnings.filter((w) => !allowed.has(norm(w)));
+      rows.push({ q, f: out.footprint, extra });
+      console.log(`  ${fp(out.footprint)}  ${extra.length ? `${extra.length} new warning(s): ${extra[0].slice(0, 110)}` : 'CLEAN'}  — alarmmod ${am || 'as designed'}, solver rect ${rect(r.f)}`);
+    }
+  }
+  const clean = rows.filter((x) => !x.extra.length).sort((a, b) => a.f.area - b.f.area);
+  if (!clean.length) console.log('  NO CLEAN CANDIDATE: every re-solved arrangement drew a warning the designed form build does not');
+  else {
+    const c = clean[0];
+    console.log(`BEST CLEAN: ${fp(c.f)} — ${((1 - c.f.area / base.footprint.area) * 100).toFixed(1)}% under the designed footprint`);
+    console.log(`  URL: index.html?${c.q}`);
+  }
+}
+
 if (BOOT > 0) {
   console.log(`TRIAL BOOTS (${BOOT}, round case; the warnings are the build's own asserts):`);
   for (const r of best.slice(0, BOOT)) {
