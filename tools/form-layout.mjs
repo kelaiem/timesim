@@ -37,7 +37,34 @@
 // position table `P`, so a re-solved train can foul them and only a trial boot
 // (`?case=rect&…` — the URL this prints) and the battery can say. The
 // prototype's record (BUILT §307) lists this as landing 2's work.
-import { readFileSync, writeFileSync } from 'node:fs';
+//
+//   node tools/form-layout.mjs --search [--budget N] [--parallel P] [--log FILE] [--rounds R]
+//
+// --search MEASURES what the solvers cannot: it boots the page itself, once per
+// candidate, under `?case=rect&<knobs>`, and reads `formFootprint.rect` — the
+// rectangle round every part the build placed (main.js FORM_FOOTPRINT: the
+// gong and anything already through the round bore excepted, the rim margin
+// added). Its objective is that rectangle's AREA, and a candidate's rectangle
+// does not depend on the outline it was cut to, so one boot judges it and its
+// `formrect=` is that rectangle. The knobs are index.html's SPEC_FIELDS rows
+// that MOVE a station (the train's three steps and d4, the stem and the
+// crown's azimuths, the reserve's radius, the alarm corner's azimuth and
+// radius, the alarm module and its three bearings), each started at the value
+// the build uses when the key is absent (read off the boot or off the named
+// constant) — dialr, subdialr, studr and the route keys stay out. FEASIBILITY
+// is the build's own warning list: a candidate is accepted only when every
+// warning it prints, digits stripped, is one the designed form build
+// (`?case=rect`) prints too; a boot error is infeasible. The search is
+// coordinate descent from the design, ±step per knob, P boots at a time in one
+// browser, the best improving move of each batch taken, every step halved
+// after a round with none. Every boot is a line in `--log` (JSONL), and a
+// candidate already there is read back, not re-booted, so a long run resumes.
+// LIMITS, named: it is a LOCAL search (the starting basin, a few rounds); the
+// judge is the build's warnings, so a collision the build does not warn on is
+// invisible to it and a part pushed out through the round bore drops out of
+// the footprint rather than counting against it — the BATTERY is the judge of
+// record, and a winner here is a candidate for it, not a result.
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, extname, normalize } from 'node:path';
@@ -175,7 +202,157 @@ if (DUMP) {
   process.exit(0);
 }
 
-if (!INPUTS) { console.error('need --dump FILE or --inputs FILE'); process.exit(2); }
+if (argv.includes('--search')) {
+  const L0 = await import(join(ROOT, 'src/layout.js'));
+  const BUDGET = Number(opt('--budget', 120));
+  const PAR = Math.max(1, Number(opt('--parallel', 3)));
+  const ROUNDS = Number(opt('--rounds', 6));
+  const LOG = opt('--log', null);
+  const norm = (w) => w.replace(/-?\d+(\.\d+)?(e-?\d+)?/g, '#');
+  const UMM = L0.UNIT_MM;
+  const areaMm = (r) => (r[1] - r[0]) * (r[3] - r[2]) * UMM * UMM;
+  const dims = (r) => `${((r[1] - r[0]) * UMM).toFixed(2)} × ${((r[3] - r[2]) * UMM).toFixed(2)} mm`;
+
+  // One server and one browser for the whole run; a fresh CONTEXT per boot,
+  // so no state (the §79 worker, storage) crosses from one candidate to the next.
+  const { chromium } = await import('playwright');
+  const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+  const srv = createServer(async (req, res) => {
+    try {
+      const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
+      const body = await readFile(join(SERVE_ROOT, path === '/' ? 'index.html' : path));
+      res.writeHead(200, { 'content-type': MIME[extname(path)] ?? 'application/octet-stream', 'cache-control': 'no-store' }).end(body);
+    } catch { res.writeHead(404).end('not found'); }
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
+    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
+  const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
+  async function boot(query) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    const warnings = [];
+    page.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !NOISE.test(m.text())) warnings.push(`${m.type()}: ${m.text()}`); });
+    page.on('pageerror', (e) => warnings.push(`pageerror: ${e.message}`));
+    const t0 = Date.now();
+    try {
+      await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?trial=1&${query}`);
+      await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 900000 });
+      const out = await page.evaluate(() => window.__bootError ? { bootError: String(window.__bootError.message) }
+        : { ff: window.__clock.formFootprint, P: window.__clock.P });
+      return { ...out, warnings, ms: Date.now() - t0 };
+    } catch (e) { return { bootError: `harness: ${e.message.split('\n')[0]}`, warnings, ms: Date.now() - t0 }; }
+    finally { await ctx.close().catch(() => {}); }
+  }
+
+  // The log is the run's memory: each line one boot, keyed by its query.
+  const seen = new Map();
+  if (LOG && existsSync(LOG)) for (const ln of readFileSync(LOG, 'utf8').split('\n')) { if (!ln.trim()) continue; try { const j = JSON.parse(ln); seen.set(j.query, j); } catch {} }
+  const record = (j) => { seen.set(j.query, j); if (LOG) appendFileSync(LOG, JSON.stringify(j) + '\n'); };
+  let boots = 0;
+
+  // THE BASELINE: the designed arrangement's form build. Its warnings are the
+  // allowed set, its rectangle the reference, its P the designed stations.
+  const BASE_Q = 'case=rect';
+  let baseRow = seen.get(BASE_Q);
+  if (!baseRow || !baseRow.P) {
+    const b = await boot(BASE_Q); boots++;
+    if (b.bootError || !b.ff) { console.log(`SEARCH: the designed form build did not boot: ${b.bootError ?? 'no formFootprint'}`); await browser.close(); srv.close(); process.exit(1); }
+    baseRow = { query: BASE_Q, knobs: {}, rect: b.ff.rect, area: areaMm(b.ff.rect), accepted: true, baseline: true, warnings: b.warnings.map(norm), P: b.P, ms: b.ms, at: new Date().toISOString() };
+    record(baseRow);
+  }
+  const allowed = new Set(baseRow.warnings);
+  console.log(`SEARCH baseline (case=rect, as designed): ${dims(baseRow.rect)} = ${baseRow.area.toFixed(1)} mm²; ${allowed.size} distinct warning shape(s) allowed`);
+
+  // THE KNOBS and where each STARTS — the value the build takes when the key is
+  // absent. Read off the boot where the page exposes it (the stem and crown
+  // azimuths are the barrel's, §13; the alarm corner is the one of world 0°/180°
+  // farther from the stem, main.js ALARM_LOCAL_AZ's solve), else the constant
+  // the build falls back to: layout.js's steps, D4, RESERVE_STATION_R and
+  // ALARM_CORNER_R; main.js's module seed ALARM_SW_AZ 40° and its three
+  // bearings 202° / 92° / 148°. Steps: 15° for an angle, 1 u (0.38 mm) for a radius.
+  const Pb = baseRow.P;
+  const phi = Math.atan2(Pb.barrel.y, Pb.barrel.x) * 180 / Math.PI;
+  const angd = (a, b) => Math.abs((((a - b + 180) % 360) + 360) % 360 - 180);
+  const alarmAz0 = angd(180, phi) >= angd(0, phi) ? 180 : 0;
+  const KNOBS = [
+    ['barrelstep', L0.BARREL_STEP_DEG, 15], ['escstep', L0.ESCAPE_STEP_DEG, 15], ['balstep', L0.BALANCE_STEP_TARGET_DEG, 15],
+    ['d4', L0.D4, 1], ['stemaz', phi, 15], ['crownaz', phi, 15], ['rsvr', L0.RESERVE_STATION_R, 1],
+    ['alarmaz', alarmAz0, 15], ['alarmr', L0.ALARM_CORNER_R, 1], ['alarmmod', 40, 15],
+    ['alarmbarrelaz', 202, 15], ['alarmgovaz', 92, 15], ['alarmanchoraz', 148, 15],
+  ];
+  const START = Object.fromEntries(KNOBS.map(([k, v]) => [k, v]));
+  const step = Object.fromEntries(KNOBS.map(([k, , s]) => [k, s]));
+  const MIN_STEP = Object.fromEntries(KNOBS.map(([k, , s]) => [k, s / 8]));
+  console.log('  knobs (start, step): ' + KNOBS.map(([k, v, s]) => `${k} ${v.toFixed(2)} ±${s}`).join(', '));
+  // A candidate's query names only the knobs it MOVED (absence is the design),
+  // in roster order, two decimals — the key the log is read by.
+  const queryOf = (kn) => [BASE_Q, ...KNOBS.filter(([k]) => k in kn).map(([k]) => `${k}=${kn[k].toFixed(2)}`)].join('&');
+
+  async function judge(kn) {
+    const query = queryOf(kn);
+    if (seen.has(query)) return seen.get(query);
+    if (boots >= BUDGET) return null;
+    const n = ++boots;
+    const b = await boot(query);
+    let row;
+    if (b.bootError || !b.ff) row = { query, knobs: kn, accepted: false, reason: `boot error: ${b.bootError ?? 'no formFootprint'}` };
+    else {
+      const extra = b.warnings.filter((w) => !allowed.has(norm(w)));
+      row = { query, knobs: kn, rect: b.ff.rect, area: areaMm(b.ff.rect), accepted: extra.length === 0, newWarnings: extra.length, reason: extra[0]?.slice(0, 200) ?? null };
+    }
+    row.ms = b.ms; row.at = new Date().toISOString();
+    record(row);
+    console.log(`  [${String(n).padStart(3)}/${BUDGET}] ${query.slice(BASE_Q.length + 1) || '(designed)'} → `
+      + `${row.area !== undefined ? `${row.area.toFixed(1)} mm² ${dims(row.rect)}` : '—'} ${row.accepted ? 'ACCEPTED' : `REJECTED: ${row.reason}`} (${(b.ms / 1000).toFixed(0)} s)`);
+    return row;
+  }
+  // A small pool: P boots in flight, results in input order.
+  async function judgeAll(list) {
+    const out = new Array(list.length); let i = 0;
+    await Promise.all(Array.from({ length: Math.min(PAR, list.length) }, async () => { while (i < list.length) { const j = i++; out[j] = await judge(list[j]); } }));
+    return out;
+  }
+
+  let cur = baseRow, curKn = {};
+  const val = (kn, k) => (k in kn ? kn[k] : START[k]);
+  for (let round = 0; round < ROUNDS && boots < BUDGET; round++) {
+    let moved = false;
+    // The moves of this round, regenerated from the CURRENT point after each
+    // accepted batch, so the knobs not yet tried step from where the search is.
+    let order = KNOBS.map(([k]) => k).filter((k) => step[k] >= MIN_STEP[k]);
+    if (!order.length) break;
+    while (order.length && boots < BUDGET) {
+      const batch = [];
+      while (order.length && batch.length < PAR) {
+        const k = order.shift();
+        for (const sgn of [-1, 1]) batch.push({ ...curKn, [k]: val(curKn, k) + sgn * step[k] });
+      }
+      const rows = await judgeAll(batch);
+      let best = null;
+      rows.forEach((r, j) => { if (r && r.accepted && r.area < cur.area - 1e-6 && (!best || r.area < best.r.area)) best = { r, kn: batch[j] }; });
+      if (best) { cur = best.r; curKn = best.kn; moved = true; console.log(`  → MOVE: ${cur.area.toFixed(1)} mm² at ${queryOf(curKn)}`); }
+      if (rows.some((r) => r === null)) break;
+    }
+    if (!moved) { for (const k in step) step[k] /= 2; console.log(`  round ${round + 1}: no move improved — steps halved`); }
+    else console.log(`  round ${round + 1}: best so far ${cur.area.toFixed(1)} mm²`);
+  }
+  await browser.close(); srv.close();
+
+  // The answer is the best ACCEPTED row anywhere in the log, not only the path
+  // walked this run — a resumed run keeps what the earlier one found.
+  const acc = [...seen.values()].filter((r) => r.accepted && r.rect).sort((a, b) => a.area - b.area);
+  const top = acc[0];
+  const fr = top.rect.map((q) => q.toFixed(2)).join(',');
+  console.log(`SEARCH done: ${boots} boot(s) this run, ${seen.size} candidate(s) in the log, ${acc.length} accepted`);
+  console.log(`BEST: measured rectangle ${dims(top.rect)} = ${top.area.toFixed(1)} mm², `
+    + `${((1 - top.area / baseRow.area) * 100).toFixed(1)}% under the designed ${dims(baseRow.rect)} (${baseRow.area.toFixed(1)} mm²)`);
+  console.log(`  URL: index.html?${top.query}&formrect=${fr}`);
+  console.log('  (a candidate for the battery, which is the judge of record — this search sees only the build\'s own warnings)');
+  process.exit(0);
+}
+
+if (!INPUTS) { console.error('need --dump FILE, --search or --inputs FILE'); process.exit(2); }
 const L = await import(join(ROOT, 'src/layout.js'));
 const inputs = JSON.parse(readFileSync(INPUTS, 'utf8'));
 const { layoutInputs, keylessInputs } = inputs;
