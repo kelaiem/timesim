@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<meta name="color-scheme" content="light" />
+<title>LEGO Technic booklet</title>
+<!--
+  BUILT §304 — a PRINTABLE INSTRUCTION BOOKLET per LEGO Technic build (landing 3 of the instructions scoping).
+  Display only, and sim-code-free like technic.html: it imports src/layout.js's tables through the technic
+  modules and nothing from the movement, so the inspector battery never loads it.
+
+    booklet.html?cell=row-2&gen=technic_2026&paper=letter
+      cell   row-1 row-2 row-3 row-4 keyless fusee alarm escapement   (the carousel's ids; default row-2)
+      gen    technic_2026 | technic_classic                           (default technic_2026)
+      paper  letter | a4                                              (default by language region)
+      mode   keyless: wind set neutral; alarm: armed ringing off      (default: the build's first)
+
+  One source, two papers: the pages are sheets of the chosen size and `@page` carries the same size, so
+  Print → Save as PDF gives pages that fit that paper exactly. Which step falls on which page is MEASURED
+  from the rendered cards, never counted. MODELLED, NOT BUILT: nobody has assembled any of these builds.
+  Part geometry: LDraw.org library, CC BY 4.0. LEGO is a trademark of the LEGO Group, which does not
+  sponsor or endorse this page. This page's chrome is English (technic.html's is too).
+-->
+<style>
+:root{--ink:#14161a;--dim:#5a6068;--rule:#c9ced4;--soft:#f3f5f7;--accent:#1f5fa8;--warn:#b3261e;--warnbg:#fdecea;--posed:#7a4d00;--posedbg:#fff4da;--ok:#1d6b3a;--turn:#d6481f}
+*{box-sizing:border-box}
+html{background:#dfe2e6}
+body{margin:0;color:var(--ink);font:11px/15px "Helvetica Neue",Helvetica,Arial,sans-serif;background:#dfe2e6;-webkit-text-size-adjust:100%}
+#chrome{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:8px 12px;background:#14161a;color:#eef0f2;font:13px/1.3 system-ui,sans-serif}
+#chrome label{display:flex;gap:6px;align-items:center;color:#c8ccd2}
+#chrome select,#chrome button{font:inherit;padding:4px 8px;border-radius:6px;border:1px solid #4a4f57;background:#22262b;color:#eef0f2}
+#chrome button.primary{background:#2d6cdf;border-color:#2d6cdf;color:#fff}
+#chrome .grow{flex:1}
+#chrome a{color:#9fb6d9}
+#status{color:#c8ccd2;min-width:12em}
+#book{padding:16px 0 40px}
+#measure{position:absolute;left:-99999px;top:0;visibility:hidden}
+.sheet{width:var(--pw);height:var(--ph);margin:0 auto 16px;background:#fff;position:relative;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.28)}
+.content{position:absolute;left:var(--m);top:var(--m);width:var(--cw);height:var(--ch);overflow:hidden}
+.foot{position:absolute;left:var(--m);right:var(--m);top:calc(var(--m) + var(--ch) + 6px);display:flex;justify-content:space-between;gap:12px;font-size:9px;line-height:12px;color:var(--dim);border-top:1px solid var(--rule);padding-top:4px;white-space:nowrap}
+.foot span:first-child{overflow:hidden;text-overflow:ellipsis}
+.pn{font-variant-numeric:tabular-nums}
+
+/* ---- the cover ---- */
+.cover{height:100%;display:flex;flex-direction:column;gap:14px}
+.cover .kicker{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.cover h1{margin:0;font-size:30px;line-height:34px}
+.cover .sub{font-size:16px;line-height:22px}
+.cover .gen{color:var(--dim)}
+.hero{border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:#fff;width:100%}
+.hero img{display:block;width:100%;height:100%;object-fit:contain}
+.facts{margin:0;padding:0 0 0 18px;font-size:13px;line-height:20px}
+.mnb{border:2px solid var(--ink);border-radius:8px;padding:10px 12px;font-size:12px;line-height:17px}
+.mnb p{margin:6px 0 0}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.lg{display:flex;gap:8px;align-items:center;font-size:10.5px}
+.lg i{display:inline-block;width:26px;height:16px;border-radius:3px;flex:none}
+.lg-ghost{background:#dde1e6;border:1px solid #b3b9c0}.lg-fresh{background:#c91a09}
+.lg-insert{background:linear-gradient(90deg,#fff 0 0) padding-box;border-top:3px solid #111;height:0!important;margin:7px 0}
+.lg-turn{border:3px solid var(--turn);border-radius:50%;height:16px;border-bottom-color:transparent}
+.lg-x{background:rgba(201,26,9,.42)}.lg-flag{background:var(--warnbg);border:2px solid var(--warn)}
+.attr{margin:auto 0 0;font-size:9.5px;line-height:13px;color:var(--dim)}
+
+/* ---- the parts list ---- */
+.parts-head h2,.final h2{margin:0 0 6px;font-size:22px;line-height:26px}
+.parts-head .lede{margin:0 0 8px}
+.parts-head .cols,.prow{display:grid;grid-template-columns:64px 44px 1fr 124px 168px;gap:10px;align-items:start}
+.parts-head .cols{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);border-bottom:1px solid var(--ink);padding-bottom:3px}
+.prow{padding:6px 0;border-bottom:1px solid var(--rule);min-height:68px;margin-bottom:0}
+.prow img{width:56px;height:56px;margin:0 4px}
+.pqty{font-size:15px;font-weight:700;padding-top:4px}
+.pname .pid{color:var(--dim)}
+.pflag{color:var(--dim);font-size:10px;line-height:13px;margin-top:2px}
+.pflag.unofficial{color:var(--warn);font-weight:600}
+.pcol{display:flex;gap:6px;align-items:center;padding-top:4px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #888;flex:none}
+.pbl{font-size:10.5px;line-height:14px;padding-top:2px}.els{color:var(--dim)}
+.parts-foot{margin-top:10px}.parts-foot h3{margin:10px 0 4px;font-size:13px}
+.parts-foot ul{margin:0;padding-left:18px}.parts-foot li{margin:0 0 4px}
+.honest{margin:0 0 6px}
+
+/* ---- chapters and steps ---- */
+.chapter{height:calc(var(--chh) - var(--cgap));display:flex;align-items:flex-end;gap:12px;border-bottom:3px solid var(--ink);padding:8px 0 3px;margin-bottom:var(--cgap)}
+.chapter .cn{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.chapter .ct{font-size:17px;line-height:22px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chapter .cs{color:var(--dim)}
+.card{padding:var(--pad);margin-bottom:var(--cgap);border:1px solid var(--rule);border-radius:10px;background:#fff}
+.card.sub{background:#f2f7fd;border:1px dashed #6f93bf}
+.card.hasflag{border:2px solid var(--warn);padding:calc(var(--pad) - 1px)}
+.media{display:grid;grid-template-columns:var(--callw) 1fr;gap:var(--gap);min-height:var(--imgh)}
+.num{font-weight:800}
+.call .num{height:var(--numh);font-size:34px;line-height:var(--numh)}
+.num.sm{font-size:22px;height:30px;line-height:30px}
+.pips{display:grid;grid-template-columns:repeat(2,var(--pipw));gap:var(--pipgap)}
+.pip{height:var(--piph);border:1px solid var(--rule);border-radius:6px;display:flex;flex-direction:column;align-items:center;padding:4px 2px 0;background:#fff}
+.pip img{width:56px;height:56px;display:block}
+.pip .qty{font-size:13px;font-weight:700;line-height:16px}
+.pip .pid{font-size:8.5px;line-height:11px;color:var(--dim);text-align:center}
+.pip.unofficial{border-color:var(--warn)}.pip.unofficial .pid{color:var(--warn);font-weight:600}
+.call .unit{font-size:10.5px;color:var(--dim);margin-top:4px}
+.pic{position:relative;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:#fff}
+.pic img{display:block;width:100%;height:100%;object-fit:contain}
+.pic .over,.hero .over{position:absolute;inset:0;pointer-events:none}
+.over .ink{stroke:#111;stroke-width:3.5;stroke-linecap:round}.over .ink-fill{fill:#111}
+.over .halo{stroke:#fff;stroke-width:8;stroke-linecap:round;fill:none}.over .halo-fill{fill:#fff;stroke:#fff;stroke-width:5;stroke-linejoin:round}
+.over .turn{stroke:var(--turn);stroke-width:3.5;fill:none;stroke-linecap:round}.over .turn-fill{fill:var(--turn)}
+.body{margin-top:var(--cardbody,8px)}
+.body h3{margin:0;font-size:13px;line-height:18px}
+.body p{margin:0}
+.subtag{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#2b5a91;font-weight:700}
+.turnnote,.next{color:var(--dim)}
+.mark{margin-top:6px;padding:5px 10px;border-left:4px solid var(--dim);background:var(--soft);font-size:10.5px;line-height:15px}
+.mark strong{margin-right:2px}
+.mark.flagged,.mark.overlap,.mark.unchecked{border-left-color:var(--warn);background:var(--warnbg);color:#5c110c}
+.mark.posed,.mark.not-in-model,.mark.analogue,.mark.string{border-left-color:#c58a00;background:var(--posedbg);color:var(--posed)}
+.mark.turn,.mark.two-leg{border-left-color:var(--turn)}
+.mark.unofficial{border-left-color:var(--warn);background:var(--warnbg);color:#5c110c}
+.media.note{grid-template-columns:160px 1fr;min-height:100px;align-items:center}
+.notebody h3{margin:0 0 4px;font-size:13px}
+.band .post{fill:#e2e5e9;stroke:#8a9097;stroke-width:2}.band .rband{fill:none;stroke:#b4533a;stroke-width:4;stroke-dasharray:7 5}
+.band .bandtext{font:9px sans-serif;fill:#5a6068}
+.final .hero{margin:6px 0 10px}
+
+@media screen{#book{transform-origin:top center}}
+@media print{
+  html,body{background:#fff}
+  #chrome,#status{display:none!important}
+  #book{padding:0;zoom:1!important}
+  .sheet{margin:0;box-shadow:none;break-after:page;page-break-after:always}
+  .sheet:last-of-type{break-after:auto;page-break-after:auto}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+<link rel="alternate icon" href="./favicon.png" />
+</head>
+<body>
+<header id="chrome">
+  <strong>Booklet</strong>
+  <label>Build <select id="sel-cell"></select></label>
+  <label>Parts <select id="sel-gen"></select></label>
+  <label>Paper <select id="sel-paper"><option value="letter">US Letter</option><option value="a4">A4</option></select></label>
+  <label id="lab-mode" hidden>Mode <select id="sel-mode"></select></label>
+  <button id="print" class="primary" type="button">Print / Save as PDF</button>
+  <span class="grow"></span>
+  <span id="status" role="status" aria-live="polite">starting…</span>
+  <a href="./technic.html">the LEGO page</a>
+</header>
+<main id="book" aria-label="Booklet pages"></main>
+<div id="measure" aria-hidden="true"></div>
+<script type="module">
+import { startBooklet } from './src/technic-booklet-page.js';
+import { cellIds, GENERATIONS } from './src/technic-bom.js';
+import { PAPERS, defaultPaper } from './src/technic-booklet.js';
+const params = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+const cells = cellIds();
+for (const c of cells) $('sel-cell').append(new Option(c.startsWith('row-') ? `row ${c.slice(4)}` : c, c));
+for (const g of GENERATIONS) $('sel-gen').append(new Option(g === 'technic_2026' ? '2026 catalogue' : 'classic (on sale today)', g));
+$('sel-cell').value = cells.includes(params.get('cell')) ? params.get('cell') : 'row-2';
+$('sel-gen').value = GENERATIONS.includes(params.get('gen')) ? params.get('gen') : GENERATIONS[0];
+const MODES = { keyless: ['wind', 'set', 'neutral'], alarm: ['armed', 'ringing', 'off'] };
+const reload = () => {
+  const q = new URLSearchParams({ cell: $('sel-cell').value, gen: $('sel-gen').value, paper: $('sel-paper').value });
+  const m = MODES[$('sel-cell').value] && $('sel-mode').value; if (m) q.set('mode', m);
+  location.search = q.toString();
+};
+const fillModes = () => { const ms = MODES[$('sel-cell').value]; $('lab-mode').hidden = !ms; $('sel-mode').replaceChildren(...(ms ?? []).map((m) => new Option(m, m))); if (ms && ms.includes(params.get('mode'))) $('sel-mode').value = params.get('mode'); };
+fillModes();
+for (const id of ['sel-cell', 'sel-gen', 'sel-paper', 'sel-mode']) $(id).addEventListener('change', () => { if (id === 'sel-cell') { params.delete('mode'); fillModes(); } reload(); });
+$('sel-paper').value = PAPERS[params.get('paper')] ? params.get('paper') : defaultPaper(navigator.language);
+$('print').addEventListener('click', () => window.print());
+await startBooklet({ params, libUrl: './vendor/ldraw/technic-parts.mpd' });
+</script>
+</body>
+</html>

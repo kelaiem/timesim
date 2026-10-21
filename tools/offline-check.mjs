@@ -107,7 +107,7 @@ const touchTree = (dir, when) => {
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'booklet.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;
@@ -375,7 +375,14 @@ try {
   // technic.html, one module each, like landing H's fusee.
   // §294 — 84: src/technic-carousel.js, imported statically by technic.html. One
   // module for the page, so it adds one.
-  check('release: precache complete', counts === 84, `${counts}/84`);
+  // §300-§302 — +6 that were never counted here: technic.html imports src/technic-bom.js, technic-bom-ids.js, technic-bom-view.js,
+  // technic-bricklink.js, technic-colour.js and technic-steps.js, one module each, and this job's path filter did not list the
+  // page or its modules, so those three landings merged without running it (found by §304, which read 90 here). They are
+  // precached like landing H's fusee.
+  // §304 — 96: booklet.html (an adopted document, +1) and its five modules, src/technic-booklet.js, -sig.js, -flags.js,
+  // -page.js and -view.js (+5). The count also catches a mis-listed booklet seed (drop it from ADOPTED and this reads 95); the
+  // booklet is booted offline below.
+  check('release: precache complete', counts === 96, `${counts}/96`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -403,6 +410,12 @@ try {
   await page.goto(`http://127.0.0.1:${relPort}/primer.html`, NAV);
   const primerOk = await page.evaluate(() => document.querySelectorAll('details.mech').length > 0);
   check('OFFLINE: primer.html loads with content (also the mis-listed-seed assert — see header)', primerOk);
+  // §304 — the booklet, offline: it needs its document, five modules of its own, the technic modules, the LDraw pack and three.js, and every one of
+  // them has to be in the precache for it to set a single sheet. It stops at the pages standing (the pictures are WebGL).
+  await page.goto(`http://127.0.0.1:${relPort}/booklet.html?cell=row-2&paper=a4`, NAV);
+  await page.waitForFunction(() => ['pages', 'ready', 'nogl', 'unframed'].includes(window.__booklet?.stage), null, { timeout: 120000 });
+  const bookletSheets = await page.evaluate(() => document.querySelectorAll('.sheet').length);
+  check('OFFLINE: booklet.html sets its sheets from cache (the mis-listed-seed assert for the booklet)', bookletSheets > 0, `${bookletSheets} sheets`);
   // §95 tier two — a LOCALIZED boot, offline. The locale tables arrive by
   // dynamic import, which is the one class of URL that reaches the precache
   // through the module walk rather than through a document's own markup; a
