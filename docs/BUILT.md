@@ -41531,3 +41531,79 @@ was held by `window.__I.fingerprint` on two virgin boots of pristine `main` and
 of this tree (955951544, 64 units, 13 poses), by the builders' Node comparisons
 against the pristine file, and by boot silence; the form build by a vertex
 census against the rectangle and the two headless screenshots in the PR.
+
+## §308 — A form platform, landing 1: one case-shape law, a movement fitted to it, and the dial spec
+
+The owner's direction after §307: a PLATFORM for designing watches in different case shapes, dial first,
+with the movement's regions floorplanned inside the outline (strategy "C" of three weighed: a bespoke
+dial-first calibre, a modular base-plus-modules platform, and this floorplanned hybrid). The entry is §308 in
+the private roadmap; this landing is its first of five. It carries §307 landing 2's instruments, which
+measured why inside-out tuning cannot reach a small shape: the whole built movement needs 34.78 × 33.54 mm,
+and a 118-boot search over 13 arrangement knobs found 0.2%, refused by the satellites' own siting solvers
+(the setting traverse's cap bearing 15 times, the alarm's tier-split triple 6, the strike crank 6, a bevel
+cone 5, the drum's bound 4, the alarm setting's bearing 3). The rest of §307's landing 2 is superseded here.
+The round watch does not move: fingerprint 955951544 before and after, boot silent.
+
+### One shape law (`src/layout.js`)
+
+`caseShapeOf(kind, box, opts)` holds every outline as a CCW chain of segments and arcs, and answers the same
+four questions for every kind: `inset(x, y)` (signed distance, + inside), `exit(az, off)` (the ray's
+farthest crossing), `grown(g)` and `loop({ grow })` (a true offset, checked convex and so simple). Kinds:
+
+| kind | outline | styling constant (the owner's, like the lug width) | exactness |
+|---|---|---|---|
+| circle | one arc | — | exact |
+| rect | rounded rectangle, corner radius `PLATE_RIM_MARGIN` | — | exact |
+| cushion | superellipse \|x/a\|ⁿ + \|y/b\|ⁿ = 1 | `CUSHION_N = 4` (the squircle) | 1024-point equal-arc polyline, sagitta 5–7e-4 u |
+| tonneau | straight ends, long sides bowed circular arcs, corners at the rim margin | `TONNEAU_BOW = 0.12` | exact |
+
+`plateShape` and `formLoop` (§307) are thin calls into it.
+
+### The size is fitted, never typed
+
+Under `?case=rect|cushion|tonneau` the movement is measured once every part is built (`FORM_FOOTPRINT`):
+every mesh counts wherever it stands except the DECLARED through-case parts (the two stems and crowns, the
+pusher's stem and cap), the §202 bore liners and the case-path gong, which follow the case, and the plates
+and dial, which are cut TO the shape — counting them made the fit chase its own bevel (cut 89.30 u wide, it
+asked 99.98). The shape keeps the metal box's aspect and centre and takes the smallest scale (bisection to
+1e-9) at which every vertex of the metal's convex hull stands `PLATE_RIM_MARGIN` inside — exact, since every
+kind is convex. The fitted bounds travel back as `?formrect=`; a cut that no longer holds its metal warns
+with the URL. Measured, second boot at the fitted box:
+
+| kind | fitted size | scale |
+|---|---|---|
+| rect | 34.78 × 33.54 mm | 1 |
+| cushion | 34.96 × 33.71 mm | 1.0051 |
+| tonneau | 35.37 × 34.11 mm | 1.0169 |
+
+Every form consumer reads the shape: both plates and the dial (`outline: FORM.loop()`, the dial's in its
+Y-flipped frame), the opening filter (an opening must lie inside the plate it is cut in — the §186 clamp
+bores are no longer cut under a form, since no clamp exists), the form case (`src/form-case.js`: bore, wall,
+opening, crystal and back glass as offsets of one loop; the back's window from the three-quarter plate's
+measured swell; the pusher's stop at the bore the form case actually cuts), and the asserts that used to
+read the round case's radii (§186's fit, §187's aperture and casing, TODO 241's stroke), each re-derived
+under `FORM` against the form case's own metal.
+
+### The dial spec
+
+`__clock.dialSpec`, frozen: the outline (kind, bounds, loop in the dial's frame), the hand centre, the two
+sub-dials (dial-local and world, with their wells) and the three ports (stem, alarm crown, pusher: azimuth,
+line offset, z). A READOUT in this landing; landing 3 makes it the input.
+
+### Findings left open (each a warning on the form builds, none silenced)
+
+- **The plate is not located in the form case**: §186's fit reads 2.306 u against `SEAT_FIT` 0.08 — the
+  form bore is a 1 mm clearance and nothing seats the plate. A form case needs its own seat.
+- **The form case is too deep**: 11.9624 mm cased, over `CASE_HEIGHT_MAX_MM` 11.367 — its flat back must
+  clear the alarm tower, where the round case had a raised glass step.
+- **The cushion's lugs stand proud**: its curved end falls 1.691 u from the flat lug plane at the lugs'
+  outboard faces; it needs a curved-end lug plan.
+- **The gong still runs on the round case's path** inside the form wall.
+- **No battery has swept a form build**, so every form configuration is UNVERIFIED (TODO 158).
+
+### Instruments
+
+`tools/form-layout.mjs`: `--dump` (the measured footprint, the fitted rectangle and its URL, and every unit
+standing outside the solvers' rectangle), `--search` (the boot-based search, resumable from its JSONL log;
+outline warnings are judged at the candidate's own fitted shape, every other warning is the build's verdict),
+`--verify`, `--inputs`. The round identity was held by `fingerprint` on virgin boots of copies of both trees.
