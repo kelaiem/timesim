@@ -3695,6 +3695,89 @@ export function convexHull2(xs, ys, n) {
   return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
 
+// §308 landing 2 — THE ACTION GROUPS, the region model's one table. A group is
+// the set of registered units that carry one input to one output through
+// MECH_GRAPH's drive edges (CLAUDE.md's design priority), so it is what a
+// floorplan may MOVE AS ONE without spending its internals: a lever arm, a
+// ratio, a contact lives inside a group, and a floorplan's only currencies are
+// a whole group's station, azimuth and stratum. Every row names its units
+// VERBATIM (`registerLabel` names — inspect.js couples by string too) and the
+// drive edges that make it one group. ANCHORS are what pins a group to the
+// rest: a point of this group (`at`) that must stand where a point of another
+// group (or of the dial spec) stands, resolved by main.js off the build — a
+// station of P (`P.<key>`), the hand centre (`hand`), or a case port
+// (`port.<name>`, which the case follows, so a port pins only its azimuth's
+// line to the group that carries it). A move that carries a group's anchor off
+// its pin is not a position-space move; it is refused by the floorplanner.
+// Units not in any row are the FRAME — the plates, pillars, dial and case, cut
+// to the shape or following it — and the gong, whose wire follows the case.
+export const FORM_ACTION_GROUPS = Object.freeze([
+  Object.freeze({ id: 'going', name: 'going train + escapement',
+    units: Object.freeze(['Center wheel', 'Third wheel', 'Fourth wheel', 'Escape wheel', 'Pallet fork', 'Fork cock',
+      'Balance', 'Balance cock', 'Hairspring', 'Heart cam (seconds reset)', 'Small seconds']),
+    reason: 'drive Fusee → Center → Third → Fourth → Escape → Pallet fork → Balance → Hairspring; the cocks carry the escapement, the heart cam and the small-seconds hand ride the fourth arbor',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'centre arbor under the hands', at: 'P.center', pin: 'hand', edge: 'Center wheel → Motion works' }),
+      Object.freeze({ name: 'fourth arbor under small seconds', at: 'P.fourth', pin: 'dial', edge: 'Fourth wheel → Small seconds (the sub-dial is the dial spec\'s)' }),
+      Object.freeze({ name: 'centre pinion on the great wheel', at: 'P.center', pin: 'power', edge: 'Fusee & great wheel → Center wheel' }),
+    ]) }),
+  Object.freeze({ id: 'power', name: 'barrel, fusee and chain',
+    units: Object.freeze(['Mainspring drum', 'Set-up work', 'Chain', 'Fusee & great wheel', 'Maintaining detent', 'Winding arrest']),
+    reason: 'drive mainspring → Mainspring drum → Chain → Fusee & great wheel (→ Maintaining detent); Chain → Winding arrest; the set-up work is the drum\'s arbor',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'great wheel on the centre pinion', at: 'P.barrel', pin: 'going', edge: 'Fusee & great wheel → Center wheel' }),
+      Object.freeze({ name: 'fusee square under the winding transfer', at: 'P.barrel', pin: 'keyless', edge: 'Keyless works → Fusee & great wheel' }),
+    ]) }),
+  Object.freeze({ id: 'keyless', name: 'keyless + motion works',
+    units: Object.freeze(['Keyless works', 'Winding clutch', 'Setting lever', 'Yoke', 'Motion works', 'Hour wheel']),
+    reason: 'drive crown → Winding clutch → Keyless works → Fusee (winding) and crown → Setting lever → Yoke → Winding clutch, Keyless works → Motion works → Hour wheel (setting); Center wheel → Motion works (going)',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'motion works on the hand centre', at: 'hand', pin: 'going', edge: 'Center wheel → Motion works' }),
+      Object.freeze({ name: 'stem through the crown port', at: 'port.stem', pin: 'case', edge: 'crown → Winding clutch' }),
+      Object.freeze({ name: 'winding transfer on the fusee', at: 'P.barrel', pin: 'power', edge: 'Keyless works → Fusee & great wheel' }),
+    ]) }),
+  Object.freeze({ id: 'quickset', name: 'minute quick-set',
+    units: Object.freeze(['Minute jumper']),
+    reason: 'drive Setting lever → Minute jumper and Motion works → Minute jumper: a jumper on the minute wheel\'s star, lifted by the setting lever',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'jumper on the minute wheel\'s star', at: 'hand', pin: 'keyless', edge: 'Motion works → Minute jumper' }),
+    ]) }),
+  Object.freeze({ id: 'stopwork', name: 'stop work (hack) + seconds reset',
+    units: Object.freeze(['Hack rod', 'Stop lever', 'Reset rod', 'Reset hammer']),
+    reason: 'drive Setting lever → Hack rod → Stop lever (the hack crank at the balance) and Setting lever → Reset rod → Reset hammer → Heart cam',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'stop crank at the balance', at: 'P.balance', pin: 'going', edge: 'Hack rod → Stop lever' }),
+      Object.freeze({ name: 'reset hammer on the heart cam', at: 'P.fourth', pin: 'going', edge: 'Reset hammer → Heart cam (seconds reset)' }),
+      Object.freeze({ name: 'rods off the setting lever', at: 'port.stem', pin: 'keyless', edge: 'Setting lever → Hack rod, Reset rod' }),
+    ]) }),
+  Object.freeze({ id: 'reserve', name: 'power-reserve train',
+    units: Object.freeze(['Power-reserve train', 'Power reserve']),
+    reason: 'drive Fusee & great wheel → Power-reserve train → the reserve hand on its sub-dial',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'reserve train off the fusee', at: 'P.barrel', pin: 'power', edge: 'Fusee & great wheel → Power-reserve train' }),
+    ]) }),
+  Object.freeze({ id: 'alarmStrike', name: 'alarm module (strike train)',
+    units: Object.freeze(['Alarm barrel', 'Alarm click', 'Alarm winding train', 'Alarm winding arrest', 'Alarm striking wheel',
+      'Alarm governor', 'Alarm governor anchor', 'Alarm lifting lever', 'Alarm hammer', 'Alarm lock', 'Alarm switch', 'Alarm link']),
+    reason: 'drive alarm mainspring → Alarm barrel → Alarm striking wheel → Lifting lever → Hammer and → Governor → Anchor; Alarm crown → winding train → barrel → click / winding arrest; Alarm switch → Lock (the stop wheel on the striking staff) and → Link → Selector',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'winding train off the alarm crown', at: 'port.alarmCrown', pin: 'alarmSet', edge: 'Alarm crown → Alarm winding train' }),
+      Object.freeze({ name: 'link on the selector at the hand centre', at: 'hand', pin: 'alarmSet', edge: 'Alarm link → Alarm selector' }),
+    ]) }),
+  Object.freeze({ id: 'alarmSet', name: 'alarm setting + release',
+    units: Object.freeze(['Alarm crown', 'Alarm setting arbor', 'Alarm setting idler', 'Alarm setting wheel', 'Alarm disc', 'Alarm selector',
+      'Alarm release lifter', 'Alarm release link', 'Alarm release crank', 'Alarm release sleeve', 'Alarm silence rocker',
+      'Alarm release feeler', 'Alarm release disc', 'Alarm release reader', 'Alarm release seat', 'Alarm detector idler', 'Alarm detector arbor']),
+    reason: 'drive Alarm crown → setting arbor → idler → setting wheel → Alarm disc (on the hour wheel), Hour wheel → detector idler → detector arbor → reader, idler → release disc → reader → feeler, crown → release lifter → link → crank → sleeve → disc / silence rocker',
+    anchors: Object.freeze([
+      Object.freeze({ name: 'alarm disc on the hour wheel', at: 'hand', pin: 'keyless', edge: 'Hour wheel → Alarm disc' }),
+      Object.freeze({ name: 'alarm crown through its port', at: 'port.alarmCrown', pin: 'case', edge: 'Alarm crown → Alarm setting arbor' }),
+    ]) }),
+]);
+// The units that set the outline's frame rather than standing in it (cut to
+// the shape, or following the case): never a group, never moved by a plan.
+export const FORM_FRAME_UNITS = Object.freeze(['Three-quarter plate', 'pillars', 'Dial', 'Case', 'Alarm gong']);
+
 // §307 — the rectangle as a closed CCW loop: now the 'rect' kind of the one
 // law, kept under its name for the callers that hold a formRect.
 export function formLoop(rect, { grow = 0, cornerSegs = 12 } = {}) {
