@@ -214,7 +214,9 @@ flag path stays). Org status is read from the pack header, never typed.
 `LDRAW_COLOUR` is the one colour-by-role table and is COMPLETE (no role falls to
 16); since §303 it is DERIVED (`repickColours`, `src/technic-colour.js`: a colour per
 (role, part) that BrickLink lists, `role/part` rows for the exceptions) and the
-probe holds it equal to the derivation. Held by
+probe holds it equal to the derivation. **Since §306 each list exports a BrickLink
+WANTED LIST** (`wantedListXml`: `<INVENTORY>` of `<ITEM>`s, ITEMID and COLOR from the
+subset, one lot per (item, colour), a line BrickLink does not list REFUSES to export). Held by
 `probe-technic-bom.mjs` (pure Node) and `tools/smoke-technic-bom.mjs` (Chromium:
 each picture is its part).
 **Since §304 each build has a PRINTABLE BOOKLET** (`booklet.html?cell=<id>&gen=&paper=letter|a4`,

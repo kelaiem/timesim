@@ -1,4 +1,4 @@
-// IS EACH PICTURE IN THE TECHNIC PAGE'S PARTS LIST THE PART IT IS LABELLED, IN A REAL BROWSER, AT A DESKTOP AND AT A PHONE'S WIDTH: NON-BLANK, ITS SILHOUETTE THE SIZE THE PART'S PROJECTED BOUNDS SAY, THE TOTALS THE PURE MODULE'S, THE CSV THE LIST, AND NOTHING OVERFLOWING?
+// IS EACH PICTURE IN THE TECHNIC PAGE'S PARTS LIST THE PART IT IS LABELLED, IN A REAL BROWSER, AT A DESKTOP AND AT A PHONE'S WIDTH: NON-BLANK, ITS SILHOUETTE THE SIZE THE PART'S PROJECTED BOUNDS SAY, THE TOTALS THE PURE MODULE'S, THE CSV AND THE BRICKLINK WANTED LIST THE LIST, AND NOTHING OVERFLOWING?
 // Acceptance, needs Chromium (Playwright from tools/node_modules); exits
 // non-zero on any failure. BUILT §300 (technic.html, src/technic-bom.js,
 // src/technic-bom-view.js). The pure half is tools/probe-technic-bom.mjs.
@@ -19,6 +19,9 @@
 //     re-lists it (its own total, no 7785 or 7861);
 //   · CSV — the download is the list: its quantities sum to the total and it
 //     carries the modelled-not-built note;
+//   · WANTED (BUILT §306) — for row 2 and the fusee, the BrickLink wanted-list
+//     download is byte for byte `wantedListXml` computed here, at condition any and
+//     after choosing new, and the list carries its not-checked-against-stock note;
 //   · LAYOUT — no horizontal overflow of the page or the panel, and the tour bar
 //     (with its new button) stays inside the screen, at both widths.
 //
@@ -149,10 +152,22 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
     ok(ov.pw <= ov.pc + 1 && ov.sw <= ov.vw, `${s.cell}: horizontal overflow ${JSON.stringify(ov)}`);
     // the CSV: its quantities are the list's
     if (s.cell === 'fusee' || s.cell === 'keyless') {
-      const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`details.bom[data-cell="${s.cell}"] a[download]`)]);
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`details.bom[data-cell="${s.cell}"] a[data-csv]`)]);
       const csv = B.parseCsv(readFileSync(await dl.path(), 'utf8')), head = csv[0], q = head.indexOf('quantity');
       const blank = csv.findIndex((r) => r.length === 1 && r[0] === '');
       ok(dl.suggestedFilename() === `technic_2026-${s.cell}.csv` && csv.slice(1, blank).reduce((n, r) => n + Number(r[q]), 0) === w.bom.total && csv.some((r) => r[0] === 'note' && /^Modelled, not built\./.test(r[1])), `${s.cell}: the downloaded CSV is not the list (${dl.suggestedFilename()})`);
+    }
+    // BUILT §306: the BrickLink wanted list is the pure function's XML, byte for byte, at any and at new
+    if (s.cell === 'fusee' || s.cell === 'row-2') {
+      const sel = `details.bom[data-cell="${s.cell}"] a[data-wanted-xml]`;
+      for (const cond of ['X', 'N']) {
+        if (cond !== 'X') await page.selectOption(`details.bom[data-cell="${s.cell}"] [data-wanted] select`, cond);
+        const [dl] = await Promise.all([page.waitForEvent('download'), page.click(sel)]);
+        const xml = readFileSync(await dl.path(), 'utf8'), expect = B.wantedListXml(w, 'technic_2026', { condition: cond });
+        ok(dl.suggestedFilename() === `technic_2026-${s.cell}-bricklink-wanted.xml` && xml === expect, `${s.cell}: the downloaded wanted list (${cond}) is not wantedListXml's (${dl.suggestedFilename()}, ${xml.length} vs ${expect.length} bytes)`);
+        console.log(`  ${s.cell}: wanted list (${cond}) ${B.parseWantedXml(xml).length} lots, identical to wantedListXml`);
+      }
+      ok(/not checked against stock or prices/.test(text) && text.includes(B.WANTED_NOTE.slice(0, 40)), `${s.cell}: the wanted list's note is missing`);
     }
     if (SHOTS && ['fusee', 'keyless', 'alarm'].includes(s.cell)) {
       await page.evaluate((c) => document.querySelector(`details.bom[data-cell="${c}"]`).scrollIntoView({ block: 'start' }), s.cell);

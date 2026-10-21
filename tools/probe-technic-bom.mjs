@@ -31,6 +31,12 @@
 //   · CSV and WORDS — the CSV parses back to the BOM's lines, carries the
 //     not-in-the-model items and the honesty text, and no prose the list prints
 //     (nor the page's §300 block) says a build works, was tested or was simulated.
+//   · WANTED (BUILT §306) — for every build, generation and condition the BrickLink
+//     wanted-list XML parses back (the module's strict parser and an independent
+//     regex read): its lots are the BOM's (BrickLink item, colour) multiset read
+//     through the subset, quantities summed to the BOM's total, every ITEMID and
+//     COLOR the subset's, the tags exactly the format's, no LDraw id standing for a
+//     differing BrickLink item, escaping round-trips, merges reported.
 //   · VIEW — the picture camera is orthonormal and `viewBounds` equals an
 //     independent lookAt projection of the part's triangles.
 //   · PAGE — technic.html seeds the BOM memo with a build for every cell and
@@ -42,7 +48,10 @@
 // wrong id; a pack whose 7785 is rewritten as official (the flag check); a flag
 // stripped from a line; a role row deleted (the fold throws); a CSV with a
 // quantity changed; a prose line saying "works"; a page block with "tested"; a
-// view with one axis flipped; a page with a seedBuild line removed.
+// view with one axis flipped; a page with a seedBuild line removed; a wanted list
+// with 22253 for 6595, a MINQTY changed, an ITEM dropped, a COLOR changed, an
+// invented tag, a lot written twice; an unlisted line, a line with no item and one
+// with no colour id refusing to export; a merge of two lines summed and reported.
 //
 //   node tools/probe-technic-bom.mjs
 import { readFileSync } from 'node:fs';
@@ -375,6 +384,92 @@ const pageBlock = page.slice(page.indexOf('// --- §300: the parts list'), page.
 ok(pageBlock.length > 500, 'the page has no §300 parts-list block');
 ok(!FORBIDDEN.test(pageBlock.replace(/\/\/.*$/gm, '')), `the page's parts-list code says a forbidden word: ${pageBlock.match(FORBIDDEN)?.[0]}`);
 control('the page-block scan catches "tested"', FORBIDDEN.test(pageBlock + " el('p', null, 'tested')"));
+
+// ── WANTED (BUILT §306) ────────────────────────────────────────────────────
+// The BrickLink wanted-list XML, parsed back with the module's strict parser AND an
+// independent regex read here, against the BOM: the lots are the BOM's (item, colour)
+// multiset with quantities summed, every ITEMID and COLOR is the subset's, the tags
+// are exactly the format's, and text is escaped.
+console.log('\nWANTED (BrickLink XML)');
+// the BOM's own (item, colour) -> qty, from the lines' LDraw ids through the SUBSET (not through l.bricklink)
+const bomLots = (c) => { const m = new Map(); for (const l of c.bom.lines) { const bl = BRICKLINK.parts[l.part], k = `${bl?.number}|${BRICKLINK.colours[l.colour]?.id}`; m.set(k, (m.get(k) ?? 0) + l.qty); } return m; };
+// an independent read: every <ITEM>…</ITEM>, each tag's text, nothing parsed by the module
+const readXml = (text) => [...text.matchAll(/<ITEM>([\s\S]*?)<\/ITEM>/g)].map((m) => Object.fromEntries([...m[1].matchAll(/<([A-Z]+)>([^<]*)<\/\1>/g)].map((t) => [t[1], t[2]])));
+const SUBSET_ITEMS = new Set(Object.values(BRICKLINK.parts).map((p) => p.number)), SUBSET_COLOURS = new Set(Object.values(BRICKLINK.colours).map((c) => String(c.id)));
+const wantedHolds = (c, text) => {
+  const bad = [], items = readXml(text), want = bomLots(c);
+  if (!/^<INVENTORY>\n[\s\S]*\n<\/INVENTORY>\n$/.test(text)) bad.push('no INVENTORY root');
+  if (/<\?xml|<!--|WANTEDLISTIDNAME/.test(text)) bad.push('a declaration, comment or name tag');
+  const got = new Map();
+  for (const it of items) {
+    const keys = Object.keys(it).join();
+    if (keys !== B.WANTED_TAGS.join()) bad.push(`tags ${keys}`);
+    if (it.ITEMTYPE !== 'P' || it.NOTIFY !== 'N') bad.push(`ITEMTYPE ${it.ITEMTYPE} NOTIFY ${it.NOTIFY}`);
+    if (!SUBSET_ITEMS.has(it.ITEMID)) bad.push(`ITEMID ${it.ITEMID} is not a BrickLink item of the subset`);
+    if (!SUBSET_COLOURS.has(it.COLOR)) bad.push(`COLOR ${it.COLOR} is not a BrickLink colour of the subset`);
+    if (!/^[1-9]\d*$/.test(it.MINQTY)) bad.push(`MINQTY ${it.MINQTY}`);
+    const k = `${it.ITEMID}|${it.COLOR}`;
+    if (got.has(k)) bad.push(`${k} twice (an unmerged lot)`);
+    got.set(k, Number(it.MINQTY));
+  }
+  for (const [k, q] of want) if (got.get(k) !== q) bad.push(`${k}: BOM ${q}, XML ${got.get(k)}`);
+  for (const k of got.keys()) if (!want.has(k)) bad.push(`${k}: not in the BOM`);
+  const sum = [...got.values()].reduce((n, q) => n + q, 0);
+  if (sum !== c.bom.total) bad.push(`MINQTY sums to ${sum}, the BOM to ${c.bom.total}`);
+  return bad;
+};
+const lotCounts = [];
+for (const gen of B.GENERATIONS) for (const c of all[gen]) {
+  if (!c.bom) continue;
+  for (const cond of ['X', 'N', 'U']) {
+    const text = B.wantedListXml(c, gen, { condition: cond }), bad = wantedHolds(c, text);
+    ok(bad.length === 0, `${gen} ${c.cell} (${cond}): ${bad.slice(0, 4).join('; ')}`);
+    const parsed = B.parseWantedXml(text);
+    ok(parsed.length === readXml(text).length && parsed.every((it) => it.CONDITION === cond), `${gen} ${c.cell}: the strict parser reads ${parsed.length} lots or a wrong condition`);
+  }
+  const w = B.wantedListOf(c);
+  ok(w.total === c.bom.total && w.lots.every((t) => t.remarks.length <= 120 && t.ldraw.every((id) => t.remarks.includes(id))), `${gen} ${c.cell}: lot totals or remarks`);
+  ok(w.merges.length === w.lots.filter((t) => t.ldraw.length > 1).length && c.bom.lines.length === w.lots.length + w.merges.reduce((n, m) => n + m.ldraw.length - 1, 0), `${gen} ${c.cell}: the merge report does not account for the lines`);
+  lotCounts.push(`${gen.replace('technic_', '')} ${c.cell} ${w.lots.length} lots/${w.total}${w.merges.length ? ` MERGES ${w.merges.map((m) => m.ldraw.join('+')).join(',')}` : ''}`);
+  // 22253 is bought as 6595: the XML must never carry an LDraw id BrickLink does not use
+  for (const l of c.bom.lines) if (l.bricklink.item !== l.part) ok(!readXml(B.wantedListXml(c, gen)).some((it) => it.ITEMID === l.part), `${gen} ${c.cell}: the LDraw id ${l.part} stands as an ITEMID (BrickLink sells ${l.bricklink.item})`);
+}
+console.log(`  ${lotCounts.join('\n  ')}`);
+ok(lotCounts.length === 2 * B.cellIds().length, `${lotCounts.length} wanted lists, expected ${2 * B.cellIds().length}`);
+ok(B.WANTED_NOTE.includes(BRICKLINK.source.date) && /not checked against stock or prices/.test(B.WANTED_NOTE) && /Modelled, not built/.test(B.WANTED_NOTE) && !FORBIDDEN.test(B.WANTED_NOTE), 'the wanted-list note');
+ok(/wantedListXml\(c, gen, \{ condition: sel\.value \}\)/.test(page) && /WANTED_NOTE/.test(page), 'technic.html does not offer the wanted list with its condition and note');
+// escaping: every one of the five characters, through the writer and both readers
+{
+  const nasty = `a&b<c>d"e'f`;
+  ok(B.xmlEscape(nasty) === 'a&amp;b&lt;c&gt;d&quot;e&apos;f' && B.xmlUnescape(B.xmlEscape(nasty)) === nasty && B.xmlUnescape('&amp;lt;') === '&lt;', 'XML escaping');
+  const c = structuredClone(all.technic_2026.find((x) => x.cell === 'row-2'));
+  c.bom.lines[0].roles = [nasty];
+  const text = B.wantedListXml(c, 'technic_2026'), it = B.parseWantedXml(text)[0];
+  ok(it.REMARKS.includes(nasty) && !text.includes(nasty) && wantedHolds(c, text).length === 0, `a role with & < > " ' does not survive the round trip: ${it.REMARKS}`);
+}
+// CONTROLS
+{
+  const c = all.technic_2026.find((x) => x.cell === 'row-2'), f = all.technic_2026.find((x) => x.cell === 'fusee');
+  const any = all.technic_2026.find((x) => x.bom?.lines.some((l) => l.part === '22253')), text = B.wantedListXml(any, 'technic_2026');
+  control('22253 written as its LDraw id instead of 6595 fails (not a subset item, BOM lot missing)', wantedHolds(any, text.replace('<ITEMID>6595</ITEMID>', '<ITEMID>22253</ITEMID>')).length > 0);
+  control('(self-check) the build above places 22253 and the XML carries 6595', text.includes('<ITEMID>6595</ITEMID>') && !text.includes('<ITEMID>22253</ITEMID>'));
+  const t2 = B.wantedListXml(c, 'technic_2026');
+  control('a MINQTY changed fails', wantedHolds(c, t2.replace(/<MINQTY>(\d+)<\/MINQTY>/, (_, q) => `<MINQTY>${Number(q) + 1}</MINQTY>`)).length > 0);
+  control('an ITEM dropped fails', wantedHolds(c, t2.replace(/<ITEM>[\s\S]*?<\/ITEM>\n/, '')).length > 0);
+  control('a COLOR changed fails', wantedHolds(f, B.wantedListXml(f, 'technic_2026').replace(/<COLOR>\d+<\/COLOR>/, '<COLOR>999</COLOR>')).length > 0);
+  control('an invented tag fails the format', wantedHolds(c, t2.replace('<INVENTORY>\n', '<INVENTORY>\n<WANTEDLISTIDNAME>x</WANTEDLISTIDNAME>\n')).length > 0 || (() => { try { B.parseWantedXml(t2.replace('<NOTIFY>', '<WANTEDLISTIDNAME>x</WANTEDLISTIDNAME><NOTIFY>')); return false; } catch { return true; } })());
+  const refuses = (mut, re) => { const m = structuredClone(c); mut(m.bom.lines[0]); try { B.wantedListXml(m, 'technic_2026'); return false; } catch (e) { return re.test(e.message); } };
+  control('an unlisted line (listed: false) refuses to export', refuses((l) => { l.bricklink.listed = false; }, /refused.*lists no element/));
+  control('a line with no BrickLink item refuses to export', refuses((l) => { l.bricklink = null; }, /refused.*no BrickLink item/));
+  control('a line with no BrickLink colour id refuses to export', refuses((l) => { l.bricklink.colourId = null; }, /refused.*no BrickLink colour id/));
+  control('a condition other than N, U or X refuses', (() => { try { B.wantedListXml(c, 'technic_2026', { condition: 'Q' }); return false; } catch { return true; } })());
+  // the merge path: a copy of a line under a mould-variant LDraw id that BrickLink sells as the same item
+  const m = structuredClone(c), l0 = m.bom.lines[0];
+  m.bom.lines.push({ ...structuredClone(l0), part: `${l0.part}x`, qty: 2 }); m.bom.total += 2;
+  const w = B.wantedListOf(m);
+  control('two lines of one (ITEMID, COLOR) merge into one lot, summed, and are reported', w.merges.length === 1 && w.lots.length === c.bom.lines.length && w.lots[0].qty === l0.qty + 2 && w.merges[0].ldraw.join() === `${l0.part},${l0.part}x`);
+  control('the same two lines written unmerged fail the format', wantedHolds(m, B.wantedListXml(m, 'technic_2026').replace(/(<ITEM>[\s\S]*?<\/ITEM>\n)/, '$1$1')).length > 0);
+}
 
 // ── VIEW ───────────────────────────────────────────────────────────────────
 console.log('\nVIEW');
