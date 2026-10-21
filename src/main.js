@@ -45303,6 +45303,21 @@ function askTour(onProceed) {
     panel.addEventListener('focusout', (e) => {
       if (reloadPending && !(e.relatedTarget && panel.contains(e.relatedTarget))) offer.classList.add('show');
     });
+    // Focus alone does not see every exit: Safari (macOS and iOS) does not
+    // focus a checkbox, range or button on click, so ticking the sapphire box
+    // left focus outside the menu, no focusout ever came, and the offer waited
+    // until a control that DOES take focus (the case-metal select) was used
+    // and left. So a pointer counts too: a press inside the menu marks it
+    // entered, the next press outside it (and outside the offer) is the exit.
+    // Re-armed only by re-entering, so a dismissed offer does not return on
+    // every drag of the camera — the focus path's rule.
+    let menuEntered = false;
+    document.addEventListener('pointerdown', (e) => {
+      if (panel.contains(e.target)) { menuEntered = true; return; }
+      if (offer.contains(e.target) || !menuEntered) return;
+      menuEntered = false;
+      if (reloadPending) offer.classList.add('show');
+    }, true);
   }
   // §291 — the loading screen's appearance preselect (index.html), applied
   // through the same path a panel row takes: the leaf, its applier, the
