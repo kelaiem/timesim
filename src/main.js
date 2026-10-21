@@ -49,6 +49,7 @@ import {
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
+  formLoop,                                                 // §307: the form rectangle as a loop — plates, dial and case read ONE law under ?case=rect
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -2732,10 +2733,30 @@ const {
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
   plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+  formPlate, // §307 — the form rectangle, derived beside plateR from the same members
 } = solveKeyless({
   ...KEYLESS_INPUTS,
   warn: (m) => console.warn(m),
 });
+// §307 — THE FORM BUILD. null on the round build, so nothing below this line
+// reads the rectangle and the default stays bit-exact; under ?case=rect the
+// base plate, the three-quarter plate, the dial and the case are cut to
+// `formPlate` (layout.js — the tightest rectangle round the stations and the
+// keyless floors under the plate's own rim margin). plateR keeps every other
+// consumer it has (the case's radial chain, the tube standoff, dialRadius's
+// wells): the prototype re-cuts OUTLINES and moves no station — the stations
+// are moved by the §33 knobs, which tools/form-layout.mjs searches for the
+// arrangement that makes this rectangle smallest.
+const FORM = SPEC.caseShape === 'rect' ? formPlate : null;
+// The form case's builder is fetched only when it is built: the round build's
+// module graph stays exactly today's, and a tree whose form module is absent
+// still boots round.
+const makeFormCase = FORM ? (await import('./form-case.js')).makeFormCase : null;
+if (FORM) {
+  const wOut = 2 * (FORM.hw + CASE_CLEAR + CASE_BAND_T);
+  if (wOut > 2 * CASE_WIDTH_MAX + 1e-9)
+    console.warn(`§307: the form case is ${(wOut * UNIT_MM).toFixed(2)} mm across its short side — over the 40 mm owner cap`);
+}
 
 // Centroid of just the wheel-train arbors (excludes balance/dial), used to
 // aim the "Train" camera preset without staring straight down the Z axis
@@ -10419,6 +10440,10 @@ const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLAT
 const BACK_PLATE_CUT = {
   pockets: [MW_CANNON_POCKET, MW_CAP_POCKET],
   radius: plateR, thickness: BACK_PLATE_T,
+  // §307 — under ?case=rect the plate's outline is the form rectangle (the
+  // movement frame is the plate's own: backPlate sits at the origin). The
+  // rim and its notches are skipped by the builder under an outline.
+  ...(FORM ? { outline: formLoop(FORM) } : {}),
   // §186 — the MOUNTING RIM (mesh only: plateR stays the working radius
   // every station fans out from), notched for the two crown-stem sleeves,
   // and pierced at the tripod stations for the clamp screws' clearance
@@ -16667,6 +16692,7 @@ for (const s of pillarRivetSites) {
 const threeQuarterPlate = new THREE.Group();
 const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
   radius: plateR, thickness: TQ_T, cut: TQ_CUT, slots: tqSlots,
+  ...(FORM ? { outline: formLoop(FORM) } : {}), // §307 — the same rectangle as the base plate
   // The chaton sites' circles are drawn by their merged outline instead —
   // see tqHoles, where both representations are built and asserted equal.
   holes: tqHoles.filter((h) => !h.poly),
@@ -19126,6 +19152,12 @@ for (const [nm, cy, wr] of [['reserve', RESERVE_LOCAL.y, reserveWellR], ['second
 await breathe(159);
 const dial = G.makeDial({
   radius: dialRadius,
+  // §307 — the dial is made to the movement's OUTLINE (§125's convention,
+  // applied to the rectangle): the form loop carried into the dial's frame
+  // through dialFace's Y-flip — world (X, Y) ↔ dial-local (P.dial.x − X,
+  // Y − P.dial.y) — which reverses the loop's orientation, so it is reversed
+  // back to CCW for the Shape.
+  ...(FORM ? { outline: formLoop(FORM).map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
@@ -47532,7 +47564,9 @@ await breathe(311);
 const caseCrystalMat = new THREE.MeshPhysicalMaterial({ ...CRYSTAL_GLASS });
 caseCrystalMat.userData.stock = 'corundum';   // §269 — the two crystals are sapphire for the mass tally; not `userData.glass`, which is the x-ray set's word
 await breathe(312);
-const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }); // §203 step 1: the case exterior's own material — an alloy reaches this and never the works
+const caseSolid = FORM
+  ? makeFormCase({ dims: CASE_DIMS, form: FORM, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }) // §307 — the form case round the rectangle
+  : G.makeCase({ dims: CASE_DIMS, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }); // §203 step 1: the case exterior's own material — an alloy reaches this and never the works
 await breathe(313);
 caseSolid.visible = restoredCaseLines;
 movement.add(caseSolid);
@@ -59491,6 +59525,10 @@ window.__clock = {
   lowCorridorZBand: LOW_CORRIDOR_Z_BAND,
   // Layout introspection for the realism-inspection tooling.
   P, plateR, dialRadius,
+  // §307 — the solver inputs the page MEASURED (swept radii, outlines) and the
+  // form rectangle, so tools/form-layout.mjs can run layout.js's own solvers
+  // off the real numbers in Node and search the arrangement.
+  layoutInputs: LAYOUT_INPUTS, keylessInputs: KEYLESS_INPUTS, formPlate, caseShape: SPEC.caseShape,
   // §81 tranche A: what the weld pass found and removed, so the reduction is
   // a number the battery can read rather than a claim in a comment.
   get weldCensus() { return WELD_CENSUS; },

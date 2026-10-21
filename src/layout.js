@@ -247,7 +247,15 @@ export const SPEC = (() => {
     ? ((Number(raw.alarmGovAzDeg) % 360) + 360) % 360 : null;
   const alarmGovAnchorAzDeg = Number.isFinite(Number(raw.alarmGovAnchorAzDeg))
     ? ((Number(raw.alarmGovAnchorAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr, studr });
+  // §307 — THE CASE'S OUTLINE: 'rect' cuts the plates, the dial and the case
+  // to the FORM rectangle `solveKeyless` derives beside plateR (formPlate —
+  // the tightest rectangle the stations and the keyless floors stand inside,
+  // the same rim margin). null = round, as designed: nothing downstream even
+  // reads the rectangle, so identity stays bit-exact. The rectangle is never
+  // typed — it is a function of the arrangement, which is what
+  // tools/form-layout.mjs searches over the §33 knobs to minimise.
+  const caseShape = raw.caseShape === 'rect' ? 'rect' : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr, studr, caseShape });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:
@@ -1024,12 +1032,18 @@ export const caseLugSectionZ = (T, W, rc) => {
 //     the welded foot sunk into the band (TODO 209's rule kept).
 // Returns the outline (closed, no repeated end point), the hole, the bar,
 // and every row the instruments hold; `warn` lists any law that failed.
-export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs = 16 }) {
+//   · `flat` (§307, the form case): the lug is welded to a FLAT end wall at
+//     distance rOut from the pair axis's origin, not to a cylinder — so both
+//     faces meet the wall at the same depth (surfOut = surfIn = rOut, no sag,
+//     no fillet) and the embedded root reads the flat wall's own depths
+//     (rOut − CASE_LUG_ROOT, floored at the bore plus one sheet floor, TODO
+//     209's rule without the chord). The default path is unchanged.
+export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs = 16, flat = false }) {
   const warn = [];
   const T = CASE_LUG_T, rc = CASE_LUG_EDGE_R, F = CASE_LUG_LOAD_N;
   const a = Math.abs(off);
-  const surfOut = Math.sqrt(rOut * rOut - (a + T / 2) ** 2);
-  const surfIn = Math.sqrt(rOut * rOut - (a - T / 2) ** 2);
+  const surfOut = flat ? rOut : Math.sqrt(rOut * rOut - (a + T / 2) ** 2);
+  const surfIn = flat ? rOut : Math.sqrt(rOut * rOut - (a - T / 2) ** 2);
   const uBar = rOut + CASE_BAR_REACH, uTip = rOut + CASE_LUG_REACH;
   const armU = uBar - surfOut;
   const sigmaAt = (W, arm) => F * arm * U_M / (caseLugSectionZ(T, W, rc) * U_M ** 3);
@@ -1082,7 +1096,7 @@ export function caseLugPlan({ rOut, rBore, off, zWallLo, zWallHi, zBack, arcSegs
   const out = [];
   const push = (q) => { const r = out[out.length - 1]; if (!r || Math.hypot(r[0] - q[0], r[1] - q[1]) > 1e-9) out.push(q); };
   const arc = (c, r, a0, a1, segs) => { for (let i = 0; i <= segs; i++) { const th = a0 + (a1 - a0) * i / segs; push([c[0] + r * Math.cos(th), c[1] + r * Math.sin(th)]); } };
-  const rootU = caseLugRootR(a, rOut, rBore);
+  const rootU = flat ? Math.max(rOut - CASE_LUG_ROOT, rBore + STOCK_MIN_U) : caseLugRootR(a, rOut, rBore);
   push([rootU, footBotZ]); push([rootU, footTopZ]); push([surfOut, footTopZ]);
   arc([surfOut + rf, footTopZ], rf, Math.PI, Math.PI / 2, arcSegs);            // upper weld fillet, foot to toe
   for (const q of top) push(q);                                                 // upper edge along the S
@@ -3302,6 +3316,48 @@ export const SETTING_LEVER_CUT = (() => {
 // same names the in-line block used to declare, so downstream consumers —
 // plate openings, keyless assembly, dial build — are unchanged.
 // ---------------------------------------------------------------------------
+// §307 — THE PLATE'S RIM MARGIN: the bare metal past the outermost station's
+// outline, 5 u (1.9 mm) — the literal plateR carried as `+= 5` since §13, now
+// named so the round plate and the form rectangle read one number.
+export const PLATE_RIM_MARGIN = 5;
+// §307 — THE FORM RECTANGLE LAW. The tightest axis-aligned rectangle that
+// contains every circle (centre, radius, and that circle's own rim margin), in
+// the frame the circles are given in. `cornerR` is the common rim margin: see
+// solveKeyless's derivation. Pure, so the page and tools/form-layout.mjs read
+// one law; the optimiser's objective is this rectangle's area.
+export function formRect(circles) {
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, rim = 0;
+  for (const c of circles) {
+    const reach = c.r + (c.rim || 0);
+    xMin = Math.min(xMin, c.x - reach); xMax = Math.max(xMax, c.x + reach);
+    yMin = Math.min(yMin, c.y - reach); yMax = Math.max(yMax, c.y + reach);
+    rim = Math.max(rim, c.rim || 0);
+  }
+  const hw = (xMax - xMin) / 2, hh = (yMax - yMin) / 2;
+  return Object.freeze({
+    xMin, xMax, yMin, yMax, hw, hh, cx: (xMin + xMax) / 2, cy: (yMin + yMax) / 2,
+    cornerR: Math.min(rim, hw, hh), area: 4 * hw * hh,
+  });
+}
+// §307 — the rectangle as a closed CCW loop of [x, y] points, grown (or inset,
+// negative) by `grow` on every side with the corner round growing with it, so
+// a plate, its dial and the case's opening are concentric offsets of ONE
+// outline. The last point is not repeated.
+export function formLoop(rect, { grow = 0, cornerSegs = 12 } = {}) {
+  const r = Math.max(0, rect.cornerR + grow);
+  const x0 = rect.xMin - grow + r, x1 = rect.xMax + grow - r;
+  const y0 = rect.yMin - grow + r, y1 = rect.yMax + grow - r;
+  const pts = [];
+  const arc = (cx, cy, a0) => {
+    for (let i = 0; i <= cornerSegs; i++) {
+      const a = a0 + (Math.PI / 2) * (i / cornerSegs);
+      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+  };
+  arc(x1, y0, -Math.PI / 2); arc(x1, y1, 0); arc(x0, y1, Math.PI / 2); arc(x0, y0, Math.PI);
+  return pts;
+}
+
 export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
@@ -3536,7 +3592,7 @@ export function solveKeyless({
   for (const key in P) {
     plateR = Math.max(plateR, Math.hypot(P[key].x, P[key].y) + (outline[key] || 0));
   }
-  plateR += 5;
+  plateR += PLATE_RIM_MARGIN;
   // Keyless floor: the plate must reach 1 unit past the setting wheel and
   // past the folded minute wheel (with the compact tornado train, this floor
   // — not the train extent — is what sizes the plate).
@@ -3552,6 +3608,28 @@ export function solveKeyless({
     pinDist + CROWN_PULL_DIST + GROOVE_OUTER
       + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF + STEM_BUSH_FOOT_HALF,
   );
+
+  // §307 — THE FORM RECTANGLE, derived beside plateR from the SAME members
+  // by the SAME rule: every station's own outline under the rim margin, and
+  // the keyless floors at their own reach (the setting wheel and the folded
+  // minute wheel each one unit past their rim, the stem bushing's far foot —
+  // the three terms plateR's floor takes, as circles at the positions those
+  // terms measure from). Axis-aligned in the movement frame, because the
+  // dial's 12–6 is the movement's y and a form case's long side is 12–6. It
+  // is COMPUTED on every build and READ only under SPEC.caseShape === 'rect',
+  // so the round build never touches it (identity bit-exact). Its corner
+  // radius is the rim margin itself: a station circle keeps the margin from
+  // both walls, so the metal a corner round of that radius removes lies
+  // outside every circle by construction — nothing to assert, and nothing
+  // typed. Not centred on the hands: the rectangle is the tightest one, and
+  // a form calibre's centre need not be its case's.
+  const formPlate = formRect([
+    ...Object.keys(P).map((key) => ({ x: P[key].x, y: P[key].y, r: outline[key] || 0, rim: PLATE_RIM_MARGIN })),
+    { x: uWind.x * swDist, y: uWind.y * swDist, r: settingWheelR + 1, rim: 0 },
+    { x: minuteArborXY.x, y: minuteArborXY.y, r: minuteWheelR + 1, rim: 0 },
+    { x: uWind.x * (pinDist + CROWN_PULL_DIST + GROOVE_OUTER + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF + STEM_BUSH_FOOT_HALF),
+      y: uWind.y * (pinDist + CROWN_PULL_DIST + GROOVE_OUTER + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF + STEM_BUSH_FOOT_HALF), r: 0, rim: 0 },
+  ]);
 
   // --- Dial-side locals the plate radius fixes (moved from the dial build,
   // §13 step 3b — one source; ALARM_CD's plate-bore hoist reads these too) ---
@@ -3800,6 +3878,7 @@ export function solveKeyless({
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+    formPlate, // §307 — the form rectangle (read only under ?case=rect)
   };
 }
 

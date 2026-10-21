@@ -4,7 +4,7 @@
 
 # The instruments
 
-342 scripts. **227 are ACCEPTANCE tests** — they decide and exit non-zero.
+343 scripts. **228 are ACCEPTANCE tests** — they decide and exit non-zero.
 **115 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -32,6 +32,7 @@ when a question was asked; the summaries are what it answered.
 | `dial-band-scan.mjs` |  | report | THE DIAL-SIDE BAND'S TENANTS, OVER THE POSE NET — the scan itself, as a function a page can run, shared by its two callers: probe-261-dial-band.mjs (the free-volume map, §261 step 2) and probe-261-fold-site.mjs (where the alarm switch can stand under the dial, §261 step 4). One copy, because two copies of a measuring method drift the way two copies of a law do. |
 | `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
 | `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
+| `form-layout.mjs` |  | acceptance | §307 — THE FORM LAYOUT OPTIMISER: which arrangement of the going train and the stem makes the movement's RECTANGLE smallest? |
 | `glossary-links.mjs` |  | acceptance | §236 tier one — THE GLOSSARY LINKER'S GATE. explain.html defines 28 project words and, since §236, links their first use in each entry to the definition. Nothing about that is authored: the links are injected at runtime by src/glossary-links.js, after src/explain-i18n.js has swapped the page into the reader's language. Two properties have to hold, and neither is visible by reading the diff. |
 | `height-ledger.mjs` |  | report | THE HEIGHT LEDGER'S HARNESS — one boot measured for the cased-depth chains, copied-tree mutants, and the ledger itself (front and back chains, the back-most metal and its slack), as a module. Not a probe: it measures nothing on its own. |
 | `l10n-review-packets.mjs` |  | acceptance | §249's review follow-up — BUILDS THE NATIVE-REVIEW PACKETS: one page a fluent reader opens to judge a locale's translation row by row, English beside the translation, and to say "reads well", "needs a change" (with their wording) or "not sure". Every locale carries the same IOU in docs/BUILT.md ("No native review pass"), and no gate here can pay it: the page gate holds keys, markup, numbers and the honesty vocabulary, never whether a sentence reads naturally or a part has the name a workshop uses. This makes paying it cheap for whoever can. |
