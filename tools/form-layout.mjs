@@ -208,7 +208,13 @@ if (argv.includes('--search')) {
   const PAR = Math.max(1, Number(opt('--parallel', 3)));
   const ROUNDS = Number(opt('--rounds', 6));
   const LOG = opt('--log', null);
-  const norm = (w) => w.replace(/-?\d+(\.\d+)?(e-?\d+)?/g, '#');
+  // The §307 warnings are about the OUTLINE, not the arrangement: a candidate
+  // boots with the solvers' rectangle (its own measured one does not exist
+  // until this boot reads it), so which openings fall outside, and that the
+  // footprint outgrows the cut, say nothing about whether the arrangement is
+  // sound. They are judged by the second boot at the candidate's formrect, not
+  // here; every other warning is the build's verdict and keeps its text.
+  const norm = (w) => (/^warning: §307:/.test(w) ? '§307 outline' : w.replace(/-?\d+(\.\d+)?(e-?\d+)?/g, '#'));
   const UMM = L0.UNIT_MM;
   const areaMm = (r) => (r[1] - r[0]) * (r[3] - r[2]) * UMM * UMM;
   const dims = (r) => `${((r[1] - r[0]) * UMM).toFixed(2)} × ${((r[3] - r[2]) * UMM).toFixed(2)} mm`;
