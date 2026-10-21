@@ -55,12 +55,16 @@ const OBJECTIVE = opt('--objective', 'area');
 const CROWN = opt('--crown', 'side');
 const SAMPLES = Number(opt('--samples', 6000));
 const SEED = Number(opt('--seed', 307));
+const NEAR = opt('--near', null) === null ? null : Number(opt('--near', null)); // search within ±NEAR° of the designed angles (and ±NEAR/10 u of D4)
+const BOOT = Number(opt('--boot', 0));      // trial-boot the best N candidates and count their boot warnings — the build's own asserts are the judge the solvers are not
 if (!['area', 'width'].includes(OBJECTIVE)) { console.error('--objective is area or width'); process.exit(2); }
 if (!['side', 'any'].includes(CROWN)) { console.error('--crown is side or any'); process.exit(2); }
 
-if (DUMP) {
-  // Boot the page once and read what it measured. `?trial=1` is the state
-  // guard (state.js): a throwaway boot neither reads nor writes the session.
+// Boot the page once, headless, and read what it measured. `?trial=1` is the
+// state guard (state.js): a throwaway boot neither reads nor writes the session.
+// Returns the solver inputs, the rectangle, and every console warning/error the
+// build printed — rule 6 makes that list the build's own verdict on a candidate.
+async function bootOnce(query, shot = null) {
   const { chromium } = await import('playwright');
   const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
   const srv = createServer(async (req, res) => {
@@ -71,29 +75,35 @@ if (DUMP) {
     } catch { res.writeHead(404).end('not found'); }
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-  const base = `http://127.0.0.1:${srv.address().port}/index.html?trial=1${QUERY ? '&' + QUERY : ''}`;
+  const base = `http://127.0.0.1:${srv.address().port}/index.html?trial=1${query ? '&' + query : ''}`;
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
     '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const warnings = [];
-  page.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') warnings.push(`${m.type()}: ${m.text()}`); });
+  const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
+  page.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !NOISE.test(m.text())) warnings.push(`${m.type()}: ${m.text()}`); });
   await page.goto(base);
   await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 240000 });
   const out = await page.evaluate(() => window.__bootError ? { bootError: String(window.__bootError.message) } : ({
     layoutInputs: window.__clock.layoutInputs, keylessInputs: window.__clock.keylessInputs,
     formPlate: window.__clock.formPlate, plateR: window.__clock.plateR, P: window.__clock.P,
   }));
-  if (SHOT && !out.bootError) {
+  if (shot && !out.bootError) {
     // The dial-side preset, a few frames to settle the camera tween (~0.9 s), then the picture.
     await page.evaluate(() => { const b = document.querySelector('[data-cam="Dial"]'); if (b) b.click(); });
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: SHOT });
+    await page.screenshot({ path: shot });
   }
   await browser.close(); srv.close();
+  return { ...out, warnings };
+}
+
+if (DUMP) {
+  const out = await bootOnce(QUERY, SHOT);
   if (out.bootError) { console.error(`boot failed: ${out.bootError}`); process.exit(1); }
   // KEYLESS_INPUTS carries functions? No — positions, radii and the print frame; P too.
-  writeFileSync(DUMP, JSON.stringify({ ...out, warnings }, null, 1));
-  console.log(`wrote ${DUMP}: plateR ${out.plateR.toFixed(3)}, formPlate ${(2 * out.formPlate.hw).toFixed(2)} × ${(2 * out.formPlate.hh).toFixed(2)} u, ${warnings.length} console warning(s) at boot`);
+  writeFileSync(DUMP, JSON.stringify(out, null, 1));
+  console.log(`wrote ${DUMP}: plateR ${out.plateR.toFixed(3)}, formPlate ${(2 * out.formPlate.hw).toFixed(2)} × ${(2 * out.formPlate.hh).toFixed(2)} u, ${out.warnings.length} console warning(s) at boot`);
   process.exit(0);
 }
 
@@ -136,8 +146,22 @@ const WIN = {
   d4: [w4.min + 0.05 * (w4.max - w4.min), w4.max - 0.05 * (w4.max - w4.min)],
   stemAz: [0, 360],
 };
+// `--near N`: a MOULDING rather than a re-design — each angle within ±N° of the
+// designed one and d4 within ±N/10 u, so the parts the objective cannot see
+// (the alarm module, the reserve train, the motion-works fold, all seeded off
+// these stations in main.js) stay near the arrangement they were solved for.
+// The stem's designed azimuth is the barrel's (§13); read off the base solve.
+const baseStemAz = (() => { const { P } = L.solveLayout({ ...layoutInputs }); return Math.atan2(P.barrel.y, P.barrel.x) / RAD; })();
+if (NEAR !== null) {
+  const near = (c, n, lo, hi) => [Math.max(lo, c - n), Math.min(hi, c + n)];
+  WIN.barrelStep = near(L.BARREL_STEP_DEG, NEAR, -180, 180);
+  WIN.escStep = near(L.ESCAPE_STEP_DEG, NEAR, -180, 180);
+  WIN.balStep = near(L.BALANCE_STEP_TARGET_DEG, NEAR, -180, 180);
+  WIN.d4 = near(L.D4, NEAR / 10, WIN.d4[0], WIN.d4[1]);
+  WIN.stemAz = near(((baseStemAz % 360) + 360) % 360, NEAR, -360, 720);
+}
 const stemOk = (az) => {
-  if (CROWN === 'any') return true;
+  if (CROWN === 'any' || NEAR !== null) return true;
   const a = ((az % 360) + 360) % 360;
   const d = Math.min(Math.abs(a - 0), Math.abs(a - 360), Math.abs(a - 180));
   return d <= 30;
@@ -190,7 +214,7 @@ best.sort((a, b) => a.score - b.score);
 
 const mm = (u) => (u * L.UNIT_MM).toFixed(2);
 const rect = (f) => `${mm(2 * f.hw)} × ${mm(2 * f.hh)} mm (${(f.area * L.UNIT_MM * L.UNIT_MM).toFixed(0)} mm²), centre (${mm(f.cx)}, ${mm(f.cy)}) off the hands`;
-console.log(`form-layout: objective ${OBJECTIVE}, crown ${CROWN}, ${tried} candidates evaluated, ${feasibleN} of ${SAMPLES} random samples feasible, seed ${SEED}`);
+console.log(`form-layout: objective ${OBJECTIVE}, crown ${CROWN}${NEAR !== null ? `, within ±${NEAR}° of the design` : ''}, ${tried} candidates evaluated, ${feasibleN} of ${SAMPLES} random samples feasible, seed ${SEED}`);
 console.log(`  d4 window [${w4.min.toFixed(2)}, ${w4.max.toFixed(2)}]; width cap ${mm(2 * L.CASE_WIDTH_MAX)} mm across the band (plate rectangle + 2 × (${mm(L.CASE_CLEAR)} + ${mm(L.CASE_BAND_T)}))`);
 console.log(`DEFAULT (as designed): plateR ${base.plateR.toFixed(3)} u → round plate Ø ${mm(2 * base.plateR)} mm; its rectangle ${rect(base.f)}`);
 console.log(`  knobs: barrelstep ${L.BARREL_STEP_DEG}, escstep ${L.ESCAPE_STEP_DEG}, balstep target ${L.BALANCE_STEP_TARGET_DEG} (solved ${base.balSolved.toFixed(3)}), d4 ${L.D4}, stemaz ${base.stemAz.toFixed(2)}°${base.warns.length ? `; warnings: ${base.warns.join(' | ')}` : ''}`);
@@ -203,3 +227,18 @@ if (b.warns.length) console.log(`  solver notes: ${b.warns.join(' | ')}`);
 console.log(`  URL: ${url(b.k)}`);
 console.log('RUNNERS-UP:');
 for (const r of best.slice(1, 5)) console.log(`  ${rect(r.f)} — barrelstep ${r.k.barrelStep.toFixed(1)}, escstep ${r.k.escStep.toFixed(1)}, balstep ${r.k.balStep.toFixed(1)}, d4 ${r.k.d4.toFixed(2)}, stemaz ${r.k.stemAz.toFixed(1)}`);
+// --boot N: the solvers' feasibility is the going train's and the stem's; the
+// BUILD knows the rest (the alarm module, the reserve train, the motion-works
+// fold, every §62 land and §186 annulus assert). Boot the best N and count what
+// rule 6 prints — a candidate the build warns on is not an arrangement yet.
+if (BOOT > 0) {
+  console.log(`TRIAL BOOTS (${BOOT}, round case; the warnings are the build's own asserts):`);
+  for (const r of best.slice(0, BOOT)) {
+    const q = url(r.k).replace(/^index\.html\?case=rect&/, '');
+    const out = await bootOnce(q);
+    const errs = out.warnings.filter((w) => w.startsWith('error')).length;
+    console.log(`  ${rect(r.f)} → ${out.bootError ? `BOOT FAILED: ${out.bootError}` : `${out.warnings.length} warning(s), ${errs} error(s)`}`);
+    for (const w of out.warnings.slice(0, 6)) console.log(`      ${w.slice(0, 160)}`);
+    if (out.warnings.length > 6) console.log(`      … ${out.warnings.length - 6} more`);
+  }
+}

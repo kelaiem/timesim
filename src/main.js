@@ -2748,6 +2748,47 @@ const {
 // are moved by the §33 knobs, which tools/form-layout.mjs searches for the
 // arrangement that makes this rectangle smallest.
 const FORM = SPEC.caseShape === 'rect' ? formPlate : null;
+// §307 — AN OPENING MUST LIE INSIDE THE PLATE IT IS CUT IN. The round plates
+// carry openings sited off the ROUND outline — the §186 rim's clamp bores at
+// R_CLAMP, slots and windows that run to the circle's edge — and under the
+// rectangle some of those stand outside it; an interior path outside its
+// outer ring is not a hole, and earcut bridges the outline out to it (the
+// first form boot measured 17,114 base-plate vertices outside the rectangle,
+// the worst 14.5 u out, every one of them a clamp bore on a rim that no longer
+// exists). So under FORM every opening is held to the rectangle by the plate's
+// own land rule — its whole circle inside the loop, plus the extrude bevel and
+// one §62 land (STOCK_MIN_U) of metal — and one that is not is DROPPED and
+// counted: a dropped opening is a part whose seat the rectangle does not hold,
+// which is the prototype's named gap (the alarm module, the reserve train and
+// the keyless cluster are not in the rectangle's members yet). The inset is
+// the rounded rectangle's own signed distance (the corner round included).
+const formInset = (x, y) => {
+  if (!FORM) return Infinity;
+  const rc = FORM.cornerR, bx = FORM.hw - rc, by = FORM.hh - rc;
+  const qx = Math.abs(x - FORM.cx) - bx, qy = Math.abs(y - FORM.cy) - by;
+  const outside = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rc;
+  return -outside;
+};
+const FORM_DROPPED = [];
+const formHolds = (what, x, y, r, land) => {
+  if (!FORM) return true;
+  const ok = formInset(x, y) >= r + land;
+  if (!ok) FORM_DROPPED.push(`${what} at (${x.toFixed(2)}, ${y.toFixed(2)}) r ${r.toFixed(2)}`);
+  return ok;
+};
+const formFilter = (plateRadius, { holes = [], slots = [], sectors = [], pockets = [], windows = [], polyHoles = [] }) => {
+  if (!FORM) return { holes, slots, sectors, pockets, windows, polyHoles };
+  const land = plateRadius * G.PLATE_BEVEL_F + STOCK_MIN_U;
+  const poly = (pts) => pts.every((q) => formHolds('polygon vertex', q.x ?? q[0], q.y ?? q[1], 0, land));
+  return {
+    holes: holes.filter((h) => formHolds('hole', h.x, h.y, h.r, land)),
+    slots: slots.filter((sl) => formHolds('slot end', sl.ax, sl.ay, sl.r, land) && formHolds('slot end', sl.bx, sl.by, sl.r, land)),
+    sectors: sectors.filter((sc) => formHolds('sector', sc.cx, sc.cy, sc.r1 + sc.pad, land)),
+    pockets: pockets.filter((pk) => formHolds('pocket', pk.x, pk.y, pk.r, land) && (!pk.through || formHolds('pocket through', pk.through.x, pk.through.y, pk.through.r, land))),
+    windows: windows.filter((w) => poly(w.pts ?? w.poly ?? w)),
+    polyHoles: polyHoles.filter((w) => poly(w.pts ?? w.poly ?? w)),
+  };
+};
 // The form case's builder is fetched only when it is built: the round build's
 // module graph stays exactly today's, and a tree whose form module is absent
 // still boots round.
@@ -10476,7 +10517,7 @@ const BACK_PLATE_CUT = {
   }] : [],
 };
 await breathe(91);
-const backPlate = G.makeBackPlate(BACK_PLATE_CUT);
+const backPlate = G.makeBackPlate({ ...BACK_PLATE_CUT, ...formFilter(plateR, BACK_PLATE_CUT) }); // §307 — openings outside the rectangle dropped (no-op round)
 // TODO 184 — THE LATE RE-CUT. Some openings in this plate belong to parts
 // solved after it is cut (the balance cock's legs stand on it 2,500 lines
 // below, its station read off the three-quarter plate's own cut). They wait
@@ -10487,7 +10528,8 @@ const backPlate = G.makeBackPlate(BACK_PLATE_CUT);
 // adds a late hole calls this after its push.
 await breathe(92);
 const recutBackPlate = () => {
-  const cut = G.makeBackPlate({ ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES], slots: [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS] });
+  const late = { ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES], slots: [...BACK_PLATE_CUT.slots, ...BACK_PLATE_LATE_SLOTS] };
+  const cut = G.makeBackPlate({ ...late, ...formFilter(plateR, late) }); // §307 — the same rule on the late re-cut
   backPlate.geometry.dispose();
   backPlate.geometry = cut.geometry;
   // TODO 172 — only the SLAB is swapped: the pockets' floors are children the
@@ -16691,17 +16733,22 @@ for (const s of pillarRivetSites) {
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
 const buildTqPlateGeometry = () => G.makeThreeQuarterPlate({
-  radius: plateR, thickness: TQ_T, cut: TQ_CUT, slots: tqSlots,
+  radius: plateR, thickness: TQ_T, cut: TQ_CUT,
   ...(FORM ? { outline: formLoop(FORM) } : {}), // §307 — the same rectangle as the base plate
   // The chaton sites' circles are drawn by their merged outline instead —
   // see tqHoles, where both representations are built and asserted equal.
-  holes: tqHoles.filter((h) => !h.poly),
-  windows: TQ_WINDOWS.polys, polyHoles: tqPolyHoles,
+  // §307 — every opening held inside the rectangle (formFilter; no-op round).
+  ...formFilter(plateR, { slots: tqSlots, holes: tqHoles.filter((h) => !h.poly), windows: TQ_WINDOWS.polys, polyHoles: tqPolyHoles }),
 });
 let tqPlateMesh = null;
 {
   await breathe(130);
   const mesh = buildTqPlateGeometry();
+  // §307 — both plates are cut now: say what the rectangle could not hold
+  // (rule 6 — a finding on the form build, silent on the round one).
+  if (FORM && FORM_DROPPED.length)
+    console.warn(`§307: ${FORM_DROPPED.length} plate opening(s) stand outside the form rectangle and were dropped — `
+      + `parts seated there have no seat: ${FORM_DROPPED.slice(0, 6).join('; ')}${FORM_DROPPED.length > 6 ? '; …' : ''}`);
   await breathe(131);
   mesh.name = 'threeQuarterPlate'; // structural node — see checkSupportGeometry
   mesh.castShadow = true;
