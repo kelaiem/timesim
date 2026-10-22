@@ -41663,7 +41663,8 @@ a = arrest warnings):
 | 50 | — | 0/0 | **33.84 × 33.54** | only the alarm switch/link (§234/§261/TODO 206/§278) warns |
 | 60 | 0/0 | 0/0 | 33.84 × 33.79 | the switch/link only |
 | 70 | — | 0/3 | 33.84 × 34.98 | the arrest's tower against the module's own governor wheel |
-| 80–100 | 1/1–3 | 1/3 | 33.8 × 36.1–36.8 | the dogleg now clears the metal, but every accepted station's i2 covers the one arc of the arbor wheel the going train leaves the arrest (both mesh that wheel) |
+| 80 | 1/1 | 1/3 | 33.84 × 36.13 | a TRADE, reported: before, the arrest solved beside a dogleg 0.125 into the centre wheel; now the dogleg clears the metal and every accepted station's i2 (32–51 t) covers the one arc of the arbor wheel the going train leaves the arrest (both mesh that wheel), so the arrest fails |
+| 90, 100 | —, 1/3 | 1/3 | 33.8 × 36.8 | as at 80 (100: the arrest is also bound by the drum arbor) |
 | 120–300 | 1–2/3–4 | 1–2/3–4 | | the barrel stands over the fusee/centre wheel: no dogleg station and no arrest station clears the going train's swept rotors in the winding tier (0 of 60 arrest stations rotor-free at 160) — a STRATUM problem, not a route |
 | 320, 340 | 1–2/4 | 0/4 | | the dogleg routes clear; the arrest does not |
 
