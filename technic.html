@@ -402,6 +402,7 @@ import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBa
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
          ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
 import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
+import { copyText } from './src/technic-clipboard.js';
 import { GENERATIONS, seedBuild, bomForCell, bomCsv, NOT_IN_MODEL, honestyFor, wantedListXml, wantedListOf, WANTED_CONDITIONS, WANTED_NOTE } from './src/technic-bom.js';
 import { makePartPictures } from './src/technic-bom-view.js';
 import { CATALOGUES, TECHNIC_FORK, TECHNIC_KEYLESS, TECHNIC_MOTION_WORKS, technicKeylessTargets, technicForkTargets,
@@ -1312,12 +1313,20 @@ async function fillBom(body, cell, gen) {
   try {
     const w = wantedListOf(c);
     const x = el('a', null, 'BrickLink wanted list (.xml)'); x.style.color = '#9fb6d9'; x.dataset.wantedXml = cell;
-    x.title = 'upload on BrickLink: Wanted > Upload > BrickLink XML';
+    x.title = 'BrickLink: Wanted > Upload > BrickLink XML takes this text pasted into its box (use copy for BrickLink)';
     const sel = el('select'); sel.setAttribute('aria-label', 'condition'); sel.style.marginInlineStart = '8px';
     for (const [k, v] of Object.entries(WANTED_CONDITIONS)) sel.appendChild(new Option(`${v} (${k})`, k));
     const set = () => { URL.revokeObjectURL(x.href); x.href = URL.createObjectURL(new Blob([wantedListXml(c, gen, { condition: sel.value })], { type: 'application/xml' })); x.download = `${gen}-${cell}-bricklink-wanted.xml`; };
     sel.addEventListener('change', set); set();
-    wl.append(x, sel, el('br'), document.createTextNode(`${w.lots.length} BrickLink lots, ${w.total} parts${w.merges.length ? `; ${w.merges.map((m) => `${m.ldraw.join(' and ')} are one lot (${m.itemId})`).join('; ')}` : ''}. ${WANTED_NOTE}`));
+    // BrickLink's upload page wants the XML pasted into its box, so the same text goes to the clipboard too
+    const cp = el('button', null, 'copy for BrickLink'); cp.type = 'button'; cp.dataset.wantedCopy = cell; cp.style.marginInlineStart = '8px';
+    const said = el('span', null, ''); said.dataset.wantedCopied = cell; said.setAttribute('role', 'status'); said.style.marginInlineStart = '8px';
+    cp.addEventListener('click', async () => {
+      said.textContent = (await copyText(wantedListXml(c, gen, { condition: sel.value })))
+        ? 'copied: paste it into BrickLink, Wanted > Upload > BrickLink XML'
+        : 'could not copy: open the .xml in a text editor and copy it from there';
+    });
+    wl.append(x, sel, cp, said, el('br'), document.createTextNode(`${w.lots.length} BrickLink lots, ${w.total} parts${w.merges.length ? `; ${w.merges.map((m) => `${m.ldraw.join(' and ')} are one lot (${m.itemId})`).join('; ')}` : ''}. ${WANTED_NOTE}`));
   } catch (err) { wl.textContent = `no BrickLink wanted list: ${err.message}`; }
   body.appendChild(wl);
   // BUILT §304: the printable booklet of this build (steps, callouts, this list), US Letter or A4
