@@ -64,6 +64,18 @@
 // invisible to it and a part pushed out through the round bore drops out of
 // the footprint rather than counting against it — the BATTERY is the judge of
 // record, and a winner here is a candidate for it, not a result.
+//
+//   node tools/form-layout.mjs --floorplan [--kinds rect,cushion,tonneau] [--top N] [--moves FILE]
+//
+// §308 landing 3 — THE FLOORPLANNER'S HARNESS (src/form-floorplan.js is the
+// planner, pure). It boots the designed form build of each kind and reads its
+// REGION MODEL (__clock.regions: the action groups' hulls, strata, anchors);
+// MEASURES each candidate knob as a move by booting it one step off design and
+// fitting every unit's hull (a knob is modelled only where it is measured to
+// carry its units rigidly); plans the least-area fitted outline under the
+// planner's clearance and anchor laws; and VERIFIES the best plans by boot,
+// accepting one only if it prints no warning shape the designed build does not.
+// `--dump` also prints the region model and which group sets each side.
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -124,7 +136,7 @@ async function bootOnce(query, shot = null) {
   const out = await page.evaluate(() => window.__bootError ? { bootError: String(window.__bootError.message) } : ({
     layoutInputs: window.__clock.layoutInputs, keylessInputs: window.__clock.keylessInputs,
     formPlate: window.__clock.formPlate, plateR: window.__clock.plateR, P: window.__clock.P,
-    formFootprint: window.__clock.formFootprint, form: window.__clock.form,
+    formFootprint: window.__clock.formFootprint, form: window.__clock.form, regions: window.__clock.regions,
     // §307 landing 2 — THE MOVEMENT'S TRUE FOOTPRINT, measured off the built
     // metal: the world-XY box of every mesh under the movement group, the case
     // and every schematic object excluded. The solvers' rectangle sees only the
@@ -181,6 +193,42 @@ async function bootOnce(query, shot = null) {
   return { ...out, warnings };
 }
 
+// One server and one browser for a whole run; a fresh CONTEXT per boot, so no
+// state (the §79 worker, storage) crosses from one candidate to the next.
+// `read` is evaluated in the page once the build is up (a function, passed to
+// page.evaluate); a boot error or a harness failure comes back as `bootError`.
+async function openBooter(read) {
+  const { chromium } = await import('playwright');
+  const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+  const srv = createServer(async (req, res) => {
+    try {
+      const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
+      const body = await readFile(join(SERVE_ROOT, path === '/' ? 'index.html' : path));
+      res.writeHead(200, { 'content-type': MIME[extname(path)] ?? 'application/octet-stream', 'cache-control': 'no-store' }).end(body);
+    } catch { res.writeHead(404).end('not found'); }
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
+    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
+  const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
+  async function boot(query) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    const warnings = [];
+    page.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !NOISE.test(m.text())) warnings.push(`${m.type()}: ${m.text()}`); });
+    page.on('pageerror', (e) => warnings.push(`pageerror: ${e.message}`));
+    const t0 = Date.now();
+    try {
+      await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?trial=1&${query}`);
+      await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 900000 });
+      const out = await page.evaluate((src) => window.__bootError ? { bootError: String(window.__bootError.message) } : (0, eval)(src)(), `(${read})`);
+      return { ...out, warnings, ms: Date.now() - t0 };
+    } catch (e) { return { bootError: `harness: ${e.message.split('\n')[0]}`, warnings, ms: Date.now() - t0 }; }
+    finally { await ctx.close().catch(() => {}); }
+  }
+  return { boot, close: async () => { await browser.close(); srv.close(); } };
+}
+
 if (DUMP) {
   const out = await bootOnce(QUERY, SHOT);
   if (out.bootError) { console.error(`boot failed: ${out.bootError}`); process.exit(1); }
@@ -193,6 +241,18 @@ if (DUMP) {
     console.log(`measured form rectangle (whole movement inside the round bore, gong excepted, + rim margin): `
       + `${mm(r[1] - r[0])} × ${mm(r[3] - r[2])} mm; the cut ${out.formFootprint.holds ? 'HOLDS it' : 'does NOT hold it'}`);
     console.log(`  URL: index.html?${QUERY ? QUERY.replace(/&?formrect=[^&]*/, '') + '&' : ''}formrect=${r.map((q) => q.toFixed(2)).join(',')}`);
+  }
+  if (out.regions) {
+    // §308 landing 2 — the region model: each action group's box and stratum,
+    // and which group sets each side of the metal box the fit read.
+    const R = out.regions;
+    console.log(`action groups (§308 region model, ${Object.keys(R.groups).length} incl. frame/unassigned):`);
+    for (const [gid, g] of Object.entries(R.groups))
+      console.log(`  ${gid.padEnd(12)} x [${g.box[0].toFixed(2)}, ${g.box[1].toFixed(2)}] y [${g.box[2].toFixed(2)}, ${g.box[3].toFixed(2)}] z [${g.z[0].toFixed(2)}, ${g.z[1].toFixed(2)}]  ${g.units.length} unit(s), hull ${g.hull.length} pts`
+        + (g.anchors.length ? `; anchors: ${g.anchors.map((a) => `${a.name} (${a.at} → ${a.pin})`).join('; ')}` : ''));
+    console.log('  the outline\'s sides are set by: ' + Object.entries(R.edges).map(([k, e]) => `${k} ${e.group} / ${e.unit} (${e.at.toFixed(2)})`).join(', ')
+      + `; nearest the fitted cut: ${R.binding.group} / ${R.binding.unit} (${R.binding.inset.toFixed(3)} u inside)`);
+    if (R.uncounted.length) console.log(`  declared units with no counted metal: ${R.uncounted.join(', ')}`);
   }
   if (out.outside) {
     console.log(`units standing outside the solvers' rectangle (u past its edge, worst mesh; ${out.outside.length} units):`);
@@ -219,37 +279,8 @@ if (argv.includes('--search')) {
   const areaMm = (r) => (r[1] - r[0]) * (r[3] - r[2]) * UMM * UMM;
   const dims = (r) => `${((r[1] - r[0]) * UMM).toFixed(2)} × ${((r[3] - r[2]) * UMM).toFixed(2)} mm`;
 
-  // One server and one browser for the whole run; a fresh CONTEXT per boot,
-  // so no state (the §79 worker, storage) crosses from one candidate to the next.
-  const { chromium } = await import('playwright');
-  const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
-  const srv = createServer(async (req, res) => {
-    try {
-      const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
-      const body = await readFile(join(SERVE_ROOT, path === '/' ? 'index.html' : path));
-      res.writeHead(200, { 'content-type': MIME[extname(path)] ?? 'application/octet-stream', 'cache-control': 'no-store' }).end(body);
-    } catch { res.writeHead(404).end('not found'); }
-  });
-  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
-    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
-  const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
-  async function boot(query) {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    const page = await ctx.newPage();
-    const warnings = [];
-    page.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !NOISE.test(m.text())) warnings.push(`${m.type()}: ${m.text()}`); });
-    page.on('pageerror', (e) => warnings.push(`pageerror: ${e.message}`));
-    const t0 = Date.now();
-    try {
-      await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?trial=1&${query}`);
-      await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 900000 });
-      const out = await page.evaluate(() => window.__bootError ? { bootError: String(window.__bootError.message) }
-        : { ff: window.__clock.formFootprint, P: window.__clock.P });
-      return { ...out, warnings, ms: Date.now() - t0 };
-    } catch (e) { return { bootError: `harness: ${e.message.split('\n')[0]}`, warnings, ms: Date.now() - t0 }; }
-    finally { await ctx.close().catch(() => {}); }
-  }
+  const { boot, close: closeBooter } = await openBooter(() => ({ ff: window.__clock.formFootprint, P: window.__clock.P }));
+  const browser = { close: closeBooter }, srv = { close() {} };
 
   // The log is the run's memory: each line one boot, keyed by its query.
   const seen = new Map();
@@ -355,6 +386,151 @@ if (argv.includes('--search')) {
     + `${((1 - top.area / baseRow.area) * 100).toFixed(1)}% under the designed ${dims(baseRow.rect)} (${baseRow.area.toFixed(1)} mm²)`);
   console.log(`  URL: index.html?${top.query}&formrect=${fr}`);
   console.log('  (a candidate for the battery, which is the judge of record — this search sees only the build\'s own warnings)');
+  process.exit(0);
+}
+
+// §308 landing 3 — THE FLOORPLANNER'S LOOP (`--floorplan`): measure the moves,
+// plan, and verify by boot. src/form-floorplan.js is the planner (pure); this
+// is its harness.
+//   1. boot the designed form build of each kind (`case=<kind>`): its region
+//      model (__clock.regions) is the planner's input and its warnings the
+//      allowed set (digits stripped; the §307 outline warnings judged at the
+//      candidate's own fitted shape, as --search does);
+//   2. MEASURE every candidate move (FLOORPLAN_KNOBS, the 'resolve' rows left
+//      out by declaration): one boot with the knob one step off its design
+//      value, every unit's hull compared (measureMove) — the dominant rigid
+//      cluster is the move, per unit of travel; a unit the build re-cut is a
+//      BRIDGE, carried by the move when it is in a group the move carries, and
+//      a knob whose bridges outweigh (by vertices) a third of what it moves is
+//      left out as non-rigid;
+//   3. plan each kind (planFloor) and boot its best --top plans; a plan is
+//      ACCEPTED only if it adds no warning shape beyond the designed build's;
+//      the best accepted is booted once more at its own ?formrect= to confirm
+//      the cut holds its metal.
+// `--moves FILE` writes (or, when it exists, reads back) the measured moves, so
+// a re-plan does not re-measure.
+if (argv.includes('--floorplan')) {
+  const L0 = await import(join(ROOT, 'src/layout.js'));
+  const FP = await import(join(ROOT, 'src/form-floorplan.js'));
+  const KINDS = String(opt('--kinds', 'rect,cushion,tonneau')).split(',');
+  const TOP = Number(opt('--top', 4));
+  const PAR = Math.max(1, Number(opt('--parallel', 3)));
+  const MOVES = opt('--moves', null);
+  const UMM = L0.UNIT_MM;
+  const dims = (b) => `${((b[1] - b[0]) * UMM).toFixed(2)} × ${((b[3] - b[2]) * UMM).toFixed(2)} mm`;
+  const norm = (w) => (/^warning: §307:/.test(w) ? '§307 outline' : w.replace(/-?\d+(\.\d+)?(e-?\d+)?/g, '#'));
+  const { boot, close } = await openBooter(() => ({ regions: window.__clock.regions, ff: window.__clock.formFootprint, P: window.__clock.P }));
+  const pool = async (list, f) => { const out = new Array(list.length); let i = 0; await Promise.all(Array.from({ length: Math.min(PAR, list.length) }, async () => { while (i < list.length) { const j = i++; out[j] = await f(list[j]); } })); return out; };
+
+  // 1. the designed builds
+  const bases = Object.fromEntries((await pool(KINDS, async (k) => [k, await boot(`case=${k}`)])));
+  for (const k of KINDS) if (bases[k].bootError || !bases[k].regions) { console.log(`FLOORPLAN: the designed ${k} build did not boot: ${bases[k].bootError ?? 'no regions'}`); await close(); process.exit(1); }
+  const R0 = bases[KINDS[0]].regions;
+  const P0 = bases[KINDS[0]].P;
+  console.log(`FLOORPLAN: designed builds — ${KINDS.map((k) => `${k} ${dims(bases[k].ff.rect)} (${bases[k].warnings.length} warning(s))`).join(', ')}`);
+  console.log('  the outline\'s sides (designed rect) are set by: ' + Object.entries(R0.edges).map(([e, x]) => `${e} ${x.group} (${x.unit ?? '?'})`).join(', ') + `; nearest the cut: ${R0.binding.group} (${R0.binding.unit ?? '?'})`);
+
+  // 2. the moves
+  const phi = Math.atan2(P0.barrel.y, P0.barrel.x) * 180 / Math.PI;
+  const startOf = { crownaz: phi, stemaz: phi, alarmr: L0.ALARM_CORNER_R, rsvr: L0.RESERVE_STATION_R, d4: L0.D4 };
+  const rows = FP.FLOORPLAN_KNOBS.map((r) => ({ ...r, start: r.start ?? startOf[r.knob] }));
+  let measured;
+  if (MOVES && existsSync(MOVES)) { measured = JSON.parse(readFileSync(MOVES, 'utf8')); console.log(`  moves read back from ${MOVES}`); }
+  else {
+    const probe = rows.filter((r) => r.transform !== 'resolve');
+    const boots = await pool(probe, (r) => boot(`case=${KINDS[0]}&${r.knob}=${(r.start + r.step).toFixed(4)}`));
+    const groupOf = (u) => R0.units[u]?.group;
+    measured = rows.map((r) => {
+      if (r.transform === 'resolve') return { ...r, modelled: false, reason: `declared non-rigid: ${r.why}` };
+      const b = boots[probe.indexOf(r)];
+      if (b.bootError || !b.regions) return { ...r, modelled: false, reason: `the probe boot failed: ${b.bootError ?? 'no regions'}` };
+      const m = FP.measureMove(R0, b.regions, { delta: r.step });
+      const dom = m.dominant;
+      if (!dom) return { ...r, modelled: false, reason: 'no hypothesis carries any unit', bridges: m.bridges.map((q) => q.unit) };
+      const d = FP.describeTransform(dom.T);
+      const groups = [...new Set(dom.units.map(groupOf))];
+      const bridges = m.bridges.filter((q) => q.group !== 'frame' && q.group !== 'unassigned');
+      const carried = bridges.filter((q) => groups.includes(q.group));
+      // MODELLED when the measured law carries at least half the units the knob
+      // moved (frame and unlabelled metal aside): the carried bridges then ride
+      // the move as an approximation the verifying boot judges; below that the
+      // knob is a re-solve, not a move, and is left out.
+      const move = { ...r, law: dom.src, units: [...dom.units, ...carried.map((q) => q.unit)], rigidUnits: dom.units,
+        spun: dom.units.filter((u) => m.units[u].kind === 'spun'), worst: dom.worst,
+        bridges: bridges.map((q) => q.unit), carried: carried.map((q) => q.unit), groups,
+        frameMoved: m.bridges.filter((q) => q.group === 'frame').map((q) => q.unit), warnings: b.warnings.length };
+      if (Math.abs(d.deg) > 1e-6) Object.assign(move, { transform: 'rotate', per: d.deg / r.step, centre: d.fix ?? { x: 0, y: 0 } });
+      else Object.assign(move, { transform: 'translate', dir: { x: d.tx / r.step, y: d.ty / r.step } });
+      move.modelled = dom.units.length >= bridges.length;
+      move.reason = `${dom.src} carries ${dom.units.length} unit(s) (hull error ≤ ${dom.worst.toFixed(3)} u${move.spun.length ? `, ${move.spun.length} spun to a new phase` : ''}) against ${bridges.length} re-cut`
+        + (move.modelled ? `; the ${carried.length} in its own groups ride it` : ' — a re-solve, not a move');
+      return move;
+    });
+    if (MOVES) writeFileSync(MOVES, JSON.stringify(measured, null, 1));
+  }
+  console.log('  MOVES (measured: one boot a step off each knob\'s design value, every unit\'s hull fitted):');
+  for (const m of measured) {
+    const t = !m.modelled && !m.units ? '' : m.transform === 'rotate' ? ` rotate ${m.per.toFixed(4)}°/unit about (${m.centre.x.toFixed(3)}, ${m.centre.y.toFixed(3)})`
+      : ` translate (${m.dir.x.toFixed(4)}, ${m.dir.y.toFixed(4)}) u/unit`;
+    console.log(`    ${m.knob.padEnd(13)} ${m.modelled ? 'MODELLED' : 'left out'}${t}: ${m.reason}${m.groups ? `; groups ${m.groups.join(', ')}` : ''}${m.bridges?.length ? `; bridges ${m.bridges.join(', ')}` : ''}`);
+  }
+  const moves = measured.filter((m) => m.modelled);
+
+  // 3. plan and verify, per kind
+  const results = {};
+  for (const k of KINDS) {
+    const base = bases[k];
+    const allowed = new Set(base.warnings.map(norm));
+    const fp = FP.makeFloorplan({ kind: k, regions: base.regions, moves });
+    const plan = FP.planFloor({ evaluate: fp.evaluate, moves, keep: TOP });
+    console.log(`  ${k}: planner model ${fp.units} units, ${fp.parts} parts; the design reads ${dims(plan.design.bounds)} (the build measured ${dims(base.ff.rect)})`);
+    const cands = plan.top.filter((r) => r.area < plan.design.area - 1e-6);
+    if (!cands.length) {
+      console.log(`    no feasible plan improves on the design${plan.design.feasible ? '' : ` (the design itself reads infeasible: ${plan.design.why[0]})`}; what refuses each modelled knob, swept alone:`);
+      // the refusal per knob, swept alone over its range at its step: the
+      // smallest outline each would reach and the law that stops it there
+      for (const m of [...new Map(moves.map((q) => [q.knob, q])).values()]) {
+        let bestR = null; const whys = new Map();
+        for (let v = m.range[0]; v <= m.range[1] + 1e-9; v += m.step) {
+          const r = fp.evaluate({ [m.knob]: v });
+          if (r.feasible) { if (!bestR || r.area < bestR.area) bestR = r; }
+          else { const w = r.why[0].replace(/-?\d+\.\d+/g, '#'); whys.set(w, (whys.get(w) ?? 0) + 1); }
+        }
+        const top = [...whys.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([w, n]) => `${n}× ${w}`).join(' | ');
+        console.log(`      ${m.knob}: best feasible alone ${bestR ? `${dims(bestR.bounds)} at ${bestR.values[m.knob].toFixed(2)}` : 'none'}; refusals: ${top || 'none'}`);
+      }
+      // the alarm's two azimuths TOGETHER (the module and its corner turned as one, which the port anchor asks)
+      if (moves.some((q) => q.knob === 'alarmmod') && moves.some((q) => q.knob === 'alarmaz')) {
+        let bestR = null; const whys = new Map();
+        for (let dv = -180; dv <= 180; dv += 5) {
+          const r = fp.evaluate({ alarmmod: 40 + dv, alarmaz: dv });
+          if (r.feasible) { if (!bestR || r.area < bestR.area) bestR = r; }
+          else { const w = r.why[0].replace(/-?\d+\.\d+/g, '#'); whys.set(w, (whys.get(w) ?? 0) + 1); }
+        }
+        console.log(`      alarmmod+alarmaz together: best feasible ${bestR ? `${dims(bestR.bounds)} at Δ ${(bestR.values.alarmaz).toFixed(0)}°` : 'none'}; refusals: ${[...whys.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([w, n]) => `${n}× ${w}`).join(' | ')}`);
+      }
+      results[k] = null; continue;
+    }
+    const verified = await pool(cands, async (r) => {
+      const q = FP.planQuery(k, r.values, moves);
+      const b = await boot(q);
+      const extra = b.bootError || !b.ff ? [`boot error: ${b.bootError ?? 'no footprint'}`] : b.warnings.filter((w) => !allowed.has(norm(w)));
+      return { r, q, b, extra };
+    });
+    for (const v of verified)
+      console.log(`    plan ${v.q}: planned ${dims(v.r.bounds)} → built ${v.b.ff ? dims(v.b.ff.rect) : '—'} ${v.extra.length ? `REFUSED (${v.extra.length} new: ${v.extra[0].slice(0, 160)})` : 'ACCEPTED'}`);
+    const ok = verified.filter((v) => !v.extra.length).sort((a, b) => (a.b.ff.rect[1] - a.b.ff.rect[0]) * (a.b.ff.rect[3] - a.b.ff.rect[2]) - (b.b.ff.rect[1] - b.b.ff.rect[0]) * (b.b.ff.rect[3] - b.b.ff.rect[2]));
+    if (!ok.length) { results[k] = { refused: verified.map((v) => ({ q: v.q, why: v.extra[0] })) }; continue; }
+    const best = ok[0];
+    const fr = best.b.ff.rect.map((q) => q.toFixed(2)).join(',');
+    const conf = await boot(`${best.q}&formrect=${fr}`);
+    const cExtra = conf.bootError ? [`boot error: ${conf.bootError}`] : conf.warnings.filter((w) => !allowed.has(norm(w)));
+    results[k] = { q: best.q, url: `index.html?${best.q}&formrect=${fr}`, built: best.b.ff.rect, holds: conf.ff?.holds, confirmExtra: cExtra };
+    console.log(`    BEST ${k}: ${dims(best.b.ff.rect)} (designed ${dims(base.ff.rect)}), confirm boot at its formrect: ${conf.ff?.holds ? 'the cut HOLDS its metal' : 'the cut does NOT hold'}${cExtra.length ? `, ${cExtra.length} new warning(s): ${cExtra[0].slice(0, 160)}` : ', no new warning'}`);
+    console.log(`      URL: ${results[k].url}`);
+  }
+  await close();
+  console.log('FLOORPLAN done (a REPORT: an accepted plan is a candidate for the battery, which is the judge of record)');
   process.exit(0);
 }
 

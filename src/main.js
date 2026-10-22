@@ -49,7 +49,7 @@ import {
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
-  caseShapeOf, fitCaseShape, convexHull2, PLATE_RIM_MARGIN,              // §307/§308: the case shape library — plates, dial and case read ONE law under ?case=<kind>
+  caseShapeOf, fitCaseShape, convexHull2, PLATE_RIM_MARGIN, FORM_ACTION_GROUPS, FORM_FRAME_UNITS,              // §307/§308: the case shape library — plates, dial and case read ONE law under ?case=<kind>
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -32145,7 +32145,12 @@ const ALARM_WIND_IDLER_MIN = Math.ceil(
 // the gauge itself learns small wheels, no chain-solved wheel goes
 // below the size the movement already proves readable.
 await breathe(233);
-const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5, [ALARM_WIND_PINION_TEETH]), KW_WIND_IDLER_TEETH);
+// §308 landing 4 — this is the FLOOR, and the count the build cuts is the
+// solve's (ALARM_WIND_IDLER_TEETH, after the dogleg below). On the round
+// movement the solve takes the floor and nothing else; under a form case it
+// may climb from here, because the count cancels out of the ratio (pinion over
+// arbor wheel, 12/44, whatever the idlers carry) and so is position space.
+const ALARM_WIND_IDLER_FLOOR = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5, [ALARM_WIND_PINION_TEETH]), KW_WIND_IDLER_TEETH);
 const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_WIND_W; // §99: ARBOR turns per crown turn — idlers drop out; value unchanged from the rim era (W = the rim's count)
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);
@@ -32156,9 +32161,44 @@ registerExplode(alarmWindUnit, 0, 9); // rides with the back stack, like the str
 // to the barrel), +y solution — the small dogleg that absorbs the slack
 // between the chain's link lengths and the straight span.
 const _wu = { x: (alarmBarrelPos.x - _wc.x) / _wSpan, y: (alarmBarrelPos.y - _wc.y) / _wSpan };
-const _wd1 = ALARM_TRAIN_MODULE * (ALARM_WIND_PINION_TEETH + ALARM_WIND_IDLER_TEETH) / 2;  // climb ⇄ i1
-const _wd2 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_IDLER_TEETH) / 2;   // i1 ⇄ i2
-const _wd3 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_W) / 2;             // i2 ⇄ arbor wheel (§99; same value as the rim it replaced — W is the rim's count)
+// §308 landing 4 — HOISTED from the arrest's station solve (§129, below),
+// unchanged: the subtractor idler's station law and the counts it may try. The
+// winding dogleg under a form case reads them to rank its own stations by the
+// room they leave the arrest (see the dogleg's solve).
+const subIdlerGeom = (teeth, side) => {
+  const rimCD = (ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + teeth)) / 2;
+  const legCD = (ALARM_TRAIN_MODULE * (teeth + SUB_LEG_TEETH)) / 2;
+  const cosD = (ARREST_CD * ARREST_CD + rimCD * rimCD - legCD * legCD)
+    / (2 * ARREST_CD * rimCD);
+  if (!(cosD >= -1 && cosD <= 1)) return null;   // no triangle: this count cannot reach
+  return { rimCD, legCD, daz: side * Math.acos(cosD) };
+};
+// The counts worth trying: from the smallest that is a gear on this stud up
+// to where the idler's wheel outgrows the room it has to fit into. Sweeping
+// this is what a fold is ALLOWED to spend — corners and idlers are
+// position-space, and the line spec is what proves this one carries no ratio.
+const ARREST_SUB_IDLER_COUNTS = [];
+for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_COLUMN_R + 0.05, [ALARM_BARREL_TEETH]));
+  z <= ALARM_BARREL_TEETH; z++) ARREST_SUB_IDLER_COUNTS.push(z);
+// §308 landing 4 — the chain's geometry is ONE law of the idler count, so the
+// solve can judge a count it then cuts with the same numbers (the round build
+// evaluates it once, at the floor, which is the arithmetic it always ran).
+const alarmWindChainAt = (I) => ({
+  I,
+  wd1: ALARM_TRAIN_MODULE * (ALARM_WIND_PINION_TEETH + I) / 2,  // climb ⇄ i1
+  wd2: ALARM_TRAIN_MODULE * (I + I) / 2,                        // i1 ⇄ i2
+  wd3: ALARM_TRAIN_MODULE * (I + ALARM_WIND_W) / 2,             // i2 ⇄ arbor wheel (§99; same value as the rim it replaced — W is the rim's count)
+  // §136 — each idler's mate graph, so the solve sizes the wheels it judges
+  // (gearOuterR, gearFaceReach) from the same arrays mkIdler cuts with.
+  m1: [
+    { teeth: ALARM_WIND_PINION_TEETH, mates: [I] },
+    { teeth: I, mates: [I, ALARM_WIND_W] },
+  ],
+  m2: [
+    { teeth: I, mates: [ALARM_WIND_PINION_TEETH, I] },
+    { teeth: ALARM_WIND_W, mates: [I, SUB_LEG_TEETH] },
+  ],
+});
 // §112 — THE DOGLEG IS SCORED, not authored, and since the band swap the
 // score is about the STUDS: the winding tier rides ABOVE the low corridor's
 // declared ceiling, so the WHEELS overfly the rods' lane legally and the
@@ -32173,18 +32213,9 @@ const _wd3 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_W) / 2;  
 // the accept test the score never had — both idlers one margin off the built
 // metal (below); the corridor now only ranks what that test lets through.
 //
-// §136 — each idler's mate graph, hoisted so the solve sizes the wheels it
-// judges (gearOuterR, gearFaceReach) from the same arrays mkIdler cuts with.
-const ALARM_WIND_I1_MATES = [
-  { teeth: ALARM_WIND_PINION_TEETH, mates: [ALARM_WIND_IDLER_TEETH] },
-  { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_IDLER_TEETH, ALARM_WIND_W] },
-];
-const ALARM_WIND_I2_MATES = [
-  { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_PINION_TEETH, ALARM_WIND_IDLER_TEETH] },
-  { teeth: ALARM_WIND_W, mates: [ALARM_WIND_IDLER_TEETH, SUB_LEG_TEETH] },
-];
+// (§136's mate graphs live on alarmWindChainAt above.)
 await breathe(234);
-const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
+const { i1: alarmWindI1, i2: alarmWindI2, chain: _wChain } = (() => {
   const studR = 0.45;                       // the idler stud stock (the build below)
   const lowC = (p, r) => {
     let c = Infinity;
@@ -32197,22 +32228,31 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
     return c;
   };
   const az0 = Math.atan2(_wu.y, _wu.x);
-  const cands = [];
-  for (let deg = -80; deg <= 80; deg += 2) {
-    const a = az0 + deg * DEG2RAD;
-    const i1 = { x: _wc.x + Math.cos(a) * _wd1, y: _wc.y + Math.sin(a) * _wd1 };
-    const dx = alarmBarrelPos.x - i1.x, dy = alarmBarrelPos.y - i1.y;
-    const d = Math.hypot(dx, dy);
-    if (d > _wd2 + _wd3 || d < Math.abs(_wd2 - _wd3)) continue; // no i2 closes here
-    const aa = (_wd2 * _wd2 - _wd3 * _wd3 + d * d) / (2 * d);
-    const h = Math.sqrt(Math.max(0, _wd2 * _wd2 - aa * aa));
-    const mx = i1.x + (aa * dx) / d, my = i1.y + (aa * dy) / d;
-    const c1 = lowC(i1, studR);
-    for (const i2 of [
-      { x: mx - (h * dy) / d, y: my + (h * dx) / d },
-      { x: mx + (h * dy) / d, y: my - (h * dx) / d },
-    ]) cands.push({ i1, i2, deg, c: Math.min(c1, lowC(i2, studR)) });
-  }
+  // §308 landing 4 — i1's azimuth on its mesh circle about the climb is the
+  // freedom this solve has always had; the round movement searches it ±80° off
+  // the straight line (its corner's run never needed more), a form movement the
+  // whole circle, because a turned alarm module puts the barrel across the
+  // going train and the dogleg must be free to go round it rather than over.
+  const SWING = FORM ? 180 : 80;
+  const candsFor = ({ wd1: _wd1, wd2: _wd2, wd3: _wd3 }) => {
+    const cands = [];
+    for (let deg = -SWING; deg <= SWING - (FORM ? 2 : 0); deg += 2) {
+      const a = az0 + deg * DEG2RAD;
+      const i1 = { x: _wc.x + Math.cos(a) * _wd1, y: _wc.y + Math.sin(a) * _wd1 };
+      const dx = alarmBarrelPos.x - i1.x, dy = alarmBarrelPos.y - i1.y;
+      const d = Math.hypot(dx, dy);
+      if (d > _wd2 + _wd3 || d < Math.abs(_wd2 - _wd3)) continue; // no i2 closes here
+      const aa = (_wd2 * _wd2 - _wd3 * _wd3 + d * d) / (2 * d);
+      const h = Math.sqrt(Math.max(0, _wd2 * _wd2 - aa * aa));
+      const mx = i1.x + (aa * dx) / d, my = i1.y + (aa * dy) / d;
+      const c1 = lowC(i1, studR);
+      for (const i2 of [
+        { x: mx - (h * dy) / d, y: my + (h * dx) / d },
+        { x: mx + (h * dy) / d, y: my - (h * dx) / d },
+      ]) cands.push({ i1, i2, deg, c: Math.min(c1, lowC(i2, studR)) });
+    }
+    return cands;
+  };
   // TODO 169 — THE WHEELS ARE JUDGED ON THE METAL THEY FLY OVER. The score
   // above sees the two STUDS against the corridor's declared footprint and
   // nothing else, so it took i2 where its disc flew 0.0252 under the centre
@@ -32240,8 +32280,8 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
   // and non-rotating parts at any pose but the build's — the battery's
   // `undeclaredClearance` holds those over the pose net.
   const CM = CLEAR_MARGIN;
-  const idlerPieces = (mates, partner) => {
-    const spec = { module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_IDLER_TEETH, mates, thickness: ALARM_WIND_WHEEL_T };
+  const idlerPieces = (teeth, mates, partner) => {
+    const spec = { module: ALARM_TRAIN_MODULE, teeth, mates, thickness: ALARM_WIND_WHEEL_T };
     const face = G.gearFaceReach({ ...spec, boreR: 0.5 });   // boreR: mkIdler's own
     return [
       { what: 'disc', r: G.gearOuterR(spec), lo: ALARM_WIND_TIER_Z - face.body, hi: ALARM_WIND_TIER_Z + face.body, partner },
@@ -32249,12 +32289,22 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
       { what: 'stud', r: studR, lo: ALARM_U_FLOOR - 0.5, hi: ALARM_WIND_TIER_Z + 0.3 },   // mkIdler's stud column
     ];
   };
-  const P1 = idlerPieces(ALARM_WIND_I1_MATES, null);               // i1's partner, the climb pinion, is built below
-  const P2 = idlerPieces(ALARM_WIND_I2_MATES, 'alarmArborWheel');
-  const reach = Math.max(...P1.map((q) => q.r), ...P2.map((q) => q.r)) + CM;
-  const zLo = Math.min(...P1.map((q) => q.lo)) - CM, zHi = Math.max(...P1.map((q) => q.hi)) + CM;
+  // §308 landing 4 — the counts this solve may cut: the floor alone on the
+  // round movement; under a form case every count from the floor up to the
+  // ceiling the assert below holds (an idler past 1.5× the wheel it drives
+  // "wants an added idler, not a larger one"), tried smallest first.
+  const chains = [alarmWindChainAt(ALARM_WIND_IDLER_FLOOR)];
+  if (FORM) for (let I = ALARM_WIND_IDLER_FLOOR + 1; I <= Math.floor(1.5 * ALARM_WIND_W); I++) chains.push(alarmWindChainAt(I));
+  for (const ch of chains) {
+    ch.cands = candsFor(ch);
+    ch.P1 = idlerPieces(ch.I, ch.m1, null);               // i1's partner, the climb pinion, is built below
+    ch.P2 = idlerPieces(ch.I, ch.m2, 'alarmArborWheel');
+  }
+  const reach = Math.max(...chains.map((ch) => Math.max(...ch.P1.map((q) => q.r), ...ch.P2.map((q) => q.r)))) + CM;
+  const zLo = Math.min(...chains.map((ch) => Math.min(...ch.P1.map((q) => q.lo)))) - CM,
+    zHi = Math.max(...chains.map((ch) => Math.max(...ch.P1.map((q) => q.hi)))) + CM;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const p of cands) for (const s of [p.i1, p.i2]) {
+  for (const ch of chains) for (const p of ch.cands) for (const s of [p.i1, p.i2]) {
     x0 = Math.min(x0, s.x - reach); y0 = Math.min(y0, s.y - reach);
     x1 = Math.max(x1, s.x + reach); y1 = Math.max(y1, s.y + reach);
   }
@@ -32368,11 +32418,13 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
     }
     return { c, who };
   };
-  for (const p of cands) {
-    const m1 = metalC(p.i1, P1), m2 = metalC(p.i2, P2);
-    p.metal = Math.min(m1.c, m2.c);
-    p.metalWho = m1.c <= m2.c ? `i1 ${m1.who}` : `i2 ${m2.who}`;
-  }
+  const judge = (ch) => {
+    for (const p of ch.cands) {
+      const m1 = metalC(p.i1, ch.P1), m2 = metalC(p.i2, ch.P2);
+      p.metal = Math.min(m1.c, m2.c);
+      p.metalWho = m1.c <= m2.c ? `i1 ${m1.who}` : `i2 ${m2.who}`;
+    }
+  };
   // THE CORRIDOR STILL RANKS; THE METAL REFUSES. The corridor's own pick is
   // taken exactly as before (argmax, ties within 0.05 to the smallest swing).
   // If the metal refuses it, the station is the ACCEPTED candidate that moves
@@ -32386,17 +32438,147 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
     list.sort((p, q) => q.c - p.c);
     return list.filter((p) => p.c > list[0].c - 0.05).sort((p, q) => Math.abs(p.deg) - Math.abs(q.deg))[0];
   };
-  const pick = cands.length ? rank(cands.slice()) : null;
-  const move = (p) => Math.max(Math.hypot(p.i1.x - pick.i1.x, p.i1.y - pick.i1.y), Math.hypot(p.i2.x - pick.i2.x, p.i2.y - pick.i2.y));
-  const best = !pick ? null : pick.metal >= CM ? pick
-    : cands.filter((p) => p.metal >= CM).sort((p, q) => move(p) - move(q) || q.c - p.c)[0] || null;
+  // (the move off the corridor's pick, the refusal's tie-break)
+  const moveOff = (pick) => (p) => Math.max(Math.hypot(p.i1.x - pick.i1.x, p.i1.y - pick.i1.y), Math.hypot(p.i2.x - pick.i2.x, p.i2.y - pick.i2.y));
+  // §308 landing 4 — UNDER A FORM CASE THE DOGLEG ALSO ANSWERS TO WHAT IS SITED
+  // AGAINST IT, and the two constraints the round corner never had to read are
+  // read here rather than left to the asserts that would report them:
+  //   · the alarm sleeve's TAB (§76/TODO 164's arc gap, the assert below, in
+  //     its own expression) — a dogleg free to swing the whole circle can put
+  //     i1 on the tab's azimuth, which the ±80° run could not;
+  //   · the ARREST'S ROOM. The winding arrest (§129, sited below) stands on the
+  //     ARREST_CD mesh circle about the barrel, and i2 meshes the same arbor
+  //     wheel from the same barrel, so the dogleg chooses which arc of that
+  //     circle it leaves. The arrest's own solve stays the judge; this only
+  //     RANKS the accepted dogleg stations by how many of the arrest's coarse
+  //     stations (its 6° pass) stand a margin clear of both idlers and of every
+  //     swept rotor already built (the barrel's own, its mesh partners, aside),
+  //     piece by piece at the arrest's own bands and reaches, with at least
+  //     one of its subtractor idler's (count, side) stations clear too. A proxy, said so: it reads rotors only, not the
+  //     solids, and none of the arrest's own finger/cross/plate-window tests.
+  const tabGap = (p) => (Math.atan2(p.i1.y, p.i1.x) - ALARM_CORNER_W_AZ - ALARM_SLEEVE_TAB_REL_AZ) * ALARM_CD;
+  const ARREST_ROOM = FORM ? (() => {
+    // the arrest's pieces at their OWN bands (its solve's NEED table, from the
+    // same constants): leg A in the winding tier (ARREST_PIN_Z is
+    // ALARM_WIND_TIER_Z), the spider and the cage's wheel at the cage, leg B
+    // at its plane (bounded over every idler it may mesh, as the arrest's own
+    // LEG_B_REACH is), and the tower's arbor from the plate to the cage's top
+    const T = ALARM_WIND_WHEEL_T, PLATE_Z = ALARM_U_FLOOR - 0.5;
+    const tip = (teeth, mates, module = ALARM_TRAIN_MODULE) => G.gearOuterR({ module, teeth, mates, thickness: T });
+    let legB = 0;
+    for (const z of ARREST_SUB_IDLER_COUNTS) legB = Math.max(legB, tip(SUB_LEG_TEETH, [z]));
+    const cz = ARREST_STACK.cageZ, pz = ARREST_STACK.pinBZ;
+    const tower = [
+      { r: tip(SUB_LEG_TEETH, [ALARM_WIND_W]), lo: ALARM_WIND_TIER_Z - T / 2, hi: ALARM_WIND_TIER_Z + T / 2 },
+      { r: SUB_SPEC.sweptR, lo: cz - SUB_SPEC.halfHeight, hi: cz + SUB_SPEC.halfHeight },
+      { r: legB, lo: pz - T / 2, hi: pz + T / 2 },
+      { r: tip(SUB_OUT_TEETH, [SUB_FINGER_TEETH], SUB_OUT_MODULE), lo: cz - T / 2, hi: cz + T / 2 },
+      { r: ARREST_COLUMN_R, lo: PLATE_Z, hi: cz + T / 2 + 0.2 },
+    ];
+    // the subtractor idler's: its wheel on the barrel's band, its pinion on
+    // leg B's, its arbor from the plate (SUB_IDLER_W_Z / _P_Z, below)
+    const subPieces = (z) => {
+      const r = tip(z, [ALARM_BARREL_TEETH]);
+      return [
+        { r, lo: ALARM_BARREL_Z - T / 2, hi: ALARM_BARREL_Z + T / 2 },
+        { r, lo: pz - T / 2, hi: pz + T / 2 },
+        { r: ARREST_COLUMN_R, lo: PLATE_Z, hi: pz + T / 2 + 0.2 },
+      ];
+    };
+    // clear of every built rotor (the barrel's own unit aside: leg A and the
+    // idler's wheel mesh it, and its metal is the module's own)
+    const rotorFree = (x, y, pieces) => {
+      for (const pc of pieces) for (const r of rings) {
+        if (r.unit === 'Alarm barrel') continue;
+        const dz = Math.max(0, r.lo - pc.hi, pc.lo - r.hi);
+        const d = Math.hypot(x - r.x, y - r.y);
+        const dp = d >= r.maxR + pc.r ? d - r.maxR - pc.r : (d + pc.r <= r.minR ? r.minR - d - pc.r : 0);
+        if (Math.hypot(dp, dz) < CM) return false;
+      }
+      return true;
+    };
+    const st = [];
+    for (let k = 0; k < 60; k++) {
+      const a = k * 6 * DEG2RAD;
+      const s = { x: alarmBarrelPos.x + Math.cos(a) * ARREST_CD, y: alarmBarrelPos.y + Math.sin(a) * ARREST_CD, pieces: tower };
+      if (!rotorFree(s.x, s.y, tower)) continue;
+      const subs = [];
+      for (const z of ARREST_SUB_IDLER_COUNTS) for (const side of [1, -1]) {
+        const geo = subIdlerGeom(z, side);
+        if (!geo) continue;
+        const ia = a + geo.daz;
+        const q = { x: alarmBarrelPos.x + Math.cos(ia) * geo.rimCD, y: alarmBarrelPos.y + Math.sin(ia) * geo.rimCD, pieces: subPieces(z) };
+        if (rotorFree(q.x, q.y, q.pieces)) subs.push(q);
+      }
+      if (subs.length) st.push({ ...s, subs });
+    }
+    return { st };
+  })() : null;
+  const clearOfIdlers = (p, ch, q) => {
+    for (const [c, pcs] of [[p.i1, ch.P1], [p.i2, ch.P2]]) for (const pc of pcs) for (const t of q.pieces) {
+      const dz = Math.max(0, pc.lo - t.hi, t.lo - pc.hi);
+      const dp = Math.max(0, Math.hypot(q.x - c.x, q.y - c.y) - pc.r - t.r);
+      if (Math.hypot(dp, dz) < CM) return false;
+    }
+    return true;
+  };
+  const roomOf = (p, ch) => {
+    let n = 0;
+    for (const s of ARREST_ROOM.st)
+      if (clearOfIdlers(p, ch, s) && s.subs.some((q) => clearOfIdlers(p, ch, q))) n++;
+    return n;
+  };
+  const solveChain = (ch) => {
+    judge(ch);
+    const pick = ch.cands.length ? rank(ch.cands.slice()) : null;
+    if (!pick) return { pick, best: null };
+    const move = moveOff(pick);
+    const roundRule = (cands, pk) => {
+      const mv = moveOff(pk);
+      return pk.metal >= CM ? pk
+        : cands.filter((p) => p.metal >= CM).sort((p, q) => mv(p) - mv(q) || q.c - p.c)[0] || null;
+    };
+    if (!FORM) return { pick, best: roundRule(ch.cands, pick) };
+    // A form movement keeps the round movement's own answer wherever that
+    // answer still holds — the floor's count, the ±80° run, its rule, the tab
+    // clear and the arrest left a station — so the designed form build is the
+    // round corner's dogleg; the wider search is spent only where it is refused.
+    if (ch.I === ALARM_WIND_IDLER_FLOOR) {
+      const near = ch.cands.filter((p) => Math.abs(p.deg) <= 80);
+      const pk = near.length ? rank(near.slice()) : null;
+      const b = pk && roundRule(near, pk);
+      if (b && tabGap(b) >= CM && (b.room = roomOf(b, ch)) > 0) return { pick: pk, best: b };
+    }
+    const ok = ch.cands.filter((p) => p.metal >= CM && tabGap(p) >= CM);
+    for (const p of ok) p.room = roomOf(p, ch);
+    const best = ok.sort((p, q) => q.room - p.room || move(p) - move(q) || q.c - p.c)[0] || null;
+    return { pick, best };
+  };
+  // the round movement: the floor's chain, exactly as before. A form movement:
+  // the fewest teeth whose dogleg is accepted AND leaves the arrest a station;
+  // failing that, the fewest teeth with an accepted dogleg; failing that, the
+  // floor's corridor pick, reported.
+  let chosen = null, first = null;
+  for (const ch of chains) {
+    const r = { ch, ...solveChain(ch) };
+    if (!first) first = r;
+    if (r.best && (!FORM || r.best.room > 0)) { chosen = r; break; }
+    if (r.best && !chosen) chosen = { ...r, roomless: true };
+  }
+  const { ch, pick, best } = chosen || first;
+  if (FORM && chosen?.roomless)
+    console.warn(`alarm winding dogleg (§308 form): no idler count ${ALARM_WIND_IDLER_FLOOR}–${Math.floor(1.5 * ALARM_WIND_W)} `
+      + `leaves the arrest a coarse station clear of the idlers and the built rotors — taking ${ch.I} t, the fewest that is accepted`);
   if (!best)
     console.warn(`alarm winding dogleg: no i1 azimuth on either branch stands both idlers ${CM} off the built metal — `
       + `keeping the corridor's pick, ${pick ? `${pick.metal.toFixed(4)} (${pick.metalWho})` : 'none'}`);
   else if (best.c < CM)
     console.warn(`alarm winding dogleg: no i1 azimuth stands both studs clear of the low corridor — best ${best.c.toFixed(3)} < ${CM}`);
-  return best || pick || { i1: { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } };
+  return { chain: ch, ...(best || pick || { i1: { x: _wc.x + _wu.x * ch.wd1, y: _wc.y + _wu.y * ch.wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } }) };
 })();
+const ALARM_WIND_IDLER_TEETH = _wChain.I;   // the count the solve cut (the floor on the round movement)
+const _wd1 = _wChain.wd1, _wd2 = _wChain.wd2, _wd3 = _wChain.wd3;
+const ALARM_WIND_I1_MATES = _wChain.m1, ALARM_WIND_I2_MATES = _wChain.m2;
 await breathe(235);
 if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.y) - _wd3 > 1e-6)
   console.warn('alarm winding chain: i2 failed to close on the barrel mesh distance');
@@ -33245,14 +33427,8 @@ const SUB_OUT_CD = SUB_OUT_MODULE * (SUB_OUT_TEETH + SUB_FINGER_TEETH) / 2;
 // Treating the count as fixed at 11 left exactly one station, and the low
 // corridor missed it by 0.011 — a tenth of a tooth of freedom nobody had
 // noticed was there.
-const subIdlerGeom = (teeth, side) => {
-  const rimCD = (ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + teeth)) / 2;
-  const legCD = (ALARM_TRAIN_MODULE * (teeth + SUB_LEG_TEETH)) / 2;
-  const cosD = (ARREST_CD * ARREST_CD + rimCD * rimCD - legCD * legCD)
-    / (2 * ARREST_CD * rimCD);
-  if (!(cosD >= -1 && cosD <= 1)) return null;   // no triangle: this count cannot reach
-  return { rimCD, legCD, daz: side * Math.acos(cosD) };
-};
+// (subIdlerGeom — §308 landing 4: hoisted above the alarm winding train, whose
+// form-case dogleg ranks its stations by the room it leaves this idler.)
 // Its wheel rides the barrel's band and its pinion leg B's, which is the whole
 // point of compounding it: the tower's z stops being hostage to the barrel's.
 const SUB_IDLER_W_Z = ALARM_BARREL_Z;
@@ -33734,9 +33910,9 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // to where the idler's wheel outgrows the room it has to fit into. Sweeping
   // this is what a fold is ALLOWED to spend — corners and idlers are
   // position-space, and the line spec is what proves this one carries no ratio.
-  const IDLER_COUNTS = [];
-  for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_COLUMN_R + 0.05, [ALARM_BARREL_TEETH]));
-    z <= ALARM_BARREL_TEETH; z++) IDLER_COUNTS.push(z);
+  // (§308 landing 4: the list is hoisted above the winding train with
+  // subIdlerGeom — ARREST_SUB_IDLER_COUNTS — and read here unchanged.)
+  const IDLER_COUNTS = ARREST_SUB_IDLER_COUNTS;
 
   let best = null;
   const stage = { az: 0, tower: 0, idler: 0, fAz: 0, plane: 0, cross: 0, hit: 0 };
@@ -47754,7 +47930,10 @@ const DIAL_SPEC = (() => {
 // that rule is now the FIT of the case's kind (below), and a FORM that leaves
 // the counted metal under the margin is a finding (rule 6); the tool reads
 // `rect` (the fitted shape's bounds) off __clock and hands it back as ?formrect=.
-const FORM_FOOTPRINT = (() => {
+// §308 landing 2 — the COUNTED METAL is one predicate, read by the fit below and
+// by the region model after it (FORM_REGIONS), so the outline and the regions
+// that set it cannot disagree about which meshes stand in the movement.
+const FORM_COUNTED = (() => {
   if (!FORM) return null;
   movement.updateWorldMatrix(true, true);
   const gong = labelEntries.find((e) => e.name === 'Alarm gong')?.obj ?? null;
@@ -47781,13 +47960,19 @@ const FORM_FOOTPRINT = (() => {
   // Like the gong's wire they follow the outline and so cannot also set it.
   const CUT_TO_SHAPE = [backPlate, threeQuarterPlate, dial];
   const cutToShape = (o) => CUT_TO_SHAPE.some((r) => under(o, r));
-  const v = new THREE.Vector3();
   const counted = [];
-  let total = 0;
   movement.traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position || skip(o) || (gong && under(o, gong)) || through(o) || cutToShape(o)) return;
-    counted.push(o); total += o.geometry.attributes.position.count;
+    counted.push(o);
   });
+  return counted;
+})();
+const FORM_FOOTPRINT = (() => {
+  if (!FORM) return null;
+  const v = new THREE.Vector3();
+  const counted = FORM_COUNTED;
+  let total = 0;
+  for (const o of counted) total += o.geometry.attributes.position.count;
   const xs = new Float64Array(total), ys = new Float64Array(total);
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, k = 0;
   for (const o of counted) {
@@ -47823,6 +48008,90 @@ const FORM_FOOTPRINT = (() => {
       + `boot with ?formrect=${rect.map((q) => q.toFixed(2)).join(',')}`);
   return { kind: FORM.kind, metal: [x0, x1, y0, y1], rect, holds, margin, scale: fit.s, hullN: hull.length, counted: total,
     accuracy: fit.shape.accuracy, mm: [(rect[1] - rect[0]) * UNIT_MM, (rect[3] - rect[2]) * UNIT_MM] };
+})();
+// §308 landing 2 — THE REGION MODEL, measured off the counted metal above (so
+// the outline and its regions read one predicate). Every counted mesh is
+// attributed to its INNERMOST registered unit and each unit to its action
+// group (layout.js FORM_ACTION_GROUPS, the one table); per group, and per unit
+// inside it, the XY convex hull and the z range (its STRATUM), and the group's
+// ANCHORS resolved to world points off this build (P's stations, the dial
+// spec's hand centre and ports). `edges` says which group sets each side of
+// the metal box the fit read, and `binding` which group's hull vertex stands
+// nearest the fitted outline — the region a smaller shape must move first.
+// Pure data, computed only under FORM: the round build never reaches it.
+const FORM_REGIONS = (() => {
+  if (!FORM) return null;
+  const labelOf = new Map();
+  for (const e of labelEntries) if (!labelOf.has(e.obj)) labelOf.set(e.obj, e.name);
+  const unitOf = (o) => { for (let a = o; a && a !== movement; a = a.parent) if (labelOf.has(a)) return labelOf.get(a); return '(unlabelled)'; };
+  const groupOfUnit = new Map();
+  for (const g of FORM_ACTION_GROUPS) for (const u of g.units) groupOfUnit.set(u, g.id);
+  for (const u of FORM_FRAME_UNITS) groupOfUnit.set(u, 'frame');
+  const v = new THREE.Vector3();
+  const byUnit = new Map();
+  for (const o of FORM_COUNTED) {
+    const u = unitOf(o);
+    let rec = byUnit.get(u);
+    if (!rec) byUnit.set(u, rec = { xs: [], ys: [], z0: Infinity, z1: -Infinity, meshes: 0, parts: [] });
+    rec.meshes++;
+    const pa = o.geometry.attributes.position, mx = [], my = [];
+    let mz0 = Infinity, mz1 = -Infinity;
+    for (let i = 0; i < pa.count; i++) {
+      v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld);
+      rec.xs.push(v.x); rec.ys.push(v.y); mx.push(v.x); my.push(v.y);
+      if (v.z < mz0) mz0 = v.z; if (v.z > mz1) mz1 = v.z;
+    }
+    rec.z0 = Math.min(rec.z0, mz0); rec.z1 = Math.max(rec.z1, mz1);
+    // each MESH's own hull and z span too: a unit's hull is a coarse proxy for
+    // an arc-shaped part (the alarm switch's hull spans the module), so the
+    // floorplanner judges clearance part by part.
+    rec.parts.push([mx, my, mz0, mz1]);
+  }
+  const r4 = (q) => Math.round(q * 1e4) / 1e4;
+  const hullOf = (xs, ys) => convexHull2(xs, ys, xs.length).map(([x, y]) => Object.freeze([r4(x), r4(y)]));
+  const units = {};
+  const gAcc = new Map();
+  for (const [u, rec] of byUnit) {
+    const gid = groupOfUnit.get(u) ?? 'unassigned';
+    units[u] = Object.freeze({ group: gid, meshes: rec.meshes, vertices: rec.xs.length, z: Object.freeze([r4(rec.z0), r4(rec.z1)]), hull: Object.freeze(hullOf(rec.xs, rec.ys)),
+      parts: Object.freeze(rec.parts.filter(([mx]) => mx.length >= 3).map(([mx, my, z0, z1]) => Object.freeze({ z: Object.freeze([r4(z0), r4(z1)]), hull: Object.freeze(hullOf(mx, my)) }))) });
+    let g = gAcc.get(gid);
+    if (!g) gAcc.set(gid, g = { xs: [], ys: [], z0: Infinity, z1: -Infinity, units: [] });
+    g.units.push(u); g.z0 = Math.min(g.z0, rec.z0); g.z1 = Math.max(g.z1, rec.z1);
+    for (const [x, y] of units[u].hull) { g.xs.push(x); g.ys.push(y); }
+  }
+  const resolve = (key) => {
+    if (key === 'hand') return { x: DIAL_SPEC.handCentre.x, y: DIAL_SPEC.handCentre.y };
+    if (key.startsWith('P.')) { const p = P[key.slice(2)]; return p ? { x: p.x, y: p.y } : null; }
+    if (key.startsWith('port.')) { const q = DIAL_SPEC.ports[key.slice(5)]; return q ? { az: q.az, off: q.off, z: q.z } : null; }
+    return null;
+  };
+  const groups = {};
+  for (const [gid, g] of gAcc) {
+    const decl = FORM_ACTION_GROUPS.find((r) => r.id === gid);
+    const hull = hullOf(g.xs, g.ys);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const [x, y] of hull) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    groups[gid] = Object.freeze({ name: decl?.name ?? gid, units: Object.freeze(g.units.slice().sort()),
+      z: Object.freeze([r4(g.z0), r4(g.z1)]), hull: Object.freeze(hull), box: Object.freeze([r4(x0), r4(x1), r4(y0), r4(y1)]),
+      anchors: Object.freeze((decl?.anchors ?? []).map((a) => Object.freeze({ ...a, point: resolve(a.at) }))) });
+  }
+  // which group sets each side of the metal box, and which stands nearest the cut
+  const m = FORM_FOOTPRINT.metal, side = { xMin: null, xMax: null, yMin: null, yMax: null }, sideUnit = { ...side };
+  const best = { xMin: Infinity, xMax: -Infinity, yMin: Infinity, yMax: -Infinity };
+  let binding = null, bindUnit = null, bindInset = Infinity;
+  for (const u in units) for (const [x, y] of units[u].hull) {
+    const gid = units[u].group;
+    if (x < best.xMin) { best.xMin = x; side.xMin = gid; sideUnit.xMin = u; } if (x > best.xMax) { best.xMax = x; side.xMax = gid; sideUnit.xMax = u; }
+    if (y < best.yMin) { best.yMin = y; side.yMin = gid; sideUnit.yMin = u; } if (y > best.yMax) { best.yMax = y; side.yMax = gid; sideUnit.yMax = u; }
+    const ins = FORM.inset(x, y);
+    if (ins < bindInset) { bindInset = ins; binding = gid; bindUnit = u; }
+  }
+  const missing = FORM_ACTION_GROUPS.flatMap((g) => g.units.filter((u) => !byUnit.has(u)));
+  return Object.freeze({ kind: FORM.kind, metal: Object.freeze(m.slice()), groups: Object.freeze(groups), units: Object.freeze(units),
+    edges: Object.freeze(Object.fromEntries(Object.keys(side).map((k) => [k, Object.freeze({ group: side[k], unit: sideUnit[k], at: r4(best[k]) })]))),
+    binding: Object.freeze({ group: binding, unit: bindUnit, inset: r4(bindInset) }),
+    uncounted: Object.freeze(missing), clearMargin: CLEAR_MARGIN, rimMargin: PLATE_RIM_MARGIN });
 })();
 const caseSolid = FORM
   ? makeFormCase({ dims: CASE_DIMS, form: FORM, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }) // §307/§308 — the form case round the shape
@@ -59817,7 +60086,8 @@ window.__clock = {
   // off the real numbers in Node and search the arrangement.
   layoutInputs: LAYOUT_INPUTS, keylessInputs: KEYLESS_INPUTS, formPlate, caseShape: SPEC.caseShape,
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
-  dialSpec: DIAL_SPEC,   // §308 — the dial spec, a readout in landing 1
+  dialSpec: DIAL_SPEC,
+  regions: FORM_REGIONS,   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
   // §81 tranche A: what the weld pass found and removed, so the reduction is
   // a number the battery can read rather than a claim in a comment.
   get weldCensus() { return WELD_CENSUS; },

@@ -41607,3 +41607,72 @@ line offset, z). A READOUT in this landing; landing 3 makes it the input.
 standing outside the solvers' rectangle), `--search` (the boot-based search, resumable from its JSONL log;
 outline warnings are judged at the candidate's own fitted shape, every other warning is the build's verdict),
 `--verify`, `--inputs`. The round identity was held by `fingerprint` on virgin boots of copies of both trees.
+
+### §308 landings 2 (minimal) and 3 — the region model and the floorplanner
+
+**The region model** (`__clock.regions`, form builds only): `FORM_ACTION_GROUPS` in `src/layout.js` is the one
+table — going train + escapement, barrel/fusee/chain, keyless + motion works, minute quick-set, stop work +
+seconds reset, power-reserve train, the alarm strike train, the alarm setting/release — each row its units, the
+drive edges that make it one group, and its anchors. main.js measures every group's XY hull, z span and each
+mesh's own hull off the same counted metal the fit reads (`FORM_COUNTED`, hoisted so the predicate is written
+once). On the designed rect the sides are set by: xMin the stop work (Hack rod), xMax the alarm strike train
+(Alarm hammer, also nearest the cut), yMin the frame (the dial's counted metal), yMax the power group (Mainspring drum).
+
+**The floorplanner** (`src/form-floorplan.js`, pure; harness `tools/form-layout.mjs --floorplan`). A knob is a
+move only where it is MEASURED to be one: one boot a step off design, every unit's hull judged against a rotation
+about the hand centre or a translation (a wheel re-sited at a new tooth phase counts as carried). Measured:
+`alarmmod` carries 8 strike-train units rigidly (hull error ≤ 0.134 u) and re-cuts 5; `alarmaz` carries 9 of the
+alarm corner's units (≤ 0.101 u) and re-cuts 7; `d4` translates the escapement end but re-cuts the fusee, centre
+and third wheels, so its anchors refuse it; `crownaz`, `stemaz`, `alarmr`, `rsvr` and `alarmbarrelaz` re-cut more
+than they carry and are left out, as are the three step angles (declared re-solves). The planner (least fitted-area,
+part-hull clearance not worse than designed or CLEAR_MARGIN, anchors held) finds NO feasible plan smaller than the
+design for rect, cushion or tonneau: every turn of the alarm module fouls the going train through its BRIDGES —
+the winding train against the fusee, the winding arrest against the balance, the switch against the drum — which
+are the units the build re-cuts between the fixed crown and the turned barrel. So nothing was booted as a plan, and
+the designed sizes stand (34.78 × 33.54, 34.96 × 33.71, 35.37 × 34.11 mm). BLOCKED, for landing 4: the alarm
+module (its bridges must be solved inside its region), the keyless cluster and the stop work (stemaz re-cuts 27
+units), the reserve train (rsvr re-solves it), the going train (its knobs re-solve it). The round build is
+untouched: fingerprint 955951544, boot silent.
+
+### §308 landing 4, item 1 — the alarm winding dogleg solves the whole of its freedom (and what that measured)
+
+Landing 3 found every turn of the alarm module (`?alarmmod=`) refused through its bridges. Booting the turns (rect,
+every 20°, warnings digit-stripped against the designed `case=rect`) shows the boot's own verdict is narrower and
+harder than the planner's: the winding train and the arrest each have a solver that already reads the BUILT METAL
+(every unit built before it — the going train's rotors as swept annuli, the solids triangle by triangle, the low
+corridor), which is a stricter obstacle set than the region hulls, so no region table was added; what was missing was
+FREEDOM. Under `FORM` only (the round build is bit-exact, 955951544, boot silent; `case=rect` itself is unchanged,
+1604757989), the dogleg (`main.js`, the `alarmWindI1/I2` solve):
+
+- swings i1 the whole circle about the climb (the round corner's ±80° is kept for it);
+- tries every idler count from the floor up to the 1.5× ceiling its own assert holds, smallest first — the count
+  cancels out of the ratio (12/44), so it is position space; `alarmWindChainAt(I)` is the one law of the count;
+- reads two constraints the asserts used to report after the fact: the sleeve tab's arc gap (§76/TODO 164) and the
+  ROOM it leaves the arrest — a ranking proxy, piece by piece at the arrest's own bands (its NEED table, with
+  `subIdlerGeom` and the subtractor's count list hoisted unchanged), against the built rotors and both idlers. The
+  arrest's own solve stays the judge;
+- keeps the round answer wherever it still holds.
+
+No new part, no ratio or arm changed, no tolerance touched. Measured (`alarmmod`, rect; w = dogleg/tab warnings,
+a = arrest warnings):
+
+| alarmmod | before w/a | after w/a | fitted outline (mm) | what binds |
+|---|---|---|---|---|
+| 0, 20 | 1/3 | 1/3 | 36.6 × 33.5, 36.3 × 33.5 | the barrel swings onto the alarm crown: the span is too short for any two-idler chain to clear the arbor wheel |
+| 40 (design) | 0/0 | 0/0 | 34.79 × 33.54 | — |
+| 50 | — | 0/0 | **33.84 × 33.54** | only the alarm switch/link (§234/§261/TODO 206/§278) warns |
+| 60 | 0/0 | 0/0 | 33.84 × 33.79 | the switch/link only |
+| 70 | — | 0/3 | 33.84 × 34.98 | the arrest's tower against the module's own governor wheel |
+| 80 | 1/1 | 1/3 | 33.84 × 36.13 | a TRADE, reported: before, the arrest solved beside a dogleg 0.125 into the centre wheel; now the dogleg clears the metal and every accepted station's i2 (32–51 t) covers the one arc of the arbor wheel the going train leaves the arrest (both mesh that wheel), so the arrest fails |
+| 90, 100 | —, 1/3 | 1/3 | 33.8 × 36.8 | as at 80 (100: the arrest is also bound by the drum arbor) |
+| 120–300 | 1–2/3–4 | 1–2/3–4 | | the barrel stands over the fusee/centre wheel: no dogleg station and no arrest station clears the going train's swept rotors in the winding tier (0 of 60 arrest stations rotor-free at 160) — a STRATUM problem, not a route |
+| 320, 340 | 1–2/4 | 0/4 | | the dogleg routes clear; the arrest does not |
+
+`tools/form-layout.mjs --floorplan` (rect, cushion, tonneau) still finds no feasible plan: its alarmmod move carries the
+bridges RIGIDLY as an approximation (landing 3's model), so it never asks the build to re-route them and refuses every
+turn on that model (winding train ⇄ fusee, arrest ⇄ balance, switch ⇄ drum) before any boot. The boot says
+`alarmmod=50` is the smallest arrangement the winding train and the arrest accept (33.84 × 33.54 mm against 34.78 ×
+33.54), refused only by the alarm SWITCH and its link — item 2 of landing 4. Still open: the planner must judge a
+re-solved bridge by boot rather than by rigid carry; past ~70° the arrest has no station and the module wants either
+its own stratum over the going train or a second drive arc for the arrest; and §184's click offset TRANSLATES rather
+than turning with the module, so its triple warns at 0, 200, 220, 260, 280 and 340.
