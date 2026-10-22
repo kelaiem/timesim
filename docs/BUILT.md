@@ -41676,3 +41676,71 @@ turn on that model (winding train ⇄ fusee, arrest ⇄ balance, switch ⇄ drum
 re-solved bridge by boot rather than by rigid carry; past ~70° the arrest has no station and the module wants either
 its own stratum over the going train or a second drive arc for the arrest; and §184's click offset TRANSLATES rather
 than turning with the module, so its triple warns at 0, 200, 220, 260, 280 and 340.
+
+### §308 landing 4, item 2 — the alarm switch and link under a turned module: one assumption fixed, one conflict measured
+
+`case=rect&alarmmod=50` (the 33.84 × 33.54 mm item 1 found) printed 16 warnings the designed `case=rect` does not,
+from the selector link's chain (§234 Landing 5's body length, shaft stratum and bush OD; §234's rod length; §261 2c's
+three guide plates; §112's fork block; TODO 206's arming spring, three rows; §278/§261 2c's hanger 3, four rows; §125's
+dial rim). The round build prints the same 16 at `?alarmmod=50`, so the defect is on the module-azimuth path, not
+the form path. All 16 have ONE root: the link's site solve (§112/§261 2c) left the site its hoisted constants were
+measured at (k 1, run 6, tab 87) for the k = 2 parity ray, whose 26.24 u chord (against 9.99) drifts every
+measured constant downstream and puts the arming spring outside its 5–50 mN window (seat 4.774 mN at the adverse
+corner). The rows are consequences, not separate defects.
+
+**Fixed (an assumption, at the root).** The tab's 3° grid was a WORLD literal while the beak's rays and runs ride
+the cluster's frame, so a turned module could not even propose the site turned (87° + 10° is off a grid of
+multiples of 3). And the max-min score walks off the measured site as soon as an UNRELATED tenant moves past the
+self-term that binds the design: at `alarmmod=42` the turned site scores the designed 0.4224, a neighbouring tab
+0.4337, and the chord drifts to 9.8156 against the hoisted 9.991. On the module path the grid is now
+module-relative, and the measured site (`ALARM_LINK_MEASURED_SITE`, the row the four hoisted constants quote) is
+kept wherever it clears `CLEAR_MARGIN`. Where it does not, one warning names what refuses it. The round build's
+solve is asserted to land on that row. No arm, ratio, section, tolerance or waiver moved. Round default
+fingerprint 955951544, boot silent. `case=rect` 1604757989 unchanged, explicit `alarmmod=40` silent.
+
+**Measured with it, `case=rect`:**
+
+| alarmmod | link/switch warnings | what binds the measured site | fitted (mm) |
+|---|---|---|---|
+| 42 | 15 → 0; one TODO 206 row left | — (clears 0.4224, the design's own self-term) | 34.55 × 33.54 |
+| 44 | refused | the reserve train, 0.134 | — |
+| 45 | refused | the reserve train, −0.046 | — |
+| 50 | refused (17 = 16 + the naming row) | the reserve train, −0.627 | 33.84 × 33.54 |
+| 55 | refused | the reserve train, −0.627 | — |
+| 60 | refused (17) | the switch's column skirt, −0.915 (see below) | 33.84 × 33.79 |
+
+At 42 the link's `lineSpec` rows (`rEff`, `turn`, `helixTan`, which moved on HEAD) measure clean. The one row left is
+TODO 206's shared margin: the selector ring's guide triangle (60/220/300°) is centre machinery, sited by hand among
+the centre's fixed tenants (the seat posts, the rocker bracket, the setting idler, the sleeve's co-sited third
+plate), so the turned drive meets it 2° further round. The ring's work factor moves follower-B's lift at the nose
+from 0.017278 to 0.017497 mN·…, and the fixed point from the hoisted 5.2780 to 5.2661 mN (nose seat 5.2634,
+still inside 5–50). Turning the guides with the module would be a re-site among the centre's tenants, not a turn.
+
+**Left, a real conflict (P3, with numbers).** From about 44° on, the folded column wheel carries the beak's nose
+end into the POWER-RESERVE TRAIN: at 50° the bar's nose end (1.32, 19.27) stands 3.99 from the reserve wheel's
+axis (0, 15.5), inside its swept disc r 4.1. The bar's band is z −5.75…−4.85 and the wheel's −6.38…−5.02, so the
+measured site clears −0.627 (+0.955 at 40°). Every k = 1 run clears the same −0.627 (the nose end is common to all),
+so no beak site on the designed ray exists. Moving the reserve station does not clear it. At `rsvr=14.5` the bar
+clears (+0.298) but the chord's hanger columns then cross the same wheel (−0.112), because the wheel stands between
+the beak's nose and the chord. Turning the fold by a whole stop pitch (φ 210°) puts the site back on k = 1 at a
+different geometry (chord 12.25), which drifts the same constants and runs the jumper blade into the case annulus. A
+layout change that would clear it: the reserve train out from between the folded switch and the ring (its sub-dial
+azimuth, a dial-spec decision), or its wheels re-stratified at least 0.88 dial-ward of the bar's band (0.73 of
+overlap plus the margin). Either belongs to the dial spec or a reserve re-solve, not to the switch.
+
+**Also found, reported.** (1) The site solve scores non-rotor obstacles by WORLD axis-aligned boxes, so a neighbour
+rigid with the beak scores differently as the module turns: the beak pivot against the switch's own column skirt
+reads 0.638 at 40°, 0.777 at 50° and −0.915 at 60° for one rigid pair. This is an orientation artefact of the
+obstacle model. It binds first at 60°, where the reserve train would refuse the site anyway. (2) Under ANY turned
+module (42° and 50° read identically) the strike's `lineSpec` reference moves: `pivSwD` 9.81324 → 9.81607,
+`restGamma`, `camPickupR` and `lift` with it. It is on HEAD and silent at boot (only the gate sees it), absent at
+explicit `alarmmod=40`, so it is a discrete branch in the strike build's module path, not this item's.
+
+**The other shapes** (each booted plain, then at its printed `formrect=`; the second boot's new warnings against
+the designed build of its kind): `case=rect&alarmmod=60` 33.84 × 33.79 mm, 16 new (the refusal and the drift
+chain). `case=cushion&alarmmod=50` 33.95 × 33.65 mm (designed 34.96 × 33.71), 16 new. `case=tonneau&alarmmod=50`
+34.18 × 33.88 mm (designed 35.37 × 34.11), 16 new. In every case the set is the reserve-train refusal and its drift
+chain; the plain boots' extra rows (the opening count, the tonneau's pusher bore sleeve) clear at the fitted outline.
+The floorplanner was not re-run: its alarmmod move still carries the bridges rigidly (landing 3's model) and refuses
+before booting, and the boot now says 50° is refused anyway. Teaching it to boot re-solved bridges stays a separate
+item. No battery check was run on a 50° build: it does not boot clean.
