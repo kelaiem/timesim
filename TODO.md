@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 265 | OPEN | Found bumping Playwright (#762). The same source (`abcceb8`) built on the same host under Chromium 156 instead of 141 gives a different fingerprint (`955951544` → `4180065205`), 12 fewer triangles, and fails `lineSpec` on four alarm-strike rows by up to 0.0028 u against 1e-6. A JS engine moves `Math.*` by ULPs, so a build step amplifies float noise ~10¹³×. Find the first unit whose §152 digest diverges, make that step well-conditioned so both browsers build the spec, then land the bump and un-pin the browser jobs from `ubuntu-24.04` (#766) |
 | 264 | DONE | §305 cleared both of §302's inventories at their roots: six placed-pose overlaps (the escapement's bob hung in front of the front knife and the balance re-solved, T 1.00175 s; the keyless stem as two axles in the joiner's stop; a long axle's overhang placed where it meets nothing; the fusee detent re-solved over the baseplate) and 27 flagged insertion steps (the fusee cone ends at its metal; parts shut by their own group held in the gap; a pin's lip measured as its press; pins in a held part and the alarm disc's beams as units; no gear lowered between two meshes; the escape arbor lowered beside its bricks). Both inventories empty and closed. |
 | 263 | DONE | Brushed steel rendered its grain a quarter turn off: `installBrush` handed three the GRAIN as `anisotropyT`, and three's GGX is rougher along T, so highlights stretched along the grain. The shader now names the grain per surface (a flat's `brushAngleDeg`, the midcase flank's vertical, every other flank's circumferential) and hands three T = n × grain. `probe-263-brush-axis.mjs`: axis 90.0° at grain 0°, 0.0° at grain 90°, elongation 3.24, polished control 1.00; the old shader reads the axis along the grain and fails |
 | 260 | DONE | The ramp's climb out of the notch loaded the disc as hard as its seat could hold it (1.00× where the hold is sized to 3×, and under 1 at a kinder friction). The ramp is longer now and its length is SOLVED, not chosen: the seat's pad at its blade's strain cap (0.9 of the stock's) holds a climb of 5.29 mN at the headroom, which is a slope of 4.40° and a run of 0.4257 rad (48.8 min of hour each side); the tick's drop law is `ALARM_DETECTOR_LAWS.dropAt`. Hold ÷ climb 3.000 by construction, asserted at boot and in `probe-144-set-hold`. The hold is priced at every friction corner (2.55× / 2.76× / 3.00×, decoupled worst 1.80×, never under 1) and the hour train carries the climb at 0.27% of the centre arbor's torque. Not priced: the cannon pinion's friction fit (the model declares no slip torque) and the tooth load on the minute pinion ⇄ hour wheel mesh. |
@@ -34542,3 +34543,63 @@ unchanged, and no row was deleted without its geometry clearing.
   neutral, the click pawl rides in the maintaining unit on its peg, the
   escape arbor is lowered beside its bricks with its wheel and slid 20.4 mm
   through them, and arms in a sub-assembly go on in order along their axle.
+
+## 265. Chromium 156 builds different alarm-strike metal from the same source: an ill-conditioned build step
+
+Found bumping Playwright 1.56.1 → 1.64.1 (#762), which GitHub's move of
+`ubuntu-latest` to Ubuntu 26.04 forced: 1.56.1 cannot install Chromium there.
+On the self-hosted Linux/ARM64 host, the same source (`main` at `abcceb8`; the
+PR touched only `tools/`) built under Chromium 141 (the 08:08 UTC nightly,
+2026-10-22) and under Chromium 156 (#762's battery) gives two movements:
+
+| | Chromium 141 | Chromium 156 |
+|---|---|---|
+| fingerprint (both virgin boots agree) | `955951544` | `4180065205` |
+| meshIntegrity tris / zeroArea | 491,235 / 21,449 | 491,223 / 21,441 |
+| `lineSpec` | PASS | FAIL |
+
+The failing rows are all in the `alarm strike` reference (tol 1e-6):
+
+| key | spec | measured (156) | Δ |
+|---|---|---|---|
+| `pivSwD` | 9.813240 | 9.816065 | +0.00283 u |
+| `restGamma` | 0.2094395 rad | 0.2093110 | −0.000129 rad |
+| `camPickupR` | 3.710164 | 3.712336 | +0.00217 u |
+| `lift` | 1.439941 | 1.440849 | +0.00091 u |
+
+Every other gate passed under 156, `strikeHandoff` included, and so did the
+determinism gates (each browser agrees with itself across virgin boots). A new
+JS engine changes `Math.*` results by ULPs, about 1e-16. The build moved by
+about 1e-3 and lost 12 triangles. So some step amplifies float noise by about
+10¹³, which makes it discontinuous or ill-conditioned: a solve that picks a
+branch, a bisection whose stopping test lands on a different step, or a
+tessellation or earcut decision fed by a coordinate sitting on a threshold.
+That is a defect of the build, not of the browser. Rule 1 says a constant is
+derived from its constraint, and a derivation that moves 1e-3 under a ULP has
+not pinned the constant to the constraint. §261's link seat solve was already
+found discontinuous at the nose's own station, so that neighbourhood is the
+first place to look.
+
+**Why it blocks.** The push battery runs hosted, so any Playwright ≥ 1.61
+(the first with an `ubuntu26.04` host entry) puts `main` red on `lineSpec`.
+#766 pins the five browser jobs to `ubuntu-24.04` with 1.56.1 until this
+closes; GitHub will retire that image eventually, so this has a deadline.
+
+**Fix path.**
+1. Localise: boot both browsers on one host and diff `unitDigests()` (§152)
+   at the build pose. The first unit whose SHAPE digest differs names the
+   step (a PLACE-only difference points at a pose law, not a cut). Two
+   Playwright installs (1.56.1 and ≥ 1.61) in separate directories give the
+   two browsers on one host.
+2. Re-condition that step so a perturbation of its inputs at the ULP scale
+   moves its output at the ULP scale: take the branch from the constraint
+   rather than from a float comparison, close the bisection on the residual
+   rather than an iteration count, or snap the coordinate a tessellation
+   decision reads. Add a probe that perturbs the step's inputs by a few ULPs
+   and holds the output to float noise, with a control that restores the
+   current code and fails.
+3. Confirm `lineSpec`'s four rows land on their spec under BOTH browsers, then
+   land the Playwright bump and return the five jobs to `ubuntu-latest`
+   (#762's other two CI fixes, the dpkg lock wait and offline-check's
+   per-boot watchdog marks, are already on `main`). On 26.04 `install-deps` needs ~25 MB of
+   fonts; #766's apt cache covers that.
