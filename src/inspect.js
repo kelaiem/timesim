@@ -1056,13 +1056,37 @@ function _meshesIntersectInner(a, b, raw = false) {
   return v.inside || v.d < 1e-4;
 }
 
-function unitsIntersect(A, B, raw = false) {
+// A mesh's world AABB at the CURRENT pose, computed once per pose instead of
+// once per mesh PAIR. The pair loops below used to call setFromObject inside
+// their inner loop — every pair, every pose: profiled on `inspection:wind`,
+// 23.6% of the slice in setFromObject plus 20% in expandByObject beneath it.
+// `cache` is a Map the caller creates FRESH after each setPose, so an entry
+// never crosses a pose; the entry is also keyed on the geometry's identity
+// and position version, so a mesh whose geometry is replaced or rewritten
+// inside a pose (the Chain re-tessellates lazily) is recomputed rather than
+// served stale. The box is setFromObject's own — the same call, the same
+// updateWorldMatrix side effect on first use, the same children recursion —
+// so every comparison reads the identical numbers the uncached path did.
+// Without a cache it is exactly the old per-call computation.
+function poseBox(cache, m, scratch) {
+  if (!cache) return scratch.setFromObject(m);
+  const g = m.geometry, v = g?.attributes?.position?.version;
+  let c = cache.get(m);
+  if (!c || c.g !== g || c.v !== v) {
+    c = { g, v, box: new THREE.Box3().setFromObject(m) };
+    cache.set(m, c);
+  }
+  return c.box;
+}
+
+const _uiA = new THREE.Box3(), _uiB = new THREE.Box3();
+function unitsIntersect(A, B, raw = false, boxCache = null) {
   const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
     for (const b of B.meshes) {
       // Cheap per-mesh AABB gate before the triangle test.
       if (cen) cen.aabbTests++;
-      if (!new THREE.Box3().setFromObject(a).intersectsBox(new THREE.Box3().setFromObject(b))) continue;
+      if (!poseBox(boxCache, a, _uiA).intersectsBox(poseBox(boxCache, b, _uiB))) continue;
       if (cen) cen.aabbPass++;
       if (meshesIntersect(a, b, raw)) return true;
     }
@@ -2137,16 +2161,16 @@ function meshLabel(unit, mesh) {
   return mesh.name || `${mesh.geometry.type}#${unit.meshes.indexOf(mesh)}`;
 }
 
-function unitClearance(A, B, upperBound = Infinity, exclude = null) {
+function unitClearance(A, B, upperBound = Infinity, exclude = null, boxCache = null) {
   let best = upperBound, pair = null;
   const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
-    _cbA.setFromObject(a);
+    const ba = poseBox(boxCache, a, _cbA);   // per pose when the sweep hands a cache (poseBox)
     for (const b of B.meshes) {
       if (exclude && exclude(a, b)) continue; // TODO 6 — a declared contact is not this measurement's business
-      _cbB.setFromObject(b);
+      const bb = poseBox(boxCache, b, _cbB);
       if (cen) cen.aabbTests++;
-      if (boxDistance(_cbA, _cbB) >= best) continue;
+      if (boxDistance(ba, bb) >= best) continue;
       if (cen) cen.aabbPass++;
       const d = meshClearance(a, b, best);
       if (d < best) { best = d; pair = [a, b]; }
@@ -2193,6 +2217,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
     const f = i / axis.n;
     clock.setPose(axis.pose(f, clock)); // includes scene.updateMatrixWorld(true)
     poseCount++;
+    const boxCache = new Map();   // per-mesh world AABBs, this pose only (poseBox)
     for (let p = 0; p < pairs.length; p++) {
       const pr = pairs[p];
       if (pr.axes && !pr.axes.includes(axis.name)) continue;
@@ -2207,7 +2232,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
       // (measureClearance, no refineFloor) is uncapped as before.
       const cap = pr.refineFloor !== undefined ? pr.refineFloor + refineBand : Infinity;
       const bound = Math.min(refined ? st.min : st.min + refineBand, cap);
-      const { d, pair: meshPair } = unitClearance(pr.A, pr.B, bound, pr.exclude);
+      const { d, pair: meshPair } = unitClearance(pr.A, pr.B, bound, pr.exclude, boxCache);
       if (d < pr._axisMin) pr._axisMin = d;   // §127 tier 2a — the refinement reference, per axis (see the axis loop)
       if (d < st.min) {
         st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) };
@@ -7060,6 +7085,7 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
 
       // Broad phase: unit AABBs at this pose.
       const boxes = units.map((u) => new THREE.Box3().setFromObject(u.obj));
+      const boxCache = new Map();   // per-mesh world AABBs, this pose only (poseBox)
       for (let ai = 0; ai < units.length; ai++) {
         for (let bi = ai + 1; bi < units.length; bi++) {
           const A = units[ai], B = units[bi];
@@ -7077,7 +7103,7 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
           // browser context, so the flag never crosses a slice boundary.
           const isExpected = expectedAt[ai][bi];
           const confirmed = isExpected && findings.get(key)?.axes[axis.name]?.length > 0;
-          if (!unitsIntersect(A, B, confirmed)) continue;
+          if (!unitsIntersect(A, B, confirmed, boxCache)) continue;
           let rec = findings.get(key);
           if (!rec) {
             rec = {
