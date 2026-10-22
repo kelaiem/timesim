@@ -274,7 +274,7 @@ const threw = (what, mutate) => {
 threw('a check with no cost', (c) => { delete c.support; });
 threw('a cost naming no check', (c) => { c.notACheck = 1; });
 threw('a slice cost naming no axis', (c) => { c['inspection:notAnAxis'] = 1; });
-threw('a slice cost on an unsliced check', (c) => { c['clearances:crown'] = 1; });
+threw('a slice cost on an unsliced check', (c) => { c['sweptOverlap:crown'] = 1; });   // clearances was this case until §127 tier 2a sliced it
 console.log(`  ${Object.keys(COSTS).length} cost rows over ${BATTERY.length} checks`);
 
 if (fail.length) { console.error('\nFAILED:', JSON.stringify(fail, null, 1)); process.exitCode = 1; }
