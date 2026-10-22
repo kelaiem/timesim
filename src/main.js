@@ -12006,42 +12006,50 @@ function chainJoints(curve) {
   // 0.019, outside the running fit, at exactly one tension.
   const M0 = Math.max(Math.round(len / CHAIN_PITCH), 2) * CHAIN_JOINT_SAMPLES_PER_PITCH;
   const P0 = curve.getSpacedPoints(M0);
+  // The walking point is carried as three doubles rather than a fresh Vector3
+  // per joint (49 walks of N joints per call): `pd` is Vector3.distanceTo's own
+  // arithmetic, term for term and in its operand order (this − v), so every
+  // comparison and every root reads the numbers the Vector3 form read.
+  const pd = (p, qx, qy, qz) => { const dx = p.x - qx, dy = p.y - qy, dz = p.z - qz; return Math.sqrt(dx * dx + dy * dy + dz * dz); };
   const walked = (() => {
-    let q = P0[0], jf = 0, n = 0;
+    let qx = P0[0].x, qy = P0[0].y, qz = P0[0].z, jf = 0, n = 0;
     for (;;) {
       let j = Math.floor(jf) + 1;
-      while (j <= M0 && P0[j].distanceTo(q) < CHAIN_PITCH) j++;
-      if (j > M0) return n + q.distanceTo(P0[M0]) / CHAIN_PITCH;   // the last link's fraction, chord to the end
+      while (j <= M0 && pd(P0[j], qx, qy, qz) < CHAIN_PITCH) j++;
+      if (j > M0) { const e = P0[M0], dx = qx - e.x, dy = qy - e.y, dz = qz - e.z; return n + Math.sqrt(dx * dx + dy * dy + dz * dz) / CHAIN_PITCH; }   // the last link's fraction, chord to the end
       const A = P0[j - 1], B = P0[j];
       const dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
-      const ex = A.x - q.x, ey = A.y - q.y, ez = A.z - q.z;
+      const ex = A.x - qx, ey = A.y - qy, ez = A.z - qz;
       const a = dx * dx + dy * dy + dz * dz, b = 2 * (dx * ex + dy * ey + dz * ez), cc = ex * ex + ey * ey + ez * ez - CHAIN_PITCH * CHAIN_PITCH;
       const t = Math.min(1, Math.max(0, (-b + Math.sqrt(Math.max(b * b - 4 * a * cc, 0))) / (2 * a)));
       jf = Math.max(jf, j - 1 + t);
-      q = new THREE.Vector3(A.x + t * dx, A.y + t * dy, A.z + t * dz);
+      qx = A.x + t * dx; qy = A.y + t * dy; qz = A.z + t * dz;
       n++;
     }
   })();
   const N = Math.max(Math.round(walked), 2);
   const M = N * CHAIN_JOINT_SAMPLES_PER_PITCH;
-  const P = curve.getSpacedPoints(M);
+  // The census's polyline IS this one whenever the walked count rounds to the
+  // arc count (the same curve at the same divisions, its arc table already
+  // cached by getLength above), and both are only read, so it is reused.
+  const P = M === M0 ? P0 : curve.getSpacedPoints(M);
   const ds = len / M;
   // One walk at chord c: joint positions as fractional polyline indices.
   const walk = (c, out) => {
-    let jf = 0, q = P[0];
+    let jf = 0, qx = P[0].x, qy = P[0].y, qz = P[0].z;
     if (out) out[0] = 0;
     for (let n = 1; n <= N; n++) {
       let j = Math.floor(jf) + 1;
-      while (j <= M && P[j].distanceTo(q) < c) j++;
+      while (j <= M && pd(P[j], qx, qy, qz) < c) j++;
       if (j > M) return { ok: false, rest: -(N - n + 1) };   // ran off the end: c too long
       // solve |A + t(B − A) − q| = c on segment [j−1, j], the outbound root
       const A = P[j - 1], B = P[j];
       const dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
-      const ex = A.x - q.x, ey = A.y - q.y, ez = A.z - q.z;
+      const ex = A.x - qx, ey = A.y - qy, ez = A.z - qz;
       const a = dx * dx + dy * dy + dz * dz, b = 2 * (dx * ex + dy * ey + dz * ez), cc = ex * ex + ey * ey + ez * ez - c * c;
       const t = Math.min(1, Math.max(0, (-b + Math.sqrt(Math.max(b * b - 4 * a * cc, 0))) / (2 * a)));
       jf = Math.max(jf, j - 1 + t);
-      q = new THREE.Vector3(A.x + t * dx, A.y + t * dy, A.z + t * dz);
+      qx = A.x + t * dx; qy = A.y + t * dy; qz = A.z + t * dz;
       if (out) out[n] = jf;
     }
     return { ok: true, rest: M - jf };   // polyline samples left after the last joint
