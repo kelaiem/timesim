@@ -1,0 +1,78 @@
+name: Install Chromium (cached apt packages)
+description: >
+  Runs tools/ci-install-chromium.sh with the .deb files its apt half downloads
+  carried between runs by actions/cache, so a slow Ubuntu mirror is paid once
+  per package set rather than on every job. Call it after checkout and after
+  `npm ci` in tools/ (the script runs `npx playwright`).
+
+# WHY. Since 2026-10-22 neither hosted image carries the font packages
+# `playwright install-deps chromium` wants (~25 MB), and on half of #762's and
+# #766's runs the mirror served them at 80-250 kB/s, past the script's
+# 3 x 90 s budget. The browser itself was already cached; the system packages
+# were not, because they install outside the workspace and the image's
+# docker-clean hook deletes /var/cache/apt/archives/*.deb after each install.
+#
+# HOW. The script points apt's archive directory at APT_ARCHIVES (outside
+# docker-clean's reach). The newest saved set for this OS / arch / image is
+# restored first, so apt downloads only what it lacks. The set is saved again,
+# under a key carrying a hash of its file names, whenever it changed, EVEN
+# WHEN THE INSTALL FAILED: a run a slow mirror cut short keeps what it
+# fetched, so the next run needs only the rest. Only top-level *.deb files are
+# cached. partial/ (downloads in flight) and apt's root-owned lock are not.
+runs:
+  using: composite
+  steps:
+    # The image's release, read off the machine: a 24.04 package set must never
+    # be restored onto 26.04. (The `env` context holds only declared variables,
+    # so the runner's own ImageOS is not reachable from an expression.)
+    - name: Name this image's apt package cache
+      id: prefix
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        . /etc/os-release
+        echo "prefix=apt-debs-${RUNNER_OS}-${RUNNER_ARCH}-${ID}${VERSION_ID}-" >> "$GITHUB_OUTPUT"
+
+    - name: Restore cached apt packages
+      id: restore
+      if: runner.os == 'Linux'
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/apt-archives/*.deb
+        key: ${{ steps.prefix.outputs.prefix }}
+        restore-keys: ${{ steps.prefix.outputs.prefix }}
+
+    - name: Install Chromium
+      id: install
+      shell: bash
+      # The script reads APT_ARCHIVES only on Linux.
+      run: APT_ARCHIVES="$HOME/.cache/apt-archives" tools/ci-install-chromium.sh
+
+    - name: Key the apt package set
+      id: key
+      if: always() && runner.os == 'Linux'
+      shell: bash
+      env:
+        PREFIX: ${{ steps.prefix.outputs.prefix }}
+        MATCHED: ${{ steps.restore.outputs.cache-matched-key }}
+      run: |
+        dir="$HOME/.cache/apt-archives"
+        n=$(find "$dir" -maxdepth 1 -name '*.deb' 2>/dev/null | wc -l)
+        if [ "$n" -eq 0 ]; then echo "save=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+        hash=$(find "$dir" -maxdepth 1 -name '*.deb' -printf '%f\n' | sort | sha256sum | cut -c1-16)
+        key="$PREFIX$hash"
+        echo "key=$key" >> "$GITHUB_OUTPUT"
+        if [ "$key" = "$MATCHED" ]; then
+          echo "apt package set unchanged ($n packages, $key): nothing to save"
+          echo "save=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "apt package set changed ($n packages): saving $key"
+          echo "save=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Save apt packages
+      if: always() && steps.key.outputs.save == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/apt-archives/*.deb
+        key: ${{ steps.key.outputs.key }}
