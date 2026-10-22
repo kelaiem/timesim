@@ -47901,19 +47901,20 @@ const FORM_REGIONS = (() => {
       anchors: Object.freeze((decl?.anchors ?? []).map((a) => Object.freeze({ ...a, point: resolve(a.at) }))) });
   }
   // which group sets each side of the metal box, and which stands nearest the cut
-  const m = FORM_FOOTPRINT.metal, side = { xMin: null, xMax: null, yMin: null, yMax: null };
+  const m = FORM_FOOTPRINT.metal, side = { xMin: null, xMax: null, yMin: null, yMax: null }, sideUnit = { ...side };
   const best = { xMin: Infinity, xMax: -Infinity, yMin: Infinity, yMax: -Infinity };
-  let binding = null, bindInset = Infinity;
-  for (const gid in groups) for (const [x, y] of groups[gid].hull) {
-    if (x < best.xMin) { best.xMin = x; side.xMin = gid; } if (x > best.xMax) { best.xMax = x; side.xMax = gid; }
-    if (y < best.yMin) { best.yMin = y; side.yMin = gid; } if (y > best.yMax) { best.yMax = y; side.yMax = gid; }
+  let binding = null, bindUnit = null, bindInset = Infinity;
+  for (const u in units) for (const [x, y] of units[u].hull) {
+    const gid = units[u].group;
+    if (x < best.xMin) { best.xMin = x; side.xMin = gid; sideUnit.xMin = u; } if (x > best.xMax) { best.xMax = x; side.xMax = gid; sideUnit.xMax = u; }
+    if (y < best.yMin) { best.yMin = y; side.yMin = gid; sideUnit.yMin = u; } if (y > best.yMax) { best.yMax = y; side.yMax = gid; sideUnit.yMax = u; }
     const ins = FORM.inset(x, y);
-    if (ins < bindInset) { bindInset = ins; binding = gid; }
+    if (ins < bindInset) { bindInset = ins; binding = gid; bindUnit = u; }
   }
   const missing = FORM_ACTION_GROUPS.flatMap((g) => g.units.filter((u) => !byUnit.has(u)));
   return Object.freeze({ kind: FORM.kind, metal: Object.freeze(m.slice()), groups: Object.freeze(groups), units: Object.freeze(units),
-    edges: Object.freeze(Object.fromEntries(Object.keys(side).map((k) => [k, Object.freeze({ group: side[k], at: r4(best[k]) })]))),
-    binding: Object.freeze({ group: binding, inset: r4(bindInset) }),
+    edges: Object.freeze(Object.fromEntries(Object.keys(side).map((k) => [k, Object.freeze({ group: side[k], unit: sideUnit[k], at: r4(best[k]) })]))),
+    binding: Object.freeze({ group: binding, unit: bindUnit, inset: r4(bindInset) }),
     uncounted: Object.freeze(missing), clearMargin: CLEAR_MARGIN, rimMargin: PLATE_RIM_MARGIN });
 })();
 const caseSolid = FORM

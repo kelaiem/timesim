@@ -41607,3 +41607,29 @@ line offset, z). A READOUT in this landing; landing 3 makes it the input.
 standing outside the solvers' rectangle), `--search` (the boot-based search, resumable from its JSONL log;
 outline warnings are judged at the candidate's own fitted shape, every other warning is the build's verdict),
 `--verify`, `--inputs`. The round identity was held by `fingerprint` on virgin boots of copies of both trees.
+
+### §308 landings 2 (minimal) and 3 — the region model and the floorplanner
+
+**The region model** (`__clock.regions`, form builds only): `FORM_ACTION_GROUPS` in `src/layout.js` is the one
+table — going train + escapement, barrel/fusee/chain, keyless + motion works, minute quick-set, stop work +
+seconds reset, power-reserve train, the alarm strike train, the alarm setting/release — each row its units, the
+drive edges that make it one group, and its anchors. main.js measures every group's XY hull, z span and each
+mesh's own hull off the same counted metal the fit reads (`FORM_COUNTED`, hoisted so the predicate is written
+once). On the designed rect the sides are set by: xMin the stop work (Hack rod), xMax the alarm strike train
+(Alarm hammer, also nearest the cut), yMin the frame (the dial's counted metal), yMax the power group (Mainspring drum).
+
+**The floorplanner** (`src/form-floorplan.js`, pure; harness `tools/form-layout.mjs --floorplan`). A knob is a
+move only where it is MEASURED to be one: one boot a step off design, every unit's hull judged against a rotation
+about the hand centre or a translation (a wheel re-sited at a new tooth phase counts as carried). Measured:
+`alarmmod` carries 8 strike-train units rigidly (hull error ≤ 0.134 u) and re-cuts 5; `alarmaz` carries 9 of the
+alarm corner's units (≤ 0.101 u) and re-cuts 7; `d4` translates the escapement end but re-cuts the fusee, centre
+and third wheels, so its anchors refuse it; `crownaz`, `stemaz`, `alarmr`, `rsvr` and `alarmbarrelaz` re-cut more
+than they carry and are left out, as are the three step angles (declared re-solves). The planner (least fitted-area,
+part-hull clearance not worse than designed or CLEAR_MARGIN, anchors held) finds NO feasible plan smaller than the
+design for rect, cushion or tonneau: every turn of the alarm module fouls the going train through its BRIDGES —
+the winding train against the fusee, the winding arrest against the balance, the switch against the drum — which
+are the units the build re-cuts between the fixed crown and the turned barrel. So nothing was booted as a plan, and
+the designed sizes stand (34.78 × 33.54, 34.96 × 33.71, 35.37 × 34.11 mm). BLOCKED, for landing 4: the alarm
+module (its bridges must be solved inside its region), the keyless cluster and the stop work (stemaz re-cuts 27
+units), the reserve train (rsvr re-solves it), the going train (its knobs re-solve it). The round build is
+untouched: fingerprint 955951544, boot silent.

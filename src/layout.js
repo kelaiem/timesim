@@ -3708,7 +3708,10 @@ export function convexHull2(xs, ys, n) {
 // station of P (`P.<key>`), the hand centre (`hand`), or a case port
 // (`port.<name>`, which the case follows, so a port pins only its azimuth's
 // line to the group that carries it). A move that carries a group's anchor off
-// its pin is not a position-space move; it is refused by the floorplanner.
+// its pin is not a position-space move; it is refused by the floorplanner —
+// unless the anchor is carried `via` a unit the build RE-SOLVES between the two
+// (the alarm winding train is cut from the crown to wherever the barrel stands),
+// which the move's measurement must show re-cut.
 // Units not in any row are the FRAME — the plates, pillars, dial and case, cut
 // to the shape or following it — and the gong, whose wire follows the case.
 export const FORM_ACTION_GROUPS = Object.freeze([
@@ -3761,7 +3764,7 @@ export const FORM_ACTION_GROUPS = Object.freeze([
       'Alarm governor', 'Alarm governor anchor', 'Alarm lifting lever', 'Alarm hammer', 'Alarm lock', 'Alarm switch', 'Alarm link']),
     reason: 'drive alarm mainspring → Alarm barrel → Alarm striking wheel → Lifting lever → Hammer and → Governor → Anchor; Alarm crown → winding train → barrel → click / winding arrest; Alarm switch → Lock (the stop wheel on the striking staff) and → Link → Selector',
     anchors: Object.freeze([
-      Object.freeze({ name: 'winding train off the alarm crown', at: 'port.alarmCrown', pin: 'alarmSet', edge: 'Alarm crown → Alarm winding train' }),
+      Object.freeze({ name: 'winding train off the alarm crown', at: 'port.alarmCrown', pin: 'alarmSet', edge: 'Alarm crown → Alarm winding train', via: 'Alarm winding train' }),
       Object.freeze({ name: 'link on the selector at the hand centre', at: 'hand', pin: 'alarmSet', edge: 'Alarm link → Alarm selector' }),
     ]) }),
   Object.freeze({ id: 'alarmSet', name: 'alarm setting + release',
