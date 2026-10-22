@@ -23255,7 +23255,29 @@ const _gearTx = new Float64Array(3), _gearTy = new Float64Array(3), _gearTa = ne
 // pitch misphase matches what the eye reported in the screenshots.
 // Returns the TOOTH-centre phase (gap phase + half a pitch), same contract
 // as the reader it replaces.
+let _mtpMemo = null;   // solveGearChain's per-solve readings — see there
+const _mtpSnap = (obj, N) => {
+  obj.updateWorldMatrix(true, true);   // what the walk does first; idempotent
+  const a = [N, ...obj.matrixWorld.elements];
+  obj.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes?.position) return;
+    const g = m.geometry;
+    a.push(g.id, g.attributes.position.version, g.attributes.position.count, g.index ? g.index.version : -1, g.index ? g.index.count : -1, ...m.matrixWorld.elements);
+  });
+  return a;
+};
+const _sameSnap = (x, y) => { if (x.length !== y.length) return false; for (let i = 0; i < x.length; i++) if (!Object.is(x[i], y[i])) return false; return true; };
 const measuredToothPhase = (obj, N) => {
+  if (!_mtpMemo) return measuredToothPhaseWalk(obj, N);
+  const snap = _mtpSnap(obj, N);
+  let rows = _mtpMemo.get(obj);
+  if (!rows) _mtpMemo.set(obj, rows = []);
+  for (const r of rows) if (_sameSnap(r.snap, snap)) return { ...r.res };
+  const res = measuredToothPhaseWalk(obj, N);
+  rows.push({ snap, res });
+  return { ...res };
+};
+const measuredToothPhaseWalk = (obj, N) => {
   // (true, TRUE): parents AND children. This runs at BUILD time, before any
   // render — with (true, false) the handle's own matrix was fresh but every
   // child mesh still carried the identity it was born with, so the gauge
@@ -23431,7 +23453,7 @@ declareTransfer('alarm setting: lane dogleg (setting wheel → arbor pinion)', {
 // distance against the pitch-circle sum — a perfectly phased pair that does
 // not reach each other is not a mesh either, and that second check is
 // independent of the phase solve.
-const solveGearChain = (label, chain, module, inputs = []) => {
+const solveGearChainBody = (label, chain, module, inputs = []) => {
   // GAUGE VALIDATION FIRST. A reading whose gap count disagrees with the
   // declared tooth count, or whose folded resultant is weak, is refused —
   // solving on it would drag every wheel downstream of the bad reading to a
@@ -23498,6 +23520,22 @@ const solveGearChain = (label, chain, module, inputs = []) => {
     if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
     else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.split(/[\s:]/)[0] });
   }
+};
+// A chain solve reads each gauge again at poses it has already read: the datum
+// at its build pose (validated, then read as the first mesh's P, then
+// verified), each turned wheel at its pre-turn pose (validated, then read by
+// alignGear) and at its final pose (read as the next mesh's P, then verified)
+// — about half of its silhouette walks repeat one exactly. So for the solve's
+// duration a reading is kept per gauge against a snapshot of everything it
+// reads: every mesh's geometry (id and attribute versions) and world matrix
+// under the gauge, compared bit for bit (Object.is, so −0 ≠ 0). Nothing in the
+// solve re-cuts a wheel, and a turned wheel's matrices differ, so a hit is a
+// reading of exactly the metal the walk would read. The memo dies with the
+// solve; outside it every call walks. (`_mtpMemo` is declared beside the gauge.)
+const solveGearChain = (label, chain, module, inputs = []) => {
+  const outer = _mtpMemo;
+  _mtpMemo = new Map();
+  try { return solveGearChainBody(label, chain, module, inputs); } finally { _mtpMemo = outer; }
 };
 await (async () => {
   const gearOf = (spin) => spin.children.find((o) => o.isGroup || o.isMesh);
