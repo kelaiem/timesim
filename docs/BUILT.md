@@ -41684,3 +41684,261 @@ turn on that model (winding train ⇄ fusee, arrest ⇄ balance, switch ⇄ drum
 re-solved bridge by boot rather than by rigid carry; past ~70° the arrest has no station and the module wants either
 its own stratum over the going train or a second drive arc for the arrest; and §184's click offset TRANSLATES rather
 than turning with the module, so its triple warns at 0, 200, 220, 260, 280 and 340.
+
+### §308 landing 4, item 2 — the alarm switch and link under a turned module: one assumption fixed, one conflict measured
+
+`case=rect&alarmmod=50` (the 33.84 × 33.54 mm item 1 found) printed 16 warnings the designed `case=rect` does not,
+from the selector link's chain (§234 Landing 5's body length, shaft stratum and bush OD; §234's rod length; §261 2c's
+three guide plates; §112's fork block; TODO 206's arming spring, three rows; §278/§261 2c's hanger 3, four rows; §125's
+dial rim). The round build prints the same 16 at `?alarmmod=50`, so the defect is on the module-azimuth path, not
+the form path. All 16 have ONE root: the link's site solve (§112/§261 2c) left the site its hoisted constants were
+measured at (k 1, run 6, tab 87) for the k = 2 parity ray, whose 26.24 u chord (against 9.99) drifts every
+measured constant downstream and puts the arming spring outside its 5–50 mN window (seat 4.774 mN at the adverse
+corner). The rows are consequences, not separate defects.
+
+**Fixed (an assumption, at the root).** The tab's 3° grid was a WORLD literal while the beak's rays and runs ride
+the cluster's frame, so a turned module could not even propose the site turned (87° + 10° is off a grid of
+multiples of 3). And the max-min score walks off the measured site as soon as an UNRELATED tenant moves past the
+self-term that binds the design: at `alarmmod=42` the turned site scores the designed 0.4224, a neighbouring tab
+0.4337, and the chord drifts to 9.8156 against the hoisted 9.991. On the module path the grid is now
+module-relative, and the measured site (`ALARM_LINK_MEASURED_SITE`, the row the four hoisted constants quote) is
+kept wherever it clears `CLEAR_MARGIN`. Where it does not, one warning names what refuses it. The round build's
+solve is asserted to land on that row. No arm, ratio, section, tolerance or waiver moved. Round default
+fingerprint 955951544, boot silent. `case=rect` 1604757989 unchanged, explicit `alarmmod=40` silent.
+
+**Measured with it, `case=rect`:**
+
+| alarmmod | link/switch warnings | what binds the measured site | fitted (mm) |
+|---|---|---|---|
+| 42 | 15 → 0; one TODO 206 row left | — (clears 0.4224, the design's own self-term) | 34.55 × 33.54 |
+| 44 | refused | the reserve train, 0.134 | — |
+| 45 | refused | the reserve train, −0.046 | — |
+| 50 | refused (17 = 16 + the naming row) | the reserve train, −0.627 | 33.84 × 33.54 |
+| 55 | refused | the reserve train, −0.627 | — |
+| 60 | refused (17) | the switch's column skirt, −0.915 (see below) | 33.84 × 33.79 |
+
+At 42 the link's `lineSpec` rows (`rEff`, `turn`, `helixTan`, which moved on HEAD) measure clean. The one row left is
+TODO 206's shared margin: the selector ring's guide triangle (60/220/300°) is centre machinery, sited by hand among
+the centre's fixed tenants (the seat posts, the rocker bracket, the setting idler, the sleeve's co-sited third
+plate), so the turned drive meets it 2° further round. The ring's work factor moves follower-B's lift at the nose
+from 17.278 to 17.497 mN, and the fixed point from the hoisted 5.2780 to 5.2661 mN (nose seat 5.2634,
+still inside 5–50). Turning the guides with the module would be a re-site among the centre's tenants, not a turn.
+
+**Left, a real conflict (P3, with numbers).** From about 44° on, the folded column wheel carries the beak's nose
+end into the POWER-RESERVE TRAIN: at 50° the bar's nose end (1.32, 19.27) stands 3.99 from the reserve wheel's
+axis (0, 15.5), inside its swept disc r 4.1. The bar's band is z −5.75…−4.85 and the wheel's −6.38…−5.02, so the
+measured site clears −0.627 (+0.955 at 40°). Every k = 1 run clears the same −0.627 (the nose end is common to all),
+so no beak site on the designed ray exists. Moving the reserve station does not clear it. At `rsvr=14.5` the bar
+clears (+0.298) but the chord's hanger columns then cross the same wheel (−0.112), because the wheel stands between
+the beak's nose and the chord. Turning the fold by a whole stop pitch (φ 210°) puts the site back on k = 1 at a
+different geometry (chord 12.25), which drifts the same constants and runs the jumper blade into the case annulus. A
+layout change that would clear it: the reserve train out from between the folded switch and the ring (its sub-dial
+azimuth, a dial-spec decision), or its wheels re-stratified at least 0.88 dial-ward of the bar's band (0.73 of
+overlap plus the margin). Either belongs to the dial spec or a reserve re-solve, not to the switch.
+
+**Also found, reported.** (1) The site solve scores non-rotor obstacles by WORLD axis-aligned boxes, so a neighbour
+rigid with the beak scores differently as the module turns: the beak pivot against the switch's own column skirt
+reads 0.638 at 40°, 0.777 at 50° and −0.915 at 60° for one rigid pair. This is an orientation artefact of the
+obstacle model. It binds first at 60°, where the reserve train would refuse the site anyway. (2) Under ANY turned
+module (42° and 50° read identically) the strike's `lineSpec` reference moves: `pivSwD` 9.81324 → 9.81607,
+`restGamma`, `camPickupR` and `lift` with it. It is on HEAD and silent at boot (only the gate sees it), absent at
+explicit `alarmmod=40`, so it is a discrete branch in the strike build's module path, not this item's.
+
+**The other shapes** (each booted plain, then at its printed `formrect=`; the second boot's new warnings against
+the designed build of its kind): `case=rect&alarmmod=60` 33.84 × 33.79 mm, 16 new (the refusal and the drift
+chain). `case=cushion&alarmmod=50` 33.95 × 33.65 mm (designed 34.96 × 33.71), 16 new. `case=tonneau&alarmmod=50`
+34.18 × 33.88 mm (designed 35.37 × 34.11), 16 new. In every case the set is the reserve-train refusal and its drift
+chain; the plain boots' extra rows (the opening count, the tonneau's pusher bore sleeve) clear at the fitted outline.
+The floorplanner was not re-run: its alarmmod move still carries the bridges rigidly (landing 3's model) and refuses
+before booting, and the boot now says 50° is refused anyway. Teaching it to boot re-solved bridges stays a separate
+item. No battery check was run on a 50° build: it does not boot clean.
+
+### §308 landing 4, option A — the reserve station gets an azimuth and a sweep; a nearby station clears the switch, a corner does not
+
+Item 2 left the turned module (`alarmmod=50`) refused by the power-reserve train: the folded switch's beak nose
+stands inside the reserve wheel's swept disc. This option moves the reserve SUB-DIAL (position space, P3), and asks
+whether a form dial's corner, free face outside the round chapter, can take it.
+
+**Two spec keys** (`index.html` roster, `layout.js` SPEC; absent = as designed, bit-exact):
+
+- `?rsvaz=` — the station's azimuth in dial-clock degrees (0 = 12 o'clock, clockwise from the front). With `rsvr` the
+  station is polar: dial-local (r·sin az, r·cos az). It flows exactly as `rsvr` does: `solveKeyless` places
+  `RESERVE_LOCAL`, `rsvPivotXY` follows, the reserve train's span, the swing solve, `RSV_TRAIN`'s count solve and the
+  module bounds (`rsvTrainWarnsAt`) all read the moved pivot. Readers that used `RESERVE_LOCAL.y` as the station's
+  DISTANCE (the well law, TODO 33's web, the §125 rim's well edge) now read `reserveStationR`, the same value on the
+  12 o'clock axis.
+- `?rsvsweep=` — the hand's graduated arc in degrees. TODO 18's coupling makes it an INPUT of the train:
+  R = turns · 360/sweep, and `reserveTrainCandidates` re-solves the counts (90° gives R = 7). A sweep that is not an
+  integer inside (0, 360) warns and builds the designed 300°. The Technic fork's reserve row is held only at the
+  designed sweep, where it was solved.
+
+**The fan opens toward the dial centre.** `RESERVE_FAN_MID_DEG` is the arc's midpoint direction (where the hand
+stands at half reserve). §158 hung the arc from the well's down vertical, which at the 12 o'clock station IS the
+direction of the dial centre, so that is the general law: under `rsvaz` the arc's midpoint points at the centre, the
+notch (caption and maker's mark) sits opposite it, and the friction coupling's set becomes 90° − mid − sweep/2 (the
+literal 180° − sweep/2 is kept on the default path). `paintSubdialFace` takes `midDeg` in the scale.
+
+**Two well laws.** A station inside the chapter keeps §125's law (the well grows from the centre keep-out and yields
+the marker band). A station past the chapter window takes the mirror of it: the well grows from the railway track's
+OUTER rail (`railOuterF`, composed like the inner rail's) and stays inside the dial's outline by the wall and the
+margin (`faceInset`, the fitted shape when the URL carries `formrect=`; a first form boot is held to the shape it
+cuts by a boot assert at `FORM`). Under `SUBDIAL_FLOOR` it warns. A new warn holds the two wells apart (both walls plus
+the margin), which nothing had to check while both stations sat on the 12–6 axis.
+
+**Measured, `case=rect&alarmmod=50`** (warnings digit-stripped against the designed `case=rect`; plain boots, the
+corners at the fitted `formrect=-43.58,45.72,-43.91,44.59`):
+
+| station | well | new warnings | fitted (mm) | what binds |
+|---|---|---|---|---|
+| design (15.5, 0°) | 8.44 | 16 (item 2's chain) | 33.84 × 33.54 | the switch's beak nose in the reserve wheel |
+| rsvaz 8, 10, 15, 20, 25 | 8.44 | 1 + the plain boot's opening count | 33.84 × 33.54 | — (TODO 206's shared margin, item 2's residue) |
+| rsvaz 30 | 8.44 | 9 | 33.84 × 33.54 | the station is too near the barrel: stage two's span 0.78, no exact train over the tooth floor |
+| rsvaz −20 | 8.44 | 23 | 33.84 × 33.54 | the setting traverse's cap bearing (reserve p1 −2.18) and the switch again |
+| rsvaz −45 | 8.44 | 33 | 33.84 × 33.54 | w2's tip past its well, the alarm setting's i1/i2 on the reserve train, the switch |
+| corner TR (46.87, 44.1°), 300° | 10.58 | 27 | 35.95 × 35.52 | w2's tip 12.50 against the 10.23 its well allows; w2 in the case annulus (§186); the switch |
+| corner TR, 120° | 10.58 | 14 | 38.74 × 38.52 | w2's tip 18.33; §158's pointer bounds; the case annulus |
+| corner TR, 90° | 10.58 | 14 | 39.21 × 38.92 | w2's tip 19.44; §158's pointer bounds; the case annulus |
+| corner TL (47.50, 314°), 90° | 11.20 | 40 | 45.58 × 45.26 | w2's tip 36.49; the alarm setting train; the switch |
+| corner BR (46.67, 135.3°), 90° | 10.39 | 15 | 43.96 × 43.67 | w2's tip 31.60; the case annulus |
+| corner BL (47.30, 226.6°), 90° | 11.00 | 48 | 48.58 × 48.26 | w2's tip 44.53, past the dial centre; the alarm setting train; the switch |
+
+**A corner does not work, and the train is what limits it.** The reserve train is two meshes, and stage two's centre
+distance is whatever the span leaves after stage one's fixed 6.12. w2's pitch radius is then d1·k/(1+k), k its
+ratio to p1, which no tooth count can shrink below. The nearest corner (top right, by the barrel) is a 31.1 span, so
+d1 ≈ 25. At 300° (k = 0.6 on the shipped stage one) w2 alone is 9.4 in radius, and the solver's first admissible
+train cuts it at 12.50 against the 10.23 the corner well allows (a much finer stage two with p0 = 6 would reach
+about 7.5, but the solver ranks by the shipped stage one, not the well). The quarter fan makes it WORSE, not better:
+90° raises R to 7, so stage two must REDUCE (k ≥ 1.4) and w2 is ≥ 14.6 at any count. That wheel also stands in the
+case annulus, so the fitted outline GROWS (35.95 to 48.58 mm wide) instead of shrinking. A 30 h scale on a 90° fan
+also fails §158's two pointer bounds at a well this size: one hour is 3° of arc, narrower than a readable pointer.
+Reaching a corner needs a third stage or an idler in the reserve train (a train-solver change), and a 90° fan wants
+a shorter reserve scale or a larger well. The round well is kept; a quarter-fan well was not cut, because no corner
+station builds for it to sit in.
+
+**The station picked: `rsvaz=10`** (dial-local (2.69, 15.26), the designed radius, the same 8.44 well). It is the
+smallest turn that takes the reserve wheel off the beak's nose with room (8° clears too; 10° leaves the wheel's axis
+5.67 from the nose against a 3.0 tip, and stage two's module 0.75 stays nearest the shipped 1.07 of the clean range).
+Each shape booted plain and then at its printed outline, warnings against the designed build of its kind at its own
+fitted outline:
+
+| shape (`alarmmod=50&rsvaz=10`) | fitted (mm) | designed (mm) | new warnings |
+|---|---|---|---|
+| rect, `formrect=-43.58,45.72,-43.91,44.59` | 33.84 × 33.54 | 34.78 × 33.54 | 1 |
+| cushion, `formrect=-43.72,45.87,-44.06,44.74` | 33.95 × 33.65 | 34.96 × 33.71 | 1 |
+| tonneau, `formrect=-44.03,46.18,-44.36,45.04` | 34.18 × 33.88 | 35.37 × 34.11 | 1 |
+
+The quarter fan at the picked station (`rsvaz=10&rsvsweep=90`, rect) paints as intended, the arc hanging toward
+the dial centre with the caption in the notch opposite, but it does not build clean: R = 7 makes stage two a
+reduction, w2 grows from a 3.0 to a 5.0 tip, and the switch's measured site is refused again (it clears 0.013, the
+same 16-row chain). §158's two pointer bounds fire as at the corners, and the three hour figures (0, 12, 24 at 36°
+apart) overprint one another, which no assert reads yet.
+
+The one row in each is TODO 206's shared margin, item 2's residue: follower-B's seat at the nose's margin (nose seat
+5.2093 mN against the 5.2223 it needs), set by the selector ring's guide triangle among the centre's fixed tenants,
+not by the reserve. The link's measured site is kept at every clean station, so the 16-row drift chain is gone. The
+plain boots' extra rows (the opening count; the tonneau's pusher bore sleeve) clear at the fitted outline, as in item
+2. Round default: fingerprint 955951544, boot silent; `case=rect` 1604757989 unchanged. No arm, ratio, section,
+tolerance or waiver moved. No battery check was run on a form build (TODO 158).
+
+### §308 landing 4, option B — a sector well and idler pairs put the reserve in a corner
+
+Option A found a corner refused for two reasons: the well was a full disc, and the two-stage train's stage-two wheels
+share a ~25 u span. The owner's call was to cut the sub-dial to cover only the sweep, and to add a stage or an idler if
+the train still could not reach. Both are done under the corner path only (`?rsvsweep=` with `?rsvaz=`, at a station
+past the chapter). Every other build is bit-exact.
+
+**The sector well** (`reserveSectorLoop` in layout.js is the one loop: geometry's pocket cuts it and solveKeyless fits
+it). It is a fan about the hand's pivot, opening toward the dial centre (option A's fan law), closed round the back by
+a hub land. Nothing in it is a chosen angle (`reserveSectorExtent`, geometry.js):
+
+- **Hub land**: the hand's tail corner, hypot(tail, half-width), plus the margin. It is never less than the floor's
+  bore ring (bore + wall + margin).
+- **Half-angle**: half the sweep, plus the widest of three things that stand past the end graduations. The first is
+  the hand's edge plus the margin, at the hub's radius. The second is the end figure's half advance plus one
+  resolvable gap, at the figure's inner edge. Helvetica, Helvetica Neue and Arial set every digit 0.556 em wide
+  (`DIGIT_ADVANCE_EM`). The third is the end tick's half-width plus the gap. §158's figure band, `reserveScaleFrame`,
+  is lifted out of the paint, so the paint and the extent read the same three numbers.
+- **Radius**: the largest at which three things hold. The arc stays the wall and the margin off the track's outer rail
+  (exact on the mid-line). Every point of the cut loop stays the wall and the margin inside the dial outline. The hand
+  the well carries (its tip and edge over the sweep, its tail all round) stays `PLATE_RIM_MARGIN` inside, because the
+  fit counts that metal. The radius is found by bisection.
+
+The pocket wall is cut on the loop's own normals (`loopWall` over the reversed loop). The floor, the printed face and
+the bore keep the disc's builders. A fan has no notch, so the caption moves to the fan's inner line, between the hub
+and the figures, and is held to the fan's cut angle. The maker's mark has no line left in the well, so the dial prints
+it as it does on a reserve-less face. A new paint check holds neighbouring figures apart (two figures 12 h apart need
+their half widths and a gap). A narrow fan made overprinting possible, and nothing read it before.
+
+**The train ranks by fit, and adds idler pairs** (`rsvFitTrainAt`, main.js; sector path only). The counts are still
+`reserveTrainCandidates`'s exact trains. Idlers sit between p1 and w2 at stage two's module, so they cancel out of R.
+They come in pairs: each mesh reverses, and an even number keeps the hand's sense, so the scale, the set and w2's tick
+law are untouched. A candidate is admissible when:
+
+- every member is over §50's floor;
+- every cut root clears its bore (an idler turns on a post the size of rsvPost1, which reaches the same metal);
+- every stage-two member, at its centre on the w1→pivot line, keeps its tip `PLATE_RIM_MARGIN` inside the case shape.
+  This is the margin the fitted outline holds counted metal to, so a member that fits cannot grow the case.
+
+The rank is the fewest idlers that fit, then the smallest largest tip. The idler's count is the larger of p1's and
+w2's: the largest tip falls in t while the idler is the smaller member and rises once it is the larger. No two-stage
+train reached any corner (option A's arithmetic), and two idlers never fit either. Every corner station that fits took
+**four or six**. The idlers are appended after every shipped member, so the unit's mesh indices (the intra-unit rows)
+are unchanged. They are phased in stage two's `solveGearChain` run and turned in tick. Under this path w2's
+well-wall ceiling (TODO 33's form) is replaced by the case-shape bound, because w2 stands under the dial, not under a
+disc it must stay inside. `__clock.reserveSectorAt(rsvr, az)` is a shadow of the whole path for a candidate station
+(about 0.3 s a call).
+
+**Readability sets the sweep.** §158's pointer law makes the bound explicit. The hand must be no finer than the major
+tick, and narrower than one hour of arc at its tip (0.8 r·sweep/h). The major tick is max(0.055·r, 2′ at the wrist),
+so the smallest sweep that passes is max(0.055·h/0.8 rad, 2′·h/(0.8 r) rad). That is **118.2° whenever r ≥ 11.2 u**,
+and it rises as the sector shrinks: 128.7° at r 10.25, 170° at r 7.75. 90° fails on every corner, as option A found.
+
+**Measured.** Rows are `alarmmod=50`, rect at `formrect=-43.58,45.72,-43.91,44.59`. New warnings are counted against
+the designed build of each shape at its fitted outline (digits stripped). Stations come from a shadow search over
+az ±20° and rsvr 40–64.
+
+| shape, corner (rsvr, az) | sweep | sector r / fan / hub | train (p0:w1, p1:w2, idlers × t) | new warnings | fitted (mm) |
+|---|---|---|---|---|---|
+| rect BR (48, 135) | 90 | 11.75 / 116° / 2.24 | 8:28, 21:42, 4 × 42 | 6: §158 both bounds, the caption, w2 past its room by 0.01, + the two below | 33.84 × 33.54 |
+| rect BR (48, 135) | **120** | 11.75 / 146° / 2.24 | 8:28, 28:42, 4 × 42 | **2**: TODO 206's shared margin; the swing-confirmation compare | **33.84 × 33.54** |
+| rect BR (48, 135) | 150 | 10.85 / 179° / 2.09 | 8:28, 35:42, 4 × 42 | 2 (the same) | 33.84 × 33.54 |
+| rect BR (48, 135) | 180 | 7.80 / 232° / 1.56 | 8:28, 41:41, 4 × 41 | 2 (the same) | 33.84 × 33.54 |
+| rect TR (50, 45) | 90 / 120 / 150 | 13.75 / 13.75 / 10.85 | 4 idlers | 14–16: no w1 bearing clears the setting traverse; the cap bearing; the fold | grows (34.5–36.1 tall) |
+| rect TL (50, 315) | 90 / 120 | 13.75 | 6 idlers | 24–27: the idler line through the alarm link's site (§112/§234/TODO 206/TODO 240) | grows (36.1 tall) |
+| rect BL (48, 225) | 120 / 150 | 11.75 / 11.64 | 6 idlers | 13: the setting traverse, the cap bearing, the fold | 33.84 × 33.54 |
+| tonneau BR (47, 140) | 120 | 10.75 | 8:28, 20:30, 6 × 30 | 3: §158 both bounds, the swing compare | 34.19 × 34.01 |
+| tonneau BR (46.5, 140) | **130** | 10.25 / 162° / 1.98 | 9:27, 13:21, 6 × 21 | **1**: TODO 206 | 34.18 × 33.90 |
+| tonneau BR (46.5, 140) | 150 | 10.17 / 182° | 9:27, 20:28, 6 × 28 | 1: TODO 206 | 34.18 × 33.88 |
+| cushion BR (44, 135) | 120 | 7.75 | 8:28, 18:27, 6 × 27 | 4: §158 both bounds, the figures overprint | 33.95 × 33.65 |
+| cushion BR (44, 135) | **180** | 7.75 / 233° / 1.54 | 8:28, 26:26, 6 × 26 | **1**: TODO 206 | 33.95 × 33.65 |
+
+**The corner that works is the bottom right**, the one away from the keyless works and the alarm link. On the rect it
+builds at **120°**, the smallest sweep that passes the pointer bound there, with a sector of 11.75 u (4.45 mm). Option
+A's disc at the top right was 10.58 u. The fitted outline is option A's 33.84 × 33.54 mm. The tonneau's rounder corner
+leaves a 10.25 u sector, which needs **130°**. The cushion's leaves 7.75 u, which needs **170°** (180 was booted). Each
+of those three is option A's fitted size, within 0.02 mm. TR and BL refuse on the setting traverse: no w1 bearing
+within ±30° clears it, the same failure option A recorded. TL refuses on the alarm link's site. Those are P3 conflicts
+with other groups, outside this option. Pictures (dial side, solid, panel hidden) are in the session's scratch
+`fan/shots/` (br120.png, tonneau-br130.png, cushion-br180.png and the others).
+
+The two rows left on the rect are:
+
+- TODO 206's guide-triangle margin, option A's residue.
+- `reserve train: the swing solved on the cut keyless works (−19°) is not the one the cap bearing was solved against
+  (−19°)`. This is the existing `> 1e-12` compare. The two swings agree to the degree printed, and the station move
+  exposed a float difference between the scan's candidate metal and the cut metal. It is reported, not fixed.
+
+**Other changes:**
+
+- The §186 annulus tripwire, under a FORM, counts a point only if it is also past the form case's bore (shape +
+  `CASE_CLEAR`). A corner station stands in the round annulus and well inside the rect, and form-case.js cuts no round
+  sectors. The designed rect and the default read as before.
+- The §125 dial-rim scan skips the reserve hand when its well is outside the chapter. The hand rides sunk in its own
+  well, past the round rim by construction.
+- §194's row naming tells two same-count rotors on one held pair apart by the chain's gauge. The corner train can cut
+  p1 with w1's 28. This applies only on a collision, so every shipped row is named as before.
+
+Round default: fingerprint 955951544, boot silent (booted from a copy of the tree). `case=rect` 1604757989 unchanged.
+No arm, ratio, section, tolerance or waiver moved. The idlers are real parts but have no `INTRA_UNIT_CONTACTS` rows
+(any selector naming them would be unmatched on the default build), and no battery check was run on a form build
+(TODO 158).

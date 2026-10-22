@@ -5190,7 +5190,7 @@ export function makeJumper({ reach, thickness, width = 0.9 }) {
 // clutch's stroke, and geometry.js already imports layout, so the one
 // arithmetic sits at the bottom of that edge. Re-exported here so builder
 // consumers keep a single import surface.
-import { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt, sawSeatOffset } from './layout.js';
+import { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt, sawSeatOffset, reserveSectorLoop } from './layout.js';
 export { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt, sawSeatOffset };
 export { gearBevel, GEAR_HUB_H_F };   // TODO 209: a band between gears is cut against the bevel the builder adds
 
@@ -8834,6 +8834,60 @@ function resolvableEm(family, floorF) {
 const SUBDIAL_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 const SUBDIAL_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
 
+// §158's FIGURE BAND, the one law (§308 L4 option B lifted it out of the
+// paint so the sector well's extent reads the same three numbers the paint
+// draws with): cap height by the glance floor, the gap by the resolve floor,
+// the band's centre line one gap and half a cap inside the majors. With no
+// physical scale, the pre-§158 fractions.
+function reserveScaleFrame(mmPerSr) {
+  const capF = mmPerSr ? mmForArcmin(GLANCE_ARCMIN) / mmPerSr : 0.11 * CAP_PER_EM;
+  const gapF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0.02;
+  const figBandF = SUBDIAL_TICK_OUTER_F - SUBDIAL_MAJOR_LEN_F - gapF - capF / 2;
+  return { capF, gapF, figBandF };
+}
+// §308 L4 option B — a tabular figure's ADVANCE in the reserve's face
+// (Helvetica Neue / Helvetica / Arial all set every digit on 556/1000 em: the
+// figures are tabular so a column of them aligns). The figure is centred on
+// its tick, so half of it stands past the sweep's last graduation.
+export const DIGIT_ADVANCE_EM = 0.556;
+// §308 L4 option B — THE SECTOR WELL'S EXTENT AT RADIUS r, read off what is
+// printed on it (paintSubdialFace's own fractions) and the hand that sweeps
+// it, so nothing here is a chosen angle:
+//  · HUB LAND — the disc about the pivot that carries the floor's bore and
+//    the hand's tail: the tail's far corner (hypot(tail, half-width)) plus the
+//    one margin, never less than the bore's own ring (`hubMinR`, the caller's
+//    bore + wall + margin);
+//  · HALF-ANGLE — half the sweep, plus the widest of the three things that
+//    stand past the sweep's end graduations: the hand's own edge (its
+//    half-width plus the margin, at the hub land's radius, where a radial
+//    flank comes nearest a radial hand), the end figure's half advance plus
+//    one resolvable gap (at the figure's inner edge), and the end tick's
+//    half-width plus the gap (at its inner end).
+// The radius itself is the CALLER's (solveKeyless sizes it to the corner);
+// the print is a fraction of it exactly as on a disc.
+export function reserveSectorExtent({ r, sweepDeg, hours, mmPerSr, handHalfW, handTail, hubMinR, handLen = null }) {
+  const { capF, gapF, figBandF } = reserveScaleFrame(mmPerSr);
+  const gap = gapF * r;
+  const hubR = Math.max(Math.hypot(handTail, handHalfW) + CLEAR_MARGIN, hubMinR);
+  const asin1 = (x) => Math.asin(Math.min(1, x));
+  const hand = asin1((handHalfW + CLEAR_MARGIN) / hubR);
+  const em = (capF / CAP_PER_EM) * r;
+  const figAt = (digits) => asin1((digits * DIGIT_ADVANCE_EM * em / 2 + gap) / ((figBandF - capF / 2) * r));
+  const fig = Math.max(figAt(1), hours % 12 === 0 ? figAt(String(hours).length) : 0);
+  const tickAtEnd = (major) => {
+    const w = subdialStrokeF(major ? SUBDIAL_MAJOR_W_F : SUBDIAL_MINOR_W_F, major ? SUBDIAL_MAJOR_ARCMIN : SUBDIAL_MINOR_ARCMIN, mmPerSr) * r;
+    const len = (major ? SUBDIAL_MAJOR_LEN_F : SUBDIAL_MINOR_LEN_F) * r;
+    return asin1((w / 2 + gap) / (SUBDIAL_TICK_OUTER_F * r - len));
+  };
+  const tick = Math.max(tickAtEnd(true), tickAtEnd(hours % 12 === 0));
+  const halfRad = Math.min((sweepDeg * Math.PI) / 360 + Math.max(hand, fig, tick), Math.PI - 1e-3);
+  // the caption's line: centred between the hub land (plus a gap) and the
+  // figures' inner edge (less a gap) — a fan has no notch to letter in
+  const captionF = ((hubR / r + gapF) + (figBandF - capF / 2 - gapF)) / 2;
+  return { halfRad, hubR, captionF, terms: { hand, fig, tick },
+    hand: handLen ? { len: handLen, halfW: handHalfW, tail: handTail, sweepRad: (sweepDeg * Math.PI) / 180 } : null };
+}
+
 function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, shippedGround = null) {
   // §196 — ONE ink for everything this function prints, SOLVED against the
   // well's own ground. Before §196 this was a literal '#1c1c22' at four
@@ -8929,13 +8983,19 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // notch, never the sweep, so it cannot reach the ratio at all.
     // Major ticks every 12 hours (0/12/24), one minor per HOUR (10° each at
     // the shipped 300°), slimmed to keep the comb fine.
-    const { sweepDeg = 300, hours = 30, mmPerSr = null } = scale;
+    // §308 L4 option A — `midDeg`, the arc's MIDPOINT direction (math degrees,
+    // as the face is read): the caller's fan-opens-toward-the-dial-centre law,
+    // which at the 12 o'clock station IS §158's down vertical (−90°, the
+    // default). The notch, and the lettering set in it, sit opposite.
+    const { sweepDeg = 300, hours = 30, mmPerSr = null, midDeg = -90, sector: fan = null } = scale;   // §308 L4 option B: `fan` — the well is a sector
+    const notchMidDeg = midDeg + 180;
+    const notchFlip = Math.sin((notchMidDeg * Math.PI) / 180) < 0;
     const TICK_OUTER_F = SUBDIAL_TICK_OUTER_F, MAJOR_LEN_F = SUBDIAL_MAJOR_LEN_F;
     const MINOR_LEN_F = SUBDIAL_MINOR_LEN_F;
     // §293: the drawn widths, each floored at what the eye resolves.
     const MAJOR_W_F = subdialStrokeF(SUBDIAL_MAJOR_W_F, SUBDIAL_MAJOR_ARCMIN, mmPerSr);
     const MINOR_W_F = subdialStrokeF(SUBDIAL_MINOR_W_F, SUBDIAL_MINOR_ARCMIN, mmPerSr);
-    const angAt = (h) => -90 + sweepDeg / 2 - (h / hours) * sweepDeg;
+    const angAt = (h) => midDeg + sweepDeg / 2 - (h / hours) * sweepDeg;
     // §159 — THE SCALE'S TWO ZONES, painted UNDER the comb so the ticks read
     // over them and the graduation stays the thing being read. A zone says at
     // a glance what the figures cannot say at arm's length: the figures stand
@@ -9052,9 +9112,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // say how big the well IS (the bare makeDial() smoke test) gets the
     // pre-§158 fraction, since an acuity solve without a physical scale is
     // not a solve.
-    const capF = mmPerSr ? mmForArcmin(GLANCE_ARCMIN) / mmPerSr : 0.11 * CAP_PER_EM;
-    const gapF = mmPerSr ? mmForArcmin(RESOLVE_ARCMIN) / mmPerSr : 0.02;
-    const figBandF = TICK_OUTER_F - MAJOR_LEN_F - gapF - capF / 2;
+    const { capF, gapF, figBandF } = reserveScaleFrame(mmPerSr);   // §308 L4 option B: the one law, shared with the sector's extent
     // Hour figures at the majors — ARABIC, so the reserve reads as an
     // instrument scale rather than as more of the hour chapter, and (since
     // §158) large enough that the claim survives being looked at. One figure
@@ -9071,6 +9129,20 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     for (let h = 0; h <= hours; h += 12) {
       const aDeg = angAt(h);
       arcLabel(String(h), aDeg, sr * figBandF, Math.sin((aDeg * Math.PI) / 180) < 0);
+    }
+    // §308 L4 option B — NEIGHBOURING FIGURES MUST NOT OVERPRINT, which a
+    // narrow fan makes possible and nothing read: two figures 12 h apart stand
+    // 12·sweep/hours of arc apart on the band, and each is half its measured
+    // width either side of its tick; between them one resolvable gap.
+    if (hours >= 12) {
+      const wOf = (h) => [...String(h)].reduce((a, ch) => a + ctx.measureText(ch).width, 0) + sr * 0.008 * (String(h).length - 1);
+      for (let h = 12; h <= hours; h += 12) {
+        const apart = ((12 * sweepDeg) / hours) * (Math.PI / 180) * sr * figBandF;
+        const need = (wOf(h - 12) + wOf(h)) / 2 + gapF * sr;
+        if (apart < need - 1e-9)
+          console.warn(`reserve face: the figures ${h - 12} and ${h} stand ${(apart / sr).toFixed(3)}·sr apart on the band and need `
+            + `${(need / sr).toFixed(3)}·sr — a ${sweepDeg}° sweep over ${hours} h overprints its own figures`);
+      }
     }
     // No AB / AUF bookending the arc: the German pair was the Glashütte
     // marking for a Roman-figured reserve, and with the scale figured 0→24
@@ -9131,15 +9203,33 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
       markEm = lo;
     }
     const markR = markRadiusFor(markEm).r;
+    if (fan) {
+      // §308 L4 option B — A FAN HAS NO NOTCH: what was the notch is outside
+      // the pocket. The caption takes the fan's inner line (fan.captionF,
+      // centred between the hub land and the figures), centred on the fan's
+      // mid-line, and must fit the sweep there; the maker's mark has no line
+      // left in the well and is NOT printed in it (makeDial prints it on the
+      // dial instead, as on a reserve-less face).
+      ctx.fillStyle = ink;
+      ctx.font = `400 ${sr * CAPTION_EM_F}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
+      const capArcS = arcLabel('POWER RESERVE', midDeg, sr * fan.captionF, Math.sin((midDeg * Math.PI) / 180) < 0);
+      const needDeg = ((capArcS + 2 * (gapF / fan.captionF)) * 180) / Math.PI;
+      // the floor under that line spans the fan's whole cut angle (2·halfRad)
+      const haveDeg = (2 * fan.halfRad * 180) / Math.PI;
+      if (needDeg > haveDeg + 1e-9)
+        console.warn(`reserve face: the caption needs ${needDeg.toFixed(1)}° of the fan's inner line and the `
+          + `fan is cut ${haveDeg.toFixed(1)}° wide — it will run past the fan's flanks`);
+      return;
+    }
     ctx.fillStyle = ink; // §196 — the well's one solved ink
     ctx.font = `400 ${sr * CAPTION_EM_F}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
-    const capArc = arcLabel('POWER RESERVE', 90, sr * capR, false);
+    const capArc = arcLabel('POWER RESERVE', notchMidDeg, sr * capR, notchFlip);
     ctx.font = `400 ${sr * markEm}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     // §196 — this was a literal copy of DIAL_MARK_INK, the fifth untracked
     // transcription this landing retired; the mark now tracks its shipped
     // RELATION to this well's ground (see solveMarkInk).
     ctx.fillStyle = solveMarkInk(ground, shippedGround ?? ground);
-    const markArc = arcLabel(MARK_TEXT, 90, sr * markR, false);
+    const markArc = arcLabel(MARK_TEXT, notchMidDeg, sr * markR, notchFlip);
     // The caption is NOT solved — it is the line that names the complication,
     // so it keeps its size and the mark yields around it. Both are asserted
     // against the notch, which is a function of the SWEEP: a re-spec that
@@ -9807,7 +9897,7 @@ export function makeDial({
         // is set INSIDE its well (painted by paintSubdialFace on the recessed
         // floor); only a reserve-less dial prints it here, on the classic
         // 6-o'clock arc.
-        if (!subdials.some((sd) => sd.kind === 'reserve')) {
+        if (!subdials.some((sd) => sd.kind === 'reserve' && !sd.sector)) {   // §308 L4 option B: a fan well has no line for the mark
           ctx.font = '400 13px "Helvetica Neue", Helvetica, Arial, sans-serif';
           // §196 — discreet means a RELATION, so the mark tracks the shipped
           // pair's contrast on whatever ground it lands on (see solveMarkInk).
@@ -9874,7 +9964,12 @@ export function makeDial({
   // finish meshes below are built from these same arrays and must land on the
   // machined surfaces BIT for bit — see FINISH_ORDER.
   const wells = subdials.map((sd) => ({
-    pocket: circleLoop(sd.x, sd.y, sd.r, SEG, 'out'),
+    // §308 L4 option B — a well may be a SECTOR (the fan its hand sweeps):
+    // the one loop layout.js's fit reads (reserveSectorLoop), in this frame.
+    pocket: sd.sector
+      ? reserveSectorLoop(sd.x, sd.y, sd.r, sd.sector.hubR, (sd.sector.midDeg * Math.PI) / 180, sd.sector.halfRad, SEG).map(([x, y]) => new THREE.Vector2(x, y))
+      : circleLoop(sd.x, sd.y, sd.r, SEG, 'out'),
+    sector: !!sd.sector,
     bore: circleLoop(sd.x, sd.y, subdialBoreR, SEG, 'out'),
     // §153 — the recess is PER WELL: an entry's own `recess` overrides the
     // plate-wide default. Resolved once here so the plate's cut and the
@@ -9997,7 +10092,11 @@ export function makeDial({
     subdials.forEach((sd, i) => {
       const { pocket, bore: hole, recess } = wells[i];
       if (!(recess > 0)) { part(`aperture#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, zB, false)); return; }
-      part(`pocket-wall#${i}`, plateWall(sd.x, sd.y, pocket, zF, pocket, -recess, false));
+      // §308 L4 option B — a fan's wall is not a cylinder about its pivot, so it
+      // is cut on the loop's own normals (loopWall over the reversed loop: the
+      // normals face into the pocket, away from the brass).
+      part(`pocket-wall#${i}`, wells[i].sector ? loopWall(pocket.slice().reverse(), zF, -recess)
+        : plateWall(sd.x, sd.y, pocket, zF, pocket, -recess, false));
       part(`pocket-floor#${i}`, plateCap(pocket, [hole], -recess, +1));
       part(`arbor-bore#${i}`, plateWall(sd.x, sd.y, hole, -recess, hole, zB, false));
     });
@@ -10151,8 +10250,8 @@ export function makeDial({
       // bounding-box "thickness" is the pocket's DEPTH, not a section — the
       // deep well cleared the wheel floor by coincidence (0.19 mm ≥ 0.12),
       // and the barely-recessed sector (0.05 mm) exposed the misclassification.
-      const wall = new THREE.Mesh(
-        plateWall(sd.x, sd.y, wells[i].pocket, 0, wells[i].pocket, -recess, false), wallMat);
+      const wall = new THREE.Mesh(wells[i].sector ? loopWall(wells[i].pocket.slice().reverse(), 0, -recess)   // §308 L4 option B
+        : plateWall(sd.x, sd.y, wells[i].pocket, 0, wells[i].pocket, -recess, false), wallMat);
       wall.name = `${sd.kind}SubdialWall`;
       wall.renderOrder = FINISH_ORDER;
       g.add(wall);

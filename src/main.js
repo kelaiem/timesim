@@ -31,7 +31,7 @@ import {
   TRAIN,
   KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
   minuteWheelTeeth, WIND_SPUR_TEETH, SETTING_CAP_TEETH,
-  rsvModule0, rsvD0, reserveReduction, reserveTrainCandidates,   // TODO 134: the train's counts are solved from the reserve, below
+  rsvModule0, rsvD0, reserveReduction, reserveTrainCandidates, reserveSectorLoop, PINION_LEAVES_MIN,   // §308 L4 option B: the fan well's one loop   // TODO 134: the train's counts are solved from the reserve, below
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
@@ -929,12 +929,16 @@ function declareMesh(site, row) {
 // the third pinion on one arbor). The rotor is the descendant whose recorded
 // tooth count is the one the chain declared — resolved here, at boot, against
 // the live object, so a row can never name a part the solve did not turn.
-function rotorNameFor(obj, teeth) {
+function rotorNameFor(obj, teeth, gauge = null) {
   let hit = null, n = 0;
   obj.traverse((o) => {
     if (o.userData && o.userData.teeth === teeth && typeof o.userData.r === 'number') { hit = hit || o; n++; }
   });
   if (!hit) return null;
+  // §308 L4 option B — a held pair whose two rotors share a count (the corner
+  // train can cut p1 with w1's 28) is told apart by the GAUGE the chain named
+  // for it, which is the rotor whose mesh this is.
+  if (n > 1 && gauge && gauge !== obj) { const g = rotorNameFor(gauge, teeth); if (g) return g; }
   if (n > 1) console.warn(`§194: ${n} rotors under one chain member carry ${teeth} teeth — the row cannot tell them apart`);
   return hit.name || null;
 }
@@ -2695,6 +2699,48 @@ const KW_SPEC = {
 // (CROWN_PULL_DIST, SL_C / SL_TAIL / GROOVE_LOCAL, YK_C — the declared
 // keyless spec — imported from layout.js.)
 // ---------------------------------------------------------------------------
+// §308 L4 option A — the sweep is a SPEC input (?rsvsweep=, the owner's
+// quarter fan for a form dial's corner). The 300° design is the default and
+// its reasons are written where the dial is drawn; a spec'd sweep re-solves
+// the counts below through R = turns · 360/sweep, never by a typed count. It
+// must be an integer degree count strictly inside (0, 360) — reserveReduction
+// reduces R exactly over integers, and a full turn leaves no notch to read the
+// empty end from — or the build warns and keeps the design.
+const RESERVE_SWEEP_DESIGN_DEG = 300;
+const RESERVE_SWEEP_DEG = (() => {
+  const v = SPEC.rsvSweepDeg;
+  if (v === null) return RESERVE_SWEEP_DESIGN_DEG;
+  if (Number.isInteger(v) && v > 0 && v < 360) return v;
+  console.warn(`reserve sweep ${v}° is not an integer degree count inside (0, 360) — building the designed ${RESERVE_SWEEP_DESIGN_DEG}°`);
+  return RESERVE_SWEEP_DESIGN_DEG;
+})();
+// §293 — the sub-dial pointer's width law (its reasons are with the small
+// seconds hand, which it is shared with).
+const subdialPointerHalfW = (length, divisionRad, majorW) => {
+  const target = mmForArcmin(POINTER_ARCMIN) / UNIT_MM;
+  const division = length * divisionRad;
+  return (target < division ? target : (majorW + division) / 2) / 2;
+};
+// The reserve hand's length, as a fraction of its well's radius (the tip
+// reaches into the comb; the comb's outer circle is SUBDIAL_TICK_OUTER_F).
+const RSV_HAND_LEN_F = 0.8;
+// §308 L4 option B — THE SECTOR WELL, the owner's "cover just the sweep so it
+// squeezes into a corner": under a spec'd sweep, a reserve station outside
+// the chapter is cut as the fan its hand and print need (solveKeyless sizes
+// its radius; geometry's reserveSectorExtent reads its angle and hub off the
+// print). The hand at radius r is the very spec the build cuts below
+// (RESERVE_HAND_SPEC): length RSV_HAND_LEN_F·r, the pointer law's width, the
+// minute hand's tail factor. Absent a sweep, no sector and every well is the
+// disc it was.
+const RSV_SECTOR_ON = SPEC.rsvSweepDeg !== null && SPEC.rsvAzDeg !== null;
+const rsvSectorExtentAt = (r) => {
+  const len = r * RSV_HAND_LEN_F;
+  const halfW = subdialPointerHalfW(len, (RESERVE_SWEEP_DEG * DEG2RAD) / SPEC.reserveHours,
+    G.subdialStrokeF(G.SUBDIAL_MAJOR_W_F, G.SUBDIAL_MAJOR_ARCMIN, r * UNIT_MM) * r);
+  return G.reserveSectorExtent({ r, sweepDeg: RESERVE_SWEEP_DEG, hours: SPEC.reserveHours, mmPerSr: r * UNIT_MM,
+    handHalfW: halfW, handTail: len * aesthetics.dial.hands.minute.tailFactor, handLen: len,
+    hubMinR: SUBDIAL_BORE_R + DIAL_WALL_HALF + CLEAR_MARGIN });
+};
 // §33 step 2 — the keyless solver's inputs are CAPTURED like LAYOUT_INPUTS,
 // so reconfigure mode can shadow-solve a candidate stem azimuth live: pure
 // solver, same measured inputs, a collecting warn. The spec's azimuth
@@ -2710,6 +2756,19 @@ const KEYLESS_INPUTS = {
   // §94 tier C — the reserve station's radius spreads in only when present,
   // so identity passes nothing and stays bit-exact (d4's null rule).
   ...(SPEC.rsvr !== null ? { rsvR: SPEC.rsvr } : {}),
+  // §308 L4 option A — the station's azimuth, same null rule; and, for a
+  // station outside the chapter, the outline its well must stand inside: the
+  // FITTED shape when the URL carries it (?formrect=), read through the dial
+  // seam's flip; a first form boot has no outline yet (it is fitted to the
+  // metal this build places), so its well is bounded by the track alone and
+  // the boot assert at the dial build holds it to the shape it was cut to.
+  ...(SPEC.rsvAzDeg !== null ? { rsvAzRad: SPEC.rsvAzDeg * DEG2RAD } : {}),
+  ...(RSV_SECTOR_ON ? { rsvSector: { extentAt: rsvSectorExtentAt, rimMargin: PLATE_RIM_MARGIN } } : {}),   // §308 L4 option B
+  ...(SPEC.rsvAzDeg !== null && SPEC.caseShape ? { faceInset: (() => {
+    if (!SPEC.formRectSpec) return () => Infinity;
+    const sh = caseShapeOf(SPEC.caseShape, { xMin: SPEC.formRectSpec[0], xMax: SPEC.formRectSpec[1], yMin: SPEC.formRectSpec[2], yMax: SPEC.formRectSpec[3] });
+    return (x, y) => sh.inset(P.dial.x - x, P.dial.y + y);
+  })() } : {}),
   // §98 — the alarm corner's radius, same null rule.
   ...(SPEC.alarmr !== null ? { alarmR: SPEC.alarmr } : {}),
   // §97 — the shared well radius, same null rule.
@@ -2724,6 +2783,9 @@ const KEYLESS_INPUTS = {
   printFrame: {
     markerInnerF: G.DIAL_MARKER_INNER_F,
     railInnerF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F,
+    // §308 L4 option A — the railroad's OUTER rail, the edge a well outside
+    // the chapter grows from (the same composition as the inner rail's).
+    railOuterF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_OUT_F,
   },
 };
 const {
@@ -2733,6 +2795,8 @@ const {
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
   plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+  reserveStationR, reserveWellLaw, // §308 L4 option A — the station's distance, and which side of the chapter its well is cut
+  reserveSector,   // §308 L4 option B — the fan well (null unless reserveWellLaw is 'sector')
   formPlate, // §307 — the form rectangle, derived beside plateR from the same members
 } = solveKeyless({
   ...KEYLESS_INPUTS,
@@ -2777,6 +2841,28 @@ const FORM = !SPEC.caseShape ? null
 // (§308: that signed distance is the shape's own `inset` — exact for the rect
 // and the tonneau, the dense polyline's for the cushion, within its `accuracy`.)
 const FORM_SHAPE = FORM;
+// §308 L4 option A — A WELL OUTSIDE THE CHAPTER MUST LIE INSIDE THE DIAL IT IS
+// CUT IN. solveKeyless held it to the fitted outline when the URL carried one;
+// a first form boot has none, so its well was bounded by the track alone and
+// is held here to the shape this build actually cuts (the solvers' guess, or
+// the carried box): the ring wall one margin inside the outline.
+if (FORM && reserveWellLaw === 'sector') {
+  // §308 L4 option B — the fan, read on its own cut loop (the disc law below
+  // would hold a circle the fan does not fill).
+  let web = Infinity;
+  for (const [x, y] of reserveSectorLoop(RESERVE_LOCAL.x, RESERVE_LOCAL.y, reserveSector.r, reserveSector.hubR, reserveSector.midRad, reserveSector.halfRad, 96))
+    web = Math.min(web, FORM.inset(P.dial.x - x, P.dial.y + y) - DIAL_WALL_HALF);
+  if (web < CLEAR_MARGIN - 1e-9)
+    console.warn(`§308: the reserve sector well (r ${reserveSector.r.toFixed(2)}, ±${(reserveSector.halfRad / DEG2RAD).toFixed(1)}°, hub ${reserveSector.hubR.toFixed(2)}) `
+      + `stands ${web.toFixed(3)} inside the ${FORM.kind} outline this build cuts, need ${CLEAR_MARGIN} — boot again at the printed formrect=, or move the station`);
+}
+if (FORM && reserveWellLaw === 'track') {
+  const web = FORM.inset(P.dial.x - RESERVE_LOCAL.x, P.dial.y + RESERVE_LOCAL.y) - reserveWellR - DIAL_WALL_HALF;
+  if (web < CLEAR_MARGIN - 1e-9)
+    console.warn(`§308: the reserve well outside the chapter (r ${reserveWellR.toFixed(2)} at dial (${RESERVE_LOCAL.x.toFixed(2)}, `
+      + `${RESERVE_LOCAL.y.toFixed(2)})) stands ${web.toFixed(3)} inside the ${FORM.kind} outline this build cuts, need ${CLEAR_MARGIN} — `
+      + `boot again at the printed formrect=, or move the station`);
+}
 const formInset = (x, y) => (FORM ? FORM_SHAPE.inset(x, y) : Infinity);
 const FORM_DROPPED = [];
 const formHolds = (what, x, y, r, land) => {
@@ -7171,7 +7257,19 @@ const RSV_W1_BORE_R = RSV_POST1_R + PIVOT_BORE_CLEAR;   // rsvWheel1's and reser
 //    tooth width π·m/2 on §50's wheel floor;
 //  · every member clears its own bore, by the builders' own floor.
 // At 30 h that is 8:28 × 10:6, the shipped train, byte for byte.
-const RESERVE_SWEEP_DEG = 300;      // the hand's graduated arc; its reasons are written where the dial is drawn
+// (RESERVE_SWEEP_DEG — the spec'd sweep — is declared above KEYLESS_INPUTS since
+// §308 L4 option B: the sector well's extent reads it.)
+// §308 L4 option A — WHERE THE FAN OPENS: the direction (math degrees,
+// dial-local, as the face is read) of the graduated arc's MIDPOINT, which is
+// where the hand stands at half reserve. §158 hung the arc from the well's
+// DOWN vertical (−90°) — at the 12 o'clock station that is the direction of
+// the dial's centre, and the law that generalises it is exactly that: the fan
+// opens TOWARD THE DIAL CENTRE, so a corner well's hand pivots in the corner
+// and sweeps its arc over the face inboard of it. Absent an azimuth, the
+// literal −90° (bit-exact).
+const RESERVE_FAN_MID_DEG = SPEC.rsvAzDeg === null ? -90
+  : reserveSector ? reserveSector.midRad * 180 / Math.PI   // §308 L4 option B: the sector was cut on solveKeyless's own mid-line
+  : Math.atan2(-RESERVE_LOCAL.y, -RESERVE_LOCAL.x) * 180 / Math.PI;
 const RSV_TOOTH_FLOOR_MM = 0.12;    // §50's wheel floor (STOCK_FLOORS.wheel in inspect.js owns it; the census re-measures)
 const RSV_TRAIN = (() => {
   const d1 = rsvSpanD - rsvD0;
@@ -7192,7 +7290,93 @@ const RSV_TRAIN = (() => {
     + 'building the shipped 30 h train, whose hand will not read this reserve');
   return { p0: 8, w1: 28, p1: 10, w2: 6, reduction };
 })();
-const rsvTeethP0 = RSV_TRAIN.p0, rsvTeethW1 = RSV_TRAIN.w1, rsvTeethP1 = RSV_TRAIN.p1, rsvTeethW2 = RSV_TRAIN.w2;
+// §308 L4 option B — THE FIT-RANKED TRAIN, for a SECTOR station only (the
+// corner path; every other station keeps the preference order above, so the
+// default train is the shipped one by construction). Option A measured why a
+// corner refused two stages: stage two's centre distance d1 is what the span
+// leaves after stage one's fixed rsvD0, and p1 + w2 share it in proportion to
+// their teeth, so whichever is the larger is at least half of a ~25 u span —
+// no tooth count can shrink it. What can is MORE MESHES over the same span:
+// IDLERS between p1 and w2, at stage two's module, which carry the motion
+// without changing R (an idler's teeth cancel), so the reduction is still
+// solved by reserveTrainCandidates, never typed. They come in PAIRS: each
+// mesh reverses, and an even number keeps the hand's sense, so the scale, the
+// set and the tick's chain to w2 are untouched. The rank is FIT:
+//  · admissible — every member over §50's tooth floor and its own bore (the
+//    rules above; an idler turns on a post the size of rsvPost1, bored by the
+//    one running fit);
+//  · fits — every stage-two member, at its collinear centre on the w1→pivot
+//    line, keeps its tip PLATE_RIM_MARGIN inside the case shape (the same
+//    margin the fitted outline holds the counted metal to, so a member that
+//    fits cannot be what grows the case);
+//  · then the FEWEST idlers that fit, and among those the smallest largest tip.
+// If nothing fits, the smallest largest tip is built and the boot says what a
+// fit would need. The idler count is searched over pairs up to RSV_IDLER_MAX.
+const RSV_FIT = reserveWellLaw === 'sector';
+const RSV_IDLER_MAX = 6;
+const RSV_IDLER_BORE_R = RSV_W1_BORE_R;   // a post the size of rsvPost1, the one running fit
+function rsvFitTrainAt(pivotXY, quiet = false) {
+  const span = Math.hypot(pivotXY.x - P.barrel.x, pivotXY.y - P.barrel.y);
+  const rsvU = { x: (pivotXY.x - P.barrel.x) / span, y: (pivotXY.y - P.barrel.y) / span };
+  const d1 = span - rsvD0;
+  const mFloor = (2 * RSV_TOOTH_FLOOR_MM) / (Math.PI * UNIT_MM);
+  const boreW2 = RSV_HAND_ARBOR_R + PIVOT_BORE_CLEAR;
+  const w1At = { x: P.barrel.x + rsvU.x * rsvD0, y: P.barrel.y + rsvU.y * rsvD0 };
+  const room = (along) => formInset(w1At.x + rsvU.x * along, w1At.y + rsvU.y * along) - PLATE_RIM_MARGIN;
+  let best = null, bestAny = null;
+  const reduction = RSV_TRAIN.reduction;
+  const st1 = new Map();   // stage one's floors per split (module0 is fixed)
+  for (let n = 0; n <= RSV_IDLER_MAX; n += 2) {
+    for (const c of reserveTrainCandidates(reduction)) {
+      if (!st1.has(c.p0)) st1.set(c.p0, c.p0 >= G.minGearTeeth(rsvModule0, RSV_ARB_EXT_R, [c.w1]) && c.w1 >= G.minGearTeeth(rsvModule0, RSV_W1_BORE_R, [c.p0]));
+      if (!st1.get(c.p0)) continue;
+      // THE IDLER'S COUNT is the larger of p1's and w2's: the largest tip is
+      // m1·(max(p1, w2, t) + 2)/2 with m1 = 2·d1/(Σ + 2nt), which FALLS in t
+      // while the idler is the smaller member (m1 shrinks, the max holds) and
+      // RISES once it is the larger (d1·(t+2)/(Σ+2nt) grows while Σ > 4n) —
+      // so its least is the idler matched to the larger of the pair.
+      for (const t of n ? [Math.max(c.p1, c.w2)] : [0]) {
+        const m1 = (2 * d1) / (c.p1 + c.w2 + 2 * n * t);
+        if (m1 < mFloor) continue;
+        const p1Mate = n ? t : c.w2, w2Mate = n ? t : c.p1;
+        // each member's cut root clears its own bore — minGearTeeth's own test
+        // (gearToothSpec's root against the bore; the root grows with the
+        // count, so "count ≥ the floor" IS "root ≥ bore"), asked once per member
+        const rootClears = (teeth, mates, bore) => G.gearToothSpec({ module: m1, teeth, mates }).rootR >= bore;
+        if (!rootClears(c.p1, [p1Mate], RSV_W1_BORE_R)) continue;
+        if (!rootClears(c.w2, [w2Mate], boreW2)) continue;
+        if (n && !(rootClears(t, [c.p1, t], RSV_IDLER_BORE_R) && rootClears(t, [t, c.w2], RSV_IDLER_BORE_R) && rootClears(t, [t, t], RSV_IDLER_BORE_R))) continue;   // the first, last and middle idlers' mate sets
+        // members along the line: p1 at 0, idler k at m1·(p1/2 + t/2 + (k−1)·t), w2 at d1
+        const members = [{ at: 0, tip: (m1 * (c.p1 + 2)) / 2 }];
+        for (let k = 1; k <= n; k++) members.push({ at: m1 * (c.p1 / 2 + t / 2 + (k - 1) * t), tip: (m1 * (t + 2)) / 2 });
+        members.push({ at: d1, tip: (m1 * (c.w2 + 2)) / 2 });
+        const maxTip = Math.max(...members.map((q) => q.tip));
+        const short = Math.min(...members.map((q) => room(q.at) - q.tip));
+        const cand = { ...c, reduction, idlers: n, idlerTeeth: t, m1, maxTip, short };
+        if (!bestAny || maxTip < bestAny.maxTip) bestAny = cand;
+        if (short >= 0 && (!best || maxTip < best.maxTip)) best = cand;
+      }
+    }
+    if (best) break;
+  }
+  if (!best) {
+    if (!quiet) console.warn(`reserve train: no exact train of two stages and up to ${RSV_IDLER_MAX} idlers keeps every stage-two member `
+      + `${PLATE_RIM_MARGIN} inside the case shape over the ${d1.toFixed(2)} stage-two span — building the least largest tip `
+      + `(${bestAny.idlers} idlers, ${bestAny.maxTip.toFixed(2)}), ${(-bestAny.short).toFixed(2)} past the margin`);
+    return bestAny;
+  }
+  return best;
+}
+const RSV_FIT_TRAIN = RSV_FIT ? rsvFitTrainAt(rsvPivotXY) : null;
+const RSV_TRAIN_BUILT = RSV_FIT_TRAIN ?? RSV_TRAIN;
+const rsvTeethP0 = RSV_TRAIN_BUILT.p0, rsvTeethW1 = RSV_TRAIN_BUILT.w1, rsvTeethP1 = RSV_TRAIN_BUILT.p1, rsvTeethW2 = RSV_TRAIN_BUILT.w2;
+// §308 L4 option B — the idlers (0 off the sector path) and stage two's tooth
+// SUM, the denominator every stage-two module solve divides the span by.
+const RSV_IDLERS = RSV_FIT_TRAIN ? RSV_FIT_TRAIN.idlers : 0;
+const RSV_IDLER_T = RSV_FIT_TRAIN ? RSV_FIT_TRAIN.idlerTeeth : 0;
+const RSV_STAGE2_TEETH = rsvTeethP1 + rsvTeethW2 + 2 * RSV_IDLERS * RSV_IDLER_T;
+const RSV_P1_MATE = RSV_IDLERS ? RSV_IDLER_T : rsvTeethW2;   // p1's and w2's neighbour on the line
+const RSV_W2_MATE = RSV_IDLERS ? RSV_IDLER_T : rsvTeethP1;
 // TODO 162 — THE NOMINAL TIP UNDER-READS THE CUT METAL. module·(teeth+2)/2 is
 // the pitch-circle offset a smooth involute tip would reach; this repo's
 // generators cut a POLYGON, whose farthest point is a VERTEX past that
@@ -7394,14 +7578,14 @@ async function solveReserveSwing(pts) {
     const wx = P.barrel.x + ux * rsvD0, wy = P.barrel.y + uy * rsvD0;
     // the fixed point: this candidate's own stage-two module, hence p1's reach
     const m1 = (2 * Math.hypot(rsvPivotXY.x - wx, rsvPivotXY.y - wy))
-      / (rsvTeethP1 + rsvTeethW2);
+      / RSV_STAGE2_TEETH;
     if (!(m1 > 0)) return { c: -Infinity, member: 'p1 (no module)' };
     // TODO 162 — gearOuterR (TODO 86) OVER-reads the built polygon by rounding
     // out past its own tip vertex, which used to cancel w1's under-read above
     // and hide the pair's true clearance. Read p1's bound off the metal too,
     // for the exact args its build (far below) uses, memoized by module —
     // every candidate swing re-derives m1, so this caches per distinct module.
-    const p1TipR = cutTipR(G.makePinion, { module: m1, teeth: rsvTeethP1, mates: [rsvTeethW2], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
+    const p1TipR = cutTipR(G.makePinion, { module: m1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
     const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
     const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
     let c = Infinity, member = 'none';
@@ -19046,7 +19230,7 @@ const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated t
   const fromTeeth = ratMul(ratQ(rsvTeethW1, rsvTeethP0), ratQ(rsvTeethW2, rsvTeethP1));
   if (!ratEq(fromScale, fromTeeth))
     console.warn(`§219 technic fork: the reserve reduction from its scale is ${ratStr(fromScale)}, from the steel counts ${ratStr(fromTeeth)} — the display and the gears drifted apart (TODO 18)`);
-  if (SPEC.reserveHours === TECHNIC_FORK.solvedAt.reserveHours) {
+  if (SPEC.reserveHours === TECHNIC_FORK.solvedAt.reserveHours && RESERVE_SWEEP_DEG === RESERVE_SWEEP_DESIGN_DEG) {   // §308 L4: the fork was solved at the designed sweep too
     const row = TECHNIC_FORK.rows.find((r) => r.key === 'reserve reduction');
     for (const [gen, chain] of Object.entries(row.chains))
       for (const e of technicChainErrors(gen, row.key, chain, fromScale)) console.warn(`§219 technic fork: ${e}`);
@@ -19175,7 +19359,7 @@ const RSV_HAND_BOSS_H = 0.18 * 2 * 1.3;   // makeHand's boss law over that secti
 // TODO 26 lifted them out of it. So this asserts the ceiling that binds now,
 // in the same form — bore + wall + the one margin — and reports the achieved
 // and required numbers per rule 6.
-for (const [nm, cy, wr] of [['reserve', RESERVE_LOCAL.y, reserveWellR], ['seconds', -SECONDS_LOCAL.y, secondsWellR]]) {
+for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['seconds', -SECONDS_LOCAL.y, secondsWellR]]) {
   const innerEdge = cy - wr;                           // the ring's closest approach to the dial centre
   const need = DIAL_CENTER_BORE_R + DIAL_WALL_HALF;    // brass the bore needs before the pocket may start
   // §94 tier A — the epsilon is a FLOAT-EQUALITY guard, not a widened budget.
@@ -19240,7 +19424,11 @@ const dial = G.makeDial({
       // mmPerSr — the well's printed radius in REAL mm, which is what lets
       // the face size its figures by acuity (§158) instead of by fraction.
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS,
-        mmPerSr: reserveR * UNIT_MM } },
+        mmPerSr: reserveR * UNIT_MM,
+        ...(SPEC.rsvAzDeg !== null ? { midDeg: RESERVE_FAN_MID_DEG } : {}),   // §308 L4: the fan opens toward the dial centre
+        ...(reserveSector ? { sector: { captionF: reserveSector.extent.captionF, halfRad: reserveSector.halfRad } } : {}) },
+      // §308 L4 option B — the pocket is the fan solveKeyless sized
+      ...(reserveSector ? { sector: { midDeg: RESERVE_FAN_MID_DEG, halfRad: reserveSector.halfRad, hubR: reserveSector.hubR } } : {}) },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds',
       scale: { mmPerSr: secondsSubR * UNIT_MM } },   // §293: the seconds well read by acuity too
   ],
@@ -19421,11 +19609,8 @@ registerLabel('Small seconds', smallSecondsGroup);
 // as one division at the tip (a small well: ?subdialr=8), where it takes the
 // middle of the window §158's two bounds leave, the drawn major below and the
 // division above, equal margin to each. Bounded both ways at each build.
-const subdialPointerHalfW = (length, divisionRad, majorW) => {
-  const target = mmForArcmin(POINTER_ARCMIN) / UNIT_MM;
-  const division = length * divisionRad;
-  return (target < division ? target : (majorW + division) / 2) / 2;
-};
+// (subdialPointerHalfW — the law — is declared above KEYLESS_INPUTS since
+// §308 L4 option B: the reserve's sector well is sized off the hand it reads.)
 const SMALL_SECONDS_HAND_SPEC = { length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds',
   halfWidth: subdialPointerHalfW(secondsSubR * 0.8, 6 * DEG2RAD,
     G.subdialStrokeF(G.SECONDS_MAJOR_W_F, G.SUBDIAL_MAJOR_ARCMIN, secondsSubR * UNIT_MM) * secondsSubR) };
@@ -20344,13 +20529,13 @@ registerLabel('Power reserve', reserveGroup);
 // from it (floorDrop + topRise against SUBDIAL_RECESS), so widening the
 // section that way would spend the band on depth nobody asked for. Wide
 // and flat is also what a hand actually is.
-const RSV_HAND_HALF_W = subdialPointerHalfW(reserveR * 0.8, (RESERVE_SWEEP_DEG * DEG2RAD) / RESERVE_SCALE_HOURS,   // §293: one pointer law for both wells
+const RSV_HAND_HALF_W = subdialPointerHalfW(reserveR * RSV_HAND_LEN_F, (RESERVE_SWEEP_DEG * DEG2RAD) / RESERVE_SCALE_HOURS,   // §293: one pointer law for both wells
   G.subdialStrokeF(G.SUBDIAL_MAJOR_W_F, G.SUBDIAL_MAJOR_ARCMIN, reserveR * UNIT_MM) * reserveR);
 // TODO 112 CLOSED here — `halfWidth` is section law by §158's own argument
 // above, and it rides the shared spec object into HAND_SPECS, so a panel
 // re-cut rebuilds this pointer at 3.00′ rather than the √3/2 default the
 // omitted key used to fall back to.
-const RESERVE_HAND_SPEC = { length: reserveR * 0.8, kind: 'minute', subdial: true,
+const RESERVE_HAND_SPEC = { length: reserveR * RSV_HAND_LEN_F, kind: 'minute', subdial: true,
   namePrefix: 'reserve', halfWidth: RSV_HAND_HALF_W };
 const reserveHand = G.makeHand(RESERVE_HAND_SPEC);
 reserveHand.position.z = wellHandZ(reserveHand);   // §188 — back on the class derivation (wellHandZ warns per rule 6)
@@ -20468,8 +20653,8 @@ const rsvW1U = rsvSwing === 0 ? rsvU
       y: rsvU.x * Math.sin(rsvSwing) + rsvU.y * Math.cos(rsvSwing) };
 const rsvW1PosSolved = { x: P.barrel.x + rsvW1U.x * rsvD0, y: P.barrel.y + rsvW1U.y * rsvD0 };
 const rsvModule1 = rsvSwing === 0
-  ? (2 * (rsvSpanD - rsvD0)) / (rsvTeethP1 + rsvTeethW2)
-  : (2 * Math.hypot(rsvPivotXY.x - rsvW1PosSolved.x, rsvPivotXY.y - rsvW1PosSolved.y)) / (rsvTeethP1 + rsvTeethW2);
+  ? (2 * (rsvSpanD - rsvD0)) / RSV_STAGE2_TEETH
+  : (2 * Math.hypot(rsvPivotXY.x - rsvW1PosSolved.x, rsvPivotXY.y - rsvW1PosSolved.y)) / RSV_STAGE2_TEETH;
 // §94 tier C — THE MODULE'S OWN BOUNDS, jointly in (rsvr, reserveh): the
 // span solves the module, the hours solve w2's tooth count, and neither
 // spec key can see the other's consequence — a moved station silently
@@ -20506,7 +20691,7 @@ const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
   const out = [];
   const pivot = { x: P.dial.x - station.x, y: P.dial.y + station.y };
   const span = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
-  const m1 = m1Override !== null ? m1Override : (2 * (span - rsvD0)) / (rsvTeethP1 + rsvTeethW2);
+  const m1 = m1Override !== null ? m1Override : (2 * (span - rsvD0)) / RSV_STAGE2_TEETH;
   if (m1 <= 0) {
     out.push(`reserve train: the station sits inside stage one's centre distance `
       + `(barrel→pivot ${span.toFixed(2)} vs d0 ${rsvD0.toFixed(2)}) — the second mesh has no metal `
@@ -20525,7 +20710,15 @@ const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
     out.push(`reserve train: w2's tip circle reaches ${(stationDist - w2Tip).toFixed(2)} from the dial `
       + `centre, inside the ${boreNeed.toFixed(2)} the centre bore, its wall and the margin need `
       + `(tip r ${w2Tip.toFixed(2)} at station ${stationDist.toFixed(2)})`);
-  if (w2Tip > sdR - DIAL_WALL_HALF - CLEAR_MARGIN)
+  if (RSV_FIT) {
+    // §308 L4 option B — under a SECTOR well w2 is not under a disc it must
+    // stay inside: it stands under the dial in the corner, and what bounds it
+    // is the case shape (the counted metal's rim margin, the fit's own bound).
+    const room = formInset(pivot.x, pivot.y) - PLATE_RIM_MARGIN;
+    if (w2Tip > room + 1e-9)
+      out.push(`reserve train: w2's tip circle ${w2Tip.toFixed(2)} stands past the case shape's rim margin at its station — `
+        + `${room.toFixed(2)} of room (the shape's inset less ${PLATE_RIM_MARGIN})`);
+  } else if (w2Tip > sdR - DIAL_WALL_HALF - CLEAR_MARGIN)
     out.push(`reserve train: w2's tip circle ${w2Tip.toFixed(2)} reaches its own well's ring wall — `
       + `the well allows ${(sdR - DIAL_WALL_HALF - CLEAR_MARGIN).toFixed(2)} `
       + `(reserve well ${sdR.toFixed(2)} − wall − margin)`);
@@ -20538,7 +20731,7 @@ for (const m of rsvTrainWarnsAt(RESERVE_LOCAL, reserveWellR, rsvModule1)) consol
 // makePinion's default 0.4, inside the 0.55 rod.
 const reservePinion0 = G.makePinion({ name: 'reservePinion0', module: rsvModule0, teeth: rsvTeethP0, mates: [rsvTeethW1], thickness: 1.2, boreR: RSV_ARB_EXT_R, material: MATS.steel });
 const rsvWheel1 = G.makeGear({ name: 'rsvWheel1', module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R, spokes: 4, material: MATS.brass });
-const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1, teeth: rsvTeethP1, mates: [rsvTeethW2], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
+const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
 // §234 — the swing solve's z-bands were read off `gearFaceReach` before these
 // two existed; now they exist, the reach is re-read off the metal (a figure
 // computed two ways, rule 6's shape): the body's and the hub's half-heights
@@ -20561,14 +20754,14 @@ const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1
   // than shipped, exactly what rsvSwing's own warning above polices for the
   // bearing.
   const w1TipCut = cutTipR(G.makeGear, { module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R, spokes: 4, material: MATS.brass });
-  const p1TipCut = cutTipR(G.makePinion, { module: rsvModule1, teeth: rsvTeethP1, mates: [rsvTeethW2], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
+  const p1TipCut = cutTipR(G.makePinion, { module: rsvModule1, teeth: rsvTeethP1, mates: [RSV_P1_MATE], thickness: 1.2, boreR: RSV_W1_BORE_R, material: MATS.steel });
   for (const [name, got, want] of [['rsvWheel1 tip radius', rMax(w1Body), w1TipCut], ['reservePinion1 tip radius', rMax(p1Body), p1TipCut]])
     if (Math.abs(got - want) > 1e-5)
       console.warn(`reserve train: ${name} measures ${got.toFixed(5)} as cut, the swing solve's own cutTipR says ${want.toFixed(5)} — the swing solve's bound is not the metal's`);
 }
 // TODO 175 — w2 turns on the hand arbor: the arbor plus the one running fit.
 await breathe(167);
-const rsvWheel2 = G.makeGear({ name: 'rsvWheel2', module: rsvModule1, teeth: rsvTeethW2, mates: [rsvTeethP1], thickness: 1.0, boreR: RSV_HAND_ARBOR_R + PIVOT_BORE_CLEAR, spokes: 0, material: MATS.brass });
+const rsvWheel2 = G.makeGear({ name: 'rsvWheel2', module: rsvModule1, teeth: rsvTeethW2, mates: [RSV_W2_MATE], thickness: 1.0, boreR: RSV_HAND_ARBOR_R + PIVOT_BORE_CLEAR, spokes: 0, material: MATS.brass });
 // (TODO 48 — the `Math.PI / teeth` half-pitch idiom that used to sit here
 // phased each wheel against its OWN local +x, with no reference to the line
 // of centres to its neighbour; measured, both meshes sat 47–49% of a pitch
@@ -20650,6 +20843,46 @@ rsvHandArbor.name = 'rsvHandArbor'; // §94 tier C — the floors rows select it
 rsvHandArbor.rotation.x = Math.PI / 2;
 rsvHandArbor.position.set(rsvPivotXY.x, rsvPivotXY.y, ((Z_RSV - RSV_Z_STEP) + rsvHandZ) / 2);
 reserveTrain.add(rsvHandArbor);
+// §308 L4 option B — THE IDLERS (sector stations only; RSV_IDLERS is 0 on
+// every other build, so nothing here is cut and the unit's mesh order is the
+// shipped one — they are appended AFTER every shipped member for the same
+// reason). Each is a plain brass wheel at stage two's module and plane, on
+// the w1→pivot line at the centre distances its pitch radii give, turning on
+// a post the size of rsvPost1 that reaches the same metal rsvPost1 does (its
+// top at Z_RSV + 1), bored by the one running fit.
+const rsvIdlers = [];
+if (RSV_IDLERS > 0) {
+  const zI = Z_RSV - RSV_Z_STEP;
+  const dx = rsvPivotXY.x - rsvW1Pos.x, dy = rsvPivotXY.y - rsvW1Pos.y, dd = Math.hypot(dx, dy);
+  const v = { x: dx / dd, y: dy / dd };
+  for (let k = 1; k <= RSV_IDLERS; k++) {
+    const along = rsvModule1 * (rsvTeethP1 / 2 + RSV_IDLER_T / 2 + (k - 1) * RSV_IDLER_T);
+    const at = { x: rsvW1Pos.x + v.x * along, y: rsvW1Pos.y + v.y * along };
+    const mates = [k === 1 ? rsvTeethP1 : RSV_IDLER_T, k === RSV_IDLERS ? rsvTeethW2 : RSV_IDLER_T];
+    const wheel = G.makeGear({ name: `rsvIdler${k}`, module: rsvModule1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R, spokes: 0, material: MATS.brass });
+    const arbor = new THREE.Group();
+    arbor.position.set(at.x, at.y, zI);
+    arbor.add(wheel);
+    reserveTrain.add(arbor);
+    const postTop = Z_RSV + 1, postBot = zI - 0.6;
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(RSV_POST1_R, RSV_POST1_R, postTop - postBot, 10), MATS.steel);
+    post.name = `rsvIdlerPost${k}`;
+    post.rotation.x = Math.PI / 2;
+    post.position.set(at.x, at.y, (postTop + postBot) / 2);
+    reserveTrain.add(post);
+    rsvIdlers.push({ arbor, wheel, at, tip: cutTipR(G.makeGear, { module: rsvModule1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R, spokes: 0, material: MATS.brass }) });
+  }
+  // the line closes on w2: the last idler's centre distance to the pivot is its pitch sum
+  const last = rsvIdlers[rsvIdlers.length - 1].at;
+  const closeErr = Math.hypot(rsvPivotXY.x - last.x, rsvPivotXY.y - last.y) - rsvModule1 * (RSV_IDLER_T + rsvTeethW2) / 2;
+  if (Math.abs(closeErr) > 1e-9)
+    console.warn(`reserve train: the idler line misses w2 by ${closeErr.toExponential(3)} — the stage-two sum and the span disagree`);
+  for (const [k, q] of rsvIdlers.entries()) {
+    const room = formInset(q.at.x, q.at.y) - PLATE_RIM_MARGIN;
+    if (q.tip > room + 1e-9)
+      console.warn(`reserve train: idler ${k + 1}'s tip ${q.tip.toFixed(2)} stands past the case shape's rim margin (${room.toFixed(2)} of room)`);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Alarm (BUILT §24) — a second, independent crown sets a small alarm disc.
@@ -23466,7 +23699,7 @@ const solveGearChain = (label, chain, module, inputs = []) => {
         + `pitch-circle sum ${want.toFixed(3)} — the phase solve is meaningless if they do not mesh`);
     // §194 — this pair is a declared mesh by construction: the solve just
     // phased it, so the registry cannot describe a pair the solve does not.
-    const an = rotorNameFor(P.obj, P.teeth), bn = rotorNameFor(Q.obj, Q.teeth);
+    const an = rotorNameFor(P.obj, P.teeth, P.gauge), bn = rotorNameFor(Q.obj, Q.teeth, Q.gauge);
     if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
     else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.split(/[\s:]/)[0] });
   }
@@ -23504,6 +23737,7 @@ await (async () => {
   await breathe(178);
   solveGearChain('reserve stage two:', [
     { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },
+    ...rsvIdlers.map((q, k) => ({ obj: q.wheel, teeth: RSV_IDLER_T, name: `idler ${k + 1}` })),   // §308 L4 option B (none off the sector path)
     { obj: rsvWheel2, teeth: rsvTeethW2, name: 'w2' },
   ], rsvModule1, ['wind', 'train']);
   // TODO 124 — THE MOTION WORKS, the movement's 12:1, and the last chain with
@@ -36472,6 +36706,14 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
+// §308 landing 4 item 2 — THE SITE THE HOISTED CONSTANTS BELOW WERE MEASURED AT
+// (ALARM_LINK_BODY_LEN_U, ALARM_LINK_ROD_LEN_U, ALARM_LINK_BUSH_OD_U,
+// ALARM_SEL_GUIDE_HALF_T_U all quote "k 1, run 6, tab 87"): the beak's parity
+// ray, its run and the drive tab's azimuth, module-relative. The round build's
+// solve must still land on it (asserted after the solve), and a turned module
+// keeps it wherever it clears — see the site solve. Re-measuring any of those
+// constants at a re-solved site re-quotes this row with them.
+const ALARM_LINK_MEASURED_SITE = Object.freeze({ k: 1, run: 6, tabDeg: 87 });
 const ALARM_LINK_BODY_LEN_U = 9.9910;   // TODO 240: re-measured at the tangential beak's re-solved site (k 1, run 6, tab 87), rounded UP from the built 9.9909 — was 12.0141. §261 2c: re-measured at the folded beak's rod site (the §112 solve re-sited with the hangers' columns scored, and the fork guarded against the guide PLATES TODO 222 hung where the posts stood — at 11.1138 the fork was cut through guide 1), rounded UP so the stratum is derived for a bush no thinner than the one built — was 11.0211. TODO 222: re-measured after the B band's spend lengthened the selector rod (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0121 shorter — was 11.0331; rounded UP from the built 11.0210x. TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
@@ -37508,15 +37750,23 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     }
     return { c, who, jog };
   };
-  let best = null;
+  let best = null, measured = null;
   // Every stage-1 candidate is searched, not a top-N: the rim guard
   // confines each rod to the tab sectors whose block seats outboard, and
   // those sectors can belong to parity rays whose COLUMNS do not top the
   // stage-1 ranking — a top-40 shortlist starved the joint solve to −1.3
   // (measured, this landing).
+  // §308 landing 4 item 2 — THE TAB'S GRID TURNS WITH THE MODULE. The beak's
+  // rays (k) and its runs are in the cluster's frame, so they turn with
+  // ?alarmmod=; the tab's 3° grid was a WORLD literal, so a turned module
+  // could not even propose the site it had at identity (87° turned by 10° is
+  // 97°, off a grid of multiples of 3). The grid is module-relative now; at
+  // identity the offset is exactly 0 and the loop is the one it was.
+  const _tabGridOff = SPEC.alarmModAzDeg !== null ? ALARM_MOD_ROT / DEG2RAD : 0;
   for (const rc of rodCands) {
     await breathe(280);
-    for (let azw = 0; azw < 360; azw += 3) {
+    for (let azw0 = 0; azw0 < 360; azw0 += 3) {
+      const azw = SPEC.alarmModAzDeg !== null ? azw0 + _tabGridOff : azw0;
       const tx = Math.cos(azw * DEG2RAD) * ALARM_SEL_TAB_R, ty = Math.sin(azw * DEG2RAD) * ALARM_SEL_TAB_R; // tab mid-reach, the ring's own radius
       // TODO 213 — the chord this candidate's build would cut: tab to the tip
       // standing ALARM_LINK_ROD_STANDOFF beside the rod (the same function
@@ -37532,7 +37782,29 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       const c = Math.min(rc.c, cc, tb.c, hg.c);
       const boundBy = c === rc.c ? rc.who : (c === cc ? who : c === tb.c ? tb.who : hg.who);
       if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
+      if (rc.k === ALARM_LINK_MEASURED_SITE.k && rc.run === ALARM_LINK_MEASURED_SITE.run && azw0 === ALARM_LINK_MEASURED_SITE.tabDeg)
+        measured = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
     }
+  }
+  // §308 landing 4 item 2 — A TURNED MODULE KEEPS THE MEASURED SITE wherever
+  // it still clears. The chain this site feeds is cut at MEASURED constants
+  // (ALARM_LINK_BODY_LEN_U, ALARM_LINK_ROD_LEN_U, ALARM_LINK_BUSH_OD_U,
+  // ALARM_SEL_GUIDE_HALF_T_U), each boot-guarded against the build at
+  // ALARM_LINK_MEASURED_SITE, and the arming spring's force window was
+  // proportioned on the same geometry. The site turned with the module is that
+  // geometry exactly — the ray, the run and the tab are all module-relative —
+  // so every constant reproduces; any other site is a site nobody measured, and
+  // the max-min score walks to one as soon as an UNRELATED tenant's clearance
+  // moves past the self-term that binds the design (measured at alarmmod=42:
+  // the measured site scores the designed 0.4224, a neighbouring tab 0.4337,
+  // and the chord drifts to 9.8156 against the hoisted 9.991). So the measured
+  // site is taken when it clears CLEAR_MARGIN; when it does not, the turn has
+  // a real conflict, and the warning names it before the drift asserts fire.
+  if (SPEC.alarmModAzDeg !== null) {
+    if (measured && measured.c >= CLEAR_MARGIN) best = measured;
+    else console.warn(`§308: the turned module refuses the link's measured site (k ${ALARM_LINK_MEASURED_SITE.k}, run ${ALARM_LINK_MEASURED_SITE.run}, `
+      + `tab ${ALARM_LINK_MEASURED_SITE.tabDeg}° + the module's turn) — it clears ${measured ? measured.c.toFixed(3) : 'nothing (guarded out)'}, bound by `
+      + `${measured ? measured.who : '-'}; every other site drifts the constants measured there`);
   }
   await breathe(281);
   if (!best || best.c < CLEAR_MARGIN)
@@ -37545,6 +37817,10 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   return { xy: { x: best.x, y: best.y }, xyC: { x: best.xC, y: best.yC }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC,
     barLine: { P: best.Pw, N: best.Nw, pivReach: best.pivReach }, run: best.run, noseAz: best.noseAz, k: best.k, who: best.who, clear: best.c };
 })();
+if (SPEC.alarmModAzDeg === null && (ALARM_LINK_NOSE_K !== ALARM_LINK_MEASURED_SITE.k || ALARM_LINK_RUN !== ALARM_LINK_MEASURED_SITE.run
+  || ALARM_LINK_AZ_DEG !== ALARM_LINK_MEASURED_SITE.tabDeg))
+  console.warn(`§308: the link's site solve landed at k ${ALARM_LINK_NOSE_K}, run ${ALARM_LINK_RUN}, tab ${ALARM_LINK_AZ_DEG}° — `
+    + `not ALARM_LINK_MEASURED_SITE, where the hoisted link constants were measured; re-measure them there and re-quote the row`);
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * ALARM_SEL_TAB_R, y: Math.sin(_linkInnerAz) * ALARM_SEL_TAB_R }; // inner end r = the tab's mid-reach
 const ALARM_LINK_ROD_R = Math.hypot(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y);
@@ -46993,6 +47269,11 @@ const CASE_SECTORS = (() => {
         const r = Math.hypot(pt.x, pt.y);
         if (r > CASE_R_OUT) return;
         if (r < wallAt(pt.z) && !inClampHead(pt)) return;
+        // §308 L4 option B — under a FORM the case is cut to the plate's shape
+        // grown CASE_CLEAR (form-case.js), so a point in the round annulus is
+        // in case metal only if it is also past THAT bore. A corner station
+        // stands in the round annulus and well inside the rect.
+        if (FORM && FORM.inset(pt.x, pt.y) > -CASE_CLEAR) return;
         if (exempt(pt)) return;
         hits.push({ name: o.name || o.parent?.name || '(unnamed)', r, z: pt.z, az: Math.atan2(pt.y, pt.x) });
       };
@@ -47028,7 +47309,7 @@ const CASE_SECTORS = (() => {
     if (hits.length) {
       const names = [...new Set(hits.map((h) => h.name))];
       console.warn(`§186: the analytic case sectors' annulus is OCCUPIED at the build pose — ${hits.length} `
-        + `sample(s) from [${names.join(', ')}] inside r ${CASE_R_IN.toFixed(2)}..${CASE_R_OUT.toFixed(2)}, `
+        + `sample(s) from [${names.join(', ')}] inside r ${CASE_R_IN.toFixed(2)}..${CASE_R_OUT.toFixed(2)}${FORM ? ` and past the ${FORM.kind} case's bore` : ''}, `
         + `z ${zLo.toFixed(2)}..${zHi.toFixed(2)}; the case would be built through that metal`);
     }
   }
@@ -56785,9 +57066,18 @@ function tick(t) {
   // straight down — at tension 0.5, which is the two sites agreeing.
   reserveShown = tension;
   const rsvRatio = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);
-  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 + (180 - RESERVE_SWEEP_DEG / 2) * rsvRatio) * DEG2RAD;
+  // §308 L4 option A — the set generalised: the hand's empty end is half a
+  // sweep off the fan's MIDPOINT (RESERVE_FAN_MID_DEG, math degrees; the hand's
+  // rotation 0 points the well's 12, math 90°), so the set is 90° − mid −
+  // sweep/2 — 180° − sweep/2 at the designed mid of −90°, kept literal there.
+  const rsvSet = SPEC.rsvAzDeg === null ? (180 - RESERVE_SWEEP_DEG / 2) : (90 - RESERVE_FAN_MID_DEG - RESERVE_SWEEP_DEG / 2);
+  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 + rsvSet * rsvRatio) * DEG2RAD;
   rsvArbor1.rotation.z = -rsvArbor0.rotation.z * (rsvTeethP0 / rsvTeethW1);
   rsvArbor2.rotation.z = -rsvArbor1.rotation.z * (rsvTeethP1 / rsvTeethW2);
+  // §308 L4 option B — the idlers carry the mesh between (an even number, so
+  // w2's law above is theirs too: each reverses, the pair restores).
+  for (let k = 0; k < rsvIdlers.length; k++)
+    rsvIdlers[k].arbor.rotation.z = (k % 2 === 0 ? -1 : 1) * rsvArbor1.rotation.z * (rsvTeethP1 / RSV_IDLER_T);
   reserveHand.rotation.z = -rsvArbor2.rotation.z;
 
   // Alarm setting (BUILT §24): the pointer reads the continuous disc angle on
@@ -58827,11 +59117,19 @@ if (JMP_SITE.best && !(JMP_SITE.bSlack >= JMP_SITE.best.clr - 1e-9))
 {
   scene.updateMatrixWorld(true);
   const slab = new THREE.Box3().setFromObject(dial);
-  const wellsEdge = Math.max(RESERVE_LOCAL.y + reserveWellR, -SECONDS_LOCAL.y + secondsWellR) + CLEAR_MARGIN;
+  // (§308 L4 option A — a well cut OUTSIDE the chapter stands past the round
+  // rim by construction, held to the form outline at FORM instead; only the
+  // chapter's wells bound this rim.)
+  const wellsEdge = Math.max(reserveWellLaw === 'chapter' ? reserveStationR + reserveWellR : -Infinity,
+    -SECONDS_LOCAL.y + secondsWellR) + CLEAR_MARGIN;
   const _rv = new THREE.Vector3();
   let nearest = Infinity, nearestUnit = 'nothing';
   for (const entry of labelEntries) {
     if (entry.name === 'Dial') continue;
+    // §308 L4 option B — the reserve HAND of a well outside the chapter rides
+    // sunk in that well, in the dial's slab by design and past the round rim
+    // by construction; its well is held to the outline at FORM.
+    if (entry.name === 'Power reserve' && reserveWellLaw !== 'chapter') continue;
     await breathe(351);
     entry.obj.traverse((o) => {
       if (!o.isMesh || !o.geometry.getAttribute) return;
@@ -60085,6 +60383,24 @@ window.__clock = {
   // form rectangle, so tools/form-layout.mjs can run layout.js's own solvers
   // off the real numbers in Node and search the arrangement.
   layoutInputs: LAYOUT_INPUTS, keylessInputs: KEYLESS_INPUTS, formPlate, caseShape: SPEC.caseShape,
+  // §308 L4 option B — a SHADOW of the corner path for a candidate station
+  // (rsvr, rsvaz in dial-clock degrees): the same solveKeyless and the same
+  // fit-ranked train the build would run there, warnings collected.
+  reserveSectorAt: (rsvr, azDeg) => {
+    const warns = [];
+    const k = solveKeyless({ ...KEYLESS_INPUTS, rsvR: rsvr, rsvAzRad: azDeg * DEG2RAD, warn: (m) => warns.push(m) });
+    const s = k.reserveSector;
+    const pivot = { x: P.dial.x - k.RESERVE_LOCAL.x, y: P.dial.y + k.RESERVE_LOCAL.y };
+    const tr = s ? rsvFitTrainAt(pivot, true) : null;
+    return { law: k.reserveWellLaw, r: s ? s.r : k.reserveWellR, halfDeg: s ? s.halfRad / DEG2RAD : null, hubR: s?.hubR, binds: s?.binds, handInset: s?.handInset,
+      train: tr && { p1: tr.p1, w2: tr.w2, idlers: tr.idlers, idlerTeeth: tr.idlerTeeth, maxTip: tr.maxTip, short: tr.short, m1: tr.m1 }, warns };
+  },
+  // §308 L4 option B — the reserve's fan well and the train the corner chose (null off the sector path)
+  reserveSector: reserveSector ? { r: reserveSector.r, halfDeg: reserveSector.halfRad / DEG2RAD, hubR: reserveSector.hubR,
+    midDeg: reserveSector.midRad / DEG2RAD, binds: reserveSector.binds, rRail: reserveSector.rRail, terms: reserveSector.extent.terms,
+    train: { p0: rsvTeethP0, w1: rsvTeethW1, p1: rsvTeethP1, w2: rsvTeethW2, idlers: RSV_IDLERS, idlerTeeth: RSV_IDLER_T,
+      module1: rsvModule1, w2Tip: (rsvModule1 * (rsvTeethW2 + 2)) / 2, maxTip: RSV_FIT_TRAIN?.maxTip, short: RSV_FIT_TRAIN?.short },
+    station: { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveStationR } } : null,
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
   dialSpec: DIAL_SPEC,
   regions: FORM_REGIONS,   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
