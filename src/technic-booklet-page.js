@@ -12,6 +12,7 @@ import { BOOKLET_FLAGS } from './technic-booklet-flags.js';
 import * as K from './technic-booklet.js';
 import { makeGeoOf, makeStepRenderer } from './technic-booklet-view.js';
 import { makePartPictures } from './technic-bom-view.js';
+import { copyText } from './technic-clipboard.js';
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 const svgNS = 'http://www.w3.org/2000/svg';
@@ -251,8 +252,15 @@ export async function startBooklet({ params, libUrl }) {
   const wanted = document.getElementById('wanted');
   if (wanted) {
     try {
-      wanted.href = URL.createObjectURL(new Blob([B.wantedListXml({ cell, kind: built.kind, title: built.title, bom }, gen)], { type: 'application/xml' }));
-      wanted.download = `${gen}-${cell}-bricklink-wanted.xml`; wanted.title = `Upload on BrickLink: Wanted > Upload > BrickLink XML. Condition: any. ${B.WANTED_NOTE}`; wanted.hidden = false;
+      const xml = B.wantedListXml({ cell, kind: built.kind, title: built.title, bom }, gen);
+      wanted.href = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+      wanted.download = `${gen}-${cell}-bricklink-wanted.xml`; wanted.title = `BrickLink: Wanted > Upload > BrickLink XML takes this text pasted into its box. Condition: any. ${B.WANTED_NOTE}`; wanted.hidden = false;
+      // the upload page wants the XML pasted, so the same text also goes to the clipboard
+      const cp = document.getElementById('wanted-copy');
+      if (cp) {
+        cp.hidden = false;
+        cp.onclick = async () => say((await copyText(xml)) ? 'wanted list copied: paste it into BrickLink, Wanted > Upload > BrickLink XML' : 'could not copy: open the .xml in a text editor and copy it from there');
+      }
     } catch (e) { state.errors.push(`wanted list: ${e.message}`); }
   }
   const model = K.bookletOf({ lib, gen, cell, mode: plan.mode, built, plan, bom, flagsTable: BOOKLET_FLAGS, paper });

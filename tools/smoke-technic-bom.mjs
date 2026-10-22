@@ -108,7 +108,7 @@ const ready = (page, cell, gen) => page.waitForFunction(([c, g]) => document.que
 for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone', width: 390, height: 844, mobile: true }]) {
   console.log(`\n== ${vp.name} ${vp.width}x${vp.height}`);
   const errors = [];
-  const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.mobile, hasTouch: !!vp.mobile, deviceScaleFactor: 1, acceptDownloads: true });
+  const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.mobile, hasTouch: !!vp.mobile, deviceScaleFactor: 1, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await open(ctx, '', errors);
   const stops = await page.evaluate(() => window.__technic.tour.stops.map((s) => ({ id: s.id, cell: s.cell })));
   console.log(`  ${stops.length} stops: ${stops.map((s) => s.id).join(' ')}`);
@@ -167,6 +167,15 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
         ok(dl.suggestedFilename() === `technic_2026-${s.cell}-bricklink-wanted.xml` && xml === expect, `${s.cell}: the downloaded wanted list (${cond}) is not wantedListXml's (${dl.suggestedFilename()}, ${xml.length} vs ${expect.length} bytes)`);
         console.log(`  ${s.cell}: wanted list (${cond}) ${B.parseWantedXml(xml).length} lots, identical to wantedListXml`);
       }
+      // the copy button puts the same text on the clipboard (BrickLink's upload page takes it pasted), at the chosen condition
+      await page.evaluate(() => navigator.clipboard.writeText('(empty)'));
+      await page.click(`details.bom[data-cell="${s.cell}"] button[data-wanted-copy]`);
+      await page.waitForFunction((c) => /copied/.test(document.querySelector(`[data-wanted-copied="${c}"]`)?.textContent ?? ''), s.cell, { timeout: 5000 }).catch(() => {});
+      const clip = await page.evaluate(() => navigator.clipboard.readText());
+      const expectN = B.wantedListXml(w, 'technic_2026', { condition: 'N' });
+      ok(clip === expectN, `${s.cell}: the copied wanted list is not wantedListXml's at the chosen condition (${clip.length} vs ${expectN.length} chars)`);
+      ok(clip !== B.wantedListXml(w, 'technic_2026', { condition: 'X' }), `${s.cell}: (control) the copy ignores the condition picker`);
+      console.log(`  ${s.cell}: copy for BrickLink put ${B.parseWantedXml(clip).length} lots on the clipboard, identical to wantedListXml (N)`);
       ok(/not checked against stock or prices/.test(text) && text.includes(B.WANTED_NOTE.slice(0, 40)), `${s.cell}: the wanted list's note is missing`);
     }
     if (SHOTS && ['fusee', 'keyless', 'alarm'].includes(s.cell)) {

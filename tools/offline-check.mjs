@@ -387,7 +387,9 @@ try {
   // ones (inspect.js's precedent, above), so the module is versioned and
   // precached with the rest of the app and the form build opens offline too.
   // One module for the app, so it adds one.
-  check('release: precache complete', counts === 97, `${counts}/97`);
+  // §306 follow-up — 98: src/technic-clipboard.js, the "copy for BrickLink" button's copy (BrickLink's upload page
+  // takes the wanted list pasted), imported by technic.html and booklet's page module. One module, so it adds one.
+  check('release: precache complete', counts === 98, `${counts}/98`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
