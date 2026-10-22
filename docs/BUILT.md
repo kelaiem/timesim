@@ -41414,6 +41414,14 @@ downloads are byte for byte `wantedListXml` at condition any and after choosing 
 here); the first owner upload is the format's real test, and a tag BrickLink rejects
 is a one-line change in `wantedListXml`.
 
+**Follow-up: a copy button.** The owner's first try found BrickLink's Wanted > Upload page does not accept the
+downloaded file; it takes the XML pasted into its box. So beside each download (`technic.html`'s parts list and
+the booklet's header) a "copy for BrickLink" button puts the same `wantedListXml` text, at the condition chosen,
+on the clipboard (`src/technic-clipboard.js`: the Clipboard API, then a selected textarea where the page is not
+allowed it), and says where to paste it. `smoke-technic-bom.mjs` reads the clipboard back and holds it to
+`wantedListXml` at the picked condition, with the condition as its control. `offline-check.mjs`'s precache count
+is 98 (the one new module). The pasted upload itself is still unchecked from here.
+
 ## §307 — A form movement, landing 1: the rectangle law, the layout optimiser and `?case=rect` (a prototype)
 
 Out of an owner request — "reshape the movement inside a different case shape
