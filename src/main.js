@@ -101,6 +101,13 @@ const BUILD_T0 = performance.now();
 
 const DEG2RAD = Math.PI / 180;
 
+// The matrix `o.localToWorld(v)` applies, refreshed exactly as its call does
+// (three.js: `updateWorldMatrix(true, false)`, then `v.applyMatrix4(matrixWorld)`).
+// A per-vertex localToWorld re-walks every ancestor for every vertex; a walk
+// over one mesh's vertices that changes no transform reads one matrix, so it is
+// read once. The same refresh, the same multiply, the same float result.
+const worldMatrixOf = (o) => { o.updateWorldMatrix(true, false); return o.matrixWorld; };
+
 // TODO 115 / §126 — ONE SOURCE for the stem⇄bank gearing, and it carries the
 // movement's sense. `STEM_RAD_PER_TURN` is what the knob's derived angle
 // advances per turn banked; the INPUT divides by it to turn crown radians into
@@ -16547,7 +16554,8 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) continue;
       const pos = o.geometry.attributes.position;
       const b = new THREE.Box3();
-      for (let i = 0; i < pos.count; i++) b.expandByPoint(o.localToWorld(kv.fromBufferAttribute(pos, i)));
+      const _mw = pos.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+      for (let i = 0; i < pos.count; i++) b.expandByPoint(kv.fromBufferAttribute(pos, i).applyMatrix4(_mw));
       // TODO 184 step 3: the pillar now reaches DOWN through the base plate on
       // its tenon, so its span is [PLATE_BACK_FACE, TQ_BOT_Z] (TODO 200: the
       // presented face, the rivet's end). Reading the old
@@ -27194,8 +27202,9 @@ const PLATE_RIM = (() => {
   backPlate.traverse((o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
     const p = o.geometry.attributes.position;
+    const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let i = 0; i < p.count; i++) {
-      o.localToWorld(v.fromBufferAttribute(p, i));
+      v.fromBufferAttribute(p, i).applyMatrix4(_mw);
       const r = Math.hypot(v.x, v.y);
       if (r > reach) reach = r;
       if (FORM) {
@@ -27735,12 +27744,13 @@ const GONG_BAND_FLOOR = await (async () => {
     if (o.name === 'backPlate') return;       // what the block stands on
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : pos.count;
+    const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t + 2 < n; t += 3) {
       let hit = false, zMax = -Infinity;
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
         const v = e === 0 ? a : e === 1 ? b : c;
-        o.localToWorld(v.fromBufferAttribute(pos, i));
+        v.fromBufferAttribute(pos, i).applyMatrix4(_mw);
         zMax = Math.max(zMax, v.z);
         if (inSwath(v)) hit = true;
       }
@@ -27786,11 +27796,12 @@ const GONG_FOOT_OBSTACLES = await (async () => {
     if (o.name === 'backPlate') return;             // the rim is what it stands ON
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : pos.count;
+    const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t + 2 < n; t += 3) {
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
-        o.localToWorld(v.fromBufferAttribute(pos, i));
+        v.fromBufferAttribute(pos, i).applyMatrix4(_mw);
         x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x);
         y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
         z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z);
@@ -29893,11 +29904,12 @@ const rotorInertiaZ = (group, pivot) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : pos.count;
+    const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t + 2 < n; t += 3) {
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
         const v = e === 0 ? a : e === 1 ? b : c;
-        o.localToWorld(v.fromBufferAttribute(pos, i)).sub(pivot);
+        v.fromBufferAttribute(pos, i).applyMatrix4(_mw).sub(pivot);
       }
       const v6 = a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x);
       V += v6 / 6;
@@ -33684,17 +33696,19 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
         sx = rot.g.matrixWorld.elements[12]; sy = rot.g.matrixWorld.elements[13];
       }
       let lo = Infinity, hi = -Infinity;
+      const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
       for (let k = 0; k < p.count; k += 3) {
         v.set(p.getX(k), p.getY(k), p.getZ(k));
-        const w = o.localToWorld(v.clone());
+        const w = v.clone().applyMatrix4(_mw);
         const d = Math.hypot(w.x - sx, w.y - sy);
         lo = Math.min(lo, d); hi = Math.max(hi, d);
       }
       ring = { st: { p: { x: sx, y: sy }, of: rot.of }, minR: lo, maxR: hi };
     }
+    const _mw2 = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted, as above
     for (let k = 0; k < p.count; k++) {
       v.set(p.getX(k), p.getY(k), p.getZ(k));
-      const w = o.localToWorld(v.clone());
+      const w = v.clone().applyMatrix4(_mw2);
       zLo = Math.min(zLo, w.z); zHi = Math.max(zHi, w.z);
       if (ring) continue;                       // rings carry their own reach
       if (Math.hypot(w.x - alarmBarrelPos.x, w.y - alarmBarrelPos.y) > ARREST_CD + 12) continue;
@@ -37122,7 +37136,8 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       // of the rim (the tail, the blade) stays scored.
       {
         const pp = o.geometry.attributes.position; let rMin = Infinity;
-        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); o.localToWorld(_tmpV3a); rMin = Math.min(rMin, Math.hypot(_tmpV3a.x, _tmpV3a.y)); }
+        const _mw = pp.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); _tmpV3a.applyMatrix4(_mw); rMin = Math.min(rMin, Math.hypot(_tmpV3a.x, _tmpV3a.y)); }
         if (rMin > plateR + 1e-6) return;
       }
       let axis = null;
@@ -37160,7 +37175,8 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
         // answers, decided by box inflation.
         const ax = axis.x, ay = axis.y, pp = o.geometry.attributes.position;
         let r = 0;
-        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); o.localToWorld(_tmpV3a); r = Math.max(r, Math.hypot(_tmpV3a.x - ax, _tmpV3a.y - ay)); }
+        const _mw = pp.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); _tmpV3a.applyMatrix4(_mw); r = Math.max(r, Math.hypot(_tmpV3a.x - ax, _tmpV3a.y - ay)); }
         obs.push({ disc: { x: axis.x, y: axis.y, r }, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(disc r ${r.toFixed(1)} at ${axis.x.toFixed(1)},${axis.y.toFixed(1)} z ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)})` });
       } else {
         b._who = `${e.name}/${o.name || o.geometry.type}`;
@@ -46996,12 +47012,13 @@ const CASE_SECTORS = (() => {
         if (exempt(pt)) return;
         hits.push({ name: o.name || o.parent?.name || '(unnamed)', r, z: pt.z, az: Math.atan2(pt.y, pt.x) });
       };
+      const _mw = n > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
       for (let t = 0; t < n; t += 3) {
         for (let e = 0; e < 3; e++) {
           const i0 = idx ? idx.getX(t + e) : t + e;
           const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-          a.fromBufferAttribute(p, i0); o.localToWorld(a);
-          b.fromBufferAttribute(p, i1); o.localToWorld(b);
+          a.fromBufferAttribute(p, i0); a.applyMatrix4(_mw);
+          b.fromBufferAttribute(p, i1); b.applyMatrix4(_mw);
           take(a);
           take(q.copy(a).lerp(b, 0.5));
           // Exact crossings of the two wall radii: |a + t(b-a)|_xy = rw.
@@ -47374,16 +47391,17 @@ const BACK_ENVELOPE = await (async () => {
         if (unit === R.unit && r >= R.r0 && r <= R.r1 && pt.z > regBuild[i]) regBuild[i] = pt.z;
       }
     };
+    const _mw = o.matrixWorld;   // refreshed after each seam below: localToWorld would re-walk the ancestors per vertex
     for (let t = 0; t < n; t += 3) {
       // §266 — one heavy mesh is 300–400 ms of this walk on its own (~15.5 µs
       // a triangle, 145k of them), so a seam every 1000 triangles (~16 ms):
       // the clock is read 145 times, not once a triangle.
-      if (t % 3000 === 0) await breathe(305);
+      if (t % 3000 === 0) { await breathe(305); o.updateWorldMatrix(true, false); }
       for (let e = 0; e < 3; e++) {
         const i0 = idx ? idx.getX(t + e) : t + e;
         const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-        a.fromBufferAttribute(p, i0); o.localToWorld(a);
-        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        a.fromBufferAttribute(p, i0); a.applyMatrix4(_mw);
+        b.fromBufferAttribute(p, i1); b.applyMatrix4(_mw);
         take(a);
         const dx = b.x - a.x, dy = b.y - a.y;
         const A2 = dx * dx + dy * dy;
@@ -47429,7 +47447,8 @@ const BACK_ENVELOPE = await (async () => {
     if (tqe) tqe.obj.traverse((o) => {
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
       const p = o.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > tqTop) tqTop = v.z; }
+      const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); if (v.z > tqTop) tqTop = v.z; }
     });
     await breathe(308);
     const zOf = (name) => {
@@ -47438,7 +47457,8 @@ const BACK_ENVELOPE = await (async () => {
       if (e) e.obj.traverse((o) => {
         if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
         const p = o.geometry.attributes.position;
-        for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > z) z = v.z; }
+        const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); if (v.z > z) z = v.z; }
       });
       return z;
     };
@@ -47717,7 +47737,8 @@ const CASE_DIMS = (() => {
     if (tqe) tqe.obj.traverse((o) => {
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
       const p = o.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); tqReach = Math.max(tqReach, Math.hypot(v.x, v.y)); }
+      const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); tqReach = Math.max(tqReach, Math.hypot(v.x, v.y)); }
     });
     if (!FORM && RA < tqReach + CLEAR_MARGIN)
       console.warn(`§187: the aperture ${RA.toFixed(3)} does not clear the three-quarter plate's measured `
@@ -47735,7 +47756,8 @@ const CASE_DIMS = (() => {
       tqe.obj.traverse((o) => {
         if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
         const p = o.geometry.attributes.position;
-        for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); out = Math.max(out, -FORM_SHAPE.inset(v.x, v.y)); }
+        const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); out = Math.max(out, -FORM_SHAPE.inset(v.x, v.y)); }
       });
       formApertureGrow = out + CLEAR_MARGIN;
       formGlassGrow = formApertureGrow + CASE_CRYSTAL_T;
@@ -48273,12 +48295,13 @@ registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
     const take = FORM
       ? (x, y, z) => { if (z > zPath) { const d = -FORM_SHAPE.inset(x, y); if (d < minR) { minR = d; minName = o.name; } } }
       : (x, y, z) => { if (z > zPath) { const r = Math.hypot(x, y); if (r < minR) { minR = r; minName = o.name; } } };
+    const _mw = n > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t < n; t += 3) {
       for (let e = 0; e < 3; e++) {
         const i0 = idx ? idx.getX(t + e) : t + e;
         const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-        a.fromBufferAttribute(p, i0); o.localToWorld(a);
-        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        a.fromBufferAttribute(p, i0); a.applyMatrix4(_mw);
+        b.fromBufferAttribute(p, i1); b.applyMatrix4(_mw);
         take(a.x, a.y, a.z);
         // min-r along an edge is convex: the interior stationary point and
         // the z-boundary crossing are the two samples vertices miss
@@ -50247,8 +50270,9 @@ const GONG_CASE_PATH = await (async () => {
       const rho = STOCK[key].rho;
       const pos = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pos.count;
       let V = 0, vx = 0, vy = 0, vz = 0, A = 0, Rb = 0; const s = [0, 0, 0, 0, 0, 0], Q = [0, 0, 0, 0, 0, 0, 0, 0, 0]; nrm.set(0, 0, 0);
+      const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
       for (let t = 0; t + 2 < n; t += 3) {
-        for (let e = 0; e < 3; e++) { const i = idx ? idx.getX(t + e) : t + e; o.localToWorld((e === 0 ? a : e === 1 ? b : c).fromBufferAttribute(pos, i)); }
+        for (let e = 0; e < 3; e++) { const i = idx ? idx.getX(t + e) : t + e; (e === 0 ? a : e === 1 ? b : c).fromBufferAttribute(pos, i).applyMatrix4(_mw); }
         e1.subVectors(b, a); e2.subVectors(c, a); e1.cross(e2); A += e1.length(); nrm.add(e1);   // e1 = 2·(area·normal)
         cen.copy(a).add(b).add(c).multiplyScalar(1 / 3);                        // ∮ x_i n_j dA over a flat triangle is exactly centroid ⊗ area-vector
         Q[0] += cen.x * e1.x; Q[1] += cen.x * e1.y; Q[2] += cen.x * e1.z; Q[3] += cen.y * e1.x; Q[4] += cen.y * e1.y; Q[5] += cen.y * e1.z; Q[6] += cen.z * e1.x; Q[7] += cen.z * e1.y; Q[8] += cen.z * e1.z;
