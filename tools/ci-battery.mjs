@@ -264,29 +264,56 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // same rough seed and the same correction on its first sliced `--report`; what
 // the pair does NOT let anyone do is quietly keep a projection while believing
 // it was measured.
+//
+// EVERY ROW BELOW IS NOW ONE HOSTED CI RUN'S, and the paragraph above that
+// argued against a CI-derived column was overtaken by how far the dev-container
+// column had drifted. The source is the push battery of run 39720040054
+// (`main` at abcceb8, ubuntu-latest / SwiftShader, 3 shards, Linux/X64): each
+// task's wall from its `[shard i] task… N s` log line — the same wall
+// `--report` writes as `ms` / `sliceMs`. A whole-check row is that check's
+// wall in seconds rounded (floor 1); a split check's whole row is the sum of
+// its slices, which matters only to `--no-split` and to an axis added later
+// (its projection divides the whole row by pose count). The comments on
+// individual rows below say how the EARLIER values were reached and are kept
+// as history; none of their numbers is the row's any more.
+//
+// Why: the old column had drifted 3.8x (`expectedContacts` 404 against 1538
+// measured — and 16 of its 17 slices were projections), 3.3x (`clearances`,
+// 14 of 17 projected) and 5.6x (`inspection` 166 against 929), while
+// `undeclaredClearance` ran at 0.47x its prototype-seeded 320. LPT balanced
+// that column to ~569 s a shard and the shards actually ended at 1086 / 1762 /
+// 1316 s of check time, 27.8% over the ideal 1352 s. Against the same run the
+// refreshed column partitions to within 0.1 s of ideal, which is in-sample and
+// proves nothing; the claim is the OUT-OF-SAMPLE one. Run 39712407468 (the
+// push before, main at 4bab2c4, on a runner 1.44x slower overall) gives task
+// walls this column never saw: the old column's partition of them lands
+// 1549 / 2461 / 1843 s (max +26.2% over ideal), this column's 1923 / 1979 /
+// 1951 s (max +1.4%). A runner's speed moves every row together; what moved
+// the partition was the checks' RELATIVE drift, which one CI run fixes for the
+// next. Refresh from a hosted push's log or `--report`, never a dev container.
 const COSTS = {
-  'support': 7,
+  'support': 9,
   'graph': 1,
   // §161 — 12 fixtures over throwaway objects, no scene and no poses. 1 is
   // this column's floor for sub-second checks (see `slenderness` below);
   // `--report` refreshes it like every row.
   'aestheticsMerge': 1,
-  'axisEntry': 2,
+  'axisEntry': 6,
   // §111 raised this from 17 (the governor row's 449 phases); §113's stubby
   // pallets halved the row's mesh work — measured 21 s.
-  'penetration': 18,
-  'alarmHandoffs': 1,
+  'penetration': 44,
+  'alarmHandoffs': 3,
   'windArrestHandoff': 1,
-  'stemClutchHandoff': 1,
+  'stemClutchHandoff': 2,
   'strikeHandoff': 1,      // §198 — three posed phases, two rows
-  'maintDetentHandoff': 1, // TODO 210 — three posed phases, one row
-  'escapementHandoff': 2,  // TODO 226 step 3b — fourteen posed phases, one row
-  'stockFloor': 6,
+  'maintDetentHandoff': 2, // TODO 210 — three posed phases, one row
+  'escapementHandoff': 1,  // TODO 226 step 3b — fourteen posed phases, one row
+  'stockFloor': 9,
   // §233 — one swept registry (shared with stockFloor's cost, but measured
   // separately since it is its own call), then a per-mesh axis descent over
   // 272 revolves. No pose sweep and no BVH. Measured 6.6 s on the first full
   // local run, which is the number here; refresh it like every row.
-  'turning': 7,
+  'turning': 8,
   // §70/§261 — one reference, 25 press poses twice (the control re-reads
   // the stroke) and 2,880 rays round the wheel's own frame. Measured on the
   // dev container; refresh with --report like every row.
@@ -300,8 +327,8 @@ const COSTS = {
   // digest poses, memoised on (geometry, world matrix) because most of the
   // population is fixed metal; measured 22.7 s on the dev container (203 s
   // before the memo).
-  'plateSeats': 23,
-  'jumperMovers': 15,
+  'plateSeats': 18,
+  'jumperMovers': 10,
   // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
   // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no
   // pose sweep. TODO 78's bearing walk adds a handful of Box3.setFromObject
@@ -310,14 +337,14 @@ const COSTS = {
   'slenderness': 1,
   // TODO 100 — no scene sweep and no poses: it reads each geometry's authored
   // shape once. Measured alongside meshIntegrity, which walks the same roster.
-  'outlines': 2,
-  'meshIntegrity': 10,
+  'outlines': 1,
+  'meshIntegrity': 1,
   // 3 → 11 with §182's declaration audit: 140 rows measured over the same 70
   // poses the tiers walk. The audit stops refining a row once its verdict
   // cannot change, which is what keeps this a +2.6 s column and not a +33 s
   // one (uncapped it measured 41.4).
-  'intraUnit': 11,
-  'assembly': 3,
+  'intraUnit': 18,
+  'assembly': 4,
   // §194 — both walk the 23-row registry. meshPhase reads two silhouette
   // gauges per row over the 43-pose net (2048 bins each, outline edges only);
   // transmits sweeps each row's declared inputs with span refinement, so its
@@ -325,9 +352,9 @@ const COSTS = {
   // 10.4 s and 5.1 s on the container that ran the landing battery — the first
   // guesses here were 34 and 22, which is the kind of stale number this column
   // exists to be corrected out of (it costs wall clock, never a verdict).
-  'meshPhase': 10,
+  'meshPhase': 14,
   'transmits': 5,
-  'meshCoverage': 3,   // §135 item 4 — 85 rotors pairwise × the 43-pose net, bounding boxes only; a guess until measured (the column's rule: corrected from a run, never trusted)
+  'meshCoverage': 1,   // §135 item 4 — 85 rotors pairwise × the 43-pose net, bounding boxes only; a guess until measured (the column's rule: corrected from a run, never trusted)
   // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
   // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair
   // loop is quadratic in exactly that. Measured, unscaled, on the container
@@ -345,14 +372,14 @@ const COSTS = {
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
-  'expectedContacts': 404,   // TODO 236: 389 × 1.0392 (see the note at 'inspection')
+  'expectedContacts': 1538,   // the sum of its slices below
   'oscillator': 1,
   // §104 — the cost moved 1 → 14: the alarm half's endpoint rows STEP the
   // shipped tick law (120 ticks at two winds), which is the row's whole
   // point; a stale 1 here costs wall clock, never a verdict.
-  'equalisation': 16,
+  'equalisation': 5,
   'chainLength': 1,
-  'restoring': 3,
+  'restoring': 26,
   'transfers': 1,
   'lubrication': 1,
   // §122 — the verdict tier's two fixes moved this column's three largest
@@ -389,8 +416,8 @@ const COSTS = {
   //    ×1.0411, undeclaredClearance ×1.0105, expectedContacts ×1.0392.
   // Every other row is untouched: the checks that walk AXES unsliced grew too,
   // but no pre-236 run on this box measured by how much.
-  'inspection': 166,   // TODO 236: 160 × 1.0398
-  'clearances': 284,   // TODO 236: 273 × 1.0411
+  'inspection': 929,   // the sum of its slices below
+  'clearances': 947,   // the sum of its slices below
   // TODO 164 — PROTOTYPE-MEASURED, not yet CI-calibrated: the planning probe
   // (`scratchpad/164/engine.mjs`, the prototype `checkUndeclaredClearance` was
   // ported from) measured 317 s dense over all 14 axes on a dev container,
@@ -399,52 +426,86 @@ const COSTS = {
   // a pose-count guess on its first run; `--report` replaces every row of it
   // with a measured one; the header's own rule (a stale cost costs wall clock,
   // never a verdict).
-  'undeclaredClearance': 320,   // TODO 236: 317 × 1.0105
-  'sweptOverlap': 260,
+  'undeclaredClearance': 151,   // the sum of its slices below
+  'sweptOverlap': 294,
 
-  'undeclaredClearance:beat': 13870,   // §221: ×1.26, the local before/after of the beat axis's derived n (96 → 193)
-  'undeclaredClearance:crown': 2144,
-  'undeclaredClearance:reserve': 10488,
-  'undeclaredClearance:wind': 108850,
-  'undeclaredClearance:arrest': 15271,
-  'undeclaredClearance:train': 46320,
-  'undeclaredClearance:jumperEngage': 55845,
-  'undeclaredClearance:handSet': 7226,
-  'undeclaredClearance:alarm': 11418,
-  'undeclaredClearance:alarmStrike': 24982,
-  'undeclaredClearance:alarmWind': 16262,
-  'undeclaredClearance:alarmToggle': 1732,
-  'undeclaredClearance:stemSlip': 3094,
-  'undeclaredClearance:alarmPress': 1981,
-  // §246 tier two — the position axis, seeded at the beat axis's measured wall
-  // scaled by pose count (292 / 194: the same oscillation, posed dial-flat);
-  // `--report` replaces it with a measured one.
-  'undeclaredClearance:position': 20877,
-  'undeclaredClearance:alarmPull': 3883,   // TODO 236: 5895 ms local × 0.6587
-  'clearances:alarmPull': 11214,           // TODO 236: 108003 ms local × 0.1038 (siblings still projected)
-  'expectedContacts:alarmPull': 15240,     // TODO 236: 143293 ms local × 0.1064 (siblings still projected)
+  // §127 — the per-axis walls of the split checks, in MILLISECONDS (`--report`'s
+  // `sliceMs`; here the per-task line of the CI log, which is the same wall).
+  // Every split check has every slice measured since run 39720040054, so
+  // nothing below is projected; a slice with no row (an axis added later) is
+  // projected from its pose count and labelled `projected` until a sliced run
+  // measures it.
+  'expectedContacts:beat': 144700,
+  'expectedContacts:crown': 43500,
+  'expectedContacts:reserve': 40500,
+  'expectedContacts:wind': 470600,
+  'expectedContacts:arrest': 64800,
+  'expectedContacts:train': 68800,
+  'expectedContacts:jumperEngage': 61200,
+  'expectedContacts:handSet': 64000,
+  'expectedContacts:alarm': 59500,
+  'expectedContacts:alarmStrike': 60600,
+  'expectedContacts:alarmWind': 58500,
+  'expectedContacts:alarmToggle': 23300,
+  'expectedContacts:stemSlip': 71500,
+  'expectedContacts:alarmPress': 30200,
+  'expectedContacts:maintHold': 25300,
+  'expectedContacts:alarmPull': 66500,
+  'expectedContacts:position': 184300,
 
-  // §127 — the per-axis walls of the one split check, in MILLISECONDS
-  // (`--report`'s `sliceMs`). A slice with no row here is projected from its
-  // pose count and labelled `projected` until a sliced run measures it.
-  'inspection:beat': 22630,   // §221: ×2.30, likewise
-  'inspection:crown': 4430,
-  'inspection:reserve': 6390,
-  'inspection:wind': 68040,
-  // TODO 71 — seeded from stemSlip's measured cost (same n, and nearly every
-  // pose rebuilds the chain); --report refreshes it like every row.
-  'inspection:arrest': 12690,
-  'inspection:train': 11620,
-  'inspection:jumperEngage': 11940,
-  'inspection:handSet': 11840,
-  'inspection:alarm': 9550,
-  'inspection:alarmStrike': 10030,
-  'inspection:alarmWind': 14770,
-  'inspection:alarmToggle': 6440,
-  // TODO 50 — measured on a dev container battery run.
-  'inspection:stemSlip': 9640,
-  'inspection:position': 34061,   // §246 — seeded as undeclaredClearance:position is (beat × 292/194)
-  'inspection:alarmPull': 9818,   // TODO 236: 93550 ms local × 0.1049
+  'inspection:beat': 63400,
+  'inspection:crown': 24400,
+  'inspection:reserve': 26200,
+  'inspection:wind': 238500,
+  'inspection:arrest': 40300,
+  'inspection:train': 51800,
+  'inspection:jumperEngage': 35500,
+  'inspection:handSet': 57400,
+  'inspection:alarm': 42400,
+  'inspection:alarmStrike': 35300,
+  'inspection:alarmWind': 46800,
+  'inspection:alarmToggle': 15800,
+  'inspection:stemSlip': 31000,
+  'inspection:alarmPress': 23100,
+  'inspection:maintHold': 15600,
+  'inspection:alarmPull': 48400,
+  'inspection:position': 133100,
+
+  'clearances:beat': 79000,
+  'clearances:crown': 17400,
+  'clearances:reserve': 20500,
+  'clearances:wind': 306800,
+  'clearances:arrest': 50100,
+  'clearances:train': 33900,
+  'clearances:jumperEngage': 40600,
+  'clearances:handSet': 42300,
+  'clearances:alarm': 32600,
+  'clearances:alarmStrike': 38400,
+  'clearances:alarmWind': 57900,
+  'clearances:alarmToggle': 17800,
+  'clearances:stemSlip': 34100,
+  'clearances:alarmPress': 23400,
+  'clearances:maintHold': 17500,
+  'clearances:alarmPull': 33000,
+  'clearances:position': 102100,
+
+  'undeclaredClearance:beat': 8300,
+  'undeclaredClearance:crown': 2700,
+  'undeclaredClearance:reserve': 3500,
+  'undeclaredClearance:wind': 16200,
+  'undeclaredClearance:arrest': 4000,
+  'undeclaredClearance:train': 19500,
+  'undeclaredClearance:jumperEngage': 23100,
+  'undeclaredClearance:handSet': 3000,
+  'undeclaredClearance:alarm': 3500,
+  'undeclaredClearance:alarmStrike': 16700,
+  'undeclaredClearance:alarmWind': 9200,
+  'undeclaredClearance:alarmToggle': 2300,
+  'undeclaredClearance:stemSlip': 3700,
+  'undeclaredClearance:alarmPress': 2300,
+  'undeclaredClearance:maintHold': 18300,
+  'undeclaredClearance:alarmPull': 3300,
+  'undeclaredClearance:position': 11400,
 };
 
 // DECLARED HERE, ASSERTED AGAINST THE BATTERY IT DESCRIBES — both ways, and it
