@@ -9214,9 +9214,11 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
       ctx.font = `400 ${sr * CAPTION_EM_F}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
       const capArcS = arcLabel('POWER RESERVE', midDeg, sr * fan.captionF, Math.sin((midDeg * Math.PI) / 180) < 0);
       const needDeg = ((capArcS + 2 * (gapF / fan.captionF)) * 180) / Math.PI;
-      if (needDeg > sweepDeg + 1e-9)
-        console.warn(`reserve face: the caption needs ${needDeg.toFixed(1)}° of the fan's inner line and a `
-          + `${sweepDeg}° sweep gives ${sweepDeg}° — it will run past the fan's flanks`);
+      // the floor under that line spans the fan's whole cut angle (2·halfRad)
+      const haveDeg = (2 * fan.halfRad * 180) / Math.PI;
+      if (needDeg > haveDeg + 1e-9)
+        console.warn(`reserve face: the caption needs ${needDeg.toFixed(1)}° of the fan's inner line and the `
+          + `fan is cut ${haveDeg.toFixed(1)}° wide — it will run past the fan's flanks`);
       return;
     }
     ctx.fillStyle = ink; // §196 — the well's one solved ink

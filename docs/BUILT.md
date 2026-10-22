@@ -41831,3 +41831,106 @@ not by the reserve. The link's measured site is kept at every clean station, so 
 plain boots' extra rows (the opening count; the tonneau's pusher bore sleeve) clear at the fitted outline, as in item
 2. Round default: fingerprint 955951544, boot silent; `case=rect` 1604757989 unchanged. No arm, ratio, section,
 tolerance or waiver moved. No battery check was run on a form build (TODO 158).
+
+### §308 landing 4, option B — a sector well and idler pairs put the reserve in a corner
+
+Option A found a corner refused for two reasons: the well was a full disc, and the two-stage train's stage-two wheels
+share a ~25 u span. The owner's call was to cut the sub-dial to cover only the sweep, and to add a stage or an idler if
+the train still could not reach. Both are done under the corner path only (`?rsvsweep=` with `?rsvaz=`, at a station
+past the chapter). Every other build is bit-exact.
+
+**The sector well** (`reserveSectorLoop` in layout.js is the one loop: geometry's pocket cuts it and solveKeyless fits
+it). It is a fan about the hand's pivot, opening toward the dial centre (option A's fan law), closed round the back by
+a hub land. Nothing in it is a chosen angle (`reserveSectorExtent`, geometry.js):
+
+- **Hub land**: the hand's tail corner, hypot(tail, half-width), plus the margin. It is never less than the floor's
+  bore ring (bore + wall + margin).
+- **Half-angle**: half the sweep, plus the widest of three things that stand past the end graduations. The first is
+  the hand's edge plus the margin, at the hub's radius. The second is the end figure's half advance plus one
+  resolvable gap, at the figure's inner edge. Helvetica, Helvetica Neue and Arial set every digit 0.556 em wide
+  (`DIGIT_ADVANCE_EM`). The third is the end tick's half-width plus the gap. §158's figure band, `reserveScaleFrame`,
+  is lifted out of the paint, so the paint and the extent read the same three numbers.
+- **Radius**: the largest at which three things hold. The arc stays the wall and the margin off the track's outer rail
+  (exact on the mid-line). Every point of the cut loop stays the wall and the margin inside the dial outline. The hand
+  the well carries (its tip and edge over the sweep, its tail all round) stays `PLATE_RIM_MARGIN` inside, because the
+  fit counts that metal. The radius is found by bisection.
+
+The pocket wall is cut on the loop's own normals (`loopWall` over the reversed loop). The floor, the printed face and
+the bore keep the disc's builders. A fan has no notch, so the caption moves to the fan's inner line, between the hub
+and the figures, and is held to the fan's cut angle. The maker's mark has no line left in the well, so the dial prints
+it as it does on a reserve-less face. A new paint check holds neighbouring figures apart (two figures 12 h apart need
+their half widths and a gap). A narrow fan made overprinting possible, and nothing read it before.
+
+**The train ranks by fit, and adds idler pairs** (`rsvFitTrainAt`, main.js; sector path only). The counts are still
+`reserveTrainCandidates`'s exact trains. Idlers sit between p1 and w2 at stage two's module, so they cancel out of R.
+They come in pairs: each mesh reverses, and an even number keeps the hand's sense, so the scale, the set and w2's tick
+law are untouched. A candidate is admissible when:
+
+- every member is over §50's floor;
+- every cut root clears its bore (an idler turns on a post the size of rsvPost1, which reaches the same metal);
+- every stage-two member, at its centre on the w1→pivot line, keeps its tip `PLATE_RIM_MARGIN` inside the case shape.
+  This is the margin the fitted outline holds counted metal to, so a member that fits cannot grow the case.
+
+The rank is the fewest idlers that fit, then the smallest largest tip. The idler's count is the larger of p1's and
+w2's: the largest tip falls in t while the idler is the smaller member and rises once it is the larger. No two-stage
+train reached any corner (option A's arithmetic), and two idlers never fit either. Every corner station that fits took
+**four or six**. The idlers are appended after every shipped member, so the unit's mesh indices (the intra-unit rows)
+are unchanged. They are phased in stage two's `solveGearChain` run and turned in tick. Under this path w2's
+well-wall ceiling (TODO 33's form) is replaced by the case-shape bound, because w2 stands under the dial, not under a
+disc it must stay inside. `__clock.reserveSectorAt(rsvr, az)` is a shadow of the whole path for a candidate station
+(about 0.3 s a call).
+
+**Readability sets the sweep.** §158's pointer law makes the bound explicit. The hand must be no finer than the major
+tick, and narrower than one hour of arc at its tip (0.8 r·sweep/h). The major tick is max(0.055·r, 2′ at the wrist),
+so the smallest sweep that passes is max(0.055·h/0.8 rad, 2′·h/(0.8 r) rad). That is **118.2° whenever r ≥ 11.2 u**,
+and it rises as the sector shrinks: 128.7° at r 10.25, 170° at r 7.75. 90° fails on every corner, as option A found.
+
+**Measured.** Rows are `alarmmod=50`, rect at `formrect=-43.58,45.72,-43.91,44.59`. New warnings are counted against
+the designed build of each shape at its fitted outline (digits stripped). Stations come from a shadow search over
+az ±20° and rsvr 40–64.
+
+| shape, corner (rsvr, az) | sweep | sector r / fan / hub | train (p0:w1, p1:w2, idlers × t) | new warnings | fitted (mm) |
+|---|---|---|---|---|---|
+| rect BR (48, 135) | 90 | 11.75 / 116° / 2.24 | 8:28, 21:42, 4 × 42 | 6: §158 both bounds, the caption, w2 past its room by 0.01, + the two below | 33.84 × 33.54 |
+| rect BR (48, 135) | **120** | 11.75 / 146° / 2.24 | 8:28, 28:42, 4 × 42 | **2**: TODO 206's shared margin; the swing-confirmation compare | **33.84 × 33.54** |
+| rect BR (48, 135) | 150 | 10.85 / 179° / 2.09 | 8:28, 35:42, 4 × 42 | 2 (the same) | 33.84 × 33.54 |
+| rect BR (48, 135) | 180 | 7.80 / 232° / 1.56 | 8:28, 41:41, 4 × 41 | 2 (the same) | 33.84 × 33.54 |
+| rect TR (50, 45) | 90 / 120 / 150 | 13.75 / 13.75 / 10.85 | 4 idlers | 14–16: no w1 bearing clears the setting traverse; the cap bearing; the fold | grows (34.5–36.1 tall) |
+| rect TL (50, 315) | 90 / 120 | 13.75 | 6 idlers | 24–27: the idler line through the alarm link's site (§112/§234/TODO 206/TODO 240) | grows (36.1 tall) |
+| rect BL (48, 225) | 120 / 150 | 11.75 / 11.64 | 6 idlers | 13: the setting traverse, the cap bearing, the fold | 33.84 × 33.54 |
+| tonneau BR (47, 140) | 120 | 10.75 | 8:28, 20:30, 6 × 30 | 3: §158 both bounds, the swing compare | 34.19 × 34.01 |
+| tonneau BR (46.5, 140) | **130** | 10.25 / 162° / 1.98 | 9:27, 13:21, 6 × 21 | **1**: TODO 206 | 34.18 × 33.90 |
+| tonneau BR (46.5, 140) | 150 | 10.17 / 182° | 9:27, 20:28, 6 × 28 | 1: TODO 206 | 34.18 × 33.88 |
+| cushion BR (44, 135) | 120 | 7.75 | 8:28, 18:27, 6 × 27 | 4: §158 both bounds, the figures overprint | 33.95 × 33.65 |
+| cushion BR (44, 135) | **180** | 7.75 / 233° / 1.54 | 8:28, 26:26, 6 × 26 | **1**: TODO 206 | 33.95 × 33.65 |
+
+**The corner that works is the bottom right**, the one away from the keyless works and the alarm link. On the rect it
+builds at **120°**, the smallest sweep that passes the pointer bound there, with a sector of 11.75 u (4.45 mm). Option
+A's disc at the top right was 10.58 u. The fitted outline is option A's 33.84 × 33.54 mm. The tonneau's rounder corner
+leaves a 10.25 u sector, which needs **130°**. The cushion's leaves 7.75 u, which needs **170°** (180 was booted). Each
+of those three is option A's fitted size, within 0.02 mm. TR and BL refuse on the setting traverse: no w1 bearing
+within ±30° clears it, the same failure option A recorded. TL refuses on the alarm link's site. Those are P3 conflicts
+with other groups, outside this option. Pictures (dial side, solid, panel hidden) are in the session's scratch
+`fan/shots/` (br120.png, tonneau-br130.png, cushion-br180.png and the others).
+
+The two rows left on the rect are:
+
+- TODO 206's guide-triangle margin, option A's residue.
+- `reserve train: the swing solved on the cut keyless works (−19°) is not the one the cap bearing was solved against
+  (−19°)`. This is the existing `> 1e-12` compare. The two swings agree to the degree printed, and the station move
+  exposed a float difference between the scan's candidate metal and the cut metal. It is reported, not fixed.
+
+**Other changes:**
+
+- The §186 annulus tripwire, under a FORM, counts a point only if it is also past the form case's bore (shape +
+  `CASE_CLEAR`). A corner station stands in the round annulus and well inside the rect, and form-case.js cuts no round
+  sectors. The designed rect and the default read as before.
+- The §125 dial-rim scan skips the reserve hand when its well is outside the chapter. The hand rides sunk in its own
+  well, past the round rim by construction.
+- §194's row naming tells two same-count rotors on one held pair apart by the chain's gauge. The corner train can cut
+  p1 with w1's 28. This applies only on a collision, so every shipped row is named as before.
+
+Round default: fingerprint 955951544, boot silent (booted from a copy of the tree). `case=rect` 1604757989 unchanged.
+No arm, ratio, section, tolerance or waiver moved. The idlers are real parts but have no `INTRA_UNIT_CONTACTS` rows
+(any selector naming them would be unmatched on the default build), and no battery check was run on a form build
+(TODO 158).

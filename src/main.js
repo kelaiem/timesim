@@ -929,12 +929,16 @@ function declareMesh(site, row) {
 // the third pinion on one arbor). The rotor is the descendant whose recorded
 // tooth count is the one the chain declared — resolved here, at boot, against
 // the live object, so a row can never name a part the solve did not turn.
-function rotorNameFor(obj, teeth) {
+function rotorNameFor(obj, teeth, gauge = null) {
   let hit = null, n = 0;
   obj.traverse((o) => {
     if (o.userData && o.userData.teeth === teeth && typeof o.userData.r === 'number') { hit = hit || o; n++; }
   });
   if (!hit) return null;
+  // §308 L4 option B — a held pair whose two rotors share a count (the corner
+  // train can cut p1 with w1's 28) is told apart by the GAUGE the chain named
+  // for it, which is the rotor whose mesh this is.
+  if (n > 1 && gauge && gauge !== obj) { const g = rotorNameFor(gauge, teeth); if (g) return g; }
   if (n > 1) console.warn(`§194: ${n} rotors under one chain member carry ${teeth} teeth — the row cannot tell them apart`);
   return hit.name || null;
 }
@@ -19422,7 +19426,7 @@ const dial = G.makeDial({
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS,
         mmPerSr: reserveR * UNIT_MM,
         ...(SPEC.rsvAzDeg !== null ? { midDeg: RESERVE_FAN_MID_DEG } : {}),   // §308 L4: the fan opens toward the dial centre
-        ...(reserveSector ? { sector: { captionF: reserveSector.extent.captionF } } : {}) },
+        ...(reserveSector ? { sector: { captionF: reserveSector.extent.captionF, halfRad: reserveSector.halfRad } } : {}) },
       // §308 L4 option B — the pocket is the fan solveKeyless sized
       ...(reserveSector ? { sector: { midDeg: RESERVE_FAN_MID_DEG, halfRad: reserveSector.halfRad, hubR: reserveSector.hubR } } : {}) },
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds',
@@ -23695,7 +23699,7 @@ const solveGearChain = (label, chain, module, inputs = []) => {
         + `pitch-circle sum ${want.toFixed(3)} — the phase solve is meaningless if they do not mesh`);
     // §194 — this pair is a declared mesh by construction: the solve just
     // phased it, so the registry cannot describe a pair the solve does not.
-    const an = rotorNameFor(P.obj, P.teeth), bn = rotorNameFor(Q.obj, Q.teeth);
+    const an = rotorNameFor(P.obj, P.teeth, P.gauge), bn = rotorNameFor(Q.obj, Q.teeth, Q.gauge);
     if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
     else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.split(/[\s:]/)[0] });
   }
@@ -59122,6 +59126,10 @@ if (JMP_SITE.best && !(JMP_SITE.bSlack >= JMP_SITE.best.clr - 1e-9))
   let nearest = Infinity, nearestUnit = 'nothing';
   for (const entry of labelEntries) {
     if (entry.name === 'Dial') continue;
+    // §308 L4 option B — the reserve HAND of a well outside the chapter rides
+    // sunk in that well, in the dial's slab by design and past the round rim
+    // by construction; its well is held to the outline at FORM.
+    if (entry.name === 'Power reserve' && reserveWellLaw !== 'chapter') continue;
     await breathe(351);
     entry.obj.traverse((o) => {
       if (!o.isMesh || !o.geometry.getAttribute) return;
