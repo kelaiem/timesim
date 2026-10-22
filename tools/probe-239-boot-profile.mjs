@@ -56,6 +56,10 @@ const arg = (f, d) => { const i = process.argv.indexOf(f); return i > 0 ? proces
 const ROOT = arg('--tree', new URL('..', import.meta.url).pathname);
 const TOP = Number(arg('--top', 25));
 const OUT = arg('--out', null);
+// --query profiles a SPEC build rather than only the default (§308: the form
+// platform's boots are spec builds, e.g. 'case=rect&alarmmod=50'); trial=1 so a
+// profiled boot neither reads nor writes the session's state.
+const QUERY = arg('--query', '');
 const PORT = 8397;
 // 500 µs: fine enough that a 100 ms builder lands ~200 samples, coarse enough
 // that the profiler is not itself a cost worth reporting.
@@ -77,7 +81,7 @@ await cdp.send('Profiler.enable');
 await cdp.send('Profiler.setSamplingInterval', { interval: INTERVAL_US });
 await cdp.send('Profiler.start');
 const t0 = Date.now();
-await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'commit', timeout: 300000 });
+await page.goto(`http://127.0.0.1:${PORT}/index.html${QUERY ? `?trial=1&${QUERY}` : ''}`, { waitUntil: 'commit', timeout: 300000 });
 let booted = true;
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 300000 }).catch(() => { booted = false; });
 const bootMs = Date.now() - t0;
