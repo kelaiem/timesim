@@ -190,6 +190,25 @@ export const SPEC = (() => {
   // KEYLESS_INPUTS passes no radius at all, so the station derives from
   // dialRadius · 0.39 and identity stays bit-exact.
   const rsvr = Number.isFinite(Number(raw.rsvr)) ? Number(raw.rsvr) : null;
+  // §308 landing 4, option A — THE RESERVE STATION'S AZIMUTH, the key the
+  // note above left room for: dial-clock degrees (0 = 12 o'clock, 90 = 3,
+  // clockwise as the dial is read from the front), so the station is the
+  // polar pair (rsvr, rsvaz) and a form case's CORNER — free dial outside the
+  // round chapter — is a station a URL can name. Like rsvr, NOT clamped here:
+  // solveKeyless derives which well law the station takes (inside the chapter
+  // or outside the railway track) and warns when it takes neither, and the
+  // reduction train's own bounds are asserted beside its span solve. null =
+  // as designed: KEYLESS_INPUTS passes no azimuth, the station stays on the
+  // 12 o'clock axis by the original expression and identity is bit-exact.
+  const rsvAzDeg = Number.isFinite(Number(raw.rsvAzDeg)) ? Number(raw.rsvAzDeg) : null;
+  // §308 landing 4, option A — THE RESERVE HAND'S SWEEP, the owner's quarter
+  // fan for a corner: the graduated arc in degrees, which TODO 18's coupling
+  // makes an INPUT of the reduction train (R = turns · 360/sweep — the counts
+  // re-solve from it through reserveTrainCandidates, never typed). Read as
+  // given; main.js warns and builds the designed 300° for a sweep it cannot
+  // graduate (not an integer in (0, 360), which reserveReduction needs to
+  // reduce R exactly). null = as designed (300°), bit-exact.
+  const rsvSweepDeg = Number.isFinite(Number(raw.rsvSweepDeg)) ? Number(raw.rsvSweepDeg) : null;
   // §237 — THE HAIRSPRING STUD'S RADIUS, which is also the cock's stud
   // carrier arm: the two are one number by construction, because the stud has
   // to sit where the terminal ends or it is not holding the spring. TODO 147
@@ -271,7 +290,7 @@ export const SPEC = (() => {
     const v = String(raw.formRectSpec).split(',').map(Number);
     return (v.length === 4 && v.every(Number.isFinite) && v[0] < v[1] && v[2] < v[3]) ? Object.freeze(v) : null;
   })();
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr, studr, caseShape, formRectSpec });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:
@@ -3801,6 +3820,8 @@ export function solveKeyless({
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
   stemAzRad = null, // §33 step 2 — decoupled stem azimuth; null = derive from the barrel (§13, bit-exact)
   rsvR = null,      // §94 tier C — the reserve station's radius; null = mirror the seconds station (§125 — symmetric by construction)
+  rsvAzRad = null,  // §308 L4 option A — the reserve station's azimuth, dial-clock radians (0 = 12 o'clock, clockwise from the front); null = on the 12 o'clock axis, bit-exact
+  faceInset = null, // §308 L4 option A — (x, y) dial-local → signed distance inside the dial's outline, for a well OUTSIDE the chapter; null = the round face (dialRadius − r)
   alarmR = null,    // §98 — the alarm corner's radius; null = ALARM_CORNER_R (§125 step 1 — the §74-proven station, pinned)
   subDialRadius = null, // §97/§125 Tier B — the SECONDS well's radius (the wells split; the reserve's is its station's derivation); null = the derived ceiling, bit-exact
   dialR = null,     // §125 step 3 — the dial's radius; null = the movement's own diameter (dialRadius = plateR)
@@ -4114,7 +4135,14 @@ export function solveKeyless({
   // and a mirror would have dragged the reserve to 22.9 and ballooned its
   // well with it. The literal IS the mirror's landing at the old D4, so
   // nothing on the reserve side moved when the law changed.
-  const RESERVE_LOCAL = { x: 0, y: rsvR !== null ? rsvR : RESERVE_STATION_R };
+  const reserveStationR = rsvR !== null ? rsvR : RESERVE_STATION_R;
+  // §308 L4 option A — the station is POLAR: (reserveStationR, rsvAzRad) in
+  // dial-clock terms, so dial-local x = r·sin az (+x is 3 o'clock as the face
+  // is read) and y = r·cos az. Absent, the original expression, bit-exact.
+  // Every consumer that wants the station's DISTANCE reads reserveStationR;
+  // RESERVE_LOCAL.y is a distance only on the 12 o'clock axis.
+  const RESERVE_LOCAL = rsvAzRad === null ? { x: 0, y: reserveStationR }
+    : { x: reserveStationR * Math.sin(rsvAzRad), y: reserveStationR * Math.cos(rsvAzRad) };
   // §94 tier B — THE ALARM CORNER'S OWN RADIUS. Until this tier it did not
   // exist: main.js defined ALARM_CD as a read of RESERVE_LOCAL.y, which made
   // "the reserve indicator happens to sit there" the radius of the entire
@@ -4238,9 +4266,27 @@ export function solveKeyless({
       + `its centre bore's wall`);
     secondsWellR = SUBDIAL_FLOOR;
   }
-  const reserveWellR = Math.min(
-    RESERVE_LOCAL.y - SUBDIAL_INBOARD_CLEAR,
-    markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - RESERVE_LOCAL.y,
+  // §308 L4 option A — TWO WELL LAWS, one per side of the printed chapter. A
+  // station INSIDE it (every station before this key, and the default) takes
+  // the law above: the well grows from the centre keep-out and yields the
+  // marker band. A station OUTSIDE the railway track — a form dial's corner,
+  // free face the round chapter never reaches — takes the mirror of it: the
+  // well grows from the track's OUTER rail (the ring wall one CLEAR_MARGIN off
+  // it, §125's furniture rule from the other side) and is held inside the
+  // dial's own outline by the same wall and margin (faceInset; the round face
+  // when the caller has no outline). Which law a station takes is the window:
+  // past the chapter window's outer end the chapter law has no well left
+  // (it is under SUBDIAL_FLOOR there by the window's own construction).
+  const railOuterR = printFrame && printFrame.railOuterF !== undefined ? dialRadius * printFrame.railOuterF : null;
+  const chapterWindowMax = Math.min((dialRadius + SUBDIAL_INBOARD_CLEAR) / 2,
+    markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - SUBDIAL_FLOOR);
+  const reserveWellLaw = (rsvR !== null && rsvR > chapterWindowMax && railOuterR !== null) ? 'track' : 'chapter';
+  const reserveWellR = reserveWellLaw === 'chapter' ? Math.min(
+    reserveStationR - SUBDIAL_INBOARD_CLEAR,
+    markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - reserveStationR,
+  ) : Math.min(
+    reserveStationR - (railOuterR + DIAL_WALL_HALF + CLEAR_MARGIN),
+    (faceInset ? faceInset(RESERVE_LOCAL.x, RESERVE_LOCAL.y) : dialRadius - reserveStationR) - DIAL_WALL_HALF - CLEAR_MARGIN,
   );
   // §94 tier A — THE WELLS MUST HAVE A RADIUS AT ALL, which nothing checked
   // while both stations were literals comfortably outside the ceiling. Make
@@ -4259,7 +4305,7 @@ export function solveKeyless({
       + `${SUBDIAL_INBOARD_CLEAR.toFixed(2)} the centre bore, its wall and the margin need`);
   if (reserveWellR <= 0)
     warn(`the reserve well has no radius: ${reserveWellR.toFixed(2)} — its station sits `
-      + `${RESERVE_LOCAL.y.toFixed(2)} from the dial centre, inside the `
+      + `${reserveStationR.toFixed(2)} from the dial centre, inside the `
       + `${SUBDIAL_INBOARD_CLEAR.toFixed(2)} the centre bore, its wall and the margin need`);
 
   // §125 step 3 — the spec'd dial's own bounds, findings 3 and 4. INBOARD:
@@ -4271,7 +4317,7 @@ export function solveKeyless({
   // the actual metal and is the live guard. Warn, never clamp (d4's rule):
   // the build proceeds and the battery judges it.
   if (dialR !== null) {
-    const wellsEdge = Math.max(RESERVE_LOCAL.y + reserveWellR, -SECONDS_LOCAL.y + secondsWellR);
+    const wellsEdge = Math.max(reserveStationR + reserveWellR, -SECONDS_LOCAL.y + secondsWellR);
     const metalCeiling = 44.423 - CLEAR_MARGIN;
     if (!(dialR >= wellsEdge && dialR <= metalCeiling))
       warn(`dial radius ${dialR.toFixed(2)} is outside [${wellsEdge.toFixed(2)}, ${metalCeiling.toFixed(2)}] — `
@@ -4301,13 +4347,34 @@ export function solveKeyless({
   // its own floor; the face bound stays for the no-furniture callers.
   const rsvrWindow = {
     min: SUBDIAL_INBOARD_CLEAR,
-    max: Math.min((dialRadius + SUBDIAL_INBOARD_CLEAR) / 2,
-      markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - SUBDIAL_FLOOR),
+    max: chapterWindowMax,
   };
-  if (rsvR !== null && !(rsvR > rsvrWindow.min && rsvR <= rsvrWindow.max))
+  // §308 L4 option A — a TRACK-law station has its own window, read off the
+  // well it got rather than restated: it exists while that well holds the
+  // floor (its pocket's bore + wall + margin); under it the station is too
+  // close to the track or too near the outline's edge.
+  if (reserveWellLaw === 'track') {
+    if (!(reserveWellR >= SUBDIAL_FLOOR))
+      warn(`reserve station ${rsvR.toFixed(2)} stands outside the chapter, but its well outside the railway track is `
+        + `${reserveWellR.toFixed(2)}, under the floor ${SUBDIAL_FLOOR.toFixed(2)} — the track's outer rail at `
+        + `${railOuterR.toFixed(2)} and the dial's outline leave it no pocket. The build proceeds; the battery judges it`);
+  } else if (rsvR !== null && !(rsvR > rsvrWindow.min && rsvR <= rsvrWindow.max))
     warn(`reserve station ${rsvR.toFixed(2)} is outside its window (${rsvrWindow.min.toFixed(2)}, `
       + `${rsvrWindow.max.toFixed(2)}] — at or inside the bore keep-out the well has no radius; past the `
       + `ceiling its ring runs off the ${dialRadius.toFixed(2)} face. The build proceeds; the battery judges it`);
+
+  // §308 L4 option A — THE TWO WELLS ARE TWO POCKETS IN ONE PLATE, which
+  // nothing had to check while both stations sat on the one 12–6 axis. With
+  // an azimuth the reserve can walk round onto the seconds: their rings must
+  // stay apart by both walls and the one margin (TODO 33's web, between wells).
+  {
+    const web = Math.hypot(RESERVE_LOCAL.x - SECONDS_LOCAL.x, RESERVE_LOCAL.y - SECONDS_LOCAL.y)
+      - reserveWellR - secondsWellR - 2 * DIAL_WALL_HALF;
+    if (web < CLEAR_MARGIN)
+      warn(`the reserve and seconds wells overlap: their rings stand ${web.toFixed(2)} apart, need ${CLEAR_MARGIN} `
+        + `(reserve r ${reserveWellR.toFixed(2)} at (${RESERVE_LOCAL.x.toFixed(2)}, ${RESERVE_LOCAL.y.toFixed(2)}), `
+        + `seconds r ${secondsWellR.toFixed(2)} at (${SECONDS_LOCAL.x.toFixed(2)}, ${SECONDS_LOCAL.y.toFixed(2)})) — the build proceeds; the battery judges it`);
+  }
 
   return {
     barrelDist, uWind, stemAngle, vPerp, sideSign,
@@ -4316,6 +4383,7 @@ export function solveKeyless({
     settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
     kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+    reserveStationR, reserveWellLaw, railOuterR, // §308 L4 option A
     formPlate, // §307 — the form rectangle (read only under ?case=rect)
   };
 }

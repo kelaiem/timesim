@@ -8929,13 +8929,19 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     // notch, never the sweep, so it cannot reach the ratio at all.
     // Major ticks every 12 hours (0/12/24), one minor per HOUR (10° each at
     // the shipped 300°), slimmed to keep the comb fine.
-    const { sweepDeg = 300, hours = 30, mmPerSr = null } = scale;
+    // §308 L4 option A — `midDeg`, the arc's MIDPOINT direction (math degrees,
+    // as the face is read): the caller's fan-opens-toward-the-dial-centre law,
+    // which at the 12 o'clock station IS §158's down vertical (−90°, the
+    // default). The notch, and the lettering set in it, sit opposite.
+    const { sweepDeg = 300, hours = 30, mmPerSr = null, midDeg = -90 } = scale;
+    const notchMidDeg = midDeg + 180;
+    const notchFlip = Math.sin((notchMidDeg * Math.PI) / 180) < 0;
     const TICK_OUTER_F = SUBDIAL_TICK_OUTER_F, MAJOR_LEN_F = SUBDIAL_MAJOR_LEN_F;
     const MINOR_LEN_F = SUBDIAL_MINOR_LEN_F;
     // §293: the drawn widths, each floored at what the eye resolves.
     const MAJOR_W_F = subdialStrokeF(SUBDIAL_MAJOR_W_F, SUBDIAL_MAJOR_ARCMIN, mmPerSr);
     const MINOR_W_F = subdialStrokeF(SUBDIAL_MINOR_W_F, SUBDIAL_MINOR_ARCMIN, mmPerSr);
-    const angAt = (h) => -90 + sweepDeg / 2 - (h / hours) * sweepDeg;
+    const angAt = (h) => midDeg + sweepDeg / 2 - (h / hours) * sweepDeg;
     // §159 — THE SCALE'S TWO ZONES, painted UNDER the comb so the ticks read
     // over them and the graduation stays the thing being read. A zone says at
     // a glance what the figures cannot say at arm's length: the figures stand
@@ -9133,13 +9139,13 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, sh
     const markR = markRadiusFor(markEm).r;
     ctx.fillStyle = ink; // §196 — the well's one solved ink
     ctx.font = `400 ${sr * CAPTION_EM_F}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
-    const capArc = arcLabel('POWER RESERVE', 90, sr * capR, false);
+    const capArc = arcLabel('POWER RESERVE', notchMidDeg, sr * capR, notchFlip);
     ctx.font = `400 ${sr * markEm}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
     // §196 — this was a literal copy of DIAL_MARK_INK, the fifth untracked
     // transcription this landing retired; the mark now tracks its shipped
     // RELATION to this well's ground (see solveMarkInk).
     ctx.fillStyle = solveMarkInk(ground, shippedGround ?? ground);
-    const markArc = arcLabel(MARK_TEXT, 90, sr * markR, false);
+    const markArc = arcLabel(MARK_TEXT, notchMidDeg, sr * markR, notchFlip);
     // The caption is NOT solved — it is the line that names the complication,
     // so it keeps its size and the mark yields around it. Both are asserted
     // against the notch, which is a function of the SWEEP: a re-spec that

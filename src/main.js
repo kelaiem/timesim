@@ -2710,6 +2710,18 @@ const KEYLESS_INPUTS = {
   // §94 tier C — the reserve station's radius spreads in only when present,
   // so identity passes nothing and stays bit-exact (d4's null rule).
   ...(SPEC.rsvr !== null ? { rsvR: SPEC.rsvr } : {}),
+  // §308 L4 option A — the station's azimuth, same null rule; and, for a
+  // station outside the chapter, the outline its well must stand inside: the
+  // FITTED shape when the URL carries it (?formrect=), read through the dial
+  // seam's flip; a first form boot has no outline yet (it is fitted to the
+  // metal this build places), so its well is bounded by the track alone and
+  // the boot assert at the dial build holds it to the shape it was cut to.
+  ...(SPEC.rsvAzDeg !== null ? { rsvAzRad: SPEC.rsvAzDeg * DEG2RAD } : {}),
+  ...(SPEC.rsvAzDeg !== null && SPEC.caseShape ? { faceInset: (() => {
+    if (!SPEC.formRectSpec) return () => Infinity;
+    const sh = caseShapeOf(SPEC.caseShape, { xMin: SPEC.formRectSpec[0], xMax: SPEC.formRectSpec[1], yMin: SPEC.formRectSpec[2], yMax: SPEC.formRectSpec[3] });
+    return (x, y) => sh.inset(P.dial.x - x, P.dial.y + y);
+  })() } : {}),
   // §98 — the alarm corner's radius, same null rule.
   ...(SPEC.alarmr !== null ? { alarmR: SPEC.alarmr } : {}),
   // §97 — the shared well radius, same null rule.
@@ -2724,6 +2736,9 @@ const KEYLESS_INPUTS = {
   printFrame: {
     markerInnerF: G.DIAL_MARKER_INNER_F,
     railInnerF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F,
+    // §308 L4 option A — the railroad's OUTER rail, the edge a well outside
+    // the chapter grows from (the same composition as the inner rail's).
+    railOuterF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_OUT_F,
   },
 };
 const {
@@ -2733,6 +2748,7 @@ const {
   settingLeverPivot, settingLeverAngleAt, tailPostWorldAt, postEng, postRel,
   kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
   plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
+  reserveStationR, reserveWellLaw, // §308 L4 option A — the station's distance, and which side of the chapter its well is cut
   formPlate, // §307 — the form rectangle, derived beside plateR from the same members
 } = solveKeyless({
   ...KEYLESS_INPUTS,
@@ -2777,6 +2793,18 @@ const FORM = !SPEC.caseShape ? null
 // (§308: that signed distance is the shape's own `inset` — exact for the rect
 // and the tonneau, the dense polyline's for the cushion, within its `accuracy`.)
 const FORM_SHAPE = FORM;
+// §308 L4 option A — A WELL OUTSIDE THE CHAPTER MUST LIE INSIDE THE DIAL IT IS
+// CUT IN. solveKeyless held it to the fitted outline when the URL carried one;
+// a first form boot has none, so its well was bounded by the track alone and
+// is held here to the shape this build actually cuts (the solvers' guess, or
+// the carried box): the ring wall one margin inside the outline.
+if (FORM && reserveWellLaw === 'track') {
+  const web = FORM.inset(P.dial.x - RESERVE_LOCAL.x, P.dial.y + RESERVE_LOCAL.y) - reserveWellR - DIAL_WALL_HALF;
+  if (web < CLEAR_MARGIN - 1e-9)
+    console.warn(`§308: the reserve well outside the chapter (r ${reserveWellR.toFixed(2)} at dial (${RESERVE_LOCAL.x.toFixed(2)}, `
+      + `${RESERVE_LOCAL.y.toFixed(2)})) stands ${web.toFixed(3)} inside the ${FORM.kind} outline this build cuts, need ${CLEAR_MARGIN} — `
+      + `boot again at the printed formrect=, or move the station`);
+}
 const formInset = (x, y) => (FORM ? FORM_SHAPE.inset(x, y) : Infinity);
 const FORM_DROPPED = [];
 const formHolds = (what, x, y, r, land) => {
@@ -7171,7 +7199,31 @@ const RSV_W1_BORE_R = RSV_POST1_R + PIVOT_BORE_CLEAR;   // rsvWheel1's and reser
 //    tooth width π·m/2 on §50's wheel floor;
 //  · every member clears its own bore, by the builders' own floor.
 // At 30 h that is 8:28 × 10:6, the shipped train, byte for byte.
-const RESERVE_SWEEP_DEG = 300;      // the hand's graduated arc; its reasons are written where the dial is drawn
+// §308 L4 option A — the sweep is a SPEC input (?rsvsweep=, the owner's
+// quarter fan for a form dial's corner). The 300° design is the default and
+// its reasons are written where the dial is drawn; a spec'd sweep re-solves
+// the counts below through R = turns · 360/sweep, never by a typed count. It
+// must be an integer degree count strictly inside (0, 360) — reserveReduction
+// reduces R exactly over integers, and a full turn leaves no notch to read the
+// empty end from — or the build warns and keeps the design.
+const RESERVE_SWEEP_DESIGN_DEG = 300;
+const RESERVE_SWEEP_DEG = (() => {
+  const v = SPEC.rsvSweepDeg;
+  if (v === null) return RESERVE_SWEEP_DESIGN_DEG;
+  if (Number.isInteger(v) && v > 0 && v < 360) return v;
+  console.warn(`reserve sweep ${v}° is not an integer degree count inside (0, 360) — building the designed ${RESERVE_SWEEP_DESIGN_DEG}°`);
+  return RESERVE_SWEEP_DESIGN_DEG;
+})();
+// §308 L4 option A — WHERE THE FAN OPENS: the direction (math degrees,
+// dial-local, as the face is read) of the graduated arc's MIDPOINT, which is
+// where the hand stands at half reserve. §158 hung the arc from the well's
+// DOWN vertical (−90°) — at the 12 o'clock station that is the direction of
+// the dial's centre, and the law that generalises it is exactly that: the fan
+// opens TOWARD THE DIAL CENTRE, so a corner well's hand pivots in the corner
+// and sweeps its arc over the face inboard of it. Absent an azimuth, the
+// literal −90° (bit-exact).
+const RESERVE_FAN_MID_DEG = SPEC.rsvAzDeg === null ? -90
+  : Math.atan2(-RESERVE_LOCAL.y, -RESERVE_LOCAL.x) * 180 / Math.PI;
 const RSV_TOOTH_FLOOR_MM = 0.12;    // §50's wheel floor (STOCK_FLOORS.wheel in inspect.js owns it; the census re-measures)
 const RSV_TRAIN = (() => {
   const d1 = rsvSpanD - rsvD0;
@@ -19046,7 +19098,7 @@ const RESERVE_SCALE_HOURS = SPEC.reserveHours; // §22: the scale is graduated t
   const fromTeeth = ratMul(ratQ(rsvTeethW1, rsvTeethP0), ratQ(rsvTeethW2, rsvTeethP1));
   if (!ratEq(fromScale, fromTeeth))
     console.warn(`§219 technic fork: the reserve reduction from its scale is ${ratStr(fromScale)}, from the steel counts ${ratStr(fromTeeth)} — the display and the gears drifted apart (TODO 18)`);
-  if (SPEC.reserveHours === TECHNIC_FORK.solvedAt.reserveHours) {
+  if (SPEC.reserveHours === TECHNIC_FORK.solvedAt.reserveHours && RESERVE_SWEEP_DEG === RESERVE_SWEEP_DESIGN_DEG) {   // §308 L4: the fork was solved at the designed sweep too
     const row = TECHNIC_FORK.rows.find((r) => r.key === 'reserve reduction');
     for (const [gen, chain] of Object.entries(row.chains))
       for (const e of technicChainErrors(gen, row.key, chain, fromScale)) console.warn(`§219 technic fork: ${e}`);
@@ -19175,7 +19227,7 @@ const RSV_HAND_BOSS_H = 0.18 * 2 * 1.3;   // makeHand's boss law over that secti
 // TODO 26 lifted them out of it. So this asserts the ceiling that binds now,
 // in the same form — bore + wall + the one margin — and reports the achieved
 // and required numbers per rule 6.
-for (const [nm, cy, wr] of [['reserve', RESERVE_LOCAL.y, reserveWellR], ['seconds', -SECONDS_LOCAL.y, secondsWellR]]) {
+for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['seconds', -SECONDS_LOCAL.y, secondsWellR]]) {
   const innerEdge = cy - wr;                           // the ring's closest approach to the dial centre
   const need = DIAL_CENTER_BORE_R + DIAL_WALL_HALF;    // brass the bore needs before the pocket may start
   // §94 tier A — the epsilon is a FLOAT-EQUALITY guard, not a widened budget.
@@ -19240,7 +19292,8 @@ const dial = G.makeDial({
       // mmPerSr — the well's printed radius in REAL mm, which is what lets
       // the face size its figures by acuity (§158) instead of by fraction.
       scale: { sweepDeg: RESERVE_SWEEP_DEG, hours: RESERVE_SCALE_HOURS,
-        mmPerSr: reserveR * UNIT_MM } },
+        mmPerSr: reserveR * UNIT_MM,
+        ...(SPEC.rsvAzDeg !== null ? { midDeg: RESERVE_FAN_MID_DEG } : {}) } },   // §308 L4: the fan opens toward the dial centre
     { x: SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, r: secondsSubR, kind: 'seconds',
       scale: { mmPerSr: secondsSubR * UNIT_MM } },   // §293: the seconds well read by acuity too
   ],
@@ -56827,7 +56880,12 @@ function tick(t) {
   // straight down — at tension 0.5, which is the two sites agreeing.
   reserveShown = tension;
   const rsvRatio = (rsvTeethW1 / rsvTeethP0) * (rsvTeethW2 / rsvTeethP1);
-  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 + (180 - RESERVE_SWEEP_DEG / 2) * rsvRatio) * DEG2RAD;
+  // §308 L4 option A — the set generalised: the hand's empty end is half a
+  // sweep off the fan's MIDPOINT (RESERVE_FAN_MID_DEG, math degrees; the hand's
+  // rotation 0 points the well's 12, math 90°), so the set is 90° − mid −
+  // sweep/2 — 180° − sweep/2 at the designed mid of −90°, kept literal there.
+  const rsvSet = SPEC.rsvAzDeg === null ? (180 - RESERVE_SWEEP_DEG / 2) : (90 - RESERVE_FAN_MID_DEG - RESERVE_SWEEP_DEG / 2);
+  rsvArbor0.rotation.z = (tension * FUSEE_WRAP_TURNS * 360 + rsvSet * rsvRatio) * DEG2RAD;
   rsvArbor1.rotation.z = -rsvArbor0.rotation.z * (rsvTeethP0 / rsvTeethW1);
   rsvArbor2.rotation.z = -rsvArbor1.rotation.z * (rsvTeethP1 / rsvTeethW2);
   reserveHand.rotation.z = -rsvArbor2.rotation.z;
@@ -58869,7 +58927,11 @@ if (JMP_SITE.best && !(JMP_SITE.bSlack >= JMP_SITE.best.clr - 1e-9))
 {
   scene.updateMatrixWorld(true);
   const slab = new THREE.Box3().setFromObject(dial);
-  const wellsEdge = Math.max(RESERVE_LOCAL.y + reserveWellR, -SECONDS_LOCAL.y + secondsWellR) + CLEAR_MARGIN;
+  // (§308 L4 option A — a well cut OUTSIDE the chapter stands past the round
+  // rim by construction, held to the form outline at FORM instead; only the
+  // chapter's wells bound this rim.)
+  const wellsEdge = Math.max(reserveWellLaw === 'chapter' ? reserveStationR + reserveWellR : -Infinity,
+    -SECONDS_LOCAL.y + secondsWellR) + CLEAR_MARGIN;
   const _rv = new THREE.Vector3();
   let nearest = Infinity, nearestUnit = 'nothing';
   for (const entry of labelEntries) {
