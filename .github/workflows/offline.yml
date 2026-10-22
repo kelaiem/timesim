@@ -78,7 +78,7 @@ concurrency:
 
 jobs:
   offline:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # TEMPORARY pin (#762): ubuntu-latest is 26.04, where Playwright 1.56.1 cannot install Chromium, and the Chromium that can (156) builds different alarm-strike metal (lineSpec). Return to ubuntu-latest with the Playwright bump once that build step is fixed.
     timeout-minutes: 20   # ~8x the measured 2 min 29 s job; see the note above
     steps:
       - uses: actions/checkout@v4

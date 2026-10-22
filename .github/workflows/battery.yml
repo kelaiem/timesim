@@ -621,7 +621,7 @@ jobs:
     name: battery tiers
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # TEMPORARY pin (#762): ubuntu-latest is 26.04, where Playwright 1.56.1 cannot install Chromium, and the Chromium that can (156) builds different alarm-strike metal (lineSpec). Return to ubuntu-latest with the Playwright bump once that build step is fixed.
     timeout-minutes: ${{ fromJSON(needs.route.outputs.tiers_cap_min) }}
     steps:
       - uses: actions/checkout@v4
@@ -694,7 +694,9 @@ jobs:
       TIERS_WAIT_S: ${{ needs.route.outputs.tiers_cap_s }}
     # §251 — the route job decides; see it for the trust tiers (§200) and the
     # readiness check that can turn an opt-in back to ubuntu-latest.
-    runs-on: ${{ needs.route.outputs.host }}
+    # route's 'ubuntu-latest' means GITHUB-HOSTED in a dozen comparisons; it is mapped to the pin
+    # here, where the job lands, so the routing logic is untouched.
+    runs-on: ${{ needs.route.outputs.host == 'ubuntu-latest' && 'ubuntu-24.04' || needs.route.outputs.host }}   # TEMPORARY pin (#762): ubuntu-latest is 26.04, where Playwright 1.56.1 cannot install Chromium, and the Chromium that can (156) builds different alarm-strike metal (lineSpec). Return to ubuntu-latest with the Playwright bump once that build step is fixed.
     # The cap must stay ABOVE ci-battery.mjs's per-check guard (35; TODO 38's
     # wind axis re-derived both — guard + the ~15 min this pair has always kept
     # above it). A PUSH gets more room than the rest: it is the whole, never
