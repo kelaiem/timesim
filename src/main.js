@@ -5494,10 +5494,15 @@ const heartFreeAngleAt = (d) => {
   }
   for (let j = 0; j < 48; j++) { const t = (j / 48) * 2 * Math.PI; body.push([bossR * Math.cos(t), bossR * Math.sin(t)]); }
   const reachR = HEART_R + HEART_BEVEL + CLEAR_MARGIN;   // nothing further out can come within the margin
+  // The coarse scan's 180 outline points are the same for every query point, so
+  // they are cut once: each is the very product d2 forms (r·cos t, r·sin t at the
+  // same t), so every q, and so every argmin, is the one the per-call scan read.
+  const SD_N = 180, sdT = new Float64Array(SD_N), sdX = new Float64Array(SD_N), sdY = new Float64Array(SD_N);
+  for (let i = 0; i < SD_N; i++) { const t = (i / 180) * 2 * Math.PI, r = heartRadiusAt(t); sdT[i] = t; sdX[i] = r * Math.cos(t); sdY[i] = r * Math.sin(t); }
   const heartSD = (x, y) => {
     const d2 = (t) => { const r = heartRadiusAt(t); const dx = r * Math.cos(t) - x, dy = r * Math.sin(t) - y; return dx * dx + dy * dy; };
     let m = Infinity, best = 0;
-    for (let i = 0; i < 180; i++) { const t = (i / 180) * 2 * Math.PI; const q = d2(t); if (q < m) { m = q; best = t; } }
+    for (let i = 0; i < SD_N; i++) { const dx = sdX[i] - x, dy = sdY[i] - y; const q = dx * dx + dy * dy; if (q < m) { m = q; best = sdT[i]; } }
     let lo = best - Math.PI / 90, hi = best + Math.PI / 90;
     for (let it = 0; it < 30; it++) { const a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3; if (d2(a) < d2(b)) hi = b; else lo = a; }
     return (Math.hypot(x, y) < heartRadiusAt(Math.atan2(y, x)) ? -1 : 1) * Math.sqrt(d2((lo + hi) / 2)) - HEART_BEVEL;
