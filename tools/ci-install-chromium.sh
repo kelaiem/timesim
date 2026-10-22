@@ -30,7 +30,16 @@ ATTEMPTS=3
 
 if [ "$(uname -s)" = Linux ]; then
   # Per-request bounds: 20 s to connect or stall, three retries per file.
-  printf 'Acquire::Retries "3";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' \
+  #
+  # And a lock wait of one attempt's length, because `timeout` cannot reach the
+  # apt-get Playwright starts under sudo: a timed-out attempt leaves it running
+  # and holding the dpkg lock, and without a wait every retry dies on that lock
+  # in a second. Measured on PR #762, the first run on Ubuntu 26.04, where the
+  # install needs 9 font packages (21.9 MB) the image lacks and the mirror served
+  # them at ~180 kB/s: attempt 1 was killed at 90 s still downloading, and
+  # attempts 2 and 3 failed at once on "lock held by process 2555 (apt-get)".
+  # Waiting lets the orphan finish, and nothing is killed mid-dpkg.
+  printf 'Acquire::Retries "3";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\nDPkg::Lock::Timeout "%s";\n' "$ATTEMPT_S" \
     | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null
   ok=
   for attempt in $(seq 1 "$ATTEMPTS"); do
