@@ -101,6 +101,13 @@ const BUILD_T0 = performance.now();
 
 const DEG2RAD = Math.PI / 180;
 
+// The matrix `o.localToWorld(v)` applies, refreshed exactly as its call does
+// (three.js: `updateWorldMatrix(true, false)`, then `v.applyMatrix4(matrixWorld)`).
+// A per-vertex localToWorld re-walks every ancestor for every vertex; a walk
+// over one mesh's vertices that changes no transform reads one matrix, so it is
+// read once. The same refresh, the same multiply, the same float result.
+const worldMatrixOf = (o) => { o.updateWorldMatrix(true, false); return o.matrixWorld; };
+
 // TODO 115 / §126 — ONE SOURCE for the stem⇄bank gearing, and it carries the
 // movement's sense. `STEM_RAD_PER_TURN` is what the knob's derived angle
 // advances per turn banked; the INPUT divides by it to turn crown radians into
@@ -5573,10 +5580,15 @@ const heartFreeAngleAt = (d) => {
   }
   for (let j = 0; j < 48; j++) { const t = (j / 48) * 2 * Math.PI; body.push([bossR * Math.cos(t), bossR * Math.sin(t)]); }
   const reachR = HEART_R + HEART_BEVEL + CLEAR_MARGIN;   // nothing further out can come within the margin
+  // The coarse scan's 180 outline points are the same for every query point, so
+  // they are cut once: each is the very product d2 forms (r·cos t, r·sin t at the
+  // same t), so every q, and so every argmin, is the one the per-call scan read.
+  const SD_N = 180, sdT = new Float64Array(SD_N), sdX = new Float64Array(SD_N), sdY = new Float64Array(SD_N);
+  for (let i = 0; i < SD_N; i++) { const t = (i / 180) * 2 * Math.PI, r = heartRadiusAt(t); sdT[i] = t; sdX[i] = r * Math.cos(t); sdY[i] = r * Math.sin(t); }
   const heartSD = (x, y) => {
     const d2 = (t) => { const r = heartRadiusAt(t); const dx = r * Math.cos(t) - x, dy = r * Math.sin(t) - y; return dx * dx + dy * dy; };
     let m = Infinity, best = 0;
-    for (let i = 0; i < 180; i++) { const t = (i / 180) * 2 * Math.PI; const q = d2(t); if (q < m) { m = q; best = t; } }
+    for (let i = 0; i < SD_N; i++) { const dx = sdX[i] - x, dy = sdY[i] - y; const q = dx * dx + dy * dy; if (q < m) { m = q; best = sdT[i]; } }
     let lo = best - Math.PI / 90, hi = best + Math.PI / 90;
     for (let it = 0; it < 30; it++) { const a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3; if (d2(a) < d2(b)) hi = b; else lo = a; }
     return (Math.hypot(x, y) < heartRadiusAt(Math.atan2(y, x)) ? -1 : 1) * Math.sqrt(d2((lo + hi) / 2)) - HEART_BEVEL;
@@ -12178,42 +12190,50 @@ function chainJoints(curve) {
   // 0.019, outside the running fit, at exactly one tension.
   const M0 = Math.max(Math.round(len / CHAIN_PITCH), 2) * CHAIN_JOINT_SAMPLES_PER_PITCH;
   const P0 = curve.getSpacedPoints(M0);
+  // The walking point is carried as three doubles rather than a fresh Vector3
+  // per joint (49 walks of N joints per call): `pd` is Vector3.distanceTo's own
+  // arithmetic, term for term and in its operand order (this − v), so every
+  // comparison and every root reads the numbers the Vector3 form read.
+  const pd = (p, qx, qy, qz) => { const dx = p.x - qx, dy = p.y - qy, dz = p.z - qz; return Math.sqrt(dx * dx + dy * dy + dz * dz); };
   const walked = (() => {
-    let q = P0[0], jf = 0, n = 0;
+    let qx = P0[0].x, qy = P0[0].y, qz = P0[0].z, jf = 0, n = 0;
     for (;;) {
       let j = Math.floor(jf) + 1;
-      while (j <= M0 && P0[j].distanceTo(q) < CHAIN_PITCH) j++;
-      if (j > M0) return n + q.distanceTo(P0[M0]) / CHAIN_PITCH;   // the last link's fraction, chord to the end
+      while (j <= M0 && pd(P0[j], qx, qy, qz) < CHAIN_PITCH) j++;
+      if (j > M0) { const e = P0[M0], dx = qx - e.x, dy = qy - e.y, dz = qz - e.z; return n + Math.sqrt(dx * dx + dy * dy + dz * dz) / CHAIN_PITCH; }   // the last link's fraction, chord to the end
       const A = P0[j - 1], B = P0[j];
       const dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
-      const ex = A.x - q.x, ey = A.y - q.y, ez = A.z - q.z;
+      const ex = A.x - qx, ey = A.y - qy, ez = A.z - qz;
       const a = dx * dx + dy * dy + dz * dz, b = 2 * (dx * ex + dy * ey + dz * ez), cc = ex * ex + ey * ey + ez * ez - CHAIN_PITCH * CHAIN_PITCH;
       const t = Math.min(1, Math.max(0, (-b + Math.sqrt(Math.max(b * b - 4 * a * cc, 0))) / (2 * a)));
       jf = Math.max(jf, j - 1 + t);
-      q = new THREE.Vector3(A.x + t * dx, A.y + t * dy, A.z + t * dz);
+      qx = A.x + t * dx; qy = A.y + t * dy; qz = A.z + t * dz;
       n++;
     }
   })();
   const N = Math.max(Math.round(walked), 2);
   const M = N * CHAIN_JOINT_SAMPLES_PER_PITCH;
-  const P = curve.getSpacedPoints(M);
+  // The census's polyline IS this one whenever the walked count rounds to the
+  // arc count (the same curve at the same divisions, its arc table already
+  // cached by getLength above), and both are only read, so it is reused.
+  const P = M === M0 ? P0 : curve.getSpacedPoints(M);
   const ds = len / M;
   // One walk at chord c: joint positions as fractional polyline indices.
   const walk = (c, out) => {
-    let jf = 0, q = P[0];
+    let jf = 0, qx = P[0].x, qy = P[0].y, qz = P[0].z;
     if (out) out[0] = 0;
     for (let n = 1; n <= N; n++) {
       let j = Math.floor(jf) + 1;
-      while (j <= M && P[j].distanceTo(q) < c) j++;
+      while (j <= M && pd(P[j], qx, qy, qz) < c) j++;
       if (j > M) return { ok: false, rest: -(N - n + 1) };   // ran off the end: c too long
       // solve |A + t(B − A) − q| = c on segment [j−1, j], the outbound root
       const A = P[j - 1], B = P[j];
       const dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
-      const ex = A.x - q.x, ey = A.y - q.y, ez = A.z - q.z;
+      const ex = A.x - qx, ey = A.y - qy, ez = A.z - qz;
       const a = dx * dx + dy * dy + dz * dz, b = 2 * (dx * ex + dy * ey + dz * ez), cc = ex * ex + ey * ey + ez * ez - c * c;
       const t = Math.min(1, Math.max(0, (-b + Math.sqrt(Math.max(b * b - 4 * a * cc, 0))) / (2 * a)));
       jf = Math.max(jf, j - 1 + t);
-      q = new THREE.Vector3(A.x + t * dx, A.y + t * dy, A.z + t * dz);
+      qx = A.x + t * dx; qy = A.y + t * dy; qz = A.z + t * dz;
       if (out) out[n] = jf;
     }
     return { ok: true, rest: M - jf };   // polyline samples left after the last joint
@@ -16731,7 +16751,8 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) continue;
       const pos = o.geometry.attributes.position;
       const b = new THREE.Box3();
-      for (let i = 0; i < pos.count; i++) b.expandByPoint(o.localToWorld(kv.fromBufferAttribute(pos, i)));
+      const _mw = pos.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+      for (let i = 0; i < pos.count; i++) b.expandByPoint(kv.fromBufferAttribute(pos, i).applyMatrix4(_mw));
       // TODO 184 step 3: the pillar now reaches DOWN through the base plate on
       // its tenon, so its span is [PLATE_BACK_FACE, TQ_BOT_Z] (TODO 200: the
       // presented face, the rivet's end). Reading the old
@@ -23435,6 +23456,7 @@ const alarmDetectorDl = (r) => ({ x: ALARM_DETECTOR_AT.x + _uF.x * r, y: ALARM_D
 // below rather than for trusting a clean run.
 const _frac = (x) => x - Math.floor(x);
 const _gearOrig = new THREE.Vector3(), _gearV = new THREE.Vector3();
+const _gearTx = new Float64Array(3), _gearTy = new Float64Array(3), _gearTa = new Float64Array(3);
 // A tooth-centre azimuth, MEASURED FROM THE VERTICES. Reading `local +x` and
 // trusting gearOutlineShape's convention is not good enough here: the winding
 // train's climb wheel comes from makePinion, not makeGear, and nothing
@@ -23466,7 +23488,29 @@ const _gearOrig = new THREE.Vector3(), _gearV = new THREE.Vector3();
 // pitch misphase matches what the eye reported in the screenshots.
 // Returns the TOOTH-centre phase (gap phase + half a pitch), same contract
 // as the reader it replaces.
+let _mtpMemo = null;   // solveGearChain's per-solve readings — see there
+const _mtpSnap = (obj, N) => {
+  obj.updateWorldMatrix(true, true);   // what the walk does first; idempotent
+  const a = [N, ...obj.matrixWorld.elements];
+  obj.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes?.position) return;
+    const g = m.geometry;
+    a.push(g.id, g.attributes.position.version, g.attributes.position.count, g.index ? g.index.version : -1, g.index ? g.index.count : -1, ...m.matrixWorld.elements);
+  });
+  return a;
+};
+const _sameSnap = (x, y) => { if (x.length !== y.length) return false; for (let i = 0; i < x.length; i++) if (!Object.is(x[i], y[i])) return false; return true; };
 const measuredToothPhase = (obj, N) => {
+  if (!_mtpMemo) return measuredToothPhaseWalk(obj, N);
+  const snap = _mtpSnap(obj, N);
+  let rows = _mtpMemo.get(obj);
+  if (!rows) _mtpMemo.set(obj, rows = []);
+  for (const r of rows) if (_sameSnap(r.snap, snap)) return { ...r.res };
+  const res = measuredToothPhaseWalk(obj, N);
+  rows.push({ snap, res });
+  return { ...res };
+};
+const measuredToothPhaseWalk = (obj, N) => {
   // (true, TRUE): parents AND children. This runs at BUILD time, before any
   // render — with (true, false) the handle's own matrix was fresh but every
   // child mesh still carried the identity it was born with, so the gauge
@@ -23489,13 +23533,19 @@ const measuredToothPhase = (obj, N) => {
     const pos = m.geometry.attributes.position;
     const idx = m.geometry.index ? m.geometry.index.array : null;
     const n = idx ? idx.length : pos.count;
+    // Each corner is carried and its azimuth taken ONCE per triangle, then read
+    // by both edges that share it (the same applyMatrix4 and atan2 on the same
+    // inputs the per-edge reads made), edges in the same order.
+    const mw = m.matrixWorld;
     for (let i = 0; i + 2 < n; i += 3) {
-      for (const [p, q] of [[0, 1], [1, 2], [2, 0]]) {
-        _gearV.fromBufferAttribute(pos, idx ? idx[i + p] : i + p).applyMatrix4(m.matrixWorld);
-        const ax = _gearV.x - ox, ay = _gearV.y - oy;
-        _gearV.fromBufferAttribute(pos, idx ? idx[i + q] : i + q).applyMatrix4(m.matrixWorld);
-        const bx = _gearV.x - ox, by = _gearV.y - oy;
-        let d = Math.atan2(by, bx) - Math.atan2(ay, ax);
+      for (let e = 0; e < 3; e++) {
+        _gearV.fromBufferAttribute(pos, idx ? idx[i + e] : i + e).applyMatrix4(mw);
+        _gearTx[e] = _gearV.x - ox; _gearTy[e] = _gearV.y - oy; _gearTa[e] = Math.atan2(_gearTy[e], _gearTx[e]);
+      }
+      for (let p = 0; p < 3; p++) {
+        const q = p === 2 ? 0 : p + 1;
+        const ax = _gearTx[p], ay = _gearTy[p], bx = _gearTx[q], by = _gearTy[q];
+        let d = _gearTa[q] - _gearTa[p];
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
         // OUTLINE EDGES ONLY. The extrude's face triangulation connects tooth
@@ -23636,7 +23686,7 @@ declareTransfer('alarm setting: lane dogleg (setting wheel → arbor pinion)', {
 // distance against the pitch-circle sum — a perfectly phased pair that does
 // not reach each other is not a mesh either, and that second check is
 // independent of the phase solve.
-const solveGearChain = (label, chain, module, inputs = []) => {
+const solveGearChainBody = (label, chain, module, inputs = []) => {
   // GAUGE VALIDATION FIRST. A reading whose gap count disagrees with the
   // declared tooth count, or whose folded resultant is weak, is refused —
   // solving on it would drag every wheel downstream of the bad reading to a
@@ -23703,6 +23753,22 @@ const solveGearChain = (label, chain, module, inputs = []) => {
     if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
     else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.split(/[\s:]/)[0] });
   }
+};
+// A chain solve reads each gauge again at poses it has already read: the datum
+// at its build pose (validated, then read as the first mesh's P, then
+// verified), each turned wheel at its pre-turn pose (validated, then read by
+// alignGear) and at its final pose (read as the next mesh's P, then verified)
+// — about half of its silhouette walks repeat one exactly. So for the solve's
+// duration a reading is kept per gauge against a snapshot of everything it
+// reads: every mesh's geometry (id and attribute versions) and world matrix
+// under the gauge, compared bit for bit (Object.is, so −0 ≠ 0). Nothing in the
+// solve re-cuts a wheel, and a turned wheel's matrices differ, so a hit is a
+// reading of exactly the metal the walk would read. The memo dies with the
+// solve; outside it every call walks. (`_mtpMemo` is declared beside the gauge.)
+const solveGearChain = (label, chain, module, inputs = []) => {
+  const outer = _mtpMemo;
+  _mtpMemo = new Map();
+  try { return solveGearChainBody(label, chain, module, inputs); } finally { _mtpMemo = outer; }
 };
 await (async () => {
   const gearOf = (spin) => spin.children.find((o) => o.isGroup || o.isMesh);
@@ -27428,8 +27494,9 @@ const PLATE_RIM = (() => {
   backPlate.traverse((o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
     const p = o.geometry.attributes.position;
+    const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let i = 0; i < p.count; i++) {
-      o.localToWorld(v.fromBufferAttribute(p, i));
+      v.fromBufferAttribute(p, i).applyMatrix4(_mw);
       const r = Math.hypot(v.x, v.y);
       if (r > reach) reach = r;
       if (FORM) {
@@ -27969,12 +28036,13 @@ const GONG_BAND_FLOOR = await (async () => {
     if (o.name === 'backPlate') return;       // what the block stands on
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : pos.count;
+    const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t + 2 < n; t += 3) {
       let hit = false, zMax = -Infinity;
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
         const v = e === 0 ? a : e === 1 ? b : c;
-        o.localToWorld(v.fromBufferAttribute(pos, i));
+        v.fromBufferAttribute(pos, i).applyMatrix4(_mw);
         zMax = Math.max(zMax, v.z);
         if (inSwath(v)) hit = true;
       }
@@ -28020,11 +28088,12 @@ const GONG_FOOT_OBSTACLES = await (async () => {
     if (o.name === 'backPlate') return;             // the rim is what it stands ON
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : pos.count;
+    const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t + 2 < n; t += 3) {
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
-        o.localToWorld(v.fromBufferAttribute(pos, i));
+        v.fromBufferAttribute(pos, i).applyMatrix4(_mw);
         x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x);
         y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
         z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z);
@@ -30127,11 +30196,12 @@ const rotorInertiaZ = (group, pivot) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : pos.count;
+    const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t + 2 < n; t += 3) {
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
         const v = e === 0 ? a : e === 1 ? b : c;
-        o.localToWorld(v.fromBufferAttribute(pos, i)).sub(pivot);
+        v.fromBufferAttribute(pos, i).applyMatrix4(_mw).sub(pivot);
       }
       const v6 = a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x);
       V += v6 / 6;
@@ -33918,17 +33988,19 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
         sx = rot.g.matrixWorld.elements[12]; sy = rot.g.matrixWorld.elements[13];
       }
       let lo = Infinity, hi = -Infinity;
+      const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
       for (let k = 0; k < p.count; k += 3) {
         v.set(p.getX(k), p.getY(k), p.getZ(k));
-        const w = o.localToWorld(v.clone());
+        const w = v.clone().applyMatrix4(_mw);
         const d = Math.hypot(w.x - sx, w.y - sy);
         lo = Math.min(lo, d); hi = Math.max(hi, d);
       }
       ring = { st: { p: { x: sx, y: sy }, of: rot.of }, minR: lo, maxR: hi };
     }
+    const _mw2 = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted, as above
     for (let k = 0; k < p.count; k++) {
       v.set(p.getX(k), p.getY(k), p.getZ(k));
-      const w = o.localToWorld(v.clone());
+      const w = v.clone().applyMatrix4(_mw2);
       zLo = Math.min(zLo, w.z); zHi = Math.max(zHi, w.z);
       if (ring) continue;                       // rings carry their own reach
       if (Math.hypot(w.x - alarmBarrelPos.x, w.y - alarmBarrelPos.y) > ARREST_CD + 12) continue;
@@ -37364,7 +37436,8 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       // of the rim (the tail, the blade) stays scored.
       {
         const pp = o.geometry.attributes.position; let rMin = Infinity;
-        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); o.localToWorld(_tmpV3a); rMin = Math.min(rMin, Math.hypot(_tmpV3a.x, _tmpV3a.y)); }
+        const _mw = pp.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); _tmpV3a.applyMatrix4(_mw); rMin = Math.min(rMin, Math.hypot(_tmpV3a.x, _tmpV3a.y)); }
         if (rMin > plateR + 1e-6) return;
       }
       let axis = null;
@@ -37402,7 +37475,8 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
         // answers, decided by box inflation.
         const ax = axis.x, ay = axis.y, pp = o.geometry.attributes.position;
         let r = 0;
-        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); o.localToWorld(_tmpV3a); r = Math.max(r, Math.hypot(_tmpV3a.x - ax, _tmpV3a.y - ay)); }
+        const _mw = pp.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); _tmpV3a.applyMatrix4(_mw); r = Math.max(r, Math.hypot(_tmpV3a.x - ax, _tmpV3a.y - ay)); }
         obs.push({ disc: { x: axis.x, y: axis.y, r }, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(disc r ${r.toFixed(1)} at ${axis.x.toFixed(1)},${axis.y.toFixed(1)} z ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)})` });
       } else {
         b._who = `${e.name}/${o.name || o.geometry.type}`;
@@ -47277,12 +47351,13 @@ const CASE_SECTORS = (() => {
         if (exempt(pt)) return;
         hits.push({ name: o.name || o.parent?.name || '(unnamed)', r, z: pt.z, az: Math.atan2(pt.y, pt.x) });
       };
+      const _mw = n > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
       for (let t = 0; t < n; t += 3) {
         for (let e = 0; e < 3; e++) {
           const i0 = idx ? idx.getX(t + e) : t + e;
           const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-          a.fromBufferAttribute(p, i0); o.localToWorld(a);
-          b.fromBufferAttribute(p, i1); o.localToWorld(b);
+          a.fromBufferAttribute(p, i0); a.applyMatrix4(_mw);
+          b.fromBufferAttribute(p, i1); b.applyMatrix4(_mw);
           take(a);
           take(q.copy(a).lerp(b, 0.5));
           // Exact crossings of the two wall radii: |a + t(b-a)|_xy = rw.
@@ -47617,6 +47692,7 @@ const BACK_ENVELOPE = await (async () => {
   const unitByObj = new Map(labelEntries.map((e) => [e.obj, e.name]));
   const unitOf = (o) => { for (let n = o; n; n = n.parent) { const u = unitByObj.get(n); if (u) return u; } return null; };
   const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
+  const _bt = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   movement.updateMatrixWorld(true);
   // §239 — WALKED AS A LIST, not as a callback. The body is unchanged; what
   // changes is that a `for` loop in an async block can yield between meshes
@@ -47655,16 +47731,17 @@ const BACK_ENVELOPE = await (async () => {
         if (unit === R.unit && r >= R.r0 && r <= R.r1 && pt.z > regBuild[i]) regBuild[i] = pt.z;
       }
     };
+    const _mw = o.matrixWorld;   // refreshed after each seam below: localToWorld would re-walk the ancestors per vertex
     for (let t = 0; t < n; t += 3) {
       // §266 — one heavy mesh is 300–400 ms of this walk on its own (~15.5 µs
       // a triangle, 145k of them), so a seam every 1000 triangles (~16 ms):
       // the clock is read 145 times, not once a triangle.
-      if (t % 3000 === 0) await breathe(305);
+      if (t % 3000 === 0) { await breathe(305); o.updateWorldMatrix(true, false); }
+      // each corner carried once, then copied into both edges that share it
+      for (let e = 0; e < 3; e++) _bt[e].fromBufferAttribute(p, idx ? idx.getX(t + e) : t + e).applyMatrix4(_mw);
       for (let e = 0; e < 3; e++) {
-        const i0 = idx ? idx.getX(t + e) : t + e;
-        const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-        a.fromBufferAttribute(p, i0); o.localToWorld(a);
-        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        a.copy(_bt[e]);
+        b.copy(_bt[(e + 1) % 3]);
         take(a);
         const dx = b.x - a.x, dy = b.y - a.y;
         const A2 = dx * dx + dy * dy;
@@ -47710,7 +47787,8 @@ const BACK_ENVELOPE = await (async () => {
     if (tqe) tqe.obj.traverse((o) => {
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
       const p = o.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > tqTop) tqTop = v.z; }
+      const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); if (v.z > tqTop) tqTop = v.z; }
     });
     await breathe(308);
     const zOf = (name) => {
@@ -47719,7 +47797,8 @@ const BACK_ENVELOPE = await (async () => {
       if (e) e.obj.traverse((o) => {
         if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
         const p = o.geometry.attributes.position;
-        for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > z) z = v.z; }
+        const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); if (v.z > z) z = v.z; }
       });
       return z;
     };
@@ -47998,7 +48077,8 @@ const CASE_DIMS = (() => {
     if (tqe) tqe.obj.traverse((o) => {
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
       const p = o.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); tqReach = Math.max(tqReach, Math.hypot(v.x, v.y)); }
+      const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); tqReach = Math.max(tqReach, Math.hypot(v.x, v.y)); }
     });
     if (!FORM && RA < tqReach + CLEAR_MARGIN)
       console.warn(`§187: the aperture ${RA.toFixed(3)} does not clear the three-quarter plate's measured `
@@ -48016,7 +48096,8 @@ const CASE_DIMS = (() => {
       tqe.obj.traverse((o) => {
         if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
         const p = o.geometry.attributes.position;
-        for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); out = Math.max(out, -FORM_SHAPE.inset(v.x, v.y)); }
+        const _mw = p.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(_mw); out = Math.max(out, -FORM_SHAPE.inset(v.x, v.y)); }
       });
       formApertureGrow = out + CLEAR_MARGIN;
       formGlassGrow = formApertureGrow + CASE_CRYSTAL_T;
@@ -48554,12 +48635,13 @@ registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
     const take = FORM
       ? (x, y, z) => { if (z > zPath) { const d = -FORM_SHAPE.inset(x, y); if (d < minR) { minR = d; minName = o.name; } } }
       : (x, y, z) => { if (z > zPath) { const r = Math.hypot(x, y); if (r < minR) { minR = r; minName = o.name; } } };
+    const _mw = n > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t < n; t += 3) {
       for (let e = 0; e < 3; e++) {
         const i0 = idx ? idx.getX(t + e) : t + e;
         const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-        a.fromBufferAttribute(p, i0); o.localToWorld(a);
-        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        a.fromBufferAttribute(p, i0); a.applyMatrix4(_mw);
+        b.fromBufferAttribute(p, i1); b.applyMatrix4(_mw);
         take(a.x, a.y, a.z);
         // min-r along an edge is convex: the interior stationary point and
         // the z-boundary crossing are the two samples vertices miss
@@ -50528,8 +50610,9 @@ const GONG_CASE_PATH = await (async () => {
       const rho = STOCK[key].rho;
       const pos = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pos.count;
       let V = 0, vx = 0, vy = 0, vz = 0, A = 0, Rb = 0; const s = [0, 0, 0, 0, 0, 0], Q = [0, 0, 0, 0, 0, 0, 0, 0, 0]; nrm.set(0, 0, 0);
+      const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
       for (let t = 0; t + 2 < n; t += 3) {
-        for (let e = 0; e < 3; e++) { const i = idx ? idx.getX(t + e) : t + e; o.localToWorld((e === 0 ? a : e === 1 ? b : c).fromBufferAttribute(pos, i)); }
+        for (let e = 0; e < 3; e++) { const i = idx ? idx.getX(t + e) : t + e; (e === 0 ? a : e === 1 ? b : c).fromBufferAttribute(pos, i).applyMatrix4(_mw); }
         e1.subVectors(b, a); e2.subVectors(c, a); e1.cross(e2); A += e1.length(); nrm.add(e1);   // e1 = 2·(area·normal)
         cen.copy(a).add(b).add(c).multiplyScalar(1 / 3);                        // ∮ x_i n_j dA over a flat triangle is exactly centroid ⊗ area-vector
         Q[0] += cen.x * e1.x; Q[1] += cen.x * e1.y; Q[2] += cen.x * e1.z; Q[3] += cen.y * e1.x; Q[4] += cen.y * e1.y; Q[5] += cen.y * e1.z; Q[6] += cen.z * e1.x; Q[7] += cen.z * e1.y; Q[8] += cen.z * e1.z;
@@ -58567,13 +58650,24 @@ const JMP_SITE = await (async () => {
     const R = rzBox(rot.o, rot.a, p0, p1, p2, bb);
     if (bb[0] - tau >= rot.R1 || bb[1] + tau <= rot.R0 || bb[2] - tau >= rot.Z1 || bb[3] + tau <= rot.Z0) return true;
     const A = bb.slice();
-    let gap = Infinity;
-    for (let gi = Math.floor((A[0] - tau) / RZ_CELL); gi <= Math.floor((A[1] + tau) / RZ_CELL) && gap >= tau; gi++)
-      for (let gj = Math.floor((A[2] - tau) / RZ_CELL); gj <= Math.floor((A[3] + tau) / RZ_CELL) && gap >= tau; gj++) {
+    // The verdict only asks whether SOME box stands nearer than tau (the min
+    // was compared with tau and nothing else), so a box is passed over as soon
+    // as one leg of its gap already reaches tau: hypot(dr, dz) is never below
+    // its larger leg (V8 scales by that leg, and the scaled sum is ≥ 1), so
+    // such a box could never have been the one under tau. The boxes that
+    // remain are measured by boxGap exactly as before.
+    let near = false;
+    const B = rot.boxes;
+    for (let gi = Math.floor((A[0] - tau) / RZ_CELL); gi <= Math.floor((A[1] + tau) / RZ_CELL) && !near; gi++)
+      for (let gj = Math.floor((A[2] - tau) / RZ_CELL); gj <= Math.floor((A[3] + tau) / RZ_CELL) && !near; gj++) {
         const list = rot.grid.get(gi * 100003 + gj);
-        if (list) for (const i of list) { gap = Math.min(gap, boxGap(A, rot.boxes, i * 4)); if (gap < tau) break; }
+        if (list) for (const i of list) {
+          const j = i * 4;
+          if (Math.max(0, B[j] - A[1], A[0] - B[j + 1]) >= tau || Math.max(0, B[j + 2] - A[3], A[2] - B[j + 3]) >= tau) continue;
+          if (boxGap(A, B, j) < tau) { near = true; break; }
+        }
       }
-    if (gap >= tau) return true;
+    if (!near) return true;
     if (R <= ROT_HMIN) return false;
     const m01 = V().addVectors(p0, p1).multiplyScalar(0.5), m12 = V().addVectors(p1, p2).multiplyScalar(0.5), m20 = V().addVectors(p2, p0).multiplyScalar(0.5);
     return rotorTriClear(rot, p0, m01, m20, tau) && rotorTriClear(rot, m01, p1, m12, tau)
