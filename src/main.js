@@ -47373,6 +47373,7 @@ const BACK_ENVELOPE = await (async () => {
   const unitByObj = new Map(labelEntries.map((e) => [e.obj, e.name]));
   const unitOf = (o) => { for (let n = o; n; n = n.parent) { const u = unitByObj.get(n); if (u) return u; } return null; };
   const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
+  const _bt = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   movement.updateMatrixWorld(true);
   // §239 — WALKED AS A LIST, not as a callback. The body is unchanged; what
   // changes is that a `for` loop in an async block can yield between meshes
@@ -47417,11 +47418,11 @@ const BACK_ENVELOPE = await (async () => {
       // a triangle, 145k of them), so a seam every 1000 triangles (~16 ms):
       // the clock is read 145 times, not once a triangle.
       if (t % 3000 === 0) { await breathe(305); o.updateWorldMatrix(true, false); }
+      // each corner carried once, then copied into both edges that share it
+      for (let e = 0; e < 3; e++) _bt[e].fromBufferAttribute(p, idx ? idx.getX(t + e) : t + e).applyMatrix4(_mw);
       for (let e = 0; e < 3; e++) {
-        const i0 = idx ? idx.getX(t + e) : t + e;
-        const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-        a.fromBufferAttribute(p, i0); a.applyMatrix4(_mw);
-        b.fromBufferAttribute(p, i1); b.applyMatrix4(_mw);
+        a.copy(_bt[e]);
+        b.copy(_bt[(e + 1) % 3]);
         take(a);
         const dx = b.x - a.x, dy = b.y - a.y;
         const A2 = dx * dx + dy * dy;
