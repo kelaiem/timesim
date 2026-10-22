@@ -6887,7 +6887,32 @@ const MW_SINK_FLOOR = PLATE_BACK_FACE + MW_PLATE_SINK;   // world: the pockets' 
 const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                           // 0.55
 const RSV_ARB_EXT_R = 0.55;                                                              // rsvArbExt's radius — its build reads this
 const Z_RSV = -4.2;         // the reserve train's gear plane in the plate→dial gap (plate back −2.3, dial −7) — hoisted from its build for the same reason
-const RSV_Z_STEP = 1.5;     // its wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
+const RSV_Z_STEP_DESIGN = 1.5;   // its wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
+// §308 landing 4 item 3 — A TURNED ALARM MODULE CARRIES THE SWITCH'S BEAK BAR
+// OVER THE RESERVE'S SECOND STAGE, so under a form case with ?alarmmod= the
+// stage (p1 and w2, which share a plane because they mesh) takes the stratum
+// DIAL-WARD of the bar's band: w2's plate-ward face one CLEAR_MARGIN (+ the
+// measured-margin band, ALARM_SHEET_GAP's precedent) under the bar's dial-ward
+// face. At the designed azimuth the bar's plan clears w2's disc (+0.955 at
+// 40°); from ~44° the folded column wheel puts the nose over it (−0.627 at
+// 50°, item 2), and the bar's band is the same at every turn — its z is the
+// fold's, not the azimuth's — so the stratum is a property of the turned
+// family, not of one angle. PLATE-WARD is refused: the bar's plate-ward face is
+// −4.85, and a w2 above it stands in the switch's own column cluster (the pawl
+// boss −3.667…−3.35 at 1.93 from w2's axis, measured at 50°). Dial-ward the
+// stage has the gap down to the dial plate's back face (asserted at the build).
+// w2's reach is module-free: the hub's half-height (GEAR_HUB_H_F) or the body
+// at its bevel's thickness cap (gearBevel at m → ∞), whichever is taller, so
+// the solve needs no rsvModule1 (which the swing sets from this very step).
+// The bar's face is the switch build's hand-off, carried on RSV_P0_TOP_Z's
+// idiom: MEASURED at the link's measured site (alarmFoldZ(colTopC + lift + H)
+// at ALARM_LINK_MEASURED_SITE's run) and guarded at the site solve, which
+// warns if the build's own figure moves off this one.
+const ALARM_LINK_BAR_DIAL_Z = -5.7506375;   // measured: the measured site's barDialW (run 6), identical at alarmmod 40, 50
+const RSV_W2_REACH = Math.max((1.0 * G.GEAR_HUB_H_F) / 2, 1.0 / 2 + G.gearBevel(Infinity, 1.0, true));   // w2 is cut 1.0 thick (its build)
+const RSV_Z_STEP = (FORM && SPEC.alarmModAzDeg !== null)
+  ? Z_RSV - (ALARM_LINK_BAR_DIAL_Z - (CLEAR_MARGIN + MEASURED_MARGIN_BAND) - RSV_W2_REACH)
+  : RSV_Z_STEP_DESIGN;
 const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5 (hoisted: the cap's z-band is read below)
 // The Yoke's bound on leg 1, as the world HEADING of leg 1's direction from
 // A (degrees, atan2 in the movement's XY): the heading closest to the
@@ -20635,6 +20660,18 @@ const rsvArbor2 = new THREE.Group(); // w2 — the output, coaxial with the sub-
 rsvArbor2.position.set(rsvPivotXY.x, rsvPivotXY.y, Z_RSV - RSV_Z_STEP);
 rsvArbor2.add(rsvWheel2);
 reserveTrain.add(rsvArbor2);
+// §308 landing 4 item 3 — the turned-module stratum, re-read off the metal as
+// cut: w2's plate-ward face one margin under the bar's dial-ward face, and the
+// whole stage (p1 and w2) one margin over the dial's back face (Z_DIAL).
+if (RSV_Z_STEP !== RSV_Z_STEP_DESIGN) {
+  reserveTrain.updateWorldMatrix(true, true);
+  const w2B = new THREE.Box3().setFromObject(rsvWheel2), p1B = new THREE.Box3().setFromObject(reservePinion1);
+  if (w2B.max.z > ALARM_LINK_BAR_DIAL_Z - CLEAR_MARGIN)
+    console.warn(`§308: the reserve's w2 tops at ${w2B.max.z.toFixed(4)} as cut, over the bar's face ${ALARM_LINK_BAR_DIAL_Z} less the margin — the stratum's reach is not the metal's`);
+  const floor = Math.min(w2B.min.z, p1B.min.z);
+  if (floor < Z_DIAL + CLEAR_MARGIN)
+    console.warn(`§308: the reserve's second stage reaches ${floor.toFixed(4)}, inside a margin of the dial's back face ${Z_DIAL.toFixed(4)} — no dial-ward stratum under the bar`);
+}
 // Indicator arbor: from w2 through the dial to the hand's pivot boss.
 // §153/§188 — the arbor runs through the well floor's bore up into the
 // pocket and stops 0.2 short of the hand's plane (sunk inside the well
@@ -37302,8 +37339,17 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       for (const [nm, tt] of terms) if (tt.c < c) { c = tt.c; who = `${nm}:${tt.who}`; }
       const Tc = atC(ALARM_LINK_BAR_LINE_R, run);
       rodCands.push({ c, x: Tw.x, y: Tw.y, xC: Tc.x, yC: Tc.y, d: Math.hypot(Tc.x - ALARM_COL_POS.x, Tc.y - ALARM_COL_POS.y),
-        k, run, noseAz: a, who, Pw, Nw: Ew, noseW: Nw, pivReach });
+        k, run, noseAz: a, who, Pw, Nw: Ew, noseW: Nw, pivReach, barDialW });
     }
+  }
+  // §308 landing 4 item 3 — the reserve's turned-module stratum was cut
+  // against ALARM_LINK_BAR_DIAL_Z, this solve's own bar face at the measured
+  // site, before this solve exists; the figure computed two ways must agree.
+  {
+    const ms = rodCands.find((rc) => rc.k === ALARM_LINK_MEASURED_SITE.k && rc.run === ALARM_LINK_MEASURED_SITE.run);
+    if (!ms || Math.abs(ms.barDialW - ALARM_LINK_BAR_DIAL_Z) > 1e-6)
+      console.warn(`§308: the beak bar's dial-ward face at the measured site is ${ms ? ms.barDialW.toFixed(7) : 'unproposed'} as solved, `
+        + `ALARM_LINK_BAR_DIAL_Z says ${ALARM_LINK_BAR_DIAL_Z} — the reserve's turned-module stratum was cut against the wrong bar`);
   }
   rodCands.sort((p, q) => q.c - p.c);
   if (!rodCands.length || rodCands[0].c < CLEAR_MARGIN)

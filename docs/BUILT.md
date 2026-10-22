@@ -41744,3 +41744,52 @@ chain; the plain boots' extra rows (the opening count, the tonneau's pusher bore
 The floorplanner was not re-run: its alarmmod move still carries the bridges rigidly (landing 3's model) and refuses
 before booting, and the boot now says 50° is refused anyway. Teaching it to boot re-solved bridges stays a separate
 item. No battery check was run on a 50° build: it does not boot clean.
+
+### §308 landing 4, item 3 — the reserve's second stage takes the stratum under the switch's beak bar (option B)
+
+Item 2 left one conflict at `alarmmod=50`: the folded column wheel carries the beak bar's nose over the
+power-reserve wheel w2 (plan 3.99 from its axis, inside its 4.1 swept disc; bar z −5.75…−4.85, w2 −6.38…−5.02).
+Option B keeps the dial and the sub-dial where they are and moves the reserve's SECOND STAGE to another stratum.
+
+**The stratum, derived.** p1 and w2 mesh, so they move together: the step between w1's plane and theirs
+(`RSV_Z_STEP`) is no longer one number under a form case with `?alarmmod=`. It is solved so that w2's
+plate-ward face stands `CLEAR_MARGIN` (plus `MEASURED_MARGIN_BAND`, ALARM_SHEET_GAP's precedent) dial-ward of the
+bar's dial-ward face: `RSV_Z_STEP = Z_RSV − (ALARM_LINK_BAR_DIAL_Z − margin − RSV_W2_REACH)`. w2's reach is
+module-free (the hub's half-height `GEAR_HUB_H_F · t / 2` = 0.75 against the body at its bevel's thickness cap
+0.68), so the step does not depend on `rsvModule1`, which the swing solve sets from this very step. The bar's face
+is the link site solve's own `barDialW` at `ALARM_LINK_MEASURED_SITE`'s run (−5.7506375), carried up the file on
+`RSV_P0_TOP_Z`'s idiom and guarded where the site solve computes it (a drift warns). The bar's z is the fold's,
+not the azimuth's, so one stratum serves every turn. The step is 2.4506 against the designed 1.5 (+0.9506).
+PLATE-WARD was refused: w2 would have to clear −4.70, into the switch's own column cluster (the pawl boss
+−3.667…−3.35 at 1.93 from w2's axis). Dial-ward, the stage has the gap down to the dial's back face (Z_DIAL,
+−8.96): the stage now reaches −7.43 (p1) and −7.40 (w2's hub), 1.53 clear. Both faces are re-read off the cut
+metal at the build and asserted (under the bar by the margin, over the dial by the margin).
+
+Everything downstream re-derives from the step: the swing solve's and the cap-bearing solve's p1 band, the post,
+the hand arbor. The designed form builds (no `alarmmod`) and the round build keep 1.5.
+
+**Depth.** None spent: the stage moves inside the existing plate-to-dial gap, the dial does not move, and every
+form build still reports 11.9624 mm cased (over `CASE_HEIGHT_MAX_MM` 11.367 as before, not worse).
+
+**Measured** (each kind plain, then at its printed `formrect=`; warnings digit-stripped against the designed build of
+its kind at its own fitted outline):
+
+| build | fitted (mm) | new warnings at the fitted outline |
+|---|---|---|
+| `case=rect&alarmmod=50` | 33.84 × 33.54 (designed 34.78 × 33.54) | 1 (was 17): TODO 206's arming spring |
+| `case=cushion&alarmmod=50` | 33.95 × 33.65 (designed 34.96 × 33.71) | 1: the same row |
+| `case=tonneau&alarmmod=50` | 34.18 × 33.88 (designed 35.37 × 34.11) | 1: the same row |
+
+The refusal and its 16-row drift chain are gone: the link keeps its measured site, so every hoisted link constant
+reproduces. The row left is the one item 2 found at 42°: the selector ring's guide triangle stays among the
+centre's fixed tenants while the drive turns, and follower-B's nose seat reads 5.2093 mN against the 5.2223 its
+margin needs (window 5–50 mN). That is a re-site among the centre's tenants, not a stratum, and stays open. The
+plain boots' extra rows (the opening count; the tonneau's pusher bore sleeve) clear at the fitted outline, as before.
+At boot pose, `case=rect&alarmmod=50` fitted: the bar now passes 3.32 from w2's axis, 0.22 over its body (0.150
+over the hub's plane, the hub itself being 0.77 in radius and nowhere under it); the link's shaft and hanger 3 stand
+0.27–0.32 outside w2's disc in plan. No battery has swept it (it does not boot silent), so its pose net is
+unverified.
+Explicit `alarmmod=40` (designed azimuth, deeper stage) at the designed fitted outline prints only the designed
+build's two rows (§186's seat, §261's depth). Fingerprints: round default 955951544, 0 warnings (unchanged);
+`case=rect` 1604757989 (unchanged); `case=rect&alarmmod=40` at its fitted outline 834155125;
+`case=rect&alarmmod=50&formrect=-43.58,45.72,-43.91,44.59` 829037748.
