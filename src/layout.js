@@ -3815,12 +3815,28 @@ export function plateShape(rect, plateR, { grow = 0 } = {}) {
   return grow === 0 ? s : s.grown(grow);
 }
 
+// §308 L4 option B — THE SECTOR WELL'S OUTLINE, one law for the cut (geometry
+// makeDial) and the fit (solveKeyless): a fan of radius r about (cx, cy),
+// mid-direction midRad, half-angle halfRad, closed round the BACK of the pivot
+// by the hub land's arc (radius hubR), which carries the bore and the hand's
+// tail. CCW, the last point not repeated, `n` points over a full turn's worth
+// of arc (the fan's share of it at r, the rest at hubR, at least 2 each).
+export function reserveSectorLoop(cx, cy, r, hubR, midRad, halfRad, n = 96) {
+  const pts = [];
+  const a0 = midRad - halfRad, a1 = midRad + halfRad;
+  const nFan = Math.max(2, Math.ceil((n * 2 * halfRad) / (2 * Math.PI)));
+  const nHub = Math.max(2, Math.ceil((n * (2 * Math.PI - 2 * halfRad)) / (2 * Math.PI)));
+  for (let i = 0; i <= nFan; i++) { const a = a0 + (i / nFan) * (a1 - a0); pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+  for (let i = 0; i <= nHub; i++) { const a = a1 + (i / nHub) * (2 * Math.PI - 2 * halfRad); pts.push([cx + hubR * Math.cos(a), cy + hubR * Math.sin(a)]); }
+  return pts;
+}
 export function solveKeyless({
   P,              // solveLayout's position table (shifted, centre-arbor origin)
   outline,        // { barrel, center, third, fourth, escape, balance, fork, dial } — outline radii for the plate bound
   stemAzRad = null, // §33 step 2 — decoupled stem azimuth; null = derive from the barrel (§13, bit-exact)
   rsvR = null,      // §94 tier C — the reserve station's radius; null = mirror the seconds station (§125 — symmetric by construction)
   rsvAzRad = null,  // §308 L4 option A — the reserve station's azimuth, dial-clock radians (0 = 12 o'clock, clockwise from the front); null = on the 12 o'clock axis, bit-exact
+  rsvSector = null, // §308 L4 option B — { extentAt(r) → { halfRad, hubR } }: the print's fan at radius r; null = a disc well (bit-exact)
   faceInset = null, // §308 L4 option A — (x, y) dial-local → signed distance inside the dial's outline, for a well OUTSIDE the chapter; null = the round face (dialRadius − r)
   alarmR = null,    // §98 — the alarm corner's radius; null = ALARM_CORNER_R (§125 step 1 — the §74-proven station, pinned)
   subDialRadius = null, // §97/§125 Tier B — the SECONDS well's radius (the wells split; the reserve's is its station's derivation); null = the derived ceiling, bit-exact
@@ -4280,8 +4296,63 @@ export function solveKeyless({
   const railOuterR = printFrame && printFrame.railOuterF !== undefined ? dialRadius * printFrame.railOuterF : null;
   const chapterWindowMax = Math.min((dialRadius + SUBDIAL_INBOARD_CLEAR) / 2,
     markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - SUBDIAL_FLOOR);
-  const reserveWellLaw = (rsvR !== null && rsvR > chapterWindowMax && railOuterR !== null) ? 'track' : 'chapter';
-  const reserveWellR = reserveWellLaw === 'chapter' ? Math.min(
+  const outsideChapter = rsvR !== null && rsvR > chapterWindowMax && railOuterR !== null;
+  // §308 L4 option B — THE SECTOR WELL. A station outside the chapter whose
+  // hand sweeps less than a turn (the caller passes `rsvSector` only under a
+  // spec'd sweep) is cut as the FAN the hand and its print need, not a disc:
+  // apex at the pivot, opening toward the dial centre (the fan law, option A),
+  // its half-angle and its hub land read off what is printed on it at the
+  // radius being tried (`rsvSector.extentAt(r)` — the caller owns the print's
+  // laws). The radius is the largest at which (a) the fan's arc stays the
+  // ring wall and the margin off the track's outer rail — exact on the mid
+  // line, where the arc comes nearest the centre — and (b) every point of the
+  // cut loop stands the wall and the margin inside the dial's outline. (b) is
+  // monotone in r for a fan whose angles do not shrink faster than it grows,
+  // which a print sized by acuity does not, so a bisection finds it.
+  const reserveWellLaw = outsideChapter ? (rsvSector ? 'sector' : 'track') : 'chapter';
+  let reserveSector = null;
+  if (reserveWellLaw === 'sector') {
+    const midRad = Math.atan2(-RESERVE_LOCAL.y, -RESERVE_LOCAL.x);
+    const rRail = reserveStationR - (railOuterR + DIAL_WALL_HALF + CLEAR_MARGIN);
+    const need = DIAL_WALL_HALF + CLEAR_MARGIN;
+    const loopAt = (r) => { const e = rsvSector.extentAt(r);
+      return { e, loop: reserveSectorLoop(RESERVE_LOCAL.x, RESERVE_LOCAL.y, r, e.hubR, midRad, e.halfRad, 96) }; };
+    // (c) the HAND it carries is movement metal the case's fit counts (its
+    // tip, its edge and its tail, swept over the sweep and the tail's own
+    // arc), so it stands the fit's own rim margin inside the outline
+    // (`rsvSector.rimMargin`) — the well may run closer than its hand, never
+    // the hand closer than the case allows any metal.
+    const handFits = (e) => {
+      if (!e.hand || !(rsvSector.rimMargin > 0)) return true;
+      const { len, halfW, tail, sweepRad } = e.hand;
+      const tipR = Math.hypot(len, halfW), tailR = Math.hypot(tail, halfW);
+      const half = sweepRad / 2 + Math.atan2(halfW, len);
+      for (let i = 0; i <= 48; i++) {
+        const a = midRad - half + (i / 48) * 2 * half;
+        if (faceInset(RESERVE_LOCAL.x + tipR * Math.cos(a), RESERVE_LOCAL.y + tipR * Math.sin(a)) < rsvSector.rimMargin) return false;
+      }
+      for (let i = 0; i < 48; i++) {
+        const a = (i / 48) * 2 * Math.PI;
+        if (faceInset(RESERVE_LOCAL.x + tailR * Math.cos(a), RESERVE_LOCAL.y + tailR * Math.sin(a)) < rsvSector.rimMargin) return false;
+      }
+      return true;
+    };
+    const fits = (r) => { if (!faceInset) return true; const { e, loop } = loopAt(r); return loop.every(([x, y]) => faceInset(x, y) >= need) && handFits(e); };
+    let lo = SUBDIAL_FLOOR, hi = rRail;
+    if (!(hi > lo)) hi = lo;
+    else if (!fits(hi)) {
+      if (!fits(lo)) hi = lo;
+      else { for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; } hi = lo; }
+    }
+    const { e } = loopAt(hi);
+    reserveSector = { r: hi, midRad, halfRad: e.halfRad, hubR: e.hubR, rRail, fitsOutline: fits(hi), binds: hi < rRail - 1e-6 ? 'outline' : 'track', extent: e,
+      handInset: faceInset && e.hand ? Math.min(...Array.from({ length: 49 }, (_, i) => { const half = e.hand.sweepRad / 2; const a = midRad - half + (i / 48) * 2 * half;
+        return faceInset(RESERVE_LOCAL.x + e.hand.len * Math.cos(a), RESERVE_LOCAL.y + e.hand.len * Math.sin(a)); })) : null };
+    if (!reserveSector.fitsOutline)
+      warn(`the reserve sector well cannot stand inside the dial's outline at any radius over the floor ${SUBDIAL_FLOOR.toFixed(2)} — `
+        + `its hub land ${e.hubR.toFixed(2)} at (${RESERVE_LOCAL.x.toFixed(2)}, ${RESERVE_LOCAL.y.toFixed(2)}) is past the wall and margin; move the station in`);
+  }
+  const reserveWellR = reserveWellLaw === 'sector' ? reserveSector.r : reserveWellLaw === 'chapter' ? Math.min(
     reserveStationR - SUBDIAL_INBOARD_CLEAR,
     markerInnerR - DIAL_WALL_HALF - CLEAR_MARGIN - reserveStationR,
   ) : Math.min(
@@ -4353,7 +4424,7 @@ export function solveKeyless({
   // well it got rather than restated: it exists while that well holds the
   // floor (its pocket's bore + wall + margin); under it the station is too
   // close to the track or too near the outline's edge.
-  if (reserveWellLaw === 'track') {
+  if (reserveWellLaw === 'track' || reserveWellLaw === 'sector') {
     if (!(reserveWellR >= SUBDIAL_FLOOR))
       warn(`reserve station ${rsvR.toFixed(2)} stands outside the chapter, but its well outside the railway track is `
         + `${reserveWellR.toFixed(2)}, under the floor ${SUBDIAL_FLOOR.toFixed(2)} — the track's outer rail at `
@@ -4384,6 +4455,7 @@ export function solveKeyless({
     kwPostBow, yokePivot, yokeAngleAt, slMidAlong, canonToWorld,
     plateR, dialRadius, RESERVE_LOCAL, SECONDS_LOCAL, reserveWellR, secondsWellR, secondsWellCeil, alarmCornerR, rsvrWindow,
     reserveStationR, reserveWellLaw, railOuterR, // §308 L4 option A
+    reserveSector, // §308 L4 option B — the fan well's derivation (null unless the law is 'sector')
     formPlate, // §307 — the form rectangle (read only under ?case=rect)
   };
 }
