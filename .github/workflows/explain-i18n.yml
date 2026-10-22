@@ -107,6 +107,7 @@ on:
       - '.github/workflows/explain-i18n.yml'
       # the one Chromium install every browser job here calls
       - 'tools/ci-install-chromium.sh'
+      - '.github/actions/install-chromium/**'
       # the quote audit compares the page against these, so a constant moving
       # here must re-run it — that is the whole point of the check
       - 'src/layout.js'
@@ -124,7 +125,7 @@ permissions:
 
 jobs:
   explain-i18n:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # TEMPORARY pin (#762): ubuntu-latest is 26.04, where Playwright 1.56.1 cannot install Chromium, and the Chromium that can (156) builds different alarm-strike metal (lineSpec). Return to ubuntu-latest with the Playwright bump once that build step is fixed.
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -144,7 +145,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
 
       - name: Install Chromium
-        run: tools/ci-install-chromium.sh   # bounded apt, then the cached browser
+        uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
       # Cheapest first, and it needs no browser: if the page has drifted from
       # the source, that is worth knowing before spending a Chromium on prose.
