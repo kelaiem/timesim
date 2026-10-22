@@ -36472,6 +36472,14 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
+// §308 landing 4 item 2 — THE SITE THE HOISTED CONSTANTS BELOW WERE MEASURED AT
+// (ALARM_LINK_BODY_LEN_U, ALARM_LINK_ROD_LEN_U, ALARM_LINK_BUSH_OD_U,
+// ALARM_SEL_GUIDE_HALF_T_U all quote "k 1, run 6, tab 87"): the beak's parity
+// ray, its run and the drive tab's azimuth, module-relative. The round build's
+// solve must still land on it (asserted after the solve), and a turned module
+// keeps it wherever it clears — see the site solve. Re-measuring any of those
+// constants at a re-solved site re-quotes this row with them.
+const ALARM_LINK_MEASURED_SITE = Object.freeze({ k: 1, run: 6, tabDeg: 87 });
 const ALARM_LINK_BODY_LEN_U = 9.9910;   // TODO 240: re-measured at the tangential beak's re-solved site (k 1, run 6, tab 87), rounded UP from the built 9.9909 — was 12.0141. §261 2c: re-measured at the folded beak's rod site (the §112 solve re-sited with the hangers' columns scored, and the fork guarded against the guide PLATES TODO 222 hung where the posts stood — at 11.1138 the fork was cut through guide 1), rounded UP so the stratum is derived for a bush no thinner than the one built — was 11.0211. TODO 222: re-measured after the B band's spend lengthened the selector rod (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0121 shorter — was 11.0331; rounded UP from the built 11.0210x. TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
@@ -37508,15 +37516,23 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     }
     return { c, who, jog };
   };
-  let best = null;
+  let best = null, measured = null;
   // Every stage-1 candidate is searched, not a top-N: the rim guard
   // confines each rod to the tab sectors whose block seats outboard, and
   // those sectors can belong to parity rays whose COLUMNS do not top the
   // stage-1 ranking — a top-40 shortlist starved the joint solve to −1.3
   // (measured, this landing).
+  // §308 landing 4 item 2 — THE TAB'S GRID TURNS WITH THE MODULE. The beak's
+  // rays (k) and its runs are in the cluster's frame, so they turn with
+  // ?alarmmod=; the tab's 3° grid was a WORLD literal, so a turned module
+  // could not even propose the site it had at identity (87° turned by 10° is
+  // 97°, off a grid of multiples of 3). The grid is module-relative now; at
+  // identity the offset is exactly 0 and the loop is the one it was.
+  const _tabGridOff = SPEC.alarmModAzDeg !== null ? ALARM_MOD_ROT / DEG2RAD : 0;
   for (const rc of rodCands) {
     await breathe(280);
-    for (let azw = 0; azw < 360; azw += 3) {
+    for (let azw0 = 0; azw0 < 360; azw0 += 3) {
+      const azw = SPEC.alarmModAzDeg !== null ? azw0 + _tabGridOff : azw0;
       const tx = Math.cos(azw * DEG2RAD) * ALARM_SEL_TAB_R, ty = Math.sin(azw * DEG2RAD) * ALARM_SEL_TAB_R; // tab mid-reach, the ring's own radius
       // TODO 213 — the chord this candidate's build would cut: tab to the tip
       // standing ALARM_LINK_ROD_STANDOFF beside the rod (the same function
@@ -37532,7 +37548,29 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       const c = Math.min(rc.c, cc, tb.c, hg.c);
       const boundBy = c === rc.c ? rc.who : (c === cc ? who : c === tb.c ? tb.who : hg.who);
       if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
+      if (rc.k === ALARM_LINK_MEASURED_SITE.k && rc.run === ALARM_LINK_MEASURED_SITE.run && azw0 === ALARM_LINK_MEASURED_SITE.tabDeg)
+        measured = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
     }
+  }
+  // §308 landing 4 item 2 — A TURNED MODULE KEEPS THE MEASURED SITE wherever
+  // it still clears. The chain this site feeds is cut at MEASURED constants
+  // (ALARM_LINK_BODY_LEN_U, ALARM_LINK_ROD_LEN_U, ALARM_LINK_BUSH_OD_U,
+  // ALARM_SEL_GUIDE_HALF_T_U), each boot-guarded against the build at
+  // ALARM_LINK_MEASURED_SITE, and the arming spring's force window was
+  // proportioned on the same geometry. The site turned with the module is that
+  // geometry exactly — the ray, the run and the tab are all module-relative —
+  // so every constant reproduces; any other site is a site nobody measured, and
+  // the max-min score walks to one as soon as an UNRELATED tenant's clearance
+  // moves past the self-term that binds the design (measured at alarmmod=42:
+  // the measured site scores the designed 0.4224, a neighbouring tab 0.4337,
+  // and the chord drifts to 9.8156 against the hoisted 9.991). So the measured
+  // site is taken when it clears CLEAR_MARGIN; when it does not, the turn has
+  // a real conflict, and the warning names it before the drift asserts fire.
+  if (SPEC.alarmModAzDeg !== null) {
+    if (measured && measured.c >= CLEAR_MARGIN) best = measured;
+    else console.warn(`§308: the turned module refuses the link's measured site (k ${ALARM_LINK_MEASURED_SITE.k}, run ${ALARM_LINK_MEASURED_SITE.run}, `
+      + `tab ${ALARM_LINK_MEASURED_SITE.tabDeg}° + the module's turn) — it clears ${measured ? measured.c.toFixed(3) : 'nothing (guarded out)'}, bound by `
+      + `${measured ? measured.who : '-'}; every other site drifts the constants measured there`);
   }
   await breathe(281);
   if (!best || best.c < CLEAR_MARGIN)
@@ -37545,6 +37583,10 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   return { xy: { x: best.x, y: best.y }, xyC: { x: best.xC, y: best.yC }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC,
     barLine: { P: best.Pw, N: best.Nw, pivReach: best.pivReach }, run: best.run, noseAz: best.noseAz, k: best.k, who: best.who, clear: best.c };
 })();
+if (SPEC.alarmModAzDeg === null && (ALARM_LINK_NOSE_K !== ALARM_LINK_MEASURED_SITE.k || ALARM_LINK_RUN !== ALARM_LINK_MEASURED_SITE.run
+  || ALARM_LINK_AZ_DEG !== ALARM_LINK_MEASURED_SITE.tabDeg))
+  console.warn(`§308: the link's site solve landed at k ${ALARM_LINK_NOSE_K}, run ${ALARM_LINK_RUN}, tab ${ALARM_LINK_AZ_DEG}° — `
+    + `not ALARM_LINK_MEASURED_SITE, where the hoisted link constants were measured; re-measure them there and re-quote the row`);
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * ALARM_SEL_TAB_R, y: Math.sin(_linkInnerAz) * ALARM_SEL_TAB_R }; // inner end r = the tab's mid-reach
 const ALARM_LINK_ROD_R = Math.hypot(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y);
