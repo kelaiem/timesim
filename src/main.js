@@ -32453,56 +32453,71 @@ const { i1: alarmWindI1, i2: alarmWindI2, chain: _wChain } = (() => {
   //     RANKS the accepted dogleg stations by how many of the arrest's coarse
   //     stations (its 6° pass) stand a margin clear of both idlers and of every
   //     swept rotor already built (the barrel's own, its mesh partners, aside),
-  //     at the tower's widest reach (leg A or the spider) over its band, plate
-  //     to cage, with at least one of its subtractor idler's (count, side)
-  //     stations clear too. A proxy, said so: it reads rotors only, not the
+  //     piece by piece at the arrest's own bands and reaches, with at least
+  //     one of its subtractor idler's (count, side) stations clear too. A proxy, said so: it reads rotors only, not the
   //     solids, and none of the arrest's own finger/cross/plate-window tests.
   const tabGap = (p) => (Math.atan2(p.i1.y, p.i1.x) - ALARM_CORNER_W_AZ - ALARM_SLEEVE_TAB_REL_AZ) * ALARM_CD;
   const ARREST_ROOM = FORM ? (() => {
-    const towerR = Math.max(G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH, mates: [ALARM_WIND_W], thickness: ALARM_WIND_WHEEL_T }), SUB_SPEC.sweptR);
-    const lo = ALARM_U_FLOOR - 0.5, hi = ARREST_STACK.cageZ + ALARM_WIND_WHEEL_T / 2 + 0.2;
+    // the arrest's pieces at their OWN bands (its solve's NEED table, from the
+    // same constants): leg A in the winding tier (ARREST_PIN_Z is
+    // ALARM_WIND_TIER_Z), the spider and the cage's wheel at the cage, leg B
+    // at its plane (bounded over every idler it may mesh, as the arrest's own
+    // LEG_B_REACH is), and the tower's arbor from the plate to the cage's top
+    const T = ALARM_WIND_WHEEL_T, PLATE_Z = ALARM_U_FLOOR - 0.5;
+    const tip = (teeth, mates, module = ALARM_TRAIN_MODULE) => G.gearOuterR({ module, teeth, mates, thickness: T });
+    let legB = 0;
+    for (const z of ARREST_SUB_IDLER_COUNTS) legB = Math.max(legB, tip(SUB_LEG_TEETH, [z]));
+    const cz = ARREST_STACK.cageZ, pz = ARREST_STACK.pinBZ;
+    const tower = [
+      { r: tip(SUB_LEG_TEETH, [ALARM_WIND_W]), lo: ALARM_WIND_TIER_Z - T / 2, hi: ALARM_WIND_TIER_Z + T / 2 },
+      { r: SUB_SPEC.sweptR, lo: cz - SUB_SPEC.halfHeight, hi: cz + SUB_SPEC.halfHeight },
+      { r: legB, lo: pz - T / 2, hi: pz + T / 2 },
+      { r: tip(SUB_OUT_TEETH, [SUB_FINGER_TEETH], SUB_OUT_MODULE), lo: cz - T / 2, hi: cz + T / 2 },
+      { r: ARREST_COLUMN_R, lo: PLATE_Z, hi: cz + T / 2 + 0.2 },
+    ];
+    // the subtractor idler's: its wheel on the barrel's band, its pinion on
+    // leg B's, its arbor from the plate (SUB_IDLER_W_Z / _P_Z, below)
+    const subPieces = (z) => {
+      const r = tip(z, [ALARM_BARREL_TEETH]);
+      return [
+        { r, lo: ALARM_BARREL_Z - T / 2, hi: ALARM_BARREL_Z + T / 2 },
+        { r, lo: pz - T / 2, hi: pz + T / 2 },
+        { r: ARREST_COLUMN_R, lo: PLATE_Z, hi: pz + T / 2 + 0.2 },
+      ];
+    };
+    // clear of every built rotor (the barrel's own unit aside: leg A and the
+    // idler's wheel mesh it, and its metal is the module's own)
+    const rotorFree = (x, y, pieces) => {
+      for (const pc of pieces) for (const r of rings) {
+        if (r.unit === 'Alarm barrel') continue;
+        const dz = Math.max(0, r.lo - pc.hi, pc.lo - r.hi);
+        const d = Math.hypot(x - r.x, y - r.y);
+        const dp = d >= r.maxR + pc.r ? d - r.maxR - pc.r : (d + pc.r <= r.minR ? r.minR - d - pc.r : 0);
+        if (Math.hypot(dp, dz) < CM) return false;
+      }
+      return true;
+    };
     const st = [];
     for (let k = 0; k < 60; k++) {
       const a = k * 6 * DEG2RAD;
-      const s = { x: alarmBarrelPos.x + Math.cos(a) * ARREST_CD, y: alarmBarrelPos.y + Math.sin(a) * ARREST_CD };
-      let free = true;
-      for (const r of rings) {
-        if (r.unit === 'Alarm barrel') continue;
-        const dz = Math.max(0, r.lo - hi, lo - r.hi);
-        const d = Math.hypot(s.x - r.x, s.y - r.y);
-        const dp = d >= r.maxR + towerR ? d - r.maxR - towerR : (d + towerR <= r.minR ? r.minR - d - towerR : 0);
-        if (Math.hypot(dp, dz) < CM) { free = false; break; }
-      }
-      if (!free) continue;
-      // the subtractor idler's candidate stations off this one, each kept
-      // only where it stands clear of the built rotors (its wheel's tip over
-      // its column, plate to leg B's band) — the arrest's own (count, side)
+      const s = { x: alarmBarrelPos.x + Math.cos(a) * ARREST_CD, y: alarmBarrelPos.y + Math.sin(a) * ARREST_CD, pieces: tower };
+      if (!rotorFree(s.x, s.y, tower)) continue;
       const subs = [];
-      const sHi = ARREST_STACK.pinBZ + ALARM_WIND_WHEEL_T / 2 + 0.2;
       for (const z of ARREST_SUB_IDLER_COUNTS) for (const side of [1, -1]) {
         const geo = subIdlerGeom(z, side);
         if (!geo) continue;
         const ia = a + geo.daz;
-        const q = { x: alarmBarrelPos.x + Math.cos(ia) * geo.rimCD, y: alarmBarrelPos.y + Math.sin(ia) * geo.rimCD,
-          r: G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: z, mates: [ALARM_BARREL_TEETH], thickness: ALARM_WIND_WHEEL_T }) };
-        let qok = true;
-        for (const r of rings) {
-          if (r.unit === 'Alarm barrel') continue;
-          const dz = Math.max(0, r.lo - sHi, lo - r.hi);
-          const d = Math.hypot(q.x - r.x, q.y - r.y);
-          const dp = d >= r.maxR + q.r ? d - r.maxR - q.r : (d + q.r <= r.minR ? r.minR - d - q.r : 0);
-          if (Math.hypot(dp, dz) < CM) { qok = false; break; }
-        }
-        if (qok) subs.push(q);
+        const q = { x: alarmBarrelPos.x + Math.cos(ia) * geo.rimCD, y: alarmBarrelPos.y + Math.sin(ia) * geo.rimCD, pieces: subPieces(z) };
+        if (rotorFree(q.x, q.y, q.pieces)) subs.push(q);
       }
-      if (subs.length) st.push({ ...s, subs, sHi });
+      if (subs.length) st.push({ ...s, subs });
     }
-    return { st, towerR, lo, hi };
+    return { st };
   })() : null;
-  const clearOfIdlers = (p, ch, x, y, r, lo, hi) => {
-    for (const [c, pcs] of [[p.i1, ch.P1], [p.i2, ch.P2]]) for (const pc of pcs) {
-      const dz = Math.max(0, pc.lo - hi, lo - pc.hi);
-      const dp = Math.max(0, Math.hypot(x - c.x, y - c.y) - pc.r - r);
+  const clearOfIdlers = (p, ch, q) => {
+    for (const [c, pcs] of [[p.i1, ch.P1], [p.i2, ch.P2]]) for (const pc of pcs) for (const t of q.pieces) {
+      const dz = Math.max(0, pc.lo - t.hi, t.lo - pc.hi);
+      const dp = Math.max(0, Math.hypot(q.x - c.x, q.y - c.y) - pc.r - t.r);
       if (Math.hypot(dp, dz) < CM) return false;
     }
     return true;
@@ -32510,8 +32525,7 @@ const { i1: alarmWindI1, i2: alarmWindI2, chain: _wChain } = (() => {
   const roomOf = (p, ch) => {
     let n = 0;
     for (const s of ARREST_ROOM.st)
-      if (clearOfIdlers(p, ch, s.x, s.y, ARREST_ROOM.towerR, ARREST_ROOM.lo, ARREST_ROOM.hi)
-        && s.subs.some((q) => clearOfIdlers(p, ch, q.x, q.y, q.r, ARREST_ROOM.lo, s.sHi))) n++;
+      if (clearOfIdlers(p, ch, s) && s.subs.some((q) => clearOfIdlers(p, ch, q))) n++;
     return n;
   };
   const solveChain = (ch) => {
