@@ -41713,7 +41713,7 @@ At 42 the link's `lineSpec` rows (`rEff`, `turn`, `helixTan`, which moved on HEA
 TODO 206's shared margin: the selector ring's guide triangle (60/220/300°) is centre machinery, sited by hand among
 the centre's fixed tenants (the seat posts, the rocker bracket, the setting idler, the sleeve's co-sited third
 plate), so the turned drive meets it 2° further round. The ring's work factor moves follower-B's lift at the nose
-from 0.017278 to 0.017497 mN·…, and the fixed point from the hoisted 5.2780 to 5.2661 mN (nose seat 5.2634,
+from 17.278 to 17.497 mN, and the fixed point from the hoisted 5.2780 to 5.2661 mN (nose seat 5.2634,
 still inside 5–50). Turning the guides with the module would be a re-site among the centre's tenants, not a turn.
 
 **Left, a real conflict (P3, with numbers).** From about 44° on, the folded column wheel carries the beak's nose
