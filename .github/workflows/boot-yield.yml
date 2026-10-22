@@ -54,6 +54,7 @@ on:
       - '.github/workflows/boot-yield.yml'
       # the one Chromium install every browser job here calls
       - 'tools/ci-install-chromium.sh'
+      - '.github/actions/install-chromium/**'
   push:
     branches: [main]
   workflow_dispatch:
@@ -90,7 +91,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
 
       - name: Install Chromium
-        run: tools/ci-install-chromium.sh   # bounded apt, then the cached browser
+        uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
       - name: Probe the boot's yield, with both controls
         run: node tools/probe-239-boot-yield.mjs --json boot-yield.json

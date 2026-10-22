@@ -641,7 +641,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
 
       - name: Install Chromium
-        run: tools/ci-install-chromium.sh   # bounded apt, then the cached browser
+        uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
       - name: Measure the spec boots and the point tier (§264, §265)
         run: |
@@ -829,12 +829,13 @@ jobs:
             ~/Library/Caches/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
 
-      # --with-deps also apt-installs the shared libraries Chromium needs,
-      # which the browser cache above cannot carry — so it runs every time.
-      # Linux only (§200): it is apt work, and on macOS it was measured to
-      # download a codec the harness never uses and then stall.
+      # --with-deps also apt-installs the shared libraries Chromium needs, which
+      # the browser cache above cannot carry — the action caches their .debs
+      # instead (#766), so apt still runs every time but downloads only what no
+      # earlier run fetched. Linux only (§200): it is apt work, and on macOS it
+      # was measured to download a codec the harness never uses and then stall.
       - name: Install Chromium
-        run: tools/ci-install-chromium.sh   # Linux-only apt half, bounded; see the script
+        uses: ./.github/actions/install-chromium   # Linux-only apt half, bounded and cached; see the action
 
       # ---- §152: the baseline, and what this run is allowed to skip ---------
       #

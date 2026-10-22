@@ -70,6 +70,7 @@ on:
       - '.github/workflows/offline.yml'
       # the one Chromium install every browser job here calls
       - 'tools/ci-install-chromium.sh'
+      - '.github/actions/install-chromium/**'
   workflow_dispatch:
 
 concurrency:
@@ -98,9 +99,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
 
       # --with-deps also apt-installs the shared libraries Chromium needs, which
-      # the browser cache above cannot carry — so it runs every time.
+      # the browser cache above cannot carry — the action caches their .debs
+      # instead (#766), so apt still runs every time but downloads only what no
+      # earlier run fetched.
       - name: Install Chromium
-        run: tools/ci-install-chromium.sh   # bounded apt, then the cached browser
+        uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
       - name: Offline acceptance
         working-directory: tools
