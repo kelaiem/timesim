@@ -58313,13 +58313,24 @@ const JMP_SITE = await (async () => {
     const R = rzBox(rot.o, rot.a, p0, p1, p2, bb);
     if (bb[0] - tau >= rot.R1 || bb[1] + tau <= rot.R0 || bb[2] - tau >= rot.Z1 || bb[3] + tau <= rot.Z0) return true;
     const A = bb.slice();
-    let gap = Infinity;
-    for (let gi = Math.floor((A[0] - tau) / RZ_CELL); gi <= Math.floor((A[1] + tau) / RZ_CELL) && gap >= tau; gi++)
-      for (let gj = Math.floor((A[2] - tau) / RZ_CELL); gj <= Math.floor((A[3] + tau) / RZ_CELL) && gap >= tau; gj++) {
+    // The verdict only asks whether SOME box stands nearer than tau (the min
+    // was compared with tau and nothing else), so a box is passed over as soon
+    // as one leg of its gap already reaches tau: hypot(dr, dz) is never below
+    // its larger leg (V8 scales by that leg, and the scaled sum is ≥ 1), so
+    // such a box could never have been the one under tau. The boxes that
+    // remain are measured by boxGap exactly as before.
+    let near = false;
+    const B = rot.boxes;
+    for (let gi = Math.floor((A[0] - tau) / RZ_CELL); gi <= Math.floor((A[1] + tau) / RZ_CELL) && !near; gi++)
+      for (let gj = Math.floor((A[2] - tau) / RZ_CELL); gj <= Math.floor((A[3] + tau) / RZ_CELL) && !near; gj++) {
         const list = rot.grid.get(gi * 100003 + gj);
-        if (list) for (const i of list) { gap = Math.min(gap, boxGap(A, rot.boxes, i * 4)); if (gap < tau) break; }
+        if (list) for (const i of list) {
+          const j = i * 4;
+          if (Math.max(0, B[j] - A[1], A[0] - B[j + 1]) >= tau || Math.max(0, B[j + 2] - A[3], A[2] - B[j + 3]) >= tau) continue;
+          if (boxGap(A, B, j) < tau) { near = true; break; }
+        }
       }
-    if (gap >= tau) return true;
+    if (!near) return true;
     if (R <= ROT_HMIN) return false;
     const m01 = V().addVectors(p0, p1).multiplyScalar(0.5), m12 = V().addVectors(p1, p2).multiplyScalar(0.5), m20 = V().addVectors(p2, p0).multiplyScalar(0.5);
     return rotorTriClear(rot, p0, m01, m20, tau) && rotorTriClear(rot, m01, p1, m12, tau)
