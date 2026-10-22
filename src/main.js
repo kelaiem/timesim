@@ -23215,6 +23215,7 @@ const alarmDetectorDl = (r) => ({ x: ALARM_DETECTOR_AT.x + _uF.x * r, y: ALARM_D
 // below rather than for trusting a clean run.
 const _frac = (x) => x - Math.floor(x);
 const _gearOrig = new THREE.Vector3(), _gearV = new THREE.Vector3();
+const _gearTx = new Float64Array(3), _gearTy = new Float64Array(3), _gearTa = new Float64Array(3);
 // A tooth-centre azimuth, MEASURED FROM THE VERTICES. Reading `local +x` and
 // trusting gearOutlineShape's convention is not good enough here: the winding
 // train's climb wheel comes from makePinion, not makeGear, and nothing
@@ -23269,13 +23270,19 @@ const measuredToothPhase = (obj, N) => {
     const pos = m.geometry.attributes.position;
     const idx = m.geometry.index ? m.geometry.index.array : null;
     const n = idx ? idx.length : pos.count;
+    // Each corner is carried and its azimuth taken ONCE per triangle, then read
+    // by both edges that share it (the same applyMatrix4 and atan2 on the same
+    // inputs the per-edge reads made), edges in the same order.
+    const mw = m.matrixWorld;
     for (let i = 0; i + 2 < n; i += 3) {
-      for (const [p, q] of [[0, 1], [1, 2], [2, 0]]) {
-        _gearV.fromBufferAttribute(pos, idx ? idx[i + p] : i + p).applyMatrix4(m.matrixWorld);
-        const ax = _gearV.x - ox, ay = _gearV.y - oy;
-        _gearV.fromBufferAttribute(pos, idx ? idx[i + q] : i + q).applyMatrix4(m.matrixWorld);
-        const bx = _gearV.x - ox, by = _gearV.y - oy;
-        let d = Math.atan2(by, bx) - Math.atan2(ay, ax);
+      for (let e = 0; e < 3; e++) {
+        _gearV.fromBufferAttribute(pos, idx ? idx[i + e] : i + e).applyMatrix4(mw);
+        _gearTx[e] = _gearV.x - ox; _gearTy[e] = _gearV.y - oy; _gearTa[e] = Math.atan2(_gearTy[e], _gearTx[e]);
+      }
+      for (let p = 0; p < 3; p++) {
+        const q = p === 2 ? 0 : p + 1;
+        const ax = _gearTx[p], ay = _gearTy[p], bx = _gearTx[q], by = _gearTy[q];
+        let d = _gearTa[q] - _gearTa[p];
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
         // OUTLINE EDGES ONLY. The extrude's face triangulation connects tooth
