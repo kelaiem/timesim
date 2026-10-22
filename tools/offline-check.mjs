@@ -636,7 +636,13 @@ try {
   mark('two environments under one origin');
   const mctx = await browser.newContext();
   const mnoise = [];
+  // One mark per boot, the rule PHASE_BUDGET_MS rests on: this section runs
+  // four full boots in sequence (each environment online, then each offline),
+  // and at ~37 s a boot on ubuntu-26.04 / Chromium 156 (PR #762's boot-yield
+  // run) four under one mark passed 180 s with every await inside its own
+  // timeout — the watchdog accused a phase that was not stuck.
   const bootAt = async (path) => {
+    mark(`two environments: booting ${path} online`);
     const p = await mctx.newPage();
     wireNoise(p, mnoise);
     const t0 = Date.now();
@@ -653,10 +659,12 @@ try {
   check('two environments: one cache each, named for its own scope — neither evicted the other',
     mkeys.length === 2 && mkeys.join() === want.join(), mkeys.join(' '));
 
+  mark('two environments: reloading /a/ offline');
   await mctx.setOffline(true);
   await pa.reload(NAV);
   await pa.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   const va = await pa.evaluate(() => document.querySelector('meta[name="app-version"]')?.content);
+  mark('two environments: reloading /b/ offline');
   await pb.reload(NAV);
   await pb.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   const vb = await pb.evaluate(() => document.querySelector('meta[name="app-version"]')?.content);
