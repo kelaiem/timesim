@@ -41633,3 +41633,45 @@ the designed sizes stand (34.78 × 33.54, 34.96 × 33.71, 35.37 × 34.11 mm). BL
 module (its bridges must be solved inside its region), the keyless cluster and the stop work (stemaz re-cuts 27
 units), the reserve train (rsvr re-solves it), the going train (its knobs re-solve it). The round build is
 untouched: fingerprint 955951544, boot silent.
+
+### §308 landing 4, item 1 — the alarm winding dogleg solves the whole of its freedom (and what that measured)
+
+Landing 3 found every turn of the alarm module (`?alarmmod=`) refused through its bridges. Booting the turns (rect,
+every 20°, warnings digit-stripped against the designed `case=rect`) shows the boot's own verdict is narrower and
+harder than the planner's: the winding train and the arrest each have a solver that already reads the BUILT METAL
+(every unit built before it — the going train's rotors as swept annuli, the solids triangle by triangle, the low
+corridor), which is a stricter obstacle set than the region hulls, so no region table was added; what was missing was
+FREEDOM. Under `FORM` only (the round build is bit-exact, 955951544, boot silent; `case=rect` itself is unchanged,
+1604757989), the dogleg (`main.js`, the `alarmWindI1/I2` solve):
+
+- swings i1 the whole circle about the climb (the round corner's ±80° is kept for it);
+- tries every idler count from the floor up to the 1.5× ceiling its own assert holds, smallest first — the count
+  cancels out of the ratio (12/44), so it is position space; `alarmWindChainAt(I)` is the one law of the count;
+- reads two constraints the asserts used to report after the fact: the sleeve tab's arc gap (§76/TODO 164) and the
+  ROOM it leaves the arrest — a ranking proxy, piece by piece at the arrest's own bands (its NEED table, with
+  `subIdlerGeom` and the subtractor's count list hoisted unchanged), against the built rotors and both idlers. The
+  arrest's own solve stays the judge;
+- keeps the round answer wherever it still holds.
+
+No new part, no ratio or arm changed, no tolerance touched. Measured (`alarmmod`, rect; w = dogleg/tab warnings,
+a = arrest warnings):
+
+| alarmmod | before w/a | after w/a | fitted outline (mm) | what binds |
+|---|---|---|---|---|
+| 0, 20 | 1/3 | 1/3 | 36.6 × 33.5, 36.3 × 33.5 | the barrel swings onto the alarm crown: the span is too short for any two-idler chain to clear the arbor wheel |
+| 40 (design) | 0/0 | 0/0 | 34.79 × 33.54 | — |
+| 50 | — | 0/0 | **33.84 × 33.54** | only the alarm switch/link (§234/§261/TODO 206/§278) warns |
+| 60 | 0/0 | 0/0 | 33.84 × 33.79 | the switch/link only |
+| 70 | — | 0/3 | 33.84 × 34.98 | the arrest's tower against the module's own governor wheel |
+| 80–100 | 1/1–3 | 1/3 | 33.8 × 36.1–36.8 | the dogleg now clears the metal, but every accepted station's i2 covers the one arc of the arbor wheel the going train leaves the arrest (both mesh that wheel) |
+| 120–300 | 1–2/3–4 | 1–2/3–4 | | the barrel stands over the fusee/centre wheel: no dogleg station and no arrest station clears the going train's swept rotors in the winding tier (0 of 60 arrest stations rotor-free at 160) — a STRATUM problem, not a route |
+| 320, 340 | 1–2/4 | 0/4 | | the dogleg routes clear; the arrest does not |
+
+`tools/form-layout.mjs --floorplan` (rect, cushion, tonneau) still finds no feasible plan: its alarmmod move carries the
+bridges RIGIDLY as an approximation (landing 3's model), so it never asks the build to re-route them and refuses every
+turn on that model (winding train ⇄ fusee, arrest ⇄ balance, switch ⇄ drum) before any boot. The boot says
+`alarmmod=50` is the smallest arrangement the winding train and the arrest accept (33.84 × 33.54 mm against 34.78 ×
+33.54), refused only by the alarm SWITCH and its link — item 2 of landing 4. Still open: the planner must judge a
+re-solved bridge by boot rather than by rigid carry; past ~70° the arrest has no station and the module wants either
+its own stratum over the going train or a second drive arc for the arrest; and §184's click offset TRANSLATES rather
+than turning with the module, so its triple warns at 0, 200, 220, 260, 280 and 340.
