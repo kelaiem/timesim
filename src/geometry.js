@@ -486,8 +486,21 @@ const cyArc = (R, rho, h) => {
 // them can call the wrapper before the function it calls exists — the first
 // draft had them the other way round, which was correct only for as long as
 // no module-level line between the two reached it.
+// ONE MEMBER'S CAP is a function of (m, N, mate) alone, and the pair cache is
+// ordered, so (m, Na, Nb) and (m, Nb, Na) each solved both members' caps:
+// measured, 2,564 member solves a boot over 1,318 distinct members. The cap
+// is kept per member and each solve gets its own copy (the pair solve below
+// raises its member's `h` in place), so every number is the one the solve
+// computed.
+const cyMemberCache = new Map();
 const cyPairSolveUncached = (m, Na, Nb) => {
   const mk = (N, mate) => {
+    const key = `${m}|${N}|${mate}`;
+    let c = cyMemberCache.get(key);
+    if (c === undefined) cyMemberCache.set(key, c = Object.freeze(mkUncached(N, mate)));
+    return { ...c };
+  };
+  const mkUncached = (N, mate) => {
     const Rp = (m * N) / 2, rho = (m * mate) / 4;
     const halfThick = ((Math.PI * m) / 2 - cyBacklash(m) / 2) / 2 / Rp;
     // pointed-tip cap, less the land a 2ε round needs
