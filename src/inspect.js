@@ -1079,8 +1079,100 @@ function poseBox(cache, m, scratch) {
   return c.box;
 }
 
+// THE STATIC-PAIR MEMO. A motion census over every pose of every axis
+// (CI push run 39720040054's battery) found only 3–20 of the 64 units MOVE on
+// any one axis, so ~60% of the (mesh pair × pose) queries `clearances` and
+// `expectedContacts` make (51–62% of their cost) are between two meshes that
+// are both standing exactly where they stood one pose earlier: the identical
+// BVH query, recomputed. `checkUndeclaredClearance` already memoises that
+// case; this is the same idea for the two shared sweep engines
+// (`sweepClearances` → `meshClearance`, `runInspection` → `meshesIntersect`).
+//
+// THE RULE IS EXACT REPLAY, NOT REASONING ABOUT BOUNDS. An entry is reused
+// only when EVERY input the query reads is the same as when it ran: both
+// meshes' world matrices element for element (Object.is), both geometries by
+// IDENTITY (the Chain swaps in a new geometry per rebuild, so its key changes
+// whenever its metal does) and their position and index attribute VERSIONS
+// (a geometry rewritten in place), and the query's own parameters — the
+// distance bound itself (Object.is, not "a bound the cached answer is valid
+// for": a thresholded closest-point search is a bounded traversal, and §82
+// is the record of that library's answers once depending on more than their
+// inputs; a reuse that rests on an argument about the traversal is exactly
+// what this cache must not do) and `raw`. So a hit returns what the very same
+// call returned, and the memo is correct exactly to the extent the query is a
+// function of its inputs — which the byte-identical `--report` diff that
+// landed it measures, and which every other cache in this file (bvhFor,
+// _bakeCache, poseBox) already assumes. The snapshot is taken BEFORE the
+// query runs, so a query that mutates its own inputs (a first BVH build
+// reorders the index) is simply a miss next time, never a stale hit.
+//
+// Static pairs still hit because the sweep's bound settles: once a pair's
+// running minimum stops falling, every later pose asks each mesh pair with
+// the same bound sequence. Lost: the first two poses of each pair per axis.
+//
+// The census (§108, report-only but IN the payload) counts LOGICAL queries:
+// a hit replays the counts its original call added (calls, verdicts,
+// outcome buckets) — never the times, which are the probes' exemptions and
+// drop honestly — so the payload a report diff reads is the uncached one.
+// `PAIR_MEMO_STATS` carries what the memo actually skipped, outside every
+// payload. The memo is per sweep and reset per AXIS, so a §127 slice and a
+// whole run see the same hits.
+export const PAIR_MEMO_STATS = { hits: 0, misses: 0 };
+function newPairMemo() { return { snaps: new Map(), q: new Map() }; }
+const _censusCountsOf = (c) => [c.exactCalls, c.verdictCalls, c.boolTrue, c.boolFalse,
+  c.out.pruned, c.out.far, c.out.mid, c.out.near, c.out.contact];
+function _censusReplay(c, d) {
+  c.exactCalls += d[0]; c.verdictCalls += d[1]; c.boolTrue += d[2]; c.boolFalse += d[3];
+  c.out.pruned += d[4]; c.out.far += d[5]; c.out.mid += d[6]; c.out.near += d[7]; c.out.contact += d[8];
+}
+// A mesh's state as the query reads it, as ONE object per distinct state: the
+// last snapshot is kept per mesh and handed back while geometry identity,
+// both attribute versions and all 16 matrix elements (Object.is) still match,
+// and replaced the moment any of them differs. So an entry matches when its
+// two snapshot objects ARE the meshes' current ones. A mesh that returns to
+// an earlier state gets a fresh object and misses — conservative, never stale.
+function _memoSnap(memo, m) {
+  const g = m.geometry, e = m.matrixWorld.elements;
+  const pv = g.attributes.position.version, iv = g.index ? g.index.version : -1;
+  const s = memo.snaps.get(m);
+  if (s && s.g === g && s.pv === pv && s.iv === iv) {
+    let same = true;
+    for (let k = 0; k < 16; k++) if (!Object.is(s.e[k], e[k])) { same = false; break; }
+    if (same) return s;
+  }
+  const n = { g, pv, iv, e: e.slice() };
+  memo.snaps.set(m, n);
+  return n;
+}
+// `tag` names the query and `param` its one parameter (the bound, or raw).
+// One slot per (query, mesh pair) holding the two snapshots and a map from
+// parameter (Object.is — a Map's SameValueZero would fold -0 into 0, so the
+// parameter is stored and re-checked) to answer; a slot whose snapshots are
+// no longer current is EMPTIED, so a moving pair holds only its live state.
+function memoPairQuery(memo, tag, a, b, param, compute) {
+  if (!memo) return compute();
+  const key = `${tag}:${a.id}:${b.id}`;
+  const c = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
+  // Snapshots are read BEFORE the query runs (see above).
+  const sa = _memoSnap(memo, a), sb = _memoSnap(memo, b);
+  let slot = memo.q.get(key);
+  if (!slot || slot.sa !== sa || slot.sb !== sb) { slot = { sa, sb, byParam: new Map() }; memo.q.set(key, slot); }
+  const hit = slot.byParam.get(param);
+  if (hit && Object.is(hit.param, param) && (hit.census !== null) === (c !== null)) {
+    PAIR_MEMO_STATS.hits++;
+    if (c) _censusReplay(c, hit.census);
+    return hit.r;
+  }
+  PAIR_MEMO_STATS.misses++;
+  const before = c ? _censusCountsOf(c) : null;
+  const r = compute();
+  const census = c ? _censusCountsOf(c).map((x, k) => x - before[k]) : null;
+  slot.byParam.set(param, { param, r, census });
+  return r;
+}
+
 const _uiA = new THREE.Box3(), _uiB = new THREE.Box3();
-function unitsIntersect(A, B, raw = false, boxCache = null) {
+function unitsIntersect(A, B, raw = false, boxCache = null, memo = null) {
   const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
     for (const b of B.meshes) {
@@ -1088,7 +1180,7 @@ function unitsIntersect(A, B, raw = false, boxCache = null) {
       if (cen) cen.aabbTests++;
       if (!poseBox(boxCache, a, _uiA).intersectsBox(poseBox(boxCache, b, _uiB))) continue;
       if (cen) cen.aabbPass++;
-      if (meshesIntersect(a, b, raw)) return true;
+      if (memoPairQuery(memo, 'i', a, b, raw, () => meshesIntersect(a, b, raw))) return true;
     }
   }
   return false;
@@ -2161,7 +2253,7 @@ function meshLabel(unit, mesh) {
   return mesh.name || `${mesh.geometry.type}#${unit.meshes.indexOf(mesh)}`;
 }
 
-function unitClearance(A, B, upperBound = Infinity, exclude = null, boxCache = null) {
+function unitClearance(A, B, upperBound = Infinity, exclude = null, boxCache = null, memo = null) {
   let best = upperBound, pair = null;
   const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
@@ -2172,7 +2264,7 @@ function unitClearance(A, B, upperBound = Infinity, exclude = null, boxCache = n
       if (cen) cen.aabbTests++;
       if (boxDistance(ba, bb) >= best) continue;
       if (cen) cen.aabbPass++;
-      const d = meshClearance(a, b, best);
+      const d = memoPairQuery(memo, 'c', a, b, best, () => meshClearance(a, b, best));   // the static-pair memo (exact replay)
       if (d < best) { best = d; pair = [a, b]; }
     }
   }
@@ -2213,6 +2305,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
   // pairs: [{ A, B, axes?: [names] }] — resolved units, optional axis filter.
   const state = pairs.map(() => ({ min: Infinity, at: null }));
   let poseCount = 0;
+  let memo = null;   // the static-pair memo — reset per axis below, so a §127 slice sees a whole run's hits
   const evalPose = (axis, i, refined) => {
     const f = i / axis.n;
     clock.setPose(axis.pose(f, clock)); // includes scene.updateMatrixWorld(true)
@@ -2232,7 +2325,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
       // (measureClearance, no refineFloor) is uncapped as before.
       const cap = pr.refineFloor !== undefined ? pr.refineFloor + refineBand : Infinity;
       const bound = Math.min(refined ? st.min : st.min + refineBand, cap);
-      const { d, pair: meshPair } = unitClearance(pr.A, pr.B, bound, pr.exclude, boxCache);
+      const { d, pair: meshPair } = unitClearance(pr.A, pr.B, bound, pr.exclude, boxCache, memo);
       if (d < pr._axisMin) pr._axisMin = d;   // §127 tier 2a — the refinement reference, per axis (see the axis loop)
       if (d < st.min) {
         st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) };
@@ -2267,6 +2360,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
     // DROP. A row that moves is increased accuracy — the old heuristic was
     // skipping that interval — not a regression.
     for (const pr of pairs) { pr._samples = {}; pr._axisMin = Infinity; }
+    memo = newPairMemo();
     // Coarse pass (always includes both endpoints).
     const coarseIdx = [];
     for (let i = 0; i <= axis.n; i += coarse) coarseIdx.push(i);
@@ -7079,6 +7173,7 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
 
   for (const axis of axes) {
     enterAxis(clock);   // TODO 54 — canonical entry, so this axis's findings do not depend on which axes ran before it (and §127 can run it in its own context)
+    const memo = newPairMemo();   // the static-pair memo, per axis (see memoPairQuery)
     for (let i = 0; i <= axis.n; i++) {
       const f = i / axis.n;
       clock.setPose(axis.pose(f, clock));
@@ -7103,7 +7198,7 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
           // browser context, so the flag never crosses a slice boundary.
           const isExpected = expectedAt[ai][bi];
           const confirmed = isExpected && findings.get(key)?.axes[axis.name]?.length > 0;
-          if (!unitsIntersect(A, B, confirmed, boxCache)) continue;
+          if (!unitsIntersect(A, B, confirmed, boxCache, memo)) continue;
           let rec = findings.get(key);
           if (!rec) {
             rec = {
