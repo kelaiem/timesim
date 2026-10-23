@@ -12195,10 +12195,26 @@ function chainJoints(curve) {
   // arithmetic, term for term and in its operand order (this − v), so every
   // comparison and every root reads the numbers the Vector3 form read.
   const pd = (p, qx, qy, qz) => { const dx = p.x - qx, dy = p.y - qy, dz = p.z - qz; return Math.sqrt(dx * dx + dy * dy + dz * dz); };
+  // THE SCAN'S SKIP. Each step scans samples outward from the walking point
+  // q until one stands a chord c away, testing every sample on the way —
+  // ~32 a joint, 49 walks a call. But the scan's answer for the first samples
+  // is known without measuring them: q lies on the segment ending at sample
+  // floor(jf)+1 (or at that sample itself), so sample floor(jf)+m stands at
+  // most m+1 segments from it (the triangle inequality along the polyline),
+  // and a sample whose bound is under c is one the scan would step past. The
+  // bound uses the polyline's LONGEST segment as measured, widened by
+  // SKIP_GUARD, which covers the rounding of every measured distance (a few
+  // ulps, ~1e-15 relative) by nine orders; the samples it skips are exactly
+  // those the scan would have passed, so every joint is the same float.
+  const SKIP_GUARD = 1 + 1e-6;
+  const segBound = (Q, m) => { let b = 0; for (let i = 1; i <= m; i++) b = Math.max(b, pd(Q[i], Q[i - 1].x, Q[i - 1].y, Q[i - 1].z)); return b * SKIP_GUARD; };
+  // the first sample the scan from floor(jf) need actually measure at chord c
+  const scanFrom = (jf, c, sb, m) => { const f = Math.floor(jf); return Math.min(Math.max(f + 1, f + Math.floor(c / sb) - 1), m + 1); };
+  const sb0 = segBound(P0, M0);
   const walked = (() => {
     let qx = P0[0].x, qy = P0[0].y, qz = P0[0].z, jf = 0, n = 0;
     for (;;) {
-      let j = Math.floor(jf) + 1;
+      let j = scanFrom(jf, CHAIN_PITCH, sb0, M0);
       while (j <= M0 && pd(P0[j], qx, qy, qz) < CHAIN_PITCH) j++;
       if (j > M0) { const e = P0[M0], dx = qx - e.x, dy = qy - e.y, dz = qz - e.z; return n + Math.sqrt(dx * dx + dy * dy + dz * dz) / CHAIN_PITCH; }   // the last link's fraction, chord to the end
       const A = P0[j - 1], B = P0[j];
@@ -12217,13 +12233,14 @@ function chainJoints(curve) {
   // arc count (the same curve at the same divisions, its arc table already
   // cached by getLength above), and both are only read, so it is reused.
   const P = M === M0 ? P0 : curve.getSpacedPoints(M);
+  const sbP = P === P0 ? sb0 : segBound(P, M);
   const ds = len / M;
   // One walk at chord c: joint positions as fractional polyline indices.
   const walk = (c, out) => {
     let jf = 0, qx = P[0].x, qy = P[0].y, qz = P[0].z;
     if (out) out[0] = 0;
     for (let n = 1; n <= N; n++) {
-      let j = Math.floor(jf) + 1;
+      let j = scanFrom(jf, c, sbP, M);
       while (j <= M && pd(P[j], qx, qy, qz) < c) j++;
       if (j > M) return { ok: false, rest: -(N - n + 1) };   // ran off the end: c too long
       // solve |A + t(B − A) − q| = c on segment [j−1, j], the outbound root
