@@ -58708,7 +58708,35 @@ const JMP_SITE = await (async () => {
       && rotorTriClear(rot, m20, m12, p2, tau) && rotorTriClear(rot, m01, m12, m20, tau);
   };
   const _sc = V();
+  // The verdict is MONOTONE in tau, exactly and in floating point: every test
+  // that can refuse a piece compares a quantity tau does not touch against tau
+  // (`>= tau`, `< tau`, `± tau` against a fixed bound), so a piece clear at tau
+  // is clear at any smaller tau, and the split recursion only goes deeper where
+  // a box is near at the larger one. So a part, a matrix and an obstacle set
+  // that cleared tau clears every tau under it, and one that failed tau fails
+  // every tau over it — which is the station bisection's whole pattern: the
+  // same poses asked again at a nearer tau. Each (obstacle set, part, matrix,
+  // coaxial flag) keeps the largest tau it cleared and the smallest it failed,
+  // and a question between them is measured.
+  const _rcMemo = new WeakMap();
+  const _rcGeoKey = (geo) => {
+    const a = geo.attributes.position.array;
+    if (a.length > 96) return 'g' + geo.id;       // the stud's and lever's query geometries persist (qOf)
+    return 'p' + Array.prototype.join.call(a, ',') + '|' + (geo.index ? Array.prototype.join.call(geo.index.array, ',') : '');   // the lifter bar is cut afresh per station, so it is keyed by its metal
+  };
   const rotorsClear = (geo, M, tau, withCoaxial) => {
+    let byObs = _rcMemo.get(OBS.rotors);
+    if (!byObs) _rcMemo.set(OBS.rotors, byObs = new Map());
+    const key = _rcGeoKey(geo) + '|' + M.elements.join(',') + '|' + (withCoaxial ? 1 : 0);
+    let rec = byObs.get(key);
+    if (!rec) byObs.set(key, rec = { clear: -Infinity, fail: Infinity });
+    if (tau <= rec.clear) return true;
+    if (tau >= rec.fail) return false;
+    const ok = rotorsClearAt(geo, M, tau, withCoaxial);
+    if (ok) rec.clear = tau; else rec.fail = tau;
+    return ok;
+  };
+  const rotorsClearAt = (geo, M, tau, withCoaxial) => {
     const pos = geo.attributes.position, idx = geo.index;
     const q0 = V(), q1 = V(), q2 = V();
     if (!geo.boundingSphere) geo.computeBoundingSphere();
