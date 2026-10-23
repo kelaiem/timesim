@@ -265,9 +265,33 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // the pair does NOT let anyone do is quietly keep a projection while believing
 // it was measured.
 //
-// EVERY ROW BELOW IS NOW ONE HOSTED CI RUN'S, and the paragraph above that
+// EVERY ROW BELOW IS ONE HOSTED CI RUN'S: the push battery of run 39895692050
+// (`main` at 14fd806c, the merge of #768; ubuntu-24.04 / SwiftShader, 3
+// shards, Linux/X64), each task's wall from its `[shard i] task… N s` log
+// line, by the convention of the refresh recorded next (whole checks in
+// seconds rounded, floor 1; slices in ms; a split check's whole row the sum of
+// its slices).
+//
+// Why: #768's static mesh-pair memo in src/inspect.js made the sweep checks
+// several times faster, so the column it left behind was wrong in the way
+// that mis-partitions — the checks moved RELATIVE to each other. `expectedContacts` 1538 → 287, `inspection` 929 → 122, `clearances`
+// 947 → 144 and `sweptOverlap` 294 → 41 (5.4x–7.6x), while
+// `undeclaredClearance` (its own engine) held at 151 → 155 and every small row
+// moved by a few seconds at most. That run, partitioned by the stale column, ended
+// its shards at 365.2 / 265.4 / 330.9 s of check time, +13.9% over the ideal
+// 320.5 s; the same walls under this column land 321.0 / 319.8 / 320.7 s
+// (+0.2%; K=2: +15.6% → +0.1%). That is in-sample. OUT OF SAMPLE, PR #768's
+// own whole run on the self-hosted Linux/ARM64 host (run 39891935777, a
+// different machine this column never saw) partitions +19.3% over ideal at
+// K=3 under the stale column and +7.0% under this one (K=2: +16.1% → +1.2%).
+// The longest single task is now `expectedContacts:wind` at 60.1 s, well
+// under a shard's 320 s, so the residue is the machines' different ratios
+// (§127's lesson), not task granularity.
+//
+// HISTORY — the refresh before this one, whose numbers are no longer any
+// row's. EVERY ROW WAS THEN ONE HOSTED CI RUN'S, and the paragraph above that
 // argued against a CI-derived column was overtaken by how far the dev-container
-// column had drifted. The source is the push battery of run 39720040054
+// column had drifted. The source was the push battery of run 39720040054
 // (`main` at abcceb8, ubuntu-latest / SwiftShader, 3 shards, Linux/X64): each
 // task's wall from its `[shard i] task… N s` log line — the same wall
 // `--report` writes as `ms` / `sliceMs`. A whole-check row is that check's
@@ -301,14 +325,14 @@ const COSTS = {
   'axisEntry': 6,
   // §111 raised this from 17 (the governor row's 449 phases); §113's stubby
   // pallets halved the row's mesh work — measured 21 s.
-  'penetration': 44,
-  'alarmHandoffs': 3,
+  'penetration': 49,
+  'alarmHandoffs': 2,
   'windArrestHandoff': 1,
   'stemClutchHandoff': 2,
   'strikeHandoff': 1,      // §198 — three posed phases, two rows
-  'maintDetentHandoff': 2, // TODO 210 — three posed phases, one row
+  'maintDetentHandoff': 1, // TODO 210 — three posed phases, one row
   'escapementHandoff': 1,  // TODO 226 step 3b — fourteen posed phases, one row
-  'stockFloor': 9,
+  'stockFloor': 8,
   // §233 — one swept registry (shared with stockFloor's cost, but measured
   // separately since it is its own call), then a per-mesh axis descent over
   // 272 revolves. No pose sweep and no BVH. Measured 6.6 s on the first full
@@ -327,7 +351,7 @@ const COSTS = {
   // digest poses, memoised on (geometry, world matrix) because most of the
   // population is fixed metal; measured 22.7 s on the dev container (203 s
   // before the memo).
-  'plateSeats': 18,
+  'plateSeats': 21,
   'jumperMovers': 10,
   // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
   // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no
@@ -343,7 +367,7 @@ const COSTS = {
   // poses the tiers walk. The audit stops refining a row once its verdict
   // cannot change, which is what keeps this a +2.6 s column and not a +33 s
   // one (uncapped it measured 41.4).
-  'intraUnit': 18,
+  'intraUnit': 19,
   'assembly': 4,
   // §194 — both walk the 23-row registry. meshPhase reads two silhouette
   // gauges per row over the 43-pose net (2048 bins each, outline edges only);
@@ -353,7 +377,7 @@ const COSTS = {
   // guesses here were 34 and 22, which is the kind of stale number this column
   // exists to be corrected out of (it costs wall clock, never a verdict).
   'meshPhase': 14,
-  'transmits': 5,
+  'transmits': 6,
   'meshCoverage': 1,   // §135 item 4 — 85 rotors pairwise × the 43-pose net, bounding boxes only; a guess until measured (the column's rule: corrected from a run, never trusted)
   // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
   // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair
@@ -372,14 +396,14 @@ const COSTS = {
   // of them another Dial pair of the quadratic class). Measured unscaled
   // on the tier's landing container; the partition still does not move —
   // sweptOverlap alone (1787 there) exceeds the other shard's 1245 total.
-  'expectedContacts': 1538,   // the sum of its slices below
+  'expectedContacts': 287,   // the sum of its slices below
   'oscillator': 1,
   // §104 — the cost moved 1 → 14: the alarm half's endpoint rows STEP the
   // shipped tick law (120 ticks at two winds), which is the row's whole
   // point; a stale 1 here costs wall clock, never a verdict.
   'equalisation': 5,
   'chainLength': 1,
-  'restoring': 26,
+  'restoring': 30,
   'transfers': 1,
   'lubrication': 1,
   // §122 — the verdict tier's two fixes moved this column's three largest
@@ -416,8 +440,8 @@ const COSTS = {
   //    ×1.0411, undeclaredClearance ×1.0105, expectedContacts ×1.0392.
   // Every other row is untouched: the checks that walk AXES unsliced grew too,
   // but no pre-236 run on this box measured by how much.
-  'inspection': 929,   // the sum of its slices below
-  'clearances': 947,   // the sum of its slices below
+  'inspection': 122,   // the sum of its slices below
+  'clearances': 144,   // the sum of its slices below
   // TODO 164 — PROTOTYPE-MEASURED, not yet CI-calibrated: the planning probe
   // (`scratchpad/164/engine.mjs`, the prototype `checkUndeclaredClearance` was
   // ported from) measured 317 s dense over all 14 axes on a dev container,
@@ -426,86 +450,87 @@ const COSTS = {
   // a pose-count guess on its first run; `--report` replaces every row of it
   // with a measured one; the header's own rule (a stale cost costs wall clock,
   // never a verdict).
-  'undeclaredClearance': 151,   // the sum of its slices below
-  'sweptOverlap': 294,
+  'undeclaredClearance': 155,   // the sum of its slices below
+  'sweptOverlap': 41,
 
   // §127 — the per-axis walls of the split checks, in MILLISECONDS (`--report`'s
   // `sliceMs`; here the per-task line of the CI log, which is the same wall).
-  // Every split check has every slice measured since run 39720040054, so
-  // nothing below is projected; a slice with no row (an axis added later) is
+  // Every split check has every slice measured (since run 39720040054; every
+  // row below is run 39895692050's), so nothing below is projected; a slice
+  // with no row (an axis added later) is
   // projected from its pose count and labelled `projected` until a sliced run
   // measures it.
-  'expectedContacts:beat': 144700,
-  'expectedContacts:crown': 43500,
-  'expectedContacts:reserve': 40500,
-  'expectedContacts:wind': 470600,
-  'expectedContacts:arrest': 64800,
-  'expectedContacts:train': 68800,
-  'expectedContacts:jumperEngage': 61200,
-  'expectedContacts:handSet': 64000,
-  'expectedContacts:alarm': 59500,
-  'expectedContacts:alarmStrike': 60600,
-  'expectedContacts:alarmWind': 58500,
-  'expectedContacts:alarmToggle': 23300,
-  'expectedContacts:stemSlip': 71500,
-  'expectedContacts:alarmPress': 30200,
-  'expectedContacts:maintHold': 25300,
-  'expectedContacts:alarmPull': 66500,
-  'expectedContacts:position': 184300,
+  'expectedContacts:beat': 12800,
+  'expectedContacts:crown': 4400,
+  'expectedContacts:reserve': 9600,
+  'expectedContacts:wind': 60100,
+  'expectedContacts:arrest': 9100,
+  'expectedContacts:train': 38800,
+  'expectedContacts:jumperEngage': 46700,
+  'expectedContacts:handSet': 30400,
+  'expectedContacts:alarm': 11000,
+  'expectedContacts:alarmStrike': 6500,
+  'expectedContacts:alarmWind': 6300,
+  'expectedContacts:alarmToggle': 3200,
+  'expectedContacts:stemSlip': 6700,
+  'expectedContacts:alarmPress': 5300,
+  'expectedContacts:maintHold': 17100,
+  'expectedContacts:alarmPull': 5200,
+  'expectedContacts:position': 14200,
 
-  'inspection:beat': 63400,
-  'inspection:crown': 24400,
-  'inspection:reserve': 26200,
-  'inspection:wind': 238500,
-  'inspection:arrest': 40300,
-  'inspection:train': 51800,
-  'inspection:jumperEngage': 35500,
-  'inspection:handSet': 57400,
-  'inspection:alarm': 42400,
-  'inspection:alarmStrike': 35300,
-  'inspection:alarmWind': 46800,
-  'inspection:alarmToggle': 15800,
-  'inspection:stemSlip': 31000,
-  'inspection:alarmPress': 23100,
-  'inspection:maintHold': 15600,
-  'inspection:alarmPull': 48400,
-  'inspection:position': 133100,
+  'inspection:beat': 6900,
+  'inspection:crown': 2500,
+  'inspection:reserve': 4300,
+  'inspection:wind': 31900,
+  'inspection:arrest': 6000,
+  'inspection:train': 11100,
+  'inspection:jumperEngage': 14400,
+  'inspection:handSet': 4500,
+  'inspection:alarm': 11500,
+  'inspection:alarmStrike': 3700,
+  'inspection:alarmWind': 3300,
+  'inspection:alarmToggle': 1400,
+  'inspection:stemSlip': 1500,
+  'inspection:alarmPress': 1700,
+  'inspection:maintHold': 7500,
+  'inspection:alarmPull': 1500,
+  'inspection:position': 8200,
 
-  'clearances:beat': 79000,
-  'clearances:crown': 17400,
-  'clearances:reserve': 20500,
-  'clearances:wind': 306800,
-  'clearances:arrest': 50100,
-  'clearances:train': 33900,
-  'clearances:jumperEngage': 40600,
-  'clearances:handSet': 42300,
-  'clearances:alarm': 32600,
-  'clearances:alarmStrike': 38400,
-  'clearances:alarmWind': 57900,
-  'clearances:alarmToggle': 17800,
-  'clearances:stemSlip': 34100,
-  'clearances:alarmPress': 23400,
-  'clearances:maintHold': 17500,
-  'clearances:alarmPull': 33000,
-  'clearances:position': 102100,
+  'clearances:beat': 10400,
+  'clearances:crown': 6700,
+  'clearances:reserve': 5900,
+  'clearances:wind': 40700,
+  'clearances:arrest': 5400,
+  'clearances:train': 21300,
+  'clearances:jumperEngage': 15900,
+  'clearances:handSet': 2200,
+  'clearances:alarm': 1500,
+  'clearances:alarmStrike': 2200,
+  'clearances:alarmWind': 1800,
+  'clearances:alarmToggle': 1500,
+  'clearances:stemSlip': 1600,
+  'clearances:alarmPress': 1500,
+  'clearances:maintHold': 11100,
+  'clearances:alarmPull': 1500,
+  'clearances:position': 12900,
 
-  'undeclaredClearance:beat': 8300,
-  'undeclaredClearance:crown': 2700,
-  'undeclaredClearance:reserve': 3500,
-  'undeclaredClearance:wind': 16200,
-  'undeclaredClearance:arrest': 4000,
-  'undeclaredClearance:train': 19500,
-  'undeclaredClearance:jumperEngage': 23100,
-  'undeclaredClearance:handSet': 3000,
-  'undeclaredClearance:alarm': 3500,
-  'undeclaredClearance:alarmStrike': 16700,
-  'undeclaredClearance:alarmWind': 9200,
-  'undeclaredClearance:alarmToggle': 2300,
+  'undeclaredClearance:beat': 9100,
+  'undeclaredClearance:crown': 2800,
+  'undeclaredClearance:reserve': 3400,
+  'undeclaredClearance:wind': 17500,
+  'undeclaredClearance:arrest': 3700,
+  'undeclaredClearance:train': 24500,
+  'undeclaredClearance:jumperEngage': 24900,
+  'undeclaredClearance:handSet': 4200,
+  'undeclaredClearance:alarm': 3700,
+  'undeclaredClearance:alarmStrike': 17100,
+  'undeclaredClearance:alarmWind': 9600,
+  'undeclaredClearance:alarmToggle': 2400,
   'undeclaredClearance:stemSlip': 3700,
-  'undeclaredClearance:alarmPress': 2300,
-  'undeclaredClearance:maintHold': 18300,
+  'undeclaredClearance:alarmPress': 2400,
+  'undeclaredClearance:maintHold': 11600,
   'undeclaredClearance:alarmPull': 3300,
-  'undeclaredClearance:position': 11400,
+  'undeclaredClearance:position': 11500,
 };
 
 // DECLARED HERE, ASSERTED AGAINST THE BATTERY IT DESCRIBES — both ways, and it
@@ -1260,14 +1285,27 @@ const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
 // checks a point sweeps: each point's own local per-check times, each divided by
 // that check's growth (the note at COSTS 'inspection'), give its time without
 // the axis. The ratio, ×1.0386–1.0401, scales these CI rows; studr=7.1175 died at
-// the 2100 s guard locally and takes its siblings' ×1.0401.
+// the 2100 s guard locally and takes its siblings' ×1.0401. (History: those
+// were the rows until the refresh below — 157, 259, 524, 497, 491, 133.)
+//
+// REFRESHED after #768's static mesh-pair memo, from the `battery tiers` job of
+// push run 39895692050 (`main` at 14fd806c, ubuntu-24.04 / SwiftShader,
+// Linux/X64): each point's `full N changed … · W s` line, all six swept FULL
+// with no ceiling, in three concurrent lanes on one runner (the same
+// lane-contended wall the rows above were). The rows above came from a
+// self-hosted split run (37878429511), so an absolute before → after mixes the
+// machine with the memo and only the ORDER is evidence: the studr points fell
+// from ~500 s to 210–287 s while `balstep=60` and `route=2-leg` (whose
+// restriction already reached almost nothing) rose 157 → 181 and 133 → 155,
+// and `subdialr=8` now outweighs `studr=7.595`. The order is what pointOwners
+// and the lanes read.
 const POINT_COSTS = {
-  'balstep=60': 157,      // 1 changed [Chain] on 37878429511 — see above; TODO 236: 151 × 1.0387
-  'subdialr=8': 259,      // TODO 236: 249 × 1.0392
-  'studr=7.595': 524,     // TODO 236: 504 × 1.0401
-  'studr=4.71': 497,      // TODO 236: 478 × 1.0401
-  'studr=7.1175': 491,    // TODO 236: 472 × 1.0401 (its siblings'; it hit the guard locally)
-  'route=2-leg': 133,     // TODO 236: 128 × 1.0386
+  'balstep=60': 181,      // 1 changed [Chain]
+  'subdialr=8': 224,      // 3 changed [Chain, Dial, Small seconds]
+  'studr=7.595': 210,     // 5 changed [Balance cock, Base plate, Chain, Fork cock, Hairspring]
+  'studr=4.71': 233,      // 3 changed [Balance cock, Chain, Hairspring]
+  'studr=7.1175': 287,    // 5 changed [Balance cock, Base plate, Chain, Fork cock, Hairspring]
+  'route=2-leg': 155,     // 3 changed [Applied route, Base plate, Chain]
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
