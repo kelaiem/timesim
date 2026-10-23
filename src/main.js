@@ -29424,21 +29424,35 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   const riseSpan = ALARM_CAM_TIP_PSI - rise[0].psi;    // pickup → release, in cam angle
   const dropSpan = ALARM_CAM_DROP_FRAC * pitch;
   const approachSpan = ALARM_CAM_APPROACH_FRAC * pitch;
+  // Each SEAM between two pieces is one point, and it is written once, by the
+  // piece that owns it (TODO 265). The dwell starts where the previous lobe's
+  // drop ends (tip − pitch + dropSpan, the base circle) and the approach ends
+  // where the rise starts (lobe + rise[0].psi, at ALARM_CAM_PICKUP_R, which is
+  // rise[0].r). Each pair is equal in algebra but reached by two different
+  // computations, so in floating point they matched or missed by an ULP
+  // depending on the JS engine's atan2. three.js drops a point only when it
+  // EXACTLY equals the one before it, so the outline carried 1067 points on
+  // Chromium 141 and 1069 on 156. The two survivors were 1e-10 slivers that
+  // left degenerate triangles in the metal, and they moved the vertex mean
+  // lineSpec reads the wheel's axis by (four identical lobes) by 2.8e-3.
   const pts = [];
   for (let k = 0; k < ALARM_CAM_LOBES; k++) {
     const lobe = k * pitch;                            // this lobe's copy of the generated flank
     const tip = lobe + ALARM_CAM_TIP_PSI;              // where its release is cut
     // Base-circle dwell, from the end of the previous lobe's drop round to
     // this lobe's approach. The nose floats above it through strike + rebound.
+    // Its first point (i = 0) is that drop's last, so it starts at i = 1; the
+    // ring is cyclic, and lobe 0's is the last lobe's.
     const dwellFrom = tip - pitch + dropSpan;
     const dwellTo = tip - riseSpan - approachSpan;
     const nDwell = Math.max(2, Math.round((dwellTo - dwellFrom) / 0.05));
-    for (let i = 0; i <= nDwell; i++) {
+    for (let i = 1; i <= nDwell; i++) {
       const a = dwellFrom + (dwellTo - dwellFrom) * (i / nDwell);
       pts.push([Math.cos(a) * ALARM_CAM_BASE_R, Math.sin(a) * ALARM_CAM_BASE_R]);
     }
-    // Approach ramp up to the radius that first meets the resting nose.
-    for (let i = 1; i <= 6; i++) {
+    // Approach ramp up to the radius that first meets the resting nose. Its
+    // last point (f = 1) is the rise's first, so it stops one short.
+    for (let i = 1; i < 6; i++) {
       const f = i / 6, a = dwellTo + approachSpan * f;
       const r = ALARM_CAM_BASE_R + (ALARM_CAM_PICKUP_R - ALARM_CAM_BASE_R) * smoothstep(f);
       pts.push([Math.cos(a) * r, Math.sin(a) * r]);
@@ -29451,6 +29465,23 @@ alarmStrikeUnit.add(alarmStrikeRotor);
       const r = ALARM_CAM_TIP_R + (ALARM_CAM_BASE_R - ALARM_CAM_TIP_R) * f;
       pts.push([Math.cos(a) * r, Math.sin(a) * r]);
     }
+  }
+  // The guard: no two neighbours (cyclically) closer than half the finest step
+  // the outline means to take, the generated flank's own, where smoothstep
+  // starts flat. A seam written twice lands under it at any rounding.
+  {
+    let minStep = Infinity, worst = Infinity, at = -1;
+    for (let i = 1; i < rise.length; i++) {
+      const a = rise[i - 1], b = rise[i];
+      minStep = Math.min(minStep, Math.hypot(b.r * Math.cos(b.psi) - a.r * Math.cos(a.psi), b.r * Math.sin(b.psi) - a.r * Math.sin(a.psi)) / 2);
+    }
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length], d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+      if (d < worst) { worst = d; at = i; }
+    }
+    if (worst < minStep)
+      console.warn(`TODO 265: the alarm cam's outline has two neighbours ${worst.toExponential(2)} apart at point ${at} of ${pts.length}, `
+        + `required ≥ ${minStep.toExponential(2)} (half the flank's finest step) — a seam written twice`);
   }
   shape.moveTo(pts[0][0], pts[0][1]);
   for (const [x, y] of pts.slice(1)) shape.lineTo(x, y);
