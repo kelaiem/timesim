@@ -47743,7 +47743,7 @@ const BACK_ENVELOPE = await (async () => {
   const unitByObj = new Map(labelEntries.map((e) => [e.obj, e.name]));
   const unitOf = (o) => { for (let n = o; n; n = n.parent) { const u = unitByObj.get(n); if (u) return u; } return null; };
   const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
-  const _bt = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const _bt = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], _bti = [0, 0, 0];
   movement.updateMatrixWorld(true);
   // §239 — WALKED AS A LIST, not as a callback. The body is unchanged; what
   // changes is that a `for` loop in an async block can yield between meshes
@@ -47763,6 +47763,16 @@ const BACK_ENVELOPE = await (async () => {
     const p = o.geometry.attributes.position;
     const idx = o.geometry.index;
     const n = idx ? idx.count : p.count;
+    // the rows this mesh's unit answers for: a row of another unit never
+    // takes its sample, so it is not asked
+    const ownRegs = [];
+    for (let i = 0; i < BACK_SWEPT_REGIONS.length; i++) if (BACK_SWEPT_REGIONS[i].unit === unit) ownRegs.push(i);
+    // take() only raises maxima, so a point taken twice changes nothing the
+    // second time: an indexed mesh's corner is the same vertex, carried by the
+    // same matrix, in every triangle that shares it (six, on a welded mesh),
+    // so each is taken once. The edges' bin-wall crossings are still taken
+    // per edge, as before.
+    const taken = idx ? new Uint8Array(p.count) : null;
     const take = (pt) => {
       const r = Math.hypot(pt.x, pt.y);
       // §307 landing 2 — a form plate's corners stand past the round case's
@@ -47777,9 +47787,9 @@ const BACK_ENVELOPE = await (async () => {
       // ...and what the ROW'S OWN unit reaches inside each row's band, which
       // is the quantity the assert below holds the row to. Same walk, so it
       // cannot measure a different tree than the bins do.
-      for (let i = 0; i < BACK_SWEPT_REGIONS.length; i++) {
-        const R = BACK_SWEPT_REGIONS[i];
-        if (unit === R.unit && r >= R.r0 && r <= R.r1 && pt.z > regBuild[i]) regBuild[i] = pt.z;
+      for (let k = 0; k < ownRegs.length; k++) {
+        const i = ownRegs[k], R = BACK_SWEPT_REGIONS[i];
+        if (r >= R.r0 && r <= R.r1 && pt.z > regBuild[i]) regBuild[i] = pt.z;
       }
     };
     const _mw = o.matrixWorld;   // refreshed after each seam below: localToWorld would re-walk the ancestors per vertex
@@ -47789,11 +47799,13 @@ const BACK_ENVELOPE = await (async () => {
       // the clock is read 145 times, not once a triangle.
       if (t % 3000 === 0) { await breathe(305); o.updateWorldMatrix(true, false); }
       // each corner carried once, then copied into both edges that share it
-      for (let e = 0; e < 3; e++) _bt[e].fromBufferAttribute(p, idx ? idx.getX(t + e) : t + e).applyMatrix4(_mw);
+      for (let e = 0; e < 3; e++) _bti[e] = idx ? idx.getX(t + e) : t + e;
+      for (let e = 0; e < 3; e++) _bt[e].fromBufferAttribute(p, _bti[e]).applyMatrix4(_mw);
       for (let e = 0; e < 3; e++) {
         a.copy(_bt[e]);
         b.copy(_bt[(e + 1) % 3]);
-        take(a);
+        if (!taken) take(a);
+        else if (!taken[_bti[e]]) { taken[_bti[e]] = 1; take(a); }
         const dx = b.x - a.x, dy = b.y - a.y;
         const A2 = dx * dx + dy * dy;
         if (A2 > 1e-12) {
