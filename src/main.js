@@ -34083,8 +34083,12 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       if (drop === 'wheel' && s.meshPartner) continue;
       if (drop === 'rim' && s.rimPartner) continue;
       for (const q of s.xy) {
-        const k = `${Math.floor(q[0] / CELL)},${Math.floor(q[1] / CELL)}`;
-        let a = g.get(k); if (!a) g.set(k, a = []); a.push([q[0], q[1], s.name]);
+        // keyed by the cell's two integers in nested maps rather than by a
+        // string of them: the same cells, the same lists in the same order,
+        // without building a string per point and per probe
+        const i = Math.floor(q[0] / CELL), j = Math.floor(q[1] / CELL);
+        let col = g.get(i); if (!col) g.set(i, col = new Map());
+        let a = col.get(j); if (!a) col.set(j, a = []); a.push([q[0], q[1], s.name]);
       }
     }
     return g;
@@ -34117,7 +34121,8 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       for (let i = ci - ring; i <= ci + ring; i++)
         for (let j = cj - ring; j <= cj + ring; j++) {
           if (ring > 0 && Math.abs(i - ci) !== ring && Math.abs(j - cj) !== ring) continue;
-          const a = g.get(`${i},${j}`); if (!a) continue;
+          const col = g.get(i); if (!col) continue;
+          const a = col.get(j); if (!a) continue;
           for (const q of a) {
             const d = Math.hypot(x - q[0], y - q[1]);
             if (d < best) { best = d; who = q[2]; }
