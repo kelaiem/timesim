@@ -4,8 +4,8 @@
 
 # The instruments
 
-344 scripts. **229 are ACCEPTANCE tests** — they decide and exit non-zero.
-**115 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+346 scripts. **230 are ACCEPTANCE tests** — they decide and exit non-zero.
+**116 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -17,6 +17,7 @@ when a question was asked; the summaries are what it answered.
 | `battery-points.mjs` |  | report | TODO 186 B1 — THE SILENT SPEC POINTS, SWEPT, and kept swept incrementally. |
 | `battery-promote.mjs` |  | acceptance | §227 — MAY THIS PUSH PROMOTE A PULL REQUEST'S BATTERY INSTEAD OF RE-RUNNING? |
 | `battery-split.mjs` |  | report | §127 — the battery's partition atom, and the reassembly that makes it legal. |
+| `battery-tiers.mjs` |  | report | §264/§265 — WHICH SPEC BOOTS THE PUSH'S TWO JOBS EACH TAKE, and the proof that the two halves put back together are the whole tier. |
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
 | `booklet-flags.mjs` |  | acceptance | WRITES src/technic-booklet-flags.js: what the swept-insertion validator (BUILT §302, tools/technic-steps-sweep.mjs) said about every step of every LEGO build, in a form the BROWSER can read. The booklet page cannot run the validator (it needs three-mesh-bvh and minutes of Node), but it must not show a step the validator could not clear as if it were buildable, so the verdicts are GENERATED here and committed, never typed. Each row is keyed `${generation}\|${cell}\|${mode}` (the fusee, alarm and escapement are one build in both generations and sit under `shared`) and carries the plan's signature (planSig), so a derivation that has moved since the file was written is a MISMATCH the booklet and its probe both refuse. |
 | `booklet-pdf.mjs` |  | acceptance | PRINTS A LEGO BOOKLET TO PDF (BUILT §304): opens booklet.html in Chromium (Playwright from tools/node_modules), waits for every picture, and writes the PDF the browser's own Print → Save as PDF would, at the paper's size (`@page` carries it, so `preferCSSPageSize`). A dev tool for the owner and for the smoke test's page counts — not a CI step, and not a dependency of the page. |
@@ -340,6 +341,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-technic-motion.mjs` |  | acceptance | DOES THE LEGO MOTION WORKS TURN THE HOUR WHEEL A TWELFTH OF THE MINUTE HAND, THE SAME WAY, ON THE MINUTE HAND'S OWN AXLE, FROM THE CROWN? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing G. |
 | `probe-technic-pusher.mjs` |  | acceptance | DOES THE LEGO ALARM'S PUSHER TURN THE COLUMN WHEEL'S DRIVER FROM ITS REST STOP TO ITS BANK STOP, ON ONE FACE, WITH EVERY PART CLEAR OF EVERY OTHER? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §288 (src/technic-alarm.js: solvePusher, pusherOf, pushFace, pushDriver). |
 | `probe-technic-steps.mjs` |  | acceptance | IS THE ORDER THE LEGO BUILDS GO TOGETHER IN A VALID ONE: EVERY PLACEMENT IN EXACTLY ONE STEP, EVERY PART AFTER THE PARTS IT RESTS ON AND PASSES THROUGH, EVERY STEP'S PARTS INSERTABLE INTO WHAT IS ALREADY THERE, AND THE .MPD THE PAGE OFFERS THE SAME BUILD? Acceptance, pure Node (the vendored three.js and three-mesh-bvh load through tools/three-node-loader.mjs, no browser, no network); exits non-zero on any failed row. BUILT §302 (src/technic-steps.js, the swept validator in tools/technic-steps-sweep.mjs, technic.html's .mpd link). Not probe-technic-build.mjs (that holds the PLACEMENTS: seated, through, meshed) and not probe-technic-bom.mjs (that holds the parts LIST); this holds the ORDER. |
+| `probe-tiers-spec-hand.mjs` |  | acceptance | §264/§265 REBALANCED — DOES THE SPLIT SPEC TIER PUT BACK TOGETHER AS THE WHOLE ONE, AND IS EVERY OTHER SHAPE OF HAND-OFF REFUSED? Acceptance: exits non-zero on any failed row. |
 | `probe-touch-ghost-pointer.mjs` |  | acceptance | DOES ONE FINGER STILL ORBIT AFTER A RELEASE THE CANVAS NEVER HEARD? — the ghost-pointer pinch, measured. |
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
