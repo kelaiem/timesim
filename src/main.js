@@ -14123,18 +14123,32 @@ const maintDetent = new THREE.Group();
     // NaN term fails here as it poisons the minimum there. The terms and their
     // order are clearAt's own; `clearAt` stays whole for the instruments that
     // read the gap itself.
+    //   And since the answer is a conjunction, the order its terms are asked
+    // in cannot change it: the term that refused the last question is asked
+    // first (the bisection's neighbouring tilts are refused by the same corner
+    // of the cut), then every term in clearAt's order. Each term is the same
+    // expression either way.
+    let lastRefuser = -1;
+    const nS = samples.length;
+    const termOk = (k, c, s, cn, sn, thr) => {
+      if (k < nS) {
+        const p = samples[k];
+        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;
+        return ringSd(ax * cn + ay * sn, -ax * sn + ay * cn) >= thr;
+      }
+      const [vx, vy] = poly[k - nS];
+      const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;
+      if (Math.hypot(ax - cx, ay - cy) > reach) return true;
+      const qx = ax - pivR, qy = ay;
+      return beakSd(qx * c + qy * s, -qx * s + qy * c) >= thr;
+    };
     const clearsAt = (net, t, thr) => {
       const lam = MAINT_DET_SIGN * t, c = Math.cos(lam), s = Math.sin(lam);
       const cn = Math.cos(net), sn = Math.sin(net);
-      for (const p of samples) {
-        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;
-        if (!(ringSd(ax * cn + ay * sn, -ax * sn + ay * cn) >= thr)) return false;
-      }
-      for (const [vx, vy] of poly) {
-        const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;
-        if (Math.hypot(ax - cx, ay - cy) > reach) continue;
-        const qx = ax - pivR, qy = ay;
-        if (!(beakSd(qx * c + qy * s, -qx * s + qy * c) >= thr)) return false;
+      if (lastRefuser >= 0 && !termOk(lastRefuser, c, s, cn, sn, thr)) return false;
+      for (let k = 0, nT = nS + poly.length; k < nT; k++) {
+        if (k === lastRefuser) continue;
+        if (!termOk(k, c, s, cn, sn, thr)) { lastRefuser = k; return false; }
       }
       return true;
     };
