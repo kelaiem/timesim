@@ -37876,13 +37876,21 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       const seat = _blockSeat(tx, ty, tip.x, tip.y);
       if (!_blockOk(seat)) continue;
       if (_postClear(tx, ty, seat) < 0) continue;   // TODO 174 — the fork clears every guide post station
-      const { c: cc, who } = scoreChord(tip.x, tip.y, tx, ty);
+      // The score is the MIN of four terms and a candidate is kept only when
+      // it beats the best strictly, so once the terms read so far are at or
+      // under the best, the rest cannot make it win and are not computed —
+      // cheapest first, the hangers' columns (the costliest) last. The
+      // measured site is always scored whole: it is recorded win or lose.
+      const isMeasured = rc.k === ALARM_LINK_MEASURED_SITE.k && rc.run === ALARM_LINK_MEASURED_SITE.run && azw0 === ALARM_LINK_MEASURED_SITE.tabDeg;
       const tb = scoreTab(tx, ty, seat.bx, seat.by);
+      if (best && !isMeasured && Math.min(rc.c, tb.c) <= best.c) continue;
+      const { c: cc, who } = scoreChord(tip.x, tip.y, tx, ty);
+      if (best && !isMeasured && Math.min(rc.c, cc, tb.c) <= best.c) continue;
       const hg = scoreHangers(tip.x, tip.y, tx, ty, rc);
       const c = Math.min(rc.c, cc, tb.c, hg.c);
       const boundBy = c === rc.c ? rc.who : (c === cc ? who : c === tb.c ? tb.who : hg.who);
       if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
-      if (rc.k === ALARM_LINK_MEASURED_SITE.k && rc.run === ALARM_LINK_MEASURED_SITE.run && azw0 === ALARM_LINK_MEASURED_SITE.tabDeg)
+      if (isMeasured)
         measured = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
     }
   }
