@@ -1238,7 +1238,12 @@ parallel `battery tiers` job, and since §265 its 36 spec boots with it**
 (`--tiers-only`). Both are handed to the battery (`--tiers-from`, fetched in
 the background by `tools/battery-tiers-fetch.sh`), which judges them in its
 one assembly. Each tier proves itself or runs in-process and says why. Both
-need the same tree. The spec tier needs one row per declared point, in order.
+need the same tree. The spec tier needs one row per declared point, in order —
+SPLIT since the rebalance (`tools/battery-tiers.mjs`): the battery boots every
+twelfth declared point itself while it would otherwise wait, the file must carry
+exactly the sibling's half, and `mergeSpecHalves` re-proves the whole
+(`probe-tiers-spec-hand.mjs`); on that path the three post-battery probes run
+ahead of the harness, off the wait.
 The point tier needs the same point code, whole, every point full. A dead
 sibling or a fetcher that gave up runs both here, so the worst case is the run
 as it was. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
