@@ -4426,6 +4426,7 @@ export function genevaFingerStack({ thickness, crankT, side = 1, lift = CLEAR_MA
 // main.js's BREATHE_MS, so a machine twice as slow still reaches a pause
 // inside the budget. main.js resumes it with `await breathe()` between steps.
 const FINGER_SWEEP_STEP = 8;
+const FINGER_CUT_GUARD = 1e-6;   // the sweep's skip bound's rounding allowance, 25× the worst the cut's arithmetic can err (see the sweep)
 export function makeGenevaFinger(opts) { return drainSteps(makeGenevaFingerSteps(opts)); }
 export function* makeGenevaFingerSteps({ spec, thickness, boreR, hubR, crankT, side = 1, blankAt = 0, material }) {
   const { a, d, beta, lockR, pinR, slotInner, hollowR } = spec;
@@ -4502,8 +4503,16 @@ export function* makeGenevaFingerSteps({ spec, thickness, boreR, hubR, crankT, s
   }
   const EPS = 0.5 * dTh * (spec.b * kMax + lockR + CLEAR_MARGIN_G) + 0.5 * gap;
   const TAU = Math.PI * 2;
-  for (let k = 0; k <= NTH; k++) {
-    if (k % FINGER_SWEEP_STEP === 0) yield;
+  // The envelope is a MIN over every (driver angle, point, bin) and a min
+  // does not depend on the order it is taken in, so the angles are visited
+  // from the line of centres outward — where the cross stands deepest in the
+  // disc first — which cuts the envelope to its depth early and lets the
+  // skip below pass over more of what follows. The pauses stay one per
+  // FINGER_SWEEP_STEP angles visited.
+  const order = Array.from({ length: NTH + 1 }, (_, k) => k).sort((x, y) => Math.abs(2 * x - NTH) - Math.abs(2 * y - NTH) || x - y);
+  for (let n = 0; n <= NTH; n++) {
+    if (n % FINGER_SWEEP_STEP === 0) yield;
+    const k = order[n];
     const th = -sweep + dTh * k;                 // driver angle, 0 = crank pointing at the cross
     // The cross's rotation is what the slot demands of it at this driver angle:
     // the engaging slot's axis, seen from the cross's centre at +d, points at
@@ -4520,8 +4529,18 @@ export function* makeGenevaFingerSteps({ spec, thickness, boreR, hubR, crankT, s
       const w = Math.asin(Math.min(1, cl / rr));
       const nb = Math.ceil((w / TAU) * SEG) + 1;
       const b0 = Math.round((((phi % TAU) + TAU) % TAU) / TAU * SEG);
+      // No ray's near intersection with this point's circle stands nearer
+      // the axis than rr − cl, so a bin the envelope has already cut to that
+      // depth cannot be cut by this point, and is not evaluated (68% of the
+      // bins, measured). FINGER_CUT_GUARD covers the rounding of the cut's own
+      // arithmetic: its one ill-conditioned step is √(cl² − sd²) near the
+      // tangent, off by at most √(6ε)·cl ≈ 4e-8 at cl ≤ 1, so the cut as
+      // computed is never under rr − cl − FINGER_CUT_GUARD, and a bin it
+      // skips is one whose `cut < env[q]` would have read false.
+      const floor = rr - cl - FINGER_CUT_GUARD;
       for (let o = -nb; o <= nb; o++) {
         const q = (((b0 + o) % SEG) + SEG) % SEG;
+        if (env[q] <= floor) continue;
         const del = (q / SEG) * TAU - phi;
         const sd = rr * Math.sin(del);
         if (Math.abs(sd) >= cl) continue;
