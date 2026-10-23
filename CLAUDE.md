@@ -1142,7 +1142,7 @@ or `[matrix]` in the title): the battery job becomes a matrix of two legs
 `[0]` and the job is the single process, unchanged. A host with fewer than two
 IDLE runners refuses the split rather than running two workers in series.
 **Since §263 a split run may SEED a baseline too**, so a hosted dispatch can ask
-for one (`split: true`); a push stays the single process with §265's tiers job
+for one (`split: true`); a push stays the single process with §265's tiers jobs
 beside it, which falls back to sweeping the tiers itself if its sibling dies,
 where a dead leg fails a whole split. `--collect --digests FILE` writes the key worker 0's
 §152 preflight read (the object one process writes, carried in its tasks file,
@@ -1234,20 +1234,23 @@ changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
 report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
-parallel `battery tiers` job, and since §265 its 36 spec boots with it**
-(`--tiers-only`). Both are handed to the battery (`--tiers-from`, fetched in
-the background by `tools/battery-tiers-fetch.sh`), which judges them in its
-one assembly. Each tier proves itself or runs in-process and says why. Both
-need the same tree. The spec tier needs one row per declared point, in order —
-SPLIT since the rebalance (`tools/battery-tiers.mjs`): the battery boots every
-twelfth declared point itself while it would otherwise wait, the file must carry
-exactly the sibling's half, and `mergeSpecHalves` re-proves the whole
-(`probe-tiers-spec-hand.mjs`); on that path the three post-battery probes run
-ahead of the harness, off the wait.
+parallel job, and since §265 its 36 spec boots too — since the fan-out on TWO
+jobs, `battery spec` and `battery points`** (`--tiers-only --tiers-part P`, one
+file per tier naming its part, `TIERS_FORMAT` 3). Each is handed to the battery
+(`--tiers-from SPEC,POINTS`, each fetched in the background by its own
+`tools/battery-tiers-fetch.sh`), which judges them in its one assembly. Each
+tier proves itself or runs in-process and says why (`acceptTiers` in
+`tools/battery-tiers.mjs`): its file must be the format, name the part and carry
+no other, be the same tree, and be the ONLY file carrying that part. The spec
+tier needs one row per declared point, in order; it may be SPLIT with the
+battery by `SPEC_HAND_STRIDE`, which the fan-out re-derived to 0 (both siblings
+hand over minutes before the battery reaches them, so a boot kept there only
+lengthens the critical path), the file must carry exactly the sibling's half,
+and `mergeSpecHalves` re-proves the whole (`probe-tiers-spec-hand.mjs`).
 The point tier needs the same point code, whole, every point full. A dead
-sibling or a fetcher that gave up runs both here, so the worst case is the run
-as it was. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
-which spreads both tiers across its two workers, so the tiers job runs only on
+sibling or a fetcher that gave up runs THAT tier here, so the worst case is the
+run as it was. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
+which spreads both tiers across its two workers, so the tiers jobs run only on
 an unsplit run. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
 build; every doubt sends a point FULL and says so, and the PR's point tier is

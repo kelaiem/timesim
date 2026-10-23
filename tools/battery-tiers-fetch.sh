@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# §264/§265 — fetch the spec boots and the point tier that the parallel
-# `battery tiers` job measured, for the battery job to judge. battery.yml
-# starts this in the BACKGROUND beside `ci-battery.mjs --tiers-from "$OUT"`,
-# so it runs while the sweeps do.
+# §264/§265 — fetch ONE tier that a parallel sibling job measured, for the
+# battery job to judge. Since the fan-out there are two siblings, `battery
+# spec` and `battery points`, each uploading its own file, and battery.yml
+# starts one copy of this per sibling in the BACKGROUND beside
+# `ci-battery.mjs --tiers-from "$OUT1,$OUT2"`, so they run while the sweeps do.
 #
-#   GH_TOKEN, OUT, NAME, TIERS_WAIT_S   set by the step
+#   GH_TOKEN, OUT, NAME, JOB, TIERS_WAIT_S   set by the step: JOB is the
+#                     sibling's job NAME (how a dead one is recognised), and
+#                     the artifact must hold a file named like OUT's basename
 #   GITHUB_API_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID   set by Actions
+#
+# Each copy works in its own directory ("$OUT.zip.d"), so two of them beside
+# each other never unzip over one another.
 #
 # IT ALWAYS ENDS IN ONE OF TWO FILES. Either "$OUT" (written atomically, by
 # rename, so the harness never reads half of it) or "$OUT.failed" with the
@@ -21,16 +27,16 @@
 # is what lets a job read its sibling's file mid-run. The polling is the same
 # curl + node idiom as battery.yml's §227 promotion step.
 set -u
-: "${GH_TOKEN:?}" "${OUT:?}" "${NAME:?}" "${TIERS_WAIT_S:?}"
+: "${GH_TOKEN:?}" "${OUT:?}" "${NAME:?}" "${JOB:?}" "${TIERS_WAIT_S:?}"
 : "${GITHUB_API_URL:?}" "${GITHUB_REPOSITORY:?}" "${GITHUB_RUN_ID:?}"
 
 API="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
-JOB="battery tiers"
-DIR=$(dirname "$OUT")
+ZIP="$OUT.zip.d"
+FILE=$(basename "$OUT")
 T0=$(date +%s)
 END=$(( T0 + TIERS_WAIT_S ))
 
-say() { echo "§264 fetcher +$(( $(date +%s) - T0 ))s: $1"; }
+say() { echo "§264 fetcher ($JOB) +$(( $(date +%s) - T0 ))s: $1"; }
 fail() { echo "$1" > "$OUT.failed"; say "gave up — $1"; exit 0; }
 api() {
   curl -sS --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
@@ -49,12 +55,12 @@ sibling() {
       process.stdout.write(j?j.status+':'+(j.conclusion||''):'')}catch{process.stdout.write('')}})"
 }
 fetch() {
-  rm -rf "$DIR/zip" && mkdir -p "$DIR/zip" \
+  rm -rf "$ZIP" && mkdir -p "$ZIP" \
     && curl -sSL --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
-         "$API/actions/artifacts/$1/zip" -o "$DIR/zip/a.zip" \
-    && unzip -q -o "$DIR/zip/a.zip" -d "$DIR/zip" \
-    && [ -f "$DIR/zip/tiers.json" ] \
-    && mv "$DIR/zip/tiers.json" "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+         "$API/actions/artifacts/$1/zip" -o "$ZIP/a.zip" \
+    && unzip -q -o "$ZIP/a.zip" -d "$ZIP" \
+    && [ -f "$ZIP/$FILE" ] \
+    && mv "$ZIP/$FILE" "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 }
 
 say "waiting up to ${TIERS_WAIT_S}s for artifact ${NAME}"
