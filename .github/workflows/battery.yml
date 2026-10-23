@@ -448,10 +448,10 @@ jobs:
       matrix: ${{ steps.decide.outputs.matrix }}
       workers: ${{ steps.decide.outputs.workers }}
       # §264/§265 — whether the spec boots and the point tier are measured by the parallel
-      # `battery tiers` job and handed to the battery.
+      # `battery spec` and `battery points` jobs (the fan-out) and handed to the battery.
       tiers_job: ${{ steps.decide.outputs.tiers_job }}
-      # §264 — that job's cap in minutes, read by its `timeout-minutes` and by
-      # the battery's wait for it. Derived where it is set, in `decide`.
+      # §264 — those jobs' cap in minutes, read by their `timeout-minutes` and by
+      # the battery's wait for them. Derived where it is set, in `decide`.
       tiers_cap_min: ${{ steps.decide.outputs.tiers_cap_min }}
       tiers_cap_s: ${{ steps.decide.outputs.tiers_cap_s }}
     env:
@@ -585,16 +585,21 @@ jobs:
           tiers_job=false; pwhy=""
           if [ "$run" = true ] && [ "$matrix" != true ] && [ "$host" = ubuntu-latest ] && { [ "$EVENT" = push ] || [ "$EVENT" = workflow_dispatch ]; }; then
             tiers_job=true
-            pwhy="the spec boots and the point tier are measured by the parallel 'battery tiers' job and handed to the battery before it judges"
+            pwhy="the spec boots and the point tier are measured by the parallel 'battery spec' and 'battery points' jobs and handed to the battery before it judges; the case and casing probes run on 'battery probes', whose conclusion the battery gates on"
           fi
-          # The cap. §264's sibling measured the point tier alone in 21.6 min of
-          # job wall (run 37962011695: setup, the default's digest boot, the
-          # 1260 s tier). §265 adds the spec boots, 584 s in that run's battery,
-          # so the job is ~31.3 min. Times the 1.66x same-tree spread above the
-          # battery's cap, that is 52.0, rounded up to 55. A sibling slower than
-          # that is killed, and the battery, which has stopped waiting by then,
-          # runs both tiers itself.
-          tiers_cap_min=55
+          # The cap, one for both siblings. §264 set 55 when one sibling ran
+          # the point tier (then 1260 s) and the spec boots back to back. Since
+          # the fan-out each tier has its own job, and hosted dispatch
+          # 39983932573 (b568c03c) measured each part on its runner: setup
+          # ~26 s, 33 spec boots 418.4 s (so ~456 s for all 36 at 12.7 s a
+          # boot), point tier 448.4 s. The slower job is spec, ~482 s = 8.0
+          # min; times the 1.66x same-tree spread above the battery's cap,
+          # that is 13.3, rounded up to 14. A sibling slower than that is
+          # killed, and the battery, which stops waiting at the same bound
+          # (from its harness's start, ~the same instant), runs that tier
+          # itself — a slower run, never a different verdict. Re-derive from
+          # the push runs that carry the fan-out.
+          tiers_cap_min=14
           { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; echo "tiers_job=$tiers_job"; echo "tiers_cap_min=$tiers_cap_min"; echo "tiers_cap_s=$(( tiers_cap_min * 60 ))"; } >> "$GITHUB_OUTPUT"
           echo "§200/§251: $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$mwhy" ] && echo "§259: $mwhy" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -602,25 +607,38 @@ jobs:
           true
 
   # §264 — THE PUSH'S POINT TIER, ON A PARALLEL RUNNER, and since §265 its
-  # SPEC BOOTS beside it.
+  # SPEC BOOTS beside it — since the fan-out on TWO parallel runners.
   #
   # The six silent spec points are swept FULL on every run that may write a
   # baseline, after the battery's shards: 1541 s of the 89-minute green push
   # 37924262189, all on the critical path. Before that tier come the 36 spec
   # boots, 584 s. Neither needs the shards. A point boots its own build and
   # reads the default's digests off its own virgin boot, a spec boot is one
-  # page, and both are judged by the assembly. So this job measures both from
-  # t=0 with `--tiers-only` and uploads the file the moment it exists. The
-  # battery job, which reaches its spec tier well after this job finishes,
-  # takes them from there (`--tiers-from`) and judges them in the SAME assembly
-  # as everything else: one gate loop, and the baseline is still written by the
-  # one job that writes it. If this job dies, is slow or measured different
-  # bytes, the battery runs the tiers itself and says why. That is the run as
-  # it was before §264, so that is the worst case.
+  # page, and both are judged by the assembly. So these jobs measure them from
+  # t=0 with `--tiers-only --tiers-part <part>` and upload the file the moment
+  # it exists. The battery job, which reaches its spec tier after these jobs
+  # finish, takes them from there (`--tiers-from`) and judges them in the SAME
+  # assembly as everything else: one gate loop, and the baseline is still
+  # written by the one job that writes it. If a job dies, is slow or measured
+  # different bytes, the battery runs THAT tier itself and says why. That is
+  # the run as it was before §264, so that is the worst case.
+  #
+  # THE FAN-OUT. One `battery tiers` job ran the two tiers back to back:
+  # 14.9 min on dispatch 39983932573 (setup ~26 s, spec boots 418.4 s, point
+  # tier 448.4 s), the longest job of the run but for the battery. As two jobs
+  # each is ~8 min, both well inside the battery's hand-off at ~12 min
+  # (battery-tiers.mjs derives how many spec points the battery keeps from
+  # that: none). The repo is public, so a hosted job costs nothing.
+  # fail-fast OFF: a dead `spec` leg must not cancel a healthy `points` leg,
+  # since each tier falls back on its own.
   battery-tiers:
-    name: battery tiers
+    name: battery ${{ matrix.part }}
     needs: route
     if: needs.route.outputs.tiers_job == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [spec, points]
     runs-on: ubuntu-24.04   # TEMPORARY pin (#762): ubuntu-latest is 26.04, where Playwright 1.56.1 cannot install Chromium, and the Chromium that can (156) builds different alarm-strike metal (lineSpec). Return to ubuntu-latest with the Playwright bump once that build step is fixed.
     timeout-minutes: ${{ fromJSON(needs.route.outputs.tiers_cap_min) }}
     steps:
@@ -643,24 +661,70 @@ jobs:
       - name: Install Chromium
         uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
 
-      - name: Measure the spec boots and the point tier (§264, §265)
+      - name: Measure the ${{ matrix.part }} tier (§264, §265)
+        env:
+          PART: ${{ matrix.part }}
         run: |
           mkdir -p .battery-tiers
-          node tools/ci-battery.mjs --tiers-only --tiers-out .battery-tiers/tiers.json
+          node tools/ci-battery.mjs --tiers-only --tiers-part "$PART" --tiers-out ".battery-tiers/$PART.json"
 
-      # Named for the RUN, not the attempt: a re-run of the battery alone must
-      # still find the file this attempt's sibling wrote, and `overwrite`
-      # because a re-run of this job writes the same name. The battery refuses
-      # a file measured on any other tree, so a stale one costs a sweep, never
-      # a verdict.
-      - name: Hand the tiers to the battery (§264, §265)
+      # Named for the RUN and the PART, not the attempt: a re-run of the
+      # battery alone must still find the file this attempt's sibling wrote,
+      # and `overwrite` because a re-run of this job writes the same name. The
+      # battery refuses a file measured on any other tree, so a stale one costs
+      # a sweep, never a verdict.
+      - name: Hand the ${{ matrix.part }} tier to the battery (§264, §265)
         uses: actions/upload-artifact@v4
         with:
-          name: battery-tiers-${{ github.run_id }}
-          path: .battery-tiers/tiers.json
+          name: battery-tiers-${{ matrix.part }}-${{ github.run_id }}
+          path: .battery-tiers/${{ matrix.part }}.json
           retention-days: 1
           overwrite: true
           if-no-files-found: error
+
+  # THE FAN-OUT'S THIRD SIBLING: the case relief, casing path and back
+  # envelope probes (§186, §187), the three steps that run after the harness
+  # everywhere else. #774 moved them AHEAD of the harness on this path, where
+  # they still sat on the battery job's critical path: 194 s of dispatch
+  # 39983932573's 16.1-minute battery job (case relief ~130, casing path and
+  # back envelope ~62). They read nothing the harness writes, so here they
+  # run on their own hosted runner from t=0, in the same order with the same
+  # `set -e` stop, and the battery job's own gate step reads this job's
+  # conclusion — `battery` still fails when a probe does (see that step).
+  #
+  # The cap: setup ~26 s plus the probes' 194 s is ~3.7 min, times the 1.66x
+  # same-tree spread, 6.1 -> 7. The battery's gate step waits the same 7.
+  battery-probes:
+    name: battery probes
+    needs: route
+    if: needs.route.outputs.tiers_job == 'true'
+    runs-on: ubuntu-24.04   # TEMPORARY pin (#762): ubuntu-latest is 26.04, where Playwright 1.56.1 cannot install Chromium, and the Chromium that can (156) builds different alarm-strike metal (lineSpec). Return to ubuntu-latest with the Playwright bump once that build step is fixed.
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pinned Playwright
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
+
+      - name: Install Chromium
+        uses: ./.github/actions/install-chromium   # bounded apt from cached .debs, then the cached browser
+
+      - name: Case relief, casing path and back envelope (§186, §187)
+        run: |
+          node tools/probe-case-relief.mjs
+          node tools/probe-187-casing-path.mjs
+          node tools/probe-back-envelope.mjs
 
   battery:
     needs: route
@@ -686,13 +750,13 @@ jobs:
     env:
       MATRIX: ${{ needs.route.outputs.matrix }}
       WORKER: ${{ matrix.worker }}
-      # §264/§265 — set when the parallel `battery tiers` job measures the spec
-      # boots and the point tier. The wait is that job's own cap (the route's tiers_cap_min, the
+      # §264/§265 — set when the parallel `battery spec` and `battery points` jobs
+      # measure the spec boots and the point tier. The wait is their own cap (the route's tiers_cap_min, the
       # one definition), so the battery stops waiting when the sibling would
       # have been killed — counted from the harness's start, which since the
-      # rebalance is ~190 s after the sibling's (the probes run first), so a
-      # sibling hung to its cap costs those seconds more; one that dies or is
-      # killed is seen by the fetcher at once, by the job's status.
+      # fan-out is the same instant as the siblings' give or take setup (the
+      # probes have their own job); one that dies or is killed is seen by its
+      # fetcher at once, by the job's status.
       TIERS_JOB: ${{ needs.route.outputs.tiers_job }}
       TIERS_WAIT_S: ${{ needs.route.outputs.tiers_cap_s }}
     # §251 — the route job decides; see it for the trust tiers (§200) and the
@@ -980,31 +1044,6 @@ jobs:
             say "SHADOW: this run could have been skipped. It runs anyway — tier one only watches."
           fi
 
-      # §264/§265 rebalanced — ON THE TIERS-JOB PATH THE POST-BATTERY PROBES RUN
-      # FIRST. Push run 39959720085 (main 9525e5b7): the harness finished its
-      # shards, boot B and the share boot at +731 s, WAITED 270.3 s for the
-      # `battery tiers` file (read at +1002.5 s), and only then did these three
-      # probes run, 190.4 s more (case relief 128.4, casing path and back
-      # envelope 62.0), so they sat behind the wait on the critical path. They
-      # read nothing the harness writes and share nothing with it (their own
-      # server, port and browser profile), so ahead of it they cost the same
-      # 190 s and the harness reaches the hand-off at ~+921 s instead. The
-      # spec boots ci-battery.mjs now keeps (battery-tiers.mjs) fill the rest.
-      # Predicted, not yet measured: both jobs within ~5 s of +961 s, a ~16.1
-      # min push against 20.0. The same three probes, the same steps' order
-      # among themselves and the same `set -e` stop, so a failure here still
-      # fails the job and, below, still runs the harness (`steps.preprobes`):
-      # the report is written and the baseline is not seeded, exactly as when a
-      # probe after the harness fails. Off this path they run after the harness
-      # as before (the PR's single process, a split's worker 1, the host).
-      - name: Case relief, casing path and back envelope, ahead of the battery (§186, §187)
-        id: preprobes
-        if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
-        run: |
-          node tools/probe-case-relief.mjs
-          node tools/probe-187-casing-path.mjs
-          node tools/probe-back-envelope.mjs
-
       # §259 — a worker takes the SAME mode arguments as the single process:
       # each restores the same baseline and runs its own §152 preflight, and the
       # collector throws if the two derived different restrictions. What it
@@ -1024,8 +1063,6 @@ jobs:
       # names its platform. The collector seeds under its OWN runner's cache
       # key, so it checks that the two agree before it may write one.
       - name: Run the battery
-        # The early probes failing must not take the battery's report with it.
-        if: success() || steps.preprobes.outcome == 'failure'
         env:
           EVENT: ${{ github.event_name }}
           PLATFORM: ${{ runner.os }}/${{ runner.arch }}
@@ -1045,20 +1082,23 @@ jobs:
               cp .battery-baseline/report.json .battery-out/baseline-report.json
             fi
           else
-            # §264/§265 — when `battery tiers` is measuring the tiers, fetch its
-            # file in the BACKGROUND while the sweeps run, and point the
-            # harness at where it will land. The fetcher always ends by
-            # writing either the file or FILE.failed with its reason, by the
-            # sibling's own cap at the latest, and the harness waits no longer
-            # than that cap either. So a broken fetcher costs a sweep here,
-            # never a hang. Its log is printed after the battery.
+            # §264/§265 — when `battery spec` and `battery points` are measuring
+            # the tiers, fetch each one's file in the BACKGROUND while the
+            # sweeps run (one fetcher per sibling), and point the harness at
+            # where they will land. A fetcher always ends by writing either the
+            # file or FILE.failed with its reason, by the siblings' own cap at
+            # the latest, and the harness waits no longer than that cap either.
+            # So a broken fetcher costs that tier's sweep here, never a hang.
+            # Their logs are printed after the battery.
             tiers_args=""
             if [ "$TIERS_JOB" = true ]; then
               mkdir -p .battery-tiers
-              GH_TOKEN="$GH_TOKEN" OUT=.battery-tiers/tiers.json \
-                NAME="battery-tiers-${GITHUB_RUN_ID}" \
-                bash tools/battery-tiers-fetch.sh > .battery-tiers/fetch.log 2>&1 &
-              tiers_args="--tiers-from .battery-tiers/tiers.json --tiers-wait-s $TIERS_WAIT_S"
+              for part in spec points; do
+                GH_TOKEN="$GH_TOKEN" OUT=".battery-tiers/$part.json" \
+                  NAME="battery-tiers-$part-${GITHUB_RUN_ID}" JOB="battery $part" \
+                  bash tools/battery-tiers-fetch.sh > ".battery-tiers/fetch-$part.log" 2>&1 &
+              done
+              tiers_args="--tiers-from .battery-tiers/spec.json,.battery-tiers/points.json --tiers-wait-s $TIERS_WAIT_S"
             fi
             status=0
             node tools/ci-battery.mjs \
@@ -1067,11 +1107,56 @@ jobs:
               --points-out .battery-out/points.json \
               $tiers_args \
               ${{ steps.mode.outputs.args }} || status=$?
-            if [ -f .battery-tiers/fetch.log ]; then
-              echo "--- §264/§265 fetcher"; cat .battery-tiers/fetch.log
-            fi
+            for log in .battery-tiers/fetch-*.log; do
+              [ -f "$log" ] && { echo "--- §264/§265 $log"; cat "$log"; }
+            done
             exit $status
           fi
+
+      # THE FAN-OUT'S PROBES STILL GATE `battery`. On the fan-out path the three
+      # post-battery probes run on their own job, `battery probes`, from t=0
+      # (they read nothing the harness writes and share nothing with it: their
+      # own server, port and browser profile). `battery` is the required check,
+      # so — §259's rule for the split, where `battery-collect` takes the name
+      # because it is the job that gates — the job named `battery` must still
+      # fail when a probe does. This step reads the sibling's conclusion off the
+      # run (the jobs API, `filter=latest`, so a re-run of either job is read at
+      # its latest attempt) and fails unless it is `success`: a failed,
+      # cancelled, timed-out or never-listed probes job fails the battery. It
+      # sits BEFORE the provenance and seeding steps, whose `success()` it
+      # therefore holds exactly as a failing probe step after the harness did:
+      # the report is still uploaded, nothing is published or seeded.
+      #
+      # Its cap is the probes job's own (7 min): the battery reaches it ~12 min
+      # in, so a probes job that started as late as ~5 min after the battery
+      # still finishes, or is killed, inside it. A step killed at the cap fails,
+      # which is the safe side.
+      - name: The case relief, casing path and back envelope probes passed (§186, §187)
+        if: env.TIERS_JOB == 'true' && env.MATRIX != 'true'
+        timeout-minutes: 7
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          API="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
+          while :; do
+            st=$(curl -sS --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
+                   -H "Accept: application/vnd.github+json" \
+                   "$API/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest&per_page=100" | node -e "
+              let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{
+                const j=(JSON.parse(s).jobs||[]).find(x=>x.name==='battery probes');
+                process.stdout.write(j?j.status+':'+(j.conclusion||''):'')}catch{process.stdout.write('')}})" || echo '')
+            case "$st" in
+              completed:success)
+                echo "§186/§187: 'battery probes' passed" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0 ;;
+              completed:*)
+                echo "::error::'battery probes' ended $st — case relief, casing path or back envelope failed (see that job); this battery does not pass"
+                echo "§186/§187: 'battery probes' ended $st — the battery FAILS" >> "$GITHUB_STEP_SUMMARY"
+                exit 1 ;;
+            esac
+            echo "'battery probes' is ${st:-not listed yet}; waiting"
+            sleep 15
+          done
 
       # ---- §186 / TODO 111: the analytic case sectors, held over the pose net
       #
@@ -1089,7 +1174,7 @@ jobs:
       # §259 — under a split the post-battery probes ride WORKER 1, which
       # carries no anchors, spec boots or point tier and so finishes first.
       - name: Case relief over the pose net (§186 / TODO 111)
-        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the tiers-job path they ran ahead of the harness
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs them
         run: node tools/probe-case-relief.mjs
 
       # ---- §187: the casing path, and the back envelope the glass hugs
@@ -1106,7 +1191,7 @@ jobs:
       #   CLEAR_MARGIN of swept metal. A mover that grows reds CI here, not
       #   the glass.
       - name: Casing path and back envelope (§187)
-        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the tiers-job path they ran ahead of the harness
+        if: (env.MATRIX != 'true' || matrix.worker == 1) && env.TIERS_JOB != 'true'   # on the fan-out path the `battery probes` job runs them
         run: |
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs

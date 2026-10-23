@@ -89,18 +89,20 @@
 //                           key (§263), so a split run can seed a baseline;
 //                           the workers then need --digests too, which is
 //                           what runs their preflight.
-//         --tiers-only --tiers-out FILE   (§264, §265) measure the spec
-//                           boots and the point tier ALONE — the spec points
-//                           battery-tiers.mjs hands the sibling, every silent
-//                           one swept full — and write them to FILE for a
-//                           sibling run to judge. No sweeps, no gates, no report.
-//         --tiers-from FILE --tiers-wait-s N   (§264, §265) take both tiers
-//                           from that file (waiting up to N s for it) instead
-//                           of running them here, booting the few spec points
-//                           this run keeps (battery-tiers.mjs) while it waits;
-//                           anything wrong with the file runs it here and says
-//                           why. With --spec-only, both runs narrow to the spec
-//                           tier (a probe path; CI never passes it).
+//         --tiers-only --tiers-part spec|points --tiers-out FILE
+//                           (§264, §265, the fan-out) measure ONE tier alone —
+//                           the spec points battery-tiers.mjs hands the
+//                           sibling, or every silent point swept full — and
+//                           write it to FILE, naming its part, for a sibling
+//                           run to judge. No sweeps, no gates, no report.
+//         --tiers-from FILE[,FILE] --tiers-wait-s N   (§264, §265) take each
+//                           tier from the one file whose part it is (waiting
+//                           up to N s for them) instead of running it here,
+//                           booting the spec points this run keeps
+//                           (battery-tiers.mjs; none since the fan-out) first;
+//                           anything wrong with a file runs its tier here and
+//                           says why. With --spec-only, both runs narrow to the
+//                           spec tier (a probe path; CI never passes it).
 //         --only NAME[,NAME]  a probe/iteration flag CI never passes: narrow
 //                           the run to these checks (or `check:axis` slices)
 //                           so the assembly half is exercisable in minutes.
@@ -119,7 +121,7 @@ import { BATTERY, RESTRICTABLE, prepPage, runCheck, virginBoot } from './battery
 import { VALIDATED_CONFIGS } from '../src/validated-configs.js';   // TODO 158: the configuration keys this battery vouches for
 import { unionCheck } from './battery-union.mjs';
 import { POINTS_FORMAT_VERSION, decidePointMode, defaultPointDigests, judgePoint, sweepPoint } from './battery-points.mjs';   // TODO 186 B1
-import { mergeSpecHalves, specHandRefusal, specHandedPoints, specKeptHere } from './battery-tiers.mjs';   // §264/§265: who boots which spec point
+import { TIERS_FORMAT, TIERS_PARTS, acceptTiers, mergeSpecHalves, specHandedPoints, specKeptHere, tiersFile } from './battery-tiers.mjs';   // §264/§265: who boots which spec point
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Per check. This is a WEDGED-TAB GUARD, not a budget: no check is supposed
@@ -870,38 +872,46 @@ if (POINTS_BASE && !POINTS_PR) throw new Error('--points-base is what a --points
 // next thing on the critical path after the shards, and it needs nothing but
 // a server and a browser either. Its rows are judged by the assembly too.
 //
-//   --tiers-only          measure both tiers alone and write them out; boots
-//                         no sweep, evaluates no gate, writes no report
-//   --tiers-out FILE      where --tiers-only writes them
-//   --tiers-from FILE     the run that judges: take the tiers from FILE instead
-//                         of running them, waiting for the file to appear (or
-//                         for FILE.failed, the fetcher's verdict that it never
-//                         will)
+//   --tiers-only          measure ONE tier alone and write it out; boots no
+//                         sweep, evaluates no gate, writes no report
+//   --tiers-part P        which: `spec` (the boots the sibling is handed) or
+//                         `points` (every silent point, full). Since the
+//                         fan-out each has its own job, `battery spec` and
+//                         `battery points`, so the two run side by side
+//                         rather than back to back on one runner
+//   --tiers-out FILE      where --tiers-only writes it
+//   --tiers-from F[,F]    the run that judges: take the tiers from these files
+//                         instead of running them, waiting for each to appear
+//                         (or for F.failed, its fetcher's verdict that it
+//                         never will)
 //   --tiers-wait-s N      how long to wait, from this process's start
 //
-// THE FILE IS TRUSTED ONLY AS FAR AS IT PROVES ITSELF. It must be this
-// format, measured on this exact TREE (git's tree object, so a single changed
-// byte anywhere refuses it). Then each tier on its own terms. The spec tier
-// is SPLIT (battery-tiers.mjs: the judging run boots every twelfth declared
-// point itself while it would otherwise wait, the sibling the rest), so the
-// file must carry one row per point handed to the sibling, in declared order,
-// and none this run keeps; mergeSpecHalves then holds the whole to one row per
-// declared SPEC_POINTS row, in declared order, as before the split. The
-// point tier must come from this POINT CODE (pointsCodeDigest), be whole and
-// not a PR's, and cover every swept point exactly once, full. A tier that
+// A FILE IS TRUSTED ONLY AS FAR AS IT PROVES ITSELF (battery-tiers.mjs's
+// acceptTiers, held by probe-tiers-spec-hand.mjs). It must be this format,
+// name one part and carry no other, and be measured on this exact TREE (git's
+// tree object, so a single changed byte anywhere refuses it); each part must
+// come from exactly one such file. Then each tier on its own terms. The spec
+// tier may be SPLIT (battery-tiers.mjs's stride; since the fan-out the
+// battery keeps none), so the file must carry one row per point handed to the
+// sibling, in declared order, and none this run keeps; mergeSpecHalves then
+// holds the whole to one row per declared SPEC_POINTS row, in declared order.
+// The point tier must come from this POINT CODE (pointsCodeDigest), be whole
+// and not a PR's, and cover every swept point exactly once, full. A tier that
 // fails runs HERE and says which check refused it. The other tier, if it
 // passed, is still taken. §152's rule: every uncertainty resolves towards
 // more work.
 const TIERS_ONLY = argv.includes('--tiers-only');
+const TIERS_PART = argOf('--tiers-part');
 const TIERS_OUT = argOf('--tiers-out');
-const TIERS_FROM = argOf('--tiers-from');
+const TIERS_FROM = argOf('--tiers-from')?.split(',').filter(Boolean) ?? null;
 const TIERS_WAIT_S = argOf('--tiers-wait-s');
-// 2 since the spec tier is SPLIT (battery-tiers.mjs): a format-1 file carries
-// all 36 rows, and is refused rather than read as the sibling's half.
-const TIERS_FORMAT = 2;
 const PROCESS_T0 = Date.now();
 if (TIERS_ONLY && !TIERS_OUT) throw new Error('--tiers-only wants --tiers-out FILE to write what it measured');
 if (TIERS_OUT && !TIERS_ONLY) throw new Error('--tiers-out is what a --tiers-only run writes');
+if (TIERS_ONLY && !TIERS_PARTS.includes(TIERS_PART)) throw new Error(`--tiers-only wants --tiers-part ${TIERS_PARTS.join('|')}: one tier per file since the fan-out, got "${TIERS_PART}"`);
+if (TIERS_PART !== null && !TIERS_ONLY) throw new Error('--tiers-part is which tier a --tiers-only run measures');
+if (TIERS_PART === 'points' && SPEC_ONLY) throw new Error('--spec-only has no point tier for --tiers-part points to measure');
+if (TIERS_FROM && !TIERS_FROM.length) throw new Error('--tiers-from wants FILE[,FILE]');
 if (TIERS_ONLY && (POINTS_PR || POINTS_BASE || POINTS_OUT || TIERS_FROM)) {
   throw new Error('--tiers-only measures every point FULL for a sibling to judge; it takes no --points-pr, --points-base, --points-out or --tiers-from');
 }
@@ -913,7 +923,7 @@ if (TIERS_WAIT_S !== null && !(Number(TIERS_WAIT_S) > 0)) throw new Error(`--tie
 // matrix already spreads both tiers (§260), and a collector judges what its
 // workers measured.
 if (TIERS_ONLY && (MATRIX || COLLECT || ONLY || REPORT_PATH || argOf('--digests') !== null || argOf('--digests-base') !== null || argOf('--baseline') !== null)) {
-  throw new Error('--tiers-only measures the spec and point tiers and nothing else; it takes no --matrix, --collect, --only, --report, --digests, --digests-base or --baseline');
+  throw new Error('--tiers-only measures one tier (--tiers-part) and nothing else; it takes no --matrix, --collect, --only, --report, --digests, --digests-base or --baseline');
 }
 // --spec-only is allowed with both (the probe path that holds the spec split
 // without a sweep): it narrows each run to the spec tier.
@@ -2271,59 +2281,39 @@ function measuredTree() {
 }
 
 // §264/§265 — the judging side of the hand-off. Returns { spec, points }: each
-// is the sibling's tier, or null with the reason logged, in which case the
-// caller runs that tier here. It waits because the sibling starts with this
-// job, not before it. §264 predicted the sibling would finish first and the
-// wait be zero; once #765–#771 sped the shards, push run 39959720085 measured
-// the opposite, a 270.3 s wait, which battery-tiers.mjs's split and the
-// workflow's probe reorder exist to close. The bound is only for a sibling
-// that died.
-async function tiersFrom(file, waitS) {
+// is a sibling's tier, or null with the reason logged, in which case the
+// caller runs that tier here. It waits because the siblings start with this
+// job, not before it. Since the fan-out each tier has its own sibling and its
+// own file; battery-tiers.mjs's acceptTiers decides which file, if any, each
+// tier is taken from. The bound is only for a sibling that died: a fetcher
+// that gives up writes FILE.failed, and that file stops being waited for.
+async function tiersFrom(files, waitS) {
   const deadline = PROCESS_T0 + waitS * 1000;
-  const failed = `${file}.failed`;
   const waitT0 = Date.now();
-  while (!existsSync(file) && !existsSync(failed) && Date.now() < deadline) {
+  const settled = (f) => existsSync(f) || existsSync(`${f}.failed`);
+  while (!files.every(settled) && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 5000));
   }
   const waited = secs(Date.now() - waitT0);
-  const none = (why) => { console.log(`spec and point tiers: NOT taken from ${file} (${why}) — running both here`); return { spec: null, points: null }; };
-  if (!existsSync(file)) {
-    if (existsSync(failed)) return none(`the fetcher gave up: ${readFileSync(failed, 'utf8').trim() || 'no reason written'}; waited ${waited}`);
-    return none(`nothing arrived within ${waitS} s of this process's start; waited ${waited}`);
-  }
-  let f;
-  try { f = JSON.parse(readFileSync(file, 'utf8')); } catch (err) { return none(`unreadable: ${err.message}`); }
-  if (f?.tiersFormat !== TIERS_FORMAT) return none(`format ${f?.tiersFormat ?? 'unversioned'}, this harness reads ${TIERS_FORMAT}`);
-  const tree = measuredTree();
-  if (!tree || f.tree !== tree) return none(`measured tree ${f.tree ?? 'unknown'}, this process is running ${tree ?? 'a tree it cannot name (git missing or the working tree is dirty)'}`);
-
-  // The spec tier: the sibling's HALF (battery-tiers.mjs) — one row per point
-  // the rule hands it, in declared order, and none this run keeps. The caller
-  // merges it with the rows booted here and the merge re-proves the whole: one
-  // row per declared point, in declared order, which the assembly's gates read.
-  let spec = f.spec;
-  const specWhy = specHandRefusal(SPEC_POINTS, spec);
-  if (specWhy) { console.log(`spec tier: NOT taken from ${file} (${specWhy}) — booting the sibling's half here`); spec = null; }
-  else console.log(`spec tier: taken from ${file} — tree ${tree}, ${spec.rows.length} of ${SPEC_POINTS.length} points booted on the parallel runner in ${secs(spec.ms)}; waited ${waited} here`);
-  if (SPEC_ONLY) return { spec, points: null };   // --spec-only: there is no point tier to take
-
-  // The point tier: this point code, whole, every swept point once and full.
-  let points = f.points;
-  const want = SWEEP_POINTS.map((p) => p.name);
-  const pointsWhy = (() => {
-    if (JSON.stringify(f.checkCode) !== JSON.stringify(pointsCodeDigest())) return 'measured by different point code';
-    if (!points || points.pr !== false) return 'not a whole, non-PR tier';
-    const names = (points.plan || []).map((p) => p.name);
-    if (names.length !== want.length || want.some((n) => !names.includes(n))) return `it covers [${names}], the swept points are [${want}]`;
-    const notFull = (points.plan || []).filter((p) => p.mode !== 'full').map((p) => p.name);
-    if (notFull.length) return `[${notFull}] were not swept full`;
-    const missing = want.filter((n) => !points.got?.[n]);
-    if (missing.length) return `no measurement for [${missing}]`;
-    return null;
-  })();
-  if (pointsWhy) { console.log(`point tier: NOT taken from ${file} (${pointsWhy}) — sweeping it here`); points = null; }
-  else console.log(`point tier: taken from ${file} — tree ${tree}, ${want.length} points swept full on the parallel runner in ${secs(points.ms)}; waited ${waited} here`);
-  return { spec, points };
+  const read = files.map((path) => {
+    if (!existsSync(path)) {
+      const failed = `${path}.failed`;
+      if (existsSync(failed)) return { path, f: null, why: `the fetcher gave up: ${readFileSync(failed, 'utf8').trim() || 'no reason written'}` };
+      return { path, f: null, why: `nothing arrived within ${waitS} s of this process's start` };
+    }
+    try { return { path, f: JSON.parse(readFileSync(path, 'utf8')) }; } catch (err) { return { path, f: null, why: `unreadable: ${err.message}` }; }
+  });
+  const got = acceptTiers({
+    files: read,
+    tree: measuredTree(),
+    checkCode: pointsCodeDigest(),
+    declared: SPEC_POINTS,
+    swept: SWEEP_POINTS.map((p) => p.name),
+    specOnly: SPEC_ONLY,
+  });
+  for (const l of got.lines) console.log(l);
+  console.log(`tiers: waited ${waited} here for [${files.join(', ')}]`);
+  return { spec: got.spec, points: got.points };
 }
 
 // ---- §127 tier 3: THE COLLECTOR -----------------------------------------
@@ -2556,23 +2546,29 @@ try {
   ] });
 
   // §264/§265 — THE TIERS-ONLY FORK. The same server, browser, runSpecTier and
-  // runPointTier a whole run uses, and nothing else: both tiers are measured
-  // exactly as the single process would measure them, and the file names the
-  // tree it measured so the judging run can refuse anything that is not its
-  // own bytes.
+  // runPointTier a whole run uses, and nothing else: the one tier asked for
+  // (--tiers-part) is measured exactly as the single process would measure
+  // it, and the file names its part and the tree it measured so the judging
+  // run can refuse anything that is not its own bytes, or not one part once.
   if (TIERS_ONLY) {
     const tree = measuredTree();
     if (!tree) console.log('--tiers-only: this tree cannot be named (git missing or the working tree is dirty) — the file will be refused by any judging run');
-    // The sibling's half of the spec tier only: the judging run boots the
-    // points battery-tiers.mjs keeps for it while it would otherwise wait.
-    const spec = await runSpecTier(browser, base, specHandedPoints(SPEC_POINTS));
-    const points = SPEC_ONLY ? null : await runPointTier(browser, base, { stored: null, incremental: false });
-    writeFileSync(resolve(TIERS_OUT), `${JSON.stringify({ tiersFormat: TIERS_FORMAT, tree, checkCode: pointsCodeDigest(), spec, points })}\n`);
-    const dead = spec.rows.filter((r) => !r.alive).map((r) => r.name);
-    const bad = points ? Object.entries(points.got).filter(([, g]) => g.error || g.skipped).map(([n]) => n) : [];
-    console.log(`--tiers-only: ${spec.rows.length} of ${SPEC_POINTS.length} spec point(s) booted in ${secs(spec.ms)}${dead.length ? ` (${dead.length} did not build: [${dead}])` : ''}, `
-      + (points ? `${Object.keys(points.got).length} point(s) swept in ${secs(points.ms)}${bad.length ? ` (${bad.length} with an error: [${bad}])` : ''}` : 'no point tier (--spec-only)')
-      + ` — written to ${resolve(TIERS_OUT)}; the judging run's gates read every row`);
+    // ONE tier per run since the fan-out. The spec part is the sibling's half
+    // of the spec tier only: the judging run boots the points
+    // battery-tiers.mjs keeps for it (none at the shipped stride).
+    let tier;
+    let said;
+    if (TIERS_PART === 'spec') {
+      tier = await runSpecTier(browser, base, specHandedPoints(SPEC_POINTS));
+      const dead = tier.rows.filter((r) => !r.alive).map((r) => r.name);
+      said = `${tier.rows.length} of ${SPEC_POINTS.length} spec point(s) booted in ${secs(tier.ms)}${dead.length ? ` (${dead.length} did not build: [${dead}])` : ''}`;
+    } else {
+      tier = await runPointTier(browser, base, { stored: null, incremental: false });
+      const bad = Object.entries(tier.got).filter(([, g]) => g.error || g.skipped).map(([n]) => n);
+      said = `${Object.keys(tier.got).length} point(s) swept in ${secs(tier.ms)}${bad.length ? ` (${bad.length} with an error: [${bad}])` : ''}`;
+    }
+    writeFileSync(resolve(TIERS_OUT), `${JSON.stringify(tiersFile({ part: TIERS_PART, tree, checkCode: pointsCodeDigest(), tier }))}\n`);
+    console.log(`--tiers-only (${TIERS_PART}, format ${TIERS_FORMAT}): ${said} — written to ${resolve(TIERS_OUT)}; the judging run's gates read every row`);
   } else {
 
   // ---- §152 PREFLIGHT: the key, and the decision it licenses ---------------
@@ -2704,8 +2700,9 @@ try {
       + `${ONLY ? ' (--only: the identity control alone, if it is this worker\'s)' : ''} and sweeps `
       + `[${ONLY ? '' : SWEEP_POINTS.filter((p) => owners.get(p.name) === me).map((p) => p.name).join(', ')}]`);
   }
-  // §264/§265 — a push takes the tiers its sibling job measured, each one only
-  // when it proves itself; otherwise, and always elsewhere, they run here.
+  // §264/§265 — a push takes the tiers its sibling jobs measured (one file per
+  // tier since the fan-out), each one only when it proves itself; otherwise,
+  // and always elsewhere, they run here.
   //
   // The spec tier is SPLIT with the sibling (battery-tiers.mjs): the points
   // this run keeps boot HERE, before the wait, on a runner whose shards have
@@ -2713,7 +2710,10 @@ try {
   // when it does not; and mergeSpecHalves puts the two back in declared order,
   // throwing on a gap or a double. Without --tiers-from nothing is split.
   const kept = TIERS_FROM ? specKeptHere(SPEC_POINTS) : null;
-  const local = TIERS_FROM ? await runSpecTier(browser, base, SPEC_POINTS.filter((p) => kept.has(p.name))) : null;
+  // Stride 0 (the fan-out's) keeps none: no boot, and nothing to print.
+  const local = !TIERS_FROM ? null
+    : kept.size ? await runSpecTier(browser, base, SPEC_POINTS.filter((p) => kept.has(p.name)))
+      : { rows: [], ms: 0 };
   const handed = TIERS_FROM ? await tiersFrom(TIERS_FROM, Number(TIERS_WAIT_S)) : { spec: null, points: null };
   const spec = TIERS_FROM
     ? mergeSpecHalves(SPEC_POINTS, handed.spec || await runSpecTier(browser, base, specHandedPoints(SPEC_POINTS)), local)
