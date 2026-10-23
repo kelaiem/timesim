@@ -4,7 +4,7 @@
 
 # The instruments
 
-344 scripts. **229 are ACCEPTANCE tests** — they decide and exit non-zero.
+345 scripts. **230 are ACCEPTANCE tests** — they decide and exit non-zero.
 **115 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -218,6 +218,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-261-lever-prices.mjs` | §261 | acceptance | WHAT EACH HEIGHT LEVER BUYS — the compaction levers of the private roadmap's §261, each built as a copied tree with one constant moved, measured off the metal for what it does to the cased depth, which member governs after it, and which boot asserts it trips (its cost). Combinations are measured too, beside the superposition of their singles, because the back is governed jointly and a lever bought alone is not the lever bought with its neighbours. |
 | `probe-262-gong-note.mjs` | §262 | acceptance | §262 — WHICH C? The gong's pitch target is a NOTE now, and the octave was measured here rather than chosen: boot the build with GONG_F1_TARGET_HZ rewritten in flight to each C (the foot cut to the arc the fixed point derives for it, since the aesthetics knob only knows the shipped one) and read what `__clock.acoustics` makes of it — the arc, the head the blow is matched to, each partial's level and whether the ear can hear it. |
 | `probe-263-brush-axis.mjs` | §263 | acceptance | TODO 263 — WHICH WAY DOES THE BRUSHED STEEL'S HIGHLIGHT STRETCH? Acceptance. |
+| `probe-265-ulp.mjs` | §265 | acceptance | DOES THE BUILD HOLD ITS LINE SPEC WHEN THE JS ENGINE ROUNDS DIFFERENTLY? (TODO 265) — `lineSpec` booted with `Math.atan2` nudged by one ULP, up or down or not at all per call, chosen by a hash of its arguments and a seed. |
 | `probe-267-boot-progress.mjs` | §267 | acceptance | DOES THE BOOT BAR TELL THE TRUTH ABOUT WHERE THE BUILD IS? — §267, measured. |
 | `probe-268-hammer-spiral.mjs` | §268 | acceptance | §268 — THE HAMMER SPRING IS A SPRING NOW: does the fall law read √(k/I) off the metal, and is the metal there? ACCEPTANCE. |
 | `probe-269-case-path.mjs` | §269 | acceptance | §269 — THE CASE AS THE RADIATOR: does the structure-borne path on the record follow from the metal, and does every integral behind it reproduce by a second method? ACCEPTANCE. |

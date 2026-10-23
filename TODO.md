@@ -34603,3 +34603,40 @@ closes; GitHub will retire that image eventually, so this has a deadline.
    (#762's other two CI fixes, the dpkg lock wait and offline-check's
    per-boot watchdog marks, are already on `main`). On 26.04 `install-deps` needs ~25 MB of
    fonts; #766's apt cache covers that.
+
+**Localised and fixed on 2026-10-23: a seam written twice in the alarm cam.**
+Step 1 was done without Chromium 156, which this container cannot download.
+An engine change moves a transcendental result by an ULP per input, so 141
+was booted with `Math.*` nudged by ±1 ULP, keyed on a hash of the arguments
+and a seed. A uniform scale reproduced nothing, because it keeps every
+comparison's order. Seed 2 failed exactly 156's four rows (pivSwD +2.83e-3,
+the same figure), and bisection by function left `Math.atan2` alone. The cam's
+outline wrote two points per lobe twice. The dwell began at the previous
+drop's last point (`tip − pitch + dropSpan`), and the approach ended at the
+rise's first (`lobe + rise[0].psi`, at `ALARM_CAM_PICKUP_R`, which is
+`rise[0].r`). Each pair is equal in algebra but computed two ways, the rise
+through `atan2`. three.js drops a repeated point only when it is EXACTLY
+equal, so the engine's last ULP decided which copies survived as 1e-10
+slivers: degenerate triangles (the `zeroArea` count), and an uneven point
+count per lobe. `lineSpec` reads the wheel's axis as the outline's vertex
+MEAN ("four identical lobes"), so each survivor pulled it by about 3e-3.
+Chromium 141 passed by symmetry, not by construction: its two survivors
+started lobes 0 and 2, 180° apart, and cancelled. The fix writes each seam
+once, from the piece that owns it, and a boot guard warns when two
+neighbours sit closer than half the flank's finest step.
+`tools/probe-265-ulp.mjs` holds it. The shipped tree, unperturbed and under
+seeds 2, 5 and 7, has 0 `lineSpec` failures and a silent guard. The CONTROL
+restores the doubled seams under seed 2 and fails the four strike rows
+(pivSwD +1.97e-3) with the guard warning.
+
+**Residue, measured and not fixed here.** A survey of every extruded shape's
+raw outline found 60 with consecutive points under 1e-9 apart, mostly gear
+tooth outlines: exact copies three.js drops, or 1e-16 slivers it keeps. That is
+the same class, and very likely why seven units' §152 digests differ between
+the two browsers when only the cam fails a gate. Nothing else reads a vertex
+mean as an axis, so those shapes change the fingerprint, not a verdict.
+Nudging every transcendental function at once (seeds 2 and 11) also tripped
+three boot asserts that sit on a threshold, none of them in the cam: TODO 221's
+beak relief bracket, §173's "backward flank 0.0000° off radial" (an exact-zero
+test) and TODO 15's centre-pinion gauge (8 gaps for 7 teeth). `lineSpec` held
+in both runs. Step 3 still owes Chromium 156 itself, which only CI can run.
