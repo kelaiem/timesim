@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 265 | OPEN | Found bumping Playwright (#762). The same source (`abcceb8`) built on the same host under Chromium 156 instead of 141 gives a different fingerprint (`955951544` → `4180065205`), 12 fewer triangles, and fails `lineSpec` on four alarm-strike rows by up to 0.0028 u against 1e-6. A JS engine moves `Math.*` by ULPs, so a build step amplifies float noise ~10¹³×. Find the first unit whose §152 digest diverges, make that step well-conditioned so both browsers build the spec, then land the bump and un-pin the browser jobs from `ubuntu-24.04` (#766) |
+| 265 | OPEN | Found bumping Playwright (#762). The same source (`abcceb8`) built on the same host under Chromium 156 instead of 141 gives a different fingerprint (`955951544` → `4180065205`), 12 fewer triangles, and fails `lineSpec` on four alarm-strike rows by up to 0.0028 u against 1e-6. A JS engine moves `Math.*` by ULPs, so a build step amplifies float noise ~10¹³×. Reproduced bit-identically on current `main` on hosted x64 (#772), so it is a pure function of the JS engine. The §152 digests name seven candidate units (Alarm release crank, Alarm striking wheel, Alarm winding arrest, Center wheel, Dial, Fusee & great wheel, Three-quarter plate). Find the step they share, make it well-conditioned so both browsers build the spec, then land the bump and un-pin the browser jobs from `ubuntu-24.04` (#766) |
 | 264 | DONE | §305 cleared both of §302's inventories at their roots: six placed-pose overlaps (the escapement's bob hung in front of the front knife and the balance re-solved, T 1.00175 s; the keyless stem as two axles in the joiner's stop; a long axle's overhang placed where it meets nothing; the fusee detent re-solved over the baseplate) and 27 flagged insertion steps (the fusee cone ends at its metal; parts shut by their own group held in the gap; a pin's lip measured as its press; pins in a held part and the alarm disc's beams as units; no gear lowered between two meshes; the escape arbor lowered beside its bricks). Both inventories empty and closed. |
 | 263 | DONE | Brushed steel rendered its grain a quarter turn off: `installBrush` handed three the GRAIN as `anisotropyT`, and three's GGX is rougher along T, so highlights stretched along the grain. The shader now names the grain per surface (a flat's `brushAngleDeg`, the midcase flank's vertical, every other flank's circumferential) and hands three T = n × grain. `probe-263-brush-axis.mjs`: axis 90.0° at grain 0°, 0.0° at grain 90°, elongation 3.24, polished control 1.00; the old shader reads the axis along the grain and fails |
 | 260 | DONE | The ramp's climb out of the notch loaded the disc as hard as its seat could hold it (1.00× where the hold is sized to 3×, and under 1 at a kinder friction). The ramp is longer now and its length is SOLVED, not chosen: the seat's pad at its blade's strain cap (0.9 of the stock's) holds a climb of 5.29 mN at the headroom, which is a slope of 4.40° and a run of 0.4257 rad (48.8 min of hour each side); the tick's drop law is `ALARM_DETECTOR_LAWS.dropAt`. Hold ÷ climb 3.000 by construction, asserted at boot and in `probe-144-set-hold`. The hold is priced at every friction corner (2.55× / 2.76× / 3.00×, decoupled worst 1.80×, never under 1) and the hour train carries the climb at 0.27% of the centre arbor's torque. Not priced: the cannon pinion's friction fit (the model declares no slip torque) and the tooth load on the minute pinion ⇄ hour wheel mesh. |
@@ -34579,6 +34579,25 @@ derived from its constraint, and a derivation that moves 1e-3 under a ULP has
 not pinned the constant to the constraint. §261's link seat solve was already
 found discontinuous at the nose's own station, so that neighbourhood is the
 first place to look.
+
+**Reproduced on 2026-10-23 (#772), and localised to seven units.** A draft
+PR bumped only Playwright (1.64.1, Chromium 156) on current `main` (9525e5b,
+after #770 and #771 reworked a batch of boot solves), on the HOSTED x64
+`ubuntu-24.04` runner. The result was bit-identical to #762's ARM64 run:
+fingerprint `4180065205`, 491,223 / 21,441, and the same four deltas to every
+printed digit (`pivSwD` +0.0028255348375108014, `restGamma`
+−0.00012850064088371083, `camPickupR` +0.002172549174773497, `lift`
++0.0009079544744845514). Two consequences. The divergence is a pure function
+of the JS engine (another CPU architecture, OS and runner change nothing), so
+any Chromium 156 host reproduces it. And #770/#771 did not touch the step.
+The run's §152 incremental path also did step 1 below for free: against
+`main`'s Chromium 141 baseline, the unit digests marked eight units changed
+(Alarm release crank, Alarm striking wheel, Alarm winding arrest, Center
+wheel, Chain, Dial, Fusee & great wheel, Three-quarter plate). Chain is always
+in that set (it is re-tessellated lazily), which leaves **seven candidates**.
+Several of them are fixtures or wheels a layout solve places, so a shared
+upstream quantity (a station or a placement solve that more than one unit
+reads) is a likelier source than seven separate cuts.
 
 **Why it blocks.** The push battery runs hosted, so any Playwright ≥ 1.61
 (the first with an `ubuntu26.04` host entry) puts `main` red on `lineSpec`.
