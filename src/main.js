@@ -7601,9 +7601,16 @@ async function solveReserveSwing(pts) {
     const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
     const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
     let c = Infinity, member = 'none';
-    for (const q of inW1) { const d = Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR; if (d < c) { c = d; member = 'w1'; } }
-    for (const q of inHub) { const d = Math.hypot(wx - q[0], wy - q[1]) - w1Reach.hub.r; if (d < c) { c = d; member = 'w1 hub'; } }
-    for (const q of inP1) { if (q[2] < p1Lo || q[2] > p1Hi) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - p1TipR; if (d < c) { c = d; member = 'p1'; } }
+    // A point either of whose plan legs, less the member's reach, stands at
+    // or past the clearance so far cannot lower it (a distance is never under
+    // its larger leg; LEG_LO takes the leg 1e-12 down, a thousand times what
+    // hypot's rounding could), so it is passed over unmeasured: `c` and the
+    // member that set it are the same.
+    const LEG_LO = 1 - 1e-12;
+    const far = (q, R) => Math.abs(wx - q[0]) * LEG_LO - R >= c || Math.abs(wy - q[1]) * LEG_LO - R >= c;
+    for (const q of inW1) { if (far(q, rsvW1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR; if (d < c) { c = d; member = 'w1'; } }
+    for (const q of inHub) { if (far(q, w1Reach.hub.r)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - w1Reach.hub.r; if (d < c) { c = d; member = 'w1 hub'; } }
+    for (const q of inP1) { if (q[2] < p1Lo || q[2] > p1Hi) continue; if (far(q, p1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - p1TipR; if (d < c) { c = d; member = 'p1'; } }
     return { c, member };
   };
   let best = { c: -Infinity, member: 'none', swing: 0 };
@@ -12195,10 +12202,26 @@ function chainJoints(curve) {
   // arithmetic, term for term and in its operand order (this − v), so every
   // comparison and every root reads the numbers the Vector3 form read.
   const pd = (p, qx, qy, qz) => { const dx = p.x - qx, dy = p.y - qy, dz = p.z - qz; return Math.sqrt(dx * dx + dy * dy + dz * dz); };
+  // THE SCAN'S SKIP. Each step scans samples outward from the walking point
+  // q until one stands a chord c away, testing every sample on the way —
+  // ~32 a joint, 49 walks a call. But the scan's answer for the first samples
+  // is known without measuring them: q lies on the segment ending at sample
+  // floor(jf)+1 (or at that sample itself), so sample floor(jf)+m stands at
+  // most m+1 segments from it (the triangle inequality along the polyline),
+  // and a sample whose bound is under c is one the scan would step past. The
+  // bound uses the polyline's LONGEST segment as measured, widened by
+  // SKIP_GUARD, which covers the rounding of every measured distance (a few
+  // ulps, ~1e-15 relative) by nine orders; the samples it skips are exactly
+  // those the scan would have passed, so every joint is the same float.
+  const SKIP_GUARD = 1 + 1e-6;
+  const segBound = (Q, m) => { let b = 0; for (let i = 1; i <= m; i++) b = Math.max(b, pd(Q[i], Q[i - 1].x, Q[i - 1].y, Q[i - 1].z)); return b * SKIP_GUARD; };
+  // the first sample the scan from floor(jf) need actually measure at chord c
+  const scanFrom = (jf, c, sb, m) => { const f = Math.floor(jf); return Math.min(Math.max(f + 1, f + Math.floor(c / sb) - 1), m + 1); };
+  const sb0 = segBound(P0, M0);
   const walked = (() => {
     let qx = P0[0].x, qy = P0[0].y, qz = P0[0].z, jf = 0, n = 0;
     for (;;) {
-      let j = Math.floor(jf) + 1;
+      let j = scanFrom(jf, CHAIN_PITCH, sb0, M0);
       while (j <= M0 && pd(P0[j], qx, qy, qz) < CHAIN_PITCH) j++;
       if (j > M0) { const e = P0[M0], dx = qx - e.x, dy = qy - e.y, dz = qz - e.z; return n + Math.sqrt(dx * dx + dy * dy + dz * dz) / CHAIN_PITCH; }   // the last link's fraction, chord to the end
       const A = P0[j - 1], B = P0[j];
@@ -12217,13 +12240,14 @@ function chainJoints(curve) {
   // arc count (the same curve at the same divisions, its arc table already
   // cached by getLength above), and both are only read, so it is reused.
   const P = M === M0 ? P0 : curve.getSpacedPoints(M);
+  const sbP = P === P0 ? sb0 : segBound(P, M);
   const ds = len / M;
   // One walk at chord c: joint positions as fractional polyline indices.
   const walk = (c, out) => {
     let jf = 0, qx = P[0].x, qy = P[0].y, qz = P[0].z;
     if (out) out[0] = 0;
     for (let n = 1; n <= N; n++) {
-      let j = Math.floor(jf) + 1;
+      let j = scanFrom(jf, c, sbP, M);
       while (j <= M && pd(P[j], qx, qy, qz) < c) j++;
       if (j > M) return { ok: false, rest: -(N - n + 1) };   // ran off the end: c too long
       // solve |A + t(B − A) − q| = c on segment [j−1, j], the outbound root
@@ -14106,18 +14130,32 @@ const maintDetent = new THREE.Group();
     // NaN term fails here as it poisons the minimum there. The terms and their
     // order are clearAt's own; `clearAt` stays whole for the instruments that
     // read the gap itself.
+    //   And since the answer is a conjunction, the order its terms are asked
+    // in cannot change it: the term that refused the last question is asked
+    // first (the bisection's neighbouring tilts are refused by the same corner
+    // of the cut), then every term in clearAt's order. Each term is the same
+    // expression either way.
+    let lastRefuser = -1;
+    const nS = samples.length;
+    const termOk = (k, c, s, cn, sn, thr) => {
+      if (k < nS) {
+        const p = samples[k];
+        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;
+        return ringSd(ax * cn + ay * sn, -ax * sn + ay * cn) >= thr;
+      }
+      const [vx, vy] = poly[k - nS];
+      const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;
+      if (Math.hypot(ax - cx, ay - cy) > reach) return true;
+      const qx = ax - pivR, qy = ay;
+      return beakSd(qx * c + qy * s, -qx * s + qy * c) >= thr;
+    };
     const clearsAt = (net, t, thr) => {
       const lam = MAINT_DET_SIGN * t, c = Math.cos(lam), s = Math.sin(lam);
       const cn = Math.cos(net), sn = Math.sin(net);
-      for (const p of samples) {
-        const ax = pivR + p.x * c - p.y * s, ay = p.x * s + p.y * c;
-        if (!(ringSd(ax * cn + ay * sn, -ax * sn + ay * cn) >= thr)) return false;
-      }
-      for (const [vx, vy] of poly) {
-        const ax = vx * cn - vy * sn, ay = vx * sn + vy * cn;
-        if (Math.hypot(ax - cx, ay - cy) > reach) continue;
-        const qx = ax - pivR, qy = ay;
-        if (!(beakSd(qx * c + qy * s, -qx * s + qy * c) >= thr)) return false;
+      if (lastRefuser >= 0 && !termOk(lastRefuser, c, s, cn, sn, thr)) return false;
+      for (let k = 0, nT = nS + poly.length; k < nT; k++) {
+        if (k === lastRefuser) continue;
+        if (!termOk(k, c, s, cn, sn, thr)) { lastRefuser = k; return false; }
       }
       return true;
     };
@@ -34052,8 +34090,12 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       if (drop === 'wheel' && s.meshPartner) continue;
       if (drop === 'rim' && s.rimPartner) continue;
       for (const q of s.xy) {
-        const k = `${Math.floor(q[0] / CELL)},${Math.floor(q[1] / CELL)}`;
-        let a = g.get(k); if (!a) g.set(k, a = []); a.push([q[0], q[1], s.name]);
+        // keyed by the cell's two integers in nested maps rather than by a
+        // string of them: the same cells, the same lists in the same order,
+        // without building a string per point and per probe
+        const i = Math.floor(q[0] / CELL), j = Math.floor(q[1] / CELL);
+        let col = g.get(i); if (!col) g.set(i, col = new Map());
+        let a = col.get(j); if (!a) col.set(j, a = []); a.push([q[0], q[1], s.name]);
       }
     }
     return g;
@@ -34086,7 +34128,8 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       for (let i = ci - ring; i <= ci + ring; i++)
         for (let j = cj - ring; j <= cj + ring; j++) {
           if (ring > 0 && Math.abs(i - ci) !== ring && Math.abs(j - cj) !== ring) continue;
-          const a = g.get(`${i},${j}`); if (!a) continue;
+          const col = g.get(i); if (!col) continue;
+          const a = col.get(j); if (!a) continue;
           for (const q of a) {
             const d = Math.hypot(x - q[0], y - q[1]);
             if (d < best) { best = d; who = q[2]; }
@@ -37198,36 +37241,56 @@ const _colBreaks = (() => {
 // at which the deepest corner stands exactly on the floor.
 //   A — the wheel angle (alarmColShownA), L — the arm to the nose (beakLen),
 //   hN — the nose's underside under the axis, thMax — the seat tilt.
+// The law is evaluated by a bisection, 45 tilts per call and 79,200 calls per
+// boot (the stub's sweep below, inside the seat solve's fixed point), so what
+// does not depend on the tilt is computed once per call: each breakpoint's
+// plan offset under the face, rho·tan(dd), is a property of the wheel angle and
+// the radius alone. The predicate is the same conjunction over the same points,
+// each evaluated by the same expression, so it returns the same boolean; two
+// of its points are decided without reading the profile, by its range alone
+// (0 ≤ profileAt ≤ 1, so the surface under the face stands between 0 and colH
+// below the top): a point that drops no more than the 1e-9 slack cannot be
+// under it, and one that drops more than colH plus it must be.
+const _noseRads = [ALARM_LINK_NOSE_LAND_R - ALARM_LINK_NOSE_W_RAD / 2, ALARM_LINK_NOSE_LAND_R + ALARM_LINK_NOSE_W_RAD / 2];
 const alarmLinkNoseTheta = (A, L, hN, thMax) => {
   const p = alarmColumnWheel.userData.profileAt, colH = ALARM_COL_H;
   const half = ALARM_LINK_NOSE_W_AZ / 2;
   const base = A + ALARM_LINK_BEAK_OFF;
-  const rads = [ALARM_LINK_NOSE_LAND_R - ALARM_LINK_NOSE_W_RAD / 2, ALARM_LINK_NOSE_LAND_R + ALARM_LINK_NOSE_W_RAD / 2];
-  const xs = [];
+  const rads = _noseRads;
+  const off = [[], []];                                         // per radius: rho·tan(dd) of each breakpoint within reach
+  for (const ab of _colBreaks) {
+    let d = ab - base; d -= Math.round(d / _colPitch) * _colPitch;
+    for (const dd of [d - _colPitch, d, d + _colPitch]) {
+      if (Math.abs(dd) > 0.5) continue;
+      const t = Math.tan(dd);
+      off[0].push(rads[0] * t); off[1].push(rads[1] * t);
+    }
+  }
+  const lo = L - half, hi = L + half, dropAll = colH + 1e-9;
   const ok = (b) => {
-    const cb = Math.cos(b), sb = Math.sin(b);
-    for (const rho of rads) {
-      xs.length = 0; xs.push(L - half, L + half);
-      for (const ab of _colBreaks) {
-        let d = ab - base; d -= Math.round(d / _colPitch) * _colPitch;
-        for (const dd of [d - _colPitch, d, d + _colPitch]) {
-          if (Math.abs(dd) > 0.5) continue;
-          const x = (L + hN * sb - rho * Math.tan(dd)) / cb;   // the face point standing over that breakpoint
-          if (x > L - half && x < L + half) xs.push(x);
-        }
-      }
-      for (const x of xs) {
-        const s = L - (x * cb - hN * sb);                       // its plan offset from the nose's ray, toward the pivot (ccw)
-        const drop = x * sb - hN * (1 - cb);
-        if (drop > colH * (1 - p(base + Math.atan2(s, rho))) + 1e-9) return false;
+    const cb = Math.cos(b), sb = Math.sin(b), num = L + hN * sb;
+    // the face point at x is under the cut surface?
+    const under = (x, rho) => {
+      const s = L - (x * cb - hN * sb);                         // its plan offset from the nose's ray, toward the pivot (ccw)
+      const drop = x * sb - hN * (1 - cb);
+      if (drop <= 1e-9) return false;
+      if (drop > dropAll) return true;
+      return drop > colH * (1 - p(base + Math.atan2(s, rho))) + 1e-9;
+    };
+    for (let r = 0; r < 2; r++) {
+      const rho = rads[r], o = off[r];
+      if (under(lo, rho) || under(hi, rho)) return false;
+      for (let k = 0; k < o.length; k++) {
+        const x = (num - o[k]) / cb;                            // the face point standing over that breakpoint
+        if (x > lo && x < hi && under(x, rho)) return false;
       }
     }
     return true;
   };
   if (ok(thMax)) return thMax;
-  let lo = 0, hi = thMax;
-  for (let k = 0; k < 44; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
-  return lo;
+  let lo2 = 0, hi2 = thMax;
+  for (let k = 0; k < 44; k++) { const m = (lo2 + hi2) / 2; if (ok(m)) lo2 = m; else hi2 = m; }
+  return lo2;
 };
 // THE STUB'S LIFT — the clearance its underside needs over the columns, swept.
 // §120's precedent (and TODO 206's form of it): a static margin over the column
@@ -37254,6 +37317,12 @@ const _stubLiftFor = (L, thS, hN) => {
     for (let ix = 0; ix <= NX; ix++) {
       const x = L - hw + (2 * hw * ix) / NX;
       const s = L - (x * cb - hb * sb), drop = x * sb - hb * (1 - cb);
+      // every term of this row is colH·(p − 1) + CLEAR_MARGIN + drop with
+      // p ≤ 1, so none exceeds CLEAR_MARGIN + drop (each step of the sum rounds
+      // monotonically): a row whose ceiling is already met cannot raise the
+      // max, and is not read. The max of a set does not depend on which of its
+      // members were looked at, so the lift is the same number.
+      if (CLEAR_MARGIN + drop <= need) continue;
       for (let ir = 0; ir <= NR; ir++) {
         const rho = r0 + ((r1 - r0) * ir) / NR;
         if (Math.abs(x - L) < nHalf - 1e-9 && Math.abs(rho - ALARM_LINK_NOSE_LAND_R) < nRad - 1e-9) continue;
@@ -37850,13 +37919,21 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       const seat = _blockSeat(tx, ty, tip.x, tip.y);
       if (!_blockOk(seat)) continue;
       if (_postClear(tx, ty, seat) < 0) continue;   // TODO 174 — the fork clears every guide post station
-      const { c: cc, who } = scoreChord(tip.x, tip.y, tx, ty);
+      // The score is the MIN of four terms and a candidate is kept only when
+      // it beats the best strictly, so once the terms read so far are at or
+      // under the best, the rest cannot make it win and are not computed —
+      // cheapest first, the hangers' columns (the costliest) last. The
+      // measured site is always scored whole: it is recorded win or lose.
+      const isMeasured = rc.k === ALARM_LINK_MEASURED_SITE.k && rc.run === ALARM_LINK_MEASURED_SITE.run && azw0 === ALARM_LINK_MEASURED_SITE.tabDeg;
       const tb = scoreTab(tx, ty, seat.bx, seat.by);
+      if (best && !isMeasured && Math.min(rc.c, tb.c) <= best.c) continue;
+      const { c: cc, who } = scoreChord(tip.x, tip.y, tx, ty);
+      if (best && !isMeasured && Math.min(rc.c, cc, tb.c) <= best.c) continue;
       const hg = scoreHangers(tip.x, tip.y, tx, ty, rc);
       const c = Math.min(rc.c, cc, tb.c, hg.c);
       const boundBy = c === rc.c ? rc.who : (c === cc ? who : c === tb.c ? tb.who : hg.who);
       if (!best || c > best.c) best = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
-      if (rc.k === ALARM_LINK_MEASURED_SITE.k && rc.run === ALARM_LINK_MEASURED_SITE.run && azw0 === ALARM_LINK_MEASURED_SITE.tabDeg)
+      if (isMeasured)
         measured = { ...rc, c, colC: rc.c, who: boundBy, tabAzDeg: azw, jog: hg.jog };
     }
   }
@@ -47692,7 +47769,7 @@ const BACK_ENVELOPE = await (async () => {
   const unitByObj = new Map(labelEntries.map((e) => [e.obj, e.name]));
   const unitOf = (o) => { for (let n = o; n; n = n.parent) { const u = unitByObj.get(n); if (u) return u; } return null; };
   const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
-  const _bt = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const _bt = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], _bti = [0, 0, 0];
   movement.updateMatrixWorld(true);
   // §239 — WALKED AS A LIST, not as a callback. The body is unchanged; what
   // changes is that a `for` loop in an async block can yield between meshes
@@ -47712,6 +47789,16 @@ const BACK_ENVELOPE = await (async () => {
     const p = o.geometry.attributes.position;
     const idx = o.geometry.index;
     const n = idx ? idx.count : p.count;
+    // the rows this mesh's unit answers for: a row of another unit never
+    // takes its sample, so it is not asked
+    const ownRegs = [];
+    for (let i = 0; i < BACK_SWEPT_REGIONS.length; i++) if (BACK_SWEPT_REGIONS[i].unit === unit) ownRegs.push(i);
+    // take() only raises maxima, so a point taken twice changes nothing the
+    // second time: an indexed mesh's corner is the same vertex, carried by the
+    // same matrix, in every triangle that shares it (six, on a welded mesh),
+    // so each is taken once. The edges' bin-wall crossings are still taken
+    // per edge, as before.
+    const taken = idx ? new Uint8Array(p.count) : null;
     const take = (pt) => {
       const r = Math.hypot(pt.x, pt.y);
       // §307 landing 2 — a form plate's corners stand past the round case's
@@ -47726,9 +47813,9 @@ const BACK_ENVELOPE = await (async () => {
       // ...and what the ROW'S OWN unit reaches inside each row's band, which
       // is the quantity the assert below holds the row to. Same walk, so it
       // cannot measure a different tree than the bins do.
-      for (let i = 0; i < BACK_SWEPT_REGIONS.length; i++) {
-        const R = BACK_SWEPT_REGIONS[i];
-        if (unit === R.unit && r >= R.r0 && r <= R.r1 && pt.z > regBuild[i]) regBuild[i] = pt.z;
+      for (let k = 0; k < ownRegs.length; k++) {
+        const i = ownRegs[k], R = BACK_SWEPT_REGIONS[i];
+        if (r >= R.r0 && r <= R.r1 && pt.z > regBuild[i]) regBuild[i] = pt.z;
       }
     };
     const _mw = o.matrixWorld;   // refreshed after each seam below: localToWorld would re-walk the ancestors per vertex
@@ -47738,11 +47825,13 @@ const BACK_ENVELOPE = await (async () => {
       // the clock is read 145 times, not once a triangle.
       if (t % 3000 === 0) { await breathe(305); o.updateWorldMatrix(true, false); }
       // each corner carried once, then copied into both edges that share it
-      for (let e = 0; e < 3; e++) _bt[e].fromBufferAttribute(p, idx ? idx.getX(t + e) : t + e).applyMatrix4(_mw);
+      for (let e = 0; e < 3; e++) _bti[e] = idx ? idx.getX(t + e) : t + e;
+      for (let e = 0; e < 3; e++) _bt[e].fromBufferAttribute(p, _bti[e]).applyMatrix4(_mw);
       for (let e = 0; e < 3; e++) {
         a.copy(_bt[e]);
         b.copy(_bt[(e + 1) % 3]);
-        take(a);
+        if (!taken) take(a);
+        else if (!taken[_bti[e]]) { taken[_bti[e]] = 1; take(a); }
         const dx = b.x - a.x, dy = b.y - a.y;
         const A2 = dx * dx + dy * dy;
         if (A2 > 1e-12) {
@@ -58674,7 +58763,35 @@ const JMP_SITE = await (async () => {
       && rotorTriClear(rot, m20, m12, p2, tau) && rotorTriClear(rot, m01, m12, m20, tau);
   };
   const _sc = V();
+  // The verdict is MONOTONE in tau, exactly and in floating point: every test
+  // that can refuse a piece compares a quantity tau does not touch against tau
+  // (`>= tau`, `< tau`, `± tau` against a fixed bound), so a piece clear at tau
+  // is clear at any smaller tau, and the split recursion only goes deeper where
+  // a box is near at the larger one. So a part, a matrix and an obstacle set
+  // that cleared tau clears every tau under it, and one that failed tau fails
+  // every tau over it — which is the station bisection's whole pattern: the
+  // same poses asked again at a nearer tau. Each (obstacle set, part, matrix,
+  // coaxial flag) keeps the largest tau it cleared and the smallest it failed,
+  // and a question between them is measured.
+  const _rcMemo = new WeakMap();
+  const _rcGeoKey = (geo) => {
+    const a = geo.attributes.position.array;
+    if (a.length > 96) return 'g' + geo.id;       // the stud's and lever's query geometries persist (qOf)
+    return 'p' + Array.prototype.join.call(a, ',') + '|' + (geo.index ? Array.prototype.join.call(geo.index.array, ',') : '');   // the lifter bar is cut afresh per station, so it is keyed by its metal
+  };
   const rotorsClear = (geo, M, tau, withCoaxial) => {
+    let byObs = _rcMemo.get(OBS.rotors);
+    if (!byObs) _rcMemo.set(OBS.rotors, byObs = new Map());
+    const key = _rcGeoKey(geo) + '|' + M.elements.join(',') + '|' + (withCoaxial ? 1 : 0);
+    let rec = byObs.get(key);
+    if (!rec) byObs.set(key, rec = { clear: -Infinity, fail: Infinity });
+    if (tau <= rec.clear) return true;
+    if (tau >= rec.fail) return false;
+    const ok = rotorsClearAt(geo, M, tau, withCoaxial);
+    if (ok) rec.clear = tau; else rec.fail = tau;
+    return ok;
+  };
+  const rotorsClearAt = (geo, M, tau, withCoaxial) => {
     const pos = geo.attributes.position, idx = geo.index;
     const q0 = V(), q1 = V(), q2 = V();
     if (!geo.boundingSphere) geo.computeBoundingSphere();

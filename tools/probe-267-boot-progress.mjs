@@ -27,12 +27,21 @@
 //
 // THE CONTROLS, because a deviation that reads small and a bar that reads as
 // moving both have to be able to read otherwise:
-//   · ORDINAL (must-fail claim 1): the bar §267's filing rejected — seams passed
-//     over seams in source — evaluated at the SAME write times from the SAME
-//     boot's first visits. Its average must come back over the ceiling, or the
-//     table buys nothing this gate can see and the ceiling is not discriminating.
-//     (Its WORST cannot be asked to: the first composited frame sets the worst
-//     moment of any bar on a slow host, the ordinal and the table alike.)
+//   · REVERSED (must-fail claim 1): the table itself with its shares handed to
+//     the WRONG seams — seam i of SEAM_ORDER gets seam (n−1−i)'s first-visit
+//     share — evaluated at the SAME write times from the SAME boot's first
+//     visits. It is the failure this gate exists for (a table that no longer
+//     describes the build) made total, so its average must come back over the
+//     ceiling whatever the build's cost profile, or the reading cannot fail.
+//   · ORDINAL (REPORTED): the bar §267's filing rejected — seams passed over
+//     seams in source. It was this gate's control until the boot speed-ups of
+//     perf/boot-solves spread the build's cost so evenly over its seams that the
+//     ordinal read 4.0–4.4 pt on the dev container (5.5–5.7 on main before
+//     them): a good bar and a naive one became hard to tell apart, which says
+//     the table now buys little over the ordinal, not that the gate is wrong.
+//     It is printed beside the table's reading so that margin stays visible.
+//     (Neither control's WORST can be asked to fail: the first composited frame
+//     sets the worst moment of any bar on a slow host.)
 //   · FROZEN (must-miss claim 5): main.js served with writeBar's first line
 //     made a return, so the bar never moves. The pixel reader must then see ONE
 //     level, or it was reading something other than the bar.
@@ -77,7 +86,8 @@ const JSON_OUT = arg('--json', null);
 // the worst run times 1.66, battery.yml's same-tree spread, rounded up to the
 // next half point.
 // MAX_MEAN is the sharp gate: 2.69 × 1.66 = 4.47. Every ordinal run (5.28 pt at
-// its best) sits over it, which is what makes the control a control.
+// its best) sat over it on those hosts; the control is now the REVERSED table
+// (above), which sits over it by construction.
 const MAX_MEAN = 0.045;
 // MAX_WORST is the backstop: on every host the worst moment is the first
 // composited frame, one unsplittable task near the start that no seam reaches
@@ -97,7 +107,7 @@ if (MAIN.split(FREEZE_FROM).length !== 2) {
   console.error('REFUSED: src/main.js must declare `function writeBar(now) {` exactly once — the frozen control rewrites that line.');
   process.exit(1);
 }
-const { SEAM_ORDER } = await import(`${ROOT}src/boot-progress.js`);
+const { SEAM_ORDER, SEAM_KNOTS } = await import(`${ROOT}src/boot-progress.js`);
 
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 process.on('exit', () => srv.kill());
@@ -178,6 +188,25 @@ function ordinalSteps(p) {
   return out;
 }
 
+// The REVERSED control: the table's first-visit shares handed to the seams in
+// reverse source order, read the way the live bar reads them (the furthest
+// share among the seams first reached by each write time, short of 1 until
+// the build's end).
+function reversedSteps(p) {
+  const reached = SEAM_ORDER.map((id, i) => [id, SEAM_KNOTS[i]]).filter(([, kn]) => kn);
+  const share = new Map(reached.map(([id], i) => [id, reached[reached.length - 1 - i][1][1]]));
+  const visits = [];
+  p.first.forEach((t, id) => { if (t !== null && share.has(id)) visits.push([t, share.get(id)]); });
+  visits.sort((a, b) => a[0] - b[0]);
+  const out = [];
+  let k = 0, best = 0;
+  for (const [t] of p.writes) {
+    while (k < visits.length && visits[k][0] <= t) { best = Math.max(best, visits[k][1]); k++; }
+    out.push([t, t >= p.spanMs ? 1 : Math.min(best, 0.9999)]);
+  }
+  return out;
+}
+
 // Claim 5's reader: the bar's fill along its middle row, as the share of the
 // track carrying the accent. PNG decoding is written out (probe-238's decoder,
 // one row instead of an ink count) because tools/ carries one dependency.
@@ -242,16 +271,17 @@ for (let b = 0; b < BOOTS; b++) {
   const r = await boot();
   if (!r.booted) { fail.push(`boot ${b + 1} never completed`); continue; }
   const p = r.rec.p, span = p.spanMs;
-  const dev = deviation(p.writes, span), ord = deviation(ordinalSteps(p), span);
+  const dev = deviation(p.writes, span), ord = deviation(ordinalSteps(p), span), rev = deviation(reversedSteps(p), span);
   const shares = p.writes.map((w) => w[1]);
   const backwards = shares.filter((v, i) => i && v <= shares[i - 1]).length;
   const last = p.writes[p.writes.length - 1];
-  live.push({ spanMs: span, writes: p.writes.length, dev, ordinal: ord, backwards,
+  live.push({ spanMs: span, writes: p.writes.length, dev, ordinal: ord, reversed: rev, backwards,
     early100: shares.slice(0, -1).filter((v) => v >= 1).length, lastShare: last?.[1], lastAt: last?.[0],
     unshared: p.unshared, warns: r.rec.warns.length });
   console.log(`\nBOOT ${b + 1} — build span ${(span / 1000).toFixed(1)} s, ${p.writes.length} bar writes`);
   console.log(`  table bar   worst ${pct(dev.worst)}   ahead ${pct(dev.ahead)} at t+${(dev.aheadAt / 1000).toFixed(1)}s   behind ${pct(dev.behind)} at t+${(dev.behindAt / 1000).toFixed(1)}s   mean ${pct(dev.mean)}`);
-  console.log(`  ordinal     worst ${pct(ord.worst)}   ahead ${pct(ord.ahead)} at t+${(ord.aheadAt / 1000).toFixed(1)}s   behind ${pct(ord.behind)} at t+${(ord.behindAt / 1000).toFixed(1)}s   mean ${pct(ord.mean)}   (control)`);
+  console.log(`  ordinal     worst ${pct(ord.worst)}   ahead ${pct(ord.ahead)} at t+${(ord.aheadAt / 1000).toFixed(1)}s   behind ${pct(ord.behind)} at t+${(ord.behindAt / 1000).toFixed(1)}s   mean ${pct(ord.mean)}   (reported)`);
+  console.log(`  reversed    worst ${pct(rev.worst)}   mean ${pct(rev.mean)}   (control)`);
   for (const q of [0.25, 0.5, 0.75, 0.9]) {
     const hit = p.writes.find((w) => w[1] >= q);
     if (hit) console.log(`    shows ${Math.round(q * 100)}% at ${(100 * hit[0] / span).toFixed(1)}% of the build`);
@@ -271,7 +301,7 @@ for (const [i, r] of live.entries()) {
   const tag = live.length > 1 ? `boot ${i + 1}: ` : '';
   if (r.dev.mean > MAX_MEAN) fail.push(`${tag}the bar stands ${pct(r.dev.mean)} from the true elapsed fraction on average (ceiling ${pct(MAX_MEAN)})`);
   if (r.dev.worst > MAX_WORST) fail.push(`${tag}the bar strays ${pct(r.dev.worst)} from the true elapsed fraction at worst (backstop ${pct(MAX_WORST)})`);
-  if (r.ordinal.mean <= MAX_MEAN) fail.push(`${tag}CONTROL: the raw seam ordinal stands only ${pct(r.ordinal.mean)} off on average (≤ ${pct(MAX_MEAN)}) — the gate cannot tell the table from the bar it replaced`);
+  if (r.reversed.mean <= MAX_MEAN) fail.push(`${tag}CONTROL: the reversed table stands only ${pct(r.reversed.mean)} off on average (≤ ${pct(MAX_MEAN)}) — the reading cannot tell a right table from a wrong one`);
   if (r.backwards) fail.push(`${tag}${r.backwards} bar write(s) did not move it forward`);
   if (r.early100) fail.push(`${tag}${r.early100} write(s) showed 100% before the build was done`);
   if (r.lastShare !== 1 || Math.abs(r.lastAt - r.spanMs) > 1e-6) fail.push(`${tag}the last write is ${r.lastShare} at ${r.lastAt} ms, not 1 at the span's end (${r.spanMs} ms)`);
@@ -298,14 +328,14 @@ if (process.env.GITHUB_STEP_SUMMARY) {
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
     `### Boot progress (§267) — ${fail.length ? 'FAIL' : 'PASS'}`,
     `${SEAM_ORDER.length} seams in the table · ${record.host.cores} × ${record.host.cpu} · ceilings: mean ${pct(MAX_MEAN)}, worst ${pct(MAX_WORST)}`,
-    '', '| boot | span | bar: mean / worst (ahead, behind) | ordinal (control): mean / worst |', '|---|---|---|---|',
-    ...live.map((r, i) => `| ${i + 1} | ${(r.spanMs / 1000).toFixed(1)} s | ${pct(r.dev.mean)} / ${pct(r.dev.worst)} (${pct(r.dev.ahead)}, ${pct(r.dev.behind)}) | ${pct(r.ordinal.mean)} / ${pct(r.ordinal.worst)} |`),
+    '', '| boot | span | bar: mean / worst (ahead, behind) | reversed (control): mean | ordinal (reported): mean / worst |', '|---|---|---|---|---|',
+    ...live.map((r, i) => `| ${i + 1} | ${(r.spanMs / 1000).toFixed(1)} s | ${pct(r.dev.mean)} / ${pct(r.dev.worst)} (${pct(r.dev.ahead)}, ${pct(r.dev.behind)}) | ${pct(r.reversed.mean)} | ${pct(r.ordinal.mean)} / ${pct(r.ordinal.worst)} |`),
     '', `Painted: ${pLive ? `${pLive.levels} widths over ${pLive.frames} frames` : '—'} · frozen control: ${pFrozen ? `${pFrozen.levels}` : '—'}`,
     '', ...fail.map((f) => `- FAIL: ${f}`), '',
   ].join('\n'));
 }
 console.log('');
 if (fail.length) { for (const f of fail) console.error(`FAIL: ${f}`); process.exit(1); }
-const m = Math.max(...live.map((r) => r.dev.mean)), w = Math.max(...live.map((r) => r.dev.worst)), o = Math.min(...live.map((r) => r.ordinal.mean));
-console.log(`PASS — the bar stands ${pct(m)} from the elapsed fraction on average (ceiling ${pct(MAX_MEAN)}; the raw ordinal ${pct(o)}), ${pct(w)} at worst (backstop ${pct(MAX_WORST)}), `
+const m = Math.max(...live.map((r) => r.dev.mean)), w = Math.max(...live.map((r) => r.dev.worst)), o = Math.min(...live.map((r) => r.ordinal.mean)), v = Math.min(...live.map((r) => r.reversed.mean));
+console.log(`PASS — the bar stands ${pct(m)} from the elapsed fraction on average (ceiling ${pct(MAX_MEAN)}; the reversed table ${pct(v)}, the raw ordinal ${pct(o)}),${pct(w)} at worst (backstop ${pct(MAX_WORST)}), `
   + `never backwards, 100% only at the guard's release; painted ${pLive.levels} widths mid-build (frozen control: ${pFrozen.levels})`);

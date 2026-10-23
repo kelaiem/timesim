@@ -486,8 +486,21 @@ const cyArc = (R, rho, h) => {
 // them can call the wrapper before the function it calls exists — the first
 // draft had them the other way round, which was correct only for as long as
 // no module-level line between the two reached it.
+// ONE MEMBER'S CAP is a function of (m, N, mate) alone, and the pair cache is
+// ordered, so (m, Na, Nb) and (m, Nb, Na) each solved both members' caps:
+// measured, 2,564 member solves a boot over 1,318 distinct members. The cap
+// is kept per member and each solve gets its own copy (the pair solve below
+// raises its member's `h` in place), so every number is the one the solve
+// computed.
+const cyMemberCache = new Map();
 const cyPairSolveUncached = (m, Na, Nb) => {
   const mk = (N, mate) => {
+    const key = `${m}|${N}|${mate}`;
+    let c = cyMemberCache.get(key);
+    if (c === undefined) cyMemberCache.set(key, c = Object.freeze(mkUncached(N, mate)));
+    return { ...c };
+  };
+  const mkUncached = (N, mate) => {
     const Rp = (m * N) / 2, rho = (m * mate) / 4;
     const halfThick = ((Math.PI * m) / 2 - cyBacklash(m) / 2) / 2 / Rp;
     // pointed-tip cap, less the land a 2ε round needs
@@ -3993,7 +4006,7 @@ export function* makeHairspringSteps(plan) {
     // — the self-contact no pair sweep can see, measured here (CLAUDE.md's
     // residue rule); the ribbon's own diameter is subtracted by the caller.
     const half = Math.floor(segsPerTurn / 2);
-    let gap = Infinity, len = 0, shift = 0, cx = 0, cy = 0;
+    let gap = Infinity, skip = Infinity, len = 0, shift = 0, cx = 0, cy = 0;
     const P = sol.pts;
     const Z = rest.zs;   // §218 tier two — the overcoil's plane: a coil under it is separated in z, and the gap is measured in 3D
     for (let i = 0; i < P.length; i++) {
@@ -4002,9 +4015,17 @@ export function* makeHairspringSteps(plan) {
         len += l; cx += l * (P[i][0] + P[i - 1][0]) / 2; cy += l * (P[i][1] + P[i - 1][1]) / 2;
       }
       shift = Math.max(shift, Math.abs(Math.hypot(P[i][0], P[i][1]) - Math.hypot(rest.pts[i][0], rest.pts[i][1])));
+      // A pair whose plan leg alone stands past the gap cannot lower it: a
+      // distance is never under its largest leg, and `skip` sits 1e-12
+      // (relative) beyond the gap, a thousand times what Math.hypot's few
+      // ulps of rounding could take back. So the pair is passed over
+      // unmeasured and the min is the same number.
+      const xi = P[i][0], yi = P[i][1], zi = Z[i];
       for (let j = i + half; j < P.length; j++) {
-        const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1], Z[i] - Z[j]);
-        if (d < gap) gap = d;
+        const ex = Math.abs(xi - P[j][0]), ey = Math.abs(yi - P[j][1]);
+        if (ex > skip || ey > skip) continue;
+        const d = Math.hypot(xi - P[j][0], yi - P[j][1], zi - Z[j]);
+        if (d < gap) { gap = d; skip = gap * (1 + 1e-12); }
       }
     }
     // §246 tier two — the frame's length-weighted CENTROID (plan frame, model
@@ -4426,6 +4447,7 @@ export function genevaFingerStack({ thickness, crankT, side = 1, lift = CLEAR_MA
 // main.js's BREATHE_MS, so a machine twice as slow still reaches a pause
 // inside the budget. main.js resumes it with `await breathe()` between steps.
 const FINGER_SWEEP_STEP = 8;
+const FINGER_CUT_GUARD = 1e-6;   // the sweep's skip bound's rounding allowance, 25× the worst the cut's arithmetic can err (see the sweep)
 export function makeGenevaFinger(opts) { return drainSteps(makeGenevaFingerSteps(opts)); }
 export function* makeGenevaFingerSteps({ spec, thickness, boreR, hubR, crankT, side = 1, blankAt = 0, material }) {
   const { a, d, beta, lockR, pinR, slotInner, hollowR } = spec;
@@ -4502,8 +4524,16 @@ export function* makeGenevaFingerSteps({ spec, thickness, boreR, hubR, crankT, s
   }
   const EPS = 0.5 * dTh * (spec.b * kMax + lockR + CLEAR_MARGIN_G) + 0.5 * gap;
   const TAU = Math.PI * 2;
-  for (let k = 0; k <= NTH; k++) {
-    if (k % FINGER_SWEEP_STEP === 0) yield;
+  // The envelope is a MIN over every (driver angle, point, bin) and a min
+  // does not depend on the order it is taken in, so the angles are visited
+  // from the line of centres outward — where the cross stands deepest in the
+  // disc first — which cuts the envelope to its depth early and lets the
+  // skip below pass over more of what follows. The pauses stay one per
+  // FINGER_SWEEP_STEP angles visited.
+  const order = Array.from({ length: NTH + 1 }, (_, k) => k).sort((x, y) => Math.abs(2 * x - NTH) - Math.abs(2 * y - NTH) || x - y);
+  for (let n = 0; n <= NTH; n++) {
+    if (n % FINGER_SWEEP_STEP === 0) yield;
+    const k = order[n];
     const th = -sweep + dTh * k;                 // driver angle, 0 = crank pointing at the cross
     // The cross's rotation is what the slot demands of it at this driver angle:
     // the engaging slot's axis, seen from the cross's centre at +d, points at
@@ -4520,8 +4550,18 @@ export function* makeGenevaFingerSteps({ spec, thickness, boreR, hubR, crankT, s
       const w = Math.asin(Math.min(1, cl / rr));
       const nb = Math.ceil((w / TAU) * SEG) + 1;
       const b0 = Math.round((((phi % TAU) + TAU) % TAU) / TAU * SEG);
+      // No ray's near intersection with this point's circle stands nearer
+      // the axis than rr − cl, so a bin the envelope has already cut to that
+      // depth cannot be cut by this point, and is not evaluated (68% of the
+      // bins, measured). FINGER_CUT_GUARD covers the rounding of the cut's own
+      // arithmetic: its one ill-conditioned step is √(cl² − sd²) near the
+      // tangent, off by at most √(6ε)·cl ≈ 4e-8 at cl ≤ 1, so the cut as
+      // computed is never under rr − cl − FINGER_CUT_GUARD, and a bin it
+      // skips is one whose `cut < env[q]` would have read false.
+      const floor = rr - cl - FINGER_CUT_GUARD;
       for (let o = -nb; o <= nb; o++) {
         const q = (((b0 + o) % SEG) + SEG) % SEG;
+        if (env[q] <= floor) continue;
         const del = (q / SEG) * TAU - phi;
         const sd = rr * Math.sin(del);
         if (Math.abs(sd) >= cl) continue;
