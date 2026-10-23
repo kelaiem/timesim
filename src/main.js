@@ -7601,9 +7601,16 @@ async function solveReserveSwing(pts) {
     const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
     const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
     let c = Infinity, member = 'none';
-    for (const q of inW1) { const d = Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR; if (d < c) { c = d; member = 'w1'; } }
-    for (const q of inHub) { const d = Math.hypot(wx - q[0], wy - q[1]) - w1Reach.hub.r; if (d < c) { c = d; member = 'w1 hub'; } }
-    for (const q of inP1) { if (q[2] < p1Lo || q[2] > p1Hi) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - p1TipR; if (d < c) { c = d; member = 'p1'; } }
+    // A point either of whose plan legs, less the member's reach, stands at
+    // or past the clearance so far cannot lower it (a distance is never under
+    // its larger leg; LEG_LO takes the leg 1e-12 down, a thousand times what
+    // hypot's rounding could), so it is passed over unmeasured: `c` and the
+    // member that set it are the same.
+    const LEG_LO = 1 - 1e-12;
+    const far = (q, R) => Math.abs(wx - q[0]) * LEG_LO - R >= c || Math.abs(wy - q[1]) * LEG_LO - R >= c;
+    for (const q of inW1) { if (far(q, rsvW1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR; if (d < c) { c = d; member = 'w1'; } }
+    for (const q of inHub) { if (far(q, w1Reach.hub.r)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - w1Reach.hub.r; if (d < c) { c = d; member = 'w1 hub'; } }
+    for (const q of inP1) { if (q[2] < p1Lo || q[2] > p1Hi) continue; if (far(q, p1TipR)) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - p1TipR; if (d < c) { c = d; member = 'p1'; } }
     return { c, member };
   };
   let best = { c: -Infinity, member: 'none', swing: 0 };
