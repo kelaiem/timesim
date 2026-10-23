@@ -3993,7 +3993,7 @@ export function* makeHairspringSteps(plan) {
     // — the self-contact no pair sweep can see, measured here (CLAUDE.md's
     // residue rule); the ribbon's own diameter is subtracted by the caller.
     const half = Math.floor(segsPerTurn / 2);
-    let gap = Infinity, len = 0, shift = 0, cx = 0, cy = 0;
+    let gap = Infinity, skip = Infinity, len = 0, shift = 0, cx = 0, cy = 0;
     const P = sol.pts;
     const Z = rest.zs;   // §218 tier two — the overcoil's plane: a coil under it is separated in z, and the gap is measured in 3D
     for (let i = 0; i < P.length; i++) {
@@ -4002,9 +4002,17 @@ export function* makeHairspringSteps(plan) {
         len += l; cx += l * (P[i][0] + P[i - 1][0]) / 2; cy += l * (P[i][1] + P[i - 1][1]) / 2;
       }
       shift = Math.max(shift, Math.abs(Math.hypot(P[i][0], P[i][1]) - Math.hypot(rest.pts[i][0], rest.pts[i][1])));
+      // A pair whose plan leg alone stands past the gap cannot lower it: a
+      // distance is never under its largest leg, and `skip` sits 1e-12
+      // (relative) beyond the gap, a thousand times what Math.hypot's few
+      // ulps of rounding could take back. So the pair is passed over
+      // unmeasured and the min is the same number.
+      const xi = P[i][0], yi = P[i][1], zi = Z[i];
       for (let j = i + half; j < P.length; j++) {
-        const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1], Z[i] - Z[j]);
-        if (d < gap) gap = d;
+        const ex = Math.abs(xi - P[j][0]), ey = Math.abs(yi - P[j][1]);
+        if (ex > skip || ey > skip) continue;
+        const d = Math.hypot(xi - P[j][0], yi - P[j][1], zi - Z[j]);
+        if (d < gap) { gap = d; skip = gap * (1 + 1e-12); }
       }
     }
     // §246 tier two — the frame's length-weighted CENTROID (plan frame, model
