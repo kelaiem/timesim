@@ -1249,7 +1249,13 @@ lengthens the critical path), the file must carry exactly the sibling's half,
 and `mergeSpecHalves` re-proves the whole (`probe-tiers-spec-hand.mjs`).
 The point tier needs the same point code, whole, every point full. A dead
 sibling or a fetcher that gave up runs THAT tier here, so the worst case is the
-run as it was. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
+run as it was. On the same path the three post-battery probes (case relief,
+casing path, back envelope) run on a fourth hosted job, `battery probes`, from
+t=0, and the `battery` job's last gate step reads that job's conclusion off the
+run: anything but `success` fails `battery` (the required check, §259's rule
+that the job named `battery` is the one that gates) before provenance or
+seeding can run. PR, matrix, self-hosted and nightly runs keep the probes after
+the harness, and no tiers jobs. Measured, §264 took the push from 89 to 63 min. Since §263 a hosted dispatch may ask for the SPLIT (`split: true`) instead,
 which spreads both tiers across its two workers, so the tiers jobs run only on
 an unsplit run. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
 stored payload, re-measuring only the units the PR moved in that point's
