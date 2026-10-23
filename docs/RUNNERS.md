@@ -513,6 +513,21 @@ queued or running `timesim-battery` jobs first.
   self-hosted PR whose base is newer than the last nightly still runs whole;
   the manual dispatch remains for the day you want the seed sooner.
 
+  **And since the host-seed job, every merge fires it too.** A self-hosted PR's
+  base is nearly always newer than the last nightly, so the nightly alone left
+  almost every host PR whole (#776's host run: "no cached baseline for the merge
+  base", every check and point FULL, 12.8 min). `battery.yml`'s `seed-host` job
+  runs beside each owner's push and dispatches the same whole host run with
+  `host_seed: true`, through `GITHUB_TOKEN` (the job alone holds
+  `actions: write`). The concurrency groups are keyed per event and commit now,
+  so the old "wait for the push run, then dispatch" rule above no longer
+  applies: the push and the seed run side by side, on different platforms. A
+  `host_seed` run has the nightly's rule, never a hosted arm. With no runner
+  ready or the variable unset it is SKIPPED. Its actor is
+  `github-actions[bot]`, which the routing trusts as the owner only for a
+  `host_seed` dispatch on the default branch. The nightly stays as the backstop
+  for a seed that was lost.
+
   Worth knowing what the dispatch buys, so the cost is a choice rather than a
   habit: a seeded host makes a self-hosted PR run incremental (~12 min against
   the ~17.5 min a whole run measured here), and it has to be re-earned after

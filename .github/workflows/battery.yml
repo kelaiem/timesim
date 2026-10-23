@@ -266,6 +266,15 @@ on:
         description: '§263 — split across two hosted workers plus a collector that seeds (hosted only; the host never splits a dispatch)'
         type: boolean
         default: false
+      # The push's own host seed (the `seed-host` job below dispatches it). Not
+      # for hand use: it marks a run that exists ONLY to write the host's
+      # baseline, so like the nightly it has no hosted arm. With no runner
+      # ready, or the variable unset, it is SKIPPED rather than run hosted,
+      # since the push it came from already wrote the hosted verdict.
+      host_seed:
+        description: 'Set by the push run to seed the self-hosted baseline (implies runner: self-hosted; skipped, never run hosted, when no host is ready)'
+        type: boolean
+        default: false
 
 # WHAT MAY CANCEL WHAT, and the rule is one line: a run that WRITES A BASELINE
 # is never cancelled by a run that writes a DIFFERENT one.
@@ -465,9 +474,12 @@ jobs:
         && github.event.pull_request.head.repo.full_name == github.repository
         && (contains(github.event.pull_request.labels.*.name, 'self-hosted-battery')
         || contains(github.event.pull_request.title, '[self-hosted]')))
-        || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted')
+        || (github.event_name == 'workflow_dispatch' && (inputs.runner == 'self-hosted' || inputs.host_seed))
         || github.event_name == 'schedule'
-        ) && github.actor == github.repository_owner && vars.BATTERY_RUNS_ON || 'ubuntu-latest' }}
+        ) && (github.actor == github.repository_owner
+        || (github.event_name == 'workflow_dispatch' && inputs.host_seed && github.actor == 'github-actions[bot]'
+        && github.ref_name == github.event.repository.default_branch))
+        && vars.BATTERY_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
         if: env.WANT != 'ubuntu-latest'
@@ -499,6 +511,9 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
           DISPATCH_RUNNER: ${{ inputs.runner }}
           DISPATCH_SPLIT: ${{ inputs.split }}
+          HOST_SEED: ${{ inputs.host_seed }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           READY: ${{ steps.ready.outputs.verdict }}
           ONLINE: ${{ steps.ready.outputs.online }}
           BUSY: ${{ steps.ready.outputs.busy }}
@@ -507,20 +522,37 @@ jobs:
           if [ "$EVENT" = pull_request ]; then
             printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'self-hosted-battery' && asked="label"
             printf '%s' "$TITLE" | grep -qF '[self-hosted]' && asked="title"
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$HOST_SEED" = true ]; then asked="the push's host-seed dispatch"
           elif [ "$EVENT" = workflow_dispatch ] && [ "$DISPATCH_RUNNER" = self-hosted ]; then asked="dispatch input"
           elif [ "$EVENT" = schedule ]; then asked="the nightly seeding schedule"
           fi
+          # The two runs that exist only to seed the host: the nightly, and the
+          # dispatch a push fires. Neither has a hosted arm.
+          seed_only=false
+          { [ "$EVENT" = schedule ] || { [ "$EVENT" = workflow_dispatch ] && [ "$HOST_SEED" = true ]; }; } && seed_only=true
+          # The push's seed is dispatched with GITHUB_TOKEN, so its actor is the
+          # Actions bot, never the owner. It is trusted as the owner only on the
+          # default branch: that run executes main's reviewed workflow, and only
+          # a workflow holding `actions: write` can make the bot dispatch at all
+          # (a fork's pull request never gets one). WANT applies the same rule.
+          trusted=false
+          [ "$ACTOR" = "$OWNER" ] && trusted=true
+          [ "$EVENT" = workflow_dispatch ] && [ "$HOST_SEED" = true ] && [ "$ACTOR" = 'github-actions[bot]' ] && [ "$REF_NAME" = "$DEFAULT_BRANCH" ] && trusted=true
           # The HOST comes from WANT, the expression; the shell only explains
           # it and applies readiness, so the decision exists in one place.
           host="$WANT"; run=true
           if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then verdict="FORK — pinned to ubuntu-latest"
-          elif [ "$ACTOR" != "$OWNER" ]; then verdict="triggered by a non-owner — pinned to ubuntu-latest"
+          elif [ "$trusted" != true ] && [ "$seed_only" = true ]; then
+            run=false; verdict="a host seed triggered by a non-owner — SKIPPED (a seed has no hosted arm)"
+          elif [ "$trusted" != true ]; then verdict="triggered by a non-owner — pinned to ubuntu-latest"
           elif [ "$asked" = no ]; then verdict="host not asked for — ubuntu-latest by default"
+          elif [ -z "$ROUTE_VAR" ] && [ "$seed_only" = true ]; then
+            run=false; verdict="host asked for ($asked) but vars.BATTERY_RUNS_ON is unset — SKIPPED (it only seeds the host)"
           elif [ -z "$ROUTE_VAR" ]; then verdict="host asked for ($asked) but vars.BATTERY_RUNS_ON is unset — ubuntu-latest"
           elif [ "$READY" = READY ]; then verdict="host asked for ($asked), a runner is online — routed to '$ROUTE_VAR'"
-          elif [ "$READY" = NOT_READY ] && [ "$EVENT" = schedule ]; then
+          elif [ "$READY" = NOT_READY ] && [ "$seed_only" = true ]; then
             run=false
-            verdict="host asked for ($asked) but no runner is online under '$ROUTE_VAR' — nightly SKIPPED (it seeds the host's baseline; a hosted verdict of main already exists)"
+            verdict="host asked for ($asked) but no runner is online under '$ROUTE_VAR' — SKIPPED (it seeds the host's baseline; a hosted verdict of main already exists)"
           elif [ "$READY" = NOT_READY ]; then
             host=ubuntu-latest
             verdict="host asked for ($asked) but no runner is online under '$ROUTE_VAR' — ubuntu-latest instead of queueing for up to 24 h"
@@ -605,6 +637,45 @@ jobs:
           [ -n "$mwhy" ] && echo "§259: $mwhy" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$pwhy" ] && echo "§264/§265: $pwhy" | tee -a "$GITHUB_STEP_SUMMARY"
           true
+
+  # EVERY MERGE SEEDS THE HOST TOO. A self-hosted PR restores the host's
+  # baseline for its merge base, and only the nightly or a hand dispatch wrote
+  # one, so a PR whose base was newer than 08:00 UTC (nearly every PR) ran
+  # whole: #776's host run read "no cached baseline for the merge base" and
+  # swept every check and every point FULL, 12.8 min. This job fires the
+  # dispatch the nightly fires, at merge time, so the next PR's base has a
+  # host entry about one host run after the merge.
+  #
+  # It dispatches rather than running the host job here, so the seed is the
+  # same whole single-process run a dispatch or the nightly is: one battery
+  # job, one seeding rule (`battery-seed.sh`), nothing written twice. A
+  # dispatch on `main` runs main's TIP, so two quick merges seed the newer one,
+  # and the concurrency group (event and SHA) lets the second supersede the
+  # first at one commit. `host_seed` has no hosted arm: with no runner ready
+  # or the variable unset the dispatched run is SKIPPED, so this never costs a
+  # second hosted whole run. Owner pushes only, like every other host route.
+  #
+  # GITHUB_TOKEN may fire a workflow_dispatch (the one event it may trigger).
+  # The token needs `actions: write`, granted to this job alone; every other
+  # job keeps the workflow's read-only grant.
+  seed-host:
+    if: >-
+      ${{ github.event_name == 'push' && github.actor == github.repository_owner
+      && vars.BATTERY_RUNS_ON != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch the host's seeding run on the default branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          gh workflow run battery.yml --repo "$REPO" --ref "$DEFAULT_BRANCH" \
+            -f runner=self-hosted -f host_seed=true -f full=true
+          echo "§200: dispatched the host seed for $DEFAULT_BRANCH (tip at dispatch; pushed $GITHUB_SHA)" | tee -a "$GITHUB_STEP_SUMMARY"
 
   # §264 — THE PUSH'S POINT TIER, ON A PARALLEL RUNNER, and since §265 its
   # SPEC BOOTS beside it — since the fan-out on TWO parallel runners.

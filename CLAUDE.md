@@ -1066,7 +1066,9 @@ with `runner: self-hosted` — or, since the nightly, by the `schedule` trigger 
 fires that dispatch for you at 08:00 UTC on the host and is SKIPPED, never
 routed to `ubuntu-latest`, when `BATTERY_RUNS_ON` is unset (this line used to
 say the next merge re-seeded it, and no merge ever did; then that one dispatch
-per merge was owed by hand, and nobody fired it); and a host's shard count is written on
+per merge was owed by hand, and nobody fired it — so since the host-seed job each
+owner's push fires it, `seed-host` dispatching `host_seed: true`, which like the
+nightly is skipped rather than run hosted when no host is ready); and a host's shard count is written on
 the host (`--shards K` → the runner's `.env`), never in the workflow, because K
 is a measured property of a machine. `docs/RUNNERS.md` has the rest.
 
