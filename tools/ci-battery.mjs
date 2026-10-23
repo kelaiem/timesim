@@ -576,17 +576,19 @@ function partition(entries, k) {
   return shards.filter((s) => s.entries.length);
 }
 
-// Serialises the virgin boots. Two shards booting at once would race on the
-// dev server's single /__state file — one shard's DELETE against another's
-// startup GET — and a virgin boot is only virgin if nothing else is touching
-// that file. The boots cost ~26 s each and the checks are the expensive part,
-// so serialising them costs a fraction of what the sharding saves.
-function serialiser() {
-  let tail = Promise.resolve();
-  return (fn) => {
-    const next = tail.then(fn, fn);
-    tail = next.then(() => {}, () => {});
-    return next;
+// At most BOOT_POOL virgin boots at once. Boots no longer need serialising for
+// state (virginBoot answers /__state per browser context), but they still
+// compete for CPU, and the spec tier measured what that costs: 4 concurrent
+// boots on a 4-vCPU runner keep each within ~2x of solo, so BOOT_TIMEOUT_MS
+// keeps its meaning ("one roughly uncontended boot must build"). A host whose
+// --shards is larger than that queues its later shards behind the pool.
+const BOOT_POOL = 4;
+function bootPool(n) {
+  let free = n;
+  const waiting = [];
+  return async (fn) => {
+    if (free > 0) free--; else await new Promise((r) => waiting.push(r));
+    try { return await fn(); } finally { const w = waiting.shift(); if (w) w(); else free++; }
   };
 }
 
@@ -2008,10 +2010,14 @@ async function runShardGroup({ browser, base, group, shardCount, axisFilter, t0 
   const axisMeta = [];        // §127 — window.__I.AXES as the page reports it, read once
   const checkRoster = [];     // TODO 78 — window.__I.CHECK_NAMES, likewise: the page's roster, not this file's
   let fpA = null;
-  // Per PROCESS, which is all it has to be: a worker owns its own dev server
-  // and its own TMPDIR, so the /__state file two shards would race over is not
-  // shared with any other worker.
-  const bootInTurn = serialiser();
+  // The shards boot AT ONCE. They were serialised while every page shared the
+  // dev server's one /__state file, which made shard k's checks wait for the k
+  // boots ahead of it (measured ~12 s apart on a hosted push, __clock up at
+  // 10.8 / 23.2 / 36.2 s on the self-hosted runner). virginBoot now answers
+  // /__state per browser context, so a boot is virgin by construction and
+  // there is nothing left to serialise; tools/probe-state-isolation.mjs holds
+  // that. They share BOOT_POOL for CPU's sake only.
+  const bootInPool = bootPool(BOOT_POOL);
   // Each shard catches its own failure instead of rejecting: one shard dying
   // must not throw away what the others measured, because the surviving
   // reports are how you tell a broken harness from a broken build.
@@ -2019,7 +2025,7 @@ async function runShardGroup({ browser, base, group, shardCount, axisFilter, t0 
     const tag = shardCount > 1 ? `[shard ${index}] ` : '';
     let context = null;
     try {
-      const boot = await bootInTurn(async () => {
+      const boot = await bootInPool(async () => {
         console.log(`${tag}boot (virgin)…`);
         const p = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
         console.log(`${tag}  __clock up at ${secs(Date.now() - t0)}`);
@@ -2198,7 +2204,11 @@ async function runPointTier(browser, base, { stored, incremental, owned = SWEEP_
   const plan = owned.map((point) => ({ point, ...decidePointMode({ name: point.name, stored, checkCode, incremental }) }));
   console.log(`point sweeps (${plan.length} silent spec points${POINTS_PR ? `, PR ceiling ${secs(POINT_PR_BUDGET_MS)} of wall` : ', full, no ceiling'})…`);
   for (const p of plan) console.log(`  ${p.point.name.padEnd(16)} ${p.mode.toUpperCase()} — ${p.why}`);
-  const bootInTurn = serialiser();
+  // Boots overlap here too: every point boots ?trial=1, which never touches
+  // /__state, and the default's digest boot is a virginBoot with its own
+  // per-context state — so nothing is left for a serialiser to protect. The
+  // lanes' boots share BOOT_POOL for CPU's sake only.
+  const bootInTurn = bootPool(BOOT_POOL);
   let againstDefault = null;
   if (plan.some((p) => p.mode === 'full')) {
     try {

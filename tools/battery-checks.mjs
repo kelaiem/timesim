@@ -528,9 +528,22 @@ export const RESTRICTABLE = new Set(['sweptOverlap', 'inspection', 'clearances',
 // that nothing fresh-side is imported into the digested side.
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 
-// Boot a VIRGIN page: fresh browser context (no localStorage) after deleting
-// the dev server's state file, so nothing of a previous session leaks in —
-// the determinism gate is only meaningful between two boots that start equal.
+// Boot a VIRGIN page: fresh browser context (no localStorage) whose /__state
+// is its OWN, so nothing of a previous session — or of a sibling page — leaks
+// in: the determinism gate is only meaningful between two boots that start
+// equal.
+//
+// The state endpoint is served PER CONTEXT (isolateState), not by the dev
+// server. Until it was, every page of a run shared dev_server.py's one
+// timesim-state.json: a boot DELETEd it and then GOT it some seconds later,
+// and in between any live page's autosave (main.js PUTs every 5 sim-seconds,
+// outside the sweep hold, and step() advances sim time) could write it. The
+// harness serialised the BOOTS against each other for that reason, which never
+// covered a booted page's PUT and cost each shard the boots queued ahead of it.
+// Per context there is nothing to race, so boots may overlap and each still
+// starts from "no saved state" by construction. tools/probe-state-isolation.mjs
+// is the control: a dirty shared file, rewritten throughout the boots, leaks
+// into the legacy boot and never into this one.
 //
 // `bootTimeoutMs` is passed in rather than declared here: it is a scheduling
 // guard, and widening a guard must not void the check-code key.
@@ -539,9 +552,35 @@ const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 // still be read beside one: the share boot loads `?aes=…` into the same fresh
 // context so its fingerprint is comparable with boot A's. Empty by default,
 // and every existing caller passes nothing.
+// dev_server.py's /__state, answered inside one browser context and starting
+// ABSENT: the same statuses (GET 200 with the blob or 404, PUT 204 for JSON
+// and 400 otherwise, DELETE 204), so state.js takes exactly the path it takes
+// against a freshly deleted file — but the blob lives in this closure, and no
+// other context can read or write it.
+export async function isolateState(context) {
+  let blob = null;
+  await context.route('**/__state', (route) => {
+    const req = route.request();
+    const m = req.method();
+    if (m === 'GET') {
+      return blob === null
+        ? route.fulfill({ status: 404, contentType: 'text/plain', body: 'no saved state' })
+        : route.fulfill({ status: 200, contentType: 'application/json', body: blob });
+    }
+    if (m === 'PUT') {
+      const body = req.postData() ?? '';
+      try { JSON.parse(body); } catch { return route.fulfill({ status: 400, body: 'body is not JSON' }); }
+      blob = body;
+      return route.fulfill({ status: 204 });
+    }
+    if (m === 'DELETE') { blob = null; return route.fulfill({ status: 204 }); }
+    return route.fulfill({ status: 405 });
+  });
+}
+
 export async function virginBoot(browser, base, bootTimeoutMs, query = '') {
-  await fetch(`${base}/__state`, { method: 'DELETE' });
   const context = await browser.newContext();
+  await isolateState(context);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
