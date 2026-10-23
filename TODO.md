@@ -34640,3 +34640,13 @@ three boot asserts that sit on a threshold, none of them in the cam: TODO 221's
 beak relief bracket, §173's "backward flank 0.0000° off radial" (an exact-zero
 test) and TODO 15's centre-pinion gauge (8 gaps for 7 teeth). `lineSpec` held
 in both runs. Step 3 still owes Chromium 156 itself, which only CI can run.
+
+**Step 3: Chromium 156 measured green with the fix, and the bump lands.**
+#772 ran the battery on Playwright 1.64.1 (Chromium 156, hosted 24.04) with
+#775's fix merged: 58/58 gates, `lineSpec` 120 rows within float noise,
+`strikeHandoff` 4/4, boot silent. The fingerprint still differs from 141's
+(`4180065205` against `955951544`, 491,219 triangles against 491,227), and the
+§152 changed set was the seven units above plus the chain. That is the residue:
+the doubled seams in the 60 other shapes, which move no verdict. The bump to
+1.64.1 and the return of the six browser jobs to `ubuntu-latest` follow in one
+PR. The item closes when that PR's battery is green on 26.04.
