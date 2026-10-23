@@ -4,7 +4,7 @@
 
 # The instruments
 
-343 scripts. **228 are ACCEPTANCE tests** — they decide and exit non-zero.
+344 scripts. **229 are ACCEPTANCE tests** — they decide and exit non-zero.
 **115 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -322,6 +322,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-slenderness-bearings.mjs` |  | report | TODO 78 — the alarm link's lay shaft, MEASURED. Every number the §54 note block quotes about this shaft (33.387, 2.45, 22, λ 135.4, "the 19.55 u bush-to-bush span") comes from prose; this reads them off the built tree. |
 | `probe-slenderness-residue.mjs` |  | report | TODO 109 — the seven UNWAIVED rows of §54's slenderness report, NAMED. |
 | `probe-sound-boot-optin.mjs` |  | acceptance | IS SOUND ALWAYS OFF AT LOAD, AND DOES THE BOOT SCREEN'S BUTTON WORK? — ACCEPTANCE. |
+| `probe-state-isolation.mjs` |  | acceptance | Is a battery boot VIRGIN when other pages are alive beside it? The control for virginBoot's per-context /__state (battery-checks.mjs isolateState), which is what lets ci-battery.mjs boot its shards at once instead of in turn. |
 | `probe-strike-site.mjs` |  | acceptance | WHERE CAN THE STRIKE STAND SO ITS METAL LEAVES THE BACK GLASS'S OUTBOARD RING? — §278 landing 1's site search for the strike fold. The alarm hammer and its lifting lever stand on the lever plane at r 34.6–47.8, and the part of them outboard of the back glass's aperture sets the pane floor (11.741 on the tree §278 was filed from), 1.124 u over the skirt arm that would otherwise govern the band's back face. This searches the stations the strike can be carried to WITH ITS MECHANISM HELD FIXED — every row of the 'alarm strike' line spec (LINE_SPECS in src/inspect.js) — and asks of each whether its metal meets §278 Layout A's condition, what depth that would buy, what it would stand nearest, whether the cam still reaches it, and what it does to §269's structure-borne path. |
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-technic-alarm.mjs` |  | acceptance | DOES THE LEGO ALARM SWITCH ON AND OFF ON EVERY FULL PRESS AND NEVER ON A HALF ONE, DROP ITS RELEASE AT THE NOTCH, AND STRIKE FOUR TIMES A TURN OF ITS FLY? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. §219 tier three (b), landing I (src/technic-alarm.js). |
