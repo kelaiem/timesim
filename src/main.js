@@ -37198,36 +37198,56 @@ const _colBreaks = (() => {
 // at which the deepest corner stands exactly on the floor.
 //   A — the wheel angle (alarmColShownA), L — the arm to the nose (beakLen),
 //   hN — the nose's underside under the axis, thMax — the seat tilt.
+// The law is evaluated by a bisection, 45 tilts per call and 79,200 calls per
+// boot (the stub's sweep below, inside the seat solve's fixed point), so what
+// does not depend on the tilt is computed once per call: each breakpoint's
+// plan offset under the face, rho·tan(dd), is a property of the wheel angle and
+// the radius alone. The predicate is the same conjunction over the same points,
+// each evaluated by the same expression, so it returns the same boolean; two
+// of its points are decided without reading the profile, by its range alone
+// (0 ≤ profileAt ≤ 1, so the surface under the face stands between 0 and colH
+// below the top): a point that drops no more than the 1e-9 slack cannot be
+// under it, and one that drops more than colH plus it must be.
+const _noseRads = [ALARM_LINK_NOSE_LAND_R - ALARM_LINK_NOSE_W_RAD / 2, ALARM_LINK_NOSE_LAND_R + ALARM_LINK_NOSE_W_RAD / 2];
 const alarmLinkNoseTheta = (A, L, hN, thMax) => {
   const p = alarmColumnWheel.userData.profileAt, colH = ALARM_COL_H;
   const half = ALARM_LINK_NOSE_W_AZ / 2;
   const base = A + ALARM_LINK_BEAK_OFF;
-  const rads = [ALARM_LINK_NOSE_LAND_R - ALARM_LINK_NOSE_W_RAD / 2, ALARM_LINK_NOSE_LAND_R + ALARM_LINK_NOSE_W_RAD / 2];
-  const xs = [];
+  const rads = _noseRads;
+  const off = [[], []];                                         // per radius: rho·tan(dd) of each breakpoint within reach
+  for (const ab of _colBreaks) {
+    let d = ab - base; d -= Math.round(d / _colPitch) * _colPitch;
+    for (const dd of [d - _colPitch, d, d + _colPitch]) {
+      if (Math.abs(dd) > 0.5) continue;
+      const t = Math.tan(dd);
+      off[0].push(rads[0] * t); off[1].push(rads[1] * t);
+    }
+  }
+  const lo = L - half, hi = L + half, dropAll = colH + 1e-9;
   const ok = (b) => {
-    const cb = Math.cos(b), sb = Math.sin(b);
-    for (const rho of rads) {
-      xs.length = 0; xs.push(L - half, L + half);
-      for (const ab of _colBreaks) {
-        let d = ab - base; d -= Math.round(d / _colPitch) * _colPitch;
-        for (const dd of [d - _colPitch, d, d + _colPitch]) {
-          if (Math.abs(dd) > 0.5) continue;
-          const x = (L + hN * sb - rho * Math.tan(dd)) / cb;   // the face point standing over that breakpoint
-          if (x > L - half && x < L + half) xs.push(x);
-        }
-      }
-      for (const x of xs) {
-        const s = L - (x * cb - hN * sb);                       // its plan offset from the nose's ray, toward the pivot (ccw)
-        const drop = x * sb - hN * (1 - cb);
-        if (drop > colH * (1 - p(base + Math.atan2(s, rho))) + 1e-9) return false;
+    const cb = Math.cos(b), sb = Math.sin(b), num = L + hN * sb;
+    // the face point at x is under the cut surface?
+    const under = (x, rho) => {
+      const s = L - (x * cb - hN * sb);                         // its plan offset from the nose's ray, toward the pivot (ccw)
+      const drop = x * sb - hN * (1 - cb);
+      if (drop <= 1e-9) return false;
+      if (drop > dropAll) return true;
+      return drop > colH * (1 - p(base + Math.atan2(s, rho))) + 1e-9;
+    };
+    for (let r = 0; r < 2; r++) {
+      const rho = rads[r], o = off[r];
+      if (under(lo, rho) || under(hi, rho)) return false;
+      for (let k = 0; k < o.length; k++) {
+        const x = (num - o[k]) / cb;                            // the face point standing over that breakpoint
+        if (x > lo && x < hi && under(x, rho)) return false;
       }
     }
     return true;
   };
   if (ok(thMax)) return thMax;
-  let lo = 0, hi = thMax;
-  for (let k = 0; k < 44; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
-  return lo;
+  let lo2 = 0, hi2 = thMax;
+  for (let k = 0; k < 44; k++) { const m = (lo2 + hi2) / 2; if (ok(m)) lo2 = m; else hi2 = m; }
+  return lo2;
 };
 // THE STUB'S LIFT — the clearance its underside needs over the columns, swept.
 // §120's precedent (and TODO 206's form of it): a static margin over the column
@@ -37254,6 +37274,12 @@ const _stubLiftFor = (L, thS, hN) => {
     for (let ix = 0; ix <= NX; ix++) {
       const x = L - hw + (2 * hw * ix) / NX;
       const s = L - (x * cb - hb * sb), drop = x * sb - hb * (1 - cb);
+      // every term of this row is colH·(p − 1) + CLEAR_MARGIN + drop with
+      // p ≤ 1, so none exceeds CLEAR_MARGIN + drop (each step of the sum rounds
+      // monotonically): a row whose ceiling is already met cannot raise the
+      // max, and is not read. The max of a set does not depend on which of its
+      // members were looked at, so the lift is the same number.
+      if (CLEAR_MARGIN + drop <= need) continue;
       for (let ir = 0; ir <= NR; ir++) {
         const rho = r0 + ((r1 - r0) * ir) / NR;
         if (Math.abs(x - L) < nHalf - 1e-9 && Math.abs(rho - ALARM_LINK_NOSE_LAND_R) < nRad - 1e-9) continue;
