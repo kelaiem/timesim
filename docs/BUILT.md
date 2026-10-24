@@ -42133,7 +42133,7 @@ generated files it reads).
   booklet `PASS — 106 checks, 16 controls, 0 failed`. Smokes (Chromium 1194, 1280 and 390 wide):
   `smoke-technic-bom.mjs` `PASS — 244 checks, 0 failed` (every line's alternatives and summary
   are the pure module's; the CSV column is them); `smoke-technic-booklet.mjs` `PASS — 115 checks,
-  11 controls, 0 failed`. `index-instruments.mjs --check` OK (352), `check-item-numbers.mjs` OK,
+  11 controls, 0 failed`. `index-instruments.mjs --check` OK (353, after merging main), `check-item-numbers.mjs` OK,
   `bricklink-subset.mjs --check` OK, `offline-check.mjs`: `release: precache complete (101/101)`
   and every check but one; the one, `update: Reload crosses the worker boundary to the NEW release`, timed
   out in this container on this tree AND on `origin/main` (main passed it once and failed it the next run):

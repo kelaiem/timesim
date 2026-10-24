@@ -52546,10 +52546,13 @@ const RECONF_HANDLES = [
     kind: r.kind, specKeyName: r.specKeyName, urlKey: r.urlKey, def: r.def,
     anchor: r.anchor, grabAt: r.grabAt, grabR: r.grabR,
     // Module-relative, like the literals they override: the stored bearing is
-    // `deg + ALARM_MOD_ROT`, so a pointer azimuth sheds the reconfigure frame's
-    // rotation AND the module's, and composes with ?alarmmod= instead of
-    // fighting it.
-    toSpec: (azDeg) => azDeg - RECONF_ROT_DEG - ALARM_MOD_ROT / DEG2RAD,
+    // `deg + ALARM_MOD_ROT`, so a pointer azimuth sheds the module's rotation
+    // and composes with ?alarmmod= instead of fighting it. NOT the reconfigure
+    // frame's (RECONF_ROT_DEG): that is ?crownaz=, which rotates solveLayout's
+    // table P, and the strike arbor (ALARM_SW_AZ) is not in P — measured, the
+    // three grabs stand at one world azimuth at crownaz 0, 90 and 200, so
+    // shedding it made a handle released where it stood propose ±55°.
+    toSpec: (azDeg) => azDeg - ALARM_MOD_ROT / DEG2RAD,
     label: (v, def) => `proposed: ${r.what} bearing ${v.toFixed(1)}° (was ${def.toFixed(1)}°)`,
     // ONE joint bound, three rows. The other two legs come from the build in
     // force, so this is the triple being judged, never the leg alone.
