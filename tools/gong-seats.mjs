@@ -66,7 +66,7 @@ const boot = async (q) => {
     if (window.__bootError) return { bootError: String(window.__bootError.message || window.__bootError) };
     const c = window.__clock, g = c.gongSeat;
     return { rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
-      seat: g && { pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
+      seat: g && { tenants: JSON.parse(JSON.stringify(g.tenants)), pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
         zGong: g.zGong, postR: g.postR, postRAt: [10, 20, 30, 40, 50, 60, 70, 80].map((L) => [L, g.postRFor(L)]) } };
   });
   await ctx.close();
@@ -134,7 +134,9 @@ for (const kind of KINDS) {
       if (arc.bootError) { console.error(`  arc boot failed: ${arc.bootError}`); break; }
       const S = arc.seat, shape = caseShapeOf(kind, { xMin: rect[0], xMax: rect[1], yMin: rect[2], yMax: rect[3] });
       const need = S.wireR + S.lever.margin;
-      const parts = GS.bandParts(arc.regions, S.zGong - S.wireR, S.zGong + S.wireR, S.lever.margin, new Set(['Alarm hammer']));
+      // the counted metal's hulls (the hammer excepted: it is the seat's own) and the plates' tenants in the band
+      const parts = [...GS.bandParts(arc.regions, S.zGong - S.wireR, S.zGong + S.wireR, S.lever.margin, new Set(['Alarm hammer'])),
+        ...GS.bandParts(S.tenants, S.zGong - S.wireR, S.zGong + S.wireR, S.lever.margin)];
       const W = Math.ceil((rect[1] - rect[0]) / RES) + 2, H = Math.ceil((rect[3] - rect[2]) / RES) + 2;
       const map = GS.bandMap(parts, { x0: rect[0] - RES, y0: rect[2] - RES, W, H, RES, need, inset: (x, y) => shape.inset(x, y) });
       const lever = { Q: S.lever.Q, rho: S.lever.rho, tanLen: S.lever.tanLen, side: S.lever.side, gap: S.lever.gap, headR: S.lever.headR,

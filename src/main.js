@@ -48805,8 +48805,27 @@ const FORM_REGIONS = (() => {
 // a seat carried to a build it was not solved on, says so — the wire within
 // a margin of metal, off the outline's need, the block off the plate, or the
 // hammer's staff on its wire. Rule 6: silent when it holds.
+// …and the plates' own TENANTS that rise into the band: FORM_REGIONS counts no
+// mesh under a part cut to the shape (the plates and the dial follow the
+// outline and cannot set it), and that also drops what stands IN them — the
+// base plate's screw shanks reach 5.90 against the band's top 5.96 — so they
+// are added here, every mesh under those three whose z span meets the band
+// but the slabs themselves, as one more unit of hulls in FORM_REGIONS' shape.
+const GONG_BAND_TENANTS = FORM ? (() => {
+  const z0 = Z_GONG - GONG_WIRE_R - CLEAR_MARGIN, z1 = Z_GONG + GONG_WIRE_R + CLEAR_MARGIN, v = new THREE.Vector3(), parts = [];
+  movement.updateWorldMatrix(true, true);
+  for (const root of [backPlate, threeQuarterPlate, dial]) root.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position || o === tqPlateMesh || o.name === 'backPlate' || o.name === 'threeQuarterPlate') return;
+    const pa = o.geometry.attributes.position, xs = [], ys = []; let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); xs.push(v.x); ys.push(v.y); lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
+    if (hi < z0 || lo > z1 || xs.length < 3) return;
+    parts.push({ z: [lo, hi], hull: convexHull2(xs, ys, xs.length).map(([x, y]) => [x, y]), name: o.name || '(unnamed)' });
+  });
+  return { units: { 'plate tenants': { parts } } };
+})() : null;
 const GONG_SEAT_CHECK = GONG_SEATED ? (() => {
-  const parts = GS.bandParts(FORM_REGIONS, Z_GONG - GONG_WIRE_R, Z_GONG + GONG_WIRE_R, CLEAR_MARGIN, new Set(['Alarm hammer']));
+  const parts = [...GS.bandParts(FORM_REGIONS, Z_GONG - GONG_WIRE_R, Z_GONG + GONG_WIRE_R, CLEAR_MARGIN, new Set(['Alarm hammer'])),
+    ...GS.bandParts(GONG_BAND_TENANTS, Z_GONG - GONG_WIRE_R, Z_GONG + GONG_WIRE_R, CLEAR_MARGIN)];
   const need = GONG_WIRE_R + CLEAR_MARGIN;
   let near = { d: Infinity, unit: null, at: null }, inset = Infinity;
   for (const [x, y] of GONG_SEAT_PTS) {
@@ -60935,7 +60954,7 @@ window.__clock = {
     row: GONG_SEAT?.row ?? null, strike: GONG_SEATED ? { s: GONG_SEAT.st.s, S: GONG_SEAT.st.S, F: GONG_SEAT.st.F, b: GONG_SEAT.st.b, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi } : null,
     check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2),
       side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
-    wireR: GONG_WIRE_R, wireD_m: 2 * GONG_WIRE_R * OSC_U, zGong: Z_GONG, postR: GONG_POST_R_BUILT,
+    tenants: GONG_BAND_TENANTS, wireR: GONG_WIRE_R, wireD_m: 2 * GONG_WIRE_R * OSC_U, zGong: Z_GONG, postR: GONG_POST_R_BUILT,
     postRFor: (L_u) => gongPostRFor(L_u * OSC_U) }) : null,   // §310 landing 2 — the seat this build stands its gong on, and what tools/gong-seats.mjs solves against   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
   // §81 tranche A: what the weld pass found and removed, so the reduction is
   // a number the battery can read rather than a claim in a comment.
