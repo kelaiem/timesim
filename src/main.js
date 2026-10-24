@@ -44686,6 +44686,18 @@ panel.innerHTML = `
         <span class="label-small">Rib pitch</span>
         <input type="range" id="rib-pitch" min="4" max="22" step="0.1" />
       </div>
+      <!-- §310 — the CASE SHAPE, a reload-tier spec (?case=): round as
+           designed, or a form case fitted to the movement. Static markup, so
+           the one localizeTree walk translates it (§73); values stay the
+           canonical spec words. -->
+      <div class="row label-small"><span>Case shape</span>
+        <select id="spec-case">
+          <option value="">Round</option>
+          <option value="rect">Rectangular</option>
+          <option value="cushion">Cushion</option>
+          <option value="tonneau">Tonneau</option>
+        </select>
+      </div>
       <!-- §23: ADVANCED — every control below is GENERATED from
            aesthetics.json, so a future finish parameter gets a knob for free
            and the file stays the single source. Collapsed by default on §15's
@@ -47091,6 +47103,25 @@ updateCrownUI();
     setOrClear('studr', Number(studSel.value), HAIRSPRING_STUD_R_DEFAULT);
     location.search = p.toString(); // navigates; the identity spec keeps a clean URL
   };
+  // §310 — THE CASE SHAPE. A form case is cut to the movement's FITTED
+  // outline (§308), which a first boot only prints, so the select carries the
+  // fit along: the generated gong seat's own ?formrect= (src/gong-seats.js,
+  // solved at the default knobs), which is the fit that seat holds at. A kind
+  // with no seat row, or a spec off the default knobs, reloads unfitted and
+  // the boot prints the formrect= to carry (§307's first-boot path). Round
+  // drops every form key, ?gong= with it.
+  const caseSel = document.getElementById('spec-case');
+  caseSel.value = SPEC.caseShape ?? '';
+  caseSel.addEventListener('change', () => {
+    const p = new URLSearchParams(location.search), kind = caseSel.value;
+    p.delete('formrect');
+    if (!kind) { p.delete('case'); p.delete('gong'); location.search = p.toString(); return; }
+    p.set('case', kind);
+    const seat = GONG_SEATS[kind]?.[p.get('gong') || 'bar'] ?? GONG_SEATS[kind]?.bar;
+    const key = configKey({ spec: { ...SPEC, caseShape: kind, formRectSpec: null, gongSeat: null } });
+    if (seat && seat.specKey === key) p.set('formrect', seat.formrect.join(','));
+    location.search = p.toString();   // reload-tier, like the beat rate: back IS undo
+  });
   vphSel.addEventListener('change', reloadWithSpec);
   rsvSel.addEventListener('change', reloadWithSpec);
   studSel.addEventListener('change', reloadWithSpec);
