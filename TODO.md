@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 268 | DONE | Form builds: both crown stems were cut to `CASE_R_OUT`, the ROUND band's radius, while the pusher already read the form case's own outer loop (§307 landing 2). On the tonneau the band on the winding stem's line stands 0.6 u (az 145°) to 12.0 u (az 130.7°, `?barrelstep=-49.3`) past the circle and 1.5 u on the alarm stem's, so each knob stood in the band, its sleeve and its collar. `caseWallAlong` (main.js) is the one law now — the circle on the round build (its fingerprint unchanged), the `outer` loop's exit on a form build — and `tools/probe-form-crowns.mjs` holds both crowns to 0.5 mm of finger room past the collar and `CLEAR_MARGIN` off the band, pushed in and pulled out, on every fitted case |
 | 265 | DONE | The alarm cam's outline wrote two seams per lobe twice, each equal in algebra but computed two ways (one through `atan2`), so the engine's last ULP decided which copies three.js kept; the survivors moved the vertex mean `lineSpec` reads the axis by ~3e-3, and 141 passed only because its two cancelled. #775 writes each seam once (boot-guarded; `probe-265-ulp.mjs` nudges `atan2` per input and its control restores the doubles), and #777 landed Playwright 1.64.1 with the browser jobs back on `ubuntu-latest`: 57/57 on 26.04 / Chromium 156. Residue, recorded in the item: the same doubled seams in 60 other shapes (fingerprint only, no verdict) and three boot asserts that sit on a threshold under a full `Math` nudge |
 | 264 | DONE | §305 cleared both of §302's inventories at their roots: six placed-pose overlaps (the escapement's bob hung in front of the front knife and the balance re-solved, T 1.00175 s; the keyless stem as two axles in the joiner's stop; a long axle's overhang placed where it meets nothing; the fusee detent re-solved over the baseplate) and 27 flagged insertion steps (the fusee cone ends at its metal; parts shut by their own group held in the gap; a pin's lip measured as its press; pins in a held part and the alarm disc's beams as units; no gear lowered between two meshes; the escape arbor lowered beside its bricks). Both inventories empty and closed. |
 | 263 | DONE | Brushed steel rendered its grain a quarter turn off: `installBrush` handed three the GRAIN as `anisotropyT`, and three's GGX is rougher along T, so highlights stretched along the grain. The shader now names the grain per surface (a flat's `brushAngleDeg`, the midcase flank's vertical, every other flank's circumferential) and hands three T = n × grain. `probe-263-brush-axis.mjs`: axis 90.0° at grain 0°, 0.0° at grain 90°, elongation 3.24, polished control 1.00; the old shader reads the axis along the grain and fails |
@@ -34736,3 +34737,60 @@ These are P3 position changes: the group's arms, tail, draw and stud geometry st
 **Done when.** `node tools/gong-seats.mjs --write` closes a spiral seat on at least one case.
 `tools/probe-310-gong-seat.mjs` then holds it: seated, its check clean, the strike line spec
 unforked, and no boot warning the arc build lacks. The round build's fingerprint is unchanged.
+
+## 268. Form builds: the two crowns were cut to the round case's radius and stood in the band — DONE
+
+**What was wrong.** The three through-case parts are cut to reach THROUGH the
+band and stand their knob a declared distance past its outer face: the crown's
+base 2 mm out (the tube's collar ends at 1.5 mm, so a finger grips 0.5 mm of
+clear knob), the pusher's cap at its seat. §307 landing 2 made the pusher read
+that face off the FORM case's own outer loop (`rayExit` on `formCaseLoops(FORM).outer`,
+the loop `makeFormCase` cuts every tube's outboard end on) and left both crown
+stems on `CASE_R_OUT` — the round band's radius, which under `?case=` is no
+wall of anything. Measured on the fitted tonneau
+(`?case=tonneau&formrect=-45.27,48.98,-45.58,46.25`), the band's face on the
+winding stem's line (az 145°) stands 58.25 u from the centre against the
+circle's 57.65 (52.78 + 1.5 mm — the collar's end), so the knob's base at
+58.05 stood 0.2 u inside the band; on the owner's `?barrelstep=-49.3&balstep=6.2`
+the stem swings to az 130.7°, where the tonneau's corner puts the face at
+64.80 u, and the whole knob — body, sixteen ridges, cap and mark — stood in the
+band, the sleeve and the collar (every crown mesh in contact at the boot pose,
+`tools/probe-case-relief.mjs`'s measurement run on that URL). The alarm stem's
+line (az 0°) meets the tonneau's side at 54.25 u, 1.47 u past the circle, and
+its knob stood 0.17 u into the collar and the sleeve's end.
+
+**Why no gate saw it.** Form builds are not swept (TODO 158): the battery runs
+the round build, and `probe-case-relief.mjs` with it. On the round build the
+law and the circle coincide.
+
+**What was done.** ONE law, `caseWallAlong(u, off)` in `main.js`, beside
+`CASE_R_OUT`: where the case's outer wall stands on a line — `CASE_R_OUT`
+itself on a radial of the round case (so the round build's bytes do not move:
+its fingerprint is byte-identical before and after, measured with
+`fingerprintFull` over `digestPoses`), `√(R² − off²)` on a chord, and the form
+case's `outer` loop's exit along the line under FORM. The winding stem
+(`stemLen`), the alarm stem (`ALARM_STEM_LEN`) and the pusher's seat
+(`ALARM_PUSH_SEAT_S`) read it; the pusher's own expression was the same law
+written once more, and is gone. Both knobs now stand 2 mm past the band on
+their own lines on every case, and the alarm stem's bar (`ALARM_STEM_BAR`,
+which sizes its radius against the turning target) follows the longer stem.
+
+**Held by** `tools/probe-form-crowns.mjs` (acceptance, Chromium): per build —
+the round control, every fitted form case `src/gong-seats.js` lists, and any
+`SPEC=` query — per crown, pushed in and pulled out on inspect.js's own
+`crown` and `alarmPull` axes: finger room between the knob's inner face and the
+collar's outer face exactly 0.5 mm pushed in and at least that pulled out
+(two metal faces along the stem's line, restating neither builder's constant),
+every knob mesh `CLEAR_MARGIN` off the band, the sleeve and the collar, the
+band's face by a ray cast beside the opening as a report, and two controls (the
+knob moved into the collar reads contact; a name resolving to nothing throws).
+On the tree before the fix it fails the tonneau on both crowns; after, every
+build passes. Not in a workflow: a form boot is minutes, and TODO 158's form
+battery is where a form gate belongs.
+
+**Residue, named.** The three stems still pass through SOLID band metal on a
+form case (`windStem`, `alarmStem`, `alarmPusherStem` ⇄ `caseMiddle` read 0 —
+§307's declared prototype debt: the form band is not bored for its tubes), and
+on the owner's URL `caseAlarmTubeSleeve ⇄ backPlate` reads 0.1414, under the
+margin, because that layout's plate reaches the alarm tube's inboard end (the
+§186 boot warning says so). Neither is this item's.
