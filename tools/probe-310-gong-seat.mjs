@@ -57,7 +57,7 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
   const st = GS.seatStrike(curve, lever, wireR, -1, 12);
   const off = st && Math.hypot(st.F.x - st.S.x, st.F.y - st.S.y) - wireR;
   ok('P2 strike solve: pivot on the lever circle, face one gap off the wire', !!st && Math.abs(Math.hypot(st.P.x - lever.Q.x, st.P.y - lever.Q.y) - lever.rho) < 1e-9
-    && Math.abs(off - lever.gap) < 1e-12 && Math.abs(st.b.x * st.n.x + st.b.y * st.n.y + 1) < 1e-12,
+    && Math.abs(off - lever.gap) < 1e-12 && Math.abs(st.b.x * st.n.x + st.b.y * st.n.y - 1) < 1e-12,   // face on side −1: the blow runs along +n
     st ? `s ${st.s.toFixed(6)}, |P−Q|−ρ ${(Math.hypot(st.P.x - lever.Q.x, st.P.y - lever.Q.y) - lever.rho).toExponential(1)}` : 'no root');
 }
 {
