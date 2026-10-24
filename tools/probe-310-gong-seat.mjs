@@ -25,8 +25,9 @@
 //   B3  CONTROLS: ?gong=arc keeps the ring; a seat carried to a fit 3 u narrower on its own side is called
 //       out by the boot's seat check (the outline clause); a seat whose strike was moved 1 u along its wire
 //       is called out by the strike clause
-// REPORTED, not gated: the hammer staff's crossing of the three-quarter plate (TODO 266, pre-existing on
-// every form build).
+//   B2  …and since TODO 266, each seat's hammer staff stands in the three-quarter plate's strike opening, not
+//       under the plate (a vertical ray at the post meets no plate), the opening holding TQ_LAND_MIN of plate to
+//       everything round it (the build's own land test, reported on __clock.strikePlateOpening)
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -106,12 +107,14 @@ const seatRead = async () => {   // (Infinity crosses page.evaluate as null: the
     const ls = await I.checkLineSpec(c);
     r.strike = ls.rows.filter((x) => x.ref === 'alarm strike').map((x) => ({ key: x.key, pass: x.pass, spec: x.spec, measured: x.measured, fork: x.fork }));
     r.lsMalformed = ls.malformed.filter((m) => m.ref === 'alarm strike' || m.fork);
-    // TODO 266 — the staff against the three-quarter plate (reported)
+    // TODO 266 — the staff against the three-quarter plate, and the opening the plate is cut to round it
     const T = await import('./vendor/three.module.js'), tq = c.scene.getObjectByName('threeQuarterPlate'), post = c.scene.getObjectByName('alarmHammerPost');
     c.scene.updateMatrixWorld(true); const p = new T.Vector3(); post.getWorldPosition(p);
     const hits = new T.Raycaster(new T.Vector3(p.x, p.y, 100), new T.Vector3(0, 0, -1)).intersectObject(tq, true);
     const bb = new T.Box3().setFromObject(post), tb = new T.Box3().setFromObject(tq);
     r.staff = { inPlateFootprint: hits.length > 0, postTop: bb.max.z, plateBottom: tb.min.z };
+    const op = c.strikePlateOpening; r.opening = op ? { land: op.land, landTo: op.landTo } : null;
+    r.tqT = tb.max.z - tb.min.z;   // TQ_LAND_MIN is max(STOCK_MIN_U, TQ_T): the plate's own thickness governs
   }
   return r;
 };
@@ -146,7 +149,8 @@ for (const row of rows) {
   const RUNTIME = /§38\/TODO 8: the alarm's coincidence was crossed/;
   const extra = seated.warnings.filter((w) => !arc.warnings.includes(w) && !RUNTIME.test(w));
   ok(`${tag}: no boot warning the arc build at this fit lacks`, extra.length === 0, extra.slice(0, 3).join(' | '));
-  console.log(`REPORT ${tag}: TODO 266 — the staff ${o.staff.inPlateFootprint ? 'stands under the three-quarter plate' : 'is clear of the plate\'s footprint'}, its top ${o.staff.postTop.toFixed(2)} against the plate's underside ${o.staff.plateBottom.toFixed(2)}`);
+  ok(`${tag}: TODO 266 — the staff stands in the plate's strike opening, its land held`, !o.staff.inPlateFootprint && !!o.opening && o.opening.land >= o.tqT - 1e-6,
+    o.opening ? `land ${o.opening.land.toFixed(3)} to ${o.opening.landTo} (plate ${o.tqT.toFixed(3)} thick); staff top ${o.staff.postTop.toFixed(2)} against the plate's underside ${o.staff.plateBottom.toFixed(2)}` : 'no opening cut');
 }
 // controls
 {
