@@ -14,6 +14,10 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Since the split each item is its own file (docs/todo/, docs/built/); the
+// headings are read over the concatenation, or the old single file on a base
+// that predates the split, so the rules below are unchanged.
+import { itemText, treeSource, refSource } from './item-docs.mjs';
 
 const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
 const CLAIMS = join(ROOT, 'docs/item-numbers');
@@ -101,9 +105,9 @@ if (existsSync(CLAIMS)) {
 // ---- per document ----------------------------------------------------------
 let checked = 0;
 for (const [ns, cfg] of Object.entries(DOCS)) {
-  const path = join(ROOT, cfg.file);
-  if (!existsSync(path)) { console.log(`  ${cfg.file}: absent, skipped`); continue; }
-  const here = headings(readFileSync(path, 'utf8'), cfg.heading);
+  const hereText = itemText(ns, treeSource(ROOT));
+  if (hereText === null) { console.log(`  ${cfg.file}: absent, skipped`); continue; }
+  const here = headings(hereText, cfg.heading);
 
   if (cfg.unique) {
     const seen = new Map();
@@ -113,7 +117,7 @@ for (const [ns, cfg] of Object.entries(DOCS)) {
     }
   }
 
-  const baseText = gitShow(BASE, cfg.file);
+  const baseText = itemText(ns, refSource(BASE, ROOT));
   if (baseText === null) {
     // Refusing is the safe direction: with no base, EVERY number looks new and
     // the gate would either pass vacuously or demand claims for all of them.

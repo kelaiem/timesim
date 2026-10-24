@@ -122,6 +122,7 @@ abandoned approach is worse than no plan.
 -->
 
 - [ ] `TODO.md` — honesty debt this change closed, opened, or re-measured
+      (the item's own `docs/todo/NNNN.md`, then `node tools/item-docs.mjs --write`)
 - [ ] `docs/BUILT.md` — a shipped roadmap entry, reconciled with what was
       actually built and moved over from the private roadmap repo
 - [ ] `docs/ROADMAP.md` — a public in-progress row added, updated, or deleted

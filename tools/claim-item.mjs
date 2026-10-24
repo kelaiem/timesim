@@ -42,6 +42,7 @@ import { writeFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { itemText, refSource } from './item-docs.mjs';   // one file per item since the split; a pre-split ref still reads its single file
 
 const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
 const CLAIMS = join(ROOT, 'docs/item-numbers');
@@ -98,7 +99,7 @@ if (!NO_REMOTE) {
 for (const [ns, cfg] of Object.entries(DOCS)) {
   if (ns !== NS) continue;
   for (const ref of refs) {
-    const text = git('show', `${ref}:${cfg.file}`);
+    const text = itemText(ns, refSource(ref, ROOT));
     if (!text) continue;
     for (const line of text.split('\n')) {
       const m = cfg.heading.exec(line);

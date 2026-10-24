@@ -26,18 +26,24 @@ on:
     paths:
       - 'TODO.md'
       - 'docs/BUILT.md'
+      - 'docs/todo/**'
+      - 'docs/built/**'
       - 'docs/item-numbers/**'
       - 'tools/check-item-numbers.mjs'
       - 'tools/claim-item.mjs'
+      - 'tools/item-docs.mjs'
       - '.github/workflows/item-numbers.yml'
   push:
     branches: [main]
     paths:
       - 'TODO.md'
       - 'docs/BUILT.md'
+      - 'docs/todo/**'
+      - 'docs/built/**'
       - 'docs/item-numbers/**'
       - 'tools/check-item-numbers.mjs'
       - 'tools/claim-item.mjs'
+      - 'tools/item-docs.mjs'
 
 jobs:
   item-numbers:
@@ -53,3 +59,8 @@ jobs:
         run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch --no-tags origin main
       - name: Check item numbers
         run: node tools/check-item-numbers.mjs --base origin/main
+      # One file per item (docs/todo/, docs/built/) under a GENERATED index:
+      # every file opens on its own heading and carries no other number's, the
+      # indexes carry no item heading, and the index is current.
+      - name: Check the item files and their indexes
+        run: node tools/item-docs.mjs --check
