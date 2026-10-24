@@ -42145,3 +42145,72 @@ page and the CSV do). No substitute's FRICTION, CLUTCH FORCE or STRENGTH is judg
 modelled. A pass is the model's judges accepting the part's geometry; it says nothing about
 stock, price or anyone having built it. The candidate list is Rebrickable's A and M
 relationships only: a part Rebrickable does not relate is never offered, whatever would fit.
+
+## §310 — Gong placement solver, landing 1: the wire model (in-plane and out-of-plane modes of any planar centreline) and the placement solver as one pure module, with the hammer's reach as a constraint
+
+**Why.** §308 left the gong on the round case's path inside the form wall. Measured on the
+fitted form builds, the wire overhangs the plate's outline by up to 1.43 u (rect), 1.20 u
+(cushion) and 0.67 u (tonneau). It never breaches the case bore (1.21, 1.44 and 1.98 u of
+clearance remain), and no warning fires, because the form fit deliberately leaves the gong out.
+The owner's rule is that the gong is seated in whatever space the fitted case leaves, at a
+pleasant and audible pitch rather than at C7 specifically, with a flat-edge bar as the
+default and a spiral round a support column as the alternative. This landing is the
+model and the solver that decide that seat. No build changes: `src/gong-solve.js` is
+imported by nothing on `index.html`'s module graph yet.
+
+**The wire model.** It is §253's transfer-matrix method generalised from one circular arc to
+any planar centreline: a chain of short constant-curvature pieces, clamped at the foot and
+free at the struck end, each piece propagated exactly by its own matrix exponential and the
+pieces multiplied. There are two families. IN PLANE is §253's (Love's arch equations, now per
+unit length). OUT OF PLANE is new: the wire flapping across the plate while it twists, with
+the round section's EI/GJ = 1 + ν and the twist's rotary inertia 2/S, both read from
+`layout.js`' steel. §253 could not see that family. For the tight curl the owner tried on
+the bench, it puts an out-of-plane mode two semitones under the in-plane f₁, where a hammer
+tilted only 5° drives it as strongly as f₁.
+
+**The solver.** Given the case's free space at the wire's height, a band for f₁ and a striking
+rule (the free end for the loudest f₁, or the first overtone's node for the purest), it places
+four families:
+- a straight bar along a flat run of the outline (its foot blocked to the plate's rim);
+- a spiral whose foot sits on a column's keep-out ring;
+- a straight or arc wire from any free point;
+- the same restricted to a neighbourhood of a given placement.
+
+Every length is solved for the band, never typed. Each family keeps its own shortlist, spread
+over distinct placements before ranking, so a populous family cannot crowd another out. The
+first runs did exactly that, twice: once in the shortlist and once in the final list.
+
+**The hammer's reach is a constraint.** The hammer hangs off the alarm module, and the module
+only turns about the movement's centre. §198's law puts the face inboard of the wire with the
+blow radial and outward. So a strike point is reachable only where the wire's normal is radial
+(within `tolDeg`) and the implied face lands in `[rFaceMin, rFaceMax]`, the window a hammer
+re-solve may move its face through. A flat-edge bar meets that at exactly one point per edge,
+the foot of the perpendicular from the centre. On the rect that leaves the right side, struck
+on the overtone's node, as the default seat landing 3 builds toward.
+
+**A defect the record keeps.** A root scan at step 0.02 lost two roots at once. A straight
+bar's third bending root (7.8548) and first twist root (7.8493 at S = 4000) are 0.0055 apart;
+one step straddled both, the sign changed twice, and the scan saw nothing. The default step is
+0.004, and the probe keeps the coarse scan as a control that must lose the pair.
+
+**Instruments.** `tools/probe-gong-solve.mjs` is pure Node, takes about a minute, and passes
+15 of 15:
+- the cantilever roots and the overtone's node (0.7834);
+- the out-of-plane bending and twist roots with the close pair resolved, and the 0.02 scan's
+  control losing it;
+- Love's free ring in both families for n = 2, 3, 4 (located / predicted 1.0000);
+- §253's arc table: f₁ ×1.0194, f₂ ×0.9055, f₂/f₁ 5.566;
+- today's shipped arc ringing 2092.86 Hz, −0.12 cents from C7;
+- on a synthetic case: every result in free space and in band, an edge bar on all four sides,
+  column feet on the keep-out ring, and under a reach the bar struck on the perpendicular;
+- three controls that must find nothing and do: a band no wire can reach; metal laid along
+  the right side; a reach window off the right side's face.
+
+**Not done, and why.** The build does not use the solver yet: landing 2 replaces the arc on
+form builds with the solved bar (default) or spiral (`?gong=spiral`), and landing 3 rotates
+the alarm module and re-solves the hammer under a declared fork of §278's strike line spec.
+Levels are not loudness. The model gives how hard a blow drives each mode, but neither the
+hammer's contact time nor what the wire and case radiate (TODO 229's receiver). A spiral's
+higher modes, which move almost only at its tip, read loud here and would radiate little.
+The free-space map the solver reads is a measured grid, not the metal. Landing 2 builds it
+from `FORM_REGIONS`' per-mesh hulls at boot, and that conversion is that landing's own check.

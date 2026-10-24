@@ -4,7 +4,7 @@
 
 # The instruments
 
-353 scripts. **235 are ACCEPTANCE tests** — they decide and exit non-zero.
+354 scripts. **236 are ACCEPTANCE tests** — they decide and exit non-zero.
 **118 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -301,6 +301,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-fork-blank.mjs` |  | acceptance | TODO 98 — is the pallet fork ONE piece of metal, and is it one thickness? A Swiss lever is a single blank: boss, both pallet arms, the lever and the fork end are cut in one outline and lapped to one thickness, with only the ruby stones and the guard dart separate. This REPORTS what the movement actually builds — the unit's steel members, the z-height of each, the joint steps between them, the two arms' symmetry, and the one thing the eye cannot see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork body top") matches the fork's real reach. |
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
+| `probe-gong-solve.mjs` |  | acceptance | THE GONG PLACEMENT SOLVER AND ITS WIRE MODEL (BUILT §310) — acceptance, pure Node. |
 | `probe-hand-stack.mjs` |  | acceptance | THE HAND STACK, MEASURED — every indicator's blade/boss z, the crystal chain from live constants, the alarm lane over poses, and the section table a thinning would be judged by. |
 | `probe-handedness.mjs` |  | acceptance | IS THIS PART HANDED? — the three couplings TODO 115 named as unmeasured. |
 | `probe-handset-reach.mjs` |  | report | HOW FAR DOWN THE HAND-SETTING CHAIN DOES THE `handSet` AXIS ACTUALLY REACH? |
