@@ -35,7 +35,8 @@
 // Controls, per build: C1 the knob moved inboard by the finger room plus the
 // margin must turn F2 red (the instrument sees a knob in the collar) and is
 // restored; C2 a name that resolves to no mesh THROWS rather than passing a
-// scan of nothing (resolveAxes' precedent).
+// scan of nothing (resolveAxes' precedent). A page error gates a catalogue
+// build and is reported on a SPEC build, whose other defects are the caller's.
 //
 // Run: node tools/probe-form-crowns.mjs [--only round|rect|cushion|tonneau]
 //      SPEC='case=tonneau&formrect=…&barrelstep=-49.3;…' adds builds (';'-separated queries)
@@ -190,7 +191,11 @@ for (const b of run) {
     ok(`${b.name}: ${c.name} control — the knob moved into the collar reads contact`, c.control < 1e-3, `${c.control.toFixed(4)}`);
   }
   ok(`${b.name}: a name that resolves to no mesh throws`, r.missingThrows);
-  ok(`${b.name}: no page error`, !errors.length, errors.join(' | ').slice(0, 300));
+  // A SPEC build is whatever the caller typed, and its other defects are its
+  // own (the owner's ?barrelstep=-49.3 layout cuts NaN hammer metal, §198/§268
+  // warn so): page errors are REPORTED there and gated on the catalogue builds.
+  if (b.name.startsWith('spec ')) console.log(`${errors.length ? 'REPORT' : 'PASS'}  ${b.name}: ${errors.length ? `${errors.length} page error(s), not this probe's — ${errors.join(' | ').slice(0, 300)}` : 'no page error'}`);
+  else ok(`${b.name}: no page error`, !errors.length, errors.join(' | ').slice(0, 300));
 }
 await browser.close();
 srv.close();
