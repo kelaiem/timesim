@@ -34702,3 +34702,37 @@ tail's plane under the plate instead (the crank §278 landing 2 already cuts).
 That is a P3 position change, and the group's arms stay as they are. TODO 158's
 form-build battery is the instrument that would hold it. Until then,
 `probe-310-gong-seat` reports the staff's crossing and does not gate it.
+
+## 267. Form builds: derive the strike group's round-annulus constraints from the form's own outline
+
+**What is wrong.** §310 landing 2 seats the gong on every fitted form case by moving the hammer's
+STATION along its lifting lever's circle (`|P − Q| = ρ`, ρ = |(13, 0.5)|). The station may move,
+but several of the strike group's own constraints are still written against §198's ROUND annulus,
+which a form case does not have:
+- The tail crank's riser window (`ALARM_TAIL_RISER`). It requires the tall metal inside
+  `STRIKE_R_ALLOW` (the round case back's aperture) and the root outside `R_ANNULUS_IN` (the round
+  three-quarter plate's rim plus the margin).
+- The hammer spring's stud. Its build asserts the stud stays inside the annulus
+  `R_ANNULUS_IN`–`R_ANNULUS_OUT`.
+- §198's band floor and skirt rule, read as a circle's sector until §310 generalised the swath.
+
+On a form build those circles are not the case's walls. Measured by `tools/gong-seats.mjs`:
+- Every SPIRAL seat the lever can reach puts the hammer inboard of r 41.67. There the riser has no
+  window and the stud leaves the annulus. Rect and tonneau: "no candidate's seated build is clean";
+  on the cushion the lever reaches none.
+- So `?gong=spiral` refuses on every case and keeps the arc, and the solver's reachable region is
+  narrower than the case allows.
+
+**Fix path.** Under FORM, derive each constraint from the form's own walls, keeping the round
+build's expressions untouched (bit for bit):
+- the riser's ceiling from the FORM case's aperture (`form-case.js`'s back, at the bins its
+  envelope reads);
+- its floor from the three-quarter plate as actually cut. This is the same opening TODO 266 must
+  cut for the staff and tail, so the two land together;
+- the stud's bound from the plate's outline (`FORM.inset`).
+
+These are P3 position changes: the group's arms, tail, draw and stud geometry stay as they are.
+
+**Done when.** `node tools/gong-seats.mjs --write` closes a spiral seat on at least one case.
+`tools/probe-310-gong-seat.mjs` then holds it: seated, its check clean, the strike line spec
+unforked, and no boot warning the arc build lacks. The round build's fingerprint is unchanged.
