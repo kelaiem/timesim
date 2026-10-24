@@ -3783,6 +3783,26 @@ const CASE_R_OUT = CASE_WIDTH_MAX;
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
 // its old proportions inside it.
 const R_BORE_BACK = CASE_R_OUT - CASE_BAND_T;
+// TODO 268 — WHERE THE CASE'S OUTER WALL STANDS ON A LINE, one law for the three
+// through-case parts (the two crown stems and the pusher), which are cut to
+// reach THROUGH that wall and stand their knob a declared distance past it.
+// On the round case it is the circle: CASE_R_OUT on a radial, √(R² − off²) on
+// a chord `off` to one side. Under FORM (§307/§308) the band is no circle: its
+// outer wall is the plate's shape grown CASE_CLEAR + CASE_BAND_T — the `outer`
+// loop of form-case.js's formCaseLoops, the one makeFormCase cuts every tube's
+// outboard end on — and the wall on a line is that loop's exit along it
+// (rayExit, the same function on the same loop). §307 landing 2 read the
+// pusher's seat this way and left both crowns on CASE_R_OUT; measured on the
+// tonneau, the band on the winding stem's line stands 0.6 u (az 145°) to
+// 12.0 u (az 130.7°, the owner's ?barrelstep=-49.3) past the circle, and on
+// the alarm stem's 1.5 u, so the knobs cut to the circle stood in the band,
+// its sleeve and its collar (every crown mesh in contact at the boot pose).
+// The round branch returns CASE_R_OUT ITSELF on a radial, so the round build's
+// bytes do not move (the fingerprint holds that). `u` is the line's unit
+// direction, `off` the signed offset of its base to the left of it.
+const caseWallAlong = (u, off = 0) => FORM
+  ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM).outer, [u.x, u.y], [-u.y * off, u.x * off])
+  : off === 0 ? CASE_R_OUT : Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - off * off));
 // §186 — THE MOUNTING RIM the plate grows (the plate MESH alone: plateR is
 // the movement's working radius and fans out to dialRadius, R_IN, and every
 // station — growing it would move the dial, the case and the lugs at once).
@@ -6697,9 +6717,11 @@ const SQ_TOP = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + SLEEVE_TOP
   + CLEAR_MARGIN + MEASURED_MARGIN_BAND + SAW_FIT;
 // Backlog (watch case): the stem now reaches THROUGH the case band's tube —
 // the crown's base stands 2 mm outboard of the band's outer face (tube
-// collar plus finger room), so the length is cut to CASE_R_OUT, not the
+// collar plus finger room), so the length is cut to the case wall, not the
 // plate. The keyless throws are clutch-local and untouched by this.
-const stemLen = CASE_R_OUT + 2 / UNIT_MM + 0.7 - pinDist;
+// TODO 268 — the wall ON THE STEM'S OWN LINE (caseWallAlong): CASE_R_OUT on
+// the round case, the form case's outer loop along uWind under FORM.
+const stemLen = caseWallAlong(uWind) + 2 / UNIT_MM + 0.7 - pinDist;
 // Round shaft from the square's shoulder (a SAW_FIT weld into the square,
 // one turned piece modeled as two meshes) out to the crown; the bushing
 // sits ≈8+ units outboard of SQ_TOP at every pull, so the declared
@@ -16135,6 +16157,8 @@ const TQ_WINDOW_INTENTS = [
 // §201 — the late intent's centre. null until the arrest block has placed the
 // cross's stud; the solver reports the row as deferred while it is null.
 let ARREST_WINDOW = null;
+// TODO 266 — the strike group's opening in a FORM plate, cut at the re-cut (null on the round build)
+let STRIKE_PLATE_OPENING = null;
 
 // TODO 242 — the edges of windows already cut, as one flat list, kept only
 // where they can come within `reach` of (cx, cy): the land a later opening owes
@@ -21058,7 +21082,7 @@ const ALARM_BEVEL_MODULE = 0.24;
 // prefer; the difference is 8% of the radius and it is not the binding call.
 const ALARM_CROWN_BODY_H = 4.55;                     // §203/§41: matched to the winding crown, and the knob's own reach past the stem
 const ALARM_CROWN_BODY_INSET = 0.7;                  // the knob's inner face sits this far in from the stem's tip
-const ALARM_STEM_LEN = CASE_R_OUT + 2 / UNIT_MM + ALARM_CROWN_BODY_INSET - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
+const ALARM_STEM_LEN = caseWallAlong(alarmDir) + 2 / UNIT_MM + ALARM_CROWN_BODY_INSET - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem (TODO 268: the wall on the stem's own line — the form case's, under FORM)
 const ALARM_STEM_BAR = ALARM_STEM_LEN + ALARM_CROWN_BODY_H - ALARM_CROWN_BODY_INSET; // what the census clusters: stem + the knob past its tip
 // AND THE SECTION, at last. Two constraints bear on the radius and the LARGER
 // governs, the alarm pusher's rule (§234's first member) with the other term
@@ -28399,6 +28423,11 @@ movement.add(alarmHammerUnit);
 registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
 const HAMMER_POST_R = 0.6;
+// §268: the hammer's COLLET, bored the running fit over the post with a pivot
+// floor of wall. Declared beside the post because the crank's riser (TODO 267)
+// must leave its cranked root long enough to cover it.
+const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
+const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
 const HAMMER_POST_BOT = GONG_RIM_Z - GONG_RIM_PLANT;
 // §278 landing 2 — the staff stops at the CRANKED tail's plane, ALARM_TAIL_DROP
 // under the lever's: the tail's root rides there, outboard of the aperture.
@@ -29237,10 +29266,21 @@ const ALARM_TAIL_RISER = (() => {
     return Math.hypot(hammerPiv.x + x * c - y * sn, hammerPiv.y + x * sn + y * c);
   };
   const xs = (x0, x1) => { const out = []; for (let i = 0; i <= 16; i++) out.push(x0 + (x1 - x0) * i / 16); return out; };
+  // TODO 267 — the LOWER wall is the round three-quarter plate's rim: the
+  // dropped root reaches under the plate's top, so on the round build it must
+  // stand in §198's annulus. A form plate runs to the outline and is OPENED
+  // round the strike group instead (TODO 266, cut at the re-cut from this very
+  // metal), so under FORM the root owes no circle; what it still owes is the
+  // collet it turns on — the cranked root (riser.at − T/2) must run past the
+  // collet's radius, which §268's collet assert holds, or the boss seats in
+  // the riser instead of the root and the rotor is not one body. The UPPER wall stays: the form case's depth is still
+  // derived through the round chain (CASE_DIMS' skirt arm and pane floor), so
+  // tall metal outboard of STRIKE_R_ALLOW would deepen the form case too.
   const ok = (ac) => {
+    if (FORM && !(ac - T / 2 > ALARM_HSPIRAL_COLLET_R)) return false;
     for (const th of thetas) {
       for (const x of xs(ac - T / 2, len)) for (const y of [-h, h]) if (!(rAt(x, y, th) < STRIKE_R_ALLOW)) return false;
-      for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
+      if (!FORM) for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
     }
     return true;
   };
@@ -29265,7 +29305,8 @@ const ALARM_TAIL_RISER = (() => {
     if (!ok((lo0 + hi0) / 2)) { lo0 = null; hi0 = null; }
   }
   if (lo0 === null) {
-    console.warn(`§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);
+    console.warn(FORM ? `§278/TODO 267: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and past the collet (r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}) below over the swing — the crank cannot be cut`
+      : `§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);
     return { at: ALARM_TAIL_BAR_LEN, window: null };
   }
   // The tall metal's reach: the riser's and the upper bar's outermost corner
@@ -29274,7 +29315,10 @@ const ALARM_TAIL_RISER = (() => {
   // the bin the envelope saw it in — so BACK_SWEPT_REGIONS declares that band
   // (the table's own case: a mover that migrates radially), or the glass's
   // step wall would stand one margin off the build pose and less off the blow.
-  const ac = (lo0 + hi0) / 2;
+  // the round build takes the window's middle; a form build its INBOARD end,
+  // the station nearest the post, because the plate is cut open round the root
+  // up to the riser (TODO 266) and the shortest root is the smallest opening
+  const ac = FORM ? lo0 : (lo0 + hi0) / 2;
   let build = 0, swept = 0;
   for (const th of [0, ...thetas]) for (const x of xs(ac - T / 2, len)) for (const y of [-h, h]) {
     const r = rAt(x, y, th);
@@ -30438,8 +30482,6 @@ const alarmMomentAt = (windTurns) => ALARM_GOV_K * (ALARM_SETUP_SWEEP + windTurn
 const ALARM_HSPIRAL_LIFT_SHARE = 0.9;
 const ALARM_HSPIRAL_B = ALARM_TAIL_T;
 const ALARM_HSPIRAL_STRAIN = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA;
-const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
-const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
 const ALARM_HSPIRAL_WIND = [-ALARM_STRIKE_AMP, ALARM_DRAW_RAD];
 const ALARM_HSPIRAL_RISE_ARC = ALARM_CAM_RISE_FRAC * ALARM_CAM_LOBE_PITCH;   // cam angle the rise occupies
 // the strike arbor's torque with the barrel at set-up: the ribbon's moment
@@ -30806,7 +30848,16 @@ registerSub('Alarm hammer', 'Hammer spring', alarmHammerSpiral);
   alarmHammerUnit.add(stud);
   registerSub('Alarm hammer', 'Spring stud', stud);
   const r = Math.hypot(ALARM_HSPIRAL_STUD.x, ALARM_HSPIRAL_STUD.y);
-  if (r - ALARM_HSPIRAL_STUD_R < R_ANNULUS_IN - 1e-9 || r + ALARM_HSPIRAL_STUD_R > R_ANNULUS_OUT + 1e-9)
+  // TODO 267 — the annulus is the ROUND case's room for the stud (§198: outside
+  // the three-quarter plate's rim, inside the bore). A form case has neither
+  // circle: the base plate runs to the outline and the three-quarter plate is
+  // opened round the strike group (TODO 266), so what the stud owes there is
+  // its own seat — its whole circle on the base plate, inside the outline.
+  if (FORM) {
+    const seat = FORM.inset(ALARM_HSPIRAL_STUD.x, ALARM_HSPIRAL_STUD.y) - ALARM_HSPIRAL_STUD_R;
+    if (seat < 0)
+      console.warn(`§268/TODO 267: the hammer spring's stud overhangs the ${FORM.kind} plate's outline by ${(-seat).toFixed(3)} — it has no plate to plant in`);
+  } else if (r - ALARM_HSPIRAL_STUD_R < R_ANNULUS_IN - 1e-9 || r + ALARM_HSPIRAL_STUD_R > R_ANNULUS_OUT + 1e-9)
     console.warn(`§268: the hammer spring's stud (r ${r.toFixed(3)}) leaves the annulus ${R_ANNULUS_IN.toFixed(3)}–${R_ANNULUS_OUT.toFixed(3)}`);
   // its section against the load it was sized from — achieved vs required
   const F = ALARM_HSPIRAL_STUD_F, Lc = ALARM_HSPIRAL_Z * OSC_U, dM = 2 * ALARM_HSPIRAL_STUD_R * Math.cos(Math.PI / 10) * OSC_U;
@@ -41724,10 +41775,9 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // cuts it: form-case.js's flush bore runs to the axis's exit from the OUTER
   // loop (tubeAt's `outerExit`, its own rayExit on its own formCaseLoops), so
   // the seat is read through that same law on that same loop — the circle's
-  // √(R_OUT² − off²) is the round band's exit and no other case's.
-  const ALARM_PUSH_SEAT_S = FORM
-    ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM).outer, [_pushU.x, _pushU.y], [_pushPerp.x * _pushOffAxis, _pushPerp.y * _pushOffAxis])
-    : Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - _pushOffAxis * _pushOffAxis)); // the tube's flat end, along the line from its foot
+  // √(R_OUT² − off²) is the round band's exit and no other case's. TODO 268
+  // made that law ONE function, `caseWallAlong`, read by both crown stems too.
+  const ALARM_PUSH_SEAT_S = caseWallAlong(_pushU, _pushOffAxis); // the tube's flat end, along the line from its foot
   const stemOuterS = ALARM_PUSH_SEAT_S - ALARM_SEAT_SINK + ALARM_PUSH_TRAVEL - _pushBaseS;
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
@@ -47519,6 +47569,66 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
   // its geometry replaced, so everything already parented to it — the chatons,
   // the bearing collars, the plate screws, §71's occluder (which shares this
   // very geometry, and is built below) — follows without being rebuilt.
+  // TODO 266 — THE STRIKE GROUP'S OPENING, on a form build. On the round
+  // build the hammer's staff, its cranked root and riser and the arm's crossing
+  // all stand in §198's annulus, outside this plate's rim; a form plate is cut
+  // to the case's outline and so runs straight through them (measured on the
+  // fitted rect before this: the staff from z −0.50 to 10.22 against a plate
+  // at 8.40–10.30, solid). So under FORM the plate is OPENED round exactly the
+  // hammer's metal that meets its band (one margin either side in z), over the
+  // hammer's whole swing (the law's angle runs in [−DRAW, +DRAW], so the group
+  // is sampled across that, both senses), the hull of it grown one margin in
+  // plan. Measured off the cut metal, so a re-sited hammer (§310's seats) moves
+  // the opening with it. The plate's own lands are held below: the opening must
+  // leave TQ_LAND_MIN to every bore, slot, window, pivot boss, the lifting
+  // lever's post and the outline, or it warns — a seat the opening reaches is a
+  // layout finding, not a land to be thinned.
+  if (FORM) {
+    const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
+    const keepRot = alarmHammerPivot.rotation.z, N = 12;
+    const meshes = []; alarmHammerUnit.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) meshes.push(o); });
+    const under = (o) => { for (let a = o; a; a = a.parent) if (a === alarmHammerPivot) return true; return false; };
+    for (let k = 0; k <= N; k++) {
+      await breathe(363);
+      alarmHammerPivot.rotation.z = -ALARM_DRAW_RAD + 2 * ALARM_DRAW_RAD * k / N;
+      alarmHammerUnit.updateWorldMatrix(true, true);
+      for (const o of meshes) {
+        if (k > 0 && !under(o)) continue;   // a static member is read once
+        const pa = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pa.count, m = o.matrixWorld, tri = [[], [], []];
+        for (let t = 0; t + 2 < n; t += 3) {
+          let lo = Infinity, hi = -Infinity;
+          for (let e = 0; e < 3; e++) { v.fromBufferAttribute(pa, idx ? idx.getX(t + e) : t + e).applyMatrix4(m); tri[e] = [v.x, v.y]; lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
+          if (hi < z0 || lo > z1) continue;
+          for (const [x, y] of tri) { xs.push(x); ys.push(y); }
+        }
+      }
+    }
+    alarmHammerPivot.rotation.z = keepRot;
+    alarmHammerUnit.updateWorldMatrix(true, true);
+    if (xs.length >= 3) {
+      // the hull, grown one margin: the hull of each vertex's margin circle
+      const h0 = convexHull2(xs, ys, xs.length), gx = [], gy = [];
+      for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + CLEAR_MARGIN * Math.cos(a * Math.PI / 12)); gy.push(y + CLEAR_MARGIN * Math.sin(a * Math.PI / 12)); }
+      const pts = convexHull2(gx, gy, gx.length).map(([x, y]) => [x, y]);
+      // the lands it owes: the edge's distance to each, against TQ_LAND_MIN
+      const edgeD = (x, y) => { let d = Infinity; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i], vx = bx - ax, vy = by - ay;
+        const t = clamp(((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1e-12), 0, 1); d = Math.min(d, Math.hypot(x - ax - t * vx, y - ay - t * vy)); }
+        let inside = true; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i]; if ((bx - ax) * (y - ay) - (by - ay) * (x - ax) < 0) inside = false; }
+        return inside ? -d : d; };
+      const lands = [];
+      for (const hh of tqHoles) lands.push({ what: `bore (${hh.x.toFixed(2)}, ${hh.y.toFixed(2)})`, d: edgeD(hh.x, hh.y) - hh.r });
+      for (const p of tqPivots) lands.push({ what: `pivot boss (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`, d: edgeD(p.x, p.y) - pivotBossR(p) });
+      for (const sl of tqSlots) for (let q = 0; q <= 8; q++) { const x = sl.ax + (sl.bx - sl.ax) * q / 8, y = sl.ay + (sl.by - sl.ay) * q / 8; lands.push({ what: 'slot', d: edgeD(x, y) - sl.r }); }
+      for (const w of TQ_WINDOWS.polys) for (const [x, y] of w.pts) lands.push({ what: `window '${w.name}'`, d: edgeD(x, y) });
+      lands.push({ what: 'the lifting lever\'s post', d: edgeD(LIFT_PIV.x, LIFT_PIV.y) - ALARM_LIFT_POST_R });
+      for (const [x, y] of pts) lands.push({ what: `the ${FORM.kind} outline`, d: FORM.inset(x, y) });
+      const worst = lands.reduce((a, b) => (b.d < a.d ? b : a), { d: Infinity });
+      STRIKE_PLATE_OPENING = Object.freeze({ pts, land: worst.d, landTo: worst.what, verts: xs.length });
+      if (worst.d < TQ_LAND_MIN - 1e-9)
+        console.warn(`TODO 266: the strike group's opening in the three-quarter plate leaves ${worst.d.toFixed(3)} of plate to ${worst.what} — need TQ_LAND_MIN ${TQ_LAND_MIN.toFixed(3)}; re-site the hammer (tools/gong-seats.mjs) rather than thin the land`);
+      tqPolyHoles.push({ name: 'strike group (TODO 266)', pts });
+    }
+  }
   await breathe(298);
   const next = buildTqPlateGeometry();
   await breathe(299);
@@ -60973,6 +61083,7 @@ window.__clock = {
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
   dialSpec: DIAL_SPEC,
   regions: FORM_REGIONS,
+  get strikePlateOpening() { return STRIKE_PLATE_OPENING; },   // TODO 266 — the strike group's opening in a form plate (null round)
   gongSeat: FORM ? Object.freeze({ pivot: { x: hammerPiv.x, y: hammerPiv.y }, mode: GONG_SEAT_MODE, seated: GONG_SEATED, refused: GONG_SEAT?.refused ?? null,
     row: GONG_SEAT?.row ?? null, strike: GONG_SEATED ? { s: GONG_SEAT.st.s, S: GONG_SEAT.st.S, F: GONG_SEAT.st.F, b: GONG_SEAT.st.b, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi } : null,
     check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2),

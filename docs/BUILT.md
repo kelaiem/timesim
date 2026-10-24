@@ -41943,6 +41943,17 @@ No arm, ratio, section, tolerance or waiver moved. The idlers are real parts but
 (any selector naming them would be unmatched on the default build), and no battery check was run on a form build
 (TODO 158).
 
+### §308 — TODO 268: the crowns stand on the form case's own wall
+
+The two crown stems were cut to `CASE_R_OUT`, the round band's radius, where §307 landing 2 had already
+cut the pusher's seat to the form case's outer loop. On the fitted tonneau the band on the winding stem's
+line stands 0.6 u past the circle (az 145°) and 12.0 u at az 130.7° (`?barrelstep=-49.3`), 1.5 u on the alarm
+stem's, and each knob stood in the band, its sleeve and its collar. `caseWallAlong(u, off)` in `main.js` is
+the one law for where the case's wall stands on a line — `CASE_R_OUT` on a round radial (the round build's
+fingerprint is byte-identical), the `outer` loop's `rayExit` under FORM — read by both stems and the pusher.
+`tools/probe-form-crowns.mjs` holds both knobs, pushed in and pulled out, to 0.5 mm of finger room past the
+collar and `CLEAR_MARGIN` off the band on every fitted case; TODO 268 has the measurements.
+
 ## §309 — LEGO parts list: substitute parts from Rebrickable, each judged by the model
 
 Owner: "suggest alternatives" for the LEGO parts, now that BrickLink stock is off the
@@ -42318,3 +42329,13 @@ strike group's staff and tail stand inside it. The probe reports it on every sea
 is at 10.22 against the plate's underside at 8.40. The spiral's way back runs through the same work:
 derive the strike group's round-annulus constraints from the form's own outline, which TODO 266's fix
 already has to do.
+
+**Since TODO 266/267.** The re-cut opens the form plate round the strike group: the hull of the
+hammer metal in the plate's band over the whole swing, one margin out, its land held to
+`TQ_LAND_MIN`. Under FORM, the crank's riser owes the collet rather than the round rim, and the stud
+owes the outline rather than the annulus. The probe now GATES the staff in the opening. The
+tonneau's seat above was refused by the land (1.007 to the bore at (32.49, 18.76)), and its
+regenerated seat moves the hammer 2.20 u, fit −45.16, 48.98, −45.46, 46.13; the rect and cushion
+rows are unchanged. Spirals now pass the crank and stud, and are refused by the land and by the
+impedance: the spiral's fundamental is its winding mode, which a blow across the free end barely
+drives (TODO 267 records the numbers).
