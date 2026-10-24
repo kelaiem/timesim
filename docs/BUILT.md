@@ -42318,3 +42318,13 @@ strike group's staff and tail stand inside it. The probe reports it on every sea
 is at 10.22 against the plate's underside at 8.40. The spiral's way back runs through the same work:
 derive the strike group's round-annulus constraints from the form's own outline, which TODO 266's fix
 already has to do.
+
+**Since TODO 266/267.** The re-cut opens the form plate round the strike group: the hull of the
+hammer metal in the plate's band over the whole swing, one margin out, its land held to
+`TQ_LAND_MIN`. Under FORM, the crank's riser owes the collet rather than the round rim, and the stud
+owes the outline rather than the annulus. The probe now GATES the staff in the opening. The
+tonneau's seat above was refused by the land (1.007 to the bore at (32.49, 18.76)), and its
+regenerated seat moves the hammer 2.20 u, fit −45.16, 48.98, −45.46, 46.13; the rect and cushion
+rows are unchanged. Spirals now pass the crank and stud, and are refused by the land and by the
+impedance: the spiral's fundamental is its winding mode, which a blow across the free end barely
+drives (TODO 267 records the numbers).

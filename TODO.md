@@ -34676,7 +34676,7 @@ within float noise, all six spec points swept full and clean, boot silent.
 Boot yield held the thread at 384 ms against its 550 ceiling. The residue
 above stays open as recorded, not as this item.
 
-## 266. Form builds: the strike group's staff and tail stand inside the three-quarter plate cut to the outline
+## 266. Form builds: the strike group's staff and tail stand inside the three-quarter plate cut to the outline — DONE
 
 **What is wrong.** On the round build the hammer's staff, its cranked tail
 and the lifting lever's far arm live in §198's annulus, outside the
@@ -34702,6 +34702,29 @@ tail's plane under the plate instead (the crank §278 landing 2 already cuts).
 That is a P3 position change, and the group's arms stay as they are. TODO 158's
 form-build battery is the instrument that would hold it. Until then,
 `probe-310-gong-seat` reports the staff's crossing and does not gate it.
+
+**Done (TODO 266/267's landing).** Under FORM, the late re-cut (§62/§201) now
+opens the three-quarter plate round exactly the hammer metal that meets the
+plate's band. It samples the hammer's pivot over the whole swing (−DRAW to
++DRAW, 13 poses), takes the convex hull of every triangle whose z meets the
+plate, and grows it one `CLEAR_MARGIN`. The opening is checked for land, under
+`TQ_LAND_MIN`, against every bore, pivot boss, slot, window, the lifting
+lever's post and the outline; under it the build warns, and the seat generator
+refuses that station. The round build never takes the branch (fingerprint
+955951544, boot silent). `probe-310-gong-seat` GATES it now: on each seat the
+staff leaves the plate's footprint and the opening holds the plate's own
+thickness in land.
+
+| Seat | Land | Against |
+|---|---|---|
+| rect bar | 4.388 | the outline |
+| cushion bar | 2.086 | bore (32.49, 18.76) |
+| tonneau bar | 2.081 | bore (32.49, 18.76) |
+
+The tonneau's §310 seat (pivot moved 0.84 u) left 1.007 to that bore, so the
+generator refused it. The next seat (moved 2.20 u, fit −45.16, 48.98, −45.46,
+46.13) keeps the land; rect and cushion are unchanged. The lower-the-tail
+fallback was not needed.
 
 ## 267. Form builds: derive the strike group's round-annulus constraints from the form's own outline
 
@@ -34736,3 +34759,33 @@ These are P3 position changes: the group's arms, tail, draw and stud geometry st
 **Done when.** `node tools/gong-seats.mjs --write` closes a spiral seat on at least one case.
 `tools/probe-310-gong-seat.mjs` then holds it: seated, its check clean, the strike line spec
 unforked, and no boot warning the arc build lacks. The round build's fingerprint is unchanged.
+
+**Status — the constraints are derived; the done-when is NOT met, for two reasons this item does not own.**
+Landed with TODO 266, under FORM only (the round build's expressions are untouched):
+- **The riser's floor.** It is no longer `R_ANNULUS_IN`. The root stands in TODO 266's opening, so
+  what it owes is the hammer's COLLET: the cranked root (`riser.at − T/2`) must run past
+  `ALARM_HSPIRAL_COLLET_R`, or the boss seats in the riser and §268's collet assert fires. The
+  first draft used one margin off the post. That left the root 0.750 long under a 0.8347 collet,
+  and the rect's seat stopped closing, which is how it was found. The station is the window's
+  INBOARD end, the smallest opening.
+- **The riser's ceiling.** It STAYS `STRIKE_R_ALLOW`, against the fix path above. The form case's
+  depth is still derived through the round chain (CASE_DIMS' skirt arm and pane floor), so tall
+  metal outboard of it would deepen the form case too.
+- **The stud's bound.** `FORM.inset(stud) − studR ≥ 0` replaces the annulus.
+
+Measured by `tools/gong-seats.mjs --write`, spirals now pass the crank and the stud on the rect and
+the tonneau (no riser or stud warning on any candidate). They are refused on two other grounds.
+On the cushion the lever still reaches none.
+- **TODO 266's land.** Every spiral station leaves 0.99–1.75 of plate to the bore at
+  (32.49, 18.76) or the governor's window, against 1.90.
+- **The impedance.** The §197 assert reads μ = 0.00. That is a measurement, not a bug: the
+  spiral's in-plane fundamental is its WINDING mode, whose free end moves along the wire. On the
+  rect's first candidate's plan (r 11 u, 4.5 u a turn, 80.5 u), normalised to the tip's normal,
+  its largest tangential displacement is 33 against a normal 7, and its modal
+  mass is 375× the straight bar's 0.25. A blow across the free end barely drives it. No station
+  fixes that. A spiral would need a strike that drives the winding mode: a blow along the wire's
+  tangent, or a station off the end.
+
+So `?gong=spiral` still refuses and keeps the arc. The impedance is a design question for the
+solver's spiral family, not a constraint this item derives. It stays open until a spiral seat
+closes or that family is retired.
