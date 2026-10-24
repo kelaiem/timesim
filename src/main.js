@@ -3782,6 +3782,26 @@ const CASE_R_OUT = CASE_WIDTH_MAX;
 // dress-watch wall the front keeps, and the gasket annulus keeps exactly
 // its old proportions inside it.
 const R_BORE_BACK = CASE_R_OUT - CASE_BAND_T;
+// TODO 268 — WHERE THE CASE'S OUTER WALL STANDS ON A LINE, one law for the three
+// through-case parts (the two crown stems and the pusher), which are cut to
+// reach THROUGH that wall and stand their knob a declared distance past it.
+// On the round case it is the circle: CASE_R_OUT on a radial, √(R² − off²) on
+// a chord `off` to one side. Under FORM (§307/§308) the band is no circle: its
+// outer wall is the plate's shape grown CASE_CLEAR + CASE_BAND_T — the `outer`
+// loop of form-case.js's formCaseLoops, the one makeFormCase cuts every tube's
+// outboard end on — and the wall on a line is that loop's exit along it
+// (rayExit, the same function on the same loop). §307 landing 2 read the
+// pusher's seat this way and left both crowns on CASE_R_OUT; measured on the
+// tonneau, the band on the winding stem's line stands 0.6 u (az 145°) to
+// 12.0 u (az 130.7°, the owner's ?barrelstep=-49.3) past the circle, and on
+// the alarm stem's 1.5 u, so the knobs cut to the circle stood in the band,
+// its sleeve and its collar (every crown mesh in contact at the boot pose).
+// The round branch returns CASE_R_OUT ITSELF on a radial, so the round build's
+// bytes do not move (the fingerprint holds that). `u` is the line's unit
+// direction, `off` the signed offset of its base to the left of it.
+const caseWallAlong = (u, off = 0) => FORM
+  ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM).outer, [u.x, u.y], [-u.y * off, u.x * off])
+  : off === 0 ? CASE_R_OUT : Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - off * off));
 // §186 — THE MOUNTING RIM the plate grows (the plate MESH alone: plateR is
 // the movement's working radius and fans out to dialRadius, R_IN, and every
 // station — growing it would move the dial, the case and the lugs at once).
@@ -6696,9 +6716,11 @@ const SQ_TOP = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + SLEEVE_TOP
   + CLEAR_MARGIN + MEASURED_MARGIN_BAND + SAW_FIT;
 // Backlog (watch case): the stem now reaches THROUGH the case band's tube —
 // the crown's base stands 2 mm outboard of the band's outer face (tube
-// collar plus finger room), so the length is cut to CASE_R_OUT, not the
+// collar plus finger room), so the length is cut to the case wall, not the
 // plate. The keyless throws are clutch-local and untouched by this.
-const stemLen = CASE_R_OUT + 2 / UNIT_MM + 0.7 - pinDist;
+// TODO 268 — the wall ON THE STEM'S OWN LINE (caseWallAlong): CASE_R_OUT on
+// the round case, the form case's outer loop along uWind under FORM.
+const stemLen = caseWallAlong(uWind) + 2 / UNIT_MM + 0.7 - pinDist;
 // Round shaft from the square's shoulder (a SAW_FIT weld into the square,
 // one turned piece modeled as two meshes) out to the crown; the bushing
 // sits ≈8+ units outboard of SQ_TOP at every pull, so the declared
@@ -21059,7 +21081,7 @@ const ALARM_BEVEL_MODULE = 0.24;
 // prefer; the difference is 8% of the radius and it is not the binding call.
 const ALARM_CROWN_BODY_H = 4.55;                     // §203/§41: matched to the winding crown, and the knob's own reach past the stem
 const ALARM_CROWN_BODY_INSET = 0.7;                  // the knob's inner face sits this far in from the stem's tip
-const ALARM_STEM_LEN = CASE_R_OUT + 2 / UNIT_MM + ALARM_CROWN_BODY_INSET - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
+const ALARM_STEM_LEN = caseWallAlong(alarmDir) + 2 / UNIT_MM + ALARM_CROWN_BODY_INSET - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem (TODO 268: the wall on the stem's own line — the form case's, under FORM)
 const ALARM_STEM_BAR = ALARM_STEM_LEN + ALARM_CROWN_BODY_H - ALARM_CROWN_BODY_INSET; // what the census clusters: stem + the knob past its tip
 // AND THE SECTION, at last. Two constraints bear on the radius and the LARGER
 // governs, the alarm pusher's rule (§234's first member) with the other term
@@ -41752,10 +41774,9 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // cuts it: form-case.js's flush bore runs to the axis's exit from the OUTER
   // loop (tubeAt's `outerExit`, its own rayExit on its own formCaseLoops), so
   // the seat is read through that same law on that same loop — the circle's
-  // √(R_OUT² − off²) is the round band's exit and no other case's.
-  const ALARM_PUSH_SEAT_S = FORM
-    ? FORM_CASE_MOD.rayExit(FORM_CASE_MOD.formCaseLoops(FORM).outer, [_pushU.x, _pushU.y], [_pushPerp.x * _pushOffAxis, _pushPerp.y * _pushOffAxis])
-    : Math.sqrt(Math.max(0, CASE_R_OUT * CASE_R_OUT - _pushOffAxis * _pushOffAxis)); // the tube's flat end, along the line from its foot
+  // √(R_OUT² − off²) is the round band's exit and no other case's. TODO 268
+  // made that law ONE function, `caseWallAlong`, read by both crown stems too.
+  const ALARM_PUSH_SEAT_S = caseWallAlong(_pushU, _pushOffAxis); // the tube's flat end, along the line from its foot
   const stemOuterS = ALARM_PUSH_SEAT_S - ALARM_SEAT_SINK + ALARM_PUSH_TRAVEL - _pushBaseS;
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);

@@ -41943,6 +41943,17 @@ No arm, ratio, section, tolerance or waiver moved. The idlers are real parts but
 (any selector naming them would be unmatched on the default build), and no battery check was run on a form build
 (TODO 158).
 
+### §308 — TODO 268: the crowns stand on the form case's own wall
+
+The two crown stems were cut to `CASE_R_OUT`, the round band's radius, where §307 landing 2 had already
+cut the pusher's seat to the form case's outer loop. On the fitted tonneau the band on the winding stem's
+line stands 0.6 u past the circle (az 145°) and 12.0 u at az 130.7° (`?barrelstep=-49.3`), 1.5 u on the alarm
+stem's, and each knob stood in the band, its sleeve and its collar. `caseWallAlong(u, off)` in `main.js` is
+the one law for where the case's wall stands on a line — `CASE_R_OUT` on a round radial (the round build's
+fingerprint is byte-identical), the `outer` loop's `rayExit` under FORM — read by both stems and the pusher.
+`tools/probe-form-crowns.mjs` holds both knobs, pushed in and pulled out, to 0.5 mm of finger room past the
+collar and `CLEAR_MARGIN` off the band on every fitted case; TODO 268 has the measurements.
+
 ## §309 — LEGO parts list: substitute parts from Rebrickable, each judged by the model
 
 Owner: "suggest alternatives" for the LEGO parts, now that BrickLink stock is off the
