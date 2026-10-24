@@ -202,6 +202,15 @@
     <label><span>Case metal</span><select data-pref="materials.caseMetal.alloy"></select></label>
     <label><span>Ruby colour</span><input type="color" data-pref="materials.ruby.color"></label>
     <label><span>Sapphire dial</span><input type="checkbox" data-pref="dial.plate.sapphire"></label>
+    <!-- §310: the case shape is a reload-tier spec (?case=), so choosing one
+         here reloads at once, carrying its fit (src/case-shape.js, the panel's
+         own rule); values are the canonical spec words. -->
+    <label><span>Case shape</span><select id="boot-case">
+      <option value="">Round</option>
+      <option value="rect">Rectangular</option>
+      <option value="cushion">Cushion</option>
+      <option value="tonneau">Tonneau</option>
+    </select></label>
     <label><span>Case</span><input type="checkbox" data-view="case" checked></label>
     <label><span>Wireframe view</span><input type="checkbox" data-view="wireframe"></label>
     <label><span>Plate X-ray</span><input type="checkbox" data-view="xray" checked></label>
@@ -408,6 +417,28 @@
       window.__bootPrefs[el.dataset.pref] = v;
       if (typeof window.__bootPrefsApply === 'function') window.__bootPrefsApply(el.dataset.pref, v);
     });
+    // §310 — the case shape. The select starts at the URL's own ?case= (the
+    // spec the build is cutting) and a change reloads through the panel's
+    // caseShapeSearch. layout.js is not loaded yet, so the seat's fit is taken
+    // only when the URL carries no other geometry-tier knob (the roster above):
+    // the seats were solved at the default knobs, and anything else reloads
+    // unfitted for the boot to print its formrect=.
+    // The module is fetched NOW, not on the click: while the build runs a
+    // freshly posted task waits behind its yields (§267's trap), so a click
+    // must find the promise already settled and continue on a microtask.
+    const caseSel = prefsEl.querySelector('#boot-case');
+    const caseShape = caseSel ? import('./src/case-shape.js') : null;
+    if (caseSel) {
+      const kind = new URLSearchParams(location.search).get('case');
+      caseSel.value = [...caseSel.options].some((o) => o.value === kind) ? kind : '';
+      caseSel.addEventListener('change', () => {
+        const here = new URLSearchParams(location.search);
+        const other = (globalThis.__WATCH_SPEC_KEYS || []).some((k) => !['case', 'formrect', 'gong'].includes(k) && here.has(k));
+        caseShape.then(({ caseShapeSearch }) => {
+          location.search = caseShapeSearch(location.search, caseSel.value, () => !other);
+        }).catch(() => {});
+      });
+    }
     for (const el of prefsEl.querySelectorAll('[data-view]')) el.addEventListener('change', () => {
       window.__bootView[el.dataset.view] = el.checked;
       if (typeof window.__bootViewApply === 'function') window.__bootViewApply(el.dataset.view, el.checked);
