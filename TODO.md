@@ -34790,6 +34790,7 @@ On the cushion the lever still reaches none.
 So `?gong=spiral` still refuses and keeps the arc. The impedance is a design question for the
 solver's spiral family, not a constraint this item derives. It stays open until a spiral seat
 closes or that family is retired.
+TODO 269 files the impedance half with its measurements and fix path (a blow along the tangent).
 
 ## 268. Form builds: the two crowns were cut to the round case's radius and stood in the band — DONE
 
@@ -34847,3 +34848,61 @@ form case (`windStem`, `alarmStem`, `alarmPusherStem` ⇄ `caseMiddle` read 0 �
 on the owner's URL `caseAlarmTubeSleeve ⇄ backPlate` reads 0.1414, under the
 margin, because that layout's plate reaches the alarm tube's inboard end (the
 §186 boot warning says so). Neither is this item's.
+
+## 269. Form builds: a spiral gong struck across its free end cannot drive its winding fundamental
+
+**What is wrong.** §310's spiral seat (`spiralInGen`, `?gong=spiral`) is struck the way every gong here
+is struck: at its free end, along the wire's normal (§198's Thales rule, §278's `blow` row). On a bar or
+an arc that blow drives the fundamental, whose free end moves across the wire. A spiral of a turn or
+more rings first in its WINDING mode, and there the free end moves ALONG the wire. Since TODO 267
+cleared the crank and the stud, every spiral the rect and the tonneau offer reaches the seated build
+and is refused by §197's impedance assert at μ = 0.00 (TODO 266's land also refuses most of them; that
+part is P3).
+
+**Measured** on `gong-solve.js`' own model, at the shipped wire (⌀ 2.9028 u). The first spiral
+`tools/gong-seats.mjs` offers on the rect (r 11 u, 4.5 u a turn, 80.5 u) reproduces its generated f₁ of
+3041 Hz. Every modal mass is at unit displacement in the direction struck; the bar is 0.25.
+
+| Plan (L, r₀, pitch) | f₁ | Across the free end | Best station across | Along the free end |
+|---|---|---|---|---|
+| 80.5, 11, 4.5 | 3041 Hz | 347 | 7.02 (0.32 L in) | 0.35 |
+| 60, 11, 4.5 | 3598 Hz | 30.9 | 4.75 | 0.50 |
+| 50, 14, 6 | 3058 Hz | 13.7 | 2.06 | 0.36 |
+| 40, 11, 4.5 | 4820 Hz | 18.0 | 2.10 | 0.36 |
+| 25, 11, 4.5 | 9794 Hz | 0.76 | 0.75 | — |
+
+At the free end the tangential displacement is 31.7× the normal on the first row, and 6–8× on the
+others.
+
+So a blow across the end of a true spiral meets 55–1400× the bar's modal mass. Moving the strike inboard still leaves
+8–28×. A plan short enough to ring flexurally at the end (a third of a turn) is an arc, not a spiral,
+and rings above §197's 4 kHz. Struck ALONG its tangent, the same spiral meets 0.35–0.50, the bar's
+order. No station on the lever's circle changes any of this: the blow's direction is set by the Thales
+rule, not by where the hammer stands.
+
+**Why no gate passed it.** None did. §197's assert refuses the seat, which is the gate working. The
+debt is that the solver's spiral family is offered at all with a blow that cannot drive it: it
+searches only the normal-blow geometry, so `?gong=spiral` always falls back to the arc.
+
+**Fix path.** Give the spiral family its own blow, along the tangent at the free end:
+- **The face meets the wire's END.** The head's travel at the blow is the wire's tangent, so the hammer
+  pivot lies on the wire's NORMAL line through the free end, still on the lever's circle
+  `|P − Q| = ρ`. That is the same root solve on a different line, in `leverHammer` / `seatStrike`.
+- **The contact.** A flat face on the wire's flat end is a cylinder's end against a plane, a linear
+  spring E*·d (the face's width does not enter). Rule 1: re-derive the contact time and the line
+  spec's `blow` row for it, with the end-face's normal as the strike normal (`userData.gongWire.blow`
+  already carries a direction; it becomes the tangent).
+- **The mode set.** The modes and the far field are unchanged, since the drive is now u at the free
+  end rather than w. The §310 acoustics reads the drive off the shape it is handed, so the record
+  needs the strike component named.
+- **The end, finished square** to a face (P1: the wire's end must be cut flat, not left as a
+  hemisphere).
+
+Bars and arcs keep the normal blow; the family picks the blow its fundamental takes. If no spiral
+then closes on the land (TODO 266), that is P3 and moves the station, never the blow.
+
+**Done when.** `node tools/gong-seats.mjs --write` closes a spiral seat on at least one case, with
+§197's μ inside 0.4–2.5. `tools/probe-310-gong-seat.mjs` holds it like a bar seat (seated, check
+clean, the strike line spec unforked or a declared fork citing this item, no new boot warning), and a
+control strikes the same spiral across its end and watches μ fall out of the band. TODO 267's open
+remainder closes with it.
