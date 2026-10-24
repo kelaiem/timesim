@@ -28352,7 +28352,7 @@ const gongSeatShapes = ({ roots, S, L_m, d_m }) => roots.map((g) => {
 });
 let GONG_SEAT_MODES = null, GONG_SEAT_MODES_OUT = null;
 if (GONG_SEATED) {
-  const run = async (it) => { for (;;) { const r = it.next(); if (r.done) return r.value; await breathe(); } };
+  const run = async (it) => { for (;;) { const r = it.next(); if (r.done) return r.value; await breathe(362); } };
   GONG_SEAT_MODES = gongSeatShapes(await run(gongSeatModeSteps('in', 8, 1.1 * GONG_MODE_BL[4])));
   GONG_SEAT_MODES_OUT = (await run(gongSeatModeSteps('out', 3, 9))).roots.map((g) => GS.hz(g, gongDevLen(), 2 * GONG_WIRE_R * OSC_U));
   // the build's own solve must be the generator's (same model, same seat)
