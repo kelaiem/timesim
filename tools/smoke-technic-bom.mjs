@@ -19,6 +19,8 @@
 //     re-lists it (its own total, no 7785 or 7861);
 //   · CSV — the download is the list: its quantities sum to the total and it
 //     carries the modelled-not-built note;
+//   · ALTERNATIVES (BUILT §309) — every line shows exactly the pure module's
+//     alternatives and its "substitutes judged" summary, and the CSV's column is them;
 //   · WANTED (BUILT §306) — for row 2 and the fusee, the BrickLink wanted-list
 //     download is byte for byte `wantedListXml` computed here, at condition any and
 //     after choosing new, and the list carries its not-checked-against-stock note;
@@ -132,9 +134,14 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
     const w = wantCell('technic_2026', s.cell);
     const text = await page.evaluate((c) => document.querySelector(`details.bom[data-cell="${c}"] .bom-body`).innerText, s.cell);
     ok(new RegExp(`\\b${w.bom.total} parts in ${w.bom.lines.length} lines`).test(text), `${s.cell}: the list does not say "${w.bom.total} parts in ${w.bom.lines.length} lines"`);
-    const lines = await page.evaluate((c) => [...document.querySelectorAll(`details.bom[data-cell="${c}"] .bom-line`)].map((l) => ({ part: l.dataset.part, colour: Number(l.dataset.colour), qty: Number(l.dataset.qty) })), s.cell);
+    const lines = await page.evaluate((c) => [...document.querySelectorAll(`details.bom[data-cell="${c}"] .bom-line`)].map((l) => ({ part: l.dataset.part, colour: Number(l.dataset.colour), qty: Number(l.dataset.qty), alts: [...l.querySelectorAll('.alt')].map((a) => a.textContent), judged: l.querySelector('.alt-judged')?.textContent ?? null })), s.cell);
     ok(lines.length === w.bom.lines.length && lines.every((l, k) => l.part === w.bom.lines[k].part && l.colour === w.bom.lines[k].colour && l.qty === w.bom.lines[k].qty), `${s.cell}: the listed lines are not the pure module's`);
     ok(lines.reduce((n, l) => n + l.qty, 0) === w.bom.total, `${s.cell}: listed quantities do not sum to the total`);
+    // BUILT §309: each line shows exactly the pure module's alternatives and its judged summary
+    ok(lines.every((l, k) => l.alts.join('|') === w.bom.lines[k].alternatives.map((a) => `alternative: ${a}`).join('|')
+      && l.judged === (w.bom.lines[k].substitutes.candidates ? `substitutes judged: ${w.bom.lines[k].alternativesJudged}` : null)), `${s.cell}: the alternatives shown are not the pure module's`);
+    const nAlt = lines.reduce((n, l) => n + l.alts.length, 0);
+    if (nAlt) console.log(`  ${s.cell}: ${nAlt} alternative(s) shown on ${lines.filter((l) => l.alts.length).length} line(s)`);
     // §304: each list links its build's booklet, in the generation the list is for
     const bk = await page.evaluate((c) => document.querySelector(`details.bom[data-cell="${c}"] a[data-booklet]`)?.getAttribute('href') ?? null, s.cell);
     ok(bk === `./booklet.html?cell=${encodeURIComponent(s.cell)}&gen=technic_2026`, `${s.cell}: the list's booklet link is ${bk}`);
@@ -155,7 +162,8 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
       const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`details.bom[data-cell="${s.cell}"] a[data-csv]`)]);
       const csv = B.parseCsv(readFileSync(await dl.path(), 'utf8')), head = csv[0], q = head.indexOf('quantity');
       const blank = csv.findIndex((r) => r.length === 1 && r[0] === '');
-      ok(dl.suggestedFilename() === `technic_2026-${s.cell}.csv` && csv.slice(1, blank).reduce((n, r) => n + Number(r[q]), 0) === w.bom.total && csv.some((r) => r[0] === 'note' && /^Modelled, not built\./.test(r[1])), `${s.cell}: the downloaded CSV is not the list (${dl.suggestedFilename()})`);
+      ok(dl.suggestedFilename() === `technic_2026-${s.cell}.csv` && csv.slice(1, blank).reduce((n, r) => n + Number(r[q]), 0) === w.bom.total
+        && csv.slice(1, blank).every((r, k) => r[head.indexOf('alternatives')] === w.bom.lines[k].alternatives.join(' | ')) && csv.some((r) => r[0] === 'note' && /^Modelled, not built\./.test(r[1])), `${s.cell}: the downloaded CSV is not the list (${dl.suggestedFilename()})`);
     }
     // BUILT §306: the BrickLink wanted list is the pure function's XML, byte for byte, at any and at new
     if (s.cell === 'fusee' || s.cell === 'row-2') {

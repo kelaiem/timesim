@@ -79,6 +79,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import { CATALOGUES } from '../src/layout.js';
 import { LEGO_DIM_MM as D, GEAR_TIP_MM } from '../src/technic-frame.js';
 import { placedParts, toLdr, surfaceSamples } from '../src/technic-ldraw.js';
@@ -91,8 +92,7 @@ import {
 } from '../src/technic-fusee.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PACK = readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8');
-const lib = parseLibrary(PACK);
+const { lib, text: PACK } = loadPack({ text: true });   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 const L = (mm) => mm / LDU_MM;
 const B = (p) => bounds(lib, `${p}.dat`);
 const deg = (r) => (r * 180 / Math.PI).toFixed(2);

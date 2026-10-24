@@ -43,6 +43,7 @@ import { walk } from './ldraw.js';
 import { frameFork, frameKeyless } from './technic-frame.js';
 import { ldrawBuild, placedParts, LDRAW_COLOUR } from './technic-ldraw.js';
 import { colourOf } from './technic-colour.js';
+import { substitutesFor, alternativeText, judgedText, sameItemWarnings, SUBSTITUTE_HONESTY } from './technic-substitutes.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from './technic-alarm.js';
 import { frameEscapement, escapementBuild } from './technic-escapement.js';
@@ -182,7 +183,7 @@ export const honestyFor = (kind, lines) => [HONESTY.modelled, ...(['fusee', 'ala
   ...(['alarm', 'escapement'].includes(kind) ? [HONESTY.analogue] : []),
   ...(lines.some((l) => l.status === 'unofficial') ? [HONESTY.unofficial] : []),
   ...(lines.some((l) => l.purchase.basis === 'unverified') ? [HONESTY.unverified] : []),
-  HONESTY.colour, HONESTY.attribution];
+  HONESTY.colour, ...(lines.some((l) => l.substitutes?.candidates) ? [SUBSTITUTE_HONESTY] : []), HONESTY.attribution];
 
 // ---------------------------------------------------------------------------
 // THE FOLD. Placements to quantity per (id, colour). The colour is the role's;
@@ -210,14 +211,14 @@ const cmpId = (a, b) => (parseInt(a, 10) - parseInt(b, 10)) || (a < b ? -1 : a >
 
 // A build's BOM: its modes folded separately (they must agree), the first one's
 // lines enriched from the pack and the table.
-export function bomOf(build, lib, { table = PART_TABLE, colours = LDRAW_COLOUR } = {}) {
+export function bomOf(build, lib, { table = PART_TABLE, colours = LDRAW_COLOUR, cell = null } = {}) {
   const modes = build.modes?.length ? build.modes : [undefined];
   const string = build.cord?.string ?? null;
   const per = modes.map((m) => ({ mode: m, placements: placedParts(build, 0, m).length, ...foldParts(placedParts(build, 0, m), { string, colours }) }));
   const sig = (f) => f.lines.map((l) => `${l.part}|${l.colour}|${l.qty}`).join(',');
   const modesAgree = per.every((f) => sig(f) === sig(per[0]));
   const base = per[0];
-  const lines = base.lines.map((l) => describeLine(l, lib, table));
+  const lines = base.lines.map((l) => describeLine(l, lib, table, cell));
   const total = lines.reduce((n, l) => n + l.qty, 0);
   return { key: build.key, gen: build.gen, modes: modes.filter(Boolean), modesAgree, placements: base.placements, cordPlacements: base.cordPlacements,
     total, lines, perMode: per.map((f) => ({ mode: f.mode, placements: f.placements, total: f.lines.reduce((n, l) => n + l.qty, 0) })),
@@ -225,7 +226,7 @@ export function bomOf(build, lib, { table = PART_TABLE, colours = LDRAW_COLOUR }
     colours: [...new Set(lines.map((l) => l.colour))].sort((a, b) => a - b) };
 }
 
-function describeLine(l, lib, table) {
+function describeLine(l, lib, table, cell = null) {
   const info = packInfo(lib, l.part), r = table[l.part], src = r && SOURCES[r.basis];
   const purchase = { id: r?.purchase ?? l.part, basis: r?.basis ?? 'unverified', source: src?.text ?? SOURCES.unverified.text,
     date: r?.basis === 'bricklink' ? SOURCES.bricklink.date : r?.basis === 'catalogue' ? SOURCES.catalogue.date : r?.basis === 'ldraw-keyword' ? (info?.updated ?? null) : null,
@@ -244,9 +245,13 @@ function describeLine(l, lib, table) {
   if (info?.status === 'mould-variant') flags.push(info.aliasOf ? `mould variant: ${l.part} is an alias of ${info.aliasOf}` : 'mould variant: the purchase id may differ from the LDraw id');
   if (purchase.basis === 'unverified') flags.push('purchase id not yet verified');
   if (purchase.basis === 'ldraw-keyword') flags.push(`purchase id from the LDraw header${purchase.differs ? ` (${purchase.id}, not ${l.part})` : ''}, not checked against a catalogue`);
+  // BUILT §309: the substitutes Rebrickable offers for this part, as the model judged them
+  const substitutes = substitutesFor(l.part, l.colour, cell);
+  flags.push(...sameItemWarnings(substitutes));
   if (l.string) flags.push(`one string of ${l.string.studs} studs, ${l.string.length} mm between the end studs, of which ${l.string.dead.toFixed(1)} mm lies dead on the barrel`);
   return { ...l, title: info?.title ?? null, org: info?.org ?? null, status: info?.status ?? null, aliasOf: info?.aliasOf ?? null,
-    colourName: COLOUR_INFO[l.colour]?.name ?? null, hex: COLOUR_INFO[l.colour]?.hex ?? null, purchase, bricklink, only2026, flags };
+    colourName: COLOUR_INFO[l.colour]?.name ?? null, hex: COLOUR_INFO[l.colour]?.hex ?? null, purchase, bricklink, only2026, flags,
+    substitutes, alternatives: substitutes.passed.map((s) => alternativeText(s, l)), alternativesJudged: judgedText(substitutes) };
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +287,7 @@ export function buildOf(lib, gen, cell) {
 // one cell's BOM for one generation (null build -> bom null, with the reason)
 export function bomForCell(lib, gen, cell, { table = PART_TABLE } = {}) {
   const c = buildOf(lib, gen, cell);
-  return { cell: c.cell, kind: c.kind, title: c.title, reason: c.reason, bom: c.build ? bomOf(c.build, lib, { table }) : null };
+  return { cell: c.cell, kind: c.kind, title: c.title, reason: c.reason, bom: c.build ? bomOf(c.build, lib, { table, cell: c.cell }) : null };
 }
 // Every BOM for both generations (the probe's; the page asks per cell).
 export function allBoms(lib, { table = PART_TABLE } = {}) {
@@ -322,12 +327,12 @@ export const idsOf = (all) => [...new Set(Object.values(all).flatMap((cells) => 
 // CSV. RFC 4180: a field with a comma, quote or newline is quoted and its
 // quotes doubled. The parts table first, then a blank line and the notes, so
 // the honesty text travels with the file.
-export const CSV_COLUMNS = ['build', 'generation', 'ldraw_id', 'title', 'colour_code', 'colour', 'quantity', 'purchase_id', 'purchase_id_basis', 'bricklink_colour_id', 'bricklink_colour', 'bricklink_listed', 'bricklink_elements', 'part_status', 'flags'];
+export const CSV_COLUMNS = ['build', 'generation', 'ldraw_id', 'title', 'colour_code', 'colour', 'quantity', 'purchase_id', 'purchase_id_basis', 'bricklink_colour_id', 'bricklink_colour', 'bricklink_listed', 'bricklink_elements', 'part_status', 'flags', 'alternatives', 'alternatives_judged'];
 const csvField = (v) => { const s = v === null || v === undefined ? '' : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 export function bomCsv(cell, gen) {
   const b = cell.bom, out = [CSV_COLUMNS.join(',')];
   for (const l of b.lines)
-    out.push([cell.title, gen, l.part, l.title, l.colour, l.colourName, l.qty, l.purchase.id, l.purchase.basis, l.bricklink?.colourId, l.bricklink?.colour, l.bricklink ? (l.bricklink.listed ? 'yes' : 'no') : '', l.bricklink?.elements.join(' '), l.status ?? 'string', l.flags.join('; ')].map(csvField).join(','));
+    out.push([cell.title, gen, l.part, l.title, l.colour, l.colourName, l.qty, l.purchase.id, l.purchase.basis, l.bricklink?.colourId, l.bricklink?.colour, l.bricklink ? (l.bricklink.listed ? 'yes' : 'no') : '', l.bricklink?.elements.join(' '), l.status ?? 'string', l.flags.join('; '), l.alternatives.join(' | '), l.alternativesJudged].map(csvField).join(','));
   out.push('', ['kind', 'text'].join(','));
   out.push(['total', `${b.total} physical parts in ${b.lines.length} lines (${b.placements} placements${b.cordPlacements ? `, of which ${b.cordPlacements} are the cord's pieces, bought as one string` : ''})`].map(csvField).join(','));
   for (const n of NOT_IN_MODEL[cell.kind]) out.push(['not in the model', `${n.item}: ${n.quantity}. ${n.why}`].map(csvField).join(','));

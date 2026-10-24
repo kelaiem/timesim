@@ -82,6 +82,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import {
   TECHNIC_FUSEE_SPRING, FUSEE_DIM_MM, solveFusee, frameFusee, fuseeBuild, cordPath, cordPlacements, pathLength, spanTangent,
   bandMoment, MAINTAINING, clickSpec, detentSpec, pawlLock, pawlModel, coneTurnTotal, runState, paidAtTurn,
@@ -91,7 +92,7 @@ import {
 import { toothPhase } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
+const lib = loadPack();   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 const deg = (r) => (r * 180 / Math.PI).toFixed(2);
 let fails = 0;
 const fail = (msg) => { fails++; console.log(`  ✗ ${msg}`); };

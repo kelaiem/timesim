@@ -247,7 +247,7 @@ export async function startBooklet({ params, libUrl }) {
   say('deriving the steps…');
   await new Promise((r) => setTimeout(r, 0));
   const plan = deriveSteps(built.build, { lib, mode });
-  const bom = B.bomOf(built.build, lib);
+  const bom = B.bomOf(built.build, lib, { cell });   // BUILT §309: the line's substitutes are judged per build
   // BUILT §306: the build's BrickLink wanted list (condition any), the same function technic.html's list offers
   const wanted = document.getElementById('wanted');
   if (wanted) {
