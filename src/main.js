@@ -28400,6 +28400,11 @@ movement.add(alarmHammerUnit);
 registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
 const HAMMER_POST_R = 0.6;
+// §268: the hammer's COLLET, bored the running fit over the post with a pivot
+// floor of wall. Declared beside the post because the crank's riser (TODO 267)
+// must leave its cranked root long enough to cover it.
+const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
+const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
 const HAMMER_POST_BOT = GONG_RIM_Z - GONG_RIM_PLANT;
 // §278 landing 2 — the staff stops at the CRANKED tail's plane, ALARM_TAIL_DROP
 // under the lever's: the tail's root rides there, outboard of the aperture.
@@ -29243,12 +29248,13 @@ const ALARM_TAIL_RISER = (() => {
   // stand in §198's annulus. A form plate runs to the outline and is OPENED
   // round the strike group instead (TODO 266, cut at the re-cut from this very
   // metal), so under FORM the root owes no circle; what it still owes is the
-  // static post it turns about — the riser's inner face one margin off the
-  // post's own radius. The UPPER wall stays: the form case's depth is still
+  // collet it turns on — the cranked root (riser.at − T/2) must run past the
+  // collet's radius, which §268's collet assert holds, or the boss seats in
+  // the riser instead of the root and the rotor is not one body. The UPPER wall stays: the form case's depth is still
   // derived through the round chain (CASE_DIMS' skirt arm and pane floor), so
   // tall metal outboard of STRIKE_R_ALLOW would deepen the form case too.
   const ok = (ac) => {
-    if (FORM && ac - T / 2 < HAMMER_POST_R + CLEAR_MARGIN) return false;
+    if (FORM && !(ac - T / 2 > ALARM_HSPIRAL_COLLET_R)) return false;
     for (const th of thetas) {
       for (const x of xs(ac - T / 2, len)) for (const y of [-h, h]) if (!(rAt(x, y, th) < STRIKE_R_ALLOW)) return false;
       if (!FORM) for (const x of xs(0, ac + T / 2)) for (const y of [-h, h]) if (!(rAt(x, y, th) >= R_ANNULUS_IN)) return false;
@@ -29276,7 +29282,7 @@ const ALARM_TAIL_RISER = (() => {
     if (!ok((lo0 + hi0) / 2)) { lo0 = null; hi0 = null; }
   }
   if (lo0 === null) {
-    console.warn(FORM ? `§278/TODO 267: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and one margin off the post below over the swing — the crank cannot be cut`
+    console.warn(FORM ? `§278/TODO 267: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and past the collet (r ${ALARM_HSPIRAL_COLLET_R.toFixed(4)}) below over the swing — the crank cannot be cut`
       : `§278: no riser station on the hammer's tail stands inside r ${STRIKE_R_ALLOW.toFixed(4)} above and outside r ${R_ANNULUS_IN.toFixed(4)} below over the swing — the crank cannot be cut`);
     return { at: ALARM_TAIL_BAR_LEN, window: null };
   }
@@ -30453,8 +30459,6 @@ const alarmMomentAt = (windTurns) => ALARM_GOV_K * (ALARM_SETUP_SWEEP + windTurn
 const ALARM_HSPIRAL_LIFT_SHARE = 0.9;
 const ALARM_HSPIRAL_B = ALARM_TAIL_T;
 const ALARM_HSPIRAL_STRAIN = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA;
-const ALARM_HSPIRAL_COLLET_BORE = HAMMER_POST_R + PIVOT_BORE_CLEAR;
-const ALARM_HSPIRAL_COLLET_R = ALARM_HSPIRAL_COLLET_BORE + PIVOT_MIN_U;
 const ALARM_HSPIRAL_WIND = [-ALARM_STRIKE_AMP, ALARM_DRAW_RAD];
 const ALARM_HSPIRAL_RISE_ARC = ALARM_CAM_RISE_FRAC * ALARM_CAM_LOBE_PITCH;   // cam angle the rise occupies
 // the strike arbor's torque with the barrel at set-up: the ribbon's moment
