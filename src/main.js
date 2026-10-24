@@ -28127,13 +28127,17 @@ const GONG_BAND_FLOOR = await (async () => {
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   let top = GONG_RIM_Z;                       // the rim's own face is the floor of last resort
   let owner = 'base plate rim';
-  // §310 landing 2 — on a seat the swath is the annulus's own width carried
-  // along the wire (a quarter-unit grid of the cells within it), not a sector.
+  // §310 landing 2 — on a seat the swath is what stands over the floor: the
+  // wire's own need (its radius and the margin) along it, and round the strike
+  // the room the solver gave the head (4.5 u, its room test's reach) — a
+  // quarter-unit grid of those cells, not a sector of the round annulus.
   const swathGrid = GONG_SEATED ? (() => {
-    const w = rHi - rLo, RES = 0.25; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const [x, y] of GONG_SEAT_PTS) { x0 = Math.min(x0, x - w); x1 = Math.max(x1, x + w); y0 = Math.min(y0, y - w); y1 = Math.max(y1, y + w); }
+    const RES = 0.25, need = GONG_WIRE_R + CLEAR_MARGIN, headRoom = 4.5, S = GONG_SEAT.st.S;
+    const disks = [...GONG_SEAT_PTS.map(([x, y]) => [x, y, need]), [S.x, S.y, headRoom]];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y, w] of disks) { x0 = Math.min(x0, x - w); x1 = Math.max(x1, x + w); y0 = Math.min(y0, y - w); y1 = Math.max(y1, y + w); }
     const W = Math.ceil((x1 - x0) / RES) + 1, H = Math.ceil((y1 - y0) / RES) + 1, cell = new Uint8Array(W * H);
-    for (const [x, y] of GONG_SEAT_PTS) for (let j = Math.floor((y - w - y0) / RES); j <= Math.ceil((y + w - y0) / RES); j++)
+    for (const [x, y, w] of disks) for (let j = Math.floor((y - w - y0) / RES); j <= Math.ceil((y + w - y0) / RES); j++)
       for (let i = Math.floor((x - w - x0) / RES); i <= Math.ceil((x + w - x0) / RES); i++)
         if (i >= 0 && j >= 0 && i < W && j < H && Math.hypot(x0 + i * RES - x, y0 + j * RES - y) <= w) cell[j * W + i] = 1;
     return (p) => { const i = Math.round((p.x - x0) / RES), j = Math.round((p.y - y0) / RES); return i >= 0 && j >= 0 && i < W && j < H && cell[j * W + i] === 1; };
