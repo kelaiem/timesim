@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 265 | OPEN | Found bumping Playwright (#762). The same source (`abcceb8`) built on the same host under Chromium 156 instead of 141 gives a different fingerprint (`955951544` → `4180065205`), 12 fewer triangles, and fails `lineSpec` on four alarm-strike rows by up to 0.0028 u against 1e-6. A JS engine moves `Math.*` by ULPs, so a build step amplifies float noise ~10¹³×. Reproduced bit-identically on current `main` on hosted x64 (#772), so it is a pure function of the JS engine. The §152 digests name seven candidate units (Alarm release crank, Alarm striking wheel, Alarm winding arrest, Center wheel, Dial, Fusee & great wheel, Three-quarter plate). Find the step they share, make it well-conditioned so both browsers build the spec, then land the bump and un-pin the browser jobs from `ubuntu-24.04` (#766) |
+| 265 | DONE | The alarm cam's outline wrote two seams per lobe twice, each equal in algebra but computed two ways (one through `atan2`), so the engine's last ULP decided which copies three.js kept; the survivors moved the vertex mean `lineSpec` reads the axis by ~3e-3, and 141 passed only because its two cancelled. #775 writes each seam once (boot-guarded; `probe-265-ulp.mjs` nudges `atan2` per input and its control restores the doubles), and #777 landed Playwright 1.64.1 with the browser jobs back on `ubuntu-latest`: 57/57 on 26.04 / Chromium 156. Residue, recorded in the item: the same doubled seams in 60 other shapes (fingerprint only, no verdict) and three boot asserts that sit on a threshold under a full `Math` nudge |
 | 264 | DONE | §305 cleared both of §302's inventories at their roots: six placed-pose overlaps (the escapement's bob hung in front of the front knife and the balance re-solved, T 1.00175 s; the keyless stem as two axles in the joiner's stop; a long axle's overhang placed where it meets nothing; the fusee detent re-solved over the baseplate) and 27 flagged insertion steps (the fusee cone ends at its metal; parts shut by their own group held in the gap; a pin's lip measured as its press; pins in a held part and the alarm disc's beams as units; no gear lowered between two meshes; the escape arbor lowered beside its bricks). Both inventories empty and closed. |
 | 263 | DONE | Brushed steel rendered its grain a quarter turn off: `installBrush` handed three the GRAIN as `anisotropyT`, and three's GGX is rougher along T, so highlights stretched along the grain. The shader now names the grain per surface (a flat's `brushAngleDeg`, the midcase flank's vertical, every other flank's circumferential) and hands three T = n × grain. `probe-263-brush-axis.mjs`: axis 90.0° at grain 0°, 0.0° at grain 90°, elongation 3.24, polished control 1.00; the old shader reads the axis along the grain and fails |
 | 260 | DONE | The ramp's climb out of the notch loaded the disc as hard as its seat could hold it (1.00× where the hold is sized to 3×, and under 1 at a kinder friction). The ramp is longer now and its length is SOLVED, not chosen: the seat's pad at its blade's strain cap (0.9 of the stock's) holds a climb of 5.29 mN at the headroom, which is a slope of 4.40° and a run of 0.4257 rad (48.8 min of hour each side); the tick's drop law is `ALARM_DETECTOR_LAWS.dropAt`. Hold ÷ climb 3.000 by construction, asserted at boot and in `probe-144-set-hold`. The hold is priced at every friction corner (2.55× / 2.76× / 3.00×, decoupled worst 1.80×, never under 1) and the hour train carries the climb at 0.27% of the centre arbor's torque. Not priced: the cannon pinion's friction fit (the model declares no slip torque) and the tooth load on the minute pinion ⇄ hour wheel mesh. |
@@ -34544,7 +34544,7 @@ unchanged, and no row was deleted without its geometry clearing.
   escape arbor is lowered beside its bricks with its wheel and slid 20.4 mm
   through them, and arms in a sub-assembly go on in order along their axle.
 
-## 265. Chromium 156 builds different alarm-strike metal from the same source: an ill-conditioned build step
+## 265. Chromium 156 builds different alarm-strike metal from the same source: an ill-conditioned build step — DONE
 
 Found bumping Playwright 1.56.1 → 1.64.1 (#762), which GitHub's move of
 `ubuntu-latest` to Ubuntu 26.04 forced: 1.56.1 cannot install Chromium there.
@@ -34669,3 +34669,9 @@ in both runs. Step 3 still owes Chromium 156 itself, which only CI can run.
 the doubled seams in the 60 other shapes, which move no verdict. The bump to
 1.64.1 and the return of the six browser jobs to `ubuntu-latest` follow in one
 PR. The item closes when that PR's battery is green on 26.04.
+
+**Closed by #777.** Its battery ran whole on hosted `ubuntu-latest` (26.04)
+with Playwright 1.64.1 / Chromium 156: 57/57 gates, `lineSpec` 120 rows
+within float noise, all six spec points swept full and clean, boot silent.
+Boot yield held the thread at 384 ms against its 550 ceiling. The residue
+above stays open as recorded, not as this item.
