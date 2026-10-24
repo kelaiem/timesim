@@ -50,9 +50,11 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
     `chord sum ${L.toFixed(9)} of ${c.L}`);
 }
 {
-  const lever = { Q: { x: 31.4578, y: 15.343 }, rho: 13.0096, tanLen: 7.2793, side: 1, gap: 0.4 }, wireR = 1.4514;
-  const curve = GS.seatCurve({ type: 'line', sx: 44.6, sy: 30, th: -Math.PI / 2, L: 60 });
-  const st = GS.seatStrike(curve, lever, wireR, 1, 15);
+  // the lever as the build stands it (STRIKE_REF.piv at r 35, az 26°; ρ = |(13, 0.5)|; tanLen = √(arm² − 0.6²)),
+  // on a vertical bar its circle crosses at two points ~18.7 u apart
+  const lever = { Q: { x: 31.457791620470847, y: 15.34299013761771 }, rho: Math.hypot(13, 0.5), tanLen: 7.279256431577741, side: 1, gap: 0.4 }, wireR = 1.4514;
+  const curve = GS.seatCurve({ type: 'line', sx: 44, sy: 30, th: -Math.PI / 2, L: 60 });
+  const st = GS.seatStrike(curve, lever, wireR, -1, 12);
   const off = st && Math.hypot(st.F.x - st.S.x, st.F.y - st.S.y) - wireR;
   ok('P2 strike solve: pivot on the lever circle, face one gap off the wire', !!st && Math.abs(Math.hypot(st.P.x - lever.Q.x, st.P.y - lever.Q.y) - lever.rho) < 1e-9
     && Math.abs(off - lever.gap) < 1e-12 && Math.abs(st.b.x * st.n.x + st.b.y * st.n.y + 1) < 1e-12,
@@ -82,7 +84,8 @@ const srv = createServer(async (req, res) => {
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
   '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
-const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL/i;
+// (a 404 is this static server declining dev_server.py's /__state endpoint, which the page falls back from)
+const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL|Failed to load resource: the server responded with a status of 404/i;
 const boot = async (q, fn) => {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } }), page = await ctx.newPage(), warnings = [];
   page.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !NOISE.test(m.text())) warnings.push(m.text()); });
