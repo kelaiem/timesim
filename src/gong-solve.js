@@ -134,6 +134,17 @@ export const arcGen = (x, y, th, k) => (s) => Math.abs(k) < 1e-9 ? [x + s * Math
 export const spiralFootGen = (cx, cy, rf, a0, dir, p) => { const b = p / (2 * Math.PI), H = 0.05; const cache = [[cx + rf * Math.cos(a0), cy + rf * Math.sin(a0)]]; let ph = 0, r = rf, acc = 0;
   return (s) => { while (acc < s) { const dph = H / Math.hypot(r, b); ph += dph; r += b * dph; acc += H; if (ph > 6 * Math.PI) return null; cache.push([cx + r * Math.cos(a0 + dir * ph), cy + r * Math.sin(a0 + dir * ph)]); }
     return cache[Math.min(cache.length - 1, Math.round(s / H))]; }; };
+// §310 landing 2 — an Archimedean spiral that STARTS at a point (sx, sy) on heading th and winds INWARD
+// (turn +1 curving left) from radius r0 by p per turn, to its foot block at rMin; null past it. The curve is
+// rotated about its start so its heading there is exactly th (an Archimedean tangent leans atan(b/r) off
+// the circle's), which is what lets a strike anchored at the start meet the wire square.
+export const spiralInGen = (sx, sy, th, r0, p, turn, rMin = 2.5) => { const b = p / (2 * Math.PI), H = 0.05;
+  const cx0 = sx - turn * r0 * Math.sin(th), cy0 = sy + turn * r0 * Math.cos(th), a0 = Math.atan2(sy - cy0, sx - cx0);
+  const h0 = Math.atan2(turn * r0 * Math.cos(a0) - b * Math.sin(a0), -turn * r0 * Math.sin(a0) - b * Math.cos(a0)), rot = th - h0, c = Math.cos(rot), sn = Math.sin(rot);
+  const at = (ph) => { const r = r0 - b * ph, x = cx0 + r * Math.cos(a0 + turn * ph) - sx, y = cy0 + r * Math.sin(a0 + turn * ph) - sy; return [sx + c * x - sn * y, sy + sn * x + c * y]; };
+  const cache = [[sx, sy]]; let ph = 0, acc = 0;
+  return (s) => { while (acc < s) { const r = r0 - b * ph; if (r <= rMin) return null; ph += H / Math.hypot(r, b); acc += H; cache.push(at(ph)); }
+    return cache[Math.min(cache.length - 1, Math.round(s / H))]; }; };
 export const sample = (gen, from, to, h = 0.25) => { const pts = []; for (let s = from; s <= to + 1e-9; s += h) { const p = gen(Math.min(s, to)); if (p) pts.push(p); } return pts; };
 export const pointInLoop = (loop, x, y) => { let c = false; for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) { const [xi, yi] = loop[i], [xj, yj] = loop[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
 // flat runs of an outline: consecutive edges within half a degree of one direction, at least minLen long
@@ -164,7 +175,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
     return Math.min(L, Lfit); };
   // the hammer: a head's travel of room on the side it strikes from, and (with a reach) the face where the module can put it
   const strikeFrame = (pts, idx) => { const i = Math.max(0, Math.min(pts.length - 2, idx)), [x, y] = pts[i], [x2, y2] = pts[i + 1], l = Math.hypot(x2 - x, y2 - y) || 1; return { x, y, nx: -(y2 - y) / l, ny: (x2 - x) / l }; };
-  const hammer = (pts, idx) => { const f = strikeFrame(pts, idx), R = opts.reach;
+  const hammer = (pts, idx) => { if (opts.lever) return leverHammer(pts, idx); const f = strikeFrame(pts, idx), R = opts.reach;
     for (const sg of [1, -1]) {
       let room = true; for (let dd = 1.6; dd <= 4.5; dd += 0.4) if (!free(f.x + sg * f.nx * dd, f.y + sg * f.ny * dd)) { room = false; break; }
       if (!room) continue;
@@ -175,27 +186,81 @@ export const solveGong = (map, opts, progress = () => {}) => {
       if (rf >= R.rFaceMin && rf <= R.rFaceMax && cos >= Math.cos(R.tolDeg * Math.PI / 180)) return { side: sg, face: [fx, fy], rFace: rf, azDeg: Math.atan2(fy, fx) * 180 / Math.PI };
     }
     return null; };
-  const footRoom = (p) => { if (!free(p[0], p[1])) return false; for (let a = 0; a < 2 * Math.PI; a += Math.PI / 6) if (!free(p[0] + 1.2 * Math.cos(a), p[1] + 1.2 * Math.sin(a))) return false; return true; };
+  // §310 landing 2 — THE LEVER'S REACH. The hammer is not free to stand
+  // anywhere: its tail is lifted by the lifting lever, pivoted at Q, whose far
+  // arm and the tail lie anti-parallel, so the hammer's pivot P stands exactly
+  // rho = |(a + l, s)| from Q (main.js ALARM_STRIKE_LAWS.hammerPivot's circle).
+  // And the blow is normal to the wire where it lands (§198's Thales rule, the
+  // radial blow generalised): the face F one rest gap off the wire on the side
+  // the head has room, the pivot tanLen along the tangent from F on the lever's
+  // side. So for a wire, the strike is where |P(s) - Q| = rho: a root along
+  // the wire, found by sign change and interpolated, and the wire must leave
+  // the strike AWAY from the pivot toward its foot (§198's GONG_HAND rule).
+  const leverAt = (S, n, sg) => { const L = opts.lever, off = WR + L.gap, fx = S[0] + sg * n[0] * off, fy = S[1] + sg * n[1] * off;
+    const bx = -sg * n[0], by = -sg * n[1], px = fx + L.side * L.tanLen * -by, py = fy + L.side * L.tanLen * bx;
+    return { fx, fy, bx, by, px, py, g: Math.hypot(px - L.Q.x, py - L.Q.y) - L.rho }; };
+  const leverRoom = (h) => { const L = opts.lever; if (!free(h.px, h.py)) return false;
+    // the staff and the arm (eye to pivot) stand in free space too: sampled at a quarter unit
+    const ex = h.fx - h.bx * L.headR, ey = h.fy - h.by * L.headR, d = Math.hypot(h.px - ex, h.py - ey);
+    for (let t = 0; t <= d; t += 0.25) if (!free(ex + (h.px - ex) * t / d, ey + (h.py - ey) * t / d)) return false; return true; };
+  const leverHammer = (pts, want) => { const L = opts.lever, roots = [];
+    for (const sg of [1, -1]) { let prev = null;
+      for (let i = 0; i < pts.length - 1; i++) { const f = strikeFrame(pts, i), h = leverAt([f.x, f.y], [f.nx, f.ny], sg);
+        // a root ON a sample (the lever family anchors its free end exactly at the strike) counts as one
+        const onPt = Math.abs(h.g) < 1e-6 && (!prev || Math.abs(prev.h.g) >= 1e-6);
+        if (onPt || (prev && Math.abs(prev.h.g) >= 1e-6 && Math.sign(prev.h.g) !== Math.sign(h.g))) { const t = onPt ? 1 : prev.h.g / (prev.h.g - h.g), j = onPt ? i : i - 1;
+          const ii = onPt ? Math.min(i + 1, pts.length - 1) : i;
+          const S = onPt ? [pts[i][0], pts[i][1]] : [pts[j][0] + t * (pts[i][0] - pts[j][0]), pts[j][1] + t * (pts[i][1] - pts[j][1])], fr = strikeFrame(pts, j), q = leverAt(S, [fr.nx, fr.ny], sg);
+          const fdx = pts[ii][0] - pts[j][0], fdy = pts[ii][1] - pts[j][1];   // toward the foot (pts run free end first)
+          const idx = onPt ? i : j + t;
+          // §198: the blow runs OUTWARD (toward the case) unless the caller lifts that rule
+          const outward = !L.outward || q.bx * q.fx + q.by * q.fy > 0;
+          if ((q.px - q.fx) * fdx + (q.py - q.fy) * fdy < 0 && outward) roots.push({ sg, idx, q }); }
+        prev = { h }; } }
+    roots.sort((a, b) => Math.abs(a.idx - want) - Math.abs(b.idx - want));
+    for (const r of roots) { let room = true; const f = strikeFrame(pts, Math.floor(r.idx));
+      for (let dd = 1.6; dd <= 4.5; dd += 0.4) if (!free(f.x + r.sg * f.nx * dd, f.y + r.sg * f.ny * dd)) { room = false; break; }
+      if (!room || !leverRoom(r.q)) continue;
+      const near = pts.reduce((m, p) => Math.min(m, Math.hypot(p[0] - r.q.px, p[1] - r.q.py)), Infinity);
+      if (near < WR + L.postR + L.margin) continue;   // the staff clear of the wire it strikes
+      return { side: r.sg, face: [r.q.fx, r.q.fy], rFace: Math.hypot(r.q.fx, r.q.fy), azDeg: Math.atan2(r.q.fy, r.q.fx) * 180 / Math.PI,
+        blowDeg: Math.atan2(r.q.by, r.q.bx) * 180 / Math.PI, pivot: [r.q.px, r.q.py], at: r.idx, frac: 1 - r.idx / (pts.length - 1) }; }
+    return null; };
+  // the block stands on PLATE: under a plate test (map.plateInset, the outline's signed distance) its whole
+  // circle (map.footR, the block's radius) lies inside the outline
+  const onPlate = (p) => !M.plateInset || M.plateInset(p[0], p[1]) >= (M.footR ?? 0);
+  const footRoom = (p) => { if (!free(p[0], p[1]) || !onPlate(p)) return false; for (let a = 0; a < 2 * Math.PI; a += Math.PI / 6) if (!free(p[0] + 1.2 * Math.cos(a), p[1] + 1.2 * Math.sin(a))) return false; return true; };
   const hitFrac = (segs, Lu) => opts.strike === 'node' ? overtoneNode(segs, S(Lu)) : 1;
   const sol = [];
   // ---- edge bars: where a reach is given, the strike sits at the foot of the perpendicular from the centre
   if (opts.edge) flatRuns(M.loop).forEach((run, ri) => {
     const tx = Math.cos(run.dir), ty = Math.sin(run.dir); let nx = -ty, ny = tx;
     const mx = run.a[0] + tx * run.len / 2, my = run.a[1] + ty * run.len / 2; if (!pointInLoop(M.loop, mx + nx, my + ny)) { nx = -nx; ny = -ny; }
-    const off = M.need + 0.1, ax = run.a[0] + nx * off, ay = run.a[1] + ny * off;
+    // the bar's standoff from the edge: one wire's need, or (under the lever, whose reach is a circle)
+    // up to opts.lever.inboard further in, a quarter unit at a time — the first that the lever reaches wins
+    const off0 = Math.max(M.need, M.footR ?? 0) + 0.1;   // a wire's need, or the block's radius where that is larger
+    for (let off = off0; off <= off0 + (opts.lever?.inboard ?? 0) + 1e-9; off += 0.25) {
+    const ax = run.a[0] + nx * off, ay = run.a[1] + ny * off;
     const segsAt = () => [{ k: 0, ds: 1 }];
     const Lband = solveL(segsAt, 400), hit = hitFrac(segsAt(), Lband);
     // strike positions: the perpendicular's foot under a reach, else every unit along the run
-    const us = opts.reach ? [-(ax * tx + ay * ty)] : Array.from({ length: Math.floor(run.len) + 1 }, (_, i) => i);
+    // under the lever, the strike is where the pivot P(u) = P0 + u t lands rho from Q (two roots per face side)
+    const leverUs = () => { const L = opts.lever, us = [];
+      for (const sg of [1, -1]) { const h = leverAt([ax, ay], [nx, ny], sg), dx = h.px - L.Q.x, dy = h.py - L.Q.y, b = dx * tx + dy * ty, c = dx * dx + dy * dy - L.rho * L.rho, disc = b * b - c;
+        if (disc >= 0) for (const r of [-b - Math.sqrt(disc), -b + Math.sqrt(disc)]) us.push(r); }
+      return us; };
+    const us = opts.lever ? leverUs() : opts.reach ? [-(ax * tx + ay * ty)] : Array.from({ length: Math.floor(run.len) + 1 }, (_, i) => i);
     for (const u of us) for (const sg of [1, -1]) {
       const px = ax + tx * u, py = ay + ty * u, dx = sg * tx, dy = sg * ty;   // dx,dy: from the strike toward the FOOT
       // the length: the band's centre, else the longest inside the band that fits
       for (const L of [Lband, ...Array.from({ length: 30 }, (_, i) => Lband - (i + 1) * (Lband - Lstraight(fHi)) / 30)]) {
         const freeEnd = [px - dx * (1 - hit) * L, py - dy * (1 - hit) * L], gen = arcGen(freeEnd[0], freeEnd[1], Math.atan2(dy, dx), 0), pts = sample(gen, 0, L);
-        if (!allFree(pts)) continue;
+        if (!allFree(pts) || !onPlate(pts[pts.length - 1])) continue;
         const hm = hammer(pts, Math.round((1 - hit) * (pts.length - 1))); if (!hm) break;
-        sol.push({ fam: 'edge', label: 'bar along a flat edge', pts, L, nseg: 1, hit, hammer: hm, slack: 0, segs: segsAt(), spread: `run${ri}` }); break;
+        sol.push({ fam: 'edge', label: 'bar along a flat edge', pts, L, nseg: 1, hit: opts.lever ? hm.frac : hit, hammer: hm, slack: 0, segs: segsAt(), spread: `run${ri}`, off }); break;
       }
+    }
+    if (sol.some((q) => q.spread === `run${ri}`)) break;
     }
   });
   // ---- generated families: march the longest fit, then solve the length for the band
@@ -206,7 +271,26 @@ export const solveGong = (map, opts, progress = () => {}) => {
       const gen = spiralFootGen(q.x, q.y, q.r + 0.1, a0, dir, p), Lfit = march(gen, 200); if (Lfit < Lstraight(fHi) * 0.8) continue;
       cands.push({ fam: 'column', label: `spiral round column P${pi + 1}`, pillar: pi, p, a0, gen, anchor: 'foot', Lfit, key: `c${pi}:${p}:${Math.round(a0 / (Math.PI / 3))}` }); } });
   const near = opts.near, ks = [0, 1 / 12, -1 / 12, 1 / 20, -1 / 20, 1 / 35, -1 / 35, 1 / 60, -1 / 60].concat(near && Number.isFinite(near.k) ? [near.k] : []);
-  if (opts.any || near) {
+  // §310 landing 2 — under the lever, 'any' is ANCHORED AT THE STRIKE rather than scattered: every pivot on
+  // the lever's circle (2°) and blow direction (3°, outward), the face and the strike they imply, and a wire
+  // of each curvature leaving the strike away from the pivot — struck at its free end (the loudest f1).
+  if ((opts.any || opts.spiral) && opts.lever) { const L = opts.lever;
+    for (let ph = 0; ph < 360; ph += 2) { const px = L.Q.x + L.rho * Math.cos(ph * Math.PI / 180), py = L.Q.y + L.rho * Math.sin(ph * Math.PI / 180);
+      if (!free(px, py)) continue;
+      for (let be = 0; be < 360; be += 3) { const bx = Math.cos(be * Math.PI / 180), by = Math.sin(be * Math.PI / 180);
+        const fx = px - L.side * L.tanLen * -by, fy = py - L.side * L.tanLen * bx;   // P = F + side·tanLen·(ẑ×b)
+        if (L.outward && bx * fx + by * fy <= 0) continue;
+        const sx = fx + bx * (WR + L.gap), sy = fy + by * (WR + L.gap); if (!free(sx, sy)) continue;
+        const tx = -by, ty = bx, away = -Math.sign((px - fx) * tx + (py - fy) * ty), th = Math.atan2(away * ty, away * tx);
+        if (opts.any) for (const k of ks) { const gen = arcGen(sx, sy, th, k), Lfit = march(gen, 140); if (Lfit < Lstraight(fHi) * 0.85) continue;
+          cands.push({ fam: 'any', label: k === 0 ? 'straight bar' : `arc, radius ${(1 / Math.abs(k)).toFixed(0)} u`, k, th, gen, anchor: 'free', Lfit, strikeEnd: true,
+            key: `l:${k.toFixed(4)}:${Math.round(ph / 6)}:${Math.round(be / 9)}` }); }
+        // ...and the SPIRAL that stands on its own block: struck at its outer end, winding inward to its foot
+        if (opts.spiral) for (const r0 of [8, 11, 14, 18]) for (const p of [3.5, 4.5, 6]) for (const turn of [1, -1]) {
+          const gen = spiralInGen(sx, sy, th, r0, p, turn), Lfit = march(gen, 140); if (Lfit < Lstraight(fHi) * 0.85) continue;
+          cands.push({ fam: 'spiral', label: `spiral from r ${r0} u, ${p} u a turn`, r0, p, turn, th, gen, anchor: 'free', Lfit, strikeEnd: true, spiral: { sx, sy, th, r0, p, turn },
+            key: `s:${r0}:${p}:${turn}:${Math.round(ph / 6)}:${Math.round(be / 9)}` }); } } } }
+  if ((opts.any && !opts.lever) || near) {
     const grid = near ? 1 : 3, xs = near ? [near.x - 6, near.x + 6] : [M.x0 + 1, M.x0 + M.W * M.RES], ys = near ? [near.y - 6, near.y + 6] : [M.y0 + 1, M.y0 + M.H * M.RES];
     const ths = near ? Array.from({ length: 25 }, (_, i) => near.th + (i - 12) * Math.PI / 36) : Array.from({ length: 18 }, (_, i) => i * Math.PI / 9);
     for (let y = ys[0]; y <= ys[1]; y += grid) for (let x = xs[0]; x <= xs[1]; x += grid) { if (!free(x, y)) continue;
@@ -216,17 +300,18 @@ export const solveGong = (map, opts, progress = () => {}) => {
   }
   progress(`${cands.length + sol.length} placements; solving lengths…`);
   // per-family caps, spread by key, roomiest first — so no family crowds another out
-  const CAP = { column: 150, any: 260, near: 220 }, pool = [];
+  const CAP = { column: 150, any: 260, near: 220, spiral: 220 }, pool = [];
   for (const fam of Object.keys(CAP)) { const seen = new Set(); for (const c of cands.filter((q) => q.fam === fam).sort((a, b) => b.Lfit - a.Lfit)) { if (seen.has(c.key)) continue; seen.add(c.key); pool.push(c); if (seen.size >= CAP[fam]) break; } }
   pool.forEach((c, i) => { if (i % 50 === 0) progress(`solving lengths: ${i} of ${pool.length}`);
-    const segsAt = c.anchor === 'foot' ? (L) => segsFromPts(sample(c.gen, 0, L), 12) : (L) => [{ k: c.k * L, ds: 1 }];
+    const segsAt = c.anchor === 'foot' ? (L) => segsFromPts(sample(c.gen, 0, L), 12)
+      : c.spiral ? (L) => segsFromPts(sample(c.gen, 0, L).reverse(), 12) : (L) => [{ k: c.k * L, ds: 1 }];
     const L = solveL(segsAt, c.Lfit); if (!L) return;
     const f1 = f1Of(segsAt(L), L); if (!(f1 >= fLo * 0.999 && f1 <= fHi * 1.001)) return;
     const pts = c.anchor === 'foot' ? sample(c.gen, 0, L).reverse() : sample(c.gen, 0, L);
     if (c.anchor === 'free' && !footRoom(pts[pts.length - 1])) return;
-    const segs = c.anchor === 'foot' ? segsFromPts(pts.slice().reverse(), 20) : segsAt(L), hit = hitFrac(segs, L);
+    const segs = (c.anchor === 'foot' || c.spiral) ? segsFromPts(pts.slice().reverse(), 20) : segsAt(L), hit = c.strikeEnd ? 1 : hitFrac(segs, L);
     const hm = hammer(pts, Math.round((1 - hit) * (pts.length - 1))); if (!hm) return;
-    sol.push({ fam: c.fam, label: c.label, pts, L, nseg: c.anchor === 'foot' ? 20 : 1, hit, hammer: hm, slack: c.Lfit - L, segs, key: c.key, pillar: c.pillar,
+    sol.push({ fam: c.fam, label: c.label, pts, L, nseg: (c.anchor === 'foot' || c.spiral) ? 20 : 1, spiral: c.spiral, k: c.k, th: c.th, hit: opts.lever ? hm.frac : hit, hammer: hm, slack: c.Lfit - L, segs, key: c.key, pillar: c.pillar,
       spread: c.anchor === 'foot' ? `P${c.pillar}` : `${Math.round(pts[0][0] / 25)}:${Math.round(pts[0][1] / 25)}` }); });
   progress(`${sol.length} reach the band${opts.reach ? ' and the hammer' : ''}; judging…`);
   // the shortlist: distinct placements per family, nearest the band's centre first
@@ -247,9 +332,87 @@ export const solveGong = (map, opts, progress = () => {}) => {
   // four per family, the first of them from distinct placements (each side, each column, each
   // quarter of the case) so one good spot cannot fill a family's list with copies of itself
   const top = [];
-  for (const f of ['near', 'edge', 'column', 'any']) { const mine = out.filter((o) => o.fam === f), seenS = new Set(), pick = [];
+  for (const f of ['near', 'edge', 'column', 'spiral', 'any']) { const mine = out.filter((o) => o.fam === f), seenS = new Set(), pick = [];
     for (const o of mine) if (pick.length < 4 && !seenS.has(o.spread)) { seenS.add(o.spread); pick.push(o); }
     for (const o of mine) if (pick.length < 4 && !pick.includes(o)) pick.push(o);
     top.push(...pick); }
   return { results: top, counts: { placements: cands.length + (opts.edge ? sol.filter((s) => s.fam === 'edge').length : 0), reach: sol.length, judged: out.length } };
 };
+
+// ---- §310 landing 2: a SEAT, as the build reads it --------------------------
+// A seat's centreline is stored ANALYTICALLY from its free end (s = 0) toward
+// its foot (s = L), so the build can solve its strike exactly rather than on a
+// sampled chord:
+//   { type: 'line', sx, sy, th, L }               a straight bar, heading th
+//   { type: 'arc',  sx, sy, th, k, L }            constant curvature k (1/u)
+//   { type: 'spiral', sx, sy, th, r0, p, turn, L } spiralInGen's curve
+// at(s) -> { x, y, tx, ty, k } (tangent toward the foot, signed curvature).
+export const seatCurve = (c) => {
+  if (c.type === 'line' || c.type === 'arc') {
+    const k = c.type === 'line' ? 0 : c.k, gen = arcGen(c.sx, c.sy, c.th, k);
+    return { L: c.L, at: (s) => { const [x, y] = gen(s), a = c.th + k * s; return { x, y, tx: Math.cos(a), ty: Math.sin(a), k }; } };
+  }
+  if (c.type !== 'spiral') throw new Error(`seatCurve: unknown type '${c.type}'`);
+  const { sx, sy, th, r0, p, turn } = c, b = p / (2 * Math.PI);
+  const cx0 = sx - turn * r0 * Math.sin(th), cy0 = sy + turn * r0 * Math.cos(th), a0 = Math.atan2(sy - cy0, sx - cx0);
+  const h0 = Math.atan2(turn * r0 * Math.cos(a0) - b * Math.sin(a0), -turn * r0 * Math.sin(a0) - b * Math.cos(a0)), rot = th - h0, cr = Math.cos(rot), sr = Math.sin(rot);
+  const pos = (ph) => { const r = r0 - b * ph, x = cx0 + r * Math.cos(a0 + turn * ph) - sx, y = cy0 + r * Math.sin(a0 + turn * ph) - sy; return [sx + cr * x - sr * y, sy + sr * x + cr * y]; };
+  const der = (ph) => { const r = r0 - b * ph, a = a0 + turn * ph, x = -b * Math.cos(a) - turn * r * Math.sin(a), y = -b * Math.sin(a) + turn * r * Math.cos(a); return [cr * x - sr * y, sr * x + cr * y]; };
+  // arc length in phi, Simpson per step of 1e-3 rad (|d^4| ~ r: error ~1e-13 u a step)
+  const dph = 1e-3, phs = [0], ss = [0], sp = (ph) => Math.hypot(...der(ph));
+  while (ss[ss.length - 1] < c.L + 1e-9) { const a = phs[phs.length - 1]; phs.push(a + dph); ss.push(ss[ss.length - 1] + dph / 6 * (sp(a) + 4 * sp(a + dph / 2) + sp(a + dph))); }
+  const phOf = (s) => { let lo = 0, hi = ss.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (ss[m] <= s) lo = m; else hi = m; }
+    // linear inside one step, then two Newton steps on the speed (ds/dphi), exact to float noise
+    let ph = phs[lo] + (s - ss[lo]) / ((ss[hi] - ss[lo]) || 1) * dph;
+    for (let it = 0; it < 2; it++) { const a = phs[lo], sOf = ss[lo] + (ph - a) / 6 * (sp(a) + 4 * sp((a + ph) / 2) + sp(ph)); ph -= (sOf - s) / sp(ph); }
+    return ph; };
+  return { L: c.L, at: (s) => { const ph = phOf(s), [x, y] = pos(ph), [dx, dy] = der(ph), l = Math.hypot(dx, dy), r = r0 - b * ph;
+    return { x, y, tx: dx / l, ty: dy / l, k: turn * (r * r + 2 * b * b) / (r * r + b * b) ** 1.5 }; } };
+};
+// The strike on a seat, exactly: the root of |P(s) - Q| - rho nearest `guess`
+// (arc length from the free end), the face on side `sg` of the wire's left
+// normal — the same law as the solver's leverAt, on the analytic tangent.
+export const seatStrike = (curve, { Q, rho, tanLen, side, gap }, wireR, sg, guess) => {
+  const g = (s) => { const q = curve.at(s), nx = -q.ty, ny = q.tx, off = wireR + gap, fx = q.x + sg * nx * off, fy = q.y + sg * ny * off;
+    const bx = -sg * nx, by = -sg * ny, px = fx + side * tanLen * -by, py = fy + side * tanLen * bx;
+    return { s, S: { x: q.x, y: q.y }, n: { x: nx, y: ny }, F: { x: fx, y: fy }, b: { x: bx, y: by }, P: { x: px, y: py }, k: q.k, g: Math.hypot(px - Q.x, py - Q.y) - rho }; };
+  // the search runs a twentieth of a unit PAST the free end: a strike solved AT the end (the lever family's
+  // anchor) has its root there to float noise, either side, and must not be lost to the other root
+  const s0min = -0.05;
+  if (Math.abs(g(Math.max(s0min, guess)).g) < 1e-9) return g(Math.max(s0min, guess));
+  let best = null;
+  for (let d = 0; d <= 3 && !best; d += 0.02) for (const s0 of [guess - d, guess + d]) {
+    const a = Math.max(s0min, s0 - 0.02), c = Math.min(curve.L, s0); if (!(c > a)) continue;
+    let lo = g(a), hi = g(c); if (Math.sign(lo.g) === Math.sign(hi.g)) continue;
+    for (let it = 0; it < 80; it++) { const m = g((lo.s + hi.s) / 2); if (Math.sign(m.g) === Math.sign(lo.g)) lo = m; else hi = m; }
+    best = Math.abs(lo.g) < Math.abs(hi.g) ? lo : hi; break; }
+  return best;
+};
+// ---- the band's metal, as the build measures it (FORM_REGIONS' per-mesh hulls)
+// distance from a point to a convex polygon (0 inside)
+export const hullDist = (hull, x, y) => { let inside = true, best = Infinity;
+  for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) { const [ax, ay] = hull[j], [bx, by] = hull[i], vx = bx - ax, vy = by - ay, wx = x - ax, wy = y - ay;
+    if (vx * wy - vy * wx < 0) inside = false;
+    const t = Math.max(0, Math.min(1, (vx * wx + vy * wy) / ((vx * vx + vy * vy) || 1))); best = Math.min(best, Math.hypot(wx - t * vx, wy - t * vy)); }
+  if (hull.length >= 3) { let area = 0; for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) area += hull[j][0] * hull[i][1] - hull[i][0] * hull[j][1];
+    if (area < 0) { inside = true; for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) { const [ax, ay] = hull[j], [bx, by] = hull[i]; if ((bx - ax) * (y - ay) - (by - ay) * (x - ax) > 0) inside = false; } } }
+  return inside && hull.length >= 3 ? 0 : best; };
+// the parts that stand in the band [z0, z1] (one margin of z either side), every
+// unit's meshes but those named in `exclude`: [{ unit, hull, box }]
+export const bandParts = (regions, z0, z1, margin, exclude = new Set()) => { const out = [];
+  for (const [unit, u] of Object.entries(regions.units)) { if (exclude.has(unit)) continue;
+    for (const p of u.parts) { if (p.z[1] < z0 - margin || p.z[0] > z1 + margin || p.hull.length < 1) continue;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; for (const [x, y] of p.hull) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      out.push({ unit, hull: p.hull, box: [x0, x1, y0, y1] }); } }
+  return out; };
+// the nearest band part to (x, y) within `reach`: { d, unit } (d = Infinity past reach)
+export const bandNearest = (parts, x, y, reach) => { let d = Infinity, unit = null;
+  for (const q of parts) { const [x0, x1, y0, y1] = q.box; if (x < x0 - reach || x > x1 + reach || y < y0 - reach || y > y1 + reach) continue;
+    const e = hullDist(q.hull, x, y); if (e < d) { d = e; unit = q.unit; } }
+  return { d, unit }; };
+// the solver's map from those parts: a centreline may stand where no part is
+// within `need` and the outline is at least `need` inside (inset(x, y) >= need)
+export const bandMap = (parts, { x0, y0, W, H, RES, need, inset }) => { const free = new Uint8Array(W * H);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const x = x0 + (i + 0.5) * RES, y = y0 + (j + 0.5) * RES;
+    free[j * W + i] = inset(x, y) >= need && bandNearest(parts, x, y, need).d >= need ? 1 : 0; }
+  return { free, W, H, x0, y0, RES, need }; };
