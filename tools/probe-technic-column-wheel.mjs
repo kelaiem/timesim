@@ -56,12 +56,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, LDU_MM } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import { toLdr } from '../src/technic-ldraw.js';
 import { starProfile, penetration } from '../src/technic-fusee.js';
 import * as M from '../src/technic-alarm.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
+const lib = loadPack();   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 const P = M.ALARM_PARTS;
 const deg = (r) => (r * 180 / Math.PI).toFixed(2);
 const mod = (a, m) => ((a % m) + m) % m;

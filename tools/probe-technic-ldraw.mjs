@@ -41,6 +41,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import { CATALOGUES } from '../src/layout.js';
 import { LEGO_DIM_MM, GEAR_WIDTH_MM, GEAR_TIP_MM, FRAME_PARTS, AXLE_PARTS, TURNTABLE_BASES, frameFork, frameKeyless,
   KEYLESS_PARTS, KEYLESS_DIM_MM, KEYLESS_DOGS, KEYLESS_SELECTOR_DIM_MM, selectorRise, KEYLESS_PULL_DIM_MM } from '../src/technic-frame.js';
@@ -48,8 +49,7 @@ import { TECHNIC_CLUTCH_GEAR } from '../src/layout.js';
 import { dogPhase } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PACK = readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8');
-const lib = parseLibrary(PACK);
+const { lib, text: PACK } = loadPack({ text: true });   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 // THE PACK IS PART DATA AND NOTHING ELSE. Every section's first line is an
 // LDraw meta line and no line anywhere is an HTTP header: the first pack
 // committed nothing else but carried the server's response headers, cookies

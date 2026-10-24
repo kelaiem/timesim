@@ -40,6 +40,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, compose } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import { LDU_MM } from '../src/ldraw.js';
 import * as B from '../src/technic-bom.js';
 import { placedParts, toLdr } from '../src/technic-ldraw.js';
@@ -48,7 +49,7 @@ import * as T from '../src/technic-steps.js';
 import * as S from './technic-steps-sweep.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
+const lib = loadPack();   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 const only = process.argv[2] ?? null;
 const t0 = performance.now();
 let fails = 0, checks = 0;
@@ -282,7 +283,15 @@ for (const { gen, cell } of targets) {
 // ── CONTROLS. Each is seen to fail; a probe that cannot see these has measured nothing.
 console.log('\nCONTROLS');
 {
-  const label = [...planCache.keys()].find((k) => /row-2/.test(k)) ?? [...planCache.keys()][0];
+  // The controls are written against a gear-train row (a layer to swap, an axle threaded through a gap, two coplanar
+  // gears), so they run on row 2's plan whichever cells were asked for: run for one other cell (`escapement`, `alarm`),
+  // they used to take that cell's plan, and crashed or reported controls missed on the unmutated tree (BUILT §309).
+  let label = [...planCache.keys()].find((k) => /row-2/.test(k));
+  if (!label) {
+    const { build } = B.buildOf(lib, B.GENERATIONS[0], 'row-2'), plan = T.deriveSteps(build, { lib, mode: build.modes?.[0] });
+    label = `${B.GENERATIONS[0]} row-2 (for the controls)`;
+    planCache.set(label, { plan, build, edges: supportEdges(build, plan.parts).edges, mpd: T.toMpd(plan) });
+  }
   if (label) {
     const { plan, build, edges, mpd } = planCache.get(label);
     // COVERAGE: a part dropped from a step; a part listed twice

@@ -44,12 +44,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, LDU_MM } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import { placedParts, surfaceSamples } from '../src/technic-ldraw.js';
 import { LEGO_DIM_MM as D, KEYLESS_PULL_DIM_MM } from '../src/technic-frame.js';
 import * as M from '../src/technic-alarm.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
+const lib = loadPack();   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 const deg = (r) => (r * 180 / Math.PI).toFixed(2);
 const g = M.AX_CLEAR, P = M.ALARM_PARTS;
 let fails = 0;

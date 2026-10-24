@@ -39,12 +39,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, walk, compose, LDU_MM } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import { CATALOGUES } from '../src/layout.js';
 import { frameFork, frameKeyless, FRAME_PARTS, KEYLESS_SELECTOR_DIM_MM } from '../src/technic-frame.js';
 import { ldrawBuild, placedParts, toLdr } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
+const lib = loadPack();   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 const EPS = 1e-6, PHASE_TOL = 1e-3, AXLE_TRIM = 0.5;          // LDU; pitches (the tips are measured off polygons)
 const ANGLES = [0, 0.37, 1.9, 7.3, 41.1];
 const dat = (p) => `${p}.dat`;

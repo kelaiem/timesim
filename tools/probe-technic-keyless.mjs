@@ -86,6 +86,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, walk, LDU_MM } from '../src/ldraw.js';
+import { loadPack } from './technic-pack.mjs';
 import { CATALOGUES, TECHNIC_KEYLESS, TECHNIC_CLUTCH_GEAR, technicKeylessTargets, technicKeylessErrors,
   solveRatio, ratStr } from '../src/layout.js';
 import { frameKeyless, KEYLESS_PARTS, KEYLESS_DIM_MM as K, KEYLESS_DOGS, LEGO_DIM_MM, KEYLESS_DETENT, KEYLESS_PULL_DIM_MM as PD,
@@ -94,7 +95,7 @@ import { ldrawBuild, placedParts, dogPhase, catchInRingFrame, surfaceSamples, fo
   gearInYZ } from '../src/technic-ldraw.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const lib = parseLibrary(readFileSync(join(ROOT, 'vendor/ldraw/technic-parts.mpd'), 'utf8'));
+const lib = loadPack();   // vendor/ldraw/technic-parts.mpd (BUILT §309: or with TECHNIC_SUBSTITUTE's one swap)
 const EPS = 1e-6, ANGLES = [0.37, 1.9, 7.3, -2.2];
 const L = (mm) => mm / LDU_MM;
 const B = (p) => bounds(lib, `${p}.dat`);

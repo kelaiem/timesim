@@ -41942,3 +41942,206 @@ Round default: fingerprint 955951544, boot silent (booted from a copy of the tre
 No arm, ratio, section, tolerance or waiver moved. The idlers are real parts but have no `INTRA_UNIT_CONTACTS` rows
 (any selector naming them would be unmatched on the default build), and no battery check was run on a form build
 (TODO 158).
+
+## §309 — LEGO parts list: substitute parts from Rebrickable, each judged by the model
+
+Owner: "suggest alternatives" for the LEGO parts, now that BrickLink stock is off the
+table (BrickLink's API needs a seller account). Every line of every build's parts list
+on `technic.html` now names the **substitutes** the model accepts for its part, in the
+CSV too, and says what it refused and why. Display and file only: no placement, `.ldr`
+line, colour or step moved, and `index.html`'s module graph reaches `layout.js` and none
+of `src/technic-*.js`, so the battery cannot see this landing.
+
+**MODELLED, not built.** A substitute "passes" when every judge this model already has
+passes with the candidate's geometry in place of the part's and nothing else changed. No
+one has built any build with any of them. **The count beside each one is not stock**:
+"used in N official sets in this colour (Rebrickable, 2026-10-23)" counts the sets whose
+Rebrickable inventory lists that part in that colour (spares excluded) — how common the
+element was in LEGO's own sets, an abundance proxy. **Friction is not modelled**, so a
+pin whose friction differs from the placed one is "not judged: friction", never passed.
+
+### The data (the §301 pattern: a generator, a small committed subset, `--check`)
+
+- **Rebrickable full download, 2026-10-23** (the owner's; `parts`, `part_relationships`,
+  `part_mappings`, `colors`, `color_mappings`, `sets`, `inventories`, `inventory_parts`;
+  ~160 MB, not committed). Rebrickable's external-system codes in this archive are `LD`
+  (LDraw) and `BL` (BrickLink) — not "LDraw" — which the generator reads as such.
+- **BrickLink catalogue download, 2026-10-20** (§301's Parts and Codes, the same files:
+  `bricklink-subset.mjs --check` re-derives §301's subset from them).
+- `tools/rebrickable-subset.mjs --write --rb DIR --parts P --codes K --date 2026-10-23`
+  writes `src/technic-rebrickable.js` (36 KB): per placed LDraw id (`PART_IDS`), its
+  Rebrickable part (Rebrickable's `LD` mapping, else the same number, else the number
+  without a mould-variant letter — §301's rule), every **A** (alternate) and **M** (mould
+  variant) relative in either direction plus the other children of an M parent, each
+  mapped back to LDraw (`LD` row, else its own number) and BrickLink (`BL` row, then
+  BrickLink's Parts as an item number or an alternate), BrickLink's element codes for it
+  in each role-table colour, and the abundance counts per colour for it and for the
+  placed part. P, T, B and R rows (print, pattern, sub-part, pair) are not candidates.
+  `--check` re-derives the file from the downloads and fails on any byte.
+- **The direction is recorded, never relied on.** Rebrickable's page defining the
+  relationship types answered 403 to this sandbox, so an A row is read only as
+  "Rebrickable lists it as an alternate" — a claim the geometry then judges.
+- **LDraw geometry for the candidates.** The official library at library.ldraw.org WAS
+  reachable: `node tools/ldraw-vendor.mjs --candidates` fetches every candidate the
+  subset names through the same `fetchParts` and list mechanism as the main pack (the
+  roots read from the generated subset, never typed) and writes
+  `tools/data/technic-candidates.mpd` (69 files, 170 KiB, every one of the 26 candidates
+  not already in the main pack found; the shared files were compared and are identical).
+  **Why a second pack under `tools/`, not the main pack:** the acceptance probe must
+  re-judge FAILING candidates as well as passing ones, offline, and the page draws none of
+  them — so the main pack (what the page loads) does not move, and the candidates' file is
+  repository, not site (`payload.sh` cuts `tools/`).
+
+### The judges (`tools/technic-substitutes-judge.mjs`; nothing is re-implemented)
+
+**One substitution per process.** With `TECHNIC_SUBSTITUTE=P=C` in the environment,
+`tools/technic-pack.mjs` hands every technic probe the main pack with C's geometry filed
+under P's name (C's own sub-files added; a reference to P inside C's tree keeps the
+original P). Every builder, solver and judge then reads C wherever the model places P —
+the same ids, tables and code — so "the build otherwise unchanged" holds by
+construction: a keyed body's free angle is re-solved by `ldrawBuild`'s own mesh solver
+off C's measured tooth phase, a groove seat is re-measured by `grooveSeat`, a mass by
+`partSolid`, the alarm's index by `solveAlarm`. One process each, because the builders
+cache per part id. The eleven probes that read the pack now load it through
+`loadPack()`; without the variable it is the pack, parsed, exactly as before.
+
+**Before geometry, in order** (the first that fails is the verdict):
+`geometry` (an LDraw file exists — else not judged), `bricklink` (BrickLink's Codes list
+the candidate in at least one role-table colour — else failed: §303's constraint, every
+line buyable in a colour the page uses), `ratio` (where the part is a gear, the
+candidate's tooth count MEASURED by `toothCount` — the largest radius per angular bin,
+counted across the level midway between root and tip — must equal the placement's: P0,
+never judged further), then `friction` (the two catalogue names say one has friction
+ridges and the other not: the geometric judges still run and a geometric failure still
+fails, but a geometric pass is NOT JUDGED, because friction is not modelled).
+
+**The geometric judges, per cell the part is in.** Every kind runs
+`probe-technic-ldraw` (the frame tables against the parts — the tables `frameFindings`
+reads; `probe-technic-frame` reads only tables and cannot see a part's geometry, so it is
+not a judge here) and `probe-technic-steps <cell>` (the swept insertion AND the
+placed-pose overlap inventory); rows add `probe-technic-build` (seated, through, on the
+axle, the tooth-phase mesh); the keyless works add `build`, `keyless` and `motion`; the
+fusee `fusee` and `fusee-loop` (the groove seats, the cord, the loop); the alarm `alarm`,
+`column-wheel` and `pusher` (the press); the escapement `escapement` (the rate, the lock).
+**A verdict is per BUILD**, since a parts-list line belongs to one: a candidate passes a
+line when every judge that build calls for passes (`cells` in the verdict file); the
+overall verdict is every build the part is in.
+
+**Two instruments got fixed on the way, both found by this landing:**
+- `probe-technic-steps.mjs <cell>` crashed for `escapement` (a TypeError in its gear-push
+  control, which looked for two coplanar gears in that cell's plan) and reported two
+  controls MISSED for `alarm`, on the unmodified tree. Its controls are written against a
+  gear-train row, so they now always run on row 2's plan, derived for the purpose when
+  row 2 was not asked for. Both cells now read `0 failing, 16 controls`.
+- **An uncaught exception exits 1, the probes' own "failed" code**, so a judge that threw
+  would have read as a judge that refused. `runProbe` treats Node's crash trailer as an
+  ERROR, and the writer stops on one rather than writing a verdict.
+
+**The baseline.** Every judge a run calls is first run once with nothing substituted, and
+must pass (18 runs, all pass), or no failure could be the candidate's.
+
+**A judge's blind spot, measured.** Offered the 16-tooth 4019 as the 8-tooth 3647's
+substitute, `probe-technic-build` PASSES: its mesh judge folds the tips by the
+placement's count, and 16 tips fold by 8 as cleanly as 8 do. `probe-technic-ldraw`
+fails it on the tip radius and the steps probe on three overlaps. That is why every
+candidate runs every judge its cells call for, and why the ratio rule comes first.
+
+### Measured (30 candidates for 24 of the 51 placed ids; 27 have none)
+
+| placed | candidate (Rebrickable) | verdict | judge, and what it said |
+|---|---|---|---|
+| 3647 8T | 10928 8T reinforced (M) | **pass**, every build (17 judges) | BrickLink lists it in Dark Bluish Gray only: a colour change on every line |
+| 4019 16T | 94925 16T reinforced (A) | **pass**, every build (16) | Light Bluish Gray listed; a colour change from Tan on the fusee's click |
+| 32062 axle 2 notched | 3704 axle 2 (M) | **pass** (14) | |
+| 3794b jumper | 3794a jumper without groove (M) | **pass**, all eight builds (18) | |
+| 62462 round connector | 75535 no slot (A) | **pass** (4) | |
+| 3044b slope 2×1 double | 3044c with inside stud holder (M sibling) | **pass** (3) | the escapement's knife edge |
+| 22253 VR rim | 6595 (M) | **pass** (4) | BrickLink sells 22253 AS 6595: the same lot |
+| 32123a half bush | 32123b (M) | **pass** (9) | the same BrickLink item, 4265c |
+| 4032a round 2×2 | 4032b (M) | **pass** (4) | the same BrickLink item, 4032 |
+| 43093 axle pin, friction | 3749 axle pin, no friction (A) | **not judged: friction** | every geometric judge passes |
+| 3673 pin | 2780 friction pin (A) | fail: `alarm` | its shaft, collar and collar width differ from the pin the alarm's tables read, and the column wheel re-solves at 16 mm, not 12 |
+| 6558 long pin | 42924 (M) | fail: `alarm`, `steps alarm` | the alarm's solve re-derives another index (pawl lock, detent); a pin lip in step 55. **BrickLink sells 42924 under 6558**, so the line is flagged |
+| 6558 long pin | 32556b, no friction (A) | fail: `alarm`, `steps alarm` | as 42924 |
+| 6641 changeover catch | 51149 new style (A) | fail: `ldraw` | "no axle hole along its X to pivot on": the selector's pivot and tip cannot be read off it. **BrickLink sells 51149 under 6641**: flagged |
+| 3794b jumper | 15573 with groove, no understud (M) | fail: `ldraw` | the frame's TITLE check ("Plate 1 x 2 … 1 Centre Stud"); every geometric judge passed. A check on what the part is, and the verdict is its |
+| 2712 rotor, toothed ends | 32125 smooth ends, 6 studs (A) | fail: `alarm` | "not three studs": the column wheel is read off the rotor |
+| 18946 16T clutch | 6542b clutch, smooth (A) | fail: `keyless` (and `ldraw`, `steps keyless`) | the ring's lugs do not reach the gear's dogs; its recess is 0.8 mm, not 3.2 |
+| 55982 wheel 18×14 | 55981 (A) | fail: `fusee` (and `steps fusee`) | its groove is 8.0 mm half-wide, not 7.4, and off-centre; it would sit 1.46 LDU in the 3482 |
+| 69778 12T double bevel | 32270 12T double bevel (A) | fail: `ldraw`; in the alarm also `alarm`, `column-wheel` | tip 6.81 mm against the table's 7.08; the alarm's detent and pawl re-solve elsewhere and the pawl falls four times a press |
+| 69779 20T double bevel | 18575 (A) | fail: `ldraw` | tip 10.80 mm against the table's 11.04 |
+| 3004; 3648; 3705; 3737; 3023b; 3044b; 3070b; 32123a | 3065, u8001c; 3648a; 3705c01; 3737c01; 3023a; 3044a; 3070a; 4265a, 6577 | fail: `bricklink` (10) | BrickLink's Codes list none of them in any colour the page uses (old moulds: 3648a is BrickLink's x187, 3023a its 3023old) |
+
+No candidate had a different tooth count, and every one the subset names has an LDraw
+file (26 fetched, four already in the pack: 6595, 32123b, 4265a, 6577 are §285's
+surveyed pulleys).
+
+**Per build** (each line's candidates, summed over the build's lines; a part on two
+lines of a build counts twice):
+
+| build | technic_2026: candidates / passed / failed (by judge) / not judged | technic_classic |
+|---|---|---|
+| row 1 | 3 / 2 / bricklink 1 / 0 | 5 / 3 / bricklink 1, ldraw 1 / 0 |
+| row 2 | 5 / 3 / bricklink 1, ldraw 1 / 0 | 5 / 3 / bricklink 1, ldraw 1 / 0 |
+| row 3 | 3 / 2 / bricklink 1 / 0 | 5 / 3 / bricklink 1, ldraw 1 / 0 |
+| row 4 | 6 / 2 / bricklink 2, ldraw 2 / 0 | 6 / 2 / bricklink 2, ldraw 2 / 0 |
+| keyless + motion | 15 / 5 / bricklink 5, ldraw 4, keyless 1 / 0 | 14 / 5 / bricklink 5, ldraw 3, keyless 1 / 0 |
+| fusee | 11 / 8 / bricklink 1, ldraw 1, fusee 1 / 0 | the same build |
+| alarm | 17 / 6 / alarm 5, bricklink 5, ldraw 1 / 0 | the same build |
+| escapement | 14 / 5 / bricklink 7, ldraw 1 / friction 1 | the same build |
+
+### On the page and in the files
+
+Each line of `technic.html`'s parts list carries, under its flags, one green
+"alternative:" note per passing substitute — its LDraw id, name, BrickLink item, the
+colour (the line's, or "a colour change from …" to the role-table colour BrickLink lists
+that the most official sets used), and "used in N official sets in this colour
+(Rebrickable, 2026-10-23)" — then "substitutes judged: n candidates: p passed, f failed
+(id: judge; …), x not judged (id: why)". A same-lot mould the model refuses is a WARN
+flag on the line (6641's 51149, 6558's 42924). The CSV has two new columns,
+`alternatives` and `alternatives_judged`, and one more note (`SUBSTITUTE_HONESTY`). The
+wanted list does not change: an alternative is a suggestion, never put in a lot. The
+booklet's parts page is unchanged (its list now reads per build, like the page's).
+`offline-check.mjs`'s precache count is 101 (+3: `src/technic-substitutes.js` and the two
+generated files it reads).
+
+### Instruments
+
+- `node tools/probe-technic-substitutes.mjs --rb … --parts … --codes …` (acceptance, pure
+  Node): the subset re-derived from the downloads byte for byte; `toothCount` reads all ten
+  placed gears at their catalogued counts; 18 baseline judges pass unsubstituted; every one
+  of the 30 verdicts re-judged — the 20 geometric ones by re-running all their 159 judge
+  runs with the candidate swapped in, each seen to read the substitution, and the file
+  agreeing judge for judge and build for build; the list's alternatives all passing verdicts
+  offered in a colour BrickLink lists; the CSV columns the lines'; no "stock". Controls seen
+  to fail: the 16T offered for the 8T (ratio refuses; `ldraw` fails it on the tip), a forged
+  verdict, an alternative forged into a colour BrickLink does not list, a candidate with no
+  element in any page colour, and the overlay itself (3647.dat carries 10928's lines, the main
+  pack's untouched). `--quick` skips the geometric re-runs and says they are unverified.
+  `PASS — 846 checks, 8 controls, 0 failed, 3559 s` (4 cores, `--jobs 3`).
+- `node tools/rebrickable-subset.mjs --check --rb … --parts … --codes …` — OK, re-derived.
+- `node tools/technic-substitutes.mjs --write` — 30 candidates: 9 pass, 20 fail, 1 not
+  judged (about an hour on 4 cores; `--cache FILE` resumes a run that was stopped).
+- The technic probes, re-run on this tree (the eleven that read the pack now load it through
+  `loadPack()`; without `TECHNIC_SUBSTITUTE` it is the pack, parsed): frame `10 rows framed, 0
+  failing`; build `10 builds, 0 failing`; ldraw `every table entry matches the parts`; keyless,
+  motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement pass (each also inside the
+  substitutes probe's baseline; fusee, alarm and pusher need more than Node's default 2 GB heap
+  here, `--max-old-space-size=8192`, as they did before this landing); steps `37 checks, 0 failing,
+  16 controls`, and `steps escapement`, `steps alarm` now `0 failing, 16 controls` (they crashed or
+  missed two controls before); carousel `PASS`; bom `PASS — 2342 checks, 47 controls, 0 failed`;
+  booklet `PASS — 106 checks, 16 controls, 0 failed`. Smokes (Chromium 1194, 1280 and 390 wide):
+  `smoke-technic-bom.mjs` `PASS — 244 checks, 0 failed` (every line's alternatives and summary
+  are the pure module's; the CSV column is them); `smoke-technic-booklet.mjs` `PASS — 115 checks,
+  11 controls, 0 failed`. `index-instruments.mjs --check` OK (352), `check-item-numbers.mjs` OK,
+  `bricklink-subset.mjs --check` OK, `offline-check.mjs`: `release: precache complete (101/101)`
+  and every check but one; the one, `update: Reload crosses the worker boundary to the NEW release`, timed
+  out in this container on this tree AND on `origin/main` (main passed it once and failed it the next run):
+  the browser-internal skip-waiting stall `main.js`' 30 s escape is written for, landing after the harness's
+  60 s window because the install alone takes ~40 s here. No worker file moved in this landing.
+
+**Not done, and why.** The booklet's parts page does not print the alternatives (the
+page and the CSV do). No substitute's FRICTION, CLUTCH FORCE or STRENGTH is judged — none is
+modelled. A pass is the model's judges accepting the part's geometry; it says nothing about
+stock, price or anyone having built it. The candidate list is Rebrickable's A and M
+relationships only: a part Rebrickable does not relate is never offered, whatever would fit.
