@@ -34874,7 +34874,7 @@ part is P3).
 At the free end the tangential displacement is 31.7× the normal on the first row, and 6–8× on the
 others.
 
-So a blow across the end meets 30–1400× the bar's modal mass. Moving the strike inboard still leaves
+So a blow across the end of a true spiral meets 55–1400× the bar's modal mass. Moving the strike inboard still leaves
 8–28×. A plan short enough to ring flexurally at the end (a third of a turn) is an arc, not a spiral,
 and rings above §197's 4 kHz. Struck ALONG its tangent, the same spiral meets 0.35–0.50, the bar's
 order. No station on the lever's circle changes any of this: the blow's direction is set by the Thales
