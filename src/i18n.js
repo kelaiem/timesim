@@ -473,6 +473,8 @@ const DE = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Lage', 'Dial up': 'Zifferblatt oben', 'Dial down': 'Zifferblatt unten', 'Crown up': 'Krone oben', 'Crown down': 'Krone unten', 'Crown left': 'Krone links', 'Crown right': 'Krone rechts', 'Amplitude': 'Amplitude', 'Rate': 'Gang', 's/day': 's/Tag',
   'Beat rate': 'Schlagzahl', 'Reserve spec': 'Reserve-Spezifikation',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Gehäuseform', 'Round': 'Rund', 'Rectangular': 'Rechteckig', 'Cushion': 'Kissen', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Unruh steht', 'Give it a swing': 'Anschwingen',
   'Stud radius': 'Klötzchenradius',
   'Spring torque': 'Federmoment', 'Train torque': 'Räderwerkmoment',
@@ -896,6 +898,8 @@ const ZH = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': '位置', 'Dial up': '表盘朝上', 'Dial down': '表盘朝下', 'Crown up': '表冠朝上', 'Crown down': '表冠朝下', 'Crown left': '表冠朝左', 'Crown right': '表冠朝右', 'Amplitude': '摆幅', 'Rate': '日差', 's/day': '秒/天',
   'Beat rate': '振频', 'Reserve spec': '动储规格',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': '表壳形状', 'Round': '圆形', 'Rectangular': '矩形', 'Cushion': '枕形', 'Tonneau': '酒桶形',
   'Balance stopped': '摆轮停摆', 'Give it a swing': '晃动启动',
   'Stud radius': '外桩半径',
   'Spring torque': '发条扭矩', 'Train torque': '轮系扭矩',
@@ -1303,6 +1307,8 @@ const FR = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Position', 'Dial up': 'Cadran en haut', 'Dial down': 'Cadran en bas', 'Crown up': 'Couronne en haut', 'Crown down': 'Couronne en bas', 'Crown left': 'Couronne à gauche', 'Crown right': 'Couronne à droite', 'Amplitude': 'Amplitude', 'Rate': 'Marche', 's/day': 's/j',
   ['Beat rate']: 'Fréquence',
+  // §310 — the case-shape select (Appearance)
+  ['Case shape']: 'Forme du boîtier', ['Round']: 'Rond', ['Rectangular']: 'Rectangulaire', ['Cushion']: 'Coussin', ['Tonneau']: 'Tonneau',
   ['Balance stopped']: 'Balancier arrêté', ['Give it a swing']: 'Relancer',
   ['Reserve spec']: 'Réserve nominale',
   ['Stud radius']: 'Rayon du piton',
@@ -1869,6 +1875,8 @@ const JA = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': '姿勢', 'Dial up': '文字板上', 'Dial down': '文字板下', 'Crown up': 'りゅうず上', 'Crown down': 'りゅうず下', 'Crown left': 'りゅうず左', 'Crown right': 'りゅうず右', 'Amplitude': '振り角', 'Rate': '日差', 's/day': '秒/日',
   ['Beat rate']: '振動数',
+  // §310 — the case-shape select (Appearance)
+  ['Case shape']: 'ケース形状', ['Round']: 'ラウンド', ['Rectangular']: 'レクタンギュラー', ['Cushion']: 'クッション', ['Tonneau']: 'トノー',
   ['Balance stopped']: 'テンプ停止', ['Give it a swing']: '振って始動',
   ['Reserve spec']: '規定持続時間',
   ['Stud radius']: 'スタッド半径',
@@ -2434,6 +2442,8 @@ const ZH_HANT = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': '位置', 'Dial up': '錶盤朝上', 'Dial down': '錶盤朝下', 'Crown up': '錶冠朝上', 'Crown down': '錶冠朝下', 'Crown left': '錶冠朝左', 'Crown right': '錶冠朝右', 'Amplitude': '擺幅', 'Rate': '日差', 's/day': '秒/天',
   ['Beat rate']: '振頻',
+  // §310 — the case-shape select (Appearance)
+  ['Case shape']: '錶殼形狀', ['Round']: '圓形', ['Rectangular']: '矩形', ['Cushion']: '枕形', ['Tonneau']: '酒桶形',
   ['Balance stopped']: '擺輪停擺', ['Give it a swing']: '晃動啟動',
   ['Reserve spec']: '規格儲存',
   ['Stud radius']: '外樁半徑',
@@ -3008,6 +3018,8 @@ const AR = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'الوضعية', 'Dial up': 'الميناء للأعلى', 'Dial down': 'الميناء للأسفل', 'Crown up': 'التاج للأعلى', 'Crown down': 'التاج للأسفل', 'Crown left': 'التاج لليسار', 'Crown right': 'التاج لليمين', 'Amplitude': 'السعة', 'Rate': 'المعدل اليومي', 's/day': 'ث/يوم',
   'Beat rate': 'معدل النبض',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'شكل العلبة', 'Round': 'دائري', 'Rectangular': 'مستطيل', 'Cushion': 'وسادي', 'Tonneau': 'برميلي',
   'Balance stopped': 'عجلة التوازن متوقفة', 'Give it a swing': 'هزّها لتبدأ',
   'Reserve spec': 'مواصفة الاحتياطي',
   'Stud radius': 'نصف قطر المربط',
@@ -3566,6 +3578,8 @@ const ES = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Posición', 'Dial up': 'Esfera arriba', 'Dial down': 'Esfera abajo', 'Crown up': 'Corona arriba', 'Crown down': 'Corona abajo', 'Crown left': 'Corona a la izquierda', 'Crown right': 'Corona a la derecha', 'Amplitude': 'Amplitud', 'Rate': 'Marcha', 's/day': 's/día',
   'Beat rate': 'Frecuencia',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Forma de la caja', 'Round': 'Redonda', 'Rectangular': 'Rectangular', 'Cushion': 'Cojín', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Volante detenido', 'Give it a swing': 'Darle impulso',
   'Reserve spec': 'Reserva nominal',
   'Stud radius': 'Radio del pitón',
@@ -4121,6 +4135,8 @@ const KO = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': '자세', 'Dial up': '다이얼 위', 'Dial down': '다이얼 아래', 'Crown up': '용두 위', 'Crown down': '용두 아래', 'Crown left': '용두 왼쪽', 'Crown right': '용두 오른쪽', 'Amplitude': '진폭', 'Rate': '일오차', 's/day': '초/일',
   'Beat rate': '진동수',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': '케이스 형태', 'Round': '라운드', 'Rectangular': '렉탱귤러', 'Cushion': '쿠션', 'Tonneau': '토노',
   'Balance stopped': '밸런스 정지', 'Give it a swing': '흔들어 시동',
   'Reserve spec': '리저브 규격',
   'Stud radius': '스터드 반경',
@@ -4678,6 +4694,8 @@ const RU = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Положение', 'Dial up': 'Циферблатом вверх', 'Dial down': 'Циферблатом вниз', 'Crown up': 'Головкой вверх', 'Crown down': 'Головкой вниз', 'Crown left': 'Головкой влево', 'Crown right': 'Головкой вправо', 'Amplitude': 'Амплитуда', 'Rate': 'Суточный ход', 's/day': 'с/сут',
   'Beat rate': 'Частота',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Форма корпуса', 'Round': 'Круглый', 'Rectangular': 'Прямоугольный', 'Cushion': 'Подушка', 'Tonneau': 'Тонно',
   'Balance stopped': 'Баланс остановлен', 'Give it a swing': 'Качнуть',
   'Reserve spec': 'Заданный запас',
   'Stud radius': 'Радиус колонки',
@@ -5236,6 +5254,8 @@ const PT = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Posição', 'Dial up': 'Mostrador para cima', 'Dial down': 'Mostrador para baixo', 'Crown up': 'Coroa para cima', 'Crown down': 'Coroa para baixo', 'Crown left': 'Coroa à esquerda', 'Crown right': 'Coroa à direita', 'Amplitude': 'Amplitude', 'Rate': 'Marcha', 's/day': 's/dia',
   'Beat rate': 'Frequência',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Formato da caixa', 'Round': 'Redonda', 'Rectangular': 'Retangular', 'Cushion': 'Almofada', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Balanço parado', 'Give it a swing': 'Dar impulso',
   'Reserve spec': 'Reserva nominal',
   'Stud radius': 'Raio do pitão',
@@ -5793,6 +5813,8 @@ const IT = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Posizione', 'Dial up': 'Quadrante in alto', 'Dial down': 'Quadrante in basso', 'Crown up': 'Corona in alto', 'Crown down': 'Corona in basso', 'Crown left': 'Corona a sinistra', 'Crown right': 'Corona a destra', 'Amplitude': 'Ampiezza', 'Rate': 'Marcia', 's/day': 's/giorno',
   'Beat rate': 'Frequenza',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Forma della cassa', 'Round': 'Rotonda', 'Rectangular': 'Rettangolare', 'Cushion': 'Cuscino', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Bilanciere fermo', 'Give it a swing': 'Dare una scossa',
   'Reserve spec': 'Riserva nominale',
   'Stud radius': 'Raggio del piton',
@@ -6347,6 +6369,8 @@ const HI = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'स्थिति', 'Dial up': 'डायल ऊपर', 'Dial down': 'डायल नीचे', 'Crown up': 'क्राउन ऊपर', 'Crown down': 'क्राउन नीचे', 'Crown left': 'क्राउन बाएँ', 'Crown right': 'क्राउन दाएँ', 'Amplitude': 'आयाम', 'Rate': 'दैनिक दर', 's/day': 'से./दिन',
   'Beat rate': 'बीट दर',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'केस का आकार', 'Round': 'गोल', 'Rectangular': 'आयताकार', 'Cushion': 'कुशन', 'Tonneau': 'टोनो',
   'Balance stopped': 'बैलेंस व्हील रुका हुआ', 'Give it a swing': 'झटका दें',
   'Reserve spec': 'रिज़र्व स्पेक',
   'Stud radius': 'स्टड त्रिज्या',
@@ -6906,6 +6930,8 @@ const VI = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Tư thế', 'Dial up': 'Mặt số hướng lên', 'Dial down': 'Mặt số hướng xuống', 'Crown up': 'Núm vặn hướng lên', 'Crown down': 'Núm vặn hướng xuống', 'Crown left': 'Núm vặn bên trái', 'Crown right': 'Núm vặn bên phải', 'Amplitude': 'Biên độ', 'Rate': 'Sai số ngày', 's/day': 'giây/ngày',
   'Beat rate': 'Tần số nhịp',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Hình dáng vỏ', 'Round': 'Tròn', 'Rectangular': 'Chữ nhật', 'Cushion': 'Đệm', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Bánh lắc dừng', 'Give it a swing': 'Lắc để chạy',
   'Reserve spec': 'Dự trữ thiết kế',
   'Stud radius': 'Bán kính cọc',
@@ -7479,6 +7505,8 @@ const NL = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Stand', 'Dial up': 'Wijzerplaat boven', 'Dial down': 'Wijzerplaat onder', 'Crown up': 'Kroon boven', 'Crown down': 'Kroon onder', 'Crown left': 'Kroon links', 'Crown right': 'Kroon rechts', 'Amplitude': 'Amplitude', 'Rate': 'Gang', 's/day': 's/dag',
   'Beat rate': 'Tikfrequentie',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Kastvorm', 'Round': 'Rond', 'Rectangular': 'Rechthoekig', 'Cushion': 'Kussen', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Onrust staat stil', 'Give it a swing': 'Aanslingeren',
   'Reserve spec': 'Nominale reserve',
   'Stud radius': 'Stiftstraal',
@@ -8052,6 +8080,8 @@ const FA = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'وضعیت', 'Dial up': 'صفحه رو به بالا', 'Dial down': 'صفحه رو به پایین', 'Crown up': 'تاج رو به بالا', 'Crown down': 'تاج رو به پایین', 'Crown left': 'تاج به چپ', 'Crown right': 'تاج به راست', 'Amplitude': 'دامنه', 'Rate': 'آهنگ روزانه', 's/day': 'ث/روز',
   'Beat rate': 'نرخ تیک',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'شکل قاب', 'Round': 'گرد', 'Rectangular': 'مستطیلی', 'Cushion': 'بالشتکی', 'Tonneau': 'بشکه\u200cای',
   'Balance stopped': 'بالانس متوقف', 'Give it a swing': 'تکان بده',
   'Reserve spec': 'ذخیره‌ی اسمی',
   'Stud radius': 'شعاع گل‌میخ',
@@ -8626,6 +8656,8 @@ const HE = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'מנח', 'Dial up': 'לוח השעון למעלה', 'Dial down': 'לוח השעון למטה', 'Crown up': 'כתר למעלה', 'Crown down': 'כתר למטה', 'Crown left': 'כתר שמאלה', 'Crown right': 'כתר ימינה', 'Amplitude': 'משרעת', 'Rate': 'סטייה יומית', 's/day': 'ש׳/יום',
   'Beat rate': 'קצב תקתוק',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'צורת התיבה', 'Round': 'עגול', 'Rectangular': 'מלבני', 'Cushion': 'כרית', 'Tonneau': 'טונו',
   'Balance stopped': 'המאזן עצר', 'Give it a swing': 'לנער',
   'Reserve spec': 'עתודה נומינלית',
   'Stud radius': 'רדיוס הפין',
@@ -9199,6 +9231,8 @@ const ID = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Posisi', 'Dial up': 'Dial ke atas', 'Dial down': 'Dial ke bawah', 'Crown up': 'Mahkota ke atas', 'Crown down': 'Mahkota ke bawah', 'Crown left': 'Mahkota ke kiri', 'Crown right': 'Mahkota ke kanan', 'Amplitude': 'Amplitudo', 'Rate': 'Laju harian', 's/day': 'd/hari',
   'Beat rate': 'Laju ketukan',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Bentuk casing', 'Round': 'Bulat', 'Rectangular': 'Persegi panjang', 'Cushion': 'Bantal', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Balans berhenti', 'Give it a swing': 'Goyangkan',
   'Reserve spec': 'Spek cadangan',
   'Stud radius': 'Jari-jari pasak',
@@ -9773,6 +9807,8 @@ const TR = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Pozisyon', 'Dial up': 'Kadran yukarı', 'Dial down': 'Kadran aşağı', 'Crown up': 'Kurma kolu yukarı', 'Crown down': 'Kurma kolu aşağı', 'Crown left': 'Kurma kolu solda', 'Crown right': 'Kurma kolu sağda', 'Amplitude': 'Genlik', 'Rate': 'Günlük sapma', 's/day': 'sn/gün',
   'Beat rate': 'Vuruş hızı',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Kasa biçimi', 'Round': 'Yuvarlak', 'Rectangular': 'Dikdörtgen', 'Cushion': 'Yastık', 'Tonneau': 'Fıçı',
   'Balance stopped': 'Balans durdu', 'Give it a swing': 'Salla',
   'Reserve spec': 'Nominal rezerv',
   'Stud radius': 'Saplama yarıçapı',
@@ -10347,6 +10383,8 @@ const CY = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Safle', 'Dial up': 'Deial i fyny', 'Dial down': 'Deial i lawr', 'Crown up': 'Coron i fyny', 'Crown down': 'Coron i lawr', 'Crown left': 'Coron i’r chwith', 'Crown right': 'Coron i’r dde', 'Amplitude': 'Osgled', 'Rate': 'Cyfradd ddyddiol', 's/day': 'e/dydd',
   'Beat rate': 'Cyfradd curiad',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Siâp y cas', 'Round': 'Crwn', 'Rectangular': 'Petryal', 'Cushion': 'Clustog', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Y fantol wedi stopio', 'Give it a swing': 'Rhoi siglad',
   'Reserve spec': 'Manyleb cronfa',
   'Stud radius': 'Radiws y styden',
@@ -10923,6 +10961,8 @@ const FIL = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Posisyon', 'Dial up': 'Dial pataas', 'Dial down': 'Dial pababa', 'Crown up': 'Korona pataas', 'Crown down': 'Korona pababa', 'Crown left': 'Korona sa kaliwa', 'Crown right': 'Korona sa kanan', 'Amplitude': 'Amplitud', 'Rate': 'Bilis bawat araw', 's/day': 's/araw',
   ['Beat rate']: 'Dalas ng tibok',
+  // §310 — the case-shape select (Appearance)
+  ['Case shape']: 'Hugis ng kaha', ['Round']: 'Bilog', ['Rectangular']: 'Parihaba', ['Cushion']: 'Unan', ['Tonneau']: 'Tonneau',
   ['Balance stopped']: 'Huminto ang balance', ['Give it a swing']: 'Iugoy',
   ['Reserve spec']: 'Spec ng reserba',
   ['Stud radius']: 'Radius ng stud',
@@ -11475,6 +11515,8 @@ const LV = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Stāvoklis', 'Dial up': 'Ciparnīca augšā', 'Dial down': 'Ciparnīca lejā', 'Crown up': 'Kronis augšā', 'Crown down': 'Kronis lejā', 'Crown left': 'Kronis pa kreisi', 'Crown right': 'Kronis pa labi', 'Amplitude': 'Amplitūda', 'Rate': 'Gaita', 's/day': 's/dienā',
   'Beat rate': 'Sitienu biežums',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Korpusa forma', 'Round': 'Apaļš', 'Rectangular': 'Taisnstūra', 'Cushion': 'Spilvena', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Balanss apstājies', 'Give it a swing': 'Iešūpot',
   'Reserve spec': 'Rezerves spec.',
   'Stud radius': 'Stiprinājuma rādiuss',
@@ -12027,6 +12069,8 @@ const HU = {
   // §246 tier two — the position select and the driven balance's readouts
   'Position': 'Helyzet', 'Dial up': 'Számlap felfelé', 'Dial down': 'Számlap lefelé', 'Crown up': 'Korona felfelé', 'Crown down': 'Korona lefelé', 'Crown left': 'Korona balra', 'Crown right': 'Korona jobbra', 'Amplitude': 'Amplitúdó', 'Rate': 'Járás', 's/day': 's/nap',
   'Beat rate': 'Ütésszám',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Tokforma', 'Round': 'Kerek', 'Rectangular': 'Téglalap', 'Cushion': 'Párna', 'Tonneau': 'Tonneau',
   'Balance stopped': 'A billegő áll', 'Give it a swing': 'Meglendíteni',
   'Reserve spec': 'Tartalék spec.',
   'Stud radius': 'Rugótartó sugara',
@@ -12580,6 +12624,8 @@ const CS = {
   'Rate': 'Chod',
   's/day': 's/den',
   'Beat rate': 'Frekvence',
+  // §310 — the case-shape select (Appearance)
+  'Case shape': 'Tvar pouzdra', 'Round': 'Kulaté', 'Rectangular': 'Obdélníkové', 'Cushion': 'Polštář', 'Tonneau': 'Tonneau',
   'Balance stopped': 'Nepokoj stojí',
   'Give it a swing': 'Rozhoupat',
   'Reserve spec': 'Parametry rezervy',
