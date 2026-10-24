@@ -42214,3 +42214,107 @@ hammer's contact time nor what the wire and case radiate (TODO 229's receiver). 
 higher modes, which move almost only at its tip, read loud here and would radiate little.
 The free-space map the solver reads is a measured grid, not the metal. Landing 2 builds it
 from `FORM_REGIONS`' per-mesh hulls at boot, and that conversion is that landing's own check.
+
+### §310 landing 2 — the seat in the build: the solved bar (default) or spiral on every fitted form case, the hammer re-sited on its lever, and the acoustics read off the wire as it stands
+
+**What moved, and what was refused.** The plan was to turn the whole alarm module (`?alarmmod=`)
+until the hammer faced the seat. That was measured first and refused. At the −24.5° the rect's
+right edge asked for, a score of the module's own boot asserts fail: the arrest, the arming spring,
+the selector link and the strike stud tables. That would be a P3 conflict paid out of P0–P2. What
+moves instead is the HAMMER'S STATION. Its tail rides the lifting lever's far arm anti-parallel
+(`ALARM_STRIKE_LAWS.hammerPivot`), so its pivot may stand anywhere on the circle `|P − Q| = ρ`
+about the lever's pivot (ρ = |(a + ℓ, s)| = 13.0096 u). The blow is normal to the wire where it
+lands: §198's Thales rule, the radial blow generalised, with the pivot on the wire's tangent at the
+face. Every mechanism dimension (arm, tail, lever arms, head, gap, draw) is held. Only the station
+moves, which is the fold rule's currency.
+
+**The seat is generated, not solved at boot.** The wire's band holds metal the build cuts long after
+the gong. So `tools/gong-seats.mjs` boots each fitted case and reads the band's metal: every counted
+mesh's hull whose z span meets the wire's band, the hammer excepted. It solves the seat with §310's
+solver and writes `src/gong-seats.js`, where `--check` re-derives it. Each seat closes its OWN fit:
+the seat moves the hammer, the hammer is counted in the case's fit, so the tool re-boots the seated
+build and cuts the union of the two outlines until the seated metal fits the cut. The constraints
+the seats are solved to:
+- the fundamental inside §197's 1–4 kHz, its length solved to the band's centre unless room caps it;
+- struck at the free end (the loudest fundamental) by the lever's root;
+- the blow outward (§198's rule);
+- the wire one wire-plus-margin clear of every hull and of the outline;
+- its block wholly on plate, its radius from §198's clamp condition at the seat's length;
+- among the passing seats, the owner's family (a bar along a flat edge where the case has one, else
+  the straightest bar; `?gong=spiral` a spiral standing on its own block) and inside it the least
+  hammer move.
+
+`?gong=arc` keeps §198's arc for comparison. The round build reads none of this, and its
+fingerprint is unchanged (955951544, boot silent).
+
+**What the solve found.** A bar on every fitted case, and no spiral on any.
+
+| Case | Seat | Length | f₁ | f₂ | Hammer pivot moved | Fit (`?formrect=`) |
+|---|---|---|---|---|---|---|
+| rect | a bar along its right edge, struck at the free end | 50.48 u | 2122.5 Hz | 13.3 kHz | 10.5 u | −43.58, 50.91, −43.91, 44.59 |
+| cushion | the straightest bar (no flat edge) | 52.01 u | 2000.0 Hz | 12.5 kHz | 2.65 u | −44.57, 48.62, −44.87, 45.55 |
+| tonneau | the straightest bar (no flat edge) | 52.01 u | 2000.0 Hz | 12.5 kHz | 0.84 u | −45.27, 48.98, −45.58, 46.25 |
+
+The rect's edge bar costs the case 2.7 u (about 1 mm) on its right side, because the re-sited
+hammer's metal now sets that edge. The rect's first edge candidate, 52 u at 2.0 kHz, was refused
+because its hammer governed the caseback skirt's floor (§198's own assert). A straight bar that moves
+the hammer 0.5 u fits the unwidened rect. It is not the owner's flat-edge default, so it is not the
+seat.
+
+No spiral seat closes. On the rect and the tonneau, every spiral the lever can reach puts the hammer
+inboard of §198's annulus. There the strike group's own round-annulus constraints fail: the crank's
+riser window (`STRIKE_R_ALLOW`, `R_ANNULUS_IN`) and the hammer spring's stud. On the cushion the
+lever reaches none. `?gong=spiral` therefore refuses and keeps the arc, and says so on
+`__clock.gongSeat.refused`. Where the gong can be struck at all is set by the lever: the strike lies
+within about 20 u of its pivot, the case's upper-right region. The wire may run anywhere free from
+there; the rect's bar runs 50 u down to the lower-right corner.
+
+**Two families the solver gained.** First, the lever's REACH: a strike is the root of
+`|P(s) − Q| − ρ` along the wire (`leverAt`), and an edge bar may stand up to 3 u further inboard,
+because the lever's circle missed the rect's right edge by 0.18 u at one wire's need. Second, a
+SPIRAL ON ITS OWN BLOCK (`spiralInGen`), struck at its outer end and winding inward. A spiral round a
+pillar was refused, by measurement: only P3 stands within the lever's reach, and there the staff
+would stand over the coils. The build solves the strike again, exactly, on the seat's analytic
+centreline (`seatCurve`, `seatStrike`) against its own live lever, and warns if the result moved
+more than 0.05 u from the table's.
+
+**The strike line spec holds unforked.** §278's `blow` row has always said the wire is struck along
+its own normal, and it measured that as the face's radius because the wire was a ring. The reader
+now measures it along the wire's normal at the strike, which the seated wire publishes
+(`userData.gongWire`). On the ring that normal is the radius, so the round build's reading is the
+same number. All 27 strike rows hold on the seated metal with no fork.
+
+**The acoustics, generalised.** The seat's modes are §310's model on its own centreline: in-plane
+for the blow, eight of them, shapes resampled onto 161 stations from the foot. The out-of-plane
+family is reported. The root scan is sliced into a generator, so the build breathes between slices.
+The contact is the wire's where it is struck. A curved wire is §198's torus on a flat at its LOCAL
+radius. A straight bar has no second curvature and meets the square face along a line the face's
+width long, a linear spring ¼πE*ℓ, so the contact lasts π√(m/k) at any speed. The far field is the
+same two integrals by direct quadrature over the seat's stations. On the shipped arc, the
+quadrature agrees with §253's Jacobi–Anger series to 3e-4 in ∫|F|²dΩ and 0.4% in the peak. The case
+path's foot participation runs over the same stations, with the rigid-translation control on the
+seat's frame.
+
+**Instruments.** `tools/probe-310-gong-seat.mjs` is ACCEPTANCE, one boot per seat plus the controls.
+- **Pure half:** the spiral's arc length exact to 1e-8, the strike on the lever's circle, the hull
+  distance, and every row naming its spec.
+- **The round build:** untouched and silent, and the path radiation agrees with the series.
+- **Each seat:**
+  - seated, its check holding (metal 7.77 / 1.80 / 1.81 u off against a 1.60 need);
+  - the face at 0.4 to 1e-9 and the pivot on the circle to 4e-15;
+  - its generated f₁, through a line contact;
+  - 27 strike rows unforked;
+  - no new boot warning.
+- **Controls:** `?gong=arc` keeps the ring, a fit 3 u narrower is called out, and a strike moved
+  1 u is called out.
+
+`tools/gong-seats.mjs --check` re-derives the table, at the same cost as `--write`.
+
+**Not done, and why.** Form builds are still UNVERIFIED configurations; TODO 158 owns the battery on
+them. The pair sweep has not judged the re-sited hammer's swing or the lever's new far arm against
+the strike tier, and the seat check covers only the wire, its block and the staff. TODO 266 (filed
+here, pre-existing on every form build): the three-quarter plate is cut to the outline and the
+strike group's staff and tail stand inside it. The probe reports it on every seat: the staff's top
+is at 10.22 against the plate's underside at 8.40. The spiral's way back runs through the same work:
+derive the strike group's round-annulus constraints from the form's own outline, which TODO 266's fix
+already has to do.

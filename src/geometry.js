@@ -5695,17 +5695,11 @@ export function makeHelicalSpring({ coilR, wireR, coils, length, material = MATS
 // Local frame: origin on the coil's axis in the plane of its BOTTOM end, z up
 // the axis. `legA` / `legB` are POLYLINES in that frame, listed from the coil
 // OUTWARD — one point for a straight leg, two or more for a bent one.
-export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
-                                    legA = [], legB = [], material = MATS.blueSteel,
-                                    name = 'torsionSpring', seg = 6, per = 24 }) {
-  const height = coils * 2 * wireR;
-  const azOf = (t) => startAz + sense * coils * Math.PI * 2 * t;
-  const N = Math.max(16, Math.round(coils * per));
-  const path = [];
-  const coilPt = (t) => [coilR * Math.cos(azOf(t)), coilR * Math.sin(azOf(t)), height * t];
-  for (let i = legA.length - 1; i >= 0; i--) path.push([...legA[i]]);   // listed coil-outward, walked inward
-  for (let i = 0; i <= N; i++) path.push(coilPt(i / N));
-  for (const q of legB) path.push([...q]);
+// A round wire swept along a polyline [[x, y, z], …] on a rotation-minimising
+// frame, CAPPED at both ends (TODO 27: an open mesh reads as a colliding one):
+// the torsion spring's sweep, lifted out whole so §310's seated gong wire is
+// cut by the same law. Returns the raw position and index arrays.
+export function sweptWireBuffers(path, wireR, seg) {
   // Drop any duplicate consecutive point: a zero-length segment has no
   // tangent, and the transport below would carry a NaN frame the whole way.
   const pts = path.filter((p, i) => i === 0
@@ -5757,6 +5751,29 @@ export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
   const c1 = pos.length / 3; pos.push(...pts[pts.length - 1]);
   for (let k = 0; k < seg; k++) idx.push(c0, (k + 1) % seg, k);
   for (let k = 0; k < seg; k++) idx.push(c1, last + k, last + (k + 1) % seg);
+  return { pos, idx };
+}
+// …and as a geometry (§310 landing 2: the seated gong's wire).
+export function makeSweptWireGeometry(path, wireR, seg = 12) {
+  const { pos, idx } = sweptWireBuffers(path, wireR, seg);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
+                                    legA = [], legB = [], material = MATS.blueSteel,
+                                    name = 'torsionSpring', seg = 6, per = 24 }) {
+  const height = coils * 2 * wireR;
+  const azOf = (t) => startAz + sense * coils * Math.PI * 2 * t;
+  const N = Math.max(16, Math.round(coils * per));
+  const path = [];
+  const coilPt = (t) => [coilR * Math.cos(azOf(t)), coilR * Math.sin(azOf(t)), height * t];
+  for (let i = legA.length - 1; i >= 0; i--) path.push([...legA[i]]);   // listed coil-outward, walked inward
+  for (let i = 0; i <= N; i++) path.push(coilPt(i / N));
+  for (const q of legB) path.push([...q]);
+  const { pos, idx } = sweptWireBuffers(path, wireR, seg);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setIndex(idx);

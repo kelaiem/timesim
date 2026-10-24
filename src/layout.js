@@ -290,7 +290,14 @@ export const SPEC = (() => {
     const v = String(raw.formRectSpec).split(',').map(Number);
     return (v.length === 4 && v.every(Number.isFinite) && v[0] < v[1] && v[2] < v[3]) ? Object.freeze(v) : null;
   })();
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec });
+  // §310 landing 2 — THE GONG'S SEAT on a form build: 'bar' (the default under
+  // ?case=, so null means it there), 'spiral' (the alternative), or 'arc' (the
+  // round build's case-path arc, kept to compare against). The seat itself is
+  // never typed: src/gong-seats.js is GENERATED (tools/gong-seats.mjs) from the
+  // fitted case's measured free space and the lever the hammer hangs off.
+  // Ignored on the round build, where the arc is the design.
+  const gongSeat = ['bar', 'spiral', 'arc'].includes(raw.gongSeat) ? raw.gongSeat : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:

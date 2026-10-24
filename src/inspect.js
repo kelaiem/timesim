@@ -13676,7 +13676,7 @@ LINE_SPECS.push({
     { key: 'gap', kind: 'spec', unit: 'u', value: 0.4, measure: 'faceGap',
       derivedFrom: '§24: the radial rest gap, striking face → the wire’s surface (HAMMER_HEAD_GAP)' },
     { key: 'blow', kind: 'spec', unit: 'ratio', value: 0, measure: 'blowRadialCos',
-      derivedFrom: '§198: the pivot stands on the TANGENT at the face, so the head’s velocity at the blow is exactly radial and the wire is struck along its own normal — measured as the cosine between the pivot → face line and the face’s radius' },
+      derivedFrom: '§198: the pivot stands on the TANGENT at the face, so the head’s velocity at the blow is exactly radial and the wire is struck along its own normal — measured as the cosine between the pivot → face line and the face’s radius (§310: the wire’s normal at the strike, which on a ring is that radius)' },
     { key: 'reach', kind: 'envelope', bound: 'min', unit: 'u', value: 0, measure: 'faceOverrun',
       derivedFrom: 'the GONG CONTACT: at the strike the face must reach the wire — its radial travel past the wire’s near surface at the swing the fall law ends on, never short of it (a hammer that falls short rings nothing)' },
     { key: 'k', kind: 'spec', unit: 'Nmm/rad', value: (r, L) => L.strike.k * 1e3, measure: 'springRate',
@@ -14389,7 +14389,14 @@ function lineSpecStrike(clock) {
   // movement (its group carries no plan offset — checked, not assumed)
   wire.updateWorldMatrix(true, false);
   const wO = new THREE.Vector3().setFromMatrixPosition(wire.matrixWorld);
-  const wireR = wire.geometry.parameters.radius, wireTube = wire.geometry.parameters.tube;
+  // §310 landing 2 — a SEATED wire (a form build's bar or spiral) is no ring:
+  // the build publishes its strike point and the wire's normal there, from the
+  // face toward the wire (userData.gongWire), and every "radius" below becomes
+  // the coordinate along that normal from the strike point — the ring's radius
+  // IS its normal, so the two readings are one quantity.
+  const seatW = wire.userData.gongWire || null;
+  const wireR = seatW ? null : wire.geometry.parameters.radius, wireTube = seatW ? seatW.tube : wire.geometry.parameters.tube;
+  const along = seatW ? (q) => (q.x - seatW.strike.x) * seatW.blow.x + (q.y - seatW.strike.y) * seatW.blow.y : null;
   // the face: the head's vertices nearest the wire at REST (its extreme radius
   // on the wire's side — the four corners of a flat face, each carried by
   // every facet that meets it), then the SAME vertices at any pose, averaged:
@@ -14404,9 +14411,10 @@ function lineSpecStrike(clock) {
       let rMean = 0;
       for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(head.matrixWorld); pts.push(v.clone()); rMean += Math.hypot(v.x, v.y); }
       rMean /= pts.length;
-      faceBlow = Math.sign(wireR - rMean) || 1;   // the wire outboard of the head: the face is its outermost metal
-      let ext = -Infinity; for (const q of pts) ext = Math.max(ext, faceBlow * Math.hypot(q.x, q.y));
-      faceIdx = pts.map((q, i) => (faceBlow * Math.hypot(q.x, q.y) >= ext - 1e-6 ? i : -1)).filter((i) => i >= 0);
+      faceBlow = seatW ? 1 : Math.sign(wireR - rMean) || 1;   // the wire outboard of the head: the face is its outermost metal (§310: on a seat, along the blow)
+      const rOf = seatW ? along : (q) => Math.hypot(q.x, q.y);
+      let ext = -Infinity; for (const q of pts) ext = Math.max(ext, faceBlow * rOf(q));
+      faceIdx = pts.map((q, i) => (faceBlow * rOf(q) >= ext - 1e-6 ? i : -1)).filter((i) => i >= 0);
       const uniq = [];
       for (const i of faceIdx) if (!uniq.some((q) => q.distanceTo(pts[i]) < 1e-9)) uniq.push(pts[i]);
       faceCorners = uniq.length;
@@ -14472,11 +14480,11 @@ function lineSpecStrike(clock) {
   const radii = camRing.map((q) => Math.hypot(q.x, q.y));
   const rMin = Math.min(...radii), rMax = Math.max(...radii), rMid = (rMin + rMax) / 2;
   let lobes = 0; for (let i = 0; i < radii.length; i++) if (radii[i] > rMid && radii[(i + radii.length - 1) % radii.length] <= rMid) lobes++;
-  const faceR = Math.hypot(rest.face.c.x - wO.x, rest.face.c.y - wO.y);
-  const near = wireR - rest.face.blow * wireTube;              // the wire's surface on the head's side
+  const faceR = seatW ? along(rest.face.c) : Math.hypot(rest.face.c.x - wO.x, rest.face.c.y - wO.y);
+  const near = seatW ? -wireTube : wireR - rest.face.blow * wireTube;              // the wire's surface on the head's side
   const pf = { x: rest.face.c.x - rest.P.x, y: rest.face.c.y - rest.P.y }, pfL = Math.hypot(pf.x, pf.y);
-  const fr = { x: (rest.face.c.x - wO.x) / faceR, y: (rest.face.c.y - wO.y) / faceR };
-  const strikeFaceR = Math.hypot(strike.face.c.x - wO.x, strike.face.c.y - wO.y);
+  const fr = seatW ? seatW.blow : { x: (rest.face.c.x - wO.x) / faceR, y: (rest.face.c.y - wO.y) / faceR };   // the wire's normal at the face
+  const strikeFaceR = seatW ? along(strike.face.c) : Math.hypot(strike.face.c.x - wO.x, strike.face.c.y - wO.y);
   return {
     camLobes: lobes,
     tailContactArm: TP.x * rest.e.x + TP.y * rest.e.y,

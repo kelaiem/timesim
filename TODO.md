@@ -34675,3 +34675,30 @@ with Playwright 1.64.1 / Chromium 156: 57/57 gates, `lineSpec` 120 rows
 within float noise, all six spec points swept full and clean, boot silent.
 Boot yield held the thread at 384 ms against its 550 ceiling. The residue
 above stays open as recorded, not as this item.
+
+## 266. Form builds: the strike group's staff and tail stand inside the three-quarter plate cut to the outline
+
+**What is wrong.** On the round build the hammer's staff, its cranked tail
+and the lifting lever's far arm live in §198's annulus, outside the
+three-quarter plate's rim, so the staff can rise from the base plate's rim to
+the tail's plane above the plate's top face. Under `?case=` (§307/§308) the
+three-quarter plate is cut to the form's OUTLINE, which reaches past that rim,
+and nothing cuts an opening for the strike group. Measured on the fitted rect
+(`?case=rect&formrect=-43.58,48.21,-43.91,44.59`): the hammer post runs z
+−0.50 to 10.22 at (39.16, 25.83), and the plate spans z 8.40 to 10.30 there,
+solid. The staff passes through 1.8 u of plate and the cranked tail rides
+inside it. This was so before §310. Landing 2 of §310 moves the hammer on form
+builds, so the hammer still sits inside the plate, just somewhere else.
+
+**Why no gate saw it.** Form builds are not swept: they boot UNVERIFIED
+(TODO 158), and the three-quarter plate is cut to the shape, so FORM_REGIONS
+does not count it.
+
+**Fix path.** Cut the plate's own clearance for the strike group under FORM: an
+opening round the hammer's staff and the swept envelope of its tail and the
+lever's far arm, one CLEAR_MARGIN off each. Each opening keeps the §62 land rule
+the plate's other openings obey. If the land rule refuses an opening, lower the
+tail's plane under the plate instead (the crank §278 landing 2 already cuts).
+That is a P3 position change, and the group's arms stay as they are. TODO 158's
+form-build battery is the instrument that would hold it. Until then,
+`probe-310-gong-seat` reports the staff's crossing and does not gate it.
