@@ -162,7 +162,7 @@ for (const kind of KINDS) {
       // its own assert — the fold rule's P3: the move is refused, never paid for), tried four deep
       const pool = pickSeat(mode, res, arc.seat.pivot);   // the round build's hammer pivot, which the fold moves least
       if (!pool.length) { console.log(`  ${mode}: no seat the lever reaches`); break; }
-      let seated = null, pick = null;
+      let seated = null, pick = null, fallback = null;
       for (const cand of pool.slice(0, 4)) {
         const sh = (q) => q.map((v) => v.toFixed(2)).join(', ');
         console.log(`  ${mode}: ${cand.label} (${cand.fam}), L ${cand.L.toFixed(2)} u, f ${cand.f.map((v) => v.toFixed(0)).join(' / ')} Hz, out of plane ${cand.fo.map((v) => v.toFixed(0)).join(' / ')}; free end (${sh(cand.pts[0])}), foot (${sh(cand.pts.at(-1))}); pivot (${sh(cand.hammer.pivot)}), moved ${cand.pivotMoved.toFixed(2)} u`);
@@ -186,8 +186,16 @@ for (const kind of KINDS) {
         const firstKinds = new Set(first.warnings.map(warnKind));
         const widened = b.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
         if (widened.length) { console.log(`    refused: at its fit the seated build carries ${widened.length} warning(s) the first fit lacks: ${widened.slice(0, 2).map((w) => w.slice(0, 160)).join(' | ')}`); continue; }
-        seated = b; pick = cand; row = r; break;
+        // A clean seat whose own metal fits INSIDE this cut closes here and is taken at once. One that would WIDEN
+        // the cut is kept as the round's fallback and the rest are still tried: taking the first clean seat sent
+        // the tonneau's spiral to a 53.2 cut it then could not hold (41.25 mm, over the cap) while a later seat,
+        // 18.02 u of hammer move and 48.92 of fit, closed inside the first cut unwidened.
+        const fits = b.rect[0] >= rect[0] - 0.005 && b.rect[1] <= rect[1] + 0.005 && b.rect[2] >= rect[2] - 0.005 && b.rect[3] <= rect[3] + 0.005;
+        if (fits && !b.warnings.some((w) => /§310/.test(w))) { seated = b; pick = cand; row = r; break; }
+        console.log(`    clean, but its fit [${b.rect.join(', ')}] widens the cut: kept as the round's fallback`);
+        fallback ??= { b, cand, r };
       }
+      if (!seated && fallback) ({ b: seated, cand: pick, r: row } = fallback);
       if (!seated) { console.log(`  ${mode}: no candidate's seated build is clean`); break; }
       for (const w of seated.warnings.filter((w) => /§310/.test(w))) console.log(`  seated build warns: ${w}`);
       // CLOSED when the seated build's metal fits inside the shape it was cut to: the seat was solved on this
