@@ -184,6 +184,8 @@ for (const kind of KINDS) {
         const m = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
         if (m.bootError || !m.seat?.keep) { console.log(`    refused: the seated build ${m.bootError ? `fails to boot (${m.bootError})` : 'measures no strike footprint'}`); continue; }
         r = { ...r, keep: m.seat.keep };
+        // GONG_ROWS=dir writes each candidate row as judged, so a refused seat can be booted and read by hand
+        if (process.env.GONG_ROWS) await writeFile(join(process.env.GONG_ROWS, `${kind}-${mode}-${round}-${pool.indexOf(cand)}.json`), JSON.stringify(r));
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
         const b = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
         if (b.bootError) { console.log(`    refused: the seated build fails to boot (${b.bootError})`); continue; }

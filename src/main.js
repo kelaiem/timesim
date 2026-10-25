@@ -16895,8 +16895,14 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // the base plate, whose rivet mouth is inside the cap). Reading the circle
   // there stood all four pillars inside a rim the form plate does not have,
   // pillar 1 in the strike corner (TODO 266's lands were measured to its seat).
+  // TODO 272 — and to PLATE_RIM_MARGIN, which binds: a pillar is counted metal,
+  // and the case's fit (§308, FORM_FOOTPRINT) holds every counted vertex that
+  // far inside its outline. Held only to TQ_LAND_MIN, a pillar the strike group
+  // pushed to the rim stood 3.238 inside the cushion and the fit grew the case
+  // round it — the frame paying for the gong with the case's size.
+  const PILLAR_RIM_LAND = Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
   const seatClearance = (x, y) => {
-    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - TQ_LAND_MIN : plateR - Math.hypot(x, y));
+    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND : plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
