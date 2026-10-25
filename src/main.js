@@ -16849,8 +16849,15 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       PILLAR_KEYLESS_BOXES.push(b);
     }
   }
+  // TODO 271 — under FORM both plates are cut to the form's OUTLINE, not to
+  // plateR, so the rim term is the outline's own inset, held to TQ_LAND_MIN
+  // like §62's windows (the strip between the screw seat and the edge carries
+  // the clamping load, and TQ_LAND_MIN covers the tenon's STOCK_MIN_U land in
+  // the base plate, whose rivet mouth is inside the cap). Reading the circle
+  // there stood all four pillars inside a rim the form plate does not have,
+  // pillar 1 in the strike corner (TODO 266's lands were measured to its seat).
   const seatClearance = (x, y) => {
-    let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
+    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - TQ_LAND_MIN : plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
@@ -16950,7 +16957,11 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       await breathe(125);
       for (const sgn of dA === 0 ? [1] : [1, -1]) {
         const a = (base + sgn * dA) * DEG2RAD;
-        for (let r = plateR - 4; r >= plateR - 16; r -= 0.5) {
+        // TODO 271: under FORM the ring runs out to the outline along this
+        // bearing (the rim term above refuses what stands too near it); the
+        // round build keeps its ring, so its four seats do not move.
+        const rTop = FORM ? Math.floor(2 * FORM_SHAPE.exit(a)) / 2 : plateR - 4;
+        for (let r = rTop; r >= plateR - 16; r -= 0.5) {
           const x = Math.cos(a) * r, y = Math.sin(a) * r;
           const c = seatClearance(x, y);
           if (c >= CLEAR_MARGIN && (!best || c > best.c + 0.5)) best = { x, y, c, dA };
@@ -17005,7 +17016,8 @@ await breathe(127);
 {
   const all = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
   for (const h of BACK_PLATE_LATE_HOLES) {
-    if (Math.hypot(h.x, h.y) + h.r > plateR - STOCK_MIN_U + 1e-9)
+    // TODO 271: under FORM the plate's edge is the outline, not plateR
+    if ((FORM ? h.r - formInset(h.x, h.y) : Math.hypot(h.x, h.y) + h.r - plateR) > -STOCK_MIN_U + 1e-9)
       console.warn(`TODO 184: late base-plate hole at (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)} leaves under STOCK_MIN_U to the plate edge`);
     for (const o of all) {
       if (o === h) continue;
