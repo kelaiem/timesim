@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>timesim — the gong bench</title>
+<!--
+  BUILT §310 — THE GONG BENCH. Lay an alarm gong's wire into a fitted form case and hear what it would ring:
+  the plan view is the free space at the wire's own height, read off the booted build by
+  tools/gong-bench-data.mjs (src/gong-bench-data.json, generated, never typed); the wire's two models (in plane,
+  out of plane) and the placement solver are src/gong-solve.js, the build's own copy, the solver run in a
+  module worker (src/gong-bench-worker.js); the presets include the build's own seats (src/gong-seats.js).
+  Display only and sim-code-free like technic.html: it imports layout.js' constants and the pure gong modules,
+  never the movement, so the battery cannot see it. Its chrome is English (technic.html's is too).
+-->
+<style>
+html, body { margin: 0; padding: 0; }
+/* Layout: a workbench — the plan view of the case on the left, the wire's settings and its voice on the right; one column on a phone. */
+:root {
+  --bg: #eef0ee; --panel: #f8f9f7; --ink: #1f2725; --muted: #5d6965; --rule: #cfd6d2;
+  --free: #cde6db; --metal: #3a4440; --hammer: #d98f3e; --wire: #a8771e; --bad: #c43c32; --accent: #2f7a63;
+  --f-ui: "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --f-num: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141917; --panel: #1b2220; --ink: #e2e8e5; --muted: #93a29c; --rule: #2c3633;
+  --free: #24453b; --metal: #0b0e0d; --hammer: #e0a056; --wire: #e3b453; --bad: #ef6b60; --accent: #6cc7a6; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141917; --panel: #1b2220; --ink: #e2e8e5; --muted: #93a29c; --rule: #2c3633;
+  --free: #24453b; --metal: #0b0e0d; --hammer: #e0a056; --wire: #e3b453; --bad: #ef6b60; --accent: #6cc7a6; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-ui); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+header h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: .01em; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.bench { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 861px) { .plan { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
+.plan { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 10px; min-width: 0; }
+canvas { width: 100%; height: auto; display: block; touch-action: none; cursor: crosshair; border-radius: 3px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.legend span::before { content: ""; display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; background: var(--c); }
+.side { display: grid; gap: 14px; min-width: 0; }
+fieldset { margin: 0; border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px 14px; background: var(--panel); display: grid; gap: 10px; min-width: 0; }
+legend { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 0 4px; }
+.row { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 5.2em; gap: 10px; align-items: center; }
+.row label { color: var(--muted); }
+.row output { font-family: var(--f-num); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button, .btn { font: inherit; font-size: 14px; padding: 5px 11px; border-radius: 4px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: inherit; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); }
+.voice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.voice div { display: grid; gap: 2px; }
+.voice .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.voice .v { font-family: var(--f-num); font-size: 19px; font-variant-numeric: tabular-nums; }
+.voice .s { font-family: var(--f-num); font-size: 12px; color: var(--muted); }
+.status { font-family: var(--f-num); font-size: 13px; padding: 6px 9px; border-radius: 4px; border: 1px solid var(--rule); }
+.status.ok { color: var(--accent); border-color: var(--accent); }
+.status.bad { color: var(--bad); border-color: var(--bad); }
+.ear { position: relative; height: 26px; border-radius: 3px; background: linear-gradient(90deg, var(--rule), var(--free) 35%, var(--free) 72%, var(--rule)); }
+.ear i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--wire); }
+.ear b { position: absolute; top: 4px; font: 500 11px var(--f-num); color: var(--muted); }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: start; font-weight: 500; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 6px; border-bottom: 1px solid var(--rule); }
+td { padding: 4px 6px; font-family: var(--f-num); font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+#s-results td.fam { white-space: normal; min-width: 12em; }
+#s-results td { white-space: normal; }
+td.fam { font-family: var(--f-ui); }
+tr.out td { color: var(--muted); }
+#s-results tr { cursor: pointer; }
+#s-results tr:hover td, #s-results tr:focus-visible td { background: var(--free); }
+#s-results tr[aria-selected="true"] td { background: var(--free); font-weight: 500; }
+#s-results td.beat { color: var(--bad); }
+input[type=number] { font: inherit; font-family: var(--f-num); font-size: 13px; padding: 3px 6px; border-radius: 4px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); width: 100%; }
+tr.out td.fam::after { content: " ↕"; }
+.notes { color: var(--muted); font-size: 13px; max-width: 70ch; display: grid; gap: 6px; }
+.notes p { margin: 0; }
+code { font-family: var(--f-num); font-size: 12.5px; }
+[hidden] { display: none !important; }
+.check { display: flex; gap: 8px; align-items: flex-start; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Gong Bench</h1>
+    <p><a href="./index.html">← the watch</a> · <a href="./technic.html?view=lego">the LEGO build</a></p>
+    <p>Lay a gong wire into the fitted form case and hear what it would ring. The plan view is the measured free space at the gong wire's own height, already shrunk by one clearance margin and the wire's radius, so the wire's centreline may go anywhere that is green. Drag the wire's free end (the ringed dot) to move it; the hammer can strike anywhere along it.</p>
+  </header>
+
+  <div class="bench">
+    <div class="plan">
+      <canvas id="cv" width="900" height="900" aria-label="Plan view of the case with the gong wire"></canvas>
+      <div class="legend">
+        <span style="--c: var(--free)">room for the wire's centreline</span>
+        <span style="--c: var(--metal)">movement metal</span>
+        <span style="--c: var(--hammer)">the hammer and lifting lever, where the round build stands them</span>
+        <span style="--c: var(--wire)">your wire (ringed: free end · square: foot)</span>
+        <span style="--c: var(--hammer)">where the hammer strikes (dashed: the blow)</span>
+        <span style="--c: var(--bad)">wire in metal or outside the case</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <fieldset>
+        <legend>Case and shape</legend>
+        <div class="row"><label for="kind">Case</label>
+          <select id="kind"></select><span></span></div>
+        <div class="row"><label for="fitsel">Fitted to</label><select id="fitsel"></select><span></span></div>
+        <div class="seg" role="group" aria-label="Wire shape">
+          <button id="sh-straight" aria-pressed="false">Straight bar</button>
+          <button id="sh-arc" aria-pressed="true">Arc</button>
+          <button id="sh-spiral" aria-pressed="false">Spiral</button>
+        </div>
+        <div class="row" id="r-len"><label for="len">Length</label><input id="len" type="range" min="10" max="320" step="0.1" value="51.43"><output id="len-o"></output></div>
+        <div class="row" id="r-head"><label for="head">Heading from free end</label><input id="head" type="range" min="-180" max="180" step="0.5" value="-65.5"><output id="head-o"></output></div>
+        <div class="row" id="r-rad"><label for="rad">Arc radius</label><input id="rad" type="range" min="8" max="120" step="0.1" value="48.2"><output id="rad-o"></output></div>
+        <div class="row" id="r-bend"><label for="bend">Bends to the</label><select id="bend"><option value="-1">right (clockwise)</option><option value="1">left (anticlockwise)</option></select><span></span></div>
+        <div class="row" id="r-pitch"><label for="pitch">Spiral pitch per turn</label><input id="pitch" type="range" min="2" max="20" step="0.1" value="4"><output id="pitch-o"></output></div>
+        <div class="row"><label for="hit">Hammer strikes at</label><input id="hit" type="range" min="20" max="100" step="0.5" value="100"><output id="hit-o"></output></div>
+        <div class="row" id="r-wind"><label for="wind">Spiral runs</label><select id="wind"><option value="-1">clockwise, inward</option><option value="1">anticlockwise, inward</option><option value="-2">clockwise, outward</option><option value="2">anticlockwise, outward</option></select><span></span></div>
+        <div class="row" id="r-centre"><label for="centre">Spiral centre</label><select id="centre"></select><span></span></div>
+        <div class="row"><label for="tilt">Blow tilted out of plane</label><input id="tilt" type="range" min="0" max="20" step="0.5" value="0"><output id="tilt-o"></output></div>
+        <label class="check" for="gap"><input id="gap" type="checkbox"> Let the wire run past the plate's edge, into the gap to the case wall (where the round build's ring overhangs)</label>
+        <div class="seg">
+          <button class="btn" id="fit">Longest that fits</button>
+          <button class="btn" id="p-bar">This case's bar seat</button>
+          <button class="btn" id="p-seat-spiral">This case's spiral seat</button>
+          <button class="btn" id="p-today">The round build's ring</button>
+          <button class="btn" id="p-side">Bar along the right side</button>
+          <button class="btn" id="p-spiral">Spiral round the train</button>
+          <button class="btn" id="p-curl">Curl round column P3</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Solver</legend>
+        <div class="seg" role="group" aria-label="Placement families">
+          <label class="check" for="s-edge"><input id="s-edge" type="checkbox" checked> Bar along a flat edge</label>
+          <label class="check" for="s-col"><input id="s-col" type="checkbox" checked> Spiral round a column</label>
+          <label class="check" for="s-any"><input id="s-any" type="checkbox" checked> Anywhere it fits</label>
+          <label class="check" for="s-spiral"><input id="s-spiral" type="checkbox"> Spiral struck along its end (needs the lever)</label>
+        </div>
+        <div class="row"><label for="s-lo">f₁ at least</label><input id="s-lo" type="number" min="200" max="12000" step="10" value="1500"><output id="s-lo-o"></output></div>
+        <div class="row"><label for="s-hi">f₁ at most</label><input id="s-hi" type="number" min="200" max="12000" step="10" value="3000"><output id="s-hi-o"></output></div>
+        <div class="row"><label for="s-strike">Hammer strikes</label><select id="s-strike"><option value="end">at the free end (loudest)</option><option value="node">on the first overtone's node (purest)</option></select><span></span></div>
+        <label class="check" for="s-lever"><input id="s-lever" type="checkbox" checked> Only where the hammer can reach on its lifting lever: the build's rule, the strike re-solved on the lever's circle (tools/gong-seats.mjs solves the same way)</label>
+        <div class="row"><label for="s-rank">Rank by</label><select id="s-rank"><option value="pitch">nearest the band's centre</option><option value="clean">no out-of-plane beat first</option><option value="room">most spare room</option></select><span></span></div>
+        <div class="seg">
+          <button class="btn primary" id="s-run">Solve</button>
+          <button class="btn" id="s-near">Find a fit near here</button>
+        </div>
+        <div id="s-prog" class="notes" role="status"><p>Solve searches every family you ticked in this case for a wire that rings inside the band. Find a fit near here keeps your free end and shape and tweaks the heading, curvature, position and length. Tap a result to preview it.</p></div>
+        <div class="tbl" id="s-wrap" hidden><table>
+          <thead><tr><th scope="col">Placement</th><th scope="col">f₁</th><th scope="col">× f₁ (f₂)</th><th scope="col">Out of plane</th><th scope="col">Wire</th></tr></thead>
+          <tbody id="s-results"></tbody>
+        </table></div>
+        <p id="custom-note" class="notes" hidden></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>What it rings</legend>
+        <div id="status" class="status" role="status">computing…</div>
+        <div class="voice">
+          <div><span class="k">Note (f₁, in plane)</span><span class="v" id="o-note">–</span><span class="s" id="o-cents"></span></div>
+          <div><span class="k">f₁</span><span class="v" id="o-f1">–</span><span class="s">what a square blow rings</span></div>
+          <div><span class="k">Wire</span><span class="v" id="o-mm">–</span><span class="s">1.1 mm steel</span></div>
+        </div>
+        <div id="lowwarn" class="status bad" hidden></div>
+        <div class="tbl"><table>
+          <thead><tr><th scope="col">Mode</th><th scope="col">Frequency</th><th scope="col">Note</th><th scope="col">× f₁</th><th scope="col">Level, this blow</th></tr></thead>
+          <tbody id="partials"></tbody>
+        </table></div>
+        <div>
+          <div class="ear" aria-hidden="true"><i id="ear-i"></i><b style="left:4px">200 Hz</b><b style="left:46%">2 kHz</b><b style="right:4px">20 kHz</b></div>
+          <div class="notes" style="margin-top:6px"><p>The green stretch of the scale is roughly where hearing is most sensitive (about 1 to 5 kHz). The marker is f₁.</p></div>
+        </div>
+        <div class="seg"><button class="btn primary" id="play">Strike it</button></div>
+      </fieldset>
+    </div>
+  </div>
+
+  <div class="notes">
+    <p><b>What is measured and what is not.</b> The free space is read off the real build by <code>tools/gong-bench-data.mjs</code> (generated, never typed; <code>--check</code> re-derives it), at each case's bar seat fit with the round build's ring left out, the same map <code>tools/gong-seats.mjs</code> solves its seats on: every movement triangle within one clearance margin of the wire's z band, on each case kind at its own fitted size. The pitch comes from two bending models of the wire, each a chain of short circular arcs clamped at the foot and free at the struck end: IN PLANE, the model the watch already uses for its gong, extended to any curve; and OUT OF PLANE, the wire flapping across the plate while it twists (Love's curved-rod equations, round section, Poisson's ratio 0.3). The out-of-plane model reproduces Love's free-ring frequencies and a straight bar's bending and twisting roots. Against today's gong (the 61.14° arc at radius 48.2) it reproduces 2093 Hz, the C7 the build tunes to, and it matches a straight bar's textbook roots exactly.</p>
+    <p><b>Not modelled here.</b> The hammer is not re-solved: the blow is taken normal to the wire wherever the slider puts it, square in the plate's plane unless you tilt it. A square blow drives only the in-plane modes; a tilt of θ hands sin θ of the impulse to the out-of-plane ones (marked ↕). On a tight curl those can sit below f₁, and two close modes sounding together beat. The foot block's own room is not checked. A spiral's turns must stay apart (pitch at least the wire plus a margin, 3.05 units), which the status line checks. The sound is a sketch. Its partial frequencies come from the model, and so does how strongly a blow at the chosen point excites each one (the mode's own shape there, over its modal mass, as an equal impulse). What the ear finally gets is not modelled: the hammer's contact time and the case's radiation both favour the low partials, so the page rolls the higher partials off by f₁/f and gives each a made-up decay. Strike at about 78% from the foot on a straight bar and its first overtone, sitting on that mode's node, nearly vanishes.</p>
+  </div>
+</div>
+
+<script type="module">
+import * as GS from './src/gong-solve.js';
+import { GONG_SEATS } from './src/gong-seats.js';
+import { UNIT_MM, CLEAR_MARGIN } from './src/layout.js';
+const DATA = await (await fetch('./src/gong-bench-data.json')).json();
+// the wire's models, in the shape the bench reads them
+const Wire = { modes: (segs, S, nMax = 4, gMax = 20, fam = 'in', step = 0.004) => GS.modes(segs, S, { nMax, gMax, fam, step }),
+  hz: (g, L, d) => GS.hz(g, L, d), shape: (segs, S, g, nSamp = 200, fam = 'in') => GS.shape(segs, S, g, { nSamp, fam }), at: GS.shapeAt };
+
+  // the wire's section and the margin are the build's (read off the booted build into the data); the unit is layout.js'
+  const U_MM = UNIT_MM, D_M = DATA.kinds.rect.bar.wireD_m, WIRE_R = DATA.kinds.rect.bar.wireR, MARGIN = CLEAR_MARGIN;
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const st = { kind: 'rect', fit: 'bar', shape: 'arc', fx: 48.195 * Math.cos(24.5 * Math.PI / 180), fy: 48.195 * Math.sin(24.5 * Math.PI / 180) };
+  const unpack = (b64, n) => { const s = atob(b64), out = new Uint8Array(n); for (let i = 0; i < n; i++) out[i] = (s.charCodeAt(i >> 3) >> (i & 7)) & 1; return out; };
+  const maps = {};
+  // the space a wire is laid into: per case and per FIT (each seat's own; the plate is cut to the fit)
+  const mapOf = (kind, fit = st.fit) => {
+    const k = `${kind}:${DATA.kinds[kind][fit] ? fit : 'bar'}`;
+    if (maps[k]) return maps[k];
+    const d = DATA.kinds[kind][DATA.kinds[kind][fit] ? fit : 'bar'], { W, H } = d.grid;
+    const m = { d, free: unpack(d.free, W * H), strike: unpack(d.strike, W * H) };
+    const inside = (x, y) => { let c = false, L = d.loop; for (let i = 0, j = L.length - 1; i < L.length; j = i++) { const [xi, yi] = L[i], [xj, yj] = L[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+    m.inside = new Uint8Array(W * H);
+    // strict: inside the plate outline by the wire's own need (one margin plus its radius)
+    const L = d.loop, segD = (x, y) => { let best = Infinity; for (let i = 0, j = L.length - 1; i < L.length; j = i++) { const [ax, ay] = L[j], [bx, by] = L[i], vx = bx - ax, vy = by - ay;
+      const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy))); best = Math.min(best, Math.hypot(x - ax - t * vx, y - ay - t * vy)); } return best; };
+    m.strict = new Uint8Array(W * H);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const x = d.grid.x0 + (i + .5) * d.grid.RES, y = d.grid.y0 + (j + .5) * d.grid.RES, k = j * W + i;
+      m.inside[k] = inside(x, y) ? 1 : 0; m.strict[k] = m.inside[k] && m.free[k] && segD(x, y) >= d.need ? 1 : 0; }
+    return (maps[k] = m);
+  };
+  const freeAt = (m, x, y) => { const g = m.d.grid, i = Math.floor((x - g.x0) / g.RES), j = Math.floor((y - g.y0) / g.RES); return i >= 0 && j >= 0 && i < g.W && j < g.H && ($('gap').checked ? m.free : m.strict)[j * g.W + i] === 1; };
+
+  // ---- the wire's centreline, sampled from the struck end toward the foot ----
+  const H = 0.1;
+  const path = (L) => {
+    if (st.shape === 'custom') return st.custom.pts;
+    const pts = [[st.fx, st.fy]];
+    const n = Math.max(2, Math.round(L / H)), h = L / n;
+    if (st.shape !== 'spiral') {
+      let th = +$('head').value * Math.PI / 180;
+      const k = st.shape === 'arc' ? +$('bend').value / +$('rad').value : 0;
+      let x = st.fx, y = st.fy;
+      for (let i = 0; i < n; i++) { const tm = th + k * h / 2; x += h * Math.cos(tm); y += h * Math.sin(tm); th += k * h; pts.push([x, y]); }
+      return pts;
+    }
+    // Archimedean spiral about the movement's centre, starting at the struck end
+    const w = +$('wind').value, dir = Math.sign(w), inward = Math.abs(w) === 1, p = +$('pitch').value;
+    const C = centreOf();
+    let r = Math.hypot(st.fx - C.x, st.fy - C.y), ph = Math.atan2(st.fy - C.y, st.fx - C.x);
+    const b = (inward ? -1 : 1) * p / (2 * Math.PI);
+    for (let i = 0; i < n; i++) {   // step dφ so the arc step is h: ds = sqrt(r² + b²) dφ
+      const dph = h / Math.hypot(r, b); ph += dir * dph; r += b * dph;
+      if (r <= 0.5) break;
+      pts.push([C.x + r * Math.cos(ph), C.y + r * Math.sin(ph)]);
+    }
+    return pts;
+  };
+  // curvature per model segment, ordered foot → struck end (the model clamps at s = 0)
+  const segsOf = (pts, M) => {
+    const n = pts.length - 1, ks = [];
+    for (let i = 1; i < n; i++) {
+      const a1 = Math.atan2(pts[i][1] - pts[i - 1][1], pts[i][0] - pts[i - 1][0]);
+      const a2 = Math.atan2(pts[i + 1][1] - pts[i][1], pts[i + 1][0] - pts[i][0]);
+      let d = a2 - a1; d = Math.atan2(Math.sin(d), Math.cos(d)); ks.push(d);
+    }
+    const L = n;   // in steps
+    const segs = [];
+    for (let s = 0; s < M; s++) {
+      const a = Math.floor(s * ks.length / M), b = Math.max(a + 1, Math.floor((s + 1) * ks.length / M));
+      let t = 0; for (let i = a; i < b; i++) t += ks[i];
+      segs.push({ k: (t / ((b - a) / L)), ds: 1 / M });   // nondimensional κ·L
+    }
+    return segs.reverse();
+  };
+  const centreOf = () => { const v = $('centre').value; if (v === 'm') return { x: 0, y: 0 }; const q = mapOf(st.kind).d.pillars[+v]; return q ? { x: q.x, y: q.y } : { x: 0, y: 0 }; };
+  const fillCentres = () => { const sel = $('centre'), keep = sel.value || 'm'; const ps = mapOf(st.kind).d.pillars;
+    sel.innerHTML = '<option value="m">Movement centre</option>' + ps.map((q, i) => `<option value="${i}">Column P${i + 1} (${q.x.toFixed(1)}, ${q.y.toFixed(1)})</option>`).join('');
+    sel.value = [...sel.options].some((o) => o.value === keep) ? keep : 'm'; };
+  const NOTES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const noteOf = (f) => { const m = 69 + 12 * Math.log2(f / 440), r = Math.round(m); return { name: NOTES[(r % 12 + 12) % 12] + (Math.floor(r / 12) - 1), cents: Math.round((m - r) * 100) }; };
+
+  // ---- evaluation ----
+  let last = null;
+  const evaluate = () => {
+    const m = mapOf(st.kind);
+    const L = +$('len').value, pts = path(L);
+    const Lreal = st.shape === 'custom' ? st.custom.L : (pts.length - 1) * (L / Math.max(2, Math.round(L / H)));
+    const bad = pts.map(([x, y]) => !freeAt(m, x, y));
+    let selfHit = false;
+    if (st.shape === 'spiral' && +$('pitch').value < 2 * WIRE_R + MARGIN) selfHit = true;
+    const M = st.shape === 'spiral' ? 48 : st.shape === 'custom' ? (st.custom.nseg > 1 ? 24 : 1) : 1;
+    const segs = segsOf(pts, M);
+    const Lm = Lreal * U_MM / 1000, S = (Lm / (D_M / 4)) ** 2;
+    const fam = (name) => { const g = Wire.modes(segs, S, 3, 12, name);
+      return g.map((x) => ({ fam: name, f: Wire.hz(x, Lm, D_M), sh: Wire.shape(segs, S, x, 160, name) })); };
+    const modesIn = fam('in'), modesOut = fam('out');
+    const f = modesIn.map((q) => q.f), shapes = modesIn.map((q) => q.sh);
+    last = { pts, bad, f, shapes, modesIn, modesOut, Lreal, selfHit, short: st.shape !== 'custom' && Lreal < L - 0.5 };
+    render(); readout();
+  };
+  let timer = 0;
+  const schedule = () => { $('status').textContent = 'computing…'; clearTimeout(timer); timer = setTimeout(evaluate, 90); render(true); };
+
+  // ---- drawing ----
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  let view = null;
+  const layout = () => { const g = mapOf(st.kind).d.grid, wx = g.W * g.RES, wy = g.H * g.RES, s = Math.min(cv.width / wx, cv.height / wy);
+    view = { s, ox: (cv.width - wx * s) / 2 - g.x0 * s, oy: (cv.height + wy * s) / 2 + g.y0 * s }; };
+  const X = (x) => view.ox + x * view.s, Y = (y) => view.oy - y * view.s;
+  const toWorld = (px, py) => [(px - view.ox) / view.s, (view.oy - py) / view.s];
+  let base = null, baseKey = '';
+  const drawBase = () => {
+    const key = st.kind + st.fit + $('gap').checked + css('--free') + css('--metal') + css('--hammer');
+    if (base && baseKey === key) return base;
+    const m = mapOf(st.kind), g = m.d.grid, img = ctx.createImageData(cv.width, cv.height);
+    const hex = (c) => { const t = document.createElement('div'); t.style.color = c; document.body.appendChild(t); const v = getComputedStyle(t).color.match(/\d+/g).map(Number); t.remove(); return v; };
+    const cFree = hex(css('--free')), cMetal = hex(css('--metal')), cHam = hex(css('--hammer'));
+    for (let py = 0; py < cv.height; py++) for (let px = 0; px < cv.width; px++) {
+      const [x, y] = toWorld(px + .5, py + .5), i = Math.floor((x - g.x0) / g.RES), j = Math.floor((y - g.y0) / g.RES);
+      if (i < 0 || j < 0 || i >= g.W || j >= g.H) continue;
+      const k = j * g.W + i; let c = null;
+      if (m.strike[k]) c = cHam; else if (($('gap').checked ? m.free : m.strict)[k]) c = cFree; else if (m.inside[k]) c = cMetal;
+      if (!c) continue;
+      const o = (py * cv.width + px) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+    }
+    base = img; baseKey = key; return base;
+  };
+  const render = (pending) => {
+    layout(); ctx.clearRect(0, 0, cv.width, cv.height); ctx.putImageData(drawBase(), 0, 0);
+    const d = mapOf(st.kind).d;
+    ctx.strokeStyle = css('--ink'); ctx.globalAlpha = .55; ctx.lineWidth = 1.2; ctx.beginPath();
+    d.loop.forEach(([x, y], i) => (i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)))); ctx.closePath(); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = css('--ink'); ctx.beginPath(); ctx.arc(X(0), Y(0), 3, 0, 7); ctx.fill();
+    ctx.font = `600 ${Math.round(cv.width / 55)}px ${css('--f-ui')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    d.pillars.forEach((q, i) => { ctx.fillStyle = css('--free'); ctx.fillText(`P${i + 1}`, X(q.x), Y(q.y)); });
+    if (st.shape === 'spiral') { const C = centreOf(); ctx.strokeStyle = css('--wire'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X(C.x) - 7, Y(C.y)); ctx.lineTo(X(C.x) + 7, Y(C.y)); ctx.moveTo(X(C.x), Y(C.y) - 7); ctx.lineTo(X(C.x), Y(C.y) + 7); ctx.stroke(); }
+    const pts = (last && !pending) ? last.pts : path(+$('len').value);
+    const bad = (last && !pending) ? last.bad : null;
+    ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2, 2 * WIRE_R * view.s);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.strokeStyle = bad && (bad[i] || bad[i - 1]) ? css('--bad') : css('--wire');
+      ctx.beginPath(); ctx.moveTo(X(pts[i - 1][0]), Y(pts[i - 1][1])); ctx.lineTo(X(pts[i][0]), Y(pts[i][1])); ctx.stroke();
+    }
+    // the foot, and the struck end with the blow square to the wire
+    const [ex, ey] = pts[pts.length - 1];
+    ctx.fillStyle = css('--ink'); ctx.fillRect(X(ex) - 5, Y(ey) - 5, 10, 10);
+    // the hammer's point: the slider's fraction of the length from the FOOT (the last sample)
+    const hi = Math.max(0, Math.min(pts.length - 2, Math.round((1 - +$('hit').value / 100) * (pts.length - 1))));
+    const [hx, hy] = pts[hi], [bx, by] = pts[hi + 1], tl = Math.hypot(bx - hx, by - hy) || 1;
+    const nx = -(by - hy) / tl, ny = (bx - hx) / tl;
+    ctx.strokeStyle = css('--hammer'); ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(X(hx - nx * 8), Y(hy - ny * 8)); ctx.lineTo(X(hx + nx * 8), Y(hy + ny * 8)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = css('--hammer'); ctx.beginPath(); ctx.arc(X(hx), Y(hy), 5.5, 0, 7); ctx.fill();
+    const [ax, ay] = pts[0];
+    ctx.strokeStyle = css('--ink'); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(ax), Y(ay), 9, 0, 7); ctx.stroke();
+  };
+  const fmtHz = (f) => !Number.isFinite(f) ? '–' : f >= 1000 ? (f / 1000).toFixed(f >= 10000 ? 1 : 2) + ' kHz' : f.toFixed(0) + ' Hz';
+  // how strongly an equal impulse at fraction x from the foot drives each mode: the mode's
+  // displacement there over its generalised mass (tip-normalised shapes), the in-plane share
+  // cos(tilt) of the impulse, the out-of-plane share sin(tilt); referred to a square free-end blow on f1
+  const partials = () => { const x = +$('hit').value / 100, t = +$('tilt').value * Math.PI / 180;
+    const ref = 1 / last.modesIn[0].sh.mass;
+    const one = (q, share) => ({ ...q, lvl: share * Math.abs(Wire.at(q.sh, x)) / q.sh.mass / ref });
+    return [...last.modesIn.map((q) => one(q, Math.cos(t))), ...last.modesOut.map((q) => one(q, Math.sin(t)))].sort((a, b) => a.f - b.f); };
+  const dB = (r) => r > 1e-6 ? `${(20 * Math.log10(r)).toFixed(1)} dB` : 'not driven';
+  const readout = () => {
+    const { f, bad, Lreal, selfHit, short } = last;
+    const nBad = bad.filter(Boolean).length;
+    const ps = partials(), f1 = f[0];
+    $('partials').innerHTML = ps.map((q) => { const nn = noteOf(q.f);
+      return `<tr class="${q.fam}"><td class="fam">${q.fam === 'in' ? 'in plane' : 'out of plane'}</td><td>${fmtHz(q.f)}</td><td>${nn.name} ${nn.cents >= 0 ? '+' : ''}${nn.cents}</td><td>${(q.f / f1).toFixed(2)}</td><td>${dB(q.lvl)}</td></tr>`; }).join('');
+    const low = last.modesOut[0];
+    const lw = $('lowwarn');
+    if (low && low.f < f1 * 0.995) { lw.hidden = false;
+      lw.textContent = `The lowest mode is out of plane: ${fmtHz(low.f)} (${noteOf(low.f).name}), ${(1200 * Math.log2(f1 / low.f) / 100).toFixed(1)} semitones under f₁. A square blow leaves it quiet; a tilted one or a crooked foot wakes it.`; }
+    else lw.hidden = true;
+    $('o-f1').textContent = fmtHz(f[0]);
+    const n = f[0] ? noteOf(f[0]) : null;
+    $('o-note').textContent = n ? n.name : '–'; $('o-cents').textContent = n ? `${n.cents >= 0 ? '+' : ''}${n.cents} cents` : '';
+    $('o-mm').textContent = (Lreal * U_MM).toFixed(1) + ' mm';
+    const lg = (q) => Math.max(0, Math.min(1, Math.log10(q / 200) / Math.log10(100)));
+    $('ear-i').style.left = `calc(${(lg(f[0] || 200) * 100).toFixed(1)}% - 1px)`;
+    const s = $('status');
+    if (selfHit) { s.className = 'status bad'; s.textContent = 'The spiral’s turns touch: pitch must be at least 3.05 units.'; }
+    else if (short) { s.className = 'status bad'; s.textContent = 'The spiral reaches the centre before its full length.'; }
+    else if (nBad) { s.className = 'status bad'; s.textContent = `Does not fit: ${(nBad * Lreal / Math.max(1, last.pts.length - 1)).toFixed(1)} units of wire are in metal or outside the case.`; }
+    else { s.className = 'status ok'; s.textContent = `Fits: ${Lreal.toFixed(1)} units of wire, all in free space.`; }
+  };
+
+  // ---- controls ----
+  const outs = () => { $('len-o').value = (+$('len').value).toFixed(1) + ' u'; $('head-o').value = (+$('head').value).toFixed(1) + '°';
+    $('rad-o').value = (+$('rad').value).toFixed(1) + ' u'; $('pitch-o').value = (+$('pitch').value).toFixed(1) + ' u'; $('hit-o').value = (+$('hit').value).toFixed(1) + '%'; $('tilt-o').value = (+$('tilt').value).toFixed(1) + '°'; $('r-centre').hidden = st.shape !== 'spiral';
+    const cu = st.shape === 'custom';
+    $('r-len').hidden = cu; $('r-head').hidden = st.shape === 'spiral' || cu; $('r-rad').hidden = $('r-bend').hidden = st.shape !== 'arc'; $('r-pitch').hidden = $('r-wind').hidden = st.shape !== 'spiral';
+    if (cu) $('r-centre').hidden = true;
+    $('custom-note').hidden = !cu; if (cu) $('custom-note').textContent = `Previewing ${st.custom.label}, ${st.custom.L.toFixed(1)} units. Pick Straight bar, Arc or Spiral to go back to editing by hand.`
+      + (st.custom.blow === 'tangent' ? ' It is struck ALONG its end (TODO 269): the levels below are for a blow across the wire, which is not how this one is struck, so read its pitches, not its levels.' : '')
+      + (/seat/.test(st.custom.label) ? ' The build holds this seat to its margin exactly (tools/probe-310-gong-seat.mjs); the plan here is a 0.25-unit grid, so a stretch that passes within half a cell of the margin can show red where the exact check passes.' : '');
+    $('s-lo-o').value = noteOf(+$('s-lo').value).name; $('s-hi-o').value = noteOf(+$('s-hi').value).name;
+    for (const s of ['straight', 'arc', 'spiral']) $('sh-' + s).setAttribute('aria-pressed', String(st.shape === s)); };
+  const set = (o) => { for (const [k, v] of Object.entries(o)) { if (k in st) st[k] = v; else $(k).value = v; } outs(); schedule(); };
+  for (const id of ['len', 'head', 'rad', 'pitch']) $(id).addEventListener('input', () => { outs(); schedule(); });
+  for (const id of ['hit', 'tilt']) $(id).addEventListener('input', () => { outs(); if (last) { render(); readout(); } });
+  $('centre').addEventListener('change', () => { outs(); schedule(); });
+  for (const id of ['bend', 'wind']) $(id).addEventListener('change', () => { outs(); schedule(); });
+  $('gap').addEventListener('change', () => { base = null; schedule(); });
+  $('kind').addEventListener('change', (e) => { st.kind = e.target.value; base = null; fillCentres(); schedule(); });
+  $('fitsel').addEventListener('change', (e) => { st.fit = e.target.value; base = null; fillCentres(); schedule(); });
+  for (const s of ['straight', 'arc', 'spiral']) $('sh-' + s).addEventListener('click', () => set({ shape: s }));
+  $('fit').addEventListener('click', () => {
+    const m = mapOf(st.kind); let L = 1;
+    for (; L <= 320; L += 0.2) { const p = path(L); if ((st.shape === 'spiral' && p.length - 1 < Math.round(L / H) - 5) || p.some(([x, y]) => !freeAt(m, x, y))) break; }
+    set({ len: Math.max(10, L - 0.2).toFixed(1) });
+  });
+  // the BUILD's seats (src/gong-seats.js, generated by tools/gong-seats.mjs), sampled off their own analytic curves
+  const seatPreset = (mode) => { const row = GONG_SEATS[st.kind]?.[mode];
+    if (!row) { $('custom-note').hidden = false; $('custom-note').textContent = `The ${st.kind} case has no ${mode} seat generated (tools/gong-seats.mjs).`; return; }
+    const c = GS.seatCurve(row.curve), pts = []; for (let s = 0; s <= c.L + 1e-9; s += 0.25) { const q = c.at(Math.min(s, c.L)); pts.push([q.x, q.y]); }
+    st.fit = mode; $('fitsel').value = mode; base = null; fillCentres();   // the seat's own space
+    st.shape = 'custom'; st.custom = { pts, L: c.L, nseg: row.curve.type === 'line' ? 1 : 24, blow: row.blow, label: `this case's ${mode} seat, ${row.label}` }; st.fx = pts[0][0]; st.fy = pts[0][1];
+    $('hit').value = (100 * (1 - row.strikeS / c.L)).toFixed(1); outs(); schedule(); };
+  $('p-bar').addEventListener('click', () => seatPreset('bar'));
+  $('p-seat-spiral').addEventListener('click', () => seatPreset('spiral'));
+  // the round build's ring (§197/§253: the 61.14° arc at radius 48.195, struck at 24.5°), laid into the rect for comparison
+  $('p-today').addEventListener('click', () => { $('kind').value = 'rect'; st.kind = 'rect'; base = null;
+    const a = 24.5 * Math.PI / 180; set({ shape: 'arc', fx: 48.195 * Math.cos(a), fy: 48.195 * Math.sin(a), head: -65.5, rad: 48.2, bend: -1, len: 51.43 }); });
+  $('p-side').addEventListener('click', () => { const g = mapOf(st.kind).d; set({ shape: 'straight', fx: g.loop.reduce((a, p) => Math.max(a, p[0]), -1e9) - g.need - 0.3, fy: 22, head: -90, len: 40 }); $('fit').click(); });
+  $('p-spiral').addEventListener('click', () => { $('centre').value = 'm'; set({ shape: 'spiral', fx: 44.2, fy: 4, pitch: 3.2, wind: 1, len: 60 }); $('fit').click(); });
+  // a curl round the column by the hammer: the free end one ring out from its keep-out disc, winding outward
+  $('p-curl').addEventListener('click', () => { const ps = mapOf(st.kind).d.pillars; const i = ps.length - 1, q = ps[i];
+    $('centre').value = String(i); const r0 = q.r + 0.6; set({ shape: 'spiral', fx: q.x + r0, fy: q.y, pitch: 3.2, wind: 2, len: 40, hit: 100 }); $('fit').click(); });
+
+  // drag the struck end
+  let drag = false;
+  const ptr = (e) => { const r = cv.getBoundingClientRect(); return toWorld((e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height); };
+  cv.addEventListener('pointerdown', (e) => { if (st.shape === 'custom') return; const [x, y] = ptr(e); if (Math.hypot(x - st.fx, y - st.fy) * view.s < 40) { drag = true; cv.setPointerCapture(e.pointerId); } else { st.fx = x; st.fy = y; schedule(); } });
+  cv.addEventListener('pointermove', (e) => { if (!drag) return; const [x, y] = ptr(e); st.fx = x; st.fy = y; schedule(); });
+  cv.addEventListener('pointerup', () => { drag = false; });
+
+  // ---- the strike: partials from the model; levels and decays illustrative ----
+  let ac = null;
+  $('play').addEventListener('click', () => {
+    if (!last) return;
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = ac.currentTime + 0.02, out = ac.createGain(); out.gain.value = 0.22; out.connect(ac.destination);
+    const f1 = last.f[0];
+    partials().forEach((q) => { const f = q.f; if (!(f > 20 && f < 18000) || !(q.lvl > 1e-4)) return;
+      const amp = Math.max(1e-4, Math.min(4, q.lvl) * (f1 / f));   // computed excitation × the illustrative roll-off
+      const o = ac.createOscillator(), g = ac.createGain(), tau = 1.6 * Math.sqrt(f1 / f);
+      o.frequency.value = f; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(amp, t0 + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 5 * tau); o.connect(g).connect(out); o.start(t0); o.stop(t0 + 5 * tau + 0.05); });
+  });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { base = null; render(); });
+  new MutationObserver(() => { base = null; render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  // ---- the solver, in a worker built from the same model source the page runs ----
+  let worker = null, results = [];
+  const startWorker = () => { if (worker) worker.terminate();
+    worker = new Worker('./src/gong-bench-worker.js', { type: 'module' });   // src/gong-solve.js, the build's own copy
+    worker.onmessage = (e) => { const m = e.data;
+      if (m.progress) $('s-prog').innerHTML = `<p>${m.progress}</p>`;
+      if (m.error) $('s-prog').innerHTML = `<p>The solver stopped: ${m.error.split('\n')[0]}</p>`;
+      if (m.done) { results = m.done.results; showResults(m.done); $('s-run').disabled = $('s-near').disabled = false; } }; };
+  const headingNow = () => { const p = path(+$('len').value); return Math.atan2(p[1][1] - p[0][1], p[1][0] - p[0][0]); };
+  const kappaNow = () => st.shape === 'arc' ? +$('bend').value / +$('rad').value : st.shape === 'straight' ? 0 : NaN;
+  const runSolver = (near) => {
+    const m = mapOf(st.kind), g = m.d.grid, free = ($('gap').checked ? m.free : m.strict).slice();
+    const lo = +$('s-lo').value, hi = +$('s-hi').value;
+    if (!(lo > 0 && hi > lo)) { $('s-prog').innerHTML = '<p>Set the band\'s lower f₁ below its upper one.</p>'; return; }
+    const opts = { edge: !near && $('s-edge').checked, column: !near && $('s-col').checked, any: !near && $('s-any').checked, fLo: lo, fHi: hi, strike: $('s-strike').value, rank: $('s-rank').value, wireD_m: D_M, wireR: WIRE_R,
+      // the build's rule (tools/gong-seats.mjs): the hammer re-solved on its lifting lever's circle
+      lever: $('s-lever').checked ? { ...m.d.lever, inboard: 3, outward: true } : null, spiral: !near && $('s-spiral').checked };
+    if (opts.spiral && !opts.lever) { $('s-prog').innerHTML = '<p>A spiral struck along its end is solved with the hammer on its lever: tick the lever.</p>'; return; }
+    if (near) { if (st.shape === 'custom') { $('s-prog').innerHTML = '<p>Pick a shape first: Find a fit near here starts from a wire you placed by hand.</p>'; return; }
+      opts.near = { x: st.fx, y: st.fy, th: headingNow(), k: kappaNow() }; }
+    if (!near && !opts.edge && !opts.column && !opts.any && !opts.spiral) { $('s-prog').innerHTML = '<p>Tick at least one placement family.</p>'; return; }
+    startWorker(); $('s-run').disabled = $('s-near').disabled = true; $('s-prog').innerHTML = '<p>Searching…</p>';
+    worker.postMessage({ map: { free: free.buffer, W: g.W, H: g.H, x0: g.x0, y0: g.y0, RES: g.RES, loop: m.d.loop, pillars: m.d.pillars, need: m.d.need }, opts }, [free.buffer]);
+  };
+  const famName = { edge: 'Flat edge', column: 'Column', any: 'Anywhere', near: 'Near here', spiral: 'Spiral, struck along its end' };
+  // where a placement sits, as the plan is drawn (the plan is the movement in its own frame,
+  // not the dial, so no clock positions are claimed): eight regions about the movement's centre
+  const where = (q) => { const [x, y] = q.pts[0], [fx, fy] = q.pts[q.pts.length - 1];
+    const reg = (px, py) => { const v = py > 12 ? 'top' : py < -12 ? 'bottom' : '', h = px > 12 ? 'right' : px < -12 ? 'left' : ''; return v && h ? `${v} ${h}` : v || h || 'middle'; };
+    return `free end ${reg(x, y)}, foot ${reg(fx, fy)} of the plan`; };
+  const showResults = (r) => {
+    $('s-wrap').hidden = !results.length;
+    $('s-prog').innerHTML = results.length
+      ? `<p>${r.counts.placements} placements fit, ${r.counts.reach} reach the band, ${r.counts.judged} judged in full. Tap a row to preview it; a red out-of-plane entry beats against f₁.</p>`
+      : `<p>Nothing fits that rings inside the band: ${r.counts.placements} placements fit, none reaches it. Widen the band or tick another family.</p>`;
+    $('s-results').innerHTML = results.map((q, i) => { const nn = noteOf(q.f[0]);
+      return `<tr tabindex="0" data-i="${i}"><td class="fam">${famName[q.fam]}: ${q.label}<br><span style="color: var(--muted); font-size: 12px">${where(q)}</span></td><td>${fmtHz(q.f[0])} ${nn.name}</td><td>${q.f[1] ? (q.f[1] / q.f[0]).toFixed(2) : '–'}</td>`
+        + `<td class="${q.clean ? '' : 'beat'}">${q.fo[0] ? fmtHz(q.fo[0]) : '–'}${q.clean ? '' : ` (${Math.abs(q.beat).toFixed(1)} st ${q.beat > 0 ? 'under' : 'over'} f₁)`}</td><td>${(q.L * U_MM).toFixed(1)} mm</td></tr>`; }).join('');
+  };
+  const pick = (i) => { const q = results[i]; if (!q) return;
+    st.shape = 'custom'; st.custom = { pts: q.pts, L: q.L, nseg: q.nseg, blow: q.blow, label: `${famName[q.fam].toLowerCase()}, ${q.label}` }; st.fx = q.pts[0][0]; st.fy = q.pts[0][1];
+    $('hit').value = (q.hit * 100).toFixed(1);
+    [...$('s-results').rows].forEach((r) => r.setAttribute('aria-selected', String(+r.dataset.i === i)));
+    outs(); schedule(); };
+  $('s-results').addEventListener('click', (e) => { const tr = e.target.closest('tr'); if (tr) pick(+tr.dataset.i); });
+  $('s-results').addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('tr')) { e.preventDefault(); pick(+e.target.closest('tr').dataset.i); } });
+  $('s-run').addEventListener('click', () => runSolver(false));
+  $('s-near').addEventListener('click', () => runSolver(true));
+  for (const id of ['s-lo', 's-hi']) $(id).addEventListener('input', outs);
+  $('kind').innerHTML = Object.keys(DATA.kinds).map((k) => `<option value="${k}">${{ rect: 'Rectangle', cushion: 'Cushion', tonneau: 'Tonneau' }[k] ?? k}</option>`).join('');
+  $('kind').value = st.kind;
+  const fitLabels = () => { const k = DATA.kinds[st.kind];
+    $('fitsel').innerHTML = ['bar', 'spiral'].filter((f) => k[f]).map((f) => `<option value="${f}">the ${f} seat's, ${k[f].mm[0].toFixed(1)} × ${k[f].mm[1].toFixed(1)} mm</option>`).join('');
+    if (!k[st.fit]) st.fit = 'bar'; $('fitsel').value = st.fit; };
+  $('kind').addEventListener('change', fitLabels); fitLabels();
+  // §197's band, as tools/gong-seats.mjs solves to it
+  $('s-lo').value = DATA.band[0]; $('s-hi').value = DATA.band[1];
+  fillCentres(); outs(); evaluate();
+
+window.__gongBench = { ready: true };
+</script>
+</body>
+</html>
