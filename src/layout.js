@@ -3390,9 +3390,16 @@ export function formRect(circles) {
 //                        stands `off` to its left (on (−sin az, cos az)) from
 //                        the ORIGIN, to where it leaves the outline (NaN: the
 //                        ray's line misses the shape)
-//     grown(g)           the shape offset outward by g (negative: inward) — a
-//                        TRUE offset, the same kind where the family is closed
-//                        under offsetting
+//     grown(g, { cornerR })  the shape offset outward by g (negative: inward)
+//                        — a TRUE offset, the same kind where the family is
+//                        closed under offsetting. `cornerR` (§311) HOLDS the
+//                        rect's and the tonneau's corner round at that radius
+//                        instead of offsetting it (an inward offset past the
+//                        round would leave a sharp corner): the straights and
+//                        the long arcs are still the exact offset, and the
+//                        corner arc of the held radius is re-sited tangent to
+//                        them. The circle and the cushion have no corner
+//                        primitive and ignore it.
 //     loop({ grow = 0, segs })  the grown outline as a closed CCW [x, y] array,
 //                        the last point not repeated; held convex (so simple)
 //   }
@@ -3627,7 +3634,7 @@ export function caseShapeOf(kind, box, opts = {}) {
       { c: [x0, y0], r: rc, a0: 2 * H, a1: 3 * H }, { seg: true, a: [x0, yMin], b: [x1, yMin] },
     ].filter((p) => !p.seg || Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1]) > 1e-12);
     return shapeFrom(kind, prims, { segs, cornerR: rc,
-      grown: (g) => caseShapeOf('rect', { xMin: xMin - g, xMax: xMax + g, yMin: yMin - g, yMax: yMax + g }, { ...opts, cornerR: rc + g }) });
+      grown: (g, { cornerR: hold } = {}) => caseShapeOf('rect', { xMin: xMin - g, xMax: xMax + g, yMin: yMin - g, yMax: yMax + g }, { ...opts, cornerR: hold ?? rc + g }) });
   }
   if (kind === 'tonneau') {
     // the construction's free parts: the side's centre offset sx and radius R,
@@ -3653,8 +3660,15 @@ export function caseShapeOf(kind, box, opts = {}) {
       { seg: true, a: C(-kx, -bb), b: C(kx, -bb) },
       { c: C(kx, -ky), r: rc, a0: 3 * H, a1: TAU - phi },
     ];
+    // The offset keeps every centre (the corner's included) when the corner
+    // round grows with it; a HELD corner round (§311) re-sites the corner's
+    // centre by the same construction as the base's — rc' inside the offset
+    // end, R' − rc' from the side's centre — so it stays tangent to both.
     const s = shapeFrom(kind, prims, { segs, maxChord: opts.maxChord ?? 1, cornerR: rc,
-      grown: (g) => caseShapeOf('tonneau', box, { ...opts, tonneau: { ...T, R: R + g, rc: rc + g, b: bb + g } }) });
+      grown: (g, { cornerR: hold } = {}) => {
+        const R2 = R + g, b2 = bb + g, rc2 = hold ?? rc + g, ky2 = b2 - rc2;
+        return caseShapeOf('tonneau', box, { ...opts, tonneau: { sx, R: R2, rc: rc2, b: b2, ky: ky2, kx: sx + Math.sqrt((R2 - rc2) ** 2 - ky2 * ky2) } });
+      } });
     return Object.freeze({ ...s, flatHalf: kx });   // the straight end's half-run, where a flat lug may weld
   }
   if (kind === 'cushion') {
