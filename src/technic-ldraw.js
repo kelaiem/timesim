@@ -161,6 +161,81 @@ export function surfaceSamples(lib, part, step = 0.5) {
   sampleCache.set(key, out);
   return out;
 }
+// A PLACED PART'S SURFACE AS A FLAT CLOUD, for the probes' CLEAR tiers (alarm,
+// pusher, fusee). A cloud is { s, m, lo, hi }: `s` the samples, flat x y z …,
+// in the PART's frame when `m` is its placement (LDraw's x y z a b c d e f g h
+// i) and in the world when `m` is null; lo/hi its world box. The samples are
+// kept ONCE per (part, step) and a placement transforms them IN FLIGHT, so a
+// cloud holds no points of its own. CONSTRAINT, measured on the alarm cell:
+// its three states place 258 distinct (part, matrix) pairs carrying 38.6 M
+// samples at the 0.5 LDU step (five axles over a million each), and a boxed
+// [x, y, z] per sample per placement was 3.8 GB — past Node's default heap
+// (2 GB where it was measured), where the alarm, pusher and fusee probes each
+// died after printing their earlier tiers. Kept once per part the alarm's are
+// 8.6 M samples, 205 MB. The points and their order are surfaceSamples'
+// exactly, so a gap read through a cloud is the boxed reading to the bit.
+const flatCache = new Map();
+export function flatSurfaceSamples(lib, part, step = 0.5) {
+  const key = `${part}@${step}`;
+  if (flatCache.has(key)) return flatCache.get(key);
+  let n = 0, buf = new Float64Array(3 * 65536);
+  forEachSurfaceSample(lib, part, step, (x, y, z) => {
+    if (3 * n + 3 > buf.length) { const grown = new Float64Array(buf.length * 2); grown.set(buf); buf = grown; }
+    buf[3 * n] = x; buf[3 * n + 1] = y; buf[3 * n + 2] = z; n++;
+  });
+  const out = buf.subarray(0, 3 * n); flatCache.set(key, out); return out;
+}
+// Sample i of a cloud in the world, into `out`.
+export function cloudPoint(c, i, out = [0, 0, 0]) {
+  const s = c.s, m = c.m, x = s[i], y = s[i + 1], z = s[i + 2];
+  if (!m) { out[0] = x; out[1] = y; out[2] = z; return out; }
+  out[0] = m[0] + m[3] * x + m[4] * y + m[5] * z; out[1] = m[1] + m[6] * x + m[7] * y + m[8] * z; out[2] = m[2] + m[9] * x + m[10] * y + m[11] * z;
+  return out;
+}
+function boxCloud(c) {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity], q = [0, 0, 0];
+  for (let i = 0; i < c.s.length; i += 3) { cloudPoint(c, i, q); for (let d = 0; d < 3; d++) { if (q[d] < lo[d]) lo[d] = q[d]; if (q[d] > hi[d]) hi[d] = q[d]; } }
+  c.lo = lo; c.hi = hi; return c;
+}
+// A placement `p` ({ part, m }) of the build, as placedParts lists them.
+export function placedCloud(lib, p, step = 0.5) {
+  return boxCloud({ s: flatSurfaceSamples(lib, p.part, step), m: p.m });
+}
+// Points already in the world ([x, y, z] each), as a cloud.
+export function pointCloud(points) {
+  const s = new Float64Array(points.length * 3);
+  points.forEach((q, k) => { s[3 * k] = q[0]; s[3 * k + 1] = q[1]; s[3 * k + 2] = q[2]; });
+  return boxCloud({ s, m: null });
+}
+// The nearest two samples of A and B, in LDU: Infinity when their boxes stand
+// over `reach` apart. B's samples within `reach` of A's box are binned in
+// `cell`-LDU cells and each sample of A looks in its own and the 26 around it,
+// so a gap over `cell` is found only when the boxes' overlap carries it; the
+// CLEAR tiers gate at one LDU and report what they found. A cell's key is one
+// number: the three indices offset to stay positive, 4096 a side (±4096 LDU;
+// a build is under 300).
+export function cloudGap(A, B, { reach = 4, cell = 2 } = {}) {
+  if ([0, 1, 2].some((d) => A.lo[d] > B.hi[d] + reach || B.lo[d] > A.hi[d] + reach)) return Infinity;
+  const OFF = 2048, SPAN = 4096, grid = new Map(), q = [0, 0, 0];
+  const keyOf = (cx, cy, cz) => ((cx + OFF) * SPAN + (cy + OFF)) * SPAN + (cz + OFF);
+  for (let i = 0; i < B.s.length; i += 3) {
+    cloudPoint(B, i, q);
+    if (q[0] < A.lo[0] - reach || q[0] > A.hi[0] + reach || q[1] < A.lo[1] - reach || q[1] > A.hi[1] + reach || q[2] < A.lo[2] - reach || q[2] > A.hi[2] + reach) continue;
+    const k = keyOf(Math.floor(q[0] / cell), Math.floor(q[1] / cell), Math.floor(q[2] / cell));
+    let bin = grid.get(k); if (!bin) { bin = []; grid.set(k, bin); }
+    bin.push(q[0], q[1], q[2]);
+  }
+  let best = Infinity;
+  for (let i = 0; i < A.s.length; i += 3) {
+    cloudPoint(A, i, q);
+    const cx = Math.floor(q[0] / cell), cy = Math.floor(q[1] / cell), cz = Math.floor(q[2] / cell);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+      const bin = grid.get(keyOf(cx + dx, cy + dy, cz + dz)); if (!bin) continue;
+      for (let j = 0; j < bin.length; j += 3) { const d = Math.hypot(bin[j] - q[0], bin[j + 1] - q[1], bin[j + 2] - q[2]); if (d < best) best = d; }
+    }
+  }
+  return best;
+}
 export function catchInRingFrame(lib, theta, riseLDU, part = KEYLESS_PARTS.catch) {
   const pz = L(KEYLESS_SELECTOR_DIM_MM.catchPivot), c = Math.cos(theta), sn = Math.sin(theta);
   return surfaceSamples(lib, part).map(([qx, qy, qz]) => {
