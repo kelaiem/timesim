@@ -43,7 +43,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [254](docs/todo/0254.md) | OPEN | The balance's lower pivot has no endstone: the pivot ends at the stone's underside |
 | [253](docs/todo/0253.md) | OPEN | The beak's stub stands 0.0949 off the cut castellations, under CLEAR_MARGIN |
 | [252](docs/todo/0252.md) | OPEN | The fusee arbor's pivots disagree: a plain bush on top, a jewel at the bottom |
-| [251](docs/todo/0251.md) | PART DONE † | The 7-leaf centre pinion is the train's worst mesh and the first to wear |
+| [251](docs/todo/0251.md) | PART DONE | The 7-leaf centre pinion is the train's worst mesh and the first to wear |
 | [250](docs/todo/0250.md) | OPEN | Saw couplings are cut at dry MU_STEEL, and the keyless runs greased |
 | [248](docs/todo/0248.md) | OPEN | The fusee chain articulates ~34° at the small end, and nothing prices rivet bearing, wear or fatigue |
 | [247](docs/todo/0247.md) | OPEN | The release sleeve turns under follower A's tail pin: the drag it puts on the alarm tube is unpriced against the tube's friction coupling |
@@ -70,7 +70,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [123](docs/todo/0123.md) | OPEN | A body wound inside-out is invisible metal: the exhibition ring painted nothing and every instrument passed |
 | [122](docs/todo/0122.md) | OPEN | The exhibition crystals are glazed by coordinates: no gasket, no press, nothing fixes them in place |
 | [110](docs/todo/0110.md) | PART DONE | `start()`'s reset does not settle EASED state, so a check can read the previous check's pose |
-| [109](docs/todo/0109.md) | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE † | §54's seven unwaived λ rows are live debt parked in a closed item — NAMED, priced, and untriaged |
+| [109](docs/todo/0109.md) | OPEN | §54's seven unwaived λ rows are live debt parked in a closed item — NAMED, priced, and untriaged |
 | [106](docs/todo/0106.md) | OPEN | Open meshes silently degrade every parity witness in the repo — census the movement |
 | [105](docs/todo/0105.md) | OPEN | The lever's safety action is modelled but not simulated |
 | [104](docs/todo/0104.md) | TIER A DONE (§182) | `INTRA_UNIT_CONTACTS` declarations are never audited against the metal |
@@ -79,7 +79,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [95](docs/todo/0095.md) | OPEN | A sampling miss overrode a correct intersection, and published it as clearance |
 | [94](docs/todo/0094.md) | OPEN | What item 93's fix made visible — five interpenetrations nothing reported before |
 | [90](docs/todo/0090.md) | OPEN | What the column wheel DRIVES has never been audited the way what drives IT has |
-| [89](docs/todo/0089.md) | PART DONE † | BUILT §1's unpaid hardening bill — promised asserts, underived constants, uncovered instrument rows |
+| [89](docs/todo/0089.md) | PART DONE | BUILT §1's unpaid hardening bill — promised asserts, underived constants, uncovered instrument rows |
 | [88](docs/todo/0088.md) | OPEN | The quick-set's detent is arithmetic — deliver the setting-time step through a derived compliance window |
 | [87](docs/todo/0087.md) | OPEN | The alarm toggle's press is not in the pose net, and its declarations answer for the wrong members |
 | [86](docs/todo/0086.md) | OPEN | `gearTrueReach`'s miter is not a miter, and the setting wheel's clearance has been living on the error |
@@ -90,20 +90,20 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [80](docs/todo/0080.md) | OPEN | `weldGeometry` drops `geometry.userData`, and §77's sub-body declarations ride on it |
 | [77](docs/todo/0077.md) | OPEN | The reserve train's two meshes interpenetrate — 0.118 mm after §136 cut them conjugate, because the extrude fattens what the generator cut |
 | [74](docs/todo/0074.md) | OPEN | The first triangle census: 3,233 zero-area triangles across 125 geometries, catalogued by cause |
-| [73](docs/todo/0073.md) | PART DONE † | PART DONE — the raycast is guarded (half 2, the vendor patch); the fourteen zero-area triangles remain (half 1) |
+| [73](docs/todo/0073.md) | PART DONE | the raycast is guarded (half 2, the vendor patch); the fourteen zero-area triangles remain (half 1) |
 | [72](docs/todo/0072.md) | OPEN | The alarm stem's one-way has no metal |
 | [66](docs/todo/0066.md) | OPEN | Four small things the code and the documents say that are not true |
-| [63](docs/todo/0063.md) | PART DONE † | PART DONE — the stall is re-taken (≈48 mN, TAIL-limited — SINCE REFUTED: TODO 82 computes ≈1.58 mN, ROD-END-limited), the elbows' bending is computed and the five force paths are priced; an over-strained blade and the §137 record remain |
-| [62](docs/todo/0062.md) | PART DONE † | Mesh phase: the going train is SOLVED; the keyless idiom sites and the bevels remain |
+| [63](docs/todo/0063.md) | PART DONE | the stall is re-taken (≈48 mN, TAIL-limited — SINCE REFUTED: TODO 82 computes ≈1.58 mN, ROD-END-limited), the elbows' bending is computed and the five force paths are priced; an over-strained blade and the §137 record remain |
+| [62](docs/todo/0062.md) | PART DONE | Mesh phase: the going train is SOLVED; the keyless idiom sites and the bevels remain |
 | [56](docs/todo/0056.md) | OPEN | §129's stop-work reverses, and no axis sweeps the reversal — so §48 still cannot judge it |
 | [52](docs/todo/0052.md) | OPEN | `setPathRot` is not persisted, so the setting train re-phases on reload |
-| [36](docs/todo/0036.md) | TIER ONE BUILT † | TIER ONE BUILT — nothing in CI ever booted a non-identity spec |
+| [36](docs/todo/0036.md) | TIER ONE BUILT | nothing in CI ever booted a non-identity spec |
 | [34](docs/todo/0034.md) | OPEN | The §36 sleeve validation cannot fail — the dilation is measured from the sweep that then approves it |
 | [30](docs/todo/0030.md) | OPEN | §76's walls two and three exist only as roadmap prose |
 | [29](docs/todo/0029.md) | MOSTLY CLOSED | §48's audit is wired in, the parity is swept, and the lock's debt is now VISIBLE |
 | [28](docs/todo/0028.md) | MOSTLY CLOSED | pillars, a derived profile, and a lock the column actually lifts |
-| [16](docs/todo/0016.md) | PART CLOSED † | PART CLOSED — the alarm link was thickness-legal and structurally impossible |
-| [12](docs/todo/0012.md) | PART CLOSED † | The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row |
+| [16](docs/todo/0016.md) | PART CLOSED | the alarm link was thickness-legal and structurally impossible |
+| [12](docs/todo/0012.md) | PART DONE | The 0.05–0.12 band — first tranche closed; the remainder is catalogued per-row |
 | [11](docs/todo/0011.md) | OPEN | The alarm work is built at quarter-to-half-scale stock |
 | [7](docs/todo/0007.md) | OPEN | The battery samples poses — it cannot bound them |
 | [6](docs/todo/0006.md) | MOSTLY CLOSED | `EXPECTED_CONTACT_FLOORS` names the contact; the instance became item 21 |
@@ -125,7 +125,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [260](docs/todo/0260.md) | DONE | Price the reader pin's lift out of the notch: the sideways force the hour train must deliver |
 | [259](docs/todo/0259.md) | DONE | The alarm notch's drop is a law over radial walls: a flat pin is never lifted out |
 | [257](docs/todo/0257.md) | DONE | The hack brake engages from the first frame of the crown's travel, before the pad touches the rim |
-| [249](docs/todo/0249.md) | DONE † | The reset-heart and tube friction couplings are bounded by a lossless train torque |
+| [249](docs/todo/0249.md) | DONE | The reset-heart and tube friction couplings are bounded by a lossless train torque |
 | [244](docs/todo/0244.md) | CLOSED | probe-261-fold-site's control K9 cannot run once the fold has landed, so the study exits 2 on main |
 | [242](docs/todo/0242.md) | CLOSED | The faster beat rates re-gear only the escape mesh, so the train cannot start or fully swing the balance at 21,600-36,000 |
 | [241](docs/todo/0241.md) | CLOSED | The alarm press chain survives the finger only if something bottoms it: a stroke stop for the pusher |
@@ -136,7 +136,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [234](docs/todo/0234.md) | CLOSED | The fork cock's leg is solved against a disc about the fork's pivot, held at the pre-seat horns' radius |
 | [233](docs/todo/0233.md) | CLOSED (#611) | The Latvian explainer and primer tables are keyed to English §221 rewrote: ten blocks render English and the Explainer workflow is red on main |
 | [230](docs/todo/0230.md) | CLOSED | The beak lever has no axial retention on its pivot pin: it can slide 0.17 toward the selector rod, which is the first thing it meets |
-| [227](docs/todo/0227.md) | CLOSED † | The alarm release sleeve's skirt cone is a zero-thickness sheet, and the web beside it is a patch over that |
+| [227](docs/todo/0227.md) | CLOSED | The alarm release sleeve's skirt cone is a zero-thickness sheet, and the web beside it is a patch over that |
 | [226](docs/todo/0226.md) | CLOSED (§221) | The impulse pin only enters the fork's mouth, and the bank is derived at the notch floor: the lift the pose law impulses over (21.7 degrees) is not the lift the metal cuts (30.9 degrees) |
 | [224](docs/todo/0224.md) | CLOSED | Pose the maintaining wind: the ring held on the beak, the great wheel on the spring, run-out at Harrison's stop |
 | [223](docs/todo/0223.md) | CLOSED | The setting lever is buried in the setting wheel and crosses the stem, and the yoke crosses the minute wheel, behind EXPECTED pairs with no floors row |
@@ -154,8 +154,8 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [211](docs/todo/0211.md) | CLOSED | The yoke's prong never bears on the clutch collar it is declared to return the clutch through |
 | [210](docs/todo/0210.md) | CLOSED | The maintaining detent's restoring declaration names the maintaining-power spring, which never touches the detent |
 | [209](docs/todo/0209.md) | CLOSED | Twelve parts stand under CLEAR_MARGIN off the base plate |
-| [208](docs/todo/0208.md) | CLOSED (§254) † | The fusee cone is too steep for an upright chain: wrap links lean to 63 degrees and twist 16-35 degrees per joint |
-| [207](docs/todo/0207.md) | DONE † | The balance sustains 76–327°: a lever watch runs 200° and up in every position |
+| [208](docs/todo/0208.md) | CLOSED (§254) | The fusee cone is too steep for an upright chain: wrap links lean to 63 degrees and twist 16-35 degrees per joint |
+| [207](docs/todo/0207.md) | DONE | The balance sustains 76–327°: a lever watch runs 200° and up in every position |
 | [206](docs/todo/0206.md) | CLOSED | Nothing presses the alarm link's beak onto the castellations: the gap direction is posed, and the restoring audit's two-way declaration hides it |
 | [205](docs/todo/0205.md) | CLOSED | The lay shaft's rod-end neck stands 0.1091 from the selector rod, inside one unit and unheld |
 | [204](docs/todo/0204.md) | CLOSED | The link beak's post stands 0.618 above the three-quarter plate a floors row declares it seated on |
@@ -166,8 +166,8 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [196](docs/todo/0196.md) | CLOSED | balstep=60 re-cuts the three-quarter plate's rim although the solved balance station is unchanged |
 | [195](docs/todo/0195.md) | CLOSED | probe-117-fork-room's controls and the explainer's track annulus still describe the old hub |
 | [194](docs/todo/0194.md) | CLOSED | The alarm follower's return spring does not bear on the follower arm |
-| [193](docs/todo/0193.md) | DONE † | The mainspring ribbon works at 1756 MPa, over the 800 MPa SPRING_SIGMA_Y_PA the movement cites |
-| [192](docs/todo/0192.md) | DONE † | The going spring cannot drive the balance: the power budget does not close |
+| [193](docs/todo/0193.md) | DONE | The mainspring ribbon works at 1756 MPa, over the 800 MPa SPRING_SIGMA_Y_PA the movement cites |
+| [192](docs/todo/0192.md) | DONE | The going spring cannot drive the balance: the power budget does not close |
 | [191](docs/todo/0191.md) | CLOSED | The alarm selector rod stands 0.0811 from the beak post it runs parallel to |
 | [190](docs/todo/0190.md) | CLOSED | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring, hidden by an EXPECTED pair |
 | [189](docs/todo/0189.md) | CLOSED | The release pawl's beak never reaches the alarm winding contrate: the strike hold is in the pose law only |
@@ -175,7 +175,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [187](docs/todo/0187.md) | CLOSED | The base plate is invisible to the battery: no gate reads its openings, lands, closure or digest |
 | [185](docs/todo/0185.md) | CLOSED | The cap leg's tilt and stub still sit on the margin, and raising them carries the foot corner into the minute star |
 | [184](docs/todo/0184.md) | CLOSED | The frame's fasteners hold nothing: plate and cock screws stop at the joint face, pillars butt the base plate, and every size is a proportion of an unrelated dimension |
-| [182](docs/todo/0182.md) | CLOSED | PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3) |
+| [182](docs/todo/0182.md) | CLOSED | the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3) |
 | [181](docs/todo/0181.md) | CLOSED | JMP_SITE still reads most of its moving obstacles as built, with no declared table saying why each is safe |
 | [180](docs/todo/0180.md) | CLOSED | JMP_SITE trusts BVH zeros, so a degenerate obstacle triangle read as contact and set the minute jumper's station |
 | [179](docs/todo/0179.md) | CLOSED | The alarm release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700, on an EXPECTED pair with no floors row |
@@ -215,7 +215,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [140](docs/todo/0140.md) | CLOSED | The alarm corner is indexed at a pose the movement never occupies: the disc's rest angle carries alarmSetRot and the stem does not mirror it |
 | [139](docs/todo/0139.md) | WITHDRAWN | The alarm setting corner is not a closed loop when engaged: the hour back-drives the disc past a crown that cannot follow |
 | [138](docs/todo/0138.md) | CLOSED | `makeBevelGear`'s shear-cone teeth can never interleave, so no bevel pair in the movement meshes |
-| [137](docs/todo/0137.md) | CLOSED † | The column pawl's arm is cut under the stock floor, and every instrument misses it for a different reason |
+| [137](docs/todo/0137.md) | CLOSED | The column pawl's arm is cut under the stock floor, and every instrument misses it for a different reason |
 | [136](docs/todo/0136.md) | CLOSED | Two crossed-axis meshes drive through each other, and the registry cannot see them |
 | [135](docs/todo/0135.md) | CLOSED | The handSet axis is blind to everything downstream of the minute jumper |
 | [134](docs/todo/0134.md) | CLOSED | The reserve clamp snaps to a multiple of 3, but the second-stage wheel needs a multiple of 5 — four of the five menu options build a fractional tooth count |
@@ -253,7 +253,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [82](docs/todo/0082.md) | CLOSED | the alarm transfer's stall was prose, and its stroke was a constant the file had deleted |
 | [79](docs/todo/0079.md) | CLOSED (§202) | The alarm link's rod-end overhang is a chord-growth regression, and it is TODO 16's own condemned cantilever returned |
 | [78](docs/todo/0078.md) | CLOSED | §54's ceiling had never been measured: the check was never registered, and it measured stock, not free length |
-| [76](docs/todo/0076.md) | CLOSED (§254) † | The chain's declared articulation fiction, measured: adjacent bodies interpenetrate up to 0.24 u |
+| [76](docs/todo/0076.md) | CLOSED (§254) | The chain's declared articulation fiction, measured: adjacent bodies interpenetrate up to 0.24 u |
 | [75](docs/todo/0075.md) | CLOSED | Four bodies measure INSIDE-OUT — over half the fork cock's volume is negative |
 | [71](docs/todo/0071.md) | CLOSED (§151) | The arrest pad rode a model of the coil |
 | [70](docs/todo/0070.md) | CLOSED | `makeJewelSetting`'s collar is wound inside out, and it is an open shell as well |
@@ -272,7 +272,7 @@ Item numbers are permanent IDs cited as `TODO 117`, never by file or line.
 | [53](docs/todo/0053.md) | CLOSED | the plate floor counts the chain now, in closed form |
 | [51](docs/todo/0051.md) | CLOSED | the finger's accommodation is solved with the finger, not after it |
 | [50](docs/todo/0050.md) | CLOSED (§149) | the going stem's one-way is a saw coupling at the sliding clutch |
-| [49](docs/todo/0049.md) | CLOSED (§254) † | The fusee end of the chain is hooked to nothing |
+| [49](docs/todo/0049.md) | CLOSED (§254) | The fusee end of the chain is hooked to nothing |
 | [48](docs/todo/0048.md) | CLOSED | the power-reserve train's two meshes sat tooth ON tooth; solved, driven forward, and re-measured at 0.03–0.07% |
 | [47](docs/todo/0047.md) | CLOSED | the heart cam turned before the roller reached it |
 | [46](docs/todo/0046.md) | CLOSED (§124) | the first stage re-geared so the ideal cut carries its chain; the float row gates it seated |
