@@ -77,6 +77,19 @@ const boot = async (q) => {
   return { ...out, warnings };
 };
 const sameRect = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.005);
+// the smallest box about `fit`'s own centre, `fit` grown by one scale, whose shape holds every station of the wire
+// `need` inside: the seat's own fit (the metal's fit never shrinks; the wire is not counted in it, so it may grow it)
+const holdWire = (kind, fit, curveRow, need) => {
+  const c = GS.seatCurve(curveRow), pts = []; for (let s = 0; s <= c.L + 1e-9; s += 0.25) { const q = c.at(Math.min(s, c.L)); pts.push([q.x, q.y]); }
+  const cx = (fit[0] + fit[1]) / 2, cy = (fit[2] + fit[3]) / 2, hw = (fit[1] - fit[0]) / 2, hh = (fit[3] - fit[2]) / 2;
+  const box = (k) => [cx - k * hw, cx + k * hw, cy - k * hh, cy + k * hh];
+  const holds = (k) => { const [xMin, xMax, yMin, yMax] = box(k), sh = caseShapeOf(kind, { xMin, xMax, yMin, yMax }); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
+  if (holds(1)) return fit;
+  let lo = 1, hi = 1.05; while (!holds(hi)) { lo = hi; hi *= 1.05; if (hi > 2) return fit; }
+  while (hi - lo > 1e-6) { const m = (lo + hi) / 2; if (holds(m)) hi = m; else lo = m; }
+  const b = box(hi);
+  return [Math.floor(b[0] * 100) / 100, Math.ceil(b[1] * 100) / 100, Math.floor(b[2] * 100) / 100, Math.ceil(b[3] * 100) / 100];   // outward, the URL's 0.01
+};
 const within = (a, cut) => a[0] >= cut[0] - 0.005 && a[1] <= cut[1] + 0.005 && a[2] >= cut[2] - 0.005 && a[3] <= cut[3] + 0.005;   // fit a stands within cut
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
 const r12 = (v) => Math.round(v * 1e12) / 1e12;   // an end-struck spiral's station (rowCurve)
@@ -191,21 +204,25 @@ for (const kind of KINDS) {
         let b = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
         if (b.bootError) { console.log(`    refused: the seated build fails to boot (${b.bootError})`); continue; }
         // THE SEAT AT ITS OWN FIT (TODO 269's second search change, owed since the case is fitted about the
-        // hands): a cut is the round's, sized by the metal the round's map was read on, and a seat whose own
-        // metal fits INSIDE it is judged at that fit, not at the wider cut — a cut over §307's 40 mm cap refused
-        // every seat of the first centred run for a width none of them needed. The narrower fit is booted with
-        // its own arc build beside it (the arc's warnings are what the seat may not add, at the same fit), and
-        // taken only if the seated metal still fits it.
+        // hands): a seat is judged at the smallest case that holds BOTH its seated metal and its own wire, not at
+        // the round's cut. The cut is sized by whatever the round's map was read on — the first centred cut stands
+        // about the round build's hammer and over §307's 40 mm cap, which refused every seat for a width none
+        // needed. The metal's fit alone is not enough: the case-path gong follows the case and is not counted in
+        // FORM_FOOTPRINT, so the metal's fit can leave the wire outside (the rect spiral by 0.605 u, measured). So
+        // the fit is GROWN about its own centre (the hands) until every station of the wire stands its need inside
+        // the outline, then booted with its own arc build beside it (the arc's warnings are what the seat may not
+        // add, at the same fit), and taken only if the seated metal still fits it.
         let arcAt = arc;
-        if (within(b.rect, rect) && !sameRect(b.rect, rect)) {
-          const r2 = { ...r, formrect: b.rect };
+        const own = holdWire(kind, b.rect, rowCurve(cand), need);
+        if (!sameRect(own, rect)) {
+          const r2 = { ...r, formrect: own };
           seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
-          const c = await boot(`case=${kind}&formrect=${b.rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
-          if (!c.bootError && within(c.rect, b.rect)) {
+          const c = await boot(`case=${kind}&formrect=${own.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+          if (!c.bootError && within(c.rect, own)) {
             seatsText = seatModuleText({ ...others });
-            arcAt = await boot(`case=${kind}&formrect=${b.rect.join(',')}&gong=arc`);
+            arcAt = await boot(`case=${kind}&formrect=${own.join(',')}&gong=arc`);
             seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
-            console.log(`    judged at its own fit [${b.rect.join(', ')}] (the cut was [${rect.join(', ')}])`);
+            console.log(`    judged at its own fit [${own.join(', ')}] (the metal's [${b.rect.join(', ')}], the cut [${rect.join(', ')}])`);
             b = c; r = r2;
           } else seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
         }
