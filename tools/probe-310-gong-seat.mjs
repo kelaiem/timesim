@@ -31,6 +31,8 @@
 //       seat's head stands a margin off every coil but its end; B3's control reads the same spiral's
 //       fundamental ACROSS its end, off the build's own record (modal fraction, wire and hammer mass), and
 //       must find μ out of that band — the reason a spiral is struck along its tangent
+//   B2  …and no warning the movement AS FIRST FITTED (the arc build with no ?formrect=) lacks, by kind: a warning
+//       a seat causes by widening its fit stands in the arc build at that fit too, so the row above cannot see it
 //   B2  …and since TODO 266, each seat's hammer staff stands in the three-quarter plate's strike opening, not
 //       under the plate (a vertical ray at the post meets no plate), the opening holding TQ_LAND_MIN of plate to
 //       everything round it (the build's own land test, reported on __clock.strikePlateOpening)
@@ -151,8 +153,10 @@ const seatRead = async () => {   // (Infinity crosses page.evaluate as null: the
   ok('B1 path radiation agrees with the arc series on the shipped arc', out.cmp.every((x) => Math.abs(x.sph - 1) < 1e-3 && Math.abs(x.peak - 1) < 0.01),
     out.cmp.map((x) => `${x.sph.toFixed(7)}/${x.peak.toFixed(4)}`).join(', '));
 }
+const firstFit = {};   // per kind: the movement as first fitted (the arc build, no ?formrect=), the warnings a seat may not add
 for (const row of rows) {
   const q = `case=${row.kind}&formrect=${row.formrect.join(',')}${row.mode === 'bar' ? '' : `&gong=${row.mode}`}`;
+  firstFit[row.kind] ??= (await boot(`case=${row.kind}&gong=arc`, () => ({}))).warnings;
   const seated = await boot(q, seatRead), arc = await boot(`case=${row.kind}&formrect=${row.formrect.join(',')}&gong=arc`, () => ({}));
   const o = seated.out, ch = o.check, tag = `B2 ${row.kind} ${row.mode}`;
   ok(`${tag}: seated`, o.seated === true, o.refused ?? '');
@@ -175,6 +179,12 @@ for (const row of rows) {
   const RUNTIME = /§38\/TODO 8: the alarm's coincidence was crossed/;
   const extra = seated.warnings.filter((w) => !arc.warnings.includes(w) && !RUNTIME.test(w));
   ok(`${tag}: no boot warning the arc build at this fit lacks`, extra.length === 0, extra.slice(0, 3).join(' | '));
+  // …nor one the movement as FIRST fitted lacks, compared by kind (digits folded: a measured warning's numbers
+  // drift with the fit). A warning the seat causes by widening its fit stands in the arc build at that fit too,
+  // which is how the rect's spiral reached a 40.09 mm case past §307's 40 mm cap with the row above green.
+  const warnKind = (w) => w.replace(/-?\d+(\.\d+)?/g, '#'), firstKinds = new Set(firstFit[row.kind].map(warnKind));
+  const widened = seated.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
+  ok(`${tag}: no boot warning the movement as first fitted lacks`, widened.length === 0, widened.slice(0, 3).join(' | '));
   ok(`${tag}: TODO 266 — the staff stands in the plate's strike opening, its land held`, !o.staff.inPlateFootprint && !!o.opening && o.opening.land >= o.tqT - 1e-6,
     o.opening ? `land ${o.opening.land.toFixed(3)} to ${o.opening.landTo} (plate ${o.tqT.toFixed(3)} thick); staff top ${o.staff.postTop.toFixed(2)} against the plate's underside ${o.staff.plateBottom.toFixed(2)}` : 'no opening cut');
 }

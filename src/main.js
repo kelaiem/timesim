@@ -15969,8 +15969,29 @@ const tqKeepClearance = (x, y) => tqKeepClearanceIn(TQ_KEEPS, x, y);
 // slots, the balance cut and the rim. A window that came closer than
 // TQ_LAND_MIN to one of these would merge with it, and the strip between
 // them would be the member that failed.
+//
+// TODO 270 — under FORM the plate is cut to the form's OUTLINE, not to
+// plateR, so the rim term is the outline's own inset (held to TQ_LAND_MIN
+// like every opening, which is more than formFilter's bevel-plus-stock land
+// of 0.65, so formFilter never has a window to drop). Reading the round rim
+// there kept 5.89 u² of the governor's frame covered by plate cut for a circle
+// the form case does not have. And the strike group's opening (TODO 266),
+// once cut, is an opening like the bores: the windows re-solved at the re-cut
+// keep a land to it, so the WINDOW gives way to the mechanism's clearance
+// (§62's rule) rather than the strike group being refused by the view.
+const tqStrikeOpeningDist = (x, y) => {
+  const pts = STRIKE_PLATE_OPENING.pts; let d = Infinity, inside = true;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [ax, ay] = pts[j], [bx, by] = pts[i], vx = bx - ax, vy = by - ay;
+    const t = clamp(((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1e-12), 0, 1);
+    d = Math.min(d, Math.hypot(x - ax - t * vx, y - ay - t * vy));
+    if (vx * (y - ay) - vy * (x - ax) < 0) inside = false;
+  }
+  return inside ? -d : d;
+};
 const tqOpeningClearance = (x, y) => {
-  let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
+  let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) : plateR - Math.hypot(x, y));
+  if (STRIKE_PLATE_OPENING) c = Math.min(c, tqStrikeOpeningDist(x, y));
   for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
   for (const s of tqSlots) {
     const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
@@ -47511,6 +47532,57 @@ function setLabels(on) {
 }
 document.getElementById('btn-labels').addEventListener('click', () => setLabels(!labelsOn));
 
+// TODO 266 — THE STRIKE GROUP'S OPENING, on a form build. On the round
+// build the hammer's staff, its cranked root and riser and the arm's crossing
+// all stand in §198's annulus, outside this plate's rim; a form plate is cut
+// to the case's outline and so runs straight through them (measured on the
+// fitted rect before this: the staff from z −0.50 to 10.22 against a plate
+// at 8.40–10.30, solid). So under FORM the plate is OPENED round exactly the
+// hammer's metal that meets its band (one margin either side in z), over the
+// hammer's whole swing (the law's angle runs in [−DRAW, +DRAW], so the group
+// is sampled across that, both senses), the hull of it grown one margin in
+// plan. Measured off the cut metal, so a re-sited hammer (§310's seats) moves
+// the opening with it. The plate's own lands are held below: the opening must
+// leave TQ_LAND_MIN to every bore, slot, window, pivot boss, the lifting
+// lever's post and the outline, or it warns — a seat the opening reaches is a
+// layout finding, not a land to be thinned.
+//
+// TODO 270 — and it is cut BEFORE the windows are re-solved, so they keep a
+// land to it (tqOpeningClearance): the window gives way, not the strike
+// group. Its own lands are then read against the windows as re-solved.
+let STRIKE_PLATE_VERTS = 0;
+if (FORM) {
+  const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
+  const keepRot = alarmHammerPivot.rotation.z, N = 12;
+  const meshes = []; alarmHammerUnit.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) meshes.push(o); });
+  const under = (o) => { for (let a = o; a; a = a.parent) if (a === alarmHammerPivot) return true; return false; };
+  for (let k = 0; k <= N; k++) {
+    await breathe(363);
+    alarmHammerPivot.rotation.z = -ALARM_DRAW_RAD + 2 * ALARM_DRAW_RAD * k / N;
+    alarmHammerUnit.updateWorldMatrix(true, true);
+    for (const o of meshes) {
+      if (k > 0 && !under(o)) continue;   // a static member is read once
+      const pa = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pa.count, m = o.matrixWorld, tri = [[], [], []];
+      for (let t = 0; t + 2 < n; t += 3) {
+        let lo = Infinity, hi = -Infinity;
+        for (let e = 0; e < 3; e++) { v.fromBufferAttribute(pa, idx ? idx.getX(t + e) : t + e).applyMatrix4(m); tri[e] = [v.x, v.y]; lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
+        if (hi < z0 || lo > z1) continue;
+        for (const [x, y] of tri) { xs.push(x); ys.push(y); }
+      }
+    }
+  }
+  alarmHammerPivot.rotation.z = keepRot;
+  alarmHammerUnit.updateWorldMatrix(true, true);
+  if (xs.length >= 3) {
+    // the hull, grown one margin: the hull of each vertex's margin circle
+    const h0 = convexHull2(xs, ys, xs.length), gx = [], gy = [];
+    for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + CLEAR_MARGIN * Math.cos(a * Math.PI / 12)); gy.push(y + CLEAR_MARGIN * Math.sin(a * Math.PI / 12)); }
+    const pts = convexHull2(gx, gy, gx.length).map(([x, y]) => [x, y]);
+    STRIKE_PLATE_OPENING = { pts };   // TODO 270: an opening the re-solved windows keep a land to
+    STRIKE_PLATE_VERTS = xs.length;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // §62 — THE WINDOWS, RE-SOLVED against the finished movement, and the plate
 // re-cut to the answer.
@@ -47591,52 +47663,11 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
   // its geometry replaced, so everything already parented to it — the chatons,
   // the bearing collars, the plate screws, §71's occluder (which shares this
   // very geometry, and is built below) — follows without being rebuilt.
-  // TODO 266 — THE STRIKE GROUP'S OPENING, on a form build. On the round
-  // build the hammer's staff, its cranked root and riser and the arm's crossing
-  // all stand in §198's annulus, outside this plate's rim; a form plate is cut
-  // to the case's outline and so runs straight through them (measured on the
-  // fitted rect before this: the staff from z −0.50 to 10.22 against a plate
-  // at 8.40–10.30, solid). So under FORM the plate is OPENED round exactly the
-  // hammer's metal that meets its band (one margin either side in z), over the
-  // hammer's whole swing (the law's angle runs in [−DRAW, +DRAW], so the group
-  // is sampled across that, both senses), the hull of it grown one margin in
-  // plan. Measured off the cut metal, so a re-sited hammer (§310's seats) moves
-  // the opening with it. The plate's own lands are held below: the opening must
-  // leave TQ_LAND_MIN to every bore, slot, window, pivot boss, the lifting
-  // lever's post and the outline, or it warns — a seat the opening reaches is a
-  // layout finding, not a land to be thinned.
-  if (FORM) {
-    const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
-    const keepRot = alarmHammerPivot.rotation.z, N = 12;
-    const meshes = []; alarmHammerUnit.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) meshes.push(o); });
-    const under = (o) => { for (let a = o; a; a = a.parent) if (a === alarmHammerPivot) return true; return false; };
-    for (let k = 0; k <= N; k++) {
-      await breathe(363);
-      alarmHammerPivot.rotation.z = -ALARM_DRAW_RAD + 2 * ALARM_DRAW_RAD * k / N;
-      alarmHammerUnit.updateWorldMatrix(true, true);
-      for (const o of meshes) {
-        if (k > 0 && !under(o)) continue;   // a static member is read once
-        const pa = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pa.count, m = o.matrixWorld, tri = [[], [], []];
-        for (let t = 0; t + 2 < n; t += 3) {
-          let lo = Infinity, hi = -Infinity;
-          for (let e = 0; e < 3; e++) { v.fromBufferAttribute(pa, idx ? idx.getX(t + e) : t + e).applyMatrix4(m); tri[e] = [v.x, v.y]; lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
-          if (hi < z0 || lo > z1) continue;
-          for (const [x, y] of tri) { xs.push(x); ys.push(y); }
-        }
-      }
-    }
-    alarmHammerPivot.rotation.z = keepRot;
-    alarmHammerUnit.updateWorldMatrix(true, true);
-    if (xs.length >= 3) {
-      // the hull, grown one margin: the hull of each vertex's margin circle
-      const h0 = convexHull2(xs, ys, xs.length), gx = [], gy = [];
-      for (const [x, y] of h0) for (let a = 0; a < 24; a++) { gx.push(x + CLEAR_MARGIN * Math.cos(a * Math.PI / 12)); gy.push(y + CLEAR_MARGIN * Math.sin(a * Math.PI / 12)); }
-      const pts = convexHull2(gx, gy, gx.length).map(([x, y]) => [x, y]);
-      // the lands it owes: the edge's distance to each, against TQ_LAND_MIN
-      const edgeD = (x, y) => { let d = Infinity; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i], vx = bx - ax, vy = by - ay;
-        const t = clamp(((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1e-12), 0, 1); d = Math.min(d, Math.hypot(x - ax - t * vx, y - ay - t * vy)); }
-        let inside = true; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i]; if ((bx - ax) * (y - ay) - (by - ay) * (x - ax) < 0) inside = false; }
-        return inside ? -d : d; };
+  // TODO 266/270 — the strike opening's lands, against the windows as re-solved round it
+  if (FORM && STRIKE_PLATE_OPENING) {
+    const pts = STRIKE_PLATE_OPENING.pts;
+    {
+      const edgeD = (x, y) => tqStrikeOpeningDist(x, y);
       const lands = [];
       for (const hh of tqHoles) lands.push({ what: `bore (${hh.x.toFixed(2)}, ${hh.y.toFixed(2)})`, d: edgeD(hh.x, hh.y) - hh.r });
       for (const p of tqPivots) lands.push({ what: `pivot boss (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`, d: edgeD(p.x, p.y) - pivotBossR(p) });
@@ -47645,7 +47676,7 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
       lands.push({ what: 'the lifting lever\'s post', d: edgeD(LIFT_PIV.x, LIFT_PIV.y) - ALARM_LIFT_POST_R });
       for (const [x, y] of pts) lands.push({ what: `the ${FORM.kind} outline`, d: FORM.inset(x, y) });
       const worst = lands.reduce((a, b) => (b.d < a.d ? b : a), { d: Infinity });
-      STRIKE_PLATE_OPENING = Object.freeze({ pts, land: worst.d, landTo: worst.what, verts: xs.length });
+      STRIKE_PLATE_OPENING = Object.freeze({ pts, land: worst.d, landTo: worst.what, verts: STRIKE_PLATE_VERTS });
       if (worst.d < TQ_LAND_MIN - 1e-9)
         console.warn(`TODO 266: the strike group's opening in the three-quarter plate leaves ${worst.d.toFixed(3)} of plate to ${worst.what} — need TQ_LAND_MIN ${TQ_LAND_MIN.toFixed(3)}; re-site the hammer (tools/gong-seats.mjs) rather than thin the land`);
       tqPolyHoles.push({ name: 'strike group (TODO 266)', pts });
