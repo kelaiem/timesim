@@ -80,16 +80,121 @@ export function rayExit(loop, dir, base = [0, 0]) {
 // plate's shape (the rules in the header; `form` is a caseShapeOf shape, and
 // `loop({ grow })` its true offset). Pure, so an instrument reads the same
 // loops the build does.
+//
+// The rounded bezel (below) is swept round the outer loop, so every wall INSIDE
+// it — bore, crystal, opening — is the outer loop's exact PARALLEL OFFSET by its
+// own depth (`inward`, a mitre at each vertex), not a fresh sampling of the
+// shape grown: one vertex per vertex, so the rounds, the seat the crystal is
+// pressed into and the crystal itself are one polygon at each depth, and the
+// hairlines (formCaseLines) lie on the metal's own vertices.
 export function formCaseLoops(form) {
+  const G = CASE_CLEAR + CASE_BAND_T;
+  const outer = form.loop({ grow: G });
+  const ring = (t) => inward(outer, t);
   return {
     plate: form.loop({ grow: 0 }),
-    bore: form.loop({ grow: CASE_CLEAR }),
-    outer: form.loop({ grow: CASE_CLEAR + CASE_BAND_T }),
-    opening: form.loop({ grow: -1 / UNIT_MM }),
-    crystal: form.loop({ grow: -0.5 / UNIT_MM }),
+    bore: ring(CASE_BAND_T),
+    outer,
+    opening: ring(G + 1 / UNIT_MM),
+    crystal: ring(G + 0.5 / UNIT_MM),
+    ring,   // the outer loop offset inward by t
   };
 }
+// A closed CCW convex polygon offset inward by t: each vertex moves along its
+// mitre, p − t·(n₁ + n₂)/(1 + n₁·n₂), with n₁, n₂ the outward unit normals of its
+// two edges — so every edge of the result is its edge moved exactly t inward.
+// Held at the build: a depth past the loop's tightest curvature folds an edge
+// over, which the caller's convexity check reads.
+export function inward(pts, t) {
+  const n = pts.length, en = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % n], L = Math.hypot(bx - ax, by - ay) || 1e-12;
+    en.push([(by - ay) / L, -(bx - ax) / L]);
+  }
+  return pts.map(([x, y], i) => {
+    const a = en[(i + n - 1) % n], b = en[i], k = 1 + a[0] * b[0] + a[1] * b[1];
+    return [x - t * (a[0] + b[0]) / k, y - t * (a[1] + b[1]) / k];
+  });
+}
+// §289/§292 under a form — THE ROUNDED BEZEL'S PROFILE, makeCase's frontRun read
+// as (depth inward from the outer loop, z) rather than (radius, z): the bore up
+// to the crystal seat's floor, the seat wall, the lip's underside, STOCK_MIN_U of
+// straight bore, the lip's quarter round onto the face, the flat, and the outer
+// quarter ELLIPSE (reach `roundW` across the top, height bezelR down to the seat
+// plane zBandFront, where the band's wall takes over tangent). The radii are
+// CASE_DIMS' own (bezelR, bezelLipR) and the flat is the round case's
+// (bezelFlat, BEZEL_FLAT_MM); only the reach is re-derived, because the face is
+// the form's own width — the outer loop to the opening, G + 1 mm — so the reach
+// is what that face leaves once the lip's round and the flat are taken out,
+// makeCase's derivation on this face. Returns the profile as RUNS, each smooth
+// along itself (shared vertices give it smooth normals), the corners between
+// them sharp.
+export function formBezelProfile(dims) {
+  const { zBandFront, zCrystInner, zCrystOuter, zBezelOuter, bezelR, bezelLipR, bezelFlat } = dims;
+  const G = CASE_CLEAR + CASE_BAND_T, face = G + 1 / UNIT_MM;
+  const tBore = CASE_BAND_T, tCryst = G + 0.5 / UNIT_MM, tOpen = face;
+  const roundW = face - bezelLipR - bezelFlat;
+  const quarter = (ct, cz, rt, rz, a0, a1, n) => {
+    const pts = [];
+    for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * (i / n); pts.push([ct - rt * Math.cos(a), cz + rz * Math.sin(a)]); }
+    return pts;
+  };
+  // (t = depth inward, z): makeCase's radius r reads t = R_out − r, so its angles carry over with the t axis flipped
+  const lip = quarter(tOpen - bezelLipR, zBezelOuter + bezelLipR, bezelLipR, bezelLipR, Math.PI, 1.5 * Math.PI, 3);
+  const outer = quarter(roundW, zBezelOuter + bezelR, roundW, bezelR, 1.5 * Math.PI, 2 * Math.PI, 12);
+  const runs = [
+    [[tBore, zBandFront], [tBore, zCrystInner]],                 // the bore, up to the seat's floor
+    [[tBore, zCrystInner], [tCryst, zCrystInner]],                // the seat's floor
+    [[tCryst, zCrystInner], [tCryst, zCrystOuter]],               // the seat wall (the crystal's edge)
+    [[tCryst, zCrystOuter], [tOpen, zCrystOuter]],                // the lip's underside, over the crystal's face
+    [[tOpen, zCrystOuter], ...lip, ...outer],                     // the bore, the lip round, the flat (lip's end to the round's start), the outer round
+    [[0, zBandFront], [tBore, zBandFront]],                       // the seat plane, shared with the band (inside the metal)
+  ];
+  // §292's measured wall: the nearest the outer round comes to the seat and the bore behind it
+  const segD = ([pt, pz], [at, az], [ct, cz]) => { const dt = ct - at, dz = cz - az, k = Math.max(0, Math.min(1, ((pt - at) * dt + (pz - az) * dz) / (dt * dt + dz * dz)));
+    return Math.hypot(pt - at - k * dt, pz - az - k * dz); };
+  const inner = [[tBore, zBandFront], [tBore, zCrystInner], [tCryst, zCrystInner], [tCryst, zCrystOuter], [tOpen, zCrystOuter]];
+  let minWall = Infinity;
+  for (const p of quarter(roundW, zBezelOuter + bezelR, roundW, bezelR, 1.5 * Math.PI, 2 * Math.PI, 400))
+    for (let i = 0; i + 1 < inner.length; i++) minWall = Math.min(minWall, segD(p, inner[i], inner[i + 1]));
+  return { runs, roundW, lipR: bezelLipR, flat: bezelFlat, minWall, tOpen, tCryst, tBore };
+}
+// A profile run swept round a loop: ring(t) at each run point, quads between
+// consecutive rings, indexed so the run is smooth along itself and round the loop.
+function sweepRun(ring, run) {
+  const rings = run.map(([t, z]) => ring(t).map(([x, y]) => [x, y, z]));
+  const n = rings[0].length, pos = new Float32Array(rings.length * n * 3), idx = [];
+  rings.forEach((r, j) => r.forEach((p, i) => pos.set(p, (j * n + i) * 3)));
+  for (let j = 0; j + 1 < rings.length; j++) for (let i = 0; i < n; i++) {
+    const a = j * n + i, b = j * n + (i + 1) % n, c = (j + 1) * n + (i + 1) % n, d = (j + 1) * n + i;
+    idx.push(a, b, c, a, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  return g;
+}
 
+// Every turn of a closed CCW loop left (a fold reads as a right turn).
+function loopConvex(pts) {
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = pts[(i + n - 1) % n], [bx, by] = pts[i], [cx, cy] = pts[(i + 1) % n];
+    if ((bx - ax) * (cy - by) - (by - ay) * (cx - bx) < -1e-9) return false;
+  }
+  return true;
+}
+// Turn a non-indexed body inside-out in place: swap each triangle's last two
+// vertices and negate the normals.
+function flipWinding(g) {
+  const p = g.attributes.position.array, nr = g.attributes.normal?.array;
+  for (let t = 0; t < p.length; t += 9) for (let k = 0; k < 3; k++) {
+    const a = t + 3 + k, b = t + 6 + k; [p[a], p[b]] = [p[b], p[a]];
+    if (nr) [nr[a], nr[b]] = [nr[b], nr[a]];
+  }
+  if (nr) for (let i = 0; i < nr.length; i++) nr[i] = -nr[i];
+  g.attributes.position.needsUpdate = true;
+}
 // Signed volume of a geometry, indexed or not: the sum over triangles of the
 // scalar triple product over six (makeCase's volume check). Negative is a
 // body wound inside-out — FrontSide culling hides it while every instrument
@@ -208,8 +313,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
       + `is over CASE_WIDTH_MAX ${CASE_WIDTH_MAX.toFixed(3)} u`);
 
   // CASE MIDDLE — the band and the bezel as ONE body, the round case's one
-  // turning. Three prisms of the outer loop, each the next z band down the
-  // round profile's frontRun, merged:
+  // turning. The walls are the round profile's frontRun on the form's loops:
   //   · the LIP, zBezelOuter..zCrystOuter, bored to the OPENING (dial − 1 mm):
   //     the metal that covers the crystal's edge;
   //   · the SEAT, zCrystOuter..zCrystInner, bored to the CRYSTAL loop: the
@@ -217,14 +321,28 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   //     crystal is pressed into its seat and trapped under the lip, no floor);
   //   · the BAND, zCrystInner..z0, bored to the BORE (plate + CASE_CLEAR): the
   //     0.3 mm step to zBandFront and the band behind it are one bore here.
-  // The faces two prisms share at a plane are doubled inside the metal, the
-  // sector caps' own precedent in makeCase. Not cut: the midcase step at
-  // zStep (prototype — one outer plane from the bezel to the back).
-  const middleGeo = mergeGeos([
-    prism(loops.outer, [loops.opening], zBezelOuter, zCrystOuter),
-    prism(loops.outer, [loops.crystal], zCrystOuter, zCrystInner),
-    prism(loops.outer, [loops.bore], zCrystInner, z0),
-  ]);
+  // The face the sweep and the band share at zBandFront is doubled inside the
+  // metal, the sector caps' own precedent in makeCase. Not cut: the midcase step
+  // at zStep (prototype — one outer plane from the bezel's round to the back).
+  //
+  // §289/§292 — AND THE BEZEL IS THE ROUND CASE'S ROUNDED ONE: everything in
+  // front of the seat plane zBandFront is formBezelProfile swept round the outer
+  // loop (the round case's lathe, read along the form), and the band is the
+  // prism behind it. The runs are wound one way; the merged body's signed volume
+  // says which, and the whole is turned once if it came out inside-out.
+  const bezel = formBezelProfile(dims);
+  if (!(bezel.flat > 0) || !(bezel.roundW > 0) || !(bezel.lipR > 0))
+    console.warn(`makeFormCase §289: the ${form.kind}'s rounded bezel — outer round ${bezel.roundW.toFixed(3)}, lip round ${bezel.lipR.toFixed(3)}, flat ${bezel.flat.toFixed(3)} — needs all three > 0`);
+  if (!(bezel.minWall >= STOCK_MIN_U))
+    console.warn(`makeFormCase §292: the ${form.kind}'s bezel round leaves ${bezel.minWall.toFixed(3)} u of metal over the crystal seat, under §50's floor ${STOCK_MIN_U.toFixed(3)}`);
+  {
+    const deepest = loops.ring(bezel.tOpen);
+    if (!(loopConvex(deepest)))
+      console.warn(`makeFormCase §289: the ${form.kind}'s outer loop offset ${bezel.tOpen.toFixed(3)} inward folds over — the bezel's opening is deeper than the outline's tightest curvature`);
+  }
+  const sweep = mergeGeos(bezel.runs.map((run) => { const r = sweepRun(loops.ring, run); r.computeVertexNormals(); return r; }));
+  if (signedVolume(sweep) < 0) flipWinding(sweep);
+  const middleGeo = mergeGeos([sweep, prism(loops.outer, [loops.bore], zBandFront, z0)]);
   holdWound(middleGeo, 'the case middle');
   // §289 — the bezel's metal is the part in front of the seat plane
   // zBandFront, and the brush shader (materials.js, CASE_POLISH_ATTR) polishes
@@ -449,6 +567,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   g.traverse((o) => { if (o.isMesh) o.userData.casePart = true; });
   g.userData.form = form;
   g.userData.loops = loops;
+  g.userData.bezel = bezel;   // §289 — the swept profile, for formCaseLines and the record (minWall)
   g.userData.assemblies = { middle: middleAsm, back: backAsm, front: frontAsm };
   return g;
 }
@@ -464,9 +583,11 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
 //
 // Every ring is one of the loops a wall was cut from, at a z where that wall
 // ENDS (an edge the metal has — the drawing says nothing the solid does not):
-//   · outer   at zBezelOuter and z0: the one outer wall, bezel face to back
-//     (no midcase step — the prototype cuts none, so none is drawn);
-//   · opening at zBezelOuter and zCrystOuter: the lip, face and underside;
+//   · outer   at zBandFront and z0: the one outer wall, from where the bezel's
+//     round ends on it to the back (no midcase step — the prototype cuts none);
+//   · bezel   at zBezelOuter, twice: the flat's two edges, where the outer round
+//     and the lip's round leave it (§289, the round drawing's own two rings);
+//   · opening at zBezelOuter + lipR and zCrystOuter: the lip's bore;
 //   · crystal at zCrystOuter and zCrystInner: the seat wall's two ends, the
 //     crystal's two faces;
 //   · bore    at zCrystInner (the seat's floor steps out to it) and zMidBack
@@ -496,9 +617,15 @@ export function formCaseLines(g, dims) {
   const seg = (what, a, b) => out.push({ what, closed: false, pts: [a, b] });
   // A round hole's ring, on the segment count the solid's absarc holes use.
   const circle = (r) => { const pts = []; for (let k = 0; k < ROUND_SEG; k++) { const a = 2 * Math.PI * k / ROUND_SEG; pts.push([r * Math.cos(a), r * Math.sin(a)]); } return pts; };
-  // The middle (makeFormCase's three prisms).
-  ring('outer', loops.outer, zBezelOuter); ring('outer', loops.outer, z0);
-  ring('opening', loops.opening, zBezelOuter); ring('opening', loops.opening, zCrystOuter);
+  // The middle: the band's prism, and the rounded bezel swept in front of it
+  // (§289 — the round drawing's three bezel rings: where the outer round meets
+  // the flat, where the flat meets the lip's round, where that round meets the
+  // bore; the outer wall's ring stands where the round ends on it, the seat plane).
+  const { zBandFront } = dims, B = g.userData.bezel;
+  ring('outer', loops.outer, zBandFront); ring('outer', loops.outer, z0);
+  ring('bezel', loops.ring(B.roundW), zBezelOuter);
+  ring('bezel', loops.ring(B.tOpen - B.lipR), zBezelOuter);
+  ring('opening', loops.opening, zBezelOuter + B.lipR); ring('opening', loops.opening, zCrystOuter);
   ring('crystal', loops.crystal, zCrystOuter); ring('crystal', loops.crystal, zCrystInner);
   ring('bore', loops.bore, zCrystInner); ring('bore', loops.bore, zMidBack);
   // The back (its two prisms and the glass), the same stations makeFormCase cut.
@@ -514,7 +641,7 @@ export function formCaseLines(g, dims) {
     for (const p of loops.outer) ext = Math.max(ext, sgn * p[i]);
     const at = loops.outer.filter((p) => sgn * p[i] >= ext - 1e-9);
     const x = at.reduce((a, p) => a + p[0], 0) / at.length, y = at.reduce((a, p) => a + p[1], 0) / at.length;
-    seg('generator', [x, y, zBezelOuter], [x, y, z0]);
+    seg('generator', [x, y, zBandFront], [x, y, z0]);
   }
   // The tubes, as built.
   g.traverse((o) => {

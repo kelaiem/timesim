@@ -48879,6 +48879,7 @@ const CASE_DIMS = (() => {
     zCrystInner, zCrystOuter,
     zBezelOuter, zBandFront,
     bezelR, bezelRoundW, bezelLipR, // the rounded bezel: the outer ellipse's height and reach, the lip's radius (derived above)
+    bezelFlat: BEZEL_FLAT_MM / UNIT_MM,   // §289 under a form — the flat, which the form's face re-derives its round's reach round (form-case.js formBezelProfile)
     gasketD: CASE_GASKET_D, gasketSeat: CASE_GASKET_SEAT, crystT: CASE_CRYSTAL_T,
     // §187 — screwShaftD/HeadD stay for the §186 CLAMP screws; the six
     // caseback screws died with the flange.

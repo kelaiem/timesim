@@ -30,7 +30,7 @@
 //       lines, which §307 landing 3 moved onto the chord the solid drills on
 //       and which are gated inside the bore's own wall thickness.
 //   L2  COMPLETE: the form drawing carries every kind of line the law names —
-//       outer, opening, crystal, bore, aperture, glass rings; four generators;
+//       outer, bezel (§289: the flat's two edges), opening, crystal, bore, aperture, glass rings; four generators;
 //       six tube lines (three tubes); four lug outlines, four holes, two bars.
 //   P1  THE PLATE'S OCCLUDER IS THE PLATE: every vertex of the base plate's
 //       schematic rim lines and wall ribbon lies ON the form outline
@@ -256,7 +256,7 @@ const measure = async (isForm) => {
 };
 
 const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL|Failed to load resource: the server responded with a status of 404/i;
-const FORM_KINDS = ['outer', 'opening', 'crystal', 'bore', 'aperture', 'glass', 'generator', 'tube', 'lug', 'lugHole', 'lugBar'];
+const FORM_KINDS = ['outer', 'bezel', 'opening', 'crystal', 'bore', 'aperture', 'glass', 'generator', 'tube', 'lug', 'lugHole', 'lugBar'];   // 'bezel': §289's flat's two edges, under a form too
 if (shotDir) await mkdir(shotDir, { recursive: true });
 for (const b of run) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }), page = await ctx.newPage();
