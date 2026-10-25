@@ -444,12 +444,33 @@
       if (typeof window.__bootViewApply === 'function') window.__bootViewApply(el.dataset.view, el.checked);
     });
   }
+  // The three view boxes show the view the movement will OPEN in: the saved
+  // state (state.js's own loadState, the store main.js reads), the renderer's
+  // default and the link, by boot-view.js's initialView — the law main.js
+  // applies, so the screen and the build cannot disagree. The markup's
+  // `checked` stands only until this lands (or if it fails). A box the visitor
+  // has already changed is theirs and is never overwritten. Awaited with the
+  // first frames below rather than after the import: while the build runs, a
+  // freshly posted task (a fetch's answer) waits behind its yields (§267's
+  // trap), and main.js awaits the same loadState before it builds anyway.
+  // window.__bootViewShown records what the boxes were set to, for the probe.
+  const viewPrefill = (prefsEl ? Promise.all([import('./src/state.js'), import('./src/boot-view.js')]) : Promise.reject(new Error('no boot prefs')))
+    .then(([S, BV]) => S.loadState().then((saved) => {
+      const view = BV.initialView(saved, BV.probeSoftwareGL(), location.search);
+      for (const el of prefsEl.querySelectorAll('[data-view]')) {
+        if (el.dataset.view in window.__bootView || !(el.dataset.view in view)) continue;
+        el.checked = view[el.dataset.view];
+      }
+      window.__bootViewShown = view;
+    }))
+    .catch(() => {});
   await new Promise((resolve) => {
     let settled = false;
     const go = () => { if (!settled) { settled = true; resolve(); } };
     requestAnimationFrame(() => requestAnimationFrame(go));
     setTimeout(go, 250);
   });
+  await viewPrefill;
   import('./src/main.js').catch((err) => {
     // A build that dies used to leave a black page; with a boot screen over
     // it, it would leave a ring turning forever — a screen claiming work is
