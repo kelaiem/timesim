@@ -9,6 +9,7 @@ import { geometryOverridePaths } from './aesthetics.js';
 import { VALIDATED_CONFIGS } from './validated-configs.js';   // TODO 158: the configuration keys the battery swept
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, importAesthetics, IMPORT_OUTCOME, encodeShare, SHARE_PARAM, stripLinkParams, LINK_OUTCOME, LINK_DROPPED } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
+import { isSoftwareRenderer, savedView } from './boot-view.js';   // the view a boot opens in — one law, read here and by the loading screen (index.html)
 import * as BD from './balance-drive.js';   // §246 tier two — the driven balance (pure; the live loop steps it)
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
@@ -43949,7 +43950,7 @@ const SOFTWARE_GL = (() => {
     const gl = renderer.getContext();
     const ext = gl.getExtension('WEBGL_debug_renderer_info');
     const name = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
-    return /swiftshader|llvmpipe|softpipe|software/i.test(name);
+    return isSoftwareRenderer(name);   // boot-view.js — the loading screen reads the same test off a throwaway context
   } catch (e) { return false; }   // unreadable renderer: assume a GPU, the user-facing default
 })();
 let restoredSchematic = SOFTWARE_GL; // overwritten by a saved boolean in the restore block below
@@ -44109,11 +44110,12 @@ let mmPerPxCal = null;
   fastForward = savedState.fastForward;
   if (BD.POSITIONS.includes(savedState.position)) balancePosition = savedState.position; // §246 — absent or unknown keeps the default
   restoredCamera = savedState.camera;
-  restoredXray = !!savedState.plateXray;
-  // Only a saved BOOLEAN is a choice. null (a fresh visitor, or a state saved
-  // before the field existed) keeps the renderer's default declared above.
-  if (typeof savedState.schematic === 'boolean') restoredSchematic = savedState.schematic;
-  restoredCaseLines = savedState.caseLines ?? true; // ?? true, not !! — same reason as schematic above
+  // The three view toggles are boot-view.js's savedView — the law the loading
+  // screen prefills its boxes from, so the two cannot disagree. Only a saved
+  // BOOLEAN schematic is a choice: null (a fresh visitor, or a state saved
+  // before the field existed) keeps the renderer's default declared above;
+  // caseLines is `?? true`, not `!!`, for the same reason.
+  ({ xray: restoredXray, wireframe: restoredSchematic, case: restoredCaseLines } = savedView(savedState, SOFTWARE_GL));
   restoredFocus = typeof savedState.focusUnit === 'string' ? savedState.focusUnit : null;
   // soundOn is saved but NOT restored: sound is always off at load (see __bootSoundApply).
   alarmCrownRotation = savedState.alarmCrownRotation ?? 0; // ?? — states saved before §24 have no such field
@@ -56263,12 +56265,16 @@ function applyDeepLink() {
     goToPose(camParam || camera.position.clone(), lookParam || controls.target.clone(), { snap: true });
   }
   if (params.has('scale')) setTimeScale(parseFloat(params.get('scale')) || 1);
-  if (params.has('xray')) setXray(flag(params.get('xray')));
+  // A view the visitor CHOSE on the loading screen (window.__bootView, applied
+  // just before this) is the more recent intent than the link they opened, so
+  // the link yields to it: the box they set is what loads (boot-view.js).
+  const bootChose = (k) => Object.prototype.hasOwnProperty.call(window.__bootView || {}, k);
+  if (params.has('xray') && !bootChose('xray')) setXray(flag(params.get('xray')));
   // ?lang is consumed by i18n.js at import (the panel is BUILT from it) — nothing to apply here.
   // §69 — ?schematic=0 opts a link out of the default line tier; ?focus=<unit>
   // arrives ghost-focused on one mechanism (an invalid name degrades to
   // nothing, this block's standing rule).
-  if (params.has('schematic')) setSchematic(flag(params.get('schematic')));
+  if (params.has('schematic') && !bootChose('wireframe')) setSchematic(flag(params.get('schematic')));
   if (params.has('focus')) setFocus(params.get('focus'));
   // §93 — `?reconf=1` arrives IN reconfigure mode, which is how the mode
   // survives its own Apply (setReconf writes this param). Applied AFTER
@@ -56330,8 +56336,11 @@ if (restoredSchematic) setSchematic(true);
 setCaseLines(restoredCaseLines); // applies the persisted preference; the group was built with it
 if (restoredFocus) setFocus(restoredFocus);
 // §291 — the loading screen's view preselect (index.html): the case, the
-// wireframe view and the plate x-ray, applied over the saved defaults and
-// before the deep link, which runs after and still wins where it disagrees.
+// wireframe view and the plate x-ray, applied over the saved defaults. The
+// boxes are prefilled from boot-view.js's initialView, so only a box the
+// visitor CHANGED lands here, and the deep link below yields to it for the two
+// keys a link can carry (?xray, ?schematic). ?reconf=1 still forces the solid
+// tier: that is a mode's requirement (§93), not a view preference.
 {
   const applyBootView = (k, on) => {
     if (k === 'case') setCaseLines(on);
