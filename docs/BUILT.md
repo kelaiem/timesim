@@ -32,7 +32,7 @@ that band's swept footprint.
 
 | § | Title | Parts |
 |---|---|---|
-| [§311](built/0311.md) | The form dial's railroad track follows the case: the outline's own inward offset, corners held at the case's round, rungs on the hands' rays | 1 |
+| [§311](built/0311.md) | The form dial's railroad track follows the case: the outline's own inward offset, corners held at the case's round, rungs on the hands' rays | 2 |
 | [§310](built/0310.md) | Gong placement solver, landing 1: the wire model (in-plane and out-of-plane modes of any planar centreline) and the placement solver as one pure module, with the hammer's reach as a constraint | 1 |
 | [§309](built/0309.md) | LEGO parts list: substitute parts from Rebrickable, each judged by the model | 1 |
 | [§308](built/0308.md) | A form platform, landing 1: one case-shape law, a movement fitted to it, and the dial spec | 1 |

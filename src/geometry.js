@@ -9472,33 +9472,47 @@ export const DIAL_RAIL_IN_F = 0.87;       // railroad inner rail / printed disc
 // rim margin (PLATE_RIM_MARGIN, 5 u), and both gauges (5.6 and 8.3 u at the
 // shipped dial) are past it: the exact offset would carry the outer rail
 // round a 0 u corner and fold the inner one — a cusp, which no rail can be
-// bent to and no wheel can roll round. So a corner is HELD at the outline's
-// own round (`grown(−g, { cornerR })`): the track turns no tighter than the
-// case it follows, which is the smoothest turn the face has to offer and
-// the one number for it that is not typed. The straights and the long arcs
-// are still the exact offset; at a held corner the rails stand farther from
-// the rim than on the straights (√2·g at a rect's corner), which is the
-// 1930s form dial's look, and the consequence, not the input. The cushion
-// (and the circle) has no corner primitive: its curvature is bounded by the
-// curve itself, its offsets are smooth at both gauges (the library warns if
-// an inward offset folds), and the hold is a no-op there.
+// bent to and no wheel can roll round. So the INNER rail's corner — the
+// tightest turn either rail makes — is HELD at the outline's own round
+// (`grown(−gIn, { cornerR })`): the track turns no tighter than the case it
+// follows, which is the smoothest turn the face has to offer and the one
+// number for it that is not typed. The cushion (and the circle) has no
+// corner primitive: its curvature is bounded by the curve itself, its
+// offsets are smooth at both gauges (the library warns if an inward offset
+// folds), and the hold is a no-op there.
 //
-// THE RUNGS LIE ON THE HANDS' RAYS. Minute i is the ray from the hands' axis
-// at 6°·i, and its rung runs along that ray from the inner rail's crossing
-// to the outer's (`exit`): the hand that reads it is a radial line, the rung
-// continues that line, and two rays from one centre never meet, so no two
-// rungs can cross however tight the corner. (A rung drawn square to the
-// rails — a railway's sleeper — would be the SAME line on the round face,
-// where the normal is the radius, and would converge with its neighbours
-// round a form corner; the two conventions part exactly where the hand
-// stops being the rails' normal, and the hand is what the rung is for.)
-// Along a straight side the rungs are therefore unevenly spaced along the
-// rail (d·sec²θ per 6°), which is what every honest form dial shows.
+// ONE GAUGE ALL THE WAY ROUND (§311 landing 2, the owner's "keep the
+// distance between the tracks equal"). The OUTER rail is the inner rail's
+// own exact offset by the rail gap d = gIn − gOut (`inner.grown(d)`, no
+// hold), so the two rails are parallel curves: d apart at every point,
+// corners included, their corner arcs concentric (the outer's round
+// cornerR + d). Landing 1 offset each rail from the rim and held BOTH
+// corners at the case's round, which put the two corner arcs on different
+// centres and opened the gap there to √2·d at a rect's corner. Along the
+// straights and the long arcs nothing moves — each rail still stands its
+// round-face gauge inside the rim there; at a held corner both rails stand
+// farther from the rim, which is the form dial's look and the consequence,
+// not an input.
+//
+// THE RUNGS SPAN THE SHORTEST DISTANCE BETWEEN THE RAILS (§311 landing 2,
+// the owner's call; landing 1 laid them on the hands' rays). Minute i is
+// still READ off the hand's ray at 6°·i: the ray crosses the mid-rail at
+// a, and the rung through a runs along the rails' common normal there,
+// from the inner rail's foot of a to the outer rail's (`foot`). On parallel
+// rails those feet and a are collinear and the rung's length IS the gauge
+// d, the minimum distance between the two rails, at every minute. The
+// hand's tip still points at the rung's middle. Two normals of a convex
+// curve cross only beyond its centre of curvature, which is at least
+// cornerR inside the inner rail and so never between the rails: no two
+// rungs can meet, however tight the corner. On the round face the normal
+// IS the radius, so a rung there is the same line as before.
 //
 // `form` is the dial's outline as a caseShapeOf shape IN THE DIAL'S FRAME
 // (origin at the hands' axis — exit() measures from the frame's origin);
 // `radius` the round face's working radius the gauges are keyed to. Returns
-// the two rail shapes, their drawn loops, the sixty rungs, the mid-rail's
+// the shape itself (`form`, so a caller can hold its outline to it), the two rail shapes, their drawn loops, the sixty rungs (each its `from`
+// on the inner rail and `to` on the outer, and the `at` on the mid-rail it
+// was read through), the mid-rail's
 // nearest approach to the axis (where the minute hand's tip lands — main.js
 // derives the hand from it, as it derives the round hand from the fractions
 // above) and the inner rail's nearest / the outer rail's farthest approach
@@ -9509,7 +9523,9 @@ export function dialTrack(form, radius) {
   const gOut = radius - R * DIAL_RAIL_OUT_F;         // rim → outer rail, the round face's gauge
   const gIn = radius - R * DIAL_RAIL_IN_F;           // rim → inner rail
   const hold = form.cornerR !== null && form.cornerR !== undefined ? { cornerR: form.cornerR } : {};
-  const outer = form.grown(-gOut, hold), inner = form.grown(-gIn, hold), mid = form.grown(-(gOut + gIn) / 2, hold);
+  const gap = gIn - gOut;                            // the rails' one gauge
+  const inner = form.grown(-gIn, hold);              // the tightest rail, its corner held at the case's round
+  const outer = inner.grown(gap), mid = inner.grown(gap / 2);   // its exact parallels: d and d/2 out, everywhere
   // The drawn loops: an arc at TRACK_SEGS chords per turn, so a held 5 u
   // corner's sagitta (r(1 − cos(π/TRACK_SEGS)) = 3.8e-4 u) is under a tenth
   // of a pixel at the print's scale (1024 px over 2·radius).
@@ -9517,8 +9533,15 @@ export function dialTrack(form, radius) {
   const rungs = [];
   for (let i = 0; i < 60; i++) {
     const az = Math.PI / 2 - (i / 60) * 2 * Math.PI;    // 12 o'clock is +y; minutes run clockwise (toward +x first)
-    const tIn = inner.exit(az), tOut = outer.exit(az);
-    rungs.push({ i, az, tIn, tOut, major: i % 5 === 0 });
+    const tMid = mid.exit(az), a = [tMid * Math.cos(az), tMid * Math.sin(az)];   // where the hand's ray crosses the mid-rail
+    // The rung: the inner rail's foot of a, and the gauge out along the line
+    // from that foot through a — the inner rail's normal there. On the arcs
+    // and straights that is the outer rail's foot too; on the cushion's
+    // polyline a foot can sit on a vertex, and building the rung from ONE foot
+    // keeps it through a and exactly the gauge long, where two independent
+    // feet drift apart along the rail (measured 0.04 u).
+    const f = inner.foot(a[0], a[1]), nx = a[0] - f[0], ny = a[1] - f[1], nl = Math.hypot(nx, ny);
+    rungs.push({ i, az, at: a, from: f, to: [f[0] + (gap * nx) / nl, f[1] + (gap * ny) / nl], major: i % 5 === 0 });
   }
   // The nearest approach is the shape's own signed distance to the axis
   // (`inset(0, 0)`, exact on the primitives — a straight side's nearest point
@@ -9526,7 +9549,7 @@ export function dialTrack(form, radius) {
   // of a convex loop from an inside point is a vertex, so the loop's.
   const farthest = (loop) => loop.reduce((m, [x, y]) => Math.max(m, Math.hypot(x, y)), 0);
   return {
-    gOut, gIn, outer, inner, mid, loops, rungs,
+    form, gOut, gIn, gap, outer, inner, mid, loops, rungs,
     nearestMid: mid.inset(0, 0),
     nearestInner: inner.inset(0, 0),
     farthestOuter: farthest(loops.outer),
@@ -9943,7 +9966,7 @@ export function makeDial({
     // polyline accuracy). Holds the caller's two frames — the loop it cut
     // and the shape it offset — to one outline.
     let off = 0;
-    const base = track.outer.grown(track.gOut, track.outer.cornerR !== null ? { cornerR: track.outer.cornerR } : {});
+    const base = track.form;   // the shape the rails were offset from, carried rather than rebuilt from a rail
     for (const [x, y] of outline) off = Math.max(off, Math.abs(base.inset(x, y)));
     if (off > base.accuracy + 1e-6)
       console.warn(`§311: the dial's outline and its track's shape disagree — an outline vertex stands ${off.toExponential(2)} off the shape (need ≤ ${(base.accuracy + 1e-6).toExponential(2)})`);
@@ -10032,12 +10055,13 @@ export function makeDial({
         ctx.fillStyle = trackInk;
         ctx.lineWidth = 3;
         if (track) {
-          // §311 — the form track: the two rails are the outline's inward
-          // offsets (dialTrack, above), drawn as their loops in the print's
-          // own frame (dial-local u → px: (k·x, −k·y) about the axis, the
-          // inverse of the sheet's UV map), and each minute's rung runs
-          // along the hand's ray between the rails' crossings. Same ink,
-          // same weights, same caps as the round track's.
+          // §311 — the form track: the two rails are parallel inward
+          // offsets of the outline (dialTrack, above), drawn as their loops
+          // in the print's own frame (dial-local u → px: (k·x, −k·y) about
+          // the axis, the inverse of the sheet's UV map), and each minute's
+          // rung spans the rails' shortest distance through the point the
+          // hand's ray reads it at. Same ink, same weights, same caps as the
+          // round track's.
           const k = print ? print.k : S / (2 * radius);   // px per u: the round face's own scale either way
           const rail = (loop) => {
             ctx.beginPath();
@@ -10047,12 +10071,11 @@ export function makeDial({
           };
           rail(track.loops.outer);
           rail(track.loops.inner);
-          for (const { az, tIn, tOut, major } of track.rungs) {
-            const cx = Math.cos(az), cy = Math.sin(az);
+          for (const { from, to, major } of track.rungs) {
             ctx.lineWidth = major ? 10 : 3;
             ctx.beginPath();
-            ctx.moveTo(k * tIn * cx, -k * tIn * cy);
-            ctx.lineTo(k * tOut * cx, -k * tOut * cy);
+            ctx.moveTo(k * from[0], -k * from[1]);
+            ctx.lineTo(k * to[0], -k * to[1]);
             ctx.stroke();
           }
         } else {
