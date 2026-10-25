@@ -226,6 +226,22 @@ export const solveGong = (map, opts, progress = () => {}) => {
       return { side: r.sg, face: [r.q.fx, r.q.fy], rFace: Math.hypot(r.q.fx, r.q.fy), azDeg: Math.atan2(r.q.fy, r.q.fx) * 180 / Math.PI,
         blowDeg: Math.atan2(r.q.by, r.q.bx) * 180 / Math.PI, pivot: [r.q.px, r.q.py], at: r.idx, frac: 1 - r.idx / (pts.length - 1) }; }
     return null; };
+  // TODO 269 — the hammer of an END strike: the face one gap before the wire's end, the blow along the
+  // wire, the pivot on the lever's circle by construction (the candidate was built from it). What it owes:
+  // the staff and arm in free space (leverRoom), the head's travel of room BEHIND the face (along −b, where
+  // the drawn head goes), the staff clear of the wire, and the head clear of every coil but the end it strikes
+  // (the wire beyond its first unit, one wire's need plus the head's half-width off the head's line).
+  const endHammer = (c, pts) => { const L = opts.lever, e = c.end, h = { fx: e.fx, fy: e.fy, bx: e.bx, by: e.by, px: e.px, py: e.py };
+    if (!leverRoom(h)) return null;
+    for (let dd = L.gap + 0.4; dd <= 4.5; dd += 0.4) if (!free(e.fx - e.bx * (dd - L.gap), e.fy - e.by * (dd - L.gap))) return null;
+    const near = pts.reduce((m, p) => Math.min(m, Math.hypot(p[0] - e.px, p[1] - e.py)), Infinity);
+    if (near < WR + L.postR + L.margin) return null;
+    const ex = e.fx - e.bx * L.headR, ey = e.fy - e.by * L.headR, hl = Math.hypot(ex - e.fx, ey - e.fy) || 1;
+    for (let i = 0; i < pts.length; i++) { if (i * STEP < 1) continue;
+      const [x, y] = pts[i], t = Math.max(0, Math.min(1, ((x - e.fx) * (ex - e.fx) + (y - e.fy) * (ey - e.fy)) / (hl * hl)));
+      if (Math.hypot(x - e.fx - t * (ex - e.fx), y - e.fy - t * (ey - e.fy)) < WR + L.headR + L.margin) return null; }
+    return { side: 0, blow: 'tangent', face: [e.fx, e.fy], rFace: Math.hypot(e.fx, e.fy), azDeg: Math.atan2(e.fy, e.fx) * 180 / Math.PI,
+      blowDeg: Math.atan2(e.by, e.bx) * 180 / Math.PI, pivot: [e.px, e.py], at: 0, frac: 1 }; };
   // the block stands on PLATE: under a plate test (map.plateInset, the outline's signed distance) its whole
   // circle (map.footR, the block's radius) lies inside the outline
   const onPlate = (p) => !M.plateInset || M.plateInset(p[0], p[1]) >= (M.footR ?? 0);
@@ -279,17 +295,25 @@ export const solveGong = (map, opts, progress = () => {}) => {
       if (!free(px, py)) continue;
       for (let be = 0; be < 360; be += 3) { const bx = Math.cos(be * Math.PI / 180), by = Math.sin(be * Math.PI / 180);
         const fx = px - L.side * L.tanLen * -by, fy = py - L.side * L.tanLen * bx;   // P = F + side·tanLen·(ẑ×b)
-        if (L.outward && bx * fx + by * fy <= 0) continue;
-        const sx = fx + bx * (WR + L.gap), sy = fy + by * (WR + L.gap); if (!free(sx, sy)) continue;
+        const radialOk = !L.outward || bx * fx + by * fy > 0;
+        const sx = fx + bx * (WR + L.gap), sy = fy + by * (WR + L.gap);
         const tx = -by, ty = bx, away = -Math.sign((px - fx) * tx + (py - fy) * ty), th = Math.atan2(away * ty, away * tx);
-        if (opts.any) for (const k of ks) { const gen = arcGen(sx, sy, th, k), Lfit = march(gen, 140); if (Lfit < Lstraight(fHi) * 0.85) continue;
+        if (opts.any && radialOk && free(sx, sy)) for (const k of ks) { const gen = arcGen(sx, sy, th, k), Lfit = march(gen, 140); if (Lfit < Lstraight(fHi) * 0.85) continue;
           cands.push({ fam: 'any', label: k === 0 ? 'straight bar' : `arc, radius ${(1 / Math.abs(k)).toFixed(0)} u`, k, th, gen, anchor: 'free', Lfit, strikeEnd: true,
             key: `l:${k.toFixed(4)}:${Math.round(ph / 6)}:${Math.round(be / 9)}` }); }
-        // ...and the SPIRAL that stands on its own block: struck at its outer end, winding inward to its foot
-        if (opts.spiral) for (const r0 of [8, 11, 14, 18]) for (const p of [3.5, 4.5, 6]) for (const turn of [1, -1]) {
-          const gen = spiralInGen(sx, sy, th, r0, p, turn), Lfit = march(gen, 140); if (Lfit < Lstraight(fHi) * 0.85) continue;
-          cands.push({ fam: 'spiral', label: `spiral from r ${r0} u, ${p} u a turn`, r0, p, turn, th, gen, anchor: 'free', Lfit, strikeEnd: true, spiral: { sx, sy, th, r0, p, turn },
-            key: `s:${r0}:${p}:${turn}:${Math.round(ph / 6)}:${Math.round(be / 9)}` }); } } } }
+        // ...and the SPIRAL that stands on its own block, struck at its outer end and winding inward to its
+        // foot. TODO 269: struck ALONG ITS TANGENT, on the wire's squared end. A spiral of a turn or more rings
+        // first in its WINDING mode, whose free end moves along the wire (31.7x its normal motion on the rect's
+        // first plan), so a blow across the end meets 55-1400x a bar's modal mass and a blow along it 0.35-0.50x
+        // M. The face is one gap BEFORE the end, normal to the tangent, and the wire leaves the strike along the
+        // blow: S = F + b·gap, heading b. §198's outward rule is the RADIAL blow's (a head striking a ring from
+        // inside) and is not applied to a blow along the wire.
+        if (opts.spiral) { const ex = fx + bx * L.gap, ey = fy + by * L.gap, eth = Math.atan2(by, bx);
+          if (free(ex, ey)) for (const r0 of [8, 11, 14, 18]) for (const p of [3.5, 4.5, 6]) for (const turn of [1, -1]) {
+            const gen = spiralInGen(ex, ey, eth, r0, p, turn), Lfit = march(gen, 140); if (Lfit < Lstraight(fHi) * 0.85) continue;
+            cands.push({ fam: 'spiral', label: `spiral from r ${r0} u, ${p} u a turn, struck along its end`, r0, p, turn, th: eth, gen, anchor: 'free', Lfit, strikeEnd: true,
+              spiral: { sx: ex, sy: ey, th: eth, r0, p, turn }, blow: 'tangent', end: { px, py, fx, fy, bx, by },
+              key: `s:${r0}:${p}:${turn}:${Math.round(ph / 6)}:${Math.round(be / 9)}` }); } } } } }
   if ((opts.any && !opts.lever) || near) {
     const grid = near ? 1 : 3, xs = near ? [near.x - 6, near.x + 6] : [M.x0 + 1, M.x0 + M.W * M.RES], ys = near ? [near.y - 6, near.y + 6] : [M.y0 + 1, M.y0 + M.H * M.RES];
     const ths = near ? Array.from({ length: 25 }, (_, i) => near.th + (i - 12) * Math.PI / 36) : Array.from({ length: 18 }, (_, i) => i * Math.PI / 9);
@@ -310,8 +334,8 @@ export const solveGong = (map, opts, progress = () => {}) => {
     const pts = c.anchor === 'foot' ? sample(c.gen, 0, L).reverse() : sample(c.gen, 0, L);
     if (c.anchor === 'free' && !footRoom(pts[pts.length - 1])) return;
     const segs = (c.anchor === 'foot' || c.spiral) ? segsFromPts(pts.slice().reverse(), 20) : segsAt(L), hit = c.strikeEnd ? 1 : hitFrac(segs, L);
-    const hm = hammer(pts, Math.round((1 - hit) * (pts.length - 1))); if (!hm) return;
-    sol.push({ fam: c.fam, label: c.label, pts, L, nseg: (c.anchor === 'foot' || c.spiral) ? 20 : 1, spiral: c.spiral, k: c.k, th: c.th, hit: opts.lever ? hm.frac : hit, hammer: hm, slack: c.Lfit - L, segs, key: c.key, pillar: c.pillar,
+    const hm = c.blow === 'tangent' ? endHammer(c, pts) : hammer(pts, Math.round((1 - hit) * (pts.length - 1))); if (!hm) return;
+    sol.push({ fam: c.fam, label: c.label, pts, L, nseg: (c.anchor === 'foot' || c.spiral) ? 20 : 1, spiral: c.spiral, blow: c.blow, k: c.k, th: c.th, hit: opts.lever ? hm.frac : hit, hammer: hm, slack: c.Lfit - L, segs, key: c.key, pillar: c.pillar,
       spread: c.anchor === 'foot' ? `P${c.pillar}` : `${Math.round(pts[0][0] / 25)}:${Math.round(pts[0][1] / 25)}` }); });
   progress(`${sol.length} reach the band${opts.reach ? ' and the hammer' : ''}; judging…`);
   // the shortlist: distinct placements per family, nearest the band's centre first
@@ -387,6 +411,16 @@ export const seatStrike = (curve, { Q, rho, tanLen, side, gap }, wireR, sg, gues
     for (let it = 0; it < 80; it++) { const m = g((lo.s + hi.s) / 2); if (Math.sign(m.g) === Math.sign(lo.g)) lo = m; else hi = m; }
     best = Math.abs(lo.g) < Math.abs(hi.g) ? lo : hi; break; }
   return best;
+};
+// TODO 269 — the END strike on a seat, exactly: the blow along the wire's tangent at its free end (s = 0),
+// the face one gap before the end and normal to it, the pivot tanLen along the face from F on the lever's
+// side (the same P = F + side·tanLen·(ẑ×b) as every seat). No root to find: the end is the strike, and
+// g = |P − Q| − rho is the residual the build holds (the generator placed the end from P, so it is float noise).
+export const seatStrikeEnd = (curve, { Q, rho, tanLen, side, gap }) => {
+  const q = curve.at(0), bx = q.tx, by = q.ty, fx = q.x - bx * gap, fy = q.y - by * gap;
+  const px = fx + side * tanLen * -by, py = fy + side * tanLen * bx;
+  return { s: 0, S: { x: q.x, y: q.y }, n: { x: -by, y: bx }, F: { x: fx, y: fy }, b: { x: bx, y: by }, P: { x: px, y: py }, k: q.k,
+    g: Math.hypot(px - Q.x, py - Q.y) - rho, blow: 'tangent' };
 };
 // ---- the band's metal, as the build measures it (FORM_REGIONS' per-mesh hulls)
 // distance from a point to a convex polygon (0 inside)

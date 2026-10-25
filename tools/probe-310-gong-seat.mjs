@@ -25,6 +25,12 @@
 //   B3  CONTROLS: ?gong=arc keeps the ring; a seat carried to a fit 3 u narrower on its own side is called
 //       out by the boot's seat check (the outline clause); a seat whose strike was moved 1 u along its wire
 //       is called out by the strike clause
+//   P5  TODO 269 — the END strike (GS.seatStrikeEnd) of a spiral built the solver's way from a pivot on the
+//       lever's circle returns that pivot to 1e-9, its face one gap before the end, the blow along the tangent
+//   B2  …and since TODO 269, each seat's head meets its wire inside §197's 0.4 < μ < 2.5, and an END-struck
+//       seat's head stands a margin off every coil but its end; B3's control reads the same spiral's
+//       fundamental ACROSS its end, off the build's own record (modal fraction, wire and hammer mass), and
+//       must find μ out of that band — the reason a spiral is struck along its tangent
 //   B2  …and since TODO 266, each seat's hammer staff stands in the three-quarter plate's strike opening, not
 //       under the plate (a vertical ray at the post meets no plate), the opening holding TQ_LAND_MIN of plate to
 //       everything round it (the build's own land test, reported on __clock.strikePlateOpening)
@@ -60,6 +66,18 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
   ok('P2 strike solve: pivot on the lever circle, face one gap off the wire', !!st && Math.abs(Math.hypot(st.P.x - lever.Q.x, st.P.y - lever.Q.y) - lever.rho) < 1e-9
     && Math.abs(off - lever.gap) < 1e-12 && Math.abs(st.b.x * st.n.x + st.b.y * st.n.y - 1) < 1e-12,   // face on side −1: the blow runs along +n
     st ? `s ${st.s.toFixed(6)}, |P−Q|−ρ ${(Math.hypot(st.P.x - lever.Q.x, st.P.y - lever.Q.y) - lever.rho).toExponential(1)}` : 'no root');
+}
+{
+  // TODO 269: the solver's construction — a pivot on the circle, a blow b, F = P − side·tanLen·(ẑ×b), the end
+  // one gap past F along b — read back by the build's exact end strike
+  const lever = { Q: { x: 31.457791620470847, y: 15.34299013761771 }, rho: Math.hypot(13, 0.5), tanLen: 7.279256431577741, side: 1, gap: 0.4 };
+  const ph = 0.7, be = 2.1, px = lever.Q.x + lever.rho * Math.cos(ph), py = lever.Q.y + lever.rho * Math.sin(ph), bx = Math.cos(be), by = Math.sin(be);
+  const fx = px - lever.side * lever.tanLen * -by, fy = py - lever.side * lever.tanLen * bx, ex = fx + bx * lever.gap, ey = fy + by * lever.gap;
+  const st = GS.seatStrikeEnd(GS.seatCurve({ type: 'spiral', sx: ex, sy: ey, th: be, r0: 11, p: 4.5, turn: 1, L: 60 }), lever);
+  ok('P5 end strike: the pivot back on the lever circle, the face a gap before the end, the blow along it',
+    Math.hypot(st.P.x - px, st.P.y - py) < 1e-9 && Math.abs(st.g) < 1e-9 && Math.abs(Math.hypot(st.F.x - st.S.x, st.F.y - st.S.y) - lever.gap) < 1e-12
+    && Math.abs(st.b.x * bx + st.b.y * by - 1) < 1e-12 && st.s === 0 && st.blow === 'tangent',
+    `|P − P₀| ${Math.hypot(st.P.x - px, st.P.y - py).toExponential(1)}, g ${st.g.toExponential(1)}`);
 }
 {
   const sq = [[0, 0], [1, 0], [1, 1], [0, 1]];
@@ -101,7 +119,9 @@ const seatRead = async () => {   // (Infinity crosses page.evaluate as null: the
   const c = window.__clock, g = c.gongSeat, A = c.acoustics;
   const arc = c.scene.getObjectByName('alarmGongArc');
   const r = { seated: g?.seated ?? null, refused: g?.refused ?? null, check: g?.check ?? null, torus: arc.geometry.type === 'TorusGeometry',
-    f1: A.modes[0].f_Hz, contact: A.strike.contact, seat: A.wire.seat ? { mode: A.wire.seat.mode, label: A.wire.seat.label } : null };
+    f1: A.modes[0].f_Hz, contact: A.strike.contact, seat: A.wire.seat ? { mode: A.wire.seat.mode, label: A.wire.seat.label, blow: A.wire.seat.blow, driveTip: A.wire.seat.driveTip } : null,
+    // TODO 269 — the impedance match, and the same fundamental read ACROSS the end (the control's arithmetic)
+    mu: A.strike.mu, muAcross: A.hammer.effMass_mg / (A.wire.mass_mg * A.wire.modalFrac) };
   if (g?.seated) {
     const I = await import('./src/inspect.js');
     const ls = await I.checkLineSpec(c);
@@ -137,6 +157,12 @@ for (const row of rows) {
   const o = seated.out, ch = o.check, tag = `B2 ${row.kind} ${row.mode}`;
   ok(`${tag}: seated`, o.seated === true, o.refused ?? '');
   if (!o.seated) continue;
+  ok(`${tag}: TODO 269 — the head meets the wire inside §197's 0.4 < μ < 2.5`, o.mu > 0.4 && o.mu < 2.5, `μ ${o.mu.toFixed(3)} (${o.seat.blow} blow, contact ${o.contact})`);
+  if (o.seat.blow === 'tangent') {
+    ok(`${tag}: TODO 269 — the end-struck head stands a margin off every coil but its end`, ch.headClear >= 0.15 - 1e-9, `head ${ch.headClear.toFixed(3)} off the coils`);
+    ok(`${tag}: TODO 269 control — the same fundamental struck ACROSS the end falls out of the band`, !(o.muAcross > 0.4 && o.muAcross < 2.5),
+      `μ across ${o.muAcross.toFixed(4)} against μ along ${o.mu.toFixed(3)} (u at the tip ${o.seat.driveTip.toFixed(2)}× the normal)`);
+  }
   ok(`${tag}: the seat check holds`, ch.metal.d >= ch.need - 1e-9 && ch.outlineInset >= ch.need - 1e-9 && ch.footInset >= 0 && ch.staffClear >= 0.15 - 1e-9,
     `metal ${ch.metal.d.toFixed(3)} (${ch.metal.unit}) / need ${ch.need.toFixed(3)}, outline ${ch.outlineInset.toFixed(3)}, block ${ch.footInset.toFixed(3)}, staff ${ch.staffClear.toFixed(3)}`);
   ok(`${tag}: face at the gap, pivot on the lever's circle`, Math.abs(ch.faceGap - 0.4) < 1e-6 && Math.abs(ch.leverResidual) < 1e-9, `gap ${ch.faceGap.toFixed(9)}, residual ${ch.leverResidual.toExponential(1)}`);
