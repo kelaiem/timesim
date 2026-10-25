@@ -49386,17 +49386,56 @@ const SCHEMATIC = { proxies: [], on: false };
     // circle — the two crown notches are a few degrees each, and this is a
     // drawing convention, not a claim the instruments read: every piece here
     // is flagged userData.schematic).
+    // §307 landing 3 — UNDER FORM THE PLATE IS NO DISC: it was cut to
+    // BACK_PLATE_CUT.outline (the form loop, no rim), so the occluder is that
+    // same loop — two page-colored faces of it and a ribbon wall round it,
+    // the loop as the rim hairline at each face. Read from the cut's own
+    // argument, not re-derived, so a plate re-cut to another loop carries its
+    // occluder with it. The faces are mirrored by WINDING (the second face's
+    // triangles reversed), never by a rotation: the round disc could turn
+    // over on x because a circle is its own mirror, and a tonneau is not.
+    const plateLoop = FORM ? BACK_PLATE_CUT.outline : null;
+    const faceGeo = (flip) => {
+      if (!plateLoop) return new THREE.CircleGeometry(BASE_RIM_R, 96);
+      const geo = new THREE.ShapeGeometry(new THREE.Shape(plateLoop.map(([x, y]) => new THREE.Vector2(x, y))));
+      if (flip) { const ix = geo.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } }
+      return geo;
+    };
+    const rimGeo = () => {
+      if (!plateLoop) return circGeo(BASE_RIM_R, 96);
+      const pts = plateLoop.map(([x, y]) => new THREE.Vector3(x, y, 0)); pts.push(pts[0].clone());
+      return new THREE.BufferGeometry().setFromPoints(pts);
+    };
     for (const zf of [1, -1]) { // backPlate local: the slab spans ±1 about its centre
-      const f = new THREE.Mesh(new THREE.CircleGeometry(BASE_RIM_R, 96), occMat);
+      const f = new THREE.Mesh(faceGeo(zf < 0), occMat);
       f.position.z = zf;
-      if (zf < 0) f.rotation.x = Math.PI; // face outward
+      if (zf < 0 && !plateLoop) f.rotation.x = Math.PI; // face outward (the disc: a circle is its own mirror)
       SCHEMATIC.baseFills.push(f);
-      const rim = new THREE.Line(circGeo(BASE_RIM_R, 96), rimMat);
+      const rim = new THREE.Line(rimGeo(), rimMat);
       rim.position.z = zf;
       for (const o of [f, rim]) { o.userData.schematic = true; o.layers.set(1); backPlate.add(o); }
     }
-    const wall = new THREE.Mesh(new THREE.CylinderGeometry(BASE_RIM_R, BASE_RIM_R, 2, 96, 1, true), occMat);
-    wall.rotation.x = Math.PI / 2;
+    let wall;
+    if (!plateLoop) {
+      wall = new THREE.Mesh(new THREE.CylinderGeometry(BASE_RIM_R, BASE_RIM_R, 2, 96, 1, true), occMat);
+      wall.rotation.x = Math.PI / 2;
+    } else {
+      // The ribbon: one outward-facing quad per loop edge between the two faces.
+      // The loop is CCW, so (b − a) × (c − a) for the triangle (a at −1, b the
+      // next vertex at −1, c the next vertex at +1) points along the edge's
+      // outward normal — the winding a FrontSide material shows from outside.
+      const n = plateLoop.length, pos = new Float32Array(n * 2 * 3), idx = [];
+      for (let i = 0; i < n; i++) {
+        const [x, y] = plateLoop[i];
+        pos.set([x, y, -1], (2 * i) * 3); pos.set([x, y, 1], (2 * i + 1) * 3);
+        const j = (i + 1) % n;
+        idx.push(2 * i, 2 * j, 2 * j + 1, 2 * i, 2 * j + 1, 2 * i + 1);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      wall = new THREE.Mesh(geo, occMat);
+    }
     wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
     SCHEMATIC.baseFills.push(wall);
   }
@@ -49427,6 +49466,23 @@ const SCHEMATIC = { proxies: [], on: false };
     caseGroup.name = 'caseLines';
     const put = (o) => { o.userData.schematic = true; o.layers.set(1); caseGroup.add(o); return o; };
 
+    // §307 landing 3 — UNDER FORM THE HOUSING IS THE FORM CASE, and the
+    // drawing is form-case.js's formCaseLines: every ring one of the loops
+    // the solid was cut from at a z where that wall ends, the tubes and lugs
+    // read off the BUILT group's own records (userData.tube, userData.lugPlans).
+    // Until this landing the block below drew the round case's CASE_DIMS
+    // circles round a form movement — the residue §307's record named — and
+    // nothing measured it, because the battery runs the round build.
+    // probe-schematic-form-case.mjs holds every point of it to the solid now.
+    // Each line carries `userData.what` (the law's own name for it) so the
+    // instrument can sort a ring from a generator from an axis line.
+    if (FORM) {
+      for (const L of FORM_CASE_MOD.formCaseLines(caseSolid, CASE_DIMS)) {
+        const pts = L.pts.map(([x, y, z]) => V3(x, y, z));
+        if (L.closed) pts.push(pts[0].clone());
+        put(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), rim)).userData.what = L.what;
+      }
+    } else {
     // §186 — the drawing follows the stepped metal: the back band at R_OUT
     // down to the midcase step, the front section at R_OUT_FRONT below it,
     // the wide back bore at R_BORE_BACK down to the ledge, the front bore at
@@ -49471,16 +49527,23 @@ const SCHEMATIC = { proxies: [], on: false };
     // band (the alarm pusher's stemOuterS is literally "the as-built
     // case-band end"); the case answers with a Ø2.0 mm tube per crown and a
     // Ø1.2 mm pusher bore, flush — "discreet" was the owner's word.
-    const tube = (az, d, z) => {
+    // `off` is the line's chord off the centre (makeCase's own argument): the
+    // pusher runs PARALLEL to a radius, ALARM_PUSH_CHORD off it, and until
+    // §307 landing 3 this drew its bore ON the radius — the 4.37 u the solid
+    // once drilled beside the pusher (CASE_DIMS.pusherOff's note), kept in the
+    // drawing after the metal was fixed. The ends are where the line meets
+    // the two circles (makeCase's alongAt), not the radii themselves.
+    const tube = (az, d, z, off = 0) => {
       const u = V3(Math.cos(az), Math.sin(az), 0), p = V3(-Math.sin(az), Math.cos(az), 0);
+      const along = (R) => Math.sqrt(Math.max(0, R * R - off * off));
       for (const s of [-1, 1])
         put(new THREE.Line(seg(
-          u.clone().multiplyScalar(R_IN).addScaledVector(p, s * d / 2).setZ(z),
-          u.clone().multiplyScalar(R_OUT).addScaledVector(p, s * d / 2).setZ(z)), rim));
+          u.clone().multiplyScalar(along(R_IN)).addScaledVector(p, off + s * d / 2).setZ(z),
+          u.clone().multiplyScalar(along(R_OUT)).addScaledVector(p, off + s * d / 2).setZ(z)), rim)).userData.what = 'tube';
     };
     tube(stemAngle, CASE_TUBE_D, CASE_DIMS.stemZ);
     tube(alarmStemAngle, CASE_TUBE_D, CASE_DIMS.alarmZ);
-    tube(ALARM_PUSH_AZ, CASE_PUSHER_D, CASE_DIMS.pusherZ);
+    tube(ALARM_PUSH_AZ, CASE_PUSHER_D, CASE_DIMS.pusherZ, CASE_DIMS.pusherOff);
 
     // Lugs at 12 and 6 — the interior span is the shared derivation (20 mm,
     // asserted against the cap where it is derived, beside BACK_PLATE_Z).
@@ -49509,6 +49572,7 @@ const SCHEMATIC = { proxies: [], on: false };
       }
       put(new THREE.Line(seg(at(lugPlan.uBar, lugPlan.zB, -LUG_SPAN / 2), at(lugPlan.uBar, lugPlan.zB, LUG_SPAN / 2)), rim));
     }
+    }   // end of the round drawing (§307 landing 3 — the form case draws above)
 
     caseGroup.visible = restoredCaseLines;
     movement.add(caseGroup);

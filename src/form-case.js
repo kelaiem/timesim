@@ -349,7 +349,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     const grp = new THREE.Group();
     grp.add(pivot);
     grp.name = name;
-    grp.userData.tube = { az, off, inboard, outboard, len };
+    grp.userData.tube = { az, off, inboard, outboard, len, d, z };   // the drawing (formCaseLines) reads the built tube, never the dims again
     middleAsm.add(grp);
     return grp;
   };
@@ -392,7 +392,7 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
     const plan = caseLugPlan({ rOut, rBore, off: lugCtrSpan / 2,
       zWallLo: zStep, zWallHi: zMidBack, zBack: z0, flat: true });
     for (const w of plan.warn) console.warn(`makeFormCase §280 lug: ${w}`);
-    lugPlans.push(plan);
+    lugPlans.push({ ...plan, az: lugAz });   // the azimuth placed it, so the drawing (formCaseLines) places the same outline
     const shape = new THREE.Shape(plan.outline.map(([pu, pz]) => new THREE.Vector2(pu, pz)));
     const hole = new THREE.Path();
     hole.absarc(plan.hole.u, plan.hole.z, plan.hole.r, 0, 2 * Math.PI, true);
@@ -451,4 +451,95 @@ export function makeFormCase({ dims, form, material, crystalMaterial }) {
   g.userData.loops = loops;
   g.userData.assemblies = { middle: middleAsm, back: backAsm, front: frontAsm };
   return g;
+}
+
+// §307 landing 3 — THE FORM CASE AS LINES: what the schematic tier (main.js,
+// §66/§71) draws for the housing under ?case=<kind>, read off the BUILT group
+// makeFormCase returned and the same CASE_DIMS it was cut to — so the drawing
+// cannot drift from the metal because there is nothing to drift FROM (the round
+// drawing's own rule, which this block kept breaking: until landing 3 the tier
+// drew the round case's CASE_DIMS circles round a form movement, the residue
+// §307's record named). Lines only, no fills, the round drawing's convention —
+// a case occluder would hide the very movement the tier exists to explain.
+//
+// Every ring is one of the loops a wall was cut from, at a z where that wall
+// ENDS (an edge the metal has — the drawing says nothing the solid does not):
+//   · outer   at zBezelOuter and z0: the one outer wall, bezel face to back
+//     (no midcase step — the prototype cuts none, so none is drawn);
+//   · opening at zBezelOuter and zCrystOuter: the lip, face and underside;
+//   · crystal at zCrystOuter and zCrystInner: the seat wall's two ends, the
+//     crystal's two faces;
+//   · bore    at zCrystInner (the seat's floor steps out to it) and zMidBack
+//     (the band's bore meets the back's inner face — a concave edge);
+//   · aperture at z0 and z0 − LIP_T, glass at z0 − LIP_T and the glass's inner
+//     face (and the channel's floor at zMidBack when the glass stops short of it).
+// GENERATORS run down the outer wall at its four extremes (±x, ±y; on a straight
+// side, the side's midpoint — the mean of the vertices sharing the extreme).
+// TUBES are read from each tube group's own `userData.tube`: two lines at ±d/2
+// (the bore's walls, the round drawing's convention) from the built inboard end
+// to the built outboard end, on the tube's own line (`off` carries the pusher's
+// chord). LUGS are the plans makeFormCase built (`userData.lugPlans`, each with
+// the azimuth that placed it): the outline and the hole at each lug's centre
+// plane — makeRoundedSlab's straight wall, so the outline IS the section there
+// — and the spring bar as its AXIS between the two lugs (an axis line, the one
+// line here that is inside metal rather than on it).
+//
+// Returns [{ what, closed, pts: [[x, y, z], …] }] in the movement frame, the
+// frame the group stands in. Pure: an instrument reads the same list the tier
+// draws, and holds every point to the solid (probe-schematic-form-case.mjs).
+export function formCaseLines(g, dims) {
+  const { form, loops, lugPlans } = g.userData;
+  const { z0, zMidBack, zCrystInner, zCrystOuter, zBezelOuter, crystT, apertureR, glassEdgeR,
+          formApertureGrow = null, formGlassGrow = null, lugSpanInner } = dims;
+  const out = [];
+  const ring = (what, loop, z) => out.push({ what, closed: true, pts: loop.map(([x, y]) => [x, y, z]) });
+  const seg = (what, a, b) => out.push({ what, closed: false, pts: [a, b] });
+  // A round hole's ring, on the segment count the solid's absarc holes use.
+  const circle = (r) => { const pts = []; for (let k = 0; k < ROUND_SEG; k++) { const a = 2 * Math.PI * k / ROUND_SEG; pts.push([r * Math.cos(a), r * Math.sin(a)]); } return pts; };
+  // The middle (makeFormCase's three prisms).
+  ring('outer', loops.outer, zBezelOuter); ring('outer', loops.outer, z0);
+  ring('opening', loops.opening, zBezelOuter); ring('opening', loops.opening, zCrystOuter);
+  ring('crystal', loops.crystal, zCrystOuter); ring('crystal', loops.crystal, zCrystInner);
+  ring('bore', loops.bore, zCrystInner); ring('bore', loops.bore, zMidBack);
+  // The back (its two prisms and the glass), the same stations makeFormCase cut.
+  const zCrystOut = z0 - LIP_T, zCrystIn = zCrystOut - crystT;
+  const apLoop = formApertureGrow === null ? circle(apertureR) : form.loop({ grow: formApertureGrow });
+  const glLoop = formGlassGrow === null ? circle(glassEdgeR) : form.loop({ grow: formGlassGrow });
+  ring('aperture', apLoop, z0); ring('aperture', apLoop, zCrystOut);
+  ring('glass', glLoop, zCrystOut); ring('glass', glLoop, zCrystIn);
+  if (zCrystIn - zMidBack > 1e-9) ring('glass', glLoop, zMidBack);
+  // Generators at the outer wall's four extremes.
+  for (const [i, sgn] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+    let ext = -Infinity;
+    for (const p of loops.outer) ext = Math.max(ext, sgn * p[i]);
+    const at = loops.outer.filter((p) => sgn * p[i] >= ext - 1e-9);
+    const x = at.reduce((a, p) => a + p[0], 0) / at.length, y = at.reduce((a, p) => a + p[1], 0) / at.length;
+    seg('generator', [x, y, zBezelOuter], [x, y, z0]);
+  }
+  // The tubes, as built.
+  g.traverse((o) => {
+    const t = o.userData?.tube;
+    if (!t) return;
+    const dir = [Math.cos(t.az), Math.sin(t.az)], perp = [-Math.sin(t.az), Math.cos(t.az)];
+    for (const s of [-1, 1]) {
+      const k = t.off + s * t.d / 2;
+      seg('tube', [dir[0] * t.inboard + perp[0] * k, dir[1] * t.inboard + perp[1] * k, t.z],
+                  [dir[0] * t.outboard + perp[0] * k, dir[1] * t.outboard + perp[1] * k, t.z]);
+    }
+  });
+  // The lugs, as planned.
+  const span = lugSpanInner + CASE_LUG_T;        // centre to centre — the dims quantity is the interior gap
+  for (const plan of lugPlans) {
+    const u = [Math.cos(plan.az), Math.sin(plan.az)], perp = [-u[1], u[0]];
+    const at = (pu, pz, off) => [u[0] * pu + perp[0] * off + form.cx, u[1] * pu + perp[1] * off, pz];
+    for (const s of [-1, 1]) {
+      const off = s * span / 2;
+      out.push({ what: 'lug', closed: true, pts: plan.outline.map(([pu, pz]) => at(pu, pz, off)) });
+      const hole = [];
+      for (let k = 0; k < 24; k++) { const th = 2 * Math.PI * k / 24; hole.push(at(plan.hole.u + plan.hole.r * Math.cos(th), plan.hole.z + plan.hole.r * Math.sin(th), off)); }
+      out.push({ what: 'lugHole', closed: true, pts: hole });
+    }
+    seg('lugBar', at(plan.uBar, plan.zB, -span / 2), at(plan.uBar, plan.zB, span / 2));
+  }
+  return out;
 }

@@ -4,7 +4,7 @@
 
 # The instruments
 
-358 scripts. **240 are ACCEPTANCE tests** — they decide and exit non-zero.
+359 scripts. **241 are ACCEPTANCE tests** — they decide and exit non-zero.
 **118 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -325,6 +325,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |
 | `probe-reserve-mesh.mjs` |  | report | Do the power-reserve train's two meshes actually engage? |
 | `probe-reset-contact.mjs` |  | acceptance | The seconds-reset contact, measured rather than assumed. |
+| `probe-schematic-form-case.mjs` |  | acceptance | DOES THE WIREFRAME DRAW THE CASE THAT WAS BUILT — ON EVERY CASE SHAPE? Acceptance (BUILT §307 landing 3): exits non-zero on any failure. |
 | `probe-section-headroom.mjs` |  | acceptance | TODO 109 step 2 — HOW MUCH SECTION CAN EACH BAR ACTUALLY GAIN? |
 | `probe-silence-feeler-pairs.mjs` |  | acceptance | TODO 190 — WHAT DOES THE SILENCE ROCKER TOUCH ON THE FEELER, MESH BY MESH? REPORT. The EXPECTED pair `Alarm silence rocker ⇄ Alarm release feeler` excuses every contact between the two units, and the `rocker finger ⇄ feeler tail` hand-off row measures only its own two named meshes — so a finger that lands on the feeler's RETURN BLADE instead of its tail reads green on both. This walks every mesh pair of the two units over the pose net (every AXES axis, sampled, plus the four ALARM_HANDOFF_POSES parities) and prints, per pair under 0.3: the minimum BVH clearance (`meshClearance`, the battery's own primitive — 0 means contact), and for pairs in contact an oriented-box separating-axis DEPTH (exact for boxes; a cylinder is read as its circumscribing square prism, so a cylinder's depth is an OVER-estimate, never an under-one). It also prints what the hand-off row reads at the four parities, and the finger's clearance to the return blade at the SETTING parity — the P0 question: does the finger reach the tail before the blade? |
 | `probe-slenderness-bearings.mjs` |  | report | TODO 78 — the alarm link's lay shaft, MEASURED. Every number the §54 note block quotes about this shaft (33.387, 2.45, 22, λ 135.4, "the 19.55 u bush-to-bush span") comes from prose; this reads them off the built tree. |
