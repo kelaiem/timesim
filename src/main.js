@@ -16750,6 +16750,45 @@ function checkPlateWindows(stage) {
 // in it (TODO 27) — see the seat counterbores pushed into tqHoles at the end
 // of this block. The scan itself is unchanged, and must stay this side of the
 // push: a pillar may not avoid its own screw's seat.
+// TODO 272 — THE GONG SETS THE PILLARS. A form build's gong seat is read here,
+// ahead of the pillar scan, because the seat is the one that may not move: a
+// pillar is the freest part on the plate (the balance cock's precedent below),
+// so it yields to the strike group rather than the strike group to it. The seat
+// row is generated (tools/gong-seats.mjs) and carries `keep`, the strike group's
+// plan footprint as its seated build measured it — the hammer's swept metal over
+// the pillars' height and its opening in the three-quarter plate — while its
+// wire and the post at its foot are read off the row's own curve. GONG_SEAT
+// below solves the strike from this same lookup, so there is one reading of
+// which row a build stands on. The declaration is held to the cut metal at the
+// strike opening (STRIKE_KEEP_MEASURED), where a stale `keep` warns.
+const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? 'bar') : null;
+const GONG_SEAT_LOOKUP = (() => {
+  if (!FORM || GONG_SEAT_MODE === 'arc') return null;
+  const specKey = configKey({ spec: { ...SPEC, formRectSpec: null, gongSeat: null } });
+  const row = GONG_SEATS[FORM.kind]?.[GONG_SEAT_MODE];
+  if (!row) return { refused: `no ${GONG_SEAT_MODE} seat is generated for the ${FORM.kind} case (tools/gong-seats.mjs)` };
+  if (row.specKey !== specKey) return { refused: `the ${FORM.kind} seats were solved for ${row.specKey}, not this build's ${specKey}`, row };
+  return { row };
+})();
+// signed distance to a closed polygon (negative inside), winding-free
+const polySignedDist = (pts, x, y) => {
+  let d = Infinity, inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [ax, ay] = pts[j], [bx, by] = pts[i], vx = bx - ax, vy = by - ay;
+    const t = clamp(((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1e-12), 0, 1);
+    d = Math.min(d, Math.hypot(x - ax - t * vx, y - ay - t * vy));
+    if ((ay > y) !== (by > y) && x < ax + (y - ay) * vx / (vy || 1e-12)) inside = !inside;
+  }
+  return inside ? -d : d;
+};
+const PILLAR_STRIKE_KEEP = (() => {
+  const row = GONG_SEAT_LOOKUP && !GONG_SEAT_LOOKUP.refused ? GONG_SEAT_LOOKUP.row : null;
+  if (!row?.keep) return null;
+  const c = GS.seatCurve(row.curve), n = Math.max(8, Math.ceil(c.L / 0.25)), wire = [];
+  for (let i = 0; i <= n; i++) { const q = c.at(c.L * i / n); wire.push([q.x, q.y]); }
+  const foot = c.at(c.L);
+  return { hull: row.keep.hull, opening: row.keep.opening, wire, wireR: row.wireR, foot: [foot.x, foot.y], postR: row.keep.postR };
+})();
 const pillarSeats = []; // §20: the plate screws land over the solved seats
 const pillarRivetSites = []; // TODO 200: each tenon's countersunk land, put back after the late re-cut
 // TODO 184 — THE PILLAR IS SIZED FROM ITS SCREW, and the screw from its job.
@@ -16864,8 +16903,14 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // the base plate, whose rivet mouth is inside the cap). Reading the circle
   // there stood all four pillars inside a rim the form plate does not have,
   // pillar 1 in the strike corner (TODO 266's lands were measured to its seat).
+  // TODO 272 — and to PLATE_RIM_MARGIN, which binds: a pillar is counted metal,
+  // and the case's fit (§308, FORM_FOOTPRINT) holds every counted vertex that
+  // far inside its outline. Held only to TQ_LAND_MIN, a pillar the strike group
+  // pushed to the rim stood 3.238 inside the cushion and the fit grew the case
+  // round it — the frame paying for the gong with the case's size.
+  const PILLAR_RIM_LAND = Math.max(TQ_LAND_MIN, PLATE_RIM_MARGIN);
   const seatClearance = (x, y) => {
-    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - TQ_LAND_MIN : plateR - Math.hypot(x, y));
+    let c = Math.min(inCutClearance(x, y), FORM ? formInset(x, y) - PILLAR_RIM_LAND : plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
     const stadium = (s) => {
       const vx = s.bx - s.ax, vy = s.by - s.ay, L2 = vx * vx + vy * vy || 1e-9;
@@ -16913,6 +16958,22 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
+    // TODO 272 — THE STRIKE GROUP, which the pillar yields to: the hammer's
+    // swept metal over the column's height, its opening in the three-quarter
+    // plate (owed TQ_LAND_MIN, like a window: the screw seat is a hole in that
+    // plate), the wire and the post at its foot.
+    if (PILLAR_STRIKE_KEEP) {
+      const K = PILLAR_STRIKE_KEEP;
+      c = Math.min(c, polySignedDist(K.hull, x, y));
+      c = Math.min(c, polySignedDist(K.opening, x, y) - TQ_LAND_MIN);
+      let dw = Infinity;
+      for (let i = 1; i < K.wire.length; i++) {
+        const [ax, ay] = K.wire[i - 1], [bx, by] = K.wire[i], vx = bx - ax, vy = by - ay;
+        const t = clamp(((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1e-12), 0, 1);
+        dw = Math.min(dw, Math.hypot(x - ax - t * vx, y - ay - t * vy));
+      }
+      c = Math.min(c, dw - K.wireR, Math.hypot(x - K.foot[0], y - K.foot[1]) - K.postR);
+    }
     // TODO 184 step 3 — THE PLATE A PILLAR STANDS ON. Its foot land is a
     // shoulder bearing on the base plate and its tenon passes through it, so
     // the land must stand on metal: every opening the base plate is cut with
@@ -28129,13 +28190,9 @@ const ALARM_STRIKE_LAWS = {
 // moves the strike rather than leaving the hammer off its wire. Every
 // mechanism dimension — arm, tail, lever arms, head, gap, draw — is the
 // group's own and is held; only the station moves (the fold rule).
-const GONG_SEAT_MODE = FORM ? (SPEC.gongSeat ?? 'bar') : null;
 const GONG_SEAT = (() => {
-  if (!FORM || GONG_SEAT_MODE === 'arc') return null;
-  const specKey = configKey({ spec: { ...SPEC, formRectSpec: null, gongSeat: null } });
-  const row = GONG_SEATS[FORM.kind]?.[GONG_SEAT_MODE];
-  if (!row) return { refused: `no ${GONG_SEAT_MODE} seat is generated for the ${FORM.kind} case (tools/gong-seats.mjs)` };
-  if (row.specKey !== specKey) return { refused: `the ${FORM.kind} seats were solved for ${row.specKey}, not this build's ${specKey}`, row };
+  if (!GONG_SEAT_LOOKUP || GONG_SEAT_LOOKUP.refused) return GONG_SEAT_LOOKUP;   // TODO 272: the lookup is hoisted to the pillar scan
+  const { row } = GONG_SEAT_LOOKUP;
   const curve = GS.seatCurve(row.curve);
   const lever = { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S),
     tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2), side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP };
@@ -47600,8 +47657,14 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
 // land to it (tqOpeningClearance): the window gives way, not the strike
 // group. Its own lands are then read against the windows as re-solved.
 let STRIKE_PLATE_VERTS = 0;
+// TODO 272 — and the footprint the pillar scan was handed, measured here off the
+// same sweep: the hammer's metal over the pillars' span [PLATE_BACK_FACE, TQ_BOT_Z]
+// (one margin either side) and the opening, with the post at the wire's foot.
+// tools/gong-seats.mjs writes it into the seat row as `keep`.
+let STRIKE_KEEP_MEASURED = null;
 if (FORM) {
   const z0 = TQ_BOT_Z - CLEAR_MARGIN, z1 = TQ_TOP_Z + CLEAR_MARGIN, xs = [], ys = [], v = new THREE.Vector3();
+  const pz0 = PLATE_BACK_FACE - CLEAR_MARGIN, pz1 = TQ_BOT_Z + CLEAR_MARGIN, pxs = [], pys = [];
   const keepRot = alarmHammerPivot.rotation.z, N = 12;
   const meshes = []; alarmHammerUnit.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) meshes.push(o); });
   const under = (o) => { for (let a = o; a; a = a.parent) if (a === alarmHammerPivot) return true; return false; };
@@ -47615,6 +47678,7 @@ if (FORM) {
       for (let t = 0; t + 2 < n; t += 3) {
         let lo = Infinity, hi = -Infinity;
         for (let e = 0; e < 3; e++) { v.fromBufferAttribute(pa, idx ? idx.getX(t + e) : t + e).applyMatrix4(m); tri[e] = [v.x, v.y]; lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
+        if (!(hi < pz0 || lo > pz1)) for (const [x, y] of tri) { pxs.push(x); pys.push(y); }
         if (hi < z0 || lo > z1) continue;
         for (const [x, y] of tri) { xs.push(x); ys.push(y); }
       }
@@ -47629,6 +47693,31 @@ if (FORM) {
     const pts = convexHull2(gx, gy, gx.length).map(([x, y]) => [x, y]);
     STRIKE_PLATE_OPENING = { pts };   // TODO 270: an opening the re-solved windows keep a land to
     STRIKE_PLATE_VERTS = xs.length;
+  }
+  if (GONG_SEATED && STRIKE_PLATE_OPENING && pxs.length >= 3) {
+    const r4o = (q) => Math.round(q * 1e4) / 1e4;
+    STRIKE_KEEP_MEASURED = Object.freeze({
+      hull: convexHull2(pxs, pys, pxs.length).map(([x, y]) => [r4o(x), r4o(y)]),
+      opening: STRIKE_PLATE_OPENING.pts.map(([x, y]) => [r4o(x), r4o(y)]),
+      postR: r4o(GONG_POST_R_BUILT),
+    });
+    // DECLARED VERSUS CUT (§115's idiom): the pillars were sited against the
+    // row's `keep`, so the metal must stand inside it, and no pillar may stand
+    // in the metal. The second is the gate the first protects; it is also what
+    // reads the hammer through a pillar on a table generated before TODO 272.
+    const K = PILLAR_STRIKE_KEEP, TOL = 1e-3;
+    if (!K) console.warn(`TODO 272: the ${FORM.kind} ${GONG_SEAT_MODE} seat carries no pillar keep-out — the pillars were sited blind to the strike group; re-run tools/gong-seats.mjs`);
+    else {
+      const outH = STRIKE_KEEP_MEASURED.hull.reduce((w, [x, y]) => Math.max(w, polySignedDist(K.hull, x, y)), -Infinity);
+      const outO = STRIKE_KEEP_MEASURED.opening.reduce((w, [x, y]) => Math.max(w, polySignedDist(K.opening, x, y)), -Infinity);
+      if (outH > TOL || outO > TOL || STRIKE_KEEP_MEASURED.postR > K.postR + TOL)
+        console.warn(`TODO 272: the strike group stands outside the keep-out its seat declared (hammer ${outH.toFixed(4)}, opening ${outO.toFixed(4)}, post ${STRIKE_KEEP_MEASURED.postR.toFixed(4)} against ${K.postR.toFixed(4)}) — re-run tools/gong-seats.mjs`);
+    }
+    for (const p of pillarSeats) {
+      const d = polySignedDist(STRIKE_KEEP_MEASURED.hull, p.x, p.y) - PILLAR_CAP_R;
+      if (d < CLEAR_MARGIN - 1e-9)
+        console.warn(`TODO 272: the pillar at (${p.x.toFixed(2)}, ${p.y.toFixed(2)}) stands ${d.toFixed(3)} from the hammer's swept metal — need CLEAR_MARGIN ${CLEAR_MARGIN}`);
+    }
   }
 }
 
@@ -61277,6 +61366,7 @@ window.__clock = {
     row: GONG_SEAT?.row ?? null, strike: GONG_SEATED ? { s: GONG_SEAT.st.s, S: GONG_SEAT.st.S, F: GONG_SEAT.st.F, b: GONG_SEAT.st.b, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi } : null,
     check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2),
       side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, headH: ALARM_HEAD_H, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
+    keep: STRIKE_KEEP_MEASURED,   // TODO 272 — what tools/gong-seats.mjs writes into the row as the pillars' keep-out
     tenants: GONG_BAND_TENANTS, wireR: GONG_WIRE_R, wireD_m: 2 * GONG_WIRE_R * OSC_U, zGong: Z_GONG, postR: GONG_POST_R_BUILT,
     postRFor: (L_u) => gongPostRFor(L_u * OSC_U) }) : null,   // §310 landing 2 — the seat this build stands its gong on, and what tools/gong-seats.mjs solves against   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
   // §81 tranche A: what the weld pass found and removed, so the reduction is

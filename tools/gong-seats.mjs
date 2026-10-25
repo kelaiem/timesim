@@ -70,7 +70,7 @@ const boot = async (q) => {
     if (window.__bootError) return { bootError: String(window.__bootError.message || window.__bootError) };
     const c = window.__clock, g = c.gongSeat;
     return { rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
-      seat: g && { tenants: JSON.parse(JSON.stringify(g.tenants)), pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
+      seat: g && { tenants: JSON.parse(JSON.stringify(g.tenants)), keep: g.keep ? JSON.parse(JSON.stringify(g.keep)) : null, pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
         zGong: g.zGong, postR: g.postR, postRAt: [10, 20, 30, 40, 50, 60, 70, 80].map((L) => [L, g.postRFor(L)]) } };
   });
   await ctx.close();
@@ -145,7 +145,8 @@ for (const kind of KINDS) {
       const S = arc.seat, shape = caseShapeOf(kind, { xMin: rect[0], xMax: rect[1], yMin: rect[2], yMax: rect[3] });
       const need = S.wireR + S.lever.margin;
       // the counted metal's hulls (the hammer excepted: it is the seat's own) and the plates' tenants in the band
-      const parts = [...GS.bandParts(arc.regions, S.zGong - S.wireR, S.zGong + S.wireR, S.lever.margin, new Set(['Alarm hammer'])),
+      // TODO 272: nor the PILLARS — the gong sets them (the build's pillar scan yields to the row's `keep`)
+      const parts = [...GS.bandParts(arc.regions, S.zGong - S.wireR, S.zGong + S.wireR, S.lever.margin, new Set(['Alarm hammer', 'pillars'])),
         ...GS.bandParts(S.tenants, S.zGong - S.wireR, S.zGong + S.wireR, S.lever.margin)];
       const W = Math.ceil((rect[1] - rect[0]) / RES) + 2, H = Math.ceil((rect[3] - rect[2]) / RES) + 2;
       const map = GS.bandMap(parts, { x0: rect[0] - RES, y0: rect[2] - RES, W, H, RES, need, inset: (x, y) => shape.inset(x, y) });
@@ -174,7 +175,17 @@ for (const kind of KINDS) {
           : GS.seatStrike(GS.seatCurve(rowCurve(cand)), lever, S.wireR, cand.hammer.side, cand.hammer.at * 0.25);
         // the row stores a spiral's end to 1e-12 (rowCurve), so the residual its pivot carries is float noise
         if (!st || (cand.blow === 'tangent' && Math.abs(st.g) > 1e-9)) { console.log(`    refused: the exact strike solve ${st ? `leaves the pivot ${st.g.toExponential(2)} off the lever's circle` : 'finds no root on the analytic curve'}`); continue; }
-        const r = rowOf(kind, mode, cand, rect, lever, S.wireR, mapInfo, st);
+        let r = rowOf(kind, mode, cand, rect, lever, S.wireR, mapInfo, st);
+        // TODO 272 — THE KEEP-OUT the build's pillar scan yields to is the strike group as SEATED, so it is
+        // measured off a first seated boot (its pillars still blind to it) and written into the row; the
+        // second boot, with the pillars yielding, is the one judged. The hammer does not depend on where the
+        // pillars stand, so one measuring boot is the fixed point (the build holds that: declared vs cut).
+        seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
+        const m = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+        if (m.bootError || !m.seat?.keep) { console.log(`    refused: the seated build ${m.bootError ? `fails to boot (${m.bootError})` : 'measures no strike footprint'}`); continue; }
+        r = { ...r, keep: m.seat.keep };
+        // GONG_ROWS=dir writes each candidate row as judged, so a refused seat can be booted and read by hand
+        if (process.env.GONG_ROWS) await writeFile(join(process.env.GONG_ROWS, `${kind}-${mode}-${round}-${pool.indexOf(cand)}.json`), JSON.stringify(r));
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
         const b = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
         if (b.bootError) { console.log(`    refused: the seated build fails to boot (${b.bootError})`); continue; }

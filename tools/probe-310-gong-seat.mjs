@@ -36,6 +36,14 @@
 //   B2  …and since TODO 266, each seat's hammer staff stands in the three-quarter plate's strike opening, not
 //       under the plate (a vertical ray at the post meets no plate), the opening holding TQ_LAND_MIN of plate to
 //       everything round it (the build's own land test, reported on __clock.strikePlateOpening)
+//   B2  …and since TODO 272, the GONG SETS THE PILLARS: each seat row declares `keep`, the strike group's
+//       footprint as its seated build measured it; the build's cut strike group stands inside it (to 1e-3), and
+//       every pillar, read off the scene (its seat and its widest land), stands CLEAR_MARGIN off the hammer's
+//       swept metal, the wire and its post, and TQ_LAND_MIN off the plate's strike opening. Its control: the
+//       same reader on the cushion's hammer and the 30° pillar `main` shipped before TODO 271 (32.49, 18.76)
+//       must read it inside the metal — the FORBIDDEN pair that build carried unseen
+//   B3  …and since TODO 272, a seat whose `keep` is dropped is called out (the pillars sited blind), and one
+//       whose `keep` is shrunk about its centre is called out (the cut metal outside what was declared)
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -107,6 +115,13 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
   '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] });
 // (a 404 is this static server declining dev_server.py's /__state endpoint, which the page falls back from)
 const NOISE = /GPU stall|GL Driver Message|swiftshader|ReadPixels|Automatic fallback to software WebGL|Failed to load resource: the server responded with a status of 404/i;
+// TODO 272 — signed distance to a closed polygon (negative inside), and to a segment
+const segD = ([ax, ay], [bx, by], x, y) => { const vx = bx - ax, vy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1e-12)));
+  return Math.hypot(x - ax - t * vx, y - ay - t * vy); };
+const psd = (pts, x, y) => { let d = Infinity, inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ax, ay] = pts[j], [bx, by] = pts[i]; d = Math.min(d, segD(pts[j], pts[i], x, y));
+    if ((ay > y) !== (by > y) && x < ax + (y - ay) * (bx - ax) / ((by - ay) || 1e-12)) inside = !inside; }
+  return inside ? -d : d; };
 const boot = async (q, fn) => {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } }), page = await ctx.newPage(), warnings = [];
   page.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !NOISE.test(m.text())) warnings.push(m.text()); });
@@ -137,6 +152,13 @@ const seatRead = async () => {   // (Infinity crosses page.evaluate as null: the
     r.staff = { inPlateFootprint: hits.length > 0, postTop: bb.max.z, plateBottom: tb.min.z };
     const op = c.strikePlateOpening; r.opening = op ? { land: op.land, landTo: op.landTo } : null;
     r.tqT = tb.max.z - tb.min.z;   // TQ_LAND_MIN is max(STOCK_MIN_U, TQ_T): the plate's own thickness governs
+    // TODO 272 — the pillars as built: each one's seat and its widest land, read off its own vertices
+    r.pillars = [];
+    c.scene.traverse((o) => { if (o.name !== 'pillar' || !o.isMesh) return;
+      const w = new T.Vector3(); o.getWorldPosition(w); const pa = o.geometry.attributes.position, v = new T.Vector3(); let capR = 0;
+      for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld); capR = Math.max(capR, Math.hypot(v.x - w.x, v.y - w.y)); }
+      r.pillars.push({ x: w.x, y: w.y, capR }); });
+    r.keep = g.keep; r.rowKeep = g.row?.keep ?? null; r.wireR = g.wireR;
   }
   return r;
 };
@@ -187,6 +209,28 @@ for (const row of rows) {
   ok(`${tag}: no boot warning the movement as first fitted lacks`, widened.length === 0, widened.slice(0, 3).join(' | '));
   ok(`${tag}: TODO 266 — the staff stands in the plate's strike opening, its land held`, !o.staff.inPlateFootprint && !!o.opening && o.opening.land >= o.tqT - 1e-6,
     o.opening ? `land ${o.opening.land.toFixed(3)} to ${o.opening.landTo} (plate ${o.tqT.toFixed(3)} thick); staff top ${o.staff.postTop.toFixed(2)} against the plate's underside ${o.staff.plateBottom.toFixed(2)}` : 'no opening cut');
+  // TODO 272 — the gong sets the pillars: declared, cut, and every pillar off the strike group
+  {
+    const K = o.rowKeep, M = o.keep, wire = [], c = GS.seatCurve(row.curve), nW = Math.max(8, Math.ceil(c.L / 0.25));
+    for (let i = 0; i <= nW; i++) { const q = c.at(c.L * i / nW); wire.push([q.x, q.y]); }
+    const foot = c.at(c.L);
+    const outH = K && M ? Math.max(...M.hull.map(([x, y]) => psd(K.hull, x, y))) : NaN, outO = K && M ? Math.max(...M.opening.map(([x, y]) => psd(K.opening, x, y))) : NaN;
+    ok(`${tag}: TODO 272 — the row declares the strike group's keep-out and the cut metal stands inside it`, !!K && !!M && outH <= 1e-3 && outO <= 1e-3 && M.postR <= K.postR + 1e-3,
+      K && M ? `hammer ${outH.toFixed(4)}, opening ${outO.toFixed(4)} outside the declaration; post ${M.postR} against ${K.postR}` : `row keep ${!!K}, measured ${!!M}`);
+    const worst = { d: Infinity, what: '' };
+    for (const p of o.pillars) {
+      const lands = [[psd(M.hull, p.x, p.y) - p.capR - 0.15, 'the hammer'], [psd(M.opening, p.x, p.y) - p.capR - o.tqT, 'the opening (less TQ_LAND_MIN)'],
+        [Math.min(...wire.slice(1).map((b, i) => segD(wire[i], b, p.x, p.y))) - o.wireR - p.capR - 0.15, 'the wire'],
+        [Math.hypot(p.x - foot.x, p.y - foot.y) - M.postR - p.capR - 0.15, 'the post']];
+      for (const [d, w] of lands) if (d < worst.d) { worst.d = d; worst.what = `${w}, pillar (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`; }
+    }
+    ok(`${tag}: TODO 272 — every pillar stands clear of the strike group`, o.pillars.length === 4 && worst.d >= -1e-6,
+      `${o.pillars.length} pillars; least spare ${worst.d.toFixed(3)} (${worst.what})`);
+    if (row.kind === 'cushion' && row.mode === 'bar') {
+      const capR = o.pillars[0].capR, d = psd(M.hull, 32.49, 18.76) - capR;
+      ok(`${tag}: TODO 272 control — the reader finds the hammer through the 30° pillar main shipped before TODO 271`, d < 0.15, `${d.toFixed(3)} from the hammer's swept metal`);
+    }
+  }
 }
 // controls
 {
@@ -206,6 +250,18 @@ for (const row of rows) {
     const m = await boot(fr, seatRead);
     seatsOverride = null;
     ok('B3 control: a seat whose strike moved 1 u is called out', m.warnings.some((w) => /§310: the bar seat's strike solved at/.test(w)), m.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
+    // TODO 272 — the keep-out dropped, and shrunk to half about its own centre
+    const dropped = JSON.parse(JSON.stringify(GONG_SEATS)); delete dropped[bar.kind].bar.keep;
+    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(dropped)});\n`;
+    const dk = await boot(fr, () => ({}));
+    ok('B3 control: TODO 272 — a seat with no keep-out is called out', dk.warnings.some((w) => /TODO 272: the .* seat carries no pillar keep-out/.test(w)), dk.warnings.filter((w) => /TODO 272/.test(w)).slice(0, 1).join(''));
+    const shrunk = JSON.parse(JSON.stringify(GONG_SEATS)), kp = shrunk[bar.kind].bar.keep;
+    if (kp) for (const key of ['hull', 'opening']) { const cx = kp[key].reduce((t, q) => t + q[0], 0) / kp[key].length, cy = kp[key].reduce((t, q) => t + q[1], 0) / kp[key].length;
+      kp[key] = kp[key].map(([x, y]) => [cx + (x - cx) / 2, cy + (y - cy) / 2]); }
+    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(shrunk)});\n`;
+    const sk = await boot(fr, () => ({}));
+    seatsOverride = null;
+    ok('B3 control: TODO 272 — a seat whose keep-out is shrunk is called out', sk.warnings.some((w) => /TODO 272: the strike group stands outside the keep-out/.test(w)), sk.warnings.filter((w) => /TODO 272/.test(w)).slice(0, 1).join(''));
   }
 }
 await browser.close(); srv.close();
