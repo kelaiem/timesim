@@ -182,8 +182,8 @@ for (const row of rows) {
   // …nor one the movement as FIRST fitted lacks, compared by kind (digits folded: a measured warning's numbers
   // drift with the fit). A warning the seat causes by widening its fit stands in the arc build at that fit too,
   // which is how the rect's spiral reached a 40.09 mm case past §307's 40 mm cap with the row above green.
-  const kind = (w) => w.replace(/-?\d+(\.\d+)?/g, '#'), firstKinds = new Set(firstFit[row.kind].map(kind));
-  const widened = seated.warnings.filter((w) => !firstKinds.has(kind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
+  const warnKind = (w) => w.replace(/-?\d+(\.\d+)?/g, '#'), firstKinds = new Set(firstFit[row.kind].map(warnKind));
+  const widened = seated.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
   ok(`${tag}: no boot warning the movement as first fitted lacks`, widened.length === 0, widened.slice(0, 3).join(' | '));
   ok(`${tag}: TODO 266 — the staff stands in the plate's strike opening, its land held`, !o.staff.inPlateFootprint && !!o.opening && o.opening.land >= o.tqT - 1e-6,
     o.opening ? `land ${o.opening.land.toFixed(3)} to ${o.opening.landTo} (plate ${o.tqT.toFixed(3)} thick); staff top ${o.staff.postTop.toFixed(2)} against the plate's underside ${o.staff.plateBottom.toFixed(2)}` : 'no opening cut');

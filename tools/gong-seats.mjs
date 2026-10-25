@@ -182,9 +182,9 @@ for (const kind of KINDS) {
         // passed that way with its case at 40.09 mm across, over §307's 40 mm owner cap. Compared by KIND (digits
         // folded), because a measured warning's numbers drift with the fit (§186's rim-to-bore reads 2.3060 on one
         // fit and 2.3067 on another) and would otherwise read as new on every round.
-        const kind = (w) => w.replace(/-?\d+(\.\d+)?/g, '#');
-        const firstKinds = new Set(first.warnings.map(kind));
-        const widened = b.warnings.filter((w) => !firstKinds.has(kind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
+        const warnKind = (w) => w.replace(/-?\d+(\.\d+)?/g, '#');
+        const firstKinds = new Set(first.warnings.map(warnKind));
+        const widened = b.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
         if (widened.length) { console.log(`    refused: at its fit the seated build carries ${widened.length} warning(s) the first fit lacks: ${widened.slice(0, 2).map((w) => w.slice(0, 160)).join(' | ')}`); continue; }
         seated = b; pick = cand; row = r; break;
       }
