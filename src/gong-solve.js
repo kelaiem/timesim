@@ -236,10 +236,7 @@ export const solveGong = (map, opts, progress = () => {}) => {
     for (let dd = L.gap + 0.4; dd <= 4.5; dd += 0.4) if (!free(e.fx - e.bx * (dd - L.gap), e.fy - e.by * (dd - L.gap))) return null;
     const near = pts.reduce((m, p) => Math.min(m, Math.hypot(p[0] - e.px, p[1] - e.py)), Infinity);
     if (near < WR + L.postR + L.margin) return null;
-    const ex = e.fx - e.bx * L.headR, ey = e.fy - e.by * L.headR, hl = Math.hypot(ex - e.fx, ey - e.fy) || 1;
-    for (let i = 0; i < pts.length; i++) { if (i * STEP < 1) continue;
-      const [x, y] = pts[i], t = Math.max(0, Math.min(1, ((x - e.fx) * (ex - e.fx) + (y - e.fy) * (ey - e.fy)) / (hl * hl)));
-      if (Math.hypot(x - e.fx - t * (ex - e.fx), y - e.fy - t * (ey - e.fy)) < WR + L.headR + L.margin) return null; }
+    if (endHeadClear(pts, STEP, { x: e.fx, y: e.fy }, { x: e.bx, y: e.by }, L.headR, L.headH ?? 2 * L.headR, WR) < L.margin) return null;
     return { side: 0, blow: 'tangent', face: [e.fx, e.fy], rFace: Math.hypot(e.fx, e.fy), azDeg: Math.atan2(e.fy, e.fx) * 180 / Math.PI,
       blowDeg: Math.atan2(e.by, e.bx) * 180 / Math.PI, pivot: [e.px, e.py], at: 0, frac: 1 }; };
   // the block stands on PLATE: under a plate test (map.plateInset, the outline's signed distance) its whole
@@ -311,8 +308,11 @@ export const solveGong = (map, opts, progress = () => {}) => {
         if (opts.spiral) { const ex = fx + bx * L.gap, ey = fy + by * L.gap, eth = Math.atan2(by, bx);
           if (free(ex, ey)) for (const r0 of [8, 11, 14, 18]) for (const p of [3.5, 4.5, 6]) for (const turn of [1, -1]) {
             const gen = spiralInGen(ex, ey, eth, r0, p, turn), Lfit = march(gen, 140); if (Lfit < Lstraight(fHi) * 0.85) continue;
+            // the hammer is judged HERE, before the roomiest-first cap: it does not depend on the length the
+            // band solves, and its coil tests on the longest fit are the stricter (the solved wire is a prefix)
+            const end = { px, py, fx, fy, bx, by }; if (!endHammer({ end }, sample(gen, 0, Lfit))) continue;
             cands.push({ fam: 'spiral', label: `spiral from r ${r0} u, ${p} u a turn, struck along its end`, r0, p, turn, th: eth, gen, anchor: 'free', Lfit, strikeEnd: true,
-              spiral: { sx: ex, sy: ey, th: eth, r0, p, turn }, blow: 'tangent', end: { px, py, fx, fy, bx, by },
+              spiral: { sx: ex, sy: ey, th: eth, r0, p, turn }, blow: 'tangent', end,
               key: `s:${r0}:${p}:${turn}:${Math.round(ph / 6)}:${Math.round(be / 9)}` }); } } } } }
   if ((opts.any && !opts.lever) || near) {
     const grid = near ? 1 : 3, xs = near ? [near.x - 6, near.x + 6] : [M.x0 + 1, M.x0 + M.W * M.RES], ys = near ? [near.y - 6, near.y + 6] : [M.y0 + 1, M.y0 + M.H * M.RES];
@@ -412,6 +412,19 @@ export const seatStrike = (curve, { Q, rho, tanLen, side, gap }, wireR, sg, gues
     best = Math.abs(lo.g) < Math.abs(hi.g) ? lo : hi; break; }
   return best;
 };
+// TODO 269 — the end-struck head against the COILS. The head stands behind its face (from the face plane
+// back to its eye, headR, along −b) and is headH wide across the blow; the wire's own struck end runs AHEAD
+// of the face plane and can never meet it. So a station of the wire clashes only where it stands behind the
+// plane or within a wire's radius in front of it, inside the head's extent, and laterally within the face's
+// half-width plus the wire's radius of the head's axis. The struck end's own first 2 u are its end, not a
+// coil (any returning coil is a turn away). Returns the least lateral clearance over the stations that can
+// meet the head (Infinity when none can); the solver and the build's seat check read this one rule.
+export const endHeadClear = (pts, ds, F, b, headR, headH, wireR) => { let best = Infinity;
+  for (let i = 0; i < pts.length; i++) { if (i * ds < 2) continue;
+    const dx = pts[i][0] - F.x, dy = pts[i][1] - F.y, along = dx * b.x + dy * b.y;
+    if (along > wireR || along < -headR - wireR) continue;
+    best = Math.min(best, Math.abs(-dx * b.y + dy * b.x) - headH / 2 - wireR); }
+  return best; };
 // TODO 269 — the END strike on a seat, exactly: the blow along the wire's tangent at its free end (s = 0),
 // the face one gap before the end and normal to it, the pivot tanLen along the face from F on the lever's
 // side (the same P = F + side·tanLen·(ẑ×b) as every seat). No root to find: the end is the strike, and

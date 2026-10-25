@@ -48995,16 +48995,12 @@ const GONG_SEAT_CHECK = GONG_SEATED ? (() => {
   const ALONG = GONG_SEAT.row.blow === 'tangent';
   const faceGap = Math.hypot(headFace.x - GONG_SEAT.st.S.x, headFace.y - GONG_SEAT.st.S.y) - (ALONG ? 0 : GONG_WIRE_R);
   const lever = Math.hypot(hammerPiv.x - LIFT_PIV.x, hammerPiv.y - LIFT_PIV.y) - GONG_SEAT.lever.rho;
-  // ...and its head stands on the wire's own line beyond the end, so it owes the COILS a margin: every station
-  // more than one unit of wire from the struck end, off the head's segment (eye to face) by the wire's radius
-  // and the face's half-width (ALARM_HEAD_H, square across the wire)
+  // ...and its head stands on the wire's own line before the end, so it owes the COILS a margin, by the
+  // solver's rule (GS.endHeadClear: behind the face plane, across the face's half-width, ALARM_HEAD_H)
   let headClear = null;
-  if (ALONG) { headClear = Infinity;
-    const ax = headRest.x, ay = headRest.y, vx = headFace.x - ax, vy = headFace.y - ay, l2 = vx * vx + vy * vy || 1;
-    const n = GONG_SEAT_PTS.length, ds = GONG_SEAT.row.curve.L / (n - 1);
-    for (let i = 0; i < n; i++) { if ((n - 1 - i) * ds < 1) continue;   // GONG_SEAT_PTS run foot → free end
-      const [x, y] = GONG_SEAT_PTS[i], t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / l2));
-      headClear = Math.min(headClear, Math.hypot(x - ax - t * vx, y - ay - t * vy) - GONG_WIRE_R - ALARM_HEAD_H / 2); }
+  if (ALONG) {   // GS.endHeadClear, the solver's own rule, on the seat's stations from the free end (GONG_SEAT_PTS run foot → free)
+    const fromEnd = GONG_SEAT_PTS.slice().reverse(), ds = GONG_SEAT.row.curve.L / (fromEnd.length - 1);
+    headClear = GS.endHeadClear(fromEnd, ds, headFace, GONG_SEAT.st.b, ALARM_HEAD_R, ALARM_HEAD_H, GONG_WIRE_R);
     if (headClear < CLEAR_MARGIN - 1e-9)
       console.warn(`§310/TODO 269: the end-struck hammer's head stands ${headClear.toFixed(3)} off the ${GONG_SEAT_MODE} gong's coils, under the margin`); }
   const r = { parts: parts.length, metal: near, need, outlineInset: inset, footInset, staffClear: staff, faceGap, leverResidual: lever, headClear, blow: ALONG ? 'tangent' : 'normal' };
@@ -61123,7 +61119,7 @@ window.__clock = {
   gongSeat: FORM ? Object.freeze({ pivot: { x: hammerPiv.x, y: hammerPiv.y }, mode: GONG_SEAT_MODE, seated: GONG_SEATED, refused: GONG_SEAT?.refused ?? null,
     row: GONG_SEAT?.row ?? null, strike: GONG_SEATED ? { s: GONG_SEAT.st.s, S: GONG_SEAT.st.S, F: GONG_SEAT.st.F, b: GONG_SEAT.st.b, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi } : null,
     check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2),
-      side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
+      side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, headH: ALARM_HEAD_H, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
     tenants: GONG_BAND_TENANTS, wireR: GONG_WIRE_R, wireD_m: 2 * GONG_WIRE_R * OSC_U, zGong: Z_GONG, postR: GONG_POST_R_BUILT,
     postRFor: (L_u) => gongPostRFor(L_u * OSC_U) }) : null,   // §310 landing 2 — the seat this build stands its gong on, and what tools/gong-seats.mjs solves against   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
   // §81 tranche A: what the weld pass found and removed, so the reduction is
