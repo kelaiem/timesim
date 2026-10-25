@@ -30,6 +30,7 @@
 // stalled branch resets it — a lenient reading, accepted, because the
 // alternative (author dates) would flag a freshly rebased live branch.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { itemText, treeSource } from './item-docs.mjs';   // docs/todo/ and docs/built/, one file per item
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -145,12 +146,12 @@ function readTree() {
   const claimDir = join(ROOT, 'docs/item-numbers');
   const claims = new Set(readdirSync(claimDir).filter((f) => /^[A-Z]+-\d+\.md$/.test(f)).map((f) => f.replace(/\.md$/, '')));
   const built = new Set();
-  for (const l of readFileSync(join(ROOT, 'docs/BUILT.md'), 'utf8').split('\n')) {
+  for (const l of (itemText('BUILT', treeSource(ROOT)) || '').split('\n')) {
     const m = /^## (?:§)?(\d+)(?:\s*[—–-]\s*|\.[ \t]*|\s+)/.exec(l);
     if (m) built.add(Number(m[1]));
   }
   const todo = new Map();
-  for (const l of readFileSync(join(ROOT, 'TODO.md'), 'utf8').split('\n')) {
+  for (const l of (itemText('TODO', treeSource(ROOT)) || '').split('\n')) {
     const m = /^## (\d+)\.[ \t]*(.*)$/.exec(l);
     if (m) todo.set(Number(m[1]), m[2]);
   }

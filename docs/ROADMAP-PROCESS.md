@@ -32,7 +32,7 @@ BACKLOG (private) → ROADMAP row (public, in progress) → BUILT section (publi
 
 ## Finishing
 
-- **It ships:** the PR that adds the `docs/BUILT.md` section deletes the row.
+- **It ships:** the PR that adds the `docs/BUILT.md` section (its `docs/built/NNNN.md` file) deletes the row.
   The checker fails if both exist. If more of the same § is genuinely still
   being built (a partial ship), start Status with `Continues`.
 - **It stops:** move the row to *Stopped* with a reason and the date. A stale

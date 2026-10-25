@@ -8,10 +8,10 @@ lever escapement. Everything is procedural — there are no model assets.
 | File | What it is |
 |---|---|
 | `SPEC.md` | The architecture contract. Read before changing structure. |
-| `docs/BUILT.md` | How shipped features were designed — numbered (§n); source comments cite these. |
+| `docs/BUILT.md` | How shipped features were designed — numbered (§n); source comments cite these. An INDEX: each § is its own file, `docs/built/NNNN.md` (see Conventions). |
 | `BACKLOG.md` | Unshipped roadmap. **Private** — lives in `kelaiem/timesim-roadmap`, not this repo. |
 | `docs/ROADMAP.md` | The PUBLIC list of work in progress (§272) — published per item by explicit act, never mirrored from the backlog. `docs/ROADMAP-PROCESS.md` says how to add a row; `tools/check-roadmap.mjs` holds it. |
-| `TODO.md` | Mechanical-realism debt: honesty fixes to what exists. |
+| `TODO.md` | Mechanical-realism debt: honesty fixes to what exists. An INDEX: each item is its own file, `docs/todo/NNNN.md`. |
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |
 | `docs/RUNNERS.md` | Where the battery job runs (§200): the fork-routing rule, the `BATTERY_RUNS_ON` variable, and how a host is set up. |
@@ -1297,7 +1297,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 357 measuring scripts and this file names 71. The rest are named for the
+`tools/` holds 358 measuring scripts and this file names 71. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -1314,7 +1314,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **239 of
+The index also carries the split that decides how to read a result: **240 of
 them are ACCEPTANCE tests** that exit non-zero, and **118 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
@@ -1740,7 +1740,7 @@ PR body, and must never rewrite history behind a contributor.
 
 When a `BACKLOG.md` entry lands, reconcile the entry with what was actually
 built rather than only marking it BUILT — then move the whole section from
-the private roadmap repo into `docs/BUILT.md` here, which is the public
+the private roadmap repo into `docs/built/NNNN.md` here, which is the public
 record; a plan left describing an abandoned approach is worse than no plan.
 
 **§ numbers and `TODO.md` item numbers are permanent IDs, and they are
@@ -1768,10 +1768,25 @@ node tools/claim-item.mjs --namespace TODO --title "What it actually does"
 It writes `docs/item-numbers/<NS>-NNNN.md` — one file per number, so two
 branches claiming the same number create the same PATH and git reports an
 add/add conflict, while different numbers merge silently. That file is the
-reservation; the item's content still lives in `TODO.md` / `docs/BUILT.md`.
+reservation; the item's content lives in its own file, `docs/todo/NNNN.md` /
+`docs/built/NNNN.md`.
 `tools/check-item-numbers.mjs` gates it in `item-numbers.yml` (the hook only
 warns — see `docs/item-numbers/README.md` for why, and for the residue the
 scheme does not cover).
+
+**`TODO.md` and `docs/BUILT.md` are INDEXES since the split**: each item or §
+is its own file, verbatim, opening on its `## N.` / `## §N` heading (a §
+with several landings or parts keeps them all, in order, in one file), and
+the table in each index is GENERATED between two markers by `node
+tools/item-docs.mjs --write`. The single files had reached 2.2 and 2.5 MB,
+past what the GitHub app opens, and every branch appended to the same end.
+`--check` rides `item-numbers.yml`: every file carries its own number's
+heading and no other's, neither index carries an item heading, and the
+index is current. The claim tools read headings through `itemText`, the
+files concatenated, or the old single file on a ref cut before the split.
+An item's State column is its heading's (`— DONE`, `— CLOSED (§n)`); where
+the heading is silent the index shows the hand-written table's
+(`docs/todo/STATUS.md`) and marks it †, so close an item in its HEADING.
 
 `BACKLOG.md` must never be committed here — `.gitignore` excludes it and
 `.githooks/pre-commit` hard-fails on it. Enable the hook once per clone:

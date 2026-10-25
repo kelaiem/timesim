@@ -22,7 +22,11 @@ fi
 #
 # Local-only and offline: it compares against origin/main as already fetched,
 # and stays silent if that ref is missing rather than guessing.
-if git diff --cached --name-only | grep -qE '^(TODO\.md|docs/BUILT\.md)$'; then
+if git diff --cached --name-only | grep -qE '^(TODO\.md|docs/BUILT\.md|docs/(todo|built)/.*)$'; then
+	# The index is generated from the item files; a stale one fails CI.
+	if command -v node >/dev/null 2>&1 && [ -f tools/item-docs.mjs ] && ! node tools/item-docs.mjs --check >/dev/null 2>&1; then
+		echo 'pre-commit: TODO.md / docs/BUILT.md index is stale — run node tools/item-docs.mjs --write (CI is the gate).' >&2
+	fi
 	if git rev-parse --verify --quiet origin/main >/dev/null; then
 		if command -v node >/dev/null 2>&1 && [ -f tools/check-item-numbers.mjs ]; then
 			if ! node tools/check-item-numbers.mjs --base origin/main >/dev/null 2>&1; then
