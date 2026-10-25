@@ -3703,9 +3703,18 @@ export function caseShapeOf(kind, box, opts = {}) {
 // rect that is s = 1 exactly (the rounded box of corner `margin` is the box's
 // own offset by it); the cushion and the tonneau leave their corners empty and
 // so need s > 1. Bisection to 1e-9 of s from a bracket found by doubling.
-export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, ...opts } = {}) {
+//
+// `centre` [x, y] FIXES the shape's centre (the hands' axis: the owner's rule
+// since the hands-centred landing — a watch's hands stand in the middle of its
+// case, as they do in the round one), and the box it scales is the metal box
+// made symmetric about that point: its half-widths are the metal's farther
+// reach either side. Without it the shape is centred on the metal's own box,
+// the smallest case, which is §308's first rule and stood the hands up to
+// 1.39 mm off the case's centre.
+export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, centre = null, ...opts } = {}) {
   const [x0, x1, y0, y1] = metal;
-  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, A = (x1 - x0) / 2 + margin, B = (y1 - y0) / 2 + margin;
+  const cx = centre ? centre[0] : (x0 + x1) / 2, cy = centre ? centre[1] : (y0 + y1) / 2;
+  const A = Math.max(cx - x0, x1 - cx) + margin, B = Math.max(cy - y0, y1 - cy) + margin;
   const at = (s) => caseShapeOf(kind, { xMin: cx - s * A, xMax: cx + s * A, yMin: cy - s * B, yMax: cy + s * B }, opts);
   const worst = (sh) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, sh.inset(x, y)); return w; };
   const ok = (s) => worst(at(s)) >= margin - 1e-9;

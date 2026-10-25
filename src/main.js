@@ -49020,14 +49020,16 @@ const FORM_FOOTPRINT = (() => {
   }
   const M = PLATE_RIM_MARGIN;
   // §308 — THE FIT (layout.js fitCaseShape): the smallest scale of this kind,
-  // about the metal box's centre at its rim-grown aspect, at which every
+  // about the hands, at its rim-grown aspect, at which every
   // counted vertex stands at least the rim margin inside — read on the convex
   // hull, which is exact for a convex shape. `rect` is the fitted shape's
   // BOUNDS, rounded OUTWARD to the URL's resolution (0.01 u), so the shape the
   // spec carries back holds the metal it was measured from; `?formrect=` is
   // its carrier for every kind.
   const hull = convexHull2(xs, ys, total);
-  const fit = fitCaseShape(FORM.kind, hull, [x0, x1, y0, y1], { margin: M });
+  // …about the HANDS (P.dial, the centre arbor's axis): the case is centred on
+  // them as the round case is, and grows to the metal's farther reach either side.
+  const fit = fitCaseShape(FORM.kind, hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y] });
   const fb = fit.shape.bounds;
   const rect = [Math.floor(fb.xMin * 100) / 100, Math.ceil(fb.xMax * 100) / 100,
     Math.floor(fb.yMin * 100) / 100, Math.ceil(fb.yMax * 100) / 100];
