@@ -19591,9 +19591,10 @@ await breathe(159);
 // in the library is symmetric about its box's axes. Its origin is the hands'
 // axis, which is what lets the track's rungs be read off the shape's own
 // `exit` along the hands' rays. The track is then dialTrack's law on it: the
-// rails the outline's inward offsets at the round face's two gauges, corners
-// held at the case's round, sixty rungs on the rays — one derivation the
-// print paints, the minute hand is cut to and the probe re-measures.
+// inner rail the outline's inward offset with its corner held at the case's
+// round, the outer its exact parallel at one gauge, sixty rungs across their
+// shortest span where the hands' rays read them — one derivation the print
+// paints, the minute hand is cut to and the probe re-measures.
 const FORM_DIAL = FORM ? caseShapeOf(FORM.kind, { xMin: P.dial.x - FORM.xMax, xMax: P.dial.x - FORM.xMin, yMin: FORM.yMin - P.dial.y, yMax: FORM.yMax - P.dial.y }) : null;
 const DIAL_TRACK = FORM ? G.dialTrack(FORM_DIAL, dialRadius) : null;
 if (DIAL_TRACK) {
@@ -48932,10 +48933,12 @@ const DIAL_SPEC = (() => {
     outline: FORM ? Object.freeze({ kind: FORM.kind, bounds: FORM.bounds,
       dialLoop: Object.freeze(FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse()) }) : null,
     // §311 — the form face's railroad in the dial's frame: the two rails'
-    // loops and the sixty rungs (az from +x, tIn → tOut along the ray); null
-    // on the round face, whose track is the print's own circles.
-    track: DIAL_TRACK ? Object.freeze({ gOut: DIAL_TRACK.gOut, gIn: DIAL_TRACK.gIn, outer: DIAL_TRACK.loops.outer, inner: DIAL_TRACK.loops.inner,
-      rungs: DIAL_TRACK.rungs.map(({ az, tIn, tOut, major }) => ({ az, tIn, tOut, major })), handReach: DIAL_TRACK.nearestMid }) : null,
+    // loops, their one gauge, and the sixty rungs (each from the inner rail
+    // to the outer across their shortest distance, read through `at` on the
+    // hand's ray, az from +x); null on the round face, whose track is the
+    // print's own circles.
+    track: DIAL_TRACK ? Object.freeze({ gOut: DIAL_TRACK.gOut, gIn: DIAL_TRACK.gIn, gap: DIAL_TRACK.gap, outer: DIAL_TRACK.loops.outer, inner: DIAL_TRACK.loops.inner,
+      rungs: DIAL_TRACK.rungs.map(({ az, at, from, to, major }) => ({ az, at, from, to, major })), handReach: DIAL_TRACK.nearestMid }) : null,
     dialRadius,
     handCentre: Object.freeze({ x: P.dial.x, y: P.dial.y }),
     subdials: Object.freeze({ reserve: st(RESERVE_LOCAL, reserveWellR), seconds: st(SECONDS_LOCAL, secondsWellR) }),

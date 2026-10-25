@@ -3386,6 +3386,7 @@ export function formRect(circles) {
 //
 //   { kind, bounds, hw, hh, cx, cy, xMin, xMax, yMin, yMax, accuracy,
 //     inset(x, y)        signed distance to the outline, + inside
+//     foot(x, y)         the outline's point nearest (x, y), [x, y] (§311 landing 2)
 //     exit(az, off = 0)  distance along the ray at azimuth `az` whose base
 //                        stands `off` to its left (on (−sin az, cos az)) from
 //                        the ORIGIN, to where it leaves the outline (NaN: the
@@ -3475,14 +3476,14 @@ function primFoot(p, x, y) {
     // bisector of its two edges), so a point in the corner's normal cone signs right
     let nx = ey / L, ny = -ex / L;
     if (t === 0 && p.na) [nx, ny] = p.na; else if (t === 1 && p.nb) [nx, ny] = p.nb;
-    return { d: Math.hypot(x - fx, y - fy), s: (x - fx) * nx + (y - fy) * ny };
+    return { d: Math.hypot(x - fx, y - fy), s: (x - fx) * nx + (y - fy) * ny, fx, fy };
   }
   const [cx, cy] = p.c, th = Math.atan2(y - cy, x - cx), rr = Math.hypot(x - cx, y - cy);
-  if (angIn(th, p.a0, p.a1)) return { d: Math.abs(rr - p.r), s: rr - p.r };
+  if (angIn(th, p.a0, p.a1)) return { d: Math.abs(rr - p.r), s: rr - p.r, fx: cx + p.r * Math.cos(th), fy: cy + p.r * Math.sin(th) };
   let best = null;
   for (const a of [p.a0, p.a1]) {
     const fx = cx + p.r * Math.cos(a), fy = cy + p.r * Math.sin(a), d = Math.hypot(x - fx, y - fy);
-    if (!best || d < best.d) best = { d, s: (x - fx) * Math.cos(a) + (y - fy) * Math.sin(a) };
+    if (!best || d < best.d) best = { d, s: (x - fx) * Math.cos(a) + (y - fy) * Math.sin(a), fx, fy };
   }
   return best;
 }
@@ -3587,11 +3588,16 @@ function shapeFrom(kind, prims, extra) {
     for (let k = -4; k <= 8; k++) { const a = (k * Math.PI) / 2; if (a >= p.a0 - 1e-12 && a <= p.a1 + 1e-12) take(p.c[0] + p.r * Math.cos(a), p.c[1] + p.r * Math.sin(a)); }
   }
   const bounds = Object.freeze({ xMin, xMax, yMin, yMax });
-  const inset = (x, y) => {
+  const nearest = (x, y) => {
     let best = null;
     for (const p of prims) { const f = primFoot(p, x, y); if (!best || f.d < best.d) best = f; }
-    return best.s > 0 ? -best.d : best.d;
+    return best;
   };
+  const inset = (x, y) => { const best = nearest(x, y); return best.s > 0 ? -best.d : best.d; };
+  // §311 landing 2 — the outline's point nearest (x, y): the foot of the
+  // shortest segment from it, on the primitive inset() measured (exact for
+  // the arcs and straights; the cushion's polyline within its accuracy).
+  const foot = (x, y) => { const best = nearest(x, y); return [best.fx, best.fy]; };
   const exit = (az, off = 0) => {
     const ux = Math.cos(az), uy = Math.sin(az), bx = -uy * off, by = ux * off;
     let t = -Infinity;
@@ -3601,7 +3607,7 @@ function shapeFrom(kind, prims, extra) {
   const shape = {
     kind, bounds, ...bounds, hw: (xMax - xMin) / 2, hh: (yMax - yMin) / 2,
     cx: (xMin + xMax) / 2, cy: (yMin + yMax) / 2, accuracy: extra.accuracy ?? 0,
-    cornerR: extra.cornerR ?? null, prims, inset, exit, grown: extra.grown,
+    cornerR: extra.cornerR ?? null, prims, inset, foot, exit, grown: extra.grown,
     loop: ({ grow = 0, segs = extra.segs } = {}) => {
       const s = grow === 0 ? shape : extra.grown(grow);
       const pts = primLoop(s.prims, segs, extra.maxChord);
