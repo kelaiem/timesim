@@ -28070,8 +28070,12 @@ const GONG_SEAT = (() => {
   const curve = GS.seatCurve(row.curve);
   const lever = { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S),
     tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2), side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP };
-  const st = GS.seatStrike(curve, lever, GONG_WIRE_R, row.sg, row.strikeS);
+  // TODO 269 — a seat struck ALONG its end (a spiral, `blow: 'tangent'`) has no root to find: its strike is
+  // the end, the face one gap before it, and the lever's equation is a residual to hold, not to solve
+  const st = row.blow === 'tangent' ? GS.seatStrikeEnd(curve, lever) : GS.seatStrike(curve, lever, GONG_WIRE_R, row.sg, row.strikeS);
   if (!st) return { refused: `the lifting lever reaches no point of the ${GONG_SEAT_MODE} seat's wire within 3 u of its solved strike`, row };
+  if (row.blow === 'tangent' && Math.abs(st.g) > 0.05)
+    console.warn(`§310/TODO 269: the ${GONG_SEAT_MODE} seat's end strike leaves the hammer pivot ${st.g.toFixed(4)} off the lifting lever's circle — the lever has moved since tools/gong-seats.mjs ran; re-run it`);
   if (Math.abs(st.s - row.strikeS) > 0.05)
     console.warn(`§310: the ${GONG_SEAT_MODE} seat's strike solved at s ${st.s.toFixed(4)} against the generated ${row.strikeS.toFixed(4)} — the lever has moved since tools/gong-seats.mjs ran; re-run it`);
   return { row, curve, lever, st };
@@ -28312,7 +28316,10 @@ gongArc.position.z = Z_GONG;
 // §310 landing 2 — a seated wire publishes where it is struck and its normal
 // there (face → wire): the strike line spec's reader measures the face, its
 // gap and the blow's direction along it, as it measures them along a ring's radius
-if (GONG_SEATED) gongArc.userData.gongWire = Object.freeze({ strike: { x: GONG_SEAT.st.S.x, y: GONG_SEAT.st.S.y }, blow: { x: GONG_SEAT.st.b.x, y: GONG_SEAT.st.b.y }, tube: GONG_WIRE_R });
+// TODO 269 — and where the wire's surface on the head's side stands along the blow from the strike point:
+// one tube radius back for a blow across the wire, the squared end itself for a blow along it
+if (GONG_SEATED) gongArc.userData.gongWire = Object.freeze({ strike: { x: GONG_SEAT.st.S.x, y: GONG_SEAT.st.S.y }, blow: { x: GONG_SEAT.st.b.x, y: GONG_SEAT.st.b.y }, tube: GONG_WIRE_R,
+  near: GONG_SEAT.row.blow === 'tangent' ? 0 : -GONG_WIRE_R, blowKind: GONG_SEAT.row.blow ?? 'normal' });
 alarmGongUnit.add(gongArc);
 // The block: from the arc's fixed end down into the base plate's rim — the
 // gong's ONLY fixing (the far end rings free); its route to the plate.
@@ -31068,7 +31075,17 @@ const GONG_ACOUSTICS = (() => {
   const M = OSC_STEEL_RHO * Math.PI * aW * aW * L;
   const arch = gongArchModes();
   const R_m = GONG_SEATED ? null : GONG_R * U, alpha = GONG_SEATED ? null : L / R_m;
-  const mModal = M * arch[0].mFrac;
+  // TODO 269 — WHAT THE BLOW DRIVES. A blow across the wire drives each mode's
+  // tip by its normal displacement, which the shapes are normalised to (1); a
+  // blow ALONG the wire (a spiral, struck on its squared end) drives it by its
+  // TANGENTIAL displacement there, uTip. An impulse J along d leaves mode n
+  // with J²(φ_n·d)²/2m_n, so every per-mode weight and the modal mass the head
+  // meets carry (φ_n·d)²: the fundamental's mass at the contact is
+  // M·mFrac/uTip², which for a spiral's winding mode is the bar's order where
+  // the normal reading is hundreds of times it.
+  const BLOW_ALONG = GONG_SEATED && GONG_SEAT.row.blow === 'tangent';
+  const driveOf = (m) => (BLOW_ALONG ? m.uTip : 1);
+  const mModal = M * arch[0].mFrac / driveOf(arch[0]) ** 2;
   const mu = mEff / mModal;
   const eta = (4 * mu / (1 + mu) ** 2) * ((1 + REST) / 2) ** 2;
   const Estar = OSC_STEEL_E / (2 * (1 - NU * NU));
@@ -31080,11 +31097,15 @@ const GONG_ACOUSTICS = (() => {
   // the face along a LINE the face's own width long (ALARM_HEAD_H, the head is
   // square across the wire), whose stiffness is linear — ¼πE*ℓ — so the
   // contact lasts half its period, π√(m/k), whatever the speed.
+  // TODO 269 — and a blow along the wire meets its squared END: a flat circle
+  // of the wire's radius on the flat face, a rigid punch on an elastic flat
+  // whose stiffness is linear, 2E*a (both steel, E* the pair's), so the contact
+  // lasts π√(m/k) whatever the speed, as the line contact's does.
   const strikeK = GONG_SEATED ? Math.abs(GONG_SEAT.st.k) / U : 1 / (GONG_R * U);   // 1/m
-  const contact = strikeK < 1e-9 ? 'line' : 'hertz';
+  const contact = BLOW_ALONG ? 'end' : strikeK < 1e-9 ? 'line' : 'hertz';
   const Re = contact === 'line' ? null : GONG_SEATED ? Math.sqrt(aW / strikeK) : Math.sqrt(aW * GONG_R * U);   // torus on a flat: √(r_section·r_centreline) (the round build's own expression, bit for bit)
   const kHertz = contact === 'hertz' ? (4 / 3) * Estar * Math.sqrt(Re) : null;
-  const kLine = contact === 'line' ? (Math.PI / 4) * Estar * ALARM_HEAD_H * U : null;
+  const kLine = contact === 'line' ? (Math.PI / 4) * Estar * ALARM_HEAD_H * U : contact === 'end' ? 2 * Estar * aW : null;
   const tau = contact === 'hertz' ? 2.9432 * (5 * mRed / (4 * kHertz)) ** 0.4 * vHead ** -0.2 : Math.PI * Math.sqrt(mRed / kLine);
   // 3/4 — per mode. The Hertz spectrum says which modes the blow can reach;
   // §253 divides by each mode's modal mass as well, because an impulse J at
@@ -31094,7 +31115,7 @@ const GONG_ACOUSTICS = (() => {
   const spec = arch.map((m) => {
     const f = m.f, x = 2 * f * tau;
     const S = Math.abs(Math.cos(Math.PI * f * tau) / (Math.abs(1 - x * x) < 1e-12 ? 1e-12 : 1 - x * x));
-    return { f, w: S * S / m.mFrac, lambda: C_AIR / f, mFrac: m.mFrac, kind: m.kind, uTip: m.uTip, tanShare: m.tanShare, shape: m.w };
+    return { f, w: S * S * driveOf(m) ** 2 / m.mFrac, lambda: C_AIR / f, mFrac: m.mFrac, kind: m.kind, uTip: m.uTip, tanShare: m.tanShare, shape: m.w };
   });
   // §56's straight law at this length, kept beside the arch's answer so the
   // record (and the explainer) can quote what the curvature term moved.
@@ -31171,7 +31192,8 @@ const GONG_ACOUSTICS = (() => {
       // §310 landing 2 — on a form build, the seat the wire stands on (null on the round build)
       seat: GONG_SEATED ? { mode: GONG_SEAT_MODE, fam: GONG_SEAT.row.fam, label: GONG_SEAT.row.label, curve: GONG_SEAT.row.curve,
         band_Hz: GONG_SEAT.row.band, strikeS_u: GONG_SEAT.st.s, strikeFromFoot: 1 - GONG_SEAT.st.s / GONG_SEAT.row.curve.L,
-        outOfPlane_Hz: GONG_SEAT_MODES_OUT, contact, strikeCurvature_per_u: GONG_SEAT.st.k } : null,
+        outOfPlane_Hz: GONG_SEAT_MODES_OUT, contact, strikeCurvature_per_u: GONG_SEAT.st.k,
+        blow: GONG_SEAT.row.blow ?? 'normal', driveTip: driveOf(arch[0]) } : null,
       // §262 — the target is a note: its name (derived from the semitone
       // count), the count and the concert pitch it is tempered from
       targetNote: GONG_NOTE_NAME, targetSemitonesAboveA4: GONG_NOTE_SEMITONES, concertA4_Hz: GONG_PITCH_A4_HZ,
@@ -48969,9 +48991,19 @@ const GONG_SEAT_CHECK = GONG_SEATED ? (() => {
   const footInset = FORM.inset(gongFoot.x, gongFoot.y) - GONG_POST_R_BUILT;
   let staff = Infinity;
   for (const [x, y] of GONG_SEAT_PTS) staff = Math.min(staff, Math.hypot(x - hammerPiv.x, y - hammerPiv.y) - GONG_WIRE_R - HAMMER_POST_R);
-  const faceGap = Math.hypot(headFace.x - GONG_SEAT.st.S.x, headFace.y - GONG_SEAT.st.S.y) - GONG_WIRE_R;
+  // TODO 269: a blow ALONG the wire rests its face a gap before the squared end, not a gap off the surface
+  const ALONG = GONG_SEAT.row.blow === 'tangent';
+  const faceGap = Math.hypot(headFace.x - GONG_SEAT.st.S.x, headFace.y - GONG_SEAT.st.S.y) - (ALONG ? 0 : GONG_WIRE_R);
   const lever = Math.hypot(hammerPiv.x - LIFT_PIV.x, hammerPiv.y - LIFT_PIV.y) - GONG_SEAT.lever.rho;
-  const r = { parts: parts.length, metal: near, need, outlineInset: inset, footInset, staffClear: staff, faceGap, leverResidual: lever };
+  // ...and its head stands on the wire's own line before the end, so it owes the COILS a margin, by the
+  // solver's rule (GS.endHeadClear: behind the face plane, across the face's half-width, ALARM_HEAD_H)
+  let headClear = null;
+  if (ALONG) {   // GS.endHeadClear, the solver's own rule, on the seat's stations from the free end (GONG_SEAT_PTS run foot → free)
+    const fromEnd = GONG_SEAT_PTS.slice().reverse(), ds = GONG_SEAT.row.curve.L / (fromEnd.length - 1);
+    headClear = GS.endHeadClear(fromEnd, ds, headFace, GONG_SEAT.st.b, ALARM_HEAD_R, ALARM_HEAD_H, GONG_WIRE_R);
+    if (headClear < CLEAR_MARGIN - 1e-9)
+      console.warn(`§310/TODO 269: the end-struck hammer's head stands ${headClear.toFixed(3)} off the ${GONG_SEAT_MODE} gong's coils, under the margin`); }
+  const r = { parts: parts.length, metal: near, need, outlineInset: inset, footInset, staffClear: staff, faceGap, leverResidual: lever, headClear, blow: ALONG ? 'tangent' : 'normal' };
   if (near.d < need - 1e-9)
     console.warn(`§310: the ${GONG_SEAT_MODE} gong stands ${near.d.toFixed(3)} from ${near.unit}'s metal at (${near.at.map((q) => q.toFixed(2)).join(', ')}) — under the ${need.toFixed(3)} its seat was solved to; the movement moved under it: re-run tools/gong-seats.mjs`);
   if (inset < need - 1e-9)
@@ -48980,7 +49012,7 @@ const GONG_SEAT_CHECK = GONG_SEATED ? (() => {
     console.warn(`§310: the gong's block overhangs the plate's outline by ${(-footInset).toFixed(3)} — it has no plate to plant in`);
   if (staff < CLEAR_MARGIN - 1e-9)
     console.warn(`§310: the hammer's staff stands ${staff.toFixed(3)} off the gong wire, under the margin`);
-  if (Math.abs(faceGap - HAMMER_HEAD_GAP) > 1e-6 || Math.abs(lever) > 1e-9)
+  if (Math.abs(faceGap - HAMMER_HEAD_GAP) > 1e-6 || Math.abs(lever) > (ALONG ? 1e-6 : 1e-9))
     console.warn(`§310: the seated hammer's face rests ${faceGap.toFixed(6)} off its wire (gap ${HAMMER_HEAD_GAP}) with its pivot ${lever.toExponential(2)} off the lever's circle — the strike solve and the station have parted`);
   return Object.freeze(r);
 })() : null;
@@ -61087,7 +61119,7 @@ window.__clock = {
   gongSeat: FORM ? Object.freeze({ pivot: { x: hammerPiv.x, y: hammerPiv.y }, mode: GONG_SEAT_MODE, seated: GONG_SEATED, refused: GONG_SEAT?.refused ?? null,
     row: GONG_SEAT?.row ?? null, strike: GONG_SEATED ? { s: GONG_SEAT.st.s, S: GONG_SEAT.st.S, F: GONG_SEAT.st.F, b: GONG_SEAT.st.b, P: { x: hammerPiv.x, y: hammerPiv.y }, psi: hammerPiv.psi } : null,
     check: GONG_SEAT_CHECK, lever: { Q: LIFT_PIV, rho: Math.hypot(ALARM_LIFT_ARM + ALARM_TAIL_LEN, ALARM_LIFT_S), tanLen: Math.sqrt(ALARM_ARM_LEN ** 2 - ALARM_HEAD_R ** 2),
-      side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
+      side: ALARM_LIFT_SIDE, gap: HAMMER_HEAD_GAP, headR: ALARM_HEAD_R, headH: ALARM_HEAD_H, postR: HAMMER_POST_R, margin: CLEAR_MARGIN },
     tenants: GONG_BAND_TENANTS, wireR: GONG_WIRE_R, wireD_m: 2 * GONG_WIRE_R * OSC_U, zGong: Z_GONG, postR: GONG_POST_R_BUILT,
     postRFor: (L_u) => gongPostRFor(L_u * OSC_U) }) : null,   // §310 landing 2 — the seat this build stands its gong on, and what tools/gong-seats.mjs solves against   // §308 landing 2 — the region model (null on the round build)   // §308 — the dial spec, a readout in landing 1
   // §81 tranche A: what the weld pass found and removed, so the reduction is

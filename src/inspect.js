@@ -13676,7 +13676,7 @@ LINE_SPECS.push({
     { key: 'gap', kind: 'spec', unit: 'u', value: 0.4, measure: 'faceGap',
       derivedFrom: '§24: the radial rest gap, striking face → the wire’s surface (HAMMER_HEAD_GAP)' },
     { key: 'blow', kind: 'spec', unit: 'ratio', value: 0, measure: 'blowRadialCos',
-      derivedFrom: '§198: the pivot stands on the TANGENT at the face, so the head’s velocity at the blow is exactly radial and the wire is struck along its own normal — measured as the cosine between the pivot → face line and the face’s radius (§310: the wire’s normal at the strike, which on a ring is that radius)' },
+      derivedFrom: '§198: the pivot stands on the TANGENT at the face, so the head’s velocity at the blow is exactly radial and the wire is struck along its own normal — measured as the cosine between the pivot → face line and the face’s radius (§310: the wire’s normal at the strike, which on a ring is that radius; TODO 269: on a spiral struck along its squared end, the wire’s tangent there — the blow’s direction is the seat’s, the rule that the head meets it square is this row’s)' },
     { key: 'reach', kind: 'envelope', bound: 'min', unit: 'u', value: 0, measure: 'faceOverrun',
       derivedFrom: 'the GONG CONTACT: at the strike the face must reach the wire — its radial travel past the wire’s near surface at the swing the fall law ends on, never short of it (a hammer that falls short rings nothing)' },
     { key: 'k', kind: 'spec', unit: 'Nmm/rad', value: (r, L) => L.strike.k * 1e3, measure: 'springRate',
@@ -14481,7 +14481,9 @@ function lineSpecStrike(clock) {
   const rMin = Math.min(...radii), rMax = Math.max(...radii), rMid = (rMin + rMax) / 2;
   let lobes = 0; for (let i = 0; i < radii.length; i++) if (radii[i] > rMid && radii[(i + radii.length - 1) % radii.length] <= rMid) lobes++;
   const faceR = seatW ? along(rest.face.c) : Math.hypot(rest.face.c.x - wO.x, rest.face.c.y - wO.y);
-  const near = seatW ? -wireTube : wireR - rest.face.blow * wireTube;              // the wire's surface on the head's side
+  // the wire's surface on the head's side (TODO 269: a seat publishes it — a tube radius back for a blow
+  // across the wire, the squared end itself for a blow along it)
+  const near = seatW ? (seatW.near ?? -wireTube) : wireR - rest.face.blow * wireTube;
   const pf = { x: rest.face.c.x - rest.P.x, y: rest.face.c.y - rest.P.y }, pfL = Math.hypot(pf.x, pf.y);
   const fr = seatW ? seatW.blow : { x: (rest.face.c.x - wO.x) / faceR, y: (rest.face.c.y - wO.y) / faceR };   // the wire's normal at the face
   const strikeFaceR = seatW ? along(strike.face.c) : Math.hypot(strike.face.c.x - wO.x, strike.face.c.y - wO.y);

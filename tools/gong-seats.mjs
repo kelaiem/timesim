@@ -36,7 +36,11 @@ import { caseShapeOf, configKey, SPEC } from '../src/layout.js';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/gong-seats.js');
 const ARGS = process.argv.slice(2), WRITE = ARGS.includes('--write'), CHECK = ARGS.includes('--check');
-const KINDS = ARGS.filter((a) => !a.startsWith('--')).length ? ARGS.filter((a) => !a.startsWith('--')) : ['rect', 'cushion', 'tonneau'];
+// --modes bar,spiral (the default both): which seats to solve; a mode left out keeps its committed row
+const MODES = ARGS.includes('--modes') ? ARGS[ARGS.indexOf('--modes') + 1].split(',') : ['bar', 'spiral'];
+const KINDS = ARGS.filter((a, i) => !a.startsWith('--') && ARGS[i - 1] !== '--modes').length
+  ? ARGS.filter((a, i) => !a.startsWith('--') && ARGS[i - 1] !== '--modes') : ['rect', 'cushion', 'tonneau'];
+if (!MODES.every((m) => m === 'bar' || m === 'spiral')) { console.error(`--modes takes bar and/or spiral (got ${MODES.join(',')})`); process.exit(2); }
 if (WRITE === CHECK) { console.error('usage: node tools/gong-seats.mjs --write | --check [kind …]'); process.exit(2); }
 export const BAND_HZ = [1000, 4000];   // §197: a struck alarm gong's fundamental (GONG §197 assert, 1–4 kHz)
 const RES = 0.25;                      // the map's cell: under the margin the wire must clear by (CLEAR_MARGIN 0.15 + the wire's own radius)
@@ -109,7 +113,8 @@ function rowCurve(r) {
 function rowOf(kind, mode, r, rect, lever, wireR, mapInfo, st) {
   const curve = rowCurve(r);
   // strikeS is the EXACT root on the analytic curve (GS.seatStrike, the build's own solve), not the sampled one
-  return { kind, mode, fam: r.fam, label: r.label, curve, sg: r.hammer.side, strikeS: r6(st.s),
+  // TODO 269: a spiral is struck ALONG its end (blow 'tangent'), so it has no face side and its strike is s = 0
+  return { kind, mode, fam: r.fam, label: r.label, curve, ...(r.blow === 'tangent' ? { blow: 'tangent' } : {}), sg: r.hammer.side, strikeS: r6(st.s),
     f: r.f.map((v) => Math.round(v * 100) / 100), fo: r.fo.map((v) => Math.round(v * 100) / 100), band: BAND_HZ,
     pivot: r.hammer.pivot.map(r6), face: r.hammer.face.map(r6), pivotMoved: r6(r.pivotMoved),
     formrect: rect, specKey: configKey({ spec: { ...SPEC, caseShape: kind } }), wireR: r6(wireR), map: mapInfo };
@@ -122,9 +127,10 @@ for (const kind of KINDS) {
   const first = await boot(`case=${kind}&gong=arc`);
   if (first.bootError) { console.error(`  boot failed: ${first.bootError}`); failed = true; continue; }
   const rows = {};
+  for (const m of ['bar', 'spiral']) if (!MODES.includes(m) && committed[kind]?.[m]) rows[m] = committed[kind][m];
   // EACH SEAT CLOSES ITS OWN FIT: the bar and the spiral move the hammer to different stations, so each is
   // solved and re-booted at the fit its own seated build needs (the spiral rides ?gong=spiral)
-  for (const mode of ['bar', 'spiral']) {
+  for (const mode of MODES) {
     let rect = first.rect, row = null, closed = false;
     for (let round = 1; round <= 5 && !closed; round++) {
       // no seat for this kind while its band is read: the arc build is what the measure sees
@@ -139,7 +145,7 @@ for (const kind of KINDS) {
         ...GS.bandParts(S.tenants, S.zGong - S.wireR, S.zGong + S.wireR, S.lever.margin)];
       const W = Math.ceil((rect[1] - rect[0]) / RES) + 2, H = Math.ceil((rect[3] - rect[2]) / RES) + 2;
       const map = GS.bandMap(parts, { x0: rect[0] - RES, y0: rect[2] - RES, W, H, RES, need, inset: (x, y) => shape.inset(x, y) });
-      const lever = { Q: S.lever.Q, rho: S.lever.rho, tanLen: S.lever.tanLen, side: S.lever.side, gap: S.lever.gap, headR: S.lever.headR,
+      const lever = { Q: S.lever.Q, rho: S.lever.rho, tanLen: S.lever.tanLen, side: S.lever.side, gap: S.lever.gap, headR: S.lever.headR, headH: S.lever.headH,
         postR: S.lever.postR, margin: S.lever.margin, inboard: 3, outward: true };
       // the block's radius at the shortest wire the band admits (the clamp condition's ¼ power makes it the largest)
       const footR = Math.max(...S.postRAt.map(([, r]) => r));
@@ -148,6 +154,8 @@ for (const kind of KINDS) {
       const free = map.free.reduce((t, v) => t + v, 0);
       const mapInfo = { cells: W * H, free, parts: parts.length, res: RES, need: r6(need) };
       console.log(`  ${mode} round ${round}: fit [${rect.join(', ')}], ${parts.length} hulls in the band, ${free} of ${W * H} cells free`);
+      // GONG_DUMP=dir writes the map and options each round solves on, so the solver can be read in Node alone
+      if (process.env.GONG_DUMP) await writeFile(join(process.env.GONG_DUMP, `${kind}-${mode}-${round}.json`), JSON.stringify({ base: { ...base, free: Array.from(base.free), plateInset: null }, opts, rect, loop: shape.loop() }));
       const res = GS.solveGong(base, mode === 'bar' ? { ...opts, edge: true, any: true } : { ...opts, spiral: true }).results;
       // the candidates in the family's order; a seat is ADMITTED only if its seated build adds no boot
       // warning the arc build at this fit lacks (the hammer's new station must not cost any other part
@@ -158,8 +166,11 @@ for (const kind of KINDS) {
       for (const cand of pool.slice(0, 4)) {
         const sh = (q) => q.map((v) => v.toFixed(2)).join(', ');
         console.log(`  ${mode}: ${cand.label} (${cand.fam}), L ${cand.L.toFixed(2)} u, f ${cand.f.map((v) => v.toFixed(0)).join(' / ')} Hz, out of plane ${cand.fo.map((v) => v.toFixed(0)).join(' / ')}; free end (${sh(cand.pts[0])}), foot (${sh(cand.pts.at(-1))}); pivot (${sh(cand.hammer.pivot)}), moved ${cand.pivotMoved.toFixed(2)} u`);
-        const st = GS.seatStrike(GS.seatCurve(rowCurve(cand)), lever, S.wireR, cand.hammer.side, cand.hammer.at * 0.25);
-        if (!st) { console.log('    refused: the exact strike solve finds no root on the analytic curve'); continue; }
+        const st = cand.blow === 'tangent' ? GS.seatStrikeEnd(GS.seatCurve(rowCurve(cand)), lever)
+          : GS.seatStrike(GS.seatCurve(rowCurve(cand)), lever, S.wireR, cand.hammer.side, cand.hammer.at * 0.25);
+        // the row stores the end's station and heading to 1e-6 (r6), and a heading rounded by 5e-7 rad swings the
+        // pivot by that times tanLen (7.28): the residual a stored row can carry is ~5e-6, so 1e-5 is the bound
+        if (!st || (cand.blow === 'tangent' && Math.abs(st.g) > 1e-5)) { console.log(`    refused: the exact strike solve ${st ? `leaves the pivot ${st.g.toExponential(2)} off the lever's circle` : 'finds no root on the analytic curve'}`); continue; }
         const r = rowOf(kind, mode, cand, rect, lever, S.wireR, mapInfo, st);
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
         const b = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
