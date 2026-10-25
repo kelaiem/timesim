@@ -75,7 +75,10 @@ export function itemText(ns, src) {
 
 // ---- the index -------------------------------------------------------------
 const STATE = /\s*[—–-]\s*((?:[A-Z][A-Z0-9 ,]*|PART DONE|MOSTLY CLOSED)(?:\s*\([^)]*\))?)\s*$/;
-const LEAD_STATE = /^((?:MOSTLY |PARTLY )?CLOSED|DONE)\b\s*(?:\([^)]*\))?\s*[—–:-]?\s*/;
+// a state LEADING the title: `CLOSED —`, `MOSTLY CLOSED (§121) —`, and the qualified forms the file also uses
+// (`PART CLOSED —`, `PART DONE —`, `TIER ONE BUILT —`): capitals ending in a state word, then a dash. A bare
+// state with no dash is read only for CLOSED/DONE, which is how the oldest headings wrote it.
+const LEAD_STATE = /^(?:(?:[A-Z][A-Z0-9]* )*(?:CLOSED|DONE|BUILT|FIXED)\b(?:\s*\([^)]*\))?\s*[—–:-]\s*|(?:MOSTLY |PARTLY )?(?:CLOSED|DONE)\b(?:\s*\([^)]*\))?\s*)/;
 const cell = (s) => s.replace(/\|/g, '\\|');
 function todoRow(n, text) {
   const h = text.split('\n').find((l) => ITEM_DOCS.TODO.heading.test(l)) || '';
@@ -107,7 +110,7 @@ export function renderIndex(ns, src) {
   const rows = nums.map((n) => (ns === 'TODO' ? todoRow : builtRow)(n, src.read(`${cfg.dir}/${fileOf(n)}`) ?? ''));
   if (ns === 'TODO') {
     const st = statusTable(src);
-    for (const r of rows) if (r.state === 'OPEN' && st.has(r.n) && st.get(r.n) !== 'OPEN') { r.state = `${st.get(r.n)} †`; r.fromTable = true; }
+    for (const r of rows) if (r.state === 'OPEN' && st.has(r.n) && !/^OPEN\b/.test(st.get(r.n))) { r.state = `${st.get(r.n)} †`; r.fromTable = true; }
   }
   const link = (n) => `[${ns === 'TODO' ? n : `§${n}`}](${ns === 'TODO' ? 'docs/todo' : 'built'}/${fileOf(n)})`;
   const out = [BEGIN, ''];
