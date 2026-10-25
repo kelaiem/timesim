@@ -9456,6 +9456,83 @@ export const PANDA_WELL = '#16181b';
 export const DIAL_RAIL_OUT_F = 0.94;      // railroad outer rail / printed disc
 export const DIAL_RAIL_IN_F = 0.87;       // railroad inner rail / printed disc
 
+// §311 — THE FORM DIAL'S RAILROAD TRACK FOLLOWS THE CASE. On the round face
+// the chemin de fer is two circles, and a circle is the one curve that is
+// its own offset: the outer rail stands `gOut` inside the rim and the inner
+// rail `gIn`, each a fixed distance from the edge the dial is cut to. That
+// is the GAUGE of the track, exactly as §307 ran the chapter ring's gauge
+// round the form loop — so on a form face the rails are the outline's own
+// INWARD OFFSETS by the round face's two gauges (caseShapeOf's `grown`,
+// a true offset: the straights stay parallel to the case's sides at the
+// round face's distance and the long arcs concentric with the case's), and
+// the round face is the circle's case of the same law (the control the probe
+// holds: at a circle the two offsets ARE the shipped rails, bit for bit).
+//
+// NO SHARP CORNER. A rect's and a tonneau's corners are rounded only by the
+// rim margin (PLATE_RIM_MARGIN, 5 u), and both gauges (5.6 and 8.3 u at the
+// shipped dial) are past it: the exact offset would carry the outer rail
+// round a 0 u corner and fold the inner one — a cusp, which no rail can be
+// bent to and no wheel can roll round. So a corner is HELD at the outline's
+// own round (`grown(−g, { cornerR })`): the track turns no tighter than the
+// case it follows, which is the smoothest turn the face has to offer and
+// the one number for it that is not typed. The straights and the long arcs
+// are still the exact offset; at a held corner the rails stand farther from
+// the rim than on the straights (√2·g at a rect's corner), which is the
+// 1930s form dial's look, and the consequence, not the input. The cushion
+// (and the circle) has no corner primitive: its curvature is bounded by the
+// curve itself, its offsets are smooth at both gauges (the library warns if
+// an inward offset folds), and the hold is a no-op there.
+//
+// THE RUNGS LIE ON THE HANDS' RAYS. Minute i is the ray from the hands' axis
+// at 6°·i, and its rung runs along that ray from the inner rail's crossing
+// to the outer's (`exit`): the hand that reads it is a radial line, the rung
+// continues that line, and two rays from one centre never meet, so no two
+// rungs can cross however tight the corner. (A rung drawn square to the
+// rails — a railway's sleeper — would be the SAME line on the round face,
+// where the normal is the radius, and would converge with its neighbours
+// round a form corner; the two conventions part exactly where the hand
+// stops being the rails' normal, and the hand is what the rung is for.)
+// Along a straight side the rungs are therefore unevenly spaced along the
+// rail (d·sec²θ per 6°), which is what every honest form dial shows.
+//
+// `form` is the dial's outline as a caseShapeOf shape IN THE DIAL'S FRAME
+// (origin at the hands' axis — exit() measures from the frame's origin);
+// `radius` the round face's working radius the gauges are keyed to. Returns
+// the two rail shapes, their drawn loops, the sixty rungs, the mid-rail's
+// nearest approach to the axis (where the minute hand's tip lands — main.js
+// derives the hand from it, as it derives the round hand from the fractions
+// above) and the inner rail's nearest / the outer rail's farthest approach
+// (the grounds the ink is solved against). Pure, for the probe.
+export const TRACK_SEGS = 256;
+export function dialTrack(form, radius) {
+  const R = 2 * DIAL_CANVAS_FILL_F * radius;        // the printed disc's world radius
+  const gOut = radius - R * DIAL_RAIL_OUT_F;         // rim → outer rail, the round face's gauge
+  const gIn = radius - R * DIAL_RAIL_IN_F;           // rim → inner rail
+  const hold = form.cornerR !== null && form.cornerR !== undefined ? { cornerR: form.cornerR } : {};
+  const outer = form.grown(-gOut, hold), inner = form.grown(-gIn, hold), mid = form.grown(-(gOut + gIn) / 2, hold);
+  // The drawn loops: an arc at TRACK_SEGS chords per turn, so a held 5 u
+  // corner's sagitta (r(1 − cos(π/TRACK_SEGS)) = 3.8e-4 u) is under a tenth
+  // of a pixel at the print's scale (1024 px over 2·radius).
+  const loops = { outer: outer.loop({ segs: TRACK_SEGS }), inner: inner.loop({ segs: TRACK_SEGS }) };
+  const rungs = [];
+  for (let i = 0; i < 60; i++) {
+    const az = Math.PI / 2 - (i / 60) * 2 * Math.PI;    // 12 o'clock is +y; minutes run clockwise (toward +x first)
+    const tIn = inner.exit(az), tOut = outer.exit(az);
+    rungs.push({ i, az, tIn, tOut, major: i % 5 === 0 });
+  }
+  // The nearest approach is the shape's own signed distance to the axis
+  // (`inset(0, 0)`, exact on the primitives — a straight side's nearest point
+  // is its middle, which is no vertex of the drawn loop); the farthest point
+  // of a convex loop from an inside point is a vertex, so the loop's.
+  const farthest = (loop) => loop.reduce((m, [x, y]) => Math.max(m, Math.hypot(x, y)), 0);
+  return {
+    gOut, gIn, outer, inner, mid, loops, rungs,
+    nearestMid: mid.inset(0, 0),
+    nearestInner: inner.inset(0, 0),
+    farthestOuter: farthest(loops.outer),
+  };
+}
+
 // §154 — the dial's silvered face is a three-stop radial gradient around ONE
 // editable base tone (aesthetics.dial.face.color) instead of three
 // independent literals. DIAL_TINT_RATIO_{IN,OUT} are the shipped inner/outer
@@ -9743,9 +9820,14 @@ function plateWall(cx, cy, A, zA, B, zB, outward) {
 // numerals and everything printed stay where the round face puts them.
 // `radius` is still the working radius the print's scale, the numerals and
 // the wells' grounds are keyed to. Null = the round dial, byte for byte.
+// track (§311): dialTrack's answer for the outline's shape in this frame —
+// the form face's railroad, the outline's own inward offsets, in place of the
+// round track the print otherwise paints at its radius; the rails' grounds
+// for the ink solve and the §157 gate come with it. Null = the round track
+// (and on a form face, §307's round track on the rectangular ground).
 export function makeDial({
   radius, subdials = [], subdialRecess = 0.5, centerBoreR = 0, thickness = 0,
-  edgeBreak = 0, subdialBoreR = 1.0, outline = null,
+  edgeBreak = 0, subdialBoreR = 1.0, outline = null, track = null,
 }) {
   const g = new THREE.Group();
   let mat = null;
@@ -9846,6 +9928,26 @@ export function makeDial({
   const faceTone = () => (pandaOn() ? caseTone() : aesthetics.dial.face.color);
   g.userData.contrast = () => ({ style: contrastStyle, active: contrastActive() });
   const groundAt = (f) => (sapphire ? glassGround : dialTintAt(faceTone(), f));
+  // §311 — THE RAILS' GROUNDS, as fractions of the printed disc's radius: the
+  // round track's two rail fractions, or on a form track the outer rail's
+  // farthest and the inner rail's nearest approach to the axis (the vignette
+  // runs radially, so those are its two extremes over the track; past the
+  // disc dialTintAt reads the rim tone, which is what the sheet pads with).
+  // ONE list, read by the paint, the §157 gate and inkContrast alike.
+  const railFracs = track
+    ? [track.farthestOuter / (2 * DIAL_CANVAS_FILL_F * radius), track.nearestInner / (2 * DIAL_CANVAS_FILL_F * radius)]
+    : [DIAL_RAIL_OUT_F, DIAL_RAIL_IN_F];
+  if (track && outline) {
+    // The track was derived from the SAME shape the outline is cut to: every
+    // outline vertex lies on the track's base shape (within the cushion's
+    // polyline accuracy). Holds the caller's two frames — the loop it cut
+    // and the shape it offset — to one outline.
+    let off = 0;
+    const base = track.outer.grown(track.gOut, track.outer.cornerR !== null ? { cornerR: track.outer.cornerR } : {});
+    for (const [x, y] of outline) off = Math.max(off, Math.abs(base.inset(x, y)));
+    if (off > base.accuracy + 1e-6)
+      console.warn(`§311: the dial's outline and its track's shape disagree — an outline vertex stands ${off.toExponential(2)} off the shape (need ≤ ${(base.accuracy + 1e-6).toExponential(2)})`);
+  }
   // A print sheet on sapphire: the glass recipe with the sheet's canvas as
   // its map. Colour white and opacity 1 because the texels already carry the
   // tint and the alpha — the material must not apply either twice.
@@ -9925,29 +10027,52 @@ export function makeDial({
         // (the vignette darkens outward, so the two differ); on the shipped
         // face this is DIAL_TRACK_INK verbatim, on a dark face the light
         // pole. One call here, and the §157 gate re-derives the same call.
-        const trackInk = solveInk([
-          groundAt(DIAL_RAIL_OUT_F),
-          groundAt(DIAL_RAIL_IN_F),
-        ]);
+        const trackInk = solveInk(railFracs.map(groundAt));
         ctx.strokeStyle = trackInk;
         ctx.fillStyle = trackInk;
         ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(0, 0, rOut, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, 0, rIn, 0, Math.PI * 2);
-        ctx.stroke();
-        for (let i = 0; i < 60; i++) {
-          const a = (i / 60) * Math.PI * 2;
-          ctx.save();
-          ctx.rotate(a);
-          ctx.lineWidth = i % 5 === 0 ? 10 : 3;
+        if (track) {
+          // §311 — the form track: the two rails are the outline's inward
+          // offsets (dialTrack, above), drawn as their loops in the print's
+          // own frame (dial-local u → px: (k·x, −k·y) about the axis, the
+          // inverse of the sheet's UV map), and each minute's rung runs
+          // along the hand's ray between the rails' crossings. Same ink,
+          // same weights, same caps as the round track's.
+          const k = print ? print.k : S / (2 * radius);   // px per u: the round face's own scale either way
+          const rail = (loop) => {
+            ctx.beginPath();
+            loop.forEach(([x, y], j) => (j ? ctx.lineTo(k * x, -k * y) : ctx.moveTo(k * x, -k * y)));
+            ctx.closePath();
+            ctx.stroke();
+          };
+          rail(track.loops.outer);
+          rail(track.loops.inner);
+          for (const { az, tIn, tOut, major } of track.rungs) {
+            const cx = Math.cos(az), cy = Math.sin(az);
+            ctx.lineWidth = major ? 10 : 3;
+            ctx.beginPath();
+            ctx.moveTo(k * tIn * cx, -k * tIn * cy);
+            ctx.lineTo(k * tOut * cx, -k * tOut * cy);
+            ctx.stroke();
+          }
+        } else {
           ctx.beginPath();
-          ctx.moveTo(0, -rOut);
-          ctx.lineTo(0, -rIn);
+          ctx.arc(0, 0, rOut, 0, Math.PI * 2);
           ctx.stroke();
-          ctx.restore();
+          ctx.beginPath();
+          ctx.arc(0, 0, rIn, 0, Math.PI * 2);
+          ctx.stroke();
+          for (let i = 0; i < 60; i++) {
+            const a = (i / 60) * Math.PI * 2;
+            ctx.save();
+            ctx.rotate(a);
+            ctx.lineWidth = i % 5 === 0 ? 10 : 3;
+            ctx.beginPath();
+            ctx.moveTo(0, -rOut);
+            ctx.lineTo(0, -rIn);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
         // (Hour markers are applied 3D numerals — built below, not printed.)
         // Discreet maker's mark. When a power-reserve sub-dial exists the mark
@@ -10172,6 +10297,7 @@ export function makeDial({
   ring.position.z = radius * 0.01;
   g.add(ring);
   if (outline) g.userData.outline = outline;   // §307 — the loop the dial was cut to, for the caller and the probes
+  if (track) g.userData.track = track;         // §311 — the form track the sheet was printed with, for the probes
 
   // The wells' FINISH. The well itself is matter — a pocket machined into the
   // plate above, floor and wall both brass — and these two meshes are what is
@@ -10539,7 +10665,7 @@ export function makeDial({
   // called at build and again on every live recolour — a second
   // transcription of a threshold is a second place for it to rot.
   const assertInkLegible = () => {
-    const railGrounds = [groundAt(DIAL_RAIL_OUT_F), groundAt(DIAL_RAIL_IN_F)]; // §3: the composite on sapphire, the vignette otherwise — one expression
+    const railGrounds = railFracs.map(groundAt); // §3: the composite on sapphire, the vignette otherwise — one expression; §311: the form track's extremes
     const trackInk = solveInk(railGrounds);
     for (const [name, ground] of [['outer', railGrounds[0]], ['inner', railGrounds[1]]]) {
       const ratio = contrastRatio(ground, trackInk);
@@ -10589,7 +10715,7 @@ export function makeDial({
     // actually printed, and names which pole won; the wells joined the gate
     // with the solve. The reported block keeps measuring the CONSTANTS
     // (the mark's designed relation and the metals' indicative hexes).
-    const railGrounds = [at(DIAL_RAIL_OUT_F), at(DIAL_RAIL_IN_F)];
+    const railGrounds = railFracs.map(at);
     const trackInk = solveInk(railGrounds);
     return {
       face,

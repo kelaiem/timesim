@@ -2795,7 +2795,14 @@ const KEYLESS_INPUTS = {
     railInnerF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F,
     // §308 L4 option A — the railroad's OUTER rail, the edge a well outside
     // the chapter grows from (the same composition as the inner rail's).
-    railOuterF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_OUT_F,
+    // §311 — NOT on a form build: its track follows the case (the outline's
+    // own inward offsets, dialTrack), so there is no face outside the
+    // chapter for a well to be cut in — every station is inside the track,
+    // and the solver takes the chapter law for all of them. The inner rail
+    // it reads stays the ROUND one, which the form track stands outside
+    // everywhere (asserted at the dial build), so the ceilings it derives
+    // from it are conservative on a form face, never breached.
+    ...(SPEC.caseShape ? {} : { railOuterF: 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_OUT_F }),
   },
 };
 const {
@@ -19515,6 +19522,28 @@ for (const [nm, cy, wr] of [['reserve', reserveStationR, reserveWellR], ['second
 }
 
 await breathe(159);
+// §311 — THE FORM DIAL'S RAILROAD TRACK. The dial's outline in the DIAL'S OWN
+// FRAME, as a shape rather than a loop: the same kind over the fitted box
+// carried through dialFace's Y-flip (world X ↔ dial-local P.dial.x − X, so the
+// box's x-bounds swap and mirror; y shifts), which is exact because every kind
+// in the library is symmetric about its box's axes. Its origin is the hands'
+// axis, which is what lets the track's rungs be read off the shape's own
+// `exit` along the hands' rays. The track is then dialTrack's law on it: the
+// rails the outline's inward offsets at the round face's two gauges, corners
+// held at the case's round, sixty rungs on the rays — one derivation the
+// print paints, the minute hand is cut to and the probe re-measures.
+const FORM_DIAL = FORM ? caseShapeOf(FORM.kind, { xMin: P.dial.x - FORM.xMax, xMax: P.dial.x - FORM.xMin, yMin: FORM.yMin - P.dial.y, yMax: FORM.yMax - P.dial.y }) : null;
+const DIAL_TRACK = FORM ? G.dialTrack(FORM_DIAL, dialRadius) : null;
+if (DIAL_TRACK) {
+  // The solver bounded both wells by the ROUND inner rail (printFrame above):
+  // that is only conservative while the form track's inner rail stands
+  // outside the round one everywhere, which a small enough fitted outline
+  // would break — and then a well the solver passed would bury the track.
+  const roundInner = dialRadius * 2 * G.DIAL_CANVAS_FILL_F * G.DIAL_RAIL_IN_F;
+  if (DIAL_TRACK.nearestInner < roundInner - 1e-9)
+    console.warn(`§311: the form track's inner rail comes within ${DIAL_TRACK.nearestInner.toFixed(3)} of the hands' axis, inside the round `
+      + `inner rail at ${roundInner.toFixed(3)} the wells are bounded by — a well may bury the track; bound the wells by the form rail`);
+}
 const dial = G.makeDial({
   radius: dialRadius,
   // §307 — the dial is made to the movement's OUTLINE (§125's convention,
@@ -19523,6 +19552,7 @@ const dial = G.makeDial({
   // Y − P.dial.y) — which reverses the loop's orientation, so it is reversed
   // back to CCW for the Shape.
   ...(FORM ? { outline: FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse() } : {}),
+  ...(DIAL_TRACK ? { track: DIAL_TRACK } : {}),   // §311 — the form face's railroad, the outline's own offsets
   subdialRecess: SUBDIAL_RECESS,
   thickness: DIAL_T,          // TODO 26 — the dial is a plate now; its BACK lands on Z_DIAL
   edgeBreak: DIAL_EDGE_BREAK, // TODO 26 — and the plate is thinner at its rim, by a real chamfer
@@ -19676,7 +19706,12 @@ const hourHand = G.makeHand(HOUR_HAND_SPEC);
 // measurements of the face ("world r ≈ 31.5 / 34.2") — correct on the day it
 // was sampled, stale the day §125 re-proportioned the dial, the same rot the
 // hour hand's derivation closed one constant up.
-const MINUTE_HAND_LEN = dialRadius * (2 * G.DIAL_CANVAS_FILL_F)
+// §311 — on a form face the track follows the case, so "on the rungs" is
+// where the mid-rail comes NEAREST the hands' axis (the middle of a side): the
+// tip lands on the track there and falls inside it everywhere else, as every
+// form watch's minute hand does — read off the same law the print painted
+// (dialTrack's nearestMid), which at a circle IS the fraction below.
+const MINUTE_HAND_LEN = DIAL_TRACK ? DIAL_TRACK.nearestMid : dialRadius * (2 * G.DIAL_CANVAS_FILL_F)
   * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
 const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute', namePrefix: 'minute',
   pipe: { boreR: MINUTE_PIPE_BORE, outerR: MINUTE_PIPE_OUTER, hang: 'blade' } };
@@ -48805,6 +48840,11 @@ const DIAL_SPEC = (() => {
   return Object.freeze({
     outline: FORM ? Object.freeze({ kind: FORM.kind, bounds: FORM.bounds,
       dialLoop: Object.freeze(FORM.loop().map(([X, Y]) => [P.dial.x - X, Y - P.dial.y]).reverse()) }) : null,
+    // §311 — the form face's railroad in the dial's frame: the two rails'
+    // loops and the sixty rungs (az from +x, tIn → tOut along the ray); null
+    // on the round face, whose track is the print's own circles.
+    track: DIAL_TRACK ? Object.freeze({ gOut: DIAL_TRACK.gOut, gIn: DIAL_TRACK.gIn, outer: DIAL_TRACK.loops.outer, inner: DIAL_TRACK.loops.inner,
+      rungs: DIAL_TRACK.rungs.map(({ az, tIn, tOut, major }) => ({ az, tIn, tOut, major })), handReach: DIAL_TRACK.nearestMid }) : null,
     dialRadius,
     handCentre: Object.freeze({ x: P.dial.x, y: P.dial.y }),
     subdials: Object.freeze({ reserve: st(RESERVE_LOCAL, reserveWellR), seconds: st(SECONDS_LOCAL, secondsWellR) }),
@@ -61220,6 +61260,7 @@ window.__clock = {
       module1: rsvModule1, w2Tip: (rsvModule1 * (rsvTeethW2 + 2)) / 2, maxTip: RSV_FIT_TRAIN?.maxTip, short: RSV_FIT_TRAIN?.short },
     station: { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveStationR } } : null,
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
+  dialTrack: DIAL_TRACK,                      // §311 — the form face's railroad (null round): rails, rungs, the hand's reach
   dialSpec: DIAL_SPEC,
   regions: FORM_REGIONS,
   get strikePlateOpening() { return STRIKE_PLATE_OPENING; },   // TODO 266 — the strike group's opening in a form plate (null round)
