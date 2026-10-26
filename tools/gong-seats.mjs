@@ -50,7 +50,8 @@ if (!MODES.every((m) => m === 'bar' || m === 'spiral')) { console.error(`--modes
 if (WRITE === CHECK) { console.error('usage: node tools/gong-seats.mjs --write | --check [kind …]'); process.exit(2); }
 export const BAND_HZ = [1000, 4000];   // §197: a struck alarm gong's fundamental (GONG §197 assert, 1–4 kHz)
 const STRETCH = [0, 4, 8];              // u added to the cut's y half-extent per retry (y is not under §307's cap)
-const DEPTH = 6;                       // candidates tried per round (each costs up to five boots)
+const DEPTH = 6;
+const ARRANGED_RESIDUE = /§234: the alarm pusher bar is L\/D/;   // an arrangement's named, fit-dependent residue (see the widened check)                       // candidates tried per round (each costs up to five boots)
 const RES = 0.25;                      // the map's cell: under the margin the wire must clear by (CLEAR_MARGIN 0.15 + the wire's own radius)
 
 const { chromium } = await import(join(ROOT, 'tools/node_modules/playwright/index.mjs'));
@@ -274,7 +275,10 @@ for (const kind of KINDS) {
         // fit and 2.3067 on another) and would otherwise read as new on every round.
         const warnKind = (w) => w.replace(/-?\d+(\.\d+)?/g, '#');
         const firstKinds = new Set(first.warnings.map(warnKind));
-        const widened = b.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
+        // (an ARRANGEMENT's named residue that moves with the fit, not with the seat, is not the seat's to answer:
+        // §308 landing 5's alarm pusher bar, L/D ~20.6 at the 80° turn, owed a radius-from-length derivation — PR #806's debt)
+        const widened = b.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w)
+          && !(SPECQ && ARRANGED_RESIDUE.test(w)));
         if (widened.length) { console.log(`    refused: at its fit the seated build carries ${widened.length} warning(s) the first fit lacks: ${widened.slice(0, 2).map((w) => w.slice(0, 160)).join(' | ')}`); continue; }
         // A clean seat whose own metal fits INSIDE this cut closes here and is taken at once. One that would WIDEN
         // the cut is kept as the round's fallback and the rest are still tried: taking the first clean seat sent
