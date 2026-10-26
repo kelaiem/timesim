@@ -3755,6 +3755,9 @@ movement.add(alarmFrame);
 // the coordinates its constants are written in. Under the identity it is the identity.
 const ALARM_W2M = ALARM_MIRROR ? alarmFrame.matrix.clone() : new THREE.Matrix4();
 // whether an object hangs in the module's frame (its measurements are then the module's, read through ALARM_W2M)
+// an object's world matrix read in the module's coordinates (the link's and the selector's own measurements: their
+// constants are the module's, and every pair of them is reflected alike, so relative readings are unchanged)
+const alarmMW = ALARM_MIRROR ? (o) => new THREE.Matrix4().multiplyMatrices(ALARM_W2M, o.matrixWorld) : (o) => o.matrixWorld;
 const inAlarmFrame = (o) => { for (let a = o; a; a = a.parent) if (a === alarmFrame) return true; return false; };
 const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29;
 const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
@@ -33418,7 +33421,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPosW.x, alarmWindI2.y - alarmBarrelPos
   // in the same origin-relative azimuth `ALARM_SLEEVE_TAB_REL_AZ` is
   // measured in (both corner and idler stand off the WORLD origin's polar
   // angle, `ALARM_CORNER_W_AZ`'s own convention).
-  const i1RelAz = Math.atan2(alarmWindI1.y, alarmWindI1.x) - ALARM_CORNER_W_AZ;
+  const i1RelAz = ((a) => Math.atan2(Math.sin(a), Math.cos(a)))(Math.atan2(alarmWindI1.y, alarmWindI1.x) - ALARM_CORNER_W_AZ);   // into (−π, π]: a turned corner read −334° for +26°
   const i1ArcGap = (i1RelAz - ALARM_SLEEVE_TAB_REL_AZ) * ALARM_CD;
   if (i1ArcGap < CLEAR_MARGIN)
     console.warn(`§76/TODO 164 alarm tab azimuth ${(ALARM_SLEEVE_TAB_REL_AZ / DEG2RAD).toFixed(2)}° stands only `
@@ -38443,7 +38446,9 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   // and the chord drifts to 9.8156 against the hoisted 9.991). So the measured
   // site is taken when it clears CLEAR_MARGIN; when it does not, the turn has
   // a real conflict, and the warning names it before the drift asserts fire.
-  if (SPEC.alarmModAzDeg !== null) {
+  // The MIRROR is the same case: the module and the selector both stand in the reflection, the site is sited in
+  // the module's coordinates, so the measured site IS the measured geometry, reflected — every constant reproduces.
+  if (SPEC.alarmModAzDeg !== null || ALARM_MIRROR) {
     if (measured && measured.c >= CLEAR_MARGIN) best = measured;
     else console.warn(`§308: the turned module refuses the link's measured site (k ${ALARM_LINK_MEASURED_SITE.k}, run ${ALARM_LINK_MEASURED_SITE.run}, `
       + `tab ${ALARM_LINK_MEASURED_SITE.tabDeg}° + the module's turn) — it clears ${measured ? measured.c.toFixed(3) : 'nothing (guarded out)'}, bound by `
@@ -38460,7 +38465,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   return { xy: { x: best.x, y: best.y }, xyC: { x: best.xC, y: best.yC }, dist: best.d, tabAzDeg: best.tabAzDeg, colClear: best.colC,
     barLine: { P: best.Pw, N: best.Nw, pivReach: best.pivReach }, run: best.run, noseAz: best.noseAz, k: best.k, who: best.who, clear: best.c };
 })();
-if (SPEC.alarmModAzDeg === null && (ALARM_LINK_NOSE_K !== ALARM_LINK_MEASURED_SITE.k || ALARM_LINK_RUN !== ALARM_LINK_MEASURED_SITE.run
+if (SPEC.alarmModAzDeg === null && !ALARM_MIRROR && (ALARM_LINK_NOSE_K !== ALARM_LINK_MEASURED_SITE.k || ALARM_LINK_RUN !== ALARM_LINK_MEASURED_SITE.run
   || ALARM_LINK_AZ_DEG !== ALARM_LINK_MEASURED_SITE.tabDeg))
   console.warn(`§308: the link's site solve landed at k ${ALARM_LINK_NOSE_K}, run ${ALARM_LINK_RUN}, tab ${ALARM_LINK_AZ_DEG}° — `
     + `not ALARM_LINK_MEASURED_SITE, where the hoisted link constants were measured; re-measure them there and re-quote the row`);
@@ -39117,7 +39122,7 @@ const alarmLinkParts = {};
   // stratification put it ON the shaft's axis plane, and the fork attaches
   // to the ring at exactly that local height, so the pin seats to it.
   alarmSelectorUnit.updateWorldMatrix(true, true);
-  const ALARM_FORK_GROOVE_MID_REST = new THREE.Vector3(0, 0, 0).applyMatrix4(alarmSelRing.matrixWorld).z;
+  const ALARM_FORK_GROOVE_MID_REST = new THREE.Vector3(0, 0, 0).applyMatrix4(alarmMW(alarmSelRing)).z;
   const innerEnd = { x: ALARM_LINK_INNER_XY.x + u.x * ALARM_FORK_RETREAT, y: ALARM_LINK_INNER_XY.y + u.y * ALARM_FORK_RETREAT };
   const chordLen = fullChordLen - ALARM_FORK_RETREAT;
   // THE BUSH STATIONS, ONE DECLARATION. The hanger loop below cuts the metal
@@ -39598,7 +39603,7 @@ const alarmLinkParts = {};
       const zAt = (th) => {
         shaft.rotation.x = th;
         key.updateWorldMatrix(true, false);
-        return _v.copy(local).applyMatrix4(key.matrixWorld).z;
+        return _v.copy(local).applyMatrix4(alarmMW(key)).z;
       };
       const z0 = zAt(0), zp = zAt(0.3), zm = zAt(-0.3);
       shaft.rotation.x = 0;
@@ -39664,7 +39669,7 @@ const alarmLinkParts = {};
     // The datums first. (The fork's groove mid — the pin's drive datum —
     // was captured at the shaft build above, from the fork's own box.)
     // The ring's travel in world sign, from the dial flip (TODO 19's capture).
-    const zCol = _v.set(0, 0, 1).transformDirection(alarmSelRing.parent.matrixWorld);
+    const zCol = _v.set(0, 0, 1).transformDirection(alarmMW(alarmSelRing.parent));
     const travelW = -ALARM_SEL_TRAVEL * Math.sign(zCol.z);
     // 1. THE RIM REST IS A DESIGN CHOICE, and the rod's foot is read off it.
     //    TODO 9's chain ran the other way: a foot constant built from
@@ -39690,7 +39695,7 @@ const alarmLinkParts = {};
     // 2. BUILD THE ROD — both of its ends are read off their partners now
     //    (top: the tail's underside; foot: the finger's designed rest).
     //    Frames: the link unit is world-identity; assert rather than assume.
-    if (Math.abs(_v.set(0, 0, 1).transformDirection(alarmLinkUnit.matrixWorld).z - 1) > 1e-9)
+    if (Math.abs(_v.set(0, 0, 1).transformDirection(alarmMW(alarmLinkUnit)).z - 1) > 1e-9)
       console.warn('TODO 20 registration: the link unit is no longer world-identity — every solved datum here is frame-mixed');
     const rodLen = ALARM_ROD_TOP_BUILT - rodFootRest;
     // §234 Landing 4 coherence guard — ALARM_LINK_ROD_LEN_U (near
@@ -39786,7 +39791,7 @@ const alarmLinkParts = {};
     const rollArmed = F.rollArmed;
     const pinLocal = new THREE.Vector3(0, 0, ALARM_FORK_PIN_ARM_R);
     const fitAxis = (key, local, pick) => {   // the TODO 19 fit, on any world axis of a point riding the roll
-      const at = (th) => { shaft.rotation.x = th; key.updateWorldMatrix(true, false); return pick(_v.copy(local).applyMatrix4(key.matrixWorld)); };
+      const at = (th) => { shaft.rotation.x = th; key.updateWorldMatrix(true, false); return pick(_v.copy(local).applyMatrix4(alarmMW(key))); };
       const z0 = at(0), zp = at(0.3), zm = at(-0.3);
       shaft.rotation.x = 0;
       const A = (zp - zm) / (2 * Math.sin(0.3)), B = (zp + zm - 2 * z0) / (2 * (Math.cos(0.3) - 1));
@@ -39830,12 +39835,12 @@ const alarmLinkParts = {};
       const pMid = { x: sinus(rfX, thDead), y: sinus(rfY, thDead) };
       const q = new THREE.Vector3(pMid.x, pMid.y, sinus(rfZ, thDead));
       alarmSelectorUnit.updateWorldMatrix(true, true);
-      const qL = q.clone().applyMatrix4(alarmSelRing.matrixWorld.clone().invert());
+      const qL = q.clone().applyMatrix4(alarmMW(alarmSelRing).clone().invert());
       // a CENTRAL difference: the one-sided one carries the rotation's own
       // curvature, −ε/2·(q·n), which read r_eff 1.75e-4 short of the line's
       // distance from the axis (TODO 222's line spec caught it)
       const eps = 1e-4;
-      const at = (d) => { alarmSelRing.rotation.z += d; alarmSelRing.updateWorldMatrix(true, false); const w = qL.clone().applyMatrix4(alarmSelRing.matrixWorld); alarmSelRing.rotation.z -= d; alarmSelRing.updateWorldMatrix(true, false); return w; };
+      const at = (d) => { alarmSelRing.rotation.z += d; alarmSelRing.updateWorldMatrix(true, false); const w = qL.clone().applyMatrix4(alarmMW(alarmSelRing)); alarmSelRing.rotation.z -= d; alarmSelRing.updateWorldMatrix(true, false); return w; };
       const qp = at(eps), qm = at(-eps);
       const rEff = ((qp.x - qm.x) * nW.x + (qp.y - qm.y) * nW.y) / (2 * eps);
       const throwN = F.pinNArmed - F.pinNRest;
@@ -39923,7 +39928,7 @@ const alarmLinkParts = {};
         alarmLinkParts.rimKey.updateWorldMatrix(true, false);
         const corners = [];
         for (const sy of [1, -1]) for (const sx of [1, -1])
-          corners.push(new THREE.Vector3(sx * ALARM_LINK_CRANK_T / 2, sy * ALARM_LINK_CRANK_T / 2, rimTipD).applyMatrix4(alarmLinkParts.rimKey.matrixWorld));
+          corners.push(new THREE.Vector3(sx * ALARM_LINK_CRANK_T / 2, sy * ALARM_LINK_CRANK_T / 2, rimTipD).applyMatrix4(alarmMW(alarmLinkParts.rimKey)));
         const zTop = Math.max(...corners.map((c) => c.z));
         for (const c of corners) {
           if (c.z < zTop - 1e-9) continue;
@@ -39964,7 +39969,7 @@ const alarmLinkParts = {};
       // roll gives it — the ring turns and lifts between rest and armed, so the
       // band below is the pin's path RELATIVE to the fork, which is what the
       // slot has to hold (rest-frame alone, it would be the pin's world path).
-      const ringInvAt = (s) => { poseAlarmSelRing(s); alarmSelRing.updateWorldMatrix(true, false); const m = alarmSelRing.matrixWorld.clone().invert(); poseAlarmSelRing(0); alarmSelRing.updateWorldMatrix(true, false); return m; };
+      const ringInvAt = (s) => { poseAlarmSelRing(s); alarmSelRing.updateWorldMatrix(true, false); const m = alarmMW(alarmSelRing).clone().invert(); poseAlarmSelRing(0); alarmSelRing.updateWorldMatrix(true, false); return m; };
       const ringInv = ringInvAt(0), ringInvArmed = ringInvAt(1);
       // §234 Landing 5, course-corrected — THE PIN RIDES AN ARC (D ≠ 0), so
       // "built on the pin's REST position" is only half the pin's own
@@ -39976,7 +39981,7 @@ const alarmLinkParts = {};
       const pinEndsAt = (roll, inv) => {
         shaft.rotation.x = roll;
         alarmLinkParts.centreKey.updateWorldMatrix(true, false);
-        const km2 = alarmLinkParts.centreKey.matrixWorld;
+        const km2 = alarmMW(alarmLinkParts.centreKey);
         return [
           new THREE.Vector3(-ALARM_FORK_RETREAT, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km2).applyMatrix4(inv),
           new THREE.Vector3(0, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km2).applyMatrix4(inv),
@@ -40025,7 +40030,7 @@ const alarmLinkParts = {};
       const rollerEnds = (roll, inv) => {
         shaft.rotation.x = roll;
         alarmLinkParts.centreKey.updateWorldMatrix(true, false);
-        const km2 = alarmLinkParts.centreKey.matrixWorld, hL = (ALARM_FORK_BLOCK_L - 2 * ALARM_FORK_CLEAR) / 2, x0 = -ALARM_FORK_RETREAT + ALARM_FORK_SEAT;
+        const km2 = alarmMW(alarmLinkParts.centreKey), hL = (ALARM_FORK_BLOCK_L - 2 * ALARM_FORK_CLEAR) / 2, x0 = -ALARM_FORK_RETREAT + ALARM_FORK_SEAT;
         return [x0 - hL, x0 + hL].map((x) => new THREE.Vector3(x, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km2).applyMatrix4(inv));
       };
       const [rlR0, rlR1] = rollerEnds(F.rollRest, ringInv), [rlA0, rlA1] = rollerEnds(F.rollArmed, ringInvArmed);
@@ -40055,13 +40060,13 @@ const alarmLinkParts = {};
         const nrm = new THREE.Vector3(-dirL.y, dirL.x, 0), up = new THREE.Vector3(0, 0, 1);
         const pts = [];
         const yS = [-Wo, -webInner, -webInner / 2, 0, webInner / 2, webInner, Wo], zS = [-H, -grooveHalfH, -grooveHalfH / 2, 0, grooveHalfH / 2, grooveHalfH, H];
-        const upL = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.matrixWorld).z) < 0 ? -1 : 1;
+        const upL = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmMW(alarmSelRing)).z) < 0 ? -1 : 1;
         for (const y of yS) for (const z of [upL * grooveHalfH, upL * H]) pts.push([y, z]);   // the one plate (below)
         for (const y of [-Wo, -webInner, webInner, Wo]) for (const z of zS) if (upL * z >= -grooveHalfH - 1e-12) pts.push([y, z]);   // the webs stop at the band's open edge
         const frames = [[F.rollRest, 0], [F.rollArmed, 1]].map(([roll, u]) => {
           const ringM = ringInvAt(u).invert();
           shaft.rotation.x = roll; alarmLinkParts.centreKey.updateWorldMatrix(true, false);
-          return { ringM, keyInv: alarmLinkParts.centreKey.matrixWorld.clone().invert() };
+          return { ringM, keyInv: alarmMW(alarmLinkParts.centreKey).clone().invert() };
         });
         shaft.rotation.x = F.rollRest; alarmLinkParts.centreKey.updateWorldMatrix(true, false);
         const v = new THREE.Vector3();
@@ -40139,7 +40144,7 @@ const alarmLinkParts = {};
       // CLEAR_MARGIN. On main's site this reads the pin inside post 1.
       {
         alarmSelRing.updateWorldMatrix(true, false);
-        const W = (v) => v.clone().applyMatrix4(alarmSelRing.matrixWorld);
+        const W = (v) => v.clone().applyMatrix4(alarmMW(alarmSelRing));
         const bA = W(blockC.clone().addScaledVector(dirL, -ALARM_FORK_BLOCK_L / 2));
         const bB = W(blockC.clone().addScaledVector(dirL, ALARM_FORK_BLOCK_L / 2));
         const I4 = new THREE.Matrix4();   // TODO 222: the pins in the WORLD frame the posts stand in (the fork turns with the ring; the posts do not)
@@ -40176,7 +40181,7 @@ const alarmLinkParts = {};
       // crank's carrier hangs down past the pin exactly where that plate stood
       // (at the force budget's arm it could not be cleared anywhere on the pin).
       // The block is a U, open toward the carrier, which passes between the webs.
-      const upLocal = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.matrixWorld).z) < 0 ? -1 : 1;
+      const upLocal = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmMW(alarmSelRing)).z) < 0 ? -1 : 1;
       for (const s of [upLocal]) {
         const plate = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FORK_BLOCK_L, blockW, ALARM_SEL_T), MATS.nickel);
         plate.name = 'alarmSelTab';
@@ -40222,7 +40227,7 @@ const alarmLinkParts = {};
         if (!roller) return azF0;
         alarmSelRing.updateWorldMatrix(true, false); roller.updateWorldMatrix(true, false);
         const c = alarmSelRing.worldToLocal(roller.getWorldPosition(new THREE.Vector3()));
-        const ax = new THREE.Vector3(0, 1, 0).transformDirection(roller.matrixWorld);   // the cylinder's own axis
+        const ax = new THREE.Vector3(0, 1, 0).transformDirection(alarmMW(roller));   // the cylinder's own axis
         const axL = alarmSelRing.worldToLocal(roller.getWorldPosition(new THREE.Vector3()).add(ax)).sub(c);
         const aL = Math.hypot(axL.x, axL.y), ux = axL.x / aL, uy = axL.y / aL;
         const h = roller.geometry.parameters.height / 2, rRoll = roller.geometry.parameters.radiusTop;
@@ -40291,7 +40296,7 @@ const alarmLinkParts = {};
     const noseTip = new THREE.Vector3(beakLen, 0, 0);
     // §261 2c: in the CLUSTER's frame — the fold mirrors world z, and "lower"
     // means toward the wheel the nose reads
-    const noseZAt = (ry) => { beakArm.rotation.y = ry; beakArm.updateWorldMatrix(true, false); return _v.copy(noseTip).applyMatrix4(beakArm.matrixWorld).applyMatrix4(alarmFoldInv).z; };
+    const noseZAt = (ry) => { beakArm.rotation.y = ry; beakArm.updateWorldMatrix(true, false); return _v.copy(noseTip).applyMatrix4(alarmMW(beakArm)).applyMatrix4(alarmFoldInv).z; };
     F.noseRySign = noseZAt(0.05) < noseZAt(-0.05) ? 1 : -1;
     beakArm.rotation.y = 0;
 
@@ -40349,11 +40354,11 @@ const alarmLinkParts = {};
         rod.position.z = z0 + th * tailLen;
         beakArm.updateWorldMatrix(true, true);
         rod.updateWorldMatrix(true, false);
-        inv.copy(barM.matrixWorld).invert();
+        inv.copy(alarmMW(barM)).invert();
         let m = Infinity;
         for (let i = 0; i < pos.count; i++) {
           if (pos.getY(i) < yTop - 0.5) continue;
-          _v.fromBufferAttribute(pos, i).applyMatrix4(rod.matrixWorld).applyMatrix4(inv);
+          _v.fromBufferAttribute(pos, i).applyMatrix4(alarmMW(rod)).applyMatrix4(inv);
           if (Math.abs(_v.x) > hx + 1e-9 || Math.abs(_v.y) > hy + 1e-9) continue;
           m = Math.min(m, (_v.z - zf) * Math.cos(th));
         }
@@ -40415,7 +40420,7 @@ const alarmLinkParts = {};
     // 7. The §54 corridor budget: the rim finger's contact ridge must not
     //    sweep laterally past the ray-probed 0.2685 — now asserted from the
     //    DERIVED rolls rather than narrated from an assumed 0.5429.
-    const xyAt = (key, d, th) => { shaft.rotation.x = th; key.updateWorldMatrix(true, false); _v.set(0, 0, d).applyMatrix4(key.matrixWorld); return { x: _v.x, y: _v.y }; };
+    const xyAt = (key, d, th) => { shaft.rotation.x = th; key.updateWorldMatrix(true, false); _v.set(0, 0, d).applyMatrix4(alarmMW(key)); return { x: _v.x, y: _v.y }; };
     const p0 = xyAt(alarmLinkParts.rimKey, rimTipD, F.rollRest);
     const p1 = xyAt(alarmLinkParts.rimKey, rimTipD, F.rollArmed);
     shaft.rotation.x = F.rollRest;
@@ -41349,7 +41354,7 @@ const alarmLinkParts = {};
         if (bl) {
           bl.updateWorldMatrix(true, false);
           const pa = bl.geometry.attributes.position, v = new THREE.Vector3(), vs = [];
-          for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(bl.matrixWorld); vs.push({ x: v.x - hx, y: v.y - hy }); }
+          for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(alarmMW(bl)); vs.push({ x: v.x - hx, y: v.y - hy }); }
           const boxD = (p, cm, cw, hm, hw) => {            // plan distance to a box in the (m, w) frame
             const pm = p.x * H.m.x + p.y * H.m.y, pw = p.x * H.w.x + p.y * H.w.y;
             return Math.hypot(Math.max(0, Math.abs(pm - cm) - hm), Math.max(0, Math.abs(pw - cw) - hw));
@@ -42852,7 +42857,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       // below are the pre-fold ones, so each vertex goes to world and back
       // through the fold — which also puts the unfolded pusher where it truly
       // stands relative to the folded driver, rather than where it once did.
-      const toCluster = alarmFoldMatrix.clone().invert();
+      const toCluster = alarmFoldMatrix.clone().invert().multiply(ALARM_W2M);   // world → module → the cluster's frame
       const m = new THREE.Matrix4();
       const wc = new THREE.Vector3(ALARM_COL_POS.x, ALARM_COL_POS.y, 0).applyMatrix4(alarmFoldMatrix);
       const box = new THREE.Box3();
@@ -42869,7 +42874,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         const pos = o.geometry.getAttribute('position'); if (!pos) return;
         // cheap cull: the mesh's world box against the reach disc (the box is
         // an over-estimate, which can only keep a mesh the exact test drops)
-        box.setFromObject(o);
+        box.setFromObject(o).applyMatrix4(ALARM_W2M);   // the module's coordinates, where wc is written
         if (box.max.x < wc.x - reachW || box.min.x > wc.x + reachW || box.max.y < wc.y - reachW || box.min.y > wc.y + reachW) return;
         const pts = [], armPts = [];
         let zLo = Infinity, zHi = -Infinity;
