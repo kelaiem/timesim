@@ -43,6 +43,8 @@ const KINDS = ARGS.filter((a, i) => !a.startsWith('--') && ARGS[i - 1] !== '--mo
 if (!MODES.every((m) => m === 'bar' || m === 'spiral')) { console.error(`--modes takes bar and/or spiral (got ${MODES.join(',')})`); process.exit(2); }
 if (WRITE === CHECK) { console.error('usage: node tools/gong-seats.mjs --write | --check [kind …]'); process.exit(2); }
 export const BAND_HZ = [1000, 4000];   // §197: a struck alarm gong's fundamental (GONG §197 assert, 1–4 kHz)
+const STRETCH = [0, 4, 8];              // u added to the cut's y half-extent per retry (y is not under §307's cap)
+const DEPTH = 6;                       // candidates tried per round (each costs up to five boots)
 const RES = 0.25;                      // the map's cell: under the margin the wire must clear by (CLEAR_MARGIN 0.15 + the wire's own radius)
 
 const { chromium } = await import(join(ROOT, 'tools/node_modules/playwright/index.mjs'));
@@ -77,18 +79,22 @@ const boot = async (q) => {
   return { ...out, warnings };
 };
 const sameRect = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.005);
-// the smallest box about `fit`'s own centre, `fit` grown by one scale, whose shape holds every station of the wire
-// `need` inside: the seat's own fit (the metal's fit never shrinks; the wire is not counted in it, so it may grow it)
+// the smallest box about `fit`'s own centre whose shape holds every station of the wire `need` inside: the seat's
+// own fit (the metal's fit never shrinks; the wire is not counted in it, so it may grow it). It grows LUG TO LUG
+// first: §307's 40 mm owner cap is on the width across the strap (x) and the length (y) is not capped, so a wire
+// the y growth alone can hold costs the case no width; only a wire it cannot hold grows both, by one scale.
 const holdWire = (kind, fit, curveRow, need) => {
   const c = GS.seatCurve(curveRow), pts = []; for (let s = 0; s <= c.L + 1e-9; s += 0.25) { const q = c.at(Math.min(s, c.L)); pts.push([q.x, q.y]); }
   const cx = (fit[0] + fit[1]) / 2, cy = (fit[2] + fit[3]) / 2, hw = (fit[1] - fit[0]) / 2, hh = (fit[3] - fit[2]) / 2;
-  const box = (k) => [cx - k * hw, cx + k * hw, cy - k * hh, cy + k * hh];
-  const holds = (k) => { const [xMin, xMax, yMin, yMax] = box(k), sh = caseShapeOf(kind, { xMin, xMax, yMin, yMax }); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
-  if (holds(1)) return fit;
-  let lo = 1, hi = 1.05; while (!holds(hi)) { lo = hi; hi *= 1.05; if (hi > 2) return fit; }
-  while (hi - lo > 1e-6) { const m = (lo + hi) / 2; if (holds(m)) hi = m; else lo = m; }
-  const b = box(hi);
-  return [Math.floor(b[0] * 100) / 100, Math.ceil(b[1] * 100) / 100, Math.floor(b[2] * 100) / 100, Math.ceil(b[3] * 100) / 100];   // outward, the URL's 0.01
+  const box = (kx, ky) => [cx - kx * hw, cx + kx * hw, cy - ky * hh, cy + ky * hh];
+  const holds = (kx, ky) => { const [xMin, xMax, yMin, yMax] = box(kx, ky), sh = caseShapeOf(kind, { xMin, xMax, yMin, yMax }); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
+  const out = (b) => [Math.floor(b[0] * 100) / 100, Math.ceil(b[1] * 100) / 100, Math.floor(b[2] * 100) / 100, Math.ceil(b[3] * 100) / 100];   // outward, the URL's 0.01
+  if (holds(1, 1)) return fit;
+  const least = (ok) => { let lo = 1, hi = 1.05; while (!ok(hi)) { lo = hi; hi *= 1.05; if (hi > 2) return null; } while (hi - lo > 1e-6) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; } return hi; };
+  const ky = least((k) => holds(1, k));
+  if (ky) return out(box(1, ky));
+  const k = least((k) => holds(k, k));
+  return k ? out(box(k, k)) : fit;
 };
 const within = (a, cut) => a[0] >= cut[0] - 0.005 && a[1] <= cut[1] + 0.005 && a[2] >= cut[2] - 0.005 && a[3] <= cut[3] + 0.005;   // fit a stands within cut
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
@@ -104,16 +110,20 @@ export const GONG_SEATS = Object.freeze(${JSON.stringify(seats, null, 1).replace
 `;
 const loadSeats = (text) => { const m = text.match(/GONG_SEATS = Object\.freeze\(([\s\S]*)\);\s*$/); return m ? JSON.parse(m[1]) : {}; };
 
-function pickSeat(mode, res, roundPivot) {
+// the candidates in the order they are tried: the NARROWEST centred case first (the width across the strap the
+// seat's own wire needs about the hands, holdWire on the round's cut — the one quantity §307 caps), then the
+// hammer's move from the round build's pivot, then the pitch nearest the band's middle
+function pickSeat(kind, mode, res, roundPivot, rect, need) {
   const disp = (r) => Math.hypot(r.hammer.pivot[0] - roundPivot.x, r.hammer.pivot[1] - roundPivot.y);
+  const width = (r) => { const f = holdWire(kind, rect, rowCurve(r), need); return Math.round((f[1] - f[0]) * 100) / 100; };
   let pool;
   if (mode === 'bar') {
     pool = res.filter((r) => r.fam === 'edge');
     if (!pool.length) pool = res.filter((r) => r.fam === 'any' && !r.k);
     if (!pool.length) pool = res.filter((r) => r.fam === 'any');
   } else pool = res.filter((r) => r.fam === 'spiral');
-  pool.sort((a, b) => disp(a) - disp(b) || Math.abs(Math.log(a.f[0] / Math.sqrt(BAND_HZ[0] * BAND_HZ[1]))) - Math.abs(Math.log(b.f[0] / Math.sqrt(BAND_HZ[0] * BAND_HZ[1]))));
-  return pool.map((r) => ({ ...r, pivotMoved: disp(r) }));
+  const mid = (r) => Math.abs(Math.log(r.f[0] / Math.sqrt(BAND_HZ[0] * BAND_HZ[1])));
+  return pool.map((r) => ({ ...r, pivotMoved: disp(r), wide: width(r) })).sort((a, b) => a.wide - b.wide || a.pivotMoved - b.pivotMoved || mid(a) - mid(b));
 }
 // §38/TODO 8's guard fires at RUNTIME on a starved frame (a loaded machine), on any build: no seat's warning
 const RUNTIME = /§38\/TODO 8: the alarm's coincidence was crossed/;
@@ -149,7 +159,12 @@ for (const kind of KINDS) {
   // EACH SEAT CLOSES ITS OWN FIT: the bar and the spiral move the hammer to different stations, so each is
   // solved and re-booted at the fit its own seated build needs (the spiral rides ?gong=spiral)
   for (const mode of MODES) {
-    let rect = first.rect, row = null, closed = false;
+    let row = null, closed = false;
+    // LUG TO LUG when the first cut cannot close: the cut is stretched along y only (the length §307 does not
+    // cap), so the band's map reaches toward the lugs and a wire laid there costs the case no width
+    for (const stretch of STRETCH) { if (closed) break;
+    let rect = [first.rect[0], first.rect[1], first.rect[2] - stretch, first.rect[3] + stretch];
+    if (stretch) console.log(`  ${mode}: the cut stretched ${stretch} u lug to lug either side`);
     for (let round = 1; round <= 5 && !closed; round++) {
       // no seat for this kind while its band is read: the arc build is what the measure sees
       const others = JSON.parse(JSON.stringify(derived)); delete others[kind];
@@ -169,7 +184,7 @@ for (const kind of KINDS) {
       // the block's radius at the shortest wire the band admits (the clamp condition's ¼ power makes it the largest)
       const footR = Math.max(...S.postRAt.map(([, r]) => r));
       const base = { free: map.free, W, H, x0: map.x0, y0: map.y0, RES, loop: shape.loop(), pillars: [], need, footR, plateInset: (x, y) => shape.inset(x, y) };
-      const opts = { fLo: BAND_HZ[0], fHi: BAND_HZ[1], strike: 'end', rank: 'pitch', wireD_m: S.wireD_m, wireR: S.wireR, lever };
+      const opts = { fLo: BAND_HZ[0], fHi: BAND_HZ[1], strike: 'end', rank: 'pitch', perFamily: DEPTH, wireD_m: S.wireD_m, wireR: S.wireR, lever };
       const free = map.free.reduce((t, v) => t + v, 0);
       const mapInfo = { cells: W * H, free, parts: parts.length, res: RES, need: r6(need) };
       console.log(`  ${mode} round ${round}: fit [${rect.join(', ')}], ${parts.length} hulls in the band, ${free} of ${W * H} cells free`);
@@ -179,12 +194,12 @@ for (const kind of KINDS) {
       // the candidates in the family's order; a seat is ADMITTED only if its seated build adds no boot
       // warning the arc build at this fit lacks (the hammer's new station must not cost any other part
       // its own assert — the fold rule's P3: the move is refused, never paid for), tried four deep
-      const pool = pickSeat(mode, res, arc.seat.pivot);   // the round build's hammer pivot, which the fold moves least
+      const pool = pickSeat(kind, mode, res, arc.seat.pivot, rect, need);
       if (!pool.length) { console.log(`  ${mode}: no seat the lever reaches`); break; }
       let seated = null, pick = null, fallback = null;
-      for (const cand of pool.slice(0, 4)) {
+      for (const cand of pool.slice(0, DEPTH)) {
         const sh = (q) => q.map((v) => v.toFixed(2)).join(', ');
-        console.log(`  ${mode}: ${cand.label} (${cand.fam}), L ${cand.L.toFixed(2)} u, f ${cand.f.map((v) => v.toFixed(0)).join(' / ')} Hz, out of plane ${cand.fo.map((v) => v.toFixed(0)).join(' / ')}; free end (${sh(cand.pts[0])}), foot (${sh(cand.pts.at(-1))}); pivot (${sh(cand.hammer.pivot)}), moved ${cand.pivotMoved.toFixed(2)} u`);
+        console.log(`  ${mode}: ${cand.label} (${cand.fam}), L ${cand.L.toFixed(2)} u, f ${cand.f.map((v) => v.toFixed(0)).join(' / ')} Hz, out of plane ${cand.fo.map((v) => v.toFixed(0)).join(' / ')}; free end (${sh(cand.pts[0])}), foot (${sh(cand.pts.at(-1))}); pivot (${sh(cand.hammer.pivot)}), moved ${cand.pivotMoved.toFixed(2)} u; its wire needs ${cand.wide.toFixed(2)} u across`);
         const st = cand.blow === 'tangent' ? GS.seatStrikeEnd(GS.seatCurve(rowCurve(cand)), lever)
           : GS.seatStrike(GS.seatCurve(rowCurve(cand)), lever, S.wireR, cand.hammer.side, cand.hammer.at * 0.25);
         // the row stores a spiral's end to 1e-12 (rowCurve), so the residual its pivot carries is float noise
@@ -262,6 +277,7 @@ for (const kind of KINDS) {
         if (sameRect(u, rect) && seatWarn) { console.log('  the union does not move and the seat still warns: refused'); break; }
         rect = u;
       }
+    }
     }
     if (closed) rows[mode] = row;
     else { console.error(`  ${kind} ${mode}: the fit and the seat did not close`); if (mode === 'bar') failed = true; }

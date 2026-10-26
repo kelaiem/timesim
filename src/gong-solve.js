@@ -353,12 +353,12 @@ export const solveGong = (map, opts, progress = () => {}) => {
   const err = (r) => Math.abs(Math.log2(r.f[0] / fT));
   const rank = { pitch: (a, b) => err(a) - err(b) || b.slack - a.slack, clean: (a, b) => (b.clean - a.clean) || err(a) - err(b), room: (a, b) => b.slack - a.slack };
   out.sort(rank[opts.rank] || rank.pitch);
-  // four per family, the first of them from distinct placements (each side, each column, each
+  // four per family (opts.perFamily), the first of them from distinct placements (each side, each column, each
   // quarter of the case) so one good spot cannot fill a family's list with copies of itself
-  const top = [];
+  const top = [], nPer = opts.perFamily ?? 4;
   for (const f of ['near', 'edge', 'column', 'spiral', 'any']) { const mine = out.filter((o) => o.fam === f), seenS = new Set(), pick = [];
-    for (const o of mine) if (pick.length < 4 && !seenS.has(o.spread)) { seenS.add(o.spread); pick.push(o); }
-    for (const o of mine) if (pick.length < 4 && !pick.includes(o)) pick.push(o);
+    for (const o of mine) if (pick.length < nPer && !seenS.has(o.spread)) { seenS.add(o.spread); pick.push(o); }
+    for (const o of mine) if (pick.length < nPer && !pick.includes(o)) pick.push(o);
     top.push(...pick); }
   return { results: top, counts: { placements: cands.length + (opts.edge ? sol.filter((s) => s.fam === 'edge').length : 0), reach: sol.length, judged: out.length } };
 };
