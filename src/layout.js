@@ -303,7 +303,15 @@ export const SPEC = (() => {
   // the mirror LINE's azimuth in degrees through the hand centre; 'diag' is 45° (y = x)
   const alarmMirror = raw.alarmMirror === 'diag' ? 45
     : (raw.alarmMirror !== undefined && raw.alarmMirror !== null && raw.alarmMirror !== '' && Number.isFinite(Number(raw.alarmMirror))) ? Number(raw.alarmMirror) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat, alarmMirror });
+  // THE LINK'S SITE AND ITS MEASURED CONSTANTS, forced (tools/alarm-link-sites.mjs' handles, never a user's): linkSite
+  // 'k,run,tab' takes that site from the link's solve, linkConst 'bodyLen,rodLen,guideHalfT' cuts the chain to those
+  // quotations, linkScan publishes the solve's whole ranking. src/alarm-link-sites.js carries what they converged to.
+  const num3 = (v) => { if (typeof v !== 'string') return null; const a = v.split(',').map(Number); return a.length === 3 && a.every(Number.isFinite) ? a : null; };
+  const _ls = num3(raw.linkSite), _lc = num3(raw.linkConst);
+  const linkSite = _ls ? Object.freeze({ k: _ls[0], run: _ls[1], tabDeg: _ls[2] }) : null;
+  const linkConst = _lc ? Object.freeze({ bodyLen: _lc[0], rodLen: _lc[1], guideHalfT: _lc[2] }) : null;
+  const linkScan = raw.linkScan === '1' || raw.linkScan === true ? true : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat, alarmMirror, linkSite, linkConst, linkScan });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:

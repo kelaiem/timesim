@@ -268,6 +268,9 @@
       formrect: { field: 'formRectSpec', parse: String }, // §307 landing 2 / §308 — the FITTED form shape's BOUNDS, xMin,xMax,yMin,yMax in movement units, whatever its kind (__clock.formFootprint.rect after a first boot; tools/form-layout.mjs --dump prints it)
       case: { field: 'caseShape', parse: String }, // §307/§308 — the case's outline, a kind of layout.js's shape library: 'rect' | 'cushion' | 'tonneau' cut plates, dial and case to that shape, fitted to the movement (absent or anything else = round, as designed)
       alarmmirror: { field: 'alarmMirror', parse: String }, // the alarm module MIRRORED across a line through the hand centre: its azimuth in degrees, or 'diag' for y = x (the module is built as designed and stands in the reflection); absent = as designed
+      linksite: { field: 'linkSite', parse: String },   // tools/alarm-link-sites.mjs: force the link's site 'k,run,tab'
+      linkconst: { field: 'linkConst', parse: String }, // tools/alarm-link-sites.mjs: the link's measured constants 'bodyLen,rodLen,guideHalfT'
+      linkscan: { field: 'linkScan', parse: String },   // tools/alarm-link-sites.mjs: publish the link solve's whole ranking
       gong: { field: 'gongSeat', parse: String }, // §310 landing 2 — the gong's seat on a form build: 'bar' (the default under ?case=), 'spiral', or 'arc' (the round build's arc); src/gong-seats.js, generated, says where each stands
       // §36 Apply — a committed route, and the bush stations frozen with it.
       // These are the tier's first NON-NUMERIC knobs, which is why the rows
