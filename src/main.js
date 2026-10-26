@@ -2536,6 +2536,16 @@ const LAYOUT_INPUTS = {
   // layout.js's D4 constant, so identity never even re-multiplies a float.
   ...(SPEC.d4 !== null ? { d4: SPEC.d4 } : {}),
 };
+// §308 landing 5 — IS THE TRAIN THE DESIGNED ONE? True when any key that
+// re-solves or turns the going train's stations (the three step angles, d4,
+// the case rotation, the stem's azimuth) is present. Two kinds of site read
+// it: a satellite whose MEASURED constant describes the shipped default and
+// is only a tripwire there (the quick-set's station and span), and a WORLD
+// heading that must turn with the stem (the setting fold's leg 1). The
+// identity spec reads false and every expression it guards keeps its
+// original form, so the round build does not move a byte.
+const TRAIN_ARRANGED = SPEC.barrelStepDeg !== null || SPEC.escapeStepDeg !== null || SPEC.balanceStepDeg !== null
+  || SPEC.d4 !== null || SPEC.crownAzDeg !== null || SPEC.stemAzDeg !== null;
 // TODO 147 — THE SPRING STANDS INSIDE THE BALANCE IT SPRINGS. makeBalanceWheel
 // trims its timing screws' protrusion because the tips set the balance's true
 // swept radius, and every neighbour — the cock's T-foot legs, the fork-pivot
@@ -2556,6 +2566,17 @@ const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayo
   ...LAYOUT_INPUTS,
   warn: (m) => console.warn(m),
 });
+// §308 landing 5 — THE BARREL'S OWN TURN off the design, in degrees, wrapped
+// to (−180, 180]. The fusee stands at 180° + BARREL_STEP_DEG = 145° as designed
+// (solveLayout steps the centre off it and shifts the centre to the hands), so
+// whatever a spec key did to the train, its turn is the solved station's
+// azimuth less that. The sites that ride the BARREL rather than the stem read
+// this one (the fusee window's web phase); the stem's own turn, STEM_TURN_DEG
+// with the keyless constants below, reads the solved stem azimuth and is the
+// same number whenever the stem follows the barrel (§13), and differs under
+// `?stemaz=`. EXACTLY 0 on the designed train, by the same rule as there.
+const wrapDeg = (d) => ((((d + 180) % 360) + 360) % 360) - 180;
+const FUSEE_TURN_DEG = TRAIN_ARRANGED ? wrapDeg(Math.atan2(P.barrel.y, P.barrel.x) / DEG2RAD - (180 + BARREL_STEP_DEG)) : 0;
 
 // Keyless-works geometry constants — declared before the plate radius
 // because the setting cluster extends OUTBOARD of the pulled-out sliding
@@ -7035,6 +7056,20 @@ const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dial
 // bounded this heading is gone from this side; the heading is HELD (the fold is
 // solved and proven at it), and the bound it records is now slack.
 const MW_FOLD_LEG1_HEADING_DEG = -46.87;   // the scan at 0.25°: this ray reads 0.55 exactly, the next (−46.62°) 0.5374
+// §308 landing 5 — AND IT TURNS WITH THE STEM. The heading was measured in the
+// movement's XY with the stem at its designed azimuth, 180° + BARREL_STEP_DEG
+// = 145° (the stem follows the barrel, §13), and everything it was measured
+// against — A, the Yoke, the run — rides the keyless cluster, which
+// solveKeyless turns with the stem (`?barrelstep=`, `?stemaz=`, `?crownaz=`).
+// A world literal left standing while its frame turned is what §308 landing 4
+// found in the link's tab grid, and under `?barrelstep=0` it read leg 1's
+// swing as 32.7° off a run the fold cannot house. So the heading used is the
+// measured one plus the stem's turn off the design. The turn is written as
+// EXACTLY 0 on the designed train rather than as a measured difference of two
+// floats (`stemAngle` is an atan2 of the solved station and lands 1e-14 off),
+// because −46.87 + 0 is −46.87 and the fingerprint holds the identity.
+const STEM_TURN_DEG = TRAIN_ARRANGED ? wrapDeg(stemAngle / DEG2RAD - (180 + BARREL_STEP_DEG)) : 0;
+const MW_FOLD_LEG1_HEADING_W_DEG = MW_FOLD_LEG1_HEADING_DEG + STEM_TURN_DEG;
 // (§234 Landing 2 step 3a measured that no SECTION closes the straight run —
 // the ceiling wanted r 0.687 in a 1.38 u window, and moving Z_RSV, swinging
 // CAP_BEARING, shrinking the corner and necking the rod were each tried and
@@ -7116,7 +7151,22 @@ const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING
 // Minute wheel world XY: dialFace is Y-flipped, so dial-local +x maps to
 // world −x. The cap pinion sits one mesh distance from its axis, on the
 // keyless side so the traverse is the short way in.
-const MW_WORLD = { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
+// §308 landing 5 — AND THE STUD TURNS WITH THE STEM. The wheel's station is
+// a direction from the hands (MW_CENTER_D is its mesh distance to the cannon
+// pinion; the direction was "horizontal, away from both sub-dial wells"), and
+// the traverse that drives it runs from A, which rides the stem. Under a
+// turned train (`?barrelstep=`, `?stemaz=`, `?crownaz=`) the stem at 180°
+// stood ON this fixed station and the fold's run lost the barrel's side: the
+// cap-bearing scan refused all ±60° with "the rays do not meet". So the
+// station is the designed one turned by the stem's own turn, which keeps A,
+// the wheel and the barrel in the one frame the fold was solved in; the
+// dial-local stud (MW_STUD, far below) is this point read through the dial's
+// Y-flip. Exactly the original expression on the designed train (STEM_TURN is
+// 0 there, and the branch is not taken), so the round build keeps its bytes.
+const STEM_TURN = STEM_TURN_DEG * DEG2RAD;
+const MW_WORLD = TRAIN_ARRANGED
+  ? { x: P.dial.x - MW_CENTER_D * Math.cos(STEM_TURN), y: P.dial.y - MW_CENTER_D * Math.sin(STEM_TURN) }
+  : { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
 const capMeshD = (MW_MODULE_1 * (SETTING_CAP_TEETH + MW_MINUTE_TEETH)) / 2;
 const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborXY.y - MW_WORLD.y).normalize();
 // §136 — THE CORNER YIELDS, BECAUSE IT IS THE ONE THAT CAN. The reserve's p1
@@ -7700,7 +7750,7 @@ function solveSettingFold(B) {
   // barrel's side of the run, which flips when B carries the run across the
   // barrel's axis (it does, within 6° of the short way in), and the fold's
   // whole frame flipped with it while the heading stood still.
-  let turn = MW_FOLD_LEG1_HEADING_DEG - Math.atan2(u.y, u.x) / DEG2RAD;
+  let turn = MW_FOLD_LEG1_HEADING_W_DEG - Math.atan2(u.y, u.x) / DEG2RAD;
   turn = ((turn + 540) % 360) - 180;
   const side = turn >= 0 ? 1 : -1;
   const alphaDeg = side * turn;                                  // leg 1's swing off THIS run, toward K's side
@@ -8998,7 +9048,7 @@ const MW_FOLD_OBSTACLE_CLEAR = (() => {
 {
   if (!(MW_FOLD.alphaDeg > 0 && MW_FOLD.alphaDeg < 30))
     console.warn(`§234 fold: leg 1's swing off the run reads ${MW_FOLD.alphaDeg.toFixed(3)}° — the measured heading `
-      + `MW_FOLD_LEG1_HEADING_DEG ${MW_FOLD_LEG1_HEADING_DEG} no longer lies within the fold's range of the run B gives (re-measure it)`);
+      + `MW_FOLD_LEG1_HEADING_DEG ${MW_FOLD_LEG1_HEADING_DEG}${STEM_TURN_DEG ? ` (turned with the stem to ${MW_FOLD_LEG1_HEADING_W_DEG.toFixed(2)}°)` : ''} no longer lies within the fold's range of the run B gives (re-measure it)`);
   // the column bound, re-read off the result: a figure computed two ways
   const missCol = Math.abs((P.barrel.x - MW_FOLD.K.x) * -MW_FOLD.leg2U.y + (P.barrel.y - MW_FOLD.K.y) * MW_FOLD.leg2U.x);
   if (Math.abs(missCol - MW_FOLD.needCol) > 1e-9)
@@ -16046,6 +16096,14 @@ const TQ_WINDOW_INTENTS = [
       for (let i = 0; i <= 64; i++) r = Math.max(r, fuseeGrooveAt((i / 64) * FUSEE_F_ACTIVE).r);
       return r + CHAIN_END_R_OUT + CLEAR_MARGIN;
     },
+    // §308 landing 5 — THE WEBS TURN WITH THE FUSEE. A window open all the way
+    // round takes its three webs by an even split that starts at bearing 0 of
+    // the MOVEMENT's frame, so under `?barrelstep=` the webs stood still while
+    // the chain, the arrest and its stud turned with the cone: a 30° turn put
+    // the finger's stud (−36° as designed) on the web at 0° and the beak scan
+    // lost its only legal stations. The split is phased by the barrel's own
+    // turn, which is exactly 0 on the designed train.
+    phaseDeg: () => FUSEE_TURN_DEG,
   },
   // §148 — THE ESCAPEMENT WINDOW IS WITHDRAWN, and the reason is the thing it
   // was islanding. §115's entry framed the escape wheel by cutting an annulus
@@ -16452,6 +16510,12 @@ function solveTqWindows() {
     // and it was the first thing the solve actually did.
     const webSpan = boss ? wanted - r0 : 0;
     const webW = boss ? tqWebWidthFor(webSpan) : 0;
+    // §308 landing 5 — a full-round run's even split starts at the intent's
+    // own phase (the fusee's: the barrel's turn), never at the movement's 0°.
+    // Absent or 0, the run is the one it was; rOut is read modulo 360 below.
+    const phaseDeg = intent.phaseDeg ? ((intent.phaseDeg() % 360) + 360) % 360 : 0;
+    if (boss && phaseDeg !== 0 && runs.length === 1 && runs[0].a === 0 && runs[0].b === 360)
+      runs[0] = { a: phaseDeg, b: phaseDeg + 360 };
     // A run too narrow to be a window is not a web either — it is a nick in
     // the plate that leaves NO opening once the two web edges have trimmed it.
     // Counting them was how the fusee came back with "three webs" of which one
@@ -20056,8 +20120,13 @@ const MW_BORE_R = MW_STUD_R + PIVOT_BORE_CLEAR;
     console.warn(`TODO 172: the setting cap covers the minute wheel's plate face by ${(capFaceW - wheelFaceW).toFixed(4)} — need MW_COVER + its own bevel ${need.toFixed(4)}`);
 }
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
-// and below the centre).
-const MW_STUD = { x: MW_CENTER_D, y: 0 };
+// and below the centre) — and since §308 landing 5 turned with the stem on an
+// arranged train: MW_WORLD read through the dial's Y-flip (dial x = −world x),
+// so the wheel the traverse reaches and the stud the jumper rides are one
+// station. The designed train keeps the literal.
+const MW_STUD = TRAIN_ARRANGED
+  ? { x: P.dial.x - MW_WORLD.x, y: MW_WORLD.y - P.dial.y }
+  : { x: MW_CENTER_D, y: 0 };
 
 const motionWorks = new THREE.Group();
 dialFace.add(motionWorks);
@@ -25545,7 +25614,7 @@ function alarmSetHoldRecord() {
 // §29 step 2 corridor — every wall the branch threads, asserted with the
 // achieved and required numbers (the §25 C discipline):
 {
-  const mwc = { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
+  const mwc = MW_WORLD;   // §308 landing 5 — the wheel's station as placed (turned with the stem on an arranged train), not a second copy of its direction
   const mwTip = (MW_MODULE_1 * MW_MINUTE_TEETH) / 2 + 1.25 * MW_MODULE_1;
   const i1bTip = (ALARM_BRANCH_MODULE * ALARM_SET_I1_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
   const rimTip = (ALARM_BRANCH_MODULE * ALARM_DISC_TEETH) / 2 + 1.25 * ALARM_BRANCH_MODULE;
@@ -37900,6 +37969,13 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     'Three-quarter plate', 'plate', 'Dial', 'Hack rod', 'Reset rod',
     'Alarm selector']); // the selector is the link's OUTPUT — the chord ends on its ring tab
   const SEAT_PRICED = /^alarmCol(Base|Castellations)$/;
+  // §308 landing 5 — the units `?alarmmod=` carries RIGIDLY with the module
+  // (§308 landing 3 measured them: the strike train's eight, and the switch
+  // whose column stands on the module's own station). Their boxes are taken in
+  // the module's frame below; the winding train, the arrest and this link are
+  // re-solved per turn and keep world boxes.
+  const ALARM_MODULE_RIGID = new Set(['Alarm switch', 'Alarm lock', 'Alarm striking wheel', 'Alarm governor',
+    'Alarm governor anchor', 'Alarm lifting lever', 'Alarm hammer', 'Alarm barrel', 'Alarm click']);
   movement.updateMatrixWorld(true);   // the fold groups' members are read in world below
   // §234 Landing 5 — THE SEARCH READS THE PRE-RISE PLANE, ON PURPOSE. The
   // task record is explicit that this landing spends no P3 currency: "the
@@ -37993,6 +38069,28 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
         const _mw = pp.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
         for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); _tmpV3a.applyMatrix4(_mw); r = Math.max(r, Math.hypot(_tmpV3a.x - ax, _tmpV3a.y - ay)); }
         obs.push({ disc: { x: axis.x, y: axis.y, r }, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(disc r ${r.toFixed(1)} at ${axis.x.toFixed(1)},${axis.y.toFixed(1)} z ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)})` });
+      } else if (ALARM_MOD_ROT !== 0 && ALARM_MODULE_RIGID.has(e.name)) {
+        // §308 landing 5 — A PART THAT TURNS WITH THE MODULE IS BOXED IN THE
+        // MODULE'S FRAME. A world box of a rigid neighbour inflates as the pair
+        // turns (the instruments skill's rotated bounding box; §308 landing 4
+        // item 2 measured the beak pivot against the switch's own column skirt
+        // at 0.638 / 0.777 / −0.915 for 40° / 50° / 60° of ONE rigid pair, and
+        // at 80° it read −1.727 and refused the measured site). The box is
+        // taken over the vertices turned back by the module's rotation about
+        // the hands, and dToBox turns the query point the same way, so the
+        // pair measures as it does at identity. Rotors and stadiums are exact
+        // already and keep their branches; identity never reaches this one.
+        const pp = o.geometry.attributes.position, _mw = worldMatrixOf(o);
+        const cs = Math.cos(ALARM_MOD_ROT), sn = Math.sin(ALARM_MOD_ROT);
+        const bm = { min: { x: Infinity, y: Infinity, z: b.min.z }, max: { x: -Infinity, y: -Infinity, z: b.max.z }, rot: ALARM_MOD_ROT };
+        for (let i = 0; i < pp.count; i++) {
+          _tmpV3a.fromBufferAttribute(pp, i); _tmpV3a.applyMatrix4(_mw);
+          const xr = _tmpV3a.x * cs + _tmpV3a.y * sn, yr = -_tmpV3a.x * sn + _tmpV3a.y * cs;
+          if (xr < bm.min.x) bm.min.x = xr; if (xr > bm.max.x) bm.max.x = xr;
+          if (yr < bm.min.y) bm.min.y = yr; if (yr > bm.max.y) bm.max.y = yr;
+        }
+        bm._who = `${e.name}/${o.name || o.geometry.type}(module frame)`;
+        obs.push(bm);
       } else {
         b._who = `${e.name}/${o.name || o.geometry.type}`;
         obs.push(b);
@@ -38000,7 +38098,13 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     });
   }
   const inBand = (b, band) => b.min.z < band[1] && b.max.z > band[0];
-  const dToBox = (x, y, b) => b.disc
+  const dToBox = (x0, y0, b) => {
+    // a module-frame box reads the point in its own frame (see the builder)
+    let x = x0, y = y0;
+    if (b.rot) { const cs = Math.cos(b.rot), sn = Math.sin(b.rot); x = x0 * cs + y0 * sn; y = -x0 * sn + y0 * cs; }
+    return _dToBoxAt(x, y, b);
+  };
+  const _dToBoxAt = (x, y, b) => b.disc
     ? Math.max(0, Math.hypot(x - b.disc.x, y - b.disc.y) - b.disc.r)
     : b.stad
       ? Math.max(0, (() => {
@@ -38221,7 +38325,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     if (!inBand(b, tabBand)) return false;
     const cx0 = b.disc ? b.disc.x : (b.min.x + b.max.x) / 2;
     const cy0 = b.disc ? b.disc.y : (b.min.y + b.max.y) / 2;
-    return Math.hypot(cx0, cy0) > 7;
+    return Math.hypot(cx0, cy0) > 7;   // a module-frame box is turned about the hands, so its centre's radius is the same number
   });
   // Two pieces per candidate: the crank/fork core about the tab itself
   // (TAB_R), and the FORK BLOCK at its modelled plan seat (the rim guard's
@@ -38397,10 +38501,16 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   // and the chord drifts to 9.8156 against the hoisted 9.991). So the measured
   // site is taken when it clears CLEAR_MARGIN; when it does not, the turn has
   // a real conflict, and the warning names it before the drift asserts fire.
-  if (SPEC.alarmModAzDeg !== null) {
+  // §308 landing 5 — AND SO DOES AN ARRANGED TRAIN. The link's neighbours on
+  // the stem's side (the minute wheel and its jumper, the reserve) turn with
+  // `?barrelstep=` while the module stands, and the max-min score walked off
+  // the measured site the same way (to k 0, run 9.5, tab 120° at
+  // `barrelstep=0`, with the whole drift chain behind it). The rule is the
+  // same: the measured site wherever it clears, a named refusal where not.
+  if (SPEC.alarmModAzDeg !== null || TRAIN_ARRANGED) {
     if (measured && measured.c >= CLEAR_MARGIN) best = measured;
-    else console.warn(`§308: the turned module refuses the link's measured site (k ${ALARM_LINK_MEASURED_SITE.k}, run ${ALARM_LINK_MEASURED_SITE.run}, `
-      + `tab ${ALARM_LINK_MEASURED_SITE.tabDeg}° + the module's turn) — it clears ${measured ? measured.c.toFixed(3) : 'nothing (guarded out)'}, bound by `
+    else console.warn(`§308: the ${SPEC.alarmModAzDeg !== null ? 'turned module' : 'arranged train'} refuses the link's measured site (k ${ALARM_LINK_MEASURED_SITE.k}, run ${ALARM_LINK_MEASURED_SITE.run}, `
+      + `tab ${ALARM_LINK_MEASURED_SITE.tabDeg}°${SPEC.alarmModAzDeg !== null ? ' + the module\'s turn' : ''}) — it clears ${measured ? measured.c.toFixed(3) : 'nothing (guarded out)'}, bound by `
       + `${measured ? measured.who : '-'}; every other site drifts the constants measured there`);
   }
   await breathe(281);
@@ -59950,7 +60060,14 @@ if (!JMP_SITE.best) {
 {
   // The span bound, re-read at the station that ships (see its declaration).
   const bound = jmpLifterSpanBoundAt(JMP_AZ);
-  if (bound < JMP_LIFTER_SPAN_MEASURED)
+  // §308 landing 5 — both tripwires below hold the SHIPPED station: the span
+  // and the azimuth were measured on the designed train, and a train that a
+  // spec key re-solved or turned re-sites the jumper legitimately (the solve's
+  // own job), where neither measured number describes the metal. There the
+  // moved values are published on `__clock.jumperSite` (azDeg, spanBound,
+  // trainArranged) and the probes read them; the tripwires fire on the
+  // designed train exactly as before.
+  if (!TRAIN_ARRANGED && bound < JMP_LIFTER_SPAN_MEASURED)
     console.warn(`minute quick-set: the lifter's span bound is ${bound.toFixed(4)} against a measured span of ${JMP_LIFTER_SPAN_MEASURED} — it does not bound the span, so the frame it was taken in is wrong`);
   // The bearing STATION, as a tripwire rather than a constraint. The solve is
   // free to re-site the jumper when the metal moves — that is what it is for —
@@ -59959,7 +60076,7 @@ if (!JMP_SITE.best) {
   // noticed and re-verified, and carry the measured value rather than an
   // inherited claim.
   const azDeg = ((JMP_AZ / DEG2RAD) % 360 + 360) % 360;
-  if (Math.abs(azDeg - JMP_AZ_MEASURED_DEG) > 1e-6)
+  if (!TRAIN_ARRANGED && Math.abs(azDeg - JMP_AZ_MEASURED_DEG) > 1e-6)
     console.warn(`minute quick-set: the siting solve re-sited the jumper to ${azDeg.toFixed(4)}° (was ${JMP_AZ_MEASURED_DEG}°) — legal, but re-verify the lifter's run and update this number`);
 }
 // TODO 156 — the jumper's reach is INDIFFERENT to the four movement-wide
@@ -60608,7 +60725,8 @@ window.__clock = {
     bearingDeg: CAP_BEARING / DEG2RAD, swingDeg: rsvSwing / DEG2RAD,
     rsvLineDeg: Math.atan2(rsvU.y, rsvU.x) / DEG2RAD,
     A: { x: settingA.x, y: settingA.y }, K: { x: MW_FOLD.K.x, y: MW_FOLD.K.y }, B: { x: settingB.x, y: settingB.y },
-    runHeadingDeg: Math.atan2(settingU.y, settingU.x) / DEG2RAD, leg1HeadingDeg: MW_FOLD_LEG1_HEADING_DEG,
+    runHeadingDeg: Math.atan2(settingU.y, settingU.x) / DEG2RAD, leg1HeadingDeg: MW_FOLD_LEG1_HEADING_W_DEG,
+    leg1HeadingMeasuredDeg: MW_FOLD_LEG1_HEADING_DEG, stemTurnDeg: STEM_TURN_DEG,   // §308 landing 5 — the heading as used is the measured one turned with the stem
     alphaDeg: MW_FOLD.alphaDeg, side: MW_FOLD.side, beta2Deg: MW_FOLD.beta2 / DEG2RAD, phiDeg: MW_FOLD.phi / DEG2RAD, needCol: MW_FOLD.needCol,
     shaftAngleDeg: MW_FOLD.shaftAngleDeg, module: MW_FOLD_MODULE, templateModule: BEVEL_MODULE,
     blankThinnest: MW_FOLD_BLANK_THINNEST, stockMinU: STOCK_MIN_U_FOLD,
@@ -60637,6 +60755,7 @@ window.__clock = {
   // tools/probe-150-fold-sense.mjs: the station it settled on and what it cost.
   jumperSite: Object.freeze({
     azDeg: ((JMP_AZ / DEG2RAD) % 360 + 360) % 360, measuredDeg: JMP_AZ_MEASURED_DEG,
+    trainArranged: TRAIN_ARRANGED, spanBound: jmpLifterSpanBoundAt(JMP_AZ), spanMeasured: JMP_LIFTER_SPAN_MEASURED,   // §308 landing 5 — the tripwires' inputs, published where a moved train silences them
     clr: JMP_SITE.best ? JMP_SITE.best.clr : null, capD: JMP_SITE.best ? JMP_SITE.best.capD : null,
     score: JMP_SITE.best ? JMP_SITE.best.score : null, sat: JMP_SITE_SAT, capDWeight: JMP_SITE_CAPD_W,
     tested: JMP_SITE.tested, candidates: JMP_SITE.candidates, stepDeg: JMP_SITE.stepDeg, ms: JMP_SITE.ms,
