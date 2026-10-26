@@ -179,8 +179,10 @@ for (const kind of KINDS) {
     if (!first.seat?.arrKey) { console.error('  the page publishes no arrangement key (gongSeat.arrKey)'); failed = true; break; }
     if (CUR_KEY && CUR_KEY !== first.seat.arrKey) { console.error(`  the arrangement key moved between kinds (${CUR_KEY} → ${first.seat.arrKey})`); failed = true; break; }
     if (!CUR_KEY) { CUR_KEY = first.seat.arrKey; committed = FILE.arranged[CUR_KEY] ?? {}; derived = JSON.parse(JSON.stringify(committed)); console.log(`  arrangement ${CUR_KEY}`); }
-    CUR_SPECKEY = first.seat.specKey;
   }
+  // the row's spec key is the BUILD's own, read off the page: a form case is cased on layout.js' FORM_ARRANGEMENT,
+  // which Node's SPEC (no URL) does not carry, so a key computed here would refuse every seat it wrote
+  CUR_SPECKEY = first.seat?.specKey ?? null;
   const rows = {};
   for (const m of ['bar', 'spiral']) if (!MODES.includes(m) && committed[kind]?.[m]) rows[m] = committed[kind][m];
   // EACH SEAT CLOSES ITS OWN FIT: the bar and the spiral move the hammer to different stations, so each is
