@@ -29,13 +29,22 @@
 //       (read off build D, not typed); the cased width, hands centred, is
 //       REPORTED — the swing alone leaves the hammer on the right edge.
 //   A   the ARRANGEMENT (swing + module at 80°): the two form warnings plus the
-//       two residues this landing names — TODO 206's shared guide-triangle
-//       margin (follower B's seat at the nose's margin, §308 landing 4's
-//       residue at every turned module) and the alarm pusher bar over the
-//       turning target (the pusher exits through the corner from 80°) — and
-//       nothing else; no alarm-arrest, dogleg or link-site warning; the hammer is
-//       the metal's yMax binder and the strike group's xMax is under the
-//       design's; width under the cap.
+//       two residues named on it — TODO 206's shared guide-triangle margin
+//       (follower B's seat at the nose's margin, §308 landing 4's residue at
+//       every turned module), and §164's return coil asking 104.9 mN of the
+//       finger at the bottom of the stroke, over the tenth of a fingertip the
+//       assert allows — and nothing else. The second is what the pusher's
+//       stem costs on this arrangement: the landing's own second residue, the
+//       alarm pusher bar over the turning target where the pusher exits
+//       through the corner from 80° (L/D 20.6 at stem stock), closed when §234
+//       derived the stem's radius from its bar — max(stem stock,
+//       L / (2 · TURN_LD_TARGET)), so the bar reads AT the target and that
+//       warn is gone, a stray here if it ever returns — and the thicker stem
+//       takes a thicker return wire at the spring-index target and the fewest
+//       coils that survive the shear, a stiffer coil by the stem's square. No
+//       alarm-arrest, dogleg or link-site warning; the hammer is the metal's
+//       yMax binder and the strike group's xMax is under the design's; width
+//       under the cap.
 //   C   CONTROL: the swing WITHOUT the reserve carried round must print the
 //       cap-bearing refusal — the instrument sees the failure it exists for.
 // Each form build is booted at the `formrect=` it fits (FORM_FOOTPRINT's own
@@ -87,7 +96,11 @@ const BUILDS = [
 ];
 const FORM_SHARED = [/^warning: §186: the rim-to-bore fit/, /^warning: §261: cased assembly/];
 const DESIGN_OWN = [/^warning: TODO 266: the strike group's opening/, /^warning: §307\/§308: the movement's counted metal/];
-const RESIDUE = [/^warning: TODO 206 arming spring: follower-B's seat sits at the nose's margin/, /^warning: §234: the alarm pusher bar is L\/D/];
+// The pusher-bar row (§234, L/D over the turning target) left this list when the
+// stem was sized to its bar; the return coil's row is what that thicker stem
+// costs the finger on this arrangement, named in docs/built/0308.md.
+const RESIDUE = [/^warning: TODO 206 arming spring: follower-B's seat sits at the nose's margin/,
+  /^warning: §164: the return coil alone wants [\d.]+ mN at the bottom of the stroke/];
 const ALLOWED = { R: [], E: [], D: [...FORM_SHARED, ...DESIGN_OWN], S: FORM_SHARED, A: [...FORM_SHARED, ...RESIDUE] };
 
 const run = only ? BUILDS.filter((b) => b.id === only) : BUILDS;

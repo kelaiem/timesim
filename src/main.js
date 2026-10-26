@@ -27819,6 +27819,337 @@ const PLATE_RIM = (() => {
   return FORM ? { front, back, reach, floors, formOut } : { front, back, reach, floors };
 })();
 await breathe(200);
+// ============================================================================
+// §234 (§308 landing 5's residue) — THE ALARM PUSHER'S BAR, DERIVED BEFORE ITS
+// STEM IS SIZED. The stem's radius is read by the gong block just below (the
+// ring's ceiling hangs off the stem's underside), by the §187 band region, the
+// pusher's guides and the §43 head — thousands of lines before the pusher is
+// built — and its second constraint, §233's turning target, is a function of
+// the BAR's length: stem plus cap, one piece of stock (`turning` clusters
+// coaxial meshes at consecutive stations). On the round case the bar is
+// 26.0 u and the stem-stock floor governs (L/D 14.1 at r 0.924). On the §308
+// arrangement (`?case=rect&barrelstep=0&rsvaz=36&alarmmod=80`) the pusher
+// exits through the rect's upper-right corner and the bar reads 38.01 u —
+// L/D 20.6 at the floor, over the target AND over TURN_LD_MAX — which the old
+// §234 assert at the cap's build could only WARN about, while its own comment
+// promised the stem would be "re-derived from its length, never waived". The
+// alarm crown's stem (§234 landing 2 step 4) and the striking staff (§261 2c)
+// already take max(stock, L / (2 · TURN_LD_TARGET)); the pusher's stem takes
+// the same below, which needs the length FIRST. So the station the length
+// turns on is HOISTED here, every block verbatim with its reasoning (TODO 184's
+// precedent, one hoist further up): the stop wheel's radii (the lock's engaged
+// pose is solved against them), the lock lever's triangle, pivot and engaged
+// azimuth and the column wheel's station off it, the wheel's count and step,
+// the press travel, the coupling's offset, the press line and the pusher's base
+// on it, and the bar's own stations — its inner end, its seat on the case wall
+// and its head. Nothing here is a new number: every expression is the one its
+// old site carried, evaluated earlier, and each old site keeps a pointer.
+// What the length turns on that is NOT yet built is the column wheel's drive
+// sense (the press line is rotated WITH it, §170): that is geometry.js's one
+// constant now, COLUMN_WHEEL_RATCHET_DRIVE, which the built wheel publishes as
+// `userData.ratchetDrive`, and the §43 postscript at the pusher's build still
+// holds the chord's sign against the built wheel.
+// The round build's fingerprint holds — 4180065205 before and after — because
+// max(floor, 26.0 / 36) IS the floor, bit for bit.
+//
+// --- The STOP WHEEL's radii (§25 B, TODO 90 finding 4). The cut's reasoning —
+// why the root circle is the old band and the teeth stand OUTWARD — stays at
+// the collar's build (grep ALARM_STOP_TEETH); the lock's engaged pose below is
+// solved against these three numbers.
+const ALARM_STOP_ROOT_R = 3.2;                                  // the §25 B band, unmoved
+const ALARM_STOP_DEPTH = STOCK_MIN_U;
+const ALARM_STOP_TIP_R = ALARM_STOP_ROOT_R + ALARM_STOP_DEPTH;
+// --- TODO 184 — HOISTED from the alarm lock and column-wheel builds below,
+// whose comments still carry the reasoning: the arrest solve that follows must
+// reject a station whose plate window cannot open, and the column wheel's
+// stud — built two thousand lines later — is the plate-crossing keep that
+// decides it when a pillar pushes the arrest inboard. Every input is a plan
+// constant, so the move changes no value; the pillar seat scan's precedent
+// (ALARM_UNDER_FOOTPRINT, "a declared list, one source, at the plan hoist").
+// (§234: the same block, one hoist further — the pusher's line is laid off
+// the column wheel's station, and the bar's length off the line.)
+const ALARM_LOCK_D = 7.0;                       // pivot → striking-wheel axis
+const ALARM_LOCK_L = 5.0;                       // pivot → pad centre
+const ALARM_LOCK_PAD_R = 0.3;
+// §102 (TODO 31): DERIVED — the item's own promise, redeemable only once a
+// spring existed to give the lift a load path. The travel is what the pad's
+// clearance demands and nothing more: released, the pad must stand one
+// margin plus the float-bind centi-unit off the collar it brakes, and the
+// angle falls out over the lever's length. (The old 0.085 was "~0.4 of the
+// radial air" — a chosen fraction of the space available, the one number
+// item 28 could not fix.)
+// TODO 90 finding 4 — RE-DERIVED, and the closed form replaces the arc.
+//
+// §102's original was (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L, which buys that
+// much ARC at the pad. But the quantity that has to clear is RADIAL from the
+// striking axis, and the two stand 18.4° apart at this lever's proportions —
+// so the 0.16 intended delivered 0.1519 measured, 94.94% of it, spending 81%
+// of the float-bind centi-unit the constant added on purpose. The projection
+// is not a correction factor to carry around: the exact relation is already
+// in the lever's own triangle, so both angles are solved from it directly.
+//
+// pad-centre distance to the striking axis at arm angle α (from the axis
+// bearing) is d(α) = √(D² + L² − 2DL·cos α), so α(d) inverts in closed form.
+// ENGAGED seats the finger tip on the stop wheel's ROOT circle; LIFTED stands
+// it one margin clear of the TIP circle. The travel is the difference, and it
+// re-derives if the tooth, the pad or the lever's triangle ever move.
+const _lockArmAt = (d) => Math.acos(clamp(
+  (ALARM_LOCK_D * ALARM_LOCK_D + ALARM_LOCK_L * ALARM_LOCK_L - d * d)
+  / (2 * ALARM_LOCK_D * ALARM_LOCK_L), -1, 1));
+const ALARM_LOCK_LIFT = _lockArmAt(ALARM_STOP_TIP_R + ALARM_LOCK_PAD_R + CLEAR_MARGIN)
+                      - _lockArmAt(ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R);
+// (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
+// at the §124 seam block beside Z_STRIKE, up by the gong build: the whole
+// strike tier rides TQ_TOP_Z now instead of restating the pre-§124 plate.)
+// §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
+// tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
+// bound 36.4 — the TODO 11 measurement). Swept 0..360° at 2° with the
+// wheel's RAISED band vertex-scored against every neighbouring mesh: 24°
+// puts the centre at r 24.9 with 3.26 of worst-case clearance (the gong),
+// runners-up 22°/26° at 2.8. The pivot swings around the striking wheel;
+// pad, collar, and the engaged-angle triangle are untouched derivations.
+// §112 — the identity move (160→40) folds its −120 into this literal too:
+// the §68 sweep's clearances were module-internal (the gong bound it), so
+// they ride the rigid rotation; 24 − 120 = −96, the same bearing in the
+// module's own frame.
+const ALARM_LOCK_PIV_AZ = -96 * DEG2RAD;
+const alarmLockPivot = (() => {
+  const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
+  return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
+})();
+// Engaged arm angle: pad centre sits at collar radius + pad radius from the
+// wheel axis; law of cosines at the pivot, same construction as the follower.
+const _lockAzAxis = Math.atan2(alarmSwPos.y - alarmLockPivot.y, alarmSwPos.x - alarmLockPivot.x);
+// TODO 90 finding 4: the seat is the stop wheel's ROOT circle now, not a
+// tangent on a smooth band. That one substitution is what turns the engaged
+// pose from a kiss carrying nothing into a finger inside a tooth space.
+const _lockDon = ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R;
+const ALARM_LOCK_THETA = _lockArmAt(_lockDon);
+const ALARM_LOCK_ENGAGED = _lockAzAxis + ALARM_LOCK_THETA;
+const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scale (4–6 mm on a 30 mm movement)
+const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
+const ALARM_COL_STUD_R = ALARM_COL_BORE_R - 0.06;   // the §43 running clearance under the bore (TODO 184: one name for every reader)
+const ALARM_COL_POS = {
+  x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
+  y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
+};
+// --- The column wheel's count and step (§25 D rev 2; the wheel's own reasoning
+// stays at its build, grep "the switch IS a COLUMN WHEEL").
+const ALARM_COL_COLUMNS = 6;
+const ALARM_COL_STEP = Math.PI / ALARM_COL_COLUMNS; // half a pitch per actuation
+// --- The press line. Hoisted whole from the pusher's build (§33, §163, §170),
+// each paragraph the one its number was derived under.
+// §33 (pusher handle) — THE PRESS AXIS RIDES THE MODULE, always. This was
+// briefly its own spec (?pushaz=), and that was retired by the owner's
+// call: an independent press axis parked the pusher's stem and pawl inside
+// the movement while the column, saw and lock it drives stayed at the
+// corner — a P2 self-disagreement the handle itself invited. The pusher is
+// the module's GRIP, not its own part: ?alarmmod= rotates the whole alarm
+// work and the press axis derives here from the column wheel's own station,
+// so it can never leave the toggle chain behind. The tangent construction
+// below stays azimuth-invariant (that work is what makes the module
+// rotation free), and the §43 saw-direction assert holds because the
+// chord's sign rotates with the module.
+// One press must sweep one ratchet tooth: the tooth pitch arc at the saw's
+// root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
+// throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
+const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM_COL_BASE_R);
+// §163 — THE OFFSET IS SET BY THE COUPLING, NOT BY A MOMENT ARM.
+//
+// This was `ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5)` = 4.37, and the
+// 1.15 was a bare literal — rule 1's "a number that appears because it looked
+// right". The first correction derived it as travel ÷ one tooth = 5.13, which
+// is right FOR A RIGID PAWL ON THE END OF AN ARM: for a line of action the
+// perpendicular offset IS the moment arm, so a travel s about it turns the
+// wheel s/offset, and carrying exactly one tooth wants travel ÷ step. Both
+// quantities were already in the source and both come from the same place —
+// the travel is the pitch arc AT THE SAW'S ROOT CIRCLE — so the quotient IS
+// that root circle, 0.9 · ALARM_COL_BASE_R. Against it the old 4.37 is 85.2%,
+// so the press delivered 1/0.852 = 117.39% of a tooth: TODO 87 finding 1's
+// over-carry was never a surplus to absorb in a spring, it was exactly the
+// ratio of a guessed number to a derived one. That still stands.
+//
+// What does not stand is the premise. The pawl is no longer rigid on the
+// pusher: §163 pivots the DRIVER on the wheel's own arbor (so that on the
+// drive stroke there is no relative motion at the teeth to foul) and the
+// pusher reaches it through a PIN IN A RADIAL SLOT. A radial slot has its own
+// kinematics — the driver's angle IS the pin's azimuth about the arbor — so a
+// pin travelling a straight line at perpendicular offset d sweeps 2·atan(h/d)
+// over a half-stroke h, and one tooth needs
+//
+//     d = travel / (2·tan(step/2)) = 5.01226
+//
+// 2.30% inboard of the root circle, with the stroke STRADDLING the foot of the
+// perpendicular (azimuth 75° at rest, 105° pressed) or it sweeps less. Cutting
+// the pin at 5.13 instead is not a placement problem to shuffle out of:
+// minimised over EVERY start position it would want 2·5.13·tan(step/2) =
+// 2.74916 of travel where 2.68606 exists, and each press would deliver 29.3415°
+// of the 30.000° a tooth needs. So 5.13 is an INTERMEDIATE here — the moment
+// arm of a rigid pawl, the member this section deletes — and the built offset
+// derives from the coupling that replaced it.
+const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));
+//
+// §170 — AND THE LINE GOES THROUGH THE MOVEMENT'S CENTRE, which is where a
+// case pusher's tube is bored. This was `atan2(ALARM_COL_POS.y, .x)`: the
+// press DIRECTION was already radial, but the LINE was that radius displaced
+// sideways by ALARM_PUSH_CHORD, so its axis missed the centre by 5.01226 and
+// crossed the case band 6.213° off the band's own normal — a tube bored
+// askew, which no cased watch has.
+//
+// The coupling wants exactly one thing from this line: perpendicular offset
+// ALARM_DRIVE_OFFSET from the WHEEL's centre, with the stroke straddling the
+// foot. It does not care where the line otherwise runs — `pinRest` and
+// `_pushBase` below are both written in the (û, perp) frame, so the whole
+// pin-in-slot construction is already blind to which azimuth û points. So the
+// same offset is available by ROTATING the line instead of translating it,
+// and a line through the origin achieves it at
+//
+//     Δ = asin(ALARM_DRIVE_OFFSET / |ALARM_COL_POS|) = 11.6307°
+//
+// taken WITH the saw's own drive sign, so the line stays on the side of the
+// wheel the teeth are cut for and §43's assert below is untouched. Nothing in
+// the mechanism's spec moves: the offset, the travel and the one-tooth
+// equality are the same numbers. It is a fold in position space, which is the
+// only currency P3 allows.
+//
+// `_pushBase = wheel + CHORD·perp` needs no edit and that is not luck: with
+// the azimuth above, (wheel + CHORD·perp)·perp = R·sin(θw − θs) + drive·d = 0
+// exactly, so the foot of the perpendicular lands ON the line through the
+// origin by construction.
+const _colR = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y);
+// A wheel closer to the centre than the offset its own coupling needs has NO
+// radial line at that offset — a geometric impossibility rather than a tight
+// fit, so it is named with both numbers rather than silently clamped to a
+// tangent (asin would return NaN and every station downstream would follow).
+const _colSinDelta = ALARM_DRIVE_OFFSET / _colR;
+if (!(Math.abs(_colSinDelta) <= 1))
+  console.warn(`§170: the column wheel stands ${_colR.toFixed(4)} from the movement's centre against the ${ALARM_DRIVE_OFFSET.toFixed(4)} its coupling needs — no line through the centre passes it at that offset, so the press axis cannot be radial at this station`);
+// The drive sign is read from geometry.js's constant here (the wheel is built
+// nine thousand lines on); the built wheel's `userData.ratchetDrive` IS that
+// constant, and the §43 postscript at the pusher's build holds the chord's
+// sign against the built wheel, so the two cannot part in silence.
+const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x)
+  + G.COLUMN_WHEEL_RATCHET_DRIVE * Math.asin(Math.max(-1, Math.min(1, _colSinDelta)));
+const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
+const _pushPerp = { x: -_pushU.y, y: _pushU.x };
+// Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
+// scaled with the wheel). Its SIGN is the drive direction, not a placement
+// taste: with the pawl at chord·perp + 0.85·û from the wheel centre, the
+// tangential component of its inward press works out to exactly the chord
+// (the û·perp cross-term vanishes), so
+//
+//     sign(ALARM_PUSH_CHORD) === the z-direction the pawl can drive
+//
+// Built positive, it pushed +z (CCW) while the wheel's own saw teeth are cut
+// to be driven −z — measured +0.619 against a −30°/press index, i.e. the pawl
+// dragging the wheel backwards, which a pawl cannot do. Now derived from the
+// teeth themselves and asserted at the pusher's build.
+const ALARM_PUSH_CHORD = G.COLUMN_WHEEL_RATCHET_DRIVE * ALARM_DRIVE_OFFSET;
+// The pusher's base: the wheel's centre displaced by the chord along the press
+// line's perpendicular — the foot of the perpendicular, which §170 lands ON
+// the line through the origin.
+const _pushBase = {
+  x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
+  y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
+};
+// --- The bar's stations along the line, hoisted whole from the pusher's build.
+// TODO 22 closed: the stem ENDS clear of the wheel. Its chord enters the
+// saw-tip circle at s = sqrt((tip+margin)² − chord²); the rest station
+// adds the full press travel so the pressed stem still stops there.
+//
+// WHAT THIS USED TO CLAIM, AND WHAT §163 MAKES OF IT. The sentence here read
+// "the PAWL, on its dropped carrier below the disc, is the only member that
+// reaches the teeth" — true of the STEM and false of the carrier, which
+// shared the pawl's z band and drove 1.586 inside the tooth circle at poses
+// nothing could reach before the alarmPress axis existed. That is TODO 87
+// finding 6, and §163 closes it in POSITION SPACE rather than by a waiver:
+// the reach bar moves down to the STEM's own plane, UNDER the three-quarter
+// plate, where the plate itself stands between it and everything above.
+// Measured over the whole stroke, its nearest neighbour is that plate at
+// 0.61 and the next thing in the movement is 1.95 away.
+//
+// So this quantity no longer bounds where the mechanism reaches — it is the
+// SECTION CHANGE. The round stem is the part that runs in the guide bore and
+// it stops clear of the wheel's footprint; the flat blade is what passes
+// underneath. The old form carried a `+ 0.16` for a dropper that stood at
+// this station and no longer does, so it goes.
+const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN; // saw tip circle (geometry.js) + the one margin
+const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
+// TODO 241 — THE HEAD BOTTOMS ON THE CASE TUBE AT THE END OF THE CARRY, and
+// that is the stroke's STOP. Before it, nothing bottomed this stroke at all:
+// TODO 92 had this solve stand the head CLEAR_MARGIN off the case at full
+// press, so the case never limited the throw — and so it never took the
+// finger either. A press that kept pressing kept loading the chain, and once
+// §261 2c put two cranks between the riser and the driver, the 5 N
+// CASE_PUSHER_INPUT_N ceiling read 7,018 MPa at crank A's input arm's root,
+// nearly nine times SPRING_SIGMA_Y_PA. A crank that carries that at this
+// length is 2.7 u wide, which the plates do not have. The answer is to stop
+// the press where the carry ends, so the finger's surplus goes into the case
+// and never into the train — every real case pusher has a stop for this
+// reason.
+//
+// WHERE IT STOPS. The press line runs through the movement's centre (§170),
+// so the pusher's case tube — the band's flush bore sleeve and the liner
+// pressed into it (§202) — ends in a flat annulus square to the line, at the
+// band's own surface: sqrt(R_OUT² − off²) along the line, the expression
+// makeCase cuts the sleeve's outboard end with (`off`, the line's distance
+// from the centre, is 0 by §170's construction; it stays in the expression
+// so the two cannot drift). The head is Ø2 mm against the tube's Ø1.8 mm
+// flange, so its flat inner face covers that whole annulus and the band's
+// crest beside it. The head is solved to land its inner face ON that plane
+// at T = 1 — the press fraction at which ALARM_LINKAGE's carry is exactly one
+// tooth — so the stop and the banked tooth coincide BY CONSTRUCTION, sunk
+// ALARM_SEAT_SINK into it by the seated-contact convention.
+//
+// What it costs: the head rests TRAVEL − SINK = 2.666 u = 1.010 mm proud, where
+// TODO 92's clearance had it at 1.075 mm. The throw is still the mechanism's
+// (rule 2's direction): the stop is placed BY the carry, never the carry by
+// the stop. The seat is asserted where the case tube is built, measured off
+// its metal.
+//
+// (TODO 92's history, kept because it is why this solve is in û: the head's
+// distance from the case axis is its projection ALONG the line, not
+// `hypot(_pushBase)`, which read 0.3495 u wrong while the line was a chord.)
+const _pushBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;  // the base, ON the push axis
+const _pushOffAxis = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;  // ...and ACROSS it (0 since §170)
+// §307 landing 2 — under FORM the pusher's bore ends where the FORM case
+// cuts it: form-case.js's flush bore runs to the axis's exit from the OUTER
+// loop (tubeAt's `outerExit`, its own rayExit on its own formCaseLoops), so
+// the seat is read through that same law on that same loop — the circle's
+// √(R_OUT² − off²) is the round band's exit and no other case's. TODO 268
+// made that law ONE function, `caseWallAlong`, read by both crown stems too.
+const ALARM_PUSH_SEAT_S = caseWallAlong(_pushU, _pushOffAxis); // the tube's flat end, along the line from its foot
+const ALARM_PUSH_STEM_OUTER_S = ALARM_PUSH_SEAT_S - ALARM_SEAT_SINK + ALARM_PUSH_TRAVEL - _pushBaseS;
+const ALARM_PUSH_STEM_LEN = ALARM_PUSH_STEM_OUTER_S - ALARM_PUSH_INNER;
+// §43 — THE HEAD IS SIZED IN MILLIMETRES, because a pusher is the one part
+// of this movement a finger is supposed to operate, and "looks about right"
+// is not a spec for that.
+//
+// Real watch pushers run 2–3 mm across the head: below about 2 mm a fingertip
+// cannot locate and press it without a tool, which is the ergonomic floor
+// this derives from. Take the SMALL end — this is a minimum to clear, not a
+// target to hit.
+//
+// Measured before changing anything (§43 required that, and §38 is the
+// cautionary tale for scoping on an unmeasured premise): the head was
+// r 0.85 u = 0.319 mm, a 0.64 mm head. Not marginally small — a third of the
+// floor, nearer a pinhead than a pusher. The premise held.
+//
+// Converted through §39's UNIT_MM rather than written as units, so the
+// ergonomic claim stays legible and survives a change of scale.
+const PUSHER_HEAD_MM = 1.0;                          // RADIUS floor ⇒ a 2 mm head
+const PUSHER_HEAD_R = PUSHER_HEAD_MM / UNIT_MM;      // 2.64 u at 0.379 mm/u
+// Head DEPTH follows the width so it still reads as a turned cap rather than
+// a wafer; at the old 1.1 u against a 5.3 u face it would have been a disc.
+// This is the HEAD, not the stem's travel — the throw that indexes the
+// column wheel one castellation per press is mechanism and is untouched
+// at the pusher's build, which is why the pusher is not simply scaled up as a whole.
+const PUSHER_HEAD_LEN = PUSHER_HEAD_R * 0.62;
+// THE BAR, at last: what `turning` clusters — the stem and the cap, coaxial at
+// consecutive stations, one piece of stock — and the governing ⌀ is the
+// stem's. 26.0 u on the round case; 38.01 u on the §308 arrangement.
+const ALARM_PUSH_BAR = ALARM_PUSH_STEM_LEN + PUSHER_HEAD_LEN;
+// ============================================================================
 const GONG_RIM_PLANT = 0.5;                        // a stud's plant depth into the rim — the plate-top idiom, kept
 const GONG_RIM_Z = PLATE_RIM.back;                 // the annulus's own floor plane: the rim's back face
 // THE CEILING. One thing crosses the annulus: the alarm pusher's stem, at
@@ -27833,20 +28164,27 @@ const GONG_RIM_Z = PLATE_RIM.back;                 // the annulus's own floor pl
 // §198 — THE PUSHER STEM'S CROSSING sets it, and the numbers are the
 // pusher's own (hoisted from its build: the stem's radius, and the guide
 // ring that stands the stem's axis one margin under the plate's underside).
-// §234 (TODO 145 group B) — THE STEM IS CUT FROM STEM STOCK: layout.js's tap-7
-// floor, ⌀0.70 mm, r 0.924 u. Two constraints bear on this radius and the
-// stock is the larger. The turning target asks bar / (2 · TURN_LD_TARGET) of
-// it — 0.723 u for the 26.0 u stem-and-cap bar — and that is HELD where the
-// bar's length is known, at the cap's build, as a boot assert: the stock
-// governs today (L/D 14.1), and the assert is what says so if the stem ever
-// lengthens past 33 u. The old 0.32 was a bare literal at L/D 40.7, a bar no
-// lathe holds, and the one waiver this landing retires. What it costs is the
+// §234 (TODO 145 group B) — THE STEM IS CUT FROM STEM STOCK, OR TO ITS BAR:
+// layout.js's tap-7 floor, ⌀0.70 mm, r 0.924 u, is one constraint; §233's
+// turning target, bar / (2 · TURN_LD_TARGET) over the stem-and-cap bar derived
+// just above, is the other, and the LARGER governs — the alarm crown stem's
+// rule (§234 landing 2 step 4) and the striking staff's (§261 2c). On the
+// round case the bar is 26.0 u and asks 0.723 u, so the stock governs
+// (L/D 14.1) and this expression returns the floor itself, bit for bit — the
+// fingerprint holds. On §308 landing 5's arrangement the bar is 38.01 u and
+// asks 1.056 u, so the target governs and the bar is cut at L/D 18.0 exactly,
+// where the floor left it at 20.6. Until §234's residue closed, the target
+// was only HELD at the cap's build, as a warn the arrangement fired. The old
+// 0.32 was a bare literal at L/D 40.7, a bar no lathe holds, and the one
+// waiver the first landing retired. What a thicker stem costs is the
 // pusher's own z: the guide ring grows with the bore it carries, the axis
 // stands lower by the ring's growth and the gong band's ceiling follows the
-// stem's underside — the ring drops 2 · Δr = 1.21 u — and every reader of
-// that band (the annulus floor, the head's band, the skirt's floor) re-derives
-// below and is asserted where it is read.
-const ALARM_PUSH_STEM_R = STEM_STOCK_R_U;
+// stem's underside — at the stock the ring dropped 2 · Δr = 1.21 u from the
+// literal, and on the arrangement it drops 2 · 0.132 more — and every reader
+// of that band (the annulus floor, the head's band, the skirt's floor)
+// re-derives below and is asserted where it is read. The case tube's liner
+// follows the bore too, and its wall is held to the §50 floor where it is cut.
+const ALARM_PUSH_STEM_R = Math.max(STEM_STOCK_R_U, ALARM_PUSH_BAR / (2 * TURN_LD_TARGET));
 const ALARM_PUSH_GUIDE_TUBE = 0.12;                                        // ring stock (§50 floor)
 const ALARM_PUSH_GUIDE_BORE = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR;        // a running fit, not a press fit
 const ALARM_PUSH_GUIDE_RING = ALARM_PUSH_GUIDE_BORE + ALARM_PUSH_GUIDE_TUBE;
@@ -29720,7 +30058,10 @@ let alarmWindTargetGear = null; // §99: the arbor's winding wheel — the chain
 // Sited here rather than at the collar's build because ALARM_LOCK_THETA and
 // ALARM_LOCK_LIFT are solved against these radii one tier down, and a
 // constant read before its declaration is this module's own repeat mistake
-// (the temporal dead zone noted immediately above).
+// (the temporal dead zone noted immediately above). §234 moved the three
+// RADII one hoist further, to the gong block (grep ALARM_PUSH_BAR): the
+// lock's engaged pose, the column wheel's station and the pusher's line are
+// solved there now, for the pusher bar's length. The cut's reasoning stays.
 //
 // Teeth per lobe: at least one tooth must fall inside every lobe's FREE
 // window, or the finger can be asked to arrest a hammer already loaded on a
@@ -29744,9 +30085,7 @@ const ALARM_STOP_TEETH = ALARM_CAM_LOBES * Math.ceil(1 / ALARM_FREE_FRAC);   // 
 // Depth is STOCK_MIN_U: the locking face is RADIAL, so a stop cannot cam out
 // at any depth, and the tooth only has to be a feature the movement's stock
 // rules allow to be cut and stay metal.
-const ALARM_STOP_ROOT_R = 3.2;                                  // the §25 B band, unmoved
-const ALARM_STOP_DEPTH = STOCK_MIN_U;
-const ALARM_STOP_TIP_R = ALARM_STOP_ROOT_R + ALARM_STOP_DEPTH;
+// (ALARM_STOP_ROOT_R, ALARM_STOP_DEPTH, ALARM_STOP_TIP_R — at the gong block, §234.)
 // The arbor this collar is pressed on — named so the collar's BORE derives
 // from the shaft it grips instead of restating its radius.
 const ALARM_STRIKE_SLEEVE_R = 0.75;
@@ -34348,78 +34687,13 @@ const SUB_IDLER_P_Z = SUB_PIN_B_Z;
 // build (grep it) rather than re-measured there.
 let ALARM_CORRIDOR_BAND_FLOOR = Infinity;
 
-// TODO 184 — HOISTED from the alarm lock and column-wheel builds below, whose
-// comments still carry the reasoning: the arrest solve that follows must
-// reject a station whose plate window cannot open, and the column wheel's
-// stud — built two thousand lines later — is the plate-crossing keep that
-// decides it when a pillar pushes the arrest inboard. Every input is a plan
-// constant, so the move changes no value; the pillar seat scan's precedent
-// (ALARM_UNDER_FOOTPRINT, "a declared list, one source, at the plan hoist").
-const ALARM_LOCK_D = 7.0;                       // pivot → striking-wheel axis
-const ALARM_LOCK_L = 5.0;                       // pivot → pad centre
-const ALARM_LOCK_PAD_R = 0.3;
-// §102 (TODO 31): DERIVED — the item's own promise, redeemable only once a
-// spring existed to give the lift a load path. The travel is what the pad's
-// clearance demands and nothing more: released, the pad must stand one
-// margin plus the float-bind centi-unit off the collar it brakes, and the
-// angle falls out over the lever's length. (The old 0.085 was "~0.4 of the
-// radial air" — a chosen fraction of the space available, the one number
-// item 28 could not fix.)
-// TODO 90 finding 4 — RE-DERIVED, and the closed form replaces the arc.
-//
-// §102's original was (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L, which buys that
-// much ARC at the pad. But the quantity that has to clear is RADIAL from the
-// striking axis, and the two stand 18.4° apart at this lever's proportions —
-// so the 0.16 intended delivered 0.1519 measured, 94.94% of it, spending 81%
-// of the float-bind centi-unit the constant added on purpose. The projection
-// is not a correction factor to carry around: the exact relation is already
-// in the lever's own triangle, so both angles are solved from it directly.
-//
-// pad-centre distance to the striking axis at arm angle α (from the axis
-// bearing) is d(α) = √(D² + L² − 2DL·cos α), so α(d) inverts in closed form.
-// ENGAGED seats the finger tip on the stop wheel's ROOT circle; LIFTED stands
-// it one margin clear of the TIP circle. The travel is the difference, and it
-// re-derives if the tooth, the pad or the lever's triangle ever move.
-const _lockArmAt = (d) => Math.acos(clamp(
-  (ALARM_LOCK_D * ALARM_LOCK_D + ALARM_LOCK_L * ALARM_LOCK_L - d * d)
-  / (2 * ALARM_LOCK_D * ALARM_LOCK_L), -1, 1));
-const ALARM_LOCK_LIFT = _lockArmAt(ALARM_STOP_TIP_R + ALARM_LOCK_PAD_R + CLEAR_MARGIN)
-                      - _lockArmAt(ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R);
-// (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
-// at the §124 seam block beside Z_STRIKE, up by the gong build: the whole
-// strike tier rides TQ_TOP_Z now instead of restating the pre-§124 plate.)
-// §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
-// tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
-// bound 36.4 — the TODO 11 measurement). Swept 0..360° at 2° with the
-// wheel's RAISED band vertex-scored against every neighbouring mesh: 24°
-// puts the centre at r 24.9 with 3.26 of worst-case clearance (the gong),
-// runners-up 22°/26° at 2.8. The pivot swings around the striking wheel;
-// pad, collar, and the engaged-angle triangle are untouched derivations.
-// §112 — the identity move (160→40) folds its −120 into this literal too:
-// the §68 sweep's clearances were module-internal (the gong bound it), so
-// they ride the rigid rotation; 24 − 120 = −96, the same bearing in the
-// module's own frame.
-const ALARM_LOCK_PIV_AZ = -96 * DEG2RAD;
-const alarmLockPivot = (() => {
-  const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
-  return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
-})();
-// Engaged arm angle: pad centre sits at collar radius + pad radius from the
-// wheel axis; law of cosines at the pivot, same construction as the follower.
-const _lockAzAxis = Math.atan2(alarmSwPos.y - alarmLockPivot.y, alarmSwPos.x - alarmLockPivot.x);
-// TODO 90 finding 4: the seat is the stop wheel's ROOT circle now, not a
-// tangent on a smooth band. That one substitution is what turns the engaged
-// pose from a kiss carrying nothing into a finger inside a tooth space.
-const _lockDon = ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R;
-const ALARM_LOCK_THETA = _lockArmAt(_lockDon);
-const ALARM_LOCK_ENGAGED = _lockAzAxis + ALARM_LOCK_THETA;
-const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scale (4–6 mm on a 30 mm movement)
-const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
-const ALARM_COL_STUD_R = ALARM_COL_BORE_R - 0.06;   // the §43 running clearance under the bore (TODO 184: one name for every reader)
-const ALARM_COL_POS = {
-  x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
-  y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
-};
+// (TODO 184's hoist — ALARM_LOCK_D … ALARM_COL_POS, the lock lever's triangle,
+// pivot and engaged azimuth and the column wheel's station off it — stood here,
+// above the arrest solve that must reject a station whose plate window cannot
+// open. §234 carried the whole block, reasoning and all, one hoist further up
+// to the gong block (grep ALARM_PUSH_BAR): the pusher's line is laid off the
+// column wheel's station and the pusher bar's length off the line, and the
+// stem's radius that length sizes is read there. Every value is unchanged.)
 
 const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   crossAz: ARREST_CROSS_AZ, idlerSide: SUB_IDLER_SIDE, idlerTeeth: SUB_IDLER_SOLVED,
@@ -35854,7 +36128,7 @@ function arrestAngles(arborA, bodyA) {
 // axis, the arm reaches L, and the engaged angle comes from the (pivot, axis,
 // pad) triangle — tick() lifts by LOCK_LIFT about the same pivot.
 // ---------------------------------------------------------------------------
-// (ALARM_LOCK_D … ALARM_LOCK_ENGAGED are hoisted above the §129 arrest solve — TODO 184: the arrest must know where the column wheel's stud will cross the plate.)
+// (ALARM_LOCK_D … ALARM_LOCK_ENGAGED are hoisted to the gong block — TODO 184 first lifted them above the §129 arrest solve, which must know where the column wheel's stud will cross the plate; §234 lifted them further, for the pusher bar's length.)
 // TODO 90 finding 4 — WHAT THE HOLD ACTUALLY IS, as geometry rather than as a
 // flag. The finger's inner surface against the stop wheel's TIP circle, at the
 // lever pose the columns put it in: positive is clear of the teeth, zero or
@@ -35952,8 +36226,8 @@ alarmSwitchUnit.add(alarmSwitchFold);
 // (the panel button, or tapping the wheel) steps it half a pitch. The wheel
 // stands one beak-reach beyond the lever's tail, ON the tail's line, so the
 // castellation's radial lift is exactly the tail's press direction.
-const ALARM_COL_COLUMNS = 6;
-const ALARM_COL_STEP = Math.PI / ALARM_COL_COLUMNS; // half a pitch per actuation
+// (ALARM_COL_COLUMNS and ALARM_COL_STEP — at the gong block, §234: the press
+// travel and the coupling's offset are derived from them there.)
 // §35 (owner's call): the wheel grows 1.5 → 2.1 — it reads to THREE members
 // now (brake beak, click, the §35 link beak) plus the pusher's pawl, and the
 // castellation annulus was too tight for a fourth rider. Every riding
@@ -36039,7 +36313,7 @@ const ALARM_COL_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;   // the lock rocker's beak:
 // the nose SEATS on the gap floor; the spec is solved from that contact at the
 // beak's build (search "THE SEAT DROP IS THE GAP FLOOR"), which is the only
 // place its inputs — the nose's own width and the arm it tilts on — exist.
-// (ALARM_COL_BORE_R is hoisted above the §129 arrest solve — TODO 184.)
+// (ALARM_COL_BORE_R is hoisted to the gong block — TODO 184, then §234.)
 // §68's second move — the RAISED STRATUM. Inboard of the rim the
 // three-quarter plate runs under the wheel, and the collar-bound lever z
 // hung the old skirt below the plate's top face. The whole wheel stack now
@@ -41502,108 +41776,12 @@ const alarmLinkParts = {};
     console.warn(`§35: the link's under-plate band tops at ${(ALARM_LINK_SHAFT_Z + 0.12 + 0.45).toFixed(2)} — no longer z-separated from the low linkage's floor (0.17); its 2D swept record would apply`);
 }
 
-// §33 (pusher handle) — THE PRESS AXIS RIDES THE MODULE, always. This was
-// briefly its own spec (?pushaz=), and that was retired by the owner's
-// call: an independent press axis parked the pusher's stem and pawl inside
-// the movement while the column, saw and lock it drives stayed at the
-// corner — a P2 self-disagreement the handle itself invited. The pusher is
-// the module's GRIP, not its own part: ?alarmmod= rotates the whole alarm
-// work and the press axis derives here from the column wheel's own station,
-// so it can never leave the toggle chain behind. The tangent construction
-// below stays azimuth-invariant (that work is what makes the module
-// rotation free), and the §43 saw-direction assert holds because the
-// chord's sign rotates with the module.
-// One press must sweep one ratchet tooth: the tooth pitch arc at the saw's
-// root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
-// throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
-const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM_COL_BASE_R);
-// §163 — THE OFFSET IS SET BY THE COUPLING, NOT BY A MOMENT ARM.
-//
-// This was `ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5)` = 4.37, and the
-// 1.15 was a bare literal — rule 1's "a number that appears because it looked
-// right". The first correction derived it as travel ÷ one tooth = 5.13, which
-// is right FOR A RIGID PAWL ON THE END OF AN ARM: for a line of action the
-// perpendicular offset IS the moment arm, so a travel s about it turns the
-// wheel s/offset, and carrying exactly one tooth wants travel ÷ step. Both
-// quantities were already in the source and both come from the same place —
-// the travel is the pitch arc AT THE SAW'S ROOT CIRCLE — so the quotient IS
-// that root circle, 0.9 · ALARM_COL_BASE_R. Against it the old 4.37 is 85.2%,
-// so the press delivered 1/0.852 = 117.39% of a tooth: TODO 87 finding 1's
-// over-carry was never a surplus to absorb in a spring, it was exactly the
-// ratio of a guessed number to a derived one. That still stands.
-//
-// What does not stand is the premise. The pawl is no longer rigid on the
-// pusher: §163 pivots the DRIVER on the wheel's own arbor (so that on the
-// drive stroke there is no relative motion at the teeth to foul) and the
-// pusher reaches it through a PIN IN A RADIAL SLOT. A radial slot has its own
-// kinematics — the driver's angle IS the pin's azimuth about the arbor — so a
-// pin travelling a straight line at perpendicular offset d sweeps 2·atan(h/d)
-// over a half-stroke h, and one tooth needs
-//
-//     d = travel / (2·tan(step/2)) = 5.01226
-//
-// 2.30% inboard of the root circle, with the stroke STRADDLING the foot of the
-// perpendicular (azimuth 75° at rest, 105° pressed) or it sweeps less. Cutting
-// the pin at 5.13 instead is not a placement problem to shuffle out of:
-// minimised over EVERY start position it would want 2·5.13·tan(step/2) =
-// 2.74916 of travel where 2.68606 exists, and each press would deliver 29.3415°
-// of the 30.000° a tooth needs. So 5.13 is an INTERMEDIATE here — the moment
-// arm of a rigid pawl, the member this section deletes — and the built offset
-// derives from the coupling that replaced it.
-const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));
-//
-// §170 — AND THE LINE GOES THROUGH THE MOVEMENT'S CENTRE, which is where a
-// case pusher's tube is bored. This was `atan2(ALARM_COL_POS.y, .x)`: the
-// press DIRECTION was already radial, but the LINE was that radius displaced
-// sideways by ALARM_PUSH_CHORD, so its axis missed the centre by 5.01226 and
-// crossed the case band 6.213° off the band's own normal — a tube bored
-// askew, which no cased watch has.
-//
-// The coupling wants exactly one thing from this line: perpendicular offset
-// ALARM_DRIVE_OFFSET from the WHEEL's centre, with the stroke straddling the
-// foot. It does not care where the line otherwise runs — `pinRest` and
-// `_pushBase` below are both written in the (û, perp) frame, so the whole
-// pin-in-slot construction is already blind to which azimuth û points. So the
-// same offset is available by ROTATING the line instead of translating it,
-// and a line through the origin achieves it at
-//
-//     Δ = asin(ALARM_DRIVE_OFFSET / |ALARM_COL_POS|) = 11.6307°
-//
-// taken WITH the saw's own drive sign, so the line stays on the side of the
-// wheel the teeth are cut for and §43's assert below is untouched. Nothing in
-// the mechanism's spec moves: the offset, the travel and the one-tooth
-// equality are the same numbers. It is a fold in position space, which is the
-// only currency P3 allows.
-//
-// `_pushBase = wheel + CHORD·perp` needs no edit and that is not luck: with
-// the azimuth above, (wheel + CHORD·perp)·perp = R·sin(θw − θs) + drive·d = 0
-// exactly, so the foot of the perpendicular lands ON the line through the
-// origin by construction.
-const _colR = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y);
-// A wheel closer to the centre than the offset its own coupling needs has NO
-// radial line at that offset — a geometric impossibility rather than a tight
-// fit, so it is named with both numbers rather than silently clamped to a
-// tangent (asin would return NaN and every station downstream would follow).
-const _colSinDelta = ALARM_DRIVE_OFFSET / _colR;
-if (!(Math.abs(_colSinDelta) <= 1))
-  console.warn(`§170: the column wheel stands ${_colR.toFixed(4)} from the movement's centre against the ${ALARM_DRIVE_OFFSET.toFixed(4)} its coupling needs — no line through the centre passes it at that offset, so the press axis cannot be radial at this station`);
-const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x)
-  + alarmColumnWheel.userData.ratchetDrive * Math.asin(Math.max(-1, Math.min(1, _colSinDelta)));
-const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
-const _pushPerp = { x: -_pushU.y, y: _pushU.x };
-// Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
-// scaled with the wheel). Its SIGN is the drive direction, not a placement
-// taste: with the pawl at chord·perp + 0.85·û from the wheel centre, the
-// tangential component of its inward press works out to exactly the chord
-// (the û·perp cross-term vanishes), so
-//
-//     sign(ALARM_PUSH_CHORD) === the z-direction the pawl can drive
-//
-// Built positive, it pushed +z (CCW) while the wheel's own saw teeth are cut
-// to be driven −z — measured +0.619 against a −30°/press index, i.e. the pawl
-// dragging the wheel backwards, which a pawl cannot do. Now derived from the
-// teeth themselves and asserted below.
-const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * ALARM_DRIVE_OFFSET;
+// §33 (pusher handle) — THE PRESS AXIS RIDES THE MODULE, always: the press
+// travel (ALARM_PUSH_TRAVEL), the coupling's offset (§163, ALARM_DRIVE_OFFSET),
+// the line through the centre (§170, ALARM_PUSH_AZ, _pushU, _pushPerp) and the
+// chord (ALARM_PUSH_CHORD) are derived at the gong block since §234 (grep
+// ALARM_PUSH_BAR), each with its reasoning, because the pusher bar's length —
+// which sizes the stem every earlier reader needs — is laid along that line.
 // The stroke is symmetric about the foot, which is where _pushBase already
 // stands (it is the wheel's centre displaced by the chord along the press
 // line's perpendicular), so s runs +h → −h and nothing else has to move.
@@ -41891,10 +42069,8 @@ const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // Cheap because the algebra above reduces the whole geometry to one sign.
 if (Math.sign(ALARM_PUSH_CHORD) !== alarmColumnWheel.userData.ratchetDrive)
   console.warn(`§43: the pusher's pawl drives ${Math.sign(ALARM_PUSH_CHORD) > 0 ? '+z' : '-z'} but the ratchet's teeth are cut for ${alarmColumnWheel.userData.ratchetDrive > 0 ? '+z' : '-z'} — the pawl would drag the wheel backwards`);
-const _pushBase = {
-  x: ALARM_COL_POS.x + _pushPerp.x * ALARM_PUSH_CHORD,
-  y: ALARM_COL_POS.y + _pushPerp.y * ALARM_PUSH_CHORD,
-};
+// (_pushBase — the wheel's centre displaced by the chord along the line's
+// perpendicular — is declared at the gong block with the line, §234.)
 // The press AXIS runs UNDER the three-quarter plate (owner call,
 // 2026-08-02): a case pusher belongs in the case band's plane, not above
 // the movement — after §68's raise the old above-stack axis had left the
@@ -41971,122 +42147,34 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   console.warn(`§198: the pusher stem's underside ${(alarmPusherGroup.position.z - ALARM_PUSH_STEM_R).toFixed(3)} stands within `
     + `CLEAR_MARGIN of the gong ring's ceiling ${GONG_BAND_TOP.toFixed(3)} — the two derivations have parted`);
 {
-  // TODO 22 closed: the stem ENDS clear of the wheel. Its chord enters the
-  // saw-tip circle at s = sqrt((tip+margin)² − chord²); the rest station
-  // adds the full press travel so the pressed stem still stops there.
-  //
-  // WHAT THIS USED TO CLAIM, AND WHAT §163 MAKES OF IT. The sentence here read
-  // "the PAWL, on its dropped carrier below the disc, is the only member that
-  // reaches the teeth" — true of the STEM and false of the carrier, which
-  // shared the pawl's z band and drove 1.586 inside the tooth circle at poses
-  // nothing could reach before the alarmPress axis existed. That is TODO 87
-  // finding 6, and §163 closes it in POSITION SPACE rather than by a waiver:
-  // the reach bar moves down to the STEM's own plane, UNDER the three-quarter
-  // plate, where the plate itself stands between it and everything above.
-  // Measured over the whole stroke, its nearest neighbour is that plate at
-  // 0.61 and the next thing in the movement is 1.95 away.
-  //
-  // So this quantity no longer bounds where the mechanism reaches — it is the
-  // SECTION CHANGE. The round stem is the part that runs in the guide bore and
-  // it stops clear of the wheel's footprint; the flat blade is what passes
-  // underneath. The old form carried a `+ 0.16` for a dropper that stood at
-  // this station and no longer does, so it goes.
-  const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN; // saw tip circle (geometry.js) + the one margin
-  const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
-  // TODO 241 — THE HEAD BOTTOMS ON THE CASE TUBE AT THE END OF THE CARRY, and
-  // that is the stroke's STOP. Before it, nothing bottomed this stroke at all:
-  // TODO 92 had this solve stand the head CLEAR_MARGIN off the case at full
-  // press, so the case never limited the throw — and so it never took the
-  // finger either. A press that kept pressing kept loading the chain, and once
-  // §261 2c put two cranks between the riser and the driver, the 5 N
-  // CASE_PUSHER_INPUT_N ceiling read 7,018 MPa at crank A's input arm's root,
-  // nearly nine times SPRING_SIGMA_Y_PA. A crank that carries that at this
-  // length is 2.7 u wide, which the plates do not have. The answer is to stop
-  // the press where the carry ends, so the finger's surplus goes into the case
-  // and never into the train — every real case pusher has a stop for this
-  // reason.
-  //
-  // WHERE IT STOPS. The press line runs through the movement's centre (§170),
-  // so the pusher's case tube — the band's flush bore sleeve and the liner
-  // pressed into it (§202) — ends in a flat annulus square to the line, at the
-  // band's own surface: sqrt(R_OUT² − off²) along the line, the expression
-  // makeCase cuts the sleeve's outboard end with (`off`, the line's distance
-  // from the centre, is 0 by §170's construction; it stays in the expression
-  // so the two cannot drift). The head is Ø2 mm against the tube's Ø1.8 mm
-  // flange, so its flat inner face covers that whole annulus and the band's
-  // crest beside it. The head is solved to land its inner face ON that plane
-  // at T = 1 — the press fraction at which ALARM_LINKAGE's carry is exactly one
-  // tooth — so the stop and the banked tooth coincide BY CONSTRUCTION, sunk
-  // ALARM_SEAT_SINK into it by the seated-contact convention.
-  //
-  // What it costs: the head rests TRAVEL − SINK = 2.666 u = 1.010 mm proud, where
-  // TODO 92's clearance had it at 1.075 mm. The throw is still the mechanism's
-  // (rule 2's direction): the stop is placed BY the carry, never the carry by
-  // the stop. The seat is asserted where the case tube is built, measured off
-  // its metal.
-  //
-  // (TODO 92's history, kept because it is why this solve is in û: the head's
-  // distance from the case axis is its projection ALONG the line, not
-  // `hypot(_pushBase)`, which read 0.3495 u wrong while the line was a chord.)
-  const _pushBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;  // the base, ON the push axis
-  const _pushOffAxis = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;  // ...and ACROSS it (0 since §170)
-  // §307 landing 2 — under FORM the pusher's bore ends where the FORM case
-  // cuts it: form-case.js's flush bore runs to the axis's exit from the OUTER
-  // loop (tubeAt's `outerExit`, its own rayExit on its own formCaseLoops), so
-  // the seat is read through that same law on that same loop — the circle's
-  // √(R_OUT² − off²) is the round band's exit and no other case's. TODO 268
-  // made that law ONE function, `caseWallAlong`, read by both crown stems too.
-  const ALARM_PUSH_SEAT_S = caseWallAlong(_pushU, _pushOffAxis); // the tube's flat end, along the line from its foot
-  const stemOuterS = ALARM_PUSH_SEAT_S - ALARM_SEAT_SINK + ALARM_PUSH_TRAVEL - _pushBaseS;
-  const stemLen = stemOuterS - ALARM_PUSH_INNER;
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
+  // The stem's stations — its inner end clear of the wheel (TODO 22), its
+  // seat on the case wall and the stop it bottoms on (TODO 241, §307 landing
+  // 2), its outer end and length (ALARM_PUSH_INNER, ALARM_PUSH_SEAT_S,
+  // ALARM_PUSH_STEM_OUTER_S, ALARM_PUSH_STEM_LEN) — and the head's size (§43,
+  // PUSHER_HEAD_R, PUSHER_HEAD_LEN) are derived at the gong block since §234
+  // (grep ALARM_PUSH_BAR), each with its reasoning: the bar they make is what
+  // sizes the stem's radius, and that radius is read thousands of lines before
+  // this build. The metal is cut here from those numbers, unchanged.
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_LEN, 10), MATS.steel);
   stem.name = 'alarmPusherStem';  // §162: the pusher body's own name, so the §48 member key and the joint rows stop selecting it as CylinderGeometry#9
   stem.rotation.z = ALARM_PUSH_AZ - Math.PI / 2; // cylinder +Y → outward along the push azimuth
-  stem.position.set(_pushU.x * (ALARM_PUSH_INNER + stemLen / 2), _pushU.y * (ALARM_PUSH_INNER + stemLen / 2), 0);
+  stem.position.set(_pushU.x * (ALARM_PUSH_INNER + ALARM_PUSH_STEM_LEN / 2), _pushU.y * (ALARM_PUSH_INNER + ALARM_PUSH_STEM_LEN / 2), 0);
   alarmPusherGroup.add(stem);
   alarmPusherStemMesh = stem;
-  // §43 — THE HEAD IS SIZED IN MILLIMETRES, because a pusher is the one part
-  // of this movement a finger is supposed to operate, and "looks about right"
-  // is not a spec for that.
-  //
-  // Real watch pushers run 2–3 mm across the head: below about 2 mm a fingertip
-  // cannot locate and press it without a tool, which is the ergonomic floor
-  // this derives from. Take the SMALL end — this is a minimum to clear, not a
-  // target to hit.
-  //
-  // Measured before changing anything (§43 required that, and §38 is the
-  // cautionary tale for scoping on an unmeasured premise): the head was
-  // r 0.85 u = 0.319 mm, a 0.64 mm head. Not marginally small — a third of the
-  // floor, nearer a pinhead than a pusher. The premise held.
-  //
-  // Converted through §39's UNIT_MM rather than written as units, so the
-  // ergonomic claim stays legible and survives a change of scale.
-  const PUSHER_HEAD_MM = 1.0;                          // RADIUS floor ⇒ a 2 mm head
-  const PUSHER_HEAD_R = PUSHER_HEAD_MM / UNIT_MM;      // 2.64 u at 0.379 mm/u
-  // Head DEPTH follows the width so it still reads as a turned cap rather than
-  // a wafer; at the old 1.1 u against a 5.3 u face it would have been a disc.
-  // This is the HEAD, not the stem's travel — the throw that indexes the
-  // column wheel one castellation per press is mechanism and is untouched
-  // below, which is why the pusher is not simply scaled up as a whole.
-  const PUSHER_HEAD_LEN = PUSHER_HEAD_R * 0.62;
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(PUSHER_HEAD_R, PUSHER_HEAD_R, PUSHER_HEAD_LEN, 20), MATS.caseMetal); // §203: the head is case exterior; the stem stays steel
   cap.name = 'alarmPusherCap';
   cap.rotation.z = ALARM_PUSH_AZ - Math.PI / 2;
-  cap.position.set(_pushU.x * (stemOuterS + PUSHER_HEAD_LEN / 2),
-                   _pushU.y * (stemOuterS + PUSHER_HEAD_LEN / 2), 0);
+  cap.position.set(_pushU.x * (ALARM_PUSH_STEM_OUTER_S + PUSHER_HEAD_LEN / 2),
+                   _pushU.y * (ALARM_PUSH_STEM_OUTER_S + PUSHER_HEAD_LEN / 2), 0);
   alarmPusherGroup.add(cap);
-  // §234 — the turning target, held where the BAR's length is known. The
-  // stem's radius is the stock floor (layout.js); this is the second
-  // constraint on it, over the workpiece the `turning` check measures — stem
-  // and cap are coaxial at consecutive stations, one piece of stock — and
-  // the governing ⌀ is the stem's. Over the target at that stock, the stem
-  // is re-derived from its length, never waived.
-  {
-    const barLen = stemLen + PUSHER_HEAD_LEN, ld = barLen / (2 * ALARM_PUSH_STEM_R);
-    if (ld > TURN_LD_TARGET + 1e-9)
-      console.warn(`§234: the alarm pusher bar is L/D ${ld.toFixed(1)} (${barLen.toFixed(2)} u at r ${ALARM_PUSH_STEM_R.toFixed(3)}) `
-        + `— over the turning target ${TURN_LD_TARGET}; the stem-stock floor no longer covers this bar`);
-  }
+  // §234 — the turning target is no longer HELD here, it is MET by
+  // construction: the stem's radius at the gong block is max(stem stock,
+  // ALARM_PUSH_BAR / (2 · TURN_LD_TARGET)) over exactly this stem and cap, so
+  // the bar reads at or under the target on every case. The warn that stood
+  // here ("the stem-stock floor no longer covers this bar", which §308
+  // landing 5's arrangement fired at L/D 20.6) had nothing left to say once
+  // the derivation it promised existed, and a guard that cannot fire is a
+  // comment — this one.
   if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
   // TODO 241 (re-stating TODO 92's assert as a SEAT) — THE FACE MUST COVER
@@ -42482,7 +42570,7 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // does. Recorded at the build because the spans are block-scoped.
   alarmPusherGroup.userData.stem = {
     ux: _pushU.x, uy: _pushU.y,
-    inner: ALARM_PUSH_INNER, capS: stemOuterS,
+    inner: ALARM_PUSH_INNER, capS: ALARM_PUSH_STEM_OUTER_S,
     capR: PUSHER_HEAD_R, capLen: PUSHER_HEAD_LEN,
     pinS: ALARM_PIN_HALF, pinR: STOCK_MIN_R10,
     riserTop: ALARM_DRIVER_TOP_Z - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL),
@@ -43499,9 +43587,9 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   // The abutment is FIXED, so it must clear the reach bar's outer end at EVERY
   // pose, not at rest: the bar sweeps its own travel, and a ring bored for the
   // stem is not bored for the bar. The BRACKET that hangs it sits inboard of
-  // the abutment, so the bar has to clear that too. (ALARM_PUSH_INNER is
-  // block-scoped to the pusher's own build; the span it recorded for the
-  // schematic tier is the same number, published.)
+  // the abutment, so the bar has to clear that too. (ALARM_PUSH_INNER stands
+  // at the gong block since §234; the span the pusher's build recorded for the
+  // schematic tier is the same number, published, and is what is read here.)
   const barOuterAtRest = alarmPusherGroup.userData.stem.inner + ALARM_PUSH_STEM_R;
   const bracketT = STOCK_MIN_U;
   const abutS = barOuterAtRest + CLEAR_MARGIN + bracketT + abutT / 2;
@@ -43523,7 +43611,7 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   // is where the two are closest and the clearance is taken there. Both are
   // rings on one axis and the collar's outer radius exceeds the boss's bore, so
   // they cannot pass through each other — the margin has to be AXIAL.
-  const _guideBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;   // the base, ON the push axis (block-scoped above; the same expression, not a second definition of the axis)
+  const _guideBaseS = _pushBaseS;   // the base, ON the push axis — the gong block's own projection (§234 hoisted it out of the pusher's build, so this is no longer a restated copy)
   const bossD = _guideBaseS + collarS + collarT / 2 + ALARM_PUSH_GUIDE_TUBE + CLEAR_MARGIN;
   alarmPusherGuideMesh.position.set(_pushU.x * bossD, _pushU.y * bossD,
                                     ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
