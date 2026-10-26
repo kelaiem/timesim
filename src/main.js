@@ -3744,6 +3744,11 @@ const worldToAlarm = alarmToWorld;               // a reflection is its own inve
 const alarmAzToWorld = ALARM_MIRROR ? (a) => Math.PI / 2 - a : (a) => a;
 const alarmModAz = (az) => az + ALARM_MOD_ROT;
 const ALARM_SENSE_W = ALARM_SENSE;
+// HOISTED from the link's block (their notes stay there): the drive tab's design reach, and the link's measured
+// site, which a turned or mirrored module keeps wherever it clears — so the tab's place in the movement is known
+// before the dial-side trains that must clear it are routed (ALARM_SEL_TAB_W).
+const ALARM_SEL_TAB_R = 5.4;
+const ALARM_LINK_MEASURED_SITE = Object.freeze({ k: 1, run: 6, tabDeg: 87 });
 // The frame the module's rigid units hang in: identity as designed, the reflection under the mirror. Its matrix
 // is set once and never recomposed (a reflection has no position/rotation/scale three.js can compose).
 const alarmFrame = new THREE.Group();
@@ -23329,6 +23334,17 @@ const alarmSetWallsAt = (geom) => {
   { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: secondsWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
   ..._alarmSetWallsMeshed,
+  // THE MIRRORED TAB. The selector's drive tab is built long after this route (the link's site solve), and as
+  // designed it stands up the dial (87°) where no setting wheel goes; reflected, it lands at 3°, across this
+  // route's lane (the link's site solve measured the incumbent idler 1.30 into it). A mirrored module keeps the
+  // link's measured site, so the tab's place is known here: the fork jaw and crank end about the tab's mid-reach
+  // (the site solve's TAB_R, 1.3) and the block's half-diagonal beside it (0.42), in the site solve's tab band.
+  // The setting wheel on the hands' axis is not walled by it: the site solve leaves concentric centre machinery
+  // to its rim guard (the fork's plate stands outboard of the wheel's rim), and so does this row.
+  ...(ALARM_MIRROR ? [(() => { const a = alarmAzToWorld(ALARM_LINK_MEASURED_SITE.tabDeg * DEG2RAD + ALARM_MOD_ROT);
+    // the lane is the site solve's own tab band (the shaft's pre-rise plane ± the groove, the ring's sheet and a margin)
+    const zS = Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2), h = ALARM_FORK_GROOVE_H / 2 + ALARM_SEL_T + CLEAR_MARGIN;
+    return { name: 'mirrored selector tab', x: Math.cos(a) * ALARM_SEL_TAB_R, y: Math.sin(a) * ALARM_SEL_TAB_R, r: 1.3 + 0.42, lo: zS - h, hi: zS + h, offAxis: true }; })()] : []),
   // (§29's feeler-bracket wall is RETIRED by §278 landing 5, and the reason is
   // the dependency's direction, not the clearance: the satellite detector is
   // sited FROM i1 — its disc meshes i1b at the branch's centre distance — so the
@@ -23363,6 +23379,7 @@ const alarmSetMembersAt = (route) => [
 // solve both call it, so the two can never again disagree about the walls.
 const alarmSetClearance = (m, w) => {
   if (!(m.lo < w.hi && m.hi > w.lo)) return Infinity;
+  if (w.offAxis && Math.hypot(m.x, m.y) < 1e-9) return Infinity;   // a wall the concentric members are guarded from elsewhere
   if (w.kind === 'seg') { // point-to-segment, §29's own construction
     const dx = w.bx - w.ax, dy = w.by - w.ay, L2 = dx * dx + dy * dy || 1e-9;
     const t = clamp(((m.x - w.ax) * dx + (m.y - w.ay) * dy) / L2, 0, 1);
@@ -37319,7 +37336,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // solve must still land on it (asserted after the solve), and a turned module
 // keeps it wherever it clears — see the site solve. Re-measuring any of those
 // constants at a re-solved site re-quotes this row with them.
-const ALARM_LINK_MEASURED_SITE = Object.freeze({ k: 1, run: 6, tabDeg: 87 });
+// (ALARM_LINK_MEASURED_SITE is HOISTED to the mirror's block: the setting train's route reads the mirrored tab.)
 const ALARM_LINK_BODY_LEN_U = 9.9910;   // TODO 240: re-measured at the tangential beak's re-solved site (k 1, run 6, tab 87), rounded UP from the built 9.9909 — was 12.0141. §261 2c: re-measured at the folded beak's rod site (the §112 solve re-sited with the hangers' columns scored, and the fork guarded against the guide PLATES TODO 222 hung where the posts stood — at 11.1138 the fork was cut through guide 1), rounded UP so the stratum is derived for a bush no thinner than the one built — was 11.0211. TODO 222: re-measured after the B band's spend lengthened the selector rod (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0121 shorter — was 11.0331; rounded UP from the built 11.0210x. TODO 207: re-measured after the selector rod shortened 0.3446 with the plate (ALARM_LINK_ROD_LEN_U) and its turned section with it — the bush OD that sets the shaft stratum shrank, so the body between its stations is 0.0100 longer — was 11.0231; rounded UP from the built 11.03308. TODO 205: re-measured after the chord was turned about its inner end to stand the shaft's tip ALARM_LINK_ROD_STANDOFF beside the rod — the chord is the leg of a right triangle on the old one, so it is shorter by D − √(D² − s²) and the body with it — was 11.0429; rounded UP from the built 11.0230x. TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
@@ -37437,7 +37454,7 @@ ALARM_LINK_LAWS.helixR = ALARM_SEL_HELIX_R;
 // The tab's design reach — where the §112 site search seats the drive tab and
 // the link's inner end (it was written there twice as a bare 5.4, the ring's
 // own reach out to its fork); the sideways drive's design r_eff is this radius.
-const ALARM_SEL_TAB_R = 5.4;
+// (ALARM_SEL_TAB_R is HOISTED to the mirror's block: the setting train's route reads the mirrored tab.)
 // The arm r itself is DERIVED FROM THE FORCE BUDGET (TODO 222, the owner's
 // call): it sets the throw, the throw sets the helix angle, and the helix
 // angle sets what follower-B's lift costs the column at the nose. Solved at
