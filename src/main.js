@@ -3731,7 +3731,16 @@ const ALARM_WIND_X = Math.cos(ALARM_CORNER_W_AZ) * ALARM_CD, ALARM_WIND_Y = Math
 // constants, defined once.
 const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
   ? SPEC.alarmModAzDeg * DEG2RAD - 40 * DEG2RAD : 0;
-const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29;
+// THE MODULE MIRRORED (?alarmmirror=diag): reflected across y = x through the hand centre, then turned by
+// ALARM_MOD_ROT. A seed AZIMUTH θ goes to 90° − θ (alarmModAz), a BEARING b between two of the module's own
+// stations to −b (ALARM_MOD_SIGMA · b), and the module's hand reverses, so its motor's sense does too
+// (ALARM_SENSE_W: every alarm cut that reads ALARM_SENSE reads this). At identity σ is exactly 1 and the
+// offset exactly 0, so every literal stays bit-exact.
+const ALARM_MIRROR = SPEC.alarmMirror === 'diag';
+const ALARM_MOD_SIGMA = ALARM_MIRROR ? -1 : 1;
+const alarmModAz = (az) => ALARM_MOD_SIGMA * az + (ALARM_MIRROR ? Math.PI / 2 : 0) + ALARM_MOD_ROT;
+const ALARM_SENSE_W = ALARM_SENSE * ALARM_MOD_SIGMA;
+const ALARM_SW_AZ = alarmModAz(40 * DEG2RAD), ALARM_SW_R = 29;
 const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
 // §261 step 4, landing 2a — THE STRIKING WHEEL TURNS ON A STAFF, not on a
 // fixed stud. §112 planted a stud 0.5 into the base plate's solid metal and
@@ -4535,7 +4544,7 @@ const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_P
 // (θ_b 202°, θ_g 92°, θ_a 148°, world at identity) with 0.90 beyond every
 // margin — the argmax over the whole rotation × bearing space, drum home.
 const ALARM_BARREL_BEARING_DEG = SPEC.alarmBarrelAzDeg !== null ? SPEC.alarmBarrelAzDeg : 202;
-const ALARM_BARREL_BEARING = ALARM_BARREL_BEARING_DEG * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
+const ALARM_BARREL_BEARING = alarmModAz(ALARM_BARREL_BEARING_DEG * DEG2RAD); // module-relative: the barrel's bearing off the striker rides the module
 // (alarmBarrelPos is derived with the other two legs at the §184 triple
 // below — the three stations are ONE construction, not three.)
 const ALARM_BARREL_PITCH_R = ALARM_TRAIN_MODULE * ALARM_BARREL_TEETH / 2;
@@ -4581,7 +4590,7 @@ const ALARM_GOV_CD = ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH + ALARM_GOV_PINIO
 // §184 — spec'd like θ_b, and for the same reason: it is one leg of a solved
 // triple, and a triple with one movable leg is worse than none.
 const ALARM_GOV_BEARING_DEG = SPEC.alarmGovAzDeg !== null ? SPEC.alarmGovAzDeg : 92;
-const ALARM_GOV_BEARING = ALARM_GOV_BEARING_DEG * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative (§112: the gate's θ_g)
+const ALARM_GOV_BEARING = alarmModAz(ALARM_GOV_BEARING_DEG * DEG2RAD);   // from the strike arbor, module-relative (§112: the gate's θ_g)
 // --- The anchor's plan (§113 — the flat-faced recoil anchor; the escapement
 // itself is derived and SOLVED at the §113 block, where the closure lives):
 // §248 — the tip circle is §104's (the train's module over its 40 teeth), and
@@ -4608,7 +4617,7 @@ const ALARM_GOV_COLLAR_R = ALARM_GOV_ARBOR_R + PIVOT_MIN_U;   // 0.769 — the r
 // 7.335 — which is exactly the trajectory-face design §113 retired.)
 const ALARM_GOV_ANCHOR_D = ALARM_GOV_SAW_R + ALARM_GOV_HUB_R + CLEAR_MARGIN; // 7.051
 const ALARM_GOV_ANCHOR_BEARING_DEG = SPEC.alarmGovAnchorAzDeg !== null ? SPEC.alarmGovAnchorAzDeg : 148;
-const ALARM_GOV_ANCHOR_BEARING = ALARM_GOV_ANCHOR_BEARING_DEG * DEG2RAD + ALARM_MOD_ROT; // §112: the gate's θ_a — the leg of the solved triple that keeps the anchor's arbor column outside the 64T wheel's swept disc AND the ring off the rods
+const ALARM_GOV_ANCHOR_BEARING = alarmModAz(ALARM_GOV_ANCHOR_BEARING_DEG * DEG2RAD); // §112: the gate's θ_a — the leg of the solved triple that keeps the anchor's arbor column outside the 64T wheel's swept disc AND the ring off the rods
 const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
                                         // holds inside the rim (assert at the §104 block), the cheap
                                         // direction — I = m·r², so radius bought is section saved
@@ -27625,7 +27634,7 @@ const ALARM_TAIL_T = 0.5;          // tail / lever bar thickness, centred on Z_S
 // cause of the blow instead of as a wobble.
 const ALARM_DRAW_RAD = 3 * ALARM_STRIKE_AMP;
 const STRIKE_REF = (() => {
-  const gongR = 35, a1 = 15 * DEG2RAD + ALARM_MOD_ROT, pivAz = a1 + 11 * DEG2RAD;
+  const gongR = 35, a1 = alarmModAz(15 * DEG2RAD), pivAz = a1 + ALARM_MOD_SIGMA * 11 * DEG2RAD;
   const wireR = 2.6292 / 2;                       // the §197 wire (its band's height, 0.996 mm)
   const piv = { x: Math.cos(pivAz) * gongR, y: Math.sin(pivAz) * gongR };
   const eyeR = gongR + wireR + ALARM_HEAD_R + HAMMER_HEAD_GAP;
@@ -30354,7 +30363,7 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
     // nothing here for a collar to add but a second radius to justify.
     springArborR: ALARM_BARREL_ARBOR_R,
     ribbonSection: 'rhombus4',   // TODO 201: re-cut as a strip WITH the §104 governor re-solve, not before
-    sense: ALARM_SENSE, // TODO 115: the alarm is its own motor — layout.js
+    sense: ALARM_SENSE_W, // TODO 115: the alarm is its own motor — layout.js
     // A full wind IS the relative travel between the two rotors: since §99
     // tick winds the ribbon by (bodyA − arborA), which spans TURNS·2π from
     // run-down to full, so the reserve and the sweep are the same quantity
@@ -30441,7 +30450,7 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
   const arborRatchet = G.makeRatchetAndClick({
     radius: ALARM_RATCHET_R, teeth: ALARM_RATCHET_N, thickness: ALARM_RATCHET_T,
     includeClick: false, squareBore: arborSq, reverse: true,
-    sense: ALARM_SENSE, // TODO 115: the alarm is its own motor — layout.js
+    sense: ALARM_SENSE_W, // TODO 115: the alarm is its own motor — layout.js
   });
   arborRatchet.traverse((o) => { if (o.isMesh) o.name = 'alarmArborRatchet'; });
   ALARM_RATCHET_POLY = arborRatchet.userData.ratchetPoly;   // TODO 115: the beak's guard reads this
@@ -31949,7 +31958,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // metal on metal by construction, not by adjacency.
   const saw = G.makeRatchetAndClick({
     radius: ALARM_GOV_SAW_R, teeth: ALARM_GOV_SAW_TEETH, thickness: ALARM_GOV_SAW_T, includeClick: false,
-    sense: ALARM_SENSE, // TODO 115: the alarm is its own motor — layout.js
+    sense: ALARM_SENSE_W, // TODO 115: the alarm is its own motor — layout.js
     squareBore: (2 * ALARM_GOV_ARBOR_R) / Math.SQRT2 }); // side of the filed square, across-corners = arbor ⌀ (§99's arborSq)
   saw.traverse((o) => { if (o.isMesh) o.name = 'alarmGovSaw'; });
   saw.rotation.z = ALARM_GOV_SAW_PHASE;
@@ -33676,7 +33685,7 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
     if (crestFrac === null || !(crestFrac < 0.5))
       console.warn(`§115 alarm click beak: the arbor ratchet's crest sits ${crestFrac === null ? 'nowhere readable' : crestFrac.toFixed(3)} `
         + 'into its pitch, but the beak above is cut for a MIRRORED saw (crest at 0.28) — the beak would park on a '
-        + `ramp instead of filling its valley (ALARM_SENSE ${ALARM_SENSE})`);
+        + `ramp instead of filling its valley (ALARM_SENSE ${ALARM_SENSE_W})`);
   }
   const clickShape = new THREE.Shape();
   const faceEdge = [1.15, 1.0, 0.66, 0.33].map((s) => facePt(s, faceRelief));   // 1.15 extends past the crest to r ≈ R+0.14, outside the tips
@@ -34332,7 +34341,7 @@ const ALARM_LOCK_LIFT = _lockArmAt(ALARM_STOP_TIP_R + ALARM_LOCK_PAD_R + CLEAR_M
 // module's own frame.
 const ALARM_LOCK_PIV_AZ = -96 * DEG2RAD;
 const alarmLockPivot = (() => {
-  const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
+  const a = alarmModAz(ALARM_LOCK_PIV_AZ);  // module-relative, as before
   return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
 })();
 // Engaged arm angle: pad centre sits at collar radius + pad radius from the
@@ -38355,7 +38364,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   for (const rc of rodCands) {
     await breathe(280);
     for (let azw0 = 0; azw0 < 360; azw0 += 3) {
-      const azw = SPEC.alarmModAzDeg !== null ? azw0 + _tabGridOff : azw0;
+      const azw = ALARM_MIRROR ? alarmModAz(azw0 * DEG2RAD) / DEG2RAD : SPEC.alarmModAzDeg !== null ? azw0 + _tabGridOff : azw0;
       const tx = Math.cos(azw * DEG2RAD) * ALARM_SEL_TAB_R, ty = Math.sin(azw * DEG2RAD) * ALARM_SEL_TAB_R; // tab mid-reach, the ring's own radius
       // TODO 213 — the chord this candidate's build would cut: tab to the tip
       // standing ALARM_LINK_ROD_STANDOFF beside the rod (the same function
@@ -41533,9 +41542,9 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 // then one column step by construction, exactly as §163's straight track gave
 // it, and the switch's drive line is untouched — the path between the ends is
 // the linkage's, and the tick reads it rather than the straight line.
-const ALARM_LINKAGE_ROD_DIR = 105 * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
+const ALARM_LINKAGE_ROD_DIR = alarmModAz(105 * DEG2RAD);   // the rod line's direction (the search's pick; turns with the module)
 const ALARM_LINKAGE_ROD_C = 25.34;                             // and its offset, m·x = c (rotation about the centre leaves c)
-const ALARM_LINKAGE_SIDE = 1;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
+const ALARM_LINKAGE_SIDE = ALARM_MOD_SIGMA;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
 const ALARM_LINKAGE = (() => {
   const m = { x: Math.cos(ALARM_LINKAGE_ROD_DIR), y: Math.sin(ALARM_LINKAGE_ROD_DIR) };
   const dotv = (u, v) => u.x * v.x + u.y * v.y;
