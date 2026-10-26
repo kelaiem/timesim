@@ -21975,7 +21975,17 @@ const alarmSelRingWork = ({ alpha, turn, rT, nWx, nWy, thS }) => {
   return Ft * rT * dthdz;     // drive work per unit of lift work
 };
 const alarmSelectorUnit = new THREE.Group();
-dialFace.add(alarmSelectorUnit);
+// the selector is the module's dial-side end (the link drives its ring): under the mirror it hangs in the dial
+// face's image of alarmFrame. dialFace is turned π about y, so world (x, y) ↔ dial-local (−x, y) about the hands,
+// and the world's reflection across y = x is, in dial-local terms, (x, y) → (−y, −x)
+const alarmSelFrame = new THREE.Group();
+alarmSelFrame.name = 'alarmSelFrame';
+if (ALARM_MIRROR) {
+  alarmSelFrame.matrixAutoUpdate = false; alarmSelFrame.matrix.set(0, -1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+  if (Math.hypot(P.dial.x, P.dial.y) > 1e-9) console.warn(`alarm mirror: the dial stands at (${P.dial.x}, ${P.dial.y}), off the hands' axis the reflection is through — the selector's frame assumes it on it`);
+}
+dialFace.add(alarmSelFrame);
+alarmSelFrame.add(alarmSelectorUnit);
 registerLabel('Alarm selector', alarmSelectorUnit);
 registerExplode(alarmSelectorUnit, 0, 3, 1);
 const alarmSelRing = new THREE.Group();
@@ -37972,7 +37982,9 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     e.obj.traverse((o) => {
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
       if (SEAT_PRICED.test(o.name)) return;
-      const b = boxOf(o);
+      // the link is the module's own and is sited in the module's coordinates: every obstacle is read there
+      // (an axis-aligned box maps to one under the mirror's x ↔ y)
+      const b = boxOf(o).applyMatrix4(ALARM_W2M);
       if (b.isEmpty()) return;
       // §198 — a part whose every vertex stands OUTSIDE the plate's rim is
       // an annulus tenant (the gong's ring and block, the hammer's post): no
@@ -37999,7 +38011,8 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       // and −0.45 in box — which re-sited the rod to another parity ray
       // and broke the plate bores the first time this fold booted.
       if (o.userData.planStadium) {
-        const st = o.userData.planStadium;
+        const st0 = o.userData.planStadium;   // written where its builder stood: the module's parts in module terms
+        const st = inAlarmFrame(o) || !ALARM_MIRROR ? st0 : { ...st0, ax: st0.ay, ay: st0.ax, bx: st0.by, by: st0.bx };
         obs.push({ stad: st, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(stadium r ${st.r.toFixed(2)})` });
         return;
       }
@@ -38024,6 +38037,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
         let r = 0;
         const _mw = pp.count > 0 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
         for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); _tmpV3a.applyMatrix4(_mw); r = Math.max(r, Math.hypot(_tmpV3a.x - ax, _tmpV3a.y - ay)); }
+        axis.applyMatrix4(ALARM_W2M);   // the reach is a distance; the axis is a place, read in the module's terms
         obs.push({ disc: { x: axis.x, y: axis.y, r }, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(disc r ${r.toFixed(1)} at ${axis.x.toFixed(1)},${axis.y.toFixed(1)} z ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)})` });
       } else {
         b._who = `${e.name}/${o.name || o.geometry.type}`;
@@ -38648,8 +38662,8 @@ function alarmLinkReadClean(colX, colY, lockEngaged) {
 // pusher's force rows below it.
 let ALARM_LINK_ARMING_SPRING = null;
 let ALARM_PINB_LIFT_AT_NOSE = null;   // TODO 222 — follower-B's lift, reflected to the column's nose (solved beside the arming spring)
-const alarmLinkUnit = new THREE.Group();
-movement.add(alarmLinkUnit);
+const alarmLinkUnit = new THREE.Group();   // the module's own: hung in alarmFrame below
+alarmFrame.add(alarmLinkUnit);
 registerLabel('Alarm link', alarmLinkUnit);
 registerExplode(alarmLinkUnit, 0, 4, -1); // dial-side chain: explodes toward the dial
 // §261 2c — the beak reads the FOLDED wheel, so it is built in the cluster's
