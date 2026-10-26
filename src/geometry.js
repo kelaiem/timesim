@@ -3062,6 +3062,15 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
 export const RATCHET_ROOT_K = 0.9;
 export const RATCHET_TIP_K = 1.12;
 export const ratchetToothDepth = (baseR) => baseR * (RATCHET_TIP_K - RATCHET_ROOT_K);
+// §234 (the alarm pusher's stem) — THE DRIVE SENSE, AS ONE SOURCE, on the
+// radii's rule above. The saw teeth below run tip→root as the angle RISES, so
+// their cliff faces +theta and a pawl can only drive the wheel in −z; the built
+// wheel publishes this as `userData.ratchetDrive`. The pusher's press axis
+// turns on this sign (§170: the line through the centre is rotated by the
+// coupling's offset WITH the drive), and that axis is now derived before the
+// wheel exists — the bar's length on the form case depends on which way the
+// line leaves — so the sign is declared here and the builder reads it.
+export const COLUMN_WHEEL_RATCHET_DRIVE = -1;
 
 export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28, skirtH = STOCK_MIN_U, rCham = 0 }) {
   const mat = material || MATS.blueSteel;
@@ -3328,8 +3337,10 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
   // The saw teeth above run tip→root as the angle RISES, so their cliff faces
   // +theta and a pawl can only drive the wheel in −z. Exported so the caller's
   // pawl geometry can derive its side from the teeth instead of agreeing with
-  // them by luck — it did not (§43 postscript).
-  g.userData.ratchetDrive = -1;
+  // them by luck — it did not (§43 postscript). The sign is the module-level
+  // constant above, so a caller that needs it before the wheel is built reads
+  // the same source.
+  g.userData.ratchetDrive = COLUMN_WHEEL_RATCHET_DRIVE;
   // Beak lift at wheel angle `a` (beak azimuth 0): 1 on a column, 0 in a gap,
   // linear on the flanks. Column i is centred at i·pitch.
   g.userData.profileAt = (a) => {
