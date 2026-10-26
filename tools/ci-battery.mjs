@@ -1278,6 +1278,29 @@ const SPEC_POINTS = [
   // build the identity instead of quietly cutting a slot nobody designed.
   { name: 'route=channel', q: 'route=10,20,-1;30,20,-0.9', expect: 'any',
     why: '§36 Apply — a leg almost in the plate plane is refused, and the movement builds as designed' },
+  // §308 landing 5 — THE ARRANGEMENT, and the first FORM build on this table.
+  // The going barrel swung to 180°, the reserve carried round to 36° and the
+  // alarm module turned to 80° on the rect: the build the §308 record names
+  // as UNVERIFIED for want of exactly this row and a validated-configs one.
+  // Until this row, the only thing that built it was
+  // tools/probe-308-barrel-swing.mjs, which no workflow runs — so #808 (the
+  // pusher's stem cut to its bar, the return coil's second floor) was held on
+  // this arrangement by a local run alone, and a later landing could stop it
+  // building with every gate green.
+  //
+  // LIVENESS ONLY, by the table's own rule, and it cannot be more yet: it
+  // boots with three warnings (the form plate's §186 seat fit and §261 depth,
+  // which every form build carries, and TODO 206's shared margin, landing 4's
+  // residue at every turned module), and `sweep: true` is for points that
+  // boot silent. The probe still holds the exact warning SET; this row holds
+  // that the arrangement BUILDS, finite, and reads unverified.
+  //
+  // `formrect=` is the arrangement's own fitted outline (FORM_FOOTPRINT's
+  // bounds, rounded outward), so the cut holds its metal and no provisional-
+  // cut artefact joins the warnings. The query is the probe's build A — the
+  // probe reads this row back and fails if the two have parted.
+  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'any',
+    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on the fitted rect; warns three (two form rows, TODO 206)' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.

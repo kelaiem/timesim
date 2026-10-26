@@ -1260,7 +1260,7 @@ changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
 report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a
-parallel job, and since §265 its 36 spec boots too — since the fan-out on TWO
+parallel job, and since §265 its spec boots too — since the fan-out on TWO
 jobs, `battery spec` and `battery points`** (`--tiers-only --tiers-part P`, one
 file per tier naming its part, `TIERS_FORMAT` 3). Each is handed to the battery
 (`--tiers-from SPEC,POINTS`, each fetched in the background by its own

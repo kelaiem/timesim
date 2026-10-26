@@ -102,6 +102,21 @@ const ALLOWED = { R: [], E: [], D: [...FORM_SHARED, ...DESIGN_OWN], S: FORM_SHAR
 const run = only ? BUILDS.filter((b) => b.id === only) : BUILDS;
 if (!run.length) { console.error(`--only ${only}: no such build`); process.exit(2); }
 
+// THE BATTERY BOOTS BUILD A TOO, as its `arrangement-308` SPEC_POINTS row
+// (liveness: it must build, finite, and read unverified). That row's query is a
+// second copy of build A's, and a copy that drifts would have the battery
+// guarding an arrangement nobody designed while this probe guards the real one.
+// So the row is read back off the battery's SOURCE (importing ci-battery.mjs
+// would run it) and held to build A's query, byte for byte. Not browser work,
+// so it runs first and under every --only.
+{
+  const src = await readFile(join(ROOT, 'tools/ci-battery.mjs'), 'utf8');
+  const m = src.match(/\{ name: 'arrangement-308', q: '([^']*)'/);
+  const a = BUILDS.find((b) => b.id === 'A').q;
+  ok('the battery\'s arrangement-308 SPEC_POINTS row boots build A', !!m && m[1] === a,
+    m ? (m[1] === a ? a : `row ${m[1]} vs build A ${a}`) : 'no arrangement-308 row in tools/ci-battery.mjs');
+}
+
 let chromium;
 try { ({ chromium } = await import(join(ROOT, 'tools/node_modules/playwright/index.mjs'))); }
 catch { ({ chromium } = createRequire(import.meta.url)('playwright')); }
