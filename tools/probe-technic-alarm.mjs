@@ -63,7 +63,7 @@ import { fileURLToPath } from 'node:url';
 import { parseLibrary, bounds, placements, LDU_MM } from '../src/ldraw.js';
 import { loadPack } from './technic-pack.mjs';
 import { LEGO_DIM_MM as D, GEAR_TIP_MM } from '../src/technic-frame.js';
-import { placedParts, toLdr, surfaceSamples } from '../src/technic-ldraw.js';
+import { placedParts, toLdr, surfaceSamples, placedCloud, cloudGap } from '../src/technic-ldraw.js';
 import { pawlLock, starProfile, penetration } from '../src/technic-fusee.js';
 import { CATALOGUES, TECHNIC_FORK, catalogueMesh, ratQ, ratMul, ratEq, ratStr } from '../src/layout.js';
 import * as M from '../src/technic-alarm.js';
@@ -400,33 +400,18 @@ for (const m of me) if (m.depth > 0.05) fail(`${m.pair}: the teeth stand ${m.dep
 control('a gear turned half a tooth out of mesh', meshErr(armedBuild, Math.PI / 16).some((m) => m.depth > 0.5));
 // CLEAR, at each state: every placed part's sampled surface over an LDU from every part it does not bear on
 const CLEAR_LDU = 1;
+// A placement's surface is a FLAT cloud (technic-ldraw's placedCloud: the
+// part's samples kept once, transformed in flight), never a boxed point per
+// sample per placement — the three states' 258 clouds were 3.8 GB that way and
+// died at Node's default heap. The gap is cloudGap's: a 4 LDU reach, 2 LDU
+// cells, the 27 around each sample, the same reading to the bit.
 const cloudCache = new Map();
 function cloud(p) {
   const key = `${p.part}|${p.m.join(',')}`;
-  if (cloudCache.has(key)) return cloudCache.get(key);
-  const m = p.m, pts = surfaceSamples(lib, p.part, 0.5).map(([x, y, z]) => [m[0] + m[3] * x + m[4] * y + m[5] * z, m[1] + m[6] * x + m[7] * y + m[8] * z, m[2] + m[9] * x + m[10] * y + m[11] * z]);
-  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-  for (const q of pts) for (let d = 0; d < 3; d++) { if (q[d] < lo[d]) lo[d] = q[d]; if (q[d] > hi[d]) hi[d] = q[d]; }
-  const c = { pts, lo, hi }; cloudCache.set(key, c); return c;
+  if (!cloudCache.has(key)) cloudCache.set(key, placedCloud(lib, p, 0.5));
+  return cloudCache.get(key);
 }
-function gap(A1, B1) {
-  const reach = 4;
-  if ([0, 1, 2].some((d) => A1.lo[d] > B1.hi[d] + reach || B1.lo[d] > A1.hi[d] + reach)) return Infinity;
-  const C = 2, grid = new Map(), key = (x, y, z) => `${Math.floor(x / C)},${Math.floor(y / C)},${Math.floor(z / C)}`;
-  for (const q of B1.pts) {
-    if (q[0] < A1.lo[0] - reach || q[0] > A1.hi[0] + reach || q[1] < A1.lo[1] - reach || q[1] > A1.hi[1] + reach || q[2] < A1.lo[2] - reach || q[2] > A1.hi[2] + reach) continue;
-    const k = key(...q); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(q);
-  }
-  let best = Infinity;
-  for (const q of A1.pts) {
-    const cx = Math.floor(q[0] / C), cy = Math.floor(q[1] / C), cz = Math.floor(q[2] / C);
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-      const cell = grid.get(`${cx + dx},${cy + dy},${cz + dz}`); if (!cell) continue;
-      for (const s of cell) { const d = Math.hypot(s[0] - q[0], s[1] - q[1], s[2] - q[2]); if (d < best) best = d; }
-    }
-  }
-  return best;
-}
+function gap(A1, B1) { return cloudGap(A1, B1, { reach: 4, cell: 2 }); }
 // BEARING BY DESIGN, and so skipped: a body's own parts; the columns among
 // themselves (frame-checked above); an axle in a Technic brick, in a pin hole
 // it turns in (the driver on the column wheel's axle, the pawl on its pivot),

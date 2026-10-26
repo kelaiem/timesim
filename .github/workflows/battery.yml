@@ -118,6 +118,10 @@
 #   booklet.html       §304's printable LEGO booklet — likewise: it imports the
 #                      technic modules (which import layout.js), index.html
 #                      loads only src/main.js, and nothing imports the page
+#   gong-bench.html    §310's gong bench — likewise: it imports layout.js and
+#   src/gong-bench-*   the pure gong modules, its worker and its generated data
+#                      are read by the page alone; the arrow points away from
+#                      index.html
 #   sw.js              the battery "runs the source tree and so deliberately
 #                      has no worker at all" (CLAUDE.md). offline.yml owns it
 #   .githooks, .gitignore, LICENSE, vendor/LICENSE-*.txt
@@ -230,6 +234,8 @@ on:
       - 'test-geometry.html'
       - 'technic.html'
       - 'booklet.html'
+      - 'gong-bench.html'
+      - 'src/gong-bench-*'
       - 'sw.js'
       - '.githooks/**'
       - '.gitignore'

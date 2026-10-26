@@ -82,7 +82,7 @@ import { parseLibrary, bounds, placements, walk, LDU_MM } from '../src/ldraw.js'
 import { loadPack } from './technic-pack.mjs';
 import { CATALOGUES } from '../src/layout.js';
 import { LEGO_DIM_MM as D, GEAR_TIP_MM } from '../src/technic-frame.js';
-import { placedParts, toLdr, surfaceSamples } from '../src/technic-ldraw.js';
+import { placedParts, toLdr, surfaceSamples, placedCloud, pointCloud, cloudGap } from '../src/technic-ldraw.js';
 import {
   TECHNIC_FUSEE_SPRING, STEEL_STAND_IN, springTorque, springBand, FUSEE_PULLEYS, FUSEE_STRINGS, FUSEE_PARTS, FUSEE_DIM_MM,
   grooveSeat, fuseeRun, solveFusee, idealAgainst, TECHNIC_FUSEE, cordChoice, frameFusee, cordPath, pathLength,
@@ -257,21 +257,20 @@ if (cord.string && !near(cord.length, cord.string.length, 1e-6)) fail(`the path 
 const build = fuseeBuild(frame, lib, { run });
 const placed = placedParts(build);
 const solid = placed.filter((p) => !['cord', 'cordEnd', 'baseplate'].includes(p.role));
+// Each a FLAT cloud (technic-ldraw's placedCloud: the part's samples kept once,
+// transformed in flight), never a boxed point per sample per placement — the
+// three ratchet poses' clouds were past Node's default heap that way. The gap
+// is cloudGap's, the same reading to the bit; a wrap's centreline is a
+// pointCloud.
 const cloudCache = new Map();
 function cloud(p) {
   const key = `${p.part}|${p.m.join(',')}`;
-  if (cloudCache.has(key)) return cloudCache.get(key);
-  const m = p.m, out = surfaceSamples(lib, p.part, 0.5).map(([x, y, z]) => [m[0] + m[3] * x + m[4] * y + m[5] * z, m[1] + m[6] * x + m[7] * y + m[8] * z, m[2] + m[9] * x + m[10] * y + m[11] * z]);
-  const c = boxed(out); cloudCache.set(key, c); return c;
-}
-function boxed(pts) {
-  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-  for (const q of pts) for (let d = 0; d < 3; d++) { if (q[d] < lo[d]) lo[d] = q[d]; if (q[d] > hi[d]) hi[d] = q[d]; }
-  return { pts, lo, hi };
+  if (!cloudCache.has(key)) cloudCache.set(key, placedCloud(lib, p, 0.5));
+  return cloudCache.get(key);
 }
 const ldu = (q) => [L(q[0]), -L(q[2]), L(q[1])];   // frame mm → LDraw LDU
 function wrapGap(points, part) {
-  return gap(boxed(points), cloud(part)) * LDU_MM;
+  return gap(pointCloud(points), cloud(part)) * LDU_MM;
 }
 // the surface is sampled every half LDU, so the nearest sample can stand up to
 // ~0.1 mm beyond the true surface: a wrap RESTS when its own groove's nearest
@@ -470,24 +469,7 @@ for (const e of be) fail(e);
 // end in a joiner; a hook's end
 // stud on its plate and against the base step's face.
 const CLEAR_LDU = 1;
-function gap(A, Bc) {
-  const reach = 4;
-  if ([0, 1, 2].some((d) => A.lo[d] > Bc.hi[d] + reach || Bc.lo[d] > A.hi[d] + reach)) return Infinity;
-  const C = 2, grid = new Map(), key = (x, y, z) => `${Math.floor(x / C)},${Math.floor(y / C)},${Math.floor(z / C)}`;
-  for (const q of Bc.pts) {
-    if (q[0] < A.lo[0] - reach || q[0] > A.hi[0] + reach || q[1] < A.lo[1] - reach || q[1] > A.hi[1] + reach || q[2] < A.lo[2] - reach || q[2] > A.hi[2] + reach) continue;
-    const k = key(...q); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(q);
-  }
-  let best = Infinity;
-  for (const q of A.pts) {
-    const cx = Math.floor(q[0] / C), cy = Math.floor(q[1] / C), cz = Math.floor(q[2] / C);
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-      const cell = grid.get(`${cx + dx},${cy + dy},${cz + dz}`); if (!cell) continue;
-      for (const s of cell) { const d = Math.hypot(s[0] - q[0], s[1] - q[1], s[2] - q[2]); if (d < best) best = d; }
-    }
-  }
-  return best;
-}
+function gap(A, Bc) { return cloudGap(A, Bc, { reach: 4, cell: 2 }); }   // hoisted: wrapGap above reads it
 const LINE = new Set(['pulley', 'hook', 'click', 'ratchet', 'great', 'knob', 'barrel', 'joiner']);
 function clearErrors(b) {
   const errs = [], worst = new Map();

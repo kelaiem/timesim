@@ -49,6 +49,9 @@ on:
       # offline here
       - 'technic.html'
       - 'booklet.html'
+      # §310 — the gong bench is an adopted document too: it, its worker and its data are precached
+      - 'gong-bench.html'
+      - 'src/gong-bench-*'
       - 'src/technic-*.js'
       - 'src/ldraw.js'
       - 'vendor/ldraw/**'
