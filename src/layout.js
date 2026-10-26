@@ -297,10 +297,12 @@ export const SPEC = (() => {
   // fitted case's measured free space and the lever the hammer hangs off.
   // Ignored on the round build, where the arc is the design.
   const gongSeat = ['bar', 'spiral', 'arc'].includes(raw.gongSeat) ? raw.gongSeat : null;
-  // THE ALARM MODULE MIRRORED: 'diag' reflects the whole module across the line y = x through the hand
-  // centre, before ?alarmmod= turns it. A reflection is not a rotation: it reverses the module's hand, so
+  // THE ALARM MODULE MIRRORED: reflects the whole module across a line through the hand centre (its azimuth, or
+  // 'diag' for y = x), before ?alarmmod= turns it. A reflection is not a rotation: it reverses the module's hand, so
   // its bearings and its motor's sense reverse with it (main.js' alarmModAz / ALARM_SENSE_W). null = as designed.
-  const alarmMirror = raw.alarmMirror === 'diag' ? 'diag' : null;
+  // the mirror LINE's azimuth in degrees through the hand centre; 'diag' is 45° (y = x)
+  const alarmMirror = raw.alarmMirror === 'diag' ? 45
+    : (raw.alarmMirror !== undefined && raw.alarmMirror !== null && raw.alarmMirror !== '' && Number.isFinite(Number(raw.alarmMirror))) ? Number(raw.alarmMirror) : null;
   return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat, alarmMirror });
 })();
 

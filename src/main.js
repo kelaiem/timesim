@@ -3737,11 +3737,16 @@ const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
 // bearing, outline and tick law is the design's, proven there, and the reflection carries them. What changes is
 // the module's EDGE: anything outside it that reads a module station reads it through alarmToWorld, and anything
 // inside it that reads the world (an obstacle, the plate, the case) reads it through worldToAlarm.
-const ALARM_MIRROR = SPEC.alarmMirror === 'diag';
+// The mirror LINE is a spec quantity: SPEC.alarmMirror is its azimuth in degrees ('diag' is 45°, y = x). Across
+// the line at α a point at azimuth θ goes to 2α − θ: the hammer (designed at ~17°) to 2α − 17°, the selector's
+// drive tab (87°) to 2α − 87°, which is what places both against the case and the dial-side trains.
+const ALARM_MIRROR = SPEC.alarmMirror !== null && SPEC.alarmMirror !== undefined;
+const ALARM_MIRROR_A = ALARM_MIRROR ? SPEC.alarmMirror * DEG2RAD : 0;
+const _mC = Math.cos(2 * ALARM_MIRROR_A), _mS = Math.sin(2 * ALARM_MIRROR_A);
 const ALARM_MOD_SIGMA = ALARM_MIRROR ? -1 : 1;   // the module's hand in the world: −1 under the reflection
-const alarmToWorld = ALARM_MIRROR ? (p) => ({ ...p, x: p.y, y: p.x }) : (p) => p;
+const alarmToWorld = ALARM_MIRROR ? (p) => ({ ...p, x: _mC * p.x + _mS * p.y, y: _mS * p.x - _mC * p.y }) : (p) => p;
 const worldToAlarm = alarmToWorld;               // a reflection is its own inverse
-const alarmAzToWorld = ALARM_MIRROR ? (a) => Math.PI / 2 - a : (a) => a;
+const alarmAzToWorld = ALARM_MIRROR ? (a) => 2 * ALARM_MIRROR_A - a : (a) => a;
 const alarmModAz = (az) => az + ALARM_MOD_ROT;
 const ALARM_SENSE_W = ALARM_SENSE;
 // HOISTED from the link's block (their notes stay there): the drive tab's design reach, and the link's measured
@@ -3753,7 +3758,7 @@ const ALARM_LINK_MEASURED_SITE = Object.freeze({ k: 1, run: 6, tabDeg: 87 });
 // is set once and never recomposed (a reflection has no position/rotation/scale three.js can compose).
 const alarmFrame = new THREE.Group();
 alarmFrame.name = 'alarmFrame';
-if (ALARM_MIRROR) { alarmFrame.matrixAutoUpdate = false; alarmFrame.matrix.set(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1); }
+if (ALARM_MIRROR) { alarmFrame.matrixAutoUpdate = false; alarmFrame.matrix.set(_mC, _mS, 0, 0, _mS, -_mC, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1); }
 movement.add(alarmFrame);
 // world → module coordinates as a matrix (the movement group is untransformed, so the frame's own matrix is it):
 // a measurement INSIDE the module of the module's own metal reads world vertices through this, so it is taken in
@@ -3763,6 +3768,16 @@ const ALARM_W2M = ALARM_MIRROR ? alarmFrame.matrix.clone() : new THREE.Matrix4()
 // an object's world matrix read in the module's coordinates (the link's and the selector's own measurements: their
 // constants are the module's, and every pair of them is reflected alike, so relative readings are unchanged)
 const alarmMW = ALARM_MIRROR ? (o) => new THREE.Matrix4().multiplyMatrices(ALARM_W2M, o.matrixWorld) : (o) => o.matrixWorld;
+// a mesh's box in the module's coordinates, from its own vertices: under a mirror line that is not y = x the box
+// of a box's mapped corners is LARGER than the metal (the instruments skill's rotated-box trap), so the vertices
+// are mapped one by one. As designed it is the box the callers always read.
+const alarmBoxOf = ALARM_MIRROR ? (o) => {
+  const b = new THREE.Box3(), pos = o.geometry?.attributes?.position; if (!pos) return b;
+  o.updateWorldMatrix(true, false);
+  const m = alarmMW(o), v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) b.expandByPoint(v.fromBufferAttribute(pos, i).applyMatrix4(m));
+  return b;
+} : null;
 const inAlarmFrame = (o) => { for (let a = o; a; a = a.parent) if (a === alarmFrame) return true; return false; };
 const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29;
 const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
@@ -21985,11 +22000,12 @@ const alarmSelRingWork = ({ alpha, turn, rT, nWx, nWy, thS }) => {
 const alarmSelectorUnit = new THREE.Group();
 // the selector is the module's dial-side end (the link drives its ring): under the mirror it hangs in the dial
 // face's image of alarmFrame. dialFace is turned π about y, so world (x, y) ↔ dial-local (−x, y) about the hands,
-// and the world's reflection across y = x is, in dial-local terms, (x, y) → (−y, −x)
+// and the world's reflection across the line at α is, in dial-local terms, D·R·D with D = diag(−1, 1): (x, y) →
+// (cos2α·x − sin2α·y, −sin2α·x − cos2α·y) — at α = 45° (y = x) that is (x, y) → (−y, −x)
 const alarmSelFrame = new THREE.Group();
 alarmSelFrame.name = 'alarmSelFrame';
 if (ALARM_MIRROR) {
-  alarmSelFrame.matrixAutoUpdate = false; alarmSelFrame.matrix.set(0, -1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+  alarmSelFrame.matrixAutoUpdate = false; alarmSelFrame.matrix.set(_mC, -_mS, 0, 0, -_mS, -_mC, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
   if (Math.hypot(P.dial.x, P.dial.y) > 1e-9) console.warn(`alarm mirror: the dial stands at (${P.dial.x}, ${P.dial.y}), off the hands' axis the reflection is through — the selector's frame assumes it on it`);
 }
 dialFace.add(alarmSelFrame);
@@ -34003,7 +34019,7 @@ const ALARM_TIER_DISCS = (() => {
       // setFromObject's PRECISE form. `boxOf` omits it, which reads a rotated
       // mesh's inflated AABB — the trap in the instruments skill, and here it
       // manufactured three fouls in members that measure clear.
-      const bb = new THREE.Box3().setFromObject(o, true).applyMatrix4(ALARM_W2M);   // module coordinates (the stations' own)
+      const bb = ALARM_MIRROR ? alarmBoxOf(o) : new THREE.Box3().setFromObject(o, true);   // module coordinates (the stations' own)
       if (!bb.isEmpty()) rows.push({ mesh: o.name || o.geometry.type, bb });
     });
     return rows;
@@ -38003,8 +38019,9 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
       if (SEAT_PRICED.test(o.name)) return;
       // the link is the module's own and is sited in the module's coordinates: every obstacle is read there
-      // (an axis-aligned box maps to one under the mirror's x ↔ y)
-      const b = boxOf(o).applyMatrix4(ALARM_W2M);
+      // (an axis-aligned box maps to one under y = x's x ↔ y; under any other line, Box3.applyMatrix4 returns the box
+      // round the mapped corners, which is larger — the conservative side)
+      const b = ALARM_MIRROR ? alarmBoxOf(o) : boxOf(o);
       if (b.isEmpty()) return;
       // §198 — a part whose every vertex stands OUTSIDE the plate's rim is
       // an annulus tenant (the gong's ring and block, the hammer's post): no
@@ -38032,7 +38049,8 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
       // and broke the plate bores the first time this fold booted.
       if (o.userData.planStadium) {
         const st0 = o.userData.planStadium;   // written where its builder stood: the module's parts in module terms
-        const st = inAlarmFrame(o) || !ALARM_MIRROR ? st0 : { ...st0, ax: st0.ay, ay: st0.ax, bx: st0.by, by: st0.bx };
+        const _sa = worldToAlarm({ x: st0.ax, y: st0.ay }), _sb = worldToAlarm({ x: st0.bx, y: st0.by });
+        const st = inAlarmFrame(o) || !ALARM_MIRROR ? st0 : { ...st0, ax: _sa.x, ay: _sa.y, bx: _sb.x, by: _sb.y };
         obs.push({ stad: st, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(stadium r ${st.r.toFixed(2)})` });
         return;
       }
@@ -42891,7 +42909,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         const pos = o.geometry.getAttribute('position'); if (!pos) return;
         // cheap cull: the mesh's world box against the reach disc (the box is
         // an over-estimate, which can only keep a mesh the exact test drops)
-        box.setFromObject(o).applyMatrix4(ALARM_W2M);   // the module's coordinates, where wc is written
+        if (ALARM_MIRROR) box.copy(alarmBoxOf(o)); else box.setFromObject(o);   // the module's coordinates, where wc is written
         if (box.max.x < wc.x - reachW || box.min.x > wc.x + reachW || box.max.y < wc.y - reachW || box.min.y > wc.y + reachW) return;
         const pts = [], armPts = [];
         let zLo = Infinity, zHi = -Infinity;
