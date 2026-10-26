@@ -250,9 +250,12 @@ for (const row of rows) {
     const [x0, x1, y0, y1] = bar.formrect, cw = GS.seatCurve(bar.curve), d = [Infinity, Infinity, Infinity, Infinity];
     for (let i = 0; i <= 64; i++) { const q = cw.at(cw.L * i / 64); d[0] = Math.min(d[0], q.x - x0); d[1] = Math.min(d[1], x1 - q.x); d[2] = Math.min(d[2], q.y - y0); d[3] = Math.min(d[3], y1 - q.y); }
     const k = d.indexOf(Math.min(...d));
-    const narrow = bar.formrect.slice(); narrow[k] += (k % 2 ? -3 : 3);
+    // pulled in past the wire: 3 u, or as far as puts that side 1 u INSIDE the wire's need (the margin and its radius,
+    // the row's map.need) when the wire stands further off than that — the arrangement's arc stands ~10 u inside
+    const pull = Math.max(3, d[k] - bar.map.need + 1);
+    const narrow = bar.formrect.slice(); narrow[k] += (k % 2 ? -pull : pull);
     const n = await boot(`case=${bar.kind}&formrect=${narrow.join(',')}`, seatRead);
-    ok('B3 control: a seat carried to a fit 3 u narrower on its side is called out', n.warnings.some((w) => /§310: the bar gong stands .* inside the/.test(w)),
+    ok(`B3 control: a seat carried to a fit narrowed past its wire on that side (${pull.toFixed(2)} u) is called out`, n.warnings.some((w) => /§310: the bar gong stands .* inside the/.test(w)),
       n.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
     const moved = JSON.parse(JSON.stringify(GONG_SEATS)); moved[bar.kind].bar.strikeS += 1;
     seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(moved)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
