@@ -3731,17 +3731,34 @@ const ALARM_WIND_X = Math.cos(ALARM_CORNER_W_AZ) * ALARM_CD, ALARM_WIND_Y = Math
 // constants, defined once.
 const ALARM_MOD_ROT = SPEC.alarmModAzDeg !== null
   ? SPEC.alarmModAzDeg * DEG2RAD - 40 * DEG2RAD : 0;
-// THE MODULE MIRRORED (?alarmmirror=diag): reflected across y = x through the hand centre, then turned by
-// ALARM_MOD_ROT. A seed AZIMUTH θ goes to 90° − θ (alarmModAz), a BEARING b between two of the module's own
-// stations to −b (ALARM_MOD_SIGMA · b), and the module's hand reverses, so its motor's sense does too
-// (ALARM_SENSE_W: every alarm cut that reads ALARM_SENSE reads this). At identity σ is exactly 1 and the
-// offset exactly 0, so every literal stays bit-exact.
+// THE MODULE MIRRORED (?alarmmirror=diag): the module is BUILT as designed, in its own coordinates, and stands
+// in the movement through one reflection across y = x through the hand centre (ALARM_FRAME, below). A reflection
+// is not a turn — it reverses the module's hand — so nothing inside the module is re-derived: every station,
+// bearing, outline and tick law is the design's, proven there, and the reflection carries them. What changes is
+// the module's EDGE: anything outside it that reads a module station reads it through alarmToWorld, and anything
+// inside it that reads the world (an obstacle, the plate, the case) reads it through worldToAlarm.
 const ALARM_MIRROR = SPEC.alarmMirror === 'diag';
-const ALARM_MOD_SIGMA = ALARM_MIRROR ? -1 : 1;
-const alarmModAz = (az) => ALARM_MOD_SIGMA * az + (ALARM_MIRROR ? Math.PI / 2 : 0) + ALARM_MOD_ROT;
-const ALARM_SENSE_W = ALARM_SENSE * ALARM_MOD_SIGMA;
-const ALARM_SW_AZ = alarmModAz(40 * DEG2RAD), ALARM_SW_R = 29;
+const ALARM_MOD_SIGMA = ALARM_MIRROR ? -1 : 1;   // the module's hand in the world: −1 under the reflection
+const alarmToWorld = ALARM_MIRROR ? (p) => ({ ...p, x: p.y, y: p.x }) : (p) => p;
+const worldToAlarm = alarmToWorld;               // a reflection is its own inverse
+const alarmAzToWorld = ALARM_MIRROR ? (a) => Math.PI / 2 - a : (a) => a;
+const alarmModAz = (az) => az + ALARM_MOD_ROT;
+const ALARM_SENSE_W = ALARM_SENSE;
+// The frame the module's rigid units hang in: identity as designed, the reflection under the mirror. Its matrix
+// is set once and never recomposed (a reflection has no position/rotation/scale three.js can compose).
+const alarmFrame = new THREE.Group();
+alarmFrame.name = 'alarmFrame';
+if (ALARM_MIRROR) { alarmFrame.matrixAutoUpdate = false; alarmFrame.matrix.set(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1); }
+movement.add(alarmFrame);
+// world → module coordinates as a matrix (the movement group is untransformed, so the frame's own matrix is it):
+// a measurement INSIDE the module of the module's own metal reads world vertices through this, so it is taken in
+// the coordinates its constants are written in. Under the identity it is the identity.
+const ALARM_W2M = ALARM_MIRROR ? alarmFrame.matrix.clone() : new THREE.Matrix4();
+// whether an object hangs in the module's frame (its measurements are then the module's, read through ALARM_W2M)
+const inAlarmFrame = (o) => { for (let a = o; a; a = a.parent) if (a === alarmFrame) return true; return false; };
+const ALARM_SW_AZ = 40 * DEG2RAD + ALARM_MOD_ROT, ALARM_SW_R = 29;
 const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW_AZ) * ALARM_SW_R };
+const alarmSwPosW = alarmToWorld(alarmSwPos);
 // §261 step 4, landing 2a — THE STRIKING WHEEL TURNS ON A STAFF, not on a
 // fixed stud. §112 planted a stud 0.5 into the base plate's solid metal and
 // ran the rotor on it (and in the three-quarter plate's chaton above — held
@@ -4885,6 +4902,8 @@ const ALARM_TIER_POS = alarmTierPosAt(ALARM_TIER_TRIPLE);
 const alarmBarrelPos = ALARM_TIER_POS.barrel;
 const alarmGovPos = ALARM_TIER_POS.gov;
 const alarmGovAnchorPos = ALARM_TIER_POS.anchor;
+// …and where they stand in the movement (the mirror's edge: every reader OUTSIDE the module reads these)
+const alarmBarrelPosW = alarmToWorld(alarmBarrelPos), alarmGovPosW = alarmToWorld(alarmGovPos), alarmGovAnchorPosW = alarmToWorld(alarmGovAnchorPos);
 const alarmTierDiscsAt = (t) => {
   const P = alarmTierPosAt(t);
   return [
@@ -27634,7 +27653,7 @@ const ALARM_TAIL_T = 0.5;          // tail / lever bar thickness, centred on Z_S
 // cause of the blow instead of as a wobble.
 const ALARM_DRAW_RAD = 3 * ALARM_STRIKE_AMP;
 const STRIKE_REF = (() => {
-  const gongR = 35, a1 = alarmModAz(15 * DEG2RAD), pivAz = a1 + ALARM_MOD_SIGMA * 11 * DEG2RAD;
+  const gongR = 35, a1 = 15 * DEG2RAD + ALARM_MOD_ROT, pivAz = a1 + 11 * DEG2RAD;
   const wireR = 2.6292 / 2;                       // the §197 wire (its band's height, 0.996 mm)
   const piv = { x: Math.cos(pivAz) * gongR, y: Math.sin(pivAz) * gongR };
   const eyeR = gongR + wireR + ALARM_HEAD_R + HAMMER_HEAD_GAP;
@@ -28379,7 +28398,7 @@ const GONG_FOOT_OBSTACLES = await (async () => {
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
-        v.fromBufferAttribute(pos, i).applyMatrix4(_mw);
+        v.fromBufferAttribute(pos, i).applyMatrix4(_mw).applyMatrix4(ALARM_W2M);   // the gong's own (module) coordinates
         x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x);
         y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
         z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z);
@@ -28397,7 +28416,7 @@ const GONG_FOOT_OBSTACLES = await (async () => {
   movement.traverse((o) => walkFootObstacle.push(o));
   for (const o of walkFootObstacle) { await breathe(207); visitFootObstacle(o); }
   for (const az of CASE_CLAMP_AZ) {
-    const h = CASE_SCREW_HEAD_D / 2, cx = Math.cos(az) * R_CLAMP, cy = Math.sin(az) * R_CLAMP;
+    const h = CASE_SCREW_HEAD_D / 2, c = worldToAlarm({ x: Math.cos(az) * R_CLAMP, y: Math.sin(az) * R_CLAMP }), cx = c.x, cy = c.y;
     boxes.push({ x0: cx - h, x1: cx + h, y0: cy - h, y1: cy + h, name: 'case clamp head' });
   }
   return boxes;
@@ -28435,7 +28454,7 @@ const GONG_POST_R_BUILT = GONG_SEATED ? gongPostRFor(GONG_SEAT.row.curve.L * OSC
 }
 
 const alarmGongUnit = new THREE.Group();
-movement.add(alarmGongUnit);
+alarmFrame.add(alarmGongUnit);   // the gong is the strike group's own: its arc derives from the striking wheel's station
 registerLabel('Alarm gong', alarmGongUnit);
 registerExplode(alarmGongUnit, 0, 9); // baseZ 0: children carry world z; rises with the back stack on explode
 // The gong wire: a partial torus (an arc of round steel wire), coaxial with
@@ -28562,7 +28581,7 @@ movement.add(alarmStrikePt);
 // (planted the plate-top idiom's 0.5) up to the tail's plane: a real
 // hammer's staff, carrying its head low and its tail high.
 const alarmHammerUnit = new THREE.Group();
-movement.add(alarmHammerUnit);
+alarmFrame.add(alarmHammerUnit);
 registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
 const HAMMER_POST_R = 0.6;
@@ -28760,11 +28779,11 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // The let-down square is the only other thing standing on this face away from
 // the gong sector (barrelArbor's plate-top end, half-diagonal FUSEE_SQ_S/√2).
 {
-  const d = Math.hypot(alarmBarrelPos.x - P.barrel.x, alarmBarrelPos.y - P.barrel.y);
+  const d = Math.hypot(alarmBarrelPosW.x - P.barrel.x, alarmBarrelPosW.y - P.barrel.y);
   const need = ALARM_BARREL_TIP_R + FUSEE_SQ_S * Math.SQRT1_2 + CLEAR_MARGIN;
   if (d < need)
     console.warn(`alarm barrel fouls the fusee let-down square: centres ${d.toFixed(2)} apart, need ${need.toFixed(2)}`);
-  const rim = Math.hypot(alarmBarrelPos.x, alarmBarrelPos.y) + ALARM_BARREL_TIP_R;
+  const rim = Math.hypot(alarmBarrelPosW.x, alarmBarrelPosW.y) + ALARM_BARREL_TIP_R;
   if (rim > plateR - CLEAR_MARGIN)
     console.warn(`alarm barrel overhangs the plate rim: reaches ${rim.toFixed(2)}, plate ${plateR.toFixed(2)}`);
 }
@@ -29086,7 +29105,7 @@ declareTravel('Alarm hammer', 2 * ALARM_DRAW_RAD, 'lift law spans [-ALARM_DRAW_R
 // transfer row (declareTransfer, after the acoustics that price the load)
 // carries the force arithmetic.
 const alarmLiftUnit = new THREE.Group();
-movement.add(alarmLiftUnit);
+alarmFrame.add(alarmLiftUnit);
 registerLabel('Alarm lifting lever', alarmLiftUnit);
 registerExplode(alarmLiftUnit, 0, 9); // baseZ 0: children carry world z, like the hammer it lifts
 const ALARM_LIFT_POST_R = 0.6;         // the §24 hammer post's section, on the same column
@@ -29646,7 +29665,7 @@ const gongWireFrame = () => {
 
 // --- 'Alarm striking wheel' — lifting cam + its pinion on a bearing stud -----
 const alarmStrikeUnit = new THREE.Group();
-movement.add(alarmStrikeUnit);
+alarmFrame.add(alarmStrikeUnit);
 registerLabel('Alarm striking wheel', alarmStrikeUnit);
 registerExplode(alarmStrikeUnit, 0, 9); // baseZ 0: children carry world z, like the gong and hammer
 // TODO 15 handles. Declared HERE, above the striking rotor: the pinion is
@@ -30008,7 +30027,7 @@ const alarmStrikeWheelAngle = () => -alarmStrikePhase * ALARM_CAM_LOBE_PITCH;
 
 // --- 'Alarm barrel' — the force source, on its own stud ---------------------
 const alarmBarrelUnit = new THREE.Group();
-movement.add(alarmBarrelUnit);
+alarmFrame.add(alarmBarrelUnit);
 registerLabel('Alarm barrel', alarmBarrelUnit);
 registerExplode(alarmBarrelUnit, 0, 9);
 {
@@ -30642,11 +30661,14 @@ const rotorInertiaZ = (group, pivot) => {
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   let V = 0, Izz = 0;
   group.updateWorldMatrix(true, true);
+  // a rotor in the module's frame is measured in the module's coordinates, where its pivot is written and where a
+  // signed tetrahedron keeps its sign (a reflection turns every one inside out)
+  const m2 = inAlarmFrame(group) ? ALARM_W2M : null;
   group.traverse((o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
     const pos = o.geometry.attributes.position, idx = o.geometry.index;
     const n = idx ? idx.count : pos.count;
-    const _mw = n > 2 ? worldMatrixOf(o) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
+    const _mw = n > 2 ? (m2 ? new THREE.Matrix4().multiplyMatrices(m2, worldMatrixOf(o)) : worldMatrixOf(o)) : null;   // hoisted: localToWorld re-walks the ancestors per vertex (refreshed only where it would have run)
     for (let t = 0; t + 2 < n; t += 3) {
       for (let e = 0; e < 3; e++) {
         const i = idx ? idx.getX(t + e) : t + e;
@@ -31862,7 +31884,7 @@ const ALARM_GOV_RING_TOP = ALARM_GOV_RING_BOT + ALARM_GOV_RING_S;
 // sleeve join the striking rotor, and the striking stud follows the shaft
 // up as a second turned length (one shaft, two meshes — declared joints).
 const alarmGovUnit = new THREE.Group();
-movement.add(alarmGovUnit);
+alarmFrame.add(alarmGovUnit);
 registerLabel('Alarm governor', alarmGovUnit);
 registerExplode(alarmGovUnit, 0, 9); // baseZ 0: children carry world z, the striking unit's convention
 const alarmGovRotor = new THREE.Group();       // pinion + saw + their arbor
@@ -31880,7 +31902,7 @@ alarmGovUnit.add(alarmGovRotor);
 // 'Hour wheel' is a sibling too). The stud comes with it, so the new unit
 // is supported by the plate directly and not by the unit it was cut out of.
 const alarmGovAnchorUnit = new THREE.Group();
-movement.add(alarmGovAnchorUnit);
+alarmFrame.add(alarmGovAnchorUnit);
 registerLabel('Alarm governor anchor', alarmGovAnchorUnit);
 registerExplode(alarmGovAnchorUnit, 0, 9); // baseZ 0, the striking unit's convention
 const alarmGovAnchorPivot = new THREE.Group(); // anchor + pallets + poising ring
@@ -32215,7 +32237,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
       if (!o.isMesh || !names.includes(o.name) || !o.geometry?.attributes?.position) return;
       const pos = o.geometry.attributes.position;
       for (let i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld).applyMatrix4(ALARM_W2M);
         const d = Math.hypot(v.x - row.x, v.y - row.y);
         if (d > reach) { reach = d; at = o.name; }
       }
@@ -32891,7 +32913,7 @@ const ALARM_WIND_PINION_TEETH = 12;
 // while the barrel is seeded from the alarm module's own azimuth and does not
 // move with it, so the span grows about 1:1 with the alarm corner.
 const _wc = { x: ALARM_WIND_X, y: ALARM_WIND_Y };
-const _wSpan = Math.hypot(alarmBarrelPos.x - _wc.x, alarmBarrelPos.y - _wc.y);
+const _wSpan = Math.hypot(alarmBarrelPosW.x - _wc.x, alarmBarrelPosW.y - _wc.y);
 // THE IDLER IS SIZED BY THE SPAN, which is what "sized so the chain spans the
 // run" always meant — but it was recorded as the number that solve produced
 // (51) rather than as the solve, and a frozen answer to a moving question is
@@ -32957,7 +32979,7 @@ registerExplode(alarmWindUnit, 0, 9); // rides with the back stack, like the str
 // the barrel; i2 by two-circle intersection (radii: mesh distances to i1 and
 // to the barrel), +y solution — the small dogleg that absorbs the slack
 // between the chain's link lengths and the straight span.
-const _wu = { x: (alarmBarrelPos.x - _wc.x) / _wSpan, y: (alarmBarrelPos.y - _wc.y) / _wSpan };
+const _wu = { x: (alarmBarrelPosW.x - _wc.x) / _wSpan, y: (alarmBarrelPosW.y - _wc.y) / _wSpan };
 // §308 landing 4 — HOISTED from the arrest's station solve (§129, below),
 // unchanged: the subtractor idler's station law and the counts it may try. The
 // winding dogleg under a form case reads them to rank its own stations by the
@@ -33036,7 +33058,7 @@ const { i1: alarmWindI1, i2: alarmWindI2, chain: _wChain } = (() => {
     for (let deg = -SWING; deg <= SWING - (FORM ? 2 : 0); deg += 2) {
       const a = az0 + deg * DEG2RAD;
       const i1 = { x: _wc.x + Math.cos(a) * _wd1, y: _wc.y + Math.sin(a) * _wd1 };
-      const dx = alarmBarrelPos.x - i1.x, dy = alarmBarrelPos.y - i1.y;
+      const dx = alarmBarrelPosW.x - i1.x, dy = alarmBarrelPosW.y - i1.y;
       const d = Math.hypot(dx, dy);
       if (d > _wd2 + _wd3 || d < Math.abs(_wd2 - _wd3)) continue; // no i2 closes here
       const aa = (_wd2 * _wd2 - _wd3 * _wd3 + d * d) / (2 * d);
@@ -33297,14 +33319,14 @@ const { i1: alarmWindI1, i2: alarmWindI2, chain: _wChain } = (() => {
     const st = [];
     for (let k = 0; k < 60; k++) {
       const a = k * 6 * DEG2RAD;
-      const s = { x: alarmBarrelPos.x + Math.cos(a) * ARREST_CD, y: alarmBarrelPos.y + Math.sin(a) * ARREST_CD, pieces: tower };
+      const s = { x: alarmBarrelPosW.x + Math.cos(a) * ARREST_CD, y: alarmBarrelPosW.y + Math.sin(a) * ARREST_CD, pieces: tower };
       if (!rotorFree(s.x, s.y, tower)) continue;
       const subs = [];
       for (const z of ARREST_SUB_IDLER_COUNTS) for (const side of [1, -1]) {
         const geo = subIdlerGeom(z, side);
         if (!geo) continue;
         const ia = a + geo.daz;
-        const q = { x: alarmBarrelPos.x + Math.cos(ia) * geo.rimCD, y: alarmBarrelPos.y + Math.sin(ia) * geo.rimCD, pieces: subPieces(z) };
+        const q = { x: alarmBarrelPosW.x + Math.cos(ia) * geo.rimCD, y: alarmBarrelPosW.y + Math.sin(ia) * geo.rimCD, pieces: subPieces(z) };
         if (rotorFree(q.x, q.y, q.pieces)) subs.push(q);
       }
       if (subs.length) st.push({ ...s, subs });
@@ -33371,13 +33393,13 @@ const { i1: alarmWindI1, i2: alarmWindI2, chain: _wChain } = (() => {
       + `keeping the corridor's pick, ${pick ? `${pick.metal.toFixed(4)} (${pick.metalWho})` : 'none'}`);
   else if (best.c < CM)
     console.warn(`alarm winding dogleg: no i1 azimuth stands both studs clear of the low corridor — best ${best.c.toFixed(3)} < ${CM}`);
-  return { chain: ch, ...(best || pick || { i1: { x: _wc.x + _wu.x * ch.wd1, y: _wc.y + _wu.y * ch.wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } }) };
+  return { chain: ch, ...(best || pick || { i1: { x: _wc.x + _wu.x * ch.wd1, y: _wc.y + _wu.y * ch.wd1 }, i2: { x: alarmBarrelPosW.x, y: alarmBarrelPosW.y } }) };
 })();
 const ALARM_WIND_IDLER_TEETH = _wChain.I;   // the count the solve cut (the floor on the round movement)
 const _wd1 = _wChain.wd1, _wd2 = _wChain.wd2, _wd3 = _wChain.wd3;
 const ALARM_WIND_I1_MATES = _wChain.m1, ALARM_WIND_I2_MATES = _wChain.m2;
 await breathe(235);
-if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.y) - _wd3 > 1e-6)
+if (Math.hypot(alarmWindI2.x - alarmBarrelPosW.x, alarmWindI2.y - alarmBarrelPosW.y) - _wd3 > 1e-6)
   console.warn('alarm winding chain: i2 failed to close on the barrel mesh distance');
 {
   // §76/TODO 164 — i1 is the OTHER obstacle the tab's azimuth (and the
@@ -33396,7 +33418,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   // The reach the sizing above bought, reported rather than assumed. Kept as
   // its own assert because the closure test upstream can only say the chain
   // did not close — not that it was ASKED to cover more than it can.
-  const reach = Math.hypot(alarmBarrelPos.x - alarmWindI1.x, alarmBarrelPos.y - alarmWindI1.y);
+  const reach = Math.hypot(alarmBarrelPosW.x - alarmWindI1.x, alarmBarrelPosW.y - alarmWindI1.y);
   if (reach > _wd2 + _wd3)
     console.warn(`alarm winding chain: i1 → barrel ${reach.toFixed(3)} exceeds the chain's reach `
       + `${(_wd2 + _wd3).toFixed(3)} (idler ${ALARM_WIND_IDLER_TEETH} t at module ${ALARM_TRAIN_MODULE}) `
@@ -33527,7 +33549,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
 // ---------------------------------------------------------------------------
 await breathe(238);
 const alarmClickUnit = new THREE.Group();
-movement.add(alarmClickUnit);
+alarmFrame.add(alarmClickUnit);
 registerLabel('Alarm click', alarmClickUnit);
 registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the winding train
 {
@@ -33951,7 +33973,7 @@ const ALARM_TIER_DISCS = (() => {
       // setFromObject's PRECISE form. `boxOf` omits it, which reads a rotated
       // mesh's inflated AABB — the trap in the instruments skill, and here it
       // manufactured three fouls in members that measure clear.
-      const bb = new THREE.Box3().setFromObject(o, true);
+      const bb = new THREE.Box3().setFromObject(o, true).applyMatrix4(ALARM_W2M);   // module coordinates (the stations' own)
       if (!bb.isEmpty()) rows.push({ mesh: o.name || o.geometry.type, bb });
     });
     return rows;
@@ -34360,6 +34382,7 @@ const ALARM_COL_POS = {
   x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
   y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
 };
+const ALARM_COL_POS_W = alarmToWorld(ALARM_COL_POS), alarmLockPivotW = alarmToWorld(alarmLockPivot);
 
 const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   crossAz: ARREST_CROSS_AZ, idlerSide: SUB_IDLER_SIDE, idlerTeeth: SUB_IDLER_SOLVED,
@@ -34496,7 +34519,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
       const w = v.clone().applyMatrix4(_mw2);
       zLo = Math.min(zLo, w.z); zHi = Math.max(zHi, w.z);
       if (ring) continue;                       // rings carry their own reach
-      if (Math.hypot(w.x - alarmBarrelPos.x, w.y - alarmBarrelPos.y) > ARREST_CD + 12) continue;
+      if (Math.hypot(w.x - alarmBarrelPosW.x, w.y - alarmBarrelPosW.y) > ARREST_CD + 12) continue;
       const kk = `${Math.round(w.x / 0.1)},${Math.round(w.y / 0.1)}`;
       if (seen.has(kk)) continue;
       seen.add(kk);
@@ -34786,14 +34809,14 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   //
   // The keeps are the plate-band keeps of the scene as built so far, plus the
   // one plate-crossing keep the scene cannot show yet: the column wheel's
-  // stud, at the station hoisted above for this (ALARM_COL_POS). The test is
+  // stud, at the station hoisted above for this (ALARM_COL_POS_W). The test is
   // sufficient rather than exact — a distance field less one land bounds
   // every point inside that land — so a pass here is a pass there.
   const _colStudR = ALARM_COL_STUD_R;
   const _winKeeps = [...await sweepTqKeepsYielding(), {
-    b: new THREE.Box3(new THREE.Vector3(ALARM_COL_POS.x - _colStudR, ALARM_COL_POS.y - _colStudR, 0),
-      new THREE.Vector3(ALARM_COL_POS.x + _colStudR, ALARM_COL_POS.y + _colStudR, 0)),
-    cx: ALARM_COL_POS.x, cy: ALARM_COL_POS.y, cr: _colStudR,
+    b: new THREE.Box3(new THREE.Vector3(ALARM_COL_POS_W.x - _colStudR, ALARM_COL_POS_W.y - _colStudR, 0),
+      new THREE.Vector3(ALARM_COL_POS_W.x + _colStudR, ALARM_COL_POS_W.y + _colStudR, 0)),
+    cx: ALARM_COL_POS_W.x, cy: ALARM_COL_POS_W.y, cr: _colStudR,
   }];
   // TODO 242 — and a land clear of the windows ALREADY CUT. The late window
   // keeps it from them now (solveTqWindows), so a station whose window stands
@@ -34843,8 +34866,8 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     for (const deg of grid.az) {
       await breathe(245);
       const a = deg * DEG2RAD;
-      const px = alarmBarrelPos.x + Math.cos(a) * ARREST_CD;
-      const py = alarmBarrelPos.y + Math.sin(a) * ARREST_CD;
+      const px = alarmBarrelPosW.x + Math.cos(a) * ARREST_CD;
+      const py = alarmBarrelPosW.y + Math.sin(a) * ARREST_CD;
       const tower = [
         clear('leg A', PIN_A[0], PIN_A[1], px, py, NEED.legA, 'wheel'),
         clear('the spider', SPIDER[0], SPIDER[1], px, py, NEED.spider, null),
@@ -34870,8 +34893,8 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
         const geo = subIdlerGeom(idlerTeeth, side);
         if (!geo) continue;
         const ia = a + geo.daz;
-        const ix = alarmBarrelPos.x + Math.cos(ia) * geo.rimCD;
-        const iy = alarmBarrelPos.y + Math.sin(ia) * geo.rimCD;
+        const ix = alarmBarrelPosW.x + Math.cos(ia) * geo.rimCD;
+        const iy = alarmBarrelPosW.y + Math.sin(ia) * geo.rimCD;
         const idlerReach = tip(idlerTeeth, [ALARM_BARREL_TEETH]);
         const idler = [
           clear("the idler's wheel", IDL_W[0], IDL_W[1], ix, iy, idlerReach + M, 'rim'),
@@ -35052,16 +35075,16 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
 })();
 
 const arrestPos = {        // the subtractor's own arbor, on the mesh circle
-  x: alarmBarrelPos.x + Math.cos(ARREST_AZ) * ARREST_CD,
-  y: alarmBarrelPos.y + Math.sin(ARREST_AZ) * ARREST_CD,
+  x: alarmBarrelPosW.x + Math.cos(ARREST_AZ) * ARREST_CD,
+  y: alarmBarrelPosW.y + Math.sin(ARREST_AZ) * ARREST_CD,
 };
 // The compound idler is on the SAME circle — its wheel meshes the barrel's rim
 // — a forced chord from the tower, so only which side it falls on was ever a
 // choice, and the solve took it.
 const SUB_IDLER_GEOM = subIdlerGeom(SUB_IDLER_SOLVED, SUB_IDLER_SIDE);
 const subIdlerPos = {
-  x: alarmBarrelPos.x + Math.cos(ARREST_AZ + SUB_IDLER_GEOM.daz) * SUB_IDLER_GEOM.rimCD,
-  y: alarmBarrelPos.y + Math.sin(ARREST_AZ + SUB_IDLER_GEOM.daz) * SUB_IDLER_GEOM.rimCD,
+  x: alarmBarrelPosW.x + Math.cos(ARREST_AZ + SUB_IDLER_GEOM.daz) * SUB_IDLER_GEOM.rimCD,
+  y: alarmBarrelPosW.y + Math.sin(ARREST_AZ + SUB_IDLER_GEOM.daz) * SUB_IDLER_GEOM.rimCD,
 };
 // §129 — the Geneva is no longer on the mesh circle at all. It hangs off the
 // cage's output stage, so its arbor's azimuth about the tower is a genuinely
@@ -35828,7 +35851,7 @@ if (Math.abs(alarmStopClearAt(ALARM_LOCK_THETA + ALARM_LOCK_LIFT) - CLEAR_MARGIN
 // (THE FOLD — the matrix both units' fold groups carry — is declared above the
 // striking rotor, whose staff carries the stop wheel down to the folded band.)
 const alarmLockUnit = new THREE.Group();
-movement.add(alarmLockUnit);
+alarmFrame.add(alarmLockUnit);
 registerLabel('Alarm lock', alarmLockUnit);
 registerExplode(alarmLockUnit, 0, 9);
 const alarmLockFold = makeAlarmFold('alarmLockFold');
@@ -35876,7 +35899,7 @@ alarmLockFold.add(alarmLockLever);
   alarmLockLever.add(tail);
 }
 const alarmSwitchUnit = new THREE.Group();
-movement.add(alarmSwitchUnit);
+alarmFrame.add(alarmSwitchUnit);
 registerLabel('Alarm switch', alarmSwitchUnit);
 registerExplode(alarmSwitchUnit, 0, 9);
 // §261 2c: the column wheel, its stud, the jumper and the driver fold with the
@@ -38364,7 +38387,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
   for (const rc of rodCands) {
     await breathe(280);
     for (let azw0 = 0; azw0 < 360; azw0 += 3) {
-      const azw = ALARM_MIRROR ? alarmModAz(azw0 * DEG2RAD) / DEG2RAD : SPEC.alarmModAzDeg !== null ? azw0 + _tabGridOff : azw0;
+      const azw = SPEC.alarmModAzDeg !== null ? azw0 + _tabGridOff : azw0;
       const tx = Math.cos(azw * DEG2RAD) * ALARM_SEL_TAB_R, ty = Math.sin(azw * DEG2RAD) * ALARM_SEL_TAB_R; // tab mid-reach, the ring's own radius
       // TODO 213 — the chord this candidate's build would cut: tab to the tip
       // standing ALARM_LINK_ROD_STANDOFF beside the rod (the same function
@@ -41544,7 +41567,7 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 // the linkage's, and the tick reads it rather than the straight line.
 const ALARM_LINKAGE_ROD_DIR = alarmModAz(105 * DEG2RAD);   // the rod line's direction (the search's pick; turns with the module)
 const ALARM_LINKAGE_ROD_C = 25.34;                             // and its offset, m·x = c (rotation about the centre leaves c)
-const ALARM_LINKAGE_SIDE = ALARM_MOD_SIGMA;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
+const ALARM_LINKAGE_SIDE = 1;                                  // both output arms on the line's +m side of their pivots (the search's tangent choice)
 const ALARM_LINKAGE = (() => {
   const m = { x: Math.cos(ALARM_LINKAGE_ROD_DIR), y: Math.sin(ALARM_LINKAGE_ROD_DIR) };
   const dotv = (u, v) => u.x * v.x + u.y * v.y;
