@@ -13,85 +13,105 @@
   Display only and sim-code-free like technic.html: it imports layout.js' constants and the pure gong modules,
   never the movement, so the battery cannot see it. Its chrome is English (technic.html's is too).
 -->
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+<link rel="alternate icon" href="./favicon.png" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <style>
-html, body { margin: 0; padding: 0; }
-/* Layout: a workbench — the plan view of the case on the left, the wire's settings and its voice on the right; one column on a phone. */
+/* The house style: explain.html's and the HUD's — the dark palette, a fixed top bar with chip links, small
+   uppercase section heads, hairline panels. Dark only, like the pages it sits beside. The plan view reads its
+   colours from these tokens (css() in the script), so the canvas follows them. */
 :root {
-  --bg: #eef0ee; --panel: #f8f9f7; --ink: #1f2725; --muted: #5d6965; --rule: #cfd6d2;
-  --free: #cde6db; --metal: #3a4440; --hammer: #d98f3e; --wire: #a8771e; --bad: #c43c32; --accent: #2f7a63;
-  --f-ui: "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --bg: #0b0d10; --panel: rgba(15,17,20,0.72); --panel-solid: #14171c;
+  --rule: rgba(255,255,255,0.08); --rule-strong: rgba(255,255,255,0.14);
+  --ink: #d8dee6; --muted: #8b95a1; --head: #8fa6bf; --head-hover: #b9cbe0; --link: #cfe3ff; --mono-ink: #cfd6dd;
+  --accent: #3a6bd8; --bad: #e05555;
+  --free: #2a3644; --metal: #050608; --hammer: #e0a355; --wire: #cfe3ff;
+  --f-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --f-num: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #141917; --panel: #1b2220; --ink: #e2e8e5; --muted: #93a29c; --rule: #2c3633;
-  --free: #24453b; --metal: #0b0e0d; --hammer: #e0a056; --wire: #e3b453; --bad: #ef6b60; --accent: #6cc7a6; color-scheme: dark } }
-:root[data-theme="dark"] {
-  --bg: #141917; --panel: #1b2220; --ink: #e2e8e5; --muted: #93a29c; --rule: #2c3633;
-  --free: #24453b; --metal: #0b0e0d; --hammer: #e0a056; --wire: #e3b453; --bad: #ef6b60; --accent: #6cc7a6; color-scheme: dark }
-body { background: var(--bg); color: var(--ink); font-family: var(--f-ui); font-size: 15px; line-height: 1.45; }
-.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
-header h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: .01em; text-wrap: balance; }
-header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+html, body { margin: 0; padding: 0; background: var(--bg); }
+body { color: var(--ink); font: 13px/1.55 var(--f-ui); padding: 74px 0 60px; }
+a { color: var(--link); }
+/* top bar — explain.html's, one line in every width (the links yield before they wrap) */
+header.bar { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: baseline; gap: 14px;
+  background: var(--panel); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule);
+  padding: 14px 18px; overflow: hidden; }
+header.bar h1 { font-size: 12px; margin: 0; letter-spacing: 0.06em; text-transform: uppercase; color: var(--head); font-weight: 600; white-space: nowrap; }
+header.bar a.back { font-size: 11px; color: var(--muted); text-decoration: none; white-space: nowrap; border: 1px solid var(--rule-strong);
+  border-radius: 6px; padding: 4px 9px; background: rgba(255,255,255,0.06); transition: background 0.15s; }
+header.bar a.back:hover { background: rgba(255,255,255,0.14); color: var(--ink); }
+header.bar .spacer { flex: 1; }
+header.bar .stamp { font: 10.5px/1 var(--f-num); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@media (max-width: 820px) { header.bar .stamp { display: none; } }
+@media (max-width: 520px) { header.bar a.back.lego { display: none; } }
+/* Layout: a workbench — the plan view of the case on the left, the wire's settings and its voice on the right; one column on a phone. */
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+.intro { color: var(--muted); max-width: 68ch; margin: 0; }
 .bench { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 860px) { .bench { grid-template-columns: minmax(0, 1fr); } }
-@media (min-width: 861px) { .plan { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
-.plan { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 10px; min-width: 0; }
-canvas { width: 100%; height: auto; display: block; touch-action: none; cursor: crosshair; border-radius: 3px; }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; color: var(--muted); font-size: 13px; }
-.legend span::before { content: ""; display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; background: var(--c); }
-.side { display: grid; gap: 14px; min-width: 0; }
-fieldset { margin: 0; border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px 14px; background: var(--panel); display: grid; gap: 10px; min-width: 0; }
-legend { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 0 4px; }
+@media (min-width: 861px) { .plan { position: sticky; top: 74px; } }
+.plan { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 10px; min-width: 0; }
+canvas { width: 100%; height: auto; display: block; touch-action: none; cursor: crosshair; border-radius: 6px; background: rgba(10,12,15,0.45); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-inline-end: 6px; vertical-align: -1px; border-radius: 2px; background: var(--c); border: 1px solid var(--rule-strong); }
+.side { display: grid; gap: 12px; min-width: 0; }
+fieldset { margin: 0; border: 1px solid var(--rule); border-radius: 10px; padding: 12px 16px 14px; background: var(--panel); display: grid; gap: 10px; min-width: 0; }
+legend { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--head); font-weight: 600; padding: 0 4px; }
 .row { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 5.2em; gap: 10px; align-items: center; }
 .row label { color: var(--muted); }
-.row output { font-family: var(--f-num); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.row output { font: 11px var(--f-num); color: var(--mono-ink); text-align: right; font-variant-numeric: tabular-nums; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .seg { display: flex; flex-wrap: wrap; gap: 6px; }
-.seg button, .btn { font: inherit; font-size: 14px; padding: 5px 11px; border-radius: 4px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
-.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-select { font: inherit; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); }
+.seg button, .btn { font: 12px var(--f-ui); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--rule-strong); background: rgba(255,255,255,0.06); color: var(--ink); cursor: pointer; transition: background 0.15s; }
+.seg button:hover, .btn:hover { background: rgba(255,255,255,0.14); }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: 12px var(--f-ui); padding: 3px 6px; border-radius: 6px; border: 1px solid var(--rule-strong); background: var(--panel-solid); color: var(--ink); }
 .voice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .voice div { display: grid; gap: 2px; }
-.voice .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.voice .v { font-family: var(--f-num); font-size: 19px; font-variant-numeric: tabular-nums; }
-.voice .s { font-family: var(--f-num); font-size: 12px; color: var(--muted); }
-.status { font-family: var(--f-num); font-size: 13px; padding: 6px 9px; border-radius: 4px; border: 1px solid var(--rule); }
-.status.ok { color: var(--accent); border-color: var(--accent); }
+.voice .k { font-size: 10.5px; color: var(--head); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.voice .v { font: 18px var(--f-num); color: #f2efe6; font-variant-numeric: tabular-nums; }
+.voice .s { font: 11px var(--f-num); color: var(--muted); }
+.status { font: 11px var(--f-num); padding: 6px 9px; border-radius: 6px; border: 1px solid var(--rule-strong); }
+.status.ok { color: #58b368; border-color: #58b368; }
 .status.bad { color: var(--bad); border-color: var(--bad); }
-.ear { position: relative; height: 26px; border-radius: 3px; background: linear-gradient(90deg, var(--rule), var(--free) 35%, var(--free) 72%, var(--rule)); }
-.ear i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--wire); }
-.ear b { position: absolute; top: 4px; font: 500 11px var(--f-num); color: var(--muted); }
+.ear { position: relative; height: 24px; border-radius: 6px; background: linear-gradient(90deg, var(--rule-strong), var(--free) 35%, var(--free) 72%, var(--rule-strong)); }
+.ear i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--hammer); }
+.ear b { position: absolute; top: 4px; font: 500 10.5px var(--f-num); color: var(--muted); }
 .tbl { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: start; font-weight: 500; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 6px; border-bottom: 1px solid var(--rule); }
-td { padding: 4px 6px; font-family: var(--f-num); font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: start; font-weight: 600; color: var(--head); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; padding: 4px 6px; border-bottom: 1px solid var(--rule-strong); }
+td { padding: 4px 6px; font: 11px var(--f-num); color: var(--mono-ink); font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--rule); white-space: nowrap; }
 #s-results td.fam { white-space: normal; min-width: 12em; }
 #s-results td { white-space: normal; }
-td.fam { font-family: var(--f-ui); }
+td.fam { font: 12px var(--f-ui); color: var(--ink); }
 tr.out td { color: var(--muted); }
 #s-results tr { cursor: pointer; }
-#s-results tr:hover td, #s-results tr:focus-visible td { background: var(--free); }
+#s-results tr:hover td, #s-results tr:focus-visible td { background: rgba(255,255,255,0.06); }
 #s-results tr[aria-selected="true"] td { background: var(--free); font-weight: 500; }
 #s-results td.beat { color: var(--bad); }
-input[type=number] { font: inherit; font-family: var(--f-num); font-size: 13px; padding: 3px 6px; border-radius: 4px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); width: 100%; }
+input[type=number] { font: 11px var(--f-num); padding: 3px 6px; border-radius: 6px; border: 1px solid var(--rule-strong); background: var(--panel-solid); color: var(--ink); width: 100%; box-sizing: border-box; }
 tr.out td.fam::after { content: " ↕"; }
-.notes { color: var(--muted); font-size: 13px; max-width: 70ch; display: grid; gap: 6px; }
+.notes { color: var(--muted); font-size: 12px; max-width: 68ch; display: grid; gap: 6px; }
 .notes p { margin: 0; }
-code { font-family: var(--f-num); font-size: 12.5px; }
+code { font: 11px/1.4 var(--f-num); color: var(--mono-ink); background: rgba(255,255,255,0.06); padding: 0.1em 0.35em; border-radius: 4px; }
 [hidden] { display: none !important; }
 .check { display: flex; gap: 8px; align-items: flex-start; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
+<header class="bar">
+  <h1>Watch Sim — Gong Bench</h1>
+  <a class="back" href="./index.html">← the movement</a>
+  <a class="back lego" href="./technic.html?view=lego">the LEGO build →</a>
+  <span class="spacer"></span>
+  <span class="stamp">space read off the booted build · solver src/gong-solve.js</span>
+</header>
 <div class="wrap">
-  <header>
-    <h1>Gong Bench</h1>
-    <p><a href="./index.html">← the watch</a> · <a href="./technic.html?view=lego">the LEGO build</a></p>
-    <p>Lay a gong wire into the fitted form case and hear what it would ring. The plan view is the measured free space at the gong wire's own height, already shrunk by one clearance margin and the wire's radius, so the wire's centreline may go anywhere that is green. Drag the wire's free end (the ringed dot) to move it; the hammer can strike anywhere along it.</p>
-  </header>
+  <p class="intro">Lay a gong wire into the fitted form case and hear what it would ring. The plan view is the measured free space at the gong wire's own height, already shrunk by one clearance margin and the wire's radius, so the wire's centreline may go anywhere that is shaded. Drag the wire's free end (the ringed dot) to move it; the hammer can strike anywhere along it.</p>
 
   <div class="bench">
     <div class="plan">
@@ -178,7 +198,7 @@ code { font-family: var(--f-num); font-size: 12.5px; }
         </table></div>
         <div>
           <div class="ear" aria-hidden="true"><i id="ear-i"></i><b style="left:4px">200 Hz</b><b style="left:46%">2 kHz</b><b style="right:4px">20 kHz</b></div>
-          <div class="notes" style="margin-top:6px"><p>The green stretch of the scale is roughly where hearing is most sensitive (about 1 to 5 kHz). The marker is f₁.</p></div>
+          <div class="notes" style="margin-top:6px"><p>The shaded stretch of the scale is roughly where hearing is most sensitive (about 1 to 5 kHz). The marker is f₁.</p></div>
         </div>
         <div class="seg"><button class="btn primary" id="play">Strike it</button></div>
       </fieldset>
