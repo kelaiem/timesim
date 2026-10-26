@@ -51,7 +51,7 @@ import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
 import { GONG_SEATS } from '../src/gong-seats.js';
-import { configKey, SPEC } from '../src/layout.js';
+import { configKey, SPEC, FORM_ARRANGEMENT } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
@@ -95,7 +95,7 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
     && Math.abs(GS.hullDist(sq, 2, 2) - Math.SQRT2) < 1e-12 && GS.hullDist(sq.slice().reverse(), 0.5, 0.5) === 0);
 }
 const rows = Object.values(GONG_SEATS).flatMap((k) => Object.values(k));
-ok('P4 every row names its spec and a readable curve', rows.length > 0 && rows.every((r) => r.specKey === configKey({ spec: { ...SPEC, caseShape: r.kind } })
+ok('P4 every row names its spec and a readable curve', rows.length > 0 && rows.every((r) => r.specKey === configKey({ spec: { ...SPEC, ...FORM_ARRANGEMENT, caseShape: r.kind } })   // a form case is cased on the arrangement (layout.js)
   && ['line', 'arc', 'spiral'].includes(r.curve.type) && r.formrect?.length === 4), `${rows.length} row(s)`);
 
 // ---- browser half
@@ -205,7 +205,10 @@ for (const row of rows) {
   // drift with the fit). A warning the seat causes by widening its fit stands in the arc build at that fit too,
   // which is how the rect's spiral reached a 40.09 mm case past §307's 40 mm cap with the row above green.
   const warnKind = (w) => w.replace(/-?\d+(\.\d+)?/g, '#'), firstKinds = new Set(firstFit[row.kind].map(warnKind));
-  const widened = seated.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w));
+  // (§308 landing 5's named residue moves with the fit, not with the seat: the alarm pusher bar's L/D, owed a
+  // radius-from-length derivation — PR #806's debt, the seat generator's same exemption)
+  const widened = seated.warnings.filter((w) => !firstKinds.has(warnKind(w)) && !RUNTIME.test(w) && !/§310/.test(w) && !/§307\/§308: the movement's counted metal/.test(w)
+    && !/§234: the alarm pusher bar is L\/D/.test(w));
   ok(`${tag}: no boot warning the movement as first fitted lacks`, widened.length === 0, widened.slice(0, 3).join(' | '));
   ok(`${tag}: TODO 266 — the staff stands in the plate's strike opening, its land held`, !o.staff.inPlateFootprint && !!o.opening && o.opening.land >= o.tqT - 1e-6,
     o.opening ? `land ${o.opening.land.toFixed(3)} to ${o.opening.landTo} (plate ${o.tqT.toFixed(3)} thick); staff top ${o.staff.postTop.toFixed(2)} against the plate's underside ${o.staff.plateBottom.toFixed(2)}` : 'no opening cut');
@@ -227,8 +230,11 @@ for (const row of rows) {
     ok(`${tag}: TODO 272 — every pillar stands clear of the strike group`, o.pillars.length === 4 && worst.d >= -1e-6,
       `${o.pillars.length} pillars; least spare ${worst.d.toFixed(3)} (${worst.what})`);
     if (row.kind === 'cushion' && row.mode === 'bar') {
-      const capR = o.pillars[0].capR, d = psd(M.hull, 32.49, 18.76) - capR;
-      ok(`${tag}: TODO 272 control — the reader finds the hammer through the 30° pillar main shipped before TODO 271`, d < 0.15, `${d.toFixed(3)} from the hammer's swept metal`);
+      // the reader's control: a pillar planted on the hammer's own swept metal (the hull's first vertex) must read as
+      // inside the margin. (It was the 30° pillar `main` shipped before TODO 271, (32.49, 18.76), which stood in the
+      // cushion's hammer on the designed train; on §308 landing 5's arrangement the hammer is on the top edge.)
+      const capR = o.pillars[0].capR, [hx, hy] = M.hull[0], d = psd(M.hull, hx, hy) - capR;
+      ok(`${tag}: TODO 272 control — the reader finds a pillar planted on the hammer's swept metal`, d < 0.15, `${d.toFixed(3)} from the hammer's swept metal`);
     }
   }
 }
@@ -240,25 +246,28 @@ for (const row of rows) {
     const a = await boot(`${fr}&gong=arc`, seatRead);
     ok('B3 control: ?gong=arc keeps the ring', a.out.seated === false && a.out.torus, `seated ${a.out.seated}`);
     // the wire's side of the case pulled in 3 u: which bound faces the wire's free end most nearly
-    const [x0, x1, y0, y1] = bar.formrect, { sx, sy } = bar.curve, d = [sx - x0, x1 - sx, sy - y0, y1 - sy], k = d.indexOf(Math.min(...d));
+    // (over the whole wire, not its free end: an arc bulges, and on §308 landing 5's arrangement its belly, not its end, is nearest a side)
+    const [x0, x1, y0, y1] = bar.formrect, cw = GS.seatCurve(bar.curve), d = [Infinity, Infinity, Infinity, Infinity];
+    for (let i = 0; i <= 64; i++) { const q = cw.at(cw.L * i / 64); d[0] = Math.min(d[0], q.x - x0); d[1] = Math.min(d[1], x1 - q.x); d[2] = Math.min(d[2], q.y - y0); d[3] = Math.min(d[3], y1 - q.y); }
+    const k = d.indexOf(Math.min(...d));
     const narrow = bar.formrect.slice(); narrow[k] += (k % 2 ? -3 : 3);
     const n = await boot(`case=${bar.kind}&formrect=${narrow.join(',')}`, seatRead);
     ok('B3 control: a seat carried to a fit 3 u narrower on its side is called out', n.warnings.some((w) => /§310: the bar gong stands .* inside the/.test(w)),
       n.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
     const moved = JSON.parse(JSON.stringify(GONG_SEATS)); moved[bar.kind].bar.strikeS += 1;
-    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(moved)});\n`;
+    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(moved)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
     const m = await boot(fr, seatRead);
     seatsOverride = null;
     ok('B3 control: a seat whose strike moved 1 u is called out', m.warnings.some((w) => /§310: the bar seat's strike solved at/.test(w)), m.warnings.filter((w) => /§310/.test(w)).slice(0, 1).join(''));
     // TODO 272 — the keep-out dropped, and shrunk to half about its own centre
     const dropped = JSON.parse(JSON.stringify(GONG_SEATS)); delete dropped[bar.kind].bar.keep;
-    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(dropped)});\n`;
+    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(dropped)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
     const dk = await boot(fr, () => ({}));
     ok('B3 control: TODO 272 — a seat with no keep-out is called out', dk.warnings.some((w) => /TODO 272: the .* seat carries no pillar keep-out/.test(w)), dk.warnings.filter((w) => /TODO 272/.test(w)).slice(0, 1).join(''));
     const shrunk = JSON.parse(JSON.stringify(GONG_SEATS)), kp = shrunk[bar.kind].bar.keep;
     if (kp) for (const key of ['hull', 'opening']) { const cx = kp[key].reduce((t, q) => t + q[0], 0) / kp[key].length, cy = kp[key].reduce((t, q) => t + q[1], 0) / kp[key].length;
       kp[key] = kp[key].map(([x, y]) => [cx + (x - cx) / 2, cy + (y - cy) / 2]); }
-    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(shrunk)});\n`;
+    seatsOverride = `export const GONG_SEATS = Object.freeze(${JSON.stringify(shrunk)});\nexport const GONG_SEATS_ARRANGED = Object.freeze({});\n`;
     const sk = await boot(fr, () => ({}));
     seatsOverride = null;
     ok('B3 control: TODO 272 — a seat whose keep-out is shrunk is called out', sk.warnings.some((w) => /TODO 272: the strike group stands outside the keep-out/.test(w)), sk.warnings.filter((w) => /TODO 272/.test(w)).slice(0, 1).join(''));
