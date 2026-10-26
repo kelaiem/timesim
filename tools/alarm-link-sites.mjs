@@ -37,7 +37,7 @@ if (WRITE === CHECK) { console.error('usage: node tools/alarm-link-sites.mjs --w
 const CONFIGS = ['alarmmirror=diag&alarmaz=-30'];
 const ONLY = ARGS.filter((a) => !a.startsWith('--'));
 const LIST = ONLY.length ? ONLY : CONFIGS;
-const MAX_CANDIDATES = 12, MAX_ITER = 6;
+const MAX_CANDIDATES = 6, MAX_ITER = 6;
 // the link's own warnings: the drift guards, the site and its floor, the chain's force window and its stresses
 const LINK_WARN = /§308|§234|§261 2c|TODO 20[4-6]|TODO 222|TODO 240|TODO 174|§278 landing 6|§112|§137 transfer|§125 dial rim|alarm link:/;
 const RUNTIME = /§38\/TODO 8: the alarm's coincidence was crossed/;
