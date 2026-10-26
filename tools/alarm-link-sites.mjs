@@ -15,7 +15,7 @@
 // PER CONFIGURATION:
 //   1. boot it with ?linkscan=1: the solve's ranking of every site it scored (unpruned), and its warnings;
 //   2. a configuration whose own build is clean of every link warning needs no row (the measured site serves);
-//   3. otherwise each ranked site at or over CLEAR_MARGIN, best first, is FORCED (?linksite=) and its quotations
+//   3. otherwise each site the solve admits (at or over CLEAR_MARGIN), NEAREST THE MEASURED SITE first, is FORCED (?linksite=) and its quotations
 //      iterated (?linkconst=) to the fixed point the build's own drift guards measure — the body length and the
 //      guides' reach rounded UP to 1e-4 (the guards' convention: a quotation may cover the metal, never fall short
 //      of it), the rod's length to 1e-4;
@@ -37,7 +37,7 @@ if (WRITE === CHECK) { console.error('usage: node tools/alarm-link-sites.mjs --w
 const CONFIGS = ['alarmmirror=diag&alarmaz=-30'];
 const ONLY = ARGS.filter((a) => !a.startsWith('--'));
 const LIST = ONLY.length ? ONLY : CONFIGS;
-const MAX_CANDIDATES = 8, MAX_ITER = 6;
+const MAX_CANDIDATES = 12, MAX_ITER = 6;
 // the link's own warnings: the drift guards, the site and its floor, the chain's force window and its stresses
 const LINK_WARN = /§308|§234|§261 2c|TODO 20[4-6]|TODO 222|TODO 240|TODO 174|§278 landing 6|§112|§137 transfer|§125 dial rim|alarm link:/;
 const RUNTIME = /§38\/TODO 8: the alarm's coincidence was crossed/;
@@ -91,8 +91,16 @@ for (const q of LIST) {
   console.log(`  its own build: site k ${base.link.site.k} run ${base.link.site.run} tab ${base.link.site.tabDeg}°, ${base.warnings.length} warning(s), ${linkW.length} the link's`);
   if (!linkW.length) { console.log('  the measured site serves: no row'); continue; }
   const baseKinds = new Set(base.warnings.filter((w) => !LINK_WARN.test(w)).map(fold));
-  const cands = (base.link.ranking ?? []).filter((c) => c.c >= CLEAR_MARGIN).slice(0, MAX_CANDIDATES);
-  console.log(`  ${cands.length} ranked site(s) at or over ${CLEAR_MARGIN}: ${cands.map((c) => `k${c.k}/run${c.run}/tab${c.tabDeg} ${c.c}`).join(', ')}`);
+  // NEAREST THE MEASURED SITE first, not roomiest: the chain's proportions (the arming spring's force window, the
+  // beak's lever arms) were designed at the measured site, and the first run of this tool measured them leaving
+  // their windows monotonically as the tab walked away from it (seat force 1.1 mN at tab 3, 4.1 at tab 12, against
+  // 5–50). Distance is the tab's arc at the ring's tab radius, then the run and the parity step; clearance breaks ties.
+  const M = { k: 1, run: 6, tabDeg: 87 };   // ALARM_LINK_MEASURED_SITE (main.js)
+  const dTab = (c) => Math.abs(((c.tabDeg - M.tabDeg + 540) % 360) - 180);
+  const cands = (base.link.ranking ?? []).filter((c) => c.c >= CLEAR_MARGIN)
+    .sort((a, b) => dTab(a) - dTab(b) || Math.abs(a.run - M.run) - Math.abs(b.run - M.run) || Math.abs(a.k - M.k) - Math.abs(b.k - M.k) || b.c - a.c)
+    .slice(0, MAX_CANDIDATES);
+  console.log(`  ${cands.length} site(s) nearest the measured one, at or over ${CLEAR_MARGIN}: ${cands.map((c) => `k${c.k}/run${c.run}/tab${c.tabDeg} ${c.c}`).join(', ')}`);
   let row = null;
   for (const c of cands) {
     const site = `${c.k},${c.run},${c.tabDeg}`;

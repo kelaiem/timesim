@@ -38524,7 +38524,7 @@ const { xy: ALARM_LINK_ROD_XY, xyC: ALARM_LINK_ROD_XY_C, dist: ALARM_LINK_ROD_DI
     barLine: { P: best.Pw, N: best.Nw, pivReach: best.pivReach }, run: best.run, noseAz: best.noseAz, k: best.k, who: best.who, clear: best.c };
 })();
 ALARM_LINK_BUILT.site = { k: ALARM_LINK_NOSE_K, run: ALARM_LINK_RUN, tabDeg: ALARM_LINK_AZ_DEG };
-if (SPEC.linkScan) ALARM_LINK_BUILT.ranking = _ranking.sort((a, b) => b.c - a.c).slice(0, 40);
+if (SPEC.linkScan) ALARM_LINK_BUILT.ranking = _ranking.filter((r) => r.c >= CLEAR_MARGIN).sort((a, b) => b.c - a.c);   // every site the solve would admit
 if ((ALARM_LINK_TARGET_SITE || (SPEC.alarmModAzDeg === null && !ALARM_MIRROR)) && (ALARM_LINK_NOSE_K !== _siteWant.k || ALARM_LINK_RUN !== _siteWant.run
   || ALARM_LINK_AZ_DEG !== _siteWant.tabDeg))
   console.warn(`§308: the link's site solve landed at k ${ALARM_LINK_NOSE_K}, run ${ALARM_LINK_RUN}, tab ${ALARM_LINK_AZ_DEG}° — `
