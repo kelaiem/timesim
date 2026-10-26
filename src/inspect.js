@@ -10278,6 +10278,37 @@ export async function checkOutlines(clock, opts = {}) {
     for (const h of shape.holes || []) take(h, 'hole');
     return out;
   };
+  // TODO 273 — a SEAM WRITTEN TWICE: two pieces of one outline each emitting
+  // the point they share. three.js drops a repeated point only when it is
+  // EXACTLY equal, so whether the copy survives as a sliver edge is decided by
+  // the JS engine's last ULP, and a bevel offsets along that edge's bisector.
+  // TODO 265's cam moved its lineSpec axis 3e-3 that way between two Chromiums,
+  // and 60 more shapes from five builders carried the same seam. Read on the
+  // AUTHORED curves, not the sampled ring, because `getPoints` has already
+  // hidden the exact copies there. A curve's own length, not its chord: a
+  // full-circle arc starts where it ends.
+  //
+  // SEAM_GAP_MAX classifies two measured populations, `DECLARED_CONTACT_REACH`'s
+  // way: every doubled seam the movement carried measured at most 3.97e-15
+  // (chatonSeatLand's, the largest; most were exactly 0), and the finest step
+  // any outline means measures 1.087e-5 (the alarm arrest cross's). Ten orders
+  // of magnitude separate them; the threshold is their geometric middle,
+  // rounded, so a change of either side by five orders still classifies.
+  const SEAM_GAP_MAX = 2e-10;
+  const seamsOf = (shapes) => {
+    const out = [];
+    for (const sh of shapes) {
+      if (!sh || !Array.isArray(sh.curves)) continue;
+      [sh, ...(sh.holes || [])].forEach((path, k) => {
+        (path.curves || []).forEach((c, idx) => {
+          const len = c.getLength();
+          if (!(len >= SEAM_GAP_MAX))
+            out.push({ ring: k ? `hole ${k - 1}` : 'outline', curve: idx, of: path.curves.length, type: c.type, length: len });
+        });
+      });
+    }
+    return out;
+  };
   const verdict = (geo) => {
     const par = geo.parameters;
     if (!par || !par.shapes) return null;
@@ -10298,7 +10329,7 @@ export async function checkOutlines(clock, opts = {}) {
         if (hh.length) cross.push({ rings: `${rs[a].id} \u00d7 ${rs[b].id}`, crossings: hh.length, first: hh[0].at });
       }
     }
-    return rings ? { rings, pts, hits, cross } : null;
+    return rings ? { rings, pts, hits, cross, seams: seamsOf(shapes) } : null;
   };
 
   // CONTROL. A check that cannot demonstrate it would catch the defect is not
@@ -10330,18 +10361,29 @@ export async function checkOutlines(clock, opts = {}) {
   };
   const cSquare = verdict(ctlGeo(square)), cHoled = verdict(ctlGeo(holed)), cBow = verdict(ctlGeo(bowtie));
   const cLap = verdict(twoBores(3)), cApart = verdict(twoBores(6));
+  // TODO 273's pair: a square with one corner written twice, exactly and then
+  // 1e-15 off (the two ways TODO 265's cam doubled a seam), must each read one
+  // seam; the clean square and the full-circle bores must read none.
+  const doubled = (eps) => mkShape([[0, 0], [4, 0], [4, 4], [4 + eps, 4], [0, 4]]);
+  const cTwice = verdict(ctlGeo(doubled(0))), cSliver = verdict(ctlGeo(doubled(1e-15)));
+  const seamCount = (v) => (v ? v.seams.length : 'unreadable');
   const crossCount = (v) => (v ? v.cross.reduce((n, c) => n + c.crossings, 0) : 'unreadable');
   const control = (cSquare && cSquare.hits.length === 0 && cHoled && cHoled.hits.length === 0
     && cBow && cBow.hits.length > 0
     && cLap && cLap.hits.length === 0 && crossCount(cLap) === 2
     && cApart && cApart.hits.length === 0 && crossCount(cApart) === 0
-    && cHoled.cross.length === 0)
-    ? `PASS — bowtie caught (${cBow.hits.length}), square and holed clean; two overlapping bores cross at ${crossCount(cLap)} points, set apart at 0`
+    && cHoled.cross.length === 0
+    && seamCount(cTwice) === 1 && seamCount(cSliver) === 1
+    && seamCount(cSquare) === 0 && seamCount(cHoled) === 0 && seamCount(cLap) === 0 && seamCount(cApart) === 0)
+    ? `PASS — bowtie caught (${cBow.hits.length}), square and holed clean; two overlapping bores cross at ${crossCount(cLap)} points, set apart at 0; `
+      + `a corner written twice reads ${seamCount(cTwice)} seam exactly and ${seamCount(cSliver)} at 1e-15, the clean square and the full-circle bores 0`
     : `FAIL — square ${cSquare ? cSquare.hits.length : 'unreadable'}, `
       + `holed ${cHoled ? cHoled.hits.length : 'unreadable'}, `
       + `bowtie ${cBow ? cBow.hits.length : 'unreadable'}, `
       + `overlapping bores ${crossCount(cLap)} cross / ${cLap ? cLap.hits.length : 'unreadable'} self (want 2 / 0), `
-      + `apart ${crossCount(cApart)} (want 0)`;
+      + `apart ${crossCount(cApart)} (want 0), `
+      + `seams: twice ${seamCount(cTwice)} / sliver ${seamCount(cSliver)} (want 1 / 1), `
+      + `clean ${[cSquare, cHoled, cLap, cApart].map(seamCount).join('/')} (want 0/0/0/0)`;
 
   // Roster: nearest-ancestor dedupe and the schematic prune, as checkSlenderness
   // and checkMeshIntegrity do (the third copy is noted in TODO 4).
@@ -10370,7 +10412,7 @@ export async function checkOutlines(clock, opts = {}) {
   const byGeo = new Map();
   for (const [mesh, unit] of byMesh) if (!byGeo.has(mesh.geometry)) byGeo.set(mesh.geometry, { unit, mesh });
 
-  const violations = [], noShape = [], byKind = {}, crossRows = [];
+  const violations = [], noShape = [], byKind = {}, crossRows = [], seamRows = [];
   const heldRead = new Map(held.map((h) => [h.name, 0]));
   let read = 0, rings = 0, i = 0;
   for (const [geo, rec] of byGeo) {
@@ -10389,6 +10431,9 @@ export async function checkOutlines(clock, opts = {}) {
           type: geo.type, crossings: v.hits.length, first: v.hits[0] });
       for (const c of v.cross)
         crossRows.push({ unit: rec.unit, mesh: rec.mesh.name || '(unnamed)', type: geo.type, ...c });
+      if (v.seams.length)
+        seamRows.push({ unit: rec.unit, mesh: rec.mesh.name || '(unnamed)', type: geo.type,
+          seams: v.seams.length, first: v.seams[0] });
     }
     if (++i % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
   }
@@ -10410,6 +10455,7 @@ export async function checkOutlines(clock, opts = {}) {
 
   return {
     ok: violations.length === 0 && noShape.length === 0 && crossGated.length === 0 && heldProblems.length === 0
+      && seamRows.length === 0
       && control.startsWith('PASS'),
     control,
     read, rings, geometries: byGeo.size,
@@ -10418,6 +10464,7 @@ export async function checkOutlines(clock, opts = {}) {
     held: held.map((h) => ({ name: h.name, meshes: h.meshes.length, read: heldRead.get(h.name) })),
     heldProblems,
     crossRing: { gated: crossGated },
+    seams: { gapMax: SEAM_GAP_MAX, rows: seamRows },
     withoutShape: Object.entries(byKind).sort((a, b) => b[1] - a[1])
       .map(([type, count]) => ({ type, count })),
   };

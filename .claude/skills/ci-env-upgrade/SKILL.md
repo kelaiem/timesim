@@ -91,7 +91,7 @@ blocked), so imitate an engine change on the old one.
 TODO 265's step was a SEAM WRITTEN TWICE. Two pieces of an outline each emitted
 the same point, equal in algebra but computed two ways (one through `atan2`).
 three.js `getPoints()` drops a point only when it EXACTLY equals the previous
-one, so the engine's last ULP decided which copies survived as 1e-10 slivers.
+one, so the engine's last ULP decided which copies survived as ~1e-15 slivers.
 Those slivers made degenerate triangles, an uneven per-lobe count, and a
 vertex mean that moved 3e-3.
 
