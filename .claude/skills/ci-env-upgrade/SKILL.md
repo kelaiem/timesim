@@ -126,8 +126,10 @@ vertex mean that moved 3e-3.
    it.
 4. **After merge**: `main`'s push run re-seeds the baseline on the new browser.
    Check that it ran whole (`restricted=false`) and seeded.
-5. **Close the TODO** in its heading, its index row and a closing paragraph,
-   keeping the residue written in the item.
+5. **Close the TODO** in its own file (`docs/todo/NNNN.md`): `— DONE` on its
+   heading and a closing paragraph, keeping the residue written in the item.
+   The `TODO.md` index is generated from the headings
+   (`node tools/item-docs.mjs --write`), so never edit its row by hand.
 
 ## 7. CI traps hit along the way
 
