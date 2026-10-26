@@ -40,11 +40,13 @@ import { caseShapeOf, configKey, SPEC } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/gong-seats.js');
+// --out FILE writes the table there instead (parallel runs, one kind each, merged afterwards); it still READS src/gong-seats.js
+const WRITE_TO = process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : OUT;
 const ARGS = process.argv.slice(2), WRITE = ARGS.includes('--write'), CHECK = ARGS.includes('--check');
 // --modes bar,spiral (the default both): which seats to solve; a mode left out keeps its committed row
 const MODES = ARGS.includes('--modes') ? ARGS[ARGS.indexOf('--modes') + 1].split(',') : ['bar', 'spiral'];
 const SPECQ = ARGS.includes('--spec') ? ARGS[ARGS.indexOf('--spec') + 1] : null;
-const _pos = ARGS.filter((a, i) => !a.startsWith('--') && ARGS[i - 1] !== '--modes' && ARGS[i - 1] !== '--spec');
+const _pos = ARGS.filter((a, i) => !a.startsWith('--') && ARGS[i - 1] !== '--modes' && ARGS[i - 1] !== '--spec' && ARGS[i - 1] !== '--out');
 const KINDS = _pos.length ? _pos : ['rect', 'cushion', 'tonneau'];
 if (!MODES.every((m) => m === 'bar' || m === 'spiral')) { console.error(`--modes takes bar and/or spiral (got ${MODES.join(',')})`); process.exit(2); }
 if (WRITE === CHECK) { console.error('usage: node tools/gong-seats.mjs --write | --check [kind …]'); process.exit(2); }
@@ -318,5 +320,5 @@ if (CHECK) {
   const cur = readFileSync(OUT, 'utf8');
   if (cur !== text) { console.error('FAIL: src/gong-seats.js is not what the tool derives — run `node tools/gong-seats.mjs --write`'); process.exit(1); }
   console.log('PASS: src/gong-seats.js re-derives');
-} else if (!failed || Object.keys(derived).length) { await writeFile(OUT, text); console.log(`wrote ${OUT}`); }
+} else if (!failed || Object.keys(derived).length) { await writeFile(WRITE_TO, text); console.log(`wrote ${WRITE_TO}`); }
 process.exit(failed ? 1 : 0);
