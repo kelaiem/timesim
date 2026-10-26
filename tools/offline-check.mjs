@@ -107,7 +107,7 @@ const touchTree = (dir, when) => {
 const work = mkdtempSync(join(tmpdir(), 'timesim-offline-'));
 const build = (name, version) => {
   const dir = join(work, name);
-  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'booklet.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
+  for (const f of ['index.html', 'explain.html', 'primer.html', 'test-geometry.html', 'technic.html', 'booklet.html', 'gong-bench.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'src', 'vendor'])
     cpSync(join(ROOT, f), join(dir, f), { recursive: true });
   execFileSync('node', [join(ROOT, 'tools/stamp-release.mjs'), version], { cwd: dir, stdio: 'pipe' });
   return dir;
@@ -399,7 +399,12 @@ try {
   // by index.html's boot screen. One module, so it adds one.
   // 105: src/boot-view.js, the view a boot opens in (case, wireframe, x-ray), imported statically by main.js and
   // dynamically by index.html's boot screen, which prefills its three view boxes from it. One module, so it adds one.
-  check('release: precache complete', counts === 105, `${counts}/105`);
+  // §310 — 108: gong-bench.html (an adopted document, +1), its solver's module worker src/gong-bench-worker.js (+1, a
+  // quoted ./src/ URL in the document) and the space it lays wires into, src/gong-bench-data.json (+1, fetched by a quoted
+  // ./src/ URL, technic-parts.mpd's precedent). Its other modules (gong-solve.js, gong-seats.js, layout.js) are the
+  // app's. The count also catches a mis-listed bench seed (drop it from ADOPTED and this reads 105, and the bench's
+  // offline boot below fails).
+  check('release: precache complete', counts === 108, `${counts}/108`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -433,6 +438,11 @@ try {
   await page.waitForFunction(() => ['pages', 'ready', 'nogl', 'unframed'].includes(window.__booklet?.stage), null, { timeout: 120000 });
   const bookletSheets = await page.evaluate(() => document.querySelectorAll('.sheet').length);
   check('OFFLINE: booklet.html sets its sheets from cache (the mis-listed-seed assert for the booklet)', bookletSheets > 0, `${bookletSheets} sheets`);
+  // §310 — the gong bench, offline: its document, its data, the solver's modules; it stops at the page drawing its first wire.
+  await page.goto(`http://127.0.0.1:${relPort}/gong-bench.html`, NAV);
+  await page.waitForFunction(() => window.__gongBench?.ready, null, { timeout: 60000 });
+  const benchKinds = await page.evaluate(() => document.getElementById('kind').options.length);
+  check('OFFLINE: gong-bench.html loads its space from cache (the mis-listed-seed assert for the bench)', benchKinds === 3, `${benchKinds} case kinds`);
   // §95 tier two — a LOCALIZED boot, offline. The locale tables arrive by
   // dynamic import, which is the one class of URL that reaches the precache
   // through the module walk rather than through a document's own markup; a
