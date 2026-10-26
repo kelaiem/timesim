@@ -604,7 +604,13 @@ export function cycloidalToothPath(spec) {
   // right side of the tooth (lower azimuth): fillet, flank, face up
   put(rootR, -th - filletAz);
   put(rootR + c, -th);
-  for (let k = 1; k <= faceSegs; k++) {
+  // The face's last sample (k = faceSegs, psiTop) is the tip land's corner: the
+  // same point in algebra, reached once through cyEpi at the solver's psiTop and
+  // once as (tipR, topAz), with tipR = Rp + h exact. Written twice, the engine's
+  // last ULP decided whether three.js dropped the copy or kept a 1e-16 edge
+  // (TODO 273, 265's class, 40 gears). The tip land owns the corner, since its radius
+  // is the spec's own tipR, so the face stops one sample short of it.
+  for (let k = 1; k < faceSegs; k++) {
     const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
     // flank is the radial segment root→pitch; the face starts AT the pitch
     // point, so k = 0 (the cusp) is the flank's top and needs no echo.
@@ -615,10 +621,20 @@ export function cycloidalToothPath(spec) {
   put(tipR, -th + topAz);
   put(tipR, th - topAz);
   // left side down (mirror)
-  for (let k = faceSegs; k >= 1; k--) {
+  for (let k = faceSegs - 1; k >= 1; k--) {
     const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
     put(Rp + e[2], th - e[3]);
     if (k === 1) put(Rp, th);
+  }
+  // The guard: the dropped sample must be the corner, not a step. It lies within
+  // the profile's own chord tolerance of the tip land's end, or something other
+  // than a seam was cut.
+  {
+    const e = cyEpi(Rp, rho, psiTop);
+    const gap = Math.hypot((Rp + e[2]) * Math.cos(e[3]) - tipR * Math.cos(topAz), (Rp + e[2]) * Math.sin(e[3]) - tipR * Math.sin(topAz));
+    if (!(gap <= eps))
+      console.warn(`seam: tooth ${N}t m${m}: the face's top stands ${gap.toExponential(2)} from the tip land's corner, `
+        + `required ≤ ${eps.toExponential(2)} (the profile's chord tolerance) — dropping it cut a real step`);
   }
   put(rootR + c, th);
   put(rootR, th + filletAz);
@@ -1823,6 +1839,7 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness, rakeDeg = 0, un
   const P = (r, a) => [Math.cos(a) * r, Math.sin(a) * r];
 
   const shape = new THREE.Shape();
+  let V0 = null;   // the ring's opening valley, which the last scallop closes on
   for (let i = 0; i < teeth; i++) {
     // TODO 115 — EVERY offset from the tooth centre carries MOVEMENT_SENSE, so
     // the club leads the direction the wheel actually runs. Mirroring only the
@@ -1862,13 +1879,18 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness, rakeDeg = 0, un
     const L = P(radius * 0.8, c + W * 0.17 * pitch); // locking-face foot (undercut hook)
     const cScal = P(baseR * 0.98, c + W * 0.34 * pitch); // scallop control
     const Vn = P(baseR, c + W * 0.5 * pitch); // next valley
-    if (i === 0) shape.moveTo(V[0], V[1]);
-    else shape.lineTo(V[0], V[1]);
+    // The valley is ONE point written once (TODO 273, 265's class): this tooth's V is
+    // the previous scallop's Vn in algebra, computed from the other centre, and
+    // the last scallop ends on the ring's opening V. So only tooth 0 places V,
+    // every scallop ends on the next tooth's valley, and the last ends on the
+    // opening point bit for bit, so closePath adds no edge.
+    if (i === 0) { shape.moveTo(V[0], V[1]); V0 = V; }
     shape.quadraticCurveTo(cBack[0], cBack[1], H[0], H[1]); // rising back
     shape.lineTo(T[0], T[1]); // impulse face (slanted top of club)
     if (U) shape.lineTo(U[0], U[1]); // the locking face's undercut, where a locked stone's corner reaches
     shape.lineTo(L[0], L[1]); // steep locking face / hook
-    shape.quadraticCurveTo(cScal[0], cScal[1], Vn[0], Vn[1]); // deep scallop
+    const end = i === teeth - 1 ? V0 : Vn;
+    shape.quadraticCurveTo(cScal[0], cScal[1], end[0], end[1]); // deep scallop
   }
   shape.closePath();
 
@@ -2978,7 +3000,10 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
   const rMin = rMinOverride ?? radius * 0.32;
   const shape = new THREE.Shape();
   const N = 96;
-  for (let i = 0; i <= N; i++) {
+  // i = N is i = 0 again a turn later, computed through cos/sin(2π): closePath
+  // closes the ring, so the loop stops one short rather than writing the start
+  // point twice (TODO 273, 265's class).
+  for (let i = 0; i < N; i++) {
     const th = (i / N) * Math.PI * 2;
     const r = rMin + (radius - rMin) * (1 - Math.cos(th)) / 2;
     const x = Math.cos(th) * r, y = Math.sin(th) * r;
@@ -7595,7 +7620,12 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
   const g = new THREE.Group();
   const hw = width / 2;
   const s = new THREE.Shape();
-  s.moveTo(hw, -length * 0.5);
+  // TODO 196's rule: the outline opens on the point the closing arc computes,
+  // not on (hw, −L/2). The rounded foot ends at angle 2π, recomputed as
+  // hw·(cos 2π, sin 2π), and sin 2π is −2.4e-16, so closing back to a typed
+  // start left a 1e-16 edge whose bisector the bevel cannot read (TODO 273, 265's class).
+  const open = new THREE.EllipseCurve(0, -length * 0.5, hw, hw, Math.PI, Math.PI * 2, false, 0).getPoint(1);
+  s.moveTo(open.x, open.y);
   s.quadraticCurveTo(hw * 0.55, 0, hw, length * 0.5); // right waisted side
   s.absarc(0, length * 0.5, hw, 0, Math.PI, false); // rounded top
   s.quadraticCurveTo(-hw * 0.55, 0, -hw, -length * 0.5); // left waisted side
