@@ -43548,11 +43548,33 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   // one place it is computed, and the round-trip assert below holds it.
   const kOf = (n) => STEEL_G_PA * (2 * wireR * U) ** 4 / (8 * (2 * coilR * U) ** 3 * n);
   const deflOf = (F, kk) => F / (kk * U);         // N and N/m in, MODEL UNITS out
-  let coils = 2, k = kOf(2), preloadDefl = deflOf(preload_N, k);
+  // ---- AND A SECOND FLOOR ON THE COUNT, from what the FINGER may be asked.
+  // §234 (§308 landing 5's residue) — the wire's size follows the stem, and a
+  // stem cut to its bar (the arrangement's 1.056 against stock's 0.924) takes
+  // a wire 14% thicker at the same index; the rate goes as d⁴/D³ and the shear
+  // floor on the count as d/D², so the fewest coils that survive the shear
+  // make a coil stiffer by the stem's square, and on the arrangement the press
+  // read 104.9 mN at the bottom of the stroke against the 100 mN the §164 row
+  // below allows. That row is the constraint: the coil's whole force at full
+  // stroke, preload plus k·travel, stays under a tenth of the LEAST a
+  // fingertip delivers (CASE_PUSHER_INPUT_N's low end), or the press feels
+  // like the spring. So it is a ceiling on k, and a ceiling on k is a FLOOR
+  // on n — the same shape as the shear floor, taken beside it: the count is
+  // the larger of the two, and the shear floor still governs on the designed
+  // train (8 coils, 83.1 mN; the force floor there is 7), so the round build
+  // does not move. Strictly under the line (floor + 1, never ceil), because
+  // the row fails AT it.
+  const ALARM_RETURN_FEEL_N = CASE_PUSHER_INPUT_N[0] / 10;
+  const kMax = (ALARM_RETURN_FEEL_N - preload_N) / (ALARM_PUSH_TRAVEL * U);   // N/m: k·travel may take only what the preload leaves of the ceiling
+  // (a preload that alone reaches the ceiling leaves no k at all; no count can
+  // answer that, so the floor stands down and the §164 row below names it)
+  const needFeel = kMax > 0 ? Math.floor(STEEL_G_PA * (2 * wireR * U) ** 4 / (8 * (2 * coilR * U) ** 3 * kMax)) + 1 : 2;
+  let coils = 2, k = kOf(2), preloadDefl = deflOf(preload_N, k), needShear = 2;
   for (let it = 0; it < 80; it++) {
     const dTot = preloadDefl + ALARM_PUSH_TRAVEL;
     const need = KW * STEEL_G_PA * (2 * wireR) * dTot / (Math.PI * (2 * coilR) ** 2 * SPRING_TAU_Y_PA);
-    const nNext = Math.max(2, Math.ceil(need));
+    needShear = Math.max(2, Math.ceil(need));
+    const nNext = Math.max(needShear, needFeel);
     const kNext = kOf(nNext);
     const dNext = deflOf(preload_N, kNext);
     if (nNext === coils && Math.abs(dNext - preloadDefl) < 1e-12) { coils = nNext; k = kNext; preloadDefl = dNext; break; }
@@ -43761,6 +43783,7 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   spring.userData.solve = () => ALARM_RETURN_SPRING;
   ALARM_RETURN_SPRING = {
     wireR, coilR, coils, k_N_per_m: k, index_C: C,
+    coilsShearFloor: needShear, coilsFeelFloor: needFeel, feelCeiling_N: ALARM_RETURN_FEEL_N,   // §234: the two floors the count is the larger of
     preload_N, preloadDefl_u: preloadDefl, dragF_N,
     solid_u: solid, free_u: freeLen, installed_u: installed,
     collarS, abutS, pressF_N: preload_N + k * ALARM_PUSH_TRAVEL * U,
@@ -43821,15 +43844,19 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   //    preload plus k·travel on top of everything downstream. Still three
   //    orders under, which is why the head's dimension stays an ERGONOMIC
   //    constraint standing alone — but it is no longer true that nothing in
-  //    the chain is sized by how hard it must be pushed.
-  if (ALARM_RETURN_SPRING.pressF_N >= CASE_PUSHER_INPUT_N[0] / 10)
+  //    the chain is sized by how hard it must be pushed. §234 made this row
+  //    a FLOOR on the coil count (ALARM_RETURN_FEEL_N, above), so it is met
+  //    by construction wherever a count exists; what it still holds is that
+  //    the solve converged and that the preload alone did not spend the
+  //    ceiling, which no count can answer.
+  if (ALARM_RETURN_SPRING.pressF_N >= ALARM_RETURN_FEEL_N)
     console.warn(`§164: the return coil alone wants ${(ALARM_RETURN_SPRING.pressF_N * 1000).toFixed(1)} mN at the bottom of the stroke, within an order of the ${CASE_PUSHER_INPUT_N[0]} N a fingertip delivers — the press would start to feel like the spring`);
   declareRestoring('Alarm switch', 'alarmPusherStem', 'spring',
     `§164: a helical coil on the stem between a collar and a fixed abutment hung from the plate's underside — `
       + `${ALARM_RETURN_SPRING.coils} coils of SPRING_FLAT_U wire at index ${ALARM_RETURN_SPRING.index_C.toFixed(2)}, `
       + `preloaded to ${(ALARM_RETURN_SPRING.preload_N * 1000).toFixed(1)} mN, which is ALARM_SPRING_HEADROOM times the `
       + `${(ALARM_RETURN_SPRING.dragF_N * 1000).toFixed(2)} mN the pawl's own spring drags back through the coupling. `
-      + `The coil count is a FLOOR from the shear the wire may work to at full stroke, not a number chosen to fit. `
+      + `The coil count is the larger of two FLOORS — the shear the wire may work to at full stroke, and the tenth of a fingertip the whole press may ask (§234) — not a number chosen to fit. `
       + `ALARM_RETURN_S was a settling time with nothing behind it; the metal brings the head home in `
       + `${(ALARM_RETURN_SPRING.quarterPeriod_s * 1000).toFixed(2)} ms, so the tick's ${ALARM_RETURN_S} s is a `
       + `human-scale bound the spring clears by ${Math.round(ALARM_RETURN_S / ALARM_RETURN_SPRING.quarterPeriod_s)}×`,
