@@ -262,16 +262,17 @@ export const BATTERY = [
   // gated then. TODO 198 closed both, so it gates every unit now. A held row
   // that reads no shape fails, the noShape rule.
   { name: 'outlines', opts: { yieldEvery: YIELD_EVERY },
-    gate: 'controls PASS, 0 self-crossing rings, every extrude\'s authored shape is readable, every held fixture read, 0 cross-ring crossings on any held fixture or labelled unit (TODO 198)',
+    gate: 'controls PASS, 0 self-crossing rings, every extrude\'s authored shape is readable, every held fixture read, 0 cross-ring crossings on any held fixture or labelled unit (TODO 198), 0 authored curves shorter than the seam gap (TODO 273)',
     fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
       ...r.violations,
       ...r.noShape.map((n) => ({ extrudeWithNoReadableShape: `${n.unit} / ${n.mesh}` })),
       ...r.heldProblems,
-      ...r.crossRing.gated],
+      ...r.crossRing.gated,
+      ...r.seams.rows.map((x) => ({ seamWrittenTwice: `${x.unit} / ${x.mesh}`, seams: x.seams, first: x.first }))],
     note: (r) => `${r.read} of ${r.geometries} geometries carry an authored shape, ${r.rings} rings tested; `
       + `${r.withoutShape.map((w) => `${w.count} ${w.type}`).join(', ')} never had one; `
       + `held ${r.held.map((h) => `${h.name} (${h.read} of ${h.meshes} read)`).join(', ')}; `
-      + `cross-ring ${r.crossRing.gated.length} rows` },
+      + `cross-ring ${r.crossRing.gated.length} rows; seams under ${r.seams.gapMax} ${r.seams.rows.length} rows` },
   { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY },
     gate: 'controls PASS, 0 malformed sub-body declarations, 0 unwaived inverted bodies, 0 stale inverted waivers, every held fixture resolved and CLOSED (TODO 187) — zeroArea rows are a REPORT (§40)',
     fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),

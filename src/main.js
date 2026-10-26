@@ -4474,7 +4474,12 @@ function crescentLand(p, st, Ri, lap, height, bore = 0, seg = 28) {
     const x = st.x + Math.cos(phi) * a, y = st.y + Math.sin(phi) * a;
     if (i === 0) sh.moveTo(x, y); else sh.lineTo(x, y);
   }
-  for (let i = 0; i <= seg; i++) {                    // …and back along the collar's
+  // …and back along the collar's. Its two ends ARE the seat rim's two ends,
+  // where the circles cross, written once already by the loop above; reached
+  // again through acos(cA), they matched or missed by an ULP (TODO 273, 265's class).
+  // So the collar contributes only its interior samples, and closePath lands on
+  // the seat rim's first point exactly.
+  for (let i = 1; i < seg; i++) {
     const th = psi + A - (2 * A * i) / seg;
     sh.lineTo(p.x + Math.cos(th) * Ri, p.y + Math.sin(th) * Ri);
   }
