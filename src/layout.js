@@ -96,8 +96,20 @@ const RATE_TABLE = {
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
+// THE FORM CASES' MOVEMENT (§308 landing 5): a fitted form case is cased about the hands, and the designed
+// train cannot be — its alarm hammer sets the case's width on the crown's far side (x 43.2), over the owner's
+// 40 mm cap once the case is centred. The barrel swung to 180° (barrelstep 0) frees the alarm module's turn to
+// 80°, which carries the hammer to the top edge where the cap does not run, and the reserve station 36° is the
+// least on its key's grid at which the link keeps its measured site there. So a form case takes this arrangement
+// unless the URL names any of its keys; the ROUND build keeps the designed train (it is the one the battery
+// sweeps, and nothing caps its width). Written out as numbers, exactly as a URL would carry them, so a form build
+// and the same build spelled in full share one configKey.
+export const FORM_ARRANGEMENT = Object.freeze({ barrelStepDeg: 0, rsvAzDeg: 36, alarmModAzDeg: 80 });
 export const SPEC = (() => {
-  const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
+  const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
+  const given = (v) => v !== undefined && v !== null && v !== '';
+  const raw = ['rect', 'cushion', 'tonneau'].includes(raw0.caseShape) && !Object.keys(FORM_ARRANGEMENT).some((k) => given(raw0[k]))
+    ? { ...raw0, ...FORM_ARRANGEMENT } : raw0;
   const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
   // loses its reason to exist; above 48 h the cone's groove stack (0.7 u per
