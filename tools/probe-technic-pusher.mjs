@@ -45,7 +45,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseLibrary, LDU_MM } from '../src/ldraw.js';
 import { loadPack } from './technic-pack.mjs';
-import { placedParts, surfaceSamples } from '../src/technic-ldraw.js';
+import { placedParts, surfaceSamples, placedCloud, cloudGap, cloudPoint } from '../src/technic-ldraw.js';
 import { LEGO_DIM_MM as D, KEYLESS_PULL_DIM_MM } from '../src/technic-frame.js';
 import * as M from '../src/technic-alarm.js';
 
@@ -124,32 +124,17 @@ const N = 200, sg = S.sigma;
 // ── ON THE PARTS ────────────────────────────────────────────────────────────
 // The tip's and the half bush's surfaces, placed by the build at a travel: the
 // nearest two samples, and the same with the rod backed off along the push.
+// Each a FLAT cloud (technic-ldraw's placedCloud: the part's samples kept once,
+// transformed in flight), never a boxed point per sample per placement — the
+// nine travels' clouds were past Node's default heap that way. The gap is
+// cloudGap's, the same reading to the bit.
 const cloudCache = new Map();
 function cloud(p) {
   const key = `${p.part}|${p.m.join(',')}`;
-  if (cloudCache.has(key)) return cloudCache.get(key);
-  const m = p.m, pts = surfaceSamples(lib, p.part, 0.5).map(([x, y, z]) => [m[0] + m[3] * x + m[4] * y + m[5] * z, m[1] + m[6] * x + m[7] * y + m[8] * z, m[2] + m[9] * x + m[10] * y + m[11] * z]);
-  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-  for (const q of pts) for (let d = 0; d < 3; d++) { if (q[d] < lo[d]) lo[d] = q[d]; if (q[d] > hi[d]) hi[d] = q[d]; }
-  const c = { pts, lo, hi }; cloudCache.set(key, c); return c;
+  if (!cloudCache.has(key)) cloudCache.set(key, placedCloud(lib, p, 0.5));
+  return cloudCache.get(key);
 }
-function gap(A1, B1, reach = 4) {
-  if ([0, 1, 2].some((d) => A1.lo[d] > B1.hi[d] + reach || B1.lo[d] > A1.hi[d] + reach)) return Infinity;
-  const C = 2, grid = new Map(), key = (x, y, z) => `${Math.floor(x / C)},${Math.floor(y / C)},${Math.floor(z / C)}`;
-  for (const q of B1.pts) {
-    if (q[0] < A1.lo[0] - reach || q[0] > A1.hi[0] + reach || q[1] < A1.lo[1] - reach || q[1] > A1.hi[1] + reach || q[2] < A1.lo[2] - reach || q[2] > A1.hi[2] + reach) continue;
-    const k = key(...q); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(q);
-  }
-  let best = Infinity;
-  for (const q of A1.pts) {
-    const cx = Math.floor(q[0] / C), cy = Math.floor(q[1] / C), cz = Math.floor(q[2] / C);
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-      const cell = grid.get(`${cx + dx},${cy + dy},${cz + dz}`); if (!cell) continue;
-      for (const s of cell) { const d = Math.hypot(s[0] - q[0], s[1] - q[1], s[2] - q[2]); if (d < best) best = d; }
-    }
-  }
-  return best;
-}
+function gap(A1, B1, reach = 4) { return cloudGap(A1, B1, { reach, cell: 2 }); }
 // a press from rest 0 at travel t, every body where the column model puts it
 const poseAt = (t, { linear = false, push = null } = {}) => {
   const p = M.columnPose(m, M.columnStroke(m, M.columnStart(m), t / pu.stroke));
@@ -168,7 +153,7 @@ const partOf = (b, shaft, role) => placedParts({ ...b, statics: [], shafts: [b.s
 // must lie in that band, never below it (that would be the tip inside the
 // bush), and must move by exactly the offset when the rod is backed off.
 const inDisc = (q) => Math.hypot(q[2] * LDU_MM - pu.slot, -q[1] * LDU_MM - pu.z) <= pu.R;
-const support = (p, dir) => { let best = -Infinity; for (const q of cloud(p).pts) if (inDisc(q)) best = Math.max(best, dir * q[0] * LDU_MM); return best; };
+const support = (p, dir) => { const c = cloud(p), q = [0, 0, 0]; let best = -Infinity; for (let i = 0; i < c.s.length; i += 3) { cloudPoint(c, i, q); if (inDisc(q)) best = Math.max(best, dir * q[0] * LDU_MM); } return best; };
 // outward (−pd): the tip's face is its least outward point, the half bush's
 // contact its most; their difference is the gap along the push
 const faceGap = (b, role = 'follower') => -support(partOf(b, 'pusher', 'pushTip')[0], pu.pd) - support(partOf(b, 'driver', role)[0], -pu.pd);
