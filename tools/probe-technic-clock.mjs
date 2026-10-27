@@ -2,7 +2,7 @@
 // AXLE ONE KEYED BODY ON ONE LINE, EVERY MESH IN MESH AND EVERY MODULE CLEAR OF
 // EVERY OTHER IN EVERY STATE?
 // Acceptance, pure Node, no browser, no network; exits non-zero on any failure.
-// BUILT §312 landing L1 (src/technic-clock.js).
+// BUILT §312 landings L1 and L1b (src/technic-clock.js).
 //
 // MODELLED, NOT SIMULATED, and display only: every reading below is geometry
 // read off the vendored LDraw parts as the clock places them. Nothing is
@@ -11,10 +11,12 @@
 //   · PLAN — the modules, the lines (an ADAPTER where a line pairs the two grid
 //     classes and neither module can stand half a stud over), the placement,
 //     each module's lift the group's highest line less its own (whole plates);
-//   · REFUSED — the escape line, by measurement: the escapement's escape arbor
-//     is closed at both ends (its front by the anchor's parts, its back by the
-//     back knife's stack); control: the same measurement with the back knife
-//     taken away finds that side free;
+//   · JOINED — every line joins, none refused: since L1b the escape line runs
+//     to the escapement's DRIVE (a 1:1 transfer onto an input axle open behind,
+//     src/technic-escapement.js). Controls, by measurement: the cell's own
+//     escapement (no drive) in its place has its escape line REFUSED, the arbor
+//     closed at both ends (L1's finding); and with its back knife taken away
+//     that side reads free;
 //   · STANDING — no two statics in one space; every static on the baseplate or
 //     on the static under it; every foot on a baseplate and in the form the
 //     frames' grid rule gives at its x (a 1×1 plate on the grid, a jumper half a
@@ -23,16 +25,21 @@
 //   · LINES — each line's Technic bricks, both modules', have their hole faces
 //     on ONE line (to float noise: the line is derived); every gear of both modules on the line is on
 //     one body; the joint's axles pass every brick; a joiner holds each axle
-//     inside its bore short of its web; control: one module of a line moved an
-//     LDU across;
+//     inside its bore short of its web; every part keyed on a line body (both
+//     modules') on one of its axles (CARRIED, L1b: L1 laid each joint between
+//     the bricks' far faces and left the fusee's centre pinion and the alarm's
+//     hour-axle 8T on no axle); controls: one module of a line moved an LDU
+//     across, the joints cut back to the bricks' far faces;
 //   · MESHES — every gear pair on two bodies at its catalogue centre distance in
 //     one slab is a mesh, and every one is interleaved (penetration ≤ 0.05 mm,
 //     the alarm probe's bound), each gear's own plane mapped into the world (a
 //     module turned 180° mirrors its parts in plan); the train's ratios read off
 //     those meshes: the going group 40/8 × 60 × 7.5 from the great wheel to the
-//     fourth→escape output, the minute group 1, in the sense kept, from the
-//     minute axle to the alarm's hour axle; control: a line body turned half a
-//     tooth;
+//     fourth→escape output and on, 1:1, to the escape wheel, the minute group 1,
+//     in the sense kept, from the minute axle to the alarm's hour axle; the
+//     SENSE: the great wheel running its going sense drives the escape wheel
+//     the way its escapement escapes; controls: a line body turned half a tooth,
+//     the escapement turned the other way (the layout's own judge refuses it);
 //   · CLEAR — over the alarm's three states × the keyless works' three modes,
 //     every part of one module over an LDU from every part of another (and the
 //     joints' parts from everything but their own line), the statics held by
@@ -42,7 +49,8 @@
 //
 // WHAT THIS DOES NOT CLAIM: that the train turns the hands (the centre arbor and
 // the minute axle are two lines, with no slip between them yet: §312's L2), any
-// force, any rate kept; the escapement in the cell (refused above). A module's
+// force, any rate kept (the escapement's beat is its own probe's, on the drive's
+// balance). A module's
 // OWN parts are held by its own probe; the clock moves no part of a module
 // against another of its own, except that a re-phased gear turns about its own
 // axle — angle-free for everything but its meshes, which MESHES holds.
@@ -52,7 +60,8 @@ import { loadPack } from './technic-pack.mjs';
 import { LDU_MM, placements, compose, walk } from '../src/ldraw.js';
 import { FRAME_PARTS, KEYLESS_DIM_MM } from '../src/technic-frame.js';
 import { placedParts, toLdr, placedCloud, cloudGap, rotZ } from '../src/technic-ldraw.js';
-import { starProfile } from '../src/technic-fusee.js';
+import { starProfile, goingSense } from '../src/technic-fusee.js';
+import * as X from '../src/technic-escapement.js';
 import * as C from '../src/technic-clock.js';
 
 const lib = loadPack();
@@ -169,23 +178,26 @@ for (const gen of GENS) {
   }
   console.log(`  ${Object.keys(lay.placement).length} modules on ${lay.areaStuds} studs of plan; not in the cell: ${Mods.order.filter((k) => !lay.placement[k]).join(', ') || 'none'}`);
 
-  lap('REFUSED');
-  // ── REFUSED ────────────────────────────────────────────────────────────────
-  console.log('\nrefused (a line measured closed):');
-  const esc = lay.refused.find((r) => r.key === 'escape');
-  if (!esc) fail('the escape line was not refused: it would join through the escapement\'s closed arbor');
-  else {
-    console.log(`  escape: ${esc.reason}`);
-    const e = esc.ends.find((x) => x.mk === 'escapement');
-    if (!e.ex.front.blocked || !e.ex.back.blocked) fail('the escape arbor is not measured closed at both ends');
-    // control: the back knife taken away, the back is free
-    const em = Mods.modules.escapement, eb = em.build;
-    const backKnife = new Set(eb.statics.map((p, i) => [p, i]).filter(([p]) => p.m[2] > C.lineGeometry(lib, em, e.bi).span[1] + 1e-6 && (p.role === 'knife' || p.role === 'brick' || p.role === 'plate') && Math.abs(p.m[0] - eb.shafts[e.bi].origin[0]) < 21).map(([, i]) => i));
-    const cut = { ...em, build: { ...eb, statics: eb.statics.filter((_, i) => !backKnife.has(i)) } };
-    const ex2 = C.lineExits(lib, cut, e.bi);
-    control('the escapement with its back knife taken away is open behind', !ex2.back.blocked);
+  lap('JOINED');
+  // ── JOINED ─────────────────────────────────────────────────────────────────
+  console.log('\njoined (every line, none refused):');
+  for (const r of lay.refused) fail(`the ${r.key} line was refused: ${r.reason}`);
+  if (!lay.joints.some((j) => j.line === 'escape')) fail('the escape line is not joined');
+  {
+    const em = Mods.modules.escapement, de = C.lineExits(lib, em, C.lineBody(em, 'drive'));
+    console.log(`  escape: through the escapement's ${em.frame.drive.teeth}:${em.frame.drive.teeth} transfer onto its input axle at ${mm(C.lineGeometry(lib, em, C.lineBody(em, 'drive')).x)} mm, open ${de.back.blocked ? 'in front' : 'behind'} (${de.front.blocked ? `in front ${de.front.blocked}` : `behind ${de.back.blocked}`})`);
+    if (de.front.blocked && de.back.blocked) fail('the escapement\'s input axle is closed at both ends');
+    // controls, by measurement: the cell's own escapement (no drive) is closed at both ends, and open behind once
+    // its back knife is taken away
+    const cell = X.frameEscapement(), cm = { ...em, frame: cell, build: X.escapementBuild(cell, lib) }, ci = C.lineBody(cm, 'escape');
+    const ce = C.lineExits(lib, cm, ci);
+    console.log(`  the cell's own escapement, undriven: ${ce.front.blocked && ce.back.blocked ? `closed at both ends (in front ${ce.front.blocked}; behind ${ce.back.blocked})` : 'open'}`);
+    control('the cell\'s undriven escapement in the drive\'s place has its escape arbor closed at both ends', !!(ce.front.blocked && ce.back.blocked));
+    const cb = cm.build, span = C.lineGeometry(lib, cm, ci).span;
+    const backKnife = new Set(cb.statics.map((p, i) => [p, i]).filter(([p]) => p.m[2] > span[1] + 1e-6 && (p.role === 'knife' || p.role === 'brick' || p.role === 'plate') && Math.abs(p.m[0] - cb.shafts[ci].origin[0]) < 21).map(([, i]) => i));
+    const cut = { ...cm, build: { ...cb, statics: cb.statics.filter((_, i) => !backKnife.has(i)) } };
+    control('that escapement with its back knife taken away is open behind', !C.lineExits(lib, cut, ci).back.blocked);
   }
-  for (const r of lay.refused) if (r.key !== 'escape') fail(`the ${r.key} line was refused: ${r.reason}`);
 
   lap('THE NINE STATES');
   // ── THE NINE STATES ────────────────────────────────────────────────────────
@@ -226,8 +238,12 @@ for (const gen of GENS) {
   const feet = rest.statics.filter((s) => s.refooted), fill = rest.statics.filter((s) => s.filler !== undefined);
   console.log(`  ${rest.statics.length - rest.base.plates.length} statics, none in another's space; ${feet.length} feet re-footed (${[...new Set(feet.map((s) => `${s.refooted}→${s.part}`))].join(', ') || 'none'}), ${fill.length} fillers under the lifted modules`);
   if (feet.length) {
-    const f0 = feet[0], undo = { ...rest, statics: rest.statics.map((s) => (s === f0 ? { ...s, part: s.refooted } : s)) };
-    control('a re-footed foot put back as its module built it', standErrs(undo).some((e) => e.includes('does not stand on the baseplate')));
+    // the foot put back as its module built it, and (on a lifted module) the fillers under it re-derived from that
+    // foot, as standModule derives them: the stack's lowest part then stands off the studs at its x
+    const f0 = feet[0], under = rest.statics.filter((s) => s.module === f0.module && s.filler === f0.static);
+    const lift = under.reduce((h, s) => h + (s.role === 'brick' ? 9.6 : 3.2), 0), was = C.fillers(f0.refooted, lift) ?? [];
+    const undo = { ...rest, statics: rest.statics.map((s) => (s === f0 ? { ...s, part: s.refooted } : under.includes(s) ? { ...s, part: was[under.indexOf(s)].part } : s)) };
+    control(`a re-footed foot put back as its module built it${under.length ? ', its fillers with it' : ''}`, standErrs(undo).some((e) => e.includes('does not stand on the baseplate')));
   }
 
   lap('LINES');
@@ -263,10 +279,27 @@ for (const gen of GENS) {
       const gears = b.shafts.flatMap((s, i) => s.parts.filter((p) => p.teeth && mods.includes(p.module) && i !== ln.body && !s.idles && !s.clutch
         && Math.hypot(s.origin[0] - body.origin[0], s.origin[1] - body.origin[1]) < 1e-6).map(() => s.shaft));
       if (gears.length) errs.push(`${ln.key}: ${gears.join(', ')} stand on the line as other bodies`);
+      for (const e of carriedErrs(body, ln)) errs.push(e);
     }
     return errs;
   };
+  // CARRIED: every part keyed on a line body on one of its axles (an axle stops half an LDU short of the face it
+  // is laid to, the library's trim)
+  function carriedErrs(body, ln, axlesOf = (bd) => bd.parts.filter((p) => p.role === 'axle').map((p) => { const bx = C.boxOf(lib, p.part, p.m); return [bx.lo[2], bx.hi[2]]; })) {
+    const out = [], ax = axlesOf(body);
+    for (const p of body.parts.filter((q) => q.role !== 'axle' && q.role !== 'joiner')) {
+      const bx = C.boxOf(lib, p.part, p.m);
+      if (!ax.some(([a0, a1]) => a0 <= bx.lo[2] + 0.5 + 1e-6 && a1 >= bx.hi[2] - 0.5 - 1e-6)) out.push(`${ln.key}: ${p.module}'s ${p.role} ${p.part} is on no axle`);
+    }
+    return out;
+  }
   for (const e of lineErrs(rest, lay)) fail(e);
+  {
+    // control: the joints laid as L1 laid them, each axle cut back to the bricks' far faces
+    const cutBack = (bd, ln) => bd.parts.filter((p) => p.role === 'axle').map((p) => { const bx = C.boxOf(lib, p.part, p.m), lo = Math.min(...ln.spans.flat()) - bd.origin[2], hi = Math.max(...ln.spans.flat()) - bd.origin[2]; return [Math.max(bx.lo[2], lo + 0.5), Math.min(bx.hi[2], hi - 0.5)]; });
+    const floats = rest.lines.flatMap((ln) => carriedErrs(rest.shafts[ln.body], ln, (bd) => cutBack(bd, ln)));
+    control(`the joints cut back to the bricks' far faces leave a keyed part on no axle (${floats.length}: ${floats.slice(0, 2).join('; ')})`, floats.length > 0);
+  }
   for (const ln of rest.lines) {
     const j = ln.joint;
     console.log(`  ${ln.key}: x ${mm(ln.x)} at ${mm(-ln.y)} mm, ${j.kind === 'axle' ? `one ${j.axles[0].lenStuds}L axle through both` : `${j.axles.map((a) => `${a.lenStuds}L`).join(' and ')} in a joiner, ${mm(j.joiner.engagement)} mm into its bore`} (gap ${mm(j.gap)} mm)`);
@@ -310,12 +343,23 @@ for (const gen of GENS) {
   };
   const bodyOf = (b, pred) => b.shafts.findIndex(pred);
   const great = bodyOf(rest, (s) => s.shaft === 'fusee/great');
-  const out = rest.lines.find((l) => l.key === 'fourth') && bodyOf(rest, (s) => s.module === 'fourth→escape' && s.shaft === `fourth→escape/${Mods.modules['fourth→escape'].frame.shafts.length - 1}`);
-  if (great >= 0 && out >= 0) {
-    const r = ratioBetween(rest, great, out);
-    console.log(`  the going group: the fourth→escape output turns ${r?.toFixed(6)} per great-wheel turn (40/8 × 60 × 7.5 = 2250)`);
+  const escLine = rest.lines.find((l) => l.key === 'escape'), out = escLine ? escLine.body : -1;
+  const wheel = bodyOf(rest, (s) => s.shaft === 'escapement/escape');
+  if (great >= 0 && out >= 0 && wheel >= 0) {
+    const r = ratioBetween(rest, great, out), rw = ratioBetween(rest, great, wheel);
+    console.log(`  the going group: the fourth→escape output turns ${r?.toFixed(6)} per great-wheel turn (40/8 × 60 × 7.5 = 2250), the escape wheel ${rw?.toFixed(6)} (through the 1:1 transfer)`);
     if (!r || !near(Math.abs(r), 2250, 1e-6)) fail(`the going group's ratio is ${r}, not 2250`);
-  } else fail('the going group\'s great wheel or output is not in the cell');
+    if (!rw || !near(rw, -r, 1e-6)) fail(`the escape wheel turns ${rw} per great-wheel turn, not the output's ${r} through one 1:1 mesh`);
+    // THE SENSE: the great wheel running its going sense in its own frame drives the escape wheel the way its
+    // escapement escapes in its own (a module turned 180° sees its turns about z reversed)
+    const s = (k) => (lay.placement[k].rot ? -1 : 1), g = goingSense(Mods.modules.fusee.frame), sense = Mods.modules.escapement.frame.spec.sense;
+    const runs = Math.sign(rw) * s('fusee') * g, must = s('escapement') * sense;
+    console.log(`  the sense: the great wheel runs ${g > 0 ? '+' : '−'} in the fusee's frame${lay.placement.fusee.rot ? ' (turned)' : ''}, the escape wheel ${runs * s('escapement') > 0 ? '+' : '−'} in the escapement's${lay.placement.escapement.rot ? ' (turned)' : ''}; it escapes ${sense > 0 ? '+' : '−'}`);
+    if (runs !== must) fail('the train drives the escape wheel backwards');
+    const flipped = { ...Object.fromEntries(Object.entries(lay.placement).map(([k, p]) => [k, [p.rot, p.tx, p.tz]])) };
+    flipped.escapement = [1 - flipped.escapement[0], flipped.escapement[1], flipped.escapement[2]];
+    control('the escapement turned the other way: the layout\'s judge finds the train driving it backwards', (C.layoutFrom(lib, Mods, flipped).findings ?? []).some((f) => f.includes('backwards')));
+  } else fail('the going group\'s great wheel, output or escape wheel is not in the cell');
   const minute = rest.lines.find((l) => l.key === 'minute'), hourLine = rest.lines.find((l) => l.key === 'minute (adapted)') ?? minute;
   if (minute && hourLine) {
     const r = ratioBetween(rest, minute.body, hourLine.body);
@@ -410,5 +454,5 @@ for (const gen of GENS) {
 
 console.log('\ncontrols:');
 for (const [n, ok] of ctl) { console.log(`  ${ok ? 'caught' : 'NOT CAUGHT'}  ${n}`); if (!ok) fails++; }
-console.log(fails ? `\n${fails} FAILED` : '\nthe clock stands on one base of baseplates, each of its joined lines one keyed body through both modules\' bricks, every mesh interleaved, every module clear of every other in all nine states; the escape line refused by measurement');
+console.log(fails ? `\n${fails} FAILED` : '\nthe clock stands on one base of baseplates, every line joined, each one keyed body through both modules\' bricks carrying every part keyed on it, every mesh interleaved, the train driving the escape wheel its own way, every module clear of every other in all nine states');
 process.exit(fails ? 1 : 0);

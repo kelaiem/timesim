@@ -1633,14 +1633,15 @@ async function build(gen) {
   // placed on one baseplate by src/technic-clock.js, each shared axle one keyed
   // body. Display only and posed: every module stands as its own laws pose it at
   // the chosen state, and nothing drives anything. The modules are the ones just
-  // built (handed in), the placement the declared one the probe re-solves.
+  // built (handed in) but the escapement, which the clock builds in its DRIVE
+  // variant (§312 L1b); the placement is the declared one the probe re-solves.
   {
     const k = TECHNIC_FORK.rows.length + 4;
     const band = new THREE.Group(); band.position.set((k % 2) * LEGO_CELL, 0, Math.floor(k / 2) * LEGO_CELL); world.add(band);
     const div = document.createElement('div'); div.className = 'row';
     const rowPre = (i) => cellReg[`row-${i + 1}`] && { frame: cellReg[`row-${i + 1}`].frame, build: cellReg[`row-${i + 1}`].build };
     const pre = { 'centre→fourth': rowPre(0), 'fourth→escape': rowPre(1), keyless: keylessBuild && { frame: keylessFrame, build: keylessBuild },
-      fusee: fuseePre, alarm: alarmFrame?.framed && alarmStatesNow ? { frame: alarmFrame, states: alarmStatesNow } : null, escapement: escFrame?.framed ? { frame: escFrame } : null };
+      fusee: fuseePre, alarm: alarmFrame?.framed && alarmStatesNow ? { frame: alarmFrame, states: alarmStatesNow } : null };
     for (const key of Object.keys(pre)) if (!pre[key]) delete pre[key];
     clockCell = null;
     const mods = clockModules(lib, gen, pre), lay = mods.framed ? clockLayout(lib, mods) : null;
@@ -1655,10 +1656,11 @@ async function build(gen) {
         + `${Object.keys(lay.placement).filter((m) => !mods.modules[m].adapter).length} of the cells above${ad ? ' and a half-stud adapter' : ''} on ${b.base.plates.length} baseplates of 32×32 studs, each shared axle one keyed body:`
         + b.lines.map((l) => `<br>${l.key}: <span style="color:var(--dim)">${l.why}</span> — ${joint(l.joint)}`).join('')
         + (ad ? `<br>a half-stud ADAPTER on the ${ad.adapter} line, <code>${ad.chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code>: <span style="color:var(--dim)">its two modules carry the line on the two grid classes and neither can stand half a stud over</span>` : '')
+        + (() => { const e = mods.modules.escapement?.frame; if (!e?.drive) return ''; const bl = e.bal, dv = e.drive; return `<br>the escapement DRIVEN: <code>${dv.teeth}:${dv.teeth}</code> from an input axle ${dv.cd} mm beside the escape arbor <span style="color:var(--dim)">(nothing reaches the arbor along its axis: the pallets stand in front and the back knife on its line), its back knife two studs further back, its crossbar a ${e.crossbar.lenStuds}L, and its balance solved again for that frame: ${bl.masses.join(', ')} a side, a bob of ${bl.bob.join(', ')}</span>`; })()
         + `<br>lifted to one height: ${Object.entries(lay.placement).filter(([, p]) => p.lift).map(([m, p]) => `${m} ${p.lift} mm`).join(', ') || 'none'}; half a stud over: ${Object.entries(lay.placement).filter(([, p]) => p.shift).map(([m]) => m).join(', ') || 'none'}`
         + lay.refused.map((r) => `<br><span class="bad">the ${r.key} line is refused:</span> <span style="color:var(--dim)">${r.reason}</span>`).join('')
         + `<div class="gen" id="clstates"></div>`
-        + `<span style="color:var(--dim)">Display only, and modelled: each module stands as its own laws pose it at the state chosen, and nothing drives anything. The going train does not turn the hands yet (the slip between the centre arbor and the minute axle is BACKLOG §312's L2), the escapement is not in the cell, and the parts list, steps and booklet are §312's L4.</span>`
+        + `<span style="color:var(--dim)">Display only, and modelled: each module stands as its own laws pose it at the state chosen, and nothing drives anything. The going train does not turn the hands yet (the slip between the centre arbor and the minute axle is BACKLOG §312's L2), and the parts list, steps and booklet are §312's L4.</span>`
         + `<br><a id="clldr" href="#" style="color:#9fb6d9">download .ldr (this state)</a>`;
       const sts = div.querySelector('#clstates');
       for (const [field, list] of [['alarm', TECHNIC_CLOCK.alarmStates], ['keyless', TECHNIC_CLOCK.keylessModes]]) for (const v of list) {

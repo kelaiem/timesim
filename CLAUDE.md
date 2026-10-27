@@ -176,14 +176,23 @@ escape, minute); `solveClockLayout` lifts each group to its highest line on whol
 plates, re-foots a module half a stud over where a line pairs the grid classes (or
 runs it through a derived 8:8 × 12:12 half-stud ADAPTER where neither module can),
 slides the modules apart until their plans clear and keeps the fewest studs — its
-answer DECLARED in `CLOCK_PLACEMENT`, which the probe re-solves. The ESCAPE line is
-REFUSED by measurement (`lineExits`: the escape arbor is closed at both ends), so the
-cell carries no escapement, and the going train does not yet turn the hands (that
-slip is L2's). `tools/probe-technic-clock.mjs` holds the lifts, the lines, every mesh
-in phase, the ratios and CLEAR over the alarm's three × the keyless works' three
-states. The frame, ldraw, build,
-keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement and clock
-probes are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
+answer DECLARED in `CLOCK_PLACEMENT`, which the probe re-solves. **Since L1b the
+escapement is DRIVEN** there: nothing reaches its arbor along its axis (the back knife,
+the balance's pivot, stands on the arbor's line), so the clock builds its DRIVE variant
+(`frameEscapement`'s `drive`, `solveDrive`: a 12:12 transfer onto an input axle 12 mm
+over, past the back knife, on `TECHNIC_BALANCE_DRIVE`, the balance solved for that
+frame; the cell on the page stays undriven, and `probe-technic-escapement-drive.mjs`
+holds the variant apart from the cell's probe, the cell's substitutes judge). A joint
+reaches every part keyed on its line (the line's HOLD, which L1's brick-face joints
+missed twice), the going group is phased from the escapement with the fusee built at
+the ratchet angle that meshes (`fuseePhases`), and the train must drive the escape
+wheel the way it escapes (`goingSenseRule`, held by the search and the judge). The
+going train does not yet turn the hands (that slip is L2's).
+`tools/probe-technic-clock.mjs` holds the lifts, the lines and what they carry, every
+mesh in phase, the ratios and the sense, and CLEAR over the alarm's three × the keyless
+works' three states. The frame, ldraw, build,
+keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement,
+escapement-drive and clock probes are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
 are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
 opens one, and the page writes the URL only inside the tour. **Since §298 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is

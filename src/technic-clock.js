@@ -1,4 +1,4 @@
-// BUILT §312, landing L1 — THE LEGO ALARM CLOCK AS ONE CELL: the modules that
+// BUILT §312, landings L1 and L1b — THE LEGO ALARM CLOCK AS ONE CELL: the modules that
 // stand on technic.html as separate cells (the fusee, the going train's two
 // rows, the escapement, the keyless and motion works, the alarm) placed on ONE
 // baseplate, each shared axle ONE keyed body. Pure: no three.js, no DOM.
@@ -20,13 +20,21 @@
 //   · CENTRE — the fusee's centre pinion IS the centre→fourth row's first
 //     arbor (the steel's centre wheel, 1 rev/h);
 //   · FOURTH — that row's last arbor IS the fourth→escape row's first;
-//   · ESCAPE — that row's last arbor IS the escapement's escape arbor;
+//   · ESCAPE — that row's last arbor IS the escapement's INPUT axle, which turns
+//     the escape arbor through a 1:1 transfer (§312 L1b: the escapement's DRIVE
+//     variant, frameEscapement's `drive`, on the balance solved for that frame);
 //   · MINUTE — the keyless works' minute axle (the setting branch's output, the
 //     hour wheel's bearing) IS the alarm's hour axle (the release chain's input).
 // A line is COLLINEAR: one x, one height, the two modules in tandem along it.
-// A line can be REFUSED, by measurement (lineExits): the escape line is, since
-// the escapement's escape arbor is closed at both ends (its pallet in front,
-// its frame's brick behind), so the cell carries no escapement and says so.
+// A line can be REFUSED, by measurement (lineExits), when its arbor is closed at
+// both ends. L1 refused the escape line so (the pallets in front, the back knife
+// on its line behind); L1b drives the escapement through a transfer instead, and
+// no line is refused now. A joint carries every part keyed on its line: its far
+// ends are the line's HOLD (the bricks and the parts on the body), not the
+// bricks' faces, which left two gears on no axle in L1 (the fusee's centre
+// pinion, the alarm's hour-axle 8T). And the train must drive the escape wheel
+// the way the escapement escapes (goingSenseRule): the search and the judge
+// both hold it.
 //
 // THREE THINGS ARE DERIVED, none chosen:
 //   · THE HEIGHT. Every module carries its axles at the lowest height its own
@@ -66,7 +74,8 @@
 // driver's tooth, each part's tooth phase MEASURED). The going train is phased
 // from the escapement at its own rest, back up the train to the fusee's great
 // wheel, whose angle is set through the fusee's own law (its ratchet angle
-// phiM, which turns the great wheel with it) to the nearest that meshes. The
+// phiM, which turns the great wheel with it) to the nearest that meshes
+// (fuseePhases). The
 // minute line is phased from the alarm's state (its disc sets the hour axle
 // through the release chain) and the keyless works re-phased from it, each
 // clutch gear idle or locked to the stem as the mode says.
@@ -76,7 +85,7 @@ import { CATALOGUES, catalogueMesh, ratQ, ratMul, ratEq } from './layout.js';
 import { ldrawBuild, toothPhase, rotZ, rotX } from './technic-ldraw.js';
 import { solveFusee, frameFusee, fuseeBuild, TECHNIC_FUSEE_SPRING, goingSense, BAND_LAG_DEG, FUSEE_PARTS } from './technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from './technic-alarm.js';
-import { frameEscapement, escapementBuild } from './technic-escapement.js';
+import { frameEscapement, escapementBuild, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE_DRIVE } from './technic-escapement.js';
 
 const L = (mm) => mm / LDU_MM;
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
@@ -111,7 +120,7 @@ export const TECHNIC_CLOCK = Object.freeze({
   lines: Object.freeze([
     Object.freeze({ key: 'centre', why: 'the fusee\'s centre pinion is the centre wheel\'s arbor (1 rev/h)', a: ['fusee', 'centre'], b: ['centre→fourth', 0] }),
     Object.freeze({ key: 'fourth', why: 'the centre→fourth row\'s output is the fourth→escape row\'s input (1 rev/min)', a: ['centre→fourth', 'last'], b: ['fourth→escape', 0] }),
-    Object.freeze({ key: 'escape', why: 'the fourth→escape row\'s output is the escape arbor', a: ['fourth→escape', 'last'], b: ['escapement', 'escape'] }),
+    Object.freeze({ key: 'escape', why: 'the fourth→escape row\'s output drives the escape arbor, through the escapement\'s 1:1 transfer (§312 L1b)', a: ['fourth→escape', 'last'], b: ['escapement', 'drive'] }),
     Object.freeze({ key: 'minute', why: 'the setting branch\'s output, the hour wheel\'s bearing, is the release chain\'s input', a: ['keyless', 'minute'], b: ['alarm', 'hour'] }),
   ]),
   // the states the cell is drawn and held in: the alarm's three × the keyless works' three
@@ -147,9 +156,10 @@ export function clockModules(lib, gen, pre = {}) {
   out.alarm = { key: 'alarm', kind: 'alarm', frame: af, states: st,
     builds: Object.fromEntries(TECHNIC_CLOCK.alarmStates.map((s) => [s, alarmBuild(af, lib, st[s])])) };
   out.alarm.build = out.alarm.builds[TECHNIC_CLOCK.rest.alarm];
-  const ef = pre.escapement?.frame ?? frameEscapement();
+  // the escapement as the clock drives it: its DRIVE variant (§312 L1b), on the balance solved for that frame
+  const ef = pre.escapement?.frame?.drive ? pre.escapement.frame : frameEscapement(TECHNIC_ESCAPEMENT, TECHNIC_BALANCE_DRIVE, { drive: true });
   if (!ef.framed) return { framed: false, reason: `escapement: ${ef.reason}` };
-  out.escapement = { key: 'escapement', kind: 'escapement', frame: ef, build: pre.escapement?.build ?? escapementBuild(ef, lib) };
+  out.escapement = { key: 'escapement', kind: 'escapement', frame: ef, build: (pre.escapement?.frame === ef && pre.escapement?.build) || escapementBuild(ef, lib) };
   // THE LINES, and an ADAPTER where a line pairs the two grid classes and
   // neither of its modules can stand half a stud over (its columns stand a
   // stud apart, so re-footed jumpers would collide): the line is then two
@@ -168,8 +178,71 @@ export function clockModules(lib, gen, pre = {}) {
     lines.push({ key: ln.key, why: ln.why, a: ln.a, b: [key, 0] });
     lines.push({ key: `${ln.key} (adapted)`, why: `the half-stud adapter's output carries the ${ln.key} line on: ${ad.why}`, a: [key, 'last'], b: ln.b });
   }
-  return { framed: true, gen, modules: out, order, lines };
+  return { framed: true, gen, modules: out, order, lines, sense: goingSenseRule(lib, out, lines) };
 }
+
+// ── WHICH WAY THE TRAIN RUNS (§312 L1b) ──────────────────────────────────────
+// The fusee's great wheel runs its going sense (goingSense) and the escape wheel
+// must turn the way its escapement escapes (the spec's sense). A ratio inside a
+// module does not depend on its turn (each of its bodies' world angle is the
+// same sign times its own), and a line hands its angle on unchanged, so the
+// world ratio from the great wheel to the escape wheel is the product of each
+// module's own; the condition is then one on the TURNS: s_fusee · s_escapement =
+// sign(Π r) · g · sense, s = −1 for a module turned 180°. A module's ratio is
+// read off its parts, every pair of gears at their centre distance in one slab
+// a mesh (the clock probe's law), so a module that does not list a mesh it
+// makes (the fusee's centre pinion) is read the same as one that does.
+export function moduleMeshes(lib, build) {
+  const gears = [];
+  build.shafts.forEach((s, bi) => {
+    if (s.axis === 'x') return;
+    const c = Math.cos(s.phi), sn = Math.sin(s.phi);
+    for (const p of s.parts) if (p.teeth) gears.push({ body: bi, teeth: p.teeth, x: s.origin[0] + c * p.m[0] - sn * p.m[1], y: s.origin[1] + sn * p.m[0] + c * p.m[1], z: s.origin[2] + p.m[2] });
+  });
+  const out = [];
+  for (let i = 0; i < gears.length; i++) for (let j = i + 1; j < gears.length; j++) {
+    const a = gears[i], b = gears[j];
+    if (a.body === b.body || Math.abs(a.z - b.z) >= 20 - EPS) continue;
+    if (Math.abs(Math.hypot(a.x - b.x, a.y - b.y) * LDU_MM - (a.teeth + b.teeth) / 2) < 1e-4) out.push({ a, b });
+  }
+  return out;
+}
+export function bodyRatio(lib, build, from, to) {
+  const ms = moduleMeshes(lib, build), seen = new Map([[from, 1]]), q = [from];
+  while (q.length) {
+    const u = q.shift();
+    for (const { a, b } of ms) {
+      const [x, y] = a.body === u ? [a, b] : b.body === u ? [b, a] : [];
+      if (!x || seen.has(y.body)) continue;
+      seen.set(y.body, -seen.get(u) * x.teeth / y.teeth); q.push(y.body);
+    }
+  }
+  return seen.get(to) ?? null;
+}
+export function goingSenseRule(lib, M, lines) {
+  if (!M.fusee || !M.escapement) return null;
+  // a train whose ratio cannot be read is refused, never passed: product 0 matches no pair of turns
+  const unread = (why) => ({ a: 'fusee', b: 'escapement', ratio: null, product: 0, why: `the train's ratio could not be read off the parts (${why})` });
+  // the path of lines from the fusee to the escapement, each module entered on one line and left on the next
+  const ends = (ln) => [ln.a, ln.b];
+  let at = ['fusee', 'great'], prod = 1;
+  const seen = new Set();
+  for (;;) {
+    const [mk, sel] = at;
+    if (mk === 'escapement') { const r = bodyRatio(lib, M[mk].build, lineBody(M[mk], sel), lineBody(M[mk], 'escape')); if (r === null) return unread('inside the escapement'); prod *= r; break; }
+    const ln = lines.find((l) => !seen.has(l.key) && ends(l).some(([k]) => k === mk));
+    if (!ln) return unread(`no line leaves the ${mk}`);
+    seen.add(ln.key);
+    const [here, there] = ln.a[0] === mk ? [ln.a, ln.b] : [ln.b, ln.a];
+    const r = bodyRatio(lib, M[mk].build, lineBody(M[mk], sel), lineBody(M[mk], here[1]));
+    if (r === null) return unread(`inside the ${mk}`);
+    prod *= r; at = there;
+  }
+  const g = goingSense(M.fusee.frame), sense = M.escapement.frame.spec.sense;
+  return { a: 'fusee', b: 'escapement', ratio: prod, product: Math.sign(prod) * g * sense,
+    why: `the great wheel runs ${g > 0 ? '+' : '−'} in its own frame, the escape wheel must run ${sense > 0 ? '+' : '−'} in its own, and the train between them turns ${prod.toFixed(1)}` };
+}
+const senseHolds = (rule, placed) => !rule || !placed[rule.a] || !placed[rule.b] || (placed[rule.a].rot ? -1 : 1) * (placed[rule.b].rot ? -1 : 1) === rule.product;
 
 // ── THE HALF-STUD ADAPTER ────────────────────────────────────────────────────
 // A line that must step half a stud sideways keeps its rate and its sense
@@ -249,7 +322,12 @@ export function lineGeometry(lib, mod_, bi) {
   })());
   if (!bricks.length) return { x, y, height: -y * LDU_MM, bricks: [], span: null };
   const zs = bricks.flatMap(({ p }) => { const b = boxOf(lib, p.part, p.m, { body: true }); return [b.lo[2], b.hi[2]]; });
-  return { x, y, height: r6(-y * LDU_MM), bricks: bricks.map((b) => b.i), span: [Math.min(...zs), Math.max(...zs)] };
+  const span = [Math.min(...zs), Math.max(...zs)];
+  // the HOLD: the span and every part keyed on the line's body (a joint's axle must carry them all: the
+  // escapement's transfer gear stands in front of its input's bricks, §312 L1b)
+  const ps = s.parts.filter((p) => p.role !== 'axle').map((p) => boxOf(lib, p.part, [p.m[0] + s.origin[0], p.m[1] + s.origin[1], p.m[2] + s.origin[2], ...p.m.slice(3)]));
+  const hold = [Math.min(span[0], ...ps.map((b) => b.lo[2])), Math.max(span[1], ...ps.map((b) => b.hi[2]))];
+  return { x, y, height: r6(-y * LDU_MM), bricks: bricks.map((b) => b.i), span, hold };
 }
 
 // ── THE GROUND, AND STANDING ON IT ───────────────────────────────────────────
@@ -526,15 +604,17 @@ export function solveClockLayout(lib, Mods, { slide = SLIDE_STUDS } = {}) {
           if (shift === null) continue;
           // A's span in the world
           const aSpan = [gA.span[0], gA.span[1]].map((z) => placePoint(pA, [gA.x, gA.y, z])[2]).sort((p, q) => p - q);
-          const aNear = sA > 0 ? aSpan[1] : aSpan[0], aFar = sA > 0 ? aSpan[0] : aSpan[1];
+          const aHold = gA.hold.map((z) => placePoint(pA, [gA.x, gA.y, z])[2]).sort((p, q) => p - q);
+          const aNear = sA > 0 ? aSpan[1] : aSpan[0], aFar = sA > 0 ? aHold[0] : aHold[1];
           for (let n = 0; n <= slide; n++) {
             // B's facing end at aNear + sA·20n
-            const bLocal = gB.span.map((z) => (rot ? -z : z)).sort((p, q) => p - q);
+            const bLocal = gB.span.map((z) => (rot ? -z : z)).sort((p, q) => p - q), bHoldL = gB.hold.map((z) => (rot ? -z : z)).sort((p, q) => p - q);
             const bNear0 = sA > 0 ? bLocal[0] : bLocal[1];
             const tz = r6(aNear + sA * 20 * n - bNear0);
             const pB = { rot, tx, tz, lift: lifts.lift[mk] ?? 0, shift };
+            if (!senseHolds(Mods.sense, { ...placed, [mk]: pB })) break;   // the train would drive the escape wheel backwards
             if (n === 0 && !standModule(lib, M[mk], pB).ok) break;   // its feet cannot stand at this x: no slide changes that
-            const bSpan = bLocal.map((z) => z + tz), bNear = sA > 0 ? bSpan[0] : bSpan[1], bFar = sA > 0 ? bSpan[1] : bSpan[0];
+            const bSpan = bLocal.map((z) => z + tz), bHold = bHoldL.map((z) => z + tz), bNear = sA > 0 ? bSpan[0] : bSpan[1], bFar = sA > 0 ? bHold[1] : bHold[0];
             const boxesB = boxes[mk].map((b) => placeBox(pB, b));
             const others = Object.entries(placed).flatMap(([k, p]) => boxes[k].map((b) => ({ ...placeBox(p, b), mk: k })));
             if (conflictsAny(boxesB, others, true)) continue;
@@ -542,7 +622,7 @@ export function solveClockLayout(lib, Mods, { slide = SLIDE_STUDS } = {}) {
             const j = solveJoint({ aFar, aNear, bNear, bFar, d: sA, freeOverhang: { a: freeFar(eA, pA, -sA), b: freeFar(eB, pB, sA) } });
             if (!j) continue;
             const Y = placePoint(pA, [gA.x, gA.y, 0])[1];
-            const jb = jointBoxes(j, X, Y, [aSpan, bSpan]);
+            const jb = jointBoxes(j, X, Y, [aHold, bHold]);
             // the joint against every part placed (B's included), but a line's own bodies and bricks
             const own = (b) => (b.mk === from && (b.body === eA.bi || gA.bricks.includes(b.static))) || (b.mk === mk && (b.body === eB.bi || gB.bricks.includes(b.static)));
             const all = [...others, ...boxesB.map((b) => ({ ...b, mk }))].filter((b) => !own(b));
@@ -636,6 +716,7 @@ export function layoutFrom(lib, Mods, placed, { boxes = null } = {}) {
     const st = standModule(lib, M[k], placement[k]);
     if (!st.ok) findings.push(st.reason);
   }
+  if (!senseHolds(Mods.sense, placement)) findings.push(`the ${Mods.sense.a} and the ${Mods.sense.b} stand turned so the train drives the escape wheel backwards (${Mods.sense.why})`);
   const P = Object.fromEntries(Object.keys(placement).map((k) => [k, boxes[k].map((b) => ({ ...placeBox(placement[k], b), mk: k }))]));
   const ks = Object.keys(P);
   for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) {
@@ -649,20 +730,21 @@ export function layoutFrom(lib, Mods, placed, { boxes = null } = {}) {
     const pA = placement[eA.mk], pB = placement[eB.mk], gA = eA.ex.geometry, gB = eB.ex.geometry;
     const [XA, YA] = placePoint(pA, [gA.x, gA.y, 0]), [XB, YB] = placePoint(pB, [gB.x, gB.y, 0]);
     if (Math.abs(XA - XB) > EPS || Math.abs(YA - YB) > EPS) { findings.push(`the ${ln.key} line's halves stand ${(Math.hypot(XA - XB, YA - YB) * LDU_MM).toFixed(3)} mm apart`); continue; }
-    const span = (p, g) => g.span.map((z) => placePoint(p, [g.x, g.y, z])[2]).sort((a, b) => a - b);
+    const span = (p, g, r = g.span) => r.map((z) => placePoint(p, [g.x, g.y, z])[2]).sort((a, b) => a - b);
     const aSpan = span(pA, gA), bSpan = span(pB, gB), d = bSpan[0] >= aSpan[1] - EPS ? 1 : aSpan[0] >= bSpan[1] - EPS ? -1 : 0;
+    const aHold = span(pA, gA, gA.hold), bHold = span(pB, gB, gB.hold);
     if (!d) { findings.push(`the ${ln.key} line's two spans overlap`); continue; }
     const side = (e, p, s) => e.ex[sideOf(p, s) > 0 ? 'back' : 'front'];
     if (side(eA, pA, d).blocked) findings.push(`${eA.mk} leaves the ${ln.key} line on its closed side`);
     if (side(eB, pB, -d).blocked) findings.push(`${eB.mk} meets the ${ln.key} line on its closed side`);
-    const [aNear, aFar] = d > 0 ? [aSpan[1], aSpan[0]] : [aSpan[0], aSpan[1]], [bNear, bFar] = d > 0 ? [bSpan[0], bSpan[1]] : [bSpan[1], bSpan[0]];
+    const [aNear, aFar] = d > 0 ? [aSpan[1], aHold[0]] : [aSpan[0], aHold[1]], [bNear, bFar] = d > 0 ? [bSpan[0], bHold[1]] : [bSpan[1], bHold[0]];
     const j = solveJoint({ aFar, aNear, bNear, bFar, d, freeOverhang: { a: !side(eA, pA, -d).blocked, b: !side(eB, pB, d).blocked } });
     if (!j) { findings.push(`no joint makes the ${ln.key} line across its ${((d * (bNear - aNear)) * LDU_MM).toFixed(1)} mm gap`); continue; }
     const own = (b) => (b.mk === eA.mk && (b.body === eA.bi || gA.bricks.includes(b.static))) || (b.mk === eB.mk && (b.body === eB.bi || gB.bricks.includes(b.static)));
     const all = Object.values(P).flat().filter((b) => !own(b));
-    const c = conflictsAny(jointBoxes(j, XA, YA, [aSpan, bSpan]), all, false);
+    const c = conflictsAny(jointBoxes(j, XA, YA, [aHold, bHold]), all, false);
     if (c) findings.push(`the ${ln.key} line's ${c[0].who} meets ${c[1].who}`);
-    joints.push({ line: ln.key, a: eA.mk, b: eB.mk, joint: j, x: XA, y: YA, aSpan, bSpan, d });
+    joints.push({ line: ln.key, a: eA.mk, b: eB.mk, joint: j, x: XA, y: YA, aSpan, bSpan, aHold, bHold, d });
   }
   return { framed: !findings.length, reason: findings[0], findings, placement, joints, lines, refused, groups, boxes };
 }
@@ -754,6 +836,24 @@ export function keylessPhases(lib, mod_, mode, phiMinute) {
   return phi;
 }
 
+// The fusee with its centre pinion handed `phiC` (§312 L1b): the great wheel takes the angle that meshes it
+// (the representative nearest its own, a 40T keyed by whole teeth), and the fusee is BUILT at the ratchet angle
+// its own law gives that great wheel (the band stands it BAND_LAG_DEG behind the ratchet in the going sense), so
+// every body the ratchet carries — the click, the band's pegs — stands where the loop would stand it.
+export function fuseePhases(lib, mod_, ci, phiC) {
+  const b0 = mod_.build, gi = b0.shafts.findIndex((s) => s.shaft === 'great');
+  const C = b0.shafts[ci], G = b0.shafts[gi], cg = C.parts.find((p) => p.teeth), gg = G.parts.find((p) => p.teeth);
+  const phiG = nearest(meshAngle(lib, C, cg, G, gg, phiC), G.phi, TAU / gg.teeth);
+  const phiM = phiG + goingSense(mod_.frame) * BAND_LAG_DEG * Math.PI / 180;
+  const build = fuseeBuild(mod_.frame, lib, { run: mod_.run, phiM });
+  const phi = build.shafts.map((s) => s.phi);
+  // the pinion as built meshes that great wheel; it is the line's own angle up to whole teeth
+  const step = TAU / cg.teeth, dd = mod(phi[ci] - phiC + step / 2, step) - step / 2;
+  if (Math.abs(dd) > 1e-6) throw new Error(`clock: the fusee's centre pinion stands ${dd} rad off the line it is handed`);
+  phi[ci] = phiC;
+  return { build: { ...build, shafts: build.shafts.map((s, i) => ({ ...s, phi: phi[i] })) }, phi };
+}
+
 // ── THE CELL ─────────────────────────────────────────────────────────────────
 // The clock at one state ({ alarm, keyless }): a build in ldrawBuild's shape
 // (statics, shafts, meshes) in the clock's own frame, plus what the probe and
@@ -785,7 +885,9 @@ export function clockBuild(lib, Mods, layout, state = TECHNIC_CLOCK.rest) {
   // takes it in its own frame (a module turned 180° about the vertical sees a
   // turn about z reversed) and is re-phased from that body by the mesh law.
   for (const k of keys) phi[k] = build[k].shafts.map((s) => s.phi);
-  const given = new Set(keys.filter((k) => ['fusee', 'alarm', 'escapement'].includes(M[k].kind)));
+  // the going group is phased from the escapement at its rest when it is in the cell (§312 L1b); the fusee
+  // then takes the angle its centre pinion is handed, through its own law (below)
+  const given = new Set(keys.filter((k) => ['alarm', 'escapement'].includes(M[k].kind) || (M[k].kind === 'fusee' && !keys.some((e) => M[e].kind === 'escapement'))));
   const done = new Set(given), q = [...given];
   while (q.length) {
     const from = q.shift();
@@ -793,7 +895,8 @@ export function clockBuild(lib, Mods, layout, state = TECHNIC_CLOCK.rest) {
       const to = j.a === from ? j.b : j.b === from ? j.a : null;
       if (!to || done.has(to)) continue;
       const ef = end(j.line, from), et = end(j.line, to), v = sgn(to) * sgn(from) * phi[from][ef.bi];
-      phi[to] = M[to].kind === 'keyless' ? keylessPhases(lib, M[to], state.keyless, v) : rephase(lib, build[to], new Map([[et.bi, v]]));
+      if (M[to].kind === 'fusee') { const fz = fuseePhases(lib, M[to], et.bi, v); build[to] = fz.build; phi[to] = fz.phi; }
+      else phi[to] = M[to].kind === 'keyless' ? keylessPhases(lib, M[to], state.keyless, v) : rephase(lib, build[to], new Map([[et.bi, v]]));
       done.add(to); q.push(to);
     }
   }
@@ -872,8 +975,8 @@ export function clockBuild(lib, Mods, layout, state = TECHNIC_CLOCK.rest) {
 // when either differs, so this cannot go stale against the modules; the page
 // reads it through layoutFrom, the solve's own judge.
 export const CLOCK_PLACEMENT = Object.freeze({
-  technic_2026: Object.freeze({ fusee: [0, 0, 0], 'centre→fourth': [0, 130, 380], 'fourth→escape': [1, 330, 380], keyless: [0, 160, 700], 'adapter:minute': [0, 80, 1000], alarm: [1, 300, 1260] }),
-  technic_classic: Object.freeze({ fusee: [0, 0, 0], 'centre→fourth': [0, 130, 380], 'fourth→escape': [1, 290, 300], keyless: [0, 120, 740], 'adapter:minute': [0, 40, 1040], alarm: [1, 260, 1300] }),
+  technic_2026: Object.freeze({ fusee: [0, 0, 0], 'centre→fourth': [0, 130, 440], 'fourth→escape': [1, 330, 440], escapement: [0, 180, -220], keyless: [0, 160, 760], 'adapter:minute': [0, 80, 1060], alarm: [1, 300, 1380] }),
+  technic_classic: Object.freeze({ fusee: [0, 0, 0], 'centre→fourth': [0, 130, 440], 'fourth→escape': [0, 290, 640], escapement: [1, 440, 1000], keyless: [0, 780, 140], 'adapter:minute': [0, 700, 440], alarm: [1, 920, 760] }),
 });
 export function clockLayout(lib, Mods, placement = CLOCK_PLACEMENT[Mods.gen]) {
   if (!placement) return { framed: false, reason: `no placement declared for ${Mods.gen}` };
