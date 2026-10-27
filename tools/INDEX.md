@@ -4,7 +4,7 @@
 
 # The instruments
 
-367 scripts. **249 are ACCEPTANCE tests** — they decide and exit non-zero.
+368 scripts. **250 are ACCEPTANCE tests** — they decide and exit non-zero.
 **118 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -237,6 +237,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-308-barrel-swing.mjs` | §308 | acceptance | DOES THE SWUNG BARREL FREE THE ALARM MODULE'S TURN — AND DOES THE DESIGNED TRAIN STILL BUILD THE SAME? Acceptance (§308 landing 5): exits non-zero on any failure. |
 | `probe-310-gong-seat.mjs` | §310 | acceptance | ACCEPTANCE (BUILT §310 landing 2): the gong's SEAT on a fitted form case, held to the metal and to the mechanism. Exits non-zero on any failure. |
 | `probe-313-reserve-at-12.mjs` | §313 | acceptance | DOES THE ARRANGED MOVEMENT HOLD ITS POWER RESERVE AT 12 O'CLOCK — AND ONLY BECAUSE OF THE IDLERS AND THE MODULE'S TURN IT NAMES? Acceptance (§313): exits non-zero on any failure. |
+| `probe-314-linkage-line.mjs` | §314 | acceptance | WHERE DOES THE PUSHER LINKAGE'S ROD LINE RUN IN THIS ARRANGEMENT? — §314's re-run of §261 2c's linkage search, for a movement whose band the fold-site study can no longer site (its cluster already stands folded, so that study's rotation loop has nothing to search; its header says so under TODO 244). |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |

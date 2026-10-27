@@ -1363,7 +1363,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 367 measuring scripts and this file names 73. The rest are named for the
+`tools/` holds 368 measuring scripts and this file names 73. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
