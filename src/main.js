@@ -7991,7 +7991,7 @@ const ALARM_ARR_KEY = configKey({ spec: { ...SPEC, caseShape: null, formRectSpec
 const ALARM_PINB_SEAT_FIXED = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': 5.2780,   // §278 landing 6: re-quoted to its fixed point — the reclaim moved the dial-hung column against the held arming blade's corner, and hanger 3's jog, moved beside the blade, lengthened the ground's developed path and with it the section and the room (was 5.2650). TODO 240: re-quoted to its fixed point — the re-aimed lever reflects the blade to the nose by its new ratio, and the pin's journal is charged on the same-side reaction (was 5.4263). mN at the pin — the shared equal margin, re-derived and asserted at the link's arming solve (rounded to 0.1 µN). §261 2c: re-quoted to its fixed point — the folded same-side beak reflects the arming blade to the nose by its own lever (was 5.2502)
   'cfg1:{"spec":{"alarmModAzDeg":60,"barrelStepDeg":0,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":6,"vph":18000},"route":null,"tuned":[]}': 5.1837,   // §313: the swung barrel, the reserve at 12 on six idlers, the module at 60°
-  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-10,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': 5.2249,   // §314: the barrel at −10°, the reserve at 12 on two idlers, the module at 50°
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': 5.2248,   // §314: the barrel at −20°, the reserve at 12 on two idlers, the module at 50°
 });
 const ALARM_PINB_SEAT_MN = ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] ?? 5.2780;   // mN at the pin; a spec with no row takes the designed value
 const ALARM_PINB_BLADE = (() => {

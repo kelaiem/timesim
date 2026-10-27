@@ -96,21 +96,22 @@ const RATE_TABLE = {
 // The row a rate's balance reads: its own, or the shipped movement's.
 const rateBalanceRow = (vph) => (RATE_TABLE[vph].rimF !== undefined ? RATE_TABLE[vph] : RATE_TABLE[18000]);
 export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
-// THE MOVEMENT'S ARRANGEMENT (§308 landing 5, §313, §314): the barrel stepped −10° off the centre, the alarm
+// THE MOVEMENT'S ARRANGEMENT (§308 landing 5, §313, §314): the barrel stepped −20° off the centre, the alarm
 // module turned 50°, the power reserve held at 12 o'clock on two idlers. A fitted form case needs the module turned
 // — the designed train's alarm hammer sets the case's width on the crown's far side (x 43.2), over the owner's 40 mm
 // cap once the case is centred, and a turned module carries the strike group off the width (its seats,
-// tools/gong-seats.mjs). §313 swung the barrel to 180° (barrelstep 0) and §314's first battery found the fusee cone
-// (swept r 5.53) and the third wheel (r 9.82) 13.59 apart there against the 15.50 they need: −9° is the first whole
-// step that clears them, −10° keeps a degree in hand (the designed −35° stands 20.51 apart). At −10° the reserve at 12
-// takes no idler-free train (the alarm link refuses it), two idlers keep the link's site at 45°–55° and four at
-// 50°–55° (60° reads −0.032, 65° refuses), so two — the fewest parts — at 50°, the middle of their window. §314 made
-// it EVERY build's default, the round one too, so the movement the battery sweeps is the one the cases are cut for.
+// tools/gong-seats.mjs). §313 swung the barrel to 180° (barrelstep 0), and §314's first battery found the great wheel
+// (r 15.65) through the third wheel's arbor (r 0.50) and its pinion (r 1.63, 0.06 over the wheel's plane — inside the
+// margin, so it counts in plan): 17.43 between the axes clears both, which the step first reaches at −19°; −20°
+// keeps a degree in hand (the designed −35° stands 20.51 apart). At −20° the reserve at 12 takes no idler-free train
+// (the alarm link refuses it), and two idlers keep the link's site with the module at 45° and 50°: two — the fewest
+// parts — at 50°, where §313's cases were cut nearest. §314 made it EVERY build's default, the round one too, so the
+// movement the battery sweeps is the one the cases are cut for.
 // A URL that names any of its keys builds what it names; `?arrangement=designed` builds the designed train (every
 // arrangement key null), exactly as before §314. Written out as numbers, as a URL would carry them, so a default
 // build and the same build spelled in full share one configKey — and the `arrangement` marker itself is NOT a spec
 // field, so the designed train and its variants keep the configKeys they were validated under.
-export const ARRANGEMENT = Object.freeze({ barrelStepDeg: -10, rsvAzDeg: 0, alarmModAzDeg: 50, rsvIdlers: 2 });
+export const ARRANGEMENT = Object.freeze({ barrelStepDeg: -20, rsvAzDeg: 0, alarmModAzDeg: 50, rsvIdlers: 2 });
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
