@@ -5,5 +5,5 @@
 // UNVERIFIED configuration; the battery re-verifies every row each run and
 // fails on a stale one. Adding a row is a claim that a sweep covered it.
 export const VALIDATED_CONFIGS = Object.freeze([
-  Object.freeze({ point: "identity", key: "cfg1:{\"spec\":{\"alarmModAzDeg\":60,\"barrelStepDeg\":0,\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":6,\"vph\":18000},\"route\":null,\"tuned\":[]}", evidence: "battery: full sweep of the default build" }),
+  Object.freeze({ point: "identity", key: "cfg1:{\"spec\":{\"alarmModAzDeg\":50,\"barrelStepDeg\":-10,\"reserveHours\":30,\"rsvAzDeg\":0,\"rsvIdlers\":2,\"vph\":18000},\"route\":null,\"tuned\":[]}", evidence: "battery: full sweep of the default build" }),
 ]);
