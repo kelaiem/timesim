@@ -581,7 +581,7 @@ function buildStudioEnvironment(renderer) {
   // card. It also lights the lacquered dial, both by reflection off the lacquer
   // and on its diffuse face.
   // Its DIRECTION is a key softbox's (§290): raised FRONT_CARD_ELEV_DEG over the
-  // dial and swung FRONT_CARD_AZ_DEG to the left, not square in front. From the
+  // dial and swung FRONT_CARD_AZ_DEG to the left, not square in front. From that
   // opening view the flat bezel top samples within ~6° ± 13° of −z, so a card
   // whose lower edge sits near that cone lights the upper bezel fully and lets
   // the lower bezel fall off: the top-bright gradient that reads as a mirror.
@@ -55898,19 +55898,10 @@ function currentViewLink() {
     }
   });
 }
-// §289 — THE OPENING VIEW: the owner's chosen framing for a first visit: the dial
-// side, three-quarter from below, at a standoff that shows the whole case.
-// A literal pose quoted from the owner's view link (?cam=…&look=…), and taste
-// (P4), not a derivation: nothing in the movement constrains where a visitor
-// first stands. It is not a preset — the Free preset stays the working
-// movement-side framing every script step, the 5 key and life size's exit
-// fly to.
-const OPENING_POSE = {
-  pos: new THREE.Vector3(-9.077, -12.889, -202.52),
-  target: new THREE.Vector3(5.988, -0.769, -8.992),
-};
-// Restore a saved camera pose if one was persisted; otherwise snap to the
-// opening view, before the viewer has said what they came to look at. A
+// THE OPENING VIEW is the Free preset (owner ask, superseding §289's literal
+// dial-side pose): a first visit stands where the 5 key, every script step and
+// life size's exit already fly to, and the panel's Free button says so.
+// Restore a saved camera pose if one was persisted; otherwise snap to it. A
 // restore snaps directly (no tween) and cancels any in-flight preset tween so
 // it isn't overwritten next frame.
 if (restoredCamera) {
@@ -55920,7 +55911,8 @@ if (restoredCamera) {
   camTween = null;
   document.querySelectorAll('.hud-panel .presets button').forEach((b) => b.classList.remove('active'));
 } else {
-  goToPose(OPENING_POSE.pos, OPENING_POSE.target, { snap: true });
+  goToPose(camTargets.Free.pos, camTargets.Free.target, { snap: true });
+  document.querySelectorAll('.hud-panel .presets button').forEach((b) => b.classList.toggle('active', b.dataset.cam === 'Free'));
 }
 
 // ---------------------------------------------------------------------------
