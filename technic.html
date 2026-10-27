@@ -1101,7 +1101,7 @@ function writeDrive() {
   const n = (x) => (x * NMM).toExponential(2), Fr = TECHNIC_DRIVE_FRICTION, rate = (T) => (1 - T / BEAT_PERIOD_S) * DAY_S;
   const sw = (c) => { const s = d.corners[c].mean; return s.status === 'sustained' ? `<code>${s.A.toFixed(2)}°</code> at <code>${s.T.toFixed(5)} s</code>` : `<span class="bad">${s.status === 'banks' ? `banks (${s.A?.toFixed(2) ?? '—'}°: past the widest clean swing, ${TECHNIC_DRIVE.tableDeg}°)` : s.status}</span>`; };
   const nom = d.corners.nominal;
-  el.innerHTML = (d.ok ? `<b>the swing is SOLVED</b>: ` : `<span class="bad">the posed swing stays — ${d.why}</span>: `)
+  el.innerHTML = (d.ok ? `<span style="font-weight:600">the swing is SOLVED</span>: ` : `<span class="bad">the posed swing stays — ${d.why}</span>: `)
     + `the escape arbor's torque <code>${n(nom.band.lo)}–${n(nom.band.hi)} N·mm</code> over the run (nominal meshes ${Fr.mesh.nominal}), from a spring of <code>${(d.Munit * NMM).toFixed(2)} N·mm</code> at full wind at the barrel — the size SOLVED as the most that keeps the balance the timekeeper (its error inside ${(RATE_BAND * 100).toFixed(1)}% of the free pendulum's), on the POSED law's shape. `
     + `With the pallets' friction at its nominal ${Fr.pallet.nominal} the balance settles to ${sw('nominal')}${nom.mean.status === 'sustained' ? ` (${rate(nom.mean.T).toFixed(0)} s/day)` : ''}; at the adverse ${Fr.pallet.adverse}, ${sw('adverse')}; at the favourable ${Fr.pallet.favourable}, ${sw('favourable')}. `
     + `The RATING NUT, a bush on a 4L axle rising from the bob, stands <code>${(-TECHNIC_DRIVE.nutV).toFixed(2)} mm</code> above the knife's apex: `
