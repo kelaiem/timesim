@@ -12,9 +12,9 @@
 // the browser's: tools/smoke-technic-carousel.mjs drives them.
 //
 //   · CELLS — describeCells over the REAL frames of each generation (frameFork,
-//     frameKeyless, frameFusee, frameAlarm, frameEscapement, and since BUILT
-//     §312 the clock's declared layout, clockLayout over the vendored parts):
-//     the stops are those the frames frame, in build order, row ids carry the
+//     frameKeyless, frameFusee, frameAlarm, frameEscapement, §313's frameTrain, and
+//     since BUILT §312 the clock's declared layout, clockLayout over the vendored
+//     parts): the stops are those the frames frame, in build order, row ids carry the
 //     panel's number;
 //   · IDS — unique, round-trip through resolveId, case and edge spaces forgiven,
 //     an unknown id (and a prototype name) is the overview (-1);
@@ -53,6 +53,7 @@ import { frameFork, frameKeyless } from '../src/technic-frame.js';
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee } from '../src/technic-fusee.js';
 import { frameAlarm } from '../src/technic-alarm.js';
 import { frameEscapement } from '../src/technic-escapement.js';
+import { frameTrain } from '../src/technic-train.js';
 import { clockModules, clockLayout } from '../src/technic-clock.js';
 import { loadPack } from './technic-pack.mjs';
 
@@ -73,14 +74,14 @@ const alarmIn = frameAlarm(), escIn = frameEscapement();
 const lib = loadPack(), clockIn = {};
 const clockOf = (gen) => { if (!clockIn[gen]) { const m = clockModules(lib, gen), l = m.framed ? clockLayout(lib, m) : null; clockIn[gen] = { framed: !!l?.framed, reason: m.reason ?? l?.reason, refused: l?.refused.map((r) => r.key) ?? [] }; } return clockIn[gen]; };
 const inputs = (gen) => ({ rows: TECHNIC_FORK.rows.map((row, k) => ({ key: row.key, chain: row.chains[gen], frame: frameFork(gen)[k] })),
-  keyless: frameKeyless(gen), fusee: fuseeIn, alarm: alarmIn, escapement: escIn, clock: clockOf(gen) });
+  keyless: frameKeyless(gen), fusee: fuseeIn, alarm: alarmIn, escapement: escIn, train: frameTrain(gen), clock: clockOf(gen) });
 
 for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   const inp = inputs(gen), cells = C.describeCells(inp), { stops, skipped } = C.stopsOf(cells);
   const R = TECHNIC_FORK.rows.length;
   console.log(`${gen}: ${cells.length} cells, ${stops.length} stops, ${skipped.length} skipped`);
   console.log('  ' + stops.map((s, i) => `${i + 1}:${s.id}`).join('  '));
-  ok(cells.length === R + 5, `${gen}: ${R} rows + keyless + fusee + alarm + escapement + clock = ${R + 5} cells, got ${cells.length}`);
+  ok(cells.length === R + 6, `${gen}: ${R} rows + keyless + fusee + alarm + escapement + going train + clock = ${R + 6} cells, got ${cells.length}`);
   // the stops are what the frames frame
   const want = [];
   inp.rows.forEach((r, k) => { if (r.frame?.framed) want.push(`row-${k + 1}`); });
@@ -88,6 +89,7 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
   if (inp.fusee.framed) want.push('fusee');
   if (inp.alarm.framed) want.push('alarm', 'strike');
   if (inp.escapement.framed) want.push('escapement');
+  if (inp.train.framed) want.push('train');
   if (inp.clock.framed) want.push('clock');
   ok(JSON.stringify(stops.map((s) => s.id)) === JSON.stringify(want), `${gen}: stops ${stops.map((s) => s.id)} are not the framed cells' ${want}`);
   ok(stops.length + skipped.length >= cells.length, `${gen}: a cell vanished (stops+skipped < cells)`);
@@ -97,8 +99,8 @@ for (const gen of Object.keys(CATALOGUES).filter((k) => CATALOGUES[k])) {
     if (i) ok(stops[i - 1].n <= s.n, `${gen}: ${s.id} stands before a lower-numbered stop`);
     ok(s.title && s.caption, `${gen}: ${s.id} lacks a title or caption`);
   });
-  const order = ['keyless', 'motion', 'fusee', 'alarm', 'strike', 'escapement', 'clock'].map((id) => stops.findIndex((s) => s.id === id)).filter((i) => i >= 0);
-  ok(order.every((v, i) => !i || order[i - 1] < v), `${gen}: keyless, motion, fusee, alarm, strike, escapement out of order`);
+  const order = ['keyless', 'motion', 'fusee', 'alarm', 'strike', 'escapement', 'train', 'clock'].map((id) => stops.findIndex((s) => s.id === id)).filter((i) => i >= 0);
+  ok(order.every((v, i) => !i || order[i - 1] < v), `${gen}: keyless, motion, fusee, alarm, strike, escapement, train, clock out of order`);
   // ids: unique, round trip, forgiven case and spaces
   const ids = stops.map((s) => s.id);
   ok(new Set(ids).size === ids.length, `${gen}: duplicate stop ids`);

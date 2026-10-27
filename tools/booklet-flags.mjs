@@ -30,7 +30,7 @@ import * as S from './technic-steps-sweep.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/technic-booklet-flags.js');
-const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement'];
+const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement', 'train'];
 export const SHARED = ['fusee', 'alarm', 'escapement'];
 
 export function variantsOf(lib, gen, cell) {

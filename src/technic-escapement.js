@@ -643,7 +643,23 @@ const HALF = D.stud / 2;
 const lens = Object.keys(AXLE_PARTS).map(Number).sort((p, q) => p - q);
 export const axleLen = (n) => n * D.stud - 0.4;                       // the library trims half an LDU each end
 const axleCovering = (need) => lens.find((n) => axleLen(n) >= need - 1e-9) ?? null;
-export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE) {
+// §312 — THE ESCAPEMENT IN A GOING TRAIN (src/technic-train.js) takes three options, each a position-space
+// fold that moves no part of the balance or the anchor (so the period and the cycle are §287's):
+//   · `x0`, the knife line. The train lands the escape arbor on whatever x its meshes reach, and every
+//     catalogue centre distance it uses keeps x ≡ 0 (mod 8) from the centre arbor's, so the line may be ON
+//     the stud grid. A 1×2 stack centred on a stud stands half a stud off the grid: its bottom plate is a
+//     1×2 JUMPER (3794b, the frame's own half-stud part) along x, its one stud under the stack's −x anti-stud.
+//     The escape arbor's columns, on a stud, stand on 1×1 plates.
+//   · `zE`, the escape arbor's height: the train drives the escape wheel from straight below (a 24:8 mesh is
+//     16 mm, five plates), so the arbor stands where the train puts it, raised by whole plates from the lowest.
+//   · `driveZ`, the drive's bearings at that height, under the anchor: a 1×2 Technic brick (`driveBrick`, the
+//     train's part) in the FRONT knife's stack and a second 1×1 Technic brick in the front escape column. The
+//     drive's axle is threaded through the knife's hole from in front, before the balance is hung (between the two
+//     knives it could not be: they shut both ends of its line, and the gap between the front knife and the escape
+//     columns is shorter than the axle — the steps' swept insertion found it). `driveFrom: 'back'` turns that
+//     round: the 1×2 Technic brick in the BACK knife's stack and a hole in both escape columns, the axle threaded
+//     from behind through all three (the classic going train's line in front runs into its fusee).
+export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE, { x0: X0 = ESC_X0, zE: zWant = null, driveZ = null, driveBrick = null, driveFrom = 'front' } = {}) {
   const ra = E.axleReach, tip40 = GEAR_TIP_MM[ESCAPEMENT_PARTS.mass];
   // ── heights: the lowest knife whose balance clears the baseplate's studs
   // (its lowest point, the bob's 40T or a mass 40T, at the posed swing's
@@ -654,7 +670,14 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   const lowest = Math.max(bal.bob.length ? bobV + tipB : -Infinity, bal.masses.length ? -ra + massU * Math.sin(sw) + tipM : -Infinity, spec.vA + E.armHalfWidth, spec.vW + GEAR_TIP_MM[spec.wheelPart]);
   let n = 1;
   while (D.plateH * n + E.knifeH < lowest + D.studH + AX_CLEAR) n++;
+  if (zWant !== null) {
+    const nw = Math.round((zWant + spec.vW - E.knifeH) / D.plateH);
+    if (Math.abs(D.plateH * nw + E.knifeH - spec.vW - zWant) > 1e-6) return { framed: false, reason: `an escape arbor at ${zWant} mm puts the knife off the plate lattice` };
+    if (nw < n) return { framed: false, reason: `an escape arbor at ${zWant} mm hangs the balance under the stud tops (it needs ${r6(D.plateH * n + E.knifeH - spec.vW)})` };
+    n = nw;
+  }
   const zK = r6(D.plateH * n + E.knifeH), zE = r6(zK - spec.vW);
+  if (mod(X0, D.stud / 2) !== 0) return { framed: false, reason: `a knife line at x ${X0} is on neither the stud grid nor its half` };
   const m = Math.round((zE - D.holeZ - D.plateH) / D.plateH);
   if (Math.abs(D.plateH * (1 + m) + D.holeZ - zE) > 1e-6) return { framed: false, reason: `the escape arbor at ${zE} mm is not a column's hole height` };
   // ── slabs along y
@@ -714,7 +737,7 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   const e1 = Math.ceil((Ww.y1 + AX_CLEAR + HALF) / D.stud) * D.stud, e2 = e1 + D.stud;
   // the escape arbor: from the wheel's front face back through both columns
   const eNeed = e2 + HALF - Ww.y0, eN = axleCovering(eNeed);
-  const escAxle = { shaft: 'escape', x: ESC_X0, z: zE, y0: Ww.y0, y1: r6(Ww.y0 + axleLen(eN)), part: AXLE_PARTS[eN], lenStuds: eN };
+  const escAxle = { shaft: 'escape', x: X0, z: zE, y0: Ww.y0, y1: r6(Ww.y0 + axleLen(eN)), part: AXLE_PARTS[eN], lenStuds: eN };
   const r2 = Math.ceil((escAxle.y1 + AX_CLEAR + HALF) / D.stud) * D.stud;
   // the crossbar: from R1's front face to R2's back face, the shortest that spans
   // (from the frontmost arm's front face when the gears hang ahead of the front knife, §305)
@@ -727,32 +750,43 @@ export function frameEscapement(spec = TECHNIC_ESCAPEMENT, bal = TECHNIC_BALANCE
   if (massAxles.some((a) => !a)) return { framed: false, reason: 'a mass axle is past the longest axle' };
   if (behind && Math.max(Gb.y1, ...massAxles.map((a) => a.y1)) > crossbar.y1) return { framed: false, reason: 'the mass gears stand past the crossbar\'s end' };
   // ── columns: the knives (1×2 stacks, the 3044b on top) and the escape arbor's
+  const onStud = mod(X0, D.stud) === 0;
+  if (driveZ !== null && !driveBrick) return { framed: false, reason: 'a drive hole needs the 1×2 Technic brick that carries it in a knife' };
+  if (!['front', 'back'].includes(driveFrom)) return { framed: false, reason: `the drive is threaded from the front or the back, not ${driveFrom}` };
+  // the front knife's drive brick: plate heights from the stack's bottom plate to it, and from it to the knife
+  const kD = driveZ === null ? null : Math.round((driveZ - D.holeZ - D.plateH) / D.plateH), kUp = kD === null ? null : n - 1 - kD - 3;
+  if (kD !== null && (Math.abs(D.plateH * (1 + kD) + D.holeZ - driveZ) > 1e-6 || kD < 0 || kUp < 0)) return { framed: false, reason: `a drive hole at ${driveZ} mm is not a brick's hole height in the knife's stack` };
   const knifeCol = (end, yc) => {
     const units = n;                                                // plate heights under the knife
     const boxes = [];
     let zz = 0;
-    const push = (part, h) => { boxes.push({ part, x0: ESC_X0 - D.stud, x1: ESC_X0 + D.stud, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + h) }); zz += h; };
-    push(ESCAPEMENT_PARTS.stackPlate, D.plateH);
-    const k = Math.floor((units - 1) / 3), p = units - 1 - 3 * k;
-    for (let i = 0; i < p; i++) push(ESCAPEMENT_PARTS.stackPlate, D.plateH);
-    for (let i = 0; i < k; i++) push(ESCAPEMENT_PARTS.stackBrick, D.brickH);
-    boxes.push({ part: ESCAPEMENT_PARTS.knife, knife: true, x0: ESC_X0 - E.knifeHalfSpan, x1: ESC_X0 + E.knifeHalfSpan, y0: yc - E.knifeHalfLength, y1: yc + E.knifeHalfLength, z0: r6(zz), z1: r6(zz + E.knifeH) });
-    return { shaft: 'knife', end, x: ESC_X0, y: yc, boxes, apex: r6(zz + E.knifeH) };
+    const push = (part, h, dx = 0, extra = {}) => { boxes.push({ part, x0: X0 + dx - D.stud, x1: X0 + dx + D.stud, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + h), ...(dx ? { jumper: true } : {}), ...extra }); zz += h; };
+    // on a stud, the stack's bottom plate is a jumper half a stud toward −x (its stud under the −x anti-stud)
+    if (onStud) push(FRAME_PARTS.jumper1x2, D.plateH, -HALF);
+    else push(ESCAPEMENT_PARTS.stackPlate, D.plateH);
+    const fill2 = (m2) => { const k = Math.floor(m2 / 3), p = m2 - 3 * k; for (let i = 0; i < p; i++) push(ESCAPEMENT_PARTS.stackPlate, D.plateH); for (let i = 0; i < k; i++) push(ESCAPEMENT_PARTS.stackBrick, D.brickH); };
+    if (kD !== null && end === driveFrom) { fill2(kD); push(driveBrick, D.brickH, 0, { hole: true, drive: true }); fill2(kUp); }
+    else fill2(units - 1);
+    boxes.push({ part: ESCAPEMENT_PARTS.knife, knife: true, x0: X0 - E.knifeHalfSpan, x1: X0 + E.knifeHalfSpan, y0: yc - E.knifeHalfLength, y1: yc + E.knifeHalfLength, z0: r6(zz), z1: r6(zz + E.knifeH) });
+    return { shaft: 'knife', end, x: X0, y: yc, boxes, apex: r6(zz + E.knifeH) };
   };
+  // plates and bricks for `m` plate heights, bricks where three plates would stand
+  const fill = (stack, m2) => { const k = Math.floor(m2 / 3), p = m2 - 3 * k; for (let i = 0; i < p; i++) stack.push({ part: FRAME_PARTS.plate1x1, h: D.plateH, dx: HALF }); for (let i = 0; i < k; i++) stack.push({ part: FRAME_PARTS.brick1x1, h: D.brickH, dx: HALF }); };
+  // the drive's hole, when asked: plate heights from the bottom plate's top to it, and from its brick's top to the arbor's
+  const mD = driveZ === null ? null : Math.round((driveZ - D.holeZ - D.plateH) / D.plateH), mGap = mD === null ? null : m - mD - 3;
+  if (mD !== null && (Math.abs(D.plateH * (1 + mD) + D.holeZ - driveZ) > 1e-6 || mD < 0 || mGap < 0)) return { framed: false, reason: `a drive hole at ${driveZ} mm is not a column's hole height under the arbor's` };
   const arborCol = (end, yc) => {
-    const onGrid = mod(ESC_X0, D.stud) === 0;
-    const stack = [{ part: onGrid ? FRAME_PARTS.plate1x1 : FRAME_PARTS.jumper1x2, h: D.plateH, dx: onGrid ? HALF : D.stud }];
-    const k = Math.floor(m / 3), p = m - 3 * k;
-    for (let i = 0; i < p; i++) stack.push({ part: FRAME_PARTS.plate1x1, h: D.plateH, dx: HALF });
-    for (let i = 0; i < k; i++) stack.push({ part: FRAME_PARTS.brick1x1, h: D.brickH, dx: HALF });
+    const stack = [{ part: onStud ? FRAME_PARTS.plate1x1 : FRAME_PARTS.jumper1x2, h: D.plateH, dx: onStud ? HALF : D.stud }];
+    if (mD !== null && (end === 'front' || driveFrom === 'back')) { fill(stack, mD); stack.push({ part: FRAME_PARTS.technicBrick1x1, h: D.brickH, dx: HALF, hole: true, drive: true }); fill(stack, mGap); }
+    else fill(stack, m);
     stack.push({ part: FRAME_PARTS.technicBrick1x1, h: D.brickH, dx: HALF, hole: true });
     let zz = 0;
-    const boxes = stack.map((s) => { const b = { part: s.part, x0: ESC_X0 - s.dx, x1: ESC_X0 + s.dx, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + s.h), hole: !!s.hole }; zz += s.h; return b; });
-    return { shaft: 'escape', end, x: ESC_X0, y: yc, boxes, holeZ: r6(zz - D.brickH + D.holeZ) };
+    const boxes = stack.map((s) => { const b = { part: s.part, x0: X0 - s.dx, x1: X0 + s.dx, y0: yc - HALF, y1: yc + HALF, z0: r6(zz), z1: r6(zz + s.h), hole: !!s.hole, ...(s.drive ? { drive: true } : {}) }; zz += s.h; return b; });
+    return { shaft: 'escape', end, x: X0, y: yc, boxes, holeZ: r6(zz - D.brickH + D.holeZ), ...(mD !== null ? { driveZ: r6(driveZ) } : {}) };
   };
   const columns = [knifeCol('front', 0), arborCol('front', e1), arborCol('back', e2), knifeCol('back', r2)];
   const frame = {
-    key: 'escapement', gen: 'technic_classic', spec, bal, x0: ESC_X0, zK, zE, plates: n, columnPlates: m,
+    key: 'escapement', gen: 'technic_classic', spec, bal, x0: X0, zK, zE, plates: n, columnPlates: m, ...(driveZ !== null ? { driveZ: r6(driveZ), driveFrom } : {}),
     slabs: { G, B, M1, M2, D: Dp, P1, P2, W: Wp, wheel: Ww, Gb }, behind, shareFront,
     crossbar, massAxles, bobAxle, anchorAxle, escAxle, columns,
   };
@@ -792,9 +826,9 @@ export function escapementBuild(frame, lib, { alpha = 0, theta = 0 } = {}) {
   const snap = (v) => Math.round((v - 10) / 20) * 20 + 10;
   const studs = Math.max(frame.base.studsX, frame.base.studsY) + 1;
   statics.push({ role: 'baseplate', part: studs <= 16 ? FRAME_PARTS.baseplate16 : '3811', m: at(snap(midX), 0, snap(midZ)) });
-  const roleOf = (p) => (p === FRAME_PARTS.technicBrick1x1 ? 'technicBrick' : p === ESCAPEMENT_PARTS.knife ? 'knife' : p === FRAME_PARTS.brick1x1 || p === ESCAPEMENT_PARTS.stackBrick ? 'brick' : 'plate');
+  const roleOf = (p, b) => (p === FRAME_PARTS.technicBrick1x1 || (b.hole && b.drive) ? 'technicBrick' : p === ESCAPEMENT_PARTS.knife ? 'knife' : p === FRAME_PARTS.brick1x1 || p === ESCAPEMENT_PARTS.stackBrick ? 'brick' : 'plate');
   for (const c of frame.columns) for (const b of c.boxes)
-    statics.push({ role: roleOf(b.part), part: b.part, m: at(L((b.x0 + b.x1) / 2), -L(b.z1), L((b.y0 + b.y1) / 2), b.knife ? KNIFE : I3) });
+    statics.push({ role: roleOf(b.part, b), part: b.part, m: at(L((b.x0 + b.x1) / 2), -L(b.z1), L((b.y0 + b.y1) / 2), b.knife ? KNIFE : I3) });
   // the balance: origin on the knife's apex line (y = 0 there), each part at
   // its body-frame place — (u, v, w) mm is LDraw (X, Y, Z)/0.4 about the origin
   const body = framedBalance(frame, lib).map((p) => ({ role: p.role === 'crossbar' ? 'axle' : p.role, part: p.part, m: [L(p.m[0]), L(p.m[1]), L(p.m[2]), ...p.m.slice(3)] }));

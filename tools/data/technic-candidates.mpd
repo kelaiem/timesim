@@ -1,5 +1,5 @@
 0 LEGO Technic fork SUBSTITUTE CANDIDATES — packed from the LDraw library by tools/ldraw-vendor.mjs --candidates (BUILT §309)
-0 Roots: 10928 15573 18575 2780 3023a 3044a 3044c 3065 3070a 32125 32270 32556b 3648a 3704 3705c01 3737c01 3749 3794a 4032b 42924 51149 55981 6542b 75535 94925 u8001c
+0 Roots: 10928 15573 18575 2780 3023a 3044a 3044c 3065 3070a 32125 32270 32556b 3648a 3704 3705c01 3737c01 3749 3794a 389 4032b 42924 51149 55981 6542b 75535 94925 u8001c
 0 Missing: -
 0 Licence: CC BY 4.0 (per file below); see vendor/ldraw/LICENSE-ldraw.txt
 
@@ -995,6 +995,110 @@
 4 16 20 8 -10 16 8 -6 16 8 6 20 8 10
 1 16 0 8 0 20 0 0 0 -8 0 0 0 10 box5.dat
 1 16 0 0 0 1 0 0 0 1 0 0 0 1 stud2.dat
+0
+0 NOFILE
+
+0 FILE 389.dat
+0 Technic Brick  1 x  2 with Hole and Thin Top
+0 Name: 389.dat
+0 Author: Niels Karsdorp [nielsk]
+0 !LDRAW_ORG Part UPDATE 2025-09
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !KEYWORDS BrickLink 3700b, Rebrickable 3700b
+
+0 !HISTORY 2009-12-29 [PTadmin] Official Update 2009-03
+0 !HISTORY 2025-09-27 [OrionP] Changed winding to CCW
+0 !HISTORY 2025-09-29 [OrionP] Official Update 2025-09
+
+0 // Inner details
+
+1 16 6.5 12 5.5 0.5 0 0 0 -1 0 0 0 0.5 rect.dat
+1 16 6.5 12 -5.5 0.5 0 0 0 -1 0 0 0 0.5 rect.dat
+1 16 -6.5 12 5.5 0.5 0 0 0 -1 0 0 0 0.5 rect.dat
+1 16 -6.5 12 -5.5 0.5 0 0 0 -1 0 0 0 0.5 rect.dat
+1 16 7 8 5.5 0 -1 0 0 0 -4 0.5 0 0 rect3.dat
+1 16 7 8 -5.5 0 -1 0 0 0 -4 0.5 0 0 rect3.dat
+1 16 -7 8 5.5 0 1 0 0 0 -4 0.5 0 0 rect3.dat
+1 16 -7 8 -5.5 0 1 0 0 0 -4 0.5 0 0 rect3.dat
+1 16 0 10 5 6 0 0 0 0 -6 0 1 0 2-4edge.dat
+1 16 0 10 -5 6 0 0 0 0 -6 0 1 0 2-4edge.dat
+1 16 6 11 5.5 0 1 0 1 0 0 0 0 0.5 rect2p.dat
+1 16 6 11 -5.5 0 1 0 1 0 0 0 0 0.5 rect2p.dat
+1 16 -6 11 5.5 0 -1 0 1 0 0 0 0 0.5 rect2p.dat
+1 16 -6 11 -5.5 0 -1 0 1 0 0 0 0 0.5 rect2p.dat
+4 16 7 4 5 6 4 5 6 12 5 7 12 5
+4 16 7 12 -5 6 12 -5 6 4 -5 7 4 -5
+4 16 -6 4 5 -7 4 5 -7 12 5 -6 12 5
+4 16 -6 12 -5 -7 12 -5 -7 4 -5 -6 4 -5
+0 BFC INVERTNEXT
+1 16 0 10 6 6 0 0 0 0 -6 0 -1 0 2-4cyli.dat
+0 BFC INVERTNEXT
+1 16 0 10 -6 6 0 0 0 0 -6 0 1 0 2-4cyli.dat
+1 16 0 10 5 6 0 0 0 0 -6 0 1 0 2-4ndis.dat
+1 16 0 10 -5 6 0 0 0 0 -6 0 -1 0 2-4ndis.dat
+1 16 0 10 6 6 0 0 0 0 6 0 1 0 4-4edge.dat
+1 16 0 10 -6 6 0 0 0 0 6 0 1 0 4-4edge.dat
+0 // Inner sides
+1 16 16 14 0 0 1 0 10 0 0 0 0 6 rect.dat
+1 16 -16 14 0 0 -1 0 10 0 0 0 0 6 rect.dat
+1 16 11.5 4 0 4.5 0 0 0 -1 0 0 0 6 rect2p.dat
+1 16 0 4 0 7 0 0 0 -1 0 0 0 5 rect2p.dat
+1 16 -11.5 4 0 4.5 0 0 0 -1 0 0 0 6 rect2p.dat
+1 16 0 10 6 6 0 0 0 0 6 0 1 0 2-4ndis.dat
+1 16 0 10 -6 6 0 0 0 0 6 0 -1 0 2-4ndis.dat
+4 16 -7 4 6 -16 4 6 -16 24 6 -7 12 6
+4 16 -16 24 6 -6 16 6 -6 12 6 -7 12 6
+4 16 16 4 6 7 4 6 7 12 6 16 24 6
+4 16 7 12 6 6 12 6 6 16 6 16 24 6
+4 16 6 16 6 -6 16 6 -16 24 6 16 24 6
+4 16 -7 12 -6 -16 24 -6 -16 4 -6 -7 4 -6
+4 16 -7 12 -6 -6 12 -6 -6 16 -6 -16 24 -6
+4 16 16 24 -6 7 12 -6 7 4 -6 16 4 -6
+4 16 16 24 -6 6 16 -6 6 12 -6 7 12 -6
+4 16 16 24 -6 -16 24 -6 -6 16 -6 6 16 -6
+2 24 -16 24 -6 16 24 -6
+2 24 16 24 6 -16 24 6
+0 // Outer details
+1 16 6 5 8 0 1 0 0 0 -5 2 0 0 rect3.dat
+1 16 6 5 -8 0 1 0 0 0 -5 2 0 0 rect3.dat
+1 16 -6 5 8 0 -1 0 0 0 -5 2 0 0 rect3.dat
+1 16 -6 5 -8 0 -1 0 0 0 -5 2 0 0 rect3.dat
+0 BFC INVERTNEXT
+1 16 0 10 10 6 0 0 0 0 6 0 -4 0 2-4cyli.dat
+0 BFC INVERTNEXT
+1 16 0 10 -10 6 0 0 0 0 6 0 4 0 2-4cyli.dat
+1 16 0 10 10 6 0 0 0 0 6 0 1 0 2-4edge.dat
+1 16 0 10 -10 6 0 0 0 0 6 0 1 0 2-4edge.dat
+1 16 0 10 6 6 0 0 0 0 -6 0 -1 0 2-4ndis.dat
+1 16 0 10 -6 6 0 0 0 0 -6 0 1 0 2-4ndis.dat
+4 16 -6 0 6 6 0 6 6 4 6 -6 4 6
+4 16 -6 4 -6 6 4 -6 6 0 -6 -6 0 -6
+0 // Outer sides
+1 16 -20 12 0 0 1 0 12 0 0 0 0 10 rect.dat
+1 16 20 12 0 0 -1 0 12 0 0 0 0 10 rect.dat
+1 16 0 10 10 6 0 0 0 0 6 0 -1 0 2-4ndis.dat
+1 16 0 10 -10 6 0 0 0 0 6 0 1 0 2-4ndis.dat
+4 16 20 24 10 6 16 10 6 0 10 20 0 10
+4 16 -20 24 -10 -6 16 -10 -6 0 -10 -20 0 -10
+4 16 6 16 -10 20 24 -10 20 0 -10 6 0 -10
+4 16 -6 16 10 -20 24 10 -20 0 10 -6 0 10
+4 16 20 24 10 -20 24 10 -6 16 10 6 16 10
+4 16 -20 24 -10 20 24 -10 6 16 -10 -6 16 -10
+2 24 -20 24 -10 20 24 -10
+2 24 -20 24 10 20 24 10
+0 // Top & bottom sides
+1 16 13 0 0 7 0 0 0 1 0 0 0 10 rect2p.dat
+1 16 0 0 0 6 0 0 0 1 0 0 0 6 rect2p.dat
+1 16 -13 0 0 7 0 0 0 1 0 0 0 10 rect2p.dat
+4 16 -16 24 6 -20 24 10 20 24 10 16 24 6
+4 16 -16 24 -6 16 24 -6 20 24 -10 -20 24 -10
+4 16 16 24 -6 16 24 6 20 24 10 20 24 -10
+4 16 -16 24 -6 -20 24 -10 -20 24 10 -16 24 6
+1 16 10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 -10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
 0
 0 NOFILE
 
@@ -2154,32 +2258,6 @@
 4 16 6 1 0 5.602 1 -2 5.602 0 -2 6 0 0
 1 16 0 0 0 -1 0 0 0 1 0 0 0 1 axlehol6.dat
 4 16 -2 1 5.602 0 1 6 0 0 6 -2 0 5.602
-0 NOFILE
-
-0 FILE box2-5.dat
-0 Box with 2 Faces without 5 Edges
-0 Name: box2-5.dat
-0 Author: Steffen [Steffen]
-0 !LDRAW_ORG Primitive UPDATE 2003-03
-0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
-
-0 BFC CERTIFY CCW
-
-0 !HISTORY 2003-12-19 [PTadmin] Official Update 2003-03
-0 !HISTORY 2007-06-24 [PTadmin] Header formatted for Contributor Agreement
-0 !HISTORY 2008-07-01 [PTadmin] Official Update 2008-01
-
-
-2 24 1 1 1 -1 1 1
-2 24 1 1 -1 -1 1 -1
-2 24 1 -1 1 -1 -1 1
-2 24 -1 -1 1 -1 1 1
-2 24 1 -1 1 1 1 1
-2 24 -1 1 -1 -1 1 1
-2 24 1 1 -1 1 1 1
-4 16 1 1 1 1 1 -1 -1 1 -1 -1 1 1
-4 16 1 1 1 -1 1 1 -1 -1 1 1 -1 1
-0
 0 NOFILE
 
 0 FILE box3u4a.dat

@@ -424,6 +424,50 @@ export const REBRICKABLE = {
     "71": 1346
    }
   },
+  "3700": {
+   "rb": [
+    "3700"
+   ],
+   "via": "LD mapping",
+   "names": [
+    "Technic Brick 1 x 2 [1 Pin Hole]"
+   ],
+   "candidates": [
+    {
+     "rb": "3700b",
+     "rel": "M",
+     "dir": "child",
+     "from": "3700",
+     "name": "Technic Brick 1 x 2 with Hole Type II",
+     "ldraw": "389",
+     "ldrawVia": "LD mapping",
+     "bricklink": {
+      "number": "3700b",
+      "name": "Technic, Brick 1 x 2 with Hole Type II",
+      "category": "Technic, Brick",
+      "via": "number",
+      "asked": "3700b",
+      "askedVia": "BL mapping",
+      "elements": {}
+     },
+     "abundance": {
+      "0": 6
+     }
+    }
+   ],
+   "abundance": {
+    "0": 775,
+    "1": 229,
+    "2": 37,
+    "4": 399,
+    "14": 334,
+    "15": 444,
+    "19": 222,
+    "25": 53,
+    "71": 564,
+    "72": 464
+   }
+  },
   "3705": {
    "rb": [
     "3705"
@@ -645,6 +689,23 @@ export const REBRICKABLE = {
    "abundance": {
     "4": 3,
     "71": 60
+   }
+  },
+  "4186": {
+   "rb": [
+    "4186"
+   ],
+   "via": "LD mapping",
+   "names": [
+    "Baseplate 48 x 48"
+   ],
+   "candidates": [],
+   "abundance": {
+    "1": 2,
+    "2": 1,
+    "4": 1,
+    "14": 1,
+    "71": 23
    }
   },
   "4519": {

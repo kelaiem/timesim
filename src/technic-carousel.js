@@ -10,7 +10,7 @@
 //
 // THE STOPS ARE DERIVED FROM THE CELLS THE PAGE BUILT, never typed: describeCells
 // takes what build() already holds (the rows and their frames, the keyless,
-// fusee, alarm and escapement frames) and answers the cells in build order; a
+// fusee, alarm, escapement and — §313 — going-train frames) and answers the cells in build order; a
 // cell that did not frame in LEGO is SKIPPED and says why (skipNote), and a
 // cell with two things worth looking at is two stops (the keyless works and
 // its motion works; the alarm's column wheel and its strike).
@@ -18,11 +18,11 @@ import { ratQ, ratMul, ratStr } from './layout.js';
 
 // The views a stop can take. technic.html keeps one handler per name; the
 // probe fails when a view here has no handler there.
-export const VIEWS = ['row', 'keyless', 'motion', 'fusee', 'wheel', 'strike', 'escapement', 'clock'];
+export const VIEWS = ['row', 'keyless', 'motion', 'fusee', 'wheel', 'strike', 'escapement', 'train', 'clock'];
 
 // The ?focus= values the page accepted before the carousel, and the stop each
 // opens. ?focus= itself is unchanged; it maps onto the same stops.
-export const FOCUS_IDS = { escapement: 'escapement', fusee: 'fusee', alarm: 'alarm', strike: 'strike' };
+export const FOCUS_IDS = { escapement: 'escapement', fusee: 'fusee', alarm: 'alarm', strike: 'strike', train: 'train' };
 
 // Next from the last stop goes to the first, and Previous from the first to the
 // last: it is a carousel, and the overview button (and Escape) is the way out.
@@ -53,8 +53,9 @@ export const SWIPE_RATIO = 2;
 //   fusee      { framed, reason }
 //   alarm      { framed, reason }
 //   escapement { framed, reason }
+//   train      { framed, reason }   (§313: frameTrain, the fusee to the balance on one baseplate)
 //   clock      { framed, reason, refused? }   (BUILT §312 L1; absent before it, so no stop)
-export function describeCells({ rows, keyless, fusee, alarm, escapement, clock = null }) {
+export function describeCells({ rows, keyless, fusee, alarm, escapement, train = { framed: false, reason: 'no frame' }, clock = null }) {
   const cells = [];
   const add = (c) => cells.push({ ...c, n: cells.length + 1 });
   for (const r of rows) {
@@ -77,6 +78,9 @@ export function describeCells({ rows, keyless, fusee, alarm, escapement, clock =
   add({ id: 'escapement', kind: 'escapement', framed: !!escapement.framed, reason: escapement.reason,
     title: 'escapement and balance', caption: 'a recoil anchor and a knife-edge balance arm: analogues of the Swiss lever and the sprung balance, modelled',
     views: [{ id: 'escapement', view: 'escapement', title: 'escapement and balance', caption: 'a recoil anchor and a knife-edge balance arm: analogues of the Swiss lever and the sprung balance, modelled' }] });
+  add({ id: 'train', kind: 'train', framed: !!train.framed, reason: train.reason,
+    title: 'going train', caption: 'the fusee to the balance on one baseplate: every angle from the escapement\'s cycle through the tooth counts; the spring law is posed, so it is modelled, not simulated',
+    views: [{ id: 'train', view: 'train', title: 'going train', caption: 'the fusee to the balance on one baseplate: every angle from the escapement\'s cycle through the tooth counts; the spring law is posed, so it is modelled, not simulated' }] });
   if (clock) {
     const caption = `the cells joined on one base, each shared axle one keyed body; display only, modelled${clock.refused?.length ? ` — ${clock.refused.map((r) => `the ${r} line refused`).join(', ')}` : ''}`;
     add({ id: 'clock', kind: 'clock', framed: !!clock.framed, reason: clock.reason, title: 'alarm clock', caption,

@@ -47,6 +47,7 @@ import { substitutesFor, alternativeText, judgedText, sameItemWarnings, SUBSTITU
 import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild } from './technic-fusee.js';
 import { frameAlarm, alarmStates, alarmBuild } from './technic-alarm.js';
 import { frameEscapement, escapementBuild } from './technic-escapement.js';
+import { frameTrain, trainBuild } from './technic-train.js';
 
 export const GENERATIONS = ['technic_2026', 'technic_classic'];
 
@@ -165,6 +166,11 @@ export const NOT_IN_MODEL = Object.freeze({
     { item: 'a finger on the pusher\'s button', quantity: 'not a part', why: 'the press is a person\'s' }],
   escapement: [
     { item: 'a hand to start the balance swinging', quantity: 'not a part', why: 'nothing drives this build; its swing is posed inside the range the parts allow' }],
+  // §312: the going train is the fusee and the escapement on one baseplate, so it lacks what both lack
+  train: [
+    { item: 'rubber bands (the barrel\'s band, the maintaining band and the two pawls\' bands)', quantity: 'unspecified', why: 'the spring law is POSED and a band can only be measured; count and size are not in the model' },
+    { item: 'a hand to turn the winding crank', quantity: 'not a part', why: 'the wind is turned by the person; no crank handle is placed' },
+    { item: 'a hand to start the balance swinging', quantity: 'not a part', why: 'the train is metered by the escapement\'s posed swing; nothing in the model starts it' }],
 });
 
 // The text that travels with every list. Its words are held by the probe: it may
@@ -179,8 +185,8 @@ export const HONESTY = Object.freeze({
   attribution: 'Part geometry: LDraw.org library, CC BY 4.0 (some files CC BY 2.0 and 4.0). LEGO is a trademark of the LEGO Group, which does not sponsor or endorse this page.',
 });
 // which honesty lines a list carries (the analogue line only where it is about that build)
-export const honestyFor = (kind, lines) => [HONESTY.modelled, ...(['fusee', 'alarm', 'escapement'].includes(kind) ? [HONESTY.posed] : []),
-  ...(['alarm', 'escapement'].includes(kind) ? [HONESTY.analogue] : []),
+export const honestyFor = (kind, lines) => [HONESTY.modelled, ...(['fusee', 'alarm', 'escapement', 'train'].includes(kind) ? [HONESTY.posed] : []),
+  ...(['alarm', 'escapement', 'train'].includes(kind) ? [HONESTY.analogue] : []),
   ...(lines.some((l) => l.status === 'unofficial') ? [HONESTY.unofficial] : []),
   ...(lines.some((l) => l.purchase.basis === 'unverified') ? [HONESTY.unverified] : []),
   HONESTY.colour, ...(lines.some((l) => l.substitutes?.candidates) ? [SUBSTITUTE_HONESTY] : []), HONESTY.attribution];
@@ -262,8 +268,8 @@ function describeLine(l, lib, table, cell = null) {
 // made (`seedBuild`) and builds only the cell and generation a reader asks for.
 // A seeded build must be what `buildOf` would make: the same functions, the same
 // arguments (probe-technic-bom.mjs holds the page's seeds to that).
-export const cellIds = () => [...TECHNIC_FORK.rows.map((_, k) => `row-${k + 1}`), 'keyless', 'fusee', 'alarm', 'escapement'];
-const CELL_TITLES = { keyless: 'keyless works', fusee: 'fusee and maintaining power', alarm: 'alarm', escapement: 'escapement and balance' };
+export const cellIds = () => [...TECHNIC_FORK.rows.map((_, k) => `row-${k + 1}`), 'keyless', 'fusee', 'alarm', 'escapement', 'train'];
+const CELL_TITLES = { keyless: 'keyless works', fusee: 'fusee and maintaining power', alarm: 'alarm', escapement: 'escapement and balance', train: 'going train' };
 const kindOf = (cell) => (cell.startsWith('row-') ? 'row' : cell);
 const memo = new WeakMap();
 const memoOf = (lib) => (memo.has(lib) ? memo.get(lib) : (memo.set(lib, new Map()), memo.get(lib)));
@@ -280,6 +286,7 @@ export function buildOf(lib, gen, cell) {
   else if (cell === 'fusee') { const run = solveFusee(TECHNIC_FUSEE_SPRING).best, f = run && frameFusee(); build = f && f.framed ? fuseeBuild(f, lib, { run }) : null; reason = build ? null : 'not framed'; }
   else if (cell === 'alarm') { const f = frameAlarm(); build = f.framed ? alarmBuild(f, lib, alarmStates(lib, f).armed) : null; reason = build ? null : 'not framed'; }
   else if (cell === 'escapement') { const f = frameEscapement(); build = f.framed ? escapementBuild(f, lib) : null; reason = build ? null : 'not framed'; }
+  else if (cell === 'train') { const f = frameTrain(gen); build = f.framed ? trainBuild(f, lib, { run: solveFusee(TECHNIC_FUSEE_SPRING).best }) : null; reason = build ? null : f.reason; }
   else throw new Error(`technic-bom: no cell ${cell}`);
   if (build) m.set(key, build);
   return out(build, reason);
