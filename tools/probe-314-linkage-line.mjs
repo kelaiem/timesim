@@ -154,9 +154,10 @@ const out = await page.evaluate(async ({ TOP }) => {
   const reach = CM + CELL * Math.SQRT1_2;
   const R = Math.ceil(reach / CELL);
   const TQ = c.alarmLinkage.swept()[0].zHi - 0.5;   // the studs' piece tops 0.5 into the plate: its underside
-  // the studs are planted in the three-quarter plate. A window with a boss shrinks around a keep (§62), but the
-  // arrest's is BOSSLESS and all-or-nothing (§115), so each stud stands a land (TQ_LAND_MIN) outside its reveal
-  const WIN = LK.windowDiscs().filter((w) => w.name === 'arrest');
+  // the studs are planted in the three-quarter plate. A window with a boss shrinks around a keep (§62); the
+  // arrest's is bossless and YIELDS to a stud planted in its reveal (§314, the owner's call), so no window
+  // refuses a line here — the list stays so a window that cannot yield can be named in it
+  const WIN = [];
   const studOut = (k) => { for (const P of [k.PA, k.PB]) for (const w of WIN) if (Math.hypot(P.x - w.x, P.y - w.y) < w.r + LK.landMin + LK.studR) return `stud in the ${w.name} window`; return null; };
   const judge = (swept, firstOnly = true) => {
     const hits = new Map();

@@ -16300,8 +16300,21 @@ const TQ_WINDOW_INTENTS = [
     late: true,
     at: () => ARREST_WINDOW,
     discs: () => [{ x: ARREST_WINDOW.x, y: ARREST_WINDOW.y, r: ARREST_WINDOW.r + CLEAR_MARGIN }],
+    // §314 — A WINDOW CARRIES NO FORCE, SO IT YIELDS TO A STUD THE PLATE CARRIES. The arranged movement's
+    // pusher linkage (its rod line searched round the arrest's tower, tools/probe-314-linkage-line.mjs)
+    // plants crank A's stud inside this reveal; a bossless window cut all-or-nothing cannot open round it,
+    // so the plate keeps its metal over the cross and the row is reported as yielded, never as NOT CUT.
+    yieldsTo: () => {
+      if (!ALARM_LINKAGE_STUDS) return null;
+      for (const st of ALARM_LINKAGE_STUDS)
+        if (Math.hypot(st.x - ARREST_WINDOW.x, st.y - ARREST_WINDOW.y) < ARREST_WINDOW.r + CLEAR_MARGIN + TQ_LAND_MIN + st.r)
+          return `the pusher linkage's ${st.name} stud, planted in the plate inside its reveal`;
+      return null;
+    },
   },
 ];
+// §314 — the pusher linkage's studs (planted in this plate), filled in once the linkage is solved
+let ALARM_LINKAGE_STUDS = null;
 // §201 — the late intent's centre. null until the arrest block has placed the
 // cross's stud; the solver reports the row as deferred while it is null.
 let ARREST_WINDOW = null;
@@ -16349,6 +16362,13 @@ function solveTqWindows() {
         console.warn(`§201 window '${intent.name}': at() returned nothing and the intent is not declared late — an early window with no centre`);
       report.push({ name: intent.name, c: null, discs: [], wanted: 0, r0: 0, boss: false, cut: false,
         deferred: true, late: !!intent.late, webW: 0, webSpan: 0, sectors: [], rOut: [] });
+      continue;
+    }
+    // §314 — a window that yields to metal the plate carries is reported, not cut and not warned
+    const yielded = intent.yieldsTo ? intent.yieldsTo() : null;
+    if (yielded) {
+      report.push({ name: intent.name, c, discs: [], wanted: 0, r0: 0, boss: false, cut: false, yielded,
+        late: !!intent.late, webW: 0, webSpan: 0, sectors: [], rOut: [] });
       continue;
     }
     // The framed circles. A coaxial intent declares one radius about its own
@@ -41992,6 +42012,7 @@ const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 // line. `dirDeg` is the line's direction before the module's turn, `c` its offset (m·x = c).
 const ALARM_LINKAGE_LINES = Object.freeze({
   'cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 105, c: 25.34 },   // §261 2c: the fold-site search's pick at φ = 240°
+  'cfg1:{"spec":{"alarmModAzDeg":50,"barrelStepDeg":-20,"reserveHours":30,"rsvAzDeg":0,"rsvIdlers":2,"vph":18000},"route":null,"tuned":[]}': { dirDeg: 28, c: 31.34 },   // §314: probe-314-linkage-line's shortest line clear of the metal (52.51 against the designed line's 60.83, whose crank A arm runs through the arrest's leg B here); its crank A stud stands in the arrest's cross window, which yields (the owner's call)
 });
 const _linkageLine = ALARM_LINKAGE_LINES[ALARM_ARR_KEY] ?? ALARM_LINKAGE_LINES['cfg1:{"spec":{"reserveHours":30,"vph":18000},"route":null,"tuned":[]}'];
 const ALARM_LINKAGE_ROD_DIR = _linkageLine.dirDeg * DEG2RAD + ALARM_MOD_ROT;   // the rod line's direction (the search's pick; turns with the module)
@@ -42308,6 +42329,7 @@ const ALARM_LINKAGE_ROD_Z = ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T;
 // length the shank's section answers to, not its own
 const ALARM_LINKAGE_STUD_R = STOCK_MIN_U;
 const ALARM_LINKAGE_HUB_R = ALARM_LINKAGE_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U;
+ALARM_LINKAGE_STUDS = [{ name: 'crank A', x: ALARM_LINKAGE.PA.x, y: ALARM_LINKAGE.PA.y, r: ALARM_LINKAGE_HUB_R }, { name: 'crank B', x: ALARM_LINKAGE.PB.x, y: ALARM_LINKAGE.PB.y, r: ALARM_LINKAGE_HUB_R }];
 const ALARM_LINKAGE_SHANK_R = Math.max(STOCK_MIN_R10,
   ((ALARM_LINKAGE_ARM_Z + ALARM_LINKAGE_ARM_T / 2) - alarmFoldZ(ALARM_DRIVER_TOP_Z)) / (2 * TURN_LD_TARGET));
 // §314 — a linkage's SWEPT PLAN over the press, piece by piece at its own band: the studs and hubs (hung
