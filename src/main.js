@@ -59717,8 +59717,12 @@ const JMP_SITE = await (async () => {
     g.computeBoundingBox();
     return { g, F };
   };
+  // §314 — every geometric query the stages ask, COUNTED: the stage order's cost
+  // measure (byRefusalsPerWork below), a property of the program, not the clock
+  let jmpWork = 0;
   const bvhShort = (bvh, geo, M, tau) => {
     if (!bvh) return false;
+    jmpWork++;
     const q = rigidQ(geo, M);
     try {
       const r = bvh.closestPointToGeometry(q ? q.g : geo, q ? q.F : M, t1, t2, 0, tau);
@@ -59785,6 +59789,7 @@ const JMP_SITE = await (async () => {
     return 'p' + Array.prototype.join.call(a, ',') + '|' + (geo.index ? Array.prototype.join.call(geo.index.array, ',') : '');   // the lifter bar is cut afresh per station, so it is keyed by its metal
   };
   const rotorsClear = (geo, M, tau, withCoaxial) => {
+    jmpWork++;
     let byObs = _rcMemo.get(OBS.rotors);
     if (!byObs) _rcMemo.set(OBS.rotors, byObs = new Map());
     const key = _rcGeoKey(geo) + '|' + M.elements.join(',') + '|' + (withCoaxial ? 1 : 0);
@@ -59824,6 +59829,7 @@ const JMP_SITE = await (async () => {
   const ray = new THREE.Ray();
   const inside = (bvh, geo, M) => {
     if (!bvh) return false;
+    jmpWork++;
     ray.origin.fromBufferAttribute(geo.attributes.position, 0).applyMatrix4(M);
     ray.direction.set(0.5773502691896258, 0.5773502691896258, 0.5773502691896258);
     // TODO 161 — PARITY PER TREE. Each tree is one closed body, so its own
@@ -59856,14 +59862,19 @@ const JMP_SITE = await (async () => {
   const liftJobs = coarseToFine(pulls.length).flatMap((k) => [[0, k], [RIDE_MAX, k]]);
   const psiJobs = coarseToFine(psiSamples.length);
   // test()'s adaptive order (see its stages): per stage, the runs, the refusals
-  // and the time spent in it; per pose loop, the pose that refused last. Cost
-  // only — never a verdict.
+  // and the WORK spent in it; per pose loop, the pose that refused last. Cost
+  // only — never a verdict. §314: the work is the count of geometric queries the
+  // stage asked (jmpWork), not its milliseconds — on the arrangement two stages'
+  // ratios stood close enough that the clock flipped their order from boot to
+  // boot, so the build did a different amount of work each time (18,465–18,617
+  // seam visits over three boots, which §267's bar table refuses). A count is the
+  // same on every boot and every machine.
   const breatheOuter = breathe;
   const stageOrder = [0, 1, 2, 3, 4, 5, 6];
-  const stageRuns = [0, 0, 0, 0, 0, 0, 0], stageRefusals = [0, 0, 0, 0, 0, 0, 0], stageMs = [0, 0, 0, 0, 0, 0, 0];
-  const byRefusalsPerMs = (x, y) =>
+  const stageRuns = [0, 0, 0, 0, 0, 0, 0], stageRefusals = [0, 0, 0, 0, 0, 0, 0], stageWork = [0, 0, 0, 0, 0, 0, 0];
+  const byRefusalsPerWork = (x, y) =>
     (stageRuns[x] === 0) - (stageRuns[y] === 0)
-    || stageRefusals[y] / (stageMs[y] || Number.MIN_VALUE) - stageRefusals[x] / (stageMs[x] || Number.MIN_VALUE)
+    || stageRefusals[y] / (stageWork[y] || Number.MIN_VALUE) - stageRefusals[x] / (stageWork[x] || Number.MIN_VALUE)
     || x - y;
   const lastRefuter = { lever: 0, lift: 0, p2lever: 0, p2lift: 0 };
   const posesFrom = (n, key) => {
@@ -59915,15 +59926,14 @@ const JMP_SITE = await (async () => {
       // recency (it promotes whatever refused last, expensive or not: measured
       // 65 s at ?alarmaz=175 against 38 s fixed). The optimum for independent
       // checks is the one that puts first what refuses most per unit of time
-      // spent in it: refusals / time, per stage, cumulative over the scan. A
-      // stage not yet run has no evidence and keeps its source place behind the
-      // ones that do. Time is the work: the yields breathe() takes land on
-      // whichever stage is running, so they are not charged to it.
+      // spent in it: refusals / work, per stage, cumulative over the scan (§314:
+      // the work is the queries the stage asked, counted — the clock flipped the
+      // order between boots). A stage not yet run has no evidence and keeps its
+      // source place behind the ones that do.
       // Inside a pose loop the pose that refused last goes first: neighbouring
       // candidates are refused at the same pose. None of this is a constant.
       {
-        let idle = 0;
-        const breathe = async (id) => { const t0 = performance.now(); await breatheOuter(id); idle += performance.now() - t0; };
+        const breathe = breatheOuter;
         const stages = [
           // PASS 1 — the exact distances, cheapest and most telling first
           async () => {
@@ -60008,14 +60018,13 @@ const JMP_SITE = await (async () => {
           },
         ];
         for (const st of stageOrder) {
-          idle = 0;
-          const t0 = performance.now();
+          const w0 = jmpWork;
           const ok = await stages[st]();
           stageRuns[st]++;
-          stageMs[st] += performance.now() - t0 - idle;
+          stageWork[st] += jmpWork - w0;
           if (ok) continue;
           stageRefusals[st]++;
-          stageOrder.sort(byRefusalsPerMs);
+          stageOrder.sort(byRefusalsPerWork);
           return false;
         }
       }
