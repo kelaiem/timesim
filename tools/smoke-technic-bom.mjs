@@ -114,7 +114,8 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
   const page = await open(ctx, '', errors);
   const stops = await page.evaluate(() => window.__technic.tour.stops.map((s) => ({ id: s.id, cell: s.cell })));
   console.log(`  ${stops.length} stops: ${stops.map((s) => s.id).join(' ')}`);
-  ok(stops.length === 10, `${stops.length} stops`);
+  // (every build a stop, plus motion and strike, which ride the keyless and alarm builds: read off the module)
+  ok(stops.length === B.cellIds().length + 2, `${stops.length} stops, expected ${B.cellIds().length + 2}`);
   ok(await page.locator('#tour-parts').isVisible(), 'the tour bar has no parts button');
   let pictures = 0, nonBlank = 0;
   const seen = new Set();
@@ -191,7 +192,7 @@ for (const vp of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'phone'
       await page.screenshot({ path: join(SHOTS, `bom-${vp.name}-${s.cell}.png`) });
     }
   }
-  ok(seen.size === 8, `${seen.size} builds had a list opened, expected 8`);
+  ok(seen.size === B.cellIds().length, `${seen.size} builds had a list opened, expected ${B.cellIds().length}`);
   ok(pictures >= 140 && nonBlank === pictures, `${nonBlank} of ${pictures} pictures read as their parts`);
   console.log(`  ${nonBlank} of ${pictures} pictures are non-blank and the size of their parts' projected bounds`);
 
