@@ -39,9 +39,10 @@
 //
 //   node tools/probe-technic-drive.mjs [technic_classic|technic_2026]
 import { loadPack } from './technic-pack.mjs';
+import { placements, bounds, LDU_MM } from '../src/ldraw.js';
 import { CATALOGUES } from '../src/layout.js';
 import { solveFusee, fuseeRun, TECHNIC_FUSEE_SPRING } from '../src/technic-fusee.js';
-import { frameEscapement, framedBalance, balanceMoments, periodAt, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, BEAT_PERIOD_S } from '../src/technic-escapement.js';
+import { frameEscapement, framedBalance, balanceMoments, periodAt, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, BEAT_PERIOD_S, RATING_DIM_MM, RATING_PARTS } from '../src/technic-escapement.js';
 import { frameTrain, trainChain, trainBuild, trainModel, trainPose } from '../src/technic-train.js';
 import * as D from '../src/technic-drive.js';
 
@@ -158,6 +159,19 @@ for (const gen of GENS) {
   if (nom.lo.T && nom.hi.T) console.log(`  RATE over the run (nominal): ${((1 - nom.lo.T / BEAT_PERIOD_S) * D.DAY_S).toFixed(0)} s/day at the least torque, ${((1 - nom.hi.T / BEAT_PERIOD_S) * D.DAY_S).toFixed(0)} at the most (the cone's ${(run.spread * 100).toFixed(1)}% residual spread, on the POSED law)`);
   if (!(r.lock.margin > 1)) fail(`${gen}: the drive (${N(r.lock.tauHi)} N·mm) is over the escapement's trip torque (${N(r.lock.trip)} N·mm): it would not hold the train`);
   console.log(`  LOCK the trip torque ${N(r.lock.trip)} N·mm at the escape arbor (frictionless) against the most the drive delivers, ${N(r.lock.tauHi)}: ${r.lock.margin.toFixed(0)}×; a hand on the great wheel trips it at ${(r.lock.trip * D.NMM * ratio / F.mesh.nominal ** meshes).toFixed(1)} N·mm there (nominal meshes)`);
+}
+
+// ── RATING NUT's parts, measured: the connector's two axle holes (axl2hol* primitives) run from RATING_DIM_MM.holeIn
+// to holeOut off its centre, its body ±halfWidth across; the bush is ±nutHalf along its axis
+{
+  const holes = placements(lib, `${RATING_PARTS.connector}.dat`, /axl2hol/).map((p) => Math.hypot(p.m[0], p.m[1], p.m[2]) * LDU_MM).filter((r) => r > 0);
+  const lo = Math.min(...holes), bc = bounds(lib, `${RATING_PARTS.connector}.dat`), bn = bounds(lib, `${RATING_PARTS.nut}.dat`);
+  const hi = Math.min(-bc.lo[1], -bc.lo[2]) * LDU_MM;                 // each arm (−Y, −Z) ends at its hole's mouth
+  const across = Math.max(-bc.lo[0], bc.hi[0]) * LDU_MM, along = Math.max(-bn.lo[2], bn.hi[2]) * LDU_MM;
+  if (!near(lo, RATING_DIM_MM.holeIn, 1e-9) || !near(hi, RATING_DIM_MM.holeOut, 1e-3)) fail(`the connector's axle holes run ${lo}–${hi} mm off its centre; RATING_DIM_MM says ${RATING_DIM_MM.holeIn}–${RATING_DIM_MM.holeOut}`);
+  if (!near(across, RATING_DIM_MM.halfWidth, 1e-9)) fail(`the connector is ±${across} mm across, RATING_DIM_MM says ±${RATING_DIM_MM.halfWidth}`);
+  if (!near(along, RATING_DIM_MM.nutHalf, 1e-9)) fail(`the bush is ±${along} mm along its axis, RATING_DIM_MM says ±${RATING_DIM_MM.nutHalf}`);
+  console.log(`\nRATING PARTS measured: the connector's (${RATING_PARTS.connector}) axle holes from ${lo.toFixed(1)} mm off its centre to each arm's mouth at ${hi.toFixed(1)}, ±${across.toFixed(1)} mm across; the bush (${RATING_PARTS.nut}) ±${along.toFixed(1)} mm along its axis`);
 }
 
 // ── RATING NUT
