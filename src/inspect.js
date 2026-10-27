@@ -13885,8 +13885,11 @@ export const LINE_SPEC_FORKS = [
     name: 'alarm switch drive as folded',
     ref: 'alarm switch drive',
     rows: {
-      straight: { value: 0.13470189764102053,
-        forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm (6.762) through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) over the crank’s 0.3996 rad swing (clock.alarmLinkage), read off the metal' },
+      // §314 — the arranged movement's rod line (ALARM_LINKAGE_LINES, searched round the arrest's tower)
+      // gives crank B a longer output arm and a smaller swing, so the sagitta is re-read off the metal
+      // (the designed line's was 0.13470189764102053: arm 6.762, swing 0.3996 rad)
+      straight: { value: 0.083199897954356,
+        forcedBy: '§261 2c’s fold: crank B’s pin, not the pusher’s, works the driver’s slot, on an arc of the crank’s output arm through the line’s two ends; its greatest departure from that chord is the arc’s sagitta, arm·(1 − cos(θ/2)) — on §314’s arranged line the arm 10.861 over a 0.2479 rad swing (clock.alarmLinkage), 0.0834 by the formula and 0.0832 read off the metal' },
     },
   },
   {
