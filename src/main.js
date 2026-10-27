@@ -26887,7 +26887,9 @@ const alarmReleaseCrank = new THREE.Group();   // the moving crank — tick turn
     const sh = new THREE.Shape();
     sh.moveTo(xc, hb);
     if (outEnd > xc) { sh.lineTo(outEnd, hb); sh.lineTo(outEnd, -hb); }
-    sh.lineTo(xc, -hb);
+    // the arc opens at (xc, −hb) and absarc draws its own line there from the
+    // pen; a lineTo to that point first left a zero-length curve wherever the
+    // two readings of it parted by float noise (§314: the outlines gate's seams)
     sh.absarc(0, 0, hubOut, -a0, -2 * Math.PI + a0, true);   // the long way round, through the far side of the hub
     const bore = new THREE.Path();
     bore.absarc(0, 0, hubIn, 0, 2 * Math.PI, true);
