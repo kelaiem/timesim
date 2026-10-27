@@ -36,8 +36,8 @@
 //   · CLEAR — over the alarm's three states × the keyless works' three modes,
 //     every part of one module over an LDU from every part of another (and the
 //     joints' parts from everything but their own line), the statics held by
-//     STANDING instead and a meshing pair by MESHES; control: a module turned
-//     the wrong way where it stands;
+//     STANDING instead and a meshing pair by MESHES; control: a part of one
+//     module planted where a moving part of another stands;
 //   · THE FILE — the .ldr parsed back.
 //
 // WHAT THIS DOES NOT CLAIM: that the train turns the hands (the centre arbor and
@@ -388,14 +388,15 @@ for (const gen of GENS) {
     for (const e of c.errs) fail(`${states[si].alarm}/${states[si].keyless}: ${e}`);
   }
   {
-    // control: the alarm turned the wrong way where it stands
-    const wrong = { ...lay, placement: { ...lay.placement, alarm: { ...lay.placement.alarm, rot: 1 - lay.placement.alarm.rot } } };
-    let caught = false;
-    try { const b = C.clockBuild(lib, Mods, wrong, C.TECHNIC_CLOCK.rest); caught = clearOf(b, meshesOf(b)).errs.length > 0 || standErrs(b).length > 0; } catch { caught = true; }
-    control('the alarm turned the wrong way where it stands', caught);
+    // control: a part of one module planted where a moving part of another
+    // stands (the fusee's great wheel on the centre→fourth row's 40T): the tier
+    // must measure the pair and find it in contact
+    const target = rest.shafts.findIndex((sh) => sh.module === 'centre→fourth' && sh.parts.some((p) => p.teeth === 40));
+    const tgt = rest.shafts[target], g40 = tgt.parts.find((p) => p.teeth === 40);
+    const plant = { shaft: 'planted', module: 'fusee', origin: tgt.origin, phi: tgt.phi, speed: 0, parts: [{ ...g40, module: 'fusee', role: 'great' }] };
+    const planted = { ...rest, shafts: [...rest.shafts, plant] };
+    control('the fusee\'s great wheel planted on the centre→fourth row\'s 40T', clearOf(planted, meshesOf(rest)).errs.length > 0);
   }
-
-  lap('THE FILE');
   // ── THE FILE ───────────────────────────────────────────────────────────────
   const ldr = toLdr(rest), lines = ldr.split('\n').filter((l) => l.startsWith('1 ')), want = placedParts(rest);
   if (lines.length !== want.length) fail(`the .ldr has ${lines.length} parts, the build ${want.length}`);
@@ -409,5 +410,5 @@ for (const gen of GENS) {
 
 console.log('\ncontrols:');
 for (const [n, ok] of ctl) { console.log(`  ${ok ? 'caught' : 'NOT CAUGHT'}  ${n}`); if (!ok) fails++; }
-console.log(fails ? `\n${fails} FAILED` : '\nthe clock stands on one baseplate, each of its joined lines one keyed body through both modules\' bricks, every mesh interleaved, every module clear of every other in all nine states; the escape line refused by measurement');
+console.log(fails ? `\n${fails} FAILED` : '\nthe clock stands on one base of baseplates, each of its joined lines one keyed body through both modules\' bricks, every mesh interleaved, every module clear of every other in all nine states; the escape line refused by measurement');
 process.exit(fails ? 1 : 0);

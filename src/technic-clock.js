@@ -24,6 +24,9 @@
 //   · MINUTE — the keyless works' minute axle (the setting branch's output, the
 //     hour wheel's bearing) IS the alarm's hour axle (the release chain's input).
 // A line is COLLINEAR: one x, one height, the two modules in tandem along it.
+// A line can be REFUSED, by measurement (lineExits): the escape line is, since
+// the escapement's escape arbor is closed at both ends (its pallet in front,
+// its frame's brick behind), so the cell carries no escapement and says so.
 //
 // THREE THINGS ARE DERIVED, none chosen:
 //   · THE HEIGHT. Every module carries its axles at the lowest height its own
@@ -40,6 +43,10 @@
 //     on), one module stands HALF A STUD over: its 1×1 feet become jumpers and
 //     its jumpers 1×1 plates — the frames' own rule, applied in the clock's
 //     coordinates. A module whose feet cannot be re-footed that way refuses it.
+//     When NEITHER module of such a line can (the keyless works and the alarm),
+//     the line runs through a HALF-STUD ADAPTER (solveAdapter): a row of two
+//     1:1 meshes whose centre distances sum to an odd number of half studs, so
+//     its output stands half a stud off its input and turns the same way.
 //   · THE PLACE. Modules are slid apart along their lines, a stud at a time,
 //     until no part of one comes within an LDU of another in PLAN (the parts'
 //     boxes, every turning body swept through a whole turn): a plan gap is a
@@ -359,9 +366,9 @@ export function lineExits(lib, mod_, bi, boxes = moduleBoxes(lib, mod_)) {
       if (d < -EPS && (dir > 0 ? b.hi[2] <= g.span[1] + EPS : b.lo[2] >= g.span[0] - EPS)) continue;   // wholly inside the span: the module's own business
       if (dir > 0 ? b.hi[2] <= g.span[1] + EPS : b.lo[2] >= g.span[0] - EPS) continue;
       const dist = Math.max(0, d);
-      if (!best || dist < best.dist) best = { dist, who: b.who, partId: b.partId };
+      if (!best || dist < best.dist) best = { dist, who: b.who, partId: b.partId, name: b.body !== undefined ? `its ${mod_.build.shafts[b.body].shaft}'s ${b.role}` : `its frame's ${b.role}` };
     }
-    return best ? { blocked: `${best.who} (${best.partId}) ${(best.dist * LDU_MM).toFixed(2)} mm past the span`, at: best.dist, who: best.who } : { blocked: null };
+    return best ? { blocked: `${best.name} (${best.partId}) ${(best.dist * LDU_MM).toFixed(2)} mm past the arbor's bricks`, at: best.dist, who: best.who } : { blocked: null };
   };
   return { geometry: g, front: side(-1), back: side(1) };
 }
@@ -459,7 +466,7 @@ export function joinableLines(lib, M, boxes, lines) {
   for (const ln of lines) {
     const ends = [ln.a, ln.b].map(([mk, sel]) => { const m = M[mk], bi = lineBody(m, sel); return { mk, sel, bi, ex: lineExits(lib, m, bi, boxes[mk]) }; });
     const blocked = ends.find((e) => e.ex.front.blocked && e.ex.back.blocked);
-    if (blocked) refused.push({ ...ln, ends, reason: `${blocked.mk}'s ${blocked.sel === 'last' ? 'output' : blocked.sel} arbor is closed at both ends: in front by ${blocked.ex.front.blocked}, behind by ${blocked.ex.back.blocked}` });
+    if (blocked) refused.push({ ...ln, ends, reason: `the ${blocked.mk}'s ${blocked.sel === 'last' ? 'output' : blocked.sel} arbor is closed at both ends: in front by ${blocked.ex.front.blocked}, behind by ${blocked.ex.back.blocked}` });
     else ok.push({ ...ln, ends });
   }
   return { ok, refused };

@@ -78,7 +78,7 @@ export function describeCells({ rows, keyless, fusee, alarm, escapement, clock =
     title: 'escapement and balance', caption: 'a recoil anchor and a knife-edge balance arm: analogues of the Swiss lever and the sprung balance, modelled',
     views: [{ id: 'escapement', view: 'escapement', title: 'escapement and balance', caption: 'a recoil anchor and a knife-edge balance arm: analogues of the Swiss lever and the sprung balance, modelled' }] });
   if (clock) {
-    const caption = `the modules on one baseplate, each shared axle one keyed body; display only, modelled${clock.refused?.length ? ` — ${clock.refused.map((r) => `the ${r} line refused`).join(', ')}` : ''}`;
+    const caption = `the cells joined on one base, each shared axle one keyed body; display only, modelled${clock.refused?.length ? ` — ${clock.refused.map((r) => `the ${r} line refused`).join(', ')}` : ''}`;
     add({ id: 'clock', kind: 'clock', framed: !!clock.framed, reason: clock.reason, title: 'alarm clock', caption,
       views: [{ id: 'clock', view: 'clock', title: 'alarm clock', caption }] });
   }

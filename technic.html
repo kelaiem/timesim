@@ -1094,7 +1094,7 @@ function cellBox(entry) {
   scene.updateMatrixWorld(true);
   // (the first static placed is the baseplate: its mesh and its edges, children 0 and 1)
   for (const o of root.children.slice(2)) if (o.isMesh || o.isLineSegments) box.expandByObject(o);
-  discBox(entry, box);
+  if (entry.shafts) discBox(entry, box);   // (the clock cell's bodies stand still: their parts are in the box already)
   const p = entry.label.getWorldPosition(new THREE.Vector3());
   box.expandByPoint(p); box.expandByPoint(p.clone().add(new THREE.Vector3(entry.label.scale.x, 0, 0)));
   return box;
@@ -1649,10 +1649,10 @@ async function build(gen) {
       drawClock();
       const lbl = labelSprite(`${k + 1}. alarm clock`); lbl.position.set(-30, 60, 0); band.add(lbl);
       const b = clockCell.build, mm = (v) => (v * 0.4).toFixed(1);
-      const joint = (j) => (j.kind === 'axle' ? `one ${j.axles[0].lenStuds}L axle through both` : `${j.axles.map((a) => `${a.lenStuds}L`).join(' and ')} keyed in a ridged joiner`);
       const ad = Object.values(mods.modules).find((m) => m.adapter);
+      const joint = (j) => (j.kind === 'axle' ? `one ${j.axles[0].lenStuds}L axle through both` : `${j.axles.map((a) => `${a.lenStuds}L`).join(' and ')} keyed in a ridged joiner`);
       div.innerHTML = `<b>${k + 1}. alarm clock — LEGO build</b>`
-        + `${Object.keys(lay.placement).length} of the cells above on ${b.base.plates.length} baseplates of 32×32 studs, each shared axle one keyed body:`
+        + `${Object.keys(lay.placement).filter((m) => !mods.modules[m].adapter).length} of the cells above${ad ? ' and a half-stud adapter' : ''} on ${b.base.plates.length} baseplates of 32×32 studs, each shared axle one keyed body:`
         + b.lines.map((l) => `<br>${l.key}: <span style="color:var(--dim)">${l.why}</span> — ${joint(l.joint)}`).join('')
         + (ad ? `<br>a half-stud ADAPTER on the ${ad.adapter} line, <code>${ad.chain.map(([a, c]) => `${a}:${c}`).join(' × ')}</code>: <span style="color:var(--dim)">its two modules carry the line on the two grid classes and neither can stand half a stud over</span>` : '')
         + `<br>lifted to one height: ${Object.entries(lay.placement).filter(([, p]) => p.lift).map(([m, p]) => `${m} ${p.lift} mm`).join(', ') || 'none'}; half a stud over: ${Object.entries(lay.placement).filter(([, p]) => p.shift).map(([m]) => m).join(', ') || 'none'}`
