@@ -1383,9 +1383,12 @@ const POINT_COSTS = {
   // The form default is a FORM build: its plate, case, train and module all
   // change against the round default, so its restriction reaches most of the
   // movement and the point costs close to the default's own three sweeps.
-  // PROVISIONAL: §308 landing 5's arrangement row measured 1174 s here (59
-  // changed) and this row replaces it; re-measured below before landing.
-  'form-rect': 1174,
+  // Measured on the 4-vCPU dev container, beside the default's three whole
+  // sweeps (1344 s: 62 changed, inspection 262, clearances 222,
+  // undeclaredClearance 798, against the default's 233 / 223 / 285 alone);
+  // only the order is evidence, and it is the longest by far, so LPT hands it
+  // out first. (§308 landing 5's row it replaces measured 1174 s, 59 changed.)
+  'form-rect': 1344,
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
