@@ -1365,10 +1365,12 @@ const POINT_COSTS = {
   // §308 landing 5 — the arrangement is a FORM build: its plate, case, train
   // and module all change against the round default, so its restriction
   // reaches most of the movement and the point costs close to the default's
-  // own three sweeps. Measured on the 4-vCPU dev container that landed it
-  // (seconds, the same lane-contended wall as the rows above); only the order
-  // is evidence, and it is the longest by far, so LPT hands it out first.
-  'arrangement-308': 2400,
+  // own three sweeps. Measured on the 4-vCPU dev container that landed it,
+  // beside the default's three whole sweeps (1174 s: 59 changed, inspection
+  // 212, clearances 215, undeclaredClearance 703, against the default's 181 /
+  // 195 / 259 alone); only the order is evidence, and it is the longest by
+  // far, so LPT hands it out first.
+  'arrangement-308': 1174,
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
