@@ -21187,6 +21187,13 @@ reserveTrain.add(rsvHandArbor);
 const rsvIdlers = [];
 if (RSV_IDLERS > 0) {
   const zI = Z_RSV - RSV_Z_STEP;
+  // §314 — the metal the idlers' posts stand between: w1's dial-ward face (its
+  // hub hangs below its pitch plane) and the reserve well's printed floor
+  rsvWheel1.updateWorldMatrix(true, true);
+  const rsvW1Lo = new THREE.Box3().setFromObject(rsvWheel1).min.z;
+  const _rsvFloor = dialGroup.getObjectByName('reserveSubdialFace');
+  _rsvFloor.updateWorldMatrix(true, false);
+  const rsvWellFloorZ = new THREE.Box3().setFromObject(_rsvFloor).max.z;
   const dx = rsvPivotXY.x - rsvW1Pos.x, dy = rsvPivotXY.y - rsvW1Pos.y, dd = Math.hypot(dx, dy);
   const v = { x: dx / dd, y: dy / dd };
   for (let k = 1; k <= RSV_IDLERS; k++) {
@@ -21194,18 +21201,33 @@ if (RSV_IDLERS > 0) {
     const at = { x: rsvW1Pos.x + v.x * along, y: rsvW1Pos.y + v.y * along };
     const mates = [k === 1 ? rsvTeethP1 : RSV_IDLER_T, k === RSV_IDLERS ? rsvTeethW2 : RSV_IDLER_T];
     const wheel = G.makeGear({ name: `rsvIdler${k}`, module: rsvModule1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R, spokes: 0, material: MATS.brass });
+    wheel.traverse((o) => { if (o.isMesh && !o.name) o.name = `rsvIdlerWheel${k}`; });   // §314 — the intra-unit mesh rows select it
     const arbor = new THREE.Group();
     arbor.position.set(at.x, at.y, zI);
     arbor.add(wheel);
     reserveTrain.add(arbor);
-    const postTop = Z_RSV + 1, postBot = zI - 0.6;
+    // §314 — PLANTED IN THE DIAL PLATE, not hung toward the base plate. Every
+    // idler stands inside w1's radius (the first meshes p1, on w1's own arbor),
+    // so a post run plate-ward crosses w1's plane where w1 turns (intraUnit read
+    // w1 ⇄ the post, MF, at every pose). The dial plate is the metal under the
+    // stage-two plane (its back face Z_DIAL), so the post is set into it — 0.5,
+    // the alarm studs' rule, or as far as the reserve well's floor allows (the
+    // idlers stand over the well, where the plate is that floor: one margin off
+    // its printed face) — and rises through the idler's bore to one margin
+    // under w1's dial-ward face.
+    const postTop = rsvW1Lo - CLEAR_MARGIN, postBot = Math.max(Z_DIAL - 0.5, rsvWellFloorZ + CLEAR_MARGIN);
     const post = new THREE.Mesh(new THREE.CylinderGeometry(RSV_POST1_R, RSV_POST1_R, postTop - postBot, 10), MATS.steel);
-    post.name = `rsvIdlerPost${k}`;
+    post.name = 'rsvIdlerPost';   // §314 — one name for every idler's post: the dial-plate seat row names them together
     post.rotation.x = Math.PI / 2;
     post.position.set(at.x, at.y, (postTop + postBot) / 2);
     reserveTrain.add(post);
     rsvIdlers.push({ arbor, wheel, at, tip: cutTipR(G.makeGear, { module: rsvModule1, teeth: RSV_IDLER_T, mates, thickness: 1.0, boreR: RSV_IDLER_BORE_R, spokes: 0, material: MATS.brass }) });
   }
+  // §314 — each post stands through its idler's bore, and is set into metal
+  if (rsvW1Lo - CLEAR_MARGIN < zI + 0.5)
+    console.warn(`reserve train: the idler posts top at ${(rsvW1Lo - CLEAR_MARGIN).toFixed(4)}, under the idlers' face ${(zI + 0.5).toFixed(4)} — w1 hangs too low to carry them`);
+  if (Math.max(Z_DIAL - 0.5, rsvWellFloorZ + CLEAR_MARGIN) >= Z_DIAL)
+    console.warn(`reserve train: the idler posts cannot be set into the dial plate — its well floor stands at ${rsvWellFloorZ.toFixed(4)}`);
   // the line closes on w2: the last idler's centre distance to the pivot is its pitch sum
   const last = rsvIdlers[rsvIdlers.length - 1].at;
   const closeErr = Math.hypot(rsvPivotXY.x - last.x, rsvPivotXY.y - last.y) - rsvModule1 * (RSV_IDLER_T + rsvTeethW2) / 2;

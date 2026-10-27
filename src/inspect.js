@@ -2856,6 +2856,7 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['reserveBody', 'rsvHandArbor'],
       ['rsvHandArbor', 'dialPlate'],         // the arbor passes the sector floor's bore (SUBDIAL_BORE_R is derived from its radius) and stands out of the plate to the proud hand (§153)
       ['rsvHandArbor', 'reserveSubdialFace'], // …and crosses the printed floor's plane inside that bore (the face is a zero-volume decal)
+      ['rsvIdlerPost', 'dialPlate'],         // §314 — the reserve idlers' posts, set 0.5 into the dial plate (the arrangement's train)
     ],
   },
   {
@@ -3949,6 +3950,14 @@ export const INTRA_UNIT_WAIVERS = [
     debt: 'TODO 77: p0 ⇄ w1, the stage-one mesh — the profile rolls conjugate, the extrude bevel grows it past its backlash (TODO 84); 0.118 mm, measured' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'ExtrudeGeometry#6',
     debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same extrude debt (TODO 84); depth refused by the probe at a 6-tooth wheel, not measured' },
+  // §314 — the arrangement's two idlers carry stage two from p1 to w2, three
+  // meshes of the same cut and the same debt
+  { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'rsvIdlerWheel1',
+    debt: 'TODO 77: p1 ⇄ idler 1, a stage-two mesh — the same extrude debt (TODO 84)' },
+  { unit: 'Power-reserve train', a: 'rsvIdlerWheel1', b: 'rsvIdlerWheel2',
+    debt: 'TODO 77: idler 1 ⇄ idler 2, a stage-two mesh — the same extrude debt (TODO 84)' },
+  { unit: 'Power-reserve train', a: 'rsvIdlerWheel2', b: 'ExtrudeGeometry#6',
+    debt: 'TODO 77: idler 2 ⇄ w2, a stage-two mesh — the same extrude debt (TODO 84)' },
 ];
 // TODO 191 — INTRA-UNIT CLEARANCE FLOORS, `EXPECTED_CONTACT_FLOORS`' shape one
 // level down. The tiers above gate INTERSECTION only, so two members of one
