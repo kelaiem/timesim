@@ -221,6 +221,16 @@ export const SPEC = (() => {
   // graduate (not an integer in (0, 360), which reserveReduction needs to
   // reduce R exactly). null = as designed (300°), bit-exact.
   const rsvSweepDeg = Number.isFinite(Number(raw.rsvSweepDeg)) ? Number(raw.rsvSweepDeg) : null;
+  // §313 — THE RESERVE TRAIN'S IDLERS, an arrangement's own key: how many idlers
+  // stand between p1 and w2 (§308 L4 option B's machinery, which until here only a
+  // sector station could reach). They come in PAIRS, so the hand keeps its sense,
+  // and they cancel out of R, so the counts still solve from the reserve. The count
+  // is the arrangement's, not a solve's: what binds it (the alarm link's measured
+  // site) is cut long after the train, so an arrangement names the fewest pairs at
+  // which its own scan found that site held. An even count in 0..6 (RSV_IDLER_MAX)
+  // or null = the two-stage train as designed, bit-exact.
+  const rsvIdlers = Number.isInteger(Number(raw.rsvIdlers)) && raw.rsvIdlers !== null && raw.rsvIdlers !== ''
+    && Number(raw.rsvIdlers) >= 0 && Number(raw.rsvIdlers) <= 6 && Number(raw.rsvIdlers) % 2 === 0 ? Number(raw.rsvIdlers) : null;
   // §237 — THE HAIRSPRING STUD'S RADIUS, which is also the cock's stud
   // carrier arm: the two are one number by construction, because the stud has
   // to sit where the terminal ends or it is not holding the spring. TODO 147
@@ -309,7 +319,7 @@ export const SPEC = (() => {
   // fitted case's measured free space and the lever the hammer hangs off.
   // Ignored on the round build, where the arc is the design.
   const gongSeat = ['bar', 'spiral', 'arc'].includes(raw.gongSeat) ? raw.gongSeat : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, rsvAzDeg, rsvSweepDeg, rsvIdlers, alarmr, subdialr, dialr, studr, caseShape, formRectSpec, gongSeat });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:
