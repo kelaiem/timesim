@@ -166,7 +166,7 @@ export const NOT_IN_MODEL = Object.freeze({
     { item: 'a finger on the pusher\'s button', quantity: 'not a part', why: 'the press is a person\'s' }],
   escapement: [
     { item: 'a hand to start the balance swinging', quantity: 'not a part', why: 'nothing drives this build; its swing is posed inside the range the parts allow' }],
-  // §312: the going train is the fusee and the escapement on one baseplate, so it lacks what both lack
+  // §315: the going train is the fusee and the escapement on one baseplate, so it lacks what both lack
   train: [
     { item: 'rubber bands (the barrel\'s band, the maintaining band and the two pawls\' bands)', quantity: 'unspecified', why: 'the spring law is POSED and a band can only be measured; count and size are not in the model' },
     { item: 'a hand to turn the winding crank', quantity: 'not a part', why: 'the wind is turned by the person; no crank handle is placed' },

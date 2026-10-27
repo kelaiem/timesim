@@ -12,7 +12,7 @@
 // the browser's: tools/smoke-technic-carousel.mjs drives them.
 //
 //   · CELLS — describeCells over the REAL frames of each generation (frameFork,
-//     frameKeyless, frameFusee, frameAlarm, frameEscapement, §313's frameTrain, and
+//     frameKeyless, frameFusee, frameAlarm, frameEscapement, §315's frameTrain, and
 //     since BUILT §312 the clock's declared layout, clockLayout over the vendored
 //     parts): the stops are those the frames frame, in build order, row ids carry the
 //     panel's number;

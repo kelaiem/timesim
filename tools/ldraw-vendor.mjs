@@ -9,7 +9,7 @@
 // FUSEE_PULLEYS (landing H's five and §285's surveyed grooves), FUSEE_STRINGS
 // and FUSEE_PARTS (landing H), and
 // `technic-alarm.js`' ALARM_PARTS (landing I), and `technic-escapement.js`'
-// ESCAPEMENT_PARTS (landing J), and `technic-train.js`' TRAIN_PARTS (§312: the
+// ESCAPEMENT_PARTS (landing J), and `technic-train.js`' TRAIN_PARTS (§315: the
 // 48 × 48 baseplate the classic going train needs, and the 1 × 2 Technic brick
 // that bears its drive arbor in the front knife's stack). Add a gear to the
 // catalogue and the next run fetches it; a part

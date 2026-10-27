@@ -1,4 +1,4 @@
-// BUILT §312 — THE LEGO GOING TRAIN, landing 1 of three: the four LEGO modules joined into one train, from the
+// BUILT §315 — THE LEGO GOING TRAIN, landing 1 of three: the four LEGO modules joined into one train, from the
 // fusee's great wheel to the knife-edge balance. Pure: no three.js, no DOM. tools/probe-technic-train.mjs holds it.
 //
 // THE QUESTION. §219 tier three (b) built the fork's modules one at a time, each on its own baseplate: the fusee
@@ -10,7 +10,7 @@
 // balance swings at its posed amplitude and its solved period (§287), the escape wheel's angle is the traced
 // cycle's (cyclePose), and every other angle is read back from it through the tooth counts (standing rule 2). No
 // torque is carried and nothing is integrated: the spring's law is still TECHNIC_FUSEE_SPRING's POSED stand-in,
-// so the going time per wind below is that law's, never a measurement. Landings 2 and 3 (BUILT §312 scopes them)
+// so the going time per wind below is that law's, never a measurement. Landings 2 and 3 (BUILT §315 scopes them)
 // drive the escapement with torque and integrate the balance; this one does neither.
 //
 // THE CHAIN, read off the declared rows, never typed (trainChain):

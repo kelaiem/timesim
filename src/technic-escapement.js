@@ -643,7 +643,7 @@ const HALF = D.stud / 2;
 const lens = Object.keys(AXLE_PARTS).map(Number).sort((p, q) => p - q);
 export const axleLen = (n) => n * D.stud - 0.4;                       // the library trims half an LDU each end
 const axleCovering = (need) => lens.find((n) => axleLen(n) >= need - 1e-9) ?? null;
-// §312 — THE ESCAPEMENT IN A GOING TRAIN (src/technic-train.js) takes three options, each a position-space
+// §315 — THE ESCAPEMENT IN A GOING TRAIN (src/technic-train.js) takes three options, each a position-space
 // fold that moves no part of the balance or the anchor (so the period and the cycle are §287's):
 //   · `x0`, the knife line. The train lands the escape arbor on whatever x its meshes reach, and every
 //     catalogue centre distance it uses keeps x ≡ 0 (mod 8) from the centre arbor's, so the line may be ON

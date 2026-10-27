@@ -72,7 +72,7 @@ const FLAGGED = Object.freeze({   // value: the TODO that owns the row
 });
 
 // ── THE BUILDS
-const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement', 'train'];   // §312: the going train, per generation
+const CELLS = ['row-1', 'row-2', 'row-3', 'row-4', 'keyless', 'fusee', 'alarm', 'escapement', 'train'];   // §315: the going train, per generation
 const SHARED = ['fusee', 'alarm', 'escapement'];              // the same build in both generations
 const targets = [];
 for (const gen of B.GENERATIONS) for (const cell of CELLS) {
@@ -101,7 +101,7 @@ function supportEdges(build, parts) {
     if (!cols.has(k)) cols.set(k, []);
     cols.get(k).push(i);
   }
-  // §312: a stack may stand on a part of ANOTHER spot (a knife stack centred on a stud stands on a jumper half a
+  // §315: a stack may stand on a part of ANOTHER spot (a knife stack centred on a stud stands on a jumper half a
   // stud off it): its bottom part then rests on the static whose top face is its underside and whose footprint it
   // overlaps, read off the pack's bounds
   const foot = (i) => { const q = Bd(parts[i].part), xs = [], zs = [];

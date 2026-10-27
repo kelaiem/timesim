@@ -196,7 +196,7 @@ bob hangs in front of its front knife, the fusee detent clears the baseplate and
 its cone ends at its metal, and the step order holds a part its own group shuts in,
 presses pins into a held part off the model, never lowers a gear between two
 meshes and reads a pin's LIP as its press.
-**And since §313 the GOING TRAIN joins them** (`src/technic-train.js`, the ninth
+**And since §315 the GOING TRAIN joins them** (`src/technic-train.js`, the ninth
 cell, one per generation): the fusee's great wheel → centre pinion → the
 `TECHNIC_FORK` rows → the 8T escape wheel under the recoil anchor and knife-edge
 balance, one framed LDraw build, its tooth counts read off the rows (2250:1

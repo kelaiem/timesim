@@ -406,7 +406,7 @@ try {
   // offline boot below fails).
   // §312 L1 — 109: src/technic-clock.js, the cells joined into one clock, imported statically by technic.html. One
   // module, so it adds one.
-  // §313 — 110: src/technic-train.js, the going train's cell, imported statically by technic.html (and reached by
+  // §315 — 110: src/technic-train.js, the going train's cell, imported statically by technic.html (and reached by
   // booklet's page through src/technic-bom.js and src/technic-steps.js). One module, so it adds one.
   check('release: precache complete', counts === 110, `${counts}/110`);
 

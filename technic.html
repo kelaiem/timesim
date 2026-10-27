@@ -630,7 +630,7 @@ const provisionalRides = (build) => ({ click: { at: () => build.pose.psiC, provi
 const CORD_SHOW_R = 1.1;   // mm: a DISPLAY radius, about twice the string's own (0.6)
 const CORD_SHOW_MAT = new THREE.MeshStandardMaterial({ color: 0xff7a1a, emissive: 0x6a2a00, roughness: 0.6, metalness: 0 });
 // The cord at `paid` mm off the cone, placed by the build's own law; redrawn
-// only when the cord has moved. (§313: the going train's cell draws its fusee's
+// only when the cord has moved. (§315: the going train's cell draws its fusee's
 // cord the same way, from its own view.)
 function drawFuseeCord(paid) { drawCord(fuseeView, paid); }
 function drawCord(v, paid) {
@@ -1052,7 +1052,7 @@ function writeEscMeasures() {
 }
 const S8 = () => escFrame.spec.teeth;
 
-// --- §313: the going train ----------------------------------------------------
+// --- §315: the going train ----------------------------------------------------
 // The fusee, the going train and the escapement on one baseplate (src/technic-train.js).
 // ONE STATE: display time, trainT, seconds of going. The escapement's traced cycle
 // gives the escape wheel's angle and the balance's (cyclePose: the posed swing at the
@@ -1722,7 +1722,7 @@ async function build(gen) {
     } else div.innerHTML = `<b>${k + 1}. escapement</b><br><span class="bad">not framed in LEGO: ${escFrame.reason}</span>`;
     rowsEl.appendChild(div);
   }
-  // §313 — the going train, the LEGO view's ninth cell: the fusee, the train and the
+  // §315 — the going train, the LEGO view's ninth cell: the fusee, the train and the
   // escapement on one baseplate. Per generation (the train's rows are the generation's).
   // Its band stands past the cells before it by its own length (the classic train is
   // 35 studs long, on a 48 × 48 plate).
@@ -1777,7 +1777,7 @@ async function build(gen) {
     } else div.innerHTML = `<b>${k + 1}. going train</b><br><span class="bad">not framed in LEGO: ${trainFrame.reason ?? 'no step set fits the table'}</span>`;
     rowsEl.appendChild(div);
   }
-  // BUILT §312 L1 — the alarm clock, the LEGO view's tenth cell (§313's going train is the ninth): the cells above
+  // BUILT §312 L1 — the alarm clock, the LEGO view's tenth cell (§315's going train is the ninth): the cells above
   // placed on one baseplate by src/technic-clock.js, each shared axle one keyed
   // body. Display only and posed: every module stands as its own laws pose it at
   // the chosen state, and nothing drives anything. The modules are the ones just
@@ -1891,14 +1891,14 @@ renderer.setAnimationLoop((now) => {
   // §287: the balance swings at its SOLVED period in display seconds (the
   // speed slider's rate), the wheel read off the traced cycle
   applyEscapement(now, dt * Number(speedEl.value));
-  // §313: the going train, display time at its own rate (real time, or a minute or an
+  // §315: the going train, display time at its own rate (real time, or a minute or an
   // hour a second) times the speed slider; every angle from that one state
   applyTrain(now, dt * Number(speedEl.value));
   for (const s of legoShafts) {
     if (s.fusee) { if (!fuseeLoop) s.rotor.rotation.z = s.phi; continue; }        // the fusee cell: posed by applyFusee from the loop's state
     if (s.alarm) continue;                                                           // the alarm cell: posed by applyAlarm from the press's state
     if (s.escape) continue;                                                          // the escapement cell: posed by applyEscapement
-    if (s.train) continue;                                                           // §313: the going train, posed by applyTrain from one state
+    if (s.train) continue;                                                           // §315: the going train, posed by applyTrain from one state
     if (s.slider) continue;                                                          // the pull's rack: it slides with the mode, it does not turn
     if (s.axis === 'x') s.rotor.rotation.x = s.phi + (s.pose?.[keylessMode] ?? 0);   // the selector and the detent's arm: the mode's rest
     else s.rotor.rotation.z = s.keyless ? s.phi + s.speeds[keylessMode] * keylessAngle : s.phi + s.speed * inputAngle;
@@ -1915,7 +1915,7 @@ window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return
   // §287: an instrument's hook — the escapement's state, and a seek to a display time
   get escapement() { return escCycle && { ok: escCycle.ok, T: escMoments?.T ?? null, pose: escCycle.ok ? cyclePose(escCycle, escT) : null, t: escT }; },
   seekEscapement: (t) => { escT = t; }, focusEscapement,
-  // §313: an instrument's hook — the train's state (its model's pose at display time), a seek, the rate
+  // §315: an instrument's hook — the train's state (its model's pose at display time), a seek, the rate
   get train() { return trainView && { framed: true, t: trainT, rate: trainRate, ready: !!trainView.model, pose: trainView.model ? trainPose(trainView.model, trainT) : null, base: trainFrame.base, o: trainFrame.o }; },
   seekTrain: (t) => { trainT = t; }, setTrainRate: (r) => setTrainRate(r), focusTrain,
   // §312 L1: the clock cell's build at its state, for an instrument

@@ -1,7 +1,7 @@
 // IS THE LEGO GOING TRAIN ONE TRAIN, FROM THE FUSEE'S GREAT WHEEL TO THE BALANCE: ITS COUNTS THE ROWS', ITS PLACE
 // THE SOLVE'S, EVERY MESH ON THE LATTICE AND PHASED, EVERY PART SEATED AND CLEAR, AND EVERY ANGLE CARRIED FROM ONE
 // STATE THROUGH THE TEETH? Acceptance, pure Node, no browser, no network; exits non-zero on any failed row.
-// BUILT §312 (src/technic-train.js, technic.html's ninth cell). Per generation:
+// BUILT §315 (src/technic-train.js, technic.html's ninth cell). Per generation:
 //
 //   · CHAIN — the meshes are FUSEE_CENTRE's and TECHNIC_FORK's two rows, read and never typed: the centre→fourth
 //     row as declared, the fourth→escape row's two meshes the other way round, its product unchanged, its last

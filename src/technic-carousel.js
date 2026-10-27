@@ -10,7 +10,7 @@
 //
 // THE STOPS ARE DERIVED FROM THE CELLS THE PAGE BUILT, never typed: describeCells
 // takes what build() already holds (the rows and their frames, the keyless,
-// fusee, alarm, escapement and — §313 — going-train frames) and answers the cells in build order; a
+// fusee, alarm, escapement and — §315 — going-train frames) and answers the cells in build order; a
 // cell that did not frame in LEGO is SKIPPED and says why (skipNote), and a
 // cell with two things worth looking at is two stops (the keyless works and
 // its motion works; the alarm's column wheel and its strike).
@@ -53,7 +53,7 @@ export const SWIPE_RATIO = 2;
 //   fusee      { framed, reason }
 //   alarm      { framed, reason }
 //   escapement { framed, reason }
-//   train      { framed, reason }   (§313: frameTrain, the fusee to the balance on one baseplate)
+//   train      { framed, reason }   (§315: frameTrain, the fusee to the balance on one baseplate)
 //   clock      { framed, reason, refused? }   (BUILT §312 L1; absent before it, so no stop)
 export function describeCells({ rows, keyless, fusee, alarm, escapement, train = { framed: false, reason: 'no frame' }, clock = null }) {
   const cells = [];
