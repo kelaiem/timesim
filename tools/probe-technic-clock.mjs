@@ -2,7 +2,7 @@
 // AXLE ONE KEYED BODY ON ONE LINE, EVERY MESH IN MESH AND EVERY MODULE CLEAR OF
 // EVERY OTHER IN EVERY STATE?
 // Acceptance, pure Node, no browser, no network; exits non-zero on any failure.
-// BUILT §312 landing L1 (src/technic-clock.js).
+// BUILT §312 landings L1 and L1b (src/technic-clock.js).
 //
 // MODELLED, NOT SIMULATED, and display only: every reading below is geometry
 // read off the vendored LDraw parts as the clock places them. Nothing is
@@ -11,10 +11,11 @@
 //   · PLAN — the modules, the lines (an ADAPTER where a line pairs the two grid
 //     classes and neither module can stand half a stud over), the placement,
 //     each module's lift the group's highest line less its own (whole plates);
-//   · REFUSED — the escape line, by measurement: the escapement's escape arbor
-//     is closed at both ends (its front by the anchor's parts, its back by the
-//     back knife's stack); control: the same measurement with the back knife
-//     taken away finds that side free;
+//   · DECLARED — CLOCK_PLACEMENT is the solve's answer, both generations;
+//   · JOINED — every line joins, none refused. Since L1b the going group is
+//     §315's going train placed WHOLE (src/technic-train.js: the fusee through
+//     the rows to the escape wheel, driven from below), so no line crosses into
+//     the escapement; the train's own probe holds what is inside it;
 //   · STANDING — no two statics in one space; every static on the baseplate or
 //     on the static under it; every foot on a baseplate and in the form the
 //     frames' grid rule gives at its x (a 1×1 plate on the grid, a jumper half a
@@ -23,16 +24,19 @@
 //   · LINES — each line's Technic bricks, both modules', have their hole faces
 //     on ONE line (to float noise: the line is derived); every gear of both modules on the line is on
 //     one body; the joint's axles pass every brick; a joiner holds each axle
-//     inside its bore short of its web; control: one module of a line moved an
-//     LDU across;
+//     inside its bore short of its web; every part keyed on a line body (both
+//     modules') on one of its axles (CARRIED, L1b: L1 laid each joint between
+//     the bricks' far faces and left the fusee's centre pinion and the alarm's
+//     hour-axle 8T on no axle); controls: one module of a line moved an LDU
+//     across, the joints cut back to the bricks' far faces (L1's law);
 //   · MESHES — every gear pair on two bodies at its catalogue centre distance in
 //     one slab is a mesh, and every one is interleaved (penetration ≤ 0.05 mm,
 //     the alarm probe's bound), each gear's own plane mapped into the world (a
 //     module turned 180° mirrors its parts in plan); the train's ratios read off
-//     those meshes: the going group 40/8 × 60 × 7.5 from the great wheel to the
-//     fourth→escape output, the minute group 1, in the sense kept, from the
-//     minute axle to the alarm's hour axle; control: a line body turned half a
-//     tooth;
+//     those meshes: the going train 2250 from the great wheel to the escape
+//     wheel, the sign the train's own build gives it (a module turned 180° turns
+//     both ends), the minute group 1, in the sense kept, from the minute axle to
+//     the alarm's hour axle; control: a line body turned half a tooth;
 //   · CLEAR — over the alarm's three states × the keyless works' three modes,
 //     every part of one module over an LDU from every part of another (and the
 //     joints' parts from everything but their own line), the statics held by
@@ -42,7 +46,7 @@
 //
 // WHAT THIS DOES NOT CLAIM: that the train turns the hands (the centre arbor and
 // the minute axle are two lines, with no slip between them yet: §312's L2), any
-// force, any rate kept; the escapement in the cell (refused above). A module's
+// force, any rate kept (the train's beat and going time are its own probe's). A module's
 // OWN parts are held by its own probe; the clock moves no part of a module
 // against another of its own, except that a re-phased gear turns about its own
 // axle — angle-free for everything but its meshes, which MESHES holds.
@@ -159,6 +163,12 @@ for (const gen of GENS) {
   // the lifts: each group to its highest line, whole plates
   for (const g of lay.groups) {
     const hs = lay.lines.filter((ln) => g.includes(ln.ends[0].mk)).flatMap((ln) => ln.ends.map((e) => ({ mk: e.mk, h: e.ex.geometry.height })));
+    if (!hs.length) {
+      // a module on no line stands as built
+      for (const mk of g) if (lay.placement[mk].lift) fail(`${mk} is on no line and lifted ${lay.placement[mk].lift} mm`);
+      console.log(`  group ${g.join(' + ')}: on no line, standing as built`);
+      continue;
+    }
     const top = Math.max(...hs.map((x) => x.h));
     for (const { mk, h } of hs) {
       const want = Math.round((top - h) * 1e6) / 1e6, got = lay.placement[mk].lift;
@@ -169,23 +179,27 @@ for (const gen of GENS) {
   }
   console.log(`  ${Object.keys(lay.placement).length} modules on ${lay.areaStuds} studs of plan; not in the cell: ${Mods.order.filter((k) => !lay.placement[k]).join(', ') || 'none'}`);
 
-  lap('REFUSED');
-  // ── REFUSED ────────────────────────────────────────────────────────────────
-  console.log('\nrefused (a line measured closed):');
-  const esc = lay.refused.find((r) => r.key === 'escape');
-  if (!esc) fail('the escape line was not refused: it would join through the escapement\'s closed arbor');
-  else {
-    console.log(`  escape: ${esc.reason}`);
-    const e = esc.ends.find((x) => x.mk === 'escapement');
-    if (!e.ex.front.blocked || !e.ex.back.blocked) fail('the escape arbor is not measured closed at both ends');
-    // control: the back knife taken away, the back is free
-    const em = Mods.modules.escapement, eb = em.build;
-    const backKnife = new Set(eb.statics.map((p, i) => [p, i]).filter(([p]) => p.m[2] > C.lineGeometry(lib, em, e.bi).span[1] + 1e-6 && (p.role === 'knife' || p.role === 'brick' || p.role === 'plate') && Math.abs(p.m[0] - eb.shafts[e.bi].origin[0]) < 21).map(([, i]) => i));
-    const cut = { ...em, build: { ...eb, statics: eb.statics.filter((_, i) => !backKnife.has(i)) } };
-    const ex2 = C.lineExits(lib, cut, e.bi);
-    control('the escapement with its back knife taken away is open behind', !ex2.back.blocked);
+  lap('DECLARED');
+  // ── DECLARED ───────────────────────────────────────────────────────────────
+  {
+    const solved = Object.fromEntries(Object.entries(lay.placement).map(([k, p]) => [k, [p.rot, p.tx, p.tz]]));
+    const declared = C.CLOCK_PLACEMENT[gen], same = JSON.stringify(solved) === JSON.stringify(declared && Object.fromEntries(Object.keys(solved).map((k) => [k, declared[k]])))
+      && Object.keys(declared ?? {}).length === Object.keys(solved).length;
+    console.log(`\ndeclared: CLOCK_PLACEMENT ${same ? 'is' : 'is NOT'} the solve's answer`);
+    if (!same) fail(`CLOCK_PLACEMENT.${gen} is ${JSON.stringify(declared)}; the solve gives ${JSON.stringify(solved)}`);
+    const judged = C.clockLayout(lib, Mods);
+    if (!judged.framed) fail(`the declared placement does not frame: ${judged.reason}`);
   }
-  for (const r of lay.refused) if (r.key !== 'escape') fail(`the ${r.key} line was refused: ${r.reason}`);
+
+  lap('JOINED');
+  // ── JOINED ─────────────────────────────────────────────────────────────────
+  console.log('\njoined (every line, none refused):');
+  for (const r of lay.refused) fail(`the ${r.key} line was refused: ${r.reason}`);
+  for (const ln of Mods.lines) if (!lay.joints.some((j) => j.line === ln.key)) fail(`the ${ln.key} line is not joined`);
+  {
+    const tm = Mods.modules.train, tb = tm.build;
+    console.log(`  the going train placed whole: ${tb.shafts.length} bodies, ${tb.meshes.length} meshes, great wheel to escape wheel ${tb.ratio} (§315's build), on no line`);
+  }
 
   lap('THE NINE STATES');
   // ── THE NINE STATES ────────────────────────────────────────────────────────
@@ -226,8 +240,19 @@ for (const gen of GENS) {
   const feet = rest.statics.filter((s) => s.refooted), fill = rest.statics.filter((s) => s.filler !== undefined);
   console.log(`  ${rest.statics.length - rest.base.plates.length} statics, none in another's space; ${feet.length} feet re-footed (${[...new Set(feet.map((s) => `${s.refooted}→${s.part}`))].join(', ') || 'none'}), ${fill.length} fillers under the lifted modules`);
   if (feet.length) {
-    const f0 = feet[0], undo = { ...rest, statics: rest.statics.map((s) => (s === f0 ? { ...s, part: s.refooted } : s)) };
-    control('a re-footed foot put back as its module built it', standErrs(undo).some((e) => e.includes('does not stand on the baseplate')));
+    // the foot put back as its module built it, and (on a lifted module) the fillers under it re-derived from that
+    // foot, as standModule derives them: the stack's lowest part then stands off the studs at its x
+    const f0 = feet[0], under = rest.statics.filter((s) => s.module === f0.module && s.filler === f0.static);
+    const lift = under.reduce((h, s) => h + (s.role === 'brick' ? 9.6 : 3.2), 0), was = C.fillers(f0.refooted, lift) ?? [];
+    const undo = { ...rest, statics: rest.statics.map((s) => (s === f0 ? { ...s, part: s.refooted } : under.includes(s) ? { ...s, part: was[under.indexOf(s)].part } : s)) };
+    control(`a re-footed foot put back as its module built it${under.length ? ', its fillers with it' : ''}`, standErrs(undo).some((e) => e.includes('does not stand on the baseplate')));
+  }
+  {
+    // control: a foot on the baseplate in the OTHER grid class's form (a 1×1 plate for a jumper, or the reverse)
+    const other = { [FRAME_PARTS.plate1x1]: FRAME_PARTS.jumper1x2, [FRAME_PARTS.jumper1x2]: FRAME_PARTS.plate1x1 };
+    const f1 = rest.statics.find((s) => other[s.part] && Math.abs(C.boxOf(lib, s.part, s.m).hi[1]) < 1e-6);
+    const swapped = { ...rest, statics: rest.statics.map((s) => (s === f1 ? { ...s, part: other[s.part], m: [...s.m.slice(0, 3), 1, 0, 0, 0, 1, 0, 0, 0, 1] } : s)) };
+    control(`a ${f1?.module} foot (${f1?.part}) swapped for the other grid class's form`, !!f1 && standErrs(swapped).some((e) => e.includes('does not stand on the baseplate')));
   }
 
   lap('LINES');
@@ -263,10 +288,27 @@ for (const gen of GENS) {
       const gears = b.shafts.flatMap((s, i) => s.parts.filter((p) => p.teeth && mods.includes(p.module) && i !== ln.body && !s.idles && !s.clutch
         && Math.hypot(s.origin[0] - body.origin[0], s.origin[1] - body.origin[1]) < 1e-6).map(() => s.shaft));
       if (gears.length) errs.push(`${ln.key}: ${gears.join(', ')} stand on the line as other bodies`);
+      for (const e of carriedErrs(body, ln)) errs.push(e);
     }
     return errs;
   };
+  // CARRIED: every part keyed on a line body on one of its axles (an axle stops half an LDU short of the face it
+  // is laid to, the library's trim)
+  function carriedErrs(body, ln, axlesOf = (bd) => bd.parts.filter((p) => p.role === 'axle').map((p) => { const bx = C.boxOf(lib, p.part, p.m); return [bx.lo[2], bx.hi[2]]; })) {
+    const out = [], ax = axlesOf(body);
+    for (const p of body.parts.filter((q) => q.role !== 'axle' && q.role !== 'joiner')) {
+      const bx = C.boxOf(lib, p.part, p.m);
+      if (!ax.some(([a0, a1]) => a0 <= bx.lo[2] + 0.5 + 1e-6 && a1 >= bx.hi[2] - 0.5 - 1e-6)) out.push(`${ln.key}: ${p.module}'s ${p.role} ${p.part} is on no axle`);
+    }
+    return out;
+  }
   for (const e of lineErrs(rest, lay)) fail(e);
+  {
+    // control: the joints laid as L1 laid them, each axle cut back to the bricks' far faces
+    const cutBack = (bd, ln) => bd.parts.filter((p) => p.role === 'axle').map((p) => { const bx = C.boxOf(lib, p.part, p.m), lo = Math.min(...ln.spans.flat()) - bd.origin[2], hi = Math.max(...ln.spans.flat()) - bd.origin[2]; return [Math.max(bx.lo[2], lo + 0.5), Math.min(bx.hi[2], hi - 0.5)]; });
+    const floats = rest.lines.flatMap((ln) => carriedErrs(rest.shafts[ln.body], ln, (bd) => cutBack(bd, ln)));
+    control(`the joints cut back to the bricks' far faces leave a keyed part on no axle (${floats.length}: ${floats.slice(0, 2).join('; ')})`, floats.length > 0);
+  }
   for (const ln of rest.lines) {
     const j = ln.joint;
     console.log(`  ${ln.key}: x ${mm(ln.x)} at ${mm(-ln.y)} mm, ${j.kind === 'axle' ? `one ${j.axles[0].lenStuds}L axle through both` : `${j.axles.map((a) => `${a.lenStuds}L`).join(' and ')} in a joiner, ${mm(j.joiner.engagement)} mm into its bore`} (gap ${mm(j.gap)} mm)`);
@@ -309,13 +351,13 @@ for (const gen of GENS) {
     return seen.get(to);
   };
   const bodyOf = (b, pred) => b.shafts.findIndex(pred);
-  const great = bodyOf(rest, (s) => s.shaft === 'fusee/great');
-  const out = rest.lines.find((l) => l.key === 'fourth') && bodyOf(rest, (s) => s.module === 'fourth→escape' && s.shaft === `fourth→escape/${Mods.modules['fourth→escape'].frame.shafts.length - 1}`);
-  if (great >= 0 && out >= 0) {
-    const r = ratioBetween(rest, great, out);
-    console.log(`  the going group: the fourth→escape output turns ${r?.toFixed(6)} per great-wheel turn (40/8 × 60 × 7.5 = 2250)`);
-    if (!r || !near(Math.abs(r), 2250, 1e-6)) fail(`the going group's ratio is ${r}, not 2250`);
-  } else fail('the going group\'s great wheel or output is not in the cell');
+  const great = bodyOf(rest, (s) => s.shaft === 'train/great'), wheel = bodyOf(rest, (s) => s.shaft === 'train/escape');
+  if (great >= 0 && wheel >= 0) {
+    const r = ratioBetween(rest, great, wheel), tb = Mods.modules.train.build, own = tb.shafts[tb.index.escape].speed / tb.shafts[tb.index.great].speed;
+    console.log(`  the going train: the escape wheel turns ${r?.toFixed(6)} per great-wheel turn (its own build: ${own.toFixed(6)}; (40:8) × … × (24:8) = 2250)`);
+    if (!r || !near(Math.abs(r), 2250, 1e-6)) fail(`the going train's ratio is ${r}, not 2250`);
+    if (!r || !near(r, own, 1e-6)) fail(`the going train turns ${r} in the cell, ${own} in its own build`);
+  } else fail('the going train\'s great wheel or escape wheel is not in the cell');
   const minute = rest.lines.find((l) => l.key === 'minute'), hourLine = rest.lines.find((l) => l.key === 'minute (adapted)') ?? minute;
   if (minute && hourLine) {
     const r = ratioBetween(rest, minute.body, hourLine.body);
@@ -389,13 +431,12 @@ for (const gen of GENS) {
   }
   {
     // control: a part of one module planted where a moving part of another
-    // stands (the fusee's great wheel on the centre→fourth row's 40T): the tier
-    // must measure the pair and find it in contact
-    const target = rest.shafts.findIndex((sh) => sh.module === 'centre→fourth' && sh.parts.some((p) => p.teeth === 40));
-    const tgt = rest.shafts[target], g40 = tgt.parts.find((p) => p.teeth === 40);
-    const plant = { shaft: 'planted', module: 'fusee', origin: tgt.origin, phi: tgt.phi, speed: 0, parts: [{ ...g40, module: 'fusee', role: 'great' }] };
+    // stands (an alarm 40T on the going train's great wheel): the tier must
+    // measure the pair and find it in contact
+    const tgt = rest.shafts[bodyOf(rest, (s) => s.shaft === 'train/great')], g40 = tgt.parts.find((p) => p.teeth === 40);
+    const plant = { shaft: 'planted', module: 'alarm', origin: tgt.origin, phi: tgt.phi, speed: 0, parts: [{ ...g40, module: 'alarm', role: 'spur' }] };
     const planted = { ...rest, shafts: [...rest.shafts, plant] };
-    control('the fusee\'s great wheel planted on the centre→fourth row\'s 40T', clearOf(planted, meshesOf(rest)).errs.length > 0);
+    control('an alarm 40T planted on the going train\'s great wheel', clearOf(planted, meshesOf(rest)).errs.length > 0);
   }
   // ── THE FILE ───────────────────────────────────────────────────────────────
   const ldr = toLdr(rest), lines = ldr.split('\n').filter((l) => l.startsWith('1 ')), want = placedParts(rest);
@@ -410,5 +451,5 @@ for (const gen of GENS) {
 
 console.log('\ncontrols:');
 for (const [n, ok] of ctl) { console.log(`  ${ok ? 'caught' : 'NOT CAUGHT'}  ${n}`); if (!ok) fails++; }
-console.log(fails ? `\n${fails} FAILED` : '\nthe clock stands on one base of baseplates, each of its joined lines one keyed body through both modules\' bricks, every mesh interleaved, every module clear of every other in all nine states; the escape line refused by measurement');
+console.log(fails ? `\n${fails} FAILED` : '\nthe clock stands on one base of baseplates, every line joined, each one keyed body through both modules\' bricks carrying every part keyed on it, every mesh interleaved, the going train turning 2250 as its own build does, every module clear of every other in all nine states');
 process.exit(fails ? 1 : 0);
