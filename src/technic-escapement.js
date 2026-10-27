@@ -859,10 +859,11 @@ const X2V = Object.freeze([0, -1, 0, 1, 0, 0, 0, 0, 1]);      // an axle's own X
 const Z2V = Object.freeze([1, 0, 0, 0, 0, 1, 0, -1, 0]);      // the bush's own Z (its axis) along the rod
 export function ratingParts(rt, nutV) {
   const out = [
-    { role: 'connector', slab: 'rating', part: rt.connector, m: [0, rt.vBob, rt.wc, ...RY180] },
-    { role: 'axle', slab: 'rating', part: rt.rod.part, m: [0, r6((rt.rod.v0 + rt.rod.v1) / 2), rt.wc, ...X2V] },
+    { role: 'joiner', rating: 'connector', slab: 'rating', part: rt.connector, m: [0, rt.vBob, rt.wc, ...RY180] },
+    { role: 'axle', rating: 'rod', slab: 'rating', part: rt.rod.part, m: [0, r6((rt.rod.v0 + rt.rod.v1) / 2), rt.wc, ...X2V] },
   ];
-  if (nutV !== null && nutV !== undefined) out.push({ role: 'nut', slab: 'rating', part: rt.nut, m: [0, nutV, rt.wc, ...Z2V] });
+  // (the nut is a COLLAR in the parts list's words: a bush its own friction holds on an axle, as the alarm pusher's is)
+  if (nutV !== null && nutV !== undefined) out.push({ role: 'collar', rating: 'nut', slab: 'rating', part: rt.nut, m: [0, nutV, rt.wc, ...Z2V] });
   return out;
 }
 
@@ -882,7 +883,7 @@ export function escapementBuild(frame, lib, { alpha = 0, theta = 0 } = {}) {
     statics.push({ role: roleOf(b.part, b), part: b.part, m: at(L((b.x0 + b.x1) / 2), -L(b.z1), L((b.y0 + b.y1) / 2), b.knife ? KNIFE : I3) });
   // the balance: origin on the knife's apex line (y = 0 there), each part at
   // its body-frame place — (u, v, w) mm is LDraw (X, Y, Z)/0.4 about the origin
-  const body = framedBalance(frame, lib).map((p) => ({ role: p.role === 'crossbar' ? 'axle' : p.role, part: p.part, m: [L(p.m[0]), L(p.m[1]), L(p.m[2]), ...p.m.slice(3)] }));
+  const body = framedBalance(frame, lib).map((p) => ({ role: p.role === 'crossbar' ? 'axle' : p.role, part: p.part, ...(p.rating ? { rating: p.rating } : {}), m: [L(p.m[0]), L(p.m[1]), L(p.m[2]), ...p.m.slice(3)] }));
   const balance = { shaft: 'balance', origin: fr(frame.x0, 0, frame.zK), phi: alpha, speed: 0, parts: body };
   const ea = frame.escAxle;
   const arbor = { shaft: 'escape', origin: fr(frame.x0, 0, frame.zE), phi: theta, speed: 0, parts: [
@@ -931,6 +932,7 @@ export function cycleModel(lib, frame, opts) {
 // cycle (two legs, −A → A → −A, n steps each); α is the swing's own sine, the
 // wheel's angle the step's, plus one pitch per period already run.
 export function cyclePose(cm, t) {
+  if (cm.poseAt) return cm.poseAt(t);                                  // §316: a driven cycle carries its own pose (technic-drive's drivenCycle)
   const N = cm.steps.length, per = cm.T;
   const cyc = Math.floor(t / per), f = t / per - cyc;            // phase in [0, 1)
   // α = −A cos(2π f): −A at f = 0, A at f = ½ — the legs' own order

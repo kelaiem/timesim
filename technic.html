@@ -409,8 +409,9 @@ import { TECHNIC_FUSEE_SPRING, solveFusee, frameFusee, fuseeBuild, cordPath, cor
 import { frameAlarm, alarmStates, alarmBuild, TECHNIC_ALARM_STRIKE, strikesPerBarrelTurn, ALARM_Y, ALARM_DIM_MM, TECHNIC_ALARM, alarmShafts,
          columnModel, columnWarmSteps, columnStart, columnAdvance, columnCommand, columnPose, columnPhase, trainAngles } from './src/technic-alarm.js';
 import { frameEscapement, escapementBuild, cycleModelSteps, cyclePose, balanceMoments, framedBalance, periodAt, partSolid, escSpec,
-         ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2 } from './src/technic-escapement.js';
+         ESC_SWING_DEG, BEAT_PERIOD_S, TECHNIC_ESCAPEMENT, TECHNIC_BALANCE, F2_PLAY_MM, ESC_DENSITY, G_MM_S2, RATE_BAND } from './src/technic-escapement.js';
 import { frameTrain, trainBuild, trainModel, trainPose, goingTime } from './src/technic-train.js';
+import { contactTablesSteps, driveDeclared, TECHNIC_DRIVE, TECHNIC_DRIVE_FRICTION, NMM, DAY_S } from './src/technic-drive.js';
 import { describeCells, stopsOf, skipNote, indicator, step, resolveId, resolveFocus, initialTour, swipeDir, withCell, ease, TWEEN_S, CAROUSEL_WRAPS } from './src/technic-carousel.js';
 import { copyText } from './src/technic-clipboard.js';
 import { clockModules, clockLayout, clockBuild, TECHNIC_CLOCK } from './src/technic-clock.js';
@@ -1073,11 +1074,39 @@ function setTrainRate(r, btns) {
 // balance's solved period, the pawls' rides (the state, trainT, is kept)
 function trainRemodel() {
   const v = trainView;
-  if (!v || !v.cycle?.ok) return;
-  v.cycle.T = escMoments?.T ?? BEAT_PERIOD_S;
+  const driven = v?.drive?.ok ? v.drive.cycle : null;
+  if (!v || !(driven || v.cycle?.ok)) return;
+  if (!driven) v.cycle.T = escMoments?.T ?? BEAT_PERIOD_S;
   const loop = fuseeLoopModel(trainFrame.fusee, lib, v.run, trainBuildNow.fusee, { rides: v.rides ?? provisionalRides(trainBuildNow.fusee) });
-  v.model = trainModel(trainBuildNow, v.cycle, loop);
+  v.model = trainModel(trainBuildNow, driven ?? v.cycle, loop);
   writeTrainMeasures();
+}
+// §316: the escapement DRIVEN (src/technic-drive.js). The anchor's contact traced once over the widest swing whose
+// drops are the posed swing's (between frames), then TECHNIC_DRIVE's drive on this train: each friction corner's
+// swing at the run's mean torque, and the nominal corner's driven cycle, which the train then follows. When the
+// nominal corner does not hold a swing the posed cycle stays, and the panel says why.
+async function measureDrive(F, b, run) {
+  const ef = F.escapement.ef, spec = { ...ef.spec, sense: F.sense };
+  const it = contactTablesSteps(lib, spec, { A: TECHNIC_DRIVE.tableDeg, n: TECHNIC_DRIVE.traceSteps });
+  let t = performance.now(), r;
+  while (!(r = it.next()).done) if (performance.now() - t > Math.max(RIDE_SLICE_MS, Math.min(frameMs, 400) / 2)) { await new Promise((res) => setTimeout(res, 0)); t = performance.now(); }
+  const ct = r.value;
+  if (!ct.ok) return { ok: false, why: `the contact trace did not escape: ${ct.why}` };
+  for (const p of new Set(framedBalance(ef, lib).map((q) => q.part))) { partSolid(lib, p); await new Promise((res) => setTimeout(res, 0)); }
+  return driveDeclared(lib, ef, { run, ratio: b.ratio, meshes: F.chain.meshes.length, ct, between: () => new Promise((res) => setTimeout(res, 0)) });
+}
+function writeDrive() {
+  const el = document.getElementById('tdrive'), d = trainView?.drive;
+  if (!el || !d) return;
+  const n = (x) => (x * NMM).toExponential(2), Fr = TECHNIC_DRIVE_FRICTION, rate = (T) => (1 - T / BEAT_PERIOD_S) * DAY_S;
+  const sw = (c) => { const s = d.corners[c].mean; return s.status === 'sustained' ? `<code>${s.A.toFixed(2)}°</code> at <code>${s.T.toFixed(5)} s</code>` : `<span class="bad">${s.status === 'banks' ? `banks (${s.A?.toFixed(2) ?? '—'}°: past the widest clean swing, ${TECHNIC_DRIVE.tableDeg}°)` : s.status}</span>`; };
+  const nom = d.corners.nominal;
+  el.innerHTML = (d.ok ? `<b>the swing is SOLVED</b>: ` : `<span class="bad">the posed swing stays — ${d.why}</span>: `)
+    + `the escape arbor's torque <code>${n(nom.band.lo)}–${n(nom.band.hi)} N·mm</code> over the run (nominal meshes ${Fr.mesh.nominal}), from a spring of <code>${(d.Munit * NMM).toFixed(2)} N·mm</code> at full wind at the barrel — the size SOLVED as the most that keeps the balance the timekeeper (its error inside ${(RATE_BAND * 100).toFixed(1)}% of the free pendulum's), on the POSED law's shape. `
+    + `With the pallets' friction at its nominal ${Fr.pallet.nominal} the balance settles to ${sw('nominal')}${nom.mean.status === 'sustained' ? ` (${rate(nom.mean.T).toFixed(0)} s/day)` : ''}; at the adverse ${Fr.pallet.adverse}, ${sw('adverse')}; at the favourable ${Fr.pallet.favourable}, ${sw('favourable')}. `
+    + `The RATING NUT, a bush on a 4L axle rising from the bob, stands <code>${(-TECHNIC_DRIVE.nutV).toFixed(2)} mm</code> above the knife's apex: `
+    + `a millimetre up the rod is <code>${d.sens.ratePerMm.toFixed(0)} s/day</code> slower, a stud <code>${d.sens.ratePerStud.toFixed(0)}</code> (DERIVED from its inertia). `
+    + `The lock holds the train: with the balance at rest the escapement trips at <code>${n(d.lock.trip)} N·mm</code> at its arbor (frictionless), <code>${d.lock.margin.toFixed(0)}×</code> the most the drive delivers.`;
 }
 function applyTrain(now, dt) {
   const v = trainView;
@@ -1119,9 +1148,9 @@ function applyTrain(now, dt) {
 function writeTrainMeasures() {
   const el = document.getElementById('tmeasure');
   if (!el || !trainView) return;
-  const T = escMoments?.T ?? null, g = goingTime(trainView.run, trainBuildNow.ratio, TECHNIC_ESCAPEMENT.teeth, T ?? BEAT_PERIOD_S);
+  const dr = trainView.drive?.ok ? trainView.drive.cycle.T : null, T = dr ?? escMoments?.T ?? null, g = goingTime(trainView.run, trainBuildNow.ratio, TECHNIC_ESCAPEMENT.teeth, T ?? BEAT_PERIOD_S);
   el.innerHTML = `a wind turns the great wheel <code>${g.greatTurns.toFixed(4)}</code> turns (the cone's run); through the <code>${trainBuildNow.ratio}:1</code> the escape wheel turns <code>${g.escapeTurns.toFixed(0)}</code> times, one tooth a period: `
-    + `<b>${g.hours.toFixed(2)} h a wind</b> at ${T ? `the balance's solved <code>${T.toFixed(4)} s</code>` : `the row's <code>${BEAT_PERIOD_S} s</code> (the solved period is being read off the parts)`}, `
+    + `<b>${g.hours.toFixed(2)} h a wind</b> at ${dr ? `the DRIVEN swing's period, <code>${dr.toFixed(5)} s</code>` : T ? `the balance's solved <code>${T.toFixed(4)} s</code>` : `the row's <code>${BEAT_PERIOD_S} s</code> (the solved period is being read off the parts)`}, `
     + `<span class="bad">under the POSED spring law</span> <span style="color:var(--dim)">(TECHNIC_FUSEE_SPRING's stand-in: the steel's run of the barrel, not a LEGO band's)</span>. `
     + `The centre arbor turns once in <code>${(g.centreTurnS / 3600).toFixed(4)} h</code>, the great wheel once in <code>${(g.greatTurnS / 3600).toFixed(3)} h</code>.`;
 }
@@ -1754,7 +1783,8 @@ async function build(gen) {
         + `<div class="gen" id="trates">${TRAIN_RATES.map(([r, t]) => `<button type="button" data-rate="${r}" title="display time: ${t} at speed 1">${r === 1 ? 'real time' : `×${r}`}</button>`).join('')}<button id="tfocus" type="button">look at the train</button></div>`
         + `<div id="tdetail" style="color:var(--dim)">swinging; the train waits while the escapement's cycle is read off the teeth</div>`
         + `<div id="tmeasure" style="color:var(--dim)"></div>`
-        + ` <span class="bad">Driven by a POSED law, modelled:</span> <span style="color:var(--dim)">nothing is integrated and no torque is carried. The balance swings ±${ESC_SWING_DEG}° (posed) at the period its inertia gives; the escape wheel's angle is the traced cycle's; every other angle is that one through the tooth counts, and the fusee stands where the great wheel's turn puts it (its spring law the stand-in, its winding a person's). The escapement is an analogue (a recoil anchor and a knife-edge balance). Display time is real time or a minute or an hour a second, times the speed slider. `
+        + `<div id="tdrive" style="color:var(--dim)">driving the escapement: tracing the anchor's contact over its widest clean swing…</div>`
+        + ` <span class="bad">Driven by a POSED spring law, frictions tabled (modelled):</span> <span style="color:var(--dim)">the balance's swing is SOLVED (§316): its equation of motion stepped in time, gravity against the anchor's push, the push the spring's torque carried through the cone and the train, every mesh's and the pallets' friction a tabled band. The knife's and the air's losses, and the wheel's and the train's inertia, are not modelled (landing 3). The escape wheel's angle is the anchor's contact at the solved swing; every other angle is that one through the tooth counts, and the fusee stands where the great wheel's turn puts it (its spring law the stand-in, its winding a person's). Until the solve converges the balance swings ±${ESC_SWING_DEG}° (posed), as landing 1 drew it, and the panel says which. The escapement is an analogue (a recoil anchor and a knife-edge balance). Display time is real time or a minute or an hour a second, times the speed slider. `
         + `Base ${F.base.studsX}×${F.base.studsY} studs on a ${F.base.plate.studs}×${F.base.plate.studs} baseplate; the escape arbor ${F.zE} mm up, the escapement ${F.o > 0 ? 'as §287 lays it out' : 'turned half round'}; ${gt.hours.toFixed(2)} h a wind at ${BEAT_PERIOD_S} s.</span>`
         + `<br><a id="tldr" href="#" style="color:#9fb6d9">download .ldr (at full wind)</a> · ${mpdLink('tmpd')}`;
       wireMpd(div, 'tmpd', () => ({ build: trainBuildNow }), () => `${gen}-going-train.mpd`);
@@ -1770,6 +1800,7 @@ async function build(gen) {
       drawCord(trainView.cord, 0);
       const v = trainView;
       trainCycle(F.sense).then((c) => { if (trainView === v) { v.cycle = c; trainRemodel(); } });
+      measureDrive(F, b, run).then((d) => { if (trainView === v) { v.drive = d; trainRemodel(); writeDrive(); } });
       (escMomentsP ??= measureEscMoments(escFrame ?? frameEscapement())).then((m) => { escMoments ??= m; if (trainView === v) trainRemodel(); });
       (fuseeRidesP ??= measureRides(fuseeBuildNow ?? b.fusee)).then((r) => { if (trainView === v) { v.rides = r; trainRemodel(); } });
       cellReg.train = { band: trainBand, row: div, label: lbl, frame: F, build: b, shafts: made };
@@ -1915,7 +1946,7 @@ window.__technic = { build, setKeylessMode, setAlarmMode, get keyless() { return
   get escapement() { return escCycle && { ok: escCycle.ok, T: escMoments?.T ?? null, pose: escCycle.ok ? cyclePose(escCycle, escT) : null, t: escT }; },
   seekEscapement: (t) => { escT = t; }, focusEscapement,
   // §315: an instrument's hook — the train's state (its model's pose at display time), a seek, the rate
-  get train() { return trainView && { framed: true, t: trainT, rate: trainRate, ready: !!trainView.model, pose: trainView.model ? trainPose(trainView.model, trainT) : null, base: trainFrame.base, o: trainFrame.o }; },
+  get train() { return trainView && { framed: true, t: trainT, rate: trainRate, ready: !!trainView.model, driven: !!trainView.drive?.ok, drive: trainView.drive ? { ok: trainView.drive.ok, why: trainView.drive.why, A: trainView.drive.cycle?.A ?? null, T: trainView.drive.cycle?.T ?? null, corners: Object.fromEntries(Object.entries(trainView.drive.corners ?? {}).map(([c, v]) => [c, { status: v.mean.status, A: v.mean.A, T: v.mean.T }])) } : null, pose: trainView.model ? trainPose(trainView.model, trainT) : null, base: trainFrame.base, o: trainFrame.o }; },
   seekTrain: (t) => { trainT = t; }, setTrainRate: (r) => setTrainRate(r), focusTrain,
   // §312 L1: the clock cell's build at its state, for an instrument
   get clock() { return clockCell && { build: clockCell.build, layout: clockCell.lay, state: clockCell.state }; },

@@ -79,7 +79,7 @@ export const etaOf = (corner, F = TECHNIC_DRIVE_FRICTION) => ({ mesh: F.mesh[cor
 //               posed spring may deliver there (it rests on the posed law's shape and on the tabled frictions);
 //   nutV      — `solveNut`'s answer, mm (v down from the knife's apex): where the rating nut stands on its rod for
 //               the beat at the nominal corner and the run's mean torque; the rod is `solveRatingRod`'s.
-export const TECHNIC_DRIVE = Object.freeze({ tableDeg: 8.5, traceSteps: 1700, escapeTorqueHi: null, nutV: null });
+export const TECHNIC_DRIVE = Object.freeze({ tableDeg: 8.75, traceSteps: 1750, escapeTorqueHi: 3.198e-4, nutV: -16.96 });
 
 // ── THE DRIVE: the spring law → the escape arbor ─────────────────────────────
 // τ_e = Munit · P / ρ_b · η_mesh^n / ratio, at the run's sample `s` (fuseeRun's samples: P = M × arm, in the
@@ -96,7 +96,7 @@ export function torqueBand(run, opts) {
 // I (kg·mm²) and m g d (kg·mm²/s²) of the framed balance, the rating nut at `nutV` (mm, v down; null: none).
 export const RHO_NOMINAL = (ESC_DENSITY.abs[0] + ESC_DENSITY.abs[1]) / 2;   // g/cm³; it cancels from the period
 export function balanceDynamics(lib, frame, { nutV = frame.rating?.nutV ?? null, rho = RHO_NOMINAL, ignoreNut = false } = {}) {
-  const parts = framedBalance(frame, lib, { nutV }).filter((p) => !(ignoreNut && p.role === 'nut'));
+  const parts = framedBalance(frame, lib, { nutV }).filter((p) => !(ignoreNut && p.rating === 'nut'));
   const mo = balanceMoments(lib, parts), k = rho * 1e-6;              // g/cm³ → kg/mm³
   return { I: mo.I * k, Mgd: mo.V * k * G_MM_S2 * mo.d, T0: mo.T, mo, rho, nutV };
 }
@@ -145,9 +145,10 @@ export const kindAt = (ct, dir, al) => ct.legs[dir].kind[idx(ct, al)];
 // From α0 (deg) at rest; `periods` of the small-swing period at most. Returns each full period's mean amplitude
 // (deg) and its length (s), the run's status, and the energy books (the work the escapement did, the balance's
 // energy gained) — the probe holds W − ΔE to the integrator's own error.
-export function drive({ I, Mgd, ct, tau, eta = 1, A0, periods = 200, dt = null, record = false, settle = null }) {
+export function drive({ I, Mgd, ct, tau, eta = 1, A0, start = null, periods = 200, dt = null, record = false, settle = null, restoring = null }) {
   const T0 = TAU * Math.sqrt(I / Mgd), h = dt ?? T0 / 5000, Rmax = ct ? ct.R : Infinity;
-  let al = deg(A0), w = 0, t = 0, W = 0, peak = 0, lastDir = -1, halfs = [], ups = [], status = 'running';
+  const grav = restoring ?? ((a) => Mgd * Math.sin(a));                // (a probe's control may stiffen it)
+  let al = start ? start.alpha : deg(A0), w = start ? start.omega : 0, t = 0, W = 0, Wideal = 0, peak = 0, lastDir = w > 0 ? 1 : -1, halfs = [], ups = [], status = 'running';
   const E = (a, v) => 0.5 * I * v * v + Mgd * (1 - Math.cos(a)), E0 = E(al, w);
   const Q = (a, v) => {
     if (!ct || tau === 0) return 0;
@@ -158,10 +159,11 @@ export function drive({ I, Mgd, ct, tau, eta = 1, A0, periods = 200, dt = null, 
   const trace = record ? { t: [], a: [] } : null;
   const steps = Math.ceil(periods * T0 / h);
   for (let k = 0; k < steps; k++) {
-    const q = Q(al, w), w1 = w;
-    w += (-Mgd * Math.sin(al) + q) / I * h;
+    const q = Q(al, w), w1 = w, sdir = w > 0 ? 1 : -1;
+    w += (-grav(al) + q) / I * h;
     const al2 = al + w * h;
     W += q * h * (w1 + w) / 2;                                        // the escapement's work as the step counts it
+    if (ct && tau) Wideal += tau * slopeAt(ct, sdir, al) * h * (w1 + w) / 2;   // the same, the pallets frictionless
     if (al < 0 && al2 >= 0) ups.push(t + h * (-al) / (al2 - al));
     peak = Math.max(peak, Math.abs(al2));
     const dir = w > 0 ? 1 : -1;
@@ -178,18 +180,29 @@ export function drive({ I, Mgd, ct, tau, eta = 1, A0, periods = 200, dt = null, 
   for (let j = 1; j < ups.length; j++) cycles.push({ T: ups[j] - ups[j - 1], at: ups[j] });
   const amps = halfs.slice(1);
   cycles.forEach((c, j) => { const a = amps.slice(2 * j + 1, 2 * j + 3); c.A = a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN; });
-  return { status, cycles, halfs, t, W, dE: E(al, w) - E0, alpha: al, omega: w, T0, h, trace };
+  return { status, cycles, halfs, t, W, Wideal, dE: E(al, w) - E0, alpha: al, omega: w, T0, h, trace };
 }
 // the swing the drive holds: run until the half-swings stop moving (every half-swing of the last twenty periods
 // within SETTLED_DEG of the one twenty periods before) or the escapement banks or stops
+export const TABLE_STEP_DEG = 0.25;      // tableSwing's grid
 export const SETTLED_DEG = 2e-3;          // half-swings that stay within this of the swing twenty periods back are settled (the table's
                                           // own step is a hundredth of a degree: the swing jitters inside it)
+export const AVERAGE_PERIODS = 400;      // the settled swing is not a fixed point (it wanders within a few hundredths of a
+                                          // degree, the table's steps beating against the swing): its period and amplitude
+                                          // are averaged over this many periods after it settles
 export function sustained({ I, Mgd, ct, tau, eta, A0 = 3, periods = 4000 }) {
   const settle = (halfs) => { const n = halfs.length; if (n < 60) return false; let d = 0; for (let j = n - 40; j < n; j++) d = Math.max(d, Math.abs(halfs[j] - halfs[n - 42 + ((j - n) & 1)])); return d < SETTLED_DEG; };
   const r = drive({ I, Mgd, ct, tau, eta, A0, periods, settle });
-  const last = r.cycles.slice(-20).filter((c) => Number.isFinite(c.A));
-  const A = last.length ? last.reduce((s, c) => s + c.A, 0) / last.length : null, T = last.length ? last.reduce((s, c) => s + c.T, 0) / last.length : null;
-  return { status: r.status === 'ran' ? 'unsettled' : r.status, A, T, Tfree: A !== null ? periodAt(r.T0, A) : null, T0: r.T0, run: r };
+  if (r.status !== 'sustained') return { status: r.status === 'ran' ? 'unsettled' : r.status, A: null, T: null, Tfree: null, T0: r.T0, run: r };
+  const r2 = drive({ I, Mgd, ct, tau, eta, start: { alpha: r.alpha, omega: r.omega }, periods: AVERAGE_PERIODS + 1 });
+  const cyc = r2.cycles.filter((c) => Number.isFinite(c.A));
+  if (r2.status === 'banks' || r2.status === 'stops' || !cyc.length) return { status: r2.status === 'ran' ? 'unsettled' : r2.status, A: null, T: null, Tfree: null, T0: r.T0, run: r2 };
+  const A = cyc.reduce((x, c) => x + c.A, 0) / cyc.length, T = cyc.reduce((x, c) => x + c.T, 0) / cyc.length;
+  const Amin = Math.min(...cyc.map((c) => c.A)), Amax = Math.max(...cyc.map((c) => c.A));
+  // a swing that settles within the table swing's own grid step of its edge may already be making the slip the
+  // table does not hold: it is counted as BANKING, not as a swing the escapement holds
+  const status = ct && Amax > ct.A - TABLE_STEP_DEG ? 'banks' : 'sustained';
+  return { status, A, T, Amin, Amax, Tfree: periodAt(r.T0, A), T0: r.T0, run: r2, settledAfter: r.cycles.length };
 }
 
 // ── THE SIZE OF THE DRIVE, SOLVED ────────────────────────────────────────────
@@ -219,7 +232,7 @@ export function solveScale(dyn, ct, eta, { band = RATE_BAND, lo = 1e-6, hi = 1e-
 // and the rate, s/day, moves by −DAY_S · dT/T. Per stud, × the stud.
 export function nutSensitivity(lib, frame, nutV, { stud = 8 } = {}) {
   const dyn = balanceDynamics(lib, frame, { nutV }), mo = dyn.mo;
-  const Vn = balanceMoments(lib, framedBalance(frame, lib, { nutV }).filter((p) => p.role === 'nut')).V;
+  const Vn = balanceMoments(lib, framedBalance(frame, lib, { nutV }).filter((p) => p.rating === 'nut')).V;
   const F = mo.V * mo.d, dTdv = mo.T * 0.5 * (2 * Vn * nutV / mo.I - Vn / F);
   return { Vn, dTdv, ratePerMm: -DAY_S * dTdv / mo.T, ratePerStud: -DAY_S * dTdv / mo.T * stud, T0: mo.T };
 }
@@ -267,14 +280,16 @@ export function drivenCycle(dyn, ct, tau, eta, sus) {
     s.kind = kindAt(ct, s.dir, s.alpha);
     s.holder = ct.legs[s.dir].holder[Math.round((s.alpha + ct.R) / ct.da)] || 1;
   }
-  // the two legs meet: the wheel's angle at the swing's ends read off both directions' tables
-  const seam = Math.max(Math.abs(thetaAt(ct, 1, A) - thetaAt(ct, -1, A)), Math.abs(thetaAt(ct, -1, -A) - thetaAt(ct, 1, -A) + ct.sigma * ct.pitch * 0));
+  // the two legs meet: at the swing's top the wheel's angle read off both directions' tables, and at its foot the
+  // down leg's against the next period's up leg (one pitch on)
+  const seam = Math.max(Math.abs(thetaAt(ct, 1, A) - thetaAt(ct, -1, A)), Math.abs(thetaAt(ct, -1, -A) - thetaAt(ct, 1, -A) - ct.sigma * ct.pitch));
   const label = (k) => (k === 'drop' ? 'drop' : k === 'recoil' ? 'recoil' : k === 'impulse' ? 'impulse' : 'still');
-  const cyc = { driven: true, ok: true, A: sus.A, T, sigma: ct.sigma, pitch: ct.pitch, steps: samples, labels: samples.map((s) => label(s.kind)), seam, theta0: samples[0].theta };
+  // (the period the train keeps is the settled swing's, averaged: one period's own length wanders with it)
+  const cyc = { driven: true, ok: true, A: sus.A, T: sus.T, Tone: T, sigma: ct.sigma, pitch: ct.pitch, steps: samples, labels: samples.map((s) => label(s.kind)), seam, theta0: samples[0].theta };
   // the wheel's angle runs on one pitch a period: the up leg's table, then the down leg's, each table the trace's
   // own (its down leg follows its up leg in the same cycle)
   cyc.poseAt = (tt) => {
-    const c = Math.floor(tt / T), f = tt / T - c, k = Math.min(N, Math.max(0, Math.round(f * N))), s = samples[k];
+    const c = Math.floor(tt / cyc.T), f = tt / cyc.T - c, k = Math.min(N, Math.max(0, Math.round(f * N))), s = samples[k];
     return { alpha: s.alpha, theta: s.theta + ct.sigma * c * ct.pitch, kind: cyc.labels[k], holder: s.holder, step: k, cycle: c };
   };
   return cyc;
@@ -284,6 +299,25 @@ export function drivenCycle(dyn, ct, tau, eta, sus) {
 // For one going train (its run, ratio and mesh count) and its escapement frame (with the rating rod): the contact
 // tables, the drive's size, the nut's place, the swing and its period per friction corner, the period against
 // amplitude, the lock. (`ct` may be passed in: it is the one expensive piece.)
+// The barrel's full-wind torque (the table's 1, kg·mm²/s²) that gives the escape torque `tauHi` at the run's highest
+// level product through `meshes` meshes of efficiency `etaMesh` and the train's ratio: escapeTorque solved for Munit.
+export const barrelScale = (tauHi, run, ratio, meshes, etaMesh) => tauHi * ratio * run.rb / (run.hi * etaMesh ** meshes);
+// THE DECLARED DRIVE, AS THE PAGE RUNS IT: TECHNIC_DRIVE's ceiling and nut on this frame and train, each corner's
+// swing at the run's mean torque (one `sustained` each; `between` is awaited between them, so a page can breathe),
+// and the nominal corner's driven cycle when it holds a swing.
+export async function driveDeclared(lib, frame, { run, ratio, meshes, ct, F = TECHNIC_DRIVE_FRICTION, between = async () => {} } = {}) {
+  const tauHi = TECHNIC_DRIVE.escapeTorqueHi / NMM, Munit = barrelScale(tauHi, run, ratio, meshes, F.mesh.nominal);
+  const dyn = balanceDynamics(lib, frame, { nutV: TECHNIC_DRIVE.nutV }), corners = {};
+  for (const c of F.corners) {
+    const e = etaOf(c, F), band = torqueBand(run, { Munit, etaMesh: e.mesh, meshes, ratio });
+    corners[c] = { eta: e, band, mean: sustained({ ...dyn, ct, tau: band.mean, eta: e.pallet }) };
+    await between();
+  }
+  const nom = corners.nominal;
+  const cycle = nom.mean.status === 'sustained' ? drivenCycle(dyn, ct, nom.band.mean, nom.eta.pallet, nom.mean) : null;
+  const lock = lockMargin(lib, frame, dyn, corners.favourable.band.hi);
+  return { ok: !!cycle, why: cycle ? null : `the nominal corner ${nom.mean.status}`, tauHi, Munit, dyn, corners, cycle, lock, sens: nutSensitivity(lib, frame, TECHNIC_DRIVE.nutV) };
+}
 export function solveDrive(lib, frame, { run, ratio, meshes, ct, F = TECHNIC_DRIVE_FRICTION, iterations = 3 } = {}) {
   const nom = etaOf('nominal', F);
   // the drive's size and the nut's place each read the other (the nut moves the balance a little, and so the
@@ -292,8 +326,7 @@ export function solveDrive(lib, frame, { run, ratio, meshes, ct, F = TECHNIC_DRI
   for (let k = 0; k < iterations; k++) {
     tauHi = solveScale(balanceDynamics(lib, frame, { nutV }), ct, nom.pallet);
     if (tauHi === null) return { ok: false, why: 'no torque drives the escapement inside the rate band' };
-    // the barrel's full-wind torque that gives tauHi at the run's highest level product, nominal meshes
-    Munit = tauHi * ratio * run.rb / (run.hi * nom.mesh ** meshes);
+    Munit = barrelScale(tauHi, run, ratio, meshes, nom.mesh);
     const tauMean = torqueBand(run, { Munit, etaMesh: nom.mesh, meshes, ratio }).mean;
     nut = frame.rating ? solveNut(lib, frame, ct, tauMean, nom.pallet) : null;
     if (nut && !nut.ok) return { ok: false, why: nut.why, tauHi };
@@ -317,7 +350,7 @@ export function solveDrive(lib, frame, { run, ratio, meshes, ct, F = TECHNIC_DRI
 // for the wheel: the escapement jams. Inside it the contact along a leg is a function of the anchor's angle alone,
 // which is what lets one trace stand for every swing up to it. Returns that amplitude and the first that differs.
 const dropsOf = (tr) => tr.steps.filter((s) => s.kind === 'drop').map((s) => ({ dir: s.dir, alpha: s.alpha }));
-export function tableSwing(lib, spec = TECHNIC_ESCAPEMENT, { from = ESC_SWING_DEG, step = 0.25, cap = 20, perDeg = 100 } = {}) {
+export function tableSwing(lib, spec = TECHNIC_ESCAPEMENT, { from = ESC_SWING_DEG, step = TABLE_STEP_DEG, cap = 20, perDeg = 100 } = {}) {
   const model = escapementModel(lib, escSpec(lib, spec));
   const trace = (A) => traceCycle(model, A, { n: Math.round(A * perDeg) });
   const t0 = trace(from);
