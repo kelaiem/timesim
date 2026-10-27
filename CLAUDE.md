@@ -777,9 +777,12 @@ it into prose either.
    geneva finger disc both cut that way, and both are now cut as rings that
    do not cross. `probe-187-plate-gates.mjs` re-cuts the
    draft and watches both go red), and `point sweeps` **0 broken, every
-   LISTED point clean** (TODO 186 — the silent spec points swept and unioned
-   by §152's rule; a finding keeps a point out of the validated set, a PR's
-   ceiling may skip one but never passes it; see Inspecting), and `plateSeats`
+   LISTED point clean** (TODO 186 — the silent spec points, and since §308
+   landing 5 a point that DECLARES its warning set and boots exactly it, swept
+   and unioned by §152's rule; a finding keeps a point out of the validated
+   set, a PR's ceiling may skip one but never passes it; see Inspecting), and
+   `spec boots` **every declaring point boots exactly its declared set** (a
+   warning beyond it, or a declared row that stopped firing, fails), and `plateSeats`
    **control PASS, 0 undeclared parts within CLEAR_MARGIN of the base plate, 0
    malformed or stale seats, 0 regressed or stale debt** (TODO 202 step 4 — the
    plate is a HELD fixture in no sweep's pairs, which is how a dozen parts sat
@@ -1256,7 +1259,17 @@ one join `src/validated-configs.js`.** Each `SPEC_POINTS` row marked `sweep:
 true` (the non-identity points that boot silent; `reconf=1` needs none, its
 key is the default's) gets `inspection`, `clearances` and
 `undeclaredClearance` restricted with `pairsTouching` to the units its build
-changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
+changes, unioned by §152's own rule (`battery-points.mjs`). **Since §308
+landing 5 a swept row may DECLARE its warnings instead of booting silent**
+(`expect: 'declared'`, `expectWarns` — a list of warning PREFIXES, the rows'
+names, never their measured numbers): both the spec tier and the point judge
+hold the boot to exactly that set (`matchDeclaredWarns`), a warning beyond it
+reads `warns`, a declared row that stops firing reads stale and fails, and the
+point's validated-configs evidence names the set. It exists because every FORM
+build carries two filed rows (§186's form-case fit, §261's depth cap) that are
+debt about the case, not a station out of its window, and a judge that read
+any warning as `warns` could never let a form build join the set however clean
+its sweeps came back; the arrangement is the first such row. A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
 report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a

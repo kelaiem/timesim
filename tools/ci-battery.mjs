@@ -120,7 +120,7 @@ import { assertCosts, buildTasks } from './battery-split.mjs';
 import { BATTERY, RESTRICTABLE, prepPage, runCheck, virginBoot } from './battery-checks.mjs';
 import { VALIDATED_CONFIGS } from '../src/validated-configs.js';   // TODO 158: the configuration keys this battery vouches for
 import { unionCheck } from './battery-union.mjs';
-import { POINTS_FORMAT_VERSION, decidePointMode, defaultPointDigests, judgePoint, sweepPoint } from './battery-points.mjs';   // TODO 186 B1
+import { POINTS_FORMAT_VERSION, decidePointMode, defaultPointDigests, judgePoint, matchDeclaredWarns, sweepPoint } from './battery-points.mjs';   // TODO 186 B1
 import { TIERS_FORMAT, TIERS_PARTS, acceptTiers, mergeSpecHalves, specHandedPoints, specKeptHere, tiersFile } from './battery-tiers.mjs';   // §264/§265: who boots which spec point
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1288,19 +1288,25 @@ const SPEC_POINTS = [
   // this arrangement by a local run alone, and a later landing could stop it
   // building with every gate green.
   //
-  // LIVENESS ONLY, by the table's own rule, and it cannot be more yet: it
-  // boots with three warnings (the form plate's §186 seat fit and §261 depth,
-  // which every form build carries, and TODO 206's shared margin, landing 4's
-  // residue at every turned module), and `sweep: true` is for points that
-  // boot silent. The probe still holds the exact warning SET; this row holds
-  // that the arrangement BUILDS, finite, and reads unverified.
+  // SWEPT, AND THE FIRST ROW THAT DECLARES ITS WARNINGS. It boots with three
+  // (the form plate's §186 seat fit and §261 depth, which every form build
+  // carries, and TODO 206's shared margin, landing 4's residue at every turned
+  // module), so `sweep: true` alone could never read it clean: the point judge
+  // read any warning as 'warns'. `expectWarns` names the set by prefix and
+  // both tiers hold it EXACTLY — the spec tier here (`expect: 'declared'`), the
+  // point tier in judgePoint — so a fourth warning fails the row and a
+  // declared row that stops firing fails it as stale. The three are filed
+  // debt about the case and the module, none a collision; the sweep is the
+  // collision claim, and its evidence row says the boot warns. The probe
+  // still holds the same set on the same build.
   //
   // `formrect=` is the arrangement's own fitted outline (FORM_FOOTPRINT's
   // bounds, rounded outward), so the cut holds its metal and no provisional-
   // cut artefact joins the warnings. The query is the probe's build A — the
   // probe reads this row back and fails if the two have parted.
-  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'any',
-    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on the fitted rect; warns three (two form rows, TODO 206)' },
+  { name: 'arrangement-308', q: 'case=rect&barrelstep=0&rsvaz=36&alarmmod=80&gong=arc&formrect=-45.96,45.72,-43.91,51.41', expect: 'declared', sweep: true,
+    expectWarns: ['§186: the rim-to-bore fit', '§261: cased assembly', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin'],
+    why: '§308 landing 5 — barrel swung to 180°, reserve at 36°, alarm module at 80° on the fitted rect; the first FORM build swept, warning exactly its three declared rows (two form rows, TODO 206)' },
 ];
 
 // TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
@@ -1308,7 +1314,10 @@ const SPEC_POINTS = [
 // `sweep: true` above marks the non-identity points that boot SILENT (seven
 // of them on the tree that landed this; `reconf=1` is the seventh and is not
 // marked, because its configuration key IS the default's — the default's own
-// full run already covers it). battery-points.mjs holds the why of the rest.
+// full run already covers it) — and, since §308 landing 5, a point that
+// DECLARES its warning set (`expect: 'declared'`, `expectWarns`) and boots
+// exactly it; the first is the arrangement, the first form build swept.
+// battery-points.mjs holds the why of the rest.
 const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
 // The tier's cost column, for ordering its lanes — the COSTS rule exactly: a
 // wrong number costs wall clock, never a verdict, and `--report`'s
@@ -1353,6 +1362,15 @@ const POINT_COSTS = {
   'studr=4.71': 233,      // 3 changed [Balance cock, Chain, Hairspring]
   'studr=7.1175': 287,    // 5 changed [Balance cock, Base plate, Chain, Fork cock, Hairspring]
   'route=2-leg': 155,     // 3 changed [Applied route, Base plate, Chain]
+  // §308 landing 5 — the arrangement is a FORM build: its plate, case, train
+  // and module all change against the round default, so its restriction
+  // reaches most of the movement and the point costs close to the default's
+  // own three sweeps. Measured on the 4-vCPU dev container that landed it,
+  // beside the default's three whole sweeps (1174 s: 59 changed, inspection
+  // 212, clearances 215, undeclaredClearance 703, against the default's 181 /
+  // 195 / 259 alone); only the order is evidence, and it is the longest by
+  // far, so LPT hands it out first.
+  'arrangement-308': 1174,
 };
 {
   const named = new Set(SWEEP_POINTS.map((p) => p.name));
@@ -1779,6 +1797,19 @@ function assemble({
   gate('spec boots: the identity control is silent',
     spec.rows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
       .map((r) => ({ spec: r.name, warns: r.warns, note: 'the default spec is what every other gate boots — if it warns here, the trial path differs from the real one' })));
+  // §308 landing 5 — a row that DECLARES its warning set (`expect: 'declared'`,
+  // `expectWarns` prefixes) boots exactly that set: a warning beyond it, or a
+  // declared row that did not fire, fails here. The same rule judgePoint
+  // applies to the point tier's own boot of the row (battery-points.mjs
+  // matchDeclaredWarns), so a declared set is held on both boots.
+  gate('spec boots: every point declaring its warning set boots exactly that set',
+    spec.rows.filter((r) => r.expect === 'declared').map((r) => {
+      if (!Array.isArray(r.expectWarns) || !r.expectWarns.length) return { spec: r.name, malformed: 'expect: declared with no expectWarns' };
+      if (!r.alive) return { spec: r.name, dead: true };
+      const m = matchDeclaredWarns(r.expectWarns, r.warns);
+      return m.unmatched.length || m.stale.length ? { spec: r.name, undeclared: m.unmatched, stale: m.stale, declared: r.expectWarns } : null;
+    }).filter(Boolean),
+    `${spec.rows.filter((r) => r.expect === 'declared').length} declaring row(s)`);
 
   // TODO 186 B1 — THE POINT SWEEPS, JUDGED. Each point's restricted payloads
   // are unioned with their base — this run's default (FULL) or the point's
@@ -2020,6 +2051,9 @@ function assemble({
       whole: !points.pr && !restriction,
       points: Object.fromEntries([...pointWhole].map(([name, j]) => [name, {
         q: j.row.q, key: j.row.key, verdict: j.row.verdict, mode: j.row.mode, changed: j.row.changed,
+        // §308 landing 5 — the declared warning set the row booted with, so the
+        // validated-configs evidence written from this file can name it.
+        ...(j.row.declaredWarns ? { declaredWarns: j.row.declaredWarns } : {}),
         digests: j.digests, result: j.merged,
       }])),
     };
@@ -2247,7 +2281,7 @@ async function runPointTier(browser, base, { stored, incremental, owned = SWEEP_
   const deadline = POINTS_PR ? tierT0 + POINT_PR_BUDGET_MS : null;
   const checkCode = pointsCodeDigest();
   const plan = owned.map((point) => ({ point, ...decidePointMode({ name: point.name, stored, checkCode, incremental }) }));
-  console.log(`point sweeps (${plan.length} silent spec points${POINTS_PR ? `, PR ceiling ${secs(POINT_PR_BUDGET_MS)} of wall` : ', full, no ceiling'})…`);
+  console.log(`point sweeps (${plan.length} spec points, silent or declaring their warnings${POINTS_PR ? `, PR ceiling ${secs(POINT_PR_BUDGET_MS)} of wall` : ', full, no ceiling'})…`);
   for (const p of plan) console.log(`  ${p.point.name.padEnd(16)} ${p.mode.toUpperCase()} — ${p.why}`);
   // Boots overlap here too: every point boots ?trial=1, which never touches
   // /__state, and the default's digest boot is a virginBoot with its own

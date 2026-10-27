@@ -30,9 +30,18 @@
 // the log — and never reads as clean.
 //
 // WHICH POINTS. Only spec rows declaring `sweep: true`: the non-identity
-// points that boot SILENT. A warning point already says it is out of its
-// window, and recording those as expected-red is B2's (it needs the §127
-// matrix). `reconf=1` boots silent too, but its key IS the default's.
+// points that boot SILENT, or — since §308 landing 5's form-build sweep —
+// that DECLARE their warning set (`expectWarns`, a list of warning prefixes)
+// and boot EXACTLY it: every warning covered by a declared prefix, every
+// prefix met by a warning (`matchDeclaredWarns`, held both ways, so a row
+// whose warning stops firing is stale and fails rather than lingering as a
+// claim). Why it exists: every FORM build carries two rows (§186's form-case
+// fit, §261's depth cap) that are filed debt about the case, not about the
+// build being out of a window, so a judge that read any warning as 'warns'
+// could never let a form build join the validated set however clean its
+// sweeps came back. An UNDECLARED warning point still says it is out of its
+// window and reads 'warns'; recording those as expected-red is B2's (it needs
+// the §127 matrix). `reconf=1` boots silent too, but its key IS the default's.
 //
 // WHICH CHECKS. `inspection`, `clearances`, `undeclaredClearance` — between
 // them every unit pair is classified. The STOP CONDITION is TODO 186's: a
@@ -66,6 +75,19 @@ export const POINTS_FORMAT_VERSION = 1;
 
 // A stored point whose verdict produced WHOLE payloads may be a union base.
 const WHOLE = new Set(['clean', 'finding']);
+
+// A declared warning set against the warnings a boot produced, both ways:
+// `unmatched` are warnings no declared prefix covers (the point warns beyond
+// its declaration), `stale` are declared prefixes no warning met (the
+// declaration outlived its row). Prefixes, not whole texts, because a row
+// quotes its measured numbers and those move with the metal; the prefix is
+// the row's NAME. Exported so the spec tier and probe-186-points hold the
+// same rule.
+export function matchDeclaredWarns(declared, warns) {
+  const unmatched = warns.filter((w) => !declared.some((p) => w.startsWith(p)));
+  const stale = declared.filter((p) => !warns.some((w) => w.startsWith(p)));
+  return { unmatched, stale };
+}
 
 // FULL or INCREMENTAL, decided from the stored file before anything boots.
 // `stored` is the parsed points file or null; `incremental` is false on every
@@ -162,7 +184,8 @@ export async function sweepPoint({ browser, base, point, mode, against, bootInTu
 //
 //   'clean'    booted silent, every check unioned, every gate empty
 //   'finding'  a gate predicate is non-empty — TODO 186's stop condition
-//   'warns'    booted with warnings: not a B1 point this run
+//   'warns'    booted with warnings it did not declare, or declared a warning
+//              that did not fire (`why` says which): not a B1 point this run
 //   'skipped'  the PR ceiling ran out — unverified THIS run, never clean
 //   'broken'   never ran, errored, or could not be judged; the harness gates it
 //
@@ -177,6 +200,10 @@ export function judgePoint(point, got, { defaults, entry }) {
   if (got.skipped) return { row: { ...row, verdict: 'skipped', why: got.skipped } };
   if (got.error) return { row: { ...row, verdict: 'broken', why: got.error } };
   Object.assign(row, { key: got.config?.key ?? null, changed: got.changed, absentHere: got.absentHere, warns: got.warns.length, perCheck: {} });
+  if (point.expectWarns) {
+    const m = matchDeclaredWarns(point.expectWarns, got.warns);
+    Object.assign(row, { declaredWarns: point.expectWarns, warnsUndeclared: m.unmatched, warnsStale: m.stale });
+  }
   const changed = new Set(got.changed);
   const merged = {};
   let failing = 0;
@@ -200,7 +227,17 @@ export function judgePoint(point, got, { defaults, entry }) {
     failing += fails.length;
     row.perCheck[name] = { ms: got.checks[name].ms, fails: fails.slice(0, 20), failCount: fails.length, note: gate.note?.(merged[name]) };
   }
-  if (row.warns) return { row: { ...row, verdict: 'warns' } };
+  if (point.expectWarns) {
+    // Declared set, held both ways. A silent boot under a declaration is the
+    // declaration gone stale, and reads here rather than as clean.
+    if (row.warnsUndeclared.length || row.warnsStale.length) {
+      const why = [
+        ...(row.warnsUndeclared.length ? [`${row.warnsUndeclared.length} warning(s) beyond the declared set: ${row.warnsUndeclared.map((w) => w.slice(0, 120)).join(' | ')}`] : []),
+        ...(row.warnsStale.length ? [`${row.warnsStale.length} declared warning(s) did not fire (the declaration is stale): ${row.warnsStale.join(' | ')}`] : []),
+      ].join('; ');
+      return { row: { ...row, verdict: 'warns', why } };
+    }
+  } else if (row.warns) return { row: { ...row, verdict: 'warns' } };
   if (!row.key) return { row: { ...row, verdict: 'broken', why: 'the point reported no __clock.config key' } };
   return { row: { ...row, verdict: failing ? 'finding' : 'clean' }, merged, digests: got.digests };
 }
@@ -212,5 +249,11 @@ export function evidenceOf(row) {
   return `battery (TODO 186 B1): full point sweep — inspection, clearances and undeclaredClearance restricted to the `
     + `${row.changed.length} unit(s) this point changes against the default [${row.changed.join(', ')}] over every axis, `
     + 'unioned with the default build\'s full run: 0 FORBIDDEN, 0 clearance violations, 0 undeclared pairs under CLEAR_MARGIN; '
-    + 're-verified every run (incrementally on a PR)';
+    + 're-verified every run (incrementally on a PR)'
+    // A row that boots with declared warnings says so in its own evidence: the
+    // sweep is a claim about collisions, and the warnings are filed debt the
+    // SPEC_POINTS row names, not a clean boot.
+    + (row.declaredWarns?.length
+      ? `; boots with exactly its ${row.declaredWarns.length} declared boot warning(s) [${row.declaredWarns.join(' | ')}] — filed debt named on its SPEC_POINTS row, held both ways every run, and no collision`
+      : '');
 }
