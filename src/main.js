@@ -61623,6 +61623,10 @@ window.__clock = {
     return { law: k.reserveWellLaw, r: s ? s.r : k.reserveWellR, halfDeg: s ? s.halfRad / DEG2RAD : null, hubR: s?.hubR, binds: s?.binds, handInset: s?.handInset,
       train: tr && { p1: tr.p1, w2: tr.w2, idlers: tr.idlers, idlerTeeth: tr.idlerTeeth, maxTip: tr.maxTip, short: tr.short, m1: tr.m1 }, warns };
   },
+  // §313 — the reserve train as cut, on every build: its station (dial-local), the counts and the idlers
+  reserveTrain: Object.freeze({ station: { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveStationR }, p0: rsvTeethP0, w1: rsvTeethW1, p1: rsvTeethP1, w2: rsvTeethW2,
+    idlers: RSV_IDLERS, idlerTeeth: RSV_IDLER_T, module1: rsvModule1, swingDeg: rsvSwing / DEG2RAD }),
+  armingFixedPoint: Object.freeze({ key: ALARM_ARR_KEY, quoted: ALARM_PINB_SEAT_MN, tabled: ALARM_PINB_SEAT_FIXED[ALARM_ARR_KEY] !== undefined }),
   // §308 L4 option B — the reserve's fan well and the train the corner chose (null off the sector path)
   reserveSector: reserveSector ? { r: reserveSector.r, halfDeg: reserveSector.halfRad / DEG2RAD, hubR: reserveSector.hubR,
     midDeg: reserveSector.midRad / DEG2RAD, binds: reserveSector.binds, rRail: reserveSector.rRail, terms: reserveSector.extent.terms,
