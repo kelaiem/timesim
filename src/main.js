@@ -50,7 +50,7 @@ import {
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CASE_LUG_T, caseLugPlan,                                  // §190/§280: the lug/bar stock and the lug's one outline law — the schematic tier draws the same metal makeCase cuts
-  caseShapeOf, fitCaseShape, convexHull2, PLATE_RIM_MARGIN, FORM_ACTION_GROUPS, FORM_FRAME_UNITS,              // §307/§308: the case shape library — plates, dial and case read ONE law under ?case=<kind>
+  caseShapeOf, fitCaseShape, convexHull2, PLATE_RIM_MARGIN, formShapeOf, formShapeOpts, fitFittedCaseSteps, shapeArea, solveFittedBack, FORM_ACTION_GROUPS, FORM_FRAME_UNITS,              // §307/§308: the case shape library — plates, dial and case read ONE law under ?case=<kind>
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -2798,7 +2798,7 @@ const KEYLESS_INPUTS = {
   ...(RSV_SECTOR_ON ? { rsvSector: { extentAt: rsvSectorExtentAt, rimMargin: PLATE_RIM_MARGIN } } : {}),   // §308 L4 option B
   ...(SPEC.rsvAzDeg !== null && SPEC.caseShape ? { faceInset: (() => {
     if (!SPEC.formRectSpec) return () => Infinity;
-    const sh = caseShapeOf(SPEC.caseShape, { xMin: SPEC.formRectSpec[0], xMax: SPEC.formRectSpec[1], yMin: SPEC.formRectSpec[2], yMax: SPEC.formRectSpec[3] });
+    const sh = formShapeOf(SPEC.caseShape, SPEC.formRectSpec);
     return (x, y) => sh.inset(P.dial.x - x, P.dial.y + y);
   })() } : {}),
   // §98 — the alarm corner's radius, same null rule.
@@ -2860,9 +2860,7 @@ const {
 // stands in, the first boot's guess. The rect's and the tonneau's corner
 // radius is the rim margin, formPlate's own law.
 const FORM = !SPEC.caseShape ? null
-  : caseShapeOf(SPEC.caseShape, SPEC.formRectSpec
-    ? { xMin: SPEC.formRectSpec[0], xMax: SPEC.formRectSpec[1], yMin: SPEC.formRectSpec[2], yMax: SPEC.formRectSpec[3] }
-    : formPlate);
+  : formShapeOf(SPEC.caseShape, SPEC.formRectSpec, formPlate);
 // §307 — AN OPENING MUST LIE INSIDE THE PLATE IT IS CUT IN. The round plates
 // carry openings sited off the ROUND outline — the §186 rim's clamp bores at
 // R_CLAMP, slots and windows that run to the circle's edge — and under the
@@ -19691,7 +19689,7 @@ await breathe(159);
 // round, the outer its exact parallel at one gauge, sixty rungs across their
 // shortest span where the hands' rays read them — one derivation the print
 // paints, the minute hand is cut to and the probe re-measures.
-const FORM_DIAL = FORM ? caseShapeOf(FORM.kind, { xMin: P.dial.x - FORM.xMax, xMax: P.dial.x - FORM.xMin, yMin: FORM.yMin - P.dial.y, yMax: FORM.yMax - P.dial.y }) : null;
+const FORM_DIAL = FORM ? caseShapeOf(FORM.kind, { xMin: P.dial.x - FORM.xMax, xMax: P.dial.x - FORM.xMin, yMin: FORM.yMin - P.dial.y, yMax: FORM.yMax - P.dial.y }, formShapeOpts(FORM)) : null;
 const DIAL_TRACK = FORM ? G.dialTrack(FORM_DIAL, dialRadius) : null;
 if (DIAL_TRACK) {
   // The solver bounded both wells by the ROUND inner rail (printFrame above):
@@ -45154,6 +45152,7 @@ panel.innerHTML = `
           <option value="rect">Rectangular</option>
           <option value="cushion">Cushion</option>
           <option value="tonneau">Tonneau</option>
+          <option value="fitted">Fitted tonneau</option>
         </select>
       </div>
       <!-- §23: ADVANCED — every control below is GENERATED from
@@ -48595,6 +48594,18 @@ const BACK_ENVELOPE = await (async () => {
   // bins to the last digit before it prices anything with them.
   const unitBins = new Map();
   let formBeyond = -Infinity;   // §307 landing 2 — see `take`
+  // §317 — THE FITTED BACK'S PLAN: on the fitted tonneau the same walk keeps
+  // its scores on an XY GRID as well (one CLEAR_MARGIN a cell — the bins' own
+  // §234 rule, so metal a cell away cannot govern), over the fitted box grown
+  // by the rim margin; CASE_DIMS solves the back's raised step off it. Every
+  // other build walks exactly as before.
+  const FB_CELL = CLEAR_MARGIN;
+  const FB_UNITS = new Map(BACK_SWEPT_REGIONS.map((g) => [g.unit, []]));   // a swept row's unit: its whole plan, by cell
+  const FB = FORM?.kind === 'fitted' ? (() => {
+    const x0 = FORM.xMin - PLATE_RIM_MARGIN, y0 = FORM.yMin - PLATE_RIM_MARGIN;
+    const nx = Math.ceil((FORM.xMax - FORM.xMin + 2 * PLATE_RIM_MARGIN) / FB_CELL), ny = Math.ceil((FORM.yMax - FORM.yMin + 2 * PLATE_RIM_MARGIN) / FB_CELL);
+    return { x0, y0, nx, ny, z: new Float32Array(nx * ny).fill(-Infinity), out: -Infinity };
+  })() : null;
   // Per-mesh unit attribution, so each sample carries its unit's declared
   // allowance: score = z + allowance(unit). The bin keeps the max SCORE —
   // exact for the model "each unit's metal may stand its allowance above
@@ -48634,6 +48645,13 @@ const BACK_ENVELOPE = await (async () => {
     const taken = idx ? new Uint8Array(p.count) : null;
     const take = (pt) => {
       const r = Math.hypot(pt.x, pt.y);
+      if (FB) {
+        const i = Math.floor((pt.x - FB.x0) / FB_CELL), j = Math.floor((pt.y - FB.y0) / FB_CELL), sc = pt.z + allow;
+        if (i >= 0 && j >= 0 && i < FB.nx && j < FB.ny) { const k = j * FB.nx + i; if (sc > FB.z[k]) FB.z[k] = sc; }
+        else if (sc > FB.out) FB.out = sc;   // past the grid: the through-case parts (stems, crowns), which no back stands over
+        const plan = unit && FB_UNITS.get(unit);
+        if (plan) plan.push(pt.x, pt.y);
+      }
       // §307 landing 2 — a form plate's corners stand past the round case's
       // R_OUT (the rectangle's half-diagonal), where no bin reaches; the form
       // case's flat back covers them all the same, so their tallest score is
@@ -48823,6 +48841,11 @@ const BACK_ENVELOPE = await (async () => {
     unitBins: Object.fromEntries([...unitBins].map(([u, a]) => [u, a.map((z) => (z === -Infinity ? null : z))])),
     regions: BACK_SWEPT_REGIONS,
     ...(FORM ? { formBeyond } : {}),
+    ...(FB ? { fittedGrid: { ...FB, cell: FB_CELL, unitPlans: Object.fromEntries([...FB_UNITS].map(([u, a]) => {
+      const n = a.length / 2, xs = new Float64Array(n), ys = new Float64Array(n);
+      for (let i = 0; i < n; i++) { xs[i] = a[2 * i]; ys[i] = a[2 * i + 1]; }
+      return [u, n >= 3 ? convexHull2(xs, ys, n) : []];
+    })) } } : {}),
   };
 })();
 
@@ -48890,7 +48913,10 @@ const CASE_DIMS = (() => {
   {
     let top = -Infinity, owner = null;
     for (const b of envBins) if (b.z !== null && b.r1 > skirtID && b.r0 < R_BORE_BACK && b.z > top) { top = b.z; owner = b.owner; }
-    if (owner && /^Alarm (gong|hammer)/.test(owner) && top >= clampHeadTop)
+    // (not under FORM — §307's rule for the skirt's other asserts: the form case
+    // builds no skirt, so no ring pays for one; §317's fitted back is the first
+    // form back low enough over the strike group for this band to read the hammer)
+    if (!FORM && owner && /^Alarm (gong|hammer)/.test(owner) && top >= clampHeadTop)
       console.warn(`§198: the caseback skirt's floor is governed by ${owner} at ${top.toFixed(3)} — the ring is paying `
         + 'for case thickness of its own');
     if (GONG_BAND_TOP + CLEAR_MARGIN > zSkirtBot + 1e-9)
@@ -48961,31 +48987,6 @@ const CASE_DIMS = (() => {
   const zFormBack = FORM
     ? Math.max(envMaxOver(0, CASE_R_OUT), BACK_ENVELOPE.formBeyond) + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD
     : null;
-  const zMidBack = FORM ? zFormBack : Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
-  // §278 landing 2 — the strike's crank was cut under a ceiling derived from
-  // THIS skirt arm (STRIKE_SKIRT_ARM, hoisted); held both ways: the skirt the
-  // case measures is the one assumed, and the pane floor no longer governs.
-  // §307 landing 2 — not under FORM: these hold the strike's crank to the
-  // round case's SKIRT, which the form case does not build; its flat back is
-  // derived above to clear every metal, the crank's included, by the margin.
-  if (!FORM && Math.abs((zSkirtBot + CASE_CLAMP_ENG) - STRIKE_SKIRT_ARM) > 1e-9)
-    console.warn(`§278: the skirt arm measures ${(zSkirtBot + CASE_CLAMP_ENG).toFixed(6)}, the strike's crank was cut under ${STRIKE_SKIRT_ARM.toFixed(6)} — re-derive the crank`);
-  if (!FORM && zPaneFloor > STRIKE_SKIRT_ARM + 1e-9)
-    console.warn(`§278: the pane floor ${zPaneFloor.toFixed(6)} stands over the skirt arm ${STRIKE_SKIRT_ARM.toFixed(6)} — metal outboard of the aperture governs the back again`);
-  // The bore wall must still contain the pusher's bore window whole
-  // (§186's boredProfiles carries the degenerate-piece assert; this is the
-  // same constraint stated where the number is born).
-  const pusherApD = CASE_PUSHER_D / 2 + G.TUBE_WALL;
-  const zPusherHi = alarmPusherGroup.position.z + pusherApD;
-  if (zMidBack < zPusherHi + CLEAR_MARGIN)
-    console.warn(`§187: the band's back face ${zMidBack.toFixed(3)} sits within CLEAR_MARGIN of the pusher `
-      + `window's top ${zPusherHi.toFixed(3)} — the bored piece above the window is degenerate`);
-  // The ring's face plate: lip (0.6) + crystal (0.6) — §3's flush-both-
-  // sides identity, kept for the glass's EDGE band (the raised step stands
-  // proud of this plane by design; the record states the successor
-  // identity: the glass's outer pane's INNER face is flush with the band's
-  // back face).
-  const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
   let formApertureGrow = null, formGlassGrow = null;   // §307 landing 2 — set under FORM below
   // (The glazing channel and the APERTURE it leaves are derived above the
   // band's back face now — TODO 69: the back face reads the aperture.) The
@@ -49040,6 +49041,72 @@ const CASE_DIMS = (() => {
   //    allowance);
   //  · rStep is the outer edge of the outermost bin too tall for the pane,
   //    plus one CLEAR_MARGIN so the step's wall clears the bin's own metal.
+  const pusherApD = CASE_PUSHER_D / 2 + G.TUBE_WALL;
+  const zPusherHi = alarmPusherGroup.position.z + pusherApD;
+  // §317 — THE FITTED BACK (layout.js solveFittedBack): on the fitted tonneau the
+  // back's pane stands at the level that makes the case's interior VOLUME least,
+  // with a raised glass step over the metal taller than that level — the round
+  // case's §187 step, its outline the hull of that metal off the walk's XY grid,
+  // grown by the margin plus the cell's half-diagonal (a sample is its cell's
+  // tallest point, anywhere in the cell). The pane may not come below the pusher
+  // window's top plus the margin (the assert below, stated as a floor here), and
+  // the step's outer wall must stand a margin inside the back's window, which is
+  // the plate's shape grown formApertureGrow. The flat back is a candidate, so the
+  // step is never worse than it. Interior volume is between the crystal's inner
+  // face and the back's inner faces, over the BORE (the plate's shape grown
+  // CASE_CLEAR — the cavity's plan).
+  const FITTED_BACK = FORM?.kind === 'fitted' && BACK_ENVELOPE.fittedGrid ? (() => {
+    const FG = BACK_ENVELOPE.fittedGrid, lift = CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD, zLowMin = zPusherHi + CLEAR_MARGIN;
+    const items = [];
+    for (let j = 0; j < FG.ny; j++) for (let i = 0; i < FG.nx; i++) {
+      const z = FG.z[j * FG.nx + i];
+      if (z >= zLowMin - lift - 1e-3) items.push({ z, pts: [[FG.x0 + (i + 0.5) * FG.cell, FG.y0 + (j + 0.5) * FG.cell]] });
+    }
+    // A DECLARED SWEPT ROW is a radial band (r0..r1 about the movement's origin)
+    // with no azimuth — read in plan it would be the whole ring, and a ring over
+    // the hammer's band covers the movement. It is carried instead over its OWN
+    // UNIT's plan, which is that unit's swept plan for both rows the table holds:
+    // the striking wheel turns on its own arbor (its plan is invariant), and the
+    // hammer's row is its own build-pose top (§198: every hammer bin reads Δ 0 —
+    // its strike swings the head under the rim, out of the scan). A row for a
+    // unit that SWINGS across the plan would need its swept hull here, and that
+    // is the residue the record names.
+    for (const g of BACK_SWEPT_REGIONS) { const h = FG.unitPlans[g.unit]; if (h?.length) items.push({ z: g.z, pts: h }); }
+    const aperture = FORM_SHAPE.grown(formApertureGrow);
+    const zFront = handFront - CASE_CRYSTAL_CLEAR;   // zCrystInner, below
+    // an island's wall stands `grow` off its metal and is a glass thick; two
+    // islands closer than two walls and the margin between them are one
+    const grow = CLEAR_MARGIN + FG.cell * Math.SQRT1_2;
+    const sol = solveFittedBack({ items, zFront, boreArea: shapeArea(FORM_SHAPE.grown(CASE_CLEAR)), lift, grow, glassT: CASE_CRYSTAL_T,
+      join: 2 * (grow + CASE_CRYSTAL_T) + CLEAR_MARGIN, zLowMin,
+      fits: (loop) => loop.every(([x, y]) => aperture.inset(x, y) >= CLEAR_MARGIN) });
+    if (!(Math.abs(sol.zHigh - zFormBack) <= FG.cell))
+      console.warn(`§317: the fitted back's grid reads the tallest metal at ${(sol.zHigh - lift).toFixed(3)} against the envelope's ${(zFormBack - lift).toFixed(3)} — the two readings of one walk have parted`);
+    return sol;
+  })() : null;
+  const zMidBack = FORM ? (FITTED_BACK ? FITTED_BACK.zLow : zFormBack) : Math.max(zSkirtBot + CASE_CLAMP_ENG, zPaneFloor);
+  // §278 landing 2 — the strike's crank was cut under a ceiling derived from
+  // THIS skirt arm (STRIKE_SKIRT_ARM, hoisted); held both ways: the skirt the
+  // case measures is the one assumed, and the pane floor no longer governs.
+  // §307 landing 2 — not under FORM: these hold the strike's crank to the
+  // round case's SKIRT, which the form case does not build; its flat back is
+  // derived above to clear every metal, the crank's included, by the margin.
+  if (!FORM && Math.abs((zSkirtBot + CASE_CLAMP_ENG) - STRIKE_SKIRT_ARM) > 1e-9)
+    console.warn(`§278: the skirt arm measures ${(zSkirtBot + CASE_CLAMP_ENG).toFixed(6)}, the strike's crank was cut under ${STRIKE_SKIRT_ARM.toFixed(6)} — re-derive the crank`);
+  if (!FORM && zPaneFloor > STRIKE_SKIRT_ARM + 1e-9)
+    console.warn(`§278: the pane floor ${zPaneFloor.toFixed(6)} stands over the skirt arm ${STRIKE_SKIRT_ARM.toFixed(6)} — metal outboard of the aperture governs the back again`);
+  // The bore wall must still contain the pusher's bore window whole
+  // (§186's boredProfiles carries the degenerate-piece assert; this is the
+  // same constraint stated where the number is born).
+  if (zMidBack < zPusherHi + CLEAR_MARGIN)
+    console.warn(`§187: the band's back face ${zMidBack.toFixed(3)} sits within CLEAR_MARGIN of the pusher `
+      + `window's top ${zPusherHi.toFixed(3)} — the bored piece above the window is degenerate`);
+  // The ring's face plate: lip (0.6) + crystal (0.6) — §3's flush-both-
+  // sides identity, kept for the glass's EDGE band (the raised step stands
+  // proud of this plane by design; the record states the successor
+  // identity: the glass's outer pane's INNER face is flush with the band's
+  // back face).
+  const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
   const envMaxAll = envMaxOver(0, CASE_R_OUT);
   const zStepUnder = envMaxAll + CLEAR_MARGIN + CASE_GLASS_FLOAT_GUARD;
   const zStepTop = zStepUnder + CASE_CRYSTAL_T;
@@ -49052,10 +49119,13 @@ const CASE_DIMS = (() => {
   // step's wall stood 0.1445 off the cranked tail at the blow — under the
   // margin by the sag at that azimuth.
   rStep = (rStep + CLEAR_MARGIN) / Math.cos(Math.PI / G.CASE_LATHE_SEG);
-  if (rStep > RA - CLEAR_MARGIN)
+  // (§317: the fitted back's islands replace this one round step — solveFittedBack
+  // holds each island's wall inside the window and every sample outside the
+  // islands under the pane — so neither assert reads the fitted build)
+  if (!FITTED_BACK && rStep > RA - CLEAR_MARGIN)
     console.warn(`§187: the glass step's radius ${rStep.toFixed(3)} reaches the aperture ${RA.toFixed(3)} — `
       + 'the raised step no longer fits through its own window; the tall band has outgrown the ring');
-  {
+  if (!FITTED_BACK) {
     const outsideMax = envMaxOver(rStep, CASE_R_OUT);
     if (outsideMax + CLEAR_MARGIN > zMidBack)
       console.warn(`§187: metal outside the glass step (envelope ${outsideMax.toFixed(3)}) stands within `
@@ -49112,6 +49182,11 @@ const CASE_DIMS = (() => {
     skirtOD, skirtID, zSkirtBot,
     apertureR: RA, glassEdgeR: RA_EDGE,
     ...(FORM ? { formApertureGrow, formGlassGrow } : {}),   // §307 landing 2 — the form back's window, a grow of the plate's shape
+    // §317 — the fitted back's raised step: its inner wall (the clearance loop),
+    // its outer wall (one glass thickness out) and its two pane planes
+    ...(FITTED_BACK && !FITTED_BACK.flat ? { formStep: { islands: FITTED_BACK.islands,
+      zStepUnder: FITTED_BACK.zHigh, zStepTop: FITTED_BACK.zHigh + CASE_CRYSTAL_T } } : {}),
+    fittedBack: FITTED_BACK,
     rStep, zStepUnder, zStepTop,
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
     // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
@@ -49259,7 +49334,7 @@ const FORM_COUNTED = (() => {
   });
   return counted;
 })();
-const FORM_FOOTPRINT = (() => {
+const FORM_FOOTPRINT = await (async () => {
   if (!FORM) return null;
   const v = new THREE.Vector3();
   const counted = FORM_COUNTED;
@@ -49286,10 +49361,38 @@ const FORM_FOOTPRINT = (() => {
   const hull = convexHull2(xs, ys, total);
   // …about the HANDS (P.dial, the centre arbor's axis): the case is centred on
   // them as the round case is, and grows to the metal's farther reach either side.
-  const fit = fitCaseShape(FORM.kind, hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y] });
+  //
+  // §317 — THE FITTED TONNEAU starts from that tonneau and frees its aspect, its
+  // ends and its sides' curve and apex (layout.js fitFittedCaseSteps, the least
+  // AREA), each straight end held to the lug pair's outboard reach (makeFormCase's
+  // `need`: the strap's interior span plus one lug, halved, plus half a lug) so
+  // the flat lugs still weld to straight metal. Resumed between its compass
+  // evaluations (§266: one call is ~1 s of search). Its spec carries the two
+  // shape numbers after the bounds, k and tau to 1e-6 — rounded, so the carried
+  // outline is re-checked against the hull below like every other kind's.
+  // the spec's text: bounds to the URL's 0.01 u, a fitted tonneau's k and tau to 1e-6
+  const rectText = (r) => r.map((q, i) => (i < 4 ? q.toFixed(2) : String(Math.round(q * 1e6) / 1e6)));
+  let fit;
+  if (FORM.kind === 'fitted') {
+    const gen = fitFittedCaseSteps(hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y],
+      flatMin: (CASE_LUG_INNER + CASE_LUG_T) / 2 + CASE_LUG_T / 2 });
+    // Handed back on breathe()'s own budget but NOT through a numbered seam: the
+    // boot bar's table (§267) is measured on the DEFAULT build, which never comes
+    // here, so a seam would be a null row — and regenerating the table on this
+    // landing's host was refused by an existing nondeterministic seam (337, whose
+    // stage order is timed). The held-time mark is kept, so §239's accounting
+    // still reads the stretch between yields, not the whole search.
+    for (let r = gen.next(); ; r = gen.next()) {
+      if (r.done) { fit = r.value; break; }
+      const held = performance.now() - breatheMark;
+      if (held > breatheWorstHeld) breatheWorstHeld = held;
+      if (held >= BREATHE_MS) { breatheCount++; await yieldToEventLoop(); breatheMark = performance.now(); }
+    }
+  } else fit = fitCaseShape(FORM.kind, hull, [x0, x1, y0, y1], { margin: M, centre: [P.dial.x, P.dial.y] });
   const fb = fit.shape.bounds;
   const rect = [Math.floor(fb.xMin * 100) / 100, Math.ceil(fb.xMax * 100) / 100,
-    Math.floor(fb.yMin * 100) / 100, Math.ceil(fb.yMax * 100) / 100];
+    Math.floor(fb.yMin * 100) / 100, Math.ceil(fb.yMax * 100) / 100,
+    ...(FORM.kind === 'fitted' ? [Math.round(fit.shape.fitted.k * 1e6) / 1e6, Math.round(fit.shape.fitted.tau * 1e6) / 1e6] : [])];
   // HOLDS: every counted vertex has inset ≥ 0 against the shape actually cut
   // (the hull's worst is every vertex's worst). `margin` is the worst inset —
   // the rim margin the cut leaves the metal, required ≥ PLATE_RIM_MARGIN.
@@ -49298,10 +49401,21 @@ const FORM_FOOTPRINT = (() => {
   const holds = margin >= 0;
   if (!(margin >= M - 1e-3))
     console.warn(`§307/§308: the movement's counted metal stands ${margin.toFixed(3)} u inside the ${FORM.kind} it was cut to (required ≥ the rim margin ${M}) — `
-      + `the fitted ${FORM.kind} is [${rect.map((q) => q.toFixed(2)).join(', ')}] and the plates were cut to [${[FORM.xMin, FORM.xMax, FORM.yMin, FORM.yMax].map((q) => q.toFixed(2)).join(', ')}] — `
-      + `boot with ?formrect=${rect.map((q) => q.toFixed(2)).join(',')}`);
-  return { kind: FORM.kind, metal: [x0, x1, y0, y1], rect, holds, margin, scale: fit.s, hullN: hull.length, counted: total,
-    accuracy: fit.shape.accuracy, mm: [(rect[1] - rect[0]) * UNIT_MM, (rect[3] - rect[2]) * UNIT_MM] };
+      + `the fitted ${FORM.kind} is [${rectText(rect).join(', ')}] and the plates were cut to [${rectText([FORM.xMin, FORM.xMax, FORM.yMin, FORM.yMax, ...(FORM.fitted ? [FORM.fitted.k, FORM.fitted.tau] : [])]).join(', ')}] — `
+      + `boot with ?formrect=${rectText(rect).join(',')}`);
+  // §317 — the plan AREA each outline encloses (layout.js shapeArea, exact), in
+  // mm²: the one actually cut, and on the fitted tonneau the tonneau it was
+  // derived from, so the record reads what the form fit bought.
+  const mm2 = UNIT_MM * UNIT_MM;
+  return { kind: FORM.kind, metal: [x0, x1, y0, y1], rect, holds, margin, scale: fit.s ?? null, hullN: hull.length, counted: total,
+    accuracy: fit.shape.accuracy, mm: [(rect[1] - rect[0]) * UNIT_MM, (rect[3] - rect[2]) * UNIT_MM],
+    areaMm2: shapeArea(FORM) * mm2, fitAreaMm2: shapeArea(fit.shape) * mm2,
+    ...(FORM.kind === 'fitted' ? { fitted: { tonneauAreaMm2: fit.tonneauArea * mm2, tonneauMm: [fit.tonneau.hw * 2 * UNIT_MM, fit.tonneau.hh * 2 * UNIT_MM],
+      k: fit.shape.fitted.k, tau: fit.shape.fitted.tau, handOffMm: fit.handOff * UNIT_MM, flatMm: [fit.shape.flatTop * UNIT_MM, fit.shape.flatBot * UNIT_MM], evals: fit.evals,
+      // the volume half (CASE_DIMS.fittedBack): the cavity flat and stepped, in mm³
+      back: CASE_DIMS.fittedBack ? (({ V, Vflat, zLow, zHigh, stepArea, flat, islands }) => ({ volumeMm3: V * mm2 * UNIT_MM, flatVolumeMm3: Vflat * mm2 * UNIT_MM,
+        stepped: !flat, paneZ: zLow, stepZ: zHigh, stepAreaMm2: stepArea * mm2, islands: islands.length }))(CASE_DIMS.fittedBack) : null } } : {}),
+    hull: hull.map(([hx, hy]) => [Math.round(hx * 1e4) / 1e4, Math.round(hy * 1e4) / 1e4]) };
 })();
 // §308 landing 2 — THE REGION MODEL, measured off the counted metal above (so
 // the outline and its regions read one predicate). Every counted mesh is
@@ -61633,6 +61747,7 @@ window.__clock = {
     train: { p0: rsvTeethP0, w1: rsvTeethW1, p1: rsvTeethP1, w2: rsvTeethW2, idlers: RSV_IDLERS, idlerTeeth: RSV_IDLER_T,
       module1: rsvModule1, w2Tip: (rsvModule1 * (rsvTeethW2 + 2)) / 2, maxTip: RSV_FIT_TRAIN?.maxTip, short: RSV_FIT_TRAIN?.short },
     station: { x: RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, r: reserveStationR } } : null,
+  casedDepthMm: CASED_DEPTH_MM,   // §317 — the cased depth §261 holds to its cap, for the instruments
   formFootprint: FORM_FOOTPRINT, form: FORM,  // §307 landing 2 — the measured footprint (§308: the fitted shape) and the shape actually cut
   dialTrack: DIAL_TRACK,                      // §311 — the form face's railroad (null round): rails, rungs, the hand's reach
   dialSpec: DIAL_SPEC,

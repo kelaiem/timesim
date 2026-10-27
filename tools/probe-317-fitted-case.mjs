@@ -1,0 +1,130 @@
+#!/usr/bin/env node
+// §317 — THE FITTED TONNEAU, held: the case archetype derived from the solved tonneau and form-fitted to the
+// least plan AREA (layout.js caseShapeOf 'fitted', fitFittedCase), and its back stepped to the least interior
+// VOLUME (solveFittedBack). Pure Node over layout.js, the measured hull read from tools/data/probe-317-hull.json
+// (`--refresh` re-measures it: one Chromium boot of ?case=fitted at the fixture's spec, through boot-form.mjs).
+//
+//   S  the shape law. S1 at the tonneau's own curvature and tau 0 the fitted shape IS the tonneau (every ray's
+//      exit to 1e-9; the control: tau 0.2 moves it); S2 a grow is the exact offset (every vertex of the shape
+//      grown g reads inset −g to 1e-9) and stays convex; S3 a tau tapers it, the end nearer the apex the wider.
+//   F  the fit, on the measured hull. F1 it holds every hull vertex at the rim margin; F2 both straight ends run
+//      the lug pair's reach; F3 it is TIGHT: each bound pulled in 0.01 u refuses the metal (the control on F1 —
+//      a fit that held by being loose would pass F1 alone); F4 it is a LOCAL MINIMUM: k and yA nudged ±1% and
+//      re-tightened never enclose less; F5 it encloses less than the tonneau it started from, and less than
+//      every other kind's §308 fit (the ranking is printed — the owner's question, measured).
+//   B  the back, on synthetic metal whose answer is known. B1 a slab with two far posts: two islands, the pane
+//      one lift over the slab, the volume the formula's; B2 the control: posts nearer than `join` make one; B3 the flat back is a candidate (posts covering the slab: no step); B4
+//      zLowMin refuses a pane under it; B5 an island too wide for the window (`fits`) is refused.
+// An ACCEPTANCE test: exits non-zero on any failure.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import * as L from '../src/layout.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const FIX = join(ROOT, 'tools/data/probe-317-hull.json');
+let fails = 0;
+const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); if (!cond) fails++; };
+const quiet = (fn) => { const w = console.warn; console.warn = () => {}; try { return fn(); } finally { console.warn = w; } };
+const U = L.UNIT_MM, M = L.PLATE_RIM_MARGIN, mm2 = U * U;
+
+if (process.argv.includes('--refresh')) {
+  const fx = JSON.parse(readFileSync(FIX, 'utf8'));
+  const { bootForm } = await import('./boot-form.mjs');
+  const r = await bootForm(fx.query, '({ dial: __clock.P.dial })');
+  if (!r.ff?.hull) { console.error('refresh: the boot published no hull', r.bootError ?? ''); process.exit(1); }
+  writeFileSync(FIX, JSON.stringify({ ...fx, hull: r.ff.hull, metal: r.ff.metal, centre: [r.extra.dial.x, r.extra.dial.y] }));
+  console.log(`refreshed ${FIX}: ${r.ff.hull.length} hull vertices`);
+}
+
+// ── S: the shape law ────────────────────────────────────────────────────────────────────────────────────────
+{
+  const box = { xMin: -40, xMax: 40, yMin: -45, yMax: 47 };
+  const t = L.caseShapeOf('tonneau', box), f = L.caseShapeOf('fitted', box), f2 = L.caseShapeOf('fitted', box, { fitted: { k: f.fitted.k, tau: 0.2 } });
+  let d = 0, d2 = 0;
+  for (let i = 0; i < 720; i++) { const az = (i * Math.PI) / 360; d = Math.max(d, Math.abs(t.exit(az) - f.exit(az))); d2 = Math.max(d2, Math.abs(t.exit(az) - f2.exit(az))); }
+  ok('S1 at the tonneau\'s curvature and tau 0 the fitted shape is the tonneau', d < 1e-9, `max exit difference ${d.toExponential(2)}`);
+  ok('S1 control: tau 0.2 moves the outline', d2 > 0.1, `max exit difference ${d2.toFixed(3)}`);
+  let e = 0, cv = true;
+  for (const g of [2.5, 5.278, -3]) {
+    const gg = f2.grown(g), lp = gg.loop();
+    for (const [x, y] of lp) e = Math.max(e, Math.abs(f2.inset(x, y) + g));
+    cv = cv && L.loopConvexity(lp).ok;
+  }
+  ok('S2 a grow is the exact offset, and convex', e < 1e-9 && cv, `worst |inset + g| ${e.toExponential(2)}`);
+  ok('S3 a tau tapers it: the end nearer the apex is the wider', f2.flatTop > f2.flatBot && f.flatTop === f.flatBot,
+    `half-runs ${f2.flatTop.toFixed(3)} / ${f2.flatBot.toFixed(3)} at tau 0.2, ${f.flatTop.toFixed(3)} both at 0`);
+}
+
+// ── F: the fit, on the measured hull ────────────────────────────────────────────────────────────────────────
+const fx = JSON.parse(readFileSync(FIX, 'utf8'));
+const { hull, metal, centre } = fx;
+const NEED = (20 / U + 1 / U) / 2 + 0.5 / U;   // makeFormCase's lug reach: (CASE_LUG_INNER + CASE_LUG_T)/2 + CASE_LUG_T/2
+{
+  const fit = L.fitFittedCase(hull, metal, { centre, flatMin: NEED });
+  const sh = fit.shape, p = fit.params;
+  const worst = (s) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, s.inset(x, y)); return w; };
+  ok('F1 the fit holds every hull vertex at the rim margin', fit.worst >= M - 1e-9, `worst inset ${fit.worst.toFixed(6)} (need ≥ ${M})`);
+  ok('F2 both straight ends run the lug pair\'s reach', sh.flatTop >= NEED - 1e-9 && sh.flatBot >= NEED - 1e-9,
+    `half-runs ${(sh.flatTop * U).toFixed(3)} / ${(sh.flatBot * U).toFixed(3)} mm against ${(NEED * U).toFixed(3)}`);
+  const make = (q) => { const b = (q.y1 - q.y0) / 2, cy = (q.y0 + q.y1) / 2;
+    return quiet(() => L.caseShapeOf('fitted', { xMin: centre[0] - q.a, xMax: centre[0] + q.a, yMin: q.y0, yMax: q.y1 }, { fitted: { k: q.k, tau: (q.yA - cy) / b } })); };
+  const feasible = (q) => { const s = make(q); return s.flatTop >= NEED - 1e-9 && s.flatBot >= NEED - 1e-9 && worst(s) >= M - 1e-9; };
+  const tight = [['a', -0.01], ['y1', -0.01], ['y0', 0.01]].map(([k, d]) => [k, feasible({ ...p, [k]: p[k] + d })]);
+  ok('F3 the fit is tight: each bound pulled in 0.01 u refuses the metal', tight.every(([, f]) => !f), tight.map(([k, f]) => `${k} ${f ? 'still holds' : 'refused'}`).join(', '));
+  // a local minimum: the solve's own law re-run from nudged starting points
+  let worse = Infinity;
+  for (const [k, s] of [['k', 1.01], ['k', 0.99], ['yA', 1]]) for (const sgn of [1, -1]) {
+    const q = { ...p, [k]: k === 'k' ? p.k * (sgn > 0 ? s : 2 - s) : p.yA + sgn * 0.01 * (p.y1 - p.y0) };
+    // re-tighten q's bounds: the bisection fitFittedCase runs, for a fixed (k, yA)
+    let r = { ...q };
+    for (let pass = 0; pass < 40; pass++) for (const [b, dir] of [['a', 1], ['y1', 1], ['y0', -1]]) {
+      let hi = r[b]; let st = 0.05; let n = 0;
+      while (!feasible({ ...r, [b]: hi }) && n++ < 80) { hi += dir * st; st *= 2; }
+      let lo = hi - dir * 0.05; st = 0.05; n = 0;
+      while (feasible({ ...r, [b]: lo }) && n++ < 80) { hi = lo; st *= 2; lo -= dir * st; }
+      while (Math.abs(hi - lo) > 1e-7) { const m = (lo + hi) / 2; if (feasible({ ...r, [b]: m })) hi = m; else lo = m; }
+      r = { ...r, [b]: hi };
+    }
+    worse = Math.min(worse, L.shapeArea(make(r)) - fit.area);
+  }
+  ok('F4 the fit is a local minimum: k and yA nudged and re-tightened never enclose less', worse > -1e-6 * fit.area, `least change ${(worse * mm2).toFixed(4)} mm²`);
+  const rows = ['rect', 'cushion', 'tonneau'].map((k) => [k, L.shapeArea(L.fitCaseShape(k, hull, metal, { centre }).shape)]);
+  let A = 0, P = 0; for (let i = 0; i < hull.length; i++) { const [ax, ay] = hull[i], [bx, by] = hull[(i + 1) % hull.length]; A += ax * by - ay * bx; P += Math.hypot(bx - ax, by - ay); }
+  const bound = A / 2 + P * M + Math.PI * M * M;
+  console.log('      plan areas on the measured hull (hands centred across the width):');
+  for (const [k, a] of rows) console.log(`        ${k.padEnd(10)} ${(a * mm2).toFixed(1).padStart(7)} mm²  (§308 fit)`);
+  console.log(`        ${'fitted'.padEnd(10)} ${(fit.area * mm2).toFixed(1).padStart(7)} mm²  ${(2 * sh.hw * U).toFixed(2)} × ${(2 * sh.hh * U).toFixed(2)} mm, k ${sh.fitted.k.toFixed(4)}, tau ${sh.fitted.tau.toFixed(4)}, hands ${(fit.handOff * U).toFixed(3)} mm off the 12–6 middle`);
+  console.log(`        ${'bound'.padEnd(10)} ${(bound * mm2).toFixed(1).padStart(7)} mm²  (the hull grown by the rim margin: no convex case is smaller)`);
+  ok('F5 the fitted tonneau encloses less than the tonneau it started from and every other kind\'s §308 fit',
+    rows.every(([, a]) => fit.area < a) && Math.abs(fit.tonneauArea - rows[2][1]) < 1e-9 && fit.area > bound,
+    `${(fit.area * mm2).toFixed(1)} mm² against the tonneau's ${(fit.tonneauArea * mm2).toFixed(1)} (−${(100 * (1 - fit.area / fit.tonneauArea)).toFixed(1)}%)`);
+}
+
+// ── B: the back, on synthetic metal ─────────────────────────────────────────────────────────────────────────
+{
+  const cell = 0.5, items = [];
+  const slab = (x0, x1, y0, y1, z) => { for (let x = x0; x <= x1; x += cell) for (let y = y0; y <= y1; y += cell) items.push({ z, pts: [[x, y]] }); };
+  slab(-30, 30, -30, 30, 10);                 // the plate: 60 × 60 u at z 10
+  slab(-25, -23, -1, 1, 12); slab(23, 25, -1, 1, 12);   // two posts, 46 u apart, 2 u over it
+  const base = { zFront: 0, boreArea: 3600, lift: 0.15, grow: 0.3, glassT: 1.58, join: 2 * (0.3 + 1.58) + 0.15 };
+  const r = L.solveFittedBack({ ...base, items, res: cell });
+  const islA = r.islands.reduce((s, is) => s + Math.abs((() => { let a = 0; const p = is.inner; for (let i = 0; i < p.length; i++) a += p[i][0] * p[(i + 1) % p.length][1] - p[i][1] * p[(i + 1) % p.length][0]; return a / 2; })()), 0);
+  const Vf = 3600 * (r.zLow - 0) + islA * (r.zHigh - r.zLow);
+  ok('B1 two far posts make two islands, the pane one lift over the slab, V the formula\'s', r.islands.length === 2 && Math.abs(r.zLow - 10.15) < 1e-9 && Math.abs(r.V - Vf) < 1e-6 && r.V < r.Vflat,
+    `${r.islands.length} islands, pane ${r.zLow.toFixed(3)}, V ${r.V.toFixed(1)} against flat ${r.Vflat.toFixed(1)}`);
+  const near = []; for (const it of items) if (it.z === 10 || it.pts[0][0] < 0) near.push(it);
+  for (let x = -20; x <= -18; x += cell) for (let y = -1; y <= 1; y += cell) near.push({ z: 12, pts: [[x, y]] });
+  const one = L.solveFittedBack({ ...base, items: near, res: cell });
+  ok(`B2 control: posts 3 u apart (join ${base.join.toFixed(2)}) make ONE island`, one.islands.length === 1, `${one.islands.length} island(s)`);
+  const cover = []; for (let x = -30; x <= 30; x += 3) for (let y = -30; y <= 30; y += 3) cover.push({ z: 12, pts: [[x, y]] });
+  const fl = L.solveFittedBack({ ...base, res: cell, items: [...items.filter((it) => it.z === 10), ...cover], fits: (lp) => lp.every(([x, y]) => Math.abs(x) < 29 && Math.abs(y) < 29) });
+  ok('B3 the flat back is a candidate: posts covering the slab leave no step', fl.flat && fl.V === fl.Vflat, `flat ${fl.flat}`);
+  const lo = L.solveFittedBack({ ...base, items, res: cell, zLowMin: 11 });
+  ok('B4 zLowMin refuses a pane under it', lo.zLow >= 11 || lo.flat, `pane ${lo.zLow.toFixed(3)}`);
+  const narrow = L.solveFittedBack({ ...base, items, res: cell, fits: (lp) => lp.every(([x]) => Math.abs(x) < 20) });
+  ok('B5 an island outside the window is refused', narrow.flat, `flat ${narrow.flat}`);
+}
+
+console.log(fails ? `${fails} FAILED` : 'all PASS');
+process.exit(fails ? 1 : 0);

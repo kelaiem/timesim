@@ -108,11 +108,15 @@ export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, th
 // any of its keys; the ROUND build keeps the designed train (it is the one the battery sweeps, and nothing caps
 // its width). Written out as numbers, exactly as a URL would carry them, so a form build and the same build
 // spelled in full share one configKey.
+// §308/§317 — the kinds of the shape library a CASE may take (the circle is
+// the round build, never named): one list, read by SPEC and by every tool that
+// walks the kinds.
+export const FORM_KINDS = Object.freeze(['rect', 'cushion', 'tonneau', 'fitted']);
 export const FORM_ARRANGEMENT = Object.freeze({ barrelStepDeg: 0, rsvAzDeg: 0, alarmModAzDeg: 60, rsvIdlers: 6 });
 export const SPEC = (() => {
   const raw0 = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const given = (v) => v !== undefined && v !== null && v !== '';
-  const raw = ['rect', 'cushion', 'tonneau'].includes(raw0.caseShape) && !Object.keys(FORM_ARRANGEMENT).some((k) => given(raw0[k]))
+  const raw = FORM_KINDS.includes(raw0.caseShape) && !Object.keys(FORM_ARRANGEMENT).some((k) => given(raw0[k]))
     ? { ...raw0, ...FORM_ARRANGEMENT } : raw0;
   const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
   // Reserve clamped to what the STRUCTURE accepts: below ~12 h the fusee
@@ -300,8 +304,9 @@ export const SPEC = (() => {
   // typed — it is a function of the arrangement, which is what
   // tools/form-layout.mjs searches over the §33 knobs to minimise.
   // §308 — the kinds of layout.js's shape library (caseShapeOf) a case may
-  // take: 'rect', 'cushion', 'tonneau'. Anything else is round.
-  const caseShape = ['rect', 'cushion', 'tonneau'].includes(raw.caseShape) ? raw.caseShape : null;
+  // take: FORM_KINDS ('rect', 'cushion', 'tonneau', and §317's 'fitted').
+  // Anything else is round.
+  const caseShape = FORM_KINDS.includes(raw.caseShape) ? raw.caseShape : null;
   // §307 landing 2 — THE MEASURED FORM RECTANGLE, `xMin,xMax,yMin,yMax` in
   // movement units: the footprint of the whole built movement (every part the
   // build placed inside the round case's bore, the case-path gong excepted)
@@ -313,8 +318,11 @@ export const SPEC = (() => {
   // Absent: ?case=rect falls back to the solvers' `formPlate`. Malformed: null.
   const formRectSpec = (() => {
     if (raw.formRectSpec === undefined) return null;
+    // §317 — six numbers for the fitted tonneau: the bounds, then its side
+    // curvature k (> 0) and apex height tau (caseShapeOf's opts.fitted)
     const v = String(raw.formRectSpec).split(',').map(Number);
-    return (v.length === 4 && v.every(Number.isFinite) && v[0] < v[1] && v[2] < v[3]) ? Object.freeze(v) : null;
+    return ((v.length === 4 || (v.length === 6 && caseShape === 'fitted' && v[4] > 0))
+      && v.every(Number.isFinite) && v[0] < v[1] && v[2] < v[3]) ? Object.freeze(v) : null;
   })();
   // §310 landing 2 — THE GONG'S SEAT on a form build: 'bar' (the default under
   // ?case=, so null means it there), 'spiral' (the alternative), or 'arc' (the
@@ -3703,6 +3711,51 @@ export function caseShapeOf(kind, box, opts = {}) {
       } });
     return Object.freeze({ ...s, flatHalf: kx });   // the straight end's half-run, where a flat lug may weld
   }
+  if (kind === 'fitted') {
+    // §317 — THE FITTED TONNEAU: the tonneau's construction with the two
+    // freedoms the barrel holds fixed set free — the side arcs' CURVATURE
+    // (opts.fitted.k = a/R, the half-width over the side's radius; the
+    // tonneau's is 2·bow/(bow² + (b/a)²)) and the HEIGHT of their apex
+    // (opts.fitted.tau: the apex stands tau·b above the box's centre; the
+    // tonneau's is 0). Each side is the circle tangent to x = cx ± a at
+    // (cx ± a, yA), so with tau ≠ 0 the ends are cut at different heights on
+    // it and the barrel TAPERS — the end nearer the apex the wider. The two
+    // ends stay straight (the lugs weld flat to them, form-case.js), each at
+    // its own bound, so the box's yMin/yMax carry them independently; the
+    // shape stays mirror-symmetric about x = cx (the hands' line, which is
+    // what the dial's Y-flip needs, and the strap's). Corners rounded tangent
+    // to side and end at opts.cornerR, the tonneau's rule. Exact (arcs and
+    // segments); grow g adds g to R, to rc and to both ends and keeps every
+    // centre (k and tau re-expressed on the grown box), the tonneau's closure.
+    const rc = Math.max(0, Math.min(opts.cornerR ?? PLATE_RIM_MARGIN, b));
+    const { k = 2 * TONNEAU_BOW / (TONNEAU_BOW ** 2 + (b / a) ** 2), tau = 0 } = opts.fitted ?? {};
+    const R = a / k, yA = cy + tau * b, sx = a - R;               // the right side's centre (cx + sx, yA); the left's mirrored
+    const kxAt = (yc) => sx + Math.sqrt((R - rc) ** 2 - (yc - yA) ** 2);   // a corner centre's x (from cx) at height yc
+    const kT = kxAt(yMax - rc), kB = kxAt(yMin + rc);
+    if (!(kT > 0) || !(kB > 0))
+      console.warn(`§317: the fitted tonneau's corner round ${rc.toFixed(3)} u leaves no straight end (half-runs ${kT.toFixed(3)} / ${kB.toFixed(3)} u at the +y / −y ends, required > 0)`);
+    const ang = (yc, kx) => Math.atan2(yc - yA, kx - sx);
+    const pT = ang(yMax - rc, kT), pB = ang(yMin + rc, kB), H = Math.PI / 2;
+    const X = (x) => cx + x;
+    const prims = [
+      { c: [X(sx), yA], r: R, a0: pB, a1: pT },
+      { c: [X(kT), yMax - rc], r: rc, a0: pT, a1: H },
+      { seg: true, a: [X(kT), yMax], b: [X(-kT), yMax] },
+      { c: [X(-kT), yMax - rc], r: rc, a0: H, a1: Math.PI - pT },
+      { c: [X(-sx), yA], r: R, a0: Math.PI - pT, a1: Math.PI - pB },
+      { c: [X(-kB), yMin + rc], r: rc, a0: Math.PI - pB, a1: 3 * H },
+      { seg: true, a: [X(-kB), yMin], b: [X(kB), yMin] },
+      { c: [X(kB), yMin + rc], r: rc, a0: 3 * H, a1: TAU + pB },
+    ];
+    const s = shapeFrom(kind, prims, { segs, maxChord: opts.maxChord ?? 1, cornerR: rc,
+      grown: (g, { cornerR: hold } = {}) => {
+        const a2 = a + g, b2 = b + g;
+        return caseShapeOf('fitted', { xMin: xMin - g, xMax: xMax + g, yMin: yMin - g, yMax: yMax + g },
+          { ...opts, cornerR: hold ?? rc + g, fitted: { k: a2 / (R + g), tau: (yA - cy) / b2 } });
+      } });
+    // flatHalf, the tonneau's word, is the SHORTER end's half-run (where a flat lug may weld at both ends)
+    return Object.freeze({ ...s, flatHalf: Math.min(kT, kB), flatTop: kT, flatBot: kB, fitted: Object.freeze({ k, tau, R, yA }) });
+  }
   if (kind === 'cushion') {
     const n = opts.n ?? CUSHION_N;
     const base = opts.cushion ?? cushionSamples(a, b, n, cx, cy);
@@ -3717,7 +3770,22 @@ export function caseShapeOf(kind, box, opts = {}) {
     return shapeFrom(kind, polyPrims(pts), { segs, accuracy: base.sag,
       grown: (g) => caseShapeOf('cushion', box, { ...opts, cushion: base, cushionGrow: g0 + g }) });
   }
-  throw new Error(`caseShapeOf: unknown kind '${kind}' (circle | rect | cushion | tonneau)`);
+  throw new Error(`caseShapeOf: unknown kind '${kind}' (circle | rect | cushion | tonneau | fitted)`);
+}
+
+// §317 — A FORM SHAPE FROM ITS SPEC: `?formrect=`'s four bounds, and for the
+// fitted tonneau its two further numbers (k, tau), as caseShapeOf's options.
+// `formShapeOpts(shape)` hands a built shape's own options back, so a shape
+// re-made in another frame (the dial's Y-flip, which mirrors x about the
+// hands — the fitted tonneau is mirror-symmetric there — and translates y,
+// which tau, measured from the box's own centre, rides unchanged) is the same
+// outline. Every kind but the fitted tonneau is its box alone.
+export function formShapeOpts(shape) {
+  return shape?.fitted ? { fitted: { k: shape.fitted.k, tau: shape.fitted.tau } } : {};
+}
+export function formShapeOf(kind, spec, fallbackBox) {
+  const box = spec ? { xMin: spec[0], xMax: spec[1], yMin: spec[2], yMax: spec[3] } : fallbackBox;
+  return caseShapeOf(kind, box, kind === 'fitted' && spec?.length === 6 ? { fitted: { k: spec[4], tau: spec[5] } } : {});
 }
 
 // §308 — THE FIT. A shape's size is never typed: given the counted metal (the
@@ -3750,6 +3818,229 @@ export function fitCaseShape(kind, hull, metal, { margin = PLATE_RIM_MARGIN, cen
   while (hi - lo > 1e-9) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; }
   const shape = at(hi);
   return { s: hi, shape, worst: worst(shape) };
+}
+// §317 — THE AREA a shape encloses, exact off its primitives: ½∮(x dy − y dx),
+// a segment contributing ½(aₓb_y − a_yb_x) and an arc of centre c, radius r
+// over a0 → a1 contributing ½[r·cₓ(sin a1 − sin a0) + r·c_y(cos a0 − cos a1)
+// + r²(a1 − a0)]. The cushion's polyline is its own segments, so exact for it.
+export function shapeArea(shape) {
+  let A = 0;
+  for (const p of shape.prims) {
+    if (p.seg) { A += p.a[0] * p.b[1] - p.a[1] * p.b[0]; continue; }
+    const [cx, cy] = p.c, r = p.r;
+    A += r * cx * (Math.sin(p.a1) - Math.sin(p.a0)) + r * cy * (Math.cos(p.a0) - Math.cos(p.a1)) + r * r * (p.a1 - p.a0);
+  }
+  return A / 2;
+}
+// §317 — THE FITTED TONNEAU'S SOLVE: the case archetype DERIVED FROM A SOLVED
+// TONNEAU and then form-fitted to the metal. It starts where §308 stops —
+// fitCaseShape('tonneau', …) about the hands, the barrel at TONNEAU_BOW and the
+// metal box's aspect, scaled until every hull vertex stands the margin inside —
+// and then lets go of what that construction typed: the aspect (the half-width
+// a and each end's own bound, y0 below the hands and y1 above), the sides'
+// curvature k and their apex height yA. The objective is the AREA the outline
+// encloses (shapeArea), which is the case's plan; every candidate is held to
+// the same two laws the tonneau was:
+//   · every hull vertex stands ≥ margin inside (the rim margin — exact on the
+//     hull, every kind being convex);
+//   · each straight end runs ≥ flatMin either side of the centreline, so the
+//     flat lugs weld to straight metal (the caller passes the lug pair's
+//     outboard reach, form-case.js's `need`: a corner round's start inside
+//     it would be §308's "lug stands proud" finding, and a taper that narrowed
+//     an end past it is refused here rather than warned at the build).
+// The x centre stays on the hands (the shape is mirror-symmetric about it —
+// the strap's line, and the dial's Y-flip); the ends do not, so the hands may
+// stand off the 12–6 middle by what the metal asks (reported as `handOff`).
+// The search: for a given (k, yA) the three bounds are TIGHTENED — each, in
+// turn, bisected to the least feasible value with the others held, until a
+// pass moves them by under 1e-6 in sum (each bound's feasibility is monotone:
+// pulling a wall in only removes room; bisection to 1e-7, a thousandth of the
+// URL's 0.01 u resolution) — and (k, yA) are walked by a compass search on the
+// tightened area, steps halved to 1e-5 of k and 1e-4 u. Deterministic; pure.
+export function fitFittedCase(hull, metal, opts) { return drainFit(fitFittedCaseSteps(hull, metal, opts)); }
+function drainFit(gen) { for (;;) { const r = gen.next(); if (r.done) return r.value; } }
+// §317 — in steps, §266's rule for a single call longer than the boot's
+// budget: it yields once per compass evaluation, and main.js resumes it with
+// `await breathe()` between them (fitFittedCase drains it for every other caller).
+export function* fitFittedCaseSteps(hull, metal, { margin = PLATE_RIM_MARGIN, centre, flatMin = 0, cornerR = PLATE_RIM_MARGIN } = {}) {
+  const tonneau = fitCaseShape('tonneau', hull, metal, { margin, centre, cornerR });
+  const t = tonneau.shape, cx = centre ? centre[0] : t.cx, cyH = centre ? centre[1] : t.cy;
+  const worst = (sh) => { let w = Infinity; for (const [x, y] of hull) w = Math.min(w, sh.inset(x, y)); return w; };
+  const make = (p) => {
+    const b = (p.y1 - p.y0) / 2, cy = (p.y0 + p.y1) / 2;
+    if (!(p.a > 0) || !(b > 0) || !(p.k > 0)) return null;
+    const R = p.a / p.k;
+    // the corners must be constructible before the shape is asked anything
+    for (const yc of [p.y1 - cornerR, p.y0 + cornerR]) if (!((R - cornerR) ** 2 > (yc - p.yA) ** 2)) return null;
+    return caseShapeOf('fitted', { xMin: cx - p.a, xMax: cx + p.a, yMin: p.y0, yMax: p.y1 }, { cornerR, fitted: { k: p.k, tau: (p.yA - cy) / b } });
+  };
+  const quiet = (fn) => { const w = console.warn; console.warn = () => {}; try { return fn(); } finally { console.warn = w; } };
+  // feasibility asks the vertex that refused last time first: a bisection's
+  // refusals are almost all the same vertex, so most refusals cost one inset
+  let last = 0;
+  const holds = (sh) => {
+    if (sh.inset(...hull[last]) < margin - 1e-9) return false;
+    for (let i = 0; i < hull.length; i++) if (sh.inset(...hull[i]) < margin - 1e-9) { last = i; return false; }
+    return true;
+  };
+  const ok = (p) => quiet(() => { const sh = make(p); return !!sh && sh.flatTop >= flatMin - 1e-9 && sh.flatBot >= flatMin - 1e-9 && holds(sh); });
+  // one bound to its least feasible value, the others held; `dir` +1 grows it
+  const tightenOne = (p, key, dir) => {
+    let hi = p[key], step = 0.05;
+    if (!ok(p)) { let n = 0; while (!ok({ ...p, [key]: hi }) && n++ < 60) hi += dir * step, step *= 2; if (!ok({ ...p, [key]: hi })) return null; }
+    let lo = hi - dir * step;
+    let n = 0;
+    while (ok({ ...p, [key]: lo }) && n++ < 60) { hi = lo; step *= 2; lo -= dir * step; }
+    while (Math.abs(hi - lo) > 1e-7) { const m = (lo + hi) / 2; if (ok({ ...p, [key]: m })) hi = m; else lo = m; }
+    return { ...p, [key]: hi };
+  };
+  const tighten = (p0) => {
+    let p = p0;
+    for (let pass = 0; pass < 200; pass++) {
+      const before = p;
+      for (const [key, dir] of [['a', 1], ['y1', 1], ['y0', -1]]) { p = tightenOne(p, key, dir); if (!p) return null; }
+      if (Math.abs(p.a - before.a) + Math.abs(p.y1 - before.y1) + Math.abs(p.y0 - before.y0) < 1e-6) break;
+    }
+    return p;
+  };
+  const areaOf = (p) => (p ? quiet(() => shapeArea(make(p))) : Infinity);
+  const tb = t.bounds, b0 = (tb.yMax - tb.yMin) / 2, a0 = (tb.xMax - tb.xMin) / 2;
+  const start = { a: a0, y0: tb.yMin, y1: tb.yMax, k: 2 * TONNEAU_BOW / (TONNEAU_BOW ** 2 + (b0 / a0) ** 2), yA: (tb.yMin + tb.yMax) / 2 };
+  let best = tighten(start), bestA = areaOf(best);
+  const stepK = { k: start.k * 0.25, yA: b0 * 0.25 };
+  let evals = 0;
+  while (stepK.k > 1e-5 * start.k || stepK.yA > 1e-4) {
+    let moved = false;
+    for (const key of ['k', 'yA']) for (const d of [1, -1]) {
+      if (stepK[key] <= (key === 'k' ? 1e-5 * start.k : 1e-4)) continue;
+      const trial = tighten({ ...best, [key]: best[key] + d * stepK[key] });
+      evals++;
+      yield evals;
+      const A = areaOf(trial);
+      if (A < bestA - 1e-9) { best = trial; bestA = A; moved = true; }
+    }
+    if (!moved) { stepK.k /= 2; stepK.yA /= 2; }
+  }
+  const shape = make(best);
+  return { shape, params: best, area: bestA, tonneau: t, tonneauArea: shapeArea(t), worst: worst(shape),
+    handOff: cyH - (best.y0 + best.y1) / 2, evals,
+    spec: [shape.xMin, shape.xMax, shape.yMin, shape.yMax, shape.fitted.k, shape.fitted.tau] };
+}
+// §317 — THE FITTED BACK: the volume half of the fitted tonneau. A flat form
+// back (§307) stands one margin over the TALLEST metal anywhere in the plan, so
+// every square millimetre of the case is as deep as the alarm tower; the round
+// case has, since §187, a raised glass STEP over the tall metal only. This is
+// that step on a form: the back's pane at a LOW level zLow over the whole bore,
+// and raised panes — ISLANDS, one per cluster of tall metal — whose outlines
+// are each cluster's convex hull grown by the margin. Which level is the
+// question, and it is answered by the interior VOLUME, the cavity between the
+// crystal's inner face and the back's inner faces:
+//
+//   V(T) = A_bore · (zLow(T) − zFront) + Σ A_island(T) · (zHigh − zLow(T))
+//
+// T a threshold on the metal's score (z plus its unit's swept allowance, the
+// back envelope's own score), zLow = T + lift (lift = CLEAR_MARGIN plus the
+// glass's float guard: the pane clears what it stands over), the islands hold
+// every sample scoring above T, zHigh = the tallest score + lift (each raised
+// pane's inner face — one height for all, so the glass is one shell). Two
+// samples closer than `join` (the caller's: two island walls and the margin
+// between them) are one island, and two islands whose grown hulls come within
+// it are merged — so no two walls stand closer than the margin. Candidate T
+// are the distinct scores to `dz`; the flat back (one level, no island) is the
+// first candidate, so the answer is never worse than the flat back it
+// replaces. A candidate is refused when zLow falls under `zLowMin` (what the
+// band's back face must clear in its own right) or an island's OUTER wall (its
+// loop grown by the glass's thickness) fails `fits(loop)` (the caller's test
+// against the back's window); both only get worse as T falls, so the walk
+// stops there. `items` are { z, pts: [[x, y]…] }: a grid sample is one point,
+// and a declared swept region is its unit's plan carried at the row's score,
+// all its points one island. `res` is the clustering raster's cell (the grid's
+// own). Pure; the build and the probe read it.
+export function solveFittedBack({ items, zFront, boreArea, lift, grow, glassT, join, zLowMin = -Infinity, fits = () => true, dz = 0.01, res = CLEAR_MARGIN, segs = 96 }) {
+  const all = items.filter((it) => it.pts.length).slice().sort((p, q) => q.z - p.z);
+  if (!all.length) return null;
+  const top = all[0].z, zHigh = top + lift;
+  const ringPts = (g) => { const out = []; for (let i = 0; i < segs; i++) { const a = (2 * Math.PI * i) / segs; out.push([g * Math.cos(a), g * Math.sin(a)]); } return out; };
+  // a hull grown by g: an arc of radius g at every vertex between its two edges'
+  // outward normals — the exact offset of the convex polygon
+  const grownLoop = (hull, g) => {
+    if (hull.length === 1) return ringPts(g).map(([x, y]) => [x + hull[0][0], y + hull[0][1]]);
+    const out = [], n = hull.length;
+    for (let i = 0; i < n; i++) {
+      const [px, py] = hull[(i + n - 1) % n], [x, y] = hull[i], [qx, qy] = hull[(i + 1) % n];
+      const a0 = Math.atan2(-(x - px), y - py);
+      let a1 = Math.atan2(-(qx - x), qy - y);
+      while (a1 < a0) a1 += 2 * Math.PI;
+      const k = Math.max(1, Math.ceil(((a1 - a0) / (2 * Math.PI)) * segs));
+      for (let j = 0; j <= k; j++) { const a = a0 + ((a1 - a0) * j) / k; out.push([x + g * Math.cos(a), y + g * Math.sin(a)]); }
+    }
+    return out;
+  };
+  const polyArea = (pts) => { let A = 0; for (let i = 0; i < pts.length; i++) { const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % pts.length]; A += ax * by - ay * bx; } return A / 2; };
+  const hullOf = (pts) => (pts.length < 3 ? pts.slice() : convexHull2(pts.map((p) => p[0]), pts.map((p) => p[1]), pts.length));
+  // the least distance between two convex hulls (0 when they overlap)
+  const segD = (p, a, b) => { const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1e-18, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / L2)); return Math.hypot(p[0] - a[0] - t * ex, p[1] - a[1] - t * ey); };
+  const inside = (p, h) => { if (h.length < 3) return false; for (let i = 0; i < h.length; i++) { const a = h[i], b = h[(i + 1) % h.length]; if ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) < 0) return false; } return true; };
+  const hullDist = (A, B) => {
+    if (A.some((p) => inside(p, B)) || B.some((p) => inside(p, A))) return 0;
+    let d = Infinity;
+    for (const [P, Q] of [[A, B], [B, A]]) for (const p of P) for (let i = 0; i < Q.length; i++) d = Math.min(d, segD(p, Q[i], Q[(i + 1) % Q.length]));
+    return d;
+  };
+  // islands, grown sample by sample: two samples within `join` are one island
+  // exactly when discs of radius join/2 about them meet, so each sample STAMPS
+  // its disc on a raster of `res` (the radius rounded up a cell — never fewer
+  // merges than the exact rule), and a stamp landing on another item's cell
+  // unions the two. Linear in the samples, where a pairwise test is not. A
+  // declared region's plan is stamped whole (its polygon).
+  const parent = all.map((_, i) => i), find = (i) => { while (parent[i] !== i) i = parent[i] = parent[parent[i]]; return i; };
+  let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+  for (const it of all) for (const [x, y] of it.pts) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
+  const rr = join / 2 + res, nx = Math.ceil((bx1 - bx0 + 2 * rr) / res) + 2, ny = Math.ceil((by1 - by0 + 2 * rr) / res) + 2;
+  const owner = new Int32Array(nx * ny).fill(-1), kr = Math.ceil(rr / res);
+  const stamp = (i, x, y) => {
+    const ci = Math.round((x - bx0 + rr) / res), cj = Math.round((y - by0 + rr) / res);
+    for (let v = -kr; v <= kr; v++) for (let u = -kr; u <= kr; u++) {
+      if (u * u + v * v > kr * kr) continue;
+      const k = (cj + v) * nx + ci + u, o = owner[k];
+      if (o < 0) owner[k] = i; else if (find(o) !== find(i)) parent[find(o)] = find(i);
+    }
+  };
+  const stampItem = (i) => {
+    const pts = all[i].pts;
+    if (pts.length < 3) { for (const [x, y] of pts) stamp(i, x, y); return; }
+    const h = hullOf(pts);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of h) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    for (let x = x0; x <= x1 + res; x += res) for (let y = y0; y <= y1 + res; y += res) {
+      const p = [Math.min(x, x1), Math.min(y, y1)];
+      if (inside(p, h) || h.some((q, j) => segD(p, q, h[(j + 1) % h.length]) <= res)) stamp(i, p[0], p[1]);
+    }
+  };
+  const flat = boreArea * (zHigh - zFront);
+  let best = { T: top, zLow: zHigh, zHigh, islands: [], stepArea: 0, V: flat, flat: true };
+  for (let i = 0; i < all.length; ) {
+    const z = all[i].z;
+    for (; i < all.length && all[i].z > z - dz; i++) stampItem(i);
+    if (i >= all.length) break;
+    const T = all[i].z, zLow = T + lift;   // the next sample is the tallest the pane passes over
+    if (zLow < zLowMin) break;
+    // the islands: each root's hull, then merged while two stand within `join`
+    const groups = new Map();
+    for (let j = 0; j < i; j++) { const r = find(j); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(...all[j].pts); }
+    let hulls = [...groups.values()].map(hullOf);
+    for (let merged = true; merged; ) {
+      merged = false;
+      outer: for (let a = 0; a < hulls.length; a++) for (let b = a + 1; b < hulls.length; b++)
+        if (hullDist(hulls[a], hulls[b]) <= join) { hulls[a] = hullOf([...hulls[a], ...hulls[b]]); hulls.splice(b, 1); merged = true; break outer; }
+    }
+    const islands = hulls.map((h) => ({ hull: h, inner: grownLoop(h, grow), outer: grownLoop(h, grow + glassT) }));
+    if (!islands.every((is) => fits(is.outer))) break;
+    const stepArea = islands.reduce((A, is) => A + polyArea(is.inner), 0);
+    const V = boreArea * (zLow - zFront) + stepArea * (zHigh - zLow);
+    if (V < best.V) best = { T, zLow, zHigh, islands, stepArea, V, flat: false };
+  }
+  return { ...best, Vflat: flat };
 }
 // The convex hull of a point cloud (Andrew's monotone chain), CCW, after an
 // Akl–Toussaint cull of every point strictly inside the octagon of the eight

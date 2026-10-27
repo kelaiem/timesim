@@ -4,8 +4,8 @@
 
 # The instruments
 
-367 scripts. **249 are ACCEPTANCE tests** — they decide and exit non-zero.
-**118 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+369 scripts. **250 are ACCEPTANCE tests** — they decide and exit non-zero.
+**119 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -21,6 +21,7 @@ when a question was asked; the summaries are what it answered.
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
 | `booklet-flags.mjs` |  | acceptance | WRITES src/technic-booklet-flags.js: what the swept-insertion validator (BUILT §302, tools/technic-steps-sweep.mjs) said about every step of every LEGO build, in a form the BROWSER can read. The booklet page cannot run the validator (it needs three-mesh-bvh and minutes of Node), but it must not show a step the validator could not clear as if it were buildable, so the verdicts are GENERATED here and committed, never typed. Each row is keyed `${generation}\|${cell}\|${mode}` (the fusee, alarm and escapement are one build in both generations and sit under `shared`) and carries the plan's signature (planSig), so a derivation that has moved since the file was written is a MISMATCH the booklet and its probe both refuse. |
 | `booklet-pdf.mjs` |  | acceptance | PRINTS A LEGO BOOKLET TO PDF (BUILT §304): opens booklet.html in Chromium (Playwright from tools/node_modules), waits for every picture, and writes the PDF the browser's own Print → Save as PDF would, at the paper's size (`@page` carries it, so `preferCSSPageSize`). A dev tool for the owner and for the smoke test's page counts — not a CI step, and not a dependency of the page. |
+| `boot-form.mjs` |  | report | Boot one build headless and print what it measured: `node tools/boot-form.mjs '<query>' [expr]`. A REPORT (§317): the form footprint, the warnings the build printed (rule 6), and optionally a JSON-able expression over __clock. |
 | `boot-progress.mjs` |  | acceptance | THE BOOT BAR'S TABLE — §267. Where the build IS, as a share of how long it takes, read off a measured boot rather than a clock or a count. |
 | `bricklink-subset.mjs` |  | acceptance | Writes src/technic-bricklink.js: the SUBSET of BrickLink's catalogue downloads (Parts, Colors, Codes — https://www.bricklink.com/catalogDownload.asp, tab- delimited) that the parts list needs, so the purchase ids and colour ids are READ from BrickLink and never typed (BUILT §300's rule). The three whole files are 14 MB and are not committed; this keeps one row per LDraw id the builds place, one row per LDraw colour the role table may use, and the element codes those pairs have. `--check` re-derives the file from the same three downloads and fails if it differs; with no downloads it only reads the committed file back and checks its shape. |
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
@@ -237,6 +238,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-308-barrel-swing.mjs` | §308 | acceptance | DOES THE SWUNG BARREL FREE THE ALARM MODULE'S TURN — AND DOES THE DESIGNED TRAIN STILL BUILD THE SAME? Acceptance (§308 landing 5): exits non-zero on any failure. |
 | `probe-310-gong-seat.mjs` | §310 | acceptance | ACCEPTANCE (BUILT §310 landing 2): the gong's SEAT on a fitted form case, held to the metal and to the mechanism. Exits non-zero on any failure. |
 | `probe-313-reserve-at-12.mjs` | §313 | acceptance | DOES THE ARRANGED MOVEMENT HOLD ITS POWER RESERVE AT 12 O'CLOCK — AND ONLY BECAUSE OF THE IDLERS AND THE MODULE'S TURN IT NAMES? Acceptance (§313): exits non-zero on any failure. |
+| `probe-317-fitted-case.mjs` | §317 | acceptance | §317 — THE FITTED TONNEAU, held: the case archetype derived from the solved tonneau and form-fitted to the least plan AREA (layout.js caseShapeOf 'fitted', fitFittedCase), and its back stepped to the least interior VOLUME (solveFittedBack). Pure Node over layout.js, the measured hull read from tools/data/probe-317-hull.json (`--refresh` re-measures it: one Chromium boot of ?case=fitted at the fixture's spec, through boot-form.mjs). |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |

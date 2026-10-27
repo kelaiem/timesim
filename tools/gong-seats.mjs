@@ -36,7 +36,7 @@ import { readFileSync } from 'node:fs';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as GS from '../src/gong-solve.js';
-import { caseShapeOf, configKey, SPEC } from '../src/layout.js';
+import { formShapeOf, configKey, SPEC, FORM_KINDS, PLATE_RIM_MARGIN } from '../src/layout.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src/gong-seats.js');
@@ -47,7 +47,13 @@ const ARGS = process.argv.slice(2), WRITE = ARGS.includes('--write'), CHECK = AR
 const MODES = ARGS.includes('--modes') ? ARGS[ARGS.indexOf('--modes') + 1].split(',') : ['bar', 'spiral'];
 const SPECQ = ARGS.includes('--spec') ? ARGS[ARGS.indexOf('--spec') + 1] : null;
 const _pos = ARGS.filter((a, i) => !a.startsWith('--') && ARGS[i - 1] !== '--modes' && ARGS[i - 1] !== '--spec' && ARGS[i - 1] !== '--out');
-const KINDS = _pos.length ? _pos : ['rect', 'cushion', 'tonneau'];
+const KINDS = _pos.length ? _pos : [...FORM_KINDS];
+// §317 — the fitted tonneau's spec carries two SHAPE numbers after the bounds (k, tau). The fixed point below
+// moves the bounds only; a kind's shape numbers are its FIRST fit's (the unfitted boot's solve), carried on every
+// URL, every shape this tool builds and the row it writes. Every other kind has none.
+const EXTRA = {};
+const FR = (kind, rect) => [...rect.slice(0, 4), ...(EXTRA[kind] ?? [])].join(',');
+const shapeAt = (kind, b) => formShapeOf(kind, [b[0], b[1], b[2], b[3], ...(EXTRA[kind] ?? [])]);
 if (!MODES.every((m) => m === 'bar' || m === 'spiral')) { console.error(`--modes takes bar and/or spiral (got ${MODES.join(',')})`); process.exit(2); }
 if (WRITE === CHECK) { console.error('usage: node tools/gong-seats.mjs --write | --check [kind …]'); process.exit(2); }
 export const BAND_HZ = [1000, 4000];   // §197: a struck alarm gong's fundamental (GONG §197 assert, 1–4 kHz)
@@ -80,11 +86,22 @@ const boot = async (q) => {
   const out = await page.evaluate(() => {
     if (window.__bootError) return { bootError: String(window.__bootError.message || window.__bootError) };
     const c = window.__clock, g = c.gongSeat;
-    return { rect: c.formFootprint?.rect ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
+    return { rect: c.formFootprint?.rect ?? null, margin: c.formFootprint?.margin ?? null, regions: JSON.parse(JSON.stringify(c.regions)),
       seat: g && { specKey: g.specKey, arrKey: g.arrKey, tenants: JSON.parse(JSON.stringify(g.tenants)), keep: g.keep ? JSON.parse(JSON.stringify(g.keep)) : null, pivot: g.pivot, mode: g.mode, seated: g.seated, refused: g.refused, strike: g.strike, check: g.check, lever: g.lever, wireR: g.wireR, wireD_m: g.wireD_m,
         zGong: g.zGong, postR: g.postR, postRAt: [10, 20, 30, 40, 50, 60, 70, 80].map((L) => [L, g.postRFor(L)]) } };
   });
   await ctx.close();
+  // §317 — a fitted tonneau's re-fit moves its shape numbers too, so its box is no measure of whether the
+  // metal stands in the CUT: the box can come back the same while k and tau move (measured: the seated hammer
+  // moved them 0.5873 → 0.5796 inside an unchanged box). What is a measure is the build's own reading against
+  // the shape it cut (formFootprint.margin, the rim margin held), so `refit` says the cut does NOT hold and the
+  // fixed point carries the re-fit's shape numbers into its next round. The rect compared is four numbers
+  // either way, the shape numbers carried apart (EXTRA).
+  if (out.rect?.length === 6) {
+    out.rectFull = out.rect;
+    out.refit = /formrect=/.test(q) && !(out.margin >= PLATE_RIM_MARGIN - 1e-3);
+    out.rect = out.rect.slice(0, 4);
+  }
   return { ...out, warnings };
 };
 const sameRect = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.005);
@@ -96,7 +113,7 @@ const holdWire = (kind, fit, curveRow, need) => {
   const c = GS.seatCurve(curveRow), pts = []; for (let s = 0; s <= c.L + 1e-9; s += 0.25) { const q = c.at(Math.min(s, c.L)); pts.push([q.x, q.y]); }
   const cx = (fit[0] + fit[1]) / 2, cy = (fit[2] + fit[3]) / 2, hw = (fit[1] - fit[0]) / 2, hh = (fit[3] - fit[2]) / 2;
   const box = (kx, ky) => [cx - kx * hw, cx + kx * hw, cy - ky * hh, cy + ky * hh];
-  const holds = (kx, ky) => { const [xMin, xMax, yMin, yMax] = box(kx, ky), sh = caseShapeOf(kind, { xMin, xMax, yMin, yMax }); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
+  const holds = (kx, ky) => { const [xMin, xMax, yMin, yMax] = box(kx, ky), sh = shapeAt(kind, [xMin, xMax, yMin, yMax]); return pts.every(([x, y]) => sh.inset(x, y) >= need - 1e-9); };
   const out = (b) => [Math.floor(b[0] * 100) / 100, Math.ceil(b[1] * 100) / 100, Math.floor(b[2] * 100) / 100, Math.ceil(b[3] * 100) / 100];   // outward, the URL's 0.01
   if (holds(1, 1)) return fit;
   const least = (ok) => { let lo = 1, hi = 1.05; while (!ok(hi)) { lo = hi; hi *= 1.05; if (hi > 2) return null; } while (hi - lo > 1e-6) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; } return hi; };
@@ -164,7 +181,7 @@ function rowOf(kind, mode, r, rect, lever, wireR, mapInfo, st) {
   return { kind, mode, fam: r.fam, label: r.label, curve, ...(r.blow === 'tangent' ? { blow: 'tangent' } : {}), sg: r.hammer.side, strikeS: r6(st.s),
     f: r.f.map((v) => Math.round(v * 100) / 100), fo: r.fo.map((v) => Math.round(v * 100) / 100), band: BAND_HZ,
     pivot: r.hammer.pivot.map(r6), face: r.hammer.face.map(r6), pivotMoved: r6(r.pivotMoved),
-    formrect: rect, specKey: CUR_SPECKEY ?? configKey({ spec: { ...SPEC, caseShape: kind } }), wireR: r6(wireR), map: mapInfo };
+    formrect: [...rect.slice(0, 4), ...(EXTRA[kind] ?? [])], specKey: CUR_SPECKEY ?? configKey({ spec: { ...SPEC, caseShape: kind } }), wireR: r6(wireR), map: mapInfo };
 }
 
 FILE = loadFile(seatsText);
@@ -174,6 +191,7 @@ let failed = false;
 for (const kind of KINDS) {
   console.log(`== ${kind}`);
   const first = await boot(`case=${kind}&gong=arc`);
+  if (first.rectFull) EXTRA[kind] = first.rectFull.slice(4);
   if (first.bootError) { console.error(`  boot failed: ${first.bootError}`); failed = true; continue; }
   if (SPECQ) {
     if (!first.seat?.arrKey) { console.error('  the page publishes no arrangement key (gongSeat.arrKey)'); failed = true; break; }
@@ -198,9 +216,9 @@ for (const kind of KINDS) {
       // no seat for this kind while its band is read: the arc build is what the measure sees
       const others = JSON.parse(JSON.stringify(derived)); delete others[kind];
       seatsText = seatModuleText({ ...others, ...(Object.keys(rows).length ? { [kind]: rows } : {}) });
-      const arc = await boot(`case=${kind}&formrect=${rect.join(',')}&gong=arc`);
+      const arc = await boot(`case=${kind}&formrect=${FR(kind, rect)}&gong=arc`);
       if (arc.bootError) { console.error(`  arc boot failed: ${arc.bootError}`); break; }
-      const S = arc.seat, shape = caseShapeOf(kind, { xMin: rect[0], xMax: rect[1], yMin: rect[2], yMax: rect[3] });
+      const S = arc.seat, shape = shapeAt(kind, rect);
       const need = S.wireR + S.lever.margin;
       // the counted metal's hulls (the hammer excepted: it is the seat's own) and the plates' tenants in the band
       // TODO 272: nor the PILLARS — the gong sets them (the build's pillar scan yields to the row's `keep`)
@@ -239,13 +257,13 @@ for (const kind of KINDS) {
         // second boot, with the pillars yielding, is the one judged. The hammer does not depend on where the
         // pillars stand, so one measuring boot is the fixed point (the build holds that: declared vs cut).
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        const m = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+        const m = await boot(`case=${kind}&formrect=${FR(kind, rect)}${mode === 'bar' ? '' : `&gong=${mode}`}`);
         if (m.bootError || !m.seat?.keep) { console.log(`    refused: the seated build ${m.bootError ? `fails to boot (${m.bootError})` : 'measures no strike footprint'}`); continue; }
         r = { ...r, keep: m.seat.keep };
         // GONG_ROWS=dir writes each candidate row as judged, so a refused seat can be booted and read by hand
         if (process.env.GONG_ROWS) await writeFile(join(process.env.GONG_ROWS, `${kind}-${mode}-${round}-${pool.indexOf(cand)}.json`), JSON.stringify(r));
         seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r } });
-        let b = await boot(`case=${kind}&formrect=${rect.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+        let b = await boot(`case=${kind}&formrect=${FR(kind, rect)}${mode === 'bar' ? '' : `&gong=${mode}`}`);
         if (b.bootError) { console.log(`    refused: the seated build fails to boot (${b.bootError})`); continue; }
         // THE SEAT AT ITS OWN FIT (TODO 269's second search change, owed since the case is fitted about the
         // hands): a seat is judged at the smallest case that holds BOTH its seated metal and its own wire, not at
@@ -259,12 +277,12 @@ for (const kind of KINDS) {
         let arcAt = arc;
         const own = holdWire(kind, b.rect, rowCurve(cand), need);
         if (!sameRect(own, rect)) {
-          const r2 = { ...r, formrect: own };
+          const r2 = { ...r, formrect: [...own.slice(0, 4), ...(EXTRA[kind] ?? [])] };
           seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
-          const c = await boot(`case=${kind}&formrect=${own.join(',')}${mode === 'bar' ? '' : `&gong=${mode}`}`);
+          const c = await boot(`case=${kind}&formrect=${FR(kind, own)}${mode === 'bar' ? '' : `&gong=${mode}`}`);
           if (!c.bootError && within(c.rect, own)) {
             seatsText = seatModuleText({ ...others });
-            arcAt = await boot(`case=${kind}&formrect=${own.join(',')}&gong=arc`);
+            arcAt = await boot(`case=${kind}&formrect=${FR(kind, own)}&gong=arc`);
             seatsText = seatModuleText({ ...others, [kind]: { ...rows, [mode]: r2 } });
             console.log(`    judged at its own fit [${own.join(', ')}] (the metal's [${b.rect.join(', ')}], the cut [${rect.join(', ')}])`);
             b = c; r = r2;
@@ -288,7 +306,7 @@ for (const kind of KINDS) {
         // the cut is kept as the round's fallback and the rest are still tried: taking the first clean seat sent
         // the tonneau's spiral to a 53.2 cut it then could not hold (41.25 mm, over the cap) while a later seat,
         // 18.02 u of hammer move and 48.92 of fit, closed inside the first cut unwidened.
-        const fits = within(b.rect, r.formrect);
+        const fits = within(b.rect, r.formrect) && !b.refit;
         if (fits && !b.warnings.some((w) => /§310/.test(w))) { seated = b; pick = cand; row = r; rect = r.formrect; break; }
         console.log(`    clean, but its fit [${b.rect.join(', ')}] widens the cut: kept as the round's fallback`);
         fallback ??= { b, cand, r };
@@ -300,13 +318,14 @@ for (const kind of KINDS) {
       // outline and the outline holds the seated movement. Otherwise the next round cuts the UNION of the two
       // (never smaller: a seat that moves the hammer out cannot shrink the case it moved out of, and a two-cycle
       // between a narrow cut and a wide fit is what taking either alone does — the first run of this tool).
-      const inside = seated.rect[0] >= rect[0] - 0.005 && seated.rect[1] <= rect[1] + 0.005 && seated.rect[2] >= rect[2] - 0.005 && seated.rect[3] <= rect[3] + 0.005;
+      const inside = !seated.refit && seated.rect[0] >= rect[0] - 0.005 && seated.rect[1] <= rect[1] + 0.005 && seated.rect[2] >= rect[2] - 0.005 && seated.rect[3] <= rect[3] + 0.005;
       const seatWarn = seated.warnings.some((w) => /§310/.test(w));
       if (inside && !seatWarn) { closed = true; console.log(`  ${mode} closed: the seated build fits [${seated.rect.join(', ')}] inside the cut [${rect.join(', ')}]`); }
       else {
         const u = [Math.min(rect[0], seated.rect[0]), Math.max(rect[1], seated.rect[1]), Math.min(rect[2], seated.rect[2]), Math.max(rect[3], seated.rect[3])];
         console.log(`  the seated build fits [${seated.rect.join(', ')}]${seatWarn ? ' and its seat check warns' : ''} — re-solving at the union [${u.join(', ')}]`);
-        if (sameRect(u, rect) && seatWarn) { console.log('  the union does not move and the seat still warns: refused'); break; }
+        if (sameRect(u, rect) && seatWarn && !seated.refit) { console.log('  the union does not move and the seat still warns: refused'); break; }
+        if (seated.refit) { EXTRA[kind] = seated.rectFull.slice(4); console.log(`  the seated metal re-fits the ${kind}'s shape numbers to [${EXTRA[kind].join(', ')}]`); }
         rect = u;
       }
     }

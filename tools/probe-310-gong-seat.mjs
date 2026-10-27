@@ -96,7 +96,7 @@ const ok = (name, cond, detail = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}
 }
 const rows = Object.values(GONG_SEATS).flatMap((k) => Object.values(k));
 ok('P4 every row names its spec and a readable curve', rows.length > 0 && rows.every((r) => r.specKey === configKey({ spec: { ...SPEC, ...FORM_ARRANGEMENT, caseShape: r.kind } })   // a form case is cased on the arrangement (layout.js)
-  && ['line', 'arc', 'spiral'].includes(r.curve.type) && r.formrect?.length === 4), `${rows.length} row(s)`);
+  && ['line', 'arc', 'spiral'].includes(r.curve.type) && (r.formrect?.length === 4 || (r.kind === 'fitted' && r.formrect?.length === 6)))   // §317: the fitted tonneau's two shape numbers ride after the bounds, `${rows.length} row(s)`);
 
 // ---- browser half
 const { chromium } = await import(join(ROOT, 'tools/node_modules/playwright/index.mjs'));
