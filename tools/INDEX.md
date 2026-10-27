@@ -4,7 +4,7 @@
 
 # The instruments
 
-365 scripts. **247 are ACCEPTANCE tests** — they decide and exit non-zero.
+366 scripts. **248 are ACCEPTANCE tests** — they decide and exit non-zero.
 **118 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -344,6 +344,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-technic-booklet.mjs` |  | acceptance | DOES THE BOOKLET SAY WHAT THE BUILD IS: EVERY STEP ON EXACTLY ONE PAGE IN ORDER, EACH CALLOUT THE PARTS ITS STEP ADDS, EACH PICTURE FRAMED ON ITS NEW PARTS, THE LAST PICTURE THE WHOLE BUILD, EVERY PAGE INSIDE ITS PAPER, EVERY STEP THE VALIDATOR COULD NOT CLEAR MARKED? Acceptance, pure Node (no browser, no network); exits non-zero on any failed row. BUILT §304 (src/technic-booklet.js, the printable booklet booklet.html). The PICTURES and the real page breaks are tools/smoke-technic-booklet.mjs (Chromium); this holds the DATA the page prints and the FLOW it prints it on, at both papers. Not probe-technic-steps.mjs (that holds the ORDER and the validator, minutes of Node) and not probe-technic-bom.mjs (the parts LIST): this reads their outputs and holds what the booklet does with them. |
 | `probe-technic-build.mjs` |  | acceptance | IS THE LEGO BUILD OF THE TECHNIC FORK ASSEMBLED — every part seated, every axle through its holes, every pair of teeth meshed? Acceptance, pure Node, no browser, no network; exits non-zero on any failed row. |
 | `probe-technic-carousel.mjs` |  | acceptance | IS THE TECHNIC PAGE'S CAROUSEL A WALK OVER THE CELLS THE PAGE ACTUALLY BUILT: STOPS DERIVED FROM THEIR FRAMES (NOT RETYPED), IDS THAT ROUND-TRIP, AN UNFRAMED CELL SKIPPED OUT LOUD, NEXT AND PREVIOUS WRAPPING AT BOTH ENDS, EVERY OLD ?focus= VALUE STILL A STOP, AND THE URL WRITTEN ONLY BY THE TOUR? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §294 (src/technic-carousel.js, technic.html's carousel). |
+| `probe-technic-clock.mjs` |  | acceptance | IS THE LEGO ALARM CLOCK ONE BUILD: ITS MODULES ON ONE BASEPLATE, EACH SHARED AXLE ONE KEYED BODY ON ONE LINE, EVERY MESH IN MESH AND EVERY MODULE CLEAR OF EVERY OTHER IN EVERY STATE? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §312 landing L1 (src/technic-clock.js). |
 | `probe-technic-column-wheel.mjs` |  | acceptance | DOES THE LEGO COLUMN WHEEL, PRESSED, STEP EXACTLY ONE REST ON A FULL PRESS AND NONE ON A HALF ONE, AND DOES THE LEVER READ IT — HELD ON A COLUMN, FREE IN A GAP? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §283 (src/technic-alarm.js, the press technic.html animates). |
 | `probe-technic-escapement.mjs` |  | acceptance | DOES THE LEGO ANCHOR ESCAPE ONE TOOTH A PERIOD ON ITS 8T WHEEL, IS ITS LOCK DEEPER THAN A PLASTIC BEARING'S PLAY, AND DOES THE KNIFE-EDGE BALANCE'S SOLVED PERIOD LAND THE BEAT THE FOURTH→ESCAPE ROW IS CUT FOR? Acceptance, pure Node, no browser, no network; exits non-zero on any failure. BUILT §287 (src/technic-escapement.js), §219 tier three (b) landing J. |
 | `probe-technic-frame.mjs` |  | acceptance | DOES THE TECHNIC FORK'S FRAME HOLD ITS GEARS WITHOUT ANY PART FOULING ANOTHER? Acceptance, pure Node, no browser; exits non-zero on any failed row. |

@@ -169,9 +169,21 @@ setting, mirrored) over an 8T wheel, and a pendulum drawn as a balance on a
 KNIFE EDGE (a cross axle on two 3044b apices) whose arms and gears are solved,
 its I and d read off the parts' SOLIDS (`partSolid`), to land the row's 1 s;
 `tools/probe-technic-escapement.mjs` holds the lattice survey (no 16T escapes),
-the beat, the lock against F2's play and the rate law. The frame, ldraw, build,
-keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher and escapement probes
-are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
+the beat, the lock against F2's play and the rate law. **Since §312 L1 the CELLS
+JOIN in one more** (`src/technic-clock.js`, display only, modelled): `TECHNIC_CLOCK`
+names each LINE as the two module bodies it makes one keyed axle (centre, fourth,
+escape, minute); `solveClockLayout` lifts each group to its highest line on whole
+plates, re-foots a module half a stud over where a line pairs the grid classes (or
+runs it through a derived 8:8 × 12:12 half-stud ADAPTER where neither module can),
+slides the modules apart until their plans clear and keeps the fewest studs — its
+answer DECLARED in `CLOCK_PLACEMENT`, which the probe re-solves. The ESCAPE line is
+REFUSED by measurement (`lineExits`: the escape arbor is closed at both ends), so the
+cell carries no escapement, and the going train does not yet turn the hands (that
+slip is L2's). `tools/probe-technic-clock.mjs` holds the lifts, the lines, every mesh
+in phase, the ratios and CLEAR over the alarm's three × the keyless works' three
+states. The frame, ldraw, build,
+keyless, motion, fusee, fusee-loop, alarm, column-wheel, pusher, escapement and clock
+probes are pure Node. **Since §294 a CAROUSEL walks the cells** (display only): its stops
 are DERIVED from the cells `build()` made (`src/technic-carousel.js`, held by
 `probe-technic-carousel.mjs`; an unframed cell is skipped aloud), `?cell=<id>`
 opens one, and the page writes the URL only inside the tour. **Since §298 the page OPENS in the tour** at stop 1 (`initialTour`'s table: `?tour=0` or an explicit `?focus=` opens the overview as before, `?cell=` its stop); the browser half is
@@ -777,9 +789,12 @@ it into prose either.
    geneva finger disc both cut that way, and both are now cut as rings that
    do not cross. `probe-187-plate-gates.mjs` re-cuts the
    draft and watches both go red), and `point sweeps` **0 broken, every
-   LISTED point clean** (TODO 186 — the silent spec points swept and unioned
-   by §152's rule; a finding keeps a point out of the validated set, a PR's
-   ceiling may skip one but never passes it; see Inspecting), and `plateSeats`
+   LISTED point clean** (TODO 186 — the silent spec points, and since §308
+   landing 5 a point that DECLARES its warning set and boots exactly it, swept
+   and unioned by §152's rule; a finding keeps a point out of the validated
+   set, a PR's ceiling may skip one but never passes it; see Inspecting), and
+   `spec boots` **every declaring point boots exactly its declared set** (a
+   warning beyond it, or a declared row that stopped firing, fails), and `plateSeats`
    **control PASS, 0 undeclared parts within CLEAR_MARGIN of the base plate, 0
    malformed or stale seats, 0 regressed or stale debt** (TODO 202 step 4 — the
    plate is a HELD fixture in no sweep's pairs, which is how a dozen parts sat
@@ -1256,7 +1271,17 @@ one join `src/validated-configs.js`.** Each `SPEC_POINTS` row marked `sweep:
 true` (the non-identity points that boot silent; `reconf=1` needs none, its
 key is the default's) gets `inspection`, `clearances` and
 `undeclaredClearance` restricted with `pairsTouching` to the units its build
-changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
+changes, unioned by §152's own rule (`battery-points.mjs`). **Since §308
+landing 5 a swept row may DECLARE its warnings instead of booting silent**
+(`expect: 'declared'`, `expectWarns` — a list of warning PREFIXES, the rows'
+names, never their measured numbers): both the spec tier and the point judge
+hold the boot to exactly that set (`matchDeclaredWarns`), a warning beyond it
+reads `warns`, a declared row that stops firing reads stale and fails, and the
+point's validated-configs evidence names the set. It exists because every FORM
+build carries two filed rows (§186's form-case fit, §261's depth cap) that are
+debt about the case, not a station out of its window, and a judge that read
+any warning as `warns` could never let a form build join the set however clean
+its sweeps came back; the arrangement is the first such row. A push, dispatch
 or local run sweeps every point FULL — against that run's default — and
 `--points-out` writes the whole payloads into the cached baseline beside the
 report. **Since §264 a push's tier (and a hosted dispatch's) is MEASURED on a

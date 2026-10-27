@@ -28,6 +28,12 @@
 //      matching entry answers INCREMENTAL.
 //   6  THE CEILING NEVER READS CLEAN: a point whose deadline has passed is
 //      SKIPPED, and judges 'skipped'.
+//   7  A DECLARED WARNING SET IS HELD BOTH WAYS (§308 landing 5, the form-build
+//      sweep): the clean sweep re-judged with rewritten boot warnings — exact
+//      declared set → CLEAN with the declaration on the row; a warning beyond
+//      it → WARNS naming it; a declared row that did not fire, or a silent
+//      boot under a declaration → WARNS naming it stale; an undeclared point
+//      with any warning → WARNS as before; and the evidence row names the set.
 //
 // Axes crown + alarmToggle (the two cheap ones probe-152 uses); ~20 min on a
 // 4-vCPU dev container.
@@ -42,7 +48,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepPage, runCheck, virginBoot, BATTERY } from './battery-checks.mjs';
 import { unionCheck } from './battery-union.mjs';
-import { POINT_CHECKS, POINTS_FORMAT_VERSION, decidePointMode, judgePoint, sweepPoint } from './battery-points.mjs';
+import { POINT_CHECKS, POINTS_FORMAT_VERSION, decidePointMode, evidenceOf, judgePoint, matchDeclaredWarns, sweepPoint } from './battery-points.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const AXES = ['crown', 'alarmToggle'];
@@ -149,6 +155,32 @@ for (const point of [STUDR, ROUTE]) {
     const jb = judgePoint(point, bad, { defaults, entry: null });
     const n = jb.row.perCheck ? Object.values(jb.row.perCheck).reduce((a, c) => a + c.failCount, 0) : 0;
     check(jb.row.verdict === 'finding', `${point.name} with its hairspring ×6: judged FINDING`, `${jb.row.verdict}, ${n} failing row(s)`);
+  }
+
+  console.log(`7  ${point.name}: a declared warning set is held both ways (§308 landing 5)`);
+  {
+    // The same clean sweep (`got`), with its boot warnings REWRITTEN — the
+    // judge reads the warnings it is handed, so the rule can be exercised on
+    // a silent point without a form build: declared and exact → the sweep's
+    // own verdict (clean); a warning beyond the set → 'warns' naming it;
+    // a declared row that did not fire → 'warns' naming it stale; and the
+    // undeclared case unchanged: any warning → 'warns'.
+    const W = ['§186: the rim-to-bore fit measures 0.1 u', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin (0.01)'];
+    const declared = { ...point, expectWarns: ['§186: the rim-to-bore fit', 'TODO 206 arming spring: follower-B\'s seat sits at the nose\'s margin'] };
+    const withWarns = (ws) => ({ ...got, warns: ws });
+    const m = matchDeclaredWarns(declared.expectWarns, W);
+    check(!m.unmatched.length && !m.stale.length, 'matchDeclaredWarns: an exact set matches both ways');
+    const jExact = judgePoint(declared, withWarns(W), { defaults, entry: null });
+    check(jExact.row.verdict === 'clean' && jExact.row.declaredWarns.length === 2, 'declared and exact → the sweep\'s own verdict (CLEAN), the declaration carried on the row', `${jExact.row.verdict}${jExact.row.why ? `: ${jExact.row.why}` : ''}`);
+    const jExtra = judgePoint(declared, withWarns([...W, '§261: cased assembly 9.9 mm deep']), { defaults, entry: null });
+    check(jExtra.row.verdict === 'warns' && jExtra.row.warnsUndeclared.length === 1 && /beyond the declared set/.test(jExtra.row.why), 'a warning beyond the set → WARNS, naming it', `${jExtra.row.verdict}: ${jExtra.row.why}`);
+    const jStale = judgePoint(declared, withWarns(W.slice(0, 1)), { defaults, entry: null });
+    check(jStale.row.verdict === 'warns' && jStale.row.warnsStale.length === 1 && /stale/.test(jStale.row.why), 'a declared row that did not fire → WARNS, naming it stale', `${jStale.row.verdict}: ${jStale.row.why}`);
+    const jSilent = judgePoint(declared, withWarns([]), { defaults, entry: null });
+    check(jSilent.row.verdict === 'warns' && jSilent.row.warnsStale.length === 2, 'a silent boot under a declaration → WARNS (the whole declaration is stale), never clean', `${jSilent.row.verdict}: ${jSilent.row.why}`);
+    const jUndeclared = judgePoint(point, withWarns(W), { defaults, entry: null });
+    check(jUndeclared.row.verdict === 'warns' && !jUndeclared.row.declaredWarns, 'the control: an undeclared point with any warning → WARNS, as before', jUndeclared.row.verdict);
+    check(/declared boot warning/.test(evidenceOf(jExact.row)) && !/declared boot warning/.test(evidenceOf(j.row)), 'the evidence row names the declared warnings, and a silent point\'s does not');
   }
 }
 
