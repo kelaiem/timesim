@@ -1283,7 +1283,9 @@ const SPEC_POINTS = [
   // The refusal, asserted as a WARNING rather than a silence: a route that
   // meets a plate edge-on is a channel through it, and Apply must say so and
   // build the identity instead of quietly cutting a slot nobody designed.
-  { name: 'route=channel', q: 'arrangement=designed&route=10,20,-1;30,20,-0.9', expect: 'any',
+  // §314 — on the default (the arrangement), NOT the designed train: the control's claim is that a refused
+  // route builds the IDENTITY and reads verified, and the identity is the arrangement since §314
+  { name: 'route=channel', q: 'route=10,20,-1;30,20,-0.9', expect: 'any',
     why: '§36 Apply — a leg almost in the plate plane is refused, and the movement builds as designed' },
   // §308 landing 5 — THE ARRANGEMENT, and the first FORM build on this table.
   // The going barrel swung to 180°, the reserve carried round to 36° and the
