@@ -230,7 +230,7 @@ for (const gen of GENS) {
       const turn = (m) => [o * m[0], m[1], o * m[2], o * m[3], o * m[4], o * m[5], m[6], m[7], m[8], o * m[9], o * m[10], o * m[11]];
       if (ts.parts.length !== es.parts.length || ts.parts.some((q, i) => q.part !== es.parts[i].part || turn(es.parts[i].m).some((v, k) => !near(v, q.m[k], 1e-9)))) fail(`the escapement's ${es.shaft} carries other parts than §287's`);
     }
-    console.log(`  BUILD ${b.statics.length + b.shafts.reduce((n, s) => n + s.parts.length, 0)} placements; SEATED ${se.length ? 'FAILS' : 'every static'}; THROUGH ${checked.length} arbors in two bricks each; the fusee's ${fp.length - 1} placements and the escapement's statics where their modules put them`); }
+    console.log(`  BUILD ${b.statics.length + b.shafts.reduce((n, s) => n + s.parts.length, 0)} placements; SEATED ${se.length ? 'FAILS' : 'every static'}; THROUGH ${checked.length} arbors in their bricks (two each, the drive ${frame.drive.local.cols.length}); the fusee's ${fp.length - 1} placements and the escapement's statics where their modules put them`); }
   // THE FILE
   { const lines = toLdr(b).split('\n').filter((l) => l.startsWith('1 ')).map((l) => l.split(/\s+/)), want = placedParts(b);
     if (lines.length !== want.length) fail(`.ldr: ${lines.length} parts, build ${want.length}`);
