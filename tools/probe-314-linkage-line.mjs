@@ -207,7 +207,7 @@ const out = await page.evaluate(async ({ TOP }) => {
   for (const cd of cands) {
     judged++;
     if (studOut(cd.k)) continue;
-    const h = judge(cd.k.swept(), false);
+    const h = judge(cd.k.swept());   // the first hit names what the line runs into
     if (h.size === 0) { clear.push(cd); if (clear.length >= TOP) break; }
     else if (near.length < 25) near.push({ ...strip(cd), hits: [...h.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3) });
     if (judged % 50 === 0) { console.info(`judged ${judged}, clear ${clear.length}`); await new Promise((r) => setTimeout(r, 0)); }
