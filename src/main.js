@@ -576,7 +576,7 @@ function buildStudioEnvironment(renderer) {
   // The DIAL-SIDE panel (§289's mirror bezel). Every panel above lit the back
   // and the sides, so the −z hemisphere was the room's bare wall. A mirror shows
   // only what it reflects, and the polished bezel's flat top faces −z and is seen
-  // from there (the opening view), so it read black. A brushed lobe had smeared
+  // from there (§289's opening view, since replaced by Free), so it read black. A brushed lobe had smeared
   // the overhead and side panels across it. This is the photographer's front
   // card. It also lights the lacquered dial, both by reflection off the lacquer
   // and on its diffuse face.
