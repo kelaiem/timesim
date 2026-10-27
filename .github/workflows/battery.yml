@@ -637,7 +637,19 @@ jobs:
           # (from its harness's start, ~the same instant), runs that tier
           # itself — a slower run, never a different verdict. Re-derive from
           # the push runs that carry the fan-out.
-          tiers_cap_min=14
+          #
+          # Re-derived for the form-build sweep (§308 landing 5, §313): the
+          # point tier now sweeps a FORM build (the `form-rect` row), whose
+          # restriction reaches 62 units, and the 14 above killed its sibling
+          # on pushes 40438439985 and 40450787429 (~885 s in, the other six
+          # points done by 634 s), so the battery re-ran the tier itself and
+          # both runs read "cancelled". Hosted dispatch 40507457573 (61b84b64)
+          # let it finish: the points job handed its file over 1307 s after it
+          # started (tier 1280.2 s, form-rect alone 1249.8 s), the spec job at
+          # 566 s. The slower is points, 21.8 min; times the same 1.66x spread,
+          # 36.2, rounded up to 37. The points sibling is now the run's
+          # critical path (the battery's own checks finished first and waited).
+          tiers_cap_min=37
           { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; echo "matrix=$matrix"; echo "workers=$workers"; echo "tiers_job=$tiers_job"; echo "tiers_cap_min=$tiers_cap_min"; echo "tiers_cap_s=$(( tiers_cap_min * 60 ))"; } >> "$GITHUB_OUTPUT"
           echo "§200/§251: $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
           [ -n "$mwhy" ] && echo "§259: $mwhy" | tee -a "$GITHUB_STEP_SUMMARY"
