@@ -22770,7 +22770,10 @@ const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03
 //     selector's own third guide station and stands one margin OUTBOARD of
 //     its pins — the one plate whose radius is not the floor's. Max gap 145°,
 //     so the triangle holds the tube's axis.
-const ALARM_SLEEVE_GUIDE_AZ = [105, 250, ALARM_SEL_POST_AZ[2] / DEG2RAD].map((d) => d * DEG2RAD); // world az
+// §314 — the fork turns with a turned module (its tab is the link's measured site, module-relative) while the
+// seat posts do not, so the first plate keeps its SHARE of the gap between them: 105° + half the turn (the fork
+// at 84–99° under the arrangement's 10°, where a world 105° stood 0.03 off its tab), exactly 105° at identity.
+const ALARM_SLEEVE_GUIDE_AZ = [105 + ALARM_MOD_ROT / DEG2RAD / 2, 250, ALARM_SEL_POST_AZ[2] / DEG2RAD].map((d) => d * DEG2RAD); // world az
 // The plates' inboard face: they hang from the sheet through the selector's
 // band, so they stand one margin outside the selector rocker's orbit (it turns
 // with the tube: ALARM_SELR_REACH 4.837 + CLEAR_MARGIN = 4.987); the owner's
