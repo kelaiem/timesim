@@ -95,6 +95,12 @@ export const ESCAPEMENT_PARTS = Object.freeze({
   massArm: '11478', bobArm: '11478', anchorDrop: '41677', palletArm: '6632', palletPin: '43093',
   pallet: '3647', wheel: '3647', mass: '3649',
 });
+// §316 — THE RATING NUT's parts (src/technic-drive.js derives what it does; the going train's balance carries it,
+// frameEscapement's `rating`): every axle on this balance is parallel to the knife, so a nut slid along one moves no
+// mass about it. A RADIAL member needs a part that turns an axle through a right angle — the angle connector #6
+// (32014, two axle holes at 90°) on the bob axle's front end — and a 4L axle rising from it, on which a bush with two
+// flanges (3713) slides and is held by its own friction.
+export const RATING_PARTS = Object.freeze({ connector: '32014', rod: '3705', nut: '3713' });
 // The thin liftarms, by the reach from their keyed end hole to their far AXLE
 // hole (mm), and where their ROUND holes stand on the way (mm from that end).
 export const ARM_PARTS = Object.freeze({
